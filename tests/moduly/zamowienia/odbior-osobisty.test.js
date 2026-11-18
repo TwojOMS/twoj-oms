@@ -10,10 +10,20 @@ const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('bas
 const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) };
 
 const zmapowane = (id, nad = {}) => ({
-  zrodlo_id: id, numer: String(id), klient: { first_name: 'Jan', last_name: 'Kowalski' },
-  dostawa: { city: 'Warszawa' }, metoda_wysylki: 'odbior_osobisty', kwota_pobrania: null,
-  chce_fakture: 0, nip: null, kwota_brutto: '100.00', koszt_dostawy_brutto: '0.00',
-  status_woo: 'processing', oplacone_at: null, anulowane: 0, metoda_platnosci: 'Gotówka',
+  zrodlo_id: id,
+  numer: String(id),
+  klient: { first_name: 'Jan', last_name: 'Kowalski' },
+  dostawa: { city: 'Warszawa' },
+  metoda_wysylki: 'odbior_osobisty',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '100.00',
+  koszt_dostawy_brutto: '0.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  metoda_platnosci: 'Gotówka',
   utworzone_at: '2026-07-31T09:00:00',
   pozycje: [{ nazwa: 'STOP', sku: 'S1', ilosc: 1, cena_brutto: '100.00', brutto_linii: '100.00', vat: null }],
   ...nad,
@@ -33,8 +43,7 @@ describe('odbiór osobisty', () => {
   // ⚠️ SEDNO ZADANIA: paczka do klienta, który stoi przy ladzie, to pomyłka kosztująca
   // prawdziwe pieniądze i nieodwracalna (DPD odmawia ponownego nadania z tą referencją).
   it('NIE MA kuriera — nadanie odbija się z czytelnym powodem', () => {
-    expect(() => wybierzKuriera('odbior_osobisty', { dpd: {} }))
-      .toThrow(/nie jest obsługiwana/);
+    expect(() => wybierzKuriera('odbior_osobisty', { dpd: {} })).toThrow(/nie jest obsługiwana/);
   });
 
   it('rejestracja przesyłki nadanej poza panelem też jest odmawiana', async () => {
@@ -43,8 +52,10 @@ describe('odbiór osobisty', () => {
     await app.ready();
     const id = zapiszZamowienie(db, 'pro', zmapowane(5101), {});
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/przesylki/reczna`,
-      headers: naglowek, payload: { numer_listu: '0000123456789A' },
+      method: 'POST',
+      url: `/zamowienia/${id}/przesylki/reczna`,
+      headers: naglowek,
+      payload: { numer_listu: '0000123456789A' },
     });
     expect(r.statusCode).toBe(400);
     expect(r.body).toMatch(/odbior|odbiór/i);
@@ -57,8 +68,10 @@ describe('odbiór osobisty', () => {
     await app.ready();
     const id = zapiszZamowienie(db, 'pro', zmapowane(5102, { metoda_wysylki: 'dpd' }), {});
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/przesylki/reczna`,
-      headers: naglowek, payload: { numer_listu: '0000123456789A' },
+      method: 'POST',
+      url: `/zamowienia/${id}/przesylki/reczna`,
+      headers: naglowek,
+      payload: { numer_listu: '0000123456789A' },
     });
     expect(r.statusCode).toBe(302);
     expect(db.prepare('SELECT COUNT(*) n FROM przesylki').get().n).toBe(1);
@@ -88,9 +101,16 @@ describe('przypomnienie o paragonie', () => {
     const db = openOmsDb(':memory:');
     const app = buildOmsServer({ db, config, poller });
     await app.ready();
-    const id = zapiszZamowienie(db, 'pro', zmapowane(5202, {
-      metoda_wysylki: 'dpd', chce_fakture: 1, nip: '6762432557',
-    }), {});
+    const id = zapiszZamowienie(
+      db,
+      'pro',
+      zmapowane(5202, {
+        metoda_wysylki: 'dpd',
+        chce_fakture: 1,
+        nip: '6762432557',
+      }),
+      {},
+    );
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(tresc(r.body)).not.toContain('paragon');
   });

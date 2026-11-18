@@ -1,6 +1,4 @@
-import {
-  wartoscPozycjiGrosze, kwotaOczekiwanaGrosze, wysylkaBruttoGrosze, zl,
-} from './suma-pozycji.js';
+import { wartoscPozycjiGrosze, kwotaOczekiwanaGrosze, wysylkaBruttoGrosze, zl } from './suma-pozycji.js';
 import { daneFaktury, chceFakture } from './dane-faktury.js';
 import { dzienWarszawa } from './format-daty.js';
 import { nazwaDostawy, metodaWysylki, czyPobranie } from './wysylka.js';
@@ -73,7 +71,10 @@ function uwagiOdKlienta(surowe) {
  *   (nazwa, adres, nip, bdo); `dzis` to fallback daty, gdy zamowienie jej nie niesie
  *   (domyslnie dzisiejszy dzien w czasie warszawskim).
  */
-export function daneSpecyfikacji(z, { sprzedawca, dzis = dzienWarszawa(new Date().toISOString()), klienciWdt = new Set() } = {}) {
+export function daneSpecyfikacji(
+  z,
+  { sprzedawca, dzis = dzienWarszawa(new Date().toISOString()), klienciWdt = new Set() } = {},
+) {
   const nabywca = daneFaktury(z);
   const pozycje = (z?.pozycje ?? []).map((p) => ({
     nazwa: p?.nazwa ?? '',

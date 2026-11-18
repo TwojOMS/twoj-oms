@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
-  formularzZwrotu, kwotaZaSztukiGrosze, przygotujKrok2, sumaKwotPozycjiZl,
+  formularzZwrotu,
+  kwotaZaSztukiGrosze,
+  przygotujKrok2,
+  sumaKwotPozycjiZl,
 } from '../../src/domena/zwrot-formularz.js';
 
 // ⚠️ DWIE POZYCJE, W TYM JEDNA Z RABATEM — fikstura z jedna pozycja nie sprawdza NICZEGO
@@ -16,8 +19,24 @@ const zam = (nad = {}) => ({
   utworzone_at: '2026-08-01T10:00:00',
   anulowane: 0,
   pozycje: [
-    { id: 11, zrodlo: 'sklep', zrodlo_id: 77, nazwa: 'Kot 70x100', ilosc: 2, cena_brutto: '99.00', brutto_linii: '198.00' },
-    { id: 12, zrodlo: 'sklep', zrodlo_id: 78, nazwa: 'Pies 50x70', ilosc: 3, cena_brutto: '35.00', brutto_linii: '100.00' },
+    {
+      id: 11,
+      zrodlo: 'sklep',
+      zrodlo_id: 77,
+      nazwa: 'Kot 70x100',
+      ilosc: 2,
+      cena_brutto: '99.00',
+      brutto_linii: '198.00',
+    },
+    {
+      id: 12,
+      zrodlo: 'sklep',
+      zrodlo_id: 78,
+      nazwa: 'Pies 50x70',
+      ilosc: 3,
+      cena_brutto: '35.00',
+      brutto_linii: '100.00',
+    },
   ],
   zwroty: [],
   ...nad,
@@ -30,7 +49,10 @@ const poKluczu = (formularz, klucz) => formularz.pozycje.find((p) => p.klucz ===
 describe('podsumowanie zamowienia nad tabela zwrotu', () => {
   it('oddaje cztery liczby: wartosc zamowienia, w tym dostawa, juz zwrocono, zostalo', () => {
     expect(f(zam()).podsumowanie).toEqual({
-      zamowienieZl: '317.00', dostawaZl: '19.00', zwroconoZl: '0.00', zostaloZl: '317.00',
+      zamowienieZl: '317.00',
+      dostawaZl: '19.00',
+      zwroconoZl: '0.00',
+      zostaloZl: '317.00',
     });
   });
 
@@ -52,10 +74,14 @@ describe('podsumowanie zamowienia nad tabela zwrotu', () => {
 
   it('„zostalo do zwrotu" maleje o wczesniejsze zwroty — RAZEM z oddana dostawa', () => {
     const z = zam({
-      zwroty: [{
-        data: '2026-08-10', kwota: '100.00', kwota_dostawy: '19.00',
-        pozycje: [{ klucz_pozycji: 's78', nazwa: 'Pies 50x70', ilosc: 3, kwota: '100.00' }],
-      }],
+      zwroty: [
+        {
+          data: '2026-08-10',
+          kwota: '100.00',
+          kwota_dostawy: '19.00',
+          pozycje: [{ klucz_pozycji: 's78', nazwa: 'Pies 50x70', ilosc: 3, kwota: '100.00' }],
+        },
+      ],
     });
     expect(f(z).podsumowanie.zwroconoZl).toBe('119.00');
     expect(f(z).podsumowanie.zostaloZl).toBe('198.00');
@@ -84,10 +110,14 @@ describe('proponowane sztuki i kwoty', () => {
 
   it('proponowane sztuki i kwoty sa POMNIEJSZONE o wczesniejszy zwrot tej samej pozycji', () => {
     const z = zam({
-      zwroty: [{
-        data: '2026-08-10', kwota: '33.33', kwota_dostawy: null,
-        pozycje: [{ klucz_pozycji: 's78', nazwa: 'Pies 50x70', ilosc: 1, kwota: '33.33' }],
-      }],
+      zwroty: [
+        {
+          data: '2026-08-10',
+          kwota: '33.33',
+          kwota_dostawy: null,
+          pozycje: [{ klucz_pozycji: 's78', nazwa: 'Pies 50x70', ilosc: 1, kwota: '33.33' }],
+        },
+      ],
     });
     const wiersz = poKluczu(f(z), 's78');
     expect(wiersz).toMatchObject({ kupiono: 3, doZwrotu: 2, ilosc: 2 });
@@ -101,7 +131,9 @@ describe('proponowane sztuki i kwoty', () => {
   it('dwa zwroty czesciowe sumuja sie do `brutto_linii` co do grosza', () => {
     const pierwszy = kwotaZaSztukiGrosze(zam().pozycje[1], { sztuki: 1 });
     const drugi = kwotaZaSztukiGrosze(zam().pozycje[1], {
-      sztuki: 2, zwroconeSztuki: 1, zwroconeGr: pierwszy,
+      sztuki: 2,
+      zwroconeSztuki: 1,
+      zwroconeGr: pierwszy,
     });
     expect(pierwszy).toBe(3333);
     expect(drugi).toBe(6667);
@@ -110,10 +142,14 @@ describe('proponowane sztuki i kwoty', () => {
 
   it('pozycja zwrocona w CALOSCI wczesniej: zero sztuk i nie da sie podniesc', () => {
     const z = zam({
-      zwroty: [{
-        data: '2026-08-10', kwota: '198.00', kwota_dostawy: null,
-        pozycje: [{ klucz_pozycji: 's77', nazwa: 'Kot 70x100', ilosc: 2, kwota: '198.00' }],
-      }],
+      zwroty: [
+        {
+          data: '2026-08-10',
+          kwota: '198.00',
+          kwota_dostawy: null,
+          pozycje: [{ klucz_pozycji: 's77', nazwa: 'Kot 70x100', ilosc: 2, kwota: '198.00' }],
+        },
+      ],
     });
     const wiersz = poKluczu(f(z), 's77');
     expect(wiersz).toMatchObject({ kupiono: 2, doZwrotu: 0, ilosc: 0 });
@@ -137,7 +173,9 @@ describe('proponowane sztuki i kwoty', () => {
 describe('zwrot kosztu dostawy', () => {
   it('proponuje zwrot dostawy z zamowienia — zaznaczony i z wypelniona kwota', () => {
     expect(f(zam()).dostawa).toEqual({
-      zaznaczona: true, kwotaZl: '19.00', uwaga: null,
+      zaznaczona: true,
+      kwotaZl: '19.00',
+      uwaga: null,
     });
   });
 
@@ -163,7 +201,8 @@ describe('zwrot kosztu dostawy', () => {
       zwroty: [{ data: '2026-08-10', kwota: '100.00', kwota_dostawy: '9.00', pozycje: [] }],
     });
     expect(f(z).dostawa).toMatchObject({
-      zaznaczona: true, kwotaZl: '10.00',
+      zaznaczona: true,
+      kwotaZl: '10.00',
     });
   });
 
@@ -189,7 +228,9 @@ describe('zwrot kosztu dostawy', () => {
 
   it('zamowienie bez kosztu dostawy nie proponuje jej zwrotu', () => {
     expect(f(zam({ koszt_dostawy_brutto: null })).dostawa).toEqual({
-      zaznaczona: false, kwotaZl: '', uwaga: null,
+      zaznaczona: false,
+      kwotaZl: '',
+      uwaga: null,
     });
   });
 });
@@ -230,8 +271,10 @@ describe('wartosci wpisane przez operatora wygrywaja z propozycja', () => {
   it('dopasowuje wpisane wartosci po KLUCZU pozycji, nie po kolejnosci', () => {
     const odwrocone = {
       ...wpisane,
-      klucz: ['s78', 's77'], nazwa: ['Pies 50x70', 'Kot 70x100'],
-      ilosc: ['3', '1'], pozycja_kwota: ['100.00', '99.00'],
+      klucz: ['s78', 's77'],
+      nazwa: ['Pies 50x70', 'Kot 70x100'],
+      ilosc: ['3', '1'],
+      pozycja_kwota: ['100.00', '99.00'],
     };
     const formularz = f(zam(), { wpisane: odwrocone });
     expect(poKluczu(formularz, 's77')).toMatchObject({ ilosc: 1, kwotaZl: '99.00' });
@@ -241,7 +284,9 @@ describe('wartosci wpisane przez operatora wygrywaja z propozycja', () => {
   it('odznaczona dostawa wraca odznaczona, a pole dostaje z powrotem podpowiedz', () => {
     const bezDostawy = { ...wpisane, zwroc_dostawe: undefined, kwota_dostawy: '' };
     expect(f(zam(), { wpisane: bezDostawy }).dostawa).toMatchObject({
-      zaznaczona: false, kwotaZl: '19.00', uwaga: null,
+      zaznaczona: false,
+      kwotaZl: '19.00',
+      uwaga: null,
     });
   });
 
@@ -256,8 +301,10 @@ describe('wartosci wpisane przez operatora wygrywaja z propozycja', () => {
 // liczb nie rozjechal.
 describe('suma kwot przy pozycjach (liczy SERWER, nie operator)', () => {
   const cialo = (nad = {}) => ({
-    klucz: ['s77', 's78'], nazwa: ['Kot 70x100', 'Pies 50x70'],
-    ilosc: ['2', '3'], pozycja_kwota: ['198.00', '100.00'],
+    klucz: ['s77', 's78'],
+    nazwa: ['Kot 70x100', 'Pies 50x70'],
+    ilosc: ['2', '3'],
+    pozycja_kwota: ['198.00', '100.00'],
     ...nad,
   });
 
@@ -362,53 +409,71 @@ describe('krok 2: kwota PODAZA ZA ILOSCIA', () => {
     expect(pierwszy.pozycja_kwota[1]).toBe('33.33');
 
     const poPierwszym = zam({
-      zwroty: [{
-        data: '2026-08-10',
-        kwota: pierwszy.kwota,
-        kwota_dostawy: null,
-        pozycje: [{
-          klucz_pozycji: 's78', nazwa: 'Pies 50x70', ilosc: 1, kwota: pierwszy.pozycja_kwota[1],
-        }],
-      }],
+      zwroty: [
+        {
+          data: '2026-08-10',
+          kwota: pierwszy.kwota,
+          kwota_dostawy: null,
+          pozycje: [
+            {
+              klucz_pozycji: 's78',
+              nazwa: 'Pies 50x70',
+              ilosc: 1,
+              kwota: pierwszy.pozycja_kwota[1],
+            },
+          ],
+        },
+      ],
     });
     // Krok 1 drugiego zwrotu proponuje 2 szt. za 66,67 zl — a operator schodzi do 1 szt.
     // i kwoty NIE RUSZA. Panel ma policzyc polowe RESZTY (33,34 zl), nie polowe linii.
-    const drugi = przygotujKrok2(poPierwszym, cialoKroku1({
-      ilosc: ['0', '1'],
-      pozycja_kwota: ['198.00', '66.67'],
-      pozycja_kwota_propozycja: ['198.00', '66.67'],
-    })).cialo;
+    const drugi = przygotujKrok2(
+      poPierwszym,
+      cialoKroku1({
+        ilosc: ['0', '1'],
+        pozycja_kwota: ['198.00', '66.67'],
+        pozycja_kwota_propozycja: ['198.00', '66.67'],
+      }),
+    ).cialo;
     expect(drugi.pozycja_kwota[1]).toBe('33.34');
 
     // A gdy zamiast tego wraca cala reszta — suma obu zwrotow to DOKLADNIE wartosc linii.
-    const reszta = przygotujKrok2(poPierwszym, cialoKroku1({
-      ilosc: ['0', '2'],
-      pozycja_kwota: ['198.00', '66.67'],
-      pozycja_kwota_propozycja: ['198.00', '66.67'],
-    })).cialo;
+    const reszta = przygotujKrok2(
+      poPierwszym,
+      cialoKroku1({
+        ilosc: ['0', '2'],
+        pozycja_kwota: ['198.00', '66.67'],
+        pozycja_kwota_propozycja: ['198.00', '66.67'],
+      }),
+    ).cialo;
     expect(reszta.pozycja_kwota[1]).toBe('66.67');
-    expect(Math.round(Number(pierwszy.kwota) * 100) + Math.round(Number(reszta.kwota) * 100))
-      .toBe(10000);
+    expect(Math.round(Number(pierwszy.kwota) * 100) + Math.round(Number(reszta.kwota) * 100)).toBe(10000);
   });
 
   // ⚠️⚠️ CZLOWIEK WYGRYWA (Reguła produktu: „kwotę przepisujesz z Allegro i to ONA jest
   // prawdą") — ale krok 2 MA TO POKAZAC. Ostrzezenie, nie odmowa.
   it('kwota zmieniona RECZNIE wygrywa z przeliczeniem', () => {
-    const { cialo } = przygotujKrok2(zam(), cialoKroku1({
-      ilosc: ['0', '1'],
-      pozycja_kwota: ['198.00', '40.00'],
-      pozycja_kwota_propozycja: ['198.00', '100.00'],
-    }));
+    const { cialo } = przygotujKrok2(
+      zam(),
+      cialoKroku1({
+        ilosc: ['0', '1'],
+        pozycja_kwota: ['198.00', '40.00'],
+        pozycja_kwota_propozycja: ['198.00', '100.00'],
+      }),
+    );
     expect(cialo.pozycja_kwota[1]).toBe('40.00');
     expect(cialo.kwota).toBe('40.00');
   });
 
   it('reczna kwota rozna od przeliczonej daje OSTRZEZENIE z obiema liczbami', () => {
-    const { ostrzezenia } = przygotujKrok2(zam(), cialoKroku1({
-      ilosc: ['0', '1'],
-      pozycja_kwota: ['198.00', '40.00'],
-      pozycja_kwota_propozycja: ['198.00', '100.00'],
-    }));
+    const { ostrzezenia } = przygotujKrok2(
+      zam(),
+      cialoKroku1({
+        ilosc: ['0', '1'],
+        pozycja_kwota: ['198.00', '40.00'],
+        pozycja_kwota_propozycja: ['198.00', '100.00'],
+      }),
+    );
     expect(ostrzezenia).toHaveLength(1);
     expect(ostrzezenia[0]).toContain('Pies 50x70');
     expect(ostrzezenia[0]).toContain('1 z 3');
@@ -421,22 +486,28 @@ describe('krok 2: kwota PODAZA ZA ILOSCIA', () => {
   // przeliczone 33,33 zl, wiec wpisanie tam z powrotem 100,00 zl jest DECYZJA CZLOWIEKA —
   // i ma zostac, ale nie po cichu.
   it('ostrzezenie nazywa po imieniu kwote rowna CALEJ pozostalej linii', () => {
-    const { cialo, ostrzezenia } = przygotujKrok2(zam(), cialoKroku1({
-      ilosc: ['0', '1'],
-      pozycja_kwota: ['198.00', '100.00'],
-      pozycja_kwota_propozycja: ['198.00', '33.33'],
-    }));
+    const { cialo, ostrzezenia } = przygotujKrok2(
+      zam(),
+      cialoKroku1({
+        ilosc: ['0', '1'],
+        pozycja_kwota: ['198.00', '100.00'],
+        pozycja_kwota_propozycja: ['198.00', '33.33'],
+      }),
+    );
     expect(cialo.pozycja_kwota[1]).toBe('100.00');
     expect(ostrzezenia[0]).toMatch(/całej pozostałej linii/i);
     expect(ostrzezenia[0]).toContain('33.33');
   });
 
   it('reczna kwota ZGODNA z przeliczeniem nie ostrzega o niczym', () => {
-    const { cialo, ostrzezenia } = przygotujKrok2(zam(), cialoKroku1({
-      ilosc: ['0', '1'],
-      pozycja_kwota: ['198.00', '33.33'],
-      pozycja_kwota_propozycja: ['198.00', '100.00'],
-    }));
+    const { cialo, ostrzezenia } = przygotujKrok2(
+      zam(),
+      cialoKroku1({
+        ilosc: ['0', '1'],
+        pozycja_kwota: ['198.00', '33.33'],
+        pozycja_kwota_propozycja: ['198.00', '100.00'],
+      }),
+    );
     expect(cialo.pozycja_kwota[1]).toBe('33.33');
     expect(ostrzezenia).toEqual([]);
   });
@@ -458,9 +529,13 @@ describe('krok 2: kwota PODAZA ZA ILOSCIA', () => {
   // OBIE ilosci wieksze od zera, bo tylko wtedy pierwszy wiersz w ogole wchodzi w przeliczanie
   // — z iloscia 0 test przechodzilby takze BEZ straznika dlugosci.
   it('propozycja o innej dlugosci niz reszta formularza tez niczego nie przelicza', () => {
-    const { cialo } = przygotujKrok2(zam(), cialoKroku1({
-      ilosc: ['1', '1'], pozycja_kwota_propozycja: ['198.00'],
-    }));
+    const { cialo } = przygotujKrok2(
+      zam(),
+      cialoKroku1({
+        ilosc: ['1', '1'],
+        pozycja_kwota_propozycja: ['198.00'],
+      }),
+    );
     expect(cialo.pozycja_kwota[0]).toBe('198.00');
     expect(cialo.pozycja_kwota[0]).not.toBe('99.00');
     expect(cialo.pozycja_kwota[1]).toBe('100.00');
@@ -470,8 +545,9 @@ describe('krok 2: kwota PODAZA ZA ILOSCIA', () => {
   it('odznaczony checkbox dostawy dalej zeruje kwote dostawy', () => {
     const { cialo } = przygotujKrok2(zam(), cialoKroku1({ kwota_dostawy: '19.00' }));
     expect(cialo.kwota_dostawy).toBe('');
-    expect(przygotujKrok2(zam(), cialoKroku1({ kwota_dostawy: '19.00', zwroc_dostawe: '1' })).cialo.kwota_dostawy)
-      .toBe('19.00');
+    expect(przygotujKrok2(zam(), cialoKroku1({ kwota_dostawy: '19.00', zwroc_dostawe: '1' })).cialo.kwota_dostawy).toBe(
+      '19.00',
+    );
   });
 
   it('formularz o nierownych tablicach idzie dalej nietkniety — odmowe wypowie parsujZwrot', () => {
@@ -557,11 +633,14 @@ describe('I1: przeliczenie kwoty NIETKNIETEJ nie jest ciche', () => {
   // NIE zmienil, choc policzylby inaczej".
   it('nie myli sie ze zdaniem o kwocie zmienionej recznie', () => {
     const przeliczone = przygotujKrok2(zam(), cialoKroku1({ ilosc: ['0', '1'] })).ostrzezenia[0];
-    const reczne = przygotujKrok2(zam(), cialoKroku1({
-      ilosc: ['0', '1'],
-      pozycja_kwota: ['198.00', '40.00'],
-      pozycja_kwota_propozycja: ['198.00', '100.00'],
-    })).ostrzezenia[0];
+    const reczne = przygotujKrok2(
+      zam(),
+      cialoKroku1({
+        ilosc: ['0', '1'],
+        pozycja_kwota: ['198.00', '40.00'],
+        pozycja_kwota_propozycja: ['198.00', '100.00'],
+      }),
+    ).ostrzezenia[0];
     expect(przeliczone).toMatch(/przeliczy/i);
     expect(reczne).not.toMatch(/przeliczy/i);
     expect(reczne).toMatch(/Zostaje Twoja kwota/i);
@@ -603,14 +682,31 @@ describe('propozycja kwoty jako fakt przenoszony na krok 2', () => {
 describe('ostrzezenie, gdy propozycja przekracza „Zostalo do zwrotu"', () => {
   // Dokladnie stan zmierzony: 198,00 + 100,90 + dostawa 19,00 przy kwocie
   // zamowienia 317,00 zl.
-  const zamNiespojne = (nad = {}) => zam({
-    kwota_brutto: '317.00',
-    pozycje: [
-      { id: 11, zrodlo: 'sklep', zrodlo_id: 77, nazwa: 'Kot 70x100', ilosc: 2, cena_brutto: '99.00', brutto_linii: '198.00' },
-      { id: 12, zrodlo: 'sklep', zrodlo_id: 78, nazwa: 'Pies 50x70', ilosc: 1, cena_brutto: '100.90', brutto_linii: '100.90' },
-    ],
-    ...nad,
-  });
+  const zamNiespojne = (nad = {}) =>
+    zam({
+      kwota_brutto: '317.00',
+      pozycje: [
+        {
+          id: 11,
+          zrodlo: 'sklep',
+          zrodlo_id: 77,
+          nazwa: 'Kot 70x100',
+          ilosc: 2,
+          cena_brutto: '99.00',
+          brutto_linii: '198.00',
+        },
+        {
+          id: 12,
+          zrodlo: 'sklep',
+          zrodlo_id: 78,
+          nazwa: 'Pies 50x70',
+          ilosc: 1,
+          cena_brutto: '100.90',
+          brutto_linii: '100.90',
+        },
+      ],
+      ...nad,
+    });
 
   it('mowi to WPROST na kroku 1 — z obiema liczbami i z roznica do sciecia', () => {
     const formularz = f(zamNiespojne());
@@ -649,14 +745,17 @@ describe('ostrzezenie, gdy propozycja przekracza „Zostalo do zwrotu"', () => {
   describe('komunikat nie zgaduje PRZYCZYNY rozjazdu', () => {
     // Zamowienie sumuje sie samo ze soba CO DO GROSZA (198 + 100 + 19 = 317). Rozjazd robi
     // wylacznie wczesniejszy zwrot oddany „na gest".
-    const poHojnymZwrocie = () => zam({
-      zwroty: [{
-        data: '2026-08-10',
-        kwota: '248.00',
-        kwota_dostawy: null,
-        pozycje: [{ klucz_pozycji: 's77', nazwa: 'Kot 70x100', ilosc: 2, kwota: '248.00' }],
-      }],
-    });
+    const poHojnymZwrocie = () =>
+      zam({
+        zwroty: [
+          {
+            data: '2026-08-10',
+            kwota: '248.00',
+            kwota_dostawy: null,
+            pozycje: [{ klucz_pozycji: 's77', nazwa: 'Kot 70x100', ilosc: 2, kwota: '248.00' }],
+          },
+        ],
+      });
 
     it('podaje trzy liczby, ktore panel ZNA: sume podpowiedzi, „zostalo" i nadwyzke', () => {
       const zdanie = f(poHojnymZwrocie()).ostrzezenieSumy;
@@ -696,12 +795,14 @@ describe('podloga zera', () => {
 
   it('pole kwoty na kroku 1 dostaje 0.00, a nie liczbe ujemna', () => {
     const z = zam({
-      zwroty: [{
-        data: '2026-08-10',
-        kwota: '248.00',
-        kwota_dostawy: null,
-        pozycje: [{ klucz_pozycji: 's77', nazwa: 'Kot 70x100', ilosc: 1, kwota: '248.00' }],
-      }],
+      zwroty: [
+        {
+          data: '2026-08-10',
+          kwota: '248.00',
+          kwota_dostawy: null,
+          pozycje: [{ klucz_pozycji: 's77', nazwa: 'Kot 70x100', ilosc: 1, kwota: '248.00' }],
+        },
+      ],
     });
     const wiersz = poKluczu(f(z), 's77');
     expect(wiersz.kwotaZl).toBe('0.00');

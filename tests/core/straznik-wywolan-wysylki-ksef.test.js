@@ -59,9 +59,13 @@ const WARSTWA_PROGRAMU = ['integracje/', 'oms/infakt/', 'oms/fakturownia/', 'cor
 const WOLNO_SEND_TO_KSEF = new Set(['oms/fakturownia/client.js']);
 const KOD = new Set(['.js', '.mjs', '.cjs', '.ts']);
 const WEZLY_TEKSTU = new Set([
-  ts.SyntaxKind.Identifier, ts.SyntaxKind.PrivateIdentifier, ts.SyntaxKind.StringLiteral,
-  ts.SyntaxKind.NoSubstitutionTemplateLiteral, ts.SyntaxKind.TemplateHead,
-  ts.SyntaxKind.TemplateMiddle, ts.SyntaxKind.TemplateTail,
+  ts.SyntaxKind.Identifier,
+  ts.SyntaxKind.PrivateIdentifier,
+  ts.SyntaxKind.StringLiteral,
+  ts.SyntaxKind.NoSubstitutionTemplateLiteral,
+  ts.SyntaxKind.TemplateHead,
+  ts.SyntaxKind.TemplateMiddle,
+  ts.SyntaxKind.TemplateTail,
 ]);
 
 const wWarstwieProgramu = (plik) => WARSTWA_PROGRAMU.some((p) => (p.endsWith('/') ? plik.startsWith(p) : plik === p));
@@ -69,24 +73,37 @@ const wWarstwieProgramu = (plik) => WARSTWA_PROGRAMU.some((p) => (p.endsWith('/'
 /** Wyrażenie „w górę” przez nawiasy, `!`, `as`, `satisfies` — `(x.f)(…)` i `(x.f as F)(…)` to dalej wywołanie x.f. */
 function wGore(w) {
   let n = w;
-  while (n.parent && (ts.isParenthesizedExpression(n.parent) || ts.isNonNullExpression(n.parent)
-    || ts.isAsExpression(n.parent) || ts.isTypeAssertionExpression(n.parent)
-    || (ts.isSatisfiesExpression?.(n.parent) ?? false))) n = n.parent;
+  while (
+    n.parent &&
+    (ts.isParenthesizedExpression(n.parent) ||
+      ts.isNonNullExpression(n.parent) ||
+      ts.isAsExpression(n.parent) ||
+      ts.isTypeAssertionExpression(n.parent) ||
+      (ts.isSatisfiesExpression?.(n.parent) ?? false))
+  )
+    n = n.parent;
   return n;
 }
 const jestWolanym = (w) => {
   const n = wGore(w);
   if (ts.isCallExpression(n.parent) && n.parent.expression === n) return true;
   // x.m.call(…) / .apply(…) / .bind(…)
-  return ts.isPropertyAccessExpression(n.parent) && n.parent.expression === n
-    && ['call', 'apply', 'bind'].includes(n.parent.name.text) && jestWolanym(n.parent);
+  return (
+    ts.isPropertyAccessExpression(n.parent) &&
+    n.parent.expression === n &&
+    ['call', 'apply', 'bind'].includes(n.parent.name.text) &&
+    jestWolanym(n.parent)
+  );
 };
 
 /** Nazwa, pod którą funkcja jest wystawiona — deklaracja, metoda, klucz obiektu, zmienna. Nie własna nazwa wyrażenia. */
 function nazwaWystawienia(n) {
   if (ts.isFunctionDeclaration(n) || ts.isMethodDeclaration(n)) return n.name?.text;
-  if ((ts.isArrowFunction(n) || ts.isFunctionExpression(n))
-    && (ts.isPropertyAssignment(n.parent) || ts.isVariableDeclaration(n.parent)) && n.parent.initializer === n) {
+  if (
+    (ts.isArrowFunction(n) || ts.isFunctionExpression(n)) &&
+    (ts.isPropertyAssignment(n.parent) || ts.isVariableDeclaration(n.parent)) &&
+    n.parent.initializer === n
+  ) {
     return n.parent.name?.text;
   }
   return undefined;
@@ -107,7 +124,10 @@ const zawieraNazwe = (wezel) => {
   let jest = false;
   const szukaj = (n) => {
     if (jest) return;
-    if (WEZLY_TEKSTU.has(n.kind) && [NAZWA, ZDOLNOSC, MAPA].includes(n.text)) { jest = true; return; }
+    if (WEZLY_TEKSTU.has(n.kind) && [NAZWA, ZDOLNOSC, MAPA].includes(n.text)) {
+      jest = true;
+      return;
+    }
     ts.forEachChild(n, szukaj);
   };
   szukaj(wezel);
@@ -126,16 +146,31 @@ function forma(w) {
   // `const { m } = x` / `const { m: f } = x` — wyjęcie metody z obiektu.
   if (ts.isBindingElement(p) && (p.propertyName === w || (!p.propertyName && p.name === w))) return 'odczyt';
   if (ts.isIdentifier(w) && jestWolanym(w) && !ts.isFunctionDeclaration(p)) return 'wywolanie';
-  if (((ts.isFunctionDeclaration(p) || ts.isMethodDeclaration(p) || ts.isPropertyAssignment(p)
-    || ts.isPropertySignature(p) || ts.isMethodSignature(p) || ts.isFunctionExpression(p)) && p.name === w)
-    || ts.isShorthandPropertyAssignment(p)) {
+  if (
+    ((ts.isFunctionDeclaration(p) ||
+      ts.isMethodDeclaration(p) ||
+      ts.isPropertyAssignment(p) ||
+      ts.isPropertySignature(p) ||
+      ts.isMethodSignature(p) ||
+      ts.isFunctionExpression(p)) &&
+      p.name === w) ||
+    ts.isShorthandPropertyAssignment(p)
+  ) {
     return 'definicja';
   }
   if (ts.isStringLiteralLike(w) && ts.isArrayLiteralExpression(p)) return 'lista';
-  if (ts.isStringLiteralLike(w) && ts.isPropertyAssignment(p) && p.initializer === w && wMapieZdolnosci(p)) return 'lista';
-  if (ts.isStringLiteralLike(w) && ts.isCallExpression(p) && p.arguments.length === 1 && p.arguments[0] === w
-    && ts.isPropertyAccessExpression(p.expression) && p.expression.name.text === 'includes'
-    && ts.isPropertyAccessExpression(p.expression.expression) && p.expression.expression.name.text === 'zdolnosci') {
+  if (ts.isStringLiteralLike(w) && ts.isPropertyAssignment(p) && p.initializer === w && wMapieZdolnosci(p))
+    return 'lista';
+  if (
+    ts.isStringLiteralLike(w) &&
+    ts.isCallExpression(p) &&
+    p.arguments.length === 1 &&
+    p.arguments[0] === w &&
+    ts.isPropertyAccessExpression(p.expression) &&
+    p.expression.name.text === 'includes' &&
+    ts.isPropertyAccessExpression(p.expression.expression) &&
+    p.expression.expression.name.text === 'zdolnosci'
+  ) {
     return 'zdolnoscZOpisu';
   }
   return 'inne';
@@ -151,17 +186,32 @@ export function przeskanuj(sciezka, tresc) {
   const nazwy = [];
   const teksty = [];
   if (KOD.has(roz)) {
-    const zrodlo = ts.createSourceFile(sciezka, tresc, ts.ScriptTarget.Latest, true,
-      roz === '.ts' ? ts.ScriptKind.TS : ts.ScriptKind.JS);
+    const zrodlo = ts.createSourceFile(
+      sciezka,
+      tresc,
+      ts.ScriptTarget.Latest,
+      true,
+      roz === '.ts' ? ts.ScriptKind.TS : ts.ScriptKind.JS,
+    );
     const linia = (w) => zrodlo.getLineAndCharacterOfPosition(w.getStart(zrodlo)).line + 1;
     const odwiedz = (w) => {
-      if (ts.isElementAccessExpression(w) && !ts.isStringLiteralLike(w.argumentExpression) && jestWolanym(w)
-        && zawieraNazwe(w.argumentExpression)) {
-        nazwy.push({ linia: linia(w), nazwa: 'wolanieIndeksem', forma: 'wywolanie', wDefinicji: wDefinicjiTejSamejNazwy(w) });
+      if (
+        ts.isElementAccessExpression(w) &&
+        !ts.isStringLiteralLike(w.argumentExpression) &&
+        jestWolanym(w) &&
+        zawieraNazwe(w.argumentExpression)
+      ) {
+        nazwy.push({
+          linia: linia(w),
+          nazwa: 'wolanieIndeksem',
+          forma: 'wywolanie',
+          wDefinicji: wDefinicjiTejSamejNazwy(w),
+        });
       }
       if (WEZLY_TEKSTU.has(w.kind)) {
         for (const n of [NAZWA, ZDOLNOSC, MAPA]) {
-          if (w.text === n) nazwy.push({ linia: linia(w), nazwa: n, forma: forma(w), wDefinicji: wDefinicjiTejSamejNazwy(w) });
+          if (w.text === n)
+            nazwy.push({ linia: linia(w), nazwa: n, forma: forma(w), wDefinicji: wDefinicjiTejSamejNazwy(w) });
           else if (w.text.includes(n)) nazwy.push({ linia: linia(w), nazwa: n, forma: 'inne', wDefinicji: false });
         }
         if (/gov_save_and_send|send_to_ksef/i.test(w.text)) teksty.push({ linia: linia(w), tekst: w.text });
@@ -173,7 +223,8 @@ export function przeskanuj(sciezka, tresc) {
   }
   const bez = roz === '.ejs' ? tresc.replace(/<%#[\s\S]*?%>/g, (k) => k.replace(/[^\n]/g, '')) : tresc;
   bez.split('\n').forEach((l, i) => {
-    for (const n of [NAZWA, ZDOLNOSC, MAPA]) if (l.includes(n)) nazwy.push({ linia: i + 1, nazwa: n, forma: 'poza kodem', wDefinicji: false });
+    for (const n of [NAZWA, ZDOLNOSC, MAPA])
+      if (l.includes(n)) nazwy.push({ linia: i + 1, nazwa: n, forma: 'poza kodem', wDefinicji: false });
     if (/gov_save_and_send|send_to_ksef/i.test(l)) teksty.push({ linia: i + 1, tekst: l.trim() });
   });
   return { nazwy, teksty };
@@ -186,10 +237,19 @@ export function naruszeniaWysylki(plik, wystapienia) {
   if (wWarstwieProgramu(plik)) {
     for (const w of wystapienia) {
       if (w.forma === 'poza kodem') zle.push(opis(w, 'nazwa w pliku spoza kodu'));
-      else if ((w.forma === 'wywolanie' || w.forma === 'odczyt') && (w.nazwa === NAZWA || w.nazwa === 'wolanieIndeksem')) {
-        if (!w.wDefinicji) zle.push(opis(w, `w warstwie programu wolno wołać tylko z wnętrza definicji wystawionej jako ${NAZWA}`));
+      else if (
+        (w.forma === 'wywolanie' || w.forma === 'odczyt') &&
+        (w.nazwa === NAZWA || w.nazwa === 'wolanieIndeksem')
+      ) {
+        if (!w.wDefinicji)
+          zle.push(opis(w, `w warstwie programu wolno wołać tylko z wnętrza definicji wystawionej jako ${NAZWA}`));
       } else if (w.nazwa === NAZWA && !['definicja', 'lista'].includes(w.forma)) {
-        zle.push(opis(w, `${NAZWA} w warstwie programu tylko jako klucz definicji, element listy metod albo wartość w ${MAPA}`));
+        zle.push(
+          opis(
+            w,
+            `${NAZWA} w warstwie programu tylko jako klucz definicji, element listy metod albo wartość w ${MAPA}`,
+          ),
+        );
       }
     }
     return zle;
@@ -208,7 +268,8 @@ export function naruszeniaWysylki(plik, wystapienia) {
       if (!nazwy.length) zle.push(`${plik}: brak wywołania ${NAZWA} — jedyna droga wysyłki zniknęła`);
     }
     if (zdolnosci.length > 1 || zdolnosci.some((w) => w.forma !== 'zdolnoscZOpisu')) {
-      for (const w of zdolnosci) zle.push(opis(w, `${ZDOLNOSC} tylko raz, jako \`….zdolnosci.includes('${ZDOLNOSC}')\``));
+      for (const w of zdolnosci)
+        zle.push(opis(w, `${ZDOLNOSC} tylko raz, jako \`….zdolnosci.includes('${ZDOLNOSC}')\``));
     }
   }
   return zle;
@@ -269,7 +330,10 @@ describe('strażnik wysyłki do KSeF', () => {
   });
 
   it('skaner: każda forma wywołania i odczytu, definicje, komentarze pominięte, .ejs bez komentarzy EJS', () => {
-    const formy = (kod, p = 'a.js') => przeskanuj(p, kod).nazwy.filter((w) => w.nazwa === NAZWA).map((w) => w.forma);
+    const formy = (kod, p = 'a.js') =>
+      przeskanuj(p, kod)
+        .nazwy.filter((w) => w.nazwa === NAZWA)
+        .map((w) => w.forma);
     for (const kod of [
       'program.wyslijDokumentDoKsef(id);',
       'program?.wyslijDokumentDoKsef(id);',
@@ -280,7 +344,8 @@ describe('strażnik wysyłki do KSeF', () => {
       '(program.wyslijDokumentDoKsef as any)(id);',
       'program.wyslijDokumentDoKsef.call(program, id);',
       'wyslijDokumentDoKsef(id);',
-    ]) expect(formy(kod, 'a.ts'), kod).toEqual(['wywolanie']);
+    ])
+      expect(formy(kod, 'a.ts'), kod).toEqual(['wywolanie']);
     expect(formy('const f = program.wyslijDokumentDoKsef;')).toEqual(['odczyt']);
     expect(formy("if (typeof p['wyslijDokumentDoKsef'] === 'function') {}")).toEqual(['odczyt']);
     expect(formy('const { wyslijDokumentDoKsef: f } = program;')).toEqual(['odczyt']);
@@ -288,13 +353,17 @@ describe('strażnik wysyłki do KSeF', () => {
     expect(formy('async function wyslijDokumentDoKsef(uuid) {}')).toEqual(['definicja']);
     expect(formy('const o = { wyslijDokumentDoKsef, x: 1 };')).toEqual(['definicja']);
     expect(formy("const l = ['listaFaktur', 'wyslijDokumentDoKsef'];")).toEqual(['lista']);
-    expect(formy("const METODA_ZDOLNOSCI = Object.freeze({ wyslijDoKsef: 'wyslijDokumentDoKsef' } as const);", 'a.ts')).toEqual(['lista']);
+    expect(
+      formy("const METODA_ZDOLNOSCI = Object.freeze({ wyslijDoKsef: 'wyslijDokumentDoKsef' } as const);", 'a.ts'),
+    ).toEqual(['lista']);
     expect(formy("const INNA = { m: 'wyslijDokumentDoKsef' };")).toEqual(['inne']);
     expect(formy('// program.wyslijDokumentDoKsef(id)\n/* wyslijDokumentDoKsef() */ const y = 1;')).toEqual([]);
-    expect(formy('<%# program.wyslijDokumentDoKsef() %>\n<% program.wyslijDokumentDoKsef() %>', 'w.ejs')).toEqual(['poza kodem']);
+    expect(formy('<%# program.wyslijDokumentDoKsef() %>\n<% program.wyslijDokumentDoKsef() %>', 'w.ejs')).toEqual([
+      'poza kodem',
+    ]);
     // Napisy: kod i szablon tak, komentarz nie.
     const teksty = (kod, p = 'a.js') => przeskanuj(p, kod).teksty.map((t) => t.linia);
-    expect(teksty("const q = { send_to_ksef: true };\nconst u = `?gov_save_and_send=${1}`;")).toEqual([1, 2]);
+    expect(teksty('const q = { send_to_ksef: true };\nconst u = `?gov_save_and_send=${1}`;')).toEqual([1, 2]);
     expect(teksty("post('/x', { 'send_to_ksef': 1 });")).toEqual([1]);
     expect(teksty('// send_to_ksef\n/* gov_save_and_send */')).toEqual([]);
   });
@@ -303,35 +372,78 @@ describe('strażnik wysyłki do KSeF', () => {
     const FAKTURA = 'moduly/faktury/services/faktura.js';
     const ADAPTER = 'integracje/programy/x.ts';
     // Dozwolone: jedyny wołający z odczytem zdolności z opisu; przekazanie w dół w adapterze; klient jak dziś.
-    expect(naruszeniaKodu(JEDYNY_WOLAJACY, `const n = !program.opis.zdolnosci.includes('wyslijDoKsef');
-      async function wyslij(d) { await program.wyslijDokumentDoKsef(d.uuid); }`)).toEqual([]);
-    expect(naruszeniaKodu(ADAPTER, 'const p = { async wyslijDokumentDoKsef(id) { return k.wyslijDokumentDoKsef(id); } };')).toEqual([]);
-    expect(naruszeniaKodu(ADAPTER, 'const p = { wyslijDokumentDoKsef: (id) => k[METODA_ZDOLNOSCI.wyslijDoKsef](id) };')).toEqual([]);
-    expect(naruszeniaKodu('oms/infakt/client.js', `async function wyslijDokumentDoKsef(uuid) {}
-      export const L = ['wystaw', 'wyslijDokumentDoKsef']; const k = { wystaw, wyslijDokumentDoKsef };`)).toEqual([]);
+    expect(
+      naruszeniaKodu(
+        JEDYNY_WOLAJACY,
+        `const n = !program.opis.zdolnosci.includes('wyslijDoKsef');
+      async function wyslij(d) { await program.wyslijDokumentDoKsef(d.uuid); }`,
+      ),
+    ).toEqual([]);
+    expect(
+      naruszeniaKodu(ADAPTER, 'const p = { async wyslijDokumentDoKsef(id) { return k.wyslijDokumentDoKsef(id); } };'),
+    ).toEqual([]);
+    expect(
+      naruszeniaKodu(ADAPTER, 'const p = { wyslijDokumentDoKsef: (id) => k[METODA_ZDOLNOSCI.wyslijDoKsef](id) };'),
+    ).toEqual([]);
+    expect(
+      naruszeniaKodu(
+        'oms/infakt/client.js',
+        `async function wyslijDokumentDoKsef(uuid) {}
+      export const L = ['wystaw', 'wyslijDokumentDoKsef']; const k = { wystaw, wyslijDokumentDoKsef };`,
+      ),
+    ).toEqual([]);
     // A: logika OMS-u woła przez mapę zdolności (w czuwaczu, fakturze…).
-    expect(naruszeniaKodu(FAKTURA, `import { METODA_ZDOLNOSCI } from '../../../integracje/program-fakturowy.ts';
-      async function wystaw(program, d) { await program[METODA_ZDOLNOSCI.wyslijDoKsef](d.uuid); }`).length).toBeGreaterThan(0);
-    expect(naruszeniaKodu(FAKTURA, "async function wystaw(p, d) { await p[Z['wyslijDoKsef']](d.uuid); }").length).toBeGreaterThan(0);
+    expect(
+      naruszeniaKodu(
+        FAKTURA,
+        `import { METODA_ZDOLNOSCI } from '../../../integracje/program-fakturowy.ts';
+      async function wystaw(program, d) { await program[METODA_ZDOLNOSCI.wyslijDoKsef](d.uuid); }`,
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(
+      naruszeniaKodu(FAKTURA, "async function wystaw(p, d) { await p[Z['wyslijDoKsef']](d.uuid); }").length,
+    ).toBeGreaterThan(0);
     // Zdolność w logice OMS-u poza wysylka-ksef.js albo w innej formie niż odczyt z opisu.
     expect(naruszeniaKodu(FAKTURA, "const n = program.opis.zdolnosci.includes('wyslijDoKsef');")).toHaveLength(1);
-    expect(naruszeniaKodu(JEDYNY_WOLAJACY, `const z = 'wyslijDoKsef';
-      async function wyslij(d) { await program.wyslijDokumentDoKsef(d.uuid); }`)).toHaveLength(1);
+    expect(
+      naruszeniaKodu(
+        JEDYNY_WOLAJACY,
+        `const z = 'wyslijDoKsef';
+      async function wyslij(d) { await program.wyslijDokumentDoKsef(d.uuid); }`,
+      ),
+    ).toHaveLength(1);
     // Wywołanie poza wysylka-ksef.js; dwa wystąpienia w wysylka-ksef.js.
-    expect(naruszeniaKodu(FAKTURA, 'async function wystaw(d) { await k.wyslijDokumentDoKsef(d.uuid); }')).toHaveLength(1);
+    expect(naruszeniaKodu(FAKTURA, 'async function wystaw(d) { await k.wyslijDokumentDoKsef(d.uuid); }')).toHaveLength(
+      1,
+    );
     expect(naruszeniaKodu(JEDYNY_WOLAJACY, 'k.wyslijDokumentDoKsef(1); k.wyslijDokumentDoKsef(2);')).toHaveLength(2);
     // E: warstwa programu — nazwa w stałej, potem wywołanie indeksem.
-    expect(naruszeniaKodu(ADAPTER, `const M = 'wyslijDokumentDoKsef';
-      export function programX(k) { return { async wystaw(d) { const r = await k.wystaw(d); await k[M](r.uuid); return r; } }; }`).length)
-      .toBeGreaterThan(0);
+    expect(
+      naruszeniaKodu(
+        ADAPTER,
+        `const M = 'wyslijDokumentDoKsef';
+      export function programX(k) { return { async wystaw(d) { const r = await k.wystaw(d); await k[M](r.uuid); return r; } }; }`,
+      ).length,
+    ).toBeGreaterThan(0);
     // F: warstwa programu — `wystaw` woła wysyłkę przez mapę zdolności.
-    expect(naruszeniaKodu(ADAPTER, `import { METODA_ZDOLNOSCI } from '../program-fakturowy.ts';
-      export function programX(k) { return { async wystaw(d) { const r = await k.wystaw(d); await k[METODA_ZDOLNOSCI.wyslijDoKsef](r.uuid); return r; } }; }`))
-      .toHaveLength(1);
+    expect(
+      naruszeniaKodu(
+        ADAPTER,
+        `import { METODA_ZDOLNOSCI } from '../program-fakturowy.ts';
+      export function programX(k) { return { async wystaw(d) { const r = await k.wystaw(d); await k[METODA_ZDOLNOSCI.wyslijDoKsef](r.uuid); return r; } }; }`,
+      ),
+    ).toHaveLength(1);
     // G: wyrażenie funkcyjne nazwane jak metoda wysyłki, ale wystawione jako `wystaw`.
-    expect(naruszeniaKodu(ADAPTER, `export function programX(k) { return { wystaw: async function wyslijDokumentDoKsef(d) {
-      const r = await k.wystaw(d); await k.wyslijDokumentDoKsef(r.uuid); return r; } }; }`)).toHaveLength(1);
+    expect(
+      naruszeniaKodu(
+        ADAPTER,
+        `export function programX(k) { return { wystaw: async function wyslijDokumentDoKsef(d) {
+      const r = await k.wystaw(d); await k.wyslijDokumentDoKsef(r.uuid); return r; } }; }`,
+      ),
+    ).toHaveLength(1);
     // Klient: `wystaw` wołające wysyłkę po cichu.
-    expect(naruszeniaKodu('oms/infakt/client.js', 'async function wystaw(d) { await wyslijDokumentDoKsef(d.uuid); }')).toHaveLength(1);
+    expect(
+      naruszeniaKodu('oms/infakt/client.js', 'async function wystaw(d) { await wyslijDokumentDoKsef(d.uuid); }'),
+    ).toHaveLength(1);
   });
 });

@@ -24,29 +24,37 @@ const AUTH = { authorization: `Basic ${Buffer.from('t:h').toString('base64')}`, 
 // ⚠️ `pobierzLog` z brudnopisu zadania NIE ISTNIEJE w `db/zamowienia.js` (sa tam `dopiszLog`
 // i `ostatniWpisLogu`). Log czytamy wprost z bazy, tak samo jak kazdy inny test w tym repo.
 const logZ = (db, id) => db.prepare('SELECT * FROM log WHERE zamowienie_id = ? ORDER BY id').all(id);
-const wpisyKsef = (db, id) => logZ(db, id).filter((w) => w.akcja === 'ksef').map((w) => w.wynik);
+const wpisyKsef = (db, id) =>
+  logZ(db, id)
+    .filter((w) => w.akcja === 'ksef')
+    .map((w) => w.wynik);
 
 let licznik = 0;
 
 // Zamowienie z wystawiona faktura — bez niego nie ma gdzie zapisac sladu wysylki.
 function zamowienieZFaktura(db, { uuid = 'u1', numer = '1/08/2026' } = {}) {
   licznik += 1;
-  const id = zapiszZamowienie(db, 'pro', {
-    zrodlo_id: `w-${licznik}`,
-    numer: String(3000 + licznik),
-    klient: { first_name: 'Jan', last_name: 'Kowalski' },
-    dostawa: {},
-    metoda_wysylki: 'dpd',
-    kwota_pobrania: null,
-    chce_fakture: 1,
-    nip: null,
-    kwota_brutto: '123.00',
-    koszt_dostawy_brutto: '0.00',
-    status_woo: 'processing',
-    oplacone_at: null,
-    anulowane: 0,
-    pozycje: [],
-  }, {});
+  const id = zapiszZamowienie(
+    db,
+    'pro',
+    {
+      zrodlo_id: `w-${licznik}`,
+      numer: String(3000 + licznik),
+      klient: { first_name: 'Jan', last_name: 'Kowalski' },
+      dostawa: {},
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: 1,
+      nip: null,
+      kwota_brutto: '123.00',
+      koszt_dostawy_brutto: '0.00',
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane: 0,
+      pozycje: [],
+    },
+    {},
+  );
   const f = rozpocznijFakture(db, id);
   zakonczFakture(db, f.id, { uuid, numer, ksefStatus: null });
   return id;
@@ -58,9 +66,16 @@ function zamowienieZFaktura(db, { uuid = 'u1', numer = '1/08/2026' } = {}) {
 // konsumencki i bariera (domain/wysylka-ksef.js) go nie przepuszcza. Fikstura bez tego pola
 // odbijalaby sie od reguly przy KAZDYM tescie wysylki w tym pliku.
 const dokument = (nadpisz = {}) => ({
-  uuid: 'u1', number: '1/08/2026', rodzaj: 'vat', ksef_number: null, kwotaZl: '123.00',
-  client_company_name: 'Firma X', client_tax_code: '1234563218',
-  invoice_date: '2026-08-06', zamowienie: null, ...nadpisz,
+  uuid: 'u1',
+  number: '1/08/2026',
+  rodzaj: 'vat',
+  ksef_number: null,
+  kwotaZl: '123.00',
+  client_company_name: 'Firma X',
+  client_tax_code: '1234563218',
+  invoice_date: '2026-08-06',
+  zamowienie: null,
+  ...nadpisz,
 });
 
 // ⚠️⚠️ ODMOWA SPRZED WYWOLANIA MUSI BYC JEDNOZNACZNA. `wyslijDokumentDoKsef` odmawia pustej/bialej
@@ -71,7 +86,12 @@ const dokument = (nadpisz = {}) => ({
 // rezerwacje NA ZAWSZE za wywolanie, ktore nigdy nie opuscilo panelu.
 describe('odmowa pustego identyfikatora w wyslijDokumentDoKsef jest oznaczona jako JEDNOZNACZNA', () => {
   it('rzuca błąd ze statusem 4xx, mimo że żadne żądanie HTTP nie poszło', async () => {
-    const c = createInfaktClient({ apiKey: 'x', fetchImpl: async () => { throw new Error('nie wolno wołać sieci'); } });
+    const c = createInfaktClient({
+      apiKey: 'x',
+      fetchImpl: async () => {
+        throw new Error('nie wolno wołać sieci');
+      },
+    });
 
     // ⚠️ Argumentem jest teraz JEDEN identyfikator, nie lista — sam `null`
     // i same spacje muszą odbić się TAK SAMO, bo wklejone do ścieżki dałyby adres, który
@@ -99,7 +119,12 @@ describe('usługa wysyłki do KSeF — wyslij()', () => {
     const wyslane = [];
     const u = createWysylkaKsef({
       db,
-      infakt: { wyslijDokumentDoKsef: async (uuid) => { wyslane.push(uuid); return {}; } },
+      infakt: {
+        wyslijDokumentDoKsef: async (uuid) => {
+          wyslane.push(uuid);
+          return {};
+        },
+      },
       fakturyWidok: { dokumenty: async () => [dokument({ zamowienie: { id, numer: '3001' } })] },
     });
 
@@ -149,7 +174,12 @@ describe('usługa wysyłki do KSeF — wyslij()', () => {
     let wolane = false;
     const u = createWysylkaKsef({
       db,
-      infakt: { wyslijDokumentDoKsef: async () => { wolane = true; return {}; } },
+      infakt: {
+        wyslijDokumentDoKsef: async () => {
+          wolane = true;
+          return {};
+        },
+      },
       fakturyWidok: {
         dokumenty: async () => [dokument({ ksef_number: 'JUZ-W-KSEF', zamowienie: { id, numer: '3001' } })],
       },
@@ -169,12 +199,14 @@ describe('usługa wysyłki do KSeF — wyslij()', () => {
     const wyslane = [];
     const u = createWysylkaKsef({
       db,
-      infakt: { wyslijDokumentDoKsef: async (uuid) => { wyslane.push(uuid); return {}; } },
+      infakt: {
+        wyslijDokumentDoKsef: async (uuid) => {
+          wyslane.push(uuid);
+          return {};
+        },
+      },
       fakturyWidok: {
-        dokumenty: async () => [
-          dokument(),
-          dokument({ uuid: 'k1', number: 'KOR/1/08/2026', rodzaj: 'korekta' }),
-        ],
+        dokumenty: async () => [dokument(), dokument({ uuid: 'k1', number: 'KOR/1/08/2026', rodzaj: 'korekta' })],
       },
     });
 
@@ -189,7 +221,12 @@ describe('usługa wysyłki do KSeF — wyslij()', () => {
     let wolane = false;
     const u = createWysylkaKsef({
       db,
-      infakt: { wyslijDokumentDoKsef: async () => { wolane = true; return {}; } },
+      infakt: {
+        wyslijDokumentDoKsef: async () => {
+          wolane = true;
+          return {};
+        },
+      },
       fakturyWidok: { dokumenty: async () => [dokument()] },
     });
 
@@ -365,9 +402,7 @@ describe('usługa wysyłki do KSeF — wyslij()', () => {
     const u = createWysylkaKsef({
       db,
       infakt: {
-        wyslijDokumentDoKsef: async () => (
-          { przyjete: 1, odpowiedzInfaktu: { request_id: 'ZNACZNIK-TESTOWY-123' } }
-        ),
+        wyslijDokumentDoKsef: async () => ({ przyjete: 1, odpowiedzInfaktu: { request_id: 'ZNACZNIK-TESTOWY-123' } }),
       },
       fakturyWidok: { dokumenty: async () => [dokument({ zamowienie: { id, numer: '3001' } })] },
     });
@@ -441,7 +476,12 @@ describe('rezerwacja wysyłki do KSeF', () => {
     let wolan = 0;
     const u = createWysylkaKsef({
       db,
-      infakt: { wyslijDokumentDoKsef: async () => { wolan += 1; return {}; } },
+      infakt: {
+        wyslijDokumentDoKsef: async () => {
+          wolan += 1;
+          return {};
+        },
+      },
       // ⚠️ `ksef_number` zostaje NULL-em takze przy DRUGIM przeliczeniu — dokladnie tak
       // wyglada prawdziwa lista przez pierwsze ~70 sekund po przyjeciu zlecenia.
       fakturyWidok: { dokumenty: async () => [dokument({ zamowienie: { id, numer: '3001' } })] },
@@ -556,7 +596,12 @@ describe('rezerwacja wysyłki do KSeF', () => {
       let wolan = 0;
       const u = createWysylkaKsef({
         db,
-        infakt: { wyslijDokumentDoKsef: async () => { wolan += 1; throw awaria; } },
+        infakt: {
+          wyslijDokumentDoKsef: async () => {
+            wolan += 1;
+            throw awaria;
+          },
+        },
         fakturyWidok: { dokumenty: async () => [dokument({ zamowienie: { id, numer: '3001' } })] },
       });
       const arg = { uuids: ['u1'], miesiac: '2026-08', pole: 'invoice_date' };
@@ -584,7 +629,12 @@ describe('rezerwacja wysyłki do KSeF', () => {
     let wolan = 0;
     const u = createWysylkaKsef({
       db,
-      infakt: { wyslijDokumentDoKsef: async () => { wolan += 1; return {}; } },
+      infakt: {
+        wyslijDokumentDoKsef: async () => {
+          wolan += 1;
+          return {};
+        },
+      },
       fakturyWidok: { dokumenty: async () => [dokument({ zamowienie: { id, numer: '3001' } })] },
     });
     const arg = { uuids: ['u1'], miesiac: '2026-08', pole: 'invoice_date' };
@@ -615,7 +665,12 @@ describe('rezerwacja wysyłki do KSeF', () => {
     let wolane = false;
     const u = createWysylkaKsef({
       db,
-      infakt: { wyslijDokumentDoKsef: async () => { wolane = true; return {}; } },
+      infakt: {
+        wyslijDokumentDoKsef: async () => {
+          wolane = true;
+          return {};
+        },
+      },
       fakturyWidok: {
         dokumenty: async () => [
           dokument({ zamowienie: { id: id1, numer: '3001' } }),
@@ -648,7 +703,12 @@ describe('rezerwacja wysyłki do KSeF', () => {
     const wyslane = [];
     const u = createWysylkaKsef({
       db,
-      infakt: { wyslijDokumentDoKsef: async (uuid) => { wyslane.push(uuid); return {}; } },
+      infakt: {
+        wyslijDokumentDoKsef: async (uuid) => {
+          wyslane.push(uuid);
+          return {};
+        },
+      },
       fakturyWidok: {
         dokumenty: async () => [dokument(), dokument({ uuid: 'u2', number: '2/08/2026' })],
       },
@@ -686,7 +746,9 @@ describe('ślad wysyłki do KSeF', () => {
       db,
       infakt: { wyslijDokumentDoKsef: async () => ({}) },
       fakturyWidok: {
-        dokumenty: async () => [dokument({ zamowienie: null, okres: { id: okres.id, klient: 'dropship', rok: 2026, miesiac: 8 } })],
+        dokumenty: async () => [
+          dokument({ zamowienie: null, okres: { id: okres.id, klient: 'dropship', rok: 2026, miesiac: 8 } }),
+        ],
       },
     });
 
@@ -706,9 +768,15 @@ describe('ślad wysyłki do KSeF', () => {
 
     const u = createWysylkaKsef({
       db,
-      infakt: { wyslijDokumentDoKsef: async () => { throw bladOperatora('inFakt nie odpowiedział w wyznaczonym czasie.'); } },
+      infakt: {
+        wyslijDokumentDoKsef: async () => {
+          throw bladOperatora('inFakt nie odpowiedział w wyznaczonym czasie.');
+        },
+      },
       fakturyWidok: {
-        dokumenty: async () => [dokument({ zamowienie: null, okres: { id: okres.id, klient: 'dropship', rok: 2026, miesiac: 8 } })],
+        dokumenty: async () => [
+          dokument({ zamowienie: null, okres: { id: okres.id, klient: 'dropship', rok: 2026, miesiac: 8 } }),
+        ],
       },
     });
 
@@ -726,7 +794,11 @@ describe('ślad wysyłki do KSeF', () => {
     const id = zamowienieZFaktura(db);
     const u = createWysylkaKsef({
       db,
-      infakt: { wyslijDokumentDoKsef: async () => { throw bladOperatora('inFakt nie odpowiedział.'); } },
+      infakt: {
+        wyslijDokumentDoKsef: async () => {
+          throw bladOperatora('inFakt nie odpowiedział.');
+        },
+      },
       fakturyWidok: { dokumenty: async () => [dokument({ zamowienie: { id, numer: '3001' } })] },
     });
 
@@ -777,16 +849,24 @@ function serwer(wyslij) {
   });
 }
 
-const wyslijZadanie = (app, payload, naglowki = AUTH) => app.inject({
-  method: 'POST', url: '/faktury/ksef/wyslij', headers: naglowki, payload,
-});
+const wyslijZadanie = (app, payload, naglowki = AUTH) =>
+  app.inject({
+    method: 'POST',
+    url: '/faktury/ksef/wyslij',
+    headers: naglowki,
+    payload,
+  });
 
 describe('POST /faktury/ksef/wyslij', () => {
   // ⚠️⚠️ ZADNEGO PRZEKIEROWANIA. Ekran wyniku jest JEDYNYM potwierdzeniem operacji, ktorej
   // nie da sie ani powtorzyc, ani cofnac (ta sama zasada, co przy nadaniu masowym).
   it('nie przekierowuje — oddaje ekran wyniku', async () => {
     const app = serwer(async () => ({
-      wyslane: [{ uuid: 'u1', numer: '1/08/2026' }], pominiete: [], niepewne: [], przyjete: 1, blad: null,
+      wyslane: [{ uuid: 'u1', numer: '1/08/2026' }],
+      pominiete: [],
+      niepewne: [],
+      przyjete: 1,
+      blad: null,
     }));
     const r = await wyslijZadanie(app, { uuid: 'u1', miesiac: '2026-08', pole: 'invoice_date' });
     expect(r.statusCode).toBe(200);
@@ -797,7 +877,11 @@ describe('POST /faktury/ksef/wyslij', () => {
   // a nadaniem numeru — panel w tej chwili NIE WIE, czy organ dokument przyjal.
   it('mówi „wysłano — czeka na numer KSeF" i nie obiecuje, że dokument JEST w KSeF', async () => {
     const app = serwer(async () => ({
-      wyslane: [{ uuid: 'u1', numer: '1/08/2026' }], pominiete: [], niepewne: [], przyjete: 1, blad: null,
+      wyslane: [{ uuid: 'u1', numer: '1/08/2026' }],
+      pominiete: [],
+      niepewne: [],
+      przyjete: 1,
+      blad: null,
     }));
     const r = await wyslijZadanie(app, { uuid: 'u1', miesiac: '2026-08', pole: 'invoice_date' });
     expect(r.body).toContain('1/08/2026');
@@ -830,7 +914,9 @@ describe('POST /faktury/ksef/wyslij', () => {
     const app = serwer(async () => ({
       wyslane: [],
       pominiete: [{ numer: 'KOR/1/08/2026', powod: 'Korekty wysyła się w inFakcie — panel ich nie wysyła.' }],
-      niepewne: [], przyjete: null, blad: null,
+      niepewne: [],
+      przyjete: null,
+      blad: null,
     }));
     const r = await wyslijZadanie(app, { uuid: 'k1', miesiac: '2026-08', pole: 'invoice_date' });
     expect(r.body).toContain('KOR/1/08/2026');
@@ -841,7 +927,10 @@ describe('POST /faktury/ksef/wyslij', () => {
   // wprost, razem z nastepnym krokiem dla czlowieka.
   it('gdy wysyłka padła, ekran mówi „nie wiadomo" i odsyła do inFaktu, a nie do ponowienia', async () => {
     const app = serwer(async () => ({
-      wyslane: [], pominiete: [], niepewne: [{ uuid: 'u1', numer: '1/08/2026' }], przyjete: 0,
+      wyslane: [],
+      pominiete: [],
+      niepewne: [{ uuid: 'u1', numer: '1/08/2026' }],
+      przyjete: 0,
       blad: 'inFakt nie odpowiedział w wyznaczonym czasie.',
     }));
     const r = await wyslijZadanie(app, { uuid: 'u1', miesiac: '2026-08', pole: 'invoice_date' });
@@ -882,8 +971,14 @@ describe('POST /faktury/ksef/wyslij', () => {
   it('nie udaje zestawienia liczb, których nikt nie sprawdził', async () => {
     for (const przyjete of [1, 2, null]) {
       const app = serwer(async () => ({
-        wyslane: [{ uuid: 'u1', numer: '1/08/2026' }, { uuid: 'u2', numer: '2/08/2026' }],
-        pominiete: [], niepewne: [], przyjete, blad: null,
+        wyslane: [
+          { uuid: 'u1', numer: '1/08/2026' },
+          { uuid: 'u2', numer: '2/08/2026' },
+        ],
+        pominiete: [],
+        niepewne: [],
+        przyjete,
+        blad: null,
       }));
       const r = await wyslijZadanie(app, { uuid: ['u1', 'u2'], miesiac: '2026-08', pole: 'invoice_date' });
       expect(r.statusCode).toBe(200);
@@ -899,7 +994,9 @@ describe('POST /faktury/ksef/wyslij', () => {
   // Nieznany miesiac / nieznane pole daty odbija sie w uslugowej bramce `faktury-widok`.
   // Ekran ma o tym POWIEDZIEC, a nie oddac 500 ani udawac, ze cos poszlo.
   it('wyjątek z usługi kończy się ekranem z komunikatem, a nie pięćsetką', async () => {
-    const app = serwer(async () => { throw bladOperatora('Nieznany miesiąc rozliczeniowy.'); });
+    const app = serwer(async () => {
+      throw bladOperatora('Nieznany miesiąc rozliczeniowy.');
+    });
     const r = await wyslijZadanie(app, { uuid: 'u1', miesiac: 'byle-co', pole: 'invoice_date' });
     expect(r.statusCode).toBe(200);
     expect(r.body).toMatch(/Nieznany miesiąc rozliczeniowy/);
@@ -911,7 +1008,11 @@ describe('POST /faktury/ksef/wyslij', () => {
   // Powrot ma oddac operatora tam, skad przyszedl — na TEN miesiac i TO pole daty.
   it('odnośnik powrotny niesie miesiąc i pole daty, na które operator patrzył', async () => {
     const app = serwer(async () => ({
-      wyslane: [{ uuid: 'u1', numer: '1/08/2026' }], pominiete: [], niepewne: [], przyjete: 1, blad: null,
+      wyslane: [{ uuid: 'u1', numer: '1/08/2026' }],
+      pominiete: [],
+      niepewne: [],
+      przyjete: 1,
+      blad: null,
     }));
     const r = await wyslijZadanie(app, { uuid: 'u1', miesiac: '2026-07', pole: 'sale_date' });
     // `&` w atrybucie HTML jest ESCAPOWANE przez EJS (`&amp;`) — sprawdzamy to, co naprawdę

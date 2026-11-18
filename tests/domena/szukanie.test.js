@@ -8,8 +8,21 @@ import { normalizuj, polaSzukania, pasujeDoSzukania, filtrujSzukaniem } from '..
 const zamowienie = (nad = {}) => ({
   numer: '1276',
   sklep: 'pro',
-  klient: { first_name: 'Jan', last_name: 'Kowalski', email: 'jan@example.pl', phone: '+48 500 900 010', company: null },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Papierowa 12', postcode: '00-950', city: 'Łódź', country: 'PL' },
+  klient: {
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    email: 'jan@example.pl',
+    phone: '+48 500 900 010',
+    company: null,
+  },
+  dostawa: {
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    address_1: 'Papierowa 12',
+    postcode: '00-950',
+    city: 'Łódź',
+    country: 'PL',
+  },
   pozycje: [{ nazwa: 'Szablon STOP', sku: 'PRO-STOP-001', ilosc: 1 }],
   przesylki: [],
   faktura: null,
@@ -30,9 +43,11 @@ describe('normalizuj', () => {
 
 describe('pola do szukania', () => {
   it('obejmują numer, klienta, adres, pozycje i numer listu przewozowego', () => {
-    const pola = polaSzukania(zamowienie({
-      przesylki: [{ numer_listu: '1000000000001U' }],
-    })).join(' | ');
+    const pola = polaSzukania(
+      zamowienie({
+        przesylki: [{ numer_listu: '1000000000001U' }],
+      }),
+    ).join(' | ');
     expect(pola).toContain('1276');
     expect(pola).toContain('Kowalski');
     expect(pola).toContain('jan@example.pl');
@@ -43,8 +58,9 @@ describe('pola do szukania', () => {
   });
 
   it('puste pola nie wchodzą na listę (nie da się ich znaleźć pustą frazą)', () => {
-    expect(polaSzukania(zamowienie({ klient: null, dostawa: {}, pozycje: [] })).every((p) => String(p).trim() !== ''))
-      .toBe(true);
+    expect(
+      polaSzukania(zamowienie({ klient: null, dostawa: {}, pozycje: [] })).every((p) => String(p).trim() !== ''),
+    ).toBe(true);
   });
 
   // ⚠️ Mutacja: czytanie surowego bloku `dostawa` zamiast adresOdbiorcy ma zaczerwienić TEN

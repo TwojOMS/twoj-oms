@@ -184,14 +184,16 @@ export function obslugaSprzedazy({ db }) {
     // WLACZNIE, czyli [poczatek dnia `od`, koniec dnia `do`] w Europe/Warsaw. Porownanie
     // ostre przy gornej granicy odcinaloby zamowienie zlozone w ostatniej chwili doby,
     // a raport pytajacy tydzien po tygodniu gubilby je zupelnie.
-    const wiersze = db.prepare(
-      // ⚠️ `indywidualne` NA LIScie KOLUMN JEST OBOWIAZKOWE — czyta je `kanalZamowienia`.
-      // Bez niego pole byloby `undefined`, warunek nigdy by nie zadzialal i zamowienie
-      // z panelu ofert wyszloby CICHO jako zwykly 'SKLEP'. Zadnego wyjatku, zadnego 500 —
-      // tylko jeden kanal raportu zaniżony, a drugi zawyzony.
-      'SELECT id, sklep, numer, kwota_brutto, utworzone_at, okres_rozliczeniowy_id,'
-      + ' indywidualne, anulowane, anulowane_recznie FROM zamowienia',
-    ).all();
+    const wiersze = db
+      .prepare(
+        // ⚠️ `indywidualne` NA LIScie KOLUMN JEST OBOWIAZKOWE — czyta je `kanalZamowienia`.
+        // Bez niego pole byloby `undefined`, warunek nigdy by nie zadzialal i zamowienie
+        // z panelu ofert wyszloby CICHO jako zwykly 'SKLEP'. Zadnego wyjatku, zadnego 500 —
+        // tylko jeden kanal raportu zaniżony, a drugi zawyzony.
+        'SELECT id, sklep, numer, kwota_brutto, utworzone_at, okres_rozliczeniowy_id,' +
+          ' indywidualne, anulowane, anulowane_recznie FROM zamowienia',
+      )
+      .all();
 
     const zamowienia = wiersze
       // ⚠️ ANULOWANIE EFEKTYWNE, nie sama kolumna `anulowane`. Ta nalezy do SKLEPU (przepisuje

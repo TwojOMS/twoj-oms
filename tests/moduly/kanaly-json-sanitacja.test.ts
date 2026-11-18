@@ -5,7 +5,11 @@ const definicje = [{ klucz: 'demo', typ: 'woo' as const, prefiks: 'DEMO' }];
 const env = { DEMO_URL: 'https://example.test/', DEMO_CK: 'test', DEMO_CS: 'test', DEMO_OD: '2026-01-01' };
 const sekret = 'SYNTHETIC_SECRET_JSON';
 function komunikat(f: () => unknown) {
-  try { f(); } catch (e) { return (e as Error).message; }
+  try {
+    f();
+  } catch (e) {
+    return (e as Error).message;
+  }
   throw new Error('Oczekiwano odmowy konfiguracji');
 }
 
@@ -28,7 +32,9 @@ describe('błędy JSON konfiguracji kanałów bez wartości wejściowej', () => 
     expect(komunikat(() => definicjeKanalow({ OMS_KANALY: '[{"klucz":"a"' }))).toContain('brakuje zamknięcia');
   });
   it('definicja nie jest listą: mówi, czego oczekiwano', () => {
-    expect(komunikat(() => definicjeKanalow({ OMS_KANALY: '{"klucz":"a"}' }))).toMatch(/oczekiwano listy kanałów w nawiasach \[ \].*sekcja 9/);
+    expect(komunikat(() => definicjeKanalow({ OMS_KANALY: '{"klucz":"a"}' }))).toMatch(
+      /oczekiwano listy kanałów w nawiasach \[ \].*sekcja 9/,
+    );
   });
   describe('błąd pozycji wskazuje numer (od 1), klucz kanału i pole', () => {
     const ok = { klucz: 'woo_a', typ: 'woo', prefiks: 'WOO_A' };
@@ -41,11 +47,17 @@ describe('błędy JSON konfiguracji kanałów bez wartości wejściowej', () => 
       expect(m).not.toContain('pozycja 1');
     });
     it('zły prefiks i zły klucz', () => {
-      expect(blad(ok, { klucz: 'b', typ: 'woo', prefiks: 'małe' })).toMatch(/pozycja 2 \(klucz „b”\): pole „prefiks”.*wielkich liter/);
+      expect(blad(ok, { klucz: 'b', typ: 'woo', prefiks: 'małe' })).toMatch(
+        /pozycja 2 \(klucz „b”\): pole „prefiks”.*wielkich liter/,
+      );
       expect(blad({ klucz: 'Wielkie', typ: 'woo', prefiks: 'A' })).toMatch(/pozycja 1: pole „klucz”.*małych liter/);
     });
     it('powtórzony klucz i prefiks wskazują, którą wcześniejszą pozycję powtarzają', () => {
-      const m = blad(ok, { klucz: 'woo_b', typ: 'woo', prefiks: 'WOO_B' }, { klucz: 'woo_a', typ: 'woo', prefiks: 'WOO_C' });
+      const m = blad(
+        ok,
+        { klucz: 'woo_b', typ: 'woo', prefiks: 'WOO_B' },
+        { klucz: 'woo_a', typ: 'woo', prefiks: 'WOO_C' },
+      );
       expect(m).toContain('pozycja 3 (klucz „woo_a”)');
       expect(m).toContain('pole „klucz” powtarza pozycję 1');
       const p = blad(ok, { klucz: 'woo_b', typ: 'woo', prefiks: 'WOO_A' });
@@ -54,10 +66,14 @@ describe('błędy JSON konfiguracji kanałów bez wartości wejściowej', () => 
     });
     it('pozycja nie będąca obiektem, nazwy zastrzeżone, etykieta i raport', () => {
       expect(blad(ok, 'tekst')).toMatch(/pozycja 2 nie jest obiektem/);
-      expect(blad({ klucz: 'reczne', typ: 'woo', prefiks: 'R' })).toMatch(/pozycja 1 \(klucz „reczne”\): pole „klucz” ma nazwę zastrzeżoną/);
+      expect(blad({ klucz: 'reczne', typ: 'woo', prefiks: 'R' })).toMatch(
+        /pozycja 1 \(klucz „reczne”\): pole „klucz” ma nazwę zastrzeżoną/,
+      );
       expect(blad({ ...ok, etykieta: '  ' })).toMatch(/pozycja 1 \(klucz „woo_a”\): pole „etykieta”/);
       expect(blad({ ...ok, raport: 'B2B' })).toMatch(/pole „raport” \(B2B\) to nazwa zastrzeżona/);
-      expect(blad({ ...ok, raport: 'RAP' }, { klucz: 'woo_b', typ: 'woo', prefiks: 'WOO_B', raport: 'RAP' })).toMatch(/pozycja 2.*pole „raport” \(RAP\) powtarza pozycję 1/);
+      expect(blad({ ...ok, raport: 'RAP' }, { klucz: 'woo_b', typ: 'woo', prefiks: 'WOO_B', raport: 'RAP' })).toMatch(
+        /pozycja 2.*pole „raport” \(RAP\) powtarza pozycję 1/,
+      );
     });
     it('wartość niedozwolona w kluczu nie trafia do komunikatu', () => {
       const m = blad({ klucz: sekret, typ: 'woo', prefiks: 'A' });
@@ -71,19 +87,43 @@ describe('błędy JSON konfiguracji kanałów bez wartości wejściowej', () => 
     expect(m).not.toContain(sekret);
   });
   it('null definicji, mapowania i pozycji odmawia nazwanym błędem konfiguracji', () => {
-    expect(komunikat(() => definicjeKanalow({ OMS_KANALY: '[null]' }))).toMatch(/^OMS_KANALY: pozycja 1 nie jest obiektem/);
-    for (const DEMO_MAPOWANIE of ['null', '[]', '{"instancje":{},"poPozycji":[null]}', '{"instancje":{"a":null},"poPozycji":[]}']) {
-      expect(komunikat(() => konfiguracjaKanalow(definicje, { ...env, DEMO_MAPOWANIE }))).toMatch(/^DEMO_MAPOWANIE: (oczekiwano instancje i poPozycji|niedozwolona metoda sklepu)$/);
+    expect(komunikat(() => definicjeKanalow({ OMS_KANALY: '[null]' }))).toMatch(
+      /^OMS_KANALY: pozycja 1 nie jest obiektem/,
+    );
+    for (const DEMO_MAPOWANIE of [
+      'null',
+      '[]',
+      '{"instancje":{},"poPozycji":[null]}',
+      '{"instancje":{"a":null},"poPozycji":[]}',
+    ]) {
+      expect(komunikat(() => konfiguracjaKanalow(definicje, { ...env, DEMO_MAPOWANIE }))).toMatch(
+        /^DEMO_MAPOWANIE: (oczekiwano instancje i poPozycji|niedozwolona metoda sklepu)$/,
+      );
     }
   });
   it('zachowuje wcześniej akceptowaną pustą tablicę instancje', () => {
     const mapowanie = { instancje: [], poPozycji: [] };
-    expect(konfiguracjaKanalow(definicje, { ...env, DEMO_MAPOWANIE: JSON.stringify(mapowanie) }).sklepy.demo.mapowanie).toEqual(mapowanie);
+    expect(
+      konfiguracjaKanalow(definicje, { ...env, DEMO_MAPOWANIE: JSON.stringify(mapowanie) }).sklepy.demo.mapowanie,
+    ).toEqual(mapowanie);
   });
   describe('opcjonalne bramkiPobrania w mapowaniu sklepu z pliku', () => {
-    const zBramkami = (bramkiPobrania: unknown) => ({ ...env, DEMO_MAPOWANIE: JSON.stringify({ instancje: {}, poPozycji: [], bramkiPobrania }) });
+    const zBramkami = (bramkiPobrania: unknown) => ({
+      ...env,
+      DEMO_MAPOWANIE: JSON.stringify({ instancje: {}, poPozycji: [], bramkiPobrania }),
+    });
     it('odrzuca wartość, która nie jest tablicą krótkich identyfikatorów, bez przepisywania jej do komunikatu', () => {
-      for (const zle of ['cod', null, {}, [1], [''], ['ma spację'], ['a'.repeat(65)], [`${sekret}/`], Array.from({ length: 21 }, (_, i) => `b${i}`)]) {
+      for (const zle of [
+        'cod',
+        null,
+        {},
+        [1],
+        [''],
+        ['ma spację'],
+        ['a'.repeat(65)],
+        [`${sekret}/`],
+        Array.from({ length: 21 }, (_, i) => `b${i}`),
+      ]) {
         const m = komunikat(() => konfiguracjaKanalow(definicje, zBramkami(zle)));
         expect(m).toBe('DEMO_MAPOWANIE: niepoprawne bramkiPobrania');
         expect(m).not.toContain(sekret);
@@ -91,12 +131,19 @@ describe('błędy JSON konfiguracji kanałów bez wartości wejściowej', () => 
     });
     it('przyjmuje pustą tablicę i do 20 identyfikatorów bramek', () => {
       expect(konfiguracjaKanalow(definicje, zBramkami([])).sklepy.demo.mapowanie.bramkiPobrania).toEqual([]);
-      const dobre = ['cod', 'wtyczka_pobranie.dpd', 'Pobranie-2:x', 'a'.repeat(64), ...Array.from({ length: 16 }, (_, i) => `b${i}`)];
+      const dobre = [
+        'cod',
+        'wtyczka_pobranie.dpd',
+        'Pobranie-2:x',
+        'a'.repeat(64),
+        ...Array.from({ length: 16 }, (_, i) => `b${i}`),
+      ];
       expect(konfiguracjaKanalow(definicje, zBramkami(dobre)).sklepy.demo.mapowanie.bramkiPobrania).toEqual(dobre);
     });
     it('brak pola zostawia mapowanie takie jak dziś', () => {
       const mapowanie = { instancje: { 3: { metoda: 'dpd', pobranie: true } }, poPozycji: [] };
-      const wynik = konfiguracjaKanalow(definicje, { ...env, DEMO_MAPOWANIE: JSON.stringify(mapowanie) }).sklepy.demo.mapowanie;
+      const wynik = konfiguracjaKanalow(definicje, { ...env, DEMO_MAPOWANIE: JSON.stringify(mapowanie) }).sklepy.demo
+        .mapowanie;
       expect(wynik).toEqual(mapowanie);
       expect('bramkiPobrania' in wynik).toBe(false);
     });
@@ -106,19 +153,38 @@ describe('błędy JSON konfiguracji kanałów bez wartości wejściowej', () => 
       { klucz: ['polnoc'], typ: 'woo', prefiks: ['SHARED'] },
       { klucz: ['poludnie'], typ: 'woo', prefiks: ['SHARED'] },
     ];
-    expect(() => definicjeKanalow({ OMS_KANALY: JSON.stringify(zObejściem) })).toThrow(/^OMS_KANALY: pozycja 1: pole „klucz”/);
+    expect(() => definicjeKanalow({ OMS_KANALY: JSON.stringify(zObejściem) })).toThrow(
+      /^OMS_KANALY: pozycja 1: pole „klucz”/,
+    );
     for (const wpis of [
       { klucz: ['demo'], typ: 'woo', prefiks: 'DEMO' },
       { klucz: 'demo', typ: 'woo', prefiks: ['DEMO'] },
       { klucz: 'demo', typ: ['woo'], prefiks: 'DEMO' },
-    ]) expect(() => definicjeKanalow({ OMS_KANALY: JSON.stringify([wpis]) })).toThrow(/^OMS_KANALY: pozycja 1.*: pole „(klucz|typ|prefiks)”/);
+    ])
+      expect(() => definicjeKanalow({ OMS_KANALY: JSON.stringify([wpis]) })).toThrow(
+        /^OMS_KANALY: pozycja 1.*: pole „(klucz|typ|prefiks)”/,
+      );
   });
   it('poprawne definicje i mapowanie zachowują wynik oraz dotychczasowe domyślne wartości', () => {
     expect(definicjeKanalow({ OMS_KANALY: JSON.stringify(definicje) })).toEqual(definicje);
     const mapowanie = { instancje: {}, poPozycji: [] };
     expect(konfiguracjaKanalow(definicje, { ...env, DEMO_MAPOWANIE: JSON.stringify(mapowanie) })).toEqual({
-      sklepy: { demo: { baseUrl: 'https://example.test', ck: 'test', cs: 'test', mapowanie, od: '2026-01-01T00:00:00', historia: null } },
-      kanaly: {}, odstepMs: 120000, definicje, deviceEnv: {}, userAgent: expect.stringMatching(/^TwojOMS\//), userAgentZEnv: '',
+      sklepy: {
+        demo: {
+          baseUrl: 'https://example.test',
+          ck: 'test',
+          cs: 'test',
+          mapowanie,
+          od: '2026-01-01T00:00:00',
+          historia: null,
+        },
+      },
+      kanaly: {},
+      odstepMs: 120000,
+      definicje,
+      deviceEnv: {},
+      userAgent: expect.stringMatching(/^TwojOMS\//),
+      userAgentZEnv: '',
     });
   });
 });

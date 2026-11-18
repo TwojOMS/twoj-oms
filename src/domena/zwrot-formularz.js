@@ -6,8 +6,12 @@ import { kluczPozycji } from './pozycje-reczne.js';
 // a bariera odbijalaby zwrot calosci bez slowa wyjasnienia na ekranie.
 import { kwotaOczekiwanaGrosze, wartoscPozycjiGrosze, wysylkaBruttoGrosze } from './suma-pozycji.js';
 import {
-  juzZwrocone, listaPolaFormularza, normalizujKwote, sumaZwroconejDostawyGrosze,
-  sumaZwrotowGrosze, wierszeFormularzaZwrotu,
+  juzZwrocone,
+  listaPolaFormularza,
+  normalizujKwote,
+  sumaZwroconejDostawyGrosze,
+  sumaZwrotowGrosze,
+  wierszeFormularzaZwrotu,
 } from './zwrot.js';
 
 // ⚠️⚠️ PO CO TEN MODUŁ ISTNIEJE: ekran zwrotu ma pokazać podsumowanie zamówienia przed zwrotem
@@ -104,8 +108,8 @@ export function sumaKwotPozycjiZl(body) {
  */
 export function razemZwrotuZl({ kwota, kwotaDostawy = null }) {
   return zl(
-    grosze(normalizujKwote(kwota), 'kwota zwrotu')
-    + (kwotaDostawy ? grosze(normalizujKwote(kwotaDostawy), 'zwrot dostawy') : 0),
+    grosze(normalizujKwote(kwota), 'kwota zwrotu') +
+      (kwotaDostawy ? grosze(normalizujKwote(kwotaDostawy), 'zwrot dostawy') : 0),
   );
 }
 
@@ -138,8 +142,10 @@ function dostawaZostalaGrosze(z) {
 function uwagaODostawie(oddanaGr, zostalaGr) {
   if (oddanaGr <= 0) return null;
   if (zostalaGr <= 0) return 'Koszt dostawy wrócił już przy wcześniejszym zwrocie — drugi raz nie wraca.';
-  return `Z kosztu dostawy wróciło już ${zl(oddanaGr)} zł przy wcześniejszym zwrocie`
-    + ` — zostało ${zl(zostalaGr)} zł i tyle panel podpowiada.`;
+  return (
+    `Z kosztu dostawy wróciło już ${zl(oddanaGr)} zł przy wcześniejszym zwrocie` +
+    ` — zostało ${zl(zostalaGr)} zł i tyle panel podpowiada.`
+  );
 }
 
 /** Kwota z formularza w groszach albo `null`, gdy nie da sie jej policzyc (odmowe wypowie `parsujZwrot`). */
@@ -205,11 +211,11 @@ export function formularzZwrotu(z, { dzis, wpisane = null } = {}) {
     // uznalby wlasna liczbe za „recznie wpisana" i kwota przestalaby podazac za kazda kolejna
     // zmiana ilosci.
     const propozycjaGr = kwotaZaSztukiGrosze(p, {
-      sztuki: ilosc, zwroconeSztuki: byle.ilosc, zwroconeGr: byle.kwotaGr,
+      sztuki: ilosc,
+      zwroconeSztuki: byle.ilosc,
+      zwroconeGr: byle.kwotaGr,
     });
-    const kwotaZl = wpisany && wpisany.kwota !== undefined
-      ? String(wpisany.kwota)
-      : zl(propozycjaGr);
+    const kwotaZl = wpisany && wpisany.kwota !== undefined ? String(wpisany.kwota) : zl(propozycjaGr);
     return {
       klucz,
       nazwa: String(p?.nazwa ?? ''),
@@ -313,11 +319,13 @@ function ostrzezenieOSumiePropozycji(pozycje, dostawa, zostaloGr) {
     sumaGr += gr;
   }
   if (sumaGr <= zostaloGr) return null;
-  return `Podpowiedziane kwoty sumują się do ${zl(sumaGr)} zł, a do zwrotu zostało ${zl(zostaloGr)} zł`
-    + ` — o ${zl(sumaGr - zostaloGr)} zł za dużo, więc panel odmówi zapisu całości.`
-    + ' Skąd bierze się ta różnica, panel nie wie i nie zgaduje.'
-    + ` Sprawdź, ile naprawdę wróciło do kupującego, i zejdź łącznie o ${zl(sumaGr - zostaloGr)} zł`
-    + ' — kwotą przy pozycji, liczbą sztuk albo rezygnacją ze zwrotu dostawy.';
+  return (
+    `Podpowiedziane kwoty sumują się do ${zl(sumaGr)} zł, a do zwrotu zostało ${zl(zostaloGr)} zł` +
+    ` — o ${zl(sumaGr - zostaloGr)} zł za dużo, więc panel odmówi zapisu całości.` +
+    ' Skąd bierze się ta różnica, panel nie wie i nie zgaduje.' +
+    ` Sprawdź, ile naprawdę wróciło do kupującego, i zejdź łącznie o ${zl(sumaGr - zostaloGr)} zł` +
+    ' — kwotą przy pozycji, liczbą sztuk albo rezygnacją ze zwrotu dostawy.'
+  );
 }
 
 /**
@@ -386,9 +394,12 @@ function przeliczoneWiersze(z, body) {
     if (!p || wpisanaGr === null || !Number.isFinite(sztuki) || sztuki <= 0) return bezPrzeliczenia;
 
     const byle = wczesniej.get(w.klucz_pozycji) ?? { ilosc: 0, kwotaGr: 0 };
-    const zaSztuki = (ile) => kwotaZaSztukiGrosze(p, {
-      sztuki: ile, zwroconeSztuki: byle.ilosc, zwroconeGr: byle.kwotaGr,
-    });
+    const zaSztuki = (ile) =>
+      kwotaZaSztukiGrosze(p, {
+        sztuki: ile,
+        zwroconeSztuki: byle.ilosc,
+        zwroconeGr: byle.kwotaGr,
+      });
     const panelGr = zaSztuki(sztuki);
     const pozostale = Math.max(Number(p?.ilosc ?? 0) - byle.ilosc, 0);
     const propozycjaGr = dopasowane ? groszeAlboNull(dopasowane[i]) : null;
@@ -399,10 +410,10 @@ function przeliczoneWiersze(z, body) {
       return {
         kwotaZl: zl(panelGr),
         ostrzezenie: przeliczone
-          ? `Przy „${w.nazwa}" panel przeliczył ${zl(wpisanaGr)} → ${zl(panelGr)} zł,`
-            + ` bo wraca ${sztuki} z ${pozostale} szt. — kwoty nie tknąłeś, więc policzył ją sam`
-            + ` z wartości linii. Jeśli do kupującego naprawdę wyszło ${zl(wpisanaGr)} zł,`
-            + ' wróć i wpisz tę kwotę ręcznie: wpisana ręcznie zostaje.'
+          ? `Przy „${w.nazwa}" panel przeliczył ${zl(wpisanaGr)} → ${zl(panelGr)} zł,` +
+            ` bo wraca ${sztuki} z ${pozostale} szt. — kwoty nie tknąłeś, więc policzył ją sam` +
+            ` z wartości linii. Jeśli do kupującego naprawdę wyszło ${zl(wpisanaGr)} zł,` +
+            ' wróć i wpisz tę kwotę ręcznie: wpisana ręcznie zostaje.'
           : null,
       };
     }
@@ -411,10 +422,11 @@ function przeliczoneWiersze(z, body) {
     const calaLinia = wpisanaGr === zaSztuki(pozostale) ? ' — czyli wartość CAŁEJ pozostałej linii' : '';
     return {
       kwotaZl: zl(wpisanaGr),
-      ostrzezenie: `Przy „${w.nazwa}" wraca ${sztuki} z ${pozostale} szt., a wpisana kwota to `
-        + `${zl(wpisanaGr)} zł${calaLinia}; panel policzyłby ${zl(panelGr)} zł.`
-        + ' Zostaje Twoja kwota — kwotę przepisujesz z Allegro i to ona jest prawdą.'
-        + ' Jeśli to pomyłka, wróć i popraw.',
+      ostrzezenie:
+        `Przy „${w.nazwa}" wraca ${sztuki} z ${pozostale} szt., a wpisana kwota to ` +
+        `${zl(wpisanaGr)} zł${calaLinia}; panel policzyłby ${zl(panelGr)} zł.` +
+        ' Zostaje Twoja kwota — kwotę przepisujesz z Allegro i to ona jest prawdą.' +
+        ' Jeśli to pomyłka, wróć i popraw.',
     };
   });
 }
@@ -443,9 +455,7 @@ function przeliczoneWiersze(z, body) {
  */
 export function przygotujKrok2(z, body) {
   const wiersze = przeliczoneWiersze(z, body);
-  const zPrzeliczonymi = wiersze
-    ? { ...body, pozycja_kwota: wiersze.map((w) => w.kwotaZl) }
-    : { ...body };
+  const zPrzeliczonymi = wiersze ? { ...body, pozycja_kwota: wiersze.map((w) => w.kwotaZl) } : { ...body };
   return {
     cialo: {
       ...zPrzeliczonymi,

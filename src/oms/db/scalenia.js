@@ -3,14 +3,21 @@ import { pobierzZamowienie, dopiszLog } from './zamowienia.js';
 import { bladOperatora } from '../../domena/bledy.js';
 import { maTabeleStatusow } from './statusy.js';
 import {
-  idsDolaczonych, decyzjaScalenia, zamowienieGrupy, sprawdzCzlonkowGrupy, DECYZJE_WYSYLKI, PREFIKS_BLEDU_DOLACZONYCH,
+  idsDolaczonych,
+  decyzjaScalenia,
+  zamowienieGrupy,
+  sprawdzCzlonkowGrupy,
+  DECYZJE_WYSYLKI,
+  PREFIKS_BLEDU_DOLACZONYCH,
 } from '../../domena/scalanie.js';
 
 const teraz = () => new Date().toISOString();
 
 /** Dołączone zamówienia głównego `z` (odczyt jak na karcie); pusta lista, gdy `z` nie jest głównym. */
 export function dolaczoneZamowienia(db, z) {
-  return idsDolaczonych(z).map((id) => pobierzZamowienie(db, id)).filter((d) => d && d.scalone_do === z.id);
+  return idsDolaczonych(z)
+    .map((id) => pobierzZamowienie(db, id))
+    .filter((d) => d && d.scalone_do === z.id);
 }
 
 /**
@@ -44,17 +51,26 @@ export function zamowienieZGrupa(db, z) {
  * zamówienie, które w międzyczasie zostało scalone, nie przejdzie warunku `IS NULL`.
  */
 export function scalZamowienia(db, { glowneId, dolaczoneIds, wysylka, kto }) {
-  if (!DECYZJE_WYSYLKI.includes(wysylka)) throw bladOperatora('Wybierz koszt wysyłki: z zamówienia głównego albo suma wysyłek.');
+  if (!DECYZJE_WYSYLKI.includes(wysylka))
+    throw bladOperatora('Wybierz koszt wysyłki: z zamówienia głównego albo suma wysyłek.');
   const ids = [...new Set(dolaczoneIds.map(Number))].filter((i) => i !== Number(glowneId));
   if (!ids.length) throw bladOperatora('Nie ma czego dołączyć — zaznacz co najmniej dwa zamówienia.');
   const decyzja = { wysylka, dolaczone: ids, at: teraz(), kto: kto ?? null };
   db.exec('BEGIN IMMEDIATE');
   try {
     const znaki = ids.map(() => '?').join(',');
-    const zmienione = db.prepare(`UPDATE zamowienia SET scalone_do = ?, zmienione_at = ? WHERE id IN (${znaki})
-      AND scalone_do IS NULL AND scalenie_json IS NULL`).run(glowneId, teraz(), ...ids).changes;
-    const glowne = db.prepare(`UPDATE zamowienia SET scalenie_json = ?, zmienione_at = ? WHERE id = ?
-      AND scalone_do IS NULL AND scalenie_json IS NULL`).run(JSON.stringify(decyzja), teraz(), glowneId).changes;
+    const zmienione = db
+      .prepare(
+        `UPDATE zamowienia SET scalone_do = ?, zmienione_at = ? WHERE id IN (${znaki})
+      AND scalone_do IS NULL AND scalenie_json IS NULL`,
+      )
+      .run(glowneId, teraz(), ...ids).changes;
+    const glowne = db
+      .prepare(
+        `UPDATE zamowienia SET scalenie_json = ?, zmienione_at = ? WHERE id = ?
+      AND scalone_do IS NULL AND scalenie_json IS NULL`,
+      )
+      .run(JSON.stringify(decyzja), teraz(), glowneId).changes;
     if (zmienione !== ids.length || glowne !== 1) {
       throw bladOperatora('Któreś z zamówień zostało w międzyczasie scalone — odśwież listę i spróbuj ponownie.');
     }
@@ -80,8 +96,12 @@ export function rozdzielZamowienia(db, glowneId) {
   const z = pobierzZamowienie(db, glowneId);
   const decyzja = decyzjaScalenia(z);
   if (!decyzja) throw bladOperatora('To zamówienie nie jest scalone.');
-  if (z.faktura) throw bladOperatora('Zamówienie scalone ma już fakturę obejmującą dołączone pozycje — rozdzielenie dałoby drugą fakturę za te same pozycje.');
-  if (z.wyslane_at || z.przesylki.length) throw bladOperatora('Zamówienie scalone ma już przesyłkę albo jest wysłane — nie da się go rozdzielić.');
+  if (z.faktura)
+    throw bladOperatora(
+      'Zamówienie scalone ma już fakturę obejmującą dołączone pozycje — rozdzielenie dałoby drugą fakturę za te same pozycje.',
+    );
+  if (z.wyslane_at || z.przesylki.length)
+    throw bladOperatora('Zamówienie scalone ma już przesyłkę albo jest wysłane — nie da się go rozdzielić.');
   db.exec('BEGIN IMMEDIATE');
   try {
     db.prepare('UPDATE zamowienia SET scalone_do = NULL, zmienione_at = ? WHERE scalone_do = ?').run(teraz(), glowneId);
@@ -117,19 +137,28 @@ export function odlaczAnulowane(db, glowneId) {
   const decyzja = decyzjaScalenia(z);
   if (!decyzja) throw bladOperatora('To zamówienie nie jest scalone.');
   const anulowane = dolaczoneZamowienia(db, z).filter((d) => d.anulowane);
-  if (!anulowane.length) throw bladOperatora('To zamówienie nie ma anulowanych dołączonych zamówień — nie ma czego odłączać.');
+  if (!anulowane.length)
+    throw bladOperatora('To zamówienie nie ma anulowanych dołączonych zamówień — nie ma czego odłączać.');
   const ids = anulowane.map((d) => d.id);
   const zostaja = decyzja.dolaczone.filter((id) => !ids.includes(id));
   const { wysylka, at, kto, odlaczone = [] } = decyzja;
   const nowa = zostaja.length
-    ? JSON.stringify({ wysylka, dolaczone: zostaja, at, kto, odlaczone: [...odlaczone, ...ids.map((id) => ({ id, at: teraz() }))] })
+    ? JSON.stringify({
+        wysylka,
+        dolaczone: zostaja,
+        at,
+        kto,
+        odlaczone: [...odlaczone, ...ids.map((id) => ({ id, at: teraz() }))],
+      })
     : null;
   db.exec('BEGIN IMMEDIATE');
   try {
     const znaki = ids.map(() => '?').join(',');
-    const zmienione = db.prepare(`UPDATE zamowienia SET scalone_do = NULL, zmienione_at = ? WHERE id IN (${znaki}) AND scalone_do = ?`)
+    const zmienione = db
+      .prepare(`UPDATE zamowienia SET scalone_do = NULL, zmienione_at = ? WHERE id IN (${znaki}) AND scalone_do = ?`)
       .run(teraz(), ...ids, glowneId).changes;
-    if (zmienione !== ids.length) throw bladOperatora('Grupa zmieniła się w międzyczasie — odśwież kartę i spróbuj ponownie.');
+    if (zmienione !== ids.length)
+      throw bladOperatora('Grupa zmieniła się w międzyczasie — odśwież kartę i spróbuj ponownie.');
     db.prepare('UPDATE zamowienia SET scalenie_json = ?, zmienione_at = ? WHERE id = ?').run(nowa, teraz(), glowneId);
     if (!nowa && String(z.sync_woo_blad ?? '').startsWith(PREFIKS_BLEDU_DOLACZONYCH)) {
       db.prepare('UPDATE zamowienia SET sync_woo_blad = NULL WHERE id = ?').run(glowneId);
@@ -145,5 +174,6 @@ export function odlaczAnulowane(db, glowneId) {
 /** Wpis w logu każdego członka — historia karty głównego i (w bazie) dołączonego. */
 export function zalogujScalenie(db, glowne, dolaczone, opis) {
   dopiszLog(db, glowne.id, { akcja: 'scalenie', wynik: opis });
-  for (const d of dolaczone) dopiszLog(db, d.id, { akcja: 'scalenie', wynik: `${opis} Zamówienie główne: ${glowne.numer}.` });
+  for (const d of dolaczone)
+    dopiszLog(db, d.id, { akcja: 'scalenie', wynik: `${opis} Zamówienie główne: ${glowne.numer}.` });
 }

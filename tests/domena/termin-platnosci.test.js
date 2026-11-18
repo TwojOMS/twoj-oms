@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  datyFaktury, PRZY_ODBIORZE, BEZ_TERMINU, ZAPLACONE, TERMINY_DNI,
-} from '../../src/domena/termin-platnosci.js';
+import { datyFaktury, PRZY_ODBIORZE, BEZ_TERMINU, ZAPLACONE, TERMINY_DNI } from '../../src/domena/termin-platnosci.js';
 
 // Nazwy pól są z dokumentacji API inFakt v3 („Definicja faktury VAT"):
 // `invoice_date` = „Data wystawienia (RRRR-MM-DD)", `payment_date` = „Termin zapłaty".
@@ -16,23 +14,26 @@ import {
 
 describe('termin płatności — liczenie daty zapłaty', () => {
   it('termin N dni to data wystawienia + N dni', () => {
-    expect(datyFaktury({ dataWystawienia: '2026-08-03', termin: 14 }))
-      .toEqual({ invoice_date: '2026-08-03', payment_date: '2026-08-17' });
+    expect(datyFaktury({ dataWystawienia: '2026-08-03', termin: 14 })).toEqual({
+      invoice_date: '2026-08-03',
+      payment_date: '2026-08-17',
+    });
   });
 
   it('liczba dni z formularza przychodzi NAPISEM i ma działać tak samo', () => {
-    expect(datyFaktury({ dataWystawienia: '2026-08-03', termin: '14' }).payment_date)
-      .toBe('2026-08-17');
+    expect(datyFaktury({ dataWystawienia: '2026-08-03', termin: '14' }).payment_date).toBe('2026-08-17');
   });
 
   // Wszystkie terminy z listy w widoku, policzone jawnie — żeby test nie powtarzał wzoru
   // z implementacji, tylko sprawdzał wynik.
-  it.each([[7, '2026-08-10'], [14, '2026-08-17'], [21, '2026-08-24'], [30, '2026-09-02']])(
-    'termin %i dni od 2026-08-03 daje %s',
-    (dni, oczekiwana) => {
-      expect(datyFaktury({ dataWystawienia: '2026-08-03', termin: dni }).payment_date).toBe(oczekiwana);
-    },
-  );
+  it.each([
+    [7, '2026-08-10'],
+    [14, '2026-08-17'],
+    [21, '2026-08-24'],
+    [30, '2026-09-02'],
+  ])('termin %i dni od 2026-08-03 daje %s', (dni, oczekiwana) => {
+    expect(datyFaktury({ dataWystawienia: '2026-08-03', termin: dni }).payment_date).toBe(oczekiwana);
+  });
 
   it('lista terminów w widoku to 7 / 14 / 21 / 30', () => {
     expect(TERMINY_DNI).toEqual([7, 14, 21, 30]);
@@ -91,8 +92,10 @@ describe('termin płatności — data wystawienia', () => {
   // Operator, który niczego w polu nie zmienia, wystawia dzisiejszą datą. Odmowa byłaby tu
   // zwykłym utrudnieniem, a nie ochroną.
   it('pusta data wystawienia znaczy DZISIAJ, nie błąd', () => {
-    expect(datyFaktury({ dataWystawienia: '', termin: 7 }, null, '2026-08-01'))
-      .toEqual({ invoice_date: '2026-08-01', payment_date: '2026-08-08' });
+    expect(datyFaktury({ dataWystawienia: '', termin: 7 }, null, '2026-08-01')).toEqual({
+      invoice_date: '2026-08-01',
+      payment_date: '2026-08-08',
+    });
   });
 
   it('brak pola daty w ogóle też znaczy dzisiaj', () => {
@@ -107,7 +110,10 @@ describe('termin płatności — data wystawienia', () => {
   // z TZ=UTC, dzień ma być WARSZAWSKI (patrz domain/format-daty.js).
   it('bez podanego „dzisiaj" bierze bieżący dzień warszawski z zegara', () => {
     const dzis = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Europe/Warsaw', year: 'numeric', month: '2-digit', day: '2-digit',
+      timeZone: 'Europe/Warsaw',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
     }).format(new Date());
     expect(datyFaktury({ termin: BEZ_TERMINU }).invoice_date).toBe(dzis);
   });
@@ -137,8 +143,10 @@ describe('termin płatności — data wystawienia', () => {
 // uzgodnił — na dokumencie, którego w inFakcie się nie edytuje, tylko kasuje i wystawia od nowa.
 describe('termin płatności — „przy odbiorze" kontra „bez terminu"', () => {
   it('„przy odbiorze" to termin ZERO dni: data płatności równa dacie wystawienia', () => {
-    expect(datyFaktury({ dataWystawienia: '2026-08-03', termin: PRZY_ODBIORZE }))
-      .toEqual({ invoice_date: '2026-08-03', payment_date: '2026-08-03' });
+    expect(datyFaktury({ dataWystawienia: '2026-08-03', termin: PRZY_ODBIORZE })).toEqual({
+      invoice_date: '2026-08-03',
+      payment_date: '2026-08-03',
+    });
   });
 
   it('jawne „0 dni" znaczy to samo, co „przy odbiorze"', () => {
@@ -196,35 +204,42 @@ describe('termin płatności — śmieć w polu terminu', () => {
 // zamówienia opłaconego wcześniej niosła datę niezgodną z prawem.
 describe('data sprzedaży — sale_date w payloadzie', () => {
   it('data sprzedaży przechodzi do payloadu obok daty wystawienia', () => {
-    expect(datyFaktury({ dataWystawienia: '2026-08-04', dataSprzedazy: '2026-08-01', termin: 14 }))
-      .toEqual({ invoice_date: '2026-08-04', sale_date: '2026-08-01', payment_date: '2026-08-18' });
+    expect(datyFaktury({ dataWystawienia: '2026-08-04', dataSprzedazy: '2026-08-01', termin: 14 })).toEqual({
+      invoice_date: '2026-08-04',
+      sale_date: '2026-08-01',
+      payment_date: '2026-08-18',
+    });
   });
 
   // Zmierzone (pytanie 4 rozpoznania): inFakt przyjmuje sprzedaż PÓŹNIEJSZĄ od wystawienia.
   // Potrzebne dla faktury do pobrania wystawionej w przeddzień wyjazdu paczki.
   it('data sprzedaży późniejsza od daty wystawienia też przechodzi', () => {
-    expect(datyFaktury({ dataWystawienia: '2026-08-04', dataSprzedazy: '2026-08-05', termin: PRZY_ODBIORZE }).sale_date)
-      .toBe('2026-08-05');
+    expect(
+      datyFaktury({ dataWystawienia: '2026-08-04', dataSprzedazy: '2026-08-05', termin: PRZY_ODBIORZE }).sale_date,
+    ).toBe('2026-08-05');
   });
 
   // „Czego nie podano, tego nie wysyłamy" — pusta data sprzedaży ma zostawić payload
   // dokładnie takim, jaki panel wysyłał przed tą zmianą.
-  it.each([['pusta', ''], ['same spacje', '   '], ['null', null], ['brak pola', undefined]])(
-    'data sprzedaży %s NIE dokłada pola sale_date',
-    (_opis, pusta) => {
-      const daty = datyFaktury({ dataWystawienia: '2026-08-04', dataSprzedazy: pusta, termin: 14 });
-      expect(daty).not.toHaveProperty('sale_date');
-      expect(daty).toEqual({ invoice_date: '2026-08-04', payment_date: '2026-08-18' });
-    },
-  );
+  it.each([
+    ['pusta', ''],
+    ['same spacje', '   '],
+    ['null', null],
+    ['brak pola', undefined],
+  ])('data sprzedaży %s NIE dokłada pola sale_date', (_opis, pusta) => {
+    const daty = datyFaktury({ dataWystawienia: '2026-08-04', dataSprzedazy: pusta, termin: 14 });
+    expect(daty).not.toHaveProperty('sale_date');
+    expect(daty).toEqual({ invoice_date: '2026-08-04', payment_date: '2026-08-18' });
+  });
 
   // Ta sama pułapka, co przy dacie wystawienia: sam regex przepuszcza „2026-02-30".
   // Data, której nie ma w kalendarzu, poleciałaby na dokument księgowy.
   it.each(['2026-02-30', '2026-13-01', '2026-00-10', '2026-04-31', '01.08.2026', 'wczoraj'])(
     'nieistniejąca albo źle zapisana data sprzedaży „%s" → błąd operatora',
     (zla) => {
-      expect(() => datyFaktury({ dataWystawienia: '2026-08-04', dataSprzedazy: zla, termin: 7 }))
-        .toThrow(/Data sprzedaży/);
+      expect(() => datyFaktury({ dataWystawienia: '2026-08-04', dataSprzedazy: zla, termin: 7 })).toThrow(
+        /Data sprzedaży/,
+      );
     },
   );
 
@@ -238,10 +253,8 @@ describe('data sprzedaży — sale_date w payloadzie', () => {
   });
 
   it('data sprzedaży dokłada się do KAŻDEGO wariantu terminu', () => {
-    const dla = (termin, kwota) => datyFaktury(
-      { dataWystawienia: '2026-08-04', dataSprzedazy: '2026-08-01', termin },
-      kwota,
-    );
+    const dla = (termin, kwota) =>
+      datyFaktury({ dataWystawienia: '2026-08-04', dataSprzedazy: '2026-08-01', termin }, kwota);
     expect(dla(PRZY_ODBIORZE).sale_date).toBe('2026-08-01');
     expect(dla(BEZ_TERMINU).sale_date).toBe('2026-08-01');
     expect(dla(30).sale_date).toBe('2026-08-01');
@@ -302,8 +315,7 @@ describe('faktura zapłacona z góry — wariant ZAPLACONE', () => {
   it.each([[undefined], [null], [''], ['12300'], [0], [-1], [12.5], [NaN]])(
     'ZAPLACONE z kwotą „%s" → błąd operatora, bez cichej faktury',
     (kwota) => {
-      expect(() => datyFaktury({ dataWystawienia: '2026-08-03', termin: ZAPLACONE }, kwota))
-        .toThrow(/kwot/i);
+      expect(() => datyFaktury({ dataWystawienia: '2026-08-03', termin: ZAPLACONE }, kwota)).toThrow(/kwot/i);
     },
   );
 
@@ -330,7 +342,8 @@ describe('zgodność wstecz — payload bez nowych pól', () => {
   });
 
   it('kwota podana bez wariantu „zapłacone" niczego nie zmienia', () => {
-    expect(datyFaktury({ dataWystawienia: '2026-08-03', termin: 7 }, 12300))
-      .toEqual(datyFaktury({ dataWystawienia: '2026-08-03', termin: 7 }));
+    expect(datyFaktury({ dataWystawienia: '2026-08-03', termin: 7 }, 12300)).toEqual(
+      datyFaktury({ dataWystawienia: '2026-08-03', termin: 7 }),
+    );
   });
 });

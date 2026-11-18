@@ -20,18 +20,32 @@ const ANALIZY = ['/analityka', '/raporty', '/statystyki', '/kampania', '/finanse
 
 const admin = { imie: 'Admin', admin: true, uprawnienia: new Set<string>() };
 const zRoli = (rola: string) => ({ imie: `Konto ${rola}`, admin: false, rola, uprawnienia: new Set(ekranyRoli(rola)) });
-const model = (sciezka: string, konto: any, odlozoneEkrany: string[] = []) => nawigacjaDla({ sciezka, konto, menu, odlozoneEkrany });
-const render = async (sciezka: string, konto: any, odlozoneEkrany: string[] = []) => ejs.renderFile(szablon, {
-  title: 'Test', motyw: 'jasny', htmx: false, bezPaska: false,
-  // Zakładki są częścią nagłówka ekranu, renderowanego przed layoutem.
-  body: await ejs.renderFile(fileURLToPath(new URL('../../src/core/web/widoki/_naglowek-ekranu.ejs', import.meta.url)), {tytul: 'Treść', nawigacja: model(sciezka, konto, odlozoneEkrany)}),
-  nawigacja: model(sciezka, konto, odlozoneEkrany),
-  menuKonta: menuKontaDla(konto, { powrot: sciezka }), marka: { logoAlt: 'Firma testowa' }, modyfikatorStatusu: () => null, zasob,
-}) as Promise<string>;
+const model = (sciezka: string, konto: any, odlozoneEkrany: string[] = []) =>
+  nawigacjaDla({ sciezka, konto, menu, odlozoneEkrany });
+const render = async (sciezka: string, konto: any, odlozoneEkrany: string[] = []) =>
+  ejs.renderFile(szablon, {
+    title: 'Test',
+    motyw: 'jasny',
+    htmx: false,
+    bezPaska: false,
+    // Zakładki są częścią nagłówka ekranu, renderowanego przed layoutem.
+    body: await ejs.renderFile(
+      fileURLToPath(new URL('../../src/core/web/widoki/_naglowek-ekranu.ejs', import.meta.url)),
+      { tytul: 'Treść', nawigacja: model(sciezka, konto, odlozoneEkrany) },
+    ),
+    nawigacja: model(sciezka, konto, odlozoneEkrany),
+    menuKonta: menuKontaDla(konto, { powrot: sciezka }),
+    marka: { logoAlt: 'Firma testowa' },
+    modyfikatorStatusu: () => null,
+    zasob,
+  }) as Promise<string>;
 const kawalki = (h: string) => {
   const bok = h.slice(h.indexOf('<aside class="oms-sidebar">'), h.indexOf('</aside>'));
   return {
-    bokKomputer: bok.slice(bok.indexOf('<div class="oms-menu-desktop">'), bok.indexOf('<details class="oms-menu-mobile"')),
+    bokKomputer: bok.slice(
+      bok.indexOf('<div class="oms-menu-desktop">'),
+      bok.indexOf('<details class="oms-menu-mobile"'),
+    ),
     bokTelefon: bok.slice(bok.indexOf('<details class="oms-menu-mobile"')),
     pasek: h.match(/<header class="oms-topbar">[\s\S]*?<\/header>/)?.[0] ?? '',
     tresc: h.slice(h.indexOf('<main class="kolumna-glowna')),
@@ -43,15 +57,23 @@ describe('jedno źródło układu', () => {
   // Układ menu stoi w dwóch miejscach: EKRANY.nawigacja (menu bez manifestów, strażnik) i pola `menu` manifestów
   // (menu HTTP). Rozjazd znaczyłby inne menu w teście i inne na produkcji.
   it('dzial, grupa i kolejność w manifestach zgadzają się z EKRANY.nawigacja', () => {
-    const zEkranow = Object.fromEntries(EKRANY.filter((e: any) => e.nawigacja && e.href)
-      .map((e: any) => [e.klucz, { dzial: e.nawigacja.dzial, grupa: e.nawigacja.grupa, kolejnosc: e.nawigacja.kolejnosc }]));
-    const zManifestow = Object.fromEntries(menu.filter((p) => p.dzial !== 'ustawienia')
-      .map((p) => [p.uprawnienie, { dzial: p.dzial, grupa: p.grupa, kolejnosc: p.kolejnosc }]));
+    const zEkranow = Object.fromEntries(
+      EKRANY.filter((e: any) => e.nawigacja && e.href).map((e: any) => [
+        e.klucz,
+        { dzial: e.nawigacja.dzial, grupa: e.nawigacja.grupa, kolejnosc: e.nawigacja.kolejnosc },
+      ]),
+    );
+    const zManifestow = Object.fromEntries(
+      menu
+        .filter((p) => p.dzial !== 'ustawienia')
+        .map((p) => [p.uprawnienie, { dzial: p.dzial, grupa: p.grupa, kolejnosc: p.kolejnosc }]),
+    );
     expect(zManifestow).toEqual(zEkranow);
   });
 });
 
-const podmenuAnalityki = (html: string) => html.match(/<ul class="oms-podmenu-lista"[^>]*data-podmenu-lista="analityka"[\s\S]*?<\/ul>/)?.[0] ?? '';
+const podmenuAnalityki = (html: string) =>
+  html.match(/<ul class="oms-podmenu-lista"[^>]*data-podmenu-lista="analityka"[\s\S]*?<\/ul>/)?.[0] ?? '';
 
 describe('menu boczne', () => {
   it('trzy grupy: Obsługa zamówień, Klienci i Wyniki (Analityka)', () => {
@@ -75,7 +97,9 @@ describe('menu boczne', () => {
 describe('analizy w podmenu „Analityka”', () => {
   it('górny pasek do 900 px oddaje miejsce nazwie ekranu i nie ma już przycisku analiz', async () => {
     const css = readFileSync(new URL('../../src/public/oms-design.css', import.meta.url), 'utf8');
-    expect(css).toMatch(/@media\s*\(max-width:\s*900px\)\s*\{\s*\.oms-breadcrumb>span\s*,\s*\.oms-topbar \.menu-uzytkownika-nazwa\s*\{\s*display:\s*none\s*\}\s*\}/);
+    expect(css).toMatch(
+      /@media\s*\(max-width:\s*900px\)\s*\{\s*\.oms-breadcrumb>span\s*,\s*\.oms-topbar \.menu-uzytkownika-nazwa\s*\{\s*display:\s*none\s*\}\s*\}/,
+    );
     const { pasek } = kawalki(await render('/', admin));
     expect(pasek).toContain('aria-label="Konto: Admin"');
     expect(pasek).not.toContain('data-menu="analizy"');
@@ -91,8 +115,11 @@ describe('analizy w podmenu „Analityka”', () => {
   it('Sprzedaż dostaje analizy bez Finansów; wyłączone ekrany też znikają z podmenu', async () => {
     const { bokKomputer } = kawalki(await render('/', zRoli('sprzedaz')));
     expect(hrefy(podmenuAnalityki(bokKomputer))).toEqual(['/analityka', '/raporty', '/statystyki', '/kampania']);
-    expect((model('/', admin, ['kampania', 'finanse']) as any).analizy.pozycje.map((p: any) => p.href))
-      .toEqual(['/analityka', '/raporty', '/statystyki']);
+    expect((model('/', admin, ['kampania', 'finanse']) as any).analizy.pozycje.map((p: any) => p.href)).toEqual([
+      '/analityka',
+      '/raporty',
+      '/statystyki',
+    ]);
   });
 
   it('Produkcja nie ma Analityki — ani na komputerze, ani na telefonie', async () => {
@@ -104,7 +131,12 @@ describe('analizy w podmenu „Analityka”', () => {
 
   it('na ekranie analiz zaznaczona jest Analityka i jej podstrona; nad treścią nie ma zakładek', async () => {
     const n = model('/statystyki', admin) as any;
-    expect(n.boczne.flatMap((g: any) => g.pozycje).filter((p: any) => p.aktywna).map((p: any) => p.href)).toEqual(['/analityka']);
+    expect(
+      n.boczne
+        .flatMap((g: any) => g.pozycje)
+        .filter((p: any) => p.aktywna)
+        .map((p: any) => p.href),
+    ).toEqual(['/analityka']);
     const { tresc, bokKomputer } = kawalki(await render('/statystyki', admin));
     expect(podmenuAnalityki(bokKomputer)).toContain('href="/statystyki" aria-current="page"');
     expect(tresc).not.toContain('oms-order-statuses');

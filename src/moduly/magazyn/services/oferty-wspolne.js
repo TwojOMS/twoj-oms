@@ -14,8 +14,11 @@ export function znakInstalacji(db, { losuj = randomInt, teraz = () => new Date()
   if (istniejacy) return String(istniejacy.wartosc);
   let znak = '';
   for (let i = 0; i < 6; i++) znak += ALFABET_ZNAKU[losuj(ALFABET_ZNAKU.length)];
-  db.prepare('INSERT OR IGNORE INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)')
-    .run(KLUCZ_ZNAKU, znak, teraz().toISOString());
+  db.prepare('INSERT OR IGNORE INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)').run(
+    KLUCZ_ZNAKU,
+    znak,
+    teraz().toISOString(),
+  );
   return String(db.prepare('SELECT wartosc FROM ustawienia WHERE klucz = ?').get(KLUCZ_ZNAKU).wartosc);
 }
 
@@ -27,7 +30,11 @@ export function przerwaPonowienia(n) {
 export function stabilnie(w) {
   if (Array.isArray(w)) return `[${w.map(stabilnie).join(',')}]`;
   if (w && typeof w === 'object') {
-    return `{${Object.keys(w).sort().filter(k => w[k] !== undefined).map(k => `${JSON.stringify(k)}:${stabilnie(w[k])}`).join(',')}}`;
+    return `{${Object.keys(w)
+      .sort()
+      .filter((k) => w[k] !== undefined)
+      .map((k) => `${JSON.stringify(k)}:${stabilnie(w[k])}`)
+      .join(',')}}`;
   }
   return JSON.stringify(w);
 }
@@ -44,7 +51,8 @@ export function bramkaZapisu({ konto, ustawienia, oferta, klucze, kanal = 'ERLI'
   if (!ustawienia?.czynne) return { wolno: false, powod: 'oferty wstrzymane' };
   if (konto.tylkoOdczyt?.()) return { wolno: false, powod: 'konto w trybie tylko odczyt' };
   const samaIlosc = zakres === 'ilosc' && oferta?.tryb === 'obserwowana' && Number(oferta.ilosc_z_oms) === 1;
-  if (!oferta || oferta.kanal !== konto.klucz || (oferta.tryb !== 'zarzadzana' && !samaIlosc)) return { wolno: false, powod: 'oferta nie jest zarządzana przez OMS' };
+  if (!oferta || oferta.kanal !== konto.klucz || (oferta.tryb !== 'zarzadzana' && !samaIlosc))
+    return { wolno: false, powod: 'oferta nie jest zarządzana przez OMS' };
   return { wolno: true };
 }
 

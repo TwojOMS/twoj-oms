@@ -71,6 +71,9 @@ export function metodaZId(id, nazwa) {
  * (spadamy na etykiete kubelka) od nazwy zlozonej z zera znakow.
  */
 export function oczyscNazweDostawy(nazwa) {
-  const czysta = String(nazwa ?? '').trim().replace(/\s*\(AD\)$/, '').trim();
+  const czysta = String(nazwa ?? '')
+    .trim()
+    .replace(/\s*\(AD\)$/, '')
+    .trim();
   return czysta || null;
 }

@@ -7,11 +7,11 @@
 // Style wyłącznie inline (Outlook/Gmail wycinają <style> w <head>).
 
 export const KOLOR = {
-  tlo: '#F7F3EC',      // Płótno
+  tlo: '#F7F3EC', // Płótno
   karta: '#FFFDFA',
   ramka: '#E4DDD1',
   linia: '#EFE9DD',
-  tekst: '#2E2A26',    // Grafit
+  tekst: '#2E2A26', // Grafit
   muted: '#6D675F',
   // Stal. Kolor rejestru PRO — nie tylko wycen: tym samym akcentem idą nagłówki sekcji i kreska sumy
   // w potwierdzeniu przyjęcia zamówienia (potwierdzenie-html.js) oraz w trzech mailach o pieniądzach
@@ -41,11 +41,16 @@ export const MONO = "font-family:Consolas,'Courier New',monospace;";
  * jest ROZPOZNAWANY we wpisanym przez człowieka tekście („Dane do przelewu:"). Sklejenie
  * obu zmieniłoby wygląd maili z wyceną.
  */
-export const naglowekSekcji = (tekst) => `<p style="margin:20px 0 6px;font-family:${FONT};font-size:12px;`
-  + `font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:${KOLOR.akcent};">${esc(tekst)}</p>`;
+export const naglowekSekcji = (tekst) =>
+  `<p style="margin:20px 0 6px;font-family:${FONT};font-size:12px;` +
+  `font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:${KOLOR.akcent};">${esc(tekst)}</p>`;
 
 export function esc(s) {
-  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 // Po esc() — URL-e w treści (link do sklepu) muszą być klikalne. Escapowanie najpierw:
@@ -101,21 +106,35 @@ const RE_OPCJA_NR = /^(\d{1,2})\.\s+(.+)$/;
 // Renderujemy ja czcionka o stalej szerokosci, zeby dalo sie ja przepisac do przelewu.
 const RE_NUMER_KONTA = /^[\d][\d ]{18,}[\d]$/;
 
-const td = (extra = '') => `padding:8px 2px;border-bottom:1px solid ${KOLOR.linia};font-family:${FONT};font-size:14px;color:${KOLOR.tekst};${extra}`;
+const td = (extra = '') =>
+  `padding:8px 2px;border-bottom:1px solid ${KOLOR.linia};font-family:${FONT};font-size:14px;color:${KOLOR.tekst};${extra}`;
 
 function quoteTableHtml(rows) {
-  const out = ['<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:4px 0 14px;">'];
+  const out = [
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:4px 0 14px;">',
+  ];
   for (const r of rows) {
     if (r.typ === 'pozycja') {
-      out.push(`<tr><td style="${td()}">${r.qty}× ${r.nazwa}</td><td align="right" style="${td('white-space:nowrap;')}">${r.cena}/szt</td></tr>`);
+      out.push(
+        `<tr><td style="${td()}">${r.qty}× ${r.nazwa}</td><td align="right" style="${td('white-space:nowrap;')}">${r.cena}/szt</td></tr>`,
+      );
     } else if (r.typ === 'opcja') {
-      out.push(`<tr><td style="${td()}">${r.opis}</td><td align="right" style="${td('white-space:nowrap;')}">${r.kwota}</td></tr>`);
+      out.push(
+        `<tr><td style="${td()}">${r.opis}</td><td align="right" style="${td('white-space:nowrap;')}">${r.kwota}</td></tr>`,
+      );
     } else if (r.typ === 'dodatek') {
-      out.push(`<tr><td style="${td()}">${r.nazwa}</td><td align="right" style="${td('white-space:nowrap;')}">${r.cena}</td></tr>`);
-    } else { // razem
-      const netto = r.netto ? `<br><span style="font-weight:normal;font-size:12px;color:${KOLOR.muted};">${r.netto}</span>` : '';
-      out.push(`<tr><td style="${td(`border-bottom:0;border-top:2px solid ${KOLOR.akcent};font-weight:bold;padding-top:10px;`)}">Razem</td>`
-        + `<td align="right" style="${td(`border-bottom:0;border-top:2px solid ${KOLOR.akcent};font-weight:bold;padding-top:10px;white-space:nowrap;`)}">${r.kwota}${netto}</td></tr>`);
+      out.push(
+        `<tr><td style="${td()}">${r.nazwa}</td><td align="right" style="${td('white-space:nowrap;')}">${r.cena}</td></tr>`,
+      );
+    } else {
+      // razem
+      const netto = r.netto
+        ? `<br><span style="font-weight:normal;font-size:12px;color:${KOLOR.muted};">${r.netto}</span>`
+        : '';
+      out.push(
+        `<tr><td style="${td(`border-bottom:0;border-top:2px solid ${KOLOR.akcent};font-weight:bold;padding-top:10px;`)}">Razem</td>` +
+          `<td align="right" style="${td(`border-bottom:0;border-top:2px solid ${KOLOR.akcent};font-weight:bold;padding-top:10px;white-space:nowrap;`)}">${r.kwota}${netto}</td></tr>`,
+      );
     }
   }
   out.push('</table>');
@@ -125,13 +144,25 @@ function quoteTableHtml(rows) {
 // Treść → bloki: grupy linii tabelarycznych (min. 1 pozycja) jako tabela,
 // reszta jako akapity (pusta linia rozdziela, pojedyncze łamanie = <br>).
 function textToBlocks(text) {
-  const lines = String(text ?? '').replace(/\r\n/g, '\n').split('\n');
+  const lines = String(text ?? '')
+    .replace(/\r\n/g, '\n')
+    .split('\n');
   const maPozycje = lines.some((l) => RE_POZYCJA.test(l.trim()));
   const blocks = [];
   let para = [];
   let table = [];
-  const flushPara = () => { if (para.length) { blocks.push({ typ: 'p', linie: para }); para = []; } };
-  const flushTable = () => { if (table.length) { blocks.push({ typ: 'tabela', rows: table }); table = []; } };
+  const flushPara = () => {
+    if (para.length) {
+      blocks.push({ typ: 'p', linie: para });
+      para = [];
+    }
+  };
+  const flushTable = () => {
+    if (table.length) {
+      blocks.push({ typ: 'tabela', rows: table });
+      table = [];
+    }
+  };
 
   // Tabela czasu realizacji zyje wlasnym trybem: wlacza ja naglowek, wylacza pierwsza
   // linia niepasujaca do „opis - kwota".
@@ -184,7 +215,10 @@ function textToBlocks(text) {
       continue;
     }
     // Etykieta przycisku nie moze zostac takze akapitem — pomijamy ja tutaj.
-    if (przyciski.has(nr + 1)) { flushPara(); continue; }
+    if (przyciski.has(nr + 1)) {
+      flushPara();
+      continue;
+    }
     if (naglowkiTabeli.has(nr)) {
       flushPara();
       blocks.push({ typ: 'naglowek', tekst: esc(l) });
@@ -250,7 +284,10 @@ function wydzielPudelka(blocks) {
   for (let i = 0; i < blocks.length; i += 1) {
     const b = blocks[i];
     const m = b.typ === 'p' && b.linie.length ? b.linie[0].match(RE_OPCJA_NR) : null;
-    if (!m) { out.push(b); continue; }
+    if (!m) {
+      out.push(b);
+      continue;
+    }
     const nastepny = blocks[i + 1];
     const przycisk = nastepny?.typ === 'przycisk' ? nastepny : null;
     if (przycisk) i += 1;
@@ -275,7 +312,10 @@ export function kopertaMaila({ body, footer = '', naglowek = '' } = {}) {
   const naglowekHtml = marka
     ? `<tr><td align="center" style="padding:20px 24px 14px;border-bottom:1px solid ${KOLOR.linia};font-family:${FONT};font-size:14px;font-weight:bold;letter-spacing:1px;color:${KOLOR.akcent};">${esc(marka)}</td></tr>`
     : '';
-  const footerLines = String(footer ?? '').split('\n').map((l) => l.trim()).filter(Boolean);
+  const footerLines = String(footer ?? '')
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
   const footerHtml = footerLines.length
     ? `<tr><td class="mail-footer" style="border-top:1px solid ${KOLOR.linia};padding:14px 26px 20px;font-family:${FONT};font-size:12px;color:${KOLOR.muted};line-height:1.65;">${footerLines.map((l) => linkify(esc(l))).join('<br>')}</td></tr>`
     : '';
@@ -306,9 +346,7 @@ function przyciskHtml(b, glowny) {
 // Linia tresci pudelka. Numer konta dostaje czcionke o stalej szerokosci — klient ma go
 // przepisac do przelewu, a w proporcjonalnej czcionce cyfry zlewaja sie w jeden ciag.
 function liniaPudelka(l) {
-  return RE_NUMER_KONTA.test(l.replace(/<[^>]*>/g, '').trim())
-    ? `<span style="${MONO}">${l}</span>`
-    : l;
+  return RE_NUMER_KONTA.test(l.replace(/<[^>]*>/g, '').trim()) ? `<span style="${MONO}">${l}</span>` : l;
 }
 
 function pudelkoHtml(b, glowny) {
@@ -317,11 +355,14 @@ function pudelkoHtml(b, glowny) {
     : '';
   const przycisk = b.przycisk ? przyciskHtml(b.przycisk, glowny).replace('margin:14px 0 2px;', 'margin:0;') : '';
   const numer = `<span style="display:inline-block;width:22px;height:22px;line-height:22px;border-radius:50%;background-color:${KOLOR.akcent};color:#ffffff;font-size:12px;text-align:center;margin-right:8px;">${b.nr}</span>`;
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F4EFE6;border:1px solid ${KOLOR.ramka};border-radius:8px;margin:0 0 12px;">`
-    + '<tr><td style="padding:16px 18px 15px;">'
-    + `<p style="margin:0 0 6px;font-family:${FONT};font-size:15px;font-weight:bold;color:${KOLOR.tekst};">${numer}${b.tytul}</p>`
-    + tresc + przycisk
-    + '</td></tr></table>';
+  return (
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F4EFE6;border:1px solid ${KOLOR.ramka};border-radius:8px;margin:0 0 12px;">` +
+    '<tr><td style="padding:16px 18px 15px;">' +
+    `<p style="margin:0 0 6px;font-family:${FONT};font-size:15px;font-weight:bold;color:${KOLOR.tekst};">${numer}${b.tytul}</p>` +
+    tresc +
+    przycisk +
+    '</td></tr></table>'
+  );
 }
 
 export function renderMailHtml({ text, footer = '', naglowek = '' } = {}) {
@@ -329,27 +370,29 @@ export function renderMailHtml({ text, footer = '', naglowek = '' } = {}) {
   // Licznik przycisków na CAŁY mail — pierwszy wypełniony, kolejne obrysowane, niezależnie
   // od tego, czy stoją w pudełku, czy luzem.
   let ilePrzyciskow = 0;
-  const body = blocks.map((b) => {
-    if (b.typ === 'tabela') return quoteTableHtml(b.rows);
-    if (b.typ === 'pudelko') {
-      const glowny = b.przycisk ? (ilePrzyciskow += 1) === 1 : false;
-      return pudelkoHtml(b, glowny);
-    }
-    if (b.typ === 'przycisk') {
-      return przyciskHtml(b, (ilePrzyciskow += 1) === 1);
-    }
-    if (b.typ === 'naglowek') {
-      // Nagłówek sekcji w rejestrze PRO: wersaliki, rozstrzelenie, kolor akcentu — tak samo
-      // jak eyebrow na stronie oferty, żeby mail i sklep czytały się jak jedno miejsce.
-      //
-      // ⚠️ CELOWO NIE `naglowekSekcji` Z GÓRY TEGO PLIKU:
-      // tamta funkcja ma rozstrzelenie 1px i inne marginesy, a tutaj nagłówek jest ROZPOZNANY
-      // we wpisanym przez człowieka tekście, więc dochodzi jeszcze obcięcie dwukropka z końca.
-      // Podmiana na wspólną wersję zmieniłaby wygląd maili z wyceną, które chodzą na produkcji.
-      return `<p style="margin:22px 0 2px;font-family:${FONT};font-size:12px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;color:${KOLOR.akcent};">${b.tekst.replace(/:$/, '')}</p>`;
-    }
-    return `<p style="margin:0 0 14px;font-family:${FONT};font-size:15px;line-height:1.6;color:${KOLOR.tekst};">${b.linie.join('<br>')}</p>`;
-  }).join('');
+  const body = blocks
+    .map((b) => {
+      if (b.typ === 'tabela') return quoteTableHtml(b.rows);
+      if (b.typ === 'pudelko') {
+        const glowny = b.przycisk ? (ilePrzyciskow += 1) === 1 : false;
+        return pudelkoHtml(b, glowny);
+      }
+      if (b.typ === 'przycisk') {
+        return przyciskHtml(b, (ilePrzyciskow += 1) === 1);
+      }
+      if (b.typ === 'naglowek') {
+        // Nagłówek sekcji w rejestrze PRO: wersaliki, rozstrzelenie, kolor akcentu — tak samo
+        // jak eyebrow na stronie oferty, żeby mail i sklep czytały się jak jedno miejsce.
+        //
+        // ⚠️ CELOWO NIE `naglowekSekcji` Z GÓRY TEGO PLIKU:
+        // tamta funkcja ma rozstrzelenie 1px i inne marginesy, a tutaj nagłówek jest ROZPOZNANY
+        // we wpisanym przez człowieka tekście, więc dochodzi jeszcze obcięcie dwukropka z końca.
+        // Podmiana na wspólną wersję zmieniłaby wygląd maili z wyceną, które chodzą na produkcji.
+        return `<p style="margin:22px 0 2px;font-family:${FONT};font-size:12px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;color:${KOLOR.akcent};">${b.tekst.replace(/:$/, '')}</p>`;
+      }
+      return `<p style="margin:0 0 14px;font-family:${FONT};font-size:15px;line-height:1.6;color:${KOLOR.tekst};">${b.linie.join('<br>')}</p>`;
+    })
+    .join('');
 
   return kopertaMaila({ body, footer, naglowek });
 }

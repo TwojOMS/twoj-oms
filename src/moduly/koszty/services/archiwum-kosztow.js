@@ -15,9 +15,7 @@ import { zCzekaniemNa429 } from '../../../oms/ksef/limit.js';
 // prawdy panelu. Dlatego awaria dysku archiwum nie ma prawa przerwać niczego ważniejszego: patrz
 // `zarchiwizuj` nizej i uzasadnienie przy proba/catch.
 
-export function sciezkaArchiwum({
-  dataWystawienia, sprzedawcaNazwa, sprzedawcaNip, numerDokumentu, rozszerzenie,
-}) {
+export function sciezkaArchiwum({ dataWystawienia, sprzedawcaNazwa, sprzedawcaNip, numerDokumentu, rozszerzenie }) {
   const dzien = doDnia(dataWystawienia);
   const [rok, miesiac] = dzien.split('-');
   const kto = doNazwyPliku(sprzedawcaNazwa || sprzedawcaNip || 'NIEZNANY').toUpperCase();
@@ -61,7 +59,13 @@ export function sciezkaArchiwum({
  * kosztow) podaje `doKiedy`, a odmowa spoza budzetu wraca stad z `powod: 'limit'`.
  */
 export async function zarchiwizuj({
-  db, klient, sesja, wiersz, katalogBazowy, log = console.error, pdf = zbudujKosztPdf,
+  db,
+  klient,
+  sesja,
+  wiersz,
+  katalogBazowy,
+  log = console.error,
+  pdf = zbudujKosztPdf,
   limit = {},
 }) {
   if (wiersz.sciezka_xml) return { pominiete: true, powod: 'XML już zarchiwizowany' };
@@ -86,9 +90,9 @@ export async function zarchiwizuj({
     writeFileSync(pelna, xmlTresc);
   } catch (e) {
     log(
-      `Archiwum kosztow: zapis XML dokumentu ${wiersz.ksef_number} na NAS ("${wzgledna}") `
-      + `sie nie udal (${e.message}) — dokument zostanie sprobowany ponownie przy kolejnym `
-      + 'przebiegu. Dane w bazie sa kompletne niezaleznie od tego pliku.',
+      `Archiwum kosztow: zapis XML dokumentu ${wiersz.ksef_number} na NAS ("${wzgledna}") ` +
+        `sie nie udal (${e.message}) — dokument zostanie sprobowany ponownie przy kolejnym ` +
+        'przebiegu. Dane w bazie sa kompletne niezaleznie od tego pliku.',
     );
     return { xml: null };
   }
@@ -117,9 +121,9 @@ export async function zarchiwizuj({
     wzglednaPdf = sciezkaPdf;
   } catch (e) {
     log(
-      `Archiwum kosztow: wizualizacja PDF dokumentu ${wiersz.ksef_number} sie nie udala `
-      + `(${e.message}) — oryginalny XML jest zarchiwizowany, a PDF da sie pobrac z zakladki `
-      + 'KOSZTY na zadanie.',
+      `Archiwum kosztow: wizualizacja PDF dokumentu ${wiersz.ksef_number} sie nie udala ` +
+        `(${e.message}) — oryginalny XML jest zarchiwizowany, a PDF da sie pobrac z zakladki ` +
+        'KOSZTY na zadanie.',
     );
   }
 

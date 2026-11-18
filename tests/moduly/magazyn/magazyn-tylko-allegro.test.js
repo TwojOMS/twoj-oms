@@ -7,11 +7,18 @@ import { createPomocnikiMagazynu } from '../../../src/moduly/magazyn/pomocniki.j
 import { kanalyZrodloweKart } from '../../../src/domena/karta-z-produktu.js';
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 
 const zapisz = (p) => zapiszProduktSklepowy(db, { wariant_id: '', odczytane_at: '2026-10-17T06:00:00.000Z', ...p });
-const karty = () => db.prepare('SELECT nazwa FROM karty_produktow ORDER BY nazwa').all().map((k) => k.nazwa);
-const pomoc = (kanalySklepow, kanalyAllegro) => createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicje: [] });
+const karty = () =>
+  db
+    .prepare('SELECT nazwa FROM karty_produktow ORDER BY nazwa')
+    .all()
+    .map((k) => k.nazwa);
+const pomoc = (kanalySklepow, kanalyAllegro) =>
+  createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicje: [] });
 
 describe('kanalyZrodloweKart', () => {
   it('ze sklepami źródłem są sklepy, bez sklepów — konta Allegro', () => {

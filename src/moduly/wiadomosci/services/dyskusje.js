@@ -38,12 +38,12 @@ export function createOdswiezanieSpraw({ db, klienci = {}, brakiKanalu = () => [
     for (const [nazwa, klient] of Object.entries(klienci)) {
       // Mapa kanałów niesie też klientów ERLI — oni nie mają spraw Allegro.
       if (!kanalZWiadomosciami(nazwa)) continue;
-  // ⚠️⚠️ NIE WOLAMY ZASOBU, DO KTOREGO KANAL NIE MA UPRAWNIENIA. Bez tego panel wdrozony
-  // PRZED przewiazaniem kanalow strzela 403 przy kazdym przebiegu — ponad tysiac nieudanych
-  // wywolan na dobe prosto do raportu „Bledy techniczne" Allegro. Zakresy wchodza do tokenu
-  // wylacznie przy autoryzacji, wiec ten stan trwa az do przewiazania, nie mija sam.
-  // ⚠️ Pusta lista brakow znaczy „nie wiem" i przepuszcza — nie wnioskujemy z niewiedzy
-  // (ta sama zasada, co w domena/uprawnienia-kanalu.js).
+      // ⚠️⚠️ NIE WOLAMY ZASOBU, DO KTOREGO KANAL NIE MA UPRAWNIENIA. Bez tego panel wdrozony
+      // PRZED przewiazaniem kanalow strzela 403 przy kazdym przebiegu — ponad tysiac nieudanych
+      // wywolan na dobe prosto do raportu „Bledy techniczne" Allegro. Zakresy wchodza do tokenu
+      // wylacznie przy autoryzacji, wiec ten stan trwa az do przewiazania, nie mija sam.
+      // ⚠️ Pusta lista brakow znaczy „nie wiem" i przepuszcza — nie wnioskujemy z niewiedzy
+      // (ta sama zasada, co w domena/uprawnienia-kanalu.js).
       if (brakiKanalu(nazwa).includes('allegro:api:disputes')) continue;
       // ⚠️ IZOLACJA NA KANAL. Przed przewiazaniem kanalow o `allegro:api:disputes` ten zasob
       // odda 403 na obu kontach — przebieg ma to zniesc i oddac bledy, a nie odrzucic
@@ -52,8 +52,14 @@ export function createOdswiezanieSpraw({ db, klienci = {}, brakiKanalu = () => [
         const { sprawy } = await klient.pobierzSprawy({ offset: 0 });
         for (const s of sprawy) {
           wpis.run(
-            nazwa, s.id, s.type ?? null, s.status ?? null,
-            s.buyer?.login ?? null, s.checkoutForm?.id ?? null, s.openedDate ?? null, pobranyAt,
+            nazwa,
+            s.id,
+            s.type ?? null,
+            s.status ?? null,
+            s.buyer?.login ?? null,
+            s.checkoutForm?.id ?? null,
+            s.openedDate ?? null,
+            pobranyAt,
           );
           zapisane += 1;
         }
@@ -71,7 +77,7 @@ export function createOdswiezanieSpraw({ db, klienci = {}, brakiKanalu = () => [
 /** Sprawy wymagajace uwagi — na znacznik przy zakladce i na liste wiadomosci. */
 export function sprawyOtwarte(db) {
   const pytajniki = STATUSY_OTWARTE.map(() => '?').join(',');
-  return db.prepare(
-    `SELECT * FROM allegro_sprawy WHERE status IN (${pytajniki}) ORDER BY opened_date DESC`,
-  ).all(...STATUSY_OTWARTE);
+  return db
+    .prepare(`SELECT * FROM allegro_sprawy WHERE status IN (${pytajniki}) ORDER BY opened_date DESC`)
+    .all(...STATUSY_OTWARTE);
 }

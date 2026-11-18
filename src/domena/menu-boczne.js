@@ -1,6 +1,8 @@
 // Preferencja przeglądarki, tak jak motyw. Rozwinięcie w Ustawieniach jest lokalne.
 export function menuZwinieteZNaglowka(cookie) {
-  return String(cookie ?? '').split(';').some(wpis => wpis.trim() === 'oms_menu=zwiniete');
+  return String(cookie ?? '')
+    .split(';')
+    .some((wpis) => wpis.trim() === 'oms_menu=zwiniete');
 }
 
 export function ciasteczkoMenu(zwiniete) {

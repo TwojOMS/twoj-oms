@@ -7,10 +7,15 @@ import { zapiszZamowienie, pobierzZamowienie, listaZamowien } from '../../src/om
 import { createAllegroClient, LIMIT_ZAPYTANIA_OFERTY_MS } from '../../src/oms/allegro/client.js';
 import { zdjecieOferty, zdjeciePozycji, adresMiniatury } from '../../src/domena/miniatury.js';
 import {
-  ofertyDoSprawdzenia, zapiszProbeZdjecia, zdjecieOfertyZBazy, PONOWIENIE_PO_MS,
+  ofertyDoSprawdzenia,
+  zapiszProbeZdjecia,
+  zdjecieOfertyZBazy,
+  PONOWIENIE_PO_MS,
 } from '../../src/oms/db/zdjecia-ofert.js';
 import {
-  createZdjeciaAllegro, zPobieraniemZdjec, LIMIT_OFERT_NA_PRZEBIEG,
+  createZdjeciaAllegro,
+  zPobieraniemZdjec,
+  LIMIT_OFERT_NA_PRZEBIEG,
 } from '../../src/moduly/kanaly/services/zdjecia-allegro.js';
 import { createPoller } from '../../src/moduly/kanaly/services/poller.js';
 import { wierszePozycji } from '../../src/domena/tabela-pozycji.js';
@@ -41,8 +46,7 @@ const MINIATURA = 'https://9.allegroimg.com/s150/03e7d6/772bd11044a79ce6967b62cf
 
 describe('zdjecieOferty — co zapisujemy z odpowiedzi Allegro', () => {
   it('bierze PIERWSZY adres z `images` (zdjęcie główne)', () => {
-    expect(zdjecieOferty({ images: [ORYGINAL, 'https://2.allegroimg.com/original/aa/bb'] }))
-      .toBe(ORYGINAL);
+    expect(zdjecieOferty({ images: [ORYGINAL, 'https://2.allegroimg.com/original/aa/bb'] })).toBe(ORYGINAL);
   });
 
   // Oferta bez zdjęcia to stan NORMALNY, a nie awaria — pozycja pokazuje wtedy samą nazwę.
@@ -93,19 +97,20 @@ describe('adresMiniatury — wariant s150 wyprowadzany ze ścieżki Allegro', ()
   // ⚠️ REGUŁA ALLEGRO NIE MA PRAWA SIĘGNĄĆ PO ADRES ZE SKLEPU — `pro` i `swietlik` działają
   // i mają zostać nietknięte. Warunek to HOST, nie „adres zawiera /original/".
   it('nie tyka adresów spoza allegroimg.com', () => {
-    expect(adresMiniatury('https://pro.swietlik.example.test/wp-content/uploads/original/stop.jpg'))
-      .toBe('https://pro.swietlik.example.test/wp-content/uploads/original/stop-150x150.jpg');
+    expect(adresMiniatury('https://pro.swietlik.example.test/wp-content/uploads/original/stop.jpg')).toBe(
+      'https://pro.swietlik.example.test/wp-content/uploads/original/stop-150x150.jpg',
+    );
     expect(adresMiniatury('https://zle.pl/original/aa/bb')).toBe('https://zle.pl/original/aa/bb');
     // Host, który tylko KOŃCZY się podobnie — nie jest Allegro.
-    expect(adresMiniatury('https://zleallegroimg.com/original/aa/bb'))
-      .toBe('https://zleallegroimg.com/original/aa/bb');
+    expect(adresMiniatury('https://zleallegroimg.com/original/aa/bb')).toBe('https://zleallegroimg.com/original/aa/bb');
   });
 });
 
 describe('zdjeciePozycji — które źródło wygrywa', () => {
   it('pozycja ze sklepu czyta własną kolumnę', () => {
-    expect(zdjeciePozycji({ zdjecie_url: 'https://sklep.test/x.jpg', zdjecie_oferty: null }))
-      .toBe('https://sklep.test/x.jpg');
+    expect(zdjeciePozycji({ zdjecie_url: 'https://sklep.test/x.jpg', zdjecie_oferty: null })).toBe(
+      'https://sklep.test/x.jpg',
+    );
   });
 
   it('pozycja z Allegro czyta pamięć ofert', () => {
@@ -117,8 +122,9 @@ describe('zdjeciePozycji — które źródło wygrywa', () => {
   // kupił. Odwrócona kolejność znaczyłaby, że sklep — kanał, który DZIAŁA I SPRZEDAJE —
   // zaczyna czytać adres z cudzej tabeli.
   it('przy OBU źródłach wygrywa kolumna pozycji', () => {
-    expect(zdjeciePozycji({ zdjecie_url: 'https://sklep.test/x.jpg', zdjecie_oferty: ORYGINAL }))
-      .toBe('https://sklep.test/x.jpg');
+    expect(zdjeciePozycji({ zdjecie_url: 'https://sklep.test/x.jpg', zdjecie_oferty: ORYGINAL })).toBe(
+      'https://sklep.test/x.jpg',
+    );
   });
 
   it('brak obu daje null', () => {
@@ -169,8 +175,12 @@ describe('klient Allegro — pobranie oferty', () => {
     await createAllegroClient({ ustawienia, tokeny, fetchImpl }).pobierzOferte('1');
 
     expect(wywolania[0].url).not.toMatch(/\/sale\/offers\//);
-    expect(zrodlo('allegro', 'client.js').split('\n').filter((l) => !l.trim().startsWith('*') && !l.trim().startsWith('//')).join('\n'))
-      .not.toMatch(/\/sale\/offers\//);
+    expect(
+      zrodlo('allegro', 'client.js')
+        .split('\n')
+        .filter((l) => !l.trim().startsWith('*') && !l.trim().startsWith('//'))
+        .join('\n'),
+    ).not.toMatch(/\/sale\/offers\//);
   });
 
   it('identyfikator oferty trafia do adresu zakodowany', async () => {
@@ -200,20 +210,37 @@ describe('klient Allegro — pobranie oferty', () => {
 // ---------------------------------------------------------------------------------
 
 const zmapowane = (zrodloId, pozycje) => ({
-  zrodlo_id: String(zrodloId), numer: String(zrodloId), klient: { first_name: 'Jan' },
-  dostawa: { city: 'Warszawa' }, metoda_wysylki: 'allegro_dpd', kwota_pobrania: null, chce_fakture: 0,
-  nip: null, kwota_brutto: '99.00', status_woo: null, oplacone_at: null,
-  anulowane: 0, utworzone_at: '2026-08-04T08:00:00',
+  zrodlo_id: String(zrodloId),
+  numer: String(zrodloId),
+  klient: { first_name: 'Jan' },
+  dostawa: { city: 'Warszawa' },
+  metoda_wysylki: 'allegro_dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '99.00',
+  status_woo: null,
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-08-04T08:00:00',
   pozycje,
 });
 
 const pozycjaAllegro = (ofertaId, nazwa = 'Szablon STOP') => ({
-  nazwa, sku: null, ilosc: 1, cena_brutto: '99.00', vat: '23',
-  zdjecie_url: null, produkt_id: null, oferta_id: ofertaId,
+  nazwa,
+  sku: null,
+  ilosc: 1,
+  cena_brutto: '99.00',
+  vat: '23',
+  zdjecie_url: null,
+  produkt_id: null,
+  oferta_id: ofertaId,
 });
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 
 const zamowienieAllegro = (ofertaId, { sklep = 'allegro_swietlik', zrodloId = 'e2a1' } = {}) =>
   zapiszZamowienie(db, sklep, zmapowane(zrodloId, [pozycjaAllegro(ofertaId)]), {});
@@ -320,7 +347,12 @@ describe('pamięć podręczna zdjęć ofert', () => {
   // Pierwszy przebieg po wdrożeniu widzi CAŁE archiwum kanału naraz.
   it('jeden przebieg pyta o najwyżej LIMIT_OFERT_NA_PRZEBIEG ofert', async () => {
     for (let i = 0; i < LIMIT_OFERT_NA_PRZEBIEG + 5; i += 1) {
-      zapiszZamowienie(db, 'allegro_swietlik', zmapowane(`z${i}`, [pozycjaAllegro(`of-${String(i).padStart(3, '0')}`)]), {});
+      zapiszZamowienie(
+        db,
+        'allegro_swietlik',
+        zmapowane(`z${i}`, [pozycjaAllegro(`of-${String(i).padStart(3, '0')}`)]),
+        {},
+      );
     }
     const klient = klientZ({});
     await createZdjeciaAllegro({ db, klienci: { allegro_swietlik: klient } }).uzupelnij();
@@ -339,10 +371,23 @@ describe('pamięć podręczna zdjęć ofert', () => {
   // ⚠️ ZERO ZMIAN DLA SKLEPÓW. Pozycje z WooCommerce mają `oferta_id` puste, więc nie mają
   // prawa trafić do kolejki pytań do Allegro.
   it('pozycje sklepowe nie wchodzą do kolejki', () => {
-    zapiszZamowienie(db, 'pro', zmapowane('1281', [{
-      nazwa: 'Szablon', sku: 'PRO-1', ilosc: 1, cena_brutto: '10.00', vat: '23',
-      zdjecie_url: 'https://pro.swietlik.example.test/x.jpg', produkt_id: 7, oferta_id: null,
-    }]), {});
+    zapiszZamowienie(
+      db,
+      'pro',
+      zmapowane('1281', [
+        {
+          nazwa: 'Szablon',
+          sku: 'PRO-1',
+          ilosc: 1,
+          cena_brutto: '10.00',
+          vat: '23',
+          zdjecie_url: 'https://pro.swietlik.example.test/x.jpg',
+          produkt_id: 7,
+          oferta_id: null,
+        },
+      ]),
+      {},
+    );
 
     expect(ofertyDoSprawdzenia(db, 'pro', { limit: 10 })).toEqual([]);
   });
@@ -355,7 +400,10 @@ describe('pamięć podręczna zdjęć ofert', () => {
 describe('miniatura dociera na ekran', () => {
   it('lista zamówień pokazuje adres z pamięci ofert', async () => {
     zamowienieAllegro('900');
-    await createZdjeciaAllegro({ db, klienci: { allegro_swietlik: klientZ({ 900: { images: [ORYGINAL] } }) } }).uzupelnij();
+    await createZdjeciaAllegro({
+      db,
+      klienci: { allegro_swietlik: klientZ({ 900: { images: [ORYGINAL] } }) },
+    }).uzupelnij();
 
     const [z] = listaZamowien(db);
     expect(z.pozycje[0].zdjecie_url).toBe(ORYGINAL);
@@ -365,7 +413,10 @@ describe('miniatura dociera na ekran', () => {
 
   it('karta zamówienia pokazuje ten sam adres, co lista', async () => {
     const id = zamowienieAllegro('901');
-    await createZdjeciaAllegro({ db, klienci: { allegro_swietlik: klientZ({ 901: { images: [ORYGINAL] } }) } }).uzupelnij();
+    await createZdjeciaAllegro({
+      db,
+      klienci: { allegro_swietlik: klientZ({ 901: { images: [ORYGINAL] } }) },
+    }).uzupelnij();
 
     const [w] = wierszePozycji(pobierzZamowienie(db, id));
     expect(w.zdjecie).toBe(ORYGINAL);
@@ -382,24 +433,43 @@ describe('miniatura dociera na ekran', () => {
 
   // ⚠️ ZERO ZMIAN W ZACHOWANIU SKLEPÓW — `pro` i `swietlik` sprzedają i ich miniatury działają.
   it('pozycja sklepowa czyta dalej WŁASNĄ kolumnę', () => {
-    zapiszZamowienie(db, 'pro', zmapowane('1281', [{
-      nazwa: 'Szablon', sku: 'PRO-1', ilosc: 1, cena_brutto: '10.00', vat: '23',
-      zdjecie_url: 'https://pro.swietlik.example.test/wp-content/uploads/2026/07/stop.jpg',
-      produkt_id: 7, oferta_id: null,
-    }]), {});
+    zapiszZamowienie(
+      db,
+      'pro',
+      zmapowane('1281', [
+        {
+          nazwa: 'Szablon',
+          sku: 'PRO-1',
+          ilosc: 1,
+          cena_brutto: '10.00',
+          vat: '23',
+          zdjecie_url: 'https://pro.swietlik.example.test/wp-content/uploads/2026/07/stop.jpg',
+          produkt_id: 7,
+          oferta_id: null,
+        },
+      ]),
+      {},
+    );
 
     const [z] = listaZamowien(db);
     expect(z.pozycje[0].zdjecie_url).toBe('https://pro.swietlik.example.test/wp-content/uploads/2026/07/stop.jpg');
-    expect(adresMiniatury(z.pozycje[0].zdjecie_url))
-      .toBe('https://pro.swietlik.example.test/wp-content/uploads/2026/07/stop-150x150.jpg');
+    expect(adresMiniatury(z.pozycje[0].zdjecie_url)).toBe(
+      'https://pro.swietlik.example.test/wp-content/uploads/2026/07/stop-150x150.jpg',
+    );
   });
 
   it('pozycja dopisana ręcznie dalej nie ma zdjęcia i nie wywala odczytu', async () => {
     const id = zamowienieAllegro('903');
-    db.prepare(
-      "INSERT INTO pozycje (zamowienie_id, nazwa, ilosc, cena_brutto, zrodlo) VALUES (?,?,?,?,'reczna')",
-    ).run(id, 'Dopłata za projekt', 1, '50.00');
-    await createZdjeciaAllegro({ db, klienci: { allegro_swietlik: klientZ({ 903: { images: [ORYGINAL] } }) } }).uzupelnij();
+    db.prepare("INSERT INTO pozycje (zamowienie_id, nazwa, ilosc, cena_brutto, zrodlo) VALUES (?,?,?,?,'reczna')").run(
+      id,
+      'Dopłata za projekt',
+      1,
+      '50.00',
+    );
+    await createZdjeciaAllegro({
+      db,
+      klienci: { allegro_swietlik: klientZ({ 903: { images: [ORYGINAL] } }) },
+    }).uzupelnij();
 
     const pozycje = pobierzZamowienie(db, id).pozycje;
     expect(pozycje.map((p) => p.zdjecie_url)).toEqual([ORYGINAL, null]);
@@ -425,7 +495,11 @@ describe('awaria zdjęć nie dotyka pollera', () => {
       sklep: 'allegro_swietlik',
     });
     // Uzupełnianie, które wybucha najgorzej jak potrafi — poza pętlą per oferta.
-    const zdjecia = { uzupelnij: vi.fn(async () => { throw new Error('Allegro leży'); }) };
+    const zdjecia = {
+      uzupelnij: vi.fn(async () => {
+        throw new Error('Allegro leży');
+      }),
+    };
 
     const wynik = await zPobieraniemZdjec(poller, zdjecia).przebieg();
 
@@ -443,9 +517,15 @@ describe('awaria zdjęć nie dotyka pollera', () => {
   // kosmetyczna.
   it('błąd PRZEBIEGU dochodzi do wołającego nietknięty, a zdjęcia i tak się dociągają', async () => {
     const kanal = kanalZ([]);
-    kanal.pobierzStrone = vi.fn(async () => { throw new Error('Allegro: HTTP 401 przy /order/checkout-forms'); });
+    kanal.pobierzStrone = vi.fn(async () => {
+      throw new Error('Allegro: HTTP 401 przy /order/checkout-forms');
+    });
     const poller = createPoller({ db, kanal, sklep: 'allegro_swietlik' });
-    const zdjecia = { uzupelnij: vi.fn(async () => { throw new Error('i to też leży'); }) };
+    const zdjecia = {
+      uzupelnij: vi.fn(async () => {
+        throw new Error('i to też leży');
+      }),
+    };
 
     await expect(zPobieraniemZdjec(poller, zdjecia).przebieg()).rejects.toThrow('HTTP 401');
     expect(zdjecia.uzupelnij).toHaveBeenCalledTimes(1);

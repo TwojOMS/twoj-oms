@@ -5,19 +5,59 @@ import { createErliAdapter, stanErliWPamieci } from '../../../src/oms/erli/adapt
 const TERAZ = new Date('2026-11-13T12:00:00Z');
 
 const zam = (id, zmiany = {}) => ({
-  id, status: 'purchased', currency: 'PLN', market: 'pl', totalPrice: 1000,
-  created: '2026-11-13T09:00:00Z', updated: '2026-11-13T09:05:00Z', purchasedAt: '2026-11-13T09:01:00Z',
-  user: { email: 'ala@polcien.example', deliveryAddress: { firstName: 'Ala', lastName: 'Zmyślonowicz', street: 'Fikcyjna', buildingNumber: '1', city: 'Testowo', country: 'pl', zip: '00-000', phone: '000000000' } },
+  id,
+  status: 'purchased',
+  currency: 'PLN',
+  market: 'pl',
+  totalPrice: 1000,
+  created: '2026-11-13T09:00:00Z',
+  updated: '2026-11-13T09:05:00Z',
+  purchasedAt: '2026-11-13T09:01:00Z',
+  user: {
+    email: 'ala@polcien.example',
+    deliveryAddress: {
+      firstName: 'Ala',
+      lastName: 'Zmyślonowicz',
+      street: 'Fikcyjna',
+      buildingNumber: '1',
+      city: 'Testowo',
+      country: 'pl',
+      zip: '00-000',
+      phone: '000000000',
+    },
+  },
   delivery: { name: 'Kurier testowy', typeId: 'kurierTestowy', price: 0, cod: false },
-  items: [{ id: 1, externalId: 'PC-OF-001', quantity: 1, unitPrice: 1000, name: 'Szablon', slug: 'szablon', taxRate: 'TAX_23', dispatchTime: { period: 1, unit: 'day' } }],
+  items: [
+    {
+      id: 1,
+      externalId: 'PC-OF-001',
+      quantity: 1,
+      unitPrice: 1000,
+      name: 'Szablon',
+      slug: 'szablon',
+      taxRate: 'TAX_23',
+      dispatchTime: { period: 1, unit: 'day' },
+    },
+  ],
   ...zmiany,
 });
-const wiad = (id, payload, type = 'orderCreated') => ({ id, shopId: 1000001, created: '2026-11-13T09:06:00Z', read: false, type, payload });
+const wiad = (id, payload, type = 'orderCreated') => ({
+  id,
+  shopId: 1000001,
+  created: '2026-11-13T09:06:00Z',
+  read: false,
+  type,
+  payload,
+});
 
 function klientAtrapa({ zmiany = [], inbox = [], zmiany404 = false, strony = [], produkty = {} } = {}) {
   const k = {
     zmianyZamowien: vi.fn(async () => {
-      if (zmiany404) { const e = new Error('ERLI: nie znaleziono (HTTP 404)'); e.status = 404; throw e; }
+      if (zmiany404) {
+        const e = new Error('ERLI: nie znaleziono (HTTP 404)');
+        e.status = 404;
+        throw e;
+      }
       return zmiany;
     }),
     oznaczPrzeczytane: vi.fn(async () => 1),
@@ -36,10 +76,12 @@ const uzgodnione = () => stanErliWPamieci({ uzgodnienieAt: TERAZ.toISOString(), 
 
 describe('adapter ERLI — tor główny /orders/changes (D1)', () => {
   it('ta sama wiadomość dwa razy w paczce → jedno zamówienie (ostatnia wersja)', async () => {
-    const klient = klientAtrapa({ zmiany: [
-      wiad('m1', zam('PC-ERLI-0001')),
-      wiad('m2', zam('PC-ERLI-0001', { status: 'cancelled', updated: '2026-11-13T10:00:00Z' }), 'orderStatusChanged'),
-    ] });
+    const klient = klientAtrapa({
+      zmiany: [
+        wiad('m1', zam('PC-ERLI-0001')),
+        wiad('m2', zam('PC-ERLI-0001', { status: 'cancelled', updated: '2026-11-13T10:00:00Z' }), 'orderStatusChanged'),
+      ],
+    });
     const a = createErliAdapter({ klient, stan: uzgodnione(), teraz: () => TERAZ });
     const { zamowienia, stron } = await a.pobierzStrone({ od: null, kursor: null, strona: 1 });
     expect(stron).toBe(1);
@@ -82,7 +124,11 @@ describe('adapter ERLI — 404 na /orders/changes → /inbox (D1)', () => {
 
   it('zapisany tor inbox → następny przebieg nie pyta już o /orders/changes', async () => {
     const klient = klientAtrapa({ zmiany404: true });
-    const a = createErliAdapter({ klient, stan: stanErliWPamieci({ ...uzgodnione().wczytaj(), tor: 'inbox' }), teraz: () => TERAZ });
+    const a = createErliAdapter({
+      klient,
+      stan: stanErliWPamieci({ ...uzgodnione().wczytaj(), tor: 'inbox' }),
+      teraz: () => TERAZ,
+    });
     await a.pobierzStrone({ od: null, kursor: null, strona: 1 });
     expect(klient.zmianyZamowien).not.toHaveBeenCalled();
     expect(klient.inboxSzukaj).toHaveBeenCalledTimes(1);
@@ -99,7 +145,10 @@ describe('adapter ERLI — 404 na /orders/changes → /inbox (D1)', () => {
   });
 
   it('wiadomość inbox bez zamówienia (np. productsNeedSync) jest pomijana', async () => {
-    const klient = klientAtrapa({ zmiany404: true, inbox: [wiad('i1', { productId: 'PC-OF-001' }, 'productsNeedSync')] });
+    const klient = klientAtrapa({
+      zmiany404: true,
+      inbox: [wiad('i1', { productId: 'PC-OF-001' }, 'productsNeedSync')],
+    });
     const a = createErliAdapter({ klient, stan: uzgodnione(), teraz: () => TERAZ });
     const { zamowienia } = await a.pobierzStrone({ od: null, kursor: null, strona: 1 });
     expect(zamowienia).toEqual([]);
@@ -110,11 +159,13 @@ describe('adapter ERLI — uzgodnienie orders/_search (D1)', () => {
   it('pierwsze podłączenie: strony po cursor, remis dat updated nie gubi zamówienia', async () => {
     const remis = '2026-11-13T09:05:00Z';
     const stan = stanErliWPamieci();
-    const klient = klientAtrapa({ strony: [
-      { after: null, zamowienia: [zam('PC-ERLI-0010', { updated: remis, cursor: 'c10' })] },
-      { after: 'c10', zamowienia: [zam('PC-ERLI-0011', { updated: remis, cursor: 'c11' })] },
-      { after: 'c11', zamowienia: [] },
-    ] });
+    const klient = klientAtrapa({
+      strony: [
+        { after: null, zamowienia: [zam('PC-ERLI-0010', { updated: remis, cursor: 'c10' })] },
+        { after: 'c10', zamowienia: [zam('PC-ERLI-0011', { updated: remis, cursor: 'c11' })] },
+        { after: 'c11', zamowienia: [] },
+      ],
+    });
     const a = createErliAdapter({ klient, stan, teraz: () => TERAZ, limitUzgodnienia: 1 });
     const { zamowienia } = await a.pobierzStrone({ od: null, kursor: null, strona: 1 });
     expect(zamowienia.map((z) => z.id).sort()).toEqual(['PC-ERLI-0010', 'PC-ERLI-0011']);
@@ -128,27 +179,41 @@ describe('adapter ERLI — uzgodnienie orders/_search (D1)', () => {
 
   it('uzgodnienie raz na dobę: świeże nie pyta, po dobie pyta od zapisanego kursora', async () => {
     const swieze = klientAtrapa();
-    await createErliAdapter({ klient: swieze, stan: stanErliWPamieci({ uzgodnienieAt: '2026-11-13T00:00:00Z', uzgodnienieKursor: 'k5' }), teraz: () => TERAZ })
-      .pobierzStrone({ od: null, kursor: null, strona: 1 });
+    await createErliAdapter({
+      klient: swieze,
+      stan: stanErliWPamieci({ uzgodnienieAt: '2026-11-13T00:00:00Z', uzgodnienieKursor: 'k5' }),
+      teraz: () => TERAZ,
+    }).pobierzStrone({ od: null, kursor: null, strona: 1 });
     expect(swieze.szukajZamowien).not.toHaveBeenCalled();
     const stare = klientAtrapa();
-    await createErliAdapter({ klient: stare, stan: stanErliWPamieci({ uzgodnienieAt: '2026-11-12T11:59:00Z', uzgodnienieKursor: 'k5' }), teraz: () => TERAZ })
-      .pobierzStrone({ od: null, kursor: null, strona: 1 });
+    await createErliAdapter({
+      klient: stare,
+      stan: stanErliWPamieci({ uzgodnienieAt: '2026-11-12T11:59:00Z', uzgodnienieKursor: 'k5' }),
+      teraz: () => TERAZ,
+    }).pobierzStrone({ od: null, kursor: null, strona: 1 });
     expect(stare.szukajZamowien.mock.calls[0][0].pagination.after).toBe('k5');
   });
 
   it('pierwsze uzgodnienie filtruje updated >= od (data startu kanału), nie czyta całej historii', async () => {
     const klient = klientAtrapa();
-    await createErliAdapter({ klient, stan: stanErliWPamieci(), teraz: () => TERAZ })
-      .pobierzStrone({ od: '2026-11-01T00:00:00Z', kursor: null, strona: 1 });
-    expect(klient.szukajZamowien.mock.calls[0][0].filter).toEqual({ field: 'updated', operator: '>=', value: '2026-11-01T00:00:00Z' });
+    await createErliAdapter({ klient, stan: stanErliWPamieci(), teraz: () => TERAZ }).pobierzStrone({
+      od: '2026-11-01T00:00:00Z',
+      kursor: null,
+      strona: 1,
+    });
+    expect(klient.szukajZamowien.mock.calls[0][0].filter).toEqual({
+      field: 'updated',
+      operator: '>=',
+      value: '2026-11-01T00:00:00Z',
+    });
   });
 
   it('429 na stronie 2 uzgodnienia → zamówienie z /changes wchodzi, postęp strony 1 zostaje, błąd w stanie', async () => {
     const stan = stanErliWPamieci();
     const klient = klientAtrapa({ zmiany: [wiad('m1', zam('PC-ERLI-NOWE'))] });
     klient.szukajZamowien.mockImplementation(async (dane) => {
-      if (dane.pagination.after === 'c1') throw Object.assign(new Error('ERLI: limit żądań (HTTP 429).'), { status: 429 });
+      if (dane.pagination.after === 'c1')
+        throw Object.assign(new Error('ERLI: limit żądań (HTTP 429).'), { status: 429 });
       return [zam('PC-ERLI-0001', { cursor: 'c1' })];
     });
     const a = createErliAdapter({ klient, stan, teraz: () => TERAZ, limitUzgodnienia: 1 });
@@ -162,37 +227,57 @@ describe('adapter ERLI — uzgodnienie orders/_search (D1)', () => {
     // Następny przebieg wraca do uzgodnienia od strony 2, nie od zera.
     klient.szukajZamowien.mockClear();
     klient.szukajZamowien.mockImplementation(async () => []);
-    await createErliAdapter({ klient, stan, teraz: () => TERAZ, limitUzgodnienia: 1 }).pobierzStrone({ od: null, kursor: null, strona: 1 });
+    await createErliAdapter({ klient, stan, teraz: () => TERAZ, limitUzgodnienia: 1 }).pobierzStrone({
+      od: null,
+      kursor: null,
+      strona: 1,
+    });
     expect(klient.szukajZamowien.mock.calls[0][0].pagination.after).toBe('c1');
   });
 
   it('limit stron uzgodnienia na przebieg: reszta w następnym przebiegu, dopiero koniec zalicza uzgodnienie', async () => {
     const stan = stanErliWPamieci();
-    const klient = klientAtrapa({ strony: [
-      { after: null, zamowienia: [zam('PC-ERLI-0001', { cursor: 'c1' })] },
-      { after: 'c1', zamowienia: [zam('PC-ERLI-0002', { cursor: 'c2' })] },
-      { after: 'c2', zamowienia: [zam('PC-ERLI-0003', { cursor: 'c3' })] },
-    ] });
+    const klient = klientAtrapa({
+      strony: [
+        { after: null, zamowienia: [zam('PC-ERLI-0001', { cursor: 'c1' })] },
+        { after: 'c1', zamowienia: [zam('PC-ERLI-0002', { cursor: 'c2' })] },
+        { after: 'c2', zamowienia: [zam('PC-ERLI-0003', { cursor: 'c3' })] },
+      ],
+    });
     const opcje = { klient, stan, teraz: () => TERAZ, limitUzgodnienia: 1, stronUzgodnieniaNaPrzebieg: 2 };
     const a = createErliAdapter(opcje);
     expect((await a.pobierzStrone({ od: null, kursor: null, strona: 1 })).zamowienia).toHaveLength(2);
     await a.potwierdz();
     expect(stan.wczytaj()).toMatchObject({ uzgodnienieKursor: 'c2', uzgodnienieWToku: true });
     const b = createErliAdapter(opcje);
-    expect((await b.pobierzStrone({ od: null, kursor: null, strona: 1 })).zamowienia.map((z) => z.id)).toEqual(['PC-ERLI-0003']);
+    expect((await b.pobierzStrone({ od: null, kursor: null, strona: 1 })).zamowienia.map((z) => z.id)).toEqual([
+      'PC-ERLI-0003',
+    ]);
     await b.potwierdz();
-    expect(stan.wczytaj()).toMatchObject({ uzgodnienieKursor: 'c3', uzgodnienieWToku: false, uzgodnienieAt: TERAZ.toISOString() });
+    expect(stan.wczytaj()).toMatchObject({
+      uzgodnienieKursor: 'c3',
+      uzgodnienieWToku: false,
+      uzgodnienieAt: TERAZ.toISOString(),
+    });
   });
 
   it('zatrzymanie kanału w trakcie uzgodnienia nie jest połykane', async () => {
     const klient = klientAtrapa();
     klient.szukajZamowien.mockRejectedValue(Object.assign(new Error('zatrzymany'), { name: 'KanalZatrzymany' }));
-    await expect(createErliAdapter({ klient, stan: stanErliWPamieci(), teraz: () => TERAZ })
-      .pobierzStrone({ od: null, kursor: null, strona: 1 })).rejects.toThrow(/zatrzymany/);
+    await expect(
+      createErliAdapter({ klient, stan: stanErliWPamieci(), teraz: () => TERAZ }).pobierzStrone({
+        od: null,
+        kursor: null,
+        strona: 1,
+      }),
+    ).rejects.toThrow(/zatrzymany/);
   });
 
   it('ta sama zmiana z wiadomości i z uzgodnienia → jedno zamówienie', async () => {
-    const klient = klientAtrapa({ zmiany: [wiad('m1', zam('PC-ERLI-0001'))], strony: [{ after: null, zamowienia: [zam('PC-ERLI-0001', { cursor: 'c1' })] }] });
+    const klient = klientAtrapa({
+      zmiany: [wiad('m1', zam('PC-ERLI-0001'))],
+      strony: [{ after: null, zamowienia: [zam('PC-ERLI-0001', { cursor: 'c1' })] }],
+    });
     const a = createErliAdapter({ klient, stan: stanErliWPamieci(), teraz: () => TERAZ });
     const { zamowienia } = await a.pobierzStrone({ od: null, kursor: null, strona: 1 });
     expect(zamowienia).toHaveLength(1);
@@ -201,9 +286,20 @@ describe('adapter ERLI — uzgodnienie orders/_search (D1)', () => {
 
 describe('adapter ERLI — czas wysyłki (D6)', () => {
   it('pozycja bez dispatchTime → produkt z ERLI, potem domyślny; termin w surowych danych', async () => {
-    const bezCzasu = (extId) => ({ id: extId, externalId: extId, quantity: 1, unitPrice: 1000, name: 'X', slug: 'x', taxRate: 'TAX_23' });
+    const bezCzasu = (extId) => ({
+      id: extId,
+      externalId: extId,
+      quantity: 1,
+      unitPrice: 1000,
+      name: 'X',
+      slug: 'x',
+      taxRate: 'TAX_23',
+    });
     const klient = klientAtrapa({
-      zmiany: [wiad('m1', zam('PC-ERLI-0020', { items: [bezCzasu('PC-OF-010')] })), wiad('m2', zam('PC-ERLI-0021', { items: [bezCzasu('PC-OF-011')] }))],
+      zmiany: [
+        wiad('m1', zam('PC-ERLI-0020', { items: [bezCzasu('PC-OF-010')] })),
+        wiad('m2', zam('PC-ERLI-0021', { items: [bezCzasu('PC-OF-011')] })),
+      ],
       produkty: { 'PC-OF-010': { externalId: 'PC-OF-010', dispatchTime: { period: 1, unit: 'day' } } },
     });
     const a = createErliAdapter({ klient, stan: uzgodnione(), teraz: () => TERAZ, domyslnyCzasWysylki: 3 });
@@ -227,7 +323,9 @@ describe('adapter ERLI — czas wysyłki (D6)', () => {
     const klient = klientAtrapa({ zmiany: [wiad('m1', zam('PC-ERLI-0030', { market: 'de', currency: 'EUR' }))] });
     const a = createErliAdapter({ klient, stan: uzgodnione(), teraz: () => TERAZ });
     const { zamowienia } = await a.pobierzStrone({ od: null, kursor: null, strona: 1 });
-    expect(zamowienia[0]._oms.sprawy.map((s) => s.tekst)).toContain('ERLI: zamówienie z rynku DE / w EUR — obsłuż ręcznie');
+    expect(zamowienia[0]._oms.sprawy.map((s) => s.tekst)).toContain(
+      'ERLI: zamówienie z rynku DE / w EUR — obsłuż ręcznie',
+    );
   });
 });
 

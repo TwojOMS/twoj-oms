@@ -1,7 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import { domyslnyRozmiarWiersza, paczkaWiersza } from '../../src/domena/nadanie-hurtem.js';
-import { USLUGI_AUTOMATOW, propozycjaAutomatu, zmienAutomat, zapiszAutomaty, odczytajAutomaty } from '../../src/domena/gabaryty-automatow.js';
-import { odczytajSzablony, zmienSzablon, ustawDomyslnySzablon, zapiszSzablony } from '../../src/domena/szablony-paczek.js';
+import {
+  USLUGI_AUTOMATOW,
+  propozycjaAutomatu,
+  zmienAutomat,
+  zapiszAutomaty,
+  odczytajAutomaty,
+} from '../../src/domena/gabaryty-automatow.js';
+import {
+  odczytajSzablony,
+  zmienSzablon,
+  ustawDomyslnySzablon,
+  zapiszSzablony,
+} from '../../src/domena/szablony-paczek.js';
 
 // Hurt bierze propozycję gabarytu i wagi paczkomatu / automatu Allegro z JEDNEGO
 // miejsca (`propozycjaAutomatu`, ustawienie „Paczkomaty i automaty”), tego samego co karta.
@@ -33,32 +44,54 @@ describe('hurt — gabaryt i waga z ustawienia', () => {
   it('brak ustawienia: paczkomat A i waga szablonu domyślnego, automaty S i 1 kg', () => {
     const ustawienia = zapisSzablonow();
     const szablony = odczytajSzablony(ustawienia);
-    expect(domyslnyRozmiarWiersza({ rodzaj: 'paczkomat', szablony, ustawienia }))
-      .toEqual({ pole: 'gabaryt', gabaryt: 'A', waga: 3 });
+    expect(domyslnyRozmiarWiersza({ rodzaj: 'paczkomat', szablony, ustawienia })).toEqual({
+      pole: 'gabaryt',
+      gabaryt: 'A',
+      waga: 3,
+    });
     for (const id of [ONE_BOX, ORLEN]) {
-      expect(domyslnyRozmiarWiersza({ rodzaj: 'wza', deliveryMethodId: id, szablony, ustawienia }))
-        .toEqual({ pole: 'gabarytAllegro', gabaryt: 'S', waga: 1, gabaryty: ['S', 'M', 'L'] });
+      expect(domyslnyRozmiarWiersza({ rodzaj: 'wza', deliveryMethodId: id, szablony, ustawienia })).toEqual({
+        pole: 'gabarytAllegro',
+        gabaryt: 'S',
+        waga: 1,
+        gabaryty: ['S', 'M', 'L'],
+      });
     }
   });
 
   it('ustawienie: paczkomat C/7 kg, automaty M/4 kg, wyjątek usługi (ORLEN L/12 kg) wygrywa', () => {
     const ustawienia = zUstawieniem();
     const szablony = odczytajSzablony(ustawienia);
-    expect(domyslnyRozmiarWiersza({ rodzaj: 'paczkomat', szablony, ustawienia }))
-      .toEqual({ pole: 'gabaryt', gabaryt: 'C', waga: 7 });
-    expect(domyslnyRozmiarWiersza({ rodzaj: 'wza', deliveryMethodId: DHL_BOX, szablony, ustawienia }))
-      .toEqual({ pole: 'gabarytAllegro', gabaryt: 'M', waga: 4, gabaryty: ['S', 'M', 'L'] });
-    expect(domyslnyRozmiarWiersza({ rodzaj: 'wza', deliveryMethodId: ORLEN, szablony, ustawienia }))
-      .toEqual({ pole: 'gabarytAllegro', gabaryt: 'L', waga: 12, gabaryty: ['S', 'M', 'L'] });
+    expect(domyslnyRozmiarWiersza({ rodzaj: 'paczkomat', szablony, ustawienia })).toEqual({
+      pole: 'gabaryt',
+      gabaryt: 'C',
+      waga: 7,
+    });
+    expect(domyslnyRozmiarWiersza({ rodzaj: 'wza', deliveryMethodId: DHL_BOX, szablony, ustawienia })).toEqual({
+      pole: 'gabarytAllegro',
+      gabaryt: 'M',
+      waga: 4,
+      gabaryty: ['S', 'M', 'L'],
+    });
+    expect(domyslnyRozmiarWiersza({ rodzaj: 'wza', deliveryMethodId: ORLEN, szablony, ustawienia })).toEqual({
+      pole: 'gabarytAllegro',
+      gabaryt: 'L',
+      waga: 12,
+      gabaryty: ['S', 'M', 'L'],
+    });
     // DPD nadal z szablonu kuriera — ustawienie automatów go nie dotyczy.
-    expect(domyslnyRozmiarWiersza({ rodzaj: 'dpd', szablony, ustawienia })).toEqual({ pole: 'szablon', szablon: 'duza' });
+    expect(domyslnyRozmiarWiersza({ rodzaj: 'dpd', szablony, ustawienia })).toEqual({
+      pole: 'szablon',
+      szablon: 'duza',
+    });
   });
 
   it('zatwierdzenie paczkomatu: waga z ustawienia (nie z szablonu), gabaryt z wiersza wygrywa', () => {
     const ustawienia = zUstawieniem();
     const szablony = odczytajSzablony(ustawienia);
-    expect(paczkaWiersza({ rodzaj: 'paczkomat', pola: { gabaryt: 'B' }, szablony, ustawienia }))
-      .toEqual({ paczka: { waga: 7, gabaryt: 'B' } });
+    expect(paczkaWiersza({ rodzaj: 'paczkomat', pola: { gabaryt: 'B' }, szablony, ustawienia })).toEqual({
+      paczka: { waga: 7, gabaryt: 'B' },
+    });
     // „Brak pola” przy paczkomacie dalej jest odmową — gabarytu nie zgadujemy.
     expect(paczkaWiersza({ rodzaj: 'paczkomat', pola: {}, szablony, ustawienia }).blad).toMatch(/gabaryt paczkomatu/);
   });
@@ -70,7 +103,9 @@ describe('hurt — gabaryt i waga z ustawienia', () => {
       expect({ gabaryt, waga }).toEqual(propozycjaAutomatu(ustawienia, { rodzaj: 'paczkomat' }));
       for (const { id } of USLUGI_AUTOMATOW) {
         const r = domyslnyRozmiarWiersza({ rodzaj: 'wza', deliveryMethodId: id, szablony, ustawienia });
-        expect({ gabaryt: r.gabaryt, waga: r.waga }).toEqual(propozycjaAutomatu(ustawienia, { rodzaj: 'wza', deliveryMethodId: id }));
+        expect({ gabaryt: r.gabaryt, waga: r.waga }).toEqual(
+          propozycjaAutomatu(ustawienia, { rodzaj: 'wza', deliveryMethodId: id }),
+        );
       }
     }
   });

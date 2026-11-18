@@ -15,14 +15,23 @@ describe('sprawdzFormularzDpd', () => {
 
   it('każde pole wymagane ma własny powód', () => {
     const w = sprawdzFormularzDpd({});
-    expect(w.bledy).toEqual(['Podaj nazwę — dowolną, np. „DPD”.', 'Podaj login od DPD.',
-      'Podaj główny numer klienta DPD (Master FID).', 'Wybierz typ etykiety.', 'Podaj hasło od DPD.']);
+    expect(w.bledy).toEqual([
+      'Podaj nazwę — dowolną, np. „DPD”.',
+      'Podaj login od DPD.',
+      'Podaj główny numer klienta DPD (Master FID).',
+      'Wybierz typ etykiety.',
+      'Podaj hasło od DPD.',
+    ]);
   });
 
   it('Master FID tylko cyfry; nieznany typ etykiety odrzucony; za długa nazwa', () => {
-    expect(sprawdzFormularzDpd({ ...OK, fid: '12-34' }).bledy).toEqual(['Główny numer klienta DPD (Master FID) to same cyfry.']);
+    expect(sprawdzFormularzDpd({ ...OK, fid: '12-34' }).bledy).toEqual([
+      'Główny numer klienta DPD (Master FID) to same cyfry.',
+    ]);
     expect(sprawdzFormularzDpd({ ...OK, typEtykiety: 'A6' }).bledy).toEqual(['Wybierz typ etykiety.']);
-    expect(sprawdzFormularzDpd({ ...OK, nazwa: 'x'.repeat(61) }).bledy).toEqual(['Nazwa może mieć najwyżej 60 znaków.']);
+    expect(sprawdzFormularzDpd({ ...OK, nazwa: 'x'.repeat(61) }).bledy).toEqual([
+      'Nazwa może mieć najwyżej 60 znaków.',
+    ]);
   });
 
   it('puste hasło i kanał przy istniejącym zapisie = zostaw zapisane; samo białe hasło też', () => {
@@ -30,15 +39,26 @@ describe('sprawdzFormularzDpd', () => {
     const w = sprawdzFormularzDpd({ ...OK, haslo: '   ', kanal: '' }, zapisane);
     expect(w.bledy).toEqual([]);
     expect(w.sekrety).toEqual({ haslo: 'stare', kanal: 'K1' });
-    expect(sprawdzFormularzDpd({ ...OK, haslo: 'nowe', kanal: 'K2' }, zapisane).sekrety).toEqual({ haslo: 'nowe', kanal: 'K2' });
+    expect(sprawdzFormularzDpd({ ...OK, haslo: 'nowe', kanal: 'K2' }, zapisane).sekrety).toEqual({
+      haslo: 'nowe',
+      kanal: 'K2',
+    });
   });
 });
 
 describe('opcjeKlientaDpd', () => {
   const zapis = { ustawienia: { login: 'l', fid: '1', typEtykiety: 'A4' }, sekrety: { haslo: 'h', kanal: '' } };
   it('bez kanału: brak usługi zdarzeń (OMS nadaje, nie śledzi)', () => {
-    expect(opcjeKlientaDpd(zapis, { nazwa: 'N' })).toEqual({ url: ADRESY_DPD.url, login: 'l', haslo: 'h', fid: '1',
-      infoUrl: '', channel: '', formatEtykiety: 'A4', nadawca: { nazwa: 'N' } });
+    expect(opcjeKlientaDpd(zapis, { nazwa: 'N' })).toEqual({
+      url: ADRESY_DPD.url,
+      login: 'l',
+      haslo: 'h',
+      fid: '1',
+      infoUrl: '',
+      channel: '',
+      formatEtykiety: 'A4',
+      nadawca: { nazwa: 'N' },
+    });
   });
   it('z kanałem: adres usługi zdarzeń DPD Info', () => {
     const o = opcjeKlientaDpd({ ...zapis, sekrety: { haslo: 'h', kanal: 'K' } }, null);
@@ -49,15 +69,21 @@ describe('opcjeKlientaDpd', () => {
 // DPD z Ustawień bez kanału DPD Info ma `bezSledzenia: true`. Paczka WzA jadąca DPD nie może
 // wtedy trafić do naszego klienta DPD (stałby błąd „brak konfiguracji usługi zdarzeń”) — śledzi ją Allegro, jak dotąd.
 describe('śledzenie WzA a DPD bez kanału DPD Info', () => {
-  const surowa = JSON.stringify({ carrier: 'DPD', carrierTrackingData: { carrierId: 'DPD', carrierWaybill: '1049419215075U' },
-    packages: [{ waybill: 'AD0WZA1' }] });
+  const surowa = JSON.stringify({
+    carrier: 'DPD',
+    carrierTrackingData: { carrierId: 'DPD', carrierWaybill: '1049419215075U' },
+    packages: [{ waybill: 'AD0WZA1' }],
+  });
   const paczka = { kurier: 'allegro_wza', numer_listu: 'AD0WZA1', odpowiedz_surowa: surowa };
   const allegro = { statusPrzesylki: () => {} };
   it('DPD bez śledzenia → Allegro; DPD ze śledzeniem → DPD numerem podwykonawcy', () => {
-    expect(sledzeniePrzesylki(paczka, { dpd: { bezSledzenia: true }, allegro, allegro_wza: { bezSledzenia: true } }))
-      .toMatchObject({ klient: allegro, numer: 'AD0WZA1' });
+    expect(
+      sledzeniePrzesylki(paczka, { dpd: { bezSledzenia: true }, allegro, allegro_wza: { bezSledzenia: true } }),
+    ).toMatchObject({ klient: allegro, numer: 'AD0WZA1' });
     const dpd = { bezSledzenia: false, statusPrzesylki: () => {} };
-    expect(sledzeniePrzesylki(paczka, { dpd, allegro, allegro_wza: { bezSledzenia: true } }))
-      .toMatchObject({ klient: dpd, numer: '1049419215075U' });
+    expect(sledzeniePrzesylki(paczka, { dpd, allegro, allegro_wza: { bezSledzenia: true } })).toMatchObject({
+      klient: dpd,
+      numer: '1049419215075U',
+    });
   });
 });

@@ -1,13 +1,30 @@
 import { describe, it, expect } from 'vitest';
 import {
-  POLA_POZYCJI, kluczPozycji, parsujNowaPozycje, parsujEdycjePozycji, cenaBruttoZPol, wybierzZrodloCeny,
-  nalozNadpisaniaPozycji, ustawNadpisaniePozycji, roznicePozycji,
-  ZNACZNIK_USUNIECIA, pozycjeUsuniete, oznaczUsunieta,
+  POLA_POZYCJI,
+  kluczPozycji,
+  parsujNowaPozycje,
+  parsujEdycjePozycji,
+  cenaBruttoZPol,
+  wybierzZrodloCeny,
+  nalozNadpisaniaPozycji,
+  ustawNadpisaniePozycji,
+  roznicePozycji,
+  ZNACZNIK_USUNIECIA,
+  pozycjeUsuniete,
+  oznaczUsunieta,
 } from '../../src/domena/pozycje-reczne.js';
 
 const zeSklepu = (nad = {}) => ({
-  id: 7, zrodlo: 'sklep', zrodlo_id: 4321, nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 2,
-  cena_brutto: '61.50', cena_netto: '50.00', brutto_linii: '123.00', netto_linii: '100.00',
+  id: 7,
+  zrodlo: 'sklep',
+  zrodlo_id: 4321,
+  nazwa: 'STOP',
+  sku: 'PRO-STOP-001',
+  ilosc: 2,
+  cena_brutto: '61.50',
+  cena_netto: '50.00',
+  brutto_linii: '123.00',
+  netto_linii: '100.00',
   ...nad,
 });
 
@@ -21,12 +38,18 @@ describe('cena z pól i wybór źródła ceny', () => {
   });
   it('wykrywa zmianę netto bez JS i porównuje ceny w groszach', () => {
     const teraz = { bruttoTeraz: '61.50', nettoTeraz: '50.00' };
-    expect(wybierzZrodloCeny({ cena_brutto: '61,5', cena_netto: '60' }, teraz))
-      .toEqual({ cena_brutto: '', cena_netto: '60' });
-    expect(wybierzZrodloCeny({ cena_brutto: '70', cena_netto: '60' }, teraz))
-      .toEqual({ cena_brutto: '70', cena_netto: '60' });
-    expect(wybierzZrodloCeny({ cena_brutto: '61,5', cena_netto: '50,0' }, teraz))
-      .toEqual({ cena_brutto: '61,5', cena_netto: '50,0' });
+    expect(wybierzZrodloCeny({ cena_brutto: '61,5', cena_netto: '60' }, teraz)).toEqual({
+      cena_brutto: '',
+      cena_netto: '60',
+    });
+    expect(wybierzZrodloCeny({ cena_brutto: '70', cena_netto: '60' }, teraz)).toEqual({
+      cena_brutto: '70',
+      cena_netto: '60',
+    });
+    expect(wybierzZrodloCeny({ cena_brutto: '61,5', cena_netto: '50,0' }, teraz)).toEqual({
+      cena_brutto: '61,5',
+      cena_netto: '50,0',
+    });
   });
   it('odmawia znacznika usunięcia pod nietrwałym kluczem p', () => {
     expect(() => oznaczUsunieta({}, 'p0')).toThrow();
@@ -34,8 +57,16 @@ describe('cena z pól i wybór źródła ceny', () => {
 });
 
 const reczna = (nad = {}) => ({
-  id: 91, zrodlo: 'reczna', zrodlo_id: null, nazwa: 'Dodatkowy szablon', sku: null, ilosc: 1,
-  cena_brutto: '80.00', cena_netto: null, brutto_linii: '80.00', netto_linii: null,
+  id: 91,
+  zrodlo: 'reczna',
+  zrodlo_id: null,
+  nazwa: 'Dodatkowy szablon',
+  sku: null,
+  ilosc: 1,
+  cena_brutto: '80.00',
+  cena_netto: null,
+  brutto_linii: '80.00',
+  netto_linii: null,
   ...nad,
 });
 
@@ -57,7 +88,11 @@ describe('kluczPozycji', () => {
   });
 
   it('klucze różnych pozycji tego samego zamówienia się nie zbiegają', () => {
-    const klucze = [kluczPozycji(zeSklepu(), 0), kluczPozycji(zeSklepu({ zrodlo_id: 4322 }), 1), kluczPozycji(reczna(), 2)];
+    const klucze = [
+      kluczPozycji(zeSklepu(), 0),
+      kluczPozycji(zeSklepu({ zrodlo_id: 4322 }), 1),
+      kluczPozycji(reczna(), 2),
+    ];
     expect(new Set(klucze).size).toBe(3);
   });
 });
@@ -74,12 +109,17 @@ describe('parsujNowaPozycje — stawka VAT', () => {
 
   it('pusta stawka → domyślna z Ustawień; brutto wpisane wygrywa z netto', () => {
     expect(parsujNowaPozycje({ ...baza, cena_brutto: '50.00', vat: '' }, { stawkaDomyslna: '5' }).vat).toBe('5');
-    expect(parsujNowaPozycje({ ...baza, cena_netto: '100', cena_brutto: '50.00', vat: '8' }, { stawkaDomyslna: '23' }).cena_brutto).toBe('50.00');
+    expect(
+      parsujNowaPozycje({ ...baza, cena_netto: '100', cena_brutto: '50.00', vat: '8' }, { stawkaDomyslna: '23' })
+        .cena_brutto,
+    ).toBe('50.00');
   });
 
   it('stawka spoza listy (22, zw, abc) → odmowa z „stawka”, nie cicha domyślna', () => {
     for (const vat of ['22', 'zw', 'abc']) {
-      expect(() => parsujNowaPozycje({ ...baza, cena_brutto: '10.00', vat }, { stawkaDomyslna: '23' })).toThrow(/stawk/i);
+      expect(() => parsujNowaPozycje({ ...baza, cena_brutto: '10.00', vat }, { stawkaDomyslna: '23' })).toThrow(
+        /stawk/i,
+      );
     }
   });
 
@@ -94,7 +134,12 @@ describe('parsujNowaPozycje', () => {
     const p = parsujNowaPozycje({ nazwa: 'Dodatkowy szablon', sku: 'X-1', ilosc: '3', cena_brutto: '61.50' });
     // Wynik niesie też stawkę — bez pola `vat` domyślną (tu wbudowane 23).
     expect(p).toEqual({
-      nazwa: 'Dodatkowy szablon', sku: 'X-1', ilosc: 3, cena_brutto: '61.50', brutto_linii: '184.50', vat: '23',
+      nazwa: 'Dodatkowy szablon',
+      sku: 'X-1',
+      ilosc: 3,
+      cena_brutto: '61.50',
+      brutto_linii: '184.50',
+      vat: '23',
     });
   });
 
@@ -147,14 +192,18 @@ describe('parsujNowaPozycje', () => {
 
 describe('parsujEdycjePozycji', () => {
   it('oddaje komplet trzech pól w postaci znormalizowanej', () => {
-    expect(parsujEdycjePozycji({ nazwa: '  STOP  ', ilosc: '3', cena_brutto: '61,5' }))
-      .toEqual({ nazwa: 'STOP', ilosc: 3, cena_brutto: '61.50' });
+    expect(parsujEdycjePozycji({ nazwa: '  STOP  ', ilosc: '3', cena_brutto: '61,5' })).toEqual({
+      nazwa: 'STOP',
+      ilosc: 3,
+      cena_brutto: '61.50',
+    });
   });
 
   it('SKU nie jest polem edycji — edycja go nie tyka', () => {
     expect(POLA_POZYCJI).not.toContain('sku');
-    expect(Object.keys(parsujEdycjePozycji({ nazwa: 'X', ilosc: '1', cena_brutto: '1.00', sku: 'PODMIENIONE' })))
-      .toEqual(POLA_POZYCJI);
+    expect(
+      Object.keys(parsujEdycjePozycji({ nazwa: 'X', ilosc: '1', cena_brutto: '1.00', sku: 'PODMIENIONE' })),
+    ).toEqual(POLA_POZYCJI);
   });
 
   it('puste pola odrzuca tak samo jak przy dopisywaniu', () => {
@@ -175,8 +224,9 @@ describe('roznicePozycji', () => {
   });
 
   it('porównanie ceny idzie po wartości, nie po zapisie — 61,5 to nie zmiana wobec 61.50', () => {
-    expect(roznicePozycji(zeSklepu({ cena_brutto: '61.50' }), { nazwa: 'STOP', ilosc: 2, cena_brutto: '61.50' }))
-      .toEqual({});
+    expect(
+      roznicePozycji(zeSklepu({ cena_brutto: '61.50' }), { nazwa: 'STOP', ilosc: 2, cena_brutto: '61.50' }),
+    ).toEqual({});
   });
 });
 
@@ -265,8 +315,9 @@ describe('ustawNadpisaniePozycji', () => {
   });
 
   it('puste nadpisanie KASUJE klucz — „Przywróć ze sklepu"', () => {
-    expect(ustawNadpisaniePozycji(JSON.stringify({ s1: { ilosc: 2 }, s2: { ilosc: 3 } }), 's1', {}))
-      .toEqual({ s2: { ilosc: 3 } });
+    expect(ustawNadpisaniePozycji(JSON.stringify({ s1: { ilosc: 2 }, s2: { ilosc: 3 } }), 's1', {})).toEqual({
+      s2: { ilosc: 3 },
+    });
   });
 
   it('skasowanie ostatniego nadpisania daje null, nie pusty obiekt', () => {
@@ -294,12 +345,15 @@ describe('usunięcie pozycji sklepowej znacznikiem', () => {
   });
 
   // Klucz zapasowy `p<indeks>` liczy się z listy SUROWEJ — liczony po odfiltrowaniu przesunąłby
-// poprawkę trzeciego wiersza na drugi.
+  // poprawkę trzeciego wiersza na drugi.
   it('klucz zapasowy liczony z indeksu listy surowej, nie wynikowej', () => {
     const bezId = trzy().map((p) => ({ ...p, zrodlo_id: null }));
     const mapa = JSON.stringify({ p1: { usunieta: true }, p2: { ilosc: 5 } });
     const wynik = nalozNadpisaniaPozycji(bezId, mapa);
-    expect(wynik.map((p) => [p.klucz, p.nazwa, p.ilosc])).toEqual([['p0', 'Pierwsza', 2], ['p2', 'Trzecia', 5]]);
+    expect(wynik.map((p) => [p.klucz, p.nazwa, p.ilosc])).toEqual([
+      ['p0', 'Pierwsza', 2],
+      ['p2', 'Trzecia', 5],
+    ]);
   });
 
   it('pozycja ręczna nigdy nie jest usunięta znacznikiem', () => {
@@ -316,15 +370,22 @@ describe('usunięcie pozycji sklepowej znacznikiem', () => {
     const mapa = JSON.stringify({ s2: { usunieta: true, cena_brutto: '1.00' }, s3: { ilosc: 9 } });
     const usuniete = pozycjeUsuniete(trzy(), mapa);
     expect(usuniete).toHaveLength(1);
-    expect(usuniete[0]).toMatchObject({ klucz: 's2', nazwa: 'Druga', ilosc: 2, cena_brutto: '61.50', brutto_linii: '123.00' });
+    expect(usuniete[0]).toMatchObject({
+      klucz: 's2',
+      nazwa: 'Druga',
+      ilosc: 2,
+      cena_brutto: '61.50',
+      brutto_linii: '123.00',
+    });
   });
 
   it('pozycjeUsuniete: bez mapy, z ręczną i z kluczem zapasowym', () => {
     expect(pozycjeUsuniete(trzy(), null)).toEqual([]);
     expect(pozycjeUsuniete([reczna()], JSON.stringify({ r91: { usunieta: true } }))).toEqual([]);
     const bezId = trzy().map((p) => ({ ...p, zrodlo_id: null }));
-    expect(pozycjeUsuniete(bezId, JSON.stringify({ p2: { usunieta: true } })).map((p) => [p.klucz, p.nazwa]))
-      .toEqual([['p2', 'Trzecia']]);
+    expect(pozycjeUsuniete(bezId, JSON.stringify({ p2: { usunieta: true } })).map((p) => [p.klucz, p.nazwa])).toEqual([
+      ['p2', 'Trzecia'],
+    ]);
   });
 
   it('oznaczUsunieta zastępuje wcześniejsze poprawki samym znacznikiem i zwraca kopię', () => {

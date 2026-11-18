@@ -6,8 +6,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
 import { nowyPanel, jako, get } from '../../pomoc/panel-konta-testowe.js';
 
-beforeEach(() => { vi.spyOn(globalThis, 'fetch').mockImplementation(async () => { throw Error('Sieć zabroniona'); }); });
-afterEach(() => { vi.restoreAllMocks(); });
+beforeEach(() => {
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+    throw Error('Sieć zabroniona');
+  });
+});
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 async function sekcjaZwolnienia(env) {
   const p = nowyPanel({ env });
@@ -19,7 +25,9 @@ async function sekcjaZwolnienia(env) {
 
 describe('sekcja „Zwolnienie z VAT” z prawdziwego wyboru programu', () => {
   it.runIf(szewTwojeFaktury)('próba + TwojeFaktury → sekcja jest', async () => {
-    expect(await sekcjaZwolnienia({ OMS_TRYB: 'proba', OMS_PROGRAM_FAKTUROWY: 'twojefaktury', OMS_TWOJEFAKTURY: 'tak' })).toBe(true);
+    expect(
+      await sekcjaZwolnienia({ OMS_TRYB: 'proba', OMS_PROGRAM_FAKTUROWY: 'twojefaktury', OMS_TWOJEFAKTURY: 'tak' }),
+    ).toBe(true);
   });
   it('produkcja bez programu → sekcji nie ma', async () => {
     expect(await sekcjaZwolnienia({ OMS_TRYB: 'produkcja' })).toBe(false);

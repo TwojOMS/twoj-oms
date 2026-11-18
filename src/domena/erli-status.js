@@ -18,6 +18,10 @@ export function statusDlaErli(z, ostatniWyslany) {
   // Oba stany końcowe są równorzędne: nie cofamy ich ani nie zamieniamy między sobą.
   if (['sent', 'readyToPickup'].includes(ostatniWyslany)) return null;
   // Odczyt ERLI służy tylko do blokowania cofnięcia, nie do pomijania duplikatów.
-  if (docelowy === 'inProgress' && ['sent', 'readyToPickup', 'received', 'returned', 'returningToSender', 'canceled'].includes(z.status_realizacji)) return null;
+  if (
+    docelowy === 'inProgress' &&
+    ['sent', 'readyToPickup', 'received', 'returned', 'returningToSender', 'canceled'].includes(z.status_realizacji)
+  )
+    return null;
   return docelowy;
 }

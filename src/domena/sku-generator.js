@@ -32,8 +32,7 @@
 // zakresu wpisanego znakami: znaki diakrytyczne sa same w sobie NIEWIDOCZNE i w edytorze
 // doklejaja sie do sasiedniego nawiasu (ta sama postac, co w domena/dopasowanie-ofert.js).
 function bezOgonkow(tekst) {
-  return tekst.normalize('NFD').replace(/\p{M}/gu, '')
-    .replace(/ł/gu, 'l').replace(/Ł/gu, 'L');
+  return tekst.normalize('NFD').replace(/\p{M}/gu, '').replace(/ł/gu, 'l').replace(/Ł/gu, 'L');
 }
 
 /**
@@ -77,14 +76,18 @@ const numerPorzadkowy = (n) => String(n).padStart(3, '0');
 function zbudujSkladacz(wzorzec, wieleKart) {
   const surowy = String(wzorzec ?? '').trim();
   if (!surowy) {
-    throw new Error('Nie podałeś wzorca numeru. Wpisz np. „LMP-{kategoria}-{nnn}" — '
-      + '{kategoria} podstawi kategorię główną karty, a {nnn} kolejny numer.');
+    throw new Error(
+      'Nie podałeś wzorca numeru. Wpisz np. „LMP-{kategoria}-{nnn}" — ' +
+        '{kategoria} podstawi kategorię główną karty, a {nnn} kolejny numer.',
+    );
   }
 
   for (const [, pole] of surowy.matchAll(POLE_W_KLAMRACH)) {
     if (!POLA_WZORCA.includes(pole)) {
-      throw new Error(`Wzorzec zna wyłącznie {kategoria} i {nnn} — „{${pole}}" nie znam. `
-        + 'Numer z nierozpoznanym polem pojechałby do sklepu razem z klamrami.');
+      throw new Error(
+        `Wzorzec zna wyłącznie {kategoria} i {nnn} — „{${pole}}" nie znam. ` +
+          'Numer z nierozpoznanym polem pojechałby do sklepu razem z klamrami.',
+      );
     }
   }
 
@@ -92,19 +95,22 @@ function zbudujSkladacz(wzorzec, wieleKart) {
   // Odmawiamy PRZED policzeniem czegokolwiek: podglad pokazujacy tysiac razy ten sam numer
   // byłby zaproszeniem do kliknięcia „zapisz".
   if (wieleKart && !surowy.includes('{nnn}')) {
-    throw new Error('Wzorzec bez {nnn} dałby wszystkim zaznaczonym kartom TEN SAM numer. '
-      + 'Dopisz {nnn} — to on rozróżnia kolejne karty.');
+    throw new Error(
+      'Wzorzec bez {nnn} dałby wszystkim zaznaczonym kartom TEN SAM numer. ' +
+        'Dopisz {nnn} — to on rozróżnia kolejne karty.',
+    );
   }
 
   // Sprawdzamy na PUSTEJ kategorii i pierwszym numerze, czy z wzorca w ogole cokolwiek
   // zostaje: „###" po odsianiu znakow spoza alfabetu numeru jest napisem pustym, a pusty
   // numer nie jest numerem.
-  const skladaj = (kategoria, n) => czlonNumeru(
-    surowy.replaceAll('{kategoria}', kategoria).replaceAll('{nnn}', numerPorzadkowy(n)),
-  );
+  const skladaj = (kategoria, n) =>
+    czlonNumeru(surowy.replaceAll('{kategoria}', kategoria).replaceAll('{nnn}', numerPorzadkowy(n)));
   if (!skladaj(BEZ_KATEGORII, 1)) {
-    throw new Error(`Wzorzec „${surowy}" nie daje ani jednego znaku, który sklep przyjmie `
-      + 'jako SKU. Użyj liter, cyfr i myślnika.');
+    throw new Error(
+      `Wzorzec „${surowy}" nie daje ani jednego znaku, który sklep przyjmie ` +
+        'jako SKU. Użyj liter, cyfr i myślnika.',
+    );
   }
   return skladaj;
 }
@@ -115,7 +121,10 @@ function zbudujSkladacz(wzorzec, wieleKart) {
 // I to jest cala roznica: sklep, ktory ma „pd10", odrzuci nasze „PD10" jako duplikat, a nasza
 // baza przepuscilaby oba jako rozne. Ostrozniej znaczy tutaj: WIECEJ wykrytych kolizji,
 // nigdy mniej.
-const kluczNumeru = (sku) => String(sku ?? '').trim().toUpperCase();
+const kluczNumeru = (sku) =>
+  String(sku ?? '')
+    .trim()
+    .toUpperCase();
 
 /**
  * Zajete numery → mapa `klucz → opis zrodla`.
@@ -134,12 +143,13 @@ function indeksZajetych(zajete) {
     if (klucz && !indeks.has(klucz)) indeks.set(klucz, opis ?? null);
   };
   if (zajete instanceof Map) for (const [sku, opis] of zajete) dodaj(sku, opis);
-  else for (const p of zajete) (typeof p === 'string' ? dodaj(p, null) : dodaj(p?.sku, p?.opis));
+  else for (const p of zajete) typeof p === 'string' ? dodaj(p, null) : dodaj(p?.sku, p?.opis);
   return indeks;
 }
 
-const OPIS_KOLIZJI = (sku, skad) => `Numer „${sku}" jest już zajęty${skad ? ` — ${skad}` : ''}. `
-  + 'Zmień wzorzec albo popraw ten numer ręcznie na karcie produktu.';
+const OPIS_KOLIZJI = (sku, skad) =>
+  `Numer „${sku}" jest już zajęty${skad ? ` — ${skad}` : ''}. ` +
+  'Zmień wzorzec albo popraw ten numer ręcznie na karcie produktu.';
 
 // ——— PROPOZYCJE —————————————————————————————————————————————————————————————
 
@@ -175,9 +185,9 @@ export function proponujSku(karty, wzorzec, zajete) {
   // ⚠️ SORTOWANIE JAWNE — po nazwie, tak jak na liscie i na ekranie powiazan, a `id` domyka
   // remis. To ono daje POWTARZALNOSC: kolejnosc wierszy z bazy zalezy od planu zapytania,
   // a od kolejnosci zalezy, ktora karta dostanie numer 001.
-  const doNumeru = [...poId.values()].filter(bezSku).sort(
-    (a, b) => String(a.nazwa ?? '').localeCompare(String(b.nazwa ?? ''), 'pl') || (a.id - b.id),
-  );
+  const doNumeru = [...poId.values()]
+    .filter(bezSku)
+    .sort((a, b) => String(a.nazwa ?? '').localeCompare(String(b.nazwa ?? ''), 'pl') || a.id - b.id);
 
   // Wzorzec sprawdzamy TAKZE dla pustego zbioru — literowka ma odmowic, a nie oddac pusto:
   // „nie ma czego numerowac" i „nie rozumiem wzorca" to dwie rozne odpowiedzi.

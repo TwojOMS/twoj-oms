@@ -37,8 +37,14 @@ export function createPoller({ db, kanal, sklep, od = null, kontrola = () => {} 
   // z kazda minuta, i ani jeden zapisany kursor, bo zaden przebieg nie dobiegal konca.
   let wTrakcie = false;
   function stan() {
-    return db.prepare('SELECT * FROM stan_pollera WHERE sklep = ?').get(sklep)
-      ?? { sklep, zsynchronizowane_do: null, ostatni_przebieg_at: null, ostatni_blad: null };
+    return (
+      db.prepare('SELECT * FROM stan_pollera WHERE sklep = ?').get(sklep) ?? {
+        sklep,
+        zsynchronizowane_do: null,
+        ostatni_przebieg_at: null,
+        ostatni_blad: null,
+      }
+    );
   }
 
   // ⚠️ `rodzaj` ROZSTRZYGA, CZY BLAD BEDZIE DLAWIONY — i to na OBU progach naraz
@@ -66,10 +72,9 @@ export function createPoller({ db, kanal, sklep, od = null, kontrola = () => {} 
     // ⚠️ Nieparsowalna albo ujemna wartosc w kolumnie (obcy zapis, reczny UPDATE) liczymy
     // jak zero — licznik ma rosnac, a nie cofac sie w nieskonczonosc.
     const poprzednieProby = Number(poprzedni?.ostatni_blad_prob);
-    const proby = blad
-      ? (Number.isFinite(poprzednieProby) && poprzednieProby > 0 ? poprzednieProby : 0) + 1
-      : null;
-    db.prepare(`
+    const proby = blad ? (Number.isFinite(poprzednieProby) && poprzednieProby > 0 ? poprzednieProby : 0) + 1 : null;
+    db.prepare(
+      `
       INSERT INTO stan_pollera (sklep, zsynchronizowane_do, ostatni_przebieg_at, ostatni_blad, ostatni_blad_od_at, ostatni_blad_rodzaj, ostatni_blad_prob)
       VALUES (?,?,?,?,?,?,?)
       ON CONFLICT(sklep) DO UPDATE SET
@@ -79,7 +84,16 @@ export function createPoller({ db, kanal, sklep, od = null, kontrola = () => {} 
         ostatni_blad_od_at = excluded.ostatni_blad_od_at,
         ostatni_blad_rodzaj = excluded.ostatni_blad_rodzaj,
         ostatni_blad_prob = excluded.ostatni_blad_prob
-    `).run(sklep, kursor, teraz, blad, blad ? (poprzedni?.ostatni_blad_od_at ?? teraz) : null, blad ? rodzaj : null, proby);
+    `,
+    ).run(
+      sklep,
+      kursor,
+      teraz,
+      blad,
+      blad ? (poprzedni?.ostatni_blad_od_at ?? teraz) : null,
+      blad ? rodzaj : null,
+      proby,
+    );
   }
 
   // ⚠️⚠️ IZOLACJA PER ZAMOWIENIE — CALA TRESC TEJ FUNKCJI I POWOD, DLA KTOREGO ISTNIEJE.
@@ -118,8 +132,9 @@ export function createPoller({ db, kanal, sklep, od = null, kontrola = () => {} 
   // Zdanie dla paska na liscie zamowien (src/moduly/zamowienia/lista.js). `stan()`
   // (kanaly/services/kompozycja-kanalow.ts) oddaje stan pollera z NIEPUSTYM bledem. Pominiete zamowienie MUSI byc widoczne: kursor przez nie
   // przeskakuje, wiec samo z siebie juz NIE WROCI — wroci dopiero, gdy zrodlo je zmodyfikuje.
-  const opisPominietych = (powody) => `Pominięto ${powody.length} zamówien${powody.length === 1 ? 'ie' : 'ia'}`
-    + ` (kursor przesunięty, same z siebie nie wrócą): ${powody.join(' | ')}`;
+  const opisPominietych = (powody) =>
+    `Pominięto ${powody.length} zamówien${powody.length === 1 ? 'ie' : 'ia'}` +
+    ` (kursor przesunięty, same z siebie nie wrócą): ${powody.join(' | ')}`;
 
   async function przebieg() {
     if (wTrakcie) return { pobrane: 0, pominiety: true };

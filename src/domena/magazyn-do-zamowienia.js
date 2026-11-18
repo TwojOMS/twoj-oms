@@ -33,12 +33,24 @@ const KLUCZ_CENNIKA = /^[a-z][a-z0-9_-]*$/;
 export function parsujCenniki(tekst) {
   if (tekst === undefined || String(tekst).trim() === '') return null;
   let lista;
-  try { lista = JSON.parse(tekst); } catch { throw new Error('OMS_CENNIKI: niepoprawny JSON'); }
+  try {
+    lista = JSON.parse(tekst);
+  } catch {
+    throw new Error('OMS_CENNIKI: niepoprawny JSON');
+  }
   if (!Array.isArray(lista) || lista.length === 0) throw new Error('OMS_CENNIKI: oczekiwano niepustej listy');
   const widziane = new Set();
   for (const w of lista) {
-    if (w === null || typeof w !== 'object' || Array.isArray(w) || typeof w.kanal !== 'string'
-      || !KLUCZ_CENNIKA.test(w.kanal) || typeof w.nazwa !== 'string' || !w.nazwa.trim() || widziane.has(w.kanal)) {
+    if (
+      w === null ||
+      typeof w !== 'object' ||
+      Array.isArray(w) ||
+      typeof w.kanal !== 'string' ||
+      !KLUCZ_CENNIKA.test(w.kanal) ||
+      typeof w.nazwa !== 'string' ||
+      !w.nazwa.trim() ||
+      widziane.has(w.kanal)
+    ) {
       throw new Error('OMS_CENNIKI: każdy wpis to {"kanal":"klucz","nazwa":"tekst"}, kanały bez powtórzeń');
     }
     widziane.add(w.kanal);
@@ -54,9 +66,11 @@ export function parsujCenniki(tekst) {
  */
 export function cenniki({ lista = null, definicje = [] } = {}) {
   const allegrowe = new Set(definicje.filter((d) => d.typ === 'allegro').map((d) => d.klucz));
-  const wpisy = lista ?? definicje.filter((d) => d.typ === 'woo').map((d) => ({ kanal: d.klucz, nazwa: d.etykieta ?? d.klucz }));
+  const wpisy =
+    lista ?? definicje.filter((d) => d.typ === 'woo').map((d) => ({ kanal: d.klucz, nazwa: d.etykieta ?? d.klucz }));
   for (const w of wpisy) {
-    if (allegrowe.has(w.kanal)) throw new Error(`OMS_CENNIKI: kanał „${w.kanal}" jest kanałem Allegro, a Allegro nie jest cennikiem`);
+    if (allegrowe.has(w.kanal))
+      throw new Error(`OMS_CENNIKI: kanał „${w.kanal}" jest kanałem Allegro, a Allegro nie jest cennikiem`);
   }
   return Object.freeze({
     kanaly: Object.freeze(wpisy.map((w) => w.kanal)),
@@ -130,7 +144,9 @@ export function rozmiarDoPokazania({ nazwa, rozmiar_tekst: rozmiar } = {}) {
 
 /** Ilość z formularza — całkowita, dodatnia, bez górnej granicy poza zdrowym rozsądkiem. */
 function parsujIlosc(surowa) {
-  const tekst = String(surowa ?? '').trim().replace(',', '.');
+  const tekst = String(surowa ?? '')
+    .trim()
+    .replace(',', '.');
   const n = Number(tekst === '' ? 1 : tekst);
   if (!Number.isInteger(n) || n <= 0) {
     throw bladOperatora(`Ilość musi być liczbą całkowitą większą od zera, a jest „${surowa}".`);
@@ -158,20 +174,26 @@ function parsujIlosc(surowa) {
  * przeliczenia niewidzialna, więc rabat wpisany na karcie po dodaniu towaru nie miałby
  * czego dotknąć.
  */
-export function pozycjaZProduktu(produkt, iloscSurowa, { rabatProcent = 0, wdt = false, stawkaDomyslna, cenniki: cennikiInstalacji = BEZ_CENNIKOW } = {}) {
+export function pozycjaZProduktu(
+  produkt,
+  iloscSurowa,
+  { rabatProcent = 0, wdt = false, stawkaDomyslna, cenniki: cennikiInstalacji = BEZ_CENNIKOW } = {},
+) {
   if (!produkt) throw bladOperatora('Nie ma takiego produktu w magazynie — odczytaj katalogi i spróbuj jeszcze raz.');
   const { kanaly, nazwy } = cennikiInstalacji;
   if (!kanaly.includes(String(produkt.kanal ?? ''))) {
-    throw bladOperatora(kanaly.length
-      ? `Kanał „${produkt.kanal}" nie jest cennikiem — ceny biorą się wyłącznie ze sklepów `
-        + `${wyliczenie(kanaly.map((k) => nazwy[k]))}.`
-      : `Kanał „${produkt.kanal}" nie jest cennikiem — ta instalacja nie ma żadnego cennika (OMS_CENNIKI, OMS_KANALY).`);
+    throw bladOperatora(
+      kanaly.length
+        ? `Kanał „${produkt.kanal}" nie jest cennikiem — ceny biorą się wyłącznie ze sklepów ` +
+            `${wyliczenie(kanaly.map((k) => nazwy[k]))}.`
+        : `Kanał „${produkt.kanal}" nie jest cennikiem — ta instalacja nie ma żadnego cennika (OMS_CENNIKI, OMS_KANALY).`,
+    );
   }
   const cenaGr = produkt.cena_gr;
   if (!Number.isInteger(cenaGr) || cenaGr <= 0) {
     throw bladOperatora(
-      `Produkt „${produkt.nazwa}" nie ma ceny w cenniku ${nazwy[produkt.kanal]} — `
-      + 'dopisz go ręcznie z ceną albo wybierz drugi cennik.',
+      `Produkt „${produkt.nazwa}" nie ma ceny w cenniku ${nazwy[produkt.kanal]} — ` +
+        'dopisz go ręcznie z ceną albo wybierz drugi cennik.',
     );
   }
   const ilosc = parsujIlosc(iloscSurowa);

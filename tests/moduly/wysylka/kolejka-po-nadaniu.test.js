@@ -6,9 +6,20 @@ import { wstawEtykieteDoKolejki } from '../../../src/moduly/wysylka/services/kol
 
 // Kolejka druku po nadaniu — jedna funkcja dla karty („Nadaj i drukuj") i hurtu.
 const zmapowane = {
-  zrodlo_id: 1589, numer: '1589', klient: {}, dostawa: {}, metoda_wysylki: 'dpd', kwota_pobrania: null,
-  chce_fakture: 0, nip: null, kwota_brutto: '104.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
-  utworzone_at: '2026-10-13T13:13:48Z', pozycje: [],
+  zrodlo_id: 1589,
+  numer: '1589',
+  klient: {},
+  dostawa: {},
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '104.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-10-13T13:13:48Z',
+  pozycje: [],
 };
 let db;
 let id;
@@ -16,13 +27,23 @@ beforeEach(() => {
   db = openOmsDb(':memory:');
   id = zapiszZamowienie(db, 'pro', zmapowane, {});
 });
-const log = () => db.prepare("SELECT wynik FROM log WHERE zamowienie_id = ? AND akcja = 'kolejka-druku.dodanie'")
-  .all(id).map((r) => r.wynik);
-const kolejka = () => db.prepare('SELECT przesylka_id FROM kolejka_druku').all().map((r) => r.przesylka_id);
+const log = () =>
+  db
+    .prepare("SELECT wynik FROM log WHERE zamowienie_id = ? AND akcja = 'kolejka-druku.dodanie'")
+    .all(id)
+    .map((r) => r.wynik);
+const kolejka = () =>
+  db
+    .prepare('SELECT przesylka_id FROM kolejka_druku')
+    .all()
+    .map((r) => r.przesylka_id);
 const nadana = (kolejnosc, zpl) => {
   const p = rozpocznijPrzesylke(db, id, 'dpd', kolejnosc);
   zakonczPrzesylke(db, p.id, {
-    numerListu: `L${kolejnosc}`, etykietaSciezka: `/${kolejnosc}.pdf`, etykietaZplSciezka: zpl, surowa: null,
+    numerListu: `L${kolejnosc}`,
+    etykietaSciezka: `/${kolejnosc}.pdf`,
+    etykietaZplSciezka: zpl,
+    surowa: null,
   });
   return p.id;
 };

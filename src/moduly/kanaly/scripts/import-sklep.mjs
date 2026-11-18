@@ -32,11 +32,16 @@ export function parsujArgumenty(argv) {
   const od = wez('--od');
   const doDnia = wez('--do');
   if (!doDnia) {
-    throw new Error('Podaj --do RRRR-MM-DD. Domyślnego „do dziś" tu nie ma: górna granica'
-      + ' importu to sufit chroniący przed podwójnym policzeniem ery Apilo.');
+    throw new Error(
+      'Podaj --do RRRR-MM-DD. Domyślnego „do dziś" tu nie ma: górna granica' +
+        ' importu to sufit chroniący przed podwójnym policzeniem ery Apilo.',
+    );
   }
   if (!sklep || !od) throw new Error('Podaj jawnie --sklep i --od RRRR-MM-DD.');
-  for (const [nazwa, wartosc] of [['--od', od], ['--do', doDnia]]) {
+  for (const [nazwa, wartosc] of [
+    ['--od', od],
+    ['--do', doDnia],
+  ]) {
     if (!WZORZEC_DATY.test(wartosc)) {
       throw new Error(`${nazwa}: data musi mieć postać RRRR-MM-DD, dostałem "${wartosc}"`);
     }
@@ -47,11 +52,17 @@ export function parsujArgumenty(argv) {
 async function main() {
   const { sklep, od, doDnia, sonda } = parsujArgumenty(process.argv);
   const definicje = definicjeKanalow(process.env);
-  sprawdzTrybProby(process.env, definicje.flatMap(d => kluczeKanalu(d.typ, d.prefiks).kluczeIntegracji));
-  const definicja = definicje.find(d => d.klucz === sklep && d.typ === 'woo');
+  sprawdzTrybProby(
+    process.env,
+    definicje.flatMap((d) => kluczeKanalu(d.typ, d.prefiks).kluczeIntegracji),
+  );
+  const definicja = definicje.find((d) => d.klucz === sklep && d.typ === 'woo');
   if (!definicja) throw new Error(`Brak kanału Woo "${sklep}" w OMS_KANALY`);
   const prefiks = definicja.prefiks;
-  const wymagane = n => { if (!process.env[n]?.trim()) throw new Error(`Brak wymaganej zmiennej: ${n}`); return process.env[n]; };
+  const wymagane = (n) => {
+    if (!process.env[n]?.trim()) throw new Error(`Brak wymaganej zmiennej: ${n}`);
+    return process.env[n];
+  };
   const url = wymagane(`${prefiks}_URL`);
   skonfigurowanyUrl(url, `${prefiks}_URL`);
   const ck = wymagane(`${prefiks}_CK`);
@@ -59,34 +70,39 @@ async function main() {
   const konfiguracja = konfiguracjaHistorii(process.env, sklep, prefiks);
   const db = openOmsDb(process.env.OMS_DB_PATH ?? '/data-oms/oms.sqlite');
   try {
-  console.log(`Sufit z ery Apilo: ${sufitZApilo(db, konfiguracja.konta.get(sklep)) ?? 'BRAK — era Apilo pusta'}`);
+    console.log(`Sufit z ery Apilo: ${sufitZApilo(db, konfiguracja.konta.get(sklep)) ?? 'BRAK — era Apilo pusta'}`);
 
-  const klient = createWooClient({
-    baseUrl: url.replace(/\/+$/, ''),
-    ck,
-    cs,
-  });
-  const imp = createImportSklepu({ db, sklep, klient, konfiguracja, log: (t) => console.log(t) });
+    const klient = createWooClient({
+      baseUrl: url.replace(/\/+$/, ''),
+      ck,
+      cs,
+    });
+    const imp = createImportSklepu({ db, sklep, klient, konfiguracja, log: (t) => console.log(t) });
 
-  const start = Date.now();
-  const w = await imp.przebieg({ od, doDnia, sonda });
-  const sekund = Math.round((Date.now() - start) / 1000);
+    const start = Date.now();
+    const w = await imp.przebieg({ od, doDnia, sonda });
+    const sekund = Math.round((Date.now() - start) / 1000);
 
-  console.log('');
-  console.log(sonda ? '=== SONDA (nic nie zapisano) ===' : '=== IMPORT ===');
-  console.log(`zapisanych: ${w.pobranych}, poza oknem: ${w.pominietych}, testowych: ${w.testowych}`);
-  console.log(`stron: ${w.stron}, sklep zapowiadał: ${w.razem}, czas: ${sekund} s`);
-  console.log(`statusy: ${JSON.stringify(w.statusy)}`);
-  console.log(`waluty:  ${JSON.stringify(w.waluty)}`);
-  console.log(`lata:    ${JSON.stringify(w.lata)}`);
-  if (w.zatrzymany) {
-    console.error('');
-    console.error(`⚠️ PRZEBIEG ZATRZYMANY: ${w.powod}`);
-    process.exitCode = 1;
+    console.log('');
+    console.log(sonda ? '=== SONDA (nic nie zapisano) ===' : '=== IMPORT ===');
+    console.log(`zapisanych: ${w.pobranych}, poza oknem: ${w.pominietych}, testowych: ${w.testowych}`);
+    console.log(`stron: ${w.stron}, sklep zapowiadał: ${w.razem}, czas: ${sekund} s`);
+    console.log(`statusy: ${JSON.stringify(w.statusy)}`);
+    console.log(`waluty:  ${JSON.stringify(w.waluty)}`);
+    console.log(`lata:    ${JSON.stringify(w.lata)}`);
+    if (w.zatrzymany) {
+      console.error('');
+      console.error(`⚠️ PRZEBIEG ZATRZYMANY: ${w.powod}`);
+      process.exitCode = 1;
+    }
+  } finally {
+    db.close();
   }
-  } finally { db.close(); }
 }
 
 if (process.argv[1]?.endsWith('import-sklep.mjs')) {
-  main().catch((e) => { console.error(e); process.exit(1); });
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
 }

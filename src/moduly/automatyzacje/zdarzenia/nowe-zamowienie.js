@@ -20,15 +20,27 @@ export function sqlKandydatowZamowienia({ granica, od, po = null, limit, kanaly 
   const oknoOd = new Date(Date.parse(odKiedy) - OKNO_ZAMOWIEN_DNI * 24 * 3600_000).toISOString();
   const chwila = `MAX(${CHWILA}, ?)`;
   const filtrKanalu = Array.isArray(kanaly) ? ` AND +z.sklep IN (${znaki(kanaly.length)})` : '';
-  const bezWykonania = regula_id === null ? '' : ` AND NOT EXISTS (SELECT 1 FROM automatyzacje_wykonania w
+  const bezWykonania =
+    regula_id === null
+      ? ''
+      : ` AND NOT EXISTS (SELECT 1 FROM automatyzacje_wykonania w
     WHERE w.regula_id = ? AND w.przedmiot = 'zamowienie:' || z.id)`;
   const filtrPo = po ? ` AND (${chwila} > ? OR (${chwila} = ? AND z.id > ?))` : '';
-  return { sql: `SELECT z.id, z.id AS zamowienie_id, z.sklep, ${chwila} AS zdarzenie_at
+  return {
+    sql: `SELECT z.id, z.id AS zamowienie_id, z.sklep, ${chwila} AS zdarzenie_at
     FROM zamowienia z WHERE julianday(z.utworzone_at) >= julianday(?) AND +z.id > ?
       AND ${CHWILA} IS NOT NULL${filtrKanalu}${bezWykonania}${filtrPo}
     ORDER BY zdarzenie_at, z.id LIMIT ?`,
-  args: [odKiedy, oknoOd, Number(granica?.zamowienia ?? 0), ...(Array.isArray(kanaly) ? kanaly : []),
-    ...(regula_id === null ? [] : [regula_id]), ...(po ? [odKiedy, po.at, odKiedy, po.at, po.id] : []), limit ?? 1000] };
+    args: [
+      odKiedy,
+      oknoOd,
+      Number(granica?.zamowienia ?? 0),
+      ...(Array.isArray(kanaly) ? kanaly : []),
+      ...(regula_id === null ? [] : [regula_id]),
+      ...(po ? [odKiedy, po.at, odKiedy, po.at, po.id] : []),
+      limit ?? 1000,
+    ],
+  };
 }
 
 export const zdarzenieNoweZamowienie = Object.freeze({
@@ -44,7 +56,11 @@ export const zdarzenieNoweZamowienie = Object.freeze({
 
   /** Podgląd „30 dni”: data złożenia, bez granicy, najnowsze najpierw. Zero zapisów. */
   symulacja(db, od) {
-    return db.prepare(`SELECT z.id, z.id AS zamowienie_id, z.sklep, ${CHWILA} AS zdarzenie_at
-      FROM zamowienia z WHERE ${CHWILA} >= ? ORDER BY zdarzenie_at DESC, z.id DESC`).all(od);
+    return db
+      .prepare(
+        `SELECT z.id, z.id AS zamowienie_id, z.sklep, ${CHWILA} AS zdarzenie_at
+      FROM zamowienia z WHERE ${CHWILA} >= ? ORDER BY zdarzenie_at DESC, z.id DESC`,
+      )
+      .all(od);
   },
 });

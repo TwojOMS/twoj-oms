@@ -1,13 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import {
-  mkdtempSync, writeFileSync, rmSync, existsSync,
-} from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import {
-  AUTH, POST, zamowienie, serwer, cialo, NIP, BDO,
-} from '../faktury/_hurtem-pomocniki.js';
+import { AUTH, POST, zamowienie, serwer, cialo, NIP, BDO } from '../faktury/_hurtem-pomocniki.js';
 import { SUFIT_SPECYFIKACJI_DRUKU } from '../../../src/domena/masowe.js';
 
 // Trasy pobrania „Specyfikacji zamowienia" — kartki wkladanej do KAZDEJ paczki:
@@ -41,8 +37,7 @@ const PDFTOTEXT = znajdzPdftotext();
 if (!PDFTOTEXT) {
   // eslint-disable-next-line no-console
   console.warn(
-    '[specyfikacja-trasy] pdftotext (poppler) nie znaleziony — testy odczytu tekstu z PDF-a '
-    + 'POMINIETE.',
+    '[specyfikacja-trasy] pdftotext (poppler) nie znaleziony — testy odczytu tekstu z PDF-a ' + 'POMINIETE.',
   );
 }
 
@@ -62,14 +57,22 @@ function pdfNaTekst(buf) {
 }
 
 const POZYCJA = {
-  nazwa: 'STOP 70x100', sku: 'STOP-70', ilosc: 1, cena_brutto: '100.00', brutto_linii: '100.00', vat: null,
+  nazwa: 'STOP 70x100',
+  sku: 'STOP-70',
+  ilosc: 1,
+  cena_brutto: '100.00',
+  brutto_linii: '100.00',
+  vat: null,
 };
 
 describe('trasa pojedyncza: GET /zamowienia/:id/specyfikacja.pdf', () => {
   it('oddaje PDF jednego zamowienia z naglowkiem application/pdf', async () => {
     const { app, db } = serwer();
     const a = zamowienie(db, {
-      numer: '3001', zrodlo: 1, oplacone: true, pozycje: [POZYCJA],
+      numer: '3001',
+      zrodlo: 1,
+      oplacone: true,
+      pozycje: [POZYCJA],
     });
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${a}/specyfikacja.pdf`, headers: AUTH });
     expect(r.statusCode).toBe(200);
@@ -98,20 +101,26 @@ describe('trasa pojedyncza: GET /zamowienia/:id/specyfikacja.pdf', () => {
     expect(r.statusCode).toBe(401);
   });
 
-  it.skipIf(!PDFTOTEXT)('sklada sprzedawce z config.nadawca + NIP + BDO — dowod, ze skladanie dziala przez TRASE, nie tylko w tescie jednostkowym', async () => {
-    const { app, db } = serwer();
-    const a = zamowienie(db, {
-      numer: '3001', zrodlo: 1, oplacone: true, pozycje: [POZYCJA],
-    });
-    const r = await app.inject({ method: 'GET', url: `/zamowienia/${a}/specyfikacja.pdf`, headers: AUTH });
-    const tekst = pdfNaTekst(r.rawPayload);
-    expect(tekst).toContain('Pracownia Półcień Anna Wzorcowa');
-    expect(tekst).toContain('Przykładowa 1');
-    // ⚠️ NIP dolozony do skladu 12.08.2026: przy zamowieniach firmowych ta kartka
-    // ZASTEPUJE wydruk faktury, wiec dokument bez NIP-u wystawcy byl widoczna dziura.
-    expect(tekst).toContain(NIP);
-    expect(tekst).toContain(BDO);
-  });
+  it.skipIf(!PDFTOTEXT)(
+    'sklada sprzedawce z config.nadawca + NIP + BDO — dowod, ze skladanie dziala przez TRASE, nie tylko w tescie jednostkowym',
+    async () => {
+      const { app, db } = serwer();
+      const a = zamowienie(db, {
+        numer: '3001',
+        zrodlo: 1,
+        oplacone: true,
+        pozycje: [POZYCJA],
+      });
+      const r = await app.inject({ method: 'GET', url: `/zamowienia/${a}/specyfikacja.pdf`, headers: AUTH });
+      const tekst = pdfNaTekst(r.rawPayload);
+      expect(tekst).toContain('Pracownia Półcień Anna Wzorcowa');
+      expect(tekst).toContain('Przykładowa 1');
+      // ⚠️ NIP dolozony do skladu 12.08.2026: przy zamowieniach firmowych ta kartka
+      // ZASTEPUJE wydruk faktury, wiec dokument bez NIP-u wystawcy byl widoczna dziura.
+      expect(tekst).toContain(NIP);
+      expect(tekst).toContain(BDO);
+    },
+  );
 
   // ⚠️ SPOSOB DOSTAWY I STAN PLATNOSCI NA KARTCE DLA KLIENTA. Do tej
   // poprawki na dokument szedl WEWNETRZNY KOD metody (`dpd`, `inpost_paczkomat`, a w
@@ -123,18 +132,24 @@ describe('trasa pojedyncza: GET /zamowienia/:id/specyfikacja.pdf', () => {
   // wyladowalo na papierze: zamowienie w bazie ma `metoda_wysylki = 'dpd'` (fixture), a na
   // kartce ma stac „DPD". `not.toMatch` na goly kod pilnuje, ze stary napis NIE wraca —
   // sama obecnosc „DPD" przechodzilaby takze wtedy, gdyby obok stalo `dpd`.
-  it.skipIf(!PDFTOTEXT)('drukuje nazwe dostawy dla czlowieka („Kurier DPD"), nie kod metody („dpd"), i stan platnosci', async () => {
-    const { app, db } = serwer();
-    const a = zamowienie(db, {
-      numer: '3001', zrodlo: 1, oplacone: true, pozycje: [POZYCJA],
-    });
-    const r = await app.inject({ method: 'GET', url: `/zamowienia/${a}/specyfikacja.pdf`, headers: AUTH });
-    const tekst = pdfNaTekst(r.rawPayload);
-    expect(tekst).toMatch(/Sposób dostawy:\s*Kurier DPD/);
-    expect(tekst).not.toMatch(/Sposób dostawy:\s*dpd/);
-    // Fixture ma pelne pokrycie wplat, wiec kartka ma o tym powiedziec.
-    expect(tekst).toMatch(/Płatność:[^\n]*opłacone/);
-  });
+  it.skipIf(!PDFTOTEXT)(
+    'drukuje nazwe dostawy dla czlowieka („Kurier DPD"), nie kod metody („dpd"), i stan platnosci',
+    async () => {
+      const { app, db } = serwer();
+      const a = zamowienie(db, {
+        numer: '3001',
+        zrodlo: 1,
+        oplacone: true,
+        pozycje: [POZYCJA],
+      });
+      const r = await app.inject({ method: 'GET', url: `/zamowienia/${a}/specyfikacja.pdf`, headers: AUTH });
+      const tekst = pdfNaTekst(r.rawPayload);
+      expect(tekst).toMatch(/Sposób dostawy:\s*Kurier DPD/);
+      expect(tekst).not.toMatch(/Sposób dostawy:\s*dpd/);
+      // Fixture ma pelne pokrycie wplat, wiec kartka ma o tym powiedziec.
+      expect(tekst).toMatch(/Płatność:[^\n]*opłacone/);
+    },
+  );
 
   // ⚠️ BEZ `skipIf(!PDFTOTEXT)` — ten test NIE CZYTA PDF-a (sprawdza naglowek i tresc
   // komunikatu odmowy), wiec nie ma powodu znikac na maszynie bez poppler. Na kontenerze
@@ -153,13 +168,22 @@ describe('trasa zbiorcza: POST /zamowienia/specyfikacje.pdf', () => {
   it('zaznaczenie wielu daje JEDEN plik', async () => {
     const { app, db } = serwer();
     const a = zamowienie(db, {
-      numer: '3001', zrodlo: 1, oplacone: true, pozycje: [POZYCJA],
+      numer: '3001',
+      zrodlo: 1,
+      oplacone: true,
+      pozycje: [POZYCJA],
     });
     const b = zamowienie(db, {
-      numer: '3002', zrodlo: 2, oplacone: true, pozycje: [POZYCJA],
+      numer: '3002',
+      zrodlo: 2,
+      oplacone: true,
+      pozycje: [POZYCJA],
     });
     const r = await app.inject({
-      method: 'POST', url: '/zamowienia/specyfikacje.pdf', headers: POST, payload: cialo([a, b]),
+      method: 'POST',
+      url: '/zamowienia/specyfikacje.pdf',
+      headers: POST,
+      payload: cialo([a, b]),
     });
     expect(r.statusCode).toBe(200);
     expect(r.headers['content-type']).toContain('application/pdf');
@@ -177,16 +201,27 @@ describe('trasa zbiorcza: POST /zamowienia/specyfikacje.pdf', () => {
     // „kolejnosc listy" (wymagana przez brief) od „kolejnosc zaznaczenia" (ktorej trasa
     // NIE MA prawa uzyc).
     const b = zamowienie(db, {
-      numer: '3002', zrodlo: 2, oplacone: true, pozycje: [POZYCJA], utworzoneAt: '2026-08-05T09:00:00.000Z',
+      numer: '3002',
+      zrodlo: 2,
+      oplacone: true,
+      pozycje: [POZYCJA],
+      utworzoneAt: '2026-08-05T09:00:00.000Z',
     });
     const a = zamowienie(db, {
-      numer: '3001', zrodlo: 1, oplacone: true, pozycje: [POZYCJA], utworzoneAt: '2026-08-05T10:00:00.000Z',
+      numer: '3001',
+      zrodlo: 1,
+      oplacone: true,
+      pozycje: [POZYCJA],
+      utworzoneAt: '2026-08-05T10:00:00.000Z',
     });
     // Zaznaczenie w formularzu CELOWO w odwrotnej kolejnosci — [b, a] — zeby test naprawde
     // odroznial „kolejnosc listy" od „kolejnosc zaznaczenia": gdyby trasa uzyla tej drugiej,
     // strona 3002 wypadlaby PIERWSZA, a asercja ponizej by upadla.
     const r = await app.inject({
-      method: 'POST', url: '/zamowienia/specyfikacje.pdf', headers: POST, payload: cialo([b, a]),
+      method: 'POST',
+      url: '/zamowienia/specyfikacje.pdf',
+      headers: POST,
+      payload: cialo([b, a]),
     });
     const tekst = pdfNaTekst(r.rawPayload);
     expect(tekst).toContain('3001');
@@ -203,35 +238,53 @@ describe('trasa zbiorcza: POST /zamowienia/specyfikacje.pdf', () => {
   // WSZYSTKIE istniejace zamowienia, wiec taka mutacja i tak dawalaby poprawny wynik. Test
   // trzyma w bazie TRZY zamowienia i zaznacza JEDNO — operator ma dostac dokument z
   // DOKLADNIE tego, co zaznaczyl, nie z calej listy.
-  it.skipIf(!PDFTOTEXT)('zaznaczenie JEDNEGO z trzech istniejacych daje dokument WYLACZNIE tego zamowienia', async () => {
-    const { app, db } = serwer();
-    zamowienie(db, {
-      numer: '4001', zrodlo: 1, oplacone: true, pozycje: [POZYCJA],
-    });
-    const b = zamowienie(db, {
-      numer: '4002', zrodlo: 2, oplacone: true, pozycje: [POZYCJA],
-    });
-    zamowienie(db, {
-      numer: '4003', zrodlo: 3, oplacone: true, pozycje: [POZYCJA],
-    });
-    const r = await app.inject({
-      method: 'POST', url: '/zamowienia/specyfikacje.pdf', headers: POST, payload: cialo([b]),
-    });
-    expect(r.statusCode).toBe(200);
-    const tekst = pdfNaTekst(r.rawPayload);
-    const strony = tekst.split('\f').filter((s) => s.trim());
-    expect(strony).toHaveLength(1);
-    expect(tekst).toContain('4002');
-    expect(tekst).not.toContain('4001');
-    expect(tekst).not.toContain('4003');
-  });
+  it.skipIf(!PDFTOTEXT)(
+    'zaznaczenie JEDNEGO z trzech istniejacych daje dokument WYLACZNIE tego zamowienia',
+    async () => {
+      const { app, db } = serwer();
+      zamowienie(db, {
+        numer: '4001',
+        zrodlo: 1,
+        oplacone: true,
+        pozycje: [POZYCJA],
+      });
+      const b = zamowienie(db, {
+        numer: '4002',
+        zrodlo: 2,
+        oplacone: true,
+        pozycje: [POZYCJA],
+      });
+      zamowienie(db, {
+        numer: '4003',
+        zrodlo: 3,
+        oplacone: true,
+        pozycje: [POZYCJA],
+      });
+      const r = await app.inject({
+        method: 'POST',
+        url: '/zamowienia/specyfikacje.pdf',
+        headers: POST,
+        payload: cialo([b]),
+      });
+      expect(r.statusCode).toBe(200);
+      const tekst = pdfNaTekst(r.rawPayload);
+      const strony = tekst.split('\f').filter((s) => s.trim());
+      expect(strony).toHaveLength(1);
+      expect(tekst).toContain('4002');
+      expect(tekst).not.toContain('4001');
+      expect(tekst).not.toContain('4003');
+    },
+  );
 
   // ⚠️ Pusty PDF wyglada jak plik, ktory sie udal — a przy wydruku do paczki znaczy paczke
   // bez dokumentu. Odmowa jest tu tansza niz cisza.
   it('bez zaznaczenia odmawia, zamiast oddawac pusty PDF', async () => {
     const { app } = serwer();
     const r = await app.inject({
-      method: 'POST', url: '/zamowienia/specyfikacje.pdf', headers: POST, payload: '',
+      method: 'POST',
+      url: '/zamowienia/specyfikacje.pdf',
+      headers: POST,
+      payload: '',
     });
     expect(r.headers['content-type']).not.toContain('application/pdf');
     expect(r.body).toMatch(/nie zaznaczono/i);
@@ -246,7 +299,10 @@ describe('trasa zbiorcza: POST /zamowienia/specyfikacje.pdf', () => {
     zamowienie(db, { numer: '4001', zrodlo: 1, oplacone: true });
     zamowienie(db, { numer: '4002', zrodlo: 2, oplacone: true });
     const r = await app.inject({
-      method: 'POST', url: '/zamowienia/specyfikacje.pdf', headers: POST, payload: '',
+      method: 'POST',
+      url: '/zamowienia/specyfikacje.pdf',
+      headers: POST,
+      payload: '',
     });
     expect(r.headers['content-type']).not.toContain('application/pdf');
     expect(r.body).toMatch(/nie zaznaczono/i);
@@ -256,7 +312,9 @@ describe('trasa zbiorcza: POST /zamowienia/specyfikacje.pdf', () => {
     const { app, db } = serwer();
     const a = zamowienie(db, { numer: '3001', zrodlo: 1, oplacone: true });
     const r = await app.inject({
-      method: 'POST', url: '/zamowienia/specyfikacje.pdf', payload: cialo([a]),
+      method: 'POST',
+      url: '/zamowienia/specyfikacje.pdf',
+      payload: cialo([a]),
     });
     expect(r.statusCode).toBe(401);
   });
@@ -275,11 +333,19 @@ describe('trasa zbiorcza: POST /zamowienia/specyfikacje.pdf', () => {
   // ─────────────────────────────────────────────────────────────────────────────
   it(`odmawia zaznaczeniu ponad sufit (${SUFIT_SPECYFIKACJI_DRUKU + 1}) i nie oddaje ani jednego PDF-a`, async () => {
     const { app, db } = serwer();
-    const ids = Array.from({ length: SUFIT_SPECYFIKACJI_DRUKU + 1 }, (_, i) => zamowienie(db, {
-      numer: String(5000 + i), zrodlo: 5000 + i, oplacone: true, pozycje: [POZYCJA],
-    }));
+    const ids = Array.from({ length: SUFIT_SPECYFIKACJI_DRUKU + 1 }, (_, i) =>
+      zamowienie(db, {
+        numer: String(5000 + i),
+        zrodlo: 5000 + i,
+        oplacone: true,
+        pozycje: [POZYCJA],
+      }),
+    );
     const r = await app.inject({
-      method: 'POST', url: '/zamowienia/specyfikacje.pdf', headers: POST, payload: cialo(ids),
+      method: 'POST',
+      url: '/zamowienia/specyfikacje.pdf',
+      headers: POST,
+      payload: cialo(ids),
     });
     expect(r.statusCode).toBe(400);
     expect(r.headers['content-type']).not.toContain('application/pdf');
@@ -292,11 +358,19 @@ describe('trasa zbiorcza: POST /zamowienia/specyfikacje.pdf', () => {
   // dostawalby odmowe przy zaznaczeniu, ktore komunikat sam nazywa dozwolonym.
   it(`przepuszcza zaznaczenie dokladnie na granicy (${SUFIT_SPECYFIKACJI_DRUKU})`, async () => {
     const { app, db } = serwer();
-    const ids = Array.from({ length: SUFIT_SPECYFIKACJI_DRUKU }, (_, i) => zamowienie(db, {
-      numer: String(6000 + i), zrodlo: 6000 + i, oplacone: true, pozycje: [POZYCJA],
-    }));
+    const ids = Array.from({ length: SUFIT_SPECYFIKACJI_DRUKU }, (_, i) =>
+      zamowienie(db, {
+        numer: String(6000 + i),
+        zrodlo: 6000 + i,
+        oplacone: true,
+        pozycje: [POZYCJA],
+      }),
+    );
     const r = await app.inject({
-      method: 'POST', url: '/zamowienia/specyfikacje.pdf', headers: POST, payload: cialo(ids),
+      method: 'POST',
+      url: '/zamowienia/specyfikacje.pdf',
+      headers: POST,
+      payload: cialo(ids),
     });
     expect(r.statusCode).toBe(200);
     expect(r.headers['content-type']).toContain('application/pdf');

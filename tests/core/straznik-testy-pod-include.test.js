@@ -17,7 +17,8 @@ const WYJATKI = {};
 
 export function plikiTestowe() {
   return execFileSync('git', ['ls-files'], { cwd: KORZEN, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
-    .split('\n').filter((p) => ROZSZERZENIE_TESTU.test(p));
+    .split('\n')
+    .filter((p) => ROZSZERZENIE_TESTU.test(p));
 }
 
 const wyjatek = (plik, wpis) => (wpis.endsWith('/') ? plik.startsWith(wpis) : plik === wpis);

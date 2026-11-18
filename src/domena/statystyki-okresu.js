@@ -11,7 +11,13 @@ import { agregatorUslug, agregatorTerminowosci } from './statystyki-wysylki.js';
 import { agregatorMetod } from './statystyki-platnosci.js';
 import { setImmediate } from 'node:timers/promises';
 
-const bezpiecznyJson = (s) => { try { return JSON.parse(s ?? '{}') ?? {}; } catch { return {}; } };
+const bezpiecznyJson = (s) => {
+  try {
+    return JSON.parse(s ?? '{}') ?? {};
+  } catch {
+    return {};
+  }
+};
 
 /**
  * Uzasadnienie wspólnego odczytu: statystyka musi czytać TE SAME NAKŁADKI co lista
@@ -97,9 +103,13 @@ export function pierwszyDzienZamowien(db) {
   let pierwszy = null;
   // Lokalna data i UTC mogą mieć odwrotną kolejność chwil i dni warszawskich.
   // MIN znajduje początek po indeksie, a dokładny dzień wybiera wspólna definicja.
-  const kandydaci = db.prepare('SELECT utworzone_at FROM zamowienia'
-    + ' WHERE (julianday(utworzone_at) >= ? AND julianday(utworzone_at) <= ?)'
-    + ' OR julianday(utworzone_at) IS NULL').all(minimum, minimum === null ? null : minimum + 2);
+  const kandydaci = db
+    .prepare(
+      'SELECT utworzone_at FROM zamowienia' +
+        ' WHERE (julianday(utworzone_at) >= ? AND julianday(utworzone_at) <= ?)' +
+        ' OR julianday(utworzone_at) IS NULL',
+    )
+    .all(minimum, minimum === null ? null : minimum + 2);
   for (const { utworzone_at: utworzone } of kandydaci) {
     const dzien = dzienWarszawa(utworzone);
     if (dzien && (pierwszy === null || dzien < pierwszy)) pierwszy = dzien;

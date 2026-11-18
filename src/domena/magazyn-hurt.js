@@ -30,7 +30,11 @@ import { PACZKOMAT_WARTOSCI } from './paczkomat.js';
  * recznie do formularza siegaloby dalej, niz ekran pozwala.
  */
 export const POLA_HURTU = Object.freeze([
-  'szerokosc_cm', 'wysokosc_cm', 'kategoria_glowna', 'paczkomat', 'nazwa_bez_rozmiaru',
+  'szerokosc_cm',
+  'wysokosc_cm',
+  'kategoria_glowna',
+  'paczkomat',
+  'nazwa_bez_rozmiaru',
 ]);
 
 // Wartosc pola wyboru paczkomatu, ktora JAWNIE kasuje decyzje i wraca do stanu „jeszcze
@@ -54,9 +58,10 @@ function poleHurtu(body, klucz) {
   return typeof wartosc === 'string' ? wartosc : null;
 }
 
-const NIE_ROZUMIEM_WYMIARU = (surowe) => `„${surowe}" to nie jest wymiar w centymetrach. `
-  + 'Wpisz samą liczbę (np. 70 albo 10,5) albo zostaw pole puste — puste pole hurtem '
-  + 'znaczy „nie ruszaj tej kolumny", a nie „skasuj ją".';
+const NIE_ROZUMIEM_WYMIARU = (surowe) =>
+  `„${surowe}" to nie jest wymiar w centymetrach. ` +
+  'Wpisz samą liczbę (np. 70 albo 10,5) albo zostaw pole puste — puste pole hurtem ' +
+  'znaczy „nie ruszaj tej kolumny", a nie „skasuj ją".';
 
 /**
  * Tresc formularza hurtowego → POLECENIE, czyli komplet kolumn do ustawienia.
@@ -75,7 +80,10 @@ export function polecenieZFormularza(body) {
   // ⚠️ CENTYMETRY WCHODZA, MILIMETRY LADUJA W BAZIE — przelicza `domena/rozmiar.js`, TA SAMA
   // funkcja, ktorej uzywa karta produktu. Druga kopia arytmetyki znaczylaby, ze „10,5 cm"
   // wpisane hurtem to co innego niz „10,5 cm" wpisane na karcie.
-  for (const [pole, kolumna] of [['szerokosc_cm', 'szerokosc_mm'], ['wysokosc_cm', 'wysokosc_mm']]) {
+  for (const [pole, kolumna] of [
+    ['szerokosc_cm', 'szerokosc_mm'],
+    ['wysokosc_cm', 'wysokosc_mm'],
+  ]) {
     const surowe = poleHurtu(body, pole);
     if (surowe === BRAK_POLA) continue;
     if (surowe === null) return { polecenie: null, blad: NIE_ROZUMIEM_WYMIARU('(pole wysłane dwa razy)') };
@@ -111,8 +119,7 @@ export function polecenieZFormularza(body) {
     else if (p) {
       return {
         polecenie: null,
-        blad: `„${p}" nie jest oznaczeniem paczkomatu. Wybierz „tak", „nie" albo `
-          + `„${PACZKOMAT_KASUJACY}".`,
+        blad: `„${p}" nie jest oznaczeniem paczkomatu. Wybierz „tak", „nie" albo ` + `„${PACZKOMAT_KASUJACY}".`,
       };
     }
   }

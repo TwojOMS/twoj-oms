@@ -8,7 +8,9 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 
 const TERAZ = new Date('2026-11-06T10:00:00.000Z');
 const sprzatanie = [];
-afterEach(async () => { for (const f of sprzatanie.splice(0).reverse()) await f(); });
+afterEach(async () => {
+  for (const f of sprzatanie.splice(0).reverse()) await f();
+});
 
 function baza() {
   const db = openOmsDb(':memory:');
@@ -16,62 +18,112 @@ function baza() {
   return db;
 }
 const liczbaKart = (db) => db.prepare('SELECT COUNT(*) AS n FROM karty_produktow').get().n;
-const wpisy = (db) => db.prepare('SELECT klucz_id, klucz_zadania, trasa, status, cialo, at FROM api_idempotencja ORDER BY klucz_id, klucz_zadania').all();
+const wpisy = (db) =>
+  db
+    .prepare(
+      'SELECT klucz_id, klucz_zadania, trasa, status, cialo, at FROM api_idempotencja ORDER BY klucz_id, klucz_zadania',
+    )
+    .all();
 
 // Trasy testowe w pluginie /api/v1; klucz API przypięty jak przez strażnika (id z nagłówka testowego).
 function serwer(db) {
   const licznik = { karty: 0, awaria: 0, piecset: 0 };
   const zalozKarte = (nazwa) => {
     licznik.karty++;
-    const id = Number(db.prepare(`INSERT INTO karty_produktow (nazwa, utworzony_at, zmieniony_at) VALUES (?, ?, ?)`)
-      .run(nazwa, TERAZ.toISOString(), TERAZ.toISOString()).lastInsertRowid);
+    const id = Number(
+      db
+        .prepare(`INSERT INTO karty_produktow (nazwa, utworzony_at, zmieniony_at) VALUES (?, ?, ?)`)
+        .run(nazwa, TERAZ.toISOString(), TERAZ.toISOString()).lastInsertRowid,
+    );
     return { status: 201, cialo: { id, nazwa, wykonanie: licznik.karty } };
   };
   const app = Fastify();
   sprzatanie.push(() => app.close());
-  app.register(async (api) => {
-    api.addHook('onRequest', async (req) => {
-      const id = Number(req.headers['x-test-klucz'] ?? 1);
-      req.kluczApi = { id, nazwa: 'integracja testowa', prefiks: 'abcdefgh', zakresy: new Set(['produkty:zapis']) };
-    });
-    await pluginApiV1(api, { ctx: { db, teraz: () => TERAZ } });
-    const opcje = { teraz: () => TERAZ };
-    api.post('/karty', (req, reply) => zIdempotencja(db, req, reply, 'POST /karty',
-      () => zalozKarte(req.body?.nazwa ?? 'Lampa Półcień'), opcje));
-    api.post('/inna', (req, reply) => zIdempotencja(db, req, reply, 'POST /inna',
-      () => zalozKarte('inna'), opcje));
-    for (const status of [400, 404, 409, 422]) {
-      api.post(`/wynik-${status}`, (req, reply) => zIdempotencja(db, req, reply, `POST /wynik-${status}`, () => {
-        const { cialo } = zalozKarte(`przed ${status}`);
-        return { status, cialo };
-      }, opcje));
-    }
-    api.post('/awaria', (req, reply) => zIdempotencja(db, req, reply, 'POST /awaria', () => {
-      licznik.awaria++;
-      const wynik = zalozKarte('po awarii');
-      if (licznik.awaria === 1) throw new Error('atrapa: zerwane połączenie z bazą');
-      return wynik;
-    }, opcje));
-    api.post('/piecset', (req, reply) => zIdempotencja(db, req, reply, 'POST /piecset', () => {
-      licznik.piecset++;
-      if (licznik.piecset === 1) {
-        zalozKarte('przed 500');
-        return { status: 500, cialo: { kod: 'blad', powod: 'Błąd serwera.' } };
+  app.register(
+    async (api) => {
+      api.addHook('onRequest', async (req) => {
+        const id = Number(req.headers['x-test-klucz'] ?? 1);
+        req.kluczApi = { id, nazwa: 'integracja testowa', prefiks: 'abcdefgh', zakresy: new Set(['produkty:zapis']) };
+      });
+      await pluginApiV1(api, { ctx: { db, teraz: () => TERAZ } });
+      const opcje = { teraz: () => TERAZ };
+      api.post('/karty', (req, reply) =>
+        zIdempotencja(db, req, reply, 'POST /karty', () => zalozKarte(req.body?.nazwa ?? 'Lampa Półcień'), opcje),
+      );
+      api.post('/inna', (req, reply) => zIdempotencja(db, req, reply, 'POST /inna', () => zalozKarte('inna'), opcje));
+      for (const status of [400, 404, 409, 422]) {
+        api.post(`/wynik-${status}`, (req, reply) =>
+          zIdempotencja(
+            db,
+            req,
+            reply,
+            `POST /wynik-${status}`,
+            () => {
+              const { cialo } = zalozKarte(`przed ${status}`);
+              return { status, cialo };
+            },
+            opcje,
+          ),
+        );
       }
-      return zalozKarte('po 500');
-    }, opcje));
-    api.post('/bez-ciala', (req, reply) => zIdempotencja(db, req, reply, 'POST /bez-ciala', () => {
-      zalozKarte('bez ciała');
-      return { status: 204 };
-    }, opcje));
-  }, { prefix: '/api/v1' });
+      api.post('/awaria', (req, reply) =>
+        zIdempotencja(
+          db,
+          req,
+          reply,
+          'POST /awaria',
+          () => {
+            licznik.awaria++;
+            const wynik = zalozKarte('po awarii');
+            if (licznik.awaria === 1) throw new Error('atrapa: zerwane połączenie z bazą');
+            return wynik;
+          },
+          opcje,
+        ),
+      );
+      api.post('/piecset', (req, reply) =>
+        zIdempotencja(
+          db,
+          req,
+          reply,
+          'POST /piecset',
+          () => {
+            licznik.piecset++;
+            if (licznik.piecset === 1) {
+              zalozKarte('przed 500');
+              return { status: 500, cialo: { kod: 'blad', powod: 'Błąd serwera.' } };
+            }
+            return zalozKarte('po 500');
+          },
+          opcje,
+        ),
+      );
+      api.post('/bez-ciala', (req, reply) =>
+        zIdempotencja(
+          db,
+          req,
+          reply,
+          'POST /bez-ciala',
+          () => {
+            zalozKarte('bez ciała');
+            return { status: 204 };
+          },
+          opcje,
+        ),
+      );
+    },
+    { prefix: '/api/v1' },
+  );
   return { app, licznik };
 }
 
-const post = (app, url, klucz, dodatkowe = {}) => app.inject({
-  method: 'POST', url, payload: { nazwa: 'Lampa Półcień 🌙' },
-  headers: { ...(klucz === undefined ? {} : { 'idempotency-key': klucz }), ...dodatkowe },
-});
+const post = (app, url, klucz, dodatkowe = {}) =>
+  app.inject({
+    method: 'POST',
+    url,
+    payload: { nazwa: 'Lampa Półcień 🌙' },
+    headers: { ...(klucz === undefined ? {} : { 'idempotency-key': klucz }), ...dodatkowe },
+  });
 
 describe('zIdempotencja', () => {
   it('dwa POST z tym samym kluczem → jedno wykonanie, jedna karta, identyczny status, ciało i typ', async () => {
@@ -86,8 +138,16 @@ describe('zIdempotencja', () => {
     expect(a.json()).toEqual({ id: 1, nazwa: 'Lampa Półcień 🌙', wykonanie: 1 });
     expect(licznik.karty).toBe(1);
     expect(liczbaKart(db)).toBe(1);
-    expect(wpisy(db)).toEqual([{ klucz_id: 1, klucz_zadania: 'zadanie-1', trasa: 'POST /karty', status: 201,
-      cialo: a.body, at: TERAZ.toISOString() }]);
+    expect(wpisy(db)).toEqual([
+      {
+        klucz_id: 1,
+        klucz_zadania: 'zadanie-1',
+        trasa: 'POST /karty',
+        status: 201,
+        cialo: a.body,
+        at: TERAZ.toISOString(),
+      },
+    ]);
   });
 
   it('bez nagłówka każde wywołanie wykonuje się i nic nie jest zapisane', async () => {
@@ -99,32 +159,38 @@ describe('zIdempotencja', () => {
     expect(wpisy(db)).toEqual([]);
   });
 
-  it.each([404, 409])('%i nie jest zapamiętane i wycofuje także zapis trasy; powtórka wykonuje się od nowa', async (status) => {
-    const db = baza();
-    const { app, licznik } = serwer(db);
-    const a = await post(app, `/api/v1/wynik-${status}`, `k-${status}`);
-    expect(a.statusCode).toBe(status);
-    expect(wpisy(db)).toEqual([]);
-    expect(liczbaKart(db)).toBe(0);
-    const b = await post(app, `/api/v1/wynik-${status}`, `k-${status}`);
-    expect(b.statusCode).toBe(status);
-    expect(b.json().wykonanie).toBe(2);
-    expect(licznik.karty).toBe(2);
-    expect(wpisy(db)).toEqual([]);
-    expect(liczbaKart(db)).toBe(0);
-  });
+  it.each([404, 409])(
+    '%i nie jest zapamiętane i wycofuje także zapis trasy; powtórka wykonuje się od nowa',
+    async (status) => {
+      const db = baza();
+      const { app, licznik } = serwer(db);
+      const a = await post(app, `/api/v1/wynik-${status}`, `k-${status}`);
+      expect(a.statusCode).toBe(status);
+      expect(wpisy(db)).toEqual([]);
+      expect(liczbaKart(db)).toBe(0);
+      const b = await post(app, `/api/v1/wynik-${status}`, `k-${status}`);
+      expect(b.statusCode).toBe(status);
+      expect(b.json().wykonanie).toBe(2);
+      expect(licznik.karty).toBe(2);
+      expect(wpisy(db)).toEqual([]);
+      expect(liczbaKart(db)).toBe(0);
+    },
+  );
 
-  it.each([400, 422])('%i jest zapamiętane wraz z zapisem trasy; powtórka nie wykonuje się ponownie', async (status) => {
-    const db = baza();
-    const { app, licznik } = serwer(db);
-    const a = await post(app, `/api/v1/wynik-${status}`, `k-${status}`);
-    const b = await post(app, `/api/v1/wynik-${status}`, `k-${status}`);
-    expect([a.statusCode, b.statusCode]).toEqual([status, status]);
-    expect(b.body).toBe(a.body);
-    expect(licznik.karty).toBe(1);
-    expect(liczbaKart(db)).toBe(1);
-    expect(wpisy(db)).toEqual([expect.objectContaining({ status, cialo: a.body })]);
-  });
+  it.each([400, 422])(
+    '%i jest zapamiętane wraz z zapisem trasy; powtórka nie wykonuje się ponownie',
+    async (status) => {
+      const db = baza();
+      const { app, licznik } = serwer(db);
+      const a = await post(app, `/api/v1/wynik-${status}`, `k-${status}`);
+      const b = await post(app, `/api/v1/wynik-${status}`, `k-${status}`);
+      expect([a.statusCode, b.statusCode]).toEqual([status, status]);
+      expect(b.body).toBe(a.body);
+      expect(licznik.karty).toBe(1);
+      expect(liczbaKart(db)).toBe(1);
+      expect(wpisy(db)).toEqual([expect.objectContaining({ status, cialo: a.body })]);
+    },
+  );
 
   it('ten sam klucz na innej trasie → 422 kod idempotencja, bez wykonania', async () => {
     const db = baza();
@@ -186,7 +252,10 @@ describe('zIdempotencja', () => {
     expect([a.statusCode, b.statusCode]).toEqual([201, 201]);
     expect(a.json().id).not.toBe(b.json().id);
     expect(licznik.karty).toBe(2);
-    expect(wpisy(db).map((w) => [w.klucz_id, w.klucz_zadania])).toEqual([[7, 'ten-sam'], [8, 'ten-sam']]);
+    expect(wpisy(db).map((w) => [w.klucz_id, w.klucz_zadania])).toEqual([
+      [7, 'ten-sam'],
+      [8, 'ten-sam'],
+    ]);
   });
 
   it('pusty albo dłuższy niż 200 znaków klucz → 400 kod idempotencja, bez wykonania; 200 znaków przechodzi', async () => {
@@ -207,7 +276,9 @@ describe('zegar modułu api — sprzątanie idempotencji', () => {
   it('usuwa wpisy starsze niż 7 dni, zostawia młodsze', async () => {
     const db = baza();
     const dni = (n) => new Date(TERAZ.getTime() - n * 86_400_000).toISOString();
-    const ins = db.prepare('INSERT INTO api_idempotencja (klucz_id, klucz_zadania, trasa, status, cialo, at) VALUES (?, ?, ?, ?, ?, ?)');
+    const ins = db.prepare(
+      'INSERT INTO api_idempotencja (klucz_id, klucz_zadania, trasa, status, cialo, at) VALUES (?, ?, ?, ?, ?, ?)',
+    );
     ins.run(1, 'stary', 'POST /x', 201, '{}', dni(8));
     ins.run(1, 'mlody', 'POST /x', 201, '{}', dni(6));
     const zegary = modulApi.zbuduj({ db, teraz: () => TERAZ, log: () => {} }).zegary ?? [];
@@ -219,9 +290,14 @@ describe('zegar modułu api — sprzątanie idempotencji', () => {
 
   it('błąd sprzątania trafia do logu i nie wywraca przebiegu', async () => {
     const log = [];
-    const db = { prepare: () => { throw new Error('baza zamknięta'); } };
-    const zegar = modulApi.zbuduj({ db, teraz: () => TERAZ, log: (...t) => log.push(t.join(' ')) }).zegary
-      .find((z) => z.nazwa === 'api-idempotencja');
+    const db = {
+      prepare: () => {
+        throw new Error('baza zamknięta');
+      },
+    };
+    const zegar = modulApi
+      .zbuduj({ db, teraz: () => TERAZ, log: (...t) => log.push(t.join(' ')) })
+      .zegary.find((z) => z.nazwa === 'api-idempotencja');
     await expect(zegar.przebieg()).resolves.toBeUndefined();
     expect(log.join('\n')).toContain('baza zamknięta');
   });

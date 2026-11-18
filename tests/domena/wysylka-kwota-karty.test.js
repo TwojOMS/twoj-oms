@@ -7,9 +7,13 @@ describe('kwota pobrania na karcie', () => {
     expect(wynik.blad).toBeTruthy();
     expect(wynik.nadpisanie).toBeNull();
   });
-  it.each([['12,50', '12.50'], ['150.00', '150.00']])('zapisuje %s jako %s', (kwota, oczekiwana) => {
+  it.each([
+    ['12,50', '12.50'],
+    ['150.00', '150.00'],
+  ])('zapisuje %s jako %s', (kwota, oczekiwana) => {
     expect(sprawdzZmianeMetody('dpd', true, kwota)).toEqual({
-      nadpisanie: { metoda: 'dpd', pobranie: 1, kwota_pobrania: oczekiwana }, blad: null,
+      nadpisanie: { metoda: 'dpd', pobranie: 1, kwota_pobrania: oczekiwana },
+      blad: null,
     });
   });
   it.each(['0', '-10.00'])('zachowuje komunikat o kwocie większej od zera dla %s', (kwota) => {

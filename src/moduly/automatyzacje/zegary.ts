@@ -11,14 +11,22 @@ type Silnik = { przebieg: () => Promise<{ wlaczonych?: number; zapisow?: number;
  */
 export function zegarAutomatyzacji({ silnik, log }: { silnik: Silnik; log: (...tekst: string[]) => void }): Zegar {
   let pierwszy = true;
-  return { nazwa: 'automatyzacje', odstepMs: ODSTEP_AUTOMATYZACJI_MS, przebieg: async () => {
-    try {
-      const wynik = await silnik.przebieg();
-      if (pierwszy && wynik && !wynik.pominiety) {
-        pierwszy = false;
-        log(`automatyzacje: zegar ruszył — włączonych reguł: ${wynik.wlaczonych ?? 0}`
-          + (wynik.zapisow === undefined ? '' : `, zapisów: ${wynik.zapisow}`));
+  return {
+    nazwa: 'automatyzacje',
+    odstepMs: ODSTEP_AUTOMATYZACJI_MS,
+    przebieg: async () => {
+      try {
+        const wynik = await silnik.przebieg();
+        if (pierwszy && wynik && !wynik.pominiety) {
+          pierwszy = false;
+          log(
+            `automatyzacje: zegar ruszył — włączonych reguł: ${wynik.wlaczonych ?? 0}` +
+              (wynik.zapisow === undefined ? '' : `, zapisów: ${wynik.zapisow}`),
+          );
+        }
+      } catch (e) {
+        log(`automatyzacje: ${e instanceof Error ? e.message : String(e)}`);
       }
-    } catch (e) { log(`automatyzacje: ${e instanceof Error ? e.message : String(e)}`); }
-  } };
+    },
+  };
 }

@@ -26,10 +26,16 @@ describe('bramki płatności Woo', () => {
     await expect(klient(async () => odpowiedz(403, {})).pobierzBramkiPlatnosci()).rejects.toThrow('403');
   });
   it('odrzuca odpowiedź, która nie jest tablicą', async () => {
-    await expect(klient(async () => odpowiedz(200, {})).pobierzBramkiPlatnosci()).rejects.toThrow('nieprawidłową listę bramek');
+    await expect(klient(async () => odpowiedz(200, {})).pobierzBramkiPlatnosci()).rejects.toThrow(
+      'nieprawidłową listę bramek',
+    );
   });
   it('nie przepuszcza obiektów w polach tekstowych ani elementów niebędących obiektem', async () => {
-    const dane = [null, 'cod', { id: 'cod', title: { settings: 'sekret_bramki_polcien' }, method_title: 7, enabled: 'yes' }];
+    const dane = [
+      null,
+      'cod',
+      { id: 'cod', title: { settings: 'sekret_bramki_polcien' }, method_title: 7, enabled: 'yes' },
+    ];
     const wynik = await klient(async () => odpowiedz(200, dane)).pobierzBramkiPlatnosci();
     expect(wynik).toEqual([{ id: 'cod', tytul: '', nazwaWoo: '', wlaczona: false }]);
   });

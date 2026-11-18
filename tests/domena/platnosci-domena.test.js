@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
-  sumaWplatGrosze, dataPokryciaWplat, brakujacaKwotaGrosze, saldoWplat, parsujWplate,
+  sumaWplatGrosze,
+  dataPokryciaWplat,
+  brakujacaKwotaGrosze,
+  saldoWplat,
+  parsujWplate,
   domyslnaKwotaWplaty,
 } from '../../src/domena/platnosci.js';
 
@@ -24,7 +28,7 @@ describe('suma wpłat', () => {
     const wplaty = [w('35.65', '2026-07-30'), w('35.65', '2026-07-31'), w('141.60', '2026-08-01')];
     expect(sumaWplatGrosze(wplaty)).toBe(21290);
     // Dowod, ze to nie jest test o niczym: to samo na floatach wychodzi PONIZEJ progu.
-    expect(wplaty.reduce((a, p) => a + Number(p.kwota), 0) >= 212.90).toBe(false);
+    expect(wplaty.reduce((a, p) => a + Number(p.kwota), 0) >= 212.9).toBe(false);
     expect(saldoWplat({ kwota_brutto: '212.90', platnosci: wplaty }).stan).toBe('pokryte');
     expect(dataPokryciaWplat(wplaty, '212.90')).toBe('2026-08-01');
   });
@@ -109,7 +113,11 @@ describe('brakująca kwota', () => {
 describe('parsowanie formularza wpłaty', () => {
   it('kwota wymagana — brak kwoty to odmowa dla operatora', () => {
     expect(() => parsujWplate({ kwota: '' })).toThrow(/Podaj kwotę wpłaty/);
-    try { parsujWplate({}); } catch (e) { expect(e.dlaOperatora).toBe(true); }
+    try {
+      parsujWplate({});
+    } catch (e) {
+      expect(e.dlaOperatora).toBe(true);
+    }
     expect.assertions(2);
   });
 
@@ -150,7 +158,10 @@ describe('parsowanie formularza wpłaty', () => {
       '2026-08-07T10:30:00.000Z',
     );
     expect(p).toEqual({
-      kwota: '61.50', data: '2026-08-01T00:00:00', metoda: 'BLIK', uwaga: 'dopłata za szablon',
+      kwota: '61.50',
+      data: '2026-08-01T00:00:00',
+      metoda: 'BLIK',
+      uwaga: 'dopłata za szablon',
     });
   });
 });
@@ -183,7 +194,9 @@ describe('data wpłaty', () => {
   // nie znamy, więc jej nie zmyślamy. Ta sama zasada, co przy podłodze pollera
   // („data dostaje godzinę zero, bo sklep pyta o moment, nie o dzień").
   it('data wsteczna dostaje godzinę zero', () => {
-    expect(parsujWplate({ kwota: '10', data: '2026-08-01', metoda: 'Przelew' }, teraz).data).toBe('2026-08-01T00:00:00');
+    expect(parsujWplate({ kwota: '10', data: '2026-08-01', metoda: 'Przelew' }, teraz).data).toBe(
+      '2026-08-01T00:00:00',
+    );
   });
 
   // ⚠️ TO JEST CAŁA POPRAWKA: bylejaka wartość ma dostać ODMOWĘ, a nie wylądować w bazie.
@@ -210,7 +223,10 @@ describe('data wpłaty', () => {
 // częściowej podstawienie pełnej kwoty znaczyłoby nadpłatę wpisaną jednym kliknięciem.
 describe('domyślna kwota wpłaty w formularzu', () => {
   const zam = (kwota, wplaty = []) => ({
-    sklep: 'pro', kwota_brutto: kwota, pozycje: [], platnosci: wplaty,
+    sklep: 'pro',
+    kwota_brutto: kwota,
+    pozycje: [],
+    platnosci: wplaty,
   });
 
   it('bez wpłat proponuje całą kwotę zamówienia', () => {

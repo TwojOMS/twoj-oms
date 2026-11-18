@@ -6,8 +6,13 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { createWooAdapter } from '../../../src/oms/woo/adapter.js';
 import { createPoller } from '../../../src/moduly/kanaly/services/poller.js';
 import {
-  zapiszZamowienie, pobierzZamowienie, listaZamowien,
-  dodajPozycjeReczna, zapiszPozycjeReczna, usunPozycjeReczna, zapiszNadpisaniaPozycji,
+  zapiszZamowienie,
+  pobierzZamowienie,
+  listaZamowien,
+  dodajPozycjeReczna,
+  zapiszPozycjeReczna,
+  usunPozycjeReczna,
+  zapiszNadpisaniaPozycji,
 } from '../../../src/oms/db/zamowienia.js';
 import { dodajWplateReczna } from '../../../src/oms/db/platnosci.js';
 import { kwotaOczekiwanaGrosze, kwotaZamowieniaGrosze } from '../../../src/domena/suma-pozycji.js';
@@ -16,18 +21,27 @@ import { parsujNowaPozycje } from '../../../src/domena/pozycje-reczne.js';
 
 // Zamowienie DOKLADNIE w postaci, w jakiej oddaje je WooCommerce — tego samego uzywa poller.
 const zeSklepu = (nad = {}) => ({
-  id: 1301, number: '1301', status: 'processing', total: '212.90',
-  date_created: '2026-07-29T10:00:00', date_modified: '2026-07-29T10:00:00',
+  id: 1301,
+  number: '1301',
+  status: 'processing',
+  total: '212.90',
+  date_created: '2026-07-29T10:00:00',
+  date_modified: '2026-07-29T10:00:00',
   date_modified_gmt: '2026-07-29T10:00:00',
-  billing: {}, shipping: {}, shipping_lines: [{ method_id: 'flat_rate', instance_id: '1' }],
-  shipping_total: '73.09', shipping_tax: '16.81',
+  billing: {},
+  shipping: {},
+  shipping_lines: [{ method_id: 'flat_rate', instance_id: '1' }],
+  shipping_total: '73.09',
+  shipping_tax: '16.81',
   line_items: [{ id: 4321, name: 'STOP', sku: 'PRO-STOP-001', quantity: 2, total: '100.00', total_tax: '23.00' }],
   meta_data: [],
   ...nad,
 });
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 
 // PELNY przebieg pollera, nie samo zapiszZamowienie: to on jest tym, co realnie chodzi na
 // produkcji co dwie minuty, i to jego trzeba przepuscic, zeby dowod cokolwiek znaczyl.
@@ -49,7 +63,13 @@ describe('stawka VAT pozycji ręcznej w bazie', () => {
     dodajPozycjeReczna(db, id, parsujNowaPozycje({ nazwa: 'Album', ilosc: '1', cena_brutto: '10.80', vat: '8' }));
     const r = () => db.prepare("SELECT * FROM pozycje WHERE zamowienie_id = ? AND zrodlo = 'reczna'").get(id);
     expect(r().vat).toBe('8');
-    zapiszPozycjeReczna(db, id, r().id, { nazwa: 'Album', ilosc: 1, cena_brutto: '10.50', brutto_linii: '10.50', vat: '5' });
+    zapiszPozycjeReczna(db, id, r().id, {
+      nazwa: 'Album',
+      ilosc: 1,
+      cena_brutto: '10.50',
+      brutto_linii: '10.50',
+      vat: '5',
+    });
     expect(r().vat).toBe('5');
     zapiszPozycjeReczna(db, id, r().id, { nazwa: 'Album', ilosc: 2, cena_brutto: '10.50', brutto_linii: '21.00' });
     expect(r().vat).toBe('5');
@@ -58,7 +78,9 @@ describe('stawka VAT pozycji ręcznej w bazie', () => {
   it('stawka spoza listy nie trafia do bazy — odmowa', async () => {
     await przebiegPollera();
     const id = idZamowienia();
-    expect(() => dodajPozycjeReczna(db, id, { nazwa: 'X', ilosc: 1, cena_brutto: '1.00', brutto_linii: '1.00', vat: '22' })).toThrow(/stawk/i);
+    expect(() =>
+      dodajPozycjeReczna(db, id, { nazwa: 'X', ilosc: 1, cena_brutto: '1.00', brutto_linii: '1.00', vat: '22' }),
+    ).toThrow(/stawk/i);
   });
 });
 
@@ -146,7 +168,9 @@ describe('poller a ręczne nadpisania pozycji sklepowych', () => {
     zapiszNadpisaniaPozycji(db, id, { s4321: { ilosc: 3 } });
     await przebiegPollera({
       date_modified_gmt: '2026-07-29T11:00:00',
-      line_items: [{ id: 4321, name: 'STOP (nowa nazwa)', sku: 'PRO-STOP-001', quantity: 2, total: '100.00', total_tax: '23.00' }],
+      line_items: [
+        { id: 4321, name: 'STOP (nowa nazwa)', sku: 'PRO-STOP-001', quantity: 2, total: '100.00', total_tax: '23.00' },
+      ],
     });
     expect(pobierzZamowienie(db, idZamowienia()).pozycje[0].nazwa).toBe('STOP (nowa nazwa)');
   });
@@ -237,11 +261,26 @@ describe('edycja i usuwanie pozycji ręcznej', () => {
   // przeszlaby niezauwazona.
   async function zamowienieZRozjechanymiLicznikami() {
     for (let i = 0; i < 4; i += 1) {
-      zapiszZamowienie(db, 'pro', {
-        zrodlo_id: 9000 + i, numer: `900${i}`, klient: {}, dostawa: {}, metoda_wysylki: 'dpd',
-        kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '1.00',
-        status_woo: 'processing', oplacone_at: null, anulowane: 0, pozycje: [],
-      }, {});
+      zapiszZamowienie(
+        db,
+        'pro',
+        {
+          zrodlo_id: 9000 + i,
+          numer: `900${i}`,
+          klient: {},
+          dostawa: {},
+          metoda_wysylki: 'dpd',
+          kwota_pobrania: null,
+          chce_fakture: 0,
+          nip: null,
+          kwota_brutto: '1.00',
+          status_woo: 'processing',
+          oplacone_at: null,
+          anulowane: 0,
+          pozycje: [],
+        },
+        {},
+      );
     }
     await przebiegPollera();
     return idZamowienia();
@@ -364,13 +403,16 @@ describe('migracja na bazie z danymi', () => {
 
   it('jest idempotentna — trzecie otwarcie tej samej bazy niczego nie zmienia', async () => {
     const { db: druga } = await poPonownymOtwarciu({ zRecznaPozycja: true });
-    const przed = druga.prepare('SELECT id, zrodlo, zrodlo_id, brutto_linii, netto_linii FROM pozycje ORDER BY id').all();
+    const przed = druga
+      .prepare('SELECT id, zrodlo, zrodlo_id, brutto_linii, netto_linii FROM pozycje ORDER BY id')
+      .all();
     const sciezka = druga.prepare('PRAGMA database_list').all()[0].file;
     druga.close();
 
     const trzecia = openOmsDb(sciezka);
-    expect(trzecia.prepare('SELECT id, zrodlo, zrodlo_id, brutto_linii, netto_linii FROM pozycje ORDER BY id').all())
-      .toEqual(przed);
+    expect(
+      trzecia.prepare('SELECT id, zrodlo, zrodlo_id, brutto_linii, netto_linii FROM pozycje ORDER BY id').all(),
+    ).toEqual(przed);
     trzecia.close();
   });
 
@@ -378,8 +420,10 @@ describe('migracja na bazie z danymi', () => {
   // liczbę wierszy z liczbą `line_items` i BLOKOWAŁA przeliczenie reszty zamówienia.
   it('pozycja ręczna nie dostaje identyfikatora ze sklepu ani nie blokuje przeliczenia', async () => {
     const { db: druga } = await poPonownymOtwarciu({ zRecznaPozycja: true });
-    expect(druga.prepare('SELECT zrodlo, zrodlo_id FROM pozycje ORDER BY id').all())
-      .toEqual([{ zrodlo: 'sklep', zrodlo_id: 4321 }, { zrodlo: 'reczna', zrodlo_id: null }]);
+    expect(druga.prepare('SELECT zrodlo, zrodlo_id FROM pozycje ORDER BY id').all()).toEqual([
+      { zrodlo: 'sklep', zrodlo_id: 4321 },
+      { zrodlo: 'reczna', zrodlo_id: null },
+    ]);
     druga.close();
   });
 

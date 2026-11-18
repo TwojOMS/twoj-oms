@@ -20,8 +20,9 @@ export const ZAPIS_BDO_FIRMY = '/ustawienia/firma/bdo';
 /** Uwaga w /health, gdy NIP-u nie ma ani w pliku, ani w panelu (dokumenty z NIP-em odmawiają). */
 export const UWAGA_BRAK_NIP = 'brak NIP-u firmy — wpisz w Ustawienia → Firma';
 /** Odmowa dokumentu bez NIP-u — jedno zdanie dla wszystkich dokumentów. */
-export const ODMOWA_BRAK_NIP = 'Panel nie zna NIP-u firmy, więc dokument wyszedłby bez NIP-u sprzedawcy. '
-  + 'Wpisz NIP firmy w Ustawienia → Firma (/ustawienia/firma) albo OMS_SPRZEDAWCA_NIP w pliku konfiguracji.';
+export const ODMOWA_BRAK_NIP =
+  'Panel nie zna NIP-u firmy, więc dokument wyszedłby bez NIP-u sprzedawcy. ' +
+  'Wpisz NIP firmy w Ustawienia → Firma (/ustawienia/firma) albo OMS_SPRZEDAWCA_NIP w pliku konfiguracji.';
 
 const wielka = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const tekst = (v) => String(v ?? '').trim();
@@ -72,7 +73,12 @@ export function rozstrzygnijNipBdoFirmy({ zPliku, zapisNip, zapisBdo }) {
   const bdoPlik = zPliku?.bdo || null;
   const nip = nipPlik ?? nipZZapisu(zapisNip());
   const bdo = bdoPlik ?? bdoZZapisu(zapisBdo());
-  return { nip, bdo, zrodloNip: nipPlik ? 'plik' : nip ? 'baza' : null, zrodloBdo: bdoPlik ? 'plik' : bdo ? 'baza' : null };
+  return {
+    nip,
+    bdo,
+    zrodloNip: nipPlik ? 'plik' : nip ? 'baza' : null,
+    zrodloBdo: bdoPlik ? 'plik' : bdo ? 'baza' : null,
+  };
 }
 
 /** Bieżące { nip, bdo } z konfiguracji modułu: `config.nipBdoFirmy()` (plik → panel), a w starszych składach plik. */

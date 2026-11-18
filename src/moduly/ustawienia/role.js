@@ -15,27 +15,55 @@ export const malymi = (t) => String(t).toLocaleLowerCase('pl');
 const rowne = (a, b) => a.size === b.size && [...a].every((x) => b.has(x));
 
 export class BladRoli extends Error {
-  constructor(kod, komunikat) { super(komunikat); this.kod = kod; }
+  constructor(kod, komunikat) {
+    super(komunikat);
+    this.kod = kod;
+  }
 }
 
 export function tabeleRolIstnieja(db) {
   return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'role_ekrany'").get());
 }
-const ekranyZBazy = (db, klucz) => new Set(db.prepare('SELECT ekran FROM role_ekrany WHERE rola = ?').all(klucz).map((w) => w.ekran));
+const ekranyZBazy = (db, klucz) =>
+  new Set(
+    db
+      .prepare('SELECT ekran FROM role_ekrany WHERE rola = ?')
+      .all(klucz)
+      .map((w) => w.ekran),
+  );
 
 export function rolaPoKluczu(db, klucz) {
-  const w = db.prepare('SELECT klucz, nazwa, admin, zablokowana, osobista FROM role WHERE klucz = ?').get(String(klucz ?? ''));
+  const w = db
+    .prepare('SELECT klucz, nazwa, admin, zablokowana, osobista FROM role WHERE klucz = ?')
+    .get(String(klucz ?? ''));
   if (!w) return null;
-  return { klucz: w.klucz, nazwa: w.nazwa, admin: w.admin === 1, zablokowana: w.zablokowana === 1, osobista: w.osobista === 1,
-    ekrany: ekranyZBazy(db, w.klucz) };
+  return {
+    klucz: w.klucz,
+    nazwa: w.nazwa,
+    admin: w.admin === 1,
+    zablokowana: w.zablokowana === 1,
+    osobista: w.osobista === 1,
+    ekrany: ekranyZBazy(db, w.klucz),
+  };
 }
 
 export function listaRol(db) {
-  return db.prepare(`SELECT r.klucz, r.nazwa, r.admin, r.zablokowana, r.osobista,
+  return db
+    .prepare(
+      `SELECT r.klucz, r.nazwa, r.admin, r.zablokowana, r.osobista,
       (SELECT count(*) FROM konta k WHERE k.rola = r.klucz) AS liczbaKont
-    FROM role r ORDER BY r.zablokowana DESC, r.utworzone_at, r.rowid`).all()
-    .map((w) => ({ klucz: w.klucz, nazwa: w.nazwa, admin: w.admin === 1, zablokowana: w.zablokowana === 1,
-      osobista: w.osobista === 1, liczbaKont: w.liczbaKont, ekrany: ekranyZBazy(db, w.klucz) }));
+    FROM role r ORDER BY r.zablokowana DESC, r.utworzone_at, r.rowid`,
+    )
+    .all()
+    .map((w) => ({
+      klucz: w.klucz,
+      nazwa: w.nazwa,
+      admin: w.admin === 1,
+      zablokowana: w.zablokowana === 1,
+      osobista: w.osobista === 1,
+      liczbaKont: w.liczbaKont,
+      ekrany: ekranyZBazy(db, w.klucz),
+    }));
 }
 
 /**
@@ -43,13 +71,20 @@ export function listaRol(db) {
  * polu; zapis z innym odciskiem jest odrzucany (druga karta, przypisanie nowego ekranu po restarcie).
  */
 export function odciskMacierzy(db) {
-  const pary = db.prepare('SELECT rola, ekran FROM role_ekrany').all().map((w) => `${w.rola}:${w.ekran}`).sort();
+  const pary = db
+    .prepare('SELECT rola, ekran FROM role_ekrany')
+    .all()
+    .map((w) => `${w.rola}:${w.ekran}`)
+    .sort();
   return createHash('sha256').update(pary.join('\n')).digest('hex');
 }
 
 export function nazwaZajeta(db, nazwa, procz = null) {
   const m = malymi(nazwa);
-  return db.prepare('SELECT klucz, nazwa FROM role').all().some((r) => r.klucz !== procz && malymi(r.nazwa) === m);
+  return db
+    .prepare('SELECT klucz, nazwa FROM role')
+    .all()
+    .some((r) => r.klucz !== procz && malymi(r.nazwa) === m);
 }
 
 export function unikalnaNazwa(db, baza) {
@@ -61,9 +96,13 @@ export function unikalnaNazwa(db, baza) {
   return nazwa;
 }
 
-export function wstawRole(db, { klucz, nazwa, admin = false, zablokowana = false, osobista = false, ekrany = [], teraz }) {
-  db.prepare('INSERT INTO role (klucz, nazwa, admin, zablokowana, osobista, utworzone_at) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(klucz, nazwa, admin ? 1 : 0, zablokowana ? 1 : 0, osobista ? 1 : 0, teraz().toISOString());
+export function wstawRole(
+  db,
+  { klucz, nazwa, admin = false, zablokowana = false, osobista = false, ekrany = [], teraz },
+) {
+  db.prepare(
+    'INSERT INTO role (klucz, nazwa, admin, zablokowana, osobista, utworzone_at) VALUES (?, ?, ?, ?, ?, ?)',
+  ).run(klucz, nazwa, admin ? 1 : 0, zablokowana ? 1 : 0, osobista ? 1 : 0, teraz().toISOString());
   const wstaw = db.prepare('INSERT OR IGNORE INTO role_ekrany (rola, ekran) VALUES (?, ?)');
   for (const e of ekrany) wstaw.run(klucz, String(e));
 }
@@ -80,7 +119,13 @@ export function wolnyKluczRoli(db, losowyKlucz = nowyKluczRoli) {
 /** Nowa rola osobista z dokładnie podanymi ptaszkami, nazwa „<Etykieta> — <imię>”. Bez transakcji. */
 export function rolaOsobista(db, { ekrany, etykietaBazowa, imie, teraz, losowyKlucz = nowyKluczRoli }) {
   const klucz = wolnyKluczRoli(db, losowyKlucz);
-  wstawRole(db, { klucz, nazwa: unikalnaNazwa(db, `${etykietaBazowa} — ${imie}`), osobista: true, ekrany: [...ekrany], teraz });
+  wstawRole(db, {
+    klucz,
+    nazwa: unikalnaNazwa(db, `${etykietaBazowa} — ${imie}`),
+    osobista: true,
+    ekrany: [...ekrany],
+    teraz,
+  });
   return klucz;
 }
 
@@ -116,11 +161,18 @@ export function przypiszRoleBezTransakcji(db, kontoId, klucz) {
 
 export function wTransakcji(db, fn) {
   db.exec('BEGIN IMMEDIATE');
-  try { const w = fn(); db.exec('COMMIT'); return w; }
-  catch (e) { if (db.isTransaction) db.exec('ROLLBACK'); throw e; }
+  try {
+    const w = fn();
+    db.exec('COMMIT');
+    return w;
+  } catch (e) {
+    if (db.isTransaction) db.exec('ROLLBACK');
+    throw e;
+  }
 }
 
-export const przypiszRole = (db, kontoId, klucz) => wTransakcji(db, () => przypiszRoleBezTransakcji(db, kontoId, klucz));
+export const przypiszRole = (db, kontoId, klucz) =>
+  wTransakcji(db, () => przypiszRoleBezTransakcji(db, kontoId, klucz));
 
 export function synchronizujRole(db, { teraz = () => new Date(), losowyKlucz = nowyKluczRoli } = {}) {
   const wynik = { zasiane: false, przejete: [], poszerzone: [] };
@@ -129,30 +181,55 @@ export function synchronizujRole(db, { teraz = () => new Date(), losowyKlucz = n
     if (!db.prepare('SELECT 1 FROM role LIMIT 1').get()) {
       for (const [klucz, r] of Object.entries(ROLE)) {
         const admin = klucz === ROLA_ADMINISTRATOR;
-        wstawRole(db, { klucz, nazwa: r.etykieta, admin, zablokowana: admin, ekrany: admin ? kluczeEkranow() : ekranyRoli(klucz), teraz });
+        wstawRole(db, {
+          klucz,
+          nazwa: r.etykieta,
+          admin,
+          zablokowana: admin,
+          ekrany: admin ? kluczeEkranow() : ekranyRoli(klucz),
+          teraz,
+        });
       }
       wynik.zasiane = true;
     } else if (!rolaPoKluczu(db, ROLA_ADMINISTRATOR)) {
       // Brak wiersza Administratora przy niepustej tabeli (ręczna ingerencja w bazę): bez niego wstawienie
       // ekranów niżej łamie FK i OMS nie startuje — odtwarzamy go, zanim cokolwiek innego.
-      wstawRole(db, { klucz: ROLA_ADMINISTRATOR, nazwa: unikalnaNazwa(db, ROLE[ROLA_ADMINISTRATOR].etykieta),
-        admin: true, zablokowana: true, ekrany: kluczeEkranow(), teraz });
+      wstawRole(db, {
+        klucz: ROLA_ADMINISTRATOR,
+        nazwa: unikalnaNazwa(db, ROLE[ROLA_ADMINISTRATOR].etykieta),
+        admin: true,
+        zablokowana: true,
+        ekrany: kluczeEkranow(),
+        teraz,
+      });
     }
     // Tylko brakujące ekrany: start bez zmian nie pisze do bazy (pełny dysk nie może wywrócić startu OMS-u).
-    const ekranyAdmina = new Set(db.prepare('SELECT ekran FROM role_ekrany WHERE rola = ?').all(ROLA_ADMINISTRATOR).map((w) => w.ekran));
+    const ekranyAdmina = new Set(
+      db
+        .prepare('SELECT ekran FROM role_ekrany WHERE rola = ?')
+        .all(ROLA_ADMINISTRATOR)
+        .map((w) => w.ekran),
+    );
     const wstaw = db.prepare('INSERT OR IGNORE INTO role_ekrany (rola, ekran) VALUES (?, ?)');
     for (const e of kluczeEkranow()) if (!ekranyAdmina.has(e)) wstaw.run(ROLA_ADMINISTRATOR, e);
     const pelne = new Set(kluczeEkranow());
     for (const k of db.prepare('SELECT id, login, imie, rola, admin FROM konta ORDER BY id').all()) {
       if (k.admin === 1) {
-        if (k.rola !== ROLA_ADMINISTRATOR) db.prepare('UPDATE konta SET rola = ? WHERE id = ?').run(ROLA_ADMINISTRATOR, k.id);
+        if (k.rola !== ROLA_ADMINISTRATOR)
+          db.prepare('UPDATE konta SET rola = ? WHERE id = ?').run(ROLA_ADMINISTRATOR, k.id);
         if (!rowne(uprawnieniaKonta(db, k.id), pelne)) wynik.poszerzone.push(k.login);
         continue;
       }
       const rola = rolaPoKluczu(db, k.rola);
       const ptaszki = uprawnieniaKonta(db, k.id);
       if (rola && !rola.admin && rowne(rola.ekrany, ptaszki)) continue;
-      const klucz = rolaOsobista(db, { ekrany: ptaszki, etykietaBazowa: etykietaOsobista(k.rola, rola), imie: k.imie, teraz, losowyKlucz });
+      const klucz = rolaOsobista(db, {
+        ekrany: ptaszki,
+        etykietaBazowa: etykietaOsobista(k.rola, rola),
+        imie: k.imie,
+        teraz,
+        losowyKlucz,
+      });
       db.prepare('UPDATE konta SET rola = ? WHERE id = ?').run(klucz, k.id);
       wynik.przejete.push({ kontoId: k.id, login: k.login, rola: klucz });
     }
@@ -164,8 +241,12 @@ export function synchronizujRole(db, { teraz = () => new Date(), losowyKlucz = n
 /** Wiersz logu startu: kto przeszedł na rolę osobistą i kogo poszerzono do Administratora; null, gdy nikogo. */
 export function opisSynchronizacjiRol(wynik) {
   const czesci = [];
-  if (wynik.przejete.length) czesci.push(`konta przeniesione na role osobiste: ${wynik.przejete.map((p) => `${p.login} → ${p.rola}`).join(', ')}`);
-  if (wynik.poszerzone.length) czesci.push(`administratorzy poszerzeni do pełnej roli Administrator: ${wynik.poszerzone.join(', ')}`);
+  if (wynik.przejete.length)
+    czesci.push(
+      `konta przeniesione na role osobiste: ${wynik.przejete.map((p) => `${p.login} → ${p.rola}`).join(', ')}`,
+    );
+  if (wynik.poszerzone.length)
+    czesci.push(`administratorzy poszerzeni do pełnej roli Administrator: ${wynik.poszerzone.join(', ')}`);
   return czesci.length ? `role (PRZ-068): ${czesci.join('; ')}` : null;
 }
 
@@ -173,7 +254,8 @@ export function opisSynchronizacjiRol(wynik) {
 
 export function walidujNazweRoli(nazwa) {
   const t = String(nazwa ?? '').trim();
-  if (t.length < 1 || t.length > MAKS_NAZWY_ROLI) throw new BladRoli('nazwa', `Nazwa roli musi mieć od 1 do ${MAKS_NAZWY_ROLI} znaków.`);
+  if (t.length < 1 || t.length > MAKS_NAZWY_ROLI)
+    throw new BladRoli('nazwa', `Nazwa roli musi mieć od 1 do ${MAKS_NAZWY_ROLI} znaków.`);
   return t;
 }
 
@@ -229,7 +311,11 @@ export function usunRole(db, klucz) {
     if (!rola) throw new BladRoli('nieznana', 'Nie ma takiej roli.');
     if (rola.zablokowana) throw new BladRoli('zablokowana', 'Roli Administrator nie można usunąć.');
     const n = db.prepare('SELECT count(*) AS n FROM konta WHERE rola = ?').get(klucz).n;
-    if (n > 0) throw new BladRoli('uzywana', `Rola ma konta (${n}, także wyłączone) — przypisz im inną rolę, zanim ją usuniesz.`);
+    if (n > 0)
+      throw new BladRoli(
+        'uzywana',
+        `Rola ma konta (${n}, także wyłączone) — przypisz im inną rolę, zanim ją usuniesz.`,
+      );
     db.prepare('DELETE FROM role_ekrany WHERE rola = ?').run(klucz);
     db.prepare('DELETE FROM role WHERE klucz = ?').run(klucz);
   });
@@ -246,8 +332,13 @@ export function ustawPtaszkiPrzezRole(db, kontoId, { ekrany, admin, teraz, losow
     // Rolę osobistą konta (oznaczoną `osobista`, nie preset, nie Administrator) z jednym kontem aktualizujemy
     // w miejscu, żeby każdy zapis starej trasy nie mnożył ról „<Etykieta> — <imię> (n)”. Rola założona przez
     // admina („Magazynier”) nie jest osobista, nawet gdy ma jedno konto — wtedy powstaje nowa rola osobista.
-    const jedyna = obecna && obecna.osobista && !obecna.admin && !obecna.zablokowana && !ROLE[obecna.klucz]
-      && db.prepare('SELECT count(*) AS n FROM konta WHERE rola = ?').get(obecna.klucz).n === 1;
+    const jedyna =
+      obecna &&
+      obecna.osobista &&
+      !obecna.admin &&
+      !obecna.zablokowana &&
+      !ROLE[obecna.klucz] &&
+      db.prepare('SELECT count(*) AS n FROM konta WHERE rola = ?').get(obecna.klucz).n === 1;
     let klucz;
     if (jedyna) {
       klucz = obecna.klucz;
@@ -255,7 +346,13 @@ export function ustawPtaszkiPrzezRole(db, kontoId, { ekrany, admin, teraz, losow
       const wstaw = db.prepare('INSERT INTO role_ekrany (rola, ekran) VALUES (?, ?)');
       for (const e of new Set(ekrany)) wstaw.run(klucz, e);
     } else {
-      klucz = rolaOsobista(db, { ekrany, etykietaBazowa: etykietaOsobista(konto.rola, obecna), imie: konto.imie, teraz, losowyKlucz });
+      klucz = rolaOsobista(db, {
+        ekrany,
+        etykietaBazowa: etykietaOsobista(konto.rola, obecna),
+        imie: konto.imie,
+        teraz,
+        losowyKlucz,
+      });
     }
     przypiszRoleBezTransakcji(db, kontoId, klucz);
   });

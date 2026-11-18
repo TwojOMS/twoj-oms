@@ -22,8 +22,17 @@ import { zapiszProduktSklepowy } from '../../../src/oms/db/magazyn.js';
 
 // Produkt w lustrze magazynu (cennik „pro” z cenników testowych serwera) — zmyślony.
 const PRODUKT = Object.freeze({
-  kanal: 'pro', produkt_id: '7001', wariant_id: '', nazwa: 'Klosz lniany Półcień', sku_sklepu: 'KL-LN-01', cena_gr: 7490,
-  rozmiar_tekst: '', kategorie: [], zdjecia: [], adres: 'https://polcien.invalid/klosz', odczytane_at: '2026-10-27T08:00:00',
+  kanal: 'pro',
+  produkt_id: '7001',
+  wariant_id: '',
+  nazwa: 'Klosz lniany Półcień',
+  sku_sklepu: 'KL-LN-01',
+  cena_gr: 7490,
+  rozmiar_tekst: '',
+  kategorie: [],
+  zdjecia: [],
+  adres: 'https://polcien.invalid/klosz',
+  odczytane_at: '2026-10-27T08:00:00',
 });
 
 const config = { auth: { user: 'adam', pass: 'x' } };
@@ -45,48 +54,110 @@ const BEZ_FLAGI = [
 ];
 
 const zamowienie = (nad = {}) => ({
-  zrodlo_id: 2201, numer: '2201', klient: { first_name: 'Ewa', last_name: 'Półcień', email: 'ewa@polcien.invalid' },
-  dostawa: { city: 'Warszawa' }, metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null,
-  kwota_brutto: '212.90', koszt_dostawy_brutto: '89.90', koszt_dostawy_netto: '73.09', status_woo: 'processing',
-  oplacone_at: null, anulowane: 0, utworzone_at: '2026-10-27T09:00:00',
-  pozycje: [{
-    zrodlo_id: 4321, nazwa: 'Lampa stołowa Kałamarz', sku: 'LMP-KAL-01', ilosc: 2, cena_brutto: '61.50',
-    cena_netto: '50.00', brutto_linii: '123.00', netto_linii: '100.00', vat: null,
-  }],
+  zrodlo_id: 2201,
+  numer: '2201',
+  klient: { first_name: 'Ewa', last_name: 'Półcień', email: 'ewa@polcien.invalid' },
+  dostawa: { city: 'Warszawa' },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '212.90',
+  koszt_dostawy_brutto: '89.90',
+  koszt_dostawy_netto: '73.09',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-10-27T09:00:00',
+  pozycje: [
+    {
+      zrodlo_id: 4321,
+      nazwa: 'Lampa stołowa Kałamarz',
+      sku: 'LMP-KAL-01',
+      ilosc: 2,
+      cena_brutto: '61.50',
+      cena_netto: '50.00',
+      brutto_linii: '123.00',
+      netto_linii: '100.00',
+      vat: null,
+    },
+  ],
   ...nad,
 });
 
-let db; let app; let katalog;
+let db;
+let app;
+let katalog;
 async function panel(program) {
   db = openOmsDb(':memory:');
   katalog = mkdtempSync(join(tmpdir(), 'prz122-b07c-'));
-  const proforma = createProforma({ db, teraz: ZEGAR, config: {
-    nadawca: { nazwa: 'Pracownia Półcień', ulica: 'Lampowa 7', kod: '00-950', miasto: 'Warszawa', kraj: 'PL', phone: '' },
-    proforma: { nip: '1234563218', rachunek: '34109010140000000000000000', bank: 'Bank Przykładowy', katalog },
-  } });
+  const proforma = createProforma({
+    db,
+    teraz: ZEGAR,
+    config: {
+      nadawca: {
+        nazwa: 'Pracownia Półcień',
+        ulica: 'Lampowa 7',
+        kod: '00-950',
+        miasto: 'Warszawa',
+        kraj: 'PL',
+        phone: '',
+      },
+      proforma: { nip: '1234563218', rachunek: '34109010140000000000000000', bank: 'Bank Przykładowy', katalog },
+    },
+  });
   app = buildOmsServer({ db, config, poller, proforma, ...(program === undefined ? {} : { infakt: program }) });
   await app.ready();
 }
-afterEach(async () => { await app?.close(); rmSync(katalog, { recursive: true, force: true }); app = null; });
+afterEach(async () => {
+  await app?.close();
+  rmSync(katalog, { recursive: true, force: true });
+  app = null;
+});
 
-const karta = async (id, query = '') => (await app.inject({ method: 'GET', url: `/zamowienia/${id}${query}`, headers: naglowek })).body;
+const karta = async (id, query = '') =>
+  (await app.inject({ method: 'GET', url: `/zamowienia/${id}${query}`, headers: naglowek })).body;
 // Formularz „Dodaj pozycję” jest w trybie edycji pozycji (`?edytuj=pozycje`).
 const kartaEdycji = (id) => karta(id, '?edytuj=pozycje');
 const ekranNowego = async () => (await app.inject({ method: 'GET', url: '/zamowienia/nowe', headers: naglowek })).body;
 const wyslij = (url, payload) => app.inject({ method: 'POST', url, headers: naglowek, payload });
 const sekcjaPozycji = (html) => html.slice(html.indexOf('id="pozycje"'), html.indexOf('id="przesylka"'));
-const formularzDodaj = (html) => /<form method="post" action="\/zamowienia\/\d+\/pozycje\/zapisz" class="formularz-pozycji"[\s\S]*?<\/form>/u.exec(html)?.[0] ?? '';
-const reczne = (id) => db.prepare("SELECT nazwa, vat, cena_brutto, brutto_linii FROM pozycje WHERE zamowienie_id = ? AND zrodlo = 'reczna' ORDER BY id").all(id);
-const kolumnaVat = (html) => [...sekcjaPozycji(html).matchAll(/<td class="liczba kol-vat">([^<]*)<\/td>/gu)].map((m) => m[1].trim());
-const NOWE = { w_nazwa: 'Ewa Półcień', dostawa: 'dpd', platnosc: 'przelew', koszt_dostawy_brutto: '19,00',
-  poz_nazwa: 'Kurs lutowania', poz_ilosc: '1', poz_sku: '', poz_cena_brutto: '' };
+const formularzDodaj = (html) =>
+  /<form method="post" action="\/zamowienia\/\d+\/pozycje\/zapisz" class="formularz-pozycji"[\s\S]*?<\/form>/u.exec(
+    html,
+  )?.[0] ?? '';
+const reczne = (id) =>
+  db
+    .prepare(
+      "SELECT nazwa, vat, cena_brutto, brutto_linii FROM pozycje WHERE zamowienie_id = ? AND zrodlo = 'reczna' ORDER BY id",
+    )
+    .all(id);
+const kolumnaVat = (html) =>
+  [...sekcjaPozycji(html).matchAll(/<td class="liczba kol-vat">([^<]*)<\/td>/gu)].map((m) => m[1].trim());
+const NOWE = {
+  w_nazwa: 'Ewa Półcień',
+  dostawa: 'dpd',
+  platnosc: 'przelew',
+  koszt_dostawy_brutto: '19,00',
+  poz_nazwa: 'Kurs lutowania',
+  poz_ilosc: '1',
+  poz_sku: '',
+  poz_cena_brutto: '',
+};
 
 describe('TwojeFaktury (flaga `zw`) — karta zamówienia', () => {
-  beforeEach(async () => { await panel(programWbudowany()); });
+  beforeEach(async () => {
+    await panel(programWbudowany());
+  });
 
   it('„Dodaj pozycję” ze stawką „zw”: zapis „zw”, brutto = netto; karta pokazuje „zw” i VAT 0 tej linii', async () => {
     const id = zapiszZamowienie(db, 'pro', zamowienie(), {});
-    const r = await wyslij(`/zamowienia/${id}/pozycje`, { nazwa: 'Kurs lutowania', ilosc: '1', cena_netto: '57', vat: 'zw' });
+    const r = await wyslij(`/zamowienia/${id}/pozycje`, {
+      nazwa: 'Kurs lutowania',
+      ilosc: '1',
+      cena_netto: '57',
+      vat: 'zw',
+    });
     expect(r.statusCode, r.body).toBe(302);
     expect(reczne(id)).toEqual([{ nazwa: 'Kurs lutowania', vat: 'zw', cena_brutto: '57.00', brutto_linii: '57.00' }]);
     const html = await karta(id);
@@ -113,8 +184,11 @@ describe('TwojeFaktury (flaga `zw`) — karta zamówienia', () => {
     const edycja = await kartaEdycji(id);
     expect(edycja).toMatch(/<select name="vat" aria-label="Stawka VAT">[\s\S]*?<option value="zw">zw<\/option>/u);
     const r = await wyslij(`/zamowienia/${id}/pozycje/zapisz`, {
-      klucz: ['s4321', klucz], nazwa: ['Lampa stołowa Kałamarz', 'Album'], ilosc: ['2', '1'],
-      cena_brutto: ['61.50', '10.80'], vat: ['', 'zw'],
+      klucz: ['s4321', klucz],
+      nazwa: ['Lampa stołowa Kałamarz', 'Album'],
+      ilosc: ['2', '1'],
+      cena_brutto: ['61.50', '10.80'],
+      vat: ['', 'zw'],
     });
     expect(r.statusCode, r.body).toBeLessThan(400);
     expect(reczne(id)).toEqual([{ nazwa: 'Album', vat: 'zw', cena_brutto: '10.80', brutto_linii: '10.80' }]);
@@ -139,8 +213,20 @@ describe('TwojeFaktury (flaga `zw`) — karta zamówienia', () => {
 
   it('zmiana rabatu przelicza pozycję z magazynu ze stawką „zw” (zapis stawki „zw” z flagą)', async () => {
     const id = zapiszZamowienie(db, 'pro', zamowienie(), {});
-    dodajPozycjeReczna(db, id, { nazwa: 'Klosz lniany', sku: 'KL-1', ilosc: 1, cena_brutto: '100.00', brutto_linii: '100.00',
-      cena_katalogowa: '100.00', vat: 'zw' }, { zw: true });
+    dodajPozycjeReczna(
+      db,
+      id,
+      {
+        nazwa: 'Klosz lniany',
+        sku: 'KL-1',
+        ilosc: 1,
+        cena_brutto: '100.00',
+        brutto_linii: '100.00',
+        cena_katalogowa: '100.00',
+        vat: 'zw',
+      },
+      { zw: true },
+    );
     const r = await wyslij(`/zamowienia/${id}/ustalenia`, { rabat_procent: '10' });
     expect(r.statusCode, r.body).toBe(302);
     expect(reczne(id)).toEqual([{ nazwa: 'Klosz lniany', vat: 'zw', cena_brutto: '90.00', brutto_linii: '90.00' }]);
@@ -151,14 +237,30 @@ describe('TwojeFaktury (flaga `zw`) — karta zamówienia', () => {
     zapiszStawkeDomyslna(db, 'zw', { zw: true });
     zapiszProduktSklepowy(db, PRODUKT);
     const id = zapiszZamowienie(db, 'pro', zamowienie(), {});
-    const r = await wyslij(`/zamowienia/${id}/pozycje/z-magazynu`, { kanal: 'pro', produkt_id: '7001', wariant_id: '', ilosc: '1' });
+    const r = await wyslij(`/zamowienia/${id}/pozycje/z-magazynu`, {
+      kanal: 'pro',
+      produkt_id: '7001',
+      wariant_id: '',
+      ilosc: '1',
+    });
     expect(r.statusCode, r.body).toBe(302);
-    expect(reczne(id)).toEqual([{ nazwa: 'Klosz lniany Półcień', vat: 'zw', cena_brutto: '74.90', brutto_linii: '74.90' }]);
+    expect(reczne(id)).toEqual([
+      { nazwa: 'Klosz lniany Półcień', vat: 'zw', cena_brutto: '74.90', brutto_linii: '74.90' },
+    ]);
   });
 
   it('proforma z pozycją „zw”: w PDF „zw” bez „%”, VAT tej linii 0', async () => {
-    const id = zapiszZamowienie(db, 'pro', zamowienie({ nip: '1234500011', kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00',
-      koszt_dostawy_netto: '0.00' }), {});
+    const id = zapiszZamowienie(
+      db,
+      'pro',
+      zamowienie({
+        nip: '1234500011',
+        kwota_brutto: '123.00',
+        koszt_dostawy_brutto: '0.00',
+        koszt_dostawy_netto: '0.00',
+      }),
+      {},
+    );
     await wyslij(`/zamowienia/${id}/pozycje`, { nazwa: 'Kurs lutowania', ilosc: '1', cena_brutto: '57', vat: 'zw' });
     const r = await wyslij(`/zamowienia/${id}/proforma`, {});
     expect(r.statusCode, r.body).toBe(302);
@@ -172,7 +274,9 @@ describe('TwojeFaktury (flaga `zw`) — karta zamówienia', () => {
 });
 
 describe('TwojeFaktury (flaga `zw`) — nowe zamówienie', () => {
-  beforeEach(async () => { await panel(programWbudowany()); });
+  beforeEach(async () => {
+    await panel(programWbudowany());
+  });
 
   it('lista stawek ma „zw” bez „%”; wiersz „zw” zapisuje się i liczy netto = brutto', async () => {
     const t = await ekranNowego();
@@ -200,7 +304,13 @@ describe('TwojeFaktury (flaga `zw`) — nowe zamówienie', () => {
     zapiszStawkeDomyslna(db, 'zw', { zw: true });
     zapiszProduktSklepowy(db, PRODUKT);
     const r = await wyslij('/zamowienia/nowe/magazyn/dodaj', {
-      magazyn: 'klosz', cennik: 'pro', wybrany: '0', mag_kanal: 'pro', mag_produkt_id: '7001', mag_wariant_id: '', mag_ilosc: '1',
+      magazyn: 'klosz',
+      cennik: 'pro',
+      wybrany: '0',
+      mag_kanal: 'pro',
+      mag_produkt_id: '7001',
+      mag_wariant_id: '',
+      mag_ilosc: '1',
     });
     expect(r.statusCode, r.body).toBe(200);
     const wiersz = /value="Klosz lniany Półcień[\s\S]*?<\/tr>/u.exec(r.body)?.[0] ?? '';
@@ -210,11 +320,18 @@ describe('TwojeFaktury (flaga `zw`) — nowe zamówienie', () => {
 });
 
 describe.each(BEZ_FLAGI)('bez flagi `zw` (%s) — jak przed zmianą', (_nazwa, program) => {
-  beforeEach(async () => { await panel(program()); });
+  beforeEach(async () => {
+    await panel(program());
+  });
 
   it('„Dodaj pozycję” ze stawką „zw” → 400, nic nie zapisane; lista bez „zw”', async () => {
     const id = zapiszZamowienie(db, 'pro', zamowienie(), {});
-    const r = await wyslij(`/zamowienia/${id}/pozycje`, { nazwa: 'Kurs lutowania', ilosc: '1', cena_netto: '57', vat: 'zw' });
+    const r = await wyslij(`/zamowienia/${id}/pozycje`, {
+      nazwa: 'Kurs lutowania',
+      ilosc: '1',
+      cena_netto: '57',
+      vat: 'zw',
+    });
     expect(r.statusCode).toBe(400);
     expect(r.body).toContain('Nieznana stawka VAT „zw” — wybierz 23, 8, 5, 0%.');
     expect(reczne(id)).toEqual([]);
@@ -238,12 +355,22 @@ describe.each(BEZ_FLAGI)('bez flagi `zw` (%s) — jak przed zmianą', (_nazwa, p
   it('zapis zbiorczy z zapisaną „zw” (po zmianie programu) → 400, nic nie zapisane, wpis w logu', async () => {
     const id = zapiszZamowienie(db, 'pro', zamowienie(), {});
     dodajPozycjeReczna(db, id, { nazwa: 'Album', ilosc: 1, cena_brutto: '10.80', brutto_linii: '10.80', vat: '8' });
-    dodajPozycjeReczna(db, id, { nazwa: 'Kurs lutowania', ilosc: 1, cena_brutto: '100.00', brutto_linii: '100.00', vat: 'zw' }, { zw: true });
+    dodajPozycjeReczna(
+      db,
+      id,
+      { nazwa: 'Kurs lutowania', ilosc: 1, cena_brutto: '100.00', brutto_linii: '100.00', vat: 'zw' },
+      { zw: true },
+    );
     const przed = reczne(id);
-    const klucze = pobierzZamowienie(db, id).pozycje.filter((p) => p.reczna).map((p) => p.klucz);
+    const klucze = pobierzZamowienie(db, id)
+      .pozycje.filter((p) => p.reczna)
+      .map((p) => p.klucz);
     const r = await wyslij(`/zamowienia/${id}/pozycje/zapisz`, {
-      klucz: ['s4321', ...klucze], nazwa: ['Lampa stołowa Kałamarz', 'Album', 'Kurs lutowania'], ilosc: ['2', '2', '1'],
-      cena_brutto: ['61.50', '10.80', '100.00'], vat: ['', '', ''],
+      klucz: ['s4321', ...klucze],
+      nazwa: ['Lampa stołowa Kałamarz', 'Album', 'Kurs lutowania'],
+      ilosc: ['2', '2', '1'],
+      cena_brutto: ['61.50', '10.80', '100.00'],
+      vat: ['', '', ''],
     });
     expect(r.statusCode, r.body).toBe(400);
     expect(r.body).toContain('„zw”');
@@ -262,23 +389,48 @@ describe.each(BEZ_FLAGI)('bez flagi `zw` (%s) — jak przed zmianą', (_nazwa, p
 
 describe('zalozZamowienieReczne — opłata i pozycje z flagą `zw`', () => {
   const dane = {
-    klient: { first_name: 'Ewa', last_name: 'Półcień', email: 'ewa@polcien.invalid' }, dostawa: { first_name: 'Ewa' },
-    nip: '1234500011', etykietaKlienta: true, chce_fakture: 0, metoda_wysylki: 'dpd', pobranie: 0,
-    metoda_platnosci: 'Przelew', koszt_dostawy_brutto: '0.00',
-    pozycje: [{ nazwa: 'Kurs lutowania', sku: null, ilosc: 1, cena_brutto: '100.00', brutto_linii: '100.00', vat: 'zw' }],
+    klient: { first_name: 'Ewa', last_name: 'Półcień', email: 'ewa@polcien.invalid' },
+    dostawa: { first_name: 'Ewa' },
+    nip: '1234500011',
+    etykietaKlienta: true,
+    chce_fakture: 0,
+    metoda_wysylki: 'dpd',
+    pobranie: 0,
+    metoda_platnosci: 'Przelew',
+    koszt_dostawy_brutto: '0.00',
+    pozycje: [
+      { nazwa: 'Kurs lutowania', sku: null, ilosc: 1, cena_brutto: '100.00', brutto_linii: '100.00', vat: 'zw' },
+    ],
   };
-  beforeEach(() => { db = openOmsDb(':memory:'); dopiszKlientaZbiorczego(db); zapiszStawkeDomyslna(db, 'zw', { zw: true }); });
-  afterEach(() => { db.close(); });
+  beforeEach(() => {
+    db = openOmsDb(':memory:');
+    dopiszKlientaZbiorczego(db);
+    zapiszStawkeDomyslna(db, 'zw', { zw: true });
+  });
+  afterEach(() => {
+    db.close();
+  });
 
   it('z flagą: pozycja „zw” zapisana, opłata za obsługę dostaje domyślną „zw”', () => {
     const { id } = zalozZamowienieReczne({ db, dane, znacznik: '2026-10-27T09:00:00.000Z', zw: true });
-    expect(reczne(id).map((p) => [p.nazwa, p.vat])).toEqual([['Kurs lutowania', 'zw'], [NAZWA_OBSLUGI, 'zw']]);
+    expect(reczne(id).map((p) => [p.nazwa, p.vat])).toEqual([
+      ['Kurs lutowania', 'zw'],
+      [NAZWA_OBSLUGI, 'zw'],
+    ]);
   });
 
   it('bez flagi: opłata dostaje 23 (zapisana „zw” czytana jak dotąd), pozycja „zw” odrzucona', () => {
-    const { id } = zalozZamowienieReczne({ db, dane: { ...dane, pozycje: [{ ...dane.pozycje[0], vat: '8' }] },
-      znacznik: '2026-10-27T09:00:00.000Z' });
-    expect(reczne(id).map((p) => [p.nazwa, p.vat])).toEqual([['Kurs lutowania', '8'], [NAZWA_OBSLUGI, '23']]);
-    expect(() => zalozZamowienieReczne({ db, dane, znacznik: '2026-10-27T09:00:00.000Z' })).toThrow(/Nieznana stawka VAT „zw”/u);
+    const { id } = zalozZamowienieReczne({
+      db,
+      dane: { ...dane, pozycje: [{ ...dane.pozycje[0], vat: '8' }] },
+      znacznik: '2026-10-27T09:00:00.000Z',
+    });
+    expect(reczne(id).map((p) => [p.nazwa, p.vat])).toEqual([
+      ['Kurs lutowania', '8'],
+      [NAZWA_OBSLUGI, '23'],
+    ]);
+    expect(() => zalozZamowienieReczne({ db, dane, znacznik: '2026-10-27T09:00:00.000Z' })).toThrow(
+      /Nieznana stawka VAT „zw”/u,
+    );
   });
 });

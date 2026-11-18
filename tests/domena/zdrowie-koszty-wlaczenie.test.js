@@ -33,6 +33,10 @@ describe('/health po włączeniu pobierania kosztów', () => {
     expect(alarmyKosztow(w)).toHaveLength(1);
     expect(w.czuwaczKosztow.zdrowy).toBe(false);
     // Włączenie dawno temu nie ucisza świeżej awarii: liczy się PÓŹNIEJSZA z dwóch chwil.
-    expect(alarmyKosztow(ocen({ stanKosztow: { ostatnie_udane_at: temu(27), ostatni_blad: null }, kosztyWlaczoneOd: temu(100) }))).toHaveLength(1);
+    expect(
+      alarmyKosztow(
+        ocen({ stanKosztow: { ostatnie_udane_at: temu(27), ostatni_blad: null }, kosztyWlaczoneOd: temu(100) }),
+      ),
+    ).toHaveLength(1);
   });
 });

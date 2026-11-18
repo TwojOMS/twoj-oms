@@ -21,9 +21,11 @@ beforeEach(async () => {
   db.exec('CREATE TABLE sekret_sesji (id INTEGER PRIMARY KEY, sekret TEXT, zmieniony_at TEXT)');
   sekret = wczytajSekret(db);
   app = Fastify({ logger: false });
-  await app.register(basicAuth, { validate: async (uzytkownik, haslo) => {
-    if (uzytkownik !== 'test' || haslo !== 'test') throw new Error('Unauthorized');
-  } });
+  await app.register(basicAuth, {
+    validate: async (uzytkownik, haslo) => {
+      if (uzytkownik !== 'test' || haslo !== 'test') throw new Error('Unauthorized');
+    },
+  });
   app.addHook('onRequest', zbudujStraznika({ basicAuth: app.basicAuth, db, nazwaCiasteczka: NAZWA_CIASTECZKA_OMS }));
   app.get('/zamowienia', async () => 'chronione');
 });
@@ -54,9 +56,13 @@ describe('strażnik po przeszczepie', () => {
     expect((await app.inject('/favicon.ico')).statusCode).toBe(404);
   });
   it('ważna sesja dopuszcza żądanie', async () => {
-    const r = await app.inject({ method: 'GET', url: '/zamowienia', headers: {
-      cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz('test', sekret)}`,
-    } });
+    const r = await app.inject({
+      method: 'GET',
+      url: '/zamowienia',
+      headers: {
+        cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz('test', sekret)}`,
+      },
+    });
     expect(r.statusCode).toBe(200);
     expect(r.body).toBe('chronione');
   });

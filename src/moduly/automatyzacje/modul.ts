@@ -23,16 +23,29 @@ import { regulyDoOstrzezen } from './db/reguly.js';
  * 0004 — `odebrana_kurier_at` (chwila odbioru u kuriera, do odrzucenia spóźnionego dowodu).
  */
 export const modulAutomatyzacje: ModulOms<null> = {
-  nazwa: 'automatyzacje', wersja: '1.2.0', wymaga: ['rdzen', 'web', 'kanaly', 'faktury', 'wiadomosci', 'zamowienia', 'wysylka'],
-  migracje: [migracjaRegul, migracjaIndeksow, migracjaOdbioruPrzesylki, migracjaOdbioruUKuriera], menu: [], uprawnienia: [], konfiguracja: () => null,
+  nazwa: 'automatyzacje',
+  wersja: '1.2.0',
+  wymaga: ['rdzen', 'web', 'kanaly', 'faktury', 'wiadomosci', 'zamowienia', 'wysylka'],
+  migracje: [migracjaRegul, migracjaIndeksow, migracjaOdbioruPrzesylki, migracjaOdbioruUKuriera],
+  menu: [],
+  uprawnienia: [],
+  konfiguracja: () => null,
   zbuduj: (ctx) => {
     // Nadpisanie z testu albo wartość modułu — własne usługi modułu nie istnieją jeszcze w chwili budowy.
     const nadpisane = <T>(nazwa: string, domyslna: T): T => {
-      try { return ctx.usluga<T>('automatyzacje', nazwa); } catch { return domyslna; }
+      try {
+        return ctx.usluga<T>('automatyzacje', nazwa);
+      } catch {
+        return domyslna;
+      }
     };
     // Usługa wiadomości czytana przy każdym wykonaniu (null w wąskim składzie bez modułu wiadomości).
     const wiadomosci = () => {
-      try { return ctx.usluga<any>('wiadomosci', 'wiadomosci') ?? null; } catch { return null; }
+      try {
+        return ctx.usluga<any>('wiadomosci', 'wiadomosci') ?? null;
+      } catch {
+        return null;
+      }
     };
     const zdarzenia = nadpisane<readonly any[]>('zdarzenia', ZDARZENIA);
     const akcje = nadpisane<readonly any[]>('akcje', utworzAkcje({ wiadomosci }));
@@ -40,8 +53,15 @@ export const modulAutomatyzacje: ModulOms<null> = {
     // Usługa wiadomości istnieje zawsze; czy poczta jest TERAZ ustawiona, mówi `gotowe()` (zapis poczty
     // w Ustawieniach działa bez restartu).
     const pocztaGotowa = nadpisane<() => boolean>('pocztaGotowa', () => Boolean(wiadomosci()?.gotowe?.()));
-    const silnik = createSilnikAutomatyzacji({ db: ctx.db, zdarzenia, akcje, sprawdzWarunki, pocztaGotowa,
-      teraz: ctx.teraz, log: ctx.log });
+    const silnik = createSilnikAutomatyzacji({
+      db: ctx.db,
+      zdarzenia,
+      akcje,
+      sprawdzWarunki,
+      pocztaGotowa,
+      teraz: ctx.teraz,
+      log: ctx.log,
+    });
     // `w_toku` → `niepewne` robi pierwszy przebieg zegara, nie budowa modułu: skrypt budujący aplikację na tej samej
     // bazie nie przestawi trwającej wysyłki serwera.
     return {
@@ -49,16 +69,24 @@ export const modulAutomatyzacje: ModulOms<null> = {
       // Wstrzymana reguła jako uwaga zdrowia modułu (wzór: kanaly/modul.ts).
       // Uwaga: zbiorcze `zdrowie()` aplikacji czytają dziś tylko testy — na stronie głównej adminowi pokazuje ją tabelka
       // ostrzeżeń (domena/ostrzezenia.js, `ostrzezeniaAutomatyzacji`, zamowienia/kontekst.js).
-      zdrowie: () => ({ alarmy: [], uwagi: regulyDoOstrzezen(ctx.db, new Date(ctx.teraz().getTime() - 7 * 24 * 3600 * 1000).toISOString())
-        .filter((r: any) => r.wstrzymana_powod)
-        .map((r: any) => `automatyzacja „${r.nazwa}” wstrzymana: ${r.wstrzymana_powod}`) }),
+      zdrowie: () => ({
+        alarmy: [],
+        uwagi: regulyDoOstrzezen(ctx.db, new Date(ctx.teraz().getTime() - 7 * 24 * 3600 * 1000).toISOString())
+          .filter((r: any) => r.wstrzymana_powod)
+          .map((r: any) => `automatyzacja „${r.nazwa}” wstrzymana: ${r.wstrzymana_powod}`),
+      }),
       zegary: [zegarAutomatyzacji({ silnik, log: ctx.log })],
       trasy: (app) => {
         const faktury = <T>(nazwa: string) => ctx.usluga<T>('faktury', nazwa);
         const definicje = ctx.usluga<{ definicje?: readonly unknown[] }>('kanaly', 'config').definicje ?? [];
-        registerEkranAutomatyzacji(app, { db: ctx.db, teraz: ctx.teraz,
-          konfiguracjaProgramu: faktury('konfiguracjaProgramu'), automatKsef: faktury('automatKsef'), infakt: faktury('infakt'),
-          reguly: { definicje, zdarzenia, akcje, sprawdzWarunki, pocztaGotowa } });
+        registerEkranAutomatyzacji(app, {
+          db: ctx.db,
+          teraz: ctx.teraz,
+          konfiguracjaProgramu: faktury('konfiguracjaProgramu'),
+          automatKsef: faktury('automatKsef'),
+          infakt: faktury('infakt'),
+          reguly: { definicje, zdarzenia, akcje, sprawdzWarunki, pocztaGotowa },
+        });
       },
     };
   },

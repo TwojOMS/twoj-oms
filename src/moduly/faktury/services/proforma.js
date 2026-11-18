@@ -3,7 +3,11 @@ import { join } from 'node:path';
 import { dopiszLog } from '../../../oms/db/zamowienia.js';
 import { zamowienieDoDokumentu } from '../../../oms/db/scalenia.js';
 import {
-  zapiszProforme, pobierzProforme, uniewaznijPoprzednie, zapiszSciezkePliku, usunProforme,
+  zapiszProforme,
+  pobierzProforme,
+  uniewaznijPoprzednie,
+  zapiszSciezkePliku,
+  usunProforme,
 } from '../db/proformy.js';
 import { czyWolnoWystawic } from '../../../domena/proforma-stan.js';
 import { pozycjeDokumentu, sprawdzSumeDokumentu } from '../../../domena/pozycje-faktury.js';
@@ -83,9 +87,9 @@ export function createProforma({
       mkdirSync(ustawienia.katalog, { recursive: true });
     } catch (e) {
       throw bladOperatora(
-        `Katalog na proformy (${ustawienia.katalog}) jest nie do założenia: ${e.code ?? e.message}. `
-        + 'Proforma NIE została wystawiona i żaden numer z serii nie przepadł. '
-        + 'Sprawdź OMS_PROFORMY_KATALOG — musi wskazywać na zapisywalny wolumen.',
+        `Katalog na proformy (${ustawienia.katalog}) jest nie do założenia: ${e.code ?? e.message}. ` +
+          'Proforma NIE została wystawiona i żaden numer z serii nie przepadł. ' +
+          'Sprawdź OMS_PROFORMY_KATALOG — musi wskazywać na zapisywalny wolumen.',
       );
     }
   }
@@ -109,8 +113,10 @@ export function createProforma({
   function rachunekDokumentu() {
     const r = config?.rachunekFirmy ? config.rachunekFirmy() : { rachunek: ustawienia.rachunek, bank: ustawienia.bank };
     if (!String(r?.rachunek ?? '').trim()) {
-      throw bladOperatora('Panel nie zna rachunku firmy — wpisz numer rachunku w Ustawienia → Firma (/ustawienia/firma) '
-        + 'albo OMS_RACHUNEK w pliku konfiguracji. Proforma NIE została wystawiona i żaden numer z serii nie przepadł.');
+      throw bladOperatora(
+        'Panel nie zna rachunku firmy — wpisz numer rachunku w Ustawienia → Firma (/ustawienia/firma) ' +
+          'albo OMS_RACHUNEK w pliku konfiguracji. Proforma NIE została wystawiona i żaden numer z serii nie przepadł.',
+      );
     }
     return { rachunek: r.rachunek, bank: r.bank };
   }
@@ -122,7 +128,12 @@ export function createProforma({
   function daneNabywcy(z) {
     const d = daneFaktury(z);
     return {
-      nazwa: d.firma, ulica: d.ulica, kod: d.kod, miasto: d.miasto, kraj: d.kraj, nip: d.nip,
+      nazwa: d.firma,
+      ulica: d.ulica,
+      kod: d.kod,
+      miasto: d.miasto,
+      kraj: d.kraj,
+      nip: d.nip,
     };
   }
 
@@ -204,18 +215,21 @@ export function createProforma({
     // a sciezka trafia potem do bazy i jest serwowana przez trase pobrania.
     const sciezka = join(ustawienia.katalog, `${bezpiecznaNazwa(z.numer)}-${bezpiecznaNazwa(p.numer)}.pdf`);
     try {
-      writeFileSync(sciezka, budujPdf({
-        numer: p.numer,
-        dataWystawienia,
-        sprzedawca,
-        nabywca,
-        pozycje,
-        podsumowanieVat: wierszeVat,
-        doZaplatyGr,
-        slownie: kwotaSlownie(doZaplatyGr),
-        rachunek,
-        bank,
-      }));
+      writeFileSync(
+        sciezka,
+        budujPdf({
+          numer: p.numer,
+          dataWystawienia,
+          sprzedawca,
+          nabywca,
+          pozycje,
+          podsumowanieVat: wierszeVat,
+          doZaplatyGr,
+          slownie: kwotaSlownie(doZaplatyGr),
+          rachunek,
+          bank,
+        }),
+      );
     } catch (e) {
       // ⚠️ WIERSZ KASUJEMY, i to jest decyzja, nie skrot. Wybor byl miedzy skasowaniem
       // a oznaczeniem go jako uniewazniony — i rozstrzyga go pytanie „czy ten dokument
@@ -242,9 +256,9 @@ export function createProforma({
         wynik: `BŁĄD zapisu pliku (numer ${p.numer} przepadł): ${e.message}`,
       });
       throw bladOperatora(
-        `Nie udało się zapisać pliku proformy: ${e.message}. Proforma NIE została wystawiona `
-        + '— żaden dokument nie powstał, a poprzednia proforma (jeśli była) dalej obowiązuje. '
-        + 'Spróbuj ponownie, gdy zapis na dysk znów będzie działał.',
+        `Nie udało się zapisać pliku proformy: ${e.message}. Proforma NIE została wystawiona ` +
+          '— żaden dokument nie powstał, a poprzednia proforma (jeśli była) dalej obowiązuje. ' +
+          'Spróbuj ponownie, gdy zapis na dysk znów będzie działał.',
       );
     }
 
@@ -277,9 +291,7 @@ export function createProforma({
     const p = pobierzProforme(db, proformaId);
     if (!p) throw bladOperatora('Nie ma takiej proformy.');
     if (!p.plik_sciezka) {
-      throw bladOperatora(
-        `Proforma ${p.numer} nie ma zapisanego pliku — wystaw ją ponownie (dostanie kolejny numer).`,
-      );
+      throw bladOperatora(`Proforma ${p.numer} nie ma zapisanego pliku — wystaw ją ponownie (dostanie kolejny numer).`);
     }
     try {
       return { bajty: readFileSync(p.plik_sciezka), numer: p.numer };
@@ -287,8 +299,8 @@ export function createProforma({
       // Sciezka w bazie jest, pliku nie ma (skasowany, odmontowany wolumen). Komunikat mowi
       // czlowiekowi, co ma zrobic — bo sam plik nie wroci.
       throw bladOperatora(
-        `Pliku proformy ${p.numer} nie ma na dysku (${e.code ?? e.message}). `
-        + 'Wystaw proformę ponownie — dostanie kolejny numer.',
+        `Pliku proformy ${p.numer} nie ma na dysku (${e.code ?? e.message}). ` +
+          'Wystaw proformę ponownie — dostanie kolejny numer.',
       );
     }
   }

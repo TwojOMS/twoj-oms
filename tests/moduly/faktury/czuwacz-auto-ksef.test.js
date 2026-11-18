@@ -16,15 +16,36 @@ let licznik = 0;
 function zamowienieZFaktura(db, { wyslanaZPanelu }) {
   licznik += 1;
   const sklep = 'allegro_polcien';
-  const id = zapiszZamowienie(db, sklep, {
-    zrodlo_id: `${sklep}-${licznik}`, numer: String(5000 + licznik), klient: { first_name: 'Ala' }, dostawa: {},
-    metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: null, kwota_brutto: '123.00',
-    koszt_dostawy_brutto: '0.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
-    utworzone_at: new Date().toISOString(), pozycje: [],
-  }, {});
+  const id = zapiszZamowienie(
+    db,
+    sklep,
+    {
+      zrodlo_id: `${sklep}-${licznik}`,
+      numer: String(5000 + licznik),
+      klient: { first_name: 'Ala' },
+      dostawa: {},
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: 1,
+      nip: null,
+      kwota_brutto: '123.00',
+      koszt_dostawy_brutto: '0.00',
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane: 0,
+      utworzone_at: new Date().toISOString(),
+      pozycje: [],
+    },
+    {},
+  );
   const dokument = String(900 + licznik);
   const f = rozpocznijFakture(db, id);
-  zakonczFakture(db, f.id, { uuid: dokument, numer: `FV ${licznik}/11/2026`, ksefStatus: null }, { program: 'fakturownia' });
+  zakonczFakture(
+    db,
+    f.id,
+    { uuid: dokument, numer: `FV ${licznik}/11/2026`, ksefStatus: null },
+    { program: 'fakturownia' },
+  );
   if (wyslanaZPanelu) zajmijWysylkeKsef(db, dokument, { numer: `FV ${licznik}/11/2026` });
   return { zamowienieId: id, dokument };
 }
@@ -32,11 +53,23 @@ function zamowienieZFaktura(db, { wyslanaZPanelu }) {
 function czuwaczFakturowni(db, odpowiedz, { alarm = true } = {}) {
   const alarmAutoKsef = utworzAlarmAutoKsef(db);
   const klient = {
-    pobierzFakture: async (id) => ({ id: Number(id), number: `FV ${id}`, kind: 'vat', price_gross: '123.00', price_net: '100.00', price_tax: '23.00', paid: '0',
-      positions: [], ...odpowiedz }),
+    pobierzFakture: async (id) => ({
+      id: Number(id),
+      number: `FV ${id}`,
+      kind: 'vat',
+      price_gross: '123.00',
+      price_net: '100.00',
+      price_tax: '23.00',
+      paid: '0',
+      positions: [],
+      ...odpowiedz,
+    }),
   };
   const program = programFakturownia(klient, { alarmAutoKsef });
-  return { alarmAutoKsef, czuwacz: createCzuwaczKsef({ db, program, ...(alarm ? { alarmAutoKsef } : {}), log: () => {} }) };
+  return {
+    alarmAutoKsef,
+    czuwacz: createCzuwaczKsef({ db, program, ...(alarm ? { alarmAutoKsef } : {}), log: () => {} }),
+  };
 }
 
 describe('czuwacz KSeF — warstwa 3 (Fakturownia wysłała sama)', () => {
@@ -48,7 +81,9 @@ describe('czuwacz KSeF — warstwa 3 (Fakturownia wysłała sama)', () => {
     await czuwacz.przebieg();
 
     expect(alarmAutoKsef.wczytaj()).toEqual([expect.objectContaining({ dokument, gov_status: 'ok', oid: null })]);
-    const wpisy = db.prepare("SELECT wynik FROM log WHERE zamowienie_id = ? AND akcja = 'ksef'").all(zamowienieId)
+    const wpisy = db
+      .prepare("SELECT wynik FROM log WHERE zamowienie_id = ? AND akcja = 'ksef'")
+      .all(zamowienieId)
       .map((w) => w.wynik);
     expect(wpisy.some((w) => w.includes('OMS tego nie zlecał'))).toBe(true);
     db.close();
@@ -64,7 +99,8 @@ describe('czuwacz KSeF — warstwa 3 (Fakturownia wysłała sama)', () => {
     await czuwacz.przebieg();
 
     expect(alarmAutoKsef.wczytaj()).toEqual([]);
-    const ile = db.prepare("SELECT COUNT(*) AS n FROM log WHERE zamowienie_id = ? AND akcja = 'ksef' AND wynik LIKE '%nie zlecał%'")
+    const ile = db
+      .prepare("SELECT COUNT(*) AS n FROM log WHERE zamowienie_id = ? AND akcja = 'ksef' AND wynik LIKE '%nie zlecał%'")
       .get(zamowienieId).n;
     expect(ile).toBe(1);
     db.close();
@@ -102,9 +138,21 @@ describe('czuwacz KSeF — warstwa 3 (Fakturownia wysłała sama)', () => {
     const klient = {
       pobierzFakture: async (id) => {
         // Operator zatwierdza wysyłkę drugiego dokumentu, gdy czuwacz czyta pierwszy (rezerwacja przed wysyłką).
-        if (String(id) === pierwszy) { zajmijWysylkeKsef(db, drugi, { numer: 'FV 2/11/2026' }); zlecone.add(drugi); }
-        return { id: Number(id), number: `FV ${id}`, kind: 'vat', price_gross: '123.00', price_net: '100.00', price_tax: '23.00', paid: '0',
-          positions: [], gov_status: zlecone.has(String(id)) ? 'processing' : null };
+        if (String(id) === pierwszy) {
+          zajmijWysylkeKsef(db, drugi, { numer: 'FV 2/11/2026' });
+          zlecone.add(drugi);
+        }
+        return {
+          id: Number(id),
+          number: `FV ${id}`,
+          kind: 'vat',
+          price_gross: '123.00',
+          price_net: '100.00',
+          price_tax: '23.00',
+          paid: '0',
+          positions: [],
+          gov_status: zlecone.has(String(id)) ? 'processing' : null,
+        };
       },
     };
     const program = programFakturownia(klient, { alarmAutoKsef });

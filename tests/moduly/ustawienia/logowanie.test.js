@@ -13,7 +13,8 @@ const BASIC = 'Basic ' + Buffer.from('adam:x').toString('base64');
 const JAK_PRZEGLADARKA = { accept: 'text/html,application/xhtml+xml' };
 const ORIGIN = { origin: 'http://localhost' };
 
-let db; let app;
+let db;
+let app;
 beforeEach(() => {
   db = openOmsDb(':memory:');
   app = buildOmsServer({ db, config, poller });
@@ -69,7 +70,9 @@ describe('żądania NIE-przeglądarkowe dalej dostają 401', () => {
 describe('logowanie formularzem', () => {
   it('poprawne dane wystawiają ciasteczko i odsyłają tam, gdzie operator szedł', async () => {
     const r = await app.inject({
-      method: 'POST', url: '/login', headers: ORIGIN,
+      method: 'POST',
+      url: '/login',
+      headers: ORIGIN,
       payload: { uzytkownik: 'adam', haslo: 'x', powrot: '/faktury' },
     });
     expect(r.statusCode).toBe(302);
@@ -91,7 +94,8 @@ describe('logowanie formularzem', () => {
 
   it('podrobione ciasteczko nie wpuszcza', async () => {
     const r = await app.inject({
-      method: 'GET', url: '/',
+      method: 'GET',
+      url: '/',
       headers: { ...JAK_PRZEGLADARKA, cookie: `${NAZWA_CIASTECZKA_OMS}=zmyslone.podpis` },
     });
     expect(r.statusCode).toBe(302);
@@ -112,7 +116,9 @@ describe('logowanie formularzem', () => {
 
   it('adres powrotu przechodzi przez bramkę — obcy host nie przejdzie', async () => {
     const r = await app.inject({
-      method: 'POST', url: '/login', headers: ORIGIN,
+      method: 'POST',
+      url: '/login',
+      headers: ORIGIN,
       payload: { uzytkownik: 'adam', haslo: 'x', powrot: '//obcy.pl/przejmij' },
     });
     expect(r.headers.location).toBe('/');
@@ -124,7 +130,9 @@ describe('flaga Secure idzie za połączeniem', () => {
   // z flaga Secure w calosci, wiec ekran logowania „nic by nie robil".
   it('po HTTP ciasteczko NIE MA Secure', async () => {
     const r = await app.inject({
-      method: 'POST', url: '/login', headers: ORIGIN,
+      method: 'POST',
+      url: '/login',
+      headers: ORIGIN,
       payload: { uzytkownik: 'adam', haslo: 'x', powrot: '/' },
     });
     expect(r.headers['set-cookie']).not.toContain('Secure');
@@ -132,7 +140,8 @@ describe('flaga Secure idzie za połączeniem', () => {
 
   it('za proxy po HTTPS ciasteczko dostaje Secure', async () => {
     const r = await app.inject({
-      method: 'POST', url: '/login',
+      method: 'POST',
+      url: '/login',
       headers: { ...ORIGIN, 'x-forwarded-proto': 'https' },
       payload: { uzytkownik: 'adam', haslo: 'x', powrot: '/' },
     });
@@ -141,10 +150,13 @@ describe('flaga Secure idzie za połączeniem', () => {
 });
 
 describe('hamulec na zgadywanie hasła', () => {
-  const zlaProba = () => app.inject({
-    method: 'POST', url: '/login', headers: ORIGIN,
-    payload: { uzytkownik: 'adam', haslo: 'ZLE', powrot: '/' },
-  });
+  const zlaProba = () =>
+    app.inject({
+      method: 'POST',
+      url: '/login',
+      headers: ORIGIN,
+      payload: { uzytkownik: 'adam', haslo: 'ZLE', powrot: '/' },
+    });
 
   it('blokuje dokładnie przy piątej nieudanej próbie', async () => {
     for (let i = 0; i < LIMIT_PROB - 1; i++) expect((await zlaProba()).statusCode).toBe(401);
@@ -158,7 +170,9 @@ describe('hamulec na zgadywanie hasła', () => {
   it('po zablokowaniu nie wpuszcza nawet z POPRAWNYM hasłem', async () => {
     for (let i = 0; i < LIMIT_PROB; i++) await zlaProba();
     const r = await app.inject({
-      method: 'POST', url: '/login', headers: ORIGIN,
+      method: 'POST',
+      url: '/login',
+      headers: ORIGIN,
       payload: { uzytkownik: 'adam', haslo: 'x', powrot: '/' },
     });
     expect(r.statusCode).toBe(429);
@@ -177,10 +191,13 @@ describe('hamulec na zgadywanie hasła', () => {
 // 291 wierszy. (2) `login` szedl do dziennika bez zadnego ograniczenia dlugosci — 291 zadan
 // ze 100 kB loginem dalo 29,1 MB w samej tej kolumnie.
 describe('N1 — dziennik przy zapalonej karze nie puchnie bez ograniczenia', () => {
-  const zlaProba = (uzytkownik = 'adam') => app.inject({
-    method: 'POST', url: '/login', headers: ORIGIN,
-    payload: { uzytkownik, haslo: 'ZLE', powrot: '/' },
-  });
+  const zlaProba = (uzytkownik = 'adam') =>
+    app.inject({
+      method: 'POST',
+      url: '/login',
+      headers: ORIGIN,
+      payload: { uzytkownik, haslo: 'ZLE', powrot: '/' },
+    });
 
   it('kara + dziesiec kolejnych zadan daje DOKLADNIE JEDEN wpis "zablokowane"', async () => {
     for (let i = 0; i < LIMIT_PROB; i++) await zlaProba();
@@ -213,9 +230,15 @@ describe('wylogowanie', () => {
 
   it('„wszystkie urządzenia" unieważnia ciasteczko wydane wcześniej', async () => {
     const stare = ciastko();
-    expect((await app.inject({ method: 'GET', url: '/', headers: { ...JAK_PRZEGLADARKA, cookie: stare } })).statusCode).toBe(200);
+    expect(
+      (await app.inject({ method: 'GET', url: '/', headers: { ...JAK_PRZEGLADARKA, cookie: stare } })).statusCode,
+    ).toBe(200);
 
-    await app.inject({ method: 'POST', url: '/ustawienia/konta/wyloguj-wszystkie', headers: { ...ORIGIN, cookie: stare } });
+    await app.inject({
+      method: 'POST',
+      url: '/ustawienia/konta/wyloguj-wszystkie',
+      headers: { ...ORIGIN, cookie: stare },
+    });
 
     const po = await app.inject({ method: 'GET', url: '/', headers: { ...JAK_PRZEGLADARKA, cookie: stare } });
     expect(po.statusCode).toBe(302);
@@ -233,7 +256,8 @@ describe('odnawianie ciasteczka w locie', () => {
   // Ciasteczko wazne 90 dni przesuwa termin przy uzyciu, wiec przy codziennej pracy nie
   // wygasa nigdy. Przepisujemy je dopiero po dobie — przegladarka nie ma dostawac
   // Set-Cookie przy kazdym kliknieciu.
-  const stareODobe = () => `${NAZWA_CIASTECZKA_OMS}=${podpisz(config.auth.user, odczytajSekret(db), Date.now() - 25 * 60 * 60 * 1000)}`;
+  const stareODobe = () =>
+    `${NAZWA_CIASTECZKA_OMS}=${podpisz(config.auth.user, odczytajSekret(db), Date.now() - 25 * 60 * 60 * 1000)}`;
 
   it('świeże ciasteczko NIE jest przepisywane', async () => {
     const r = await app.inject({ method: 'GET', url: '/', headers: { ...JAK_PRZEGLADARKA, cookie: ciastko() } });
@@ -259,7 +283,8 @@ describe('odnawianie ciasteczka w locie', () => {
 
   it('odnowione za proxy po HTTPS ma Secure', async () => {
     const r = await app.inject({
-      method: 'GET', url: '/',
+      method: 'GET',
+      url: '/',
       headers: { ...JAK_PRZEGLADARKA, cookie: stareODobe(), 'x-forwarded-proto': 'https' },
     });
     expect(r.headers['set-cookie']).toContain('Secure');
@@ -268,7 +293,11 @@ describe('odnawianie ciasteczka w locie', () => {
 
 describe('menu konta i administracja sesjami', () => {
   it('podstrona ustawień niesie motyw i własne wylogowanie w menu konta', async () => {
-    const r = await app.inject({ method: 'GET', url: '/ustawienia/zamowienia-i-wysylka', headers: { ...JAK_PRZEGLADARKA, cookie: ciastko() } });
+    const r = await app.inject({
+      method: 'GET',
+      url: '/ustawienia/zamowienia-i-wysylka',
+      headers: { ...JAK_PRZEGLADARKA, cookie: ciastko() },
+    });
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('action="/motyw"');
     expect(r.body).toContain('action="/wyloguj"');
@@ -276,14 +305,22 @@ describe('menu konta i administracja sesjami', () => {
   });
 
   it('globalne wylogowanie jest wyłącznie na stronie Kont', async () => {
-    const r = await app.inject({ method: 'GET', url: '/ustawienia/konta', headers: { ...JAK_PRZEGLADARKA, cookie: ciastko() } });
+    const r = await app.inject({
+      method: 'GET',
+      url: '/ustawienia/konta',
+      headers: { ...JAK_PRZEGLADARKA, cookie: ciastko() },
+    });
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('action="/ustawienia/konta/wyloguj-wszystkie"');
   });
 
   it('NIE pokazuje samego sekretu — to jest poświadczenie', async () => {
     const sekret = odczytajSekret(db);
-    const r = await app.inject({ method: 'GET', url: '/ustawienia/konta', headers: { ...JAK_PRZEGLADARKA, cookie: ciastko() } });
+    const r = await app.inject({
+      method: 'GET',
+      url: '/ustawienia/konta',
+      headers: { ...JAK_PRZEGLADARKA, cookie: ciastko() },
+    });
     expect(r.body).not.toContain(sekret);
   });
 });
@@ -294,7 +331,11 @@ describe('zasoby ekranu logowania', () => {
   // `Accept: text/html`, wiec straznik nie uznawal go za wejscie przegladarki. Efekt: ekran
   // bez jednej barwy marki, czcionka systemowa. Widac to wylacznie w przegladarce.
   it('arkusz stylów jest dostępny BEZ zalogowania', async () => {
-    const r = await app.inject({ method: 'GET', url: '/public/oms-design.css', headers: { accept: 'text/css,*/*;q=0.1' } });
+    const r = await app.inject({
+      method: 'GET',
+      url: '/public/oms-design.css',
+      headers: { accept: 'text/css,*/*;q=0.1' },
+    });
     expect(r.statusCode).toBe(200);
   });
 

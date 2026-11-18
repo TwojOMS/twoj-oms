@@ -90,8 +90,10 @@ export function idDokumentuDla(f, program) {
   if (id == null) return null;
   if (czyDokumentProgramu(f, program)) return id;
   const gdzie = wProgramie(programDokumentu(f));
-  throw bladOperatora(`Ta faktura jest w ${gdzie}, a program do faktur OMS-u to teraz „${etykietaModulu(idProgramu(program))}” — otworzysz ją w ${gdzie}. Nic nie poszło do programu.`,
-    { status: 409, bezProgramu: true });
+  throw bladOperatora(
+    `Ta faktura jest w ${gdzie}, a program do faktur OMS-u to teraz „${etykietaModulu(idProgramu(program))}” — otworzysz ją w ${gdzie}. Nic nie poszło do programu.`,
+    { status: 409, bezProgramu: true },
+  );
 }
 
 /**
@@ -102,8 +104,17 @@ export function idDokumentuDla(f, program) {
 export const TERMIN_PODGLADU_FAKTURY_MS = 2500;
 export async function podgladFakturyZTerminem(program, id, ms = TERMIN_PODGLADU_FAKTURY_MS) {
   let zegar;
-  const termin = new Promise((ok) => { zegar = setTimeout(() => ok(null), ms); });
+  const termin = new Promise((ok) => {
+    zegar = setTimeout(() => ok(null), ms);
+  });
   try {
-    return await Promise.race([Promise.resolve().then(() => program.pobierzFakture(id)).catch(() => null), termin]);
-  } finally { clearTimeout(zegar); }
+    return await Promise.race([
+      Promise.resolve()
+        .then(() => program.pobierzFakture(id))
+        .catch(() => null),
+      termin,
+    ]);
+  } finally {
+    clearTimeout(zegar);
+  }
 }

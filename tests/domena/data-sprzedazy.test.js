@@ -1,12 +1,13 @@
-import {
-  describe, it, expect, afterEach,
-} from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { proponowanaDataSprzedazy } from '../../src/domena/data-sprzedazy.js';
 
 // Nazwy pól i kwoty jak w platnosci-domena.test.js / kwota-oczekiwana-reczne.test.js — te
 // same fixture'y, żeby test tej reguły nie wymyślał drugiego dialektu danych zamówienia.
 const platnosc = (kwota, data) => ({
-  kwota, data, zrodlo: 'reczna', utworzona_at: '2026-07-30T10:00:00Z',
+  kwota,
+  data,
+  zrodlo: 'reczna',
+  utworzona_at: '2026-07-30T10:00:00Z',
 });
 
 describe('proponowana data sprzedaży — przedpłata przenosi obowiązek (art. 19a ust. 8)', () => {
@@ -159,10 +160,18 @@ describe('proponowana data sprzedaży — miarą jest kwotaOczekiwanaGrosze, nie
     koszt_dostawy_brutto: '0.00',
     pozycje: [
       {
-        nazwa: 'A', ilosc: 1, cena_brutto: '100.00', brutto_linii: '100.00', zrodlo: 'sklep',
+        nazwa: 'A',
+        ilosc: 1,
+        cena_brutto: '100.00',
+        brutto_linii: '100.00',
+        zrodlo: 'sklep',
       },
       {
-        nazwa: 'Dodatek', ilosc: 1, cena_brutto: '20.00', brutto_linii: '20.00', zrodlo: 'reczna',
+        nazwa: 'Dodatek',
+        ilosc: 1,
+        cena_brutto: '20.00',
+        brutto_linii: '20.00',
+        zrodlo: 'reczna',
       },
     ],
     platnosci,
@@ -170,19 +179,13 @@ describe('proponowana data sprzedaży — miarą jest kwotaOczekiwanaGrosze, nie
   });
 
   it('wpłata pokrywająca tylko kwotę sklepową (100) NIE domyka kwoty oczekiwanej (120) → wydanie', () => {
-    const wynik = proponowanaDataSprzedazy(
-      zamowienieZDopiskiem([platnosc('100.00', '2026-07-30')]),
-      '2026-08-04',
-    );
+    const wynik = proponowanaDataSprzedazy(zamowienieZDopiskiem([platnosc('100.00', '2026-07-30')]), '2026-08-04');
     expect(wynik.podstawa).toBe('wydanie');
     expect(wynik.data).toBe('2026-08-01');
   });
 
   it('wpłata pokrywająca pełną kwotę oczekiwaną (120) → zaplata', () => {
-    const wynik = proponowanaDataSprzedazy(
-      zamowienieZDopiskiem([platnosc('120.00', '2026-07-30')]),
-      '2026-08-04',
-    );
+    const wynik = proponowanaDataSprzedazy(zamowienieZDopiskiem([platnosc('120.00', '2026-07-30')]), '2026-08-04');
     expect(wynik.podstawa).toBe('zaplata');
     expect(wynik.data).toBe('2026-07-30');
   });
@@ -241,7 +244,9 @@ describe('proponowana data sprzedaży — kwota uszkodzona nie może wywalić ka
 // (Node czyta tę zmienną na bieżąco, bez restartu procesu).
 describe('proponowana data sprzedaży — dzień warszawski, nigdy UTC ani lokalny zegar maszyny', () => {
   const oryginalnyTZ = process.env.TZ;
-  afterEach(() => { process.env.TZ = oryginalnyTZ; });
+  afterEach(() => {
+    process.env.TZ = oryginalnyTZ;
+  });
 
   it.each(['UTC', 'Europe/Warsaw', 'Pacific/Kiritimati'])(
     'wpłata o 2026-08-04T00:30:00Z → dzień warszawski 2026-08-04, niezależnie od TZ=%s',
@@ -302,7 +307,11 @@ describe('proponowana data sprzedaży — dzień warszawski, nigdy UTC ani lokal
 // gałęzi ANI JEDEN RAZ, niezależnie od tego, jaką datę nosi.
 describe('proponowana data sprzedaży — inkaso kuriera to nie zapłata przed dostawą', () => {
   const pobranieZeSklepu = (kwota, data) => ({
-    kwota, data, zrodlo: 'sklep', metoda: 'Za pobraniem', utworzona_at: data,
+    kwota,
+    data,
+    zrodlo: 'sklep',
+    metoda: 'Za pobraniem',
+    utworzona_at: data,
   });
 
   it('wpłata „Za pobraniem" w dniu wysyłki → podstawa „wydanie", nie „zaplata"', () => {

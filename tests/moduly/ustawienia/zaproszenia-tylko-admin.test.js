@@ -23,7 +23,8 @@ function panel() {
 const liczbaLinkow = (db) => db.prepare('SELECT count(*) AS n FROM linki_hasla').get().n;
 
 describe('uwaga o źródle adresu pod linkiem „Pokaż link”', () => {
-  const UWAGA = 'Adres wzięty z Twojej przeglądarki. Jeśli pracownik otwiera panel pod innym adresem, wpisz go w Ustawienia → Integracje → Poczta wychodząca.'; // Adres wpisuje się też na ekranie
+  const UWAGA =
+    'Adres wzięty z Twojej przeglądarki. Jeśli pracownik otwiera panel pod innym adresem, wpisz go w Ustawienia → Integracje → Poczta wychodząca.'; // Adres wpisuje się też na ekranie
   const zaloz = (env) => {
     const p = nowyPanel({ env });
     zalozKonto(p.db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
@@ -37,7 +38,13 @@ describe('uwaga o źródle adresu pod linkiem „Pokaż link”', () => {
     expect(reset.statusCode).toBe(200);
     expect(reset.body).toMatch(/\/haslo\/[A-Za-z0-9_-]{43}/);
     expect(reset.body).toContain(UWAGA);
-    const nowe = await post(app, '/ustawienia/konta/nowe', admin, { imie: 'Nowy', login: 'nowy', email: '', rola: 'produkcja', sposob: 'pokaz' });
+    const nowe = await post(app, '/ustawienia/konta/nowe', admin, {
+      imie: 'Nowy',
+      login: 'nowy',
+      email: '',
+      rola: 'produkcja',
+      sposob: 'pokaz',
+    });
     expect(nowe.statusCode).toBe(200);
     expect(nowe.body).toContain(UWAGA);
   });
@@ -103,7 +110,13 @@ describe('trasy zaproszeń i resetu: konto z ptaszkiem Ustawień, ale bez admina
   it('POST /ustawienia/konta/nowe ze `sposob` — 403, konta nie ma, linku nie ma, mailer niewołany', async () => {
     const { db, app, mailer, ktos } = panel();
     for (const sposob of ['pokaz', 'mail']) {
-      const r = await post(app, '/ustawienia/konta/nowe', ktos, { imie: 'Nowy', login: 'nowy', email: 'nowy@example.test', rola: 'administrator', sposob });
+      const r = await post(app, '/ustawienia/konta/nowe', ktos, {
+        imie: 'Nowy',
+        login: 'nowy',
+        email: 'nowy@example.test',
+        rola: 'administrator',
+        sposob,
+      });
       expect(r.statusCode).toBe(403);
       expect(r.body).not.toMatch(/\/haslo\/[A-Za-z0-9_-]{43}/);
     }

@@ -24,7 +24,13 @@ export const wartoscSzablonuKanalu = (w) => `${SZABLON_KANALU}:${w.dlugosc}x${w.
 // domena bazy nie czyta.
 
 /** Co ekran podglądu wstawi w wiersz jako wybór wstępny. */
-export function domyslnyRozmiarWiersza({ rodzaj, deliveryMethodId = null, szablony, ustawienia, wymiaryKanalu = null }) {
+export function domyslnyRozmiarWiersza({
+  rodzaj,
+  deliveryMethodId = null,
+  szablony,
+  ustawienia,
+  wymiaryKanalu = null,
+}) {
   const domyslny = szablonDomyslny(szablony);
   // Przesyłki Erli — wybór wstępny to wymiary z kroku 4 kreatora (jak formularz karty);
   // szablony operatora zostają na liście, więc człowiek może podać inne. Trasa podaje je tylko
@@ -64,7 +70,14 @@ export function polaWiersza(body, id) {
  * nadawał DPD wymiarami domyślnymi. Gabarytu paczkomatu i automatu NIE zgadujemy — tamtych
  * wierszy stary formularz w ogóle nie znał, a za ciasna skrytka to odrzucona paczka.
  */
-export function paczkaWiersza({ rodzaj, deliveryMethodId = null, pola = {}, szablony, ustawienia, wymiaryKanalu = null }) {
+export function paczkaWiersza({
+  rodzaj,
+  deliveryMethodId = null,
+  pola = {},
+  szablony,
+  ustawienia,
+  wymiaryKanalu = null,
+}) {
   if (rodzaj === 'paczkomat') {
     // Wiersz paczkomatu nie ma pola wagi (ekran pokazuje ją tekstem) — waga z ustawienia,
     // tej samej propozycji, którą pokazał podgląd, nie z szablonu kuriera.
@@ -81,7 +94,10 @@ export function paczkaWiersza({ rodzaj, deliveryMethodId = null, pola = {}, szab
       return { blad: 'Wymiary paczki z ustawień kanału zmieniły się — odśwież podgląd nadania.' };
     }
     return parsujPaczke({
-      waga: wymiaryKanalu.waga, dlugosc: wymiaryKanalu.dlugosc, szerokosc: wymiaryKanalu.szerokosc, wysokosc: wymiaryKanalu.wysokosc,
+      waga: wymiaryKanalu.waga,
+      dlugosc: wymiaryKanalu.dlugosc,
+      szerokosc: wymiaryKanalu.szerokosc,
+      wysokosc: wymiaryKanalu.wysokosc,
     });
   }
   const id = bezPola ? szablony.domyslnyId : String(pola.szablon);
@@ -90,7 +106,10 @@ export function paczkaWiersza({ rodzaj, deliveryMethodId = null, pola = {}, szab
   // domyślnego dałby paczkę o wymiarach, których człowiek na ekranie NIE wybrał.
   if (!s) return { blad: 'Szablon paczki zmienił się — odśwież podgląd nadania.' };
   const { paczka, blad } = parsujPaczke({
-    waga: s.waga, dlugosc: s.dlugosc, szerokosc: s.szerokosc, wysokosc: s.wysokosc,
+    waga: s.waga,
+    dlugosc: s.dlugosc,
+    szerokosc: s.szerokosc,
+    wysokosc: s.wysokosc,
   });
   if (blad) return { blad };
   // Jak na karcie (trasy/nadanie.js): adapter WzA porównuje usługę z tej chwili z tą z ekranu.

@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  wartoPytacAllegroONumery, OKNO_DOPYTANIA_PO_WYSLANIU_DNI,
-} from '../../src/domena/allegro-numery.js';
+import { wartoPytacAllegroONumery, OKNO_DOPYTANIA_PO_WYSLANIU_DNI } from '../../src/domena/allegro-numery.js';
 
 // CZY PYTAC ALLEGRO O NUMERY LISTOW TEGO ZAMOWIENIA.
 //
@@ -26,9 +24,9 @@ describe('wartoPytacAllegroONumery', () => {
   });
 
   it('wyslane BEZ zadnej przesylki pytamy — to jest ta luka', () => {
-    expect(wartoPytacAllegroONumery(
-      z({ wyslane_at: '2026-08-24T09:12:00Z' }), { maPrzesylke: false, teraz: TERAZ },
-    )).toBe(true);
+    expect(
+      wartoPytacAllegroONumery(z({ wyslane_at: '2026-08-24T09:12:00Z' }), { maPrzesylke: false, teraz: TERAZ }),
+    ).toBe(true);
   });
 
   // ⚠️ TU JEST HAMULEC. Warunek „pytaj zawsze po wyslaniu" znaczylby jedno zadanie do Allegro
@@ -36,9 +34,9 @@ describe('wartoPytacAllegroONumery', () => {
   // wlasnie broni komentarz przy trasie (~14 000 zadan na dobe w wariancie pollera).
   // Numer, ktory mamy, jest odpowiedzia ostateczna: nie zmienia sie w zyciu paczki.
   it('wyslane z paczka NIE jest pytane — numer juz mamy', () => {
-    expect(wartoPytacAllegroONumery(
-      z({ wyslane_at: '2026-08-24T09:12:00Z' }), { maPrzesylke: true, teraz: TERAZ },
-    )).toBe(false);
+    expect(
+      wartoPytacAllegroONumery(z({ wyslane_at: '2026-08-24T09:12:00Z' }), { maPrzesylke: true, teraz: TERAZ }),
+    ).toBe(false);
   });
 
   it('po oknie przestajemy pytac — archiwum nie wali w API Allegro', () => {
@@ -52,18 +50,16 @@ describe('wartoPytacAllegroONumery', () => {
   // Granica jawnie: dokladnie 30 dni jeszcze pytamy. Rozstrzygniete tutaj, zeby nie zalezalo
   // od tego, ktora strona nierownosci komus wygodniej sie czytalo.
   it('dokladnie 30 dni to jeszcze pytanie', () => {
-    expect(wartoPytacAllegroONumery(
-      z({ wyslane_at: '2026-07-26T10:00:00Z' }), { maPrzesylke: false, teraz: TERAZ },
-    )).toBe(true);
+    expect(
+      wartoPytacAllegroONumery(z({ wyslane_at: '2026-07-26T10:00:00Z' }), { maPrzesylke: false, teraz: TERAZ }),
+    ).toBe(true);
   });
 
   // ⚠️ NIEPARSOWALNA DATA NIE MOZE ZNACZYC „PYTAJ BEZ KONCA". Wiersz z uszkodzonym
   // `wyslane_at` jest wyslany (kolumna niepusta), wiec brak okna zamienialby go w zrodlo
   // zadania przy kazdym otwarciu karty — po cichu i dokladnie w archiwum.
   it('nieparsowalne wyslane_at to odmowa, nie pytanie bez konca', () => {
-    expect(wartoPytacAllegroONumery(
-      z({ wyslane_at: 'kiedys' }), { maPrzesylke: false, teraz: TERAZ },
-    )).toBe(false);
+    expect(wartoPytacAllegroONumery(z({ wyslane_at: 'kiedys' }), { maPrzesylke: false, teraz: TERAZ })).toBe(false);
   });
 
   it('brak zamowienia to odmowa', () => {

@@ -14,12 +14,19 @@ function klientZ(errors, token = TOKEN, status = 400) {
     fetchImpl: async () => ({ ok: false, status, json: async () => ({ errors }) }),
   });
 }
-const propozycje = (klient) => klient.pobierzPropozycjePodjazdu({
-  shipmentIds: ['shipment-055'], readyDate: '2026-10-09', address: { phone: '+48501234567' },
-}).catch((e) => e);
+const propozycje = (klient) =>
+  klient
+    .pobierzPropozycjePodjazdu({
+      shipmentIds: ['shipment-055'],
+      readyDate: '2026-10-09',
+      address: { phone: '+48501234567' },
+    })
+    .catch((e) => e);
 
 it('token odbity w userMessage zapisu jest ukryty, reszta opisu zostaje', async () => {
-  const blad = await propozycje(klientZ([{ userMessage: `Niepoprawny token ${TOKEN} w żądaniu`, path: 'address.phone' }]));
+  const blad = await propozycje(
+    klientZ([{ userMessage: `Niepoprawny token ${TOKEN} w żądaniu`, path: 'address.phone' }]),
+  );
   expect(blad.message).toBe(`${poczatek}: Niepoprawny token [ukryto] w żądaniu (address.phone)`);
   expect(blad.message).not.toContain(TOKEN);
 });
@@ -27,7 +34,9 @@ it('token odbity w userMessage zapisu jest ukryty, reszta opisu zostaje', async 
 it('nagłówek autoryzacji odbity w message odczytu jest ukryty', async () => {
   const klient = klientZ([{ message: `Authorization: Bearer ${TOKEN}` }]);
   const blad = await klient.stanZleceniaPodjazdu('cmd-055').catch((e) => e);
-  expect(blad.message).toBe('Allegro: HTTP 400 przy /shipment-management/pickups/create-commands/cmd-055: Authorization: [ukryto]');
+  expect(blad.message).toBe(
+    'Allegro: HTTP 400 przy /shipment-management/pickups/create-commands/cmd-055: Authorization: [ukryto]',
+  );
   expect(blad.message).not.toMatch(/Bearer/i);
   expect(blad.message).not.toContain(TOKEN);
 });

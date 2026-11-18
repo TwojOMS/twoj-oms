@@ -62,8 +62,8 @@ export const NAJDLUZSZA_LISTA_MS = (1 + Math.ceil((SUFIT_STRON - 1) / ROWNOLEGLE
 // panel ma nie wstac, zamiast po cichu wrocic do tego wyscigu.
 if (LIMIT_ZADANIA_MS >= PROG_ZAWIESZONEJ_FAKTURY_MS) {
   throw new Error(
-    'Limit żądania do inFaktu musi być krótszy od progu zawieszonej faktury — inaczej '
-    + '„zawieszona" może oznaczać żywe wywołanie, a odblokowanie da drugą fakturę w inFakcie.',
+    'Limit żądania do inFaktu musi być krótszy od progu zawieszonej faktury — inaczej ' +
+      '„zawieszona" może oznaczać żywe wywołanie, a odblokowanie da drugą fakturę w inFakcie.',
   );
 }
 
@@ -80,7 +80,12 @@ function powod(dane, status) {
   return dane?.error || dane?.message || `bez szczegółów (HTTP ${status})`;
 }
 
-export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetchImpl, limitCzasuMs: LIMIT_ZADANIA_MS }), baseUrl = 'https://api.infakt.pl/api' }) {
+export function createInfaktClient({
+  apiKey,
+  fetchImpl,
+  http = transport({ fetchImpl, limitCzasuMs: LIMIT_ZADANIA_MS }),
+  baseUrl = 'https://api.infakt.pl/api',
+}) {
   // Ta sama funkcja dla testu połączenia i wszystkich pozostałych metod. Krótki/pusty
   // klucz nie może zamazać zwykłych słów; URL może nieść klucz w postaci kodowanej.
   const bezKlucza = (tekst) => {
@@ -104,10 +109,13 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
     // DOMException ma name/message/code na prototypie, a ich gettery wymagają
     // wewnętrznego stanu. Sam prototyp daje martwą kopię. Takie błędy spłaszczamy
     // do Error i odczytujemy odziedziczone metadane z działającego oryginału.
-    const wymagaZwyklegoBledu = blad instanceof DOMException
-      || (!Object.hasOwn(blad, 'message') && typeof blad.message === 'string');
-    const kopia = wymagaZwyklegoBledu ? new Error(bezKlucza(blad.message))
-      : Array.isArray(blad) ? [] : Object.create(Object.getPrototypeOf(blad));
+    const wymagaZwyklegoBledu =
+      blad instanceof DOMException || (!Object.hasOwn(blad, 'message') && typeof blad.message === 'string');
+    const kopia = wymagaZwyklegoBledu
+      ? new Error(bezKlucza(blad.message))
+      : Array.isArray(blad)
+        ? []
+        : Object.create(Object.getPrototypeOf(blad));
     odwiedzone.set(blad, kopia);
     const nazwy = Reflect.ownKeys(blad);
     if (wymagaZwyklegoBledu) {
@@ -120,10 +128,15 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
       // Node 24 udostępnia stack przez getter. Odczytujemy go przed kopiowaniem,
       // żeby zachować stos, ale nie getter zamykający w sobie oryginalną treść.
       let wartosc;
-      try { wartosc = blad[nazwa]; }
-      catch { wartosc = '[pominięto nieczytelne szczegóły błędu]'; }
+      try {
+        wartosc = blad[nazwa];
+      } catch {
+        wartosc = '[pominięto nieczytelne szczegóły błędu]';
+      }
       Object.defineProperty(kopia, nazwa, {
-        enumerable: opis?.enumerable ?? false, configurable: opis?.configurable ?? true, writable: true,
+        enumerable: opis?.enumerable ?? false,
+        configurable: opis?.configurable ?? true,
+        writable: true,
         value: bezpiecznyBlad(wartosc, glebokosc + 1, odwiedzone),
       });
     }
@@ -157,9 +170,16 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
       throw bladOperatora(`inFakt nieosiągalny: ${ukryjIdentyfikatoryHttp(`${baseUrl}${sciezka}`, e.message)}`);
     }
     let dane = null;
-    try { dane = await res.json(); } catch { dane = null; }
+    try {
+      dane = await res.json();
+    } catch {
+      dane = null;
+    }
     if (!res.ok) {
-      throw bladOperatora(`inFakt odrzucił ${coRobimy} (${res.status}): ${ukryjIdentyfikatoryHttp(`${baseUrl}${sciezka}`, powod(dane, res.status))}`, { status: res.status });
+      throw bladOperatora(
+        `inFakt odrzucił ${coRobimy} (${res.status}): ${ukryjIdentyfikatoryHttp(`${baseUrl}${sciezka}`, powod(dane, res.status))}`,
+        { status: res.status },
+      );
     }
     return dane;
   }
@@ -179,9 +199,7 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
    * `order=payment_date+asc` i `order=payment_date%20asc` dają IDENTYCZNY wynik.
    * Nie ma tu czego podmieniać po stronie klienta.
    */
-  function adres(zasob, {
-    od, do: doDaty, pole = 'invoice_date', order, filtry,
-  }, offset) {
+  function adres(zasob, { od, do: doDaty, pole = 'invoice_date', order, filtry }, offset) {
     const p = new URLSearchParams();
     p.set('offset', String(offset));
     if (od) p.set(`q[${pole}_gteq]`, od);
@@ -207,15 +225,15 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
     // zamiast przez ignorowany `limit`. Milczenie jest tu gorsze niż odmowa.
     if (!Number.isFinite(razem) || razem < 0) {
       throw bladOperatora(
-        'inFakt nie podał, ile dokumentów jest w tym zakresie — panel nie pokaże listy, '
-        + 'której nie umie policzyć. Spróbuj ponownie za chwilę.',
+        'inFakt nie podał, ile dokumentów jest w tym zakresie — panel nie pokaże listy, ' +
+          'której nie umie policzyć. Spróbuj ponownie za chwilę.',
       );
     }
     const stron = Math.ceil(razem / STRONA_INFAKTU);
     if (stron > sufit) {
       throw bladOperatora(
-        `Ten zakres obejmuje ${razem} dokumentów, a panel pobiera najwyżej `
-        + `${sufit * STRONA_INFAKTU}. Zawęź zakres — niepełna lista wyglądałaby tak samo jak pełna.`,
+        `Ten zakres obejmuje ${razem} dokumentów, a panel pobiera najwyżej ` +
+          `${sufit * STRONA_INFAKTU}. Zawęź zakres — niepełna lista wyglądałaby tak samo jak pełna.`,
       );
     }
     const wiersze = [...(pierwsza?.entities ?? [])];
@@ -223,9 +241,9 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
     for (let s = 1; s < stron; s += 1) offsety.push(s * STRONA_INFAKTU);
     for (let i = 0; i < offsety.length; i += ROWNOLEGLE_STRON) {
       const partia = offsety.slice(i, i + ROWNOLEGLE_STRON);
-      const odp = await Promise.all(partia.map(
-        (o) => zapytaj(adres(zasob, zakres, o), { method: 'GET' }, 'listę dokumentów'),
-      ));
+      const odp = await Promise.all(
+        partia.map((o) => zapytaj(adres(zasob, zakres, o), { method: 'GET' }, 'listę dokumentów')),
+      );
       for (const d of odp) wiersze.push(...(d?.entities ?? []));
     }
     return wiersze.map((w) => ({ ...w, rodzaj }));
@@ -239,12 +257,26 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
   const listaKorekt = (zakres) => wszystkieStrony('corrective_invoices', zakres, 'korekta');
 
   async function pobierzKorekte(uuid) {
-    const dane = await zapytaj(`/v3/corrective_invoices/${encodeURIComponent(uuid)}.json`, { method: 'GET' }, 'odczyt korekty');
-    return { uuid: dane?.uuid ?? uuid, number: dane?.number,
-      corrected_invoice_number: dane?.corrected_invoice_number, invoice_date: dane?.invoice_date, rodzaj: 'korekta',
-      ksef_number: dane?.ksef_number ?? null, ksef_status: dane?.ksef_data?.status ?? null,
-      ksef_opis: typeof dane?.ksef_data?.status_description === 'string' ? dane.ksef_data.status_description.slice(0, 300) : null,
-      status: dane?.status ?? null, gross_price: dane?.gross_price ?? null };
+    const dane = await zapytaj(
+      `/v3/corrective_invoices/${encodeURIComponent(uuid)}.json`,
+      { method: 'GET' },
+      'odczyt korekty',
+    );
+    return {
+      uuid: dane?.uuid ?? uuid,
+      number: dane?.number,
+      corrected_invoice_number: dane?.corrected_invoice_number,
+      invoice_date: dane?.invoice_date,
+      rodzaj: 'korekta',
+      ksef_number: dane?.ksef_number ?? null,
+      ksef_status: dane?.ksef_data?.status ?? null,
+      ksef_opis:
+        typeof dane?.ksef_data?.status_description === 'string'
+          ? dane.ksef_data.status_description.slice(0, 300)
+          : null,
+      status: dane?.status ?? null,
+      gross_price: dane?.gross_price ?? null,
+    };
   }
 
   /**
@@ -277,11 +309,8 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
    * kosztuje więcej niż odmowa. Druga pętla po stronach to zarazem drugie miejsce do
    * zepsucia — nie odtwarzać jej tutaj.
    */
-  const listaNieoplaconych = () => wszystkieStrony(
-    'invoices',
-    { filtry: { 'q[left_to_pay_gt]': '0' }, order: 'payment_date asc' },
-    'vat',
-  );
+  const listaNieoplaconych = () =>
+    wszystkieStrony('invoices', { filtry: { 'q[left_to_pay_gt]': '0' }, order: 'payment_date asc' }, 'vat');
 
   /**
    * Ilu dokumentow ma DOKLADNIE ten numer — straznik duplikatu wlasnej serii WDT
@@ -300,8 +329,8 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
     const ile = Number(dane?.metainfo?.total_count);
     if (!Number.isFinite(ile) || ile < 0) {
       throw bladOperatora(
-        'inFakt nie podał, ile dokumentów ma ten numer — strażnik duplikatu serii WDT '
-        + 'nie ma jak rozstrzygnąć. Spróbuj ponownie za chwilę.',
+        'inFakt nie podał, ile dokumentów ma ten numer — strażnik duplikatu serii WDT ' +
+          'nie ma jak rozstrzygnąć. Spróbuj ponownie za chwilę.',
       );
     }
     return ile;
@@ -321,29 +350,37 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
     // KSeF, zostaje juz tylko KOREKTA. Niech rozstrzygnie czlowiek.
     if (ile > 1) {
       throw bladOperatora(
-        `W kartotece inFaktu jest ${ile} wpisów z NIP-em ${nip} — panel nie zgadnie, który jest nabywcą. `
-        + 'Usuń duplikat w inFakcie albo wystaw tę fakturę ręcznie.',
+        `W kartotece inFaktu jest ${ile} wpisów z NIP-em ${nip} — panel nie zgadnie, który jest nabywcą. ` +
+          'Usuń duplikat w inFakcie albo wystaw tę fakturę ręcznie.',
       );
     }
     return wpisy[0]?.id ?? null;
   }
 
   async function zalozKlienta(dane) {
-    const odp = await zapytaj('/v3/clients.json', {
-      method: 'POST',
-      body: JSON.stringify({ client: dane }),
-    }, 'założenie klienta');
+    const odp = await zapytaj(
+      '/v3/clients.json',
+      {
+        method: 'POST',
+        body: JSON.stringify({ client: dane }),
+      },
+      'założenie klienta',
+    );
     return odp?.id ?? null;
   }
 
   async function wystaw(payload) {
-    const dane = await zapytaj('/v3/invoices.json', {
-      method: 'POST',
-      // KOPERTA: dokumentacja API pokazuje `{"invoice": { ... }}`, nie pola plasko. To byla
-      // nierozstrzygnieta watpliwosc ("plaskie i opakowane daja identyczny blad walidacji"
-      // przy proznej probie) — kopertujemy zgodnie z dokumentacja, nie ze zgadywaniem.
-      body: JSON.stringify({ invoice: payload }),
-    }, 'fakturę');
+    const dane = await zapytaj(
+      '/v3/invoices.json',
+      {
+        method: 'POST',
+        // KOPERTA: dokumentacja API pokazuje `{"invoice": { ... }}`, nie pola plasko. To byla
+        // nierozstrzygnieta watpliwosc ("plaskie i opakowane daja identyczny blad walidacji"
+        // przy proznej probie) — kopertujemy zgodnie z dokumentacja, nie ze zgadywaniem.
+        body: JSON.stringify({ invoice: payload }),
+      },
+      'fakturę',
+    );
     // `ksef_data` (NIE `ksef_status` — tego pola to API w ogole nie zwraca) jest, wedlug
     // dokumentacji, PUSTE, dopoki dokument nie pojdzie do KSeF. Wystawienie faktury SAMO Z
     // SIEBIE jej nie wysyla — wysylka to osobna, swiadoma decyzja czlowieka przez
@@ -370,12 +407,19 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
    * stąd `pobierzPdfKorekty` niżej.
    */
   async function wystawKorekte(payload) {
-    const dane = await zapytaj('/v3/async/corrective_invoices.json', {
-      method: 'POST',
-      body: JSON.stringify({ corrective_invoice: {
-        ...payload, correction_reason: symbolPowoduKorekty(payload.correction_reason),
-      } }),
-    }, 'wystawienie korekty');
+    const dane = await zapytaj(
+      '/v3/async/corrective_invoices.json',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          corrective_invoice: {
+            ...payload,
+            correction_reason: symbolPowoduKorekty(payload.correction_reason),
+          },
+        }),
+      },
+      'wystawienie korekty',
+    );
     return {
       referencja: dane?.invoice_task_reference_number ?? null,
       uuid: dane?.uuid ?? null,
@@ -389,24 +433,34 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
     if (!referencja) return nieznany;
     let dane;
     try {
-      dane = await zapytaj(`/v3/async/corrective_invoices/status/${encodeURIComponent(referencja)}.json`, { method: 'GET' }, 'odczyt statusu korekty');
+      dane = await zapytaj(
+        `/v3/async/corrective_invoices/status/${encodeURIComponent(referencja)}.json`,
+        { method: 'GET' },
+        'odczyt statusu korekty',
+      );
     } catch (e) {
       if (e?.status === 404) return nieznany;
       throw e;
     }
     const nazwy = {
-      client_id: 'klient', correction_reason: 'powód korekty', services: 'pozycje', sale_type: 'rodzaj sprzedaży',
+      client_id: 'klient',
+      correction_reason: 'powód korekty',
+      services: 'pozycje',
+      sale_type: 'rodzaj sprzedaży',
       corrected_invoice_number: 'numer faktury korygowanej',
-      corrected_invoice_date: 'data faktury korygowanej', base: 'dokument',
+      corrected_invoice_date: 'data faktury korygowanej',
+      base: 'dokument',
     };
     const bledy = Object.entries(dane?.invoice_errors ?? {}).flatMap(([pole, wartosc]) => {
-      const komunikaty = (Array.isArray(wartosc) ? wartosc : [wartosc])
-        .filter((k) => typeof k === 'string' && k.trim());
+      const komunikaty = (Array.isArray(wartosc) ? wartosc : [wartosc]).filter(
+        (k) => typeof k === 'string' && k.trim(),
+      );
       return komunikaty.length ? [{ pole: Object.hasOwn(nazwy, pole) ? nazwy[pole] : pole, komunikaty }] : [];
     });
     const kod = dane?.processing_code;
     if (kod === 422 || (kod >= 400 && kod < 500 && bledy.length)) return { stan: 'odrzucona', uuid: null, bledy };
-    if ((kod === 200 || kod === 201) && dane?.invoice_uuid) return { stan: 'wystawiona', uuid: dane.invoice_uuid, bledy: [] };
+    if ((kod === 200 || kod === 201) && dane?.invoice_uuid)
+      return { stan: 'wystawiona', uuid: dane.invoice_uuid, bledy: [] };
     if ([100, 120, 140].includes(kod)) return { stan: 'w_toku', uuid: null, bledy: [] };
     return nieznany;
   }
@@ -434,8 +488,8 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
     // „Dokument", a nie „faktura": tędy jadą też KOREKTY (`pobierzPdfKorekty`), a operator
     // czytający „ta faktura" przy pustej korekcie szukałby błędu nie tam, gdzie jest.
     if (!uuid) throw bladOperatora('Ten dokument nie ma numeru w inFakcie.');
-    const sciezka = `/v3/${zasob}/${encodeURIComponent(uuid)}/pdf.json`
-      + `?document_type=${encodeURIComponent(typDokumentu)}`;
+    const sciezka =
+      `/v3/${zasob}/${encodeURIComponent(uuid)}/pdf.json` + `?document_type=${encodeURIComponent(typDokumentu)}`;
     let res;
     try {
       res = await http(`${baseUrl}${sciezka}`, {
@@ -448,8 +502,14 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
     }
     if (!res.ok) {
       let dane = null;
-      try { dane = JSON.parse(Buffer.from(await res.arrayBuffer()).toString()); } catch { dane = null; }
-      throw bladOperatora(`inFakt odrzucił pobranie PDF (${res.status}): ${powod(dane, res.status)}`, { status: res.status });
+      try {
+        dane = JSON.parse(Buffer.from(await res.arrayBuffer()).toString());
+      } catch {
+        dane = null;
+      }
+      throw bladOperatora(`inFakt odrzucił pobranie PDF (${res.status}): ${powod(dane, res.status)}`, {
+        status: res.status,
+      });
     }
     const bajty = Buffer.from(await res.arrayBuffer());
     if (bajty.subarray(0, 4).toString() !== '%PDF') {
@@ -493,13 +553,17 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
    */
   async function oznaczZaplacona(uuid, { paidDate } = {}) {
     if (!uuid) throw bladOperatora('Ta faktura nie ma numeru dokumentu w inFakcie.');
-    const dane = await zapytaj(`/v3/async/invoices/${encodeURIComponent(uuid)}/paid.json`, {
-      method: 'POST',
-      // BEZ koperty — inaczej niż `wystaw`. Dokumentacja opisuje `paid_date` jako parametr
-      // samego wywołania, a nie pole faktury; koperty `{ invoice: ... }` nie ma tu czego opakować,
-      // bo dokument już istnieje i nie jest przedmiotem tego żądania.
-      body: JSON.stringify(paidDate ? { paid_date: paidDate } : {}),
-    }, 'oznaczenie faktury jako zapłaconej');
+    const dane = await zapytaj(
+      `/v3/async/invoices/${encodeURIComponent(uuid)}/paid.json`,
+      {
+        method: 'POST',
+        // BEZ koperty — inaczej niż `wystaw`. Dokumentacja opisuje `paid_date` jako parametr
+        // samego wywołania, a nie pole faktury; koperty `{ invoice: ... }` nie ma tu czego opakować,
+        // bo dokument już istnieje i nie jest przedmiotem tego żądania.
+        body: JSON.stringify(paidDate ? { paid_date: paidDate } : {}),
+      },
+      'oznaczenie faktury jako zapłaconej',
+    );
     // Pusta odpowiedź NIE jest awarią: `zapytaj` oddaje wtedy `null` (nie rzuca), a zlecenie
     // i tak zostało przyjęte — status 2xx jest jedyną informacją, którą tu mamy.
     return { referencja: dane?.invoice_task_reference_number ?? null };
@@ -669,8 +733,11 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
       dane = await zapytaj(adres('invoices', {}, 0), { method: 'GET' }, 'sprawdzenie połączenia');
     } catch (e) {
       if (e?.status === 401 || e?.status === 403) {
-        throw bladOperatora(`inFakt nie przyjął klucza API (HTTP ${e.status}) — sprawdź, czy klucz jest skopiowany w całości `
-          + `i aktywny w inFakcie (Ustawienia → API). Odpowiedź inFaktu: ${e.message}`, { status: e.status });
+        throw bladOperatora(
+          `inFakt nie przyjął klucza API (HTTP ${e.status}) — sprawdź, czy klucz jest skopiowany w całości ` +
+            `i aktywny w inFakcie (Ustawienia → API). Odpowiedź inFaktu: ${e.message}`,
+          { status: e.status },
+        );
       }
       throw bladOperatora(e?.message ?? 'inFakt nieosiągalny', e?.status ? { status: e.status } : {});
     }
@@ -683,19 +750,53 @@ export function createInfaktClient({ apiKey, fetchImpl, http = transport({ fetch
 
   // Jedno wyjście: każda metoda dodana do obiektu automatycznie dostaje maskowanie,
   // także dla PDF (osobny transport) i błędów serializacji przed żądaniem HTTP.
-  return Object.fromEntries(Object.entries({
-    znajdzKlientaPoNip, zalozKlienta, wystaw, oznaczZaplacona, pobierzPdf, pobierzFakture,
-    listaFaktur, listaKorekt, listaNieoplaconych, pobierzPdfKorekty, wyslijDokumentDoKsef,
-    wystawKorekte, statusKorekty, pobierzKorekte, iluMaNumer, sprawdzPolaczenie,
-  }).map(([nazwa, metoda]) => [nazwa, async (...args) => {
-    try { return await metoda(...args); }
-    catch (e) { throw bezpiecznyBlad(e); }
-  }]));
+  return Object.fromEntries(
+    Object.entries({
+      znajdzKlientaPoNip,
+      zalozKlienta,
+      wystaw,
+      oznaczZaplacona,
+      pobierzPdf,
+      pobierzFakture,
+      listaFaktur,
+      listaKorekt,
+      listaNieoplaconych,
+      pobierzPdfKorekty,
+      wyslijDokumentDoKsef,
+      wystawKorekte,
+      statusKorekty,
+      pobierzKorekte,
+      iluMaNumer,
+      sprawdzPolaczenie,
+    }).map(([nazwa, metoda]) => [
+      nazwa,
+      async (...args) => {
+        try {
+          return await metoda(...args);
+        } catch (e) {
+          throw bezpiecznyBlad(e);
+        }
+      },
+    ]),
+  );
 }
 
 /** Nazwy metod klienta — pośrednik „inFakt z Ustawień” (moduly/faktury/infakt-ustawien.ts) wystawia te same. */
 export const METODY_INFAKTU = Object.freeze([
-  'znajdzKlientaPoNip', 'zalozKlienta', 'wystaw', 'oznaczZaplacona', 'pobierzPdf', 'pobierzFakture',
-  'listaFaktur', 'listaKorekt', 'listaNieoplaconych', 'pobierzPdfKorekty', 'wyslijDokumentDoKsef',
-  'wystawKorekte', 'statusKorekty', 'pobierzKorekte', 'iluMaNumer', 'sprawdzPolaczenie',
+  'znajdzKlientaPoNip',
+  'zalozKlienta',
+  'wystaw',
+  'oznaczZaplacona',
+  'pobierzPdf',
+  'pobierzFakture',
+  'listaFaktur',
+  'listaKorekt',
+  'listaNieoplaconych',
+  'pobierzPdfKorekty',
+  'wyslijDokumentDoKsef',
+  'wystawKorekte',
+  'statusKorekty',
+  'pobierzKorekte',
+  'iluMaNumer',
+  'sprawdzPolaczenie',
 ]);

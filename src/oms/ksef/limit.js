@@ -51,12 +51,18 @@ const MAKS_PONOWIEN = 3;
  * znaczniku (a nie po tresci zdania, ktora zmieni sie przy pierwszej poprawce po stronie MF)
  * wolajacy rozpoznaje „to nie awaria, tylko koniec na dzis" i konczy petle spokojnie.
  */
-export async function zCzekaniemNa429(fn, {
-  spij = (ms) => new Promise((r) => { setTimeout(r, ms); }),
-  teraz = () => new Date(),
-  doKiedy = Infinity,
-  log = () => {},
-} = {}) {
+export async function zCzekaniemNa429(
+  fn,
+  {
+    spij = (ms) =>
+      new Promise((r) => {
+        setTimeout(r, ms);
+      }),
+    teraz = () => new Date(),
+    doKiedy = Infinity,
+    log = () => {},
+  } = {},
+) {
   for (let proba = 0; ; proba += 1) {
     try {
       return await fn();
@@ -70,7 +76,9 @@ export async function zCzekaniemNa429(fn, {
         // zostaja, bo to wciaz jest zdanie, ktore wolno pokazac czlowiekowi przy panelu.
         throw Object.assign(e, { powod: 'limit' });
       }
-      log(`KSeF: limit ${LIMIT_KSEF_NA_MINUTE} żądań na minutę — czekam ${Math.round(czekanieMs / 1000)} s przed ponowieniem.`);
+      log(
+        `KSeF: limit ${LIMIT_KSEF_NA_MINUTE} żądań na minutę — czekam ${Math.round(czekanieMs / 1000)} s przed ponowieniem.`,
+      );
       await spij(czekanieMs);
     }
   }

@@ -3,7 +3,8 @@ import { pobranieDoWysylki } from '../../src/domena/allegro-wysylka.js';
 
 const KONTO = { ownerName: 'Pracownia Półcień Anna Wzorcowa', iban: '34109010140000000000000000' };
 const COD = { amount: '83.99', currency: 'PLN', ownerName: null, iban: null };
-const wolaj = (n = {}) => pobranieDoWysylki({ pobranieUslugi: true, cashOnDelivery: COD, limit: '6000', ...KONTO, ...n });
+const wolaj = (n = {}) =>
+  pobranieDoWysylki({ pobranieUslugi: true, cashOnDelivery: COD, limit: '6000', ...KONTO, ...n });
 
 describe('pobranie przez Wysyłam z Allegro — pieniądze kupującego', () => {
   // ⚠️⚠️ NASZEGO KONTA W INKASIE NIE MA — poprawka po zgłoszeniu właściciela 11.08.2026:
@@ -30,7 +31,10 @@ describe('pobranie przez Wysyłam z Allegro — pieniądze kupującego', () => {
   it('gdy usługa WYMAGA konta — dokłada je, a bez niego odmawia', () => {
     const w = wolaj({ wymaganeKonto: true });
     expect(w.cashOnDelivery).toEqual({
-      amount: '83.99', currency: 'PLN', ownerName: 'Pracownia Półcień Anna Wzorcowa', iban: 'PL34109010140000000000000000',
+      amount: '83.99',
+      currency: 'PLN',
+      ownerName: 'Pracownia Półcień Anna Wzorcowa',
+      iban: 'PL34109010140000000000000000',
     });
     expect(wolaj({ wymaganeKonto: true, iban: '123' }).wolno).toBe(false);
     expect(wolaj({ wymaganeKonto: true, ownerName: ' ' }).wolno).toBe(false);
@@ -38,7 +42,8 @@ describe('pobranie przez Wysyłam z Allegro — pieniądze kupującego', () => {
 
   // ⚠️ USLUGA POBRANIOWA BEZ KWOTY = kurier nie inkasuje NIC, towar oddany za darmo.
   it.each([[null], [undefined], [{ amount: '0.00', currency: 'PLN' }], [{ amount: null }]])(
-    'ODMAWIA usługi pobraniowej bez kwoty (%s)', (cod) => {
+    'ODMAWIA usługi pobraniowej bez kwoty (%s)',
+    (cod) => {
       expect(wolaj({ cashOnDelivery: cod }).wolno).toBe(false);
     },
   );
@@ -82,8 +87,7 @@ describe('pobranie przez Wysyłam z Allegro — pieniądze kupującego', () => {
     for (const nadpisanie of ['83.99', '83,99', '', null, undefined]) {
       const w = wolaj({ nadpisanieOperatora: nadpisanie });
       expect(`${JSON.stringify(nadpisanie)}: ${w.wolno}`).toBe(`${JSON.stringify(nadpisanie)}: true`);
-      expect(`${JSON.stringify(nadpisanie)}: ${w.cashOnDelivery.amount}`)
-        .toBe(`${JSON.stringify(nadpisanie)}: 83.99`);
+      expect(`${JSON.stringify(nadpisanie)}: ${w.cashOnDelivery.amount}`).toBe(`${JSON.stringify(nadpisanie)}: 83.99`);
     }
   });
 
@@ -96,8 +100,9 @@ describe('pobranie przez Wysyłam z Allegro — pieniądze kupującego', () => {
     expect(zKontem({ iban: '123' }).wolno).toBe(false);
     expect(zKontem({ iban: null }).wolno).toBe(false);
     expect(zKontem({ iban: 'PL34109010140000000000000000' }).wolno).toBe(true);
-    expect(zKontem({ iban: '34 1090 1014 0000 0000 0000 0000' }).cashOnDelivery.iban)
-      .toBe('PL34109010140000000000000000');
+    expect(zKontem({ iban: '34 1090 1014 0000 0000 0000 0000' }).cashOnDelivery.iban).toBe(
+      'PL34109010140000000000000000',
+    );
   });
 
   it('bez wymogu konta brak IBAN-u NIE JEST błędem', () => {

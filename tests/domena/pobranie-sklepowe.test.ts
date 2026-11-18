@@ -10,12 +10,22 @@ import { podzielDoNadania } from '../../src/domena/masowe.js';
 import { MODULY_KURIEROW } from '../../src/domena/moduly-kurierow.ts';
 
 const UMOWA = { umowyPobrania: ['inpost'] };
-const POWOD = 'pobranie przez InPost wymaga umowy — włącz ją w Ustawieniach → Integracje albo zmień kuriera na karcie zamówienia';
+const POWOD =
+  'pobranie przez InPost wymaga umowy — włącz ją w Ustawieniach → Integracje albo zmień kuriera na karcie zamówienia';
 
 // Zamówienie z WooCommerce „Pracowni Półcień”: paczkomat InPost za pobraniem, nieopłacone.
 const zam = (nad: Record<string, unknown> = {}) => ({
-  id: 37, numer: 'PC-137', sklep: 'polcien', metoda_wysylki: 'inpost_paczkomat', punkt_odbioru: 'POL01A',
-  anulowane: 0, oplacone_at: null, przesylki: [], pobranie: 1, kwota_pobrania: '212.90', ...nad,
+  id: 37,
+  numer: 'PC-137',
+  sklep: 'polcien',
+  metoda_wysylki: 'inpost_paczkomat',
+  punkt_odbioru: 'POL01A',
+  anulowane: 0,
+  oplacone_at: null,
+  przesylki: [],
+  pobranie: 1,
+  kwota_pobrania: '212.90',
+  ...nad,
 });
 const nadpisanie = (o: Record<string, unknown>) => JSON.stringify(o);
 
@@ -46,15 +56,22 @@ describe('pobranieSklepowe (D1)', () => {
 
   it('metoda zmieniona na karcie (DPD → paczkomat) → OMS-owe', () => {
     const z = zam({
-      metoda_wysylki: 'dpd', punkt_odbioru: null,
-      wysylka_reczna_json: nadpisanie({ metoda: 'inpost_paczkomat', pobranie: 1, kwota_pobrania: '212.90', punkt_odbioru: 'POL01A' }),
+      metoda_wysylki: 'dpd',
+      punkt_odbioru: null,
+      wysylka_reczna_json: nadpisanie({
+        metoda: 'inpost_paczkomat',
+        pobranie: 1,
+        kwota_pobrania: '212.90',
+        punkt_odbioru: 'POL01A',
+      }),
     });
     expect(pobranieSklepowe(z)).toBe(false);
   });
 
   it('pobranie włączone na karcie przy sklepowej przedpłacie → OMS-owe', () => {
     const z = zam({
-      pobranie: 0, kwota_pobrania: null,
+      pobranie: 0,
+      kwota_pobrania: null,
       wysylka_reczna_json: nadpisanie({ metoda: 'inpost_paczkomat', pobranie: 1, kwota_pobrania: '212.90' }),
     });
     expect(pobranieSklepowe(z)).toBe(false);
@@ -66,7 +83,14 @@ describe('pobranieSklepowe (D1)', () => {
   });
 
   it('zmieniony tylko punkt odbioru (i kwota) → dalej sklepowe', () => {
-    const z = zam({ wysylka_reczna_json: nadpisanie({ metoda: 'inpost_paczkomat', pobranie: 1, kwota_pobrania: '200.00', punkt_odbioru: 'POL02B' }) });
+    const z = zam({
+      wysylka_reczna_json: nadpisanie({
+        metoda: 'inpost_paczkomat',
+        pobranie: 1,
+        kwota_pobrania: '200.00',
+        punkt_odbioru: 'POL02B',
+      }),
+    });
     expect(pobranieSklepowe(z)).toBe(true);
   });
 
@@ -89,17 +113,29 @@ describe('wymagaUmowyPobrania (D2)', () => {
   });
 
   it('kurier z „umowa” (DPD) nigdy nie wymaga przełącznika', () => {
-    expect(wymagaUmowyPobrania(zam({ sklep: 'reczne', metoda_wysylki: 'dpd' }), 'dpd', MODULY_KURIEROW, [])).toBe(false);
+    expect(wymagaUmowyPobrania(zam({ sklep: 'reczne', metoda_wysylki: 'dpd' }), 'dpd', MODULY_KURIEROW, [])).toBe(
+      false,
+    );
   });
 
   it('bez pobrania nie ma czego wymagać', () => {
-    expect(wymagaUmowyPobrania(zam({ sklep: 'reczne', pobranie: 0, kwota_pobrania: null }), 'inpost_paczkomat', MODULY_KURIEROW, [])).toBe(false);
+    expect(
+      wymagaUmowyPobrania(
+        zam({ sklep: 'reczne', pobranie: 0, kwota_pobrania: null }),
+        'inpost_paczkomat',
+        MODULY_KURIEROW,
+        [],
+      ),
+    ).toBe(false);
   });
 
   it('nazwa kuriera i rodzaj pobrania z podanego rejestru, nie na sztywno', () => {
     const rejestr: any = {
       ...MODULY_KURIEROW,
-      inpost: { ...MODULY_KURIEROW.inpost, umiejetnosci: { ...MODULY_KURIEROW.inpost.umiejetnosci, pobranie: 'umowa' } },
+      inpost: {
+        ...MODULY_KURIEROW.inpost,
+        umiejetnosci: { ...MODULY_KURIEROW.inpost.umiejetnosci, pobranie: 'umowa' },
+      },
     };
     expect(wymagaUmowyPobrania(zam({ sklep: 'reczne' }), 'inpost_paczkomat', rejestr, [])).toBe(false);
   });
@@ -114,7 +150,9 @@ describe('nadanie hurtem: pobranie sklepowe przy wyłączonym przełączniku', (
   });
 
   it('Allegro paczkomat za pobraniem → naszym InPostem do nadania', () => {
-    const { doNadania, pominiete } = podzielDoNadania([zam({ sklep: 'allegro_polcien', metoda_wysylki: 'allegro_paczkomat' })]);
+    const { doNadania, pominiete } = podzielDoNadania([
+      zam({ sklep: 'allegro_polcien', metoda_wysylki: 'allegro_paczkomat' }),
+    ]);
     expect(pominiete).toEqual([]);
     expect(doNadania[0].metodaUzyta).toBe('inpost_paczkomat');
   });
@@ -126,7 +164,14 @@ describe('nadanie hurtem: pobranie sklepowe przy wyłączonym przełączniku', (
   });
 
   it('zmieniony tylko punkt → do nadania', () => {
-    const z = zam({ wysylka_reczna_json: nadpisanie({ metoda: 'inpost_paczkomat', pobranie: 1, kwota_pobrania: '212.90', punkt_odbioru: 'POL02B' }) });
+    const z = zam({
+      wysylka_reczna_json: nadpisanie({
+        metoda: 'inpost_paczkomat',
+        pobranie: 1,
+        kwota_pobrania: '212.90',
+        punkt_odbioru: 'POL02B',
+      }),
+    });
     const { doNadania, pominiete } = podzielDoNadania([z]);
     expect(pominiete).toEqual([]);
     expect(doNadania).toHaveLength(1);
@@ -148,8 +193,14 @@ describe('nadanie hurtem: pobranie sklepowe przy wyłączonym przełączniku', (
 
   it('metoda zmieniona na karcie (DPD → paczkomat) → pominięte', () => {
     const z = zam({
-      metoda_wysylki: 'dpd', punkt_odbioru: null,
-      wysylka_reczna_json: nadpisanie({ metoda: 'inpost_paczkomat', pobranie: 1, kwota_pobrania: '212.90', punkt_odbioru: 'POL01A' }),
+      metoda_wysylki: 'dpd',
+      punkt_odbioru: null,
+      wysylka_reczna_json: nadpisanie({
+        metoda: 'inpost_paczkomat',
+        pobranie: 1,
+        kwota_pobrania: '212.90',
+        punkt_odbioru: 'POL01A',
+      }),
     });
     const { doNadania, pominiete } = podzielDoNadania([z]);
     expect(doNadania).toEqual([]);

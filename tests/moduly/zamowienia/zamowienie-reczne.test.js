@@ -13,7 +13,9 @@ const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null })
 
 describe('utworzZamowienieReczne', () => {
   let db;
-  beforeEach(() => { db = openOmsDb(':memory:'); });
+  beforeEach(() => {
+    db = openOmsDb(':memory:');
+  });
 
   it('nadaje numer z własnej serii i oznacza pochodzenie', () => {
     const id = utworzZamowienieReczne(db, { metoda_wysylki: 'dpd' });
@@ -154,11 +156,21 @@ describe('trasy zakładania zamówienia', () => {
 
   it('zakłada zamówienie z adresem, nabywcą i pozycjami w JEDNYM zapisie', async () => {
     const r = await zaloz({
-      w_nazwa: 'Anna Kowalska', w_ulica: 'Krótka 12', w_kod: '32-600', w_miasto: 'Oświęcim',
-      w_telefon: '600100200', w_email: 'anna@example.pl',
-      f_chce_fakture: 'on', f_firma: 'PRACOWNIA PÓŁCIEŃ', f_nip: '6762432557',
-      f_ulica: 'Przykładowa 5', f_kod: '32-600', f_miasto: 'Oświęcim',
-      dostawa: 'dpd', platnosc: 'przelew', koszt_dostawy_brutto: '23,00',
+      w_nazwa: 'Anna Kowalska',
+      w_ulica: 'Krótka 12',
+      w_kod: '32-600',
+      w_miasto: 'Oświęcim',
+      w_telefon: '600100200',
+      w_email: 'anna@example.pl',
+      f_chce_fakture: 'on',
+      f_firma: 'PRACOWNIA PÓŁCIEŃ',
+      f_nip: '6762432557',
+      f_ulica: 'Przykładowa 5',
+      f_kod: '32-600',
+      f_miasto: 'Oświęcim',
+      dostawa: 'dpd',
+      platnosc: 'przelew',
+      koszt_dostawy_brutto: '23,00',
       poz_nazwa: ['Szablon', 'Projekt', '', '', ''],
       poz_sku: ['SZ-1', '', '', '', ''],
       poz_ilosc: ['2', '1', '', '', ''],
@@ -170,8 +182,13 @@ describe('trasy zakładania zamówienia', () => {
 
     // Adres czytamy TA SAMA funkcja, ktora karmi ekran nadania i klienta DPD.
     expect(adresOdbiorcy(z)).toMatchObject({
-      nazwa: 'Anna Kowalska', ulica: 'Krótka 12', kod: '32-600', miasto: 'Oświęcim',
-      kraj: 'PL', phone: '600100200', email: 'anna@example.pl',
+      nazwa: 'Anna Kowalska',
+      ulica: 'Krótka 12',
+      kod: '32-600',
+      miasto: 'Oświęcim',
+      kraj: 'PL',
+      phone: '600100200',
+      email: 'anna@example.pl',
     });
     expect(daneFaktury(z)).toMatchObject({ firma: 'PRACOWNIA PÓŁCIEŃ', nip: '6762432557', miasto: 'Oświęcim' });
     expect(z.chce_fakture).toBe(1);
@@ -184,8 +201,14 @@ describe('trasy zakładania zamówienia', () => {
 
   it('kurier z pobraniem zapisuje dpd + flagę pobrania, a kwota pobrania równa się kwocie zamówienia', async () => {
     const r = await zaloz({
-      dostawa: 'dpd', platnosc: 'pobranie', koszt_dostawy_brutto: '20',
-      poz_nazwa: 'Szablon', poz_sku: '', poz_ilosc: '1', poz_cena_netto: '', poz_cena_brutto: '100.00',
+      dostawa: 'dpd',
+      platnosc: 'pobranie',
+      koszt_dostawy_brutto: '20',
+      poz_nazwa: 'Szablon',
+      poz_sku: '',
+      poz_ilosc: '1',
+      poz_cena_netto: '',
+      poz_cena_brutto: '100.00',
     });
     expect(r.statusCode).toBe(302);
     const z = pobierzZamowienie(db, idZOdpowiedzi(r));
@@ -241,8 +264,11 @@ describe('trasy zakładania zamówienia', () => {
 
   it('cena podana samym netto zapisuje się jako brutto', async () => {
     const r = await zaloz({
-      poz_nazwa: 'Szablon', poz_sku: '', poz_ilosc: '1',
-      poz_cena_netto: '65,04', poz_cena_brutto: '',
+      poz_nazwa: 'Szablon',
+      poz_sku: '',
+      poz_ilosc: '1',
+      poz_cena_netto: '65,04',
+      poz_cena_brutto: '',
     });
     expect(pobierzZamowienie(db, idZOdpowiedzi(r)).pozycje[0].cena_brutto).toBe('80.00');
   });
@@ -259,7 +285,11 @@ describe('trasy zakładania zamówienia', () => {
     db.exec("CREATE TRIGGER pozycje_odmowa BEFORE INSERT ON pozycje BEGIN SELECT RAISE(ABORT, 'dysk pełny'); END");
     const r = await zaloz({
       w_nazwa: 'Jan Kowalski',
-      poz_nazwa: 'Szablon', poz_sku: '', poz_ilosc: '1', poz_cena_netto: '', poz_cena_brutto: '100,00',
+      poz_nazwa: 'Szablon',
+      poz_sku: '',
+      poz_ilosc: '1',
+      poz_cena_netto: '',
+      poz_cena_brutto: '100,00',
     });
     expect(r.statusCode).toBe(500);
     expect(r.body).toContain('nr wewnętrzny');
@@ -290,7 +320,9 @@ describe('pobranie z GUS przed założeniem zamówienia', () => {
   let db;
   const zbuduj = (gus) => buildOmsServer({ db, config, poller, gus });
 
-  beforeEach(() => { db = openOmsDb(':memory:'); });
+  beforeEach(() => {
+    db = openOmsDb(':memory:');
+  });
 
   const pytaj = async (app, payload) => {
     await app.ready();
@@ -299,7 +331,14 @@ describe('pobranie z GUS przed założeniem zamówienia', () => {
 
   it('wypełnia pola odpowiedzią z REGON-u i NICZEGO nie zapisuje', async () => {
     const app = zbuduj({
-      firmaPoNip: async () => ({ firma: 'PRACOWNIA PÓŁCIEŃ Anna Wzorcowa', nip: '6762432557', regon: '123', ulica: 'Przykładowa 5', kod: '32-600', miasto: 'Oświęcim' }),
+      firmaPoNip: async () => ({
+        firma: 'PRACOWNIA PÓŁCIEŃ Anna Wzorcowa',
+        nip: '6762432557',
+        regon: '123',
+        ulica: 'Przykładowa 5',
+        kod: '32-600',
+        miasto: 'Oświęcim',
+      }),
     });
     const r = await pytaj(app, { f_nip: '6762432557', w_nazwa: 'Anna Kowalska' });
     expect(r.statusCode).toBe(200);
@@ -319,7 +358,11 @@ describe('pobranie z GUS przed założeniem zamówienia', () => {
 
   // Awaria GUS-u nie ma prawa wywalic ekranu razem z tym, co operator zdazyl wpisac.
   it('awaria GUS-u nie wywala ekranu i nie gubi wpisanych pól', async () => {
-    const app = zbuduj({ firmaPoNip: async () => { throw new Error('ETIMEDOUT'); } });
+    const app = zbuduj({
+      firmaPoNip: async () => {
+        throw new Error('ETIMEDOUT');
+      },
+    });
     const r = await pytaj(app, { f_nip: '6762432557', w_nazwa: 'Anna Kowalska' });
     expect(r.statusCode).toBe(200);
     expect(r.body).toMatch(/nie udało się zapytać gus/i);
@@ -366,10 +409,13 @@ describe('powiązanie dosyłki z karty', () => {
     await app.ready();
   });
 
-  const powiaz = (id, numer) => app.inject({
-    method: 'POST', url: `/zamowienia/${id}/dosylka`, headers: naglowek,
-    payload: { numer_zrodlowy: numer },
-  });
+  const powiaz = (id, numer) =>
+    app.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/dosylka`,
+      headers: naglowek,
+      payload: { numer_zrodlowy: numer },
+    });
 
   it('wskazanie numeru widocznego wiąże dosyłkę z zamówieniem pierwotnym', async () => {
     const pierwotneId = utworzZamowienieReczne(db, { metoda_wysylki: 'dpd' });
@@ -437,10 +483,20 @@ describe('powiązanie dosyłki z karty', () => {
   // z pierwszym z brzegu.
   it('numer pasujący do dwóch zamówień dostaje odmowę, nie ciche powiązanie', async () => {
     const zmapowane = (zrodloId) => ({
-      zrodlo_id: zrodloId, numer: '5555', klient: { email: 'a@b.pl' }, dostawa: { city: 'Warszawa' },
-      metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null,
-      kwota_brutto: '10.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
-      utworzone_at: '2026-07-31T09:00:00', pozycje: [],
+      zrodlo_id: zrodloId,
+      numer: '5555',
+      klient: { email: 'a@b.pl' },
+      dostawa: { city: 'Warszawa' },
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: 0,
+      nip: null,
+      kwota_brutto: '10.00',
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane: 0,
+      utworzone_at: '2026-07-31T09:00:00',
+      pozycje: [],
     });
     zapiszZamowienie(db, 'pro', zmapowane(9001), {});
     zapiszZamowienie(db, 'pro', zmapowane(9002), {});
@@ -468,7 +524,9 @@ describe('trasy pozycji przeliczają kwotę zamówienia ręcznego (weryfikacja p
   it('dodanie pozycji przez POST /pozycje podnosi kwotę zamówienia', async () => {
     const id = utworzZamowienieReczne(db, { metoda_wysylki: 'dpd' });
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/pozycje`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/pozycje`,
+      headers: naglowek,
       payload: { nazwa: 'Szablon', ilosc: '2', cena_brutto: '50.00' },
     });
     expect(r.statusCode).toBe(302);
@@ -481,7 +539,9 @@ describe('trasy pozycji przeliczają kwotę zamówienia ręcznego (weryfikacja p
     przeliczKwoteRecznego(db, id);
     const klucz = pobierzZamowienie(db, id).pozycje[0].klucz;
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/pozycje/zapisz`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/pozycje/zapisz`,
+      headers: naglowek,
       payload: { klucz: [klucz], nazwa: ['Szablon'], ilosc: ['3'], cena_brutto: ['50.00'] },
     });
     expect(r.statusCode).toBe(302);
@@ -497,7 +557,9 @@ describe('trasy pozycji przeliczają kwotę zamówienia ręcznego (weryfikacja p
     expect(zPrzed.kwota_brutto).toBe('80.00');
     const klucz = zPrzed.pozycje[0].klucz;
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/pozycje/${klucz}/usun`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/pozycje/${klucz}/usun`,
+      headers: naglowek,
     });
     expect(r.statusCode).toBe(303);
     expect(pobierzZamowienie(db, id).kwota_brutto).toBe('30.00');
@@ -557,12 +619,28 @@ describe('kwota pobrania przy zmianach metody z karty (weryfikacja przez HTTP)',
   // Zamowienie SKLEPOWE nie ma prawa dostac tego zachowania: tam kwote narzuca sklep,
   // a przeliczKwoteRecznego w ogole nie powinno go tknac.
   it('zamówienia ze sklepu ta reguła nie dotyczy', () => {
-    zapiszZamowienie(db, 'pro', {
-      zrodlo_id: 7001, numer: '7001', klient: {}, dostawa: {}, metoda_wysylki: 'dpd', pobranie: 1,
-      kwota_pobrania: '99.00', chce_fakture: 0, nip: null, kwota_brutto: '99.00',
-      status_woo: 'processing', oplacone_at: null, anulowane: 0,
-      utworzone_at: '2026-08-01T09:00:00', pozycje: [],
-    }, {});
+    zapiszZamowienie(
+      db,
+      'pro',
+      {
+        zrodlo_id: 7001,
+        numer: '7001',
+        klient: {},
+        dostawa: {},
+        metoda_wysylki: 'dpd',
+        pobranie: 1,
+        kwota_pobrania: '99.00',
+        chce_fakture: 0,
+        nip: null,
+        kwota_brutto: '99.00',
+        status_woo: 'processing',
+        oplacone_at: null,
+        anulowane: 0,
+        utworzone_at: '2026-08-01T09:00:00',
+        pozycje: [],
+      },
+      {},
+    );
     const id = db.prepare("SELECT id FROM zamowienia WHERE sklep='pro' AND zrodlo_id=7001").get().id;
     przeliczKwoteRecznego(db, id);
     expect(pobierzZamowienie(db, id).kwota_pobrania).toBe('99.00');

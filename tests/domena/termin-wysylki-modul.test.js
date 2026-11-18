@@ -19,6 +19,11 @@ it.each([
   const z = { sklep, oplacone_at: '2026-11-03T09:00:00Z', pozycje: [] };
   expect(typZamowienia(z)).toBe(typ);
   expect(terminZamowienia(z)).toEqual({
-    typ, start: '2026-11-03T09:00:00Z', dzienStartu: '2026-11-03', limit, cutoffAllegro, reczny: null,
+    typ,
+    start: '2026-11-03T09:00:00Z',
+    dzienStartu: '2026-11-03',
+    limit,
+    cutoffAllegro,
+    reczny: null,
   });
 });

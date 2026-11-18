@@ -6,9 +6,19 @@
 // połączenia buduje klient KSeF z odpowiedzi serwera (bez tokenu); błąd techniczny idzie tylko do logu, też bez tokenu.
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
 import { stronaOdmowy } from '../../../core/web/odmowa.js';
-import { sprawdzFormularzKsef, EKRAN_KSEF, ZDANIE_UPRAWNIENIA_KSEF, ZDANIE_TOKENU_KOSZTOW_TWOJEFAKTURY, ODMOWA_KSEF_BRAK_NIP } from '../../../domena/konfiguracja-ksef-kosztow.js';
-import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji, usunKonfiguracjeIntegracji, stanDlaEkranu }
-  from '../../../oms/db/konfiguracja-integracji.js';
+import {
+  sprawdzFormularzKsef,
+  EKRAN_KSEF,
+  ZDANIE_UPRAWNIENIA_KSEF,
+  ZDANIE_TOKENU_KOSZTOW_TWOJEFAKTURY,
+  ODMOWA_KSEF_BRAK_NIP,
+} from '../../../domena/konfiguracja-ksef-kosztow.js';
+import {
+  wczytajKonfiguracjeIntegracji,
+  zapiszKonfiguracjeIntegracji,
+  usunKonfiguracjeIntegracji,
+  stanDlaEkranu,
+} from '../../../oms/db/konfiguracja-integracji.js';
 import { usunSesjeKsef } from '../../../oms/ksef/sesja.js';
 import { wylaczoneModuly } from '../../../oms/db/moduly-opcjonalne.js';
 import { nawigacjaUstawien } from '../../ustawienia/nawigacja.js';
@@ -16,7 +26,8 @@ import { tytulEkranuDlaAdresu } from '../../../domena/ekrany.js';
 import { odmianaNazwyProgramu } from '../../../domena/nazwa-programu.js';
 
 const KOMUNIKATY = {
-  zapisano: 'Zapisano token KSeF. OMS pobierze nim faktury zakupowe przy następnym przebiegu (o 3 w nocy albo „Odśwież teraz” na ekranie Koszty).',
+  zapisano:
+    'Zapisano token KSeF. OMS pobierze nim faktury zakupowe przy następnym przebiegu (o 3 w nocy albo „Odśwież teraz” na ekranie Koszty).',
   odlaczono: 'Token KSeF usunięty z OMS-u. Panel nie pobiera już faktur kosztowych; koszty zapisane wcześniej zostają.',
 };
 
@@ -30,19 +41,33 @@ export function registerUstawieniaKsefRoutes(app, { db, zrodloKsef, nipSprzedawc
   const nipTeraz = () => (typeof nip === 'function' ? nip() : nip) ?? null;
   function widok(req, reply, { bledy = [], test = null } = {}) {
     const zapis = wczytajKonfiguracjeIntegracji(db, 'ksef');
-    return reply.view('ustawienia-ksef.ejs', { szerokosc: 'formularz',
-      nawigacja: nawigacjaUstawien(req, reply), title: tytulEkranuDlaAdresu(EKRAN_KSEF),
-      zEnv: k.zEnv, stan: stanDlaEkranu(zapis), nipZapisu: zapis?.ustawienia?.nip ?? '', nipSprzedawcy: nipTeraz(),
-      nipNiezgodny: k.nipNiezgodny(), modulWylaczony: wylaczoneModuly(db).includes('koszty'),
+    return reply.view('ustawienia-ksef.ejs', {
+      szerokosc: 'formularz',
+      nawigacja: nawigacjaUstawien(req, reply),
+      title: tytulEkranuDlaAdresu(EKRAN_KSEF),
+      zEnv: k.zEnv,
+      stan: stanDlaEkranu(zapis),
+      nipZapisu: zapis?.ustawienia?.nip ?? '',
+      nipSprzedawcy: nipTeraz(),
+      nipNiezgodny: k.nipNiezgodny(),
+      modulWylaczony: wylaczoneModuly(db).includes('koszty'),
       zdanie: wbudowany ? ZDANIE_TOKENU_KOSZTOW_TWOJEFAKTURY : ZDANIE_UPRAWNIENIA_KSEF,
-      wbudowany, bledy, test, odmowaBrakNip: ODMOWA_KSEF_BRAK_NIP,
-      zapisano: KOMUNIKATY[req.query?.zapisano] ?? null, nazwaProgramu,
+      wbudowany,
+      bledy,
+      test,
+      odmowaBrakNip: ODMOWA_KSEF_BRAK_NIP,
+      zapisano: KOMUNIKATY[req.query?.zapisano] ?? null,
+      nazwaProgramu,
     });
   }
   // Odmowa w układzie OMS (status i tekst bez zmian); tekst nie niesie tokenu.
-  const zEnv = (reply) => stronaOdmowy(reply, 409,
-    'Token KSeF jest ustawiony w pliku konfiguracji (oms.env, KSEF_TOKEN) — tam go zmień. Formularz niczego nie zapisał.',
-    { tytul: 'Token KSeF jest w pliku konfiguracji', wroc: EKRAN_KSEF, napisWroc: 'Wróć do ustawień KSeF' });
+  const zEnv = (reply) =>
+    stronaOdmowy(
+      reply,
+      409,
+      'Token KSeF jest ustawiony w pliku konfiguracji (oms.env, KSEF_TOKEN) — tam go zmień. Formularz niczego nie zapisał.',
+      { tytul: 'Token KSeF jest w pliku konfiguracji', wroc: EKRAN_KSEF, napisWroc: 'Wróć do ustawień KSeF' },
+    );
 
   app.get(EKRAN_KSEF, async (req, reply) => widok(req, reply));
 
@@ -68,9 +93,18 @@ export function registerUstawieniaKsefRoutes(app, { db, zrodloKsef, nipSprzedawc
     }
     try {
       await k.sprawdzZapisany();
-      return widok(req, reply, { test: { ok: true, tekst: 'Połączenie z KSeF działa — token przyjęty, lista faktur zakupowych z ostatniej doby odczytana. Nic nie zostało wysłane ani dopisane do kosztów.' } });
+      return widok(req, reply, {
+        test: {
+          ok: true,
+          tekst:
+            'Połączenie z KSeF działa — token przyjęty, lista faktur zakupowych z ostatniej doby odczytana. Nic nie zostało wysłane ani dopisane do kosztów.',
+        },
+      });
     } catch (e) {
-      req.log?.warn?.({ ksef: 'sprawdzenie połączenia', dlaOperatora: Boolean(e?.dlaOperatora), status: e?.status ?? null }, 'KSeF: sprawdzenie połączenia nieudane');
+      req.log?.warn?.(
+        { ksef: 'sprawdzenie połączenia', dlaOperatora: Boolean(e?.dlaOperatora), status: e?.status ?? null },
+        'KSeF: sprawdzenie połączenia nieudane',
+      );
       return widok(req, reply, { test: { ok: false, tekst: komunikatDlaOperatora(e) } });
     }
   });

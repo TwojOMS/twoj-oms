@@ -3,7 +3,10 @@
 // z podmienioną fabryką klienta InPost — żadne żądanie nie wychodzi do InPostu. Dane zmyślone.
 import { describe, it, expect, vi } from 'vitest';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
-import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji } from '../../../src/oms/db/konfiguracja-integracji.js';
+import {
+  wczytajKonfiguracjeIntegracji,
+  zapiszKonfiguracjeIntegracji,
+} from '../../../src/oms/db/konfiguracja-integracji.js';
 import { zapiszAdresFirmy } from '../../../src/oms/db/adres-firmy.js';
 import { bladOperatora } from '../../../src/domena/bledy.js';
 import { createInpostClient } from '../../../src/oms/kurierzy/inpost.js';
@@ -21,8 +24,14 @@ import { modulMarketing } from '../../../src/moduly/marketing/modul.ts';
 import { modulZdrowie } from '../../../src/moduly/zdrowie/modul.ts';
 
 const TOKEN = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.ZMYSLONY-TOKEN-PRZ093.podpis';
-const NADAWCA = { DPD_NADAWCA_NAZWA: 'Pracownia Testowa', DPD_NADAWCA_ULICA: 'Zmyślona 1', DPD_NADAWCA_KOD: '00-950',
-  DPD_NADAWCA_MIASTO: 'Warszawa', DPD_NADAWCA_TELEFON: '000000000', DPD_NADAWCA_EMAIL: 'nadawca@example.invalid' };
+const NADAWCA = {
+  DPD_NADAWCA_NAZWA: 'Pracownia Testowa',
+  DPD_NADAWCA_ULICA: 'Zmyślona 1',
+  DPD_NADAWCA_KOD: '00-950',
+  DPD_NADAWCA_MIASTO: 'Warszawa',
+  DPD_NADAWCA_TELEFON: '000000000',
+  DPD_NADAWCA_EMAIL: 'nadawca@example.invalid',
+};
 const FORMULARZ = { nazwa: 'InPost', organizacja: '4242', token: TOKEN, paczkomatNadawczy: 'abc01m' };
 const ADRES = '/ustawienia/integracje/inpost';
 
@@ -32,13 +41,42 @@ function panel({ env = NADAWCA, sprawdz = async () => ({ ok: true }), klient = n
   const createInpost = vi.fn((opcje) => {
     utworzone.push(opcje);
     if (klient) return klient(opcje); // prawdziwy createInpostClient z podanym fetchImpl — zero sieci
-    return { nadaj, sprawdzPrzesylke: vi.fn(async (...a) => a), pobierzEtykiete: vi.fn(), statusPrzesylki: vi.fn(), sprawdzPolaczenie: vi.fn(sprawdz) };
+    return {
+      nadaj,
+      sprawdzPrzesylke: vi.fn(async (...a) => a),
+      pobierzEtykiete: vi.fn(),
+      statusPrzesylki: vi.fn(),
+      sprawdzPolaczenie: vi.fn(sprawdz),
+    };
   });
   const podglad = {};
-  const podgladacz = { nazwa: 'test-podgladacz', wersja: '1.0.0', wymaga: ['wysylka'], migracje: [], menu: [], uprawnienia: [],
-    konfiguracja: () => null, zbuduj: (ctx) => { podglad.kurierzy = ctx.usluga('wysylka', 'kurierzy'); return {}; } };
-  const moduly = [modulRdzen, modulWeb, modulKanaly, modulFaktury, modulWiadomosci, createModulZamowienia({ zWiadomosciami: true }),
-    createModulWysylka({ fabryki: { createInpost } }), modulMagazyn, modulUstawienia, modulMarketing, modulZdrowie, podgladacz];
+  const podgladacz = {
+    nazwa: 'test-podgladacz',
+    wersja: '1.0.0',
+    wymaga: ['wysylka'],
+    migracje: [],
+    menu: [],
+    uprawnienia: [],
+    konfiguracja: () => null,
+    zbuduj: (ctx) => {
+      podglad.kurierzy = ctx.usluga('wysylka', 'kurierzy');
+      return {};
+    },
+  };
+  const moduly = [
+    modulRdzen,
+    modulWeb,
+    modulKanaly,
+    modulFaktury,
+    modulWiadomosci,
+    createModulZamowienia({ zWiadomosciami: true }),
+    createModulWysylka({ fabryki: { createInpost } }),
+    modulMagazyn,
+    modulUstawienia,
+    modulMarketing,
+    modulZdrowie,
+    podgladacz,
+  ];
   const p = nowyPanel({ moduly, env });
   zalozKonto(p.db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
   zalozKonto(p.db, { login: 'ewa', imie: 'Ewa', haslo: 'h', rola: 'sprzedaz' });
@@ -92,9 +130,21 @@ describe('Ustawienia → Kurier InPost', () => {
 
     expect(podglad.kurierzy.inpost).toBeDefined();
     await podglad.kurierzy.inpost.sprawdzPolaczenie();
-    expect(utworzone.at(-1)).toEqual({ url: 'https://api-shipx-pl.easypack24.net/v1', token: TOKEN, organizacja: 4242,
-      paczkomatNadawczy: 'ABC01M', nadawca: { nazwa: 'Pracownia Testowa', ulica: 'Zmyślona 1', kod: '00-950', miasto: 'Warszawa',
-        kraj: 'PL', phone: '000000000', email: 'nadawca@example.invalid' } });
+    expect(utworzone.at(-1)).toEqual({
+      url: 'https://api-shipx-pl.easypack24.net/v1',
+      token: TOKEN,
+      organizacja: 4242,
+      paczkomatNadawczy: 'ABC01M',
+      nadawca: {
+        nazwa: 'Pracownia Testowa',
+        ulica: 'Zmyślona 1',
+        kod: '00-950',
+        miasto: 'Warszawa',
+        kraj: 'PL',
+        phone: '000000000',
+        email: 'nadawca@example.invalid',
+      },
+    });
   });
 
   it('PaczkoPunkt z myślnikiem (POP-WAW206) zapisuje się z ekranu i jedzie do klienta jako paczkomat nadawczy', async () => {
@@ -143,11 +193,15 @@ describe('Ustawienia → Kurier InPost', () => {
     const ok = await post(app, `${ADRES}/sprawdz`, admin, {});
     expect(ok.statusCode, ok.body).toBe(200);
     expect(ok.body).toContain('Połączenie z InPostem działa');
-    odp = async () => { throw bladOperatora('InPost odrzucił żądanie (HTTP 401): Token is missing or invalid'); };
+    odp = async () => {
+      throw bladOperatora('InPost odrzucił żądanie (HTTP 401): Token is missing or invalid');
+    };
     const zle = await post(app, `${ADRES}/sprawdz`, admin, {});
     expect(zle.body).toContain('InPost odrzucił żądanie');
     expect(zle.body).not.toContain(TOKEN);
-    odp = async () => { throw new Error(`TypeError w środku z ${TOKEN}`); }; // błąd techniczny nie idzie na ekran
+    odp = async () => {
+      throw new Error(`TypeError w środku z ${TOKEN}`);
+    }; // błąd techniczny nie idzie na ekran
     const tech = await post(app, `${ADRES}/sprawdz`, admin, {});
     expect(tech.body).not.toContain(TOKEN);
     expect(tech.body).toContain('błąd techniczny');
@@ -157,7 +211,11 @@ describe('Ustawienia → Kurier InPost', () => {
   // połączenia pokazuje powód (numer organizacji), a tokenu nie.
   it('„Sprawdź połączenie” przy 403/404 z tokenem w odpowiedzi: ekran bez tokenu', async () => {
     for (const status of [403, 404]) {
-      const echo = JSON.stringify({ status, error: 'access_forbidden', message: `Organization not available for token ${TOKEN}` });
+      const echo = JSON.stringify({
+        status,
+        error: 'access_forbidden',
+        message: `Organization not available for token ${TOKEN}`,
+      });
       const fetchImpl = vi.fn(async () => ({ status, ok: false, text: async () => echo }));
       const { app, admin } = panel({ klient: (o) => createInpostClient({ ...o, fetchImpl }) });
       await post(app, ADRES, admin, FORMULARZ);
@@ -215,19 +273,41 @@ describe('Ustawienia → Kurier InPost', () => {
 
   it('nadawca z Ustawień → Firma (adres w bazie, bez DPD_NADAWCA_* w pliku) trafia do klienta InPost', async () => {
     const { app, admin, db, podglad, utworzone } = panel({ env: {} });
-    zapiszAdresFirmy(db, { nazwa: 'Firma z Ekranu', ulica: 'Ekranowa 5', kod: '01-234', miasto: 'Ekranowo', kraj: 'PL',
-      telefon: '+48 000 000 000', email: 'firma@example.invalid' });
+    zapiszAdresFirmy(db, {
+      nazwa: 'Firma z Ekranu',
+      ulica: 'Ekranowa 5',
+      kod: '01-234',
+      miasto: 'Ekranowo',
+      kraj: 'PL',
+      telefon: '+48 000 000 000',
+      email: 'firma@example.invalid',
+    });
     await post(app, ADRES, admin, FORMULARZ);
     await podglad.kurierzy.inpost.sprawdzPolaczenie();
-    expect(utworzone.at(-1).nadawca).toEqual({ nazwa: 'Firma z Ekranu', ulica: 'Ekranowa 5', kod: '01-234', miasto: 'Ekranowo',
-      kraj: 'PL', phone: '+48 000 000 000', email: 'firma@example.invalid' });
+    expect(utworzone.at(-1).nadawca).toEqual({
+      nazwa: 'Firma z Ekranu',
+      ulica: 'Ekranowa 5',
+      kod: '01-234',
+      miasto: 'Ekranowo',
+      kraj: 'PL',
+      phone: '+48 000 000 000',
+      email: 'firma@example.invalid',
+    });
     const ekran = await get(app, ADRES, admin);
     expect(ekran.body).toContain('Ekranowa 5');
   });
 
   it('adres firmy bez telefonu i e-maila: nadanie odmawia PRZED InPostem i wskazuje Ustawienia → Firma', async () => {
     const { app, admin, db, podglad, nadaj } = panel({ env: {} });
-    zapiszAdresFirmy(db, { nazwa: 'Firma z Ekranu', ulica: 'Ekranowa 5', kod: '01-234', miasto: 'Ekranowo', kraj: 'PL', telefon: '', email: '' });
+    zapiszAdresFirmy(db, {
+      nazwa: 'Firma z Ekranu',
+      ulica: 'Ekranowa 5',
+      kod: '01-234',
+      miasto: 'Ekranowo',
+      kraj: 'PL',
+      telefon: '',
+      email: '',
+    });
     await post(app, ADRES, admin, FORMULARZ);
     const e = await podglad.kurierzy.inpost.nadaj({ zamowienie: {}, paczka: {} }).catch((x) => x);
     expect(e.dlaOperatora).toBe(true);
@@ -251,8 +331,15 @@ describe('Ustawienia → Kurier InPost', () => {
 
   it('telefon firmy, którego InPost nie przyjmie: czytelny powód zamiast „błąd techniczny”', async () => {
     const { app, admin, db } = panel({ env: {} });
-    zapiszAdresFirmy(db, { nazwa: 'Firma z Ekranu', ulica: 'Ekranowa 5', kod: '01-234', miasto: 'Ekranowo', kraj: 'PL',
-      telefon: '+49 30 1234567', email: 'firma@example.invalid' });
+    zapiszAdresFirmy(db, {
+      nazwa: 'Firma z Ekranu',
+      ulica: 'Ekranowa 5',
+      kod: '01-234',
+      miasto: 'Ekranowo',
+      kraj: 'PL',
+      telefon: '+49 30 1234567',
+      email: 'firma@example.invalid',
+    });
     await post(app, ADRES, admin, FORMULARZ);
     const r = await post(app, `${ADRES}/sprawdz`, admin, {});
     expect(r.body).toContain('Telefon');
@@ -274,18 +361,43 @@ describe('Ustawienia → Kurier InPost', () => {
 // Zapis z ekranu MUSI leżeć w bazie przed startem modułów — tak wygląda instalacja, która dopisała InPost do pliku.
 function nowyPanelZZapisem(env) {
   const utworzone = [];
-  const createInpost = vi.fn((opcje) => { utworzone.push(opcje); return { nadaj: vi.fn(), sprawdzPrzesylke: vi.fn(), statusPrzesylki: vi.fn() }; });
+  const createInpost = vi.fn((opcje) => {
+    utworzone.push(opcje);
+    return { nadaj: vi.fn(), sprawdzPrzesylke: vi.fn(), statusPrzesylki: vi.fn() };
+  });
   const podglad = {};
-  const podgladacz = { nazwa: 'test-podgladacz', wersja: '1.0.0', wymaga: ['wysylka'], migracje: [], menu: [], uprawnienia: [],
-    konfiguracja: () => null, zbuduj: (ctx) => {
+  const podgladacz = {
+    nazwa: 'test-podgladacz',
+    wersja: '1.0.0',
+    wymaga: ['wysylka'],
+    migracje: [],
+    menu: [],
+    uprawnienia: [],
+    konfiguracja: () => null,
+    zbuduj: (ctx) => {
       podglad.kurierzy = ctx.usluga('wysylka', 'kurierzy');
       return {};
-    } };
-  const moduly = [modulRdzen, modulWeb, modulKanaly, modulFaktury, modulWiadomosci, createModulZamowienia({ zWiadomosciami: true }),
-    createModulWysylka({ fabryki: { createInpost } }), modulMagazyn, modulUstawienia, modulMarketing, modulZdrowie, podgladacz];
+    },
+  };
+  const moduly = [
+    modulRdzen,
+    modulWeb,
+    modulKanaly,
+    modulFaktury,
+    modulWiadomosci,
+    createModulZamowienia({ zWiadomosciami: true }),
+    createModulWysylka({ fabryki: { createInpost } }),
+    modulMagazyn,
+    modulUstawienia,
+    modulMarketing,
+    modulZdrowie,
+    podgladacz,
+  ];
   const wstepny = nowyPanel({ moduly, env });
-  zapiszKonfiguracjeIntegracji(wstepny.db, 'inpost', { ustawienia: { nazwa: 'InPost', organizacja: '4242', paczkomatNadawczy: '' },
-    sekrety: { token: TOKEN } });
+  zapiszKonfiguracjeIntegracji(wstepny.db, 'inpost', {
+    ustawienia: { nazwa: 'InPost', organizacja: '4242', paczkomatNadawczy: '' },
+    sekrety: { token: TOKEN },
+  });
   utworzone.length = 0;
   const p = nowyPanel({ moduly, env, db: wstepny.db });
   zalozKonto(p.db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });

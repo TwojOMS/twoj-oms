@@ -19,8 +19,15 @@ import { wyslijDoSklepow } from '../../../src/moduly/magazyn/services/magazyn-za
 //       operacji, ktorej nie da sie cofnac klknieciem.
 
 const Z = (nad = {}) => ({
-  kanal: 'pro', sciezka: 'products/900', pola: { sku: 'A-1' }, opis: '…',
-  produkt_id: '900', wariant_id: '', nazwa: 'Lampka', karta_id: 1, ...nad,
+  kanal: 'pro',
+  sciezka: 'products/900',
+  pola: { sku: 'A-1' },
+  opis: '…',
+  produkt_id: '900',
+  wariant_id: '',
+  nazwa: 'Lampka',
+  karta_id: 1,
+  ...nad,
 });
 
 /** Klient sklepu: produkt bez numeru, zapis sie udaje. */
@@ -50,12 +57,11 @@ describe('wyslijDoSklepow', () => {
   // i nie wiadomo, w ktorym miejscu.
   it('awaria jednej zmiany nie przerywa pozostałych', async () => {
     const pro = klientO({
-      zapiszProdukt: vi.fn()
-        .mockRejectedValueOnce(new Error('duplikat SKU'))
-        .mockResolvedValueOnce({}),
+      zapiszProdukt: vi.fn().mockRejectedValueOnce(new Error('duplikat SKU')).mockResolvedValueOnce({}),
     });
     const w = await wyslijDoSklepow({
-      sklepy: { pro }, zmiany: [Z(), Z({ sciezka: 'products/901' })],
+      sklepy: { pro },
+      zmiany: [Z(), Z({ sciezka: 'products/901' })],
     });
     expect(w[0].ok).toBe(false);
     expect(w[0].blad).toMatch(/duplikat/);
@@ -97,8 +103,7 @@ describe('wyslijDoSklepow — bariera na stanie ŻYWYM', () => {
     await wyslijDoSklepow({ sklepy: { pro }, zmiany: [Z()] });
     expect(pro.pobierzProdukt).toHaveBeenCalledWith('products/900');
     // Kolejnosc jest tresc: odczyt PRZED zapisem, nie po nim.
-    expect(pro.pobierzProdukt.mock.invocationCallOrder[0])
-      .toBeLessThan(pro.zapiszProdukt.mock.invocationCallOrder[0]);
+    expect(pro.pobierzProdukt.mock.invocationCallOrder[0]).toBeLessThan(pro.zapiszProdukt.mock.invocationCallOrder[0]);
   });
 
   it('produkt, który w międzyczasie dostał numer w sklepie, NIE jest nadpisywany', async () => {
@@ -128,7 +133,8 @@ describe('wyslijDoSklepow — bariera na stanie ŻYWYM', () => {
   it('zmiana bez numeru nie jest wstrzymywana numerem w sklepie', async () => {
     const pro = klientO({ pobierzProdukt: vi.fn().mockResolvedValue({ sku: 'PD10' }) });
     const [w] = await wyslijDoSklepow({
-      sklepy: { pro }, zmiany: [Z({ pola: { dimensions: { length: '100', width: '70' } } })],
+      sklepy: { pro },
+      zmiany: [Z({ pola: { dimensions: { length: '100', width: '70' } } })],
     });
     expect(w.ok).toBe(true);
   });
@@ -145,12 +151,11 @@ describe('wyslijDoSklepow — bariera na stanie ŻYWYM', () => {
 
   it('wstrzymanie jednej pozycji nie zatrzymuje pozostałych', async () => {
     const pro = klientO({
-      pobierzProdukt: vi.fn()
-        .mockResolvedValueOnce({ sku: 'PD10' })
-        .mockResolvedValueOnce({ sku: '' }),
+      pobierzProdukt: vi.fn().mockResolvedValueOnce({ sku: 'PD10' }).mockResolvedValueOnce({ sku: '' }),
     });
     const w = await wyslijDoSklepow({
-      sklepy: { pro }, zmiany: [Z(), Z({ sciezka: 'products/901' })],
+      sklepy: { pro },
+      zmiany: [Z(), Z({ sciezka: 'products/901' })],
     });
     expect(w.map((x) => x.ok)).toEqual([false, true]);
     expect(pro.zapiszProdukt.mock.calls.map((c) => c[0])).toEqual(['products/901']);
@@ -237,7 +242,10 @@ describe('bariera na stanie żywym wobec odpowiedzi, której nie rozumiemy', () 
       };
     });
     const klient = createWooClient({
-      baseUrl: 'https://pro.example', ck: 'ck', cs: 'cs', fetchImpl,
+      baseUrl: 'https://pro.example',
+      ck: 'ck',
+      cs: 'cs',
+      fetchImpl,
     });
     return { klient, puty: () => zadania.filter((z) => z.metoda === 'PUT') };
   }
@@ -246,7 +254,12 @@ describe('bariera na stanie żywym wobec odpowiedzi, której nie rozumiemy', () 
   // „reprezentatywny": kazdy z nich ma inna droge dojscia do tego samego skutku.
   const KSZTALTY_NIEZROZUMIALE = [
     // WAF, tryb konserwacji, strona logowania hostingu — HTML z kodem 200.
-    ['ciało nie-JSON', async () => { throw new SyntaxError('Unexpected token < in JSON'); }],
+    [
+      'ciało nie-JSON',
+      async () => {
+        throw new SyntaxError('Unexpected token < in JSON');
+      },
+    ],
     ['JSON bez klucza sku', async () => ({ id: 900 })],
     ['JSON = null', async () => null],
     ['JSON = tablica', async () => [{ id: 900, sku: 'LMP-NIEUPOWAZN-168' }]],
@@ -315,9 +328,13 @@ describe('klient Woo: zapiszProdukt i pobierzProdukt', () => {
     headers: { get: () => null },
   });
 
-  const klientZ = (fetchImpl) => createWooClient({
-    baseUrl: 'https://pro.example', ck: 'ck', cs: 'cs', fetchImpl,
-  });
+  const klientZ = (fetchImpl) =>
+    createWooClient({
+      baseUrl: 'https://pro.example',
+      ck: 'ck',
+      cs: 'cs',
+      fetchImpl,
+    });
 
   it('zapis idzie metodą PUT pod adres produktu', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(odpowiedz({ id: 900 }));
@@ -331,8 +348,7 @@ describe('klient Woo: zapiszProdukt i pobierzProdukt', () => {
   it('zapis wariantu idzie pod adres wariantu', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(odpowiedz({ id: 1091 }));
     await klientZ(fetchImpl).zapiszProdukt('products/944/variations/1091', { sku: 'A-1' });
-    expect(fetchImpl.mock.calls[0][0])
-      .toBe('https://pro.example/wp-json/wc/v3/products/944/variations/1091');
+    expect(fetchImpl.mock.calls[0][0]).toBe('https://pro.example/wp-json/wc/v3/products/944/variations/1091');
   });
 
   it('odczyt idzie metodą GET i oddaje dane produktu', async () => {
@@ -344,27 +360,24 @@ describe('klient Woo: zapiszProdukt i pobierzProdukt', () => {
 
   // ⚠️ TRESC BLEDU SKLEPU JEST INFORMACJA, nie szumem: „duplikat SKU" mowi, co zrobic dalej.
   it('błąd sklepu wraca z treścią', async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(
-      odpowiedz({ message: 'Nieprawidłowy lub zduplikowany SKU.' }, 400),
-    );
-    await expect(klientZ(fetchImpl).zapiszProdukt('products/900', { sku: 'A-1' }))
-      .rejects.toThrow(/zduplikowany SKU/);
+    const fetchImpl = vi.fn().mockResolvedValue(odpowiedz({ message: 'Nieprawidłowy lub zduplikowany SKU.' }, 400));
+    await expect(klientZ(fetchImpl).zapiszProdukt('products/900', { sku: 'A-1' })).rejects.toThrow(/zduplikowany SKU/);
   });
 
   // ⚠️⚠️ SCIEZKA JEST SKLADANA W ADRES HTTP, a `produkt_id` jest kolumna TEKSTOWA (bo Allegro).
   // Smiec w niej zamienilby `products/{id}` w zupelnie inny zasob REST-a — a metoda jest PUT.
   it('ścieżka spoza wzorca produktu/wariantu ODMAWIA, zanim cokolwiek poleci', async () => {
     const fetchImpl = vi.fn();
-    await expect(klientZ(fetchImpl).zapiszProdukt('products/900/../orders/5', { sku: 'A-1' }))
-      .rejects.toThrow(/ścieżk/i);
+    await expect(klientZ(fetchImpl).zapiszProdukt('products/900/../orders/5', { sku: 'A-1' })).rejects.toThrow(
+      /ścieżk/i,
+    );
     await expect(klientZ(fetchImpl).pobierzProdukt('orders/5')).rejects.toThrow(/ścieżk/i);
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it('poprawna ścieżka nie jest odrzucana', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(odpowiedz({ id: 900 }));
-    await expect(klientZ(fetchImpl).zapiszProdukt('products/900', { sku: 'A-1' }))
-      .resolves.toBeDefined();
+    await expect(klientZ(fetchImpl).zapiszProdukt('products/900', { sku: 'A-1' })).resolves.toBeDefined();
   });
 
   // ⚠️ DIAGNOZA JEST CZESCIA ODPOWIEDZI. Trzy powody odmowy to trzy rozne awarie sklepu
@@ -374,28 +387,37 @@ describe('klient Woo: zapiszProdukt i pobierzProdukt', () => {
   // nie komunikat.
   it('odczyt: odpowiedź, która nie jest obiektem, mówi wprost, że to nie produkt', async () => {
     const nieJson = {
-      ok: true, status: 200, headers: { get: () => null },
-      json: async () => { throw new SyntaxError('Unexpected token <'); },
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      json: async () => {
+        throw new SyntaxError('Unexpected token <');
+      },
     };
-    await expect(klientZ(vi.fn().mockResolvedValue(nieJson)).pobierzProdukt('products/900'))
-      .rejects.toThrow(/nie jest obiektem/i);
-    await expect(klientZ(vi.fn().mockResolvedValue(odpowiedz([{ id: 900, sku: '' }])))
-      .pobierzProdukt('products/900')).rejects.toThrow(/nie jest obiektem/i);
+    await expect(klientZ(vi.fn().mockResolvedValue(nieJson)).pobierzProdukt('products/900')).rejects.toThrow(
+      /nie jest obiektem/i,
+    );
+    await expect(
+      klientZ(vi.fn().mockResolvedValue(odpowiedz([{ id: 900, sku: '' }]))).pobierzProdukt('products/900'),
+    ).rejects.toThrow(/nie jest obiektem/i);
   });
 
   it('odczyt: brak pola sku mówi, że to NIE jest „produkt bez numeru"', async () => {
-    await expect(klientZ(vi.fn().mockResolvedValue(odpowiedz({ id: 900 })))
-      .pobierzProdukt('products/900')).rejects.toThrow(/sku/i);
+    await expect(
+      klientZ(vi.fn().mockResolvedValue(odpowiedz({ id: 900 }))).pobierzProdukt('products/900'),
+    ).rejects.toThrow(/sku/i);
   });
 
   it('odczyt: cudzy identyfikator mówi, o co pytaliśmy i co przyszło', async () => {
-    await expect(klientZ(vi.fn().mockResolvedValue(odpowiedz({ id: 7, sku: '' })))
-      .pobierzProdukt('products/900')).rejects.toThrow(/„7".*„900"|„900".*„7"/);
+    await expect(
+      klientZ(vi.fn().mockResolvedValue(odpowiedz({ id: 7, sku: '' }))).pobierzProdukt('products/900'),
+    ).rejects.toThrow(/„7".*„900"|„900".*„7"/);
   });
 
   it('odczyt: rozpoznany produkt wraca w całości', async () => {
-    const dane = await klientZ(vi.fn().mockResolvedValue(odpowiedz({ id: 900, sku: 'PD10' })))
-      .pobierzProdukt('products/900');
+    const dane = await klientZ(vi.fn().mockResolvedValue(odpowiedz({ id: 900, sku: 'PD10' }))).pobierzProdukt(
+      'products/900',
+    );
     expect(dane).toMatchObject({ id: 900, sku: 'PD10' });
   });
 });
@@ -410,15 +432,25 @@ const auth = {
   origin: 'http://localhost',
 };
 const STAN_PUSTY = {
-  trwa: false, zaczety_at: null, skonczony_at: null, postep: null, kanaly: [], blad: null,
+  trwa: false,
+  zaczety_at: null,
+  skonczony_at: null,
+  postep: null,
+  kanaly: [],
+  blad: null,
 };
 
 let db;
 let sklepy;
 
-const serwer = (nad = {}) => buildOmsServer({
-  db, config, magazyn: { start: vi.fn(), stan: () => STAN_PUSTY }, sklepy, ...nad,
-});
+const serwer = (nad = {}) =>
+  buildOmsServer({
+    db,
+    config,
+    magazyn: { start: vi.fn(), stan: () => STAN_PUSTY },
+    sklepy,
+    ...nad,
+  });
 
 beforeEach(() => {
   db = openOmsDb(':memory:');
@@ -427,11 +459,13 @@ beforeEach(() => {
 
 const kartaO = (nazwa, reszta = {}) => utworzKarte(db, { nazwa, ...reszta });
 
-function produktO(kartaId, {
-  kanal = 'pro', produkt_id = '900', wariant_id = '', sku = null, nazwa = 'Lampka',
-} = {}) {
+function produktO(kartaId, { kanal = 'pro', produkt_id = '900', wariant_id = '', sku = null, nazwa = 'Lampka' } = {}) {
   const id = zapiszProduktSklepowy(db, {
-    kanal, produkt_id, wariant_id, nazwa, sku_sklepu: sku,
+    kanal,
+    produkt_id,
+    wariant_id,
+    nazwa,
+    sku_sklepu: sku,
     odczytane_at: '2026-08-12T10:00:00.000Z',
   });
   if (kartaId) powiazProdukt(db, id, kartaId);
@@ -440,9 +474,13 @@ function produktO(kartaId, {
 
 const lustro = (id) => db.prepare('SELECT * FROM produkty_sklepowe WHERE id = ?').get(id);
 
-const wyslij = (app, payload, naglowki = auth) => app.inject({
-  method: 'POST', url: '/magazyn/zapisz-do-sklepow', headers: naglowki, payload,
-});
+const wyslij = (app, payload, naglowki = auth) =>
+  app.inject({
+    method: 'POST',
+    url: '/magazyn/zapisz-do-sklepow',
+    headers: naglowki,
+    payload,
+  });
 
 function sekcja(body, id) {
   const trafienie = new RegExp(`<section[^>]*id="${id}"[\\s\\S]*?</section>`).exec(body);
@@ -459,7 +497,10 @@ describe('POST /magazyn/zapisz-do-sklepow', () => {
     produktO(id);
     const app = serwer();
     await app.inject({
-      method: 'POST', url: '/magazyn/podglad-zapisu', headers: auth, payload: { zaznaczone: String(id) },
+      method: 'POST',
+      url: '/magazyn/podglad-zapisu',
+      headers: auth,
+      payload: { zaznaczone: String(id) },
     });
     db.prepare('UPDATE karty_produktow SET sku = ? WHERE id = ?').run('NOWE-PO-ZMIANIE', id);
     await wyslij(app, { zaznaczone: String(id) });
@@ -497,9 +538,7 @@ describe('POST /magazyn/zapisz-do-sklepow', () => {
 
   it('awaria jednego produktu nie zatrzymuje drugiego, a ekran mówi o obu', async () => {
     sklepy.pro = klientO({
-      zapiszProdukt: vi.fn()
-        .mockRejectedValueOnce(new Error('duplikat SKU'))
-        .mockResolvedValueOnce({}),
+      zapiszProdukt: vi.fn().mockRejectedValueOnce(new Error('duplikat SKU')).mockResolvedValueOnce({}),
     });
     const id = kartaO('Bursztyn', { sku: 'A-1' });
     produktO(id, { produkt_id: '900' });

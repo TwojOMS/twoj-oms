@@ -20,7 +20,9 @@ const { WARIANTY, przygotujErli, przygotujAllegro } = await import('../../pomoc/
 const NAGRAJ = process.env.E4_BLIZNIAK_NAGRAJ === '1';
 const plik = (kanal) => new URL(`../../fixtures/e4-blizniak-${kanal}.json`, import.meta.url);
 
-beforeEach(() => { licznik.n = 0; });
+beforeEach(() => {
+  licznik.n = 0;
+});
 
 async function porownaj(kanal, przygotuj, wariant) {
   const z = await przygotuj({ wariant });
@@ -30,7 +32,9 @@ async function porownaj(kanal, przygotuj, wariant) {
     if (NAGRAJ && wariant === 'i') writeFileSync(plik(kanal), tekst);
     expect(tekst).toBe(readFileSync(plik(kanal), 'utf8'));
     return z.nagr.zadania;
-  } finally { z.zamknij(); }
+  } finally {
+    z.zamknij();
+  }
 }
 
 describe('E4 — test bliźniaczy: stany wyłączone = żądania do kanałów bez zmian', () => {

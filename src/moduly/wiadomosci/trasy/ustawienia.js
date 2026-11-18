@@ -5,7 +5,7 @@ import { ustawieniaFormulki, sprawdzFormularz } from '../../../domena/ustawienia
 import { nawigacjaUstawien } from '../../ustawienia/nawigacja.js';
 
 function formulkaZFormularza(pola = {}) {
-  const dni = Array.isArray(pola.dni) ? pola.dni : (pola.dni == null ? [] : [pola.dni]);
+  const dni = Array.isArray(pola.dni) ? pola.dni : pola.dni == null ? [] : [pola.dni];
   return {
     wlaczona: pola.wlaczona === 'on' || pola.wlaczona === '1' || pola.wlaczona === true,
     tresc: String(pola.tresc ?? ''),
@@ -18,11 +18,13 @@ function formulkaZFormularza(pola = {}) {
 
 export function registerUstawieniaFormulkiRoutes(app, { db }) {
   function widokAutomatyzacji(req, reply, { formulka = null, blad = null } = {}) {
-    return reply.view('ustawienia-automatyzacje.ejs', { szerokosc: 'formularz',
+    return reply.view('ustawienia-automatyzacje.ejs', {
+      szerokosc: 'formularz',
       nawigacja: nawigacjaUstawien(req, reply),
       zapisano: req.query?.zapisano === 'formulka' ? 'Zapisano ustawienia autorespondera.' : null,
       title: tytulEkranuDlaAdresu(req.url),
-      formulka: formulka ?? ustawieniaFormulki(wczytajUstawienia(db)), blad,
+      formulka: formulka ?? ustawieniaFormulki(wczytajUstawienia(db)),
+      blad,
     });
   }
 

@@ -11,17 +11,31 @@ const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null })
 const PDF = Buffer.from('%PDF-1.4 udawany dokument');
 
 const zmapowane = (id) => ({
-  zrodlo_id: id, numer: String(id), klient: { first_name: 'Jan', last_name: 'Kowalski', email: 'j@k.pl' },
-  dostawa: { city: 'Warszawa' }, metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: '6762432557',
-  kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
-  metoda_platnosci: 'Przelew tradycyjny', utworzone_at: '2026-07-31T09:00:00',
+  zrodlo_id: id,
+  numer: String(id),
+  klient: { first_name: 'Jan', last_name: 'Kowalski', email: 'j@k.pl' },
+  dostawa: { city: 'Warszawa' },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 1,
+  nip: '6762432557',
+  kwota_brutto: '123.00',
+  koszt_dostawy_brutto: '0.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  metoda_platnosci: 'Przelew tradycyjny',
+  utworzone_at: '2026-07-31T09:00:00',
   pozycje: [{ nazwa: 'STOP', sku: 'S1', ilosc: 1, cena_brutto: '123.00', brutto_linii: '123.00', vat: null }],
 });
 
-const wystawiona = (db, id, { uuid = 'u-1', numer = '65/07/2026' } = {}) => db.prepare(
-  'INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, ksef_status, utworzona_at)'
-  + " VALUES (?, ?, ?, NULL, '2026-07-31T10:00:00')",
-).run(id, uuid, numer);
+const wystawiona = (db, id, { uuid = 'u-1', numer = '65/07/2026' } = {}) =>
+  db
+    .prepare(
+      'INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, ksef_status, utworzona_at)' +
+        " VALUES (?, ?, ?, NULL, '2026-07-31T10:00:00')",
+    )
+    .run(id, uuid, numer);
 
 // ---------------------------------------------------------------------------------
 // A. KLIENT inFAKTU — ksztalt zadania sprawdzony na ZYWYM dokumencie, nie z dokumentacji.
@@ -29,7 +43,9 @@ const wystawiona = (db, id, { uuid = 'u-1', numer = '65/07/2026' } = {}) => db.p
 describe('infakt.pobierzPdf', () => {
   const klient = (fetchImpl) => createInfaktClient({ apiKey: 'k', fetchImpl });
   const odp = (bajty, ok = true, status = 200) => ({
-    ok, status, arrayBuffer: async () => bajty.buffer.slice(bajty.byteOffset, bajty.byteOffset + bajty.byteLength),
+    ok,
+    status,
+    arrayBuffer: async () => bajty.buffer.slice(bajty.byteOffset, bajty.byteOffset + bajty.byteLength),
   });
 
   // ⚠️ `.pdf` na koncu adresu oddaje 406 („wybierz rozszerzenie .json"), a `/pdf.json` bez
@@ -57,14 +73,12 @@ describe('infakt.pobierzPdf', () => {
   // u operatora przy drukarce — czyli w najgorszym momencie.
   it('odpowiedź, która NIE jest PDF-em, jest odrzucana mimo statusu 200', async () => {
     const smiec = Buffer.from('{"error":"cos poszlo nie tak"}');
-    await expect(klient(vi.fn().mockResolvedValue(odp(smiec))).pobierzPdf('abc-123'))
-      .rejects.toThrow(/nie jest PDF/);
+    await expect(klient(vi.fn().mockResolvedValue(odp(smiec))).pobierzPdf('abc-123')).rejects.toThrow(/nie jest PDF/);
   });
 
   it('błąd inFaktu niesie status i powód', async () => {
     const bl = Buffer.from('{"error":"Nie znaleziono"}');
-    await expect(klient(vi.fn().mockResolvedValue(odp(bl, false, 404))).pobierzPdf('abc-123'))
-      .rejects.toThrow(/404/);
+    await expect(klient(vi.fn().mockResolvedValue(odp(bl, false, 404))).pobierzPdf('abc-123')).rejects.toThrow(/404/);
   });
 
   it('brak uuid to odmowa PRZED dotknięciem sieci', async () => {
@@ -82,7 +96,12 @@ describe('faktura.pdf (usługa)', () => {
   let db, infakt, uslugaFaktury;
   beforeEach(() => {
     db = openOmsDb(':memory:');
-    infakt = { pobierzPdf: vi.fn().mockResolvedValue(PDF), znajdzKlientaPoNip: vi.fn(), zalozKlienta: vi.fn(), wystaw: vi.fn() };
+    infakt = {
+      pobierzPdf: vi.fn().mockResolvedValue(PDF),
+      znajdzKlientaPoNip: vi.fn(),
+      zalozKlienta: vi.fn(),
+      wystaw: vi.fn(),
+    };
     uslugaFaktury = createFaktura({ db, infakt });
   });
 
@@ -105,8 +124,8 @@ describe('faktura.pdf (usługa)', () => {
   it('faktura zawieszona w połowie wystawiania → odmowa, nie strzał z pustym uuid', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(3403), {});
     db.prepare(
-      "INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, ksef_status, utworzona_at)"
-      + " VALUES (?, NULL, NULL, 'w_toku', '2026-07-31T10:00:00')",
+      'INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, ksef_status, utworzona_at)' +
+        " VALUES (?, NULL, NULL, 'w_toku', '2026-07-31T10:00:00')",
     ).run(id);
     await expect(uslugaFaktury.pdf(id)).rejects.toThrow(/nie została do końca wystawiona/);
     expect(infakt.pobierzPdf).not.toHaveBeenCalled();

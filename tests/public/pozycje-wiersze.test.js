@@ -20,7 +20,9 @@ describe('Enter w „Dodaj z magazynu” nie zakłada zamówienia', () => {
   it('bez htmx: klika „Szukaj” (pełny formularz pod adres szukania)', () => {
     const szukaj = { click: vi.fn() };
     const pole = {
-      name: 'magazyn', closest: () => null, dispatchEvent: vi.fn(),
+      name: 'magazyn',
+      closest: () => null,
+      dispatchEvent: vi.fn(),
       form: { querySelector: (s) => (s === '[data-szukaj-magazyn]' ? szukaj : null) },
     };
     const z = enter(pole);
@@ -59,21 +61,37 @@ describe('Enter w „Dodaj z magazynu” nie zakłada zamówienia', () => {
 function tabela(liczba) {
   const tbody = { wiersze: [] };
   const wiersz = (wartosc) => {
-    const pola = [{ name: 'poz_nazwa', value: wartosc }, { name: 'poz_produkt_id', value: `ukryte-${wartosc}` }, { name: 'poz_ilosc', value: '3' }];
-    const przycisk = { value: '', setAttribute(k, v) { this[k] = v; } };
+    const pola = [
+      { name: 'poz_nazwa', value: wartosc },
+      { name: 'poz_produkt_id', value: `ukryte-${wartosc}` },
+      { name: 'poz_ilosc', value: '3' },
+    ];
+    const przycisk = {
+      value: '',
+      setAttribute(k, v) {
+        this[k] = v;
+      },
+    };
     const suma = { textContent: '9,99 zł' };
     const tr = {
-      parentNode: tbody, pola, przycisk, suma,
+      parentNode: tbody,
+      pola,
+      przycisk,
+      suma,
       querySelectorAll: (s) => (s === 'input' ? pola : []),
       querySelector: (s) => (s === '[data-usun-wiersz]' ? przycisk : s === '[data-suma-linii]' ? suma : null),
-      remove() { tbody.wiersze.splice(tbody.wiersze.indexOf(tr), 1); },
+      remove() {
+        tbody.wiersze.splice(tbody.wiersze.indexOf(tr), 1);
+      },
       cloneNode: () => wiersz(pola[0].value),
     };
     return tr;
   };
   for (let i = 0; i < liczba; i += 1) tbody.wiersze.push(wiersz(`w${i}`));
   tbody.querySelectorAll = (s) => (s === SELEKTOR_WIERSZA ? [...tbody.wiersze] : []);
-  tbody.appendChild = (tr) => { tbody.wiersze.push(tr); };
+  tbody.appendChild = (tr) => {
+    tbody.wiersze.push(tr);
+  };
   return tbody;
 }
 
@@ -110,7 +128,10 @@ describe('wyczyscWiersz — lista stawek wraca do domyślnej', () => {
   it('select poz_vat = data-vat formularza; inputy czyszczone, ilość 1', async () => {
     const { wyczyscWiersz } = await import('../../src/public/pozycje-wiersze.js');
     const lista = { name: 'poz_vat', value: '5' };
-    const pola = [{ name: 'poz_ilosc', value: '3' }, { name: 'poz_cena_netto', value: '9' }];
+    const pola = [
+      { name: 'poz_ilosc', value: '3' },
+      { name: 'poz_cena_netto', value: '9' },
+    ];
     const tr = {
       dataset: { zrodlo: 'netto' },
       querySelectorAll: (s) => (s === 'input' ? pola : s === 'select[name$="vat"]' ? [lista] : []),
@@ -131,7 +152,11 @@ describe('wyczyscWiersz — pola karty zamówienia (bez poz_)', () => {
   it('ilość = 1, reszta pusta, lista stawek (name kończy się na „vat”) = data-vat formularza', async () => {
     const { wyczyscWiersz } = await import('../../src/public/pozycje-wiersze.js');
     const lista = { name: 'vat', value: '5' };
-    const pola = [{ name: 'nazwa', value: 'Lampa' }, { name: 'ilosc', value: '3' }, { name: 'cena_brutto', value: '12.30' }];
+    const pola = [
+      { name: 'nazwa', value: 'Lampa' },
+      { name: 'ilosc', value: '3' },
+      { name: 'cena_brutto', value: '12.30' },
+    ];
     const tr = {
       dataset: {},
       querySelectorAll: (s) => (s === 'input' ? pola : s === 'select[name$="vat"]' ? [lista] : []),
@@ -151,19 +176,41 @@ describe('podepnij — tabela karty', () => {
     const tbody = { querySelectorAll: () => [] };
     const sluchacze = {};
     const formularz = {
-      addEventListener: (typ, f) => { sluchacze[typ] = f; },
+      addEventListener: (typ, f) => {
+        sluchacze[typ] = f;
+      },
       dispatchEvent: vi.fn(),
     };
-    const tabela = { closest: (s) => (s === 'form' ? formularz : null), querySelector: (s) => (s === 'tbody' ? tbody : null) };
+    const tabela = {
+      closest: (s) => (s === 'form' ? formularz : null),
+      querySelector: (s) => (s === 'tbody' ? tbody : null),
+    };
     const dokument = {
       readyState: 'complete',
-      querySelector: (s) => (s.split(',').map((x) => x.trim()).includes('table[data-wiersze-pozycji]') ? tabela : null),
+      querySelector: (s) =>
+        s
+          .split(',')
+          .map((x) => x.trim())
+          .includes('table[data-wiersze-pozycji]')
+          ? tabela
+          : null,
     };
     return { dokument, sluchacze, formularz, tbody, nazwa, nowyWiersz };
   }
   const klik = (attr) => {
     const przycisk = { hasAttribute: (a) => a === attr };
-    return { target: { closest: (s) => (s.split(',').map((x) => x.trim()).includes(`[${attr}]`) ? przycisk : null) }, preventDefault: vi.fn() };
+    return {
+      target: {
+        closest: (s) =>
+          s
+            .split(',')
+            .map((x) => x.trim())
+            .includes(`[${attr}]`)
+            ? przycisk
+            : null,
+      },
+      preventDefault: vi.fn(),
+    };
   };
 
   it('znajduje tabelę z data-wiersze-pozycji i podpina formularz', async () => {

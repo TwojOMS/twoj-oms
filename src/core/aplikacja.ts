@@ -30,18 +30,24 @@ function przygotujModuly(moduly: readonly ModulOms[], env: Srodowisko) {
   let przyczyna: unknown;
   const konfiguracje = new Map<string, unknown>();
   for (const m of kolejnosc) {
-    try { konfiguracje.set(m.nazwa, m.konfiguracja(env)); }
-    catch (e) {
+    try {
+      konfiguracje.set(m.nazwa, m.konfiguracja(env));
+    } catch (e) {
       const blad = bladWalidatora(e);
-      if (!blad) { nieoczekiwany = true; przyczyna ??= e; }
-      else pierwszyBlad ??= blad;
+      if (!blad) {
+        nieoczekiwany = true;
+        przyczyna ??= e;
+      } else pierwszyBlad ??= blad;
       bledy.push(`[${m.nazwa}] ${e instanceof Error ? e.message : String(e)}`);
     }
   }
   if (nieoczekiwany) throw new Error(`OMS nie wystartuje — konfiguracja:\n${bledy.join('\n')}`, { cause: przyczyna });
   if (pierwszyBlad) {
-    const blad = new BladKonfiguracji(pierwszyBlad.zmienna,
-      `OMS nie wystartuje — konfiguracja:\n${bledy.join('\n')}`, pierwszyBlad.wskazowka);
+    const blad = new BladKonfiguracji(
+      pierwszyBlad.zmienna,
+      `OMS nie wystartuje — konfiguracja:\n${bledy.join('\n')}`,
+      pierwszyBlad.wskazowka,
+    );
     blad.opisStartu = pierwszyBlad.opisStartu;
     throw blad;
   }
@@ -79,7 +85,8 @@ export async function zbudujAplikacje(o: {
   const usluga = <T>(modul: string, nazwa: string): T => {
     const klucz = `${modul}.${nazwa}`;
     if (o.nadpisania && Object.hasOwn(o.nadpisania, klucz)) return o.nadpisania[klucz] as T;
-    if (!uslugi.has(klucz)) throw new Error(`Usługa „${klucz}" nie istnieje albo moduł „${modul}" nie jest zbudowany przed wołającym`);
+    if (!uslugi.has(klucz))
+      throw new Error(`Usługa „${klucz}" nie istnieje albo moduł „${modul}" nie jest zbudowany przed wołającym`);
     return uslugi.get(klucz) as T;
   };
 
@@ -103,10 +110,15 @@ export async function zbudujAplikacje(o: {
     return payload;
   });
   app.addHook('onRequest', async (req) => {
-    if (!trustProxy && !ostrzezonoOProxy
-      && (req.headers['x-forwarded-for'] !== undefined || req.headers['cf-connecting-ip'] !== undefined)) {
+    if (
+      !trustProxy &&
+      !ostrzezonoOProxy &&
+      (req.headers['x-forwarded-for'] !== undefined || req.headers['cf-connecting-ip'] !== undefined)
+    ) {
       ostrzezonoOProxy = true;
-      log('Ostrzeżenie: brak OMS_TRUST_PROXY przy nagłówkach proxy; ustaw w OMS_TRUST_PROXY wyłącznie adresy IP lub CIDR zaufanego tunelu/proxy.');
+      log(
+        'Ostrzeżenie: brak OMS_TRUST_PROXY przy nagłówkach proxy; ustaw w OMS_TRUST_PROXY wyłącznie adresy IP lub CIDR zaufanego tunelu/proxy.',
+      );
     }
   });
   // Ten sam zebrany manifest zasila HTTP i publiczne Aplikacja.menu.
@@ -121,13 +133,17 @@ export async function zbudujAplikacje(o: {
   }
 
   return {
-    app, usluga,
+    app,
+    usluga,
     zegary: zbudowane.flatMap((z) => z.zegary ?? []),
     menu,
     zdrowie: () => {
       const stany = zbudowane.map((z) => z.zdrowie?.() ?? { alarmy: [], uwagi: [] });
       // To samo zdanie z dwóch modułów (np. auto-KSeF z faktur i ze zdrowia) — raz.
-      return { alarmy: [...new Set(stany.flatMap((s) => s.alarmy))], uwagi: [...new Set(stany.flatMap((s) => s.uwagi))] };
+      return {
+        alarmy: [...new Set(stany.flatMap((s) => s.alarmy))],
+        uwagi: [...new Set(stany.flatMap((s) => s.uwagi))],
+      };
     },
   };
 }

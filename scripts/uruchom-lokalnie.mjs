@@ -34,8 +34,26 @@ const TEN_PLIK = fileURLToPath(import.meta.url);
 const HOST = '127.0.0.1';
 const LOGIN = 'lokalny';
 const WAZNOSC_LINKU_SEK = 120;
-const ZMIENNE_SYSTEMU = ['PATH', 'Path', 'PATHEXT', 'SystemRoot', 'SYSTEMROOT', 'windir', 'WINDIR', 'ComSpec', 'COMSPEC',
-  'TEMP', 'TMP', 'TMPDIR', 'HOME', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'LANG', 'TZ'];
+const ZMIENNE_SYSTEMU = [
+  'PATH',
+  'Path',
+  'PATHEXT',
+  'SystemRoot',
+  'SYSTEMROOT',
+  'windir',
+  'WINDIR',
+  'ComSpec',
+  'COMSPEC',
+  'TEMP',
+  'TMP',
+  'TMPDIR',
+  'HOME',
+  'USERPROFILE',
+  'APPDATA',
+  'LOCALAPPDATA',
+  'LANG',
+  'TZ',
+];
 
 function opcje(argv) {
   const o = { komenda: argv[0], port: null, katalog: null, zostaw: false, sila: false, waznySek: WAZNOSC_LINKU_SEK };
@@ -48,18 +66,43 @@ function opcje(argv) {
     else if (a === '--sila') o.sila = true;
     else throw new Error(`nieznany argument: ${a}`);
   }
-  if (o.port !== null && !(Number.isInteger(o.port) && o.port > 0 && o.port < 65536)) throw new Error('--port: liczba 1–65535');
-  if (!(Number.isInteger(o.waznySek) && o.waznySek >= 1 && o.waznySek <= 600)) throw new Error('--wazny-sek: liczba 1–600');
-  o.katalog ??= path.join(os.tmpdir(), `oms-lokalnie-${createHash('sha1').update(REPO.toLowerCase()).digest('hex').slice(0, 10)}`);
+  if (o.port !== null && !(Number.isInteger(o.port) && o.port > 0 && o.port < 65536))
+    throw new Error('--port: liczba 1–65535');
+  if (!(Number.isInteger(o.waznySek) && o.waznySek >= 1 && o.waznySek <= 600))
+    throw new Error('--wazny-sek: liczba 1–600');
+  o.katalog ??= path.join(
+    os.tmpdir(),
+    `oms-lokalnie-${createHash('sha1').update(REPO.toLowerCase()).digest('hex').slice(0, 10)}`,
+  );
   return o;
 }
 
-const pliki = (k) => ({ baza: path.join(k, 'oms.sqlite'), stan: path.join(k, 'stan.json'), konto: path.join(k, 'konto.json'),
-  wejscie: path.join(k, 'wejscie.json'), klucz: path.join(k, 'klucz.env'),
-  log: path.join(k, 'serwer.log'), proformy: path.join(k, 'proformy'), etykiety: path.join(k, 'etykiety') });
+const pliki = (k) => ({
+  baza: path.join(k, 'oms.sqlite'),
+  stan: path.join(k, 'stan.json'),
+  konto: path.join(k, 'konto.json'),
+  wejscie: path.join(k, 'wejscie.json'),
+  klucz: path.join(k, 'klucz.env'),
+  log: path.join(k, 'serwer.log'),
+  proformy: path.join(k, 'proformy'),
+  etykiety: path.join(k, 'etykiety'),
+});
 const wypisz = (obiekt) => console.log(JSON.stringify(obiekt));
-const czytajJson = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; } };
-const zyje = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } };
+const czytajJson = (p) => {
+  try {
+    return JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch {
+    return null;
+  }
+};
+const zyje = (pid) => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    return e.code === 'EPERM';
+  }
+};
 const czekaj = (ms) => new Promise((ok) => setTimeout(ok, ms));
 
 function portWolny(port) {
@@ -73,11 +116,19 @@ function wolnyPort() {
   return new Promise((ok, zle) => {
     const s = net.createServer();
     s.once('error', zle);
-    s.listen(0, HOST, () => { const { port } = s.address(); s.close(() => ok(port)); });
+    s.listen(0, HOST, () => {
+      const { port } = s.address();
+      s.close(() => ok(port));
+    });
   });
 }
 async function odpowiada(adres) {
-  try { const r = await fetch(`${adres}/health`, { signal: AbortSignal.timeout(3000) }); return r.status; } catch { return null; }
+  try {
+    const r = await fetch(`${adres}/health`, { signal: AbortSignal.timeout(3000) });
+    return r.status;
+  } catch {
+    return null;
+  }
 }
 function usunKatalog(k) {
   fs.rmSync(k, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
@@ -86,28 +137,38 @@ function usunKatalog(k) {
 function wyczyscBezKlucza(k) {
   if (!fs.existsSync(k)) return;
   for (const wpis of fs.readdirSync(k)) {
-    if (wpis !== 'klucz.env') fs.rmSync(path.join(k, wpis), { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+    if (wpis !== 'klucz.env')
+      fs.rmSync(path.join(k, wpis), { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   }
 }
 function srodowisko(p, port) {
   const env = {};
   for (const k of ZMIENNE_SYSTEMU) if (process.env[k] !== undefined) env[k] = process.env[k];
-  return { ...env, OMS_DB_PATH: p.baza, OMS_PORT: String(port), OMS_PROFORMY_KATALOG: p.proformy, OMS_ETYKIETY_KATALOG: p.etykiety,
+  return {
+    ...env,
+    OMS_DB_PATH: p.baza,
+    OMS_PORT: String(port),
+    OMS_PROFORMY_KATALOG: p.proformy,
+    OMS_ETYKIETY_KATALOG: p.etykiety,
     // Konto serwisowe (Basic) gaśnie po pierwszym koncie w bazie — tu jest od razu, więc hasło nikomu niepotrzebne.
-    OMS_USER: 'serwis-lokalny', OMS_PASS: randomBytes(24).toString('base64url') };
+    OMS_USER: 'serwis-lokalny',
+    OMS_PASS: randomBytes(24).toString('base64url'),
+  };
 }
 
 async function start(o) {
   const p = pliki(o.katalog);
   const stan = czytajJson(p.stan);
-  if (stan && zyje(stan.pid) && await odpowiada(stan.adres)) {
-    if (o.port !== null && o.port !== stan.port) throw new Error(`w ${o.katalog} działa już serwer na porcie ${stan.port} — najpierw stop`);
+  if (stan && zyje(stan.pid) && (await odpowiada(stan.adres))) {
+    if (o.port !== null && o.port !== stan.port)
+      throw new Error(`w ${o.katalog} działa już serwer na porcie ${stan.port} — najpierw stop`);
     wypisz({ status: 'juz-dziala', ...stan });
     return;
   }
-  if (stan && zyje(stan.pid)) throw new Error(`proces ${stan.pid} z ${p.stan} żyje, ale nie odpowiada — sprawdź go albo stop --sila`);
-  const port = o.port ?? await wolnyPort();
-  if (!await portWolny(port)) throw new Error(`port ${port} zajęty — wybierz inny (--port) albo pomiń --port`);
+  if (stan && zyje(stan.pid))
+    throw new Error(`proces ${stan.pid} z ${p.stan} żyje, ale nie odpowiada — sprawdź go albo stop --sila`);
+  const port = o.port ?? (await wolnyPort());
+  if (!(await portWolny(port))) throw new Error(`port ${port} zajęty — wybierz inny (--port) albo pomiń --port`);
   const t0 = Date.now();
   wyczyscBezKlucza(o.katalog); // resztki po poprzednim przebiegu (proces nie żyje) — zawsze świeże demo
   for (const k of [p.proformy, p.etykiety]) fs.mkdirSync(k, { recursive: true });
@@ -124,8 +185,11 @@ async function start(o) {
   await utworzBazeDemo({ baza: p.baza, dzis, env });
   const haslo = randomBytes(18).toString('base64url');
   const db = new DatabaseSync(p.baza);
-  try { zalozKonto(db, { login: LOGIN, imie: 'Administrator lokalny', haslo, rola: 'administrator', admin: true }); }
-  finally { db.close(); }
+  try {
+    zalozKonto(db, { login: LOGIN, imie: 'Administrator lokalny', haslo, rola: 'administrator', admin: true });
+  } finally {
+    db.close();
+  }
   const adres = `http://${HOST}:${port}`;
   fs.writeFileSync(p.konto, JSON.stringify({ adres, login: LOGIN, haslo }, null, 2) + '\n', { mode: 0o600 });
   const msBaza = Date.now() - t0;
@@ -133,15 +197,35 @@ async function start(o) {
   const wyjscie = fs.openSync(p.log, 'a');
   let portWejscia = await wolnyPort();
   while (portWejscia === port) portWejscia = await wolnyPort();
-  const dziecko = spawn(process.execPath, [TEN_PLIK, 'serwer', '--wejscie', String(portWejscia), '--katalog', o.katalog], {
-    cwd: REPO, env, detached: true, windowsHide: true, stdio: ['ignore', wyjscie, wyjscie],
-  });
+  const dziecko = spawn(
+    process.execPath,
+    [TEN_PLIK, 'serwer', '--wejscie', String(portWejscia), '--katalog', o.katalog],
+    {
+      cwd: REPO,
+      env,
+      detached: true,
+      windowsHide: true,
+      stdio: ['ignore', wyjscie, wyjscie],
+    },
+  );
   fs.closeSync(wyjscie);
   let koniec = null;
-  dziecko.once('exit', (kod) => { koniec = kod ?? 'sygnał'; });
+  dziecko.once('exit', (kod) => {
+    koniec = kod ?? 'sygnał';
+  });
   dziecko.unref();
-  const nowyStan = { pid: dziecko.pid, port, portWejscia, adres, katalog: o.katalog, log: p.log, plikKonta: p.konto, login: LOGIN,
-    repo: REPO, uruchomiony: new Date().toISOString() };
+  const nowyStan = {
+    pid: dziecko.pid,
+    port,
+    portWejscia,
+    adres,
+    katalog: o.katalog,
+    log: p.log,
+    plikKonta: p.konto,
+    login: LOGIN,
+    repo: REPO,
+    uruchomiony: new Date().toISOString(),
+  };
   fs.writeFileSync(p.stan, JSON.stringify(nowyStan, null, 2) + '\n');
 
   const limit = Date.now() + 60000;
@@ -155,7 +239,9 @@ async function start(o) {
   }
   const ogon = fs.existsSync(p.log) ? fs.readFileSync(p.log, 'utf8').slice(-3000) : '';
   if (koniec === null && zyje(dziecko.pid)) process.kill(dziecko.pid);
-  throw new Error(`serwer nie wstał (${koniec !== null ? `zakończył się kodem ${koniec}` : 'brak odpowiedzi w 60 s'}); log ${p.log}:\n${ogon}`);
+  throw new Error(
+    `serwer nie wstał (${koniec !== null ? `zakończył się kodem ${koniec}` : 'brak odpowiedzi w 60 s'}); log ${p.log}:\n${ogon}`,
+  );
 }
 
 async function stop(o) {
@@ -168,24 +254,35 @@ async function stop(o) {
   }
   // PID z pliku mógł zostać przydzielony innemu procesowi (restart laptopa) — zabijamy tylko, gdy pod portem
   // z tego samego pliku odpowiada panel, albo na wyraźne --sila.
-  if (!o.sila && !await odpowiada(stan.adres)) {
-    throw new Error(`proces ${stan.pid} żyje, ale ${stan.adres} nie odpowiada — to może nie być OMS; sprawdź i użyj stop --sila`);
+  if (!o.sila && !(await odpowiada(stan.adres))) {
+    throw new Error(
+      `proces ${stan.pid} żyje, ale ${stan.adres} nie odpowiada — to może nie być OMS; sprawdź i użyj stop --sila`,
+    );
   }
   process.kill(stan.pid, 'SIGTERM');
   const limit = Date.now() + 15000;
-  while (Date.now() < limit && (zyje(stan.pid) || !await portWolny(stan.port))) {
+  while (Date.now() < limit && (zyje(stan.pid) || !(await portWolny(stan.port)))) {
     if (Date.now() > limit - 10000 && zyje(stan.pid) && process.platform !== 'win32') process.kill(stan.pid, 'SIGKILL');
     await czekaj(200);
   }
   if (zyje(stan.pid)) throw new Error(`proces ${stan.pid} nie zakończył się w 15 s`);
   if (!o.zostaw) usunKatalog(o.katalog);
-  wypisz({ status: 'zatrzymany', pid: stan.pid, port: stan.port, portWolny: await portWolny(stan.port), katalog: o.katalog,
-    katalogUsuniety: !fs.existsSync(o.katalog) });
+  wypisz({
+    status: 'zatrzymany',
+    pid: stan.pid,
+    port: stan.port,
+    portWolny: await portWolny(stan.port),
+    katalog: o.katalog,
+    katalogUsuniety: !fs.existsSync(o.katalog),
+  });
 }
 
 async function pokazStan(o) {
   const stan = czytajJson(pliki(o.katalog).stan);
-  if (!stan) { wypisz({ status: 'nie-dziala', katalog: o.katalog }); return; }
+  if (!stan) {
+    wypisz({ status: 'nie-dziala', katalog: o.katalog });
+    return;
+  }
   const health = zyje(stan.pid) ? await odpowiada(stan.adres) : null;
   wypisz({ status: health ? 'dziala' : 'nie-dziala', health, ...stan });
 }
@@ -194,15 +291,24 @@ const skrot = (token) => createHash('sha256').update(token).digest();
 
 async function zaloguj(o) {
   const stan = czytajJson(pliki(o.katalog).stan);
-  if (!stan || !zyje(stan.pid) || !await odpowiada(stan.adres)) {
+  if (!stan || !zyje(stan.pid) || !(await odpowiada(stan.adres))) {
     throw new Error('serwer nie działa — najpierw: node scripts/uruchom-lokalnie.mjs start');
   }
   if (!stan.portWejscia) throw new Error('ten serwer wstał starszą wersją skryptu (bez wejścia) — stop, potem start');
   const token = randomBytes(24).toString('base64url');
-  fs.writeFileSync(pliki(o.katalog).wejscie,
-    JSON.stringify({ skrot: skrot(token).toString('hex'), wygasa: Date.now() + o.waznySek * 1000 }) + '\n', { mode: 0o600 });
-  wypisz({ status: 'gotowe', link: `http://${HOST}:${stan.portWejscia}/wejscie/${token}`, jednorazowy: true, waznySek: o.waznySek,
-    adres: stan.adres, uwaga: 'Link jest sekretem o krótkim życiu: otwórz go w przeglądarce raz; po tym nie loguje.' });
+  fs.writeFileSync(
+    pliki(o.katalog).wejscie,
+    JSON.stringify({ skrot: skrot(token).toString('hex'), wygasa: Date.now() + o.waznySek * 1000 }) + '\n',
+    { mode: 0o600 },
+  );
+  wypisz({
+    status: 'gotowe',
+    link: `http://${HOST}:${stan.portWejscia}/wejscie/${token}`,
+    jednorazowy: true,
+    waznySek: o.waznySek,
+    adres: stan.adres,
+    uwaga: 'Link jest sekretem o krótkim życiu: otwórz go w przeglądarce raz; po tym nie loguje.',
+  });
 }
 
 // Nasłuch wejścia: tylko w procesie serwera uruchomionym przez `start`. Hasło z konto.json czytane jest TUTAJ,
@@ -210,7 +316,10 @@ async function zaloguj(o) {
 function uruchomWejscie({ port, portPanelu, katalog }) {
   const p = pliki(katalog);
   const adresPanelu = `http://${HOST}:${portPanelu}`;
-  const odmow = (res, kod) => { res.writeHead(kod, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' }); res.end('brak dostępu\n'); };
+  const odmow = (res, kod) => {
+    res.writeHead(kod, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' });
+    res.end('brak dostępu\n');
+  };
   const serwer = http.createServer(async (req, res) => {
     try {
       // Obrona przed DNS rebinding: tylko adres, który wypisało `zaloguj`.
@@ -222,24 +331,40 @@ function uruchomWejscie({ port, portPanelu, katalog }) {
       // padnie logowanie, więc link jest jednorazowy także wtedy, gdy logowanie się nie uda.
       const zapis = czytajJson(p.wejscie);
       if (!zapis) return odmow(res, 410);
-      if (!(zapis.wygasa > Date.now())) { fs.rmSync(p.wejscie, { force: true }); return odmow(res, 410); }
+      if (!(zapis.wygasa > Date.now())) {
+        fs.rmSync(p.wejscie, { force: true });
+        return odmow(res, 410);
+      }
       const oczekiwany = Buffer.from(zapis.skrot, 'hex');
       const dany = skrot(dopasowanie[1]);
       if (oczekiwany.length !== dany.length || !timingSafeEqual(oczekiwany, dany)) return odmow(res, 410);
       fs.rmSync(p.wejscie, { force: true });
       const konto = czytajJson(p.konto);
-      const odpowiedz = await fetch(`${adresPanelu}/login`, { method: 'POST', redirect: 'manual',
+      const odpowiedz = await fetch(`${adresPanelu}/login`, {
+        method: 'POST',
+        redirect: 'manual',
         headers: { origin: adresPanelu, 'content-type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ uzytkownik: konto?.login ?? '', haslo: konto?.haslo ?? '', powrot: '/' }) });
+        body: new URLSearchParams({ uzytkownik: konto?.login ?? '', haslo: konto?.haslo ?? '', powrot: '/' }),
+      });
       const ciasteczko = odpowiedz.headers.getSetCookie().find((c) => c.startsWith('sesja_oms_proba='));
       if (odpowiedz.status !== 302 || !ciasteczko) return odmow(res, 502);
       res.writeHead(302, { 'set-cookie': ciasteczko, location: `${adresPanelu}/`, 'cache-control': 'no-store' });
       res.end();
-    } catch { odmow(res, 500); }
+    } catch {
+      odmow(res, 500);
+    }
   });
   return new Promise((ok, zle) => {
     serwer.once('error', zle);
-    serwer.listen(port, HOST, () => ok(() => new Promise((koniec) => { serwer.closeAllConnections(); serwer.close(koniec); })));
+    serwer.listen(port, HOST, () =>
+      ok(
+        () =>
+          new Promise((koniec) => {
+            serwer.closeAllConnections();
+            serwer.close(koniec);
+          }),
+      ),
+    );
   });
 }
 
@@ -250,12 +375,17 @@ async function serwer(argv) {
     if (argv[i] === '--wejscie') w.wejscie = Number(argv[++i]);
     else if (argv[i] === '--katalog') w.katalog = argv[++i];
   }
-  const zamknijWejscie = w.wejscie && w.katalog
-    ? await uruchomWejscie({ port: w.wejscie, portPanelu: Number(process.env.OMS_PORT), katalog: w.katalog })
-    : async () => {};
+  const zamknijWejscie =
+    w.wejscie && w.katalog
+      ? await uruchomWejscie({ port: w.wejscie, portPanelu: Number(process.env.OMS_PORT), katalog: w.katalog })
+      : async () => {};
   const { uruchomPiaskownice } = await import('../deploy/proba/atrapy/index.mjs');
   const { zamknij } = await uruchomPiaskownice(process.env, { host: HOST });
-  const zakoncz = () => { void zamknijWejscie().then(zamknij).finally(() => process.exit(0)); };
+  const zakoncz = () => {
+    void zamknijWejscie()
+      .then(zamknij)
+      .finally(() => process.exit(0));
+  };
   process.once('SIGINT', zakoncz);
   process.once('SIGTERM', zakoncz);
   console.log(`OMS lokalnie na http://${HOST}:${process.env.OMS_PORT} — tryb proba, integracje: atrapy`);
@@ -267,7 +397,10 @@ try {
   if (argv[0] === 'serwer') await serwer(argv.slice(1));
   else {
     const o = opcje(argv);
-    if (!KOMENDY[o.komenda]) throw new Error('użycie: node scripts/uruchom-lokalnie.mjs start|stan|stop|zaloguj [--port N] [--katalog K] [--zostaw] [--sila] [--wazny-sek N]');
+    if (!KOMENDY[o.komenda])
+      throw new Error(
+        'użycie: node scripts/uruchom-lokalnie.mjs start|stan|stop|zaloguj [--port N] [--katalog K] [--zostaw] [--sila] [--wazny-sek N]',
+      );
     await KOMENDY[o.komenda](o);
   }
 } catch (e) {

@@ -19,28 +19,54 @@ const zasob = adresZasobu(fileURLToPath(new URL('../../src/public', import.meta.
 
 const przed = JSON.parse(readFileSync(new URL('../fixtures/menu-prz065.json', import.meta.url), 'utf8'));
 if (przed.cases.length !== 225) throw new Error(`PRZ065: fixture ma ${przed.cases.length} zamiast 225 przypadków`);
-type OpcjeRenderu = { filename:string; includer:(original:string, parsed:string)=>{filename:string;template:string} };
-const ejs = createRequire(import.meta.url)('ejs') as { renderFile:(path:string,data:Record<string,unknown>)=>Promise<string>; render:(template:string,data:Record<string,unknown>,options:OpcjeRenderu)=>string; };
+type OpcjeRenderu = {
+  filename: string;
+  includer: (original: string, parsed: string) => { filename: string; template: string };
+};
+const ejs = createRequire(import.meta.url)('ejs') as {
+  renderFile: (path: string, data: Record<string, unknown>) => Promise<string>;
+  render: (template: string, data: Record<string, unknown>, options: OpcjeRenderu) => string;
+};
 const szablon = fileURLToPath(new URL('../../src/core/web/widoki/layout-oms.ejs', import.meta.url));
-const menu = MODULY.flatMap(m => m.menu).toSorted((a,b) => a.kolejnosc-b.kolejnosc);
-const plikiSzablonu = ['layout-oms.ejs','_menu-panelu.ejs','_ikona-panelu.ejs','_menu-uzytkownika.ejs']
-  .map(p=>fileURLToPath(new URL(`../../src/core/web/widoki/${p}`,import.meta.url)));
-const eolZrodel = plikiSzablonu.map(p=>{
-  const rodzaje = [...new Set(readFileSync(p,'utf8').match(/\r\n|\r|\n/g))];
-  if(rodzaje.length!==1)throw new Error(`Niejednorodne EOL szablonu: ${p}`);
+const menu = MODULY.flatMap((m) => m.menu).toSorted((a, b) => a.kolejnosc - b.kolejnosc);
+const plikiSzablonu = ['layout-oms.ejs', '_menu-panelu.ejs', '_ikona-panelu.ejs', '_menu-uzytkownika.ejs'].map((p) =>
+  fileURLToPath(new URL(`../../src/core/web/widoki/${p}`, import.meta.url)),
+);
+const eolZrodel = plikiSzablonu.map((p) => {
+  const rodzaje = [...new Set(readFileSync(p, 'utf8').match(/\r\n|\r|\n/g))];
+  if (rodzaje.length !== 1) throw new Error(`Niejednorodne EOL szablonu: ${p}`);
   return rodzaje[0];
 });
-if(new Set(eolZrodel).size!==1)throw new Error('Mieszane EOL między szablonami nowego menu — nie zgaduj oracle');
+if (new Set(eolZrodel).size !== 1) throw new Error('Mieszane EOL między szablonami nowego menu — nie zgaduj oracle');
 // Belka ma teraz wersję PNG, jak ikona karty. Zmieniamy tylko oczekiwany adres
 // w historycznej ramie; cały pozostały HTML nadal porównujemy dosłownie.
-const odtworz = (refs:number[],eol:string=eolZrodel[0]) => refs.map(i=>przed.fragments[i]).join('')
-  .replaceAll('src="/public/favicon-192.png"', `src="${zasob('favicon-192.png')}"`)
-  .replaceAll('\r\n','\n').replaceAll('\n',eol);
-const dane = (przypadek:any) => {
-  const konto = przypadek.konto ? {...przypadek.konto,uprawnienia:new Set(przypadek.konto.uprawnienia)} : null;
-  return {title:'Fixture menu',motyw:'jasny',htmx:false,bezPaska:przypadek.bezPaska??false,body:'<p>Fixture</p>',panelStatusow:przypadek.panelStatusow,
-    marka:{logoAlt:'Firma testowa'},nawigacja:nawigacjaDla({sciezka:przypadek.sciezka,konto,menu,odlozoneEkrany:['kampania','cele','finanse']}),
-    menuKonta:menuKontaDla(konto,{powrot:przypadek.sciezka}),modyfikatorStatusu:()=>null,zasob};
+const odtworz = (refs: number[], eol: string = eolZrodel[0]) =>
+  refs
+    .map((i) => przed.fragments[i])
+    .join('')
+    .replaceAll('src="/public/favicon-192.png"', `src="${zasob('favicon-192.png')}"`)
+    .replaceAll('\r\n', '\n')
+    .replaceAll('\n', eol);
+const dane = (przypadek: any) => {
+  const konto = przypadek.konto ? { ...przypadek.konto, uprawnienia: new Set(przypadek.konto.uprawnienia) } : null;
+  return {
+    title: 'Fixture menu',
+    motyw: 'jasny',
+    htmx: false,
+    bezPaska: przypadek.bezPaska ?? false,
+    body: '<p>Fixture</p>',
+    panelStatusow: przypadek.panelStatusow,
+    marka: { logoAlt: 'Firma testowa' },
+    nawigacja: nawigacjaDla({
+      sciezka: przypadek.sciezka,
+      konto,
+      menu,
+      odlozoneEkrany: ['kampania', 'cele', 'finanse'],
+    }),
+    menuKonta: menuKontaDla(konto, { powrot: przypadek.sciezka }),
+    modyfikatorStatusu: () => null,
+    zasob,
+  };
 };
 const wytnij = (html: string) => ({
   header: html.match(/<header class="oms-topbar">[\s\S]*?<\/header>/)?.[0] ?? '',
@@ -48,28 +74,95 @@ const wytnij = (html: string) => ({
 });
 
 describe('literalny HTML zatwierdzonego menu i manifestów', () => {
-  for (const przypadek of przed.cases) it(przypadek.name, async () => {
-    expect(wytnij(await ejs.renderFile(szablon,dane(przypadek)))).toEqual({header:odtworz(przypadek.header),aside:odtworz(przypadek.aside)});
-  });
+  for (const przypadek of przed.cases)
+    it(przypadek.name, async () => {
+      expect(wytnij(await ejs.renderFile(szablon, dane(przypadek)))).toEqual({
+        header: odtworz(przypadek.header),
+        aside: odtworz(przypadek.aside),
+      });
+    });
 });
-for(const eol of ['\n','\r\n'])it(`literalny HTML w checkout ${eol==='\n'?'LF':'CRLF'}`,()=>{
-  for(const name of ['administrator /faktury','tylko-przesylki /przesylki','statusy-runtime','imie-html /ustawienia/konta/2']) {
-    const przypadek = przed.cases.find((p:any)=>p.name===name);
-    const eolSzablonu = (p:string)=>readFileSync(p,'utf8').replaceAll('\r\n','\n').replaceAll('\n',eol);
-    const html=ejs.render(eolSzablonu(szablon),dane(przypadek),{filename:szablon,includer:(_original,parsed)=>({filename:parsed,template:eolSzablonu(parsed)})});
-    expect(wytnij(html)).toEqual({header:odtworz(przypadek.header,eol),aside:odtworz(przypadek.aside,eol)});
+for (const eol of ['\n', '\r\n'])
+  it(`literalny HTML w checkout ${eol === '\n' ? 'LF' : 'CRLF'}`, () => {
+    for (const name of [
+      'administrator /faktury',
+      'tylko-przesylki /przesylki',
+      'statusy-runtime',
+      'imie-html /ustawienia/konta/2',
+    ]) {
+      const przypadek = przed.cases.find((p: any) => p.name === name);
+      const eolSzablonu = (p: string) => readFileSync(p, 'utf8').replaceAll('\r\n', '\n').replaceAll('\n', eol);
+      const html = ejs.render(eolSzablonu(szablon), dane(przypadek), {
+        filename: szablon,
+        includer: (_original, parsed) => ({ filename: parsed, template: eolSzablonu(parsed) }),
+      });
+      expect(wytnij(html)).toEqual({ header: odtworz(przypadek.header, eol), aside: odtworz(przypadek.aside, eol) });
+    }
+  });
+const env = {
+  OMS_USER: 'operator',
+  OMS_PASS: 'fixture',
+  OMS_SPRZEDAWCA_NIP: '1234563218',
+  OMS_RACHUNEK: '34109010140000000000000000',
+  OMS_PROFORMY_KATALOG: tmpdir(),
+  OMS_ETYKIETY_KATALOG: tmpdir(),
+};
+const headers = { authorization: `Basic ${Buffer.from('operator:fixture').toString('base64')}` };
+it('rzeczywisty bootstrap zachowuje etykietę, adres i kolejność z manifestu', async () => {
+  const siec = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Sieć zabroniona'));
+  let a: Awaited<ReturnType<typeof zbudujOms>> | undefined;
+  const moduly = MODULY.map((m) =>
+    m.nazwa === 'raporty'
+      ? {
+          ...m,
+          menu: m.menu.map((p) =>
+            p.adres === '/raporty'
+              ? { ...p, etykieta: 'Raporty <z manifestu>', adres: '/raporty?widok=manifest', kolejnosc: 25 }
+              : p,
+          ),
+        }
+      : m,
+  );
+  // Analizy są w menu bocznym, w podmenu „Analityka”.
+  try {
+    a = await zbudujOms({ env, moduly });
+    const odp = await a.app.inject({ method: 'GET', url: '/raporty', headers });
+    expect(odp.statusCode).toBe(200);
+    const f = wytnij(odp.body);
+    expect(f.aside).toContain('href="/raporty?widok=manifest"');
+    expect(f.aside).toContain('Raporty &lt;z manifestu&gt;');
+    expect(f.aside.indexOf('href="/statystyki"')).toBeLessThan(f.aside.indexOf('href="/raporty?widok=manifest"'));
+    expect((a.app as any).menuOms).toBe(a.menu);
+    expect(siec).not.toHaveBeenCalled();
+  } finally {
+    try {
+      await a?.app.close();
+    } finally {
+      a?.db.close();
+      siec.mockRestore();
+    }
   }
 });
-const env = { OMS_USER:'operator', OMS_PASS:'fixture', OMS_SPRZEDAWCA_NIP:'1234563218', OMS_RACHUNEK:'34109010140000000000000000', OMS_PROFORMY_KATALOG:tmpdir(), OMS_ETYKIETY_KATALOG:tmpdir() };
-const headers = { authorization:`Basic ${Buffer.from('operator:fixture').toString('base64')}` };
-it('rzeczywisty bootstrap zachowuje etykietę, adres i kolejność z manifestu', async () => {
-  const siec = vi.spyOn(globalThis,'fetch').mockRejectedValue(new Error('Sieć zabroniona')); let a: Awaited<ReturnType<typeof zbudujOms>> | undefined;
-  const moduly = MODULY.map(m => m.nazwa==='raporty' ? {...m, menu:m.menu.map(p=>p.adres==='/raporty'?{...p,etykieta:'Raporty <z manifestu>',adres:'/raporty?widok=manifest',kolejnosc:25}:p)}:m);
-  // Analizy są w menu bocznym, w podmenu „Analityka”.
-  try { a=await zbudujOms({env,moduly}); const odp=await a.app.inject({method:'GET',url:'/raporty',headers}); expect(odp.statusCode).toBe(200); const f=wytnij(odp.body);
-    expect(f.aside).toContain('href="/raporty?widok=manifest"'); expect(f.aside).toContain('Raporty &lt;z manifestu&gt;');
-    expect(f.aside.indexOf('href="/statystyki"')).toBeLessThan(f.aside.indexOf('href="/raporty?widok=manifest"')); expect((a.app as any).menuOms).toBe(a.menu); expect(siec).not.toHaveBeenCalled();
-  } finally { try { await a?.app.close(); } finally { a?.db.close(); siec.mockRestore(); } }
+it('jawna pusta lista manifestów nie przywraca statycznych pozycji', () => {
+  const n = nawigacjaDla({ sciezka: '/', menu: [] } as any);
+  expect({ boczne: n.boczne, ustawienia: n.ustawienia, statusy: n.kontekst?.statusy ?? [] }).toEqual({
+    boczne: [],
+    ustawienia: null,
+    statusy: [],
+  });
 });
-it('jawna pusta lista manifestów nie przywraca statycznych pozycji',()=>{ const n=nawigacjaDla({sciezka:'/',menu:[]} as any); expect({boczne:n.boczne,ustawienia:n.ustawienia,statusy:n.kontekst?.statusy??[]}).toEqual({boczne:[],ustawienia:null,statusy:[]}); });
-it('pipeline odmawia konfiguracji HTTP bez manifestu Aplikacja.menu',async()=>{const app=Fastify(),db=openOmsDb();try{expect(()=>registerWeb(app,{db,config:{auth:{user:'operator',pass:'fixture'}}})).toThrow('Brak menuOms');}finally{try{await app.close();}finally{db.close();}}});
+it('pipeline odmawia konfiguracji HTTP bez manifestu Aplikacja.menu', async () => {
+  const app = Fastify(),
+    db = openOmsDb();
+  try {
+    expect(() => registerWeb(app, { db, config: { auth: { user: 'operator', pass: 'fixture' } } })).toThrow(
+      'Brak menuOms',
+    );
+  } finally {
+    try {
+      await app.close();
+    } finally {
+      db.close();
+    }
+  }
+});

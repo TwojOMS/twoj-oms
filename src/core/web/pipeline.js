@@ -118,53 +118,63 @@ const __publicDir = join(__dir, '../../public');
 const SYGNATURA_PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 function wczytajLogo(plik) {
   let bajty;
-  try { bajty = readFileSync(plik); } catch { throw new Error('OMS_LOGO_PLIK: nie da się odczytać pliku'); }
+  try {
+    bajty = readFileSync(plik);
+  } catch {
+    throw new Error('OMS_LOGO_PLIK: nie da się odczytać pliku');
+  }
   if (!bajty.subarray(0, 8).equals(SYGNATURA_PNG)) throw new Error('OMS_LOGO_PLIK: plik nie jest obrazem PNG');
   return bajty;
 }
-export function registerWeb(app, {db, config}) {
-// Ten sam znak w belce i na karcie; bez konfiguracji karta używa PNG 32 px z paczki.
-const logo = config.marka?.logoPlik ? wczytajLogo(config.marka.logoPlik) : null;
-const znak = logoInstalacji(db, { bajty: logo, alt: config.marka?.logoAlt ?? '', wPliku: Boolean(config.marka?.logoPlik) });
-app.decorate('logoInstalacji', znak);
-let ostatnieLogo;
-let adres;
-const zasob = nazwa => {
-  const bajty = znak.biezace().bajty;
-  if (!adres || bajty !== ostatnieLogo) {
-    ostatnieLogo = bajty;
-    adres = adresZasobu(__publicDir, bajty ? { 'favicon-32.png': bajty, 'favicon-192.png': bajty } : {});
-  }
-  return adres(nazwa);
-};
-const menu = app.menuOms;
-if (!Array.isArray(menu)) throw new Error('Brak menuOms z manifestów Aplikacja.menu');
-const trasyOms = [];
-app.addHook('onRequest', (_req, _reply, done) => { wPamieciStatusowZadania(done); });
-app.addHook('onRoute', (opcje) => {
+export function registerWeb(app, { db, config }) {
+  // Ten sam znak w belce i na karcie; bez konfiguracji karta używa PNG 32 px z paczki.
+  const logo = config.marka?.logoPlik ? wczytajLogo(config.marka.logoPlik) : null;
+  const znak = logoInstalacji(db, {
+    bajty: logo,
+    alt: config.marka?.logoAlt ?? '',
+    wPliku: Boolean(config.marka?.logoPlik),
+  });
+  app.decorate('logoInstalacji', znak);
+  let ostatnieLogo;
+  let adres;
+  const zasob = (nazwa) => {
+    const bajty = znak.biezace().bajty;
+    if (!adres || bajty !== ostatnieLogo) {
+      ostatnieLogo = bajty;
+      adres = adresZasobu(__publicDir, bajty ? { 'favicon-32.png': bajty, 'favicon-192.png': bajty } : {});
+    }
+    return adres(nazwa);
+  };
+  const menu = app.menuOms;
+  if (!Array.isArray(menu)) throw new Error('Brak menuOms z manifestów Aplikacja.menu');
+  const trasyOms = [];
+  app.addHook('onRequest', (_req, _reply, done) => {
+    wPamieciStatusowZadania(done);
+  });
+  app.addHook('onRoute', (opcje) => {
     const metody = Array.isArray(opcje.method) ? opcje.method : [opcje.method];
     for (const metoda of metody) trasyOms.push({ metoda, url: opcje.url });
   });
-app.decorate('trasyOms', trasyOms);
-app.addHook('onRoute', (opcje) => {
+  app.decorate('trasyOms', trasyOms);
+  app.addHook('onRoute', (opcje) => {
     const oryginal = opcje.handler;
     opcje.handler = function (req, reply) {
       const kto = req.konto && !req.konto.serwisowe ? req.konto.imie : null;
       return wKontekscie(kto, () => oryginal.call(this, req, reply));
     };
   });
-app.register(fastifyFormbody);
-app.register(fastifyBasicAuth, {
+  app.register(fastifyFormbody);
+  app.register(fastifyBasicAuth, {
     authenticate: { realm: 'OMS' },
     validate: async (user, pass) => {
       if (user !== config.auth.user || pass !== config.auth.pass) throw new Error('Unauthorized');
     },
   });
-app.register(fastifyView, {
+  app.register(fastifyView, {
     engine: { ejs },
     root: join(__dir, '../..'),
     layout: 'core/web/widoki/layout-oms.ejs',
-options: { views: katalogiWidokow() },
+    options: { views: katalogiWidokow() },
     // `fmtDataCzas`/`fmtDataCzasKrotko` w defaultContext, zeby byly dostepne w KAZDYM
     // widoku bez przekazywania ich osobno w kazdej trasie — jeden format daty w calym
     // module, patrz domena/format-daty.js. Tak samo `klasaStatusu`: lista i karta maluja
@@ -176,9 +186,16 @@ options: { views: katalogiWidokow() },
     // widok skladajacy ten dopisek u siebie zgubilby go przy pierwszym przeoczeniu, a to
     // jest informacja o pieniadzach, ktore kurier ma zainkasowac.
     defaultContext: {
-      title: 'Zamówienia', fmtDataCzas, fmtDataCzasKrotko, fmtKiedy, klasaStatusu, modyfikatorStatusu,
-      etykietaStatusu: klucz => klucz,
-      etapPrzesylki, etykietaEtapu, dniKalendarzowe,
+      title: 'Zamówienia',
+      fmtDataCzas,
+      fmtDataCzasKrotko,
+      fmtKiedy,
+      klasaStatusu,
+      modyfikatorStatusu,
+      etykietaStatusu: (klucz) => klucz,
+      etapPrzesylki,
+      etykietaEtapu,
+      dniKalendarzowe,
       etykietaWysylki,
       zlotowki,
       // Pelna nazwa uslugi (Allegro) z odwrotem na etykiete kubelka — patrz domena/wysylka.js.
@@ -200,76 +217,92 @@ options: { views: katalogiWidokow() },
       zasob,
     },
   });
-app.register(fastifyStatic, { root: __publicDir, prefix: '/public/' });
-// Te same adresy dla pliku, zapisu z panelu i paczki. Zapis działa bez restartu.
-for (const nazwa of ['favicon-192.png', 'favicon-32.png']) {
-  app.get(`/public/${nazwa}`, async (_req, reply) => reply.type('image/png')
-    .send(znak.biezace().bajty ?? readFileSync(join(__publicDir, nazwa))));
-}
-// Starsze zakładki i przeglądarki pytające domyślnie o ICO trafiają na ten sam PNG co układ.
-app.get('/favicon.ico', async (_req, reply) => reply.redirect(zasob('favicon-32.png'), 301));
-wczytajSekret(db);
-app.after(() => {
-app.addHook('preHandler', async (req, reply) => {
- const view = reply.view;
- reply.view = function(page, ...args) {
-   const dane = args[0];
-   const dzialy = dane?.nawigacja?.kontekst?.dzialy;
-   const dzial = dzialy?.find(d => d.aktywna);
-   if (dzial) args[0] = { ...dane, okruszki: [
-     { tekst: 'Ustawienia', href: dzialy[0].href },
-     { tekst: dzial.etykieta, href: dzial.href },
-   ] };
-   const render = () => view.call(this, typeof page === 'string' ? sciezkaWidoku(page) : page, ...args);
-   // Dopiero trasa z nawigacją Ustawień prosi o liczniki. Odmowa/404 nie odświeża indeksu.
-   // Wspólny render GET i formularza z błędem po POST korzysta z tego samego indeksu.
-   if (dane?.nawigacja?.kontekst?.dzial === 'ustawienia') {
-     return licznikiStatusowDlaMenu(db, req, dane.nawigacja, { naZadanie: true }).then(licznikiStatusow => {
-       args[0] = { ...args[0], licznikiStatusow };
-       return render();
-     });
-   }
-   return render();
- };
-});
-app.addHook('onRequest', zbudujStraznika({
-      basicAuth: app.basicAuth, db, nazwaCiasteczka: nazwaCiasteczkaOms(config.proba),
-      odlozoneEkrany: () => config.odlozoneEkrany ?? wylaczoneModuly(db),
-      // ⚠️ WSTRZYKIWANE, a nie siegane ze srodka straznika: ten sam modul obsluguje panel
-      // zamowien indywidualnych, ktory kont NIE MA i ma sie zachowywac dokladnie jak dotad
-      // (dowodzi tego tests/security/panel-bez-kont.test.js).
-      konta: {
-        kontoPoLoginie: (login) => kontoPoLoginie(db, login),
-        czyIstniejeCzynnyAdmin: () => czyIstniejeCzynnyAdmin(db),
-        loginSerwisowy: config.auth.user,
-        usluga: 'oms',
-      },
-      // /api/v1 tylko kluczem API. Panel indywidualny tego parametru nie podaje.
-      // Limit jeden na aplikację (licznik wywołań klucza i złych kluczy z IP), tworzony tutaj obok strażnika.
-      klucze: { db, limit: utworzLimitApi() },
-    }));
-// Kolejki druku na Bearer mają ten sam dziennik co API; /api/v1 obsługuje wyłącznie plugin.
-const wpisDrukuDoDziennika = wpisDoDziennika({ db, teraz: () => new Date() });
-app.addHook('onResponse', async (req, reply) => {
-  if (typeof req.headers.authorization !== 'string' || !/^\s*Bearer(\s|$)/i.test(req.headers.authorization)) return;
-  if (!czyTrasaMaszynowaZdekodowana(req.url)) return;
-  await wpisDrukuDoDziennika(req, reply);
-});
-// Demo publiczne — gość ogląda Ustawienia, nie zapisuje (podglad-demo.js). Bez konta gościa haka nie ma.
-if (config.demo) app.addHook('onRequest', podgladUstawienDemo({ loginGoscia: config.demo.login }));
-// Ta sama nazwa ciasteczka co strażnikowi — żądanie z kluczem API i bez ciasteczka sesji omija CSRF.
-zarejestrujOchroneCsrf(app, { nazwaCiasteczka: nazwaCiasteczkaOms(config.proba) });
-app.addHook('preHandler', async (req, reply) => {
+  app.register(fastifyStatic, { root: __publicDir, prefix: '/public/' });
+  // Te same adresy dla pliku, zapisu z panelu i paczki. Zapis działa bez restartu.
+  for (const nazwa of ['favicon-192.png', 'favicon-32.png']) {
+    app.get(`/public/${nazwa}`, async (_req, reply) =>
+      reply.type('image/png').send(znak.biezace().bajty ?? readFileSync(join(__publicDir, nazwa))),
+    );
+  }
+  // Starsze zakładki i przeglądarki pytające domyślnie o ICO trafiają na ten sam PNG co układ.
+  app.get('/favicon.ico', async (_req, reply) => reply.redirect(zasob('favicon-32.png'), 301));
+  wczytajSekret(db);
+  app.after(() => {
+    app.addHook('preHandler', async (req, reply) => {
+      const view = reply.view;
+      reply.view = function (page, ...args) {
+        const dane = args[0];
+        const dzialy = dane?.nawigacja?.kontekst?.dzialy;
+        const dzial = dzialy?.find((d) => d.aktywna);
+        if (dzial)
+          args[0] = {
+            ...dane,
+            okruszki: [
+              { tekst: 'Ustawienia', href: dzialy[0].href },
+              { tekst: dzial.etykieta, href: dzial.href },
+            ],
+          };
+        const render = () => view.call(this, typeof page === 'string' ? sciezkaWidoku(page) : page, ...args);
+        // Dopiero trasa z nawigacją Ustawień prosi o liczniki. Odmowa/404 nie odświeża indeksu.
+        // Wspólny render GET i formularza z błędem po POST korzysta z tego samego indeksu.
+        if (dane?.nawigacja?.kontekst?.dzial === 'ustawienia') {
+          return licznikiStatusowDlaMenu(db, req, dane.nawigacja, { naZadanie: true }).then((licznikiStatusow) => {
+            args[0] = { ...args[0], licznikiStatusow };
+            return render();
+          });
+        }
+        return render();
+      };
+    });
+    app.addHook(
+      'onRequest',
+      zbudujStraznika({
+        basicAuth: app.basicAuth,
+        db,
+        nazwaCiasteczka: nazwaCiasteczkaOms(config.proba),
+        odlozoneEkrany: () => config.odlozoneEkrany ?? wylaczoneModuly(db),
+        // ⚠️ WSTRZYKIWANE, a nie siegane ze srodka straznika: ten sam modul obsluguje panel
+        // zamowien indywidualnych, ktory kont NIE MA i ma sie zachowywac dokladnie jak dotad
+        // (dowodzi tego tests/security/panel-bez-kont.test.js).
+        konta: {
+          kontoPoLoginie: (login) => kontoPoLoginie(db, login),
+          czyIstniejeCzynnyAdmin: () => czyIstniejeCzynnyAdmin(db),
+          loginSerwisowy: config.auth.user,
+          usluga: 'oms',
+        },
+        // /api/v1 tylko kluczem API. Panel indywidualny tego parametru nie podaje.
+        // Limit jeden na aplikację (licznik wywołań klucza i złych kluczy z IP), tworzony tutaj obok strażnika.
+        klucze: { db, limit: utworzLimitApi() },
+      }),
+    );
+    // Kolejki druku na Bearer mają ten sam dziennik co API; /api/v1 obsługuje wyłącznie plugin.
+    const wpisDrukuDoDziennika = wpisDoDziennika({ db, teraz: () => new Date() });
+    app.addHook('onResponse', async (req, reply) => {
+      if (typeof req.headers.authorization !== 'string' || !/^\s*Bearer(\s|$)/i.test(req.headers.authorization)) return;
+      if (!czyTrasaMaszynowaZdekodowana(req.url)) return;
+      await wpisDrukuDoDziennika(req, reply);
+    });
+    // Demo publiczne — gość ogląda Ustawienia, nie zapisuje (podglad-demo.js). Bez konta gościa haka nie ma.
+    if (config.demo) app.addHook('onRequest', podgladUstawienDemo({ loginGoscia: config.demo.login }));
+    // Ta sama nazwa ciasteczka co strażnikowi — żądanie z kluczem API i bez ciasteczka sesji omija CSRF.
+    zarejestrujOchroneCsrf(app, { nazwaCiasteczka: nazwaCiasteczkaOms(config.proba) });
+    app.addHook('preHandler', async (req, reply) => {
       const kolory = koloryStatusow(db);
       const etykiety = etykietyStatusow(db);
       const sciezkaPowrotu = sciezkaPowrotuDlaMenu(app, req, config.definicje);
       const odlozoneEkrany = config.odlozoneEkrany ?? wylaczoneModuly(db);
-      const nawigacja = nawigacjaDla({ sciezka: req.url, konto: req.konto ?? null, menu, odlozoneEkrany, etykietyStatusow: etykiety });
+      const nawigacja = nawigacjaDla({
+        sciezka: req.url,
+        konto: req.konto ?? null,
+        menu,
+        odlozoneEkrany,
+        etykietyStatusow: etykiety,
+      });
       reply.locals = {
         ...(reply.locals ?? {}),
-        klasaStatusu: s => klasaStatusu(s, kolory),
-        modyfikatorStatusu: s => modyfikatorStatusu(s, kolory),
-        etykietaStatusu: klucz => etykiety[klucz] ?? klucz,
+        klasaStatusu: (s) => klasaStatusu(s, kolory),
+        modyfikatorStatusu: (s) => modyfikatorStatusu(s, kolory),
+        etykietaStatusu: (klucz) => etykiety[klucz] ?? klucz,
         title: tytulEkranuDlaAdresu(req.url),
         motyw: motywZNaglowka(req.headers.cookie),
         menuZwiniete: menuZwinieteZNaglowka(req.headers.cookie),
@@ -280,9 +313,12 @@ app.addHook('preHandler', async (req, reply) => {
         // oraz tych samych praw co strażnik. Lista i karta nadpisują wyłącznie
         // `panelStatusow`, bo jako jedyne znają rzeczywiste liczniki i aktywny filtr.
         nawigacja,
-        licznikWiadomosci: nawigacja.boczne?.some(g => g.pozycje.some(p => p.klucz === 'wiadomosci'))
-          // W trybie próby (piaskownica, demo) wątki są z atrapy — plakietka „czeka na odpowiedź” byłaby szumem.
-          ? (config.proba === true ? 0 : licznikWiadomosciDlaMenu(db, req)) : 0,
+        licznikWiadomosci: nawigacja.boczne?.some((g) => g.pozycje.some((p) => p.klucz === 'wiadomosci'))
+          ? // W trybie próby (piaskownica, demo) wątki są z atrapy — plakietka „czeka na odpowiedź” byłaby szumem.
+            config.proba === true
+            ? 0
+            : licznikWiadomosciDlaMenu(db, req)
+          : 0,
         modulWlaczony: (modul) => !odlozoneEkrany.includes(modul),
         // Liczby przy statusach na KAŻDEJ zakładce, nie tylko na liście i karcie.
         licznikiStatusow: await licznikiStatusowDlaMenu(db, req, nawigacja),
@@ -307,6 +343,6 @@ app.addHook('preHandler', async (req, reply) => {
         podgladDemo: req.konto?.podgladDemo === true && wUstawieniach(req.url),
       };
     });
-});
-return app;
+  });
+  return app;
 }

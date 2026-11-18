@@ -1,18 +1,28 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../pomoc/testowe-dane-miesieczne.js';
 import {
-  zapiszDaneMiesiaca, daneMiesiaca, daneOkresu, rozjazdZus, wgrajDaneStartowe,
+  zapiszDaneMiesiaca,
+  daneMiesiaca,
+  daneOkresu,
+  rozjazdZus,
+  wgrajDaneStartowe,
   miesiaceZDanymi,
 } from '../../pomoc/testowe-dane-miesieczne.js';
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 
 describe('dane miesieczne', () => {
   it('zapisuje i czyta miesiac', () => {
     zapiszDaneMiesiaca(db, '2026-06', {
-      zusSpoleczne: '1788.29', zusZdrowotna: '894.30', zusFunduszPracy: '138.47',
-      zusRazem: '2821.06', pit5: '779.00', vat7: '1617.00',
+      zusSpoleczne: '1788.29',
+      zusZdrowotna: '894.30',
+      zusFunduszPracy: '138.47',
+      zusRazem: '2821.06',
+      pit5: '779.00',
+      vat7: '1617.00',
     });
     expect(daneMiesiaca(db, '2026-06')).toMatchObject({ zus_razem: '2821.06', pit5_zaplacony: '779.00' });
   });
@@ -37,7 +47,9 @@ describe('dane miesieczne', () => {
 
   it('ROZJAZD SKLADNIKOW I PRZELEWU jest widoczny, a nie wygladzony', () => {
     zapiszDaneMiesiaca(db, '2026-01', {
-      zusSpoleczne: '1432.08', zusZdrowotna: '314.96', zusFunduszPracy: '127.49',
+      zusSpoleczne: '1432.08',
+      zusZdrowotna: '314.96',
+      zusFunduszPracy: '127.49',
       zusRazem: '2088.92',
     });
     // 1432,08 + 314,96 + 127,49 = 1874,53; przelew 2088,92 → rozjazd 214,39.

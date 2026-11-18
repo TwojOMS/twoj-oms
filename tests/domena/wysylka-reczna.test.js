@@ -1,15 +1,25 @@
 import { describe, it, expect } from 'vitest';
 import {
-  metodaWysylki, kwotaPobrania, metodaZeSklepu, kwotaPobraniaZeSklepu,
-  metodaZmienionaRecznie, saNadpisanieWysylki, sprawdzZmianeMetody,
-  czyPobranie, pobranieZeSklepu,
+  metodaWysylki,
+  kwotaPobrania,
+  metodaZeSklepu,
+  kwotaPobraniaZeSklepu,
+  metodaZmienionaRecznie,
+  saNadpisanieWysylki,
+  sprawdzZmianeMetody,
+  czyPobranie,
+  pobranieZeSklepu,
 } from '../../src/domena/wysylka.js';
 
 // Surowy wiersz z bazy — tak wyglada zamowienie ZANIM przejdzie przez zLinii().
 // ⚠️ Pobranie ma WLASNA kolumne obok metody — surowy wiersz musi ja miec,
 // bo to ona (a nie nazwa metody) decyduje, czy kurier cos inkasuje.
 const surowy = (o = {}) => ({
-  metoda_wysylki: 'dpd', pobranie: 0, kwota_pobrania: null, wysylka_reczna_json: null, ...o,
+  metoda_wysylki: 'dpd',
+  pobranie: 0,
+  kwota_pobrania: null,
+  wysylka_reczna_json: null,
+  ...o,
 });
 const nadpisanie = (o) => JSON.stringify(o);
 
@@ -31,7 +41,8 @@ describe('metodaWysylki / kwotaPobrania — wartosci EFEKTYWNE', () => {
   // zaplaciby przelewem, a kurier zainkasowalby te sama kwote drugi raz.
   it('przelaczenie z pobrania na zwykla wysylke ZERUJE kwote pobrania', () => {
     const w = surowy({
-      pobranie: 1, kwota_pobrania: '246.00',
+      pobranie: 1,
+      kwota_pobrania: '246.00',
       wysylka_reczna_json: nadpisanie({ metoda: 'dpd', pobranie: 0 }),
     });
     expect(metodaWysylki(w)).toBe('dpd');
@@ -71,8 +82,12 @@ describe('funkcje sa IDEMPOTENTNE — dzialaja przed i po zLinii', () => {
   // funkcje czytaly tylko `metoda_wysylki`, drugie wywolanie porownywaloby wartosc
   // efektywna z nia sama i oznaczenie „zmienione recznie" nigdy by sie nie pokazalo.
   const poZLinii = {
-    metoda_wysylki: 'odbior_osobisty', pobranie: 0, kwota_pobrania: null,
-    metoda_wysylki_sklep: 'dpd', pobranie_sklep: 1, kwota_pobrania_sklep: '246.00',
+    metoda_wysylki: 'odbior_osobisty',
+    pobranie: 0,
+    kwota_pobrania: null,
+    metoda_wysylki_sklep: 'dpd',
+    pobranie_sklep: 1,
+    kwota_pobrania_sklep: '246.00',
     wysylka_reczna_json: nadpisanie({ metoda: 'odbior_osobisty', pobranie: 0 }),
   };
 
@@ -113,7 +128,8 @@ describe('metodaZmienionaRecznie / saNadpisanieWysylki', () => {
   // zdecydowal o nim czlowiek, a przycisk przywracania wygladalby na niepotrzebny.
   it('samo włączenie pobrania, przy tej samej dostawie, JEST zmianą ręczną', () => {
     const w = surowy({
-      metoda_wysylki: 'dpd', pobranie: 0,
+      metoda_wysylki: 'dpd',
+      pobranie: 0,
       wysylka_reczna_json: nadpisanie({ metoda: 'dpd', pobranie: 1, kwota_pobrania: '246.00' }),
     });
     expect(metodaZmienionaRecznie(w)).toBe(true);
@@ -123,14 +139,16 @@ describe('metodaZmienionaRecznie / saNadpisanieWysylki', () => {
 describe('sprawdzZmianeMetody — bramka na pieniadze', () => {
   it('zwykla wysylka nie wymaga kwoty i kwoty nie zapisuje', () => {
     expect(sprawdzZmianeMetody('dpd', false, '')).toEqual({
-      nadpisanie: { metoda: 'dpd', pobranie: 0 }, blad: null,
+      nadpisanie: { metoda: 'dpd', pobranie: 0 },
+      blad: null,
     });
     expect(sprawdzZmianeMetody('dpd', false, '199.00').nadpisanie).toEqual({ metoda: 'dpd', pobranie: 0 });
   });
 
   it('pobranie z poprawna kwota przechodzi', () => {
     expect(sprawdzZmianeMetody('dpd', true, ' 246.00 ')).toEqual({
-      nadpisanie: { metoda: 'dpd', pobranie: 1, kwota_pobrania: '246.00' }, blad: null,
+      nadpisanie: { metoda: 'dpd', pobranie: 1, kwota_pobrania: '246.00' },
+      blad: null,
     });
   });
 

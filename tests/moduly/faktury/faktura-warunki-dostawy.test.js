@@ -16,17 +16,40 @@ let db;
 const nip = '1234500011';
 beforeEach(() => {
   db = openOmsDb(':memory:');
-  dopiszKlienta(db, { klucz: 'polcien', nazwa: 'Pracownia Półcień', nip, aktywny: 1,
-    b2b: 1, rabat_procent: 0, chce_fakture: 1, metoda_wysylki: 'dpd', platnosc: 'przelew',
-    koszt_dostawy_brutto: '19.00', rozliczenie_zbiorcze: 0,
-    prog_darmowej_dostawy_gr: 50000, oplata_obslugi_gr: 400 });
+  dopiszKlienta(db, {
+    klucz: 'polcien',
+    nazwa: 'Pracownia Półcień',
+    nip,
+    aktywny: 1,
+    b2b: 1,
+    rabat_procent: 0,
+    chce_fakture: 1,
+    metoda_wysylki: 'dpd',
+    platnosc: 'przelew',
+    koszt_dostawy_brutto: '19.00',
+    rozliczenie_zbiorcze: 0,
+    prog_darmowej_dostawy_gr: 50000,
+    oplata_obslugi_gr: 400,
+  });
 });
 afterEach(() => db.close());
 
 function zamow(cena, inne = {}) {
-  const { id } = zalozZamowienieReczne({ db, znacznik: '2026-11-13T10:00:00Z', naliczajOplate: true, okresId: null,
-    dane: { nip, klient: {}, dostawa: {}, metoda_wysylki: 'dpd', koszt_dostawy_brutto: '19.00',
-      pozycje: [{ nazwa: 'Lampa', ilosc: 1, cena_brutto: cena, cena_katalogowa: cena, brutto_linii: cena }], ...inne } });
+  const { id } = zalozZamowienieReczne({
+    db,
+    znacznik: '2026-11-13T10:00:00Z',
+    naliczajOplate: true,
+    okresId: null,
+    dane: {
+      nip,
+      klient: {},
+      dostawa: {},
+      metoda_wysylki: 'dpd',
+      koszt_dostawy_brutto: '19.00',
+      pozycje: [{ nazwa: 'Lampa', ilosc: 1, cena_brutto: cena, cena_katalogowa: cena, brutto_linii: cena }],
+      ...inne,
+    },
+  });
   return pobierzZamowienie(db, id);
 }
 const suma = (uslugi) => uslugi.reduce((s, p) => s + p.gross_price, 0);

@@ -9,26 +9,44 @@ import { ROZMIAR_STRONY } from '../../../../src/moduly/zamowienia/lista.js';
 import { adresZFiltrami, bezpiecznyPowrotNaListe } from '../../../../src/domena/filtry-listy.js';
 import { KANALY_TESTOWE, wstawGole } from './testowe-dane-listy.js';
 
-let a; let cookie;
+let a;
+let cookie;
 const naglowki = () => ({ cookie });
 const formularz = () => ({ cookie, origin: 'http://localhost', 'content-type': 'application/x-www-form-urlencoded' });
 const ids = (html) => [...html.matchAll(/name="id" value="(\d+)"/g)].map((m) => Number(m[1]));
 const licznik = (html, klucz) => Number(html.match(new RegExp(`data-status="${klucz}">(\\d+)<`))?.[1]);
 
 beforeEach(async () => {
-  a = await zbudujOms({ env: { OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000',
-    OMS_USER: 'bootstrap', OMS_PASS: 'syntetyczne', OMS_PROFORMY_KATALOG: tmpdir(), OMS_ETYKIETY_KATALOG: tmpdir(),
-    OMS_KANALY: JSON.stringify(KANALY_TESTOWE) } });
+  a = await zbudujOms({
+    env: {
+      OMS_SPRZEDAWCA_NIP: '1234563218',
+      OMS_RACHUNEK: '34109010140000000000000000',
+      OMS_USER: 'bootstrap',
+      OMS_PASS: 'syntetyczne',
+      OMS_PROFORMY_KATALOG: tmpdir(),
+      OMS_ETYKIETY_KATALOG: tmpdir(),
+      OMS_KANALY: JSON.stringify(KANALY_TESTOWE),
+    },
+  });
   zalozKonto(a.db, { login: 'tester', imie: 'Test', haslo: 'syntetyczne-haslo-051', rola: 'admin', admin: true });
-  const login = await a.app.inject({ method: 'POST', url: '/login', headers: { origin: 'http://localhost', 'content-type': 'application/x-www-form-urlencoded' },
-    payload: 'uzytkownik=tester&haslo=syntetyczne-haslo-051&powrot=%2F' });
+  const login = await a.app.inject({
+    method: 'POST',
+    url: '/login',
+    headers: { origin: 'http://localhost', 'content-type': 'application/x-www-form-urlencoded' },
+    payload: 'uzytkownik=tester&haslo=syntetyczne-haslo-051&powrot=%2F',
+  });
   cookie = String(login.headers['set-cookie']).match(/sesja_oms=[^;]+/)[0];
 });
-afterEach(async () => { await a.app.close(); a.db.close(); });
+afterEach(async () => {
+  await a.app.close();
+  a.db.close();
+});
 
 describe('adres listy niesie stronę', () => {
   it('adresZFiltrami: strona po filtrach, przed zaznaczeniem; strona 1 nie zostawia śladu', () => {
-    expect(adresZFiltrami({ kanal: 'kanal_a' }, { wszystkie: true, strona: 3, zaznacz: true })).toBe('/?wszystkie=1&kanal=kanal_a&strona=3&zaznacz=1');
+    expect(adresZFiltrami({ kanal: 'kanal_a' }, { wszystkie: true, strona: 3, zaznacz: true })).toBe(
+      '/?wszystkie=1&kanal=kanal_a&strona=3&zaznacz=1',
+    );
     expect(adresZFiltrami({}, { strona: 1 })).toBe('/');
   });
 
@@ -90,7 +108,8 @@ describe('ekran listy', () => {
     a.db.prepare('UPDATE zamowienia SET w_realizacji_at = ? WHERE id = ?').run('2026-10-01T10:00:00Z', id);
     const oryginal = a.db.prepare;
     a.db.prepare = function (sql) {
-      if (/^\s*(INSERT|DELETE|UPDATE)/i.test(sql) && /lista_/.test(sql)) throw new Error('SQLITE_FULL: database or disk is full');
+      if (/^\s*(INSERT|DELETE|UPDATE)/i.test(sql) && /lista_/.test(sql))
+        throw new Error('SQLITE_FULL: database or disk is full');
       return oryginal.call(this, sql);
     };
     try {
@@ -103,7 +122,9 @@ describe('ekran listy', () => {
       expect(karta.statusCode, karta.body.slice(0, 300)).toBe(200);
       expect(karta.body).not.toContain('SQLITE_FULL');
       expect(karta.body).not.toMatch(/data-status="wszystkie">\d+</);
-    } finally { a.db.prepare = oryginal; }
+    } finally {
+      a.db.prepare = oryginal;
+    }
     // Po ustąpieniu awarii indeks dogania sam, przy następnym odczycie.
     const po = await a.app.inject({ url: '/', headers: naglowki() });
     expect(licznik(po.body, 'w_realizacji')).toBe(1);
@@ -144,10 +165,15 @@ describe('ekran listy', () => {
     for (const url of ['/', '/?wszystkie=1&strona=2', '/?szukaj=T-1', '/?status=nowe&kanal=kanal_a']) {
       const sql = [];
       const oryginal = a.db.prepare;
-      a.db.prepare = function (tekst) { sql.push(tekst); return oryginal.call(this, tekst); };
+      a.db.prepare = function (tekst) {
+        sql.push(tekst);
+        return oryginal.call(this, tekst);
+      };
       try {
         expect((await a.app.inject({ url, headers: naglowki() })).statusCode).toBe(200);
-      } finally { a.db.prepare = oryginal; }
+      } finally {
+        a.db.prepare = oryginal;
+      }
       for (const s of sql.filter((t) => /\bFROM zamowienia\b/.test(t))) {
         const strona = /WHERE id IN \(/.test(s) && s.match(/\?/g).length <= ROZMIAR_STRONY;
         // Bezpiecznik kanałów (moduł zdrowia): DISTINCT po indeksie (sklep, zrodlo_id) kończy grupę
@@ -162,7 +188,8 @@ describe('ekran listy', () => {
   it('ostrzeżenia paczek pytają o numer tylko zamówień, których paczka stoi — nie o całe okno 60 dni', async () => {
     const ids = wstawGole(a.db, 300);
     const teraz = new Date().toISOString();
-    const ins = a.db.prepare(`INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, etykieta_sciezka, status_kuriera, status_kuriera_at, utworzona_at, kolejnosc)
+    const ins = a.db
+      .prepare(`INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, etykieta_sciezka, status_kuriera, status_kuriera_at, utworzona_at, kolejnosc)
       VALUES (?, 'dpd', 'nadana', ?, '/tmp/e.pdf', ?, ?, ?, 1)`);
     // 299 doręczonych dziś, jedna stoi od miesiąca.
     for (const id of ids.slice(1)) ins.run(id, `L${id}`, 'Doręczona', teraz, teraz);
@@ -170,9 +197,16 @@ describe('ekran listy', () => {
     ins.run(ids[0], 'STOI-1', 'W drodze', dawno, dawno);
     const sql = [];
     const oryginal = a.db.prepare;
-    a.db.prepare = function (tekst) { sql.push(tekst); return oryginal.call(this, tekst); };
+    a.db.prepare = function (tekst) {
+      sql.push(tekst);
+      return oryginal.call(this, tekst);
+    };
     let r;
-    try { r = await a.app.inject({ url: '/', headers: naglowki() }); } finally { a.db.prepare = oryginal; }
+    try {
+      r = await a.app.inject({ url: '/', headers: naglowki() });
+    } finally {
+      a.db.prepare = oryginal;
+    }
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('Paczka STOI-1 (zam. T-1)');
     const numery = sql.filter((s) => /SELECT id, numer FROM zamowienia/.test(s));
@@ -184,16 +218,34 @@ describe('ekran listy', () => {
     const wstawione = wstawGole(a.db, 600);
     await a.app.inject({ url: '/', headers: naglowki() }); // indeks zbudowany — mierzymy same akcje
     const cel = [wstawione[10], wstawione[500]];
-    for (const url of ['/zamowienia/masowe/status', '/zamowienia/specyfikacje.pdf', '/zamowienia/lista-produktow.pdf', '/zamowienia/zestawienie.pdf', '/zamowienia/faktury-hurtem/podglad', '/zamowienia/masowe/nadaj-podglad']) {
+    for (const url of [
+      '/zamowienia/masowe/status',
+      '/zamowienia/specyfikacje.pdf',
+      '/zamowienia/lista-produktow.pdf',
+      '/zamowienia/zestawienie.pdf',
+      '/zamowienia/faktury-hurtem/podglad',
+      '/zamowienia/masowe/nadaj-podglad',
+    ]) {
       const sql = [];
       const oryginal = a.db.prepare;
-      a.db.prepare = function (tekst) { sql.push(tekst); return oryginal.call(this, tekst); };
+      a.db.prepare = function (tekst) {
+        sql.push(tekst);
+        return oryginal.call(this, tekst);
+      };
       try {
-        const body = new URLSearchParams([...cel.map((id) => ['id', String(id)]), ['status', 'w_realizacji']]).toString();
+        const body = new URLSearchParams([
+          ...cel.map((id) => ['id', String(id)]),
+          ['status', 'w_realizacji'],
+        ]).toString();
         const r = await a.app.inject({ method: 'POST', url, headers: formularz(), payload: body });
         expect(r.statusCode, `${url}: ${r.body.slice(0, 200)}`).toBeLessThan(500);
-      } finally { a.db.prepare = oryginal; }
-      expect(sql.filter((s) => /^SELECT id FROM zamowienia$/.test(s.trim())), url).toEqual([]);
+      } finally {
+        a.db.prepare = oryginal;
+      }
+      expect(
+        sql.filter((s) => /^SELECT id FROM zamowienia$/.test(s.trim())),
+        url,
+      ).toEqual([]);
       const odczyty = sql.filter((s) => /FROM zamowienia WHERE id IN \(/.test(s));
       expect(odczyty.length, url).toBeGreaterThan(0);
       for (const s of odczyty) expect(s.match(/\?/g).length, url).toBeLessThanOrEqual(2);
@@ -203,8 +255,17 @@ describe('ekran listy', () => {
   it('zmiana masowa: liczniki i zakładki widzą ją od razu, powrót na tę samą stronę', async () => {
     const wstawione = wstawGole(a.db, ROZMIAR_STRONY + 5);
     const cel = wstawione.slice(0, 3);
-    const body = new URLSearchParams([...cel.map((id) => ['id', String(id)]), ['status', 'w_realizacji'], ['powrot', '/?strona=2']]).toString();
-    const m = await a.app.inject({ method: 'POST', url: '/zamowienia/masowe/status', headers: formularz(), payload: body });
+    const body = new URLSearchParams([
+      ...cel.map((id) => ['id', String(id)]),
+      ['status', 'w_realizacji'],
+      ['powrot', '/?strona=2'],
+    ]).toString();
+    const m = await a.app.inject({
+      method: 'POST',
+      url: '/zamowienia/masowe/status',
+      headers: formularz(),
+      payload: body,
+    });
     expect(m.statusCode, m.body.slice(0, 300)).toBe(302);
     expect(m.headers.location).toBe('/?strona=2');
     const po = await a.app.inject({ url: '/?status=w_realizacji', headers: naglowki() });

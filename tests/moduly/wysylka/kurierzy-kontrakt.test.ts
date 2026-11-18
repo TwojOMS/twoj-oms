@@ -5,9 +5,13 @@ import { describe, expect, it, vi } from 'vitest';
 const strazStartu = vi.hoisted(() => ({ wywolania: 0 }));
 vi.mock('../../../src/domena/moduly-kurierow.ts', async (oryg) => {
   const m = await oryg<typeof import('../../../src/domena/moduly-kurierow.ts')>();
-  return { ...m, sprawdzOpisyKurierow: (...a: Parameters<typeof m.sprawdzOpisyKurierow>) => {
-    strazStartu.wywolania++; return m.sprawdzOpisyKurierow(...a);
-  } };
+  return {
+    ...m,
+    sprawdzOpisyKurierow: (...a: Parameters<typeof m.sprawdzOpisyKurierow>) => {
+      strazStartu.wywolania++;
+      return m.sprawdzOpisyKurierow(...a);
+    },
+  };
 });
 
 import { FABRYKI_KURIEROW } from '../../../src/integracje/fabryki.ts';
@@ -16,18 +20,45 @@ import { odmowaWProbie } from '../../../src/moduly/wysylka/modul.ts';
 import { wczytajKurierow, zbudujKurierow } from '../../../src/moduly/wysylka/kurierzy.ts';
 import { zplPrzyNadaniu } from '../../../src/moduly/wysylka/services/nadanie.js';
 
-const nadawca = { nazwa: 'Pracownia Półcień', ulica: 'Cienista 1', kod: '00-001', miasto: 'Warszawa', kraj: 'PL',
-  phone: '500600700', email: 'nadania@polcien.example' };
-const bezSieci = async () => { throw new Error('test: bez sieci'); };
+const nadawca = {
+  nazwa: 'Pracownia Półcień',
+  ulica: 'Cienista 1',
+  kod: '00-001',
+  miasto: 'Warszawa',
+  kraj: 'PL',
+  phone: '500600700',
+  email: 'nadania@polcien.example',
+};
+const bezSieci = async () => {
+  throw new Error('test: bez sieci');
+};
 
 // Typowane kluczem rejestru: nowy kurier z metodami bez opcji tutaj = błąd tsc, nie cicho pominięty kontrakt.
-const OPCJE: { [K in KluczKurieraNadania]: Parameters<typeof FABRYKI_KURIEROW[K]>[0] } = {
-  dpd: { url: 'https://dpd.invalid/ws', login: 'polcien', haslo: 'tajne', fid: '1001', nadawca,
-    infoUrl: 'https://dpd.invalid/info', channel: 'kanal', fetchImpl: bezSieci },
+const OPCJE: { [K in KluczKurieraNadania]: Parameters<(typeof FABRYKI_KURIEROW)[K]>[0] } = {
+  dpd: {
+    url: 'https://dpd.invalid/ws',
+    login: 'polcien',
+    haslo: 'tajne',
+    fid: '1001',
+    nadawca,
+    infoUrl: 'https://dpd.invalid/info',
+    channel: 'kanal',
+    fetchImpl: bezSieci,
+  },
   inpost: { url: 'https://inpost.invalid/v1', token: 'token', organizacja: 1, nadawca, fetchImpl: bezSieci },
-  allegro_wza: { allegroDla: () => { throw new Error('test: bez Allegro'); }, metodaZywa: () => null,
-    pobranieNadawca: { nazwa: 'Pracownia Półcień' } },
-  erli_przesylki: { erliDla: () => { throw new Error('test: bez ERLI'); }, punktNadaniaDla: () => null },
+  allegro_wza: {
+    allegroDla: () => {
+      throw new Error('test: bez Allegro');
+    },
+    metodaZywa: () => null,
+    pobranieNadawca: { nazwa: 'Pracownia Półcień' },
+  },
+  erli_przesylki: {
+    erliDla: () => {
+      throw new Error('test: bez ERLI');
+    },
+    punktNadaniaDla: () => null,
+  },
 };
 
 const kurierzyNadania = Object.entries(MODULY_KURIEROW)
@@ -35,7 +66,10 @@ const kurierzyNadania = Object.entries(MODULY_KURIEROW)
   .map(([k]) => k as KluczKurieraNadania);
 const adapter = (k: KluczKurieraNadania): Record<string, unknown> =>
   (FABRYKI_KURIEROW[k] as (o: unknown) => Record<string, unknown>)(OPCJE[k]);
-const metody = (o: Record<string, unknown>) => Object.keys(o).filter(m => typeof o[m] === 'function').sort();
+const metody = (o: Record<string, unknown>) =>
+  Object.keys(o)
+    .filter((m) => typeof o[m] === 'function')
+    .sort();
 
 describe('FABRYKI_KURIEROW', () => {
   it('ma fabrykę dokładnie dla każdego kuriera z metodami, w kolejności rejestru', () => {
@@ -61,7 +95,7 @@ describe('FABRYKI_KURIEROW', () => {
 });
 
 describe('odmowaWProbie(opis)', () => {
-  const zAtrapa = kurierzyNadania.filter(k => MODULY_KURIEROW[k].umowa === 'wlasna');
+  const zAtrapa = kurierzyNadania.filter((k) => MODULY_KURIEROW[k].umowa === 'wlasna');
   it('dotyczy kurierów z własną umową: DPD i InPost', () => {
     expect(zAtrapa).toEqual(['dpd', 'inpost']);
   });
@@ -99,8 +133,16 @@ describe('składanie modułu wysyłki', () => {
   it('zbudujKurierow składa mapę w kolejności rejestru', () => {
     const atrapa = () => ({ nadaj: async () => ({ numerListu: null }) });
     const config = { ...wczytajKurierow({}), dpd: {} as never, inpost: {} as never };
-    const mapa = zbudujKurierow(config, {}, { createDpd: atrapa, createInpost: atrapa, createAllegroWza: atrapa,
-      createAllegroSledzenie: () => ({ statusPrzesylki: async () => null }) });
+    const mapa = zbudujKurierow(
+      config,
+      {},
+      {
+        createDpd: atrapa,
+        createInpost: atrapa,
+        createAllegroWza: atrapa,
+        createAllegroSledzenie: () => ({ statusPrzesylki: async () => null }),
+      },
+    );
     expect(Object.keys(mapa)).toEqual(['dpd', 'inpost', 'allegro_wza', 'erli_przesylki', 'allegro']);
   });
 });

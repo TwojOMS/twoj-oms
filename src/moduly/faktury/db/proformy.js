@@ -24,9 +24,7 @@ const teraz = () => new Date().toISOString();
  * wpisuje w tytul przelewu.
  */
 export function nastepnyNumer(db, rok, miesiac) {
-  const { m } = db.prepare(
-    'SELECT MAX(kolejny) m FROM proformy WHERE rok = ? AND miesiac = ?',
-  ).get(rok, miesiac);
+  const { m } = db.prepare('SELECT MAX(kolejny) m FROM proformy WHERE rok = ? AND miesiac = ?').get(rok, miesiac);
   const kolejny = Number(m ?? 0) + 1;
   return { rok, miesiac, kolejny, numer: formatNumeru({ kolejny, miesiac, rok }) };
 }
@@ -55,9 +53,11 @@ export function nastepnyNumer(db, rok, miesiac) {
  * to on wie, czy PDF w ogole powstal: uniewaznienie poprzedniej PRZED nadaniem numeru
  * zostawialoby zamowienie bez ani jednej waznej proformy, gdyby zapis sie nie udal.
  */
-export function zapiszProforme(db, zamowienieId, {
-  kwotaBrutto, plikSciezka = null, rok = null, miesiac = null, utworzonaAt = null,
-} = {}) {
+export function zapiszProforme(
+  db,
+  zamowienieId,
+  { kwotaBrutto, plikSciezka = null, rok = null, miesiac = null, utworzonaAt = null } = {},
+) {
   const kwotaGr = grosze(kwotaBrutto, 'kwota proformy');
   const stempel = utworzonaAt ?? teraz();
   const data = new Date(stempel);
@@ -68,10 +68,12 @@ export function zapiszProforme(db, zamowienieId, {
   db.exec('BEGIN IMMEDIATE');
   try {
     const n = nastepnyNumer(db, rokDokumentu, miesiacDokumentu);
-    const info = db.prepare(
-      'INSERT INTO proformy (zamowienie_id, numer, rok, miesiac, kolejny, kwota_brutto,'
-      + ' plik_sciezka, uniewazniona_at, utworzona_at) VALUES (?,?,?,?,?,?,?,NULL,?)',
-    ).run(zamowienieId, n.numer, n.rok, n.miesiac, n.kolejny, zl(kwotaGr), plikSciezka, stempel);
+    const info = db
+      .prepare(
+        'INSERT INTO proformy (zamowienie_id, numer, rok, miesiac, kolejny, kwota_brutto,' +
+          ' plik_sciezka, uniewazniona_at, utworzona_at) VALUES (?,?,?,?,?,?,?,NULL,?)',
+      )
+      .run(zamowienieId, n.numer, n.rok, n.miesiac, n.kolejny, zl(kwotaGr), plikSciezka, stempel);
     db.exec('COMMIT');
     // Oddajemy ZAPISANY wiersz, odczytany z bazy: wolajacy dostaje `id` (bez niego nie ma
     // czego uniewaznic ani do czego podpiac pliku) i numer, ktory ma wydrukowac na PDF-ie.
@@ -94,8 +96,7 @@ export function zapiszProforme(db, zamowienieId, {
  * „nie wiem" — ta sama zasada, co przy przesylkach zamowienia.
  */
 export function proformyZamowienia(db, zamowienieId) {
-  return db.prepare('SELECT * FROM proformy WHERE zamowienie_id = ? ORDER BY utworzona_at, id')
-    .all(zamowienieId);
+  return db.prepare('SELECT * FROM proformy WHERE zamowienie_id = ? ORDER BY utworzona_at, id').all(zamowienieId);
 }
 
 /** Jedna proforma po `id` — do pobrania PDF-a i do odczytu po zapisie. `null`, gdy nie ma. */
@@ -159,10 +160,12 @@ export function usunProforme(db, id) {
  * klient i inne pieniadze.
  */
 export function uniewaznijPoprzednie(db, zamowienieId, pozaId = null, { teraz: kiedy = teraz() } = {}) {
-  const info = db.prepare(
-    'UPDATE proformy SET uniewazniona_at = ?'
-    + ' WHERE zamowienie_id = ? AND uniewazniona_at IS NULL AND (? IS NULL OR id <> ?)',
-  ).run(kiedy, zamowienieId, pozaId, pozaId);
+  const info = db
+    .prepare(
+      'UPDATE proformy SET uniewazniona_at = ?' +
+        ' WHERE zamowienie_id = ? AND uniewazniona_at IS NULL AND (? IS NULL OR id <> ?)',
+    )
+    .run(kiedy, zamowienieId, pozaId, pozaId);
   return Number(info.changes);
 }
 

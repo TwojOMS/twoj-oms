@@ -17,15 +17,37 @@ const NIP_PRACOWNI = '5250000009'; // zmyślony
 const TERAZ = () => '2026-11-12T10:00:00.000Z';
 
 const zamowienie = {
-  zrodlo_id: 4101, numer: 'R/2026/041',
-  klient: { first_name: 'Ewa', last_name: 'Półcień', company: 'Pracownia Półcień', email: 'biuro@polcien.invalid', address_1: 'Lampowa 7', postcode: '00-950', city: 'Warszawa' },
-  dostawa: {}, metoda_wysylki: 'dpd', kwota_pobrania: null,
-  chce_fakture: 1, nip: NIP_PRACOWNI, kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00',
-  status_woo: 'processing', oplacone_at: '2026-11-11T13:00:00', anulowane: 0, utworzone_at: '2026-11-11T13:00:00',
+  zrodlo_id: 4101,
+  numer: 'R/2026/041',
+  klient: {
+    first_name: 'Ewa',
+    last_name: 'Półcień',
+    company: 'Pracownia Półcień',
+    email: 'biuro@polcien.invalid',
+    address_1: 'Lampowa 7',
+    postcode: '00-950',
+    city: 'Warszawa',
+  },
+  dostawa: {},
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 1,
+  nip: NIP_PRACOWNI,
+  kwota_brutto: '123.00',
+  koszt_dostawy_brutto: '0.00',
+  status_woo: 'processing',
+  oplacone_at: '2026-11-11T13:00:00',
+  anulowane: 0,
+  utworzone_at: '2026-11-11T13:00:00',
   pozycje: [{ nazwa: 'Lampa stołowa Kałamarz (zmyślona)', sku: 'LMP-01', ilosc: 2, cena_brutto: '61.50', vat: null }],
 };
 
-const duplikat = () => Object.assign(new Error('Już jest faktura dla zamówienia X w Programie'), { dlaOperatora: true, status: 422, duplikat: true });
+const duplikat = () =>
+  Object.assign(new Error('Już jest faktura dla zamówienia X w Programie'), {
+    dlaOperatora: true,
+    status: 422,
+    duplikat: true,
+  });
 const zwykla422 = () => Object.assign(new Error('Program odrzucił fakturę (422)'), { dlaOperatora: true, status: 422 });
 
 function zestaw(program) {
@@ -40,8 +62,8 @@ function bazaZOkresem() {
   const db = openOmsDb();
   const okres = zapewnijOkres(db, { klientKlucz: 'polcien', rok: 2026, miesiac: 3 });
   db.prepare(
-    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, okres_rozliczeniowy_id, utworzone_at)'
-    + " VALUES ('reczne', 202600041, 'R/2026/041', '100.00', ?, '2026-10-10T10:00:00.000Z')",
+    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, okres_rozliczeniowy_id, utworzone_at)' +
+      " VALUES ('reczne', 202600041, 'R/2026/041', '100.00', ?, '2026-10-10T10:00:00.000Z')",
   ).run(okres.id);
   const zamId = db.prepare('SELECT id FROM zamowienia WHERE numer = ?').get('R/2026/041').id;
   db.prepare(
@@ -88,7 +110,9 @@ describe('faktura okresu — oid i duplikat', () => {
   it('odmowa „duplikat” → okres do wyjaśnienia, NIE otwarty z powrotem', async () => {
     const { db, okres } = bazaZOkresem();
     const program = programTestowy({ metody: { wystaw: vi.fn().mockRejectedValue(duplikat()) } });
-    await expect(createFakturaOkresu({ db, program }).wystaw(okres.id, { nip: NIP_PRACOWNI })).rejects.toThrow(/Już jest faktura/);
+    await expect(createFakturaOkresu({ db, program }).wystaw(okres.id, { nip: NIP_PRACOWNI })).rejects.toThrow(
+      /Już jest faktura/,
+    );
     const po = pobierzOkres(db, okres.id);
     expect(po.ksef_status).toBe('do_wyjasnienia');
     expect(po.stan).not.toBe(STAN.OTWARTY);

@@ -14,9 +14,14 @@ import { zapiszTokeny, wczytajTokeny, zapiszBladTokenu } from '../../src/oms/db/
 // zarezerwowane przez RFC 2606.
 const UA = 'PrzykladowyPanel/0.0.0 (+https://przyklad.invalid/panel)';
 const ustawienia = {
-  clientId: 'id', clientSecret: 'sekret', auth: 'https://przyklad/auth/oauth', userAgent: UA,
+  clientId: 'id',
+  clientSecret: 'sekret',
+  auth: 'https://przyklad/auth/oauth',
+  userAgent: UA,
 };
-const baza = () => { return openOmsDb(':memory:'); };
+const baza = () => {
+  return openOmsDb(':memory:');
+};
 const zaDni = (n) => new Date(Date.now() + n * 86400000).toISOString();
 
 // ⚠️ Do testow GRANICY ostrzezenia `zaDni` nie wystarcza: `zostaloDni` liczy sie przez
@@ -32,16 +37,23 @@ const odpowiedz = (dane, { ok = true, status = 200 } = {}) => ({ ok, status, jso
 const cialoNieJson = ({ ok = true, status = 200 } = {}) => ({
   ok,
   status,
-  json: async () => { throw new SyntaxError('Unexpected token < in JSON at position 0'); },
+  json: async () => {
+    throw new SyntaxError('Unexpected token < in JSON at position 0');
+  },
 });
 
 describe('tokeny kanału Allegro', () => {
   it('token ważny jest oddawany bez ani jednego wyjścia do sieci', async () => {
     const db = baza();
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'ZYWY', refreshToken: 'r', wygasaAt: zaDni(1), refreshWygasaAt: zaDni(80),
+      accessToken: 'ZYWY',
+      refreshToken: 'r',
+      wygasaAt: zaDni(1),
+      refreshWygasaAt: zaDni(80),
     });
-    const fetchImpl = () => { throw new Error('siec nie miala byc wolana'); };
+    const fetchImpl = () => {
+      throw new Error('siec nie miala byc wolana');
+    };
     const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
 
     expect(await t.waznyToken()).toBe('ZYWY');
@@ -50,7 +62,10 @@ describe('tokeny kanału Allegro', () => {
   it('token wygasły jest odświeżany, a NOWA para NADPISUJE starą', async () => {
     const db = baza();
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
+      accessToken: 'STARY',
+      refreshToken: 'STARY_R',
+      wygasaAt: zaDni(-1),
+      refreshWygasaAt: zaDni(80),
     });
     // Poprzedni błąd ma zgasnąć po zapisie nowej pary;
     // `zapiszTokeny` woła też aktywacja kanału.
@@ -79,7 +94,10 @@ describe('tokeny kanału Allegro', () => {
   it('bliskie wygaśnięcie refresh tokena jest SPRAWĄ, zanim stanie się awarią', () => {
     const db = baza();
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'a', refreshToken: 'r', wygasaAt: zaDni(1), refreshWygasaAt: zaDni(DNI_OSTRZEZENIA - 1),
+      accessToken: 'a',
+      refreshToken: 'r',
+      wygasaAt: zaDni(1),
+      refreshWygasaAt: zaDni(DNI_OSTRZEZENIA - 1),
     });
     const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl: () => {} });
 
@@ -99,7 +117,10 @@ describe('tokeny kanału Allegro', () => {
   it('kanał ze świeżą parą NIE prosi o ponowne połączenie', () => {
     const db = baza();
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'a', refreshToken: 'r', wygasaAt: zaDni(1), refreshWygasaAt: zaDniZZapasem(80),
+      accessToken: 'a',
+      refreshToken: 'r',
+      wygasaAt: zaDni(1),
+      refreshWygasaAt: zaDniZZapasem(80),
     });
     const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl: () => {} });
 
@@ -112,13 +133,19 @@ describe('tokeny kanału Allegro', () => {
     const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl: () => {} });
 
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'a', refreshToken: 'r', wygasaAt: zaDni(1), refreshWygasaAt: zaDniZZapasem(DNI_OSTRZEZENIA),
+      accessToken: 'a',
+      refreshToken: 'r',
+      wygasaAt: zaDni(1),
+      refreshWygasaAt: zaDniZZapasem(DNI_OSTRZEZENIA),
     });
     expect(t.stan().zostaloDni).toBe(DNI_OSTRZEZENIA);
     expect(t.stan().wymagaPowiazania).toBe(true);
 
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'a', refreshToken: 'r', wygasaAt: zaDni(1), refreshWygasaAt: zaDniZZapasem(DNI_OSTRZEZENIA + 1),
+      accessToken: 'a',
+      refreshToken: 'r',
+      wygasaAt: zaDni(1),
+      refreshWygasaAt: zaDniZZapasem(DNI_OSTRZEZENIA + 1),
     });
     expect(t.stan().zostaloDni).toBe(DNI_OSTRZEZENIA + 1);
     expect(t.stan().wymagaPowiazania).toBe(false);
@@ -143,7 +170,10 @@ describe('tokeny kanału Allegro', () => {
   it('odświeżenie idzie na /token, z Basic z poświadczeń kanału i grant_type=refresh_token', async () => {
     const db = baza();
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
+      accessToken: 'STARY',
+      refreshToken: 'STARY_R',
+      wygasaAt: zaDni(-1),
+      refreshWygasaAt: zaDni(80),
     });
     const wywolania = [];
     const fetchImpl = async (url, opcje) => {
@@ -157,8 +187,7 @@ describe('tokeny kanału Allegro', () => {
     expect(wywolania).toHaveLength(1);
     expect(wywolania[0].url).toBe('https://przyklad/auth/oauth/token');
     expect(wywolania[0].opcje.method).toBe('POST');
-    expect(wywolania[0].opcje.headers.Authorization)
-      .toBe(`Basic ${Buffer.from('id:sekret').toString('base64')}`);
+    expect(wywolania[0].opcje.headers.Authorization).toBe(`Basic ${Buffer.from('id:sekret').toString('base64')}`);
     const pola = new URLSearchParams(String(wywolania[0].opcje.body));
     expect(pola.get('grant_type')).toBe('refresh_token');
     expect(pola.get('refresh_token')).toBe('STARY_R');
@@ -167,7 +196,10 @@ describe('tokeny kanału Allegro', () => {
   it('nowa para dostaje ważność z expires_in, a refresh tokena — z udokumentowanych 3 miesięcy', async () => {
     const db = baza();
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(10),
+      accessToken: 'STARY',
+      refreshToken: 'STARY_R',
+      wygasaAt: zaDni(-1),
+      refreshWygasaAt: zaDni(10),
     });
     const fetchImpl = async () => odpowiedz({ access_token: 'NOWY', refresh_token: 'NOWY_R', expires_in: 43199 });
     const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
@@ -195,10 +227,16 @@ describe('tokeny kanału Allegro', () => {
   it('odrzucone odświeżenie NIE PONAWIA, nie kasuje starej pary i zostawia ślad dla człowieka', async () => {
     const db = baza();
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
+      accessToken: 'STARY',
+      refreshToken: 'STARY_R',
+      wygasaAt: zaDni(-1),
+      refreshWygasaAt: zaDni(80),
     });
     let prob = 0;
-    const fetchImpl = async () => { prob += 1; return odpowiedz({ error: 'invalid_grant' }, { ok: false, status: 400 }); };
+    const fetchImpl = async () => {
+      prob += 1;
+      return odpowiedz({ error: 'invalid_grant' }, { ok: false, status: 400 });
+    };
     const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
 
     await expect(t.waznyToken()).rejects.toThrow(/odświeżenie tokenu odrzucone/i);
@@ -216,15 +254,19 @@ describe('tokeny kanału Allegro', () => {
     const db = baza();
     const tajne = { clientId: 'KLIENT_X', clientSecret: 'SEKRET_X', auth: 'https://przyklad/auth/oauth' };
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'ACCESS_X', refreshToken: 'REFRESH_X', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
+      accessToken: 'ACCESS_X',
+      refreshToken: 'REFRESH_X',
+      wygasaAt: zaDni(-1),
+      refreshWygasaAt: zaDni(80),
     });
-    const fetchImpl = async () => odpowiedz(
-      { error: 'invalid_client', error_description: 'SEKRET_X jest zly' },
-      { ok: false, status: 401 },
-    );
+    const fetchImpl = async () =>
+      odpowiedz({ error: 'invalid_client', error_description: 'SEKRET_X jest zly' }, { ok: false, status: 401 });
     const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia: tajne, fetchImpl });
 
-    const blad = await t.waznyToken().then(() => null, (e) => e);
+    const blad = await t.waznyToken().then(
+      () => null,
+      (e) => e,
+    );
     const basic = Buffer.from('KLIENT_X:SEKRET_X').toString('base64');
     for (const tekst of [blad.message, t.stan().ostatni_blad]) {
       expect(tekst).not.toContain('SEKRET_X');
@@ -237,7 +279,10 @@ describe('tokeny kanału Allegro', () => {
   it('stan dla ekranu nie niesie ani access, ani refresh tokena', () => {
     const db = baza();
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'ACCESS_X', refreshToken: 'REFRESH_X', wygasaAt: zaDni(1), refreshWygasaAt: zaDniZZapasem(80),
+      accessToken: 'ACCESS_X',
+      refreshToken: 'REFRESH_X',
+      wygasaAt: zaDni(1),
+      refreshWygasaAt: zaDniZZapasem(80),
     });
     const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl: () => {} });
 
@@ -251,7 +296,10 @@ describe('tokeny kanału Allegro', () => {
   it('kanał niepołączony odmawia tokenu komunikatem dla człowieka, a nie awarią techniczną', async () => {
     const db = baza();
     let prob = 0;
-    const fetchImpl = async () => { prob += 1; return odpowiedz({}); };
+    const fetchImpl = async () => {
+      prob += 1;
+      return odpowiedz({});
+    };
     const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
 
     await expect(t.waznyToken()).rejects.toThrow(/nie jest połączony/i);
@@ -277,7 +325,10 @@ describe('nagłówek User-Agent — WSZYSTKIE trzy żądania OAuth do Allegro', 
   it('ODŚWIEŻENIE tokenu niesie User-Agent z konfiguracji', async () => {
     const db = baza();
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
+      accessToken: 'STARY',
+      refreshToken: 'STARY_R',
+      wygasaAt: zaDni(-1),
+      refreshWygasaAt: zaDni(80),
     });
     const wywolania = [];
     const fetchImpl = async (url, opcje) => {
@@ -301,7 +352,10 @@ describe('nagłówek User-Agent — WSZYSTKIE trzy żądania OAuth do Allegro', 
   it('wartość pochodzi z ustawień kanału, a nie ze stałej w module', async () => {
     const db = baza();
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
+      accessToken: 'STARY',
+      refreshToken: 'STARY_R',
+      wygasaAt: zaDni(-1),
+      refreshWygasaAt: zaDni(80),
     });
     const inny = { ...ustawienia, userAgent: 'InnaNazwa/9.9.9 (+https://inny.invalid/dok)' };
     const wywolania = [];
@@ -322,7 +376,10 @@ describe('nagłówek User-Agent — WSZYSTKIE trzy żądania OAuth do Allegro', 
   it('dokłada się do nagłówków, których żądanie OAuth już wymagało', async () => {
     const db = baza();
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
+      accessToken: 'STARY',
+      refreshToken: 'STARY_R',
+      wygasaAt: zaDni(-1),
+      refreshWygasaAt: zaDni(80),
     });
     const wywolania = [];
     const fetchImpl = async (url, opcje) => {
@@ -348,7 +405,10 @@ describe('odpowiedź o nieoczekiwanym kształcie nie ma prawa spalić pary bez �
   it('200 BEZ expires_in: para jest ZAPISANA (z zapasową ważnością), a nie zgubiona', async () => {
     const db = baza();
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
+      accessToken: 'STARY',
+      refreshToken: 'STARY_R',
+      wygasaAt: zaDni(-1),
+      refreshWygasaAt: zaDni(80),
     });
     // Odpowiedz z para tokenow, ale bez `expires_in` — kiedys `new Date(NaN).toISOString()`
     // rzucalo tu RangeError i zapis nigdy sie nie wykonywal.
@@ -374,7 +434,10 @@ describe('odpowiedź o nieoczekiwanym kształcie nie ma prawa spalić pary bez �
   it('200 BEZ pary tokenów: ślad w bazie ZANIM poleci wyjątek, stara para nietknięta', async () => {
     const db = baza();
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
+      accessToken: 'STARY',
+      refreshToken: 'STARY_R',
+      wygasaAt: zaDni(-1),
+      refreshWygasaAt: zaDni(80),
     });
     // 200 z pustym ciałem: Allegro zrotowalo pare, ale nam jej nie oddalo.
     const fetchImpl = async () => odpowiedz({});
@@ -393,12 +456,18 @@ describe('odpowiedź o nieoczekiwanym kształcie nie ma prawa spalić pary bez �
   it('200 z ciałem, które NIE JEST JSON-em: ślad i komunikat, a nie SyntaxError', async () => {
     const db = baza();
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
+      accessToken: 'STARY',
+      refreshToken: 'STARY_R',
+      wygasaAt: zaDni(-1),
+      refreshWygasaAt: zaDni(80),
     });
     const fetchImpl = async () => cialoNieJson();
     const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
 
-    const blad = await t.waznyToken().then(() => null, (e) => e);
+    const blad = await t.waznyToken().then(
+      () => null,
+      (e) => e,
+    );
     expect(blad).toBeInstanceOf(Error);
     expect(blad).not.toBeInstanceOf(SyntaxError);
     expect(blad.message).toMatch(/bez pary tokenów/i);
@@ -409,17 +478,22 @@ describe('odpowiedź o nieoczekiwanym kształcie nie ma prawa spalić pary bez �
   it('ODMOWA z ciałem, które NIE JEST JSON-em, też zostawia ślad (5xx z HTML-em)', async () => {
     const db = baza();
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
+      accessToken: 'STARY',
+      refreshToken: 'STARY_R',
+      wygasaAt: zaDni(-1),
+      refreshWygasaAt: zaDni(80),
     });
     const fetchImpl = async () => cialoNieJson({ ok: false, status: 502 });
     const t = createTokeny({ db, kanal: 'allegro_swietlik', ustawienia, fetchImpl });
 
-    const blad = await t.waznyToken().then(() => null, (e) => e);
+    const blad = await t.waznyToken().then(
+      () => null,
+      (e) => e,
+    );
     expect(blad).not.toBeInstanceOf(SyntaxError);
     expect(blad.message).toMatch(/odrzucone/i);
     expect(t.stan().ostatni_blad).toMatch(/502/);
   });
-
 });
 
 // ⚠️ REFRESH TOKEN JEST JEDNORAZOWY. Dwa rownolegle `waznyToken()` na wygaslym tokenie
@@ -429,12 +503,17 @@ describe('dwa równoległe odświeżenia nie wysyłają tego samego refresh toke
   it('DWIE OSOBNE instancje createTokeny nad tą samą bazą robią DOKŁADNIE JEDNO wyjście do sieci', async () => {
     const db = baza();
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
+      accessToken: 'STARY',
+      refreshToken: 'STARY_R',
+      wygasaAt: zaDni(-1),
+      refreshWygasaAt: zaDni(80),
     });
 
     const wyslaneTokeny = [];
     let zwolnij;
-    const wstrzymanie = new Promise((res) => { zwolnij = res; });
+    const wstrzymanie = new Promise((res) => {
+      zwolnij = res;
+    });
     const fetchImpl = async (url, opcje) => {
       wyslaneTokeny.push(new URLSearchParams(String(opcje.body)).get('refresh_token'));
       // Trzymamy odpowiedz, zeby oba wywolania na pewno nachodzily na siebie w czasie —
@@ -462,11 +541,16 @@ describe('dwa równoległe odświeżenia nie wysyłają tego samego refresh toke
     const db = baza();
     for (const kanal of ['allegro_swietlik', 'allegro_pro']) {
       zapiszTokeny(db, kanal, {
-        accessToken: 'STARY', refreshToken: `STARY_R_${kanal}`, wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
+        accessToken: 'STARY',
+        refreshToken: `STARY_R_${kanal}`,
+        wygasaAt: zaDni(-1),
+        refreshWygasaAt: zaDni(80),
       });
     }
     let zwolnij;
-    const wstrzymanie = new Promise((res) => { zwolnij = res; });
+    const wstrzymanie = new Promise((res) => {
+      zwolnij = res;
+    });
     const fetchImpl = async (url, opcje) => {
       const stary = new URLSearchParams(String(opcje.body)).get('refresh_token');
       await wstrzymanie;
@@ -485,7 +569,10 @@ describe('dwa równoległe odświeżenia nie wysyłają tego samego refresh toke
   it('nieudane odświeżenie ZWALNIA blokadę: następna próba znów wychodzi do sieci', async () => {
     const db = baza();
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
+      accessToken: 'STARY',
+      refreshToken: 'STARY_R',
+      wygasaAt: zaDni(-1),
+      refreshWygasaAt: zaDni(80),
     });
     let prob = 0;
     const fetchImpl = async () => {
@@ -507,7 +594,10 @@ describe('dwa równoległe odświeżenia nie wysyłają tego samego refresh toke
   it('drugie wywołanie, które przyszło tuż po zakończonym odświeżeniu, NIE wychodzi do sieci', async () => {
     const db = baza();
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
+      accessToken: 'STARY',
+      refreshToken: 'STARY_R',
+      wygasaAt: zaDni(-1),
+      refreshWygasaAt: zaDni(80),
     });
     let prob = 0;
     const fetchImpl = async () => {
@@ -529,10 +619,15 @@ describe('komunikat odmowy mówi PRAWDĘ o tym, co człowiek ma zrobić', () => 
   const zOdmowa = (dane, status) => {
     const db = baza();
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
+      accessToken: 'STARY',
+      refreshToken: 'STARY_R',
+      wygasaAt: zaDni(-1),
+      refreshWygasaAt: zaDni(80),
     });
     const t = createTokeny({
-      db, kanal: 'allegro_swietlik', ustawienia,
+      db,
+      kanal: 'allegro_swietlik',
+      ustawienia,
       fetchImpl: async () => odpowiedz(dane, { ok: false, status }),
     });
     return t;
@@ -605,7 +700,10 @@ describe('ślad po błędzie niesie WŁASNY znacznik czasu', () => {
   it('zapiszBladTokenu odświeża zaktualizowane_at, a nie zostawia daty ostatniego sukcesu', () => {
     const db = baza();
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'a', refreshToken: 'r', wygasaAt: zaDni(1), refreshWygasaAt: zaDni(80),
+      accessToken: 'a',
+      refreshToken: 'r',
+      wygasaAt: zaDni(1),
+      refreshWygasaAt: zaDni(80),
     });
     // Udany zapis sprzed trzech dni — dokladnie ta sytuacja, ktora myli operatora.
     const trzyDniTemu = new Date(Date.now() - 3 * 86400000).toISOString();
@@ -633,7 +731,10 @@ describe('odświeżanie tokenu po błędzie sieci NIE PONAWIA — refresh token 
   it('wyjątek z fetch leci w górę po JEDNYM żądaniu i NIE RUSZA pary w bazie', async () => {
     const db = baza();
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
+      accessToken: 'STARY',
+      refreshToken: 'STARY_R',
+      wygasaAt: zaDni(-1),
+      refreshWygasaAt: zaDni(80),
     });
     let wywolan = 0;
     const t = createTokeny({
@@ -658,7 +759,10 @@ describe('odświeżanie tokenu po błędzie sieci NIE PONAWIA — refresh token 
   it('kolejne wywołanie po błędzie sieci znów PRÓBUJE — blokada odświeżania została zwolniona', async () => {
     const db = baza();
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'STARY', refreshToken: 'STARY_R', wygasaAt: zaDni(-1), refreshWygasaAt: zaDni(80),
+      accessToken: 'STARY',
+      refreshToken: 'STARY_R',
+      wygasaAt: zaDni(-1),
+      refreshWygasaAt: zaDni(80),
     });
     let wywolan = 0;
     const t = createTokeny({
@@ -687,9 +791,13 @@ describe('odświeżanie tokenu po błędzie sieci NIE PONAWIA — refresh token 
 describe('klucz tabeli tokenów nie przyjmuje NULL-a', () => {
   it('zapis z pustym kanałem jest ODRZUCANY, a nie dokłada kolejnego wiersza', () => {
     const db = baza();
-    const zapisz = () => zapiszTokeny(db, null, {
-      accessToken: 'a', refreshToken: 'r', wygasaAt: zaDni(1), refreshWygasaAt: zaDni(80),
-    });
+    const zapisz = () =>
+      zapiszTokeny(db, null, {
+        accessToken: 'a',
+        refreshToken: 'r',
+        wygasaAt: zaDni(1),
+        refreshWygasaAt: zaDni(80),
+      });
 
     expect(zapisz).toThrow(/NOT NULL/i);
     expect(zapisz).toThrow(/NOT NULL/i);
@@ -705,17 +813,21 @@ describe('klucz tabeli tokenów nie przyjmuje NULL-a', () => {
 describe('tabela tokenow w bazie JUZ ISTNIEJACEJ', () => {
   it('powstaje przy otwarciu starej bazy i nie tyka danych, ktore juz w niej leza', () => {
     // Odmowa niezgodnego schematu bazowego oraz prawidłowe ponowne otwarcie.
-    potwierdzOdmoweHistorycznegoSchema(["DROP TABLE tokeny_kanalu"], ['tokeny_kanalu']);
+    potwierdzOdmoweHistorycznegoSchema(['DROP TABLE tokeny_kanalu'], ['tokeny_kanalu']);
     const plik = join(mkdtempSync(join(tmpdir(), 'oms-tokeny-')), 'oms.sqlite');
     const pierwsza = openOmsDb(plik);
-    pierwsza.prepare(
-      "INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at)"
-      + " VALUES ('swietlik', 1267, '1267', '123.45', '2026-07-29')",
-    ).run();
-    pierwsza.prepare(
-      'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, utworzona_at)'
-      + " VALUES (1, 'dpd', 'nadana', '0000123456789A', '2026-07-29T13:00:00')",
-    ).run();
+    pierwsza
+      .prepare(
+        'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at)' +
+          " VALUES ('swietlik', 1267, '1267', '123.45', '2026-07-29')",
+      )
+      .run();
+    pierwsza
+      .prepare(
+        'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, utworzona_at)' +
+          " VALUES (1, 'dpd', 'nadana', '0000123456789A', '2026-07-29T13:00:00')",
+      )
+      .run();
     // Poprawny baseline już zawiera tabelę; normalne reopen ma zachować dane.
     pierwsza.close();
 
@@ -729,7 +841,10 @@ describe('tabela tokenow w bazie JUZ ISTNIEJACEJ', () => {
     expect(druga.prepare('SELECT kwota_brutto FROM zamowienia WHERE id = 1').get().kwota_brutto).toBe('123.45');
 
     zapiszTokeny(druga, 'allegro_swietlik', {
-      accessToken: 'a', refreshToken: 'r', wygasaAt: zaDni(1), refreshWygasaAt: zaDni(80),
+      accessToken: 'a',
+      refreshToken: 'r',
+      wygasaAt: zaDni(1),
+      refreshWygasaAt: zaDni(80),
     });
     expect(wczytajTokeny(druga, 'allegro_swietlik').access_token).toBe('a');
     druga.close();

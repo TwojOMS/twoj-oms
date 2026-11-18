@@ -17,7 +17,8 @@ import { createPoNumerzeKsef } from './services/po-numerze-ksef.js';
 import { createDoczytanieKsef } from './services/ksef-doczytanie.js';
 import { createCzuwaczKsef, najdluzszyPrzebiegMs } from './services/czuwacz-ksef.js';
 import {
-  createCzuwaczArchiwumSprzedazy, najdluzszyPrzebiegArchiwumSprzedazyMs,
+  createCzuwaczArchiwumSprzedazy,
+  najdluzszyPrzebiegArchiwumSprzedazyMs,
 } from './services/czuwacz-archiwum-sprzedazy.js';
 import { przypiszDoOkresu } from './services/okres.js';
 import { createZapytania as fakturyDb } from './db/faktury.js';
@@ -39,7 +40,13 @@ import { kwotaOczekiwanaGrosze } from '../../domena/suma-pozycji.js';
 import { stawkiDlaProgramu } from '../../domena/vat.js';
 import { zwolnienieDlaProgramu } from './db/zwolnienie-vat.js';
 import { wplatyPowiazane, dopiszWplatePowiazana } from './db/wplaty-dokumentu.js';
-import { zegarKsef, zegarArchiwumSprzedazy, zegarAutomatuKsef, createAutomatKsef, ODSTEP_AUTOMATU_KSEF_MS } from './zegary.ts';
+import {
+  zegarKsef,
+  zegarArchiwumSprzedazy,
+  zegarAutomatuKsef,
+  createAutomatKsef,
+  ODSTEP_AUTOMATU_KSEF_MS,
+} from './zegary.ts';
 import { paczkaBiuraDlaTras } from './paczka-biura.ts';
 import { skonfigurowanyUrl } from '../../core/konfiguracja-wartosci.ts';
 import { efektywnyTryb } from '../../core/tryb.ts';
@@ -58,13 +65,25 @@ import { bladOperatora } from '../../domena/bledy.js';
 import { opcjeKlientaInfakt } from '../../domena/konfiguracja-infakt.js';
 import { programInfakt } from '../../integracje/programy/infakt.ts';
 import { sprawdzProgramFakturowy } from '../../integracje/program-fakturowy.ts';
-import { zgodaTwojeFaktury, wyborZPliku, wybierzProgram, jawnyBrak, zdanieBrakuProgramu, zdanieCzekaniaNaRestart } from '../../domena/wybor-programu.js';
+import {
+  zgodaTwojeFaktury,
+  wyborZPliku,
+  wybierzProgram,
+  jawnyBrak,
+  zdanieBrakuProgramu,
+  zdanieCzekaniaNaRestart,
+} from '../../domena/wybor-programu.js';
 import { wczytajWyborProgramu } from '../../oms/db/wybor-programu.js';
 import { createFakturowniaClient } from '../../oms/fakturownia/client.js';
 import { programFakturownia, NAZWA_FAKTUROWNI } from '../../integracje/programy/fakturownia.ts';
 import { utworzAlarmAutoKsef } from './db/alarm-auto-ksef.js';
 import { fakturowniaZUstawien, odmowaFakturowniWProbie } from './fakturownia-ustawien.ts';
-import { opcjeKlientaFakturowni, adresKontaFakturowni, EKRAN_FAKTUROWNI, WZOR_DOMENY_FAKTUROWNI } from '../../domena/konfiguracja-fakturownia.js';
+import {
+  opcjeKlientaFakturowni,
+  adresKontaFakturowni,
+  EKRAN_FAKTUROWNI,
+  WZOR_DOMENY_FAKTUROWNI,
+} from '../../domena/konfiguracja-fakturownia.js';
 
 export const ODSTEP_FAKTUR_MS = 3600000;
 
@@ -73,8 +92,10 @@ export function wczytajFaktury(env: Srodowisko, szew: SzewTwojeFaktury | null = 
   const zgodaTf = zgodaTwojeFaktury(env);
   // Zgoda w kopii bez plików modułu = odmowa startu, nie ciche „wkrótce”.
   if (zgodaTf && !szew) {
-    throw new Error('OMS_TWOJEFAKTURY: ustawione na tak, ale ta wersja OMS-u nie ma modułu TwojeFaktury (brak pliku '
-      + 'src/moduly/faktury/szew-twojefaktury.ts) — usuń zmienną albo dołóż pliki modułu.');
+    throw new Error(
+      'OMS_TWOJEFAKTURY: ustawione na tak, ale ta wersja OMS-u nie ma modułu TwojeFaktury (brak pliku ' +
+        'src/moduly/faktury/szew-twojefaktury.ts) — usuń zmienną albo dołóż pliki modułu.',
+    );
   }
   const programZPliku = wyborZPliku(env.OMS_PROGRAM_FAKTUROWY, { zgoda: zgodaTf });
   const adresInfaktuZPliku = skonfigurowanyUrl(env.INFAKT_API_URL, 'INFAKT_API_URL');
@@ -92,20 +113,33 @@ export function wczytajFaktury(env: Srodowisko, szew: SzewTwojeFaktury | null = 
   const tokenFakturowni = env.FAKTUROWNIA_API_TOKEN?.trim() || null;
   const domenaFakturowni = env.FAKTUROWNIA_DOMENA?.trim() || null;
   if (Boolean(tokenFakturowni) !== Boolean(domenaFakturowni)) {
-    const [brak, jest] = tokenFakturowni ? ['FAKTUROWNIA_DOMENA', 'FAKTUROWNIA_API_TOKEN'] : ['FAKTUROWNIA_API_TOKEN', 'FAKTUROWNIA_DOMENA'];
-    throw new Error(`${brak}: wymagana razem z ${jest} (Fakturownia z pliku konfiguracji) — wpisz obie zmienne albo usuń obie.`);
+    const [brak, jest] = tokenFakturowni
+      ? ['FAKTUROWNIA_DOMENA', 'FAKTUROWNIA_API_TOKEN']
+      : ['FAKTUROWNIA_API_TOKEN', 'FAKTUROWNIA_DOMENA'];
+    throw new Error(
+      `${brak}: wymagana razem z ${jest} (Fakturownia z pliku konfiguracji) — wpisz obie zmienne albo usuń obie.`,
+    );
   }
   if (domenaFakturowni && !WZOR_DOMENY_FAKTUROWNI.test(domenaFakturowni)) {
-    throw new Error('FAKTUROWNIA_DOMENA: tylko domena konta — małe litery, cyfry i myślnik, część przed .fakturownia.pl (bez https://).');
+    throw new Error(
+      'FAKTUROWNIA_DOMENA: tylko domena konta — małe litery, cyfry i myślnik, część przed .fakturownia.pl (bez https://).',
+    );
   }
   // `infakt` — klucz tylko z pliku (.env wygrywa w całości); `infaktUstawien` — co z pliku
   // dotyczy klucza z ekranu Ustawienia → Integracje → inFakt (adres z pliku go NIE dotyczy, archiwum tak).
-  return { proforma: { ...sprzedawca, katalog }, nadawca,
-    infakt: env.INFAKT_API_KEY ? { apiKey: env.INFAKT_API_KEY, baseUrl: env.INFAKT_API_URL || undefined,
-      archiwum } : null, infaktUstawien: { archiwum, adresWPliku: Boolean(adresInfaktuZPliku) },
+  return {
+    proforma: { ...sprzedawca, katalog },
+    nadawca,
+    infakt: env.INFAKT_API_KEY
+      ? { apiKey: env.INFAKT_API_KEY, baseUrl: env.INFAKT_API_URL || undefined, archiwum }
+      : null,
+    infaktUstawien: { archiwum, adresWPliku: Boolean(adresInfaktuZPliku) },
     fakturownia: tokenFakturowni && domenaFakturowni ? { token: tokenFakturowni, domena: domenaFakturowni } : null,
     archiwumSprzedazy: env.OMS_ARCHIWUM_SPRZEDAZY?.trim() || archiwum,
-    odstepMs, zgodaTf, proba: efektywnyTryb(env) === 'proba', programZPliku,
+    odstepMs,
+    zgodaTf,
+    proba: efektywnyTryb(env) === 'proba',
+    programZPliku,
     // Przycisk „Uruchom OMS ponownie” — `tak` / `atrapa` (demo); inna wartość = bez przycisku, nie błąd startu.
     restartZPanelu: trybRestartu(env.OMS_RESTART_Z_PANELU),
     // Wysyłka TwojeFaktury do KSeF — ten sam token i adres co koszty (plik wygrywa nad Ustawieniami),
@@ -114,8 +148,14 @@ export function wczytajFaktury(env: Srodowisko, szew: SzewTwojeFaktury | null = 
     // Piaskownica z KSeF TEST — para zmiennych, wyłącznie w próbie i wyłącznie adres TEST (inaczej
     // odmowa startu). Bez pary `null`.
     // Sprawdza szew (plik TF); bez szwu para nie ma czego włączyć — `null`.
-    ksefTest: szew ? szew.wczytajKsefTestProby({ api: env.OMS_PROBA_KSEF_TEST_API, token: env.OMS_PROBA_KSEF_TEST_TOKEN,
-      proba: efektywnyTryb(env) === 'proba' }) : null };
+    ksefTest: szew
+      ? szew.wczytajKsefTestProby({
+          api: env.OMS_PROBA_KSEF_TEST_API,
+          token: env.OMS_PROBA_KSEF_TEST_TOKEN,
+          proba: efektywnyTryb(env) === 'proba',
+        })
+      : null,
+  };
 }
 
 // Domyślne ubicie po „Uruchom OMS ponownie” — SIGTERM do siebie (main.ts zamyka łagodnie, nadzorca procesu
@@ -140,390 +180,742 @@ const zakonczProcesDomyslnie = () => {
 // `{ domena, fetchImpl, znacznik(db) }` — prawdziwy klient z tokenem z ekranu, wyłącznie na domenę z pliku profilu,
 // `oid` z prefiksem bazy próby, KSeF (ręcznie i automat) wyłączony.
 // `domena: null` (plik profilu z "domena":"*") = dowolna domena z ekranu — próba „jak inny sklep”.
-const FABRYKI_ATRAP = ['createInfaktClient', 'createVies', 'programFakturowy', 'atrapaKsefWysylki', 'createFakturowniaClient', 'fakturowniaProby'];
+const FABRYKI_ATRAP = [
+  'createInfaktClient',
+  'createVies',
+  'programFakturowy',
+  'atrapaKsefWysylki',
+  'createFakturowniaClient',
+  'fakturowniaProby',
+];
 // Atrapa bez zapisu z ekranu: demo działa od razu (token „demo”, jak klucz inFaktu atrapy).
 const ZAPIS_DEMO_FAKTUROWNI = { ustawienia: { domena: 'demo' }, sekrety: { token: 'demo' } };
 
 // `fabryki.szewTwojeFaktury` — szew testów (`null` = kopia bez modułu TwojeFaktury); bez klucza
 // moduł bierze szew wczytany z drzewa. Migracje TF są w module `twojefaktury` (szew, `src/moduly/lista.ts`).
-export function createModulFaktury({ fabryki = {} }: { fabryki?: Record<string, any> } = {}): ModulOms<ReturnType<typeof wczytajFaktury>> {
-const szew: SzewTwojeFaktury | null = Object.hasOwn(fabryki, 'szewTwojeFaktury') ? fabryki.szewTwojeFaktury : szewTwojeFaktury;
-return {
-  nazwa: 'faktury', wersja: '1.0.0', wymaga: ['rdzen', 'kanaly', 'web'],
-  kluczeIntegracji: [...integracje.infakt.kluczeIntegracji, ...integracje.fakturownia.kluczeIntegracji, ...integracje.allegro.kluczeIntegracji],
-  konfiguracja: (env) => wczytajFaktury(env, szew), migracje: [],
-  uprawnienia: [{ klucz: 'faktury', etykieta: 'Faktury', role: ['admin', 'operator'] },
-    { klucz: 'faktury-zamowienia', etykieta: 'Faktury zamówień', role: ['admin', 'operator'] },
-    { klucz: 'pozostale-dokumenty-zamowienia', etykieta: 'Pozostałe dokumenty zamówień', role: ['admin', 'operator'] },
-    { klucz: 'okresy', etykieta: 'Okresy rozliczeniowe', role: ['admin', 'operator'] }],
-  menu: [{ dzial: 'sprzedaz', grupa: 'obsluga', etykieta: 'Faktury', adres: '/faktury', uprawnienie: 'faktury', kolejnosc: 30 },
-    // Podmenu Faktur (zgodnie z EKRANY.nawigacja).
-    { dzial: 'sprzedaz', grupa: 'faktury', etykieta: 'Rozliczenia okresowe', adres: '/okresy', uprawnienie: 'okresy', kolejnosc: 60 }],
-  zbuduj: (ctx) => {
-    const { db, konfiguracja: k, teraz } = ctx;
-    const atrapy = FABRYKI_ATRAP.filter((n) => fabryki[n]);
-    if (atrapy.length && !k.proba) throw new Error(`Fabryki ${atrapy.join(', ')} (atrapy piaskownicy) wolno podać tylko z OMS_TRYB=proba`);
-    const wszyscyKlienci = ctx.usluga<Record<string, any>>('kanaly', 'klienciKanalow');
-    const kanaly = mapaNaZadanie(() => Object.keys(wszyscyKlienci).filter(sklep => kanalKlientaUmie(sklep, u => u.plikFaktury)), sklep => wszyscyKlienci[sklep]);
-    const adresFirmy = zrodloAdresuFirmy({ db, zPliku: k.nadawca });
-    // Rachunek i bank z bieżącej konfiguracji (plik → Ustawienia → Firma → brak) — proforma i maile płatnicze
-    // (config kopiowany do wiadomości) czytają go przy każdym użyciu; `proforma.rachunek` zostaje wartością z pliku.
-    // Źródło nie trzyma stanu (czyta bazę przy każdym wywołaniu), więc własna instancja = ta sama odpowiedź co usługa rdzenia.
-    const rachunekFirmy = zrodloRachunkuFirmy({ db, zPliku: k.proforma });
-    // NIP i BDO tak samo (każde pole osobno: plik → Ustawienia → Firma → brak), czytane przy każdym dokumencie,
-    // fakturze WDT i zapytaniu VIES; `proforma.nip` / `.bdo` zostają wartościami z pliku.
-    const nipBdoFirmy = zrodloNipuIBdoFirmy({ db, zPliku: k.proforma });
-    const nipTeraz = () => nipBdoFirmy.biezacy().nip;
-    // Cały kod TwojeFaktury przez szew. Bez szwu — inFakt / „brak” jak w kopii bez modułu,
-    // moduł „wkrótce” (zgodę bez szwu odrzuca już `wczytajFaktury`). Schemat `tf_*` daje moduł `twojefaktury`.
-    // Szew w drzewie to za mało — bez zgody instalacji (`OMS_TWOJEFAKTURY=tak`) żadnych tras, usług,
-    // `zlozKsef` ani numeru demo TF (moduł „wkrótce”: nic z TF nie działa ani nie zapisuje).
-    const tf = k.zgodaTf ? szew : null;
-    const zgodaTf = Boolean(tf);
-    // Źródło KSeF sprzedaży i połączenie wysyłki — w szwie (`zlozKsef`).
-    const { ksefSprzedazy = null, polaczenieKsef = null, atrapaWysylki = null } = tf ? tf.zlozKsef({ db, teraz, k, fabryki, nipTeraz }) : {};
-    const config = { ...ctx.usluga<any>('kanaly', 'config'), proforma: k.proforma, infakt: k.infakt, nadawca: k.nadawca,
-      adresFirmy: adresFirmy.adres, rachunekFirmy: rachunekFirmy.biezacy, nipBdoFirmy: nipBdoFirmy.biezacy };
-    const puls = createPuls({ teraz });
-    // inFakt z Ustawień (wiersz „infakt” w konfiguracja_integracji) — tylko gdy plik nie ma INFAKT_API_KEY
-    // (.env wygrywa w całości). Pośrednik czyta zapis przy każdym
-    // żądaniu (zmiana klucza bez restartu); usługi faktur powstają z nim tylko, gdy zapis był w bazie przy starcie.
-    // Piaskownica bez atrapy dostaje odmowę zamiast prawdziwego klienta; z atrapą — zawsze atrapę (gałąź pierwsza).
-    // Zapis klucza z ekranu Ustawienia → Integracje → inFakt (wiersz „infakt”; nazwa zmiennej bez nazwy programu — pilnuje tego strażnik).
-    const zapisKlucza = () => wczytajKonfiguracjeIntegracji(db, 'infakt');
-    if (fabryki.programFakturowy && fabryki.createInfaktClient) {
-      throw new Error('Fabryki programFakturowy i createInfaktClient naraz — podaj jedną (jedno źródło programu fakturowego).');
-    }
-    // Wybór modułu faktur (domena/wybor-programu.js) — plik → zapis z Ustawień → inFakt, gdy gotowy → „brak”.
-    // „Gotowy” = jest źródło klienta `infakt` niżej (szew programu, atrapa, plik, zapis z ekranu
-    // przy starcie). Zapis czytany przy każdym `teraz()`; składanie — raz.
-    const gotowy = () => Boolean(fabryki.programFakturowy || fabryki.createInfaktClient || k.infakt || zapisKlucza());
-    const regula = () => wybierzProgram({ zPliku: k.programZPliku, zUstawien: wczytajWyborProgramu(db)?.program ?? null,
-      infaktGotowy: gotowy(), zgoda: zgodaTf });
-    const wybor = regula();
-    // Fakturownia — zapis z ekranu Ustawienia → Integracje → Fakturownia (wiersz „fakturownia”: domena
-    // w ustawieniach, token w sekretach). Gotowa = atrapa piaskownicy, para w pliku albo pełny zapis. Reguła wyboru
-    // dalej pyta wyłącznie o inFakt (Fakturownia nigdy domyślnie); ta gotowość służy zdaniu „czeka na restart”.
-    const zapisFakturowni = () => wczytajKonfiguracjeIntegracji(db, 'fakturownia');
-    const fakturowniaZapisana = () => {
-      const zapis = zapisFakturowni();
-      const opcje = zapis ? opcjeKlientaFakturowni(zapis) : null;
-      return Boolean(opcje?.token && opcje.domena);
-    };
-    const gotowoscProgramu = (program: string) => (program === 'fakturownia'
-      ? Boolean(fabryki.createFakturowniaClient || k.fakturownia || fakturowniaZapisana()) : gotowy());
-    // ⛔ Jawny „brak” (plik albo Ustawienia): NIE powstaje żaden program ani klient — ani z pliku, ani pośrednik
-    // z Ustawień, ani atrapa, ani szew próby; fabryk się nie woła. Usługi zależne są `null` jak bez inFaktu.
-    // „Brak” domyślny (nic nie wybrano i nic nie ma) składa się z pośrednikiem pierwszego podłączenia.
-    const wylaczone = jawnyBrak(wybor);
-    const wyborProgramu = { program: wybor.program, zrodlo: wybor.zrodlo, uwaga: wybor.uwaga,
-      zgoda: zgodaTf,
-      // Gotowość ZAPISANEGO programu (inFakt: klucz; Fakturownia: domena i token) — ekran „Moduł faktur”.
-      teraz: regula, gotowy: () => gotowoscProgramu(regula().program), czekaNaRestart: () => regula().program !== wybor.program };
-    const brakTeraz = () => wylaczone || jawnyBrak(regula());
-    // Przy wyborze Fakturowni nie powstaje nic z inFaktu (klient, pośrednik z Ustawień, atrapa, szew programu).
-    const fakturowniaWybrana = !wylaczone && wybor.program === 'fakturownia';
-    const proba = fakturowniaWybrana ? fabryki.fakturowniaProby ?? null : null;
-    const klientFakturowni = !fakturowniaWybrana ? null
-      // Profil próby: zapis z ekranu czytany przy każdym wywołaniu; domena inna niż w pliku profilu = 400 przed siecią.
-      : proba ? fakturowniaZUstawien({ wczytaj: zapisFakturowni, fabryka: (o) => {
-        if (proba.domena && o.domena !== proba.domena) {
-          throw bladOperatora(`Piaskownica łączy się wyłącznie z kontem próbnym z pliku profilu (${proba.domena}.fakturownia.pl) — zapisz formularz w Ustawienia → Integracje → Fakturownia ponownie. Nic nie poszło do Fakturowni.`, { status: 400, bezProgramu: true });
-        }
-        return createFakturowniaClient({ token: o.token, domena: proba.domena ?? o.domena, fetchImpl: proba.fetchImpl });
-      } })
-      : fabryki.createFakturowniaClient ? fakturowniaZUstawien({ wczytaj: () => zapisFakturowni() ?? ZAPIS_DEMO_FAKTUROWNI,
-        fabryka: (o) => fabryki.createFakturowniaClient({ db, teraz, token: o.token }) })
-      : k.fakturownia ? createFakturowniaClient({ ...k.fakturownia, fetchImpl: undefined })
-      : fakturowniaZapisana() ? fakturowniaZUstawien({ wczytaj: zapisFakturowni,
-        fabryka: k.proba ? odmowaFakturowniWProbie : createFakturowniaClient })
-      : null;
-    // Magazyn alarmu automatycznej wysyłki do KSeF — wspólny dla adaptera (warstwa 2) i czuwacza (warstwa 3).
-    const alarmAutoKsef = klientFakturowni ? utworzAlarmAutoKsef(db, { teraz }) : null;
-    const programFakturowni = klientFakturowni && alarmAutoKsef
-      ? sprawdzProgramFakturowy(programFakturownia(klientFakturowni as any, { alarmAutoKsef, teraz,
-        ...(proba ? { piaskownica: { znacznik: () => proba.znacznik(db) } } : {}) })) : null;
-    const infaktUstawien = k.infakt || wylaczone || fakturowniaWybrana ? null : infaktZUstawien({ wczytaj: zapisKlucza,
-      fabryka: k.proba ? odmowaInfaktuWProbie : createInfaktClient });
-    // Wybór źródła jak dla klienta; na zewnątrz modułu wychodzi wyłącznie adres, nigdy klucz API. Przy „brak” — nic.
-    const celeLacznosci = () => {
-      if (brakTeraz()) return { infakt: null };
-      // Fakturownia: host konta, z którym łączy się klient (plik albo zapis z ekranu); bez domeny — nic.
-      if (fakturowniaWybrana) {
-        const domena = k.fakturownia?.domena ?? opcjeKlientaFakturowni(zapisFakturowni()).domena;
-        const baseUrl = adresKontaFakturowni(domena);
-        return { infakt: null, fakturownia: baseUrl ? { baseUrl } : null };
-      }
-      const zapis = infaktUstawien ? zapisKlucza() : null;
-      return { infakt: infaktUstawien ? (zapis ? { baseUrl: opcjeKlientaInfakt(zapis).baseUrl } : null)
-        : k.infakt ? { baseUrl: k.infakt.baseUrl } : null };
-    };
-    const zUstawienPrzyStarcie = Boolean(!fabryki.createInfaktClient && infaktUstawien && zapisKlucza());
-    const programZFabryki = !wylaczone && !fakturowniaWybrana && fabryki.programFakturowy ? fabryki.programFakturowy({ db, teraz }) : null;
-    // Sprzedawca programu wbudowanego z bieżącej konfiguracji (czytany przy każdym dokumencie) — ten sam dla
-    // wystawienia i dla zapisu zmian na ekranie faktury.
-    const sprzedawcaWbudowanego = () => {
-      const adres = adresFirmy.adres();
-      const { nip, bdo } = nipBdoFirmy.biezacy();
-      const { rachunek, bank } = rachunekFirmy.biezacy();
-      return { nazwa: adres?.nazwa, nip, ulica: adres?.ulica, kod: adres?.kod, miasto: adres?.miasto,
-        kraj: 'PL', email: adres?.email, telefon: adres?.phone, bdo, rachunek, bank };
-    };
-    const wbudowany = tf && wybor.program === 'twojefaktury' ? sprawdzProgramFakturowy(programZFabryki ?? tf.programTwojeFaktury({
-      db, teraz, log: ctx.log, zwolnienie: () => zwolnienieDlaProgramu(db), sprzedawca: sprzedawcaWbudowanego,
-      // Dostawca JS przyjmuje listę tekstowych id; bez JSDoc TS wnioskuje wyłącznie domyślne null.
-      wplatyPowiazane: (ids: string[] | null) => (wplatyPowiazane as
-        (baza: typeof db, ids: string[] | null) => ReturnType<typeof wplatyPowiazane>)(db, ids),
-      dopiszWplatePowiazana: (id: string, wplata: { kwotaGr: number; data: string; uwaga: string }) => dopiszWplatePowiazana(db, id, wplata),
-      ksef: polaczenieKsef, ...(atrapaWysylki?.spij ? { spij: atrapaWysylki.spij } : {}),
-      // Środowisko KOD I na PDF nabywcy — ten sam adres, na który idzie wysyłka (w próbie: atrapa).
-      adresKsef: k.proba && atrapaWysylki ? atrapaWysylki.baseUrl : k.ksefTest?.baseUrl ?? k.ksef.baseUrl,
-    })) : null;
-    // Edycja wystawionej faktury i jej ekran — WYŁĄCZNIE przy programie wbudowanym
-    // (przy inFakcie trasy nie ma). Należność zamówienia jak wszędzie (`kwotaOczekiwanaGrosze`), pobranie z zamówienia;
-    // zamówienia już nie ma → null (bez różnicy). Log zamówienia przez dopiszLog (konto z kontekstu żądania).
-    const edycjaTwojeFaktur = tf && wbudowany ? tf.edycjaTwojeFaktury({
-      db, teraz, stawki: stawkiDlaProgramu({ wbudowany: true }), sprzedawca: sprzedawcaWbudowanego,
-      zwolnienie: () => zwolnienieDlaProgramu(db),
-      kwotaZamowienia: (id: number) => {
-        const z = pobierzZamowienie(db, id);
-        return z ? { kwotaGr: kwotaOczekiwanaGrosze(z), pobranie: Boolean(z.pobranie) } : null;
+export function createModulFaktury({ fabryki = {} }: { fabryki?: Record<string, any> } = {}): ModulOms<
+  ReturnType<typeof wczytajFaktury>
+> {
+  const szew: SzewTwojeFaktury | null = Object.hasOwn(fabryki, 'szewTwojeFaktury')
+    ? fabryki.szewTwojeFaktury
+    : szewTwojeFaktury;
+  return {
+    nazwa: 'faktury',
+    wersja: '1.0.0',
+    wymaga: ['rdzen', 'kanaly', 'web'],
+    kluczeIntegracji: [
+      ...integracje.infakt.kluczeIntegracji,
+      ...integracje.fakturownia.kluczeIntegracji,
+      ...integracje.allegro.kluczeIntegracji,
+    ],
+    konfiguracja: (env) => wczytajFaktury(env, szew),
+    migracje: [],
+    uprawnienia: [
+      { klucz: 'faktury', etykieta: 'Faktury', role: ['admin', 'operator'] },
+      { klucz: 'faktury-zamowienia', etykieta: 'Faktury zamówień', role: ['admin', 'operator'] },
+      {
+        klucz: 'pozostale-dokumenty-zamowienia',
+        etykieta: 'Pozostałe dokumenty zamówień',
+        role: ['admin', 'operator'],
       },
-      log: (id: number, { akcja, wynik }: { akcja: string, wynik: string }) => dopiszLog(db, id, { akcja, wynik }),
-      // Korekta z ekranu faktury idzie przez `wystawKorekte` programu wbudowanego.
-      program: wbudowany,
-      // Odmowa zamiany bez numeru KSeF podaje powód ze źródła połączenia (brak tokenu, zgody…).
-      ksef: polaczenieKsef,
-    }) : null;
-    // Przy Fakturowni `infakt` = program Fakturowni (jak przy programie wbudowanym — `zProgramu` go nie owija).
-    const infakt = wylaczone ? null : fakturowniaWybrana ? programFakturowni
-      : wbudowany ?? programZFabryki ?? (fabryki.createInfaktClient ? fabryki.createInfaktClient({ db, teraz })
-      : k.infakt ? createInfaktClient({ ...k.infakt, fetchImpl: undefined })
-      : zUstawienPrzyStarcie ? infaktUstawien : null);
-    // Program fakturowy = ten sam obiekt „inFakt” (klient z pliku, pośrednik z Ustawień — zmiana klucza
-    // dalej bez restartu, bo program woła pośrednika przy każdym wywołaniu — albo atrapa próby) za kontraktem.
-    // Strażnik kontraktu tu, przy składaniu (nie w podkładce).
-    // Atrapa z fabryki `createInfaktClient` (próba) idzie bez strażnika: test szwu (tests/moduly/faktury/
-    // modul.test.ts) podaje atrapę z dwiema metodami; atrapa piaskownicy ma komplet (tests/instalacja/atrapy-kontrakt).
-    //
-    // ⚠️ Usługa `infakt` zostaje obok `programFakturowy`. Testy podmieniają
-    // `nadpisania['faktury.infakt']` (core/aplikacja.ts:72), więc konsumenci czytają klucz `infakt` i owijają go
-    // `zProgramu`/`programInfakt`. `infakt` NIE jest tym samym obiektem co `programFakturowy`, tylko
-    // klientem pod nim — znajdzKlientaPoNip/zalozKlienta woła już tylko program (integracje/programy/infakt.ts);
-    // testy przypinają `uslugi.infakt` = atrapa (`toBe`, `.atrapa === true`).
-    // Wyjątek: program z fabryki `programFakturowy`, program wbudowany i Fakturownia — wtedy `infakt` = ten sam program.
-    const programFakturowy = fakturowniaWybrana ? programFakturowni : wbudowany ?? (programZFabryki ? sprawdzProgramFakturowy(programZFabryki)
-      : !infakt ? null
-      : fabryki.createInfaktClient ? programInfakt(infakt)
-      : sprawdzProgramFakturowy(programInfakt(infakt)));
-    // Strażnik budżetu z limitów WYBRANEGO programu.
-    if (programFakturowy) {
-      const { limity, nazwa } = programFakturowy.opis;
-      const ksef = najdluzszyPrzebiegMs(limity);
-      const archiwumMs = najdluzszyPrzebiegArchiwumSprzedazyMs(limity);
-      if (ksef >= k.odstepMs) {
-        throw new Error(`Budżet czuwacza KSeF z limitów programu „${nazwa.mianownik}” (${ksef} ms) nie mieści się między tyknięciami zegara (${k.odstepMs} ms) — panel nie wstanie z tym programem.`);
+      { klucz: 'okresy', etykieta: 'Okresy rozliczeniowe', role: ['admin', 'operator'] },
+    ],
+    menu: [
+      {
+        dzial: 'sprzedaz',
+        grupa: 'obsluga',
+        etykieta: 'Faktury',
+        adres: '/faktury',
+        uprawnienie: 'faktury',
+        kolejnosc: 30,
+      },
+      // Podmenu Faktur (zgodnie z EKRANY.nawigacja).
+      {
+        dzial: 'sprzedaz',
+        grupa: 'faktury',
+        etykieta: 'Rozliczenia okresowe',
+        adres: '/okresy',
+        uprawnienie: 'okresy',
+        kolejnosc: 60,
+      },
+    ],
+    zbuduj: (ctx) => {
+      const { db, konfiguracja: k, teraz } = ctx;
+      const atrapy = FABRYKI_ATRAP.filter((n) => fabryki[n]);
+      if (atrapy.length && !k.proba)
+        throw new Error(`Fabryki ${atrapy.join(', ')} (atrapy piaskownicy) wolno podać tylko z OMS_TRYB=proba`);
+      const wszyscyKlienci = ctx.usluga<Record<string, any>>('kanaly', 'klienciKanalow');
+      const kanaly = mapaNaZadanie(
+        () => Object.keys(wszyscyKlienci).filter((sklep) => kanalKlientaUmie(sklep, (u) => u.plikFaktury)),
+        (sklep) => wszyscyKlienci[sklep],
+      );
+      const adresFirmy = zrodloAdresuFirmy({ db, zPliku: k.nadawca });
+      // Rachunek i bank z bieżącej konfiguracji (plik → Ustawienia → Firma → brak) — proforma i maile płatnicze
+      // (config kopiowany do wiadomości) czytają go przy każdym użyciu; `proforma.rachunek` zostaje wartością z pliku.
+      // Źródło nie trzyma stanu (czyta bazę przy każdym wywołaniu), więc własna instancja = ta sama odpowiedź co usługa rdzenia.
+      const rachunekFirmy = zrodloRachunkuFirmy({ db, zPliku: k.proforma });
+      // NIP i BDO tak samo (każde pole osobno: plik → Ustawienia → Firma → brak), czytane przy każdym dokumencie,
+      // fakturze WDT i zapytaniu VIES; `proforma.nip` / `.bdo` zostają wartościami z pliku.
+      const nipBdoFirmy = zrodloNipuIBdoFirmy({ db, zPliku: k.proforma });
+      const nipTeraz = () => nipBdoFirmy.biezacy().nip;
+      // Cały kod TwojeFaktury przez szew. Bez szwu — inFakt / „brak” jak w kopii bez modułu,
+      // moduł „wkrótce” (zgodę bez szwu odrzuca już `wczytajFaktury`). Schemat `tf_*` daje moduł `twojefaktury`.
+      // Szew w drzewie to za mało — bez zgody instalacji (`OMS_TWOJEFAKTURY=tak`) żadnych tras, usług,
+      // `zlozKsef` ani numeru demo TF (moduł „wkrótce”: nic z TF nie działa ani nie zapisuje).
+      const tf = k.zgodaTf ? szew : null;
+      const zgodaTf = Boolean(tf);
+      // Źródło KSeF sprzedaży i połączenie wysyłki — w szwie (`zlozKsef`).
+      const {
+        ksefSprzedazy = null,
+        polaczenieKsef = null,
+        atrapaWysylki = null,
+      } = tf ? tf.zlozKsef({ db, teraz, k, fabryki, nipTeraz }) : {};
+      const config = {
+        ...ctx.usluga<any>('kanaly', 'config'),
+        proforma: k.proforma,
+        infakt: k.infakt,
+        nadawca: k.nadawca,
+        adresFirmy: adresFirmy.adres,
+        rachunekFirmy: rachunekFirmy.biezacy,
+        nipBdoFirmy: nipBdoFirmy.biezacy,
+      };
+      const puls = createPuls({ teraz });
+      // inFakt z Ustawień (wiersz „infakt” w konfiguracja_integracji) — tylko gdy plik nie ma INFAKT_API_KEY
+      // (.env wygrywa w całości). Pośrednik czyta zapis przy każdym
+      // żądaniu (zmiana klucza bez restartu); usługi faktur powstają z nim tylko, gdy zapis był w bazie przy starcie.
+      // Piaskownica bez atrapy dostaje odmowę zamiast prawdziwego klienta; z atrapą — zawsze atrapę (gałąź pierwsza).
+      // Zapis klucza z ekranu Ustawienia → Integracje → inFakt (wiersz „infakt”; nazwa zmiennej bez nazwy programu — pilnuje tego strażnik).
+      const zapisKlucza = () => wczytajKonfiguracjeIntegracji(db, 'infakt');
+      if (fabryki.programFakturowy && fabryki.createInfaktClient) {
+        throw new Error(
+          'Fabryki programFakturowy i createInfaktClient naraz — podaj jedną (jedno źródło programu fakturowego).',
+        );
       }
-      if (archiwumMs >= k.odstepMs) {
-        throw new Error(`Budżet czuwacza archiwum sprzedaży z limitów programu „${nazwa.mianownik}” (${archiwumMs} ms) nie mieści się między tyknięciami zegara (${k.odstepMs} ms) — panel nie wstanie z tym programem.`);
+      // Wybór modułu faktur (domena/wybor-programu.js) — plik → zapis z Ustawień → inFakt, gdy gotowy → „brak”.
+      // „Gotowy” = jest źródło klienta `infakt` niżej (szew programu, atrapa, plik, zapis z ekranu
+      // przy starcie). Zapis czytany przy każdym `teraz()`; składanie — raz.
+      const gotowy = () => Boolean(fabryki.programFakturowy || fabryki.createInfaktClient || k.infakt || zapisKlucza());
+      const regula = () =>
+        wybierzProgram({
+          zPliku: k.programZPliku,
+          zUstawien: wczytajWyborProgramu(db)?.program ?? null,
+          infaktGotowy: gotowy(),
+          zgoda: zgodaTf,
+        });
+      const wybor = regula();
+      // Fakturownia — zapis z ekranu Ustawienia → Integracje → Fakturownia (wiersz „fakturownia”: domena
+      // w ustawieniach, token w sekretach). Gotowa = atrapa piaskownicy, para w pliku albo pełny zapis. Reguła wyboru
+      // dalej pyta wyłącznie o inFakt (Fakturownia nigdy domyślnie); ta gotowość służy zdaniu „czeka na restart”.
+      const zapisFakturowni = () => wczytajKonfiguracjeIntegracji(db, 'fakturownia');
+      const fakturowniaZapisana = () => {
+        const zapis = zapisFakturowni();
+        const opcje = zapis ? opcjeKlientaFakturowni(zapis) : null;
+        return Boolean(opcje?.token && opcje.domena);
+      };
+      const gotowoscProgramu = (program: string) =>
+        program === 'fakturownia'
+          ? Boolean(fabryki.createFakturowniaClient || k.fakturownia || fakturowniaZapisana())
+          : gotowy();
+      // ⛔ Jawny „brak” (plik albo Ustawienia): NIE powstaje żaden program ani klient — ani z pliku, ani pośrednik
+      // z Ustawień, ani atrapa, ani szew próby; fabryk się nie woła. Usługi zależne są `null` jak bez inFaktu.
+      // „Brak” domyślny (nic nie wybrano i nic nie ma) składa się z pośrednikiem pierwszego podłączenia.
+      const wylaczone = jawnyBrak(wybor);
+      const wyborProgramu = {
+        program: wybor.program,
+        zrodlo: wybor.zrodlo,
+        uwaga: wybor.uwaga,
+        zgoda: zgodaTf,
+        // Gotowość ZAPISANEGO programu (inFakt: klucz; Fakturownia: domena i token) — ekran „Moduł faktur”.
+        teraz: regula,
+        gotowy: () => gotowoscProgramu(regula().program),
+        czekaNaRestart: () => regula().program !== wybor.program,
+      };
+      const brakTeraz = () => wylaczone || jawnyBrak(regula());
+      // Przy wyborze Fakturowni nie powstaje nic z inFaktu (klient, pośrednik z Ustawień, atrapa, szew programu).
+      const fakturowniaWybrana = !wylaczone && wybor.program === 'fakturownia';
+      const proba = fakturowniaWybrana ? (fabryki.fakturowniaProby ?? null) : null;
+      const klientFakturowni = !fakturowniaWybrana
+        ? null
+        : // Profil próby: zapis z ekranu czytany przy każdym wywołaniu; domena inna niż w pliku profilu = 400 przed siecią.
+          proba
+          ? fakturowniaZUstawien({
+              wczytaj: zapisFakturowni,
+              fabryka: (o) => {
+                if (proba.domena && o.domena !== proba.domena) {
+                  throw bladOperatora(
+                    `Piaskownica łączy się wyłącznie z kontem próbnym z pliku profilu (${proba.domena}.fakturownia.pl) — zapisz formularz w Ustawienia → Integracje → Fakturownia ponownie. Nic nie poszło do Fakturowni.`,
+                    { status: 400, bezProgramu: true },
+                  );
+                }
+                return createFakturowniaClient({
+                  token: o.token,
+                  domena: proba.domena ?? o.domena,
+                  fetchImpl: proba.fetchImpl,
+                });
+              },
+            })
+          : fabryki.createFakturowniaClient
+            ? fakturowniaZUstawien({
+                wczytaj: () => zapisFakturowni() ?? ZAPIS_DEMO_FAKTUROWNI,
+                fabryka: (o) => fabryki.createFakturowniaClient({ db, teraz, token: o.token }),
+              })
+            : k.fakturownia
+              ? createFakturowniaClient({ ...k.fakturownia, fetchImpl: undefined })
+              : fakturowniaZapisana()
+                ? fakturowniaZUstawien({
+                    wczytaj: zapisFakturowni,
+                    fabryka: k.proba ? odmowaFakturowniWProbie : createFakturowniaClient,
+                  })
+                : null;
+      // Magazyn alarmu automatycznej wysyłki do KSeF — wspólny dla adaptera (warstwa 2) i czuwacza (warstwa 3).
+      const alarmAutoKsef = klientFakturowni ? utworzAlarmAutoKsef(db, { teraz }) : null;
+      const programFakturowni =
+        klientFakturowni && alarmAutoKsef
+          ? sprawdzProgramFakturowy(
+              programFakturownia(klientFakturowni as any, {
+                alarmAutoKsef,
+                teraz,
+                ...(proba ? { piaskownica: { znacznik: () => proba.znacznik(db) } } : {}),
+              }),
+            )
+          : null;
+      const infaktUstawien =
+        k.infakt || wylaczone || fakturowniaWybrana
+          ? null
+          : infaktZUstawien({ wczytaj: zapisKlucza, fabryka: k.proba ? odmowaInfaktuWProbie : createInfaktClient });
+      // Wybór źródła jak dla klienta; na zewnątrz modułu wychodzi wyłącznie adres, nigdy klucz API. Przy „brak” — nic.
+      const celeLacznosci = () => {
+        if (brakTeraz()) return { infakt: null };
+        // Fakturownia: host konta, z którym łączy się klient (plik albo zapis z ekranu); bez domeny — nic.
+        if (fakturowniaWybrana) {
+          const domena = k.fakturownia?.domena ?? opcjeKlientaFakturowni(zapisFakturowni()).domena;
+          const baseUrl = adresKontaFakturowni(domena);
+          return { infakt: null, fakturownia: baseUrl ? { baseUrl } : null };
+        }
+        const zapis = infaktUstawien ? zapisKlucza() : null;
+        return {
+          infakt: infaktUstawien
+            ? zapis
+              ? { baseUrl: opcjeKlientaInfakt(zapis).baseUrl }
+              : null
+            : k.infakt
+              ? { baseUrl: k.infakt.baseUrl }
+              : null,
+        };
+      };
+      const zUstawienPrzyStarcie = Boolean(!fabryki.createInfaktClient && infaktUstawien && zapisKlucza());
+      const programZFabryki =
+        !wylaczone && !fakturowniaWybrana && fabryki.programFakturowy ? fabryki.programFakturowy({ db, teraz }) : null;
+      // Sprzedawca programu wbudowanego z bieżącej konfiguracji (czytany przy każdym dokumencie) — ten sam dla
+      // wystawienia i dla zapisu zmian na ekranie faktury.
+      const sprzedawcaWbudowanego = () => {
+        const adres = adresFirmy.adres();
+        const { nip, bdo } = nipBdoFirmy.biezacy();
+        const { rachunek, bank } = rachunekFirmy.biezacy();
+        return {
+          nazwa: adres?.nazwa,
+          nip,
+          ulica: adres?.ulica,
+          kod: adres?.kod,
+          miasto: adres?.miasto,
+          kraj: 'PL',
+          email: adres?.email,
+          telefon: adres?.phone,
+          bdo,
+          rachunek,
+          bank,
+        };
+      };
+      const wbudowany =
+        tf && wybor.program === 'twojefaktury'
+          ? sprawdzProgramFakturowy(
+              programZFabryki ??
+                tf.programTwojeFaktury({
+                  db,
+                  teraz,
+                  log: ctx.log,
+                  zwolnienie: () => zwolnienieDlaProgramu(db),
+                  sprzedawca: sprzedawcaWbudowanego,
+                  // Dostawca JS przyjmuje listę tekstowych id; bez JSDoc TS wnioskuje wyłącznie domyślne null.
+                  wplatyPowiazane: (ids: string[] | null) =>
+                    (wplatyPowiazane as (baza: typeof db, ids: string[] | null) => ReturnType<typeof wplatyPowiazane>)(
+                      db,
+                      ids,
+                    ),
+                  dopiszWplatePowiazana: (id: string, wplata: { kwotaGr: number; data: string; uwaga: string }) =>
+                    dopiszWplatePowiazana(db, id, wplata),
+                  ksef: polaczenieKsef,
+                  ...(atrapaWysylki?.spij ? { spij: atrapaWysylki.spij } : {}),
+                  // Środowisko KOD I na PDF nabywcy — ten sam adres, na który idzie wysyłka (w próbie: atrapa).
+                  adresKsef: k.proba && atrapaWysylki ? atrapaWysylki.baseUrl : (k.ksefTest?.baseUrl ?? k.ksef.baseUrl),
+                }),
+            )
+          : null;
+      // Edycja wystawionej faktury i jej ekran — WYŁĄCZNIE przy programie wbudowanym
+      // (przy inFakcie trasy nie ma). Należność zamówienia jak wszędzie (`kwotaOczekiwanaGrosze`), pobranie z zamówienia;
+      // zamówienia już nie ma → null (bez różnicy). Log zamówienia przez dopiszLog (konto z kontekstu żądania).
+      const edycjaTwojeFaktur =
+        tf && wbudowany
+          ? tf.edycjaTwojeFaktury({
+              db,
+              teraz,
+              stawki: stawkiDlaProgramu({ wbudowany: true }),
+              sprzedawca: sprzedawcaWbudowanego,
+              zwolnienie: () => zwolnienieDlaProgramu(db),
+              kwotaZamowienia: (id: number) => {
+                const z = pobierzZamowienie(db, id);
+                return z ? { kwotaGr: kwotaOczekiwanaGrosze(z), pobranie: Boolean(z.pobranie) } : null;
+              },
+              log: (id: number, { akcja, wynik }: { akcja: string; wynik: string }) =>
+                dopiszLog(db, id, { akcja, wynik }),
+              // Korekta z ekranu faktury idzie przez `wystawKorekte` programu wbudowanego.
+              program: wbudowany,
+              // Odmowa zamiany bez numeru KSeF podaje powód ze źródła połączenia (brak tokenu, zgody…).
+              ksef: polaczenieKsef,
+            })
+          : null;
+      // Przy Fakturowni `infakt` = program Fakturowni (jak przy programie wbudowanym — `zProgramu` go nie owija).
+      const infakt = wylaczone
+        ? null
+        : fakturowniaWybrana
+          ? programFakturowni
+          : (wbudowany ??
+            programZFabryki ??
+            (fabryki.createInfaktClient
+              ? fabryki.createInfaktClient({ db, teraz })
+              : k.infakt
+                ? createInfaktClient({ ...k.infakt, fetchImpl: undefined })
+                : zUstawienPrzyStarcie
+                  ? infaktUstawien
+                  : null));
+      // Program fakturowy = ten sam obiekt „inFakt” (klient z pliku, pośrednik z Ustawień — zmiana klucza
+      // dalej bez restartu, bo program woła pośrednika przy każdym wywołaniu — albo atrapa próby) za kontraktem.
+      // Strażnik kontraktu tu, przy składaniu (nie w podkładce).
+      // Atrapa z fabryki `createInfaktClient` (próba) idzie bez strażnika: test szwu (tests/moduly/faktury/
+      // modul.test.ts) podaje atrapę z dwiema metodami; atrapa piaskownicy ma komplet (tests/instalacja/atrapy-kontrakt).
+      //
+      // ⚠️ Usługa `infakt` zostaje obok `programFakturowy`. Testy podmieniają
+      // `nadpisania['faktury.infakt']` (core/aplikacja.ts:72), więc konsumenci czytają klucz `infakt` i owijają go
+      // `zProgramu`/`programInfakt`. `infakt` NIE jest tym samym obiektem co `programFakturowy`, tylko
+      // klientem pod nim — znajdzKlientaPoNip/zalozKlienta woła już tylko program (integracje/programy/infakt.ts);
+      // testy przypinają `uslugi.infakt` = atrapa (`toBe`, `.atrapa === true`).
+      // Wyjątek: program z fabryki `programFakturowy`, program wbudowany i Fakturownia — wtedy `infakt` = ten sam program.
+      const programFakturowy = fakturowniaWybrana
+        ? programFakturowni
+        : (wbudowany ??
+          (programZFabryki
+            ? sprawdzProgramFakturowy(programZFabryki)
+            : !infakt
+              ? null
+              : fabryki.createInfaktClient
+                ? programInfakt(infakt)
+                : sprawdzProgramFakturowy(programInfakt(infakt))));
+      // Strażnik budżetu z limitów WYBRANEGO programu.
+      if (programFakturowy) {
+        const { limity, nazwa } = programFakturowy.opis;
+        const ksef = najdluzszyPrzebiegMs(limity);
+        const archiwumMs = najdluzszyPrzebiegArchiwumSprzedazyMs(limity);
+        if (ksef >= k.odstepMs) {
+          throw new Error(
+            `Budżet czuwacza KSeF z limitów programu „${nazwa.mianownik}” (${ksef} ms) nie mieści się między tyknięciami zegara (${k.odstepMs} ms) — panel nie wstanie z tym programem.`,
+          );
+        }
+        if (archiwumMs >= k.odstepMs) {
+          throw new Error(
+            `Budżet czuwacza archiwum sprzedaży z limitów programu „${nazwa.mianownik}” (${archiwumMs} ms) nie mieści się między tyknięciami zegara (${k.odstepMs} ms) — panel nie wstanie z tym programem.`,
+          );
+        }
       }
-    }
-    // Archiwum sprzedaży (INFAKT_ARCHIWUM) dotyczy inFaktu i programu wbudowanego — przy Fakturowni brak.
-    const archiwum = fakturowniaWybrana ? null : wbudowany ? k.archiwumSprzedazy : k.infakt ? k.infakt.archiwum : zUstawienPrzyStarcie ? (k.infaktUstawien?.archiwum ?? null) : null;
-    // Ekran sprawdza zapisane połączenie niezależnie od wyboru programu. W próbie wyłącznie atrapa albo — przy pliku
-    // profilu — konto próbne przez transport profilu; nigdy klient bez transportu.
-    const profilProby = fabryki.fakturowniaProby ?? null;
-    const zdanieKontaProby = (domena: string) => `Piaskownica łączy się wyłącznie z kontem próbnym ${domena}.fakturownia.pl (z pliku profilu) — zapisz formularz ponownie. Nic nie poszło do Fakturowni.`;
-    // `dane` = domena i token z formularza (sprawdzenie PRZED zapisem); bez nich — zapisane albo z pliku.
-    const sprawdzPolaczenieFakturowni = async (dane: { domena: string; token: string } | null = null) => {
-      const opcje = dane ? opcjeKlientaFakturowni({ ustawienia: { domena: dane.domena }, sekrety: { token: dane.token } })
-        : k.fakturownia ?? opcjeKlientaFakturowni(zapisFakturowni());
-      try {
-        if (brakTeraz()) throw bladOperatora(zdanieBrakuProgramu(regula(), 'Nic nie poszło do programu.')
-          ?? 'Wybór programu do faktur czeka na ponowne uruchomienie OMS-u. Nic nie poszło do programu.', { status: 400 });
-        if (profilProby?.domena && opcje.domena !== profilProby.domena) throw bladOperatora(zdanieKontaProby(profilProby.domena), { status: 400 });
-        const klient = fabryki.createFakturowniaClient
-          ? fabryki.createFakturowniaClient({ db, teraz, token: opcje.token })
-          : profilProby ? createFakturowniaClient({ token: opcje.token, domena: profilProby.domena ?? opcje.domena, fetchImpl: profilProby.fetchImpl })
-          : k.proba ? odmowaFakturowniWProbie()
-          : createFakturowniaClient({ ...opcje, fetchImpl: undefined });
-        return await klient.sprawdzPolaczenie();
-      } catch (e: any) {
-        // Klient maskuje token i host. Ekran dodatkowo usuwa samą domenę, także odbitą bez hosta.
-        let tekst = e?.dlaOperatora ? String(e.message) : 'Nie udało się sprawdzić połączenia z Fakturownią. Spróbuj ponownie.';
-        for (const wartosc of [opcje.token, opcje.domena]) {
-          if (!wartosc) continue;
-          for (const forma of new Set([wartosc, encodeURIComponent(wartosc),
-            encodeURIComponent(wartosc).replace(/%[0-9A-F]{2}/g, m => m.toLowerCase())])) {
-            tekst = tekst.split(forma).join('[ukryto]');
+      // Archiwum sprzedaży (INFAKT_ARCHIWUM) dotyczy inFaktu i programu wbudowanego — przy Fakturowni brak.
+      const archiwum = fakturowniaWybrana
+        ? null
+        : wbudowany
+          ? k.archiwumSprzedazy
+          : k.infakt
+            ? k.infakt.archiwum
+            : zUstawienPrzyStarcie
+              ? (k.infaktUstawien?.archiwum ?? null)
+              : null;
+      // Ekran sprawdza zapisane połączenie niezależnie od wyboru programu. W próbie wyłącznie atrapa albo — przy pliku
+      // profilu — konto próbne przez transport profilu; nigdy klient bez transportu.
+      const profilProby = fabryki.fakturowniaProby ?? null;
+      const zdanieKontaProby = (domena: string) =>
+        `Piaskownica łączy się wyłącznie z kontem próbnym ${domena}.fakturownia.pl (z pliku profilu) — zapisz formularz ponownie. Nic nie poszło do Fakturowni.`;
+      // `dane` = domena i token z formularza (sprawdzenie PRZED zapisem); bez nich — zapisane albo z pliku.
+      const sprawdzPolaczenieFakturowni = async (dane: { domena: string; token: string } | null = null) => {
+        const opcje = dane
+          ? opcjeKlientaFakturowni({ ustawienia: { domena: dane.domena }, sekrety: { token: dane.token } })
+          : (k.fakturownia ?? opcjeKlientaFakturowni(zapisFakturowni()));
+        try {
+          if (brakTeraz())
+            throw bladOperatora(
+              zdanieBrakuProgramu(regula(), 'Nic nie poszło do programu.') ??
+                'Wybór programu do faktur czeka na ponowne uruchomienie OMS-u. Nic nie poszło do programu.',
+              { status: 400 },
+            );
+          if (profilProby?.domena && opcje.domena !== profilProby.domena)
+            throw bladOperatora(zdanieKontaProby(profilProby.domena), { status: 400 });
+          const klient = fabryki.createFakturowniaClient
+            ? fabryki.createFakturowniaClient({ db, teraz, token: opcje.token })
+            : profilProby
+              ? createFakturowniaClient({
+                  token: opcje.token,
+                  domena: profilProby.domena ?? opcje.domena,
+                  fetchImpl: profilProby.fetchImpl,
+                })
+              : k.proba
+                ? odmowaFakturowniWProbie()
+                : createFakturowniaClient({ ...opcje, fetchImpl: undefined });
+          return await klient.sprawdzPolaczenie();
+        } catch (e: any) {
+          // Klient maskuje token i host. Ekran dodatkowo usuwa samą domenę, także odbitą bez hosta.
+          let tekst = e?.dlaOperatora
+            ? String(e.message)
+            : 'Nie udało się sprawdzić połączenia z Fakturownią. Spróbuj ponownie.';
+          for (const wartosc of [opcje.token, opcje.domena]) {
+            if (!wartosc) continue;
+            for (const forma of new Set([
+              wartosc,
+              encodeURIComponent(wartosc),
+              encodeURIComponent(wartosc).replace(/%[0-9A-F]{2}/g, (m) => m.toLowerCase()),
+            ])) {
+              tekst = tekst.split(forma).join('[ukryto]');
+            }
           }
+          throw bladOperatora(tekst, { status: e?.status });
         }
-        throw bladOperatora(tekst, { status: e?.status });
-      }
-    };
-    const konfiguracjaInfaktu = {
-      // Klucz niepotrzebny, gdy klient pochodzi z atrapy piaskownicy.
-      atrapa: infakt?.atrapa === true,
-      zEnv: Boolean(k.infakt), adresWPliku: Boolean(k.infaktUstawien?.adresWPliku),
-      archiwumWPliku: Boolean(k.infaktUstawien?.archiwum),
-      // Ekran automatu KSeF i Automatyzacje dostają wybór bez nowych parametrów.
-      wyborProgramu,
-      // Ekran „Moduł faktur” opisuje ten moduł i stan jego klucza (bez wartości klucza).
-      idModulu: 'infakt', kluczZapisany: () => Boolean(zapisKlucza()?.sekrety?.apiKey),
-      sprawdzPolaczenie: async () => {
-        // Przy „brak” klucz z Ustawień nie wychodzi z panelu — także do sprawdzenia połączenia, także gdy „brak”
-        // zapisano po starcie (pośrednik istnieje do restartu). Zdanie z tego „brak”, które obowiązuje.
-        if (brakTeraz()) {
-          const obecny = regula();
-          // Start z „brak”, potem wybrany inny moduł — zdanie o restarcie zamiast „wybrano Brak” (ekran pokazuje już nowy).
-          const czeka = jawnyBrak(obecny) ? null : zdanieCzekaniaNaRestart(wybor, obecny, { gotowy: gotowoscProgramu(obecny.program) });
-          throw bladOperatora(czeka ? `${czeka} Nic nie poszło do programu.`
-            : zdanieBrakuProgramu(jawnyBrak(obecny) ? obecny : wybor, 'Nic nie poszło do programu.'), { status: 400 });
-        }
-        // Ekran inFaktu przy Fakturowni nie sprawdza Fakturowni (ani atrapy piaskownicy) pod nazwą inFaktu.
-        if (fakturowniaWybrana) throw bladOperatora('Program do faktur to teraz Fakturownia — ten ekran nie sprawdza jej połączenia. Nic nie zostało wysłane.', { status: 400 });
-        if (fabryki.createInfaktClient) return infakt.sprawdzPolaczenie();
-        if (!infaktUstawien) throw bladOperatora('inFakt jest ustawiony w pliku konfiguracji — ten ekran go nie sprawdza.');
-        return infaktUstawien.sprawdzPolaczenie();
-      },
-      // Pierwsze podłączenie: usługi faktur nie powstały przy starcie. Odłączenie: usługi zostają do restartu, ale odmawiają.
-      wymagaRestartu: () => !jawnyBrak(regula()) && !infakt && Boolean(infaktUstawien && zapisKlucza()),
-      odlaczonyDoRestartu: () => zUstawienPrzyStarcie && !zapisKlucza(),
-    };
-    // Stan Fakturowni dla ekranu „Moduł faktur” i automatu KSeF (bez wartości tokenu). Rodzaj żeński
-    // w zdaniach automatu („odłączona”). Klient z zapisu Ustawień przy starcie = można go odłączyć do restartu.
-    const fakturowniaZUstawienPrzyStarcie = Boolean(klientFakturowni && !fabryki.createFakturowniaClient && !k.fakturownia);
-    const konfiguracjaFakturowni = {
-      atrapa: Boolean(fabryki.createFakturowniaClient), zEnv: Boolean(k.fakturownia),
-      wyborProgramu, idModulu: 'fakturownia', nazwa: NAZWA_FAKTUROWNI, zenska: true,
-      tokenZapisany: () => Boolean(zapisFakturowni()?.sekrety?.token),
-      wymagaRestartu: () => !jawnyBrak(regula()) && !klientFakturowni && fakturowniaZapisana(),
-      odlaczonyDoRestartu: () => fakturowniaZUstawienPrzyStarcie && !fakturowniaZapisana(),
-      // Ekran Ustawienia → Integracje → Fakturownia.
-      sprawdzPolaczenie: sprawdzPolaczenieFakturowni,
-      // Przy jawnym „Brak” token nie wychodzi z panelu — zapis bez sprawdzenia, ze zdaniem dlaczego.
-      sprawdzenieZablokowane: () => brakTeraz() ? (zdanieBrakuProgramu(regula(), 'Połączenia nie sprawdzono.')
-        ?? 'Wybór programu do faktur czeka na ponowne uruchomienie OMS-u. Połączenia nie sprawdzono.') : null,
-      // Profil próby — ekran przyjmuje wyłącznie domenę z pliku profilu (inna = 400 przed zapisem).
-      domenaProby: profilProby?.domena ?? null,
-      zdanieKontaProby,
-    };
-    // Automat KSeF czyta stan programu wybranego przy starcie — Fakturowni albo inFaktu.
-    const konfiguracjaProgramu = fakturowniaWybrana ? konfiguracjaFakturowni : konfiguracjaInfaktu;
-    // inFakt z Ustawień w trybie próby bez atrapy VIES — odmowa zamiast prawdziwego VIES.
-    const vies = !infakt ? null : fabryki.createVies ? fabryki.createVies({ db })
-      : k.proba ? odmowaViesWProbie()
-      : createVies({ nipSprzedawcy: nipTeraz, fetchImpl: undefined });
-    const faktura = infakt ? createFaktura({ db, infakt, vies: vies as any, nipSprzedawcy: nipTeraz }) : null;
-    const fakturaHurtem = faktura ? createFakturaHurtem({ faktura }) : null;
-    const proforma = createProforma({ db, config, teraz });
-    const paczkaDlaBiura = infakt ? paczkaBiuraDlaTras(() => ctx.usluga('koszty', 'paczkaDlaBiura')) : null;
-    const fakturyWidok = infakt ? createFakturyWidok({ db, infakt }) : null;
-    const wysylkaKsef = infakt && fakturyWidok ? createWysylkaKsef({ db, infakt, fakturyWidok, wpisTf: (tf?.wpisTwojeFaktury ?? null) as any }) : null;
-    const fakturaAllegro = infakt ? createFakturaAllegro({ db, infakt, klienciKanalow: kanaly }) : null;
-    const poNumerzeKsef = createPoNumerzeKsef({ db, fakturaAllegro: fakturaAllegro as any });
-    const doczytanieKsef = infakt ? createDoczytanieKsef({ db, infakt, poNumerzeKsef: poNumerzeKsef as any }) : null;
-    // Rozstrzyganie niepewnych wysyłek KSeF — tylko program wbudowany; czuwacz działa wtedy także bez
-    // kanałów. Przy inFakcie argumenty czuwacza bez zmian (bez klucza `rozstrzyganie`).
-    const rozstrzyganieKsef = tf && wbudowany ? tf.createRozstrzyganieKsef({ db, ksef: polaczenieKsef, teraz, log: ctx.log }) : null;
-    const czuwaczKsef = infakt ? (fabryki.createCzuwacz ?? createCzuwaczKsef)({ db, infakt, klienciKanalow: kanaly, fakturaAllegro: fakturaAllegro as any,
-      ...(rozstrzyganieKsef ? { rozstrzyganie: rozstrzyganieKsef } : {}),
-      // Warstwa 3 — dokument Fakturowni w KSeF bez zlecenia z panelu = alarm (tylko przy Fakturowni).
-      ...(alarmAutoKsef ? { alarmAutoKsef } : {}) }) : null;
-    const czuwaczArchiwumSprzedazy = infakt && archiwum ? (fabryki.createCzuwaczArchiwumSprzedazy ?? createCzuwaczArchiwumSprzedazy)({ db, infakt, katalogArchiwum: archiwum, teraz }) : null;
-    // Automat wysyłki do KSeF o godzinie z Ustawień — tylko na tych samych usługach co przycisk
-    // (fakturyWidok + wysylkaKsef). Bez inFaktu przy starcie nie ma ani usług, ani automatu; ekran mówi dlaczego.
-    // TwojeFaktury — własny automat z trybem (ręcznie / po wystawieniu / o godzinie), kandydaci z bazy.
-    // Ekran i automat czytają ten sam stan — odłączenie wybranego programu (inFakt albo Fakturownia).
-    const dostepny = () => !konfiguracjaProgramu.odlaczonyDoRestartu() && !brakTeraz();
-    const automatKsef = !wysylkaKsef || !fakturyWidok ? null : tf && wbudowany ? tf.createAutomatKsefWbudowany({ db, wysylkaKsef, teraz, log: ctx.log, dostepny })
-      // Zapis „brak” zatrzymuje automat OD RAZU (jedyna czynność bez człowieka); reszta — po restarcie.
-      // Profil próby Fakturowni — automat nic nie wysyła, stan „wyłączony — piaskownica”.
-      : createAutomatKsef({ db, fakturyWidok, wysylkaKsef, teraz, log: ctx.log, dostepny, piaskownica: Boolean(proba) });
-    const zegary: Zegar[] = [];
-    if (czuwaczKsef) zegary.push(zegarKsef({ czuwacz: czuwaczKsef, puls, odstepMs: k.odstepMs, log: ctx.log }));
-    if (czuwaczArchiwumSprzedazy) zegary.push(zegarArchiwumSprzedazy({ czuwacz: czuwaczArchiwumSprzedazy, odstepMs: k.odstepMs, log: ctx.log }));
-    if (automatKsef) zegary.push(zegarAutomatuKsef({ automat: automatKsef, odstepMs: ODSTEP_AUTOMATU_KSEF_MS, log: ctx.log }));
-    // Niezgaszony alarm auto-KSeF Fakturowni jako zdanie alarmu — dla zdrowie() faktur i /health.
-    const alarmyAutoKsef = (): string[] => {
-      const wpisy = alarmAutoKsef?.wczytaj() ?? [];
-      if (wpisy.length === 0) return [];
-      // Bez numeru dokumentu: /health jest otwarty, a numer bywa dowolnym tekstem z Fakturowni — numery są na ekranie.
-      return [`Fakturownia wysłała do KSeF ${wpisy.length} dokument(y/ów) bez zlecenia z panelu — sprawdź i kliknij „Sprawdziłem” w Ustawienia → Integracje → Fakturownia (${EKRAN_FAKTUROWNI}).`];
-    };
-    return { uslugi: { config, alarmyAutoKsef, infakt, programFakturowy, edycjaTwojeFaktur, ksefSprzedazy, wyborProgramu, puls, vies, faktura, fakturaHurtem, proforma, fakturyWidok, wysylkaKsef, automatKsef, celeLacznosci,
-      fakturaAllegro, poNumerzeKsef, doczytanieKsef, czuwaczKsef, czuwaczArchiwumSprzedazy, paczkaDlaBiura, konfiguracjaInfaktu, konfiguracjaProgramu, konfiguracjaFakturowni,
-      okres: (o: any) => przypiszDoOkresu({ ...o, db }), zapytania: fakturyDb(db), proformy: proformyDb(db), kolejkaDruku: kolejkaDruku(db),
-      // Komputery z drukarką faktur → { podlaczone, stanowiska: [{ nazwa, at, minutTemu, aktywne }] } (karta).
-      stanDrukuFaktur: () => stanStanowisk(zgloszeniaDruku(db), teraz()),
-      // Funkcje TF dla kosztów i zamówień tylko z szwem — bez niego usługi nie ma („nie istnieje”),
-      // a pliki wspólne pytają leniwie w try/catch i mają bezpieczny brak.
-      ...(tf ? { plikiKsefDokumentu: (uuid: string) => tf.plikiKsefDokumentu(db, uuid),
-        niepewneKsefPonadDobe: (t: Date) => tf.niepewneKsefPonadDobe(db, t) } : {}) },
-      trasy: (app) => {
-        const usluga = (n: string) => ctx.usluga<any>('faktury', n);
-        // Wybór modułu faktur w opcjach tras faktur, okresów, dokumentów i druku — trasy biorą z niego zdania „faktury
-        // wyłączone”.
-        const zWyborem = { wyborProgramu: usluga('wyborProgramu') };
-        registerFakturyRoutes(app, { ...zWyborem, db: db as any, infakt: usluga('infakt'), fakturyWidok: usluga('fakturyWidok'),
-          wysylkaKsef: usluga('wysylkaKsef'), czuwaczArchiwumSprzedazy: usluga('czuwaczArchiwumSprzedazy'),
-          paczkaDlaBiura: usluga('paczkaDlaBiura') });
-        registerOkresyRoutes(app, { ...zWyborem, db, config: usluga('config'), proba: k.proba, infakt: usluga('infakt'), vies: usluga('vies') });
-        const opcje = { ...zWyborem, db, teraz, config: usluga('config'), faktura: usluga('faktura'), fakturaHurtem: usluga('fakturaHurtem'),
-          proforma: usluga('proforma'), infakt: usluga('infakt'), fakturaAllegro: usluga('fakturaAllegro'),
-          ksefDoczytanie: usluga('doczytanieKsef'), kartaZamowienia: () => { try { return ctx.usluga<(...a: unknown[]) => unknown>('zamowienia', 'renderujKarte'); } catch { return null; } },
-          wczytajListe: (...a: unknown[]) => ctx.usluga<(...a: unknown[]) => unknown[]>('zamowienia', 'wczytajListe')(...a),
-          miniaturyEkranu: (...args: unknown[]) => ctx.usluga<(...args: unknown[]) => unknown>('zamowienia', 'miniaturyEkranu')(...args) };
-        registerDokumentyRoutes(app, opcje); registerDrukFakturRoutes(app, opcje);
-        // Ustawienia → Firma — ekran w module faktur (dane sprzedawcy na dokumentach należą do tego modułu),
-        // tak jak ekran kuriera DPD siedzi w module wysyłki.
-        registerUstawieniaFirmyRoutes(app, { db, adresFirmy, rachunekFirmy, nipBdoFirmy, wyborProgramu: usluga('wyborProgramu') });
-        // Ustawienia → Integracje → inFakt (wzór: ekrany kurierów w module wysyłki).
-        // Automat KSeF (stary adres zapisu i adres pod programem fakturowym) — stan wybranego programu.
-        registerUstawieniaInfaktuRoutes(app, { db, konfiguracjaInfaktu: usluga('konfiguracjaInfaktu'),
-          konfiguracjaProgramu: usluga('konfiguracjaProgramu'), automatKsef: usluga('automatKsef'), teraz, infakt: usluga('infakt') });
-        // Wybór programu i tryb restartu — ekran Fakturowni pokazuje, co jeszcze dzieli ją od wystawiania.
-        registerUstawieniaFakturowniRoutes(app, { db, konfiguracjaFakturowni: usluga('konfiguracjaFakturowni'), teraz,
-          wyborProgramu: usluga('wyborProgramu'), restart: { tryb: k.restartZPanelu } });
-        // Trasy TwojeFaktury (ekran faktury, serie, Wysyłka do KSeF) rejestruje WYŁĄCZNIE szew.
-        if (tf) {
-          tf.zarejestrujTrasy(app, { db, teraz, edycja: edycjaTwojeFaktur ? usluga('edycjaTwojeFaktur') : null,
-            sprzedawca: sprzedawcaWbudowanego, ksefSprzedazy: usluga('ksefSprzedazy') });
-        }
-        // Ustawienia → Integracje → Moduł faktur (wybór modułu; zapis tylko admin).
-        registerUstawieniaProgramuRoutes(app, { db, wyborProgramu: usluga('wyborProgramu'), proba: k.proba, zgoda: zgodaTf,
-          konfiguracjaInfaktu: usluga('konfiguracjaInfaktu'), konfiguracjaFakturowni, program: usluga('infakt'), kopie: () => ctx.usluga<() => any>('zdrowie', 'kopie')(),
-          restart: { tryb: k.restartZPanelu, zakoncz: fabryki.zakonczProces ?? zakonczProcesDomyslnie, log: ctx.log } });
-        if (resetDemoDostepny({ proba: k.proba, restart: k.restartZPanelu })) {
-          registerResetDemoRoutes(app, { db, wyborProgramu, nipTeraz, teraz,
-            numerDemo: (tf ? () => tf.nastepnyNumerDemo(db, teraz()) : null) as any,
-            restart: { zakoncz: fabryki.zakonczProces ?? zakonczProcesDomyslnie } });
-        }
-      }, zegary,
-      zdrowie: () => {
-        const ocena = ocenZdrowie({ teraz: teraz(), startAt: puls.startAt,
-          ksefWlaczony: Boolean(czuwaczKsef) && Object.keys(wszyscyKlienci).length > 0, pulsKsef: (puls.stan().czuwaczKsef ?? null) as any });
-        // Zdania o konfiguracji są uwagami i nie zmieniają `ok`.
-        // Auto-KSeF jest alarmem i zmienia `ok`; /health dokłada go sam (usługa `alarmyAutoKsef`).
-        const wylaczoneZdanie = zdanieBrakuProgramu(wybor);
-        if (wylaczoneZdanie) ocena.uwagi.push(wylaczoneZdanie);
-        else if (!infakt) {
-          ocena.uwagi.push(fakturowniaWybrana
-            ? `Fakturownia nie jest skonfigurowana — wpisz domenę konta i token API w Ustawienia → Integracje → Fakturownia (${EKRAN_FAKTUROWNI}); faktury ruszą po ponownym uruchomieniu OMS-u.`
-            : 'Fakturowanie inFakt nie jest skonfigurowane.');
-        }
-        // Zmiana czeka na restart — tylko gdy to wybór człowieka (pierwszy klucz bez wyboru ma swój ekran).
-        const zapisany = regula();
-        if (zapisany.zrodlo !== 'domyslny') {
-          const czeka = zdanieCzekaniaNaRestart(wybor, zapisany, { gotowy: gotowoscProgramu(zapisany.program) });
-          if (czeka) ocena.uwagi.push(czeka);
-        }
-        ocena.alarmy.push(...alarmyAutoKsef());
-        ocena.ok = ocena.alarmy.length === 0;
-        return ocena;
-      },
-    };
-  },
-};
+      };
+      const konfiguracjaInfaktu = {
+        // Klucz niepotrzebny, gdy klient pochodzi z atrapy piaskownicy.
+        atrapa: infakt?.atrapa === true,
+        zEnv: Boolean(k.infakt),
+        adresWPliku: Boolean(k.infaktUstawien?.adresWPliku),
+        archiwumWPliku: Boolean(k.infaktUstawien?.archiwum),
+        // Ekran automatu KSeF i Automatyzacje dostają wybór bez nowych parametrów.
+        wyborProgramu,
+        // Ekran „Moduł faktur” opisuje ten moduł i stan jego klucza (bez wartości klucza).
+        idModulu: 'infakt',
+        kluczZapisany: () => Boolean(zapisKlucza()?.sekrety?.apiKey),
+        sprawdzPolaczenie: async () => {
+          // Przy „brak” klucz z Ustawień nie wychodzi z panelu — także do sprawdzenia połączenia, także gdy „brak”
+          // zapisano po starcie (pośrednik istnieje do restartu). Zdanie z tego „brak”, które obowiązuje.
+          if (brakTeraz()) {
+            const obecny = regula();
+            // Start z „brak”, potem wybrany inny moduł — zdanie o restarcie zamiast „wybrano Brak” (ekran pokazuje już nowy).
+            const czeka = jawnyBrak(obecny)
+              ? null
+              : zdanieCzekaniaNaRestart(wybor, obecny, { gotowy: gotowoscProgramu(obecny.program) });
+            throw bladOperatora(
+              czeka
+                ? `${czeka} Nic nie poszło do programu.`
+                : zdanieBrakuProgramu(jawnyBrak(obecny) ? obecny : wybor, 'Nic nie poszło do programu.'),
+              { status: 400 },
+            );
+          }
+          // Ekran inFaktu przy Fakturowni nie sprawdza Fakturowni (ani atrapy piaskownicy) pod nazwą inFaktu.
+          if (fakturowniaWybrana)
+            throw bladOperatora(
+              'Program do faktur to teraz Fakturownia — ten ekran nie sprawdza jej połączenia. Nic nie zostało wysłane.',
+              { status: 400 },
+            );
+          if (fabryki.createInfaktClient) return infakt.sprawdzPolaczenie();
+          if (!infaktUstawien)
+            throw bladOperatora('inFakt jest ustawiony w pliku konfiguracji — ten ekran go nie sprawdza.');
+          return infaktUstawien.sprawdzPolaczenie();
+        },
+        // Pierwsze podłączenie: usługi faktur nie powstały przy starcie. Odłączenie: usługi zostają do restartu, ale odmawiają.
+        wymagaRestartu: () => !jawnyBrak(regula()) && !infakt && Boolean(infaktUstawien && zapisKlucza()),
+        odlaczonyDoRestartu: () => zUstawienPrzyStarcie && !zapisKlucza(),
+      };
+      // Stan Fakturowni dla ekranu „Moduł faktur” i automatu KSeF (bez wartości tokenu). Rodzaj żeński
+      // w zdaniach automatu („odłączona”). Klient z zapisu Ustawień przy starcie = można go odłączyć do restartu.
+      const fakturowniaZUstawienPrzyStarcie = Boolean(
+        klientFakturowni && !fabryki.createFakturowniaClient && !k.fakturownia,
+      );
+      const konfiguracjaFakturowni = {
+        atrapa: Boolean(fabryki.createFakturowniaClient),
+        zEnv: Boolean(k.fakturownia),
+        wyborProgramu,
+        idModulu: 'fakturownia',
+        nazwa: NAZWA_FAKTUROWNI,
+        zenska: true,
+        tokenZapisany: () => Boolean(zapisFakturowni()?.sekrety?.token),
+        wymagaRestartu: () => !jawnyBrak(regula()) && !klientFakturowni && fakturowniaZapisana(),
+        odlaczonyDoRestartu: () => fakturowniaZUstawienPrzyStarcie && !fakturowniaZapisana(),
+        // Ekran Ustawienia → Integracje → Fakturownia.
+        sprawdzPolaczenie: sprawdzPolaczenieFakturowni,
+        // Przy jawnym „Brak” token nie wychodzi z panelu — zapis bez sprawdzenia, ze zdaniem dlaczego.
+        sprawdzenieZablokowane: () =>
+          brakTeraz()
+            ? (zdanieBrakuProgramu(regula(), 'Połączenia nie sprawdzono.') ??
+              'Wybór programu do faktur czeka na ponowne uruchomienie OMS-u. Połączenia nie sprawdzono.')
+            : null,
+        // Profil próby — ekran przyjmuje wyłącznie domenę z pliku profilu (inna = 400 przed zapisem).
+        domenaProby: profilProby?.domena ?? null,
+        zdanieKontaProby,
+      };
+      // Automat KSeF czyta stan programu wybranego przy starcie — Fakturowni albo inFaktu.
+      const konfiguracjaProgramu = fakturowniaWybrana ? konfiguracjaFakturowni : konfiguracjaInfaktu;
+      // inFakt z Ustawień w trybie próby bez atrapy VIES — odmowa zamiast prawdziwego VIES.
+      const vies = !infakt
+        ? null
+        : fabryki.createVies
+          ? fabryki.createVies({ db })
+          : k.proba
+            ? odmowaViesWProbie()
+            : createVies({ nipSprzedawcy: nipTeraz, fetchImpl: undefined });
+      const faktura = infakt ? createFaktura({ db, infakt, vies: vies as any, nipSprzedawcy: nipTeraz }) : null;
+      const fakturaHurtem = faktura ? createFakturaHurtem({ faktura }) : null;
+      const proforma = createProforma({ db, config, teraz });
+      const paczkaDlaBiura = infakt ? paczkaBiuraDlaTras(() => ctx.usluga('koszty', 'paczkaDlaBiura')) : null;
+      const fakturyWidok = infakt ? createFakturyWidok({ db, infakt }) : null;
+      const wysylkaKsef =
+        infakt && fakturyWidok
+          ? createWysylkaKsef({ db, infakt, fakturyWidok, wpisTf: (tf?.wpisTwojeFaktury ?? null) as any })
+          : null;
+      const fakturaAllegro = infakt ? createFakturaAllegro({ db, infakt, klienciKanalow: kanaly }) : null;
+      const poNumerzeKsef = createPoNumerzeKsef({ db, fakturaAllegro: fakturaAllegro as any });
+      const doczytanieKsef = infakt ? createDoczytanieKsef({ db, infakt, poNumerzeKsef: poNumerzeKsef as any }) : null;
+      // Rozstrzyganie niepewnych wysyłek KSeF — tylko program wbudowany; czuwacz działa wtedy także bez
+      // kanałów. Przy inFakcie argumenty czuwacza bez zmian (bez klucza `rozstrzyganie`).
+      const rozstrzyganieKsef =
+        tf && wbudowany ? tf.createRozstrzyganieKsef({ db, ksef: polaczenieKsef, teraz, log: ctx.log }) : null;
+      const czuwaczKsef = infakt
+        ? (fabryki.createCzuwacz ?? createCzuwaczKsef)({
+            db,
+            infakt,
+            klienciKanalow: kanaly,
+            fakturaAllegro: fakturaAllegro as any,
+            ...(rozstrzyganieKsef ? { rozstrzyganie: rozstrzyganieKsef } : {}),
+            // Warstwa 3 — dokument Fakturowni w KSeF bez zlecenia z panelu = alarm (tylko przy Fakturowni).
+            ...(alarmAutoKsef ? { alarmAutoKsef } : {}),
+          })
+        : null;
+      const czuwaczArchiwumSprzedazy =
+        infakt && archiwum
+          ? (fabryki.createCzuwaczArchiwumSprzedazy ?? createCzuwaczArchiwumSprzedazy)({
+              db,
+              infakt,
+              katalogArchiwum: archiwum,
+              teraz,
+            })
+          : null;
+      // Automat wysyłki do KSeF o godzinie z Ustawień — tylko na tych samych usługach co przycisk
+      // (fakturyWidok + wysylkaKsef). Bez inFaktu przy starcie nie ma ani usług, ani automatu; ekran mówi dlaczego.
+      // TwojeFaktury — własny automat z trybem (ręcznie / po wystawieniu / o godzinie), kandydaci z bazy.
+      // Ekran i automat czytają ten sam stan — odłączenie wybranego programu (inFakt albo Fakturownia).
+      const dostepny = () => !konfiguracjaProgramu.odlaczonyDoRestartu() && !brakTeraz();
+      const automatKsef =
+        !wysylkaKsef || !fakturyWidok
+          ? null
+          : tf && wbudowany
+            ? tf.createAutomatKsefWbudowany({ db, wysylkaKsef, teraz, log: ctx.log, dostepny })
+            : // Zapis „brak” zatrzymuje automat OD RAZU (jedyna czynność bez człowieka); reszta — po restarcie.
+              // Profil próby Fakturowni — automat nic nie wysyła, stan „wyłączony — piaskownica”.
+              createAutomatKsef({
+                db,
+                fakturyWidok,
+                wysylkaKsef,
+                teraz,
+                log: ctx.log,
+                dostepny,
+                piaskownica: Boolean(proba),
+              });
+      const zegary: Zegar[] = [];
+      if (czuwaczKsef) zegary.push(zegarKsef({ czuwacz: czuwaczKsef, puls, odstepMs: k.odstepMs, log: ctx.log }));
+      if (czuwaczArchiwumSprzedazy)
+        zegary.push(zegarArchiwumSprzedazy({ czuwacz: czuwaczArchiwumSprzedazy, odstepMs: k.odstepMs, log: ctx.log }));
+      if (automatKsef)
+        zegary.push(zegarAutomatuKsef({ automat: automatKsef, odstepMs: ODSTEP_AUTOMATU_KSEF_MS, log: ctx.log }));
+      // Niezgaszony alarm auto-KSeF Fakturowni jako zdanie alarmu — dla zdrowie() faktur i /health.
+      const alarmyAutoKsef = (): string[] => {
+        const wpisy = alarmAutoKsef?.wczytaj() ?? [];
+        if (wpisy.length === 0) return [];
+        // Bez numeru dokumentu: /health jest otwarty, a numer bywa dowolnym tekstem z Fakturowni — numery są na ekranie.
+        return [
+          `Fakturownia wysłała do KSeF ${wpisy.length} dokument(y/ów) bez zlecenia z panelu — sprawdź i kliknij „Sprawdziłem” w Ustawienia → Integracje → Fakturownia (${EKRAN_FAKTUROWNI}).`,
+        ];
+      };
+      return {
+        uslugi: {
+          config,
+          alarmyAutoKsef,
+          infakt,
+          programFakturowy,
+          edycjaTwojeFaktur,
+          ksefSprzedazy,
+          wyborProgramu,
+          puls,
+          vies,
+          faktura,
+          fakturaHurtem,
+          proforma,
+          fakturyWidok,
+          wysylkaKsef,
+          automatKsef,
+          celeLacznosci,
+          fakturaAllegro,
+          poNumerzeKsef,
+          doczytanieKsef,
+          czuwaczKsef,
+          czuwaczArchiwumSprzedazy,
+          paczkaDlaBiura,
+          konfiguracjaInfaktu,
+          konfiguracjaProgramu,
+          konfiguracjaFakturowni,
+          okres: (o: any) => przypiszDoOkresu({ ...o, db }),
+          zapytania: fakturyDb(db),
+          proformy: proformyDb(db),
+          kolejkaDruku: kolejkaDruku(db),
+          // Komputery z drukarką faktur → { podlaczone, stanowiska: [{ nazwa, at, minutTemu, aktywne }] } (karta).
+          stanDrukuFaktur: () => stanStanowisk(zgloszeniaDruku(db), teraz()),
+          // Funkcje TF dla kosztów i zamówień tylko z szwem — bez niego usługi nie ma („nie istnieje”),
+          // a pliki wspólne pytają leniwie w try/catch i mają bezpieczny brak.
+          ...(tf
+            ? {
+                plikiKsefDokumentu: (uuid: string) => tf.plikiKsefDokumentu(db, uuid),
+                niepewneKsefPonadDobe: (t: Date) => tf.niepewneKsefPonadDobe(db, t),
+              }
+            : {}),
+        },
+        trasy: (app) => {
+          const usluga = (n: string) => ctx.usluga<any>('faktury', n);
+          // Wybór modułu faktur w opcjach tras faktur, okresów, dokumentów i druku — trasy biorą z niego zdania „faktury
+          // wyłączone”.
+          const zWyborem = { wyborProgramu: usluga('wyborProgramu') };
+          registerFakturyRoutes(app, {
+            ...zWyborem,
+            db: db as any,
+            infakt: usluga('infakt'),
+            fakturyWidok: usluga('fakturyWidok'),
+            wysylkaKsef: usluga('wysylkaKsef'),
+            czuwaczArchiwumSprzedazy: usluga('czuwaczArchiwumSprzedazy'),
+            paczkaDlaBiura: usluga('paczkaDlaBiura'),
+          });
+          registerOkresyRoutes(app, {
+            ...zWyborem,
+            db,
+            config: usluga('config'),
+            proba: k.proba,
+            infakt: usluga('infakt'),
+            vies: usluga('vies'),
+          });
+          const opcje = {
+            ...zWyborem,
+            db,
+            teraz,
+            config: usluga('config'),
+            faktura: usluga('faktura'),
+            fakturaHurtem: usluga('fakturaHurtem'),
+            proforma: usluga('proforma'),
+            infakt: usluga('infakt'),
+            fakturaAllegro: usluga('fakturaAllegro'),
+            ksefDoczytanie: usluga('doczytanieKsef'),
+            kartaZamowienia: () => {
+              try {
+                return ctx.usluga<(...a: unknown[]) => unknown>('zamowienia', 'renderujKarte');
+              } catch {
+                return null;
+              }
+            },
+            wczytajListe: (...a: unknown[]) =>
+              ctx.usluga<(...a: unknown[]) => unknown[]>('zamowienia', 'wczytajListe')(...a),
+            miniaturyEkranu: (...args: unknown[]) =>
+              ctx.usluga<(...args: unknown[]) => unknown>('zamowienia', 'miniaturyEkranu')(...args),
+          };
+          registerDokumentyRoutes(app, opcje);
+          registerDrukFakturRoutes(app, opcje);
+          // Ustawienia → Firma — ekran w module faktur (dane sprzedawcy na dokumentach należą do tego modułu),
+          // tak jak ekran kuriera DPD siedzi w module wysyłki.
+          registerUstawieniaFirmyRoutes(app, {
+            db,
+            adresFirmy,
+            rachunekFirmy,
+            nipBdoFirmy,
+            wyborProgramu: usluga('wyborProgramu'),
+          });
+          // Ustawienia → Integracje → inFakt (wzór: ekrany kurierów w module wysyłki).
+          // Automat KSeF (stary adres zapisu i adres pod programem fakturowym) — stan wybranego programu.
+          registerUstawieniaInfaktuRoutes(app, {
+            db,
+            konfiguracjaInfaktu: usluga('konfiguracjaInfaktu'),
+            konfiguracjaProgramu: usluga('konfiguracjaProgramu'),
+            automatKsef: usluga('automatKsef'),
+            teraz,
+            infakt: usluga('infakt'),
+          });
+          // Wybór programu i tryb restartu — ekran Fakturowni pokazuje, co jeszcze dzieli ją od wystawiania.
+          registerUstawieniaFakturowniRoutes(app, {
+            db,
+            konfiguracjaFakturowni: usluga('konfiguracjaFakturowni'),
+            teraz,
+            wyborProgramu: usluga('wyborProgramu'),
+            restart: { tryb: k.restartZPanelu },
+          });
+          // Trasy TwojeFaktury (ekran faktury, serie, Wysyłka do KSeF) rejestruje WYŁĄCZNIE szew.
+          if (tf) {
+            tf.zarejestrujTrasy(app, {
+              db,
+              teraz,
+              edycja: edycjaTwojeFaktur ? usluga('edycjaTwojeFaktur') : null,
+              sprzedawca: sprzedawcaWbudowanego,
+              ksefSprzedazy: usluga('ksefSprzedazy'),
+            });
+          }
+          // Ustawienia → Integracje → Moduł faktur (wybór modułu; zapis tylko admin).
+          registerUstawieniaProgramuRoutes(app, {
+            db,
+            wyborProgramu: usluga('wyborProgramu'),
+            proba: k.proba,
+            zgoda: zgodaTf,
+            konfiguracjaInfaktu: usluga('konfiguracjaInfaktu'),
+            konfiguracjaFakturowni,
+            program: usluga('infakt'),
+            kopie: () => ctx.usluga<() => any>('zdrowie', 'kopie')(),
+            restart: { tryb: k.restartZPanelu, zakoncz: fabryki.zakonczProces ?? zakonczProcesDomyslnie, log: ctx.log },
+          });
+          if (resetDemoDostepny({ proba: k.proba, restart: k.restartZPanelu })) {
+            registerResetDemoRoutes(app, {
+              db,
+              wyborProgramu,
+              nipTeraz,
+              teraz,
+              numerDemo: (tf ? () => tf.nastepnyNumerDemo(db, teraz()) : null) as any,
+              restart: { zakoncz: fabryki.zakonczProces ?? zakonczProcesDomyslnie },
+            });
+          }
+        },
+        zegary,
+        zdrowie: () => {
+          const ocena = ocenZdrowie({
+            teraz: teraz(),
+            startAt: puls.startAt,
+            ksefWlaczony: Boolean(czuwaczKsef) && Object.keys(wszyscyKlienci).length > 0,
+            pulsKsef: (puls.stan().czuwaczKsef ?? null) as any,
+          });
+          // Zdania o konfiguracji są uwagami i nie zmieniają `ok`.
+          // Auto-KSeF jest alarmem i zmienia `ok`; /health dokłada go sam (usługa `alarmyAutoKsef`).
+          const wylaczoneZdanie = zdanieBrakuProgramu(wybor);
+          if (wylaczoneZdanie) ocena.uwagi.push(wylaczoneZdanie);
+          else if (!infakt) {
+            ocena.uwagi.push(
+              fakturowniaWybrana
+                ? `Fakturownia nie jest skonfigurowana — wpisz domenę konta i token API w Ustawienia → Integracje → Fakturownia (${EKRAN_FAKTUROWNI}); faktury ruszą po ponownym uruchomieniu OMS-u.`
+                : 'Fakturowanie inFakt nie jest skonfigurowane.',
+            );
+          }
+          // Zmiana czeka na restart — tylko gdy to wybór człowieka (pierwszy klucz bez wyboru ma swój ekran).
+          const zapisany = regula();
+          if (zapisany.zrodlo !== 'domyslny') {
+            const czeka = zdanieCzekaniaNaRestart(wybor, zapisany, { gotowy: gotowoscProgramu(zapisany.program) });
+            if (czeka) ocena.uwagi.push(czeka);
+          }
+          ocena.alarmy.push(...alarmyAutoKsef());
+          ocena.ok = ocena.alarmy.length === 0;
+          return ocena;
+        },
+      };
+    },
+  };
 }
 export const modulFaktury = createModulFaktury();

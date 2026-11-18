@@ -15,8 +15,12 @@ const BRAK_POCZTY = '„wiadomosci.pocztaWychodzaca" nie istnieje';
 /** Stan poczty wychodzącej z modułu wiadomości albo null — bez modułu albo w starym składzie usług. */
 export function pocztaOpcjonalna(usluga) {
   return () => {
-    try { return usluga('wiadomosci', 'pocztaWychodzaca') ?? null; }
-    catch (e) { if (e instanceof Error && e.message.includes(BRAK_POCZTY)) return null; throw e; }
+    try {
+      return usluga('wiadomosci', 'pocztaWychodzaca') ?? null;
+    } catch (e) {
+      if (e instanceof Error && e.message.includes(BRAK_POCZTY)) return null;
+      throw e;
+    }
   };
 }
 
@@ -31,8 +35,12 @@ export function mailerOpcjonalny(usluga) {
   const poczta = pocztaOpcjonalna(usluga);
   return () => {
     let mailer;
-    try { mailer = usluga('wiadomosci', 'mailer') ?? null; }
-    catch (e) { if (e instanceof Error && e.message.includes(BRAK_USLUGI)) return null; throw e; }
+    try {
+      mailer = usluga('wiadomosci', 'mailer') ?? null;
+    } catch (e) {
+      if (e instanceof Error && e.message.includes(BRAK_USLUGI)) return null;
+      throw e;
+    }
     const kandydat = mailer ?? poczta()?.ustawien ?? null;
     if (kandydat && typeof kandydat.gotowy === 'function' && !kandydat.gotowy()) return null;
     return kandydat;
@@ -50,11 +58,19 @@ export function trescMaila({ cel, imie, link, szablon = null }) {
     const text = zlozTresc(szablon.tresc, { pola }).tekst;
     return { subject: zlozTemat(szablon.temat, pola), text, html: renderMailHtml({ text }) };
   }
-  const wstep = cel === 'zaproszenie'
-    ? 'Administrator zaprosił Cię do pracy w systemie obsługi zamówień.'
-    : 'Administrator przygotował link do ustawienia nowego hasła w systemie obsługi zamówień.';
-  const text = [`Dzień dobry, ${imie}!`, '', wstep, 'Ustaw hasło pod adresem:', link, '',
-    'Link działa 48 h i tylko raz. Jeśli to nie Ty — zignoruj tę wiadomość.'].join('\n');
+  const wstep =
+    cel === 'zaproszenie'
+      ? 'Administrator zaprosił Cię do pracy w systemie obsługi zamówień.'
+      : 'Administrator przygotował link do ustawienia nowego hasła w systemie obsługi zamówień.';
+  const text = [
+    `Dzień dobry, ${imie}!`,
+    '',
+    wstep,
+    'Ustaw hasło pod adresem:',
+    link,
+    '',
+    'Link działa 48 h i tylko raz. Jeśli to nie Ty — zignoruj tę wiadomość.',
+  ].join('\n');
   return { subject: TEMATY[cel], text, html: renderMailHtml({ text }) };
 }
 
@@ -63,7 +79,11 @@ const BRAK_PODPISU = '„wiadomosci.podpisMaili" nie istnieje';
 /** Usługa podpisu maili albo null — bez modułu wiadomości sekcja „Podpis maili” znika z ekranu Poczty. */
 export function podpisOpcjonalny(usluga) {
   return () => {
-    try { return usluga('wiadomosci', 'podpisMaili') ?? null; }
-    catch (e) { if (e instanceof Error && e.message.includes(BRAK_PODPISU)) return null; throw e; }
+    try {
+      return usluga('wiadomosci', 'podpisMaili') ?? null;
+    } catch (e) {
+      if (e instanceof Error && e.message.includes(BRAK_PODPISU)) return null;
+      throw e;
+    }
   };
 }

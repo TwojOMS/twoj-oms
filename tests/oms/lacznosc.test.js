@@ -56,8 +56,12 @@ describe('celeLacznosci', () => {
 
 describe('podsumowanie', () => {
   it('liczy dzialajace i niedzialajace', () => {
-    expect(podsumowanie([{ ok: true }, { ok: false }, { ok: true }]))
-      .toEqual({ ile: 3, dziala: 2, nieDziala: 1, wszystkoOk: false });
+    expect(podsumowanie([{ ok: true }, { ok: false }, { ok: true }])).toEqual({
+      ile: 3,
+      dziala: 2,
+      nieDziala: 1,
+      wszystkoOk: false,
+    });
   });
 
   it('komplet zielony ma wlasny znacznik', () => {
@@ -73,14 +77,22 @@ describe('podsumowanie', () => {
 
 // ——— USLUGA: SPRAWDZENIE IDZIE PO SIECI, ALE TESTY NIE ——————————————————————————————
 describe('sprawdzLacznosc', () => {
-  const cel = { klucz: 'sklep:pro', nazwa: 'Sklep PRO', url: 'https://pro.swietlik.example.test', host: 'pro.swietlik.example.test' };
+  const cel = {
+    klucz: 'sklep:pro',
+    nazwa: 'Sklep PRO',
+    url: 'https://pro.swietlik.example.test',
+    host: 'pro.swietlik.example.test',
+  };
 
   it('cel osiagalny: DNS rozwiazany i odpowiedz HTTP', async () => {
     const [w] = await sprawdzLacznosc({
       cele: [cel],
       lookup: async () => ({ address: '203.0.113.10' }),
       fetchImpl: async () => ({ status: 200 }),
-      teraz: (() => { let t = 0; return () => (t += 120); })(),
+      teraz: (() => {
+        let t = 0;
+        return () => (t += 120);
+      })(),
     });
     expect(w).toMatchObject({ klucz: 'sklep:pro', ok: true, adresIp: '203.0.113.10', status: 200 });
     expect(w.msDns).toBeGreaterThan(0);
@@ -93,8 +105,13 @@ describe('sprawdzLacznosc', () => {
     let bylFetch = false;
     const [w] = await sprawdzLacznosc({
       cele: [cel],
-      lookup: async () => { throw Object.assign(new Error('getaddrinfo EAI_AGAIN'), { code: 'EAI_AGAIN' }); },
-      fetchImpl: async () => { bylFetch = true; return { status: 200 }; },
+      lookup: async () => {
+        throw Object.assign(new Error('getaddrinfo EAI_AGAIN'), { code: 'EAI_AGAIN' });
+      },
+      fetchImpl: async () => {
+        bylFetch = true;
+        return { status: 200 };
+      },
     });
     expect(w.ok).toBe(false);
     expect(w.warstwa).toBe('dns');
@@ -106,7 +123,9 @@ describe('sprawdzLacznosc', () => {
     const [w] = await sprawdzLacznosc({
       cele: [cel],
       lookup: async () => ({ address: '203.0.113.10' }),
-      fetchImpl: async () => { throw new Error('connect ETIMEDOUT'); },
+      fetchImpl: async () => {
+        throw new Error('connect ETIMEDOUT');
+      },
     });
     expect(w).toMatchObject({ ok: false, warstwa: 'siec', adresIp: '203.0.113.10' });
     expect(w.komunikat).toMatch(/ETIMEDOUT/);
@@ -140,9 +159,12 @@ describe('sprawdzLacznosc', () => {
       cele: [cel],
       limitMs: 5,
       lookup: async () => ({ address: '1.2.3.4' }),
-      fetchImpl: (url, opcje) => new Promise((_, odrzuc) => {
-        opcje?.signal?.addEventListener('abort', () => odrzuc(Object.assign(new Error('aborted'), { name: 'AbortError' })));
-      }),
+      fetchImpl: (url, opcje) =>
+        new Promise((_, odrzuc) => {
+          opcje?.signal?.addEventListener('abort', () =>
+            odrzuc(Object.assign(new Error('aborted'), { name: 'AbortError' })),
+          );
+        }),
     });
     expect(w.ok).toBe(false);
     expect(w.komunikat).toMatch(/limit|czas/i);
@@ -155,9 +177,14 @@ describe('sprawdzLacznosc', () => {
   it('sprawdzenie NIE wysyla zadnych naglowkow autoryzacji', async () => {
     const naglowki = [];
     await sprawdzLacznosc({
-      cele: [{ klucz: 'allegro:allegro_swietlik', nazwa: 'Allegro', url: 'https://api.allegro.pl', host: 'api.allegro.pl' }],
+      cele: [
+        { klucz: 'allegro:allegro_swietlik', nazwa: 'Allegro', url: 'https://api.allegro.pl', host: 'api.allegro.pl' },
+      ],
       lookup: async () => ({ address: '1.2.3.4' }),
-      fetchImpl: async (url, opcje) => { naglowki.push(opcje?.headers ?? {}); return { status: 200 }; },
+      fetchImpl: async (url, opcje) => {
+        naglowki.push(opcje?.headers ?? {});
+        return { status: 200 };
+      },
     });
     const wszystkie = JSON.stringify(naglowki).toLowerCase();
     expect(wszystkie).not.toContain('authorization');
@@ -186,7 +213,9 @@ describe('sprawdzLacznosc', () => {
       fetchImpl: async () => {
         rownoczesne += 1;
         szczyt = Math.max(szczyt, rownoczesne);
-        await new Promise((r) => { setTimeout(r, 5); });
+        await new Promise((r) => {
+          setTimeout(r, 5);
+        });
         rownoczesne -= 1;
         return { status: 200 };
       },

@@ -11,7 +11,10 @@
 // nie robilby nic, a odznaczenie soboty nadal wpuszczaloby noc z piatku.
 
 const FORMAT = new Intl.DateTimeFormat('pl-PL', {
-  timeZone: 'Europe/Warsaw', hour: 'numeric', hourCycle: 'h23', weekday: 'short',
+  timeZone: 'Europe/Warsaw',
+  hour: 'numeric',
+  hourCycle: 'h23',
+  weekday: 'short',
 });
 
 // `hourCycle: 'h23'` jest istotny — bez niego polnoc wychodzi jako „24", a nie „0".
@@ -23,9 +26,12 @@ function godzinaIDzien(chwila) {
   // ⚠️ Skrot dnia bierzemy z `formatToParts`, a NIE z `chwila.getDay()`: `getDay()` oddaje
   // dzien w strefie PROCESU (UTC w kontenerze), wiec noc z piatku na sobote wychodzilaby
   // jako piatek. Normalizacja usuwa kropke i ogonki („śr.” -> „sr”).
-  const skrot = czesci.find((c) => c.type === 'weekday').value
-    .toLowerCase().replace('.', '')
-    .normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const skrot = czesci
+    .find((c) => c.type === 'weekday')
+    .value.toLowerCase()
+    .replace('.', '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '');
   return { godzina, dzien: DNI_SKROTY[skrot] };
 }
 

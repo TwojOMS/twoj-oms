@@ -43,11 +43,8 @@ import { grosze, zl } from './kwoty.js';
 // powstało) wchodziły do rachunku jako „Nieprzypisane"/„drobne", podczas gdy zakładka KOSZTY
 // pokazywała ich prawdziwą kategorię. Suma się zgadzała, więc nic nie krzyczało — rozjeżdżało
 // się rozbicie i próg rentowności.
-export const kategoriaWiersza = (w, poNipie) => (
-  w.kategoria_dokumentu
-    ? { kategoria: w.kategoria_dokumentu, typ: w.typ_dokumentu }
-    : poNipie(w.sprzedawca_nip)
-);
+export const kategoriaWiersza = (w, poNipie) =>
+  w.kategoria_dokumentu ? { kategoria: w.kategoria_dokumentu, typ: w.typ_dokumentu } : poNipie(w.sprzedawca_nip);
 
 export function zlozWidok({ wiersze, kategoria }) {
   const pln = wiersze.filter((w) => czyPLN({ waluta: w.waluta }));
@@ -61,11 +58,14 @@ export function zlozWidok({ wiersze, kategoria }) {
   // liczeniu `suma` i przy `nettoGr` w petli `pozycje`) trzeba zmienic — dopisac tam
   // odejmowanie dla wierszy z `w.rodzaj === 'Kor'` zamiast prostego dodawania. Nic innego
   // w tym pliku tej zmiany nie dotyczy.
-  const sumaGr = pln.reduce((a, w) => ({
-    netto: a.netto + grosze(w.netto, `netto (${w.ksef_number})`),
-    vat: a.vat + grosze(w.vat, `vat (${w.ksef_number})`),
-    brutto: a.brutto + grosze(w.brutto, `brutto (${w.ksef_number})`),
-  }), { netto: 0, vat: 0, brutto: 0 });
+  const sumaGr = pln.reduce(
+    (a, w) => ({
+      netto: a.netto + grosze(w.netto, `netto (${w.ksef_number})`),
+      vat: a.vat + grosze(w.vat, `vat (${w.ksef_number})`),
+      brutto: a.brutto + grosze(w.brutto, `brutto (${w.ksef_number})`),
+    }),
+    { netto: 0, vat: 0, brutto: 0 },
+  );
 
   const wKategoriach = new Map();
   let nieprzypisaneIle = 0;

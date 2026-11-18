@@ -1,12 +1,25 @@
 import { sprzedazWOkresieAsync, zwrotyWOkresie } from '../../../domena/sprzedaz-okresu.js';
 import {
-  agreguj, delty, wgMiesiecy, wgDni, wgTygodni, deltyKanalow, dokumenty,
-  udzialyDokumentow, klienci,
+  agreguj,
+  delty,
+  wgMiesiecy,
+  wgDni,
+  wgTygodni,
+  deltyKanalow,
+  dokumenty,
+  udzialyDokumentow,
+  klienci,
 } from '../../../domena/agregacja-sprzedazy.js';
 import { ostrzezenia } from '../../../domena/ostrzezenia-raportu.js';
 import {
-  zakresSkrotu, poprzedniOkres, rokWczesniej, miesiaceOkresu, nazwaOkresu,
-  dniOkresu, tygodnieOkresu, zakresZZapytania,
+  zakresSkrotu,
+  poprzedniOkres,
+  rokWczesniej,
+  miesiaceOkresu,
+  nazwaOkresu,
+  dniOkresu,
+  tygodnieOkresu,
+  zakresZZapytania,
 } from '../../../domena/okresy-raportu.js';
 import { wszystkieGranice, sufitZApilo } from '../../../oms/db/historia-sprzedazy.js';
 import { zastrzezenia } from '../../../domena/zastrzezenia-historii.js';
@@ -27,8 +40,14 @@ import { BOM_EXCELA, csvSprzedazy, nazwaPlikuSprzedazy } from '../../../domena/e
 // ⚠️ KOLEJNOSC JEST TRESCIA: skroty ida od NAJKROTSZEGO okresu. „Dzisiaj"
 // stoi pierwszy, bo odpowiada na pytanie zadawane najczesciej — „co dzis sprzedalismy".
 const SKROTY = [
-  'dzisiaj', 'ten-miesiac', 'poprzedni-miesiac', 'ten-kwartal', 'poprzedni-kwartal',
-  'ten-rok', 'poprzedni-rok', 'ostatnie-30',
+  'dzisiaj',
+  'ten-miesiac',
+  'poprzedni-miesiac',
+  'ten-kwartal',
+  'poprzedni-kwartal',
+  'ten-rok',
+  'poprzedni-rok',
+  'ostatnie-30',
 ];
 
 // ⚠️ CZAS WARSZAWSKI, nie UTC — ta sama funkcja, co przy /koszty i /faktury. Pierwszego dnia
@@ -49,8 +68,7 @@ export function zarejestrujTrasyRaportow(app, { db, config }) {
       const csv = csvSprzedazy(wiersze, { zKlientem: req.query.klient === '1' });
       return reply
         .header('content-type', 'text/csv; charset=utf-8')
-        .header('content-disposition',
-          `attachment; filename="${nazwaPlikuSprzedazy(zakres.od, zakres.do)}"`)
+        .header('content-disposition', `attachment; filename="${nazwaPlikuSprzedazy(zakres.od, zakres.do)}"`)
         .send(BOM_EXCELA + csv);
     } catch (e) {
       if (!e?.dlaOperatora) throw e;
@@ -92,15 +110,21 @@ export function zarejestrujTrasyRaportow(app, { db, config }) {
       // 90 dziennych kresek na szerokosci karty to szum, nie wykres. Listy dni i tygodni
       // przychodza Z ZAKRESU (dziury maja slupek z zerem), agregacje z domeny.
       const dni = dniOkresu(zakres);
-      const przebieg = dni.length <= 62
-        ? { typ: 'dzienny', slupki: wgDni(wiersze, dni) }
-        : { typ: 'tygodniowy', slupki: wgTygodni(wiersze, tygodnieOkresu(zakres)) };
+      const przebieg =
+        dni.length <= 62
+          ? { typ: 'dzienny', slupki: wgDni(wiersze, dni) }
+          : { typ: 'tygodniowy', slupki: wgTygodni(wiersze, tygodnieOkresu(zakres)) };
 
       // Klienci znani SPRZED okresu — jedno zapytanie, bo lista maili z calej historii
       // liczona w pamieci przy raporcie rocznym znaczylaby wczytanie wszystkiego dwa razy.
       const znane = new Set(
-        db.prepare('SELECT DISTINCT LOWER(klient_email) m FROM sprzedaz_historyczna'
-          + ' WHERE klient_email IS NOT NULL AND dzien < ?').all(zakres.od).map((w) => w.m),
+        db
+          .prepare(
+            'SELECT DISTINCT LOWER(klient_email) m FROM sprzedaz_historyczna' +
+              ' WHERE klient_email IS NOT NULL AND dzien < ?',
+          )
+          .all(zakres.od)
+          .map((w) => w.m),
       );
 
       // ⚠️ Sekcja „rok do roku" rysuje sie TYLKO gdy historia siega tamtego okresu.
@@ -138,7 +162,8 @@ export function zarejestrujTrasyRaportow(app, { db, config }) {
         udzialyDokumentow: udzialyDokumentow(dokumenty(wiersze)),
         klienci: klienci(wiersze, znane),
         ostrzezenia: ostrzezenia(wiersze, {
-          ...zakres, granice: wszystkieGranice(db),
+          ...zakres,
+          granice: wszystkieGranice(db),
           kanalGddWHistorii: config.regulySprzedazy.klasyfikacja.tagGdd !== null,
         }),
         // ⚠️ OSOBNY PAS, NIE DOPISEK DO `ostrzezenia`.
@@ -146,7 +171,13 @@ export function zarejestrujTrasyRaportow(app, { db, config }) {
         // Te zdania mowia, czego archiwum NIE WIE o calej epoce, i musza byc widoczne bez
         // rozwijania: raport za dawny rok pokazuje kilka tysiecy zamowien, ktore bez tego zdania
         // czyta sie jako „tyle sprzedalismy" — a to wylacznie sklep, bez Allegro i hurtu.
-        zastrzezeniaHistorii: zastrzezenia({ od: zakres.od, sufitApilo: config.kontoHistorii !== null ? sufitZApilo(db, config.kontoHistorii) : null, kontoNieustawione: config.kontoHistorii === null, nazwaSklepu: config.nazwaSklepuHistorii, dataImportu: config.dataImportuHistorii }),
+        zastrzezeniaHistorii: zastrzezenia({
+          od: zakres.od,
+          sufitApilo: config.kontoHistorii !== null ? sufitZApilo(db, config.kontoHistorii) : null,
+          kontoNieustawione: config.kontoHistorii === null,
+          nazwaSklepu: config.nazwaSklepuHistorii,
+          dataImportu: config.dataImportuHistorii,
+        }),
         // ⚠️ ZAMIANA GROSZY NA ZLOTOWKI IDZIE Z DOMENY (domena/kwoty.js), a nie z wlasnego
         // dzielenia w szablonie: to jedyne dzielenie pieniedzy na tym ekranie i ma byc
         // TYM SAMYM dzieleniem, ktore panel robi wszedzie indziej. Widok dokleda juz tylko

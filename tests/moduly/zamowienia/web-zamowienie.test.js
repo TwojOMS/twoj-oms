@@ -20,18 +20,28 @@ const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('bas
 const poller = { stan: () => ({ ostatni_przebieg_at: '2026-07-29T12:00:00', ostatni_blad: null }) };
 
 const zmapowane = (id, nad = {}) => ({
-  zrodlo_id: id, numer: String(id), klient: { first_name: 'Jan', email: 'j@k.pl', address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa' }, dostawa: { city: 'Warszawa' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '212.90',
-  status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-07-29T13:19:52',
+  zrodlo_id: id,
+  numer: String(id),
+  klient: { first_name: 'Jan', email: 'j@k.pl', address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa' },
+  dostawa: { city: 'Warszawa' },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '212.90',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-07-29T13:19:52',
   pozycje: [{ nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 2, cena_brutto: '61.50', vat: null }],
   ...nad,
 });
 
-
 // Trasy dotyczace POJEDYNCZEJ paczki niosa jej ID (patrz paczkaZadania w routes/zamowienia.js).
 // W tych testach zamowienie ma dokladnie jedna paczke, wiec bierzemy ja z bazy — wpisany na
 // sztywno numer ukrywalby fakt, ze adres naprawde wskazuje konkretna przesylke.
-const pid = (zamowienieId) => db.prepare('SELECT id FROM przesylki WHERE zamowienie_id = ? ORDER BY id').get(zamowienieId)?.id ?? 0;
+const pid = (zamowienieId) =>
+  db.prepare('SELECT id FROM przesylki WHERE zamowienie_id = ? ORDER BY id').get(zamowienieId)?.id ?? 0;
 
 let db, app;
 beforeEach(async () => {
@@ -70,7 +80,9 @@ describe('szczegóły zamówienia', () => {
     expect(direct.body).toContain('<h1>Zamówienie 1498</h1>');
     expect(direct.body).toContain(`href="/#zamowienie-${id}"`);
     const zly = await app.inject({
-      method: 'GET', url: `/zamowienia/${id}?powrot=${encodeURIComponent('//obcy.example/')}`, headers: naglowek,
+      method: 'GET',
+      url: `/zamowienia/${id}?powrot=${encodeURIComponent('//obcy.example/')}`,
+      headers: naglowek,
     });
     expect(zly.body).toContain(`href="/#zamowienie-${id}"`);
     expect(zly.body).not.toContain('obcy.example');
@@ -94,7 +106,9 @@ describe('szczegóły zamówienia', () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1499), {});
     const powrot = '/?status=nowe&kanal=pro';
     const karta = await app.inject({
-      method: 'GET', url: `/zamowienia/${id}?powrot=${encodeURIComponent(powrot)}`, headers: naglowek,
+      method: 'GET',
+      url: `/zamowienia/${id}?powrot=${encodeURIComponent(powrot)}`,
+      headers: naglowek,
     });
     expect(karta.body).toContain(
       `href="/zamowienia/${id}?powrot=%2F%3Fstatus%3Dnowe%26kanal%3Dpro&amp;edytuj=wysylka"`,
@@ -105,9 +119,7 @@ describe('szczegóły zamówienia', () => {
       headers: naglowek,
     });
     expect(edycja.body).toContain(`<input type="hidden" name="powrot" value="${powrot.replaceAll('&', '&amp;')}">`);
-    expect(edycja.body).toContain(
-      `href="/zamowienia/${id}?powrot=%2F%3Fstatus%3Dnowe%26kanal%3Dpro"`,
-    );
+    expect(edycja.body).toContain(`href="/zamowienia/${id}?powrot=%2F%3Fstatus%3Dnowe%26kanal%3Dpro"`);
   });
 
   it('POST zachowuje powrót w przekierowaniu do karty, a karta wraca do wiersza', async () => {
@@ -120,9 +132,7 @@ describe('szczegóły zamówienia', () => {
       payload: { status: 'w_realizacji', powrot },
     });
     expect(zapis.statusCode).toBe(302);
-    expect(zapis.headers.location).toBe(
-      `/zamowienia/${id}?powrot=%2F%3Fstatus%3Dnowe%26kanal%3Dpro`,
-    );
+    expect(zapis.headers.location).toBe(`/zamowienia/${id}?powrot=%2F%3Fstatus%3Dnowe%26kanal%3Dpro`);
     const karta = await app.inject({ method: 'GET', url: zapis.headers.location, headers: naglowek });
     expect(karta.body).toContain(`href="/?status=nowe&amp;kanal=pro#zamowienie-${id}"`);
   });
@@ -131,11 +141,13 @@ describe('szczegóły zamówienia', () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1501), {});
     const powrot = '/?status=nowe&kanal=pro';
     const karta = await app.inject({
-      method: 'GET', url: `/zamowienia/${id}?powrot=${encodeURIComponent(powrot)}`, headers: naglowek,
+      method: 'GET',
+      url: `/zamowienia/${id}?powrot=${encodeURIComponent(powrot)}`,
+      headers: naglowek,
     });
-    const formularze = [...karta.body.matchAll(
-      new RegExp(`<form[^>]*action="/zamowienia/${id}[^\"]*"[^>]*>[\\s\\S]*?<\\/form>`, 'g'),
-    )].map((trafienie) => trafienie[0]);
+    const formularze = [
+      ...karta.body.matchAll(new RegExp(`<form[^>]*action="/zamowienia/${id}[^\"]*"[^>]*>[\\s\\S]*?<\\/form>`, 'g')),
+    ].map((trafienie) => trafienie[0]);
     expect(formularze.length).toBeGreaterThan(5);
     for (const formularz of formularze) {
       expect(formularz).toContain('name="powrot" value="/?status=nowe&amp;kanal=pro"');
@@ -145,7 +157,9 @@ describe('szczegóły zamówienia', () => {
   it('błąd walidacji nie używa złośliwego powrotu jako przekierowania', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1502), {});
     const zapis = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/status`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/status`,
+      headers: naglowek,
       payload: { status: 'nie-istnieje', powrot: '//obcy.example/' },
     });
     expect(zapis.statusCode).toBe(400);
@@ -181,7 +195,12 @@ describe('szczegóły zamówienia', () => {
   });
 
   it('nieopłacone za pobraniem → BEZ ostrzeżenia o braku wpłaty', async () => {
-    const id = zapiszZamowienie(db, 'pro', zmapowane(1404, { oplacone_at: null, metoda_wysylki: 'dpd', pobranie: 1 }), {});
+    const id = zapiszZamowienie(
+      db,
+      'pro',
+      zmapowane(1404, { oplacone_at: null, metoda_wysylki: 'dpd', pobranie: 1 }),
+      {},
+    );
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.body).not.toContain('NIEOPŁACONE');
   });
@@ -190,8 +209,9 @@ describe('szczegóły zamówienia', () => {
   // (wyglada jak sukces), a tabela `log` nie jest nigdzie renderowana.
   it('nieudany sync ze sklepem → widoczna plakietka przy przesyłce', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1405), {});
-    db.prepare("INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, sync_woo_blad, utworzona_at) VALUES (?, 'dpd', 'nadana', ?, ?, ?)")
-      .run(id, '1000000000001U', 'notatka: sklep padł', '2026-07-29T13:00:00');
+    db.prepare(
+      "INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, sync_woo_blad, utworzona_at) VALUES (?, 'dpd', 'nadana', ?, ?, ?)",
+    ).run(id, '1000000000001U', 'notatka: sklep padł', '2026-07-29T13:00:00');
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.body).toContain('SKLEP NIEZSYNCHRONIZOWANY');
     expect(r.body).toContain('sklep padł');
@@ -199,8 +219,9 @@ describe('szczegóły zamówienia', () => {
 
   it('przesyłka „do wyjaśnienia” → widoczne ostrzeżenie i BRAK przycisku nadania', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1406), {});
-    db.prepare("INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, blad_opis, utworzona_at) VALUES (?, 'dpd', 'do_wyjasnienia', ?, ?, ?)")
-      .run(id, '1000000000001U', 'DPD nie wystawiło etykiety: NOT_FOUND', '2026-07-29T13:00:00');
+    db.prepare(
+      "INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, blad_opis, utworzona_at) VALUES (?, 'dpd', 'do_wyjasnienia', ?, ?, ?)",
+    ).run(id, '1000000000001U', 'DPD nie wystawiło etykiety: NOT_FOUND', '2026-07-29T13:00:00');
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.body).toContain('DO WYJAŚNIENIA');
     expect(r.body).toContain('1000000000001U');
@@ -241,14 +262,25 @@ describe('szczegóły zamówienia', () => {
 // OSTATNI wiersz tabeli, suma pod tabelą sprawdzona przeciw kwocie zamówienia.
 describe('sekcja „Pozycje”', () => {
   // Zamówienie zgodne co do grosza: 123,00 (pozycje) + 89,90 (wysyłka) = 212,90.
-  const zPozycjamiIWysylka = (id, nad = {}) => zmapowane(id, {
-    kwota_brutto: '212.90', koszt_dostawy_brutto: '89.90', koszt_dostawy_netto: '73.09',
-    pozycje: [{
-      nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 2,
-      cena_brutto: '61.50', cena_netto: '50.00', brutto_linii: '123.00', netto_linii: '100.00', vat: null,
-    }],
-    ...nad,
-  });
+  const zPozycjamiIWysylka = (id, nad = {}) =>
+    zmapowane(id, {
+      kwota_brutto: '212.90',
+      koszt_dostawy_brutto: '89.90',
+      koszt_dostawy_netto: '73.09',
+      pozycje: [
+        {
+          nazwa: 'STOP',
+          sku: 'PRO-STOP-001',
+          ilosc: 2,
+          cena_brutto: '61.50',
+          cena_netto: '50.00',
+          brutto_linii: '123.00',
+          netto_linii: '100.00',
+          vat: null,
+        },
+      ],
+      ...nad,
+    });
 
   // Odczyt ma te same kolumny co edycja: SKU, „Cena netto” i „Stawka VAT”
   // jako osobne kolumny, kwoty z przecinkiem („61,50 zł”).
@@ -282,9 +314,16 @@ describe('sekcja „Pozycje”', () => {
 
   // darmowa dostawa dostaje ZERO widoczne na ekranie, nie znika z tabeli.
   it('darmowa dostawa → wiersz „Wysyłka” zostaje, z widocznym zerem', async () => {
-    const id = zapiszZamowienie(db, 'pro', zPozycjamiIWysylka(1504, {
-      kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00', koszt_dostawy_netto: '0.00',
-    }), {});
+    const id = zapiszZamowienie(
+      db,
+      'pro',
+      zPozycjamiIWysylka(1504, {
+        kwota_brutto: '123.00',
+        koszt_dostawy_brutto: '0.00',
+        koszt_dostawy_netto: '0.00',
+      }),
+      {},
+    );
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.body).toContain('Wysyłka');
     // Trzecie „0.00 zł” brał dawny pasek „Wpłacono 0.00 zł” z sekcji Płatności — wiersz Wysyłki ma dwa.
@@ -383,14 +422,27 @@ describe('trasy nadania i etykiety', () => {
   // Testy sprawdzają zachowanie trasy nadania (anulowane, błędy DPD, etykieta),
   // więc wystarczy dowolny KOMPLETNY adres.
   const PACZKA = {
-    waga: '1', dlugosc: '110', szerokosc: '75', wysokosc: '1', kolejnosc: '1',
-    nazwa: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa',
+    waga: '1',
+    dlugosc: '110',
+    szerokosc: '75',
+    wysokosc: '1',
+    kolejnosc: '1',
+    nazwa: 'Jan Kowalski',
+    ulica: 'Polna 1',
+    kod: '00-950',
+    miasto: 'Warszawa',
   };
   let katalogEtykiet, dpd, woo;
 
   function zApp({ anulowane = 0, metoda_wysylki = 'dpd', dpdNadaj } = {}) {
     katalogEtykiet = mkdtempSync(join(tmpdir(), 'oms-web-'));
-    dpd = { nadaj: dpdNadaj ?? vi.fn().mockResolvedValue({ numerListu: NUMER_LISTU, etykietaPdf: Buffer.from('%PDF-atrapa'), surowa: '<xml/>' }) };
+    dpd = {
+      nadaj:
+        dpdNadaj ??
+        vi
+          .fn()
+          .mockResolvedValue({ numerListu: NUMER_LISTU, etykietaPdf: Buffer.from('%PDF-atrapa'), surowa: '<xml/>' }),
+    };
     woo = { dodajNotatke: vi.fn().mockResolvedValue({}), ustawStatus: vi.fn().mockResolvedValue({}) };
     const nadanie = createNadanie({ db, kurierzy: { dpd }, woo, katalogEtykiet });
     const serwer = buildOmsServer({ db, config, poller, nadanie });
@@ -409,7 +461,12 @@ describe('trasy nadania i etykiety', () => {
   it('POST /nadaj nadaje paczkę i przekierowuje na kartę', async () => {
     const { serwer, id } = zApp();
     await serwer.ready();
-    const r = await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: PACZKA });
+    const r = await serwer.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: PACZKA,
+    });
     expect(r.statusCode).toBe(302);
     expect(r.headers.location).toBe(`/zamowienia/${id}`);
     expect(pobierzZamowienie(db, id).przesylki[0].numer_listu).toBe(NUMER_LISTU);
@@ -421,7 +478,9 @@ describe('trasy nadania i etykiety', () => {
     const { serwer, id } = zApp();
     await serwer.ready();
     await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
       payload: { ...PACZKA, ulica: 'Ulica-Na-Karcie-8821', miasto: 'Miasto-Na-Karcie-8821' },
     });
     const karta = await serwer.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
@@ -436,8 +495,9 @@ describe('trasy nadania i etykiety', () => {
   it('paczka bez zapisanego adresu (sprzed tej zmiany) → karta nie pokazuje linii, nie wywala się', async () => {
     const { serwer, id } = zApp();
     await serwer.ready();
-    db.prepare("INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at) VALUES (?, 'dpd', 'nadana', 'X-STARA', 1, '2026-07-29')")
-      .run(id);
+    db.prepare(
+      "INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at) VALUES (?, 'dpd', 'nadana', 'X-STARA', 1, '2026-07-29')",
+    ).run(id);
     const karta = await serwer.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(karta.statusCode).toBe(200);
     expect(karta.body).not.toContain('Adres użyty przy nadaniu');
@@ -447,7 +507,12 @@ describe('trasy nadania i etykiety', () => {
   it('POST /nadaj na ANULOWANYM zamówieniu → odmowa i DPD nietknięte', async () => {
     const { serwer, id } = zApp({ anulowane: 1 });
     await serwer.ready();
-    const r = await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: PACZKA });
+    const r = await serwer.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: PACZKA,
+    });
     expect(r.statusCode).toBe(400);
     expect(r.body).toMatch(/anulowane/i);
     expect(dpd.nadaj).not.toHaveBeenCalled();
@@ -475,7 +540,12 @@ describe('trasy nadania i etykiety', () => {
     const techniczny = new Error("ENOENT: no such file or directory, open 'C:\\srv\\oms\\etykiety\\x.pdf'");
     const { serwer, id } = zApp({ dpdNadaj: vi.fn().mockRejectedValue(techniczny) });
     await serwer.ready();
-    const r = await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: PACZKA });
+    const r = await serwer.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: PACZKA,
+    });
     expect(r.statusCode).toBe(400);
     expect(r.body).not.toContain('C:\\srv\\oms');
     expect(r.body).not.toContain('ENOENT');
@@ -487,7 +557,12 @@ describe('trasy nadania i etykiety', () => {
   it('błąd napisany dla operatora idzie na ekran w całości', async () => {
     const { serwer, id } = zApp({ metoda_wysylki: 'nieznana' });
     await serwer.ready();
-    const r = await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: PACZKA });
+    const r = await serwer.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: PACZKA,
+    });
     expect(r.body).toMatch(/nie jest obsługiwana/);
   });
 
@@ -495,7 +570,11 @@ describe('trasy nadania i etykiety', () => {
     const { serwer, id } = zApp();
     await serwer.ready();
     await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: PACZKA });
-    const r = await serwer.inject({ method: 'GET', url: `/zamowienia/${id}/przesylki/${pid(id)}/etykieta`, headers: naglowek });
+    const r = await serwer.inject({
+      method: 'GET',
+      url: `/zamowienia/${id}/przesylki/${pid(id)}/etykieta`,
+      headers: naglowek,
+    });
     expect(r.statusCode).toBe(200);
     expect(r.headers['content-type']).toContain('application/pdf');
     expect(r.headers['content-disposition']).toContain(`etykieta-${NUMER_LISTU}.pdf`);
@@ -505,7 +584,11 @@ describe('trasy nadania i etykiety', () => {
   it('GET /etykieta bez przesyłki → 404, nie 500', async () => {
     const { serwer, id } = zApp();
     await serwer.ready();
-    const r = await serwer.inject({ method: 'GET', url: `/zamowienia/${id}/przesylki/${pid(id)}/etykieta`, headers: naglowek });
+    const r = await serwer.inject({
+      method: 'GET',
+      url: `/zamowienia/${id}/przesylki/${pid(id)}/etykieta`,
+      headers: naglowek,
+    });
     expect(r.statusCode).toBe(404);
   });
 
@@ -516,7 +599,11 @@ describe('trasy nadania i etykiety', () => {
     await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: PACZKA });
     const sciezka = pobierzZamowienie(db, id).przesylki[0].etykieta_sciezka;
     rmSync(sciezka);
-    const r = await serwer.inject({ method: 'GET', url: `/zamowienia/${id}/przesylki/${pid(id)}/etykieta`, headers: naglowek });
+    const r = await serwer.inject({
+      method: 'GET',
+      url: `/zamowienia/${id}/przesylki/${pid(id)}/etykieta`,
+      headers: naglowek,
+    });
     expect(r.statusCode).toBe(404);
     expect(r.body).toMatch(/etykiet/i);
     expect(r.body).not.toContain(katalogEtykiet);
@@ -543,11 +630,26 @@ describe('trasa wystawienia faktury', () => {
     };
     const faktura = createFaktura({ db, infakt });
     const serwer = buildOmsServer({ db, config, poller, faktura });
-    const id = zapiszZamowienie(db, 'pro', zmapowane(1601, {
-      // Aktywny formularz wymaga kompletu danych nabywcy.
-      klient: { first_name: 'Jan', last_name: 'Przykładowy', address_1: 'Fikcyjna 1', postcode: '00-001', city: 'Miasto Testowe' },
-      chce_fakture: 1, nip: '1200001200', kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00', ...nad,
-    }), {});
+    const id = zapiszZamowienie(
+      db,
+      'pro',
+      zmapowane(1601, {
+        // Aktywny formularz wymaga kompletu danych nabywcy.
+        klient: {
+          first_name: 'Jan',
+          last_name: 'Przykładowy',
+          address_1: 'Fikcyjna 1',
+          postcode: '00-001',
+          city: 'Miasto Testowe',
+        },
+        chce_fakture: 1,
+        nip: '1200001200',
+        kwota_brutto: '123.00',
+        koszt_dostawy_brutto: '0.00',
+        ...nad,
+      }),
+      {},
+    );
     return { serwer, id, infakt };
   };
 
@@ -601,7 +703,10 @@ describe('trasa wystawienia faktury', () => {
   // historia pusta, a dokument mogl juz istniec.
   it('porażka → 400 i wpis w logu zamówienia', async () => {
     const wystaw = vi.fn().mockRejectedValue(
-      Object.assign(new Error('inFakt odrzucił fakturę (422): Proszę podać nazwę firmy.'), { dlaOperatora: true, status: 422 }),
+      Object.assign(new Error('inFakt odrzucił fakturę (422): Proszę podać nazwę firmy.'), {
+        dlaOperatora: true,
+        status: 422,
+      }),
     );
     const { serwer, id } = zFaktura({}, { wystaw });
     await serwer.ready();
@@ -667,7 +772,10 @@ describe('trasa wystawienia faktury', () => {
   // wersja testu podstawiała `ksefStatus: 'sent'` i sprawdzała zdanie drukowane BEZWARUNKOWO —
   // przechodziła więc także wtedy, gdyby karta o stanie KSeF nie mówiła nic.
   it('po wystawieniu karta mówi, że faktura NIE poszła jeszcze do KSeF', async () => {
-    const { serwer, id } = zFaktura({}, { wystaw: vi.fn().mockResolvedValue({ uuid: 'u1', numer: 'FV/1/2026', ksefStatus: null }) });
+    const { serwer, id } = zFaktura(
+      {},
+      { wystaw: vi.fn().mockResolvedValue({ uuid: 'u1', numer: 'FV/1/2026', ksefStatus: null }) },
+    );
     await serwer.ready();
     await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/faktura`, headers: naglowek });
     const r = await serwer.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
@@ -699,8 +807,9 @@ describe('trasa wystawienia faktury', () => {
   it('faktura „do wyjaśnienia” → ostrzeżenie i BRAK przycisku ponowienia', async () => {
     const { serwer, id } = zFaktura();
     await serwer.ready();
-    db.prepare("INSERT INTO faktury (zamowienie_id, ksef_status, blad_opis, utworzona_at) VALUES (?, 'do_wyjasnienia', ?, ?)")
-      .run(id, 'inFakt nieosiągalny: fetch failed', '2026-07-29T13:00:00');
+    db.prepare(
+      "INSERT INTO faktury (zamowienie_id, ksef_status, blad_opis, utworzona_at) VALUES (?, 'do_wyjasnienia', ?, ?)",
+    ).run(id, 'inFakt nieosiągalny: fetch failed', '2026-07-29T13:00:00');
     const r = await serwer.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.body).toContain('DO WYJAŚNIENIA');
     expect(r.body).toContain('fetch failed');
@@ -716,9 +825,12 @@ describe('odblokowanie faktury po sprawdzeniu w inFakcie', () => {
   const wiersz = (id) => db.prepare('SELECT * FROM faktury WHERE zamowienie_id = ?').get(id);
   const zamowienie = (nad = {}) => zapiszZamowienie(db, 'pro', zmapowane(1701, { chce_fakture: 1, ...nad }), {});
 
-  const doWyjasnienia = (id) => db
-    .prepare("INSERT INTO faktury (zamowienie_id, ksef_status, blad_opis, utworzona_at) VALUES (?, 'do_wyjasnienia', ?, ?)")
-    .run(id, 'inFakt nieosiągalny: fetch failed', DAWNO);
+  const doWyjasnienia = (id) =>
+    db
+      .prepare(
+        "INSERT INTO faktury (zamowienie_id, ksef_status, blad_opis, utworzona_at) VALUES (?, 'do_wyjasnienia', ?, ?)",
+      )
+      .run(id, 'inFakt nieosiągalny: fetch failed', DAWNO);
 
   it('POST /faktura/odblokuj bez uwierzytelnienia → 401 i rezerwacja nietknięta', async () => {
     const id = zamowienie();
@@ -754,9 +866,17 @@ describe('odblokowanie faktury po sprawdzeniu w inFakcie', () => {
     };
     const serwer = buildOmsServer({ db, config, poller, faktura: createFaktura({ db, infakt }) });
     await serwer.ready();
-    const id = zapiszZamowienie(db, 'pro', zmapowane(1702, {
-      chce_fakture: 1, nip: '1200001200', kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00',
-    }), {});
+    const id = zapiszZamowienie(
+      db,
+      'pro',
+      zmapowane(1702, {
+        chce_fakture: 1,
+        nip: '1200001200',
+        kwota_brutto: '123.00',
+        koszt_dostawy_brutto: '0.00',
+      }),
+      {},
+    );
     doWyjasnienia(id);
 
     await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/faktura/odblokuj`, headers: naglowek });
@@ -769,7 +889,9 @@ describe('odblokowanie faktury po sprawdzeniu w inFakcie', () => {
   // z dokumentu, ktory NA PEWNO jest w inFakcie, a kolejne klikniecie daloby drugi.
   it('WYSTAWIONEJ faktury nie odblokuje — 400 i wiersz zostaje', async () => {
     const id = zamowienie();
-    db.prepare("INSERT INTO faktury (zamowienie_id, ksef_status, numer, utworzona_at) VALUES (?, 'sent', 'FV/1/2026', ?)").run(id, DAWNO);
+    db.prepare(
+      "INSERT INTO faktury (zamowienie_id, ksef_status, numer, utworzona_at) VALUES (?, 'sent', 'FV/1/2026', ?)",
+    ).run(id, DAWNO);
     const r = await app.inject({ method: 'POST', url: `/zamowienia/${id}/faktura/odblokuj`, headers: naglowek });
     expect(r.statusCode).toBe(400);
     expect(r.body).toMatch(/FV\/1\/2026/);
@@ -778,7 +900,10 @@ describe('odblokowanie faktury po sprawdzeniu w inFakcie', () => {
 
   it('trwającego wystawiania nie odblokuje — 400 i wiersz zostaje', async () => {
     const id = zamowienie();
-    db.prepare("INSERT INTO faktury (zamowienie_id, ksef_status, utworzona_at) VALUES (?, 'w_toku', ?)").run(id, new Date().toISOString());
+    db.prepare("INSERT INTO faktury (zamowienie_id, ksef_status, utworzona_at) VALUES (?, 'w_toku', ?)").run(
+      id,
+      new Date().toISOString(),
+    );
     const r = await app.inject({ method: 'POST', url: `/zamowienia/${id}/faktura/odblokuj`, headers: naglowek });
     expect(r.statusCode).toBe(400);
     expect(wiersz(id)).toBeDefined();
@@ -823,7 +948,10 @@ describe('odblokowanie faktury po sprawdzeniu w inFakcie', () => {
 
   it('świeża rezerwacja → nadal „odśwież za chwilę”, BEZ przycisku odblokowania', async () => {
     const id = zamowienie();
-    db.prepare("INSERT INTO faktury (zamowienie_id, ksef_status, utworzona_at) VALUES (?, 'w_toku', ?)").run(id, new Date().toISOString());
+    db.prepare("INSERT INTO faktury (zamowienie_id, ksef_status, utworzona_at) VALUES (?, 'w_toku', ?)").run(
+      id,
+      new Date().toISOString(),
+    );
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.body).toMatch(/odśwież stronę za chwilę/);
     expect(r.body).not.toContain('/faktura/odblokuj');
@@ -850,9 +978,12 @@ describe('faktura skasowana w inFakcie — wyjście dla operatora', () => {
 
   // Wystawiona, jeszcze niewyslana do KSeF — DOKLADNIE stan po dzisiejszej zmianie: panel
   // niczego do KSeF sam nie wysyla, wiec `ksef_status` jest pusty od razu po wystawieniu.
-  const wystawiona = (id, nad = {}) => db.prepare(
-    "INSERT INTO faktury (zamowienie_id, ksef_status, numer, infakt_uuid, utworzona_at) VALUES (?, NULL, 'FV/63/2026', 'uuid-63', ?)",
-  ).run(id, '2026-07-30T10:00:00.000Z');
+  const wystawiona = (id, nad = {}) =>
+    db
+      .prepare(
+        "INSERT INTO faktury (zamowienie_id, ksef_status, numer, infakt_uuid, utworzona_at) VALUES (?, NULL, 'FV/63/2026', 'uuid-63', ?)",
+      )
+      .run(id, '2026-07-30T10:00:00.000Z');
 
   it('POST /faktura/skasowana bez uwierzytelnienia → 401 i wiersz nietknięty', async () => {
     const id = zamowienie();
@@ -901,9 +1032,17 @@ describe('faktura skasowana w inFakcie — wyjście dla operatora', () => {
     };
     const serwer = buildOmsServer({ db, config, poller, faktura: createFaktura({ db, infakt }) });
     await serwer.ready();
-    const id = zapiszZamowienie(db, 'pro', zmapowane(1705, {
-      chce_fakture: 1, nip: '1200001200', kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00',
-    }), {});
+    const id = zapiszZamowienie(
+      db,
+      'pro',
+      zmapowane(1705, {
+        chce_fakture: 1,
+        nip: '1200001200',
+        kwota_brutto: '123.00',
+        koszt_dostawy_brutto: '0.00',
+      }),
+      {},
+    );
     wystawiona(id);
 
     await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/faktura/skasowana`, headers: naglowek });
@@ -916,7 +1055,9 @@ describe('faktura skasowana w inFakcie — wyjście dla operatora', () => {
   // skasowania w inFakcie — tylko do korekty. Pomylka po tej stronie jest juz nieodwracalna.
   it('fakturę wysłaną już do KSeF (niepusty ksef_status) → 400, wiersz zostaje', async () => {
     const id = zamowienie();
-    db.prepare("INSERT INTO faktury (zamowienie_id, ksef_status, numer, utworzona_at) VALUES (?, 'sent', 'FV/1/2026', ?)").run(id, '2026-07-30T10:00:00.000Z');
+    db.prepare(
+      "INSERT INTO faktury (zamowienie_id, ksef_status, numer, utworzona_at) VALUES (?, 'sent', 'FV/1/2026', ?)",
+    ).run(id, '2026-07-30T10:00:00.000Z');
     const r = await app.inject({ method: 'POST', url: `/zamowienia/${id}/faktura/skasowana`, headers: naglowek });
     expect(r.statusCode).toBe(400);
     expect(r.body).toMatch(/KSeF/);
@@ -926,7 +1067,10 @@ describe('faktura skasowana w inFakcie — wyjście dla operatora', () => {
 
   it('trwającego wystawiania nie kasuje — 400 i wiersz zostaje', async () => {
     const id = zamowienie();
-    db.prepare("INSERT INTO faktury (zamowienie_id, ksef_status, utworzona_at) VALUES (?, 'w_toku', ?)").run(id, new Date().toISOString());
+    db.prepare("INSERT INTO faktury (zamowienie_id, ksef_status, utworzona_at) VALUES (?, 'w_toku', ?)").run(
+      id,
+      new Date().toISOString(),
+    );
     const r = await app.inject({ method: 'POST', url: `/zamowienia/${id}/faktura/skasowana`, headers: naglowek });
     expect(r.statusCode).toBe(400);
     // Tresc komunikatu, nie tylko sam status 400: `ksef_status` niesie takze wewnetrzny
@@ -938,7 +1082,9 @@ describe('faktura skasowana w inFakcie — wyjście dla operatora', () => {
 
   it('rezerwacji „do wyjaśnienia” nie kasuje tą trasą — na to jest osobne wyjście („odblokuj”)', async () => {
     const id = zamowienie();
-    db.prepare("INSERT INTO faktury (zamowienie_id, ksef_status, blad_opis, utworzona_at) VALUES (?, 'do_wyjasnienia', 'fetch failed', ?)").run(id, new Date().toISOString());
+    db.prepare(
+      "INSERT INTO faktury (zamowienie_id, ksef_status, blad_opis, utworzona_at) VALUES (?, 'do_wyjasnienia', 'fetch failed', ?)",
+    ).run(id, new Date().toISOString());
     const r = await app.inject({ method: 'POST', url: `/zamowienia/${id}/faktura/skasowana`, headers: naglowek });
     expect(r.statusCode).toBe(400);
     expect(r.body).toMatch(/nie ma jeszcze numeru dokumentu/);
@@ -972,14 +1118,18 @@ describe('faktura skasowana w inFakcie — wyjście dla operatora', () => {
 
   it('faktura wysłana już do KSeF → BRAK przycisku „skasowana w inFakcie”', async () => {
     const id = zamowienie();
-    db.prepare("INSERT INTO faktury (zamowienie_id, ksef_status, numer, utworzona_at) VALUES (?, 'sent', 'FV/1/2026', ?)").run(id, '2026-07-30T10:00:00.000Z');
+    db.prepare(
+      "INSERT INTO faktury (zamowienie_id, ksef_status, numer, utworzona_at) VALUES (?, 'sent', 'FV/1/2026', ?)",
+    ).run(id, '2026-07-30T10:00:00.000Z');
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.body).not.toContain('/faktura/skasowana');
   });
 
   it('faktura „do wyjaśnienia” → BRAK przycisku „skasowana w inFakcie”', async () => {
     const id = zamowienie();
-    db.prepare("INSERT INTO faktury (zamowienie_id, ksef_status, blad_opis, utworzona_at) VALUES (?, 'do_wyjasnienia', 'fetch failed', ?)").run(id, '2026-07-29T13:00:00');
+    db.prepare(
+      "INSERT INTO faktury (zamowienie_id, ksef_status, blad_opis, utworzona_at) VALUES (?, 'do_wyjasnienia', 'fetch failed', ?)",
+    ).run(id, '2026-07-29T13:00:00');
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.body).not.toContain('/faktura/skasowana');
   });
@@ -1001,8 +1151,8 @@ describe('faktura skasowana w inFakcie — wyjście dla operatora', () => {
   it('numer KSeF od czuwacza → BRAK przycisku „skasowana w inFakcie”', async () => {
     const id = zamowienie();
     db.prepare(
-      "INSERT INTO faktury (zamowienie_id, ksef_status, numer, ksef_numer, utworzona_at)"
-      + " VALUES (?, NULL, 'FV/64/2026', '1234563218-20260804-632857000005-03', ?)",
+      'INSERT INTO faktury (zamowienie_id, ksef_status, numer, ksef_numer, utworzona_at)' +
+        " VALUES (?, NULL, 'FV/64/2026', '1234563218-20260804-632857000005-03', ?)",
     ).run(id, '2026-07-30T10:00:00.000Z');
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.body).not.toContain('/faktura/skasowana');
@@ -1011,8 +1161,8 @@ describe('faktura skasowana w inFakcie — wyjście dla operatora', () => {
   it('karta pokazuje PRAWDZIWY numer KSeF, a nie „jeszcze nie wysłana”', async () => {
     const id = zamowienie();
     db.prepare(
-      "INSERT INTO faktury (zamowienie_id, ksef_status, numer, ksef_numer, utworzona_at)"
-      + " VALUES (?, NULL, 'FV/64/2026', '1234563218-20260804-632857000005-03', ?)",
+      'INSERT INTO faktury (zamowienie_id, ksef_status, numer, ksef_numer, utworzona_at)' +
+        " VALUES (?, NULL, 'FV/64/2026', '1234563218-20260804-632857000005-03', ?)",
     ).run(id, '2026-07-30T10:00:00.000Z');
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.body).toContain('1234563218-20260804-632857000005-03');
@@ -1040,8 +1190,9 @@ describe('zawieszone nadanie — wyjście dla operatora', () => {
 
   const zZawieszonym = (nad = {}) => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1901, nad), {});
-    db.prepare("INSERT INTO przesylki (zamowienie_id, kurier, status, utworzona_at) VALUES (?, 'dpd', 'w_trakcie', ?)")
-      .run(id, DAWNO);
+    db.prepare(
+      "INSERT INTO przesylki (zamowienie_id, kurier, status, utworzona_at) VALUES (?, 'dpd', 'w_trakcie', ?)",
+    ).run(id, DAWNO);
     return id;
   };
 
@@ -1066,25 +1217,31 @@ describe('zawieszone nadanie — wyjście dla operatora', () => {
   // Komunikaty mówią o kurierze TEJ przesyłki, nie zakładają DPD.
   it('przesyłka InPost: karta odsyła do panelu InPost, nie DPD; bez znanego kuriera — „panelu kuriera”', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1905), {});
-    db.prepare("INSERT INTO przesylki (zamowienie_id, kurier, status, utworzona_at) VALUES (?, 'inpost', 'w_trakcie', ?)")
-      .run(id, DAWNO);
+    db.prepare(
+      "INSERT INTO przesylki (zamowienie_id, kurier, status, utworzona_at) VALUES (?, 'inpost', 'w_trakcie', ?)",
+    ).run(id, DAWNO);
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.body).toMatch(/NAJPIERW zajrzyj do panelu InPost/);
     expect(r.body).toContain('Sprawdziłem w panelu InPost — odblokuj');
-    const blok = r.body.slice(r.body.indexOf('NADANIE ZAWIESZONE'), r.body.indexOf('</form>', r.body.indexOf('/odblokuj')));
+    const blok = r.body.slice(
+      r.body.indexOf('NADANIE ZAWIESZONE'),
+      r.body.indexOf('</form>', r.body.indexOf('/odblokuj')),
+    );
     expect(blok).toContain('NADANIE ZAWIESZONE');
     expect(blok).not.toContain('DPD');
     const id2 = zapiszZamowienie(db, 'pro', zmapowane(1906), {});
-    db.prepare("INSERT INTO przesylki (zamowienie_id, kurier, status, utworzona_at) VALUES (?, 'nieznany', 'w_trakcie', ?)")
-      .run(id2, DAWNO);
+    db.prepare(
+      "INSERT INTO przesylki (zamowienie_id, kurier, status, utworzona_at) VALUES (?, 'nieznany', 'w_trakcie', ?)",
+    ).run(id2, DAWNO);
     const r2 = await app.inject({ method: 'GET', url: `/zamowienia/${id2}`, headers: naglowek });
     expect(r2.body).toMatch(/NAJPIERW zajrzyj do panelu kuriera/);
   });
 
   it('świeże nadanie NIE dostaje formularza odblokowania', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1902), {});
-    db.prepare("INSERT INTO przesylki (zamowienie_id, kurier, status, utworzona_at) VALUES (?, 'dpd', 'w_trakcie', ?)")
-      .run(id, new Date().toISOString());
+    db.prepare(
+      "INSERT INTO przesylki (zamowienie_id, kurier, status, utworzona_at) VALUES (?, 'dpd', 'w_trakcie', ?)",
+    ).run(id, new Date().toISOString());
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.body).not.toContain('/odblokuj');
     expect(r.body).not.toContain('ZAWIESZONE');
@@ -1092,7 +1249,12 @@ describe('zawieszone nadanie — wyjście dla operatora', () => {
 
   it('bez numeru listu: zwalnia miejsce, zapisuje DECYZJĘ CZŁOWIEKA i wraca na kartę', async () => {
     const id = zZawieszonym();
-    const r = await app.inject({ method: 'POST', url: `/zamowienia/${id}/przesylki/${pid(id)}/odblokuj`, headers: naglowek, payload: {} });
+    const r = await app.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/przesylki/${pid(id)}/odblokuj`,
+      headers: naglowek,
+      payload: {},
+    });
     expect(r.statusCode).toBe(302);
     expect(r.headers.location).toBe(`/zamowienia/${id}`);
     expect(przesylka(id).status).toBe('blad');
@@ -1110,7 +1272,9 @@ describe('zawieszone nadanie — wyjście dla operatora', () => {
   it('z numerem listu: przesyłka idzie na „do wyjaśnienia”, a nie pod ponowienie', async () => {
     const id = zZawieszonym();
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/przesylki/${pid(id)}/odblokuj`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/przesylki/${pid(id)}/odblokuj`,
+      headers: naglowek,
       payload: { numer_listu: '1000000000001U' },
     });
     expect(r.statusCode).toBe(302);
@@ -1127,20 +1291,41 @@ describe('zawieszone nadanie — wyjście dla operatora', () => {
   // Cel calej operacji w wariancie (a): po odblokowaniu panel ma znowu umiec nadac.
   it('po odblokowaniu bez numeru nadanie z panelu znów działa', async () => {
     const katalog = mkdtempSync(join(tmpdir(), 'oms-odblok-'));
-    const dpd = { nadaj: vi.fn().mockResolvedValue({ numerListu: '1000000000001U', etykietaPdf: Buffer.from('%PDF'), surowa: '<xml/>' }) };
+    const dpd = {
+      nadaj: vi
+        .fn()
+        .mockResolvedValue({ numerListu: '1000000000001U', etykietaPdf: Buffer.from('%PDF'), surowa: '<xml/>' }),
+    };
     const woo = { dodajNotatke: vi.fn().mockResolvedValue({}), ustawStatus: vi.fn().mockResolvedValue({}) };
     const serwer = buildOmsServer({
-      db, config, poller, nadanie: createNadanie({ db, kurierzy: { dpd }, woo, katalogEtykiet: katalog }),
+      db,
+      config,
+      poller,
+      nadanie: createNadanie({ db, kurierzy: { dpd }, woo, katalogEtykiet: katalog }),
     });
     await serwer.ready();
     const id = zZawieszonym();
 
-    await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/przesylki/${pid(id)}/odblokuj`, headers: naglowek, payload: {} });
+    await serwer.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/przesylki/${pid(id)}/odblokuj`,
+      headers: naglowek,
+      payload: {},
+    });
     const r = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
       payload: {
-        waga: '1', dlugosc: '110', szerokosc: '75', wysokosc: '1', kolejnosc: '1',
-        nazwa: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa',
+        waga: '1',
+        dlugosc: '110',
+        szerokosc: '75',
+        wysokosc: '1',
+        kolejnosc: '1',
+        nazwa: 'Jan Kowalski',
+        ulica: 'Polna 1',
+        kod: '00-950',
+        miasto: 'Warszawa',
       },
     });
     expect(r.statusCode).toBe(302);
@@ -1150,16 +1335,27 @@ describe('zawieszone nadanie — wyjście dla operatora', () => {
 
   it('odblokowanie działa bez skonfigurowanego DPD — brak konfiguracji nie zamraża zamówienia', async () => {
     const id = zZawieszonym();
-    const r = await app.inject({ method: 'POST', url: `/zamowienia/${id}/przesylki/${pid(id)}/odblokuj`, headers: naglowek, payload: {} });
+    const r = await app.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/przesylki/${pid(id)}/odblokuj`,
+      headers: naglowek,
+      payload: {},
+    });
     expect(r.statusCode).toBe(302);
     expect(przesylka(id).status).toBe('blad');
   });
 
   it('trwającego nadania nie odblokuje — 400 i wiersz zostaje', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1903), {});
-    db.prepare("INSERT INTO przesylki (zamowienie_id, kurier, status, utworzona_at) VALUES (?, 'dpd', 'w_trakcie', ?)")
-      .run(id, new Date().toISOString());
-    const r = await app.inject({ method: 'POST', url: `/zamowienia/${id}/przesylki/${pid(id)}/odblokuj`, headers: naglowek, payload: {} });
+    db.prepare(
+      "INSERT INTO przesylki (zamowienie_id, kurier, status, utworzona_at) VALUES (?, 'dpd', 'w_trakcie', ?)",
+    ).run(id, new Date().toISOString());
+    const r = await app.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/przesylki/${pid(id)}/odblokuj`,
+      headers: naglowek,
+      payload: {},
+    });
     expect(r.statusCode).toBe(400);
     expect(r.body).toMatch(/właśnie trwa/);
     expect(przesylka(id).status).toBe('w_trakcie');
@@ -1177,8 +1373,8 @@ describe('domknięcie przesyłki „do wyjaśnienia”', () => {
   const zWyjasnieniem = () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1904), {});
     db.prepare(
-      'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, blad_opis, utworzona_at)'
-      + " VALUES (?, 'dpd', 'do_wyjasnienia', '1000000000001U', 'DPD nie wystawiło etykiety: NOT_FOUND', strftime('%Y-%m-%dT%H:%M:%fZ','now'))",
+      'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, blad_opis, utworzona_at)' +
+        " VALUES (?, 'dpd', 'do_wyjasnienia', '1000000000001U', 'DPD nie wystawiło etykiety: NOT_FOUND', strftime('%Y-%m-%dT%H:%M:%fZ','now'))",
     ).run(id);
     return id;
   };
@@ -1201,7 +1397,11 @@ describe('domknięcie przesyłki „do wyjaśnienia”', () => {
     // Etykieta musi byc, inaczej zostaje inna sprawa (I4) i zamowienie slusznie nie schodzi.
     db.prepare("UPDATE przesylki SET etykieta_sciezka = '/e/1.pdf' WHERE zamowienie_id = ?").run(id);
 
-    const r = await app.inject({ method: 'POST', url: `/zamowienia/${id}/przesylki/${pid(id)}/domknij`, headers: naglowek });
+    const r = await app.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/przesylki/${pid(id)}/domknij`,
+      headers: naglowek,
+    });
     expect(r.statusCode).toBe(302);
     expect(przesylka(id).status).toBe('nadana');
     expect(przesylka(id).numer_listu).toBe('1000000000001U');
@@ -1220,8 +1420,14 @@ describe('domknięcie przesyłki „do wyjaśnienia”', () => {
 
   it('przesyłki nadanej nie domknie — 400 i wiersz zostaje', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1905), {});
-    db.prepare("INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, utworzona_at) VALUES (?, 'dpd', 'nadana', 'X1', '2026-07-29')").run(id);
-    const r = await app.inject({ method: 'POST', url: `/zamowienia/${id}/przesylki/${pid(id)}/domknij`, headers: naglowek });
+    db.prepare(
+      "INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, utworzona_at) VALUES (?, 'dpd', 'nadana', 'X1', '2026-07-29')",
+    ).run(id);
+    const r = await app.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/przesylki/${pid(id)}/domknij`,
+      headers: naglowek,
+    });
     expect(r.statusCode).toBe(400);
     expect(przesylka(id).status).toBe('nadana');
   });
@@ -1241,8 +1447,8 @@ describe('sprawa przesyłki załatwiona ręcznie', () => {
   const zNiezsynchronizowana = () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(2001), {});
     db.prepare(
-      "INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, etykieta_sciezka, sync_woo_blad, utworzona_at)"
-      + " VALUES (?, 'dpd', 'nadana', 'X1', '/e/1.pdf', 'notatka: sklep padł', strftime('%Y-%m-%dT%H:%M:%fZ','now'))",
+      'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, etykieta_sciezka, sync_woo_blad, utworzona_at)' +
+        " VALUES (?, 'dpd', 'nadana', 'X1', '/e/1.pdf', 'notatka: sklep padł', strftime('%Y-%m-%dT%H:%M:%fZ','now'))",
     ).run(id);
     return id;
   };
@@ -1256,12 +1462,18 @@ describe('sprawa przesyłki załatwiona ręcznie', () => {
 
   it('kasuje sync_woo_blad, zapisuje decyzję człowieka i zdejmuje zamówienie z listy roboczej', async () => {
     const id = zNiezsynchronizowana();
-    const r = await app.inject({ method: 'POST', url: `/zamowienia/${id}/przesylki/${pid(id)}/sprawa-zalatwiona`, headers: naglowek });
+    const r = await app.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/przesylki/${pid(id)}/sprawa-zalatwiona`,
+      headers: naglowek,
+    });
     expect(r.statusCode).toBe(302);
     expect(r.headers.location).toBe(`/zamowienia/${id}`);
     expect(przesylka(id).sync_woo_blad).toBeNull();
 
-    const wpis = db.prepare("SELECT * FROM log WHERE zamowienie_id = ? AND akcja = 'przesylka.sprawa-zalatwiona'").get(id);
+    const wpis = db
+      .prepare("SELECT * FROM log WHERE zamowienie_id = ? AND akcja = 'przesylka.sprawa-zalatwiona'")
+      .get(id);
     expect(wpis.wynik).toMatch(/Ręcznie( \(|:)/);
     expect(wpis.wynik).toContain('adam');
     expect(wpis.wynik).not.toContain('x:');
@@ -1278,8 +1490,8 @@ describe('sprawa przesyłki załatwiona ręcznie', () => {
   it('domyka scenariusz z przeglądu: do_wyjaśnienia → domknij → nadal brak etykiety → załatw ręcznie', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(2002), {});
     db.prepare(
-      "INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, blad_opis, utworzona_at)"
-      + " VALUES (?, 'dpd', 'do_wyjasnienia', '1000000000001U', 'DPD nie wystawiło etykiety: NOT_FOUND', strftime('%Y-%m-%dT%H:%M:%fZ','now'))",
+      'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, blad_opis, utworzona_at)' +
+        " VALUES (?, 'dpd', 'do_wyjasnienia', '1000000000001U', 'DPD nie wystawiło etykiety: NOT_FOUND', strftime('%Y-%m-%dT%H:%M:%fZ','now'))",
     ).run(id);
 
     await app.inject({ method: 'POST', url: `/zamowienia/${id}/przesylki/${pid(id)}/domknij`, headers: naglowek });
@@ -1291,7 +1503,11 @@ describe('sprawa przesyłki załatwiona ręcznie', () => {
     expect(lista.body).toContain('2002');
     expect(lista.body).toContain('brak etykiety');
 
-    const r = await app.inject({ method: 'POST', url: `/zamowienia/${id}/przesylki/${pid(id)}/sprawa-zalatwiona`, headers: naglowek });
+    const r = await app.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/przesylki/${pid(id)}/sprawa-zalatwiona`,
+      headers: naglowek,
+    });
     expect(r.statusCode).toBe(302);
     expect(przesylka(id).etykieta_reczna).toBe(1);
     // I dopiero teraz zamowienie schodzi z listy roboczej.
@@ -1304,19 +1520,31 @@ describe('sprawa przesyłki załatwiona ręcznie', () => {
 
   it('bez żadnej sprawy do zdjęcia → 400 i wiersz zostaje', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(2003), {});
-    db.prepare("INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, etykieta_sciezka, utworzona_at) VALUES (?, 'dpd', 'nadana', 'X1', '/e/1.pdf', '2026-07-29')").run(id);
-    const r = await app.inject({ method: 'POST', url: `/zamowienia/${id}/przesylki/${pid(id)}/sprawa-zalatwiona`, headers: naglowek });
+    db.prepare(
+      "INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, etykieta_sciezka, utworzona_at) VALUES (?, 'dpd', 'nadana', 'X1', '/e/1.pdf', '2026-07-29')",
+    ).run(id);
+    const r = await app.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/przesylki/${pid(id)}/sprawa-zalatwiona`,
+      headers: naglowek,
+    });
     expect(r.statusCode).toBe(400);
   });
 
   it('nieistniejące zamówienie → 404', async () => {
-    const r = await app.inject({ method: 'POST', url: '/zamowienia/9999/przesylki/1/sprawa-zalatwiona', headers: naglowek });
+    const r = await app.inject({
+      method: 'POST',
+      url: '/zamowienia/9999/przesylki/1/sprawa-zalatwiona',
+      headers: naglowek,
+    });
     expect(r.statusCode).toBe(404);
   });
 
   it('czysta przesyłka (bez spraw) → karta NIE pokazuje przycisku', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(2004), {});
-    db.prepare("INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, etykieta_sciezka, utworzona_at) VALUES (?, 'dpd', 'nadana', 'X1', '/e/1.pdf', '2026-07-29')").run(id);
+    db.prepare(
+      "INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, etykieta_sciezka, utworzona_at) VALUES (?, 'dpd', 'nadana', 'X1', '/e/1.pdf', '2026-07-29')",
+    ).run(id);
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.body).not.toContain('/sprawa-zalatwiona');
   });
@@ -1329,7 +1557,9 @@ describe('sprawa przesyłki załatwiona ręcznie', () => {
 
   it('nadana przesyłka bez etykiety → karta pokazuje przycisk', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(2005), {});
-    db.prepare("INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, utworzona_at) VALUES (?, 'dpd', 'nadana', 'X1', '2026-07-29')").run(id);
+    db.prepare(
+      "INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, utworzona_at) VALUES (?, 'dpd', 'nadana', 'X1', '2026-07-29')",
+    ).run(id);
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.body).toContain(`/zamowienia/${id}/przesylki/${pid(id)}/sprawa-zalatwiona`);
   });
@@ -1344,7 +1574,9 @@ describe('anulowanie po nadaniu i po fakturze — karta nie milczy', () => {
 
   it('anulowane z wystawioną fakturą: sekcja „Faktura” się pokazuje razem z numerem', async () => {
     const id = zAnulowanym(2001);
-    db.prepare("INSERT INTO faktury (zamowienie_id, ksef_status, numer, utworzona_at) VALUES (?, 'sent', 'FV/7/2026', '2026-07-29T13:00:00')").run(id);
+    db.prepare(
+      "INSERT INTO faktury (zamowienie_id, ksef_status, numer, utworzona_at) VALUES (?, 'sent', 'FV/7/2026', '2026-07-29T13:00:00')",
+    ).run(id);
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('Faktura');
@@ -1356,7 +1588,9 @@ describe('anulowanie po nadaniu i po fakturze — karta nie milczy', () => {
 
   it('anulowane z nadaną przesyłką: karta ostrzega, że paczka już istnieje', async () => {
     const id = zAnulowanym(2002);
-    db.prepare("INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, etykieta_sciezka, utworzona_at) VALUES (?, 'dpd', 'nadana', '1000000000001U', '/e/1.pdf', '2026-07-29')").run(id);
+    db.prepare(
+      "INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, etykieta_sciezka, utworzona_at) VALUES (?, 'dpd', 'nadana', '1000000000001U', '/e/1.pdf', '2026-07-29')",
+    ).run(id);
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.body).toMatch(/przesyłka do tego zamówienia JUŻ ISTNIEJE/i);
     expect(r.body).toContain('1000000000001U');
@@ -1382,11 +1616,15 @@ describe('status DPD odświeżany przy otwarciu karty', () => {
   function zPrzesylka(nad = {}) {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1801), {});
     db.prepare(
-      'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, status_kuriera, status_kuriera_at,'
-      + " status_kuriera_pobrany_at, utworzona_at) VALUES (?, 'dpd', 'nadana', ?, ?, ?, ?, ?)",
+      'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, status_kuriera, status_kuriera_at,' +
+        " status_kuriera_pobrany_at, utworzona_at) VALUES (?, 'dpd', 'nadana', ?, ?, ?, ?, ?)",
     ).run(
-      id, NUMER_LISTU, nad.status_kuriera ?? null, nad.status_kuriera_at ?? null,
-      nad.status_kuriera_pobrany_at ?? null, '2026-07-29T13:00:00',
+      id,
+      NUMER_LISTU,
+      nad.status_kuriera ?? null,
+      nad.status_kuriera_at ?? null,
+      nad.status_kuriera_pobrany_at ?? null,
+      '2026-07-29T13:00:00',
     );
     return id;
   }
@@ -1424,7 +1662,9 @@ describe('status DPD odświeżany przy otwarciu karty', () => {
       return {
         get: (...a) => st.get(...a),
         all: (...a) => st.all(...a),
-        run: () => { throw new Error('SQLITE_FULL: database or disk is full'); },
+        run: () => {
+          throw new Error('SQLITE_FULL: database or disk is full');
+        },
       };
     },
     exec: (sql) => db.exec(sql),
@@ -1572,7 +1812,9 @@ describe('status DPD odświeżany przy otwarciu karty', () => {
     const swiezaProba = new Date(Date.now() - 60_000).toISOString();
     const zdarzenieBezStrefy = new Date(Date.now() - 10 * GODZINA_MS).toISOString().replace('Z', '');
     const id = zPrzesylka({
-      status_kuriera: 'Nadana', status_kuriera_at: zdarzenieBezStrefy, status_kuriera_pobrany_at: swiezaProba,
+      status_kuriera: 'Nadana',
+      status_kuriera_at: zdarzenieBezStrefy,
+      status_kuriera_pobrany_at: swiezaProba,
     });
     const dpd = { statusPrzesylki: vi.fn() };
     await zDpd(id, dpd);
@@ -1602,7 +1844,9 @@ describe('status DPD odświeżany przy otwarciu karty', () => {
   // Bez tego zmiana hasla w DPD dawala karte pokazujaca status sprzed tygodnia JAKO AKTUALNY.
   it('awaria odświeżania jest widoczna na karcie, nie tylko w logu', async () => {
     const id = zPrzesylka({ status_kuriera: 'Nadana', status_kuriera_at: '2026-07-22T10:00:00.000' });
-    const dpd = { statusPrzesylki: vi.fn().mockRejectedValue(bladOperatora('DPD odrzuciło żądanie: INCORRECT_LOGIN_OR_PASSWORD')) };
+    const dpd = {
+      statusPrzesylki: vi.fn().mockRejectedValue(bladOperatora('DPD odrzuciło żądanie: INCORRECT_LOGIN_OR_PASSWORD')),
+    };
     const r = await zDpd(id, dpd);
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('status niedostępny');
@@ -1617,9 +1861,13 @@ describe('status DPD odświeżany przy otwarciu karty', () => {
     expect(przesylka(id).status_kuriera_blad).not.toBeNull();
 
     // Nastepne otwarcie po wygasnieciu dlawika, tym razem udane.
-    db.prepare('UPDATE przesylki SET status_kuriera_pobrany_at = ? WHERE zamowienie_id = ?')
-      .run(new Date(Date.now() - GODZINA_MS - 60_000).toISOString(), id);
-    const r = await zDpd(id, { statusPrzesylki: vi.fn().mockResolvedValue({ opis: 'Doręczona', at: '2026-07-30T09:00:00.000' }) });
+    db.prepare('UPDATE przesylki SET status_kuriera_pobrany_at = ? WHERE zamowienie_id = ?').run(
+      new Date(Date.now() - GODZINA_MS - 60_000).toISOString(),
+      id,
+    );
+    const r = await zDpd(id, {
+      statusPrzesylki: vi.fn().mockResolvedValue({ opis: 'Doręczona', at: '2026-07-30T09:00:00.000' }),
+    });
 
     expect(przesylka(id).status_kuriera_blad).toBeNull();
     expect(r.body).toContain('status sprawdzony'); // Nowy napis stopki karty paczki
@@ -1723,14 +1971,24 @@ describe('status DPD odświeżany przy otwarciu karty', () => {
 // Przycisk „Pobierz" (rename istniejącego pobrania PDF-a) i
 // „Drukuj" (nowy, obok niego) — widoczny WYŁĄCZNIE gdy ZPL istnieje.
 describe('karta zamówienia — „Pobierz" i „Drukuj" (kolejka druku)', () => {
-  const przesylka = (id, over = {}) => db.prepare(
-    "INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, etykieta_sciezka, etykieta_zpl_sciezka, utworzona_at)"
-    + ' VALUES (?, ?, ?, ?, ?, ?, ?)',
-  ).run(id, over.kurier ?? 'dpd', over.status ?? 'nadana', over.numer_listu ?? 'X1',
-    over.etykieta_sciezka === undefined ? '/e/1.pdf' : over.etykieta_sciezka,
-    over.etykieta_zpl_sciezka ?? null, '2026-07-29');
+  const przesylka = (id, over = {}) =>
+    db
+      .prepare(
+        'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, etykieta_sciezka, etykieta_zpl_sciezka, utworzona_at)' +
+          ' VALUES (?, ?, ?, ?, ?, ?, ?)',
+      )
+      .run(
+        id,
+        over.kurier ?? 'dpd',
+        over.status ?? 'nadana',
+        over.numer_listu ?? 'X1',
+        over.etykieta_sciezka === undefined ? '/e/1.pdf' : over.etykieta_sciezka,
+        over.etykieta_zpl_sciezka ?? null,
+        '2026-07-29',
+      );
 
-  const przesylkaId = (zamowienieId) => db.prepare('SELECT id FROM przesylki WHERE zamowienie_id = ?').get(zamowienieId).id;
+  const przesylkaId = (zamowienieId) =>
+    db.prepare('SELECT id FROM przesylki WHERE zamowienie_id = ?').get(zamowienieId).id;
 
   it('nadana przesyłka BEZ ZPL-a → „Pobierz" jest, „Drukuj" NIE MA', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(2101), {});
@@ -1752,10 +2010,14 @@ describe('karta zamówienia — „Pobierz" i „Drukuj" (kolejka druku)', () =>
     expect(pasekSpraw).not.toContain('brak etykiety');
     expect(r.body).not.toContain('Załatwione ręcznie poza panelem');
     const reczne = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/przesylki/${przesylkaId(id)}/sprawa-zalatwiona`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/przesylki/${przesylkaId(id)}/sprawa-zalatwiona`,
+      headers: naglowek,
     });
     expect(reczne.statusCode).toBe(400);
-    expect(db.prepare('SELECT etykieta_reczna FROM przesylki WHERE id = ?').get(przesylkaId(id)).etykieta_reczna).toBeNull();
+    expect(
+      db.prepare('SELECT etykieta_reczna FROM przesylki WHERE id = ?').get(przesylkaId(id)).etykieta_reczna,
+    ).toBeNull();
   });
 
   it('WzA bez PDF-u i ZPL-u ostrzega o Allegro, nie o DPD', async () => {
@@ -1857,8 +2119,9 @@ describe('etykieta otwiera się w nowej karcie', () => {
     for (let i = 0, od = 0; i < wystapienia; i += 1) {
       const gdzie = zrodlo.indexOf('PDF</a>', od);
       const tag = zrodlo.slice(0, gdzie).slice(zrodlo.slice(0, gdzie).lastIndexOf('<a '));
-      expect(`${i}: ${/target="_blank"/.test(tag) && /rel="noopener/.test(tag) ? 'ok' : tag.slice(0, 120)}`)
-        .toBe(`${i}: ok`);
+      expect(`${i}: ${/target="_blank"/.test(tag) && /rel="noopener/.test(tag) ? 'ok' : tag.slice(0, 120)}`).toBe(
+        `${i}: ok`,
+      );
       od = gdzie + 1;
     }
   });
@@ -1913,7 +2176,10 @@ describe('kurier bez śledzenia nie zaśmieca logu', () => {
     zakonczPrzesylke(db, p.id, { numerListu: 'AD0TESTZPARA', etykietaSciezka: '/tmp/e.pdf', surowa: surowaZDpd });
     const pytania = [];
     const dpd = {
-      statusPrzesylki: async (numer) => { pytania.push(numer); return { opis: 'Przesyłka doręczona', at: '2026-08-22T10:00:00.000' }; },
+      statusPrzesylki: async (numer) => {
+        pytania.push(numer);
+        return { opis: 'Przesyłka doręczona', at: '2026-08-22T10:00:00.000' };
+      },
     };
     const app = buildOmsServer({ db, config, poller, kurierzy: { dpd, allegro_wza: { bezSledzenia: true } } });
     await app.ready();
@@ -1935,14 +2201,20 @@ describe('pastylka etapu przesyłki na karcie', () => {
       const id = zapiszZamowienie(db, 'pro', zmapowane(8901), {});
       const p = rozpocznijPrzesylke(db, id, 'dpd');
       zakonczPrzesylke(db, p.id, { numerListu: 'ETAP1', etykietaSciezka: '/tmp/e.pdf', surowa: '<x/>' });
-      db.prepare('UPDATE przesylki SET utworzona_at = ?, status_kuriera = ?, status_kuriera_at = ? WHERE id = ?')
-        .run('2026-08-21T10:00:00.000Z', 'Przesyłka odebrana przez Kuriera', '2026-08-21T12:00:00.000', p.id);
+      db.prepare('UPDATE przesylki SET utworzona_at = ?, status_kuriera = ?, status_kuriera_at = ? WHERE id = ?').run(
+        '2026-08-21T10:00:00.000Z',
+        'Przesyłka odebrana przez Kuriera',
+        '2026-08-21T12:00:00.000',
+        p.id,
+      );
       const app2 = buildOmsServer({ db, config, poller });
       await app2.ready();
       const r = await app2.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
       expect(r.body).toContain('W drodze (2 dni)');
       expect(r.body).toContain('pastylka--etap-w_drodze');
       expect(r.body).toContain('Przesyłka odebrana przez Kuriera');
-    } finally { vi.useRealTimers(); }
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

@@ -9,7 +9,10 @@ const SCIEZKA = /^\/z\/([0-9a-f]{64}\.(jpg|png|webp))$/;
 
 export function utworzSerwerZdjec({ katalog }) {
   return createServer((req, res) => {
-    const odmowa = (status = 404) => { res.writeHead(status); res.end(); };
+    const odmowa = (status = 404) => {
+      res.writeHead(status);
+      res.end();
+    };
     if (req.method !== 'GET' && req.method !== 'HEAD') return odmowa(405);
     // Nie dekodujemy ani nie normalizujemy URL: walidacja poprzedza każde I/O.
     const sciezka = (req.url || '').split('?')[0];
@@ -23,18 +26,25 @@ export function utworzSerwerZdjec({ katalog }) {
         'Cache-Control': 'public, max-age=31536000, immutable',
         'X-Content-Type-Options': 'nosniff',
       };
-      if (req.method === 'HEAD') { res.writeHead(200, naglowki); res.end(); return; }
+      if (req.method === 'HEAD') {
+        res.writeHead(200, naglowki);
+        res.end();
+        return;
+      }
       const strumien = fs.createReadStream(plik);
       strumien.on('error', () => {
         if (res.headersSent) res.destroy();
         else odmowa();
       });
       res.on('close', () => strumien.destroy());
-      strumien.once('open', fd => {
+      strumien.once('open', (fd) => {
         // Otwarty deskryptor musi wskazywać ten sam zwykły plik co lstat.
         // Podmiana na symlink w czasie otwierania nie ujawni jego zawartości.
         fs.fstat(fd, (bladOtwarcia, otwarty) => {
-          if (res.destroyed) { strumien.destroy(); return; }
+          if (res.destroyed) {
+            strumien.destroy();
+            return;
+          }
           if (bladOtwarcia || !otwarty.isFile() || otwarty.ino !== dane.ino || otwarty.dev !== dane.dev) {
             strumien.destroy();
             return odmowa();

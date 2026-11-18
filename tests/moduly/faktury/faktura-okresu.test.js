@@ -1,9 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { pozycjeOkresu, sumaOczekiwanaOkresuGrosze, sprawdzSumeOkresu } from '../../../src/moduly/faktury/services/faktura-okresu.js';
+import {
+  pozycjeOkresu,
+  sumaOczekiwanaOkresuGrosze,
+  sprawdzSumeOkresu,
+} from '../../../src/moduly/faktury/services/faktura-okresu.js';
 import { STAWKA_VAT } from '../../../src/domena/vat.js';
 
 const zam = (numer, pozycje, kwotaBrutto) => ({
-  numer, sklep: 'reczne', kwota_brutto: kwotaBrutto, koszt_dostawy_brutto: null, pozycje,
+  numer,
+  sklep: 'reczne',
+  kwota_brutto: kwotaBrutto,
+  koszt_dostawy_brutto: null,
+  pozycje,
 });
 
 // Zamowienie ZE SKLEPU — inna galaz `kwotaOczekiwanaGrosze` niz przy recznym: kwota liczy sie
@@ -11,12 +19,19 @@ const zam = (numer, pozycje, kwotaBrutto) => ({
 // bierzemy z warstwy odczytu (nalozNadpisaniaPozycji): wiersz sklepowy niesie obok siebie
 // kopie `sklep` z wartosciami sprzed nadpisan.
 const zamSklep = (numer, pozycje, kwotaBrutto) => ({
-  numer, sklep: 'pro', kwota_brutto: kwotaBrutto, koszt_dostawy_brutto: null, pozycje,
+  numer,
+  sklep: 'pro',
+  kwota_brutto: kwotaBrutto,
+  koszt_dostawy_brutto: null,
+  pozycje,
 });
 
 // Pozycja sklepowa nietknieta przez operatora: efektywna == sklepowa, wiec czlon roznicowy = 0.
 const pozSklep = (nazwa, ilosc, bruttoLinii) => ({
-  nazwa, ilosc, brutto_linii: bruttoLinii, zrodlo: 'sklep',
+  nazwa,
+  ilosc,
+  brutto_linii: bruttoLinii,
+  zrodlo: 'sklep',
   sklep: { nazwa, ilosc, brutto_linii: bruttoLinii },
 });
 
@@ -33,12 +48,20 @@ describe('pozycjeOkresu', () => {
   });
 
   it('oplata reczna jedzie jako zwykla pozycja, bez zadnego kodu o niej', () => {
-    const zamowienia = [zam('R/2026/001', [
-      { nazwa: 'STOP 70x100', ilosc: 1, brutto_linii: '100.00' },
-      { nazwa: 'Obsługa zamówienia', ilosc: 1, brutto_linii: '4.00', zrodlo: 'reczna' },
-    ], '104.00')];
-    expect(pozycjeOkresu(zamowienia, { stawkaDomyslna: STAWKA_VAT }).map((x) => x.name))
-      .toEqual(['STOP 70x100', 'Obsługa zamówienia']);
+    const zamowienia = [
+      zam(
+        'R/2026/001',
+        [
+          { nazwa: 'STOP 70x100', ilosc: 1, brutto_linii: '100.00' },
+          { nazwa: 'Obsługa zamówienia', ilosc: 1, brutto_linii: '4.00', zrodlo: 'reczna' },
+        ],
+        '104.00',
+      ),
+    ];
+    expect(pozycjeOkresu(zamowienia, { stawkaDomyslna: STAWKA_VAT }).map((x) => x.name)).toEqual([
+      'STOP 70x100',
+      'Obsługa zamówienia',
+    ]);
   });
 
   it('koszt dostawy dokladany osobna linia, gdy niezerowy', () => {
@@ -49,7 +72,9 @@ describe('pozycjeOkresu', () => {
   });
 
   it('kazda pozycja niesie stawke VAT panelu', () => {
-    const p = pozycjeOkresu([zam('R/2026/001', [{ nazwa: 'A', ilosc: 1, brutto_linii: '100.00' }], '100.00')], { stawkaDomyslna: STAWKA_VAT });
+    const p = pozycjeOkresu([zam('R/2026/001', [{ nazwa: 'A', ilosc: 1, brutto_linii: '100.00' }], '100.00')], {
+      stawkaDomyslna: STAWKA_VAT,
+    });
     expect(p.every((x) => x.tax_symbol === STAWKA_VAT)).toBe(true);
   });
 });
@@ -67,12 +92,16 @@ describe('sumaOczekiwanaOkresuGrosze', () => {
 describe('sprawdzSumeOkresu', () => {
   it('przepuszcza zgodna sume', () => {
     const zamowienia = [zam('R/2026/001', [{ nazwa: 'A', ilosc: 1, brutto_linii: '100.00' }], '100.00')];
-    expect(() => sprawdzSumeOkresu(pozycjeOkresu(zamowienia, { stawkaDomyslna: STAWKA_VAT }), zamowienia)).not.toThrow();
+    expect(() =>
+      sprawdzSumeOkresu(pozycjeOkresu(zamowienia, { stawkaDomyslna: STAWKA_VAT }), zamowienia),
+    ).not.toThrow();
   });
 
   it('lapie rozjazd zaokraglenia 33,33 x 3 = 99,99 przy totalu 100,00', () => {
     const zamowienia = [zam('R/2026/001', [{ nazwa: 'A', ilosc: 3, brutto_linii: '99.99' }], '100.00')];
-    expect(() => sprawdzSumeOkresu(pozycjeOkresu(zamowienia, { stawkaDomyslna: STAWKA_VAT }), zamowienia)).toThrow(/nie zgadza/i);
+    expect(() => sprawdzSumeOkresu(pozycjeOkresu(zamowienia, { stawkaDomyslna: STAWKA_VAT }), zamowienia)).toThrow(
+      /nie zgadza/i,
+    );
   });
 
   it('odmawia faktury bez ani jednej pozycji', () => {
@@ -87,9 +116,12 @@ describe('sprawdzSumeOkresu', () => {
     const zamowienia = [zawyzone, zanizone];
     // Kontrola zalozenia: suma zbiorcza faktycznie sie zgadza, wiec lapie to WYLACZNIE
     // sprawdzenie per zamowienie.
-    expect(pozycjeOkresu(zamowienia, { stawkaDomyslna: STAWKA_VAT }).reduce((a, s) => a + s.gross_price, 0))
-      .toBe(sumaOczekiwanaOkresuGrosze(zamowienia));
-    expect(() => sprawdzSumeOkresu(pozycjeOkresu(zamowienia, { stawkaDomyslna: STAWKA_VAT }), zamowienia)).toThrow(/nie zgadza/i);
+    expect(pozycjeOkresu(zamowienia, { stawkaDomyslna: STAWKA_VAT }).reduce((a, s) => a + s.gross_price, 0)).toBe(
+      sumaOczekiwanaOkresuGrosze(zamowienia),
+    );
+    expect(() => sprawdzSumeOkresu(pozycjeOkresu(zamowienia, { stawkaDomyslna: STAWKA_VAT }), zamowienia)).toThrow(
+      /nie zgadza/i,
+    );
   });
 
   it('komunikat nazywa numer rozjechanego zamowienia', () => {
@@ -97,7 +129,9 @@ describe('sprawdzSumeOkresu', () => {
       zam('R/2026/006', [{ nazwa: 'A', ilosc: 1, brutto_linii: '100.00' }], '100.00'),
       zam('R/2026/007', [{ nazwa: 'B', ilosc: 3, brutto_linii: '99.99' }], '100.00'),
     ];
-    expect(() => sprawdzSumeOkresu(pozycjeOkresu(zamowienia, { stawkaDomyslna: STAWKA_VAT }), zamowienia)).toThrow(/R\/2026\/007/);
+    expect(() => sprawdzSumeOkresu(pozycjeOkresu(zamowienia, { stawkaDomyslna: STAWKA_VAT }), zamowienia)).toThrow(
+      /R\/2026\/007/,
+    );
   });
 
   // Podwojne liczenie dostawy bylo nazwanym ryzykiem tego zadania: `pozycjeOkresu` dokleja
@@ -110,26 +144,37 @@ describe('sprawdzSumeOkresu', () => {
   });
 
   it('przepuszcza zamowienie ze sklepu', () => {
-    const zamowienia = [zamSklep('S/2026/010', [
-      pozSklep('STOP 70x100', 1, '100.00'),
-      pozSklep('PIESZY 45x65', 2, '150.00'),
-    ], '250.00')];
-    expect(() => sprawdzSumeOkresu(pozycjeOkresu(zamowienia, { stawkaDomyslna: STAWKA_VAT }), zamowienia)).not.toThrow();
+    const zamowienia = [
+      zamSklep('S/2026/010', [pozSklep('STOP 70x100', 1, '100.00'), pozSklep('PIESZY 45x65', 2, '150.00')], '250.00'),
+    ];
+    expect(() =>
+      sprawdzSumeOkresu(pozycjeOkresu(zamowienia, { stawkaDomyslna: STAWKA_VAT }), zamowienia),
+    ).not.toThrow();
   });
 
   it('przepuszcza zamowienie ze sklepu z doklejona pozycja reczna (oplata za obsluge)', () => {
-    const zamowienia = [zamSklep('S/2026/011', [
-      pozSklep('STOP 70x100', 1, '100.00'),
-      // Sklep o tej pozycji nie wie, wiec jej wartosc sklepowa to 0 — kwota oczekiwana rosnie
-      // o pelne 4 zl ponad `kwota_brutto`.
-      { nazwa: 'Obsługa zamówienia', ilosc: 1, brutto_linii: '4.00', zrodlo: 'reczna', sklep: null },
-    ], '100.00')];
-    expect(() => sprawdzSumeOkresu(pozycjeOkresu(zamowienia, { stawkaDomyslna: STAWKA_VAT }), zamowienia)).not.toThrow();
+    const zamowienia = [
+      zamSklep(
+        'S/2026/011',
+        [
+          pozSklep('STOP 70x100', 1, '100.00'),
+          // Sklep o tej pozycji nie wie, wiec jej wartosc sklepowa to 0 — kwota oczekiwana rosnie
+          // o pelne 4 zl ponad `kwota_brutto`.
+          { nazwa: 'Obsługa zamówienia', ilosc: 1, brutto_linii: '4.00', zrodlo: 'reczna', sklep: null },
+        ],
+        '100.00',
+      ),
+    ];
+    expect(() =>
+      sprawdzSumeOkresu(pozycjeOkresu(zamowienia, { stawkaDomyslna: STAWKA_VAT }), zamowienia),
+    ).not.toThrow();
   });
 
   it('lapie rozjazd w zamowieniu ze sklepu', () => {
     const zamowienia = [zamSklep('S/2026/012', [pozSklep('STOP', 1, '100.00')], '119.00')];
-    expect(() => sprawdzSumeOkresu(pozycjeOkresu(zamowienia, { stawkaDomyslna: STAWKA_VAT }), zamowienia)).toThrow(/S\/2026\/012/);
+    expect(() => sprawdzSumeOkresu(pozycjeOkresu(zamowienia, { stawkaDomyslna: STAWKA_VAT }), zamowienia)).toThrow(
+      /S\/2026\/012/,
+    );
   });
 
   // Okres MIESZANY — najbardziej prawdopodobny uklad w produkcji: zamowienia ze sklepu obok
@@ -139,7 +184,9 @@ describe('sprawdzSumeOkresu', () => {
     const sklepowe = zamSklep('S/2026/021', [pozSklep('STOP 70x100', 2, '200.00')], '219.00');
     sklepowe.koszt_dostawy_brutto = '19.00';
     const zamowienia = [reczne, sklepowe];
-    expect(() => sprawdzSumeOkresu(pozycjeOkresu(zamowienia, { stawkaDomyslna: STAWKA_VAT }), zamowienia)).not.toThrow();
+    expect(() =>
+      sprawdzSumeOkresu(pozycjeOkresu(zamowienia, { stawkaDomyslna: STAWKA_VAT }), zamowienia),
+    ).not.toThrow();
     expect(sumaOczekiwanaOkresuGrosze(zamowienia)).toBe(46500);
   });
 
@@ -147,7 +194,9 @@ describe('sprawdzSumeOkresu', () => {
     const reczne = zam('R/2026/020', [{ nazwa: 'Szablon', ilosc: 1, brutto_linii: '246.00' }], '246.00');
     const sklepowe = zamSklep('S/2026/021', [pozSklep('STOP', 2, '200.00')], '210.00');
     const zamowienia = [reczne, sklepowe];
-    expect(() => sprawdzSumeOkresu(pozycjeOkresu(zamowienia, { stawkaDomyslna: STAWKA_VAT }), zamowienia)).toThrow(/S\/2026\/021/);
+    expect(() => sprawdzSumeOkresu(pozycjeOkresu(zamowienia, { stawkaDomyslna: STAWKA_VAT }), zamowienia)).toThrow(
+      /S\/2026\/021/,
+    );
   });
 
   // DOMKNIECIE: pozycja doklejona do `services` poza petla po zamowieniach jest dla sprawdzenia

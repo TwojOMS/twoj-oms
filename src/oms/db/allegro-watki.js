@@ -13,7 +13,8 @@ import { tekstZAllegro } from '../../domena/tekst-allegro.js';
 const czytelnyWatek = (w) => ({ ...w, ostatnia_tresc: tekstZAllegro(w.ostatnia_tresc) });
 
 export function zapiszWatek(db, w) {
-  db.prepare(`
+  db.prepare(
+    `
     INSERT INTO allegro_watki
       (kanal, thread_id, interlocutor_login, last_message_date_time, typ, przeczytany,
        ostatnia_od_kupujacego, ostatnia_tresc, pobrany_at)
@@ -26,10 +27,17 @@ export function zapiszWatek(db, w) {
       ostatnia_od_kupujacego = excluded.ostatnia_od_kupujacego,
       ostatnia_tresc = excluded.ostatnia_tresc,
       pobrany_at = excluded.pobrany_at
-  `).run(
-    w.kanal, w.threadId, w.interlocutorLogin ?? null, w.lastMessageDateTime ?? null,
-    w.typ ?? null, w.przeczytany ? 1 : 0, w.ostatniaOdKupujacego ? 1 : 0,
-    w.ostatniaTresc ?? null, w.pobranyAt ?? new Date().toISOString(),
+  `,
+  ).run(
+    w.kanal,
+    w.threadId,
+    w.interlocutorLogin ?? null,
+    w.lastMessageDateTime ?? null,
+    w.typ ?? null,
+    w.przeczytany ? 1 : 0,
+    w.ostatniaOdKupujacego ? 1 : 0,
+    w.ostatniaTresc ?? null,
+    w.pobranyAt ?? new Date().toISOString(),
   );
 }
 
@@ -46,14 +54,14 @@ const ZLACZENIE = `FROM allegro_watki w
   LEFT JOIN allegro_zamkniecia z ON z.kanal = w.kanal AND z.thread_id = w.thread_id`;
 
 export function listaWatkow(db) {
-  return db.prepare(
-    `SELECT ${KOLUMNY_WATKU} ${ZLACZENIE} ORDER BY w.last_message_date_time DESC, w.thread_id DESC`,
-  ).all().map(czytelnyWatek);
+  return db
+    .prepare(`SELECT ${KOLUMNY_WATKU} ${ZLACZENIE} ORDER BY w.last_message_date_time DESC, w.thread_id DESC`)
+    .all()
+    .map(czytelnyWatek);
 }
 
 export function watek(db, kanal, threadId) {
-  return db.prepare(`SELECT ${KOLUMNY_WATKU} ${ZLACZENIE} WHERE w.kanal = ? AND w.thread_id = ?`)
-    .get(kanal, threadId);
+  return db.prepare(`SELECT ${KOLUMNY_WATKU} ${ZLACZENIE} WHERE w.kanal = ? AND w.thread_id = ?`).get(kanal, threadId);
 }
 
 /**
@@ -67,12 +75,21 @@ export function watek(db, kanal, threadId) {
  */
 export function zamowienieWatku(db, kanal, login) {
   if (!kanal || !login) return null;
-  const wiersz = db.prepare(`SELECT id FROM zamowienia WHERE sklep = ?
+  const wiersz =
+    db
+      .prepare(
+        `SELECT id FROM zamowienia WHERE sklep = ?
       AND (CASE WHEN json_valid(klient_json) THEN json_extract(klient_json, '$.login') END) = ?
-      ORDER BY utworzone_at DESC, id DESC LIMIT 1`).get(kanal, login)
-    ?? db.prepare(`SELECT id FROM zamowienia WHERE sklep = ?
+      ORDER BY utworzone_at DESC, id DESC LIMIT 1`,
+      )
+      .get(kanal, login) ??
+    db
+      .prepare(
+        `SELECT id FROM zamowienia WHERE sklep = ?
       AND (CASE WHEN json_valid(surowe_json) THEN json_extract(surowe_json, '$.buyer.login') END) = ?
-      ORDER BY utworzone_at DESC, id DESC LIMIT 1`).get(kanal, login);
+      ORDER BY utworzone_at DESC, id DESC LIMIT 1`,
+      )
+      .get(kanal, login);
   return wiersz?.id ?? null;
 }
 
@@ -86,13 +103,15 @@ export function zamowienieWatku(db, kanal, login) {
  * ⚠️ NADPISUJE: po nowej wiadomosci wolno zamknac watek jeszcze raz.
  */
 export function zamknijWatek(db, kanal, threadId, zamknieteDo, teraz) {
-  db.prepare(`
+  db.prepare(
+    `
     INSERT INTO allegro_zamkniecia (kanal, thread_id, zamkniete_do, zamkniete_at)
     VALUES (?, ?, ?, ?)
     ON CONFLICT(kanal, thread_id) DO UPDATE SET
       zamkniete_do = excluded.zamkniete_do,
       zamkniete_at = excluded.zamkniete_at
-  `).run(kanal, threadId, zamknieteDo, teraz ?? new Date().toISOString());
+  `,
+  ).run(kanal, threadId, zamknieteDo, teraz ?? new Date().toISOString());
 }
 
 /**
@@ -101,10 +120,14 @@ export function zamknijWatek(db, kanal, threadId, zamknieteDo, teraz) {
  * wolajacy ma sie wtedy wycofac, a nie wysylac.
  */
 export function zapiszDowod(db, { kanal, threadId, rodzaj, tresc }, teraz = new Date().toISOString()) {
-  const w = db.prepare(`
+  const w = db
+    .prepare(
+      `
     INSERT INTO allegro_odpowiedzi (kanal, thread_id, rodzaj, tresc, zapisany_at)
     VALUES (?, ?, ?, ?, ?)
-  `).run(kanal, threadId, rodzaj, tresc, teraz);
+  `,
+    )
+    .run(kanal, threadId, rodzaj, tresc, teraz);
   return { id: Number(w.lastInsertRowid) };
 }
 
@@ -119,9 +142,9 @@ export function oznaczBlad(db, id, komunikat) {
 }
 
 export function dowody(db, kanal, threadId) {
-  return db.prepare(
-    'SELECT * FROM allegro_odpowiedzi WHERE kanal = ? AND thread_id = ? ORDER BY id',
-  ).all(kanal, threadId);
+  return db
+    .prepare('SELECT * FROM allegro_odpowiedzi WHERE kanal = ? AND thread_id = ? ORDER BY id')
+    .all(kanal, threadId);
 }
 
 /**
@@ -149,17 +172,26 @@ export function zapiszWiadomosci(db, kanal, threadId, wiadomosci = []) {
 }
 
 export function wiadomosciWatku(db, kanal, threadId) {
-  return db.prepare(`
+  return db
+    .prepare(
+      `
     SELECT * FROM allegro_wiadomosci WHERE kanal = ? AND thread_id = ?
     ORDER BY utworzona_at, rowid
-  `).all(kanal, threadId).map((m) => ({ ...m, tresc: tekstZAllegro(m.tresc) }));
+  `,
+    )
+    .all(kanal, threadId)
+    .map((m) => ({ ...m, tresc: tekstZAllegro(m.tresc) }));
 }
 
 /** Ile formulek FAKTYCZNIE wyszlo od `odIso` — bezpiecznik ilosciowy czuwacza. */
 export function licznikFormulek(db, odIso) {
-  const r = db.prepare(`
+  const r = db
+    .prepare(
+      `
     SELECT COUNT(*) AS ile FROM allegro_odpowiedzi
     WHERE rodzaj = 'formulka' AND wyslany_at IS NOT NULL AND wyslany_at >= ?
-  `).get(odIso);
+  `,
+    )
+    .get(odIso);
   return Number(r.ile);
 }

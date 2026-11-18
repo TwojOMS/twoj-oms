@@ -1,10 +1,11 @@
 import {
-  podpisz, ciasteczkoSesji, ciasteczkoWyczyszczenia, nazwaCiasteczkaOms,
+  podpisz,
+  ciasteczkoSesji,
+  ciasteczkoWyczyszczenia,
+  nazwaCiasteczkaOms,
 } from '../../../core/bezpieczenstwo/sesja.js';
 import { hamulecLogowaniaDla } from '../../../core/bezpieczenstwo/hamulec.js';
-import {
-  rowneStaloCzasowo, polaczenieBezpieczne,
-} from '../../../core/bezpieczenstwo/logowanie-wspolne.js';
+import { rowneStaloCzasowo, polaczenieBezpieczne } from '../../../core/bezpieczenstwo/logowanie-wspolne.js';
 import { wczytajSekret } from '../../../core/bezpieczenstwo/sekret-sesji.js';
 // ⚠️ `bezpiecznyPowrot` mieszka w core/bezpieczenstwo/powrot.js — to OGÓLNA bramka na
 // przekierowanie, nie część przełącznika motywu (domena/motyw.js tylko go przekazuje dalej).
@@ -28,27 +29,32 @@ const programyFaktur = () => {
 const bezDopiskuDemo = (nazwa) => nazwa.replace(/\s*\(demo\)$/i, '');
 
 // `firma` — nazwa z adresu firmy (plik albo Ustawienia), czytana przy każdym wejściu na ekran.
-export function registerLogowanieRoutes(app, { db, config, firma = /** @type {() => (string | null)} */ (() => null) }) {
+export function registerLogowanieRoutes(
+  app,
+  { db, config, firma = /** @type {() => (string | null)} */ (() => null) },
+) {
   const nazwaCiasteczka = nazwaCiasteczkaOms(config.proba);
   const nazwaFirmy = () => {
     const n = String(firma() ?? '').trim();
     return (config.demo ? bezDopiskuDemo(n) : n) || null;
   };
   // Formularz konta w demo: wejście `/login?konto`, powrót po błędzie tego formularza i po ustawieniu hasła.
-  const formularzKonta = (req) => Boolean(config.demo)
-    && (req.query?.konto !== undefined || req.body?.formularz === 'konto' || req.query?.haslo === 'ustawione');
-  const ekran = (req, reply, dane) => reply.view('login.ejs', {
-    title: 'Logowanie',
-    bezPaska: true,
-    ekranLogowania: true,
-    firma: nazwaFirmy(),
-    programyFaktur: programyFaktur(),
-    formularzKonta: formularzKonta(req),
-    komunikat: null,
-    blad: null,
-    zostaloS: 0,
-    ...dane,
-  });
+  const formularzKonta = (req) =>
+    Boolean(config.demo) &&
+    (req.query?.konto !== undefined || req.body?.formularz === 'konto' || req.query?.haslo === 'ustawione');
+  const ekran = (req, reply, dane) =>
+    reply.view('login.ejs', {
+      title: 'Logowanie',
+      bezPaska: true,
+      ekranLogowania: true,
+      firma: nazwaFirmy(),
+      programyFaktur: programyFaktur(),
+      formularzKonta: formularzKonta(req),
+      komunikat: null,
+      blad: null,
+      zostaloS: 0,
+      ...dane,
+    });
   const hamulec = hamulecLogowaniaDla(db);
   // ⚠️⚠️ ZAPIS-ATRAPA, POLICZONY RAZ przy rejestracji tras, nie przy każdym żądaniu — patrz
   // użycie niżej. Scrypt (N=16384) to jedyny drogi krok w całej trasie: gdy liczy się
@@ -57,11 +63,13 @@ export function registerLogowanieRoutes(app, { db, config, firma = /** @type {()
   // są wyłączone.
   const ATRAPA_HASLA = zahaszuj('atrapa-czasu-logowania-nigdy-nie-jest-prawdziwym-haslem');
 
-  app.get('/login', async (req, reply) => ekran(req, reply, {
-    powrot: bezpiecznyPowrot(req.query?.powrot),
-    // Po ustawieniu hasła z jednorazowego linku (trasy/haslo-link.js) — bez automatycznego logowania.
-    komunikat: req.query?.haslo === 'ustawione' ? 'Hasło ustawione — zaloguj się nowym hasłem.' : null,
-  }));
+  app.get('/login', async (req, reply) =>
+    ekran(req, reply, {
+      powrot: bezpiecznyPowrot(req.query?.powrot),
+      // Po ustawieniu hasła z jednorazowego linku (trasy/haslo-link.js) — bez automatycznego logowania.
+      komunikat: req.query?.haslo === 'ustawione' ? 'Hasło ustawione — zaloguj się nowym hasłem.' : null,
+    }),
+  );
 
   async function loguj(req, reply) {
     const powrot = bezpiecznyPowrot(req.body?.powrot);
@@ -78,7 +86,10 @@ export function registerLogowanieRoutes(app, { db, config, firma = /** @type {()
       // pilnuje, żeby jedna kara dała co najwyżej jeden taki wiersz (patrz hamulec.js).
       if (zapisz && hamulec.zapiszBlokadeRaz(req.ip, login)) {
         dopiszLogowanie(db, {
-          login: String(req.body?.uzytkownik ?? ''), usluga: 'oms', ip: req.ip, wynik: 'zablokowane',
+          login: String(req.body?.uzytkownik ?? ''),
+          usluga: 'oms',
+          ip: req.ip,
+          wynik: 'zablokowane',
         });
       }
       return ekran(req, reply.status(429).header('Retry-After', Math.ceil(stan.zostaloMs / 1000)), {
@@ -92,9 +103,7 @@ export function registerLogowanieRoutes(app, { db, config, firma = /** @type {()
 
     // Najpierw konto z tabeli, potem — i tylko jesli tam go nie ma — haslo z `.env`.
     const zTabeli = kontoPoLoginie(db, req.body?.uzytkownik ?? '');
-    const wierszHasla = zTabeli
-      ? db.prepare('SELECT hash_hasla FROM konta WHERE id = ?').get(zTabeli.id)
-      : null;
+    const wierszHasla = zTabeli ? db.prepare('SELECT hash_hasla FROM konta WHERE id = ?').get(zTabeli.id) : null;
 
     // ⚠️ OBA porownania konta serwisowego licza sie ZAWSZE, takze gdy zTabeli juz istnieje.
     // Skrot `&&`/wczesniejszy `return` przerwalby po nazwie konta i czas odpowiedzi
@@ -131,14 +140,14 @@ export function registerLogowanieRoutes(app, { db, config, firma = /** @type {()
     const czynnyAdminIstnieje = czyIstniejeCzynnyAdmin(db);
     const wpuszczonySerwisowo = zgodnyUzytkownik && zgodneHasloEnv && !czynnyAdminIstnieje;
 
-    const wpuszczony = zTabeli
-      ? (zTabeli.czynne && hasloPasuje)
-      : wpuszczonySerwisowo;
+    const wpuszczony = zTabeli ? zTabeli.czynne && hasloPasuje : wpuszczonySerwisowo;
 
     if (!wpuszczony) {
       const limit = hamulec.odnotujBlad(req.ip, login);
       dopiszLogowanie(db, {
-        login: String(req.body?.uzytkownik ?? ''), usluga: 'oms', ip: req.ip,
+        login: String(req.body?.uzytkownik ?? ''),
+        usluga: 'oms',
+        ip: req.ip,
         // ⚠️ Dziennik ODROZNIA „zle haslo" od „konto wylaczone", a ekran logowania NIE.
         // Czlowiekowi nie mowimy, ktore pole bylo zle; administratorowi czytajacemu
         // dziennik mowimy wszystko — to sa dwa rozne czytelniki.
@@ -164,9 +173,13 @@ export function registerLogowanieRoutes(app, { db, config, firma = /** @type {()
       if (!limit.wolno) {
         // Opóźnienie tylko błędnej odpowiedzi: poprawne hasło omija szeroki limit.
         // Logujemy przed czekaniem, żeby wygaśnięcie 2 s kary nie zgubiło wpisu.
-        if (hamulec.zapiszBlokadeRaz(req.ip, login)) dopiszLogowanie(db, {
-          login, usluga: 'oms', ip: req.ip, wynik: 'zablokowane',
-        });
+        if (hamulec.zapiszBlokadeRaz(req.ip, login))
+          dopiszLogowanie(db, {
+            login,
+            usluga: 'oms',
+            ip: req.ip,
+            wynik: 'zablokowane',
+          });
         await hamulec.opoznij(req.ip, login, Date.now(), hamulec.wiarygodnyAdres(req));
         return odmowLimit(limit, false);
       }
@@ -181,36 +194,53 @@ export function registerLogowanieRoutes(app, { db, config, firma = /** @type {()
 
     hamulec.wyczysc(req.ip, login);
     dopiszLogowanie(db, {
-      login: String(req.body?.uzytkownik ?? ''), usluga: 'oms', ip: req.ip,
+      login: String(req.body?.uzytkownik ?? ''),
+      usluga: 'oms',
+      ip: req.ip,
       wynik: zTabeli ? 'udane' : 'serwisowe',
     });
     return reply
-      .header('Set-Cookie', ciasteczkoSesji(
-        nazwaCiasteczka,
-        // ⚠️ Login z TABELI, a nie zawsze `config.auth.user` — inaczej ciasteczko konta
-        // z tabeli podpisywaloby sie loginem serwisowym, a straznik (dopuscZalogowanego)
-        // szukalby w tabeli konta, ktorego login nie zgadza sie z tym, kto sie wlasnie
-        // zalogowal.
-        podpisz(zTabeli ? zTabeli.login : config.auth.user, wczytajSekret(db), Date.now(), zTabeli ? zTabeli.wersja_hasla : 0),
-        { bezpieczne: polaczenieBezpieczne(req) },
-      ))
+      .header(
+        'Set-Cookie',
+        ciasteczkoSesji(
+          nazwaCiasteczka,
+          // ⚠️ Login z TABELI, a nie zawsze `config.auth.user` — inaczej ciasteczko konta
+          // z tabeli podpisywaloby sie loginem serwisowym, a straznik (dopuscZalogowanego)
+          // szukalby w tabeli konta, ktorego login nie zgadza sie z tym, kto sie wlasnie
+          // zalogowal.
+          podpisz(
+            zTabeli ? zTabeli.login : config.auth.user,
+            wczytajSekret(db),
+            Date.now(),
+            zTabeli ? zTabeli.wersja_hasla : 0,
+          ),
+          { bezpieczne: polaczenieBezpieczne(req) },
+        ),
+      )
       .redirect(powrot);
   }
 
   app.post('/login', async (req, reply) => {
     const zwolnij = await hamulec.zajmij(req, String(req.body?.uzytkownik ?? ''));
-    if (!zwolnij) return ekran(req, reply.status(429).header('Retry-After', 2), {
-      powrot: bezpiecznyPowrot(req.body?.powrot), blad: 'zablokowane', zostaloS: 2,
-    });
-    try { return await loguj(req, reply); }
-    finally { zwolnij(); }
+    if (!zwolnij)
+      return ekran(req, reply.status(429).header('Retry-After', 2), {
+        powrot: bezpiecznyPowrot(req.body?.powrot),
+        blad: 'zablokowane',
+        zostaloS: 2,
+      });
+    try {
+      return await loguj(req, reply);
+    } finally {
+      zwolnij();
+    }
   });
 
   // ⚠️ POST, nie GET — z tego samego powodu, co przelacznik motywu. Wylogowanie GET-em
   // uruchamialaby przegladarka wczytujaca odnosniki naprzod, i operator wylatywalby
   // z panelu bez dotkniecia czegokolwiek.
-  app.post('/wyloguj', async (req, reply) => reply
-    .header('Set-Cookie', ciasteczkoWyczyszczenia(nazwaCiasteczka, { bezpieczne: polaczenieBezpieczne(req) }))
-    .redirect('/login'));
-
+  app.post('/wyloguj', async (req, reply) =>
+    reply
+      .header('Set-Cookie', ciasteczkoWyczyszczenia(nazwaCiasteczka, { bezpieczne: polaczenieBezpieczne(req) }))
+      .redirect('/login'),
+  );
 }

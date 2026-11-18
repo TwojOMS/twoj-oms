@@ -1,5 +1,10 @@
 import type { Srodowisko } from '../../core/kontrakty.ts';
-import { createDpdClient, createInpostClient, createAllegroWzaClient, FABRYKI_KURIEROW } from '../../integracje/fabryki.ts';
+import {
+  createDpdClient,
+  createInpostClient,
+  createAllegroWzaClient,
+  FABRYKI_KURIEROW,
+} from '../../integracje/fabryki.ts';
 import { MODULY_KURIEROW, sprawdzOpisyKurierow, type KluczKurieraNadania } from '../../domena/moduly-kurierow.ts';
 import { createAllegroSledzenieClient } from '../../oms/kurierzy/allegro.js';
 import type { KurierNadania, KurierSledzenia } from './nadanie-typy.ts';
@@ -22,29 +27,49 @@ export function wczytajKurierow(env: Srodowisko) {
   skonfigurowanyUrl(env.DPD_URL, 'DPD_URL');
   skonfigurowanyUrl(env.DPD_INFO_URL, 'DPD_INFO_URL');
   skonfigurowanyUrl(env.INPOST_URL, 'INPOST_URL');
-  const nadawca = ['DPD_URL', 'INPOST_TOKEN'].some(k => env[k]?.trim()) ? {
-    nazwa: wymagane(env, 'DPD_NADAWCA_NAZWA'), ulica: wymagane(env, 'DPD_NADAWCA_ULICA'),
-    kod: wymagane(env, 'DPD_NADAWCA_KOD'), miasto: wymagane(env, 'DPD_NADAWCA_MIASTO'),
-    kraj: env.DPD_NADAWCA_KRAJ?.trim() || 'PL',
-    phone: env.DPD_NADAWCA_TELEFON?.trim() || '', email: env.DPD_NADAWCA_EMAIL?.trim() || '',
-  } : null;
-  const dpd = env.DPD_URL?.trim() ? {
-    url: wymagane(env, 'DPD_URL'), login: wymagane(env, 'DPD_LOGIN'), haslo: wymagane(env, 'DPD_PASSWORD'),
-    fid: wymagane(env, 'DPD_FID'), infoUrl: wymagane(env, 'DPD_INFO_URL'), channel: wymagane(env, 'DPD_INFO_CHANNEL'),
-    nadawca: nadawca!,
-  } : null;
+  const nadawca = ['DPD_URL', 'INPOST_TOKEN'].some((k) => env[k]?.trim())
+    ? {
+        nazwa: wymagane(env, 'DPD_NADAWCA_NAZWA'),
+        ulica: wymagane(env, 'DPD_NADAWCA_ULICA'),
+        kod: wymagane(env, 'DPD_NADAWCA_KOD'),
+        miasto: wymagane(env, 'DPD_NADAWCA_MIASTO'),
+        kraj: env.DPD_NADAWCA_KRAJ?.trim() || 'PL',
+        phone: env.DPD_NADAWCA_TELEFON?.trim() || '',
+        email: env.DPD_NADAWCA_EMAIL?.trim() || '',
+      }
+    : null;
+  const dpd = env.DPD_URL?.trim()
+    ? {
+        url: wymagane(env, 'DPD_URL'),
+        login: wymagane(env, 'DPD_LOGIN'),
+        haslo: wymagane(env, 'DPD_PASSWORD'),
+        fid: wymagane(env, 'DPD_FID'),
+        infoUrl: wymagane(env, 'DPD_INFO_URL'),
+        channel: wymagane(env, 'DPD_INFO_CHANNEL'),
+        nadawca: nadawca!,
+      }
+    : null;
   let inpost = null;
   if (env.INPOST_TOKEN?.trim()) {
     const organizacja = Number(wymagane(env, 'INPOST_ORGANIZACJA'));
-    if (!Number.isSafeInteger(organizacja) || organizacja <= 0) throw new Error('INPOST_ORGANIZACJA: wymagany dodatni identyfikator');
-    inpost = { url: env.INPOST_URL?.trim() || 'https://api-shipx-pl.easypack24.net/v1',
-      token: wymagane(env, 'INPOST_TOKEN'), organizacja, nadawca: nadawca!,
-      paczkomatNadawczy: env.INPOST_PACZKOMAT_NADAWCZY?.trim().toUpperCase() || null };
+    if (!Number.isSafeInteger(organizacja) || organizacja <= 0)
+      throw new Error('INPOST_ORGANIZACJA: wymagany dodatni identyfikator');
+    inpost = {
+      url: env.INPOST_URL?.trim() || 'https://api-shipx-pl.easypack24.net/v1',
+      token: wymagane(env, 'INPOST_TOKEN'),
+      organizacja,
+      nadawca: nadawca!,
+      paczkomatNadawczy: env.INPOST_PACZKOMAT_NADAWCZY?.trim().toUpperCase() || null,
+    };
   }
   // Adres dla DPD z Ustawień nie siedzi już tutaj — moduł bierze go ze wspólnego źródła adresu firmy
   // (plik → Ustawienia → Firma), czytanego przy każdej paczce.
-  return { dpd, inpost, adresFirmyZPliku: adresFirmyZEnv(env), pobranieNadawca: { nazwa: nadawca?.nazwa,
-    rachunek: env.OMS_RACHUNEK?.trim() } };
+  return {
+    dpd,
+    inpost,
+    adresFirmyZPliku: adresFirmyZEnv(env),
+    pobranieNadawca: { nazwa: nadawca?.nazwa, rachunek: env.OMS_RACHUNEK?.trim() },
+  };
 }
 
 type ZapisDpd = { ustawienia: Record<string, string>; sekrety: Record<string, string> };
@@ -59,35 +84,56 @@ type KlientDpd = KurierNadania & { sprawdzPolaczenie?: () => Promise<unknown> };
  * `nadawca` to funkcja — adres firmy czytany przy każdej paczce (plik → Ustawienia → Firma);
  * zmiana adresu na ekranie też buduje nowego klienta (adres wchodzi do porównania).
  */
-export function kurierDpdZUstawien({ wczytaj, nadawca, fabryka }: {
-  wczytaj: () => ZapisDpd | null; nadawca: () => AdresFirmy | null; fabryka: (o: any) => KlientDpd;
+export function kurierDpdZUstawien({
+  wczytaj,
+  nadawca,
+  fabryka,
+}: {
+  wczytaj: () => ZapisDpd | null;
+  nadawca: () => AdresFirmy | null;
+  fabryka: (o: any) => KlientDpd;
 }) {
   let klucz: string | null = null;
   let klient: KlientDpd | null = null;
   const biezacy = (): KlientDpd => {
     const zapis = wczytaj();
-    if (!zapis) throw bladOperatora('Kurier DPD nie jest skonfigurowany — Ustawienia → Integracje → DPD. Panel niczego nie nadał.');
+    if (!zapis)
+      throw bladOperatora(
+        'Kurier DPD nie jest skonfigurowany — Ustawienia → Integracje → DPD. Panel niczego nie nadał.',
+      );
     const adres = nadawca();
     // Bez adresu nadawcy createDpdClient rzuca zwykły Error — człowiek zobaczyłby „błąd techniczny” zamiast powodu.
-    if (!adresKompletny(adres)) throw bladOperatora('Brak adresu nadawcy — wpisz adres firmy w Ustawienia → Firma (/ustawienia/firma) albo DPD_NADAWCA_… w pliku konfiguracji. Bez niego DPD nie nada paczki. Panel niczego nie nadał.');
+    if (!adresKompletny(adres))
+      throw bladOperatora(
+        'Brak adresu nadawcy — wpisz adres firmy w Ustawienia → Firma (/ustawienia/firma) albo DPD_NADAWCA_… w pliku konfiguracji. Bez niego DPD nie nada paczki. Panel niczego nie nadał.',
+      );
     const nowy = JSON.stringify([zapis, adres]);
-    if (nowy !== klucz || !klient) { klient = fabryka(opcjeKlientaDpd(zapis, adres)); klucz = nowy; }
+    if (nowy !== klucz || !klient) {
+      klient = fabryka(opcjeKlientaDpd(zapis, adres));
+      klucz = nowy;
+    }
     return klient;
   };
   return {
     nadaj: (...a: Parameters<KurierNadania['nadaj']>) => biezacy().nadaj(...a),
     statusPrzesylki: (numer: string) => biezacy().statusPrzesylki!(numer),
     sprawdzPolaczenie: () => biezacy().sprawdzPolaczenie!(),
-    get bezSledzenia() { return !String(wczytaj()?.sekrety?.kanal ?? '').trim(); },
+    get bezSledzenia() {
+      return !String(wczytaj()?.sekrety?.kanal ?? '').trim();
+    },
   };
 }
 
 type ZapisInpost = { ustawienia: Record<string, string>; sekrety: Record<string, string> };
 // sprawdzPrzesylke klienta ShipX bierze tylko identyfikator (drugi parametr to wewnętrzna odpowiedź POST) — stąd
 // własny typ zamiast KurierNadania, którego sprawdzPrzesylke przyjmuje zamówienie.
-type KlientInpost = { nadaj: KurierNadania['nadaj']; sprawdzPrzesylke?: (id: string) => Promise<any>;
-  statusPrzesylki?: (numer: string) => Promise<unknown>; pobierzEtykiete?: (...a: any[]) => Promise<unknown>;
-  sprawdzPolaczenie?: () => Promise<unknown> };
+type KlientInpost = {
+  nadaj: KurierNadania['nadaj'];
+  sprawdzPrzesylke?: (id: string) => Promise<any>;
+  statusPrzesylki?: (numer: string) => Promise<unknown>;
+  pobierzEtykiete?: (...a: any[]) => Promise<unknown>;
+  sprawdzPolaczenie?: () => Promise<unknown>;
+};
 
 /**
  * Kurier InPost skonfigurowany w Ustawieniach; wzór: kurierDpdZUstawien wyżej. Każde wywołanie czyta
@@ -99,23 +145,42 @@ type KlientInpost = { nadaj: KurierNadania['nadaj']; sprawdzPrzesylke?: (id: str
  *    wpisać (klient z pliku mówi o .env.oms, co tu byłoby nieprawdą); telefon w formacie, którego InPost nie przyjmie,
  *    zatrzymujemy tu, bo createInpostClient rzuciłby zwykły Error („błąd techniczny” na ekranie).
  */
-export function kurierInpostZUstawien({ wczytaj, nadawca, fabryka }: {
-  wczytaj: () => ZapisInpost | null; nadawca: () => AdresFirmy | null; fabryka: (o: any) => KlientInpost;
+export function kurierInpostZUstawien({
+  wczytaj,
+  nadawca,
+  fabryka,
+}: {
+  wczytaj: () => ZapisInpost | null;
+  nadawca: () => AdresFirmy | null;
+  fabryka: (o: any) => KlientInpost;
 }) {
   let klucz: string | null = null;
   let klient: KlientInpost | null = null;
   const biezacy = (): { klient: KlientInpost; adres: AdresFirmy } => {
     const zapis = wczytaj();
-    if (!zapis) throw bladOperatora('Kurier InPost nie jest skonfigurowany — Ustawienia → Integracje → InPost. Panel niczego nie nadał.');
+    if (!zapis)
+      throw bladOperatora(
+        'Kurier InPost nie jest skonfigurowany — Ustawienia → Integracje → InPost. Panel niczego nie nadał.',
+      );
     const adres = nadawca();
-    if (!adresKompletny(adres)) throw bladOperatora('Brak adresu nadawcy — wpisz adres firmy w Ustawienia → Firma (/ustawienia/firma) albo DPD_NADAWCA_… w pliku konfiguracji. Bez niego InPost nie nada paczki. Panel niczego nie nadał.');
+    if (!adresKompletny(adres))
+      throw bladOperatora(
+        'Brak adresu nadawcy — wpisz adres firmy w Ustawienia → Firma (/ustawienia/firma) albo DPD_NADAWCA_… w pliku konfiguracji. Bez niego InPost nie nada paczki. Panel niczego nie nadał.',
+      );
     if (String(adres.phone ?? '').trim()) {
-      try { naTelefonInPost(adres.phone); } catch {
-        throw bladOperatora('Telefon w adresie firmy ma format, którego InPost nie przyjmie (potrzebny polski numer: 9 cyfr, może być +48). Popraw go w Ustawienia → Firma (/ustawienia/firma) albo w DPD_NADAWCA_TELEFON w pliku konfiguracji. Panel niczego nie nadał.');
+      try {
+        naTelefonInPost(adres.phone);
+      } catch {
+        throw bladOperatora(
+          'Telefon w adresie firmy ma format, którego InPost nie przyjmie (potrzebny polski numer: 9 cyfr, może być +48). Popraw go w Ustawienia → Firma (/ustawienia/firma) albo w DPD_NADAWCA_TELEFON w pliku konfiguracji. Panel niczego nie nadał.',
+        );
       }
     }
     const nowy = JSON.stringify([zapis, adres]);
-    if (nowy !== klucz || !klient) { klient = fabryka(opcjeKlientaInpost(zapis, adres)); klucz = nowy; }
+    if (nowy !== klucz || !klient) {
+      klient = fabryka(opcjeKlientaInpost(zapis, adres));
+      klucz = nowy;
+    }
     return { klient, adres };
   };
   // Metody async: odmowa (brak zapisu, adresu, telefonu) wraca jako odrzucona obietnica, jak błąd samego InPostu.
@@ -123,7 +188,9 @@ export function kurierInpostZUstawien({ wczytaj, nadawca, fabryka }: {
     nadaj: async (...a: Parameters<KurierNadania['nadaj']>) => {
       const { klient: k, adres } = biezacy();
       if (!String(adres.phone ?? '').trim() || !String(adres.email ?? '').trim()) {
-        throw bladOperatora('InPost wymaga telefonu i e-maila nadawcy — wpisz je w Ustawienia → Firma (/ustawienia/firma) albo DPD_NADAWCA_TELEFON i DPD_NADAWCA_EMAIL w pliku konfiguracji. Panel niczego nie nadał.');
+        throw bladOperatora(
+          'InPost wymaga telefonu i e-maila nadawcy — wpisz je w Ustawienia → Firma (/ustawienia/firma) albo DPD_NADAWCA_TELEFON i DPD_NADAWCA_EMAIL w pliku konfiguracji. Panel niczego nie nadał.',
+        );
       }
       return k.nadaj(...a);
     },
@@ -141,7 +208,10 @@ export type FabrykiKurierow = Partial<{
   createAllegroSledzenie: (o: Parameters<typeof createAllegroSledzenieClient>[0]) => KurierSledzenia;
 }>;
 export type MapaKurierow = Partial<Record<string, KurierNadania | KurierSledzenia>> & {
-  dpd?: KurierNadania; inpost?: KurierNadania; allegro_wza?: KurierNadania; erli_przesylki?: KurierNadania;
+  dpd?: KurierNadania;
+  inpost?: KurierNadania;
+  allegro_wza?: KurierNadania;
+  erli_przesylki?: KurierNadania;
   allegro?: KurierSledzenia;
 };
 
@@ -152,7 +222,7 @@ type Skladanie = { config: KonfigKurierow; klienciAllegro: Record<string, any>; 
 // Jak z konfiguracji powstaje adapter każdego kuriera z metodami. Typ z kluczy rejestru — nowy kurier
 // z metodami bez wpisu tutaj (i w FABRYKI_KURIEROW) to błąd tsc. `null` = kurier nieskonfigurowany w pliku.
 const SKLADANIE: { [K in KluczKurieraNadania]: (s: Skladanie) => KurierNadania | null } = {
-  dpd: ({ config, fabryki }) => config.dpd ? (fabryki.createDpd ?? FABRYKI_KURIEROW.dpd)(config.dpd) : null,
+  dpd: ({ config, fabryki }) => (config.dpd ? (fabryki.createDpd ?? FABRYKI_KURIEROW.dpd)(config.dpd) : null),
   inpost: ({ config, fabryki }) => {
     if (!config.inpost) return null;
     if (fabryki.createInpost) return fabryki.createInpost(config.inpost);
@@ -160,26 +230,33 @@ const SKLADANIE: { [K in KluczKurieraNadania]: (s: Skladanie) => KurierNadania |
     // Drugi argument ShipX jest wewnętrzną odpowiedzią POST, nie zamówieniem WzA.
     return { ...klient, sprawdzPrzesylke: (id: string) => klient.sprawdzPrzesylke(id) };
   },
-  allegro_wza: ({ config, klienciAllegro, fabryki }) => (fabryki.createAllegroWza ?? FABRYKI_KURIEROW.allegro_wza)({
-    allegroDla: (z: any) => {
-      const klient = klienciAllegro[z?.sklep];
-      if (!klient) throw new Error(`Kanał „${z?.sklep}” nie jest podpięty do Allegro — panel niczego nie nadał.`);
-      return klient;
-    },
-    metodaZywa: (z: any) => klienciAllegro[z?.sklep]?.pobierzMetodeDostawy(z?.zrodlo_id) ?? null,
-    pobranieNadawca: config.pobranieNadawca }),
+  allegro_wza: ({ config, klienciAllegro, fabryki }) =>
+    (fabryki.createAllegroWza ?? FABRYKI_KURIEROW.allegro_wza)({
+      allegroDla: (z: any) => {
+        const klient = klienciAllegro[z?.sklep];
+        if (!klient) throw new Error(`Kanał „${z?.sklep}” nie jest podpięty do Allegro — panel niczego nie nadał.`);
+        return klient;
+      },
+      metodaZywa: (z: any) => klienciAllegro[z?.sklep]?.pobierzMetodeDostawy(z?.zrodlo_id) ?? null,
+      pobranieNadawca: config.pobranieNadawca,
+    }),
   // `klienciAllegro` = klienci WSZYSTKICH kanałów (kanaly.klienciKanalow), więc tu jest też klient ERLI.
-  erli_przesylki: ({ config, klienciAllegro }) => FABRYKI_KURIEROW.erli_przesylki({
-    erliDla: (z: any) => {
-      const klient = klienciAllegro[z?.sklep];
-      if (!klient) throw new Error(`Kanał „${z?.sklep}” nie jest podpięty do ERLI — panel niczego nie nadał.`);
-      return klient;
-    },
-    punktNadaniaDla: (z: any) => config.punktNadaniaErliDla?.(z) ?? null,
-  }),
+  erli_przesylki: ({ config, klienciAllegro }) =>
+    FABRYKI_KURIEROW.erli_przesylki({
+      erliDla: (z: any) => {
+        const klient = klienciAllegro[z?.sklep];
+        if (!klient) throw new Error(`Kanał „${z?.sklep}” nie jest podpięty do ERLI — panel niczego nie nadał.`);
+        return klient;
+      },
+      punktNadaniaDla: (z: any) => config.punktNadaniaErliDla?.(z) ?? null,
+    }),
 };
 
-export function zbudujKurierow(config: KonfigKurierow, klienciAllegro: Record<string, any>, fabryki: FabrykiKurierow = {}) {
+export function zbudujKurierow(
+  config: KonfigKurierow,
+  klienciAllegro: Record<string, any>,
+  fabryki: FabrykiKurierow = {},
+) {
   const kurierzy: MapaKurierow = {};
   // Kolejność kluczy mapy = kolejność rejestru (dpd, inpost, allegro_wza, allegro).
   for (const klucz of Object.keys(MODULY_KURIEROW)) {

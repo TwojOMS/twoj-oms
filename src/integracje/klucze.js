@@ -6,7 +6,7 @@ const deklaracja = (...kluczeIntegracji) => Object.freeze({ kluczeIntegracji: Ob
 // prefiksu env zamiast wpisywać nazwy kont konkretnej firmy.
 export function kluczeKanalu(typ, prefiks) {
   if (!/^[A-Z][A-Z0-9_]*$/.test(prefiks)) throw new Error('Nieprawidłowy prefiks kanału');
-  return deklaracja(...modulKanalu(typ).kluczeEnv.sekrety.map(s => `${prefiks}_${s}`));
+  return deklaracja(...modulKanalu(typ).kluczeEnv.sekrety.map((s) => `${prefiks}_${s}`));
 }
 export const integracje = Object.freeze({
   allegro: deklaracja('ALLEGRO_CLIENT_ID', 'ALLEGRO_CLIENT_SECRET'),

@@ -32,12 +32,22 @@ const kwota = (v) => {
   return /^-?\d+(\.\d+)?$/.test(s) ? s : '0';
 };
 
-export function createMetaClient({ token, konta = [], fetchImpl, http = transport({ fetchImpl }), wersja = WERSJA, baseUrl = BAZA }) {
+export function createMetaClient({
+  token,
+  konta = [],
+  fetchImpl,
+  http = transport({ fetchImpl }),
+  wersja = WERSJA,
+  baseUrl = BAZA,
+}) {
   if (!token) throw new Error('Klient Meta bez tokenu — sekcja konfiguracji miała nie wstać.');
 
-  const bezTokena = (wartosc) => String(wartosc ?? '')
-    .split(token).join('[UKRYTO]')
-    .split(encodeURIComponent(token)).join('[UKRYTO]');
+  const bezTokena = (wartosc) =>
+    String(wartosc ?? '')
+      .split(token)
+      .join('[UKRYTO]')
+      .split(encodeURIComponent(token))
+      .join('[UKRYTO]');
 
   async function zapytanie(sciezka, parametry) {
     const url = new URL(`${baseUrl}/${wersja}/${sciezka}`);
@@ -49,7 +59,11 @@ export function createMetaClient({ token, konta = [], fetchImpl, http = transpor
       throw new Error(`Meta nieosiągalna: ${bezTokena(e?.message)}`);
     }
     let dane = null;
-    try { dane = await res.json(); } catch { dane = null; }
+    try {
+      dane = await res.json();
+    } catch {
+      dane = null;
+    }
     if (!res.ok) {
       // ⚠️ Komunikat Mety BEZ tokena i bez calego adresu — w `error.message` bywa echo
       // parametrow zapytania. Bierzemy sam powod i typ bledu.
@@ -85,7 +99,11 @@ export function createMetaClient({ token, konta = [], fetchImpl, http = transpor
       const strona = await strzalStrona(sciezka, after ? { ...parametry, after } : parametry);
       wynik.push(...strona.data);
       if (!strona.paging?.next) return wynik;
-      try { after = new URL(strona.paging.next).searchParams.get('after'); } catch { after = null; }
+      try {
+        after = new URL(strona.paging.next).searchParams.get('after');
+      } catch {
+        after = null;
+      }
       if (!after || kursory.has(after)) throw new Error('Meta zwróciła nieprawidłowy kursor stronicowania');
       kursory.add(after);
     }
@@ -127,7 +145,12 @@ export function createMetaClient({ token, konta = [], fetchImpl, http = transpor
         const dzien = w.date_start;
         if (!dzien) continue;
         const dotad = wgDni.get(dzien) ?? {
-          dzien, wydatekGr: 0, wyswietlenia: 0, zasieg: 0, klikniecia: 0, kliknieciaLinku: 0,
+          dzien,
+          wydatekGr: 0,
+          wyswietlenia: 0,
+          zasieg: 0,
+          klikniecia: 0,
+          kliknieciaLinku: 0,
         };
         // ⚠️⚠️ SUMUJEMY W GROSZACH I ZAOKRAGLAMY RAZ, NA KONCU — nie po kazdym koncie.
         // Meta potrafi oddac kwote PONIZEJ GROSZA (mikrowydatek dnia na Instagramie:
@@ -145,11 +168,13 @@ export function createMetaClient({ token, konta = [], fetchImpl, http = transpor
       }
     }
 
-    return [...wgDni.values()]
-      .sort((a, b) => a.dzien.localeCompare(b.dzien))
-      // JEDNO zaokraglenie do pelnych groszy — panel liczy pieniadze wylacznie w groszach
-      // calkowitych (domena/kwoty.js), wiec kwota z ulamkiem grosza nie ma jak do niego wejsc.
-      .map(({ wydatekGr, ...reszta }) => ({ ...reszta, wydatek: (Math.round(wydatekGr) / 100).toFixed(2) }));
+    return (
+      [...wgDni.values()]
+        .sort((a, b) => a.dzien.localeCompare(b.dzien))
+        // JEDNO zaokraglenie do pelnych groszy — panel liczy pieniadze wylacznie w groszach
+        // calkowitych (domena/kwoty.js), wiec kwota z ulamkiem grosza nie ma jak do niego wejsc.
+        .map(({ wydatekGr, ...reszta }) => ({ ...reszta, wydatek: (Math.round(wydatekGr) / 100).toFixed(2) }))
+    );
   }
 
   async function raportReklam({ konto, od, do: doDnia }) {
@@ -158,47 +183,70 @@ export function createMetaClient({ token, konta = [], fetchImpl, http = transpor
     const metadane = await zapytanie(sciezka, { fields: 'currency,timezone_name' });
     const [kampanieApi, zestawy, statystyki] = await Promise.all([
       wszystkieStrony(`${sciezka}/campaigns`, {
-        fields: 'id,name,status,effective_status,daily_budget,lifetime_budget', limit: '500',
+        fields: 'id,name,status,effective_status,daily_budget,lifetime_budget',
+        limit: '500',
       }),
       wszystkieStrony(`${sciezka}/adsets`, {
-        fields: 'id,campaign_id,daily_budget,lifetime_budget,start_time,end_time', limit: '500',
+        fields: 'id,campaign_id,daily_budget,lifetime_budget,start_time,end_time',
+        limit: '500',
       }),
       wszystkieStrony(`${sciezka}/insights`, {
         fields: 'campaign_id,date_start,spend,impressions,clicks,inline_link_clicks',
-        level: 'campaign', time_increment: '1',
-        time_range: JSON.stringify({ since: od, until: doDnia }), limit: '500',
+        level: 'campaign',
+        time_increment: '1',
+        time_range: JSON.stringify({ since: od, until: doDnia }),
+        limit: '500',
       }),
     ]);
 
-    const dni = statystyki.filter((w) => w.campaign_id && w.date_start).map((w) => ({
-      kontoId: konto, kampaniaId: String(w.campaign_id), dzien: w.date_start,
-      wydatek: kwota(w.spend), wyswietlenia: liczba(w.impressions),
-      klikniecia: liczba(w.clicks), kliknieciaLinku: liczba(w.inline_link_clicks),
-    })).sort((a, b) => a.dzien.localeCompare(b.dzien) || a.kampaniaId.localeCompare(b.kampaniaId));
+    const dni = statystyki
+      .filter((w) => w.campaign_id && w.date_start)
+      .map((w) => ({
+        kontoId: konto,
+        kampaniaId: String(w.campaign_id),
+        dzien: w.date_start,
+        wydatek: kwota(w.spend),
+        wyswietlenia: liczba(w.impressions),
+        klikniecia: liczba(w.clicks),
+        kliknieciaLinku: liczba(w.inline_link_clicks),
+      }))
+      .sort((a, b) => a.dzien.localeCompare(b.dzien) || a.kampaniaId.localeCompare(b.kampaniaId));
 
     const budzetyDla = (kampania, zestawyKampanii) => {
       const zrodlo = kampania.daily_budget || kampania.lifetime_budget ? [kampania] : zestawyKampanii;
       const poziom = zrodlo[0] === kampania ? 'kampania' : 'zestawy';
       const grupy = new Map();
       for (const w of zrodlo) {
-        for (const [pole, typ] of [['daily_budget', 'dzienny'], ['lifetime_budget', 'calkowity']]) {
+        for (const [pole, typ] of [
+          ['daily_budget', 'dzienny'],
+          ['lifetime_budget', 'calkowity'],
+        ]) {
           if (!/^\d+$/.test(String(w[pole] ?? ''))) continue;
-          const okresOd = typ === 'calkowity' ? w.start_time ?? null : null;
-          const okresDo = typ === 'calkowity' ? w.end_time ?? null : null;
+          const okresOd = typ === 'calkowity' ? (w.start_time ?? null) : null;
+          const okresDo = typ === 'calkowity' ? (w.end_time ?? null) : null;
           const klucz = typ === 'dzienny' ? typ : `${typ}:${okresOd ?? w.id}:${okresDo ?? w.id}`;
           const dotad = grupy.get(klucz);
           grupy.set(klucz, { typ, okresOd, okresDo, suma: (dotad?.suma ?? 0n) + BigInt(w[pole]) });
         }
       }
       return [...grupy.values()].map(({ typ, okresOd, okresDo, suma }) => ({
-        poziom, typ, ...(typ === 'calkowity' ? { okresOd, okresDo } : {}), kwotaMinor: String(suma),
+        poziom,
+        typ,
+        ...(typ === 'calkowity' ? { okresOd, okresDo } : {}),
+        kwotaMinor: String(suma),
       }));
     };
     const kampanie = kampanieApi.map((w) => ({
-      kontoId: konto, id: String(w.id), nazwa: w.name ?? '', status: w.status ?? null,
+      kontoId: konto,
+      id: String(w.id),
+      nazwa: w.name ?? '',
+      status: w.status ?? null,
       effectiveStatus: w.effective_status ?? null,
       emituje: dni.some((d) => d.kampaniaId === String(w.id) && (Number(d.wydatek) > 0 || d.wyswietlenia > 0)),
-      budzety: budzetyDla(w, zestawy.filter((z) => String(z.campaign_id) === String(w.id))),
+      budzety: budzetyDla(
+        w,
+        zestawy.filter((z) => String(z.campaign_id) === String(w.id)),
+      ),
     }));
     return { dni, kampanie, waluta: metadane?.currency ?? null, strefa: metadane?.timezone_name ?? null };
   }

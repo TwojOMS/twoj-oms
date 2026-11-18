@@ -1,11 +1,18 @@
 import {
-  zwrot, zwrotyZamowienia, zarezerwujKorekte, zapiszKorekte, zapiszBladKorekty, odrzucZlecenieKorekty,
+  zwrot,
+  zwrotyZamowienia,
+  zarezerwujKorekte,
+  zapiszKorekte,
+  zapiszBladKorekty,
+  odrzucZlecenieKorekty,
 } from '../../../oms/db/zwroty.js';
 import { opisOdrzuceniaKorekty } from '../../../domena/korekta-status.js';
 import { pobierzZamowienie, dopiszLog } from '../../../oms/db/zamowienia.js';
 import { paryKorekty } from '../../../domena/korekta-pozycje.js';
 import {
-  powodOdmowyKorektyDlaFaktury, powodOdmowyWystawieniaKorekty, korektaNieSprawdzona,
+  powodOdmowyKorektyDlaFaktury,
+  powodOdmowyWystawieniaKorekty,
+  korektaNieSprawdzona,
 } from '../../../domena/zwrot.js';
 import { bladOperatora } from '../../../domena/bledy.js';
 import { idDokumentuDla, programDokumentu, czyDokumentProgramu } from '../../../domena/dokument-programu.js';
@@ -56,7 +63,10 @@ const dzien = (t) => String(t ?? '').slice(0, 10);
  */
 // Dokument „przed”, korektę i listę korekt daje PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }`
 // przez `zProgramu`); teksty dla człowieka jego nazwą (dla inFaktu znak w znak jak przed zmianą).
-export function createKorekta({ db, program: programPodany = null, infakt = null,
+export function createKorekta({
+  db,
+  program: programPodany = null,
+  infakt = null,
   nipSprzedawcy = /** @type {string | (() => string | null | undefined) | null} */ (null),
 }) {
   const program = zProgramu({ program: programPodany, infakt });
@@ -101,8 +111,10 @@ export function createKorekta({ db, program: programPodany = null, infakt = null
     const nip = daneFaktury(z).nip;
     const rodzaj = rodzajKorekty(nip, faktura.services, { zwolniona: sprzedawcaZwolniony(db, program?.opis) });
     if (rodzaj === 'niezgodna') {
-      throw bladOperatora(`Nabywca ma numer VAT UE, a faktura ${faktura.number} w ${nazwa.miejscownik} nie ma stawki 0% — `
-        + `to nie wygląda na WDT. Wystaw korektę ręcznie w ${nazwa.miejscownik}. Korekta NIE została zlecona.`);
+      throw bladOperatora(
+        `Nabywca ma numer VAT UE, a faktura ${faktura.number} w ${nazwa.miejscownik} nie ma stawki 0% — ` +
+          `to nie wygląda na WDT. Wystaw korektę ręcznie w ${nazwa.miejscownik}. Korekta NIE została zlecona.`,
+      );
     }
     const wdt = rodzaj === 'wdt';
     let polaWdt = {};
@@ -112,9 +124,11 @@ export function createKorekta({ db, program: programPodany = null, infakt = null
         nipWlasny = nipSprzedawcyDoWdt(nip, nipSprzedawcy);
       } catch (e) {
         if (!e?.dlaOperatora) throw e;
-        throw bladOperatora('Korekta faktury WDT musi nieść NIP sprzedawcy, a w ustawieniach go nie ma. '
-          + 'Wpisz NIP firmy w Ustawienia → Firma (/ustawienia/firma) albo OMS_SPRZEDAWCA_NIP w pliku konfiguracji. '
-          + 'Korekta NIE została zlecona.');
+        throw bladOperatora(
+          'Korekta faktury WDT musi nieść NIP sprzedawcy, a w ustawieniach go nie ma. ' +
+            'Wpisz NIP firmy w Ustawienia → Firma (/ustawienia/firma) albo OMS_SPRZEDAWCA_NIP w pliku konfiguracji. ' +
+            'Korekta NIE została zlecona.',
+        );
       }
       polaWdt = polaWdtKorekty(nip, { nipSprzedawcy: nipWlasny, uwagi: UWAGI_NA_DOKUMENCIE });
     }
@@ -122,12 +136,22 @@ export function createKorekta({ db, program: programPodany = null, infakt = null
     // `paryKorekty`: `pobierzFakture` bywa `null` (TwojeFaktury) i to ma byc odmowa, nie TypeError.
     const klient = faktura.client_id
       ? { client_id: faktura.client_id }
-      : Object.fromEntries([
-        'client_company_name', 'client_first_name', 'client_last_name', 'client_street',
-        'client_street_number', 'client_flat_number', 'client_city', 'client_post_code',
-        'client_tax_code', 'client_country',
-      ].filter((pole) => faktura[pole] != null && String(faktura[pole]).trim() !== '')
-        .map((pole) => [pole, faktura[pole]]));
+      : Object.fromEntries(
+          [
+            'client_company_name',
+            'client_first_name',
+            'client_last_name',
+            'client_street',
+            'client_street_number',
+            'client_flat_number',
+            'client_city',
+            'client_post_code',
+            'client_tax_code',
+            'client_country',
+          ]
+            .filter((pole) => faktura[pole] != null && String(faktura[pole]).trim() !== '')
+            .map((pole) => [pole, faktura[pole]]),
+        );
 
     if (!zarezerwujKorekte(db, zamowienieId, zwrotId)) {
       throw bladOperatora(`Korekta do tego zwrotu została już zlecona — sprawdź ją ${gdzieDokument(program)}.`);
@@ -194,10 +218,12 @@ export function createKorekta({ db, program: programPodany = null, infakt = null
     if (programDokumentu(z.faktura) !== null && !czyDokumentProgramu(z.faktura, program)) return;
     const wszystkie = zwrotyZamowienia(db, zamowienieId);
     // Sito 2 obowiązuje także dokument wskazany przez status zlecenia.
-    const zajete = new Set(wszystkie
-      .filter((x) => x.id !== w.id)
-      .flatMap((x) => [x.korekta_numer, x.korekta_uuid])
-      .filter(Boolean));
+    const zajete = new Set(
+      wszystkie
+        .filter((x) => x.id !== w.id)
+        .flatMap((x) => [x.korekta_numer, x.korekta_uuid])
+        .filter(Boolean),
+    );
 
     // STAN ZLECENIA wg referencji — PRZED sitem „więcej niż jedna otwarta sprawa” niżej. Referencja wskazuje dokładnie TEN zwrot, więc
     // zakaz zgadywania przy dwóch otwartych sprawach jej nie dotyczy. Zwalniamy WYŁĄCZNIE przy pewnej odmowie
@@ -235,7 +261,8 @@ export function createKorekta({ db, program: programPodany = null, infakt = null
 
     // Referencja wskazuje ten zwrot: odczyt uuid rozstrzyga przed sitem otwartych spraw, bez sita daty.
     if (uuidZeStatusu && typeof program?.pobierzKorekte === 'function') {
-      let dokument; let odczytany = false;
+      let dokument;
+      let odczytany = false;
       try {
         dokument = await program.pobierzKorekte(uuidZeStatusu);
         odczytany = true;
@@ -245,14 +272,19 @@ export function createKorekta({ db, program: programPodany = null, infakt = null
       if (odczytany) {
         // Sito 2 na uuid, który zostanie zapisany — także gdy program go w odpowiedzi nie podał.
         const uuid = dokument?.uuid ?? uuidZeStatusu;
-        if (dokument?.number && !zajete.has(dokument.number) && !zajete.has(uuid)
-          && (!dokument.corrected_invoice_number || dokument.corrected_invoice_number === numerFaktury)) {
+        if (
+          dokument?.number &&
+          !zajete.has(dokument.number) &&
+          !zajete.has(uuid) &&
+          (!dokument.corrected_invoice_number || dokument.corrected_invoice_number === numerFaktury)
+        ) {
           try {
             zapiszKorekte(db, zamowienieId, zwrotId, { uuid, numer: dokument.number });
             dopiszLog(db, zamowienieId, {
               akcja: 'zwrot.korekta.odczyt',
-              wynik: `korekta ${dokument.number} odczytana w ${nazwa.miejscownik} po numerze zlecenia `
-                + `i przypisana do zwrotu z ${w.data} (${w.kwota} zł).`,
+              wynik:
+                `korekta ${dokument.number} odczytana w ${nazwa.miejscownik} po numerze zlecenia ` +
+                `i przypisana do zwrotu z ${w.data} (${w.kwota} zł).`,
             });
           } catch {
             // NIE RZUCA NIGDY (jak droga listy): błąd bazy nie zamyka ekranu zwrotu; lista nie zgaduje drugi raz.
@@ -307,14 +339,20 @@ export function createKorekta({ db, program: programPodany = null, infakt = null
       const lista = await program.listaKorekt({});
       // ⚠️ PO `corrected_invoice_number`, NIE po referencji zadania — encja korekty referencji
       // NIE NIESIE (sprawdzone na żywym koncie).
-      const kandydaci = (lista ?? []).filter((k) => k.corrected_invoice_number === numerFaktury
-        && !zajete.has(k.number) && !zajete.has(k.uuid) && nieStarsza(k)
-        // Status `wystawiona` zna uuid dokumentu — warunek tylko ODEJMUJE kandydatów, nigdy nie dodaje.
-        && (!uuidZeStatusu || k.uuid === uuidZeStatusu));
+      const kandydaci = (lista ?? []).filter(
+        (k) =>
+          k.corrected_invoice_number === numerFaktury &&
+          !zajete.has(k.number) &&
+          !zajete.has(k.uuid) &&
+          nieStarsza(k) &&
+          // Status `wystawiona` zna uuid dokumentu — warunek tylko ODEJMUJE kandydatów, nigdy nie dodaje.
+          (!uuidZeStatusu || k.uuid === uuidZeStatusu),
+      );
       const znaleziona = kandydaci.length === 1 ? kandydaci[0] : null;
       if (znaleziona) {
         zapiszKorekte(db, zamowienieId, zwrotId, {
-          uuid: znaleziona.uuid ?? null, numer: znaleziona.number ?? null,
+          uuid: znaleziona.uuid ?? null,
+          numer: znaleziona.number ?? null,
         });
         // ⚠️ SLAD W LOGU ZAMOWIENIA. To jest zapis NUMERU DOKUMENTU PODATKOWEGO rozliczajacego
         // zwrot — bez wpisu po miesiacu nie da sie odpowiedziec, skad ten numer sie wzial ani
@@ -326,8 +364,9 @@ export function createKorekta({ db, program: programPodany = null, infakt = null
         // u inFaktu i tak ma to zapamietac; ksztalt wzorowany na wpisie „dokument jest w KSeF".
         dopiszLog(db, zamowienieId, {
           akcja: 'zwrot.korekta.odczyt',
-          wynik: `korekta ${znaleziona.number ?? '(bez numeru)'} znaleziona w ${nazwa.miejscownik} `
-            + `i przypisana do zwrotu z ${w.data} (${w.kwota} zł).`,
+          wynik:
+            `korekta ${znaleziona.number ?? '(bez numeru)'} znaleziona w ${nazwa.miejscownik} ` +
+            `i przypisana do zwrotu z ${w.data} (${w.kwota} zł).`,
         });
       }
     } catch {

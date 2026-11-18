@@ -6,9 +6,7 @@ import path, { join } from 'node:path';
 import { PDFDocument } from 'pdf-lib';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import {
-  zapiszKoszt, zapiszRecznyKoszt, zapiszOdrzuconyKoszt,
-} from '../../../src/oms/db/koszty.js';
+import { zapiszKoszt, zapiszRecznyKoszt, zapiszOdrzuconyKoszt } from '../../../src/oms/db/koszty.js';
 import { createZestawienieKosztow } from '../../../src/moduly/koszty/services/zestawienie-kosztow.js';
 
 // ⚠️ Wykrycie `pdftotext` jak w koszt-pdf.test.js: brak binarki POMIJA tylko testy czytajace
@@ -44,31 +42,67 @@ const liniaZ = (tekst, czego) => tekst.split('\n').find((l) => l.includes(czego)
 const AUTH = { authorization: `Basic ${Buffer.from('t:h').toString('base64')}` };
 
 const ksef = (n = {}) => ({
-  ksefNumber: 'K-A', numerDokumentu: 'FV-KSEF-A', sprzedawcaNip: '5252674798', sprzedawcaNazwa: 'OVH',
-  dataWystawienia: '2026-08-04', dataTrwalegoZapisu: '2026-08-04T10:00:00Z',
-  netto: '100.00', vat: '23.00', brutto: '123.00', waluta: 'PLN', rodzaj: 'Vat', maZalacznik: 0, ...n,
+  ksefNumber: 'K-A',
+  numerDokumentu: 'FV-KSEF-A',
+  sprzedawcaNip: '5252674798',
+  sprzedawcaNazwa: 'OVH',
+  dataWystawienia: '2026-08-04',
+  dataTrwalegoZapisu: '2026-08-04T10:00:00Z',
+  netto: '100.00',
+  vat: '23.00',
+  brutto: '123.00',
+  waluta: 'PLN',
+  rodzaj: 'Vat',
+  maZalacznik: 0,
+  ...n,
 });
 const reczny = (n = {}) => ({
-  numerDokumentu: 'INV-META-1', sprzedawcaNip: '', sprzedawcaNazwa: 'Meta',
-  dataWystawienia: '2026-08-10', netto: '50.00', vat: '0.00', brutto: '50.00', waluta: 'PLN', ...n,
+  numerDokumentu: 'INV-META-1',
+  sprzedawcaNip: '',
+  sprzedawcaNazwa: 'Meta',
+  dataWystawienia: '2026-08-10',
+  netto: '50.00',
+  vat: '0.00',
+  brutto: '50.00',
+  waluta: 'PLN',
+  ...n,
 });
 
 // Sierpien: dwie z KSeF (369,00 brutto) i dwie reczne (80,00 brutto); poza miesiacem po jednej.
 function zasiej(db) {
   zapiszKoszt(db, ksef());
-  zapiszKoszt(db, ksef({
-    ksefNumber: 'K-B', numerDokumentu: 'FV-KSEF-B', sprzedawcaNazwa: 'Plastics Group',
-    dataTrwalegoZapisu: '2026-08-06T10:00:00Z', netto: '200.00', vat: '46.00', brutto: '246.00',
-  }));
-  zapiszKoszt(db, ksef({
-    ksefNumber: 'K-LIP', numerDokumentu: 'FV-KSEF-LIP', dataWystawienia: '2026-07-20',
-    dataTrwalegoZapisu: '2026-07-20T10:00:00Z',
-  }));
+  zapiszKoszt(
+    db,
+    ksef({
+      ksefNumber: 'K-B',
+      numerDokumentu: 'FV-KSEF-B',
+      sprzedawcaNazwa: 'Plastics Group',
+      dataTrwalegoZapisu: '2026-08-06T10:00:00Z',
+      netto: '200.00',
+      vat: '46.00',
+      brutto: '246.00',
+    }),
+  );
+  zapiszKoszt(
+    db,
+    ksef({
+      ksefNumber: 'K-LIP',
+      numerDokumentu: 'FV-KSEF-LIP',
+      dataWystawienia: '2026-07-20',
+      dataTrwalegoZapisu: '2026-07-20T10:00:00Z',
+    }),
+  );
   zapiszRecznyKoszt(db, reczny());
-  zapiszRecznyKoszt(db, reczny({
-    numerDokumentu: 'INV-GOOGLE-1', sprzedawcaNazwa: 'Google', dataWystawienia: '2026-08-15',
-    netto: '30.00', brutto: '30.00',
-  }));
+  zapiszRecznyKoszt(
+    db,
+    reczny({
+      numerDokumentu: 'INV-GOOGLE-1',
+      sprzedawcaNazwa: 'Google',
+      dataWystawienia: '2026-08-15',
+      netto: '30.00',
+      brutto: '30.00',
+    }),
+  );
   zapiszRecznyKoszt(db, reczny({ numerDokumentu: 'INV-WRZ', dataWystawienia: '2026-09-02' }));
 }
 
@@ -95,10 +129,15 @@ describe('zestawienie kosztów — usługa', () => {
 
   it('⚠️ kryterium to dzień OTRZYMANIA (jak w paczce), nie data wystawienia: lipcowa faktura odebrana 2 sierpnia jest w sierpniu', async () => {
     const db = openOmsDb(':memory:');
-    zapiszKoszt(db, ksef({
-      ksefNumber: 'K-GRANICA', numerDokumentu: 'FV-31-LIP', dataWystawienia: '2026-07-31',
-      dataTrwalegoZapisu: '2026-08-02T08:00:00Z',
-    }));
+    zapiszKoszt(
+      db,
+      ksef({
+        ksefNumber: 'K-GRANICA',
+        numerDokumentu: 'FV-31-LIP',
+        dataWystawienia: '2026-07-31',
+        dataTrwalegoZapisu: '2026-08-02T08:00:00Z',
+      }),
+    );
     const z = createZestawienieKosztow({ db });
     expect((await z.zbuduj('2026-08')).ksef).toBe(1);
     expect((await z.zbuduj('2026-07')).ksef).toBe(0);
@@ -156,7 +195,10 @@ describe('zestawienie kosztów — usługa', () => {
     for (let n = 18; n <= 40; n += 1) {
       const db = openOmsDb(':memory:');
       for (let i = 0; i < n; i += 1) {
-        zapiszKoszt(db, ksef({ ksefNumber: `K-${i}`, numerDokumentu: `FV-${i}`, dataTrwalegoZapisu: '2026-08-04T10:00:00Z' }));
+        zapiszKoszt(
+          db,
+          ksef({ ksefNumber: `K-${i}`, numerDokumentu: `FV-${i}`, dataTrwalegoZapisu: '2026-08-04T10:00:00Z' }),
+        );
       }
       zapiszRecznyKoszt(db, reczny());
       // eslint-disable-next-line no-await-in-loop
@@ -185,9 +227,15 @@ describe('zestawienie kosztów — usługa', () => {
   gdyJestPdftotext('kwarantanna wchodzi jako ostrzeżenie nad zestawieniem', async () => {
     const db = openOmsDb(':memory:');
     zapiszKoszt(db, ksef());
-    zapiszOdrzuconyKoszt(db, {
-      ksefNumber: 'K-BRAK', invoiceNumber: 'FV/77', permanentStorageDate: '2026-08-07T10:00:00Z',
-    }, 'Brak kwoty: netto (K-BRAK).');
+    zapiszOdrzuconyKoszt(
+      db,
+      {
+        ksefNumber: 'K-BRAK',
+        invoiceNumber: 'FV/77',
+        permanentStorageDate: '2026-08-07T10:00:00Z',
+      },
+      'Brak kwoty: netto (K-BRAK).',
+    );
     const t = tekstZPdf((await createZestawienieKosztow({ db }).zbuduj('2026-08')).bajty);
     expect(t).toMatch(/UWAGA: 1 dokument kosztowy leży w kwarantannie/);
   });
@@ -213,7 +261,11 @@ describe('zestawienie kosztów — trasa i przycisk', () => {
   it('bez hasła 401; zły albo brakujący miesiąc 400 (plik dla księgowej nie ma domyślnego miesiąca)', async () => {
     const { app } = serwer();
     expect((await app.inject({ method: 'GET', url: '/koszty/zestawienie?miesiac=2026-08' })).statusCode).toBe(401);
-    for (const url of ['/koszty/zestawienie', '/koszty/zestawienie?miesiac=2026-8', '/koszty/zestawienie?miesiac=abc']) {
+    for (const url of [
+      '/koszty/zestawienie',
+      '/koszty/zestawienie?miesiac=2026-8',
+      '/koszty/zestawienie?miesiac=abc',
+    ]) {
       const r = await app.inject({ method: 'GET', url, headers: AUTH });
       expect(r.statusCode).toBe(400);
       expect(r.body).toContain('RRRR-MM');

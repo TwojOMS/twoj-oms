@@ -8,7 +8,12 @@ import { modulyDla } from '../../../src/moduly/lista.ts';
 import { ENV_DEMO } from '../../../scripts/demo-dane.mjs';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import {
-  zapiszProduktSklepowy, utworzKarte, powiazProdukt, powiazOfertyHurtem, odepnijOferte, podgladPrzepiec,
+  zapiszProduktSklepowy,
+  utworzKarte,
+  powiazProdukt,
+  powiazOfertyHurtem,
+  odepnijOferte,
+  podgladPrzepiec,
 } from '../../../src/oms/db/magazyn.js';
 import { przelaczStany, dodajRuch, stanKarty, historiaKarty } from '../../../src/oms/db/stany-magazynowe.js';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
@@ -34,29 +39,69 @@ beforeEach(() => {
 });
 
 const lustro = (kanal, produktId, wariantId, kartaId) => {
-  const id = zapiszProduktSklepowy(db, { kanal, produkt_id: produktId, wariant_id: wariantId, nazwa: `Oferta ${produktId}`,
-    odczytane_at: WLACZONE_AT });
+  const id = zapiszProduktSklepowy(db, {
+    kanal,
+    produkt_id: produktId,
+    wariant_id: wariantId,
+    nazwa: `Oferta ${produktId}`,
+    odczytane_at: WLACZONE_AT,
+  });
   if (kartaId) powiazProdukt(db, id, kartaId);
   return id;
 };
 const rejestr = (kanal, idZewnetrzne, kartaId, pochodzenie = 'przejeta') =>
   wstawOferte(db, { kartaId, kanal, idZewnetrzne, pochodzenie }, { teraz: WLACZONE_AT });
-const kartaWRejestrze = (kanal, idZewnetrzne) => Number(db.prepare(
-  'SELECT karta_id FROM oferty_kanalow WHERE kanal = ? AND id_zewnetrzne = ?').get(kanal, idZewnetrzne).karta_id);
-const wierszRejestru = (kanal, idZewnetrzne) => db.prepare(
-  'SELECT karta_id, ilosc_z_oms, ilosc_problem_json FROM oferty_kanalow WHERE kanal = ? AND id_zewnetrzne = ?').get(kanal, idZewnetrzne);
+const kartaWRejestrze = (kanal, idZewnetrzne) =>
+  Number(
+    db.prepare('SELECT karta_id FROM oferty_kanalow WHERE kanal = ? AND id_zewnetrzne = ?').get(kanal, idZewnetrzne)
+      .karta_id,
+  );
+const wierszRejestru = (kanal, idZewnetrzne) =>
+  db
+    .prepare(
+      'SELECT karta_id, ilosc_z_oms, ilosc_problem_json FROM oferty_kanalow WHERE kanal = ? AND id_zewnetrzne = ?',
+    )
+    .get(kanal, idZewnetrzne);
 const slady = () => db.prepare('SELECT * FROM stany_przepiecia ORDER BY id').all();
 const wlacz = () => przelaczStany(db, { wlacz: true, konto, at: WLACZONE_AT });
-const przyjmij = (kartaId, ilosc) => dodajRuch(db, { kartaId, rodzaj: 'przyjecie', ilosc, klucz: `e414-klucz-${++kl}-xxxxxx`, at: PO });
+const przyjmij = (kartaId, ilosc) =>
+  dodajRuch(db, { kartaId, rodzaj: 'przyjecie', ilosc, klucz: `e414-klucz-${++kl}-xxxxxx`, at: PO });
 const sprzedaj = (sklep, ofertaId, ilosc) => {
   numer += 1;
-  return zapiszZamowienie(db, sklep, {
-    zrodlo_id: String(numer), numer: `PC-${numer}`, klient: { first_name: 'Anna' }, dostawa: { city: 'Pęki' },
-    metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '100.00', status_woo: null,
-    oplacone_at: null, anulowane: 0, utworzone_at: PO,
-    pozycje: [{ nazwa: 'Lampa', sku: null, cena_brutto: '50.00', vat: '23', zdjecie_url: null, zrodlo_id: 1000 + numer,
-      produkt_id: null, oferta_id: ofertaId, wariant_id: null, ilosc }],
-  }, {});
+  return zapiszZamowienie(
+    db,
+    sklep,
+    {
+      zrodlo_id: String(numer),
+      numer: `PC-${numer}`,
+      klient: { first_name: 'Anna' },
+      dostawa: { city: 'Pęki' },
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: 0,
+      nip: null,
+      kwota_brutto: '100.00',
+      status_woo: null,
+      oplacone_at: null,
+      anulowane: 0,
+      utworzone_at: PO,
+      pozycje: [
+        {
+          nazwa: 'Lampa',
+          sku: null,
+          cena_brutto: '50.00',
+          vat: '23',
+          zdjecie_url: null,
+          zrodlo_id: 1000 + numer,
+          produkt_id: null,
+          oferta_id: ofertaId,
+          wariant_id: null,
+          ilosc,
+        },
+      ],
+    },
+    {},
+  );
 };
 const stan = (id) => stanKarty(db, id)?.stan;
 
@@ -95,7 +140,11 @@ describe('przepięcie przenosi kartę w rejestrze (D59)', () => {
     expect(JSON.parse(wierszRejestru(ALLEGRO, '7700000005').ilosc_problem_json).kod).toBe('brak-karty');
     powiazOfertyHurtem(db, [{ produktId: oferta, kartaId: kartaB }], [ALLEGRO]);
 
-    expect(wierszRejestru(ALLEGRO, '7700000005')).toMatchObject({ karta_id: kartaB, ilosc_z_oms: 1, ilosc_problem_json: null });
+    expect(wierszRejestru(ALLEGRO, '7700000005')).toMatchObject({
+      karta_id: kartaB,
+      ilosc_z_oms: 1,
+      ilosc_problem_json: null,
+    });
   });
 
   it('wariant Woo 12/34 → B; inny wariant i rodzic zostają na A', () => {
@@ -149,8 +198,14 @@ describe('podgląd i ślad przy włączonych stanach (D59)', () => {
     const p = podgladPrzepiec(db, [{ produktSklepowyId: oferta, naKarte: kartaA }]);
 
     expect(p.granica).toBe(WLACZONE_AT);
-    expect(p.karty.map(({ kartaId, przed, po }) => ({ kartaId, przed, po })).sort((x, y) => x.kartaId - y.kartaId))
-      .toEqual([{ kartaId: kartaA, przed: 7, po: 4 }, { kartaId: kartaB, przed: 2, po: 5 }].sort((x, y) => x.kartaId - y.kartaId));
+    expect(
+      p.karty.map(({ kartaId, przed, po }) => ({ kartaId, przed, po })).sort((x, y) => x.kartaId - y.kartaId),
+    ).toEqual(
+      [
+        { kartaId: kartaA, przed: 7, po: 4 },
+        { kartaId: kartaB, przed: 2, po: 5 },
+      ].sort((x, y) => x.kartaId - y.kartaId),
+    );
     expect(p.karty.find((k) => k.kartaId === kartaA).nazwa).toBe('Lampa Półcień A');
     expect([stan(kartaA), stan(kartaB)]).toEqual([7, 2]);
     expect(kartaWRejestrze(ALLEGRO, '7700000010')).toBe(kartaB);
@@ -163,15 +218,33 @@ describe('podgląd i ślad przy włączonych stanach (D59)', () => {
 
     expect([stan(kartaA), stan(kartaB)]).toEqual([4, 5]);
     expect(kartaWRejestrze(ALLEGRO, '7700000010')).toBe(kartaA);
-    expect(slady()).toEqual([expect.objectContaining({ kanal: ALLEGRO, produkt_id: '7700000010', wariant_id: null,
-      z_karty: kartaB, na_karte: kartaA, ilosc_wstecz: 3, konto_login: 'operator' })]);
+    expect(slady()).toEqual([
+      expect.objectContaining({
+        kanal: ALLEGRO,
+        produkt_id: '7700000010',
+        wariant_id: null,
+        z_karty: kartaB,
+        na_karte: kartaA,
+        ilosc_wstecz: 3,
+        konto_login: 'operator',
+      }),
+    ]);
     for (const id of [kartaA, kartaB]) {
       const wpis = historiaKarty(db, id).find((w) => w.typ === 'przepiecie');
-      expect(wpis).toMatchObject({ ilosc: 0, ilosc_wstecz: 3, konto_login: 'operator', kanal: ALLEGRO, produkt_id: '7700000010' });
+      expect(wpis).toMatchObject({
+        ilosc: 0,
+        ilosc_wstecz: 3,
+        konto_login: 'operator',
+        kanal: ALLEGRO,
+        produkt_id: '7700000010',
+      });
       expect(wpis.powod).toContain('3 szt.');
     }
     // Historia dalej sumuje się do stanu: wpis przepięcia jest opisem, nie drugim rozchodem.
-    for (const [id, s] of [[kartaA, 4], [kartaB, 5]]) {
+    for (const [id, s] of [
+      [kartaA, 4],
+      [kartaB, 5],
+    ]) {
       expect(historiaKarty(db, id).reduce((suma, w) => suma + w.ilosc, 0)).toBe(s);
     }
   });
@@ -181,8 +254,10 @@ describe('podgląd i ślad przy włączonych stanach (D59)', () => {
     odepnijOferte(db, oferta, [ALLEGRO], { konto });
     powiazOfertyHurtem(db, [{ produktId: oferta, kartaId: kartaA }], [ALLEGRO], { konto });
 
-    expect(slady().map(({ z_karty, na_karte, ilosc_wstecz }) => ({ z_karty, na_karte, ilosc_wstecz })))
-      .toEqual([{ z_karty: kartaB, na_karte: null, ilosc_wstecz: 3 }, { z_karty: null, na_karte: kartaA, ilosc_wstecz: 3 }]);
+    expect(slady().map(({ z_karty, na_karte, ilosc_wstecz }) => ({ z_karty, na_karte, ilosc_wstecz }))).toEqual([
+      { z_karty: kartaB, na_karte: null, ilosc_wstecz: 3 },
+      { z_karty: null, na_karte: kartaA, ilosc_wstecz: 3 },
+    ]);
     expect([stan(kartaA), stan(kartaB)]).toEqual([4, 5]);
   });
 
@@ -209,9 +284,16 @@ describe('stany wyłączone (D14)', () => {
 });
 
 describe('ekran Magazyn → Powiązania: podgląd przed zapisem', () => {
-  const auth = { authorization: `Basic ${Buffer.from('operator:atrapa').toString('base64')}`, origin: 'http://localhost' };
-  const serwer = () => buildOmsServer({ db, config: { auth: { user: 'operator', pass: 'atrapa' } },
-    magazyn: { gotowy: () => true, stan: () => ({ trwa: false, kanaly: [] }) } });
+  const auth = {
+    authorization: `Basic ${Buffer.from('operator:atrapa').toString('base64')}`,
+    origin: 'http://localhost',
+  };
+  const serwer = () =>
+    buildOmsServer({
+      db,
+      config: { auth: { user: 'operator', pass: 'atrapa' } },
+      magazyn: { gotowy: () => true, stan: () => ({ trwa: false, kanaly: [] }) },
+    });
   const post = (app, url, payload) => app.inject({ method: 'POST', url, headers: auth, payload });
   const karta = (id) => db.prepare('SELECT karta_id FROM produkty_sklepowe WHERE id = ?').get(id).karta_id;
   // Kanał Allegro z konfiguracji serwera testowego (`tests/pomoc/serwer-testowy-oms.ts`) — ekran rusza tylko te kanały.

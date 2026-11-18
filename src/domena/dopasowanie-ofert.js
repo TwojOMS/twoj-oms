@@ -28,11 +28,7 @@ import { nazwaBezRozmiaru, wymiaryZTekstu } from './rozmiar.js';
 // pisza te same slowa raz z ogonkami, raz bez (tytul oferty bywa przepisywany recznie),
 // wiec fold diakrytykow jest tu warunkiem trafiania, a nie ozdoba.
 function bezOgonkow(tekst) {
-  return tekst
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .replace(/ł/gu, 'l')
-    .replace(/Ł/gu, 'L');
+  return tekst.normalize('NFD').replace(/\p{M}/gu, '').replace(/ł/gu, 'l').replace(/Ł/gu, 'L');
 }
 
 // ⚠️⚠️ TOKEN JEDNOZNAKOWY ZOSTAJE, GDY NIESIE CYFRE — I TO JEST POMIAR, NIE PRZECZUCIE.
@@ -101,9 +97,7 @@ function wymiaryZKolumn(pozycja) {
  * wszystkiemu, co niejednoznaczne.
  */
 function wymiaryPozycji(pozycja) {
-  return wymiaryZKolumn(pozycja)
-    ?? wymiaryZTekstu(pozycja?.nazwa)
-    ?? wymiaryZTekstu(pozycja?.rozmiar_tekst);
+  return wymiaryZKolumn(pozycja) ?? wymiaryZTekstu(pozycja?.nazwa) ?? wymiaryZTekstu(pozycja?.rozmiar_tekst);
 }
 
 // ⚠️⚠️ ROZMIAR JEST ROZSTRZYGACZEM, NIE WARUNKIEM. `KLOSZ 15cm/20cm`, `23cm/28cm`
@@ -125,9 +119,7 @@ function zRozmiarem(ocena, zapytanie, kandydat) {
   // ktore powiazania potrzebuja najbardziej.
   if (!a || !b) return ocena;
   const zgodny = a.szerokosc_mm === b.szerokosc_mm && a.wysokosc_mm === b.wysokosc_mm;
-  return zgodny
-    ? ocena + (1 - ocena) * PODNIESIENIE_ZGODNEGO
-    : ocena * SCIECIE_SPRZECZNEGO;
+  return zgodny ? ocena + (1 - ocena) * PODNIESIENIE_ZGODNEGO : ocena * SCIECIE_SPRZECZNEGO;
 }
 
 // ——— MIARA ————————————————————————————————————————————————————————————————————
@@ -274,6 +266,9 @@ export function propozycje(oferta, karty, { ile = 3 } = {}) {
  * a nie `karta`) — wolajacy nie ma czytac pola `karta` i wiedziec, ze siedzi w nim oferta.
  */
 export function propozycjeOfert(karta, oferty, opcje) {
-  return propozycje(karta, oferty, opcje)
-    .map(({ karta: oferta, ocena, wspolneSlowa }) => ({ oferta, ocena, wspolneSlowa }));
+  return propozycje(karta, oferty, opcje).map(({ karta: oferta, ocena, wspolneSlowa }) => ({
+    oferta,
+    ocena,
+    wspolneSlowa,
+  }));
 }

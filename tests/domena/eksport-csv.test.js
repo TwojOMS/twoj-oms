@@ -53,8 +53,8 @@ describe('CSV sprzedaży — ochrona przed formułami arkusza', () => {
     ['-1+1', "'-1+1"],
   ])('zabezpiecza numer %j apostrofem przed cytowaniem CSV', (numer, komorka) => {
     expect(csvSprzedazy([wiersz({ numer })])).toBe(
-      'Dzień;Kanał;Numer;Źródło;Brutto;Netto;Faktura;Opłacone\r\n'
-      + `2026-06-10;SWIETLIK_PL;${komorka};Apilo;246,00;200,00;nie;tak`,
+      'Dzień;Kanał;Numer;Źródło;Brutto;Netto;Faktura;Opłacone\r\n' +
+        `2026-06-10;SWIETLIK_PL;${komorka};Apilo;246,00;200,00;nie;tak`,
     );
   });
 

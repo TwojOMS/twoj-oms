@@ -20,7 +20,10 @@ const PO_ZAPISIE = `${EKRAN}?zapisano=ksef-automat#ksef-automat`;
 const otwarte = [];
 function panel({ demo = null } = {}) {
   const p = demo
-    ? (() => { const db = openOmsDb(':memory:'); return { db, app: buildOmsServer({ poller: POLLER, db, config: { auth: { ...CONFIG.auth }, demo } }) }; })()
+    ? (() => {
+        const db = openOmsDb(':memory:');
+        return { db, app: buildOmsServer({ poller: POLLER, db, config: { auth: { ...CONFIG.auth }, demo } }) };
+      })()
     : nowyPanel();
   zalozKonto(p.db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
   // Konto z Ustawieniami, ale bez admina nie zapisze automatu KSeF.
@@ -32,12 +35,16 @@ function panel({ demo = null } = {}) {
   otwarte.push(wynik);
   return wynik;
 }
-const sekcja = (html, id) => new RegExp(`<section class="ust-sekcja[^"]*" id="${id}">[\\s\\S]*?<\\/section>`, 'u').exec(html)?.[0] ?? '';
+const sekcja = (html, id) =>
+  new RegExp(`<section class="ust-sekcja[^"]*" id="${id}">[\\s\\S]*?<\\/section>`, 'u').exec(html)?.[0] ?? '';
 const akcjaFormularza = (html) => /<form id="ksef-automat-formularz"[^>]*action="([^"]+)"/u.exec(html)?.[1];
 
 afterEach(async () => {
   vi.useRealTimers();
-  for (const p of otwarte.splice(0)) { await p.app.close(); p.db.close(); }
+  for (const p of otwarte.splice(0)) {
+    await p.app.close();
+    p.db.close();
+  }
 });
 
 describe('ekran Ustawienia → Automatyzacje', () => {
@@ -72,7 +79,9 @@ describe('ekran Ustawienia → Automatyzacje', () => {
 
   it('autoodpowiedź włączona w Ustawieniach → wiersz mówi „Włączona”', async () => {
     const p = panel();
-    p.db.prepare("INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('formulka.wlaczona', '1', '2026-10-21')").run();
+    p.db
+      .prepare("INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('formulka.wlaczona', '1', '2026-10-21')")
+      .run();
     const r = await get(p.app, EKRAN, p.admin);
     expect(sekcja(r.body, 'autoodpowiedz')).toContain('Włączona');
   });
@@ -87,7 +96,9 @@ describe('ekran Ustawienia → Automatyzacje', () => {
   });
 
   it('gość demo ogląda ekran (200), zapisu nie zrobi (403)', async () => {
-    const p = panel({ demo: { login: 'demo', haslo: 'demo', reset: 'co 60 minut', resetPlanowy: null, resetGodzina: null } });
+    const p = panel({
+      demo: { login: 'demo', haslo: 'demo', reset: 'co 60 minut', resetPlanowy: null, resetGodzina: null },
+    });
     zalozKonto(p.db, { login: 'demo', imie: 'Gość', haslo: 'demo', rola: 'sprzedaz' });
     ustawUprawnienia(p.db, kontoPoLoginie(p.db, 'demo').id, [...ekranyRoli('sprzedaz'), 'ustawienia']);
     const gosc = jako(p.db, 'demo');
@@ -113,7 +124,14 @@ describe('ekran Ustawienia → Automatyzacje', () => {
     expect(wczytajAutomatKsef(p.db).wlaczony).toBe(false);
   });
 
-  it.each([['25:00', '1'], ['8:00', '1'], ['', '1'], ['20:00', 'tak'], ['23:59', '1'], ['23:46', '1']])('zła godzina %j / przełącznik %j → 400 z ekranem, nic nie zapisane', async (godzina, wlaczony) => {
+  it.each([
+    ['25:00', '1'],
+    ['8:00', '1'],
+    ['', '1'],
+    ['20:00', 'tak'],
+    ['23:59', '1'],
+    ['23:46', '1'],
+  ])('zła godzina %j / przełącznik %j → 400 z ekranem, nic nie zapisane', async (godzina, wlaczony) => {
     const p = panel();
     const r = await post(p.app, ZAPIS, p.admin, { wlaczony, godzina });
     expect(r.statusCode).toBe(400);

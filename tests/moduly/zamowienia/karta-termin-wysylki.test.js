@@ -13,15 +13,43 @@ const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null })
 
 const dzis = dzienWarszawa(new Date().toISOString());
 const zaDni = (n) => new Date(Date.parse(`${dzis}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
-const naKarcie = (dzien) => { const [r, m, d] = dzien.split('-'); return `${d}.${m}.${r}`; };
+const naKarcie = (dzien) => {
+  const [r, m, d] = dzien.split('-');
+  return `${d}.${m}.${r}`;
+};
 
 const zam = (id, nad = {}) => ({
-  zrodlo_id: id, numer: `L-${id}`, klient: { first_name: 'Ala', last_name: 'Lampowa', email: 'ala@lampy.test' },
-  dostawa: { first_name: 'Ala', last_name: 'Lampowa', address_1: 'Świetlna 2', postcode: '00-001', city: 'Lampowo', country: 'PL' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '240.00',
-  koszt_dostawy_brutto: '0.00', status_woo: 'processing', oplacone_at: new Date().toISOString(), anulowane: 0,
+  zrodlo_id: id,
+  numer: `L-${id}`,
+  klient: { first_name: 'Ala', last_name: 'Lampowa', email: 'ala@lampy.test' },
+  dostawa: {
+    first_name: 'Ala',
+    last_name: 'Lampowa',
+    address_1: 'Świetlna 2',
+    postcode: '00-001',
+    city: 'Lampowo',
+    country: 'PL',
+  },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '240.00',
+  koszt_dostawy_brutto: '0.00',
+  status_woo: 'processing',
+  oplacone_at: new Date().toISOString(),
+  anulowane: 0,
   utworzone_at: new Date().toISOString(),
-  pozycje: [{ nazwa: 'Lampa wisząca Półcień', sku: 'LMP-1', ilosc: 1, cena_brutto: '240.00', brutto_linii: '240.00', vat: null }],
+  pozycje: [
+    {
+      nazwa: 'Lampa wisząca Półcień',
+      sku: 'LMP-1',
+      ilosc: 1,
+      cena_brutto: '240.00',
+      brutto_linii: '240.00',
+      vat: null,
+    },
+  ],
   ...nad,
 });
 
@@ -48,11 +76,19 @@ const formularzTerminu = (html) => {
   if (tu === -1) return '';
   return html.slice(html.lastIndexOf('<form', tu), html.indexOf('</form>', tu));
 };
-const zapisz = (id, data) => app.inject({
-  method: 'POST', url: `/zamowienia/${id}/termin-wysylki`, headers: formularz, payload: `data_wysylki=${encodeURIComponent(data)}`,
-});
+const zapisz = (id, data) =>
+  app.inject({
+    method: 'POST',
+    url: `/zamowienia/${id}/termin-wysylki`,
+    headers: formularz,
+    payload: `data_wysylki=${encodeURIComponent(data)}`,
+  });
 const kolumna = (id) => db.prepare('SELECT termin_wysylki_reczny AS d FROM zamowienia WHERE id = ?').get(id).d;
-const wpisy = (id) => db.prepare("SELECT wynik FROM log WHERE zamowienie_id = ? AND akcja = 'termin.wysylki' ORDER BY id").all(id).map((w) => w.wynik);
+const wpisy = (id) =>
+  db
+    .prepare("SELECT wynik FROM log WHERE zamowienie_id = ? AND akcja = 'termin.wysylki' ORDER BY id")
+    .all(id)
+    .map((w) => w.wynik);
 
 describe('karta — wiersz „Termin wysyłki”', () => {
   it('standard: data z objaśnieniem, bez znacznika ręcznego', async () => {
@@ -111,7 +147,9 @@ describe('POST /zamowienia/:id/termin-wysylki', () => {
     const id = zapiszZamowienie(db, 'lampy', zam(9115), {});
     await zapisz(id, zaDni(4));
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/termin-wysylki`, headers: formularz,
+      method: 'POST',
+      url: `/zamowienia/${id}/termin-wysylki`,
+      headers: formularz,
       payload: `data_wysylki=${zaDni(4)}&przywroc=1`,
     });
     expect(r.statusCode).toBe(302);
@@ -121,8 +159,10 @@ describe('POST /zamowienia/:id/termin-wysylki', () => {
   it('zła data: 400 z czytelnym powodem, kolumna bez zmian, bez wpisu w dzienniku', async () => {
     const id = zapiszZamowienie(db, 'lampy', zam(9113), {});
     const powody = [
-      [zaDni(-1), 'wcześniejsza niż dziś'], ['2026-02-30', 'to nie jest data'],
-      ['31.12.2026', 'to nie jest data'], [zaDni(400), 'najwyżej rok naprzód'],
+      [zaDni(-1), 'wcześniejsza niż dziś'],
+      ['2026-02-30', 'to nie jest data'],
+      ['31.12.2026', 'to nie jest data'],
+      [zaDni(400), 'najwyżej rok naprzód'],
     ];
     for (const [zla, powod] of powody) {
       const r = await zapisz(id, zla);

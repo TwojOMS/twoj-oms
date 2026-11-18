@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
-  trescPotwierdzenia, czyWolnoWyslacPotwierdzenie, adresatPotwierdzenia,
+  trescPotwierdzenia,
+  czyWolnoWyslacPotwierdzenie,
+  adresatPotwierdzenia,
 } from '../pomoc/testowe-potwierdzenie-zamowienia.js';
 
 const zam = (nad = {}) => ({
@@ -15,7 +17,14 @@ const zam = (nad = {}) => ({
   chce_fakture: 0,
   anulowane: 0,
   klient: { email: 'klient@firma.pl', phone: '600100200' },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', company: 'Wzorowy Kontrahent', address_1: 'ul. Testowa 7', postcode: '00-950', city: 'Warszawa' },
+  dostawa: {
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    company: 'Wzorowy Kontrahent',
+    address_1: 'ul. Testowa 7',
+    postcode: '00-950',
+    city: 'Warszawa',
+  },
   pozycje: [
     { nazwa: 'Lampa stołowa Grzybek 30x45', sku: 'LMP-GRZ-30', ilosc: 3, cena_brutto: '74.90', brutto_linii: '224.70' },
   ],
@@ -87,7 +96,9 @@ describe('treść potwierdzenia', () => {
   // ⚠️ PRZY POBRANIU KWOTA MUSI PASC W MAILU — to jedyna liczba, ktora klient ma miec
   // przygotowana dla kuriera, i jedyna, o ktora dzwoni, gdy jej nie zna.
   it('przy pobraniu podaje kwotę do zapłaty kurierowi', () => {
-    const t = trescPotwierdzenia(zam({ pobranie: 1, kwota_pobrania: '243.70', metoda_platnosci: 'Za pobraniem' })).tekst;
+    const t = trescPotwierdzenia(
+      zam({ pobranie: 1, kwota_pobrania: '243.70', metoda_platnosci: 'Za pobraniem' }),
+    ).tekst;
     expect(t).toContain('Za pobraniem — kurier pobierze 243,70 zł');
   });
 

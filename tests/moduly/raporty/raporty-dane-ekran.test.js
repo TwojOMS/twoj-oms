@@ -6,7 +6,9 @@ import { daneMiesiaca } from '../../../src/oms/db/dane-miesieczne.js';
 const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64') };
 const config = { auth: { user: 'adam', pass: 'x' }, klienciZbiorczy: [] };
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 
 const zapisz = async (payload) => {
   const app = buildOmsServer({ db, config });
@@ -16,7 +18,9 @@ const zapisz = async (payload) => {
   // przejsc dalej do trasy. Ta sama konwencja, co we WSZYSTKICH innych testach POST w tym
   // katalogu (`origin: 'http://localhost'`).
   const odp = await app.inject({
-    method: 'POST', url: '/finanse/dane', payload,
+    method: 'POST',
+    url: '/finanse/dane',
+    payload,
     headers: { ...naglowek, origin: 'http://localhost' },
   });
   await app.close();
@@ -26,8 +30,13 @@ const zapisz = async (payload) => {
 describe('ekran danych recznych', () => {
   it('zapisuje skladki i wraca na ten sam miesiac', async () => {
     const odp = await zapisz({
-      miesiac: '2026-07', zusSpoleczne: '1788.29', zusZdrowotna: '500.00',
-      zusFunduszPracy: '138.47', zusRazem: '2426.76', pit5: '300.00', vat7: '1200.00',
+      miesiac: '2026-07',
+      zusSpoleczne: '1788.29',
+      zusZdrowotna: '500.00',
+      zusFunduszPracy: '138.47',
+      zusRazem: '2426.76',
+      pit5: '300.00',
+      vat7: '1200.00',
     });
     expect(odp.statusCode).toBe(302);
     expect(odp.headers.location).toContain('2026-07');
@@ -46,8 +55,11 @@ describe('ekran danych recznych', () => {
 
   it('ekran pokazuje ROZJAZD skladnikow i przelewu', async () => {
     await zapisz({
-      miesiac: '2026-01', zusSpoleczne: '1432.08', zusZdrowotna: '314.96',
-      zusFunduszPracy: '127.49', zusRazem: '2088.92',
+      miesiac: '2026-01',
+      zusSpoleczne: '1432.08',
+      zusZdrowotna: '314.96',
+      zusFunduszPracy: '127.49',
+      zusRazem: '2088.92',
     });
     const app = buildOmsServer({ db, config });
     const odp = await app.inject({ method: 'GET', url: '/finanse/dane/2026-01', headers: naglowek });

@@ -12,7 +12,8 @@ export const ADRES_GUS = 'https://wyszukiwarkaregon.stat.gov.pl/wsBIR/UslugaBIRz
 /** Ekran Ustawienia → Integracje → GUS. */
 export const EKRAN_GUS = '/ustawienia/integracje/gus';
 /** Odmowa przycisku „Pobierz z GUS”, gdy nie ma klucza ani w pliku, ani w panelu. */
-export const KOMUNIKAT_BRAK_GUS = 'GUS nie jest skonfigurowany — dodaj klucz w Ustawienia → Integracje → GUS albo wpisz dane ręcznie.';
+export const KOMUNIKAT_BRAK_GUS =
+  'GUS nie jest skonfigurowany — dodaj klucz w Ustawienia → Integracje → GUS albo wpisz dane ręcznie.';
 
 const tekst = (v) => String(v ?? '').trim();
 
@@ -26,8 +27,12 @@ export function sprawdzFormularzGus(body = {}, zapisane = null) {
   // Klucz wklejany z maila często niesie spację albo koniec linii na brzegu — te obcinamy.
   const klucz = tekst(body.klucz);
   const stary = String(zapisane?.sekrety?.klucz ?? '');
-  if (!klucz) bledy.push(stary ? 'Wpisz nowy klucz — zapisany klucz zostaje bez zmian.' : 'Podaj klucz użytkownika usługi BIR (GUS).');
-  else if (/\s/u.test(klucz)) bledy.push('Klucz nie może zawierać spacji — skopiuj go z maila od GUS w całości, bez dopisków.');
+  if (!klucz)
+    bledy.push(
+      stary ? 'Wpisz nowy klucz — zapisany klucz zostaje bez zmian.' : 'Podaj klucz użytkownika usługi BIR (GUS).',
+    );
+  else if (/\s/u.test(klucz))
+    bledy.push('Klucz nie może zawierać spacji — skopiuj go z maila od GUS w całości, bez dopisków.');
   else if (klucz.length < 10) bledy.push('To za krótkie na klucz GUS — skopiuj cały klucz z maila od GUS.');
   else if (klucz.length > 100) bledy.push('Klucz może mieć najwyżej 100 znaków.');
   return { ustawienia: {}, sekrety: { klucz: klucz || stary }, bledy };

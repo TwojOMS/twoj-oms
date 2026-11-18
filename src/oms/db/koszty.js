@@ -40,21 +40,35 @@ const ZRODLO_RECZNE = 'reczne';
 // `naWiersz`). Zadnego `Number(...)` po drodze: przepuszczenie kwoty przez liczbe tutaj
 // cofneloby cala te decyzje w jednym miejscu, ktorego nikt by juz nie szukal.
 export function zapiszKoszt(db, w) {
-  const wynik = db.prepare(`
+  const wynik = db
+    .prepare(
+      `
     INSERT OR IGNORE INTO koszty
       (ksef_number, numer_dokumentu, sprzedawca_nip, sprzedawca_nazwa, data_wystawienia,
        data_trwalego_zapisu, netto, vat, brutto, waluta, rodzaj, ma_zalacznik, pobrany_at,
        zrodlo)
     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-  `).run(
-    w.ksefNumber, w.numerDokumentu, w.sprzedawcaNip, w.sprzedawcaNazwa, w.dataWystawienia,
-    w.dataTrwalegoZapisu, w.netto, w.vat, w.brutto, w.waluta, w.rodzaj, w.maZalacznik,
-    teraz(),
-    // ⚠️ ZRODLO WPISUJEMY JAWNIE, mimo `DEFAULT 'ksef'` w schemacie. To jest JEDYNA droga
-    // zapisu dokumentu z KSeF, wiec zdanie „ten wiersz przyszedl z KSeF" ma stac tu, a nie
-    // wynikac z wartosci domyslnej, ktora ktos kiedys zmieni przy okazji.
-    ZRODLO_KSEF,
-  );
+  `,
+    )
+    .run(
+      w.ksefNumber,
+      w.numerDokumentu,
+      w.sprzedawcaNip,
+      w.sprzedawcaNazwa,
+      w.dataWystawienia,
+      w.dataTrwalegoZapisu,
+      w.netto,
+      w.vat,
+      w.brutto,
+      w.waluta,
+      w.rodzaj,
+      w.maZalacznik,
+      teraz(),
+      // ⚠️ ZRODLO WPISUJEMY JAWNIE, mimo `DEFAULT 'ksef'` w schemacie. To jest JEDYNA droga
+      // zapisu dokumentu z KSeF, wiec zdanie „ten wiersz przyszedl z KSeF" ma stac tu, a nie
+      // wynikac z wartosci domyslnej, ktora ktos kiedys zmieni przy okazji.
+      ZRODLO_KSEF,
+    );
   if (wynik.changes === 1) return true;
   // ⚠️⚠️ `changes === 0` MA DWA ZNACZENIA, A TYLKO JEDNO Z NICH JEST NIEGROZNE.
   //
@@ -69,9 +83,9 @@ export function zapiszKoszt(db, w) {
   // dokumentach widzianych ponownie, ktore i tak nic dalej nie robia.
   if (!db.prepare('SELECT 1 AS x FROM koszty WHERE ksef_number = ?').get(w.ksefNumber)) {
     throw bladOperatora(
-      `Baza odrzuciła fakturę kosztową „${w.ksefNumber}" (dokument „${w.numerDokumentu ?? ''}") `
-      + '— brakuje którejś z wymaganych wartości: numeru dokumentu, daty wystawienia, daty '
-      + 'trwałego zapisu, kwot, waluty albo rodzaju.',
+      `Baza odrzuciła fakturę kosztową „${w.ksefNumber}" (dokument „${w.numerDokumentu ?? ''}") ` +
+        '— brakuje którejś z wymaganych wartości: numeru dokumentu, daty wystawienia, daty ' +
+        'trwałego zapisu, kwot, waluty albo rodzaju.',
     );
   }
   return false;
@@ -100,10 +114,14 @@ export function zapiszKoszt(db, w) {
 export function kosztyMiesiaca(db, miesiac) {
   const zakres = zakresMiesiaca(miesiac);
   if (!zakres) throw bladOperatora(`„${miesiac ?? ''}" to nie jest miesiąc w formacie RRRR-MM.`);
-  return db.prepare(`
+  return db
+    .prepare(
+      `
     SELECT * FROM koszty WHERE data_wystawienia >= ? AND data_wystawienia <= ?
     ORDER BY data_wystawienia ASC, numer_dokumentu ASC
-  `).all(zakres.od, zakres.do + PO_KONCU_DNIA);
+  `,
+    )
+    .all(zakres.od, zakres.do + PO_KONCU_DNIA);
 }
 
 // Ogonek podnoszacy GORNA granice ponad kazdy znacznik czasu ostatniego dnia miesiaca:
@@ -117,9 +135,8 @@ const PO_KONCU_DNIA = '~';
 // i ten sam, ktory bierze `zarchiwizuj` oraz generator wizualizacji (pdf/koszt-pdf.js).
 // Drugiego mapowania nie ma i miec nie ma. Brak dokumentu oddaje `undefined` — o tym, ze to
 // odmowa dla operatora, a nie pusty PDF, decyduje services/wizualizacja-kosztu.js.
-export const kosztPoNumerze = (db, ksefNumber) => db.prepare(
-  'SELECT * FROM koszty WHERE ksef_number = ?',
-).get(String(ksefNumber ?? ''));
+export const kosztPoNumerze = (db, ksefNumber) =>
+  db.prepare('SELECT * FROM koszty WHERE ksef_number = ?').get(String(ksefNumber ?? ''));
 
 // ⚠️⚠️ KOSZTY OTRZYMANE W MIESIACU — INNE KRYTERIUM NIZ `kosztyMiesiaca` WYZEJ, kryterium
 // biura rachunkowego. Paczka dla biura ma pokazac, co panel OTRZYMAL
@@ -145,14 +162,18 @@ export function kosztyOtrzymaneWMiesiacu(db, miesiac) {
   // klucza sortowania do samego dnia (data z KSeF niesie znacznik czasu, data reczna — nie),
   // zeby oba zrodla sortowaly sie po tym samym ksztalcie napisu. Filtrowanie wyzej idzie
   // ZAKRESEM po surowej kolumnie, wiec indeks przy nim dziala normalnie.
-  return db.prepare(`
+  return db
+    .prepare(
+      `
     SELECT *, CASE WHEN zrodlo = 'reczne' THEN substr(data_wystawienia, 1, 10)
       ELSE substr(data_trwalego_zapisu, 1, 10) END AS dzien_otrzymania
     FROM koszty
     WHERE (zrodlo = 'ksef'   AND data_trwalego_zapisu >= ? AND data_trwalego_zapisu <= ?)
        OR (zrodlo = 'reczne' AND data_wystawienia     >= ? AND data_wystawienia     <= ?)
     ORDER BY dzien_otrzymania ASC, numer_dokumentu ASC
-  `).all(zakres.od, gorna, zakres.od, gorna);
+  `,
+    )
+    .all(zakres.od, gorna, zakres.od, gorna);
 }
 
 // ⚠️ ILE DOKUMENTOW BIURO RACHUNKOWE NIE DOSTANIE W PACZCE TEGO MIESIACA — bo panel nie umial
@@ -163,9 +184,9 @@ export function kosztyOtrzymaneWMiesiacu(db, miesiac) {
 export function odrzuconeWMiesiacu(db, miesiac) {
   const zakres = zakresMiesiaca(miesiac);
   if (!zakres) throw bladOperatora(`„${miesiac ?? ''}" to nie jest miesiąc w formacie RRRR-MM.`);
-  return db.prepare(
-    'SELECT COUNT(*) c FROM koszty_odrzucone WHERE data_trwalego_zapisu >= ? AND data_trwalego_zapisu <= ?',
-  ).get(zakres.od, zakres.do + PO_KONCU_DNIA).c;
+  return db
+    .prepare('SELECT COUNT(*) c FROM koszty_odrzucone WHERE data_trwalego_zapisu >= ? AND data_trwalego_zapisu <= ?')
+    .get(zakres.od, zakres.do + PO_KONCU_DNIA).c;
 }
 
 // NULL znaczy „nigdy jeszcze nie pobieralismy" — i to jest jedyny stan, w ktorym wolno
@@ -177,12 +198,14 @@ export const wczytajKursor = (db) => db.prepare('SELECT kursor FROM stan_kosztow
 // Jedno wywolanie, nie dwa — kursor przesuniety bez skasowania bledu zostawialby panel
 // z czerwonym komunikatem o awarii, ktora dawno minela.
 export function zapiszKursor(db, iso) {
-  db.prepare(`
+  db.prepare(
+    `
     INSERT INTO stan_kosztow (id, kursor, ostatnie_udane_at, ostatni_blad, ostatni_blad_at)
       VALUES (1,?,?,NULL,NULL)
     ON CONFLICT(id) DO UPDATE SET kursor = excluded.kursor,
       ostatnie_udane_at = excluded.ostatnie_udane_at, ostatni_blad = NULL, ostatni_blad_at = NULL
-  `).run(iso, teraz());
+  `,
+  ).run(iso, teraz());
 }
 
 // ⚠️⚠️ UDANY PRZEBIEG BEZ ANI JEDNEGO DOKUMENTU TEZ JEST UDANY.
@@ -199,12 +222,14 @@ export function zapiszKursor(db, iso) {
 // historii — ta sama pulapka, ktora opisuje `zapiszBladPobrania` nizej. Przy pierwszym w zyciu
 // przebiegu wiersz powstaje z kursorem NULL, czyli „jeszcze nic nie pobralismy", i to jest prawda.
 export function odnotujUdanyPrzebieg(db) {
-  db.prepare(`
+  db.prepare(
+    `
     INSERT INTO stan_kosztow (id, kursor, ostatnie_udane_at, ostatni_blad, ostatni_blad_at)
       VALUES (1,NULL,?,NULL,NULL)
     ON CONFLICT(id) DO UPDATE SET ostatnie_udane_at = excluded.ostatnie_udane_at,
       ostatni_blad = NULL, ostatni_blad_at = NULL
-  `).run(teraz());
+  `,
+  ).run(teraz());
 }
 
 export const stanKosztow = (db) => db.prepare('SELECT * FROM stan_kosztow WHERE id = 1').get() ?? null;
@@ -220,12 +245,14 @@ export const stanKosztow = (db) => db.prepare('SELECT * FROM stan_kosztow WHERE 
 // z bledem przy najblizszym udanym przebiegu (`zapiszKursor` wyzej), zeby na ekranie nie
 // zostala data awarii, ktorej juz nie ma.
 export function zapiszBladPobrania(db, tresc) {
-  db.prepare(`
+  db.prepare(
+    `
     INSERT INTO stan_kosztow (id, kursor, ostatnie_udane_at, ostatni_blad, ostatni_blad_at)
       VALUES (1,NULL,NULL,?,?)
     ON CONFLICT(id) DO UPDATE SET ostatni_blad = excluded.ostatni_blad,
       ostatni_blad_at = excluded.ostatni_blad_at
-  `).run(tresc, teraz());
+  `,
+  ).run(tresc, teraz());
 }
 
 // ⚠️⚠️ KWARANTANNA: DOKUMENT, KTOREGO PANEL NIE UMIAL ZAPISAC JAKO KOSZT.
@@ -248,12 +275,13 @@ export function zapiszOdrzuconyKoszt(db, metadane, powod) {
   const ksefNumber = metadane?.ksefNumber;
   if (!ksefNumber) {
     throw bladOperatora(
-      'KSeF przysłał dokument bez numeru KSeF — panel nie umie go ani zapisać jako koszt, '
-      + 'ani odłożyć na bok, bo nie ma czym go zaadresować. Pobieranie przerwane.',
+      'KSeF przysłał dokument bez numeru KSeF — panel nie umie go ani zapisać jako koszt, ' +
+        'ani odłożyć na bok, bo nie ma czym go zaadresować. Pobieranie przerwane.',
     );
   }
   const kiedy = teraz();
-  db.prepare(`
+  db.prepare(
+    `
     INSERT INTO koszty_odrzucone
       (ksef_number, numer_dokumentu, data_trwalego_zapisu, powod, metadane_json,
        odrzucony_at, ostatnia_proba_at)
@@ -261,9 +289,15 @@ export function zapiszOdrzuconyKoszt(db, metadane, powod) {
     ON CONFLICT(ksef_number) DO UPDATE SET
       powod = excluded.powod, metadane_json = excluded.metadane_json,
       ostatnia_proba_at = excluded.ostatnia_proba_at
-  `).run(
-    ksefNumber, metadane.invoiceNumber ?? null, metadane.permanentStorageDate ?? null,
-    String(powod ?? ''), JSON.stringify(metadane), kiedy, kiedy,
+  `,
+  ).run(
+    ksefNumber,
+    metadane.invoiceNumber ?? null,
+    metadane.permanentStorageDate ?? null,
+    String(powod ?? ''),
+    JSON.stringify(metadane),
+    kiedy,
+    kiedy,
   );
 }
 
@@ -271,9 +305,8 @@ export function zapiszOdrzuconyKoszt(db, metadane, powod) {
 // znaczy „suma kosztow jest kompletna"; niepusta — ze zestawienie z KSeF bedzie WIEKSZE niz
 // suma w panelu, i to o konkretne, nazwane dokumenty. Ekran zakladki ma to pokazywac obok
 // sumy, a nie chowac: liczba, ktorej nikt nie kwestionuje, jest gorsza niz widoczna dziura.
-export const odrzuconeKoszty = (db) => db.prepare(
-  'SELECT * FROM koszty_odrzucone ORDER BY odrzucony_at ASC, ksef_number ASC',
-).all();
+export const odrzuconeKoszty = (db) =>
+  db.prepare('SELECT * FROM koszty_odrzucone ORDER BY odrzucony_at ASC, ksef_number ASC').all();
 
 export const liczbaOdrzuconych = (db) => db.prepare('SELECT COUNT(*) c FROM koszty_odrzucone').get().c;
 
@@ -322,10 +355,13 @@ export function usunOdrzucony(db, ksefNumber) {
 // do hamulca „trzy bledy z rzedu" — i tym samym blokowal archiwizacje dokumentow, ktore
 // naprawde na nia czekaja. Zaplacone pobraniami z KSeF i czasem przebiegu, bez ani jednego
 // pliku na dysku.
-export const kosztyBezArchiwum = (db) => db.prepare(
-  "SELECT * FROM koszty WHERE sciezka_xml IS NULL AND zrodlo = 'ksef'"
-  + ' ORDER BY data_wystawienia DESC, ksef_number ASC',
-).all();
+export const kosztyBezArchiwum = (db) =>
+  db
+    .prepare(
+      "SELECT * FROM koszty WHERE sciezka_xml IS NULL AND zrodlo = 'ksef'" +
+        ' ORDER BY data_wystawienia DESC, ksef_number ASC',
+    )
+    .all();
 
 // ⚠️ COALESCE, a nie zwykle przypisanie — ten sam wzorzec, co przy `zapiszNumerKsef`
 // (db/faktury.js). Zapis SAMEGO PDF-a nie ma prawa skasowac sciezki do XML-a zapisanej
@@ -337,8 +373,8 @@ export const kosztyBezArchiwum = (db) => db.prepare(
 // archiwum, w ktorej i tak nie ma prawa stac.
 export function zapiszSciezki(db, ksefNumber, { xml = null, pdf = null }) {
   db.prepare(
-    'UPDATE koszty SET sciezka_xml = COALESCE(?, sciezka_xml), sciezka_pdf = COALESCE(?, sciezka_pdf)'
-    + " WHERE ksef_number = ? AND zrodlo = 'ksef'",
+    'UPDATE koszty SET sciezka_xml = COALESCE(?, sciezka_xml), sciezka_pdf = COALESCE(?, sciezka_pdf)' +
+      " WHERE ksef_number = ? AND zrodlo = 'ksef'",
   ).run(xml, pdf, ksefNumber);
 }
 
@@ -357,16 +393,30 @@ export function zapiszSciezki(db, ksefNumber, { xml = null, pdf = null }) {
 export function zapiszRecznyKoszt(db, w) {
   const klucz = nowyKluczReczny();
   const kiedy = teraz();
-  db.prepare(`
+  db.prepare(
+    `
     INSERT INTO koszty
       (ksef_number, numer_dokumentu, sprzedawca_nip, sprzedawca_nazwa, data_wystawienia,
        data_trwalego_zapisu, netto, vat, brutto, waluta, rodzaj, ma_zalacznik, pobrany_at,
        zrodlo, kategoria_dokumentu, typ_dokumentu)
     VALUES (?,?,?,?,?,?,?,?,?,?,?,0,?,?,?,?)
-  `).run(
-    klucz, w.numerDokumentu, w.sprzedawcaNip, w.sprzedawcaNazwa, w.dataWystawienia,
-    kiedy, w.netto, w.vat, w.brutto, w.waluta, RODZAJ_RECZNY, kiedy,
-    ZRODLO_RECZNE, w.kategoriaDokumentu ?? null, w.typDokumentu ?? null,
+  `,
+  ).run(
+    klucz,
+    w.numerDokumentu,
+    w.sprzedawcaNip,
+    w.sprzedawcaNazwa,
+    w.dataWystawienia,
+    kiedy,
+    w.netto,
+    w.vat,
+    w.brutto,
+    w.waluta,
+    RODZAJ_RECZNY,
+    kiedy,
+    ZRODLO_RECZNE,
+    w.kategoriaDokumentu ?? null,
+    w.typDokumentu ?? null,
   );
   return klucz;
 }
@@ -389,31 +439,40 @@ function tylkoReczny(db, klucz, co) {
   }
   if (w.zrodlo !== ZRODLO_RECZNE) {
     throw bladOperatora(
-      `Ten dokument przyszedł z KSeF i panel nie pozwala go ${co}. Panel jest lustrem KSeF-u: `
-      + 'treść dokumentu jest po stronie sprzedawcy, a skasowany wiersz wróciłby dopiero po '
-      + 'ręcznym cofnięciu pobierania o miesiące — do tego czasu suma miesiąca byłaby zaniżona.',
+      `Ten dokument przyszedł z KSeF i panel nie pozwala go ${co}. Panel jest lustrem KSeF-u: ` +
+        'treść dokumentu jest po stronie sprzedawcy, a skasowany wiersz wróciłby dopiero po ' +
+        'ręcznym cofnięciu pobierania o miesiące — do tego czasu suma miesiąca byłaby zaniżona.',
     );
   }
 }
 
 export function zaktualizujRecznyKoszt(db, klucz, w) {
   tylkoReczny(db, klucz, 'poprawić');
-  db.prepare(`
+  db.prepare(
+    `
     UPDATE koszty SET numer_dokumentu = ?, sprzedawca_nip = ?, sprzedawca_nazwa = ?,
       data_wystawienia = ?, netto = ?, vat = ?, brutto = ?, waluta = ?,
       kategoria_dokumentu = ?, typ_dokumentu = ?
     WHERE ksef_number = ? AND zrodlo = 'reczne'
-  `).run(
-    w.numerDokumentu, w.sprzedawcaNip, w.sprzedawcaNazwa, w.dataWystawienia,
-    w.netto, w.vat, w.brutto, w.waluta, w.kategoriaDokumentu ?? null, w.typDokumentu ?? null,
+  `,
+  ).run(
+    w.numerDokumentu,
+    w.sprzedawcaNip,
+    w.sprzedawcaNazwa,
+    w.dataWystawienia,
+    w.netto,
+    w.vat,
+    w.brutto,
+    w.waluta,
+    w.kategoriaDokumentu ?? null,
+    w.typDokumentu ?? null,
     String(klucz),
   );
 }
 
 export function usunRecznyKoszt(db, klucz) {
   tylkoReczny(db, klucz, 'usunąć');
-  return db.prepare("DELETE FROM koszty WHERE ksef_number = ? AND zrodlo = 'reczne'")
-    .run(String(klucz)).changes;
+  return db.prepare("DELETE FROM koszty WHERE ksef_number = ? AND zrodlo = 'reczne'").run(String(klucz)).changes;
 }
 
 // ⚠️⚠️ KATEGORIA PRZYPIETA WPROST DO DOKUMENTU — wyjscie dla sprzedawcy BEZ polskiego NIP-u.
@@ -433,12 +492,10 @@ export function usunRecznyKoszt(db, klucz) {
 // sciezki zaleznie od zrodla dawaloby dwie reguly na jedno pytanie.
 export function przypnijKategorieDoDokumentu(db, klucz, kategoria, typ) {
   const nazwa = String(kategoria ?? '').trim();
-  const wynik = db.prepare(
-    'UPDATE koszty SET kategoria_dokumentu = ?, typ_dokumentu = ? WHERE ksef_number = ?',
-  ).run(nazwa || null, nazwa ? typ : null, String(klucz ?? ''));
+  const wynik = db
+    .prepare('UPDATE koszty SET kategoria_dokumentu = ?, typ_dokumentu = ? WHERE ksef_number = ?')
+    .run(nazwa || null, nazwa ? typ : null, String(klucz ?? ''));
   if (wynik.changes === 0) {
-    throw bladOperatora(
-      `Panel nie zna kosztu „${klucz ?? ''}" — nie ma do czego przypiąć kategorii.`,
-    );
+    throw bladOperatora(`Panel nie zna kosztu „${klucz ?? ''}" — nie ma do czego przypiąć kategorii.`);
   }
 }

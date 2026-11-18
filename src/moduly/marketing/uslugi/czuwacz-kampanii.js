@@ -24,8 +24,8 @@ import { dzienWarszawa } from '../../../domena/format-daty.js';
 // liczby obu zrodel; potem kampania jest zamknieta i jej wiersze sa juz historia.
 export const DNI_DOJRZEWANIA = 2;
 
-const dzienPo = (dzien, ile) => new Date(Date.parse(`${dzien}T00:00:00Z`) + ile * 86_400_000)
-  .toISOString().slice(0, 10);
+const dzienPo = (dzien, ile) =>
+  new Date(Date.parse(`${dzien}T00:00:00Z`) + ile * 86_400_000).toISOString().slice(0, 10);
 
 /**
  * Kampanie, ktore warto dzis odswiezac: juz sie zaczely i nie skonczyly dawniej niz
@@ -71,7 +71,10 @@ export function createCzuwaczKampanii({ db, meta = null, ga4 = null, teraz = () 
         if (meta) {
           // eslint-disable-next-line no-await-in-loop -- kampanie po kolei, jak poller po sklepach
           const w = await zrodlo('meta', async () => {
-            const kampanieReklamowe = String(k.meta_kampanie ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+            const kampanieReklamowe = String(k.meta_kampanie ?? '')
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean);
             const dni = await meta.dzienneStatystyki({ od: k.od_dnia, do: doDnia, kampanie: kampanieReklamowe });
             for (const d of dni) zapiszMetaDzien(db, k.kod, d);
             return dni.length;
@@ -86,7 +89,10 @@ export function createCzuwaczKampanii({ db, meta = null, ga4 = null, teraz = () 
           // eslint-disable-next-line no-await-in-loop -- jak wyzej
           const w = await zrodlo('ga4', async () => {
             const dni = await ga4.dzienneStatystyki({
-              wlasciwosc: k.ga4_wlasciwosc, od: k.od_dnia, do: doDnia, sciezkaPromo: k.ga4_sciezka ?? null,
+              wlasciwosc: k.ga4_wlasciwosc,
+              od: k.od_dnia,
+              do: doDnia,
+              sciezkaPromo: k.ga4_sciezka ?? null,
             });
             for (const d of dni) zapiszGa4Dzien(db, k.kod, d);
             return dni.length;

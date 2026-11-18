@@ -10,7 +10,7 @@ const odmiana = (n, jeden, kilka, wiele) => {
   if (n === 1) return jeden;
   const r = n % 10;
   const d = n % 100;
-  return (r >= 2 && r <= 4 && !(d >= 12 && d <= 14)) ? kilka : wiele;
+  return r >= 2 && r <= 4 && !(d >= 12 && d <= 14) ? kilka : wiele;
 };
 
 export function ostrzezenia(wiersze, { od, do: doDnia, granice, kanalGddWHistorii }) {
@@ -21,8 +21,9 @@ export function ostrzezenia(wiersze, { od, do: doDnia, granice, kanalGddWHistori
   if (przeciete.length) {
     wynik.push({
       kod: 'granica',
-      tresc: `Okres przecina granicę historii: ${przeciete.map((g) => `${g.kanal} (do ${g.do_dnia})`).join(', ')}.`
-        + ' Do tej daty liczby pochodzą z Apilo, po niej — z panelu.',
+      tresc:
+        `Okres przecina granicę historii: ${przeciete.map((g) => `${g.kanal} (do ${g.do_dnia})`).join(', ')}.` +
+        ' Do tej daty liczby pochodzą z Apilo, po niej — z panelu.',
     });
   }
 
@@ -40,9 +41,10 @@ export function ostrzezenia(wiersze, { od, do: doDnia, granice, kanalGddWHistori
   if (bezTagu.length) {
     wynik.push({
       kod: 'bez-tagu',
-      tresc: `${bezTagu.length} ${odmiana(bezTagu.length, 'zamówienie', 'zamówienia', 'zamówień')}`
-        + ' z historii nie ma żadnego tagu — tagi nadawano wstecz dopiero w lipcu 2026,'
-        + ' więc podział na kanały może być w tym okresie niepełny.',
+      tresc:
+        `${bezTagu.length} ${odmiana(bezTagu.length, 'zamówienie', 'zamówienia', 'zamówień')}` +
+        ' z historii nie ma żadnego tagu — tagi nadawano wstecz dopiero w lipcu 2026,' +
+        ' więc podział na kanały może być w tym okresie niepełny.',
     });
   }
 
@@ -53,9 +55,10 @@ export function ostrzezenia(wiersze, { od, do: doDnia, granice, kanalGddWHistori
     const suma = bezPlatnosci.reduce((s, w) => s + w.nettoGrosze, 0);
     wynik.push({
       kod: 'bez-platnosci',
-      tresc: `${bezPlatnosci.length} ${odmiana(bezPlatnosci.length, 'zamówienie', 'zamówienia', 'zamówień')}`
-        + ` bez potwierdzonej płatności, na ${zl(suma).replace('.', ',')} zł netto.`
-        + ' Porzucone, ale nieanulowane zamówienie liczy się tutaj jako sprzedaż.',
+      tresc:
+        `${bezPlatnosci.length} ${odmiana(bezPlatnosci.length, 'zamówienie', 'zamówienia', 'zamówień')}` +
+        ` bez potwierdzonej płatności, na ${zl(suma).replace('.', ',')} zł netto.` +
+        ' Porzucone, ale nieanulowane zamówienie liczy się tutaj jako sprzedaż.',
     });
   }
 
@@ -66,9 +69,10 @@ export function ostrzezenia(wiersze, { od, do: doDnia, granice, kanalGddWHistori
   if (granicaGdd && doDnia > granicaGdd.do_dnia) {
     wynik.push({
       kod: 'gdd',
-      tresc: `Po granicy historii kanał ${granicaGdd.kanal} nie istnieje —`
-        + ' panel nie ma dziś znacznika, który odróżniałby go od zamówień indywidualnych.'
-        + ' Te zamówienia wchodzą po granicy do kanału Indywidualne.',
+      tresc:
+        `Po granicy historii kanał ${granicaGdd.kanal} nie istnieje —` +
+        ' panel nie ma dziś znacznika, który odróżniałby go od zamówień indywidualnych.' +
+        ' Te zamówienia wchodzą po granicy do kanału Indywidualne.',
     });
   }
 

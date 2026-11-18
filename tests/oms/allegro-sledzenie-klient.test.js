@@ -46,15 +46,17 @@ const klientZ = (cialo, opcje) => {
 describe('klient sledzenia Allegro', () => {
   it('oddaje NAJNOWSZE zdarzenie z opisem, czasem i kodem', async () => {
     const { klient } = klientZ({
-      waybills: [{
-        waybill: 'A005DUH6H5',
-        trackingDetails: {
-          statuses: [
-            zdarzenie('2026-08-18T09:14:06.705Z', 'PENDING', 'Przesyłka przygotowana przez nadawcę'),
-            zdarzenie('2026-08-21T04:50:56.734Z', 'DELIVERED', 'Przesyłka została doręczona'),
-          ],
+      waybills: [
+        {
+          waybill: 'A005DUH6H5',
+          trackingDetails: {
+            statuses: [
+              zdarzenie('2026-08-18T09:14:06.705Z', 'PENDING', 'Przesyłka przygotowana przez nadawcę'),
+              zdarzenie('2026-08-21T04:50:56.734Z', 'DELIVERED', 'Przesyłka została doręczona'),
+            ],
+          },
         },
-      }],
+      ],
     });
 
     const w = await klient.statusPrzesylki('A005DUH6H5', { carrier: 'ALLEGRO', kanal: KANAL });
@@ -76,15 +78,17 @@ describe('klient sledzenia Allegro', () => {
   // elementu dzialaloby na zmierzonych danych i przekłamywalo przy pierwszej zmianie kolejnosci.
   it('najnowsze liczy sie po occurredAt, nie po pozycji w tablicy', async () => {
     const { klient } = klientZ({
-      waybills: [{
-        waybill: 'X',
-        trackingDetails: {
-          statuses: [
-            zdarzenie('2026-08-21T04:50:00.000Z', 'DELIVERED', 'Przesyłka została doręczona'),
-            zdarzenie('2026-08-18T09:14:00.000Z', 'PENDING', 'Przesyłka przygotowana przez nadawcę'),
-          ],
+      waybills: [
+        {
+          waybill: 'X',
+          trackingDetails: {
+            statuses: [
+              zdarzenie('2026-08-21T04:50:00.000Z', 'DELIVERED', 'Przesyłka została doręczona'),
+              zdarzenie('2026-08-18T09:14:00.000Z', 'PENDING', 'Przesyłka przygotowana przez nadawcę'),
+            ],
+          },
         },
-      }],
+      ],
     });
 
     const w = await klient.statusPrzesylki('X', { carrier: 'ALLEGRO', kanal: KANAL });
@@ -106,7 +110,11 @@ describe('klient sledzenia Allegro', () => {
     const pusta = klientZ({ waybills: [{ waybill: 'X', trackingDetails: { statuses: [] } }] });
     await expect(pusta.klient.statusPrzesylki('X', { carrier: 'ALLEGRO', kanal: KANAL })).resolves.toBe(null);
 
-    const obcy = klientZ({ waybills: [{ waybill: 'INNY', trackingDetails: { statuses: [zdarzenie('2026-08-21T04:50:00.000Z', 'DELIVERED', 'd')] } }] });
+    const obcy = klientZ({
+      waybills: [
+        { waybill: 'INNY', trackingDetails: { statuses: [zdarzenie('2026-08-21T04:50:00.000Z', 'DELIVERED', 'd')] } },
+      ],
+    });
     await expect(obcy.klient.statusPrzesylki('X', { carrier: 'ALLEGRO', kanal: KANAL })).resolves.toBe(null);
   });
 

@@ -7,24 +7,44 @@ import { createPoller } from '../../src/moduly/kanaly/services/poller.js';
 
 // Surowe zamowienie ze sklepu — takie, jakie dostaje PELNY przebieg pollera.
 const surowe = (id, nad = {}) => ({
-  id, number: String(id), status: 'processing', total: '212.90',
-  date_created: '2026-07-29T10:00:00', date_modified_gmt: '2026-07-29T12:00:00',
-  date_paid: null, payment_method_title: 'Przelew tradycyjny',
-  billing: {}, shipping: {}, shipping_lines: [{ method_id: 'flat_rate', instance_id: '1' }],
-  line_items: [], meta_data: [],
+  id,
+  number: String(id),
+  status: 'processing',
+  total: '212.90',
+  date_created: '2026-07-29T10:00:00',
+  date_modified_gmt: '2026-07-29T12:00:00',
+  date_paid: null,
+  payment_method_title: 'Przelew tradycyjny',
+  billing: {},
+  shipping: {},
+  shipping_lines: [{ method_id: 'flat_rate', instance_id: '1' }],
+  line_items: [],
+  meta_data: [],
   ...nad,
 });
 
 const zmapowane = (nad = {}) => ({
-  zrodlo_id: 1301, numer: '1301', klient: { email: 'j@k.pl' }, dostawa: { city: 'Warszawa' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null,
-  kwota_brutto: '212.90', status_woo: 'processing', oplacone_at: null, anulowane: 0,
-  utworzone_at: '2026-07-29T13:19:52', pozycje: [],
+  zrodlo_id: 1301,
+  numer: '1301',
+  klient: { email: 'j@k.pl' },
+  dostawa: { city: 'Warszawa' },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '212.90',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-07-29T13:19:52',
+  pozycje: [],
   ...nad,
 });
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 
 // Liczniki AUTOINCREMENT roznych tabel zbiegaja sie w swiezej bazie (przewodnik OMS, 6.3),
 // wiec zamowienie i wplata dostawalyby to samo `id` — i pomylka argumentu przeszlaby
@@ -46,14 +66,18 @@ describe('wpłata ze sklepu jest utrzymywana przez pollera', () => {
     const z = pobierzZamowienie(db, 1);
     expect(z.platnosci).toHaveLength(1);
     expect(z.platnosci[0]).toMatchObject({
-      zrodlo: 'sklep', kwota: '212.90', data: '2026-07-29T13:21:26', metoda: 'Przelewy24',
+      zrodlo: 'sklep',
+      kwota: '212.90',
+      data: '2026-07-29T13:21:26',
+      metoda: 'Przelewy24',
     });
   });
 
   it('drugi przebieg NIE dubluje wpłaty ze sklepu', async () => {
     const woo = {
       pobierzZamowienia: vi.fn().mockResolvedValue({
-        zamowienia: [surowe(1301, { date_paid: '2026-07-29T13:21:26' })], stron: 1,
+        zamowienia: [surowe(1301, { date_paid: '2026-07-29T13:21:26' })],
+        stron: 1,
       }),
     };
     const p = createPoller({ db, kanal: createWooAdapter({ woo }), sklep: 'pro' });
@@ -79,7 +103,12 @@ describe('wpłata ze sklepu jest utrzymywana przez pollera', () => {
     const p = createPoller({ db, kanal: createWooAdapter({ woo }), sklep: 'pro' });
     await p.przebieg();
     const id = pobierzZamowienie(db, 1).id;
-    dodajWplateReczna(db, id, { kwota: '212.90', data: '2026-07-30T08:00:00', metoda: 'przelew', uwaga: 'wpłata na konto' });
+    dodajWplateReczna(db, id, {
+      kwota: '212.90',
+      data: '2026-07-30T08:00:00',
+      metoda: 'przelew',
+      uwaga: 'wpłata na konto',
+    });
 
     await p.przebieg();
     await p.przebieg();
@@ -87,7 +116,11 @@ describe('wpłata ze sklepu jest utrzymywana przez pollera', () => {
     const z = pobierzZamowienie(db, id);
     expect(z.platnosci).toHaveLength(1);
     expect(z.platnosci[0]).toMatchObject({
-      zrodlo: 'reczna', kwota: '212.90', data: '2026-07-30T08:00:00', metoda: 'przelew', uwaga: 'wpłata na konto',
+      zrodlo: 'reczna',
+      kwota: '212.90',
+      data: '2026-07-30T08:00:00',
+      metoda: 'przelew',
+      uwaga: 'wpłata na konto',
     });
     // I najwazniejsze: zamowienie po przebiegu pollera dalej jest OPLACONE.
     expect(z.oplacone_at).toBe('2026-07-30T08:00:00');
@@ -111,7 +144,8 @@ describe('wpłata ze sklepu jest utrzymywana przez pollera', () => {
   it('wpłata ręczna i wpłata ze sklepu żyją obok siebie', async () => {
     const woo = {
       pobierzZamowienia: vi.fn().mockResolvedValue({
-        zamowienia: [surowe(1301, { date_paid: '2026-07-29T13:21:26' })], stron: 1,
+        zamowienia: [surowe(1301, { date_paid: '2026-07-29T13:21:26' })],
+        stron: 1,
       }),
     };
     const p = createPoller({ db, kanal: createWooAdapter({ woo }), sklep: 'pro' });
@@ -216,7 +250,11 @@ describe('usuwanie wpłaty — wyjście z pomyłki', () => {
   it('odmowy są otagowane jako przeznaczone dla operatora', () => {
     const id = zamowienieZRozjechanymiLicznikami({ oplacone_at: '2026-07-29T13:21:26' });
     const wplata = platnosciZamowienia(db, id)[0];
-    try { usunWplateReczna(db, id, wplata.id); } catch (e) { expect(e.dlaOperatora).toBe(true); }
+    try {
+      usunWplateReczna(db, id, wplata.id);
+    } catch (e) {
+      expect(e.dlaOperatora).toBe(true);
+    }
     expect.assertions(1);
   });
 });

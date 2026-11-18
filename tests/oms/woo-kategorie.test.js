@@ -2,10 +2,13 @@ import { it, expect, vi } from 'vitest';
 import { createWooClient } from '../../src/oms/woo/client.js';
 
 const odp = (body, naglowki = {}) => ({
-  status: 200, ok: true, json: async () => body,
+  status: 200,
+  ok: true,
+  json: async () => body,
   headers: { get: (n) => naglowki[n.toLowerCase()] ?? null },
 });
-const kategorie = (od, ile) => Array.from({ length: ile }, (_, i) => ({ id: od + i, name: `Kategoria ${od + i}`, parent: 0, count: 1 }));
+const kategorie = (od, ile) =>
+  Array.from({ length: ile }, (_, i) => ({ id: od + i, name: `Kategoria ${od + i}`, parent: 0, count: 1 }));
 
 it('pobierzKategorieProduktow czyta wszystkie strony po 100 (ponad 100 kategorii) wyłącznie GET-em', async () => {
   const strony = [kategorie(1, 100), kategorie(101, 100), kategorie(201, 37)];

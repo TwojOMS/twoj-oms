@@ -31,10 +31,8 @@ describe('kanaly historyczne (Apilo)', () => {
   });
 
   it('zamowienie z panelu ofert poznaje sie po pozycji 28040, nie po koncie', () => {
-    expect(h({ platform_account_id: 9, pozycje: [{ original_code: '28040|1' }] }))
-      .toBe('INDYWIDUALNE');
-    expect(h({ platform_account_id: 9, pozycje: [{ original_code: '123|1' }] }))
-      .toBe('SWIETLIK_PL');
+    expect(h({ platform_account_id: 9, pozycje: [{ original_code: '28040|1' }] })).toBe('INDYWIDUALNE');
+    expect(h({ platform_account_id: 9, pozycje: [{ original_code: '123|1' }] })).toBe('SWIETLIK_PL');
   });
 
   it('konta sklepowe, allegrowe i archiwalne', () => {
@@ -57,7 +55,9 @@ describe('kanaly OMS', () => {
   });
 
   it('reczne dzieli okres rozliczeniowy — bez okresu to RECZNE, nie B2B', () => {
-    expect(kanalOms({ sklep: 'reczne', okres_rozliczeniowy_id: 7 }, klasyfikacjaHistorycznaFixture)).toBe('DROPSHIPPING');
+    expect(kanalOms({ sklep: 'reczne', okres_rozliczeniowy_id: 7 }, klasyfikacjaHistorycznaFixture)).toBe(
+      'DROPSHIPPING',
+    );
     // ⚠️ Odpowiednik konta 21 z historii. OMS nie ma dzis czym oznaczyc hurtu, wiec kanal
     // B2B po granicy jest PUSTY — i to jest prawda o danych, a nie usterka do zalatania.
     expect(kanalOms({ sklep: 'reczne', okres_rozliczeniowy_id: null }, klasyfikacjaHistorycznaFixture)).toBe('RECZNE');

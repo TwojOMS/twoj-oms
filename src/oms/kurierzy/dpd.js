@@ -3,7 +3,11 @@ import { bladOperatora } from '../../domena/bledy.js';
 import { PROG_ZAWIESZONEGO_NADANIA_MS } from '../../domena/przesylka-stan.js';
 import { adresOdbiorcy } from '../../domena/adres-odbiorcy.js';
 
-const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const esc = (s) =>
+  String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 
 // DPD odrzuca kod z myślnikiem: '00-001' -> NONEXISTING_POSTAL_CODE, '00001' -> OK.
 // Woo oddaje ZAWSZE z myślnikiem, więc bez tego nadanie padałoby na każdym zamówieniu.
@@ -39,13 +43,15 @@ function pola(xml, nazwa) {
 // Wewnatrz bloku oba pola naleza na pewno do tego samego zdarzenia.
 function zdarzenia(xml) {
   const bloki = xml.match(/<(?:\w+:)?eventsList>[\s\S]*?<\/(?:\w+:)?eventsList>/g) ?? [];
-  return bloki
-    .map((blok) => ({ opis: pole(blok, 'description'), at: pole(blok, 'eventTime') }))
-    // Zdarzenie bez czasu odrzucamy: nie da sie go porownac z innymi (a najnowsze
-    // wybieramy wlasnie po czasie) ani powiedziec operatorowi „kiedy". Zdarzenie bez
-    // opisu zostaje — czas sam w sobie jest informacja, a widok poradzi sobie z pustym
-    // opisem. To swiadoma asymetria, nie przeoczenie.
-    .filter((z) => z.at);
+  return (
+    bloki
+      .map((blok) => ({ opis: pole(blok, 'description'), at: pole(blok, 'eventTime') }))
+      // Zdarzenie bez czasu odrzucamy: nie da sie go porownac z innymi (a najnowsze
+      // wybieramy wlasnie po czasie) ani powiedziec operatorowi „kiedy". Zdarzenie bez
+      // opisu zostaje — czas sam w sobie jest informacja, a widok poradzi sobie z pustym
+      // opisem. To swiadoma asymetria, nie przeoczenie.
+      .filter((z) => z.at)
+  );
 }
 
 // Twardy limit na zapytanie o status przesylki. Obowiazuje TYLKO usluge zdarzen (nie
@@ -75,8 +81,8 @@ const ZADANIA_NADANIA = 3;
 // Panel ma wtedy NIE WSTAC, zamiast po cichu wrocic do tego wyscigu.
 if (ZADANIA_NADANIA * LIMIT_NADANIA_MS >= PROG_ZAWIESZONEGO_NADANIA_MS) {
   throw new Error(
-    'Limity żądań nadania do DPD muszą sumować się do czasu KRÓTSZEGO niż próg zawieszonego '
-    + 'nadania — inaczej „zawieszone" może oznaczać żywe wywołanie, a odblokowanie da drugą paczkę.',
+    'Limity żądań nadania do DPD muszą sumować się do czasu KRÓTSZEGO niż próg zawieszonego ' +
+      'nadania — inaczej „zawieszone" może oznaczać żywe wywołanie, a odblokowanie da drugą paczkę.',
   );
 }
 
@@ -84,7 +90,18 @@ if (ZADANIA_NADANIA * LIMIT_NADANIA_MS >= PROG_ZAWIESZONEGO_NADANIA_MS) {
 export const FORMATY_ETYKIETY_DPD = Object.freeze(['LBL_PRINTER', 'A4']);
 
 /** @param {import('../../integracje/opcje.ts').OpcjeDpd} opcje */
-export function createDpdClient({ url, login, haslo, fid, nadawca, infoUrl, channel, formatEtykiety = 'LBL_PRINTER', fetchImpl, http = transport({ fetchImpl, limitCzasuMs: LIMIT_NADANIA_MS }) }) {
+export function createDpdClient({
+  url,
+  login,
+  haslo,
+  fid,
+  nadawca,
+  infoUrl,
+  channel,
+  formatEtykiety = 'LBL_PRINTER',
+  fetchImpl,
+  http = transport({ fetchImpl, limitCzasuMs: LIMIT_NADANIA_MS }),
+}) {
   if (!FORMATY_ETYKIETY_DPD.includes(formatEtykiety)) {
     throw new Error(`createDpdClient: formatEtykiety musi być jednym z: ${FORMATY_ETYKIETY_DPD.join(', ')}.`);
   }
@@ -100,9 +117,10 @@ export function createDpdClient({ url, login, haslo, fid, nadawca, infoUrl, chan
   // jedzie z pusta ulica, kodem i miastem nadawcy i nikt sie nie orientuje, bo DPD
   // i tak zwraca numer listu. Sprawdzamy wiec pola, nie samo istnienie obiektu.
   if (!nadawca) brak.push('nadawca');
-  else for (const klucz of ['nazwa', 'ulica', 'kod', 'miasto']) {
-    if (!String(nadawca[klucz] ?? '').trim()) brak.push(`nadawca.${klucz}`);
-  }
+  else
+    for (const klucz of ['nazwa', 'ulica', 'kod', 'miasto']) {
+      if (!String(nadawca[klucz] ?? '').trim()) brak.push(`nadawca.${klucz}`);
+    }
   if (brak.length) throw new Error(`createDpdClient: brak wymaganej konfiguracji: ${brak.join(', ')}.`);
 
   // faultstring DPD niesie login ("Login failed for login: <login> ...").
@@ -114,12 +132,13 @@ export function createDpdClient({ url, login, haslo, fid, nadawca, infoUrl, chan
   const maskuj = (t, wartosc) => (wartosc ? t.split(wartosc).join('***') : t);
   const oczysc = (t) => [login, haslo, fid, channel].reduce((acc, w) => maskuj(acc, w), String(t ?? ''));
 
-  const adres = (a) => `<company>${esc(a.company ?? a.nazwa)}</company><name>${esc(a.name ?? a.nazwa)}</name>`
-    + `<address>${esc(a.address ?? a.ulica)}</address><city>${esc(a.city ?? a.miasto)}</city>`
-    + `<postalCode>${kodPocztowy(a.postalCode ?? a.kod)}</postalCode>`
-    + `<countryCode>${esc(a.countryCode ?? a.kraj ?? 'PL')}</countryCode>`
-    + (a.phone ? `<phone>${esc(a.phone)}</phone>` : '')
-    + (a.email ? `<email>${esc(a.email)}</email>` : '');
+  const adres = (a) =>
+    `<company>${esc(a.company ?? a.nazwa)}</company><name>${esc(a.name ?? a.nazwa)}</name>` +
+    `<address>${esc(a.address ?? a.ulica)}</address><city>${esc(a.city ?? a.miasto)}</city>` +
+    `<postalCode>${kodPocztowy(a.postalCode ?? a.kod)}</postalCode>` +
+    `<countryCode>${esc(a.countryCode ?? a.kraj ?? 'PL')}</countryCode>` +
+    (a.phone ? `<phone>${esc(a.phone)}</phone>` : '') +
+    (a.email ? `<email>${esc(a.email)}</email>` : '');
 
   // DPDServices i DPDInfoServices to DWIE OSOBNE usługi pod dwoma adresami, z dwoma
   // różnymi namespace'ami — koperta jest jedynym, co mają
@@ -238,7 +257,11 @@ export function createDpdClient({ url, login, haslo, fid, nadawca, infoUrl, chan
   // Jawne `true` przy paczce N > 1 to DECYZJA OPERATORA, opisana przy warunku niżej.
   /** @param {import('../../core/kontrakty.ts').ZlecenieKuriera} zlecenie */
   async function nadaj({
-    zamowienie, paczka, kolejnosc = 1, adres: adresPrzekazany, kwotaPobrania: kwotaPrzekazana,
+    zamowienie,
+    paczka,
+    kolejnosc = 1,
+    adres: adresPrzekazany,
+    kwotaPobrania: kwotaPrzekazana,
     pobranieNaTejPaczce = kolejnosc === 1,
   }) {
     // ⚠️ Adres odbiorcy: od chwili, gdy ekran nadania (GET/POST /zamowienia/:id/nadaj)
@@ -416,7 +439,9 @@ export function createDpdClient({ url, login, haslo, fid, nadawca, infoUrl, chan
     // V4 odpowiada camelCase'em i tez potrafi oddac 200 z bledem.
     const zle = pola(odpEtykieta, 'status').filter((s) => s !== 'OK');
     if (zle.length) {
-      throw bladOperatora(`DPD nie wystawiło etykiety: ${oczysc([...new Set(zle)].join('; '))}`, { surowa: oczysc(odpEtykieta) });
+      throw bladOperatora(`DPD nie wystawiło etykiety: ${oczysc([...new Set(zle)].join('; '))}`, {
+        surowa: oczysc(odpEtykieta),
+      });
     }
     const base64 = pole(odpEtykieta, 'documentData');
     if (!base64) {
@@ -464,7 +489,8 @@ export function createDpdClient({ url, login, haslo, fid, nadawca, infoUrl, chan
       <postalCodeV1><countryCode>${esc(nadawca.kraj ?? 'PL')}</countryCode><zipCode>${kodPocztowy(nadawca.kod)}</zipCode></postalCodeV1>
       <authDataV1><login>${esc(login)}</login><masterFid>${esc(fid)}</masterFid><password>${esc(haslo)}</password></authDataV1>
     </dpd:findPostalCodeV1>`);
-    if (pole(odp, 'return') === null) throw bladOperatora('DPD odpowiedziało, ale nie rozpoznaję odpowiedzi — sprawdź adres usługi.');
+    if (pole(odp, 'return') === null)
+      throw bladOperatora('DPD odpowiedziało, ale nie rozpoznaję odpowiedzi — sprawdź adres usługi.');
     return { ok: true };
   }
 

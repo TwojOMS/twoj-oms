@@ -59,16 +59,16 @@ function linia(doc, y) {
 function naglowekSekcji(doc, x, y, tekst) {
   const DUZA = 12;
   const MALA = 9;
-  doc.rect(x, y + 4, 28, 6).fillColor(SZARY_PASEK).fill();
+  doc
+    .rect(x, y + 4, 28, 6)
+    .fillColor(SZARY_PASEK)
+    .fill();
   const napis = String(tekst);
   zwykly(doc, DUZA).text(napis.slice(0, 1).toUpperCase(), x + 34, y, { lineBreak: false });
   const szerPierwszej = doc.widthOfString(napis.slice(0, 1).toUpperCase());
-  zwykly(doc, MALA).text(
-    napis.slice(1).toUpperCase(),
-    x + 34 + szerPierwszej,
-    y + (DUZA - MALA) * 0.72,
-    { lineBreak: false },
-  );
+  zwykly(doc, MALA).text(napis.slice(1).toUpperCase(), x + 34 + szerPierwszej, y + (DUZA - MALA) * 0.72, {
+    lineBreak: false,
+  });
   return y + DUZA + 8;
 }
 
@@ -152,8 +152,14 @@ function poleDoWypelnienia(doc, y, etykieta, { odX = L, doX = R } = {}) {
   zwykly(doc, 9.5);
   doc.text(etykieta, odX, y, { lineBreak: false });
   const zaEtykieta = odX + doc.widthOfString(etykieta) + 6;
-  doc.moveTo(zaEtykieta, y + 10).lineTo(doX, y + 10).lineWidth(0.5).strokeColor(SZARY_LINIA)
-    .dash(2, { space: 2 }).stroke().undash();
+  doc
+    .moveTo(zaEtykieta, y + 10)
+    .lineTo(doX, y + 10)
+    .lineWidth(0.5)
+    .strokeColor(SZARY_LINIA)
+    .dash(2, { space: 2 })
+    .stroke()
+    .undash();
   return y + 22;
 }
 
@@ -166,9 +172,15 @@ export function zbudujOswiadczenieWywozuPdf(model) {
     size: 'A4',
     bufferPages: true,
     margins: {
-      top: MARGINES, bottom: MARGINES, left: MARGINES, right: MARGINES,
+      top: MARGINES,
+      bottom: MARGINES,
+      left: MARGINES,
+      right: MARGINES,
     },
-    info: { Title: `Potwierdzenie wywozu — zamówienie ${model.zamowienieNumer}`, Author: model.sprzedawca?.nazwa ?? 'Twój OMS' },
+    info: {
+      Title: `Potwierdzenie wywozu — zamówienie ${model.zamowienieNumer}`,
+      Author: model.sprzedawca?.nazwa ?? 'Twój OMS',
+    },
   });
   for (const [nazwa, plik] of Object.entries(PLIKI_FONTOW)) doc.registerFont(nazwa, plik);
   doc.font(FONT);
@@ -201,10 +213,14 @@ export function zbudujOswiadczenieWywozuPdf(model) {
   y += 12;
 
   const dolSprzedawcy = blokSekcja(doc, L, y, PRAWA_KOLUMNA - L - 20, 'Dostawca', [
-    model.sprzedawca.nazwa, ...model.sprzedawca.adres, `NIP: ${model.sprzedawca.nip}`,
+    model.sprzedawca.nazwa,
+    ...model.sprzedawca.adres,
+    `NIP: ${model.sprzedawca.nip}`,
   ]);
   const dolNabywcy = blokSekcja(doc, PRAWA_KOLUMNA, y, R - PRAWA_KOLUMNA, 'Nabywca', [
-    model.nabywca.nazwa, ...model.nabywca.adres, `NIP: ${model.nabywca.nip}`,
+    model.nabywca.nazwa,
+    ...model.nabywca.adres,
+    `NIP: ${model.nabywca.nip}`,
   ]);
   y = Math.max(dolSprzedawcy, dolNabywcy) + 14;
 
@@ -220,7 +236,10 @@ export function zbudujOswiadczenieWywozuPdf(model) {
       y = naglowekTabeli(doc, y);
     }
     if (i % 2 === 1) {
-      doc.rect(L, y - 3, R - L, wys).fillColor(SZARY_WIERSZ).fill();
+      doc
+        .rect(L, y - 3, R - L, wys)
+        .fillColor(SZARY_WIERSZ)
+        .fill();
     }
     zwykly(doc, 9);
     komorka(doc, `${p.lp}.`, KOLUMNY.lp, y);
@@ -237,9 +256,10 @@ export function zbudujOswiadczenieWywozuPdf(model) {
   y = naglowekSekcji(doc, L, y, 'Oświadczenie nabywcy');
   y += 2;
   zwykly(doc, 9.5);
-  const oswiadczenie = `Potwierdzam, że towary wymienione powyżej zostały wywiezione z terytorium `
-    + `Polski i przyjęte na terytorium ${model.panstwo} (państwa członkowskiego innego niż `
-    + 'Polska). Adres, pod który przewieziono towary — adres nabywcy powyżej, chyba że wskazano inny:';
+  const oswiadczenie =
+    `Potwierdzam, że towary wymienione powyżej zostały wywiezione z terytorium ` +
+    `Polski i przyjęte na terytorium ${model.panstwo} (państwa członkowskiego innego niż ` +
+    'Polska). Adres, pod który przewieziono towary — adres nabywcy powyżej, chyba że wskazano inny:';
   doc.text(oswiadczenie, L, y, { width: R - L });
   y += doc.heightOfString(oswiadczenie, { width: R - L }) + 8;
 

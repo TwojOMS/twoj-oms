@@ -81,9 +81,8 @@ function kosztyOkresu(db, miesiace) {
 }
 
 /** Ostatni dzien miesiaca 'RRRR-MM' — dzien 0 nastepnego miesiaca. Luty przestepny wychodzi sam. */
-const koniecMiesiaca = (miesiac) => new Date(
-  Date.UTC(Number(miesiac.slice(0, 4)), Number(miesiac.slice(5, 7)), 0),
-).toISOString().slice(0, 10);
+const koniecMiesiaca = (miesiac) =>
+  new Date(Date.UTC(Number(miesiac.slice(0, 4)), Number(miesiac.slice(5, 7)), 0)).toISOString().slice(0, 10);
 
 function rachunekMiesiaca(db, miesiac, regulySprzedazy, sprzedaz) {
   const od = `${miesiac}-01`;
@@ -96,7 +95,7 @@ function rachunekMiesiaca(db, miesiac, regulySprzedazy, sprzedaz) {
   // grosza. Netto liczy `zwrotyWOkresie` sama (`nettoZamowieniaGrosze`) — DRUGI RAZ tej arytmetyki tu nie ma,
   // inaczej zwrot zdejmowalby inna kwote netto, niz dodala sprzedaz.
   const zwrotyNetto = sumaNetto(zwrotyWOkresie(db, { od, do: doDnia }, regulySprzedazy));
-  const przychod = sumaNetto(sprzedaz.filter(w => w.dzien >= od && w.dzien <= doDnia)) - zwrotyNetto;
+  const przychod = sumaNetto(sprzedaz.filter((w) => w.dzien >= od && w.dzien <= doDnia)) - zwrotyNetto;
   const koszty = kosztyOkresu(db, [miesiac]).nettoGrosze;
   const { miesiace: [dane] = [] } = daneOkresu(db, [miesiac]);
   const zus = gr(dane?.zus_razem);
@@ -131,11 +130,15 @@ export async function rachunekOkresuAsync(db, zakres, opcje = {}) {
 // Jeden odczyt sprzedaży dla całego rachunku. Poller może pracować między porcjami,
 // ale okres, rok i miesiące muszą korzystać z tych samych zebranych wierszy.
 function* liczRachunek(db, { od, do: doDnia }, { regulySprzedazy = {}, podlogaKosztow = null, definicje } = {}) {
-  if (!podlogaKosztow) { const e = new Error(BRAK_PODLOGI_KOSZTOW); e.dlaOperatora = true; throw e; }
+  if (!podlogaKosztow) {
+    const e = new Error(BRAK_PODLOGI_KOSZTOW);
+    e.dlaOperatora = true;
+    throw e;
+  }
   if (od.slice(0, 7) < podlogaKosztow) {
     const e = new Error(
-      `Rachunek zarządczy zaczyna się od ${podlogaKosztow}: kosztów sprzed KSeF panel nie zna,`
-      + ' więc wcześniejszy wynik byłby zyskiem zawyżonym o niewidoczne wydatki.',
+      `Rachunek zarządczy zaczyna się od ${podlogaKosztow}: kosztów sprzed KSeF panel nie zna,` +
+        ' więc wcześniejszy wynik byłby zyskiem zawyżonym o niewidoczne wydatki.',
     );
     e.dlaOperatora = true;
     throw e;
@@ -169,7 +172,7 @@ function* liczRachunek(db, { od, do: doDnia }, { regulySprzedazy = {}, podlogaKo
   // wynik wyszedlby glęboko ujemny i wygladalby jak zapasc, a nie jak zle zadane pytanie.
   // To ta sama rodzina bledu, co przy prowizji wyzej, tylko o wieksza kwote.
   const pelneMiesiace = od.endsWith('-01') && doDnia === koniecMiesiaca(miesiace.at(-1));
-  const wiersze = sprzedaz.filter(w => w.dzien >= od && w.dzien <= doDnia);
+  const wiersze = sprzedaz.filter((w) => w.dzien >= od && w.dzien <= doDnia);
   // ⚠️ ZWROT OBCIAZA MIESIAC, W KTORYM NASTAPIL — nie miesiac sprzedazy. Podstawa: art. 14
   // ust. 1m ustawy o PIT (korekta przychodu w okresie wystawienia korekty) i art. 29a ust. 13
   // ustawy o VAT. Wariant „cofnij zwrot do miesiaca sprzedazy" dawalby rachunek zmieniajacy
@@ -186,24 +189,22 @@ function* liczRachunek(db, { od, do: doDnia }, { regulySprzedazy = {}, podlogaKo
   const wynikGrosze = przychodNettoGrosze - koszty.nettoGrosze;
   // ⚠️ Brak choc jednego wiersza danych = „zostaje" NIE DA SIE POLICZYC. `null`, nie liczba
   // pomniejszona o zero — bo kwota pomniejszona o nieznany ZUS wyglada jak prawdziwa.
-  const zostajeGrosze = dane.brakujace.length
-    ? null
-    : wynikGrosze - dane.suma.zusRazemGrosze - dane.suma.pit5Grosze;
+  const zostajeGrosze = dane.brakujace.length ? null : wynikGrosze - dane.suma.zusRazemGrosze - dane.suma.pit5Grosze;
 
   // Pokrycie liczymy TYLKO gdy operator podal kontrolna kwote z KPiR. Bez niej raport
   // powstaje normalnie i o pokryciu milczy — pole jest NIEOBOWIAZKOWE.
   const kpirKoszty = dane.suma.kpirKosztyGrosze;
-  const pokrycieKosztow = kpirKoszty
-    ? (koszty.nettoGrosze / kpirKoszty) * 100
-    : null;
+  const pokrycieKosztow = kpirKoszty ? (koszty.nettoGrosze / kpirKoszty) * 100 : null;
   const kosztyZnane = pokrycieKosztow === null ? true : pokrycieKosztow >= PROG_POKRYCIA;
 
   const kpirPrzychod = dane.suma.kpirPrzychodGrosze;
-  const roznicaPrzychodu = kpirPrzychod ? {
-    kpirGrosze: kpirPrzychod,
-    roznicaGrosze: przychodNettoGrosze - kpirPrzychod,
-    procent: ((przychodNettoGrosze - kpirPrzychod) / kpirPrzychod) * 100,
-  } : null;
+  const roznicaPrzychodu = kpirPrzychod
+    ? {
+        kpirGrosze: kpirPrzychod,
+        roznicaGrosze: przychodNettoGrosze - kpirPrzychod,
+        procent: ((przychodNettoGrosze - kpirPrzychod) / kpirPrzychod) * 100,
+      }
+    : null;
 
   // Podatek NARASTAJACO od stycznia roku, w ktorym konczy sie okres.
   const odStycznia = miesiaceOkresu({ od: `${rok}-01-01`, do: doDnia });
@@ -214,8 +215,10 @@ function* liczRachunek(db, { od, do: doDnia }, { regulySprzedazy = {}, podlogaKo
   // wystawiony w dowolnym miesiacu OD STYCZNIA DO KONCA raportowanego okresu pomniejsza dochod
   // narastajaco od chwili, w ktorej faktycznie nastapil — zgodnie z art. 14 ust. 1m PIT.
   const zwrotyRokuNettoGrosze = sumaNetto(zwrotyWOkresie(db, { od: `${rok}-01-01`, do: doDnia }, regulySprzedazy));
-  const dochodRoku = sumaNetto(sprzedaz.filter(w => w.dzien >= poczatekRoku && w.dzien <= doDnia))
-    - zwrotyRokuNettoGrosze - kosztyOkresu(db, odStycznia).nettoGrosze;
+  const dochodRoku =
+    sumaNetto(sprzedaz.filter((w) => w.dzien >= poczatekRoku && w.dzien <= doDnia)) -
+    zwrotyRokuNettoGrosze -
+    kosztyOkresu(db, odStycznia).nettoGrosze;
   const podatek = podatekNarastajaco({
     dochodGrosze: dochodRoku,
     spoleczneGrosze: daneRoku.suma.zusSpoleczneGrosze,
@@ -275,10 +278,10 @@ function* liczRachunek(db, { od, do: doDnia }, { regulySprzedazy = {}, podlogaKo
     // wychodzi niski i wiarygodny naraz.
     wskazniki: kosztyZnane
       ? wskazniki({
-        kategorie: koszty.kategorie,
-        przychodNettoGrosze,
-        zamowien: wiersze.length,
-      })
+          kategorie: koszty.kategorie,
+          przychodNettoGrosze,
+          zamowien: wiersze.length,
+        })
       : null,
     // ⚠️ TYLKO DLA PELNEGO MIESIACA KALENDARZOWEGO (patrz `pelnyMiesiac` wyzej). Prowizja
     // rozstrzyga sie po okresie Z NUMERU faktury (wskazniki-zarzadcze.js), wiec dla kwartalu
@@ -291,18 +294,18 @@ function* liczRachunek(db, { od, do: doDnia }, { regulySprzedazy = {}, podlogaKo
     // rysunku (ta sama granica, co przy `zl` w raporty.ejs). `null`, gdy sprzedazy Allegro
     // w okresie NIE BYLO: dzielenie daloby wtedy nieskonczonosc, a wpisane „0%" bylo by
     // zdaniem o faktach, ktorych nie ma. `null` takze bez prowizji — patrz wyzej.
-    udzialProwizjiAllegro: prowizjaAllegro && sprzedazAllegroGrosze
-      ? (prowizjaAllegro.nettoGrosze / sprzedazAllegroGrosze) * 100
-      : null,
+    udzialProwizjiAllegro:
+      prowizjaAllegro && sprzedazAllegroGrosze ? (prowizjaAllegro.nettoGrosze / sprzedazAllegroGrosze) * 100 : null,
   };
 }
 
 // Nowa instalacja widzi to zdanie na FINANSACH, zanim ktokolwiek ustawi podłogę —
 // więc wskazuje panel oraz alternatywę w pliku. Treść w stałej, żeby linia odczytu
 // w `rachunekOkresu` nie przesuwała się przy każdej zmianie słów.
-const BRAK_PODLOGI_KOSZTOW = 'Nie ustawiono podłogi danych kosztów rachunku zarządczego.'
-  + ' W panelu Finanse → Kompletność danych (/finanse/pokrycie) administrator ustawia miesiąc RRRR-MM, np. 2026-05:'
-  + ' pierwszy miesiąc, od którego koszty firmy w OMS-ie (faktury kosztowe z KSeF i koszty dopisane ręcznie)'
-  + ' są kompletne. Zapis w panelu działa bez restartu. Rachunek pokaże wynik od tego miesiąca; wcześniejszych nie policzy,'
-  + ' bo bez części kosztów zysk wyszedłby zawyżony. Druga droga: wpisz w pliku konfiguracji OMS (oms.env)'
-  + ' OMS_RAPORTY_PODLOGA_KOSZTOW=RRRR-MM i uruchom OMS ponownie. Wartość z pliku wygrywa nad panelem.';
+const BRAK_PODLOGI_KOSZTOW =
+  'Nie ustawiono podłogi danych kosztów rachunku zarządczego.' +
+  ' W panelu Finanse → Kompletność danych (/finanse/pokrycie) administrator ustawia miesiąc RRRR-MM, np. 2026-05:' +
+  ' pierwszy miesiąc, od którego koszty firmy w OMS-ie (faktury kosztowe z KSeF i koszty dopisane ręcznie)' +
+  ' są kompletne. Zapis w panelu działa bez restartu. Rachunek pokaże wynik od tego miesiąca; wcześniejszych nie policzy,' +
+  ' bo bez części kosztów zysk wyszedłby zawyżony. Druga droga: wpisz w pliku konfiguracji OMS (oms.env)' +
+  ' OMS_RAPORTY_PODLOGA_KOSZTOW=RRRR-MM i uruchom OMS ponownie. Wartość z pliku wygrywa nad panelem.';

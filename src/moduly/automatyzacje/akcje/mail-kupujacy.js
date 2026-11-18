@@ -29,7 +29,9 @@ function kiedy(iso) {
 }
 function ktoWyslal(kto) {
   const s = String(kto ?? '');
-  return s.startsWith(PRZEDROSTEK_AUTOMATU) ? `regułą „${s.slice(PRZEDROSTEK_AUTOMATU.length)}”` : `ręcznie (${s || 'operator'})`;
+  return s.startsWith(PRZEDROSTEK_AUTOMATU)
+    ? `regułą „${s.slice(PRZEDROSTEK_AUTOMATU.length)}”`
+    : `ręcznie (${s || 'operator'})`;
 }
 
 /** Nazwa szablonu dla człowieka: wbudowany ze słownika domeny, własny z Ustawień; `null`, gdy go nie ma. */
@@ -44,28 +46,48 @@ export function akcjaMailKupujacy({ wiadomosci }) {
 
   async function zgoda({ db, regula, wykonanie, teraz = () => new Date() }) {
     const u = usluga();
-    if (!u) return odmowa('brak_poczty', 'brak poczty wychodzącej — podłącz ją w Ustawienia → Integracje → Poczta wychodząca.');
+    if (!u)
+      return odmowa(
+        'brak_poczty',
+        'brak poczty wychodzącej — podłącz ją w Ustawienia → Integracje → Poczta wychodząca.',
+      );
     const szablon = regula.akcja_param?.szablon ?? regula.akcja_json?.szablon ?? null;
     const nazwa = nazwaSzablonu(db, szablon);
     if (!szablon || !nazwa) {
-      return odmowa('szablon_usuniety', 'Szablonu maila tej reguły już nie ma (usunięty w Ustawienia → Komunikacja → Szablony wiadomości) — wybierz inny w edycji reguły.');
+      return odmowa(
+        'szablon_usuniety',
+        'Szablonu maila tej reguły już nie ma (usunięty w Ustawienia → Komunikacja → Szablony wiadomości) — wybierz inny w edycji reguły.',
+      );
     }
     const juz = ostatniaWiadomosc(db, wykonanie.zamowienie_id, szablon);
     if (juz) {
-      return odmowa('juz_wyslany', `„${nazwa}” poszło już do tego zamówienia ${ktoWyslal(juz.kto)} ${kiedy(juz.wyslana_at)}.`);
+      return odmowa(
+        'juz_wyslany',
+        `„${nazwa}” poszło już do tego zamówienia ${ktoWyslal(juz.kto)} ${kiedy(juz.wyslana_at)}.`,
+      );
     }
     // Rejestr `wiadomosci` pisze się dopiero po udanym `sendMail`. Wysyłka tego
     // samego szablonu do tego zamówienia, która jest „niepewna” (list mógł dojść) albo właśnie trwa — w dowolnej regule —
     // też blokuje: wolimy jeden brakujący mail niż dwa wysłane.
-    const watpliwa = db.prepare(`SELECT w.stan, r.nazwa FROM automatyzacje_wykonania w JOIN automatyzacje_reguly r ON r.id = w.regula_id
-      WHERE w.zamowienie_id = ? AND w.szablon = ? AND w.stan IN ('niepewne', 'w_toku') AND w.id IS NOT ? ORDER BY w.id DESC LIMIT 1`)
+    const watpliwa = db
+      .prepare(
+        `SELECT w.stan, r.nazwa FROM automatyzacje_wykonania w JOIN automatyzacje_reguly r ON r.id = w.regula_id
+      WHERE w.zamowienie_id = ? AND w.szablon = ? AND w.stan IN ('niepewne', 'w_toku') AND w.id IS NOT ? ORDER BY w.id DESC LIMIT 1`,
+      )
       .get(wykonanie.zamowienie_id, szablon, wykonanie.id ?? null);
     if (watpliwa) {
-      return odmowa('niepewne_wczesniej', `„${nazwa}” do tego zamówienia ${watpliwa.stan === 'w_toku' ? 'właśnie wychodzi' : 'ma niepewną wysyłkę'} `
-        + `z reguły „${watpliwa.nazwa}” — nie wiadomo, czy klient go dostał. Sprawdź w skrzynce nadawczej, zanim wyślesz ręcznie.`);
+      return odmowa(
+        'niepewne_wczesniej',
+        `„${nazwa}” do tego zamówienia ${watpliwa.stan === 'w_toku' ? 'właśnie wychodzi' : 'ma niepewną wysyłkę'} ` +
+          `z reguły „${watpliwa.nazwa}” — nie wiadomo, czy klient go dostał. Sprawdź w skrzynce nadawczej, zanim wyślesz ręcznie.`,
+      );
     }
     let k;
-    try { k = u.kontekst(wykonanie.zamowienie_id); } catch (e) { return odmowa('brak_zamowienia', e?.message ?? 'Nie ma zamówienia.'); }
+    try {
+      k = u.kontekst(wykonanie.zamowienie_id);
+    } catch (e) {
+      return odmowa('brak_zamowienia', e?.message ?? 'Nie ma zamówienia.');
+    }
     if (WLASNY.test(szablon) && k.z.anulowane) return odmowa('anulowane', czyWolnoWyslac(k.z, 'wyslane', k).powod);
     const zg = WLASNY.test(szablon) ? czyWolnoWyslacWlasny(k.z) : czyWolnoWyslac(k.z, szablon, k);
     if (!zg.wolno) {
@@ -79,8 +101,13 @@ export function akcjaMailKupujacy({ wiadomosci }) {
     if (szablon === 'faktura' && typeof u.fakturaGotowaDoWydania === 'function') {
       const g = await u.fakturaGotowaDoWydania(wykonanie.zamowienie_id, teraz());
       if (!g.gotowa) {
-        return { ok: false, odloz: true, kod: 'okno_poprawek', adresat: adresatKlienta(k.z),
-          powod: `Okno poprawek faktury jeszcze trwa (${g.powod}) — mail pójdzie sam po jego końcu.` };
+        return {
+          ok: false,
+          odloz: true,
+          kod: 'okno_poprawek',
+          adresat: adresatKlienta(k.z),
+          powod: `Okno poprawek faktury jeszcze trwa (${g.powod}) — mail pójdzie sam po jego końcu.`,
+        };
       }
     }
     return { ok: true, adresat: adresatKlienta(k.z) };
@@ -95,8 +122,11 @@ export function akcjaMailKupujacy({ wiadomosci }) {
     async wykonaj({ regula, wykonanie }) {
       const u = usluga();
       if (!u) throw Object.assign(new Error('brak poczty wychodzącej'), { przedWysylka: true });
-      const wynik = await u.wyslij(wykonanie.zamowienie_id, regula.akcja_param?.szablon,
-        { ktoKlikal: `${PRZEDROSTEK_AUTOMATU}${regula.nazwa}`, tryb: 'automat', regula: regula.nazwa });
+      const wynik = await u.wyslij(wykonanie.zamowienie_id, regula.akcja_param?.szablon, {
+        ktoKlikal: `${PRZEDROSTEK_AUTOMATU}${regula.nazwa}`,
+        tryb: 'automat',
+        regula: regula.nazwa,
+      });
       return { adresat: wynik?.do ?? null };
     },
     /** Podgląd maila w „Sprawdź na 30 dniach” — ta sama funkcja, co podgląd na karcie (i wysyłka). */

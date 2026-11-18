@@ -1,9 +1,15 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import {
-  zapiszProduktSklepowy, utworzKarte, powiazProdukt, oznaczZnikniete,
-  niepowiazaneOfertyAllegro, powiazaneOfertyAllegro, kartyDoPowiazania,
-  powiazOfertyHurtem, odepnijOferte,
+  zapiszProduktSklepowy,
+  utworzKarte,
+  powiazProdukt,
+  oznaczZnikniete,
+  niepowiazaneOfertyAllegro,
+  powiazaneOfertyAllegro,
+  kartyDoPowiazania,
+  powiazOfertyHurtem,
+  odepnijOferte,
 } from '../../../src/oms/db/magazyn.js';
 
 // ZAPYTANIA EKRANU POWIAZAN. Trzy warunki decyduja o tym, CO w ogole czlowiek zobaczy
@@ -15,14 +21,20 @@ import {
 //   (3) `zniknal_at IS NULL` — oferta wycofana z Allegro nie jest robota do wykonania.
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 
 const ODCZYT = '2026-08-11T06:00:00.000Z';
 
 function produkt(nadpisania = {}) {
   return zapiszProduktSklepowy(db, {
-    kanal: 'allegro_swietlik', produkt_id: String(Math.random()), wariant_id: '',
-    nazwa: 'Oferta', odczytane_at: ODCZYT, ...nadpisania,
+    kanal: 'allegro_swietlik',
+    produkt_id: String(Math.random()),
+    wariant_id: '',
+    nazwa: 'Oferta',
+    odczytane_at: ODCZYT,
+    ...nadpisania,
   });
 }
 
@@ -38,7 +50,10 @@ describe('niepowiazaneOfertyAllegro — co wchodzi na liste roboty', () => {
     // ⚠️ Produkt sklepowy trafia tu WYLACZNIE wtedy, gdy warunek kanalu zniknie — a wtedy
     // ekran powiazan proponowalby recznie wiazac to, co „Utwórz karty z niepowiązanych"
     // wiaze samo i poprawniej (karta POWSTAJE z produktu sklepowego, nie dobiera sie do niego).
-    expect(nazwy(niepowiazaneOfertyAllegro(db, ['allegro_swietlik', 'allegro_polcien2']))).toEqual(['Z konta drugiego', 'Z konta glownego']);
+    expect(nazwy(niepowiazaneOfertyAllegro(db, ['allegro_swietlik', 'allegro_polcien2']))).toEqual([
+      'Z konta drugiego',
+      'Z konta glownego',
+    ]);
   });
 
   it('oferta POWIAZANA znika z listy, niepowiazana zostaje', () => {
@@ -53,7 +68,12 @@ describe('niepowiazaneOfertyAllegro — co wchodzi na liste roboty', () => {
 
   it('oferta ZNIKNIETA z Allegro nie jest robota do wykonania, zywa jest', () => {
     produkt({ kanal: 'allegro_swietlik', produkt_id: 'a1', nazwa: 'Zywa' });
-    produkt({ kanal: 'allegro_swietlik', produkt_id: 'a2', nazwa: 'Wycofana', odczytane_at: '2026-08-01T00:00:00.000Z' });
+    produkt({
+      kanal: 'allegro_swietlik',
+      produkt_id: 'a2',
+      nazwa: 'Wycofana',
+      odczytane_at: '2026-08-01T00:00:00.000Z',
+    });
     // Ta sama droga, ktora oznacza znikniete w prawdziwym przebiegu odczytu.
     oznaczZnikniete(db, 'allegro_swietlik', ODCZYT);
 
@@ -67,8 +87,11 @@ describe('niepowiazaneOfertyAllegro — co wchodzi na liste roboty', () => {
 
     // Bez `COLLATE NOCASE` mala litera ladowalaby za wszystkimi wielkimi (porzadek kodow),
     // wiec „kandelabr" staloby pod „Trójnóg" — a czlowiek szuka wzrokiem po alfabecie.
-    expect(nazwy(niepowiazaneOfertyAllegro(db, ['allegro_swietlik', 'allegro_polcien2'])))
-      .toEqual(['ABAŻUR 23cm/28cm', 'kandelabr srebrny', 'Trójnóg podłogowy']);
+    expect(nazwy(niepowiazaneOfertyAllegro(db, ['allegro_swietlik', 'allegro_polcien2']))).toEqual([
+      'ABAŻUR 23cm/28cm',
+      'kandelabr srebrny',
+      'Trójnóg podłogowy',
+    ]);
   });
 });
 
@@ -78,7 +101,10 @@ describe('kartyDoPowiazania — katalog kandydatow', () => {
     const [w] = kartyDoPowiazania(db);
 
     expect(w).toMatchObject({
-      nazwa: 'Kandelabr', sku: 'LMP-KAN-1', szerokosc_mm: 700, wysokosc_mm: 1000,
+      nazwa: 'Kandelabr',
+      sku: 'LMP-KAN-1',
+      szerokosc_mm: 700,
+      wysokosc_mm: 1000,
     });
     expect(w.id).toBeGreaterThan(0);
   });
@@ -97,9 +123,14 @@ describe('powiazOfertyHurtem — zatwierdzenie wielu par w JEDNEJ transakcji', (
     const a = produkt({ nazwa: 'Kandelabr z Allegro' });
     const b = produkt({ nazwa: 'Lampion z Allegro' });
 
-    const wynik = powiazOfertyHurtem(db, [
-      { produktId: a, kartaId: kandelabr }, { produktId: b, kartaId: lampion },
-    ], ['allegro_swietlik', 'allegro_polcien2']);
+    const wynik = powiazOfertyHurtem(
+      db,
+      [
+        { produktId: a, kartaId: kandelabr },
+        { produktId: b, kartaId: lampion },
+      ],
+      ['allegro_swietlik', 'allegro_polcien2'],
+    );
 
     expect(wynik.powiazane).toEqual([a, b]);
     expect(wynik.nieaktualne).toEqual([]);
@@ -118,15 +149,19 @@ describe('powiazOfertyHurtem — zatwierdzenie wielu par w JEDNEJ transakcji', (
     const b = produkt({ nazwa: 'Zwyczajna' });
     powiazProdukt(db, a, kandelabr);
 
-    const wynik = powiazOfertyHurtem(db, [
-      { produktId: a, kartaId: lampion }, { produktId: b, kartaId: lampion },
-    ], ['allegro_swietlik', 'allegro_polcien2']);
+    const wynik = powiazOfertyHurtem(
+      db,
+      [
+        { produktId: a, kartaId: lampion },
+        { produktId: b, kartaId: lampion },
+      ],
+      ['allegro_swietlik', 'allegro_polcien2'],
+    );
 
     expect(wynik.nieaktualne).toEqual([a]);
     expect(wynik.powiazane).toEqual([b]);
     // Wybor sprzed chwili STOI — to jest cala tresc tego strazniks.
-    expect(db.prepare('SELECT karta_id FROM produkty_sklepowe WHERE id = ?').get(a).karta_id)
-      .toBe(kandelabr);
+    expect(db.prepare('SELECT karta_id FROM produkty_sklepowe WHERE id = ?').get(a).karta_id).toBe(kandelabr);
   });
 
   it('oferta ZNIKNIETA z Allegro nie daje sie powiazac', () => {
@@ -134,7 +169,10 @@ describe('powiazOfertyHurtem — zatwierdzenie wielu par w JEDNEJ transakcji', (
     const a = produkt({ produkt_id: 'stara', nazwa: 'Wycofana', odczytane_at: '2026-08-01T00:00:00.000Z' });
     oznaczZnikniete(db, 'allegro_swietlik', ODCZYT);
 
-    expect(powiazOfertyHurtem(db, [{ produktId: a, kartaId: kandelabr }], ['allegro_swietlik', 'allegro_polcien2']).nieaktualne).toEqual([a]);
+    expect(
+      powiazOfertyHurtem(db, [{ produktId: a, kartaId: kandelabr }], ['allegro_swietlik', 'allegro_polcien2'])
+        .nieaktualne,
+    ).toEqual([a]);
   });
 
   // ⚠️ TRANSAKCJA. Blad na dziesiatej parze z czterdziestu nie ma prawa zostawic dziewieciu
@@ -146,19 +184,32 @@ describe('powiazOfertyHurtem — zatwierdzenie wielu par w JEDNEJ transakcji', (
     const b = produkt({ nazwa: 'Druga' });
 
     // Karty o tym numerze nie ma — odmawia `wymagajKarty` (karta_id nie ma klucza obcego).
-    expect(() => powiazOfertyHurtem(db, [
-      { produktId: a, kartaId: kandelabr }, { produktId: b, kartaId: 999999 },
-    ], ['allegro_swietlik', 'allegro_polcien2'])).toThrow();
+    expect(() =>
+      powiazOfertyHurtem(
+        db,
+        [
+          { produktId: a, kartaId: kandelabr },
+          { produktId: b, kartaId: 999999 },
+        ],
+        ['allegro_swietlik', 'allegro_polcien2'],
+      ),
+    ).toThrow();
 
     // ⚠️ PIERWSZA PARA TEZ MA BYC COFNIETA — i to jest cala tresc tego testu. Bez transakcji
     // „Pierwsza" zostalaby powiazana, a lista wrocilaby z jedna pozycja mniej BEZ slowa
     // wyjasnienia, dlaczego reszta nie przeszla.
-    expect(nazwy(niepowiazaneOfertyAllegro(db, ['allegro_swietlik', 'allegro_polcien2']))).toEqual(['Druga', 'Pierwsza']);
+    expect(nazwy(niepowiazaneOfertyAllegro(db, ['allegro_swietlik', 'allegro_polcien2']))).toEqual([
+      'Druga',
+      'Pierwsza',
+    ]);
   });
 
   it('pusta lista par niczego nie rusza i nie wywala transakcji', () => {
     produkt({ nazwa: 'Nietknieta' });
-    expect(powiazOfertyHurtem(db, [], ['allegro_swietlik', 'allegro_polcien2'])).toEqual({ powiazane: [], nieaktualne: [] });
+    expect(powiazOfertyHurtem(db, [], ['allegro_swietlik', 'allegro_polcien2'])).toEqual({
+      powiazane: [],
+      nieaktualne: [],
+    });
     expect(nazwy(niepowiazaneOfertyAllegro(db, ['allegro_swietlik', 'allegro_polcien2']))).toEqual(['Nietknieta']);
   });
 });
@@ -183,8 +234,7 @@ describe('odepnijOferte — wiazanie jest ODWRACALNE', () => {
     powiazProdukt(db, sklepowy, kandelabr);
 
     expect(odepnijOferte(db, sklepowy, ['allegro_swietlik', 'allegro_polcien2'])).toBe(false);
-    expect(db.prepare('SELECT karta_id FROM produkty_sklepowe WHERE id = ?').get(sklepowy).karta_id)
-      .toBe(kandelabr);
+    expect(db.prepare('SELECT karta_id FROM produkty_sklepowe WHERE id = ?').get(sklepowy).karta_id).toBe(kandelabr);
   });
 
   it('numer, ktorego nie ma, oddaje „nic nie zrobiono" zamiast wyjatku', () => {
@@ -201,10 +251,16 @@ describe('powiazaneOfertyAllegro — skad w ogole wziac co odpiac', () => {
 
     // ⚠️ NAZWA KARTY JEDZIE Z ZAPYTANIA, a nie z drugiego odczytu per wiersz: przy setkach
     // powiazan „jedno zapytanie na wiersz" to setki zapytan na kazde otwarcie ekranu.
-    expect(powiazaneOfertyAllegro(db, ['allegro_swietlik', 'allegro_polcien2'])).toEqual([{
-      id: a, kanal: 'allegro_swietlik', nazwa: 'KANDELABR ozdobny wysoki',
-      karta_id: kandelabr, karta_nazwa: 'Kandelabr srebrny', karta_sku: 'LMP-KAN-1',
-    }]);
+    expect(powiazaneOfertyAllegro(db, ['allegro_swietlik', 'allegro_polcien2'])).toEqual([
+      {
+        id: a,
+        kanal: 'allegro_swietlik',
+        nazwa: 'KANDELABR ozdobny wysoki',
+        karta_id: kandelabr,
+        karta_nazwa: 'Kandelabr srebrny',
+        karta_sku: 'LMP-KAN-1',
+      },
+    ]);
   });
 
   it('produkt SKLEPOWY powiazany z kartą tu nie wchodzi', () => {

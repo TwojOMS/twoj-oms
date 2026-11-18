@@ -12,14 +12,15 @@ import { stanKanalu, kanalyWymagajaceUwagi, stanyKanalowZKolizjami } from '../..
 // i przestawiony kursor. Kanal wiszacy na cudzym koncie nie jest „lekko niepoprawny" —
 // on AKTYWNIE PSUJE DANE, i dlatego jest `pilne`, a nie `uprzedzenie`.
 
-const zdrowy = (extra) => stanKanalu({
-  kanal: 'allegro_polcien2',
-  polaczony: true,
-  zostaloDni: 89,
-  refreshWygasaAt: '2026-11-26T12:00:00.000Z',
-  brakujaceUprawnienia: [],
-  ...extra,
-});
+const zdrowy = (extra) =>
+  stanKanalu({
+    kanal: 'allegro_polcien2',
+    polaczony: true,
+    zostaloDni: 89,
+    refreshWygasaAt: '2026-11-26T12:00:00.000Z',
+    brakujaceUprawnienia: [],
+    ...extra,
+  });
 
 describe('kanal wiszacy na tym samym koncie co inny', () => {
   it('jest PILNY, a nie tylko „do przewiazania"', () => {
@@ -53,8 +54,10 @@ describe('kanal wiszacy na tym samym koncie co inny', () => {
   it('trafia na liste kanalow wymagajacych uwagi, PRZED uprzedzeniami', () => {
     const kolizja = zdrowy({ kanal: 'allegro_polcien2', kontoAllegro: '36457435', kolizjaKonta: true });
     const wygasa = zdrowy({ kanal: 'allegro_swietlik', zostaloDni: 3, kontoAllegro: '75246625' });
-    expect(kanalyWymagajaceUwagi([wygasa, kolizja]).map((s) => s.kanal))
-      .toEqual(['allegro_polcien2', 'allegro_swietlik']);
+    expect(kanalyWymagajaceUwagi([wygasa, kolizja]).map((s) => s.kanal)).toEqual([
+      'allegro_polcien2',
+      'allegro_swietlik',
+    ]);
   });
 });
 
@@ -81,8 +84,20 @@ describe('kanal zdrowy i sam na swoim koncie', () => {
 describe('stanyKanalowZKolizjami — jedna funkcja dla ekranu i dla uslugi', () => {
   it('ocenia wszystkie kanaly naraz i sam wykrywa sklejone konto', () => {
     const wynik = stanyKanalowZKolizjami([
-      { kanal: 'allegro_swietlik', polaczony: true, zostaloDni: 89, kontoAllegro: '36457435', brakujaceUprawnienia: [] },
-      { kanal: 'allegro_polcien2', polaczony: true, zostaloDni: 89, kontoAllegro: '36457435', brakujaceUprawnienia: [] },
+      {
+        kanal: 'allegro_swietlik',
+        polaczony: true,
+        zostaloDni: 89,
+        kontoAllegro: '36457435',
+        brakujaceUprawnienia: [],
+      },
+      {
+        kanal: 'allegro_polcien2',
+        polaczony: true,
+        zostaloDni: 89,
+        kontoAllegro: '36457435',
+        brakujaceUprawnienia: [],
+      },
     ]);
     // OBA sa pilne i OBA wolno przewiazac — panel nie wie, ktore wiazanie poszlo nie tam.
     expect(wynik.map((s) => s.pilne)).toEqual([true, true]);
@@ -91,8 +106,20 @@ describe('stanyKanalowZKolizjami — jedna funkcja dla ekranu i dla uslugi', () 
 
   it('nie rusza kanalow stojacych na swoich kontach', () => {
     const wynik = stanyKanalowZKolizjami([
-      { kanal: 'allegro_swietlik', polaczony: true, zostaloDni: 89, kontoAllegro: '36457435', brakujaceUprawnienia: [] },
-      { kanal: 'allegro_polcien2', polaczony: true, zostaloDni: 89, kontoAllegro: '75246625', brakujaceUprawnienia: [] },
+      {
+        kanal: 'allegro_swietlik',
+        polaczony: true,
+        zostaloDni: 89,
+        kontoAllegro: '36457435',
+        brakujaceUprawnienia: [],
+      },
+      {
+        kanal: 'allegro_polcien2',
+        polaczony: true,
+        zostaloDni: 89,
+        kontoAllegro: '75246625',
+        brakujaceUprawnienia: [],
+      },
     ]);
     expect(wynik.map((s) => s.pilne)).toEqual([false, false]);
     expect(wynik.map((s) => s.wolnoWiazac)).toEqual([false, false]);

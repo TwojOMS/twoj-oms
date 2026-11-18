@@ -17,7 +17,13 @@ import { uruchomAplikacje } from '../../../src/core/uruchomienie.ts';
 import { sprawdzKonfiguracjeModulow } from '../../../src/core/aplikacja.ts';
 import { modulyDla } from '../../../src/moduly/lista.ts';
 import { createModulFaktury } from '../../../src/moduly/faktury/modul.ts';
-import { SCIEZKA_PROFILU_FAKTUROWNI, DOWOLNA_DOMENA, wczytajProfilFakturowni, transportFakturowniProby, znacznikBazyProby } from './fakturownia-proba.ts';
+import {
+  SCIEZKA_PROFILU_FAKTUROWNI,
+  DOWOLNA_DOMENA,
+  wczytajProfilFakturowni,
+  transportFakturowniProby,
+  znacznikBazyProby,
+} from './fakturownia-proba.ts';
 import { definicjeKanalow, konfiguracjaKanalow } from '../../../src/moduly/kanaly/konfiguracja.ts';
 import { createModulKanaly } from '../../../src/moduly/kanaly/modul.ts';
 import { transportErliPiaskownicy } from './erli.mjs';
@@ -37,15 +43,23 @@ import { wymagajTrybuProby } from './tryb.mjs';
 import { uruchomPulsPollerow } from './pollery.mjs';
 
 // Ścieżki w rejestrze są względem korzenia repozytorium; import wykonujemy raz, bez uruchamiania serwera.
-const atrapyKurierow = await Promise.all(Object.values(MODULY_KURIEROW)
-  .filter((opis) => opis.piaskownica.atrapa.trim())
-  .map(async (opis) => ({ opis, modul: await import(new URL(`../../../${opis.piaskownica.atrapa}`, import.meta.url).href) })));
+const atrapyKurierow = await Promise.all(
+  Object.values(MODULY_KURIEROW)
+    .filter((opis) => opis.piaskownica.atrapa.trim())
+    .map(async (opis) => ({
+      opis,
+      modul: await import(new URL(`../../../${opis.piaskownica.atrapa}`, import.meta.url).href),
+    })),
+);
 
 export function fabrykiKurierowPiaskownicy({ env, baza = () => null }) {
   wymagajTrybuProby(env, 'fabryki kurierów piaskownicy');
-  return Object.fromEntries(atrapyKurierow.map(({ opis, modul }) => [
-    `create${opis.klucz[0].toUpperCase()}${opis.klucz.slice(1)}`, modul.createAtrapa({ env, baza }),
-  ]));
+  return Object.fromEntries(
+    atrapyKurierow.map(({ opis, modul }) => [
+      `create${opis.klucz[0].toUpperCase()}${opis.klucz.slice(1)}`,
+      modul.createAtrapa({ env, baza }),
+    ]),
+  );
 }
 
 // PRZ-108.09: `baza` — funkcja oddająca bazę piaskownicy (otwiera się DOPIERO po złożeniu modułów, bo migracje biorą
@@ -60,18 +74,24 @@ export function modulyPiaskownicy(env, { baza = () => null, profilFakturowni = S
   // Szew składa KSeF raz. Pamiętamy instancję także przy ponownym wywołaniu fabryki: numery i awaria zostają.
   let ksefWysylki;
   const fabryki = {
-    atrapaKsefWysylki: () => (ksefWysylki ??= {
-      ...createAtrapaKsefWysylki({ env }),
-      fabryka: ({ token }) => createAtrapaKsef({ env, token }),
-      spij: async () => {},
-    }),
+    atrapaKsefWysylki: () =>
+      (ksefWysylki ??= {
+        ...createAtrapaKsefWysylki({ env }),
+        fabryka: ({ token }) => createAtrapaKsef({ env, token }),
+        spij: async () => {},
+      }),
     createInfaktClient: ({ db, teraz }) => createAtrapaInfaktu({ db, teraz, env }),
     ...(profil
-      // Konto próbne: klient z tokenem z ekranu, transport tylko na domenę z pliku; znacznik bazy do `oid`.
-      ? { fakturowniaProby: { domena: profil.domena === DOWOLNA_DOMENA ? null : profil.domena, fetchImpl: transportFakturowniProby({ domena: profil.domena }),
-        znacznik: (db) => znacznikBazyProby(db) } }
-      // Stan Fakturowni jest w tabelach atrapy, więc instancja przy każdym wywołaniu — token sprawdzany za każdym razem.
-      : { createFakturowniaClient: ({ token, teraz }) => createAtrapaFakturowni({ db: baza(), token, teraz, env }) }),
+      ? // Konto próbne: klient z tokenem z ekranu, transport tylko na domenę z pliku; znacznik bazy do `oid`.
+        {
+          fakturowniaProby: {
+            domena: profil.domena === DOWOLNA_DOMENA ? null : profil.domena,
+            fetchImpl: transportFakturowniProby({ domena: profil.domena }),
+            znacznik: (db) => znacznikBazyProby(db),
+          },
+        }
+      : // Stan Fakturowni jest w tabelach atrapy, więc instancja przy każdym wywołaniu — token sprawdzany za każdym razem.
+        { createFakturowniaClient: ({ token, teraz }) => createAtrapaFakturowni({ db: baza(), token, teraz, env }) }),
     createVies: () => createAtrapaVies({ env }),
     // PRZ-121.06: „Uruchom OMS ponownie” — kontener piaskownicy startuje przez `node --watch-path`, który po wyjściu
     // dziecka czeka na zmianę pliku zamiast je podnieść. SIGTERM do rodzica (watch): zamyka dziecko i wychodzi,
@@ -88,20 +108,29 @@ export function modulyPiaskownicy(env, { baza = () => null, profilFakturowni = S
   const gus = { createGusClient: (opcje) => createAtrapaGus({ env, klucz: opcje?.klucz ?? null }) };
   return modulyDla(env).map((m) => {
     if (m.nazwa === 'kanaly') {
-      const modul = createModulKanaly(definicjeKanalow(env), true,
-        { fetchImpl: transportErliPiaskownicy({ baza, env }) });
-      return { ...modul, zbuduj: ctx => {
-        const z = modul.zbuduj(ctx);
-        scalUslugiKanalow(z.uslugi, zbudujAtrapyKanalow({ db: ctx.db, config: ctx.konfiguracja, log: ctx.log, env }), ctx.teraz);
-        return z;
-      } };
+      const modul = createModulKanaly(definicjeKanalow(env), true, {
+        fetchImpl: transportErliPiaskownicy({ baza, env }),
+      });
+      return {
+        ...modul,
+        zbuduj: (ctx) => {
+          const z = modul.zbuduj(ctx);
+          scalUslugiKanalow(
+            z.uslugi,
+            zbudujAtrapyKanalow({ db: ctx.db, config: ctx.konfiguracja, log: ctx.log, env }),
+            ctx.teraz,
+          );
+          return z;
+        },
+      };
     }
     if (m.nazwa === 'faktury') return createModulFaktury({ fabryki });
     // PRZ-087: poczta — atrapa bez wysyłki, żeby karta zamówienia miała sekcję wiadomości (poczta.mjs).
     if (m.nazwa === 'wiadomosci') return createModulWiadomosciAtrapy(env);
     // PRZ-102.22: token KSeF z Ustawień (faktury kosztowe) — atrapa zamiast prawdziwego klienta (ksef.mjs).
     if (m.nazwa === 'koszty') return createModulKoszty({ atrapaKsef: ({ token }) => createAtrapaKsef({ env, token }) });
-    if (m.nazwa === 'zamowienia') return createModulZamowienia({ zWiadomosciami: m.wymaga.includes('wiadomosci'), fabryki: gus });
+    if (m.nazwa === 'zamowienia')
+      return createModulZamowienia({ zWiadomosciami: m.wymaga.includes('wiadomosci'), fabryki: gus });
     if (m.nazwa === 'wysylka') return createModulWysylka({ fabryki: fabrykiKurierowPiaskownicy({ env, baza }) });
     return m;
   });
@@ -113,7 +142,8 @@ export function nadpisaniaPiaskownicy({ db, env, log }) {
   const atrapy = zbudujAtrapyKanalow({ db, config, log, env });
   return {
     // PRZ-083: Diagnostyka bez połączeń (lacznosc.mjs).
-    'ustawienia.lacznosc': createAtrapaLacznosci({ config: atrapy.config, env }) };
+    'ustawienia.lacznosc': createAtrapaLacznosci({ config: atrapy.config, env }),
+  };
 }
 
 /** OMS piaskownicy z atrapami. Zwraca to samo co uruchomAplikacje ({ aplikacja, zamknij }). */
@@ -125,8 +155,26 @@ export async function uruchomPiaskownice(env = process.env, { host = '0.0.0.0', 
   db = otworzBazeStartu(env, env.OMS_DB_PATH, { moduly, bezKataloguBazy: true });
   const nadpisania = nadpisaniaPiaskownicy({ db, env, log });
   // Źródła jak w zdrowiu (moduly/zdrowie/modul.ts): klucze sklepów i kanałów z konfiguracji, którą widzą moduły.
-  const wynik = await uruchomAplikacje({ moduly, env, db, host, port: Number(env.OMS_PORT || 3001), nadpisania, ...(log ? { log } : {}) });
+  const wynik = await uruchomAplikacje({
+    moduly,
+    env,
+    db,
+    host,
+    port: Number(env.OMS_PORT || 3001),
+    nadpisania,
+    ...(log ? { log } : {}),
+  });
   const config = wynik.aplikacja.usluga('kanaly', 'config');
-  const zatrzymajPuls = uruchomPulsPollerow({ db, env, zrodla: [...Object.keys(config.sklepy ?? {}), ...Object.keys(config.kanaly ?? {})] });
-  return { ...wynik, zamknij: async () => { zatrzymajPuls(); return wynik.zamknij(); } };
+  const zatrzymajPuls = uruchomPulsPollerow({
+    db,
+    env,
+    zrodla: [...Object.keys(config.sklepy ?? {}), ...Object.keys(config.kanaly ?? {})],
+  });
+  return {
+    ...wynik,
+    zamknij: async () => {
+      zatrzymajPuls();
+      return wynik.zamknij();
+    },
+  };
 }

@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
-  POLA_WIERSZA_POZYCJI, dodajWierszFormularza, usunWierszFormularza, liczbaWierszyFormularza,
+  POLA_WIERSZA_POZYCJI,
+  dodajWierszFormularza,
+  usunWierszFormularza,
+  liczbaWierszyFormularza,
 } from '../../src/domena/nowe-zamowienie.js';
 
 // Na ekranie „Nowe zamówienie" operator dokłada i kasuje wiersze pozycji.

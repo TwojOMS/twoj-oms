@@ -12,26 +12,45 @@ const AUTH = { authorization: `Basic ${Buffer.from('adam:x').toString('base64')}
 const CONFIG = { auth: { user: 'adam', pass: 'x' }, klienciZbiorczy: [] };
 
 const zmapowane = (nr) => ({
-  zrodlo_id: nr, numer: `Z-${nr}`, klient: { first_name: 'Jan', last_name: 'Testowy', email: 'j@k.pl' }, dostawa: {},
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null,
-  kwota_brutto: '50.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
-  utworzone_at: '2026-08-20T10:00:00Z', pozycje: [],
+  zrodlo_id: nr,
+  numer: `Z-${nr}`,
+  klient: { first_name: 'Jan', last_name: 'Testowy', email: 'j@k.pl' },
+  dostawa: {},
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '50.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-08-20T10:00:00Z',
+  pozycje: [],
 });
 
-let db; let app; let nr = 0;
+let db;
+let app;
+let nr = 0;
 function paczka({ sklep = 'pro', kurier, numer, metoda = 'dpd', nazwa = null, carrier = null }) {
   nr += 1;
   const id = zapiszZamowienie(db, sklep, zmapowane(nr), {});
   db.prepare('UPDATE zamowienia SET metoda_wysylki = ?, metoda_wysylki_nazwa = ? WHERE id = ?').run(metoda, nazwa, id);
   const p = rozpocznijPrzesylke(db, id, kurier);
   zakonczPrzesylke(db, p.id, { numerListu: numer, etykietaSciezka: '/tmp/e.pdf', surowa: '<x/>' });
-  db.prepare('UPDATE przesylki SET utworzona_at = ?, carrier_allegro = ? WHERE id = ?')
-    .run('2026-08-21T10:00:00.000Z', carrier, p.id);
+  db.prepare('UPDATE przesylki SET utworzona_at = ?, carrier_allegro = ? WHERE id = ?').run(
+    '2026-08-21T10:00:00.000Z',
+    carrier,
+    p.id,
+  );
   return p.id;
 }
 
 const pobierz = (url) => app.inject({ method: 'GET', url, headers: AUTH });
-const wiersz = (body, numer) => body.split('<tr>').find((f) => f.includes(numer))?.split('</tr>')[0];
+const wiersz = (body, numer) =>
+  body
+    .split('<tr>')
+    .find((f) => f.includes(numer))
+    ?.split('</tr>')[0];
 const komorki = (w) => [...w.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1]);
 
 beforeEach(() => {
@@ -40,11 +59,37 @@ beforeEach(() => {
   db = openOmsDb(':memory:');
   nr = 0;
   paczka({ kurier: 'dpd', numer: 'DPD-WLASNA' });
-  paczka({ sklep: 'allegro_swietlik', kurier: 'allegro_wza', numer: 'AD-WZA', metoda: 'allegro_dpd', nazwa: 'Allegro Kurier DPD' });
-  paczka({ sklep: 'allegro_swietlik', kurier: 'allegro', numer: 'AD-ALL', metoda: 'allegro_dpd', nazwa: 'Allegro Kurier DPD pobranie', carrier: 'ALLEGRO' });
+  paczka({
+    sklep: 'allegro_swietlik',
+    kurier: 'allegro_wza',
+    numer: 'AD-WZA',
+    metoda: 'allegro_dpd',
+    nazwa: 'Allegro Kurier DPD',
+  });
+  paczka({
+    sklep: 'allegro_swietlik',
+    kurier: 'allegro',
+    numer: 'AD-ALL',
+    metoda: 'allegro_dpd',
+    nazwa: 'Allegro Kurier DPD pobranie',
+    carrier: 'ALLEGRO',
+  });
   paczka({ kurier: 'inpost', numer: 'INP-1', metoda: 'inpost_paczkomat' });
-  paczka({ sklep: 'allegro_swietlik', kurier: 'allegro', numer: 'ONE-1', metoda: 'allegro_punkt', nazwa: 'Allegro One Box, One Kurier', carrier: 'ALLEGRO' });
-  paczka({ sklep: 'allegro_swietlik', kurier: 'allegro_wza', numer: 'NIEZNANY-1', metoda: 'allegro_punkt', nazwa: null });
+  paczka({
+    sklep: 'allegro_swietlik',
+    kurier: 'allegro',
+    numer: 'ONE-1',
+    metoda: 'allegro_punkt',
+    nazwa: 'Allegro One Box, One Kurier',
+    carrier: 'ALLEGRO',
+  });
+  paczka({
+    sklep: 'allegro_swietlik',
+    kurier: 'allegro_wza',
+    numer: 'NIEZNANY-1',
+    metoda: 'allegro_punkt',
+    nazwa: null,
+  });
   app = buildOmsServer({ db, config: CONFIG });
 });
 
@@ -66,7 +111,12 @@ describe('filtr przewoźnika po prawdziwym przewoźniku', () => {
     const r = await pobierz('/przesylki?pokaz=wszystkie&kurier=dpd');
     const select = r.body.match(/<select name="kurier">([\s\S]*?)<\/select>/)[1];
     const opcje = [...select.matchAll(/<option value="([^"]*)"[^>]*>([^<]*)<\/option>/g)].map((m) => [m[1], m[2]]);
-    expect(opcje).toEqual([['', 'Wszystkie'], ['allegro-one', 'Allegro One'], ['dpd', 'DPD'], ['inpost', 'InPost']]);
+    expect(opcje).toEqual([
+      ['', 'Wszystkie'],
+      ['allegro-one', 'Allegro One'],
+      ['dpd', 'DPD'],
+      ['inpost', 'InPost'],
+    ]);
     expect(select).toMatch(/<option value="dpd" selected>DPD<\/option>/);
   });
 
@@ -100,7 +150,9 @@ describe('kolumna Kurier i numer listu', () => {
     expect(wiersz(r.body, 'DPD-WLASNA')).toContain(
       '<a href="https://tracktrace.dpd.com.pl/parcelDetails?typ=1&amp;p1=DPD-WLASNA" target="_blank" rel="noopener noreferrer">DPD-WLASNA</a>',
     );
-    expect(wiersz(r.body, 'AD-WZA')).toContain('href="https://tracktrace.dpd.com.pl/parcelDetails?typ=1&amp;p1=AD-WZA"');
+    expect(wiersz(r.body, 'AD-WZA')).toContain(
+      'href="https://tracktrace.dpd.com.pl/parcelDetails?typ=1&amp;p1=AD-WZA"',
+    );
     expect(wiersz(r.body, 'INP-1')).toContain('href="https://inpost.pl/sledzenie-przesylek?number=INP-1"');
     expect(wiersz(r.body, 'ONE-1')).toContain('href="https://allegro.pl/allegrodelivery/sledzenie-paczki?numer=ONE-1"');
   });

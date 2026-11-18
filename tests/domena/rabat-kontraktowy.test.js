@@ -6,8 +6,7 @@ const zBazy = (procent) => stawkaKontraktowa({ klientBazy: { rabat_procent: proc
 
 describe('stawka kontraktowa', () => {
   it('bierze stawkę z karty klienta', () => {
-    expect(stawkaKontraktowa({ klientBazy: { rabat_procent: 40 } }))
-      .toEqual({ procent: 40, zrodlo: 'baza' });
+    expect(stawkaKontraktowa({ klientBazy: { rabat_procent: 40 } })).toEqual({ procent: 40, zrodlo: 'baza' });
   });
 
   it('klient spoza bazy nie ma stawki i wie o tym', () => {

@@ -17,10 +17,26 @@ const definicje = [
 ];
 
 const zam = (id, nad = {}) => ({
-  zrodlo_id: id, numer: String(id), klient: { first_name: 'Jan', last_name: 'Kowalski', email: 'j@k.pl' },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '100.00',
-  koszt_dostawy_brutto: '0.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
+  zrodlo_id: id,
+  numer: String(id),
+  klient: { first_name: 'Jan', last_name: 'Kowalski', email: 'j@k.pl' },
+  dostawa: {
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    address_1: 'Polna 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
+  },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '100.00',
+  koszt_dostawy_brutto: '0.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
   utworzone_at: '2026-10-17T13:19:52',
   pozycje: [{ nazwa: 'STOP', sku: 'S-1', ilosc: 1, cena_brutto: '100.00', brutto_linii: '100.00', vat: null }],
   ...nad,
@@ -53,16 +69,24 @@ describe('plakietka rodzaju kanału', () => {
     zapiszZamowienie(db, 'konto_b', zam(7002, { metoda_wysylki: 'allegro_paczkomat' }), {});
     const html = await lista();
     const woo = wiersz(html, 7001);
-    expect(woo).toContain('plakietka plakietka--kanal plakietka--woo" role="img" aria-label="WooCommerce" title="WooCommerce">W</span>Allegro Sklep');
+    expect(woo).toContain(
+      'plakietka plakietka--kanal plakietka--woo" role="img" aria-label="WooCommerce" title="WooCommerce">W</span>Allegro Sklep',
+    );
     expect(woo).not.toContain('plakietka--allegro');
     const allegro = wiersz(html, 7002);
-    expect(allegro).toContain('plakietka plakietka--kanal plakietka--allegro" role="img" aria-label="Allegro" title="Allegro">a</span>Pracownia Półcień');
+    expect(allegro).toContain(
+      'plakietka plakietka--kanal plakietka--allegro" role="img" aria-label="Allegro" title="Allegro">a</span>Pracownia Półcień',
+    );
   });
   it('ERLI — małe „e” w turkusie ERLI', async () => {
     zapiszZamowienie(db, 'rynek_c', zam(7004), {});
-    expect(wiersz(await lista(), 7004)).toContain('plakietka plakietka--kanal plakietka--erli" role="img" aria-label="ERLI" title="ERLI">e</span>Półcień na ERLI');
+    expect(wiersz(await lista(), 7004)).toContain(
+      'plakietka plakietka--kanal plakietka--erli" role="img" aria-label="ERLI" title="ERLI">e</span>Półcień na ERLI',
+    );
     const css = readFileSync(new URL('../../../src/public/oms-uklad.css', import.meta.url), 'utf8');
-    expect(css).toMatch(/\.plakietka--erli \{ --plakietka-tlo: var\(--marka-erli-tlo\); --plakietka-tekst: var\(--marka-bialy\); \}/);
+    expect(css).toMatch(
+      /\.plakietka--erli \{ --plakietka-tlo: var\(--marka-erli-tlo\); --plakietka-tekst: var\(--marka-bialy\); \}/,
+    );
     expect(css).toContain('--marka-erli-tlo: #07809F;');
   });
   it('kanał ręczny — bez plakietki kanału', async () => {

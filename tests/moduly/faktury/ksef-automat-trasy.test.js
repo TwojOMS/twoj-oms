@@ -16,13 +16,28 @@ import { modulMagazyn } from '../../../src/moduly/magazyn/modul.ts';
 import { modulUstawienia } from '../../../src/moduly/ustawienia/modul.ts';
 import { modulMarketing } from '../../../src/moduly/marketing/modul.ts';
 import { modulZdrowie } from '../../../src/moduly/zdrowie/modul.ts';
-import { wczytajAutomatKsef, zapiszWynikAutomatu, zapiszTrybAutomatu } from '../../../src/moduly/faktury/db/ksef-automat.js';
+import {
+  wczytajAutomatKsef,
+  zapiszWynikAutomatu,
+  zapiszTrybAutomatu,
+} from '../../../src/moduly/faktury/db/ksef-automat.js';
 
 const ADRES = '/ustawienia/integracje/infakt';
 
 function panel() {
-  const moduly = [modulRdzen, modulWeb, modulKanaly, createModulFaktury(), modulWiadomosci, createModulZamowienia({ zWiadomosciami: true }),
-    createModulWysylka(), modulMagazyn, modulUstawienia, modulMarketing, modulZdrowie];
+  const moduly = [
+    modulRdzen,
+    modulWeb,
+    modulKanaly,
+    createModulFaktury(),
+    modulWiadomosci,
+    createModulZamowienia({ zWiadomosciami: true }),
+    createModulWysylka(),
+    modulMagazyn,
+    modulUstawienia,
+    modulMarketing,
+    modulZdrowie,
+  ];
   const p = nowyPanel({ moduly });
   zalozKonto(p.db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
   zalozKonto(p.db, { login: 'ewa', imie: 'Ewa', haslo: 'h', rola: 'sprzedaz' });
@@ -30,7 +45,9 @@ function panel() {
   return { ...p, admin: jako(p.db, 'adam'), ewa: jako(p.db, 'ewa') };
 }
 
-afterEach(() => { vi.useRealTimers(); });
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 it('ustawienie B2C domyślnie wyłączone, zapis firmowy i 403 bez prawa do Ustawień', async () => {
   const p = panel();
@@ -49,7 +66,10 @@ it('ustawienie B2C domyślnie wyłączone, zapis firmowy i 403 bez prawa do Usta
     expect((await get(p.app, ADRES, p.admin)).body).toMatch(/id="ksef-konsumenckie-wlaczone"[^>]*checked/);
     expect((await post(p.app, url, p.admin, { wlaczony: '0' })).statusCode).toBe(303);
     expect(p.db.prepare("SELECT wartosc FROM ustawienia WHERE klucz = 'ksef.konsumenckie'").get().wartosc).toBe('0');
-  } finally { await p.app.close(); p.db.close(); }
+  } finally {
+    await p.app.close();
+    p.db.close();
+  }
 });
 
 // Formularz automatu (przełącznik, godzina, złe wejścia, „jutro o 20:00”) przeniesiony na ekran
@@ -58,8 +78,13 @@ it('ustawienie B2C domyślnie wyłączone, zapis firmowy i 403 bez prawa do Usta
 
 describe('wynik ostatniego przebiegu', () => {
   const wynik = {
-    dzien: '2026-10-20', startAt: '2026-10-20T18:01:00.000Z', koniecAt: '2026-10-20T18:01:05.000Z', stan: 'blad',
-    wyslane: [{ uuid: 'A', numer: 'A/10/2026' }], niepewne: [{ uuid: 'B', numer: 'B/10/2026' }], pominiete: [],
+    dzien: '2026-10-20',
+    startAt: '2026-10-20T18:01:00.000Z',
+    koniecAt: '2026-10-20T18:01:05.000Z',
+    stan: 'blad',
+    wyslane: [{ uuid: 'A', numer: 'A/10/2026' }],
+    niepewne: [{ uuid: 'B', numer: 'B/10/2026' }],
+    pominiete: [],
     poZasadzie: [{ numer: 'D/10/2026', powod: 'Korekty wysyła się w inFakcie — panel ich nie wysyła.' }],
     blad: 'inFakt nie odpowiedział w 30 s',
   };
@@ -82,15 +107,29 @@ describe('wynik ostatniego przebiegu', () => {
     ['przerwany', { uuid: 'A', numer: 'A/10/2026' }, 'sprawdź w inFakcie'],
     ['trwa', { uuid: 'A', numer: 'A/10/2026' }, 'Przebieg trwa — odśwież za chwilę'],
     ['trwa', null, 'Przebieg trwa — odśwież za chwilę'],
-  ])('wynik „%s” (w trakcie: %j) z pustymi listami — bez zdania „nie znalazł nic do wysłania”', async (stan, wTrakcie, oczekiwane) => {
-    const p = panel();
-    zapiszWynikAutomatu(p.db, { dzien: '2026-10-20', startAt: '2026-10-20T18:01:00.000Z', koniecAt: null, stan, wTrakcie,
-      wyslane: [], niepewne: [], pominiete: [], poZasadzie: [], wstrzymane: [], blad: null });
-    const r = await get(p.app, '/faktury/ksef/automat', p.admin);
-    expect(r.statusCode).toBe(200);
-    expect(r.body).not.toContain('nie znalazł nic do wysłania');
-    expect(r.body.toLowerCase()).toContain(oczekiwane.toLowerCase());
-  });
+  ])(
+    'wynik „%s” (w trakcie: %j) z pustymi listami — bez zdania „nie znalazł nic do wysłania”',
+    async (stan, wTrakcie, oczekiwane) => {
+      const p = panel();
+      zapiszWynikAutomatu(p.db, {
+        dzien: '2026-10-20',
+        startAt: '2026-10-20T18:01:00.000Z',
+        koniecAt: null,
+        stan,
+        wTrakcie,
+        wyslane: [],
+        niepewne: [],
+        pominiete: [],
+        poZasadzie: [],
+        wstrzymane: [],
+        blad: null,
+      });
+      const r = await get(p.app, '/faktury/ksef/automat', p.admin);
+      expect(r.statusCode).toBe(200);
+      expect(r.body).not.toContain('nie znalazł nic do wysłania');
+      expect(r.body.toLowerCase()).toContain(oczekiwane.toLowerCase());
+    },
+  );
 
   it('bez żadnego przebiegu — ekran mówi, że automat jeszcze nie działał', async () => {
     const p = panel();
@@ -102,8 +141,15 @@ describe('wynik ostatniego przebiegu', () => {
 
   it('wstrzymana faktura: ekran wyniku mówi, co zrobić, a „Zwolnij” (konto z „faktury”) zdejmuje wstrzymanie', async () => {
     const p = panel();
-    p.db.prepare('INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)').run('ksef.automat.wstrzymane',
-      JSON.stringify([{ uuid: 'B', numer: 'B/10/2026', dzien: '2026-10-20', powod: 'inFakt odrzucił (422): brak adresu' }]), '2026-10-20T18:01:00.000Z');
+    p.db
+      .prepare('INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)')
+      .run(
+        'ksef.automat.wstrzymane',
+        JSON.stringify([
+          { uuid: 'B', numer: 'B/10/2026', dzien: '2026-10-20', powod: 'inFakt odrzucił (422): brak adresu' },
+        ]),
+        '2026-10-20T18:01:00.000Z',
+      );
     const r = await get(p.app, '/faktury/ksef/automat', p.ewa);
     expect(r.body).toContain('Faktura B/10/2026 wstrzymana — automat jej nie wyśle');
     expect(r.body).toContain('action="/faktury/ksef/automat/zwolnij"');
@@ -116,15 +162,39 @@ describe('wynik ostatniego przebiegu', () => {
 
   // Przy wpisie „odrzucona” / „nie-wyslano” (TwojeFaktury) zdjęcie wpisu niczego nie wysyła — ta wersja
   // nie wraca do kolejki automatu — więc „Zwolnij” nie ma, a trasa odmawia.
-  const wstrzymaj = (p, wpisy) => p.db.prepare('INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)')
-    .run('ksef.automat.wstrzymane', JSON.stringify(wpisy), '2026-10-27T10:15:00.000Z');
-  const ODRZUCONA = { uuid: 'R', numer: 'R/10/2026', dzien: '2026-10-27', powod: 'kod 450: błąd semantyki', kod: 'odrzucona', wersja: 1 };
-  const NIE_DOSZLA = { uuid: 'N', numer: 'N/10/2026', dzien: '2026-10-27', powod: 'kod 401', kod: 'nie-wyslano', wersja: 1 };
-  const formularzZwolnij = (body, uuid) => new RegExp(`action="/faktury/ksef/automat/zwolnij"[^>]*>\\s*<input type="hidden" name="uuid" value="${uuid}"`, 'u').test(body);
+  const wstrzymaj = (p, wpisy) =>
+    p.db
+      .prepare('INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)')
+      .run('ksef.automat.wstrzymane', JSON.stringify(wpisy), '2026-10-27T10:15:00.000Z');
+  const ODRZUCONA = {
+    uuid: 'R',
+    numer: 'R/10/2026',
+    dzien: '2026-10-27',
+    powod: 'kod 450: błąd semantyki',
+    kod: 'odrzucona',
+    wersja: 1,
+  };
+  const NIE_DOSZLA = {
+    uuid: 'N',
+    numer: 'N/10/2026',
+    dzien: '2026-10-27',
+    powod: 'kod 401',
+    kod: 'nie-wyslano',
+    wersja: 1,
+  };
+  const formularzZwolnij = (body, uuid) =>
+    new RegExp(
+      `action="/faktury/ksef/automat/zwolnij"[^>]*>\\s*<input type="hidden" name="uuid" value="${uuid}"`,
+      'u',
+    ).test(body);
 
   it('wpis „odrzucona” i „nie-wyslano” — bez formularza „Zwolnij”, ze zdaniem, co zrobić; wpis bez kodu — z formularzem', async () => {
     const p = panel();
-    wstrzymaj(p, [ODRZUCONA, NIE_DOSZLA, { uuid: 'B', numer: 'B/10/2026', dzien: '2026-10-20', powod: 'inFakt odrzucił (422)' }]);
+    wstrzymaj(p, [
+      ODRZUCONA,
+      NIE_DOSZLA,
+      { uuid: 'B', numer: 'B/10/2026', dzien: '2026-10-20', powod: 'inFakt odrzucił (422)' },
+    ]);
     const r = await get(p.app, '/faktury/ksef/automat', p.ewa);
     expect(r.statusCode).toBe(200);
     expect(formularzZwolnij(r.body, 'R')).toBe(false);
@@ -137,7 +207,14 @@ describe('wynik ostatniego przebiegu', () => {
 
   it('K440c2: wpis „duplikat-niesprawdzony” — przycisk „Sprawdź ponownie” i prawdziwe wyjaśnienie; inne wpisy nadal „Zwolnij”', async () => {
     const p = panel();
-    const DUPLIKAT = { uuid: 'D', numer: 'D/10/2026', dzien: '2026-10-27', powod: 'nie udało się pobrać faktury z KSeF', kod: 'duplikat-niesprawdzony', wersja: 1 };
+    const DUPLIKAT = {
+      uuid: 'D',
+      numer: 'D/10/2026',
+      dzien: '2026-10-27',
+      powod: 'nie udało się pobrać faktury z KSeF',
+      kod: 'duplikat-niesprawdzony',
+      wersja: 1,
+    };
     wstrzymaj(p, [DUPLIKAT, { uuid: 'B', numer: 'B/10/2026', dzien: '2026-10-20', powod: 'inFakt odrzucił (422)' }]);
     const r = await get(p.app, '/faktury/ksef/automat', p.ewa);
     expect(r.statusCode).toBe(200);
@@ -147,7 +224,9 @@ describe('wynik ostatniego przebiegu', () => {
     expect(wiersz('D')).not.toContain('Zwolnij</button>');
     expect(wiersz('B')).toContain('Zwolnij</button>');
     expect(wiersz('B')).not.toContain('Sprawdź ponownie');
-    expect(r.body).toContain('„Sprawdź ponownie” niczego nie wysyła — panel jeszcze raz pobierze z KSeF fakturę o tym numerze i porówna ją z wysłaną.');
+    expect(r.body).toContain(
+      '„Sprawdź ponownie” niczego nie wysyła — panel jeszcze raz pobierze z KSeF fakturę o tym numerze i porówna ją z wysłaną.',
+    );
     // Tylko wpisy zwykłe: stare wyjaśnienie „Zwolnij” zostaje, bez zdania o duplikacie.
     const q = panel();
     wstrzymaj(q, [{ uuid: 'B', numer: 'B/10/2026', dzien: '2026-10-20', powod: 'inFakt odrzucił (422)' }]);
@@ -161,11 +240,31 @@ describe('wynik ostatniego przebiegu', () => {
   });
 
   it('K440c2: pasek wstrzymanych (TwojeFaktury) — zdanie z następnym krokiem zamiast „wymagają człowieka”', async () => {
-    const wstrzymane = [{ uuid: 'D', numer: 'D/10/2026' }, { uuid: 'E', numer: 'E/10/2026' }];
-    const automat = { wyborTrybu: true, tryb: 'o_godzinie', stoiPrzezBrak: false, najblizszy: 'jutro', odstepEdycji: 5, coIleMin: 5, odstepMaks: 60,
-      bledy: [], wstrzymane, zwolnienieMozliwe: true, nazwaProgramu: { mianownik: 'TwojeFaktury', miejscownik: 'w TwojeFaktury' },
-      formularz: { wlaczony: true, godzina: '18:00', tryb: 'o_godzinie', odstepEdycji: 5 }, wynik: null, zmienil: null };
-    const html = await ejs.renderFile('src/moduly/faktury/widoki/_automat-ksef.ejs', { automat, konsumenckie: false, fmtDataCzas: (x) => String(x) });
+    const wstrzymane = [
+      { uuid: 'D', numer: 'D/10/2026' },
+      { uuid: 'E', numer: 'E/10/2026' },
+    ];
+    const automat = {
+      wyborTrybu: true,
+      tryb: 'o_godzinie',
+      stoiPrzezBrak: false,
+      najblizszy: 'jutro',
+      odstepEdycji: 5,
+      coIleMin: 5,
+      odstepMaks: 60,
+      bledy: [],
+      wstrzymane,
+      zwolnienieMozliwe: true,
+      nazwaProgramu: { mianownik: 'TwojeFaktury', miejscownik: 'w TwojeFaktury' },
+      formularz: { wlaczony: true, godzina: '18:00', tryb: 'o_godzinie', odstepEdycji: 5 },
+      wynik: null,
+      zmienil: null,
+    };
+    const html = await ejs.renderFile('src/moduly/faktury/widoki/_automat-ksef.ejs', {
+      automat,
+      konsumenckie: false,
+      fmtDataCzas: (x) => String(x),
+    });
     expect(html).toContain('Wstrzymane faktury (automat ich nie wyśle): D/10/2026, E/10/2026.');
     expect(html).toContain('Co się stało i jaki jest następny krok');
     expect(html).not.toMatch(/wymaga(ją)? człowieka/u);
@@ -173,7 +272,11 @@ describe('wynik ostatniego przebiegu', () => {
 
   it('POST „Zwolnij” przy wpisie „nie-wyslano” / „odrzucona” → 409 po polsku, wpis zostaje; bez kodu — jak dotąd', async () => {
     const p = panel();
-    wstrzymaj(p, [ODRZUCONA, NIE_DOSZLA, { uuid: 'B', numer: 'B/10/2026', dzien: '2026-10-20', powod: 'inFakt odrzucił (422)' }]);
+    wstrzymaj(p, [
+      ODRZUCONA,
+      NIE_DOSZLA,
+      { uuid: 'B', numer: 'B/10/2026', dzien: '2026-10-20', powod: 'inFakt odrzucił (422)' },
+    ]);
     for (const uuid of ['N', 'R']) {
       const z = await post(p.app, '/faktury/ksef/automat/zwolnij', p.ewa, { uuid });
       expect(z.statusCode).toBe(409);

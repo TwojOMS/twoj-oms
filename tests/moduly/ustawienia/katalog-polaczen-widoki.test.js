@@ -9,16 +9,34 @@ const { renderFile } = createRequire(import.meta.url)('ejs');
 const kanal = 'allegro_polcien';
 const adres = `/ustawienia/integracje/allegro/${kanal}`;
 const headers = { authorization: `Basic ${Buffer.from('operator:test').toString('base64')}`, accept: 'text/html' };
-const env = { OMS_USER: 'operator', OMS_PASS: 'test', OMS_PROFORMY_KATALOG: tmpdir(), OMS_ETYKIETY_KATALOG: tmpdir(),
+const env = {
+  OMS_USER: 'operator',
+  OMS_PASS: 'test',
+  OMS_PROFORMY_KATALOG: tmpdir(),
+  OMS_ETYKIETY_KATALOG: tmpdir(),
   OMS_KANALY: JSON.stringify([{ klucz: kanal, typ: 'allegro', prefiks: 'POLCIEN', etykieta: 'Pracownia Półcień' }]),
-  POLCIEN_CLIENT_ID: 'fikcyjny', POLCIEN_CLIENT_SECRET: 'fikcyjny', POLCIEN_USER_AGENT: 'Fixture/1.0 (+https://fixture.invalid)', POLCIEN_OD: '2026-01-01' };
+  POLCIEN_CLIENT_ID: 'fikcyjny',
+  POLCIEN_CLIENT_SECRET: 'fikcyjny',
+  POLCIEN_USER_AGENT: 'Fixture/1.0 (+https://fixture.invalid)',
+  POLCIEN_OD: '2026-01-01',
+};
 afterEach(() => vi.unstubAllGlobals());
 async function panel(fn) {
-  vi.stubGlobal('fetch', vi.fn(() => { throw Error('Sieć zabroniona'); }));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(() => {
+      throw Error('Sieć zabroniona');
+    }),
+  );
   const a = await zbudujOms({ env });
-  try { await fn(a); } finally { await a.app.close(); a.db.close(); }
+  try {
+    await fn(a);
+  } finally {
+    await a.app.close();
+    a.db.close();
+  }
 }
-const kartaAllegro = html => html.match(/<article[^>]*data-usluga="allegro"[\s\S]*?<\/article>/)?.[0] ?? '';
+const kartaAllegro = (html) => html.match(/<article[^>]*data-usluga="allegro"[\s\S]*?<\/article>/)?.[0] ?? '';
 
 it('każde konto Allegro, także przykładowe, ma Zarządzaj; katalog jednego konta otwiera jego ekran, kilku — grupę', async () => {
   await panel(async ({ app, db }) => {
@@ -26,12 +44,31 @@ it('każde konto Allegro, także przykładowe, ma Zarządzaj; katalog jednego ko
       for (const proba of [false, true]) {
         let dane;
         const klucze = [kanal, 'allegro_cien'].slice(0, ile);
-        const widok = createWidokIntegracji({ db, proba, kanaly: () => ({ kanaly: Object.fromEntries(klucze.map(k => [k, {}])) }) });
+        const widok = createWidokIntegracji({
+          db,
+          proba,
+          kanaly: () => ({ kanaly: Object.fromEntries(klucze.map((k) => [k, {}])) }),
+        });
         for (const katalog of [false, true]) {
-          widok({ url: '/ustawienia/integracje' + (katalog ? '/katalog' : ''), query: {} }, { view: (_n, d) => { dane = d; } });
-          const html = await renderFile('src/moduly/ustawienia/widoki/ustawienia-polaczenia.ejs', { ...dane, fmtKiedy: () => '' });
-          if (katalog) expect(kartaAllegro(html)).toContain(`href="${ile === 1 ? adres : '/ustawienia/integracje#grupa-sprzedaz'}">Zarządzaj</a>`);
-          else for (const k of klucze) expect(html).toMatch(new RegExp(`href="/ustawienia/integracje/allegro/${k}">Zarządzaj</a>`));
+          widok(
+            { url: '/ustawienia/integracje' + (katalog ? '/katalog' : ''), query: {} },
+            {
+              view: (_n, d) => {
+                dane = d;
+              },
+            },
+          );
+          const html = await renderFile('src/moduly/ustawienia/widoki/ustawienia-polaczenia.ejs', {
+            ...dane,
+            fmtKiedy: () => '',
+          });
+          if (katalog)
+            expect(kartaAllegro(html)).toContain(
+              `href="${ile === 1 ? adres : '/ustawienia/integracje#grupa-sprzedaz'}">Zarządzaj</a>`,
+            );
+          else
+            for (const k of klucze)
+              expect(html).toMatch(new RegExp(`href="/ustawienia/integracje/allegro/${k}">Zarządzaj</a>`));
         }
       }
     }
@@ -43,7 +80,20 @@ it('każde konto Allegro, także przykładowe, ma Zarządzaj; katalog jednego ko
 
 it('każdy ekran połączenia ma jeden główny nagłówek, a Integracje są wspólnym małym linkiem powrotu', async () => {
   await panel(async ({ app }) => {
-    for (const trasa of ['', '/katalog', '/dpd', '/inpost', '/ksef', '/infakt', '/gus', '/poczta', '/reklamy', '/allegro/nowe', `/allegro/${kanal}`, '/woocommerce/nowy']) {
+    for (const trasa of [
+      '',
+      '/katalog',
+      '/dpd',
+      '/inpost',
+      '/ksef',
+      '/infakt',
+      '/gus',
+      '/poczta',
+      '/reklamy',
+      '/allegro/nowe',
+      `/allegro/${kanal}`,
+      '/woocommerce/nowy',
+    ]) {
       const r = await app.inject({ url: '/ustawienia/integracje' + trasa, headers });
       expect(r.statusCode, trasa).toBe(200);
       const html = r.body.replace(/<style\b[^>]*>[\s\S]*?<\/style>|<!--[\s\S]*?-->/g, '');
@@ -57,10 +107,17 @@ it('każdy ekran połączenia ma jeden główny nagłówek, a Integracje są wsp
 });
 
 it('lista używa czytelnych inicjałów KSeF, GUS i Meta zamiast pomniejszonych logotypów', async () => {
-  for (const [usluga, inicjal] of [['ksef', 'K'], ['gus', 'G'], ['meta', 'M']]) {
+  for (const [usluga, inicjal] of [
+    ['ksef', 'K'],
+    ['gus', 'G'],
+    ['meta', 'M'],
+  ]) {
     const html = await renderFile('src/moduly/ustawienia/widoki/ustawienia-polaczenia-wiersz.ejs', {
-      p: { usluga, nazwa: usluga, stan: 'niesprawdzone' }, idWiersza: usluga, kanaly: [],
-      wszystkieUslugi: [{ id: usluga, nazwa: usluga, logo: `/integracje/${usluga}.svg` }], fmtKiedy: () => '',
+      p: { usluga, nazwa: usluga, stan: 'niesprawdzone' },
+      idWiersza: usluga,
+      kanaly: [],
+      wszystkieUslugi: [{ id: usluga, nazwa: usluga, logo: `/integracje/${usluga}.svg` }],
+      fmtKiedy: () => '',
     });
     const logo = html.match(/<span class="pol-logo"[\s\S]*?<\/span>/)?.[0];
     expect(logo).toContain(`class="pol-inicjal" aria-hidden="true">${inicjal}</span>`);
@@ -70,8 +127,11 @@ it('lista używa czytelnych inicjałów KSeF, GUS i Meta zamiast pomniejszonych 
 
 it('ERLI w Moje połączenia i katalogu ma plik logo (Adam 11.11: „tak, wstaw logo erli”), lekki', async () => {
   const html = await renderFile('src/moduly/ustawienia/widoki/ustawienia-polaczenia-wiersz.ejs', {
-    p: { usluga: 'erli', nazwa: 'erli', stan: 'niesprawdzone' }, idWiersza: 'erli', kanaly: [],
-    wszystkieUslugi: [{ id: 'erli', nazwa: 'ERLI', logo: '/integracje/erli.svg' }], fmtKiedy: () => '',
+    p: { usluga: 'erli', nazwa: 'erli', stan: 'niesprawdzone' },
+    idWiersza: 'erli',
+    kanaly: [],
+    wszystkieUslugi: [{ id: 'erli', nazwa: 'ERLI', logo: '/integracje/erli.svg' }],
+    fmtKiedy: () => '',
   });
   const logo = html.match(/<span class="pol-logo"[\s\S]*?<\/span>/)?.[0];
   expect(logo).toContain('<img src="/public/integracje/erli.svg"');

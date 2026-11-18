@@ -92,10 +92,13 @@ export function rodzajFormularzaNadania(metodaUzyta) {
  * Przepuszczone niosą `metodaUzyta` i `rodzajFormularza` — trasa nie liczy ich drugi raz.
  * `umowyPobrania` = `umowyPobraniaFirmy(db)`; pominięte daje `[]` (jak dotąd).
  */
-export function podzielDoNadania(zamowienia, {
-  umowyPobrania = /** @type {readonly string[]} */ ([]),
-  metodaNadaniaKanalu = /** @type {((z: any, wybor: string, opcje: any) => any) | null} */ (null),
-} = {}) {
+export function podzielDoNadania(
+  zamowienia,
+  {
+    umowyPobrania = /** @type {readonly string[]} */ ([]),
+    metodaNadaniaKanalu = /** @type {((z: any, wybor: string, opcje: any) => any) | null} */ (null),
+  } = {},
+) {
   const doNadania = [];
   const pominiete = [];
   const uwagi = [];
@@ -112,9 +115,10 @@ export function podzielDoNadania(zamowienia, {
       uwagi.push({
         id: z.id,
         numer: z.numer,
-        tresc: decyzja.rodzaj === 'wza'
-          ? `za pobraniem — kwotę pobrania poda Allegro (w zamówieniu ${kwotaPobrania(z) ?? '?'} zł)`
-          : `za pobraniem — kurier zainkasuje ${kwotaPobrania(z)} zł`,
+        tresc:
+          decyzja.rodzaj === 'wza'
+            ? `za pobraniem — kwotę pobrania poda Allegro (w zamówieniu ${kwotaPobrania(z) ?? '?'} zł)`
+            : `za pobraniem — kurier zainkasuje ${kwotaPobrania(z)} zł`,
       });
     } else if (!z?.oplacone_at) {
       // Nieopłacone NIE blokuje: to sklep B2B i wysyłka na fakturę z terminem płatności jest
@@ -218,7 +222,9 @@ function decyzjaNadania(z, umowyPobrania = /** @type {readonly string[]} */ ([])
       // Kwota POniżej niedopłaty — mówimy wprost, o ile. Powyżej niedopłaty karta
       // i tak odmówi („pobierz najwyżej …”), więc powód zostaje dawny.
       if (kGr >= nd.niedoplataGr) return { powod: 'częściowo opłacone — nadaj z karty' };
-      return { powod: `kwota pobrania ${zl(kGr)} zł różni się od niedopłaty ${zl(nd.niedoplataGr)} zł — nadaj z karty` };
+      return {
+        powod: `kwota pobrania ${zl(kGr)} zł różni się od niedopłaty ${zl(nd.niedoplataGr)} zł — nadaj z karty`,
+      };
     }
   }
   return { metodaUzyta, rodzaj };
@@ -245,8 +251,10 @@ export function powodZaDuzejPartii(ile) {
   // zaznaczonych na liscie — operator mogl zaznaczyc wiecej, a czesc odpasc z innego powodu
   // (brak wplaty, juz wystawiona faktura). Zdanie mowi wiec o tym, co KWALIFIKUJE SIE do
   // wystawienia, a nie o samym zaznaczeniu — inaczej klamie liczba.
-  return `Do wystawienia kwalifikuje się ${ile} zamówień, a panel wystawia najwyżej `
-    + `${SUFIT_FAKTUR_HURTEM} faktur naraz. Nie wystawiono niczego — zaznacz mniej i powtórz.`;
+  return (
+    `Do wystawienia kwalifikuje się ${ile} zamówień, a panel wystawia najwyżej ` +
+    `${SUFIT_FAKTUR_HURTEM} faktur naraz. Nie wystawiono niczego — zaznacz mniej i powtórz.`
+  );
 }
 
 // Ile specyfikacji wolno wydrukowac jednym klikneciem.
@@ -290,8 +298,10 @@ export const SUFIT_SPECYFIKACJI_DRUKU = 100;
 // rysowane tak samo synchronicznie — wiec zdanie ma nazwac wydruk, ktory kliknieto.
 export function powodZaDuzegoDruku(ile, co = 'specyfikacji') {
   if (Number(ile) <= SUFIT_SPECYFIKACJI_DRUKU) return null;
-  return `Zaznaczono ${ile} zamówień, a panel drukuje najwyżej ${SUFIT_SPECYFIKACJI_DRUKU} `
-    + `zamówień w jednym wydruku ${co}. Nie wydrukowano niczego — zaznacz mniej i powtórz.`;
+  return (
+    `Zaznaczono ${ile} zamówień, a panel drukuje najwyżej ${SUFIT_SPECYFIKACJI_DRUKU} ` +
+    `zamówień w jednym wydruku ${co}. Nie wydrukowano niczego — zaznacz mniej i powtórz.`
+  );
 }
 
 // Stan faktury, ktory blokuje wystawienie hurtem, przelozony na zdanie dla operatora.
@@ -341,8 +351,10 @@ function powodRozjazduDokumentu(z) {
     return `Kwot zamówienia ${z?.numer} nie da się policzyć (${p.blad}) — popraw pozycje na karcie zamówienia.`;
   }
   if (!p.zgadzaSie) {
-    return `Pozycje zamówienia ${z?.numer} sumują się do ${p.sumaZl} zł, a zamówienie opiewa na `
-      + `${p.oczekiwanaZl} zł — popraw pozycje na karcie, bo wystawienie faktury i tak odmówi.`;
+    return (
+      `Pozycje zamówienia ${z?.numer} sumują się do ${p.sumaZl} zł, a zamówienie opiewa na ` +
+      `${p.oczekiwanaZl} zł — popraw pozycje na karcie, bo wystawienie faktury i tak odmówi.`
+    );
   }
   try {
     // Liczy tylko linie — stawka bez znaczenia, wbudowana wystarcza.
@@ -419,19 +431,21 @@ export function podzielDoFaktury(zamowienia, teraz = Date.now(), opcje = {}) {
   const doWystawienia = [];
   const pominiete = [];
   for (const z of zamowienia ?? []) {
-    const powod = powodOdmowyFaktury(z, { ...opcje, bezAdresu: true })
-      ?? powodStanuFaktury(z, teraz)
-      ?? powodBrakuAdresu(z)
-      ?? powodRozjazduDokumentu(z)
-      ?? wariantFakturyHurtem(z).powod
-      ?? null;
+    const powod =
+      powodOdmowyFaktury(z, { ...opcje, bezAdresu: true }) ??
+      powodStanuFaktury(z, teraz) ??
+      powodBrakuAdresu(z) ??
+      powodRozjazduDokumentu(z) ??
+      wariantFakturyHurtem(z).powod ??
+      null;
     if (powod) pominiete.push({ id: z.id, numer: z.numer, powod });
     else doWystawienia.push(z);
   }
   // Od NAJSTARSZEGO do najnowszego — numery faktur sa kolejne, wiec to ustawia numeracje
   // zgodnie z chronologia zamowien. `id` rozstrzyga remis, zeby sortowanie bylo stabilne
   // niezaleznie od kolejnosci zaznaczenia na liscie.
-  doWystawienia.sort((a, b) => String(a.utworzone_at ?? '').localeCompare(String(b.utworzone_at ?? ''))
-    || Number(a.id) - Number(b.id));
+  doWystawienia.sort(
+    (a, b) => String(a.utworzone_at ?? '').localeCompare(String(b.utworzone_at ?? '')) || Number(a.id) - Number(b.id),
+  );
   return { doWystawienia, pominiete };
 }

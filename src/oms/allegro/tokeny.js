@@ -1,5 +1,11 @@
 import { transport } from '../../integracje/transport.js';
-import { wczytajTokeny, zapiszTokeny, zapiszBladTokenu, generacjaDostepu, sprawdzGeneracjeDostepu } from '../db/tokeny.js';
+import {
+  wczytajTokeny,
+  zapiszTokeny,
+  zapiszBladTokenu,
+  generacjaDostepu,
+  sprawdzGeneracjeDostepu,
+} from '../db/tokeny.js';
 import { brakujaceUprawnienia, brakZgodyNaOferty, maZgodeNaOferty } from '../../domena/uprawnienia-kanalu.js';
 import { kontoZTokenu } from '../../domena/tozsamosc-kanalu.js';
 
@@ -70,26 +76,35 @@ function kodOauth(d) {
 // w przegladarce zamiast poprawic plik z poswiadczeniami.
 // Przycisk „Połącz z Allegro” jest w panelu: Ustawienia → Integracje → Moje połączenia, przy koncie Allegro.
 // Komunikat, ktory wymaga wiazania, podaje to miejsce razem z nazwa TEGO kanalu.
-const GDZIE_POLACZYC = (kanal) => `Ustawienia → Integracje → Moje połączenia, przy koncie Allegro tego kanału (${kanal || '<kanał>'})`;
+const GDZIE_POLACZYC = (kanal) =>
+  `Ustawienia → Integracje → Moje połączenia, przy koncie Allegro tego kanału (${kanal || '<kanał>'})`;
 
 function komunikatOdmowy(status, kod, kanal) {
   if (status >= 500) {
-    return `Allegro nie przyjęło odświeżenia tokenu (HTTP ${status}). To zwykle usterka przejściowa `
-      + 'po ich stronie — panel spróbuje ponownie przy następnym przebiegu. NIE łącz kanału ponownie; '
-      + 'jeśli trwa to dłużej niż godzinę, sprawdź status Allegro.';
+    return (
+      `Allegro nie przyjęło odświeżenia tokenu (HTTP ${status}). To zwykle usterka przejściowa ` +
+      'po ich stronie — panel spróbuje ponownie przy następnym przebiegu. NIE łącz kanału ponownie; ' +
+      'jeśli trwa to dłużej niż godzinę, sprawdź status Allegro.'
+    );
   }
   if (kod === 'invalid_grant') {
-    return `Odświeżenie tokenu odrzucone (HTTP ${status}, ${kod}) — refresh token wygasł albo został `
-      + 'już zużyty. Kanał sam z tego nie wyjdzie: trzeba połączyć go ponownie („Połącz z Allegro” w '
-      + `${GDZIE_POLACZYC(kanal)}).`;
+    return (
+      `Odświeżenie tokenu odrzucone (HTTP ${status}, ${kod}) — refresh token wygasł albo został ` +
+      'już zużyty. Kanał sam z tego nie wyjdzie: trzeba połączyć go ponownie („Połącz z Allegro” w ' +
+      `${GDZIE_POLACZYC(kanal)}).`
+    );
   }
   if (kod === 'invalid_client') {
-    return `Odświeżenie tokenu odrzucone (HTTP ${status}, ${kod}) — Allegro nie uznało poświadczeń `
-      + 'kanału (clientId/clientSecret). Popraw je w konfiguracji panelu; ponowne łączenie kanału '
-      + 'NIC tu nie da.';
+    return (
+      `Odświeżenie tokenu odrzucone (HTTP ${status}, ${kod}) — Allegro nie uznało poświadczeń ` +
+      'kanału (clientId/clientSecret). Popraw je w konfiguracji panelu; ponowne łączenie kanału ' +
+      'NIC tu nie da.'
+    );
   }
-  return `Odświeżenie tokenu odrzucone (HTTP ${status}${kod ? `, ${kod}` : ''}). Nie wiadomo, czy to `
-    + 'usterka przejściowa — sprawdź stan kanału, zanim połączysz go ponownie.';
+  return (
+    `Odświeżenie tokenu odrzucone (HTTP ${status}${kod ? `, ${kod}` : ''}). Nie wiadomo, czy to ` +
+    'usterka przejściowa — sprawdź stan kanału, zanim połączysz go ponownie.'
+  );
 }
 
 export function createTokeny({ db, kanal, ustawienia, fetchImpl, http = transport({ fetchImpl }) }) {
@@ -172,12 +187,17 @@ export function createTokeny({ db, kanal, ustawienia, fetchImpl, http = transpor
     // RangeError, zapis nigdy sie nie wykonuje, a para po stronie Allegro jest juz zrotowana.
     const sekundy = Number(d.expires_in);
     const zycie = Number.isFinite(sekundy) && sekundy > 0 ? sekundy : ZAPASOWE_ZYCIE_ACCESS_S;
-    zapiszTokeny(db, kanal, {
-      accessToken: d.access_token,
-      refreshToken: d.refresh_token,
-      wygasaAt: new Date(Date.now() + zycie * 1000).toISOString(),
-      refreshWygasaAt: new Date(Date.now() + DNI_ZYCIA_REFRESH * 86400000).toISOString(),
-    }, generacja);
+    zapiszTokeny(
+      db,
+      kanal,
+      {
+        accessToken: d.access_token,
+        refreshToken: d.refresh_token,
+        wygasaAt: new Date(Date.now() + zycie * 1000).toISOString(),
+        refreshWygasaAt: new Date(Date.now() + DNI_ZYCIA_REFRESH * 86400000).toISOString(),
+      },
+      generacja,
+    );
   }
 
   async function odswiez(refreshToken) {
@@ -226,9 +246,9 @@ export function createTokeny({ db, kanal, ustawienia, fetchImpl, http = transpor
       zapiszBladTokenu(
         db,
         kanal,
-        `Allegro odpowiedziało na odświeżenie tokenu (HTTP ${r.status}), ale bez kompletnej pary `
-        + 'tokenów — panel nie ma czym odświeżać dalej. Trzeba połączyć kanał ponownie '
-        + `(„Połącz z Allegro” w ${GDZIE_POLACZYC(kanal)}).`,
+        `Allegro odpowiedziało na odświeżenie tokenu (HTTP ${r.status}), ale bez kompletnej pary ` +
+          'tokenów — panel nie ma czym odświeżać dalej. Trzeba połączyć kanał ponownie ' +
+          `(„Połącz z Allegro” w ${GDZIE_POLACZYC(kanal)}).`,
       );
       throw new Error(`Allegro ${kanal}: odpowiedź odświeżenia bez pary tokenów (HTTP ${r.status})`);
     }
@@ -251,7 +271,10 @@ export function createTokeny({ db, kanal, ustawienia, fetchImpl, http = transpor
       // `await`-em; w miedzyczasie inne wywolanie moglo zdazyc zrotowac pare. Poleciec tu
       // refresh tokenem z tamtego odczytu znaczy wyslac token JUZ SPALONY.
       const w = wiersz();
-      if (!w?.refresh_token) throw new Error(`Allegro ${kanal}: kanał nie jest połączony — użyj „Połącz z Allegro” w ${GDZIE_POLACZYC(kanal)}.`);
+      if (!w?.refresh_token)
+        throw new Error(
+          `Allegro ${kanal}: kanał nie jest połączony — użyj „Połącz z Allegro” w ${GDZIE_POLACZYC(kanal)}.`,
+        );
       if (zywy(w)) return w.access_token;
       return odswiez(w.refresh_token);
     })();
@@ -278,7 +301,10 @@ export function createTokeny({ db, kanal, ustawienia, fetchImpl, http = transpor
     sprawdzGeneracjeDostepu(db, kanal);
     const w = wiersz();
     // Kanal niepolaczony ma powiedziec CO ZROBIC, a nie wywalic sie na `undefined`.
-    if (!w?.refresh_token) throw new Error(`Allegro ${kanal}: kanał nie jest połączony — użyj „Połącz z Allegro” w ${GDZIE_POLACZYC(kanal)}.`);
+    if (!w?.refresh_token)
+      throw new Error(
+        `Allegro ${kanal}: kanał nie jest połączony — użyj „Połącz z Allegro” w ${GDZIE_POLACZYC(kanal)}.`,
+      );
     return zywy(w) ? w.access_token : odswiezRaz();
   }
 

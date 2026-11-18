@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
-  terminZamowienia, dzienTerminu, dniPoTerminie, parsujDateWysylki, poTerminie,
+  terminZamowienia,
+  dzienTerminu,
+  dniPoTerminie,
+  parsujDateWysylki,
+  poTerminie,
 } from '../../src/domena/termin-wysylki.js';
 import { dniRoboczeMiedzy } from '../../src/domena/etap-przesylki.js';
 import { wiekZamowienia, terminNaKarcie } from '../../src/domena/wiek-zamowienia.js';
@@ -9,10 +13,18 @@ import { terminowosc } from '../../src/domena/statystyki-wysylki.js';
 // Ręczna data wysyłki („najpóźniej do”).
 // Kalendarz: śr 21.10.2026, czw 22, pt 23, sob 24, nd 25, pn 26. Do 25.10 czas letni (UTC+2).
 const zam = (d = {}) => ({
-  sklep: 'sklep_lampy', pobranie: 0, b2b: 0, indywidualne: 0, anulowane: 0, anulowane_recznie: null,
-  pozycje: [{ nazwa: 'Lampa wisząca Półcień' }], wyslane_at: null,
-  utworzone_at: '2026-10-21T06:00:00Z', oplacone_at: '2026-10-21T06:00:00Z',
-  termin_wysylki_reczny: null, ...d,
+  sklep: 'sklep_lampy',
+  pobranie: 0,
+  b2b: 0,
+  indywidualne: 0,
+  anulowane: 0,
+  anulowane_recznie: null,
+  pozycje: [{ nazwa: 'Lampa wisząca Półcień' }],
+  wyslane_at: null,
+  utworzone_at: '2026-10-21T06:00:00Z',
+  oplacone_at: '2026-10-21T06:00:00Z',
+  termin_wysylki_reczny: null,
+  ...d,
 });
 
 describe('terminZamowienia — ręczna data', () => {
@@ -51,7 +63,8 @@ describe('dniPoTerminie — jedna miara spóźnienia', () => {
   it('dla standardu równa się max(0, dni robocze od startu − limit) na trzech tygodniach', () => {
     const starty = [];
     for (let d = 19; d <= 31; d += 1) {
-      for (const godz of ['05:00', '09:59', '10:01', '21:30']) starty.push(`2026-10-${String(d).padStart(2, '0')}T${godz}:00Z`);
+      for (const godz of ['05:00', '09:59', '10:01', '21:30'])
+        starty.push(`2026-10-${String(d).padStart(2, '0')}T${godz}:00Z`);
     }
     const warianty = [{}, { sklep: 'allegro_polcien' }, { indywidualne: 1 }, { pozycje: [{ nazwa: 'Ekspres' }] }];
     let sprawdzone = 0;
@@ -140,8 +153,15 @@ describe('zegar listy (wiekZamowienia) — ręczna data', () => {
     expect(wiekZamowienia(z, '2026-10-23T10:00:00Z').poTerminie).toBe(true);
   });
   it('wysłane i anulowane dalej gaszą zegar', () => {
-    expect(wiekZamowienia(zam({ termin_wysylki_reczny: '2026-10-22', wyslane_at: '2026-10-21T12:00:00Z' }), '2026-10-23T10:00:00Z')).toBeNull();
-    expect(wiekZamowienia(zam({ termin_wysylki_reczny: '2026-10-22', anulowane: 1 }), '2026-10-23T10:00:00Z')).toBeNull();
+    expect(
+      wiekZamowienia(
+        zam({ termin_wysylki_reczny: '2026-10-22', wyslane_at: '2026-10-21T12:00:00Z' }),
+        '2026-10-23T10:00:00Z',
+      ),
+    ).toBeNull();
+    expect(
+      wiekZamowienia(zam({ termin_wysylki_reczny: '2026-10-22', anulowane: 1 }), '2026-10-23T10:00:00Z'),
+    ).toBeNull();
   });
 });
 
@@ -158,7 +178,9 @@ describe('statystyki terminowości — ręczna data rozstrzyga „w terminie”'
     expect(wczesniej.rozklad.map((p) => p.ile)).toEqual([0, 1, 0, 0]);
   });
   it('wysłane bez wpłaty z ręczną datą zostaje w wyłączeniu „bez startu”, nie w mianowniku', () => {
-    const w = terminowosc([zam({ oplacone_at: null, termin_wysylki_reczny: '2026-10-23', wyslane_at: '2026-10-22T08:00:00Z' })]);
+    const w = terminowosc([
+      zam({ oplacone_at: null, termin_wysylki_reczny: '2026-10-23', wyslane_at: '2026-10-22T08:00:00Z' }),
+    ]);
     expect(w.mianownik).toBe(0);
     expect(w.wylaczenia).toEqual({ niewyslane: 0, przedWplata: 0, bezStartu: 1 });
   });
@@ -175,11 +197,21 @@ describe('terminNaKarcie — wiersz „Termin wysyłki”', () => {
     expect(k.moznaZmienic).toBe(true);
   });
   it('objaśnienia standardu dla Allegro, ekspresu, indywidualnego i pobrania', () => {
-    expect(terminNaKarcie(zam({ sklep: 'allegro_polcien' }), teraz).objasnienie).toBe('standard: Allegro przed 12:00 — wysyłka tego dnia');
-    expect(terminNaKarcie(zam({ sklep: 'allegro_polcien', oplacone_at: '2026-10-21T11:00:00Z' }), teraz).objasnienie).toBe('standard: 1 dzień rob. od wpłaty');
-    expect(terminNaKarcie(zam({ pozycje: [{ nazwa: 'Ekspres' }] }), teraz).objasnienie).toBe('standard: ekspres — 2 dni rob. od wpłaty');
-    expect(terminNaKarcie(zam({ indywidualne: 1 }), teraz).objasnienie).toBe('standard: indywidualne — 7 dni rob. od wpłaty');
-    expect(terminNaKarcie(zam({ pobranie: 1, oplacone_at: null }), teraz).objasnienie).toBe('standard: 1 dzień rob. od złożenia');
+    expect(terminNaKarcie(zam({ sklep: 'allegro_polcien' }), teraz).objasnienie).toBe(
+      'standard: Allegro przed 12:00 — wysyłka tego dnia',
+    );
+    expect(
+      terminNaKarcie(zam({ sklep: 'allegro_polcien', oplacone_at: '2026-10-21T11:00:00Z' }), teraz).objasnienie,
+    ).toBe('standard: 1 dzień rob. od wpłaty');
+    expect(terminNaKarcie(zam({ pozycje: [{ nazwa: 'Ekspres' }] }), teraz).objasnienie).toBe(
+      'standard: ekspres — 2 dni rob. od wpłaty',
+    );
+    expect(terminNaKarcie(zam({ indywidualne: 1 }), teraz).objasnienie).toBe(
+      'standard: indywidualne — 7 dni rob. od wpłaty',
+    );
+    expect(terminNaKarcie(zam({ pobranie: 1, oplacone_at: null }), teraz).objasnienie).toBe(
+      'standard: 1 dzień rob. od złożenia',
+    );
   });
   it('ręczna data: napis, znacznik i wartość pola', () => {
     const k = terminNaKarcie(zam({ termin_wysylki_reczny: '2026-10-27' }), teraz);
@@ -199,10 +231,14 @@ describe('terminNaKarcie — wiersz „Termin wysyłki”', () => {
     expect(k.moznaZmienic).toBe(true);
   });
   it('po terminie (niewysłane) i po wysyłce — ocena, zmiana zablokowana', () => {
-    expect(terminNaKarcie(zam({ termin_wysylki_reczny: '2026-10-21' }), '2026-10-22T10:00:00Z').ocena).toBe('po terminie o 1 dzień rob.');
+    expect(terminNaKarcie(zam({ termin_wysylki_reczny: '2026-10-21' }), '2026-10-22T10:00:00Z').ocena).toBe(
+      'po terminie o 1 dzień rob.',
+    );
     const wTerminie = terminNaKarcie(zam({ wyslane_at: '2026-10-22T12:00:00Z' }), '2026-10-23T10:00:00Z');
     expect(wTerminie.ocena).toBe('wysłane w terminie');
     expect(wTerminie.moznaZmienic).toBe(false);
-    expect(terminNaKarcie(zam({ wyslane_at: '2026-10-26T12:00:00Z' }), teraz).ocena).toBe('wysłane po terminie o 2 dni rob.');
+    expect(terminNaKarcie(zam({ wyslane_at: '2026-10-26T12:00:00Z' }), teraz).ocena).toBe(
+      'wysłane po terminie o 2 dni rob.',
+    );
   });
 });

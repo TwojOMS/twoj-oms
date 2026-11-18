@@ -2,7 +2,11 @@ import { definicjeKanalowHistoryczne } from '../pomoc/przykladowe-definicje-kana
 import { describe, it, expect } from 'vitest';
 import { metodaZId, METODY_ALLEGRO } from '../../src/domena/allegro-dostawa.js';
 import {
-  METODY_WYSYLKI, ETYKIETY_WYSYLKI, etykietaWysylki, sprawdzZmianeMetody, czyKanalAllegro,
+  METODY_WYSYLKI,
+  ETYKIETY_WYSYLKI,
+  etykietaWysylki,
+  sprawdzZmianeMetody,
+  czyKanalAllegro,
 } from '../../src/domena/wysylka.js';
 import { METODY_DO_FILTRA, parsujFiltry, filtrujFiltrami } from '../../src/domena/filtry-listy.js';
 import { wybierzKuriera, kurierWpisuRecznego } from '../../src/oms/kurierzy/index.js';
@@ -60,14 +64,14 @@ describe('metody dostawy Allegro', () => {
 
   it('metody punktowe i kurierskie prowadzą do WzA, a nie do naszego kuriera', () => {
     for (const m of ['allegro_punkt', 'allegro_kurier', 'allegro_inne']) {
-      expect(wybierzKuriera(m, { dpd: {}, allegro_wza: { znacznik: 1 } }))
-        .toMatchObject({ nazwa: 'allegro_wza' });
+      expect(wybierzKuriera(m, { dpd: {}, allegro_wza: { znacznik: 1 } })).toMatchObject({ nazwa: 'allegro_wza' });
     }
   });
 
   it('allegro_dpd prowadzi do allegro_wza, a NIE do naszego DPD', () => {
-    expect(wybierzKuriera('allegro_dpd', { dpd: {}, allegro_wza: { znacznik: 1 } }))
-      .toMatchObject({ nazwa: 'allegro_wza' });
+    expect(wybierzKuriera('allegro_dpd', { dpd: {}, allegro_wza: { znacznik: 1 } })).toMatchObject({
+      nazwa: 'allegro_wza',
+    });
   });
 
   // ⚠️ CALY SLOWNIK, a nie dwa wpisy. Test z planu sprawdzal DWA z osmiu identyfikatorow,
@@ -107,8 +111,9 @@ describe('metody dostawy Allegro', () => {
 
   it('etykieta znanego id NIE jest surową nazwą od Allegro — słownik ma swoje brzmienie', () => {
     // Wpis w slowniku jest po to, zeby panel mowil o tej samej dostawie zawsze tak samo.
-    expect(metodaZId('2488f7b7-5d1c-4d65-b85c-4cbcf253fd93', 'Allegro Paczkomaty InPost').etykieta)
-      .toBe('Allegro Paczkomat InPost');
+    expect(metodaZId('2488f7b7-5d1c-4d65-b85c-4cbcf253fd93', 'Allegro Paczkomaty InPost').etykieta).toBe(
+      'Allegro Paczkomat InPost',
+    );
   });
 
   // ⚠️ NIEZMIENNIK, KTORY PSUJE SIE PRZY DOPISYWANIU WIERSZA DO SLOWNIKA: nowy identyfikator
@@ -189,7 +194,11 @@ describe('kontrakt: mapowanie Allegro × słownik metod', () => {
     id: 'e2a1-…',
     status: 'READY_FOR_PROCESSING',
     payment: { type: 'ONLINE', paidAmount: kwota('90.00') },
-    delivery: { method: { id: metodaId, name: nazwa }, cost: kwota('0.00'), address: { street: 'Ul. 1', city: 'Warszawa', zipCode: '00-950' } },
+    delivery: {
+      method: { id: metodaId, name: nazwa },
+      cost: kwota('0.00'),
+      address: { street: 'Ul. 1', city: 'Warszawa', zipCode: '00-950' },
+    },
     lineItems: [{ id: 'li-1', offer: { name: 'Szablon' }, quantity: 2, price: kwota('45.00'), tax: { rate: '23.00' } }],
     surcharges: [],
     summary: { totalToPay: kwota('90.00') },
@@ -300,13 +309,15 @@ describe('kurier wpisu ręcznego dla kanału Allegro', () => {
   // Sama obecność pierwszego w mapie NIE MA prawa niczego nadać.
   it('mimo kuriera wpisu ręcznego nadanie z panelu dalej odmawia', () => {
     // Paczkomat allegrowy: brak wpisu w DLA_METODY, czyli odmowa kategoryczna.
-    expect(() => wybierzKuriera('allegro_paczkomat', { dpd: {}, inpost: {}, allegro: {} }))
-      .toThrow(/nie jest obsługiwana/);
+    expect(() => wybierzKuriera('allegro_paczkomat', { dpd: {}, inpost: {}, allegro: {} })).toThrow(
+      /nie jest obsługiwana/,
+    );
     // Reszta metod allegrowych: obecność kuriera WPISU RĘCZNEGO (`allegro`) nadal niczego
     // nie nadaje — potrzebny jest skonfigurowany `allegro_wza`, czyli kurier KUPUJĄCY przewóz.
     for (const m of METODY_ALLEGRO.filter((x) => x !== 'allegro_paczkomat')) {
-      expect(() => wybierzKuriera(m, { dpd: {}, inpost: {}, allegro: {} }))
-        .toThrow(/allegro_wza nie jest skonfigurowany/);
+      expect(() => wybierzKuriera(m, { dpd: {}, inpost: {}, allegro: {} })).toThrow(
+        /allegro_wza nie jest skonfigurowany/,
+      );
     }
   });
 

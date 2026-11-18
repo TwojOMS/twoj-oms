@@ -7,26 +7,52 @@ import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 // zostaje na liście WYŁĄCZNIE przy trwającym przebiegu albo błędzie — błąd odczytu nadal musi być widoczny.
 
 const config = { auth: { user: 'operator', pass: 'atrapa' } };
-const auth = { authorization: `Basic ${Buffer.from('operator:atrapa').toString('base64')}`, origin: 'http://localhost' };
+const auth = {
+  authorization: `Basic ${Buffer.from('operator:atrapa').toString('base64')}`,
+  origin: 'http://localhost',
+};
 const SPOKOJ = { trwa: false, zaczety_at: null, skonczony_at: null, postep: null, kanaly: [], blad: null };
-const TRESC_SPOKOJ = { trwa: false, zaczety_at: null, skonczony_at: null, postep: null, razem: 0, pobrane: 0, bledy: [], blad: null };
+const TRESC_SPOKOJ = {
+  trwa: false,
+  zaczety_at: null,
+  skonczony_at: null,
+  postep: null,
+  razem: 0,
+  pobrane: 0,
+  bledy: [],
+  blad: null,
+};
 
 // Konto, któremu mapa praw odmawia adresów importu i nowej karty. `mozeAdres` w widokach to
 // `maDostepDoAdresu` (pipeline.js); strażnik tras pyta osobno (`maDostepDoEkranu`), więc lista nadal się otwiera.
 const odmowa = vi.hoisted(() => ({ adresy: new Set() }));
 vi.mock('../../../src/domena/ekrany.js', async (oryginal) => {
   const m = await oryginal();
-  return { ...m, maDostepDoAdresu: (konto, url) => !odmowa.adresy.has(String(url).split('?')[0]) && m.maDostepDoAdresu(konto, url) };
+  return {
+    ...m,
+    maDostepDoAdresu: (konto, url) => !odmowa.adresy.has(String(url).split('?')[0]) && m.maDostepDoAdresu(konto, url),
+  };
 });
 
 let db;
 let app;
-beforeEach(() => { db = openOmsDb(':memory:'); });
-afterEach(async () => { await app?.close(); db.close(); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
+afterEach(async () => {
+  await app?.close();
+  db.close();
+});
 
 const serwer = ({ stan = SPOKOJ, tresc = null, bezPrawa = false } = {}) => {
-  app = buildOmsServer({ db, config, magazyn: { start: vi.fn(() => ({ wystartowal: true })), stan: () => stan },
-    nadpisania: tresc ? { 'magazyn.trescAllegro': { start: vi.fn(), stan: () => ({ ...TRESC_SPOKOJ, ...tresc }), gotowy: () => true } } : {} });
+  app = buildOmsServer({
+    db,
+    config,
+    magazyn: { start: vi.fn(() => ({ wystartowal: true })), stan: () => stan },
+    nadpisania: tresc
+      ? { 'magazyn.trescAllegro': { start: vi.fn(), stan: () => ({ ...TRESC_SPOKOJ, ...tresc }), gotowy: () => true } }
+      : {},
+  });
   odmowa.adresy = new Set(bezPrawa ? ['/magazyn/import', '/magazyn/nowa-karta'] : []);
   return app;
 };
@@ -64,11 +90,22 @@ describe('nagłówek Magazynu — Dodaj produkt i Importuj', () => {
 
 describe('lista Magazynu — przyciski odczytu przeniesione na ekran importu', () => {
   it('nie ma starych przycisków ani odnośników (także przy połączonym Allegro i po błędzie)', async () => {
-    for (const opcje of [{ tresc: {} }, { tresc: { blad: 'Allegro odmówiło (HTTP 403).' }, stan: { ...SPOKOJ, blad: 'brak konfiguracji' } }]) {
+    for (const opcje of [
+      { tresc: {} },
+      { tresc: { blad: 'Allegro odmówiło (HTTP 403).' }, stan: { ...SPOKOJ, blad: 'brak konfiguracji' } },
+    ]) {
       const html = await lista(opcje);
-      for (const stary of ['action="/magazyn/odswiez"', 'action="/magazyn/tresc-allegro"', 'action="/magazyn/utworz-karty"',
-        'Nowa karta', 'Odczytaj katalogi ze sklepów', 'Pobierz treść i zdjęcia ofert', 'Utwórz karty z niepowiązanych',
-        'Co panel pomija i dlaczego', 'Powiąż oferty Allegro z kartami']) {
+      for (const stary of [
+        'action="/magazyn/odswiez"',
+        'action="/magazyn/tresc-allegro"',
+        'action="/magazyn/utworz-karty"',
+        'Nowa karta',
+        'Odczytaj katalogi ze sklepów',
+        'Pobierz treść i zdjęcia ofert',
+        'Utwórz karty z niepowiązanych',
+        'Co panel pomija i dlaczego',
+        'Powiąż oferty Allegro z kartami',
+      ]) {
         expect(html, stary).not.toContain(stary);
       }
     }
@@ -77,15 +114,23 @@ describe('lista Magazynu — przyciski odczytu przeniesione na ekran importu', (
 
 describe('lista Magazynu — pasek „Odczyt katalogów" tylko przy trwaniu albo błędzie', () => {
   it('spokój po udanym odczycie = brak paska', async () => {
-    const html = await lista({ tresc: { skonczony_at: '2026-11-13T08:10:00.000Z', razem: 2, pobrane: 2 },
-      stan: { ...SPOKOJ, skonczony_at: '2026-11-13T08:00:00.000Z', kanaly: [{ kanal: 'swietlik', zapisane: 12, znikniete: 0, blad: null }] } });
+    const html = await lista({
+      tresc: { skonczony_at: '2026-11-13T08:10:00.000Z', razem: 2, pobrane: 2 },
+      stan: {
+        ...SPOKOJ,
+        skonczony_at: '2026-11-13T08:00:00.000Z',
+        kanaly: [{ kanal: 'swietlik', zapisane: 12, znikniete: 0, blad: null }],
+      },
+    });
     expect(pasek(html)).toBe('');
     expect(html).not.toContain('Odczyt katalogów');
     expect(html).not.toContain('odczyt-szczegoly');
   });
 
   it('trwający odczyt = jedna linia z postępem i odnośnikiem „Importuj →"', async () => {
-    const p = pasek(await lista({ stan: { ...SPOKOJ, trwa: true, postep: { kanal: 'swietlik', zrobione: 3, zTego: 40 } } }));
+    const p = pasek(
+      await lista({ stan: { ...SPOKOJ, trwa: true, postep: { kanal: 'swietlik', zrobione: 3, zTego: 40 } } }),
+    );
     expect(p).toContain('Odczyt katalogów');
     expect(p).toContain('3 z 40');
     expect(p).toMatch(/<a href="\/magazyn\/import">Importuj →<\/a>/);
@@ -93,8 +138,22 @@ describe('lista Magazynu — pasek „Odczyt katalogów" tylko przy trwaniu albo
   });
 
   it('błąd kanału = pasek z PEŁNYM komunikatem i odnośnikiem do importu', async () => {
-    const p = pasek(await lista({ stan: { ...SPOKOJ, skonczony_at: '2026-11-13T08:00:00.000Z',
-      kanaly: [{ kanal: 'swietlik', zapisane: 0, znikniete: 0, blad: 'Sklep oddał pustą listę — oznacz jego wiersze ręcznie.' }] } }));
+    const p = pasek(
+      await lista({
+        stan: {
+          ...SPOKOJ,
+          skonczony_at: '2026-11-13T08:00:00.000Z',
+          kanaly: [
+            {
+              kanal: 'swietlik',
+              zapisane: 0,
+              znikniete: 0,
+              blad: 'Sklep oddał pustą listę — oznacz jego wiersze ręcznie.',
+            },
+          ],
+        },
+      }),
+    );
     expect(p).toContain('błąd odczytu');
     expect(p).toContain('Sklep oddał pustą listę — oznacz jego wiersze ręcznie.');
     expect(p).toMatch(/<a href="\/magazyn\/import">Importuj →<\/a>/);
@@ -111,8 +170,17 @@ describe('lista Magazynu — pasek „Odczyt katalogów" tylko przy trwaniu albo
     expect(trwa).toContain('2 z 5');
     expect(trwa).toContain('role="status"');
     await app.close();
-    const blad = pasek(await lista({ tresc: { skonczony_at: '2026-11-13T08:10:00.000Z', razem: 3, pobrane: 1,
-      blad: 'Allegro odmówiło dostępu (HTTP 403).', bledy: [{ kanal: 'allegro_polcien2', oferta_id: '7700000001', blad: 'Oferta w EUR — pominięta.' }] } }));
+    const blad = pasek(
+      await lista({
+        tresc: {
+          skonczony_at: '2026-11-13T08:10:00.000Z',
+          razem: 3,
+          pobrane: 1,
+          blad: 'Allegro odmówiło dostępu (HTTP 403).',
+          bledy: [{ kanal: 'allegro_polcien2', oferta_id: '7700000001', blad: 'Oferta w EUR — pominięta.' }],
+        },
+      }),
+    );
     expect(blad).toContain('Allegro odmówiło dostępu (HTTP 403).');
     expect(blad).not.toContain('role="status"');
     expect(blad).toContain('7700000001: Oferta w EUR — pominięta.');
@@ -120,7 +188,11 @@ describe('lista Magazynu — pasek „Odczyt katalogów" tylko przy trwaniu albo
   });
 
   it('ponad 50 ofert z błędem: pasek wypisuje 50 i dopisuje „…i jeszcze N”', async () => {
-    const bledy = Array.from({ length: 53 }, (_, i) => ({ kanal: 'allegro_polcien2', oferta_id: String(7700000100 + i), blad: 'Brak opisu.' }));
+    const bledy = Array.from({ length: 53 }, (_, i) => ({
+      kanal: 'allegro_polcien2',
+      oferta_id: String(7700000100 + i),
+      blad: 'Brak opisu.',
+    }));
     const p = pasek(await lista({ tresc: { skonczony_at: '2026-11-13T08:10:00.000Z', razem: 60, pobrane: 7, bledy } }));
     expect(p).toContain('ofert z błędem: 53');
     expect(p).toContain('7700000149: Brak opisu.');

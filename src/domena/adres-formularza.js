@@ -44,8 +44,9 @@ export function parsujAdresOdbiorcy(dane) {
   const brakujace = POLA_WYMAGANE_PRZEZ_DPD.filter((pole) => !adres[pole]);
   if (brakujace.length) {
     return {
-      blad: `Adres odbiorcy: brakuje pola ${brakujace.map((p) => ETYKIETY_POL[p]).join(', ')} `
-        + '— DPD tego wymaga do nadania. Uzupełnij adres w formularzu przed zatwierdzeniem.',
+      blad:
+        `Adres odbiorcy: brakuje pola ${brakujace.map((p) => ETYKIETY_POL[p]).join(', ')} ` +
+        '— DPD tego wymaga do nadania. Uzupełnij adres w formularzu przed zatwierdzeniem.',
     };
   }
   return { adres };

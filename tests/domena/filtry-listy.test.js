@@ -2,8 +2,13 @@ import { definicjeKanalowHistoryczne } from '../pomoc/przykladowe-definicje-kana
 import { describe, it, expect } from 'vitest';
 import { dzienWarszawa } from '../../src/domena/format-daty.js';
 import {
-  parsujFiltry, pasujeDoFiltrow, filtrujFiltrami, saJakiesFiltry, adresZFiltrami,
-  bezpiecznyPowrotNaListe, kanalyDoFiltra,
+  parsujFiltry,
+  pasujeDoFiltrow,
+  filtrujFiltrami,
+  saJakiesFiltry,
+  adresZFiltrami,
+  bezpiecznyPowrotNaListe,
+  kanalyDoFiltra,
 } from '../../src/domena/filtry-listy.js';
 import { adresKanalu } from '../../src/domena/kanaly.js';
 
@@ -41,17 +46,33 @@ describe('dzienWarszawa — dzień kalendarzowy TEJ SAMEJ skali, co data w wiers
 
 describe('parsujFiltry', () => {
   it('czyta zakres dat, sposób dostawy i metodę płatności z adresu', () => {
-    const f = parsujFiltry({
-      od: '2026-07-01', do: '2026-07-31', wysylka: 'dpd', platnosc: 'Za pobraniem',
-    }, definicjeKanalowHistoryczne);
+    const f = parsujFiltry(
+      {
+        od: '2026-07-01',
+        do: '2026-07-31',
+        wysylka: 'dpd',
+        platnosc: 'Za pobraniem',
+      },
+      definicjeKanalowHistoryczne,
+    );
     expect(f).toEqual({
-      od: '2026-07-01', do: '2026-07-31', wysylka: ['dpd'], platnosc: ['Za pobraniem'], kanal: null, faktura: null,
+      od: '2026-07-01',
+      do: '2026-07-31',
+      wysylka: ['dpd'],
+      platnosc: ['Za pobraniem'],
+      kanal: null,
+      faktura: null,
     });
   });
 
   it('brak parametrów daje komplet pustych filtrów', () => {
     expect(parsujFiltry({}, definicjeKanalowHistoryczne)).toEqual({
-      od: null, do: null, wysylka: null, platnosc: null, kanal: null, faktura: null,
+      od: null,
+      do: null,
+      wysylka: null,
+      platnosc: null,
+      kanal: null,
+      faktura: null,
     });
   });
 
@@ -68,7 +89,12 @@ describe('parsujFiltry', () => {
   // ZIGNOROWANA, a nie oddac pusta liste bez slowa wyjasnienia.
   it('stary parametr „pobranie" nie jest już filtrem', () => {
     expect(parsujFiltry({ pobranie: 'tak' }, definicjeKanalowHistoryczne)).toEqual({
-      od: null, do: null, wysylka: null, platnosc: null, kanal: null, faktura: null,
+      od: null,
+      do: null,
+      wysylka: null,
+      platnosc: null,
+      kanal: null,
+      faktura: null,
     });
     expect(saJakiesFiltry(parsujFiltry({ pobranie: 'tak' }, definicjeKanalowHistoryczne))).toBe(false);
   });
@@ -88,7 +114,9 @@ describe('parsujFiltry', () => {
   it('odrzuca metodę wysyłki spoza listy, którą panel umie obsłużyć', () => {
     expect(parsujFiltry({ wysylka: 'inpost' }, definicjeKanalowHistoryczne).wysylka).toBe(null);
     expect(parsujFiltry({ wysylka: 'nieznana' }, definicjeKanalowHistoryczne).wysylka).toEqual(['nieznana']);
-    expect(parsujFiltry({ wysylka: 'odbior_osobisty' }, definicjeKanalowHistoryczne).wysylka).toEqual(['odbior_osobisty']);
+    expect(parsujFiltry({ wysylka: 'odbior_osobisty' }, definicjeKanalowHistoryczne).wysylka).toEqual([
+      'odbior_osobisty',
+    ]);
   });
 
   // Powtórzony klucz (?od=a&od=b) Fastify oddaje jako tablicę — ta sama ochrona,
@@ -119,7 +147,9 @@ describe('pasujeDoFiltrow', () => {
   // Zamówienie bez daty nie ma prawa udawać, że mieści się w każdym zakresie — inaczej
   // wynik filtrowania po lipcu zawierałby wiersze, o których nie wiadomo, kiedy powstały.
   it('zamówienie bez daty wypada z każdego zakresu', () => {
-    expect(pasujeDoFiltrow(zam({ utworzone_at: null }), parsujFiltry({ od: '2026-07-01' }, definicjeKanalowHistoryczne))).toBe(false);
+    expect(
+      pasujeDoFiltrow(zam({ utworzone_at: null }), parsujFiltry({ od: '2026-07-01' }, definicjeKanalowHistoryczne)),
+    ).toBe(false);
     expect(pasujeDoFiltrow(zam({ utworzone_at: null }), parsujFiltry({}, definicjeKanalowHistoryczne))).toBe(true);
   });
 
@@ -134,7 +164,8 @@ describe('pasujeDoFiltrow', () => {
   // znaleźć pod tym, co panel pokazuje na ekranie, a nie pod tym, co przysłał sklep.
   it('metodę bierze po ręcznej korekcie, nie ze sklepu', () => {
     const z = zam({
-      metoda_wysylki: 'odbior_osobisty', metoda_wysylki_sklep: 'dpd',
+      metoda_wysylki: 'odbior_osobisty',
+      metoda_wysylki_sklep: 'dpd',
       wysylka_reczna_json: JSON.stringify({ metoda: 'odbior_osobisty' }),
     });
     expect(pasujeDoFiltrow(z, parsujFiltry({ wysylka: 'odbior_osobisty' }, definicjeKanalowHistoryczne))).toBe(true);
@@ -149,7 +180,10 @@ describe('pasujeDoFiltrow', () => {
   });
 
   it('filtry łączą się warunkiem I, nie LUB', () => {
-    const f = parsujFiltry({ od: '2026-07-01', do: '2026-07-31', wysylka: 'dpd', platnosc: 'Przelew tradycyjny' }, definicjeKanalowHistoryczne);
+    const f = parsujFiltry(
+      { od: '2026-07-01', do: '2026-07-31', wysylka: 'dpd', platnosc: 'Przelew tradycyjny' },
+      definicjeKanalowHistoryczne,
+    );
     expect(pasujeDoFiltrow(zam(), f)).toBe(true);
     expect(pasujeDoFiltrow(zam({ metoda_platnosci: 'Za pobraniem' }), f)).toBe(false);
     expect(pasujeDoFiltrow(zam({ utworzone_at: '2026-06-30T12:00:00' }), f)).toBe(false);
@@ -194,7 +228,12 @@ describe('filtr kanału sprzedaży', () => {
   // moglaby sie w ogole znalezc.
   it('pozycje filtra to zamknięta lista kanałów, razem z „indywidualne" i Allegro', () => {
     expect(kanalyDoFiltra(definicjeKanalowHistoryczne).map((k) => k.klucz)).toEqual([
-      'pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2', 'reczne', 'indywidualne',
+      'pro',
+      'swietlik',
+      'allegro_swietlik',
+      'allegro_polcien2',
+      'reczne',
+      'indywidualne',
     ]);
   });
 
@@ -204,8 +243,12 @@ describe('filtr kanału sprzedaży', () => {
   // zamknieta lista bez tych dwoch kluczy. Test dowodzi, ze `?kanal=allegro_swietlik`
   // JEST przyjmowany i faktycznie zaweza liste — nie jest cicho ignorowany.
   it('kanały Allegro są przyjmowane przez filtr i zawężają listę', () => {
-    expect(parsujFiltry({ kanal: 'allegro_swietlik' }, definicjeKanalowHistoryczne).kanal).toEqual(['allegro_swietlik']);
-    expect(parsujFiltry({ kanal: 'allegro_polcien2' }, definicjeKanalowHistoryczne).kanal).toEqual(['allegro_polcien2']);
+    expect(parsujFiltry({ kanal: 'allegro_swietlik' }, definicjeKanalowHistoryczne).kanal).toEqual([
+      'allegro_swietlik',
+    ]);
+    expect(parsujFiltry({ kanal: 'allegro_polcien2' }, definicjeKanalowHistoryczne).kanal).toEqual([
+      'allegro_polcien2',
+    ]);
     expect(pasujeDoFiltrow(zamKanal({ sklep: 'allegro_swietlik' }), { kanal: 'allegro_swietlik' })).toBe(true);
     expect(pasujeDoFiltrow(zamKanal({ sklep: 'allegro_polcien2' }), { kanal: 'allegro_swietlik' })).toBe(false);
   });
@@ -215,9 +258,15 @@ describe('filtr kanału sprzedaży', () => {
   // i pole wyboru nazywaloby to samo inaczej niz wiersz tabeli.
   it('etykiety pozycji bierze z adresKanalu, nie z własnej mapy', () => {
     expect(kanalyDoFiltra(definicjeKanalowHistoryczne)).toEqual(
-      ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2', 'reczne', 'indywidualne'].map((k) => ({ klucz: k, etykieta: adresKanalu(k, definicjeKanalowHistoryczne) })),
+      ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2', 'reczne', 'indywidualne'].map((k) => ({
+        klucz: k,
+        etykieta: adresKanalu(k, definicjeKanalowHistoryczne),
+      })),
     );
-    expect(kanalyDoFiltra(definicjeKanalowHistoryczne)[0]).toEqual({ klucz: 'pro', etykieta: 'pro.swietlik.example.test' });
+    expect(kanalyDoFiltra(definicjeKanalowHistoryczne)[0]).toEqual({
+      klucz: 'pro',
+      etykieta: 'pro.swietlik.example.test',
+    });
   });
 });
 
@@ -244,8 +293,9 @@ describe('saJakiesFiltry', () => {
 describe('adresZFiltrami', () => {
   it('składa adres zachowujący pozostałe filtry, frazę i zakładkę statusu', () => {
     const f = parsujFiltry({ od: '2026-07-01', wysylka: 'dpd' }, definicjeKanalowHistoryczne);
-    expect(adresZFiltrami(f, { szukaj: 'kolorit', status: 'nowe' }))
-      .toBe('/?status=nowe&szukaj=kolorit&od=2026-07-01&wysylka=dpd');
+    expect(adresZFiltrami(f, { szukaj: 'kolorit', status: 'nowe' })).toBe(
+      '/?status=nowe&szukaj=kolorit&od=2026-07-01&wysylka=dpd',
+    );
   });
 
   it('pominięcie jednego filtra daje adres bez niego — to jest „×" przy chipie', () => {
@@ -260,8 +310,9 @@ describe('adresZFiltrami', () => {
   // Nazwa metody płatności jest tekstem ze sklepu („Płatność przy odbiorze (pobranie)") —
   // wklejona do adresu bez kodowania rozpadłaby się na spacjach i nawiasach.
   it('koduje wartości, które trafiają do adresu', () => {
-    expect(adresZFiltrami(parsujFiltry({ platnosc: 'Za pobraniem' }, definicjeKanalowHistoryczne), {}))
-      .toBe('/?platnosc=Za%20pobraniem');
+    expect(adresZFiltrami(parsujFiltry({ platnosc: 'Za pobraniem' }, definicjeKanalowHistoryczne), {})).toBe(
+      '/?platnosc=Za%20pobraniem',
+    );
   });
 });
 
@@ -273,8 +324,9 @@ describe('adresZFiltrami', () => {
 describe('bezpiecznyPowrotNaListe', () => {
   it('przepuszcza gołą listę i listę z zapytaniem', () => {
     expect(bezpiecznyPowrotNaListe('/', definicjeKanalowHistoryczne)).toBe('/');
-    expect(bezpiecznyPowrotNaListe('/?status=w_realizacji&wysylka=dpd', definicjeKanalowHistoryczne))
-      .toBe('/?status=w_realizacji&wysylka=dpd');
+    expect(bezpiecznyPowrotNaListe('/?status=w_realizacji&wysylka=dpd', definicjeKanalowHistoryczne)).toBe(
+      '/?status=w_realizacji&wysylka=dpd',
+    );
   });
 
   // Biała lista jest WĄSKA celowo: adres powrotu z paska akcji masowych zawsze prowadzi
@@ -282,18 +334,30 @@ describe('bezpiecznyPowrotNaListe', () => {
   // że wartość nie pochodzi z naszego formularza, więc zostaje goła lista.
   it('odrzuca wszystko, co nie jest listą zamówień — zostaje goła lista', () => {
     for (const zly of [
-      '//obcy.example.com/', 'https://obcy.example.com/', 'javascript:alert(1)',
-      '/zamowienia/7', '/faktury?miesiac=2026-09', '/\\obcy.example.com',
-      '', ' ', null, undefined, 7, {},
+      '//obcy.example.com/',
+      'https://obcy.example.com/',
+      'javascript:alert(1)',
+      '/zamowienia/7',
+      '/faktury?miesiac=2026-09',
+      '/\\obcy.example.com',
+      '',
+      ' ',
+      null,
+      undefined,
+      7,
+      {},
     ]) {
       expect(bezpiecznyPowrotNaListe(zly, definicjeKanalowHistoryczne)).toBe('/');
     }
   });
 
   it('kanonizuje dozwolone filtry, odrzuca chwilowe zaznaczenie i obce parametry', () => {
-    expect(bezpiecznyPowrotNaListe(
-      '/?zaznacz=1&kanal=pro&status=nowe&szukaj=Jan%20Kowalski&obcy=sekret&od=2026-07-01', definicjeKanalowHistoryczne,
-    )).toBe('/?status=nowe&szukaj=Jan%20Kowalski&od=2026-07-01&kanal=pro');
+    expect(
+      bezpiecznyPowrotNaListe(
+        '/?zaznacz=1&kanal=pro&status=nowe&szukaj=Jan%20Kowalski&obcy=sekret&od=2026-07-01',
+        definicjeKanalowHistoryczne,
+      ),
+    ).toBe('/?status=nowe&szukaj=Jan%20Kowalski&od=2026-07-01&kanal=pro');
   });
 
   it('odrzuca powtórzone parametry zamiast wybierać jedną z wartości', () => {

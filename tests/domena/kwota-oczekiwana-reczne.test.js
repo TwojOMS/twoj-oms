@@ -3,7 +3,9 @@ import { kwotaOczekiwanaGrosze, sumaPozycjiZWysylkaGrosze } from '../../src/dome
 import { podsumowaniePozycji } from '../../src/domena/tabela-pozycji.js';
 
 const reczne = (nad = {}) => ({
-  sklep: 'reczne', kwota_brutto: '223.00', koszt_dostawy_brutto: '23.00',
+  sklep: 'reczne',
+  kwota_brutto: '223.00',
+  koszt_dostawy_brutto: '23.00',
   pozycje: [
     { nazwa: 'A', ilosc: 2, cena_brutto: '50.00', brutto_linii: '100.00', zrodlo: 'reczna' },
     { nazwa: 'B', ilosc: 1, cena_brutto: '100.00', brutto_linii: '100.00', zrodlo: 'reczna' },
@@ -30,7 +32,9 @@ describe('kwota oczekiwana przy zamówieniu ręcznym', () => {
 
   it('zamówienie ze sklepu liczy się tak jak dotąd — z członem różnicowym', () => {
     const zeSklepu = {
-      sklep: 'pro', kwota_brutto: '100.00', koszt_dostawy_brutto: '0.00',
+      sklep: 'pro',
+      kwota_brutto: '100.00',
+      koszt_dostawy_brutto: '0.00',
       pozycje: [
         { nazwa: 'A', ilosc: 1, cena_brutto: '100.00', brutto_linii: '100.00', zrodlo: 'sklep' },
         { nazwa: 'Dodatek', ilosc: 1, cena_brutto: '20.00', brutto_linii: '20.00', zrodlo: 'reczna' },

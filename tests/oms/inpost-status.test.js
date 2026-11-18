@@ -1,9 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import {
-  createInpostClient,
-  LIMIT_ZADANIA_MS,
-  LIMIT_ZAPYTANIA_STATUS_MS,
-} from '../../src/oms/kurierzy/inpost.js';
+import { createInpostClient, LIMIT_ZADANIA_MS, LIMIT_ZAPYTANIA_STATUS_MS } from '../../src/oms/kurierzy/inpost.js';
 
 // ⚠️ ANI JEDNO WYWOLANIE NIE IDZIE DO PRAWDZIWEGO INPOSTU — caly plik rozmawia z atrapa
 // `fetch`. Ksztalty odpowiedzi sa odwzorowane z rozpoznania na zywym koncie
@@ -15,7 +11,15 @@ const ORGANIZACJA = 13235;
 const URL_API = 'https://shipx.test/v1';
 const NUMER = '520000123456789012345678';
 
-const nadawca = { nazwa: 'Pracownia Półcień', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL', phone: '338451234', email: 'sklep@swietlik.example.test' };
+const nadawca = {
+  nazwa: 'Pracownia Półcień',
+  ulica: 'ul. Przykładowa 1',
+  kod: '00-950',
+  miasto: 'Warszawa',
+  kraj: 'PL',
+  phone: '338451234',
+  email: 'sklep@swietlik.example.test',
+};
 
 const json = (status, cialo) => ({
   status,
@@ -41,9 +45,9 @@ const sledzenie = (status, szczegoly) => ({
 
 describe('createInpostClient.statusPrzesylki — kontrakt wspólny z DPD', () => {
   it('pyta usługę śledzenia pod numerem przesyłki, z tokenem w nagłówku', async () => {
-    const { c, fetchImpl } = klient(json(200, sledzenie('confirmed', [
-      { status: 'confirmed', datetime: '2026-07-30T09:00:00.000+02:00' },
-    ])));
+    const { c, fetchImpl } = klient(
+      json(200, sledzenie('confirmed', [{ status: 'confirmed', datetime: '2026-07-30T09:00:00.000+02:00' }])),
+    );
     await c.statusPrzesylki(NUMER);
     const [adres, opcje] = fetchImpl.mock.calls[0];
     expect(adres).toBe(`${URL_API}/tracking/${NUMER}`);
@@ -52,11 +56,16 @@ describe('createInpostClient.statusPrzesylki — kontrakt wspólny z DPD', () =>
 
   // Ten sam kontrakt co dpd.statusPrzesylki: { opis, at } NAJNOWSZEGO zdarzenia.
   it('oddaje opis po polsku i czas najnowszego zdarzenia', async () => {
-    const { c } = klient(json(200, sledzenie('delivered', [
-      { status: 'confirmed', datetime: '2026-07-28T10:00:00.000+02:00' },
-      { status: 'delivered', datetime: '2026-07-30T18:20:00.000+02:00' },
-      { status: 'ready_to_pickup', datetime: '2026-07-29T14:00:00.000+02:00' },
-    ])));
+    const { c } = klient(
+      json(
+        200,
+        sledzenie('delivered', [
+          { status: 'confirmed', datetime: '2026-07-28T10:00:00.000+02:00' },
+          { status: 'delivered', datetime: '2026-07-30T18:20:00.000+02:00' },
+          { status: 'ready_to_pickup', datetime: '2026-07-29T14:00:00.000+02:00' },
+        ]),
+      ),
+    );
     expect(await c.statusPrzesylki(NUMER)).toEqual({
       opis: 'Odebrana przez klienta',
       at: '2026-07-30T18:20:00.000+02:00',
@@ -66,11 +75,16 @@ describe('createInpostClient.statusPrzesylki — kontrakt wspólny z DPD', () =>
   // Najnowsze wybieramy PO CZASIE, a nie po kolejnosci w dokumencie — InPost nie obiecuje
   // sortowania listy, a odwrotna kolejnosc (najnowsze na gorze) jest w API rownie czesta.
   it('przy odwróconej kolejności listy nadal oddaje najnowsze zdarzenie', async () => {
-    const { c } = klient(json(200, sledzenie('ready_to_pickup', [
-      { status: 'ready_to_pickup', datetime: '2026-07-30T12:00:00.000+02:00' },
-      { status: 'sent_from_source_branch', datetime: '2026-07-29T20:00:00.000+02:00' },
-      { status: 'confirmed', datetime: '2026-07-28T08:00:00.000+02:00' },
-    ])));
+    const { c } = klient(
+      json(
+        200,
+        sledzenie('ready_to_pickup', [
+          { status: 'ready_to_pickup', datetime: '2026-07-30T12:00:00.000+02:00' },
+          { status: 'sent_from_source_branch', datetime: '2026-07-29T20:00:00.000+02:00' },
+          { status: 'confirmed', datetime: '2026-07-28T08:00:00.000+02:00' },
+        ]),
+      ),
+    );
     expect((await c.statusPrzesylki(NUMER)).opis).toBe('Gotowa do odbioru w paczkomacie');
   });
 
@@ -92,10 +106,15 @@ describe('createInpostClient.statusPrzesylki — kontrakt wspólny z DPD', () =>
   // dowiedzial, ze cos sie stalo), ani udawac innego — bo „Odebrana przez klienta" przy
   // paczce, ktora wlasnie poszla na zwrot, to klamstwo, na ktorym operator oprze decyzje.
   it('nieznany stan pokazuje się WPROST, razem z surowym kodem', async () => {
-    const { c } = klient(json(200, sledzenie('avizo', [
-      { status: 'confirmed', datetime: '2026-07-28T10:00:00.000+02:00' },
-      { status: 'oversized_parcel_at_branch', datetime: '2026-07-31T11:00:00.000+02:00' },
-    ])));
+    const { c } = klient(
+      json(
+        200,
+        sledzenie('avizo', [
+          { status: 'confirmed', datetime: '2026-07-28T10:00:00.000+02:00' },
+          { status: 'oversized_parcel_at_branch', datetime: '2026-07-31T11:00:00.000+02:00' },
+        ]),
+      ),
+    );
     const wynik = await c.statusPrzesylki(NUMER);
     expect(wynik.at).toBe('2026-07-31T11:00:00.000+02:00');
     // Surowy kod MUSI byc widoczny — to jedyne, po czym czlowiek pozna, o co chodzi.
@@ -121,11 +140,16 @@ describe('createInpostClient.statusPrzesylki — kontrakt wspólny z DPD', () =>
   // Zdarzenie bez czasu odrzucamy: nie da sie go porownac z innymi ani powiedziec
   // operatorowi „kiedy". Ta sama swiadoma asymetria co w dpd.js.
   it('zdarzenie bez znacznika czasu nie rozjeżdża opisu z czasem', async () => {
-    const { c } = klient(json(200, sledzenie('delivered', [
-      { status: 'confirmed', datetime: '2026-07-28T10:00:00.000+02:00' },
-      { status: 'returned_to_sender' },
-      { status: 'delivered', datetime: '2026-07-30T18:20:00.000+02:00' },
-    ])));
+    const { c } = klient(
+      json(
+        200,
+        sledzenie('delivered', [
+          { status: 'confirmed', datetime: '2026-07-28T10:00:00.000+02:00' },
+          { status: 'returned_to_sender' },
+          { status: 'delivered', datetime: '2026-07-30T18:20:00.000+02:00' },
+        ]),
+      ),
+    );
     expect(await c.statusPrzesylki(NUMER)).toEqual({
       opis: 'Odebrana przez klienta',
       at: '2026-07-30T18:20:00.000+02:00',
@@ -162,9 +186,7 @@ describe('createInpostClient.statusPrzesylki — kontrakt wspólny z DPD', () =>
   // a NIE `undefined` — node:sqlite nie potrafi zbindowac undefined („Provided value cannot
   // be bound"), a ten blad ginal juz raz w try/catch odpornosci karty.
   it('zdarzenie bez stanu oddaje opis null (nie undefined) i zachowuje swój czas', async () => {
-    const { c } = klient(json(200, sledzenie('confirmed', [
-      { datetime: '2026-07-30T09:00:00.000+02:00' },
-    ])));
+    const { c } = klient(json(200, sledzenie('confirmed', [{ datetime: '2026-07-30T09:00:00.000+02:00' }])));
     const wynik = await c.statusPrzesylki(NUMER);
     expect(wynik.at).toBe('2026-07-30T09:00:00.000+02:00');
     expect(wynik.opis).toBeNull();
@@ -176,12 +198,17 @@ describe('createInpostClient.statusPrzesylki — kontrakt wspólny z DPD', () =>
   // mimo ze tekstowo wyglada odwrotnie... i odwrotnie: porownanie tekstowe myli sie tam,
   // gdzie przesuniecia sie roznia.
   it('czas porównuje po wartości, a nie po tekście (przesunięcia stref)', async () => {
-    const { c } = klient(json(200, sledzenie('delivered', [
-      // 22:30 UTC — PÓŹNIEJSZE, choć tekstowo mniejsze.
-      { status: 'delivered', datetime: '2026-07-31T00:30:00.000+02:00' },
-      // 21:35 UTC — WCZEŚNIEJSZE, choć tekstowo większe.
-      { status: 'ready_to_pickup', datetime: '2026-07-30T23:35:00.000+02:00' },
-    ])));
+    const { c } = klient(
+      json(
+        200,
+        sledzenie('delivered', [
+          // 22:30 UTC — PÓŹNIEJSZE, choć tekstowo mniejsze.
+          { status: 'delivered', datetime: '2026-07-31T00:30:00.000+02:00' },
+          // 21:35 UTC — WCZEŚNIEJSZE, choć tekstowo większe.
+          { status: 'ready_to_pickup', datetime: '2026-07-30T23:35:00.000+02:00' },
+        ]),
+      ),
+    );
     expect((await c.statusPrzesylki(NUMER)).opis).toBe('Odebrana przez klienta');
   });
 });
@@ -229,9 +256,9 @@ describe('createInpostClient.statusPrzesylki — HTTP 200 nie znaczy sukces', ()
   // ten sam powod, dla ktorego dpd.js ma osobny LIMIT_ZAPYTANIA_STATUS_MS. Limit nadania
   // (30 s) na tej sciezce zawiesilby karte na pol minuty RAZY liczba paczek.
   it('zapytanie o status niesie własny AbortSignal', async () => {
-    const { c, fetchImpl } = klient(json(200, sledzenie('confirmed', [
-      { status: 'confirmed', datetime: '2026-07-30T09:00:00.000+02:00' },
-    ])));
+    const { c, fetchImpl } = klient(
+      json(200, sledzenie('confirmed', [{ status: 'confirmed', datetime: '2026-07-30T09:00:00.000+02:00' }])),
+    );
     await c.statusPrzesylki(NUMER);
     const { signal } = fetchImpl.mock.calls[0][1];
     expect(signal).toBeInstanceOf(AbortSignal);
@@ -256,9 +283,9 @@ describe('createInpostClient.statusPrzesylki — HTTP 200 nie znaczy sukces', ()
   it('zapytanie o status jedzie NA LIMICIE STATUSU, nie na limicie nadania', async () => {
     const szpieg = vi.spyOn(AbortSignal, 'timeout');
     try {
-      const { c } = klient(json(200, sledzenie('confirmed', [
-        { status: 'confirmed', datetime: '2026-07-30T09:00:00.000+02:00' },
-      ])));
+      const { c } = klient(
+        json(200, sledzenie('confirmed', [{ status: 'confirmed', datetime: '2026-07-30T09:00:00.000+02:00' }])),
+      );
       await c.statusPrzesylki(NUMER);
       expect(szpieg).toHaveBeenCalledTimes(1);
       expect(szpieg).toHaveBeenCalledWith(LIMIT_ZAPYTANIA_STATUS_MS);
@@ -272,9 +299,9 @@ describe('createInpostClient.statusPrzesylki — HTTP 200 nie znaczy sukces', ()
   // skasowanie encodeURIComponent nie ruszalo zadnego testu — a zalozenie o cudzym formacie
   // numeru jest wlasnie zalozeniem. `domain/tracking.js` ma na to swoj test, klient nie mial.
   it('numer ze znakiem specjalnym jest zakodowany w ścieżce, nie pyta o inny zasób', async () => {
-    const { c, fetchImpl } = klient(json(200, sledzenie('confirmed', [
-      { status: 'confirmed', datetime: '2026-07-30T09:00:00.000+02:00' },
-    ])));
+    const { c, fetchImpl } = klient(
+      json(200, sledzenie('confirmed', [{ status: 'confirmed', datetime: '2026-07-30T09:00:00.000+02:00' }])),
+    );
     await c.statusPrzesylki('520000/123?456');
     const [adres] = fetchImpl.mock.calls[0];
     expect(adres).toBe(`${URL_API}/tracking/520000%2F123%3F456`);

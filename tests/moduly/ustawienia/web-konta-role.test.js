@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { zalozKonto, kontoPoLoginie } from '../../../src/core/bezpieczenstwo/konta.js';
-import { listaRol, rolaPoKluczu, dodajRole, przypiszRole, kluczeEkranow, odciskMacierzy } from '../../../src/moduly/ustawienia/role.js';
+import {
+  listaRol,
+  rolaPoKluczu,
+  dodajRole,
+  przypiszRole,
+  kluczeEkranow,
+  odciskMacierzy,
+} from '../../../src/moduly/ustawienia/role.js';
 import { nowyPanel, jako, get, post } from '../../pomoc/panel-konta-testowe.js';
 
 const teraz = () => new Date('2026-10-14T02:00:00Z');
@@ -45,7 +52,9 @@ describe('przypisanie roli kontu', () => {
     const { db, app, idEwa, admin } = panel();
     expect((await post(app, `/ustawienia/konta/${idEwa}/rola`, admin, { rola: 'r-nieistnieje' })).statusCode).toBe(404);
     expect((await post(app, '/ustawienia/konta/9999/rola', admin, { rola: 'sprzedaz' })).statusCode).toBe(404);
-    expect((await post(app, `/ustawienia/konta/${idEwa}/rola`, jako(db, 'ewa'), { rola: 'administrator' })).statusCode).toBe(403);
+    expect(
+      (await post(app, `/ustawienia/konta/${idEwa}/rola`, jako(db, 'ewa'), { rola: 'administrator' })).statusCode,
+    ).toBe(403);
     expect(kontoPoLoginie(db, 'ewa').admin).toBe(false);
   });
 
@@ -80,9 +89,18 @@ describe('przypisanie roli kontu', () => {
 
   it('żadna droga panelu nie zostawia ptaszków konta poza rolą', async () => {
     const { db, app, idEwa, admin } = panel();
-    await post(app, '/ustawienia/konta/nowe', admin, { login: 'pako', imie: 'Pako', haslo: 'haslo-ok', rola: 'produkcja' });
+    await post(app, '/ustawienia/konta/nowe', admin, {
+      login: 'pako',
+      imie: 'Pako',
+      haslo: 'haslo-ok',
+      rola: 'produkcja',
+    });
     await post(app, `/ustawienia/konta/${idEwa}/uprawnienia`, admin, { ekran: 'magazyn' });
-    await post(app, '/ustawienia/role', admin, { odcisk: odciskMacierzy(db), rola: ['sprzedaz', 'produkcja'], uprawnienie: ['produkcja:przesylki'] });
+    await post(app, '/ustawienia/role', admin, {
+      odcisk: odciskMacierzy(db),
+      rola: ['sprzedaz', 'produkcja'],
+      uprawnienie: ['produkcja:przesylki'],
+    });
     await post(app, `/ustawienia/konta/${idEwa}/rola`, admin, { rola: 'produkcja' });
     bezOdstepstw(db);
   });

@@ -11,7 +11,10 @@ export const ZAPIS_RACHUNKU_FIRMY = '/ustawienia/firma/rachunek';
 /** Uwaga w /health, gdy rachunku nie ma ani w pliku, ani w panelu (mail płatniczy idzie wtedy bez danych do przelewu). */
 export const UWAGA_BRAK_RACHUNKU = 'brak rachunku firmy — wpisz w Ustawienia → Firma';
 
-const tekst = (v) => String(v ?? '').trim().replace(/\s+/gu, ' ');
+const tekst = (v) =>
+  String(v ?? '')
+    .trim()
+    .replace(/\s+/gu, ' ');
 const wielka = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /**
@@ -24,7 +27,8 @@ export function sprawdzFormularzRachunku(body = {}) {
   const { rachunek, blad } = sprawdzNumerRachunku(body.rachunek);
   const bank = tekst(body.bank);
   if (blad) bledy.push(`${wielka(blad)}.`);
-  else if (!rachunek) bledy.push('Wpisz numer rachunku firmy: 26 cyfr (NRB); przedrostek PL, spacje i myślniki są dozwolone.');
+  else if (!rachunek)
+    bledy.push('Wpisz numer rachunku firmy: 26 cyfr (NRB); przedrostek PL, spacje i myślniki są dozwolone.');
   if (bank.length > 100) bledy.push('Nazwa banku może mieć najwyżej 100 znaków.');
   // Przy błędzie odsyłamy wpis takim, jak przyszedł (bez normalizacji), żeby człowiek widział, co poprawić.
   return { ustawienia: { rachunek: rachunek ?? tekst(body.rachunek), bank }, bledy };
@@ -56,4 +60,7 @@ export function rozstrzygnijRachunekFirmy({ zPliku, zapis }) {
 }
 
 /** Numer NRB do pokazania człowiekowi: 2 + 6 × 4 cyfry. */
-export const rachunekDoOdczytu = (r) => (/^\d{26}$/u.test(String(r ?? '')) ? `${r.slice(0, 2)} ${r.slice(2).replace(/(\d{4})(?=\d)/gu, '$1 ')}` : String(r ?? ''));
+export const rachunekDoOdczytu = (r) =>
+  /^\d{26}$/u.test(String(r ?? ''))
+    ? `${r.slice(0, 2)} ${r.slice(2).replace(/(\d{4})(?=\d)/gu, '$1 ')}`
+    : String(r ?? '');

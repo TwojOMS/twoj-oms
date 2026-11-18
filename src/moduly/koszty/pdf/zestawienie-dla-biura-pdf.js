@@ -131,7 +131,8 @@ const ZRODLO = { sprzedaz: 'inFakt', koszty: 'KSeF' };
 // data wystawienia nie pasuje do miesiaca paczki (art. 19a i art. 86 ust. 10b ustawy o VAT
 // — patrz komentarz w domena/paczka-dla-biura.js).
 const KRYTERIUM = {
-  sprzedaz: 'wg daty sprzedaży (korekty wg daty wystawienia); dokumenty wystawione w innym miesiącu oznaczone w Uwagach',
+  sprzedaz:
+    'wg daty sprzedaży (korekty wg daty wystawienia); dokumenty wystawione w innym miesiącu oznaczone w Uwagach',
   koszty: 'wg daty otrzymania (KSeF: dzień pobrania dokumentu; ręczne: data wystawienia)',
 };
 
@@ -162,7 +163,10 @@ const data = (iso) => {
  * Spacja jako separator tysiecy, bo tak zapisuje kwoty polska norma i tak wygladaja
  * kwoty na fakturach z inFaktu.
  */
-const kwota = (gr) => zl(gr).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+const kwota = (gr) =>
+  zl(gr)
+    .replace('.', ',')
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
 /**
  * Uklad kolumn: pozycje `x` z szerokosci i odstepow, ostatnia kolumna dostaje RESZTE
@@ -176,14 +180,20 @@ function kolumnyZ(czesc) {
   const kol = KOLUMNY[czesc];
   const stale = kol.reduce((s, k) => s + k[1], 0);
   const odstepy = (kol.length - 1) * ODSTEP;
-  const reszta = (R - L) - stale - odstepy;
+  const reszta = R - L - stale - odstepy;
   if (reszta < MIN_UWAGI) {
-    throw new Error(`Kolumny zestawienia „${czesc}" nie mieszczą się na stronie: na Uwagi zostaje ${reszta.toFixed(1)} pkt (minimum ${MIN_UWAGI}).`);
+    throw new Error(
+      `Kolumny zestawienia „${czesc}" nie mieszczą się na stronie: na Uwagi zostaje ${reszta.toFixed(1)} pkt (minimum ${MIN_UWAGI}).`,
+    );
   }
   let x = L;
   return kol.map(([naglowek, w, align, klucz]) => {
     const c = {
-      naglowek, x, w: w || reszta, align, klucz,
+      naglowek,
+      x,
+      w: w || reszta,
+      align,
+      klucz,
     };
     x += c.w + ODSTEP;
     return c;
@@ -297,8 +307,16 @@ function bajty(doc) {
  *                        suma laczna pod nimi i opis zrodla na wydruku. Bez nich — jedna tabela.
  */
 export async function zbudujZestawieniePdf({
-  paczka, czesc, wygenerowano, liczbaStron, liczbaDokumentow, tytul = null, kryterium = null,
-  sekcje: sekcjeWejscie = null, sumyRazem = null, zrodlo = null,
+  paczka,
+  czesc,
+  wygenerowano,
+  liczbaStron,
+  liczbaDokumentow,
+  tytul = null,
+  kryterium = null,
+  sekcje: sekcjeWejscie = null,
+  sumyRazem = null,
+  zrodlo = null,
 }) {
   const tytulWydruku = tytul
     ? `${tytul} — ${opisMiesiaca(paczka.miesiac)}`
@@ -311,7 +329,10 @@ export async function zbudujZestawieniePdf({
     // na koncu funkcji, ktory stempluje stopke.
     bufferPages: true,
     margins: {
-      top: M, bottom: M, left: M, right: M,
+      top: M,
+      bottom: M,
+      left: M,
+      right: M,
     },
     info: { Title: tytulWydruku, Author: 'OMS' },
   });
@@ -321,13 +342,15 @@ export async function zbudujZestawieniePdf({
   const kolUwagi = kol[kol.length - 1];
   // Zwykle zestawienie to JEDNA tabela. Zestawienie kosztów podaje `sekcje` —
   // kilka tabel pod własnymi nagłówkami, każda z własnymi sumami, plus `sumyRazem` na końcu.
-  const sekcje = sekcjeWejscie ?? [{
-    naglowek: null,
-    wiersze: paczka[czesc] ?? [],
-    sumy: paczka.sumy?.[czesc] ?? {},
-    pusto: PUSTO[czesc],
-    etykietaSum: '',
-  }];
+  const sekcje = sekcjeWejscie ?? [
+    {
+      naglowek: null,
+      wiersze: paczka[czesc] ?? [],
+      sumy: paczka.sumy?.[czesc] ?? {},
+      pusto: PUSTO[czesc],
+      etykietaSum: '',
+    },
+  ];
   const liczbaWierszy = sekcje.reduce((n, sk) => n + sk.wiersze.length, 0);
   let y = M;
 
@@ -359,7 +382,9 @@ export async function zbudujZestawieniePdf({
     doc.addPage();
     y = M;
     const czesc = zNaglowkiemTabeli && biezacaCzesc ? `${biezacaCzesc} — ` : '';
-    gruby(doc, 8, SZARY_TEKST).text(`${opisSekcji} — ${opisMiesiaca(paczka.miesiac)} — ${czesc}ciąg dalszy`, L, y, { lineBreak: false });
+    gruby(doc, 8, SZARY_TEKST).text(`${opisSekcji} — ${opisMiesiaca(paczka.miesiac)} — ${czesc}ciąg dalszy`, L, y, {
+      lineBreak: false,
+    });
     y += 12;
     if (zNaglowkiemTabeli) y = naglowekTabeli(doc, kol, y);
   };
@@ -371,7 +396,9 @@ export async function zbudujZestawieniePdf({
   const netto = kol.find((c) => c.klucz === 'nettoGr');
   const etykieta = { x: L, w: netto.x - L - ODSTEP, align: 'left' };
   const blokSum = (sumy, nazwa, ileWierszy) => {
-    const koszyki = Object.entries(sumy ?? {}).filter(([, s]) => s && typeof s === 'object' && typeof s.bruttoGr === 'number');
+    const koszyki = Object.entries(sumy ?? {}).filter(
+      ([, s]) => s && typeof s === 'object' && typeof s.bruttoGr === 'number',
+    );
     if (y + WIERSZ_H * (koszyki.length + 1) > DOL) nowaStrona();
     y += 4;
     linia(doc, y);
@@ -434,7 +461,10 @@ export async function zbudujZestawieniePdf({
       const wys = Math.max(WIERSZ_H, (uwagi ? doc.heightOfString(uwagi, { width: kolUwagi.w }) : 0) + 5);
       if (y + wys > DOL) nowaStrona();
       if (i % 2 === 1) {
-        doc.rect(L, y - 3, R - L, wys).fillColor(SZARY_WIERSZ).fill();
+        doc
+          .rect(L, y - 3, R - L, wys)
+          .fillColor(SZARY_WIERSZ)
+          .fill();
       }
       zwykly(doc, ROZMIAR);
       for (const c of kol) {

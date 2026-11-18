@@ -19,19 +19,44 @@ const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite');
 
 let db;
 const T = Date.parse('2026-10-01T09:30:00Z');
-beforeEach(() => { db = otworzBazeListy(); });
-afterEach(() => { try { db.close(); } catch { /* już zamknięta */ } });
+beforeEach(() => {
+  db = otworzBazeListy();
+});
+afterEach(() => {
+  try {
+    db.close();
+  } catch {
+    /* już zamknięta */
+  }
+});
 
 // Wyrocznia: cała tabela w JS.
 function wyrocznia(t) {
-  const wszystkie = listaZamowien(db).map((z) => ({ ...z, status: wyliczStatus(z), robocze: doZrobienia(z, t),
-    poTerminie: wiekZamowienia(z, new Date(t))?.poTerminie === true }));
-  const statusy = Object.fromEntries(Object.keys(ETYKIETY).map((k) => [k, wszystkie.filter((z) => z.status === k).length]));
-  return { wszystkie, liczniki: { wszystkie: wszystkie.length, do_zrobienia: wszystkie.filter((z) => z.robocze).length,
-    po_terminie: wszystkie.filter((z) => z.poTerminie).length, statusy } };
+  const wszystkie = listaZamowien(db).map((z) => ({
+    ...z,
+    status: wyliczStatus(z),
+    robocze: doZrobienia(z, t),
+    poTerminie: wiekZamowienia(z, new Date(t))?.poTerminie === true,
+  }));
+  const statusy = Object.fromEntries(
+    Object.keys(ETYKIETY).map((k) => [k, wszystkie.filter((z) => z.status === k).length]),
+  );
+  return {
+    wszystkie,
+    liczniki: {
+      wszystkie: wszystkie.length,
+      do_zrobienia: wszystkie.filter((z) => z.robocze).length,
+      po_terminie: wszystkie.filter((z) => z.poTerminie).length,
+      statusy,
+    },
+  };
 }
 
-async function liczniki(t) { const i = indeksListy(db); await i.odswiez(t); return i.liczniki(t); }
+async function liczniki(t) {
+  const i = indeksListy(db);
+  await i.odswiez(t);
+  return i.liczniki(t);
+}
 
 describe('indeks listy', () => {
   it('liczniki zakładek = wyrocznia JS, policzone COUNT-em', async () => {
@@ -48,12 +73,37 @@ describe('indeks listy', () => {
       [{ rodzaj: 'robocze' }, {}, '', (z) => z.robocze],
       [{ rodzaj: 'wszystkie' }, {}, '', () => true],
       [{ rodzaj: 'po_terminie' }, {}, '', (z) => z.poTerminie],
-      [{ rodzaj: 'status', status: 'wyslane' }, { kanal: 'kanal_b' }, '', (z) => z.status === 'wyslane' && pasujeDoFiltrow(z, { kanal: 'kanal_b' })],
-      [{ rodzaj: 'wszystkie' }, { od: '2026-09-14', do: '2026-09-20', wysylka: 'dpd' }, '', (z) => pasujeDoFiltrow(z, { od: '2026-09-14', do: '2026-09-20', wysylka: 'dpd' })],
+      [
+        { rodzaj: 'status', status: 'wyslane' },
+        { kanal: 'kanal_b' },
+        '',
+        (z) => z.status === 'wyslane' && pasujeDoFiltrow(z, { kanal: 'kanal_b' }),
+      ],
+      [
+        { rodzaj: 'wszystkie' },
+        { od: '2026-09-14', do: '2026-09-20', wysylka: 'dpd' },
+        '',
+        (z) => pasujeDoFiltrow(z, { od: '2026-09-14', do: '2026-09-20', wysylka: 'dpd' }),
+      ],
       [null, {}, 'kowalski miasto', (z) => pasujeDoSzukania(z, 'kowalski miasto')],
-      [{ rodzaj: 'wszystkie' }, { wysylka: ['dpd', 'odbior_osobisty'], kanal: ['kanal_a', 'indywidualne'] }, '', (z) => pasujeDoFiltrow(z, { wysylka: ['dpd', 'odbior_osobisty'], kanal: ['kanal_a', 'indywidualne'] })],
-      [{ rodzaj: 'wszystkie' }, { faktura: ['niewystawiona'] }, '', (z) => pasujeDoFiltrow(z, { faktura: ['niewystawiona'] })],
-      [null, { platnosc: 'BLIK' }, 'kowalski', (z) => pasujeDoSzukania(z, 'kowalski') && pasujeDoFiltrow(z, { platnosc: 'BLIK' })],
+      [
+        { rodzaj: 'wszystkie' },
+        { wysylka: ['dpd', 'odbior_osobisty'], kanal: ['kanal_a', 'indywidualne'] },
+        '',
+        (z) => pasujeDoFiltrow(z, { wysylka: ['dpd', 'odbior_osobisty'], kanal: ['kanal_a', 'indywidualne'] }),
+      ],
+      [
+        { rodzaj: 'wszystkie' },
+        { faktura: ['niewystawiona'] },
+        '',
+        (z) => pasujeDoFiltrow(z, { faktura: ['niewystawiona'] }),
+      ],
+      [
+        null,
+        { platnosc: 'BLIK' },
+        'kowalski',
+        (z) => pasujeDoSzukania(z, 'kowalski') && pasujeDoFiltrow(z, { platnosc: 'BLIK' }),
+      ],
     ];
     for (const [zakladka, filtry, szukaj, pred] of przypadki) {
       const oczekiwane = wszystkie.filter(pred).map((z) => z.id);
@@ -73,7 +123,8 @@ describe('indeks listy', () => {
     await i.odswiez(T);
     const reczne = w.filter((x) => x.rodzaj === 'odbior-reczny').map((x) => x.id);
     expect(reczne).toHaveLength(2);
-    const strona = (filtry, szukaj = '') => i.strona({ zakladka: szukaj ? null : { rodzaj: 'wszystkie' }, filtry, szukaj, offset: 0, limit: 1000, teraz: T });
+    const strona = (filtry, szukaj = '') =>
+      i.strona({ zakladka: szukaj ? null : { rodzaj: 'wszystkie' }, filtry, szukaj, offset: 0, limit: 1000, teraz: T });
     const odbior = strona({ wysylka: 'odbior_osobisty' });
     expect([...odbior.ids].sort()).toEqual([...reczne].sort());
     expect(strona({ wysylka: 'dpd' }).ids.filter((id) => reczne.includes(id))).toEqual([]);
@@ -81,7 +132,9 @@ describe('indeks listy', () => {
     expect(strona({}, `${a}-${b}-${c}`).ids).toEqual([w.telefon.id]);
     expect(strona({}, `(${a}) ${b} ${c}`).ids).toEqual([w.telefon.id]);
     // Następna, INNA fraza w tym samym połączeniu ma dać swój wynik (funkcja SQL pamięta frazę).
-    const lodz = wyrocznia(T).wszystkie.filter((z) => pasujeDoSzukania(z, 'lodz')).map((z) => z.id);
+    const lodz = wyrocznia(T)
+      .wszystkie.filter((z) => pasujeDoSzukania(z, 'lodz'))
+      .map((z) => z.id);
     expect(lodz.length).toBeGreaterThan(5);
     expect([...strona({}, 'lodz').ids].sort()).toEqual([...lodz].sort());
   });
@@ -90,7 +143,10 @@ describe('indeks listy', () => {
     const ids = wstawGole(db, 25);
     const i = indeksListy(db);
     await i.odswiez(T);
-    const strony = [0, 10, 20].flatMap((offset) => i.strona({ zakladka: { rodzaj: 'wszystkie' }, filtry: {}, szukaj: '', offset, limit: 10, teraz: T }).ids);
+    const strony = [0, 10, 20].flatMap(
+      (offset) =>
+        i.strona({ zakladka: { rodzaj: 'wszystkie' }, filtry: {}, szukaj: '', offset, limit: 10, teraz: T }).ids,
+    );
     expect(strony).toEqual([...ids].reverse());
   });
 
@@ -99,30 +155,70 @@ describe('indeks listy', () => {
     const l = await liczniki(T);
     expect(l.wszystkie).toBe(32768);
     expect(l.statusy.nowe).toBe(32768);
-    const s = indeksListy(db).strona({ zakladka: { rodzaj: 'robocze' }, filtry: {}, szukaj: '', offset: 0, limit: 100, teraz: T });
+    const s = indeksListy(db).strona({
+      zakladka: { rodzaj: 'robocze' },
+      filtry: {},
+      szukaj: '',
+      offset: 0,
+      limit: 100,
+      teraz: T,
+    });
     expect(s.ids).toHaveLength(100);
     expect(s.lacznie).toBe(32768);
   }, 60000);
 
   it('każdy zapis w tabelach źródłowych odświeża wiersz przy następnym odczycie', async () => {
-    const [a, b, c] = wstawMieszane(db, { powtorzen: 1 }).filter((w) => w.rodzaj === 'nowe' || w.rodzaj === 'w-realizacji' || w.rodzaj === 'wyslane-czyste').map((w) => w.id);
+    const [a, b, c] = wstawMieszane(db, { powtorzen: 1 })
+      .filter((w) => w.rodzaj === 'nowe' || w.rodzaj === 'w-realizacji' || w.rodzaj === 'wyslane-czyste')
+      .map((w) => w.id);
     const i = indeksListy(db);
     await i.odswiez(T);
-    const sprawdz = async (opis) => { await i.odswiez(T); expect(i.liczniki(T), opis).toEqual(wyrocznia(T).liczniki); };
-    zapiszFaktyStatusu(db, a, { wyslane_at: '2026-09-30T10:00:00Z' }); await sprawdz('zamowienia');
-    db.prepare("INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, utworzona_at, kolejnosc) VALUES (?, 'dpd', 'nadana', 'X1', '2026-09-30T10:00:00Z', 2)").run(c); await sprawdz('przesylki');
-    db.prepare("INSERT INTO faktury (zamowienie_id, infakt_uuid, ksef_status, utworzona_at) VALUES (?, 'u-x', 'do_wyjasnienia', '2026-09-30T10:00:00Z')").run(b); await sprawdz('faktury');
-    db.prepare("INSERT INTO zwroty (zamowienie_id, data, kwota, utworzony_at) VALUES (?, '2026-09-30', '1.00', '2026-09-30T10:00:00Z')").run(c); await sprawdz('zwroty');
-    db.prepare("INSERT INTO platnosci (zamowienie_id, kwota, data, metoda, zrodlo, utworzona_at) VALUES (?, '10.00', '2026-09-20T10:00:00Z', 'x', 'reczna', '2026-09-20T10:00:00Z')").run(a);
-    db.prepare("UPDATE zamowienia SET wyslane_at = NULL WHERE id = ?").run(a); await sprawdz('platnosci');
-    db.prepare("UPDATE pozycje SET nazwa = 'Realizacja ekspresowa' WHERE zamowienie_id = ?").run(b); await sprawdz('pozycje');
-    db.prepare('DELETE FROM zamowienia WHERE id = ?').run(b); await sprawdz('usunięcie');
+    const sprawdz = async (opis) => {
+      await i.odswiez(T);
+      expect(i.liczniki(T), opis).toEqual(wyrocznia(T).liczniki);
+    };
+    zapiszFaktyStatusu(db, a, { wyslane_at: '2026-09-30T10:00:00Z' });
+    await sprawdz('zamowienia');
+    db.prepare(
+      "INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, utworzona_at, kolejnosc) VALUES (?, 'dpd', 'nadana', 'X1', '2026-09-30T10:00:00Z', 2)",
+    ).run(c);
+    await sprawdz('przesylki');
+    db.prepare(
+      "INSERT INTO faktury (zamowienie_id, infakt_uuid, ksef_status, utworzona_at) VALUES (?, 'u-x', 'do_wyjasnienia', '2026-09-30T10:00:00Z')",
+    ).run(b);
+    await sprawdz('faktury');
+    db.prepare(
+      "INSERT INTO zwroty (zamowienie_id, data, kwota, utworzony_at) VALUES (?, '2026-09-30', '1.00', '2026-09-30T10:00:00Z')",
+    ).run(c);
+    await sprawdz('zwroty');
+    db.prepare(
+      "INSERT INTO platnosci (zamowienie_id, kwota, data, metoda, zrodlo, utworzona_at) VALUES (?, '10.00', '2026-09-20T10:00:00Z', 'x', 'reczna', '2026-09-20T10:00:00Z')",
+    ).run(a);
+    db.prepare('UPDATE zamowienia SET wyslane_at = NULL WHERE id = ?').run(a);
+    await sprawdz('platnosci');
+    db.prepare("UPDATE pozycje SET nazwa = 'Realizacja ekspresowa' WHERE zamowienie_id = ?").run(b);
+    await sprawdz('pozycje');
+    db.prepare('DELETE FROM zamowienia WHERE id = ?').run(b);
+    await sprawdz('usunięcie');
   });
 
   describe('na pliku bazy (kilka połączeń = kilka procesów)', () => {
-    let kat; let plik;
-    beforeEach(() => { db.close(); kat = mkdtempSync(join(tmpdir(), 'prz051-')); plik = join(kat, 'oms.sqlite'); db = otworzBazeListy(plik); });
-    afterEach(() => { try { db.close(); } catch { /* */ } rmSync(kat, { recursive: true, force: true }); });
+    let kat;
+    let plik;
+    beforeEach(() => {
+      db.close();
+      kat = mkdtempSync(join(tmpdir(), 'prz051-'));
+      plik = join(kat, 'oms.sqlite');
+      db = otworzBazeListy(plik);
+    });
+    afterEach(() => {
+      try {
+        db.close();
+      } catch {
+        /* */
+      }
+      rmSync(kat, { recursive: true, force: true });
+    });
 
     it('zapis innego procesu przez openOmsDb (skrypt importu) trafia do indeksu przy następnym odczycie', async () => {
       const [id] = wstawGole(db, 3);
@@ -144,7 +240,10 @@ describe('indeks listy', () => {
       db = otworzBazeListy(plik);
       const policzone = [];
       const oryginal = db.prepare;
-      db.prepare = function (sql) { if (/FROM zamowienia WHERE id IN/.test(sql)) policzone.push(sql); return oryginal.call(this, sql); };
+      db.prepare = function (sql) {
+        if (/FROM zamowienia WHERE id IN/.test(sql)) policzone.push(sql);
+        return oryginal.call(this, sql);
+      };
       // Liczniki z tabeli, zanim cokolwiek się przeliczy.
       expect(indeksListy(db).liczniki(T)).toEqual(oczekiwane);
       db.prepare = oryginal;
@@ -156,7 +255,11 @@ describe('indeks listy', () => {
       await indeksListy(db).odswiez(T);
       const gole = new DatabaseSync(plik);
       gole.prepare("UPDATE zamowienia SET wyslane_at = '2026-09-30T10:00:00Z' WHERE id = ?").run(id);
-      gole.prepare("INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at) VALUES ('kanal_a', 999, 'GOLE', '1.00', '2026-09-30T10:00:00')").run();
+      gole
+        .prepare(
+          "INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at) VALUES ('kanal_a', 999, 'GOLE', '1.00', '2026-09-30T10:00:00')",
+        )
+        .run();
       gole.close();
       // Ten sam proces nie wie o zmianie (to jest znana granica, opisana w indeks-listy.js)…
       await indeksListy(db).odswiez(T);
@@ -180,7 +283,10 @@ describe('indeks listy', () => {
         await i.odswiez(T);
         expect(i.liczniki(T).wszystkie).toBe(3);
         expect(performance.now() - t).toBeLessThan(2000); // busy_timeout panelu to 20 s
-      } finally { inny.exec('ROLLBACK'); inny.close(); }
+      } finally {
+        inny.exec('ROLLBACK');
+        inny.close();
+      }
     }, 30000);
 
     it('duża baza: sprawdzenie po starcie idzie w tle, z widocznym postępem, i kończy się zgodnie z wyrocznią', async () => {
@@ -211,11 +317,13 @@ describe('indeks listy', () => {
     expect(l.wszystkie).toBe(6);
     expect(l.statusy.wyslane).toBe(1);
     expect(l.do_zrobienia).toBe(5); // 4 nowe (w tym dopisane) + uszkodzone
-    expect(i.strona({ zakladka: { rodzaj: 'wszystkie' }, filtry: {}, szukaj: '', offset: 0, limit: 10, teraz: T }).ids).toContain(nowe);
+    expect(
+      i.strona({ zakladka: { rodzaj: 'wszystkie' }, filtry: {}, szukaj: '', offset: 0, limit: 10, teraz: T }).ids,
+    ).toContain(nowe);
     expect(i.uszkodzone()).toEqual([{ id: ids[1], numer: 'T-2', blad: expect.stringMatching(/JSON/) }]);
     expect(db.prepare('SELECT COUNT(*) AS n FROM lista_brudne').get().n).toBe(0);
     // Naprawa danych zdejmuje zamówienie z listy uszkodzonych przy następnym odczycie.
-    db.prepare("UPDATE zamowienia SET klient_json = NULL WHERE id = ?").run(ids[1]);
+    db.prepare('UPDATE zamowienia SET klient_json = NULL WHERE id = ?').run(ids[1]);
     await i.odswiez(T);
     expect(i.uszkodzone()).toEqual([]);
     expect(i.liczniki(T).statusy.nowe).toBe(5);
@@ -229,8 +337,15 @@ describe('indeks listy', () => {
     expect(db.prepare("SELECT 1 AS j FROM lista_meta WHERE klucz = 'zbudowany_at'").get()).toEqual({ j: 1 });
     const sql = [];
     const oryginal = db.prepare;
-    db.prepare = function (t) { sql.push(t); return oryginal.call(this, t); };
-    try { await i.odswiez(T); } finally { db.prepare = oryginal; }
+    db.prepare = function (t) {
+      sql.push(t);
+      return oryginal.call(this, t);
+    };
+    try {
+      await i.odswiez(T);
+    } finally {
+      db.prepare = oryginal;
+    }
     expect(sql.filter((t) => /FROM zamowienia WHERE id IN/.test(t))).toEqual([]);
     expect(i.liczniki(T).wszystkie).toBe(4);
   });
@@ -239,14 +354,51 @@ describe('indeks listy', () => {
     const [a, b] = wstawGole(db, 2);
     const i = indeksListy(db);
     await i.odswiez(T);
-    const brudne = () => db.prepare('SELECT zamowienie_id AS id FROM lista_brudne ORDER BY 1').all().map((w) => w.id);
+    const brudne = () =>
+      db
+        .prepare('SELECT zamowienie_id AS id FROM lista_brudne ORDER BY 1')
+        .all()
+        .map((w) => w.id);
     const zapisy = [
       ['zamowienia', () => db.prepare("UPDATE zamowienia SET uwagi = 'x' WHERE id = ?").run(a)],
-      ['pozycje', () => db.prepare("INSERT INTO pozycje (zamowienie_id, nazwa, ilosc, cena_brutto) VALUES (?, 'P', 1, '1.00')").run(a)],
-      ['platnosci', () => db.prepare("INSERT INTO platnosci (zamowienie_id, kwota, zrodlo, utworzona_at) VALUES (?, '1.00', 'reczna', '2026-09-30')").run(a)],
-      ['przesylki', () => db.prepare("INSERT INTO przesylki (zamowienie_id, kurier, status, utworzona_at) VALUES (?, 'dpd', 'nadana', '2026-09-30')").run(a)],
-      ['faktury', () => db.prepare("INSERT INTO faktury (zamowienie_id, utworzona_at) VALUES (?, '2026-09-30')").run(a)],
-      ['zwroty', () => db.prepare("INSERT INTO zwroty (zamowienie_id, data, kwota, utworzony_at) VALUES (?, '2026-09-30', '1', '2026-09-30')").run(a)],
+      [
+        'pozycje',
+        () =>
+          db
+            .prepare("INSERT INTO pozycje (zamowienie_id, nazwa, ilosc, cena_brutto) VALUES (?, 'P', 1, '1.00')")
+            .run(a),
+      ],
+      [
+        'platnosci',
+        () =>
+          db
+            .prepare(
+              "INSERT INTO platnosci (zamowienie_id, kwota, zrodlo, utworzona_at) VALUES (?, '1.00', 'reczna', '2026-09-30')",
+            )
+            .run(a),
+      ],
+      [
+        'przesylki',
+        () =>
+          db
+            .prepare(
+              "INSERT INTO przesylki (zamowienie_id, kurier, status, utworzona_at) VALUES (?, 'dpd', 'nadana', '2026-09-30')",
+            )
+            .run(a),
+      ],
+      [
+        'faktury',
+        () => db.prepare("INSERT INTO faktury (zamowienie_id, utworzona_at) VALUES (?, '2026-09-30')").run(a),
+      ],
+      [
+        'zwroty',
+        () =>
+          db
+            .prepare(
+              "INSERT INTO zwroty (zamowienie_id, data, kwota, utworzony_at) VALUES (?, '2026-09-30', '1', '2026-09-30')",
+            )
+            .run(a),
+      ],
     ];
     for (const [tabela, zapis] of zapisy) {
       zapis();
@@ -272,7 +424,9 @@ describe('indeks listy', () => {
   it('wygasanie po horyzoncie jest rozrzucone (nie cała tabela jednego dnia)', async () => {
     wstawGole(db, 90);
     await indeksListy(db).odswiez(T);
-    const dni = db.prepare('SELECT COUNT(DISTINCT wazne_do) AS n, MIN(wazne_do) AS od, MAX(wazne_do) AS do_ FROM lista_stan').get();
+    const dni = db
+      .prepare('SELECT COUNT(DISTINCT wazne_do) AS n, MIN(wazne_do) AS od, MAX(wazne_do) AS do_ FROM lista_stan')
+      .get();
     expect(dni.n).toBe(30);
     expect(dni.od).toBeGreaterThan(T + 59 * 86400000);
   });

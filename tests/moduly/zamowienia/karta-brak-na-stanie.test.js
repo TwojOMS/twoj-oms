@@ -21,8 +21,21 @@ beforeEach(async () => {
   numer = 0;
   lampa = utworzKarte(db, { nazwa: 'Lampa stołowa Grzybek', sku: 'LMP-GRZ-30' });
   kinkiet = utworzKarte(db, { nazwa: 'Kinkiet Ramię', sku: 'LMP-KIN-01' });
-  for (const [produkt, karta] of [['10', lampa], ['20', kinkiet]]) {
-    powiazProdukt(db, zapiszProduktSklepowy(db, { kanal: 'pro', produkt_id: produkt, wariant_id: '', nazwa: 'x', odczytane_at: WLACZONE_AT }), karta);
+  for (const [produkt, karta] of [
+    ['10', lampa],
+    ['20', kinkiet],
+  ]) {
+    powiazProdukt(
+      db,
+      zapiszProduktSklepowy(db, {
+        kanal: 'pro',
+        produkt_id: produkt,
+        wariant_id: '',
+        nazwa: 'x',
+        odczytane_at: WLACZONE_AT,
+      }),
+      karta,
+    );
   }
   app = buildOmsServer({ db, config, poller });
   await app.ready();
@@ -30,16 +43,48 @@ beforeEach(async () => {
 
 const zamowienie = (pozycje, { at = PO, anulowane = 0 } = {}) => {
   numer += 1;
-  return zapiszZamowienie(db, 'pro', {
-    zrodlo_id: 5000 + numer, numer: String(5000 + numer), klient: { first_name: 'Anna' }, dostawa: { city: 'Pęki' },
-    metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '100.00', status_woo: 'processing',
-    oplacone_at: null, anulowane, utworzone_at: at,
-    pozycje: pozycje.map((p, i) => ({ nazwa: 'poz', sku: null, cena_brutto: '50.00', vat: '23', zdjecie_url: null,
-      zrodlo_id: 100 * numer + i, produkt_id: null, oferta_id: null, wariant_id: null, ...p })),
-  }, {});
+  return zapiszZamowienie(
+    db,
+    'pro',
+    {
+      zrodlo_id: 5000 + numer,
+      numer: String(5000 + numer),
+      klient: { first_name: 'Anna' },
+      dostawa: { city: 'Pęki' },
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: 0,
+      nip: null,
+      kwota_brutto: '100.00',
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane,
+      utworzone_at: at,
+      pozycje: pozycje.map((p, i) => ({
+        nazwa: 'poz',
+        sku: null,
+        cena_brutto: '50.00',
+        vat: '23',
+        zdjecie_url: null,
+        zrodlo_id: 100 * numer + i,
+        produkt_id: null,
+        oferta_id: null,
+        wariant_id: null,
+        ...p,
+      })),
+    },
+    {},
+  );
 };
 const wlacz = () => przelaczStany(db, { wlacz: true, konto: { id: null, login: 'adam' }, at: WLACZONE_AT });
-const przyjmij = (karta, ilosc) => dodajRuch(db, { kartaId: karta, rodzaj: 'przyjecie', ilosc, klucz: `przyjecie-${karta}-${ilosc}-xx`, at: WLACZONE_AT });
+const przyjmij = (karta, ilosc) =>
+  dodajRuch(db, {
+    kartaId: karta,
+    rodzaj: 'przyjecie',
+    ilosc,
+    klucz: `przyjecie-${karta}-${ilosc}-xx`,
+    at: WLACZONE_AT,
+  });
 const karta = (id) => app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
 const pasek = (html) => /<div class="pasek-uwaga" id="brak-na-stanie">[\s\S]*?<\/div>/u.exec(html)?.[0] ?? null;
 
@@ -56,7 +101,10 @@ describe('karta zamówienia — brak na stanie', () => {
     wlacz();
     przyjmij(lampa, 3);
     przyjmij(kinkiet, 10);
-    const id = zamowienie([{ produkt_id: '10', ilosc: 5 }, { produkt_id: '20', ilosc: 1 }]);
+    const id = zamowienie([
+      { produkt_id: '10', ilosc: 5 },
+      { produkt_id: '20', ilosc: 1 },
+    ]);
     const r = await karta(id);
     expect(r.statusCode, r.body).toBe(200);
     const p = pasek(r.body);
@@ -92,15 +140,23 @@ describe('karta zamówienia — brak na stanie', () => {
   it('brakiNaStanieZamowienia: dwie pozycje tej samej karty sumują się w jeden wpis', () => {
     wlacz();
     przyjmij(lampa, 1);
-    const id = zamowienie([{ produkt_id: '10', ilosc: 1 }, { produkt_id: '10', ilosc: 2 }]);
-    expect(brakiNaStanieZamowienia(db, id)).toEqual([{ karta_id: lampa, nazwa: 'Lampa stołowa Grzybek', stan: -2, ilosc: 3 }]);
+    const id = zamowienie([
+      { produkt_id: '10', ilosc: 1 },
+      { produkt_id: '10', ilosc: 2 },
+    ]);
+    expect(brakiNaStanieZamowienia(db, id)).toEqual([
+      { karta_id: lampa, nazwa: 'Lampa stołowa Grzybek', stan: -2, ilosc: 3 },
+    ]);
   });
 
   // Usunięta pozycja sklepowa nie idzie do rozchodu ani do paska.
   it('brakiNaStanieZamowienia: usunięta pozycja nie liczy się do ilości ani do stanu', () => {
     wlacz();
     przyjmij(lampa, 1);
-    const id = zamowienie([{ produkt_id: '10', ilosc: 1 }, { produkt_id: '10', ilosc: 2 }]);
+    const id = zamowienie([
+      { produkt_id: '10', ilosc: 1 },
+      { produkt_id: '10', ilosc: 2 },
+    ]);
     expect(brakiNaStanieZamowienia(db, id)).toHaveLength(1);
     zapiszNadpisaniaPozycji(db, id, { [`s${100 * numer + 1}`]: { usunieta: true } });
     expect(brakiNaStanieZamowienia(db, id)).toEqual([]);

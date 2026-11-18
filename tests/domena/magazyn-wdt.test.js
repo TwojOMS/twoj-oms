@@ -25,7 +25,12 @@ describe('cenaWdtGrosze', () => {
 // nie przez stałe 1,23 — sklep obcej instalacji z domyślną 8 ma w cenie 8%, nie 23%.
 describe('cena WDT przy stawce domyślnej innej niż 23', () => {
   const produkt = {
-    kanal: 'pro', produkt_id: '77', wariant_id: '', nazwa: 'Album lamp', sku_sklepu: 'PC-ALB-001', cena_gr: 10800,
+    kanal: 'pro',
+    produkt_id: '77',
+    wariant_id: '',
+    nazwa: 'Album lamp',
+    sku_sklepu: 'PC-ALB-001',
+    cena_gr: 10800,
   };
 
   it('cenaWdtGrosze(108,00 zł, 8) → 100,00 zł; 5% → ÷1,05', () => {
@@ -38,7 +43,15 @@ describe('cena WDT przy stawce domyślnej innej niż 23', () => {
   });
 
   it('przeliczenieRabatu WDT przy stawce domyślnej 8 rozpoznaje pozycję panelu i liczy ÷1,08', () => {
-    const p = { id: 9, nazwa: 'Album lamp', ilosc: 1, zrodlo: 'reczna', cena_katalogowa: '108.00', cena_brutto: '100.00', brutto_linii: '100.00' };
+    const p = {
+      id: 9,
+      nazwa: 'Album lamp',
+      ilosc: 1,
+      zrodlo: 'reczna',
+      cena_katalogowa: '108.00',
+      cena_brutto: '100.00',
+      brutto_linii: '100.00',
+    };
     expect(czyPozycjaPanelu(p, 0, { wdt: true, stawkaDomyslna: '8' })).toBe(true);
     const { doZmiany } = przeliczenieRabatu([p], { rabatPoprzedni: 0, rabatNowy: 50, wdt: true, stawkaDomyslna: '8' });
     expect(doZmiany[0].cena_brutto).toBe('50.00');
@@ -47,8 +60,13 @@ describe('cena WDT przy stawce domyślnej innej niż 23', () => {
 
 describe('pozycjaZProduktu — klient WDT', () => {
   const produkt = {
-    kanal: 'pro', produkt_id: '77', wariant_id: '', nazwa: 'Lampa wisząca Kopuła 70x100cm',
-    sku_sklepu: 'PC-KOP-001', cena_gr: 10890, rozmiar_tekst: '70x100cm',
+    kanal: 'pro',
+    produkt_id: '77',
+    wariant_id: '',
+    nazwa: 'Lampa wisząca Kopuła 70x100cm',
+    sku_sklepu: 'PC-KOP-001',
+    cena_gr: 10890,
+    rozmiar_tekst: '70x100cm',
   };
 
   it('cena jednostkowa: katalogowa − rabat → ÷1,23; linia = jednostkowa × ilość', () => {
@@ -68,25 +86,39 @@ describe('pozycjaZProduktu — klient WDT', () => {
 describe('przeliczenieRabatu — zamówienie WDT', () => {
   // Pozycja wstawiona z magazynu dla klienta WDT: 108,90 → 50% → 54,45 → ÷1,23 → 44,27.
   const pozycjaWdt = {
-    id: 5, nazwa: 'Kopuła 70x100', ilosc: 2, zrodlo: 'reczna',
-    cena_katalogowa: '108.90', cena_brutto: '44.27', brutto_linii: '88.54',
+    id: 5,
+    nazwa: 'Kopuła 70x100',
+    ilosc: 2,
+    zrodlo: 'reczna',
+    cena_katalogowa: '108.90',
+    cena_brutto: '44.27',
+    brutto_linii: '88.54',
   };
 
   it('rozpoznaje pozycję WDT jako panelową i przelicza nowy rabat przez ÷1,23', () => {
     expect(czyPozycjaPanelu(pozycjaWdt, 50, { wdt: true })).toBe(true);
     const { doZmiany, pominiete } = przeliczenieRabatu([pozycjaWdt], {
-      rabatPoprzedni: 50, rabatNowy: 40, wdt: true,
+      rabatPoprzedni: 50,
+      rabatNowy: 40,
+      wdt: true,
     });
     expect(pominiete).toEqual([]);
     // 108,90 − 40% = 65,34 → ÷1,23 = 53,12; linia 106,24.
-    expect(doZmiany).toEqual([{
-      id: 5, nazwa: 'Kopuła 70x100', ilosc: 2, cena_brutto: '53.12', brutto_linii: '106.24',
-    }]);
+    expect(doZmiany).toEqual([
+      {
+        id: 5,
+        nazwa: 'Kopuła 70x100',
+        ilosc: 2,
+        cena_brutto: '53.12',
+        brutto_linii: '106.24',
+      },
+    ]);
   });
 
   it('bez flagi wdt pozycja WDT wygląda na ręcznie wycenioną — POMIJANA, nie psuta', () => {
     const { doZmiany, pominiete } = przeliczenieRabatu([pozycjaWdt], {
-      rabatPoprzedni: 50, rabatNowy: 40,
+      rabatPoprzedni: 50,
+      rabatNowy: 40,
     });
     expect(doZmiany).toEqual([]);
     expect(pominiete).toEqual([{ id: 5, nazwa: 'Kopuła 70x100' }]);
@@ -95,7 +127,9 @@ describe('przeliczenieRabatu — zamówienie WDT', () => {
   it('cena wpisana ręcznie na zamówieniu WDT dalej jest nietykalna', () => {
     const reczna = { ...pozycjaWdt, cena_brutto: '40.00', brutto_linii: '80.00' };
     const { doZmiany, pominiete } = przeliczenieRabatu([reczna], {
-      rabatPoprzedni: 50, rabatNowy: 40, wdt: true,
+      rabatPoprzedni: 50,
+      rabatNowy: 40,
+      wdt: true,
     });
     expect(doZmiany).toEqual([]);
     expect(pominiete).toEqual([{ id: 5, nazwa: 'Kopuła 70x100' }]);

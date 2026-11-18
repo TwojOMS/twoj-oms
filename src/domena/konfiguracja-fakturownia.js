@@ -26,15 +26,19 @@ export function sprawdzFormularzFakturowni(body = {}, zapisane = null) {
   const domena = tekst(body.domena);
   if (!domena) bledy.push('Podaj domenę konta Fakturowni — część adresu przed .fakturownia.pl.');
   else if (!WZOR_DOMENY_FAKTUROWNI.test(domena)) {
-    bledy.push('Domena konta to sama część adresu przed .fakturownia.pl — małe litery, cyfry i myślnik (bez https://, kropek i ukośników).');
+    bledy.push(
+      'Domena konta to sama część adresu przed .fakturownia.pl — małe litery, cyfry i myślnik (bez https://, kropek i ukośników).',
+    );
   }
   // Token wklejany ze schowka często niesie spację albo koniec linii na brzegu — te obcinamy.
   const token = tekst(body.token);
   const stary = String(zapisane?.sekrety?.token ?? '');
-  if (!token) { if (!stary) bledy.push('Podaj token API Fakturowni.'); }
-  else if (/\s/u.test(token)) bledy.push('Token API nie może zawierać spacji — skopiuj go w całości, bez dopisków.');
+  if (!token) {
+    if (!stary) bledy.push('Podaj token API Fakturowni.');
+  } else if (/\s/u.test(token)) bledy.push('Token API nie może zawierać spacji — skopiuj go w całości, bez dopisków.');
   // Dolna granica chroni maskowanie tokenu w komunikatach klienta (krótki „token” zamazałby zwykłe słowa).
-  else if (token.length < 12) bledy.push('To za krótkie na token API Fakturowni — skopiuj cały token (Ustawienia konta → API).');
+  else if (token.length < 12)
+    bledy.push('To za krótkie na token API Fakturowni — skopiuj cały token (Ustawienia konta → API).');
   else if (token.length > 200) bledy.push('Token API może mieć najwyżej 200 znaków.');
   return { ustawienia: { domena }, sekrety: { token: token || stary }, bledy };
 }

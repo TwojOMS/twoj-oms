@@ -30,8 +30,11 @@ describe('createOmsClient', () => {
   it('409 to NIE blad — oddaje numer istniejacego zamowienia', async () => {
     const { fetchImpl } = atrapa([{ status: 409, body: { id: 7, numer: 'R/2026/007', powod: 'jest' } }]);
     const oms = createOmsClient({ ...konfig, fetchImpl });
-    await expect(oms.createFromCard({ kartaId: 'karta-abc' }))
-      .resolves.toEqual({ id: 7, numer: 'R/2026/007', konflikt: true });
+    await expect(oms.createFromCard({ kartaId: 'karta-abc' })).resolves.toEqual({
+      id: 7,
+      numer: 'R/2026/007',
+      konflikt: true,
+    });
   });
 
   it('401 mowi o konfiguracji, nie o zamowieniu — i NIE cytuje hasla (jawnie ani w base64)', async () => {
@@ -80,17 +83,32 @@ describe('getByShopOrder', () => {
     // ⚠️ To nie jest ostroznosc na wyrost: swietlik.example.test i PRO numeruja NIEZALEZNIE, wiec
     // zamowienie 28060 moze istniec w obu. Karta podpieta do cudzego zamowienia to ta sama
     // klasa bledu, ktora zlikwidowalo przejscie z dopasowania po adresie e-mail na numer oferty.
-    const { fetchImpl, wywolania } = atrapa([{ status: 200, body: {
-      id: 41, numer: '28060', sklep: 'swietlik', oplacone: true, anulowane: false,
-      kwotaBrutto: '429.00', indywidualne: true,
-    } }]);
+    const { fetchImpl, wywolania } = atrapa([
+      {
+        status: 200,
+        body: {
+          id: 41,
+          numer: '28060',
+          sklep: 'swietlik',
+          oplacone: true,
+          anulowane: false,
+          kwotaBrutto: '429.00',
+          indywidualne: true,
+        },
+      },
+    ]);
     const oms = createOmsClient({ ...konfig, fetchImpl });
     const wynik = await oms.getByShopOrder('28060', 'swietlik');
 
     expect(wywolania[0].url).toBe('http://oms:3001/api/zamowienia/po-numerze/28060?sklep=swietlik');
     expect(wynik).toEqual({
-      id: 41, numer: '28060', sklep: 'swietlik', oplacone: true, anulowane: false,
-      kwotaBrutto: '429.00', indywidualne: true,
+      id: 41,
+      numer: '28060',
+      sklep: 'swietlik',
+      oplacone: true,
+      anulowane: false,
+      kwotaBrutto: '429.00',
+      indywidualne: true,
     });
   });
 
@@ -149,7 +167,10 @@ function atrapaBajtow(odpowiedzi) {
       status: o.status,
       ok: o.status < 400,
       json: async () => (o.body !== undefined ? o.body : JSON.parse('nie-json')),
-      arrayBuffer: async () => (o.bajty ? o.bajty.buffer.slice(o.bajty.byteOffset, o.bajty.byteOffset + o.bajty.byteLength) : new ArrayBuffer(0)),
+      arrayBuffer: async () =>
+        o.bajty
+          ? o.bajty.buffer.slice(o.bajty.byteOffset, o.bajty.byteOffset + o.bajty.byteLength)
+          : new ArrayBuffer(0),
       headers: { get: () => o.typ ?? null },
     };
   };
@@ -158,9 +179,15 @@ function atrapaBajtow(odpowiedzi) {
 
 describe('wystawProforme', () => {
   it('oddaje numer, identyfikator i adres pliku', async () => {
-    const { fetchImpl, wywolania } = atrapa([{ status: 201, body: { id: 12, numer: 'PF/3/08/2026', pdfUrl: '/api/proformy/12/pdf' } }]);
+    const { fetchImpl, wywolania } = atrapa([
+      { status: 201, body: { id: 12, numer: 'PF/3/08/2026', pdfUrl: '/api/proformy/12/pdf' } },
+    ]);
     const oms = createOmsClient({ ...konfig, fetchImpl });
-    await expect(oms.wystawProforme(7)).resolves.toEqual({ id: 12, numer: 'PF/3/08/2026', pdfUrl: '/api/proformy/12/pdf' });
+    await expect(oms.wystawProforme(7)).resolves.toEqual({
+      id: 12,
+      numer: 'PF/3/08/2026',
+      pdfUrl: '/api/proformy/12/pdf',
+    });
     expect(wywolania[0].url).toBe('http://oms:3001/api/zamowienia/7/proforma');
     expect(wywolania[0].opcje.method).toBe('POST');
     // OMS odrzuca POST bez zgodnego Origin (ochrona CSRF) — panel podaje własne, prawdziwe.
@@ -244,7 +271,9 @@ describe('pobierzProformePdf', () => {
 
 describe('oznaczWRealizacji — akceptacja projektu przesuwa zamowienie w OMS-ie', () => {
   it('POST na wlasciwy adres, z Basic Auth i Origin', async () => {
-    const { fetchImpl, wywolania } = atrapa([{ status: 200, body: { id: 77, numer: 'R/2026/041', status: 'w_realizacji' } }]);
+    const { fetchImpl, wywolania } = atrapa([
+      { status: 200, body: { id: 77, numer: 'R/2026/041', status: 'w_realizacji' } },
+    ]);
     const oms = createOmsClient({ ...konfig, fetchImpl });
 
     const wynik = await oms.oznaczWRealizacji(77);
@@ -262,7 +291,9 @@ describe('oznaczWRealizacji — akceptacja projektu przesuwa zamowienie w OMS-ie
     // transportu: rzucenie tutaj zamienialoby poprawna decyzje drugiej strony w „ERROR"
     // w logu karty, a wolajacy (moveToProduction) i tak idzie dalej — wiec czlowiek
     // dostawalby komunikat o awarii tam, gdzie nic sie nie zepsulo.
-    const { fetchImpl } = atrapa([{ status: 409, body: { powod: 'Zamówienie jest już wysłane — status zostaje bez zmian.' } }]);
+    const { fetchImpl } = atrapa([
+      { status: 409, body: { powod: 'Zamówienie jest już wysłane — status zostaje bez zmian.' } },
+    ]);
     const oms = createOmsClient({ ...konfig, fetchImpl });
 
     const wynik = await oms.oznaczWRealizacji(77);
@@ -305,14 +336,29 @@ describe('oznaczWRealizacji — akceptacja projektu przesuwa zamowienie w OMS-ie
 // Odczyt dla pollera wysylki: karta panelu przechodzi na „Wyslane" za faktem z OMS-u.
 describe('getStanWysylki', () => {
   it('GET na wlasciwy adres, z Basic Auth i Origin — oddaje fakt i date', async () => {
-    const { fetchImpl, wywolania } = atrapa([{ status: 200, body: {
-      id: 77, numer: 'R/2026/041', wyslane: true, wyslaneAt: '2026-08-25T10:00:00.000Z', anulowane: false,
-    } }]);
+    const { fetchImpl, wywolania } = atrapa([
+      {
+        status: 200,
+        body: {
+          id: 77,
+          numer: 'R/2026/041',
+          wyslane: true,
+          wyslaneAt: '2026-08-25T10:00:00.000Z',
+          anulowane: false,
+        },
+      },
+    ]);
     const oms = createOmsClient({ ...konfig, fetchImpl });
 
     const wynik = await oms.getStanWysylki(77);
 
-    expect(wynik).toEqual({ id: 77, numer: 'R/2026/041', wyslane: true, wyslaneAt: '2026-08-25T10:00:00.000Z', anulowane: false });
+    expect(wynik).toEqual({
+      id: 77,
+      numer: 'R/2026/041',
+      wyslane: true,
+      wyslaneAt: '2026-08-25T10:00:00.000Z',
+      anulowane: false,
+    });
     const { url, opcje } = wywolania[0];
     expect(url).toBe('http://oms:3001/api/zamowienia/77/stan-wysylki');
     expect(opcje.headers.Origin).toBe('http://oms:3001');

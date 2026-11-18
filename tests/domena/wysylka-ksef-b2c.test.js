@@ -1,8 +1,21 @@
 import { describe, it, expect } from 'vitest';
-import { coWolnoWyslac, doZaznaczeniaWszystkich, POWOD_KOREKTA, POWOD_KONSUMENCKA } from '../../src/domena/wysylka-ksef.js';
+import {
+  coWolnoWyslac,
+  doZaznaczeniaWszystkich,
+  POWOD_KOREKTA,
+  POWOD_KONSUMENCKA,
+} from '../../src/domena/wysylka-ksef.js';
 
-const b2c = { uuid: 'b2c', rodzaj: 'vat', number: 'FV/26', gross_price: 12300,
-  client_first_name: 'Jan', client_last_name: 'Przykładowy', client_tax_code: '', stanKsef: 'brak' };
+const b2c = {
+  uuid: 'b2c',
+  rodzaj: 'vat',
+  number: 'FV/26',
+  gross_price: 12300,
+  client_first_name: 'Jan',
+  client_last_name: 'Przykładowy',
+  client_tax_code: '',
+  stanKsef: 'brak',
+};
 
 describe('dobrowolna wysyłka B2C', () => {
   it('włączone: konsumencka z danymi nabywcy ma pole wyboru i przechodzi barierę', () => {
@@ -16,7 +29,9 @@ describe('dobrowolna wysyłka B2C', () => {
   });
   it.each([
     { number: null, gross_price: null, client_first_name: null, client_last_name: null },
-    { number: null }, { gross_price: null }, { client_first_name: ' ', client_last_name: null },
+    { number: null },
+    { gross_price: null },
+    { client_first_name: ' ', client_last_name: null },
   ])('włączone nie otwiera braku danych %j', (braki) => {
     const d = { ...b2c, ...braki };
     expect(doZaznaczeniaWszystkich(d, true)).toBe(false);

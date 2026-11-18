@@ -57,7 +57,18 @@ describe('normalizujMetode', () => {
   // Klucz kanoniczny jest PUNKTEM STALYM: normalizacja wlasnego wyniku niczego nie zmienia.
   // Bez tego stary link `?platnosc=przelew` i nowy z pola wyboru daja rozne wyniki.
   it('kazdy klucz kanoniczny normalizuje sie sam do siebie', () => {
-    for (const klucz of ['blik', 'przelew', 'przelewy24', 'pobranie', 'allegro', 'payu', 'apple_pay', 'karta', 'gotowka', 'nieokreslona']) {
+    for (const klucz of [
+      'blik',
+      'przelew',
+      'przelewy24',
+      'pobranie',
+      'allegro',
+      'payu',
+      'apple_pay',
+      'karta',
+      'gotowka',
+      'nieokreslona',
+    ]) {
       expect(normalizujMetode(klucz).klucz).toBe(klucz);
     }
   });

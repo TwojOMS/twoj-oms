@@ -26,7 +26,11 @@ import { modulZdrowie } from '../../../src/moduly/zdrowie/modul.ts';
 
 const EKRAN = '/ustawienia/komunikacja/podpis';
 const ZAPIS = '/ustawienia/integracje/poczta/podpis';
-const ENV_SMTP = { SMTP_HOST: 'smtp.pracownia.example.test', SMTP_USER: 'sklep@pracownia.example.test', SMTP_PASS: 'zmyslone-102-10' };
+const ENV_SMTP = {
+  SMTP_HOST: 'smtp.pracownia.example.test',
+  SMTP_USER: 'sklep@pracownia.example.test',
+  SMTP_PASS: 'zmyslone-102-10',
+};
 const MARKA = 'Pracownia Półcień';
 const STOPKA = 'ul. Lipowa 7, 00-001 Warszawa\nhttps://pracownia.example.test';
 const MARKA_PLIKU = 'Lampy z Pliku';
@@ -38,16 +42,35 @@ beforeEach(() => {
   wyslane = [];
   for (const m of ['log', 'error', 'warn', 'info']) vi.spyOn(console, m).mockImplementation(() => {});
 });
-afterEach(() => { vi.restoreAllMocks(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
-const fabrykaMailera = (poczta) => createMailer({ ...poczta, transportFactory: () => ({
-  async sendMail(list) { wyslane.push(list); return { messageId: `<test-${wyslane.length}@example.test>` }; },
-}) });
+const fabrykaMailera = (poczta) =>
+  createMailer({
+    ...poczta,
+    transportFactory: () => ({
+      async sendMail(list) {
+        wyslane.push(list);
+        return { messageId: `<test-${wyslane.length}@example.test>` };
+      },
+    }),
+  });
 
 async function panel({ env = {}, przedStartem = null } = {}) {
-  const moduly = [modulRdzen, modulWeb, modulKanaly, createModulFaktury(),
+  const moduly = [
+    modulRdzen,
+    modulWeb,
+    modulKanaly,
+    createModulFaktury(),
     createModulWiadomosci({ fabryki: { createMailer: fabrykaMailera } }),
-    createModulZamowienia({ zWiadomosciami: true }), createModulWysylka(), modulMagazyn, modulUstawienia, modulMarketing, modulZdrowie];
+    createModulZamowienia({ zWiadomosciami: true }),
+    createModulWysylka(),
+    modulMagazyn,
+    modulUstawienia,
+    modulMarketing,
+    modulZdrowie,
+  ];
   let db;
   if (przedStartem) {
     const pierwszy = nowyPanel({ moduly, env: { ...ENV_SMTP, ...env } });
@@ -64,10 +87,20 @@ async function panel({ env = {}, przedStartem = null } = {}) {
 }
 
 function zamowienie(db) {
-  const id = utworzZamowienieReczne(db, { klient: { email: 'klient@pracownia.example.test' },
+  const id = utworzZamowienieReczne(db, {
+    klient: { email: 'klient@pracownia.example.test' },
     dostawa: { first_name: 'Anna', last_name: 'Testowa', address_1: 'Fikcyjna 1', postcode: '00-001', city: 'Testowo' },
-    metoda_wysylki: 'dpd', metoda_platnosci: 'Przelew', utworzone_at: '2026-10-01T09:00:00.000Z' });
-  dodajPozycjeReczna(db, id, { nazwa: 'Lampa fikcyjna', sku: 'LMP-1', ilosc: 1, cena_brutto: '10.00', brutto_linii: '10.00' });
+    metoda_wysylki: 'dpd',
+    metoda_platnosci: 'Przelew',
+    utworzone_at: '2026-10-01T09:00:00.000Z',
+  });
+  dodajPozycjeReczna(db, id, {
+    nazwa: 'Lampa fikcyjna',
+    sku: 'LMP-1',
+    ilosc: 1,
+    cena_brutto: '10.00',
+    brutto_linii: '10.00',
+  });
   przeliczKwoteRecznego(db, id);
   return id;
 }
@@ -81,8 +114,11 @@ async function wyslijPotwierdzenie(p) {
   return wyslane.at(-1);
 }
 const sekcja = (html) => /<section class="ust-sekcja" id="podpis-maili">[\s\S]*?<\/section>/u.exec(html)?.[0] ?? '';
-const wierszeUstawien = (db) => db.prepare("SELECT klucz, wartosc FROM ustawienia WHERE klucz LIKE 'poczta.podpis.%' ORDER BY klucz").all()
-  .map((w) => ({ ...w }));
+const wierszeUstawien = (db) =>
+  db
+    .prepare("SELECT klucz, wartosc FROM ustawienia WHERE klucz LIKE 'poczta.podpis.%' ORDER BY klucz")
+    .all()
+    .map((w) => ({ ...w }));
 
 describe('podpis maili w Ustawieniach → Poczta', () => {
   it('bez pliku: zapis w panelu zmienia następny mail na tej samej instancji, bez restartu (tekst, HTML, podgląd)', async () => {
@@ -98,7 +134,10 @@ describe('podpis maili w Ustawieniach → Poczta', () => {
 
     const r = await post(p.app, ZAPIS, p.admin, { marka: `  ${MARKA}  `, stopka: `${STOPKA}\n\n` });
     expect(r.statusCode, r.body).toBe(303);
-    expect(wierszeUstawien(p.db)).toEqual([{ klucz: 'poczta.podpis.marka', wartosc: MARKA }, { klucz: 'poczta.podpis.stopka', wartosc: STOPKA }]);
+    expect(wierszeUstawien(p.db)).toEqual([
+      { klucz: 'poczta.podpis.marka', wartosc: MARKA },
+      { klucz: 'poczta.podpis.stopka', wartosc: STOPKA },
+    ]);
 
     const po = await wyslijPotwierdzenie(p);
     expect(po.text).toContain(`Pozdrawiamy,\n${MARKA}`);
@@ -108,9 +147,20 @@ describe('podpis maili w Ustawieniach → Poczta', () => {
 
     // Podgląd na karcie i ekran szablonu też widzą nowy podpis (zmienna {nazwa_firmy} = marka).
     const id = zamowienie(p.db);
-    expect((await p.app.inject({ method: 'GET', url: `/zamowienia/${id}?wiadomosc=potwierdzenie`, headers: { ...p.admin, accept: 'text/html' } })).body)
-      .toContain(MARKA);
-    const szablon = await get(p.app, `/ustawienia/szablony-wiadomosci/potwierdzenie?podglad=1&temat=${encodeURIComponent('Zamówienie {numer_zamowienia}')}&tresc=${encodeURIComponent('Firma: {nazwa_firmy}\n\n{podpis}')}`, p.admin);
+    expect(
+      (
+        await p.app.inject({
+          method: 'GET',
+          url: `/zamowienia/${id}?wiadomosc=potwierdzenie`,
+          headers: { ...p.admin, accept: 'text/html' },
+        })
+      ).body,
+    ).toContain(MARKA);
+    const szablon = await get(
+      p.app,
+      `/ustawienia/szablony-wiadomosci/potwierdzenie?podglad=1&temat=${encodeURIComponent('Zamówienie {numer_zamowienia}')}&tresc=${encodeURIComponent('Firma: {nazwa_firmy}\n\n{podpis}')}`,
+      p.admin,
+    );
     expect(szablon.body).toContain(`Firma: ${MARKA}`);
 
     expect(r.headers.location).toBe(`${EKRAN}?zapisano=podpis#podpis-maili`);
@@ -135,9 +185,14 @@ describe('podpis maili w Ustawieniach → Poczta', () => {
     expect(wzor.text).toContain(`Pozdrawiamy,\n${MARKA_PLIKU}`);
 
     // W bazie leży zapis z panelu sprzed dopisania zmiennych do pliku — nie może wygrać z plikiem.
-    const p = await panel({ env, przedStartem: (db) => {
-      db.prepare("INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('poczta.podpis.marka', 'Marka z panelu', '2026-10-19T10:00:00Z'), ('poczta.podpis.stopka', 'Stopka z panelu', '2026-10-19T10:00:00Z')").run();
-    } });
+    const p = await panel({
+      env,
+      przedStartem: (db) => {
+        db.prepare(
+          "INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('poczta.podpis.marka', 'Marka z panelu', '2026-10-19T10:00:00Z'), ('poczta.podpis.stopka', 'Stopka z panelu', '2026-10-19T10:00:00Z')",
+        ).run();
+      },
+    });
     const ekran = await get(p.app, EKRAN, p.admin);
     expect(sekcja(ekran.body)).toContain(MARKA_PLIKU);
     expect(sekcja(ekran.body)).toContain(STOPKA_PLIKU);
@@ -151,7 +206,11 @@ describe('podpis maili w Ustawieniach → Poczta', () => {
     expect(wierszeUstawien(p.db).map((w) => w.wartosc)).toEqual(['Marka z panelu', 'Stopka z panelu']);
 
     const mail = await wyslijPotwierdzenie(p);
-    expect({ text: mail.text, html: mail.html, subject: mail.subject }).toEqual({ text: wzor.text, html: wzor.html, subject: wzor.subject });
+    expect({ text: mail.text, html: mail.html, subject: mail.subject }).toEqual({
+      text: wzor.text,
+      html: wzor.html,
+      subject: wzor.subject,
+    });
   });
 
   it('plik ustawia samą markę: stopkę można zapisać w panelu, markę nie', async () => {
@@ -172,9 +231,16 @@ describe('podpis maili w Ustawieniach → Poczta', () => {
 
   it('walidacja: znaki sterujące i długość — 400, nic nie zapisane; nowa linia w stopce dozwolona', async () => {
     const p = await panel();
-    for (const zle of [{ marka: 'Dwie\nlinie' }, { marka: 'Tab\tulator' }, { marka: 'x'.repeat(121) },
-      { stopka: 'Linia\u0007dzwonek' }, { stopka: 'Tab\tw stopce' }, { stopka: 'y'.repeat(601) },
-      { stopka: Array.from({ length: 9 }, (_, i) => `linia ${i}`).join('\n') }, { marka: 'Odwrócony \u202Etekst' }]) {
+    for (const zle of [
+      { marka: 'Dwie\nlinie' },
+      { marka: 'Tab\tulator' },
+      { marka: 'x'.repeat(121) },
+      { stopka: 'Linia\u0007dzwonek' },
+      { stopka: 'Tab\tw stopce' },
+      { stopka: 'y'.repeat(601) },
+      { stopka: Array.from({ length: 9 }, (_, i) => `linia ${i}`).join('\n') },
+      { marka: 'Odwrócony \u202Etekst' },
+    ]) {
       const r = await post(p.app, ZAPIS, p.admin, zle);
       expect(r.statusCode, JSON.stringify(zle)).toBe(400);
       expect(r.body).toContain('Nie zapisano');
@@ -208,7 +274,11 @@ describe('podpis maili w Ustawieniach → Poczta', () => {
 
   it('podgląd niezapisanych wartości: GET niczego nie zapisuje, pokazuje wpisaną markę w ramce', async () => {
     const p = await panel();
-    const r = await get(p.app, `${EKRAN}?podglad=1&marka=${encodeURIComponent('Nowa Marka')}&stopka=${encodeURIComponent('Stopka podglądu')}#podpis-maili`, p.admin);
+    const r = await get(
+      p.app,
+      `${EKRAN}?podglad=1&marka=${encodeURIComponent('Nowa Marka')}&stopka=${encodeURIComponent('Stopka podglądu')}#podpis-maili`,
+      p.admin,
+    );
     expect(r.statusCode).toBe(200);
     expect(sekcja(r.body)).toMatch(/srcdoc="[^"]*Nowa Marka/u);
     expect(sekcja(r.body)).toContain('value="Nowa Marka"');

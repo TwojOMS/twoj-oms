@@ -85,7 +85,8 @@ describe('wiersze pozycji — bez JavaScriptu', () => {
 
   it('zapis po skasowaniu wiersza zakłada zamówienie z pozostałymi pozycjami', async () => {
     const poUsunieciu = { ...trzy };
-    for (const k of Object.keys(trzy).filter((k) => k.startsWith('poz_'))) poUsunieciu[k] = trzy[k].filter((_, i) => i !== 1);
+    for (const k of Object.keys(trzy).filter((k) => k.startsWith('poz_')))
+      poUsunieciu[k] = trzy[k].filter((_, i) => i !== 1);
     const r = await wyslij('/zamowienia/nowe', { ...poUsunieciu, dostawa: 'dpd', platnosc: 'przelew' });
     expect(r.statusCode).toBeLessThan(400);
     const nazwy = pobierzZamowienie(db, 1).pozycje.map((p) => p.nazwa);
@@ -103,9 +104,16 @@ describe('ilość 1 w nowym wierszu i „+ Dodaj wiersz” nad „Razem”', () 
 
   it('nietknięty wiersz z ilością 1 nie blokuje zapisu — zamówienie bez pozycji powstaje', async () => {
     const r = await wyslij('/zamowienia/nowe', {
-      dostawa: 'dpd', platnosc: 'przelew',
-      poz_nazwa: '', poz_sku: '', poz_ilosc: '1', poz_cena_netto: '', poz_cena_brutto: '',
-      poz_produkt_id: '', poz_wariant_id: '', poz_cena_katalogowa: '',
+      dostawa: 'dpd',
+      platnosc: 'przelew',
+      poz_nazwa: '',
+      poz_sku: '',
+      poz_ilosc: '1',
+      poz_cena_netto: '',
+      poz_cena_brutto: '',
+      poz_produkt_id: '',
+      poz_wariant_id: '',
+      poz_cena_katalogowa: '',
     });
     expect(r.statusCode).toBe(302);
     expect(pobierzZamowienie(db, 1).pozycje).toEqual([]);
@@ -138,7 +146,10 @@ describe('„Dodaj z magazynu" na ekranie zakładania', () => {
   });
 
   it('karta zamówienia też podpowiada „lampa"', () => {
-    const widok = readFileSync(new URL('../../../src/moduly/zamowienia/widoki/zamowienie.ejs', import.meta.url), 'utf8');
+    const widok = readFileSync(
+      new URL('../../../src/moduly/zamowienia/widoki/zamowienie.ejs', import.meta.url),
+      'utf8',
+    );
     expect(widok).toContain('np. „lampa”');
     expect(widok).not.toContain('pieszy');
   });
@@ -147,13 +158,26 @@ describe('„Dodaj z magazynu" na ekranie zakładania', () => {
   it('po dodaniu produktu pole szukania dostaje fokus; przy zwykłym wejściu nie', async () => {
     expect((await ekran()).body).not.toMatch(/name="magazyn"[^>]*autofocus/);
     zapiszProduktSklepowy(db, {
-      kanal: 'swietlik', produkt_id: '28040', wariant_id: '', nazwa: 'Lampa stołowa Grzybek',
-      sku_sklepu: 'LMP-GRZ-30', cena_gr: 7490, rozmiar_tekst: '', kategorie: [], zdjecia: [],
-      adres: 'https://sklep.example/grzybek', odczytane_at: '2026-10-21T08:00:00',
+      kanal: 'swietlik',
+      produkt_id: '28040',
+      wariant_id: '',
+      nazwa: 'Lampa stołowa Grzybek',
+      sku_sklepu: 'LMP-GRZ-30',
+      cena_gr: 7490,
+      rozmiar_tekst: '',
+      kategorie: [],
+      zdjecia: [],
+      adres: 'https://sklep.example/grzybek',
+      odczytane_at: '2026-10-21T08:00:00',
     });
     const r = await wyslij('/zamowienia/nowe/magazyn/dodaj', {
-      magazyn: 'lampa', cennik: 'swietlik', wybrany: '0',
-      mag_kanal: 'swietlik', mag_produkt_id: '28040', mag_wariant_id: '', mag_ilosc: '1',
+      magazyn: 'lampa',
+      cennik: 'swietlik',
+      wybrany: '0',
+      mag_kanal: 'swietlik',
+      mag_produkt_id: '28040',
+      mag_wariant_id: '',
+      mag_ilosc: '1',
     });
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('Dodano do zamówienia');

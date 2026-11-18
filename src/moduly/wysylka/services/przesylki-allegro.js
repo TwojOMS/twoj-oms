@@ -87,7 +87,8 @@ export function createPrzesylkiAllegro({ db, klienci = {} }) {
       // Mechanizm jest wiec gotowy, ale wyzwalacz do niego nie dosiega: dosylki nadanej po
       // oznaczeniu wysylki panel NIE DOCIAGNIE — znane ograniczenie, opisane przy warunku
       // w moduly/zamowienia/karta.js (reguła: status wynika z faktów).
-      const juzJest = db.prepare('SELECT 1 FROM przesylki WHERE zamowienie_id = ? AND numer_listu = ?')
+      const juzJest = db
+        .prepare('SELECT 1 FROM przesylki WHERE zamowienie_id = ? AND numer_listu = ?')
         .get(zamowienieId, numer);
       if (juzJest) continue;
 

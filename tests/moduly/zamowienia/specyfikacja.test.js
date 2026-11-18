@@ -13,9 +13,15 @@ const zam = (n) => ({
   id: 1,
   numer: '3001',
   utworzone_at: '2026-08-05T10:00:00.000Z',
-  pozycje: [{
-    nazwa: 'STOP 70x100', sku: 'STOP-70', ilosc: 2, cena_brutto: '50.00', brutto_linii: '100.00',
-  }],
+  pozycje: [
+    {
+      nazwa: 'STOP 70x100',
+      sku: 'STOP-70',
+      ilosc: 2,
+      cena_brutto: '50.00',
+      brutto_linii: '100.00',
+    },
+  ],
   platnosci: [{ kwota: '110.00' }],
   kwota_brutto: '110.00',
   koszt_dostawy_brutto: '10.00',
@@ -54,7 +60,17 @@ describe('dane specyfikacji zamowienia', () => {
   // KLIENT, stalby przy kazdej pozycji zamowienia z oferty i nie znaczyl nic.
   it('SKU zaslepki daje pusty symbol, tak samo jak brak SKU', () => {
     const d = daneSpecyfikacji(
-      zam({ pozycje: [{ nazwa: 'wysylka kurierem DPD', sku: 'psm-zam-placeholder', ilosc: 1, cena_brutto: '19.00', brutto_linii: '19.00' }] }),
+      zam({
+        pozycje: [
+          {
+            nazwa: 'wysylka kurierem DPD',
+            sku: 'psm-zam-placeholder',
+            ilosc: 1,
+            cena_brutto: '19.00',
+            brutto_linii: '19.00',
+          },
+        ],
+      }),
       { sprzedawca: SPRZEDAWCA },
     );
     expect(d.pozycje[0].symbol).toBe('');
@@ -102,10 +118,22 @@ describe('dane specyfikacji zamowienia', () => {
     const z = zam({
       pozycje: [
         {
-          zrodlo: 'sklep', sklep: null, nazwa: 'STOP 70x100', sku: 'STOP-70', ilosc: 2, cena_brutto: '50.00', brutto_linii: '100.00',
+          zrodlo: 'sklep',
+          sklep: null,
+          nazwa: 'STOP 70x100',
+          sku: 'STOP-70',
+          ilosc: 2,
+          cena_brutto: '50.00',
+          brutto_linii: '100.00',
         },
         {
-          zrodlo: 'reczna', sklep: null, nazwa: 'Dopłata za projekt', sku: null, ilosc: 1, cena_brutto: '25.00', brutto_linii: '25.00',
+          zrodlo: 'reczna',
+          sklep: null,
+          nazwa: 'Dopłata za projekt',
+          sku: null,
+          ilosc: 1,
+          cena_brutto: '25.00',
+          brutto_linii: '25.00',
         },
       ],
     });
@@ -134,10 +162,12 @@ describe('dane specyfikacji zamowienia', () => {
     });
 
     it('paczkomat i odbior osobisty tez maja nazwy, a nie klucze', () => {
-      expect(daneSpecyfikacji(zam({ metoda_wysylki: 'inpost_paczkomat' }), { sprzedawca: SPRZEDAWCA }).dostawa)
-        .toBe('InPost Paczkomat');
-      expect(daneSpecyfikacji(zam({ metoda_wysylki: 'odbior_osobisty' }), { sprzedawca: SPRZEDAWCA }).dostawa)
-        .toBe('Odbiór osobisty');
+      expect(daneSpecyfikacji(zam({ metoda_wysylki: 'inpost_paczkomat' }), { sprzedawca: SPRZEDAWCA }).dostawa).toBe(
+        'InPost Paczkomat',
+      );
+      expect(daneSpecyfikacji(zam({ metoda_wysylki: 'odbior_osobisty' }), { sprzedawca: SPRZEDAWCA }).dostawa).toBe(
+        'Odbiór osobisty',
+      );
     });
 
     // „nieznana" JEST realna wartoscia kolumny (metoda, ktorej panel nie rozpoznal), a nie
@@ -191,10 +221,9 @@ describe('dane specyfikacji zamowienia', () => {
     // NORMALNYM, nie niedoplata. Ta sama regula rzadzi ikona na liscie i paskiem na karcie;
     // gdyby dokument liczyl to sam, kartka klamalaby panelowi.
     it('pobranie: mowi, ze pieniadze odbiera kurier — mimo braku wplaty', () => {
-      const d = daneSpecyfikacji(
-        zam({ metoda_platnosci: 'Za pobraniem', pobranie: 1, platnosci: [] }),
-        { sprzedawca: SPRZEDAWCA },
-      );
+      const d = daneSpecyfikacji(zam({ metoda_platnosci: 'Za pobraniem', pobranie: 1, platnosci: [] }), {
+        sprzedawca: SPRZEDAWCA,
+      });
       expect(d.platnosc).toBe('Za pobraniem — do zapłaty kurierowi przy odbiorze');
     });
 
@@ -212,10 +241,9 @@ describe('dane specyfikacji zamowienia', () => {
     // Zamowienie reczne bywa bez metody platnosci. Sam stan, a NIE „ — opłacone" z wiszacym
     // mysnikiem na dokumencie dla klienta.
     it('brak metody daje sam stan, bez wiszacego mysnika', () => {
-      const d = daneSpecyfikacji(
-        zam({ metoda_platnosci: null, oplacone_at: '2026-08-05T10:00:00.000Z' }),
-        { sprzedawca: SPRZEDAWCA },
-      );
+      const d = daneSpecyfikacji(zam({ metoda_platnosci: null, oplacone_at: '2026-08-05T10:00:00.000Z' }), {
+        sprzedawca: SPRZEDAWCA,
+      });
       expect(d.platnosc).toBe('opłacone');
     });
   });
@@ -240,10 +268,7 @@ describe('data zamowienia i data platnosci', () => {
   // test. Godzina 21:10 UTC to jeszcze 9 sierpnia w Polsce i taki test przechodzilby TAKZE
   // przy liczeniu w UTC, czyli nie dowodzilby niczego (pomylka zlapana przy pisaniu).
   it('data platnosci bierze sie z `oplacone_at`, tez po warszawsku', () => {
-    const d = daneSpecyfikacji(
-      zam({ oplacone_at: '2026-08-09T22:10:00.000Z' }),
-      { sprzedawca: SPRZEDAWCA },
-    );
+    const d = daneSpecyfikacji(zam({ oplacone_at: '2026-08-09T22:10:00.000Z' }), { sprzedawca: SPRZEDAWCA });
     expect(d.dataPlatnosci).toBe('2026-08-10');
   });
 
@@ -270,17 +295,11 @@ describe('informacja o dokumencie sprzedazy', () => {
   // ⚠️ WARTOSC EFEKTYWNA, nie kolumna ze sklepu. Operator przestawia to pole wlasnie wtedy,
   // gdy klient rozmyslil sie po zlozeniu zamowienia — kartka ma mowic o stanie PO poprawce.
   it('reczna poprawka na karcie wygrywa z tym, co przyslal sklep', () => {
-    const zeSklepu = daneSpecyfikacji(
-      zam({ chce_fakture: 1, chce_fakture_reczne: 0 }),
-      { sprzedawca: SPRZEDAWCA },
-    );
+    const zeSklepu = daneSpecyfikacji(zam({ chce_fakture: 1, chce_fakture_reczne: 0 }), { sprzedawca: SPRZEDAWCA });
     expect(zeSklepu.paragon).toBe(true);
     expect(zeSklepu.fakturaWybrana).toBe(false);
 
-    const odwrotnie = daneSpecyfikacji(
-      zam({ chce_fakture: 0, chce_fakture_reczne: 1 }),
-      { sprzedawca: SPRZEDAWCA },
-    );
+    const odwrotnie = daneSpecyfikacji(zam({ chce_fakture: 0, chce_fakture_reczne: 1 }), { sprzedawca: SPRZEDAWCA });
     expect(odwrotnie.paragon).toBe(false);
     expect(odwrotnie.fakturaWybrana).toBe(true);
   });
@@ -289,7 +308,9 @@ describe('informacja o dokumencie sprzedazy', () => {
 // Faktura wystawiona bez prośby klienta (opcja firmy) — kartka nie może mówić „paragon”.
 describe('informacja o dokumencie sprzedazy — faktura bez zadania', () => {
   it('bez zadania, z wystawiona faktura: bez znacznika paragonu, faktura wybrana', () => {
-    const d = daneSpecyfikacji(zam({ chce_fakture: 0, faktura: { numer: 'FV/7/10/2026' } }), { sprzedawca: SPRZEDAWCA });
+    const d = daneSpecyfikacji(zam({ chce_fakture: 0, faktura: { numer: 'FV/7/10/2026' } }), {
+      sprzedawca: SPRZEDAWCA,
+    });
     expect(d.paragon).toBe(false);
     expect(d.fakturaWybrana).toBe(true);
     expect(d.faktura).toEqual({ numer: 'FV/7/10/2026' });
@@ -306,10 +327,9 @@ describe('informacja o dokumencie sprzedazy — faktura bez zadania', () => {
 
 describe('uwagi klienta', () => {
   it('przechodza na kartke tak, jak je napisal klient', () => {
-    const d = daneSpecyfikacji(
-      zam({ uwagi: 'Proszę zapakować na prezent, bez cennika w środku.' }),
-      { sprzedawca: SPRZEDAWCA },
-    );
+    const d = daneSpecyfikacji(zam({ uwagi: 'Proszę zapakować na prezent, bez cennika w środku.' }), {
+      sprzedawca: SPRZEDAWCA,
+    });
     expect(d.uwagiKlienta).toBe('Proszę zapakować na prezent, bez cennika w środku.');
   });
 
@@ -332,7 +352,9 @@ describe('uwagi klienta', () => {
 describe('znacznik techniczny panelu nie jest uwagami klienta', () => {
   // Format znacznika DOSLOWNIE jak w panelu indywidualnym (przedrostek + id karty + \n + adres karty),
   // celowo bez stalej z OMS-u: zmiana UWAGA_Z_KARTY bez zmiany panelu ma tu zaczerwienic test.
-  const zPanelu = { uwagi: `Zamówienie indywidualne — karta e218b78e-f3ab-43d4-a8a9-bd89aaaa1111\nhttps://panel.example.pl/cards/e218b78e-f3ab-43d4-a8a9-bd89aaaa1111` };
+  const zPanelu = {
+    uwagi: `Zamówienie indywidualne — karta e218b78e-f3ab-43d4-a8a9-bd89aaaa1111\nhttps://panel.example.pl/cards/e218b78e-f3ab-43d4-a8a9-bd89aaaa1111`,
+  };
 
   it('uwagi zbudowane przez panel są rozpoznane jako techniczne i NIE wychodzą na dokument', () => {
     expect(zPanelu.uwagi).toContain('Zamówienie indywidualne');
@@ -373,10 +395,7 @@ describe('kwota netto w podsumowaniu', () => {
   // raportu sprzedazy. To jedyny powod, dla ktorego ta liczba nie jest liczona na miejscu,
   // tylko wspolna regula z `sprzedaz-okresu.js`.
   it('klient WDT ma netto rowne brutto, bez dzielenia', () => {
-    const d = daneSpecyfikacji(
-      zam({ klient: { email: 'peter.novak@alfatrend.sk' } }),
-      { sprzedawca: SPRZEDAWCA },
-    );
+    const d = daneSpecyfikacji(zam({ klient: { email: 'peter.novak@alfatrend.sk' } }), { sprzedawca: SPRZEDAWCA });
     expect(d.nettoZl).toBe('110.00');
     expect(d.nettoZl).toBe(d.razemZl);
   });
@@ -384,10 +403,7 @@ describe('kwota netto w podsumowaniu', () => {
   // ⚠️ WDT rozpoznajemy po mailu KLIENTA, nie po mailu z danych faktury — ten drugi jest
   // nieobowiazkowy i bywa inny (dokumenty ida na osobny adres do ksiegowosci).
   it('rozpoznanie WDT nie zalezy od wielkosci liter w mailu', () => {
-    const d = daneSpecyfikacji(
-      zam({ klient: { email: 'Info@Alfatrend.SK' } }),
-      { sprzedawca: SPRZEDAWCA },
-    );
+    const d = daneSpecyfikacji(zam({ klient: { email: 'Info@Alfatrend.SK' } }), { sprzedawca: SPRZEDAWCA });
     expect(d.nettoZl).toBe('110.00');
   });
 

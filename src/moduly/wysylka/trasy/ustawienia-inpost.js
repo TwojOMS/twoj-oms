@@ -6,48 +6,75 @@
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
 import { stronaOdmowy } from '../../../core/web/odmowa.js';
 import { sprawdzFormularzInpost, ADRES_INPOST } from '../../../domena/konfiguracja-inpost.js';
-import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji, usunKonfiguracjeIntegracji, stanDlaEkranu }
-  from '../../../oms/db/konfiguracja-integracji.js';
+import {
+  wczytajKonfiguracjeIntegracji,
+  zapiszKonfiguracjeIntegracji,
+  usunKonfiguracjeIntegracji,
+  stanDlaEkranu,
+} from '../../../oms/db/konfiguracja-integracji.js';
 import { nawigacjaUstawien } from '../../ustawienia/nawigacja.js';
 import { EKRAN_ADRESU_FIRMY } from '../../../domena/adres-firmy.js';
 import { umowyPobraniaFirmy, zapiszUmowePobrania } from '../db/umowy-pobrania.js';
 
 const ADRES = '/ustawienia/integracje/inpost';
 const KURIER = 'inpost'; // jeden literał nazwy kuriera w pliku (scripts/straznik-kurierow.mjs)
-const KOMUNIKATY = { zapisano: 'Zapisano dane kuriera InPost.', odlaczono: 'Kurier InPost został odłączony. Token usunięty z OMS-u, umowa na pobranie w InPoście wyłączona.',
-  'pobranie-tak': 'Umowa na pobranie w InPoście: włączona.', 'pobranie-nie': 'Umowa na pobranie w InPoście: wyłączona.' };
+const KOMUNIKATY = {
+  zapisano: 'Zapisano dane kuriera InPost.',
+  odlaczono: 'Kurier InPost został odłączony. Token usunięty z OMS-u, umowa na pobranie w InPoście wyłączona.',
+  'pobranie-tak': 'Umowa na pobranie w InPoście: włączona.',
+  'pobranie-nie': 'Umowa na pobranie w InPoście: wyłączona.',
+};
 const PUSTY = { nazwa: 'InPost', organizacja: '', paczkomatNadawczy: '' };
 // Data ostatniej zmiany przełącznika (stan liczy umowyPobraniaFirmy — ta sama reguła co nadanie).
 const KLUCZ_POBRANIA = 'wysylka.umowa_pobrania.inpost';
 function umowaPobrania(db) {
   let zmienionoAt = null;
-  try { zmienionoAt = db.prepare('SELECT zmienione_at FROM ustawienia WHERE klucz = ?').get(KLUCZ_POBRANIA)?.zmienione_at ?? null; } catch { /* brak tabeli = brak daty */ }
+  try {
+    zmienionoAt =
+      db.prepare('SELECT zmienione_at FROM ustawienia WHERE klucz = ?').get(KLUCZ_POBRANIA)?.zmienione_at ?? null;
+  } catch {
+    /* brak tabeli = brak daty */
+  }
   return { wlaczone: umowyPobraniaFirmy(db).includes(KURIER), zmienionoAt };
 }
 
 export function registerUstawieniaInpostRoutes(app, { db, kurierInpost }) {
   function widok(req, reply, { wpisane = null, bledy = [], test = null } = {}) {
     const stan = stanDlaEkranu(wczytajKonfiguracjeIntegracji(db, KURIER));
-    return reply.view('ustawienia-inpost.ejs', { szerokosc: 'formularz',
-      nawigacja: nawigacjaUstawien(req, reply), title: 'InPost',
-      zEnv: kurierInpost.zEnv, adresFirmy: kurierInpost.adresFirmy(), ekranAdresu: EKRAN_ADRESU_FIRMY, stan,
+    return reply.view('ustawienia-inpost.ejs', {
+      szerokosc: 'formularz',
+      nawigacja: nawigacjaUstawien(req, reply),
+      title: 'InPost',
+      zEnv: kurierInpost.zEnv,
+      adresFirmy: kurierInpost.adresFirmy(),
+      ekranAdresu: EKRAN_ADRESU_FIRMY,
+      stan,
       adresApi: ADRES_INPOST,
       pola: { ...PUSTY, ...(stan?.ustawienia ?? {}), ...(wpisane ?? {}) },
-      bledy, test,
+      bledy,
+      test,
       zapisano: KOMUNIKATY[req.query?.zapisano] ?? null,
       wymagaRestartu: kurierInpost.wymagaRestartu(),
       pobranie: umowaPobrania(db),
     });
   }
   // Strona OMS z powrotem na ekran InPost; tekst stały — token z pliku konfiguracji nie trafia na stronę.
-  const zEnv = (reply) => stronaOdmowy(reply, 409, 'Kurier InPost jest ustawiony w pliku konfiguracji (oms.env) — tam go zmień. Formularz niczego nie zapisał.',
-    { tytul: 'Kurier InPost jest ustawiony w pliku konfiguracji', wroc: ADRES, napisWroc: 'Wróć do ustawień InPost' });
+  const zEnv = (reply) =>
+    stronaOdmowy(
+      reply,
+      409,
+      'Kurier InPost jest ustawiony w pliku konfiguracji (oms.env) — tam go zmień. Formularz niczego nie zapisał.',
+      { tytul: 'Kurier InPost jest ustawiony w pliku konfiguracji', wroc: ADRES, napisWroc: 'Wróć do ustawień InPost' },
+    );
 
   app.get(ADRES, async (req, reply) => widok(req, reply));
 
   app.post(ADRES, async (req, reply) => {
     if (kurierInpost.zEnv) return zEnv(reply);
-    const { ustawienia, sekrety, bledy } = sprawdzFormularzInpost(req.body ?? {}, wczytajKonfiguracjeIntegracji(db, KURIER));
+    const { ustawienia, sekrety, bledy } = sprawdzFormularzInpost(
+      req.body ?? {},
+      wczytajKonfiguracjeIntegracji(db, KURIER),
+    );
     if (bledy.length) {
       reply.code(400);
       return widok(req, reply, { wpisane: ustawienia, bledy });
@@ -61,13 +88,23 @@ export function registerUstawieniaInpostRoutes(app, { db, kurierInpost }) {
   app.post(`${ADRES}/sprawdz`, async (req, reply) => {
     if (kurierInpost.zEnv) return widok(req, reply);
     if (!wczytajKonfiguracjeIntegracji(db, KURIER)) {
-      return widok(req, reply, { test: { ok: false, tekst: 'Najpierw zapisz token i numer organizacji, potem sprawdź połączenie.' } });
+      return widok(req, reply, {
+        test: { ok: false, tekst: 'Najpierw zapisz token i numer organizacji, potem sprawdź połączenie.' },
+      });
     }
     try {
       await kurierInpost.sprawdzPolaczenie();
-      return widok(req, reply, { test: { ok: true, tekst: 'Połączenie z InPostem działa — InPost przyjął token i pokazał organizację. Nic nie zostało nadane.' } });
+      return widok(req, reply, {
+        test: {
+          ok: true,
+          tekst: 'Połączenie z InPostem działa — InPost przyjął token i pokazał organizację. Nic nie zostało nadane.',
+        },
+      });
     } catch (e) {
-      req.log?.warn?.({ inpost: 'sprawdzenie połączenia', dlaOperatora: Boolean(e?.dlaOperatora) }, 'InPost: sprawdzenie połączenia nieudane');
+      req.log?.warn?.(
+        { inpost: 'sprawdzenie połączenia', dlaOperatora: Boolean(e?.dlaOperatora) },
+        'InPost: sprawdzenie połączenia nieudane',
+      );
       return widok(req, reply, { test: { ok: false, tekst: komunikatDlaOperatora(e) } });
     }
   });

@@ -2,7 +2,11 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import {
-  utworzKarte, zapiszProduktSklepowy, powiazProdukt, zajeteSku, produktyKart,
+  utworzKarte,
+  zapiszProduktSklepowy,
+  powiazProdukt,
+  zajeteSku,
+  produktyKart,
 } from '../../../src/oms/db/magazyn.js';
 import { przejeciaZeSklepu } from '../../../src/domena/przejecie-sku.js';
 
@@ -33,7 +37,12 @@ const auth = {
 const authBezZrodla = { authorization: auth.authorization };
 
 const STAN_PUSTY = {
-  trwa: false, zaczety_at: null, skonczony_at: null, postep: null, kanaly: [], blad: null,
+  trwa: false,
+  zaczety_at: null,
+  skonczony_at: null,
+  postep: null,
+  kanaly: [],
+  blad: null,
 };
 const atrapaMagazynu = () => ({ start: vi.fn(), stan: () => STAN_PUSTY });
 
@@ -66,9 +75,13 @@ function produktO(kartaId, { kanal = 'pro', produkt_id = null, sku = null, nazwa
 
 const wiersz = (id) => db.prepare('SELECT * FROM karty_produktow WHERE id = ?').get(id);
 
-const post = (app, url, payload, naglowki = auth) => app.inject({
-  method: 'POST', url, headers: naglowki, payload,
-});
+const post = (app, url, payload, naglowki = auth) =>
+  app.inject({
+    method: 'POST',
+    url,
+    headers: naglowki,
+    payload,
+  });
 const podglad = (app, payload, naglowki) => post(app, '/magazyn/przejmij-podglad', payload, naglowki);
 const zatwierdz = (app, payload, naglowki) => post(app, '/magazyn/przejmij-zapisz', payload, naglowki);
 
@@ -89,13 +102,15 @@ function sekcja(body, id) {
 /** Wiersz JEDNEJ karty z tabeli przejecia — sam wiersz, bez reszty sekcji. */
 function wierszPozycji(body, nazwa) {
   const znacznik = `<div class="nazwa-karty">${nazwa}</div>`;
-  const w = sekcja(body, 'przejecie-pozycje').split('<tr').find((t) => t.includes(znacznik));
+  const w = sekcja(body, 'przejecie-pozycje')
+    .split('<tr')
+    .find((t) => t.includes(znacznik));
   if (!w) throw new Error(`W podgladzie nie ma karty „${nazwa}"`);
   return w;
 }
 
-const nazwyNaEkranie = (body) => [...sekcja(body, 'przejecie-pozycje')
-  .matchAll(/<div class="nazwa-karty">([^<]*)<\/div>/g)].map((m) => m[1]);
+const nazwyNaEkranie = (body) =>
+  [...sekcja(body, 'przejecie-pozycje').matchAll(/<div class="nazwa-karty">([^<]*)<\/div>/g)].map((m) => m[1]);
 
 // ================================================================================
 // REGULA (domain/przejecie-sku.js)
@@ -104,7 +119,12 @@ const nazwyNaEkranie = (body) => [...sekcja(body, 'przejecie-pozycje')
 describe('przejeciaZeSklepu', () => {
   const W = (id, nazwa, sku = null) => ({ id, nazwa, sku });
   const P = (karta_id, sku, kanal = 'pro', nazwa = 'Produkt') => ({
-    karta_id, sku_sklepu: sku, kanal, nazwa, produkt_id: '900', wariant_id: '',
+    karta_id,
+    sku_sklepu: sku,
+    kanal,
+    nazwa,
+    produkt_id: '900',
+    wariant_id: '',
   });
 
   it('karta bez naszego numeru przejmuje numer swojego produktu', () => {
@@ -135,11 +155,7 @@ describe('przejeciaZeSklepu', () => {
   // ⚠️⚠️ NAJWAZNIEJSZA PARA W TEJ SUICIE. Karta powiazany z produktami o ROZNYCH numerach nie
   // ma jednej poprawnej odpowiedzi — panel nie ma prawa wybierac za czlowieka.
   it('produkty o RÓŻNYCH numerach nie dają propozycji, tylko trafiają do człowieka', () => {
-    const [p] = przejeciaZeSklepu(
-      [W(1, 'Bursztyn')],
-      [P(1, 'LMP-PLA-118', 'pro'), P(1, 'PD10', 'swietlik')],
-      null,
-    );
+    const [p] = przejeciaZeSklepu([W(1, 'Bursztyn')], [P(1, 'LMP-PLA-118', 'pro'), P(1, 'PD10', 'swietlik')], null);
     expect(p.sku).toBeNull();
     expect(p.zla).toBe(true);
     expect(p.uwaga).toMatch(/różne numery/i);
@@ -150,11 +166,7 @@ describe('przejeciaZeSklepu', () => {
 
   // MILCZENIE tego samego straznika: ten sam numer w dwoch sklepach to JEDNA odpowiedz.
   it('ten sam numer w dwóch kanałach jest jedną odpowiedzią, nie rozbieżnością', () => {
-    const [p] = przejeciaZeSklepu(
-      [W(1, 'Bursztyn')],
-      [P(1, 'PD10', 'pro'), P(1, 'PD10', 'swietlik')],
-      null,
-    );
+    const [p] = przejeciaZeSklepu([W(1, 'Bursztyn')], [P(1, 'PD10', 'pro'), P(1, 'PD10', 'swietlik')], null);
     expect(p.sku).toBe('PD10');
     expect(p.zla).toBe(false);
   });
@@ -162,11 +174,7 @@ describe('przejeciaZeSklepu', () => {
   // ⚠️ „PD10" i „pd10" to DLA SKLEPU jeden numer, a dla naszej kolumny (UNIQUE BINARY) dwa.
   // Ktory z nich jest prawda, wie wylacznie czlowiek.
   it('numery różniące się WYŁĄCZNIE wielkością liter też idą do człowieka', () => {
-    const [p] = przejeciaZeSklepu(
-      [W(1, 'Bursztyn')],
-      [P(1, 'PD10', 'pro'), P(1, 'pd10', 'swietlik')],
-      null,
-    );
+    const [p] = przejeciaZeSklepu([W(1, 'Bursztyn')], [P(1, 'PD10', 'pro'), P(1, 'pd10', 'swietlik')], null);
     expect(p.sku).toBeNull();
     expect(p.zla).toBe(true);
   });
@@ -189,8 +197,7 @@ describe('przejeciaZeSklepu', () => {
   // ⚠️ KOLIZJA Z NUMEREM ZAJETYM GDZIE INDZIEJ. Przejety numer laduje w `karty.sku`,
   // wiec musi byc wolny takze w NASZYM rejestrze.
   it('numer zajęty przez inną kartę jest kolizją, nie propozycją', () => {
-    const [p] = przejeciaZeSklepu([W(1, 'Bursztyn')], [P(1, 'PD10')],
-      new Map([['PD10', 'karta „Dąbek" (#7)']]));
+    const [p] = przejeciaZeSklepu([W(1, 'Bursztyn')], [P(1, 'PD10')], new Map([['PD10', 'karta „Dąbek" (#7)']]));
     expect(p.sku).toBeNull();
     expect(p.zla).toBe(true);
     expect(p.uwaga).toMatch(/zajęt/i);
@@ -200,15 +207,13 @@ describe('przejeciaZeSklepu', () => {
   // ⚠️ POROWNANIE NIECZULE NA WIELKOSC LITER: baza (BINARY) przepuscilaby „pd10" obok „PD10",
   // a sklep odbilby je jako duplikat. Ostrozniej znaczy tutaj WIECEJ wykrytych kolizji.
   it('zajęty numer rozpoznajemy bez względu na wielkość liter', () => {
-    const [p] = przejeciaZeSklepu([W(1, 'Bursztyn')], [P(1, 'PD10')],
-      new Map([['pd10', 'karta „Dąbek" (#7)']]));
+    const [p] = przejeciaZeSklepu([W(1, 'Bursztyn')], [P(1, 'PD10')], new Map([['pd10', 'karta „Dąbek" (#7)']]));
     expect(p.zla).toBe(true);
   });
 
   // MILCZENIE straznika kolizji: numer, ktorego nikt inny nie ma, przechodzi.
   it('numer wolny w rejestrze nie jest kolizją', () => {
-    const [p] = przejeciaZeSklepu([W(1, 'Bursztyn')], [P(1, 'PD10')],
-      new Map([['PLC-001', 'karta „Dąbek" (#7)']]));
+    const [p] = przejeciaZeSklepu([W(1, 'Bursztyn')], [P(1, 'PD10')], new Map([['PLC-001', 'karta „Dąbek" (#7)']]));
     expect(p.zla).toBe(false);
     expect(p.sku).toBe('PD10');
   });
@@ -216,22 +221,14 @@ describe('przejeciaZeSklepu', () => {
   // ⚠️⚠️ DWA KARTY PO TEN SAM NUMER. Baza przyjmie „PD10" i „pd10" jako rozne, a sklep nie —
   // wiec obie pozycje musza wrocic OZNACZONE, a nie jedna „wolna" i jedna kolizyjna.
   it('dwa karty po ten sam numer to kolizja po OBU stronach', () => {
-    const wynik = przejeciaZeSklepu(
-      [W(1, 'Bursztyn'), W(2, 'Dąbek')],
-      [P(1, 'PD10'), P(2, 'pd10')],
-      null,
-    );
+    const wynik = przejeciaZeSklepu([W(1, 'Bursztyn'), W(2, 'Dąbek')], [P(1, 'PD10'), P(2, 'pd10')], null);
     expect(wynik.map((p) => p.zla)).toEqual([true, true]);
     expect(wynik[0].uwaga).toContain('Dąbek');
     expect(wynik[1].uwaga).toContain('Bursztyn');
   });
 
   it('dwa karty po różne numery przechodzą oba', () => {
-    const wynik = przejeciaZeSklepu(
-      [W(1, 'Bursztyn'), W(2, 'Dąbek')],
-      [P(1, 'PD10'), P(2, 'PD11')],
-      null,
-    );
+    const wynik = przejeciaZeSklepu([W(1, 'Bursztyn'), W(2, 'Dąbek')], [P(1, 'PD10'), P(2, 'PD11')], null);
     expect(wynik.map((p) => p.sku)).toEqual(['PD10', 'PD11']);
     expect(wynik.map((p) => p.zla)).toEqual([false, false]);
   });
@@ -239,11 +236,7 @@ describe('przejeciaZeSklepu', () => {
   // ⚠️ POWTARZALNOSC: kolejnosc wierszy z bazy zalezy od planu zapytania, a czlowiek ma
   // zobaczyc ten sam ekran przy podgladzie i przy zatwierdzeniu.
   it('kolejność jest alfabetyczna, nie taka jak w wejściu', () => {
-    const wynik = przejeciaZeSklepu(
-      [W(2, 'Lampy podłogowe'), W(1, 'Bursztyn')],
-      [P(1, 'PD10'), P(2, 'PD11')],
-      null,
-    );
+    const wynik = przejeciaZeSklepu([W(2, 'Lampy podłogowe'), W(1, 'Bursztyn')], [P(1, 'PD10'), P(2, 'PD11')], null);
     expect(wynik.map((p) => p.nazwa)).toEqual(['Bursztyn', 'Lampy podłogowe']);
   });
 
@@ -321,8 +314,7 @@ describe('zajeteSku z pominięciem produktów wskazanych kart', () => {
   it('śmieć zamiast numeru karty nie trafia do SQL-a i nie psuje odczytu', () => {
     const a = kartaO('Bursztyn');
     produktO(a, { sku: 'PD10' });
-    expect(zajeteSku(db, { pomijajProduktyKart: ["1); DROP TABLE karty_produktow; --"] }).has('PD10'))
-      .toBe(true);
+    expect(zajeteSku(db, { pomijajProduktyKart: ['1); DROP TABLE karty_produktow; --'] }).has('PD10')).toBe(true);
   });
 });
 
@@ -333,8 +325,12 @@ describe('produktyKart', () => {
     produktO(a, { sku: 'PD10' });
     produktO(b, { sku: 'PD11' });
     const wynik = produktyKart(db, [a, b]);
-    expect(wynik.map((p) => [p.karta_id, p.sku_sklepu]).sort())
-      .toEqual([[a, 'PD10'], [b, 'PD11']].sort());
+    expect(wynik.map((p) => [p.karta_id, p.sku_sklepu]).sort()).toEqual(
+      [
+        [a, 'PD10'],
+        [b, 'PD11'],
+      ].sort(),
+    );
   });
 
   it('produkt CUDZEGO karty nie wchodzi do wyniku', () => {

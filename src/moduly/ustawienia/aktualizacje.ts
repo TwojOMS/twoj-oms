@@ -26,7 +26,9 @@ export function odczytajWydanie(plik: URL): Wydanie | null {
       wersja: typeof w.wersja === 'string' && WZOR_WERSJI.test(w.wersja) ? w.wersja : null,
       utworzono: typeof w.utworzono === 'string' ? w.utworzono : null,
     };
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 /** Porównanie liczbowe vX.Y.Z — napisowe uznałoby v0.9.0 za nowsze od v0.10.0. */
@@ -58,5 +60,7 @@ export async function sprawdzNajnowsze({ http }: { http: Http }): Promise<WynikS
       opis: typeof w.body === 'string' ? w.body.slice(0, MAKS_OPISU) : '',
       adres: typeof w.html_url === 'string' ? w.html_url : `https://github.com/${REPO_AKTUALIZACJI}/releases`,
     };
-  } catch { return { stan: 'blad' }; }
+  } catch {
+    return { stan: 'blad' };
+  }
 }

@@ -27,7 +27,10 @@ export const MODULY_FAKTUR = Object.freeze([
   Object.freeze({ id: 'twojefaktury', etykieta: 'TwojeFaktury (program wbudowany)', dostepny: 'zgoda' }),
 ]);
 
-const normalizuj = (v) => String(v ?? '').trim().toLowerCase();
+const normalizuj = (v) =>
+  String(v ?? '')
+    .trim()
+    .toLowerCase();
 const modul = (id) => MODULY_FAKTUR.find((m) => m.id === id) ?? null;
 /** Jawna zgoda instalacji; błędna wartość blokuje start. */
 export function zgodaTwojeFaktury(env) {
@@ -55,9 +58,13 @@ export function wyborZPliku(wartosc, { zgoda = false } = {}) {
   const nieDostepne = wkrotce(zgoda);
   const lista = `${dostepne(zgoda).join(' albo ')}${nieDostepne.length ? ` (${nieDostepne.join(', ')} — wkrótce)` : ''}`;
   if (modul(v)) {
-    throw new Error(`${ZMIENNA_PROGRAMU}: program do faktur „${v}” będzie dostępny wkrótce, ta wersja OMS-u go nie ma — wpisz ${lista} lub usuń zmienną.`);
+    throw new Error(
+      `${ZMIENNA_PROGRAMU}: program do faktur „${v}” będzie dostępny wkrótce, ta wersja OMS-u go nie ma — wpisz ${lista} lub usuń zmienną.`,
+    );
   }
-  throw new Error(`${ZMIENNA_PROGRAMU}: nieznany program do faktur „${String(wartosc).trim()}” — wpisz ${lista} lub usuń zmienną.`);
+  throw new Error(
+    `${ZMIENNA_PROGRAMU}: nieznany program do faktur „${String(wartosc).trim()}” — wpisz ${lista} lub usuń zmienną.`,
+  );
 }
 
 /** Uwaga dla zapisu, którego ta wersja nie obsługuje (ekran i Zdrowie). */
@@ -87,12 +94,17 @@ export function wybierzProgram({ zPliku = null, zUstawien = null, infaktGotowy =
 export function sprawdzFormularzWyboru(body = {}, { zgoda = false } = {}) {
   const v = normalizuj(body?.program);
   if (modulDostepny(modul(v), { zgoda })) return { ustawienia: { program: v }, bledy: [] };
-  if (modul(v)) return { ustawienia: { program: v }, bledy: [`Program do faktur „${etykietaModulu(v)}” będzie dostępny wkrótce — wybierz inny.`] };
+  if (modul(v))
+    return {
+      ustawienia: { program: v },
+      bledy: [`Program do faktur „${etykietaModulu(v)}” będzie dostępny wkrótce — wybierz inny.`],
+    };
   return { ustawienia: { program: v }, bledy: ['Wybierz program do faktur z listy.'] };
 }
 
 /** Czy faktury są wyłączone z wyboru człowieka (plik albo Ustawienia), a nie dlatego, że nic nie skonfigurowano. */
-export const jawnyBrak = (wybor) => wybor?.program === 'brak' && (wybor.zrodlo === 'plik' || wybor.zrodlo === 'ustawienia');
+export const jawnyBrak = (wybor) =>
+  wybor?.program === 'brak' && (wybor.zrodlo === 'plik' || wybor.zrodlo === 'ustawienia');
 
 /**
  * Zdanie „faktury wyłączone” — tylko przy JAWNYM „brak”. Przy „brak” domyślnym (nic nie wybrano, nic nie ma)
@@ -102,7 +114,8 @@ export const jawnyBrak = (wybor) => wybor?.program === 'brak' && (wybor.zrodlo =
  */
 export function zdanieBrakuProgramu(wybor, dopisek = '') {
   if (!jawnyBrak(wybor)) return null;
-  const zdanie = wybor.uwaga ? wybor.uwaga
+  const zdanie = wybor.uwaga
+    ? wybor.uwaga
     : wybor.zrodlo === 'plik'
       ? `Faktury w OMS-ie są wyłączone — w pliku konfiguracji jest ${ZMIENNA_PROGRAMU}=brak.`
       : 'Faktury w OMS-ie są wyłączone — w Ustawienia → Faktury i podatki → Program do faktur wybrano „Brak”.';

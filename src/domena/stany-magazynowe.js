@@ -57,8 +57,8 @@ export function kartaPozycji(p, kanal, kartyLustra) {
 
   const zapytanie = oferta
     ? { kanal, produktId: oferta, wariantId: null }
-    // Pozycja ręczna „z magazynu” nie niesie kanału cennika — szukamy po identyfikatorze we wszystkich sklepach.
-    : { kanal: p?.zrodlo === 'reczna' ? null : kanal, produktId: produkt, wariantId: wariant };
+    : // Pozycja ręczna „z magazynu” nie niesie kanału cennika — szukamy po identyfikatorze we wszystkich sklepach.
+      { kanal: p?.zrodlo === 'reczna' ? null : kanal, produktId: produkt, wariantId: wariant };
   // ⚠️ WIERSZ LUSTRA BEZ KARTY TEŻ SIĘ LICZY (`null`). Identyfikator pasujący do dwóch wierszy, z których jeden ma kartę,
   // a drugi nie (dwa sklepy z tym samym numerem produktu, wariant bez karty), nie jest jednoznaczny — wybranie jedynej
   // karty zdejmowałoby z niej towar cicho, a lista „bez karty” milczałaby.
@@ -66,13 +66,19 @@ export function kartaPozycji(p, kanal, kartyLustra) {
   const karty = wszystkie.filter((k) => k !== null);
   if (karty.length === 1 && wszystkie.length === 1) return { kartaId: karty[0] };
   if (!karty.length) {
-    return { kartaId: null, powod: oferta
-      ? 'oferta nie jest powiązana z żadną kartą produktu'
-      : 'produkt ze sklepu nie jest powiązany z żadną kartą produktu' };
+    return {
+      kartaId: null,
+      powod: oferta
+        ? 'oferta nie jest powiązana z żadną kartą produktu'
+        : 'produkt ze sklepu nie jest powiązany z żadną kartą produktu',
+    };
   }
-  return { kartaId: null, powod: wariant
-    ? 'ten sam identyfikator wariantu ma kilka kart — nie zgaduję, którą zdjąć'
-    : 'produkt ma kilka wariantów z różnymi kartami, a zamówienie nie mówi, który kupiono' };
+  return {
+    kartaId: null,
+    powod: wariant
+      ? 'ten sam identyfikator wariantu ma kilka kart — nie zgaduję, którą zdjąć'
+      : 'produkt ma kilka wariantów z różnymi kartami, a zamówienie nie mówi, który kupiono',
+  };
 }
 
 /**
@@ -92,8 +98,14 @@ export function zuzycieZZamowien(zamowienia, kartyLustra) {
       const wynik = kartaPozycji(p, zamowienie.sklep, kartyLustra);
       if (wynik === null) continue;
       if (wynik.kartaId === null) {
-        bezKarty.push({ zamowienie_id: zamowienie.id, numer: zamowienie.numer, sklep: zamowienie.sklep,
-          nazwa: p.nazwa, ilosc, powod: wynik.powod });
+        bezKarty.push({
+          zamowienie_id: zamowienie.id,
+          numer: zamowienie.numer,
+          sklep: zamowienie.sklep,
+          nazwa: p.nazwa,
+          ilosc,
+          powod: wynik.powod,
+        });
         continue;
       }
       zuzycie.set(wynik.kartaId, (zuzycie.get(wynik.kartaId) ?? 0) + ilosc);
@@ -117,7 +129,10 @@ export function zuzycieZGrup(grupy, kartyLustra) {
     if (!Number.isInteger(ilosc) || ilosc <= 0) continue;
     const wynik = kartaPozycji(g, g.sklep, kartyLustra);
     if (wynik === null) continue;
-    if (wynik.kartaId === null) { bezKarty += Number(g.pozycji ?? 1); continue; }
+    if (wynik.kartaId === null) {
+      bezKarty += Number(g.pozycji ?? 1);
+      continue;
+    }
     zuzycie.set(wynik.kartaId, (zuzycie.get(wynik.kartaId) ?? 0) + ilosc);
   }
   return { zuzycie, bezKarty };
@@ -138,13 +153,18 @@ export function ruchZFormularza(body) {
   const surowa = napis(body?.ilosc).replace(/\s+/gu, '');
   const powod = napis(body?.powod) || null;
   const klucz = napis(body?.klucz);
-  if (!['przyjecie', 'korekta'].includes(rodzaj)) return { ruch: null, blad: 'Nieznany rodzaj ruchu — wybierz przyjęcie albo korektę.' };
-  if (!/^[A-Za-z0-9_-]{8,64}$/u.test(klucz)) return { ruch: null, blad: 'Formularz jest nieaktualny — odśwież kartę i wpisz ruch jeszcze raz.' };
-  if (!LICZBA_CALKOWITA.test(surowa)) return { ruch: null, blad: `„${napis(body?.ilosc)}” to nie jest liczba sztuk. Wpisz liczbę całkowitą.` };
+  if (!['przyjecie', 'korekta'].includes(rodzaj))
+    return { ruch: null, blad: 'Nieznany rodzaj ruchu — wybierz przyjęcie albo korektę.' };
+  if (!/^[A-Za-z0-9_-]{8,64}$/u.test(klucz))
+    return { ruch: null, blad: 'Formularz jest nieaktualny — odśwież kartę i wpisz ruch jeszcze raz.' };
+  if (!LICZBA_CALKOWITA.test(surowa))
+    return { ruch: null, blad: `„${napis(body?.ilosc)}” to nie jest liczba sztuk. Wpisz liczbę całkowitą.` };
   const ilosc = Number(surowa);
-  if (rodzaj === 'przyjecie' && !(ilosc > 0)) return { ruch: null, blad: 'Przyjęcie musi być liczbą dodatnią — ubytek wpisz jako korektę.' };
+  if (rodzaj === 'przyjecie' && !(ilosc > 0))
+    return { ruch: null, blad: 'Przyjęcie musi być liczbą dodatnią — ubytek wpisz jako korektę.' };
   if (ilosc === 0) return { ruch: null, blad: 'Korekta o zero sztuk niczego nie zmienia.' };
-  if (rodzaj === 'korekta' && !powod) return { ruch: null, blad: 'Korekta wymaga powodu (np. „inwentaryzacja”, „uszkodzone”).' };
+  if (rodzaj === 'korekta' && !powod)
+    return { ruch: null, blad: 'Korekta wymaga powodu (np. „inwentaryzacja”, „uszkodzone”).' };
   return { ruch: { rodzaj, ilosc, powod, klucz }, blad: null };
 }
 
@@ -160,29 +180,62 @@ export function ruchZFormularza(body) {
  * (zmianę robi się korektą), a ten sam SKU dwa razy w jednym pliku — odrzucony w obu wierszach.
  */
 export function planImportuOtwarcia(tekst, kartaPoSku, maOtwarcie = new Set(), { zeroDozwolone = true } = {}) {
-  const wiersze = String(tekst ?? '').split(/\r?\n/u).map((w, i) => ({ nr: i + 1, tekst: w.trim() }))
+  const wiersze = String(tekst ?? '')
+    .split(/\r?\n/u)
+    .map((w, i) => ({ nr: i + 1, tekst: w.trim() }))
     .filter((w) => w.tekst && !/^sku[;,\t]/iu.test(w.tekst));
   const odrzucone = [];
   const kandydaci = [];
   for (const w of wiersze) {
     const czesci = w.tekst.split(/[;\t,]/u).map((c) => c.trim());
-    if (czesci.length !== 2) { odrzucone.push({ wiersz: w.nr, tekst: w.tekst, powod: 'oczekuję dwóch pól: SKU i ilość' }); continue; }
+    if (czesci.length !== 2) {
+      odrzucone.push({ wiersz: w.nr, tekst: w.tekst, powod: 'oczekuję dwóch pól: SKU i ilość' });
+      continue;
+    }
     const [sku, ilosc] = czesci;
-    if (!LICZBA_CALKOWITA.test(ilosc) || Number(ilosc) < 0) { odrzucone.push({ wiersz: w.nr, tekst: w.tekst, powod: 'ilość musi być liczbą całkowitą ≥ 0' }); continue; }
+    if (!LICZBA_CALKOWITA.test(ilosc) || Number(ilosc) < 0) {
+      odrzucone.push({ wiersz: w.nr, tekst: w.tekst, powod: 'ilość musi być liczbą całkowitą ≥ 0' });
+      continue;
+    }
     const karta = kartaPoSku(sku);
-    if (!karta) { odrzucone.push({ wiersz: w.nr, tekst: w.tekst, powod: `nie ma karty z SKU „${sku}”` }); continue; }
+    if (!karta) {
+      odrzucone.push({ wiersz: w.nr, tekst: w.tekst, powod: `nie ma karty z SKU „${sku}”` });
+      continue;
+    }
     kandydaci.push({ wiersz: w.nr, tekst: w.tekst, karta_id: karta.id, nazwa: karta.nazwa, sku, ilosc: Number(ilosc) });
   }
   const liczba = new Map();
   for (const k of kandydaci) liczba.set(k.karta_id, (liczba.get(k.karta_id) ?? 0) + 1);
   const doZapisu = [];
   for (const k of kandydaci) {
-    if (liczba.get(k.karta_id) > 1) { odrzucone.push({ wiersz: k.wiersz, tekst: k.tekst, powod: 'ta sama karta występuje w pliku więcej niż raz' }); continue; }
-    if (maOtwarcie.has(k.karta_id)) { odrzucone.push({ wiersz: k.wiersz, tekst: k.tekst, powod: 'karta ma już stan otwarcia — zmień go korektą na karcie' }); continue; }
-    if (k.ilosc === 0 && !zeroDozwolone) { odrzucone.push({ wiersz: k.wiersz, tekst: k.tekst, powod: 'zero wymaga uaktualnienia bazy (brak tabeli stany_otwarcia)' }); continue; }
+    if (liczba.get(k.karta_id) > 1) {
+      odrzucone.push({ wiersz: k.wiersz, tekst: k.tekst, powod: 'ta sama karta występuje w pliku więcej niż raz' });
+      continue;
+    }
+    if (maOtwarcie.has(k.karta_id)) {
+      odrzucone.push({
+        wiersz: k.wiersz,
+        tekst: k.tekst,
+        powod: 'karta ma już stan otwarcia — zmień go korektą na karcie',
+      });
+      continue;
+    }
+    if (k.ilosc === 0 && !zeroDozwolone) {
+      odrzucone.push({
+        wiersz: k.wiersz,
+        tekst: k.tekst,
+        powod: 'zero wymaga uaktualnienia bazy (brak tabeli stany_otwarcia)',
+      });
+      continue;
+    }
     // E4 D52 — zero jest stanem znanym, choć nie tworzy ruchu.
-    doZapisu.push({ karta_id: k.karta_id, nazwa: k.nazwa, sku: k.sku, ilosc: k.ilosc,
-      ...(k.ilosc === 0 ? { tylkoOtwarcie: true } : {}) });
+    doZapisu.push({
+      karta_id: k.karta_id,
+      nazwa: k.nazwa,
+      sku: k.sku,
+      ilosc: k.ilosc,
+      ...(k.ilosc === 0 ? { tylkoOtwarcie: true } : {}),
+    });
   }
   odrzucone.sort((a, b) => a.wiersz - b.wiersz);
   return { doZapisu, odrzucone };

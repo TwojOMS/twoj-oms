@@ -9,7 +9,9 @@ import { przelicz } from '../../src/public/cena-netto.js';
 
 const UE = 'DE123456789';
 
-function pole(name, value = '') { return { name, value }; }
+function pole(name, value = '') {
+  return { name, value };
+}
 
 /** Wiersz tabeli: pola `poz_*` (suma-podglad) i te same obiekty dla cena-netto (`closest('tr')`). */
 function wiersz(dane) {
@@ -34,7 +36,10 @@ function wiersz(dane) {
 
 function strona({ vat, zwolniona, nip, wiersze, dostawa = '' }) {
   const wyjscia = {};
-  const wyj = (sel) => { wyjscia[sel] ??= { textContent: '', hidden: false }; return wyjscia[sel]; };
+  const wyj = (sel) => {
+    wyjscia[sel] ??= { textContent: '', hidden: false };
+    return wyjscia[sel];
+  };
   const dataset = { vat, wdt: '0', ...(zwolniona ? { zwolniona: '1' } : {}) };
   const formularz = {
     dataset,
@@ -51,7 +56,15 @@ function strona({ vat, zwolniona, nip, wiersze, dostawa = '' }) {
   const dokument = { querySelector: (sel) => (sel === '[data-podglad-kwoty]' ? tabela : wyj(sel)) };
   return { dokument, wyjscia, tr, formularz };
 }
-const W = (o) => ({ nazwa: 'Lampa stołowa Kałamarz', sku: '', ilosc: '1', cena_netto: '', cena_brutto: '', vat: '', ...o });
+const W = (o) => ({
+  nazwa: 'Lampa stołowa Kałamarz',
+  sku: '',
+  ilosc: '1',
+  cena_netto: '',
+  cena_brutto: '',
+  vat: '',
+  ...o,
+});
 
 /** Operator wpisuje netto w wierszu: najpierw cena-netto.js (brutto), potem suma-podglad.js (nasłuch formularza). */
 function wpiszNetto(s, i, netto) {
@@ -75,7 +88,13 @@ describe('firma zwolniona (`data-zwolniona="1"`), nabywca z numerem VAT UE — n
   });
 
   it('podgląd: dostawa „zw”, bez pasa „0% — WDT”, VAT od 23% liczony', () => {
-    const s = strona({ vat: 'zw', zwolniona: true, nip: UE, dostawa: '10.00', wiersze: [W({ vat: '23', cena_brutto: '123.00' })] });
+    const s = strona({
+      vat: 'zw',
+      zwolniona: true,
+      nip: UE,
+      dostawa: '10.00',
+      wiersze: [W({ vat: '23', cena_brutto: '123.00' })],
+    });
     const przeliczPodglad = podepnij(s.dokument);
     przeliczPodglad();
     expect(s.wyjscia['[data-dostawa-stawka]'].textContent).toBe('zw');

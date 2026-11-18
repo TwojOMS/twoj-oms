@@ -7,18 +7,36 @@
 // Dane zmyślone (NIP-y testowe, numery KSeF wg wzoru TNumerKSeF).
 import { describe, it, expect } from 'vitest';
 import {
-  coWolnoWyslac, doZaznaczeniaWszystkich, POWOD_KOREKTA, POWOD_KOREKTA_CZEKA, POWOD_KONSUMENCKA,
+  coWolnoWyslac,
+  doZaznaczeniaWszystkich,
+  POWOD_KOREKTA,
+  POWOD_KOREKTA_CZEKA,
+  POWOD_KONSUMENCKA,
 } from '../../src/domena/wysylka-ksef.js';
 const NIP = '1234500011';
 const KSEF_PIERWOTNEJ = '1234563218-20261103-0A1B2C3D4E5F-01';
 const vat = (n, nadpisz = {}) => ({
-  uuid: `v${n}`, number: `FV/${n}/11/2026`, rodzaj: 'vat', ksef_number: null, client_tax_code: NIP, stanKsef: 'brak',
-  client_company_name: 'Pracownia Półcień', gross_price: 15899, ...nadpisz,
+  uuid: `v${n}`,
+  number: `FV/${n}/11/2026`,
+  rodzaj: 'vat',
+  ksef_number: null,
+  client_tax_code: NIP,
+  stanKsef: 'brak',
+  client_company_name: 'Pracownia Półcień',
+  gross_price: 15899,
+  ...nadpisz,
 });
 const kor = (n, nadpisz = {}) => ({
-  uuid: `k${n}`, number: `FK/${n}/11/2026`, rodzaj: 'korekta', ksef_number: null, client_tax_code: NIP, stanKsef: 'brak',
-  client_company_name: 'Pracownia Półcień', gross_price: -2700,
-  ksef_korygowanej: KSEF_PIERWOTNEJ, ...nadpisz,
+  uuid: `k${n}`,
+  number: `FK/${n}/11/2026`,
+  rodzaj: 'korekta',
+  ksef_number: null,
+  client_tax_code: NIP,
+  stanKsef: 'brak',
+  client_company_name: 'Pracownia Półcień',
+  gross_price: -2700,
+  ksef_korygowanej: KSEF_PIERWOTNEJ,
+  ...nadpisz,
 });
 const TF = { korekty: true };
 
@@ -50,7 +68,10 @@ describe('flaga domyślnie wyłączona: korekty jak dziś (inFakt, program `test
 describe('TwojeFaktury ({ korekty: true })', () => {
   it('korekta faktury, która jest już w KSeF → do wysłania (razem z fakturą VAT)', () => {
     const w = coWolnoWyslac(['v1', 'k1'], [vat(1), kor(1)], false, undefined, undefined, TF);
-    expect(w.doWyslania).toEqual([{ uuid: 'v1', numer: 'FV/1/11/2026' }, { uuid: 'k1', numer: 'FK/1/11/2026' }]);
+    expect(w.doWyslania).toEqual([
+      { uuid: 'v1', numer: 'FV/1/11/2026' },
+      { uuid: 'k1', numer: 'FK/1/11/2026' },
+    ]);
     expect(w.pominiete).toEqual([]);
     expect(doZaznaczeniaWszystkich(kor(1), false, TF)).toBe(true);
   });
@@ -63,7 +84,9 @@ describe('TwojeFaktury ({ korekty: true })', () => {
       expect(w.doWyslania).toEqual([]);
       expect(w.pominiete).toEqual([{ numer: 'FK/2/11/2026', powod: POWOD_KOREKTA_CZEKA }]);
     }
-    expect(POWOD_KOREKTA_CZEKA).toBe('Korekta czeka na fakturę pierwotną — wyślesz ją do KSeF, gdy pierwotna dostanie numer KSeF.');
+    expect(POWOD_KOREKTA_CZEKA).toBe(
+      'Korekta czeka na fakturę pierwotną — wyślesz ją do KSeF, gdy pierwotna dostanie numer KSeF.',
+    );
     expect(POWOD_KOREKTA_CZEKA).not.toMatch(/inFakt/u);
   });
 

@@ -12,27 +12,67 @@ import { sprawdzFormularzTrybu } from '../../../src/domena/ksef-automat.js';
 
 const TU = dirname(fileURLToPath(import.meta.url));
 const PARTIAL = join(TU, '../../../src/moduly/faktury/widoki/_automat-ksef.ejs');
-const TF = { opis: { wbudowany: true }, nazwa: { mianownik: 'TwojeFaktury', dopelniacz: 'TwojeFaktury', miejscownik: 'TwojeFaktury', narzednik: 'TwojeFaktury' } };
+const TF = {
+  opis: { wbudowany: true },
+  nazwa: {
+    mianownik: 'TwojeFaktury',
+    dopelniacz: 'TwojeFaktury',
+    miejscownik: 'TwojeFaktury',
+    narzednik: 'TwojeFaktury',
+  },
+};
 const konfiguracja = { odlaczonyDoRestartu: () => false, wymagaRestartu: () => false };
 const TERAZ = new Date('2026-10-28T09:00:00.000Z');
 
 const bazy = [];
-afterEach(() => { while (bazy.length) bazy.pop().close(); vi.restoreAllMocks(); });
-function baza() { const db = openOmsDb(':memory:'); bazy.push(db); return db; }
+afterEach(() => {
+  while (bazy.length) bazy.pop().close();
+  vi.restoreAllMocks();
+});
+function baza() {
+  const db = openOmsDb(':memory:');
+  bazy.push(db);
+  return db;
+}
 
 function zapis(zaleznosci, body) {
   const info = vi.fn();
-  const req = { konto: { admin: true, login: 'adam' }, body, method: 'POST', query: {}, log: { info, warn: vi.fn(), error: vi.fn() } };
-  const reply = { kod: 200, cel: null, code(k) { this.kod = k; return this; }, redirect(c) { this.cel = c; return this; }, view: vi.fn() };
+  const req = {
+    konto: { admin: true, login: 'adam' },
+    body,
+    method: 'POST',
+    query: {},
+    log: { info, warn: vi.fn(), error: vi.fn() },
+  };
+  const reply = {
+    kod: 200,
+    cel: null,
+    code(k) {
+      this.kod = k;
+      return this;
+    },
+    redirect(c) {
+      this.cel = c;
+      return this;
+    },
+    view: vi.fn(),
+  };
   return obsluzZapisAutomatuKsef(zaleznosci)(req, reply).then(() => ({ reply, info }));
 }
 const render = (automat) => ejs.renderFile(PARTIAL, { automat, konsumenckie: false, fmtDataCzas: (s) => String(s) });
 
 describe('formularz trybu (domena)', () => {
   it('poprawne wartości; odstęp 0–120 (puste = 15); zły tryb, odstęp poza zakresem i zła godzina → błędy', () => {
-    expect(sprawdzFormularzTrybu({ tryb: 'po_wystawieniu', odstep_edycji: '0', godzina: '20:00' }))
-      .toMatchObject({ tryb: 'po_wystawieniu', odstepEdycji: 0, godzina: '20:00', bledy: [] });
-    expect(sprawdzFormularzTrybu({ tryb: 'reczna', odstep_edycji: '', godzina: '20:00' })).toMatchObject({ odstepEdycji: 15, bledy: [] });
+    expect(sprawdzFormularzTrybu({ tryb: 'po_wystawieniu', odstep_edycji: '0', godzina: '20:00' })).toMatchObject({
+      tryb: 'po_wystawieniu',
+      odstepEdycji: 0,
+      godzina: '20:00',
+      bledy: [],
+    });
+    expect(sprawdzFormularzTrybu({ tryb: 'reczna', odstep_edycji: '', godzina: '20:00' })).toMatchObject({
+      odstepEdycji: 15,
+      bledy: [],
+    });
     expect(sprawdzFormularzTrybu({ tryb: 'o_godzinie', odstep_edycji: '120', godzina: '07:30' }).bledy).toEqual([]);
     expect(sprawdzFormularzTrybu({ tryb: 'codziennie', odstep_edycji: '15', godzina: '20:00' }).bledy).toHaveLength(1);
     expect(sprawdzFormularzTrybu({ tryb: 'reczna', odstep_edycji: '121', godzina: '20:00' }).bledy).toHaveLength(1);
@@ -45,7 +85,13 @@ describe('formularz trybu (domena)', () => {
 describe('ekran przy TwojeFaktury', () => {
   it('domyślnie „ręcznie”, odstęp 15; widok ma wybór trybu i pole odstępu', async () => {
     const db = baza();
-    const m = modelAutomatuKsef({ db, konfiguracjaInfaktu: konfiguracja, automatKsef: {}, teraz: () => TERAZ, infakt: TF });
+    const m = modelAutomatuKsef({
+      db,
+      konfiguracjaInfaktu: konfiguracja,
+      automatKsef: {},
+      teraz: () => TERAZ,
+      infakt: TF,
+    });
     expect(m.wyborTrybu).toBe(true);
     expect(m.formularz).toMatchObject({ tryb: 'reczna', odstepEdycji: 15 });
     const html = await render(m);
@@ -61,9 +107,17 @@ describe('ekran przy TwojeFaktury', () => {
     const zal = { db, konfiguracjaInfaktu: konfiguracja, automatKsef: {}, teraz: () => TERAZ, infakt: TF };
     const { reply, info } = await zapis(zal, { tryb: 'po_wystawieniu', odstep_edycji: '30', godzina: '20:00' });
     expect(reply.kod).toBe(303);
-    expect(wczytajAutomatKsef(db)).toMatchObject({ tryb: 'po_wystawieniu', odstepEdycji: 30, wlaczony: true, zmienil: { login: 'adam' } });
+    expect(wczytajAutomatKsef(db)).toMatchObject({
+      tryb: 'po_wystawieniu',
+      odstepEdycji: 30,
+      wlaczony: true,
+      zmienil: { login: 'adam' },
+    });
     expect(odstepEdycjiMin(db)).toBe(30);
-    expect(info).toHaveBeenCalledWith(expect.objectContaining({ konto: 'adam', tryb: 'po_wystawieniu', odstepEdycji: 30 }), expect.any(String));
+    expect(info).toHaveBeenCalledWith(
+      expect.objectContaining({ konto: 'adam', tryb: 'po_wystawieniu', odstepEdycji: 30 }),
+      expect.any(String),
+    );
     const m = modelAutomatuKsef(zal);
     expect(m.najblizszy).toBe('co 5 minut');
     const html = await render(m);
@@ -79,7 +133,9 @@ describe('ekran przy TwojeFaktury', () => {
     await zapis(zal, { tryb: 'reczna', odstep_edycji: '15', godzina: '20:00' });
     expect(wczytajAutomatKsef(db)).toMatchObject({ tryb: 'reczna', wlaczony: false });
     const przed = wczytajAutomatKsef(db);
-    const { reply } = await zapis(zal, { tryb: 'po_wystawieniu', odstep_edycji: '500', godzina: '20:00' }).catch(() => ({ reply: { kod: 400 } }));
+    const { reply } = await zapis(zal, { tryb: 'po_wystawieniu', odstep_edycji: '500', godzina: '20:00' }).catch(
+      () => ({ reply: { kod: 400 } }),
+    );
     expect(reply.kod).toBe(400);
     expect(wczytajAutomatKsef(db)).toMatchObject({ tryb: przed.tryb, odstepEdycji: przed.odstepEdycji });
   });
@@ -87,9 +143,25 @@ describe('ekran przy TwojeFaktury', () => {
 
 // Wpisu „odrzucona” / „nie-wyslano” nie da się zwolnić (ekran wyniku odmawia) — pasek tego nie obiecuje.
 describe('pasek wstrzymanych bez „albo zwolnij” dla wpisów, których nie da się zwolnić', () => {
-  const wpis = (db, wpisy) => { for (const w of wpisy) wstrzymajFakture(db, w, TERAZ.toISOString()); };
-  const W1 = { uuid: 'u-1', numer: 'FV/1/10/2026', dzien: '27.10.2026', powod: 'kod 450: Błąd semantyki', kod: 'odrzucona', wersja: 1 };
-  const W2 = { uuid: 'u-2', numer: 'FV/2/10/2026', dzien: '27.10.2026', powod: 'brak faktury na liście sesji', kod: 'nie-wyslano', wersja: 1 };
+  const wpis = (db, wpisy) => {
+    for (const w of wpisy) wstrzymajFakture(db, w, TERAZ.toISOString());
+  };
+  const W1 = {
+    uuid: 'u-1',
+    numer: 'FV/1/10/2026',
+    dzien: '27.10.2026',
+    powod: 'kod 450: Błąd semantyki',
+    kod: 'odrzucona',
+    wersja: 1,
+  };
+  const W2 = {
+    uuid: 'u-2',
+    numer: 'FV/2/10/2026',
+    dzien: '27.10.2026',
+    powod: 'brak faktury na liście sesji',
+    kod: 'nie-wyslano',
+    wersja: 1,
+  };
   const W3 = { uuid: 'u-3', numer: 'FV/3/10/2026', dzien: '27.10.2026', powod: 'Kontrahent bez NIP' };
   const zal = (db) => ({ db, konfiguracjaInfaktu: konfiguracja, automatKsef: {}, teraz: () => TERAZ, infakt: TF });
 

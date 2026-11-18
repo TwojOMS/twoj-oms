@@ -6,16 +6,18 @@ export const KROKI = Object.freeze({
   BRAK_UPRAWNIEN: 'Sprawdź uprawnienia tylko do odczytu dla wybranego konta i ponów test.',
   BRAK_WALUTY: 'Sprawdź walutę konta lub właściwości i ponów test.',
   BLAD_ODCZYTU: 'Sprawdź połączenie ze źródłem i ponów test.',
-  ADS_API_NIEDOSTEPNE: 'Raport Google Analytics 4 działa bez Google Ads API; to opcjonalne połączenie wymaga produkcyjnego dostępu.',
+  ADS_API_NIEDOSTEPNE:
+    'Raport Google Analytics 4 działa bez Google Ads API; to opcjonalne połączenie wymaga produkcyjnego dostępu.',
 });
 
 function wynikBledu(stan, kodBledu) {
-  return { stan, waluta: null, strefa: null, pobranoAt: null,
-    kodBledu, nastepnyKrok: KROKI[kodBledu] };
+  return { stan, waluta: null, strefa: null, pobranoAt: null, kodBledu, nastepnyKrok: KROKI[kodBledu] };
 }
 
 function kodWaluty(value) {
-  const waluta = String(value ?? '').trim().toUpperCase();
+  const waluta = String(value ?? '')
+    .trim()
+    .toUpperCase();
   return /^[A-Z]{3}$/.test(waluta) ? waluta : null;
 }
 
@@ -42,8 +44,16 @@ function brakUprawnien(error) {
 
 /** Test odczytu pojedynczego połączenia. `klienci` zawiera fabryki istniejących
  * adapterów GA4/Meta, a magazyn udostępnia sekret tylko wewnątrz serwera. */
-export async function testPolaczenie({ typ, kontoId, sekretRef, magazyn, klienci,
-  teraz = () => new Date(), od, do: doDnia }) {
+export async function testPolaczenie({
+  typ,
+  kontoId,
+  sekretRef,
+  magazyn,
+  klienci,
+  teraz = () => new Date(),
+  od,
+  do: doDnia,
+}) {
   if (typ === 'google_ads') return wynikBledu('niedostepne', 'ADS_API_NIEDOSTEPNE');
   if (typ !== 'ga4' && typ !== 'meta') return wynikBledu('brak_konfiguracji', 'BRAK_KONFIGURACJI');
   if (!kontoId || !sekretRef || !magazyn?.odczytaj) {
@@ -58,17 +68,20 @@ export async function testPolaczenie({ typ, kontoId, sekretRef, magazyn, klienci
     if (typeof klient?.raportReklam !== 'function') return wynikBledu('brak_konfiguracji', 'BRAK_ADAPTERA');
     const chwila = teraz();
     const zakres = { ...zakresProby(chwila), ...(od ? { od } : {}), ...(doDnia ? { do: doDnia } : {}) };
-    const raport = await klient.raportReklam(typ === 'ga4'
-      ? { wlasciwosc: kontoId, ...zakres }
-      : { konto: kontoId, ...zakres });
+    const raport = await klient.raportReklam(
+      typ === 'ga4' ? { wlasciwosc: kontoId, ...zakres } : { konto: kontoId, ...zakres },
+    );
     const waluta = kodWaluty(raport?.waluta);
     if (!waluta) return wynikBledu('brak_konfiguracji', 'BRAK_WALUTY');
-    return { stan: 'dziala', waluta,
+    return {
+      stan: 'dziala',
+      waluta,
       strefa: typ === 'meta' ? strefaCzasowa(raport?.strefa) : null,
-      pobranoAt: chwila.toISOString(), kodBledu: null, nastepnyKrok: null };
+      pobranoAt: chwila.toISOString(),
+      kodBledu: null,
+      nastepnyKrok: null,
+    };
   } catch (error) {
-    return brakUprawnien(error)
-      ? wynikBledu('brak_uprawnien', 'BRAK_UPRAWNIEN')
-      : wynikBledu('blad', 'BLAD_ODCZYTU');
+    return brakUprawnien(error) ? wynikBledu('brak_uprawnien', 'BRAK_UPRAWNIEN') : wynikBledu('blad', 'BLAD_ODCZYTU');
   }
 }

@@ -34,8 +34,10 @@ const SLOWNIK = [
   // dostaje sama informacje „nie doszlo". Tak to nazywamy, bez udawania, ze wiemy wiecej.
   [/fetch failed/gi, 'połączenie nie doszło do skutku'],
   [/socket hang up/gi, 'druga strona zerwała połączenie'],
-  [/Client network socket disconnected before secure TLS connection was established/gi,
-    'połączenie zerwane przed zestawieniem szyfrowania TLS'],
+  [
+    /Client network socket disconnected before secure TLS connection was established/gi,
+    'połączenie zerwane przed zestawieniem szyfrowania TLS',
+  ],
   // DNS i gniazdo — nazwa serwera zostaje w tresci (idzie po dwukropku), bo bez niej
   // czlowiek nie wie, KTORA usluga nie odpowiada.
   [/getaddrinfo ENOTFOUND/gi, 'nieznana nazwa serwera:'],

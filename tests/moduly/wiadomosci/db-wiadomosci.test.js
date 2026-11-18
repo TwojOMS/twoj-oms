@@ -3,12 +3,19 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszWiadomosc, wiadomosciZamowienia, ostatniaWiadomosc } from '../../../src/oms/db/wiadomosci.js';
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 
 const wpis = (nad = {}) => ({
-  zamowienieId: 1, temat_id: 'proforma', adresat: 'klient@firma.pl',
+  zamowienieId: 1,
+  temat_id: 'proforma',
+  adresat: 'klient@firma.pl',
   temat: 'Proforma PF/3/08/2026 — zamówienie nr R/2026/015',
-  zalacznik: 'Proforma_PF_3_08_2026.pdf', kto: 'adam', at: '2026-08-22T10:00:00.000Z', ...nad,
+  zalacznik: 'Proforma_PF_3_08_2026.pdf',
+  kto: 'adam',
+  at: '2026-08-22T10:00:00.000Z',
+  ...nad,
 });
 
 describe('rejestr wiadomości', () => {
@@ -17,8 +24,12 @@ describe('rejestr wiadomości', () => {
     const lista = wiadomosciZamowienia(db, 1);
     expect(lista).toHaveLength(1);
     expect(lista[0]).toMatchObject({
-      zamowienie_id: 1, temat_id: 'proforma', adresat: 'klient@firma.pl',
-      zalacznik: 'Proforma_PF_3_08_2026.pdf', wyslana_at: '2026-08-22T10:00:00.000Z', kto: 'adam',
+      zamowienie_id: 1,
+      temat_id: 'proforma',
+      adresat: 'klient@firma.pl',
+      zalacznik: 'Proforma_PF_3_08_2026.pdf',
+      wyslana_at: '2026-08-22T10:00:00.000Z',
+      kto: 'adam',
     });
   });
 

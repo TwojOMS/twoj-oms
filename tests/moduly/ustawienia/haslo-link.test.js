@@ -8,7 +8,8 @@ function panel() {
   const p = nowyPanel();
   zalozKonto(p.db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
   const id = zalozKonto(p.db, { login: 'ewa', imie: 'Ewa', haslo: 'stare-haslo-123', rola: 'sprzedaz' });
-  const link = () => wydajLink(p.db, { kontoId: id, cel: 'reset', utworzylKontoId: null, teraz: () => new Date() }).token;
+  const link = () =>
+    wydajLink(p.db, { kontoId: id, cel: 'reset', utworzylKontoId: null, teraz: () => new Date() }).token;
   return { ...p, id, link };
 }
 const NIEWAZNY = 'Link jest nieważny — poproś administratora o nowy';
@@ -38,7 +39,12 @@ describe('/haslo/:token', () => {
     expect(kontoPoLoginie(db, 'ewa').wersja_hasla).toBe(1);
     expect(ostatnieLogowania(db, 5).some((l) => l.login === 'ewa' && l.wynik === 'haslo-z-linku')).toBe(true);
     expect((await get(app, '/login?haslo=ustawione')).body).toContain('Hasło ustawione');
-    const login = await app.inject({ method: 'POST', url: '/login', headers: { ...ORIGIN, accept: 'text/html' }, payload: { uzytkownik: 'ewa', haslo: NOWE.nowe } });
+    const login = await app.inject({
+      method: 'POST',
+      url: '/login',
+      headers: { ...ORIGIN, accept: 'text/html' },
+      payload: { uzytkownik: 'ewa', haslo: NOWE.nowe },
+    });
     expect(login.statusCode).toBe(302);
     for (const t of [token, starszy]) {
       const ponownie = await get(app, `/haslo/${t}`);
@@ -67,14 +73,21 @@ describe('/haslo/:token', () => {
     const { db, app, link } = panel();
     const t = link();
     expect((await post(app, `/haslo/${t}`, {}, { nowe: 'krotkie', nowe2: 'krotkie' })).statusCode).toBe(400);
-    expect((await post(app, `/haslo/${t}`, {}, { nowe: 'nowe-haslo-12345', nowe2: 'nowe-haslo-12346' })).statusCode).toBe(400);
+    expect(
+      (await post(app, `/haslo/${t}`, {}, { nowe: 'nowe-haslo-12345', nowe2: 'nowe-haslo-12346' })).statusCode,
+    ).toBe(400);
     expect((await post(app, `/haslo/${t}`, {}, NOWE)).statusCode).toBe(302);
     expect(kontoPoLoginie(db, 'ewa').wersja_hasla).toBe(1);
   });
 
   it('CSRF po Origin jak cały panel', async () => {
     const { app, link } = panel();
-    const r = await app.inject({ method: 'POST', url: `/haslo/${link()}`, headers: { accept: 'text/html', origin: 'http://obcy.example' }, payload: NOWE });
+    const r = await app.inject({
+      method: 'POST',
+      url: `/haslo/${link()}`,
+      headers: { accept: 'text/html', origin: 'http://obcy.example' },
+      payload: NOWE,
+    });
     expect(r.statusCode).toBe(403);
   });
 

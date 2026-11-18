@@ -5,7 +5,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import {
-  zapiszZamowienie, pobierzZamowienie, dodajPozycjeReczna, zapiszNadpisaniaPozycji,
+  zapiszZamowienie,
+  pobierzZamowienie,
+  dodajPozycjeReczna,
+  zapiszNadpisaniaPozycji,
 } from '../../../src/oms/db/zamowienia.js';
 import { dodajWplateReczna } from '../../../src/oms/db/platnosci.js';
 import { parsujNowaPozycje } from '../../../src/domena/pozycje-reczne.js';
@@ -16,12 +19,28 @@ import { zapiszStawkeDomyslna } from '../../../src/moduly/faktury/db/stawka-vat.
 import { zapiszFakturaDlaKazdego } from '../../../src/moduly/faktury/db/faktury-dla-kazdego.js';
 
 const zmapowane = (nad = {}) => ({
-  zrodlo_id: 1301, numer: '1301',
-  klient: { first_name: 'Jan', last_name: 'Kowalski', company: 'ACME', email: 'j@k.pl', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa' },
-  dostawa: {}, metoda_wysylki: 'dpd', kwota_pobrania: null,
-  chce_fakture: 1, nip: '1200001200', kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00',
+  zrodlo_id: 1301,
+  numer: '1301',
+  klient: {
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    company: 'ACME',
+    email: 'j@k.pl',
+    address_1: 'Polna 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+  },
+  dostawa: {},
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 1,
+  nip: '1200001200',
+  kwota_brutto: '123.00',
+  koszt_dostawy_brutto: '0.00',
   status_woo: 'processing',
-  oplacone_at: '2026-07-29T13:00:00', anulowane: 0, utworzone_at: '2026-07-29T13:19:52',
+  oplacone_at: '2026-07-29T13:00:00',
+  anulowane: 0,
+  utworzone_at: '2026-07-29T13:19:52',
   pozycje: [{ nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 2, cena_brutto: '61.50', vat: null }],
   ...nad,
 });
@@ -95,7 +114,18 @@ describe('faktura — nabywca z kartoteki', () => {
   // (ulica) i billing.address_2 (numer budynku) — faktura wychodziłaby bez numeru budynku
   // nabywcy, mimo że dokument ma być dowodem księgowym z poprawnym adresem.
   it('adres nabywcy z rozbitym address_1/address_2 (zamówienie 1275) trafia do street Z numerem', async () => {
-    const rozbity = { klient: { first_name: 'Jan', last_name: 'Kowalski', company: 'ACME', email: 'j@k.pl', address_1: 'Papierowa', address_2: '24', postcode: '00-950', city: 'Warszawa' } };
+    const rozbity = {
+      klient: {
+        first_name: 'Jan',
+        last_name: 'Kowalski',
+        company: 'ACME',
+        email: 'j@k.pl',
+        address_1: 'Papierowa',
+        address_2: '24',
+        postcode: '00-950',
+        city: 'Warszawa',
+      },
+    };
     const { infakt, faktura, id } = zestaw(rozbity);
     await faktura.wystaw(id);
     const k = infakt.zalozKlienta.mock.calls[0][0];
@@ -105,14 +135,18 @@ describe('faktura — nabywca z kartoteki', () => {
   // inFakt wymaga company_name TAKZE dla osoby prywatnej (422 "Prosze podac nazwe firmy").
   // Kod ma to wypelnic sam, a nie oddawac ten komunikat operatorowi.
   it('bez firmy wstawia imię i nazwisko w company_name', async () => {
-    const bezFirmy = { klient: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa' } };
+    const bezFirmy = {
+      klient: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa' },
+    };
     const { infakt, faktura, id } = zestaw(bezFirmy);
     await faktura.wystaw(id);
     expect(infakt.zalozKlienta.mock.calls[0][0].company_name).toBe('Jan Kowalski');
   });
 
   it('nieudane założenie klienta NIE wystawia faktury', async () => {
-    const zaloz = vi.fn().mockRejectedValue(bladApi('inFakt odrzucił założenie klienta (422): Proszę podać nazwę firmy.', 422));
+    const zaloz = vi
+      .fn()
+      .mockRejectedValue(bladApi('inFakt odrzucił założenie klienta (422): Proszę podać nazwę firmy.', 422));
     const { infakt, faktura, id } = zestaw({}, { zaloz });
     await expect(faktura.wystaw(id)).rejects.toThrow(/nazwę firmy/);
     expect(infakt.wystaw).not.toHaveBeenCalled();
@@ -176,7 +210,10 @@ describe('faktura — kwoty', () => {
   // odswiezy, bo pobiera tylko to, co zmienilo sie po kursorze.
   it('zamówienie sprzed dołożenia kolumny, z PŁATNĄ dostawą, daje się zafakturować po restarcie', async () => {
     // Wyjątek zatwierdzony przez właściciela 2026-09-30: odmowa niezgodnego baseline + prawidłowe reopen.
-    potwierdzOdmoweHistorycznegoSchema(["ALTER TABLE zamowienia DROP COLUMN koszt_dostawy_brutto"], ['koszt_dostawy_brutto']);
+    potwierdzOdmoweHistorycznegoSchema(
+      ['ALTER TABLE zamowienia DROP COLUMN koszt_dostawy_brutto'],
+      ['koszt_dostawy_brutto'],
+    );
     const plik = join(mkdtempSync(join(tmpdir(), 'oms-faktura-')), 'oms.sqlite');
     const surowe = { id: 1301, shipping_total: '15.00', shipping_tax: '3.45' };
 
@@ -211,11 +248,27 @@ describe('faktura — kwoty', () => {
   // bo blad mieszkal wlasnie na styku tych trzech kawalkow, a nie w zadnym z nich osobno.
   describe('suma linii nie dzieląca się równo przez ilość', () => {
     const zeSklepu = (nad) => ({
-      id: 1301, number: '1301', status: 'processing', date_created: '2026-07-29T13:19:52',
-      billing: { first_name: 'Jan', last_name: 'Kowalski', company: 'ACME', email: 'j@k.pl', address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa' },
-      shipping: {}, shipping_lines: [{ method_id: 'flat_rate', instance_id: '1' }],
-      shipping_total: '0.00', shipping_tax: '0.00',
-      meta_data: [{ key: '_billing_faktura', value: '1' }, { key: '_billing_nip', value: '1200001200' }],
+      id: 1301,
+      number: '1301',
+      status: 'processing',
+      date_created: '2026-07-29T13:19:52',
+      billing: {
+        first_name: 'Jan',
+        last_name: 'Kowalski',
+        company: 'ACME',
+        email: 'j@k.pl',
+        address_1: 'Lampowa 1',
+        postcode: '00-950',
+        city: 'Warszawa',
+      },
+      shipping: {},
+      shipping_lines: [{ method_id: 'flat_rate', instance_id: '1' }],
+      shipping_total: '0.00',
+      shipping_tax: '0.00',
+      meta_data: [
+        { key: '_billing_faktura', value: '1' },
+        { key: '_billing_nip', value: '1200001200' },
+      ],
       ...nad,
     });
 
@@ -226,7 +279,12 @@ describe('faktura — kwoty', () => {
         zalozKlienta: vi.fn(),
         wystaw: vi.fn().mockResolvedValue({ uuid: 'u1', numer: 'FV/1/2026', ksefStatus: 'sent' }),
       };
-      const id = zapiszZamowienie(db, 'pro', mapujZamowienie(surowe, { instancje: { 1: { metoda: 'dpd' } }, poPozycji: [] }), surowe);
+      const id = zapiszZamowienie(
+        db,
+        'pro',
+        mapujZamowienie(surowe, { instancje: { 1: { metoda: 'dpd' } }, poPozycji: [] }),
+        surowe,
+      );
       await createFaktura({ db, infakt }).wystaw(id);
       return { db, infakt, id };
     }
@@ -235,40 +293,48 @@ describe('faktura — kwoty', () => {
     // (rabat 10%). Stary panel: 33,33 x 3 = 99,99 -> „Suma pozycji (99.99) nie zgadza sie
     // z kwota zamowienia (100.00)".
     it('3 szt. za 100,00 zł z rabatem — faktura wychodzi, gross_price to 10000 gr', async () => {
-      const { infakt } = await przezPanel(zeSklepu({
-        total: '100.00',
-        line_items: [{ name: 'STOP', sku: 'A', quantity: 3, total: '81.30', total_tax: '18.70' }],
-      }));
+      const { infakt } = await przezPanel(
+        zeSklepu({
+          total: '100.00',
+          line_items: [{ name: 'STOP', sku: 'A', quantity: 3, total: '81.30', total_tax: '18.70' }],
+        }),
+      );
       const s = infakt.wystaw.mock.calls[0][0].services;
       expect(s).toEqual([{ name: 'STOP', quantity: 3, gross_price: 10000, tax_symbol: '23' }]);
     });
 
     // Drugi zmierzony przypadek: 7 szt., 123,45 + 28,39 = 151,84 (stary panel: 151,83).
     it('7 szt. za 151,84 zł — faktura wychodzi, gross_price to 15184 gr', async () => {
-      const { infakt } = await przezPanel(zeSklepu({
-        total: '151.84',
-        line_items: [{ name: 'STOP', sku: 'A', quantity: 7, total: '123.45', total_tax: '28.39' }],
-      }));
+      const { infakt } = await przezPanel(
+        zeSklepu({
+          total: '151.84',
+          line_items: [{ name: 'STOP', sku: 'A', quantity: 7, total: '123.45', total_tax: '28.39' }],
+        }),
+      );
       expect(infakt.wystaw.mock.calls[0][0].services[0].gross_price).toBe(15184);
     });
 
     // Kontrola pozytywna z briefu: 2 szt. po 61,50 bez rabatu przechodzilo TAKZE przed
     // poprawka. Ma przechodzic dalej i dawac dokladnie te sama kwote.
     it('2 szt. po 61,50 zł bez rabatu — bez zmiany, 12300 gr', async () => {
-      const { infakt } = await przezPanel(zeSklepu({
-        total: '123.00',
-        line_items: [{ name: 'STOP', sku: 'A', quantity: 2, total: '100.00', total_tax: '23.00' }],
-      }));
+      const { infakt } = await przezPanel(
+        zeSklepu({
+          total: '123.00',
+          line_items: [{ name: 'STOP', sku: 'A', quantity: 2, total: '100.00', total_tax: '23.00' }],
+        }),
+      );
       expect(infakt.wystaw.mock.calls[0][0].services[0].gross_price).toBe(12300);
     });
 
     // Cena jednostkowa dalej ma sluzyc widokowi — zaokraglona, i to jest w porzadku,
     // dopoki nie bierze udzialu w liczeniu dokumentu.
     it('cena jednostkowa w bazie zostaje zaokrąglona — dla widoku, nie dla faktury', async () => {
-      const { db, id } = await przezPanel(zeSklepu({
-        total: '100.00',
-        line_items: [{ name: 'STOP', sku: 'A', quantity: 3, total: '81.30', total_tax: '18.70' }],
-      }));
+      const { db, id } = await przezPanel(
+        zeSklepu({
+          total: '100.00',
+          line_items: [{ name: 'STOP', sku: 'A', quantity: 3, total: '81.30', total_tax: '18.70' }],
+        }),
+      );
       const p = pobierzZamowienie(db, id).pozycje[0];
       expect(p.cena_brutto).toBe('33.33');
       expect(p.brutto_linii).toBe('100.00');
@@ -280,13 +346,20 @@ describe('faktura — kwoty', () => {
     it('bariera nadal odmawia, gdy linie ze sklepu NAPRAWDĘ nie sumują się do kwoty', async () => {
       const db = openOmsDb(':memory:');
       const infakt = {
-        znajdzKlientaPoNip: vi.fn().mockResolvedValue(7), zalozKlienta: vi.fn(), wystaw: vi.fn(),
+        znajdzKlientaPoNip: vi.fn().mockResolvedValue(7),
+        zalozKlienta: vi.fn(),
+        wystaw: vi.fn(),
       };
       const surowe = zeSklepu({
         total: '150.00',
         line_items: [{ name: 'STOP', sku: 'A', quantity: 3, total: '81.30', total_tax: '18.70' }],
       });
-      const id = zapiszZamowienie(db, 'pro', mapujZamowienie(surowe, { instancje: { 1: { metoda: 'dpd' } }, poPozycji: [] }), surowe);
+      const id = zapiszZamowienie(
+        db,
+        'pro',
+        mapujZamowienie(surowe, { instancje: { 1: { metoda: 'dpd' } }, poPozycji: [] }),
+        surowe,
+      );
       await expect(createFaktura({ db, infakt }).wystaw(id)).rejects.toThrow(/100\.00.*150\.00/s);
       expect(infakt.wystaw).not.toHaveBeenCalled();
     });
@@ -296,7 +369,8 @@ describe('faktura — kwoty', () => {
     it('pozycja bez brutta linii wraca do starego liczenia, zamiast paść', async () => {
       const db = openOmsDb(':memory:');
       const infakt = {
-        znajdzKlientaPoNip: vi.fn().mockResolvedValue(7), zalozKlienta: vi.fn(),
+        znajdzKlientaPoNip: vi.fn().mockResolvedValue(7),
+        zalozKlienta: vi.fn(),
         wystaw: vi.fn().mockResolvedValue({ uuid: 'u1', numer: 'FV/1/2026', ksefStatus: 'sent' }),
       };
       const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
@@ -309,8 +383,8 @@ describe('faktura — kwoty', () => {
     // Poller go nie odswiezy (pobiera tylko po kursorze), wiec bez uzupelnienia z surowe_json
     // odbijaloby sie od bariery na zawsze — dokladnie ta sama pulapka, co przy koszcie dostawy.
     it('zamówienie sprzed dołożenia kolumny daje się zafakturować po restarcie', async () => {
-    // Wyjątek zatwierdzony przez właściciela 2026-09-30: odmowa niezgodnego baseline + prawidłowe reopen.
-    potwierdzOdmoweHistorycznegoSchema(["ALTER TABLE pozycje DROP COLUMN brutto_linii"], ['brutto_linii']);
+      // Wyjątek zatwierdzony przez właściciela 2026-09-30: odmowa niezgodnego baseline + prawidłowe reopen.
+      potwierdzOdmoweHistorycznegoSchema(['ALTER TABLE pozycje DROP COLUMN brutto_linii'], ['brutto_linii']);
       const plik = join(mkdtempSync(join(tmpdir(), 'oms-brutto-')), 'oms.sqlite');
       const surowe = zeSklepu({
         total: '100.00',
@@ -318,12 +392,18 @@ describe('faktura — kwoty', () => {
       });
 
       const stara = openOmsDb(plik);
-      zapiszZamowienie(stara, 'pro', mapujZamowienie(surowe, { instancje: { 1: { metoda: 'dpd' } }, poPozycji: [] }), surowe);
+      zapiszZamowienie(
+        stara,
+        'pro',
+        mapujZamowienie(surowe, { instancje: { 1: { metoda: 'dpd' } }, poPozycji: [] }),
+        surowe,
+      );
       stara.close();
 
       const db = openOmsDb(plik);
       const infakt = {
-        znajdzKlientaPoNip: vi.fn().mockResolvedValue(7), zalozKlienta: vi.fn(),
+        znajdzKlientaPoNip: vi.fn().mockResolvedValue(7),
+        zalozKlienta: vi.fn(),
         wystaw: vi.fn().mockResolvedValue({ uuid: 'u1', numer: 'FV/1/2026', ksefStatus: 'sent' }),
       };
       const id = db.prepare('SELECT id FROM zamowienia').get().id;
@@ -398,8 +478,9 @@ describe('faktura — termin płatności i data wystawienia', () => {
   // blokującej fakturę do końca świata.
   it('śmieć w terminie → odmowa, inFakt nietknięty i BEZ rezerwacji w tabeli', async () => {
     const { db, infakt, faktura, id } = zestaw();
-    await expect(faktura.wystaw(id, { dataWystawienia: '2026-08-03', termin: '-3' }))
-      .rejects.toThrow(/Termin płatności/);
+    await expect(faktura.wystaw(id, { dataWystawienia: '2026-08-03', termin: '-3' })).rejects.toThrow(
+      /Termin płatności/,
+    );
     expect(infakt.wystaw).not.toHaveBeenCalled();
     expect(infakt.znajdzKlientaPoNip).not.toHaveBeenCalled();
     expect(wiersz(db, id)).toBeUndefined();
@@ -407,8 +488,9 @@ describe('faktura — termin płatności i data wystawienia', () => {
 
   it('nieistniejąca data wystawienia → odmowa przed dotknięciem inFaktu', async () => {
     const { db, infakt, faktura, id } = zestaw();
-    await expect(faktura.wystaw(id, { dataWystawienia: '2026-02-30', termin: '7' }))
-      .rejects.toThrow(/Data wystawienia/);
+    await expect(faktura.wystaw(id, { dataWystawienia: '2026-02-30', termin: '7' })).rejects.toThrow(
+      /Data wystawienia/,
+    );
     expect(infakt.wystaw).not.toHaveBeenCalled();
     expect(wiersz(db, id)).toBeUndefined();
   });
@@ -417,15 +499,15 @@ describe('faktura — termin płatności i data wystawienia', () => {
   // z terminem — poprawny termin nie może przepchnąć dokumentu, którego nie wolno wystawić.
   it('poprawny termin NIE omija odmowy dla zamówienia anulowanego', async () => {
     const { infakt, faktura, id } = zestaw({ anulowane: 1 });
-    await expect(faktura.wystaw(id, { dataWystawienia: '2026-08-03', termin: '14' }))
-      .rejects.toThrow(/anulowane/i);
+    await expect(faktura.wystaw(id, { dataWystawienia: '2026-08-03', termin: '14' })).rejects.toThrow(/anulowane/i);
     expect(infakt.wystaw).not.toHaveBeenCalled();
   });
 
   it('poprawny termin NIE omija bariery arytmetycznej', async () => {
     const { infakt, faktura, id } = zestaw({ kwota_brutto: '141.45', koszt_dostawy_brutto: null });
-    await expect(faktura.wystaw(id, { dataWystawienia: '2026-08-03', termin: '14' }))
-      .rejects.toThrow(/nie zgadza się/i);
+    await expect(faktura.wystaw(id, { dataWystawienia: '2026-08-03', termin: '14' })).rejects.toThrow(
+      /nie zgadza się/i,
+    );
     expect(infakt.wystaw).not.toHaveBeenCalled();
   });
 });
@@ -516,8 +598,9 @@ describe('faktura — „zapłacone" wymaga PRAWDZIWYCH wpłat', () => {
 
   it('zero wpłat + „zapłacone" → odmowa, inFakt nietknięty i BEZ rezerwacji', async () => {
     const { db, infakt, faktura, id } = nieoplacone();
-    await expect(faktura.wystaw(id, { dataWystawienia: '2026-08-05', termin: 'zaplacone' }))
-      .rejects.toThrow(/zapłacon/i);
+    await expect(faktura.wystaw(id, { dataWystawienia: '2026-08-05', termin: 'zaplacone' })).rejects.toThrow(
+      /zapłacon/i,
+    );
     expect(infakt.wystaw).not.toHaveBeenCalled();
     expect(infakt.znajdzKlientaPoNip).not.toHaveBeenCalled();
     expect(wiersz(db, id)).toBeUndefined();
@@ -528,10 +611,10 @@ describe('faktura — „zapłacone" wymaga PRAWDZIWYCH wpłat', () => {
   // w druga strone.
   it('komunikat podaje obie kwoty i mówi, żeby najpierw dopisać wpłatę na karcie', async () => {
     const { faktura, id } = nieoplacone();
-    await expect(faktura.wystaw(id, { dataWystawienia: '2026-08-05', termin: 'zaplacone' }))
-      .rejects.toThrow(/0\.00.*123\.00/s);
-    await expect(faktura.wystaw(id, { dataWystawienia: '2026-08-05', termin: 'zaplacone' }))
-      .rejects.toThrow(/wpłat/i);
+    await expect(faktura.wystaw(id, { dataWystawienia: '2026-08-05', termin: 'zaplacone' })).rejects.toThrow(
+      /0\.00.*123\.00/s,
+    );
+    await expect(faktura.wystaw(id, { dataWystawienia: '2026-08-05', termin: 'zaplacone' })).rejects.toThrow(/wpłat/i);
   });
 
   it('odmowa jest otagowana dla operatora', async () => {
@@ -618,7 +701,8 @@ describe('faktura — bariera arytmetyczna', () => {
   // jest niewidoczna golym okiem i wlasnie dlatego musi ja lapac maszyna.
   it('łapie różnicę jednego grosza z zaokrąglenia (33,33 × 3 vs 100,00)', async () => {
     const { infakt, faktura, id } = zestaw({
-      kwota_brutto: '100.00', koszt_dostawy_brutto: null,
+      kwota_brutto: '100.00',
+      koszt_dostawy_brutto: null,
       pozycje: [{ nazwa: 'X', sku: null, ilosc: 3, cena_brutto: '33.33', vat: null }],
     });
     await expect(faktura.wystaw(id)).rejects.toThrow(/99\.99/);
@@ -687,7 +771,9 @@ describe('faktura — pozycje dopisane i poprawione ręcznie', () => {
   });
 
   it('dopisana pozycja TRAFIA na fakturę, z własną nazwą, ilością i kwotą brutto', async () => {
-    const { infakt, faktura, id } = zestawZDopiskiem({}, [{ nazwa: 'Dodatkowy szablon', ilosc: '2', cena_brutto: '40.00' }]);
+    const { infakt, faktura, id } = zestawZDopiskiem({}, [
+      { nazwa: 'Dodatkowy szablon', ilosc: '2', cena_brutto: '40.00' },
+    ]);
     await faktura.wystaw(id);
     const s = infakt.wystaw.mock.calls[0][0].services;
     expect(s).toHaveLength(2);
@@ -715,10 +801,9 @@ describe('faktura — pozycje dopisane i poprawione ręcznie', () => {
   // ⚠️ BARIERA NIE SŁABNIE. Dopisek przesuwa OBIE strony porównania o tę samą wartość, więc
   // prawdziwy rozjazd danych ze sklepu dalej jest łapany.
   it('bariera dalej odmawia, gdy linie ZE SKLEPU nie sumują się do kwoty zamówienia', async () => {
-    const { infakt, faktura, id } = zestawZDopiskiem(
-      { kwota_brutto: '141.45', koszt_dostawy_brutto: null },
-      [{ nazwa: 'Dopłata', ilosc: '1', cena_brutto: '80.00' }],
-    );
+    const { infakt, faktura, id } = zestawZDopiskiem({ kwota_brutto: '141.45', koszt_dostawy_brutto: null }, [
+      { nazwa: 'Dopłata', ilosc: '1', cena_brutto: '80.00' },
+    ]);
     await expect(faktura.wystaw(id)).rejects.toThrow(/nie zgadza się/i);
     expect(infakt.wystaw).not.toHaveBeenCalled();
   });
@@ -772,7 +857,8 @@ describe('faktura — jedna faktura na zamówienie', () => {
   // Awaria JEDNOZNACZNA (4xx): inFakt odpowiedzial i odrzucil, dokumentu na pewno nie ma.
   // Miejsce musi sie zwolnic, inaczej zamowienie zostaje bez faktury na zawsze.
   it('odmowa 4xx zwalnia miejsce — po poprawieniu danych da się ponowić', async () => {
-    const wystawAtrapa = vi.fn()
+    const wystawAtrapa = vi
+      .fn()
       .mockRejectedValueOnce(bladApi('inFakt odrzucił fakturę (422): Proszę wybrać klienta', 422))
       .mockResolvedValue({ uuid: 'u2', numer: 'FV/2/2026', ksefStatus: 'sent' });
     const { db, faktura, id } = zestaw({}, { wystaw: wystawAtrapa });
@@ -814,8 +900,11 @@ describe('faktura — awaria PRZED wystawieniem nie blokuje zamówienia', () => 
   // lokalny, rzucany bez `status`, naprawialny w inFakcie w pol minuty. Operator czytal
   // na ekranie ostrzezenie o dokumencie, o ktory nigdy nie poproszono.
   it('duplikat NIP-u w kartotece → zwolnienie i ponowienie po naprawie w inFakcie', async () => {
-    const znajdz = vi.fn()
-      .mockRejectedValueOnce(bezStatusu('W kartotece inFaktu są 2 wpisy z NIP-em 1200001200 — panel nie zgadnie, który jest nabywcą.'))
+    const znajdz = vi
+      .fn()
+      .mockRejectedValueOnce(
+        bezStatusu('W kartotece inFaktu są 2 wpisy z NIP-em 1200001200 — panel nie zgadnie, który jest nabywcą.'),
+      )
       .mockResolvedValue(7);
     const { db, infakt, faktura, id } = zestaw({}, { znajdz });
 
@@ -840,7 +929,11 @@ describe('faktura — awaria PRZED wystawieniem nie blokuje zamówienia', () => 
   // 500 z zakladania klienta jest niejednoznaczne co do WPISU W KARTOTECE, ale nie co do
   // faktury: o fakture jeszcze nie poprosilismy. Najwyzej powstanie duplikat kontrahenta.
   it('500 z zakładania klienta → zwolnienie, nie „do wyjaśnienia”', async () => {
-    const zaloz = vi.fn().mockRejectedValue(Object.assign(new Error('inFakt odrzucił założenie klienta (500)'), { dlaOperatora: true, status: 500 }));
+    const zaloz = vi
+      .fn()
+      .mockRejectedValue(
+        Object.assign(new Error('inFakt odrzucił założenie klienta (500)'), { dlaOperatora: true, status: 500 }),
+      );
     const { db, infakt, faktura, id } = zestaw({}, { zaloz });
     await expect(faktura.wystaw(id)).rejects.toThrow(/500/);
     expect(infakt.wystaw).not.toHaveBeenCalled();
@@ -868,7 +961,11 @@ describe('faktura — awaria PRZED wystawieniem nie blokuje zamówienia', () => 
   // rozluznic blokady tam, gdzie dokument naprawde mogl powstac. Awaria w samym
   // `infakt.wystaw` — z `status` albo bez — dalej blokuje ponowienie.
   it('5xx z SAMEGO wystawiania nadal blokuje ponowienie', async () => {
-    const wystawAtrapa = vi.fn().mockRejectedValue(Object.assign(new Error('inFakt odrzucił fakturę (503)'), { dlaOperatora: true, status: 503 }));
+    const wystawAtrapa = vi
+      .fn()
+      .mockRejectedValue(
+        Object.assign(new Error('inFakt odrzucił fakturę (503)'), { dlaOperatora: true, status: 503 }),
+      );
     const { db, infakt, faktura, id } = zestaw({}, { wystaw: wystawAtrapa });
     await expect(faktura.wystaw(id)).rejects.toThrow(/503/);
     expect(wiersz(db, id).ksef_status).toBe('do_wyjasnienia');
@@ -877,7 +974,9 @@ describe('faktura — awaria PRZED wystawieniem nie blokuje zamówienia', () => 
   });
 
   it('błąd bez statusu z SAMEGO wystawiania nadal blokuje ponowienie', async () => {
-    const wystawAtrapa = vi.fn().mockRejectedValue(new TypeError("Cannot read properties of undefined (reading 'uuid')"));
+    const wystawAtrapa = vi
+      .fn()
+      .mockRejectedValue(new TypeError("Cannot read properties of undefined (reading 'uuid')"));
     const { db, infakt, faktura, id } = zestaw({}, { wystaw: wystawAtrapa });
     await expect(faktura.wystaw(id)).rejects.toThrow();
     expect(wiersz(db, id).ksef_status).toBe('do_wyjasnienia');
@@ -1059,7 +1158,11 @@ describe('faktura — oznaczenie „zapłacone" w inFakcie (krok PO nieodwracaln
   // ⚠️ TEST, KTORY TRZYMA CALA KONSTRUKCJE. Dokument JUZ ISTNIEJE — rzucenie stad wywalilo by
   // operatorowi operacje, ktora SIE UDALA, i zostawilo rezerwacje w zlym stanie.
   it('awaria oznaczenia NIE psuje wystawienia — faktura jest wystawiona i zapisana', async () => {
-    const oznacz = vi.fn().mockRejectedValue(bladApi('inFakt odrzucił oznaczenie faktury jako zapłaconej (404): bez szczegółów (HTTP 404)', 404));
+    const oznacz = vi
+      .fn()
+      .mockRejectedValue(
+        bladApi('inFakt odrzucił oznaczenie faktury jako zapłaconej (404): bez szczegółów (HTTP 404)', 404),
+      );
     const { db, faktura, id } = zestaw({}, { oznacz });
     const w = await faktura.wystaw(id, { dataWystawienia: '2026-08-06', termin: 'zaplacone' });
     expect(w.numer).toBe('FV/1/2026');
@@ -1084,7 +1187,11 @@ describe('faktura — oznaczenie „zapłacone" w inFakcie (krok PO nieodwracaln
   // JEDYNYM miejscem, z ktorego wlasciciel sie o tym dowie. Ma tam byc: ze faktura jest
   // wystawiona, ze dokument dla klienta jest poprawny, co dokladnie nie wyszlo i co zrobic.
   it('nieudane oznaczenie zostawia w logu ostrzeżenie z powodem i numerem faktury', async () => {
-    const oznacz = vi.fn().mockRejectedValue(bladApi('inFakt odrzucił oznaczenie faktury jako zapłaconej (404): bez szczegółów (HTTP 404)', 404));
+    const oznacz = vi
+      .fn()
+      .mockRejectedValue(
+        bladApi('inFakt odrzucił oznaczenie faktury jako zapłaconej (404): bez szczegółów (HTTP 404)', 404),
+      );
     const { db, faktura, id } = zestaw({}, { oznacz });
     await faktura.wystaw(id, { dataWystawienia: '2026-08-06', termin: 'zaplacone' });
     const wpisy = log(db, id).filter((w) => w.akcja === 'faktura');

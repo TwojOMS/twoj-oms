@@ -19,8 +19,12 @@ export function registerUstawieniaMagazynuRoutes(app, { db }) {
   const liczniki = () => {
     const maRejestr = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'oferty_kanalow'").get();
     if (!maRejestr) return { zarzadzane: 0, przejete: 0 };
-    return db.prepare(`SELECT COUNT(CASE WHEN tryb = 'zarzadzana' THEN 1 END) zarzadzane,
-      COUNT(CASE WHEN tryb = 'obserwowana' AND ilosc_z_oms = 1 THEN 1 END) przejete FROM oferty_kanalow`).get();
+    return db
+      .prepare(
+        `SELECT COUNT(CASE WHEN tryb = 'zarzadzana' THEN 1 END) zarzadzane,
+      COUNT(CASE WHEN tryb = 'obserwowana' AND ilosc_z_oms = 1 THEN 1 END) przejete FROM oferty_kanalow`,
+      )
+      .get();
   };
   app.get('/ustawienia/magazyn', async (req, reply) => {
     const przelacznik = przelacznikStanow(db);
@@ -29,10 +33,13 @@ export function registerUstawieniaMagazynuRoutes(app, { db }) {
       title: 'Stany magazynowe',
       przelacznik,
       liczniki: przelacznik.wlaczone ? liczniki() : { zarzadzane: 0, przejete: 0 },
-      zrodla: kolejnoscZrodel(db).map(klucz => polaczeniaZrodel(db).find(p => p.klucz === klucz)),
+      zrodla: kolejnoscZrodel(db).map((klucz) => polaczeniaZrodel(db).find((p) => p.klucz === klucz)),
       // Było już kiedyś włączone — ponowne włączenie zacznie liczyć od nowa (ostrzeżenie przy przycisku).
       bylWlaczony: przelacznik.historia.some((w) => w.wlaczone),
-      zapisano: req.query?.zapisano === 'zrodla' ? 'Zapisano kolejność źródeł treści karty.' : KOMUNIKATY[req.query?.zapisano] ?? null,
+      zapisano:
+        req.query?.zapisano === 'zrodla'
+          ? 'Zapisano kolejność źródeł treści karty.'
+          : (KOMUNIKATY[req.query?.zapisano] ?? null),
     });
   });
 
@@ -56,25 +63,39 @@ export function registerUstawieniaMagazynuRoutes(app, { db }) {
       zapiszKolejnoscZrodel(db, kolejnosc);
     } catch (e) {
       if (!(e instanceof Error) || !e.message.startsWith('Kolejność musi')) throw e;
-      return stronaOdmowy(reply, 400, e.message, { tytul: 'Nie udało się zapisać kolejności źródeł',
-        wroc: '/ustawienia/magazyn', napisWroc: 'Wróć do ustawień magazynu' });
+      return stronaOdmowy(reply, 400, e.message, {
+        tytul: 'Nie udało się zapisać kolejności źródeł',
+        wroc: '/ustawienia/magazyn',
+        napisWroc: 'Wróć do ustawień magazynu',
+      });
     }
     return reply.code(303).redirect('/ustawienia/magazyn?zapisano=zrodla#ust-zrodla');
   });
 
   app.post('/ustawienia/magazyn/stany', async (req, reply) => {
-    if (req.konto?.admin !== true) return stronaOdmowy(reply, 403, 'Tylko administrator może przełączać stany.',
-      { tytul: 'Stany magazynowe', wroc: '/ustawienia/magazyn', napisWroc: 'Wróć do ustawień magazynu' });
+    if (req.konto?.admin !== true)
+      return stronaOdmowy(reply, 403, 'Tylko administrator może przełączać stany.', {
+        tytul: 'Stany magazynowe',
+        wroc: '/ustawienia/magazyn',
+        napisWroc: 'Wróć do ustawień magazynu',
+      });
     const wartosc = String(req.body?.wlacz ?? '');
     if (wartosc !== '1' && wartosc !== '0') {
-      return stronaOdmowy(reply, 400, 'Pole „wlacz” musi mieć wartość 1 albo 0.',
-        { tytul: 'Nie udało się zmienić stanów magazynowych', wroc: '/ustawienia/magazyn', napisWroc: 'Wróć do ustawień magazynu' });
+      return stronaOdmowy(reply, 400, 'Pole „wlacz” musi mieć wartość 1 albo 0.', {
+        tytul: 'Nie udało się zmienić stanów magazynowych',
+        wroc: '/ustawienia/magazyn',
+        napisWroc: 'Wróć do ustawień magazynu',
+      });
     }
     const wlacz = wartosc === '1';
     const { zarzadzane, przejete } = liczniki();
     if (!wlacz && przelacznikStanow(db).wlaczone && zarzadzane + przejete > 0 && req.body?.rozumiem !== '1') {
-      return stronaOdmowy(reply, 400, `${zarzadzane} ofert wróci do stałej ilości, ${przejete} przejętych przestanie być synchronizowanych. Zaznacz „Rozumiem”.`,
-        { tytul: 'Potwierdź wyłączenie stanów', wroc: '/ustawienia/magazyn', napisWroc: 'Wróć do ustawień magazynu' });
+      return stronaOdmowy(
+        reply,
+        400,
+        `${zarzadzane} ofert wróci do stałej ilości, ${przejete} przejętych przestanie być synchronizowanych. Zaznacz „Rozumiem”.`,
+        { tytul: 'Potwierdź wyłączenie stanów', wroc: '/ustawienia/magazyn', napisWroc: 'Wróć do ustawień magazynu' },
+      );
     }
     const konto = req.konto ? { id: req.konto.id ?? null, login: req.konto.login ?? null } : null;
     const { zmieniono } = przelaczStany(db, { wlacz, konto });

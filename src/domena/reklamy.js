@@ -22,8 +22,9 @@ const liczba = (value) => {
 };
 
 const wOkresie = (row, od, doDnia) => !row.dzien || (row.dzien >= od && row.dzien <= doDnia);
-const stanZrodla = (stan, maDane) => (typeof stan === 'string' ? stan : stan?.stan) ?? (maDane ? 'działa' : 'niepodłączone');
-const kodPowodu = (stan) => stan === 'niepodłączone' ? 'NIEPODLACZONE' : 'BRAK_DANYCH';
+const stanZrodla = (stan, maDane) =>
+  (typeof stan === 'string' ? stan : stan?.stan) ?? (maDane ? 'działa' : 'niepodłączone');
+const kodPowodu = (stan) => (stan === 'niepodłączone' ? 'NIEPODLACZONE' : 'BRAK_DANYCH');
 const zaokraglij = (licznik, mianownik) => Number((licznik / mianownik).toFixed(4));
 
 function podsumujZrodlo(rows, { od, do: doDnia, dzis, stan, preferowanaWaluta, nazwaZrodla }) {
@@ -56,8 +57,14 @@ function podsumujZrodlo(rows, { od, do: doDnia, dzis, stan, preferowanaWaluta, n
     sumaWyswietlen += wyswietlenia;
     if (row.dzien) {
       const klucz = `${row.dzien}|${row.polaczenieId ?? ''}|${row.waluta ?? waluta ?? ''}`;
-      const dzien = dzienMap.get(klucz) ?? { dzien: row.dzien, polaczenieId: row.polaczenieId ?? null,
-        waluta: row.waluta ?? waluta, koszt: 0n, klikniecia: 0, wyswietlenia: 0 };
+      const dzien = dzienMap.get(klucz) ?? {
+        dzien: row.dzien,
+        polaczenieId: row.polaczenieId ?? null,
+        waluta: row.waluta ?? waluta,
+        koszt: 0n,
+        klikniecia: 0,
+        wyswietlenia: 0,
+      };
       dzien.koszt += koszt;
       dzien.klikniecia += klikniecia;
       dzien.wyswietlenia += wyswietlenia;
@@ -66,49 +73,84 @@ function podsumujZrodlo(rows, { od, do: doDnia, dzis, stan, preferowanaWaluta, n
     if (row.kampaniaId) {
       const klucz = `${row.polaczenieId ?? ''}|${row.kampaniaId}|${row.waluta ?? waluta ?? ''}`;
       const k = kampaniaMap.get(klucz) ?? {
-        polaczenieId: row.polaczenieId ?? null, kampaniaId: row.kampaniaId,
-        nazwa: row.nazwa ?? row.kampaniaId, waluta: row.waluta ?? waluta,
-        koszt: 0n, klikniecia: 0, wyswietlenia: 0, emituje: false,
+        polaczenieId: row.polaczenieId ?? null,
+        kampaniaId: row.kampaniaId,
+        nazwa: row.nazwa ?? row.kampaniaId,
+        waluta: row.waluta ?? waluta,
+        koszt: 0n,
+        klikniecia: 0,
+        wyswietlenia: 0,
+        emituje: false,
       };
       k.koszt += koszt;
       k.klikniecia += klikniecia;
       k.wyswietlenia += wyswietlenia;
-      if (nazwaZrodla === 'meta' && row.dzien >= granicaEmisji && row.dzien <= dzis
-        && (koszt > 0n || wyswietlenia > 0)) k.emituje = true;
+      if (nazwaZrodla === 'meta' && row.dzien >= granicaEmisji && row.dzien <= dzis && (koszt > 0n || wyswietlenia > 0))
+        k.emituje = true;
       kampaniaMap.set(klucz, k);
     }
   }
 
-  const dni = [...dzienMap.values()].sort((a, b) => a.dzien.localeCompare(b.dzien)).map((d) => ({
-    ...d, koszt: kwota(d.koszt), wstepny: d.dzien >= granicaWstepnych && d.dzien <= dzis,
-  }));
+  const dni = [...dzienMap.values()]
+    .sort((a, b) => a.dzien.localeCompare(b.dzien))
+    .map((d) => ({
+      ...d,
+      koszt: kwota(d.koszt),
+      wstepny: d.dzien >= granicaWstepnych && d.dzien <= dzis,
+    }));
   const kampanie = [...kampaniaMap.values()].map((k) => ({ ...k, koszt: kwota(k.koszt) }));
   return {
-    stan: obecnyStan, stanDanych: wybrane.length ? 'dane' : 'brak danych',
-    waluta, koszt: maDane ? kwota(sumaKosztu) : null,
-    klikniecia: maDane ? sumaKlikniec : null, wyswietlenia: maDane ? sumaWyswietlen : null,
+    stan: obecnyStan,
+    stanDanych: wybrane.length ? 'dane' : 'brak danych',
+    waluta,
+    koszt: maDane ? kwota(sumaKosztu) : null,
+    klikniecia: maDane ? sumaKlikniec : null,
+    wyswietlenia: maDane ? sumaWyswietlen : null,
     ctr: maDane && sumaWyswietlen ? sumaKlikniec / sumaWyswietlen : null,
-    cpc: maDane && sumaKlikniec ? kwota((sumaKosztu + BigInt(Math.floor(sumaKlikniec / 2))) / BigInt(sumaKlikniec)) : null,
+    cpc:
+      maDane && sumaKlikniec ? kwota((sumaKosztu + BigInt(Math.floor(sumaKlikniec / 2))) / BigInt(sumaKlikniec)) : null,
     powody: {
       koszt: maDane ? null : powodKosztu,
-      ctr: !maDane ? powodKosztu : (sumaWyswietlen ? null : 'BRAK_MIANOWNIKA'),
-      cpc: !maDane ? powodKosztu : (sumaKlikniec ? null : 'BRAK_MIANOWNIKA'),
+      ctr: !maDane ? powodKosztu : sumaWyswietlen ? null : 'BRAK_MIANOWNIKA',
+      cpc: !maDane ? powodKosztu : sumaKlikniec ? null : 'BRAK_MIANOWNIKA',
     },
-    dni, kampanie, emitujace: kampanie.filter((k) => k.emituje).length,
+    dni,
+    kampanie,
+    emitujace: kampanie.filter((k) => k.emituje).length,
     _kosztGrosze: maDane ? sumaKosztu : null,
   };
 }
 
-export function podsumujReklamy({ google = [], meta = [], transakcje = [], zamowienia,
-  stany = {}, od, do: doDnia, waluta = null, dzis }) {
-  const g = podsumujZrodlo(google, { od, do: doDnia, dzis, stan: stany.ga4 ?? stany.google,
-    preferowanaWaluta: waluta, nazwaZrodla: 'google' });
-  const m = podsumujZrodlo(meta, { od, do: doDnia, dzis, stan: stany.meta,
-    preferowanaWaluta: waluta, nazwaZrodla: 'meta' });
+export function podsumujReklamy({
+  google = [],
+  meta = [],
+  transakcje = [],
+  zamowienia,
+  stany = {},
+  od,
+  do: doDnia,
+  waluta = null,
+  dzis,
+}) {
+  const g = podsumujZrodlo(google, {
+    od,
+    do: doDnia,
+    dzis,
+    stan: stany.ga4 ?? stany.google,
+    preferowanaWaluta: waluta,
+    nazwaZrodla: 'google',
+  });
+  const m = podsumujZrodlo(meta, {
+    od,
+    do: doDnia,
+    dzis,
+    stan: stany.meta,
+    preferowanaWaluta: waluta,
+    nazwaZrodla: 'meta',
+  });
   const tx = transakcje.filter((row) => wOkresie(row, od, doDnia) && row.transactionId);
-  const kluczTransakcji = (polaczenieId, transactionId) => JSON.stringify([
-    polaczenieId == null ? null : String(polaczenieId), String(transactionId),
-  ]);
+  const kluczTransakcji = (polaczenieId, transactionId) =>
+    JSON.stringify([polaczenieId == null ? null : String(polaczenieId), String(transactionId)]);
   const zamowieniaPoId = new Map();
   for (const row of zamowienia ?? []) {
     const id = String(row.zrodloId ?? row.transactionId ?? '');
@@ -135,8 +177,11 @@ export function podsumujReklamy({ google = [], meta = [], transakcje = [], zamow
     const zamowienie = dopasowane.length === 1 ? dopasowane[0] : null;
     const status = String(zamowienie?.status ?? '').toLowerCase();
     const nieaktywne = /anul|cancel|zwrot|refund/.test(status);
-    if (!zamowienie || nieaktywne
-      || (zamowienie.waluta && (row.waluta ?? g.waluta) && zamowienie.waluta !== (row.waluta ?? g.waluta))) {
+    if (
+      !zamowienie ||
+      nieaktywne ||
+      (zamowienie.waluta && (row.waluta ?? g.waluta) && zamowienie.waluta !== (row.waluta ?? g.waluta))
+    ) {
       niepotwierdzone += 1;
       continue;
     }
@@ -146,25 +191,37 @@ export function podsumujReklamy({ google = [], meta = [], transakcje = [], zamow
     if (zamowienie.kwotaBrutto == null) brakKwotyBrutto = true;
     else przychodBruttoOms += grosze(zamowienie.kwotaBrutto);
   }
-  const maTx = g.stan !== 'niepodłączone' && g.stan !== 'brak uprawnień'
-    && g.powody.koszt !== 'ROZNE_WALUTY' && (g.dni.length > 0 || tx.length > 0);
+  const maTx =
+    g.stan !== 'niepodłączone' &&
+    g.stan !== 'brak uprawnień' &&
+    g.powody.koszt !== 'ROZNE_WALUTY' &&
+    (g.dni.length > 0 || tx.length > 0);
   g.przychodGa4 = maTx ? kwota(przychodGa4) : null;
   g.konwersjeGa4 = maTx ? widziane.size : null;
   g.przychodOms = maTx && zamowienia !== undefined && !brakKwotyNetto ? kwota(przychodOms) : null;
-  g.przychodBruttoOms = maTx && zamowienia !== undefined && !brakKwotyBrutto
-    ? kwota(przychodBruttoOms) : null;
+  g.przychodBruttoOms = maTx && zamowienia !== undefined && !brakKwotyBrutto ? kwota(przychodBruttoOms) : null;
   g.konwersjeOms = maTx && zamowienia !== undefined ? konwersjeOms : null;
   g.niepotwierdzone = maTx && zamowienia !== undefined ? niepotwierdzone : null;
-  g.roasGa4 = g._kosztGrosze && g.przychodGa4 !== null
-    ? zaokraglij(Number(przychodGa4), Number(g._kosztGrosze)) : null;
-  g.roasOms = g._kosztGrosze && g.przychodOms !== null
-    ? zaokraglij(Number(przychodOms), Number(g._kosztGrosze)) : null;
-  g.powody.przychodGa4 = maTx ? null : (g.stan === 'niepodłączone' ? 'NIEPODLACZONE' : 'BRAK_DANYCH');
-  g.powody.przychodOms = zamowienia === undefined ? 'BRAK_MAPOWANIA'
-    : !maTx ? g.powody.przychodGa4 : brakKwotyNetto ? 'BRAK_KWOTY_NETTO' : null;
+  g.roasGa4 = g._kosztGrosze && g.przychodGa4 !== null ? zaokraglij(Number(przychodGa4), Number(g._kosztGrosze)) : null;
+  g.roasOms = g._kosztGrosze && g.przychodOms !== null ? zaokraglij(Number(przychodOms), Number(g._kosztGrosze)) : null;
+  g.powody.przychodGa4 = maTx ? null : g.stan === 'niepodłączone' ? 'NIEPODLACZONE' : 'BRAK_DANYCH';
+  g.powody.przychodOms =
+    zamowienia === undefined
+      ? 'BRAK_MAPOWANIA'
+      : !maTx
+        ? g.powody.przychodGa4
+        : brakKwotyNetto
+          ? 'BRAK_KWOTY_NETTO'
+          : null;
   g.powody.roasGa4 = g.roasGa4 === null ? (g._kosztGrosze === 0n ? 'BRAK_MIANOWNIKA' : g.powody.koszt) : null;
-  g.powody.roasOms = g.roasOms === null ? (g.przychodOms === null ? g.powody.przychodOms
-    : (g._kosztGrosze === 0n ? 'BRAK_MIANOWNIKA' : g.powody.koszt)) : null;
+  g.powody.roasOms =
+    g.roasOms === null
+      ? g.przychodOms === null
+        ? g.powody.przychodOms
+        : g._kosztGrosze === 0n
+          ? 'BRAK_MIANOWNIKA'
+          : g.powody.koszt
+      : null;
 
   m.przychodOms = null;
   m.przychodBruttoOms = null;
@@ -178,11 +235,22 @@ export function podsumujReklamy({ google = [], meta = [], transakcje = [], zamow
     ? { koszt: null, waluta: null, powod: 'ROZNE_WALUTY' }
     : dostepne.length === 0
       ? { koszt: null, waluta: null, powod: 'BRAK_DANYCH' }
-      : { koszt: kwota(dostepne.reduce((suma, zrodlo) => suma + zrodlo._kosztGrosze, 0n)),
-        waluta: dostepne[0].waluta, powod: null };
+      : {
+          koszt: kwota(dostepne.reduce((suma, zrodlo) => suma + zrodlo._kosztGrosze, 0n)),
+          waluta: dostepne[0].waluta,
+          powod: null,
+        };
   delete g._kosztGrosze;
   delete m._kosztGrosze;
-  return { okres: { od, do: doDnia }, google: g, meta: m, lacznie,
+  return {
+    okres: { od, do: doDnia },
+    google: g,
+    meta: m,
+    lacznie,
     dni: [...g.dni.map((d) => ({ ...d, zrodlo: 'google' })), ...m.dni.map((d) => ({ ...d, zrodlo: 'meta' }))],
-    kampanie: [...g.kampanie.map((k) => ({ ...k, zrodlo: 'google' })), ...m.kampanie.map((k) => ({ ...k, zrodlo: 'meta' }))] };
+    kampanie: [
+      ...g.kampanie.map((k) => ({ ...k, zrodlo: 'google' })),
+      ...m.kampanie.map((k) => ({ ...k, zrodlo: 'meta' })),
+    ],
+  };
 }

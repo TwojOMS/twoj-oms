@@ -1,6 +1,9 @@
 import { wymagajZakresu } from '../zakres.js';
 import {
-  obslugaZamowieniaZKarty, obslugaZamowieniaPoNumerze, obslugaDostawy, obslugaStanuWysylki,
+  obslugaZamowieniaZKarty,
+  obslugaZamowieniaPoNumerze,
+  obslugaDostawy,
+  obslugaStanuWysylki,
 } from '../../api-panelu/trasy/api-zamowienia-z-karty.js';
 import { obslugaSprzedazy } from '../../api-panelu/trasy/api-sprzedaz.js';
 

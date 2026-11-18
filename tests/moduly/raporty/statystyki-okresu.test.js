@@ -4,26 +4,42 @@ import { zamowieniaOkresu } from '../../pomoc/testowe-reguly-raportow.js';
 import { listaZamowien } from '../../../src/oms/db/zamowienia.js';
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 
 let kolejny = 0;
 const wstaw = (d = {}) => {
   kolejny += 1;
   const w = {
-    sklep: 'swietlik', zrodlo_id: kolejny, numer: `N${kolejny}`,
-    metoda_wysylki: 'dpd', metoda_wysylki_nazwa: null, pobranie: 0, b2b: 0, indywidualne: 0,
-    metoda_platnosci: 'BLIK', kwota_brutto: '100.00',
+    sklep: 'swietlik',
+    zrodlo_id: kolejny,
+    numer: `N${kolejny}`,
+    metoda_wysylki: 'dpd',
+    metoda_wysylki_nazwa: null,
+    pobranie: 0,
+    b2b: 0,
+    indywidualne: 0,
+    metoda_platnosci: 'BLIK',
+    kwota_brutto: '100.00',
     klient_json: JSON.stringify({ email: 'k@klient.pl', first_name: 'Jan' }),
-    klient_reczny_json: null, oplacone_at: '2026-08-13T06:00:00Z', wyslane_at: null,
-    anulowane: 0, anulowane_recznie: null, utworzone_at: '2026-08-13T06:00:00Z', ...d,
+    klient_reczny_json: null,
+    oplacone_at: '2026-08-13T06:00:00Z',
+    wyslane_at: null,
+    anulowane: 0,
+    anulowane_recznie: null,
+    utworzone_at: '2026-08-13T06:00:00Z',
+    ...d,
   };
-  db.prepare(`INSERT INTO zamowienia
+  db.prepare(
+    `INSERT INTO zamowienia
     (sklep, zrodlo_id, numer, metoda_wysylki, metoda_wysylki_nazwa, pobranie, b2b, indywidualne,
      metoda_platnosci, kwota_brutto, klient_json, klient_reczny_json, oplacone_at, wyslane_at,
      anulowane, anulowane_recznie, utworzone_at)
     VALUES (@sklep,@zrodlo_id,@numer,@metoda_wysylki,@metoda_wysylki_nazwa,@pobranie,@b2b,
             @indywidualne,@metoda_platnosci,@kwota_brutto,@klient_json,@klient_reczny_json,
-            @oplacone_at,@wyslane_at,@anulowane,@anulowane_recznie,@utworzone_at)`).run(w);
+            @oplacone_at,@wyslane_at,@anulowane,@anulowane_recznie,@utworzone_at)`,
+  ).run(w);
   return db.prepare('SELECT id FROM zamowienia WHERE zrodlo_id = ?').get(w.zrodlo_id).id;
 };
 
@@ -34,8 +50,8 @@ const wstaw = (d = {}) => {
 // za NIEOPŁACONE, czyli stan nieosiągalny na produkcji.
 const wplata = (id, { kwota = '100.00', data, zrodlo = 'sklep', metoda = 'BLIK' } = {}) => {
   db.prepare(
-    'INSERT INTO platnosci (zamowienie_id, kwota, data, metoda, uwaga, zrodlo, utworzona_at)'
-    + ' VALUES (?,?,?,?,NULL,?,?)',
+    'INSERT INTO platnosci (zamowienie_id, kwota, data, metoda, uwaga, zrodlo, utworzona_at)' +
+      ' VALUES (?,?,?,?,NULL,?,?)',
   ).run(id, kwota, data, metoda, zrodlo, data);
 };
 
@@ -59,8 +75,11 @@ describe('zamowieniaOkresu — okno', () => {
   it('granice zakresu są WŁĄCZNE', () => {
     wstaw({ utworzone_at: '2026-08-01T06:00:00Z', numer: 'PIERWSZY' });
     wstaw({ utworzone_at: '2026-08-31T06:00:00Z', numer: 'OSTATNI' });
-    expect(zamowieniaOkresu(db, SIERPIEN).map((z) => z.numer).sort())
-      .toEqual(['OSTATNI', 'PIERWSZY']);
+    expect(
+      zamowieniaOkresu(db, SIERPIEN)
+        .map((z) => z.numer)
+        .sort(),
+    ).toEqual(['OSTATNI', 'PIERWSZY']);
   });
 });
 
@@ -91,13 +110,16 @@ describe('zamowieniaOkresu — wykluczenia', () => {
 describe('zamowieniaOkresu — nazwy pozycji dla ekspresu', () => {
   it('dokleja nazwy pozycji, jednym zapytaniem dla całego zakresu', () => {
     const id = wstaw({ numer: 'Z-EKSPRESEM' });
-    db.prepare(`INSERT INTO pozycje (zamowienie_id, zrodlo_id, nazwa, ilosc, cena_brutto)
-                VALUES (?, 1, 'Realizacja ekspresowa', 1, '49.00')`).run(id);
-    db.prepare(`INSERT INTO pozycje (zamowienie_id, zrodlo_id, nazwa, ilosc, cena_brutto)
-                VALUES (?, 2, 'Szablon Hamptons', 1, '99.00')`).run(id);
+    db.prepare(
+      `INSERT INTO pozycje (zamowienie_id, zrodlo_id, nazwa, ilosc, cena_brutto)
+                VALUES (?, 1, 'Realizacja ekspresowa', 1, '49.00')`,
+    ).run(id);
+    db.prepare(
+      `INSERT INTO pozycje (zamowienie_id, zrodlo_id, nazwa, ilosc, cena_brutto)
+                VALUES (?, 2, 'Szablon Hamptons', 1, '99.00')`,
+    ).run(id);
     const [z] = zamowieniaOkresu(db, SIERPIEN);
-    expect(z.pozycje.map((p) => p.nazwa).sort())
-      .toEqual(['Realizacja ekspresowa', 'Szablon Hamptons']);
+    expect(z.pozycje.map((p) => p.nazwa).sort()).toEqual(['Realizacja ekspresowa', 'Szablon Hamptons']);
   });
 
   it('zamówienie bez pozycji ma pustą tablicę, nie undefined', () => {
@@ -147,10 +169,14 @@ describe('zamowieniaOkresu — `oplacone_at` jest wartością EFEKTYWNĄ, tą sa
   // podnosi próg, więc wpłata na samą kwotę sklepową NIE domyka zamówienia.
   it('pozycja dopisana ręcznie podnosi próg — wpłata na kwotę sklepową nie domyka', () => {
     const id = wstaw({ numer: 'Z-DOPISKIEM', kwota_brutto: '100.00' });
-    db.prepare(`INSERT INTO pozycje (zamowienie_id, zrodlo_id, nazwa, ilosc, cena_brutto, zrodlo)
-                VALUES (?, 1, 'Szablon Hamptons', 1, '100.00', 'sklep')`).run(id);
-    db.prepare(`INSERT INTO pozycje (zamowienie_id, zrodlo_id, nazwa, ilosc, cena_brutto, zrodlo)
-                VALUES (?, NULL, 'Dodatkowy szablon', 1, '50.00', 'reczna')`).run(id);
+    db.prepare(
+      `INSERT INTO pozycje (zamowienie_id, zrodlo_id, nazwa, ilosc, cena_brutto, zrodlo)
+                VALUES (?, 1, 'Szablon Hamptons', 1, '100.00', 'sklep')`,
+    ).run(id);
+    db.prepare(
+      `INSERT INTO pozycje (zamowienie_id, zrodlo_id, nazwa, ilosc, cena_brutto, zrodlo)
+                VALUES (?, NULL, 'Dodatkowy szablon', 1, '50.00', 'reczna')`,
+    ).run(id);
     wplata(id, { kwota: '100.00', data: '2026-08-13T06:00:00Z' });
     expect(zamowieniaOkresu(db, SIERPIEN)[0].oplacone_at).toBeNull();
 

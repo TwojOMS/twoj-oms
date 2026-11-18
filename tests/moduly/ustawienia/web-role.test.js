@@ -31,7 +31,13 @@ describe('ekran Role i uprawnienia', () => {
     const { db, app } = panelZKontami();
     ustawUprawnienia(db, kontoPoLoginie(db, 'ewa').id, ['ustawienia']);
     const ewa = jako(db, 'ewa');
-    for (const [metoda, url] of [['GET', '/ustawienia/role'], ['POST', '/ustawienia/role'], ['POST', '/ustawienia/role/nowa'], ['POST', '/ustawienia/role/produkcja/nazwa'], ['POST', '/ustawienia/role/produkcja/usun']]) {
+    for (const [metoda, url] of [
+      ['GET', '/ustawienia/role'],
+      ['POST', '/ustawienia/role'],
+      ['POST', '/ustawienia/role/nowa'],
+      ['POST', '/ustawienia/role/produkcja/nazwa'],
+      ['POST', '/ustawienia/role/produkcja/usun'],
+    ]) {
       const r = metoda === 'GET' ? await get(app, url, ewa) : await post(app, url, ewa, { nazwa: 'x' });
       expect(r.statusCode, url).toBe(403);
     }
@@ -41,7 +47,8 @@ describe('ekran Role i uprawnienia', () => {
 
   it('jeden zapis macierzy przepisuje role i ich konta; Administratora nie da się odznaczyć; nieznany ekran po cichu odpada', async () => {
     const { db, app, admin } = panelZKontami();
-    const r = await post(app, '/ustawienia/role', admin, { odcisk: odciskMacierzy(db),
+    const r = await post(app, '/ustawienia/role', admin, {
+      odcisk: odciskMacierzy(db),
       rola: ['administrator', 'sprzedaz', 'produkcja'],
       uprawnienie: ['sprzedaz:magazyn', 'produkcja:zamowienia', 'produkcja:nieznany', 'administrator:zamowienia'],
     });
@@ -57,10 +64,18 @@ describe('ekran Role i uprawnienia', () => {
   it('formularz z rolą, której już nie ma, daje 404 bez częściowego zapisu; rola spoza formularza zostaje nietknięta', async () => {
     const { db, app, admin } = panelZKontami();
     const przed = [...rolaPoKluczu(db, 'sprzedaz').ekrany].sort();
-    const r = await post(app, '/ustawienia/role', admin, { odcisk: odciskMacierzy(db), rola: ['sprzedaz', 'r-nieistnieje'], uprawnienie: ['sprzedaz:magazyn'] });
+    const r = await post(app, '/ustawienia/role', admin, {
+      odcisk: odciskMacierzy(db),
+      rola: ['sprzedaz', 'r-nieistnieje'],
+      uprawnienie: ['sprzedaz:magazyn'],
+    });
     expect(r.statusCode).toBe(404);
     expect([...rolaPoKluczu(db, 'sprzedaz').ekrany].sort()).toEqual(przed);
-    const tylkoSprzedaz = await post(app, '/ustawienia/role', admin, { odcisk: odciskMacierzy(db), rola: 'sprzedaz', uprawnienie: 'sprzedaz:magazyn' });
+    const tylkoSprzedaz = await post(app, '/ustawienia/role', admin, {
+      odcisk: odciskMacierzy(db),
+      rola: 'sprzedaz',
+      uprawnienie: 'sprzedaz:magazyn',
+    });
     expect(tylkoSprzedaz.statusCode).toBe(302);
     expect(rolaPoKluczu(db, 'produkcja').ekrany.has('zamowienia')).toBe(true);
   });
@@ -79,7 +94,9 @@ describe('ekran Role i uprawnienia', () => {
       expect(blad.body).toContain('pas-uprzedzenie');
     }
     expect(listaRol(db)).toHaveLength(4);
-    expect((await post(app, '/ustawienia/role/nowa', admin, { nazwa: 'Inna', kopiujZ: 'r-nieistnieje' })).statusCode).toBe(404);
+    expect(
+      (await post(app, '/ustawienia/role/nowa', admin, { nazwa: 'Inna', kopiujZ: 'r-nieistnieje' })).statusCode,
+    ).toBe(404);
   });
 
   it('zmienia nazwę roli; Administratora nie można przemianować; nieznana rola 404', async () => {

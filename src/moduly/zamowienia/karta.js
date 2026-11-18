@@ -1,6 +1,16 @@
 import { ekranOdmowyKarty } from './odmowa-karty.js';
 import { etykietyStatusow } from '../../oms/db/statusy.js';
-import { pobierzZamowienie, potwierdzWplate, dopiszLog, zapiszFaktyStatusu, zapiszNadpisanieWysylki, przywrocMetodeWysylkiZeSklepu, zapiszKomentarzWewnetrzny, ostatniWpisLogu, zapiszTerminWysylkiRecznego } from '../../oms/db/zamowienia.js';
+import {
+  pobierzZamowienie,
+  potwierdzWplate,
+  dopiszLog,
+  zapiszFaktyStatusu,
+  zapiszNadpisanieWysylki,
+  przywrocMetodeWysylkiZeSklepu,
+  zapiszKomentarzWewnetrzny,
+  ostatniWpisLogu,
+  zapiszTerminWysylkiRecznego,
+} from '../../oms/db/zamowienia.js';
 import { parsujDateWysylki, recznyTermin } from '../../domena/termin-wysylki.js';
 import { dzienWarszawa } from '../../domena/format-daty.js';
 import { AKCJA_LOGU as AKCJA_ALLEGRO_PRZESYLKA } from '../wysylka/services/przesylki-allegro.js';
@@ -28,12 +38,57 @@ import { klientPoNip, klientPoId, dopiszKlienta, zapiszKlienta } from '../../oms
 import { zmienUstalenia } from './services/rabat.js';
 import { parsujWplate } from '../../domena/platnosci.js';
 import { dodajWplateReczna, usunWplateReczna } from '../../oms/db/platnosci.js';
-import {teraz,AKCJA_ALLEGRO_PROBA,allegroWymagaOdpytania,miniaturyEkranu,ktoKlikal,sprzedawcaSpecyfikacji,daneKarty,KATALOG_WIDOKOW,fragment} from './wspolne.js';
+import {
+  teraz,
+  AKCJA_ALLEGRO_PROBA,
+  allegroWymagaOdpytania,
+  miniaturyEkranu,
+  ktoKlikal,
+  sprzedawcaSpecyfikacji,
+  daneKarty,
+  KATALOG_WIDOKOW,
+  fragment,
+} from './wspolne.js';
 export function registerKartaRoutes(app, kontekst) {
-const {db,config,poller,nadanie,faktura,proforma,kurierzy,gus,syncSklep,wiadomosciCzynne,przesylkiAllegro,stanyKanalow,zdrowie,fakturaAllegro,fakturaHurtem,doczytanieKsef,powrotKarty,adresPowrotuNaKarte,wczytajListe,statusyDlaKarty,OKNO_OSTRZEZEN_PRZESYLEK_DNI,zbierzOstrzezenia,wyborWiadomosci,daneWiadomosci,renderujKarte,renderujNowe,magazynEkranu,niesiePolaFormularza,opisZmian,kopiujDaneFakturyDoWysylki,pozycjaZadania,zWynikami,magazynDlaKarty}=kontekst;
-app.get('/zamowienia/:id', async (req, reply) => {
+  const {
+    db,
+    config,
+    poller,
+    nadanie,
+    faktura,
+    proforma,
+    kurierzy,
+    gus,
+    syncSklep,
+    wiadomosciCzynne,
+    przesylkiAllegro,
+    stanyKanalow,
+    zdrowie,
+    fakturaAllegro,
+    fakturaHurtem,
+    doczytanieKsef,
+    powrotKarty,
+    adresPowrotuNaKarte,
+    wczytajListe,
+    statusyDlaKarty,
+    OKNO_OSTRZEZEN_PRZESYLEK_DNI,
+    zbierzOstrzezenia,
+    wyborWiadomosci,
+    daneWiadomosci,
+    renderujKarte,
+    renderujNowe,
+    magazynEkranu,
+    niesiePolaFormularza,
+    opisZmian,
+    kopiujDaneFakturyDoWysylki,
+    pozycjaZadania,
+    zWynikami,
+    magazynDlaKarty,
+  } = kontekst;
+  app.get('/zamowienia/:id', async (req, reply) => {
     let z = pobierzZamowienie(db, Number(req.params.id));
-    if (!z) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, Number(req.params.id)), 404);
+    if (!z)
+      return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, Number(req.params.id)), 404);
     // Dołączone nie ma własnej karty — jest częścią głównego (pozycje pokazuje karta głównego).
     if (z.scalone_do) return reply.redirect(`/zamowienia/${z.scalone_do}`);
 
@@ -54,7 +109,7 @@ app.get('/zamowienia/:id', async (req, reply) => {
     // Ponowny odczyt WYLACZNIE po zapisaniu numeru: karta renderuje sie z obiektu wczytanego
     // wyzej, wiec bez tego numer siedzialby w bazie, a sekcja faktury byla by pusta az do
     // przeladowania strony (ta sama pulapka, co przy przesylkach Allegro nizej).
-    if (doczytanieKsef && await doczytanieKsef.dlaFaktury(z.faktura, z.id)) {
+    if (doczytanieKsef && (await doczytanieKsef.dlaFaktury(z.faktura, z.id))) {
       z = pobierzZamowienie(db, z.id);
     }
 
@@ -99,9 +154,12 @@ app.get('/zamowienia/:id', async (req, reply) => {
     // wystarczylo kilkadziesiat sekund, a zamowienia Allegro zostawaly bez ani jednej
     // przesylki, mimo numerow po stronie Allegro.
     // Dlawik godzinowy zostaje bez zmian: reguly ograniczaja CZAS ZYCIA, dlawik TEMPO.
-    if (przesylkiAllegro && umiejetnosciZamowienia(z).wysylkaPlatformy
-      && wartoPytacAllegroONumery(z, { maPrzesylke: (z.przesylki ?? []).length > 0, teraz: new Date().toISOString() })
-      && allegroWymagaOdpytania(db, z.id)) {
+    if (
+      przesylkiAllegro &&
+      umiejetnosciZamowienia(z).wysylkaPlatformy &&
+      wartoPytacAllegroONumery(z, { maPrzesylke: (z.przesylki ?? []).length > 0, teraz: new Date().toISOString() }) &&
+      allegroWymagaOdpytania(db, z.id)
+    ) {
       // Znacznik proby PRZED wywolaniem, a nie po nim: proba ma sie liczyc TAKZE wtedy, gdy
       // Allegro odpowie bledem albo nie odpowie wcale — inaczej dlawik nie objalby dokladnie
       // tych dwoch przypadkow, w ktorych boli najbardziej (awaria = zapytanie przy kazdym
@@ -109,10 +167,12 @@ app.get('/zamowienia/:id', async (req, reply) => {
       // Nieudany zapis znacznika odpuszczamy tak samo, jak kazdy inny zapis przy renderowaniu
       // karty (zapiszLubOdpusc): karta ma sie otworzyc, choćby dysk byl pelny — kosztem
       // dlawika, ktory wtedy po prostu nie dziala.
-      zapiszLubOdpusc(() => dopiszLog(db, z.id, {
-        akcja: AKCJA_ALLEGRO_PROBA,
-        wynik: 'panel zapytał Allegro o numery listów tego zamówienia',
-      }));
+      zapiszLubOdpusc(() =>
+        dopiszLog(db, z.id, {
+          akcja: AKCJA_ALLEGRO_PROBA,
+          wynik: 'panel zapytał Allegro o numery listów tego zamówienia',
+        }),
+      );
       try {
         // Ponowny odczyt WYLACZNIE po dopisaniu wiersza: karta renderuje sie z obiektu
         // wczytanego wyzej, wiec bez tego numer siedzialby w bazie, a sekcja paczek na
@@ -194,12 +254,19 @@ app.get('/zamowienia/:id', async (req, reply) => {
     }
     return renderujKarte(req, reply, z, dodatkiKarty);
   });
-app.post('/zamowienia/:id/dane/gus', async (req, reply) => {
+  app.post('/zamowienia/:id/dane/gus', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
-    if (!z) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id, { kotwica: 'faktura' }), 404);
+    if (!z)
+      return ekranOdmowyKarty(
+        reply,
+        'Nie ma takiego zamówienia',
+        adresPowrotuNaKarte(req, id, { kotwica: 'faktura' }),
+        404,
+      );
     // Klucz z pliku albo z Ustawień, sprawdzany przy każdym żądaniu (zapis działa bez restartu).
-    if (!gusDostepny(gus)) return ekranOdmowyKarty(reply, KOMUNIKAT_BRAK_GUS, adresPowrotuNaKarte(req, id, { kotwica: 'faktura' }), 503);
+    if (!gusDostepny(gus))
+      return ekranOdmowyKarty(reply, KOMUNIKAT_BRAK_GUS, adresPowrotuNaKarte(req, id, { kotwica: 'faktura' }), 503);
 
     // NIP bierzemy Z FORMULARZA, nie z bazy: operator zwykle właśnie go wpisał albo poprawił,
     // a jeszcze nie zapisał. Branie z bazy pytałoby o STARY numer i cicho oddawało nie tę firmę.
@@ -228,37 +295,52 @@ app.post('/zamowienia/:id/dane/gus', async (req, reply) => {
     if (!firma) {
       dopiszLog(db, id, { akcja: 'dane.gus', wynik: `GUS: nie znaleziono firmy o NIP ${nip}.` });
       return renderujKarte(req, reply, z, {
-        komunikatGus: { rodzaj: 'brak', tekst: `GUS nie zna firmy o NIP ${nip}. Sprawdź numer albo wpisz dane ręcznie.` },
+        komunikatGus: {
+          rodzaj: 'brak',
+          tekst: `GUS nie zna firmy o NIP ${nip}. Sprawdź numer albo wpisz dane ręcznie.`,
+        },
       });
     }
 
     dopiszLog(db, id, {
       akcja: 'dane.gus',
-      wynik: `GUS (${ktoKlikal(req)}): pobrano „${firma.firma}" (NIP ${firma.nip ?? nip}, REGON ${firma.regon ?? '—'}) `
-        + '— dane WSTAWIONE DO FORMULARZA, nic jeszcze nie zapisano.',
+      wynik:
+        `GUS (${ktoKlikal(req)}): pobrano „${firma.firma}" (NIP ${firma.nip ?? nip}, REGON ${firma.regon ?? '—'}) ` +
+        '— dane WSTAWIONE DO FORMULARZA, nic jeszcze nie zapisano.',
     });
     return renderujKarte(req, reply, z, {
       daneZGus: firma,
       komunikatGus: {
         rodzaj: 'ok',
-        tekst: `GUS: ${firma.firma}${firma.regon ? ` (REGON ${firma.regon})` : ''}. `
-          + 'Sprawdź dane i kliknij „Zapisz" — dopóki tego nie zrobisz, nic się nie zmieniło.',
+        tekst:
+          `GUS: ${firma.firma}${firma.regon ? ` (REGON ${firma.regon})` : ''}. ` +
+          'Sprawdź dane i kliknij „Zapisz" — dopóki tego nie zrobisz, nic się nie zmieniło.',
       },
     });
   });
-app.post('/zamowienia/:id/dane/kopiuj-do-wysylki', async (req, reply) => {
+  app.post('/zamowienia/:id/dane/kopiuj-do-wysylki', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
-    if (!z) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id, { kotwica: 'wysylka' }), 404);
+    if (!z)
+      return ekranOdmowyKarty(
+        reply,
+        'Nie ma takiego zamówienia',
+        adresPowrotuNaKarte(req, id, { kotwica: 'wysylka' }),
+        404,
+      );
     try {
       kopiujDaneFakturyDoWysylki(id, z, req);
     } catch (e) {
       dopiszLog(db, id, { akcja: 'dane.kopiuj', wynik: `BŁĄD: ${e.message}` });
-      return ekranOdmowyKarty(reply, `Nie udało się skopiować danych: ${komunikatDlaOperatora(e)}`, adresPowrotuNaKarte(req, id, { kotwica: 'wysylka' }));
+      return ekranOdmowyKarty(
+        reply,
+        `Nie udało się skopiować danych: ${komunikatDlaOperatora(e)}`,
+        adresPowrotuNaKarte(req, id, { kotwica: 'wysylka' }),
+      );
     }
     return reply.redirect(adresPowrotuNaKarte(req, id, { kotwica: 'wysylka' }));
   });
-app.post('/zamowienia/:id/status', async (req, reply) => {
+  app.post('/zamowienia/:id/status', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
     if (!z) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
@@ -269,10 +351,17 @@ app.post('/zamowienia/:id/status', async (req, reply) => {
     if (odmowa) return ekranOdmowyKarty(reply, odmowa, adresPowrotuNaKarte(req, id));
 
     try {
-      zapiszFaktyStatusu(db, id, { ...faktyDlaStatusu(z, docelowy, { powod: req.body?.powod ?? null }), kto: req.konto?.login ?? ktoKlikal(req) });
+      zapiszFaktyStatusu(db, id, {
+        ...faktyDlaStatusu(z, docelowy, { powod: req.body?.powod ?? null }),
+        kto: req.konto?.login ?? ktoKlikal(req),
+      });
     } catch (e) {
       dopiszLog(db, id, { akcja: 'status.reczny', wynik: `BŁĄD: ${e.message}` });
-      return ekranOdmowyKarty(reply, `Nie udało się zmienić statusu: ${komunikatDlaOperatora(e)}`, adresPowrotuNaKarte(req, id));
+      return ekranOdmowyKarty(
+        reply,
+        `Nie udało się zmienić statusu: ${komunikatDlaOperatora(e)}`,
+        adresPowrotuNaKarte(req, id),
+      );
     }
 
     // Log zapisuje status FAKTYCZNIE OSIAGNIETY, a nie sam wybor — i to nie jest kosmetyka.
@@ -281,19 +370,32 @@ app.post('/zamowienia/:id/status', async (req, reply) => {
     const osiagniety = wyliczStatus(pobierzZamowienie(db, id));
     dopiszLog(db, id, {
       akcja: 'status.reczny',
-      wynik: `Ręcznie (${ktoKlikal(req)}): wybrano „${etykietyStatusow(db)[docelowy]}" — zapisane fakty; `
-        + `status po zmianie: ${etykietyStatusow(db)[osiagniety]}`
-        + `${docelowy === 'zwrot' && req.body?.powod ? `; powód zwrotu: ${String(req.body.powod).trim()}` : ''}.`,
+      wynik:
+        `Ręcznie (${ktoKlikal(req)}): wybrano „${etykietyStatusow(db)[docelowy]}" — zapisane fakty; ` +
+        `status po zmianie: ${etykietyStatusow(db)[osiagniety]}` +
+        `${docelowy === 'zwrot' && req.body?.powod ? `; powód zwrotu: ${String(req.body.powod).trim()}` : ''}.`,
     });
     if (syncSklep) await syncSklep.odeslijStatus(id);
     return reply.redirect(adresPowrotuNaKarte(req, id));
   });
-app.post('/zamowienia/:id/wiadomosc/:temat', async (req, reply) => {
+  app.post('/zamowienia/:id/wiadomosc/:temat', async (req, reply) => {
     const id = Number(req.params.id);
-    if (!pobierzZamowienie(db, id)) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id, { kotwica: 'wiadomosci' }), 404);
+    if (!pobierzZamowienie(db, id))
+      return ekranOdmowyKarty(
+        reply,
+        'Nie ma takiego zamówienia',
+        adresPowrotuNaKarte(req, id, { kotwica: 'wiadomosci' }),
+        404,
+      );
     // Pytamy przy każdym żądaniu — poczta zapisana w Ustawieniach po starcie działa bez restartu.
     const wiadomosci = wiadomosciCzynne();
-    if (!wiadomosci) return ekranOdmowyKarty(reply, 'Poczta nie jest skonfigurowana — wiadomości panel nie wyśle.', adresPowrotuNaKarte(req, id, { kotwica: 'wiadomosci' }), 503);
+    if (!wiadomosci)
+      return ekranOdmowyKarty(
+        reply,
+        'Poczta nie jest skonfigurowana — wiadomości panel nie wyśle.',
+        adresPowrotuNaKarte(req, id, { kotwica: 'wiadomosci' }),
+        503,
+      );
 
     try {
       await wiadomosci.wyslij(id, String(req.params.temat), { ktoKlikal: ktoKlikal(req) });
@@ -303,13 +405,18 @@ app.post('/zamowienia/:id/wiadomosc/:temat', async (req, reply) => {
       // Odmowa serwera poczty (znacznik z uslugi, kod nodemailera) dostaje zdanie z kodu, a konto
       // z dostepem do ekranu poczty — takze wskazowke, gdzie poprawic. Tresc bledu nigdy na ekran.
       const wskazUstawienia = maDostepDoAdresu(req.konto ?? null, EKRAN_POCZTY);
-      return ekranOdmowyKarty(reply, `Wiadomość NIE została wysłana: ${komunikatWysylkiMaila(e, { wskazUstawienia })}`, adresPowrotuNaKarte(req, id, { kotwica: 'wiadomosci' }));
+      return ekranOdmowyKarty(
+        reply,
+        `Wiadomość NIE została wysłana: ${komunikatWysylkiMaila(e, { wskazUstawienia })}`,
+        adresPowrotuNaKarte(req, id, { kotwica: 'wiadomosci' }),
+      );
     }
     return reply.redirect(adresPowrotuNaKarte(req, id, { kotwica: 'wiadomosci' }));
   });
-app.post('/zamowienia/:id/komentarz', async (req, reply) => {
+  app.post('/zamowienia/:id/komentarz', async (req, reply) => {
     const id = Number(req.params.id);
-    if (!pobierzZamowienie(db, id)) return ekranOdmowyKarty(reply, 'Nie ma takiego zamowienia', adresPowrotuNaKarte(req, id), 404);
+    if (!pobierzZamowienie(db, id))
+      return ekranOdmowyKarty(reply, 'Nie ma takiego zamowienia', adresPowrotuNaKarte(req, id), 404);
 
     let komentarz;
     try {
@@ -329,48 +436,71 @@ app.post('/zamowienia/:id/komentarz', async (req, reply) => {
     });
     return reply.redirect(adresPowrotuNaKarte(req, id));
   });
-app.post('/zamowienia/:id/ustalenia', async (req, reply) => {
+  app.post('/zamowienia/:id/ustalenia', async (req, reply) => {
     const id = Number(req.params.id);
-    if (!pobierzZamowienie(db, id)) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id, { kotwica: 'szczegoly' }), 404);
+    if (!pobierzZamowienie(db, id))
+      return ekranOdmowyKarty(
+        reply,
+        'Nie ma takiego zamówienia',
+        adresPowrotuNaKarte(req, id, { kotwica: 'szczegoly' }),
+        404,
+      );
 
     let wynik;
     try {
-      wynik = zmienUstalenia(db, id, {
-        // Pole wyboru: przegladarka przysyla je WYLACZNIE gdy zaznaczone.
-        b2b: req.body?.b2b !== undefined,
-        termin_platnosci: parsujTerminZamowienia(req.body?.termin_platnosci),
-        rabat_procent: req.body?.rabat_procent,
-      }, kontekst.opcjeZw); // Pozycja „zw” przeliczana rabatem zapisuje się tylko przy TwojeFaktury
+      wynik = zmienUstalenia(
+        db,
+        id,
+        {
+          // Pole wyboru: przegladarka przysyla je WYLACZNIE gdy zaznaczone.
+          b2b: req.body?.b2b !== undefined,
+          termin_platnosci: parsujTerminZamowienia(req.body?.termin_platnosci),
+          rabat_procent: req.body?.rabat_procent,
+        },
+        kontekst.opcjeZw,
+      ); // Pozycja „zw” przeliczana rabatem zapisuje się tylko przy TwojeFaktury
     } catch (e) {
       dopiszLog(db, id, { akcja: 'ustalenia', wynik: `BŁĄD: ${e.message}` });
-      return ekranOdmowyKarty(reply, `Nie udało się zapisać ustaleń: ${komunikatDlaOperatora(e)}`, adresPowrotuNaKarte(req, id, { kotwica: 'szczegoly' }), 400);
+      return ekranOdmowyKarty(
+        reply,
+        `Nie udało się zapisać ustaleń: ${komunikatDlaOperatora(e)}`,
+        adresPowrotuNaKarte(req, id, { kotwica: 'szczegoly' }),
+        400,
+      );
     }
 
     const zlotowki = (gr) => (gr / 100).toFixed(2);
     dopiszLog(db, id, {
       akcja: 'ustalenia',
-      wynik: `Ręcznie (${ktoKlikal(req)}): kanał ${req.body?.b2b !== undefined ? 'B2B' : 'ręczne'}, `
-        + `termin ${ETYKIETY_TERMINU[String(req.body?.termin_platnosci ?? '').trim()] ?? 'nieuzgodniony'}, `
-        + `rabat ${wynik.rabat}%.`
+      wynik:
+        `Ręcznie (${ktoKlikal(req)}): kanał ${req.body?.b2b !== undefined ? 'B2B' : 'ręczne'}, ` +
+        `termin ${ETYKIETY_TERMINU[String(req.body?.termin_platnosci ?? '').trim()] ?? 'nieuzgodniony'}, ` +
+        `rabat ${wynik.rabat}%.` +
         // ⚠️ DZIENNIK MUSI POWIEDZIEC, CO SIE STALO Z PIENIEDZMI. Sam „rabat 30%" nie tlumaczy,
         // dlaczego zamowienie jest warte inna kwote niz wczoraj — a to jest jedyne miejsce
         // w panelu, gdzie kwota zamowienia zmienia sie bez dotykania pozycji.
-        + (wynik.zmienione.length
+        (wynik.zmienione.length
           ? ` Przeliczono ${wynik.zmienione.length} poz.: ${zlotowki(wynik.sumaPrzedGr)} zł → ${zlotowki(wynik.sumaPoGr)} zł.`
-          : ' Żadnej pozycji nie przeliczono.')
-        + (wynik.pominiete.length
-          ? ` Pominięto ${wynik.pominiete.length} poz. z ceną wpisaną ręcznie: `
-            + `${wynik.pominiete.map((p) => `„${p.nazwa}"`).join(', ')}.`
+          : ' Żadnej pozycji nie przeliczono.') +
+        (wynik.pominiete.length
+          ? ` Pominięto ${wynik.pominiete.length} poz. z ceną wpisaną ręcznie: ` +
+            `${wynik.pominiete.map((p) => `„${p.nazwa}"`).join(', ')}.`
           : ''),
     });
     return reply.redirect(adresPowrotuNaKarte(req, id, { kotwica: 'szczegoly' }));
   });
-// Ręczna data wysyłki („najpóźniej do”) — puste pole = powrót do standardowego terminu.
-// Reguła terminu i walidacja dnia mieszkają w domenie (termin-wysylki.js); trasa tylko parsuje i zapisuje.
-app.post('/zamowienia/:id/termin-wysylki', async (req, reply) => {
+  // Ręczna data wysyłki („najpóźniej do”) — puste pole = powrót do standardowego terminu.
+  // Reguła terminu i walidacja dnia mieszkają w domenie (termin-wysylki.js); trasa tylko parsuje i zapisuje.
+  app.post('/zamowienia/:id/termin-wysylki', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
-    if (!z) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id, { kotwica: 'szczegoly' }), 404);
+    if (!z)
+      return ekranOdmowyKarty(
+        reply,
+        'Nie ma takiego zamówienia',
+        adresPowrotuNaKarte(req, id, { kotwica: 'szczegoly' }),
+        404,
+      );
 
     // „Przywróć standardowy termin” to drugi przycisk TEGO SAMEGO formularza (`przywroc=1`):
     // wtedy pole daty, choć przyszło wypełnione, nie liczy się.
@@ -378,20 +508,30 @@ app.post('/zamowienia/:id/termin-wysylki', async (req, reply) => {
     const bylo = recznyTermin(z);
     // Ta sama data jeszcze raz (np. „Zapisz” bez zmiany przy minionej dacie) — nic się nie dzieje;
     // inaczej odmowa „wcześniejsza niż dziś” dotyczyłaby daty, której nikt nie zmieniał.
-    if ((String(surowe ?? '').trim() || null) === bylo) return reply.redirect(adresPowrotuNaKarte(req, id, { kotwica: 'szczegoly' }));
+    if ((String(surowe ?? '').trim() || null) === bylo)
+      return reply.redirect(adresPowrotuNaKarte(req, id, { kotwica: 'szczegoly' }));
 
     let dzien;
     try {
       dzien = parsujDateWysylki(surowe, dzienWarszawa(new Date().toISOString()));
     } catch (e) {
       // Zła data to błędny formularz, nie awaria — bez wpisu w logu, jak inne odmowy walidacji tej karty.
-      return ekranOdmowyKarty(reply, `Nie zapisano daty wysyłki: ${komunikatDlaOperatora(e)}`, adresPowrotuNaKarte(req, id, { kotwica: 'szczegoly' }));
+      return ekranOdmowyKarty(
+        reply,
+        `Nie zapisano daty wysyłki: ${komunikatDlaOperatora(e)}`,
+        adresPowrotuNaKarte(req, id, { kotwica: 'szczegoly' }),
+      );
     }
     // ⚠️ PO WYSYŁCE BEZ ZMIAN — inaczej spóźnioną wysyłkę dałoby się
     // „poprawić” po fakcie, a statystyka terminowości przestałaby mówić prawdę. Jedyna blokada stoi
     // w zapisie (`wyslane_at IS NULL` w UPDATE), więc łapie też paczkę nadaną po otwarciu karty.
     if (!zapiszTerminWysylkiRecznego(db, id, dzien)) {
-      return ekranOdmowyKarty(reply, 'Zamówienie jest już wysłane — daty wysyłki nie da się zmienić.', adresPowrotuNaKarte(req, id, { kotwica: 'szczegoly' }), 409);
+      return ekranOdmowyKarty(
+        reply,
+        'Zamówienie jest już wysłane — daty wysyłki nie da się zmienić.',
+        adresPowrotuNaKarte(req, id, { kotwica: 'szczegoly' }),
+        409,
+      );
     }
     const naEkran = (d) => d.split('-').reverse().join('.');
     dopiszLog(db, id, {
@@ -402,10 +542,16 @@ app.post('/zamowienia/:id/termin-wysylki', async (req, reply) => {
     });
     return reply.redirect(adresPowrotuNaKarte(req, id, { kotwica: 'szczegoly' }));
   });
-app.post('/zamowienia/:id/klient/zapamietaj', async (req, reply) => {
+  app.post('/zamowienia/:id/klient/zapamietaj', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
-    if (!z) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id, { kotwica: 'faktura' }), 404);
+    if (!z)
+      return ekranOdmowyKarty(
+        reply,
+        'Nie ma takiego zamówienia',
+        adresPowrotuNaKarte(req, id, { kotwica: 'faktura' }),
+        404,
+      );
 
     const f = daneFaktury(z);
     const a = adresOdbiorcy(z) ?? {};
@@ -419,9 +565,7 @@ app.post('/zamowienia/:id/klient/zapamietaj', async (req, reply) => {
     // to oplata za tamta jedna przesylke, nie ustalenie. Kupon darmowej wysylki dawal klientowi
     // „wysylka gratis” na stale, koszt null — 0,00, dwie paczki po 19,00 — stale 38,00.
     // Koszt zostaje pusty, a „Wstaw dane” podstawia kwote domyslna z Ustawien.
-    const metodaNowego = !istniejacy && Object.hasOwn(DOSTAWY, String(z.metoda_wysylki ?? ''))
-      ? z.metoda_wysylki
-      : '';
+    const metodaNowego = !istniejacy && Object.hasOwn(DOSTAWY, String(z.metoda_wysylki ?? '')) ? z.metoda_wysylki : '';
 
     let dane;
     try {
@@ -429,9 +573,19 @@ app.post('/zamowienia/:id/klient/zapamietaj', async (req, reply) => {
         klucz: istniejacy?.klucz ?? '',
         nazwa: f.firma || a.nazwa || z.numer,
         nip: f.nip,
-        f_firma: f.firma, f_nip: f.nip, f_ulica: f.ulica, f_kod: f.kod, f_miasto: f.miasto, f_email: f.email,
-        w_nazwa: a.nazwa, w_firma: a.company, w_ulica: a.ulica, w_kod: a.kod, w_miasto: a.miasto,
-        w_telefon: a.telefon, w_email: a.email,
+        f_firma: f.firma,
+        f_nip: f.nip,
+        f_ulica: f.ulica,
+        f_kod: f.kod,
+        f_miasto: f.miasto,
+        f_email: f.email,
+        w_nazwa: a.nazwa,
+        w_firma: a.company,
+        w_ulica: a.ulica,
+        w_kod: a.kod,
+        w_miasto: a.miasto,
+        w_telefon: a.telefon,
+        w_email: a.email,
         chce_fakture: z.chce_fakture ? 'on' : '',
         // ⚠️ Dostawa i jej koszt u ISTNIEJACEGO klienta z karty, nie z zamowienia: na karte i tak
         // nie trafiaja (`daneNabywcyNaKarcie`), a walidacja ponizej odbijala 400 „Nie znam sposobu
@@ -447,7 +601,11 @@ app.post('/zamowienia/:id/klient/zapamietaj', async (req, reply) => {
         komentarz: istniejacy?.komentarz ?? '',
       });
     } catch (e) {
-      return ekranOdmowyKarty(reply, `Nie udało się zapamiętać klienta: ${komunikatDlaOperatora(e)}`, adresPowrotuNaKarte(req, id, { kotwica: 'faktura' }));
+      return ekranOdmowyKarty(
+        reply,
+        `Nie udało się zapamiętać klienta: ${komunikatDlaOperatora(e)}`,
+        adresPowrotuNaKarte(req, id, { kotwica: 'faktura' }),
+      );
     }
 
     let kluczWBazie; // do dziennika: klucz z bazy, nie wyliczony z nazwy (baza dokłada „-2” przy kolizji)
@@ -464,24 +622,30 @@ app.post('/zamowienia/:id/klient/zapamietaj', async (req, reply) => {
       }
     } catch (e) {
       dopiszLog(db, id, { akcja: 'klient.zapamietaj', wynik: `BŁĄD: ${e.message}` });
-      return ekranOdmowyKarty(reply, `Nie udało się zapamiętać klienta: ${komunikatDlaOperatora(e)}`, adresPowrotuNaKarte(req, id, { kotwica: 'faktura' }));
+      return ekranOdmowyKarty(
+        reply,
+        `Nie udało się zapamiętać klienta: ${komunikatDlaOperatora(e)}`,
+        adresPowrotuNaKarte(req, id, { kotwica: 'faktura' }),
+      );
     }
 
     dopiszLog(db, id, {
       akcja: 'klient.zapamietaj',
-      wynik: `Ręcznie (${ktoKlikal(req)}): ${istniejacy ? 'uaktualniono' : 'dopisano'} `
-        + `klienta B2B „${dane.nazwa}" (${kluczWBazie}${dane.nip ? `, NIP ${dane.nip}` : ', bez NIP-u'}) `
-        + 'z danych tego zamówienia.',
+      wynik:
+        `Ręcznie (${ktoKlikal(req)}): ${istniejacy ? 'uaktualniono' : 'dopisano'} ` +
+        `klienta B2B „${dane.nazwa}" (${kluczWBazie}${dane.nip ? `, NIP ${dane.nip}` : ', bez NIP-u'}) ` +
+        'z danych tego zamówienia.',
     });
     return reply.redirect(adresPowrotuNaKarte(req, id, { kotwica: 'faktura' }));
   });
-app.post('/zamowienia/:id/sync-sklep', async (req, reply) => {
+  app.post('/zamowienia/:id/sync-sklep', async (req, reply) => {
     const id = Number(req.params.id);
-    if (!pobierzZamowienie(db, id)) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
+    if (!pobierzZamowienie(db, id))
+      return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
     if (syncSklep) await syncSklep.odeslijStatus(id);
     return reply.redirect(adresPowrotuNaKarte(req, id));
   });
-app.post('/zamowienia/:id/wysylka/metoda', async (req, reply) => {
+  app.post('/zamowienia/:id/wysylka/metoda', async (req, reply) => {
     const id = Number(req.params.id);
     // ⚠️ ZAMOWIENIE JEST TU POTRZEBNE, a nie tylko sprawdzane. Bramka w domenie musi znac
     // KANAL (`z.sklep`), bo odmowa dla Allegro nie moze byc kluczowana metoda — metoda to
@@ -501,8 +665,11 @@ app.post('/zamowienia/:id/wysylka/metoda', async (req, reply) => {
     // sam nie umie wyjsc. Bramka (wielkie litery, pominiecie przy metodach bez punktu)
     // siedzi w domenie, nie tutaj.
     const { nadpisanie, blad } = sprawdzZmianeMetody(
-      String(req.body?.metoda ?? '').trim(), czyPobranieZFormularza, req.body?.kwota_pobrania,
-      req.body?.punkt_odbioru, zam,
+      String(req.body?.metoda ?? '').trim(),
+      czyPobranieZFormularza,
+      req.body?.kwota_pobrania,
+      req.body?.punkt_odbioru,
+      zam,
     );
     // Bledny formularz, a nie awaria — wiec bez wpisu w logu, tak samo jak przy parsujPaczke.
     if (blad) return ekranOdmowyKarty(reply, blad, adresPowrotuNaKarte(req, id), 400);
@@ -514,18 +681,24 @@ app.post('/zamowienia/:id/wysylka/metoda', async (req, reply) => {
       zapiszNadpisanieWysylki(db, id, nadpisanie);
     } catch (e) {
       dopiszLog(db, id, { akcja: 'wysylka.metoda', wynik: `BŁĄD: ${e.message}` });
-      return ekranOdmowyKarty(reply, `Nie udało się zmienić metody wysyłki: ${komunikatDlaOperatora(e)}`, adresPowrotuNaKarte(req, id), 400);
+      return ekranOdmowyKarty(
+        reply,
+        `Nie udało się zmienić metody wysyłki: ${komunikatDlaOperatora(e)}`,
+        adresPowrotuNaKarte(req, id),
+        400,
+      );
     }
     dopiszLog(db, id, {
       akcja: 'wysylka.metoda',
       // Log nazywa OBIE decyzje — dostawe i pobranie — bo sama nazwa metody
       // nie mowi juz nic o tym, czy kurier ma cos zainkasowac.
-      wynik: `Ręcznie (${ktoKlikal(req)}): metoda wysyłki ustawiona ręcznie na ${nadpisanie.metoda}`
-        + `${nadpisanie.pobranie ? ` za pobraniem, kwota pobrania ${nadpisanie.kwota_pobrania} zł` : ' (bez pobrania)'}.`,
+      wynik:
+        `Ręcznie (${ktoKlikal(req)}): metoda wysyłki ustawiona ręcznie na ${nadpisanie.metoda}` +
+        `${nadpisanie.pobranie ? ` za pobraniem, kwota pobrania ${nadpisanie.kwota_pobrania} zł` : ' (bez pobrania)'}.`,
     });
     return reply.redirect(adresPowrotuNaKarte(req, id));
   });
-app.post('/zamowienia/:id/wysylka/przywroc', async (req, reply) => {
+  app.post('/zamowienia/:id/wysylka/przywroc', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
     if (!z) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
@@ -537,16 +710,20 @@ app.post('/zamowienia/:id/wysylka/przywroc', async (req, reply) => {
       przywrocMetodeWysylkiZeSklepu(db, id);
     } catch (e) {
       dopiszLog(db, id, { akcja: 'wysylka.przywroc', wynik: `BŁĄD: ${e.message}` });
-      return ekranOdmowyKarty(reply, `Nie udało się przywrócić metody: ${komunikatDlaOperatora(e)}`, adresPowrotuNaKarte(req, id), 400);
+      return ekranOdmowyKarty(
+        reply,
+        `Nie udało się przywrócić metody: ${komunikatDlaOperatora(e)}`,
+        adresPowrotuNaKarte(req, id),
+        400,
+      );
     }
     dopiszLog(db, id, {
       akcja: 'wysylka.przywroc',
-      wynik: `Ręcznie (${ktoKlikal(req)}): ręczna metoda wysyłki skasowana — rządzi sklep `
-        + `(${metodaZeSklepu(z)}).`,
+      wynik: `Ręcznie (${ktoKlikal(req)}): ręczna metoda wysyłki skasowana — rządzi sklep ` + `(${metodaZeSklepu(z)}).`,
     });
     return reply.redirect(adresPowrotuNaKarte(req, id));
   });
-app.post('/zamowienia/:id/wplata', async (req, reply) => {
+  app.post('/zamowienia/:id/wplata', async (req, reply) => {
     const id = Number(req.params.id);
     if (!pobierzZamowienie(db, id)) return reply.code(404).send('Nie ma takiego zamówienia');
     let wplata;
@@ -561,9 +738,10 @@ app.post('/zamowienia/:id/wplata', async (req, reply) => {
     });
     return reply.redirect(adresPowrotuNaKarte(req, id));
   });
-app.post('/zamowienia/:id/platnosci', async (req, reply) => {
+  app.post('/zamowienia/:id/platnosci', async (req, reply) => {
     const id = Number(req.params.id);
-    if (!pobierzZamowienie(db, id)) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
+    if (!pobierzZamowienie(db, id))
+      return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
     let wplata;
     try {
       wplata = parsujWplate(req.body);
@@ -575,15 +753,17 @@ app.post('/zamowienia/:id/platnosci', async (req, reply) => {
     dodajWplateReczna(db, id, wplata);
     dopiszLog(db, id, {
       akcja: 'platnosc.dodana',
-      wynik: `Ręcznie (${ktoKlikal(req)}): dopisana wpłata ${wplata.kwota} zł z ${wplata.data}`
-        + `${wplata.metoda ? `, metoda: ${wplata.metoda}` : ''}${wplata.uwaga ? `, uwaga: ${wplata.uwaga}` : ''}`,
+      wynik:
+        `Ręcznie (${ktoKlikal(req)}): dopisana wpłata ${wplata.kwota} zł z ${wplata.data}` +
+        `${wplata.metoda ? `, metoda: ${wplata.metoda}` : ''}${wplata.uwaga ? `, uwaga: ${wplata.uwaga}` : ''}`,
     });
     return reply.redirect(adresPowrotuNaKarte(req, id));
   });
-app.post('/zamowienia/:id/platnosci/:platnoscId/usun', async (req, reply) => {
+  app.post('/zamowienia/:id/platnosci/:platnoscId/usun', async (req, reply) => {
     const id = Number(req.params.id);
     const platnoscId = Number(req.params.platnoscId);
-    if (!pobierzZamowienie(db, id)) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
+    if (!pobierzZamowienie(db, id))
+      return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
     let usunieta;
     try {
       usunieta = usunWplateReczna(db, id, platnoscId);
@@ -592,8 +772,9 @@ app.post('/zamowienia/:id/platnosci/:platnoscId/usun', async (req, reply) => {
     }
     dopiszLog(db, id, {
       akcja: 'platnosc.usunieta',
-      wynik: `Ręcznie (${ktoKlikal(req)}): usunięta wpłata ręczna ${usunieta.kwota} zł`
-        + ` z ${usunieta.data ?? '(bez daty)'}`,
+      wynik:
+        `Ręcznie (${ktoKlikal(req)}): usunięta wpłata ręczna ${usunieta.kwota} zł` +
+        ` z ${usunieta.data ?? '(bez daty)'}`,
     });
     return reply.redirect(adresPowrotuNaKarte(req, id));
   });

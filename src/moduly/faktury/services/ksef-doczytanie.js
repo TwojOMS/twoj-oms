@@ -28,7 +28,11 @@ import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
 // Numer KSeF czyta PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`).
 export function createDoczytanieKsef({
-  db, program: programPodany = null, infakt = null, poNumerzeKsef = null, teraz = () => new Date().toISOString(),
+  db,
+  program: programPodany = null,
+  infakt = null,
+  poNumerzeKsef = null,
+  teraz = () => new Date().toISOString(),
 }) {
   const program = zProgramu({ program: programPodany, infakt });
   /**
@@ -64,7 +68,9 @@ export function createDoczytanieKsef({
       // karty. Numer JEST faktem niezaleznym od tego, czy udalo sie z niego skorzystac.
       try {
         await poNumerzeKsef?.wyslijDoAllegroJesliWolno(zamowienieId);
-      } catch { /* slad zapisuje samo nastepstwo */ }
+      } catch {
+        /* slad zapisuje samo nastepstwo */
+      }
       return true;
     } catch (e) {
       // ⚠️ „PYTALISMY" JEST FAKTEM NIEZALEZNYM OD ODPOWIEDZI. Bez tego zapisu faktura
@@ -78,7 +84,9 @@ export function createDoczytanieKsef({
       try {
         // Z `dokumentId`: wiersz przepięty w trakcie pytania na zastępczą nie dostaje stempla starej.
         zapiszNieudanyOdczytKsef(db, faktura.id, { sprawdzonaAt: teraz(), dokumentId: idDokumentu(faktura) });
-      } catch { /* karta wazniejsza niz slad */ }
+      } catch {
+        /* karta wazniejsza niz slad */
+      }
       return false;
     }
   }

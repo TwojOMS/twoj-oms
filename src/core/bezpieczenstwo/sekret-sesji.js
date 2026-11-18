@@ -27,8 +27,10 @@ export function wczytajSekret(db) {
   const istniejacy = db.prepare('SELECT sekret FROM sekret_sesji WHERE id = 1').get();
   if (istniejacy?.sekret) return odczyt(db, istniejacy.sekret);
 
-  db.prepare('INSERT OR IGNORE INTO sekret_sesji (id, sekret, zmieniony_at) VALUES (1, ?, ?)')
-    .run(doZapisu(db, MIEJSCE, nowySekret()), new Date().toISOString());
+  db.prepare('INSERT OR IGNORE INTO sekret_sesji (id, sekret, zmieniony_at) VALUES (1, ?, ?)').run(
+    doZapisu(db, MIEJSCE, nowySekret()),
+    new Date().toISOString(),
+  );
 
   return odczyt(db, db.prepare('SELECT sekret FROM sekret_sesji WHERE id = 1').get().sekret);
 }
@@ -54,10 +56,12 @@ export function odczytajSekret(db) {
  */
 export function podmienSekret(db) {
   const sekret = nowySekret();
-  db.prepare(`
+  db.prepare(
+    `
     INSERT INTO sekret_sesji (id, sekret, zmieniony_at) VALUES (1, ?, ?)
     ON CONFLICT(id) DO UPDATE SET sekret = excluded.sekret, zmieniony_at = excluded.zmieniony_at
-  `).run(doZapisu(db, MIEJSCE, sekret), new Date().toISOString());
+  `,
+  ).run(doZapisu(db, MIEJSCE, sekret), new Date().toISOString());
   return sekret;
 }
 

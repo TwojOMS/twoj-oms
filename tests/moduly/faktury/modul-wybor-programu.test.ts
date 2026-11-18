@@ -15,13 +15,19 @@ import { zbudujOms } from '../../../src/oms/bootstrap.ts';
 import { szewTwojeFaktury } from '../../../src/moduly/faktury/wczytaj-szew.ts';
 
 const KATALOG = mkdtempSync(join(tmpdir(), 'prz-121-01-'));
-const ENV = { OMS_PROFORMY_KATALOG: KATALOG, OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000' };
+const ENV = {
+  OMS_PROFORMY_KATALOG: KATALOG,
+  OMS_SPRZEDAWCA_NIP: '1234563218',
+  OMS_RACHUNEK: '34109010140000000000000000',
+};
 const PROBA = { ...ENV, OMS_TRYB: 'proba' };
 
 it('zgoda instalacji jest walidowana podczas startu', () => {
   expect(() => wczytajFaktury({ ...ENV, OMS_TWOJEFAKTURY: 'nie' })).toThrow(/OMS_TWOJEFAKTURY/);
   if (!szewTwojeFaktury) {
-    expect(() => wczytajFaktury({ ...ENV, OMS_TWOJEFAKTURY: ' Tak ' })).toThrow(/ta wersja OMS-u nie ma modułu TwojeFaktury/);
+    expect(() => wczytajFaktury({ ...ENV, OMS_TWOJEFAKTURY: ' Tak ' })).toThrow(
+      /ta wersja OMS-u nie ma modułu TwojeFaktury/,
+    );
     return;
   }
   expect(wczytajFaktury({ ...ENV, OMS_TWOJEFAKTURY: ' Tak ' })).toMatchObject({ zgodaTf: true });
@@ -30,55 +36,108 @@ it.each(['proba', 'produkcja'])('wybór z pliku wymaga zgody niezależnie od try
   const env = { ...ENV, OMS_TRYB: tryb, OMS_PROGRAM_FAKTUROWY: 'twojefaktury' };
   expect(() => wczytajFaktury(env)).toThrow(/OMS_PROGRAM_FAKTUROWY.*wkrótce/);
   if (!szewTwojeFaktury) {
-    expect(() => wczytajFaktury({ ...env, OMS_TWOJEFAKTURY: 'tak' })).toThrow(/ta wersja OMS-u nie ma modułu TwojeFaktury/);
+    expect(() => wczytajFaktury({ ...env, OMS_TWOJEFAKTURY: 'tak' })).toThrow(
+      /ta wersja OMS-u nie ma modułu TwojeFaktury/,
+    );
     return;
   }
   const { db, sprobuj } = zbuduj(createModulFaktury(), { ...env, OMS_TWOJEFAKTURY: 'tak' });
-  try { expect(sprobuj().uslugi.programFakturowy.opis.id).toBe('twojefaktury'); }
-  finally { db.close(); }
+  try {
+    expect(sprobuj().uslugi.programFakturowy.opis.id).toBe('twojefaktury');
+  } finally {
+    db.close();
+  }
 });
 const KLUCZ_PLIKU = 'zmyslony-klucz-pliku-prz121-0000000000001';
 const KLUCZ_EKRANU = 'zmyslony-klucz-ekranu-prz121-000000000001';
 const STARE_ZDANIE = 'Fakturowanie inFakt nie jest skonfigurowane.';
-const ZDANIE_USTAWIEN = 'Faktury w OMS-ie są wyłączone — w Ustawienia → Faktury i podatki → Program do faktur wybrano „Brak”.';
+const ZDANIE_USTAWIEN =
+  'Faktury w OMS-ie są wyłączone — w Ustawienia → Faktury i podatki → Program do faktur wybrano „Brak”.';
 const ZDANIE_PLIKU = 'Faktury w OMS-ie są wyłączone — w pliku konfiguracji jest OMS_PROGRAM_FAKTUROWY=brak.';
 // Usługi, które bez programu fakturowego są `null` (jak dziś bez inFaktu).
-const ZALEZNE = ['infakt', 'programFakturowy', 'vies', 'faktura', 'fakturaHurtem', 'fakturyWidok', 'wysylkaKsef', 'automatKsef',
-  'fakturaAllegro', 'doczytanieKsef', 'czuwaczKsef', 'czuwaczArchiwumSprzedazy', 'paczkaDlaBiura'];
+const ZALEZNE = [
+  'infakt',
+  'programFakturowy',
+  'vies',
+  'faktura',
+  'fakturaHurtem',
+  'fakturyWidok',
+  'wysylkaKsef',
+  'automatKsef',
+  'fakturaAllegro',
+  'doczytanieKsef',
+  'czuwaczKsef',
+  'czuwaczArchiwumSprzedazy',
+  'paczkaDlaBiura',
+];
 
 type Uslugi = Record<string, any>;
 type Zbudowany = { uslugi: Uslugi; zegary: { nazwa: string }[]; zdrowie: () => { alarmy: string[]; uwagi: string[] } };
-function zbuduj(modul: ReturnType<typeof createModulFaktury>, env: Record<string, string>,
-  { klucz, wybor }: { klucz?: string; wybor?: string } = {}) {
+function zbuduj(
+  modul: ReturnType<typeof createModulFaktury>,
+  env: Record<string, string>,
+  { klucz, wybor }: { klucz?: string; wybor?: string } = {},
+) {
   const db = openOmsDb();
   if (klucz) zapiszKonfiguracjeIntegracji(db, 'infakt', { ustawienia: {}, sekrety: { apiKey: klucz } });
   if (wybor) zapiszKonfiguracjeIntegracji(db, 'program_fakturowy', { ustawienia: { program: wybor }, sekrety: {} });
   // Kanał (zmyślony) — żeby czuwacz KSeF i faktura Allegro miały z czego powstać, gdy jest program.
-  const obce: Record<string, unknown> = { 'kanaly.klienciKanalow': { lampy: {} }, 'kanaly.config': { definicje: [], sklepy: {} } };
-  const usluga = <T>(m: string, n: string) => {
-    const k = `${m}.${n}`; if (!Object.hasOwn(obce, k)) throw new Error(k); return obce[k] as T;
+  const obce: Record<string, unknown> = {
+    'kanaly.klienciKanalow': { lampy: {} },
+    'kanaly.config': { definicje: [], sklepy: {} },
   };
-  const sprobuj = () => modul.zbuduj({ db, konfiguracja: modul.konfiguracja(env), teraz: () => new Date('2026-10-27T10:00:00Z'),
-    log: () => {}, usluga } as any) as unknown as Zbudowany;
+  const usluga = <T>(m: string, n: string) => {
+    const k = `${m}.${n}`;
+    if (!Object.hasOwn(obce, k)) throw new Error(k);
+    return obce[k] as T;
+  };
+  const sprobuj = () =>
+    modul.zbuduj({
+      db,
+      konfiguracja: modul.konfiguracja(env),
+      teraz: () => new Date('2026-10-27T10:00:00Z'),
+      log: () => {},
+      usluga,
+    } as any) as unknown as Zbudowany;
   return { db, sprobuj };
 }
 
 function programTestowy() {
   const metody = Object.fromEntries(METODY_OBOWIAZKOWE.map((m) => [m, async () => null]));
-  return { ...metody, opis: {
-    id: 'rachmistrz', nazwa: { mianownik: 'Rachmistrz', dopelniacz: 'Rachmistrza', miejscownik: 'Rachmistrzu', narzednik: 'Rachmistrzem' },
-    regulaVat: 'wierszami', zdolnosci: [], wystawienieWysylaDoKsef: false,
-    limity: { zadanieMs: 30000, najdluzszaListaMs: 120000, stronaListy: 25, sufitStron: 40, rownolegleStron: 4 },
-    adres: 'https://rachmistrz.invalid', ekran: '/ustawienia/integracje/rachmistrz' } };
+  return {
+    ...metody,
+    opis: {
+      id: 'rachmistrz',
+      nazwa: {
+        mianownik: 'Rachmistrz',
+        dopelniacz: 'Rachmistrza',
+        miejscownik: 'Rachmistrzu',
+        narzednik: 'Rachmistrzem',
+      },
+      regulaVat: 'wierszami',
+      zdolnosci: [],
+      wystawienieWysylaDoKsef: false,
+      limity: { zadanieMs: 30000, najdluzszaListaMs: 120000, stronaListy: 25, sufitStron: 40, rownolegleStron: 4 },
+      adres: 'https://rachmistrz.invalid',
+      ekran: '/ustawienia/integracje/rachmistrz',
+    },
+  };
 }
 
 let siec: ReturnType<typeof vi.fn>;
 function bezSieci() {
-  siec = vi.fn(async () => new Response(JSON.stringify({ metainfo: { count: 0, total_count: 0 }, entities: [] }),
-    { status: 200, headers: { 'content-type': 'application/json' } }));
+  siec = vi.fn(
+    async () =>
+      new Response(JSON.stringify({ metainfo: { count: 0, total_count: 0 }, entities: [] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+  );
   vi.stubGlobal('fetch', siec);
 }
-afterEach(() => { vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 function bezProgramu(z: Zbudowany) {
   for (const n of ZALEZNE) expect(z.uslugi[n], n).toBeNull();
@@ -103,7 +162,11 @@ describe('moduł faktur według wyboru modułu', () => {
 
   it('to samo + OMS_PROGRAM_FAKTUROWY=brak → żadnej usługi z programu, zero zegarów faktur, zero sieci', async () => {
     bezSieci();
-    const { db, sprobuj } = zbuduj(createModulFaktury(), { ...ENV, INFAKT_API_KEY: KLUCZ_PLIKU, OMS_PROGRAM_FAKTUROWY: 'brak' });
+    const { db, sprobuj } = zbuduj(createModulFaktury(), {
+      ...ENV,
+      INFAKT_API_KEY: KLUCZ_PLIKU,
+      OMS_PROGRAM_FAKTUROWY: 'brak',
+    });
     const z = sprobuj();
     bezProgramu(z);
     expect(z.uslugi.wyborProgramu).toMatchObject({ program: 'brak', zrodlo: 'plik', uwaga: null });
@@ -144,7 +207,9 @@ describe('moduł faktur według wyboru modułu', () => {
     const z = sprobuj();
     zapiszWyborProgramu(db, 'brak');
     zapiszKonfiguracjeIntegracji(db, 'infakt', { ustawienia: {}, sekrety: { apiKey: KLUCZ_EKRANU } });
-    await expect(z.uslugi.konfiguracjaInfaktu.sprawdzPolaczenie()).rejects.toThrow(`${ZDANIE_USTAWIEN} Nic nie poszło do programu.`);
+    await expect(z.uslugi.konfiguracjaInfaktu.sprawdzPolaczenie()).rejects.toThrow(
+      `${ZDANIE_USTAWIEN} Nic nie poszło do programu.`,
+    );
     expect(siec).not.toHaveBeenCalled();
     db.close();
   });
@@ -167,7 +232,8 @@ describe('moduł faktur według wyboru modułu', () => {
     zapiszWyborProgramu(db, 'infakt');
     zapiszKonfiguracjeIntegracji(db, 'infakt', { ustawienia: {}, sekrety: { apiKey: KLUCZ_EKRANU } });
     await expect(z.uslugi.konfiguracjaInfaktu.sprawdzPolaczenie()).rejects.toThrow(
-      'Zapisany program do faktur „inFakt” zadziała po ponownym uruchomieniu OMS-u — do tego czasu faktury są wyłączone. Nic nie poszło do programu.');
+      'Zapisany program do faktur „inFakt” zadziała po ponownym uruchomieniu OMS-u — do tego czasu faktury są wyłączone. Nic nie poszło do programu.',
+    );
     expect(siec).not.toHaveBeenCalled();
     db.close();
   });
@@ -176,17 +242,24 @@ describe('moduł faktur według wyboru modułu', () => {
     const { db, sprobuj } = zbuduj(createModulFaktury(), ENV);
     const z = sprobuj();
     zapiszWyborProgramu(db, 'infakt');
-    expect(z.zdrowie().uwagi).toEqual([STARE_ZDANIE,
-      'Zapisany program do faktur „inFakt” nie ma klucza API — wpisz go w Ustawienia → Integracje → inFakt (/ustawienia/integracje/infakt); faktury ruszą po ponownym uruchomieniu OMS-u.']);
+    expect(z.zdrowie().uwagi).toEqual([
+      STARE_ZDANIE,
+      'Zapisany program do faktur „inFakt” nie ma klucza API — wpisz go w Ustawienia → Integracje → inFakt (/ustawienia/integracje/infakt); faktury ruszą po ponownym uruchomieniu OMS-u.',
+    ]);
     zapiszKonfiguracjeIntegracji(db, 'infakt', { ustawienia: {}, sekrety: { apiKey: KLUCZ_EKRANU } });
-    expect(z.zdrowie().uwagi).toEqual([STARE_ZDANIE,
-      'Zapisany program do faktur „inFakt” zadziała po ponownym uruchomieniu OMS-u — do tego czasu faktury są wyłączone.']);
+    expect(z.zdrowie().uwagi).toEqual([
+      STARE_ZDANIE,
+      'Zapisany program do faktur „inFakt” zadziała po ponownym uruchomieniu OMS-u — do tego czasu faktury są wyłączone.',
+    ]);
     db.close();
   });
 
   it('plik „infakt” + wiersz „brak” → inFakt (plik wygrywa)', () => {
-    const { db, sprobuj } = zbuduj(createModulFaktury(), { ...ENV, INFAKT_API_KEY: KLUCZ_PLIKU, OMS_PROGRAM_FAKTUROWY: ' InFakt ' },
-      { wybor: 'brak' });
+    const { db, sprobuj } = zbuduj(
+      createModulFaktury(),
+      { ...ENV, INFAKT_API_KEY: KLUCZ_PLIKU, OMS_PROGRAM_FAKTUROWY: ' InFakt ' },
+      { wybor: 'brak' },
+    );
     const z = sprobuj();
     expect(z.uslugi.programFakturowy.opis.id).toBe('infakt');
     expect(z.uslugi.wyborProgramu).toMatchObject({ program: 'infakt', zrodlo: 'plik' });
@@ -196,8 +269,10 @@ describe('moduł faktur według wyboru modułu', () => {
   });
 
   it('próba z atrapami + wiersz „brak” → fabryki atrap niewołane; bez wiersza — wołane', () => {
-    const fabryki = () => ({ createInfaktClient: vi.fn(() => ({ atrapa: true, sprawdzPolaczenie: async () => ({}) })),
-      createVies: vi.fn(() => ({ sprawdz: async () => ({ wynik: 'wazny' }) })) });
+    const fabryki = () => ({
+      createInfaktClient: vi.fn(() => ({ atrapa: true, sprawdzPolaczenie: async () => ({}) })),
+      createVies: vi.fn(() => ({ sprawdz: async () => ({ wynik: 'wazny' }) })),
+    });
     const f = fabryki();
     const z = zbuduj(createModulFaktury({ fabryki: f }), PROBA, { wybor: 'brak' });
     bezProgramu(z.sprobuj());
@@ -214,7 +289,10 @@ describe('moduł faktur według wyboru modułu', () => {
 
   it('szew programu (próba) + „brak” z pliku → fabryka programu niewołana', () => {
     const programFakturowy = vi.fn(() => programTestowy());
-    const z = zbuduj(createModulFaktury({ fabryki: { programFakturowy } }), { ...PROBA, OMS_PROGRAM_FAKTUROWY: 'brak' });
+    const z = zbuduj(createModulFaktury({ fabryki: { programFakturowy } }), {
+      ...PROBA,
+      OMS_PROGRAM_FAKTUROWY: 'brak',
+    });
     bezProgramu(z.sprobuj());
     expect(programFakturowy).not.toHaveBeenCalled();
     z.db.close();
@@ -222,17 +300,23 @@ describe('moduł faktur według wyboru modułu', () => {
 
   it('zła wartość w pliku → wczytajFaktury rzuca zdaniem z nazwą zmiennej', () => {
     for (const v of ['infkat', 'twojefaktury', 'Fakturownia2']) {
-      expect(() => wczytajFaktury({ ...ENV, INFAKT_API_KEY: KLUCZ_PLIKU, OMS_PROGRAM_FAKTUROWY: v } as any), v)
-        .toThrow(/^OMS_PROGRAM_FAKTUROWY: /);
+      expect(() => wczytajFaktury({ ...ENV, INFAKT_API_KEY: KLUCZ_PLIKU, OMS_PROGRAM_FAKTUROWY: v } as any), v).toThrow(
+        /^OMS_PROGRAM_FAKTUROWY: /,
+      );
     }
     expect(wczytajFaktury({ ...ENV, OMS_PROGRAM_FAKTUROWY: '' } as any)).toMatchObject({ programZPliku: null });
   });
 
   it('zły zapis („twojefaktury” po wycofaniu wydania) → „brak” + uwaga, bez programu, panel wstaje', () => {
-    const { db, sprobuj } = zbuduj(createModulFaktury(), { ...ENV, INFAKT_API_KEY: KLUCZ_PLIKU }, { wybor: 'twojefaktury' });
+    const { db, sprobuj } = zbuduj(
+      createModulFaktury(),
+      { ...ENV, INFAKT_API_KEY: KLUCZ_PLIKU },
+      { wybor: 'twojefaktury' },
+    );
     const z = sprobuj();
     bezProgramu(z);
-    const uwaga = 'Zapisany program do faktur „twojefaktury” nie działa w tej wersji OMS-u — faktury są wyłączone. Wybierz program ponownie.';
+    const uwaga =
+      'Zapisany program do faktur „twojefaktury” nie działa w tej wersji OMS-u — faktury są wyłączone. Wybierz program ponownie.';
     expect(z.uslugi.wyborProgramu).toMatchObject({ program: 'brak', zrodlo: 'ustawienia', uwaga });
     expect(z.zdrowie().uwagi).toEqual([uwaga]);
     db.close();
@@ -258,7 +342,9 @@ describe('moduł faktur według wyboru modułu', () => {
     await z.uslugi.programFakturowy.listaFaktur({});
     expect(siec).toHaveBeenCalledTimes(1);
     expect(z.uslugi.celeLacznosci()).toEqual({ infakt: null });
-    expect(z.zdrowie().uwagi).toContain('Zapisany program do faktur „Brak” zadziała po ponownym uruchomieniu OMS-u — do tego czasu działa „inFakt”. Automatyczna wysyłka do KSeF już stoi.');
+    expect(z.zdrowie().uwagi).toContain(
+      'Zapisany program do faktur „Brak” zadziała po ponownym uruchomieniu OMS-u — do tego czasu działa „inFakt”. Automatyczna wysyłka do KSeF już stoi.',
+    );
 
     zapiszWyborProgramu(db, 'infakt');
     expect(w.czekaNaRestart()).toBe(false);
@@ -287,17 +373,38 @@ describe('moduł faktur według wyboru modułu', () => {
 });
 
 describe('/health przy „brak” — jak bez wyboru', () => {
-  const ENV_OMS = { OMS_DB_PATH: ':memory:', OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000',
-    OMS_USER: 'operator', OMS_PASS: 'test', OMS_PROFORMY_KATALOG: KATALOG, OMS_ETYKIETY_KATALOG: KATALOG };
+  const ENV_OMS = {
+    OMS_DB_PATH: ':memory:',
+    OMS_SPRZEDAWCA_NIP: '1234563218',
+    OMS_RACHUNEK: '34109010140000000000000000',
+    OMS_USER: 'operator',
+    OMS_PASS: 'test',
+    OMS_PROFORMY_KATALOG: KATALOG,
+    OMS_ETYKIETY_KATALOG: KATALOG,
+  };
   async function zdrowie(env: Record<string, string>) {
     const a = await zbudujOms({ env, teraz: () => new Date('2026-10-27T10:00:00Z') });
     try {
       const r = await a.app.inject('/health');
-      return { kod: r.statusCode, ok: r.json().ok, alarmy: r.json().alarmy, uwagiModulow: a.zdrowie().uwagi, programFakturowy: a.usluga('faktury', 'programFakturowy') };
-    } finally { await a.app.close(); a.db.close(); }
+      return {
+        kod: r.statusCode,
+        ok: r.json().ok,
+        alarmy: r.json().alarmy,
+        uwagiModulow: a.zdrowie().uwagi,
+        programFakturowy: a.usluga('faktury', 'programFakturowy'),
+      };
+    } finally {
+      await a.app.close();
+      a.db.close();
+    }
   }
   it('kod HTTP, ok i alarmy jak z inFaktem bez wyboru; zdanie trafia do uwag', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => { throw new Error('bez sieci'); }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => {
+        throw new Error('bez sieci');
+      }),
+    );
     const dzis = await zdrowie({ ...ENV_OMS, INFAKT_API_KEY: KLUCZ_PLIKU });
     const brak = await zdrowie({ ...ENV_OMS, INFAKT_API_KEY: KLUCZ_PLIKU, OMS_PROGRAM_FAKTUROWY: 'brak' });
     expect(dzis.kod).toBe(200);

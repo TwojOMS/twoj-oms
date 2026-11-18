@@ -23,11 +23,16 @@ const magazyn = () => ({
 });
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
-
-const zapisz = (p) => zapiszProduktSklepowy(db, {
-  wariant_id: '', odczytane_at: '2026-08-11T06:00:00.000Z', ...p,
+beforeEach(() => {
+  db = openOmsDb(':memory:');
 });
+
+const zapisz = (p) =>
+  zapiszProduktSklepowy(db, {
+    wariant_id: '',
+    odczytane_at: '2026-08-11T06:00:00.000Z',
+    ...p,
+  });
 const ileKart = () => db.prepare('SELECT COUNT(*) AS ile FROM karty_produktow').get().ile;
 
 // Trzy oferty Allegro (celowo bez karty), jeden zepsuty wariant (realna robota),
@@ -42,11 +47,14 @@ function lustro() {
 
 describe('grupujPominiete', () => {
   it('grupuje po POWODZIE i liczy pozycje w grupie', () => {
-    const grupy = grupujPominiete([
-      { id: 1, kanal: 'allegro_swietlik', nazwa: 'A', powod: 'kanał „allegro_swietlik" nie zakłada kart' },
-      { id: 2, kanal: 'allegro_swietlik', nazwa: 'B', powod: 'kanał „allegro_swietlik" nie zakłada kart' },
-      { id: 3, kanal: 'swietlik', nazwa: 'C', powod: 'wariant bez rozmiaru' },
-    ], ['pro', 'swietlik']);
+    const grupy = grupujPominiete(
+      [
+        { id: 1, kanal: 'allegro_swietlik', nazwa: 'A', powod: 'kanał „allegro_swietlik" nie zakłada kart' },
+        { id: 2, kanal: 'allegro_swietlik', nazwa: 'B', powod: 'kanał „allegro_swietlik" nie zakłada kart' },
+        { id: 3, kanal: 'swietlik', nazwa: 'C', powod: 'wariant bez rozmiaru' },
+      ],
+      ['pro', 'swietlik'],
+    );
 
     expect(grupy).toHaveLength(2);
     expect(grupy.map((g) => g.ile)).toEqual([1, 2]);
@@ -55,7 +63,10 @@ describe('grupujPominiete', () => {
 
   it('ROBOTA idzie na gore, rzeczy celowe na dol — nawet gdy celowych jest wielokrotnie wiecej', () => {
     const oferty = Array.from({ length: 447 }, (_, i) => ({
-      id: i, kanal: 'allegro_swietlik', nazwa: `oferta ${i}`, powod: 'kanał „allegro_swietlik" nie zakłada kart',
+      id: i,
+      kanal: 'allegro_swietlik',
+      nazwa: `oferta ${i}`,
+      powod: 'kanał „allegro_swietlik" nie zakłada kart',
     }));
     const robota = [{ id: 900, kanal: 'swietlik', nazwa: 'X', powod: 'wariant bez rozmiaru' }];
 
@@ -69,10 +80,13 @@ describe('grupujPominiete', () => {
 
   it('grupa jest CELOWA tylko wtedy, gdy ZADNA jej pozycja nie pochodzi z kanalu sklepowego', () => {
     const [tylkoAllegro] = grupujPominiete([{ id: 1, kanal: 'allegro_swietlik', powod: 'p' }], ['pro', 'swietlik']);
-    const [mieszana] = grupujPominiete([
-      { id: 1, kanal: 'allegro_swietlik', powod: 'p' },
-      { id: 2, kanal: 'swietlik', powod: 'p' },
-    ], ['pro', 'swietlik']);
+    const [mieszana] = grupujPominiete(
+      [
+        { id: 1, kanal: 'allegro_swietlik', powod: 'p' },
+        { id: 2, kanal: 'swietlik', powod: 'p' },
+      ],
+      ['pro', 'swietlik'],
+    );
     const [sklepowa] = grupujPominiete([{ id: 3, kanal: 'pro', powod: 'p' }], ['pro', 'swietlik']);
 
     expect(tylkoAllegro.celowo).toBe(true);
@@ -118,8 +132,10 @@ describe('POST /magazyn/utworz-karty', () => {
     lustro();
     const app = buildOmsServer({ db, config, magazyn: magazyn() });
     const r = await app.inject({
-      method: 'POST', url: '/magazyn/utworz-karty',
-      headers: { authorization: auth.authorization }, payload: {},
+      method: 'POST',
+      url: '/magazyn/utworz-karty',
+      headers: { authorization: auth.authorization },
+      payload: {},
     });
 
     expect(r.statusCode).toBeGreaterThanOrEqual(400);
@@ -192,7 +208,9 @@ describe('powrót na zawężony magazyn z ekranu „pominięte"', () => {
     lustro();
     const app = buildOmsServer({ db, config, magazyn: magazyn() });
     const r = await app.inject({
-      method: 'GET', url: `/magazyn/pominiete?wroc=${encodeURIComponent(ZAWEZENIE)}`, headers: auth,
+      method: 'GET',
+      url: `/magazyn/pominiete?wroc=${encodeURIComponent(ZAWEZENIE)}`,
+      headers: auth,
     });
     expect(odnosnikPowrotu(r.body)).toContain(`href="${ESC}"`);
   });
@@ -203,7 +221,10 @@ describe('powrót na zawężony magazyn z ekranu „pominięte"', () => {
     lustro();
     const app = buildOmsServer({ db, config, magazyn: magazyn() });
     const r = await app.inject({
-      method: 'POST', url: '/magazyn/utworz-karty', headers: auth, payload: { wroc: ZAWEZENIE },
+      method: 'POST',
+      url: '/magazyn/utworz-karty',
+      headers: auth,
+      payload: { wroc: ZAWEZENIE },
     });
     expect(r.statusCode).toBe(200);
     expect(odnosnikPowrotu(r.body)).toContain(`href="${ESC}"`);
@@ -214,7 +235,9 @@ describe('powrót na zawężony magazyn z ekranu „pominięte"', () => {
     const app = buildOmsServer({ db, config, magazyn: magazyn() });
     for (const zly of ['//obcy.example.com/', '/?status=nowe', '/magazyn//obcy']) {
       const r = await app.inject({
-        method: 'GET', url: `/magazyn/pominiete?wroc=${encodeURIComponent(zly)}`, headers: auth,
+        method: 'GET',
+        url: `/magazyn/pominiete?wroc=${encodeURIComponent(zly)}`,
+        headers: auth,
       });
       expect(odnosnikPowrotu(r.body)).toContain('href="/magazyn"');
     }

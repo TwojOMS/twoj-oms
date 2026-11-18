@@ -2,13 +2,9 @@ import { komunikatDlaOperatora } from '../../../domena/bledy.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
 import { ekranOdmowyRaportu } from './odmowa-raportu.js';
 import { kluczOkresu } from '../../../domena/okres-rozliczeniowy.js';
-import {
-  zakresSkrotu, nazwaOkresu, poprzedniOkres, zakresMiesiaca,
-} from '../../../domena/okresy-raportu.js';
+import { zakresSkrotu, nazwaOkresu, poprzedniOkres, zakresMiesiaca } from '../../../domena/okresy-raportu.js';
 import { zl, grosze } from '../../../domena/kwoty.js';
-import {
-  zapiszDaneMiesiaca, daneMiesiaca, rozjazdZus, miesiaceZDanymi,
-} from '../../../oms/db/dane-miesieczne.js';
+import { zapiszDaneMiesiaca, daneMiesiaca, rozjazdZus, miesiaceZDanymi } from '../../../oms/db/dane-miesieczne.js';
 import { rachunekOkresuAsync as rachunek } from '../../../domena/rachunek-zarzadczy.js';
 import { prognozaProgu } from '../../../domena/podatek-skala.js';
 import { wylaczoneModuly } from '../../../oms/db/moduly-opcjonalne.js';
@@ -67,7 +63,11 @@ const SKROTY_ZARZADCZE = ['poprzedni-miesiac', 'q1', 'q2', 'q3', 'q4', 'ten-rok'
  */
 function dzienZParametru(surowa) {
   if (typeof surowa !== 'string' || !WZORZEC_DNIA.test(surowa.trim())) return null;
-  try { kluczOkresu(surowa.trim()); } catch { return null; }
+  try {
+    kluczOkresu(surowa.trim());
+  } catch {
+    return null;
+  }
   return surowa.trim();
 }
 
@@ -91,9 +91,12 @@ export function zarejestrujTrasyFinansow(app, { db, config }) {
   app.get('/finanse', async (req, reply) => {
     // Jedna podłoga dla całego żądania, także dla okresu porównawczego.
     const PODLOGA = config.podlogaKosztow;
-    const rachunekOkresu = (baza, zakres) => rachunek(baza, zakres, {
-      regulySprzedazy: config.regulySprzedazy, podlogaKosztow: PODLOGA, definicje: config.definicje,
-    });
+    const rachunekOkresu = (baza, zakres) =>
+      rachunek(baza, zakres, {
+        regulySprzedazy: config.regulySprzedazy,
+        podlogaKosztow: PODLOGA,
+        definicje: config.definicje,
+      });
     const dzien = dzisiaj();
     let zakres;
     // ——— WYBOR MIESIACA ——————————————————————————————————————————————————————————
@@ -109,7 +112,10 @@ export function zarejestrujTrasyFinansow(app, { db, config }) {
       // w `od`/`do`. Podstawiony miesiac znaczylby, ze operator patrzy na inny okres,
       // niz wpisal, i wyciaga wnioski o pieniadzach z cudzego miesiaca.
       if (!WZORZEC_MIESIACA.test(miesiac)) {
-        return ekranOdmowyRaportu(reply, 'Niepoprawny miesiąc: oczekiwane RRRR-MM (np. 2026-06).', { ekran: 'Finanse', czynnosc: 'policzyć rachunku' });
+        return ekranOdmowyRaportu(reply, 'Niepoprawny miesiąc: oczekiwane RRRR-MM (np. 2026-06).', {
+          ekran: 'Finanse',
+          czynnosc: 'policzyć rachunku',
+        });
       }
       const m = zakresMiesiaca(miesiac);
       return reply.redirect(`/finanse?od=${m.od}&do=${m.do}`, 302);
@@ -120,11 +126,17 @@ export function zarejestrujTrasyFinansow(app, { db, config }) {
       // ⚠️ ZLA DATA I ODWROCONY ZAKRES TO BLAD, NIE PUSTY RACHUNEK — przepuszczone dalej
       // oddaja 200 i zerowy wynik, a zera nikt nie kwestionuje.
       if (!od || !doDnia) {
-        return ekranOdmowyRaportu(reply, 'Niepoprawna data: parametry od i do muszą być '
-          + 'istniejącymi dniami w formacie RRRR-MM-DD.', { ekran: 'Finanse', czynnosc: 'policzyć rachunku' });
+        return ekranOdmowyRaportu(
+          reply,
+          'Niepoprawna data: parametry od i do muszą być ' + 'istniejącymi dniami w formacie RRRR-MM-DD.',
+          { ekran: 'Finanse', czynnosc: 'policzyć rachunku' },
+        );
       }
       if (od > doDnia) {
-        return ekranOdmowyRaportu(reply, 'Niepoprawny zakres: parametr od nie może być późniejszy niż do.', { ekran: 'Finanse', czynnosc: 'policzyć rachunku' });
+        return ekranOdmowyRaportu(reply, 'Niepoprawny zakres: parametr od nie może być późniejszy niż do.', {
+          ekran: 'Finanse',
+          czynnosc: 'policzyć rachunku',
+        });
       }
       zakres = { od, do: doDnia, etykieta: null };
     } else {
@@ -152,9 +164,7 @@ export function zarejestrujTrasyFinansow(app, { db, config }) {
       // w ciche zero, a delta „−100%" wobec okresu, ktorego panel nie zna, wyglada dokladnie
       // tak samo wiarygodnie jak policzona naprawde.
       const zakresWczesniej = poprzedniOkres(zakres);
-      const wczesniej = zakresWczesniej.od.slice(0, 7) >= PODLOGA
-        ? await rachunekOkresu(db, zakresWczesniej)
-        : null;
+      const wczesniej = zakresWczesniej.od.slice(0, 7) >= PODLOGA ? await rachunekOkresu(db, zakresWczesniej) : null;
       // ⚠️ BRAK PODSTAWY DAJE `null`, NIE ZERO — ta sama regula, co w `delty`
       // (`src/domena/agregacja-sprzedazy.js`). „Zostaje" bywa `null` po obu stronach i wtedy
       // porownania nie ma z czego zrobic.
@@ -224,9 +234,12 @@ export function zarejestrujTrasyFinansow(app, { db, config }) {
       // CZLOWIEKA, nie piecsetke. Blad techniczny leci dalej, do logu.
       if (!e?.dlaOperatora) throw e;
       // Brak podłogi to stan nowej instalacji, nie błąd — ekran z pytaniem zamiast zdania w tekście.
-      if (!PODLOGA) return reply.code(400).view('finanse-brak-pokrycia.ejs', {
-        title: 'Finanse', admin: req.konto?.admin === true, powrot: req.url,
-      });
+      if (!PODLOGA)
+        return reply.code(400).view('finanse-brak-pokrycia.ejs', {
+          title: 'Finanse',
+          admin: req.konto?.admin === true,
+          powrot: req.url,
+        });
       // Odmowa to ekran panelu z menu, nie goły tekst (nieznany sklep zamówienia, brak granicy kanału).
       return ekranOdmowyRaportu(reply, e, { ekran: 'Finanse', czynnosc: 'policzyć rachunku' });
     }
@@ -270,7 +283,7 @@ export function zarejestrujTrasyFinansow(app, { db, config }) {
         // wrzesien nie da sie wpisac w sierpniu, wiec ostrzegawcza barwa przy nim uczylaby
         // operatora ignorowac ostrzezenia (ta sama zasada, co przy skrocie prowadzacym
         // zawsze w odmowe).
-        stan: zDanymi.has(klucz) ? 'ok' : (klucz > biezacy ? 'przyszly' : 'brak'),
+        stan: zDanymi.has(klucz) ? 'ok' : klucz > biezacy ? 'przyszly' : 'brak',
         aktywny: klucz === miesiac,
       };
     });
@@ -314,7 +327,9 @@ export function zarejestrujTrasyFinansow(app, { db, config }) {
     // niewlasciwego okresu.
     if (!WZORZEC_MIESIACA.test(req.params.miesiac)) {
       return ekranOdmowyRaportu(reply, 'Niepoprawny miesiąc w adresie (oczekiwane RRRR-MM).', {
-        ekran: 'Finanse', czynnosc: 'pokazać danych miesiąca', powrot: `/finanse/dane/${dzisiaj().slice(0, 7)}`,
+        ekran: 'Finanse',
+        czynnosc: 'pokazać danych miesiąca',
+        powrot: `/finanse/dane/${dzisiaj().slice(0, 7)}`,
       });
     }
     return ekranDanych(reply, req.params.miesiac);
@@ -324,7 +339,9 @@ export function zarejestrujTrasyFinansow(app, { db, config }) {
     const miesiac = String(req.body?.miesiac ?? '');
     if (!WZORZEC_MIESIACA.test(miesiac)) {
       return ekranOdmowyRaportu(reply, 'Niepoprawny miesiąc (oczekiwane RRRR-MM).', {
-        ekran: 'Finanse', czynnosc: 'pokazać danych miesiąca', powrot: `/finanse/dane/${dzisiaj().slice(0, 7)}`,
+        ekran: 'Finanse',
+        czynnosc: 'pokazać danych miesiąca',
+        powrot: `/finanse/dane/${dzisiaj().slice(0, 7)}`,
       });
     }
     try {

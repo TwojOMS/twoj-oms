@@ -15,28 +15,79 @@ let db, app, id, poczta, usluga;
 const get = (url) => app.inject({ method: 'GET', url, headers });
 const post = (url, payload = {}) => app.inject({ method: 'POST', url, headers, payload });
 function paczka(numer = '0000123456789U', kurier = 'dpd', status = 'nadana') {
-  db.prepare('INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(id, kurier, status, numer, db.prepare('SELECT COUNT(*) AS n FROM przesylki').get().n + 1, '2026-10-20T10:00:00Z');
+  db.prepare(
+    'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at) VALUES (?, ?, ?, ?, ?, ?)',
+  ).run(
+    id,
+    kurier,
+    status,
+    numer,
+    db.prepare('SELECT COUNT(*) AS n FROM przesylki').get().n + 1,
+    '2026-10-20T10:00:00Z',
+  );
 }
 beforeEach(async () => {
-  db = openOmsDb(':memory:'); poczta = [];
+  db = openOmsDb(':memory:');
+  poczta = [];
   // Zamówienie zapisywane jak ze sklepu (pełny komplet kolumn) — ten sam katalog lamp co przykład w Ustawieniach.
-  const { klient, dostawa, numer, kwota_brutto, koszt_dostawy_brutto, koszt_dostawy_netto, metoda_wysylki } = przykladoweZamowienie();
+  const { klient, dostawa, numer, kwota_brutto, koszt_dostawy_brutto, koszt_dostawy_netto, metoda_wysylki } =
+    przykladoweZamowienie();
   id = zapiszZamowienie(db, 'reczne', {
-    zrodlo_id: 9001, numer, klient, dostawa, metoda_wysylki, kwota_pobrania: null, chce_fakture: 0, nip: null,
-    kwota_brutto, koszt_dostawy_brutto, koszt_dostawy_netto, status_woo: 'processing', oplacone_at: null, anulowane: 0,
+    zrodlo_id: 9001,
+    numer,
+    klient,
+    dostawa,
+    metoda_wysylki,
+    kwota_pobrania: null,
+    chce_fakture: 0,
+    nip: null,
+    kwota_brutto,
+    koszt_dostawy_brutto,
+    koszt_dostawy_netto,
+    status_woo: 'processing',
+    oplacone_at: null,
+    anulowane: 0,
     utworzone_at: '2026-10-19T09:15:00',
-    pozycje: [{ zrodlo_id: 7001, nazwa: 'Lampa stołowa Grzybek 30 cm', sku: 'LMP-GRZ-30', ilosc: 2, cena_brutto: '189.00',
-      cena_netto: '153.66', brutto_linii: '378.00', netto_linii: '307.32', vat: null }],
+    pozycje: [
+      {
+        zrodlo_id: 7001,
+        nazwa: 'Lampa stołowa Grzybek 30 cm',
+        sku: 'LMP-GRZ-30',
+        ilosc: 2,
+        cena_brutto: '189.00',
+        cena_netto: '153.66',
+        brutto_linii: '378.00',
+        netto_linii: '307.32',
+        vat: null,
+      },
+    ],
   });
-  const config = { auth: { user: 'operator', pass: 'x' }, klienciZbiorczy: [],
-    oprawaPoczty: { podpis: 'Pracownia Przykładowa', footer: 'Stopka przykładowa' } };
-  usluga = createWiadomosci({ db, config, mailer: { sendMail: async (m) => { poczta.push(m); } } });
-  app = buildOmsServer({ db, config, wiadomosci: usluga,
-    poller: { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) } });
+  const config = {
+    auth: { user: 'operator', pass: 'x' },
+    klienciZbiorczy: [],
+    oprawaPoczty: { podpis: 'Pracownia Przykładowa', footer: 'Stopka przykładowa' },
+  };
+  usluga = createWiadomosci({
+    db,
+    config,
+    mailer: {
+      sendMail: async (m) => {
+        poczta.push(m);
+      },
+    },
+  });
+  app = buildOmsServer({
+    db,
+    config,
+    wiadomosci: usluga,
+    poller: { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) },
+  });
   await app.ready();
 });
-afterEach(async () => { await app?.close(); db.close(); });
+afterEach(async () => {
+  await app?.close();
+  db.close();
+});
 
 it('lista i podgląd w Ustawieniach pokazują wysłane zamówienie z jedną przesyłką', async () => {
   expect((await get('/ustawienia/szablony-wiadomosci')).body).toContain('<td>Zamówienie wysłane</td>');
@@ -44,7 +95,9 @@ it('lista i podgląd w Ustawieniach pokazują wysłane zamówienie z jedną prze
   expect(edytor.statusCode).toBe(200);
   expect(edytor.body).toContain('<code>{przesylki}</code>');
   expect(edytor.body).not.toContain('<code>{dane_platnosci}</code>');
-  const r = await get(`${ADRES}?${new URLSearchParams({ podglad: '1', temat: DOMYSLNE.wyslane.temat, tresc: DOMYSLNE.wyslane.tresc })}`);
+  const r = await get(
+    `${ADRES}?${new URLSearchParams({ podglad: '1', temat: DOMYSLNE.wyslane.temat, tresc: DOMYSLNE.wyslane.tresc })}`,
+  );
   expect(r.statusCode).toBe(200);
   expect(r.body).toContain('Twoje zamówienie nr 1024 zostało wysłane.');
   expect(r.body).toContain('0000123456789U');
@@ -58,7 +111,10 @@ it('zapis wymaga bloku przesyłek, przyjmuje edycję bez migracji i stosuje ją 
   expect(brak.statusCode).toBe(400);
   expect(brak.body).toContain('Treść musi zawierać {przesylki}');
   expect(brak.body).not.toContain('Ten mail dotyczy pieniędzy');
-  expect((await post(ADRES, { temat: 'W drodze {numer_zamowienia}', tresc: 'Dzień dobry,\n\n{przesylki}\n\n{podpis}' })).statusCode).toBe(303);
+  expect(
+    (await post(ADRES, { temat: 'W drodze {numer_zamowienia}', tresc: 'Dzień dobry,\n\n{przesylki}\n\n{podpis}' }))
+      .statusCode,
+  ).toBe(303);
   paczka();
   expect((await usluga.podglad(id, 'wyslane')).temat).toBe('W drodze 1024');
   expect((await post(ADRES, { temat: 'T', tresc: '{przesylki}\n\n{dane_platnosci}' })).statusCode).toBe(400);
@@ -99,12 +155,20 @@ it.each(['brak', 'blad', 'w_trakcie', 'do_wyjasnienia'])('odmawia bez żywej prz
 });
 
 it('wszystkie paczki, nieznany kurier bez linku i punkt odbioru; HTML numeru jest escapowany', async () => {
-  paczka('A\"<img src=x>&', 'dpd'); paczka('DRUGA-1', 'nieznany'); paczka('POMIN', 'dpd', 'blad');
-  db.prepare('UPDATE zamowienia SET punkt_odbioru = ?, punkt_odbioru_opis = ? WHERE id = ?').run('BOX01', 'Punkt Przykładowy', id);
+  paczka('A\"<img src=x>&', 'dpd');
+  paczka('DRUGA-1', 'nieznany');
+  paczka('POMIN', 'dpd', 'blad');
+  db.prepare('UPDATE zamowienia SET punkt_odbioru = ?, punkt_odbioru_opis = ? WHERE id = ?').run(
+    'BOX01',
+    'Punkt Przykładowy',
+    id,
+  );
   const p = await usluga.podglad(id, 'wyslane');
   expect(p.tekst).toContain('A\"<img src=x>&');
   expect(p.html).toContain('A&quot;&lt;img src=x&gt;&amp;');
-  expect(p.html).toContain('href="https://tracktrace.dpd.com.pl/parcelDetails?typ=1&amp;p1=A%22%3Cimg%20src%3Dx%3E%26"');
+  expect(p.html).toContain(
+    'href="https://tracktrace.dpd.com.pl/parcelDetails?typ=1&amp;p1=A%22%3Cimg%20src%3Dx%3E%26"',
+  );
   expect(p.html).not.toContain('<img src=x>');
   expect(p.tekst).toContain('DRUGA-1');
   expect(p.tekst).toContain('Punkt Przykładowy');
@@ -115,7 +179,10 @@ it('wszystkie paczki, nieznany kurier bez linku i punkt odbioru; HTML numeru jes
 it('link w HTML jest escapowany niezależnie od wzorca przewoźnika', async () => {
   // Import w teście, nie na górze: na starym kodzie pliku nie ma, a reszta testów ma paść na asercjach.
   const { blokiHtmlWyslane } = await import('../../../src/core/poczta/wyslane-html.js');
-  const html = blokiHtmlWyslane({ przesylki: [{ przewoznik: 'DPD', numer: '1', link: 'https://x.example/?a=1&b="2"' }], punkt: null }).przesylki;
+  const html = blokiHtmlWyslane({
+    przesylki: [{ przewoznik: 'DPD', numer: '1', link: 'https://x.example/?a=1&b="2"' }],
+    punkt: null,
+  }).przesylki;
   expect(html).toContain('href="https://x.example/?a=1&amp;b=&quot;2&quot;"');
   expect(html).not.toContain('b="2"');
 });

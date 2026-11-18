@@ -3,7 +3,10 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
-  createAllegroClient, LIMIT_STRONY, LIMIT_ZAPYTANIA_ZAMOWIEN_MS, LIMIT_ZAPYTANIA_PRZESYLEK_MS,
+  createAllegroClient,
+  LIMIT_STRONY,
+  LIMIT_ZAPYTANIA_ZAMOWIEN_MS,
+  LIMIT_ZAPYTANIA_PRZESYLEK_MS,
 } from '../../src/oms/allegro/client.js';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
@@ -29,9 +32,11 @@ function szpieg(cialo = { checkoutForms: [], totalCount: 0 }) {
 
 describe('klient Allegro', () => {
   it('pyta o zamówienia kursorem updatedAt.gte i przelicza liczbę stron z totalCount', async () => {
-    let uzytyUrl = null; let uzyteNaglowki = null;
+    let uzytyUrl = null;
+    let uzyteNaglowki = null;
     const fetchImpl = async (url, opcje) => {
-      uzytyUrl = url; uzyteNaglowki = opcje.headers;
+      uzytyUrl = url;
+      uzyteNaglowki = opcje.headers;
       return { ok: true, json: async () => ({ checkoutForms: [{ id: 'a' }], totalCount: 130 }) };
     };
     const k = createAllegroClient({ ustawienia, tokeny, fetchImpl });
@@ -70,7 +75,10 @@ describe('klient Allegro', () => {
 
   it('bez kursora pyta od PODŁOGI po dacie zakupu — konto ma 775 zamówień, nie czytamy ich w kółko', async () => {
     let uzytyUrl = null;
-    const fetchImpl = async (url) => { uzytyUrl = url; return { ok: true, json: async () => ({ checkoutForms: [], totalCount: 0 }) }; };
+    const fetchImpl = async (url) => {
+      uzytyUrl = url;
+      return { ok: true, json: async () => ({ checkoutForms: [], totalCount: 0 }) };
+    };
     const k = createAllegroClient({ ustawienia, tokeny, fetchImpl });
 
     await k.pobierzZamowienia({ od: '2026-07-01', kursor: null, strona: 1 });
@@ -152,8 +160,7 @@ describe('klient Allegro', () => {
     const { wywolania, fetchImpl } = szpieg();
     const k = createAllegroClient({ ustawienia, tokeny, fetchImpl });
 
-    await expect(k.pobierzZamowienia({ od: '01.07.2026', kursor: null, strona: 1 }))
-      .rejects.toThrow(/ISO 8601/);
+    await expect(k.pobierzZamowienia({ od: '01.07.2026', kursor: null, strona: 1 })).rejects.toThrow(/ISO 8601/);
     expect(wywolania).toHaveLength(0);
   });
 
@@ -268,7 +275,12 @@ describe('klient Allegro', () => {
     const { fetchImpl } = szpieg({ checkoutForms: [], totalCount: 0 });
     const k = createAllegroClient({
       ustawienia,
-      tokeny: { waznyToken: async () => { ile += 1; return `T${ile}`; } },
+      tokeny: {
+        waznyToken: async () => {
+          ile += 1;
+          return `T${ile}`;
+        },
+      },
       fetchImpl,
     });
 
@@ -305,10 +317,11 @@ describe('klient Allegro', () => {
   // Zadanie, ktore nigdy nie odpowiada — dokladnie tak zachowuje sie serwer przyjmujacy
   // polaczenie i milczacy. Konczy sie WYLACZNIE przez sygnal; bez sygnalu wisi na wieki
   // (i wtedy test pada na wlasnym limicie vitest, zamiast przejsc na zielono).
-  const wiszacyFetch = (url, opcje = {}) => new Promise((_, odrzuc) => {
-    if (!opcje.signal) return;
-    opcje.signal.addEventListener('abort', () => odrzuc(opcje.signal.reason));
-  });
+  const wiszacyFetch = (url, opcje = {}) =>
+    new Promise((_, odrzuc) => {
+      if (!opcje.signal) return;
+      opcje.signal.addEventListener('abort', () => odrzuc(opcje.signal.reason));
+    });
 
   // Prawdziwy sygnal, tylko SKROCONY: inaczej test czekalby 30 s realnego czasu (fake
   // timers tu nie pomoga — `AbortSignal.timeout` bierze setTimeout z wewnetrznego modulu
@@ -325,7 +338,10 @@ describe('klient Allegro', () => {
     });
     try {
       const k = createAllegroClient({ ustawienia, tokeny, fetchImpl: wiszacyFetch });
-      const blad = await wolanie(k).then(() => null, (e) => e);
+      const blad = await wolanie(k).then(
+        () => null,
+        (e) => e,
+      );
       return { zadaneLimity, blad };
     } finally {
       szpieg.mockRestore();
@@ -333,8 +349,8 @@ describe('klient Allegro', () => {
   }
 
   it('milczące Allegro KOŃCZY pobieranie zamówień błędem po limicie, zamiast wisieć', async () => {
-    const { zadaneLimity, blad } = await podMilczacymAllegro(
-      (k) => k.pobierzZamowienia({ od: null, kursor: null, strona: 1 }),
+    const { zadaneLimity, blad } = await podMilczacymAllegro((k) =>
+      k.pobierzZamowienia({ od: null, kursor: null, strona: 1 }),
     );
 
     expect(blad).toBeTruthy();

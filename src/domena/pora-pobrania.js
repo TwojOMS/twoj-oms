@@ -18,8 +18,12 @@ export const ODSTEP_OKNA_POBRANIA_MS = 24 * 60 * 60 * 1000;
 // `godzina` jest parametrem, bo dwa nocne czuwacze (koszty 3:00, archiwum sprzedazy 4:00)
 // maja NIE nachodzic na siebie; domyslna wartosc zostaje dla dotychczasowych wywolan.
 export function czyPoraPobrania(chwila, godzina = GODZINA_POBRANIA) {
-  const biezaca = Number(new Intl.DateTimeFormat('pl-PL', {
-    timeZone: 'Europe/Warsaw', hour: 'numeric', hourCycle: 'h23',
-  }).format(chwila));
+  const biezaca = Number(
+    new Intl.DateTimeFormat('pl-PL', {
+      timeZone: 'Europe/Warsaw',
+      hour: 'numeric',
+      hourCycle: 'h23',
+    }).format(chwila),
+  );
   return biezaca === godzina;
 }

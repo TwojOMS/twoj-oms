@@ -12,7 +12,8 @@ export const DOZWOLONE_SQL = {
   'src/oms/ksef/sesja.js': 'warstwa dostępu tokeny_ksef',
   'src/core/bezpieczenstwo/sekret-sesji.js': 'warstwa dostępu sekret_sesji',
   'src/core/bezpieczenstwo/konwersja-sekretow.js': 'przegląd, konwersja i odszyfrowanie formatu',
-  'src/oms/db/reset-demo.js': 'reset piaskownicy: import zachowanych wierszy (szyfrogram bajt w bajt, jawne szyfrowane)',
+  'src/oms/db/reset-demo.js':
+    'reset piaskownicy: import zachowanych wierszy (szyfrogram bajt w bajt, jawne szyfrowane)',
   'src/moduly/rdzen/migracje/0001-baseline.sql': 'schemat',
   'src/moduly/rdzen/migracje/0006-konfiguracja-integracji.ts': 'schemat',
   'scripts/sekrety.mjs': 'narzędzie poświadczeń (porzucenie, stan)',
@@ -20,7 +21,8 @@ export const DOZWOLONE_SQL = {
 
 const KOLUMNY = /\b(sekrety_json|access_token|refresh_token|sekret_sesji)\b/;
 const SQL = /\b(SELECT|INSERT|UPDATE|DELETE|SET|FROM|WHERE|CREATE\s+TABLE|ALTER\s+TABLE)\b/;
-const SUROWY_ODCZYT = /SELECT\s+(?:\w+\.)?\*\s+FROM\s+(tokeny_kanalu|tokeny_ksef|konfiguracja_integracji|sekret_sesji)\b/i;
+const SUROWY_ODCZYT =
+  /SELECT\s+(?:\w+\.)?\*\s+FROM\s+(tokeny_kanalu|tokeny_ksef|konfiguracja_integracji|sekret_sesji)\b/i;
 // Zapytanie w literale `…` na wiele linii: nazwa kolumny i słowo SQL mogą leżeć w różnych liniach.
 const LITERAL = /`[^`]*`/g;
 const SEJF_DOMYSLNY = /\bustawSejfDomyslny\s*\(/;
@@ -29,8 +31,9 @@ const DEFINICJA_SEJFU = 'src/core/bezpieczenstwo/sejf-sekretow.js';
 function pliki(katalog, wynik = []) {
   for (const w of fs.readdirSync(katalog, { withFileTypes: true })) {
     const p = path.join(katalog, w.name);
-    if (w.isDirectory()) { if (w.name !== 'node_modules') pliki(p, wynik); }
-    else if (/\.(m?js|ts|sql|sh|ejs)$/.test(w.name)) wynik.push(p);
+    if (w.isDirectory()) {
+      if (w.name !== 'node_modules') pliki(p, wynik);
+    } else if (/\.(m?js|ts|sql|sh|ejs)$/.test(w.name)) wynik.push(p);
   }
   return wynik;
 }
@@ -48,7 +51,9 @@ export function naruszenia(korzen) {
       if (!DOZWOLONE_SQL[wzgl]) {
         for (const m of tresc.matchAll(LITERAL)) {
           if (!m[0].includes('\n') || !KOLUMNY.test(m[0]) || !SQL.test(m[0])) continue;
-          wynik.push(`${wzgl}:${tresc.slice(0, m.index).split('\n').length}: SQL na kolumnie z poświadczeniami poza warstwą dostępu (zapytanie wieloliniowe)`);
+          wynik.push(
+            `${wzgl}:${tresc.slice(0, m.index).split('\n').length}: SQL na kolumnie z poświadczeniami poza warstwą dostępu (zapytanie wieloliniowe)`,
+          );
         }
       }
       linie.forEach((l, i) => {

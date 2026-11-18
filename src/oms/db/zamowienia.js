@@ -1,7 +1,5 @@
 import { zStatusamiWlasnymi, maTabeleStatusow, kolumnyStatusow } from './statusy.js';
-import {
-  metodaWysylki, kwotaPobrania, czyPobranie, punktOdbioru, punktOdbioruOpis,
-} from '../../domena/wysylka.js';
+import { metodaWysylki, kwotaPobrania, czyPobranie, punktOdbioru, punktOdbioruOpis } from '../../domena/wysylka.js';
 import { anulowaneEfektywnie } from '../../domena/status-reczny.js';
 import { dataPokryciaWplat, brakujacaKwotaGrosze } from '../../domena/platnosci.js';
 import { zl, kwotaOczekiwanaGrosze, wysylkaBruttoGrosze } from '../../domena/suma-pozycji.js';
@@ -17,7 +15,12 @@ import { idsDolaczonych } from '../../domena/scalanie.js';
 // i „Zapamietaj tego klienta" (patrz `zamowieniaPoNip` na koncu pliku).
 import { daneFaktury } from '../../domena/dane-faktury.js';
 import { normalizujNip } from '../../domena/klient-zbiorczy.js';
-import { platnosciZamowienia, platnosciDlaZamowien, zsynchronizujWplateSklepu, dodajWplateReczna } from './platnosci.js';
+import {
+  platnosciZamowienia,
+  platnosciDlaZamowien,
+  zsynchronizujWplateSklepu,
+  dodajWplateReczna,
+} from './platnosci.js';
 import { zwrotyZamowienia, zwrotyDlaZamowien } from './zwroty.js';
 
 const teraz = () => new Date().toISOString();
@@ -53,8 +56,9 @@ const PORZADEK_POZYCJI = "ORDER BY CASE WHEN zrodlo = 'reczna' THEN 1 ELSE 0 END
 // ⚠️ SKLEPOM TO NIC NIE ZMIENIA. Pozycje z WooCommerce maja `oferta_id` puste, wiec
 // zlaczenie nie trafia ANI RAZU i `zdjecie_oferty` jest tam zawsze NULL — `sklep_b` i `sklep_a`
 // czytaja dokladnie te sama wartosc, co przed ta zmiana.
-const POZYCJE_ZE_ZDJECIEM = 'SELECT p.*, o.zdjecie_url AS zdjecie_oferty FROM pozycje p'
-  + ' LEFT JOIN zdjecia_ofert o ON o.oferta_id = p.oferta_id';
+const POZYCJE_ZE_ZDJECIEM =
+  'SELECT p.*, o.zdjecie_url AS zdjecie_oferty FROM pozycje p' +
+  ' LEFT JOIN zdjecia_ofert o ON o.oferta_id = p.oferta_id';
 
 // Doklejenie adresu z pamieci ofert — JEDNO miejsce dla karty, listy i ekranu nadania.
 // Sama regula wyboru zrodla siedzi w domenie; tutaj zostaje wylacznie jej zastosowanie.
@@ -146,7 +150,8 @@ export function zapiszZamowienie(db, sklep, z, surowe) {
       // kazdej synchronizacji — oferta moze dojsc do zamowienia juz po jego zlozeniu.
       // Pominiecie go tutaj zamraza znacznik na wartosci z PIERWSZEJ synchronizacji,
       // czyli zamowienie z panelu policzyloby sie w zlym kanale raportu na zawsze.
-      db.prepare(`
+      db.prepare(
+        `
         UPDATE zamowienia SET
           numer = ?,
           -- ⚠️ COALESCE TYLKO PRZY TYCH DWOCH KOLUMNACH — patrz daneOsoboweAlboNull() wyzej.
@@ -159,31 +164,75 @@ export function zapiszZamowienie(db, sklep, z, surowe) {
           oplacone_at = ?,
           anulowane = ?, uwagi = ?, kupony_json = ?, atrybucja_json = ?, surowe_json = ?, zmienione_at = ?
         WHERE id = ?
-      `).run(
-        z.numer, daneOsoboweAlboNull(z.klient), daneOsoboweAlboNull(z.dostawa),
-        z.metoda_wysylki, z.metoda_wysylki_nazwa ?? null, z.pobranie ? 1 : 0, z.kwota_pobrania,
-        z.punkt_odbioru ?? null, z.punkt_odbioru_opis ?? null,
-        z.chce_fakture, z.nip, z.kwota_brutto, z.koszt_dostawy_brutto ?? null, z.koszt_dostawy_netto ?? null,
-        z.status_woo, z.status_realizacji ?? null, z.metoda_platnosci ?? null, z.indywidualne ? 1 : 0, z.oplacone_at,
-        z.anulowane, z.uwagi ?? null, kuponyJson, atrybucjaJson, surowyJson, teraz(), istniejace.id,
+      `,
+      ).run(
+        z.numer,
+        daneOsoboweAlboNull(z.klient),
+        daneOsoboweAlboNull(z.dostawa),
+        z.metoda_wysylki,
+        z.metoda_wysylki_nazwa ?? null,
+        z.pobranie ? 1 : 0,
+        z.kwota_pobrania,
+        z.punkt_odbioru ?? null,
+        z.punkt_odbioru_opis ?? null,
+        z.chce_fakture,
+        z.nip,
+        z.kwota_brutto,
+        z.koszt_dostawy_brutto ?? null,
+        z.koszt_dostawy_netto ?? null,
+        z.status_woo,
+        z.status_realizacji ?? null,
+        z.metoda_platnosci ?? null,
+        z.indywidualne ? 1 : 0,
+        z.oplacone_at,
+        z.anulowane,
+        z.uwagi ?? null,
+        kuponyJson,
+        atrybucjaJson,
+        surowyJson,
+        teraz(),
+        istniejace.id,
       );
       id = istniejace.id;
     } else {
-      db.prepare(`
+      db.prepare(
+        `
         INSERT INTO zamowienia (sklep, zrodlo_id, numer, klient_json, dostawa_json, metoda_wysylki,
           metoda_wysylki_nazwa, pobranie, kwota_pobrania, punkt_odbioru, punkt_odbioru_opis,
           chce_fakture, nip, kwota_brutto, koszt_dostawy_brutto, koszt_dostawy_netto,
           status_woo, status_realizacji, metoda_platnosci, indywidualne, oplacone_at, anulowane,
           uwagi, kupony_json, atrybucja_json, surowe_json, utworzone_at, zmienione_at)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-      `).run(
-        sklep, z.zrodlo_id, z.numer, JSON.stringify(z.klient), JSON.stringify(z.dostawa), z.metoda_wysylki,
-        z.metoda_wysylki_nazwa ?? null, z.pobranie ? 1 : 0, z.kwota_pobrania, z.punkt_odbioru ?? null, z.punkt_odbioru_opis ?? null,
-        z.chce_fakture, z.nip, z.kwota_brutto, z.koszt_dostawy_brutto ?? null,
-        z.koszt_dostawy_netto ?? null, z.status_woo, z.status_realizacji ?? null,
+      `,
+      ).run(
+        sklep,
+        z.zrodlo_id,
+        z.numer,
+        JSON.stringify(z.klient),
+        JSON.stringify(z.dostawa),
+        z.metoda_wysylki,
+        z.metoda_wysylki_nazwa ?? null,
+        z.pobranie ? 1 : 0,
+        z.kwota_pobrania,
+        z.punkt_odbioru ?? null,
+        z.punkt_odbioru_opis ?? null,
+        z.chce_fakture,
+        z.nip,
+        z.kwota_brutto,
+        z.koszt_dostawy_brutto ?? null,
+        z.koszt_dostawy_netto ?? null,
+        z.status_woo,
+        z.status_realizacji ?? null,
         z.metoda_platnosci ?? null,
-        z.indywidualne ? 1 : 0, z.oplacone_at, z.anulowane, z.uwagi ?? null, kuponyJson, atrybucjaJson, surowyJson,
-        z.utworzone_at ?? teraz(), teraz(),
+        z.indywidualne ? 1 : 0,
+        z.oplacone_at,
+        z.anulowane,
+        z.uwagi ?? null,
+        kuponyJson,
+        atrybucjaJson,
+        surowyJson,
+        z.utworzone_at ?? teraz(),
+        teraz(),
       );
       id = wiersz(db, sklep, z.zrodlo_id).id;
     }
@@ -217,21 +266,29 @@ export function zapiszZamowienie(db, sklep, z, surowe) {
 // przezylby wiec kasowanie i zostal wstawiony DRUGI RAZ przy kazdym przebiegu pollera —
 // pozycje mnozylyby sie co dwie minuty, a suma rosla razem z nimi.
 function zapiszPozycje(db, zamowienieId, pozycje) {
-  db.prepare("DELETE FROM pozycje WHERE zamowienie_id = ? AND COALESCE(zrodlo, 'sklep') <> 'reczna'")
-    .run(zamowienieId);
+  db.prepare("DELETE FROM pozycje WHERE zamowienie_id = ? AND COALESCE(zrodlo, 'sklep') <> 'reczna'").run(zamowienieId);
   // ⚠️ `zrodlo` jest wpisane W ZAPYTANIU ('sklep'), a nie podane argumentem — przy dokladaniu
   // kolumny latwo policzyc znaki zapytania „po kolumnach" i przesunac WSZYSTKIE wartosci
   // o jedna. Dzis: 15 kolumn = 14 znakow zapytania + 1 wpisana na sztywno ('sklep'),
   // i dokladnie 14 argumentow `.run()` (`wariant_id` na koncu).
   const ins = db.prepare(
-    'INSERT INTO pozycje (zamowienie_id, nazwa, sku, ilosc, cena_brutto, cena_netto, brutto_linii, netto_linii, vat,'
-    + " zrodlo, zrodlo_id, zdjecie_url, produkt_id, oferta_id, wariant_id) VALUES (?,?,?,?,?,?,?,?,?,'sklep',?,?,?,?,?)",
+    'INSERT INTO pozycje (zamowienie_id, nazwa, sku, ilosc, cena_brutto, cena_netto, brutto_linii, netto_linii, vat,' +
+      " zrodlo, zrodlo_id, zdjecie_url, produkt_id, oferta_id, wariant_id) VALUES (?,?,?,?,?,?,?,?,?,'sklep',?,?,?,?,?)",
   );
   for (const p of pozycje ?? []) {
     ins.run(
-      zamowienieId, p.nazwa, p.sku, p.ilosc, p.cena_brutto, p.cena_netto ?? null,
-      p.brutto_linii ?? null, p.netto_linii ?? null, p.vat, p.zrodlo_id ?? null,
-      p.zdjecie_url ?? null, p.produkt_id ?? null,
+      zamowienieId,
+      p.nazwa,
+      p.sku,
+      p.ilosc,
+      p.cena_brutto,
+      p.cena_netto ?? null,
+      p.brutto_linii ?? null,
+      p.netto_linii ?? null,
+      p.vat,
+      p.zrodlo_id ?? null,
+      p.zdjecie_url ?? null,
+      p.produkt_id ?? null,
       // ⚠️ Identyfikator oferty Allegro idzie TEDY, a nie osobnym UPDATE-em obok. Poller
       // kasuje i wstawia pozycje sklepowe co dwie minuty (reguła: dane ręczne obok danych sklepu), wiec
       // cokolwiek dopisane obok mapowania znika przy najblizszym przebiegu — dopisek
@@ -259,8 +316,14 @@ export function dodajPozycjeReczna(
   db,
   zamowienieId,
   {
-    nazwa, sku, ilosc, cena_brutto, brutto_linii,
-    produkt_id: produktId = null, wariant_id: wariantId = null, cena_katalogowa: katalogowa = null,
+    nazwa,
+    sku,
+    ilosc,
+    cena_brutto,
+    brutto_linii,
+    produkt_id: produktId = null,
+    wariant_id: wariantId = null,
+    cena_katalogowa: katalogowa = null,
     vat = null,
   },
   opcje,
@@ -277,10 +340,20 @@ export function dodajPozycjeReczna(
   // wylacznie „dodaj z magazynu"; NULL znaczy „pozycja wpisana z reki", czyli kwota juz
   // uzgodniona — i taka pozycja jest dla przeliczenia rabatem niewidzialna (domena/rabat.js).
   db.prepare(
-    'INSERT INTO pozycje (zamowienie_id, nazwa, sku, ilosc, cena_brutto, cena_netto, brutto_linii, netto_linii, vat,'
-    + " zrodlo, zrodlo_id, produkt_id, wariant_id, cena_katalogowa) VALUES (?,?,?,?,?,NULL,?,NULL,?,'reczna',NULL,?,?,?)",
-  ).run(zamowienieId, nazwa, sku ?? null, ilosc, cena_brutto, brutto_linii, vat === null ? null : String(vat).trim(),
-    produktId, wariantId, katalogowa);
+    'INSERT INTO pozycje (zamowienie_id, nazwa, sku, ilosc, cena_brutto, cena_netto, brutto_linii, netto_linii, vat,' +
+      " zrodlo, zrodlo_id, produkt_id, wariant_id, cena_katalogowa) VALUES (?,?,?,?,?,NULL,?,NULL,?,'reczna',NULL,?,?,?)",
+  ).run(
+    zamowienieId,
+    nazwa,
+    sku ?? null,
+    ilosc,
+    cena_brutto,
+    brutto_linii,
+    vat === null ? null : String(vat).trim(),
+    produktId,
+    wariantId,
+    katalogowa,
+  );
   db.prepare('UPDATE zamowienia SET zmienione_at = ? WHERE id = ?').run(teraz(), zamowienieId);
   return { nazwa, sku: sku ?? null, ilosc, cena_brutto, brutto_linii };
 }
@@ -296,16 +369,29 @@ function pozycjaZamowienia(db, zamowienieId, pozycjaId) {
 
 /** Edycja pozycji DOPISANEJ RECZNIE — wprost w wierszu, bo jest nasza w calosci. */
 // `opcje` = `{ zw: true }` (program wbudowany) dopuszcza stawkę „zw” — nową i zostawioną bez zmian.
-export function zapiszPozycjeReczna(db, zamowienieId, pozycjaId, { nazwa, ilosc, cena_brutto, brutto_linii, vat }, opcje) {
+export function zapiszPozycjeReczna(
+  db,
+  zamowienieId,
+  pozycjaId,
+  { nazwa, ilosc, cena_brutto, brutto_linii, vat },
+  opcje,
+) {
   const p = pozycjaZamowienia(db, zamowienieId, pozycjaId);
   if (p.zrodlo !== 'reczna') {
     throw bladOperatora('Pozycji ze sklepu nie zapisuje się wprost — poprawka mieszka obok, jako nadpisanie.');
   }
   // `vat` nieobecny (np. przeliczenie rabatu) = stawka bez zmian; obecny musi być z listy.
   const stawka = vat === undefined ? p.vat : vat;
-  if (stawka !== null && stawka !== undefined && !czyStawkaVat(stawka, opcje)) throw bladOperatora(`Nieznana stawka VAT „${stawka}”.`);
-  db.prepare('UPDATE pozycje SET nazwa = ?, ilosc = ?, cena_brutto = ?, brutto_linii = ?, vat = ? WHERE id = ?')
-    .run(nazwa, ilosc, cena_brutto, brutto_linii, stawka ?? null, pozycjaId);
+  if (stawka !== null && stawka !== undefined && !czyStawkaVat(stawka, opcje))
+    throw bladOperatora(`Nieznana stawka VAT „${stawka}”.`);
+  db.prepare('UPDATE pozycje SET nazwa = ?, ilosc = ?, cena_brutto = ?, brutto_linii = ?, vat = ? WHERE id = ?').run(
+    nazwa,
+    ilosc,
+    cena_brutto,
+    brutto_linii,
+    stawka ?? null,
+    pozycjaId,
+  );
   db.prepare('UPDATE zamowienia SET zmienione_at = ? WHERE id = ?').run(teraz(), zamowienieId);
   return { ...p, nazwa, ilosc, cena_brutto, brutto_linii, vat: stawka ?? null };
 }
@@ -321,9 +407,9 @@ export function usunPozycjeReczna(db, zamowienieId, pozycjaId) {
   const p = pozycjaZamowienia(db, zamowienieId, pozycjaId);
   if (p.zrodlo !== 'reczna') {
     throw bladOperatora(
-      'Pozycji ze sklepu nie da się usunąć z panelu — należy do sklepu i OMS wstawiłby ją z powrotem'
-      + ' przy najbliższej synchronizacji. Jeśli ta pozycja jest błędna, popraw zamówienie w sklepie'
-      + ' albo skoryguj ją tutaj przez edycję.',
+      'Pozycji ze sklepu nie da się usunąć z panelu — należy do sklepu i OMS wstawiłby ją z powrotem' +
+        ' przy najbliższej synchronizacji. Jeśli ta pozycja jest błędna, popraw zamówienie w sklepie' +
+        ' albo skoryguj ją tutaj przez edycję.',
     );
   }
   db.prepare('DELETE FROM pozycje WHERE id = ?').run(pozycjaId);
@@ -335,8 +421,11 @@ export function usunPozycjeReczna(db, zamowienieId, pozycjaId) {
 // funkcja nie musiala znac ani kluczy, ani polowosci nadpisania. `null` zapisujemy tak samo
 // jak przy danych klienta: „brak poprawek" ma w bazie wygladac jak przed pierwsza edycja.
 export function zapiszNadpisaniaPozycji(db, id, mapa) {
-  db.prepare('UPDATE zamowienia SET pozycje_reczne_json = ?, zmienione_at = ? WHERE id = ?')
-    .run(mapa ? JSON.stringify(mapa) : null, teraz(), id);
+  db.prepare('UPDATE zamowienia SET pozycje_reczne_json = ?, zmienione_at = ? WHERE id = ?').run(
+    mapa ? JSON.stringify(mapa) : null,
+    teraz(),
+    id,
+  );
 }
 
 /**
@@ -351,8 +440,11 @@ export function zapiszNadpisaniaPozycji(db, id, mapa) {
  * zostać pierwszą. Dosyłka za zgubioną paczkę nie może przestawiać jej na dzisiaj.
  */
 export function oznaczWyslane(db, id, kiedy = teraz()) {
-  db.prepare('UPDATE zamowienia SET wyslane_at = ?, zmienione_at = ? WHERE id = ? AND wyslane_at IS NULL')
-    .run(kiedy, teraz(), id);
+  db.prepare('UPDATE zamowienia SET wyslane_at = ?, zmienione_at = ? WHERE id = ? AND wyslane_at IS NULL').run(
+    kiedy,
+    teraz(),
+    id,
+  );
   przeniesWyslaneNaDolaczone(db, id, { tylkoPuste: true });
 }
 
@@ -376,12 +468,19 @@ function przeniesWyslaneNaDolaczone(db, glowneId, { tylkoPuste = false } = {}) {
   // ⚠️ ANULOWANE DOŁĄCZONE POMIJAMY — warunek `anulowaneEfektywnie`, ten sam, co
   // `d.anulowane` w `sprawdzCzlonkowGrupy`: paczka grupy nie wiezie pozycji anulowanego zamówienia,
   // więc „wysłane” byłoby nieprawdą. Sprawa zostaje na głównym (`uwagaDolaczonychAnulowanych`).
-  const nieanulowane = db.prepare(`SELECT id, anulowane, anulowane_recznie FROM zamowienia WHERE id IN (${ids.map(() => '?').join(',')}) AND scalone_do = ?`)
-    .all(...ids, glowneId).filter((d) => !anulowaneEfektywnie(d)).map((d) => d.id);
+  const nieanulowane = db
+    .prepare(
+      `SELECT id, anulowane, anulowane_recznie FROM zamowienia WHERE id IN (${ids.map(() => '?').join(',')}) AND scalone_do = ?`,
+    )
+    .all(...ids, glowneId)
+    .filter((d) => !anulowaneEfektywnie(d))
+    .map((d) => d.id);
   if (!nieanulowane.length) return;
   const znaki = nieanulowane.map(() => '?').join(',');
-  db.prepare(`UPDATE zamowienia SET wyslane_at = ?, zmienione_at = ? WHERE id IN (${znaki}) AND scalone_do = ?`
-    + (tylkoPuste ? ' AND wyslane_at IS NULL' : '')).run(w.wyslane_at ?? null, teraz(), ...nieanulowane, glowneId);
+  db.prepare(
+    `UPDATE zamowienia SET wyslane_at = ?, zmienione_at = ? WHERE id IN (${znaki}) AND scalone_do = ?` +
+      (tylkoPuste ? ' AND wyslane_at IS NULL' : ''),
+  ).run(w.wyslane_at ?? null, teraz(), ...nieanulowane, glowneId);
 }
 
 /**
@@ -396,8 +495,7 @@ function przeniesWyslaneNaDolaczone(db, glowneId, { tylkoPuste = false } = {}) {
  * na niej nieaktualne ostrzeżenie.
  */
 export function zapiszBladSyncSklepu(db, id, opis) {
-  db.prepare('UPDATE zamowienia SET sync_woo_blad = ?, zmienione_at = ? WHERE id = ?')
-    .run(opis ?? null, teraz(), id);
+  db.prepare('UPDATE zamowienia SET sync_woo_blad = ?, zmienione_at = ? WHERE id = ?').run(opis ?? null, teraz(), id);
 }
 
 // Odswiezenie stanu realizacji POZA pollerem. Konieczne, bo Allegro nie podbija `updatedAt`
@@ -425,25 +523,47 @@ export function zapiszStanRealizacji(db, id, status) {
 // sie WYLACZNIE w `anulowane_recznie`, a wartosc efektywna powstaje przy odczycie jako suma
 // logiczna obu (zLinii). Zapis do kolumny sklepowej zostalby i tak zdmuchniety przez
 // najblizsza synchronizacje, a po drodze skasowalby fakt przyslany przez sklep.
-export function zapiszFaktyStatusu(db, id, { w_realizacji_at, wyslane_at, zwrot_at, zwrot_powod, anulowane_recznie, status_wlasny = null, zachowaj_status_wlasny = false, kto = null }) {
+export function zapiszFaktyStatusu(
+  db,
+  id,
+  {
+    w_realizacji_at,
+    wyslane_at,
+    zwrot_at,
+    zwrot_powod,
+    anulowane_recznie,
+    status_wlasny = null,
+    zachowaj_status_wlasny = false,
+    kto = null,
+  },
+) {
   db.exec('SAVEPOINT zapis_statusu');
   try {
     db.prepare(
-      'UPDATE zamowienia SET w_realizacji_at = ?, wyslane_at = ?, zwrot_at = ?, zwrot_powod = ?, anulowane_recznie = ?,'
-      + ' zmienione_at = ? WHERE id = ?',
+      'UPDATE zamowienia SET w_realizacji_at = ?, wyslane_at = ?, zwrot_at = ?, zwrot_powod = ?, anulowane_recznie = ?,' +
+        ' zmienione_at = ? WHERE id = ?',
     ).run(
-      w_realizacji_at ?? null, wyslane_at ?? null, zwrot_at ?? null, zwrot_powod ?? null,
-      anulowane_recznie ? 1 : 0, teraz(), id,
+      w_realizacji_at ?? null,
+      wyslane_at ?? null,
+      zwrot_at ?? null,
+      zwrot_powod ?? null,
+      anulowane_recznie ? 1 : 0,
+      teraz(),
+      id,
     );
     if (maTabeleStatusow(db)) {
       if (status_wlasny) {
         // UPSERT narzucał wyzwalaczowi UPDATE własną politykę konfliktu i łamał
         // INSERT OR IGNORE do lista_brudne. Dwa zapisy w tym samym savepoincie są atomowe.
-        const zapis = db.prepare('UPDATE zamowienia_status_wlasny SET klucz = ?, ustawione_at = ?, kto = ? WHERE zamowienie_id = ?')
+        const zapis = db
+          .prepare('UPDATE zamowienia_status_wlasny SET klucz = ?, ustawione_at = ?, kto = ? WHERE zamowienie_id = ?')
           .run(status_wlasny, teraz(), kto, id);
-        if (!zapis.changes) db.prepare('INSERT INTO zamowienia_status_wlasny (zamowienie_id, klucz, ustawione_at, kto) VALUES (?, ?, ?, ?)')
-          .run(id, status_wlasny, teraz(), kto);
-      } else if (!zachowaj_status_wlasny) db.prepare('DELETE FROM zamowienia_status_wlasny WHERE zamowienie_id = ?').run(id);
+        if (!zapis.changes)
+          db.prepare(
+            'INSERT INTO zamowienia_status_wlasny (zamowienie_id, klucz, ustawione_at, kto) VALUES (?, ?, ?, ?)',
+          ).run(id, status_wlasny, teraz(), kto);
+      } else if (!zachowaj_status_wlasny)
+        db.prepare('DELETE FROM zamowienia_status_wlasny WHERE zamowienie_id = ?').run(id);
     } else if (status_wlasny) throw new Error('Brak migracji statusów własnych.');
     // „wysłane” głównego przechodzi na dołączone — w tym samym savepoincie, atomowo.
     przeniesWyslaneNaDolaczone(db, id);
@@ -488,8 +608,11 @@ export function potwierdzWplate(db, id, kiedy = teraz()) {
 const jsonAlboNull = (nadpisania) => (Object.keys(nadpisania ?? {}).length ? JSON.stringify(nadpisania) : null);
 
 export function zapiszNadpisaniaWysylki(db, id, nadpisania) {
-  db.prepare('UPDATE zamowienia SET dostawa_reczna_json = ?, zmienione_at = ? WHERE id = ?')
-    .run(jsonAlboNull(nadpisania), teraz(), id);
+  db.prepare('UPDATE zamowienia SET dostawa_reczna_json = ?, zmienione_at = ? WHERE id = ?').run(
+    jsonAlboNull(nadpisania),
+    teraz(),
+    id,
+  );
 }
 
 // Dane nabywcy i przelacznik „chce fakture" JEDNYM UPDATE-em, z tego samego powodu co data
@@ -497,8 +620,9 @@ export function zapiszNadpisaniaWysylki(db, id, nadpisania) {
 // awaria miedzy dwoma osobnymi zapisami (pelny dysk, restart procesu) zostawialaby poprawiony
 // NIP bez zgody na fakture albo odwrotnie.
 export function zapiszNadpisaniaFaktury(db, id, nadpisania, chceFaktureReczne) {
-  db.prepare('UPDATE zamowienia SET klient_reczny_json = ?, chce_fakture_reczne = ?, zmienione_at = ? WHERE id = ?')
-    .run(jsonAlboNull(nadpisania), chceFaktureReczne ?? null, teraz(), id);
+  db.prepare(
+    'UPDATE zamowienia SET klient_reczny_json = ?, chce_fakture_reczne = ?, zmienione_at = ? WHERE id = ?',
+  ).run(jsonAlboNull(nadpisania), chceFaktureReczne ?? null, teraz(), id);
 }
 
 // JEDYNE wyjscie ze stanu, z ktorego panel sam by nie wyszedl — ta sama zasada, co przy
@@ -515,8 +639,11 @@ export function zapiszNadpisaniaFaktury(db, id, nadpisania, chceFaktureReczne) {
 // `null` zapisujemy dokladnie tak samo jak przy danych klienta: „brak nadpisania" ma
 // w bazie wygladac tak, jak przed pierwsza zmiana.
 export function zapiszNadpisanieWysylki(db, id, nadpisanie) {
-  db.prepare('UPDATE zamowienia SET wysylka_reczna_json = ?, zmienione_at = ? WHERE id = ?')
-    .run(nadpisanie ? JSON.stringify(nadpisanie) : null, teraz(), id);
+  db.prepare('UPDATE zamowienia SET wysylka_reczna_json = ?, zmienione_at = ? WHERE id = ?').run(
+    nadpisanie ? JSON.stringify(nadpisanie) : null,
+    teraz(),
+    id,
+  );
 }
 
 // Wyjscie ze stanu, z ktorego panel sam by nie wyszedl — ta sama zasada, co przy danych
@@ -538,8 +665,11 @@ export function przywrocMetodeWysylkiZeSklepu(db, id) {
  * z nazwy (patrz `zapiszZamowienie` wyżej) i tej wśród nich nie ma.
  */
 export function zapiszKomentarzWewnetrzny(db, id, komentarz) {
-  db.prepare('UPDATE zamowienia SET komentarz_wewnetrzny = ?, zmienione_at = ? WHERE id = ?')
-    .run(komentarz ?? null, teraz(), id);
+  db.prepare('UPDATE zamowienia SET komentarz_wewnetrzny = ?, zmienione_at = ? WHERE id = ?').run(
+    komentarz ?? null,
+    teraz(),
+    id,
+  );
 }
 
 /**
@@ -549,8 +679,11 @@ export function zapiszKomentarzWewnetrzny(db, id, komentarz) {
  * karta twierdząca „wysłano" przy mailu, którego nigdy nie było, jest gorsza niż brak śladu.
  */
 export function oznaczPotwierdzenieWyslane(db, id, kiedy = teraz()) {
-  db.prepare('UPDATE zamowienia SET potwierdzenie_wyslane_at = ?, zmienione_at = ? WHERE id = ?')
-    .run(kiedy, teraz(), id);
+  db.prepare('UPDATE zamowienia SET potwierdzenie_wyslane_at = ?, zmienione_at = ? WHERE id = ?').run(
+    kiedy,
+    teraz(),
+    id,
+  );
 }
 
 /**
@@ -578,14 +711,17 @@ export function zapiszUstaleniaHandlowe(db, id, { b2b, termin_platnosci: termin,
  * zmiany. Oddaje `true`, gdy zapis się odbył.
  */
 export function zapiszTerminWysylkiRecznego(db, id, dzien) {
-  return db.prepare('UPDATE zamowienia SET termin_wysylki_reczny = ?, zmienione_at = ? WHERE id = ? AND wyslane_at IS NULL')
-    .run(dzien ?? null, teraz(), id).changes === 1;
+  return (
+    db
+      .prepare('UPDATE zamowienia SET termin_wysylki_reczny = ?, zmienione_at = ? WHERE id = ? AND wyslane_at IS NULL')
+      .run(dzien ?? null, teraz(), id).changes === 1
+  );
 }
 
 export function przywrocDaneZeSklepu(db, id) {
   db.prepare(
-    'UPDATE zamowienia SET dostawa_reczna_json = NULL, klient_reczny_json = NULL,'
-    + ' chce_fakture_reczne = NULL, zmienione_at = ? WHERE id = ?',
+    'UPDATE zamowienia SET dostawa_reczna_json = NULL, klient_reczny_json = NULL,' +
+      ' chce_fakture_reczne = NULL, zmienione_at = ? WHERE id = ?',
   ).run(teraz(), id);
 }
 
@@ -635,8 +771,9 @@ export function przywrocDaneZeSklepu(db, id) {
 function zLinii(db, w, pozycjeSurowe = null, platnosciSurowe = null) {
   if (!w) return null;
   const platnosci = platnosciSurowe ?? platnosciZamowienia(db, w.id);
-  const surowe = pozycjeSurowe ?? db.prepare(`${POZYCJE_ZE_ZDJECIEM} WHERE p.zamowienie_id = ? ${PORZADEK_POZYCJI}`)
-    .all(w.id).map(zZdjeciemOferty);
+  const surowe =
+    pozycjeSurowe ??
+    db.prepare(`${POZYCJE_ZE_ZDJECIEM} WHERE p.zamowienie_id = ? ${PORZADEK_POZYCJI}`).all(w.id).map(zZdjeciemOferty);
   const pozycje = nalozNadpisaniaPozycji(surowe, w.pozycje_reczne_json);
   // Pozycje sklepowe usunięte znacznikiem: nakładka ich nie oddaje, a kwota
   // oczekiwana (kwotaOczekiwanaGrosze) odejmuje stąd ich sklepową wartość. TYLKO TU.
@@ -745,7 +882,10 @@ function bezpiecznaDataPokrycia(platnosci, zamowienie) {
 // w tym miejscu wiazataloby dwa zamowienia NA STALE (kolumna zamowienie_zrodlowe_id),
 // wiec bezpieczniej oddac wieloznacznosc wprost, niz cicho zgadnac.
 export function znajdzZamowieniaPoNumerze(db, numer) {
-  return db.prepare('SELECT id FROM zamowienia WHERE numer = ?').all(numer).map((w) => w.id);
+  return db
+    .prepare('SELECT id FROM zamowienia WHERE numer = ?')
+    .all(numer)
+    .map((w) => w.id);
 }
 
 /**
@@ -757,8 +897,11 @@ export function znajdzZamowieniaPoNumerze(db, numer) {
  * policzylaby sie drugi raz jako sprzedaz (patrz domena/dosylka.js).
  */
 export function ustawZamowienieZrodlowe(db, id, zrodloweId) {
-  db.prepare('UPDATE zamowienia SET zamowienie_zrodlowe_id = ?, zmienione_at = ? WHERE id = ?')
-    .run(zrodloweId ?? null, teraz(), id);
+  db.prepare('UPDATE zamowienia SET zamowienie_zrodlowe_id = ?, zmienione_at = ? WHERE id = ?').run(
+    zrodloweId ?? null,
+    teraz(),
+    id,
+  );
 }
 
 // ⚠️⚠️ FAKTURA CZYTANA RAZEM Z REZERWACJA WYSYLKI DO KSeF, i to nie jest ozdobnik. Predykat
@@ -792,8 +935,12 @@ function dolaczoneAnulowaneDla(db, glowne) {
   const wlasciciel = new Map(glowne.flatMap((g) => idsDolaczonych(g).map((d) => [d, g.id])));
   for (let i = 0; i < ids.length; i += PORCJA_ID) {
     const porcja = ids.slice(i, i + PORCJA_ID);
-    const wiersze = db.prepare(`SELECT id, numer, scalone_do, anulowane, anulowane_recznie FROM zamowienia
-      WHERE id IN (${porcja.map(() => '?').join(',')}) ORDER BY id`).all(...porcja);
+    const wiersze = db
+      .prepare(
+        `SELECT id, numer, scalone_do, anulowane, anulowane_recznie FROM zamowienia
+      WHERE id IN (${porcja.map(() => '?').join(',')}) ORDER BY id`,
+      )
+      .all(...porcja);
     for (const w of wiersze) {
       // Tylko dołączone NADAL do tego głównego (rozdzielenie zdejmuje `scalone_do`).
       if (w.scalone_do !== wlasciciel.get(w.id) || !anulowaneEfektywnie(w)) continue;
@@ -815,7 +962,8 @@ export function pobierzZamowienie(db, id) {
   z.zwroty = zwrotyZamowienia(db, id);
   z.ma_zwrot = z.zwroty.length > 0;
   // Numer głównego do odmów i przekierowania dołączonego („faktura w zamówieniu głównym N”).
-  if (z.scalone_do) z.scalone_do_numer = db.prepare('SELECT numer FROM zamowienia WHERE id = ?').get(z.scalone_do)?.numer ?? null;
+  if (z.scalone_do)
+    z.scalone_do_numer = db.prepare('SELECT numer FROM zamowienia WHERE id = ?').get(z.scalone_do)?.numer ?? null;
   return z;
 }
 
@@ -831,8 +979,7 @@ export function pobierzZamowienie(db, id) {
 const PRZESYLKI_ZYWE = "SELECT * FROM przesylki WHERE status <> 'blad'";
 
 function przesylkiZamowienia(db, zamowienieId) {
-  return db.prepare(`${PRZESYLKI_ZYWE} AND zamowienie_id = ? ORDER BY kolejnosc`)
-    .all(zamowienieId);
+  return db.prepare(`${PRZESYLKI_ZYWE} AND zamowienie_id = ? ORDER BY kolejnosc`).all(zamowienieId);
 }
 
 // Kolumna „Produkty" na liście potrzebuje pozycji KAZDEGO zamówienia. JEDNO zapytanie
@@ -847,9 +994,10 @@ function pozycjeDlaZamowien(db, ids) {
   const mapa = new Map();
   if (ids.length === 0) return mapa;
   const placeholdery = ids.map(() => '?').join(',');
-  const wiersze = db.prepare(
-    `${POZYCJE_ZE_ZDJECIEM} WHERE p.zamowienie_id IN (${placeholdery}) ${PORZADEK_POZYCJI}`,
-  ).all(...ids).map(zZdjeciemOferty);
+  const wiersze = db
+    .prepare(`${POZYCJE_ZE_ZDJECIEM} WHERE p.zamowienie_id IN (${placeholdery}) ${PORZADEK_POZYCJI}`)
+    .all(...ids)
+    .map(zZdjeciemOferty);
   for (const w of wiersze) {
     if (!mapa.has(w.zamowienie_id)) mapa.set(w.zamowienie_id, []);
     mapa.get(w.zamowienie_id).push(w);
@@ -878,8 +1026,13 @@ const kolumnyBezSurowych = new WeakMap();
 function kolumnyListy(db) {
   let k = kolumnyBezSurowych.get(db);
   if (!k) {
-    k = db.prepare('PRAGMA table_info(zamowienia)').all().map((c) => c.name)
-      .filter((n) => n !== 'surowe_json').map((n) => `"${n}"`).join(', ');
+    k = db
+      .prepare('PRAGMA table_info(zamowienia)')
+      .all()
+      .map((c) => c.name)
+      .filter((n) => n !== 'surowe_json')
+      .map((n) => `"${n}"`)
+      .join(', ');
     kolumnyBezSurowych.set(db, k);
   }
   return k;
@@ -894,7 +1047,14 @@ function kolumnyListy(db) {
  * domyslnie odczyt jest pelny.
  */
 export function zamowieniaPoId(db, ids, { bezSurowych = false, naBlad = null } = {}) {
-  const unikalne = [...new Set([].concat(ids ?? []).map(Number).filter(Number.isInteger))];
+  const unikalne = [
+    ...new Set(
+      []
+        .concat(ids ?? [])
+        .map(Number)
+        .filter(Number.isInteger),
+    ),
+  ];
   const zamowienia = [];
   const kolumny = `${bezSurowych ? kolumnyListy(db) : '*'}, ${kolumnyStatusow(db)}`;
   for (let i = 0; i < unikalne.length; i += PORCJA_ID) {
@@ -908,7 +1068,9 @@ export function zamowieniaPoId(db, ids, { bezSurowych = false, naBlad = null } =
     // porcji. Faktura czytana tu wezej niz tam znaczylaby, ze ta sama regula domenowa
     // (np. „czeka na numer KSeF") odpowiada inaczej na liscie, a inaczej po kliknieciu w wiersz.
     const przesylkiMapa = new Map();
-    for (const p of db.prepare(`${PRZESYLKI_ZYWE} AND zamowienie_id IN (${znaki}) ORDER BY zamowienie_id, kolejnosc`).all(...porcja)) {
+    for (const p of db
+      .prepare(`${PRZESYLKI_ZYWE} AND zamowienie_id IN (${znaki}) ORDER BY zamowienie_id, kolejnosc`)
+      .all(...porcja)) {
       if (!przesylkiMapa.has(p.zamowienie_id)) przesylkiMapa.set(p.zamowienie_id, []);
       przesylkiMapa.get(p.zamowienie_id).push(p);
     }
@@ -952,11 +1114,20 @@ export function zamowieniaPoId(db, ids, { bezSurowych = false, naBlad = null } =
 
 /** `{ id, numer }` wskazanych zamówień (porcjami, jak `zamowieniaPoId`). */
 export function numeryZamowien(db, ids) {
-  const unikalne = [...new Set([].concat(ids ?? []).map(Number).filter(Number.isInteger))];
+  const unikalne = [
+    ...new Set(
+      []
+        .concat(ids ?? [])
+        .map(Number)
+        .filter(Number.isInteger),
+    ),
+  ];
   const wynik = [];
   for (let i = 0; i < unikalne.length; i += PORCJA_ID) {
     const porcja = unikalne.slice(i, i + PORCJA_ID);
-    wynik.push(...db.prepare(`SELECT id, numer FROM zamowienia WHERE id IN (${porcja.map(() => '?').join(',')})`).all(...porcja));
+    wynik.push(
+      ...db.prepare(`SELECT id, numer FROM zamowienia WHERE id IN (${porcja.map(() => '?').join(',')})`).all(...porcja),
+    );
   }
   return wynik;
 }
@@ -976,7 +1147,13 @@ export function listaZamowien(db) {
   // NATYCHMIAST, zamiast czekac na rozliczenie (zmierzone bezposrednio na tym wierszu kodu
   // przed poprawka). Lista dalej NIE dostaje pozycji zwrotu (szczegoly sa na karcie) —
   // dostaje naglowki, ktorych `doZrobienia` potrzebuje do policzenia rozliczenia.
-  return zamowieniaPoId(db, db.prepare('SELECT id FROM zamowienia').all().map((w) => w.id));
+  return zamowieniaPoId(
+    db,
+    db
+      .prepare('SELECT id FROM zamowienia')
+      .all()
+      .map((w) => w.id),
+  );
 }
 
 /**
@@ -990,8 +1167,13 @@ export function dopiszLog(db, zamowienieId, { akcja, wynik = null }) {
   // Dolozenie parametru znaczyloby setke recznych poprawek. Poza zadaniem (czuwacze, zegary) kontekstu
   // nie ma i wpis nalezy do automatu — stad `?? 'automat'`, a NIE `?? null`: `null` jest
   // zarezerwowany wylacznie dla wpisow SPRZED wdrozenia kont (kolumna `kto` tabeli `log` w moduly/rdzen/migracje/0001-baseline.sql).
-  db.prepare('INSERT INTO log (zamowienie_id, at, akcja, wynik, kto) VALUES (?,?,?,?,?)')
-    .run(zamowienieId, teraz(), akcja, wynik, ktoTeraz() ?? 'automat');
+  db.prepare('INSERT INTO log (zamowienie_id, at, akcja, wynik, kto) VALUES (?,?,?,?,?)').run(
+    zamowienieId,
+    teraz(),
+    akcja,
+    wynik,
+    ktoTeraz() ?? 'automat',
+  );
 }
 
 /**
@@ -1007,8 +1189,11 @@ export function dopiszLog(db, zamowienieId, { akcja, wynik = null }) {
  * milisekundy i dwa wpisy z tej samej milisekundy ustawilyby sie w dowolnej kolejnosci.
  */
 export function ostatniWpisLogu(db, zamowienieId, akcja) {
-  return db.prepare('SELECT * FROM log WHERE zamowienie_id = ? AND akcja = ? ORDER BY id DESC LIMIT 1')
-    .get(zamowienieId, akcja) ?? null;
+  return (
+    db
+      .prepare('SELECT * FROM log WHERE zamowienie_id = ? AND akcja = ? ORDER BY id DESC LIMIT 1')
+      .get(zamowienieId, akcja) ?? null
+  );
 }
 
 /** Wpisow historii na jednej stronie karty zamowienia. */
@@ -1036,7 +1221,8 @@ export const WPISOW_HISTORII_NA_STRONE = 50;
  * @returns {{wpisy: Array<{id: number, at: string, akcja: string, wynik: string | null, kto: string | null}>, maStarsze: boolean}}
  */
 export function historiaLogu(db, zamowienieId, { strona = 1, naStrone = WPISOW_HISTORII_NA_STRONE } = {}) {
-  const wiersze = db.prepare('SELECT id, at, akcja, wynik, kto FROM log WHERE zamowienie_id = ? ORDER BY id DESC LIMIT ? OFFSET ?')
+  const wiersze = db
+    .prepare('SELECT id, at, akcja, wynik, kto FROM log WHERE zamowienie_id = ? ORDER BY id DESC LIMIT ? OFFSET ?')
     .all(zamowienieId, naStrone + 1, (strona - 1) * naStrone);
   return { wpisy: wiersze.slice(0, naStrone), maStarsze: wiersze.length > naStrone };
 }
@@ -1068,20 +1254,20 @@ export function zamowieniaPoNip(db, nip) {
   const szukany = normalizujNip(nip);
   if (!szukany) return [];
   const kandydaci = db.prepare('SELECT id, nip, klient_reczny_json FROM zamowienia').all();
-  const ids = kandydaci
-    .filter((w) => normalizujNip(daneFaktury(w).nip) === szukany)
-    .map((w) => w.id);
+  const ids = kandydaci.filter((w) => normalizujNip(daneFaktury(w).nip) === szukany).map((w) => w.id);
   if (!ids.length) return [];
   const placeholdery = ids.map(() => '?').join(',');
   // ⚠️ WASKI ODCZYT, nie `zLinii`: karcie klienta wystarcza naglowek zamowienia, a `zLinii`
   // ciagnie pozycje, platnosci, przesylki i faktury kazdego wiersza — czyli caly ciezar
   // listy roboczej po to, zeby pokazac numer, date i kwote.
-  const wiersze = db.prepare(
-    `SELECT id, sklep, numer, kwota_brutto, utworzone_at, oplacone_at, wyslane_at,
+  const wiersze = db
+    .prepare(
+      `SELECT id, sklep, numer, kwota_brutto, utworzone_at, oplacone_at, wyslane_at,
             w_realizacji_at, anulowane, anulowane_recznie, zwrot_at, indywidualne, b2b,
             ${kolumnyStatusow(db)}
        FROM zamowienia WHERE id IN (${placeholdery}) ORDER BY utworzone_at DESC`,
-  ).all(...ids);
+    )
+    .all(...ids);
   // ⚠️ `ma_zwrot` I `anulowane` MUSZA BYC POLICZONE TAK SAMO, JAK NA LISCIE I NA KARCIE —
   // czyta je `wyliczStatus` (domena/status.js), a to jedyne miejsce, ktore rozstrzyga status.
   // Wiersz bez `ma_zwrot` oddalby „wyslane" dla zamowienia, ktore wlasnie wrocilo;
@@ -1116,12 +1302,16 @@ export function zamowieniaPoNip(db, nip) {
 export function znormalizujDatyWoo(db, sklepyWoo = []) {
   if (!sklepyWoo.length) return { naprawione: 0, pominiete: 0 };
   const znaki = sklepyWoo.map(() => '?').join(',');
-  const wiersze = db.prepare(`
+  const wiersze = db
+    .prepare(
+      `
     SELECT id, utworzone_at, oplacone_at, surowe_json FROM zamowienia
     WHERE sklep IN (${znaki})
       AND ((utworzone_at IS NOT NULL AND utworzone_at NOT LIKE '%Z')
         OR (oplacone_at IS NOT NULL AND oplacone_at NOT LIKE '%Z'))
-  `).all(...sklepyWoo);
+  `,
+    )
+    .all(...sklepyWoo);
   const zZet = (gmt) => {
     const g = String(gmt ?? '').trim();
     if (!g) return null;
@@ -1132,7 +1322,11 @@ export function znormalizujDatyWoo(db, sklepyWoo = []) {
   let pominiete = 0;
   for (const w of wiersze) {
     let surowe = null;
-    try { surowe = JSON.parse(w.surowe_json); } catch { surowe = null; }
+    try {
+      surowe = JSON.parse(w.surowe_json);
+    } catch {
+      surowe = null;
+    }
     const nagieUtworzone = Boolean(w.utworzone_at) && !String(w.utworzone_at).endsWith('Z');
     const nagieOplacone = Boolean(w.oplacone_at) && !String(w.oplacone_at).endsWith('Z');
     const utworzone = nagieUtworzone ? zZet(surowe?.date_created_gmt) : null;

@@ -16,10 +16,26 @@ const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('bas
 const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) };
 
 const zmapowane = (id, nad = {}) => ({
-  zrodlo_id: id, numer: String(id), klient: { first_name: 'Jan', last_name: 'Kowalski', email: 'j@k.pl' },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '212.90',
-  koszt_dostawy_brutto: '0.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
+  zrodlo_id: id,
+  numer: String(id),
+  klient: { first_name: 'Jan', last_name: 'Kowalski', email: 'j@k.pl' },
+  dostawa: {
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    address_1: 'Polna 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
+  },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '212.90',
+  koszt_dostawy_brutto: '0.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
   utworzone_at: '2026-07-29T13:19:52',
   pozycje: [{ nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 2, cena_brutto: '61.50', brutto_linii: '123.00', vat: null }],
   ...nad,
@@ -36,15 +52,19 @@ beforeEach(async () => {
 // w panelu „Szczegoly zamowienia" (?edytuj=szczegoly) — karta jest domyslnie TYLKO DO
 // ODCZYTU. Same reguly i trasy sa nietkniete, zmienilo sie wylacznie to, gdzie formularz
 // widac, wiec helper otwiera od razu tryb edycji.
-const karta = (id, query = '?edytuj=szczegoly') => app.inject({ method: 'GET', url: `/zamowienia/${id}${query}`, headers: naglowek });
+const karta = (id, query = '?edytuj=szczegoly') =>
+  app.inject({ method: 'GET', url: `/zamowienia/${id}${query}`, headers: naglowek });
 const wyslij = (url, payload) => app.inject({ method: 'POST', url, headers: naglowek, payload });
 const status = (id) => wyliczStatus(pobierzZamowienie(db, id));
 const wpisyLogu = (id) => db.prepare('SELECT * FROM log WHERE zamowienie_id = ?').all(id);
 
-const nadanaPaczka = (id, kolejnosc = 1, numerListu = '0000123456789A') => db.prepare(
-  'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at)'
-  + " VALUES (?, 'dpd', 'nadana', ?, ?, '2026-07-30T10:00:00')",
-).run(id, numerListu, kolejnosc);
+const nadanaPaczka = (id, kolejnosc = 1, numerListu = '0000123456789A') =>
+  db
+    .prepare(
+      'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at)' +
+        " VALUES (?, 'dpd', 'nadana', ?, ?, '2026-07-30T10:00:00')",
+    )
+    .run(id, numerListu, kolejnosc);
 
 // ---------------------------------------------------------------------------------
 // A. ZMIANA STATUSU
@@ -84,8 +104,11 @@ describe('POST /zamowienia/:id/status — status zapisuje FAKTY', () => {
     // Symulacja starego znacznika `zwrot_at`/`zwrot_powod` (droga sprzed Zadania 3, ktora
     // POST /status juz nie zapisuje) — „nowe" ma go skasowac dokladnie tak samo, jak
     // kazdy inny reczny fakt.
-    db.prepare('UPDATE zamowienia SET zwrot_at = ?, zwrot_powod = ? WHERE id = ?')
-      .run('2026-07-01T10:00:00Z', 'pomyłka', id);
+    db.prepare('UPDATE zamowienia SET zwrot_at = ?, zwrot_powod = ? WHERE id = ?').run(
+      '2026-07-01T10:00:00Z',
+      'pomyłka',
+      id,
+    );
     await wyslij(`/zamowienia/${id}/status`, { status: 'nowe' });
     const z = pobierzZamowienie(db, id);
     expect(z.zwrot_at).toBeNull();
@@ -99,8 +122,10 @@ describe('POST /zamowienia/:id/status — status zapisuje FAKTY', () => {
     await wyslij(`/zamowienia/${id}/status`, { status: 'anulowane' });
     // Kolumna `anulowane` nalezy do sklepu — poller ja przepisuje. Reczne anulowanie
     // MUSI mieszkac obok, inaczej zniknie przy najblizszej synchronizacji.
-    expect(db.prepare('SELECT anulowane, anulowane_recznie FROM zamowienia WHERE id = ?').get(id))
-      .toEqual({ anulowane: 0, anulowane_recznie: 1 });
+    expect(db.prepare('SELECT anulowane, anulowane_recznie FROM zamowienia WHERE id = ?').get(id)).toEqual({
+      anulowane: 0,
+      anulowane_recznie: 1,
+    });
     expect(status(id)).toBe('anulowane');
   });
 
@@ -137,7 +162,9 @@ describe('POST /zamowienia/:id/status — status zapisuje FAKTY', () => {
     expect((await wyslij('/zamowienia/999/status', { status: 'nowe' })).statusCode).toBe(404);
     const id = zapiszZamowienie(db, 'pro', zmapowane(1608), {});
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/status`, payload: { status: 'nowe' },
+      method: 'POST',
+      url: `/zamowienia/${id}/status`,
+      payload: { status: 'nowe' },
       headers: { authorization: naglowek.authorization },
     });
     expect(r.statusCode).toBe(403);
@@ -180,14 +207,17 @@ describe('granice recznej zmiany statusu', () => {
   // wiec proba ustawienia go dostaje dzis „Nieznany status" NIEZALEZNIE od anulowania
   // (patrz test „nieznany status → 400" nizej) i nie sprawdzalaby juz galezi, ktora ten
   // test ma chronic.
-  it.each(['nowe', 'w_realizacji', 'wyslane'])('zamowienia anulowanego W SKLEPIE nie da sie przestawic na „%s"', async (docelowy) => {
-    const id = zapiszZamowienie(db, 'pro', zmapowane(1613, { anulowane: 1 }), {});
-    const r = await wyslij(`/zamowienia/${id}/status`, { status: docelowy, powod: 'x' });
-    expect(r.statusCode).toBe(400);
-    expect(r.body).toMatch(/wycofaj anulowanie w sklepie/i);
-    expect(status(id)).toBe('anulowane');
-    expect(pobierzZamowienie(db, id).w_realizacji_at).toBeNull();
-  });
+  it.each(['nowe', 'w_realizacji', 'wyslane'])(
+    'zamowienia anulowanego W SKLEPIE nie da sie przestawic na „%s"',
+    async (docelowy) => {
+      const id = zapiszZamowienie(db, 'pro', zmapowane(1613, { anulowane: 1 }), {});
+      const r = await wyslij(`/zamowienia/${id}/status`, { status: docelowy, powod: 'x' });
+      expect(r.statusCode).toBe(400);
+      expect(r.body).toMatch(/wycofaj anulowanie w sklepie/i);
+      expect(status(id)).toBe('anulowane');
+      expect(pobierzZamowienie(db, id).w_realizacji_at).toBeNull();
+    },
+  );
 
   it('zdanie na karcie o wycofaniu anulowania W SKLEPIE zostaje prawdziwe', async () => {
     const zeSklepu = zapiszZamowienie(db, 'pro', zmapowane(1614, { anulowane: 1 }), {});
@@ -280,8 +310,11 @@ describe('granice recznej zmiany statusu', () => {
   // niezaleznie od tego, czy proba przyszla z polem „powod", czy bez niego.
   it('odrzucona proba „zwrot" nie rusza istniejacego (starego) `zwrot_powod`', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1629), {});
-    db.prepare('UPDATE zamowienia SET zwrot_at = ?, zwrot_powod = ? WHERE id = ?')
-      .run('2026-07-01T10:00:00Z', 'stary powod', id);
+    db.prepare('UPDATE zamowienia SET zwrot_at = ?, zwrot_powod = ? WHERE id = ?').run(
+      '2026-07-01T10:00:00Z',
+      'stary powod',
+      id,
+    );
 
     await wyslij(`/zamowienia/${id}/status`, { status: 'zwrot', powod: 'nowy powod' });
     expect(pobierzZamowienie(db, id).zwrot_powod).toBe('stary powod');
@@ -299,7 +332,11 @@ describe('POST /zamowienia/:id/wysylka/metoda', () => {
   // ⚠️ DWA POLA, NIE JEDNO: formularz oddaje dostawe i pobranie osobno.
   it('przelacza na pobranie z kwota i oznacza zmiane na karcie', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1621), {});
-    const r = await wyslij(`/zamowienia/${id}/wysylka/metoda`, { metoda: 'dpd', pobranie: '1', kwota_pobrania: '246.00' });
+    const r = await wyslij(`/zamowienia/${id}/wysylka/metoda`, {
+      metoda: 'dpd',
+      pobranie: '1',
+      kwota_pobrania: '246.00',
+    });
     expect(r.statusCode).toBe(302);
     const z = pobierzZamowienie(db, id);
     expect(z.metoda_wysylki).toBe('dpd');
@@ -328,16 +365,29 @@ describe('POST /zamowienia/:id/wysylka/metoda', () => {
     const r = await wyslij(`/zamowienia/${id}/wysylka/metoda`, { metoda: 'dpd', pobranie: '1' });
     expect(r.statusCode).toBe(400);
     expect(r.body).toMatch(/kwot[ęy] pobrania/i);
-    expect(db.prepare('SELECT wysylka_reczna_json FROM zamowienia WHERE id = ?').get(id).wysylka_reczna_json).toBeNull();
+    expect(
+      db.prepare('SELECT wysylka_reczna_json FROM zamowienia WHERE id = ?').get(id).wysylka_reczna_json,
+    ).toBeNull();
     expect(pobierzZamowienie(db, id).metoda_wysylki).toBe('dpd');
   });
 
   it('pobranie z kwota zero → 400; przecinek dziesietny przyjety i zapisany z kropka (jeden odczyt kwoty z nadaniem)', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1623), {});
-    expect((await wyslij(`/zamowienia/${id}/wysylka/metoda`, { metoda: 'dpd', pobranie: '1', kwota_pobrania: '0.00' })).statusCode).toBe(400);
-    expect(db.prepare('SELECT wysylka_reczna_json FROM zamowienia WHERE id = ?').get(id).wysylka_reczna_json).toBeNull();
-    expect((await wyslij(`/zamowienia/${id}/wysylka/metoda`, { metoda: 'dpd', pobranie: '1', kwota_pobrania: '12,50' })).statusCode).toBe(302);
-    expect(JSON.parse(db.prepare('SELECT wysylka_reczna_json FROM zamowienia WHERE id = ?').get(id).wysylka_reczna_json).kwota_pobrania).toBe('12.50');
+    expect(
+      (await wyslij(`/zamowienia/${id}/wysylka/metoda`, { metoda: 'dpd', pobranie: '1', kwota_pobrania: '0.00' }))
+        .statusCode,
+    ).toBe(400);
+    expect(
+      db.prepare('SELECT wysylka_reczna_json FROM zamowienia WHERE id = ?').get(id).wysylka_reczna_json,
+    ).toBeNull();
+    expect(
+      (await wyslij(`/zamowienia/${id}/wysylka/metoda`, { metoda: 'dpd', pobranie: '1', kwota_pobrania: '12,50' }))
+        .statusCode,
+    ).toBe(302);
+    expect(
+      JSON.parse(db.prepare('SELECT wysylka_reczna_json FROM zamowienia WHERE id = ?').get(id).wysylka_reczna_json)
+        .kwota_pobrania,
+    ).toBe('12.50');
     expect(pobierzZamowienie(db, id).metoda_wysylki).toBe('dpd');
   });
 
@@ -368,7 +418,9 @@ describe('POST /zamowienia/:id/wysylka/metoda', () => {
     const r = await wyslij(`/zamowienia/${id}/wysylka/metoda`, { metoda: 'dpd' });
     expect(r.statusCode).toBe(400);
     expect(r.body).toMatch(/nadajesz w Allegro/);
-    expect(db.prepare('SELECT wysylka_reczna_json FROM zamowienia WHERE id = ?').get(id).wysylka_reczna_json).toBeNull();
+    expect(
+      db.prepare('SELECT wysylka_reczna_json FROM zamowienia WHERE id = ?').get(id).wysylka_reczna_json,
+    ).toBeNull();
     expect(pobierzZamowienie(db, id).metoda_wysylki).toBe('allegro_dpd');
   });
 
@@ -425,13 +477,20 @@ describe('POST /zamowienia/:id/wysylka/metoda', () => {
 describe('metoda i kwota EFEKTYWNA docieraja do kuriera', () => {
   const zNadaniem = (kurier) => {
     const nadanie = createNadanie({
-      db, kurierzy: { dpd: kurier }, woo: { dodajNotatke: vi.fn().mockResolvedValue(undefined) },
+      db,
+      kurierzy: { dpd: kurier },
+      woo: { dodajNotatke: vi.fn().mockResolvedValue(undefined) },
       katalogEtykiet: mkdtempSync(join(tmpdir(), 'oms-etykiety-')),
     });
     return nadanie;
   };
   const kurierAtrapa = () => ({
-    nadaj: vi.fn().mockResolvedValue({ numerListu: '0000123456789A', etykietaPdf: Buffer.from('pdf'), etykietaZpl: null, surowa: '<x/>' }),
+    nadaj: vi.fn().mockResolvedValue({
+      numerListu: '0000123456789A',
+      etykietaPdf: Buffer.from('pdf'),
+      etykietaZpl: null,
+      surowa: '<x/>',
+    }),
   });
 
   it('przelaczenie na pobranie przekazuje kwote kurierowi', async () => {
@@ -466,14 +525,24 @@ describe('reczne fakty przezywaja PELNY przebieg pollera', () => {
   // mapa instancji.
   const mapa = { instancje: { 1: { metoda: 'dpd' }, 2: { metoda: 'dpd', pobranie: true } }, poPozycji: [] };
   const surowe = (id, modified) => ({
-    id, number: String(id), status: 'processing', total: '212.90',
-    date_created: '2026-07-29T10:00:00', date_modified: modified, date_modified_gmt: modified,
-    billing: {}, shipping: {}, shipping_lines: [{ method_id: 'flat_rate', instance_id: '1' }],
-    line_items: [], meta_data: [],
+    id,
+    number: String(id),
+    status: 'processing',
+    total: '212.90',
+    date_created: '2026-07-29T10:00:00',
+    date_modified: modified,
+    date_modified_gmt: modified,
+    billing: {},
+    shipping: {},
+    shipping_lines: [{ method_id: 'flat_rate', instance_id: '1' }],
+    line_items: [],
+    meta_data: [],
   });
 
   it('anulowanie reczne, metoda wysylki, realizacja i zwrot zostaja po synchronizacji', async () => {
-    const woo = { pobierzZamowienia: vi.fn().mockResolvedValue({ zamowienia: [surowe(1641, '2026-07-30T10:00:00')], stron: 1 }) };
+    const woo = {
+      pobierzZamowienia: vi.fn().mockResolvedValue({ zamowienia: [surowe(1641, '2026-07-30T10:00:00')], stron: 1 }),
+    };
     const p = createPoller({ db, kanal: createWooAdapter({ woo, mapowanie: mapa }), sklep: 'pro' });
     await p.przebieg();
     const id = pobierzZamowienie(db, db.prepare('SELECT id FROM zamowienia').get().id).id;
@@ -505,7 +574,9 @@ describe('reczne fakty przezywaja PELNY przebieg pollera', () => {
   // do kazdego zapisu synchronizacji) w ogole nie dotyka — wiec to jest test na to samo,
   // co oryginal chronil: fakt zwrotu ma przezyc pelny przebieg pollera.
   it('znaczniki realizacji i zwrot (przez tabele zwroty) tez przezywaja przebieg', async () => {
-    const woo = { pobierzZamowienia: vi.fn().mockResolvedValue({ zamowienia: [surowe(1642, '2026-07-30T10:00:00')], stron: 1 }) };
+    const woo = {
+      pobierzZamowienia: vi.fn().mockResolvedValue({ zamowienia: [surowe(1642, '2026-07-30T10:00:00')], stron: 1 }),
+    };
     const p = createPoller({ db, kanal: createWooAdapter({ woo, mapowanie: mapa }), sklep: 'pro' });
     await p.przebieg();
     const id = db.prepare('SELECT id FROM zamowienia').get().id;
@@ -543,7 +614,12 @@ describe('POST /zamowienia/:id/przesylki/reczna', () => {
     expect(r.statusCode).toBe(302);
     const z = pobierzZamowienie(db, id);
     expect(z.przesylki).toHaveLength(1);
-    expect(z.przesylki[0]).toMatchObject({ status: 'nadana', numer_listu: '0000999888777A', kolejnosc: 1, nadana_recznie: 1 });
+    expect(z.przesylki[0]).toMatchObject({
+      status: 'nadana',
+      numer_listu: '0000999888777A',
+      kolejnosc: 1,
+      nadana_recznie: 1,
+    });
     expect(wyliczStatus(z)).toBe('wyslane');
   });
 
@@ -553,7 +629,9 @@ describe('POST /zamowienia/:id/przesylki/reczna', () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1652), {});
     const { serwer, nadanie, dpd } = await zAtrapami();
     const r = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/przesylki/reczna`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/przesylki/reczna`,
+      headers: naglowek,
       payload: { numer_listu: '0000999888777A' },
     });
     expect(r.statusCode).toBe(302);
@@ -590,7 +668,7 @@ describe('POST /zamowienia/:id/przesylki/reczna', () => {
   // Brak etykiety przy takiej przesylce nie jest sprawa do zalatwienia — jest z definicji.
   it('przesylka spoza panelu NIE trzyma zamowienia na liscie roboczej', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1655), {});
-    expect((await app.inject({method:'GET',url:'/',headers:naglowek})).body).toContain(`id="zamowienie-${id}"`);
+    expect((await app.inject({ method: 'GET', url: '/', headers: naglowek })).body).toContain(`id="zamowienie-${id}"`);
     await wyslij(`/zamowienia/${id}/przesylki/reczna`, { numer_listu: '0000999888777A' });
     const lista = await app.inject({ method: 'GET', url: '/', headers: naglowek });
     // Sprawdzamy wiersz zamówienia; cyfry numeru mogą wystąpić też w ramie strony.
@@ -619,7 +697,11 @@ describe('POST /zamowienia/:id/przesylki/reczna', () => {
   describe('kurier wiersza pochodzi z METODY WYSYLKI, a nie z „na sztywno dpd"', () => {
     const zDwomaKurierami = async () => {
       const dpd = { statusPrzesylki: vi.fn().mockResolvedValue({ opis: 'Doręczona', at: '2026-07-30T12:00:00' }) };
-      const inpost = { statusPrzesylki: vi.fn().mockResolvedValue({ opis: 'Gotowa do odbioru w paczkomacie', at: '2026-07-30T12:00:00' }) };
+      const inpost = {
+        statusPrzesylki: vi
+          .fn()
+          .mockResolvedValue({ opis: 'Gotowa do odbioru w paczkomacie', at: '2026-07-30T12:00:00' }),
+      };
       const serwer = buildOmsServer({ db, config, poller, kurierzy: { dpd, inpost } });
       await serwer.ready();
       return { serwer, dpd, inpost };
@@ -664,7 +746,10 @@ describe('POST /zamowienia/:id/przesylki/reczna', () => {
 
   it('komentarz i sam fakt ida do logu jako decyzja czlowieka', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(1657), {});
-    await wyslij(`/zamowienia/${id}/przesylki/reczna`, { numer_listu: '0000999888777A', komentarz: 'nadane w panelu DPD' });
+    await wyslij(`/zamowienia/${id}/przesylki/reczna`, {
+      numer_listu: '0000999888777A',
+      komentarz: 'nadane w panelu DPD',
+    });
     const wpis = wpisyLogu(id).find((w) => w.akcja === 'przesylka.reczna');
     expect(wpis.wynik).toContain('Ręcznie (adam)');
     expect(wpis.wynik).toContain('0000999888777A');

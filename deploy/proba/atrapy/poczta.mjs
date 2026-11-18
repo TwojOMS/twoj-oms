@@ -19,13 +19,20 @@ export const POCZTA_ATRAPY = Object.freeze({
 export function createAtrapaPoczty({ env = process.env, log = (...t) => console.log(...t) } = {}) {
   wymagajTrybuProby(env, 'atrapa poczty');
   let licznik = 0;
-  const mailer = createMailer({ ...POCZTA_ATRAPY, transportFactory: () => ({
-    async sendMail({ to, subject }) {
-      licznik += 1;
-      log(`atrapa poczty: „${subject}” do ${to} (piaskownica — nic nie poszło)`);
-      return { messageId: `<atrapa-${Date.now()}-${licznik}@example.invalid>`, accepted: [].concat(to ?? []), rejected: [] };
-    },
-  }) });
+  const mailer = createMailer({
+    ...POCZTA_ATRAPY,
+    transportFactory: () => ({
+      async sendMail({ to, subject }) {
+        licznik += 1;
+        log(`atrapa poczty: „${subject}” do ${to} (piaskownica — nic nie poszło)`);
+        return {
+          messageId: `<atrapa-${Date.now()}-${licznik}@example.invalid>`,
+          accepted: [].concat(to ?? []),
+          rejected: [],
+        };
+      },
+    }),
+  });
   return { ...mailer, atrapa: true };
 }
 
@@ -33,9 +40,21 @@ export function createAtrapaPoczty({ env = process.env, log = (...t) => console.
 export function createModulWiadomosciAtrapy(env) {
   wymagajTrybuProby(env, 'moduł wiadomości piaskownicy');
   const modul = createModulWiadomosci({ fabryki: { createMailer: () => createAtrapaPoczty({ env }) } });
-  return { ...modul, konfiguracja: (e) => ({ ...konfiguracjaWiadomosci({ ...e, SMTP_HOST: undefined, SMTP_USER: undefined,
-    SMTP_PASS: undefined, SMTP_PORT: undefined, MAIL_FROM: undefined }), poczta: POCZTA_ATRAPY,
-    // PRZ-094.04: ekran Ustawienia → Poczta wychodząca pokazuje, że to atrapa (nie „poczta z pliku”), a wiadomość
-    // próbna idzie przez atrapę także wtedy, gdy ktoś zapisze na ekranie prawdziwy serwer SMTP.
-    atrapaPoczty: true }) };
+  return {
+    ...modul,
+    konfiguracja: (e) => ({
+      ...konfiguracjaWiadomosci({
+        ...e,
+        SMTP_HOST: undefined,
+        SMTP_USER: undefined,
+        SMTP_PASS: undefined,
+        SMTP_PORT: undefined,
+        MAIL_FROM: undefined,
+      }),
+      poczta: POCZTA_ATRAPY,
+      // PRZ-094.04: ekran Ustawienia → Poczta wychodząca pokazuje, że to atrapa (nie „poczta z pliku”), a wiadomość
+      // próbna idzie przez atrapę także wtedy, gdy ktoś zapisze na ekranie prawdziwy serwer SMTP.
+      atrapaPoczty: true,
+    }),
+  };
 }

@@ -29,13 +29,19 @@ export const POLA_ADRESU_RECZNE = ['nazwa', 'company', 'ulica', 'kod', 'miasto',
 // Ten sam adres w obu blokach? Porównanie po ulicy, kodzie i mieście, znormalizowane
 // (małe litery, bez nadmiarowych spacji, kod bez myślnika) — klient wpisuje te same dane
 // dwa razy i drobne różnice zapisu nie znaczą, że to inne miejsce.
-const norma = (v) => String(v ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
+const norma = (v) =>
+  String(v ?? '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
 const kodNorma = (v) => String(v ?? '').replace(/\D+/g, '');
 
 function tenSamAdres(d, k) {
-  return norma(sklejUlice(d?.address_1, d?.address_2)) === norma(sklejUlice(k?.address_1, k?.address_2))
-    && kodNorma(d?.postcode) === kodNorma(k?.postcode)
-    && norma(d?.city) === norma(k?.city);
+  return (
+    norma(sklejUlice(d?.address_1, d?.address_2)) === norma(sklejUlice(k?.address_1, k?.address_2)) &&
+    kodNorma(d?.postcode) === kodNorma(k?.postcode) &&
+    norma(d?.city) === norma(k?.city)
+  );
 }
 
 /**
@@ -81,7 +87,10 @@ function surowyAdres(zamowienie) {
     ulica: sklejUlice(d.address_1, d.address_2),
     kod: d.postcode || null,
     miasto: d.city || null,
-    kraj: String(d.country ?? '').trim().toUpperCase() || 'PL',
+    kraj:
+      String(d.country ?? '')
+        .trim()
+        .toUpperCase() || 'PL',
     phone: klient.phone || null,
     email: klient.email || null,
   };

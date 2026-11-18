@@ -3,7 +3,10 @@ import { miesiaceDoPrzegladu } from '../../../domena/archiwum-sprzedazy.js';
 import { zakresMiesiaca } from '../../../domena/lista-faktur.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
 import {
-  wierszeMiesiaca, stanArchiwumSprzedazy, odnotujUdanyPrzebiegArchiwum, zapiszBladArchiwum,
+  wierszeMiesiaca,
+  stanArchiwumSprzedazy,
+  odnotujUdanyPrzebiegArchiwum,
+  zapiszBladArchiwum,
 } from '../db/archiwum-sprzedazy.js';
 import { zarchiwizujDokument, oznaczSkasowanyDokument } from './archiwum-sprzedazy.js';
 import { zProgramu } from '../../../integracje/program-fakturowy.ts';
@@ -75,9 +78,15 @@ export const POWOD_NIE_TA_PORA = 'nie ta pora';
 // Listy i PDF-y czyta PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`). Budżet
 // przebiegu z `opis.limity` programu liczy `najdluzszyPrzebiegArchiwumSprzedazyMs(limity)` wyżej — strażnik startu w modul.ts.
 export function createCzuwaczArchiwumSprzedazy({
-  db, program: programPodany = null, infakt = null, katalogArchiwum, teraz = () => new Date(), log = console.error,
+  db,
+  program: programPodany = null,
+  infakt = null,
+  katalogArchiwum,
+  teraz = () => new Date(),
+  log = console.error,
   // Wstrzykiwalne wylacznie dla testow — ta sama zasada, co przy `archiwizuj` w czuwaczu kosztow.
-  archiwizuj = zarchiwizujDokument, oznaczSkasowany = oznaczSkasowanyDokument,
+  archiwizuj = zarchiwizujDokument,
+  oznaczSkasowany = oznaczSkasowanyDokument,
 }) {
   const program = zProgramu({ program: programPodany, infakt });
   // ⚠️ JEDEN PRZEBIEG NARAZ. Zegar tyka niezaleznie od tego, czy poprzedni przebieg sie
@@ -93,7 +102,13 @@ export function createCzuwaczArchiwumSprzedazy({
     }
     trwa = true;
     const wynik = {
-      miesiecy: 0, pobranych: 0, adoptowanych: 0, nadpisanych: 0, bezZmian: 0, skasowanych: 0, niedokonczone: false,
+      miesiecy: 0,
+      pobranych: 0,
+      adoptowanych: 0,
+      nadpisanych: 0,
+      bezZmian: 0,
+      skasowanych: 0,
+      niedokonczone: false,
     };
     const koniecBudzetu = teraz().getTime() + BUDZET_ARCHIWUM_SPRZEDAZY_MS;
     const bledy = [];
@@ -119,8 +134,11 @@ export function createCzuwaczArchiwumSprzedazy({
         // byłby liczbą bez pokrycia, a strażnik startu w modul.ts — strażnikiem
         // niczego. Zaległość nie przepada: podłoga zostaje niezrobiona, reszta jedzie następnej nocy.
         if (teraz().getTime() >= koniecBudzetu) {
-          log('Archiwum sprzedazy: budzet czasu wyczerpany przed miesiacem ' + miesiac
-            + ' — reszta pojedzie nastepnej nocy.');
+          log(
+            'Archiwum sprzedazy: budzet czasu wyczerpany przed miesiacem ' +
+              miesiac +
+              ' — reszta pojedzie nastepnej nocy.',
+          );
           wynik.niedokonczone = true;
           break;
         }
@@ -147,8 +165,10 @@ export function createCzuwaczArchiwumSprzedazy({
           // Budzet sprawdza sie PRZED pobraniem, nie w jego trakcie — jeden dokument, ktory
           // wystartowal tuz przed granica, przebieg dokancza.
           if (teraz().getTime() >= koniecBudzetu) {
-            log('Archiwum sprzedazy: budzet czasu wyczerpany — reszta pojedzie nastepnej nocy. '
-              + 'Dokumenty sa w inFakcie, brakuje tylko plikow w archiwum.');
+            log(
+              'Archiwum sprzedazy: budzet czasu wyczerpany — reszta pojedzie nastepnej nocy. ' +
+                'Dokumenty sa w inFakcie, brakuje tylko plikow w archiwum.',
+            );
             wynik.niedokonczone = true;
             break;
           }
@@ -177,8 +197,10 @@ export function createCzuwaczArchiwumSprzedazy({
             bledy.push(`${dokument.number}: ${e.message}`);
           }
           if (bledyZRzedu >= LIMIT_KOLEJNYCH_BLEDOW) {
-            log(`Archiwum sprzedazy: ${bledyZRzedu} bledy z rzedu — przebieg przerwany `
-              + '(inFakt albo dysk niedostepne).');
+            log(
+              `Archiwum sprzedazy: ${bledyZRzedu} bledy z rzedu — przebieg przerwany ` +
+                '(inFakt albo dysk niedostepne).',
+            );
             wynik.niedokonczone = true;
             break;
           }

@@ -14,20 +14,30 @@ function porownanie(wydanie, wynik) {
   if (!wynik) return null;
   if (wynik.stan !== 'jest') return { stan: wynik.stan };
   const dzien = dzienWarszawa(wynik.opublikowano);
-  const stan = !wydanie?.wersja ? 'bez-porownania' : porownajWersje(wynik.wersja, wydanie.wersja) > 0 ? 'nowsza' : 'aktualna';
+  const stan = !wydanie?.wersja
+    ? 'bez-porownania'
+    : porownajWersje(wynik.wersja, wydanie.wersja) > 0
+      ? 'nowsza'
+      : 'aktualna';
   return { stan, wersja: wynik.wersja, dzien, opis: wynik.opis, adres: wynik.adres };
 }
 
 export function registerUstawieniaAktualizacjiRoutes(app, { aktualizacje }) {
   // `wlasnyUklad: true` — brak-dostepu.ejs to samodzielny dokument (patrz tylkoAdmin w trasy/konta.js).
-  const tylkoAdmin = (req, reply) => (req.konto?.admin || (req.konto?.podgladDemo && req.method === 'GET') ? null
-    : reply.code(403).view('brak-dostepu.ejs', { title: 'Brak dostępu', wlasnyUklad: true }));
+  const tylkoAdmin = (req, reply) =>
+    req.konto?.admin || (req.konto?.podgladDemo && req.method === 'GET')
+      ? null
+      : reply.code(403).view('brak-dostepu.ejs', { title: 'Brak dostępu', wlasnyUklad: true });
   const widok = (req, reply, wynik = null) => {
     const wydanie = aktualizacje.wydanie();
     return reply.view('ustawienia-aktualizacje.ejs', {
       nawigacja: nawigacjaUstawien(req, reply),
       title: 'Aktualizacje',
-      wydanie: wydanie && { ...wydanie, krotki: wydanie.commit.slice(0, 12), paczka: fmtDataCzasKrotko(wydanie.utworzono) },
+      wydanie: wydanie && {
+        ...wydanie,
+        krotki: wydanie.commit.slice(0, 12),
+        paczka: fmtDataCzasKrotko(wydanie.utworzono),
+      },
       wynik: porownanie(wydanie, wynik),
       instrukcja: INSTRUKCJA,
     });

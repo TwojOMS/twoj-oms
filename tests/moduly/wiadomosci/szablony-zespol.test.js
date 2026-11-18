@@ -36,13 +36,19 @@ describe('B4a: sekcja „Maile do zespołu” w szablonach wiadomości', () => {
     const p = panel();
     // Symulacja migawki gościa po strażniku (wzór z klucze-api.test.js): model widoku zamiast HTML.
     const demo = Fastify();
-    demo.decorateReply('view', function (_plik, model) { return this.send(model); });
-    demo.addHook('preHandler', async (req) => { req.konto = { podgladDemo: true }; });
+    demo.decorateReply('view', function (_plik, model) {
+      return this.send(model);
+    });
+    demo.addHook('preHandler', async (req) => {
+      req.konto = { podgladDemo: true };
+    });
     registerSzablonyWiadomosciRoutes(demo, { db: p.db });
     try {
       const r = await demo.inject({ method: 'GET', url: ADRES });
       expect(r.statusCode).toBe(200);
       expect(r.json().admin).toBe(true);
-    } finally { await demo.close(); }
+    } finally {
+      await demo.close();
+    }
   });
 });

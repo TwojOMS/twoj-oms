@@ -33,6 +33,10 @@ export function kuponyZeSurowych(surowe) {
 export function kuponyZWiersza(kuponyJson) {
   if (!kuponyJson) return [];
   let dane = null;
-  try { dane = JSON.parse(kuponyJson); } catch { return []; }
+  try {
+    dane = JSON.parse(kuponyJson);
+  } catch {
+    return [];
+  }
   return Array.isArray(dane) ? dane : [];
 }

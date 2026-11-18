@@ -34,12 +34,22 @@ const ETAP_ZAPLATY = 'doreczona';
  * Warianty celowo bez polskich znaków — nie każdy kurier je wysyła w opisie zdarzenia.
  */
 const FRAZY_NIEUDANEGO_DORECZENIA = [
-  'nie doręcz', 'niedoręcz', 'nie dorecz', 'niedorecz',
-  'nieudan', 'nieobecn', 'awizo', 'próba doręcz', 'proba dorecz', 'odmow',
+  'nie doręcz',
+  'niedoręcz',
+  'nie dorecz',
+  'niedorecz',
+  'nieudan',
+  'nieobecn',
+  'awizo',
+  'próba doręcz',
+  'proba dorecz',
+  'odmow',
 ];
 
 function opisBrzmiJakNieudaneDoreczenie(opis) {
-  const s = String(opis ?? '').trim().toLowerCase();
+  const s = String(opis ?? '')
+    .trim()
+    .toLowerCase();
   return FRAZY_NIEUDANEGO_DORECZENIA.some((f) => s.includes(f));
 }
 

@@ -13,12 +13,27 @@ const fixture = (n) => readFileSync(join(__dir, 'fixtures', 'dpd', n), 'utf8');
 const odp = (status, tekst) => ({ status, ok: status >= 200 && status < 300, text: async () => tekst });
 
 const zamowienie = {
-  numer: '1301', kwota_brutto: '212.90', kwota_pobrania: null,
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
+  numer: '1301',
+  kwota_brutto: '212.90',
+  kwota_pobrania: null,
+  dostawa: {
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    address_1: 'Polna 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
+  },
   klient: { email: 'j@k.pl', phone: '+48500600700' },
 };
 const paczka = { waga: 1, dlugosc: 40, szerokosc: 30, wysokosc: 10 };
-const nadawca = { nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL' };
+const nadawca = {
+  nazwa: 'Pracownia Półcień Anna Wzorcowa',
+  ulica: 'ul. Przykładowa 1',
+  kod: '00-950',
+  miasto: 'Warszawa',
+  kraj: 'PL',
+};
 
 // Fikstury (v4-ok.xml: <reference>99999999#TEST-OMS-...) pochodzą, gdzie
 // login w odpowiedzi serwera byl juz podmieniony na 99999999 — LOGIN tutaj MUSI sie z nim
@@ -32,7 +47,15 @@ function klient(odpowiedzi, override = {}) {
   const fetchImpl = vi.fn();
   odpowiedzi.forEach((o) => fetchImpl.mockResolvedValueOnce(o));
   return {
-    c: createDpdClient({ url: 'https://dpd/api', login: LOGIN, haslo: HASLO, fid: FID, nadawca, fetchImpl, ...override }),
+    c: createDpdClient({
+      url: 'https://dpd/api',
+      login: LOGIN,
+      haslo: HASLO,
+      fid: FID,
+      nadawca,
+      fetchImpl,
+      ...override,
+    }),
     fetchImpl,
   };
 }
@@ -236,7 +259,9 @@ describe('createDpdClient.nadaj', () => {
   });
 
   it('odpowiedź bez numeru listu → czytelny błąd, nie undefined', async () => {
-    const { c } = klient([odp(200, '<soap:Envelope><soap:Body><return><Status>OK</Status></return></soap:Body></soap:Envelope>')]);
+    const { c } = klient([
+      odp(200, '<soap:Envelope><soap:Body><return><Status>OK</Status></return></soap:Body></soap:Envelope>'),
+    ]);
     await expect(c.nadaj({ zamowienie, paczka })).rejects.toThrow(/numer/i);
   });
 
@@ -314,8 +339,7 @@ describe('createDpdClient.nadaj', () => {
     ['1 234.56 (spacja jako separator)', '1 234.56'],
   ])('nieparsowalna kwota pobrania %s → rzuca czytelnym błędem, nie milczy', async (_opis, kwota) => {
     const { c, fetchImpl } = klient(OK());
-    await expect(c.nadaj({ zamowienie: { ...zamowienie, kwota_pobrania: kwota }, paczka }))
-      .rejects.toThrow(/pobrani/i);
+    await expect(c.nadaj({ zamowienie: { ...zamowienie, kwota_pobrania: kwota }, paczka })).rejects.toThrow(/pobrani/i);
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
@@ -528,7 +552,14 @@ describe('createDpdClient.nadaj — etykieta ZPL nie blokuje nadania', () => {
 });
 
 describe('createDpdClient — walidacja konfiguracji', () => {
-  const pelnaKonfiguracja = { url: 'https://dpd/api', login: LOGIN, haslo: HASLO, fid: FID, nadawca, fetchImpl: vi.fn() };
+  const pelnaKonfiguracja = {
+    url: 'https://dpd/api',
+    login: LOGIN,
+    haslo: HASLO,
+    fid: FID,
+    nadawca,
+    fetchImpl: vi.fn(),
+  };
 
   // Ustalenie: bez tej walidacji brak np. 'nadawcy' wywala sie dopiero przy
   // pierwszym nadaniu niezrozumialym TypeError, zamiast czytelnym bledem konfiguracji
@@ -547,8 +578,9 @@ describe('createDpdClient — walidacja konfiguracji', () => {
   // numer listu, wiec nikt by sie nie zorientowal.
   it('nadawca z PUSTYMI polami → błąd, a nie cicha zgoda', () => {
     const pusty = { nazwa: 'Pracownia Półcień', ulica: '', kod: '', miasto: '', kraj: 'PL' };
-    expect(() => createDpdClient({ ...pelnaKonfiguracja, nadawca: pusty }))
-      .toThrow(/nadawca\.ulica.*nadawca\.kod.*nadawca\.miasto/);
+    expect(() => createDpdClient({ ...pelnaKonfiguracja, nadawca: pusty })).toThrow(
+      /nadawca\.ulica.*nadawca\.kod.*nadawca\.miasto/,
+    );
   });
 
   it('nadawca bez miasta → błąd wskazujący brakujące pole', () => {

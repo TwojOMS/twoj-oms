@@ -12,16 +12,22 @@ const powrotFinansow = (p) => (typeof p === 'string' && /^\/finanse(\?[^\s\\]*)?
 
 export function zarejestrujTrasyPokrycia(app, { db, config }) {
   const biezaca = konfiguracjaZPokryciem(db, config);
-  const widok = (req, reply, blad = null) => reply.view('finanse-pokrycie.ejs', {
-    title: 'Kompletność danych', admin: req.konto?.admin === true, blad,
-    zapisano: req.query?.zapisano === '1',
-    pola: POLA_POKRYCIA.map(p => ({ ...p, zPliku: config[p.klucz] != null, wartosc: biezaca[p.klucz] ?? '' })),
-  });
+  const widok = (req, reply, blad = null) =>
+    reply.view('finanse-pokrycie.ejs', {
+      title: 'Kompletność danych',
+      admin: req.konto?.admin === true,
+      blad,
+      zapisano: req.query?.zapisano === '1',
+      pola: POLA_POKRYCIA.map((p) => ({ ...p, zPliku: config[p.klucz] != null, wartosc: biezaca[p.klucz] ?? '' })),
+    });
   app.get(ADRES, async (req, reply) => widok(req, reply));
   app.post(ADRES, async (req, reply) => {
-    if (req.konto?.admin !== true) return ekranOdmowyRaportu(reply,
-      'Daty kompletności danych zapisuje administrator. Poproś go o ustawienie.',
-      { ekran: 'Finanse', czynnosc: 'zapisać dat kompletności danych', kod: 403 });
+    if (req.konto?.admin !== true)
+      return ekranOdmowyRaportu(reply, 'Daty kompletności danych zapisuje administrator. Poproś go o ustawienie.', {
+        ekran: 'Finanse',
+        czynnosc: 'zapisać dat kompletności danych',
+        kod: 403,
+      });
     const wynik = zapiszPokrycie(db, config, req.body?.klucz, req.body?.wartosc);
     if (wynik.blad) return widok(req, reply.code(wynik.kod), wynik.blad);
     return reply.code(303).redirect(powrotFinansow(req.body?.powrot) ?? `${ADRES}?zapisano=1`);

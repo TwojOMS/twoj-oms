@@ -15,33 +15,56 @@ import * as karta from '../../../src/moduly/magazyn/karta.js';
 import * as lista from '../../../src/moduly/magazyn/lista.js';
 import { szyfrTestowy } from '../../pomoc/sejf-testowy.ts';
 
-vi.mock('../../../src/moduly/magazyn/karta.js', async orig => {
+vi.mock('../../../src/moduly/magazyn/karta.js', async (orig) => {
   const m = await orig<typeof import('../../../src/moduly/magazyn/karta.js')>();
-  return { ...m, createKartaMagazynu: vi.fn(m.createKartaMagazynu), registerKartaMagazynu: vi.fn(m.registerKartaMagazynu) };
+  return {
+    ...m,
+    createKartaMagazynu: vi.fn(m.createKartaMagazynu),
+    registerKartaMagazynu: vi.fn(m.registerKartaMagazynu),
+  };
 });
-vi.mock('../../../src/moduly/magazyn/lista.js', async orig => {
+vi.mock('../../../src/moduly/magazyn/lista.js', async (orig) => {
   const m = await orig<typeof import('../../../src/moduly/magazyn/lista.js')>();
   return { ...m, registerListaMagazynu: vi.fn(m.registerListaMagazynu) };
 });
 
 const aktor = { id: 1, login: 'admin' };
 const OFERTY = ['allegro:api:sale:offers:write', 'allegro:api:sale:settings:read'];
-const jwt = (scope: string[]) => ['e30', Buffer.from(JSON.stringify({ scope })).toString('base64url'), 'podpis'].join('.');
+const jwt = (scope: string[]) =>
+  ['e30', Buffer.from(JSON.stringify({ scope })).toString('base64url'), 'podpis'].join('.');
 
 const bazy: { close: () => void }[] = [];
-afterEach(() => { for (const db of bazy.splice(0)) db.close(); vi.clearAllMocks(); });
+afterEach(() => {
+  for (const db of bazy.splice(0)) db.close();
+  vi.clearAllMocks();
+});
 
 function zbuduj({ repozytorium = true } = {}) {
-  const db = openOmsDb(':memory:', { moduly: [modulRdzen,
-    { nazwa: 'kanaly', migracje: [migracjaKanalowSprzedazy, migracjaDiagnostykiAllegro, migracjaTypuKanaluISklepow] },
-    { nazwa: 'magazyn', migracje: [migracjaOfertKanalow, migracjaOfertAllegro] }] } as any);
+  const db = openOmsDb(':memory:', {
+    moduly: [
+      modulRdzen,
+      { nazwa: 'kanaly', migracje: [migracjaKanalowSprzedazy, migracjaDiagnostykiAllegro, migracjaTypuKanaluISklepow] },
+      { nazwa: 'magazyn', migracje: [migracjaOfertKanalow, migracjaOfertAllegro] },
+    ],
+  } as any);
   bazy.push(db);
-  const repo = createRepozytoriumKanalow({ db,
+  const repo = createRepozytoriumKanalow({
+    db,
     definicjeEnv: [{ klucz: 'allegro-polcien', typ: 'allegro', etykieta: 'Półcień (plik)' }] as any,
-    konfiguracjaEnv: { 'allegro-polcien': { api: 'https://api.allegro.pl', od: '2026-10-01T00:00:00Z' } }, teraz: () => new Date('2026-11-14T10:00:00Z') });
-  const tokeny = (kanal: string, scope: string[]) => db.prepare(`INSERT INTO tokeny_kanalu (kanal, access_token, refresh_token, wygasa_at, refresh_wygasa_at, zaktualizowane_at)
-    VALUES (?, ?, ?, '2026-11-14T11:00:00Z', '2027-01-01T00:00:00Z', '2026-11-14T10:00:00Z')`).run(kanal,
-    szyfrTestowy(db, 'tokeny_kanalu', 'access_token', kanal, jwt(scope)), szyfrTestowy(db, 'tokeny_kanalu', 'refresh_token', kanal, 'REFRESH-ATRAPA'));
+    konfiguracjaEnv: { 'allegro-polcien': { api: 'https://api.allegro.pl', od: '2026-10-01T00:00:00Z' } },
+    teraz: () => new Date('2026-11-14T10:00:00Z'),
+  });
+  const tokeny = (kanal: string, scope: string[]) =>
+    db
+      .prepare(
+        `INSERT INTO tokeny_kanalu (kanal, access_token, refresh_token, wygasa_at, refresh_wygasa_at, zaktualizowane_at)
+    VALUES (?, ?, ?, '2026-11-14T11:00:00Z', '2027-01-01T00:00:00Z', '2026-11-14T10:00:00Z')`,
+      )
+      .run(
+        kanal,
+        szyfrTestowy(db, 'tokeny_kanalu', 'access_token', kanal, jwt(scope)),
+        szyfrTestowy(db, 'tokeny_kanalu', 'refresh_token', kanal, 'REFRESH-ATRAPA'),
+      );
   const panel = (nazwa: string, srodowisko: 'produkcja' | 'sandbox', zmiana: string) => {
     const w = repo.utworzSzkic({ nazwa, odUtc: '2026-10-31T23:00:00Z', srodowisko }, aktor);
     if (!w.ok) throw new Error(w.komunikat);
@@ -54,8 +77,9 @@ function zbuduj({ repozytorium = true } = {}) {
   const rozlaczone = panel('Półcień stare', 'produkcja', `autoryzacja = 'odlaczone'`);
   const konflikt = panel('Półcień konflikt', 'produkcja', `autoryzacja = 'polaczone', zrodlo = 'env'`);
   // Atrapa „naiwnej” mapy klientów: ma klienta także dla konta rozłączonego i z konfliktem klucza.
-  const klienci: Record<string, object> = Object.fromEntries(['allegro-polcien', zPanelu, rozlaczone, konflikt, 'erli-polcien']
-    .map(k => [k, { atrapa: k }]));
+  const klienci: Record<string, object> = Object.fromEntries(
+    ['allegro-polcien', zPanelu, rozlaczone, konflikt, 'erli-polcien'].map((k) => [k, { atrapa: k }]),
+  );
   const usluga = (modul: string, nazwa: string) => {
     if (modul === 'kanaly' && nazwa === 'config') return { definicje: [], sklepy: {}, kanaly: {} };
     if (modul === 'kanaly' && nazwa === 'klienciKanalow') return klienci;
@@ -64,8 +88,13 @@ function zbuduj({ repozytorium = true } = {}) {
     if (modul === 'magazyn') return (z.uslugi as Record<string, unknown>)[nazwa];
     throw new Error(`Usługa „${modul}.${nazwa}” nie istnieje`);
   };
-  const z = modulMagazyn.zbuduj({ db, konfiguracja: modulMagazyn.konfiguracja({ OMS_KATALOG_ZDJEC: '/nieistniejacy/zdjecia-polcien' }),
-    teraz: () => new Date('2026-11-14T10:00:00Z'), log: vi.fn(), usluga } as any);
+  const z = modulMagazyn.zbuduj({
+    db,
+    konfiguracja: modulMagazyn.konfiguracja({ OMS_KATALOG_ZDJEC: '/nieistniejacy/zdjecia-polcien' }),
+    teraz: () => new Date('2026-11-14T10:00:00Z'),
+    log: vi.fn(),
+    usluga,
+  } as any);
   z.trasy!(Fastify() as any);
   type Konto = { klucz: string; klient: unknown; tylkoOdczyt: () => boolean; zgoda: boolean; srodowisko: string };
   const kontaAllegro = (vi.mocked(karta.createKartaMagazynu).mock.calls[0][0] as any).kontaAllegro as () => Konto[];
@@ -76,8 +105,9 @@ describe('konta Allegro w module magazynu', () => {
   it('konto z env i konto z panelu są na liście, ze zgodą i środowiskiem', () => {
     const { kontaAllegro, zPanelu } = zbuduj();
     const konta = kontaAllegro();
-    expect(konta.map(k => k.klucz).sort()).toEqual(['allegro-polcien', zPanelu].sort());
-    const env = konta.find(k => k.klucz === 'allegro-polcien')!, panel = konta.find(k => k.klucz === zPanelu)!;
+    expect(konta.map((k) => k.klucz).sort()).toEqual(['allegro-polcien', zPanelu].sort());
+    const env = konta.find((k) => k.klucz === 'allegro-polcien')!,
+      panel = konta.find((k) => k.klucz === zPanelu)!;
     expect({ zgoda: env.zgoda, srodowisko: env.srodowisko }).toEqual({ zgoda: true, srodowisko: 'produkcja' });
     expect({ zgoda: panel.zgoda, srodowisko: panel.srodowisko }).toEqual({ zgoda: false, srodowisko: 'sandbox' });
   });
@@ -85,7 +115,7 @@ describe('konta Allegro w module magazynu', () => {
   it('konto rozłączone albo z konfliktem klucza nie trafia na listę, mimo klienta w mapie', () => {
     const { kontaAllegro, rozlaczone, konflikt, repo } = zbuduj();
     expect(repo.konfliktKlucza(konflikt)).toBe(true);
-    const klucze = kontaAllegro().map(k => k.klucz);
+    const klucze = kontaAllegro().map((k) => k.klucz);
     expect(klucze).not.toContain(rozlaczone);
     expect(klucze).not.toContain(konflikt);
     expect(klucze).not.toContain('erli-polcien');
@@ -94,12 +124,12 @@ describe('konta Allegro w module magazynu', () => {
   it('klient to ten sam obiekt co w klienciKanalow', () => {
     const { kontaAllegro, klienci, zPanelu } = zbuduj();
     for (const k of kontaAllegro()) expect(k.klient).toBe(klienci[k.klucz]);
-    expect(kontaAllegro().find(k => k.klucz === zPanelu)!.klient).toBe(klienci[zPanelu]);
+    expect(kontaAllegro().find((k) => k.klucz === zPanelu)!.klient).toBe(klienci[zPanelu]);
   });
 
   it('tylko odczyt czyta blokadę zapisów z repozytorium kanałów na żywo', () => {
     const { kontaAllegro, repo } = zbuduj();
-    const konto = kontaAllegro().find(k => k.klucz === 'allegro-polcien')!;
+    const konto = kontaAllegro().find((k) => k.klucz === 'allegro-polcien')!;
     expect(konto.tylkoOdczyt()).toBe(false);
     const spy = vi.spyOn(repo, 'zapisyZablokowane').mockReturnValue(true);
     expect(konto.tylkoOdczyt()).toBe(true);

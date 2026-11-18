@@ -9,9 +9,7 @@ import { PRZY_ODBIORZE, BEZ_TERMINU, TERMINY_DNI } from '../../../domena/termin-
 import { nipDoZapytania, komunikatAwariiGus } from '../../../domena/gus.js';
 import { gusDostepny, KOMUNIKAT_BRAK_GUS } from '../../../domena/konfiguracja-gus.js';
 import { wylaczoneModuly } from '../../../oms/db/moduly-opcjonalne.js';
-import {
-  wszyscyKlienci, klientPoId, dopiszKlienta, zapiszKlienta,
-} from '../../../oms/db/klienci.js';
+import { wszyscyKlienci, klientPoId, dopiszKlienta, zapiszKlienta } from '../../../oms/db/klienci.js';
 import { dopiszLog, zamowieniaPoNip } from '../../../oms/db/zamowienia.js';
 import { podsumowanieHistorii } from '../../../domena/historia-klienta.js';
 import { wyliczStatus } from '../../../domena/status.js';
@@ -36,18 +34,37 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
   const ktoKlikal = (req) => req.uzytkownik ?? 'panel';
 
   // Lista i formularz mają osobne adresy, ale współdzielą szablon pól.
-  function renderuj(reply, {
-    formularz = {}, blad = null, edytowany = null, komunikat = null, otwarty = false,
-    daneZGus = null, komunikatGus = null,
-  } = {}) {
-    return reply.view('klienci.ejs', { szerokosc: edytowany ? 'karta' : otwarty ? 'karta' : 'tabela',
+  function renderuj(
+    reply,
+    {
+      formularz = {},
+      blad = null,
+      edytowany = null,
+      komunikat = null,
+      otwarty = false,
+      daneZGus = null,
+      komunikatGus = null,
+    } = {},
+  ) {
+    return reply.view('klienci.ejs', {
+      szerokosc: edytowany ? 'karta' : otwarty ? 'karta' : 'tabela',
       title: otwarty ? (edytowany ? `Klient: ${edytowany.nazwa}` : 'Nowy klient B2B') : 'Klienci B2B',
-      okruszki: edytowany ? [{ tekst: 'Klienci B2B', href: '/klienci' },
-        { tekst: edytowany.nazwa, href: `/klienci/${edytowany.id}/karta` }, { tekst: 'Edycja' }] : otwarty ? [{ tekst: 'Klienci B2B', href: '/klienci' }, { tekst: 'Nowy klient B2B' }] : undefined,
+      okruszki: edytowany
+        ? [
+            { tekst: 'Klienci B2B', href: '/klienci' },
+            { tekst: edytowany.nazwa, href: `/klienci/${edytowany.id}/karta` },
+            { tekst: 'Edycja' },
+          ]
+        : otwarty
+          ? [{ tekst: 'Klienci B2B', href: '/klienci' }, { tekst: 'Nowy klient B2B' }]
+          : undefined,
       otwarty,
       // ⚠️ RAZEM Z NIEAKTYWNYMI — to jest jedyny ekran, na którym wygaszony klient ma być
       // widoczny. Gdyby i tu go nie było, „wygaszenie" byłoby nieodwracalne przez panel.
-      klienci: wszyscyKlienci(db, { tylkoAktywni: false }).map((k) => ({ ...k, opis: opisKlienta(k, { zwolniona: zwolnionaFirma() }) })),
+      klienci: wszyscyKlienci(db, { tylkoAktywni: false }).map((k) => ({
+        ...k,
+        opis: opisKlienta(k, { zwolniona: zwolnionaFirma() }),
+      })),
       formularz,
       edytowany,
       blad,
@@ -73,9 +90,12 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
 
   // Stare odnośniki przekierowują na osobny formularz. Sam `/klienci` oddaje listę.
   // Odmowa „nie ma takiego klienta” w układzie OMS (status i tekst bez zmian); powrót na listę klientów.
-  const brakKlienta = (reply) => stronaOdmowy(reply, 404, 'Nie ma takiego klienta', {
-    tytul: 'Nie ma takiego klienta', napisWroc: 'Wróć do klientów', wroc: '/klienci',
-  });
+  const brakKlienta = (reply) =>
+    stronaOdmowy(reply, 404, 'Nie ma takiego klienta', {
+      tytul: 'Nie ma takiego klienta',
+      napisWroc: 'Wróć do klientów',
+      wroc: '/klienci',
+    });
   app.get('/klienci', async (req, reply) => {
     if (req.query?.nowy !== undefined) return reply.redirect('/klienci/nowy', 303);
     if (req.query?.edytuj !== undefined) {
@@ -146,9 +166,13 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
   app.post('/klienci/gus', async (req, reply) => {
     const formularz = req.body ?? {};
     const edytowany = klientZFormularza(formularz);
-    const odmowa = (tekst, rodzaj = 'blad') => renderuj(reply, {
-      formularz, edytowany, otwarty: true, komunikatGus: { rodzaj, tekst },
-    });
+    const odmowa = (tekst, rodzaj = 'blad') =>
+      renderuj(reply, {
+        formularz,
+        edytowany,
+        otwarty: true,
+        komunikatGus: { rodzaj, tekst },
+      });
 
     if (!gusDostepny(gus)) return odmowa(KOMUNIKAT_BRAK_GUS);
 
@@ -178,9 +202,10 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
 
     dopiszLog(db, null, {
       akcja: 'klient.gus',
-      wynik: `GUS (${ktoKlikal(req)}): pobrano „${firma.firma}" (NIP ${firma.nip ?? nip}, `
-        + `REGON ${firma.regon ?? '—'}) — dane WSTAWIONE DO FORMULARZA klienta B2B, `
-        + 'nic jeszcze nie zapisano.',
+      wynik:
+        `GUS (${ktoKlikal(req)}): pobrano „${firma.firma}" (NIP ${firma.nip ?? nip}, ` +
+        `REGON ${firma.regon ?? '—'}) — dane WSTAWIONE DO FORMULARZA klienta B2B, ` +
+        'nic jeszcze nie zapisano.',
     });
     return renderuj(reply, {
       formularz,
@@ -189,8 +214,9 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
       daneZGus: firma,
       komunikatGus: {
         rodzaj: 'ok',
-        tekst: `GUS: ${firma.firma}${firma.regon ? ` (REGON ${firma.regon})` : ''}. `
-          + 'Sprawdź dane i zapisz — dopóki tego nie zrobisz, nic się nie zmieniło.',
+        tekst:
+          `GUS: ${firma.firma}${firma.regon ? ` (REGON ${firma.regon})` : ''}. ` +
+          'Sprawdź dane i zapisz — dopóki tego nie zrobisz, nic się nie zmieniło.',
       },
     });
   });
@@ -198,11 +224,13 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
   // ⚠️ NIC NIE ZAPISUJE — przestawia wartości między polami i oddaje formularz z powrotem.
   // Bliźniak z karty zamówienia MUSI zapisywać (tam zamówienie już istnieje); tutaj i na
   // ekranie zakładania nie ma czego, więc obie te drogi wołają jedną funkcję domeny.
-  app.post('/klienci/kopiuj-do-wysylki', async (req, reply) => renderuj(reply, {
-    formularz: skopiujFaktureDoWysylki(req.body ?? {}),
-    edytowany: klientZFormularza(req.body ?? {}),
-    otwarty: true,
-  }));
+  app.post('/klienci/kopiuj-do-wysylki', async (req, reply) =>
+    renderuj(reply, {
+      formularz: skopiujFaktureDoWysylki(req.body ?? {}),
+      edytowany: klientZFormularza(req.body ?? {}),
+      otwarty: true,
+    }),
+  );
 
   app.post('/klienci', async (req, reply) => {
     const id = String(req.body?.id ?? '').trim();
@@ -217,14 +245,19 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
       // wpisanych pól komunikatem byłoby karą za literówkę w jednym z nich, a formularz
       // zamknięty pokazywałby komunikat o polu, którego na ekranie nie ma.
       return renderuj(reply.code(400), {
-        formularz: req.body ?? {}, edytowany, blad: komunikatDlaOperatora(e), otwarty: true,
+        formularz: req.body ?? {},
+        edytowany,
+        blad: komunikatDlaOperatora(e),
+        otwarty: true,
       });
     }
 
     // Nie pozwalamy założyć umowy, której faktury nie miałyby dostępnego ekranu.
     if (dane.rozliczenie_zbiorcze === 1 && wylaczoneModuly(db).includes('okresy')) {
       return renderuj(reply.code(409), {
-        formularz: req.body ?? {}, edytowany, otwarty: true,
+        formularz: req.body ?? {},
+        edytowany,
+        otwarty: true,
         blad: 'Włącz Rozliczenia w Ustawieniach → System → Włączone funkcje przed zapisaniem umowy zbiorczej.',
       });
     }
@@ -232,11 +265,16 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
     // „klient-3” przy kolizji i nie zmienia klucza przy edycji.
     let kluczWBazie;
     try {
-      if (edytowany) { zapiszKlienta(db, edytowany.id, dane); kluczWBazie = edytowany.klucz; }
-      else kluczWBazie = klientPoId(db, dopiszKlienta(db, dane)).klucz;
+      if (edytowany) {
+        zapiszKlienta(db, edytowany.id, dane);
+        kluczWBazie = edytowany.klucz;
+      } else kluczWBazie = klientPoId(db, dopiszKlienta(db, dane)).klucz;
     } catch (e) {
       return renderuj(reply.code(400), {
-        formularz: req.body ?? {}, edytowany, blad: komunikatDlaOperatora(e), otwarty: true,
+        formularz: req.body ?? {},
+        edytowany,
+        blad: komunikatDlaOperatora(e),
+        otwarty: true,
       });
     }
 
@@ -245,8 +283,9 @@ export function registerKlienciRoutes(app, { db, gus = null, zwolnionaFirma = ()
     // następnym telefonie, więc ma zostawiać ślad, kto go zmienił.
     dopiszLog(db, null, {
       akcja: 'klient.zapis',
-      wynik: `Ręcznie (${ktoKlikal(req)}): ${edytowany ? 'poprawiono' : 'dopisano'} `
-        + `klienta B2B „${dane.nazwa}" (${kluczWBazie}) — ${opisKlienta(dane, { zwolniona: zwolnionaFirma() })}.`,
+      wynik:
+        `Ręcznie (${ktoKlikal(req)}): ${edytowany ? 'poprawiono' : 'dopisano'} ` +
+        `klienta B2B „${dane.nazwa}" (${kluczWBazie}) — ${opisKlienta(dane, { zwolniona: zwolnionaFirma() })}.`,
     });
     return reply.redirect('/klienci');
   });
@@ -257,16 +296,32 @@ function polaZKlienta(k) {
   const f = k.faktura ?? {};
   const w = k.wysylka ?? {};
   return {
-    id: k.id, klucz: k.klucz, nazwa: k.nazwa, nip: k.nip ?? '',
-    f_firma: f.firma ?? '', f_nip: f.nip ?? k.nip ?? '', f_ulica: f.ulica ?? '',
-    f_kod: f.kod ?? '', f_miasto: f.miasto ?? '', f_email: f.email ?? '',
-    w_nazwa: w.nazwa ?? '', w_firma: w.firma ?? '', w_ulica: w.ulica ?? '',
-    w_kod: w.kod ?? '', w_miasto: w.miasto ?? '', w_telefon: w.telefon ?? '', w_email: w.email ?? '',
-    b2b: k.b2b ? 'on' : '', rabat_procent: String(k.rabat_procent ?? 0),
+    id: k.id,
+    klucz: k.klucz,
+    nazwa: k.nazwa,
+    nip: k.nip ?? '',
+    f_firma: f.firma ?? '',
+    f_nip: f.nip ?? k.nip ?? '',
+    f_ulica: f.ulica ?? '',
+    f_kod: f.kod ?? '',
+    f_miasto: f.miasto ?? '',
+    f_email: f.email ?? '',
+    w_nazwa: w.nazwa ?? '',
+    w_firma: w.firma ?? '',
+    w_ulica: w.ulica ?? '',
+    w_kod: w.kod ?? '',
+    w_miasto: w.miasto ?? '',
+    w_telefon: w.telefon ?? '',
+    w_email: w.email ?? '',
+    b2b: k.b2b ? 'on' : '',
+    rabat_procent: String(k.rabat_procent ?? 0),
     chce_fakture: k.chce_fakture ? 'on' : '',
-    metoda_wysylki: k.metoda_wysylki, koszt_dostawy_brutto: k.koszt_dostawy_brutto,
-    platnosc: k.platnosc, termin_platnosci: k.termin_platnosci ?? '',
-    komentarz: k.komentarz ?? '', aktywny: k.aktywny ? 'on' : '',
+    metoda_wysylki: k.metoda_wysylki,
+    koszt_dostawy_brutto: k.koszt_dostawy_brutto,
+    platnosc: k.platnosc,
+    termin_platnosci: k.termin_platnosci ?? '',
+    komentarz: k.komentarz ?? '',
+    aktywny: k.aktywny ? 'on' : '',
     // ⚠️ KWOTY WRACAJĄ DO FORMULARZA W ZŁOTYCH, bo w złotych je wpisano — w bazie leżą
     // w groszach. Pusty napis przy `null` jest tu ISTOTNY: „0,00" w polu twierdziłoby,
     // że ktoś ustalił zerowy próg, a nie że nie ustalił niczego.

@@ -2,7 +2,9 @@ import { createHash } from 'node:crypto';
 import { bladOperatora } from '../../domena/bledy.js';
 import { wolnoNadacZOms, pobranieDoWysylki } from '../../domena/allegro-wysylka.js';
 import {
-  profilGabarytuAllegro, parsujGabarytAllegro, sprawdzLimityGabarytuAllegro,
+  profilGabarytuAllegro,
+  parsujGabarytAllegro,
+  sprawdzLimityGabarytuAllegro,
 } from '../../domena/gabaryty-allegro.js';
 
 // KURIER, KTORY NIE MA WLASNEJ UMOWY — kupuje przewoz u Allegro („Wysylam z Allegro").
@@ -40,7 +42,10 @@ export function commandIdDlaPaczki(zamowienieId, kolejnosc) {
   return `${s.slice(0, 8)}-${s.slice(8, 12)}-${s.slice(12, 16)}-${s.slice(16, 20)}-${s.slice(20)}`;
 }
 
-const czekaj = (ms) => new Promise((r) => { setTimeout(r, ms); });
+const czekaj = (ms) =>
+  new Promise((r) => {
+    setTimeout(r, ms);
+  });
 
 // ⚠️⚠️ NUMER LISTU NIE JEST W ODPOWIEDZI KOMENDY — i to kosztowalo jedno wdrozenie.
 //
@@ -59,9 +64,8 @@ const numerListuZPrzesylki = (p) => p?.packages?.find((x) => x?.waybill)?.waybil
 
 // Numer u PRZEWOZNIKA (DPD: `1000987654321U`) — inny niz allegrowy „AD…". Zapisujemy oba,
 // bo sledzenie u DPD dziala wylacznie po tym drugim.
-const numerPrzewoznika = (p) => p?.packages
-  ?.flatMap((x) => x?.transportingInfo ?? [])
-  .find((t) => t?.carrierWaybill)?.carrierWaybill ?? null;
+const numerPrzewoznika = (p) =>
+  p?.packages?.flatMap((x) => x?.transportingInfo ?? []).find((t) => t?.carrierWaybill)?.carrierWaybill ?? null;
 
 // ⚠️ KLIENT WYBIERANY PER ZAMÓWIENIE, a nie jeden na całą usługę. Kanałów Allegro bywa kilka
 // (np. `allegro_a`, `allegro_b`) i to OSOBNE KONTA: przesylka kupiona na koncie A
@@ -69,7 +73,11 @@ const numerPrzewoznika = (p) => p?.packages
 // kanalu jedzie na cudzej umowie — i nikt by tego nie zobaczyl, bo etykieta by powstala.
 /** @param {import('../../integracje/opcje.ts').OpcjeWza} opcje */
 export function createAllegroWzaClient({
-  allegroDla, metodaZywa, pobranieNadawca, odstepMs = ODSTEP_MS, maksProb = MAKS_PROB,
+  allegroDla,
+  metodaZywa,
+  pobranieNadawca,
+  odstepMs = ODSTEP_MS,
+  maksProb = MAKS_PROB,
 }) {
   /**
    * Gotowa przesylka -> wynik dla `services/nadanie.js`. JEDNO miejsce, w ktorym ten ksztalt
@@ -86,24 +94,27 @@ export function createAllegroWzaClient({
       const bajty = Buffer.from(etykieta ?? []);
       const poczatek = bajty.subarray(0, 4096).toString('ascii');
       const tekstZpl = format === 'ZPL' ? bajty.toString('ascii') : '';
-      if (!bajty.length || (format === 'PDF' && !poczatek.startsWith('%PDF-'))
-        || (format === 'ZPL' && (!tekstZpl.includes('^XA') || !tekstZpl.includes('^XZ')))) {
+      if (
+        !bajty.length ||
+        (format === 'PDF' && !poczatek.startsWith('%PDF-')) ||
+        (format === 'ZPL' && (!tekstZpl.includes('^XA') || !tekstZpl.includes('^XZ')))
+      ) {
         throw bladOperatora(`Allegro oddało pustą lub niezgodną z ${format} etykietę przesyłki ${shipmentId}.`);
       }
       return {
-      shipmentId,
-      numerListu,
-      numerPrzewoznika: numerPrzewoznika(przesylka),
-      wTrakcieTworzenia: false,
-      etykietaPdf: format === 'PDF' ? bajty : null,
-      etykietaZpl: format === 'ZPL' ? bajty : null,
-      // ⚠️⚠️ TEKST, NIGDY OBIEKT. Kolumna `przesylki.odpowiedz_surowa` jest tekstowa,
-      // a `node:sqlite` na obiekcie RZUCA („Provided value cannot be bound to SQLite
-      // parameter 4") — i rzuca DOPIERO PO tym, jak przewoz u Allegro juz powstal
-      // i kosztował: paczka kupiona, a panel pokazuje „błąd techniczny”. DPD i InPost
-      // oddają tu surowy TEKST
-      // odpowiedzi — trzymamy sie tej samej umowy.
-      surowa: JSON.stringify(przesylka),
+        shipmentId,
+        numerListu,
+        numerPrzewoznika: numerPrzewoznika(przesylka),
+        wTrakcieTworzenia: false,
+        etykietaPdf: format === 'PDF' ? bajty : null,
+        etykietaZpl: format === 'ZPL' ? bajty : null,
+        // ⚠️⚠️ TEKST, NIGDY OBIEKT. Kolumna `przesylki.odpowiedz_surowa` jest tekstowa,
+        // a `node:sqlite` na obiekcie RZUCA („Provided value cannot be bound to SQLite
+        // parameter 4") — i rzuca DOPIERO PO tym, jak przewoz u Allegro juz powstal
+        // i kosztował: paczka kupiona, a panel pokazuje „błąd techniczny”. DPD i InPost
+        // oddają tu surowy TEKST
+        // odpowiedzi — trzymamy sie tej samej umowy.
+        surowa: JSON.stringify(przesylka),
       };
     } catch (e) {
       // Przewóz już istnieje. Numer musi przeżyć nawet awarię etykiety.
@@ -120,7 +131,10 @@ export function createAllegroWzaClient({
       const status = String(stan?.status ?? '').toUpperCase();
 
       if (status === 'ERROR' || (Array.isArray(stan?.errors) && stan.errors.length)) {
-        const powod = (stan.errors ?? []).map((e) => e.userMessage || e.message).filter(Boolean).join('; ');
+        const powod = (stan.errors ?? [])
+          .map((e) => e.userMessage || e.message)
+          .filter(Boolean)
+          .join('; ');
         throw bladOperatora(`Allegro odmówiło utworzenia przesyłki: ${powod || 'bez podanego powodu'}.`);
       }
 
@@ -146,7 +160,14 @@ export function createAllegroWzaClient({
     // (`services/nadanie.js`) zapisze wiersz 'w_trakcie', a czlowiek domknie go przyciskiem
     // „Sprawdz ponownie". Rzucenie tutaj kazaloby zapisac 'blad', co zwolniloby indeks
     // czesciowy i pozwolilo kupic DRUGI przewoz.
-    return { shipmentId: commandId, numerListu: null, wTrakcieTworzenia: true, etykietaPdf: null, etykietaZpl: null, surowa: null };
+    return {
+      shipmentId: commandId,
+      numerListu: null,
+      wTrakcieTworzenia: true,
+      etykietaPdf: null,
+      etykietaZpl: null,
+      surowa: null,
+    };
   }
 
   // ⚠️⚠️ `pobranieNaTejPaczce`: kwota pobrania nalezy do ZAMOWIENIA, a podpowiedz
@@ -155,7 +176,11 @@ export function createAllegroWzaClient({
   // inaczej kupujacy placilby drugi raz.
   /** @param {import('../../core/kontrakty.ts').ZlecenieKuriera} zlecenie */
   async function nadaj({
-    zamowienie, paczka, kolejnosc = 1, kwotaPobrania = null, drukowac = false,
+    zamowienie,
+    paczka,
+    kolejnosc = 1,
+    kwotaPobrania = null,
+    drukowac = false,
     pobranieNaTejPaczce = kolejnosc === 1,
   }) {
     // ⚠️ ZYWY ODCZYT METODY, nie kolumna. Allegro nie podbija `updatedAt` przy zmianach
@@ -165,8 +190,7 @@ export function createAllegroWzaClient({
     // Bariera domenowa PRZED pierwszym bajtem, ktory cokolwiek kosztuje.
     const zgoda = wolnoNadacZOms(zamowienie, { deliveryMethodIdZywy });
     if (!zgoda.wolno) throw bladOperatora(zgoda.powod);
-    if (paczka?.oczekiwanyDeliveryMethodId
-      && paczka.oczekiwanyDeliveryMethodId !== deliveryMethodIdZywy) {
+    if (paczka?.oczekiwanyDeliveryMethodId && paczka.oczekiwanyDeliveryMethodId !== deliveryMethodIdZywy) {
       throw bladOperatora('Metoda dostawy zmieniła się — odśwież ekran nadania.');
     }
 
@@ -205,11 +229,14 @@ export function createAllegroWzaClient({
     // ODMOWE, a nie zakup — bo cicha zgoda kosztuje tu prawdziwe pieniadze.
     const juzNadane = await allegro.pobierzPrzesylki(zamowienie.zrodlo_id);
     if (Array.isArray(juzNadane) && juzNadane.length) {
-      const numery = juzNadane.map((p) => p.waybill).filter(Boolean).join(', ');
+      const numery = juzNadane
+        .map((p) => p.waybill)
+        .filter(Boolean)
+        .join(', ');
       throw bladOperatora(
-        `To zamówienie ma już w Allegro ${juzNadane.length === 1 ? 'przesyłkę' : `${juzNadane.length} przesyłki`}`
-        + `${numery ? ` (${numery})` : ''} — panel niczego nie kupił. Jeśli potrzebna jest kolejna paczka, `
-        + 'nadaj ją świadomie jako dosyłkę.',
+        `To zamówienie ma już w Allegro ${juzNadane.length === 1 ? 'przesyłkę' : `${juzNadane.length} przesyłki`}` +
+          `${numery ? ` (${numery})` : ''} — panel niczego nie kupił. Jeśli potrzebna jest kolejna paczka, ` +
+          'nadaj ją świadomie jako dosyłkę.',
       );
     }
     const propozycja = await allegro.pobierzPropozycjeWysylki(zamowienie.zrodlo_id);
@@ -226,13 +253,15 @@ export function createAllegroWzaClient({
       deliveryMethodId: zgoda.deliveryMethodId,
       // ⚠️ WYMIARY WLASNE. Podpowiedz bierze je z OFERTY i bywaja fikcyjne — zmierzone
       // 120 × 80 × 55 cm przy 0,5 kg. O wlasnej paczce wiemy wiecej niz Allegro.
-      packages: [{
-        type: 'PACKAGE',
-        length: { value: paczkaDoWysylki.dlugosc, unit: 'CENTIMETER' },
-        width: { value: paczkaDoWysylki.szerokosc, unit: 'CENTIMETER' },
-        height: { value: paczkaDoWysylki.wysokosc, unit: 'CENTIMETER' },
-        weight: { value: paczkaDoWysylki.waga, unit: 'KILOGRAMS' },
-      }],
+      packages: [
+        {
+          type: 'PACKAGE',
+          length: { value: paczkaDoWysylki.dlugosc, unit: 'CENTIMETER' },
+          width: { value: paczkaDoWysylki.szerokosc, unit: 'CENTIMETER' },
+          height: { value: paczkaDoWysylki.wysokosc, unit: 'CENTIMETER' },
+          weight: { value: paczkaDoWysylki.waga, unit: 'KILOGRAMS' },
+        },
+      ],
       labelFormat: drukowac ? 'ZPL' : 'PDF',
     };
 
@@ -240,18 +269,22 @@ export function createAllegroWzaClient({
     // tu tylko podajemy jej fakty. Limit bierzemy z TEJ SAMEJ podpowiedzi, ktora dala kwote,
     // a nie ze stalej w kodzie: Allegro rozni go miedzy uslugami (6000 zl przy DPD (AD),
     // 15000 przy „DPD Polska") i moze zmienic bez pytania nas o zdanie.
-    const limitPobrania = (propozycja?.deliveryOptions ?? [])
-      .find((o) => o?.limits?.cashOnDelivery?.amount)?.limits?.cashOnDelivery?.amount ?? null;
+    const limitPobrania =
+      (propozycja?.deliveryOptions ?? []).find((o) => o?.limits?.cashOnDelivery?.amount)?.limits?.cashOnDelivery
+        ?.amount ?? null;
     // Pomijamy regule TYLKO na dosylce: paczka nr 1 zawsze słucha podpowiedzi Allegro.
-    const pobranie = kolejnosc > 1 && !pobranieNaTejPaczce ? { wolno: true, cashOnDelivery: null } : pobranieDoWysylki({
-      pobranieUslugi: zgoda.pobranie,
-      cashOnDelivery: p.cashOnDelivery,
-      limit: limitPobrania,
-      ownerName: pobranieNadawca?.nazwa,
-      iban: pobranieNadawca?.rachunek,
-      nadpisanieOperatora: kwotaPobrania,
-      wymaganeKonto: zgoda.wymagaKonta,
-    });
+    const pobranie =
+      kolejnosc > 1 && !pobranieNaTejPaczce
+        ? { wolno: true, cashOnDelivery: null }
+        : pobranieDoWysylki({
+            pobranieUslugi: zgoda.pobranie,
+            cashOnDelivery: p.cashOnDelivery,
+            limit: limitPobrania,
+            ownerName: pobranieNadawca?.nazwa,
+            iban: pobranieNadawca?.rachunek,
+            nadpisanieOperatora: kwotaPobrania,
+            wymaganeKonto: zgoda.wymagaKonta,
+          });
     if (!pobranie.wolno) throw bladOperatora(pobranie.powod);
     // ⚠️ JAWNE `null` przy przesylce przedplaconej, a nie pominiete pole: podpowiedz mogla
     // niesc `cashOnDelivery` i rozlozenie jej przez `...p` wyzej przemycilobyby inkaso tam,

@@ -24,7 +24,11 @@ import { kanalZWiadomosciami } from '../../../domena/moduly-kanalow.ts';
 // zegar, dwa zrodla. Osobny znaczylby drugiego straznika „jeden przebieg naraz" i druga rzecz
 // do pilnowania, a oba odczyty i tak pytaja te same konta Allegro.
 export function createPollerWiadomosci({
-  db, klienci = {}, sprawy = null, brakiKanalu = () => [], teraz = () => new Date(),
+  db,
+  klienci = {},
+  sprawy = null,
+  brakiKanalu = () => [],
+  teraz = () => new Date(),
 }) {
   let trwa = false;
 

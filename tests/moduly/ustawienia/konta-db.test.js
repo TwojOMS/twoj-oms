@@ -1,8 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import {
-  zalozKonto, kontoPoLoginie, ustawUprawnienia, ustawCzynne, ustawAdmina, zmienHaslo,
-  czyIstniejeCzynnyAdmin, listaKont, dopiszLogowanie, ostatnieLogowania, uprawnieniaKonta,
+  zalozKonto,
+  kontoPoLoginie,
+  ustawUprawnienia,
+  ustawCzynne,
+  ustawAdmina,
+  zmienHaslo,
+  czyIstniejeCzynnyAdmin,
+  listaKont,
+  dopiszLogowanie,
+  ostatnieLogowania,
+  uprawnieniaKonta,
   MAKS_DLUGOSC_LOGINU_W_DZIENNIKU,
 } from '../../../src/core/bezpieczenstwo/konta.js';
 import { zgodneHaslo } from '../../../src/domena/hasla.js';
@@ -41,8 +50,7 @@ describe('konta', () => {
   it('login jest unikalny', () => {
     const db = swiezaBaza();
     zalozKonto(db, { login: 'ewa', imie: 'A', haslo: 'h', rola: 'sprzedaz', admin: false });
-    expect(() => zalozKonto(db, { login: 'ewa', imie: 'B', haslo: 'h', rola: 'produkcja', admin: false }))
-      .toThrow();
+    expect(() => zalozKonto(db, { login: 'ewa', imie: 'B', haslo: 'h', rola: 'produkcja', admin: false })).toThrow();
   });
 
   it('ustawUprawnienia PODMIENIA komplet, a nie doklada', () => {

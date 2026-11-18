@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import {
-  createOdswiezanieSpraw, sprawyOtwarte, STATUSY_OTWARTE,
+  createOdswiezanieSpraw,
+  sprawyOtwarte,
+  STATUSY_OTWARTE,
 } from '../../../src/moduly/wiadomosci/services/dyskusje.js';
 
 // ⚠️⚠️ RUSZTOWANIE NA DWA MIESIACE. Od 28.10.2026 Allegro wprowadza Problemy z zakupem do
@@ -13,8 +15,12 @@ import {
 const teraz = () => new Date('2026-08-28T21:00:00Z');
 
 const sprawa = (id, status, typ = 'DISPUTE') => ({
-  id, type: typ, status, buyer: { login: 'kup' },
-  checkoutForm: { id: 'zam-1' }, openedDate: '2026-08-27T10:00:00Z',
+  id,
+  type: typ,
+  status,
+  buyer: { login: 'kup' },
+  checkoutForm: { id: 'zam-1' },
+  openedDate: '2026-08-27T10:00:00Z',
 });
 
 const klient = (sprawy) => ({ pobierzSprawy: async () => ({ sprawy, razem: sprawy.length }) });
@@ -37,7 +43,9 @@ describe('dyskusje i reklamacje', () => {
   it('sprawy zamknięte NIE trafiają na listę otwartych', async () => {
     const db = openOmsDb(':memory:');
     const o = createOdswiezanieSpraw({
-      db, klienci: { allegro_swietlik: klient([sprawa('d1', 'DISPUTE_CLOSED')]) }, teraz,
+      db,
+      klienci: { allegro_swietlik: klient([sprawa('d1', 'DISPUTE_CLOSED')]) },
+      teraz,
     });
     await o.przebieg();
     expect(sprawyOtwarte(db)).toHaveLength(0);
@@ -74,7 +82,11 @@ describe('dyskusje i reklamacje', () => {
     const o = createOdswiezanieSpraw({
       db,
       klienci: {
-        allegro_swietlik: { pobierzSprawy: async () => { throw new Error('Allegro: HTTP 403 przy /sale/issues'); } },
+        allegro_swietlik: {
+          pobierzSprawy: async () => {
+            throw new Error('Allegro: HTTP 403 przy /sale/issues');
+          },
+        },
         allegro_polcien2: klient([sprawa('d2', 'DISPUTE_ONGOING')]),
       },
       teraz,
@@ -88,9 +100,15 @@ describe('dyskusje i reklamacje', () => {
     // ⚠️ Przed przewiązaniem kanałów o `allegro:api:disputes` ten zasób odda 403 na obu
     // kontach. Przebieg ma to znieść i oddać błędy, a nie odrzucić obietnicy.
     const db = openOmsDb(':memory:');
-    const pad = { pobierzSprawy: async () => { throw new Error('Allegro: HTTP 403 przy /sale/issues'); } };
+    const pad = {
+      pobierzSprawy: async () => {
+        throw new Error('Allegro: HTTP 403 przy /sale/issues');
+      },
+    };
     const wynik = await createOdswiezanieSpraw({
-      db, klienci: { allegro_swietlik: pad, allegro_polcien2: pad }, teraz,
+      db,
+      klienci: { allegro_swietlik: pad, allegro_polcien2: pad },
+      teraz,
     }).przebieg();
     expect(wynik.bledy).toHaveLength(2);
     expect(wynik.zapisane).toBe(0);

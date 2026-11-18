@@ -13,20 +13,23 @@ const WYJATKI = new Set([
   'src/moduly/ustawienia/widoki/haslo-link.ejs',
 ]);
 function widoki(katalog) {
-  return readdirSync(katalog, { withFileTypes: true }).flatMap(p => {
+  return readdirSync(katalog, { withFileTypes: true }).flatMap((p) => {
     const sciezka = join(katalog, p.name);
     return p.isDirectory() ? widoki(sciezka) : /\/widoki\/.*\.ejs$/.test(sciezka) ? [sciezka] : [];
   });
 }
 describe('wspólny nagłówek ekranu', () => {
   it('h1 pochodzi wyłącznie z partiala (poza logowaniem i odmową)', () => {
-    const naruszenia = widoki('src').filter(p => !WYJATKI.has(p) &&
-      /<h1\b/i.test(readFileSync(p, 'utf8').replace(/<%#[\s\S]*?%>|<!--[\s\S]*?-->/g, '')));
+    const naruszenia = widoki('src').filter(
+      (p) => !WYJATKI.has(p) && /<h1\b/i.test(readFileSync(p, 'utf8').replace(/<%#[\s\S]*?%>|<!--[\s\S]*?-->/g, '')),
+    );
     expect(naruszenia).toEqual([]);
   });
   it('escapuje tytuł i podtytuł, zachowuje slot akcji i zakładki po h1', async () => {
     const html = await ejs.renderFile('src/core/web/widoki/_naglowek-ekranu.ejs', {
-      tytul: '<b>Tytuł</b>', podtytul: '<i>Opis</i>', licznik: '3 karty',
+      tytul: '<b>Tytuł</b>',
+      podtytul: '<i>Opis</i>',
+      licznik: '3 karty',
       akcje: '<a class="btn btn--drugi" href="/">Akcja</a>',
       zakladki: '<nav>Zakładki</nav>',
     });
@@ -47,12 +50,17 @@ describe('wspólny nagłówek ekranu', () => {
       const r = await get(app, url, BASIC);
       expect(r.statusCode).toBe(200);
       expect(r.body.match(/<h1\b/g)).toHaveLength(1);
-      expect(r.body).toMatch(new RegExp(`<header[^>]*class="[^"]*naglowek-ekranu[^"]*"[^>]*>[\\s\\S]*?<h1[^>]*>${tytul}</h1>`));
+      expect(r.body).toMatch(
+        new RegExp(`<header[^>]*class="[^"]*naglowek-ekranu[^"]*"[^>]*>[\\s\\S]*?<h1[^>]*>${tytul}</h1>`),
+      );
       if (zakladki) {
         const main = r.body.slice(r.body.indexOf('<main'));
         expect(main.search(new RegExp(`class="[^"]*\\b${zakladki}\\b`))).toBeGreaterThan(main.indexOf('</h1>'));
       }
-    } finally { await app.close(); db.close(); }
+    } finally {
+      await app.close();
+      db.close();
+    }
   });
   it('akcja szablonów paczek jest w wierszu tytułu działu, przed zakładkami', async () => {
     const { app, db } = nowyPanel();
@@ -63,6 +71,9 @@ describe('wspólny nagłówek ekranu', () => {
       expect(header).toContain('class="naglowek-ekranu__akcje"');
       expect(header).toContain('class="btn" href="/ustawienia/zamowienia-i-wysylka?dodaj=1"');
       expect(header.indexOf('?dodaj=1')).toBeLessThan(header.indexOf('class="ust-zakladki"'));
-    } finally { await app.close(); db.close(); }
+    } finally {
+      await app.close();
+      db.close();
+    }
   });
 });

@@ -24,8 +24,10 @@ export function powodOdmowyFaktury(z, { okresyWlaczone = true, dlaKazdego = fals
   // głównego — jego pozycje fakturuje faktura głównego (oms/db/scalenia.js). Własna faktura
   // dołączonego = te same pozycje na dwóch dokumentach. Tej samej funkcji pyta wystawianie hurtem.
   if (z.scalone_do) {
-    return `Zamówienie ${z.numer} jest scalone z zamówieniem ${z.scalone_do_numer ?? `#${z.scalone_do}`} — `
-      + 'faktura w zamówieniu głównym.';
+    return (
+      `Zamówienie ${z.numer} jest scalone z zamówieniem ${z.scalone_do_numer ?? `#${z.scalone_do}`} — ` +
+      'faktura w zamówieniu głównym.'
+    );
   }
 
   // ⚠️ ZAMÓWIENIE ROZLICZANE ZBIORCZO NIE MA WŁASNEJ FAKTURY — I TO JEST BLOKADA
@@ -45,11 +47,14 @@ export function powodOdmowyFaktury(z, { okresyWlaczone = true, dlaKazdego = fals
   // w ZADNYM stanie, a komunikat niesie adres ekranu, na ktory czlowiek ma kliknac —
   // inaczej operator wie tylko, ze nie wolno, i nie wie, gdzie ma isc.
   if (z.okres_rozliczeniowy_id) {
-    return `Zamówienie ${z.numer} należy do miesięcznego okresu rozliczeniowego i rozlicza się `
-      + 'JEDNĄ fakturą zbiorczą za cały miesiąc — pojedynczej faktury panel do niego nie '
-      + 'wystawi. ' + (okresyWlaczone
+    return (
+      `Zamówienie ${z.numer} należy do miesięcznego okresu rozliczeniowego i rozlicza się ` +
+      'JEDNĄ fakturą zbiorczą za cały miesiąc — pojedynczej faktury panel do niego nie ' +
+      'wystawi. ' +
+      (okresyWlaczone
         ? `Fakturę za ten miesiąc wystawisz na ekranie okresu: /okresy/${z.okres_rozliczeniowy_id}.`
-        : 'Włącz Rozliczenia w Ustawienia → System → Włączone funkcje, żeby wystawić fakturę za okres.');
+        : 'Włącz Rozliczenia w Ustawienia → System → Włączone funkcje, żeby wystawić fakturę za okres.')
+    );
   }
 
   // TWARDA odmowa, nie samo ukrycie sekcji w widoku: karta w przegladarce pokazuje stan
@@ -114,9 +119,11 @@ export function powodOdmowyZaplaconej(z) {
   const wplatyGr = sumaWplatGrosze(z?.platnosci);
   const naleznoscGr = kwotaOczekiwanaGrosze(z);
   if (wplatyGr >= naleznoscGr) return null;
-  return `Faktura ma być oznaczona jako zapłacona, a panel widzi przy zamówieniu ${z?.numer} `
-    + `wpłaty na ${zl(wplatyGr)} zł przy należności ${zl(naleznoscGr)} zł. Nie wystawiono `
-    + 'niczego. Najpierw dopisz wpłatę na karcie zamówienia (sekcja „Płatności"), a potem '
-    + 'wystaw fakturę — albo wybierz termin płatności zamiast „zapłacone". Dokumentu '
-    + 'mówiącego „zapłacono", gdy pieniędzy nie ma, nie da się poprawić — tylko skorygować.';
+  return (
+    `Faktura ma być oznaczona jako zapłacona, a panel widzi przy zamówieniu ${z?.numer} ` +
+    `wpłaty na ${zl(wplatyGr)} zł przy należności ${zl(naleznoscGr)} zł. Nie wystawiono ` +
+    'niczego. Najpierw dopisz wpłatę na karcie zamówienia (sekcja „Płatności"), a potem ' +
+    'wystaw fakturę — albo wybierz termin płatności zamiast „zapłacone". Dokumentu ' +
+    'mówiącego „zapłacono", gdy pieniędzy nie ma, nie da się poprawić — tylko skorygować.'
+  );
 }

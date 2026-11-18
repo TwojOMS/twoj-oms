@@ -9,7 +9,8 @@ import { wplatyOkresu } from './platnosci.js';
 const KLUCZ = 'moduly.wylaczone';
 // Chwila ostatniego włączenia Kosztów — /health liczy od niej próg nocnego pobrania (domena/zdrowie.js).
 const KLUCZ_KOSZTY_WLACZONE = 'moduly.koszty.wlaczone_at';
-export const kosztyWlaczoneOd = (db) => db.prepare('SELECT wartosc FROM ustawienia WHERE klucz = ?').get(KLUCZ_KOSZTY_WLACZONE)?.wartosc ?? null;
+export const kosztyWlaczoneOd = (db) =>
+  db.prepare('SELECT wartosc FROM ustawienia WHERE klucz = ?').get(KLUCZ_KOSZTY_WLACZONE)?.wartosc ?? null;
 export function wylaczoneModuly(db) {
   return parsujWylaczoneModuly(db.prepare('SELECT wartosc FROM ustawienia WHERE klucz = ?').get(KLUCZ)?.wartosc);
 }
@@ -17,10 +18,12 @@ export function wylaczoneModuly(db) {
 export function zaleznosciModulow(db) {
   const zbiorczy = db.prepare('SELECT COUNT(*) AS n FROM klienci WHERE rozliczenie_zbiorcze = 1').get().n;
   const rabaty = db.prepare('SELECT COUNT(*) AS n FROM klienci WHERE rabat_procent > 0').get().n;
-  let okresy = 0, nierozliczoneOkresy = 0, bledneKwotyOkresow = 0;
+  let okresy = 0,
+    nierozliczoneOkresy = 0,
+    bledneKwotyOkresow = 0;
   // Również pusty okres może przechowywać zaliczkę po odpięciu zamówień.
   for (const okres of db.prepare('SELECT * FROM okresy_rozliczeniowe').all()) {
-    const wszystkie = zamowieniaOkresu(db, okres.id).map(id => pobierzZamowienie(db, id));
+    const wszystkie = zamowieniaOkresu(db, okres.id).map((id) => pobierzZamowienie(db, id));
     const { zamowienia } = podzialZamowienOkresu(wszystkie);
     const wplaty = wplatyOkresu(db, okres.id);
     const wystawiona = stanFakturyOkresu(okres) === 'wystawiona';
@@ -43,7 +46,8 @@ export function zaleznosciModulow(db) {
 }
 
 export function przelaczModul(db, { modul, wlacz }) {
-  if (!dozwolonyModul(modul) || typeof wlacz !== 'boolean') return { kod: 400, blad: 'Nieznany moduł albo niepoprawna wartość przełącznika.' };
+  if (!dozwolonyModul(modul) || typeof wlacz !== 'boolean')
+    return { kod: 400, blad: 'Nieznany moduł albo niepoprawna wartość przełącznika.' };
   db.exec('BEGIN IMMEDIATE');
   try {
     const zaleznosci = zaleznosciModulow(db);
@@ -51,25 +55,42 @@ export function przelaczModul(db, { modul, wlacz }) {
     // Bezpiecznik rozliczeń dotyczy Stałych klientów i Rozliczeń. Koszty to widok i pobieranie — wyłączenie nie
     // rusza danych, więc nie blokuje go nic.
     const chroniony = modul === 'klienci' || modul === 'okresy';
-    if (chroniony && !wlacz && zaleznosci.zbiorczy > 0) powody.push(`${zaleznosci.zbiorczy} klientów B2B z rozliczeniem zbiorczym — wymagają edycji warunków na karcie klienta i fakturowania w Rozliczeniach`);
-    if (chroniony && !wlacz && zaleznosci.okresy > 0) powody.push(`${zaleznosci.okresy} okresów z zamówieniami bez zakończonej faktury — potrzebne są Rozliczenia oraz karta klienta do uzupełnienia nabywcy i warunków umowy`);
-    if (chroniony && !wlacz && zaleznosci.nierozliczoneOkresy > 0) powody.push(`${zaleznosci.nierozliczoneOkresy} okresów z nierozliczonymi wpłatami albo niedopłatą — rozlicz je w Rozliczeniach`);
-    if (chroniony && !wlacz && zaleznosci.bledneKwotyOkresow > 0) powody.push(`${zaleznosci.bledneKwotyOkresow} okresów: nie można odczytać kwoty zamówienia lub wpłaty — sprawdź i popraw dane w Rozliczeniach`);
+    if (chroniony && !wlacz && zaleznosci.zbiorczy > 0)
+      powody.push(
+        `${zaleznosci.zbiorczy} klientów B2B z rozliczeniem zbiorczym — wymagają edycji warunków na karcie klienta i fakturowania w Rozliczeniach`,
+      );
+    if (chroniony && !wlacz && zaleznosci.okresy > 0)
+      powody.push(
+        `${zaleznosci.okresy} okresów z zamówieniami bez zakończonej faktury — potrzebne są Rozliczenia oraz karta klienta do uzupełnienia nabywcy i warunków umowy`,
+      );
+    if (chroniony && !wlacz && zaleznosci.nierozliczoneOkresy > 0)
+      powody.push(
+        `${zaleznosci.nierozliczoneOkresy} okresów z nierozliczonymi wpłatami albo niedopłatą — rozlicz je w Rozliczeniach`,
+      );
+    if (chroniony && !wlacz && zaleznosci.bledneKwotyOkresow > 0)
+      powody.push(
+        `${zaleznosci.bledneKwotyOkresow} okresów: nie można odczytać kwoty zamówienia lub wpłaty — sprawdź i popraw dane w Rozliczeniach`,
+      );
     if (powody.length) {
       db.exec('ROLLBACK');
       return { kod: 409, blad: `Nie można wyłączyć modułu: ${powody.join('; ')}.` };
     }
-    const lista = wylaczoneModuly(db).filter(k => k !== modul);
+    const lista = wylaczoneModuly(db).filter((k) => k !== modul);
     if (!wlacz) lista.push(modul);
-    db.prepare(`INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
-      ON CONFLICT(klucz) DO UPDATE SET wartosc=excluded.wartosc, zmienione_at=excluded.zmienione_at`)
-      .run(KLUCZ, JSON.stringify(lista), new Date().toISOString());
+    db.prepare(
+      `INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
+      ON CONFLICT(klucz) DO UPDATE SET wartosc=excluded.wartosc, zmienione_at=excluded.zmienione_at`,
+    ).run(KLUCZ, JSON.stringify(lista), new Date().toISOString());
     if (modul === 'koszty' && wlacz) {
-      db.prepare(`INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
-        ON CONFLICT(klucz) DO UPDATE SET wartosc=excluded.wartosc, zmienione_at=excluded.zmienione_at`)
-        .run(KLUCZ_KOSZTY_WLACZONE, new Date().toISOString(), new Date().toISOString());
+      db.prepare(
+        `INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
+        ON CONFLICT(klucz) DO UPDATE SET wartosc=excluded.wartosc, zmienione_at=excluded.zmienione_at`,
+      ).run(KLUCZ_KOSZTY_WLACZONE, new Date().toISOString(), new Date().toISOString());
     }
     db.exec('COMMIT');
     return { kod: 303 };
-  } catch (e) { db.exec('ROLLBACK'); throw e; }
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
 }

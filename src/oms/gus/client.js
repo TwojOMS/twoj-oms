@@ -1,8 +1,6 @@
 import { transport } from '../../integracje/transport.js';
 import { bladOperatora } from '../../domena/bledy.js';
-import {
-  kopertaZaloguj, kopertaSzukajPoNip, firmaZOdpowiedzi, pole, rozpakuj,
-} from '../../domena/gus.js';
+import { kopertaZaloguj, kopertaSzukajPoNip, firmaZOdpowiedzi, pole, rozpakuj } from '../../domena/gus.js';
 
 // Klient GUS BIR1.1 (baza REGON). Sieć i sesja — reguły siedzą w domena/gus.js.
 //
@@ -66,7 +64,9 @@ export function createGusClient({ klucz, url }, { fetchImpl, http = transport({ 
     // szedłby dalej z pustym `sid` i mówił „nie znaleziono firmy" przy KAŻDYM NIP-ie.
     if (!sid) {
       // Klucz bywa w pliku (GUS_KLUCZ) albo w Ustawienia → Integracje → GUS — komunikat wskazuje oba.
-      throw bladOperatora('GUS odrzucił logowanie — sprawdź klucz użytkownika BIR (Ustawienia → Integracje → GUS albo GUS_KLUCZ w pliku konfiguracji).');
+      throw bladOperatora(
+        'GUS odrzucił logowanie — sprawdź klucz użytkownika BIR (Ustawienia → Integracje → GUS albo GUS_KLUCZ w pliku konfiguracji).',
+      );
     }
     sesja = { sid, do: teraz() + ZYWOTNOSC_SESJI_MS };
     return sid;
@@ -80,7 +80,7 @@ export function createGusClient({ klucz, url }, { fetchImpl, http = transport({ 
    * karta pokazuje inaczej, bo pierwszy znaczy „sprawdź NIP", a drugi „spróbuj za chwilę".
    */
   async function firmaPoNip(nip) {
-    const sid = sesjaAktualna() ?? await zaloguj();
+    const sid = sesjaAktualna() ?? (await zaloguj());
     const tresc = await wyslij(kopertaSzukajPoNip(nip, url), sid);
     const wynik = pole(rozpakuj(tresc), 'DaneSzukajPodmiotyResult');
 

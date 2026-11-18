@@ -21,22 +21,69 @@ beforeEach(() => {
     CREATE TABLE IF NOT EXISTS stany_zatwierdzenia (id INTEGER PRIMARY KEY, przelaczenie_id INTEGER NOT NULL,
     zatwierdzil TEXT NOT NULL, zatwierdzono_at TEXT NOT NULL, ofert INTEGER NOT NULL, skrot TEXT NOT NULL);`);
   for (const id of [1, 2, 3]) {
-    db.prepare(`INSERT INTO karty_produktow (id, sku, nazwa, utworzony_at, zmieniony_at) VALUES (?, ?, ?, ?, ?)`)
-      .run(id, `PP-LAMPA-${id}`, `Lampa Półcień ${id}`, T0, T0);
-    wstawOferte(db, { kanal: 'erli_polcien', kartaId: id, idZewnetrzne: `oferta-${id}`, pochodzenie: 'oms' }, { teraz: T0 });
+    db.prepare(`INSERT INTO karty_produktow (id, sku, nazwa, utworzony_at, zmieniony_at) VALUES (?, ?, ?, ?, ?)`).run(
+      id,
+      `PP-LAMPA-${id}`,
+      `Lampa Półcień ${id}`,
+      T0,
+      T0,
+    );
+    wstawOferte(
+      db,
+      { kanal: 'erli_polcien', kartaId: id, idZewnetrzne: `oferta-${id}`, pochodzenie: 'oms' },
+      { teraz: T0 },
+    );
   }
   numer = 0;
   stany.przelaczStany(db, { wlacz: true, at: T0 });
 });
-afterEach(() => { vi.restoreAllMocks(); db.close(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  db.close();
+});
 
-function zakup({ sklep = 'erli_polcien', oferta = 'oferta-1', at = T1, zmienione = T1, anulowane = 0, status = null } = {}) {
-  const id = zapiszZamowienie(db, sklep, { zrodlo_id: String(++numer), numer: `E-${numer}`,
-    klient: {}, dostawa: {}, utworzone_at: at, kwota_brutto: '20.00', metoda_wysylki: 'dpd',
-    kwota_pobrania: null, chce_fakture: 0, nip: null, oplacone_at: null,
-    anulowane, status_woo: status, pozycje: [{ zrodlo_id: 'p1', oferta_id: oferta,
-      produkt_id: null, wariant_id: null, sku: null, zdjecie_url: null,
-      nazwa: 'Lampa Półcień', ilosc: 2, cena_brutto: '10.00', vat: '23' }] }, {});
+function zakup({
+  sklep = 'erli_polcien',
+  oferta = 'oferta-1',
+  at = T1,
+  zmienione = T1,
+  anulowane = 0,
+  status = null,
+} = {}) {
+  const id = zapiszZamowienie(
+    db,
+    sklep,
+    {
+      zrodlo_id: String(++numer),
+      numer: `E-${numer}`,
+      klient: {},
+      dostawa: {},
+      utworzone_at: at,
+      kwota_brutto: '20.00',
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: 0,
+      nip: null,
+      oplacone_at: null,
+      anulowane,
+      status_woo: status,
+      pozycje: [
+        {
+          zrodlo_id: 'p1',
+          oferta_id: oferta,
+          produkt_id: null,
+          wariant_id: null,
+          sku: null,
+          zdjecie_url: null,
+          nazwa: 'Lampa Półcień',
+          ilosc: 2,
+          cena_brutto: '10.00',
+          vat: '23',
+        },
+      ],
+    },
+    {},
+  );
   db.prepare('UPDATE zamowienia SET zmienione_at = ? WHERE id = ?').run(zmienione, id);
   return id;
 }
@@ -44,7 +91,15 @@ function ruch(kartaId, ilosc, at = T1) {
   stany.dodajRuch(db, { kartaId, rodzaj: 'przyjecie', ilosc, klucz: `r-${kartaId}-${at}`, at });
 }
 function wiersz(id = 1, dodatkowe = {}) {
-  return { id, kanal: 'erli_polcien', kartaId: id, idZewnetrzne: `oferta-${id}`, od: T0, regula: 'zlozone', ...dodatkowe };
+  return {
+    id,
+    kanal: 'erli_polcien',
+    kartaId: id,
+    idZewnetrzne: `oferta-${id}`,
+    od: T0,
+    regula: 'zlozone',
+    ...dodatkowe,
+  };
 }
 
 it('migawka zna tylko otwarcia i ruchy; zatwierdzenie dotyczy id bieżącego włączenia', () => {
@@ -116,8 +171,16 @@ it('2000 zamówień i wiele ofert: jedno grupujące zapytanie, rozdzielenie kont
   ruch(1, 5);
   const zapytania = [];
   const prepare = db.prepare.bind(db);
-  vi.spyOn(db, 'prepare').mockImplementation(sql => { zapytania.push(sql); return prepare(sql); });
-  const wynik = stany.wyjasnieniaOfert(db, [wiersz(), wiersz(2), wiersz(3), wiersz(4, { kartaId: 1, idZewnetrzne: 'oferta-1', od: T2 })]);
+  vi.spyOn(db, 'prepare').mockImplementation((sql) => {
+    zapytania.push(sql);
+    return prepare(sql);
+  });
+  const wynik = stany.wyjasnieniaOfert(db, [
+    wiersz(),
+    wiersz(2),
+    wiersz(3),
+    wiersz(4, { kartaId: 1, idZewnetrzne: 'oferta-1', od: T2 }),
+  ]);
   expect(wynik.get(1)).toMatchObject({ sprzedaneOd: 4000, anulowaneOd: 3, wyjasnioneKarty: 4008, poller: null });
   expect(wynik.get(2).sprzedaneOd).toBe(0);
   expect(wynik.get(4).sprzedaneOd).toBe(0);
@@ -138,18 +201,35 @@ it('wyjaśnia całą kartę między ofertami i kontami, sumuje bezwzględne ruch
   zakup();
   ruch(1, -3);
   ruch(1, 5, T2);
-  db.prepare(`INSERT INTO stan_pollera (sklep, ostatni_przebieg_at, ostatni_blad, ostatni_blad_rodzaj)
-    VALUES (?, ?, ?, ?)`).run('erli_polcien', T2, 'odczyt nieudany', 'sieciowy');
+  db.prepare(
+    `INSERT INTO stan_pollera (sklep, ostatni_przebieg_at, ostatni_blad, ostatni_blad_rodzaj)
+    VALUES (?, ?, ?, ?)`,
+  ).run('erli_polcien', T2, 'odczyt nieudany', 'sieciowy');
   const wynik = stany.wyjasnieniaOfert(db, [wiersz()]).get(1);
-  expect(wynik).toEqual({ sprzedaneOd: 2, anulowaneOd: 0, wyjasnioneKarty: 12,
-    poller: { ostatniPrzebiegAt: T2, ostatniBlad: 'odczyt nieudany', ostatniBladRodzaj: 'sieciowy' } });
+  expect(wynik).toEqual({
+    sprzedaneOd: 2,
+    anulowaneOd: 0,
+    wyjasnioneKarty: 12,
+    poller: { ostatniPrzebiegAt: T2, ostatniBlad: 'odczyt nieudany', ostatniBladRodzaj: 'sieciowy' },
+  });
 });
 
 it('wyjaśnia produkt i wariant Woo, respektuje kartę z lustra przed rejestrem', () => {
   const id = zakup();
-  db.prepare("UPDATE pozycje SET oferta_id = NULL, produkt_id = '100', wariant_id = '101' WHERE zamowienie_id = ?").run(id);
-  powiazProdukt(db, zapiszProduktSklepowy(db, { kanal: 'erli_polcien', produkt_id: '100', wariant_id: '101',
-    nazwa: 'Lampa Półcień', odczytane_at: T0 }), 2);
+  db.prepare("UPDATE pozycje SET oferta_id = NULL, produkt_id = '100', wariant_id = '101' WHERE zamowienie_id = ?").run(
+    id,
+  );
+  powiazProdukt(
+    db,
+    zapiszProduktSklepowy(db, {
+      kanal: 'erli_polcien',
+      produkt_id: '100',
+      wariant_id: '101',
+      nazwa: 'Lampa Półcień',
+      odczytane_at: T0,
+    }),
+    2,
+  );
   const wynik = stany.wyjasnieniaOfert(db, [wiersz(2, { idZewnetrzne: '100/101', regula: 'zmienione' })]).get(2);
   expect(wynik).toMatchObject({ sprzedaneOd: 2, anulowaneOd: 0, wyjasnioneKarty: 2 });
 });
@@ -169,7 +249,9 @@ it('wiersz bez prawidłowego od (pierwsza wysyłka) dostaje zerowe wyjaśnienie 
   zakup();
   zakup({ oferta: 'oferta-2' });
   let wynik;
-  expect(() => { wynik = stany.wyjasnieniaOfert(db, [wiersz(), wiersz(2, { od: null }), wiersz(3, { od: 'nie-data' })]); }).not.toThrow();
+  expect(() => {
+    wynik = stany.wyjasnieniaOfert(db, [wiersz(), wiersz(2, { od: null }), wiersz(3, { od: 'nie-data' })]);
+  }).not.toThrow();
   expect(wynik.get(1)).toMatchObject({ sprzedaneOd: 2 });
   expect(wynik.get(2)).toMatchObject({ sprzedaneOd: 0, anulowaneOd: 0, wyjasnioneKarty: 0 });
   expect(wynik.get(3)).toMatchObject({ sprzedaneOd: 0, anulowaneOd: 0 });
@@ -198,7 +280,9 @@ it('otwarcie odmawia, gdy karta ma już ruch otwarcia od granicy (import) — be
 it('import bez tabeli stany_otwarcia odrzuca tylko linię z zerem, resztę zapisuje', () => {
   db.exec('DROP TABLE stany_otwarcia');
   let w;
-  expect(() => { w = stany.zapiszImportOtwarcia(db, 'PP-LAMPA-1;5\nPP-LAMPA-2;0', { at: T1 }); }).not.toThrow();
+  expect(() => {
+    w = stany.zapiszImportOtwarcia(db, 'PP-LAMPA-1;5\nPP-LAMPA-2;0', { at: T1 });
+  }).not.toThrow();
   expect(w.zapisane).toBe(1);
   expect(w.odrzucone).toEqual([expect.objectContaining({ wiersz: 2 })]);
   expect(stany.podgladImportuOtwarcia(db, 'PP-LAMPA-3;0').doZapisu).toEqual([]);

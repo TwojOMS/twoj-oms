@@ -68,7 +68,9 @@ describe('dolaczZrodla — Meta', () => {
   });
 
   it('zero wydatku → CPC i ROAS niedostępne (reklama jeszcze nie ruszyła)', () => {
-    const bezWydatku = [{ dzien: '2026-08-24', wydatek: '0.00', wyswietlenia: 0, zasieg: 0, klikniecia: 0, klikniecia_linku: 0 }];
+    const bezWydatku = [
+      { dzien: '2026-08-24', wydatek: '0.00', wyswietlenia: 0, zasieg: 0, klikniecia: 0, klikniecia_linku: 0 },
+    ];
     const w = dolaczZrodla(stanBazowy(), { meta: bezWydatku, ga4: [], stany: {} });
     expect(w.meta.cpcZl).toBeNull();
     expect(w.meta.roas).toBeNull();

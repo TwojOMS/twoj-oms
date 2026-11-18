@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
-  ikonaPlatnosci, ikonaPrzesylki, ikonaChceFaktury, ikonaFaktury, odznakaSyncStatusu,
+  ikonaPlatnosci,
+  ikonaPrzesylki,
+  ikonaChceFaktury,
+  ikonaFaktury,
+  odznakaSyncStatusu,
 } from '../../src/domena/lista-ikony.js';
 
 // Cztery ikony wiersza listy (Zadanie „strona główna", punkt C). Testowane w izolacji,
@@ -25,7 +29,9 @@ describe('ikonaPlatnosci', () => {
   // przy zamówieniu, przy którym kurier ma zainkasować pieniądze.
   it('pobranie włączone ręcznie z karty też wygrywa', () => {
     const z = {
-      metoda_wysylki: 'dpd', pobranie: 0, oplacone_at: null,
+      metoda_wysylki: 'dpd',
+      pobranie: 0,
+      oplacone_at: null,
       wysylka_reczna_json: JSON.stringify({ metoda: 'dpd', pobranie: 1, kwota_pobrania: '246.00' }),
     };
     expect(ikonaPlatnosci(z).stan).toBe('pobranie');
@@ -94,7 +100,11 @@ describe('ikonaPrzesylki', () => {
   // Paczka WzA (`kurier = allegro_wza`) nie mówi kodem, kto wiezie — link z tej samej
   // funkcji co karta i zakładka Przesyłki (metoda zamówienia → DPD), nie z samego kodu kuriera.
   it('paczka WzA jadąca DPD → link DPD jak na karcie (linkSledzeniaPaczki)', () => {
-    const ikona = ikonaPrzesylki({ id: 1, metoda_wysylki: 'allegro_dpd', przesylki: [{ numer_listu: 'AD0001112223', kurier: 'allegro_wza' }] });
+    const ikona = ikonaPrzesylki({
+      id: 1,
+      metoda_wysylki: 'allegro_dpd',
+      przesylki: [{ numer_listu: 'AD0001112223', kurier: 'allegro_wza' }],
+    });
     expect(ikona.href).toBe('https://tracktrace.dpd.com.pl/parcelDetails?typ=1&p1=AD0001112223');
     expect(ikona.zewnetrzny).toBe(true);
   });
@@ -232,8 +242,7 @@ describe('odznakaSyncStatusu', () => {
   });
 
   it('zamówienie sklepowe ze śladem mówi o sklepie', () => {
-    expect(odznakaSyncStatusu({ sklep: 'swietlik', sync_woo_blad: 'HTTP 503' }))
-      .toBe('status nie dojechał do sklepu');
+    expect(odznakaSyncStatusu({ sklep: 'swietlik', sync_woo_blad: 'HTTP 503' })).toBe('status nie dojechał do sklepu');
   });
 
   it('zamówienie z kanału mówi o Allegro, nie o sklepie', () => {

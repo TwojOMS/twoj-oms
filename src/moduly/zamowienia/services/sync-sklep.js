@@ -1,4 +1,10 @@
-import { pobierzZamowienie, dopiszLog, ostatniWpisLogu, zapiszBladSyncSklepu, zapiszStanRealizacji } from '../../../oms/db/zamowienia.js';
+import {
+  pobierzZamowienie,
+  dopiszLog,
+  ostatniWpisLogu,
+  zapiszBladSyncSklepu,
+  zapiszStanRealizacji,
+} from '../../../oms/db/zamowienia.js';
 import { statusDlaSklepu } from '../../../domena/sync-sklep.js';
 import { statusDlaAllegro, stanAllegroPotwierdzaZgodnosc } from '../../../domena/allegro-status.js';
 import { modulZamowienia, umiejetnosciZamowienia } from '../../../domena/moduly-kanalow.ts';
@@ -71,8 +77,8 @@ export function createSyncSklep({ db, klienci = {}, klienciKanalow = {}, czynny 
       if (!z.zrodlo_id) return null;
       const klient = klienciKanalow[z.sklep];
       const zwrotne = zwrotneZamowienia(z, klient);
-      if (zwrotne.przygotujStatus) return zwrotne.przygotujStatus(z,
-        (akcja) => ostatniWpisLogu(db, z.id, akcja)?.wynik ?? null);
+      if (zwrotne.przygotujStatus)
+        return zwrotne.przygotujStatus(z, (akcja) => ostatniWpisLogu(db, z.id, akcja)?.wynik ?? null);
       // Bez klienta nie ma jak odczytac stanu — odmowa idzie nizej, wspolna droga.
       if (!klient) return { status: null, klient: null, gdzie: KANAL_ALLEGRO, akcja: 'sync-allegro.status' };
       // ⚠️ Wyjatek z odczytu NIE MOZE zamienic sie w `undefined` przekazane dalej jak zwykla
@@ -131,7 +137,8 @@ export function createSyncSklep({ db, klienci = {}, klienciKanalow = {}, czynny 
       return { ...wynik, blad: wynik.blad ?? opis };
     }
     // Ślad po dołączonych zdejmujemy tylko wtedy, gdy to on wisiał na głównym.
-    if (!wynik.blad && String(z.sync_woo_blad ?? '').startsWith(PREFIKS_DOLACZONYCH)) zapiszBladSyncSklepu(db, id, null);
+    if (!wynik.blad && String(z.sync_woo_blad ?? '').startsWith(PREFIKS_DOLACZONYCH))
+      zapiszBladSyncSklepu(db, id, null);
     return wynik;
   }
 
@@ -167,8 +174,9 @@ export function createSyncSklep({ db, klienci = {}, klienciKanalow = {}, czynny 
         zapiszBladSyncSklepu(db, id, null);
         dopiszLog(db, id, {
           akcja: c.akcja,
-          wynik: `sprawdzono stan ${c.gdzie.w} („${c.stan}") — rozjazdu nie ma, ślad po nieudanej `
-            + 'synchronizacji zdjęty',
+          wynik:
+            `sprawdzono stan ${c.gdzie.w} („${c.stan}") — rozjazdu nie ma, ślad po nieudanej ` +
+            'synchronizacji zdjęty',
         });
       }
       return { wyslany: null, powod: `${c.gdzie.nazwa} ma już ten status` };
@@ -205,8 +213,12 @@ export function createSyncSklep({ db, klienci = {}, klienciKanalow = {}, czynny 
       // Osobna akcja zawiera tylko przyjęty status; błędy i pominięcia jej nie nadpisują.
       if (c.sladZapisu) dopiszLog(db, id, { akcja: c.sladZapisu, wynik: c.status });
     } catch (e) {
-      zapiszBladSyncSklepu(db, id, `status „${c.status}" nie dojechał ${c.gdzie.dokad}: ${e.message}`
-        + (c.sladZapisu ? '. Kliknij „Wyślij ponownie”.' : ''));
+      zapiszBladSyncSklepu(
+        db,
+        id,
+        `status „${c.status}" nie dojechał ${c.gdzie.dokad}: ${e.message}` +
+          (c.sladZapisu ? '. Kliknij „Wyślij ponownie”.' : ''),
+      );
       dopiszLog(db, id, { akcja: c.akcja, wynik: `BŁĄD: ${e.message}` });
       return { wyslany: null, blad: e.message };
     }
@@ -229,14 +241,20 @@ export function createSyncSklep({ db, klienci = {}, klienciKanalow = {}, czynny 
   async function ponowPrzejsciowe({ teraz = new Date() } = {}) {
     if (!czynny()) return { kandydatow: 0, wyslane: 0, bledy: 0 };
     const od = new Date(teraz.getTime() - OKNO_PONAWIANIA_STATUSU_DNI * 864e5).toISOString();
-    const ids = db.prepare('SELECT id, sync_woo_blad FROM zamowienia WHERE sync_woo_blad IS NOT NULL AND utworzone_at >= ? ORDER BY id')
-      .all(od).filter((z) => bladPrzejsciowy(z.sync_woo_blad)).map((z) => z.id);
+    const ids = db
+      .prepare(
+        'SELECT id, sync_woo_blad FROM zamowienia WHERE sync_woo_blad IS NOT NULL AND utworzone_at >= ? ORDER BY id',
+      )
+      .all(od)
+      .filter((z) => bladPrzejsciowy(z.sync_woo_blad))
+      .map((z) => z.id);
     let wyslane = 0;
     let bledy = 0;
     for (const id of ids) {
       // eslint-disable-next-line no-await-in-loop -- po kolei, jak poller
       const w = await odeslijStatus(id);
-      if (w.blad) bledy += 1; else wyslane += 1;
+      if (w.blad) bledy += 1;
+      else wyslane += 1;
     }
     return { kandydatow: ids.length, wyslane, bledy };
   }
@@ -244,7 +262,11 @@ export function createSyncSklep({ db, klienci = {}, klienciKanalow = {}, czynny 
   // Dla karty — czy sklep zamówienia jest podłączony kluczem „Odczyt”. Klient niepołączonego
   // sklepu potrafi rzucić już przy odczycie (rejestr kanałów) — wtedy po prostu „nie”.
   function tylkoOdczyt(sklep) {
-    try { return czyTylkoOdczyt(klienci[sklep]); } catch { return false; }
+    try {
+      return czyTylkoOdczyt(klienci[sklep]);
+    } catch {
+      return false;
+    }
   }
 
   return { odeslijStatus, ponowPrzejsciowe, tylkoOdczyt };

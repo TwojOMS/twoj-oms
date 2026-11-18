@@ -10,7 +10,11 @@ import { opisKlienta } from '../../../src/domena/klient-staly.js';
 const config = {
   auth: { user: 'adam', pass: 'x' },
   nadawca: {
-    nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL',
+    nazwa: 'Pracownia Półcień Anna Wzorcowa',
+    ulica: 'Przykładowa 1',
+    kod: '00-950',
+    miasto: 'Warszawa',
+    kraj: 'PL',
   },
   proforma: { nip: '1234563218' },
 };
@@ -18,14 +22,27 @@ const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('bas
 const poller = { stan: () => ({ ostatni_przebieg_at: '2026-07-29T12:00:00', ostatni_blad: null }) };
 
 const zmapowane = (id, nad = {}) => ({
-  zrodlo_id: id, numer: String(id),
+  zrodlo_id: id,
+  numer: String(id),
   klient: {
-    first_name: 'Peter', last_name: 'Novak', company: 'Alfatrend s.r.o.',
-    email: 't@alfatrend.sk', address_1: '1. mája 1', postcode: '01001', city: 'Žilina',
+    first_name: 'Peter',
+    last_name: 'Novak',
+    company: 'Alfatrend s.r.o.',
+    email: 't@alfatrend.sk',
+    address_1: '1. mája 1',
+    postcode: '01001',
+    city: 'Žilina',
   },
-  dostawa: { city: 'Lipnica Wielka' }, metoda_wysylki: 'dpd', kwota_pobrania: null,
-  chce_fakture: 1, nip: 'SK1000000001', kwota_brutto: '96.48',
-  status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-08-26T10:00:00',
+  dostawa: { city: 'Lipnica Wielka' },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 1,
+  nip: 'SK1000000001',
+  kwota_brutto: '96.48',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-08-26T10:00:00',
   pozycje: [{ nazwa: 'Lampa stołowa Kałamarz 30x45cm', sku: null, ilosc: 2, cena_brutto: '40.24', vat: null }],
   ...nad,
 });
@@ -86,7 +103,11 @@ describe('GET /zamowienia/:id/potwierdzenie-wywozu.pdf', () => {
   });
 
   it('nieistniejące zamówienie: 404', async () => {
-    const r = await app.inject({ method: 'GET', url: '/zamowienia/999999/potwierdzenie-wywozu.pdf', headers: naglowek });
+    const r = await app.inject({
+      method: 'GET',
+      url: '/zamowienia/999999/potwierdzenie-wywozu.pdf',
+      headers: naglowek,
+    });
     expect(r.statusCode).toBe(404);
   });
 });
@@ -96,9 +117,18 @@ describe('GET /zamowienia/:id/potwierdzenie-wywozu.pdf', () => {
 // Kałamarz 30x45: cennik 108,90 → rabat 50% → 54,45 → ÷1,23 → 44,27.
 describe('ceny z magazynu przy WDT', () => {
   const produkt = (nad = {}) => ({
-    kanal: 'pro', produkt_id: '28040', wariant_id: '', nazwa: 'Lampa stołowa Kałamarz',
-    sku_sklepu: 'PRO-KAL-001', cena_gr: 10890, rozmiar_tekst: '30x45cm', kategorie: [], zdjecia: [],
-    adres: 'https://pro.swietlik.example.test/produkt/kalamarz', odczytane_at: '2026-08-26T08:00:00', ...nad,
+    kanal: 'pro',
+    produkt_id: '28040',
+    wariant_id: '',
+    nazwa: 'Lampa stołowa Kałamarz',
+    sku_sklepu: 'PRO-KAL-001',
+    cena_gr: 10890,
+    rozmiar_tekst: '30x45cm',
+    kategorie: [],
+    zdjecia: [],
+    adres: 'https://pro.swietlik.example.test/produkt/kalamarz',
+    odczytane_at: '2026-08-26T08:00:00',
+    ...nad,
   });
 
   it('karta zamówienia WDT: pozycja z magazynu wchodzi po rabacie i ÷1,23', async () => {
@@ -141,8 +171,14 @@ describe('ceny z magazynu przy WDT', () => {
       url: '/zamowienia/nowe/magazyn/dodaj',
       headers: naglowek,
       payload: {
-        f_nip: 'SK1000000001', rabat_procent: '50', cennik: 'pro',
-        wybrany: '0', mag_kanal: 'pro', mag_produkt_id: '28040', mag_wariant_id: '', mag_ilosc: '2',
+        f_nip: 'SK1000000001',
+        rabat_procent: '50',
+        cennik: 'pro',
+        wybrany: '0',
+        mag_kanal: 'pro',
+        mag_produkt_id: '28040',
+        mag_wariant_id: '',
+        mag_ilosc: '2',
       },
     });
     expect(odp.statusCode).toBe(200);
@@ -157,8 +193,14 @@ describe('ceny z magazynu przy WDT', () => {
       url: '/zamowienia/nowe/magazyn/dodaj',
       headers: naglowek,
       payload: {
-        f_nip: '1200001200', rabat_procent: '50', cennik: 'pro',
-        wybrany: '0', mag_kanal: 'pro', mag_produkt_id: '28040', mag_wariant_id: '', mag_ilosc: '2',
+        f_nip: '1200001200',
+        rabat_procent: '50',
+        cennik: 'pro',
+        wybrany: '0',
+        mag_kanal: 'pro',
+        mag_produkt_id: '28040',
+        mag_wariant_id: '',
+        mag_ilosc: '2',
       },
     });
     expect(odp.body).toContain('value="54.45"');

@@ -15,5 +15,8 @@ it('wybór koloru pokazuje barwy palety przy nazwach w edycji i przy dodawaniu s
         expect(wybor).toContain(`<option class="znacznik--${p.klasa}" value="${klucz}"`);
       }
     }
-  } finally { await app.close(); db.close(); }
+  } finally {
+    await app.close();
+    db.close();
+  }
 });

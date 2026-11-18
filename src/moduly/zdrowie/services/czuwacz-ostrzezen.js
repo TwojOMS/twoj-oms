@@ -102,14 +102,23 @@ export function createCzuwaczOstrzezen({ db, program: programPodany = null, infa
       { sufitStron: SUFIT_STRON_LUK },
     );
     if (!Array.isArray(dokumenty)) {
-      throw new Error(`${program.opis.nazwa.mianownik} oddał listę dokumentów w kształcie, którego panel nie rozumie — lustro luk KSeF zostaje bez zmian.`);
+      throw new Error(
+        `${program.opis.nazwa.mianownik} oddał listę dokumentów w kształcie, którego panel nie rozumie — lustro luk KSeF zostaje bez zmian.`,
+      );
     }
     const zlecone = new Map(
-      db.prepare('SELECT uuid, zlecona_at FROM wysylki_ksef').all().map((w) => [w.uuid, w.zlecona_at]),
+      db
+        .prepare('SELECT uuid, zlecona_at FROM wysylki_ksef')
+        .all()
+        .map((w) => [w.uuid, w.zlecona_at]),
     );
     const lista = dokumenty.filter(Boolean).map((d) => ({ ...d, ksefZleconaAt: zlecone.get(d?.uuid) ?? null }));
     const poUuid = new Map(lista.map((d) => [d.uuid, d]));
-    const { doWyslania } = coWolnoWyslac(lista.map((d) => d.uuid), lista, czyWysylacKonsumenckie(db));
+    const { doWyslania } = coWolnoWyslac(
+      lista.map((d) => d.uuid),
+      lista,
+      czyWysylacKonsumenckie(db),
+    );
     podmienLukiKsef(
       db,
       doWyslania.map(({ uuid, numer }) => ({ uuid, numer, invoiceDate: poUuid.get(uuid)?.invoice_date ?? null })),
@@ -138,12 +147,14 @@ export function createCzuwaczOstrzezen({ db, program: programPodany = null, infa
     const lista = await fakturyWidok.nieoplacone();
     podmienPoTerminie(
       db,
-      lista.filter((d) => d?.stanTerminu === 'po_terminie').map((d) => ({
-        uuid: d.uuid,
-        numer: d.number ?? null,
-        paymentDate: d.payment_date ?? null,
-        pozostaloGr: Number(d.left_to_pay ?? 0),
-      })),
+      lista
+        .filter((d) => d?.stanTerminu === 'po_terminie')
+        .map((d) => ({
+          uuid: d.uuid,
+          numer: d.number ?? null,
+          paymentDate: d.payment_date ?? null,
+          pozostaloGr: Number(d.left_to_pay ?? 0),
+        })),
       { sprawdzonaAt: chwila },
     );
   }
@@ -153,8 +164,16 @@ export function createCzuwaczOstrzezen({ db, program: programPodany = null, infa
     // krokach. Awaria luk nie zabiera terminów (i odwrotnie), a przebieg z jakąkolwiek
     // awarią kończy się błędem — puls zgłosi go jako ostrzeżenie `integracja`.
     const bledy = [];
-    try { await odswiezLukiKsef(); } catch (e) { bledy.push(`luki KSeF: ${e.message}`); }
-    try { await odswiezPoTerminie(); } catch (e) { bledy.push(`terminy płatności: ${e.message}`); }
+    try {
+      await odswiezLukiKsef();
+    } catch (e) {
+      bledy.push(`luki KSeF: ${e.message}`);
+    }
+    try {
+      await odswiezPoTerminie();
+    } catch (e) {
+      bledy.push(`terminy płatności: ${e.message}`);
+    }
     if (bledy.length) throw new Error(bledy.join(' | '));
     return { pominiety: false };
   }

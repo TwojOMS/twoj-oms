@@ -1,6 +1,11 @@
 import { metodaWysylki, czyPobranie, metodaZeSklepu, pobranieZeSklepu } from './wysylka.js';
 import {
-  MODULY_KURIEROW, kurierDlaMetody, metodyNaUmowie, metodyZZpl, pobranieNaUmowie, pobranieNaDosylce,
+  MODULY_KURIEROW,
+  kurierDlaMetody,
+  metodyNaUmowie,
+  metodyZZpl,
+  pobranieNaUmowie,
+  pobranieNaDosylce,
 } from './moduly-kurierow.ts';
 import { czyKanalWbudowany } from './kanaly.js';
 
@@ -26,7 +31,13 @@ export function pobranieSklepowe(z) {
  * `zamiennik` — pobranie na paczce N > 1 to ZAWSZE pobranie OMS-owe (decyzja
  * operatora, nie sklepu), więc „pobranie ze sklepu" go nie zwalnia z umowy.
  */
-export function wymagaUmowyPobrania(z, metoda, rejestr = MODULY_KURIEROW, umowy = /** @type {readonly string[]} */ ([]), { zamiennik = false } = {}) {
+export function wymagaUmowyPobrania(
+  z,
+  metoda,
+  rejestr = MODULY_KURIEROW,
+  umowy = /** @type {readonly string[]} */ ([]),
+  { zamiennik = false } = {},
+) {
   if (!czyPobranie(z) || (!zamiennik && pobranieSklepowe(z))) return false;
   const kurier = kurierDlaMetody(metoda, rejestr);
   if (kurier === null || rejestr[kurier]?.umiejetnosci?.pobranie !== 'adapter') return false;
@@ -51,16 +62,19 @@ export function powodUmowyPobrania(metoda, rejestr = MODULY_KURIEROW) {
  * neutralny (bez założenia, który kurier zostaje); kurier 'adapter' bez umowy firmy → ten sam
  * powód co przy paczce nr 1. Mała litera na początku, jak `powodUmowyPobrania`.
  */
-export function powodOdmowyZamiennika(z, metoda, {
-  rejestr = MODULY_KURIEROW, umowyPobrania = /** @type {readonly string[]} */ ([]),
-} = {}) {
+export function powodOdmowyZamiennika(
+  z,
+  metoda,
+  { rejestr = MODULY_KURIEROW, umowyPobrania = /** @type {readonly string[]} */ ([]) } = {},
+) {
   if (!czyPobranie(z)) return null;
   if (!pobranieNaDosylce(metoda, rejestr)) {
     const kurier = kurierDlaMetody(metoda, rejestr);
     const nazwa = (kurier !== null && rejestr[kurier]?.nazwa) || 'ten kurier';
     return `${nazwa} nie przyjmie pobrania na kolejnej paczce — wybierz kuriera, który je przyjmuje, albo wyłącz pobranie na tej paczce`;
   }
-  if (wymagaUmowyPobrania(z, metoda, rejestr, umowyPobrania, { zamiennik: true })) return powodUmowyPobrania(metoda, rejestr);
+  if (wymagaUmowyPobrania(z, metoda, rejestr, umowyPobrania, { zamiennik: true }))
+    return powodUmowyPobrania(metoda, rejestr);
   return null;
 }
 
@@ -95,8 +109,8 @@ export function powodOdmowyZamiennika(z, metoda, {
  * z `umowa: 'wlasna'` w kolejności rejestru (dziś DPD, paczkomat InPost), z etykietą
  * wyboru (`etykietaWyboru`, zapasowo `etykieta`). Podzbiór metod z kurierem z definicji.
  */
-const doWyboru = (rejestr) => metodyNaUmowie('wlasna', rejestr)
-  .map((m) => ({ klucz: m.klucz, etykieta: m.etykietaWyboru ?? m.etykieta }));
+const doWyboru = (rejestr) =>
+  metodyNaUmowie('wlasna', rejestr).map((m) => ({ klucz: m.klucz, etykieta: m.etykietaWyboru ?? m.etykieta }));
 
 /**
  * Czy to zamówienie wymaga, żeby człowiek WSKAZAŁ kuriera, zanim panel cokolwiek nada.
@@ -132,7 +146,9 @@ const doWyboru = (rejestr) => metodyNaUmowie('wlasna', rejestr)
 const NADAJEMY_SAMI = { allegro_paczkomat: 'inpost_paczkomat' };
 for (const [metoda, cel] of Object.entries(NADAJEMY_SAMI)) {
   if (!metodyNaUmowie('wlasna').some((m) => m.klucz === cel)) {
-    throw new Error(`NADAJEMY_SAMI: ${metoda} → ${cel}, a ${cel} nie jest metodą kuriera na własnej umowie w rejestrze`);
+    throw new Error(
+      `NADAJEMY_SAMI: ${metoda} → ${cel}, a ${cel} nie jest metodą kuriera na własnej umowie w rejestrze`,
+    );
   }
 }
 
@@ -163,9 +179,8 @@ for (const [metoda, cel] of Object.entries(NADAJEMY_SAMI)) {
 //
 // Lista = metody kuriera z `umowa: 'platformy'` w rejestrze (dziś WzA: allegro_dpd,
 // allegro_punkt, allegro_kurier, allegro_inne). Usunięcie metody tam = odmowa jej nadania tu.
-const wzaDomyslnie = (rejestr) => Object.fromEntries(
-  metodyNaUmowie('platformy', rejestr).map((m) => [m.klucz, m.klucz]),
-);
+const wzaDomyslnie = (rejestr) =>
+  Object.fromEntries(metodyNaUmowie('platformy', rejestr).map((m) => [m.klucz, m.klucz]));
 const WZA_DOMYSLNIE = wzaDomyslnie(MODULY_KURIEROW);
 
 export function wymagaWyboruKuriera(z) {
@@ -207,9 +222,10 @@ export function wymagaWyboruKuriera(z) {
 // NIEDOSTĘPNA z ekranu i jedyne, co da się kliknąć, to nadanie naszą umową, czyli drugi
 // płatny przewóz (akapit wyżej). Test-strażnik pilnuje, że obie mapy mają te same klucze.
 const ETYKIETA_WZA = 'Wysyłam z Allegro — umowa Allegro (domyślnie)';
-const wzaDoWyboru = (rejestr) => Object.fromEntries(
-  Object.keys(wzaDomyslnie(rejestr)).map((metoda) => [metoda, { klucz: 'wza', etykieta: ETYKIETA_WZA }]),
-);
+const wzaDoWyboru = (rejestr) =>
+  Object.fromEntries(
+    Object.keys(wzaDomyslnie(rejestr)).map((metoda) => [metoda, { klucz: 'wza', etykieta: ETYKIETA_WZA }]),
+  );
 
 // Reguly liczone raz na rejestr: produkcyjny przy imporcie, testowy (podany parametrem) przy wywolaniu.
 const REGULY = new WeakMap();
@@ -222,9 +238,15 @@ function regulyNadania(rejestr) {
   return r;
 }
 
-export function kurierzyDoWyboru(z, kolejnosc = 1, {
-  pobranieNaTejPaczce = kolejnosc === 1, rejestr = MODULY_KURIEROW, umowyPobrania = /** @type {readonly string[]} */ ([]),
-} = {}) {
+export function kurierzyDoWyboru(
+  z,
+  kolejnosc = 1,
+  {
+    pobranieNaTejPaczce = kolejnosc === 1,
+    rejestr = MODULY_KURIEROW,
+    umowyPobrania = /** @type {readonly string[]} */ ([]),
+  } = {},
+) {
   const { doWyboru: DO_WYBORU, wzaDoWyboru: WZA_DO_WYBORU } = regulyNadania(rejestr);
   // ⚠️ WzA IDZIE PIERWSZE i tak ma zostac: przy zamowieniu z Allegro to jest droga wlasciwa,
   // a nasza umowa jest wyjatkiem (dosylka, zamiennik za zgubiona). Kolejnosc na ekranie jest
@@ -242,8 +264,9 @@ export function kurierzyDoWyboru(z, kolejnosc = 1, {
     // wiezie pobranie na kolejnej paczce (`pobranieNaDosylce`: DPD, InPost z umową firmy);
     // WzA bierze pobranie z zamówienia Allegro, więc przy zamienniku znika z listy.
     const dosylka = kolejnosc > 1;
-    const naUmowie = DO_WYBORU.filter((k) => (!dosylka || pobranieNaDosylce(k.klucz, rejestr))
-      && pobranieNaUmowie(k.klucz, rejestr, umowyPobrania));
+    const naUmowie = DO_WYBORU.filter(
+      (k) => (!dosylka || pobranieNaDosylce(k.klucz, rejestr)) && pobranieNaUmowie(k.klucz, rejestr, umowyPobrania),
+    );
     const wolnoPrzyPobraniu = wza && (!dosylka || pobranieNaDosylce(metoda, rejestr)) ? [wza, ...naUmowie] : naUmowie;
     return wolnoPrzyPobraniu;
   }
@@ -282,9 +305,10 @@ export function metodaNadania(z, wybor, { kolejnosc = 1, umowyPobrania = /** @ty
     // Brak wskazania = droga domyślna, czyli „Wysyłam z Allegro" — tam, gdzie ją mamy.
     if (Object.hasOwn(WZA_DOMYSLNIE, String(metoda ?? ''))) return { metoda: WZA_DOMYSLNIE[metoda] };
     return {
-      blad: 'To zamówienie przyszło z Allegro, więc panel nie zna kuriera, którym mamy je nadać — '
-        + 'paczkę z Allegro nadaje się etykietą kupioną w panelu Allegro. Jeśli chcesz nadać ją '
-        + 'NASZĄ umową (dosyłka, zamiennik za zgubioną), wskaż kuriera na ekranie nadania.',
+      blad:
+        'To zamówienie przyszło z Allegro, więc panel nie zna kuriera, którym mamy je nadać — ' +
+        'paczkę z Allegro nadaje się etykietą kupioną w panelu Allegro. Jeśli chcesz nadać ją ' +
+        'NASZĄ umową (dosyłka, zamiennik za zgubioną), wskaż kuriera na ekranie nadania.',
     };
   }
 
@@ -297,8 +321,9 @@ export function metodaNadania(z, wybor, { kolejnosc = 1, umowyPobrania = /** @ty
 
   if (!dozwolone.some((k) => k.klucz === wskazany)) {
     return {
-      blad: `Nie umiem nadać tej paczki jako „${wskazany}" — do wyboru jest `
-        + `${dozwolone.map((k) => k.etykieta).join(' albo ')}. Panel niczego nie nadał.`,
+      blad:
+        `Nie umiem nadać tej paczki jako „${wskazany}" — do wyboru jest ` +
+        `${dozwolone.map((k) => k.etykieta).join(' albo ')}. Panel niczego nie nadał.`,
     };
   }
   return { metoda: wskazany, wskazanyRecznie: true, metodaZamowienia: metoda };

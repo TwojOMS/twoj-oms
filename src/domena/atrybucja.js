@@ -100,13 +100,26 @@ export function opisAtrybucji(a) {
 
   let etykieta;
   switch (a.typ) {
-    case 'typein': etykieta = 'Bezpośrednie'; break;
-    case 'organic': etykieta = `${zrodlo} — wyszukiwarka`; break;
-    case 'referral': etykieta = `${zrodlo} — odsyłacz`; break;
-    case 'utm': etykieta = `${zrodlo} — link z tagiem`; break;
-    case 'admin': etykieta = 'Panel sklepu (wpisane ręcznie)'; break;
-    case 'mobile_app': etykieta = 'Aplikacja mobilna'; break;
-    default: etykieta = zrodlo ? `${zrodlo}` : 'Nieznane źródło';
+    case 'typein':
+      etykieta = 'Bezpośrednie';
+      break;
+    case 'organic':
+      etykieta = `${zrodlo} — wyszukiwarka`;
+      break;
+    case 'referral':
+      etykieta = `${zrodlo} — odsyłacz`;
+      break;
+    case 'utm':
+      etykieta = `${zrodlo} — link z tagiem`;
+      break;
+    case 'admin':
+      etykieta = 'Panel sklepu (wpisane ręcznie)';
+      break;
+    case 'mobile_app':
+      etykieta = 'Aplikacja mobilna';
+      break;
+    default:
+      etykieta = zrodlo ? `${zrodlo}` : 'Nieznane źródło';
   }
 
   const czesci = [];
@@ -132,9 +145,9 @@ export function opisAtrybucji(a) {
   const wGlab = a.typ === 'typein' && wGlabSklepu(a.wejscie);
   const wskazowka = wGlab ? 'Bez odsyłacza — tak wygląda link otwarty z aplikacji.' : null;
   const wskazowkaPelna = wGlab
-    ? 'Wejście prosto na podstronę, bez odsyłacza. Przeglądarki w Instagramie i Facebooku '
-      + 'gubią odsyłacz, więc ruch z aplikacji wygląda tak samo jak wpisany adres, link '
-      + 'z wiadomości albo zakładka. Panel nie ma jak tego rozstrzygnąć.'
+    ? 'Wejście prosto na podstronę, bez odsyłacza. Przeglądarki w Instagramie i Facebooku ' +
+      'gubią odsyłacz, więc ruch z aplikacji wygląda tak samo jak wpisany adres, link ' +
+      'z wiadomości albo zakładka. Panel nie ma jak tego rozstrzygnąć.'
     : null;
 
   return {

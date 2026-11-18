@@ -28,8 +28,12 @@ export function sprawdzFormularzZwolnienia(body = {}) {
   const zwolniona = tekst(body?.zwolniona) === 'tak';
   const wybor = tekst(body?.podstawa);
   const wpisane = {
-    zwolniona, podstawa: wybor, punkt: tekst(body?.punkt), litera: tekst(body?.litera),
-    podstawa_tekst: tekst(body?.podstawa_tekst).replace(/\s+/gu, ' '), rodzaj: tekst(body?.rodzaj),
+    zwolniona,
+    podstawa: wybor,
+    punkt: tekst(body?.punkt),
+    litera: tekst(body?.litera),
+    podstawa_tekst: tekst(body?.podstawa_tekst).replace(/\s+/gu, ' '),
+    rodzaj: tekst(body?.rodzaj),
   };
   const bledy = [];
   let podstawa = null;
@@ -37,20 +41,27 @@ export function sprawdzFormularzZwolnienia(body = {}) {
   if (wybor === '') {
     if (zwolniona) bledy.push('Firma zwolniona z VAT musi mieć podstawę zwolnienia — wybierz ją z listy.');
   } else if (wybor === 'art113') {
-    podstawa = PODSTAWA_ART_113; rodzaj = 'ustawa';
+    podstawa = PODSTAWA_ART_113;
+    rodzaj = 'ustawa';
   } else if (wybor === 'art43') {
     const pkt = /^\d{1,2}$/u.test(wpisane.punkt) ? Number(wpisane.punkt) : NaN;
     if (!(pkt >= 1 && pkt <= 41)) bledy.push('Numer punktu art. 43 ust. 1 to liczba od 1 do 41.');
-    if (wpisane.litera !== '' && !/^[a-z]$/u.test(wpisane.litera)) bledy.push('Litera punktu to jedna mała litera a–z (albo puste pole).');
+    if (wpisane.litera !== '' && !/^[a-z]$/u.test(wpisane.litera))
+      bledy.push('Litera punktu to jedna mała litera a–z (albo puste pole).');
     if (!bledy.length) {
       podstawa = `art. 43 ust. 1 pkt ${pkt}${wpisane.litera ? ` lit. ${wpisane.litera}` : ''} ustawy o VAT`;
       rodzaj = 'ustawa';
     }
   } else if (wybor === 'inna') {
     if (wpisane.podstawa_tekst === '') bledy.push('Wpisz podstawę zwolnienia (przepis ustawy, dyrektywy albo inny).');
-    else if (wpisane.podstawa_tekst.length > MAKS_PODSTAWY) bledy.push(`Podstawa zwolnienia może mieć najwyżej ${MAKS_PODSTAWY} znaków.`);
-    if (!RODZAJE_ZWOLNIENIA.includes(wpisane.rodzaj)) bledy.push('Wybierz rodzaj podstawy: ustawa, dyrektywa albo inna.');
-    if (!bledy.length) { podstawa = wpisane.podstawa_tekst; rodzaj = wpisane.rodzaj; }
+    else if (wpisane.podstawa_tekst.length > MAKS_PODSTAWY)
+      bledy.push(`Podstawa zwolnienia może mieć najwyżej ${MAKS_PODSTAWY} znaków.`);
+    if (!RODZAJE_ZWOLNIENIA.includes(wpisane.rodzaj))
+      bledy.push('Wybierz rodzaj podstawy: ustawa, dyrektywa albo inna.');
+    if (!bledy.length) {
+      podstawa = wpisane.podstawa_tekst;
+      rodzaj = wpisane.rodzaj;
+    }
   } else {
     bledy.push('Wybierz podstawę zwolnienia z listy.');
   }
@@ -65,20 +76,30 @@ export function czytajZwolnienie(db) {
     const z = JSON.parse(w);
     if (!z || typeof z !== 'object') return null;
     const podstawa = tekst(z.podstawa) || null;
-    return { zwolniona: z.zwolniona === true && podstawa !== null, podstawa,
-      rodzaj: podstawa && RODZAJE_ZWOLNIENIA.includes(z.rodzaj) ? z.rodzaj : null };
+    return {
+      zwolniona: z.zwolniona === true && podstawa !== null,
+      podstawa,
+      rodzaj: podstawa && RODZAJE_ZWOLNIENIA.includes(z.rodzaj) ? z.rodzaj : null,
+    };
   } catch {
     return null;
   }
 }
 
 export function zapiszZwolnienie(db, { zwolniona, podstawa, rodzaj }) {
-  if (zwolniona === true && !tekst(podstawa)) throw new Error('Firma zwolniona z VAT bez podstawy zwolnienia — nic nie zapisano.');
-  if (tekst(podstawa) && !RODZAJE_ZWOLNIENIA.includes(rodzaj)) throw new Error(`Rodzaj podstawy spoza listy: „${rodzaj}”.`);
-  const wartosc = JSON.stringify({ zwolniona: zwolniona === true, podstawa: tekst(podstawa) || null, rodzaj: tekst(podstawa) ? rodzaj : null });
-  db.prepare(`INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
-    ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc, zmienione_at = excluded.zmienione_at`)
-    .run(KLUCZ, wartosc, new Date().toISOString());
+  if (zwolniona === true && !tekst(podstawa))
+    throw new Error('Firma zwolniona z VAT bez podstawy zwolnienia — nic nie zapisano.');
+  if (tekst(podstawa) && !RODZAJE_ZWOLNIENIA.includes(rodzaj))
+    throw new Error(`Rodzaj podstawy spoza listy: „${rodzaj}”.`);
+  const wartosc = JSON.stringify({
+    zwolniona: zwolniona === true,
+    podstawa: tekst(podstawa) || null,
+    rodzaj: tekst(podstawa) ? rodzaj : null,
+  });
+  db.prepare(
+    `INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
+    ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc, zmienione_at = excluded.zmienione_at`,
+  ).run(KLUCZ, wartosc, new Date().toISOString());
 }
 
 /**
@@ -111,7 +132,14 @@ export function zwolnionaZFlagi(db, opcje) {
 
 /** Zapis → pola formularza (wybór z listy, punkt, litera, tekst) — do wypełnienia ekranu. */
 export function polaFormularzaZwolnienia(z) {
-  const pola = { zwolniona: z?.zwolniona === true, podstawa: '', punkt: '', litera: '', podstawa_tekst: '', rodzaj: 'ustawa' };
+  const pola = {
+    zwolniona: z?.zwolniona === true,
+    podstawa: '',
+    punkt: '',
+    litera: '',
+    podstawa_tekst: '',
+    rodzaj: 'ustawa',
+  };
   if (!z?.podstawa) return pola;
   if (z.podstawa === PODSTAWA_ART_113) return { ...pola, podstawa: 'art113' };
   const m = ART_43.exec(z.podstawa);

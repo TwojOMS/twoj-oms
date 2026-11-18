@@ -7,11 +7,22 @@ import { nowyPanel, jako, get, post } from '../../pomoc/panel-konta-testowe.js';
 const COMMIT = 'abc123def4560000000000000000000000000000';
 const WYDANIE = { commit: COMMIT, wersja: 'v0.2.0', utworzono: '2026-10-18T12:02:00Z' };
 const jest = (wersja, opis = 'Nowy ekran.') => ({
-  stan: 'jest', wersja, opublikowano: '2026-10-25T09:00:00Z', opis, adres: `https://github.com/TwojOMS/twoj-oms/releases/tag/${wersja}`,
+  stan: 'jest',
+  wersja,
+  opublikowano: '2026-10-25T09:00:00Z',
+  opis,
+  adres: `https://github.com/TwojOMS/twoj-oms/releases/tag/${wersja}`,
 });
 
 function panel({ wydanie = null, wynik = { stan: 'brak-wydan' } } = {}) {
-  const atrapa = { sprawdzen: 0, wydanie: () => wydanie, sprawdz: async () => { atrapa.sprawdzen += 1; return wynik; } };
+  const atrapa = {
+    sprawdzen: 0,
+    wydanie: () => wydanie,
+    sprawdz: async () => {
+      atrapa.sprawdzen += 1;
+      return wynik;
+    },
+  };
   const p = nowyPanel({ nadpisania: { 'ustawienia.aktualizacje': atrapa } });
   zalozKonto(p.db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
   zalozKonto(p.db, { login: 'ewa', imie: 'Ewa', haslo: 'h', rola: 'sprzedaz' });
@@ -33,7 +44,9 @@ describe('Ustawienia → Aktualizacje', () => {
     const r = await get(app, '/ustawienia/aktualizacje', admin);
     expect(r.statusCode, r.body).toBe(200);
     expect(r.body).toMatch(AKTYWNA);
-    expect(sekcja(r.body, 'akt-instalacja')).toContain('Wersja: nieznana. Ten OMS nie został zainstalowany z paczki wydania, więc panel nie zna jego numeru.');
+    expect(sekcja(r.body, 'akt-instalacja')).toContain(
+      'Wersja: nieznana. Ten OMS nie został zainstalowany z paczki wydania, więc panel nie zna jego numeru.',
+    );
     const najnowsze = sekcja(r.body, 'akt-najnowsze');
     expect(najnowsze).toContain('action="/ustawienia/aktualizacje/sprawdz"');
     expect(najnowsze).toContain('Sprawdź teraz');
@@ -51,8 +64,9 @@ describe('Ustawienia → Aktualizacje', () => {
     expect(s1).toContain('commit abc123def456');
     expect(s1).toContain('paczka z 2026-10-18 14:02');
     const p2 = panel({ wydanie: { ...WYDANIE, wersja: null } });
-    expect(sekcja((await get(p2.app, '/ustawienia/aktualizacje', p2.admin)).body, 'akt-instalacja'))
-      .toContain('Wersja: bez numeru (commit abc123def456)');
+    expect(sekcja((await get(p2.app, '/ustawienia/aktualizacje', p2.admin)).body, 'akt-instalacja')).toContain(
+      'Wersja: bez numeru (commit abc123def456)',
+    );
   });
 
   it('„Sprawdź teraz”: nowsze wydanie z opisem i linkiem; ta sama wersja → „Masz najnowszą”', async () => {
@@ -75,7 +89,9 @@ describe('Ustawienia → Aktualizacje', () => {
   it('instalacja bez numeru: najnowsze wydanie bez porównania', async () => {
     const p = panel({ wynik: jest('v0.3.0') });
     const s = sekcja((await post(p.app, '/ustawienia/aktualizacje/sprawdz', p.admin)).body, 'akt-najnowsze');
-    expect(s).toContain('Najnowsze wydanie: v0.3.0 z 2026-10-25. Nie da się porównać z tą instalacją, bo nie ma ona numeru wersji.');
+    expect(s).toContain(
+      'Najnowsze wydanie: v0.3.0 z 2026-10-25. Nie da się porównać z tą instalacją, bo nie ma ona numeru wersji.',
+    );
     expect(s).not.toContain('Masz najnowszą');
   });
 

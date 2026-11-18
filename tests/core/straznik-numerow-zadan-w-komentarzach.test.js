@@ -151,8 +151,7 @@ function listaWyciecia(sekcja) {
   return wpisy;
 }
 
-const pominiety = (wzgledna, wpisy) =>
-  wpisy.some((w) => (w.endsWith('/') ? wzgledna.startsWith(w) : wzgledna === w));
+const pominiety = (wzgledna, wpisy) => wpisy.some((w) => (w.endsWith('/') ? wzgledna.startsWith(w) : wzgledna === w));
 
 const wzgl = (p) => path.relative(KORZEN, p).split(path.sep).join('/');
 
@@ -192,21 +191,32 @@ function korzenWywolania(wyrazenie) {
   for (;;) {
     if (ts.isIdentifier(w)) return w.text;
     if (ts.isPropertyAccessExpression(w)) w = w.expression;
-    else if (ts.isCallExpression(w) || ts.isTaggedTemplateExpression(w)) w = ts.isCallExpression(w) ? w.expression : w.tag;
+    else if (ts.isCallExpression(w) || ts.isTaggedTemplateExpression(w))
+      w = ts.isCallExpression(w) ? w.expression : w.tag;
     else return null;
   }
 }
 
 /** Stałe części tytułów testów jako `{ poz, tekst }` — pierwszy argument wywołania `describe`/`it`/`test`. */
 export function tytulyTestow(nazwa, tekst) {
-  const zrodlo = ts.createSourceFile(nazwa, tekst, ts.ScriptTarget.Latest, true, nazwa.endsWith('.ts') ? ts.ScriptKind.TS : ts.ScriptKind.JS);
+  const zrodlo = ts.createSourceFile(
+    nazwa,
+    tekst,
+    ts.ScriptTarget.Latest,
+    true,
+    nazwa.endsWith('.ts') ? ts.ScriptKind.TS : ts.ScriptKind.JS,
+  );
   const tytuly = [];
   const odwiedz = (wezel) => {
     if (ts.isCallExpression(wezel) && FUNKCJE_TESTOW.has(korzenWywolania(wezel.expression) ?? '')) {
       const a = wezel.arguments[0];
-      if (a && (ts.isStringLiteral(a) || ts.isNoSubstitutionTemplateLiteral(a))) tytuly.push({ poz: a.getStart(zrodlo), tekst: a.text });
+      if (a && (ts.isStringLiteral(a) || ts.isNoSubstitutionTemplateLiteral(a)))
+        tytuly.push({ poz: a.getStart(zrodlo), tekst: a.text });
       else if (a && ts.isTemplateExpression(a)) {
-        tytuly.push({ poz: a.getStart(zrodlo), tekst: [a.head.text, ...a.templateSpans.map((s) => s.literal.text)].join('…') });
+        tytuly.push({
+          poz: a.getStart(zrodlo),
+          tekst: [a.head.text, ...a.templateSpans.map((s) => s.literal.text)].join('…'),
+        });
       }
     }
     ts.forEachChild(wezel, odwiedz);
@@ -303,18 +313,25 @@ describe('komentarze bez numerów zadań', () => {
     const js = "const a = 'http://x/PRZ-1'; const r = /PRZ-2/; const s = `${a} // PRZ-3`; // PRZ-4\n/* PRZ-5 */";
     expect(komentarze('a.js', js).map((k) => k.tekst)).toEqual(['// PRZ-4', '/* PRZ-5 */']);
     const ejs = "<p>PRZ-1</p><%# PRZ-2 %><% if (x) { // PRZ-3\n %><%= 'PRZ-4' %><% } %>";
-    expect(komentarze('a.ejs', ejs).map((k) => k.tekst).sort()).toEqual(['// PRZ-3', '<%# PRZ-2 %>']);
+    expect(
+      komentarze('a.ejs', ejs)
+        .map((k) => k.tekst)
+        .sort(),
+    ).toEqual(['// PRZ-3', '<%# PRZ-2 %>']);
     const sh = '#!/bin/sh\n# PRZ-1\necho "a # PRZ-2"\nx=1 # PRZ-3\necho \'PRZ-4 # PRZ-5\'';
     expect(komentarze('a.sh', sh).map((k) => k.tekst)).toEqual(['# PRZ-1', '# PRZ-3']);
   });
 
   it('parser tytułów widzi stałą część pierwszego argumentu describe/it/test', () => {
-    const js = "describe('a PRZ-1', () => { it.each([['PRZ-2']])('b %s', () => {}); test.skip(`c ${x} PRZ-3`, () => {}); foo('PRZ-4'); });";
+    const js =
+      "describe('a PRZ-1', () => { it.each([['PRZ-2']])('b %s', () => {}); test.skip(`c ${x} PRZ-3`, () => {}); foo('PRZ-4'); });";
     expect(tytulyTestow('a.js', js).map((t) => t.tekst)).toEqual(['a PRZ-1', 'b %s', 'c … PRZ-3']);
   });
 
   it(`żaden komentarz nie zawiera numeru zadania (plików: ${sprawdzane.length})`, () => {
-    console.log(`straznik numerow: sprawdzono ${sprawdzane.length} plikow (src ${sprawdzaneSrc.length}, tests ${testy.length}, scripts i deploy ${skrypty.length})`);
+    console.log(
+      `straznik numerow: sprawdzono ${sprawdzane.length} plikow (src ${sprawdzaneSrc.length}, tests ${testy.length}, scripts i deploy ${skrypty.length})`,
+    );
     const trafienia = [];
     for (const plik of sprawdzane) {
       const tekst = fs.readFileSync(plik, 'utf8');
@@ -340,7 +357,8 @@ describe('komentarze bez numerów zadań', () => {
       if (!KOD.has(path.extname(plik))) continue;
       const tekst = fs.readFileSync(plik, 'utf8');
       for (const t of tytulyTestow(plik, tekst)) {
-        if (NUMER_W_TYTULE.test(t.tekst)) trafienia.push(`${path.relative(KORZEN, plik)}:${tekst.slice(0, t.poz).split('\n').length}: ${t.tekst}`);
+        if (NUMER_W_TYTULE.test(t.tekst))
+          trafienia.push(`${path.relative(KORZEN, plik)}:${tekst.slice(0, t.poz).split('\n').length}: ${t.tekst}`);
       }
     }
     expect(trafienia).toEqual([]);

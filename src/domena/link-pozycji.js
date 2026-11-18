@@ -95,11 +95,15 @@ function adresOferty({ ofertaId = null, reczna = false } = {}) {
 
 // Trzeci kanal = JEDEN wpis w tej tablicy. Nic poza tym plikiem nie musi o nim wiedziec.
 const WZORCE = {
-  erli: { adres: ({ slug = null, externalId = null, reczna = false } = {}) => {
-    const id = slug ?? externalId;
-    return !reczna && typeof id === 'string' && id.length > 0 && !/[^A-Za-z0-9._-]/.test(id)
-      ? `https://erli.pl/produkt/${id}` : null;
-  }, tytul: 'Otwórz produkt na ERLI' },
+  erli: {
+    adres: ({ slug = null, externalId = null, reczna = false } = {}) => {
+      const id = slug ?? externalId;
+      return !reczna && typeof id === 'string' && id.length > 0 && !/[^A-Za-z0-9._-]/.test(id)
+        ? `https://erli.pl/produkt/${id}`
+        : null;
+    },
+    tytul: 'Otwórz produkt na ERLI',
+  },
   sklep: { adres: adresProduktu, tytul: 'Otwórz produkt w sklepie' },
   allegro: { adres: adresOferty, tytul: 'Otwórz ofertę na Allegro' },
 };

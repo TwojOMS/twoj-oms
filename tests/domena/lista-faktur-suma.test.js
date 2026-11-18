@@ -3,17 +3,25 @@ import { sumaListy, filtrujDokumenty, liniaRazem } from '../../src/domena/lista-
 import { zlozPaczke } from '../../src/domena/paczka-dla-biura.js';
 
 const dok = (rodzaj, gross_price, net_price, reszta = {}) => ({
-  rodzaj, gross_price, net_price, tax_price: gross_price - net_price,
-  invoice_date: '2026-10-12', sale_date: '2026-10-12', ...reszta,
+  rodzaj,
+  gross_price,
+  net_price,
+  tax_price: gross_price - net_price,
+  invoice_date: '2026-10-12',
+  sale_date: '2026-10-12',
+  ...reszta,
 });
 const lista = [dok('vat', 13400, 10895), dok('vat', 17700, 14391), dok('korekta', -8400, -6830)];
 
 describe('suma i filtry listy faktur P36e', () => {
   it('PT1: stopka FV i korekty, pominięcie pary zamiany, EUR po PLN', () => {
-    const dokumenty = [dok('vat', 12300, 10000, { currency: 'EUR' }),
-      dok('vat', 31900, 25935), dok('korekta', -1230, -1000),
+    const dokumenty = [
+      dok('vat', 12300, 10000, { currency: 'EUR' }),
+      dok('vat', 31900, 25935),
+      dok('korekta', -1230, -1000),
       dok('vat', 5000, 4000, { zastapiona_przez: 'nowa' }),
-      dok('korekta', -5000, -4000, { zastepujaca: true })];
+      dok('korekta', -5000, -4000, { zastepujaca: true }),
+    ];
     expect(liniaRazem(sumaListy(dokumenty))).toEqual([
       { waluta: 'PLN', tekst: 'Razem: netto 249,35 zł · brutto 306,70 zł' },
       { waluta: 'EUR', tekst: 'Razem: netto 100,00 EUR · brutto 123,00 EUR' },
@@ -21,27 +29,48 @@ describe('suma i filtry listy faktur P36e', () => {
   });
   it('sumuje różnice korekt ze znakiem w całkowitych groszach, zgodnie z paczką', () => {
     expect(sumaListy(lista)).toEqual({ PLN: { nettoGr: 18456, bruttoGr: 22700 }, ile: 3, niepelne: false });
-    const paczka = zlozPaczke({ miesiac: '2026-10', faktury: lista.filter(d => d.rodzaj === 'vat'), korekty: lista.filter(d => d.rodzaj === 'korekta') });
+    const paczka = zlozPaczke({
+      miesiac: '2026-10',
+      faktury: lista.filter((d) => d.rodzaj === 'vat'),
+      korekty: lista.filter((d) => d.rodzaj === 'korekta'),
+    });
     expect(sumaListy(lista).PLN.bruttoGr).toBe(paczka.sumy.sprzedaz.PLN.bruttoGr);
   });
 
   it('pomija parę zamiany, zostawia nową, oddziela EUR i sygnalizuje brak kwoty', () => {
-    const zamiana = [dok('vat', 10000, 8130, { zastapiona_przez: 'nowa' }),
-      dok('korekta', -10000, -8130, { zastepujaca: true }), dok('vat', 10000, 8130)];
+    const zamiana = [
+      dok('vat', 10000, 8130, { zastapiona_przez: 'nowa' }),
+      dok('korekta', -10000, -8130, { zastepujaca: true }),
+      dok('vat', 10000, 8130),
+    ];
     expect(sumaListy(zamiana)).toEqual({ PLN: { nettoGr: 8130, bruttoGr: 10000 }, ile: 1, niepelne: false });
     // Przy filtrze typu para zamiany rozjechałaby się (stara 10000 bez swojej korekty) — dlatego zawsze poza sumą.
-    expect(sumaListy(filtrujDokumenty(zamiana, { typ: 'vat' })))
-      .toEqual({ PLN: { nettoGr: 8130, bruttoGr: 10000 }, ile: 1, niepelne: false });
+    expect(sumaListy(filtrujDokumenty(zamiana, { typ: 'vat' }))).toEqual({
+      PLN: { nettoGr: 8130, bruttoGr: 10000 },
+      ile: 1,
+      niepelne: false,
+    });
     expect(sumaListy(filtrujDokumenty(zamiana, { typ: 'korekta' }))).toEqual({ ile: 0, niepelne: false });
-    expect(sumaListy([...lista, ...zamiana, dok('vat', undefined, 800), dok('vat', 123, 100, { currency: ' eur ' })]))
-      .toEqual({ PLN: { nettoGr: 26586, bruttoGr: 32700 }, EUR: { nettoGr: 100, bruttoGr: 123 }, ile: 6, niepelne: true });
+    expect(
+      sumaListy([...lista, ...zamiana, dok('vat', undefined, 800), dok('vat', 123, 100, { currency: ' eur ' })]),
+    ).toEqual({
+      PLN: { nettoGr: 26586, bruttoGr: 32700 },
+      EUR: { nettoGr: 100, bruttoGr: 123 },
+      ile: 6,
+      niepelne: true,
+    });
     expect(sumaListy([dok('vat', 100, 80, { tax_price: null })]).niepelne).toBe(true);
   });
 
   it('filtruje typ i płatność po regule listy, bez korekt i zastąpionych', () => {
-    const dokumenty = [dok('vat', 100, 80, { status: 'paid', left_to_pay: 100 }),
-      dok('vat', 100, 80, { left_to_pay: 0 }), dok('vat', 100, 80, { left_to_pay: 10 }),
-      dok('vat', 100, 80), dok('korekta', -100, -80), dok('vat', 100, 80, { zastapiona_przez: 'x' })];
+    const dokumenty = [
+      dok('vat', 100, 80, { status: 'paid', left_to_pay: 100 }),
+      dok('vat', 100, 80, { left_to_pay: 0 }),
+      dok('vat', 100, 80, { left_to_pay: 10 }),
+      dok('vat', 100, 80),
+      dok('korekta', -100, -80),
+      dok('vat', 100, 80, { zastapiona_przez: 'x' }),
+    ];
     expect(filtrujDokumenty(dokumenty, { typ: 'korekta' })).toEqual([dokumenty[4]]);
     expect(filtrujDokumenty(dokumenty, { platnosc: 'niezaplacona' })).toEqual(dokumenty.slice(2, 4));
     expect(filtrujDokumenty(dokumenty, { platnosc: 'zaplacona' })).toEqual(dokumenty.slice(0, 2));

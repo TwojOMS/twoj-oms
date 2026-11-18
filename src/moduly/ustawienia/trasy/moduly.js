@@ -3,13 +3,18 @@ import { przelaczModul, wylaczoneModuly, zaleznosciModulow } from '../../../oms/
 import { nawigacjaUstawien } from '../nawigacja.js';
 
 export function registerUstawieniaModulowRoutes(app, { db }) {
-  const tylkoAdmin = (req, reply) => req.konto?.admin ? null
-    : reply.code(403).view('brak-dostepu.ejs', { title: 'Brak dostępu', wlasnyUklad: true });
-  const widok = (req, reply, blad = null) => reply.view('ustawienia-moduly.ejs', {
-    title: 'Włączone funkcje', nawigacja: nawigacjaUstawien(req, reply), moduly: MODULY_OPCJONALNE,
-    wylaczone: wylaczoneModuly(db), zaleznosci: zaleznosciModulow(db), blad,
-    zapisano: req.query?.zapisano === '1' ? 'Zapisano ustawienia modułów.' : null,
-  });
+  const tylkoAdmin = (req, reply) =>
+    req.konto?.admin ? null : reply.code(403).view('brak-dostepu.ejs', { title: 'Brak dostępu', wlasnyUklad: true });
+  const widok = (req, reply, blad = null) =>
+    reply.view('ustawienia-moduly.ejs', {
+      title: 'Włączone funkcje',
+      nawigacja: nawigacjaUstawien(req, reply),
+      moduly: MODULY_OPCJONALNE,
+      wylaczone: wylaczoneModuly(db),
+      zaleznosci: zaleznosciModulow(db),
+      blad,
+      zapisano: req.query?.zapisano === '1' ? 'Zapisano ustawienia modułów.' : null,
+    });
   app.get('/ustawienia/moduly', async (req, reply) => tylkoAdmin(req, reply) ?? widok(req, reply));
   app.post('/ustawienia/moduly', async (req, reply) => {
     const odmowa = tylkoAdmin(req, reply);

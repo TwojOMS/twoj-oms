@@ -26,7 +26,10 @@ export const OKNO_PACZEK_DNI = 14;
 /** SQL i argumenty kandydatów (eksport dla testu planu zapytania). */
 export function sqlKandydatowPaczki({ granica, od, po = null, limit, kanaly = null, regula_id = null }) {
   const filtrKanalu = Array.isArray(kanaly) ? ` AND +z.sklep IN (${znaki(kanaly.length)})` : '';
-  const bezWykonania = regula_id === null ? '' : ` AND NOT EXISTS (SELECT 1 FROM automatyzacje_wykonania w
+  const bezWykonania =
+    regula_id === null
+      ? ''
+      : ` AND NOT EXISTS (SELECT 1 FROM automatyzacje_wykonania w
     WHERE w.regula_id = ? AND w.przedmiot = 'zamowienie:' || p.zamowienie_id
       AND (w.stan <> 'pominiete' OR w.zdarzenie_at >= p.utworzona_at))`;
   const odKiedy = od ?? granica?.at ?? '';
@@ -36,12 +39,21 @@ export function sqlKandydatowPaczki({ granica, od, po = null, limit, kanaly = nu
   // wartości i porządek się nie przesuwa.
   const chwila = 'MAX(p.utworzona_at, ?)';
   const filtrPo = po ? ` AND (${chwila} > ? OR (${chwila} = ? AND p.id > ?))` : '';
-  return { sql: `SELECT p.id, p.zamowienie_id, z.sklep, p.id AS przesylka_id, ${chwila} AS zdarzenie_at
+  return {
+    sql: `SELECT p.id, p.zamowienie_id, z.sklep, p.id AS przesylka_id, ${chwila} AS zdarzenie_at
     FROM przesylki p JOIN zamowienia z ON z.id = p.zamowienie_id
     WHERE p.utworzona_at >= ? AND +p.id > ? AND ${ZYWA}${filtrKanalu}${bezWykonania}${filtrPo}
     ORDER BY zdarzenie_at, p.id LIMIT ?`,
-  args: [odKiedy, oknoOd, Number(granica?.przesylki ?? 0), ...(Array.isArray(kanaly) ? kanaly : []),
-    ...(regula_id === null ? [] : [regula_id]), ...(po ? [odKiedy, po.at, odKiedy, po.at, po.id] : []), limit ?? 1000] };
+    args: [
+      odKiedy,
+      oknoOd,
+      Number(granica?.przesylki ?? 0),
+      ...(Array.isArray(kanaly) ? kanaly : []),
+      ...(regula_id === null ? [] : [regula_id]),
+      ...(po ? [odKiedy, po.at, odKiedy, po.at, po.id] : []),
+      limit ?? 1000,
+    ],
+  };
 }
 
 export const zdarzeniePaczkaNadana = Object.freeze({
@@ -57,8 +69,12 @@ export const zdarzeniePaczkaNadana = Object.freeze({
 
   /** Podgląd „30 dni”: paczki nadane od `od`, jedna (najnowsza) na zamówienie. */
   symulacja(db, od) {
-    return db.prepare(`SELECT p.zamowienie_id, z.sklep, MAX(p.id) AS przesylka_id, MAX(p.utworzona_at) AS zdarzenie_at
+    return db
+      .prepare(
+        `SELECT p.zamowienie_id, z.sklep, MAX(p.id) AS przesylka_id, MAX(p.utworzona_at) AS zdarzenie_at
       FROM przesylki p JOIN zamowienia z ON z.id = p.zamowienie_id
-      WHERE p.utworzona_at >= ? AND ${ZYWA} GROUP BY p.zamowienie_id ORDER BY zdarzenie_at DESC`).all(od);
+      WHERE p.utworzona_at >= ? AND ${ZYWA} GROUP BY p.zamowienie_id ORDER BY zdarzenie_at DESC`,
+      )
+      .all(od);
   },
 });

@@ -57,9 +57,18 @@ export function zmienUstalenia(db, id, { b2b, termin_platnosci: termin, rabat_pr
       // ⚠️ TĄ SAMĄ funkcją, którą zapisuje ręczna edycja pozycji — razem z jej strażą
       // („pozycji ze sklepu nie zapisuje się wprost"). Własny UPDATE ominąłby tę straż
       // i przepisał cenę wiersza, który za dwie minuty i tak nadpisze poller.
-      zapiszPozycjeReczna(db, id, p.id, {
-        nazwa: p.nazwa, ilosc: p.ilosc, cena_brutto: p.cena_brutto, brutto_linii: p.brutto_linii,
-      }, opcje);
+      zapiszPozycjeReczna(
+        db,
+        id,
+        p.id,
+        {
+          nazwa: p.nazwa,
+          ilosc: p.ilosc,
+          cena_brutto: p.cena_brutto,
+          brutto_linii: p.brutto_linii,
+        },
+        opcje,
+      );
     }
     zapiszUstaleniaHandlowe(db, id, { b2b, termin_platnosci: termin, rabat_procent: rabat });
     // Dotyczy WYŁĄCZNIE zamówień ręcznych i sama o tym wie (`if (z.sklep !== 'reczne') return`).

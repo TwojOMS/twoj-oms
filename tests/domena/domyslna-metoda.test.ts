@@ -12,7 +12,9 @@ describe('domyślna metoda z rejestru kurierów', () => {
     const rejestr = {
       polcien_ekspres: {
         ...MODULY_KURIEROW.dpd,
-        klucz: 'polcien_ekspres', nazwa: 'Półcień Ekspres', umowa: 'wlasna' as const,
+        klucz: 'polcien_ekspres',
+        nazwa: 'Półcień Ekspres',
+        umowa: 'wlasna' as const,
         metody: [{ ...MODULY_KURIEROW.dpd.metody[0], klucz: 'polcien_ekspres' }],
       },
       ...MODULY_KURIEROW,
@@ -28,7 +30,7 @@ describe('domyślna metoda z rejestru kurierów', () => {
   it('parser odczytuje domyślną metodę z rejestru', async () => {
     vi.resetModules();
     vi.doMock('../../src/domena/moduly-kurierow.ts', async (importOriginal) => ({
-      ...await importOriginal<typeof import('../../src/domena/moduly-kurierow.ts')>(),
+      ...(await importOriginal<typeof import('../../src/domena/moduly-kurierow.ts')>()),
       METODA_DOMYSLNA: 'odbior_osobisty',
     }));
     const { parsujNoweZamowienie: parsuj } = await import('../../src/domena/nowe-zamowienie.js');
@@ -36,9 +38,9 @@ describe('domyślna metoda z rejestru kurierów', () => {
   });
 
   it('zapisuje kod punktu dla paczkomatu i usuwa go dla kuriera bez punktu', () => {
-    expect(parsujNoweZamowienie({ dostawa: 'inpost_paczkomat', punkt_odbioru: ' fik01m ' }).punkt_odbioru)
-      .toBe('FIK01M');
-    expect(parsujNoweZamowienie({ dostawa: 'dpd', punkt_odbioru: 'fik01m' }).punkt_odbioru)
-      .toBeNull();
+    expect(parsujNoweZamowienie({ dostawa: 'inpost_paczkomat', punkt_odbioru: ' fik01m ' }).punkt_odbioru).toBe(
+      'FIK01M',
+    );
+    expect(parsujNoweZamowienie({ dostawa: 'dpd', punkt_odbioru: 'fik01m' }).punkt_odbioru).toBeNull();
   });
 });

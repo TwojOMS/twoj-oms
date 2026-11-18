@@ -45,9 +45,7 @@ export function agreguj(wiersze, zwroty = []) {
     wgKanalu.set(w.kanal, b);
   }
 
-  const top = [...produkty.values()]
-    .sort((a, b) => b.bruttoGrosze - a.bruttoGrosze)
-    .slice(0, 10);
+  const top = [...produkty.values()].sort((a, b) => b.bruttoGrosze - a.bruttoGrosze).slice(0, 10);
 
   return {
     kpi: {
@@ -222,8 +220,13 @@ export function klienci(wiersze, znaneMaile) {
   let nowych = 0;
   let powracajacych = 0;
   for (const w of wiersze) {
-    const mail = String(w.email ?? '').trim().toLowerCase();
-    if (!mail) { bezMaila += 1; continue; }
+    const mail = String(w.email ?? '')
+      .trim()
+      .toLowerCase();
+    if (!mail) {
+      bezMaila += 1;
+      continue;
+    }
     if (wOkresie.has(mail)) continue;
     wOkresie.add(mail);
     if (znaneMaile.has(mail)) powracajacych += 1;

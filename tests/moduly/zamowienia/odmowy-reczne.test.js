@@ -18,18 +18,38 @@ import { modulUstawienia } from '../../../src/moduly/ustawienia/modul.ts';
 import { modulMarketing } from '../../../src/moduly/marketing/modul.ts';
 import { modulZdrowie } from '../../../src/moduly/zdrowie/modul.ts';
 
-const headers = { authorization: `Basic ${Buffer.from('operator:x').toString('base64')}`, origin: 'http://localhost', 'content-type': 'application/x-www-form-urlencoded' };
+const headers = {
+  authorization: `Basic ${Buffer.from('operator:x').toString('base64')}`,
+  origin: 'http://localhost',
+  'content-type': 'application/x-www-form-urlencoded',
+};
 let db, server;
 beforeEach(() => {
-  vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('sieć wyłączona w teście'); }));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => {
+      throw new Error('sieć wyłączona w teście');
+    }),
+  );
   db = openOmsDb(':memory:');
-  server = buildOmsServer({ db, config: {
-    auth: { user: 'operator', pass: 'x' }, sklepy: {}, kanaly: {}, definicje: [],
-    nadawca: { nazwa: 'Pracownia Półcień', ulica: 'Przykładowa 7', kod: '00-000', miasto: 'Testowo', kraj: 'PL' },
-    proforma: { nip: '1234563218' },
-  }, poller: { stan: () => ({}) } });
+  server = buildOmsServer({
+    db,
+    config: {
+      auth: { user: 'operator', pass: 'x' },
+      sklepy: {},
+      kanaly: {},
+      definicje: [],
+      nadawca: { nazwa: 'Pracownia Półcień', ulica: 'Przykładowa 7', kod: '00-000', miasto: 'Testowo', kraj: 'PL' },
+      proforma: { nip: '1234563218' },
+    },
+    poller: { stan: () => ({}) },
+  });
 });
-afterEach(async () => { await server?.close(); db?.close(); vi.unstubAllGlobals(); });
+afterEach(async () => {
+  await server?.close();
+  db?.close();
+  vi.unstubAllGlobals();
+});
 
 function ekran(r, status, tekst, wroc, napis, ogolna = false) {
   expect(r.statusCode).toBe(status);
@@ -63,13 +83,30 @@ it('GET magazyn/wyniki (254) zostaje gołym tekstem — htmx, fragment bez ukła
 });
 
 it('klucz GUS w pliku konfiguracji (263): 409 w układzie OMS z powrotem na ekran GUS', async () => {
-  const moduly = [modulRdzen, modulWeb, modulKanaly, createModulFaktury(), modulWiadomosci, createModulZamowienia({ zWiadomosciami: true }),
-    createModulWysylka(), modulMagazyn, modulUstawienia, modulMarketing, modulZdrowie];
+  const moduly = [
+    modulRdzen,
+    modulWeb,
+    modulKanaly,
+    createModulFaktury(),
+    modulWiadomosci,
+    createModulZamowienia({ zWiadomosciami: true }),
+    createModulWysylka(),
+    modulMagazyn,
+    modulUstawienia,
+    modulMarketing,
+    modulZdrowie,
+  ];
   const p = nowyPanel({ moduly, env: { GUS_KLUCZ: 'zmyslony0plik0gus0c3' } });
   zalozKonto(p.db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
   ustawUprawnienia(p.db, kontoPoLoginie(p.db, 'adam').id, ['ustawienia']);
   const r = await post(p.app, '/ustawienia/integracje/gus', jako(p.db, 'adam'), { klucz: 'zmyslony0drugi0gus0b2' });
-  ekran(r, 409, 'Klucz GUS jest ustawiony w pliku konfiguracji (oms.env, GUS_KLUCZ) — tam go zmień. Formularz niczego nie zapisał.',
-    '/ustawienia/integracje/gus', 'Wróć', true);
+  ekran(
+    r,
+    409,
+    'Klucz GUS jest ustawiony w pliku konfiguracji (oms.env, GUS_KLUCZ) — tam go zmień. Formularz niczego nie zapisał.',
+    '/ustawienia/integracje/gus',
+    'Wróć',
+    true,
+  );
   expect(r.body).not.toContain('zmyslony0drugi0gus0b2');
 });

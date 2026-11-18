@@ -23,7 +23,10 @@ export async function main() {
     const zakoncz = () => {
       process.removeListener('SIGINT', zakoncz);
       process.removeListener('SIGTERM', zakoncz);
-      void zamknij().catch((e: unknown) => { console.error(e); process.exitCode = 1; });
+      void zamknij().catch((e: unknown) => {
+        console.error(e);
+        process.exitCode = 1;
+      });
     };
     process.on('SIGINT', zakoncz);
     process.on('SIGTERM', zakoncz);

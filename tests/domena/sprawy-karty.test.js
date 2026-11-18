@@ -6,11 +6,14 @@ import { sprawyKarty } from '../../src/domena/sprawy-karty.js';
 // i bez HTTP.
 
 const zamowienie = (nad = {}) => ({
-  numer: '1276', kwota_brutto: '212.90', anulowane: 0,
+  numer: '1276',
+  kwota_brutto: '212.90',
+  anulowane: 0,
   pozycje: [{ nazwa: 'STOP', ilosc: 1, cena_brutto: '193.90', brutto_linii: '193.90' }],
   koszt_dostawy_brutto: '19.00',
   platnosci: [{ kwota: '212.90', zrodlo: 'sklep' }],
-  przesylki: [], faktura: null,
+  przesylki: [],
+  faktura: null,
   ...nad,
 });
 
@@ -41,7 +44,9 @@ describe('sprawy przesyłki', () => {
 
   it('niezsynchronizowany sklep', () => {
     const z = zamowienie({
-      przesylki: [{ kolejnosc: 1, status: 'nadana', numer_listu: 'X', etykieta_sciezka: '/e/1.pdf', sync_woo_blad: 'sklep padł' }],
+      przesylki: [
+        { kolejnosc: 1, status: 'nadana', numer_listu: 'X', etykieta_sciezka: '/e/1.pdf', sync_woo_blad: 'sklep padł' },
+      ],
     });
     expect(sprawyKarty(z)[0].tekst).toMatch(/sklep niezsynchronizowany/i);
   });
@@ -91,15 +96,20 @@ describe('faktura czekająca na KSeF (Allegro)', () => {
   // ⚠️ `ksef_odczyt: 'ok'` W DOMYSLNEJ FAKTURZE, bo to jest stan, w ktorym sprawa MA prawo sie
   // odezwac: czuwacz zapytal, inFakt ODPOWIEDZIAL, a numeru KSeF tam nie ma. Bez tego dowodu
   // brak numeru nie znaczy nic — patrz testy nizej.
-  const allegro = (faktura = {}, nad = {}) => zamowienie({
-    sklep: 'allegro_swietlik',
-    chce_fakture: 1,
-    faktura: {
-      ksef_status: null, numer: 'FV/12/2026', infakt_uuid: 'u1', utworzona_at: WYSTAWIONA,
-      ksef_odczyt: 'ok', ...faktura,
-    },
-    ...nad,
-  });
+  const allegro = (faktura = {}, nad = {}) =>
+    zamowienie({
+      sklep: 'allegro_swietlik',
+      chce_fakture: 1,
+      faktura: {
+        ksef_status: null,
+        numer: 'FV/12/2026',
+        infakt_uuid: 'u1',
+        utworzona_at: WYSTAWIONA,
+        ksef_odczyt: 'ok',
+        ...faktura,
+      },
+      ...nad,
+    });
 
   const klucze = (z, teraz) => sprawyKarty(z, teraz).map((s) => s.klucz);
 
@@ -134,8 +144,7 @@ describe('faktura czekająca na KSeF (Allegro)', () => {
   // nie przyniesie, a wysylka do Allegro nie jest zadnym wyjsciem — dokumentu nie ma skad wziac
   // (panel nie trzyma kopii PDF-u). Jedynym wyjsciem jest „odnotuj skasowanie".
   it('przy dokumencie nieznanym inFaktowi NIE proponuje wysyłki bez numeru KSeF', () => {
-    const s = sprawyKarty(allegro({ ksef_odczyt: 'nieznana' }), TERAZ + 25 * GODZINA)
-      .find((w) => w.klucz === 'ksef');
+    const s = sprawyKarty(allegro({ ksef_odczyt: 'nieznana' }), TERAZ + 25 * GODZINA).find((w) => w.klucz === 'ksef');
     expect(s.tekst).not.toMatch(/bez numeru KSeF/i);
     // ⚠️ WSKAZANIE PRZENIESIONE NA ZAKLADKE FAKTURY — patrz test nizej.
     expect(s.tekst).toMatch(/zakładce Faktury/);
@@ -150,8 +159,7 @@ describe('faktura czekająca na KSeF (Allegro)', () => {
   // juz nie ma, byla by gorsza niz brak sprawy — dlatego tekst jest tu ASERCJA, a nie
   // szczegolem: to on jest jedyna instrukcja, jaka operator dostaje.
   it('gdy inFakt dokumentu NIE ZNA, sprawa wskazuje istniejącą akcję — w zakładce Faktury', () => {
-    const s = sprawyKarty(allegro({ ksef_odczyt: 'nieznana' }), TERAZ + 25 * GODZINA)
-      .find((w) => w.klucz === 'ksef');
+    const s = sprawyKarty(allegro({ ksef_odczyt: 'nieznana' }), TERAZ + 25 * GODZINA).find((w) => w.klucz === 'ksef');
     expect(s.waga).toBe('blokada');
     expect(s.tekst).toMatch(/FV\/12\/2026/);
     expect(s.tekst).toMatch(/inFakcie/);
@@ -179,8 +187,7 @@ describe('faktura czekająca na KSeF (Allegro)', () => {
   // Wyslanie bez numeru KSeF jest SWIADOMA decyzja czlowieka — po niej kupujacy
   // fakture MA, wiec pasek nie ma o co wolac.
   it('faktura już wysłana do Allegro nie jest sprawą', () => {
-    expect(klucze(allegro({ allegro_wyslana_at: '2026-08-05T12:00:00Z' }), TERAZ + 25 * GODZINA))
-      .not.toContain('ksef');
+    expect(klucze(allegro({ allegro_wyslana_at: '2026-08-05T12:00:00Z' }), TERAZ + 25 * GODZINA)).not.toContain('ksef');
   });
 
   // ⚠️ ZAKRES TEN SAM, CO W CZUWACZU. Faktura ze sklepu, ktorej NIKT nie wyslal z panelu, nie ma
@@ -292,8 +299,9 @@ describe('faktura czekająca na KSeF (Allegro)', () => {
   // „wyslij dokument do KSeF" wlascicielowi, ktory juz go wyslal. To ta sama klasa usterki,
   // ktora juz raz zamknieto: uzasadnienie kolumny nieprawda.
   it('czuwacz NIGDY nie pytał → nie ma sprawy, choćby minęła doba', () => {
-    expect(klucze(allegro({ ksef_odczyt: null, ksef_sprawdzona_at: null }), TERAZ + 25 * GODZINA))
-      .not.toContain('ksef');
+    expect(klucze(allegro({ ksef_odczyt: null, ksef_sprawdzona_at: null }), TERAZ + 25 * GODZINA)).not.toContain(
+      'ksef',
+    );
   });
 
   it('czuwacz pytał, ale odczyt padł → nie ma sprawy (inFakt milczy, nie właściciel)', () => {
@@ -371,18 +379,23 @@ describe('anulowanie wymagające uwagi', () => {
   // wyłącznie wagę i to, że tekst zawiera słowo „anulowane". Stąd dwie asercje wprost:
   // jedna na treść, druga na kotwicę, bo to one prowadzą operatora do właściwej sekcji.
   it('anulowane po nadaniu paczki mówi o PACZCE i kotwiczy w przesyłce', () => {
-    const s = sprawyKarty(zamowienie({
-      anulowane: 1,
-      przesylki: [{ kolejnosc: 1, status: 'nadana', numer_listu: 'X', etykieta_sciezka: '/e/1.pdf' }],
-    })).find((w) => w.klucz === 'anulowane');
+    const s = sprawyKarty(
+      zamowienie({
+        anulowane: 1,
+        przesylki: [{ kolejnosc: 1, status: 'nadana', numer_listu: 'X', etykieta_sciezka: '/e/1.pdf' }],
+      }),
+    ).find((w) => w.klucz === 'anulowane');
     expect(s.tekst).toContain('nadaniu paczki');
     expect(s.kotwica).toBe('#przesylka');
   });
 
   it('anulowane po wystawieniu faktury, bez paczki, mówi o FAKTURZE i kotwiczy w fakturze', () => {
-    const s = sprawyKarty(zamowienie({
-      anulowane: 1, faktura: { ksef_status: 'sent', numer: 'FV/1/2026' },
-    })).find((w) => w.klucz === 'anulowane');
+    const s = sprawyKarty(
+      zamowienie({
+        anulowane: 1,
+        faktura: { ksef_status: 'sent', numer: 'FV/1/2026' },
+      }),
+    ).find((w) => w.klucz === 'anulowane');
     expect(s.tekst).toContain('wystawieniu faktury');
     expect(s.kotwica).toBe('#faktura');
   });
@@ -394,14 +407,22 @@ describe('anulowanie wymagające uwagi', () => {
   // paczki" i kotwiczyła w `#przesylka`: operator trafiał w jedyną rzecz, którą człowiek
   // już zamknął, i mógł nie dojść do dokumentu wymagającego korekty w KSeF.
   it('ukryta paczka nie decyduje o treści — sprawa mówi o fakturze', () => {
-    const s = sprawyKarty(zamowienie({
-      anulowane: 1,
-      przesylki: [{
-        kolejnosc: 1, status: 'nadana', numer_listu: '1048123722945U',
-        etykieta_sciezka: '/e/1.pdf', ukryta_at: '2026-08-25T10:00:00Z', ukryta_przez: 'adam',
-      }],
-      faktura: { ksef_status: 'sent', numer: 'FV/1/2026' },
-    })).find((w) => w.klucz === 'anulowane');
+    const s = sprawyKarty(
+      zamowienie({
+        anulowane: 1,
+        przesylki: [
+          {
+            kolejnosc: 1,
+            status: 'nadana',
+            numer_listu: '1048123722945U',
+            etykieta_sciezka: '/e/1.pdf',
+            ukryta_at: '2026-08-25T10:00:00Z',
+            ukryta_przez: 'adam',
+          },
+        ],
+        faktura: { ksef_status: 'sent', numer: 'FV/1/2026' },
+      }),
+    ).find((w) => w.klucz === 'anulowane');
     expect(s.tekst).toContain('wystawieniu faktury');
     expect(s.tekst).not.toContain('nadaniu paczki');
     expect(s.kotwica).toBe('#faktura');
@@ -412,15 +433,22 @@ describe('anulowanie wymagające uwagi', () => {
   // kolumna `ukryta_at`: reguła po kolumnie uciszyłaby tu paczkę ŻYWĄ i karta znów mówiłaby
   // o czymś innym, niż liczy `anulowaneWymagaUwagi`.
   it('paczka, która ruszyła PO ukryciu, znów decyduje o treści', () => {
-    const s = sprawyKarty(zamowienie({
-      anulowane: 1,
-      przesylki: [{
-        kolejnosc: 1, status: 'nadana', numer_listu: '1048123722945U',
-        etykieta_sciezka: '/e/1.pdf', ukryta_at: '2026-08-25T10:00:00Z',
-        status_kuriera_at: '2026-08-26T08:00:00Z',
-      }],
-      faktura: { ksef_status: 'sent', numer: 'FV/1/2026' },
-    })).find((w) => w.klucz === 'anulowane');
+    const s = sprawyKarty(
+      zamowienie({
+        anulowane: 1,
+        przesylki: [
+          {
+            kolejnosc: 1,
+            status: 'nadana',
+            numer_listu: '1048123722945U',
+            etykieta_sciezka: '/e/1.pdf',
+            ukryta_at: '2026-08-25T10:00:00Z',
+            status_kuriera_at: '2026-08-26T08:00:00Z',
+          },
+        ],
+        faktura: { ksef_status: 'sent', numer: 'FV/1/2026' },
+      }),
+    ).find((w) => w.klucz === 'anulowane');
     expect(s.tekst).toContain('nadaniu paczki');
     expect(s.kotwica).toBe('#przesylka');
   });

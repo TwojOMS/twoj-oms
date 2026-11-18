@@ -12,8 +12,10 @@ import { znormalizujNip } from './gus.js';
 /** Ekran Ustawienia → Integracje → KSeF. */
 export const EKRAN_KSEF = '/ustawienia/integracje/ksef';
 /** Zdanie na ekranie — jakie uprawnienie ma mieć token. */
-export const ZDANIE_UPRAWNIENIA_KSEF = 'Wygeneruj w KSeF token z uprawnieniem tylko do przeglądania faktur zakupowych — OMS niczego przez KSeF nie wysyła.';
-export const ZDANIE_TOKENU_KOSZTOW_TWOJEFAKTURY = 'Ten sam token wysyła też faktury sprzedaży z TwojeFaktury — musi mieć uprawnienie do wystawiania faktur (InvoiceWrite).';
+export const ZDANIE_UPRAWNIENIA_KSEF =
+  'Wygeneruj w KSeF token z uprawnieniem tylko do przeglądania faktur zakupowych — OMS niczego przez KSeF nie wysyła.';
+export const ZDANIE_TOKENU_KOSZTOW_TWOJEFAKTURY =
+  'Ten sam token wysyła też faktury sprzedaży z TwojeFaktury — musi mieć uprawnienie do wystawiania faktur (InvoiceWrite).';
 
 const tekst = (v) => String(v ?? '').trim();
 
@@ -30,16 +32,20 @@ export function sprawdzFormularzKsef(body = {}, zapisane = null, nipSprzedawcy =
   const token = tekst(body.token);
   const stary = String(zapisane?.sekrety?.token ?? '');
   if (!token && !stary) bledy.push('Podaj token KSeF.');
-  else if (token && /\s/u.test(token)) bledy.push('Token nie może zawierać spacji — skopiuj go z KSeF w całości, bez dopisków.');
-  else if (token && token.length < 20) bledy.push('To za krótkie na token KSeF — skopiuj cały token wygenerowany w KSeF.');
+  else if (token && /\s/u.test(token))
+    bledy.push('Token nie może zawierać spacji — skopiuj go z KSeF w całości, bez dopisków.');
+  else if (token && token.length < 20)
+    bledy.push('To za krótkie na token KSeF — skopiuj cały token wygenerowany w KSeF.');
   else if (token.length > 1000) bledy.push('Token może mieć najwyżej 1000 znaków.');
   const nipSurowy = tekst(body.nip);
   const nip = nipSurowy ? znormalizujNip(nipSurowy) : null;
   if (nipSurowy && nip !== nipSprzedawcy) {
     // NIP firmy z pliku albo z Ustawień → Firma; bez niego panel nie ma z czym porównać.
-    bledy.push(nipSprzedawcy
-      ? 'NIP musi być NIP-em firmy (Ustawienia → Firma albo OMS_SPRZEDAWCA_NIP w pliku) — KSeF pobiera faktury zakupowe tej firmy. Zostaw pole puste, a OMS użyje NIP-u firmy.'
-      : 'Panel nie zna jeszcze NIP-u firmy — wpisz go najpierw w Ustawienia → Firma, potem zapisz token (pole NIP możesz zostawić puste).');
+    bledy.push(
+      nipSprzedawcy
+        ? 'NIP musi być NIP-em firmy (Ustawienia → Firma albo OMS_SPRZEDAWCA_NIP w pliku) — KSeF pobiera faktury zakupowe tej firmy. Zostaw pole puste, a OMS użyje NIP-u firmy.'
+        : 'Panel nie zna jeszcze NIP-u firmy — wpisz go najpierw w Ustawienia → Firma, potem zapisz token (pole NIP możesz zostawić puste).',
+    );
   }
   return { ustawienia: { nip }, sekrety: { token: token || stary }, bledy };
 }
@@ -64,7 +70,8 @@ export function nipZapisuZgodny(zapis, nipSprzedawcy) {
  * Firma) — jedno zdanie dla „Sprawdź połączenie”, „Odśwież teraz”, PDF-u kosztu, paczki dla biura i ekranu Koszty,
  * zamiast mylącego „brak tokenu” / „nie ma podpiętego KSeF”.
  */
-export const ODMOWA_KSEF_BRAK_NIP = 'Panel nie zna NIP-u firmy — wpisz go w Ustawienia → Firma; token KSeF działa w kontekście tego NIP-u.';
+export const ODMOWA_KSEF_BRAK_NIP =
+  'Panel nie zna NIP-u firmy — wpisz go w Ustawienia → Firma; token KSeF działa w kontekście tego NIP-u.';
 
 /** Powód niedostępności usługi KSeF do pokazania człowiekowi (dziś: tylko brak NIP-u przy zapisanym tokenie) albo null. */
 export function powodNiedostepnosciKsef(usluga) {

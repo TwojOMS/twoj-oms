@@ -6,19 +6,33 @@ import { utworzAlarmAutoKsef } from '../../../src/moduly/faktury/db/alarm-auto-k
 afterEach(() => vi.unstubAllGlobals());
 
 async function panel(skonfigurowana = true) {
-  const siec = vi.fn(() => { throw new Error('Test zdrowia nie może korzystać z sieci'); });
+  const siec = vi.fn(() => {
+    throw new Error('Test zdrowia nie może korzystać z sieci');
+  });
   vi.stubGlobal('fetch', siec);
   const env = {
-    OMS_USER: 'fixture', OMS_PASS: 'fixture', OMS_KANALY: '[]',
-    OMS_PROFORMY_KATALOG: 'tests/fixture-proformy', OMS_ETYKIETY_KATALOG: 'tests/fixture-etykiety',
+    OMS_USER: 'fixture',
+    OMS_PASS: 'fixture',
+    OMS_KANALY: '[]',
+    OMS_PROFORMY_KATALOG: 'tests/fixture-proformy',
+    OMS_ETYKIETY_KATALOG: 'tests/fixture-etykiety',
     OMS_PROGRAM_FAKTUROWY: 'fakturownia',
-    ...(skonfigurowana ? { FAKTUROWNIA_DOMENA: 'konto-fikcyjne-11912', FAKTUROWNIA_API_TOKEN: 'fikcyjny-token-11912' } : {}),
+    ...(skonfigurowana
+      ? { FAKTUROWNIA_DOMENA: 'konto-fikcyjne-11912', FAKTUROWNIA_API_TOKEN: 'fikcyjny-token-11912' }
+      : {}),
   };
   let faktury;
-  const moduly = modulyDla(env).map((m) => m.nazwa !== 'faktury' ? m : {
-    ...m,
-    zbuduj(ctx) { faktury = m.zbuduj(ctx); return faktury; },
-  });
+  const moduly = modulyDla(env).map((m) =>
+    m.nazwa !== 'faktury'
+      ? m
+      : {
+          ...m,
+          zbuduj(ctx) {
+            faktury = m.zbuduj(ctx);
+            return faktury;
+          },
+        },
+  );
   const p = await zbudujOms({ env, moduly, log: () => {} });
   return { ...p, zdrowieFaktur: () => faktury.zdrowie(), siec, alarm: utworzAlarmAutoKsef(p.db) };
 }
@@ -42,7 +56,10 @@ describe('alarm auto-KSeF w zdrowiu faktur', () => {
       p.alarm.zgas();
       expect(p.zdrowieFaktur()).toMatchObject({ alarmy: [], ok: true });
       expect(p.siec).not.toHaveBeenCalled();
-    } finally { await p.app.close(); p.db.close(); }
+    } finally {
+      await p.app.close();
+      p.db.close();
+    }
   });
 
   it('/health pokazuje alarm i ok=false do zgaszenia', async () => {
@@ -59,7 +76,10 @@ describe('alarm auto-KSeF w zdrowiu faktur', () => {
       p.alarm.zgas();
       expect((await zdrowie()).alarmy.join(' ')).not.toContain('bez zlecenia z panelu');
       expect(p.siec).not.toHaveBeenCalled();
-    } finally { await p.app.close(); p.db.close(); }
+    } finally {
+      await p.app.close();
+      p.db.close();
+    }
   });
 
   it('liczy dokumenty bez numeru tak samo', async () => {
@@ -68,7 +88,10 @@ describe('alarm auto-KSeF w zdrowiu faktur', () => {
       p.alarm.dopisz({ dokument: '3', gov_status: 'processing' });
       expect(p.zdrowieFaktur().alarmy[0]).toContain('Fakturownia wysłała do KSeF 1');
       expect(p.siec).not.toHaveBeenCalled();
-    } finally { await p.app.close(); p.db.close(); }
+    } finally {
+      await p.app.close();
+      p.db.close();
+    }
   });
 
   it('bez klienta Fakturowni pomija nawet zapisany alarm', async () => {
@@ -77,6 +100,9 @@ describe('alarm auto-KSeF w zdrowiu faktur', () => {
       p.alarm.dopisz({ dokument: '1', numer: 'FV 1/11/2026', gov_status: 'processing' });
       expect(p.zdrowieFaktur()).toMatchObject({ alarmy: [], ok: true });
       expect(p.siec).not.toHaveBeenCalled();
-    } finally { await p.app.close(); p.db.close(); }
+    } finally {
+      await p.app.close();
+      p.db.close();
+    }
   });
 });

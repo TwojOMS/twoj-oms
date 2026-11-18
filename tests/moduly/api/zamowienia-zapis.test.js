@@ -12,11 +12,14 @@ const cialo = {
   kartaId: 'karta-polcien',
   klient: { first_name: 'Ala', last_name: 'Testowa', company: 'Pracownia Półcień', email: 'ala@example.test' },
   dostawa: { first_name: 'Ala', last_name: 'Testowa', address_1: 'Przykładowa 7', postcode: '00-001', city: 'Testowo' },
-  chceFakture: false, kosztDostawyBrutto: '19.00',
+  chceFakture: false,
+  kosztDostawyBrutto: '19.00',
   pozycje: [{ nazwa: 'Dekoracja testowa', sku: 'TEST-1', ilosc: 2, cena_brutto: '61.50' }],
 };
 let zestawy;
-beforeEach(() => { zestawy = []; });
+beforeEach(() => {
+  zestawy = [];
+});
 afterEach(async () => {
   for (const z of zestawy) {
     await z.app.close();
@@ -28,37 +31,60 @@ async function zestaw(v1, { proformy = true, kanal = true } = {}) {
   const db = openOmsDb(':memory:');
   const katalog = mkdtempSync(join(tmpdir(), 'api-zapis-'));
   const dokumenty = [];
-  const proforma = proformy ? createProforma({
-    db, config: {
-      nadawca: { nazwa: 'Pracownia Półcień', ulica: 'Przykładowa 1', kod: '00-001', miasto: 'Testowo', kraj: 'PL' },
-      proforma: { katalog, nip: '1234563218', rachunek: '34109010140000000000000000', bank: 'Bank testowy' },
-    },
-    teraz: () => new Date('2026-11-06T10:00:00.000Z'),
-    budujPdf: dane => { dokumenty.push(dane); return Buffer.from('%PDF-1.3 atrapa lokalna'); },
-  }) : null;
+  const proforma = proformy
+    ? createProforma({
+        db,
+        config: {
+          nadawca: { nazwa: 'Pracownia Półcień', ulica: 'Przykładowa 1', kod: '00-001', miasto: 'Testowo', kraj: 'PL' },
+          proforma: { katalog, nip: '1234563218', rachunek: '34109010140000000000000000', bank: 'Bank testowy' },
+        },
+        teraz: () => new Date('2026-11-06T10:00:00.000Z'),
+        budujPdf: (dane) => {
+          dokumenty.push(dane);
+          return Buffer.from('%PDF-1.3 atrapa lokalna');
+        },
+      })
+    : null;
   const syncSklep = { odeslijStatus: vi.fn(async () => {}) };
   const { app } = nowyPanel({ db, proforma, syncSklep, env: { OMS_KANAL_INDYWIDUALNY: kanal ? '1' : '0' } });
   const z = { app, db, katalog, dokumenty, syncSklep };
   zestawy.push(z);
   await app.ready();
   const kontoId = zalozKonto(db, { login: 'tester', imie: 'Tester', haslo: 'h', admin: true, rola: 'administrator' });
-  z.klucz = zakresy => ({ authorization: `Bearer ${zalozKluczApi(db, {
-    nazwa: 'panel testowy', zakresy, kontoId, teraz: new Date().toISOString(),
-  }).klucz}` });
-  const headers = v1 ? z.klucz(['zamowienia:zapis', 'proformy:zapis']) : { ...BASIC, ...ORIGIN };
-  z.wolaj = (path, payload, method = 'POST', inneNaglowki = headers) => app.inject({
-    method, url: `${v1 ? '/api/v1' : '/api'}${path === '/zamowienia/z-karty' && !v1 ? '/zamowienia-z-karty' : path}`,
-    headers: inneNaglowki, ...(payload === undefined ? {} : { payload }),
+  z.klucz = (zakresy) => ({
+    authorization: `Bearer ${
+      zalozKluczApi(db, {
+        nazwa: 'panel testowy',
+        zakresy,
+        kontoId,
+        teraz: new Date().toISOString(),
+      }).klucz
+    }`,
   });
+  const headers = v1 ? z.klucz(['zamowienia:zapis', 'proformy:zapis']) : { ...BASIC, ...ORIGIN };
+  z.wolaj = (path, payload, method = 'POST', inneNaglowki = headers) =>
+    app.inject({
+      method,
+      url: `${v1 ? '/api/v1' : '/api'}${path === '/zamowienia/z-karty' && !v1 ? '/zamowienia-z-karty' : path}`,
+      headers: inneNaglowki,
+      ...(payload === undefined ? {} : { payload }),
+    });
   z.zaloz = () => z.wolaj('/zamowienia/z-karty', cialo);
   return z;
 }
-const bezZmiennych = w => Object.fromEntries(Object.entries(w).filter(([k]) =>
-  k !== 'id' && k !== 'zamowienie_id' && !k.endsWith('_at') && k !== 'wRealizacjiAt'));
+const bezZmiennych = (w) =>
+  Object.fromEntries(
+    Object.entries(w).filter(
+      ([k]) => k !== 'id' && k !== 'zamowienie_id' && !k.endsWith('_at') && k !== 'wRealizacjiAt',
+    ),
+  );
 const wiersze = (z, tabela) => z.db.prepare(`SELECT * FROM ${tabela} ORDER BY id`).all().map(bezZmiennych);
-async function para(opcje) { return [await zestaw(false, opcje), await zestaw(true, opcje)]; }
+async function para(opcje) {
+  return [await zestaw(false, opcje), await zestaw(true, opcje)];
+}
 async function zalozOba(a, b) {
-  const ra = await a.zaloz(), rb = await b.zaloz();
+  const ra = await a.zaloz(),
+    rb = await b.zaloz();
   expect(ra.statusCode).toBe(201);
   expect(rb.statusCode).toBe(ra.statusCode);
   expect(bezZmiennych(rb.json())).toEqual(bezZmiennych(ra.json()));
@@ -71,14 +97,18 @@ it('z karty: identyczne odpowiedzi i wiersze dwóch baz, powtórka 409; klucz dz
   expect(wiersze(b, 'zamowienia')).toEqual(wiersze(a, 'zamowienia'));
   expect(wiersze(b, 'pozycje')).toEqual(wiersze(a, 'pozycje'));
   expect(wiersze(b, 'pozycje')).toHaveLength(1);
-  for (const [z, id] of [[a, ia], [b, ib]]) {
+  for (const [z, id] of [
+    [a, ia],
+    [b, ib],
+  ]) {
     const r = await z.zaloz();
     expect(r.statusCode).toBe(409);
     const { numer } = z.db.prepare('SELECT numer FROM zamowienia WHERE id = ?').get(id);
     expect(r.json()).toEqual({ id, numer, powod: 'Zamówienie z tej karty już istnieje.' });
   }
-  expect(b.db.prepare("SELECT akcja, kto FROM log WHERE akcja = 'zamowienie.z-karty'").all())
-    .toEqual([{ akcja: 'zamowienie.z-karty', kto: 'klucz: panel testowy' }]);
+  expect(b.db.prepare("SELECT akcja, kto FROM log WHERE akcja = 'zamowienie.z-karty'").all()).toEqual([
+    { akcja: 'zamowienie.z-karty', kto: 'klucz: panel testowy' },
+  ]);
 });
 
 it('w realizacji: identyczny skutek, idempotencja i wywołanie usługi synchronizacji', async () => {
@@ -124,7 +154,10 @@ it('brak konfiguracji proform daje 503 dla wystawienia i PDF w obu wejściach', 
   const [a, b] = await para({ proformy: false });
   const ids = await zalozOba(a, b);
   for (const [i, z] of [a, b].entries()) {
-    for (const [path, method] of [[`/zamowienia/${ids[i]}/proforma`, 'POST'], ['/proformy/1/pdf', 'GET']]) {
+    for (const [path, method] of [
+      [`/zamowienia/${ids[i]}/proforma`, 'POST'],
+      ['/proformy/1/pdf', 'GET'],
+    ]) {
       const r = await z.wolaj(path, undefined, method);
       expect(r.statusCode).toBe(503);
       expect(r.json()).toEqual({ powod: 'Proformy nie są skonfigurowane.' });

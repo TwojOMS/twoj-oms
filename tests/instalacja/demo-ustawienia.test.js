@@ -23,9 +23,12 @@ const katalogi = [];
 let live, url, env, gosc, admin;
 
 const zaloguj = async (uzytkownik, haslo) => {
-  const r = await fetch(url + '/login', { method: 'POST', redirect: 'manual',
+  const r = await fetch(url + '/login', {
+    method: 'POST',
+    redirect: 'manual',
     headers: { origin: url, 'content-type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ uzytkownik, haslo, powrot: '/' }) });
+    body: new URLSearchParams({ uzytkownik, haslo, powrot: '/' }),
+  });
   return r.headers.get('set-cookie').match(/sesja_oms_proba=[^;]+/)[0];
 };
 const get = async (adres, cookie = gosc) => {
@@ -33,26 +36,41 @@ const get = async (adres, cookie = gosc) => {
   return { status: r.status, html: await r.text() };
 };
 const post = async (adres, pola, cookie = gosc) => {
-  const r = await fetch(url + adres, { method: 'POST', redirect: 'manual',
+  const r = await fetch(url + adres, {
+    method: 'POST',
+    redirect: 'manual',
     headers: { cookie, origin: url, accept: 'text/html', 'content-type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams(pola) });
+    body: new URLSearchParams(pola),
+  });
   return { status: r.status, html: await r.text() };
 };
 const baza = () => new DatabaseSync(env.OMS_DB_PATH, { readOnly: true });
 
 beforeAll(async () => {
-  const k = fs.mkdtempSync(path.join(os.tmpdir(), 'oms-demo-prz083c-')); katalogi.push(k);
-  env = { ...ENV_DEMO, OMS_DB_PATH: path.join(k, 'oms.sqlite'), OMS_PORT: '0', OMS_USER: 'serwis-demo',
-    OMS_PASS: 'haslo-serwisowe-testu', OMS_PROFORMY_KATALOG: path.join(k, 'proformy'), OMS_ETYKIETY_KATALOG: path.join(k, 'etykiety'),
-    OMS_DEMO_LOGIN: 'demo', OMS_DEMO_HASLO: 'demo' };
+  const k = fs.mkdtempSync(path.join(os.tmpdir(), 'oms-demo-prz083c-'));
+  katalogi.push(k);
+  env = {
+    ...ENV_DEMO,
+    OMS_DB_PATH: path.join(k, 'oms.sqlite'),
+    OMS_PORT: '0',
+    OMS_USER: 'serwis-demo',
+    OMS_PASS: 'haslo-serwisowe-testu',
+    OMS_PROFORMY_KATALOG: path.join(k, 'proformy'),
+    OMS_ETYKIETY_KATALOG: path.join(k, 'etykiety'),
+    OMS_DEMO_LOGIN: 'demo',
+    OMS_DEMO_HASLO: 'demo',
+  };
   await zalozBazeDemo({ baza: env.OMS_DB_PATH, dzis: DZIS, env, kontoAdmina: ADMIN });
   live = await uruchomPiaskownice(env, { host: '127.0.0.1' });
   url = live.aplikacja.app.listeningOrigin;
   admin = await zaloguj(ADMIN.login, ADMIN.haslo);
   // Nieudana próba z „e-mailem” jako loginem — taki wpis dziennika nie może trafić do innych gości.
-  await fetch(url + '/login', { method: 'POST', redirect: 'manual',
+  await fetch(url + '/login', {
+    method: 'POST',
+    redirect: 'manual',
     headers: { origin: url, 'content-type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ uzytkownik: 'ktos@prywatny-adres.example', haslo: 'zle', powrot: '/' }) });
+    body: new URLSearchParams({ uzytkownik: 'ktos@prywatny-adres.example', haslo: 'zle', powrot: '/' }),
+  });
   gosc = await zaloguj('demo', 'demo');
 }, 120_000);
 afterAll(async () => {
@@ -71,7 +89,7 @@ describe('„+ Nowe zamówienie” wyróżnione tłem', () => {
 
 describe('strona „Brak dostępu” ze strażnika (także produkcja)', () => {
   // Wywołanie reply.view('brak-dostepu.ejs') w onRequest — przed podmianą nazw widoków w preHandler —
-    // powodowałoby JSON z błędem ENOENT zamiast ekranu odmowy dla konta bez uprawnienia.
+  // powodowałoby JSON z błędem ENOENT zamiast ekranu odmowy dla konta bez uprawnienia.
   it('konto bez ptaszka (gość: Finanse) dostaje stronę HTML 403, nie JSON z błędem pliku', async () => {
     const { status, html } = await get('/finanse');
     expect(status).toBe(403);
@@ -90,9 +108,17 @@ describe('Ustawienia w demo — gość ogląda wszystko', () => {
     const wejscie = await get('/ustawienia');
     expect(wejscie.status).toBe(302);
     expect(wejscie.html).toBe('');
-    for (const adres of ['/ustawienia/zamowienia-i-wysylka', '/ustawienia/wiadomosci-i-automatyzacje',
-      '/ustawienia/integracje', '/ustawienia/integracje/reklamy', '/ustawienia/konta', `/ustawienia/konta/${idAdmina}`,
-      '/ustawienia/role', '/ustawienia/lacznosc', '/ustawienia/aktualizacje']) {
+    for (const adres of [
+      '/ustawienia/zamowienia-i-wysylka',
+      '/ustawienia/wiadomosci-i-automatyzacje',
+      '/ustawienia/integracje',
+      '/ustawienia/integracje/reklamy',
+      '/ustawienia/konta',
+      `/ustawienia/konta/${idAdmina}`,
+      '/ustawienia/role',
+      '/ustawienia/lacznosc',
+      '/ustawienia/aktualizacje',
+    ]) {
       const { status, html } = await get(adres);
       expect(status, adres).toBe(200);
       expect(html, adres).toContain(PODGLAD);
@@ -106,13 +132,22 @@ describe('Ustawienia w demo — gość ogląda wszystko', () => {
 
   it('żaden zapis: POST pod /ustawienia od gościa = 403 przed trasą, baza bez zmian', async () => {
     const db = baza();
-    const przed = { konta: db.prepare('SELECT COUNT(*) n FROM konta').get().n,
+    const przed = {
+      konta: db.prepare('SELECT COUNT(*) n FROM konta').get().n,
       sekret: db.prepare('SELECT sekret FROM sekret_sesji WHERE id = 1').get().sekret,
-      role: db.prepare('SELECT COUNT(*) n FROM role').get().n };
+      role: db.prepare('SELECT COUNT(*) n FROM role').get().n,
+    };
     db.close();
-    for (const [adres, pola] of [['/ustawienia/konta/wyloguj-wszystkie', {}], ['/ustawienia/konta/nowe', { login: 'wlamywacz', imie: 'X', rola: 'administrator', sposob: 'link' }],
-      ['/ustawienia/role/nowa', { nazwa: 'Rola gościa' }], ['/ustawienia/formulka', { tresc: 'x' }], ['/ustawienia/dostawa', {}],
-      ['/ustawienia/paczka', {}], ['/ustawienia/integracje/reklamy/zapisz', {}], ['/ustawienia/aktualizacje/sprawdz', {}]]) {
+    for (const [adres, pola] of [
+      ['/ustawienia/konta/wyloguj-wszystkie', {}],
+      ['/ustawienia/konta/nowe', { login: 'wlamywacz', imie: 'X', rola: 'administrator', sposob: 'link' }],
+      ['/ustawienia/role/nowa', { nazwa: 'Rola gościa' }],
+      ['/ustawienia/formulka', { tresc: 'x' }],
+      ['/ustawienia/dostawa', {}],
+      ['/ustawienia/paczka', {}],
+      ['/ustawienia/integracje/reklamy/zapisz', {}],
+      ['/ustawienia/aktualizacje/sprawdz', {}],
+    ]) {
       const r = await post(adres, pola);
       expect(r.status, adres).toBe(403);
       expect(r.html, adres).toContain('można tylko obejrzeć');
@@ -122,7 +157,9 @@ describe('Ustawienia w demo — gość ogląda wszystko', () => {
       expect(po.prepare('SELECT COUNT(*) n FROM konta').get().n).toBe(przed.konta);
       expect(po.prepare('SELECT sekret FROM sekret_sesji WHERE id = 1').get().sekret).toBe(przed.sekret);
       expect(po.prepare('SELECT COUNT(*) n FROM role').get().n).toBe(przed.role);
-    } finally { po.close(); }
+    } finally {
+      po.close();
+    }
     // Gość nadal zalogowany — „Wyloguj wszystkich” nie przeszło.
     expect((await get('/')).status).toBe(200);
   });
@@ -169,8 +206,12 @@ describe('Ustawienia w demo — gość ogląda wszystko', () => {
     // Wiersze listy zamiast kart; usługę niesie data-usluga, atrapę etykieta „Dane przykładowe”.
     const karty = html.match(/<li class="pol-wiersz[\s\S]*?<\/li>/g) ?? [];
     // Wysyłam z Allegro nie jest osobną kartą, tylko cechą konta Allegro.
-    for (const [usluga, liczba] of [['allegro', 2], ['wza', 0], ['woocommerce', 1]]) {
-      const uslugi = karty.filter(k => k.includes(`data-usluga="${usluga}"`));
+    for (const [usluga, liczba] of [
+      ['allegro', 2],
+      ['wza', 0],
+      ['woocommerce', 1],
+    ]) {
+      const uslugi = karty.filter((k) => k.includes(`data-usluga="${usluga}"`));
       expect(uslugi, usluga).toHaveLength(liczba);
       for (const karta of uslugi) {
         expect(karta).toContain('Dane przykładowe');

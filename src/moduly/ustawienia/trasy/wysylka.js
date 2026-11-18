@@ -2,41 +2,82 @@ import { tytulEkranuDlaAdresu } from '../../../domena/ekrany.js';
 import { randomUUID } from 'node:crypto';
 import { wczytajUstawienia, zapiszUstawienia, ustawieniaZmienioneAt } from '../../../oms/db/ustawienia.js';
 import { domyslnaPaczka, kwotyDostawy, sprawdzPaczke, sprawdzKoszty } from '../../../domena/ustawienia-panelu.js';
-import { odczytajSzablony, zapiszSzablony, zmienSzablon, ustawDomyslnySzablon, usunSzablon } from '../../../domena/szablony-paczek.js';
+import {
+  odczytajSzablony,
+  zapiszSzablony,
+  zmienSzablon,
+  ustawDomyslnySzablon,
+  usunSzablon,
+} from '../../../domena/szablony-paczek.js';
 import { DOSTAWY } from '../../../domena/nowe-zamowienie.js';
 import { GABARYTY_PACZKOMATU } from '../../../domena/paczka.js';
 import { profilGabarytuAllegro } from '../../../domena/gabaryty-allegro.js';
 import {
-  USLUGI_AUTOMATOW, odczytajAutomaty, zapiszAutomaty, zmienAutomat, usunWyjatekAutomatu, domyslneAutomaty,
+  USLUGI_AUTOMATOW,
+  odczytajAutomaty,
+  zapiszAutomaty,
+  zmienAutomat,
+  usunWyjatekAutomatu,
+  domyslneAutomaty,
 } from '../../../domena/gabaryty-automatow.js';
 import { nawigacjaUstawien } from '../nawigacja.js';
-const KOMUNIKATY_ZAPISU={paczka:'Zapisano domyślną paczkę.',szablon:'Zapisano szablony paczek.',dostawa:'Zapisano koszty dostawy.',automat:'Zapisano gabaryty paczkomatów i automatów.'};
-export function registerUstawieniaWysylkiRoutes(app,{db}) {
+const KOMUNIKATY_ZAPISU = {
+  paczka: 'Zapisano domyślną paczkę.',
+  szablon: 'Zapisano szablony paczek.',
+  dostawa: 'Zapisano koszty dostawy.',
+  automat: 'Zapisano gabaryty paczkomatów i automatów.',
+};
+export function registerUstawieniaWysylkiRoutes(app, { db }) {
   const wspolnyKontekst = (req, reply) => ({
     nawigacja: nawigacjaUstawien(req, reply),
     zapisano: KOMUNIKATY_ZAPISU[req.query?.zapisano] ?? null,
   });
-  function widokWysylki(req, reply, {
-    wpisanaPaczka = null, wpisanySzablon = null, bledyPaczki = [], wpisaneKoszty = null, bledyKosztow = [],
-    wpisanyAutomat = null, bledyAutomatow = [],
-  } = {}) {
+  function widokWysylki(
+    req,
+    reply,
+    {
+      wpisanaPaczka = null,
+      wpisanySzablon = null,
+      bledyPaczki = [],
+      wpisaneKoszty = null,
+      bledyKosztow = [],
+      wpisanyAutomat = null,
+      bledyAutomatow = [],
+    } = {},
+  ) {
     const zapis = wczytajUstawienia(db);
     const szablonyPaczek = odczytajSzablony(zapis);
     // Edycja w wierszu i nowy wiersz bez JS (?edytuj=<id>, ?dodaj=1); po odmowie
     // zapisu wiersz zostaje otwarty z wpisanymi wartościami.
     const edytujSzablon = wpisanySzablon
-      ? (wpisanySzablon.id || null)
-      : (wpisanaPaczka ? szablonyPaczek.domyslnyId : (typeof req.query?.edytuj === 'string' ? req.query.edytuj : null));
+      ? wpisanySzablon.id || null
+      : wpisanaPaczka
+        ? szablonyPaczek.domyslnyId
+        : typeof req.query?.edytuj === 'string'
+          ? req.query.edytuj
+          : null;
     const dodajSzablon = Boolean(wpisanySzablon && !wpisanySzablon.id) || (!edytujSzablon && req.query?.dodaj === '1');
     return reply.view('ustawienia-zamowienia.ejs', {
-      ...wspolnyKontekst(req, reply), title: tytulEkranuDlaAdresu(req.url),
+      ...wspolnyKontekst(req, reply),
+      title: tytulEkranuDlaAdresu(req.url),
       paczka: wpisanaPaczka ?? domyslnaPaczka(zapis),
-      szablonyPaczek, wpisanySzablon, wpisanaPaczka, edytujSzablon, dodajSzablon,
-      automaty: odczytajAutomaty(zapis), automatyStart: domyslneAutomaty(zapis), uslugiAutomatow: USLUGI_AUTOMATOW,
-      gabarytyPaczkomatu: GABARYTY_PACZKOMATU, wysokosciAllegro: profilGabarytuAllegro(USLUGI_AUTOMATOW[0].id).gabaryty,
-      wpisanyAutomat, bledyAutomatow,
-      kwoty: wpisaneKoszty ?? kwotyDostawy(zapis), dostawy: DOSTAWY,
-      bledyPaczki, bledyKosztow, ustawieniaZmienione: ustawieniaZmienioneAt(db),
+      szablonyPaczek,
+      wpisanySzablon,
+      wpisanaPaczka,
+      edytujSzablon,
+      dodajSzablon,
+      automaty: odczytajAutomaty(zapis),
+      automatyStart: domyslneAutomaty(zapis),
+      uslugiAutomatow: USLUGI_AUTOMATOW,
+      gabarytyPaczkomatu: GABARYTY_PACZKOMATU,
+      wysokosciAllegro: profilGabarytuAllegro(USLUGI_AUTOMATOW[0].id).gabaryty,
+      wpisanyAutomat,
+      bledyAutomatow,
+      kwoty: wpisaneKoszty ?? kwotyDostawy(zapis),
+      dostawy: DOSTAWY,
+      bledyPaczki,
+      bledyKosztow,
+      ustawieniaZmienione: ustawieniaZmienioneAt(db),
     });
   }
 
@@ -51,8 +92,11 @@ export function registerUstawieniaWysylkiRoutes(app,{db}) {
     }
     const stan = odczytajSzablony(wczytajUstawienia(db));
     const domyslny = stan.szablony.find((s) => s.id === stan.domyslnyId);
-    const wynik = zmienSzablon(stan, { ...domyslny, id: domyslny.id,
-      ...Object.fromEntries(Object.keys(domyslnaPaczka()).map((pole) => [pole, wartosci[`paczka.${pole}`]])) });
+    const wynik = zmienSzablon(stan, {
+      ...domyslny,
+      id: domyslny.id,
+      ...Object.fromEntries(Object.keys(domyslnaPaczka()).map((pole) => [pole, wartosci[`paczka.${pole}`]])),
+    });
     zapiszUstawienia(db, zapiszSzablony(wynik.stan));
     return reply.redirect('/ustawienia/zamowienia-i-wysylka?zapisano=paczka');
   });
@@ -120,5 +164,4 @@ export function registerUstawieniaWysylkiRoutes(app,{db}) {
     zapiszUstawienia(db, wartosci);
     return reply.redirect('/ustawienia/wysylka/dostawa?zapisano=dostawa');
   });
-
 }

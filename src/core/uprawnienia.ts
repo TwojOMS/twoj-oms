@@ -17,8 +17,12 @@ export function rozdajNoweUprawnienia(db: DatabaseSync, moduly: readonly ModulOm
   const odnotuj = db.prepare('INSERT INTO uprawnienia_rozdane (klucz, rozdane_at) VALUES (?, ?)');
   const konta = db.prepare('SELECT id, rola FROM konta').all() as { id: number; rola: string }[];
   // Gdy są role w bazie, nowy klucz dostają także role wymienione w manifeście (bez mapowania nazw).
-  const zRolami = Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'role_ekrany'").get());
-  const role = zRolami ? new Set((db.prepare('SELECT klucz FROM role').all() as { klucz: string }[]).map((r) => r.klucz)) : new Set<string>();
+  const zRolami = Boolean(
+    db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'role_ekrany'").get(),
+  );
+  const role = zRolami
+    ? new Set((db.prepare('SELECT klucz FROM role').all() as { klucz: string }[]).map((r) => r.klucz))
+    : new Set<string>();
   const wstawRoli = zRolami ? db.prepare('INSERT OR IGNORE INTO role_ekrany (rola, ekran) VALUES (?, ?)') : null;
   const rozdane: string[] = [];
   for (const m of moduly) {

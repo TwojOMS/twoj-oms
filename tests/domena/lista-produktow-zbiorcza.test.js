@@ -16,7 +16,10 @@ describe('listaProduktowZbiorcza', () => {
     ]);
     expect(l.wiersze).toHaveLength(1);
     expect(l.wiersze[0]).toMatchObject({ ilosc: 3, sku: 'GB-1', nazwa: 'Gingerbread - Craft' });
-    expect(l.wiersze[0].zamowienia).toEqual([{ numer: 'A1', ilosc: 2 }, { numer: 'B2', ilosc: 1 }]);
+    expect(l.wiersze[0].zamowienia).toEqual([
+      { numer: 'A1', ilosc: 2 },
+      { numer: 'B2', ilosc: 1 },
+    ]);
   });
 
   it('bez SKU scala po dokladnej nazwie, a rozne nazwy zostawia osobno', () => {
@@ -42,11 +45,13 @@ describe('listaProduktowZbiorcza', () => {
   });
 
   it('pomija wysylke przebrana za pozycje i SKU zaslepki traktuje jak brak SKU', () => {
-    const l = listaProduktowZbiorcza([zam('A1', [
-      p('Kurier DPD (darmowa wysyłka)', null, 1, '0.00'),
-      p('Wysyłka kurierem DPD', 'psm-zam-placeholder', 1, '19.00'),
-      p('Lampka nocna Żyrafa', 'psm-zam-placeholder', 1),
-    ])]);
+    const l = listaProduktowZbiorcza([
+      zam('A1', [
+        p('Kurier DPD (darmowa wysyłka)', null, 1, '0.00'),
+        p('Wysyłka kurierem DPD', 'psm-zam-placeholder', 1, '19.00'),
+        p('Lampka nocna Żyrafa', 'psm-zam-placeholder', 1),
+      ]),
+    ]);
     expect(l.wiersze.map((w) => w.nazwa)).toEqual(['Lampka nocna Żyrafa']);
     expect(l.wiersze[0].sku).toBeNull();
   });

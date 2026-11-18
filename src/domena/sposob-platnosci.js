@@ -53,9 +53,16 @@ export const PLATNOSC_POBRANIE = 'delivery';
  * i tresc faktury rozjechalyby sie po cichu.
  */
 export function sposobPlatnosciFaktury(z, { przyjmuje = ['delivery'] } = {}) {
-  const tekst = String(z?.metoda_platnosci ?? '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+  const tekst = String(z?.metoda_platnosci ?? '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase();
   const bon = /(karta|karty|bon|bony)[\s_-]*(podarunk|prezentow)|gift[\s_-]*card|voucher/u.test(tekst);
   const mapa = { karta: 'card', apple_pay: 'card', gotowka: 'cash', przelew: 'transfer' };
-  const metoda = czyPobranie(z) ? PLATNOSC_POBRANIE : bon ? 'voucher' : mapa[normalizujMetode(z?.metoda_platnosci).klucz];
+  const metoda = czyPobranie(z)
+    ? PLATNOSC_POBRANIE
+    : bon
+      ? 'voucher'
+      : mapa[normalizujMetode(z?.metoda_platnosci).klucz];
   return przyjmuje.includes(metoda) ? { payment_method: metoda } : {};
 }

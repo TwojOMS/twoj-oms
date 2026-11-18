@@ -16,18 +16,32 @@ const mapa = {
 // date_modified (czas lokalny sklepu) trzymamy tylko dla realizmu fixture'a, tak jak
 // prawdziwe Woo zwraca oba pola naraz.
 const zam = (id, modifiedGmt, modifiedLokalny = modifiedGmt) => ({
-  id, number: String(id), status: 'processing', total: '10.00',
-  date_created: '2026-07-29T10:00:00', date_modified: modifiedLokalny, date_modified_gmt: modifiedGmt,
-  billing: {}, shipping: {}, shipping_lines: [{ method_id: 'flat_rate', instance_id: '1' }],
-  line_items: [], meta_data: [],
+  id,
+  number: String(id),
+  status: 'processing',
+  total: '10.00',
+  date_created: '2026-07-29T10:00:00',
+  date_modified: modifiedLokalny,
+  date_modified_gmt: modifiedGmt,
+  billing: {},
+  shipping: {},
+  shipping_lines: [{ method_id: 'flat_rate', instance_id: '1' }],
+  line_items: [],
+  meta_data: [],
 });
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 
 describe('poller', () => {
   it('zapisuje pobrane zamówienia i przesuwa kursor na najnowszą modyfikację', async () => {
-    const woo = { pobierzZamowienia: vi.fn().mockResolvedValue({ zamowienia: [zam(1, '2026-07-29T10:00:00'), zam(2, '2026-07-29T11:00:00')], stron: 1 }) };
+    const woo = {
+      pobierzZamowienia: vi
+        .fn()
+        .mockResolvedValue({ zamowienia: [zam(1, '2026-07-29T10:00:00'), zam(2, '2026-07-29T11:00:00')], stron: 1 }),
+    };
     const p = createPoller({ db, kanal: createWooAdapter({ woo, mapowanie: mapa }), sklep: 'pro' });
     expect(await p.przebieg()).toEqual({ pobrane: 2 });
     expect(listaZamowien(db)).toHaveLength(2);
@@ -47,7 +61,9 @@ describe('poller', () => {
   });
 
   it('drugi przebieg pyta od zapisanego kursora', async () => {
-    const woo = { pobierzZamowienia: vi.fn().mockResolvedValue({ zamowienia: [zam(1, '2026-07-29T10:00:00')], stron: 1 }) };
+    const woo = {
+      pobierzZamowienia: vi.fn().mockResolvedValue({ zamowienia: [zam(1, '2026-07-29T10:00:00')], stron: 1 }),
+    };
     const p = createPoller({ db, kanal: createWooAdapter({ woo, mapowanie: mapa }), sklep: 'pro' });
     await p.przebieg();
     await p.przebieg();
@@ -56,7 +72,8 @@ describe('poller', () => {
 
   it('przechodzi przez wszystkie strony', async () => {
     const woo = {
-      pobierzZamowienia: vi.fn()
+      pobierzZamowienia: vi
+        .fn()
         .mockResolvedValueOnce({ zamowienia: [zam(1, '2026-07-29T10:00:00')], stron: 2 })
         .mockResolvedValueOnce({ zamowienia: [zam(2, '2026-07-29T11:00:00')], stron: 2 }),
     };
@@ -67,7 +84,8 @@ describe('poller', () => {
   // Kursor przesuniety mimo bledu = zamowienia z drugiej strony przepadaja na zawsze.
   it('błąd w połowie NIE przesuwa kursora', async () => {
     const woo = {
-      pobierzZamowienia: vi.fn()
+      pobierzZamowienia: vi
+        .fn()
         .mockResolvedValueOnce({ zamowienia: [zam(1, '2026-07-29T10:00:00')], stron: 2 })
         .mockRejectedValueOnce(new Error('sklep padł')),
     };
@@ -83,13 +101,16 @@ describe('poller', () => {
   // kiedykolwiek zacznie zapisywac przesuniety `kursor` zamiast `poprzedni`,
   // ponizsza asercja to wykryje — w przeciwienstwie do testu z kursorem null.
   it('błąd w połowie NIE przesuwa niezerowego kursora (nawet gdy strona 1 go już przesunęła)', async () => {
-    const wooPierwszy = { pobierzZamowienia: vi.fn().mockResolvedValue({ zamowienia: [zam(1, '2026-07-29T10:00:00')], stron: 1 }) };
+    const wooPierwszy = {
+      pobierzZamowienia: vi.fn().mockResolvedValue({ zamowienia: [zam(1, '2026-07-29T10:00:00')], stron: 1 }),
+    };
     const p1 = createPoller({ db, kanal: createWooAdapter({ woo: wooPierwszy, mapowanie: mapa }), sklep: 'pro' });
     expect(await p1.przebieg()).toEqual({ pobrane: 1 });
     expect(p1.stan().zsynchronizowane_do).toBe('2026-07-29T10:00:00');
 
     const wooDrugi = {
-      pobierzZamowienia: vi.fn()
+      pobierzZamowienia: vi
+        .fn()
         // strona 1: zamowienie z pozniejsza data niz zapisany kursor — lokalny `kursor` sie przesuwa
         .mockResolvedValueOnce({ zamowienia: [zam(2, '2026-07-29T12:00:00')], stron: 2 })
         .mockRejectedValueOnce(new Error('sklep padł w połowie')),
@@ -110,7 +131,14 @@ describe('poller', () => {
   describe('jeden przebieg naraz', () => {
     it('drugie wywołanie w trakcie pierwszego nie rusza sklepu', async () => {
       let zwolnij;
-      const woo = { pobierzZamowienia: vi.fn(() => new Promise((r) => { zwolnij = () => r({ zamowienia: [], stron: 1 }); })) };
+      const woo = {
+        pobierzZamowienia: vi.fn(
+          () =>
+            new Promise((r) => {
+              zwolnij = () => r({ zamowienia: [], stron: 1 });
+            }),
+        ),
+      };
       const p = createPoller({ db, kanal: createWooAdapter({ woo, mapowanie: mapa }), sklep: 'pro' });
 
       const pierwszy = p.przebieg();
@@ -125,7 +153,8 @@ describe('poller', () => {
     // zamowienia przestaja przychodzic i nigdzie nie ma o tym slowa.
     it('przebieg zakończony błędem zwalnia blokadę', async () => {
       const woo = {
-        pobierzZamowienia: vi.fn()
+        pobierzZamowienia: vi
+          .fn()
           .mockRejectedValueOnce(new Error('sklep padł'))
           .mockResolvedValueOnce({ zamowienia: [zam(1, '2026-07-29T10:00:00')], stron: 1 }),
       };
@@ -138,7 +167,12 @@ describe('poller', () => {
   describe('data startowa `od`', () => {
     it('pierwszy przebieg pyta od podanej daty, a nie od początku istnienia sklepu', async () => {
       const woo = { pobierzZamowienia: vi.fn().mockResolvedValue({ zamowienia: [], stron: 1 }) };
-      const p = createPoller({ db, kanal: createWooAdapter({ woo, mapowanie: mapa }), sklep: 'swietlik', od: '2026-07-01T00:00:00' });
+      const p = createPoller({
+        db,
+        kanal: createWooAdapter({ woo, mapowanie: mapa }),
+        sklep: 'swietlik',
+        od: '2026-07-01T00:00:00',
+      });
       await p.przebieg();
       expect(woo.pobierzZamowienia).toHaveBeenCalledWith({ modifiedAfter: '2026-07-01T00:00:00', page: 1 });
     });
@@ -147,8 +181,15 @@ describe('poller', () => {
     // czytalby te same zamowienia w kolko — a przy sklepie z historia nigdy by nie doszedl
     // do nowych.
     it('zapisany kursor wygrywa z datą startową', async () => {
-      const woo = { pobierzZamowienia: vi.fn().mockResolvedValue({ zamowienia: [zam(1, '2026-07-29T10:00:00')], stron: 1 }) };
-      const p = createPoller({ db, kanal: createWooAdapter({ woo, mapowanie: mapa }), sklep: 'swietlik', od: '2026-07-01T00:00:00' });
+      const woo = {
+        pobierzZamowienia: vi.fn().mockResolvedValue({ zamowienia: [zam(1, '2026-07-29T10:00:00')], stron: 1 }),
+      };
+      const p = createPoller({
+        db,
+        kanal: createWooAdapter({ woo, mapowanie: mapa }),
+        sklep: 'swietlik',
+        od: '2026-07-01T00:00:00',
+      });
       await p.przebieg();
       await p.przebieg();
       expect(woo.pobierzZamowienia).toHaveBeenLastCalledWith({ modifiedAfter: '2026-07-29T10:00:00', page: 1 });
@@ -170,7 +211,12 @@ describe('poller', () => {
       const stare = { ...zam(9, '2026-08-01T13:30:18'), date_created_gmt: '2019-05-24T08:07:07' };
       const nowe = { ...zam(10, '2026-08-01T13:30:19'), date_created_gmt: '2026-07-15T10:00:00' };
       const woo = { pobierzZamowienia: vi.fn().mockResolvedValue({ zamowienia: [stare, nowe], stron: 1 }) };
-      const p = createPoller({ db, kanal: createWooAdapter({ woo, mapowanie: mapa }), sklep: 'swietlik', od: '2026-07-01T00:00:00' });
+      const p = createPoller({
+        db,
+        kanal: createWooAdapter({ woo, mapowanie: mapa }),
+        sklep: 'swietlik',
+        od: '2026-07-01T00:00:00',
+      });
 
       expect(await p.przebieg()).toEqual({ pobrane: 1, pominieteStare: 1 });
       expect(listaZamowien(db).map((z) => z.numer)).toEqual(['10']);
@@ -181,7 +227,12 @@ describe('poller', () => {
     it('pominięte zamówienie i tak przesuwa kursor', async () => {
       const stare = { ...zam(9, '2026-08-01T13:30:18'), date_created_gmt: '2019-05-24T08:07:07' };
       const woo = { pobierzZamowienia: vi.fn().mockResolvedValue({ zamowienia: [stare], stron: 1 }) };
-      const p = createPoller({ db, kanal: createWooAdapter({ woo, mapowanie: mapa }), sklep: 'swietlik', od: '2026-07-01T00:00:00' });
+      const p = createPoller({
+        db,
+        kanal: createWooAdapter({ woo, mapowanie: mapa }),
+        sklep: 'swietlik',
+        od: '2026-07-01T00:00:00',
+      });
       await p.przebieg();
       expect(p.stan().zsynchronizowane_do).toBe('2026-08-01T13:30:18');
     });
@@ -199,7 +250,12 @@ describe('poller', () => {
     // ma zostac przy „jeszcze nic", zeby nastepny znow zajrzal od tej samej daty.
     it('pusty przebieg nie zapisuje daty startowej jako kursora', async () => {
       const woo = { pobierzZamowienia: vi.fn().mockResolvedValue({ zamowienia: [], stron: 1 }) };
-      const p = createPoller({ db, kanal: createWooAdapter({ woo, mapowanie: mapa }), sklep: 'swietlik', od: '2026-07-01T00:00:00' });
+      const p = createPoller({
+        db,
+        kanal: createWooAdapter({ woo, mapowanie: mapa }),
+        sklep: 'swietlik',
+        od: '2026-07-01T00:00:00',
+      });
       await p.przebieg();
       expect(p.stan().zsynchronizowane_do).toBeNull();
     });
@@ -229,9 +285,20 @@ describe('poller', () => {
         mapuj: (s) => {
           if (s.zle) throw new Error(`Zamówienie za pobraniem bez kwoty do pobrania: ${s.id}.`);
           return {
-            zrodlo_id: s.id, numer: String(s.id), klient: {}, dostawa: {}, metoda_wysylki: 'allegro_dpd',
-            kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '10.00', status_woo: null,
-            oplacone_at: null, anulowane: 0, utworzone_at: '2026-08-04T08:00:00', pozycje: [],
+            zrodlo_id: s.id,
+            numer: String(s.id),
+            klient: {},
+            dostawa: {},
+            metoda_wysylki: 'allegro_dpd',
+            kwota_pobrania: null,
+            chce_fakture: 0,
+            nip: null,
+            kwota_brutto: '10.00',
+            status_woo: null,
+            oplacone_at: null,
+            anulowane: 0,
+            utworzone_at: '2026-08-04T08:00:00',
+            pozycje: [],
           };
         },
       };
@@ -239,28 +306,36 @@ describe('poller', () => {
     const zamAllegro = (id, updatedAt, nad = {}) => ({ id, updatedAt, boughtAt: '2026-08-03T09:00:00.000Z', ...nad });
 
     it('złe zamówienie NIE zatrzymuje przebiegu — pozostałe z tej samej strony wchodzą do bazy', async () => {
-      const kanal = kanalAtrapa([{
-        zamowienia: [
-          zamAllegro('ALG-1', '2026-08-04T10:00:00.000Z'),
-          zamAllegro('ALG-ZLE', '2026-08-04T11:00:00.000Z', { zle: true }),
-          zamAllegro('ALG-2', '2026-08-04T12:00:00.000Z'),
-        ],
-        stron: 1,
-      }]);
+      const kanal = kanalAtrapa([
+        {
+          zamowienia: [
+            zamAllegro('ALG-1', '2026-08-04T10:00:00.000Z'),
+            zamAllegro('ALG-ZLE', '2026-08-04T11:00:00.000Z', { zle: true }),
+            zamAllegro('ALG-2', '2026-08-04T12:00:00.000Z'),
+          ],
+          stron: 1,
+        },
+      ]);
       const p = createPoller({ db, kanal, sklep: 'allegro_swietlik' });
 
       // Przebieg KONCZY SIE NORMALNIE (nie rzuca) i mowi, ile pominal.
       expect(await p.przebieg()).toEqual({ pobrane: 2, pominieteBledem: 1 });
-      expect(listaZamowien(db).map((z) => z.numer).sort()).toEqual(['ALG-1', 'ALG-2']);
+      expect(
+        listaZamowien(db)
+          .map((z) => z.numer)
+          .sort(),
+      ).toEqual(['ALG-1', 'ALG-2']);
     });
 
     // ⚠️ KURSOR MUSI PRZESKOCZYC ZLE ZAMOWIENIE. Zostawiony przed nim znaczy dokladnie te sama
     // wieczna petle, co przed poprawka — tyle ze bez wyjatku, wiec jeszcze ciszej.
     it('kursor przesuwa się PONAD złe zamówienie, więc następny przebieg idzie dalej', async () => {
-      const kanal = kanalAtrapa([{
-        zamowienia: [zamAllegro('ALG-ZLE', '2026-08-04T11:00:00.000Z', { zle: true })],
-        stron: 1,
-      }]);
+      const kanal = kanalAtrapa([
+        {
+          zamowienia: [zamAllegro('ALG-ZLE', '2026-08-04T11:00:00.000Z', { zle: true })],
+          stron: 1,
+        },
+      ]);
       const p = createPoller({ db, kanal, sklep: 'allegro_swietlik' });
       await p.przebieg();
       expect(p.stan().zsynchronizowane_do).toBe('2026-08-04T11:00:00.000Z');
@@ -271,10 +346,12 @@ describe('poller', () => {
     // glosna na cicha. Pasek na liscie czyta wlasnie `ostatni_blad` (bootstrap.js: `stan()`
     // oddaje pollera z niepustym bledem).
     it('powód pominięcia trafia do stanu pollera, razem z identyfikatorem zamówienia', async () => {
-      const kanal = kanalAtrapa([{
-        zamowienia: [zamAllegro('ALG-ZLE', '2026-08-04T11:00:00.000Z', { zle: true })],
-        stron: 1,
-      }]);
+      const kanal = kanalAtrapa([
+        {
+          zamowienia: [zamAllegro('ALG-ZLE', '2026-08-04T11:00:00.000Z', { zle: true })],
+          stron: 1,
+        },
+      ]);
       const p = createPoller({ db, kanal, sklep: 'allegro_swietlik' });
       await p.przebieg();
       expect(p.stan().ostatni_blad).toMatch(/Pominięto 1 zamówienie/);
@@ -308,7 +385,9 @@ describe('poller', () => {
           const stmt = db.prepare(sql);
           if (!/INTO zamowienia|UPDATE zamowienia/.test(sql)) return stmt;
           return {
-            run: () => { throw new Error('SQLITE_FULL: database or disk is full'); },
+            run: () => {
+              throw new Error('SQLITE_FULL: database or disk is full');
+            },
             get: (...a) => stmt.get(...a),
             all: (...a) => stmt.all(...a),
           };
@@ -330,7 +409,9 @@ describe('poller', () => {
     // rzuca, przebieg musi wygladac DOKLADNIE jak przed poprawka — takze w tym, co zwraca
     // (`pominieteBledem` nie ma prawa sie pojawic) i w tym, ze `ostatni_blad` sie zeruje.
     it('gdy nic nie rzuca, przebieg wygląda dokładnie jak przed poprawką', async () => {
-      const woo = { pobierzZamowienia: vi.fn().mockResolvedValue({ zamowienia: [zam(1, '2026-07-29T10:00:00')], stron: 1 }) };
+      const woo = {
+        pobierzZamowienia: vi.fn().mockResolvedValue({ zamowienia: [zam(1, '2026-07-29T10:00:00')], stron: 1 }),
+      };
       const p = createPoller({ db, kanal: createWooAdapter({ woo, mapowanie: mapa }), sklep: 'pro' });
       expect(await p.przebieg()).toEqual({ pobrane: 1 });
       expect(p.stan().ostatni_blad).toBeNull();
@@ -346,7 +427,8 @@ describe('poller', () => {
 
   it('udany przebieg czyści poprzedni błąd', async () => {
     const woo = {
-      pobierzZamowienia: vi.fn()
+      pobierzZamowienia: vi
+        .fn()
         .mockRejectedValueOnce(new Error('padło'))
         .mockResolvedValueOnce({ zamowienia: [], stron: 1 }),
     };

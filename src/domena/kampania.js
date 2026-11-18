@@ -26,14 +26,22 @@ const MAKS_DNI_OKNA = 120;
 function kwotaGr(z) {
   const kwota = podsumowaniePozycji(z).oczekiwanaZl ?? z?.kwota_brutto;
   if (!kwota) return 0;
-  try { return grosze(kwota, 'kwota zamówienia'); } catch { return 0; }
+  try {
+    return grosze(kwota, 'kwota zamówienia');
+  } catch {
+    return 0;
+  }
 }
 
 function rabatGr(kupony, kodMalymi) {
   let suma = 0;
   for (const k of kupony) {
     if (String(k.kod).toLowerCase() !== kodMalymi) continue;
-    try { suma += grosze(k.rabat, 'rabat kuponu'); } catch { /* uszkodzony rabat = 0 */ }
+    try {
+      suma += grosze(k.rabat, 'rabat kuponu');
+    } catch {
+      /* uszkodzony rabat = 0 */
+    }
   }
   return suma;
 }
@@ -125,7 +133,7 @@ export function stanKampanii({ kampania, zamowienia, dzis }) {
     dzis: dzien === dzis,
   }));
 
-  const faza = dzis < kampania.od_dnia ? 'przed' : (dzis > kampania.do_dnia ? 'po' : 'trwa');
+  const faza = dzis < kampania.od_dnia ? 'przed' : dzis > kampania.do_dnia ? 'po' : 'trwa';
 
   return {
     uzycia: aktywne.length,
@@ -141,7 +149,8 @@ export function stanKampanii({ kampania, zamowienia, dzis }) {
     dzienKampanii: faza === 'trwa' && dniOkna ? dniOkna.indexOf(dzis) + 1 : null,
     dniOkna: dniOkna?.length ?? 0,
     dni,
-    bladOkna: dniOkna ? null
+    bladOkna: dniOkna
+      ? null
       : `Okno kampanii ${kampania.od_dnia} – ${kampania.do_dnia} nie jest poprawnym zakresem dni (do ${MAKS_DNI_OKNA} dni) — popraw wiersz w tabeli kampanie.`,
     // Tabela: WSZYSTKIE zamowienia w zasiegu, takze anulowane (oznaczone statusem) —
     // kafle ich nie licza, ale czlowiek ma je widziec, bo „znikniete uzycie" wyglada
@@ -175,7 +184,13 @@ function zrodlaUzyc(aktywne, kodMalymi) {
   const mapa = new Map();
   for (const p of aktywne) {
     const opis = opisAtrybucji(atrybucjaZWiersza(p.z.atrybucja_json));
-    const wpis = mapa.get(opis.klucz) ?? { klucz: opis.klucz, etykieta: opis.etykieta, uzycia: 0, kwotaGr: 0, rabatGr: 0 };
+    const wpis = mapa.get(opis.klucz) ?? {
+      klucz: opis.klucz,
+      etykieta: opis.etykieta,
+      uzycia: 0,
+      kwotaGr: 0,
+      rabatGr: 0,
+    };
     wpis.uzycia += 1;
     wpis.kwotaGr += kwotaGr(p.z);
     wpis.rabatGr += rabatGr(p.kupony, kodMalymi);
@@ -193,14 +208,18 @@ function zrodlaUzyc(aktywne, kodMalymi) {
 
 const suma = (wiersze, pole) => wiersze.reduce((s, w) => s + (Number(w[pole]) || 0), 0);
 
-const sumaKwot = (wiersze, pole) => wiersze.reduce((s, w) => {
-  try { return s + grosze(w[pole], 'kwota ze źródła'); } catch { return s; }
-}, 0);
+const sumaKwot = (wiersze, pole) =>
+  wiersze.reduce((s, w) => {
+    try {
+      return s + grosze(w[pole], 'kwota ze źródła');
+    } catch {
+      return s;
+    }
+  }, 0);
 
 // Dzielenie, ktore ODMAWIA zamiast zmyslac: brak mianownika to BRAK MIARY, nie zero.
 // „Koszt 0,00 zł za użycie kodu" przy zerze użyć wygląda jak fakt i jest nieprawdą.
-const iloraz = (licznik, mianownik, miejsca = 2) =>
-  (mianownik > 0 ? (licznik / mianownik).toFixed(miejsca) : null);
+const iloraz = (licznik, mianownik, miejsca = 2) => (mianownik > 0 ? (licznik / mianownik).toFixed(miejsca) : null);
 
 /**
  * Iloraz PIENIEZNY: licznik jest w GROSZACH, wiec wynik tez — i dopiero `zl` robi z niego
@@ -211,8 +230,7 @@ const iloraz = (licznik, mianownik, miejsca = 2) =>
  * pokazywałby koszt kliknięcia sześćsetkrotnie zawyżony i nikt by nie zauważył, że to
  * grosze udające złotówki.
  */
-const ilorazKwoty = (licznikGr, mianownik) =>
-  (mianownik > 0 ? zl(Math.round(licznikGr / mianownik)) : null);
+const ilorazKwoty = (licznikGr, mianownik) => (mianownik > 0 ? zl(Math.round(licznikGr / mianownik)) : null);
 
 export function dolaczZrodla(stan, { meta = [], ga4 = [], stany = {} }) {
   const wydatekGr = sumaKwot(meta, 'wydatek');
@@ -220,7 +238,11 @@ export function dolaczZrodla(stan, { meta = [], ga4 = [], stany = {} }) {
   const kliknieciaLinku = suma(meta, 'klikniecia_linku');
   const sesjeMeta = suma(ga4, 'sesje_meta');
   const przychodGr = (() => {
-    try { return grosze(stan.przychodZl, 'przychód kampanii'); } catch { return 0; }
+    try {
+      return grosze(stan.przychodZl, 'przychód kampanii');
+    } catch {
+      return 0;
+    }
   })();
 
   const sesje = suma(ga4, 'sesje');
@@ -253,8 +275,15 @@ export function dolaczZrodla(stan, { meta = [], ga4 = [], stany = {} }) {
   const indeksDzis = dni.findIndex((d) => d.dzis);
   let prognozaZl = null;
   if (indeksDzis >= 0) {
-    const pelneGr = dni.slice(0, indeksDzis)
-      .map((d) => { try { return grosze(d.wydatekZl, 'wydatek dnia'); } catch { return 0; } })
+    const pelneGr = dni
+      .slice(0, indeksDzis)
+      .map((d) => {
+        try {
+          return grosze(d.wydatekZl, 'wydatek dnia');
+        } catch {
+          return 0;
+        }
+      })
       .filter((gr) => gr > 0);
     if (pelneGr.length) {
       const wydanePelne = pelneGr.reduce((s, gr) => s + gr, 0);
@@ -299,9 +328,7 @@ export function dolaczZrodla(stan, { meta = [], ga4 = [], stany = {} }) {
       // To ILORAZ DWOCH ZRODEL, wiec ma sens wylacznie, gdy OBA cos oddaly — 0% z samego
       // braku danych GA4 wygladaloby jak fakt o zgodach, a jest luka w pomiarze.
       // Zero PRZY DANYCH zostaje zerem: „GA4 nie widzi nic z Mety" to sygnal (alert).
-      pokryciePct: ga4.length > 0 && kliknieciaLinku > 0
-        ? Math.round((sesjeMeta / kliknieciaLinku) * 100)
-        : null,
+      pokryciePct: ga4.length > 0 && kliknieciaLinku > 0 ? Math.round((sesjeMeta / kliknieciaLinku) * 100) : null,
       // ⚠️ UZYTKOWNIKOW NIE SUMUJEMY — `totalUsers` to liczba unikalnych ludzi w DNIU,
       // wiec suma po dniach liczy dwa razy kazdego, kto wrocil nazajutrz. Ta sama zasada,
       // co przy zasiegu Mety wyzej.
@@ -351,8 +378,7 @@ export function dolaczZamowieniaZReklam(stan, { kampania, zamowieniaUtm = [] }) 
   }
 
   const aktywne = wZasiegu.filter((p) => !p.z.anulowane);
-  const maKod = (p) => kuponyZWiersza(p.z.kupony_json)
-    .some((k) => String(k.kod).toLowerCase() === kodMalymi);
+  const maKod = (p) => kuponyZWiersza(p.z.kupony_json).some((k) => String(k.kod).toLowerCase() === kodMalymi);
 
   let kwota = 0;
   let bezKoduKwota = 0;
@@ -378,7 +404,11 @@ export function dolaczZamowieniaZReklam(stan, { kampania, zamowieniaUtm = [] }) 
 
   const wydatekGr = (() => {
     if (!stan.meta?.saDane) return 0;
-    try { return grosze(stan.meta.wydatekZl, 'wydatek Mety'); } catch { return 0; }
+    try {
+      return grosze(stan.meta.wydatekZl, 'wydatek Mety');
+    } catch {
+      return 0;
+    }
   })();
 
   return {
@@ -403,16 +433,18 @@ export function dolaczZamowieniaZReklam(stan, { kampania, zamowieniaUtm = [] }) 
       zwrot: wydatekGr > 0 ? iloraz(kwota, wydatekGr, 1) : null,
       // W tabeli WYLACZNIE zamowienia bez kodu (z kodem stoja juz w „Zamowienia z kodem"),
       // ale wszystkie w zasiegu — takze anulowane, ze statusem, jak tam.
-      wiersze: wZasiegu.filter((p) => !maKod(p)).map((p) => ({
-        id: p.z.id,
-        numer: p.z.numer,
-        sklep: p.z.sklep,
-        utworzone_at: p.z.utworzone_at,
-        status: wyliczStatus(p.z),
-        kwotaZl: zl(kwotaGr(p.z)),
-        oplacone: Boolean(p.z.oplacone_at),
-        zrodlo: opisAtrybucji(p.atr),
-      })),
+      wiersze: wZasiegu
+        .filter((p) => !maKod(p))
+        .map((p) => ({
+          id: p.z.id,
+          numer: p.z.numer,
+          sklep: p.z.sklep,
+          utworzone_at: p.z.utworzone_at,
+          status: wyliczStatus(p.z),
+          kwotaZl: zl(kwotaGr(p.z)),
+          oplacone: Boolean(p.z.oplacone_at),
+          zrodlo: opisAtrybucji(p.atr),
+        })),
     },
   };
 }
@@ -434,10 +466,18 @@ export function alertyKampanii({ stan, meta = [], dzis }) {
   const wczoraj = new Date(Date.parse(`${dzis}T00:00:00Z`) - DZIEN_MS).toISOString().slice(0, 10);
   const wierszWczoraj = meta.find((w) => w.dzien === wczoraj);
   const wydatekWczorajGr = (() => {
-    try { return grosze(wierszWczoraj?.wydatek, 'wydatek wczoraj'); } catch { return 0; }
+    try {
+      return grosze(wierszWczoraj?.wydatek, 'wydatek wczoraj');
+    } catch {
+      return 0;
+    }
   })();
   const wydatekDodatni = (napis) => {
-    try { return grosze(napis, 'wydatek dnia') > 0; } catch { return false; }
+    try {
+      return grosze(napis, 'wydatek dnia') > 0;
+    } catch {
+      return false;
+    }
   };
 
   // Reklama chodzila, a wczoraj nie wydala NIC — kampania mogla stanac po cichu (limit
@@ -445,15 +485,15 @@ export function alertyKampanii({ stan, meta = [], dzis }) {
   // to nie awaria, tylko kampania, ktora jeszcze nie ruszyla.
   const wczorajWOknie = stan.dni.some((d) => d.dzien === wczoraj);
   const wydawalaWczesniej = meta.some((w) => w.dzien < wczoraj && wydatekDodatni(w.wydatek));
-  if (stan.faza === 'trwa' && stan.meta?.saDane && wczorajWOknie && wydawalaWczesniej
-    && wydatekWczorajGr === 0) {
-    alerty.push('Reklama nie wydała wczoraj ani grosza — sprawdź w Menedżerze, czy kampania nadal działa (limit płatności, odrzucona reklama).');
+  if (stan.faza === 'trwa' && stan.meta?.saDane && wczorajWOknie && wydawalaWczesniej && wydatekWczorajGr === 0) {
+    alerty.push(
+      'Reklama nie wydała wczoraj ani grosza — sprawdź w Menedżerze, czy kampania nadal działa (limit płatności, odrzucona reklama).',
+    );
   }
 
   // Pieniadze ida, a GA4 nie widzi z Mety ANI JEDNEJ sesji — najczesciej znaczy to, ze
   // linki reklam zgubily znaczniki utm (albo pomiar na stronie lezy).
-  if (stan.meta?.saDane && wydatekDodatni(stan.meta.wydatekZl)
-    && stan.ga4?.saDane && stan.ga4.sesjeMeta === 0) {
+  if (stan.meta?.saDane && wydatekDodatni(stan.meta.wydatekZl) && stan.ga4?.saDane && stan.ga4.sesjeMeta === 0) {
     alerty.push('Reklama wydaje, a GA4 nie widzi ani jednej sesji z Mety — sprawdź znaczniki utm w linkach reklam.');
   }
 
@@ -468,9 +508,14 @@ export function alertyKampanii({ stan, meta = [], dzis }) {
   // (start wieczorem), a CPC z trzech godzin rozbiegu to nie tempo — kilka złotych
   // na kilkadziesiąt kliknięć dałoby fałszywy alarm pierwszego ranka.
   const klikWczoraj = Number(wierszWczoraj?.klikniecia) || 0;
-  if (klikWczoraj >= MIN_KLIKNIEC_DLA_ALERTU && wydawalaWczesniej
-    && wydatekWczorajGr / klikWczoraj > 2 * ODNIESIENIE_CPC_GR) {
-    alerty.push(`Wczorajszy koszt kliknięcia (${zl(Math.round(wydatekWczorajGr / klikWczoraj))} zł) przekroczył dwukrotność odniesienia (0,125 zł) — sprawdź kreację i grupę odbiorców.`);
+  if (
+    klikWczoraj >= MIN_KLIKNIEC_DLA_ALERTU &&
+    wydawalaWczesniej &&
+    wydatekWczorajGr / klikWczoraj > 2 * ODNIESIENIE_CPC_GR
+  ) {
+    alerty.push(
+      `Wczorajszy koszt kliknięcia (${zl(Math.round(wydatekWczorajGr / klikWczoraj))} zł) przekroczył dwukrotność odniesienia (0,125 zł) — sprawdź kreację i grupę odbiorców.`,
+    );
   }
 
   return alerty;
@@ -485,11 +530,22 @@ export function alertyKampanii({ stan, meta = [], dzis }) {
 export function faleKampanii(kampania) {
   if (!kampania?.fale_json) return [];
   let dane;
-  try { dane = JSON.parse(kampania.fale_json); } catch { return []; }
+  try {
+    dane = JSON.parse(kampania.fale_json);
+  } catch {
+    return [];
+  }
   if (!Array.isArray(dane)) return [];
   return dane
-    .filter((f) => f && typeof f.od === 'string' && typeof f.napis === 'string'
-      && f.od >= kampania.od_dnia && f.od <= kampania.do_dnia && f.napis.trim() !== '')
+    .filter(
+      (f) =>
+        f &&
+        typeof f.od === 'string' &&
+        typeof f.napis === 'string' &&
+        f.od >= kampania.od_dnia &&
+        f.od <= kampania.do_dnia &&
+        f.napis.trim() !== '',
+    )
     .sort((a, b) => a.od.localeCompare(b.od))
     .map((f) => ({ od: f.od, napis: f.napis }));
 }
@@ -513,8 +569,14 @@ export function agregatKuponow(zamowienia) {
       if (!kodyZamowienia.has(klucz)) kodyZamowienia.set(klucz, k.kod);
     }
     for (const [klucz, kodOryginalny] of kodyZamowienia) {
-      const wpis = mapa.get(klucz)
-        ?? { kod: kodOryginalny.toLowerCase(), uzycia: 0, anulowane: 0, rabatGr: 0, obrotGr: 0, ostatnio: null };
+      const wpis = mapa.get(klucz) ?? {
+        kod: kodOryginalny.toLowerCase(),
+        uzycia: 0,
+        anulowane: 0,
+        rabatGr: 0,
+        obrotGr: 0,
+        ostatnio: null,
+      };
       if (z.anulowane) {
         wpis.anulowane += 1;
       } else {
@@ -527,8 +589,9 @@ export function agregatKuponow(zamowienia) {
     }
   }
   return [...mapa.values()]
-    .sort((a, b) => b.uzycia - a.uzycia
-      || String(b.ostatnio).localeCompare(String(a.ostatnio))
-      || a.kod.localeCompare(b.kod))
+    .sort(
+      (a, b) =>
+        b.uzycia - a.uzycia || String(b.ostatnio).localeCompare(String(a.ostatnio)) || a.kod.localeCompare(b.kod),
+    )
     .map(({ rabatGr: r, obrotGr: o, ...reszta }) => ({ ...reszta, rabatyZl: zl(r), obrotZl: zl(o) }));
 }

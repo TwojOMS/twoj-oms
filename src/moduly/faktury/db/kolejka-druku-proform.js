@@ -28,9 +28,11 @@ function wymagajWiersza(db, id) {
 
 /** Każde kliknięcie to NOWY wiersz — powtórny wydruk jest dozwolony, jak przy fakturze. */
 export function dodajProformeDoKolejki(db, proformaId) {
-  const wynik = db.prepare(
-    "INSERT INTO kolejka_druku_proform (proforma_id, status, proby, utworzone_at) VALUES (?, 'oczekuje', 0, ?)",
-  ).run(proformaId, teraz());
+  const wynik = db
+    .prepare(
+      "INSERT INTO kolejka_druku_proform (proforma_id, status, proby, utworzone_at) VALUES (?, 'oczekuje', 0, ?)",
+    )
+    .run(proformaId, teraz());
   return pobierzWiersz(db, Number(wynik.lastInsertRowid));
 }
 
@@ -46,14 +48,18 @@ export function dodajProformeDoKolejki(db, proformaId) {
  */
 function zajmijProformy(db, { stanowisko = 'nieznane', terazIso = teraz(), prog = PROG_ZAJECIA_MS } = {}) {
   const sierota = new Date(new Date(terazIso).getTime() - prog).toISOString();
-  db.prepare(`
+  db.prepare(
+    `
     UPDATE kolejka_druku_proform SET zajete_przez = ?, zajete_at = ?
     WHERE status = 'oczekuje'
       AND (nastepna_proba_at IS NULL OR nastepna_proba_at <= ?)
       AND (zajete_przez IS NULL OR zajete_at IS NULL OR zajete_at < ?)
-  `).run(stanowisko, terazIso, terazIso, sierota);
+  `,
+  ).run(stanowisko, terazIso, terazIso, sierota);
 
-  const wiersze = db.prepare(`
+  const wiersze = db
+    .prepare(
+      `
     SELECT k.id AS id, p.numer AS numer, z.numer AS zamowienie, z.id AS zamowienieId, k.utworzone_at AS utworzoneAt
     FROM kolejka_druku_proform k
     JOIN proformy p ON p.id = k.proforma_id
@@ -61,18 +67,27 @@ function zajmijProformy(db, { stanowisko = 'nieznane', terazIso = teraz(), prog 
     WHERE k.status = 'oczekuje' AND k.zajete_przez = ? AND k.zajete_at = ?
       AND p.uniewazniona_at IS NULL
     ORDER BY k.utworzone_at ASC, k.id ASC
-  `).all(stanowisko, terazIso);
+  `,
+    )
+    .all(stanowisko, terazIso);
 
-  db.prepare(`
+  db.prepare(
+    `
     UPDATE kolejka_druku_proform SET status = 'porzucone', ostatni_blad = ?, zajete_przez = NULL, zajete_at = NULL
     WHERE status = 'oczekuje'
       AND proforma_id IN (SELECT id FROM proformy WHERE uniewazniona_at IS NOT NULL)
-  `).run(BLAD_UNIEWAZNIONEJ);
+  `,
+  ).run(BLAD_UNIEWAZNIONEJ);
 
   return wiersze;
 }
 
-const doCzuwacza = (w) => ({ id: idPozycjiProformy(w.id), numer: w.numer, zamowienie: w.zamowienie, zamowienieId: w.zamowienieId });
+const doCzuwacza = (w) => ({
+  id: idPozycjiProformy(w.id),
+  numer: w.numer,
+  zamowienie: w.zamowienie,
+  zamowienieId: w.zamowienieId,
+});
 
 /** Pozycje proform do wzięcia przez stanowisko, w kształcie kontraktu czuwacza (`id` = „p<n>”). */
 export function proformyDoWziecia(db, opcje = {}) {
@@ -83,13 +98,19 @@ export function proformyDoWziecia(db, opcje = {}) {
  * Odpowiedź `GET /kolejka-druku-faktur`: pozycje faktur (kształt i typ id BEZ ZMIAN) i proform razem,
  * posortowane po `utworzone_at` (przy remisie faktura przed proformą).
  */
-export function pozycjeDrukuDoWziecia(db, { stanowisko = 'nieznane', terazIso = teraz(), prog = PROG_ZAJECIA_MS } = {}) {
+export function pozycjeDrukuDoWziecia(
+  db,
+  { stanowisko = 'nieznane', terazIso = teraz(), prog = PROG_ZAJECIA_MS } = {},
+) {
   const faktury = fakturyDoWziecia(db, { stanowisko, terazIso, prog });
   const proformy = zajmijProformy(db, { stanowisko, terazIso, prog });
   if (!proformy.length) return faktury;
-  const czasy = new Map(db.prepare(
-    'SELECT id, utworzone_at FROM kolejka_druku_faktur WHERE id IN (SELECT value FROM json_each(?))',
-  ).all(JSON.stringify(faktury.map((f) => f.id))).map((w) => [w.id, w.utworzone_at]));
+  const czasy = new Map(
+    db
+      .prepare('SELECT id, utworzone_at FROM kolejka_druku_faktur WHERE id IN (SELECT value FROM json_each(?))')
+      .all(JSON.stringify(faktury.map((f) => f.id)))
+      .map((w) => [w.id, w.utworzone_at]),
+  );
   const razem = [
     ...faktury.map((poz) => ({ poz, kiedy: czasy.get(poz.id) ?? '' })),
     ...proformy.map((w) => ({ poz: doCzuwacza(w), kiedy: w.utworzoneAt })),
@@ -103,12 +124,18 @@ export function pozycjeDrukuDoWziecia(db, { stanowisko = 'nieznane', terazIso = 
  * pozycji przez czuwacza (drukuje po kolei, do 120 s na pozycję).
  */
 export function proformaDlaPozycji(db, id) {
-  return db.prepare(`
+  return (
+    db
+      .prepare(
+        `
     SELECT k.proforma_id AS proformaId, p.zamowienie_id AS zamowienieId, p.numer AS numer,
       p.uniewazniona_at AS uniewaznionaAt
     FROM kolejka_druku_proform k JOIN proformy p ON p.id = k.proforma_id
     WHERE k.id = ?
-  `).get(id) ?? null;
+  `,
+      )
+      .get(id) ?? null
+  );
 }
 
 /**
@@ -117,8 +144,8 @@ export function proformaDlaPozycji(db, id) {
  */
 export function porzucUniewaznionaPozycje(db, id) {
   db.prepare(
-    "UPDATE kolejka_druku_proform SET status = 'porzucone', ostatni_blad = ?, zajete_przez = NULL, zajete_at = NULL"
-    + " WHERE id = ? AND status = 'oczekuje'",
+    "UPDATE kolejka_druku_proform SET status = 'porzucone', ostatni_blad = ?, zajete_przez = NULL, zajete_at = NULL" +
+      " WHERE id = ? AND status = 'oczekuje'",
   ).run(BLAD_UNIEWAZNIONEJ, id);
 }
 
@@ -131,12 +158,14 @@ export const NOTATKA_PO_UNIEWAZNIENIU = 'wydrukowano po unieważnieniu';
  */
 export function oznaczProformeWydrukowana(db, id) {
   wymagajWiersza(db, id);
-  db.prepare(`
+  db.prepare(
+    `
     UPDATE kolejka_druku_proform SET status = 'wydrukowano', wydrukowane_at = ?,
       ostatni_blad = CASE WHEN (SELECT uniewazniona_at FROM proformy WHERE id = proforma_id) IS NOT NULL
         THEN ? ELSE ostatni_blad END
     WHERE id = ?
-  `).run(teraz(), NOTATKA_PO_UNIEWAZNIENIU, id);
+  `,
+  ).run(teraz(), NOTATKA_PO_UNIEWAZNIENIU, id);
 }
 
 /**
@@ -149,8 +178,8 @@ export function oznaczBladDrukuProformy(db, id, powod) {
   const proby = w.proby + 1;
   const nastepna = new Date(Date.now() + odroczenieMs(proby)).toISOString();
   db.prepare(
-    'UPDATE kolejka_druku_proform SET proby = ?, ostatni_blad = ?, nastepna_proba_at = ?,'
-    + " zajete_przez = NULL, zajete_at = NULL WHERE id = ? AND status = 'oczekuje'",
+    'UPDATE kolejka_druku_proform SET proby = ?, ostatni_blad = ?, nastepna_proba_at = ?,' +
+      " zajete_przez = NULL, zajete_at = NULL WHERE id = ? AND status = 'oczekuje'",
   ).run(proby, powod, nastepna, id);
 }
 
@@ -162,19 +191,25 @@ export function porzucProforme(db, id) {
 
 /** Stan na karcie: liczy się tylko najnowszy wiersz. */
 export function ostatniaPozycjaDlaProformy(db, proformaId) {
-  return db.prepare('SELECT * FROM kolejka_druku_proform WHERE proforma_id = ? ORDER BY id DESC LIMIT 1')
-    .get(proformaId) ?? null;
+  return (
+    db.prepare('SELECT * FROM kolejka_druku_proform WHERE proforma_id = ? ORDER BY id DESC LIMIT 1').get(proformaId) ??
+    null
+  );
 }
 
 /** Najnowsza pozycja każdej z podanych proform — `Map<proformaId, wiersz>`; proformy bez pozycji pominięte. */
 export function ostatniePozycjeDlaProform(db, proformaIds) {
   const mapa = new Map();
   if (!proformaIds?.length) return mapa;
-  const wiersze = db.prepare(`
+  const wiersze = db
+    .prepare(
+      `
     SELECT * FROM kolejka_druku_proform WHERE id IN (
       SELECT MAX(id) FROM kolejka_druku_proform
       WHERE proforma_id IN (SELECT value FROM json_each(?)) GROUP BY proforma_id)
-  `).all(JSON.stringify(proformaIds.map(Number)));
+  `,
+    )
+    .all(JSON.stringify(proformaIds.map(Number)));
   for (const w of wiersze) mapa.set(w.proforma_id, w);
   return mapa;
 }

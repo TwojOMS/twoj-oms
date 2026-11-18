@@ -5,7 +5,10 @@ import { lukiKsef, poTerminie } from '../../../src/oms/db/ostrzezenia.js';
 import { ostrzezeniaFaktur } from '../../../src/domena/ostrzezenia.js';
 import { zajmijWysylkeKsef } from '../../../src/moduly/faktury/db/wysylki-ksef.js';
 import {
-  createCzuwaczOstrzezen, oknoLukKsef, SUFIT_STRON_LUK, najdluzszyPrzebiegOstrzezenMs,
+  createCzuwaczOstrzezen,
+  oknoLukKsef,
+  SUFIT_STRON_LUK,
+  najdluzszyPrzebiegOstrzezenMs,
 } from '../../../src/moduly/zdrowie/services/czuwacz-ostrzezen.js';
 import { ODSTEP_CZUWACZA_MS } from '../../../src/oms/bootstrap.ts';
 
@@ -33,9 +36,7 @@ const przeterminowana = (uuid, reszta = {}) => ({
   ...reszta,
 });
 
-function zbuduj({
-  db, dokumenty = [], nieoplacone = [], bladLuk = null, bladTerminow = null,
-}) {
+function zbuduj({ db, dokumenty = [], nieoplacone = [], bladLuk = null, bladTerminow = null }) {
   const zakresy = [];
   const czuwacz = createCzuwaczOstrzezen({
     db,
@@ -59,18 +60,25 @@ function zbuduj({
 describe('czuwacz ostrzeżeń — lustro luk KSeF', () => {
   it('luka B2C pojawia się po włączeniu i znika po wyłączeniu bez restartu', async () => {
     const db = openOmsDb(':memory:');
-    const { czuwacz } = zbuduj({ db, dokumenty: [dok('b2c', { client_tax_code: '', client_first_name: 'Jan', gross_price: 12300 })] });
+    const { czuwacz } = zbuduj({
+      db,
+      dokumenty: [dok('b2c', { client_tax_code: '', client_first_name: 'Jan', gross_price: 12300 })],
+    });
     try {
       await czuwacz.przebieg();
       expect(lukiKsef(db)).toEqual([]);
-      db.prepare("INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('ksef.konsumenckie', '1', '2026-10-20')").run();
+      db.prepare(
+        "INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('ksef.konsumenckie', '1', '2026-10-20')",
+      ).run();
       await czuwacz.przebieg();
       expect(lukiKsef(db).map((d) => d.uuid)).toEqual(['b2c']);
       expect(ostrzezeniaFaktur({ luki: lukiKsef(db), dzis: '2026-10-20' })[0].typ).toBe('faktura-ksef');
       db.prepare("UPDATE ustawienia SET wartosc = '0' WHERE klucz = 'ksef.konsumenckie'").run();
       await czuwacz.przebieg();
       expect(lukiKsef(db)).toEqual([]);
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
   it('pisze lustro barierą coWolnoWyslac: bez numeru KSeF i z NIP-em wchodzi, reszta nie', async () => {
     const db = openOmsDb(':memory:');
@@ -102,8 +110,7 @@ describe('czuwacz ostrzeżeń — lustro luk KSeF', () => {
   it('odpowiedź niebędąca tablicą to odmowa, nie puste lustro', async () => {
     const db = openOmsDb(':memory:');
     await zbuduj({ db, dokumenty: [dok('u-1')] }).czuwacz.przebieg();
-    await expect(zbuduj({ db, dokumenty: { entities: [] } }).czuwacz.przebieg())
-      .rejects.toThrow(/kształcie|ksztalcie/);
+    await expect(zbuduj({ db, dokumenty: { entities: [] } }).czuwacz.przebieg()).rejects.toThrow(/kształcie|ksztalcie/);
     expect(lukiKsef(db).map((l) => l.uuid)).toEqual(['u-1']);
     db.close();
   });
@@ -157,7 +164,9 @@ describe('czuwacz ostrzeżeń — izolacja kroków i zdolności', () => {
     const db = openOmsDb(':memory:');
     await zbuduj({ db, dokumenty: [dok('u-1')] }).czuwacz.przebieg();
     const { czuwacz } = zbuduj({
-      db, bladLuk: new Error('inFakt 500'), nieoplacone: [przeterminowana('u-40')],
+      db,
+      bladLuk: new Error('inFakt 500'),
+      nieoplacone: [przeterminowana('u-40')],
     });
     await expect(czuwacz.przebieg()).rejects.toThrow(/inFakt 500/);
     expect(lukiKsef(db).map((l) => l.uuid)).toEqual(['u-1']);
@@ -168,7 +177,9 @@ describe('czuwacz ostrzeżeń — izolacja kroków i zdolności', () => {
   it('awaria terminów NIE blokuje zapisu luk, a przebieg kończy się błędem', async () => {
     const db = openOmsDb(':memory:');
     const { czuwacz } = zbuduj({
-      db, dokumenty: [dok('u-1')], bladTerminow: new Error('pas długów padł'),
+      db,
+      dokumenty: [dok('u-1')],
+      bladTerminow: new Error('pas długów padł'),
     });
     await expect(czuwacz.przebieg()).rejects.toThrow(/pas długów padł/);
     expect(lukiKsef(db).map((l) => l.uuid)).toEqual(['u-1']);
@@ -185,7 +196,9 @@ describe('czuwacz ostrzeżeń — izolacja kroków i zdolności', () => {
       infakt: { listaFaktur: async () => [] },
       fakturyWidok: {
         brakNieoplaconych: 'TwojeFaktury nie podaje listy nieopłaconych faktur',
-        nieoplacone: async () => { throw new Error('TwojeFaktury nie podaje listy nieopłaconych faktur'); },
+        nieoplacone: async () => {
+          throw new Error('TwojeFaktury nie podaje listy nieopłaconych faktur');
+        },
       },
     });
     await expect(czuwacz.przebieg()).resolves.toMatchObject({ pominiety: false });
@@ -207,10 +220,17 @@ describe('czuwacz ostrzeżeń — izolacja kroków i zdolności', () => {
   it('drugi przebieg w trakcie pierwszego jest POMINIĘTY', async () => {
     const db = openOmsDb(':memory:');
     let zwolnij;
-    const brama = new Promise((res) => { zwolnij = res; });
+    const brama = new Promise((res) => {
+      zwolnij = res;
+    });
     const czuwacz = createCzuwaczOstrzezen({
       db,
-      infakt: { listaFaktur: async () => { await brama; return []; } },
+      infakt: {
+        listaFaktur: async () => {
+          await brama;
+          return [];
+        },
+      },
       fakturyWidok: null,
     });
     const pierwszy = czuwacz.przebieg();

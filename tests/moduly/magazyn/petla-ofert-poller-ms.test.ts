@@ -11,17 +11,26 @@ import { migracjaOfertKanalow } from '../../../src/moduly/magazyn/migracje/0001-
 import { modulMagazyn } from '../../../src/moduly/magazyn/modul.ts';
 import { createPetlaOfert } from '../../../src/moduly/magazyn/services/petla-ofert.js';
 
-vi.mock('../../../src/moduly/magazyn/services/petla-ofert.js', async orig => {
+vi.mock('../../../src/moduly/magazyn/services/petla-ofert.js', async (orig) => {
   const m = await orig<typeof import('../../../src/moduly/magazyn/services/petla-ofert.js')>();
   return { ...m, createPetlaOfert: vi.fn(m.createPetlaOfert) };
 });
 
 function pollerMsDla(config: Record<string, unknown>) {
   vi.mocked(createPetlaOfert).mockClear();
-  const db = openOmsDb(':memory:', { moduly: [modulRdzen,
-    { nazwa: 'kanaly', migracje: [migracjaKanalowSprzedazy, migracjaDiagnostykiAllegro, migracjaTypuKanaluISklepow] },
-    { nazwa: 'magazyn', migracje: [migracjaOfertKanalow] }] } as any);
-  const repo = { listaTypu: () => [], zapisyZablokowane: () => false, konfliktKlucza: () => false, zwolnijOperacje: () => 0 };
+  const db = openOmsDb(':memory:', {
+    moduly: [
+      modulRdzen,
+      { nazwa: 'kanaly', migracje: [migracjaKanalowSprzedazy, migracjaDiagnostykiAllegro, migracjaTypuKanaluISklepow] },
+      { nazwa: 'magazyn', migracje: [migracjaOfertKanalow] },
+    ],
+  } as any);
+  const repo = {
+    listaTypu: () => [],
+    zapisyZablokowane: () => false,
+    konfliktKlucza: () => false,
+    zwolnijOperacje: () => 0,
+  };
   const usluga = (modul: string, nazwa: string) => {
     if (modul === 'kanaly' && nazwa === 'config') return { definicje: [], sklepy: {}, kanaly: {}, ...config };
     if (modul === 'kanaly' && (nazwa === 'klienciKanalow' || nazwa === 'klienciSklepow')) return {};
@@ -29,11 +38,18 @@ function pollerMsDla(config: Record<string, unknown>) {
     throw new Error(`Usługa „${modul}.${nazwa}” nie istnieje`);
   };
   try {
-    modulMagazyn.zbuduj({ db, konfiguracja: modulMagazyn.konfiguracja({ OMS_KATALOG_ZDJEC: '/nieistniejacy/zdjecia-polcien' }),
-      teraz: () => new Date('2026-11-14T12:00:00Z'), log: vi.fn(), usluga } as any);
+    modulMagazyn.zbuduj({
+      db,
+      konfiguracja: modulMagazyn.konfiguracja({ OMS_KATALOG_ZDJEC: '/nieistniejacy/zdjecia-polcien' }),
+      teraz: () => new Date('2026-11-14T12:00:00Z'),
+      log: vi.fn(),
+      usluga,
+    } as any);
     expect(createPetlaOfert).toHaveBeenCalledTimes(1);
     return (vi.mocked(createPetlaOfert).mock.calls[0] as any[])[0].pollerMs;
-  } finally { db.close(); }
+  } finally {
+    db.close();
+  }
 }
 
 describe('odstęp pollera dla pętli ofert ERLI', () => {

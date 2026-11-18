@@ -23,5 +23,8 @@ export type SzewTwojeFaktury = Readonly<{
   niepewneKsefPonadDobe: Funkcja;
   nastepnyNumerDemo: Funkcja;
   /** Trasy TF: ekran faktury i serie (tylko przy programie wbudowanym), Wysyłka do KSeF (zawsze, gdy jest szew). */
-  zarejestrujTrasy: (app: any, o: { db: any, teraz: () => Date, edycja: any, sprzedawca: Funkcja, ksefSprzedazy: any }) => void;
+  zarejestrujTrasy: (
+    app: any,
+    o: { db: any; teraz: () => Date; edycja: any; sprzedawca: Funkcja; ksefSprzedazy: any },
+  ) => void;
 }>;

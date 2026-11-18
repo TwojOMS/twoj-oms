@@ -53,16 +53,36 @@ describe('domyślna dostawa w formularzu nowego zamówienia', () => {
 
 describe('podpowiedź brakującej etykiety na karcie zamówienia', () => {
   const zam = (id) => ({
-    zrodlo_id: `pc-${id}`, numer: `PC-${id}`,
+    zrodlo_id: `pc-${id}`,
+    numer: `PC-${id}`,
     klient: { email: 'ola@polcien.example' },
-    dostawa: { first_name: 'Ola', last_name: 'Półcień', company: 'Pracownia Półcień', address_1: 'Cienista 3', postcode: '00-950', city: 'Warszawa', country: 'PL' },
-    metoda_wysylki: 'inpost_paczkomat', punkt_odbioru: 'WAW01M', kwota_pobrania: null, chce_fakture: 0, nip: null,
-    kwota_brutto: '149.00', status_woo: 'processing', oplacone_at: '2026-10-20T10:00:00', anulowane: 0,
-    utworzone_at: '2026-10-20T09:58:00', pozycje: [],
+    dostawa: {
+      first_name: 'Ola',
+      last_name: 'Półcień',
+      company: 'Pracownia Półcień',
+      address_1: 'Cienista 3',
+      postcode: '00-950',
+      city: 'Warszawa',
+      country: 'PL',
+    },
+    metoda_wysylki: 'inpost_paczkomat',
+    punkt_odbioru: 'WAW01M',
+    kwota_pobrania: null,
+    chce_fakture: 0,
+    nip: null,
+    kwota_brutto: '149.00',
+    status_woo: 'processing',
+    oplacone_at: '2026-10-20T10:00:00',
+    anulowane: 0,
+    utworzone_at: '2026-10-20T09:58:00',
+    pozycje: [],
   });
-  const przesylka = (zamId, kurier) => db.prepare(
-    `INSERT INTO przesylki (zamowienie_id, kurier, kolejnosc, status, numer_listu, etykieta_sciezka, utworzona_at) VALUES (?, ?, 1, 'nadana', 'LIST123', NULL, '2026-10-20')`,
-  ).run(zamId, kurier);
+  const przesylka = (zamId, kurier) =>
+    db
+      .prepare(
+        `INSERT INTO przesylki (zamowienie_id, kurier, kolejnosc, status, numer_listu, etykieta_sciezka, utworzona_at) VALUES (?, ?, 1, 'nadana', 'LIST123', NULL, '2026-10-20')`,
+      )
+      .run(zamId, kurier);
 
   it.each([
     ['inpost', 'Etykieta niezapisana — pobierz ją z panelu InPost.'],

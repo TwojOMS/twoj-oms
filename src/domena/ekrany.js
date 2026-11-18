@@ -49,10 +49,7 @@ const WZORCE_FAKTUR_ZAMOWIENIA = [
   /^\/zamowienia\/[^/]+\/dane\/(?!wysylka$|kopiuj-do-wysylki$).+/,
 ];
 
-const WZORCE_ZWROTOW_ZAMOWIENIA = [
-  /^\/zamowienia\/[^/]+\/zwrot(\/|$)/,
-  /^\/zamowienia\/[^/]+\/zwroty(\/|$)/,
-];
+const WZORCE_ZWROTOW_ZAMOWIENIA = [/^\/zamowienia\/[^/]+\/zwrot(\/|$)/, /^\/zamowienia\/[^/]+\/zwroty(\/|$)/];
 
 const WZORCE_POZOSTALYCH_DOKUMENTOW_ZAMOWIENIA = [
   /^\/zamowienia\/[^/]+\/proforma$/,
@@ -78,11 +75,17 @@ export const EKRANY = [
     prefiksy: ['/zamowienia', '/ostrzezenia', '/kolejka-druku'],
   },
   {
-    klucz: 'faktury-zamowienia', etykieta: 'Faktury zamówień', href: null, prefiksy: [],
+    klucz: 'faktury-zamowienia',
+    etykieta: 'Faktury zamówień',
+    href: null,
+    prefiksy: [],
     nawigacja: { dzial: 'sprzedaz', grupa: 'obsluga', kolejnosc: 15 },
   },
   {
-    klucz: 'zwroty-zamowienia', etykieta: 'Obsługa zwrotu i korekty', href: null, prefiksy: [],
+    klucz: 'zwroty-zamowienia',
+    etykieta: 'Obsługa zwrotu i korekty',
+    href: null,
+    prefiksy: [],
     nawigacja: { dzial: 'sprzedaz', grupa: 'obsluga', kolejnosc: 15 },
   },
   {
@@ -93,48 +96,81 @@ export const EKRANY = [
     nawigacja: { dzial: 'sprzedaz', grupa: 'obsluga', kolejnosc: 15 },
   },
   {
-    klucz: 'przesylki', etykieta: 'Przesyłki', href: '/przesylki', prefiksy: ['/przesylki'],
+    klucz: 'przesylki',
+    etykieta: 'Przesyłki',
+    href: '/przesylki',
+    prefiksy: ['/przesylki'],
     nawigacja: { dzial: 'sprzedaz', grupa: 'obsluga', kolejnosc: 20 },
   },
   {
-    klucz: 'okresy', etykieta: 'Okresy rozliczeniowe', href: '/okresy', prefiksy: ['/okresy'],
+    klucz: 'okresy',
+    etykieta: 'Okresy rozliczeniowe',
+    href: '/okresy',
+    prefiksy: ['/okresy'],
     nawigacja: { dzial: 'sprzedaz', grupa: 'faktury', kolejnosc: 60, etykieta: 'Rozliczenia okresowe' },
   },
   {
-    klucz: 'faktury', etykieta: 'Faktury', href: '/faktury', prefiksy: ['/faktury'],
+    klucz: 'faktury',
+    etykieta: 'Faktury',
+    href: '/faktury',
+    prefiksy: ['/faktury'],
     nawigacja: { dzial: 'sprzedaz', grupa: 'obsluga', kolejnosc: 30 },
   },
   {
-    klucz: 'koszty', etykieta: 'Koszty', href: '/koszty', prefiksy: ['/koszty'],
+    klucz: 'koszty',
+    etykieta: 'Koszty',
+    href: '/koszty',
+    prefiksy: ['/koszty'],
     nawigacja: { dzial: 'sprzedaz', grupa: 'faktury', kolejnosc: 40 },
   },
   {
     // `/analityka` (podsumowanie dnia) należy do Raportów — ten sam ptaszek, bez nowego ekranu na liście praw.
-    klucz: 'raporty', etykieta: 'Raporty', href: '/raporty', prefiksy: ['/raporty', '/analityka'],
+    klucz: 'raporty',
+    etykieta: 'Raporty',
+    href: '/raporty',
+    prefiksy: ['/raporty', '/analityka'],
     nawigacja: { dzial: 'analizy-cele', grupa: 'analizy-cele', kolejnosc: 10 },
   },
   {
-    klucz: 'statystyki', etykieta: 'Statystyki', href: '/statystyki', prefiksy: ['/statystyki'],
+    klucz: 'statystyki',
+    etykieta: 'Statystyki',
+    href: '/statystyki',
+    prefiksy: ['/statystyki'],
     nawigacja: { dzial: 'analizy-cele', grupa: 'analizy-cele', kolejnosc: 20 },
   },
   {
-    klucz: 'kampania', etykieta: 'Reklamy', href: '/kampania', prefiksy: ['/kampania'],
+    klucz: 'kampania',
+    etykieta: 'Reklamy',
+    href: '/kampania',
+    prefiksy: ['/kampania'],
     nawigacja: { dzial: 'analizy-cele', grupa: 'analizy-cele', kolejnosc: 30 },
   },
   {
-    klucz: 'finanse', etykieta: 'Finanse', href: '/finanse', prefiksy: ['/finanse'],
+    klucz: 'finanse',
+    etykieta: 'Finanse',
+    href: '/finanse',
+    prefiksy: ['/finanse'],
     nawigacja: { dzial: 'analizy-cele', grupa: 'analizy-cele', kolejnosc: 50 },
   },
   {
-    klucz: 'magazyn', etykieta: 'Magazyn', href: '/magazyn', prefiksy: ['/magazyn'],
+    klucz: 'magazyn',
+    etykieta: 'Magazyn',
+    href: '/magazyn',
+    prefiksy: ['/magazyn'],
     nawigacja: { dzial: 'magazyn', grupa: 'magazyn', kolejnosc: 10 },
   },
   {
-    klucz: 'klienci', etykieta: 'Klienci B2B', href: '/klienci', prefiksy: ['/klienci'],
+    klucz: 'klienci',
+    etykieta: 'Klienci B2B',
+    href: '/klienci',
+    prefiksy: ['/klienci'],
     nawigacja: { dzial: 'sprzedaz', grupa: 'klienci', kolejnosc: 50 },
   },
   {
-    klucz: 'wiadomosci', etykieta: 'Wiadomości', href: '/wiadomosci', prefiksy: ['/wiadomosci'],
+    klucz: 'wiadomosci',
+    etykieta: 'Wiadomości',
+    href: '/wiadomosci',
+    prefiksy: ['/wiadomosci'],
     nawigacja: { dzial: 'sprzedaz', grupa: 'klienci', kolejnosc: 40 },
   },
   { klucz: 'ustawienia', etykieta: 'Ustawienia', href: '/ustawienia', prefiksy: ['/ustawienia'] },
@@ -144,7 +180,15 @@ export const EKRANY = [
 // koncie bez ptaszka znaczyloby czlowieka zamknietego w panelu, ktorego nie umie opuscic;
 // przelacznik motywu nie niesie zadnej informacji.
 // Strona własnego konta (imię, zmiana hasła) — bez ptaszka, także dla konta bez żadnego ekranu.
-const DLA_KAZDEGO = ['/wyloguj', '/motyw', '/menu-boczne', '/konto', '/konto/imie', '/konto/haslo', '/konto/powiadomienia'];
+const DLA_KAZDEGO = [
+  '/wyloguj',
+  '/motyw',
+  '/menu-boczne',
+  '/konto',
+  '/konto/imie',
+  '/konto/haslo',
+  '/konto/powiadomienia',
+];
 
 // ⚠️⚠️ TRASY, KTORE ODPYTUJE MASZYNA, A NIE CZLOWIEK — i to jest cala ich definicja.
 //
@@ -225,8 +269,8 @@ export function tytulEkranuDlaAdresu(url) {
   const sciezka = String(url ?? '').split('?')[0];
   if (sciezka.startsWith('/ustawienia')) {
     const model = modelNawigacjiUstawien(url, { admin: true, daneDemo: true });
-    const zakladka = model.zakladki.find(z => z.aktywna);
-    if (zakladka && !sciezka.startsWith('/ustawienia/integracje/') || model.aktywnyDzial === 'faktury') {
+    const zakladka = model.zakladki.find((z) => z.aktywna);
+    if ((zakladka && !sciezka.startsWith('/ustawienia/integracje/')) || model.aktywnyDzial === 'faktury') {
       if (zakladka) return zakladka.etykieta;
     }
   }
@@ -247,7 +291,11 @@ export function tytulEkranuDlaAdresu(url) {
   const pozycja = POZYCJE_USTAWIEN.find((p) => p.href === sciezka);
   if (pozycja) return pozycja.etykieta;
   // Odpowiedź 400 formularza korzysta z nazwy ekranu, do którego należy w menu.
-  if (['/ustawienia/paczka', '/ustawienia/dostawa', '/ustawienia/formulka', '/ustawienia/kanaly'].some((p) => wSekcji(sciezka, p))) {
+  if (
+    ['/ustawienia/paczka', '/ustawienia/dostawa', '/ustawienia/formulka', '/ustawienia/kanaly'].some((p) =>
+      wSekcji(sciezka, p),
+    )
+  ) {
     return podmenuUstawien(sciezka).find((p) => p.aktywna)?.etykieta ?? 'Ustawienia';
   }
   const klucz = ekranDlaAdresu(url);

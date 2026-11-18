@@ -27,7 +27,7 @@ export function wiadomosciZamowienia(db, zamowienieId) {
  * import), a `id` rośnie zawsze.
  */
 export function ostatniaWiadomosc(db, zamowienieId, temat_id) {
-  return db.prepare(
-    'SELECT * FROM wiadomosci WHERE zamowienie_id = ? AND temat_id = ? ORDER BY id DESC LIMIT 1',
-  ).get(zamowienieId, temat_id);
+  return db
+    .prepare('SELECT * FROM wiadomosci WHERE zamowienie_id = ? AND temat_id = ? ORDER BY id DESC LIMIT 1')
+    .get(zamowienieId, temat_id);
 }

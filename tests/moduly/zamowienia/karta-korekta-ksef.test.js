@@ -10,28 +10,59 @@ import { programInfakt } from '../../../src/integracje/programy/infakt.ts';
 
 async function karta(o = {}) {
   const db = openOmsDb(':memory:');
-  const id = zapiszZamowienie(db, 'pro', {
-    zrodlo_id: 'PC-1', numer: 'PC-1', kwota_brutto: '100.00', chce_fakture: 1, pozycje: [],
-    klient: { first_name: 'Jan', company: 'Pracownia Półcień', email: 'jan@example.test' },
-    dostawa: {}, metoda_wysylki: 'dpd', kwota_pobrania: null, nip: '1234563218',
-    status_woo: null, oplacone_at: null, anulowane: 0, utworzone_at: '2026-10-20T08:00:00',
-  }, {});
-  db.prepare(`INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, ksef_numer, utworzona_at)
-    VALUES (?, 'f1', 'FV/1', ?, '2026-10-20T08:00:00Z')`).run(id, o.pierwotna === false ? null : 'KSEF-FV-1');
-  db.prepare(`INSERT INTO zwroty (zamowienie_id, data, kwota, korekta_uuid, korekta_numer, korekta_zlecona_at, utworzony_at)
-    VALUES (?, '2026-09-20', '10.00', ?, '1/KOR/11/2026', ?, '2026-09-20T08:00:00Z')`)
-    .run(id, o.reczna ? null : 'k1', Object.hasOwn(o, 'zlecona') ? o.zlecona : '2026-10-31T23:30:00Z');
+  const id = zapiszZamowienie(
+    db,
+    'pro',
+    {
+      zrodlo_id: 'PC-1',
+      numer: 'PC-1',
+      kwota_brutto: '100.00',
+      chce_fakture: 1,
+      pozycje: [],
+      klient: { first_name: 'Jan', company: 'Pracownia Półcień', email: 'jan@example.test' },
+      dostawa: {},
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      nip: '1234563218',
+      status_woo: null,
+      oplacone_at: null,
+      anulowane: 0,
+      utworzone_at: '2026-10-20T08:00:00',
+    },
+    {},
+  );
+  db.prepare(
+    `INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, ksef_numer, utworzona_at)
+    VALUES (?, 'f1', 'FV/1', ?, '2026-10-20T08:00:00Z')`,
+  ).run(id, o.pierwotna === false ? null : 'KSEF-FV-1');
+  db.prepare(
+    `INSERT INTO zwroty (zamowienie_id, data, kwota, korekta_uuid, korekta_numer, korekta_zlecona_at, utworzony_at)
+    VALUES (?, '2026-09-20', '10.00', ?, '1/KOR/11/2026', ?, '2026-09-20T08:00:00Z')`,
+  ).run(id, o.reczna ? null : 'k1', Object.hasOwn(o, 'zlecona') ? o.zlecona : '2026-10-31T23:30:00Z');
   if (o.rezerwacja) zajmijWysylkeKsef(db, 'k1', { numer: '1/KOR/11/2026', kiedy: '2026-11-02T10:00:00Z' });
   const pobierzKorekte = vi.fn(async () => {
     if (o.blad) throw new Error('Awaria atrapy');
     return { invoice_date: '2026-11-02', ksef_number: '', ...o.dokument };
   });
-  const infakt = o.surowy ? { pobierzKorekte } : {
-    opis: { ...programInfakt({}).opis, id: 'program-testowy', wbudowany: false, nazwa: { dopelniacz: 'Programu Półcień', miejscownik: 'Programie Półcień' },
-      zdolnosci: o.bezWysylki ? ['odczytKorekty'] : ['odczytKorekty', 'wyslijDoKsef'] },
-    przygotujNabywce: vi.fn(), pobierzKorekte,
-  };
-  const app = buildOmsServer({ db, infakt, wysylkaKsef: { korekty: !o.bezWysylki }, config: { auth: { user: 'operator', pass: 'test' } } });
+  const infakt = o.surowy
+    ? { pobierzKorekte }
+    : {
+        opis: {
+          ...programInfakt({}).opis,
+          id: 'program-testowy',
+          wbudowany: false,
+          nazwa: { dopelniacz: 'Programu Półcień', miejscownik: 'Programie Półcień' },
+          zdolnosci: o.bezWysylki ? ['odczytKorekty'] : ['odczytKorekty', 'wyslijDoKsef'],
+        },
+        przygotujNabywce: vi.fn(),
+        pobierzKorekte,
+      };
+  const app = buildOmsServer({
+    db,
+    infakt,
+    wysylkaKsef: { korekty: !o.bezWysylki },
+    config: { auth: { user: 'operator', pass: 'test' } },
+  });
   try {
     let r;
     if (o.produkcja) {
@@ -39,8 +70,11 @@ async function karta(o = {}) {
       zalozKonto(db, { login: 'produkcja', imie: 'Produkcja', haslo: 'h', rola: 'produkcja' });
       r = await get(app, `/zamowienia/${id}`, jako(db, 'produkcja'));
     } else {
-      r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`,
-        headers: { authorization: 'Basic ' + Buffer.from('operator:test').toString('base64') } });
+      r = await app.inject({
+        method: 'GET',
+        url: `/zamowienia/${id}`,
+        headers: { authorization: 'Basic ' + Buffer.from('operator:test').toString('base64') },
+      });
     }
     expect(r.statusCode).toBe(200);
     expect(r.body).not.toContain('Korekty wysyła się w inFakcie');
@@ -49,7 +83,10 @@ async function karta(o = {}) {
     expect(pobierzKorekte).toHaveBeenCalledTimes(o.reczna || o.bezWysylki ? 0 : 1);
     if (!o.reczna && !o.bezWysylki) expect(pobierzKorekte).toHaveBeenCalledWith('k1');
     return { html: wiersz.replace(/\s+/g, ' '), id };
-  } finally { await app.close(); db.close(); }
+  } finally {
+    await app.close();
+    db.close();
+  }
 }
 
 describe('korekta na karcie zamówienia', () => {
@@ -98,7 +135,12 @@ describe('korekta na karcie zamówienia', () => {
     const { html, id } = await karta();
     expect(html).toContain('jeszcze nie wysłana do KSeF');
     expect(html).toContain('action="/faktury/ksef/podglad"');
-    for (const [nazwa, wartosc] of Object.entries({ uuid: 'k1', miesiac: '2026-11', pole: 'invoice_date', powrot: `/zamowienia/${id}` })) {
+    for (const [nazwa, wartosc] of Object.entries({
+      uuid: 'k1',
+      miesiac: '2026-11',
+      pole: 'invoice_date',
+      powrot: `/zamowienia/${id}`,
+    })) {
       expect(html).toContain(`name="${nazwa}" value="${wartosc}"`);
     }
     expect(html).toContain('Wyślij do KSeF');
@@ -115,7 +157,9 @@ describe('korekta na karcie zamówienia', () => {
   });
   it('awaria odczytu nie zatrzymuje karty', async () => {
     const { html } = await karta({ blad: true });
-    expect(html).toContain('Panel nie odczytał tej korekty z Programu Półcień — stan KSeF sprawdzisz w zakładce Faktury.');
+    expect(html).toContain(
+      'Panel nie odczytał tej korekty z Programu Półcień — stan KSeF sprawdzisz w zakładce Faktury.',
+    );
     expect(html).not.toContain('Wyślij do KSeF');
   });
   it('program bez wysyłki pokazuje powód z domeny', async () => {

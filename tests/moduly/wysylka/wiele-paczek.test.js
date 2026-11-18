@@ -10,7 +10,11 @@ import { createNadanie } from '../../../src/moduly/wysylka/services/nadanie.js';
 import { createDpdClient } from '../../../src/oms/kurierzy/dpd.js';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { wyliczStatus, doZrobienia } from '../../../src/domena/status.js';
-import { sprawyZamowienia, mozliwaKolejnaPaczka, PROG_ZAWIESZONEGO_NADANIA_MS } from '../../../src/domena/przesylka-stan.js';
+import {
+  sprawyZamowienia,
+  mozliwaKolejnaPaczka,
+  PROG_ZAWIESZONEGO_NADANIA_MS,
+} from '../../../src/domena/przesylka-stan.js';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const fixture = (n) => readFileSync(join(__dir, 'fixtures', 'dpd', n), 'utf8');
@@ -19,23 +23,50 @@ const odp = (status, tekst) => ({ status, ok: status >= 200 && status < 300, tex
 const config = { auth: { user: 'adam', pass: 'x' } };
 const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64'), origin: 'http://localhost' };
 const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) };
-const NADAWCA = { nazwa: 'Pracownia Półcień', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL' };
+const NADAWCA = {
+  nazwa: 'Pracownia Półcień',
+  ulica: 'ul. Przykładowa 1',
+  kod: '00-950',
+  miasto: 'Warszawa',
+  kraj: 'PL',
+};
 // Adres odbiorcy zgodny z `zmapowane().dostawa/klient` niżej — od Zadania „adres edytowalny"
 // trasa POST wymaga go W FORMULARZU (puste pole wymagane blokuje zatwierdzenie, patrz
 // domain/adres-formularza.js), więc każdy POST w tym pliku musi go nieść, tak jak niosłaby
 // go prawdziwa przeglądarka odsyłająca wartości, którymi GET wypełnił formularz.
 const ADRES = {
-  nazwa: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa', phone: '+48500600700', email: 'j@k.pl',
+  nazwa: 'Jan Kowalski',
+  ulica: 'Polna 1',
+  kod: '00-950',
+  miasto: 'Warszawa',
+  phone: '+48500600700',
+  email: 'j@k.pl',
 };
 const PACZKA = { waga: '1', dlugosc: '110', szerokosc: '75', wysokosc: '1', ...ADRES };
 
 const zmapowane = (nad = {}) => ({
-  zrodlo_id: 1267, numer: '1267',
+  zrodlo_id: 1267,
+  numer: '1267',
   klient: { email: 'j@k.pl', phone: '+48500600700' },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '212.90',
-  status_woo: 'processing', oplacone_at: '2026-07-29T13:00:00', anulowane: 0,
-  utworzone_at: '2026-07-29T13:19:52', pozycje: [], ...nad,
+  dostawa: {
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    address_1: 'Polna 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
+  },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '212.90',
+  status_woo: 'processing',
+  oplacone_at: '2026-07-29T13:00:00',
+  anulowane: 0,
+  utworzone_at: '2026-07-29T13:19:52',
+  pozycje: [],
+  ...nad,
 });
 
 // Klient DPD na PRAWDZIWYCH fiksturach, bez ani jednego żądania sieciowego:
@@ -51,14 +82,20 @@ function dpdKlient({ paczek = 2 } = {}) {
       .mockResolvedValueOnce(odp(200, fixture('v4-ok.xml')))
       .mockResolvedValueOnce(odp(200, fixture('v4-ok-zpl.xml')));
   }
-  const dpd = createDpdClient({ url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '876543', nadawca: NADAWCA, fetchImpl });
+  const dpd = createDpdClient({
+    url: 'https://dpd/api',
+    login: '99999999',
+    haslo: 'x',
+    fid: '876543',
+    nadawca: NADAWCA,
+    fetchImpl,
+  });
   return { dpd, fetchImpl };
 }
 
 // Ciała żądań V10 (nadania), w kolejności wysłania — po jednym na paczkę.
-const kopertyV10 = (fetchImpl) => fetchImpl.mock.calls
-  .map((c) => c[1].body)
-  .filter((b) => b.includes('generatePackagesNumbersV10'));
+const kopertyV10 = (fetchImpl) =>
+  fetchImpl.mock.calls.map((c) => c[1].body).filter((b) => b.includes('generatePackagesNumbersV10'));
 
 let db;
 beforeEach(() => {
@@ -83,15 +120,20 @@ const przesylki = (id) => db.prepare('SELECT * FROM przesylki WHERE zamowienie_i
 
 describe('indeks: jedna żywa paczka na PARĘ (zamówienie, numer kolejny)', () => {
   const zZamowieniem = () => {
-    db.prepare("INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at) VALUES ('pro', 1, '1', '10.00', '2026-07-29')").run();
+    db.prepare(
+      "INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at) VALUES ('pro', 1, '1', '10.00', '2026-07-29')",
+    ).run();
     return 1;
   };
 
   it('dwie żywe paczki o TYM SAMYM numerze kolejnym → baza odrzuca', () => {
     zZamowieniem();
-    const wstaw = (k) => db.prepare(
-      "INSERT INTO przesylki (zamowienie_id, kurier, status, kolejnosc, utworzona_at) VALUES (1, 'dpd', 'nadana', ?, '2026-07-29')",
-    ).run(k);
+    const wstaw = (k) =>
+      db
+        .prepare(
+          "INSERT INTO przesylki (zamowienie_id, kurier, status, kolejnosc, utworzona_at) VALUES (1, 'dpd', 'nadana', ?, '2026-07-29')",
+        )
+        .run(k);
     wstaw(1);
     expect(() => wstaw(1)).toThrow(/UNIQUE constraint failed: przesylki\.zamowienie_id, przesylki\.kolejnosc/);
   });
@@ -99,9 +141,12 @@ describe('indeks: jedna żywa paczka na PARĘ (zamówienie, numer kolejny)', () 
   // Cały sens zadania: druga paczka CHCIANA ma przejść.
   it('dwie żywe paczki o RÓŻNYCH numerach kolejnych → baza przyjmuje', () => {
     zZamowieniem();
-    const wstaw = (k) => db.prepare(
-      "INSERT INTO przesylki (zamowienie_id, kurier, status, kolejnosc, utworzona_at) VALUES (1, 'dpd', 'nadana', ?, '2026-07-29')",
-    ).run(k);
+    const wstaw = (k) =>
+      db
+        .prepare(
+          "INSERT INTO przesylki (zamowienie_id, kurier, status, kolejnosc, utworzona_at) VALUES (1, 'dpd', 'nadana', ?, '2026-07-29')",
+        )
+        .run(k);
     wstaw(1);
     expect(() => wstaw(2)).not.toThrow();
     expect(db.prepare('SELECT COUNT(*) c FROM przesylki').get().c).toBe(2);
@@ -111,17 +156,26 @@ describe('indeks: jedna żywa paczka na PARĘ (zamówienie, numer kolejny)', () 
   // inaczej zamówienie zostałoby bez paczki na zawsze.
   it('paczka na statusie „blad" nie zajmuje numeru kolejnego', () => {
     zZamowieniem();
-    db.prepare("INSERT INTO przesylki (zamowienie_id, kurier, status, kolejnosc, utworzona_at) VALUES (1, 'dpd', 'blad', 1, '2026-07-29')").run();
-    expect(() => db.prepare(
-      "INSERT INTO przesylki (zamowienie_id, kurier, status, kolejnosc, utworzona_at) VALUES (1, 'dpd', 'nadana', 1, '2026-07-29')",
-    ).run()).not.toThrow();
+    db.prepare(
+      "INSERT INTO przesylki (zamowienie_id, kurier, status, kolejnosc, utworzona_at) VALUES (1, 'dpd', 'blad', 1, '2026-07-29')",
+    ).run();
+    expect(() =>
+      db
+        .prepare(
+          "INSERT INTO przesylki (zamowienie_id, kurier, status, kolejnosc, utworzona_at) VALUES (1, 'dpd', 'nadana', 1, '2026-07-29')",
+        )
+        .run(),
+    ).not.toThrow();
   });
 
   it('domyślny numer kolejny to 1 — wiersz bez jawnej wartości nie wymyka się indeksowi', () => {
     zZamowieniem();
-    const wstaw = () => db.prepare(
-      "INSERT INTO przesylki (zamowienie_id, kurier, status, utworzona_at) VALUES (1, 'dpd', 'nadana', '2026-07-29')",
-    ).run();
+    const wstaw = () =>
+      db
+        .prepare(
+          "INSERT INTO przesylki (zamowienie_id, kurier, status, utworzona_at) VALUES (1, 'dpd', 'nadana', '2026-07-29')",
+        )
+        .run();
     wstaw();
     expect(wstaw).toThrow(/UNIQUE constraint failed/);
   });
@@ -129,7 +183,9 @@ describe('indeks: jedna żywa paczka na PARĘ (zamówienie, numer kolejny)', () 
 
 describe('nastepnaKolejnosc', () => {
   const zZamowieniem = () => {
-    db.prepare("INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at) VALUES ('pro', 1, '1', '10.00', '2026-07-29')").run();
+    db.prepare(
+      "INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at) VALUES ('pro', 1, '1', '10.00', '2026-07-29')",
+    ).run();
     return 1;
   };
 
@@ -172,10 +228,16 @@ describe('POST /nadaj — numer kolejny z formularza pilnuje podwójnego klikni�
     await serwer.ready();
 
     const pierwsze = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: { ...PACZKA, kolejnosc: '1' },
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: { ...PACZKA, kolejnosc: '1' },
     });
     const drugie = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: { ...PACZKA, kolejnosc: '1' },
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: { ...PACZKA, kolejnosc: '1' },
     });
 
     expect(pierwsze.statusCode).toBe(302);
@@ -191,11 +253,19 @@ describe('POST /nadaj — numer kolejny z formularza pilnuje podwójnego klikni�
     const { dpd, fetchImpl } = dpdKlient();
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
-    await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: { ...PACZKA, kolejnosc: '1' } });
+    await serwer.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: { ...PACZKA, kolejnosc: '1' },
+    });
     const przedProba = kopertyV10(fetchImpl).length;
 
     const r = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: { ...PACZKA, kolejnosc: '1' },
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: { ...PACZKA, kolejnosc: '1' },
     });
     expect(r.statusCode).toBe(400);
     // Komunikat ma nazwać OBA numery — przysłany i spodziewany. Bez nich operator nie wie,
@@ -211,7 +281,10 @@ describe('POST /nadaj — numer kolejny z formularza pilnuje podwójnego klikni�
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
     const r = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: { ...PACZKA, kolejnosc: '7' },
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: { ...PACZKA, kolejnosc: '7' },
     });
     expect(r.statusCode).toBe(400);
     expect(fetchImpl).not.toHaveBeenCalled();
@@ -222,7 +295,12 @@ describe('POST /nadaj — numer kolejny z formularza pilnuje podwójnego klikni�
     const { dpd, fetchImpl } = dpdKlient();
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
-    const r = await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: PACZKA });
+    const r = await serwer.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: PACZKA,
+    });
     expect(r.statusCode).toBe(400);
     expect(fetchImpl).not.toHaveBeenCalled();
     expect(przesylki(id)).toHaveLength(0);
@@ -233,7 +311,10 @@ describe('POST /nadaj — numer kolejny z formularza pilnuje podwójnego klikni�
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
     const r = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: { ...PACZKA, kolejnosc: 'druga' },
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: { ...PACZKA, kolejnosc: 'druga' },
     });
     expect(r.statusCode).toBe(400);
     expect(fetchImpl).not.toHaveBeenCalled();
@@ -245,8 +326,18 @@ describe('POST /nadaj — numer kolejny z formularza pilnuje podwójnego klikni�
     const { dpd } = dpdKlient();
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
-    await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: { ...PACZKA, kolejnosc: '1' } });
-    const r = await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: { ...PACZKA, kolejnosc: '2' } });
+    await serwer.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: { ...PACZKA, kolejnosc: '1' },
+    });
+    const r = await serwer.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: { ...PACZKA, kolejnosc: '2' },
+    });
 
     expect(r.statusCode).toBe(302);
     const p = przesylki(id);
@@ -266,7 +357,12 @@ describe('referencja wysyłana do DPD', () => {
     const { dpd, fetchImpl } = dpdKlient();
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
-    await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: { ...PACZKA, kolejnosc: '1' } });
+    await serwer.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: { ...PACZKA, kolejnosc: '1' },
+    });
 
     const koperta = kopertyV10(fetchImpl)[0];
     expect(koperta).toContain('<reference>1267</reference>');
@@ -279,8 +375,18 @@ describe('referencja wysyłana do DPD', () => {
     const { dpd, fetchImpl } = dpdKlient();
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
-    await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: { ...PACZKA, kolejnosc: '1' } });
-    await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: { ...PACZKA, kolejnosc: '2' } });
+    await serwer.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: { ...PACZKA, kolejnosc: '1' },
+    });
+    await serwer.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: { ...PACZKA, kolejnosc: '2' },
+    });
 
     const druga = kopertyV10(fetchImpl)[1];
     expect(druga).toContain('<parcels><reference>1267/2</reference>');
@@ -296,7 +402,12 @@ describe('referencja wysyłana do DPD', () => {
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
     for (const k of ['1', '2', '3']) {
-      await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: { ...PACZKA, kolejnosc: k } });
+      await serwer.inject({
+        method: 'POST',
+        url: `/zamowienia/${id}/nadaj`,
+        headers: naglowek,
+        payload: { ...PACZKA, kolejnosc: k },
+      });
     }
     expect(kopertyV10(fetchImpl)[2]).toContain('<reference>1267/3</reference>');
   });
@@ -321,7 +432,12 @@ describe('pobranie (COD) jedzie WYŁĄCZNIE na pierwszej paczce', () => {
     const { dpd, fetchImpl } = dpdKlient();
     const { serwer, id } = zServerem({ dpd, nad: zPobraniem });
     await serwer.ready();
-    await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: { ...PACZKA_POBRANIE, kolejnosc: '1' } });
+    await serwer.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: { ...PACZKA_POBRANIE, kolejnosc: '1' },
+    });
     expect(kopertyV10(fetchImpl)[0]).toContain('<cod><amount>212.90</amount><currency>PLN</currency></cod>');
   });
 
@@ -330,8 +446,18 @@ describe('pobranie (COD) jedzie WYŁĄCZNIE na pierwszej paczce', () => {
     const { dpd, fetchImpl } = dpdKlient();
     const { serwer, id } = zServerem({ dpd, nad: zPobraniem });
     await serwer.ready();
-    await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: { ...PACZKA_POBRANIE, kolejnosc: '1' } });
-    await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: { ...PACZKA, kolejnosc: '2' } });
+    await serwer.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: { ...PACZKA_POBRANIE, kolejnosc: '1' },
+    });
+    await serwer.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: { ...PACZKA, kolejnosc: '2' },
+    });
 
     const druga = kopertyV10(fetchImpl)[1];
     expect(druga).not.toContain('<cod>');
@@ -345,7 +471,9 @@ describe('pobranie (COD) jedzie WYŁĄCZNIE na pierwszej paczce', () => {
     await serwer.ready();
     for (const k of ['1', '2', '3']) {
       await serwer.inject({
-        method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+        method: 'POST',
+        url: `/zamowienia/${id}/nadaj`,
+        headers: naglowek,
         // Pole kwoty niesie WYŁĄCZNIE paczka nr 1 — przy kolejnych ekran go nie pokazuje.
         payload: k === '1' ? { ...PACZKA_POBRANIE, kolejnosc: k } : { ...PACZKA, kolejnosc: k },
       });
@@ -387,14 +515,20 @@ describe('pobierzZamowienie oddaje LISTĘ przesyłek', () => {
 
   it('lista jest uporządkowana po numerze kolejnym', () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
-    db.prepare("INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at) VALUES (?, 'dpd', 'nadana', 'B', 2, '2026-07-29')").run(id);
-    db.prepare("INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at) VALUES (?, 'dpd', 'nadana', 'A', 1, '2026-07-29')").run(id);
+    db.prepare(
+      "INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at) VALUES (?, 'dpd', 'nadana', 'B', 2, '2026-07-29')",
+    ).run(id);
+    db.prepare(
+      "INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at) VALUES (?, 'dpd', 'nadana', 'A', 1, '2026-07-29')",
+    ).run(id);
     expect(pobierzZamowienie(db, id).przesylki.map((p) => p.numer_listu)).toEqual(['A', 'B']);
   });
 
   it('paczki na statusie „blad" nie wchodzą na listę', () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
-    db.prepare("INSERT INTO przesylki (zamowienie_id, kurier, status, kolejnosc, utworzona_at) VALUES (?, 'dpd', 'blad', 1, '2026-07-29')").run(id);
+    db.prepare(
+      "INSERT INTO przesylki (zamowienie_id, kurier, status, kolejnosc, utworzona_at) VALUES (?, 'dpd', 'blad', 1, '2026-07-29')",
+    ).run(id);
     expect(pobierzZamowienie(db, id).przesylki).toEqual([]);
   });
 });
@@ -402,11 +536,21 @@ describe('pobierzZamowienie oddaje LISTĘ przesyłek', () => {
 describe('status zamówienia z wieloma paczkami', () => {
   // ⚠️ ZMIANA: status wyslany wynika z `wyslane_at`, nie z istnienia paczki.
   const zam = (przesylki, nad = {}) => ({
-    anulowane: 0, zwrot_at: null, w_realizacji_at: null, wyslane_at: null, przesylki, faktura: null, ...nad,
+    anulowane: 0,
+    zwrot_at: null,
+    w_realizacji_at: null,
+    wyslane_at: null,
+    przesylki,
+    faktura: null,
+    ...nad,
   });
   const nadana = (nad = {}) => ({
-    status: 'nadana', kolejnosc: 1, numer_listu: 'X1', etykieta_sciezka: '/e/1.pdf',
-    utworzona_at: new Date().toISOString(), ...nad,
+    status: 'nadana',
+    kolejnosc: 1,
+    numer_listu: 'X1',
+    etykieta_sciezka: '/e/1.pdf',
+    utworzona_at: new Date().toISOString(),
+    ...nad,
   });
 
   it('sama nadana paczka to jeszcze NIE „wysłane" — etykieta to nie wyjazd paczki', () => {
@@ -423,8 +567,11 @@ describe('status zamówienia z wieloma paczkami', () => {
   });
 
   it('żadna paczka nie jest nadana → nie „wysłane"', () => {
-    expect(wyliczStatus(zam([{ status: 'do_wyjasnienia', kolejnosc: 1, numer_listu: 'X1', utworzona_at: new Date().toISOString() }])))
-      .not.toBe('wyslane');
+    expect(
+      wyliczStatus(
+        zam([{ status: 'do_wyjasnienia', kolejnosc: 1, numer_listu: 'X1', utworzona_at: new Date().toISOString() }]),
+      ),
+    ).not.toBe('wyslane');
   });
 });
 
@@ -433,12 +580,21 @@ describe('status zamówienia z wieloma paczkami', () => {
 describe('sprawy liczą się PER PACZKA', () => {
   const teraz = () => new Date().toISOString();
   const nadana = (nad = {}) => ({
-    status: 'nadana', kolejnosc: 1, numer_listu: 'X1', etykieta_sciezka: '/e/1.pdf', utworzona_at: teraz(), ...nad,
+    status: 'nadana',
+    kolejnosc: 1,
+    numer_listu: 'X1',
+    etykieta_sciezka: '/e/1.pdf',
+    utworzona_at: teraz(),
+    ...nad,
   });
 
   it('sprawa na DRUGIEJ paczce wypycha zamówienie na listę roboczą', () => {
     const z = {
-      anulowane: 0, zwrot_at: null, w_realizacji_at: null, wyslane_at: teraz(), faktura: null,
+      anulowane: 0,
+      zwrot_at: null,
+      w_realizacji_at: null,
+      wyslane_at: teraz(),
+      faktura: null,
       przesylki: [nadana(), nadana({ kolejnosc: 2, numer_listu: 'X2', sync_woo_blad: 'notatka: sklep padł' })],
     };
     expect(wyliczStatus(z)).toBe('wyslane');
@@ -447,7 +603,11 @@ describe('sprawy liczą się PER PACZKA', () => {
 
   it('obie paczki czyste → zamówienie schodzi z listy roboczej', () => {
     const z = {
-      anulowane: 0, zwrot_at: null, w_realizacji_at: null, wyslane_at: teraz(), faktura: null,
+      anulowane: 0,
+      zwrot_at: null,
+      w_realizacji_at: null,
+      wyslane_at: teraz(),
+      faktura: null,
       przesylki: [nadana(), nadana({ kolejnosc: 2, numer_listu: 'X2' })],
     };
     expect(doZrobienia(z)).toBe(false);
@@ -468,10 +628,13 @@ describe('sprawy liczą się PER PACZKA', () => {
 // =====================================================================================
 
 describe('karta zamówienia — akcja nadania', () => {
-  const nadanaPaczka = (id, kolejnosc, numerListu) => db.prepare(
-    'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, etykieta_sciezka, kolejnosc, utworzona_at)'
-    + " VALUES (?, 'dpd', 'nadana', ?, '/e/1.pdf', ?, '2026-07-29')",
-  ).run(id, numerListu, kolejnosc);
+  const nadanaPaczka = (id, kolejnosc, numerListu) =>
+    db
+      .prepare(
+        'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, etykieta_sciezka, kolejnosc, utworzona_at)' +
+          " VALUES (?, 'dpd', 'nadana', ?, '/e/1.pdf', ?, '2026-07-29')",
+      )
+      .run(id, numerListu, kolejnosc);
 
   it('bez żywej paczki → „Nadaj paczkę", BEZ „Nadaj kolejną paczkę"', async () => {
     const { serwer, id } = zServerem();
@@ -508,7 +671,9 @@ describe('karta zamówienia — akcja nadania', () => {
     const { serwer, id } = zServerem();
     await serwer.ready();
     const dawno = new Date(Date.now() - PROG_ZAWIESZONEGO_NADANIA_MS - 60_000).toISOString();
-    db.prepare("INSERT INTO przesylki (zamowienie_id, kurier, status, kolejnosc, utworzona_at) VALUES (?, 'dpd', 'w_trakcie', 1, ?)").run(id, dawno);
+    db.prepare(
+      "INSERT INTO przesylki (zamowienie_id, kurier, status, kolejnosc, utworzona_at) VALUES (?, 'dpd', 'w_trakcie', 1, ?)",
+    ).run(id, dawno);
     const r = await serwer.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(r.body).not.toContain('Nadaj kolejną paczkę');
     expect(r.body).toContain('ZAWIESZONE');
@@ -540,9 +705,12 @@ describe('karta zamówienia — akcja nadania', () => {
 });
 
 describe('ekran nadania kolejnej paczki', () => {
-  const nadanaPaczka = (id) => db.prepare(
-    "INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at) VALUES (?, 'dpd', 'nadana', 'X1', 1, '2026-07-29')",
-  ).run(id);
+  const nadanaPaczka = (id) =>
+    db
+      .prepare(
+        "INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at) VALUES (?, 'dpd', 'nadana', 'X1', 1, '2026-07-29')",
+      )
+      .run(id);
 
   it('niesie numer kolejny w formularzu — to on pilnuje podwójnego kliknięcia', async () => {
     const { serwer, id } = zServerem();
@@ -601,9 +769,16 @@ describe('ekran nadania kolejnej paczki', () => {
     const { dpd } = dpdKlient();
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
-    await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: { ...PACZKA, kolejnosc: '1' } });
     await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: { ...PACZKA, kolejnosc: '1' },
+    });
+    await serwer.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
       payload: { ...PACZKA, kolejnosc: '2', komentarz: 'zamiennik za zgubioną' },
     });
     const wpisy = db.prepare("SELECT * FROM log WHERE zamowienie_id = ? AND akcja = 'nadanie.kolejna'").all(id);
@@ -620,10 +795,12 @@ describe('ekran nadania kolejnej paczki', () => {
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
     await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
       payload: { ...PACZKA, kolejnosc: '1', komentarz: 'klient prosił o kartonik z watą' },
     });
-    const wpisy = db.prepare("SELECT * FROM log WHERE zamowienie_id = ?").all(id);
+    const wpisy = db.prepare('SELECT * FROM log WHERE zamowienie_id = ?').all(id);
     expect(wpisy.some((w) => w.wynik.includes('klient prosił o kartonik z watą'))).toBe(true);
   });
 
@@ -631,8 +808,18 @@ describe('ekran nadania kolejnej paczki', () => {
     const { dpd } = dpdKlient();
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
-    await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: { ...PACZKA, kolejnosc: '1' } });
-    await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: { ...PACZKA, kolejnosc: '2' } });
+    await serwer.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: { ...PACZKA, kolejnosc: '1' },
+    });
+    await serwer.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: { ...PACZKA, kolejnosc: '2' },
+    });
     const wpis = db.prepare("SELECT * FROM log WHERE zamowienie_id = ? AND akcja = 'nadanie.kolejna'").get(id);
     expect(wpis.wynik).toMatch(/nie podano/i);
   });
@@ -641,7 +828,12 @@ describe('ekran nadania kolejnej paczki', () => {
     const { dpd } = dpdKlient();
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
-    await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: { ...PACZKA, kolejnosc: '1' } });
+    await serwer.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: { ...PACZKA, kolejnosc: '1' },
+    });
     expect(db.prepare("SELECT COUNT(*) c FROM log WHERE akcja = 'nadanie.kolejna'").get().c).toBe(0);
   });
 });
@@ -667,10 +859,12 @@ describe('mozliwaKolejnaPaczka', () => {
   });
 
   it('jedna paczka nadana, druga w toku → fałsz', () => {
-    expect(mozliwaKolejnaPaczka([
-      { status: 'nadana', utworzona_at: teraz() },
-      { status: 'w_trakcie', utworzona_at: teraz() },
-    ])).toBe(false);
+    expect(
+      mozliwaKolejnaPaczka([
+        { status: 'nadana', utworzona_at: teraz() },
+        { status: 'w_trakcie', utworzona_at: teraz() },
+      ]),
+    ).toBe(false);
   });
 });
 
@@ -678,7 +872,9 @@ describe('mozliwaKolejnaPaczka', () => {
 // sprzed sekund (dokładnie ta sama zasada co przy zamówieniu anulowanym).
 describe('rozpocznijPrzesylke — twarda odmowa przy nadaniu w toku', () => {
   const zZamowieniem = () => {
-    db.prepare("INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at) VALUES ('pro', 1, '1', '10.00', '2026-07-29')").run();
+    db.prepare(
+      "INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at) VALUES ('pro', 1, '1', '10.00', '2026-07-29')",
+    ).run();
     return 1;
   };
 
@@ -713,12 +909,12 @@ describe('rozpocznijPrzesylke — twarda odmowa przy nadaniu w toku', () => {
 describe('trasy wskazują KONKRETNĄ paczkę', () => {
   const zDwiemaPaczkami = (id) => {
     db.prepare(
-      'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, etykieta_sciezka, etykieta_zpl_sciezka, kolejnosc, utworzona_at)'
-      + " VALUES (?, 'dpd', 'nadana', 'X1', '/e/1.pdf', '/e/1.zpl', 1, '2026-07-29')",
+      'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, etykieta_sciezka, etykieta_zpl_sciezka, kolejnosc, utworzona_at)' +
+        " VALUES (?, 'dpd', 'nadana', 'X1', '/e/1.pdf', '/e/1.zpl', 1, '2026-07-29')",
     ).run(id);
     db.prepare(
-      'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, etykieta_sciezka, etykieta_zpl_sciezka, kolejnosc, utworzona_at)'
-      + " VALUES (?, 'dpd', 'nadana', 'X2', '/e/2.pdf', '/e/2.zpl', 2, '2026-07-29')",
+      'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, etykieta_sciezka, etykieta_zpl_sciezka, kolejnosc, utworzona_at)' +
+        " VALUES (?, 'dpd', 'nadana', 'X2', '/e/2.pdf', '/e/2.zpl', 2, '2026-07-29')",
     ).run(id);
     return przesylki(id).map((p) => p.id);
   };
@@ -727,7 +923,11 @@ describe('trasy wskazują KONKRETNĄ paczkę', () => {
     const { serwer, id } = zServerem();
     await serwer.ready();
     const [, drugaId] = zDwiemaPaczkami(id);
-    const r = await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/przesylki/${drugaId}/drukuj`, headers: naglowek });
+    const r = await serwer.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/przesylki/${drugaId}/drukuj`,
+      headers: naglowek,
+    });
     expect(r.statusCode).toBe(302);
     const wiersze = db.prepare('SELECT * FROM kolejka_druku').all();
     expect(wiersze).toHaveLength(1);
@@ -739,10 +939,16 @@ describe('trasy wskazują KONKRETNĄ paczkę', () => {
     await serwer.ready();
     zDwiemaPaczkami(id);
     const obceId = zapiszZamowienie(db, 'pro', zmapowane({ zrodlo_id: 9999, numer: '9999' }), {});
-    db.prepare("INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, etykieta_zpl_sciezka, kolejnosc, utworzona_at) VALUES (?, 'dpd', 'nadana', 'Y1', '/e/y.zpl', 1, '2026-07-29')").run(obceId);
+    db.prepare(
+      "INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, etykieta_zpl_sciezka, kolejnosc, utworzona_at) VALUES (?, 'dpd', 'nadana', 'Y1', '/e/y.zpl', 1, '2026-07-29')",
+    ).run(obceId);
     const obcaPrzesylka = db.prepare('SELECT id FROM przesylki WHERE zamowienie_id = ?').get(obceId).id;
 
-    const r = await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/przesylki/${obcaPrzesylka}/drukuj`, headers: naglowek });
+    const r = await serwer.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/przesylki/${obcaPrzesylka}/drukuj`,
+      headers: naglowek,
+    });
     expect(r.statusCode).toBe(404);
     expect(db.prepare('SELECT COUNT(*) c FROM kolejka_druku').get().c).toBe(0);
   });
@@ -753,7 +959,11 @@ describe('trasy wskazują KONKRETNĄ paczkę', () => {
     const [pierwszaId, drugaId] = zDwiemaPaczkami(id);
     db.prepare("UPDATE przesylki SET status = 'do_wyjasnienia', blad_opis = 'NOT_FOUND' WHERE id = ?").run(drugaId);
 
-    const r = await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/przesylki/${drugaId}/domknij`, headers: naglowek });
+    const r = await serwer.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/przesylki/${drugaId}/domknij`,
+      headers: naglowek,
+    });
     expect(r.statusCode).toBe(302);
     expect(db.prepare('SELECT status FROM przesylki WHERE id = ?').get(drugaId).status).toBe('nadana');
     expect(db.prepare('SELECT status FROM przesylki WHERE id = ?').get(pierwszaId).status).toBe('nadana');
@@ -763,9 +973,16 @@ describe('trasy wskazują KONKRETNĄ paczkę', () => {
     const { serwer, id } = zServerem();
     await serwer.ready();
     const [pierwszaId, drugaId] = zDwiemaPaczkami(id);
-    db.prepare("UPDATE przesylki SET sync_woo_blad = 'notatka: sklep padł' WHERE id IN (?, ?)").run(pierwszaId, drugaId);
+    db.prepare("UPDATE przesylki SET sync_woo_blad = 'notatka: sklep padł' WHERE id IN (?, ?)").run(
+      pierwszaId,
+      drugaId,
+    );
 
-    await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/przesylki/${drugaId}/sprawa-zalatwiona`, headers: naglowek });
+    await serwer.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/przesylki/${drugaId}/sprawa-zalatwiona`,
+      headers: naglowek,
+    });
     expect(db.prepare('SELECT sync_woo_blad FROM przesylki WHERE id = ?').get(drugaId).sync_woo_blad).toBeNull();
     expect(db.prepare('SELECT sync_woo_blad FROM przesylki WHERE id = ?').get(pierwszaId).sync_woo_blad).not.toBeNull();
   });
@@ -788,7 +1005,10 @@ describe('karta zamówienia — ukrywanie paczki zastąpionej przez kolejną', (
     const { serwer, id } = await dwiePaczki();
     const p1 = przesylki(id)[0];
     const r = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/przesylki/${p1.id}/ukryj`, headers: naglowek, payload: {},
+      method: 'POST',
+      url: `/zamowienia/${id}/przesylki/${p1.id}/ukryj`,
+      headers: naglowek,
+      payload: {},
     });
     expect(r.statusCode).toBe(302);
     expect(przesylki(id)[0].ukryta_at).toBeTruthy();
@@ -804,7 +1024,10 @@ describe('karta zamówienia — ukrywanie paczki zastąpionej przez kolejną', (
     const { serwer, id } = await dwiePaczki();
     const p2 = przesylki(id)[1];
     const r = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/przesylki/${p2.id}/ukryj`, headers: naglowek, payload: {},
+      method: 'POST',
+      url: `/zamowienia/${id}/przesylki/${p2.id}/ukryj`,
+      headers: naglowek,
+      payload: {},
     });
     expect(r.statusCode).toBe(400);
     expect(przesylki(id)[1].ukryta_at).toBeFalsy();
@@ -816,7 +1039,10 @@ describe('karta zamówienia — ukrywanie paczki zastąpionej przez kolejną', (
     await nadanie.nadaj(id, { waga: 1, dlugosc: 110, szerokosc: 75, wysokosc: 1 }, { kolejnosc: 1 });
     const p1 = przesylki(id)[0];
     const r = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/przesylki/${p1.id}/ukryj`, headers: naglowek, payload: {},
+      method: 'POST',
+      url: `/zamowienia/${id}/przesylki/${p1.id}/ukryj`,
+      headers: naglowek,
+      payload: {},
     });
     expect(r.statusCode).toBe(400);
     expect(przesylki(id)[0].ukryta_at).toBeFalsy();
@@ -826,10 +1052,16 @@ describe('karta zamówienia — ukrywanie paczki zastąpionej przez kolejną', (
     const { serwer, id } = await dwiePaczki();
     const p1 = przesylki(id)[0];
     await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/przesylki/${p1.id}/ukryj`, headers: naglowek, payload: {},
+      method: 'POST',
+      url: `/zamowienia/${id}/przesylki/${p1.id}/ukryj`,
+      headers: naglowek,
+      payload: {},
     });
     const r = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/przesylki/${p1.id}/przywroc`, headers: naglowek, payload: {},
+      method: 'POST',
+      url: `/zamowienia/${id}/przesylki/${p1.id}/przywroc`,
+      headers: naglowek,
+      payload: {},
     });
     expect(r.statusCode).toBe(302);
     expect(przesylki(id)[0].ukryta_at).toBeFalsy();

@@ -8,7 +8,10 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { zbudujOms, uruchomZegary, ODSTEP_CZUWACZA_MS } from '../pomoc/budowa-oms-testowa.ts';
 import {
-  POWOD_TRWA, POWOD_NIE_TA_PORA, SUFIT_STRON, BUDZET_ARCHIWUM_MS,
+  POWOD_TRWA,
+  POWOD_NIE_TA_PORA,
+  SUFIT_STRON,
+  BUDZET_ARCHIWUM_MS,
   NAJDLUZSZY_PRZEBIEG_KOSZTOW_MS,
 } from '../../src/moduly/koszty/services/czuwacz-kosztow.js';
 // ⚠️ DWA MODULY, DWIE STALE O TEJ SAMEJ NAZWIE — stad alias. `POWOD_TRWA` wyzej pochodzi
@@ -17,13 +20,16 @@ import {
 import {
   POWOD_TRWA as POWOD_TRWA_ARCHIWUM_SPRZEDAZY,
   POWOD_NIE_TA_PORA as POWOD_NIE_TA_PORA_ARCHIWUM_SPRZEDAZY,
-  BUDZET_ARCHIWUM_SPRZEDAZY_MS, najdluzszyPrzebiegArchiwumSprzedazyMs,
+  BUDZET_ARCHIWUM_SPRZEDAZY_MS,
+  najdluzszyPrzebiegArchiwumSprzedazyMs,
 } from '../../src/moduly/faktury/services/czuwacz-archiwum-sprzedazy.js';
 import { LIMIT_ZADANIA_MS, NAJDLUZSZE_ODPYTYWANIE_MS } from '../../src/oms/ksef/client.js';
 // ⚠️ DWA KLIENTY, DWIE STALE O TEJ SAMEJ NAZWIE — stad alias. `LIMIT_ZADANIA_MS` wyzej jest
 // limitem zadania do KSeF, ten do inFaktu. Straznik archiwum sprzedazy liczy sie z TEGO.
 import {
-  LIMIT_ZADANIA_MS as LIMIT_ZADANIA_INFAKTU_MS, NAJDLUZSZA_LISTA_MS, SUFIT_STRON as SUFIT_STRON_INFAKTU,
+  LIMIT_ZADANIA_MS as LIMIT_ZADANIA_INFAKTU_MS,
+  NAJDLUZSZA_LISTA_MS,
+  SUFIT_STRON as SUFIT_STRON_INFAKTU,
   ROWNOLEGLE_STRON,
 } from '../../src/oms/infakt/client.js';
 import { ODSTEP_OKNA_POBRANIA_MS } from '../../src/domena/pora-pobrania.js';
@@ -34,13 +40,22 @@ import { zapiszZamowienie } from '../../src/oms/db/zamowienia.js';
 const katalogEtykiet = () => mkdtempSync(join(tmpdir(), 'oms-boot-'));
 
 const PELNE = {
-  OMS_AUTH_USER: 'adam', OMS_AUTH_PASS: 'x',
+  OMS_AUTH_USER: 'adam',
+  OMS_AUTH_PASS: 'x',
   OMS_DB_PATH: ':memory:',
-  SHOP_PRO_URL: 'https://pro.swietlik.test', SHOP_PRO_CK: 'ck', SHOP_PRO_CS: 'cs',
-  DPD_URL: 'https://dpd/api', DPD_LOGIN: '99999999', DPD_PASSWORD: 'tajne', DPD_FID: '876543',
-  DPD_NADAWCA_NAZWA: 'Pracownia Półcień Anna Wzorcowa', DPD_NADAWCA_ULICA: 'Fabryczna 7',
-  DPD_NADAWCA_KOD: '00-950', DPD_NADAWCA_MIASTO: 'Warszawa',
-  DPD_INFO_URL: 'https://dpd/info', DPD_INFO_CHANNEL: '876543',
+  SHOP_PRO_URL: 'https://pro.swietlik.test',
+  SHOP_PRO_CK: 'ck',
+  SHOP_PRO_CS: 'cs',
+  DPD_URL: 'https://dpd/api',
+  DPD_LOGIN: '99999999',
+  DPD_PASSWORD: 'tajne',
+  DPD_FID: '876543',
+  DPD_NADAWCA_NAZWA: 'Pracownia Półcień Anna Wzorcowa',
+  DPD_NADAWCA_ULICA: 'Fabryczna 7',
+  DPD_NADAWCA_KOD: '00-950',
+  DPD_NADAWCA_MIASTO: 'Warszawa',
+  DPD_INFO_URL: 'https://dpd/info',
+  DPD_INFO_CHANNEL: '876543',
   INFAKT_API_KEY: 'SEKRET',
 };
 
@@ -72,7 +87,9 @@ describe('zbudujOms — okablowanie usługi', () => {
   // a nie tylko istniec w zwracanym obiekcie.
   it('podpięta faktura dociera do serwera HTTP (trasa nie oddaje 503)', async () => {
     const { app, db } = zbudujOms({ env: env(), createDpd: atrapaDpd() });
-    db.prepare("INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, chce_fakture, utworzone_at) VALUES ('pro', 1, '1', '10.00', 1, '2026-07-29')").run();
+    db.prepare(
+      "INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, chce_fakture, utworzone_at) VALUES ('pro', 1, '1', '10.00', 1, '2026-07-29')",
+    ).run();
     await app.ready();
     const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64') };
     const r = await app.inject({ method: 'POST', url: '/zamowienia/1/faktura', headers: naglowek });
@@ -97,7 +114,9 @@ describe('zbudujOms — okablowanie usługi', () => {
       origin: 'http://localhost',
     };
     const r = await app.inject({
-      method: 'POST', url: `/okresy/${okres.id}/wystaw-fakture`, headers: naglowek,
+      method: 'POST',
+      url: `/okresy/${okres.id}/wystaw-fakture`,
+      headers: naglowek,
     });
     expect(r.statusCode).not.toBe(503);
     // …i karta okresu ma pokazywac przycisk, a nie „inFakt nie jest skonfigurowany”.
@@ -119,7 +138,10 @@ describe('zbudujOms — okablowanie usługi', () => {
     // z inFaktu (te maja wlasne testy w services/faktury-widok.test.js), tylko o to, czy
     // usluga w ogole DOTARLA do trasy. Trasa i tak degraduje sie do komunikatu (patrz
     // test degradacji nizej), wiec naglowek zywego ekranu zostaje widoczny.
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 400, json: async () => ({}) })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: false, status: 400, json: async () => ({}) })),
+    );
     try {
       const { app } = zbudujOms({ env: env(), createDpd: atrapaDpd() });
       await app.ready();
@@ -130,7 +152,9 @@ describe('zbudujOms — okablowanie usługi', () => {
       // „pusta celowo" (routes/faktury.js: stala BEZ_INFAKTU).
       expect(r.body).toContain('Nieopłacone — termin płatności');
       expect(r.body).not.toContain('nie ma podpiętego inFaktu');
-    } finally { vi.unstubAllGlobals(); }
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   // ⚠️ TA SAMA KLASA DZIURY, TERAZ PRZY MAGAZYNIE. `magazyn` (przebieg odczytu
@@ -160,17 +184,23 @@ describe('zbudujOms — okablowanie usługi', () => {
   // wlasny atrapowy `infakt` wprost w konstruktorze).
   it('podpięty inFakt dociera do trasy GET /faktury/:uuid/pdf (trasa nie oddaje 503)', async () => {
     const PDF = Buffer.from('%PDF-1.4 test');
-    vi.stubGlobal('fetch', vi.fn(async () => ({
-      ok: true, status: 200,
-      arrayBuffer: async () => PDF.buffer.slice(PDF.byteOffset, PDF.byteOffset + PDF.byteLength),
-    })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        arrayBuffer: async () => PDF.buffer.slice(PDF.byteOffset, PDF.byteOffset + PDF.byteLength),
+      })),
+    );
     try {
       const { app } = zbudujOms({ env: env(), createDpd: atrapaDpd() });
       await app.ready();
       const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64') };
       const r = await app.inject({ method: 'GET', url: '/faktury/u1/pdf?rodzaj=vat', headers: naglowek });
       expect(r.statusCode).not.toBe(503);
-    } finally { vi.unstubAllGlobals(); }
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   // ⚠️⚠️ PIATA DROGA TEJ SAMEJ DZIURY — I NAJDROZSZA. `wysylkaKsef` jedzie do
@@ -183,27 +213,39 @@ describe('zbudujOms — okablowanie usługi', () => {
   // buildOmsServer → trasa → usluga → HTTP do inFaktu → HTML.
   it('podpięty inFakt dociera do trasy POST /faktury/ksef/podglad (żywy ekran, nie 503)', async () => {
     // Jedna faktura VAT bez numeru KSeF w odpowiedzi inFaktu; korekt brak (inny zasob).
-    vi.stubGlobal('fetch', vi.fn(async (url) => {
-      const pusto = String(url).includes('corrective_invoices');
-      return {
-        ok: true,
-        status: 200,
-        json: async () => ({
-          entities: pusto ? [] : [{
-            uuid: 'u1', number: '1/08/2026', ksef_number: null, gross_price: 12300,
-            left_to_pay: 0, client_company_name: 'Firma X', invoice_date: '2026-08-06',
-            // ⚠️ NIP JEST TU NOŚNY, a nie ozdobny. Dokument bez
-            // `client_tax_code` jest dla panelu fakturą KONSUMENCKĄ i odbija się od bariery
-            // (`czyKonsumencka` w domain/wysylka-ksef.js), więc ekran podglądu pokazałby go
-            // w „pominiętych" i BEZ przycisku zatwierdzenia — a ten test sprawdza okablowanie
-            // (czy inFakt dociera do trasy), nie regułę NIP-u. Atrapa firmy bez NIP-u była
-            // po prostu nierealistyczna: na 169 prawdziwych faktur VI–VIII.2026 numer miało 168.
-            client_tax_code: '1234563218',
-          }],
-          metainfo: { total_count: pusto ? 0 : 1 },
-        }),
-      };
-    }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url) => {
+        const pusto = String(url).includes('corrective_invoices');
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            entities: pusto
+              ? []
+              : [
+                  {
+                    uuid: 'u1',
+                    number: '1/08/2026',
+                    ksef_number: null,
+                    gross_price: 12300,
+                    left_to_pay: 0,
+                    client_company_name: 'Firma X',
+                    invoice_date: '2026-08-06',
+                    // ⚠️ NIP JEST TU NOŚNY, a nie ozdobny. Dokument bez
+                    // `client_tax_code` jest dla panelu fakturą KONSUMENCKĄ i odbija się od bariery
+                    // (`czyKonsumencka` w domain/wysylka-ksef.js), więc ekran podglądu pokazałby go
+                    // w „pominiętych" i BEZ przycisku zatwierdzenia — a ten test sprawdza okablowanie
+                    // (czy inFakt dociera do trasy), nie regułę NIP-u. Atrapa firmy bez NIP-u była
+                    // po prostu nierealistyczna: na 169 prawdziwych faktur VI–VIII.2026 numer miało 168.
+                    client_tax_code: '1234563218',
+                  },
+                ],
+            metainfo: { total_count: pusto ? 0 : 1 },
+          }),
+        };
+      }),
+    );
     try {
       const { app } = zbudujOms({ env: env(), createDpd: atrapaDpd() });
       await app.ready();
@@ -212,7 +254,9 @@ describe('zbudujOms — okablowanie usługi', () => {
         origin: 'http://localhost',
       };
       const r = await app.inject({
-        method: 'POST', url: '/faktury/ksef/podglad', headers: naglowek,
+        method: 'POST',
+        url: '/faktury/ksef/podglad',
+        headers: naglowek,
         payload: { uuid: 'u1', miesiac: '2026-08', pole: 'invoice_date' },
       });
 
@@ -224,7 +268,9 @@ describe('zbudujOms — okablowanie usługi', () => {
       expect(r.body).toContain('Firma X');
       expect(r.body).toContain('name="potwierdzam"');
       expect(r.body).not.toContain('nie ma podpiętego inFaktu');
-    } finally { vi.unstubAllGlobals(); }
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   // ⚠️⚠️ SIODMA DROGA TEJ SAMEJ DZIURY. `korekta` (services/korekta.js) jedzie do
@@ -239,33 +285,44 @@ describe('zbudujOms — okablowanie usługi', () => {
     // parametr W CHWILI WYWOLANIA (wewnatrz zbudujOms), wiec pozniejszy `vi.stubGlobal` nie
     // dosiegnalby juz zamknietego klienta. Ten sam porzadek, co w tescie „POST
     // /faktury/ksef/podglad" wyzej.
-    vi.stubGlobal('fetch', vi.fn(async (url) => {
-      if (String(url).includes('/v3/invoices/')) {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url) => {
+        if (String(url).includes('/v3/invoices/')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              number: 'FV 1/08/2026',
+              invoice_date: '2026-08-01',
+              uuid: 'uuid-fv',
+              services: [{ name: 'Kot 70x100', quantity: 2, gross_price: 19800, tax_symbol: '23' }],
+            }),
+          };
+        }
         return {
-          ok: true, status: 200,
-          json: async () => ({
-            number: 'FV 1/08/2026', invoice_date: '2026-08-01', uuid: 'uuid-fv',
-            services: [{ name: 'Kot 70x100', quantity: 2, gross_price: 19800, tax_symbol: '23' }],
-          }),
+          ok: true,
+          status: 201,
+          json: async () => ({ invoice_task_reference_number: 'REF-1', uuid: null, number: null }),
         };
-      }
-      return {
-        ok: true, status: 201,
-        json: async () => ({ invoice_task_reference_number: 'REF-1', uuid: null, number: null }),
-      };
-    }));
+      }),
+    );
     try {
       const { app, db } = zbudujOms({ env: env(), createDpd: atrapaDpd() });
       db.prepare(
-        "INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, chce_fakture, utworzone_at)"
-        + " VALUES ('pro', 1, '1', '198.00', 1, '2026-08-01')",
+        'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, chce_fakture, utworzone_at)' +
+          " VALUES ('pro', 1, '1', '198.00', 1, '2026-08-01')",
       ).run();
-      db.prepare(
-        'INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (1, ?, ?, ?)',
-      ).run('uuid-fv', 'FV 1/08/2026', '2026-08-01T10:00:00Z');
-      db.prepare(
-        'INSERT INTO zwroty (zamowienie_id, data, kwota, utworzony_at) VALUES (1, ?, ?, ?)',
-      ).run('2026-08-14', '99.00', '2026-08-14T00:00:00Z');
+      db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (1, ?, ?, ?)').run(
+        'uuid-fv',
+        'FV 1/08/2026',
+        '2026-08-01T10:00:00Z',
+      );
+      db.prepare('INSERT INTO zwroty (zamowienie_id, data, kwota, utworzony_at) VALUES (1, ?, ?, ?)').run(
+        '2026-08-14',
+        '99.00',
+        '2026-08-14T00:00:00Z',
+      );
       db.prepare(
         'INSERT INTO zwroty_pozycje (zwrot_id, klucz_pozycji, nazwa, ilosc, kwota) VALUES (1, ?, ?, ?, ?)',
       ).run('s77', 'Kot 70x100', 1, '99.00');
@@ -276,7 +333,9 @@ describe('zbudujOms — okablowanie usługi', () => {
         origin: 'http://localhost',
       };
       const r = await app.inject({
-        method: 'POST', url: '/zamowienia/1/zwroty/1/korekta', headers: naglowek,
+        method: 'POST',
+        url: '/zamowienia/1/zwroty/1/korekta',
+        headers: naglowek,
       });
       expect(r.statusCode).not.toBe(503);
       expect(r.statusCode).toBe(302);
@@ -285,21 +344,28 @@ describe('zbudujOms — okablowanie usługi', () => {
       const w = db.prepare('SELECT * FROM zwroty WHERE id = 1').get();
       expect(w.korekta_zlecona_at).not.toBeNull();
       expect(w.korekta_referencja).toBe('REF-1');
-    } finally { vi.unstubAllGlobals(); }
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('bez INFAKT_API_KEY korekta zostaje nieskonfigurowana (trasa odmawia 503, nie 500)', async () => {
     const { app, db, korekta } = zbudujOms({ env: env({ INFAKT_API_KEY: undefined }), createDpd: atrapaDpd() });
     expect(korekta).toBeNull();
     db.prepare(
-      "INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, chce_fakture, utworzone_at)"
-      + " VALUES ('pro', 1, '1', '198.00', 1, '2026-08-01')",
+      'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, chce_fakture, utworzone_at)' +
+        " VALUES ('pro', 1, '1', '198.00', 1, '2026-08-01')",
     ).run();
-    db.prepare(
-      'INSERT INTO zwroty (zamowienie_id, data, kwota, utworzony_at) VALUES (1, ?, ?, ?)',
-    ).run('2026-08-14', '99.00', '2026-08-14T00:00:00Z');
+    db.prepare('INSERT INTO zwroty (zamowienie_id, data, kwota, utworzony_at) VALUES (1, ?, ?, ?)').run(
+      '2026-08-14',
+      '99.00',
+      '2026-08-14T00:00:00Z',
+    );
     await app.ready();
-    const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64'), origin: 'http://localhost' };
+    const naglowek = {
+      authorization: 'Basic ' + Buffer.from('adam:x').toString('base64'),
+      origin: 'http://localhost',
+    };
     const r = await app.inject({ method: 'POST', url: '/zamowienia/1/zwroty/1/korekta', headers: naglowek });
     expect(r.statusCode).toBe(503);
   });
@@ -328,7 +394,10 @@ describe('zbudujOms — okablowanie usługi', () => {
       origin: 'http://localhost',
     };
     const r = await app.inject({
-      method: 'POST', url: '/koszty/odswiez', headers: naglowek, payload: { miesiac: '2026-06' },
+      method: 'POST',
+      url: '/koszty/odswiez',
+      headers: naglowek,
+      payload: { miesiac: '2026-06' },
     });
 
     expect(r.statusCode).toBe(200);
@@ -355,21 +424,29 @@ describe('zbudujOms — okablowanie usługi', () => {
   // skladani w mape w bootstrap.js, ale do `buildOmsServer` szedl SAM `dpd` — wiec karta
   // zamowienia odswiezala status kazdej przesylki DPD, takze paczkomatowej. Testy modulow
   // swiecilyby na zielono, bo klient InPostu istnieje i dziala; gubi go OKABLOWANIE.
-  const zInpostem = (nad = {}) => env({
-    INPOST_TOKEN: 'eyJTESTOWY.TOKEN', INPOST_ORGANIZACJA: '13235', INPOST_URL: 'https://shipx.test/v1', ...nad,
-  });
+  const zInpostem = (nad = {}) =>
+    env({
+      INPOST_TOKEN: 'eyJTESTOWY.TOKEN',
+      INPOST_ORGANIZACJA: '13235',
+      INPOST_URL: 'https://shipx.test/v1',
+      ...nad,
+    });
 
   it('podpięty InPost dociera do karty zamówienia (status paczkomatu jest odpytywany)', async () => {
-    const statusPrzesylki = vi.fn().mockResolvedValue({ opis: 'Gotowa do odbioru w paczkomacie', at: '2026-07-30T09:00:00+02:00' });
+    const statusPrzesylki = vi
+      .fn()
+      .mockResolvedValue({ opis: 'Gotowa do odbioru w paczkomacie', at: '2026-07-30T09:00:00+02:00' });
     const { app, db } = zbudujOms({
       env: zInpostem(),
       createDpd: atrapaDpd(),
       createInpost: vi.fn(() => ({ nadaj: vi.fn(), statusPrzesylki })),
     });
-    db.prepare("INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at) VALUES ('pro', 1, '1', '10.00', '2026-07-29')").run();
     db.prepare(
-      'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at)'
-      + " VALUES (1, 'inpost', 'nadana', '520000123456789012345678', 1, '2026-07-29')",
+      "INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at) VALUES ('pro', 1, '1', '10.00', '2026-07-29')",
+    ).run();
+    db.prepare(
+      'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at)' +
+        " VALUES (1, 'inpost', 'nadana', '520000123456789012345678', 1, '2026-07-29')",
     ).run();
     await app.ready();
     const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64') };
@@ -394,35 +471,45 @@ describe('zbudujOms — okablowanie usługi', () => {
     // Atrapa klienta inFaktu na poziomie HTTP — `createInfaktClient` nie jest wstrzykiwalny,
     // a chodzi tu wylacznie o to, czy klient ZBUDOWANY PRZEZ BOOTSTRAP dotarl do czuwacza.
     const zadania = [];
-    vi.stubGlobal('fetch', vi.fn(async (url, opcje) => {
-      const adres = String(url);
-      zadania.push({ adres, metoda: opcje?.method });
-      if (adres.endsWith('/paid.json')) {
-        return { ok: true, status: 201, json: async () => ({ invoice_task_reference_number: 'ref-1' }) };
-      }
-      return {
-        ok: true,
-        status: 200,
-        json: async () => ({
-          uuid: 'u-cod-boot', number: 'F/1', invoice_date: '2026-08-20',
-          status: 'sent', left_to_pay: 12300,
-        }),
-      };
-    }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url, opcje) => {
+        const adres = String(url);
+        zadania.push({ adres, metoda: opcje?.method });
+        if (adres.endsWith('/paid.json')) {
+          return { ok: true, status: 201, json: async () => ({ invoice_task_reference_number: 'ref-1' }) };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            uuid: 'u-cod-boot',
+            number: 'F/1',
+            invoice_date: '2026-08-20',
+            status: 'sent',
+            left_to_pay: 12300,
+          }),
+        };
+      }),
+    );
     try {
       const { db, czuwaczPrzesylek } = zbudujOms({ env: env(), createDpd: atrapaDpd() });
       expect(czuwaczPrzesylek).not.toBeNull();
       db.prepare(
-        'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, chce_fakture, pobranie, kwota_pobrania, utworzone_at)'
-        + " VALUES ('pro', 1, '1', '123.00', 1, 1, '123.00', '2026-08-20')",
+        'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, chce_fakture, pobranie, kwota_pobrania, utworzone_at)' +
+          " VALUES ('pro', 1, '1', '123.00', 1, 1, '123.00', '2026-08-20')",
       ).run();
-      db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)')
-        .run(1, 'u-cod-boot', 'F/1', '2026-08-20T08:00:00.000Z');
+      db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)').run(
+        1,
+        'u-cod-boot',
+        'F/1',
+        '2026-08-20T08:00:00.000Z',
+      );
       // Paczka JUZ doreczona — wypada z odpytywania kurierow (etap koncowy), wiec przebieg
       // dotyka wylacznie tej sciezki, o ktora chodzi: rozliczania pobran.
       db.prepare(
-        'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at, status_kuriera, status_kuriera_at)'
-        + " VALUES (1, 'dpd', 'nadana', 'N1', 1, '2026-08-25', 'Przesyłka doręczona', '2026-08-25T14:00:00.000')",
+        'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at, status_kuriera, status_kuriera_at)' +
+          " VALUES (1, 'dpd', 'nadana', 'N1', 1, '2026-08-25', 'Przesyłka doręczona', '2026-08-25T14:00:00.000')",
       ).run();
 
       const wynik = await czuwaczPrzesylek.przebieg();
@@ -432,19 +519,25 @@ describe('zbudujOms — okablowanie usługi', () => {
       expect(oznaczenie).toMatchObject({ metoda: 'POST' });
       expect(oznaczenie.adres).toContain('u-cod-boot');
       // …i zostal po tym slad w bazie, a nie tylko w liczniku przebiegu.
-      expect(db.prepare('SELECT * FROM oznaczenia_zaplaty WHERE uuid = ?').get('u-cod-boot'))
-        .toMatchObject({ powod: 'pobranie_doreczone', data_zaplaty: '2026-08-25' });
-    } finally { vi.unstubAllGlobals(); }
+      expect(db.prepare('SELECT * FROM oznaczenia_zaplaty WHERE uuid = ?').get('u-cod-boot')).toMatchObject({
+        powod: 'pobranie_doreczone',
+        data_zaplaty: '2026-08-25',
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   // Brak sekcji INPOST_* to TRYB POPRAWNY: panel wstaje i obsluguje reszte.
   it('bez INPOST_TOKEN panel wstaje, a paczkomat po prostu nie jest odpytywany', async () => {
     const { app, db, inpost } = zbudujOms({ env: env(), createDpd: atrapaDpd() });
     expect(inpost).toBeNull();
-    db.prepare("INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at) VALUES ('pro', 1, '1', '10.00', '2026-07-29')").run();
     db.prepare(
-      'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at)'
-      + " VALUES (1, 'inpost', 'nadana', '520000123456789012345678', 1, '2026-07-29')",
+      "INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at) VALUES ('pro', 1, '1', '10.00', '2026-07-29')",
+    ).run();
+    db.prepare(
+      'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at)' +
+        " VALUES (1, 'inpost', 'nadana', '520000123456789012345678', 1, '2026-07-29')",
     ).run();
     await app.ready();
     const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64') };
@@ -477,10 +570,12 @@ describe('zbudujOms — katalog proform nie kładzie usługi', () => {
   };
 
   it('niezapisywalny katalog proform nie wywraca budowy całej usługi', () => {
-    expect(() => zbudujOms({
-      env: env({ OMS_PROFORMY_KATALOG: niezapisywalny() }),
-      createDpd: atrapaDpd(),
-    })).not.toThrow();
+    expect(() =>
+      zbudujOms({
+        env: env({ OMS_PROFORMY_KATALOG: niezapisywalny() }),
+        createDpd: atrapaDpd(),
+      }),
+    ).not.toThrow();
   });
 
   it('karta zamówienia otwiera się mimo niezapisywalnego katalogu proform', async () => {
@@ -488,7 +583,9 @@ describe('zbudujOms — katalog proform nie kładzie usługi', () => {
       env: env({ OMS_PROFORMY_KATALOG: niezapisywalny() }),
       createDpd: atrapaDpd(),
     });
-    db.prepare("INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at) VALUES ('pro', 1, '1', '10.00', '2026-08-04')").run();
+    db.prepare(
+      "INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at) VALUES ('pro', 1, '1', '10.00', '2026-08-04')",
+    ).run();
     await app.ready();
     const r = await app.inject({ method: 'GET', url: '/zamowienia/1', headers: naglowek });
     expect(r.statusCode).toBe(200);
@@ -503,8 +600,8 @@ describe('zbudujOms — katalog proform nie kładzie usługi', () => {
       createDpd: atrapaDpd(),
     });
     db.prepare(
-      "INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, koszt_dostawy_brutto, utworzone_at)"
-      + " VALUES ('pro', 1, '1', '10.00', '0.00', '2026-08-04')",
+      'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, koszt_dostawy_brutto, utworzone_at)' +
+        " VALUES ('pro', 1, '1', '10.00', '0.00', '2026-08-04')",
     ).run();
     db.prepare(
       "INSERT INTO pozycje (zamowienie_id, nazwa, ilosc, cena_brutto, brutto_linii, zrodlo) VALUES (1, 'Szablon', 1, '10.00', '10.00', 'sklep')",
@@ -533,7 +630,9 @@ describe('zbudujOms — data startowa dociera do pollera', () => {
     try {
       const { poller } = zbudujOms({ env: env({ SHOP_PRO_OD: '2026-07-01' }), createDpd: atrapaDpd() });
       await poller.przebieg();
-    } finally { vi.unstubAllGlobals(); }
+    } finally {
+      vi.unstubAllGlobals();
+    }
 
     expect(zapytania).toHaveLength(1);
     expect(zapytania[0]).toContain('modified_after=2026-07-01T00%3A00%3A00');
@@ -541,14 +640,19 @@ describe('zbudujOms — data startowa dociera do pollera', () => {
 
   it('bez daty startowej poller nie zawęża okna wcale', async () => {
     const zapytania = [];
-    vi.stubGlobal('fetch', vi.fn(async (url) => {
-      zapytania.push(String(url));
-      return { ok: true, status: 200, json: async () => [], headers: { get: () => '1' } };
-    }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url) => {
+        zapytania.push(String(url));
+        return { ok: true, status: 200, json: async () => [], headers: { get: () => '1' } };
+      }),
+    );
     try {
       const { poller } = zbudujOms({ env: env(), createDpd: atrapaDpd() });
       await poller.przebieg();
-    } finally { vi.unstubAllGlobals(); }
+    } finally {
+      vi.unstubAllGlobals();
+    }
 
     expect(zapytania[0]).not.toContain('modified_after');
   });
@@ -564,38 +668,48 @@ describe('zbudujOms — data startowa dociera do pollera', () => {
 // spokojny dzien bez nowych zamowien (niezmiennik 4.9).
 describe('zbudujOms — kanał Allegro w pollerze', () => {
   const KANAL = {
-    ALLEGRO_SWIETLIK_CLIENT_ID: 'id', ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
-    ALLEGRO_SWIETLIK_OD: '2026-07-01', ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
+    ALLEGRO_SWIETLIK_CLIENT_ID: 'id',
+    ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
+    ALLEGRO_SWIETLIK_OD: '2026-07-01',
+    ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
     ALLEGRO_USER_AGENT: UA,
   };
   const DRUGI_KANAL = {
-    ALLEGRO_POLCIEN2_CLIENT_ID: 'id2', ALLEGRO_POLCIEN2_CLIENT_SECRET: 'sekret2',
-    ALLEGRO_POLCIEN2_OD: '2026-07-01', ALLEGRO_POLCIEN2_API: 'https://api2.allegro.test',
+    ALLEGRO_POLCIEN2_CLIENT_ID: 'id2',
+    ALLEGRO_POLCIEN2_CLIENT_SECRET: 'sekret2',
+    ALLEGRO_POLCIEN2_OD: '2026-07-01',
+    ALLEGRO_POLCIEN2_API: 'https://api2.allegro.test',
   };
 
   const zamowienieAllegro = (id, { boughtAt = '2026-08-03T09:13:41.325Z' } = {}) => ({
     id,
     updatedAt: '2026-08-04T07:17:35.018Z',
     status: 'READY_FOR_PROCESSING',
-    lineItems: [{
-      id: `${id}-1`,
-      offer: { name: 'Szablon' },
-      quantity: 1,
-      price: { amount: '129.00', currency: 'PLN' },
-      boughtAt,
-    }],
-    delivery: { method: { id: '03f26351-f683-4db2-8895-f2c599280e3c', name: 'Allegro Kurier DPD (AD)' }, cost: { amount: '0.00' } },
+    lineItems: [
+      {
+        id: `${id}-1`,
+        offer: { name: 'Szablon' },
+        quantity: 1,
+        price: { amount: '129.00', currency: 'PLN' },
+        boughtAt,
+      },
+    ],
+    delivery: {
+      method: { id: '03f26351-f683-4db2-8895-f2c599280e3c', name: 'Allegro Kurier DPD (AD)' },
+      cost: { amount: '0.00' },
+    },
     payment: { type: 'ONLINE', finishedAt: '2026-08-03T09:14:00.000Z' },
     summary: { totalToPay: { amount: '129.00', currency: 'PLN' } },
   });
 
   // Zywy access token w bazie — inaczej klient poszedlby najpierw odswiezac tokeny.
-  const polaczKanal = (db, kanal) => zapiszTokeny(db, kanal, {
-    accessToken: 'ACCESS',
-    refreshToken: 'REFRESH',
-    wygasaAt: new Date(Date.now() + 3600_000).toISOString(),
-    refreshWygasaAt: new Date(Date.now() + 80 * 86400_000).toISOString(),
-  });
+  const polaczKanal = (db, kanal) =>
+    zapiszTokeny(db, kanal, {
+      accessToken: 'ACCESS',
+      refreshToken: 'REFRESH',
+      wygasaAt: new Date(Date.now() + 3600_000).toISOString(),
+      refreshWygasaAt: new Date(Date.now() + 80 * 86400_000).toISOString(),
+    });
 
   // Jedna atrapa `fetch` na oba swiaty: sklep Woo oddaje pusta liste, Allegro — zamowienia
   // przypisane do swojego adresu API (kazdy kanal ma tu inny, wiec widac, KTORY pytal).
@@ -638,7 +752,9 @@ describe('zbudujOms — kanał Allegro w pollerze', () => {
 
   it('bez konta klient śledzenia czeka na późniejsze podłączenie i nie odpytuje API', async () => {
     const { kurierzy } = zbudujOms({ env: env(), createDpd: atrapaDpd() });
-    expect(await kurierzy.allegro.statusPrzesylki('LIST', {carrier:'ALLEGRO',kanal:'allegro_niepodlaczone'})).toBeNull();
+    expect(
+      await kurierzy.allegro.statusPrzesylki('LIST', { carrier: 'ALLEGRO', kanal: 'allegro_niepodlaczone' }),
+    ).toBeNull();
   });
 
   // ⚠️⚠️ NAGLOWEK ZGODNOSCI CALA DROGA: `.env` → config → klient → PRAWDZIWE zadanie pollera.
@@ -665,7 +781,9 @@ describe('zbudujOms — kanał Allegro w pollerze', () => {
       const doAllegro = wywolania.filter((w) => w.url.startsWith('https://api.allegro.test'));
       expect(doAllegro).toHaveLength(1);
       expect(new Headers(doAllegro[0].opcje.headers).get('User-Agent')).toBe(UA);
-    } finally { vi.unstubAllGlobals(); }
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   // ⚠️ Kanal skonfigurowany BEZ naglowka ma wywalic start CALEJ uslugi — cicha niezgodnosc
@@ -678,10 +796,12 @@ describe('zbudujOms — kanał Allegro w pollerze', () => {
   });
 
   it('kanał Allegro z NIEPOPRAWNYM nagłówkiem też nie pozwala wstać (cicha niezgodność = awaria)', () => {
-    expect(() => zbudujOms({
-      env: env({ ...KANAL, ALLEGRO_USER_AGENT: 'PrzykladowyPanel' }),
-      createDpd: atrapaDpd(),
-    })).toThrow(/ALLEGRO_USER_AGENT/);
+    expect(() =>
+      zbudujOms({
+        env: env({ ...KANAL, ALLEGRO_USER_AGENT: 'PrzykladowyPanel' }),
+        createDpd: atrapaDpd(),
+      }),
+    ).toThrow(/ALLEGRO_USER_AGENT/);
   });
 
   it('autoryzowany kanał Allegro dokłada się do wspólnej listy pollerów bez restartu', () => {
@@ -716,9 +836,12 @@ describe('zbudujOms — kanał Allegro w pollerze', () => {
       const wiersz = db.prepare('SELECT sklep, numer, metoda_wysylki FROM zamowienia').get();
       expect(wiersz).toMatchObject({ sklep: 'allegro_swietlik', numer: 'ALG-1', metoda_wysylki: 'allegro_dpd' });
       // Kursor kanalu idzie za `updatedAt`, czyli poller dostal adapter Allegro, a nie Woo.
-      expect(poller.stany().find((s) => s.sklep === 'allegro_swietlik').zsynchronizowane_do)
-        .toBe('2026-08-04T07:17:35.018Z');
-    } finally { vi.unstubAllGlobals(); }
+      expect(poller.stany().find((s) => s.sklep === 'allegro_swietlik').zsynchronizowane_do).toBe(
+        '2026-08-04T07:17:35.018Z',
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   // ⚠️⚠️ PODLOGA NA DRUGIM PRZEBIEGU — DOKLADNIE TRYB AWARII Z 8866 WCIAGNIETYCH ZAMOWIEN.
@@ -741,8 +864,8 @@ describe('zbudujOms — kanał Allegro w pollerze', () => {
       // ZAPISANY kursor = kanal ma juz za soba udany przebieg. To on przestawia klienta
       // z galezi podlogi na galaz `updatedAt.gte`.
       db.prepare(
-        'INSERT INTO stan_pollera (sklep, zsynchronizowane_do, ostatni_przebieg_at, ostatni_blad)'
-        + " VALUES ('allegro_swietlik', '2026-08-01T00:00:00.000Z', '2026-08-01T00:00:00.000Z', NULL)",
+        'INSERT INTO stan_pollera (sklep, zsynchronizowane_do, ostatni_przebieg_at, ostatni_blad)' +
+          " VALUES ('allegro_swietlik', '2026-08-01T00:00:00.000Z', '2026-08-01T00:00:00.000Z', NULL)",
       ).run();
 
       await poller.przebieg();
@@ -759,9 +882,12 @@ describe('zbudujOms — kanał Allegro w pollerze', () => {
       expect(db.prepare("SELECT COUNT(*) c FROM zamowienia WHERE sklep = 'allegro_swietlik'").get().c).toBe(0);
       // …a kursor mimo to idzie do przodu — inaczej kazdy nastepny przebieg czytalby
       // to samo archiwum w kolko i nigdy nie dogonil terazniejszosci.
-      expect(poller.stany().find((s) => s.sklep === 'allegro_swietlik').zsynchronizowane_do)
-        .toBe('2026-08-04T07:17:35.018Z');
-    } finally { vi.unstubAllGlobals(); }
+      expect(poller.stany().find((s) => s.sklep === 'allegro_swietlik').zsynchronizowane_do).toBe(
+        '2026-08-04T07:17:35.018Z',
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   // Niepołączony kanał pozostaje w diagnostyce, lecz nie jest źródłem importu.
@@ -784,7 +910,9 @@ describe('zbudujOms — kanał Allegro w pollerze', () => {
       expect(stany.allegro_swietlik).toBeUndefined();
       expect(stany.allegro_polcien2).toBeNull();
       expect(stany.pro).toBeNull();
-    } finally { vi.unstubAllGlobals(); }
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
 
@@ -799,52 +927,81 @@ describe('zbudujOms — kanał Allegro w pollerze', () => {
 // jak spokojny dzien. To ono zamieniało pozostale usterki kanalu w niewidzialne.
 describe('zbudujOms — stan pollera pokazuje BŁĄD, a nie zawsze pierwszy sklep', () => {
   const KANAL = {
-    ALLEGRO_SWIETLIK_CLIENT_ID: 'id', ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
-    ALLEGRO_SWIETLIK_OD: '2026-07-01', ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
+    ALLEGRO_SWIETLIK_CLIENT_ID: 'id',
+    ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
+    ALLEGRO_SWIETLIK_OD: '2026-07-01',
+    ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
     ALLEGRO_USER_AGENT: UA,
   };
 
-  const sklepPusty = () => vi.fn(async () => ({
-    ok: true, status: 200, json: async () => [], headers: { get: () => '1' },
-  }));
+  const sklepPusty = () =>
+    vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => [],
+      headers: { get: () => '1' },
+    }));
 
   it('bez żadnego błędu oddaje pierwszy sklep — pasek działa dokładnie jak dotąd', async () => {
     vi.stubGlobal('fetch', sklepPusty());
     try {
       const { poller } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
       expect(poller.stan().sklep).toBe('pro');
-    } finally { vi.unstubAllGlobals(); }
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   // Brak pary oznacza brak importu; błąd aktywnego konta nadal wypiera czysty sklep.
   it('błąd KANAŁU wypiera z paska czysty stan sklepu', async () => {
     const sklep = sklepPusty();
-    vi.stubGlobal('fetch', vi.fn(async (url, init) => String(url).startsWith('https://api.allegro.test')
-      ? {ok:false,status:500,text:async()=> 'awaria konta Allegro'} : sklep(url,init)));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url, init) =>
+        String(url).startsWith('https://api.allegro.test')
+          ? { ok: false, status: 500, text: async () => 'awaria konta Allegro' }
+          : sklep(url, init),
+      ),
+    );
     try {
       const { poller, db } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
-      zapiszTokeny(db,'allegro_swietlik',{accessToken:'ACCESS',refreshToken:'REFRESH',wygasaAt:new Date(Date.now()+3600000).toISOString(),refreshWygasaAt:new Date(Date.now()+80*86400000).toISOString()});
+      zapiszTokeny(db, 'allegro_swietlik', {
+        accessToken: 'ACCESS',
+        refreshToken: 'REFRESH',
+        wygasaAt: new Date(Date.now() + 3600000).toISOString(),
+        refreshWygasaAt: new Date(Date.now() + 80 * 86400000).toISOString(),
+      });
       await expect(poller.przebieg()).rejects.toThrow(/500/);
 
       expect(poller.stan().sklep).toBe('allegro_swietlik');
       expect(poller.stan().ostatni_blad).toMatch(/500/);
       // …a komplet dalej jest w `stany()` — pasek pokazuje jeden wiersz, nie kasuje reszty.
       expect(poller.stany().map((s) => s.sklep)).toEqual(['pro', 'allegro_swietlik']);
-    } finally { vi.unstubAllGlobals(); }
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   // Blad SKLEPU ma dalej dzialac tak samo — poprawka nie moze przeslonic awarii, ktora
   // pasek pokazywal do tej pory.
   it('błąd sklepu dalej trafia na pasek', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => ({
-      ok: false, status: 500, text: async () => 'padło', headers: { get: () => '1' },
-    })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: false,
+        status: 500,
+        text: async () => 'padło',
+        headers: { get: () => '1' },
+      })),
+    );
     try {
       const { poller } = zbudujOms({ env: env(), createDpd: atrapaDpd() });
       await expect(poller.przebieg()).rejects.toThrow();
       expect(poller.stan().sklep).toBe('pro');
       expect(poller.stan().ostatni_blad).toBeTruthy();
-    } finally { vi.unstubAllGlobals(); }
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
 
@@ -854,19 +1011,29 @@ describe('zbudujOms — stan pollera pokazuje BŁĄD, a nie zawsze pierwszy skle
 // `mapujZamowienieAllegro` jest jedynym mapowaniem w tym repo, ktore w ogole rzuca.
 describe('zbudujOms — jedno złe zamówienie z Allegro nie zabija kanału', () => {
   const KANAL = {
-    ALLEGRO_SWIETLIK_CLIENT_ID: 'id', ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
-    ALLEGRO_SWIETLIK_OD: '2026-07-01', ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
+    ALLEGRO_SWIETLIK_CLIENT_ID: 'id',
+    ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
+    ALLEGRO_SWIETLIK_OD: '2026-07-01',
+    ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
     ALLEGRO_USER_AGENT: UA,
   };
   const dobre = (id, updatedAt) => ({
     id,
     updatedAt,
     status: 'READY_FOR_PROCESSING',
-    lineItems: [{
-      id: `${id}-1`, offer: { name: 'Szablon' }, quantity: 1,
-      price: { amount: '129.00', currency: 'PLN' }, boughtAt: '2026-08-03T09:13:41.325Z',
-    }],
-    delivery: { method: { id: '03f26351-f683-4db2-8895-f2c599280e3c', name: 'Allegro Kurier DPD (AD)' }, cost: { amount: '0.00' } },
+    lineItems: [
+      {
+        id: `${id}-1`,
+        offer: { name: 'Szablon' },
+        quantity: 1,
+        price: { amount: '129.00', currency: 'PLN' },
+        boughtAt: '2026-08-03T09:13:41.325Z',
+      },
+    ],
+    delivery: {
+      method: { id: '03f26351-f683-4db2-8895-f2c599280e3c', name: 'Allegro Kurier DPD (AD)' },
+      cost: { amount: '0.00' },
+    },
     payment: { type: 'ONLINE', finishedAt: '2026-08-03T09:14:00.000Z' },
     summary: { totalToPay: { amount: '129.00', currency: 'PLN' } },
   });
@@ -884,12 +1051,15 @@ describe('zbudujOms — jedno złe zamówienie z Allegro nie zabija kanału', ()
       zle('ALG-ZLE', '2026-08-04T08:00:00.000Z'),
       dobre('ALG-2', '2026-08-04T09:00:00.000Z'),
     ];
-    vi.stubGlobal('fetch', vi.fn(async (url) => {
-      if (String(url).startsWith('https://api.allegro.test')) {
-        return { ok: true, status: 200, json: async () => ({ checkoutForms: lista, totalCount: lista.length }) };
-      }
-      return { ok: true, status: 200, json: async () => [], headers: { get: () => '1' } };
-    }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url) => {
+        if (String(url).startsWith('https://api.allegro.test')) {
+          return { ok: true, status: 200, json: async () => ({ checkoutForms: lista, totalCount: lista.length }) };
+        }
+        return { ok: true, status: 200, json: async () => [], headers: { get: () => '1' } };
+      }),
+    );
     try {
       const { poller, db } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
       zapiszTokeny(db, 'allegro_swietlik', {
@@ -914,7 +1084,9 @@ describe('zbudujOms — jedno złe zamówienie z Allegro nie zabija kanału', ()
       expect(stan.ostatni_blad).toMatch(/Pominięto 1 zamówienie/);
       expect(stan.ostatni_blad).toContain('ALG-ZLE');
       expect(poller.stan().sklep).toBe('allegro_swietlik');
-    } finally { vi.unstubAllGlobals(); }
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
 
@@ -924,8 +1096,10 @@ describe('zbudujOms — jedno złe zamówienie z Allegro nie zabija kanału', ()
 // w ogole powstal (I1).
 describe('zbudujOms — numery listow z Allegro', () => {
   const KANAL = {
-    ALLEGRO_SWIETLIK_CLIENT_ID: 'id', ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
-    ALLEGRO_SWIETLIK_OD: '2026-07-01', ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
+    ALLEGRO_SWIETLIK_CLIENT_ID: 'id',
+    ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
+    ALLEGRO_SWIETLIK_OD: '2026-07-01',
+    ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
     ALLEGRO_USER_AGENT: UA,
   };
 
@@ -951,14 +1125,26 @@ describe('zbudujOms — numery listow z Allegro', () => {
   // przejsc CALA droge: env → zbudujOms → serwer → karta → Allegro → HTML.
   it('otwarcie karty zamowienia z Allegro naprawde dociaga numer listu', async () => {
     const zapytania = [];
-    vi.stubGlobal('fetch', vi.fn(async (url) => {
-      const adres = String(url);
-      zapytania.push(adres);
-      if (adres.endsWith('/shipments')) {
-        return { ok: true, status: 200, json: async () => ({ shipments: [{ waybill: 'AD0LK57DLG0756H4H', carrierId: 'ALLEGRO' }] }) };
-      }
-      return { ok: true, status: 200, json: async () => ({ checkoutForms: [], totalCount: 0 }), headers: { get: () => '1' } };
-    }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url) => {
+        const adres = String(url);
+        zapytania.push(adres);
+        if (adres.endsWith('/shipments')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ shipments: [{ waybill: 'AD0LK57DLG0756H4H', carrierId: 'ALLEGRO' }] }),
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ checkoutForms: [], totalCount: 0 }),
+          headers: { get: () => '1' },
+        };
+      }),
+    );
     try {
       const { app, db } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
       zapiszTokeny(db, 'allegro_swietlik', {
@@ -967,13 +1153,27 @@ describe('zbudujOms — numery listow z Allegro', () => {
         wygasaAt: new Date(Date.now() + 3600_000).toISOString(),
         refreshWygasaAt: new Date(Date.now() + 80 * 86400_000).toISOString(),
       });
-      const id = zapiszZamowienie(db, 'allegro_swietlik', {
-        zrodlo_id: 'e2a1', numer: 'e2a1', klient: { first_name: 'Jan', email: 'j@k.pl' },
-        dostawa: { city: 'Warszawa' }, metoda_wysylki: 'allegro_dpd', kwota_pobrania: null, chce_fakture: 0,
-        nip: null, kwota_brutto: '99.00', status_woo: null, oplacone_at: '2026-08-04T09:00:00',
-        anulowane: 0, utworzone_at: '2026-08-04T08:00:00',
-        pozycje: [{ nazwa: 'Szablon', sku: 'X', ilosc: 1, cena_brutto: '99.00', vat: null }],
-      }, {});
+      const id = zapiszZamowienie(
+        db,
+        'allegro_swietlik',
+        {
+          zrodlo_id: 'e2a1',
+          numer: 'e2a1',
+          klient: { first_name: 'Jan', email: 'j@k.pl' },
+          dostawa: { city: 'Warszawa' },
+          metoda_wysylki: 'allegro_dpd',
+          kwota_pobrania: null,
+          chce_fakture: 0,
+          nip: null,
+          kwota_brutto: '99.00',
+          status_woo: null,
+          oplacone_at: '2026-08-04T09:00:00',
+          anulowane: 0,
+          utworzone_at: '2026-08-04T08:00:00',
+          pozycje: [{ nazwa: 'Szablon', sku: 'X', ilosc: 1, cena_brutto: '99.00', vat: null }],
+        },
+        {},
+      );
 
       await app.ready();
       const odp = await app.inject({
@@ -986,15 +1186,20 @@ describe('zbudujOms — numery listow z Allegro', () => {
       expect(zapytania).toContain('https://api.allegro.test/order/checkout-forms/e2a1/shipments');
       expect(odp.body).toContain('AD0LK57DLG0756H4H');
       expect(db.prepare('SELECT kurier FROM przesylki WHERE zamowienie_id = ?').get(id).kurier).toBe('allegro');
-    } finally { vi.unstubAllGlobals(); }
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('klient kanalu pyta Allegro o przesylki TEGO zamowienia', async () => {
     const zapytania = [];
-    vi.stubGlobal('fetch', vi.fn(async (url) => {
-      zapytania.push(String(url));
-      return { ok: true, status: 200, json: async () => ({ shipments: [] }) };
-    }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url) => {
+        zapytania.push(String(url));
+        return { ok: true, status: 200, json: async () => ({ shipments: [] }) };
+      }),
+    );
     try {
       const { klienciKanalow, db } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
       zapiszTokeny(db, 'allegro_swietlik', {
@@ -1005,7 +1210,9 @@ describe('zbudujOms — numery listow z Allegro', () => {
       });
       await klienciKanalow.allegro_swietlik.pobierzPrzesylki('e2a1');
       expect(zapytania).toContain('https://api.allegro.test/order/checkout-forms/e2a1/shipments');
-    } finally { vi.unstubAllGlobals(); }
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
 
@@ -1019,8 +1226,10 @@ describe('zbudujOms — numery listow z Allegro', () => {
 // env → zbudujOms → buildOmsServer → trasa → usluga → HTTP do Allegro → nasza baza.
 describe('zbudujOms — faktura na konto kupującego w Allegro', () => {
   const KANAL = {
-    ALLEGRO_SWIETLIK_CLIENT_ID: 'id', ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
-    ALLEGRO_SWIETLIK_OD: '2026-07-01', ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
+    ALLEGRO_SWIETLIK_CLIENT_ID: 'id',
+    ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
+    ALLEGRO_SWIETLIK_OD: '2026-07-01',
+    ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
     ALLEGRO_USER_AGENT: UA,
   };
   const PDF = Buffer.concat([Buffer.from('%PDF-1.4'), Buffer.alloc(64)]);
@@ -1036,15 +1245,31 @@ describe('zbudujOms — faktura na konto kupującego w Allegro', () => {
       wygasaAt: new Date(Date.now() + 3600_000).toISOString(),
       refreshWygasaAt: new Date(Date.now() + 80 * 86400_000).toISOString(),
     });
-    const id = zapiszZamowienie(db, 'allegro_swietlik', {
-      zrodlo_id: 'CF-1', numer: 'CF-1', klient: { first_name: 'Jan', email: 'j@k.pl' },
-      dostawa: { city: 'Warszawa' }, metoda_wysylki: 'allegro_dpd', kwota_pobrania: null, chce_fakture: 1,
-      nip: null, kwota_brutto: '99.00', status_woo: null, oplacone_at: '2026-08-05T09:00:00',
-      anulowane: 0, utworzone_at: '2026-08-05T08:00:00',
-      pozycje: [{ nazwa: 'Szablon', sku: 'X', ilosc: 1, cena_brutto: '99.00', vat: null }],
-    }, {});
-    db.prepare(`INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, ksef_numer, utworzona_at)
-      VALUES (?,?,?,?,?)`).run(id, 'u1', '12/08/2026', 'KS-1', '2026-08-05T10:00:00Z');
+    const id = zapiszZamowienie(
+      db,
+      'allegro_swietlik',
+      {
+        zrodlo_id: 'CF-1',
+        numer: 'CF-1',
+        klient: { first_name: 'Jan', email: 'j@k.pl' },
+        dostawa: { city: 'Warszawa' },
+        metoda_wysylki: 'allegro_dpd',
+        kwota_pobrania: null,
+        chce_fakture: 1,
+        nip: null,
+        kwota_brutto: '99.00',
+        status_woo: null,
+        oplacone_at: '2026-08-05T09:00:00',
+        anulowane: 0,
+        utworzone_at: '2026-08-05T08:00:00',
+        pozycje: [{ nazwa: 'Szablon', sku: 'X', ilosc: 1, cena_brutto: '99.00', vat: null }],
+      },
+      {},
+    );
+    db.prepare(
+      `INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, ksef_numer, utworzona_at)
+      VALUES (?,?,?,?,?)`,
+    ).run(id, 'u1', '12/08/2026', 'KS-1', '2026-08-05T10:00:00Z');
     return id;
   };
 
@@ -1055,7 +1280,8 @@ describe('zbudujOms — faktura na konto kupującego w Allegro', () => {
 
   it('bez inFaktu usługi NIE MA, choć kanał jest — nie ma skąd wziąć dokumentu', () => {
     const { fakturaAllegro } = zbudujOms({
-      env: env({ ...KANAL, INFAKT_API_KEY: undefined }), createDpd: atrapaDpd(),
+      env: env({ ...KANAL, INFAKT_API_KEY: undefined }),
+      createDpd: atrapaDpd(),
     });
     expect(fakturaAllegro).toBeNull();
   });
@@ -1066,26 +1292,33 @@ describe('zbudujOms — faktura na konto kupującego w Allegro', () => {
   // juz raz. Dlatego mierzymy PO SKUTKU: prawdziwe zadania do Allegro i slad w bazie.
   it('przycisk na karcie NAPRAWDĘ wysyła dokument — env → trasa → Allegro → baza', async () => {
     const zapytania = [];
-    vi.stubGlobal('fetch', vi.fn(async (url, opcje = {}) => {
-      const adres = String(url);
-      zapytania.push(`${opcje.method ?? 'GET'} ${adres}`);
-      // PDF na swiezo z inFaktu — panel nie trzyma kopii dokumentu.
-      if (adres.includes('/v3/invoices/u1/pdf.json')) {
-        return { ok: true, status: 200, arrayBuffer: async () => PDF };
-      }
-      // ⚠️ Zdalna lista faktur oddaje na produkcji 400 (zmierzone) — atrapa oddaje
-      // to samo, zeby test mierzyl RZECZYWISTOSC, a nie zasob, ktorego dzis nie ma.
-      if (adres.endsWith('/invoices') && (opcje.method ?? 'GET') === 'GET') {
-        return { ok: false, status: 400, json: async () => ({}) };
-      }
-      if (adres.endsWith('/invoices') && opcje.method === 'POST') {
-        return { ok: true, status: 201, json: async () => ({ id: 'INV-1' }) };
-      }
-      if (adres.endsWith('/invoices/INV-1/file') && opcje.method === 'PUT') {
-        return { ok: true, status: 200, json: async () => ({ file: { securityVerification: { status: 'WAITING' } } }) };
-      }
-      return { ok: true, status: 200, json: async () => ({ checkoutForms: [], totalCount: 0 }) };
-    }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url, opcje = {}) => {
+        const adres = String(url);
+        zapytania.push(`${opcje.method ?? 'GET'} ${adres}`);
+        // PDF na swiezo z inFaktu — panel nie trzyma kopii dokumentu.
+        if (adres.includes('/v3/invoices/u1/pdf.json')) {
+          return { ok: true, status: 200, arrayBuffer: async () => PDF };
+        }
+        // ⚠️ Zdalna lista faktur oddaje na produkcji 400 (zmierzone) — atrapa oddaje
+        // to samo, zeby test mierzyl RZECZYWISTOSC, a nie zasob, ktorego dzis nie ma.
+        if (adres.endsWith('/invoices') && (opcje.method ?? 'GET') === 'GET') {
+          return { ok: false, status: 400, json: async () => ({}) };
+        }
+        if (adres.endsWith('/invoices') && opcje.method === 'POST') {
+          return { ok: true, status: 201, json: async () => ({ id: 'INV-1' }) };
+        }
+        if (adres.endsWith('/invoices/INV-1/file') && opcje.method === 'PUT') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ file: { securityVerification: { status: 'WAITING' } } }),
+          };
+        }
+        return { ok: true, status: 200, json: async () => ({ checkoutForms: [], totalCount: 0 }) };
+      }),
+    );
     try {
       const { app, db } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
       const id = zamowienieZFaktura(db);
@@ -1097,7 +1330,9 @@ describe('zbudujOms — faktura na konto kupującego w Allegro', () => {
       expect(karta.body).toContain(`/zamowienia/${id}/faktura-allegro`);
 
       const odp = await app.inject({
-        method: 'POST', url: `/zamowienia/${id}/faktura-allegro`, headers: naglowek,
+        method: 'POST',
+        url: `/zamowienia/${id}/faktura-allegro`,
+        headers: naglowek,
       });
 
       expect(odp.statusCode).toBe(302);
@@ -1107,7 +1342,9 @@ describe('zbudujOms — faktura na konto kupującego w Allegro', () => {
       expect(f.allegro_invoice_id).toBe('INV-1');
       expect(f.allegro_wyslana_at).not.toBeNull();
       expect(f.allegro_weryfikacja).toBe('WAITING');
-    } finally { vi.unstubAllGlobals(); }
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   // ⚠️⚠️ FURTKA „BEZ NUMERU KSEF" ZNIKNELA — a wraz z nia jej
@@ -1117,8 +1354,10 @@ describe('zbudujOms — faktura na konto kupującego w Allegro', () => {
   it('trasy „bez numeru KSeF" w zbudowanym panelu NIE MA', async () => {
     const { app, db } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
     const id = zamowienieZFaktura(db);
-    db.prepare('UPDATE faktury SET ksef_numer = NULL, utworzona_at = ? WHERE zamowienie_id = ?')
-      .run(new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString(), id);
+    db.prepare('UPDATE faktury SET ksef_numer = NULL, utworzona_at = ? WHERE zamowienie_id = ?').run(
+      new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString(),
+      id,
+    );
     await app.ready();
 
     const karta = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
@@ -1126,7 +1365,9 @@ describe('zbudujOms — faktura na konto kupującego w Allegro', () => {
     expect(karta.body).not.toContain('faktura-allegro-bez-ksef');
 
     const odp = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/faktura-allegro-bez-ksef`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/faktura-allegro-bez-ksef`,
+      headers: naglowek,
     });
     expect(odp.statusCode).toBe(404);
     const f = db.prepare('SELECT * FROM faktury WHERE zamowienie_id = ?').get(id);
@@ -1140,7 +1381,12 @@ describe('zbudujOms — faktura na konto kupującego w Allegro', () => {
     const zarejestrowane = [];
     const { poller, czuwaczKsef } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
     uruchomZegary({
-      poller, czuwaczKsef, ustawInterwal: (fn, ms) => { zarejestrowane.push(ms); return zarejestrowane.length; },
+      poller,
+      czuwaczKsef,
+      ustawInterwal: (fn, ms) => {
+        zarejestrowane.push(ms);
+        return zarejestrowane.length;
+      },
     });
     expect(zarejestrowane).toEqual([2 * 60 * 1000, 60 * 60 * 1000]);
   });
@@ -1158,7 +1404,13 @@ describe('zbudujOms — adres nadawcy', () => {
       // `phone` i `email` sa PUSTE, bo DPD ich nie wymaga — a InPost owszem i dlatego
       // odmawia nadania do paczkomatu, gdy ich brak.
       // Ten test pilnuje KSZTALTU adresu firmy: nowe pole ma sie tu pojawic swiadomie.
-      nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'Fabryczna 7', kod: '00-950', miasto: 'Warszawa', kraj: 'PL', phone: '', email: '',
+      nazwa: 'Pracownia Półcień Anna Wzorcowa',
+      ulica: 'Fabryczna 7',
+      kod: '00-950',
+      miasto: 'Warszawa',
+      kraj: 'PL',
+      phone: '',
+      email: '',
     });
   });
 
@@ -1193,9 +1445,18 @@ describe('src/oms.js pozostaje cienkim punktem wejścia', () => {
     const zrodlo = readFileSync(sciezka, 'utf8');
     expect(await wykonajWejscie()).toEqual([
       ['/ustawienia/zamowienia-i-wysylka', 200, 'Szablony paczek'],
-      ['/faktury', 200, 'Faktury'], ['/magazyn', 200, 'Magazyn'], ['/raporty', 200, 'Raporty'], ['/wiadomosci', 200, 'Wiadomości'],
+      ['/faktury', 200, 'Faktury'],
+      ['/magazyn', 200, 'Magazyn'],
+      ['/raporty', 200, 'Raporty'],
+      ['/wiadomosci', 200, 'Wiadomości'],
     ]);
-    for (const zakazane of ['createDpdClient', 'createInfaktClient', 'createNadanie', 'createFaktura', 'buildOmsServer']) {
+    for (const zakazane of [
+      'createDpdClient',
+      'createInfaktClient',
+      'createNadanie',
+      'createFaktura',
+      'buildOmsServer',
+    ]) {
       expect(zrodlo).not.toContain(zakazane);
     }
   });
@@ -1212,29 +1473,37 @@ describe('src/oms.js pozostaje cienkim punktem wejścia', () => {
     const sciezka = fileURLToPath(new URL('../../src/oms.js', import.meta.url));
     const zrodlo = readFileSync(sciezka, 'utf8');
     const wynik = await wykonajZegary();
-    expect(wynik.nazwy).toEqual([
-      ['poller', 120000], ['czuwaczKsef', 3600000], ['czuwaczArchiwumSprzedazy', 3600000],
-      ['pollerWiadomosci', 300000], ['czuwaczFormulki', 120000], ['czuwaczPrzesylek', 3600000],
-      ['czuwaczPodjazdow', 600000], ['czuwaczKosztow', 3600000], ['czuwaczOstrzezen', 3600000],
-      ['czuwaczReklam', 3600000],
-      // Automat wysyłki do KSeF (tyka co minutę, sam rozstrzyga porę; domyślnie wyłączony).
-      ['automatKsef', 60000],
-      // Silnik reguł automatyzacji (co minutę; przy zerze reguł jedno SELECT, zero zapisów).
-      ['automatyzacje', 60000],
-      // Ponawianie statusu po błędzie przejściowym (co 15 min).
-      ['ponawianieStatusow', 900000],
-      // Sprzątanie dziennika API (raz na dobę).
-      ['api-dziennik', 3600000],
-      // Sprzątanie idempotencji API (wpisy starsze niż 7 dni).
-      ['api-idempotencja', 3600000],
-      // Pętla ofert ERLI (co 5 min; bez czynnego konta ERLI zero zapisów).
-      ['petlaOfert', 300000],
-      // Pętla ofert Allegro (co 5 min; bez konta z zgodą na oferty zero zapytań).
-      ['petlaOfertAllegro', 300000],
-      // Pętla stanów Woo (co 5 min) i strażnik stanów (co 30 s; przy wyłączonych stanach nic nie robi).
-      ['petlaStanowWoo', 300000],
-      ['straznikStanow', 30000],
-    ].sort());
+    expect(wynik.nazwy).toEqual(
+      [
+        ['poller', 120000],
+        ['czuwaczKsef', 3600000],
+        ['czuwaczArchiwumSprzedazy', 3600000],
+        ['pollerWiadomosci', 300000],
+        ['czuwaczFormulki', 120000],
+        ['czuwaczPrzesylek', 3600000],
+        ['czuwaczPodjazdow', 600000],
+        ['czuwaczKosztow', 3600000],
+        ['czuwaczOstrzezen', 3600000],
+        ['czuwaczReklam', 3600000],
+        // Automat wysyłki do KSeF (tyka co minutę, sam rozstrzyga porę; domyślnie wyłączony).
+        ['automatKsef', 60000],
+        // Silnik reguł automatyzacji (co minutę; przy zerze reguł jedno SELECT, zero zapisów).
+        ['automatyzacje', 60000],
+        // Ponawianie statusu po błędzie przejściowym (co 15 min).
+        ['ponawianieStatusow', 900000],
+        // Sprzątanie dziennika API (raz na dobę).
+        ['api-dziennik', 3600000],
+        // Sprzątanie idempotencji API (wpisy starsze niż 7 dni).
+        ['api-idempotencja', 3600000],
+        // Pętla ofert ERLI (co 5 min; bez czynnego konta ERLI zero zapisów).
+        ['petlaOfert', 300000],
+        // Pętla ofert Allegro (co 5 min; bez konta z zgodą na oferty zero zapytań).
+        ['petlaOfertAllegro', 300000],
+        // Pętla stanów Woo (co 5 min) i strażnik stanów (co 30 s; przy wyłączonych stanach nic nie robi).
+        ['petlaStanowWoo', 300000],
+        ['straznikStanow', 30000],
+      ].sort(),
+    );
     expect(wynik.liczba).toBe(19);
     expect(zrodlo).not.toMatch(/setInterval/);
   });
@@ -1249,7 +1518,10 @@ describe('uruchomZegary', () => {
   // test zalezny od kolejnosci plikow w suicie.
   const sztucznyZegar = () => {
     const zarejestrowane = [];
-    const ustaw = (fn, ms) => { zarejestrowane.push({ fn, ms }); return zarejestrowane.length; };
+    const ustaw = (fn, ms) => {
+      zarejestrowane.push({ fn, ms });
+      return zarejestrowane.length;
+    };
     const tyknij = (ms) => zarejestrowane.filter((z) => z.ms === ms).forEach((z) => z.fn());
     return { zarejestrowane, ustaw, tyknij };
   };
@@ -1356,7 +1628,11 @@ describe('uruchomZegary', () => {
     const czuwaczOstrzezen = { przebieg: vi.fn().mockResolvedValue({ pominiety: false }) };
 
     uruchomZegary({
-      poller: null, czuwaczKsef: null, czuwaczOstrzezen, ustawInterwal: zegar.ustaw, puls,
+      poller: null,
+      czuwaczKsef: null,
+      czuwaczOstrzezen,
+      ustawInterwal: zegar.ustaw,
+      puls,
     });
     zegar.tyknij(GODZINA);
     await Promise.resolve();
@@ -1373,7 +1649,12 @@ describe('uruchomZegary', () => {
     const czuwaczOstrzezen = { przebieg: vi.fn().mockResolvedValue({ pominiety: true }) };
 
     uruchomZegary({
-      poller: null, czuwaczKsef: null, czuwaczOstrzezen, ustawInterwal: zegar.ustaw, log, puls,
+      poller: null,
+      czuwaczKsef: null,
+      czuwaczOstrzezen,
+      ustawInterwal: zegar.ustaw,
+      log,
+      puls,
     });
     zegar.tyknij(GODZINA);
     await Promise.resolve();
@@ -1390,7 +1671,12 @@ describe('uruchomZegary', () => {
     const czuwaczOstrzezen = { przebieg: vi.fn().mockRejectedValue(new Error('inFakt 500')) };
 
     uruchomZegary({
-      poller: null, czuwaczKsef: null, czuwaczOstrzezen, ustawInterwal: zegar.ustaw, log, puls,
+      poller: null,
+      czuwaczKsef: null,
+      czuwaczOstrzezen,
+      ustawInterwal: zegar.ustaw,
+      log,
+      puls,
     });
     expect(() => zegar.tyknij(GODZINA)).not.toThrow();
     await Promise.resolve();
@@ -1419,7 +1705,9 @@ describe('zbudujOms — czuwacz ostrzeżeń (lustra tabelki strony głównej)', 
     expect(zdrowie().czuwaczOstrzezen.wlaczony).toBe(true);
   });
 
-  it('src/oms.js przekazuje czuwacza ostrzeżeń do zegarów', async () => { await wykonajZegary('czuwaczOstrzezen'); });
+  it('src/oms.js przekazuje czuwacza ostrzeżeń do zegarów', async () => {
+    await wykonajZegary('czuwaczOstrzezen');
+  });
 });
 
 // ⚠️⚠️ OKABLOWANIE ODSYLANIA STATUSU DO KANALU.
@@ -1433,8 +1721,10 @@ describe('zbudujOms — czuwacz ostrzeżeń (lustra tabelki strony głównej)', 
 // argument glebiej. Dlatego test mierzy RUCH W SIECI, a nie ksztalt zwroconego obiektu.
 describe('zbudujOms — status jedzie do KANAŁU (nie tylko do sklepu)', () => {
   const KANAL = {
-    ALLEGRO_SWIETLIK_CLIENT_ID: 'id', ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
-    ALLEGRO_SWIETLIK_OD: '2026-07-01', ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
+    ALLEGRO_SWIETLIK_CLIENT_ID: 'id',
+    ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
+    ALLEGRO_SWIETLIK_OD: '2026-07-01',
+    ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
     ALLEGRO_USER_AGENT: UA,
   };
 
@@ -1456,18 +1746,19 @@ describe('zbudujOms — status jedzie do KANAŁU (nie tylko do sklepu)', () => {
 
   const zamowienieZKanalu = (db) => {
     db.prepare(
-      "INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at, wyslane_at)"
-      + " VALUES ('allegro_swietlik', 'CF-77', 'ALG-77', '129.00', '2026-08-05T09:00:00', '2026-08-05T12:00:00')",
+      'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at, wyslane_at)' +
+        " VALUES ('allegro_swietlik', 'CF-77', 'ALG-77', '129.00', '2026-08-05T09:00:00', '2026-08-05T12:00:00')",
     ).run();
     return db.prepare("SELECT id FROM zamowienia WHERE zrodlo_id = 'CF-77'").get().id;
   };
 
-  const zTokenami = (db) => zapiszTokeny(db, 'allegro_swietlik', {
-    accessToken: 'ACCESS',
-    refreshToken: 'REFRESH',
-    wygasaAt: new Date(Date.now() + 3600_000).toISOString(),
-    refreshWygasaAt: new Date(Date.now() + 80 * 86400_000).toISOString(),
-  });
+  const zTokenami = (db) =>
+    zapiszTokeny(db, 'allegro_swietlik', {
+      accessToken: 'ACCESS',
+      refreshToken: 'REFRESH',
+      wygasaAt: new Date(Date.now() + 3600_000).toISOString(),
+      refreshWygasaAt: new Date(Date.now() + 80 * 86400_000).toISOString(),
+    });
 
   it('usługa sync dostaje klientów kanałów — status naprawdę leci do Allegro', async () => {
     const { zapytania, fetchImpl } = atrapaAllegro();
@@ -1483,7 +1774,9 @@ describe('zbudujOms — status jedzie do KANAŁU (nie tylko do sklepu)', () => {
       const zapis = zapytania.find((z) => z.metoda === 'PUT');
       expect(zapis).toBeTruthy();
       expect(zapis.url).toBe('https://api.allegro.test/order/checkout-forms/CF-77/fulfillment');
-    } finally { vi.unstubAllGlobals(); }
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   // ⚠️ SAME KANALY, BEZ ANI JEDNEGO SKLEPU. Dawniej usluga powstawala wylacznie przy
@@ -1505,7 +1798,9 @@ describe('zbudujOms — status jedzie do KANAŁU (nie tylko do sklepu)', () => {
 
       expect((await syncSklep.odeslijStatus(id)).wyslany).toBe('SENT');
       expect(zapytania.some((z) => z.metoda === 'PUT')).toBe(true);
-    } finally { vi.unstubAllGlobals(); }
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
 
@@ -1514,8 +1809,10 @@ describe('zbudujOms — status jedzie do KANAŁU (nie tylko do sklepu)', () => {
 // a nie „czuwacz bez roboty": bez kanalu Allegro nie ma po co pytac, bez inFaktu nie ma czego.
 describe('zbudujOms — czuwacz KSeF', () => {
   const KANAL_KSEF = {
-    ALLEGRO_SWIETLIK_CLIENT_ID: 'id', ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
-    ALLEGRO_SWIETLIK_OD: '2026-07-01', ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
+    ALLEGRO_SWIETLIK_CLIENT_ID: 'id',
+    ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
+    ALLEGRO_SWIETLIK_OD: '2026-07-01',
+    ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
     ALLEGRO_USER_AGENT: UA,
   };
 
@@ -1527,8 +1824,8 @@ describe('zbudujOms — czuwacz KSeF', () => {
 
   // Czuwacz jest zbudowany od startu; pierwsze konto nie wymaga nowego zegara.
   it('bez konta Allegro czuwacz istnieje i może wykonać pusty przebieg', async () => {
-    const {czuwaczKsef}=zbudujOms({ env: env(), createDpd: atrapaDpd() });
-    expect(await czuwaczKsef.przebieg()).toMatchObject({sprawdzone:0,znalezione:0});
+    const { czuwaczKsef } = zbudujOms({ env: env(), createDpd: atrapaDpd() });
+    expect(await czuwaczKsef.przebieg()).toMatchObject({ sprawdzone: 0, znalezione: 0 });
   });
 
   it('bez inFaktu czuwacza NIE MA', () => {
@@ -1548,10 +1845,9 @@ describe('zbudujOms — czuwacz KSeF', () => {
   // Podmieniamy metode NA ZWROCONYM KLIENCIE: jesli czuwacz dostal TEN OBIEKT, podmiana go
   // dosiegnie. Jesli nie dostal nic — kolumna zostanie nietknieta i test padnie.
   it('czuwacz dostaje klientów kanałów — inaczej druga pętla nie ma kogo zapytać', async () => {
-    const {
-      czuwaczKsef, klienciKanalow, db, infakt,
-    } = zbudujOms({
-      env: env(KANAL_KSEF), createDpd: atrapaDpd(),
+    const { czuwaczKsef, klienciKanalow, db, infakt } = zbudujOms({
+      env: env(KANAL_KSEF),
+      createDpd: atrapaDpd(),
     });
     klienciKanalow.allegro_swietlik.pobierzFakturyZamowienia = async () => [
       { id: 'INV-1', file: { securityVerification: { status: 'REJECTED' } } },
@@ -1560,23 +1856,40 @@ describe('zbudujOms — czuwacz KSeF', () => {
     // przebiegu — stub trzyma ten test z dala od sieci, tak samo jak stub wyżej trzyma
     // drugą pętlę z dala od Allegro.
     infakt.listaFaktur = async () => [];
-    const id = zapiszZamowienie(db, 'allegro_swietlik', {
-      zrodlo_id: 'CF-WERYF', numer: '4100', klient: { first_name: 'Jan' }, dostawa: {}, pozycje: [],
-      metoda_wysylki: 'dpd', kwota_pobrania: null, nip: null, koszt_dostawy_brutto: '0.00',
-      status_woo: 'processing', oplacone_at: null, anulowane: 0,
-      kwota_brutto: '100.00', chce_fakture: 1, utworzone_at: '2026-08-05T09:00:00',
-    }, {});
+    const id = zapiszZamowienie(
+      db,
+      'allegro_swietlik',
+      {
+        zrodlo_id: 'CF-WERYF',
+        numer: '4100',
+        klient: { first_name: 'Jan' },
+        dostawa: {},
+        pozycje: [],
+        metoda_wysylki: 'dpd',
+        kwota_pobrania: null,
+        nip: null,
+        koszt_dostawy_brutto: '0.00',
+        status_woo: 'processing',
+        oplacone_at: null,
+        anulowane: 0,
+        kwota_brutto: '100.00',
+        chce_fakture: 1,
+        utworzone_at: '2026-08-05T09:00:00',
+      },
+      {},
+    );
     // ⚠️ `ksef_numer` WYPELNIONY i `allegro_wyslana_at` WYPELNIONE — czyli faktura wypada
     // z PIERWSZEJ petli. Bez tego przebieg poszedlby do prawdziwego inFaktu przez siec.
     db.prepare(
-      'INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, ksef_numer, allegro_invoice_id,'
-      + ' allegro_wyslana_at, allegro_weryfikacja, utworzona_at) VALUES (?,?,?,?,?,?,?,?)',
+      'INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, ksef_numer, allegro_invoice_id,' +
+        ' allegro_wyslana_at, allegro_weryfikacja, utworzona_at) VALUES (?,?,?,?,?,?,?,?)',
     ).run(id, 'u1', 'FV/9/2026', 'KS-1', 'INV-1', new Date().toISOString(), 'WAITING', new Date().toISOString());
 
     await czuwaczKsef.przebieg();
 
-    expect(db.prepare('SELECT allegro_weryfikacja FROM faktury WHERE zamowienie_id = ?').get(id)
-      .allegro_weryfikacja).toBe('REJECTED');
+    expect(
+      db.prepare('SELECT allegro_weryfikacja FROM faktury WHERE zamowienie_id = ?').get(id).allegro_weryfikacja,
+    ).toBe('REJECTED');
   });
 });
 
@@ -1588,8 +1901,10 @@ describe('zbudujOms — czuwacz KSeF', () => {
 // przetestowany i bez ani jednego wywołania.
 describe('zbudujOms — okablowanie automatu wysyłki faktury do Allegro', () => {
   const KANAL = {
-    ALLEGRO_SWIETLIK_CLIENT_ID: 'id', ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
-    ALLEGRO_SWIETLIK_OD: '2026-07-01', ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
+    ALLEGRO_SWIETLIK_CLIENT_ID: 'id',
+    ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
+    ALLEGRO_SWIETLIK_OD: '2026-07-01',
+    ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
     ALLEGRO_USER_AGENT: UA,
   };
 
@@ -1598,7 +1913,10 @@ describe('zbudujOms — okablowanie automatu wysyłki faktury do Allegro', () =>
     const oms = zbudujOms({
       env: env(KANAL),
       createDpd: atrapaDpd(),
-      createCzuwacz: (args) => { dostal = args.fakturaAllegro; return { przebieg: async () => ({}) }; },
+      createCzuwacz: (args) => {
+        dostal = args.fakturaAllegro;
+        return { przebieg: async () => ({}) };
+      },
     });
     expect(dostal).not.toBe('NIE-ZBUDOWANO');
     // ⚠️ TA SAMA INSTANCJA, nie „jakaś usługa": przycisk na karcie i automat mają iść jedną
@@ -1622,8 +1940,10 @@ describe('zbudujOms — okablowanie automatu wysyłki faktury do Allegro', () =>
 // tu nie dowodzą: wstrzykują go wprost.
 describe('zbudujOms — kurier Wysyłam z Allegro', () => {
   const KANAL_WZA = {
-    ALLEGRO_SWIETLIK_CLIENT_ID: 'id', ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
-    ALLEGRO_SWIETLIK_OD: '2026-07-01', ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
+    ALLEGRO_SWIETLIK_CLIENT_ID: 'id',
+    ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
+    ALLEGRO_SWIETLIK_OD: '2026-07-01',
+    ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
     ALLEGRO_USER_AGENT: UA,
   };
 
@@ -1632,7 +1952,10 @@ describe('zbudujOms — kurier Wysyłam z Allegro', () => {
     const { nadanie } = zbudujOms({
       env: env(KANAL_WZA),
       createDpd: atrapaDpd(),
-      createAllegroWza: (opcje) => { utworzone.push(opcje); return { nadaj: vi.fn(), sprawdzPrzesylke: vi.fn() }; },
+      createAllegroWza: (opcje) => {
+        utworzone.push(opcje);
+        return { nadaj: vi.fn(), sprawdzPrzesylke: vi.fn() };
+      },
     });
     expect(nadanie).not.toBeNull();
     expect(utworzone).toHaveLength(1);
@@ -1648,20 +1971,39 @@ describe('zbudujOms — kurier Wysyłam z Allegro', () => {
   // zamówienia naprawdę trafia do tego kuriera.
   it('kurier allegro_wza jest w mapie — nadanie allegro_dpd trafia do NIEGO', async () => {
     const nadajWza = vi.fn().mockResolvedValue({
-      shipmentId: 'cmd-1', numerListu: 'AD0TEST', wTrakcieTworzenia: false,
-      etykietaPdf: Buffer.from('%PDF-1.4'), etykietaZpl: null, surowa: null,
+      shipmentId: 'cmd-1',
+      numerListu: 'AD0TEST',
+      wTrakcieTworzenia: false,
+      etykietaPdf: Buffer.from('%PDF-1.4'),
+      etykietaZpl: null,
+      surowa: null,
     });
     const { db, nadanie } = zbudujOms({
       env: env(KANAL_WZA),
       createDpd: atrapaDpd(),
       createAllegroWza: () => ({ nadaj: nadajWza, sprawdzPrzesylke: vi.fn() }),
     });
-    const id = zapiszZamowienie(db, 'allegro_swietlik', {
-      zrodlo_id: 'ord-1', numer: 'A-1', klient: { first_name: 'Jan', email: 'j@k.pl' },
-      dostawa: { city: 'Warszawa' }, pozycje: [], metoda_wysylki: 'allegro_dpd',
-      kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '99.00',
-      status_woo: null, oplacone_at: null, anulowane: 0, utworzone_at: '2026-08-11T08:00:00',
-    }, {});
+    const id = zapiszZamowienie(
+      db,
+      'allegro_swietlik',
+      {
+        zrodlo_id: 'ord-1',
+        numer: 'A-1',
+        klient: { first_name: 'Jan', email: 'j@k.pl' },
+        dostawa: { city: 'Warszawa' },
+        pozycje: [],
+        metoda_wysylki: 'allegro_dpd',
+        kwota_pobrania: null,
+        chce_fakture: 0,
+        nip: null,
+        kwota_brutto: '99.00',
+        status_woo: null,
+        oplacone_at: null,
+        anulowane: 0,
+        utworzone_at: '2026-08-11T08:00:00',
+      },
+      {},
+    );
     await nadanie.nadaj(id, { waga: 1, dlugosc: 10, szerokosc: 10, wysokosc: 10 });
     expect(nadajWza).toHaveBeenCalledTimes(1);
   });
@@ -1672,10 +2014,13 @@ describe('zbudujOms — kurier Wysyłam z Allegro', () => {
     zbudujOms({
       env: env(),
       createDpd: atrapaDpd(),
-      createAllegroWza: (o) => { utworzone.push(o); return {}; },
+      createAllegroWza: (o) => {
+        utworzone.push(o);
+        return {};
+      },
     });
     expect(utworzone).toHaveLength(1);
-    expect(() => utworzone[0].allegroDla({sklep:'allegro_niepodlaczone'})).toThrow(/nie jest podpięty/);
+    expect(() => utworzone[0].allegroDla({ sklep: 'allegro_niepodlaczone' })).toThrow(/nie jest podpięty/);
   });
 
   // ⚠️ KONTO PER KANAŁ. Kanały Allegro to osobne konta — jeden klient na całą usługę
@@ -1685,11 +2030,16 @@ describe('zbudujOms — kurier Wysyłam z Allegro', () => {
     zbudujOms({
       env: env({
         ...KANAL_WZA,
-        ALLEGRO_POLCIEN2_CLIENT_ID: 'id2', ALLEGRO_POLCIEN2_CLIENT_SECRET: 'sekret2',
-        ALLEGRO_POLCIEN2_OD: '2026-07-01', ALLEGRO_POLCIEN2_API: 'https://api2.allegro.test',
+        ALLEGRO_POLCIEN2_CLIENT_ID: 'id2',
+        ALLEGRO_POLCIEN2_CLIENT_SECRET: 'sekret2',
+        ALLEGRO_POLCIEN2_OD: '2026-07-01',
+        ALLEGRO_POLCIEN2_API: 'https://api2.allegro.test',
       }),
       createDpd: atrapaDpd(),
-      createAllegroWza: (o) => { utworzone.push(o); return {}; },
+      createAllegroWza: (o) => {
+        utworzone.push(o);
+        return {};
+      },
     });
     const { allegroDla } = utworzone[0];
     const a = allegroDla({ sklep: 'allegro_swietlik' });
@@ -1725,7 +2075,10 @@ describe('zbudujOms — czuwacz kosztów (KSeF)', () => {
   it('bez KSEF_TOKEN czuwacz kosztów jest niedostępny i niczego nie pobiera', async () => {
     const { czuwaczKosztow } = zbudujOms({ env: env(), createDpd: atrapaDpd() });
     expect(czuwaczKosztow.dostepny()).toBe(false);
-    await expect(czuwaczKosztow.przebieg({ wymuszony: true })).resolves.toEqual({ pominiety: true, powod: 'brak tokenu KSeF' });
+    await expect(czuwaczKosztow.przebieg({ wymuszony: true })).resolves.toEqual({
+      pominiety: true,
+      powod: 'brak tokenu KSeF',
+    });
   });
 
   it('czuwacz kosztów dostaje sesję I klienta KSeF, a nie samą bazę', () => {
@@ -1733,7 +2086,10 @@ describe('zbudujOms — czuwacz kosztów (KSeF)', () => {
     const oms = zbudujOms({
       env: env(KSEF),
       createDpd: atrapaDpd(),
-      createCzuwaczKosztow: (args) => { dostal = args; return { przebieg: async () => ({}) }; },
+      createCzuwaczKosztow: (args) => {
+        dostal = args;
+        return { przebieg: async () => ({}) };
+      },
     });
     expect(dostal).not.toBeNull();
     expect(dostal.db).toBe(oms.db);
@@ -1755,17 +2111,25 @@ describe('zbudujOms — czuwacz kosztów (KSeF)', () => {
       createDpd: atrapaDpd(),
       createKsefKlient: (opcje) => {
         const k = {
-          opcje, zaloguj: async () => ({}), odswiez: async () => ({}), pobierzMetadane: async () => ({}),
+          opcje,
+          zaloguj: async () => ({}),
+          odswiez: async () => ({}),
+          pobierzMetadane: async () => ({}),
         };
         utworzone.push(k);
         return k;
       },
-      createCzuwaczKosztow: (args) => { dostal = args; return { przebieg: async () => ({}) }; },
+      createCzuwaczKosztow: (args) => {
+        dostal = args;
+        return { przebieg: async () => ({}) };
+      },
     });
     expect(utworzone).toHaveLength(1);
     expect(dostal.klient).toBe(utworzone[0]);
     expect(utworzone[0].opcje).toMatchObject({
-      token: 'TOKEN-KSEF', nip: '1234563218', baseUrl: 'https://api.ksef.mf.gov.pl/v2',
+      token: 'TOKEN-KSEF',
+      nip: '1234563218',
+      baseUrl: 'https://api.ksef.mf.gov.pl/v2',
     });
   });
 
@@ -1803,8 +2167,14 @@ describe('zbudujOms — czuwacz kosztów (KSeF)', () => {
     const oms = zbudujOms({
       env: env(KSEF),
       createDpd: atrapaDpd(),
-      createCzuwaczKosztow: (args) => { uCzuwacza = args; return { przebieg: async () => ({}) }; },
-      createWizualizacjaKosztuFn: (args) => { uWizualizacji = args; return { pdf: async () => ({}) }; },
+      createCzuwaczKosztow: (args) => {
+        uCzuwacza = args;
+        return { przebieg: async () => ({}) };
+      },
+      createWizualizacjaKosztuFn: (args) => {
+        uWizualizacji = args;
+        return { pdf: async () => ({}) };
+      },
     });
     expect(uWizualizacji).not.toBeNull();
     expect(uWizualizacji.db).toBe(oms.db);
@@ -1831,7 +2201,10 @@ describe('zbudujOms — czuwacz kosztów (KSeF)', () => {
     zbudujOms({
       env: env({ ...KSEF, KSEF_ARCHIWUM: '/data-oms/faktury-kosztowe' }),
       createDpd: atrapaDpd(),
-      createCzuwaczKosztow: (args) => { dostal = args; return { przebieg: async () => ({}) }; },
+      createCzuwaczKosztow: (args) => {
+        dostal = args;
+        return { przebieg: async () => ({}) };
+      },
     });
     expect(dostal.katalogArchiwum).toBe('/data-oms/faktury-kosztowe');
   });
@@ -1844,7 +2217,10 @@ describe('zbudujOms — czuwacz kosztów (KSeF)', () => {
     const { czuwaczKosztow } = zbudujOms({
       env: env(KSEF),
       createDpd: atrapaDpd(),
-      createCzuwaczKosztow: (args) => { dostal = args; return { przebieg: async () => ({}) }; },
+      createCzuwaczKosztow: (args) => {
+        dostal = args;
+        return { przebieg: async () => ({}) };
+      },
     });
     expect(czuwaczKosztow).not.toBeNull();
     expect(dostal.katalogArchiwum).toBeNull();
@@ -1855,7 +2231,9 @@ describe('zbudujOms — czuwacz kosztów (KSeF)', () => {
   // uruchomienie w suicie znaczyłoby otwarty port. Sprawdzenie jest za to ostre: czuwacz
   // zbudowany w `zbudujOms` i NIEPRZEKAZANY do `uruchomZegary` to usługa, która nie chodzi
   // ani razu — dokładnie awaria, którą ten projekt zaliczył już przy device flow.
-  it('punkt wejścia przekazuje czuwacza kosztów do zegarów', async () => { await wykonajZegary('czuwaczKosztow'); });
+  it('punkt wejścia przekazuje czuwacza kosztów do zegarów', async () => {
+    await wykonajZegary('czuwaczKosztow');
+  });
 });
 
 // ⚠️⚠️ ZEGAR CZUWACZA KOSZTOW. Chodzi na TYM SAMYM zegarze godzinowym, co czuwacz KSeF —
@@ -1864,13 +2242,18 @@ describe('zbudujOms — czuwacz kosztów (KSeF)', () => {
 describe('uruchomZegary — czuwacz kosztów', () => {
   const sztucznyZegar = () => {
     const zarejestrowane = [];
-    const ustaw = (fn, ms) => { zarejestrowane.push({ fn, ms }); return zarejestrowane.length; };
+    const ustaw = (fn, ms) => {
+      zarejestrowane.push({ fn, ms });
+      return zarejestrowane.length;
+    };
     const tyknij = (ms) => zarejestrowane.filter((z) => z.ms === ms).forEach((z) => z.fn());
     return { zarejestrowane, ustaw, tyknij };
   };
   const GODZINA = 60 * 60 * 1000;
   const odczekaj = async () => {
-    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
   };
 
   it('po godzinie woła przebieg czuwacza kosztów DOKŁADNIE raz', async () => {
@@ -1878,7 +2261,10 @@ describe('uruchomZegary — czuwacz kosztów', () => {
     const czuwaczKosztow = { przebieg: vi.fn().mockResolvedValue({ nowych: 0, przeczytanych: 0, okien: 1 }) };
 
     uruchomZegary({
-      poller: null, czuwaczKsef: null, czuwaczKosztow, ustawInterwal: zegar.ustaw,
+      poller: null,
+      czuwaczKsef: null,
+      czuwaczKosztow,
+      ustawInterwal: zegar.ustaw,
     });
     zegar.tyknij(GODZINA);
     await odczekaj();
@@ -1890,7 +2276,10 @@ describe('uruchomZegary — czuwacz kosztów', () => {
   it('bez sekcji ksef zegar czuwacza kosztów NIE powstaje', () => {
     const zegar = sztucznyZegar();
     uruchomZegary({
-      poller: null, czuwaczKsef: null, czuwaczKosztow: null, ustawInterwal: zegar.ustaw,
+      poller: null,
+      czuwaczKsef: null,
+      czuwaczKosztow: null,
+      ustawInterwal: zegar.ustaw,
     });
     expect(zegar.zarejestrowane).toEqual([]);
   });
@@ -1903,7 +2292,11 @@ describe('uruchomZegary — czuwacz kosztów', () => {
     const czuwaczKosztow = { przebieg: vi.fn().mockRejectedValue(new Error('KSeF odmówił')) };
 
     uruchomZegary({
-      poller: null, czuwaczKsef: null, czuwaczKosztow, ustawInterwal: zegar.ustaw, log,
+      poller: null,
+      czuwaczKsef: null,
+      czuwaczKosztow,
+      ustawInterwal: zegar.ustaw,
+      log,
     });
     expect(() => zegar.tyknij(GODZINA)).not.toThrow();
     await odczekaj();
@@ -1921,7 +2314,11 @@ describe('uruchomZegary — czuwacz kosztów', () => {
     const czuwaczKosztow = { przebieg: vi.fn().mockResolvedValue({ pominiety: true, powod: POWOD_TRWA }) };
 
     uruchomZegary({
-      poller: null, czuwaczKsef: null, czuwaczKosztow, ustawInterwal: zegar.ustaw, log,
+      poller: null,
+      czuwaczKsef: null,
+      czuwaczKosztow,
+      ustawInterwal: zegar.ustaw,
+      log,
     });
     zegar.tyknij(GODZINA);
     await odczekaj();
@@ -1938,7 +2335,11 @@ describe('uruchomZegary — czuwacz kosztów', () => {
     const czuwaczKosztow = { przebieg: vi.fn().mockResolvedValue({ pominiety: true, powod: POWOD_NIE_TA_PORA }) };
 
     uruchomZegary({
-      poller: null, czuwaczKsef: null, czuwaczKosztow, ustawInterwal: zegar.ustaw, log,
+      poller: null,
+      czuwaczKsef: null,
+      czuwaczKosztow,
+      ustawInterwal: zegar.ustaw,
+      log,
     });
     zegar.tyknij(GODZINA);
     await odczekaj();
@@ -1951,12 +2352,19 @@ describe('uruchomZegary — czuwacz kosztów', () => {
     const log = vi.fn();
     const czuwaczKosztow = {
       przebieg: vi.fn().mockResolvedValue({
-        nowych: 3, przeczytanych: 9, odrzuconych: 0, okien: 2,
+        nowych: 3,
+        przeczytanych: 9,
+        odrzuconych: 0,
+        okien: 2,
       }),
     };
 
     uruchomZegary({
-      poller: null, czuwaczKsef: null, czuwaczKosztow, ustawInterwal: zegar.ustaw, log,
+      poller: null,
+      czuwaczKsef: null,
+      czuwaczKosztow,
+      ustawInterwal: zegar.ustaw,
+      log,
     });
     zegar.tyknij(GODZINA);
     await odczekaj();
@@ -1972,12 +2380,19 @@ describe('uruchomZegary — czuwacz kosztów', () => {
     const log = vi.fn();
     const czuwaczKosztow = {
       przebieg: vi.fn().mockResolvedValue({
-        nowych: 2, przeczytanych: 3, odrzuconych: 1, okien: 1,
+        nowych: 2,
+        przeczytanych: 3,
+        odrzuconych: 1,
+        okien: 1,
       }),
     };
 
     uruchomZegary({
-      poller: null, czuwaczKsef: null, czuwaczKosztow, ustawInterwal: zegar.ustaw, log,
+      poller: null,
+      czuwaczKsef: null,
+      czuwaczKosztow,
+      ustawInterwal: zegar.ustaw,
+      log,
     });
     zegar.tyknij(GODZINA);
     await odczekaj();
@@ -1993,12 +2408,20 @@ describe('uruchomZegary — czuwacz kosztów', () => {
     const log = vi.fn();
     const czuwaczKosztow = {
       przebieg: vi.fn().mockResolvedValue({
-        nowych: 50, przeczytanych: 50, odrzuconych: 0, niedokonczone: true, okien: 3,
+        nowych: 50,
+        przeczytanych: 50,
+        odrzuconych: 0,
+        niedokonczone: true,
+        okien: 3,
       }),
     };
 
     uruchomZegary({
-      poller: null, czuwaczKsef: null, czuwaczKosztow, ustawInterwal: zegar.ustaw, log,
+      poller: null,
+      czuwaczKsef: null,
+      czuwaczKosztow,
+      ustawInterwal: zegar.ustaw,
+      log,
     });
     zegar.tyknij(GODZINA);
     await odczekaj();
@@ -2019,7 +2442,10 @@ describe('zbudujOms — czuwacz archiwum sprzedazy (inFakt)', () => {
     const { czuwaczArchiwumSprzedazy } = zbudujOms({
       env: env({ INFAKT_ARCHIWUM: '/faktury' }),
       createDpd: atrapaDpd(),
-      createCzuwaczArchiwumSprzedazy: (args) => { dostal = args; return { przebieg: async () => ({}) }; },
+      createCzuwaczArchiwumSprzedazy: (args) => {
+        dostal = args;
+        return { przebieg: async () => ({}) };
+      },
     });
     expect(czuwaczArchiwumSprzedazy).not.toBeNull();
     expect(dostal.katalogArchiwum).toBe('/faktury');
@@ -2045,15 +2471,25 @@ describe('uruchomZegary — czuwacz archiwum sprzedazy', () => {
   // ogniwa (`.then` pomija, `.catch` lapie), stad jawne przemielenie kolejki — ta sama
   // sztuczka, co `odczekaj()` przy czuwaczu kosztow wyzej.
   const przemiel = async () => {
-    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
   };
 
   it('uruchomZegary rejestruje zegar archiwum sprzedazy co godzine i wola przebieg', async () => {
     const interwaly = [];
     let wolan = 0;
     uruchomZegary({
-      czuwaczArchiwumSprzedazy: { przebieg: async () => { wolan += 1; return {}; } },
-      ustawInterwal: (fn, ms) => { interwaly.push({ fn, ms }); return 0; },
+      czuwaczArchiwumSprzedazy: {
+        przebieg: async () => {
+          wolan += 1;
+          return {};
+        },
+      },
+      ustawInterwal: (fn, ms) => {
+        interwaly.push({ fn, ms });
+        return 0;
+      },
       log: () => {},
     });
     const z = interwaly.find((i) => i.ms === ODSTEP_CZUWACZA_MS);
@@ -2073,7 +2509,10 @@ describe('uruchomZegary — czuwacz archiwum sprzedazy', () => {
       czuwaczArchiwumSprzedazy: {
         przebieg: async () => ({ pominiety: true, powod: POWOD_TRWA_ARCHIWUM_SPRZEDAZY }),
       },
-      ustawInterwal: (fn, ms) => { interwaly.push({ fn, ms }); return 0; },
+      ustawInterwal: (fn, ms) => {
+        interwaly.push({ fn, ms });
+        return 0;
+      },
       log,
     });
     interwaly.find((i) => i.ms === ODSTEP_CZUWACZA_MS).fn();
@@ -2092,7 +2531,10 @@ describe('uruchomZegary — czuwacz archiwum sprzedazy', () => {
       czuwaczArchiwumSprzedazy: {
         przebieg: async () => ({ pominiety: true, powod: POWOD_NIE_TA_PORA_ARCHIWUM_SPRZEDAZY }),
       },
-      ustawInterwal: (fn, ms) => { interwaly.push({ fn, ms }); return 0; },
+      ustawInterwal: (fn, ms) => {
+        interwaly.push({ fn, ms });
+        return 0;
+      },
       log,
     });
     interwaly.find((i) => i.ms === ODSTEP_CZUWACZA_MS).fn();
@@ -2107,8 +2549,15 @@ describe('uruchomZegary — czuwacz archiwum sprzedazy', () => {
     const interwaly = [];
     const log = vi.fn();
     uruchomZegary({
-      czuwaczArchiwumSprzedazy: { przebieg: async () => { throw new Error('NAS nie odpowiada'); } },
-      ustawInterwal: (fn, ms) => { interwaly.push({ fn, ms }); return 0; },
+      czuwaczArchiwumSprzedazy: {
+        przebieg: async () => {
+          throw new Error('NAS nie odpowiada');
+        },
+      },
+      ustawInterwal: (fn, ms) => {
+        interwaly.push({ fn, ms });
+        return 0;
+      },
       log,
     });
     interwaly.find((i) => i.ms === ODSTEP_CZUWACZA_MS).fn();
@@ -2120,14 +2569,22 @@ describe('uruchomZegary — czuwacz archiwum sprzedazy', () => {
   // wstaje dokladnie jak dotad.
   it('bez czuwacza archiwum sprzedazy zegar #7 sie nie rejestruje', () => {
     const interwaly = [];
-    uruchomZegary({ ustawInterwal: (fn, ms) => { interwaly.push({ fn, ms }); return 0; }, log: () => {} });
+    uruchomZegary({
+      ustawInterwal: (fn, ms) => {
+        interwaly.push({ fn, ms });
+        return 0;
+      },
+      log: () => {},
+    });
     expect(interwaly).toHaveLength(0);
   });
 
   // ⚠️ TEST PO ZRODLE, ta sama zasada i to samo uzasadnienie, co przy czuwaczu kosztow wyzej:
   // `src/oms.js` wola `app.listen`, wiec jego uruchomienie w suicie znaczyloby otwarty port.
   // Czuwacz zbudowany w `zbudujOms` i NIEPRZEKAZANY do `uruchomZegary` nie chodzi ani razu.
-  it('punkt wejscia przekazuje czuwacza archiwum sprzedazy do zegarow', async () => { await wykonajZegary('czuwaczArchiwumSprzedazy'); });
+  it('punkt wejscia przekazuje czuwacza archiwum sprzedazy do zegarow', async () => {
+    await wykonajZegary('czuwaczArchiwumSprzedazy');
+  });
 });
 
 // ⚠️⚠️ DZIESIATA DROGA TEJ SAMEJ DZIURY — `services/paczka-dla-biura.js` ma komplet wlasnych
@@ -2142,10 +2599,16 @@ describe('zbudujOms — paczka dla biura rachunkowego', () => {
     let dostal = null;
     zbudujOms({
       env: env({
-        INFAKT_ARCHIWUM: '/faktury', KSEF_TOKEN: 'T', KSEF_NIP: '1234563218', KSEF_ARCHIWUM: '/faktury',
+        INFAKT_ARCHIWUM: '/faktury',
+        KSEF_TOKEN: 'T',
+        KSEF_NIP: '1234563218',
+        KSEF_ARCHIWUM: '/faktury',
       }),
       createDpd: atrapaDpd(),
-      createPaczkaDlaBiuraFn: (args) => { dostal = args; return { zbuduj: async () => ({}) }; },
+      createPaczkaDlaBiuraFn: (args) => {
+        dostal = args;
+        return { zbuduj: async () => ({}) };
+      },
     });
     expect(dostal.katalogSprzedazy).toBe('/faktury');
     expect(dostal.katalogKosztow).toBe('/faktury');
@@ -2165,7 +2628,10 @@ describe('zbudujOms — paczka dla biura rachunkowego', () => {
       createDpd: atrapaDpd(),
       createPaczkaDlaBiuraFn: () => ({
         zbuduj: async (m, czesc) => ({
-          bajty: Buffer.from('%PDF-1.4 p'), nazwa: `zestawienie-faktur-${m}-${czesc}.pdf`, dokumentow: 1, stron: 2,
+          bajty: Buffer.from('%PDF-1.4 p'),
+          nazwa: `zestawienie-faktur-${m}-${czesc}.pdf`,
+          dokumentow: 1,
+          stron: 2,
         }),
       }),
     });
@@ -2208,8 +2674,9 @@ describe('straznik czasu przebiegu czuwacza kosztow', () => {
   it('⚠️ najgorszy przebieg LICZY SIE z prawdziwych stalych, a nie z komentarza', () => {
     // Trzy skladniki, kazdy z modulu, ktory go naprawde narzuca. Suma ma je wszystkie
     // objac — inaczej „najgorszy przypadek" jest liczba wziela znikad.
-    expect(NAJDLUZSZY_PRZEBIEG_KOSZTOW_MS)
-      .toBeGreaterThanOrEqual(NAJDLUZSZE_ODPYTYWANIE_MS + SUFIT_STRON * LIMIT_ZADANIA_MS + BUDZET_ARCHIWUM_MS);
+    expect(NAJDLUZSZY_PRZEBIEG_KOSZTOW_MS).toBeGreaterThanOrEqual(
+      NAJDLUZSZE_ODPYTYWANIE_MS + SUFIT_STRON * LIMIT_ZADANIA_MS + BUDZET_ARCHIWUM_MS,
+    );
   });
 
   it('⚠️ najgorszy przebieg miesci sie w oknie pobrania (raz na dobe)', () => {
@@ -2221,8 +2688,9 @@ describe('straznik czasu przebiegu czuwacza kosztow', () => {
   // bo `zbudujOms` wykonuje sie dopiero po wczytaniu modulu (a wtedy straznik juz przeszedl).
   it('⚠️ podniesienie sufitu stron ponad dobe zlamaloby warunek straznika', () => {
     const sufitZabojczy = Math.ceil(ODSTEP_OKNA_POBRANIA_MS / LIMIT_ZADANIA_MS);
-    expect(NAJDLUZSZE_ODPYTYWANIE_MS + sufitZabojczy * LIMIT_ZADANIA_MS + BUDZET_ARCHIWUM_MS)
-      .toBeGreaterThanOrEqual(ODSTEP_OKNA_POBRANIA_MS);
+    expect(NAJDLUZSZE_ODPYTYWANIE_MS + sufitZabojczy * LIMIT_ZADANIA_MS + BUDZET_ARCHIWUM_MS).toBeGreaterThanOrEqual(
+      ODSTEP_OKNA_POBRANIA_MS,
+    );
   });
 });
 
@@ -2236,8 +2704,9 @@ describe('straznik czasu przebiegu czuwacza kosztow', () => {
 // jeszcze trwa" przez cala noc — a nocne tykniecia gubilby bez sladu.
 describe('straznik czasu przebiegu czuwacza archiwum sprzedazy', () => {
   it('⚠️ najgorszy przebieg LICZY SIE z prawdziwych stalych, a nie z komentarza', () => {
-    expect(najdluzszyPrzebiegArchiwumSprzedazyMs(programInfakt({}).opis.limity))
-      .toBeGreaterThanOrEqual(BUDZET_ARCHIWUM_SPRZEDAZY_MS + NAJDLUZSZA_LISTA_MS + LIMIT_ZADANIA_INFAKTU_MS);
+    expect(najdluzszyPrzebiegArchiwumSprzedazyMs(programInfakt({}).opis.limity)).toBeGreaterThanOrEqual(
+      BUDZET_ARCHIWUM_SPRZEDAZY_MS + NAJDLUZSZA_LISTA_MS + LIMIT_ZADANIA_INFAKTU_MS,
+    );
   });
 
   // ⚠️ SAMA `NAJDLUZSZA_LISTA_MS` TEZ MA BYC LICZONA, a nie wpisana z palca: `wszystkieStrony`
@@ -2259,8 +2728,7 @@ describe('straznik czasu przebiegu czuwacza archiwum sprzedazy', () => {
     // przed ktora straznik ma chronic: listy miesiaca i ostatnie pobranie dokladaja swoje.
     const budzetZabojczy = ODSTEP_CZUWACZA_MS - NAJDLUZSZA_LISTA_MS;
     expect(budzetZabojczy).toBeLessThan(ODSTEP_CZUWACZA_MS);
-    expect(budzetZabojczy + NAJDLUZSZA_LISTA_MS + LIMIT_ZADANIA_INFAKTU_MS)
-      .toBeGreaterThanOrEqual(ODSTEP_CZUWACZA_MS);
+    expect(budzetZabojczy + NAJDLUZSZA_LISTA_MS + LIMIT_ZADANIA_INFAKTU_MS).toBeGreaterThanOrEqual(ODSTEP_CZUWACZA_MS);
   });
 });
 
@@ -2271,8 +2739,10 @@ describe('straznik czasu przebiegu czuwacza archiwum sprzedazy', () => {
 // bez ani jednego wywolania i zegar czuwacza w martwej galezi.
 describe('zbudujOms — stan kanałów dla paska ostrzeżenia', () => {
   const KANAL = {
-    ALLEGRO_SWIETLIK_CLIENT_ID: 'id', ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
-    ALLEGRO_SWIETLIK_OD: '2026-07-01', ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
+    ALLEGRO_SWIETLIK_CLIENT_ID: 'id',
+    ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
+    ALLEGRO_SWIETLIK_OD: '2026-07-01',
+    ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
     ALLEGRO_USER_AGENT: UA,
   };
 
@@ -2288,11 +2758,14 @@ describe('zbudujOms — stan kanałów dla paska ostrzeżenia', () => {
   it('zapisany błąd tokenu dociera z bazy do stanu ekranu', () => {
     const { db, stanyKanalow } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'a', refreshToken: 'r',
-      wygasaAt: '2026-12-01T00:00:00.000Z', refreshWygasaAt: '2026-12-01T00:00:00.000Z',
+      accessToken: 'a',
+      refreshToken: 'r',
+      wygasaAt: '2026-12-01T00:00:00.000Z',
+      refreshWygasaAt: '2026-12-01T00:00:00.000Z',
     });
-    db.prepare("UPDATE tokeny_kanalu SET ostatni_blad = ? WHERE kanal = 'allegro_swietlik'")
-      .run('Odświeżenie tokenu odrzucone (HTTP 400, invalid_grant)');
+    db.prepare("UPDATE tokeny_kanalu SET ostatni_blad = ? WHERE kanal = 'allegro_swietlik'").run(
+      'Odświeżenie tokenu odrzucone (HTTP 400, invalid_grant)',
+    );
     const s = stanyKanalow()[0];
     expect(s.pilne).toBe(true);
     expect(s.zyje).toBe(false);
@@ -2303,8 +2776,10 @@ describe('zbudujOms — stan kanałów dla paska ostrzeżenia', () => {
   it('stan kanału NIE NIESIE tokenów', () => {
     const { db, stanyKanalow } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'TAJNY-ACCESS', refreshToken: 'TAJNY-REFRESH',
-      wygasaAt: '2026-12-01T00:00:00.000Z', refreshWygasaAt: '2026-12-01T00:00:00.000Z',
+      accessToken: 'TAJNY-ACCESS',
+      refreshToken: 'TAJNY-REFRESH',
+      wygasaAt: '2026-12-01T00:00:00.000Z',
+      refreshWygasaAt: '2026-12-01T00:00:00.000Z',
     });
     const tekst = JSON.stringify(stanyKanalow());
     expect(tekst).not.toContain('TAJNY-ACCESS');
@@ -2327,7 +2802,9 @@ describe('zbudujOms — stan kanałów dla paska ostrzeżenia', () => {
 // Test czyta ŹRÓDŁO, bo instancji nie da się porównać z zewnątrz — `createAllegroClient`
 // zamyka ją w domknięciu. Asercja jest wąska celowo: liczy wywołania fabryki.
 describe('zbudujOms — jedna instancja tokenów na kanał', () => {
-  it('createTokeny wołane DOKŁADNIE RAZ, nie osobno dla klienta i dla ekranu', async () => { expect(await wykonajJednaFabrykeTokenow()).toBe(1); });
+  it('createTokeny wołane DOKŁADNIE RAZ, nie osobno dla klienta i dla ekranu', async () => {
+    expect(await wykonajJednaFabrykeTokenow()).toBe(1);
+  });
 });
 
 // ⚠️⚠️ TEN OPIS POWSTAŁ, BO MUTACJA PRZEŻYŁA. Wszystkie testy wyżej sprawdzały, że
@@ -2339,16 +2816,20 @@ describe('zbudujOms — jedna instancja tokenów na kanał', () => {
 describe('pas kanału dociera aż na stronę listy', () => {
   const naglowek = { authorization: `Basic ${Buffer.from('adam:x').toString('base64')}` };
   const KANAL = {
-    ALLEGRO_SWIETLIK_CLIENT_ID: 'id', ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
-    ALLEGRO_SWIETLIK_OD: '2026-07-01', ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
+    ALLEGRO_SWIETLIK_CLIENT_ID: 'id',
+    ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
+    ALLEGRO_SWIETLIK_OD: '2026-07-01',
+    ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
     ALLEGRO_USER_AGENT: UA,
   };
 
   it('martwy kanał JEST WIDOCZNY w HTML-u listy zamówień', async () => {
     const { app, db } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'a', refreshToken: 'r',
-      wygasaAt: '2026-12-01T00:00:00.000Z', refreshWygasaAt: '2026-12-01T00:00:00.000Z',
+      accessToken: 'a',
+      refreshToken: 'r',
+      wygasaAt: '2026-12-01T00:00:00.000Z',
+      refreshWygasaAt: '2026-12-01T00:00:00.000Z',
     });
     db.prepare("UPDATE tokeny_kanalu SET ostatni_blad = 'invalid_grant' WHERE kanal = 'allegro_swietlik'").run();
     await app.ready();
@@ -2363,8 +2844,10 @@ describe('pas kanału dociera aż na stronę listy', () => {
   it('kanał zdrowy NIE zostawia pasa — ostrzeżenie widziane codziennie przestaje działać', async () => {
     const { app, db } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'a', refreshToken: 'r',
-      wygasaAt: '2026-12-01T00:00:00.000Z', refreshWygasaAt: '2026-12-01T00:00:00.000Z',
+      accessToken: 'a',
+      refreshToken: 'r',
+      wygasaAt: '2026-12-01T00:00:00.000Z',
+      refreshWygasaAt: '2026-12-01T00:00:00.000Z',
     });
     await app.ready();
     const r = await app.inject({ method: 'GET', url: '/', headers: naglowek });
@@ -2383,14 +2866,18 @@ describe('pas kanału dociera aż na stronę listy', () => {
 describe('przycisk „Połącz z Allegro" w ustawieniach', () => {
   const naglowek = { authorization: `Basic ${Buffer.from('adam:x').toString('base64')}` };
   const KANAL = {
-    ALLEGRO_SWIETLIK_CLIENT_ID: 'id', ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
-    ALLEGRO_SWIETLIK_OD: '2026-07-01', ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
+    ALLEGRO_SWIETLIK_CLIENT_ID: 'id',
+    ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
+    ALLEGRO_SWIETLIK_OD: '2026-07-01',
+    ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
     ALLEGRO_USER_AGENT: UA,
   };
   const zepsuty = (db) => {
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'a', refreshToken: 'r',
-      wygasaAt: '2026-12-01T00:00:00.000Z', refreshWygasaAt: '2026-12-01T00:00:00.000Z',
+      accessToken: 'a',
+      refreshToken: 'r',
+      wygasaAt: '2026-12-01T00:00:00.000Z',
+      refreshWygasaAt: '2026-12-01T00:00:00.000Z',
     });
     db.prepare("UPDATE tokeny_kanalu SET ostatni_blad = 'invalid_grant' WHERE kanal = 'allegro_swietlik'").run();
   };
@@ -2410,8 +2897,10 @@ describe('przycisk „Połącz z Allegro" w ustawieniach', () => {
   it('zdrowy kanał NIE DOSTAJE przycisku', async () => {
     const { app, db } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'a', refreshToken: 'r',
-      wygasaAt: '2026-12-01T00:00:00.000Z', refreshWygasaAt: '2026-12-01T00:00:00.000Z',
+      accessToken: 'a',
+      refreshToken: 'r',
+      wygasaAt: '2026-12-01T00:00:00.000Z',
+      refreshWygasaAt: '2026-12-01T00:00:00.000Z',
     });
     await app.ready();
     const r = await app.inject({ method: 'GET', url: '/ustawienia/integracje', headers: naglowek });
@@ -2423,8 +2912,10 @@ describe('przycisk „Połącz z Allegro" w ustawieniach', () => {
   it('POST dla kanału ZDROWEGO odbija się od domeny, nie od widoku', async () => {
     const { app, db } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
     zapiszTokeny(db, 'allegro_swietlik', {
-      accessToken: 'a', refreshToken: 'r',
-      wygasaAt: '2026-12-01T00:00:00.000Z', refreshWygasaAt: '2026-12-01T00:00:00.000Z',
+      accessToken: 'a',
+      refreshToken: 'r',
+      wygasaAt: '2026-12-01T00:00:00.000Z',
+      refreshWygasaAt: '2026-12-01T00:00:00.000Z',
     });
     await app.ready();
     const r = await app.inject({

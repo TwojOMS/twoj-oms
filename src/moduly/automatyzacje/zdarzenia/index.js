@@ -24,4 +24,9 @@ import { zdarzenieStatusZmieniony } from './status-zmieniony.js';
 import { zdarzeniePaczkaOdebrana } from './paczka-odebrana.js';
 import { zdarzenieNoweZamowienie } from './nowe-zamowienie.js';
 
-export const ZDARZENIA = Object.freeze([zdarzeniePaczkaNadana, zdarzeniePaczkaOdebrana, zdarzenieStatusZmieniony, zdarzenieNoweZamowienie]);
+export const ZDARZENIA = Object.freeze([
+  zdarzeniePaczkaNadana,
+  zdarzeniePaczkaOdebrana,
+  zdarzenieStatusZmieniony,
+  zdarzenieNoweZamowienie,
+]);

@@ -12,7 +12,8 @@
 
 // Wspólny moduł idzie z TĄ SAMĄ wersją (`?v=`) co ten skrypt (widok daje go przez zasob()). Statyczny import
 // './strefa-pliku.js' szedłby bez wersji i pośrednik (Cloudflare, max-age=14400) po wydaniu dałby stary moduł.
-export const adresStrefy = (adresSkryptu) => new URL(`strefa-pliku.js${new URL(adresSkryptu).search}`, adresSkryptu).href;
+export const adresStrefy = (adresSkryptu) =>
+  new URL(`strefa-pliku.js${new URL(adresSkryptu).search}`, adresSkryptu).href;
 const { podlaczStrefePliku, sprawdzPlik: sprawdzPlikStrefy } = await import(adresStrefy(import.meta.url));
 
 export const MAKS_BAJTOW = 256 * 1024;

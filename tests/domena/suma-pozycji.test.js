@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import {
-  grosze, zl, sumaPozycjiZWysylkaGrosze, kwotaZamowieniaGrosze,
-  wartoscPozycjiGrosze, kwotaOczekiwanaGrosze,
+  grosze,
+  zl,
+  sumaPozycjiZWysylkaGrosze,
+  kwotaZamowieniaGrosze,
+  wartoscPozycjiGrosze,
+  kwotaOczekiwanaGrosze,
 } from '../../src/domena/suma-pozycji.js';
 
 describe('grosze', () => {
@@ -92,8 +96,9 @@ describe('wartoscPozycjiGrosze — JEDNA funkcja licząca wartość pozycji', ()
   });
 
   it('pusta cena rzuca czytelnie, nigdy NaN', () => {
-    expect(() => wartoscPozycjiGrosze({ nazwa: 'X', ilosc: 1, cena_brutto: null, brutto_linii: null }))
-      .toThrow(/Brak kwoty.*"X"/);
+    expect(() => wartoscPozycjiGrosze({ nazwa: 'X', ilosc: 1, cena_brutto: null, brutto_linii: null })).toThrow(
+      /Brak kwoty.*"X"/,
+    );
   });
 });
 
@@ -101,7 +106,15 @@ describe('wartoscPozycjiGrosze — JEDNA funkcja licząca wartość pozycji', ()
 // (wpłata o źródle 'sklep' podąża za nią — patrz db/platnosci.js). Kwota, której oczekujemy
 // od klienta, jest WYLICZANA: kwota ze sklepu plus to, co dopisaliśmy u siebie.
 describe('kwotaOczekiwanaGrosze', () => {
-  const zeSklepu = (nad = {}) => ({ zrodlo: 'sklep', nazwa: 'STOP', ilosc: 2, cena_brutto: '61.50', brutto_linii: '123.00', sklep: null, ...nad });
+  const zeSklepu = (nad = {}) => ({
+    zrodlo: 'sklep',
+    nazwa: 'STOP',
+    ilosc: 2,
+    cena_brutto: '61.50',
+    brutto_linii: '123.00',
+    sklep: null,
+    ...nad,
+  });
 
   it('bez ręcznych pozycji równa się kwocie ze sklepu', () => {
     expect(kwotaOczekiwanaGrosze(zamowienie())).toBe(21290);
@@ -124,7 +137,11 @@ describe('kwotaOczekiwanaGrosze', () => {
   it('nadpisanie pozycji sklepowej przesuwa kwotę oczekiwaną o różnicę, nie o całą wartość', () => {
     const z = zamowienie({
       pozycje: [
-        zeSklepu({ ilosc: 3, brutto_linii: '184.50', sklep: { nazwa: 'STOP', ilosc: 2, cena_brutto: '61.50', brutto_linii: '123.00' } }),
+        zeSklepu({
+          ilosc: 3,
+          brutto_linii: '184.50',
+          sklep: { nazwa: 'STOP', ilosc: 2, cena_brutto: '61.50', brutto_linii: '123.00' },
+        }),
       ],
     });
     expect(kwotaOczekiwanaGrosze(z)).toBe(21290 + 6150);
@@ -133,7 +150,11 @@ describe('kwotaOczekiwanaGrosze', () => {
   it('nadpisanie w dół obniża kwotę oczekiwaną', () => {
     const z = zamowienie({
       pozycje: [
-        zeSklepu({ ilosc: 1, brutto_linii: '61.50', sklep: { nazwa: 'STOP', ilosc: 2, cena_brutto: '61.50', brutto_linii: '123.00' } }),
+        zeSklepu({
+          ilosc: 1,
+          brutto_linii: '61.50',
+          sklep: { nazwa: 'STOP', ilosc: 2, cena_brutto: '61.50', brutto_linii: '123.00' },
+        }),
       ],
     });
     expect(kwotaOczekiwanaGrosze(z)).toBe(21290 - 6150);
@@ -142,12 +163,21 @@ describe('kwotaOczekiwanaGrosze', () => {
   // Pozycja bez nałożonej warstwy nadpisań (odczyt z bazy z pominięciem zLinii) nie ma prawa
   // wyglądać na dopisaną ręcznie — inaczej samo pominięcie nakładki podwoiłoby kwotę.
   it('pozycja sklepowa bez pola `sklep` nie wnosi żadnej różnicy', () => {
-    const z = zamowienie({ pozycje: [{ zrodlo: 'sklep', nazwa: 'STOP', ilosc: 2, cena_brutto: '61.50', brutto_linii: '123.00' }] });
+    const z = zamowienie({
+      pozycje: [{ zrodlo: 'sklep', nazwa: 'STOP', ilosc: 2, cena_brutto: '61.50', brutto_linii: '123.00' }],
+    });
     expect(kwotaOczekiwanaGrosze(z)).toBe(21290);
   });
 
   it('arytmetyka na groszach — trzy dopłaty po 0,10 zł dają dokładnie 0,30 zł więcej', () => {
-    const doplata = (n) => ({ zrodlo: 'reczna', nazwa: n, ilosc: 1, cena_brutto: '0.10', brutto_linii: '0.10', sklep: null });
+    const doplata = (n) => ({
+      zrodlo: 'reczna',
+      nazwa: n,
+      ilosc: 1,
+      cena_brutto: '0.10',
+      brutto_linii: '0.10',
+      sklep: null,
+    });
     const z = zamowienie({ pozycje: [zeSklepu(), doplata('A'), doplata('B'), doplata('C')] });
     expect(kwotaOczekiwanaGrosze(z)).toBe(21320);
   });
@@ -156,9 +186,17 @@ describe('kwotaOczekiwanaGrosze', () => {
 // Usunięta pozycja sklepowa znika z `pozycje` (nakładka), ale `kwota_brutto`
 // ze sklepu dalej ją obejmuje. Kwota oczekiwana odejmuje jej SKLEPOWĄ wartość z `pozycje_usuniete`.
 describe('kwotaOczekiwanaGrosze — pozycje usunięte', () => {
-  const linia = (nazwa, ilosc, cena, brutto) => ({ zrodlo: 'sklep', nazwa, ilosc, cena_brutto: cena, brutto_linii: brutto });
+  const linia = (nazwa, ilosc, cena, brutto) => ({
+    zrodlo: 'sklep',
+    nazwa,
+    ilosc,
+    cena_brutto: cena,
+    brutto_linii: brutto,
+  });
   const woo = (nad = {}) => ({
-    sklep: 'sklep', kwota_brutto: '237.99', koszt_dostawy_brutto: '19.99',
+    sklep: 'sklep',
+    kwota_brutto: '237.99',
+    koszt_dostawy_brutto: '19.99',
     pozycje: [linia('Szablon A', 2, '61.50', '123.00'), linia('Szablon C', 1, '50.00', '50.00')],
     pozycje_usuniete: [{ ...linia('Szablon B', 1, '45.00', '45.00'), klucz: 's2' }],
     ...nad,
@@ -167,7 +205,11 @@ describe('kwotaOczekiwanaGrosze — pozycje usunięte', () => {
   it('Woo 237,99 z usuniętą linią 45,00 daje 192,99 — a po przywróceniu znów 237,99', () => {
     expect(kwotaOczekiwanaGrosze(woo())).toBe(19299);
     const przywrocone = woo({
-      pozycje: [linia('Szablon A', 2, '61.50', '123.00'), linia('Szablon B', 1, '45.00', '45.00'), linia('Szablon C', 1, '50.00', '50.00')],
+      pozycje: [
+        linia('Szablon A', 2, '61.50', '123.00'),
+        linia('Szablon B', 1, '45.00', '45.00'),
+        linia('Szablon C', 1, '50.00', '50.00'),
+      ],
       pozycje_usuniete: [],
     });
     expect(kwotaOczekiwanaGrosze(przywrocone)).toBe(23799);
@@ -175,7 +217,11 @@ describe('kwotaOczekiwanaGrosze — pozycje usunięte', () => {
 
   // Usunięta nie ma wartości efektywnej — odejmujemy sklepową, także gdy w kopii leży `sklep`.
   it('odejmuje wartość SKLEPOWĄ usuniętej linii', () => {
-    const z = woo({ pozycje_usuniete: [{ ...linia('Szablon B', 1, '45.00', '45.00'), sklep: linia('Szablon B', 1, '45.00', '45.00') }] });
+    const z = woo({
+      pozycje_usuniete: [
+        { ...linia('Szablon B', 1, '45.00', '45.00'), sklep: linia('Szablon B', 1, '45.00', '45.00') },
+      ],
+    });
     expect(kwotaOczekiwanaGrosze(z)).toBe(19299);
   });
 

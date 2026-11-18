@@ -37,12 +37,24 @@ const odp = (status, tekst) => ({ status, ok: status >= 200 && status < 300, tex
 const config = { auth: { user: 'adam', pass: 'x' } };
 const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64'), origin: 'http://localhost' };
 const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) };
-const NADAWCA = { nazwa: 'Pracownia Półcień', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL', phone: '338451234', email: 'sklep@swietlik.example.test' };
+const NADAWCA = {
+  nazwa: 'Pracownia Półcień',
+  ulica: 'ul. Przykładowa 1',
+  kod: '00-950',
+  miasto: 'Warszawa',
+  kraj: 'PL',
+  phone: '338451234',
+  email: 'sklep@swietlik.example.test',
+};
 
 // Adres odbiorcy zgodny z `zmapowane()` niżej — POST wymaga go w formularzu.
 const ADRES = {
-  nazwa: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa',
-  phone: '+48500600700', email: 'j@k.pl',
+  nazwa: 'Jan Kowalski',
+  ulica: 'Polna 1',
+  kod: '00-950',
+  miasto: 'Warszawa',
+  phone: '+48500600700',
+  email: 'j@k.pl',
 };
 // Formularz taki, jaki odesłałaby PRAWDZIWA przeglądarka z ekranu nadania zamówienia
 // ZA POBRANIEM: pole kwoty jest w nim wypełnione dzisiejszą kwotą efektywną.
@@ -50,12 +62,28 @@ const PACZKA = { waga: '1', dlugosc: '110', szerokosc: '75', wysokosc: '1', kole
 const PACZKA_Z_POBRANIEM = { ...PACZKA, kwota_pobrania: '212.90' };
 
 const zmapowane = (nad = {}) => ({
-  zrodlo_id: 1267, numer: '1267',
+  zrodlo_id: 1267,
+  numer: '1267',
   klient: { email: 'j@k.pl', phone: '+48500600700' },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '212.90',
-  status_woo: 'processing', oplacone_at: '2026-07-29T13:00:00', anulowane: 0,
-  utworzone_at: '2026-07-29T13:19:52', pozycje: [], ...nad,
+  dostawa: {
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    address_1: 'Polna 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
+  },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '212.90',
+  status_woo: 'processing',
+  oplacone_at: '2026-07-29T13:00:00',
+  anulowane: 0,
+  utworzone_at: '2026-07-29T13:19:52',
+  pozycje: [],
+  ...nad,
 });
 
 const POBRANIE = { metoda_wysylki: 'dpd', pobranie: 1, kwota_pobrania: '212.90' };
@@ -69,13 +97,19 @@ function dpdKlient({ paczek = 2 } = {}) {
       .mockResolvedValueOnce(odp(200, fixture('v4-ok.xml')))
       .mockResolvedValueOnce(odp(200, fixture('v4-ok-zpl.xml')));
   }
-  const dpd = createDpdClient({ url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '876543', nadawca: NADAWCA, fetchImpl });
+  const dpd = createDpdClient({
+    url: 'https://dpd/api',
+    login: '99999999',
+    haslo: 'x',
+    fid: '876543',
+    nadawca: NADAWCA,
+    fetchImpl,
+  });
   return { dpd, fetchImpl };
 }
 
-const kopertyV10 = (fetchImpl) => fetchImpl.mock.calls
-  .map((c) => c[1].body)
-  .filter((b) => b.includes('generatePackagesNumbersV10'));
+const kopertyV10 = (fetchImpl) =>
+  fetchImpl.mock.calls.map((c) => c[1].body).filter((b) => b.includes('generatePackagesNumbersV10'));
 
 let db;
 beforeEach(() => {
@@ -154,10 +188,8 @@ describe('parsujNadpisanieKwotyPobrania — pole istnieje tylko tam, gdzie ma pr
 });
 
 describe('parsujNadpisanieKwotyPobrania — walidacja kwoty', () => {
-  const parsuj = (kwota) => parsujNadpisanieKwotyPobrania(
-    kwota === undefined ? {} : { kwota_pobrania: kwota },
-    { pobranie: 1, kolejnosc: 1 },
-  );
+  const parsuj = (kwota) =>
+    parsujNadpisanieKwotyPobrania(kwota === undefined ? {} : { kwota_pobrania: kwota }, { pobranie: 1, kolejnosc: 1 });
 
   it('kwota ze sklepu przechodzi ZNAK W ZNAK', () => {
     expect(parsuj('212.90')).toEqual({ kwotaPobrania: '212.90' });
@@ -177,10 +209,10 @@ describe('parsujNadpisanieKwotyPobrania — walidacja kwoty', () => {
     ['puste pole', ''],
     ['same spacje', '   '],
     ['pole w ogóle nieprzysłane', undefined],
-  // ⚠️ Odmowa ma być CZYTELNA, nie byle jaka. Bez tej asercji mutacja kasująca gałąź pustej
-  // wartości PRZEŻYWA: pusty napis wpada wtedy do gałęzi „nie umiem odczytać" i operator
-  // dostaje komunikat cytujący pustkę („nie umiem odczytać kwoty pobrania: „""), zamiast
-  // zdania mówiącego wprost, że puste pole NIE znaczy „nadaj bez pobrania".
+    // ⚠️ Odmowa ma być CZYTELNA, nie byle jaka. Bez tej asercji mutacja kasująca gałąź pustej
+    // wartości PRZEŻYWA: pusty napis wpada wtedy do gałęzi „nie umiem odczytać" i operator
+    // dostaje komunikat cytujący pustkę („nie umiem odczytać kwoty pobrania: „""), zamiast
+    // zdania mówiącego wprost, że puste pole NIE znaczy „nadaj bez pobrania".
   ])('%s → ODMOWA, nigdy „bez pobrania", i to CZYTELNA', (_nazwa, wejscie) => {
     const w = parsuj(wejscie);
     expect(w.kwotaPobrania).toBeUndefined();
@@ -285,7 +317,9 @@ describe('POST /zamowienia/:id/nadaj — kwota z formularza jedzie do koperty', 
     const { serwer, id } = zServerem({ dpd, nad: POBRANIE });
     await serwer.ready();
     const r = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
       payload: { ...PACZKA_Z_POBRANIEM, kwota_pobrania: '310.33' },
     });
     expect(r.statusCode).toBe(302);
@@ -299,7 +333,9 @@ describe('POST /zamowienia/:id/nadaj — kwota z formularza jedzie do koperty', 
     const { serwer, id } = zServerem({ dpd, nad: POBRANIE });
     await serwer.ready();
     const r = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
       payload: { ...PACZKA_Z_POBRANIEM, kwota_pobrania: '310,33' },
     });
     expect(r.statusCode).toBe(302);
@@ -313,7 +349,10 @@ describe('POST /zamowienia/:id/nadaj — kwota z formularza jedzie do koperty', 
     const { serwer, id } = zServerem({ dpd, nad: POBRANIE });
     await serwer.ready();
     await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: PACZKA_Z_POBRANIEM,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: PACZKA_Z_POBRANIEM,
     });
     expect(kopertyV10(fetchImpl)[0]).toContain('<cod><amount>212.90</amount><currency>PLN</currency></cod>');
   });
@@ -325,7 +364,9 @@ describe('POST /zamowienia/:id/nadaj — kwota z formularza jedzie do koperty', 
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
     const r = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
       payload: { ...PACZKA, kwota_pobrania: '999.00' },
     });
     expect(r.statusCode).toBe(302);
@@ -342,10 +383,15 @@ describe('POST /zamowienia/:id/nadaj — kwota z formularza jedzie do koperty', 
     const { serwer, id } = zServerem({ dpd, nad: POBRANIE });
     await serwer.ready();
     await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: PACZKA_Z_POBRANIEM,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: PACZKA_Z_POBRANIEM,
     });
     await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
       payload: { ...PACZKA_Z_POBRANIEM, kolejnosc: '2', kwota_pobrania: '999.00' },
     });
     const druga = kopertyV10(fetchImpl)[1];
@@ -362,12 +408,20 @@ describe('POST /zamowienia/:id/nadaj — kwota z formularza jedzie do koperty', 
     const { serwer, id } = zServerem({ dpd, nad: POBRANIE });
     await serwer.ready();
     await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: PACZKA_Z_POBRANIEM,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: PACZKA_Z_POBRANIEM,
     });
     const r = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
       payload: {
-        ...PACZKA_Z_POBRANIEM, kolejnosc: '2', kwota_pobrania: '999.00', pobranie_na_tej_paczce: 'tak',
+        ...PACZKA_Z_POBRANIEM,
+        kolejnosc: '2',
+        kwota_pobrania: '999.00',
+        pobranie_na_tej_paczce: 'tak',
       },
     });
     expect(r.statusCode).toBe(302);
@@ -384,10 +438,15 @@ describe('POST /zamowienia/:id/nadaj — kwota z formularza jedzie do koperty', 
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
     await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: PACZKA,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: PACZKA,
     });
     await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
       payload: { ...PACZKA, kolejnosc: '2', kwota_pobrania: '999.00', pobranie_na_tej_paczce: 'tak' },
     });
     const druga = kopertyV10(fetchImpl)[1];
@@ -410,7 +469,9 @@ describe('POST /zamowienia/:id/nadaj — odmowa PRZED dotknięciem kuriera', () 
     const { serwer, id } = zServerem({ dpd, nad: POBRANIE });
     await serwer.ready();
     const r = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
       payload: { ...PACZKA_Z_POBRANIEM, kwota_pobrania: wejscie },
     });
     expect(r.statusCode).toBe(400);
@@ -426,7 +487,10 @@ describe('POST /zamowienia/:id/nadaj — odmowa PRZED dotknięciem kuriera', () 
     const { serwer, id } = zServerem({ dpd, nad: POBRANIE });
     await serwer.ready();
     const r = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: PACZKA,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: PACZKA,
     });
     expect(r.statusCode).toBe(400);
     expect(fetchImpl).not.toHaveBeenCalled();
@@ -444,7 +508,9 @@ describe('kwota FAKTYCZNIE UŻYTA trafia do logu zamówienia', () => {
     const { serwer, id } = zServerem({ dpd, nad: POBRANIE });
     await serwer.ready();
     await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
       payload: { ...PACZKA_Z_POBRANIEM, kwota_pobrania: '310,33' },
     });
     const wpis = logi(id).find((w) => w.akcja === 'nadanie.pobranie');
@@ -459,7 +525,9 @@ describe('kwota FAKTYCZNIE UŻYTA trafia do logu zamówienia', () => {
     const { serwer, id } = zServerem({ dpd, nad: POBRANIE });
     await serwer.ready();
     await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
       payload: { ...PACZKA_Z_POBRANIEM, kwota_pobrania: '31033' },
     });
     expect(logi(id).find((w) => w.akcja === 'nadanie.pobranie').wynik).toContain('31033');
@@ -470,7 +538,10 @@ describe('kwota FAKTYCZNIE UŻYTA trafia do logu zamówienia', () => {
     const { serwer, id } = zServerem({ dpd, nad: POBRANIE });
     await serwer.ready();
     await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: PACZKA_Z_POBRANIEM,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: PACZKA_Z_POBRANIEM,
     });
     expect(logi(id).find((w) => w.akcja === 'nadanie.pobranie').wynik).toContain('212.90');
   });
@@ -494,7 +565,9 @@ describe('nadpisanie jest JEDNORAZOWE — nie zapisuje się do zamówienia', () 
     const { serwer, id } = zServerem({ dpd, nad: POBRANIE });
     await serwer.ready();
     await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
       payload: { ...PACZKA_Z_POBRANIEM, kwota_pobrania: '310.33' },
     });
     const w = db.prepare('SELECT kwota_pobrania, wysylka_reczna_json FROM zamowienia WHERE id = ?').get(id);
@@ -521,7 +594,10 @@ describe('wywołania spoza formularza zachowują się DOKŁADNIE jak dziś', () 
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
     const r = await serwer.inject({
-      method: 'POST', url: '/zamowienia/masowe/nadaj', headers: naglowek, payload: { id: String(id) },
+      method: 'POST',
+      url: '/zamowienia/masowe/nadaj',
+      headers: naglowek,
+      payload: { id: String(id) },
     });
     expect(r.statusCode).toBe(200);
     const koperta = kopertyV10(fetchImpl)[0];
@@ -543,14 +619,30 @@ describe('wywołania spoza formularza zachowują się DOKŁADNIE jak dziś', () 
 // Testy niżej idą przez PRAWDZIWY klient ShipX z atrapą `fetch` (nie przez atrapę klienta),
 // bo pytanie brzmi „co poszło w ciele żądania do InPostu", a nie „czy funkcję wywołano".
 describe('paczkomat za pobraniem — kwota z formularza jedzie do InPostu', () => {
-  const NADAWCA_INPOST = { nazwa: 'Pracownia Półcień', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL', phone: '+48500600700', email: 'sklep@swietlik.example.test' };
+  const NADAWCA_INPOST = {
+    nazwa: 'Pracownia Półcień',
+    ulica: 'ul. Przykładowa 1',
+    kod: '00-950',
+    miasto: 'Warszawa',
+    kraj: 'PL',
+    phone: '+48500600700',
+    email: 'sklep@swietlik.example.test',
+  };
   const PACZKOMAT = {
-    metoda_wysylki: 'inpost_paczkomat', pobranie: 1, kwota_pobrania: '212.90',
-    punkt_odbioru: 'SLN06M', punkt_odbioru_opis: 'Przy myjni',
+    metoda_wysylki: 'inpost_paczkomat',
+    pobranie: 1,
+    kwota_pobrania: '212.90',
+    punkt_odbioru: 'SLN06M',
+    punkt_odbioru_opis: 'Przy myjni',
   };
   // Formularz paczkomatowy: gabaryt A/B/C zamiast wymiarów (InPost nie zna wymiarów).
   const FORMULARZ = {
-    waga: '1', gabaryt: 'A', kolejnosc: '1', kraj: 'PL', punkt_odbioru: 'SLN06M', ...ADRES,
+    waga: '1',
+    gabaryt: 'A',
+    kolejnosc: '1',
+    kraj: 'PL',
+    punkt_odbioru: 'SLN06M',
+    ...ADRES,
   };
 
   // Atrapa `fetch` odpowiadająca jak ShipX: POST /shipments oddaje gotową przesyłkę,
@@ -566,26 +658,30 @@ describe('paczkomat za pobraniem — kwota z formularza jedzie do InPostu', () =
       }
       const zadanie = JSON.parse(opcje?.body ?? '{}');
       return {
-        status: 201, ok: true,
-        text: async () => JSON.stringify({
-          id: 9993331,
-          tracking_number: '520000123456789012345678',
-          // Echo jak w prawdziwym ShipX: przesylka przedplacona niesie `cod` z pustymi polami.
-          cod: zadanie.cod ?? { amount: null, currency: null },
-        }),
+        status: 201,
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            id: 9993331,
+            tracking_number: '520000123456789012345678',
+            // Echo jak w prawdziwym ShipX: przesylka przedplacona niesie `cod` z pustymi polami.
+            cod: zadanie.cod ?? { amount: null, currency: null },
+          }),
       };
     });
     const inpost = createInpostClient({
-      url: 'https://shipx.test/v1', token: 'eyJTESTOWY.TOKEN', organizacja: 13235,
-      nadawca: NADAWCA_INPOST, fetchImpl,
+      url: 'https://shipx.test/v1',
+      token: 'eyJTESTOWY.TOKEN',
+      organizacja: 13235,
+      nadawca: NADAWCA_INPOST,
+      fetchImpl,
     });
     return { inpost, fetchImpl };
   }
 
   // Ciało POST-a tworzącego przesyłkę — jedyne żądanie bez `format=` w adresie.
-  const cialoPrzesylki = (fetchImpl) => JSON.parse(
-    fetchImpl.mock.calls.find((c) => !String(c[0]).includes('format='))[1].body,
-  );
+  const cialoPrzesylki = (fetchImpl) =>
+    JSON.parse(fetchImpl.mock.calls.find((c) => !String(c[0]).includes('format='))[1].body);
 
   function zServeremInpost({ nad = {} } = {}) {
     const katalogEtykiet = mkdtempSync(join(tmpdir(), 'oms-pobranie-inpost-'));
@@ -601,7 +697,9 @@ describe('paczkomat za pobraniem — kwota z formularza jedzie do InPostu', () =
     const { serwer, id, fetchImpl } = zServeremInpost();
     await serwer.ready();
     const r = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
       payload: { ...FORMULARZ, kwota_pobrania: '310.33' },
     });
     expect(r.statusCode).toBe(302);
@@ -612,7 +710,9 @@ describe('paczkomat za pobraniem — kwota z formularza jedzie do InPostu', () =
     const { serwer, id, fetchImpl } = zServeremInpost();
     await serwer.ready();
     await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
       payload: { ...FORMULARZ, kwota_pobrania: '310,33' },
     });
     expect(cialoPrzesylki(fetchImpl).cod).toEqual({ amount: 310.33, currency: 'PLN' });
@@ -623,7 +723,9 @@ describe('paczkomat za pobraniem — kwota z formularza jedzie do InPostu', () =
     const { serwer, id, fetchImpl } = zServeremInpost();
     await serwer.ready();
     await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
       payload: { ...FORMULARZ, kwota_pobrania: '212.90' },
     });
     expect(cialoPrzesylki(fetchImpl).cod).toEqual({ amount: 212.9, currency: 'PLN' });
@@ -643,7 +745,9 @@ describe('paczkomat za pobraniem — kwota z formularza jedzie do InPostu', () =
     const { serwer, id } = zServeremInpost();
     await serwer.ready();
     await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
       payload: { ...FORMULARZ, kwota_pobrania: '310.33' },
     });
     expect(logi(id).some((w) => w.akcja === 'nadanie.pobranie' && w.wynik.includes('310.33'))).toBe(true);
@@ -673,12 +777,16 @@ describe('paczkomat za pobraniem — kwota z formularza jedzie do InPostu', () =
       const { serwer, id, fetchImpl } = poPierwszejPaczce({ umowa: true });
       await serwer.ready();
       const r = await serwer.inject({
-        method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+        method: 'POST',
+        url: `/zamowienia/${id}/nadaj`,
+        headers: naglowek,
         payload: { ...FORMULARZ, kolejnosc: '2', pobranie_na_tej_paczce: 'tak', kwota_pobrania: '212.90' },
       });
       expect(r.statusCode).toBe(302);
       expect(cialoPrzesylki(fetchImpl).cod).toEqual({ amount: 212.9, currency: 'PLN' });
-      expect(db.prepare('SELECT status FROM przesylki WHERE zamowienie_id = ? AND kolejnosc = 2').get(id)).toEqual({ status: 'nadana' });
+      expect(db.prepare('SELECT status FROM przesylki WHERE zamowienie_id = ? AND kolejnosc = 2').get(id)).toEqual({
+        status: 'nadana',
+      });
     });
 
     it('ekran paczki nr 2: sekcja pobrania nie odsyła do „panelu DPD", nagłówek nie mówi o DPD', async () => {
@@ -722,16 +830,20 @@ describe('paczkomat za pobraniem — kwota z formularza jedzie do InPostu', () =
         status: 201,
         ok: true,
         // InPost przyjmuje przesyłkę, oddaje numer listu i CICHO pomija pobranie.
-        text: async () => JSON.stringify({
-          id: 9993331,
-          tracking_number: '520000123456789012345678',
-          cod: { amount: null, currency: null },
-        }),
+        text: async () =>
+          JSON.stringify({
+            id: 9993331,
+            tracking_number: '520000123456789012345678',
+            cod: { amount: null, currency: null },
+          }),
       };
     });
     const inpost = createInpostClient({
-      url: 'https://shipx.test/v1', token: 'eyJTESTOWY.TOKEN', organizacja: 13235,
-      nadawca: NADAWCA_INPOST, fetchImpl,
+      url: 'https://shipx.test/v1',
+      token: 'eyJTESTOWY.TOKEN',
+      organizacja: 13235,
+      nadawca: NADAWCA_INPOST,
+      fetchImpl,
     });
     const katalogEtykiet = mkdtempSync(join(tmpdir(), 'oms-pobranie-polkniete-'));
     const klienci = { pro: { dodajNotatke: vi.fn().mockResolvedValue({}) } };
@@ -744,8 +856,7 @@ describe('paczkomat za pobraniem — kwota z formularza jedzie do InPostu', () =
 
   it('InPost połknął pobranie → nadanie PADA, zamiast zameldować sukces', async () => {
     const { nadanie, id } = inpostBezPobrania();
-    await expect(nadanie.nadaj(id, { waga: 1, gabaryt: 'A' }, { kolejnosc: 1 }))
-      .rejects.toThrow(/pobrani/i);
+    await expect(nadanie.nadaj(id, { waga: 1, gabaryt: 'A' }, { kolejnosc: 1 })).rejects.toThrow(/pobrani/i);
   });
 
   it('wiersz idzie na `do_wyjasnienia`, a NIE na „Sprawdź ponownie"', async () => {
@@ -789,8 +900,11 @@ describe('paczkomat za pobraniem — kwota z formularza jedzie do InPostu', () =
       };
     });
     const inpost = createInpostClient({
-      url: 'https://shipx.test/v1', token: 'eyJTESTOWY.TOKEN', organizacja: 13235,
-      nadawca: NADAWCA_INPOST, fetchImpl,
+      url: 'https://shipx.test/v1',
+      token: 'eyJTESTOWY.TOKEN',
+      organizacja: 13235,
+      nadawca: NADAWCA_INPOST,
+      fetchImpl,
     });
     const katalogEtykiet = mkdtempSync(join(tmpdir(), 'oms-pobranie-bez-numeru-'));
     const klienci = { pro: { dodajNotatke: vi.fn().mockResolvedValue({}) } };

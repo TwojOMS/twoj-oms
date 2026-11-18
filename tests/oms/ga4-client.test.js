@@ -16,10 +16,13 @@ const kluczTestowy = () => {
   const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
   const katalog = mkdtempSync(join(tmpdir(), 'oms-ga4-'));
   const sciezka = join(katalog, 'sa.json');
-  writeFileSync(sciezka, JSON.stringify({
-    client_email: 'konto-uslugowe@projekt.iam.gserviceaccount.com',
-    private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }),
-  }));
+  writeFileSync(
+    sciezka,
+    JSON.stringify({
+      client_email: 'konto-uslugowe@projekt.iam.gserviceaccount.com',
+      private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }),
+    }),
+  );
   return sciezka;
 };
 
@@ -53,8 +56,9 @@ describe('createGa4Client — bariery i sekrety', () => {
   // ⚠️ KLUCZ CZYTANY DOPIERO PRZY UZYCIU: brak pliku ma zgasic SEKCJE, nie polozyc panelu.
   it('brak pliku klucza NIE wywala konstruktora — dopiero odczyt mówi, czego brakuje', async () => {
     const klient = createGa4Client({ sciezkaKlucza: 'C:/nie/ma/takiego/pliku.json', fetchImpl: atrapa().fetchImpl });
-    await expect(klient.dzienneStatystyki({ wlasciwosc: '1', od: '2026-08-24', do: '2026-08-25' }))
-      .rejects.toThrow(/Nie mogę odczytać klucza konta usługowego/);
+    await expect(klient.dzienneStatystyki({ wlasciwosc: '1', od: '2026-08-24', do: '2026-08-25' })).rejects.toThrow(
+      /Nie mogę odczytać klucza konta usługowego/,
+    );
   });
 
   it('plik, który nie jest kluczem konta usługowego, mówi to wprost', async () => {
@@ -62,8 +66,9 @@ describe('createGa4Client — bariery i sekrety', () => {
     const sciezka = join(katalog, 'zly.json');
     writeFileSync(sciezka, JSON.stringify({ cokolwiek: 1 }));
     const klient = createGa4Client({ sciezkaKlucza: sciezka, fetchImpl: atrapa().fetchImpl });
-    await expect(klient.dzienneStatystyki({ wlasciwosc: '1', od: '2026-08-24', do: '2026-08-25' }))
-      .rejects.toThrow(/nie jest klucz konta usługowego/);
+    await expect(klient.dzienneStatystyki({ wlasciwosc: '1', od: '2026-08-24', do: '2026-08-25' })).rejects.toThrow(
+      /nie jest klucz konta usługowego/,
+    );
   });
 
   it('token idzie nagłówkiem, a klucz prywatny nie pojawia się w żadnym żądaniu', async () => {
@@ -77,10 +82,14 @@ describe('createGa4Client — bariery i sekrety', () => {
   });
 
   it('odmowa tokenu jest błędem z powodem, bez treści klucza', async () => {
-    const { fetchImpl } = atrapa({ tokenOk: false, token: { error: 'invalid_grant', error_description: 'Invalid JWT Signature' } });
+    const { fetchImpl } = atrapa({
+      tokenOk: false,
+      token: { error: 'invalid_grant', error_description: 'Invalid JWT Signature' },
+    });
     const klient = createGa4Client({ sciezkaKlucza: kluczTestowy(), fetchImpl });
-    await expect(klient.dzienneStatystyki({ wlasciwosc: '1', od: '2026-08-24', do: '2026-08-25' }))
-      .rejects.toThrow(/invalid_grant.*Invalid JWT Signature/);
+    await expect(klient.dzienneStatystyki({ wlasciwosc: '1', od: '2026-08-24', do: '2026-08-25' })).rejects.toThrow(
+      /invalid_grant.*Invalid JWT Signature/,
+    );
   });
 
   // ⚠️ Trzy raporty na przebieg — token ma byc podpisany RAZ, nie trzy razy.
@@ -118,7 +127,10 @@ describe('createGa4Client — dzienne statystyki', () => {
     });
     const klient = createGa4Client({ sciezkaKlucza: kluczTestowy(), fetchImpl });
     const wynik = await klient.dzienneStatystyki({
-      wlasciwosc: '398443619', od: '2026-08-24', do: '2026-08-25', sciezkaPromo: '/wrzesien',
+      wlasciwosc: '398443619',
+      od: '2026-08-24',
+      do: '2026-08-25',
+      sciezkaPromo: '/wrzesien',
     });
 
     expect(wynik).toEqual([
@@ -190,12 +202,14 @@ describe('createGa4Client — dzienne statystyki', () => {
   // „zero sesji" — czyli jak prawdziwy, spokojny dzien bez ruchu.
   it('odpowiedź 200, której nie rozpoznajemy, jest błędem — nie zerem sesji', async () => {
     const fetchImpl = async (url) => {
-      if (String(url).includes('oauth2')) return { ok: true, status: 200, json: async () => ({ access_token: 'T', expires_in: 3600 }) };
+      if (String(url).includes('oauth2'))
+        return { ok: true, status: 200, json: async () => ({ access_token: 'T', expires_in: 3600 }) };
       return { ok: true, status: 200, json: async () => ({ cokolwiek: 'HTML logowania' }) };
     };
     const klient = createGa4Client({ sciezkaKlucza: kluczTestowy(), fetchImpl });
-    await expect(klient.dzienneStatystyki({ wlasciwosc: '1', od: '2026-08-24', do: '2026-08-25' }))
-      .rejects.toThrow(/nie rozpoznaję/);
+    await expect(klient.dzienneStatystyki({ wlasciwosc: '1', od: '2026-08-24', do: '2026-08-25' })).rejects.toThrow(
+      /nie rozpoznaję/,
+    );
   });
 });
 
@@ -208,19 +222,30 @@ describe('createGa4Client — raport reklam', () => {
   it('pobiera wszystkie strony dni i transakcji, rozdziela kwoty i pomija nieprzypisane kampanie', async () => {
     const wywolania = [];
     const fetchImpl = async (url, opcje) => {
-      if (String(url).includes('oauth2')) return { ok: true, status: 200, json: async () => ({ access_token: 'SEKRET-TOKEN', expires_in: 3600 }) };
+      if (String(url).includes('oauth2'))
+        return { ok: true, status: 200, json: async () => ({ access_token: 'SEKRET-TOKEN', expires_in: 3600 }) };
       const body = JSON.parse(opcje.body);
       wywolania.push({ url: String(url), body, headers: opcje.headers });
       const transakcje = body.dimensions.some((d) => d.name === 'transactionId');
       const offset = Number(body.offset ?? 0);
       const rows = transakcje
-        ? (offset === 0
-          ? [wierszReklamy(['20260916', '1451', '42'], ['97.40']), wierszReklamy(['20260916', '1452', '(not set)'], ['50'])]
-          : [wierszReklamy(['20260917', '1453', '43'], ['12.30'])])
-        : (offset === 0
-          ? [wierszReklamy(['20260916', '42', 'Search'], ['104.06', 253, 6936]), wierszReklamy(['20260916', '', 'Bez ID'], ['9', 2, 3])]
-          : [wierszReklamy(['20260917', '43', 'Brand'], ['10.20', 8, 100])]);
-      return { ok: true, status: 200, json: async () => ({ rows, rowCount: 10001, metadata: { currencyCode: 'PLN' } }) };
+        ? offset === 0
+          ? [
+              wierszReklamy(['20260916', '1451', '42'], ['97.40']),
+              wierszReklamy(['20260916', '1452', '(not set)'], ['50']),
+            ]
+          : [wierszReklamy(['20260917', '1453', '43'], ['12.30'])]
+        : offset === 0
+          ? [
+              wierszReklamy(['20260916', '42', 'Search'], ['104.06', 253, 6936]),
+              wierszReklamy(['20260916', '', 'Bez ID'], ['9', 2, 3]),
+            ]
+          : [wierszReklamy(['20260917', '43', 'Brand'], ['10.20', 8, 100])];
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ rows, rowCount: 10001, metadata: { currencyCode: 'PLN' } }),
+      };
     };
     const klient = createGa4Client({ sciezkaKlucza: kluczTestowy(), fetchImpl });
 
@@ -228,7 +253,14 @@ describe('createGa4Client — raport reklam', () => {
 
     expect(wynik).toEqual({
       dni: [
-        { dzien: '2026-09-16', kampaniaId: '42', nazwa: 'Search', koszt: '104.06', klikniecia: 253, wyswietlenia: 6936 },
+        {
+          dzien: '2026-09-16',
+          kampaniaId: '42',
+          nazwa: 'Search',
+          koszt: '104.06',
+          klikniecia: 253,
+          wyswietlenia: 6936,
+        },
         { dzien: '2026-09-17', kampaniaId: '43', nazwa: 'Brand', koszt: '10.20', klikniecia: 8, wyswietlenia: 100 },
       ],
       transakcje: [
@@ -240,30 +272,46 @@ describe('createGa4Client — raport reklam', () => {
     expect(wywolania).toHaveLength(4);
     expect(wywolania.map((w) => Number(w.body.offset ?? 0))).toEqual([0, 10000, 0, 10000]);
     expect(wywolania.map((w) => w.body.limit)).toEqual([10000, 10000, 10000, 10000]);
-    expect(wywolania[0].body.dimensions.map((d) => d.name)).toEqual(['date', 'googleAdsCampaignId', 'googleAdsCampaignName']);
-    expect(wywolania[0].body.metrics.map((m) => m.name)).toEqual(['advertiserAdCost', 'advertiserAdClicks', 'advertiserAdImpressions']);
-    expect(wywolania[2].body.dimensions.map((d) => d.name)).toEqual(['date', 'transactionId', 'sessionGoogleAdsCampaignId']);
+    expect(wywolania[0].body.dimensions.map((d) => d.name)).toEqual([
+      'date',
+      'googleAdsCampaignId',
+      'googleAdsCampaignName',
+    ]);
+    expect(wywolania[0].body.metrics.map((m) => m.name)).toEqual([
+      'advertiserAdCost',
+      'advertiserAdClicks',
+      'advertiserAdImpressions',
+    ]);
+    expect(wywolania[2].body.dimensions.map((d) => d.name)).toEqual([
+      'date',
+      'transactionId',
+      'sessionGoogleAdsCampaignId',
+    ]);
     expect(wywolania[2].body.metrics.map((m) => m.name)).toEqual(['purchaseRevenue']);
     expect(wywolania.every((w) => w.headers.authorization === 'Bearer SEKRET-TOKEN')).toBe(true);
     expect(wywolania.every((w) => !w.url.includes('SEKRET-TOKEN'))).toBe(true);
   });
 
   it('pusty raport zachowuje brak waluty zamiast udawać zero', async () => {
-    const fetchImpl = async (url) => String(url).includes('oauth2')
-      ? { ok: true, status: 200, json: async () => ({ access_token: 'T', expires_in: 3600 }) }
-      : { ok: true, status: 200, json: async () => ({ rowCount: 0, metadata: {} }) };
+    const fetchImpl = async (url) =>
+      String(url).includes('oauth2')
+        ? { ok: true, status: 200, json: async () => ({ access_token: 'T', expires_in: 3600 }) }
+        : { ok: true, status: 200, json: async () => ({ rowCount: 0, metadata: {} }) };
     const klient = createGa4Client({ sciezkaKlucza: kluczTestowy(), fetchImpl });
-    expect(await klient.raportReklam({ wlasciwosc: '1', od: '2026-09-16', do: '2026-09-22' }))
-      .toEqual({ dni: [], transakcje: [], waluta: null });
+    expect(await klient.raportReklam({ wlasciwosc: '1', od: '2026-09-16', do: '2026-09-22' })).toEqual({
+      dni: [],
+      transakcje: [],
+      waluta: null,
+    });
   });
 
   it('błąd GA4 nie ujawnia tokenu ani treści odpowiedzi', async () => {
-    const fetchImpl = async (url) => String(url).includes('oauth2')
-      ? { ok: true, status: 200, json: async () => ({ access_token: 'TAJNY-TOKEN', expires_in: 3600 }) }
-      : { ok: false, status: 403, json: async () => ({ error: { message: 'Odmowa TAJNY-TOKEN' } }) };
+    const fetchImpl = async (url) =>
+      String(url).includes('oauth2')
+        ? { ok: true, status: 200, json: async () => ({ access_token: 'TAJNY-TOKEN', expires_in: 3600 }) }
+        : { ok: false, status: 403, json: async () => ({ error: { message: 'Odmowa TAJNY-TOKEN' } }) };
     const klient = createGa4Client({ sciezkaKlucza: kluczTestowy(), fetchImpl });
-    const blad = await klient.raportReklam({ wlasciwosc: '1', od: '2026-09-16', do: '2026-09-22' })
-      .catch((e) => e);
+    const blad = await klient.raportReklam({ wlasciwosc: '1', od: '2026-09-16', do: '2026-09-22' }).catch((e) => e);
     expect(blad.message).toContain('GA4: nie udało się pobrać raportu reklam');
     expect(blad.status).toBe(403);
     expect(blad.message).not.toContain('TAJNY-TOKEN');

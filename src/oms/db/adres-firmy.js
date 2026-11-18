@@ -1,7 +1,10 @@
 // Adres firmy z Ustawień: wiersz „firma” w tabeli konfiguracja_integracji (migracja rdzenia 6,
 // bez nowej migracji). Jawne ustawienia, puste sekrety — adres firmy nie jest poświadczeniem.
-import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji, usunKonfiguracjeIntegracji }
-  from './konfiguracja-integracji.js';
+import {
+  wczytajKonfiguracjeIntegracji,
+  zapiszKonfiguracjeIntegracji,
+  usunKonfiguracjeIntegracji,
+} from './konfiguracja-integracji.js';
 import { KLUCZ_ADRESU_FIRMY, rozstrzygnijAdresFirmy } from '../../domena/adres-firmy.js';
 import { adresWPliku } from '../../core/adres-firmy.ts';
 

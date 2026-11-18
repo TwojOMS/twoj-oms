@@ -28,8 +28,8 @@ describe('Ustawienia → Integracje → Reklamy', () => {
       expect(r.body).toContain(`<h2>${KATALOG_INTEGRACJI.find((w) => w.id === id).nazwa}</h2>`);
     }
     expect(r.body).not.toContain('<h2>Google przez GA4</h2>');
-    expect((r.body.match(/Niepodłączone/g) ?? [])).toHaveLength(3);
-    expect((r.body.match(/Skopiuj prompt dla agenta/g) ?? [])).toHaveLength(3);
+    expect(r.body.match(/Niepodłączone/g) ?? []).toHaveLength(3);
+    expect(r.body.match(/Skopiuj prompt dla agenta/g) ?? []).toHaveLength(3);
     expect(r.body).not.toContain('name="tresc"');
     expect(r.body).not.toContain('name="token"');
     await app.close();
@@ -46,11 +46,11 @@ describe('Ustawienia → Integracje → Reklamy', () => {
     expect(lista.body).toContain('Niesprawdzone');
     const r = await app.inject({ method: 'GET', url: '/ustawienia/integracje/reklamy', headers: BASIC });
     expect(r.body).toContain('<a href="/ustawienia/integracje">← Moje połączenia</a>');
-    expect((r.body.match(/<section class="ust-sekcja" id="reklamy-(?:ga4|google_ads|meta)"/g) ?? [])).toHaveLength(3);
-    expect((r.body.match(/<p class="ust-stan"><strong>Niepodłączone<\/strong>/g) ?? [])).toHaveLength(2);
+    expect(r.body.match(/<section class="ust-sekcja" id="reklamy-(?:ga4|google_ads|meta)"/g) ?? []).toHaveLength(3);
+    expect(r.body.match(/<p class="ust-stan"><strong>Niepodłączone<\/strong>/g) ?? []).toHaveLength(2);
     // Meta jest zapisana, ale bez udanego odczytu — plakietka „Weryfikacja", nie „Niepodłączone".
     expect(r.body).toMatch(/ust-stan ust-stan-weryfikacja"><strong>Weryfikacja<\/strong>/);
-    expect((r.body.match(/<aside class="ust-instrukcja"/g) ?? [])).toHaveLength(2);
+    expect(r.body.match(/<aside class="ust-instrukcja"/g) ?? []).toHaveLength(2);
     expect(r.body).toContain('class="ust-prompt"');
     // Pole z promptem ma wysokość dobraną do treści (rows >= 7), nie stałe 7 wierszy.
     const rows = [...r.body.matchAll(/class="ust-prompt" readonly rows="(\d+)"/g)].map((m) => Number(m[1]));
@@ -62,8 +62,17 @@ describe('Ustawienia → Integracje → Reklamy', () => {
 
   it('ostatni udany odczyt w formacie panelu (fmtKiedy), nie surowym znacznikiem', async () => {
     const db = openOmsDb(':memory:');
-    const p = zapiszPolaczenie(db, { typ: 'meta', kontoId: 'act_1', kanal: 'sklep_a', sekretRef: `meta:${randomUUID()}` });
-    zapiszStan(db, { polaczenieId: p.id, ostatniaProbaAt: '2026-09-23T09:00:00Z', ostatniSukcesAt: '2026-09-23T09:00:00Z' });
+    const p = zapiszPolaczenie(db, {
+      typ: 'meta',
+      kontoId: 'act_1',
+      kanal: 'sklep_a',
+      sekretRef: `meta:${randomUUID()}`,
+    });
+    zapiszStan(db, {
+      polaczenieId: p.id,
+      ostatniaProbaAt: '2026-09-23T09:00:00Z',
+      ostatniSukcesAt: '2026-09-23T09:00:00Z',
+    });
     const app = buildOmsServer({ db, config: CONFIG });
     const r = await app.inject({ method: 'GET', url: '/ustawienia/integracje/reklamy', headers: BASIC });
     expect(r.body).toContain(`Ostatni udany odczyt: ${fmtKiedy('2026-09-23T09:00:00Z')}`);
@@ -77,14 +86,26 @@ describe('Ustawienia → Integracje → Reklamy', () => {
     const id = zalozKonto(db, { login: 'ewa', imie: 'Barbara', haslo: 'h', rola: 'sprzedaz', admin: false });
     ustawUprawnienia(db, id, ['ustawienia']);
     const jakoAga = { cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz('ewa', odczytajSekret(db))}` };
-    const bezAdmina = await app.inject({ method: 'POST', url: '/ustawienia/integracje/reklamy/zapisz',
-      headers: { ...jakoAga, origin: 'http://localhost' }, payload: { typ: 'meta', token: 'SEKRET' } });
+    const bezAdmina = await app.inject({
+      method: 'POST',
+      url: '/ustawienia/integracje/reklamy/zapisz',
+      headers: { ...jakoAga, origin: 'http://localhost' },
+      payload: { typ: 'meta', token: 'SEKRET' },
+    });
     expect(bezAdmina.statusCode).toBe(403);
-    const bezCsrf = await app.inject({ method: 'POST', url: '/ustawienia/integracje/reklamy/zapisz',
-      headers: BASIC, payload: { typ: 'meta', token: 'SEKRET' } });
+    const bezCsrf = await app.inject({
+      method: 'POST',
+      url: '/ustawienia/integracje/reklamy/zapisz',
+      headers: BASIC,
+      payload: { typ: 'meta', token: 'SEKRET' },
+    });
     expect(bezCsrf.statusCode).toBe(403);
-    const http = await app.inject({ method: 'POST', url: '/ustawienia/integracje/reklamy/zapisz',
-      headers: { ...BASIC, origin: 'http://localhost', 'x-forwarded-proto': 'https' }, payload: { typ: 'meta', token: 'SEKRET' } });
+    const http = await app.inject({
+      method: 'POST',
+      url: '/ustawienia/integracje/reklamy/zapisz',
+      headers: { ...BASIC, origin: 'http://localhost', 'x-forwarded-proto': 'https' },
+      payload: { typ: 'meta', token: 'SEKRET' },
+    });
     expect(http.statusCode).toBe(403);
     expect(http.body).not.toContain('SEKRET');
     await app.close();
@@ -95,17 +116,25 @@ describe('Ustawienia → Integracje → Reklamy', () => {
     const db = openOmsDb(':memory:');
     const magazyn = createMagazynSekretow({ katalog });
     const app = Fastify();
-    app.addHook('onRequest', async (req) => { req.konto = { admin: true }; });
+    app.addHook('onRequest', async (req) => {
+      req.konto = { admin: true };
+    });
     registerUstawieniaRoutes(app, { db, reklamy: { magazyn, zaufaneHttps: () => true } });
     try {
       const dane = { typ: 'meta', kontoId: 'act_123', kanal: 'sklep_a' };
-      const pierwszy = await app.inject({ method: 'POST', url: '/ustawienia/integracje/reklamy/zapisz',
-        payload: { ...dane, tresc: 'pierwszy-token' } });
+      const pierwszy = await app.inject({
+        method: 'POST',
+        url: '/ustawienia/integracje/reklamy/zapisz',
+        payload: { ...dane, tresc: 'pierwszy-token' },
+      });
       expect(pierwszy.statusCode).toBe(302);
       const przed = polaczenia(db);
       expect(przed).toHaveLength(1);
-      const drugi = await app.inject({ method: 'POST', url: '/ustawienia/integracje/reklamy/zapisz',
-        payload: { ...dane, tresc: 'nowy-token' } });
+      const drugi = await app.inject({
+        method: 'POST',
+        url: '/ustawienia/integracje/reklamy/zapisz',
+        payload: { ...dane, tresc: 'nowy-token' },
+      });
       expect(drugi.statusCode).toBe(302);
       const po = polaczenia(db);
       expect(po).toHaveLength(1);
@@ -123,17 +152,29 @@ describe('Ustawienia → Integracje → Reklamy', () => {
     const NAGLOWKI = { ...BASIC, origin: 'http://localhost' };
     const serwerZTestem = (raportReklam) => {
       const db = openOmsDb(':memory:');
-      const polaczenie = zapiszPolaczenie(db, { typ: 'meta', kontoId: 'act_123', kanal: 'sklep_a',
-        sekretRef: `meta:${randomUUID()}` });
-      const app = buildOmsServer({ db, config: CONFIG, reklamy: {
-        magazyn: { odczytaj: async () => 'tajny-token' },
-        klienci: { meta: () => ({ raportReklam }) },
-      } });
+      const polaczenie = zapiszPolaczenie(db, {
+        typ: 'meta',
+        kontoId: 'act_123',
+        kanal: 'sklep_a',
+        sekretRef: `meta:${randomUUID()}`,
+      });
+      const app = buildOmsServer({
+        db,
+        config: CONFIG,
+        reklamy: {
+          magazyn: { odczytaj: async () => 'tajny-token' },
+          klienci: { meta: () => ({ raportReklam }) },
+        },
+      });
       return { app, db, polaczenie };
     };
     const kliknijTest = async (app, polaczenie) => {
-      const post = await app.inject({ method: 'POST', url: '/ustawienia/integracje/reklamy/test',
-        headers: NAGLOWKI, payload: { polaczenieId: polaczenie.id } });
+      const post = await app.inject({
+        method: 'POST',
+        url: '/ustawienia/integracje/reklamy/test',
+        headers: NAGLOWKI,
+        payload: { polaczenieId: polaczenie.id },
+      });
       expect(post.statusCode).toBe(303);
       const ekran = await app.inject({ method: 'GET', url: post.headers.location, headers: BASIC });
       expect(ekran.statusCode).toBe(200);
@@ -145,7 +186,9 @@ describe('Ustawienia → Integracje → Reklamy', () => {
       const { post, ekran } = await kliknijTest(app, polaczenie);
       expect(post.headers.location).toMatch(/^\/ustawienia\/integracje\/reklamy\?/);
       expect(ekran.headers['content-type']).toContain('text/html');
-      expect(ekran.body).toMatch(/<div class="pas-potwierdzenie"[^>]*><p>Odczyt działa — Meta Ads, konto act_123\.<\/p><\/div>/);
+      expect(ekran.body).toMatch(
+        /<div class="pas-potwierdzenie"[^>]*><p>Odczyt działa — Meta Ads, konto act_123\.<\/p><\/div>/,
+      );
       expect(ekran.body).not.toContain('"stan"');
       expect(ekran.body).not.toContain('tajny-token');
       await app.close();
@@ -156,20 +199,29 @@ describe('Ustawienia → Integracje → Reklamy', () => {
         throw new Error('HTTP 500 {"error":"token tajny-token odrzucony"} at fetch (node:internal)');
       });
       const { ekran } = await kliknijTest(app, polaczenie);
-      expect(ekran.body).toMatch(/<div class="pas-uprzedzenie"[^>]*><p>Test odczytu nie powiódł się — Meta Ads, konto act_123\. Sprawdź połączenie ze źródłem i ponów test\.<\/p><\/div>/);
+      expect(ekran.body).toMatch(
+        /<div class="pas-uprzedzenie"[^>]*><p>Test odczytu nie powiódł się — Meta Ads, konto act_123\. Sprawdź połączenie ze źródłem i ponów test\.<\/p><\/div>/,
+      );
       expect(ekran.body).not.toContain('pas-potwierdzenie');
-      for (const nie of ['tajny-token', 'HTTP 500', 'node:internal', '"stan"', 'BLAD_ODCZYTU"}']) expect(ekran.body).not.toContain(nie);
+      for (const nie of ['tajny-token', 'HTTP 500', 'node:internal', '"stan"', 'BLAD_ODCZYTU"}'])
+        expect(ekran.body).not.toContain(nie);
       await app.close();
     });
 
     it('adres z samym parametrem nie wyświetla cudzego tekstu ani komunikatu dla nieistniejącego połączenia', async () => {
       const { app, polaczenie } = serwerZTestem(async () => ({ waluta: 'PLN' }));
-      const podrobiony = await app.inject({ method: 'GET', headers: BASIC,
-        url: `/ustawienia/integracje/reklamy?test=blad&kod=%3Cscript%3Ealert(1)%3C%2Fscript%3E&polaczenie=${polaczenie.id}` });
+      const podrobiony = await app.inject({
+        method: 'GET',
+        headers: BASIC,
+        url: `/ustawienia/integracje/reklamy?test=blad&kod=%3Cscript%3Ealert(1)%3C%2Fscript%3E&polaczenie=${polaczenie.id}`,
+      });
       expect(podrobiony.body).not.toContain('<script>alert');
       expect(podrobiony.body).not.toContain('Test odczytu nie powiódł się');
-      const cudze = await app.inject({ method: 'GET', headers: BASIC,
-        url: '/ustawienia/integracje/reklamy?test=dziala&polaczenie=9999' });
+      const cudze = await app.inject({
+        method: 'GET',
+        headers: BASIC,
+        url: '/ustawienia/integracje/reklamy?test=dziala&polaczenie=9999',
+      });
       expect(cudze.body).not.toContain('Odczyt działa');
       await app.close();
     });
@@ -177,16 +229,28 @@ describe('Ustawienia → Integracje → Reklamy', () => {
 
   it('ręczny test zapisuje ostatni sukces bez surowej odpowiedzi API', async () => {
     const db = openOmsDb(':memory:');
-    const polaczenie = zapiszPolaczenie(db, { typ: 'meta', kontoId: 'act_123', kanal: 'sklep_a',
-      sekretRef: `meta:${randomUUID()}` });
+    const polaczenie = zapiszPolaczenie(db, {
+      typ: 'meta',
+      kontoId: 'act_123',
+      kanal: 'sklep_a',
+      sekretRef: `meta:${randomUUID()}`,
+    });
     const app = Fastify();
-    app.addHook('onRequest', async (req) => { req.konto = { admin: true }; });
-    registerUstawieniaRoutes(app, { db, reklamy: {
-      magazyn: { odczytaj: async () => 'tajny-token' },
-      klienci: { meta: () => ({ raportReklam: async () => ({ waluta: 'PLN', strefa: 'Europe/Warsaw' }) }) },
-    } });
-    const r = await app.inject({ method: 'POST', url: '/ustawienia/integracje/reklamy/test',
-      payload: { polaczenieId: polaczenie.id } });
+    app.addHook('onRequest', async (req) => {
+      req.konto = { admin: true };
+    });
+    registerUstawieniaRoutes(app, {
+      db,
+      reklamy: {
+        magazyn: { odczytaj: async () => 'tajny-token' },
+        klienci: { meta: () => ({ raportReklam: async () => ({ waluta: 'PLN', strefa: 'Europe/Warsaw' }) }) },
+      },
+    });
+    const r = await app.inject({
+      method: 'POST',
+      url: '/ustawienia/integracje/reklamy/test',
+      payload: { polaczenieId: polaczenie.id },
+    });
     // Wynik wraca na ekran reklam (PRG), nie jako surowy JSON.
     expect(r.statusCode).toBe(303);
     expect(r.headers.location).toBe(`/ustawienia/integracje/reklamy?test=dziala&polaczenie=${polaczenie.id}`);

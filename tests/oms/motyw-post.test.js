@@ -21,14 +21,15 @@ function powrotZMenu(body) {
   return dopasowanie[1].replaceAll('&amp;', '&');
 }
 
-const cialoPodgladu = () => new URLSearchParams([
-  ['data', '2026-09-14'],
-  ['powod', 'nie pasuje'],
-  ['klucz', 's77'],
-  ['nazwa', 'Kot 70x100'],
-  ['ilosc', '1'],
-  ['pozycja_kwota', '99.00'],
-]).toString();
+const cialoPodgladu = () =>
+  new URLSearchParams([
+    ['data', '2026-09-14'],
+    ['powod', 'nie pasuje'],
+    ['klucz', 's77'],
+    ['nazwa', 'Kot 70x100'],
+    ['ilosc', '1'],
+    ['pozycja_kwota', '99.00'],
+  ]).toString();
 
 describe('menu motywu na ekranach renderowanych przez POST', () => {
   let app;
@@ -36,32 +37,39 @@ describe('menu motywu na ekranach renderowanych przez POST', () => {
 
   beforeEach(async () => {
     const db = openOmsDb(':memory:');
-    id = zapiszZamowienie(db, 'pro', {
-      zrodlo_id: 7301,
-      numer: '7301',
-      klient: { email: 'klient@example.test' },
-      dostawa: {},
-      metoda_wysylki: 'dpd',
-      kwota_pobrania: null,
-      chce_fakture: 0,
-      nip: null,
-      kwota_brutto: '99.00',
-      koszt_dostawy_brutto: '0.00',
-      koszt_dostawy_netto: '0.00',
-      status_woo: 'processing',
-      oplacone_at: null,
-      anulowane: 0,
-      utworzone_at: '2026-09-14T08:00:00Z',
-      pozycje: [{
-        zrodlo_id: 77,
-        nazwa: 'Kot 70x100',
-        sku: 'PRO-KOT-001',
-        ilosc: 1,
-        cena_brutto: '99.00',
-        brutto_linii: '99.00',
-        vat: null,
-      }],
-    }, {});
+    id = zapiszZamowienie(
+      db,
+      'pro',
+      {
+        zrodlo_id: 7301,
+        numer: '7301',
+        klient: { email: 'klient@example.test' },
+        dostawa: {},
+        metoda_wysylki: 'dpd',
+        kwota_pobrania: null,
+        chce_fakture: 0,
+        nip: null,
+        kwota_brutto: '99.00',
+        koszt_dostawy_brutto: '0.00',
+        koszt_dostawy_netto: '0.00',
+        status_woo: 'processing',
+        oplacone_at: null,
+        anulowane: 0,
+        utworzone_at: '2026-09-14T08:00:00Z',
+        pozycje: [
+          {
+            zrodlo_id: 77,
+            nazwa: 'Kot 70x100',
+            sku: 'PRO-KOT-001',
+            ilosc: 1,
+            cena_brutto: '99.00',
+            brutto_linii: '99.00',
+            vat: null,
+          },
+        ],
+      },
+      {},
+    );
     app = buildOmsServer({ db, config });
     await app.ready();
   });
@@ -80,7 +88,10 @@ describe('menu motywu na ekranach renderowanych przez POST', () => {
     expect(cel).toBe(ekranZwrotu);
 
     const motyw = await app.inject({
-      method: 'POST', url: '/motyw', headers: POST, payload: new URLSearchParams({ powrot: cel }).toString(),
+      method: 'POST',
+      url: '/motyw',
+      headers: POST,
+      payload: new URLSearchParams({ powrot: cel }).toString(),
     });
     expect(motyw.statusCode).toBe(302);
     expect(motyw.headers.location).toBe(ekranZwrotu);
@@ -102,7 +113,10 @@ describe('menu motywu na ekranach renderowanych przez POST', () => {
     const cel = powrotZMenu(odmowa.body);
     expect(cel).toBe(ekranUstawien);
     const motyw = await app.inject({
-      method: 'POST', url: '/motyw', headers: POST, payload: new URLSearchParams({ powrot: cel }).toString(),
+      method: 'POST',
+      url: '/motyw',
+      headers: POST,
+      payload: new URLSearchParams({ powrot: cel }).toString(),
     });
     const powrot = await app.inject({ method: 'GET', url: motyw.headers.location, headers: AUTH });
     expect(powrot.statusCode).toBe(200);
@@ -138,7 +152,10 @@ describe('menu motywu na ekranach renderowanych przez POST', () => {
       url: '/ustawienia/paczka',
       headers: { ...POST, referer: 'http://localhost/ustawienia/paczka' },
       payload: new URLSearchParams({
-        waga: '0', dlugosc: '100', szerokosc: '70', wysokosc: '5',
+        waga: '0',
+        dlugosc: '100',
+        szerokosc: '70',
+        wysokosc: '5',
         powrot: '/ustawienia/zamowienia-i-wysylka?sekcja=paczka',
       }).toString(),
     });
@@ -152,7 +169,11 @@ describe('menu motywu na ekranach renderowanych przez POST', () => {
       url: '/ustawienia/paczka',
       headers: { ...POST, referer: 'https://obcy.example/ustawienia/zamowienia-i-wysylka' },
       payload: new URLSearchParams({
-        waga: '0', dlugosc: '100', szerokosc: '70', wysokosc: '5', powrot: '/ustawienia/paczka',
+        waga: '0',
+        dlugosc: '100',
+        szerokosc: '70',
+        wysokosc: '5',
+        powrot: '/ustawienia/paczka',
       }).toString(),
     });
 
@@ -160,14 +181,17 @@ describe('menu motywu na ekranach renderowanych przez POST', () => {
   });
 
   it('czysci zlosliwy zagniezdzony powrot z Referer i zachowuje pozostale query', async () => {
-    const referer = 'http://localhost/ustawienia/zamowienia-i-wysylka'
-      + '?edytuj=paczka&powrot=https%3A%2F%2Fobcy.example%2Fhaslo';
+    const referer =
+      'http://localhost/ustawienia/zamowienia-i-wysylka' + '?edytuj=paczka&powrot=https%3A%2F%2Fobcy.example%2Fhaslo';
     const odmowa = await app.inject({
       method: 'POST',
       url: '/ustawienia/paczka',
       headers: { ...POST, referer },
       payload: new URLSearchParams({
-        waga: '0', dlugosc: '100', szerokosc: '70', wysokosc: '5',
+        waga: '0',
+        dlugosc: '100',
+        szerokosc: '70',
+        wysokosc: '5',
         powrot: '/?powrot=%2F%3Fstatus%3Dnowe',
       }).toString(),
     });
@@ -176,8 +200,9 @@ describe('menu motywu na ekranach renderowanych przez POST', () => {
   });
 
   it('usuwa wszystkie duplikaty zagniezdzonego powrotu z Referer', async () => {
-    const referer = 'http://localhost/ustawienia/zamowienia-i-wysylka'
-      + '?edytuj=paczka&powrot=%2F%3Fstatus%3Dnowe&powrot=%2F%3Fstatus%3Dgotowe';
+    const referer =
+      'http://localhost/ustawienia/zamowienia-i-wysylka' +
+      '?edytuj=paczka&powrot=%2F%3Fstatus%3Dnowe&powrot=%2F%3Fstatus%3Dgotowe';
     const odmowa = await app.inject({
       method: 'POST',
       url: '/ustawienia/paczka',
@@ -215,7 +240,10 @@ describe('menu motywu na ekranach renderowanych przez POST', () => {
     expect(powrotZMenu(odmowa.body)).toBe(karta);
 
     const motyw = await app.inject({
-      method: 'POST', url: '/motyw', headers: POST, payload: new URLSearchParams({ powrot: karta }).toString(),
+      method: 'POST',
+      url: '/motyw',
+      headers: POST,
+      payload: new URLSearchParams({ powrot: karta }).toString(),
     });
     expect(motyw.statusCode).toBe(302);
     expect(motyw.headers.location).toBe(karta);
@@ -229,7 +257,11 @@ describe('menu motywu na ekranach renderowanych przez POST', () => {
       url: '/ustawienia/paczka',
       headers: POST,
       payload: new URLSearchParams({
-        waga: '0', dlugosc: '100', szerokosc: '70', wysokosc: '5', powrot: `/zamowienia/${id}`,
+        waga: '0',
+        dlugosc: '100',
+        szerokosc: '70',
+        wysokosc: '5',
+        powrot: `/zamowienia/${id}`,
       }).toString(),
     });
     expect(powrotZMenu(odmowa.body)).toBe(`/zamowienia/${id}`);

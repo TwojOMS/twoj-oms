@@ -10,14 +10,25 @@ afterEach(() => db?.close());
 
 async function odczytaj({ produkty = [], warianty = [], oferty = [] }) {
   db = openOmsDb(':memory:');
-  const wynik = await odswiezMagazyn({ db, kanalySklepow: ['sklep'], kanalyAllegro: ['allegro'],
+  const wynik = await odswiezMagazyn({
+    db,
+    kanalySklepow: ['sklep'],
+    kanalyAllegro: ['allegro'],
     sklepy: { sklep: { pobierzWszystkieProdukty: async () => produkty, pobierzWarianty: async () => warianty } },
-    allegro: { allegro: { pobierzOferty: async () => oferty } }, teraz: () => data, log: () => {} });
-  expect(wynik.kanaly.map(k => k.blad).filter(Boolean)).toEqual([]);
+    allegro: { allegro: { pobierzOferty: async () => oferty } },
+    teraz: () => data,
+    log: () => {},
+  });
+  expect(wynik.kanaly.map((k) => k.blad).filter(Boolean)).toEqual([]);
 }
 
-const lustro = (kanal, wariant = '') => db.prepare(`SELECT id, ilosc_kanalu, stan_prowadzony, ilosc_odczytana_at
-  FROM produkty_sklepowe WHERE kanal = ? AND wariant_id = ?`).get(kanal, wariant);
+const lustro = (kanal, wariant = '') =>
+  db
+    .prepare(
+      `SELECT id, ilosc_kanalu, stan_prowadzony, ilosc_odczytana_at
+  FROM produkty_sklepowe WHERE kanal = ? AND wariant_id = ?`,
+    )
+    .get(kanal, wariant);
 
 it('zapisuje ilość Allegro i datę odczytu', async () => {
   await odczytaj({ oferty: [{ id: '123', name: 'Lampa', stock: { available: 490 } }] });
@@ -25,12 +36,19 @@ it('zapisuje ilość Allegro i datę odczytu', async () => {
 });
 
 it('zapisuje prowadzenie stanu Woo dla produktu i wariantu', async () => {
-  await odczytaj({ produkty: [
-    { id: 1, name: 'Lampa', type: 'simple', manage_stock: false, stock_quantity: null },
-    { id: 2, name: 'Kinkiet', type: 'variable' },
-  ], warianty: [{ id: 21, manage_stock: 'parent', stock_quantity: -3 }] });
+  await odczytaj({
+    produkty: [
+      { id: 1, name: 'Lampa', type: 'simple', manage_stock: false, stock_quantity: null },
+      { id: 2, name: 'Kinkiet', type: 'variable' },
+    ],
+    warianty: [{ id: 21, manage_stock: 'parent', stock_quantity: -3 }],
+  });
   expect(lustro('sklep')).toMatchObject({ ilosc_kanalu: null, stan_prowadzony: 'nie', ilosc_odczytana_at: data });
-  expect(lustro('sklep', '21')).toMatchObject({ ilosc_kanalu: -3, stan_prowadzony: 'rodzic', ilosc_odczytana_at: data });
+  expect(lustro('sklep', '21')).toMatchObject({
+    ilosc_kanalu: -3,
+    stan_prowadzony: 'rodzic',
+    ilosc_odczytana_at: data,
+  });
 });
 
 it('stan nie zależy od lustra', async () => {

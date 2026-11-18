@@ -26,10 +26,19 @@ import { createAtrapaDpd } from '../../../deploy/proba/atrapy/dpd.mjs';
 const MIN = 60_000;
 const START = Date.parse('2026-10-21T12:00:00.000Z');
 const otwarte = [];
-beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(START); });
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(START);
+});
 afterEach(() => {
   vi.useRealTimers();
-  for (const db of otwarte.splice(0)) { try { db.close(); } catch { /* już zamknięta */ } }
+  for (const db of otwarte.splice(0)) {
+    try {
+      db.close();
+    } catch {
+      /* już zamknięta */
+    }
+  }
 });
 const przesun = (ms) => vi.setSystemTime(Date.now() + ms);
 
@@ -44,7 +53,10 @@ function odpowiedzDpd(...opisy) {
 }
 // Odpowiedź DPD z odbiorem u kuriera w chwili `odbiorMs` (najnowsze zdarzenie = ten odbiór).
 const odpowiedzDpdZOdbiorem = (odbiorMs) => {
-  const historia = [{ opis: DPD_ZAREJESTROWANA, at: dpdBezStrefy(odbiorMs - 10 * MIN) }, { opis: DPD_ODEBRANA, at: dpdBezStrefy(odbiorMs) }];
+  const historia = [
+    { opis: DPD_ZAREJESTROWANA, at: dpdBezStrefy(odbiorMs - 10 * MIN) },
+    { opis: DPD_ODEBRANA, at: dpdBezStrefy(odbiorMs) },
+  ];
   return { ...historia[1], historia };
 };
 const odpowiedzInpost = (opis) => ({ opis, at: new Date(Date.now() - MIN).toISOString() });
@@ -54,32 +66,67 @@ let nr = 0;
 function zamowienie(db, { sklep = 'sklep', metoda = 'dpd' } = {}) {
   nr += 1;
   return zapiszZamowienie(db, sklep, {
-    zrodlo_id: 6000 + nr, numer: `O-${nr}`,
+    zrodlo_id: 6000 + nr,
+    numer: `O-${nr}`,
     klient: { first_name: 'Anna', last_name: 'Nowak', email: 'kupujacy@example.invalid', phone: '' },
     dostawa: { first_name: 'Anna', last_name: 'Nowak', address_1: 'Lipowa 7', postcode: '00-950', city: 'Warszawa' },
-    metoda_wysylki: metoda, kwota_pobrania: null, chce_fakture: 0, nip: null,
-    kwota_brutto: '189.00', koszt_dostawy_brutto: '19.00', koszt_dostawy_netto: '15.45', status_woo: 'processing',
-    oplacone_at: null, anulowane: 0, utworzone_at: '2026-10-20T09:00:00',
-    pozycje: [{ zrodlo_id: 8000 + nr, nazwa: 'Lampa stołowa Grzybek 30 cm', sku: 'LMP-GRZ-30', ilosc: 1, cena_brutto: '189.00',
-      cena_netto: '153.66', brutto_linii: '189.00', netto_linii: '153.66', vat: null }],
+    metoda_wysylki: metoda,
+    kwota_pobrania: null,
+    chce_fakture: 0,
+    nip: null,
+    kwota_brutto: '189.00',
+    koszt_dostawy_brutto: '19.00',
+    koszt_dostawy_netto: '15.45',
+    status_woo: 'processing',
+    oplacone_at: null,
+    anulowane: 0,
+    utworzone_at: '2026-10-20T09:00:00',
+    pozycje: [
+      {
+        zrodlo_id: 8000 + nr,
+        nazwa: 'Lampa stołowa Grzybek 30 cm',
+        sku: 'LMP-GRZ-30',
+        ilosc: 1,
+        cena_brutto: '189.00',
+        cena_netto: '153.66',
+        brutto_linii: '189.00',
+        netto_linii: '153.66',
+        vat: null,
+      },
+    ],
   });
 }
 let numerListu = 500;
 function paczka(db, id, { kurier = 'dpd' } = {}) {
   numerListu += 1;
   const n = kurier === 'inpost' ? `0000${String(numerListu).padStart(20, '0')}` : `00000000${numerListu}U`;
-  return zarejestrujPrzesylkeReczna(db, id, { kurier,
-    kolejnosc: Number(db.prepare('SELECT COUNT(*) AS n FROM przesylki WHERE zamowienie_id = ?').get(id).n) + 1, numerListu: n });
+  return zarejestrujPrzesylkeReczna(db, id, {
+    kurier,
+    kolejnosc: Number(db.prepare('SELECT COUNT(*) AS n FROM przesylki WHERE zamowienie_id = ?').get(id).n) + 1,
+    numerListu: n,
+  });
 }
 
 function srodowisko({ poczta = true } = {}) {
   const db = openOmsDb(':memory:', { moduly: kolejnoscBudowy(MODULY) });
   otwarte.push(db);
   const listy = [];
-  const wiadomosci = createWiadomosci({ db, mailer: { sendMail: async (m) => { listy.push(m); } }, config: { klienciZbiorczy: [],
-    oprawaPoczty: { podpis: 'Pracownia Przykładowa', footer: 'Stopka przykładowa' } } });
-  const silnik = createSilnikAutomatyzacji({ db, zdarzenia: ZDARZENIA, akcje: utworzAkcje({ wiadomosci: () => wiadomosci }),
-    sprawdzWarunki: sprawdzanieWarunkow, pocztaGotowa: () => poczta });
+  const wiadomosci = createWiadomosci({
+    db,
+    mailer: {
+      sendMail: async (m) => {
+        listy.push(m);
+      },
+    },
+    config: { klienciZbiorczy: [], oprawaPoczty: { podpis: 'Pracownia Przykładowa', footer: 'Stopka przykładowa' } },
+  });
+  const silnik = createSilnikAutomatyzacji({
+    db,
+    zdarzenia: ZDARZENIA,
+    akcje: utworzAkcje({ wiadomosci: () => wiadomosci }),
+    sprawdzWarunki: sprawdzanieWarunkow,
+    pocztaGotowa: () => poczta,
+  });
   // Atrapa kuriera na poziomie metod: numer listu → odpowiedź (null = brak zdarzeń, jak świeża paczka).
   const stany = new Map();
   const klient = { statusPrzesylki: async (numer) => stany.get(numer) ?? null };
@@ -93,12 +140,31 @@ function srodowisko({ poczta = true } = {}) {
   }
   return { db, listy, silnik, kurierzy, kurierMowi, przebieg: () => silnik.przebieg() };
 }
-const WARUNKI = (o = {}) => ({ kanaly: ['sklep'], kanalyZnane: KANALY_ZNANE, statusy: [], maNumerListu: true, metody: [],
-  pobranie: 'dowolne', ...o });
+const WARUNKI = (o = {}) => ({
+  kanaly: ['sklep'],
+  kanalyZnane: KANALY_ZNANE,
+  statusy: [],
+  maNumerListu: true,
+  metody: [],
+  pobranie: 'dowolne',
+  ...o,
+});
 function regula(e, o = {}) {
-  const id = utworzRegule(e.db, { nazwa: 'Kurier odebrał — sklep', zdarzenie: 'paczka_odebrana', zdarzenie_json: {},
-    warunki: WARUNKI(), akcja: 'mail_kupujacy', akcja_json: { szablon: 'wyslane' }, opoznienie_min: 0, limit_na_godzine: 20, ...o },
-  { login: 'adam' });
+  const id = utworzRegule(
+    e.db,
+    {
+      nazwa: 'Kurier odebrał — sklep',
+      zdarzenie: 'paczka_odebrana',
+      zdarzenie_json: {},
+      warunki: WARUNKI(),
+      akcja: 'mail_kupujacy',
+      akcja_json: { szablon: 'wyslane' },
+      opoznienie_min: 0,
+      limit_na_godzine: 20,
+      ...o,
+    },
+    { login: 'adam' },
+  );
   wlaczRegule(e.db, id, { login: 'adam' });
   return id;
 }
@@ -109,7 +175,11 @@ const log = (db, id) => db.prepare('SELECT akcja, wynik FROM log WHERE zamowieni
 describe('rejestr modułu', () => {
   it('„Kurier odebrał paczkę” jest w rejestrze zdarzeń, w grupie Przesyłka', () => {
     expect(ZDARZENIA.map((z) => z.klucz)).toContain('paczka_odebrana');
-    expect(zdarzeniePaczkaOdebrana).toMatchObject({ klucz: 'paczka_odebrana', grupa: 'przesylka', etykieta: 'Kurier odebrał paczkę' });
+    expect(zdarzeniePaczkaOdebrana).toMatchObject({
+      klucz: 'paczka_odebrana',
+      grupa: 'przesylka',
+      etykieta: 'Kurier odebrał paczkę',
+    });
     expect(zdarzeniePaczkaOdebrana.opis).toMatch(/DPD/u);
     expect(zdarzeniePaczkaOdebrana.opis).toMatch(/InPost/u);
   });
@@ -133,8 +203,9 @@ describe('2. detektor', () => {
     expect(odebrana.odebrana_dowod).toBe('dpd:ODEBRANA_PRZEZ_KURIERA');
     przesun(MIN);
     await e.przebieg();
-    expect(wykonania(e.db).map((w) => [w.zamowienie_id, w.przesylka_id, w.zdarzenie_at, w.stan]))
-      .toEqual([[id, p.id, odebrana.odebrana_at, 'wyslane']]);
+    expect(wykonania(e.db).map((w) => [w.zamowienie_id, w.przesylka_id, w.zdarzenie_at, w.stan])).toEqual([
+      [id, p.id, odebrana.odebrana_at, 'wyslane'],
+    ]);
     expect(e.listy).toHaveLength(1);
     expect(e.listy[0].text).toContain(p.numer_listu);
 
@@ -174,7 +245,9 @@ describe('2. detektor', () => {
     expect(przesylka(e.db, p.id).odebrana_at).not.toBeNull();
     przesun(MIN);
     await e.przebieg();
-    expect(wykonania(e.db).map((w) => [w.zamowienie_id, w.stan, w.powod_kod])).toEqual([[id, 'pominiete', 'przed_granica']]);
+    expect(wykonania(e.db).map((w) => [w.zamowienie_id, w.stan, w.powod_kod])).toEqual([
+      [id, 'pominiete', 'przed_granica'],
+    ]);
     expect(wykonania(e.db)[0].powod).toMatch(/ponad 14 dni przed włączeniem reguły/u);
     expect(e.listy).toEqual([]);
   });
@@ -190,7 +263,9 @@ describe('2. detektor', () => {
     await e.kurierMowi(druga, odpowiedzDpd(DPD_ZAREJESTROWANA, DPD_ODEBRANA));
     przesun(MIN);
     await e.przebieg();
-    expect(wykonania(e.db).map((w) => [w.przesylka_id, w.stan, w.powod_kod])).toEqual([[druga.id, 'pominiete', 'przed_granica']]);
+    expect(wykonania(e.db).map((w) => [w.przesylka_id, w.stan, w.powod_kod])).toEqual([
+      [druga.id, 'pominiete', 'przed_granica'],
+    ]);
     expect(wykonania(e.db)[0].powod).toMatch(/paczkę z numerem listu sprzed/u);
     expect(e.listy).toEqual([]);
   });
@@ -266,7 +341,8 @@ describe('kontrakt kandydatów (zdarzenia/index.js)', () => {
   function wstaw(e, n, chwila, { sklep = 'sklep' } = {}) {
     const zam = e.db.prepare(`INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at)
       VALUES (?, ?, ?, '10.00', '2026-10-20T09:00:00')`);
-    const pacz = e.db.prepare(`INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at,
+    const pacz = e.db
+      .prepare(`INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at,
       odebrana_at, odebrana_dowod) VALUES (?, 'dpd', 'nadana', ?, 1, ?, ?, 'dpd:ODEBRANA_PRZEZ_KURIERA')`);
     const ids = [];
     e.db.exec('BEGIN');
@@ -289,8 +365,10 @@ describe('kontrakt kandydatów (zdarzenia/index.js)', () => {
     const [c] = wstaw(e, 1, t1);
     const [obca] = wstaw(e, 1, t1, { sklep: 'allegro' });
     const [dawna] = wstaw(e, 1, new Date(START - 10 * MIN).toISOString());
-    const k = (o = {}) => zdarzeniePaczkaOdebrana.kandydaci(e.db, { granica, od: granica.at, limit: 100, kanaly: ['sklep'], ...o })
-      .map((w) => w.id);
+    const k = (o = {}) =>
+      zdarzeniePaczkaOdebrana
+        .kandydaci(e.db, { granica, od: granica.at, limit: 100, kanaly: ['sklep'], ...o })
+        .map((w) => w.id);
     expect(k()).toEqual([c, a, b]);
     expect(obca).toBeGreaterThan(stara);
     expect(k({ kanaly: ['allegro'] })).toEqual([obca]);
@@ -300,7 +378,13 @@ describe('kontrakt kandydatów (zdarzenia/index.js)', () => {
     expect(k({ od: t2 })).toEqual([a, b]);
     expect(dawna).toBeGreaterThan(stara); // po granicy id, ale odebrana przed `od` — nie wraca
     const [w] = zdarzeniePaczkaOdebrana.kandydaci(e.db, { granica, od: granica.at, limit: 1, kanaly: ['sklep'] });
-    expect(w).toEqual({ id: c, zamowienie_id: przesylka(e.db, c).zamowienie_id, sklep: 'sklep', przesylka_id: c, zdarzenie_at: t1 });
+    expect(w).toEqual({
+      id: c,
+      zamowienie_id: przesylka(e.db, c).zamowienie_id,
+      sklep: 'sklep',
+      przesylka_id: c,
+      zdarzenie_at: t1,
+    });
   });
 
   it('1100 odbiorów zapisanych w tej samej sekundzie → wszystkie wykryte w kolejnych przebiegach, późniejszy też', async () => {
@@ -356,12 +440,18 @@ describe('3. przebieg piaskownicy: atrapa DPD → czuwacz → reguła', () => {
     const odswiez = () => odswiezStatusKuriera(e.db, kurierzy, pobierzZamowienie(e.db, id), przesylka(e.db, p.id));
     przesun(5 * MIN);
     await odswiez(); // karta otwarta 5 min po nadaniu: zarejestrowana
-    expect(przesylka(e.db, p.id)).toMatchObject({ status_kuriera: 'Zarejestrowano dane przesyłki, przesyłka jeszcze nie nadana', odebrana_at: null });
+    expect(przesylka(e.db, p.id)).toMatchObject({
+      status_kuriera: 'Zarejestrowano dane przesyłki, przesyłka jeszcze nie nadana',
+      odebrana_at: null,
+    });
     await e.przebieg();
     expect(wykonania(e.db)).toEqual([]);
     przesun(61 * MIN);
     await odswiez(); // czuwacz godzinę później: odebrana
-    expect(przesylka(e.db, p.id)).toMatchObject({ status_kuriera: 'Przesyłka odebrana przez Kuriera', odebrana_dowod: 'dpd:ODEBRANA_PRZEZ_KURIERA' });
+    expect(przesylka(e.db, p.id)).toMatchObject({
+      status_kuriera: 'Przesyłka odebrana przez Kuriera',
+      odebrana_dowod: 'dpd:ODEBRANA_PRZEZ_KURIERA',
+    });
     przesun(MIN);
     await e.przebieg();
     expect(wykonania(e.db).map((w) => [w.zamowienie_id, w.stan])).toEqual([[id, 'wyslane']]);
@@ -393,7 +483,9 @@ describe('spóźniony dowód odbioru', () => {
     expect(w.odebrana_kurier_at).toBe(new Date(odbior).toISOString());
     przesun(MIN);
     await e.przebieg();
-    expect(wykonania(e.db).map((x) => [x.zamowienie_id, x.stan, x.powod_kod])).toEqual([[id, 'pominiete', 'odbior_spozniony']]);
+    expect(wykonania(e.db).map((x) => [x.zamowienie_id, x.stan, x.powod_kod])).toEqual([
+      [id, 'pominiete', 'odbior_spozniony'],
+    ]);
     expect(wykonania(e.db)[0].powod).toMatch(/Odbiór u kuriera .* godzin przed tym, jak OMS go zobaczył/u);
     expect(e.listy).toEqual([]);
   });
@@ -421,9 +513,26 @@ describe('spóźniony dowód odbioru', () => {
     e.db.prepare('UPDATE zamowienia SET utworzone_at = ? WHERE id = ?').run(new Date().toISOString().slice(0, 19), id);
     const odbior = Date.now() + 24 * 60 * MIN;
     przesun(40 * 24 * 60 * MIN);
-    const p = zarejestrujPrzesylkeReczna(e.db, id, { kurier: 'allegro', kolejnosc: 1, numerListu: 'AD0001PL', zrodloNumeru: 'allegro', carrierAllegro: 'ALLEGRO' });
-    const sledzenie = { allegro: { statusPrzesylki: async () => ({ opis: 'Doręczona', kod: 'DELIVERED', at: new Date(odbior + 24 * 60 * MIN).toISOString(),
-      historia: [{ code: 'IN_TRANSIT', occurredAt: new Date(odbior).toISOString() }, { code: 'DELIVERED', occurredAt: new Date(odbior + 24 * 60 * MIN).toISOString() }] }) } };
+    const p = zarejestrujPrzesylkeReczna(e.db, id, {
+      kurier: 'allegro',
+      kolejnosc: 1,
+      numerListu: 'AD0001PL',
+      zrodloNumeru: 'allegro',
+      carrierAllegro: 'ALLEGRO',
+    });
+    const sledzenie = {
+      allegro: {
+        statusPrzesylki: async () => ({
+          opis: 'Doręczona',
+          kod: 'DELIVERED',
+          at: new Date(odbior + 24 * 60 * MIN).toISOString(),
+          historia: [
+            { code: 'IN_TRANSIT', occurredAt: new Date(odbior).toISOString() },
+            { code: 'DELIVERED', occurredAt: new Date(odbior + 24 * 60 * MIN).toISOString() },
+          ],
+        }),
+      },
+    };
     await odswiezStatusKuriera(e.db, sledzenie, pobierzZamowienie(e.db, id), przesylka(e.db, p.id));
     expect(przesylka(e.db, p.id).odebrana_kurier_at).toBe(new Date(odbior).toISOString());
     przesun(MIN);

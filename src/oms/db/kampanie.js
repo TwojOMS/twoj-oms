@@ -23,8 +23,14 @@ export function zapiszMetaDzien(db, kod, w) {
        klikniecia = excluded.klikniecia, klikniecia_linku = excluded.klikniecia_linku,
        pobrane_at = excluded.pobrane_at`,
   ).run(
-    kod, w.dzien, w.wydatek, w.wyswietlenia ?? 0, w.zasieg ?? 0,
-    w.klikniecia ?? 0, w.kliknieciaLinku ?? 0, new Date().toISOString(),
+    kod,
+    w.dzien,
+    w.wydatek,
+    w.wyswietlenia ?? 0,
+    w.zasieg ?? 0,
+    w.klikniecia ?? 0,
+    w.kliknieciaLinku ?? 0,
+    new Date().toISOString(),
   );
 }
 
@@ -35,14 +41,20 @@ export function zapiszGa4Dzien(db, kod, w) {
      ON CONFLICT(kod, dzien) DO UPDATE SET
        sesje = excluded.sesje, uzytkownicy = excluded.uzytkownicy, sesje_meta = excluded.sesje_meta,
        odslony_promo = excluded.odslony_promo, pobrane_at = excluded.pobrane_at`,
-  ).run(kod, w.dzien, w.sesje ?? 0, w.uzytkownicy ?? 0, w.sesjeMeta ?? 0, w.odslonyPromo ?? 0, new Date().toISOString());
+  ).run(
+    kod,
+    w.dzien,
+    w.sesje ?? 0,
+    w.uzytkownicy ?? 0,
+    w.sesjeMeta ?? 0,
+    w.odslonyPromo ?? 0,
+    new Date().toISOString(),
+  );
 }
 
-export const metaDni = (db, kod) =>
-  db.prepare('SELECT * FROM kampania_meta_dni WHERE kod = ? ORDER BY dzien').all(kod);
+export const metaDni = (db, kod) => db.prepare('SELECT * FROM kampania_meta_dni WHERE kod = ? ORDER BY dzien').all(kod);
 
-export const ga4Dni = (db, kod) =>
-  db.prepare('SELECT * FROM kampania_ga4_dni WHERE kod = ? ORDER BY dzien').all(kod);
+export const ga4Dni = (db, kod) => db.prepare('SELECT * FROM kampania_ga4_dni WHERE kod = ? ORDER BY dzien').all(kod);
 
 /**
  * Stan zrodla — czytany przez ekran, zeby odroznic „reklama nic nie wydala" od „od trzech
@@ -83,9 +95,7 @@ export function listaKampanii(db) {
 // setek, właściwa droga to poszerzenie warstwy zLinii o odczyt partiami, nie druga
 // kopia regul tutaj.
 export function zamowieniaZKuponami(db) {
-  const idy = db.prepare(
-    'SELECT id FROM zamowienia WHERE kupony_json IS NOT NULL ORDER BY utworzone_at DESC',
-  ).all();
+  const idy = db.prepare('SELECT id FROM zamowienia WHERE kupony_json IS NOT NULL ORDER BY utworzone_at DESC').all();
   return idy.map(({ id }) => pobierzZamowienie(db, id));
 }
 
@@ -96,8 +106,8 @@ export function zamowieniaZKuponami(db) {
 // sparsowanym JSON (prefiksy kod30/kod305 — ta sama zasada, co przy kuponach).
 // N+1 świadome, jak wyżej: zbiór to zamówienia z kampanią w utm (zwykle nieliczne).
 export function zamowieniaZAtrybucjaKampanii(db) {
-  const idy = db.prepare(
-    `SELECT id FROM zamowienia WHERE atrybucja_json LIKE '%"kampania":"%' ORDER BY utworzone_at DESC`,
-  ).all();
+  const idy = db
+    .prepare(`SELECT id FROM zamowienia WHERE atrybucja_json LIKE '%"kampania":"%' ORDER BY utworzone_at DESC`)
+    .all();
   return idy.map(({ id }) => pobierzZamowienie(db, id));
 }

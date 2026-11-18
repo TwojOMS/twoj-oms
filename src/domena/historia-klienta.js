@@ -32,7 +32,10 @@ export function podsumowanieHistorii(zamowienia) {
   // ⚠️ MAKSIMUM I MINIMUM Z LISTY, a nie „pierwszy i ostatni wiersz". Porzadek ustala
   // zapytanie i moze sie zmienic; data ostatniego zamowienia nie ma prawa zalezec od
   // `ORDER BY` w innym pliku.
-  const daty = lista.map((z) => z.utworzone_at).filter(Boolean).sort();
+  const daty = lista
+    .map((z) => z.utworzone_at)
+    .filter(Boolean)
+    .sort();
   return {
     ile: lista.length,
     ileAnulowanych: anulowane.length,

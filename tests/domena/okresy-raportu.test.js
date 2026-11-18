@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
-  zakresSkrotu, poprzedniOkres, rokWczesniej, miesiaceOkresu, nazwaOkresu,
-  dniOkresu, tygodnieOkresu,
+  zakresSkrotu,
+  poprzedniOkres,
+  rokWczesniej,
+  miesiaceOkresu,
+  nazwaOkresu,
+  dniOkresu,
+  tygodnieOkresu,
 } from '../../src/domena/okresy-raportu.js';
 
 describe('skroty okresow', () => {
@@ -36,16 +41,14 @@ describe('skroty okresow', () => {
 // ——— SKROT „DZISIAJ" ————————————————————————————————————
 describe('skrot „dzisiaj"', () => {
   it('to jeden dzien — obie granice rowne dniu biezacemu', () => {
-    expect(zakresSkrotu('dzisiaj', '2026-08-13'))
-      .toEqual({ od: '2026-08-13', do: '2026-08-13', etykieta: 'Dzisiaj' });
+    expect(zakresSkrotu('dzisiaj', '2026-08-13')).toEqual({ od: '2026-08-13', do: '2026-08-13', etykieta: 'Dzisiaj' });
   });
 
   // ⚠️ `doKonca` NIE MA TU CO PRZYCIAC ANI CO ROZCIAGNAC — dzien jest okresem pelnym sam
   // z siebie. Gdyby opcja cokolwiek tu zmieniala, ten sam przycisk pokazywalby na /raporty
   // i na /finanse dwa rozne zakresy, a rozniloby je wylacznie wywolanie w trasie.
   it('opcja doKonca niczego nie zmienia — dzien jest okresem pelnym', () => {
-    expect(zakresSkrotu('dzisiaj', '2026-08-13', { doKonca: true }))
-      .toEqual(zakresSkrotu('dzisiaj', '2026-08-13'));
+    expect(zakresSkrotu('dzisiaj', '2026-08-13', { doKonca: true })).toEqual(zakresSkrotu('dzisiaj', '2026-08-13'));
   });
 
   it('dziala na przelomie miesiaca i roku, bo bierze dzien wprost', () => {
@@ -54,13 +57,10 @@ describe('skrot „dzisiaj"', () => {
   });
 
   it('poprzedni okres dla jednego dnia to dzien wczesniej', () => {
-    expect(poprzedniOkres({ od: '2026-08-13', do: '2026-08-13' }))
-      .toEqual({ od: '2026-08-12', do: '2026-08-12' });
+    expect(poprzedniOkres({ od: '2026-08-13', do: '2026-08-13' })).toEqual({ od: '2026-08-12', do: '2026-08-12' });
     // …takze przez granice miesiaca i roku.
-    expect(poprzedniOkres({ od: '2026-08-02', do: '2026-08-02' }))
-      .toEqual({ od: '2026-08-01', do: '2026-08-01' });
-    expect(poprzedniOkres({ od: '2026-01-01', do: '2026-01-01' }))
-      .toEqual({ od: '2025-12-01', do: '2025-12-01' });
+    expect(poprzedniOkres({ od: '2026-08-02', do: '2026-08-02' })).toEqual({ od: '2026-08-01', do: '2026-08-01' });
+    expect(poprzedniOkres({ od: '2026-01-01', do: '2026-01-01' })).toEqual({ od: '2025-12-01', do: '2025-12-01' });
   });
 
   // ⚠️ PIERWSZY DZIEN MIESIACA porownuje sie z PIERWSZYM DNIEM POPRZEDNIEGO, a nie z 31.
@@ -68,8 +68,7 @@ describe('skrot „dzisiaj"', () => {
   // ekranem: 1 sierpnia to „sierpien do dzis", wiec podstawa jest „lipiec do tego samego
   // dnia". Test stoi tu po to, zeby ta niespodzianka byla ZAPISANA, a nie odkrywana.
   it('pierwszy dzien miesiaca porownuje sie z pierwszym dniem poprzedniego', () => {
-    expect(poprzedniOkres({ od: '2026-08-01', do: '2026-08-01' }))
-      .toEqual({ od: '2026-07-01', do: '2026-07-01' });
+    expect(poprzedniOkres({ od: '2026-08-01', do: '2026-08-01' })).toEqual({ od: '2026-07-01', do: '2026-07-01' });
   });
 
   // ⚠️ Bez tego naglowek ekranu mowilby „sprzedaz w okresie 2026-08-31 – 2026-08-31 ·
@@ -86,40 +85,33 @@ describe('okresy porownawcze', () => {
     // ⚠️ Lipiec ma 31 dni, a czerwiec 30 — „to samo okno miesiac wczesniej" NIE ISTNIEJE.
     // Okno tej samej dlugosci daloby 31.05–30.06, czyli „czerwiec plus jeden dzien maja",
     // opisany na ekranie jako „poprzedni okres". Delta wyszlaby wiarygodnie i bylaby falszem.
-    expect(poprzedniOkres({ od: '2026-07-01', do: '2026-07-31' }))
-      .toEqual({ od: '2026-06-01', do: '2026-06-30' });
+    expect(poprzedniOkres({ od: '2026-07-01', do: '2026-07-31' })).toEqual({ od: '2026-06-01', do: '2026-06-30' });
   });
 
   it('dla PELNEGO KWARTALU poprzedni okres to poprzedni KWARTAL', () => {
-    expect(poprzedniOkres({ od: '2026-04-01', do: '2026-06-30' }))
-      .toEqual({ od: '2026-01-01', do: '2026-03-31' });
+    expect(poprzedniOkres({ od: '2026-04-01', do: '2026-06-30' })).toEqual({ od: '2026-01-01', do: '2026-03-31' });
   });
 
   it('dla PELNEGO ROKU poprzedni okres to poprzedni ROK', () => {
-    expect(poprzedniOkres({ od: '2026-01-01', do: '2026-12-31' }))
-      .toEqual({ od: '2025-01-01', do: '2025-12-31' });
+    expect(poprzedniOkres({ od: '2026-01-01', do: '2026-12-31' })).toEqual({ od: '2025-01-01', do: '2025-12-31' });
   });
 
   it('trzy pelne miesiace NIE stojace na granicy kwartalu ida regula dlugosci', () => {
     // 01.02–30.04 to trzy pelne miesiace, ale nie kwartal — „poprzedni kwartal" nie mialby
     // tu znaczenia, wiec zostaje okno tej samej dlugosci (89 dni) konczace sie 31 stycznia.
-    expect(poprzedniOkres({ od: '2026-02-01', do: '2026-04-30' }))
-      .toEqual({ od: '2025-11-04', do: '2026-01-31' });
+    expect(poprzedniOkres({ od: '2026-02-01', do: '2026-04-30' })).toEqual({ od: '2025-11-04', do: '2026-01-31' });
   });
 
   it('zakres DOWOLNY ma poprzednik TEJ SAMEJ DLUGOSCI, konczacy sie dzien przed', () => {
-    expect(poprzedniOkres({ od: '2026-07-15', do: '2026-07-24' }))
-      .toEqual({ od: '2026-07-05', do: '2026-07-14' });
+    expect(poprzedniOkres({ od: '2026-07-15', do: '2026-07-24' })).toEqual({ od: '2026-07-05', do: '2026-07-14' });
   });
 
   it('rok wczesniej to ten sam zakres z odjetym rokiem', () => {
-    expect(rokWczesniej({ od: '2026-07-01', do: '2026-07-31' }))
-      .toEqual({ od: '2025-07-01', do: '2025-07-31' });
+    expect(rokWczesniej({ od: '2026-07-01', do: '2026-07-31' })).toEqual({ od: '2025-07-01', do: '2025-07-31' });
   });
 
   it('29 lutego rok wczesniej cofa sie na 28 lutego, a nie na 1 marca', () => {
-    expect(rokWczesniej({ od: '2028-02-29', do: '2028-02-29' }))
-      .toEqual({ od: '2027-02-28', do: '2027-02-28' });
+    expect(rokWczesniej({ od: '2028-02-29', do: '2028-02-29' })).toEqual({ od: '2027-02-28', do: '2027-02-28' });
   });
 });
 
@@ -133,8 +125,7 @@ describe('nazwy i miesiace', () => {
   });
 
   it('miesiace okresu obejmuja kazdy dotkniety miesiac', () => {
-    expect(miesiaceOkresu({ od: '2025-11-15', do: '2026-01-02' }))
-      .toEqual(['2025-11', '2025-12', '2026-01']);
+    expect(miesiaceOkresu({ od: '2025-11-15', do: '2026-01-02' })).toEqual(['2025-11', '2025-12', '2026-01']);
   });
 });
 
@@ -205,8 +196,10 @@ describe('poprzedniOkres dla zakresu „od pierwszego do dziś"', () => {
 // okresy, dla ktorych rachunek w ogole ma sens. Dlatego `zakresSkrotu` przyjmuje `doKonca`.
 describe('zakresSkrotu z opcja doKonca (rachunek zarzadczy)', () => {
   it('doKonca oddaje PELNY miesiac, tak jak przed poprawka', () => {
-    expect(zakresSkrotu('ten-miesiac', '2026-08-17', { doKonca: true }))
-      .toMatchObject({ od: '2026-08-01', do: '2026-08-31' });
+    expect(zakresSkrotu('ten-miesiac', '2026-08-17', { doKonca: true })).toMatchObject({
+      od: '2026-08-01',
+      do: '2026-08-31',
+    });
   });
 
   it('doKonca oddaje pelny kwartal i pelny rok', () => {
@@ -261,8 +254,7 @@ describe('tygodnieOkresu', () => {
   });
 
   it('pojedynczy dzien to jeden tydzien od-do tego samego dnia', () => {
-    expect(tygodnieOkresu({ od: '2026-08-17', do: '2026-08-17' }))
-      .toEqual([{ od: '2026-08-17', do: '2026-08-17' }]);
+    expect(tygodnieOkresu({ od: '2026-08-17', do: '2026-08-17' })).toEqual([{ od: '2026-08-17', do: '2026-08-17' }]);
   });
 });
 
@@ -273,19 +265,30 @@ describe('tygodnieOkresu', () => {
 // trzeba wpisywac daty recznie.
 describe('skroty kwartalow po numerze (q1–q4)', () => {
   it('q1–q4 to kwartaly BIEZACEGO roku, liczone od miesiaca „dzisiaj"', () => {
-    expect(zakresSkrotu('q1', '2026-08-21', { doKonca: true }))
-      .toMatchObject({ od: '2026-01-01', do: '2026-03-31', etykieta: 'Q1' });
-    expect(zakresSkrotu('q2', '2026-08-21', { doKonca: true }))
-      .toMatchObject({ od: '2026-04-01', do: '2026-06-30', etykieta: 'Q2' });
-    expect(zakresSkrotu('q3', '2026-08-21', { doKonca: true }))
-      .toMatchObject({ od: '2026-07-01', do: '2026-09-30', etykieta: 'Q3' });
-    expect(zakresSkrotu('q4', '2026-08-21', { doKonca: true }))
-      .toMatchObject({ od: '2026-10-01', do: '2026-12-31', etykieta: 'Q4' });
+    expect(zakresSkrotu('q1', '2026-08-21', { doKonca: true })).toMatchObject({
+      od: '2026-01-01',
+      do: '2026-03-31',
+      etykieta: 'Q1',
+    });
+    expect(zakresSkrotu('q2', '2026-08-21', { doKonca: true })).toMatchObject({
+      od: '2026-04-01',
+      do: '2026-06-30',
+      etykieta: 'Q2',
+    });
+    expect(zakresSkrotu('q3', '2026-08-21', { doKonca: true })).toMatchObject({
+      od: '2026-07-01',
+      do: '2026-09-30',
+      etykieta: 'Q3',
+    });
+    expect(zakresSkrotu('q4', '2026-08-21', { doKonca: true })).toMatchObject({
+      od: '2026-10-01',
+      do: '2026-12-31',
+      etykieta: 'Q4',
+    });
   });
 
   it('rok bierze sie z „dzisiaj", a nie ze stalej', () => {
-    expect(zakresSkrotu('q1', '2027-05-05', { doKonca: true }))
-      .toMatchObject({ od: '2027-01-01', do: '2027-03-31' });
+    expect(zakresSkrotu('q1', '2027-05-05', { doKonca: true })).toMatchObject({ od: '2027-01-01', do: '2027-03-31' });
   });
 
   // Ta sama regula, co przy `ten-kwartal`: bez `doKonca` skrot konczy sie DZIS, bo dni,

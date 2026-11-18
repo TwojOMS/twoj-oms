@@ -19,14 +19,22 @@ const AUTH = {
 };
 const CONFIG = { auth: { user: 'adam', pass: 'x' }, klienciZbiorczy: [] };
 
-let db; let app; let wyslane;
+let db;
+let app;
+let wyslane;
 const wejdz = (opcje) => app.inject({ ...opcje, headers: AUTH });
 
 const watek = (nadpisz = {}) => ({
-  kanal: 'allegro_swietlik', threadId: 't1', interlocutorLogin: 'kupujacy_jan',
-  lastMessageDateTime: '2026-08-28T20:00:00Z', typ: 'COMMON', przeczytany: 0,
-  ostatniaOdKupujacego: 1, ostatniaTresc: 'Czy jest większy rozmiar?',
-  pobranyAt: '2026-08-28T20:01:00Z', ...nadpisz,
+  kanal: 'allegro_swietlik',
+  threadId: 't1',
+  interlocutorLogin: 'kupujacy_jan',
+  lastMessageDateTime: '2026-08-28T20:00:00Z',
+  typ: 'COMMON',
+  przeczytany: 0,
+  ostatniaOdKupujacego: 1,
+  ostatniaTresc: 'Czy jest większy rozmiar?',
+  pobranyAt: '2026-08-28T20:01:00Z',
+  ...nadpisz,
 });
 
 function serwer(wyslijImpl) {
@@ -35,7 +43,12 @@ function serwer(wyslijImpl) {
     config: CONFIG,
     klienciWiadomosci: {
       allegro_swietlik: {
-        wyslijWiadomosc: wyslijImpl ?? (async (id, tekst) => { wyslane.push({ id, tekst }); return { id: 'm1' }; }),
+        wyslijWiadomosc:
+          wyslijImpl ??
+          (async (id, tekst) => {
+            wyslane.push({ id, tekst });
+            return { id: 'm1' };
+          }),
       },
     },
   });
@@ -59,7 +72,12 @@ describe('zakładka /wiadomosci', () => {
 
   it('karta wątku pokazuje CAŁĄ korespondencję z lustra, nie samą ostatnią linijkę', async () => {
     zapiszWiadomosci(db, 'allegro_swietlik', 't1', [
-      { id: 'm1', text: 'Czy jest większy rozmiar?', createdAt: '2026-08-28T20:00:00Z', author: { isInterlocutor: true } },
+      {
+        id: 'm1',
+        text: 'Czy jest większy rozmiar?',
+        createdAt: '2026-08-28T20:00:00Z',
+        author: { isInterlocutor: true },
+      },
       { id: 'm2', text: 'Robimy na wymiar.', createdAt: '2026-08-28T20:10:00Z', author: { isInterlocutor: false } },
     ]);
     const r = await wejdz({ method: 'GET', url: '/wiadomosci/allegro_swietlik/t1' });
@@ -72,7 +90,12 @@ describe('zakładka /wiadomosci', () => {
   it('„Ó/ó" z encji Allegro widać jako litery na liście i w karcie wątku', async () => {
     zapiszWatek(db, watek({ ostatniaTresc: 'DZI&Oacute;BEK kr&oacute;tki' }));
     zapiszWiadomosci(db, 'allegro_swietlik', 't1', [
-      { id: 'm1', text: 'Kt&oacute;ry &quot;DZI&Oacute;BEK&quot;?', createdAt: '2026-08-28T20:00:00Z', author: { isInterlocutor: true } },
+      {
+        id: 'm1',
+        text: 'Kt&oacute;ry &quot;DZI&Oacute;BEK&quot;?',
+        createdAt: '2026-08-28T20:00:00Z',
+        author: { isInterlocutor: true },
+      },
     ]);
     const lista = await wejdz({ method: 'GET', url: '/wiadomosci' });
     expect(lista.body).toContain('DZIÓBEK krótki');
@@ -104,7 +127,9 @@ describe('zakładka /wiadomosci', () => {
 
   it('BEZ potwierdzenia nic nie wychodzi', async () => {
     const r = await wejdz({
-      method: 'POST', url: '/wiadomosci/allegro_swietlik/t1/odpowiedz', payload: { tresc: 'cokolwiek' },
+      method: 'POST',
+      url: '/wiadomosci/allegro_swietlik/t1/odpowiedz',
+      payload: { tresc: 'cokolwiek' },
     });
     expect(wyslane).toEqual([]);
     expect(r.statusCode).toBe(400);
@@ -114,7 +139,8 @@ describe('zakładka /wiadomosci', () => {
   it('odmawia odpowiedzi w wątku spornym, nawet gdy ktoś trafi adresem', async () => {
     zapiszWatek(db, watek({ threadId: 'spor', typ: 'POST_PURCHASE_ISSUE' }));
     const r = await wejdz({
-      method: 'POST', url: '/wiadomosci/allegro_swietlik/spor/odpowiedz',
+      method: 'POST',
+      url: '/wiadomosci/allegro_swietlik/spor/odpowiedz',
       payload: { tresc: 'cos', potwierdzam: 'tak' },
     });
     expect(wyslane).toEqual([]);
@@ -122,9 +148,12 @@ describe('zakładka /wiadomosci', () => {
   });
 
   it('nieudana wysyłka zostawia błąd i NIE udaje sukcesu', async () => {
-    app = serwer(async () => { throw new Error('Allegro: HTTP 500 przy /messaging'); });
+    app = serwer(async () => {
+      throw new Error('Allegro: HTTP 500 przy /messaging');
+    });
     const r = await wejdz({
-      method: 'POST', url: '/wiadomosci/allegro_swietlik/t1/odpowiedz',
+      method: 'POST',
+      url: '/wiadomosci/allegro_swietlik/t1/odpowiedz',
       payload: { tresc: 'cos', potwierdzam: 'tak' },
     });
     expect(r.body).toContain('HTTP 500');

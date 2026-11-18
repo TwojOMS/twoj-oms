@@ -1,13 +1,23 @@
 import { describe, it, expect } from 'vitest';
 import {
-  typZamowienia, startZegara, terminZamowienia,
-  dniRoboczeDoWysylki, poTerminie, tegoSamegoDnia,
+  typZamowienia,
+  startZegara,
+  terminZamowienia,
+  dniRoboczeDoWysylki,
+  poTerminie,
+  tegoSamegoDnia,
 } from '../../src/domena/termin-wysylki.js';
 
 // Czwartek 2026-08-13 to dzień roboczy; 2026-08-15 to sobota.
 const sklepowe = (d = {}) => ({
-  sklep: 'swietlik', pobranie: 0, b2b: 0, indywidualne: 0, pozycje: [],
-  utworzone_at: '2026-08-13T06:00:00Z', oplacone_at: '2026-08-13T06:00:00Z', ...d,
+  sklep: 'swietlik',
+  pobranie: 0,
+  b2b: 0,
+  indywidualne: 0,
+  pozycje: [],
+  utworzone_at: '2026-08-13T06:00:00Z',
+  oplacone_at: '2026-08-13T06:00:00Z',
+  ...d,
 });
 const allegrowe = (d = {}) => sklepowe({ sklep: 'allegro_swietlik', ...d });
 
@@ -18,9 +28,15 @@ describe('typZamowienia / startZegara', () => {
     expect(typZamowienia(sklepowe())).toBe('krotki');
     expect(typZamowienia(allegrowe())).toBe('allegro');
     expect(typZamowienia(sklepowe({ indywidualne: 1 }))).toBe('indywidualne');
-    expect(typZamowienia(sklepowe({
-      indywidualne: 1, sklep: 'allegro_swietlik', pozycje: [{ nazwa: 'Ekspres 24h' }],
-    }))).toBe('ekspres');
+    expect(
+      typZamowienia(
+        sklepowe({
+          indywidualne: 1,
+          sklep: 'allegro_swietlik',
+          pozycje: [{ nazwa: 'Ekspres 24h' }],
+        }),
+      ),
+    ).toBe('ekspres');
   });
 
   it('start przedpłaty to wpłata, start pobrania i B2B to złożenie', () => {
@@ -73,9 +89,11 @@ describe('terminZamowienia — cutoff 12:00 jest strefowy, nie stałym przesuni�
   });
 
   it('zima: 10:59Z jeszcze przed odcięciem, 11:00Z już po', () => {
-    const zima = (g) => allegrowe({
-      utworzone_at: `2026-01-15T${g}Z`, oplacone_at: `2026-01-15T${g}Z`,
-    });
+    const zima = (g) =>
+      allegrowe({
+        utworzone_at: `2026-01-15T${g}Z`,
+        oplacone_at: `2026-01-15T${g}Z`,
+      });
     expect(terminZamowienia(zima('10:59:00')).limit).toBe(0);
     expect(terminZamowienia(zima('11:00:00')).limit).toBe(1);
   });
@@ -127,7 +145,8 @@ describe('poTerminie / dniRoboczeDoWysylki / tegoSamegoDnia', () => {
 
   it('weekend nie jest winą kuriera — piątek→poniedziałek to 1 dzień roboczy', () => {
     const z = sklepowe({
-      utworzone_at: '2026-08-14T06:00:00Z', oplacone_at: '2026-08-14T06:00:00Z',
+      utworzone_at: '2026-08-14T06:00:00Z',
+      oplacone_at: '2026-08-14T06:00:00Z',
       wyslane_at: '2026-08-17T07:00:00Z',
     });
     expect(dniRoboczeDoWysylki(z)).toBe(1);
@@ -139,7 +158,8 @@ describe('poTerminie / dniRoboczeDoWysylki / tegoSamegoDnia', () => {
     // opłacone 21:40Z = 23:40 PL, wysłane 06:10Z = 08:10 PL NASTĘPNEGO dnia: 8,5 h,
     // ale dwa różne dni — i to ta druga odpowiedź jest prawdziwa dla klienta.
     const przezDobe = sklepowe({
-      oplacone_at: '2026-08-13T21:40:00Z', wyslane_at: '2026-08-14T06:10:00Z',
+      oplacone_at: '2026-08-13T21:40:00Z',
+      wyslane_at: '2026-08-14T06:10:00Z',
     });
     expect(tegoSamegoDnia(przezDobe)).toBe(false);
   });
@@ -156,7 +176,8 @@ describe('poTerminie / dniRoboczeDoWysylki / tegoSamegoDnia', () => {
   // dnia" — najlepszy możliwy wynik dla najgorszego przypadku.
   it('wysłane PRZED opłaceniem oddaje null, nie zero', () => {
     const z = sklepowe({
-      oplacone_at: '2026-08-13T06:00:00Z', wyslane_at: '2026-08-04T10:07:34.648Z',
+      oplacone_at: '2026-08-13T06:00:00Z',
+      wyslane_at: '2026-08-04T10:07:34.648Z',
     });
     expect(dniRoboczeDoWysylki(z)).toBeNull();
     expect(poTerminie(z)).toBeNull();
@@ -177,7 +198,8 @@ describe('poTerminie / dniRoboczeDoWysylki / tegoSamegoDnia', () => {
     // opłacone 18:00Z = 20:00 PL, wysłane 06:00Z = 08:00 PL — 12 h UJEMNEGO czasu
     // realizacji w obrębie jednej daty warszawskiej.
     const z = sklepowe({
-      oplacone_at: '2026-08-13T18:00:00Z', wyslane_at: '2026-08-13T06:00:00Z',
+      oplacone_at: '2026-08-13T18:00:00Z',
+      wyslane_at: '2026-08-13T06:00:00Z',
     });
     expect(dniRoboczeDoWysylki(z)).toBeNull();
     expect(poTerminie(z)).toBeNull();
@@ -188,7 +210,8 @@ describe('poTerminie / dniRoboczeDoWysylki / tegoSamegoDnia', () => {
   // wcześniejsze o sekundę. Bez porównania z sekundami ten wiersz dalej by przechodził.
   it('sekunda ujemnego czasu wystarcza, żeby wypaść ze statystyki', () => {
     const z = sklepowe({
-      oplacone_at: '2026-08-13T10:07:35Z', wyslane_at: '2026-08-13T10:07:34Z',
+      oplacone_at: '2026-08-13T10:07:35Z',
+      wyslane_at: '2026-08-13T10:07:34Z',
     });
     expect(dniRoboczeDoWysylki(z)).toBeNull();
   });
@@ -198,7 +221,8 @@ describe('poTerminie / dniRoboczeDoWysylki / tegoSamegoDnia', () => {
   // ze statystyki zamówienia za pobraniem nadane w sekundzie złożenia.
   it('wysłane DOKŁADNIE w chwili startu zegara zostaje w statystyce', () => {
     const z = sklepowe({
-      oplacone_at: '2026-08-13T06:00:00Z', wyslane_at: '2026-08-13T06:00:00Z',
+      oplacone_at: '2026-08-13T06:00:00Z',
+      wyslane_at: '2026-08-13T06:00:00Z',
     });
     expect(dniRoboczeDoWysylki(z)).toBe(0);
     expect(tegoSamegoDnia(z)).toBe(true);
@@ -213,7 +237,8 @@ describe('poTerminie / dniRoboczeDoWysylki / tegoSamegoDnia', () => {
   // dlatego chwile porównuje `fmtDataCzas`, ten sam przelicznik, co kolumna z datą.
   it('wpłata ze sklepu bez strefy i nasze „Z" porównują się na jednej skali', () => {
     const z = sklepowe({
-      oplacone_at: '2026-08-13 08:30:00', wyslane_at: '2026-08-13T07:00:00Z', // 09:00 PL
+      oplacone_at: '2026-08-13 08:30:00',
+      wyslane_at: '2026-08-13T07:00:00Z', // 09:00 PL
     });
     expect(dniRoboczeDoWysylki(z)).toBe(0);
     expect(tegoSamegoDnia(z)).toBe(true);

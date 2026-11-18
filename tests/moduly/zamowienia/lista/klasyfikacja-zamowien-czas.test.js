@@ -7,19 +7,33 @@ import { doZrobienia, wyliczStatus } from '../../../../src/domena/status.js';
 import { wiekZamowienia } from '../../../../src/domena/wiek-zamowienia.js';
 import { pasujeDoFiltrow, pasujaKlucze } from '../../../../src/domena/filtry-listy.js';
 import { pasujeDoSzukania, pasujePola } from '../../../../src/domena/szukanie.js';
-import { klasyfikacjaListy, pierwszaChwila, HORYZONT_KLASYFIKACJI_MS } from '../../../../src/domena/klasyfikacja-listy.js';
+import {
+  klasyfikacjaListy,
+  pierwszaChwila,
+  HORYZONT_KLASYFIKACJI_MS,
+} from '../../../../src/domena/klasyfikacja-listy.js';
 import { wstawMieszane } from './testowe-dane-listy.js';
 
 const DZIEN = 86400000;
 const T0 = Date.parse('2026-10-01T09:30:00Z');
 // Chwile próbne: gęsto na początku (progi minutowe faktury/nadania), potem co kilka godzin
 // przez cały horyzont, plus granice północy i 12:00 w Warszawie.
-const PROBY = [0, 1, 1000, 4 * 60000, 5 * 60000 - 1, 5 * 60000, 5 * 60000 + 1, 3600000,
+const PROBY = [
+  0,
+  1,
+  1000,
+  4 * 60000,
+  5 * 60000 - 1,
+  5 * 60000,
+  5 * 60000 + 1,
+  3600000,
   ...Array.from({ length: 200 }, (_, i) => Math.round((i + 1) * (HORYZONT_KLASYFIKACJI_MS / 201))),
   ...Array.from({ length: 30 }, (_, i) => Date.parse('2026-10-01T22:00:00Z') - T0 + i * DZIEN),
-  ...Array.from({ length: 30 }, (_, i) => Date.parse('2026-10-01T10:00:00Z') - T0 + i * DZIEN)];
+  ...Array.from({ length: 30 }, (_, i) => Date.parse('2026-10-01T10:00:00Z') - T0 + i * DZIEN),
+];
 
-let zamowienia; let rodzaje;
+let zamowienia;
+let rodzaje;
 beforeAll(() => {
   const db = openOmsDb(':memory:');
   const wstawione = wstawMieszane(db, { powtorzen: 2 });
@@ -32,11 +46,21 @@ beforeAll(() => {
   const widziane = new Set();
   let n = 0;
   for (const w of wstawione) {
-    if (!widziane.has(w.rodzaj)) { widziane.add(w.rodzaj); continue; }
+    if (!widziane.has(w.rodzaj)) {
+      widziane.add(w.rodzaj);
+      continue;
+    }
     db.prepare('UPDATE zamowienia SET termin_wysylki_reczny = ? WHERE id = ?').run(daty[n % daty.length], w.id);
     n += 1;
   }
-  zamowienia = zamowieniaPoId(db, db.prepare('SELECT id FROM zamowienia').all().map((w) => w.id), { bezSurowych: true });
+  zamowienia = zamowieniaPoId(
+    db,
+    db
+      .prepare('SELECT id FROM zamowienia')
+      .all()
+      .map((w) => w.id),
+    { bezSurowych: true },
+  );
   db.close();
 });
 
@@ -44,20 +68,28 @@ const poTerminieW = (z, t) => wiekZamowienia(z, new Date(t))?.poTerminie === tru
 
 describe('reguły listy w czasie', () => {
   it('doZrobienia przyjmuje chwilę: faktura w toku staje się sprawą po 5 minutach', () => {
-    const z = { anulowane: 0, wyslane_at: '2026-09-25T10:00:00Z', przesylki: [], zwroty: [],
-      faktura: { ksef_status: 'w_toku', utworzona_at: '2026-10-01T09:30:00Z' } };
+    const z = {
+      anulowane: 0,
+      wyslane_at: '2026-09-25T10:00:00Z',
+      przesylki: [],
+      zwroty: [],
+      faktura: { ksef_status: 'w_toku', utworzona_at: '2026-10-01T09:30:00Z' },
+    };
     expect(doZrobienia(z, T0 + 4 * 60000)).toBe(false);
     expect(doZrobienia(z, T0 + 5 * 60000)).toBe(true);
   });
 
   it('obie reguły są monotoniczne w czasie (raz prawda — prawda do końca horyzontu)', () => {
     for (const z of zamowienia) {
-      let rob = false; let termin = false;
+      let rob = false;
+      let termin = false;
       for (const dt of [...PROBY].sort((a, b) => a - b)) {
-        const r = doZrobienia(z, T0 + dt); const p = poTerminieW(z, T0 + dt);
+        const r = doZrobienia(z, T0 + dt);
+        const p = poTerminieW(z, T0 + dt);
         expect(!rob || r, `doZrobienia ${z.numer} cofnęło się w ${dt}`).toBe(true);
         expect(!termin || p, `poTerminie ${z.numer} cofnęło się w ${dt}`).toBe(true);
-        rob = r; termin = p;
+        rob = r;
+        termin = p;
       }
     }
   });
@@ -69,13 +101,37 @@ describe('reguły listy w czasie', () => {
   });
 
   it('klasyfikacja = reguły domeny w KAŻDEJ chwili horyzontu (status, zakładki, filtry, fraza)', () => {
-    const filtry = [{}, { od: '2026-09-15' }, { do: '2026-09-15' }, { wysylka: 'dpd' }, { wysylka: 'nieznana' },
-      { platnosc: 'blik' }, { platnosc: 'Przelew tradycyjny' }, { kanal: 'kanal_b' }, { kanal: 'indywidualne' },
+    const filtry = [
+      {},
+      { od: '2026-09-15' },
+      { do: '2026-09-15' },
+      { wysylka: 'dpd' },
+      { wysylka: 'nieznana' },
+      { platnosc: 'blik' },
+      { platnosc: 'Przelew tradycyjny' },
+      { kanal: 'kanal_b' },
+      { kanal: 'indywidualne' },
       { od: '2026-09-12', do: '2026-09-20', kanal: 'kanal_a', wysylka: 'inpost_paczkomat' },
       // Wiele wartości jednego filtra i filtr faktury (życzenie klienta i dokument).
-      { wysylka: ['dpd', 'nieznana'], kanal: ['kanal_b', 'indywidualne'] }, { platnosc: ['blik', 'Przelew tradycyjny'] },
-      { faktura: ['tak'] }, { faktura: ['nie', 'wystawiona'] }, { faktura: ['niewystawiona'] }, { faktura: ['tak', 'nie', 'wystawiona', 'niewystawiona'] }];
-    const frazy = ['kowalski', 'lodz', 'ŁÓDŹ', 'zazolc1', 'M-1', 'produkt 3', 'l1', 'sku-2 kowalski', '000', 'brak-takiego'];
+      { wysylka: ['dpd', 'nieznana'], kanal: ['kanal_b', 'indywidualne'] },
+      { platnosc: ['blik', 'Przelew tradycyjny'] },
+      { faktura: ['tak'] },
+      { faktura: ['nie', 'wystawiona'] },
+      { faktura: ['niewystawiona'] },
+      { faktura: ['tak', 'nie', 'wystawiona', 'niewystawiona'] },
+    ];
+    const frazy = [
+      'kowalski',
+      'lodz',
+      'ŁÓDŹ',
+      'zazolc1',
+      'M-1',
+      'produkt 3',
+      'l1',
+      'sku-2 kowalski',
+      '000',
+      'brak-takiego',
+    ];
     let sprawdzone = 0;
     for (const z of zamowienia) {
       const k = klasyfikacjaListy(z, T0);
@@ -92,17 +148,33 @@ describe('reguły listy w czasie', () => {
     }
     expect(sprawdzone).toBeGreaterThan(5000);
     // Zestaw ma przejścia w horyzoncie — inaczej test niczego by nie dowodził.
-    expect(zamowienia.some((z) => { const k = klasyfikacjaListy(z, T0); return k.robocze_od > T0; })).toBe(true);
-    expect(zamowienia.some((z) => { const k = klasyfikacjaListy(z, T0); return k.po_terminie_od > T0; })).toBe(true);
+    expect(
+      zamowienia.some((z) => {
+        const k = klasyfikacjaListy(z, T0);
+        return k.robocze_od > T0;
+      }),
+    ).toBe(true);
+    expect(
+      zamowienia.some((z) => {
+        const k = klasyfikacjaListy(z, T0);
+        return k.po_terminie_od > T0;
+      }),
+    ).toBe(true);
     // …także wśród zamówień z ręczną datą.
     expect(zamowienia.some((z) => z.termin_wysylki_reczny && klasyfikacjaListy(z, T0).po_terminie_od > T0)).toBe(true);
   });
 
   it('każda gałąź reguł zależna od czasu ma w zestawie zamówienie, które przechodzi w horyzoncie', () => {
     const przejscia = {
-      'allegro-przed-12': 'po_terminie_od', 'pobranie-swieze': 'po_terminie_od', 'b2b-swieze': 'po_terminie_od',
-      'ekspres-oplacone': 'po_terminie_od', 'indywidualne-oplacone': 'po_terminie_od', 'oplacone-swiezo': 'po_terminie_od',
-      'paczka-w-trakcie': 'robocze_od', 'paczka-stanie': 'robocze_od', 'faktura-swiezo-w-toku': 'robocze_od',
+      'allegro-przed-12': 'po_terminie_od',
+      'pobranie-swieze': 'po_terminie_od',
+      'b2b-swieze': 'po_terminie_od',
+      'ekspres-oplacone': 'po_terminie_od',
+      'indywidualne-oplacone': 'po_terminie_od',
+      'oplacone-swiezo': 'po_terminie_od',
+      'paczka-w-trakcie': 'robocze_od',
+      'paczka-stanie': 'robocze_od',
+      'faktura-swiezo-w-toku': 'robocze_od',
     };
     for (const [rodzaj, pole] of Object.entries(przejscia)) {
       const z = zamowienia.find((x) => rodzaje.get(x.id) === rodzaj && !x.termin_wysylki_reczny);
@@ -112,7 +184,11 @@ describe('reguły listy w czasie', () => {
     }
     // Różne limity terminu dają ROSNĄCE chwile (0 < 1 < 2 < 7 dni roboczych) — inaczej te
     // przypadki mierzyłyby jedną gałąź.
-    const termin = (r) => klasyfikacjaListy(zamowienia.find((x) => rodzaje.get(x.id) === r && !x.termin_wysylki_reczny), T0).po_terminie_od;
+    const termin = (r) =>
+      klasyfikacjaListy(
+        zamowienia.find((x) => rodzaje.get(x.id) === r && !x.termin_wysylki_reczny),
+        T0,
+      ).po_terminie_od;
     const kolejne = ['allegro-przed-12', 'oplacone-swiezo', 'ekspres-oplacone', 'indywidualne-oplacone'].map(termin);
     for (let k = 1; k < kolejne.length; k++) expect(kolejne[k]).toBeGreaterThan(kolejne[k - 1]);
   });

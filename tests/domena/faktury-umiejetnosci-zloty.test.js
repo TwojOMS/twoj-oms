@@ -7,30 +7,47 @@ import { ustawKanalyAllegro } from '../../src/domena/moduly-kanalow.ts';
 const TERAZ = Date.parse('2026-11-03T12:00:00Z');
 const DATA = '2026-11-01T10:00:00Z';
 const faktura = {
-  numer: 'FV/1000001/2026', infakt_uuid: 'polcien-test',
-  utworzona_at: DATA, ksef_odczyt: 'ok',
+  numer: 'FV/1000001/2026',
+  infakt_uuid: 'polcien-test',
+  utworzona_at: DATA,
+  ksef_odczyt: 'ok',
 };
 const zamowienie = (sklep, chce_fakture, zlecona = false) => ({
-  sklep, chce_fakture, kwota_brutto: '0.00', koszt_dostawy_brutto: '0.00',
-  pozycje: [], wplaty: [], przesylki: [],
+  sklep,
+  chce_fakture,
+  kwota_brutto: '0.00',
+  koszt_dostawy_brutto: '0.00',
+  pozycje: [],
+  wplaty: [],
+  przesylki: [],
   faktura: { ...faktura, ...(zlecona ? { ksef_zlecona_at: DATA } : {}) },
 });
 // Wyniki zapisane przed podmianą predykatów; żadna oczekiwana wartość nie pochodzi z modułu kanału.
-const ALLEGRO = [{
-  klucz: 'ksef', waga: 'blokada', kotwica: '#faktura',
-  tekst: 'Faktura FV/1000001/2026 czeka na KSeF od 2026-11-01T10:00:00Z '
-    + '— kupujący jej jeszcze nie ma. Wyślij ten dokument do KSeF w inFakcie albo, '
-    + 'jeśli świadomie godzisz się na dokument bez tego numeru, wyślij go kupującemu '
-    + 'przyciskiem „Wyślij do Allegro BEZ numeru KSeF” na tej karcie.',
-}];
-const PANEL = [{
-  klucz: 'ksef', waga: 'blokada', kotwica: '#faktura',
-  tekst: 'Panel zlecił wysyłkę faktury FV/1000001/2026 do KSeF, a numeru nie ma od '
-    + '2026-11-01T10:00:00Z — inFakt odpowiada, że dokumentu tam jeszcze '
-    + 'nie ma. Sprawdź ten dokument w inFakcie: albo zgłoszenie utknęło, albo organ je '
-    + 'odrzucił. Panel sam wysyłki NIE ponowi — drugie zgłoszenie byłoby duplikatem, '
-    + 'którego nie da się skasować.',
-}];
+const ALLEGRO = [
+  {
+    klucz: 'ksef',
+    waga: 'blokada',
+    kotwica: '#faktura',
+    tekst:
+      'Faktura FV/1000001/2026 czeka na KSeF od 2026-11-01T10:00:00Z ' +
+      '— kupujący jej jeszcze nie ma. Wyślij ten dokument do KSeF w inFakcie albo, ' +
+      'jeśli świadomie godzisz się na dokument bez tego numeru, wyślij go kupującemu ' +
+      'przyciskiem „Wyślij do Allegro BEZ numeru KSeF” na tej karcie.',
+  },
+];
+const PANEL = [
+  {
+    klucz: 'ksef',
+    waga: 'blokada',
+    kotwica: '#faktura',
+    tekst:
+      'Panel zlecił wysyłkę faktury FV/1000001/2026 do KSeF, a numeru nie ma od ' +
+      '2026-11-01T10:00:00Z — inFakt odpowiada, że dokumentu tam jeszcze ' +
+      'nie ma. Sprawdź ten dokument w inFakcie: albo zgłoszenie utknęło, albo organ je ' +
+      'odrzucił. Panel sam wysyłki NIE ponowi — drugie zgłoszenie byłoby duplikatem, ' +
+      'którego nie da się skasować.',
+  },
+];
 
 afterEach(() => ustawKanalyAllegro([]));
 
@@ -74,15 +91,22 @@ describe('K07 — złoty wynik KSeF i spraw karty', () => {
 
 describe('K07 — złoty wynik odmowy scalania', () => {
   it.each([
-    ['allegro_polcien', 'sklep_polcien', [
-      'Zamówienie P-1 jest z Allegro — zamówień z Allegro nie scalamy (tylko sklep i ręczne).',
-    ]],
+    [
+      'allegro_polcien',
+      'sklep_polcien',
+      ['Zamówienie P-1 jest z Allegro — zamówień z Allegro nie scalamy (tylko sklep i ręczne).'],
+    ],
     ['sklep_polcien', 'reczne', []],
     ['sklep_polcien', 'sklep_polcien', []],
   ])('%s + %s', (pierwszy, drugi, wynik) => {
-    expect(powodyOdmowyScalenia([
-      { id: 1, numer: 'P-1', sklep: pierwszy },
-      { id: 2, numer: 'P-2', sklep: drugi },
-    ], { glowneId: 1 })).toEqual(wynik);
+    expect(
+      powodyOdmowyScalenia(
+        [
+          { id: 1, numer: 'P-1', sklep: pierwszy },
+          { id: 2, numer: 'P-2', sklep: drugi },
+        ],
+        { glowneId: 1 },
+      ),
+    ).toEqual(wynik);
   });
 });

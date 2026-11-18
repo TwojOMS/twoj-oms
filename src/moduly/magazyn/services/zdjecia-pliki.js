@@ -21,8 +21,12 @@ export function adresPublicznyZdjec(env) {
 
 // Rozpoznanie nagłówków, bez dekodowania obrazu i bez zaufania do nazwy/MIME z sieci.
 function naglowek(b) {
-  if (b.length >= 33 && b.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex'))
-    && b.readUInt32BE(8) === 13 && b.toString('ascii', 12, 16) === 'IHDR') {
+  if (
+    b.length >= 33 &&
+    b.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex')) &&
+    b.readUInt32BE(8) === 13 &&
+    b.toString('ascii', 12, 16) === 'IHDR'
+  ) {
     return ['png', b.readUInt32BE(16), b.readUInt32BE(20)];
   }
   if (b.length >= 4 && b[0] === 0xff && b[1] === 0xd8) {
@@ -42,8 +46,13 @@ function naglowek(b) {
       p += n;
     }
   }
-  if (b.length >= 25 && b.toString('ascii', 0, 4) === 'RIFF' && b.toString('ascii', 8, 12) === 'WEBP'
-    && b.readUInt32LE(4) + 8 === b.length && b.readUInt32LE(16) + 20 <= b.length) {
+  if (
+    b.length >= 25 &&
+    b.toString('ascii', 0, 4) === 'RIFF' &&
+    b.toString('ascii', 8, 12) === 'WEBP' &&
+    b.readUInt32LE(4) + 8 === b.length &&
+    b.readUInt32LE(16) + 20 <= b.length
+  ) {
     const rodzaj = b.toString('ascii', 12, 16);
     if (rodzaj === 'VP8X' && b.length >= 30) return ['webp', b.readUIntLE(24, 3) + 1, b.readUIntLE(27, 3) + 1];
     if (rodzaj === 'VP8 ' && b.length >= 30 && b.subarray(23, 26).equals(Buffer.from([0x9d, 1, 0x2a]))) {
@@ -60,7 +69,8 @@ function naglowek(b) {
 export async function zapiszZdjecie(bufor, { katalog }) {
   if (!Buffer.isBuffer(bufor) || bufor.length > LIMIT) throw new Error('Limit zdjęcia: 10 MB.');
   const [ext, szerokosc, wysokosc] = naglowek(bufor);
-  if (!szerokosc || !wysokosc || szerokosc > 10000 || wysokosc > 10000) throw new Error('Niedozwolone wymiary zdjęcia.');
+  if (!szerokosc || !wysokosc || szerokosc > 10000 || wysokosc > 10000)
+    throw new Error('Niedozwolone wymiary zdjęcia.');
   const sha256 = createHash('sha256').update(bufor).digest('hex');
   const plik = `${sha256}.${ext}`;
   const wynik = { sha256, plik, typ: TYPY[ext], rozmiar: bufor.length, szerokosc, wysokosc };
@@ -70,13 +80,24 @@ export async function zapiszZdjecie(bufor, { katalog }) {
     const s = await lstat(cel);
     if (!s.isFile()) throw new Error('Cel zdjęcia nie jest plikiem.');
     if (s.size === bufor.length) return wynik;
-  } catch (e) { if (e.code !== 'ENOENT') throw e; }
+  } catch (e) {
+    if (e.code !== 'ENOENT') throw e;
+  }
   const tymczasowy = join(katalog, `.zdjecie-${randomUUID()}.tmp`);
   try {
     const f = await open(tymczasowy, 'wx', 0o644);
-    try { await f.writeFile(bufor); await f.sync(); } finally { await f.close(); }
+    try {
+      await f.writeFile(bufor);
+      await f.sync();
+    } finally {
+      await f.close();
+    }
     await rename(tymczasowy, cel);
-  } finally { await unlink(tymczasowy).catch(e => { if (e.code !== 'ENOENT') throw e; }); }
+  } finally {
+    await unlink(tymczasowy).catch((e) => {
+      if (e.code !== 'ENOENT') throw e;
+    });
+  }
   return wynik;
 }
 
@@ -84,30 +105,41 @@ function publicznyIp(ip) {
   const rodzaj = isIP(ip);
   if (rodzaj === 4) {
     const [a, b, c] = ip.split('.').map(Number);
-    return !(a === 0 || a === 10 || a === 127 || a >= 224
-      || (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254)
-      || (a === 172 && b >= 16 && b <= 31) || (a === 192 && (b === 168 || b === 0 || (b === 88 && c === 99)))
-      || (a === 198 && (b === 18 || b === 19 || (b === 51 && c === 100)))
-      || (a === 203 && b === 0 && c === 113));
+    return !(
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      a >= 224 ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && (b === 168 || b === 0 || (b === 88 && c === 99))) ||
+      (a === 198 && (b === 18 || b === 19 || (b === 51 && c === 100))) ||
+      (a === 203 && b === 0 && c === 113)
+    );
   }
   if (rodzaj === 6) {
     const normalny = new URL(`https://[${ip}]/`).hostname.slice(1, -1).toLowerCase();
     // Tylko global unicast 2000::/3; wyklucza ULA, link-local, loopback,
     // multicast, IPv4-mapped, NAT64. Wykluczamy też specjalne 2001::/23 i 6to4.
     const czesci = normalny.split(':');
-    const a = parseInt(czesci[0], 16), b = parseInt(czesci[1] || '0', 16);
-    return a >= 0x2000 && a <= 0x3fff && a !== 0x2002
-      && !(a === 0x2001 && (b <= 0x1ff || b === 0xdb8)) && a !== 0x3fff;
+    const a = parseInt(czesci[0], 16),
+      b = parseInt(czesci[1] || '0', 16);
+    return a >= 0x2000 && a <= 0x3fff && a !== 0x2002 && !(a === 0x2001 && (b <= 0x1ff || b === 0xdb8)) && a !== 0x3fff;
   }
   return false;
 }
 
 async function sprawdzAdres(adres, lookup) {
   const url = new URL(adres);
-  if (url.protocol !== 'https:' || url.username || url.password) throw new Error('Zdjęcie wymaga HTTPS bez poświadczeń.');
+  if (url.protocol !== 'https:' || url.username || url.password)
+    throw new Error('Zdjęcie wymaga HTTPS bez poświadczeń.');
   const host = url.hostname.replace(/^\[|\]$/g, '');
-  const adresy = isIP(host) ? [{ address: host, family: isIP(host) }] : await lookup(host, { all: true, verbatim: true });
-  if (!Array.isArray(adresy) || !adresy.length || adresy.some(a => !publicznyIp(a.address))) throw new Error('Niedozwolony adres sieciowy zdjęcia.');
+  const adresy = isIP(host)
+    ? [{ address: host, family: isIP(host) }]
+    : await lookup(host, { all: true, verbatim: true });
+  if (!Array.isArray(adresy) || !adresy.length || adresy.some((a) => !publicznyIp(a.address)))
+    throw new Error('Niedozwolony adres sieciowy zdjęcia.');
   return { url, ip: adresy[0].address, family: isIP(adresy[0].address) };
 }
 
@@ -117,23 +149,39 @@ async function sprawdzAdres(adres, lookup) {
 // Wstrzyknięty fetch to zaufana atrapa/transport: musi sam gwarantować przypięcie.
 function fetchPrzypiety(url, { signal, ip, family }) {
   return new Promise((resolve, reject) => {
-    const req = request(url, {
-      method: 'GET', signal, agent: false,
-      lookup: (_host, opcje, callback) => callback(null, opcje.all ? [{ address: ip, family }] : ip, family),
-    }, res => {
-      const status = res.statusCode;
-      const headers = new Headers();
-      if (res.headers.location) headers.set('location', res.headers.location);
-      if (res.headers['content-length']) headers.set('content-length', res.headers['content-length']);
-      resolve({ status, ok: status >= 200 && status < 300, headers, body: Readable.toWeb(res) });
-    });
+    const req = request(
+      url,
+      {
+        method: 'GET',
+        signal,
+        agent: false,
+        lookup: (_host, opcje, callback) => callback(null, opcje.all ? [{ address: ip, family }] : ip, family),
+      },
+      (res) => {
+        const status = res.statusCode;
+        const headers = new Headers();
+        if (res.headers.location) headers.set('location', res.headers.location);
+        if (res.headers['content-length']) headers.set('content-length', res.headers['content-length']);
+        resolve({ status, ok: status >= 200 && status < 300, headers, body: Readable.toWeb(res) });
+      },
+    );
     req.on('error', reject);
     req.end();
   });
 }
 
-export async function pobierzZdjecie(adres, { limitCzasuMs = 15000, limitBajtow = LIMIT, fetch = fetchPrzypiety, lookup = dnsLookup } = {}) {
-  if (!Number.isFinite(limitCzasuMs) || limitCzasuMs <= 0 || !Number.isSafeInteger(limitBajtow) || limitBajtow <= 0 || limitBajtow > LIMIT) throw new Error('Niepoprawne limity pobierania.');
+export async function pobierzZdjecie(
+  adres,
+  { limitCzasuMs = 15000, limitBajtow = LIMIT, fetch = fetchPrzypiety, lookup = dnsLookup } = {},
+) {
+  if (
+    !Number.isFinite(limitCzasuMs) ||
+    limitCzasuMs <= 0 ||
+    !Number.isSafeInteger(limitBajtow) ||
+    limitBajtow <= 0 ||
+    limitBajtow > LIMIT
+  )
+    throw new Error('Niepoprawne limity pobierania.');
   const controller = new AbortController();
   let reader, timer;
   const anulowanie = new Promise((_, reject) => {
@@ -148,8 +196,17 @@ export async function pobierzZdjecie(adres, { limitCzasuMs = 15000, limitBajtow 
     for (let przekierowania = 0; ; przekierowania++) {
       const { url, ip, family } = await sprawdzAdres(adres, lookup);
       controller.signal.throwIfAborted();
-      const res = await fetch(url.href, { redirect: 'manual', credentials: 'omit', signal: controller.signal, ip, family });
-      if (controller.signal.aborted) { void res.body?.cancel().catch(() => {}); controller.signal.throwIfAborted(); }
+      const res = await fetch(url.href, {
+        redirect: 'manual',
+        credentials: 'omit',
+        signal: controller.signal,
+        ip,
+        family,
+      });
+      if (controller.signal.aborted) {
+        void res.body?.cancel().catch(() => {});
+        controller.signal.throwIfAborted();
+      }
       if ([301, 302, 303, 307, 308].includes(res.status)) {
         await res.body?.cancel();
         const location = res.headers.get('location');
@@ -181,8 +238,9 @@ export async function pobierzZdjecie(adres, { limitCzasuMs = 15000, limitBajtow 
       return Buffer.concat(czesci, rozmiar);
     }
   };
-  try { return await Promise.race([praca(), anulowanie]); }
-  finally {
+  try {
+    return await Promise.race([praca(), anulowanie]);
+  } finally {
     clearTimeout(timer);
     controller.abort();
     void reader?.cancel().catch(() => {});
@@ -200,13 +258,17 @@ export function registerZdjeciaMagazynu(app, { katalog }) {
       const s = await f.stat();
       if (!s.isFile() || s.size > LIMIT) return reply.code(404).send();
       const bufor = await f.readFile();
-      return reply.type(TYPY[plik.split('.').pop()])
+      return reply
+        .type(TYPY[plik.split('.').pop()])
         .header('X-Content-Type-Options', 'nosniff')
-        .header('Cache-Control', 'private, max-age=31536000, immutable').send(bufor);
+        .header('Cache-Control', 'private, max-age=31536000, immutable')
+        .send(bufor);
     } catch (e) {
       if (['ENOENT', 'ENOTDIR', 'ELOOP'].includes(e.code)) return reply.code(404).send();
       req.log.error({ err: e }, 'Nie udało się odczytać zdjęcia magazynu.');
       return reply.code(500).send();
-    } finally { await f?.close(); }
+    } finally {
+      await f?.close();
+    }
   });
 }

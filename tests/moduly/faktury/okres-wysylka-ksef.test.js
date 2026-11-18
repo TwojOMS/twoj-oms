@@ -17,8 +17,9 @@ import { dopiszKlientaZbiorczego } from './_klient-zbiorczy-pomocniki.js';
 import { programTestowy } from '../../pomoc/program-testowy.js';
 
 const AUTH = { authorization: `Basic ${Buffer.from('operator:fixture').toString('base64')}` };
-const ZE_ZDOLNOSCIA = ', bez wysyłki do KSeF — wysyłasz ją osobno: przyciskiem na ekranie Faktury, '
-  + 'automatem (administrator: Ustawienia → Automatyzacje → Automaty systemowe) albo w Testowniku.';
+const ZE_ZDOLNOSCIA =
+  ', bez wysyłki do KSeF — wysyłasz ją osobno: przyciskiem na ekranie Faktury, ' +
+  'automatem (administrator: Ustawienia → Automatyzacje → Automaty systemowe) albo w Testowniku.';
 const BEZ_ZDOLNOSCI = ', bez wysyłki do KSeF — wyślij ją do KSeF bezpośrednio w Testowniku.';
 const PRZED_WYSTAWIENIEM = 'Wystawienie nie wysyła dokumentu do KSeF.';
 const jednaSpacja = (html) => html.replace(/\s+/gu, ' ');
@@ -26,15 +27,21 @@ const jednaSpacja = (html) => html.replace(/\s+/gu, ' ');
 let katalog;
 let a;
 afterEach(async () => {
-  await a?.app.close(); a?.db.close(); a = null;
+  await a?.app.close();
+  a?.db.close();
+  a = null;
   if (katalog) rmSync(katalog, { recursive: true, force: true });
 });
 
 async function panel(program) {
   katalog = mkdtempSync(join(tmpdir(), 'prz168-01b-'));
   const env = {
-    OMS_USER: 'operator', OMS_PASS: 'fixture', OMS_SPRZEDAWCA_NIP: '1234563218',
-    OMS_RACHUNEK: '34109010140000000000000000', OMS_PROFORMY_KATALOG: katalog, OMS_ETYKIETY_KATALOG: katalog,
+    OMS_USER: 'operator',
+    OMS_PASS: 'fixture',
+    OMS_SPRZEDAWCA_NIP: '1234563218',
+    OMS_RACHUNEK: '34109010140000000000000000',
+    OMS_PROFORMY_KATALOG: katalog,
+    OMS_ETYKIETY_KATALOG: katalog,
     OMS_TRYB: 'proba',
   };
   const fabryki = { programFakturowy: () => program, createVies: () => createAtrapaVies({ env }) };
@@ -46,11 +53,25 @@ async function panel(program) {
 function okresZZamowieniem(db) {
   dopiszKlientaZbiorczego(db);
   const okres = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 9 });
-  const z = zapiszZamowienie(db, 'pro', {
-    zrodlo_id: 'w-1681', numer: '1681', klient: { first_name: 'Ida' }, dostawa: {},
-    metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: null,
-    kwota_brutto: '249.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
-  }, {});
+  const z = zapiszZamowienie(
+    db,
+    'pro',
+    {
+      zrodlo_id: 'w-1681',
+      numer: '1681',
+      klient: { first_name: 'Ida' },
+      dostawa: {},
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: 1,
+      nip: null,
+      kwota_brutto: '249.00',
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane: 0,
+    },
+    {},
+  );
   db.prepare('UPDATE zamowienia SET okres_rozliczeniowy_id = ? WHERE id = ?').run(okres.id, z);
   return okres.id;
 }
@@ -68,7 +89,12 @@ describe('karta okresu: zdanie o wysyłce do KSeF zależy od programu', () => {
     expect(jednaSpacja(przed.body)).toContain(PRZED_WYSTAWIENIEM);
     expect(przed.body).not.toContain('Panel nie wysyła dokumentu do KSeF.');
 
-    zakonczFaktureOkresu(db, okresId, { uuid: 'prz168-okres', numer: 'TST 9/2026', ksefStatus: null }, { program: 'testowy' });
+    zakonczFaktureOkresu(
+      db,
+      okresId,
+      { uuid: 'prz168-okres', numer: 'TST 9/2026', ksefStatus: null },
+      { program: 'testowy' },
+    );
     const po = await app.inject({ method: 'GET', url: `/okresy/${okresId}`, headers: AUTH });
     expect(po.statusCode, po.body.slice(0, 300)).toBe(200);
     const tekst = jednaSpacja(po.body);

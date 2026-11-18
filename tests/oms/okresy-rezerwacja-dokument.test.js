@@ -11,8 +11,13 @@ import { zapewnijOkres, rozpocznijFaktureOkresu } from '../../src/oms/db/okresy.
 function okresZDokumentem(kolumny) {
   const db = openOmsDb(':memory:');
   const okres = zapewnijOkres(db, { klientKlucz: 'nip:5250000000', rok: 2026, miesiac: 10 });
-  const ustaw = Object.keys(kolumny).map((k) => `${k} = @${k}`).join(', ');
-  db.prepare(`UPDATE okresy_rozliczeniowe SET ${ustaw}, stan = 'otwarty' WHERE id = @id`).run({ ...kolumny, id: okres.id });
+  const ustaw = Object.keys(kolumny)
+    .map((k) => `${k} = @${k}`)
+    .join(', ');
+  db.prepare(`UPDATE okresy_rozliczeniowe SET ${ustaw}, stan = 'otwarty' WHERE id = @id`).run({
+    ...kolumny,
+    id: okres.id,
+  });
   return { db, id: okres.id };
 }
 

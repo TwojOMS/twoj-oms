@@ -2,12 +2,29 @@
 import { stronaOdmowy } from '../../core/web/odmowa.js';
 
 export function registerZapisMagazynu(app, { db, magazyn, sklepy, pomoc, karta }) {
-  const { kartyZKanalami, kartyPoIdach, produktyKart, zapiszSkuSklepu, ocenZapis, jednostkiSklepow, wyslijDoSklepow, adresKanalu, KANALY_SKLEPOW, BEZ_SKLEPOW_ODMOWA, pole, numeryZaznaczone, filtryZawezenia, zakresHurtu } = pomoc;
+  const {
+    kartyZKanalami,
+    kartyPoIdach,
+    produktyKart,
+    zapiszSkuSklepu,
+    ocenZapis,
+    jednostkiSklepow,
+    wyslijDoSklepow,
+    adresKanalu,
+    KANALY_SKLEPOW,
+    BEZ_SKLEPOW_ODMOWA,
+    pole,
+    numeryZaznaczone,
+    filtryZawezenia,
+    zakresHurtu,
+  } = pomoc;
   // Odmowa „brak sklepu” w układzie OMS (status i tekst bez zmian); powrót na listę, z której przyszedł człowiek.
-  const odmowaBezSklepow = (req, reply) => stronaOdmowy(reply, 503, BEZ_SKLEPOW_ODMOWA, {
-    tytul: 'Magazyn nie ma skąd czytać katalogu', napisWroc: 'Wróć do magazynu',
-    wroc: pomoc.bezpiecznyWroc(req.query?.wroc ?? req.body?.wroc) ?? '/magazyn',
-  });
+  const odmowaBezSklepow = (req, reply) =>
+    stronaOdmowy(reply, 503, BEZ_SKLEPOW_ODMOWA, {
+      tytul: 'Magazyn nie ma skąd czytać katalogu',
+      napisWroc: 'Wróć do magazynu',
+      wroc: pomoc.bezpiecznyWroc(req.query?.wroc ?? req.body?.wroc) ?? '/magazyn',
+    });
   // ——— ZAPIS SKU I WYMIAROW DO SKLEPOW ——————————————————————————————————————————
   //
   // ⚠️⚠️ TO JEST JEDYNE MIEJSCE W CALYM MODULE, KTORE PISZE DO SKLEPU, KTORY SPRZEDAJE.
@@ -21,8 +38,9 @@ export function registerZapisMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
   // ⚠️ PANEL WYSYLA WYLACZNIE SKU I WYMIARY (domena/zapis-do-sklepu.js). Do Allegro nie
   // pisze nic.
 
-  const ZAPIS_BEZ_ZAZNACZENIA = 'Nie zaznaczono ani jednej karty, więc nie mam czego wysyłać '
-    + 'do sklepów. Zaznacz karty na liście albo kliknij przycisk „dla wszystkich pasujących" — stoi przy tej samej akcji i podaje, ilu kart dotyczy.';
+  const ZAPIS_BEZ_ZAZNACZENIA =
+    'Nie zaznaczono ani jednej karty, więc nie mam czego wysyłać ' +
+    'do sklepów. Zaznacz karty na liście albo kliknij przycisk „dla wszystkich pasujących" — stoi przy tej samej akcji i podaje, ilu kart dotyczy.';
 
   /**
    * Zestaw zapisu dla podanych kart — ZE STANU BIEZACEGO, razem z jednostkami odczytanymi
@@ -36,7 +54,10 @@ export function registerZapisMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
    * jak kanal, w ktorym nie ma nic do zmiany.
    */
   async function zestawZapisu(karty) {
-    const produkty = produktyKart(db, karty.map((w) => w.id));
+    const produkty = produktyKart(
+      db,
+      karty.map((w) => w.id),
+    );
     // O jednostke pytamy WYLACZNIE te kanaly, ktore naprawde wystepuja — i wylacznie
     // sklepowe (do Allegro nie piszemy nic, wiec nie ma po co go budzic).
     const kanaly = produkty.map((p) => p.kanal).filter((k) => KANALY_SKLEPOW.includes(k));
@@ -72,15 +93,14 @@ export function registerZapisMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
     ...p,
     nazwaKarty,
     etykietaKanalu: adresKanalu(p.kanal),
-    sciezka: p.sciezka ?? (p.wariant_id
-      ? `products/${p.produkt_id}/variations/${p.wariant_id}`
-      : `products/${p.produkt_id}`),
+    sciezka:
+      p.sciezka ?? (p.wariant_id ? `products/${p.produkt_id}/variations/${p.wariant_id}` : `products/${p.produkt_id}`),
   });
 
-  function ekranZapisu(reply, {
-    zmiany = [], wstrzymane = [], nazwy = new Map(), zawezenie = '', blad = null,
-    wynik = null, kod = 200,
-  }) {
+  function ekranZapisu(
+    reply,
+    { zmiany = [], wstrzymane = [], nazwy = new Map(), zawezenie = '', blad = null, wynik = null, kod = 200 },
+  ) {
     return reply.code(kod).view('magazyn-podglad.ejs', {
       title: 'Magazyn — zapis do sklepów',
       zmiany: zmiany.map((z) => pozycjaZapisu(z, nazwy.get(z.karta_id) ?? null)),
@@ -120,7 +140,10 @@ export function registerZapisMagazynu(app, { db, magazyn, sklepy, pomoc, karta }
 
     const { zmiany, wstrzymane } = await zestawZapisu(karty);
     return ekranZapisu(reply, {
-      zmiany, wstrzymane, zawezenie, nazwy: new Map(karty.map((w) => [w.id, w.nazwa])),
+      zmiany,
+      wstrzymane,
+      zawezenie,
+      nazwy: new Map(karty.map((w) => [w.id, w.nazwa])),
     });
   });
 

@@ -43,7 +43,7 @@ describe('katalogi zapisu w compose klienta', () => {
   it('żaden domyślny /data-oms z kodu aplikacji nie dotyczy zmiennej katalogu bez wpisu w compose', () => {
     // Skan src: każda zmienna OMS_*, której domyślna wartość zaczyna się od /data-oms, musi być w compose.
     const znalezione = new Set();
-    const idz = katalog => {
+    const idz = (katalog) => {
       for (const e of fs.readdirSync(katalog, { withFileTypes: true })) {
         const p = path.join(katalog, e.name);
         if (e.isDirectory()) idz(p);
@@ -56,8 +56,9 @@ describe('katalogi zapisu w compose klienta', () => {
     idz(path.join(ROOT, 'src'));
     expect([...znalezione].length).toBeGreaterThan(0);
     for (const zmienna of znalezione) {
-      expect(compose(), `${zmienna} z domyślnym /data-oms nie jest ustawiona w compose klienta`)
-        .toMatch(new RegExp(`^\\s+${zmienna}:\\s*/opt/oms/data/`, 'm'));
+      expect(compose(), `${zmienna} z domyślnym /data-oms nie jest ustawiona w compose klienta`).toMatch(
+        new RegExp(`^\\s+${zmienna}:\\s*/opt/oms/data/`, 'm'),
+      );
     }
   });
 });

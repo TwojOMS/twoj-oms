@@ -1,12 +1,25 @@
 import { describe, it, expect } from 'vitest';
 import {
-  agreguj, delty, udzialyDokumentow, wgDni, wgTygodni, deltyKanalow,
+  agreguj,
+  delty,
+  udzialyDokumentow,
+  wgDni,
+  wgTygodni,
+  deltyKanalow,
 } from '../../src/domena/agregacja-sprzedazy.js';
 
 const w = (kanal, brutto, pozycje = []) => ({
-  zrodlo: 'oms', id: 1, dzien: '2026-07-10', kanal,
-  bruttoGrosze: brutto, nettoGrosze: Math.round(brutto / 1.23),
-  faktura: false, oplacone: true, email: 'a@b.pl', tagi: [], pozycje,
+  zrodlo: 'oms',
+  id: 1,
+  dzien: '2026-07-10',
+  kanal,
+  bruttoGrosze: brutto,
+  nettoGrosze: Math.round(brutto / 1.23),
+  faktura: false,
+  oplacone: true,
+  email: 'a@b.pl',
+  tagi: [],
+  pozycje,
 });
 
 const poz = (nazwa, ilosc, brutto, typ = 1) => ({ nazwa, ilosc, bruttoGrosze: brutto, typ });
@@ -49,7 +62,8 @@ describe('agregacja', () => {
 
   it('ranking ma najwyzej dziesiec pozycji', () => {
     const wiersze = Array.from({ length: 14 }, (_, i) =>
-      w('SWIETLIK_PL', 1000 * (i + 1), [poz(`P${i}`, 1, 1000 * (i + 1))]));
+      w('SWIETLIK_PL', 1000 * (i + 1), [poz(`P${i}`, 1, 1000 * (i + 1))]),
+    );
     expect(agreguj(wiersze).produkty).toHaveLength(10);
   });
 });
@@ -95,7 +109,13 @@ describe('udzialyDokumentow — proporcja faktura/paragon', () => {
   // albo 33% + 66% zaleznie od liczb — a wtedy pasek zostawia szpare albo sie rozjezdza.
   // Drugi udzial jest DOPELNIENIEM pierwszego, nie osobnym rachunkiem.
   it('procenty zawsze sumuja sie do 100', () => {
-    for (const [f, p] of [[1, 2], [1, 199], [7, 13], [999, 1], [50, 50]]) {
+    for (const [f, p] of [
+      [1, 2],
+      [1, 199],
+      [7, 13],
+      [999, 1],
+      [50, 50],
+    ]) {
       const u = udzialyDokumentow({
         faktura: { zamowien: f, bruttoGrosze: f * 100 },
         paragon: { zamowien: p, bruttoGrosze: p * 100 },
@@ -109,7 +129,8 @@ describe('udzialyDokumentow — proporcja faktura/paragon', () => {
   // („nikt nie chcial faktury"), a znaczy „nie bylo ani jednego zamowienia".
   it('okres bez zamowien oddaje null zamiast NaN albo zera', () => {
     const u = udzialyDokumentow({
-      faktura: { zamowien: 0, bruttoGrosze: 0 }, paragon: { zamowien: 0, bruttoGrosze: 0 },
+      faktura: { zamowien: 0, bruttoGrosze: 0 },
+      paragon: { zamowien: 0, bruttoGrosze: 0 },
     });
     expect(u.zamowien.faktura.procent).toBeNull();
     expect(u.wartosc.paragon.procent).toBeNull();
@@ -120,7 +141,8 @@ describe('udzialyDokumentow — proporcja faktura/paragon', () => {
   // nie brakiem danych.
   it('same paragony to 0% faktury, a nie brak danych', () => {
     const u = udzialyDokumentow({
-      faktura: { zamowien: 0, bruttoGrosze: 0 }, paragon: { zamowien: 5, bruttoGrosze: 1000 },
+      faktura: { zamowien: 0, bruttoGrosze: 0 },
+      paragon: { zamowien: 5, bruttoGrosze: 1000 },
     });
     expect(u.zamowien.faktura.procent).toBe(0);
     expect(u.zamowien.paragon.procent).toBe(100);
@@ -170,10 +192,14 @@ describe('wgDni', () => {
 
 describe('wgTygodni', () => {
   it('tydzien sumuje swoje dni, granice wlacznie', () => {
-    const tygodnie = [{ od: '2026-07-01', do: '2026-07-05' }, { od: '2026-07-06', do: '2026-07-12' }];
-    const wynik = wgTygodni([
-      dzien('2026-07-01', 1000), dzien('2026-07-05', 2000), dzien('2026-07-06', 4000),
-    ], tygodnie);
+    const tygodnie = [
+      { od: '2026-07-01', do: '2026-07-05' },
+      { od: '2026-07-06', do: '2026-07-12' },
+    ];
+    const wynik = wgTygodni(
+      [dzien('2026-07-01', 1000), dzien('2026-07-05', 2000), dzien('2026-07-06', 4000)],
+      tygodnie,
+    );
     expect(wynik).toEqual([
       { od: '2026-07-01', do: '2026-07-05', bruttoGrosze: 3000, zamowien: 2 },
       { od: '2026-07-06', do: '2026-07-12', bruttoGrosze: 4000, zamowien: 1 },

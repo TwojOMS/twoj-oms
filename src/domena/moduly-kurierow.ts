@@ -4,30 +4,66 @@ import { OPISY_PRZEWOZNIKOW } from './przewoznicy.ts';
 /** Opisy integracji, bez adapterów i skutków ubocznych przy imporcie. */
 export const MODULY_KURIEROW = {
   dpd: {
-    klucz: 'dpd', nazwa: 'DPD', logo: '/integracje/dpd.svg', idKatalogu: 'dpd',
-    opisKatalogu: 'Nadaj przesyłki przez DPD.', umowa: 'wlasna', przewoznicy: ['dpd'],
+    klucz: 'dpd',
+    nazwa: 'DPD',
+    logo: '/integracje/dpd.svg',
+    idKatalogu: 'dpd',
+    opisKatalogu: 'Nadaj przesyłki przez DPD.',
+    umowa: 'wlasna',
+    przewoznicy: ['dpd'],
     // ⚠️ „Kurier DPD", a nie samo „DPD". Odkad kolumna „Dostawa"
     // pokazuje pelne nazwy uslug Allegro („Allegro Kurier DPD", „Allegro One Box"), samotne
     // „DPD" czytalo sie jak nazwa PRZEWOZNIKA obok nazw USLUG — a to jest nasza wlasna usluga
     // kurierska, na NASZEJ umowie. Para „Kurier DPD" / „Allegro Kurier DPD" mowi teraz wprost,
     // czyja umowa jedzie paczka, i to jest cala roznica, ktora operator musi tu zobaczyc.
-    metody: [{ klucz: 'dpd', etykieta: 'Kurier DPD', etykietaWyboru: 'DPD — nasza umowa',
-      etykietaDrogi: 'DPD umowa własna', formularz: 'dpd', punktOdbioru: false }],
+    metody: [
+      {
+        klucz: 'dpd',
+        etykieta: 'Kurier DPD',
+        etykietaWyboru: 'DPD — nasza umowa',
+        etykietaDrogi: 'DPD umowa własna',
+        formularz: 'dpd',
+        punktOdbioru: false,
+      },
+    ],
     // pobranie 'umowa': przy pobraniu na tej paczce wolno go wybrać (kurierzyDoWyboru).
-    umiejetnosci: { pobranie: 'umowa', pobranieNaDosylce: true, nadanieAsynchroniczne: false, sledzenie: 'wlasne',
-      etykieta: { zpl: true, zplPrzyNadaniu: true } },
+    umiejetnosci: {
+      pobranie: 'umowa',
+      pobranieNaDosylce: true,
+      nadanieAsynchroniczne: false,
+      sledzenie: 'wlasne',
+      etykieta: { zpl: true, zplPrzyNadaniu: true },
+    },
     pobieranieEtykiety: false,
     kluczeEnv: ['DPD_LOGIN', 'DPD_PASSWORD'],
-    konfigurator: { sciezka: '/ustawienia/integracje/dpd', etykieta: 'DPD Polska',
-      zdanie: 'login, numer klienta i hasło od DPD, typ etykiety, sprawdzenie połączenia.' },
-    piaskownica: { atrapa: 'deploy/proba/atrapy/dpd.mjs',
-      komunikat: 'Piaskownica: prawdziwe DPD jest tu wyłączone — nic nie poszło do DPD.' },
+    konfigurator: {
+      sciezka: '/ustawienia/integracje/dpd',
+      etykieta: 'DPD Polska',
+      zdanie: 'login, numer klienta i hasło od DPD, typ etykiety, sprawdzenie połączenia.',
+    },
+    piaskownica: {
+      atrapa: 'deploy/proba/atrapy/dpd.mjs',
+      komunikat: 'Piaskownica: prawdziwe DPD jest tu wyłączone — nic nie poszło do DPD.',
+    },
   },
   inpost: {
-    klucz: 'inpost', nazwa: 'InPost', logo: '/integracje/inpost.svg', idKatalogu: 'inpost',
-    opisKatalogu: 'Nadaj przesyłki przez InPost.', umowa: 'wlasna', przewoznicy: ['inpost'],
-    metody: [{ klucz: 'inpost_paczkomat', etykieta: 'InPost Paczkomat', etykietaWyboru: 'Paczkomat InPost — nasza umowa',
-      etykietaDrogi: 'Paczkomat InPost', formularz: 'paczkomat', punktOdbioru: true }],
+    klucz: 'inpost',
+    nazwa: 'InPost',
+    logo: '/integracje/inpost.svg',
+    idKatalogu: 'inpost',
+    opisKatalogu: 'Nadaj przesyłki przez InPost.',
+    umowa: 'wlasna',
+    przewoznicy: ['inpost'],
+    metody: [
+      {
+        klucz: 'inpost_paczkomat',
+        etykieta: 'InPost Paczkomat',
+        etykietaWyboru: 'Paczkomat InPost — nasza umowa',
+        etykietaDrogi: 'Paczkomat InPost',
+        formularz: 'paczkomat',
+        punktOdbioru: true,
+      },
+    ],
     // ⚠️ pobranie 'adapter', NIE 'umowa' — ochrona pieniedzy (kurier-nadania.js, kurierzyDoWyboru):
     // adapter umie wyslac kwote, ale umowa z InPostem na pobranie nie jest potwierdzona, wiec przy
     // pobraniu na tej paczce paczkomatu NIE ma w wyborze (inaczej towar oddany bez inkasa).
@@ -35,18 +71,32 @@ export const MODULY_KURIEROW = {
     // `umowyPobrania: ['inpost']` parametrem — ten wpis zostaje 'adapter' na zawsze.
     // pobranieNaDosylce — z umową firmy paczkomat wiezie też zamiennik za pobraniem
     // (paczka N > 1, jawna decyzja operatora); adapter honoruje `pobranieNaTejPaczce` jak dpd.js.
-    umiejetnosci: { pobranie: 'adapter', pobranieNaDosylce: true, nadanieAsynchroniczne: true, sledzenie: 'wlasne',
-      etykieta: { zpl: true, zplPrzyNadaniu: true } },
+    umiejetnosci: {
+      pobranie: 'adapter',
+      pobranieNaDosylce: true,
+      nadanieAsynchroniczne: true,
+      sledzenie: 'wlasne',
+      etykieta: { zpl: true, zplPrzyNadaniu: true },
+    },
     pobieranieEtykiety: true,
     kluczeEnv: ['INPOST_TOKEN'],
-    konfigurator: { sciezka: '/ustawienia/integracje/inpost', etykieta: 'InPost (paczkomaty)',
-      zdanie: 'token API ShipX i numer organizacji, paczkomat nadawczy, sprawdzenie połączenia.' },
-    piaskownica: { atrapa: 'deploy/proba/atrapy/inpost.mjs',
-      komunikat: 'Piaskownica: prawdziwy InPost jest tu wyłączony — nic nie poszło do InPostu.' },
+    konfigurator: {
+      sciezka: '/ustawienia/integracje/inpost',
+      etykieta: 'InPost (paczkomaty)',
+      zdanie: 'token API ShipX i numer organizacji, paczkomat nadawczy, sprawdzenie połączenia.',
+    },
+    piaskownica: {
+      atrapa: 'deploy/proba/atrapy/inpost.mjs',
+      komunikat: 'Piaskownica: prawdziwy InPost jest tu wyłączony — nic nie poszło do InPostu.',
+    },
   },
   allegro_wza: {
-    klucz: 'allegro_wza', nazwa: 'Wysyłam z Allegro', logo: '/integracje/allegro.svg', idKatalogu: 'wza',
-    opisKatalogu: 'Nadaj przesyłki z wykorzystaniem powiązanego konta Allegro.', umowa: 'platformy',
+    klucz: 'allegro_wza',
+    nazwa: 'Wysyłam z Allegro',
+    logo: '/integracje/allegro.svg',
+    idKatalogu: 'wza',
+    opisKatalogu: 'Nadaj przesyłki z wykorzystaniem powiązanego konta Allegro.',
+    umowa: 'platformy',
     przewoznicy: ['dpd', 'inpost', 'dhl', 'orlen', 'allegro-one', 'packeta'],
     // Kazda etykieta metody zaczyna sie od „Allegro" (np. „Allegro Kurier DPD", „Allegro punkt / automat"),
     // zeby w kolumnie „Dostawa" od razu bylo widac, ze to
@@ -64,19 +114,34 @@ export const MODULY_KURIEROW = {
     ],
     // pobranieNaDosylce false — adapter WzA bierze pobranie z zamówienia Allegro
     // i nie umie wysłać go na kolejnej paczce; zamiennik za pobraniem dostaje odmowę.
-    umiejetnosci: { pobranie: 'umowa', pobranieNaDosylce: false, nadanieAsynchroniczne: true, sledzenie: 'przez_przewoznika',
-      etykieta: { zpl: true, zplPrzyNadaniu: false } },
+    umiejetnosci: {
+      pobranie: 'umowa',
+      pobranieNaDosylce: false,
+      nadanieAsynchroniczne: true,
+      sledzenie: 'przez_przewoznika',
+      etykieta: { zpl: true, zplPrzyNadaniu: false },
+    },
     pobieranieEtykiety: false,
     kluczeEnv: ['ALLEGRO_CLIENT_ID', 'ALLEGRO_CLIENT_SECRET'],
     konfigurator: { sciezka: '/ustawienia/integracje', etykieta: 'Wysyłam z Allegro', zdanie: '' },
     piaskownica: { atrapa: '', komunikat: '' },
   },
   allegro: {
-    klucz: 'allegro', nazwa: 'Allegro', logo: '/integracje/allegro.svg', idKatalogu: 'allegro',
-    opisKatalogu: '', umowa: 'platformy', przewoznicy: ['dpd', 'inpost', 'dhl', 'orlen', 'allegro-one', 'packeta'],
+    klucz: 'allegro',
+    nazwa: 'Allegro',
+    logo: '/integracje/allegro.svg',
+    idKatalogu: 'allegro',
+    opisKatalogu: '',
+    umowa: 'platformy',
+    przewoznicy: ['dpd', 'inpost', 'dhl', 'orlen', 'allegro-one', 'packeta'],
     metody: [],
-    umiejetnosci: { pobranie: 'brak', pobranieNaDosylce: false, nadanieAsynchroniczne: false, sledzenie: 'wlasne',
-      etykieta: { zpl: false, zplPrzyNadaniu: false } },
+    umiejetnosci: {
+      pobranie: 'brak',
+      pobranieNaDosylce: false,
+      nadanieAsynchroniczne: false,
+      sledzenie: 'wlasne',
+      etykieta: { zpl: false, zplPrzyNadaniu: false },
+    },
     pobieranieEtykiety: false,
     kluczeEnv: ['ALLEGRO_CLIENT_ID', 'ALLEGRO_CLIENT_SECRET'],
     konfigurator: { sciezka: '/ustawienia/integracje', etykieta: 'Allegro', zdanie: '' },
@@ -88,11 +153,21 @@ export const MODULY_KURIEROW = {
   // (wysylka/services/droga-nadania-erli.js), bo zamówienie ERLI ma metodę „nieznana” albo „odbior_osobisty”.
   // Śledzenie „wlasne”: adapter ma `statusPrzesylki` (status paczki z API ERLI).
   erli_przesylki: {
-    klucz: 'erli_przesylki', nazwa: 'Przesyłki Erli', logo: '', idKatalogu: 'erli_przesylki',
-    opisKatalogu: '', umowa: 'platformy', przewoznicy: ['inpost', 'orlen', 'dhl', 'dpd'],
+    klucz: 'erli_przesylki',
+    nazwa: 'Przesyłki Erli',
+    logo: '',
+    idKatalogu: 'erli_przesylki',
+    opisKatalogu: '',
+    umowa: 'platformy',
+    przewoznicy: ['inpost', 'orlen', 'dhl', 'dpd'],
     metody: [{ klucz: 'erli_przesylki', etykieta: 'Przesyłki Erli', formularz: 'dpd', punktOdbioru: false }],
-    umiejetnosci: { pobranie: 'umowa', pobranieNaDosylce: false, nadanieAsynchroniczne: true, sledzenie: 'wlasne',
-      etykieta: { zpl: false, zplPrzyNadaniu: false } },
+    umiejetnosci: {
+      pobranie: 'umowa',
+      pobranieNaDosylce: false,
+      nadanieAsynchroniczne: true,
+      sledzenie: 'wlasne',
+      etykieta: { zpl: false, zplPrzyNadaniu: false },
+    },
     pobieranieEtykiety: false,
     kluczeEnv: [],
     konfigurator: { sciezka: '/ustawienia/integracje', etykieta: 'Przesyłki Erli', zdanie: '' },
@@ -104,7 +179,7 @@ export const MODULY_KURIEROW = {
 
 export type KluczKuriera = keyof typeof MODULY_KURIEROW;
 export type KluczKurieraNadania = {
-  [K in KluczKuriera]: typeof MODULY_KURIEROW[K]['metody'] extends readonly [] ? never : K
+  [K in KluczKuriera]: (typeof MODULY_KURIEROW)[K]['metody'] extends readonly [] ? never : K;
 }[KluczKuriera];
 
 /** Rejestr podawany parametrem — domyślnie produkcyjny; test wstrzykuje tu zmyślonego kuriera. */
@@ -136,23 +211,28 @@ export function kurierDlaMetody(metoda: unknown): KluczKurieraNadania | null;
 export function kurierDlaMetody(metoda: unknown, rejestr: RejestrKurierow): string | null;
 export function kurierDlaMetody(metoda: unknown, rejestr: RejestrKurierow = MODULY_KURIEROW): string | null {
   for (const [klucz, opis] of Object.entries(rejestr)) {
-    if (opis.metody.some(m => m.klucz === metoda)) return klucz;
+    if (opis.metody.some((m) => m.klucz === metoda)) return klucz;
   }
   return null;
 }
 
 /** Metody wszystkich kurierów, w kolejności rejestru. */
 export function metodyKurierow(rejestr: RejestrKurierow = MODULY_KURIEROW): readonly MetodaKuriera[] {
-  return Object.values(rejestr).flatMap(opis => [...opis.metody]);
+  return Object.values(rejestr).flatMap((opis) => [...opis.metody]);
 }
 
 /** Metody kurierów o danej umowie, w kolejności rejestru ('wlasna' = nasza umowa, 'platformy' = WzA). */
-export function metodyNaUmowie(umowa: OpisKuriera['umowa'], rejestr: RejestrKurierow = MODULY_KURIEROW): readonly MetodaKuriera[] {
-  return Object.values(rejestr).filter(opis => opis.umowa === umowa).flatMap(opis => [...opis.metody]);
+export function metodyNaUmowie(
+  umowa: OpisKuriera['umowa'],
+  rejestr: RejestrKurierow = MODULY_KURIEROW,
+): readonly MetodaKuriera[] {
+  return Object.values(rejestr)
+    .filter((opis) => opis.umowa === umowa)
+    .flatMap((opis) => [...opis.metody]);
 }
 
 export function metodaKuriera(metoda: unknown, rejestr: RejestrKurierow = MODULY_KURIEROW): MetodaKuriera | null {
-  return metodyKurierow(rejestr).find(m => m.klucz === metoda) ?? null;
+  return metodyKurierow(rejestr).find((m) => m.klucz === metoda) ?? null;
 }
 
 /**
@@ -161,7 +241,9 @@ export function metodaKuriera(metoda: unknown, rejestr: RejestrKurierow = MODULY
  * (`umowyFirmy`, z `umowyPobraniaFirmy(db)`); `'brak'` nie awansuje nigdy. Rejestr się nie zmienia.
  */
 export function pobranieNaUmowie(
-  metoda: unknown, rejestr: RejestrKurierow = MODULY_KURIEROW, umowyFirmy: readonly string[] = [],
+  metoda: unknown,
+  rejestr: RejestrKurierow = MODULY_KURIEROW,
+  umowyFirmy: readonly string[] = [],
 ): boolean {
   const kurier = kurierDlaMetody(metoda, rejestr);
   if (kurier === null) return false;
@@ -180,16 +262,18 @@ export function pobranieNaDosylce(metoda: unknown, rejestr: RejestrKurierow = MO
 
 /** Metody, z których nadania powstaje etykieta ZPL (biała lista, kolejność rejestru). */
 export function metodyZZpl(rejestr: RejestrKurierow = MODULY_KURIEROW): readonly string[] {
-  return Object.values(rejestr).filter(opis => opis.umiejetnosci.etykieta.zpl).flatMap(opis => opis.metody.map(m => m.klucz));
+  return Object.values(rejestr)
+    .filter((opis) => opis.umiejetnosci.etykieta.zpl)
+    .flatMap((opis) => opis.metody.map((m) => m.klucz));
 }
 
 /** Klucze env wszystkich kurierów bez powtórzeń (`allegro_wza` i `allegro` mają te same ALLEGRO_*). */
 export function kluczeEnvKurierow(rejestr: RejestrKurierow = MODULY_KURIEROW): readonly string[] {
-  return [...new Set(Object.values(rejestr).flatMap(opis => [...opis.kluczeEnv]))];
+  return [...new Set(Object.values(rejestr).flatMap((opis) => [...opis.kluczeEnv]))];
 }
 
 function kurierDomyslnyOpis(rejestr: RejestrKurierow): OpisKuriera {
-  const opis = Object.values(rejestr).find(o => o.umowa === 'wlasna' && o.metody.length);
+  const opis = Object.values(rejestr).find((o) => o.umowa === 'wlasna' && o.metody.length);
   if (!opis) throw new Error('Rejestr kurierów nie ma kuriera z metodą na własnej umowie');
   return opis;
 }
@@ -238,7 +322,8 @@ export function sprawdzOpisyKurierow(
       if (!opis.piaskownica.komunikat.trim()) bledy.push(`${k}: piaskownica.komunikat wymagany`);
     }
     for (const p of opis.przewoznicy) {
-      if (!kluczPoprawny(p) || !Object.hasOwn(przewoznicy, p)) bledy.push(`${k}: przewoznicy — nieznany lub niepoprawny klucz ${p}`);
+      if (!kluczPoprawny(p) || !Object.hasOwn(przewoznicy, p))
+        bledy.push(`${k}: przewoznicy — nieznany lub niepoprawny klucz ${p}`);
     }
   }
   if (bledy.length) throw new Error(`Błędne opisy kurierów:\n${bledy.join('\n')}`);

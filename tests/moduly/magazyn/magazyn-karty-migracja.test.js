@@ -29,13 +29,33 @@ function bazaSprzedMigracji(sciezka) {
 describe('migracja kart produktów', () => {
   it('świeża baza ma karty_produktow, karta_id, wymiary 3D, wagę i indeks na karta_id', () => {
     const db = openOmsDb(':memory:');
-    const kolumny = (t) => db.prepare(`PRAGMA table_info(${t})`).all().map((k) => k.name);
-    expect(kolumny('karty_produktow')).toEqual(expect.arrayContaining([
-      'id', 'sku', 'nazwa', 'szerokosc_mm', 'wysokosc_mm', 'glebokosc_mm', 'waga_g',
-      'kategoria_glowna', 'paczkomat', 'opis', 'utworzony_at', 'zmieniony_at']));
+    const kolumny = (t) =>
+      db
+        .prepare(`PRAGMA table_info(${t})`)
+        .all()
+        .map((k) => k.name);
+    expect(kolumny('karty_produktow')).toEqual(
+      expect.arrayContaining([
+        'id',
+        'sku',
+        'nazwa',
+        'szerokosc_mm',
+        'wysokosc_mm',
+        'glebokosc_mm',
+        'waga_g',
+        'kategoria_glowna',
+        'paczkomat',
+        'opis',
+        'utworzony_at',
+        'zmieniony_at',
+      ]),
+    );
     expect(kolumny('karty_produktow')).not.toContain('folder_nas');
     expect(kolumny('produkty_sklepowe')).toEqual(expect.arrayContaining(['karta_id', 'wymiary_json', 'waga_tekst']));
-    const indeksy = db.prepare("SELECT name FROM sqlite_master WHERE type='index'").all().map((r) => r.name);
+    const indeksy = db
+      .prepare("SELECT name FROM sqlite_master WHERE type='index'")
+      .all()
+      .map((r) => r.name);
     expect(indeksy).toContain('idx_produkty_sklepowe_karta');
   });
 
@@ -47,21 +67,62 @@ describe('migracja kart produktów', () => {
       const db = openOmsDb(sciezka);
       const karty = db.prepare('SELECT * FROM karty_produktow ORDER BY id').all();
       expect(karty).toEqual([
-        { id: 3, sku: 'LMP-STO-001', nazwa: 'Lampa stołowa Grzyb', szerokosc_mm: 300, wysokosc_mm: 450,
-          glebokosc_mm: null, waga_g: null, kategoria_glowna: 'Lampy stołowe', paczkomat: 'tak', opis: 'opis A',
-          utworzony_at: AT, zmieniony_at: ZMIANA, cena_gr: null, stawka_vat: null, ean: null, wycofana: 0,
-          opis_sekcje_json: null, grupa_wariantow: null, ai_wspoltworzone: null, informacja_bezpieczenstwa: null, marka: null },
-        { id: 8, sku: null, nazwa: 'Kinkiet Ramię', szerokosc_mm: null, wysokosc_mm: null,
-          glebokosc_mm: null, waga_g: null, kategoria_glowna: null, paczkomat: null, opis: null,
-          utworzony_at: AT, zmieniony_at: AT, cena_gr: null, stawka_vat: null, ean: null, wycofana: 0,
-          opis_sekcje_json: null, grupa_wariantow: null, ai_wspoltworzone: null, informacja_bezpieczenstwa: null, marka: null },
+        {
+          id: 3,
+          sku: 'LMP-STO-001',
+          nazwa: 'Lampa stołowa Grzyb',
+          szerokosc_mm: 300,
+          wysokosc_mm: 450,
+          glebokosc_mm: null,
+          waga_g: null,
+          kategoria_glowna: 'Lampy stołowe',
+          paczkomat: 'tak',
+          opis: 'opis A',
+          utworzony_at: AT,
+          zmieniony_at: ZMIANA,
+          cena_gr: null,
+          stawka_vat: null,
+          ean: null,
+          wycofana: 0,
+          opis_sekcje_json: null,
+          grupa_wariantow: null,
+          ai_wspoltworzone: null,
+          informacja_bezpieczenstwa: null,
+          marka: null,
+        },
+        {
+          id: 8,
+          sku: null,
+          nazwa: 'Kinkiet Ramię',
+          szerokosc_mm: null,
+          wysokosc_mm: null,
+          glebokosc_mm: null,
+          waga_g: null,
+          kategoria_glowna: null,
+          paczkomat: null,
+          opis: null,
+          utworzony_at: AT,
+          zmieniony_at: AT,
+          cena_gr: null,
+          stawka_vat: null,
+          ean: null,
+          wycofana: 0,
+          opis_sekcje_json: null,
+          grupa_wariantow: null,
+          ai_wspoltworzone: null,
+          informacja_bezpieczenstwa: null,
+          marka: null,
+        },
       ]);
       const pow = db.prepare('SELECT produkt_id, karta_id FROM produkty_sklepowe ORDER BY produkt_id').all();
       expect(pow).toEqual([
-        { produkt_id: '10', karta_id: 3 }, { produkt_id: '11', karta_id: 8 }, { produkt_id: '900', karta_id: null },
+        { produkt_id: '10', karta_id: 3 },
+        { produkt_id: '11', karta_id: 8 },
+        { produkt_id: '900', karta_id: null },
       ]);
       // Nowa karta nie trafia w id przepisanej (AUTOINCREMENT liczy od największego).
-      const nowa = db.prepare(`INSERT INTO karty_produktow (nazwa, utworzony_at, zmieniony_at) VALUES ('Nowa', ?, ?)`)
+      const nowa = db
+        .prepare(`INSERT INTO karty_produktow (nazwa, utworzony_at, zmieniony_at) VALUES ('Nowa', ?, ?)`)
         .run(AT, AT);
       expect(Number(nowa.lastInsertRowid)).toBe(9);
       // Stara tabela zostaje nietknięta — droga powrotu do poprzedniego obrazu.
@@ -72,14 +133,23 @@ describe('migracja kart produktów', () => {
       const db2 = openOmsDb(sciezka);
       expect(db2.prepare('SELECT COUNT(*) AS n FROM karty_produktow').get().n).toBe(3);
       db2.close();
-    } finally { rmSync(kat, { recursive: true, force: true }); }
+    } finally {
+      rmSync(kat, { recursive: true, force: true });
+    }
   });
 
   it('SKU karty jest unikalne, wiele kart bez SKU współistnieje', () => {
     const db = openOmsDb(':memory:');
-    const k = (sku) => db.prepare(`INSERT INTO karty_produktow (sku, nazwa, utworzony_at, zmieniony_at)
-      VALUES (?, 'x', ?, ?)`).run(sku, AT, AT);
-    k(null); k(null); k('LMP-1');
+    const k = (sku) =>
+      db
+        .prepare(
+          `INSERT INTO karty_produktow (sku, nazwa, utworzony_at, zmieniony_at)
+      VALUES (?, 'x', ?, ?)`,
+        )
+        .run(sku, AT, AT);
+    k(null);
+    k(null);
+    k('LMP-1');
     expect(() => k('LMP-1')).toThrow(/UNIQUE/i);
   });
 });

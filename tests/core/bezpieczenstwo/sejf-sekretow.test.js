@@ -1,8 +1,20 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { DatabaseSync } from 'node:sqlite';
 import {
-  sejfZEnv, utworzSejf, bajtyKlucza, idKlucza, nowyKlucz, klasyfikuj, idKluczaZapisu, BladSekretow,
-  przypnijSejf, sejfBazy, ustawSejfDomyslny, doZapisu, zOdczytu, FORMAT_SEKRETOW,
+  sejfZEnv,
+  utworzSejf,
+  bajtyKlucza,
+  idKlucza,
+  nowyKlucz,
+  klasyfikuj,
+  idKluczaZapisu,
+  BladSekretow,
+  przypnijSejf,
+  sejfBazy,
+  ustawSejfDomyslny,
+  doZapisu,
+  zOdczytu,
+  FORMAT_SEKRETOW,
 } from '../../../src/core/bezpieczenstwo/sejf-sekretow.js';
 import { BladKonfiguracji } from '../../../src/core/blad-konfiguracji.ts';
 import { komunikatDlaOperatora } from '../../../src/domena/bledy.js';
@@ -33,8 +45,13 @@ describe('klucz', () => {
     expect(() => sejfZEnv({})).toThrow(BladKonfiguracji);
     expect(() => sejfZEnv({ OMS_KLUCZ_SEKRETOW: '  ' })).toThrow(BladKonfiguracji);
     const zly = K1.slice(0, -1) + '9';
-    try { sejfZEnv({ OMS_KLUCZ_SEKRETOW: zly }); expect.unreachable(); }
-    catch (e) { expect(e).toBeInstanceOf(BladKonfiguracji); expect(String(e.message) + e.wskazowka).not.toContain(zly); }
+    try {
+      sejfZEnv({ OMS_KLUCZ_SEKRETOW: zly });
+      expect.unreachable();
+    } catch (e) {
+      expect(e).toBeInstanceOf(BladKonfiguracji);
+      expect(String(e.message) + e.wskazowka).not.toContain(zly);
+    }
     expect(() => sejfZEnv({ OMS_KLUCZ_SEKRETOW: K1, OMS_KLUCZ_SEKRETOW_POPRZEDNI: 'x' })).toThrow(BladKonfiguracji);
     const s = sejfZEnv({ OMS_KLUCZ_SEKRETOW: K1, OMS_KLUCZ_SEKRETOW_POPRZEDNI: K2 });
     expect(s.idKlucza).toBe(idKlucza(bajtyKlucza(K1)));
@@ -49,8 +66,14 @@ describe('klasyfikacja', () => {
   const s = sejfZEnv({ OMS_KLUCZ_SEKRETOW: K1 });
   const z = s.szyfruj('tajne', M);
   it.each([
-    [null, 'pusty'], ['', 'pusty'], ['{}', 'jawny'], ['abc', 'jawny'], ['oms2.x', 'nieznana-wersja'], ['oms12.a.b.c', 'nieznana-wersja'],
-    ['oms1.', 'uszkodzony'], ['oms1.abcd.x.y', 'uszkodzony'],
+    [null, 'pusty'],
+    ['', 'pusty'],
+    ['{}', 'jawny'],
+    ['abc', 'jawny'],
+    ['oms2.x', 'nieznana-wersja'],
+    ['oms12.a.b.c', 'nieznana-wersja'],
+    ['oms1.', 'uszkodzony'],
+    ['oms1.abcd.x.y', 'uszkodzony'],
   ])('%s → %s', (w, k) => expect(klasyfikuj(w)).toBe(k));
   it('{} pusty tylko dla JSON-a', () => expect(klasyfikuj('{}', { json: true })).toBe('pusty'));
   it('poprawny zapis to szyfrogram, każda zła część to uszkodzony', () => {
@@ -69,23 +92,33 @@ describe('szyfrowanie', () => {
   const s1 = sejfZEnv({ OMS_KLUCZ_SEKRETOW: K1 });
   const s2 = sejfZEnv({ OMS_KLUCZ_SEKRETOW: K2 });
   it('każdy zapis ma nowy nonce, odczyt oddaje tekst', () => {
-    const a = s1.szyfruj('tajne ąę', M), b = s1.szyfruj('tajne ąę', M);
+    const a = s1.szyfruj('tajne ąę', M),
+      b = s1.szyfruj('tajne ąę', M);
     expect(a).not.toBe(b);
     expect(a).not.toContain('tajne');
     expect(s1.odszyfruj(a, M)).toBe('tajne ąę');
   });
   it('przypięcie do miejsca: inny wiersz, kolumna albo tabela nie odszyfruje', () => {
     const z = s1.szyfruj('tajne', M);
-    for (const inne of [{ ...M, id: 'allegro-b' }, { ...M, kolumna: 'refresh_token' }, { ...M, tabela: 'tokeny_ksef' }]) {
+    for (const inne of [
+      { ...M, id: 'allegro-b' },
+      { ...M, kolumna: 'refresh_token' },
+      { ...M, tabela: 'tokeny_ksef' },
+    ]) {
       expect(() => s1.odszyfruj(z, inne)).toThrow(expect.objectContaining({ kod: 'USZKODZONY' }));
     }
   });
   it('inny klucz = INNY_KLUCZ z obu id w komunikacie, bez wartości', () => {
     const z = s1.szyfruj('tajne', M);
-    try { s2.odszyfruj(z, M); expect.unreachable(); }
-    catch (e) {
-      expect(e).toBeInstanceOf(BladSekretow); expect(e.kod).toBe('INNY_KLUCZ');
-      expect(e.message).toContain(s1.idKlucza); expect(e.message).toContain(s2.idKlucza); expect(e.message).not.toContain('tajne');
+    try {
+      s2.odszyfruj(z, M);
+      expect.unreachable();
+    } catch (e) {
+      expect(e).toBeInstanceOf(BladSekretow);
+      expect(e.kod).toBe('INNY_KLUCZ');
+      expect(e.message).toContain(s1.idKlucza);
+      expect(e.message).toContain(s2.idKlucza);
+      expect(e.message).not.toContain('tajne');
       expect(komunikatDlaOperatora(e)).toBe(e.message); // ekran pokazuje przyczynę, nie „błąd techniczny”
     }
   });
@@ -98,8 +131,11 @@ describe('szyfrowanie', () => {
   it('zmieniony bajt danych = USZKODZONY', () => {
     const z = s1.szyfruj('tajne', M);
     const [w, id, n, d] = z.split('.');
-    const b = Buffer.from(d, 'base64url'); b[0] ^= 1;
-    expect(() => s1.odszyfruj([w, id, n, b.toString('base64url')].join('.'), M)).toThrow(expect.objectContaining({ kod: 'USZKODZONY' }));
+    const b = Buffer.from(d, 'base64url');
+    b[0] ^= 1;
+    expect(() => s1.odszyfruj([w, id, n, b.toString('base64url')].join('.'), M)).toThrow(
+      expect.objectContaining({ kod: 'USZKODZONY' }),
+    );
   });
   it('jawny, uszkodzony, nieznana wersja — odmowa z kodem', () => {
     expect(() => s1.odszyfruj('abc', M)).toThrow(expect.objectContaining({ kod: 'JAWNY_WIERSZ' }));
@@ -117,13 +153,17 @@ describe('przypięcie do uchwytu bazy', () => {
       const db = new DatabaseSync(':memory:');
       expect(() => sejfBazy(db)).toThrow(expect.objectContaining({ kod: 'BRAK_KLUCZA' }));
       expect(() => doZapisu(db, M, 'x')).toThrow(BladSekretow);
-    } finally { if (stary === undefined) delete process.env.OMS_KLUCZ_SEKRETOW; else process.env.OMS_KLUCZ_SEKRETOW = stary; }
+    } finally {
+      if (stary === undefined) delete process.env.OMS_KLUCZ_SEKRETOW;
+      else process.env.OMS_KLUCZ_SEKRETOW = stary;
+    }
   });
   it('dwie bazy z dwoma kluczami w jednym procesie — każda używa swojego', () => {
     ustawSejfDomyslny(null);
     const a = przypnijSejf(new DatabaseSync(':memory:'), utworzSejf(bajtyKlucza(K1)));
     const b = przypnijSejf(new DatabaseSync(':memory:'), utworzSejf(bajtyKlucza(K2)));
-    const za = doZapisu(a, M, 'A'), zb = doZapisu(b, M, 'B');
+    const za = doZapisu(a, M, 'A'),
+      zb = doZapisu(b, M, 'B');
     expect(idKluczaZapisu(za)).not.toBe(idKluczaZapisu(zb));
     expect(zOdczytu(a, M, za)).toBe('A');
     expect(zOdczytu(b, M, zb)).toBe('B');

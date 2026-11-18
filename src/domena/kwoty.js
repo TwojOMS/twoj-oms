@@ -42,12 +42,15 @@ export function grosze(kwota, opis) {
 export const zl = (gr) => (gr / 100).toFixed(2);
 
 /** Liczba do prezentacji; wartości formularzy i obliczeń pozostają liczbami. */
-export const liczbaPolska = (wartosc, opcje = {}) => new Intl.NumberFormat('pl-PL', {
-  maximumFractionDigits: 3, ...opcje,
-}).format(Number(wartosc));
+export const liczbaPolska = (wartosc, opcje = {}) =>
+  new Intl.NumberFormat('pl-PL', {
+    maximumFractionDigits: 3,
+    ...opcje,
+  }).format(Number(wartosc));
 
 /** Cena na karcie magazynu: „12 345,67 zł”. `zlotowki` niżej zostaje dla maili (bez odstępu tysięcy). */
-export const cenaPolska = (napis) => `${liczbaPolska(napis, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
+export const cenaPolska = (napis) =>
+  `${liczbaPolska(napis, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
 
 /**
  * Kwota po polsku: przecinek dziesiętny, spacja przed „zł" — do maili i komunikatów

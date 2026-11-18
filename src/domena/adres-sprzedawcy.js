@@ -2,7 +2,9 @@ import { bladOperatora } from './bledy.js';
 
 /** Nazwa firmy do przelewu; brak nazwy nie usuwa rachunku ani tytułu z maila. */
 export function odbiorcaPrzelewu(config) {
-  return String((typeof config?.adresFirmy === 'function' ? config.adresFirmy()?.nazwa : config?.nadawca?.nazwa) ?? '').trim();
+  return String(
+    (typeof config?.adresFirmy === 'function' ? config.adresFirmy()?.nazwa : config?.nadawca?.nazwa) ?? '',
+  ).trim();
 }
 
 // Adres sprzedawcy — JEDNO miejsce, z ktorego czytaja WSZYSTKIE dokumenty wystawiane przez
@@ -27,12 +29,16 @@ export function adresSprzedawcy(config) {
   const n = typeof config?.adresFirmy === 'function' ? config.adresFirmy() : config?.nadawca;
   if (!n?.nazwa || !n?.ulica) {
     throw bladOperatora(
-      'Panel nie zna adresu sprzedawcy, więc dokument wyszedłby bez nazwy i adresu wystawcy — '
-      + 'takiego dokumentu nie da się wysłać klientowi. Wpisz adres firmy w Ustawienia → Firma '
-      + '(/ustawienia/firma) albo w pliku konfiguracji (DPD_NADAWCA_*).',
+      'Panel nie zna adresu sprzedawcy, więc dokument wyszedłby bez nazwy i adresu wystawcy — ' +
+        'takiego dokumentu nie da się wysłać klientowi. Wpisz adres firmy w Ustawienia → Firma ' +
+        '(/ustawienia/firma) albo w pliku konfiguracji (DPD_NADAWCA_*).',
     );
   }
   return {
-    nazwa: n.nazwa, ulica: n.ulica, kod: n.kod, miasto: n.miasto, kraj: n.kraj,
+    nazwa: n.nazwa,
+    ulica: n.ulica,
+    kod: n.kod,
+    miasto: n.miasto,
+    kraj: n.kraj,
   };
 }

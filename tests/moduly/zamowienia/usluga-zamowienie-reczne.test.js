@@ -25,9 +25,15 @@ const dane = {
   pobranie: 0,
   metoda_platnosci: 'Przelew',
   koszt_dostawy_brutto: '19.00',
-  pozycje: [{
-    nazwa: 'Szablon 70x100', sku: null, ilosc: 2, cena_brutto: '100.00', brutto_linii: '200.00',
-  }],
+  pozycje: [
+    {
+      nazwa: 'Szablon 70x100',
+      sku: null,
+      ilosc: 2,
+      cena_brutto: '100.00',
+      brutto_linii: '200.00',
+    },
+  ],
 };
 
 // Konfiguracja Z KLIENTEM ZBIORCZYM — ta sama, co w tests/oms/oplata-doklejenie.test.js.
@@ -61,12 +67,21 @@ describe('zalozZamowienieReczne', () => {
       nip: '1234500011',
       etykietaKlienta: true,
       koszt_dostawy_brutto: '0.00',
-      pozycje: [{
-        nazwa: 'Szablon', sku: null, ilosc: 1, cena_brutto: '100.00', brutto_linii: '100.00',
-      }],
+      pozycje: [
+        {
+          nazwa: 'Szablon',
+          sku: null,
+          ilosc: 1,
+          cena_brutto: '100.00',
+          brutto_linii: '100.00',
+        },
+      ],
     };
     const { id, oplata } = zalozZamowienieReczne({
-      db, dane: zbiorczy, znacznik, okresId: null,
+      db,
+      dane: zbiorczy,
+      znacznik,
+      okresId: null,
     });
     expect(oplata).toEqual({ nazwa: NAZWA_OBSLUGI, kwotaGr: 400 });
     const z = pobierzZamowienie(db, id);
@@ -82,12 +97,21 @@ describe('zalozZamowienieReczne', () => {
       ...dane,
       nip: '1234500011',
       koszt_dostawy_brutto: '0.00',
-      pozycje: [{
-        nazwa: 'Szablon', sku: null, ilosc: 1, cena_brutto: '600.00', brutto_linii: '600.00',
-      }],
+      pozycje: [
+        {
+          nazwa: 'Szablon',
+          sku: null,
+          ilosc: 1,
+          cena_brutto: '600.00',
+          brutto_linii: '600.00',
+        },
+      ],
     };
     const { id, oplata } = zalozZamowienieReczne({
-      db, dane: zbiorczy, znacznik, okresId: null,
+      db,
+      dane: zbiorczy,
+      znacznik,
+      okresId: null,
     });
     expect(oplata).toBeNull();
     const z = pobierzZamowienie(db, id);

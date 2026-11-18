@@ -3,8 +3,14 @@ import { czyPozycjaWysylki, czyPozycjaNieTowar } from '../../src/domena/pozycje-
 
 describe('czyPozycjaWysylki', () => {
   it('rozpoznaje transport po nazwie, jaką wysyła wtyczka', () => {
-    for (const n of ['wysyłka kurierem DPD', 'Wysylka kurierem', 'Kurier DPD (pobranie)',
-      'Dostawa', 'Usługa kurierska', 'Paczka za pobraniem']) {
+    for (const n of [
+      'wysyłka kurierem DPD',
+      'Wysylka kurierem',
+      'Kurier DPD (pobranie)',
+      'Dostawa',
+      'Usługa kurierska',
+      'Paczka za pobraniem',
+    ]) {
       expect(czyPozycjaWysylki(n)).toBe(true);
     }
   });

@@ -19,10 +19,18 @@ const ZDANIA_PRACOWNIKA = [
   'Wpisz nazwę pola w klamrach, np. {imie}. Link i jego ważność wstawia panel przy wysyłce. Poproś administratora o dodanie pracownika.',
   '{imie} Imię pracownika z jego konta. {link}',
 ];
-const PODGLAD_ADMINA = 'Pracownica Anna, link zmyślony — prawdziwy, jednorazowy link panel wstawia dopiero przy wysyłce z Ustawień → Zespół i dostęp → Użytkownicy. Nic nie zostało zapisane.';
-const PODGLAD_PRACOWNIKA = 'Pracownica Anna, link zmyślony — prawdziwy, jednorazowy link panel wstawia dopiero przy wysyłce. Poproś administratora o dodanie pracownika. Nic nie zostało zapisane.';
+const PODGLAD_ADMINA =
+  'Pracownica Anna, link zmyślony — prawdziwy, jednorazowy link panel wstawia dopiero przy wysyłce z Ustawień → Zespół i dostęp → Użytkownicy. Nic nie zostało zapisane.';
+const PODGLAD_PRACOWNIKA =
+  'Pracownica Anna, link zmyślony — prawdziwy, jednorazowy link panel wstawia dopiero przy wysyłce. Poproś administratora o dodanie pracownika. Nic nie zostało zapisane.';
 
-const tekst = (body) => body.replace(/<[^>]*>/g, ' ').replace(/&#123;/g, '{').replace(/&#125;/g, '}').replace(/\s+/g, ' ').replace(/ ([.,])/g, '$1');
+const tekst = (body) =>
+  body
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&#123;/g, '{')
+    .replace(/&#125;/g, '}')
+    .replace(/\s+/g, ' ')
+    .replace(/ ([.,])/g, '$1');
 
 function panel() {
   const db = openOmsDb(':memory:');
@@ -58,6 +66,9 @@ describe('0.7: ścieżka do ekranu Użytkownicy na ekranie maila do zespołu', (
       for (const z of ZDANIA_PRACOWNIKA) expect(edycja).toContain(z);
       expect(podglad).toContain(PODGLAD_PRACOWNIKA);
       expect(edycja + podglad).not.toContain('Zespół i dostęp → Użytkownicy');
-    } finally { await p.app.close(); p.db.close(); }
+    } finally {
+      await p.app.close();
+      p.db.close();
+    }
   });
 });

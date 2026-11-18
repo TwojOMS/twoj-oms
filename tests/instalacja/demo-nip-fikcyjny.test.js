@@ -10,8 +10,8 @@ import { FIRMY_B2B } from '../../scripts/demo-dane-firma.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const WAGI = [6, 5, 7, 2, 3, 4, 5, 6, 7];
-const poprawny = (nip) => /^\d{10}$/.test(nip)
-  && WAGI.reduce((s, w, i) => s + w * Number(nip[i]), 0) % 11 === Number(nip[9]);
+const poprawny = (nip) =>
+  /^\d{10}$/.test(nip) && WAGI.reduce((s, w, i) => s + w * Number(nip[i]), 0) % 11 === Number(nip[9]);
 
 describe('NIP-y demo bez prawdziwej firmy', () => {
   it('sprzedawca demo ma fikcyjny NIP 999… z poprawną sumą kontrolną', () => {

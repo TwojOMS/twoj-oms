@@ -15,40 +15,77 @@ const katalogi = [];
 const aplikacje = [];
 afterEach(async () => {
   vi.restoreAllMocks();
-  for (const a of aplikacje.splice(0)) { await a.app.close(); a.db.close(); }
+  for (const a of aplikacje.splice(0)) {
+    await a.app.close();
+    a.db.close();
+  }
   for (const p of katalogi.splice(0)) rmSync(p, { recursive: true, force: true });
 });
 function env() {
-  const p = mkdtempSync(join(tmpdir(), 'faktury-konfig-')); katalogi.push(p);
-  return { OMS_PROFORMY_KATALOG: p, OMS_ETYKIETY_KATALOG: p,
-    OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000',
-    OMS_USER: 'operator', OMS_PASS: 'fixture', INFAKT_API_KEY: 'fixture', INFAKT_ARCHIWUM: p };
+  const p = mkdtempSync(join(tmpdir(), 'faktury-konfig-'));
+  katalogi.push(p);
+  return {
+    OMS_PROFORMY_KATALOG: p,
+    OMS_ETYKIETY_KATALOG: p,
+    OMS_SPRZEDAWCA_NIP: '1234563218',
+    OMS_RACHUNEK: '34109010140000000000000000',
+    OMS_USER: 'operator',
+    OMS_PASS: 'fixture',
+    INFAKT_API_KEY: 'fixture',
+    INFAKT_ARCHIWUM: p,
+  };
 }
-const headers = { authorization: 'Basic ' + Buffer.from('operator:fixture').toString('base64'), origin: 'http://localhost' };
+const headers = {
+  authorization: 'Basic ' + Buffer.from('operator:fixture').toString('base64'),
+  origin: 'http://localhost',
+};
 function zamowienie() {
-  return { zrodlo_id: 1, numer: 'TEST-WDT', klient: { company: 'Firma testowa UE',
-    first_name: 'Jan', last_name: 'Testowy', address_1: 'Testowa 1', postcode: '10000', city: 'Miasto' },
-    dostawa: {}, metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1,
-    nip: 'SK1000000001', kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00',
-    anulowane: 0, status_woo: 'processing', oplacone_at: null, utworzone_at: '2026-09-10T10:00:00Z',
-    pozycje: [{ nazwa: 'Towar testowy', sku: null, ilosc: 1, cena_brutto: '123.00', vat: null }] };
+  return {
+    zrodlo_id: 1,
+    numer: 'TEST-WDT',
+    klient: {
+      company: 'Firma testowa UE',
+      first_name: 'Jan',
+      last_name: 'Testowy',
+      address_1: 'Testowa 1',
+      postcode: '10000',
+      city: 'Miasto',
+    },
+    dostawa: {},
+    metoda_wysylki: 'dpd',
+    kwota_pobrania: null,
+    chce_fakture: 1,
+    nip: 'SK1000000001',
+    kwota_brutto: '123.00',
+    koszt_dostawy_brutto: '0.00',
+    anulowane: 0,
+    status_woo: 'processing',
+    oplacone_at: null,
+    utworzone_at: '2026-09-10T10:00:00Z',
+    pozycje: [{ nazwa: 'Towar testowy', sku: null, ilosc: 1, cena_brutto: '123.00', vat: null }],
+  };
 }
 describe('faktury: konfiguracja rzeczywistego manifestu i HTTP', () => {
-  it.each(['zamowienie', 'okres'])('%s wysyła NIP z env do payloadu WDT przez prawdziwą fabrykę', async droga => {
-    const payloady = [], vies = [];
+  it.each(['zamowienie', 'okres'])('%s wysyła NIP z env do payloadu WDT przez prawdziwą fabrykę', async (droga) => {
+    const payloady = [],
+      vies = [];
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, opcje = {}) => {
       const u = String(url);
       let dane;
-      if (u.includes('/vat/')) { vies.push(u); dane = { isValid: true, requestIdentifier: 'TEST', requestDate: '2026-09-30' }; }
-      else if (u.includes('/clients.json')) dane = { entities: [{ id: 77 }], metainfo: { total_count: 1 } };
+      if (u.includes('/vat/')) {
+        vies.push(u);
+        dane = { isValid: true, requestIdentifier: 'TEST', requestDate: '2026-09-30' };
+      } else if (u.includes('/clients.json')) dane = { entities: [{ id: 77 }], metainfo: { total_count: 1 } };
       else if (opcje.method === 'POST' && u.includes('/invoices.json')) {
-        const p = JSON.parse(opcje.body).invoice; payloady.push(p);
+        const p = JSON.parse(opcje.body).invoice;
+        payloady.push(p);
         dane = { uuid: 'fixture-uuid', number: p.number };
       } else if (u.includes('/invoices.json')) dane = { entities: [], metainfo: { total_count: 0 } };
       else throw new Error('Nieoczekiwane API: ' + u);
       return new Response(JSON.stringify(dane), { status: 200, headers: { 'content-type': 'application/json' } });
     });
-    const a = await zbudujOms({ env: env() }); aplikacje.push(a);
+    const a = await zbudujOms({ env: env() });
+    aplikacje.push(a);
     const id = zapiszZamowienie(a.db, 'reczne', zamowienie(), {});
     let url = `/zamowienia/${id}/faktura`;
     if (droga === 'okres') {
@@ -66,31 +103,46 @@ describe('faktury: konfiguracja rzeczywistego manifestu i HTTP', () => {
     expect(vies).toHaveLength(1);
     expect(new URL(vies[0]).searchParams.get('requesterNumber')).toBe('1234563218');
   });
-  it.each(['1', '7200000'])('rzeczywiste zegary zachowują godzinę mimo starego parametru %s', odstep => {
+  it.each(['1', '7200000'])('rzeczywiste zegary zachowują godzinę mimo starego parametru %s', (odstep) => {
     expect(modulFaktury.konfiguracja({ ...env(), OMS_FAKTURY_ODSTEP_MS: odstep }).odstepMs).toBe(3600000);
   });
   it('rzeczywiste zegary manifestu mają godzinę, mieszczą oba budżety i literalne uprawnienie', async () => {
-    const a = await zbudujOms({ env: env() }); aplikacje.push(a);
+    const a = await zbudujOms({ env: env() });
+    aplikacje.push(a);
     const k = modulFaktury.konfiguracja(env());
-    const z = modulFaktury.zbuduj({ db: a.db, konfiguracja: k, teraz: () => new Date(), log: () => {},
-      usluga: (m, n) => ({ 'kanaly.klienciKanalow': { fixture: {} }, 'kanaly.config': { definicje: [] } })[`${m}.${n}`] });
+    const z = modulFaktury.zbuduj({
+      db: a.db,
+      konfiguracja: k,
+      teraz: () => new Date(),
+      log: () => {},
+      usluga: (m, n) => ({ 'kanaly.klienciKanalow': { fixture: {} }, 'kanaly.config': { definicje: [] } })[`${m}.${n}`],
+    });
     // Automat KSeF tyka co minutę i sam rozstrzyga porę (jedna próba na dzień) — budżety czuwaczy
     // niżej dotyczą tylko zegarów godzinowych.
-    expect(z.zegary.map(x => [x.nazwa, x.odstepMs])).toEqual([
-      ['czuwaczKsef', 3600000], ['czuwaczArchiwumSprzedazy', 3600000], ['automatKsef', 60000] ]);
-    for (const zegar of z.zegary.filter(x => x.nazwa !== 'automatKsef')) {
+    expect(z.zegary.map((x) => [x.nazwa, x.odstepMs])).toEqual([
+      ['czuwaczKsef', 3600000],
+      ['czuwaczArchiwumSprzedazy', 3600000],
+      ['automatKsef', 60000],
+    ]);
+    for (const zegar of z.zegary.filter((x) => x.nazwa !== 'automatKsef')) {
       expect(najdluzszyPrzebiegMs(programInfakt({}).opis.limity)).toBeLessThan(zegar.odstepMs);
       expect(najdluzszyPrzebiegArchiwumSprzedazyMs(programInfakt({}).opis.limity)).toBeLessThan(zegar.odstepMs);
     }
-    expect(modulFaktury.uprawnienia.find(x => x.klucz === 'okresy').etykieta).toBe('Okresy rozliczeniowe');
+    expect(modulFaktury.uprawnienia.find((x) => x.klucz === 'okresy').etykieta).toBe('Okresy rozliczeniowe');
   });
   it('bez INFAKT_ARCHIWUM nie tworzy archiwum ani jego zegara', async () => {
-    const e = env(); delete e.INFAKT_ARCHIWUM;
-    const a = await zbudujOms({ env: e }); aplikacje.push(a);
-    const z = modulFaktury.zbuduj({ db: a.db, konfiguracja: modulFaktury.konfiguracja(e),
-      teraz: () => new Date(), log: () => {},
-      usluga: (m, n) => ({ 'kanaly.klienciKanalow': { fixture: {} }, 'kanaly.config': { definicje: [] } })[`${m}.${n}`] });
+    const e = env();
+    delete e.INFAKT_ARCHIWUM;
+    const a = await zbudujOms({ env: e });
+    aplikacje.push(a);
+    const z = modulFaktury.zbuduj({
+      db: a.db,
+      konfiguracja: modulFaktury.konfiguracja(e),
+      teraz: () => new Date(),
+      log: () => {},
+      usluga: (m, n) => ({ 'kanaly.klienciKanalow': { fixture: {} }, 'kanaly.config': { definicje: [] } })[`${m}.${n}`],
+    });
     expect(z.uslugi.czuwaczArchiwumSprzedazy).toBeNull();
-    expect(z.zegary.map(x => x.nazwa)).toEqual(['czuwaczKsef', 'automatKsef']);
+    expect(z.zegary.map((x) => x.nazwa)).toEqual(['czuwaczKsef', 'automatKsef']);
   });
 });

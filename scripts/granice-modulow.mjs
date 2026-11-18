@@ -49,8 +49,10 @@ function odczytajImport(wezel) {
   }
   if (ts.isCallExpression(wezel)) {
     const wywolanie = wezel.expression;
-    if (wywolanie.kind === ts.SyntaxKind.ImportKeyword ||
-      (ts.isIdentifier(wywolanie) && wywolanie.text === 'require')) {
+    if (
+      wywolanie.kind === ts.SyntaxKind.ImportKeyword ||
+      (ts.isIdentifier(wywolanie) && wywolanie.text === 'require')
+    ) {
       return [wezel.arguments[0], false];
     }
   }
@@ -90,9 +92,12 @@ function odczytajSrc(repo) {
         const cel = rozwiaz(plik, specyfikator.text);
         if (cel?.startsWith(src + path.sep)) edges.push([z, wzgledna(cel), typ]);
       }
-      if (czyModul && ts.isPropertyAssignment(wezel) &&
+      if (
+        czyModul &&
+        ts.isPropertyAssignment(wezel) &&
         (ts.isIdentifier(wezel.name) || ts.isStringLiteralLike(wezel.name)) &&
-        wezel.name.text === 'wymaga') {
+        wezel.name.text === 'wymaga'
+      ) {
         wymaga.set(nazwa, new Set(nazwyZaleznosci(wezel.initializer)));
       }
       for (const komentarz of wezel.jsDoc ?? []) ts.forEachChild(komentarz, przejdz);
@@ -181,10 +186,12 @@ export function zbadajGranice(repo) {
   }
   for (const lista of Object.values(podPradWarstw)) lista.sort();
   // Limit pary modułów liczy unikalne połączenia plików w danym rodzaju importu.
-  const pozaWymaga = Object.fromEntries([...poza.keys()].sort().map((para) => {
-    const { podPrad, krawedzie } = poza.get(para);
-    return [para, { liczba: krawedzie.size, podPrad, krawedzie: [...krawedzie].sort() }];
-  }));
+  const pozaWymaga = Object.fromEntries(
+    [...poza.keys()].sort().map((para) => {
+      const { podPrad, krawedzie } = poza.get(para);
+      return [para, { liczba: krawedzie.size, podPrad, krawedzie: [...krawedzie].sort() }];
+    }),
+  );
   /** @type {Record<string, string[]>} */
   const wzajemne = {};
   for (const kierunek of [...kierunki.keys()].sort()) {
@@ -221,22 +228,29 @@ function uruchom() {
   const raport = zbadajGranice(repo);
   const { pozaWymaga, wzajemne, podPradWarstw, cykle } = raport;
   if (values['zapisz-wyjatki']) {
-    zapiszJson({
-      pozaWymaga: Object.fromEntries(Object.entries(pozaWymaga).map(([para, dane]) => [para, dane.liczba])),
-      wzajemne: Object.keys(wzajemne),
-      podPradWarstw: Object.fromEntries(Object.entries(podPradWarstw).map(([warstwy, lista]) => {
-        const limity = {};
-        for (const krawedz of lista) limity[krawedz] = (limity[krawedz] ?? 0) + 1;
-        return [warstwy, limity];
-      })),
-      cykle,
-    }, values.wyjscie ?? path.resolve(repo, 'tests/core/granice-modulow-wyjatki.json'));
+    zapiszJson(
+      {
+        pozaWymaga: Object.fromEntries(Object.entries(pozaWymaga).map(([para, dane]) => [para, dane.liczba])),
+        wzajemne: Object.keys(wzajemne),
+        podPradWarstw: Object.fromEntries(
+          Object.entries(podPradWarstw).map(([warstwy, lista]) => {
+            const limity = {};
+            for (const krawedz of lista) limity[krawedz] = (limity[krawedz] ?? 0) + 1;
+            return [warstwy, limity];
+          }),
+        ),
+        cykle,
+      },
+      values.wyjscie ?? path.resolve(repo, 'tests/core/granice-modulow-wyjatki.json'),
+    );
   } else if (values.json) {
     zapiszJson(raport, values.wyjscie);
   } else {
     const pary = Object.values(pozaWymaga);
     const liczba = pary.reduce((suma, para) => suma + para.liczba, 0);
-    console.log(`Poza wymaga: ${pary.length} par / ${liczba} krawędzi, ${pary.filter((para) => para.podPrad).length} par pod prąd`);
+    console.log(
+      `Poza wymaga: ${pary.length} par / ${liczba} krawędzi, ${pary.filter((para) => para.podPrad).length} par pod prąd`,
+    );
     console.log(`Pary wzajemne modułów: ${Object.keys(wzajemne).length}`);
     console.log(`Cykle plików: ${cykle.length}`);
     for (const [warstwy, lista] of Object.entries(podPradWarstw)) console.log(`${warstwy}: ${lista.length}`);

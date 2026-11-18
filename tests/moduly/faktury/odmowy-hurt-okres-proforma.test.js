@@ -14,22 +14,46 @@ import { dopiszKlientaZbiorczego } from './_klient-zbiorczy-pomocniki.js';
 const katalog = mkdtempSync(join(tmpdir(), 'oms-g13f1-'));
 const POWOD = 'Pracownia Półcień: <odmowa> & "sprawdź".';
 let p;
-beforeEach(() => { vi.spyOn(globalThis, 'fetch').mockImplementation(() => { throw new Error('Sieć zabroniona'); }); });
-afterEach(async () => { await p?.app.close(); p?.db.close(); p = null; vi.restoreAllMocks(); });
+beforeEach(() => {
+  vi.spyOn(globalThis, 'fetch').mockImplementation(() => {
+    throw new Error('Sieć zabroniona');
+  });
+});
+afterEach(async () => {
+  await p?.app.close();
+  p?.db.close();
+  p = null;
+  vi.restoreAllMocks();
+});
 afterAll(() => rmSync(katalog, { recursive: true, force: true }));
 
 function panel(opcje = {}) {
   p = { db: openOmsDb(':memory:') };
-  p.app = buildOmsServer({ db: p.db, config: { auth: CONFIG.auth,
-    nadawca: { nazwa: 'Pracownia Półcień', ulica: 'Testowa 1', kod: '00-001', miasto: 'Warszawa', kraj: 'PL' },
-    proforma: { nip: '1234563218' } },
+  p.app = buildOmsServer({
+    db: p.db,
+    config: {
+      auth: CONFIG.auth,
+      nadawca: { nazwa: 'Pracownia Półcień', ulica: 'Testowa 1', kod: '00-001', miasto: 'Warszawa', kraj: 'PL' },
+      proforma: { nip: '1234563218' },
+    },
     env: { OMS_PROFORMY_KATALOG: katalog, OMS_ETYKIETY_KATALOG: katalog },
-    faktura: null, fakturaHurtem: null, proforma: null, fakturaAllegro: null, infakt: null, ...opcje });
-  p.db.prepare("INSERT INTO zamowienia (sklep, zrodlo_id, numer, nip, kwota_brutto, klient_json, utworzone_at) VALUES ('reczne', 'g13f1', 'TEST/1', '1234500011', '100.00', ?, '2026-07-10T10:00:00.000Z')")
+    faktura: null,
+    fakturaHurtem: null,
+    proforma: null,
+    fakturaAllegro: null,
+    infakt: null,
+    ...opcje,
+  });
+  p.db
+    .prepare(
+      "INSERT INTO zamowienia (sklep, zrodlo_id, numer, nip, kwota_brutto, klient_json, utworzone_at) VALUES ('reczne', 'g13f1', 'TEST/1', '1234500011', '100.00', ?, '2026-07-10T10:00:00.000Z')",
+    )
     .run(JSON.stringify({ company: 'Pracownia Półcień' }));
   return Number(p.db.prepare("SELECT id FROM zamowienia WHERE zrodlo_id = 'g13f1'").get().id);
 }
-const rzuc = () => { throw bladOperatora(POWOD); };
+const rzuc = () => {
+  throw bladOperatora(POWOD);
+};
 
 async function odmowa(url, status, tekst, wroc, metoda = 'POST') {
   const r = await (metoda === 'GET' ? get(p.app, url, BASIC) : post(p.app, url, BASIC));
@@ -46,13 +70,21 @@ async function odmowa(url, status, tekst, wroc, metoda = 'POST') {
 
 it('27 hurt: brak usługi, stały powrót na listę mimo obcego powrotu', async () => {
   panel();
-  await odmowa('/zamowienia/faktury-hurtem?powrot=//obcy.test', 503,
-    `Wystawianie faktur nie jest skonfigurowane (brak danych inFaktu). ${GDZIE_KLUCZ_INFAKTU}`, '/');
+  await odmowa(
+    '/zamowienia/faktury-hurtem?powrot=//obcy.test',
+    503,
+    `Wystawianie faktur nie jest skonfigurowane (brak danych inFaktu). ${GDZIE_KLUCZ_INFAKTU}`,
+    '/',
+  );
 });
 
 for (const [nr, koncowka, metoda] of [
-  [28, 'potwierdzenie-wywozu.pdf', 'GET'], [30, 'okres', 'POST'], [33, 'proforma', 'POST'],
-  [38, 'faktura', 'POST'], [40, 'faktura/odblokuj', 'POST'], [42, 'faktura/skasowana', 'POST'],
+  [28, 'potwierdzenie-wywozu.pdf', 'GET'],
+  [30, 'okres', 'POST'],
+  [33, 'proforma', 'POST'],
+  [38, 'faktura', 'POST'],
+  [40, 'faktura/odblokuj', 'POST'],
+  [42, 'faktura/skasowana', 'POST'],
   [45, 'faktura-allegro', 'POST'],
 ]) {
   it(`${nr} ${koncowka}: brak zamówienia, powrót na listę`, async () => {
@@ -63,19 +95,34 @@ for (const [nr, koncowka, metoda] of [
 
 it('29 PDF wywozu: odmowa modelu', async () => {
   const id = panel();
-  await odmowa(`/zamowienia/${id}/potwierdzenie-wywozu.pdf`, 400,
-    'Nie udało się przygotować potwierdzenia wywozu: Potwierdzenie wywozu dotyczy wyłącznie dostawy wewnątrzwspólnotowej (WDT) — nabywca tego zamówienia nie ma numeru VAT-UE innego państwa członkowskiego.', `/zamowienia/${id}`, 'GET');
+  await odmowa(
+    `/zamowienia/${id}/potwierdzenie-wywozu.pdf`,
+    400,
+    'Nie udało się przygotować potwierdzenia wywozu: Potwierdzenie wywozu dotyczy wyłącznie dostawy wewnątrzwspólnotowej (WDT) — nabywca tego zamówienia nie ma numeru VAT-UE innego państwa członkowskiego.',
+    `/zamowienia/${id}`,
+    'GET',
+  );
 });
 it('31 okres: odmowa reguły', async () => {
   const id = panel();
-  await odmowa(`/zamowienia/${id}/okres`, 400, 'NIP z tego zamówienia nie należy do żadnego klienta rozliczanego zbiorczo.', `/zamowienia/${id}`);
+  await odmowa(
+    `/zamowienia/${id}/okres`,
+    400,
+    'NIP z tego zamówienia nie należy do żadnego klienta rozliczanego zbiorczo.',
+    `/zamowienia/${id}`,
+  );
 });
 it('32 okres: odmowa usługi dla zamkniętego miesiąca', async () => {
   const id = panel();
   dopiszKlientaZbiorczego(p.db, { nazwa: 'Pracownia Półcień' });
   const okres = zapewnijOkres(p.db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
   zamknijOkres(p.db, okres.id);
-  await odmowa(`/zamowienia/${id}/okres`, 400, 'Okres lipiec 2026 jest już rozliczony — zamówienie z tą datą złożenia wymaga Twojej decyzji (korekta faktury albo zmiana daty).', `/zamowienia/${id}`);
+  await odmowa(
+    `/zamowienia/${id}/okres`,
+    400,
+    'Okres lipiec 2026 jest już rozliczony — zamówienie z tą datą złożenia wymaga Twojej decyzji (korekta faktury albo zmiana daty).',
+    `/zamowienia/${id}`,
+  );
 });
 
 for (const [nr, koncowka, tekst] of [
@@ -102,19 +149,39 @@ it('37 PDF proformy: brak dokumentu, komunikat operatora', async () => {
 });
 it('41 odblokowanie: brak faktury', async () => {
   const id = panel();
-  await odmowa(`/zamowienia/${id}/faktura/odblokuj`, 400, 'Nie udało się odblokować faktury: To zamówienie nie ma zablokowanej faktury — nie ma czego odblokowywać.', `/zamowienia/${id}`);
+  await odmowa(
+    `/zamowienia/${id}/faktura/odblokuj`,
+    400,
+    'Nie udało się odblokować faktury: To zamówienie nie ma zablokowanej faktury — nie ma czego odblokowywać.',
+    `/zamowienia/${id}`,
+  );
 });
 it('43 skasowanie: odmowa programu wbudowanego', async () => {
   const id = panel({ infakt: { opis: { wbudowany: true, nazwa: { dopelniacz: 'TwojeFaktury' } } } });
-  await odmowa(`/zamowienia/${id}/faktura/skasowana`, 400, 'Faktury TwojeFaktury nie da się skasować — są w bazie panelu. Błędny dokument popraw korektą.', `/zamowienia/${id}`);
+  await odmowa(
+    `/zamowienia/${id}/faktura/skasowana`,
+    400,
+    'Faktury TwojeFaktury nie da się skasować — są w bazie panelu. Błędny dokument popraw korektą.',
+    `/zamowienia/${id}`,
+  );
 });
 it('44 skasowanie: brak faktury', async () => {
   const id = panel();
-  await odmowa(`/zamowienia/${id}/faktura/skasowana`, 400, 'Nie udało się odnotować skasowania faktury: To zamówienie nie ma zablokowanej faktury — nie ma czego kasować.', `/zamowienia/${id}`);
+  await odmowa(
+    `/zamowienia/${id}/faktura/skasowana`,
+    400,
+    'Nie udało się odnotować skasowania faktury: To zamówienie nie ma zablokowanej faktury — nie ma czego kasować.',
+    `/zamowienia/${id}`,
+  );
 });
 it('47 Allegro: komunikat operatora z ucieczką HTML', async () => {
   const id = panel({ fakturaAllegro: { wyslij: rzuc } });
-  await odmowa(`/zamowienia/${id}/faktura-allegro`, 400, `Nie udało się wysłać faktury do Allegro: ${POWOD}`, `/zamowienia/${id}`);
+  await odmowa(
+    `/zamowienia/${id}/faktura-allegro`,
+    400,
+    `Nie udało się wysłać faktury do Allegro: ${POWOD}`,
+    `/zamowienia/${id}`,
+  );
 });
 
 it('udany PDF proformy zachowuje bajty i nagłówki', async () => {

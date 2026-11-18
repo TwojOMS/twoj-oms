@@ -43,13 +43,28 @@ const get = (url) => app.inject({ method: 'GET', url, headers: naglowek });
 
 // Kontrahent testowy: zamówienie mailem, wysyłka gratis, FV przelew 14 dni, kanał B2B.
 const Kontrahent = {
-  nazwa: 'Wzorowy Kontrahent', klucz: 'kontrahent', nip: '123-45-00-028',
-  f_firma: 'Wzorowy Kontrahent', f_ulica: 'ul. Testowa 7', f_kod: '00-950', f_miasto: 'Warszawa',
+  nazwa: 'Wzorowy Kontrahent',
+  klucz: 'kontrahent',
+  nip: '123-45-00-028',
+  f_firma: 'Wzorowy Kontrahent',
+  f_ulica: 'ul. Testowa 7',
+  f_kod: '00-950',
+  f_miasto: 'Warszawa',
   f_email: 'faktury@example.test',
-  w_nazwa: 'Jan Kowalski', w_firma: 'Wzorowy Kontrahent', w_ulica: 'ul. Testowa 7',
-  w_kod: '00-950', w_miasto: 'Warszawa', w_telefon: '600100200', w_email: 'zamowienia@example.test',
-  b2b: 'on', rabat_procent: '30', chce_fakture: 'on',
-  metoda_wysylki: 'dpd', koszt_dostawy_brutto: '0', platnosc: 'przelew', termin_platnosci: '14',
+  w_nazwa: 'Jan Kowalski',
+  w_firma: 'Wzorowy Kontrahent',
+  w_ulica: 'ul. Testowa 7',
+  w_kod: '00-950',
+  w_miasto: 'Warszawa',
+  w_telefon: '600100200',
+  w_email: 'zamowienia@example.test',
+  b2b: 'on',
+  rabat_procent: '30',
+  chce_fakture: 'on',
+  metoda_wysylki: 'dpd',
+  koszt_dostawy_brutto: '0',
+  platnosc: 'przelew',
+  termin_platnosci: '14',
 };
 
 const dopisz = (nad = {}) => post('/klienci', { ...Kontrahent, ...nad });
@@ -250,8 +265,11 @@ describe('wstawienie danych do nowego zamówienia', () => {
   it('nadpisuje to, co operator zdążył wpisać — i nie dotyka pozycji', async () => {
     const odp = await post('/zamowienia/nowe/klient', {
       klient_klucz: 'wzorowy-kontrahent',
-      w_ulica: 'Zupełnie inna 1', f_firma: 'Wpisane wcześniej sp. z o.o.',
-      poz_nazwa: 'Szablon dodany wcześniej', poz_ilosc: '3', poz_cena_brutto: '74.90',
+      w_ulica: 'Zupełnie inna 1',
+      f_firma: 'Wpisane wcześniej sp. z o.o.',
+      poz_nazwa: 'Szablon dodany wcześniej',
+      poz_ilosc: '3',
+      poz_cena_brutto: '74.90',
     });
     expect(odp.body).not.toContain('Zupełnie inna 1');
     expect(odp.body).not.toContain('Wpisane wcześniej sp. z o.o.');
@@ -271,11 +289,23 @@ describe('wstawienie danych do nowego zamówienia', () => {
     const wstawione = await post('/zamowienia/nowe/klient', { klient_klucz: 'wzorowy-kontrahent' });
     expect(wstawione.statusCode).toBe(200);
     await post('/zamowienia/nowe', {
-      w_nazwa: 'Jan Kowalski', f_firma: 'Wzorowy Kontrahent', f_nip: '1234500028',
-      dostawa: 'dpd', platnosc: 'przelew', koszt_dostawy_brutto: '0',
-      b2b: 'on', termin_platnosci: '14', rabat_procent: '30',
-      poz_nazwa: 'Szablon inwalida 30x30', poz_ilosc: '10', poz_cena_brutto: '52.43',
-      poz_cena_katalogowa: '74.90', poz_produkt_id: '', poz_wariant_id: '', poz_sku: '', poz_cena_netto: '',
+      w_nazwa: 'Jan Kowalski',
+      f_firma: 'Wzorowy Kontrahent',
+      f_nip: '1234500028',
+      dostawa: 'dpd',
+      platnosc: 'przelew',
+      koszt_dostawy_brutto: '0',
+      b2b: 'on',
+      termin_platnosci: '14',
+      rabat_procent: '30',
+      poz_nazwa: 'Szablon inwalida 30x30',
+      poz_ilosc: '10',
+      poz_cena_brutto: '52.43',
+      poz_cena_katalogowa: '74.90',
+      poz_produkt_id: '',
+      poz_wariant_id: '',
+      poz_sku: '',
+      poz_cena_netto: '',
     });
     const z = pobierzZamowienie(db, 1);
     expect(z.b2b).toBe(1);
@@ -289,16 +319,39 @@ describe('wstawienie danych do nowego zamówienia', () => {
 });
 
 describe('zapamiętaj tego klienta', () => {
-  const zalozZamowienie = () => zalozZamowienieReczne({
-    db,
-    znacznik: '2026-08-21T09:00:00.000Z',
-    dane: {
-      klient: { first_name: 'Jan', last_name: 'Kowalski', company: 'Wzorowy Kontrahent', address_1: 'ul. Testowa 7', postcode: '00-950', city: 'Warszawa', email: 'zamowienia@example.test' },
-      dostawa: { first_name: 'Jan', last_name: 'Kowalski', company: 'Wzorowy Kontrahent', address_1: 'ul. Testowa 7', postcode: '00-950', city: 'Warszawa' },
-      nip: '1234500028', chce_fakture: 1, metoda_wysylki: 'dpd', koszt_dostawy_brutto: '0.00',
-      metoda_platnosci: 'Przelew', b2b: 1, termin_platnosci: '14', rabat_procent: 0, pozycje: [],
-    },
-  });
+  const zalozZamowienie = () =>
+    zalozZamowienieReczne({
+      db,
+      znacznik: '2026-08-21T09:00:00.000Z',
+      dane: {
+        klient: {
+          first_name: 'Jan',
+          last_name: 'Kowalski',
+          company: 'Wzorowy Kontrahent',
+          address_1: 'ul. Testowa 7',
+          postcode: '00-950',
+          city: 'Warszawa',
+          email: 'zamowienia@example.test',
+        },
+        dostawa: {
+          first_name: 'Jan',
+          last_name: 'Kowalski',
+          company: 'Wzorowy Kontrahent',
+          address_1: 'ul. Testowa 7',
+          postcode: '00-950',
+          city: 'Warszawa',
+        },
+        nip: '1234500028',
+        chce_fakture: 1,
+        metoda_wysylki: 'dpd',
+        koszt_dostawy_brutto: '0.00',
+        metoda_platnosci: 'Przelew',
+        b2b: 1,
+        termin_platnosci: '14',
+        rabat_procent: 0,
+        pozycje: [],
+      },
+    });
 
   it('zakłada wpis z danych zamówienia', async () => {
     const { id } = zalozZamowienie();
@@ -338,16 +391,28 @@ describe('zmiana ustaleń na karcie', () => {
       db,
       znacznik: '2026-08-21T09:00:00.000Z',
       dane: {
-        klient: { email: 'zamowienia@example.test' }, dostawa: { first_name: 'Jan', last_name: 'Kowalski', city: 'Warszawa' },
-        metoda_wysylki: 'dpd', koszt_dostawy_brutto: '0.00', metoda_platnosci: 'Przelew', pozycje: [],
+        klient: { email: 'zamowienia@example.test' },
+        dostawa: { first_name: 'Jan', last_name: 'Kowalski', city: 'Warszawa' },
+        metoda_wysylki: 'dpd',
+        koszt_dostawy_brutto: '0.00',
+        metoda_platnosci: 'Przelew',
+        pozycje: [],
       },
     });
     dodajPozycjeReczna(db, id, {
-      nazwa: 'Szablon inwalida 30x30', sku: 'SZ-INW-30', ilosc: 10,
-      cena_brutto: '74.90', brutto_linii: '749.00', cena_katalogowa: '74.90',
+      nazwa: 'Szablon inwalida 30x30',
+      sku: 'SZ-INW-30',
+      ilosc: 10,
+      cena_brutto: '74.90',
+      brutto_linii: '749.00',
+      cena_katalogowa: '74.90',
     });
     dodajPozycjeReczna(db, id, {
-      nazwa: 'Usługa projektowa', sku: null, ilosc: 1, cena_brutto: '100.00', brutto_linii: '100.00',
+      nazwa: 'Usługa projektowa',
+      sku: null,
+      ilosc: 1,
+      cena_brutto: '100.00',
+      brutto_linii: '100.00',
     });
     przeliczKwoteRecznego(db, id);
     return id;
@@ -357,7 +422,10 @@ describe('zmiana ustaleń na karcie', () => {
     const id = zZamowieniem();
     expect(pobierzZamowienie(db, id).kwota_brutto).toBe('849.00');
 
-    expect((await post(`/zamowienia/${id}/ustalenia`, { b2b: 'on', termin_platnosci: '14', rabat_procent: '30' })).statusCode).toBe(302);
+    expect(
+      (await post(`/zamowienia/${id}/ustalenia`, { b2b: 'on', termin_platnosci: '14', rabat_procent: '30' }))
+        .statusCode,
+    ).toBe(302);
 
     const z = pobierzZamowienie(db, id);
     expect(z.rabat_procent).toBe(30);
@@ -468,8 +536,9 @@ describe('pobierz z GUS na ekranie klientów', () => {
   // w całej okazałości. Pusta uzupełnia się z GUS-u, wpisana ZOSTAJE.
   it('pustą nazwę uzupełnia z GUS-u, a wpisanej nie rusza', async () => {
     await zbuduj({ gusKlient: atrapaGus({ firma: FIRMA }) });
-    expect((await post('/klienci/gus', { f_nip: '1234500028', nazwa: '' })).body)
-      .toContain('SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ');
+    expect((await post('/klienci/gus', { f_nip: '1234500028', nazwa: '' })).body).toContain(
+      'SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ',
+    );
     const zWlasna = await post('/klienci/gus', { f_nip: '1234500028', nazwa: 'Wzorowy Kontrahent' });
     expect(zWlasna.body).toContain('value="Wzorowy Kontrahent"');
   });
@@ -502,9 +571,13 @@ describe('pobierz z GUS na ekranie klientów', () => {
 describe('skopiuj dane do wysyłki na ekranie klientów', () => {
   const FORMULARZ = {
     nazwa: 'Wzorowy Kontrahent',
-    f_firma: 'Wzorowy Kontrahent', f_ulica: 'ul. Testowa 7', f_kod: '00-950', f_miasto: 'Warszawa',
+    f_firma: 'Wzorowy Kontrahent',
+    f_ulica: 'ul. Testowa 7',
+    f_kod: '00-950',
+    f_miasto: 'Warszawa',
     f_email: 'faktury@example.test',
-    w_nazwa: 'Jan Kowalski', w_telefon: '600100200',
+    w_nazwa: 'Jan Kowalski',
+    w_telefon: '600100200',
   };
 
   it('przepisuje firmę, adres i e-mail', async () => {
@@ -615,13 +688,20 @@ describe('historia zamówień na karcie klienta', () => {
       dane: {
         klient: { first_name: 'Jan', last_name: 'Kowalski', company: 'Wzorowy Kontrahent' },
         dostawa: { first_name: 'Jan', last_name: 'Kowalski', city: 'Warszawa' },
-        nip, chce_fakture: 1, metoda_wysylki: 'dpd', koszt_dostawy_brutto: '0.00',
-        metoda_platnosci: 'Przelew', pozycje: [],
+        nip,
+        chce_fakture: 1,
+        metoda_wysylki: 'dpd',
+        koszt_dostawy_brutto: '0.00',
+        metoda_platnosci: 'Przelew',
+        pozycje: [],
       },
     });
     dodajPozycjeReczna(db, id, {
-      nazwa: 'Szablon inwalida 30x30', sku: 'SZ-INW-30', ilosc: 1,
-      cena_brutto: cena, brutto_linii: cena,
+      nazwa: 'Szablon inwalida 30x30',
+      sku: 'SZ-INW-30',
+      ilosc: 1,
+      cena_brutto: cena,
+      brutto_linii: cena,
     });
     przeliczKwoteRecznego(db, id);
     return id;
@@ -656,9 +736,18 @@ describe('historia zamówień na karcie klienta', () => {
     await dopisz();
     const k = wszyscyKlienci(db).at(-1);
     const id = zamowienie({ nip: '1111111111', cena: '55.00' });
-    expect((await post(`/zamowienia/${id}/dane/faktura`, {
-      firma: 'Wzorowy Kontrahent', nip: '1234500028', ulica: 'ul. Testowa 7', kod: '00-950', miasto: 'Warszawa', email: '',
-    })).statusCode).toBe(302);
+    expect(
+      (
+        await post(`/zamowienia/${id}/dane/faktura`, {
+          firma: 'Wzorowy Kontrahent',
+          nip: '1234500028',
+          ulica: 'ul. Testowa 7',
+          kod: '00-950',
+          miasto: 'Warszawa',
+          email: '',
+        })
+      ).statusCode,
+    ).toBe(302);
     expect((await get(`/klienci/${k.id}/karta`)).body).toContain(`/zamowienia/${id}"`);
   });
 

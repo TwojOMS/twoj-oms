@@ -12,7 +12,9 @@ import { poprawnyNip } from '../core/walidatory.ts';
 // spacjami albo z prefiksem „PL" (tak stoi na fakturach unijnych) — i to jest normalne,
 // więc czyścimy, zamiast odmawiać.
 export function znormalizujNip(surowy) {
-  const t = String(surowy ?? '').trim().replace(/^PL/i, '');
+  const t = String(surowy ?? '')
+    .trim()
+    .replace(/^PL/i, '');
   return t.replace(/\D+/g, '');
 }
 
@@ -30,12 +32,14 @@ export function nipDoZapytania(surowy) {
   // litery, trafiało na polski algorytm i wracało jako „błędna suma kontrolna — sprawdź,
   // czy nie ma literówki". Numer był poprawny, tylko słowacki, a człowiek szukał literówki,
   // której nie ma. REGON zna wyłącznie podmioty zarejestrowane w Polsce.
-  const zKrajem = String(surowy ?? '').replace(/[\s.\-/]/g, '').toUpperCase();
+  const zKrajem = String(surowy ?? '')
+    .replace(/[\s.\-/]/g, '')
+    .toUpperCase();
   const obcy = zKrajem.match(/^([A-Z]{2})[0-9A-Z]{2,14}$/);
   if (obcy && obcy[1] !== 'PL') {
     throw bladOperatora(
-      `„${surowy}" to numer zagraniczny (${obcy[1]}), a GUS zna wyłącznie polskie podmioty. `
-      + 'Dane firmy wpisz ręcznie.',
+      `„${surowy}" to numer zagraniczny (${obcy[1]}), a GUS zna wyłącznie polskie podmioty. ` +
+        'Dane firmy wpisz ręcznie.',
     );
   }
 
@@ -63,10 +67,15 @@ export function pole(xml, nazwa) {
 // zaescapowane (&lt;root&gt;) — zależnie od tego, jak usługa akurat odpowie. Obie postaci
 // muszą dać ten sam wynik, bo inaczej klient działa „raz na jakiś czas".
 export function rozpakuj(tresc) {
-  const bezCdata = String(tresc ?? '').replace(/^\s*<!\[CDATA\[/, '').replace(/\]\]>\s*$/, '');
+  const bezCdata = String(tresc ?? '')
+    .replace(/^\s*<!\[CDATA\[/, '')
+    .replace(/\]\]>\s*$/, '');
   return bezCdata
-    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'").replace(/&amp;/g, '&');
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, '&');
 }
 
 /**
@@ -128,20 +137,26 @@ export function kopertaSzukajPoNip(nip, adresUslugi) {
   );
 }
 
-const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const esc = (s) =>
+  String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 
 // BIR wymaga WS-Addressing (`<wsa:To>` musi zgadzać się z adresem usługi) — bez tego
 // odpowiada 500 zamiast czymkolwiek sensownym.
 function koperta(akcja, cialo, adresUslugi) {
-  return '<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope"'
-    + ' xmlns:ns="http://CIS/BIR/PUBL/2014/07" xmlns:dat="http://CIS/BIR/PUBL/2014/07/DataContract"'
-    + ' xmlns:wsa="http://www.w3.org/2005/08/addressing">'
-    + '<soap:Header>'
-    + `<wsa:Action>http://CIS/BIR/PUBL/2014/07/IUslugaBIRzewnPubl/${akcja}</wsa:Action>`
-    + `<wsa:To>${esc(adresUslugi)}</wsa:To>`
-    + '</soap:Header>'
-    + `<soap:Body><ns:${akcja}>${cialo}</ns:${akcja}></soap:Body>`
-    + '</soap:Envelope>';
+  return (
+    '<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope"' +
+    ' xmlns:ns="http://CIS/BIR/PUBL/2014/07" xmlns:dat="http://CIS/BIR/PUBL/2014/07/DataContract"' +
+    ' xmlns:wsa="http://www.w3.org/2005/08/addressing">' +
+    '<soap:Header>' +
+    `<wsa:Action>http://CIS/BIR/PUBL/2014/07/IUslugaBIRzewnPubl/${akcja}</wsa:Action>` +
+    `<wsa:To>${esc(adresUslugi)}</wsa:To>` +
+    '</soap:Header>' +
+    `<soap:Body><ns:${akcja}>${cialo}</ns:${akcja}></soap:Body>` +
+    '</soap:Envelope>'
+  );
 }
 
 // Komunikat po nieudanym zapytaniu — wspólny dla trzech przycisków „Pobierz z GUS” (karta, nowe zamówienie,

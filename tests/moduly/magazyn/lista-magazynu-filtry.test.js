@@ -12,19 +12,37 @@ const tabela = (html) => html.match(/<table class="tresc-lista magazyn-tabela">[
 
 beforeEach(() => {
   db = openOmsDb(':memory:');
-  utworzKarte(db, { nazwa: 'Zeta', paczkomat: 'tak', sku: 'Z', szerokosc_mm: 1, wysokosc_mm: 1, kategoria_glowna: 'K' });
+  utworzKarte(db, {
+    nazwa: 'Zeta',
+    paczkomat: 'tak',
+    sku: 'Z',
+    szerokosc_mm: 1,
+    wysokosc_mm: 1,
+    kategoria_glowna: 'K',
+  });
   const alfa = utworzKarte(db, { nazwa: 'Alfa', paczkomat: 'nie' });
-  db.prepare('UPDATE karty_produktow SET opis_sekcje_json = ? WHERE id = ?')
-    .run(JSON.stringify({ sekcje: [{ elementy: [{ typ: 'tekst', html: '<p>Opis</p>' }] }] }), alfa);
+  db.prepare('UPDATE karty_produktow SET opis_sekcje_json = ? WHERE id = ?').run(
+    JSON.stringify({ sekcje: [{ elementy: [{ typ: 'tekst', html: '<p>Opis</p>' }] }] }),
+    alfa,
+  );
   utworzKarte(db, { nazwa: 'Beta' });
-  app = buildOmsServer({ db, config, magazyn: { stan: () => ({ trwa: false, kanaly: [] }) },
-    nadpisania: { 'kanaly.klienciKanalow': { 'erli-test': {} }, 'kanaly.repozytoriumKanalow': {
-      listaTypu: typ => typ === 'erli' ? [{ klucz: 'erli-test', nazwa: 'Test' }] : [],
-      zapisyZablokowane: () => false,
-    } },
+  app = buildOmsServer({
+    db,
+    config,
+    magazyn: { stan: () => ({ trwa: false, kanaly: [] }) },
+    nadpisania: {
+      'kanaly.klienciKanalow': { 'erli-test': {} },
+      'kanaly.repozytoriumKanalow': {
+        listaTypu: (typ) => (typ === 'erli' ? [{ klucz: 'erli-test', nazwa: 'Test' }] : []),
+        zapisyZablokowane: () => false,
+      },
+    },
   });
 });
-afterEach(async () => { await app.close(); db.close(); });
+afterEach(async () => {
+  await app.close();
+  db.close();
+});
 
 describe('lista Magazynu', () => {
   it('usuwa nagłówki i komórki Paczkomat i Stan w obu trybach', async () => {
@@ -45,12 +63,12 @@ describe('lista Magazynu', () => {
     }
   });
 
-  it.each(['paczkomat', 'braki'])('stary sort=%s wraca do domyślnej kolejności', async sort => {
+  it.each(['paczkomat', 'braki'])('stary sort=%s wraca do domyślnej kolejności', async (sort) => {
     const domyslna = await get();
     const r = await get(`/magazyn?sort=${sort}`);
     expect(r.statusCode).toBe(200);
     // Nazwy w wierszach, niezależnie od układu filtrów i akcji.
-    const kolejnosc = html => [...tabela(html).matchAll(/<div><a[^>]*>(Alfa|Beta|Zeta)<\/a>/g)].map(m => m[1]);
+    const kolejnosc = (html) => [...tabela(html).matchAll(/<div><a[^>]*>(Alfa|Beta|Zeta)<\/a>/g)].map((m) => m[1]);
     expect(kolejnosc(domyslna.body)).toEqual(['Alfa', 'Beta', 'Zeta']);
     expect(kolejnosc(r.body)).toEqual(kolejnosc(domyslna.body));
     expect(r.body).toContain('name="sort" value="nazwa"');
@@ -77,8 +95,16 @@ describe('lista Magazynu', () => {
     expect(select).toBeDefined();
     expect(select).toMatch(/<option value="">wszystkie<\/option>/);
     expect(select).toContain('<option value="opis" selected>bez opisu</option>');
-    expect([...select.matchAll(/value="([^"]*)"/g)].map(m => m[1]))
-      .toEqual(['', 'sku', 'wymiary', 'paczkomat', 'kategoria', 'zdjecie', 'opis', 'komplet']);
+    expect([...select.matchAll(/value="([^"]*)"/g)].map((m) => m[1])).toEqual([
+      '',
+      'sku',
+      'wymiary',
+      'paczkomat',
+      'kategoria',
+      'zdjecie',
+      'opis',
+      'komplet',
+    ]);
     expect(select).not.toMatch(/\d/);
     const formularz = r.body.match(/<form[^>]*class="filtry[^\"]*"[\s\S]*?<\/form>/)?.[0];
     expect(formularz).toBeDefined();

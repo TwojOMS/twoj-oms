@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
-  wolnoWyslacDoAllegro, poZamianieNipWAllegro, zdanieKartyPoZamianieNip, ODMOWA_ALLEGRO_PO_ZAMIANIE_NIP,
+  wolnoWyslacDoAllegro,
+  poZamianieNipWAllegro,
+  zdanieKartyPoZamianieNip,
+  ODMOWA_ALLEGRO_PO_ZAMIANIE_NIP,
 } from '../../src/domena/allegro-faktura.js';
 
 // Znacznik D: zamówienie przepięte na fakturę zastępczą, gdy poprzednia faktura była
@@ -9,27 +12,36 @@ import {
 // wysłana” (to byłoby kłamstwo: wysłana była STARA). Dane zmyślone (Pracownia Półcień).
 
 const zamowienie = (faktura) => ({
-  sklep: 'allegro_polcien', chce_fakture: 1,
+  sklep: 'allegro_polcien',
+  chce_fakture: 1,
   faktura: {
-    program: 'twojefaktury', dokument_id: '17', numer: 'FV/2/11/2026', ksef_numer: '1234563218-20261102-0A1B2C3D4E5F-02',
-    allegro_invoice_id: null, allegro_wyslana_at: '2026-10-20T11:00:00.000Z', allegro_weryfikacja: 'ACCEPTED',
+    program: 'twojefaktury',
+    dokument_id: '17',
+    numer: 'FV/2/11/2026',
+    ksef_numer: '1234563218-20261102-0A1B2C3D4E5F-02',
+    allegro_invoice_id: null,
+    allegro_wyslana_at: '2026-10-20T11:00:00.000Z',
+    allegro_weryfikacja: 'ACCEPTED',
     ...faktura,
   },
 });
 
 describe('wolnoWyslacDoAllegro przy znaczniku D', () => {
-  it.each(['ACCEPTED', 'WAITING', null, 'NOWY_STATUS'])('stan %s: odmowa z nowym zdaniem, bez numeru nowej faktury', (stan) => {
-    const w = wolnoWyslacDoAllegro(zamowienie({ allegro_weryfikacja: stan }));
-    expect(w.wolno).toBe(false);
-    expect(w.powod).toBe(ODMOWA_ALLEGRO_PO_ZAMIANIE_NIP);
-    expect(w.powod).not.toMatch(/została już wysłana/);
-    expect(w.powod).not.toContain('FV/2/11/2026');
-  });
+  it.each(['ACCEPTED', 'WAITING', null, 'NOWY_STATUS'])(
+    'stan %s: odmowa z nowym zdaniem, bez numeru nowej faktury',
+    (stan) => {
+      const w = wolnoWyslacDoAllegro(zamowienie({ allegro_weryfikacja: stan }));
+      expect(w.wolno).toBe(false);
+      expect(w.powod).toBe(ODMOWA_ALLEGRO_PO_ZAMIANIE_NIP);
+      expect(w.powod).not.toMatch(/została już wysłana/);
+      expect(w.powod).not.toContain('FV/2/11/2026');
+    },
+  );
 
   it('brzmienie odmowy', () => {
     expect(ODMOWA_ALLEGRO_PO_ZAMIANIE_NIP).toBe(
-      'Kupujący ma w Allegro poprzednią fakturę (sprzed zamiany NIP-u) — nowej panel nie wysyła sam; '
-      + 'wyślij ją z panelu Allegro albo zakładką Wiadomości.',
+      'Kupujący ma w Allegro poprzednią fakturę (sprzed zamiany NIP-u) — nowej panel nie wysyła sam; ' +
+        'wyślij ją z panelu Allegro albo zakładką Wiadomości.',
     );
   });
 
@@ -41,7 +53,9 @@ describe('wolnoWyslacDoAllegro przy znaczniku D', () => {
   it('zwykły wiersz wysłany (z id zgłoszenia) → dzisiejszy tekst „została już wysłana”', () => {
     const w = wolnoWyslacDoAllegro(zamowienie({ allegro_invoice_id: 'INV-7' }));
     expect(w.wolno).toBe(false);
-    expect(w.powod).toMatch(/^Faktura FV\/2\/11\/2026 została już wysłana do Allegro 2026-10-20T11:00:00.000Z — kupujący ma ją na koncie\./);
+    expect(w.powod).toMatch(
+      /^Faktura FV\/2\/11\/2026 została już wysłana do Allegro 2026-10-20T11:00:00.000Z — kupujący ma ją na koncie\./,
+    );
   });
 
   it('REJECTED z id → przepuszcza jak dziś (ponowienie podmienia plik)', () => {
@@ -60,7 +74,7 @@ describe('wolnoWyslacDoAllegro przy znaczniku D', () => {
     expect(w.powod).toMatch(/została już wysłana/);
   });
 
-// Czuwacz może zapisać REJECTED (po `faktury.id`) już po przepięciu w stanie D. Wiersz to wtedy
+  // Czuwacz może zapisać REJECTED (po `faktury.id`) już po przepięciu w stanie D. Wiersz to wtedy
   // „wysłana, REJECTED, bez id” — kupujący starego pliku nie ma, więc wolno zgłosić NOWĄ fakturę nowym numerem.
   it('spóźnione REJECTED po przepięciu w D (bez id) NIE dostaje odmowy D — przechodzi jak C', () => {
     const f = { allegro_weryfikacja: 'REJECTED' };

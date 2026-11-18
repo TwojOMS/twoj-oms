@@ -5,7 +5,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import {
-  utworzKarte, zapiszProduktSklepowy, powiazProdukt, kartyZKanalami, kategorieDoFiltra,
+  utworzKarte,
+  zapiszProduktSklepowy,
+  powiazProdukt,
+  kartyZKanalami,
+  kategorieDoFiltra,
 } from '../../../src/oms/db/magazyn.js';
 
 let db;
@@ -13,8 +17,12 @@ let nr = 0;
 function produktZKategoriami(kartaId, kategorie) {
   nr += 1;
   const p = zapiszProduktSklepowy(db, {
-    kanal: 'pro', produkt_id: String(500 + nr), wariant_id: '', cena_gr: 1990,
-    nazwa: `Produkt ${nr}`, kategorie_json: JSON.stringify(kategorie),
+    kanal: 'pro',
+    produkt_id: String(500 + nr),
+    wariant_id: '',
+    cena_gr: 1990,
+    nazwa: `Produkt ${nr}`,
+    kategorie_json: JSON.stringify(kategorie),
     odczytane_at: '2026-11-13T06:00:00.000Z',
   });
   powiazProdukt(db, p, kartaId);
@@ -35,7 +43,9 @@ describe('filtr kategorii — encje HTML', () => {
   });
 
   it('filtr „DIY & Craft” zwraca kartę z kategorią i kartę z encjami w lustrze, bez innych', () => {
-    const nazwy = kartyZKanalami(db, { filtry: { kategoria: 'DIY & Craft' } }).map((w) => w.nazwa).sort();
+    const nazwy = kartyZKanalami(db, { filtry: { kategoria: 'DIY & Craft' } })
+      .map((w) => w.nazwa)
+      .sort();
     expect(nazwy).toEqual(['Szablon półcień A', 'Szablon półcień B']);
   });
 
@@ -48,7 +58,9 @@ describe('filtr kategorii — encje HTML', () => {
   it('kategoria karty zapisana z encją (stare dane) też jest dekodowana', () => {
     utworzKarte(db, { nazwa: 'Szablon półcień D', kategoria_glowna: 'Ogród &amp;amp; dom' });
     expect(kategorieDoFiltra(db)).toEqual(['Aplikacje', 'Boho', 'DIY & Craft', 'Ogród & dom']);
-    const nazwy = kartyZKanalami(db, { filtry: { kategoria: 'Ogród & dom' } }).map((w) => w.nazwa).sort();
+    const nazwy = kartyZKanalami(db, { filtry: { kategoria: 'Ogród & dom' } })
+      .map((w) => w.nazwa)
+      .sort();
     expect(nazwy).toEqual(['Szablon półcień C', 'Szablon półcień D']);
   });
 });

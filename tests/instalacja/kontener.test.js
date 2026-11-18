@@ -15,8 +15,14 @@ const KLIENT = path.join(ROOT, 'deploy/klient');
 const compose = () => fs.readFileSync(path.join(KLIENT, 'compose.yaml'), 'utf8');
 const dockerfile = () => fs.readFileSync(path.join(KLIENT, 'Dockerfile'), 'utf8');
 const katalogi = [];
-function katalog() { const p = fs.mkdtempSync(path.join(os.tmpdir(), 'oms-kontener-')); katalogi.push(p); return p; }
-afterEach(() => { for (const p of katalogi.splice(0)) fs.rmSync(p, { recursive: true, force: true }); });
+function katalog() {
+  const p = fs.mkdtempSync(path.join(os.tmpdir(), 'oms-kontener-'));
+  katalogi.push(p);
+  return p;
+}
+afterEach(() => {
+  for (const p of katalogi.splice(0)) fs.rmSync(p, { recursive: true, force: true });
+});
 
 // Wycinek jednej usługi z compose.yaml (wcięcie 2 spacje) — bez parsera YAML w zależnościach.
 function usluga(nazwa) {
@@ -29,8 +35,38 @@ function usluga(nazwa) {
 
 describe('compose i obraz klienta', () => {
   it('jest neutralny: zero nazw firmy autora, kanałów i adresów sieci domowej', () => {
-    for (const tekst of [compose(), dockerfile(), ...['diagnostyka.sh', 'aktualizuj.sh', 'kopia.mjs'].map(p => fs.readFileSync(path.join(KLIENT, p), 'utf8'))]) {
-      expect(wzorzecNazw([{"wzor": "\\p{L}{8}", "skrot": "3876cd847a24f6d3a8f3542919b9f6545e500e2eea8583bb58583508cefe9a57", "bezWielkosci": true}, {"wzor": "\\p{L}{8}", "skrot": "a2ac0b2e157811634f85a0cd5e7ec6ae46b6123e724924eba975ef822566f72e", "bezWielkosci": true}, {"wzor": "\\p{L}{7}", "skrot": "bbad42404dae7eccdb5c9da096a448d035cbe65c428a1f58cad5e8617dff6d6a", "bezWielkosci": true}, {"wzor": "\\p{L}{7}", "skrot": "621ff5bc8c1a1c6efc971f9b84d23fd0cd4d1253e9591b25270647d40c165c4b", "bezWielkosci": true}], /zetaklient|synology|volume1|192\.168|panel-zamowien/i).test(tekst)).toBe(false);
+    for (const tekst of [
+      compose(),
+      dockerfile(),
+      ...['diagnostyka.sh', 'aktualizuj.sh', 'kopia.mjs'].map((p) => fs.readFileSync(path.join(KLIENT, p), 'utf8')),
+    ]) {
+      expect(
+        wzorzecNazw(
+          [
+            {
+              'wzor': '\\p{L}{8}',
+              'skrot': '3876cd847a24f6d3a8f3542919b9f6545e500e2eea8583bb58583508cefe9a57',
+              'bezWielkosci': true,
+            },
+            {
+              'wzor': '\\p{L}{8}',
+              'skrot': 'a2ac0b2e157811634f85a0cd5e7ec6ae46b6123e724924eba975ef822566f72e',
+              'bezWielkosci': true,
+            },
+            {
+              'wzor': '\\p{L}{7}',
+              'skrot': 'bbad42404dae7eccdb5c9da096a448d035cbe65c428a1f58cad5e8617dff6d6a',
+              'bezWielkosci': true,
+            },
+            {
+              'wzor': '\\p{L}{7}',
+              'skrot': '621ff5bc8c1a1c6efc971f9b84d23fd0cd4d1253e9591b25270647d40c165c4b',
+              'bezWielkosci': true,
+            },
+          ],
+          /zetaklient|synology|volume1|192\.168|panel-zamowien/i,
+        ).test(tekst),
+      ).toBe(false);
     }
   });
 
@@ -53,8 +89,12 @@ describe('compose i obraz klienta', () => {
     expect(usluga('kopia')).toContain('path: /opt/oms/config/kopia.env');
     expect(usluga('kopia')).not.toContain('oms.env');
     // Nośnik zewnętrzny: zapis tylko w kontenerze kopii; rslave — pendrive podłączony po starcie też widoczny.
-    expect(usluga('kopia')).toMatch(/- type: bind\n {8}source: \/opt\/oms\/kopia-zewnetrzna\n {8}target: \/opt\/oms\/kopia-zewnetrzna\n {8}bind: \{ propagation: rslave, create_host_path: true \}/);
-    expect(usluga('oms')).toMatch(/- type: bind\n {8}source: \/opt\/oms\/kopia-zewnetrzna\n {8}target: \/opt\/oms\/kopia-zewnetrzna\n {8}read_only: true\n(.*\n)* {8}bind: \{ propagation: rslave, create_host_path: true \}/);
+    expect(usluga('kopia')).toMatch(
+      /- type: bind\n {8}source: \/opt\/oms\/kopia-zewnetrzna\n {8}target: \/opt\/oms\/kopia-zewnetrzna\n {8}bind: \{ propagation: rslave, create_host_path: true \}/,
+    );
+    expect(usluga('oms')).toMatch(
+      /- type: bind\n {8}source: \/opt\/oms\/kopia-zewnetrzna\n {8}target: \/opt\/oms\/kopia-zewnetrzna\n {8}read_only: true\n(.*\n)* {8}bind: \{ propagation: rslave, create_host_path: true \}/,
+    );
     // OMS widzi kopie tylko do odczytu i ma włączony nadzór kopii w /health.
     expect(usluga('oms')).toContain('- /opt/oms/backups:/opt/oms/backups:ro');
     expect(usluga('oms')).toContain('OMS_KOPIE_KATALOG: /opt/oms/backups');
@@ -80,8 +120,13 @@ describe('compose i obraz klienta', () => {
 
   it('ścieżki danych OMS są przybite do wolumenu, port wystawiony do LAN, proxy bez zaufania', () => {
     const u = usluga('oms');
-    for (const linia of ['OMS_DB_PATH: /opt/oms/data/oms.sqlite', 'OMS_PROFORMY_KATALOG: /opt/oms/data/proformy',
-      'OMS_ETYKIETY_KATALOG: /opt/oms/data/etykiety', 'OMS_ETYKIETY_DIR: /opt/oms/data/etykiety', 'OMS_PORT: "3001"']) {
+    for (const linia of [
+      'OMS_DB_PATH: /opt/oms/data/oms.sqlite',
+      'OMS_PROFORMY_KATALOG: /opt/oms/data/proformy',
+      'OMS_ETYKIETY_KATALOG: /opt/oms/data/etykiety',
+      'OMS_ETYKIETY_DIR: /opt/oms/data/etykiety',
+      'OMS_PORT: "3001"',
+    ]) {
       expect(u).toContain(linia);
     }
     // LAN po IPv4; bez adresu Docker publikuje też [::] — globalny IPv6 bez zapory = panel w internecie.
@@ -101,8 +146,14 @@ describe('compose i obraz klienta', () => {
     expect(d).toMatch(/^USER 10001:10001$/m);
     expect(d).toContain('COPY package.json wydanie.jso[n] ./');
     // Wszystko, czego używa compose i instalacja, jest w obrazie.
-    for (const plik of ['scripts/instalacja-kontener.mjs', 'scripts/instalacja-demo.mjs', 'scripts/instalacja-proba.mjs',
-      'scripts/instalacja-przygotuj.mjs', 'scripts/instalacja-wspolne.mjs', 'scripts/sekrety.mjs']) {
+    for (const plik of [
+      'scripts/instalacja-kontener.mjs',
+      'scripts/instalacja-demo.mjs',
+      'scripts/instalacja-proba.mjs',
+      'scripts/instalacja-przygotuj.mjs',
+      'scripts/instalacja-wspolne.mjs',
+      'scripts/sekrety.mjs',
+    ]) {
       expect(d).toContain(plik);
     }
     expect(d).toContain('COPY deploy/klient/kopia.mjs ./deploy/klient/kopia.mjs');
@@ -113,16 +164,22 @@ describe('pierwszy start w kontenerze (instalacja-kontener.mjs)', () => {
   const skrypt = path.join(ROOT, 'scripts/instalacja-kontener.mjs');
   function uruchom(dane, konfiguracja, port, env = {}) {
     return spawnSync(process.execPath, [skrypt, '--port', String(port)], {
-      encoding: 'utf8', timeout: 120_000,
+      encoding: 'utf8',
+      timeout: 120_000,
       env: { ...process.env, OMS_KATALOG_DANYCH: dane, OMS_KATALOG_KONFIGURACJI: konfiguracja, ...env },
     });
   }
 
   it('robi próbę i demo istniejącymi skryptami, a konfigurację i konto przenosi do katalogu konfiguracji', () => {
     const baza = katalog();
-    const dane = path.join(baza, 'data'); const konfiguracja = path.join(baza, 'config');
-    fs.mkdirSync(dane); fs.mkdirSync(konfiguracja);
-    const wynik = uruchom(dane, konfiguracja, 39160, { OMS_PASS: 'cudzy-sekret', ALLEGRO_CLIENT_SECRET: 'cudzy-sekret' });
+    const dane = path.join(baza, 'data');
+    const konfiguracja = path.join(baza, 'config');
+    fs.mkdirSync(dane);
+    fs.mkdirSync(konfiguracja);
+    const wynik = uruchom(dane, konfiguracja, 39160, {
+      OMS_PASS: 'cudzy-sekret',
+      ALLEGRO_CLIENT_SECRET: 'cudzy-sekret',
+    });
     expect(wynik.status, wynik.stderr).toBe(0);
     expect(wynik.stdout).toContain('instalacja-zakonczona');
     // „co dalej” dla człowieka, JSON nadal ostatnią linią (instrukcja Dockera: „Kończy się wierszem…”).
@@ -131,7 +188,8 @@ describe('pierwszy start w kontenerze (instalacja-kontener.mjs)', () => {
     expect(wynik.stdout).toContain(':39160/login');
     expect(wynik.stdout).toContain(path.join(konfiguracja, 'administrator-proby.env'));
     // Sekret żyje w jednym miejscu: katalog danych (kopie zapasowe) nie ma pliku env ani hasła admina.
-    for (const plik of ['proba.env', 'administrator-proby.env', 'produkcja.env.example']) expect(fs.existsSync(path.join(dane, plik))).toBe(false);
+    for (const plik of ['proba.env', 'administrator-proby.env', 'produkcja.env.example'])
+      expect(fs.existsSync(path.join(dane, plik))).toBe(false);
     const env = fs.readFileSync(path.join(konfiguracja, 'oms.env'), 'utf8');
     expect(env).toContain('OMS_TRYB=proba\n');
     expect(env).toContain(`OMS_DB_PATH=${path.join(dane, 'oms.sqlite')}\n`);
@@ -139,15 +197,23 @@ describe('pierwszy start w kontenerze (instalacja-kontener.mjs)', () => {
     expect(env).not.toContain('cudzy-sekret');
     const admin = fs.readFileSync(path.join(konfiguracja, 'administrator-proby.env'), 'utf8');
     expect(admin).toMatch(/^login=administrator-proby\nhaslo=\S{20,}\n$/);
-    expect(fs.readFileSync(path.join(konfiguracja, 'produkcja.env.example'), 'utf8')).toContain('OMS_SPRZEDAWCA_NIP=\n');
-    const haslo = /haslo=(.+)/.exec(admin)[1]; const serwis = /OMS_PASS=(.+)/.exec(env)[1];
-    for (const sekret of [haslo, serwis, 'cudzy-sekret']) expect(`${wynik.stdout}${wynik.stderr}`).not.toContain(sekret);
+    expect(fs.readFileSync(path.join(konfiguracja, 'produkcja.env.example'), 'utf8')).toContain(
+      'OMS_SPRZEDAWCA_NIP=\n',
+    );
+    const haslo = /haslo=(.+)/.exec(admin)[1];
+    const serwis = /OMS_PASS=(.+)/.exec(env)[1];
+    for (const sekret of [haslo, serwis, 'cudzy-sekret'])
+      expect(`${wynik.stdout}${wynik.stderr}`).not.toContain(sekret);
     const db = new DatabaseSync(path.join(dane, 'oms.sqlite'), { readOnly: true });
     try {
       expect(db.prepare('PRAGMA integrity_check').get().integrity_check).toBe('ok');
       expect(db.prepare("SELECT count(*) AS n FROM zamowienia WHERE numer LIKE 'DEMO-%'").get().n).toBe(3);
-      expect(db.prepare("SELECT login FROM konta WHERE login='administrator-proby'").get()?.login).toBe('administrator-proby');
-    } finally { db.close(); }
+      expect(db.prepare("SELECT login FROM konta WHERE login='administrator-proby'").get()?.login).toBe(
+        'administrator-proby',
+      );
+    } finally {
+      db.close();
+    }
     // Klucz poświadczeń powstaje od razu w katalogu konfiguracji — nigdy w katalogu danych (kopie),
     // nigdy na ekranie; wynik podaje ścieżkę pliku i każe go zapisać w menedżerze haseł.
     const plikKlucza = path.join(konfiguracja, 'klucz.env');
@@ -157,9 +223,14 @@ describe('pierwszy start w kontenerze (instalacja-kontener.mjs)', () => {
     expect(`${wynik.stdout}${wynik.stderr}`).not.toContain(klucz);
     expect(env).not.toContain('OMS_KLUCZ_SEKRETOW');
     expect(wynik.stdout).toContain(plikKlucza);
-    expect(wynik.stdout).toContain('Zapisz zawartość tego pliku w menedżerze haseł. Bez niego kopia bazy nie odda podłączonych integracji.');
+    expect(wynik.stdout).toContain(
+      'Zapisz zawartość tego pliku w menedżerze haseł. Bez niego kopia bazy nie odda podłączonych integracji.',
+    );
     expect(JSON.parse(wynik.stdout.trim().split(/\r?\n/).at(-1)).kluczPoswiadczen).toBe(plikKlucza);
-    const wszystkie = (k) => fs.readdirSync(k, { withFileTypes: true }).flatMap(e => e.isDirectory() ? wszystkie(path.join(k, e.name)) : [path.join(k, e.name)]);
+    const wszystkie = (k) =>
+      fs
+        .readdirSync(k, { withFileTypes: true })
+        .flatMap((e) => (e.isDirectory() ? wszystkie(path.join(k, e.name)) : [path.join(k, e.name)]));
     for (const plik of wszystkie(dane)) {
       expect(path.basename(plik), plik).not.toBe('klucz.env');
       expect(fs.readFileSync(plik).includes(Buffer.from(klucz)), plik).toBe(false);
@@ -174,8 +245,10 @@ describe('pierwszy start w kontenerze (instalacja-kontener.mjs)', () => {
 
   it('istniejący prawidłowy klucz przy pustym katalogu danych jest używany, nie nadpisywany', async () => {
     const baza = katalog();
-    const dane = path.join(baza, 'data'); const konfiguracja = path.join(baza, 'config');
-    fs.mkdirSync(dane); fs.mkdirSync(konfiguracja);
+    const dane = path.join(baza, 'data');
+    const konfiguracja = path.join(baza, 'config');
+    fs.mkdirSync(dane);
+    fs.mkdirSync(konfiguracja);
     const klucz = Buffer.from(Array.from({ length: 32 }, (_, i) => (i * 11 + 5) % 256)).toString('base64url');
     const plikKlucza = path.join(konfiguracja, 'klucz.env');
     fs.writeFileSync(plikKlucza, `OMS_KLUCZ_SEKRETOW=${klucz}\n`, { mode: 0o600 });
@@ -187,14 +260,24 @@ describe('pierwszy start w kontenerze (instalacja-kontener.mjs)', () => {
     const { idKlucza, bajtyKlucza } = await import('../../src/core/bezpieczenstwo/sejf-sekretow.js');
     const { uruchom: sekrety } = await import('../../scripts/sekrety.mjs');
     const linie = [];
-    expect(sekrety(['sprawdz', '--baza', path.join(dane, 'oms.sqlite')], { OMS_KLUCZ_SEKRETOW: klucz }, l => linie.push(l)), linie.join('\n')).toBe(0);
+    expect(
+      sekrety(['sprawdz', '--baza', path.join(dane, 'oms.sqlite')], { OMS_KLUCZ_SEKRETOW: klucz }, (l) =>
+        linie.push(l),
+      ),
+      linie.join('\n'),
+    ).toBe(0);
     expect(linie).toContain(`wymagane id kluczy: ${idKlucza(bajtyKlucza(klucz))}`);
   }, 120_000);
 
-  it.each([['pusty', ''], ['ucięty', 'OMS_KLUCZ_SEKRETOW=abc']])('plik klucza %s w konfiguracji = odmowa, dane puste, plik bez zmian', (_n, tresc) => {
+  it.each([
+    ['pusty', ''],
+    ['ucięty', 'OMS_KLUCZ_SEKRETOW=abc'],
+  ])('plik klucza %s w konfiguracji = odmowa, dane puste, plik bez zmian', (_n, tresc) => {
     const baza = katalog();
-    const dane = path.join(baza, 'data'); const konfiguracja = path.join(baza, 'config');
-    fs.mkdirSync(dane); fs.mkdirSync(konfiguracja);
+    const dane = path.join(baza, 'data');
+    const konfiguracja = path.join(baza, 'config');
+    fs.mkdirSync(dane);
+    fs.mkdirSync(konfiguracja);
     fs.writeFileSync(path.join(konfiguracja, 'klucz.env'), tresc);
     const wynik = uruchom(dane, konfiguracja, 39165);
     expect(wynik.status).toBe(1);
@@ -206,8 +289,10 @@ describe('pierwszy start w kontenerze (instalacja-kontener.mjs)', () => {
 
   it('odmawia, gdy konfiguracja już istnieje — i nie dotyka katalogu danych', () => {
     const baza = katalog();
-    const dane = path.join(baza, 'data'); const konfiguracja = path.join(baza, 'config');
-    fs.mkdirSync(dane); fs.mkdirSync(konfiguracja);
+    const dane = path.join(baza, 'data');
+    const konfiguracja = path.join(baza, 'config');
+    fs.mkdirSync(dane);
+    fs.mkdirSync(konfiguracja);
     fs.writeFileSync(path.join(konfiguracja, 'oms.env'), 'OMS_TRYB=produkcja\n');
     const wynik = uruchom(dane, konfiguracja, 39161);
     expect(wynik.status).toBe(1);
@@ -218,8 +303,10 @@ describe('pierwszy start w kontenerze (instalacja-kontener.mjs)', () => {
 
   it('odmawia niepustego katalogu danych bez tworzenia konfiguracji', () => {
     const baza = katalog();
-    const dane = path.join(baza, 'data'); const konfiguracja = path.join(baza, 'config');
-    fs.mkdirSync(dane); fs.mkdirSync(konfiguracja);
+    const dane = path.join(baza, 'data');
+    const konfiguracja = path.join(baza, 'config');
+    fs.mkdirSync(dane);
+    fs.mkdirSync(konfiguracja);
     fs.writeFileSync(path.join(dane, 'oms.sqlite'), 'cudza baza');
     const wynik = uruchom(dane, konfiguracja, 39162);
     expect(wynik.status).toBe(1);
@@ -247,49 +334,87 @@ describe('paczka wydania dla klienta (paczka-klienta.mjs)', () => {
     const commit = git('rev-parse', 'HEAD');
     const tree = git('rev-parse', 'HEAD^{tree}');
     const wyjscie = path.join(katalog(), 'wynik');
-    const r = spawnSync(process.execPath, [skrypt, '--commit', commit, '--wyjscie', wyjscie], { cwd: ROOT, encoding: 'utf8', timeout: 120_000 });
+    const r = spawnSync(process.execPath, [skrypt, '--commit', commit, '--wyjscie', wyjscie], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      timeout: 120_000,
+    });
     expect(r.status, r.stderr).toBe(0);
     const nazwa = `oms-${commit.slice(0, 12)}`;
     const archiwum = path.join(wyjscie, `${nazwa}.tar.gz`);
     const suma = fs.readFileSync(`${archiwum}.sha256`, 'utf8');
     expect(suma).toBe(`${createHash('sha256').update(fs.readFileSync(archiwum)).digest('hex')}  ${nazwa}.tar.gz\n`);
     // Root rozpakowuje tryby wiernie: żaden wpis nie może być zapisywalny dla grupy ani innych.
-    const szczegoly = execFileSync(tar, ['-tvzf', archiwum], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }).split(/\r?\n/).filter(Boolean);
+    const szczegoly = execFileSync(tar, ['-tvzf', archiwum], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 })
+      .split(/\r?\n/)
+      .filter(Boolean);
     expect(szczegoly.length).toBeGreaterThan(400);
     for (const wpis of szczegoly) expect(wpis).toMatch(/^(-rw-r--r--|drwxr-xr-x)\s.*root.*root/);
     const rozpakowane = path.join(katalog(), 'x');
     fs.mkdirSync(rozpakowane);
     execFileSync(tar, ['-xzf', archiwum, '-C', rozpakowane]);
     const korzen = path.join(rozpakowane, nazwa);
-    const lista = (k, p = '') => fs.readdirSync(path.join(k, p), { withFileTypes: true })
-      .flatMap(e => e.isDirectory() ? lista(k, path.posix.join(p, e.name)) : [path.posix.join(p, e.name)]);
+    const lista = (k, p = '') =>
+      fs
+        .readdirSync(path.join(k, p), { withFileTypes: true })
+        .flatMap((e) => (e.isDirectory() ? lista(k, path.posix.join(p, e.name)) : [path.posix.join(p, e.name)]));
     const wGicie = git('ls-tree', '-r', '--name-only', '--full-tree', commit).split('\n');
     const oczekiwane = plikiPaczki(wGicie);
     expect(lista(korzen).sort()).toEqual([...oczekiwane, 'wydanie.json', 'deploy/klient/.env'].sort());
-    for (const wymagany of ['package.json', 'package-lock.json', 'src/oms.js', 'scripts/instalacja-demo.mjs', 'deploy/klient/aktualizuj.sh', 'deploy/klient/kopia.mjs']) {
+    for (const wymagany of [
+      'package.json',
+      'package-lock.json',
+      'src/oms.js',
+      'scripts/instalacja-demo.mjs',
+      'deploy/klient/aktualizuj.sh',
+      'deploy/klient/kopia.mjs',
+    ]) {
       expect(oczekiwane).toContain(wymagany);
     }
     // Porównanie bajtów z obiektami gita (niezależnie od pakowacza): odcisk blobu = sha1("blob N\0" + bajty).
-    const bloby = new Map(execFileSync('git', ['ls-tree', '-r', '--full-tree', commit], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
-      .split('\n').filter(Boolean).map(w => { const [meta, plik] = w.split('\t'); return [plik, meta.split(' ')[2]]; }));
+    const bloby = new Map(
+      execFileSync('git', ['ls-tree', '-r', '--full-tree', commit], {
+        cwd: ROOT,
+        encoding: 'utf8',
+        maxBuffer: 64 * 1024 * 1024,
+      })
+        .split('\n')
+        .filter(Boolean)
+        .map((w) => {
+          const [meta, plik] = w.split('\t');
+          return [plik, meta.split(' ')[2]];
+        }),
+    );
     for (const plik of oczekiwane) {
       const bajty = fs.readFileSync(path.join(korzen, plik));
-      const odcisk = createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${bajty.length}\0`), bajty])).digest('hex');
+      const odcisk = createHash('sha1')
+        .update(Buffer.concat([Buffer.from(`blob ${bajty.length}\0`), bajty]))
+        .digest('hex');
       expect(odcisk, plik).toBe(bloby.get(plik));
     }
-    expect(oczekiwane.some(p => /(^|\/)(\.env|node_modules|\.git)(\/|$)|\.sqlite$|^tests\/|^docs\/prz|mutacje/.test(p))).toBe(false);
+    expect(
+      oczekiwane.some((p) => /(^|\/)(\.env|node_modules|\.git)(\/|$)|\.sqlite$|^tests\/|^docs\/prz|mutacje/.test(p)),
+    ).toBe(false);
     const wydanie = JSON.parse(fs.readFileSync(path.join(korzen, 'wydanie.json'), 'utf8'));
     expect(wydanie.commit).toBe(commit);
     expect(wydanie.tree).toBe(tree);
     expect(wydanie.podpisane).toBe(false);
-    expect(fs.readFileSync(path.join(korzen, 'deploy/klient/.env'), 'utf8')).toMatch(new RegExp(`^# .*\\nOMS_REVISION=${commit}\\n$`));
+    expect(fs.readFileSync(path.join(korzen, 'deploy/klient/.env'), 'utf8')).toMatch(
+      new RegExp(`^# .*\\nOMS_REVISION=${commit}\\n$`),
+    );
   }, 120_000);
 
   it('odmawia istniejącego katalogu wyjścia i niepełnego commita', () => {
     const istniejacy = katalog();
-    const r1 = spawnSync(process.execPath, [skrypt, '--commit', git('rev-parse', 'HEAD'), '--wyjscie', istniejacy], { cwd: ROOT, encoding: 'utf8' });
+    const r1 = spawnSync(process.execPath, [skrypt, '--commit', git('rev-parse', 'HEAD'), '--wyjscie', istniejacy], {
+      cwd: ROOT,
+      encoding: 'utf8',
+    });
     expect(r1.status).toBe(1);
-    const r2 = spawnSync(process.execPath, [skrypt, '--commit', 'HEAD', '--wyjscie', path.join(istniejacy, 'nowy')], { cwd: ROOT, encoding: 'utf8' });
+    const r2 = spawnSync(process.execPath, [skrypt, '--commit', 'HEAD', '--wyjscie', path.join(istniejacy, 'nowy')], {
+      cwd: ROOT,
+      encoding: 'utf8',
+    });
     expect(r2.status).toBe(1);
     expect(fs.existsSync(path.join(istniejacy, 'nowy'))).toBe(false);
   });

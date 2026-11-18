@@ -12,12 +12,22 @@ describe('OMS_ADRES_PANELU', () => {
     expect(adresPaneluZEnv('https://panel.example.test/')).toBe('https://panel.example.test');
     expect(adresPaneluZEnv('http://192.168.0.10:3001')).toBe('http://192.168.0.10:3001');
   });
-  it.each(['https://panel.example.test/oms', 'https://panel.example.test/?a=1', 'https://panel.example.test/#x', 'ftp://panel.example.test', ' https://panel.example.test', 'https://u:p@panel.example.test', 'panel.example.test'])('odmawia %s z nazwą zmiennej', (w) => {
+  it.each([
+    'https://panel.example.test/oms',
+    'https://panel.example.test/?a=1',
+    'https://panel.example.test/#x',
+    'ftp://panel.example.test',
+    ' https://panel.example.test',
+    'https://u:p@panel.example.test',
+    'panel.example.test',
+  ])('odmawia %s z nazwą zmiennej', (w) => {
     expect(() => adresPaneluZEnv(w)).toThrow('OMS_ADRES_PANELU');
   });
   // Konfiguracja niesie też adres firmy z pliku (`nadawca`) — ekran logowania bierze z niego nazwę firmy.
   it('konfiguracja modułu ustawienia niesie adres', () => {
-    expect(modulUstawienia.konfiguracja({ OMS_ADRES_PANELU: 'https://panel.example.test' }).adresPanelu).toBe('https://panel.example.test');
+    expect(modulUstawienia.konfiguracja({ OMS_ADRES_PANELU: 'https://panel.example.test' }).adresPanelu).toBe(
+      'https://panel.example.test',
+    );
     expect(modulUstawienia.konfiguracja({}).adresPanelu).toBeNull();
     expect(modulUstawienia.konfiguracja({ DPD_NADAWCA_NAZWA: 'Lampy Zenit' }).nadawca.nazwa).toBe('Lampy Zenit');
   });
@@ -25,7 +35,10 @@ describe('OMS_ADRES_PANELU', () => {
     const r = spawnSync(process.execPath, ['scripts/straznik-konfiguracji.mjs'], { encoding: 'utf8' });
     expect(r.status, r.stdout.slice(-2000)).toBe(0);
     const m = JSON.parse(readFileSync('docs/konfiguracja.json', 'utf8'));
-    expect(m.zmienne.find((z) => z.nazwa === 'OMS_ADRES_PANELU')).toMatchObject({ wlasciciel: 'ustawienia', wymagalnosc: 'opcjonalna' });
+    expect(m.zmienne.find((z) => z.nazwa === 'OMS_ADRES_PANELU')).toMatchObject({
+      wlasciciel: 'ustawienia',
+      wymagalnosc: 'opcjonalna',
+    });
     expect(readFileSync('.env.example', 'utf8')).toMatch(/^# OMS_ADRES_PANELU=/m);
     expect(readFileSync('docs/konfiguracja.md', 'utf8')).toContain('`OMS_ADRES_PANELU`');
   });

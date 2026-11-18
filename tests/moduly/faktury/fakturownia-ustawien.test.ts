@@ -14,7 +14,9 @@ function fabrykaLiczaca() {
   const fabryka = vi.fn((opcje: any) => {
     utworzone.push(opcje);
     const nr = utworzone.length;
-    return Object.fromEntries(METODY_FAKTUROWNI.map((m: string) => [m, async (...a: unknown[]) => ({ klient: nr, m, a })]));
+    return Object.fromEntries(
+      METODY_FAKTUROWNI.map((m: string) => [m, async (...a: unknown[]) => ({ klient: nr, m, a })]),
+    );
   });
   return { fabryka, utworzone };
 }
@@ -51,7 +53,9 @@ describe('fakturowniaZUstawien', () => {
     const w = await p.pobierzFakture(10);
     expect(w).toEqual({ klient: 3, m: 'pobierzFakture', a: [10] });
     expect(utworzone.map((o) => [o.domena, o.token === TOKEN_B])).toEqual([
-      ['pracownia-polcien', false], ['pracownia-polcien', true], ['polcien-druga', true],
+      ['pracownia-polcien', false],
+      ['pracownia-polcien', true],
+      ['polcien-druga', true],
     ]);
     expect(utworzone.every((o) => o.fetchImpl === undefined)).toBe(true);
   });

@@ -9,8 +9,12 @@ const przyklad = {
   permanentStorageDate: '2026-06-05T14:03:11.000Z',
   seller: { nip: '5252674798', name: 'Allegro sp. z o.o.' },
   buyer: { identifier: { type: 'Nip', value: '1200001192' } },
-  netAmount: 1067.0, vatAmount: 245.41, grossAmount: 1312.41,
-  currency: 'PLN', invoiceType: 'Vat', hasAttachment: false,
+  netAmount: 1067.0,
+  vatAmount: 245.41,
+  grossAmount: 1312.41,
+  currency: 'PLN',
+  invoiceType: 'Vat',
+  hasAttachment: false,
 };
 
 describe('metadane KSeF → wiersz panelu', () => {
@@ -22,8 +26,12 @@ describe('metadane KSeF → wiersz panelu', () => {
       sprzedawcaNazwa: 'Allegro sp. z o.o.',
       dataWystawienia: '2026-06-05',
       dataTrwalegoZapisu: '2026-06-05T14:03:11.000Z',
-      netto: '1067.00', vat: '245.41', brutto: '1312.41',
-      waluta: 'PLN', rodzaj: 'Vat', maZalacznik: 0,
+      netto: '1067.00',
+      vat: '245.41',
+      brutto: '1312.41',
+      waluta: 'PLN',
+      rodzaj: 'Vat',
+      maZalacznik: 0,
     });
   });
 
@@ -83,8 +91,11 @@ describe('metadane KSeF → wiersz panelu', () => {
 
   // ...a ZERO to nie brak. Faktura na 0,00 zł jest dokumentem poprawnym i ma przejść.
   it('zero zostaje poprawna kwota — „zero to nie brak"', () => {
-    expect(naWiersz({ ...przyklad, netAmount: 0, vatAmount: 0, grossAmount: 0 }))
-      .toMatchObject({ netto: '0.00', vat: '0.00', brutto: '0.00' });
+    expect(naWiersz({ ...przyklad, netAmount: 0, vatAmount: 0, grossAmount: 0 })).toMatchObject({
+      netto: '0.00',
+      vat: '0.00',
+      brutto: '0.00',
+    });
   });
 
   // NIP wchodzi do bazy ZNORMALIZOWANY. Kategoria dobiera się po NIP-ie, więc
@@ -122,9 +133,8 @@ describe('metadane KSeF → wiersz panelu', () => {
 const KWOTY_MAJA = [1067, 245.41, 36.9, 12.3, 199.99, 45.67, 88.88, 7.77, 123.45, 64.2, 310.15, 15.99, 5.55, 46.29];
 const INNA_KOLEJNOSC = [45.67, 15.99, 5.55, 199.99, 310.15, 88.88, 1067, 46.29, 36.9, 123.45, 7.77, 12.3, 245.41, 64.2];
 
-const sumaGroszy = (kwoty) => kwoty
-  .map((k) => naWiersz({ ...przyklad, grossAmount: k }))
-  .reduce((acc, w) => acc + grosze(w.brutto, 'brutto'), 0);
+const sumaGroszy = (kwoty) =>
+  kwoty.map((k) => naWiersz({ ...przyklad, grossAmount: k })).reduce((acc, w) => acc + grosze(w.brutto, 'brutto'), 0);
 
 const sumaFloatow = (kwoty) => kwoty.reduce((acc, k) => acc + k, 0);
 

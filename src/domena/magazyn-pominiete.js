@@ -46,18 +46,18 @@ export function grupujPominiete(produkty, kanalySklepow) {
     grupy.get(powod).push(p);
   }
 
-  return [...grupy.entries()]
-    .map(([powod, lista]) => ({
-      powod,
-      ile: lista.length,
-      celowo: lista.every((p) => czyPominietyCelowo(p, kanalySklepow)),
-      produkty: lista,
-    }))
-    // Kolejnosc: najpierw ROBOTA, potem rzeczy celowe; w obu pasach najliczniejsze na
-    // gorze. Trzecie kryterium (nazwa powodu) nie jest ozdoba — bez niego dwie grupy
-    // o rownej liczbie ustawialyby sie zaleznie od kolejnosci wierszy z bazy, a ekran
-    // ogladany dwa razy z rzedu wygladalby inaczej bez zadnej zmiany danych.
-    .sort((a, b) => Number(a.celowo) - Number(b.celowo)
-      || b.ile - a.ile
-      || a.powod.localeCompare(b.powod, 'pl'));
+  return (
+    [...grupy.entries()]
+      .map(([powod, lista]) => ({
+        powod,
+        ile: lista.length,
+        celowo: lista.every((p) => czyPominietyCelowo(p, kanalySklepow)),
+        produkty: lista,
+      }))
+      // Kolejnosc: najpierw ROBOTA, potem rzeczy celowe; w obu pasach najliczniejsze na
+      // gorze. Trzecie kryterium (nazwa powodu) nie jest ozdoba — bez niego dwie grupy
+      // o rownej liczbie ustawialyby sie zaleznie od kolejnosci wierszy z bazy, a ekran
+      // ogladany dwa razy z rzedu wygladalby inaczej bez zadnej zmiany danych.
+      .sort((a, b) => Number(a.celowo) - Number(b.celowo) || b.ile - a.ile || a.powod.localeCompare(b.powod, 'pl'))
+  );
 }

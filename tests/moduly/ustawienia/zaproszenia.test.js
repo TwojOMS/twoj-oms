@@ -30,7 +30,12 @@ describe('zaproszenia i reset hasła', () => {
     expect(listaKont(db).find((k) => k.login === 'nowa').zaproszone).toBe(true);
     const link = db.prepare('SELECT * FROM linki_hasla').get();
     expect(link).toMatchObject({ cel: 'zaproszenie', hash_tokenu: createHash('sha256').update(token).digest('hex') });
-    const login = await app.inject({ method: 'POST', url: '/login', headers: { origin: 'http://localhost', accept: 'text/html' }, payload: { uzytkownik: 'nowa', haslo: '' } });
+    const login = await app.inject({
+      method: 'POST',
+      url: '/login',
+      headers: { origin: 'http://localhost', accept: 'text/html' },
+      payload: { uzytkownik: 'nowa', haslo: '' },
+    });
     expect(login.statusCode).toBe(401);
   });
 
@@ -51,7 +56,12 @@ describe('zaproszenia i reset hasła', () => {
     const mailer = atrapa();
     const { db, app } = panel({ env: { OMS_ADRES_PANELU: ADRES }, mailer });
     const naglowki = { ...jako(db, 'adam'), host: 'zly.example', origin: 'http://zly.example' };
-    const r = await app.inject({ method: 'POST', url: '/ustawienia/konta/nowe', headers: { accept: 'text/html', ...naglowki }, payload: { ...NOWA, sposob: 'mail' } });
+    const r = await app.inject({
+      method: 'POST',
+      url: '/ustawienia/konta/nowe',
+      headers: { accept: 'text/html', ...naglowki },
+      payload: { ...NOWA, sposob: 'mail' },
+    });
     expect(r.statusCode).toBe(302);
     const id = kontoPoLoginie(db, 'nowa').id;
     expect(r.headers.location).toBe(`/ustawienia/konta/${id}?zapisano=wyslano`);
@@ -74,7 +84,11 @@ describe('zaproszenia i reset hasła', () => {
   });
 
   it('błąd SMTP: konto zostaje, komunikat i propozycja „Pokaż link”', async () => {
-    const mailer = { sendMail: vi.fn(async () => { throw new Error('ECONNREFUSED'); }) };
+    const mailer = {
+      sendMail: vi.fn(async () => {
+        throw new Error('ECONNREFUSED');
+      }),
+    };
     const { db, app, admin } = panel({ env: { OMS_ADRES_PANELU: ADRES }, mailer });
     const r = await post(app, '/ustawienia/konta/nowe', admin, { ...NOWA, sposob: 'mail' });
     expect(r.statusCode).toBe(502);
@@ -94,7 +108,9 @@ describe('zaproszenia i reset hasła', () => {
     expect(linki[0].uniewaznione_at).not.toBeNull();
     expect(linki[1].uniewaznione_at).toBeNull();
     await post(app, `/ustawienia/konta/${id}/czynne`, admin, { czynne: '0' });
-    expect(db.prepare('SELECT count(*) AS n FROM linki_hasla WHERE konto_id = ? AND uniewaznione_at IS NULL').get(id).n).toBe(0);
+    expect(
+      db.prepare('SELECT count(*) AS n FROM linki_hasla WHERE konto_id = ? AND uniewaznione_at IS NULL').get(id).n,
+    ).toBe(0);
   });
 
   it('strona konta dla admina, e-mail z walidacją i unikalnością; 404 i 403', async () => {
@@ -106,7 +122,9 @@ describe('zaproszenia i reset hasła', () => {
     expect(strona.body).toContain('ewa');
     expect(strona.body).toContain(`action="/ustawienia/konta/${a}/email"`);
     expect(strona.body).toContain(`action="/ustawienia/konta/${a}/link"`);
-    expect((await post(app, `/ustawienia/konta/${a}/email`, admin, { email: ' Ewa@Example.TEST ' })).statusCode).toBe(302);
+    expect((await post(app, `/ustawienia/konta/${a}/email`, admin, { email: ' Ewa@Example.TEST ' })).statusCode).toBe(
+      302,
+    );
     const dup = await post(app, `/ustawienia/konta/${b}/email`, admin, { email: 'ewa@example.test' });
     expect(dup.statusCode).toBe(400);
     expect(dup.body).toContain('pas-uprzedzenie');
@@ -122,13 +140,28 @@ describe('zaproszenia i reset hasła', () => {
     expect(lista.body).not.toMatch(/name="haslo"/);
     expect(lista.body).toContain('Nowe konto');
     expect(lista.body).toContain('name="sposob"');
-    expect((await post(app, '/ustawienia/konta/nowe', admin, { login: 'pako', imie: 'Pako', haslo: 'haslo-ok', rola: 'produkcja' })).statusCode).toBe(302);
+    expect(
+      (
+        await post(app, '/ustawienia/konta/nowe', admin, {
+          login: 'pako',
+          imie: 'Pako',
+          haslo: 'haslo-ok',
+          rola: 'produkcja',
+        })
+      ).statusCode,
+    ).toBe(302);
     expect(listaKont(db).find((k) => k.login === 'pako').zaproszone).toBe(false);
   });
 
   it('zaproszony administrator nie zamyka bramy degradacji, dopóki nie ustawi hasła (Review Focus 1)', async () => {
     const { db, app } = nowyPanel();
-    const r = await post(app, '/ustawienia/konta/nowe', BASIC, { imie: 'Szef', login: 'szef', email: '', rola: 'administrator', sposob: 'pokaz' });
+    const r = await post(app, '/ustawienia/konta/nowe', BASIC, {
+      imie: 'Szef',
+      login: 'szef',
+      email: '',
+      rola: 'administrator',
+      sposob: 'pokaz',
+    });
     expect(r.statusCode).toBe(200);
     expect((await get(app, '/ustawienia/konta', BASIC)).statusCode).toBe(200);
     const token = tokenZ(r.body);
@@ -140,7 +173,13 @@ describe('zaproszenia i reset hasła', () => {
 
   it('bezpiecznik „ostatni administrator” nie liczy zaproszonego admina', async () => {
     const { db, app, idAdam, admin } = panel();
-    await post(app, '/ustawienia/konta/nowe', admin, { imie: 'Szef', login: 'szef', email: '', rola: 'administrator', sposob: 'pokaz' });
+    await post(app, '/ustawienia/konta/nowe', admin, {
+      imie: 'Szef',
+      login: 'szef',
+      email: '',
+      rola: 'administrator',
+      sposob: 'pokaz',
+    });
     // Funkcja czysta względem req (jak w web-konta.test.js D3) — bez bezpiecznika „nie wyłączysz siebie”, który zasłoniłby wynik.
     expect(pozostanieCzynnyAdmin(db, idAdam, { czynne: false, admin: true })).toBe(false);
     expect(pozostanieCzynnyAdmin(db, idAdam, { czynne: true, admin: false })).toBe(false);

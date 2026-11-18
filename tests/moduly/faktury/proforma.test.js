@@ -1,7 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import {
-  mkdirSync, mkdtempSync, existsSync, readFileSync, rmSync,
-} from 'node:fs';
+import { mkdirSync, mkdtempSync, existsSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
@@ -21,7 +19,13 @@ const zmapowane = (nad = {}) => ({
   zrodlo_id: 1301,
   numer: '1301',
   klient: {
-    first_name: 'Jan', last_name: 'Kowalski', company: 'ACME', email: 'j@k.pl', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa',
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    company: 'ACME',
+    email: 'j@k.pl',
+    address_1: 'Polna 1',
+    postcode: '00-950',
+    city: 'Warszawa',
   },
   dostawa: {},
   metoda_wysylki: 'dpd',
@@ -34,9 +38,15 @@ const zmapowane = (nad = {}) => ({
   oplacone_at: null,
   anulowane: 0,
   utworzone_at: '2026-08-04T10:00:00',
-  pozycje: [{
-    nazwa: 'STOP 70x100', sku: 'PRO-STOP-001', ilosc: 2, cena_brutto: '61.50', vat: null,
-  }],
+  pozycje: [
+    {
+      nazwa: 'STOP 70x100',
+      sku: 'PRO-STOP-001',
+      ilosc: 2,
+      cena_brutto: '61.50',
+      vat: null,
+    },
+  ],
   ...nad,
 });
 
@@ -60,20 +70,33 @@ function zestaw(nad = {}, opcje = {}) {
   const config = {
     nadawca: NADAWCA,
     proforma: {
-      nip: '1234563218', rachunek: '34109010140000000000000000', bank: 'Millennium', katalog,
+      nip: '1234563218',
+      rachunek: '34109010140000000000000000',
+      bank: 'Millennium',
+      katalog,
     },
   };
   const id = zapiszZamowienie(db, 'pro', zmapowane(nad), {});
   const proforma = createProforma({
-    db, config, teraz: ZEGAR, ...opcje,
+    db,
+    config,
+    teraz: ZEGAR,
+    ...opcje,
   });
   return {
-    db, id, katalog, config, proforma,
+    db,
+    id,
+    katalog,
+    config,
+    proforma,
   };
 }
 
-const logi = (db, id) => db.prepare('SELECT * FROM log WHERE zamowienie_id = ? ORDER BY id').all(id)
-  .filter((w) => w.akcja === 'proforma');
+const logi = (db, id) =>
+  db
+    .prepare('SELECT * FROM log WHERE zamowienie_id = ? ORDER BY id')
+    .all(id)
+    .filter((w) => w.akcja === 'proforma');
 
 // Proforma bierze stawkę domyślną z Ustawień — tę samą, którą dostaje faktura VAT.
 describe('proforma — stawka domyślna z Ustawień', () => {
@@ -144,7 +167,11 @@ describe('proforma — przełom miesiąca liczony w czasie warszawskim', () => {
   const wStrefie = (strefa, co) => {
     const poprzednia = process.env.TZ;
     process.env.TZ = strefa;
-    try { return co(); } finally { process.env.TZ = poprzednia; }
+    try {
+      return co();
+    } finally {
+      process.env.TZ = poprzednia;
+    }
   };
 
   it.each(STREFY)('przy TZ=%s numer bierze WRZEŚNIOWĄ serię, a nie sierpniową', (strefa) => {
@@ -173,8 +200,7 @@ describe('proforma — przełom miesiąca liczony w czasie warszawskim', () => {
       const { id, proforma } = zestaw({}, { teraz: ZEGAR_NOCNY, budujPdf });
       return proforma.wystaw(id);
     });
-    expect(fmtDataCzasKrotko(p.utworzona_at).slice(0, 10))
-      .toBe(budujPdf.mock.calls[0][0].dataWystawienia);
+    expect(fmtDataCzasKrotko(p.utworzona_at).slice(0, 10)).toBe(budujPdf.mock.calls[0][0].dataWystawienia);
   });
 });
 
@@ -223,7 +249,9 @@ describe('proforma — odmowy przed nadaniem numeru', () => {
   it('bez adresu nadawcy odmawia, zamiast wystawić dokument z pustym sprzedawcą', () => {
     const { db, id, config } = zestaw();
     const bezNadawcy = createProforma({
-      db, config: { ...config, nadawca: null }, teraz: ZEGAR,
+      db,
+      config: { ...config, nadawca: null },
+      teraz: ZEGAR,
     });
     expect(() => bezNadawcy.wystaw(id)).toThrow(/sprzedawc/i);
     expect(proformyZamowienia(db, id)).toHaveLength(0);
@@ -283,14 +311,27 @@ describe('proforma — dane na dokumencie', () => {
   // poprawione dane, a do klienta jechalby dokument ze starymi.
   it('bierze nabywcę z poprawek operatora, a nie ze sklepu', () => {
     const { db, id, proforma, budujPdf } = zPodgladem();
-    zapiszNadpisaniaFaktury(db, id, {
-      firma: 'ACME Sp. z o.o.', nip: '1111111111', ulica: 'Nowa 5', kod: '31-000', miasto: 'Kraków',
-    }, null);
+    zapiszNadpisaniaFaktury(
+      db,
+      id,
+      {
+        firma: 'ACME Sp. z o.o.',
+        nip: '1111111111',
+        ulica: 'Nowa 5',
+        kod: '31-000',
+        miasto: 'Kraków',
+      },
+      null,
+    );
 
     proforma.wystaw(id);
 
     expect(budujPdf.mock.calls[0][0].nabywca).toMatchObject({
-      nazwa: 'ACME Sp. z o.o.', nip: '1111111111', ulica: 'Nowa 5', kod: '31-000', miasto: 'Kraków',
+      nazwa: 'ACME Sp. z o.o.',
+      nip: '1111111111',
+      ulica: 'Nowa 5',
+      kod: '31-000',
+      miasto: 'Kraków',
     });
   });
 
@@ -298,7 +339,11 @@ describe('proforma — dane na dokumencie', () => {
     const { id, proforma, budujPdf } = zPodgladem();
     proforma.wystaw(id);
     expect(budujPdf.mock.calls[0][0].nabywca).toMatchObject({
-      nazwa: 'ACME', nip: '1200001200', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa',
+      nazwa: 'ACME',
+      nip: '1200001200',
+      ulica: 'Polna 1',
+      kod: '00-950',
+      miasto: 'Warszawa',
     });
   });
 
@@ -308,7 +353,12 @@ describe('proforma — dane na dokumencie', () => {
     const { id, proforma, budujPdf } = zPodgladem();
     proforma.wystaw(id);
     expect(budujPdf.mock.calls[0][0].sprzedawca).toMatchObject({
-      nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL', nip: '1234563218',
+      nazwa: 'Pracownia Półcień Anna Wzorcowa',
+      ulica: 'ul. Przykładowa 1',
+      kod: '00-950',
+      miasto: 'Warszawa',
+      kraj: 'PL',
+      nip: '1234563218',
     });
   });
 
@@ -329,11 +379,19 @@ describe('proforma — dane na dokumencie', () => {
     const { id, proforma, budujPdf } = zPodgladem();
     proforma.wystaw(id);
     const dane = budujPdf.mock.calls[0][0];
-    expect(dane.pozycje).toEqual([{
-      name: 'STOP 70x100', quantity: 2, gross_price: 12300, tax_symbol: '23',
-    }]);
+    expect(dane.pozycje).toEqual([
+      {
+        name: 'STOP 70x100',
+        quantity: 2,
+        gross_price: 12300,
+        tax_symbol: '23',
+      },
+    ]);
     expect(dane.podsumowanieVat.at(-1)).toMatchObject({
-      suma: true, nettoGr: 10000, vatGr: 2300, bruttoGr: 12300,
+      suma: true,
+      nettoGr: 10000,
+      vatGr: 2300,
+      bruttoGr: 12300,
     });
     expect(dane.doZaplatyGr).toBe(12300);
     expect(dane.slownie).toBe('sto dwadzieścia trzy złote');
@@ -357,14 +415,19 @@ describe('konfiguracja proformy', () => {
 
   it('NIP, rachunek i bank mają wartości produkcyjne, gdy nikt ich nie podał', () => {
     expect(loadOmsConfig({ ...bazowe }).proforma).toMatchObject({
-      nip: '1234563218', rachunek: '34109010140000000000000000', bank: 'Millennium',
+      nip: '1234563218',
+      rachunek: '34109010140000000000000000',
+      bank: 'Millennium',
     });
   });
 
   it('zmienne środowiskowe podmieniają NIP, rachunek i bank', () => {
     // Poprawny jawny fixture przy rzeczywistej walidacji NIP/NRB.
     const c = loadOmsConfig({
-      ...bazowe, OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000', OMS_BANK: 'Inny',
+      ...bazowe,
+      OMS_SPRZEDAWCA_NIP: '1234563218',
+      OMS_RACHUNEK: '34109010140000000000000000',
+      OMS_BANK: 'Inny',
     });
     expect(c.proforma).toMatchObject({ nip: '1234563218', rachunek: '34109010140000000000000000', bank: 'Inny' });
   });
@@ -386,8 +449,9 @@ describe('konfiguracja proformy', () => {
   // etykiet i plik bazy. Pomylka tej klasy (`DB_PATH` zamiast `OMS_DB_PATH`) skasowalaby
   // przy Etapie 1 numery listow przy pierwszym odtworzeniu kontenera.
   it('katalog na pliki bierze się z OMS_PROFORMY_KATALOG', () => {
-    expect(loadOmsConfig({ ...bazowe, OMS_PROFORMY_KATALOG: '/data-oms/proformy' }).proforma.katalog)
-      .toBe('/data-oms/proformy');
+    expect(loadOmsConfig({ ...bazowe, OMS_PROFORMY_KATALOG: '/data-oms/proformy' }).proforma.katalog).toBe(
+      '/data-oms/proformy',
+    );
   });
 
   // ⚠️ WARTOSC DOMYSLNA MUSI LEZEC NA WOLUMENIE. Kontener chodzi z `read_only: true`
@@ -422,7 +486,10 @@ describe('proforma — trasy HTTP', () => {
     const app = buildOmsServer({ db, config: { ...config, auth: { user: 'adam', pass: 'x' } }, proforma });
     await app.ready();
     return {
-      db, id, app, proforma,
+      db,
+      id,
+      app,
+      proforma,
     };
   }
 

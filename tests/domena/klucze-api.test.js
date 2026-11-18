@@ -1,9 +1,25 @@
 import { describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
-import { ZAKRESY_API, nowyKlucz, skrotKlucza, rozbierzNaglowek, czyZakresyPoprawne } from '../../src/domena/klucze-api.js';
+import {
+  ZAKRESY_API,
+  nowyKlucz,
+  skrotKlucza,
+  rozbierzNaglowek,
+  czyZakresyPoprawne,
+} from '../../src/domena/klucze-api.js';
 
-const zakresy = ['zamowienia:odczyt', 'zamowienia:zapis', 'proformy:zapis', 'produkty:odczyt',
-  'produkty:zapis', 'zdjecia:zapis', 'stany:odczyt', 'stany:zapis', 'sprzedaz:odczyt', 'druk'];
+const zakresy = [
+  'zamowienia:odczyt',
+  'zamowienia:zapis',
+  'proformy:zapis',
+  'produkty:odczyt',
+  'produkty:zapis',
+  'zdjecia:zapis',
+  'stany:odczyt',
+  'stany:zapis',
+  'sprzedaz:odczyt',
+  'druk',
+];
 
 describe('domena kluczy API', () => {
   it('udostępnia dokładne zakresy w ustalonej kolejności', () => {
@@ -18,8 +34,8 @@ describe('domena kluczy API', () => {
       expect(skrot).toBe(createHash('sha256').update(klucz).digest('hex'));
       expect(skrotKlucza(klucz)).toBe(skrot);
     }
-    expect(new Set(klucze.map(k => k.klucz)).size).toBe(1000);
-    expect(new Set(klucze.map(k => k.prefiks)).size).toBe(1000);
+    expect(new Set(klucze.map((k) => k.klucz)).size).toBe(1000);
+    expect(new Set(klucze.map((k) => k.prefiks)).size).toBe(1000);
   });
   it('przyjmuje klucz z końcowym CRLF i białymi znakami nagłówka', () => {
     const { klucz } = nowyKlucz();
@@ -28,9 +44,19 @@ describe('domena kluczy API', () => {
   });
   it('odrzuca inne schematy i uszkodzony format klucza', () => {
     const { klucz } = nowyKlucz();
-    for (const naglowek of [undefined, null, '', klucz, `Basic ${klucz}`, `Bearer ${klucz}x`,
-      `Bearer ${klucz.slice(0, -1)}`, `Bearer ${klucz} drugi`, `Bearer ${klucz.replace('toms_', 'TOMS_')}`,
-      `Bearer ${klucz.slice(0, 5)}ABCDEFGH${klucz.slice(13)}`, `Bearer ${klucz.slice(0, -1)}+`]) {
+    for (const naglowek of [
+      undefined,
+      null,
+      '',
+      klucz,
+      `Basic ${klucz}`,
+      `Bearer ${klucz}x`,
+      `Bearer ${klucz.slice(0, -1)}`,
+      `Bearer ${klucz} drugi`,
+      `Bearer ${klucz.replace('toms_', 'TOMS_')}`,
+      `Bearer ${klucz.slice(0, 5)}ABCDEFGH${klucz.slice(13)}`,
+      `Bearer ${klucz.slice(0, -1)}+`,
+    ]) {
       expect(rozbierzNaglowek(naglowek)).toBeNull();
     }
   });

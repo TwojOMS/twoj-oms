@@ -10,7 +10,10 @@ import { nowyPanel, jako, get } from '../../pomoc/panel-konta-testowe.js';
 const panele = [];
 afterEach(async () => {
   vi.useRealTimers();
-  for (const p of panele.splice(0)) { await p.app.close(); p.db.close(); }
+  for (const p of panele.splice(0)) {
+    await p.app.close();
+    p.db.close();
+  }
 });
 
 const TEKST = 'Nowa wiadomość z Allegro od kupujacy-testowy';
@@ -23,9 +26,13 @@ function panel(env = {}) {
   panele.push(p);
   zalozKonto(db, { login: 'admin-test', imie: 'Administrator', haslo: 'h', rola: 'administrator', admin: true });
   zapiszWatek(db, {
-    kanal: 'allegro_swietlik', threadId: 'w-167', interlocutorLogin: 'kupujacy-testowy',
-    lastMessageDateTime: '2026-10-28T08:00:00.000Z', ostatniaOdKupujacego: true,
-    ostatniaTresc: 'Dzień dobry, pytanie o rozmiar.', pobranyAt: '2026-10-28T08:01:00.000Z',
+    kanal: 'allegro_swietlik',
+    threadId: 'w-167',
+    interlocutorLogin: 'kupujacy-testowy',
+    lastMessageDateTime: '2026-10-28T08:00:00.000Z',
+    ostatniaOdKupujacego: true,
+    ostatniaTresc: 'Dzień dobry, pytanie o rozmiar.',
+    pobranyAt: '2026-10-28T08:01:00.000Z',
   });
   return { ...p, admin: jako(db, 'admin-test') };
 }

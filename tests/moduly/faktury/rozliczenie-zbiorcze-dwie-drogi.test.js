@@ -27,9 +27,13 @@ const naglowek = {
 
 // ⚠️ Od 24.08.2026 klient zbiorczy jest WIERSZEM TABELY `klienci`, nie wpisem w konfiguracji.
 const KLIENT = {
-  klucz: 'przykladowa', nazwa: 'Pracownia Przykładowa sp. z o.o.', nip: '1234500011',
-  rabat_procent: 10, prog_darmowej_dostawy_gr: 30000,
-  oplata_obslugi_gr: 400, oplata_kurierska_gr: 1900,
+  klucz: 'przykladowa',
+  nazwa: 'Pracownia Przykładowa sp. z o.o.',
+  nip: '1234500011',
+  rabat_procent: 10,
+  prog_darmowej_dostawy_gr: 30000,
+  oplata_obslugi_gr: 400,
+  oplata_kurierska_gr: 1900,
 };
 const config = { auth: { user: 'adam', pass: 'x' } };
 
@@ -51,19 +55,30 @@ let infakt;
  */
 function dodajZamowienie({ numer, kwota = '100.00', okresId = okres.id, anulowane = 0 }) {
   db.prepare(
-    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, nip, chce_fakture, klient_json,'
-    + ' okres_rozliczeniowy_id, anulowane, utworzone_at)'
-    + " VALUES ('reczne', ?, ?, ?, ?, 1, ?, ?, ?, '2026-07-10T10:00:00.000Z')",
+    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, nip, chce_fakture, klient_json,' +
+      ' okres_rozliczeniowy_id, anulowane, utworzone_at)' +
+      " VALUES ('reczne', ?, ?, ?, ?, 1, ?, ?, ?, '2026-07-10T10:00:00.000Z')",
   ).run(
-    Number(String(numer).replace(/\D/g, '')), numer, kwota, KLIENT.nip,
+    Number(String(numer).replace(/\D/g, '')),
+    numer,
+    kwota,
+    KLIENT.nip,
     // Komplet danych dla aktywnego formularza poza okresem.
-    JSON.stringify({ company: KLIENT.nazwa, first_name: 'Jan', last_name: 'Kowalski', address_1: 'Fikcyjna 1', postcode: '00-001', city: 'Miasto Testowe' }),
-    okresId, anulowane ? 1 : 0,
+    JSON.stringify({
+      company: KLIENT.nazwa,
+      first_name: 'Jan',
+      last_name: 'Kowalski',
+      address_1: 'Fikcyjna 1',
+      postcode: '00-001',
+      city: 'Miasto Testowe',
+    }),
+    okresId,
+    anulowane ? 1 : 0,
   );
   const id = db.prepare('SELECT id FROM zamowienia WHERE numer = ?').get(numer).id;
   db.prepare(
-    'INSERT INTO pozycje (zamowienie_id, nazwa, ilosc, cena_brutto, brutto_linii, zrodlo)'
-    + " VALUES (?, 'STOP 70x100', 1, ?, ?, 'reczna')",
+    'INSERT INTO pozycje (zamowienie_id, nazwa, ilosc, cena_brutto, brutto_linii, zrodlo)' +
+      " VALUES (?, 'STOP 70x100', 1, ?, ?, 'reczna')",
   ).run(id, kwota, kwota);
   return id;
 }
@@ -88,8 +103,7 @@ describe('K1 — to samo zamowienie nie moze pojechac na fakture dwiema drogami'
 
   it('komunikat odmowy niesie ADRES ekranu okresu — inaczej operator nie wie, gdzie kliknac', async () => {
     const zamId = dodajZamowienie({ numer: 'R/2026/001' });
-    await expect(createFaktura({ db, infakt }).wystaw(zamId))
-      .rejects.toThrow(new RegExp(`/okresy/${okres.id}`));
+    await expect(createFaktura({ db, infakt }).wystaw(zamId)).rejects.toThrow(new RegExp(`/okresy/${okres.id}`));
   });
 
   it('zamowienie POZA okresem dalej fakturuje sie pojedynczo — blokada nie moze byc szersza', async () => {
@@ -105,12 +119,11 @@ describe('K1 — to samo zamowienie nie moze pojechac na fakture dwiema drogami'
     // Wiersz faktury wstawiony WPROST — tak wyglada zamowienie zafakturowane pojedynczo
     // (albo z rezerwacja po zerwanej probie) w chwili, gdy trafia do okresu.
     db.prepare(
-      "INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, ksef_status, utworzona_at)"
-      + " VALUES (?, 'u-0', 'FV/0/2026', NULL, '2026-07-11T09:00:00.000Z')",
+      'INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, ksef_status, utworzona_at)' +
+        " VALUES (?, 'u-0', 'FV/0/2026', NULL, '2026-07-11T09:00:00.000Z')",
     ).run(zamId);
 
-    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, KLIENT))
-      .rejects.toThrow(/R\/2026\/001/);
+    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, KLIENT)).rejects.toThrow(/R\/2026\/001/);
     expect(infakt.wystaw).not.toHaveBeenCalled();
     // Okres ma zostac DOKLADNIE taki, jak byl: bez rezerwacji i otwarty.
     const po = pobierzOkres(db, okres.id);
@@ -141,7 +154,11 @@ describe('K1 — trasy i karta zamowienia', () => {
   let app;
   beforeEach(async () => {
     app = buildOmsServer({
-      db, config, infakt, faktura: createFaktura({ db, infakt }), poller: null,
+      db,
+      config,
+      infakt,
+      faktura: createFaktura({ db, infakt }),
+      poller: null,
     });
     await app.ready();
   });
@@ -198,8 +215,7 @@ describe('W2 — zamowienie zapisane w oknie `await` nie wpada do zafakturowaneg
       return 77;
     });
 
-    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, KLIENT))
-      .rejects.toThrow(/R\/2026\/009/);
+    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, KLIENT)).rejects.toThrow(/R\/2026\/009/);
     // ⚠️ ODMOWA PRZED `infakt.wystaw`: inaczej klient dostaje fakture na 100,00 zl za miesiac,
     // ktory dzis wart jest 140,00 — a wyjscia z tego nie ma zadnego.
     expect(infakt.wystaw).not.toHaveBeenCalled();
@@ -215,7 +231,10 @@ describe('W2 — zamowienie zapisane w oknie `await` nie wpada do zafakturowaneg
     dodajZamowienie({ numer: 'R/2026/001' });
     let raz = false;
     infakt.znajdzKlientaPoNip = vi.fn().mockImplementation(async () => {
-      if (!raz) { raz = true; dodajZamowienie({ numer: 'R/2026/009', kwota: '40.00' }); }
+      if (!raz) {
+        raz = true;
+        dodajZamowienie({ numer: 'R/2026/009', kwota: '40.00' });
+      }
       return 77;
     });
     const usluga = createFakturaOkresu({ db, infakt });
@@ -254,8 +273,8 @@ describe('W3 — zamowienie w okresie nie zglasza niedoplaty (pieniadze zyja na 
   it('NADPLATA na zamowieniu w okresie zostaje sprawa — to sa pieniadze, ktore gdzies sa', () => {
     const zamId = dodajZamowienie({ numer: 'R/2026/003' });
     db.prepare(
-      'INSERT INTO platnosci (zamowienie_id, kwota, data, zrodlo, utworzona_at)'
-      + " VALUES (?, '150.00', '2026-07-12', 'reczna', '2026-07-12T08:00:00.000Z')",
+      'INSERT INTO platnosci (zamowienie_id, kwota, data, zrodlo, utworzona_at)' +
+        " VALUES (?, '150.00', '2026-07-12', 'reczna', '2026-07-12T08:00:00.000Z')",
     ).run(zamId);
     const sprawy = sprawyKarty(pobierzZamowienie(db, zamId));
     expect(sprawy.filter((s) => s.klucz === 'platnosci')).toHaveLength(1);
@@ -265,7 +284,11 @@ describe('W3 — zamowienie w okresie nie zglasza niedoplaty (pieniadze zyja na 
   it('karta pokazuje odeslanie do okresu zamiast alarmu NIEDOPLATA', async () => {
     const zamId = dodajZamowienie({ numer: 'R/2026/001' });
     const app = buildOmsServer({
-      db, config, infakt, faktura: createFaktura({ db, infakt }), poller: null,
+      db,
+      config,
+      infakt,
+      faktura: createFaktura({ db, infakt }),
+      poller: null,
     });
     await app.ready();
     const odp = await app.inject({ method: 'GET', url: `/zamowienia/${zamId}`, headers: naglowek });
@@ -285,9 +308,9 @@ describe('indeks na zamowienia.okres_rozliczeniowy_id', () => {
     // kolumna dokłada się dopiero w `dolozKolumny` (db.js, DOLOZ). Indeks postawiony
     // w schema.sql odbilby sie wiec na STAREJ bazie o „no such column" jeszcze przed
     // migracja, czyli panel nie wstalby w ogole. Ten test pilnuje KOLEJNOSCI.
-    const indeksy = db.prepare(
-      "SELECT name, sql FROM sqlite_master WHERE type = 'index' AND tbl_name = 'zamowienia'",
-    ).all();
+    const indeksy = db
+      .prepare("SELECT name, sql FROM sqlite_master WHERE type = 'index' AND tbl_name = 'zamowienia'")
+      .all();
     const nasz = indeksy.find((i) => (i.sql ?? '').includes('okres_rozliczeniowy_id'));
     expect(nasz, 'brak indeksu po okres_rozliczeniowy_id').toBeTruthy();
   });
@@ -295,10 +318,13 @@ describe('indeks na zamowienia.okres_rozliczeniowy_id', () => {
   it('`zamowieniaOkresu` przestaje skanowac cala tabele', () => {
     // Bez indeksu plan brzmial „SCAN zamowienia", a `/okresy` wola `daneOkresu` dla KAZDEGO
     // okresu — czyli koszt rosl iloczynowo z kazdym kolejnym miesiacem.
-    const plan = db.prepare(
-      'EXPLAIN QUERY PLAN SELECT id FROM zamowienia WHERE okres_rozliczeniowy_id = ?'
-      + ' ORDER BY utworzone_at, id',
-    ).all(okres.id).map((w) => w.detail).join(' | ');
+    const plan = db
+      .prepare(
+        'EXPLAIN QUERY PLAN SELECT id FROM zamowienia WHERE okres_rozliczeniowy_id = ?' + ' ORDER BY utworzone_at, id',
+      )
+      .all(okres.id)
+      .map((w) => w.detail)
+      .join(' | ');
     expect(plan).toMatch(/USING INDEX/);
   });
 });
@@ -306,7 +332,9 @@ describe('indeks na zamowienia.okres_rozliczeniowy_id', () => {
 describe('jeden odczyt zegara przy zakladaniu zamowienia', () => {
   const PRAWDZIWY_DATE = Date;
 
-  afterEach(() => { vi.unstubAllGlobals(); });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
 
   it('na przelomie miesiaca okres zgadza sie z data zlozenia zamowienia', async () => {
     // ⚠️ ZEGAR PRZESKAKUJE MIEDZY PIERWSZYM A DRUGIM ODCZYTEM — dokladnie tak, jak potrafi
@@ -315,18 +343,23 @@ describe('jeden odczyt zegara przy zakladaniu zamowienia', () => {
     // `utworzone_at` z WLASNEGO `teraz()` — dwa niezalezne odczyty, wiec zamowienie trafialo
     // do LIPCOWEGO okresu z SIERPNIOWA data zlozenia (albo odwrotnie).
     let pierwszy = true;
-    vi.stubGlobal('Date', class extends PRAWDZIWY_DATE {
-      constructor(...args) {
-        if (args.length === 0) {
-          // ⚠️ GRANICA MIESIACA LICZY SIE W WARSZAWIE (domain/okres-rozliczeniowy.js),
-          // nie w UTC: 1 sierpnia 00:00 czasu warszawskiego to 31 lipca 22:00 UTC.
-          // Pierwszy odczyt pada tuz PRZED ta granica, kazdy nastepny tuz PO niej.
-          super(pierwszy ? '2026-07-31T21:59:59.500Z' : '2026-07-31T22:00:00.500Z');
-          pierwszy = false;
-        } else super(...args);
-      }
-      static now() { return new PRAWDZIWY_DATE().getTime(); }
-    });
+    vi.stubGlobal(
+      'Date',
+      class extends PRAWDZIWY_DATE {
+        constructor(...args) {
+          if (args.length === 0) {
+            // ⚠️ GRANICA MIESIACA LICZY SIE W WARSZAWIE (domain/okres-rozliczeniowy.js),
+            // nie w UTC: 1 sierpnia 00:00 czasu warszawskiego to 31 lipca 22:00 UTC.
+            // Pierwszy odczyt pada tuz PRZED ta granica, kazdy nastepny tuz PO niej.
+            super(pierwszy ? '2026-07-31T21:59:59.500Z' : '2026-07-31T22:00:00.500Z');
+            pierwszy = false;
+          } else super(...args);
+        }
+        static now() {
+          return new PRAWDZIWY_DATE().getTime();
+        }
+      },
+    );
 
     const app = buildOmsServer({ db, config, infakt, poller: null });
     await app.ready();
@@ -335,9 +368,14 @@ describe('jeden odczyt zegara przy zakladaniu zamowienia', () => {
       url: '/zamowienia/nowe',
       headers: naglowek,
       payload: {
-        f_nip: KLIENT.nip, f_firma: KLIENT.nazwa, w_nazwa: 'Jan Kowalski',
-        poz_nazwa: ['STOP 70x100'], poz_sku: [''], poz_ilosc: ['1'],
-        poz_cena_netto: [''], poz_cena_brutto: ['100,00'],
+        f_nip: KLIENT.nip,
+        f_firma: KLIENT.nazwa,
+        w_nazwa: 'Jan Kowalski',
+        poz_nazwa: ['STOP 70x100'],
+        poz_sku: [''],
+        poz_ilosc: ['1'],
+        poz_cena_netto: [''],
+        poz_cena_brutto: ['100,00'],
       },
     });
     expect(odp.statusCode).toBe(302);

@@ -15,7 +15,14 @@ import { skonfigurowanyUrl } from '../../core/konfiguracja-wartosci.ts';
 import { efektywnyTryb } from '../../core/tryb.ts';
 import { wczytajKonfiguracjeIntegracji } from '../../oms/db/konfiguracja-integracji.js';
 import { wylaczoneModuly, kosztyWlaczoneOd } from '../../oms/db/moduly-opcjonalne.js';
-import { zrodloKsefKosztow, czuwaczZeZrodla, wizualizacjaZeZrodla, odmowaKsefWProbie, type KlientKsef, type ZestawKsef } from './ksef-ustawien.ts';
+import {
+  zrodloKsefKosztow,
+  czuwaczZeZrodla,
+  wizualizacjaZeZrodla,
+  odmowaKsefWProbie,
+  type KlientKsef,
+  type ZestawKsef,
+} from './ksef-ustawien.ts';
 import { registerUstawieniaKsefRoutes } from './trasy/ustawienia-ksef.js';
 import { zrodloNipuIBdoFirmy } from '../../oms/db/nip-bdo-firmy.js';
 
@@ -23,32 +30,46 @@ export const ODSTEP_KOSZTOW_MS = 3600000;
 export function wczytajKoszty(env: Srodowisko) {
   skonfigurowanyUrl(env.KSEF_API, 'KSEF_API');
   // Budżet przebiegu porównujemy z dobą, nie z odstępem zegara: tyknięcia poza dobowym oknem pobrania i tak są pomijane.
-  if (NAJDLUZSZY_PRZEBIEG_KOSZTOW_MS >= ODSTEP_OKNA_POBRANIA_MS) throw new Error('Budżet czuwacza kosztów nie mieści się przed następnym dobowym oknem pobrania.');
+  if (NAJDLUZSZY_PRZEBIEG_KOSZTOW_MS >= ODSTEP_OKNA_POBRANIA_MS)
+    throw new Error('Budżet czuwacza kosztów nie mieści się przed następnym dobowym oknem pobrania.');
   const token = env.KSEF_TOKEN?.trim();
-  if ((env.KSEF_TOKEN || env.KSEF_NIP || env.KSEF_API || env.KSEF_ARCHIWUM) && !token) throw new Error('Sekcja KSeF wymaga KSEF_TOKEN.');
+  if ((env.KSEF_TOKEN || env.KSEF_NIP || env.KSEF_API || env.KSEF_ARCHIWUM) && !token)
+    throw new Error('Sekcja KSeF wymaga KSEF_TOKEN.');
   // NIP sprzedawcy także bez tokenu w pliku — to kontekst logowania tokenem z Ustawień → Integracje → KSeF.
   const nip = nipSprzedawcy(env, Boolean(token));
-  if (token && env.KSEF_NIP?.trim() && znormalizujNip(env.KSEF_NIP) !== nip) throw new Error('KSEF_NIP musi być zgodny z OMS_SPRZEDAWCA_NIP.');
+  if (token && env.KSEF_NIP?.trim() && znormalizujNip(env.KSEF_NIP) !== nip)
+    throw new Error('KSEF_NIP musi być zgodny z OMS_SPRZEDAWCA_NIP.');
   // Adres API tylko z pliku — ten sam dla tokenu z pliku i z ekranu.
   const baseUrl = env.KSEF_API?.trim().replace(/\/+$/, '') || undefined;
-  return { ksef: token ? { token, nip: nip!, baseUrl } : null, nipSprzedawcy: nip, adresKsef: baseUrl,
+  return {
+    ksef: token ? { token, nip: nip!, baseUrl } : null,
+    nipSprzedawcy: nip,
+    adresKsef: baseUrl,
     // Piaskownica: token z ekranu nie wychodzi do KSeF (atrapa albo odmowa).
     proba: efektywnyTryb(env) === 'proba',
-    katalogKosztow: env.KSEF_ARCHIWUM?.trim() || null, katalogSprzedazy: env.INFAKT_ARCHIWUM?.trim() || null,
+    katalogKosztow: env.KSEF_ARCHIWUM?.trim() || null,
+    katalogSprzedazy: env.INFAKT_ARCHIWUM?.trim() || null,
     // Archiwum programu wbudowanego (jak faktury/modul.ts) — wybór w zbuduj, gdy program jest znany.
     katalogSprzedazyWbudowanego: env.OMS_ARCHIWUM_SPRZEDAZY?.trim() || env.INFAKT_ARCHIWUM?.trim() || null,
-    odstepMs: ODSTEP_KOSZTOW_MS };
+    odstepMs: ODSTEP_KOSZTOW_MS,
+  };
 }
 // Z tokenem w pliku brak NIP-u sprzedawcy W PLIKU zatrzymuje start jak dotąd (token z pliku = kontekst z pliku; KSEF_NIP
 // porównujemy przy starcie). Bez tokenu w pliku NIP z pliku jest tylko pierwszym źródłem — zbuduj czyta
 // bieżący NIP (plik → Ustawienia → Firma) przy każdym użyciu tokenu z ekranu.
 function nipSprzedawcy(env: Srodowisko, wymagany: boolean): string | null {
   let nip: string | null = null;
-  try { nip = wczytajSprzedawce(env).nip; } catch (e) { if (wymagany) throw e; return null; }
+  try {
+    nip = wczytajSprzedawce(env).nip;
+  } catch (e) {
+    if (wymagany) throw e;
+    return null;
+  }
   if (wymagany && !nip) throw new Error(BRAK_NIP_PRZY_TOKENIE);
   return nip;
 }
-const BRAK_NIP_PRZY_TOKENIE = 'KSEF_TOKEN w pliku konfiguracji wymaga OMS_SPRZEDAWCA_NIP w tym samym pliku (10 cyfr) — token loguje do KSeF w kontekście tej firmy. Dopisz NIP do pliku albo usuń KSEF_TOKEN i dodaj token w Ustawienia → Integracje → KSeF.';
+const BRAK_NIP_PRZY_TOKENIE =
+  'KSEF_TOKEN w pliku konfiguracji wymaga OMS_SPRZEDAWCA_NIP w tym samym pliku (10 cyfr) — token loguje do KSeF w kontekście tej firmy. Dopisz NIP do pliku albo usuń KSEF_TOKEN i dodaj token w Ustawienia → Integracje → KSeF.';
 
 const najpozniejsza = (daty: (string | null)[]): string | null =>
   daty.filter((d): d is string => Boolean(d)).sort((a, b) => Date.parse(b) - Date.parse(a))[0] ?? null;
@@ -56,19 +77,39 @@ const najpozniejsza = (daty: (string | null)[]): string | null =>
 type FabrykaKsef = (o: { token: string; nip: string; baseUrl?: string }) => KlientKsef;
 // `atrapaKsef` — atrapa klienta KSeF piaskownicy i demo (deploy/proba/atrapy/ksef.mjs) dla tokenu z Ustawień,
 // jak `fabryki.createGusClient` w module zamówień. Poza OMS_TRYB=proba odmowa już przy konfiguracji.
-export function createModulKoszty(o: { createKlient?: typeof createKsefClient; atrapaKsef?: FabrykaKsef; fabryki?: Record<string, (...args: any[]) => any> } = {}): ModulOms<ReturnType<typeof wczytajKoszty>> {
+export function createModulKoszty(
+  o: {
+    createKlient?: typeof createKsefClient;
+    atrapaKsef?: FabrykaKsef;
+    fabryki?: Record<string, (...args: any[]) => any>;
+  } = {},
+): ModulOms<ReturnType<typeof wczytajKoszty>> {
   return {
-    nazwa: 'koszty', wersja: '1.0.0', wymaga: ['rdzen', 'web', 'faktury'],
+    nazwa: 'koszty',
+    wersja: '1.0.0',
+    wymaga: ['rdzen', 'web', 'faktury'],
     kluczeIntegracji: [...integracje.ksef.kluczeIntegracji],
-    konfiguracja: env => {
+    konfiguracja: (env) => {
       const k = wczytajKoszty(env);
-      if (o.atrapaKsef && !k.proba) throw new Error('Fabryka atrapaKsef (atrapa KSeF piaskownicy) wolno podać tylko w trybie próby (OMS_TRYB=proba)');
+      if (o.atrapaKsef && !k.proba)
+        throw new Error(
+          'Fabryka atrapaKsef (atrapa KSeF piaskownicy) wolno podać tylko w trybie próby (OMS_TRYB=proba)',
+        );
       return k;
     },
     migracje: [],
     uprawnienia: [{ klucz: 'koszty', etykieta: 'Koszty', role: ['admin', 'operator'] }],
-    menu: [{ dzial: 'sprzedaz', grupa: 'faktury', etykieta: 'Koszty', adres: '/koszty', uprawnienie: 'koszty', kolejnosc: 40 }],
-    zbuduj: ctx => {
+    menu: [
+      {
+        dzial: 'sprzedaz',
+        grupa: 'faktury',
+        etykieta: 'Koszty',
+        adres: '/koszty',
+        uprawnienie: 'koszty',
+        kolejnosc: 40,
+      },
+    ],
+    zbuduj: (ctx) => {
       const { db, konfiguracja: k, teraz, log } = ctx;
       const infakt = ctx.usluga<any>('faktury', 'infakt');
       // Jeden zestaw = jeden klient, JEDNA trwała sesja (tokeny_ksef) i czuwacz/wizualizacja na tej samej sesji —
@@ -76,43 +117,100 @@ export function createModulKoszty(o: { createKlient?: typeof createKsefClient; a
       // Sesja zna odcisk tokenu, którym ją wydano — para innego tokenu to dla niej brak pary.
       const zestaw = (klient: KlientKsef, t: { token: string; nip: string }): ZestawKsef => {
         const sesja = createSesjaKsef({ db, klient, teraz, odcisk: odciskTokenuKsef(t) });
-        return { klient, sesja,
-          czuwacz: (o.fabryki?.createCzuwaczKosztow ?? createCzuwaczKosztow)({ db, klient, sesja, teraz, log, katalogArchiwum: k.katalogKosztow } as any),
-          wizualizacja: (o.fabryki?.createWizualizacjaKosztuFn ?? createWizualizacjaKosztu)({ db, klient, sesja } as any) };
+        return {
+          klient,
+          sesja,
+          czuwacz: (o.fabryki?.createCzuwaczKosztow ?? createCzuwaczKosztow)({
+            db,
+            klient,
+            sesja,
+            teraz,
+            log,
+            katalogArchiwum: k.katalogKosztow,
+          } as any),
+          wizualizacja: (o.fabryki?.createWizualizacjaKosztuFn ?? createWizualizacjaKosztu)({
+            db,
+            klient,
+            sesja,
+          } as any),
+        };
       };
-      const zPliku = k.ksef ? zestaw((o.createKlient ?? createKsefClient)({ ...k.ksef, fetchImpl: undefined }) as KlientKsef, k.ksef) : null;
+      const zPliku = k.ksef
+        ? zestaw((o.createKlient ?? createKsefClient)({ ...k.ksef, fetchImpl: undefined }) as KlientKsef, k.ksef)
+        : null;
       // Plik → panel → brak, przy każdym użyciu (ksef-ustawien.ts). Piaskownica: atrapa albo odmowa.
-      const fabryka: FabrykaKsef = o.atrapaKsef ?? (k.proba ? odmowaKsefWProbie
-        : (opcje) => (o.createKlient ?? createKsefClient)({ ...opcje, fetchImpl: undefined }) as KlientKsef);
+      const fabryka: FabrykaKsef =
+        o.atrapaKsef ??
+        (k.proba
+          ? odmowaKsefWProbie
+          : (opcje) => (o.createKlient ?? createKsefClient)({ ...opcje, fetchImpl: undefined }) as KlientKsef);
       // Kontekst tokenu z ekranu = bieżący NIP firmy (plik → Ustawienia → Firma), czytany przy każdym użyciu.
       const nipFirmy = zrodloNipuIBdoFirmy({ db, zPliku: { nip: k.nipSprzedawcy } });
       const nipTeraz = () => nipFirmy.biezacy().nip;
-      const zrodloKsef = zrodloKsefKosztow({ zPliku, wczytaj: () => wczytajKonfiguracjeIntegracji(db, 'ksef'),
-        nipSprzedawcy: nipTeraz, baseUrl: k.adresKsef, fabryka, zestaw, teraz,
+      const zrodloKsef = zrodloKsefKosztow({
+        zPliku,
+        wczytaj: () => wczytajKonfiguracjeIntegracji(db, 'ksef'),
+        nipSprzedawcy: nipTeraz,
+        baseUrl: k.adresKsef,
+        fabryka,
+        zestaw,
+        teraz,
         // Ustawienia → Moduły: sprawdzane przy każdym przebiegu i każdym PDF-ie, bez restartu.
-        wylaczony: () => wylaczoneModuly(db).includes('koszty') });
+        wylaczony: () => wylaczoneModuly(db).includes('koszty'),
+      });
       const czuwaczKosztow = czuwaczZeZrodla(zrodloKsef);
       const wizualizacjaKosztu = wizualizacjaZeZrodla(zrodloKsef);
-      const paczkaDlaBiura = infakt ? (o.fabryki?.createPaczkaDlaBiuraFn ?? createPaczkaDlaBiura)({ db, infakt, wizualizacjaKosztu,
-        katalogSprzedazy: ctx.usluga<any>('faktury', 'programFakturowy')?.opis?.wbudowany === true
-          ? k.katalogSprzedazyWbudowanego : k.katalogSprzedazy, katalogKosztow: k.katalogKosztow, teraz, log,
-        // XML i UPO programu wbudowanego z usługi modułu faktur; bez niej paczka jak u inFaktu.
-        plikiKsef: (() => { try { return ctx.usluga<any>('faktury', 'plikiKsefDokumentu'); } catch { return null; } })() } as any) : null;
+      const paczkaDlaBiura = infakt
+        ? (o.fabryki?.createPaczkaDlaBiuraFn ?? createPaczkaDlaBiura)({
+            db,
+            infakt,
+            wizualizacjaKosztu,
+            katalogSprzedazy:
+              ctx.usluga<any>('faktury', 'programFakturowy')?.opis?.wbudowany === true
+                ? k.katalogSprzedazyWbudowanego
+                : k.katalogSprzedazy,
+            katalogKosztow: k.katalogKosztow,
+            teraz,
+            log,
+            // XML i UPO programu wbudowanego z usługi modułu faktur; bez niej paczka jak u inFaktu.
+            plikiKsef: (() => {
+              try {
+                return ctx.usluga<any>('faktury', 'plikiKsefDokumentu');
+              } catch {
+                return null;
+              }
+            })(),
+          } as any)
+        : null;
       // `ksefKlient`/`ksefSesja` — zestaw z PLIKU (null bez KSEF_TOKEN); bieżący zestaw (także z panelu) daje `zrodloKsef`.
-      return { uslugi: { config: k, ksefKlient: zPliku?.klient ?? null, ksefSesja: zPliku?.sesja ?? null, zrodloKsef,
-        czuwaczKosztow, wizualizacjaKosztu, paczkaDlaBiura,
-        stanKosztow: () => stanKosztow(db),
-        // Funkcje, nie wartości z chwili startu — token z panelu i przełącznik modułu działają bez restartu.
-        kosztyWlaczone: () => czuwaczKosztow.dostepny(), modulWylaczony: () => zrodloKsef.wylaczony(),
-        // Od kiedy pobieranie jest włączone (próg /health liczy się od tej chwili, jeśli jest późniejsza niż ostatnie
-        // udane pobranie): zapis tokenu z ekranu (gdy to on jest w użyciu) albo włączenie modułu w Ustawienia → Moduły.
-        wlaczoneOd: () => najpozniejsza([zrodloKsef.zEnv ? null : wczytajKonfiguracjeIntegracji(db, 'ksef')?.zmienionoAt ?? null,
-          kosztyWlaczoneOd(db)]) },
-        trasy: app => {
-          zarejestrujTrasyKosztow(app, { db,
+      return {
+        uslugi: {
+          config: k,
+          ksefKlient: zPliku?.klient ?? null,
+          ksefSesja: zPliku?.sesja ?? null,
+          zrodloKsef,
+          czuwaczKosztow,
+          wizualizacjaKosztu,
+          paczkaDlaBiura,
+          stanKosztow: () => stanKosztow(db),
+          // Funkcje, nie wartości z chwili startu — token z panelu i przełącznik modułu działają bez restartu.
+          kosztyWlaczone: () => czuwaczKosztow.dostepny(),
+          modulWylaczony: () => zrodloKsef.wylaczony(),
+          // Od kiedy pobieranie jest włączone (próg /health liczy się od tej chwili, jeśli jest późniejsza niż ostatnie
+          // udane pobranie): zapis tokenu z ekranu (gdy to on jest w użyciu) albo włączenie modułu w Ustawienia → Moduły.
+          wlaczoneOd: () =>
+            najpozniejsza([
+              zrodloKsef.zEnv ? null : (wczytajKonfiguracjeIntegracji(db, 'ksef')?.zmienionoAt ?? null),
+              kosztyWlaczoneOd(db),
+            ]),
+        },
+        trasy: (app) => {
+          zarejestrujTrasyKosztow(app, {
+            db,
             czuwaczKosztow: ctx.usluga<any>('koszty', 'czuwaczKosztow'),
             wizualizacjaKosztu: ctx.usluga<any>('koszty', 'wizualizacjaKosztu'),
-            paczkaDlaBiura: ctx.usluga<any>('koszty', 'paczkaDlaBiura') } as any);
+            paczkaDlaBiura: ctx.usluga<any>('koszty', 'paczkaDlaBiura'),
+          } as any);
           registerUstawieniaKsefRoutes(app, { db, zrodloKsef, nipSprzedawcy: nipTeraz, infakt });
         },
         // Zegar stoi zawsze: token zapisany w panelu ma pobierać od następnego tyknięcia. Bez tokenu albo przy

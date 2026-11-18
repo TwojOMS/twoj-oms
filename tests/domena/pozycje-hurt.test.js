@@ -8,8 +8,14 @@ import { parsujHurtPozycji, ustawWMapie, ustawNadpisaniePozycji } from '../../sr
 
 describe('parsujHurtPozycji', () => {
   it('zszywa opcjonalne sku i netto, odmawia każdej urwanej kolumny', () => {
-    const body = { klucz: ['s1', ''], nazwa: ['A', 'B'], ilosc: ['1', '2'], cena_brutto: ['10', ''],
-      sku: ['', 'SKU-X'], cena_netto: ['', '100'] };
+    const body = {
+      klucz: ['s1', ''],
+      nazwa: ['A', 'B'],
+      ilosc: ['1', '2'],
+      cena_brutto: ['10', ''],
+      sku: ['', 'SKU-X'],
+      cena_netto: ['', '100'],
+    };
     expect(parsujHurtPozycji(body)[1]).toMatchObject({ sku: 'SKU-X', cena_netto: '100' });
     for (const pole of ['sku', 'cena_netto', 'vat']) {
       expect(() => parsujHurtPozycji({ ...body, [pole]: [''] })).toThrow(/tyle samo/);
@@ -32,17 +38,23 @@ describe('parsujHurtPozycji', () => {
   // Przeglądarka przy JEDNYM wierszu przysyła pola jako pojedyncze wartości, nie tablice —
   // bez tego zamówienie z jedną pozycją byłoby jedynym, którego nie da się zapisać.
   it('pojedynczy wiersz przychodzi bez tablic i też działa', () => {
-    expect(parsujHurtPozycji({ klucz: 's1', nazwa: 'STOP', ilosc: '1', cena_brutto: '10' }))
-      .toEqual([{ klucz: 's1', nazwa: 'STOP', ilosc: '1', cena_brutto: '10' }]);
+    expect(parsujHurtPozycji({ klucz: 's1', nazwa: 'STOP', ilosc: '1', cena_brutto: '10' })).toEqual([
+      { klucz: 's1', nazwa: 'STOP', ilosc: '1', cena_brutto: '10' },
+    ]);
   });
 
   // ⚠️ Tablice różnej długości = żądanie urwane albo obce. Zszycie „na ile się da" wpisałoby
   // cenę jednej pozycji do drugiej — czyli po cichu zmieniłoby kwotę, której panel oczekuje
   // od klienta. To są pieniądze, więc odmowa jest jedyną poprawną odpowiedzią.
   it('tablice różnej długości = odmowa, bez zapisu czegokolwiek', () => {
-    expect(() => parsujHurtPozycji({
-      klucz: ['s1', 's2'], nazwa: ['A', 'B'], ilosc: ['1'], cena_brutto: ['10', '20'],
-    })).toThrow(/tyle samo|różn/i);
+    expect(() =>
+      parsujHurtPozycji({
+        klucz: ['s1', 's2'],
+        nazwa: ['A', 'B'],
+        ilosc: ['1'],
+        cena_brutto: ['10', '20'],
+      }),
+    ).toThrow(/tyle samo|różn/i);
   });
 
   it('żądanie bez ani jednego pola formularza = odmowa', () => {
@@ -91,8 +103,10 @@ describe('ustawWMapie', () => {
 // teraz z ustawWMapie, więc ten test pilnuje, że refaktor niczego nie przestawił.
 describe('ustawNadpisaniePozycji (edycja pojedynczej pozycji)', () => {
   it('czyta JSON z bazy i oddaje mapę', () => {
-    expect(ustawNadpisaniePozycji('{"s1":{"ilosc":3}}', 's2', { nazwa: 'X' }))
-      .toEqual({ s1: { ilosc: 3 }, s2: { nazwa: 'X' } });
+    expect(ustawNadpisaniePozycji('{"s1":{"ilosc":3}}', 's2', { nazwa: 'X' })).toEqual({
+      s1: { ilosc: 3 },
+      s2: { nazwa: 'X' },
+    });
   });
 
   it('skasowanie ostatniego klucza daje null, nie pusty obiekt', () => {

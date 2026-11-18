@@ -5,7 +5,13 @@
 // Dane zmyślone.
 import { describe, it, expect } from 'vitest';
 import {
-  STAWKI_VAT, STAWKI_Z_ZW, czyStawkaVat, stawkiDlaProgramu, stawkaPozycji, nettoZBruttoDoPokazania, bruttoZNetto,
+  STAWKI_VAT,
+  STAWKI_Z_ZW,
+  czyStawkaVat,
+  stawkiDlaProgramu,
+  stawkaPozycji,
+  nettoZBruttoDoPokazania,
+  bruttoZNetto,
 } from '../../src/domena/vat.js';
 import { parsujStawke, parsujNowaPozycje } from '../../src/domena/pozycje-reczne.js';
 import { pozycjeDokumentu } from '../../src/domena/pozycje-faktury.js';
@@ -19,7 +25,9 @@ function baza(wartosc) {
     zapisy,
     prepare: (sql) => ({
       get: () => (wartosc === undefined ? undefined : { wartosc }),
-      run: (...arg) => { zapisy.push({ sql, arg }); },
+      run: (...arg) => {
+        zapisy.push({ sql, arg });
+      },
     }),
   };
 }
@@ -30,8 +38,25 @@ const zamowienie = (nad = {}) => ({
   kwota_brutto: '200.00',
   koszt_dostawy_brutto: '20.00',
   pozycje: [
-    { klucz: 's1', nazwa: 'Lampa wisząca', ilosc: 1, cena_brutto: '123.00', brutto_linii: '123.00', cena_netto: '100.00', zrodlo: 'sklep' },
-    { klucz: 'r2', nazwa: 'Kurs szycia abażurów', ilosc: 1, cena_brutto: '57.00', brutto_linii: '57.00', zrodlo: 'reczna', reczna: true, vat: 'zw' },
+    {
+      klucz: 's1',
+      nazwa: 'Lampa wisząca',
+      ilosc: 1,
+      cena_brutto: '123.00',
+      brutto_linii: '123.00',
+      cena_netto: '100.00',
+      zrodlo: 'sklep',
+    },
+    {
+      klucz: 'r2',
+      nazwa: 'Kurs szycia abażurów',
+      ilosc: 1,
+      cena_brutto: '57.00',
+      brutto_linii: '57.00',
+      zrodlo: 'reczna',
+      reczna: true,
+      vat: 'zw',
+    },
   ],
   ...nad,
 });
@@ -56,7 +81,8 @@ describe('vat.js — listy i sprawdzenie stawki', () => {
     expect(czyStawkaVat('zw', { zw: true })).toBe(true);
     expect(czyStawkaVat(' zw ', { zw: true })).toBe(true);
     for (const s of ['23', '8', '5', '0', 23, 0]) expect(czyStawkaVat(s, { zw: true })).toBe(czyStawkaVat(s));
-    for (const s of ['ZW', 'np', 'oo', '0 WDT', '', null, undefined, '08']) expect(czyStawkaVat(s, { zw: true })).toBe(false);
+    for (const s of ['ZW', 'np', 'oo', '0 WDT', '', null, undefined, '08'])
+      expect(czyStawkaVat(s, { zw: true })).toBe(false);
   });
 
   it('stawkiDlaProgramu: program wbudowany → z „zw”; inFakt, brak programu, brak opisu → STAWKI_VAT', () => {
@@ -92,19 +118,28 @@ describe('vat.js — listy i sprawdzenie stawki', () => {
 describe('pozycje-reczne.js — stawka z formularza', () => {
   it('bez flagi „zw” to odmowa z tym samym zdaniem co dziś', () => {
     expect(() => parsujStawke('zw', '23')).toThrow('Nieznana stawka VAT „zw” — wybierz 23, 8, 5, 0%.');
-    expect(() => parsujNowaPozycje({ nazwa: 'Kurs', ilosc: '1', cena_brutto: '57.00', vat: 'zw' }))
-      .toThrow('Nieznana stawka VAT „zw”');
+    expect(() => parsujNowaPozycje({ nazwa: 'Kurs', ilosc: '1', cena_brutto: '57.00', vat: 'zw' })).toThrow(
+      'Nieznana stawka VAT „zw”',
+    );
   });
 
   it('z flagą „zw” przechodzi; netto → brutto bez narzutu', () => {
     expect(parsujStawke('zw', '23', { zw: true })).toBe('zw');
     expect(parsujStawke('', 'zw', { zw: true })).toBe('zw');
-    expect(parsujNowaPozycje({ nazwa: 'Kurs', ilosc: '2', cena_netto: '57,00', vat: 'zw' }, { zw: true }))
-      .toEqual({ nazwa: 'Kurs', sku: null, ilosc: 2, cena_brutto: '57.00', brutto_linii: '114.00', vat: 'zw' });
+    expect(parsujNowaPozycje({ nazwa: 'Kurs', ilosc: '2', cena_netto: '57,00', vat: 'zw' }, { zw: true })).toEqual({
+      nazwa: 'Kurs',
+      sku: null,
+      ilosc: 2,
+      cena_brutto: '57.00',
+      brutto_linii: '114.00',
+      vat: 'zw',
+    });
   });
 
   it('z flagą stawka spoza listy dalej odmawia — zdanie wymienia też „zw”', () => {
-    expect(() => parsujStawke('np', '23', { zw: true })).toThrow('Nieznana stawka VAT „np” — wybierz 23, 8, 5, 0% albo zw.');
+    expect(() => parsujStawke('np', '23', { zw: true })).toThrow(
+      'Nieznana stawka VAT „np” — wybierz 23, 8, 5, 0% albo zw.',
+    );
   });
 
   it('z flagą stawki liczbowe dają to samo co bez flagi', () => {
@@ -134,20 +169,33 @@ describe('stawka-vat.js — domyślna stawka firmy', () => {
 
 describe('pozycje-faktury.js — linie dokumentu', () => {
   it('bez flagi: domyślna „zw” to wyjątek (jak dziś), ręczna „zw” idzie stawką domyślną', () => {
-    expect(() => pozycjeDokumentu(zamowienie(), { stawkaDomyslna: 'zw' })).toThrow('brak albo zła stawka domyślna („zw”)');
-    expect(pozycjeDokumentu(zamowienie(), { stawkaDomyslna: '23' }).map((l) => l.tax_symbol)).toEqual(['23', '23', '23']);
+    expect(() => pozycjeDokumentu(zamowienie(), { stawkaDomyslna: 'zw' })).toThrow(
+      'brak albo zła stawka domyślna („zw”)',
+    );
+    expect(pozycjeDokumentu(zamowienie(), { stawkaDomyslna: '23' }).map((l) => l.tax_symbol)).toEqual([
+      '23',
+      '23',
+      '23',
+    ]);
   });
 
   it('z flagą: ręczna „zw” zostaje „zw”, domyślna „zw” trafia do sklepowej i dostawy', () => {
-    expect(pozycjeDokumentu(zamowienie(), { stawkaDomyslna: '23', zw: true }).map((l) => l.tax_symbol))
-      .toEqual(['23', 'zw', '23']);
-    expect(pozycjeDokumentu(zamowienie(), { stawkaDomyslna: 'zw', zw: true }).map((l) => l.tax_symbol))
-      .toEqual(['zw', 'zw', 'zw']);
+    expect(pozycjeDokumentu(zamowienie(), { stawkaDomyslna: '23', zw: true }).map((l) => l.tax_symbol)).toEqual([
+      '23',
+      'zw',
+      '23',
+    ]);
+    expect(pozycjeDokumentu(zamowienie(), { stawkaDomyslna: 'zw', zw: true }).map((l) => l.tax_symbol)).toEqual([
+      'zw',
+      'zw',
+      'zw',
+    ]);
   });
 
   it('z flagą nabywca z UE dalej wymusza 0 na każdej linii (WDT bez zmian)', () => {
-    expect(pozycjeDokumentu(zamowienie({ nip: 'DE123456789' }), { stawkaDomyslna: 'zw', zw: true }).map((l) => l.tax_symbol))
-      .toEqual(['0', '0', '0']);
+    expect(
+      pozycjeDokumentu(zamowienie({ nip: 'DE123456789' }), { stawkaDomyslna: 'zw', zw: true }).map((l) => l.tax_symbol),
+    ).toEqual(['0', '0', '0']);
   });
 });
 
@@ -157,8 +205,13 @@ describe('tabela-pozycji.js — karta zamówienia', () => {
     expect(w.map((x) => x.stawka)).toEqual(['23', '23', '23', null]);
     expect(w[1].stawkaWlasna).toBeNull();
     expect(w[1].cenaNetto).toBe('46.34');
-    expect(podsumowanieVatKarty(zamowienie(), { stawkaDomyslna: '23' }))
-      .toMatchObject({ nettoZl: '162.60', vatZl: '37.40', bruttoZl: '200.00', zeroKrajowe: false, blad: null });
+    expect(podsumowanieVatKarty(zamowienie(), { stawkaDomyslna: '23' })).toMatchObject({
+      nettoZl: '162.60',
+      vatZl: '37.40',
+      bruttoZl: '200.00',
+      zeroKrajowe: false,
+      blad: null,
+    });
   });
 
   it('z flagą: wiersz „zw” — netto = brutto, opis „zw” (bez %), stawka własna „zw”', () => {
@@ -170,14 +223,23 @@ describe('tabela-pozycji.js — karta zamówienia', () => {
 
   it('z flagą: podsumowanie mieszane „zw” + 23 — VAT tylko od części 23%', () => {
     // 123,00 / 23 → 100,00 + 23,00; 20,00 / 23 → 16,26 + 3,74; 57,00 zw → 57,00 + 0
-    expect(podsumowanieVatKarty(zamowienie(), { stawkaDomyslna: '23', zw: true }))
-      .toMatchObject({ nettoZl: '173.26', vatZl: '26.74', bruttoZl: '200.00', wdt: false, zeroKrajowe: false, blad: null });
+    expect(podsumowanieVatKarty(zamowienie(), { stawkaDomyslna: '23', zw: true })).toMatchObject({
+      nettoZl: '173.26',
+      vatZl: '26.74',
+      bruttoZl: '200.00',
+      wdt: false,
+      zeroKrajowe: false,
+      blad: null,
+    });
   });
 
   it('z flagą i domyślną „zw”: cała karta bez VAT', () => {
     const w = wierszePozycji(zamowienie(), { stawkaDomyslna: 'zw', zw: true });
     expect(w.find((x) => x.wysylka)).toMatchObject({ stawka: 'zw', stawkaOpis: 'zw' });
-    expect(podsumowanieVatKarty(zamowienie(), { stawkaDomyslna: 'zw', zw: true }))
-      .toMatchObject({ nettoZl: '200.00', vatZl: '0.00', bruttoZl: '200.00' });
+    expect(podsumowanieVatKarty(zamowienie(), { stawkaDomyslna: 'zw', zw: true })).toMatchObject({
+      nettoZl: '200.00',
+      vatZl: '0.00',
+      bruttoZl: '200.00',
+    });
   });
 });

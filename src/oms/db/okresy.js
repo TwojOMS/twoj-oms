@@ -15,9 +15,9 @@ export function pobierzOkres(db, id) {
 }
 
 export function znajdzOkres(db, { klientKlucz, rok, miesiac }) {
-  return db.prepare(
-    'SELECT * FROM okresy_rozliczeniowe WHERE klient_klucz = ? AND rok = ? AND miesiac = ?',
-  ).get(klientKlucz, rok, miesiac);
+  return db
+    .prepare('SELECT * FROM okresy_rozliczeniowe WHERE klient_klucz = ? AND rok = ? AND miesiac = ?')
+    .get(klientKlucz, rok, miesiac);
 }
 
 /**
@@ -47,14 +47,14 @@ export function zapewnijOkres(db, { klientKlucz, rok, miesiac }) {
     );
   }
   db.prepare(
-    'INSERT OR IGNORE INTO okresy_rozliczeniowe (klient_klucz, rok, miesiac, stan, utworzony_at)'
-    + ' VALUES (?, ?, ?, ?, ?)',
+    'INSERT OR IGNORE INTO okresy_rozliczeniowe (klient_klucz, rok, miesiac, stan, utworzony_at)' +
+      ' VALUES (?, ?, ?, ?, ?)',
   ).run(klientKlucz, rok, miesiac, STAN.OTWARTY, teraz());
   const okres = znajdzOkres(db, { klientKlucz, rok, miesiac });
   if (!okres) {
     throw new Error(
-      'Nie udało się założyć okresu rozliczeniowego dla '
-      + `${JSON.stringify({ klientKlucz, rok, miesiac })} — niekompletne dane okresu.`,
+      'Nie udało się założyć okresu rozliczeniowego dla ' +
+        `${JSON.stringify({ klientKlucz, rok, miesiac })} — niekompletne dane okresu.`,
     );
   }
   return okres;
@@ -62,21 +62,24 @@ export function zapewnijOkres(db, { klientKlucz, rok, miesiac }) {
 
 /** Identyfikatory zamowien okresu, w kolejnosci zlozenia — tak jak pojda na fakture. */
 export function zamowieniaOkresu(db, id) {
-  return db.prepare(
-    'SELECT id FROM zamowienia WHERE okres_rozliczeniowy_id = ? ORDER BY utworzone_at, id',
-  ).all(id).map((w) => w.id);
+  return db
+    .prepare('SELECT id FROM zamowienia WHERE okres_rozliczeniowy_id = ? ORDER BY utworzone_at, id')
+    .all(id)
+    .map((w) => w.id);
 }
 
 export function zamknijOkres(db, id) {
-  db.prepare('UPDATE okresy_rozliczeniowe SET stan = ?, zamkniety_at = ? WHERE id = ?')
-    .run(STAN.ZAMKNIETY, teraz(), id);
+  db.prepare('UPDATE okresy_rozliczeniowe SET stan = ?, zamkniety_at = ? WHERE id = ?').run(
+    STAN.ZAMKNIETY,
+    teraz(),
+    id,
+  );
   return pobierzOkres(db, id);
 }
 
 /** Powrot do „otwarty" — po nieudanej probie wystawienia faktury (bariera, awaria inFaktu). */
 export function otworzOkresPonownie(db, id) {
-  db.prepare('UPDATE okresy_rozliczeniowe SET stan = ?, zamkniety_at = NULL WHERE id = ?')
-    .run(STAN.OTWARTY, id);
+  db.prepare('UPDATE okresy_rozliczeniowe SET stan = ?, zamkniety_at = NULL WHERE id = ?').run(STAN.OTWARTY, id);
   return pobierzOkres(db, id);
 }
 
@@ -104,16 +107,18 @@ export function otworzOkresPonownie(db, id) {
  * przejscie dalej do `infakt.wystaw`.
  */
 export function rozpocznijFaktureOkresu(db, id) {
-  const wynik = db.prepare(
-    "UPDATE okresy_rozliczeniowe SET ksef_status = 'w_toku', utworzona_at = ?"
-    + ` WHERE id = ? AND ksef_status IS NULL AND ${idDokumentuSql()} IS NULL AND numer IS NULL`
-    + ' AND stan <> ?',
-  ).run(teraz(), id, STAN.ZAFAKTUROWANY);
+  const wynik = db
+    .prepare(
+      "UPDATE okresy_rozliczeniowe SET ksef_status = 'w_toku', utworzona_at = ?" +
+        ` WHERE id = ? AND ksef_status IS NULL AND ${idDokumentuSql()} IS NULL AND numer IS NULL` +
+        ' AND stan <> ?',
+    )
+    .run(teraz(), id, STAN.ZAFAKTUROWANY);
   if (wynik.changes === 0) {
     throw bladOperatora(
-      'Wystawianie faktury za ten okres zaczęło się już gdzie indziej (drugie kliknięcie albo '
-      + 'druga karta) — panel nie wystawi drugiego dokumentu za ten sam miesiąc. Odśwież widok '
-      + 'okresu i zobacz, czym skończyła się tamta próba.',
+      'Wystawianie faktury za ten okres zaczęło się już gdzie indziej (drugie kliknięcie albo ' +
+        'druga karta) — panel nie wystawi drugiego dokumentu za ten sam miesiąc. Odśwież widok ' +
+        'okresu i zobacz, czym skończyła się tamta próba.',
     );
   }
   return pobierzOkres(db, id);
@@ -124,8 +129,8 @@ export function rozpocznijFaktureOkresu(db, id) {
 export function zakonczFaktureOkresu(db, id, { uuid, numer, ksefStatus }, { program = 'infakt' } = {}) {
   if (typeof program !== 'string' || !program) throw new Error('zakonczFaktureOkresu: brak nazwy programu fakturowego');
   db.prepare(
-    'UPDATE okresy_rozliczeniowe SET program = ?, dokument_id = ?, infakt_uuid = ?, numer = ?, ksef_status = ?,'
-    + ' blad_opis = NULL, stan = ? WHERE id = ?',
+    'UPDATE okresy_rozliczeniowe SET program = ?, dokument_id = ?, infakt_uuid = ?, numer = ?, ksef_status = ?,' +
+      ' blad_opis = NULL, stan = ? WHERE id = ?',
   ).run(program, uuid, program === 'infakt' ? uuid : null, numer, ksefStatus, STAN.ZAFAKTUROWANY, id);
   return pobierzOkres(db, id);
 }
@@ -139,8 +144,8 @@ export function zakonczFaktureOkresu(db, id, { uuid, numer, ksefStatus }, { prog
  */
 export function zwolnijFaktureOkresu(db, id) {
   db.prepare(
-    'UPDATE okresy_rozliczeniowe SET ksef_status = NULL, utworzona_at = NULL, blad_opis = NULL,'
-    + ' stan = ?, zamkniety_at = NULL WHERE id = ?',
+    'UPDATE okresy_rozliczeniowe SET ksef_status = NULL, utworzona_at = NULL, blad_opis = NULL,' +
+      ' stan = ?, zamkniety_at = NULL WHERE id = ?',
   ).run(STAN.OTWARTY, id);
   return pobierzOkres(db, id);
 }
@@ -154,8 +159,10 @@ export function zwolnijFaktureOkresu(db, id) {
  * dopisane do tego miesiaca wypadloby poza fakture, ktora klient juz dostal.
  */
 export function oznaczOkresDoWyjasnienia(db, id, opis) {
-  db.prepare("UPDATE okresy_rozliczeniowe SET ksef_status = 'do_wyjasnienia', blad_opis = ? WHERE id = ?")
-    .run(opis, id);
+  db.prepare("UPDATE okresy_rozliczeniowe SET ksef_status = 'do_wyjasnienia', blad_opis = ? WHERE id = ?").run(
+    opis,
+    id,
+  );
   return pobierzOkres(db, id);
 }
 
@@ -194,10 +201,10 @@ export function odblokujFaktureOkresu(db, id) {
   }
   if (stan !== 'do_wyjasnienia' && stan !== 'zawieszona') {
     throw bladOperatora(
-      `Faktura za ten okres jest wystawiona${okres.numer ? ` (${okres.numer})` : ''} — odblokowanie zdjęłoby `
-      + 'blokadę z dokumentu, który na pewno istnieje w inFakcie, a kolejne kliknięcie wystawiłoby drugi. '
-      + 'Chcesz ją anulować? Skasuj ją w inFakcie (albo, jeśli już poszła do KSeF, wystaw korektę) — '
-      + 'panel tego za ciebie nie zrobi.',
+      `Faktura za ten okres jest wystawiona${okres.numer ? ` (${okres.numer})` : ''} — odblokowanie zdjęłoby ` +
+        'blokadę z dokumentu, który na pewno istnieje w inFakcie, a kolejne kliknięcie wystawiłoby drugi. ' +
+        'Chcesz ją anulować? Skasuj ją w inFakcie (albo, jeśli już poszła do KSeF, wystaw korektę) — ' +
+        'panel tego za ciebie nie zrobi.',
     );
   }
   return zwolnijFaktureOkresu(db, id);
@@ -214,11 +221,14 @@ export function odblokujFaktureOkresu(db, id) {
  * i wola ja trasa. Tutaj jest wylacznie tozsamosc pary — warstwa `db/` nie zna stanow faktury.
  */
 export function odepnijZamowienieOdOkresu(db, okresId, zamowienieId) {
-  const z = db.prepare('SELECT id FROM zamowienia WHERE id = ? AND okres_rozliczeniowy_id = ?')
+  const z = db
+    .prepare('SELECT id FROM zamowienia WHERE id = ? AND okres_rozliczeniowy_id = ?')
     .get(zamowienieId, okresId);
   if (!z) throw bladOperatora('To zamówienie nie należy do tego okresu rozliczeniowego.');
-  db.prepare('UPDATE zamowienia SET okres_rozliczeniowy_id = NULL, zmienione_at = ? WHERE id = ?')
-    .run(new Date().toISOString(), zamowienieId);
+  db.prepare('UPDATE zamowienia SET okres_rozliczeniowy_id = NULL, zmienione_at = ? WHERE id = ?').run(
+    new Date().toISOString(),
+    zamowienieId,
+  );
   return zamowienieId;
 }
 
@@ -231,14 +241,16 @@ export function odepnijZamowienieOdOkresu(db, okresId, zamowienieId) {
  * w odczycie wyzej, zeby dwa rownolegle zadania nie przepchnely obu zmian.
  */
 export function przypiszZamowienieDoOkresu(db, okresId, zamowienieId) {
-  const wynik = db.prepare(
-    'UPDATE zamowienia SET okres_rozliczeniowy_id = ?, zmienione_at = ?'
-    + ' WHERE id = ? AND okres_rozliczeniowy_id IS NULL',
-  ).run(okresId, new Date().toISOString(), zamowienieId);
+  const wynik = db
+    .prepare(
+      'UPDATE zamowienia SET okres_rozliczeniowy_id = ?, zmienione_at = ?' +
+        ' WHERE id = ? AND okres_rozliczeniowy_id IS NULL',
+    )
+    .run(okresId, new Date().toISOString(), zamowienieId);
   if (!wynik.changes) {
     throw bladOperatora(
-      'Nie dopisano zamówienia do okresu — albo nie ma takiego zamówienia, albo jest już '
-      + 'przypisane do jakiegoś miesiąca (wtedy najpierw je odepnij).',
+      'Nie dopisano zamówienia do okresu — albo nie ma takiego zamówienia, albo jest już ' +
+        'przypisane do jakiegoś miesiąca (wtedy najpierw je odepnij).',
     );
   }
   return zamowienieId;

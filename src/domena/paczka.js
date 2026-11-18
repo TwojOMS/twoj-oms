@@ -15,7 +15,9 @@ const ETYKIETY_POL = { waga: 'waga', dlugosc: 'długość', szerokosc: 'szeroko�
 // reguła musi rządzić formularzem nadania i formularzem wartości domyślnych — druga kopia
 // rozjechałaby się na przecinku dziesiętnym albo na zerze, czyli dokładnie tam, gdzie boli.
 export function liczbaDodatnia(surowa) {
-  const znormalizowana = String(surowa ?? '').trim().replace(',', '.');
+  const znormalizowana = String(surowa ?? '')
+    .trim()
+    .replace(',', '.');
   if (!znormalizowana) return null;
   const liczba = Number(znormalizowana);
   return Number.isFinite(liczba) && liczba > 0 ? liczba : null;
@@ -84,11 +86,14 @@ export function parsujPaczkeInpost(dane) {
   if (waga === null) {
     return { blad: 'Nieprawidłowa wartość pola: waga — musi być liczbą większą od zera.' };
   }
-  const gabaryt = String(dane?.gabaryt ?? '').trim().toUpperCase();
+  const gabaryt = String(dane?.gabaryt ?? '')
+    .trim()
+    .toUpperCase();
   if (!Object.hasOwn(GABARYTY_PACZKOMATU, gabaryt)) {
     return {
-      blad: `Nieprawidłowy gabaryt paczkomatu: „${dane?.gabaryt ?? ''}” — wybierz jeden z: `
-        + `${Object.keys(GABARYTY_PACZKOMATU).join(', ')}.`,
+      blad:
+        `Nieprawidłowy gabaryt paczkomatu: „${dane?.gabaryt ?? ''}” — wybierz jeden z: ` +
+        `${Object.keys(GABARYTY_PACZKOMATU).join(', ')}.`,
     };
   }
   return { paczka: { waga, gabaryt } };

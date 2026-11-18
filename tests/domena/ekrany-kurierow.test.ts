@@ -5,9 +5,18 @@ import { MODULY_KURIEROW } from '../../src/domena/moduly-kurierow.ts';
 import { tytulEkranuDlaAdresu } from '../../src/domena/ekrany.js';
 import { zbudujOms } from '../../src/oms/bootstrap.ts';
 
-const env = { OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000',
-  OMS_USER: 'operator', OMS_PASS: 'test', OMS_PROFORMY_KATALOG: tmpdir(), OMS_ETYKIETY_KATALOG: tmpdir() };
-const headers = { authorization: 'Basic ' + Buffer.from('operator:test').toString('base64'), origin: 'http://localhost' };
+const env = {
+  OMS_SPRZEDAWCA_NIP: '1234563218',
+  OMS_RACHUNEK: '34109010140000000000000000',
+  OMS_USER: 'operator',
+  OMS_PASS: 'test',
+  OMS_PROFORMY_KATALOG: tmpdir(),
+  OMS_ETYKIETY_KATALOG: tmpdir(),
+};
+const headers = {
+  authorization: 'Basic ' + Buffer.from('operator:test').toString('base64'),
+  origin: 'http://localhost',
+};
 
 const opisy = Object.values(MODULY_KURIEROW);
 const sciezki = [...new Set(opisy.map((opis) => opis.konfigurator.sciezka))];
@@ -28,7 +37,10 @@ describe('ekrany kurierów z rejestru', () => {
         const r = await a.app.inject({ method: 'GET', url: sciezka, headers });
         expect(r.statusCode, sciezka).toBe(200);
       }
-    } finally { await a.app.close(); a.db.close(); }
+    } finally {
+      await a.app.close();
+      a.db.close();
+    }
   });
 });
 
@@ -42,6 +54,9 @@ describe('szablon ustawienia-integracje — bez martwej sekcji „Kurierzy”', 
       expect(r.statusCode).toBe(200);
       expect(r.body).toContain('<section class="ust-sekcja" id="reklamy-ga4">');
       expect(r.body).not.toContain('<h2>Kurierzy</h2>');
-    } finally { await a.app.close(); a.db.close(); }
+    } finally {
+      await a.app.close();
+      a.db.close();
+    }
   });
 });

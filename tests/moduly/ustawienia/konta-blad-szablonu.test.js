@@ -20,12 +20,25 @@ const { nowyPanel, jako, post } = await import('../../pomoc/panel-konta-testowe.
 
 it('błąd odczytu szablonu z kodem: dawne zdanie, bez „Serwer poczty”, mail nie wysłany', async () => {
   let wyslane = 0;
-  const p = nowyPanel({ env: { OMS_ADRES_PANELU: 'https://panel.przyklad.invalid' },
-    nadpisania: { 'wiadomosci.mailer': { sendMail: async () => { wyslane += 1; } } } });
+  const p = nowyPanel({
+    env: { OMS_ADRES_PANELU: 'https://panel.przyklad.invalid' },
+    nadpisania: {
+      'wiadomosci.mailer': {
+        sendMail: async () => {
+          wyslane += 1;
+        },
+      },
+    },
+  });
   zalozKonto(p.db, { login: 'admin1', imie: 'Admin', haslo: 'h', rola: 'administrator', admin: true });
   stan.zepsuj = true;
-  const r = await post(p.app, '/ustawienia/konta/nowe', jako(p.db, 'admin1'),
-    { imie: 'Nowa Osoba', login: 'nowa', email: 'nowa@przyklad.invalid', rola: 'produkcja', sposob: 'mail' });
+  const r = await post(p.app, '/ustawienia/konta/nowe', jako(p.db, 'admin1'), {
+    imie: 'Nowa Osoba',
+    login: 'nowa',
+    email: 'nowa@przyklad.invalid',
+    rola: 'produkcja',
+    sposob: 'mail',
+  });
   stan.zepsuj = false;
   expect(wyslane).toBe(0);
   expect(r.statusCode).toBe(502);

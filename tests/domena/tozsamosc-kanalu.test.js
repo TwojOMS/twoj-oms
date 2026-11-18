@@ -48,20 +48,24 @@ describe('kolizja kont miedzy kanalami', () => {
   });
 
   it('milczy, gdy kazdy kanal ma swoje konto', () => {
-    expect(kolizjeKont([
-      { kanal: 'allegro_swietlik', kontoAllegro: '36457435' },
-      { kanal: 'allegro_polcien2', kontoAllegro: '75246625' },
-    ])).toEqual([]);
+    expect(
+      kolizjeKont([
+        { kanal: 'allegro_swietlik', kontoAllegro: '36457435' },
+        { kanal: 'allegro_polcien2', kontoAllegro: '75246625' },
+      ]),
+    ).toEqual([]);
   });
 
   it('⚠️ NIEZNANE KONTO TO NIE JEST TO SAMO KONTO', () => {
     // Dwa nieczytelne tokeny nie sa dowodem kolizji, a kolizja OTWIERA bariere wiazania —
     // czyli zaprasza do nadpisania dzialajacej pary tokenow. „Nie wiem" nie moze
     // uruchamiac nieodwracalnego kroku (ta sama regula co w brakujaceUprawnienia).
-    expect(kolizjeKont([
-      { kanal: 'allegro_swietlik', kontoAllegro: null },
-      { kanal: 'allegro_polcien2', kontoAllegro: null },
-    ])).toEqual([]);
+    expect(
+      kolizjeKont([
+        { kanal: 'allegro_swietlik', kontoAllegro: null },
+        { kanal: 'allegro_polcien2', kontoAllegro: null },
+      ]),
+    ).toEqual([]);
   });
 
   it('nie wywraca sie na pustce ani na braku pol', () => {
@@ -71,10 +75,12 @@ describe('kolizja kont miedzy kanalami', () => {
   });
 
   it('znajduje kolizje takze przy trzech kanalach, wskazujac tylko te sklejone', () => {
-    expect(kolizjeKont([
-      { kanal: 'a', kontoAllegro: '111' },
-      { kanal: 'b', kontoAllegro: '222' },
-      { kanal: 'c', kontoAllegro: '111' },
-    ])).toEqual(['a', 'c']);
+    expect(
+      kolizjeKont([
+        { kanal: 'a', kontoAllegro: '111' },
+        { kanal: 'b', kontoAllegro: '222' },
+        { kanal: 'c', kontoAllegro: '111' },
+      ]),
+    ).toEqual(['a', 'c']);
   });
 });

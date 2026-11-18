@@ -3,8 +3,9 @@ import { idDokumentu } from './dokument-programu.js';
 import { dzienWarszawa } from './format-daty.js';
 
 // Brzmienia zdań o stanie D (niżej) w JEDNYM miejscu.
-export const ODMOWA_ALLEGRO_PO_ZAMIANIE_NIP = 'Kupujący ma w Allegro poprzednią fakturę (sprzed zamiany NIP-u) — '
-  + 'nowej panel nie wysyła sam; wyślij ją z panelu Allegro albo zakładką Wiadomości.';
+export const ODMOWA_ALLEGRO_PO_ZAMIANIE_NIP =
+  'Kupujący ma w Allegro poprzednią fakturę (sprzed zamiany NIP-u) — ' +
+  'nowej panel nie wysyła sam; wyślij ją z panelu Allegro albo zakładką Wiadomości.';
 
 /**
  * Znacznik D: zamówienie przepięte na fakturę zastępczą (zły NIP), gdy poprzednia
@@ -14,16 +15,23 @@ export const ODMOWA_ALLEGRO_PO_ZAMIANIE_NIP = 'Kupujący ma w Allegro poprzedni�
  * po przepięciu) to nie D: kupujący starego pliku nie ma, nową wolno zgłosić nowym numerem.
  */
 export function poZamianieNipWAllegro(f) {
-  return Boolean(f && f.program === 'twojefaktury' && f.allegro_wyslana_at && !f.allegro_invoice_id
-    && f.allegro_weryfikacja !== 'REJECTED');
+  return Boolean(
+    f &&
+    f.program === 'twojefaktury' &&
+    f.allegro_wyslana_at &&
+    !f.allegro_invoice_id &&
+    f.allegro_weryfikacja !== 'REJECTED',
+  );
 }
 
 /** Zdanie karty zamówienia przy znaczniku D albo `null`. Dzień wysyłki w czasie Warszawy jako DD.MM. */
 export function zdanieKartyPoZamianieNip(f) {
   if (!poZamianieNipWAllegro(f)) return null;
   const [, mm, dd] = dzienWarszawa(f.allegro_wyslana_at).split('-');
-  return `Kupujący ma w Allegro poprzednią fakturę (sprzed zamiany NIP-u), wysłaną ${dd}.${mm}. `
-    + `Nowej ${f.numer} panel nie wysyła sam.`;
+  return (
+    `Kupujący ma w Allegro poprzednią fakturę (sprzed zamiany NIP-u), wysłaną ${dd}.${mm}. ` +
+    `Nowej ${f.numer} panel nie wysyła sam.`
+  );
 }
 
 /**
@@ -89,8 +97,8 @@ export function wolnoWyslacDoAllegro(z) {
   if (poZamianieNipWAllegro(f)) return nie(ODMOWA_ALLEGRO_PO_ZAMIANIE_NIP);
   if (f.allegro_wyslana_at && f.allegro_weryfikacja !== 'REJECTED') {
     return nie(
-      `Faktura ${f.numer} została już wysłana do Allegro ${f.allegro_wyslana_at} — kupujący ma ją na koncie. `
-      + 'Panel nie ma czym jej stamtąd zabrać; jeśli dokument jest błędny, potrzebna jest KOREKTA.',
+      `Faktura ${f.numer} została już wysłana do Allegro ${f.allegro_wyslana_at} — kupujący ma ją na koncie. ` +
+        'Panel nie ma czym jej stamtąd zabrać; jeśli dokument jest błędny, potrzebna jest KOREKTA.',
     );
   }
   // ⚠️⚠️ KOMUNIKAT NIE ODSYŁA DO inFAKTU ani do przycisku „bez numeru KSeF" (takiego nie ma).
@@ -98,9 +106,7 @@ export function wolnoWyslacDoAllegro(z) {
   // „wyślij ją do KSeF w inFakcie" odsyłałoby operatora poza panel do czynności, którą panel
   // ma dwie zakładki dalej.
   if (!f.ksef_numer) {
-    return nie(
-      `Faktura ${f.numer} nie jest jeszcze w KSeF — a do kupującego ma iść dokument z numerem KSeF.`,
-    );
+    return nie(`Faktura ${f.numer} nie jest jeszcze w KSeF — a do kupującego ma iść dokument z numerem KSeF.`);
   }
   return { wolno: true, powod: null };
 }

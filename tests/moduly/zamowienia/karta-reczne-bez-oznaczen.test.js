@@ -1,8 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import {
-  zapiszZamowienie, pobierzZamowienie, dodajPozycjeReczna, zapiszNadpisaniaPozycji,
-  zapiszNadpisaniaWysylki, zapiszNadpisaniaFaktury, zapiszNadpisanieWysylki,
+  zapiszZamowienie,
+  pobierzZamowienie,
+  dodajPozycjeReczna,
+  zapiszNadpisaniaPozycji,
+  zapiszNadpisaniaWysylki,
+  zapiszNadpisaniaFaktury,
+  zapiszNadpisanieWysylki,
 } from '../../../src/oms/db/zamowienia.js';
 import { utworzZamowienieReczne, przeliczKwoteRecznego } from '../../../src/oms/db/zamowienia-reczne.js';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
@@ -23,9 +28,19 @@ const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('bas
 const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) };
 
 const zmapowane = (nad = {}) => ({
-  zrodlo_id: 1301, numer: '1301', klient: { first_name: 'Jan', email: 'j@k.pl' }, dostawa: { city: 'Warszawa' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '212.90',
-  koszt_dostawy_brutto: '12.90', status_woo: 'processing', oplacone_at: null, anulowane: 0,
+  zrodlo_id: 1301,
+  numer: '1301',
+  klient: { first_name: 'Jan', email: 'j@k.pl' },
+  dostawa: { city: 'Warszawa' },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '212.90',
+  koszt_dostawy_brutto: '12.90',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
   utworzone_at: '2026-07-29T13:19:52',
   pozycje: [{ nazwa: 'STOP', sku: 'PRO-1', ilosc: 2, cena_brutto: '100.00', brutto_linii: '200.00', vat: null }],
   ...nad,
@@ -50,15 +65,19 @@ function zamowienieReczneZPoprawkami() {
     dostawa: { first_name: 'Jan', last_name: 'Kowalski', city: 'Warszawa' },
   });
   dodajPozycjeReczna(db, id, {
-    nazwa: 'Szablon', sku: null, ilosc: 1, cena_brutto: '61.50', brutto_linii: '61.50',
+    nazwa: 'Szablon',
+    sku: null,
+    ilosc: 1,
+    cena_brutto: '61.50',
+    brutto_linii: '61.50',
   });
   przeliczKwoteRecznego(db, id);
   // ⚠️ FIKSTURA MUSI ZAPALIĆ **KAŻDE PIĘĆ** ŹRÓDEŁ ZNACZNIKA, inaczej test niczego nie
   // sprawdza. Pierwsza wersja zapalała tylko dwa — i weryfikacja mutacyjna to pokazała:
   // przywrócenie znaczników faktury, przełącznika i metody wysyłki NIE wywalało testu, bo
   // fikstura nie miała czego oznaczyć.
-  zapiszNadpisaniaWysylki(db, id, { kod: '00-950', miasto: 'Warszawa' });          // adres paczki
-  zapiszNadpisaniaFaktury(db, id, { firma: 'Kowalski sp. z o.o.' }, 1);        // dane nabywcy + „chce fakturę"
+  zapiszNadpisaniaWysylki(db, id, { kod: '00-950', miasto: 'Warszawa' }); // adres paczki
+  zapiszNadpisaniaFaktury(db, id, { firma: 'Kowalski sp. z o.o.' }, 1); // dane nabywcy + „chce fakturę"
   zapiszNadpisanieWysylki(db, id, { metoda: 'inpost_paczkomat', pobranie: 0 }); // metoda dostawy
   zapiszNadpisaniaPozycji(db, id, { [KLUCZ_WYSYLKI]: { cena_brutto: '25.00' } }); // kwota wysyłki
   return id;
@@ -67,10 +86,12 @@ function zamowienieReczneZPoprawkami() {
 // Straż nad samą fiksturą: gdyby któreś nadpisanie przestało się zapisywać, testy niżej
 // przechodziłyby „na pusto" — dokładnie tak, jak przechodziły do czasu weryfikacji mutacyjnej.
 function fiksturaNaprawdeMaNadpisania(id) {
-  const w = db.prepare(
-    'SELECT dostawa_reczna_json, klient_reczny_json, chce_fakture_reczne, wysylka_reczna_json,'
-    + ' pozycje_reczne_json FROM zamowienia WHERE id = ?',
-  ).get(id);
+  const w = db
+    .prepare(
+      'SELECT dostawa_reczna_json, klient_reczny_json, chce_fakture_reczne, wysylka_reczna_json,' +
+        ' pozycje_reczne_json FROM zamowienia WHERE id = ?',
+    )
+    .get(id);
   return Object.values(w).every((v) => v !== null && v !== undefined);
 }
 
@@ -133,10 +154,13 @@ describe('zamówienie ZE SKLEPU — znaczniki zostają', () => {
 });
 
 describe('ostrzeżenie o nadanej paczce — dopiero po kliknięciu „Edytuj”', () => {
-  const nadanaPaczka = (id) => db.prepare(
-    "INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at)"
-    + " VALUES (?, 'dpd', 'nadana', '0000123456789A', 1, '2026-07-30T10:00:00')",
-  ).run(id);
+  const nadanaPaczka = (id) =>
+    db
+      .prepare(
+        'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at)' +
+          " VALUES (?, 'dpd', 'nadana', '0000123456789A', 1, '2026-07-30T10:00:00')",
+      )
+      .run(id);
 
   it('karta do odczytu jest czysta, edycja ostrzega', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
@@ -145,8 +169,9 @@ describe('ostrzeżenie o nadanej paczce — dopiero po kliknięciu „Edytuj”'
     // ⚠️ CAŁY OTWIERAJĄCY ZNACZNIK, nie sam tekst. Sprawdzenie po samej treści przepuszcza
     // akapit schowany atrybutem `hidden` — ostrzeżenie byłoby w kodzie strony, a operator
     // nie zobaczyłby go nigdy. Weryfikacja mutacyjna złapała dokładnie ten przypadek.
-    expect((await karta(id, '?edytuj=wysylka')).body)
-      .toContain('<p class="pasek-uwaga">Paczka została już nadana. Poprawka danych dotyczy kolejnych przesyłek.</p>');
+    expect((await karta(id, '?edytuj=wysylka')).body).toContain(
+      '<p class="pasek-uwaga">Paczka została już nadana. Poprawka danych dotyczy kolejnych przesyłek.</p>',
+    );
   });
 
   // ⚠️ Treść ZOSTAŁA BEZ ZMIAN — to nie jest zmiękczenie ostrzeżenia, tylko przeniesienie go
@@ -161,7 +186,9 @@ describe('ostrzeżenie o nadanej paczce — dopiero po kliknięciu „Edytuj”'
   // Napis o wystawionej fakturze stoi TYLKO w trybie edycji (po „Edytuj"), tak jak pasek przy wysyłce.
   it('napis o wystawionej fakturze: brak na karcie do odczytu, jest w edycji', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
-    db.prepare("INSERT INTO faktury (zamowienie_id, numer, infakt_uuid, utworzona_at) VALUES (?, 'FV/1/2026', 'u1', '2026-07-30T10:00:00')").run(id);
+    db.prepare(
+      "INSERT INTO faktury (zamowienie_id, numer, infakt_uuid, utworzona_at) VALUES (?, 'FV/1/2026', 'u1', '2026-07-30T10:00:00')",
+    ).run(id);
     expect((await karta(id)).body).not.toContain('Faktura została już wystawiona');
     expect((await karta(id, '?edytuj=faktura')).body).toContain('Faktura została już wystawiona. Dane popraw korektą.');
   });

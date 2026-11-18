@@ -12,13 +12,25 @@ import { adresOdbiorcy, adresZeSklepu, polaReczneAdresu } from '../../src/domena
 
 const zamowienie = (nad = {}) => ({
   dostawa: {
-    first_name: 'Maria', last_name: 'Wiśniewska', company: '',
-    address_1: 'Polna 38', address_2: '', postcode: '01-234', city: 'Dolnowo', country: 'PL',
+    first_name: 'Maria',
+    last_name: 'Wiśniewska',
+    company: '',
+    address_1: 'Polna 38',
+    address_2: '',
+    postcode: '01-234',
+    city: 'Dolnowo',
+    country: 'PL',
   },
   klient: {
-    first_name: 'Maria', last_name: 'Wiśniewska', company: 'Lustrzanka Spółka Sp. z o.o. Sp. K',
-    address_1: 'Polna 38', address_2: '', postcode: '01-234', city: 'Dolnowo',
-    email: 'biuro@example.pl', phone: '500900006',
+    first_name: 'Maria',
+    last_name: 'Wiśniewska',
+    company: 'Lustrzanka Spółka Sp. z o.o. Sp. K',
+    address_1: 'Polna 38',
+    address_2: '',
+    postcode: '01-234',
+    city: 'Dolnowo',
+    email: 'biuro@example.pl',
+    phone: '500900006',
   },
   ...nad,
 });
@@ -41,8 +53,13 @@ describe('firma na etykiecie, gdy sklep zostawił shipping.company puste', () =>
   it('przy INNYM adresie wysyłki firmy z płatności NIE bierze', () => {
     const z = zamowienie({
       dostawa: {
-        first_name: 'Jan', last_name: 'Nowak', company: '',
-        address_1: 'Budowlana 7', postcode: '00-001', city: 'Warszawa', country: 'PL',
+        first_name: 'Jan',
+        last_name: 'Nowak',
+        company: '',
+        address_1: 'Budowlana 7',
+        postcode: '00-001',
+        city: 'Warszawa',
+        country: 'PL',
       },
     });
     // ⚠️ ZMIENIONE: pole zostaje PUSTE. Dawniej wchodził tu ostateczny fallback
@@ -64,7 +81,9 @@ describe('firma na etykiecie, gdy sklep zostawił shipping.company puste', () =>
     const z = zamowienie({
       dostawa: {
         ...zamowienie().dostawa,
-        address_1: 'polna  38', postcode: '01234', city: 'DOLNOWO',
+        address_1: 'polna  38',
+        postcode: '01234',
+        city: 'DOLNOWO',
       },
     });
     expect(adresOdbiorcy(z).company).toBe('Lustrzanka Spółka Sp. z o.o. Sp. K');

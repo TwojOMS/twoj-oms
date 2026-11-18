@@ -10,7 +10,12 @@ import { METODY_INFAKTU } from '../../src/oms/infakt/client.js';
 
 const OPIS: OpisProgramu = {
   id: 'polcien-ksiegowa',
-  nazwa: { mianownik: 'Księgowa Półcień', dopelniacz: 'Księgowej Półcień', miejscownik: 'Księgowej Półcień', narzednik: 'Księgową Półcień' },
+  nazwa: {
+    mianownik: 'Księgowa Półcień',
+    dopelniacz: 'Księgowej Półcień',
+    miejscownik: 'Księgowej Półcień',
+    narzednik: 'Księgową Półcień',
+  },
   regulaVat: 'wierszami',
   zdolnosci: ['nieoplacone', 'oznaczZaplacona', 'wyslijDoKsef', 'numeracjaWlasna'],
   wystawienieWysylaDoKsef: false,
@@ -48,16 +53,27 @@ const bez = (p: Record<string, unknown>, ...klucze: string[]) => {
 describe('sprawdzProgramFakturowy — odmowa startu przy złym programie', () => {
   it('pobierzKorekte jest opcjonalne i wymaga zdolności odczytKorekty', async () => {
     const pobierzKorekte = async () => ({ uuid: 'kor-a', number: 'KOR/1', rodzaj: 'korekta' });
-    const p: ProgramFakturowy = { ...wzorcowy(), pobierzKorekte,
-      opis: { ...OPIS, zdolnosci: [...OPIS.zdolnosci, 'odczytKorekty'] } };
+    const p: ProgramFakturowy = {
+      ...wzorcowy(),
+      pobierzKorekte,
+      opis: { ...OPIS, zdolnosci: [...OPIS.zdolnosci, 'odczytKorekty'] },
+    };
     expect(sprawdzProgramFakturowy(p)).toBe(p);
     expect(await p.pobierzKorekte!('kor-a')).toMatchObject({ uuid: 'kor-a', number: 'KOR/1' });
     expect(() => sprawdzProgramFakturowy(bez(p, 'pobierzKorekte'))).toThrow(/pobierzKorekte/);
     expect(() => sprawdzProgramFakturowy({ ...wzorcowy(), pobierzKorekte })).toThrow(/odczytKorekty/);
   });
   it('statusKorekty jest opcjonalny i wymaga zgodnej deklaracji zdolności', async () => {
-    const statusKorekty = async (): Promise<import('../../src/core/kontrakty.ts').StatusKorekty> => ({ stan: 'w_toku', uuid: null, bledy: [] });
-    const p: ProgramFakturowy = { ...wzorcowy(), statusKorekty, opis: { ...OPIS, zdolnosci: [...OPIS.zdolnosci, 'statusKorekty'] } };
+    const statusKorekty = async (): Promise<import('../../src/core/kontrakty.ts').StatusKorekty> => ({
+      stan: 'w_toku',
+      uuid: null,
+      bledy: [],
+    });
+    const p: ProgramFakturowy = {
+      ...wzorcowy(),
+      statusKorekty,
+      opis: { ...OPIS, zdolnosci: [...OPIS.zdolnosci, 'statusKorekty'] },
+    };
     expect(sprawdzProgramFakturowy(p)).toBe(p);
     expect(await p.statusKorekty!('REF-TEST')).toEqual({ stan: 'w_toku', uuid: null, bledy: [] });
     expect(() => sprawdzProgramFakturowy(bez(p, 'statusKorekty'))).toThrow(/statusKorekty/);
@@ -71,24 +87,40 @@ describe('sprawdzProgramFakturowy — odmowa startu przy złym programie', () =>
   });
 
   it('program bez żadnej zdolności (same metody obowiązkowe) przechodzi', () => {
-    const p = { ...bez(wzorcowy(), 'listaNieoplaconych', 'oznaczZaplacona', 'wyslijDokumentDoKsef', 'iluMaNumer'), opis: { ...OPIS, zdolnosci: [] } };
+    const p = {
+      ...bez(wzorcowy(), 'listaNieoplaconych', 'oznaczZaplacona', 'wyslijDokumentDoKsef', 'iluMaNumer'),
+      opis: { ...OPIS, zdolnosci: [] },
+    };
     expect(sprawdzProgramFakturowy(p)).toBe(p);
   });
 
   it('bez metody obowiązkowej → odmowa z nazwą metody (każda z dziewięciu)', () => {
     expect(() => sprawdzProgramFakturowy(bez(wzorcowy(), 'listaKorekt'))).toThrow(/listaKorekt/);
-    for (const m of ['sprawdzPolaczenie', 'przygotujNabywce', 'wystaw', 'wystawKorekte', 'pobierzPdf', 'pobierzPdfKorekty',
-      'pobierzFakture', 'listaFaktur', 'listaKorekt']) {
+    for (const m of [
+      'sprawdzPolaczenie',
+      'przygotujNabywce',
+      'wystaw',
+      'wystawKorekte',
+      'pobierzPdf',
+      'pobierzPdfKorekty',
+      'pobierzFakture',
+      'listaFaktur',
+      'listaKorekt',
+    ]) {
       expect(() => sprawdzProgramFakturowy(bez(wzorcowy(), m))).toThrow(new RegExp(`\\b${m}\\b`));
       expect(() => sprawdzProgramFakturowy({ ...wzorcowy(), [m]: 'nie funkcja' })).toThrow(new RegExp(`\\b${m}\\b`));
     }
   });
 
   it('zdolność zadeklarowana bez metody → odmowa z nazwą zdolności i metody', () => {
-    expect(() => sprawdzProgramFakturowy(bez(wzorcowy(), 'wyslijDokumentDoKsef'))).toThrow(/wyslijDoKsef.*wyslijDokumentDoKsef|wyslijDokumentDoKsef.*wyslijDoKsef/);
+    expect(() => sprawdzProgramFakturowy(bez(wzorcowy(), 'wyslijDokumentDoKsef'))).toThrow(
+      /wyslijDoKsef.*wyslijDokumentDoKsef|wyslijDokumentDoKsef.*wyslijDoKsef/,
+    );
     const pary: [ZdolnoscProgramu, string][] = [
-      ['nieoplacone', 'listaNieoplaconych'], ['oznaczZaplacona', 'oznaczZaplacona'],
-      ['wyslijDoKsef', 'wyslijDokumentDoKsef'], ['numeracjaWlasna', 'iluMaNumer'],
+      ['nieoplacone', 'listaNieoplaconych'],
+      ['oznaczZaplacona', 'oznaczZaplacona'],
+      ['wyslijDoKsef', 'wyslijDokumentDoKsef'],
+      ['numeracjaWlasna', 'iluMaNumer'],
     ];
     for (const [zdolnosc, metoda] of pary) {
       expect(() => sprawdzProgramFakturowy(bez(wzorcowy(), metoda))).toThrow(new RegExp(zdolnosc));
@@ -96,11 +128,15 @@ describe('sprawdzProgramFakturowy — odmowa startu przy złym programie', () =>
   });
 
   it('metoda opcjonalna bez zadeklarowanej zdolności → odmowa (zdolności = DOKŁADNIE zbiór obecnych metod)', () => {
-    expect(() => sprawdzProgramFakturowy(zOpisem({ zdolnosci: ['nieoplacone', 'oznaczZaplacona', 'numeracjaWlasna'] }))).toThrow(/wyslijDoKsef/);
+    expect(() =>
+      sprawdzProgramFakturowy(zOpisem({ zdolnosci: ['nieoplacone', 'oznaczZaplacona', 'numeracjaWlasna'] })),
+    ).toThrow(/wyslijDoKsef/);
   });
 
   it('nieznana zdolność → odmowa', () => {
-    expect(() => sprawdzProgramFakturowy(zOpisem({ zdolnosci: [...OPIS.zdolnosci, 'teleportacja'] }))).toThrow(/teleportacja/);
+    expect(() => sprawdzProgramFakturowy(zOpisem({ zdolnosci: [...OPIS.zdolnosci, 'teleportacja'] }))).toThrow(
+      /teleportacja/,
+    );
   });
 
   it('regulaVat „odSumy” → odmowa; inna wartość też', () => {
@@ -109,8 +145,12 @@ describe('sprawdzProgramFakturowy — odmowa startu przy złym programie', () =>
   });
 
   it('wystawienieWysylaDoKsef: true → odmowa; tylko literał false przechodzi', () => {
-    expect(() => sprawdzProgramFakturowy(zOpisem({ wystawienieWysylaDoKsef: true }))).toThrow(/wystawienieWysylaDoKsef/);
-    expect(() => sprawdzProgramFakturowy(zOpisem({ wystawienieWysylaDoKsef: undefined }))).toThrow(/wystawienieWysylaDoKsef/);
+    expect(() => sprawdzProgramFakturowy(zOpisem({ wystawienieWysylaDoKsef: true }))).toThrow(
+      /wystawienieWysylaDoKsef/,
+    );
+    expect(() => sprawdzProgramFakturowy(zOpisem({ wystawienieWysylaDoKsef: undefined }))).toThrow(
+      /wystawienieWysylaDoKsef/,
+    );
     expect(() => sprawdzProgramFakturowy(zOpisem({ wystawienieWysylaDoKsef: 0 }))).toThrow(/wystawienieWysylaDoKsef/);
   });
 
@@ -118,12 +158,18 @@ describe('sprawdzProgramFakturowy — odmowa startu przy złym programie', () =>
     const limity = (zadanieMs: number) => zOpisem({ limity: { ...OPIS.limity, zadanieMs } });
     expect(() => sprawdzProgramFakturowy(limity(PROG_ZAWIESZONEJ_FAKTURY_MS))).toThrow(/zadanieMs/);
     expect(() => sprawdzProgramFakturowy(limity(PROG_ZAWIESZONEJ_FAKTURY_MS + 1))).toThrow(/zadanieMs/);
-    expect(sprawdzProgramFakturowy(limity(PROG_ZAWIESZONEJ_FAKTURY_MS - 1)).opis.limity.zadanieMs).toBe(PROG_ZAWIESZONEJ_FAKTURY_MS - 1);
+    expect(sprawdzProgramFakturowy(limity(PROG_ZAWIESZONEJ_FAKTURY_MS - 1)).opis.limity.zadanieMs).toBe(
+      PROG_ZAWIESZONEJ_FAKTURY_MS - 1,
+    );
   });
 
   it('limit brakujący albo nie-liczba → odmowa (porównanie z progiem nie może przejść przez undefined)', () => {
-    expect(() => sprawdzProgramFakturowy(zOpisem({ limity: { ...OPIS.limity, zadanieMs: undefined } }))).toThrow(/zadanieMs/);
-    expect(() => sprawdzProgramFakturowy(zOpisem({ limity: { ...OPIS.limity, sufitStron: '20' } }))).toThrow(/sufitStron/);
+    expect(() => sprawdzProgramFakturowy(zOpisem({ limity: { ...OPIS.limity, zadanieMs: undefined } }))).toThrow(
+      /zadanieMs/,
+    );
+    expect(() => sprawdzProgramFakturowy(zOpisem({ limity: { ...OPIS.limity, sufitStron: '20' } }))).toThrow(
+      /sufitStron/,
+    );
     expect(() => sprawdzProgramFakturowy(zOpisem({ limity: undefined }))).toThrow(/limity/);
   });
 
@@ -140,7 +186,8 @@ describe('sprawdzProgramFakturowy — odmowa startu przy złym programie', () =>
 });
 
 describe('zProgramu — podkładka przejściowa', () => {
-  const klient = () => Object.fromEntries(METODY_INFAKTU.map((m: string) => [m, vi.fn(async (..._a: unknown[]) => `wynik ${m}`)]));
+  const klient = () =>
+    Object.fromEntries(METODY_INFAKTU.map((m: string) => [m, vi.fn(async (..._a: unknown[]) => `wynik ${m}`)]));
 
   it('oba naraz → wyjątek', () => {
     expect(() => zProgramu({ program: wzorcowy(), infakt: klient() })).toThrow(/program.*infakt|infakt.*program/);

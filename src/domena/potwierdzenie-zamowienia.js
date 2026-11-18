@@ -90,14 +90,15 @@ export const PODPIS = 'Obsługa sklepu';
 function liniaAdresu(z) {
   const a = adresOdbiorcy(z) ?? {};
   const ulica = String(a.ulica ?? '').trim();
-  const miejscowosc = [a.kod, a.miasto].map((l) => String(l ?? '').trim()).filter(Boolean).join(' ');
+  const miejscowosc = [a.kod, a.miasto]
+    .map((l) => String(l ?? '').trim())
+    .filter(Boolean)
+    .join(' ');
   if (!ulica && !miejscowosc) return null;
 
   // ⚠️ Ten sam adres, który zobaczy kurier na etykiecie (domena/adres-odbiorcy.js). Gdyby mail
   // składał go u siebie, klient potwierdzałby inny adres, niż ten, pod który paczka pojedzie.
-  return [a.company, a.nazwa, ulica, miejscowosc]
-    .map((l) => String(l ?? '').trim())
-    .filter(Boolean);
+  return [a.company, a.nazwa, ulica, miejscowosc].map((l) => String(l ?? '').trim()).filter(Boolean);
 }
 
 /**
@@ -109,10 +110,11 @@ function liniaAdresu(z) {
  */
 function liniaFaktury(z) {
   const f = daneFaktury(z) ?? {};
-  const miejscowosc = [f.kod, f.miasto].map((l) => String(l ?? '').trim()).filter(Boolean).join(' ');
-  return [f.firma, f.nip && `NIP ${f.nip}`, f.ulica, miejscowosc]
+  const miejscowosc = [f.kod, f.miasto]
     .map((l) => String(l ?? '').trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .join(' ');
+  return [f.firma, f.nip && `NIP ${f.nip}`, f.ulica, miejscowosc].map((l) => String(l ?? '').trim()).filter(Boolean);
 }
 
 /**
@@ -150,17 +152,19 @@ export function modelZamowienia(z, { podpis = PODPIS, zdania = null } = {}) {
   return {
     numer: String(z?.numer ?? ''),
     dzien: dzienWarszawa(z?.utworzone_at ?? ''),
-    pozycje: wiersze.filter((w) => !w.podsumowanie).map((w) => ({
-      nazwa: w.nazwa,
-      ilosc: w.ilosc == null ? '' : String(w.ilosc),
-      cena: zlotowki(w.cenaBrutto),
-      suma: zlotowki(w.suma),
-    })),
+    pozycje: wiersze
+      .filter((w) => !w.podsumowanie)
+      .map((w) => ({
+        nazwa: w.nazwa,
+        ilosc: w.ilosc == null ? '' : String(w.ilosc),
+        cena: zlotowki(w.cenaBrutto),
+        suma: zlotowki(w.suma),
+      })),
     razem: zlotowki(razem?.suma),
     platnosc: pobranie
-      // ⚠️ PRZY POBRANIU PODAJEMY KWOTĘ DO ZAPŁATY KURIEROWI — to jedyna liczba, którą klient
-      // musi mieć przygotowaną, i jedyna, o którą dzwoni, gdy jej nie zna.
-      ? `Za pobraniem — kurier pobierze ${zlotowki(z?.kwota_pobrania ?? razem?.suma)}`
+      ? // ⚠️ PRZY POBRANIU PODAJEMY KWOTĘ DO ZAPŁATY KURIEROWI — to jedyna liczba, którą klient
+        // musi mieć przygotowaną, i jedyna, o którą dzwoni, gdy jej nie zna.
+        `Za pobraniem — kurier pobierze ${zlotowki(z?.kwota_pobrania ?? razem?.suma)}`
       : [platnosc || t.platnosc_do_uzgodnienia, terminSlowami].filter(Boolean).join(', '),
     wysylka: {
       metoda: nazwaDostawy(z),
@@ -216,10 +220,16 @@ function sekcjeTekstu(m) {
       `${naglowekTekstu(t.etykieta_razem)}: ${m.razem} ${t.dopisek_brutto}`,
     ]),
     sposob_platnosci: sekcja(naglowekTekstu(t.naglowek_platnosc), [m.platnosc]),
-    wysylka: sekcja(naglowekTekstu(t.naglowek_wysylka), [m.wysylka.metoda, ...(m.wysylka.adres ?? [`(${t.adres_do_uzgodnienia})`])]),
-    dane_do_faktury: sekcja(naglowekTekstu(t.naglowek_faktura), m.faktura.chce
-      ? [t.faktura_tak, ...(m.faktura.linie.length ? m.faktura.linie : [t.faktura_bez_danych])]
-      : [t.faktura_nie]),
+    wysylka: sekcja(naglowekTekstu(t.naglowek_wysylka), [
+      m.wysylka.metoda,
+      ...(m.wysylka.adres ?? [`(${t.adres_do_uzgodnienia})`]),
+    ]),
+    dane_do_faktury: sekcja(
+      naglowekTekstu(t.naglowek_faktura),
+      m.faktura.chce
+        ? [t.faktura_tak, ...(m.faktura.linie.length ? m.faktura.linie : [t.faktura_bez_danych])]
+        : [t.faktura_nie],
+    ),
   };
 }
 
@@ -257,4 +267,3 @@ export function jakoTekst(m) {
     m.sprzedawca,
   ].join('\n');
 }
-

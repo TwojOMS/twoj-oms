@@ -8,11 +8,28 @@ import { createNadanie, PACZKA_DOMYSLNA } from '../../../src/moduly/wysylka/serv
 import { wyliczStatus, doZrobienia } from '../../../src/domena/status.js';
 
 const zmapowane = (nad = {}) => ({
-  zrodlo_id: 1301, numer: '1301', klient: { email: 'j@k.pl', phone: '+48500600700' },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '212.90',
-  status_woo: 'processing', oplacone_at: '2026-07-29T13:00:00', anulowane: 0,
-  utworzone_at: '2026-07-29T13:19:52', pozycje: [], ...nad,
+  zrodlo_id: 1301,
+  numer: '1301',
+  klient: { email: 'j@k.pl', phone: '+48500600700' },
+  dostawa: {
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    address_1: 'Polna 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
+  },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '212.90',
+  status_woo: 'processing',
+  oplacone_at: '2026-07-29T13:00:00',
+  anulowane: 0,
+  utworzone_at: '2026-07-29T13:19:52',
+  pozycje: [],
+  ...nad,
 });
 
 // Prawdziwy numer listu DPD to np. '1000000000001U' — 14 znaków ZAKOŃCZONYCH LITERĄ,
@@ -25,7 +42,11 @@ const logi = (db, akcja) => db.prepare('SELECT * FROM log WHERE akcja = ?').all(
 
 function zestaw({ dpdNadaj, wooOk = true, wooNotatka, katalogEtykiet } = {}) {
   const db = openOmsDb(':memory:');
-  const dpd = { nadaj: dpdNadaj ?? vi.fn().mockResolvedValue({ numerListu: NUMER_LISTU, etykietaPdf: Buffer.from('%PDF-x'), surowa: '<xml/>' }) };
+  const dpd = {
+    nadaj:
+      dpdNadaj ??
+      vi.fn().mockResolvedValue({ numerListu: NUMER_LISTU, etykietaPdf: Buffer.from('%PDF-x'), surowa: '<xml/>' }),
+  };
   const padl = () => vi.fn().mockRejectedValue(new Error('sklep padł'));
   const woo = {
     dodajNotatke: wooNotatka ?? (wooOk ? vi.fn().mockResolvedValue({}) : padl()),
@@ -35,7 +56,13 @@ function zestaw({ dpdNadaj, wooOk = true, wooNotatka, katalogEtykiet } = {}) {
     ustawStatus: vi.fn().mockResolvedValue({}),
   };
   const katalog = katalogEtykiet ?? mkdtempSync(join(tmpdir(), 'oms-'));
-  return { db, dpd, woo, katalogEtykiet: katalog, nadanie: createNadanie({ db, kurierzy: { dpd }, klienci: { pro: woo }, katalogEtykiet: katalog }) };
+  return {
+    db,
+    dpd,
+    woo,
+    katalogEtykiet: katalog,
+    nadanie: createNadanie({ db, kurierzy: { dpd }, klienci: { pro: woo }, katalogEtykiet: katalog }),
+  };
 }
 
 describe('nadanie', () => {
@@ -76,7 +103,9 @@ describe('nadanie', () => {
     await nadanie.nadaj(id);
     dpd.nadaj.mockResolvedValue({ numerListu: NUMER_LISTU_2, etykietaPdf: Buffer.from('%PDF-x'), surowa: '<xml/>' });
     await nadanie.nadaj(id, PACZKA_DOMYSLNA, { kolejnosc: 2, pobranieNaTejPaczce: true, kwotaPobrania: '123.00' });
-    const wpisy = logi(db, 'nadanie.pobranie').map((l) => l.wynik).join(' | ');
+    const wpisy = logi(db, 'nadanie.pobranie')
+      .map((l) => l.wynik)
+      .join(' | ');
     expect(wpisy).toMatch(/Ręcznie( \(|:)/);
     expect(wpisy).toMatch(/paczce nr 2/);
     expect(wpisy).toMatch(/123\.00/);
@@ -90,7 +119,11 @@ describe('nadanie', () => {
     await nadanie.nadaj(id);
     dpd.nadaj.mockResolvedValue({ numerListu: NUMER_LISTU_2, etykietaPdf: Buffer.from('%PDF-x'), surowa: '<xml/>' });
     await nadanie.nadaj(id, PACZKA_DOMYSLNA, { kolejnosc: 2 });
-    expect(logi(db, 'nadanie.pobranie').map((l) => l.wynik).join(' | ')).not.toMatch(/Ręcznie( \(|:)/);
+    expect(
+      logi(db, 'nadanie.pobranie')
+        .map((l) => l.wynik)
+        .join(' | '),
+    ).not.toMatch(/Ręcznie( \(|:)/);
   });
 
   // Ustalenie: usuniecie WSZYSTKICH wywolan dopiszLog zostawialo suite zielona.
@@ -152,7 +185,8 @@ describe('nadanie', () => {
   });
 
   it('awaria DPD zostawia przesyłkę w stanie błędu i pozwala ponowić', async () => {
-    const dpdNadaj = vi.fn()
+    const dpdNadaj = vi
+      .fn()
       .mockRejectedValueOnce(new Error('DPD odrzuciło żądanie: Zly FID'))
       .mockResolvedValueOnce({ numerListu: NUMER_LISTU_2, etykietaPdf: Buffer.from('%PDF-x'), surowa: '<xml/>' });
     const { db, nadanie } = zestaw({ dpdNadaj });
@@ -218,9 +252,14 @@ describe('nadanie', () => {
 // nawet gdy różni się od adresu w zamówieniu ze sklepu (Woo).
 describe('nadanie — adres odbiorcy przekazany z formularza', () => {
   const ADRES = {
-    nazwa: 'Jan Kowalski-Po-Poprawce', company: 'Jan Kowalski-Po-Poprawce',
-    ulica: 'Polna 1/5', kod: '00-950', miasto: 'Warszawa', kraj: 'PL',
-    phone: '+48500600700', email: 'j@k.pl',
+    nazwa: 'Jan Kowalski-Po-Poprawce',
+    company: 'Jan Kowalski-Po-Poprawce',
+    ulica: 'Polna 1/5',
+    kod: '00-950',
+    miasto: 'Warszawa',
+    kraj: 'PL',
+    phone: '+48500600700',
+    email: 'j@k.pl',
   };
 
   it('adres podany w opcjach trafia do klienta kuriera WPROST, nie przeliczony na nowo', async () => {
@@ -408,9 +447,14 @@ describe('nadanie — awaria PO przydzieleniu numeru listu', () => {
   // już by się nie dowiedział, dokąd ta konkretna paczka pojechała.
   it('adres użyty PRZY NADANIU DO WYJAŚNIENIA też się zapisuje przy przesyłce (JSON)', async () => {
     const ADRES = {
-      nazwa: 'Jan Kowalski-Po-Poprawce', company: 'Jan Kowalski-Po-Poprawce',
-      ulica: 'Polna 1/5', kod: '00-950', miasto: 'Warszawa', kraj: 'PL',
-      phone: '+48500600700', email: 'j@k.pl',
+      nazwa: 'Jan Kowalski-Po-Poprawce',
+      company: 'Jan Kowalski-Po-Poprawce',
+      ulica: 'Polna 1/5',
+      kod: '00-950',
+      miasto: 'Warszawa',
+      kraj: 'PL',
+      phone: '+48500600700',
+      email: 'j@k.pl',
     };
     const { db, nadanie } = zestaw({ dpdNadaj: poNumerze() });
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
@@ -474,9 +518,14 @@ describe('nadanie — plik etykiety', () => {
 // żeby powtórny wydruk nie wymagał kolejnej rozmowy z DPD — zapisana na dysk TAK SAMO
 // odpornie jak PDF (patrz opis wyżej), bo w tym momencie numer listu już istnieje.
 describe('nadanie — etykieta ZPL (kolejka druku)', () => {
-  const zNadajZpl = (etykietaZpl = Buffer.from('^XA^XZ'), zplBladOpis = null) => vi.fn().mockResolvedValue({
-    numerListu: NUMER_LISTU, etykietaPdf: Buffer.from('%PDF-x'), etykietaZpl, zplBladOpis, surowa: '<xml/>',
-  });
+  const zNadajZpl = (etykietaZpl = Buffer.from('^XA^XZ'), zplBladOpis = null) =>
+    vi.fn().mockResolvedValue({
+      numerListu: NUMER_LISTU,
+      etykietaPdf: Buffer.from('%PDF-x'),
+      etykietaZpl,
+      zplBladOpis,
+      surowa: '<xml/>',
+    });
 
   it('zapisuje plik ZPL obok PDF-a i ścieżkę w etykieta_zpl_sciezka', async () => {
     const { db, nadanie } = zestaw({ dpdNadaj: zNadajZpl() });

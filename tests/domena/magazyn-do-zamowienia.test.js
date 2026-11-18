@@ -1,11 +1,22 @@
 import { describe, it, expect } from 'vitest';
 import {
-  cennikDlaZamowienia, nazwaPozycji, pozycjaZProduktu, rozmiarDoPokazania, KANALY_CENNIKA, CENNIK_DOMYSLNY,
+  cennikDlaZamowienia,
+  nazwaPozycji,
+  pozycjaZProduktu,
+  rozmiarDoPokazania,
+  KANALY_CENNIKA,
+  CENNIK_DOMYSLNY,
 } from '../pomoc/przykladowe-cenniki-sklepow.js';
 
 const produkt = (nad = {}) => ({
-  kanal: 'swietlik', produkt_id: '28040', wariant_id: '', nazwa: 'Lampa stołowa Grzybek',
-  sku_sklepu: 'LS-GRZ-70', cena_gr: 7490, rozmiar_tekst: '70x100', ...nad,
+  kanal: 'swietlik',
+  produkt_id: '28040',
+  wariant_id: '',
+  nazwa: 'Lampa stołowa Grzybek',
+  sku_sklepu: 'LS-GRZ-70',
+  cena_gr: 7490,
+  rozmiar_tekst: '70x100',
+  ...nad,
 });
 
 describe('cennik — Allegro nigdy nie jest źródłem ceny', () => {
@@ -47,8 +58,9 @@ describe('nazwa pozycji — rozmiar w nazwie, ale tylko raz', () => {
   });
 
   it('nie dokłada rozmiaru, który już jest w nazwie', () => {
-    expect(nazwaPozycji({ nazwa: 'lampa wisząca kopuła mosiężna 50cm', rozmiar_tekst: '50cm' }))
-      .toBe('lampa wisząca kopuła mosiężna 50cm');
+    expect(nazwaPozycji({ nazwa: 'lampa wisząca kopuła mosiężna 50cm', rozmiar_tekst: '50cm' })).toBe(
+      'lampa wisząca kopuła mosiężna 50cm',
+    );
   });
 
   it('porównuje bez wielkości liter', () => {
@@ -100,8 +112,9 @@ describe('pozycjaZProduktu', () => {
   // ⚠️ TU SIE PILNUJE PIENIEDZY: produkt z kanalu allegrowego ma ODMOWIC, nawet gdyby
   // ktos podal go wprost w formularzu.
   it('produkt z Allegro → odmowa, choćby miał cenę', () => {
-    expect(() => pozycjaZProduktu(produkt({ kanal: 'allegro_swietlik', cena_gr: 9900 }), '1'))
-      .toThrow(/nie jest cennikiem/);
+    expect(() => pozycjaZProduktu(produkt({ kanal: 'allegro_swietlik', cena_gr: 9900 }), '1')).toThrow(
+      /nie jest cennikiem/,
+    );
   });
 
   it('produkt bez ceny w tym cenniku → odmowa z podpowiedzią, a nie cena z innego kanału', () => {
@@ -127,8 +140,9 @@ describe('rozmiarDoPokazania', () => {
   // (`rozmiarZAtrybutow(...) ?? nazwa` w services/magazyn-sync.js). Zmierzone na produkcji:
   // „Klosz opalowy - plafon 30x48cm" wychodzilo na liscie dwa razy pod rzad.
   it('nie pokazuje rozmiaru, który jest całą nazwą', () => {
-    expect(rozmiarDoPokazania({ nazwa: 'Klosz opalowy - plafon 30x48cm', rozmiar_tekst: 'Klosz opalowy - plafon 30x48cm' }))
-      .toBeNull();
+    expect(
+      rozmiarDoPokazania({ nazwa: 'Klosz opalowy - plafon 30x48cm', rozmiar_tekst: 'Klosz opalowy - plafon 30x48cm' }),
+    ).toBeNull();
   });
 
   it('pokazuje prawdziwy rozmiar wariantu', () => {

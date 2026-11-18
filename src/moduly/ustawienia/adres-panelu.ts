@@ -18,7 +18,11 @@ export function adresPaneluZEnv(wartosc: string | undefined): string | null {
 export function adresPaneluZZapisu(zapis: { ustawienia?: Record<string, unknown> } | null): string | null {
   const adres = zapis?.ustawienia?.adres;
   if (typeof adres !== 'string') return null;
-  try { return adresPaneluZEnv(adres); } catch { return null; }
+  try {
+    return adresPaneluZEnv(adres);
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -27,7 +31,11 @@ export function adresPaneluZZapisu(zapis: { ustawienia?: Record<string, unknown>
  */
 export function adresPaneluZZadania(zadanie: { protocol?: string; host?: string } | null): string | null {
   if (!zadanie?.protocol || !zadanie.host) return null;
-  try { return adresPaneluZEnv(`${zadanie.protocol}://${zadanie.host}`); } catch { return null; }
+  try {
+    return adresPaneluZEnv(`${zadanie.protocol}://${zadanie.host}`);
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -36,7 +44,10 @@ export function adresPaneluZZadania(zadanie: { protocol?: string; host?: string 
  * ⚠️ Adres z żądania wolno podać tylko z trasy zalogowanego administratora: na ścieżce bez logowania napastnik
  * podstawiłby własny nagłówek Host i link z tokenem, wysłany ofierze, prowadziłby do niego.
  */
-export function adresLinkow(skonfigurowany: string | null, zadanie: { protocol?: string; host?: string } | null): { adres: string; domyslny: boolean } | null {
+export function adresLinkow(
+  skonfigurowany: string | null,
+  zadanie: { protocol?: string; host?: string } | null,
+): { adres: string; domyslny: boolean } | null {
   if (skonfigurowany) return { adres: skonfigurowany, domyslny: false };
   const zZadania = adresPaneluZZadania(zadanie);
   return zZadania ? { adres: zZadania, domyslny: true } : null;
@@ -46,12 +57,20 @@ export function adresLinkow(skonfigurowany: string | null, zadanie: { protocol?:
  * Formularz adresu panelu: { adres } po normalizacji (origin) albo czytelny błąd bez echa wpisanej wartości.
  * Puste pole to nie błąd — { adres: null, blad: null } = usuń zapis, wraca adres domyślny.
  */
-export function sprawdzFormularzAdresuPanelu(body: Record<string, unknown> = {}): { adres: string | null; blad: string | null } {
+export function sprawdzFormularzAdresuPanelu(body: Record<string, unknown> = {}): {
+  adres: string | null;
+  blad: string | null;
+} {
   const wpisany = String(body.adres ?? '');
   if (!wpisany.trim()) return { adres: null, blad: null };
   try {
     const adres = adresPaneluZEnv(wpisany);
     if (adres) return { adres, blad: null };
-  } catch { /* komunikat niżej — bez powtarzania wpisanej wartości */ }
-  return { adres: null, blad: 'Adres panelu to http:// albo https://, nazwa hosta i ewentualnie port — bez ścieżki, zapytania, spacji i loginu, np. https://panel.twoja-firma.pl.' };
+  } catch {
+    /* komunikat niżej — bez powtarzania wpisanej wartości */
+  }
+  return {
+    adres: null,
+    blad: 'Adres panelu to http:// albo https://, nazwa hosta i ewentualnie port — bez ścieżki, zapytania, spacji i loginu, np. https://panel.twoja-firma.pl.',
+  };
 }

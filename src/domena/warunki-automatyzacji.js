@@ -43,8 +43,10 @@ export function sprawdzWarunki(z, warunki = {}, { etykiety = {} } = {}) {
     const teraz = wyliczStatus(z);
     if (!statusy.includes(teraz)) {
       const oczekiwane = wyliczenie(statusy.map((s) => etykietaStatusu(s, z, etykiety)));
-      return nie(`Status jest teraz ${etykietaStatusu(teraz, z, etykiety)} — warunek „status jest ${oczekiwane}” `
-        + 'przestał być spełniony. Jeśli zamówienie znów dostanie ten status, reguła sprawdzi je od nowa.');
+      return nie(
+        `Status jest teraz ${etykietaStatusu(teraz, z, etykiety)} — warunek „status jest ${oczekiwane}” ` +
+          'przestał być spełniony. Jeśli zamówienie znów dostanie ten status, reguła sprawdzi je od nowa.',
+      );
     }
   }
 
@@ -56,13 +58,17 @@ export function sprawdzWarunki(z, warunki = {}, { etykiety = {} } = {}) {
   if (metody.length) {
     const metoda = metodaWysylki(z);
     if (!metody.includes(metoda)) {
-      return nie(`Sposób dostawy to ${ETYKIETY_WYSYLKI[metoda] ?? metoda ?? 'nieznany'} — reguła obejmuje tylko: `
-        + `${metody.map((m) => ETYKIETY_WYSYLKI[m] ?? m).join(', ')}.`);
+      return nie(
+        `Sposób dostawy to ${ETYKIETY_WYSYLKI[metoda] ?? metoda ?? 'nieznany'} — reguła obejmuje tylko: ` +
+          `${metody.map((m) => ETYKIETY_WYSYLKI[m] ?? m).join(', ')}.`,
+      );
     }
   }
 
-  if (w.pobranie === 'tak' && !czyPobranie(z)) return nie('Zamówienie nie jest za pobraniem — reguła obejmuje tylko pobrania.');
-  if (w.pobranie === 'nie' && czyPobranie(z)) return nie('Zamówienie jest za pobraniem — reguła obejmuje tylko zamówienia bez pobrania.');
+  if (w.pobranie === 'tak' && !czyPobranie(z))
+    return nie('Zamówienie nie jest za pobraniem — reguła obejmuje tylko pobrania.');
+  if (w.pobranie === 'nie' && czyPobranie(z))
+    return nie('Zamówienie jest za pobraniem — reguła obejmuje tylko zamówienia bez pobrania.');
 
   return ok;
 }
@@ -75,8 +81,13 @@ export function importSpozniony(z, wykonanie) {
   const zlozone = Date.parse(z?.utworzone_at ?? '');
   const wykryte = Date.parse(wykonanie?.zdarzenie_at ?? '');
   if (Number.isNaN(zlozone) || Number.isNaN(wykryte) || wykryte - zlozone <= IMPORT_SPOZNIONY_H * 3600_000) return ok;
-  return { ok: false, kod: 'spozniony_import', powod: `Zamówienie złożone ${dataPl(zlozone)} — wykryte przez OMS po ponad `
-    + `${IMPORT_SPOZNIONY_H} godzinach. Potwierdzenie nie idzie automatem; w razie potrzeby wyślij je ręcznie z karty.` };
+  return {
+    ok: false,
+    kod: 'spozniony_import',
+    powod:
+      `Zamówienie złożone ${dataPl(zlozone)} — wykryte przez OMS po ponad ` +
+      `${IMPORT_SPOZNIONY_H} godzinach. Potwierdzenie nie idzie automatem; w razie potrzeby wyślij je ręcznie z karty.`,
+  };
 }
 
 /**
@@ -99,15 +110,27 @@ export function historiaPrzedGranica(z, granica, { dni = ZAMOWIENIE_STARSZE_NIZ_
   // Bez granicy (podgląd „30 dni”) zostaje sama świeżość numeru z Allegro (`numerAllegroPozno`); z granicą — najpierw ona.
   if (Number.isNaN(granicaMs)) return numerAllegroPozno(z, wykonanie, dni) ?? ok;
   const migawka = Number(granica.przesylki ?? 0);
-  const stara = (z.przesylki ?? []).find((p) => p.status !== 'blad' && String(p.numer_listu ?? '').trim() && Number(p.id) <= migawka);
+  const stara = (z.przesylki ?? []).find(
+    (p) => p.status !== 'blad' && String(p.numer_listu ?? '').trim() && Number(p.id) <= migawka,
+  );
   if (stara) {
-    return { ok: false, kod: 'przed_granica', powod: `Zamówienie wysłane przed włączeniem reguły — ma paczkę z numerem listu sprzed `
-      + `włączenia reguły (${String(stara.numer_listu).trim()}). Mail do historii nie idzie; w razie potrzeby wyślij go ręcznie z karty.` };
+    return {
+      ok: false,
+      kod: 'przed_granica',
+      powod:
+        `Zamówienie wysłane przed włączeniem reguły — ma paczkę z numerem listu sprzed ` +
+        `włączenia reguły (${String(stara.numer_listu).trim()}). Mail do historii nie idzie; w razie potrzeby wyślij go ręcznie z karty.`,
+    };
   }
   const zlozone = Date.parse(z.utworzone_at ?? '');
   if (!Number.isNaN(zlozone) && zlozone < granicaMs - dni * DZIEN_MS) {
-    return { ok: false, kod: 'przed_granica', powod: `Zamówienie złożone ${dataPl(zlozone)} — ponad ${dni} dni przed włączeniem reguły `
-      + `(${dataPl(granicaMs)}). Mail do historii nie idzie; w razie potrzeby wyślij go ręcznie z karty.` };
+    return {
+      ok: false,
+      kod: 'przed_granica',
+      powod:
+        `Zamówienie złożone ${dataPl(zlozone)} — ponad ${dni} dni przed włączeniem reguły ` +
+        `(${dataPl(granicaMs)}). Mail do historii nie idzie; w razie potrzeby wyślij go ręcznie z karty.`,
+    };
   }
   return numerAllegroPozno(z, wykonanie, dni) ?? ok;
 }
@@ -128,9 +151,14 @@ function numerAllegroPozno(z, wykonanie, dni) {
   const zlozone = Date.parse(z.utworzone_at ?? '');
   const zdarzenie = Date.parse(wykonanie.zdarzenie_at ?? '');
   if (Number.isNaN(zlozone) || Number.isNaN(zdarzenie) || zlozone >= zdarzenie - dni * DZIEN_MS) return null;
-  return { ok: false, kod: 'numer_allegro_pozno', powod: `Numer listu dociągnięty z Allegro (${String(p.numer_listu ?? '').trim()}) `
-    + `${dataPl(zdarzenie)}, ponad ${dni} dni po złożeniu zamówienia (${dataPl(zlozone)}) — przesyłka mogła dawno dojść. `
-    + 'Mail nie idzie; w razie potrzeby wyślij go ręcznie z karty.' };
+  return {
+    ok: false,
+    kod: 'numer_allegro_pozno',
+    powod:
+      `Numer listu dociągnięty z Allegro (${String(p.numer_listu ?? '').trim()}) ` +
+      `${dataPl(zdarzenie)}, ponad ${dni} dni po złożeniu zamówienia (${dataPl(zlozone)}) — przesyłka mogła dawno dojść. ` +
+      'Mail nie idzie; w razie potrzeby wyślij go ręcznie z karty.',
+  };
 }
 
 /** Opis warunków dla człowieka (ekran reguły): „jest Wysłane i ma paczkę z numerem listu”. Pusty tekst = brak warunków. */
@@ -144,5 +172,5 @@ export function opisWarunkow(warunki = {}, { etykiety = {} } = {}) {
   if (metody.length) czesci.push(`jedzie: ${metody.map((m) => ETYKIETY_WYSYLKI[m] ?? m).join(', ')}`);
   if (w.pobranie === 'tak') czesci.push('jest za pobraniem');
   if (w.pobranie === 'nie') czesci.push('nie jest za pobraniem');
-  return czesci.length > 1 ? `${czesci.slice(0, -1).join(', ')} i ${czesci.at(-1)}` : czesci[0] ?? '';
+  return czesci.length > 1 ? `${czesci.slice(0, -1).join(', ')} i ${czesci.at(-1)}` : (czesci[0] ?? '');
 }

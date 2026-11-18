@@ -24,13 +24,20 @@ const znaki = (n) => Array.from({ length: n }, () => '?').join(',');
 function zapytanie(db, klucz) {
   if (Object.hasOwn(WBUDOWANE, klucz)) {
     const kolumna = WBUDOWANE[klucz];
-    return { sql: `SELECT z.id, z.id AS zamowienie_id, z.sklep, z.${kolumna} AS zdarzenie_at FROM zamowienia z
-      WHERE z.${kolumna} IS NOT NULL AND z.${kolumna} >= ?`, porzadek: `z.${kolumna}`, arg: [] };
+    return {
+      sql: `SELECT z.id, z.id AS zamowienie_id, z.sklep, z.${kolumna} AS zdarzenie_at FROM zamowienia z
+      WHERE z.${kolumna} IS NOT NULL AND z.${kolumna} >= ?`,
+      porzadek: `z.${kolumna}`,
+      arg: [],
+    };
   }
   if (!maTabeleStatusow(db) || !wlasne(db).some((s) => s.klucz === klucz)) return null;
-  return { sql: `SELECT z.id, z.id AS zamowienie_id, z.sklep, s.ustawione_at AS zdarzenie_at FROM zamowienia z
+  return {
+    sql: `SELECT z.id, z.id AS zamowienie_id, z.sklep, s.ustawione_at AS zdarzenie_at FROM zamowienia z
     JOIN zamowienia_status_wlasny s ON s.zamowienie_id = z.id WHERE s.klucz = ? AND s.ustawione_at >= ?`,
-  porzadek: 's.ustawione_at', arg: [klucz] };
+    porzadek: 's.ustawione_at',
+    arg: [klucz],
+  };
 }
 
 /** SQL i argumenty kandydatów (eksport dla testu planu zapytania) albo `null`, gdy statusu nie ma. */
@@ -45,9 +52,16 @@ export function sqlKandydatow(db, klucz, od, { kanaly = null, limit = null, male
   const filtrPo = po ? ` AND (${q.porzadek} > ? OR (${q.porzadek} = ? AND z.id > ?))` : '';
   const ogranicz = limit === null ? '' : ' LIMIT ?';
   const kierunek = malejaco ? ' DESC' : '';
-  return { sql: `${q.sql}${filtrKanalu}${filtrPo} ORDER BY ${q.porzadek}${kierunek}, z.id${kierunek}${ogranicz}`,
-    args: [...q.arg, od, ...(Array.isArray(kanaly) ? kanaly : []), ...(po ? [po.at, po.at, po.id] : []),
-      ...(limit === null ? [] : [limit])] };
+  return {
+    sql: `${q.sql}${filtrKanalu}${filtrPo} ORDER BY ${q.porzadek}${kierunek}, z.id${kierunek}${ogranicz}`,
+    args: [
+      ...q.arg,
+      od,
+      ...(Array.isArray(kanaly) ? kanaly : []),
+      ...(po ? [po.at, po.at, po.id] : []),
+      ...(limit === null ? [] : [limit]),
+    ],
+  };
 }
 
 function czytaj(db, klucz, od, opcje = {}) {
@@ -79,12 +93,14 @@ export const zdarzenieStatusZmieniony = Object.freeze({
   bladParametru(db, parametr) {
     const klucz = parametr?.status;
     if (!klucz) return 'Reguła nie ma wybranego statusu.';
-    return zapytanie(db, klucz) ? null : `Wybrany status („${klucz}”) nie istnieje w Ustawieniach → Zamówienia i magazyn → Statusy zamówień — reguła nic nie zrobi.`;
+    return zapytanie(db, klucz)
+      ? null
+      : `Wybrany status („${klucz}”) nie istnieje w Ustawieniach → Zamówienia i magazyn → Statusy zamówień — reguła nic nie zrobi.`;
   },
 
   /** Kandydaci przebiegu: fakt statusu nie starszy niż `od` (a więc i granica), tylko z zaznaczonych kanałów. */
   kandydaci(db, { granica, od, po = null, parametr, limit, kanaly = null }) {
-    const odKiedy = od && granica?.at && od > granica.at ? od : granica?.at ?? od;
+    const odKiedy = od && granica?.at && od > granica.at ? od : (granica?.at ?? od);
     return czytaj(db, parametr?.status, odKiedy, { kanaly, limit, po });
   },
 

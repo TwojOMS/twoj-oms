@@ -21,31 +21,43 @@ export function wydajLink(db, { kontoId, cel, utworzylKontoId = null, teraz, zas
   const wygasaAt = new Date(chwila.getTime() + WAZNOSC_LINKU_MS).toISOString();
   const id = wTransakcji(db, () => {
     if (zastapPoprzednie) {
-      db.prepare('UPDATE linki_hasla SET uniewaznione_at = ? WHERE konto_id = ? AND uzyte_at IS NULL AND uniewaznione_at IS NULL')
-        .run(chwila.toISOString(), kontoId);
+      db.prepare(
+        'UPDATE linki_hasla SET uniewaznione_at = ? WHERE konto_id = ? AND uzyte_at IS NULL AND uniewaznione_at IS NULL',
+      ).run(chwila.toISOString(), kontoId);
     }
-    return Number(db.prepare(`INSERT INTO linki_hasla (konto_id, hash_tokenu, cel, utworzone_at, wygasa_at, utworzyl_konto_id)
-      VALUES (?, ?, ?, ?, ?, ?)`).run(kontoId, skrotTokenu(token), cel, chwila.toISOString(), wygasaAt, utworzylKontoId).lastInsertRowid);
+    return Number(
+      db
+        .prepare(
+          `INSERT INTO linki_hasla (konto_id, hash_tokenu, cel, utworzone_at, wygasa_at, utworzyl_konto_id)
+      VALUES (?, ?, ?, ?, ?, ?)`,
+        )
+        .run(kontoId, skrotTokenu(token), cel, chwila.toISOString(), wygasaAt, utworzylKontoId).lastInsertRowid,
+    );
   });
   return { token, wygasaAt, id };
 }
 
 /** Po udanej wysyłce: unieważnia wszystkie inne nieużyte linki konta (jedno UPDATE — atomowe). */
 export function zastapPoprzednieLinki(db, { kontoId, nowyLinkId, teraz }) {
-  db.prepare('UPDATE linki_hasla SET uniewaznione_at = ? WHERE konto_id = ? AND id <> ? AND uzyte_at IS NULL AND uniewaznione_at IS NULL')
-    .run(teraz().toISOString(), kontoId, nowyLinkId);
+  db.prepare(
+    'UPDATE linki_hasla SET uniewaznione_at = ? WHERE konto_id = ? AND id <> ? AND uzyte_at IS NULL AND uniewaznione_at IS NULL',
+  ).run(teraz().toISOString(), kontoId, nowyLinkId);
 }
 
 /** Po błędzie wysyłki: wycofuje dokładnie ten jeden link (nikt go nie dostał). */
 export function wycofajLink(db, linkId, teraz) {
-  db.prepare('UPDATE linki_hasla SET uniewaznione_at = ? WHERE id = ? AND uzyte_at IS NULL AND uniewaznione_at IS NULL')
-    .run(teraz().toISOString(), linkId);
+  db.prepare(
+    'UPDATE linki_hasla SET uniewaznione_at = ? WHERE id = ? AND uzyte_at IS NULL AND uniewaznione_at IS NULL',
+  ).run(teraz().toISOString(), linkId);
 }
 
 export function aktywnyLink(db, token, teraz) {
   if (!poprawnyKsztaltTokenu(token)) return null;
-  const w = db.prepare(`SELECT l.id, l.konto_id, l.cel, k.login, k.imie FROM linki_hasla l JOIN konta k ON k.id = l.konto_id
-    WHERE l.hash_tokenu = ? AND l.uzyte_at IS NULL AND l.uniewaznione_at IS NULL AND l.wygasa_at > ? AND k.czynne = 1`)
+  const w = db
+    .prepare(
+      `SELECT l.id, l.konto_id, l.cel, k.login, k.imie FROM linki_hasla l JOIN konta k ON k.id = l.konto_id
+    WHERE l.hash_tokenu = ? AND l.uzyte_at IS NULL AND l.uniewaznione_at IS NULL AND l.wygasa_at > ? AND k.czynne = 1`,
+    )
     .get(skrotTokenu(token), teraz().toISOString());
   return w ? { id: w.id, kontoId: w.konto_id, cel: w.cel, login: w.login, imie: w.imie } : null;
 }
@@ -60,13 +72,15 @@ export function uzyjLinku(db, { token, haslo, teraz }) {
     ustawHashHasla(db, link.kontoId, hashHasla);
     db.prepare('UPDATE linki_hasla SET uzyte_at = ? WHERE id = ?').run(iso, link.id);
     // Żywe, nie martwe: w oknie wysyłki maila konto ma dwa aktywne linki naraz.
-    db.prepare('UPDATE linki_hasla SET uniewaznione_at = ? WHERE konto_id = ? AND id <> ? AND uzyte_at IS NULL AND uniewaznione_at IS NULL')
-      .run(iso, link.kontoId, link.id);
+    db.prepare(
+      'UPDATE linki_hasla SET uniewaznione_at = ? WHERE konto_id = ? AND id <> ? AND uzyte_at IS NULL AND uniewaznione_at IS NULL',
+    ).run(iso, link.kontoId, link.id);
     return { login: link.login };
   });
 }
 
 export function uniewaznijLinkiKonta(db, kontoId, teraz) {
-  db.prepare('UPDATE linki_hasla SET uniewaznione_at = ? WHERE konto_id = ? AND uzyte_at IS NULL AND uniewaznione_at IS NULL')
-    .run(teraz().toISOString(), kontoId);
+  db.prepare(
+    'UPDATE linki_hasla SET uniewaznione_at = ? WHERE konto_id = ? AND uzyte_at IS NULL AND uniewaznione_at IS NULL',
+  ).run(teraz().toISOString(), kontoId);
 }

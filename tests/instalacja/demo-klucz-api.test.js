@@ -18,14 +18,27 @@ const ODCZYT = ['zamowienia:odczyt', 'produkty:odczyt', 'stany:odczyt', 'sprzeda
 const katalogi = [];
 let live, url;
 
-const zKluczem = (adres, opcje = {}) => fetch(url + adres, { redirect: 'manual', ...opcje,
-  headers: { authorization: `Bearer ${KLUCZ_DEMO.klucz}`, ...opcje.headers } });
+const zKluczem = (adres, opcje = {}) =>
+  fetch(url + adres, {
+    redirect: 'manual',
+    ...opcje,
+    headers: { authorization: `Bearer ${KLUCZ_DEMO.klucz}`, ...opcje.headers },
+  });
 
 beforeAll(async () => {
-  const k = fs.mkdtempSync(path.join(os.tmpdir(), 'oms-demo-klucz-')); katalogi.push(k);
-  const env = { ...ENV_DEMO, OMS_DB_PATH: path.join(k, 'oms.sqlite'), OMS_PORT: '0', OMS_USER: 'serwis-demo',
-    OMS_PASS: 'haslo-serwisowe-testu', OMS_PROFORMY_KATALOG: path.join(k, 'proformy'),
-    OMS_ETYKIETY_KATALOG: path.join(k, 'etykiety'), OMS_DEMO_LOGIN: 'demo', OMS_DEMO_HASLO: 'demo' };
+  const k = fs.mkdtempSync(path.join(os.tmpdir(), 'oms-demo-klucz-'));
+  katalogi.push(k);
+  const env = {
+    ...ENV_DEMO,
+    OMS_DB_PATH: path.join(k, 'oms.sqlite'),
+    OMS_PORT: '0',
+    OMS_USER: 'serwis-demo',
+    OMS_PASS: 'haslo-serwisowe-testu',
+    OMS_PROFORMY_KATALOG: path.join(k, 'proformy'),
+    OMS_ETYKIETY_KATALOG: path.join(k, 'etykiety'),
+    OMS_DEMO_LOGIN: 'demo',
+    OMS_DEMO_HASLO: 'demo',
+  };
   await zalozBazeDemo({ baza: env.OMS_DB_PATH, dzis: DZIS, env, kontoAdmina: ADMIN });
   live = await uruchomPiaskownice(env, { host: '127.0.0.1' });
   url = live.aplikacja.app.listeningOrigin;
@@ -61,8 +74,11 @@ describe('klucz API demo tylko do odczytu', () => {
     const json = { 'content-type': 'application/json' };
     const proby = [
       zKluczem('/api/v1/produkty', { method: 'POST', headers: json, body: JSON.stringify({ nazwa: 'x' }) }),
-      zKluczem('/api/v1/stany/ruchy', { method: 'POST', headers: { ...json, 'idempotency-key': 'demo-1' },
-        body: JSON.stringify({ karta_id: 1, rodzaj: 'przyjecie', ilosc: 1 }) }),
+      zKluczem('/api/v1/stany/ruchy', {
+        method: 'POST',
+        headers: { ...json, 'idempotency-key': 'demo-1' },
+        body: JSON.stringify({ karta_id: 1, rodzaj: 'przyjecie', ilosc: 1 }),
+      }),
       zKluczem('/api/v1/zamowienia/1/proforma', { method: 'POST' }),
       zKluczem('/api/v1/zamowienia/1/w-realizacji', { method: 'POST' }),
       zKluczem('/kolejka-druku'),

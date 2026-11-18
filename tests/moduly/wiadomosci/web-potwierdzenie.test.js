@@ -29,16 +29,41 @@ const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('bas
 const poller = { stan: () => ({ ostatni_przebieg_at: '2026-08-21T09:00:00', ostatni_blad: null }) };
 
 const zmapowane = (nad = {}) => ({
-  zrodlo_id: 6001, numer: '202600014',
+  zrodlo_id: 6001,
+  numer: '202600014',
   klient: { first_name: 'Jan', last_name: 'Kowalski', email: 'klient@firma.pl', company: 'Wzorowy Kontrahent' },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', company: 'Wzorowy Kontrahent', address_1: 'ul. Testowa 7', postcode: '00-950', city: 'Warszawa' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null,
-  kwota_brutto: '243.70', koszt_dostawy_brutto: '19.00', koszt_dostawy_netto: '15.45',
-  status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-08-21T09:15:00',
-  pozycje: [{
-    zrodlo_id: 7001, nazwa: 'Lampa stołowa Grzybek 30x45', sku: 'LMP-GRZ-30', ilosc: 3,
-    cena_brutto: '74.90', cena_netto: '60.89', brutto_linii: '224.70', netto_linii: '182.68', vat: null,
-  }],
+  dostawa: {
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    company: 'Wzorowy Kontrahent',
+    address_1: 'ul. Testowa 7',
+    postcode: '00-950',
+    city: 'Warszawa',
+  },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '243.70',
+  koszt_dostawy_brutto: '19.00',
+  koszt_dostawy_netto: '15.45',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-08-21T09:15:00',
+  pozycje: [
+    {
+      zrodlo_id: 7001,
+      nazwa: 'Lampa stołowa Grzybek 30x45',
+      sku: 'LMP-GRZ-30',
+      ilosc: 3,
+      cena_brutto: '74.90',
+      cena_netto: '60.89',
+      brutto_linii: '224.70',
+      netto_linii: '182.68',
+      vat: null,
+    },
+  ],
   ...nad,
 });
 
@@ -76,7 +101,8 @@ function zbuduj({ mailer = atrapaPoczty() } = {}) {
 
 beforeEach(() => zbuduj());
 
-const wyslij = (id) => app.inject({ method: 'POST', url: `/zamowienia/${id}/wiadomosc/potwierdzenie`, headers: naglowek });
+const wyslij = (id) =>
+  app.inject({ method: 'POST', url: `/zamowienia/${id}/wiadomosc/potwierdzenie`, headers: naglowek });
 const karta = (id, q = '') => app.inject({ method: 'GET', url: `/zamowienia/${id}${q}`, headers: naglowek });
 const log = (id) => db.prepare('SELECT * FROM log WHERE zamowienie_id = ? ORDER BY id').all(id);
 

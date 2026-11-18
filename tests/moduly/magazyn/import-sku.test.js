@@ -14,11 +14,23 @@ const ZRODLOWE = ['pro', 'swietlik'];
 let db;
 const kartaSql = (id) => db.prepare('SELECT * FROM karty_produktow WHERE id = ?').get(id);
 const liczbaKart = () => db.prepare('SELECT COUNT(*) AS n FROM karty_produktow').get().n;
-const wiersz = (kanal, produktId) => db.prepare('SELECT * FROM produkty_sklepowe WHERE kanal = ? AND produkt_id = ?').get(kanal, produktId);
-const lustro = (kanal, produktId, nazwa, sku) => zapiszProduktSklepowy(db, {
-  kanal, produkt_id: produktId, wariant_id: '', nazwa, sku_sklepu: sku, odczytane_at: '2026-11-01T08:00:00.000Z',
+const wiersz = (kanal, produktId) =>
+  db.prepare('SELECT * FROM produkty_sklepowe WHERE kanal = ? AND produkt_id = ?').get(kanal, produktId);
+const lustro = (kanal, produktId, nazwa, sku) =>
+  zapiszProduktSklepowy(db, {
+    kanal,
+    produkt_id: produktId,
+    wariant_id: '',
+    nazwa,
+    sku_sklepu: sku,
+    odczytane_at: '2026-11-01T08:00:00.000Z',
+  });
+const p = (kanal, klucz, allegro = kanal.startsWith('allegro')) => ({
+  kanal,
+  typ: typImportu(klucz),
+  kanalyZrodlowe: ZRODLOWE,
+  allegro,
 });
-const p = (kanal, klucz, allegro = kanal.startsWith('allegro')) => ({ kanal, typ: typImportu(klucz), kanalyZrodlowe: ZRODLOWE, allegro });
 
 beforeEach(() => {
   db = openOmsDb(':memory:');
@@ -109,7 +121,11 @@ describe('drugi kanał z tym samym SKU wiąże się z istniejącą kartą', () =
     db.prepare("UPDATE produkty_sklepowe SET zniknal_at = '2026-11-02T08:00:00.000Z' WHERE id = ?").run(stary);
     powiazProdukt(db, lustro('pro', '108', 'Lampa Półcień 08', 'PP-LAMPA-08'), k2);
     lustro('allegro_swietlik', '7008', 'Lampa 08 na Allegro', 'PP-LAMPA-08');
-    expect(planImportu(db, p('allegro_swietlik', 'czesc')).liczby).toMatchObject({ powiaze: 1, utworzy: 0, pominie: 0 });
+    expect(planImportu(db, p('allegro_swietlik', 'czesc')).liczby).toMatchObject({
+      powiaze: 1,
+      utworzy: 0,
+      pominie: 0,
+    });
     wykonajImport(db, p('allegro_swietlik', 'czesc'));
     expect(wiersz('allegro_swietlik', '7008').karta_id).toBe(k2);
   });
@@ -149,38 +165,84 @@ describe('podgląd („Sprawdź”) = wynik („Importuj”) przez ekran', () =>
   };
   const liczba = (html, klucz) => Number(html.match(new RegExp(`data-liczba="${klucz}"[^>]*>(\\d+)<`))?.[1]);
   async function sprawdz(app, kanal, typ) {
-    const r = await app.inject({ method: 'POST', url: '/magazyn/import/sprawdz', headers: auth, payload: `kanal=${kanal}&typ=${typ}` });
+    const r = await app.inject({
+      method: 'POST',
+      url: '/magazyn/import/sprawdz',
+      headers: auth,
+      payload: `kanal=${kanal}&typ=${typ}`,
+    });
     expect(r.statusCode).toBe(303);
     for (let i = 0; i < 200; i += 1) {
       const g = await app.inject({ method: 'GET', url: r.headers.location, headers: auth });
       if (g.body.includes('data-krok="podglad"')) return g.body;
-      await new Promise((ok) => { setTimeout(ok, 5); });
+      await new Promise((ok) => {
+        setTimeout(ok, 5);
+      });
     }
     throw new Error('podgląd się nie pojawił');
   }
 
   it('Woo „część” zakłada kartę, Allegro z tym SKU: podgląd i wynik pokazują powiąże 1, utworzy 0', async () => {
-    const produkt = { id: 201, name: 'Lampa Półcień 21', sku: 'PP-LAMPA-21', type: 'simple', description: '', images: [], categories: [], attributes: [] };
+    const produkt = {
+      id: 201,
+      name: 'Lampa Półcień 21',
+      sku: 'PP-LAMPA-21',
+      type: 'simple',
+      description: '',
+      images: [],
+      categories: [],
+      attributes: [],
+    };
     const oferty = [
-      { id: '7021', name: 'Lampa 21 na Allegro', external: { id: 'PP-LAMPA-21' }, sellingMode: { price: { amount: '99.00', currency: 'PLN' } } },
-      { id: '7022', name: 'Lampa 22 na Allegro', external: { id: 'PP-LAMPA-22' }, sellingMode: { price: { amount: '99.00', currency: 'PLN' } } },
+      {
+        id: '7021',
+        name: 'Lampa 21 na Allegro',
+        external: { id: 'PP-LAMPA-21' },
+        sellingMode: { price: { amount: '99.00', currency: 'PLN' } },
+      },
+      {
+        id: '7022',
+        name: 'Lampa 22 na Allegro',
+        external: { id: 'PP-LAMPA-22' },
+        sellingMode: { price: { amount: '99.00', currency: 'PLN' } },
+      },
     ];
     // Dwie karty z SKU PP-LAMPA-22 w lustrze sklepu „swietlik” — oferta 7022 ma zostać pominięta z powodem.
-    for (const [id, nazwa] of [['521', 'Lampa 22 A'], ['522', 'Lampa 22 B']]) {
+    for (const [id, nazwa] of [
+      ['521', 'Lampa 22 A'],
+      ['522', 'Lampa 22 B'],
+    ]) {
       powiazProdukt(db, lustro('swietlik', id, nazwa, 'PP-LAMPA-22'), utworzKarte(db, { nazwa }));
     }
-    const sklepy = { pro: { pobierzWszystkieProdukty: vi.fn(async () => [produkt]), pobierzWarianty: vi.fn(async () => []) } };
+    const sklepy = {
+      pro: { pobierzWszystkieProdukty: vi.fn(async () => [produkt]), pobierzWarianty: vi.fn(async () => []) },
+    };
     const tresc = { start: vi.fn(() => ({ wystartowal: true })), stan: () => ({ trwa: false }), gotowy: () => true };
-    const app = buildOmsServer({ db, config, sklepy, klienciWiadomosci: { allegro_swietlik: { pobierzOferty: vi.fn(async () => oferty) } },
-      nadpisania: { 'magazyn.trescAllegro': tresc } });
+    const app = buildOmsServer({
+      db,
+      config,
+      sklepy,
+      klienciWiadomosci: { allegro_swietlik: { pobierzOferty: vi.fn(async () => oferty) } },
+      nadpisania: { 'magazyn.trescAllegro': tresc },
+    });
 
     await sprawdz(app, 'pro', 'czesc');
-    await app.inject({ method: 'POST', url: '/magazyn/import/importuj', headers: auth, payload: 'kanal=pro&typ=czesc' });
+    await app.inject({
+      method: 'POST',
+      url: '/magazyn/import/importuj',
+      headers: auth,
+      payload: 'kanal=pro&typ=czesc',
+    });
     const k = wiersz('pro', '201').karta_id;
     expect(k).not.toBeNull();
 
     const podglad = await sprawdz(app, 'allegro_swietlik', 'czesc');
-    const r = await app.inject({ method: 'POST', url: '/magazyn/import/importuj', headers: auth, payload: 'kanal=allegro_swietlik&typ=czesc' });
+    const r = await app.inject({
+      method: 'POST',
+      url: '/magazyn/import/importuj',
+      headers: auth,
+      payload: 'kanal=allegro_swietlik&typ=czesc',
+    });
     expect(r.statusCode).toBe(200);
     for (const [klucz, ile] of Object.entries({ powiaze: 1, utworzy: 0, pominie: 1 })) {
       expect(liczba(podglad, klucz)).toBe(ile);

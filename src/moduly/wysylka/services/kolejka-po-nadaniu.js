@@ -25,7 +25,10 @@ export function wstawEtykieteDoKolejki(db, zamowienieId, kolejnosc, zrodlo) {
     }
     // Kurier nie oddał ZPL-a przy nadaniu (patrz services/nadanie.js) — nie ma czego wstawić.
     // To FAKT do zapisania, nie awaria: na karcie zostaje PDF, bez przycisku „Drukuj".
-    dopiszLog(db, zamowienieId, { akcja: 'kolejka-druku.dodanie', wynik: `BRAK ZPL — nie dodano do kolejki (${zrodlo})` });
+    dopiszLog(db, zamowienieId, {
+      akcja: 'kolejka-druku.dodanie',
+      wynik: `BRAK ZPL — nie dodano do kolejki (${zrodlo})`,
+    });
     return 'brak_zpl';
   } catch (e) {
     try {

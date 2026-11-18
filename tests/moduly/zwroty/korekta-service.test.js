@@ -1,10 +1,12 @@
-import {
-  describe, it, expect, beforeEach, vi,
-} from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import {
-  dodajZwrot, zwrot, zarezerwujKorekte, zapiszKorekte, zapiszRecznyNumerKorekty,
+  dodajZwrot,
+  zwrot,
+  zarezerwujKorekte,
+  zapiszKorekte,
+  zapiszRecznyNumerKorekty,
 } from '../../../src/oms/db/zwroty.js';
 import { createKorekta } from '../../../src/moduly/zwroty/services/korekta.js';
 import { createInfaktClient } from '../../../src/oms/infakt/client.js';
@@ -14,18 +16,36 @@ import { createInfaktClient } from '../../../src/oms/infakt/client.js';
 // (db/zamowienia.js), wiec `undefined` odbija sie od SQLite. Ta sama poprawka, co w
 // tests/oms/zwroty-db.test.js i tests/oms/web-zwroty.test.js.
 const zmapowane = () => ({
-  zrodlo_id: 1301, numer: '1301', klient: { email: 'j@k.pl' }, dostawa: {},
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: '1234563218',
-  kwota_brutto: '217.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
+  zrodlo_id: 1301,
+  numer: '1301',
+  klient: { email: 'j@k.pl' },
+  dostawa: {},
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 1,
+  nip: '1234563218',
+  kwota_brutto: '217.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
   utworzone_at: '2026-08-01T10:00:00',
-  pozycje: [{
-    zrodlo_id: 77, nazwa: 'Kot 70x100', sku: 'PRO-KOT-001', ilosc: 2, cena_brutto: '99.00',
-    brutto_linii: '198.00', vat: null,
-  }],
+  pozycje: [
+    {
+      zrodlo_id: 77,
+      nazwa: 'Kot 70x100',
+      sku: 'PRO-KOT-001',
+      ilosc: 2,
+      cena_brutto: '99.00',
+      brutto_linii: '198.00',
+      vat: null,
+    },
+  ],
 });
 
 const FAKTURA = {
-  number: 'FV 1/08/2026', invoice_date: '2026-08-01', uuid: 'uuid-fv',
+  number: 'FV 1/08/2026',
+  invoice_date: '2026-08-01',
+  uuid: 'uuid-fv',
   services: [{ name: 'Kot 70x100', quantity: 2, gross_price: 19800, tax_symbol: '23' }],
 };
 
@@ -38,11 +58,15 @@ beforeEach(() => {
   // nie obiekt `{ id }` — ta sama pulapka, co w tests/oms/zwroty-db.test.js i web-zwroty.test.js.
   id = zapiszZamowienie(db, 'pro', zmapowane(), {});
   // ⚠️ Rozbieznosc z briefem: kolumna nazywa sie `infakt_uuid`, nie `uuid` (schema.sql).
-  db.prepare(
-    'INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)',
-  ).run(id, 'uuid-fv', 'FV 1/08/2026', '2026-08-01T10:00:00Z');
+  db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)').run(
+    id,
+    'uuid-fv',
+    'FV 1/08/2026',
+    '2026-08-01T10:00:00Z',
+  );
   zwrotId = dodajZwrot(db, id, {
-    data: '2026-08-14', kwota: '99.00',
+    data: '2026-08-14',
+    kwota: '99.00',
     pozycje: [{ klucz_pozycji: 's77', nazwa: 'Kot 70x100', ilosc: 1, kwota: '99.00' }],
   }).id;
 });
@@ -52,9 +76,8 @@ describe('wystawienie korekty', () => {
     const fetchImpl = vi.fn().mockImplementation(async (_url, opcje) => ({
       ok: true,
       status: opcje.method === 'POST' ? 201 : 200,
-      json: async () => (opcje.method === 'POST'
-        ? { invoice_task_reference_number: 'REF-PRZ147' }
-        : { ...FAKTURA, client_id: 14701 }),
+      json: async () =>
+        opcje.method === 'POST' ? { invoice_task_reference_number: 'REF-PRZ147' } : { ...FAKTURA, client_id: 14701 },
     }));
     const infakt = createInfaktClient({ apiKey: 'test', fetchImpl });
     await createKorekta({ db, infakt }).wystaw(id, zwrotId);
@@ -67,8 +90,15 @@ describe('wystawienie korekty', () => {
 
   it.each([
     [{ client_id: 14701, client_company_name: 'Pracownia Półcień' }, { client_id: 14701 }],
-    [{ client_company_name: 'Pracownia Półcień', client_tax_code: '1111111111', client_city: '', client_first_name: null },
-      { client_company_name: 'Pracownia Półcień', client_tax_code: '1111111111' }],
+    [
+      {
+        client_company_name: 'Pracownia Półcień',
+        client_tax_code: '1111111111',
+        client_city: '',
+        client_first_name: null,
+      },
+      { client_company_name: 'Pracownia Półcień', client_tax_code: '1111111111' },
+    ],
     [{}, {}],
   ])('przenosi nabywcę z faktury: %j', async (nabywca, oczekiwane) => {
     const infakt = {
@@ -82,7 +112,9 @@ describe('wystawienie korekty', () => {
 
   it('pobierzFakture → null: odmowa dla operatora, nie TypeError, bez rezerwacji', async () => {
     const infakt = { pobierzFakture: vi.fn().mockResolvedValue(null), wystawKorekte: vi.fn() };
-    const err = await createKorekta({ db, infakt }).wystaw(id, zwrotId).catch((e) => e);
+    const err = await createKorekta({ db, infakt })
+      .wystaw(id, zwrotId)
+      .catch((e) => e);
     expect(err.dlaOperatora).toBeTruthy();
     expect(infakt.wystawKorekte).not.toHaveBeenCalled();
     expect(zwrot(db, id, zwrotId).korekta_zlecona_at).toBeNull();
@@ -114,9 +146,11 @@ describe('wystawienie korekty', () => {
   it('ODMOWA inFaktu ZWALNIA rezerwacje i zapisuje blad', async () => {
     const infakt = {
       pobierzFakture: vi.fn().mockResolvedValue(FAKTURA),
-      wystawKorekte: vi.fn().mockRejectedValue(
-        Object.assign(new Error('inFakt odrzucił: correction_reason'), { dlaOperatora: true, status: 422 }),
-      ),
+      wystawKorekte: vi
+        .fn()
+        .mockRejectedValue(
+          Object.assign(new Error('inFakt odrzucił: correction_reason'), { dlaOperatora: true, status: 422 }),
+        ),
     };
     await expect(createKorekta({ db, infakt }).wystaw(id, zwrotId)).rejects.toThrow(/correction_reason/);
     const w = zwrot(db, id, zwrotId);
@@ -135,7 +169,10 @@ describe('wystawienie korekty', () => {
 
   it('rozbieznosc pozycji faktury i zwrotu ODMAWIA i nie dotyka inFaktu', async () => {
     const infakt = {
-      pobierzFakture: vi.fn().mockResolvedValue({ ...FAKTURA, services: [{ name: 'Sowa', quantity: 1, gross_price: 5000, tax_symbol: '23' }] }),
+      pobierzFakture: vi.fn().mockResolvedValue({
+        ...FAKTURA,
+        services: [{ name: 'Sowa', quantity: 1, gross_price: 5000, tax_symbol: '23' }],
+      }),
       wystawKorekte: vi.fn(),
     };
     await expect(createKorekta({ db, infakt }).wystaw(id, zwrotId)).rejects.toThrow(/Kot 70x100/);
@@ -155,7 +192,9 @@ describe('wystawienie korekty', () => {
     // wyslania formularza, wiec kolejnosc tych dwoch linii przestala byc obojetna.
     db.prepare('DELETE FROM zwroty WHERE id = ?').run(zwrotId);
     const wId = dodajZwrot(db, id, {
-      data: '2026-08-14', kwota: '99.00', powod: notatka,
+      data: '2026-08-14',
+      kwota: '99.00',
+      powod: notatka,
       pozycje: [{ klucz_pozycji: 's77', nazwa: 'Kot 70x100', ilosc: 1, kwota: '99.00' }],
     }).id;
     const infakt = {
@@ -186,10 +225,12 @@ describe('druga korekta do TEJ SAMEJ faktury', () => {
     pobierzFakture: vi.fn().mockResolvedValue(FAKTURA),
     wystawKorekte: vi.fn().mockResolvedValue({ referencja: 'REF-2', uuid: null, numer: null }),
   });
-  const drugiZwrot = () => dodajZwrot(db, id, {
-    data: '2026-09-02', kwota: '99.00',
-    pozycje: [{ klucz_pozycji: 's77', nazwa: 'Kot 70x100', ilosc: 1, kwota: '99.00' }],
-  }).id;
+  const drugiZwrot = () =>
+    dodajZwrot(db, id, {
+      data: '2026-09-02',
+      kwota: '99.00',
+      pozycje: [{ klucz_pozycji: 's77', nazwa: 'Kot 70x100', ilosc: 1, kwota: '99.00' }],
+    }).id;
 
   it('ODMAWIA, gdy inny zwrot tej faktury ma juz NUMER korekty', async () => {
     zarezerwujKorekte(db, id, zwrotId);
@@ -197,8 +238,7 @@ describe('druga korekta do TEJ SAMEJ faktury', () => {
     const drugi = drugiZwrot();
     const infakt = infaktSprawny();
 
-    await expect(createKorekta({ db, infakt }).wystaw(id, drugi))
-      .rejects.toMatchObject({ dlaOperatora: true });
+    await expect(createKorekta({ db, infakt }).wystaw(id, drugi)).rejects.toMatchObject({ dlaOperatora: true });
     await expect(createKorekta({ db, infakt }).wystaw(id, drugi)).rejects.toThrow(/ręcznie/);
     expect(infakt.wystawKorekte).not.toHaveBeenCalled();
     expect(infakt.pobierzFakture).not.toHaveBeenCalled();
@@ -235,7 +275,9 @@ describe('druga korekta do TEJ SAMEJ faktury', () => {
  */
 describe('doczytanie numeru korekty — cudzy dokument', () => {
   const KOREKTA_A = {
-    uuid: 'uuid-kor-a', number: '1/KOR/08/2026', corrected_invoice_number: 'FV 1/08/2026',
+    uuid: 'uuid-kor-a',
+    number: '1/KOR/08/2026',
+    corrected_invoice_number: 'FV 1/08/2026',
     invoice_date: '2026-08-14',
   };
   let drugi;
@@ -266,7 +308,9 @@ describe('doczytanie numeru korekty — cudzy dokument', () => {
 
   it('NIE przypisuje korekty STARSZEJ niz zlecenie — np. wystawionej recznie miesiac wczesniej', async () => {
     const recznaZLipca = {
-      uuid: 'uuid-reczna', number: '1/KOR/07/2026', corrected_invoice_number: 'FV 1/08/2026',
+      uuid: 'uuid-reczna',
+      number: '1/KOR/07/2026',
+      corrected_invoice_number: 'FV 1/08/2026',
       invoice_date: '2026-07-10',
     };
     const infakt = { listaKorekt: vi.fn().mockResolvedValue([recznaZLipca]) };
@@ -276,7 +320,9 @@ describe('doczytanie numeru korekty — cudzy dokument', () => {
 
   it('przypisuje korekte NOWSZA niz zlecenie i jeszcze nieprzypisana', async () => {
     const wrzesniowa = {
-      uuid: 'uuid-kor-b', number: '2/KOR/09/2026', corrected_invoice_number: 'FV 1/08/2026',
+      uuid: 'uuid-kor-b',
+      number: '2/KOR/09/2026',
+      corrected_invoice_number: 'FV 1/08/2026',
       invoice_date: '2026-09-02',
     };
     const infakt = { listaKorekt: vi.fn().mockResolvedValue([KOREKTA_A, wrzesniowa]) };
@@ -286,10 +332,22 @@ describe('doczytanie numeru korekty — cudzy dokument', () => {
   });
 
   it('DWA pasujace dokumenty to niepewnosc — nie zapisuje zadnego', async () => {
-    const infakt = { listaKorekt: vi.fn().mockResolvedValue([
-      { uuid: 'uuid-x', number: '2/KOR/09/2026', corrected_invoice_number: 'FV 1/08/2026', invoice_date: '2026-09-02' },
-      { uuid: 'uuid-y', number: '3/KOR/09/2026', corrected_invoice_number: 'FV 1/08/2026', invoice_date: '2026-09-02' },
-    ]) };
+    const infakt = {
+      listaKorekt: vi.fn().mockResolvedValue([
+        {
+          uuid: 'uuid-x',
+          number: '2/KOR/09/2026',
+          corrected_invoice_number: 'FV 1/08/2026',
+          invoice_date: '2026-09-02',
+        },
+        {
+          uuid: 'uuid-y',
+          number: '3/KOR/09/2026',
+          corrected_invoice_number: 'FV 1/08/2026',
+          invoice_date: '2026-09-02',
+        },
+      ]),
+    };
     await createKorekta({ db, infakt }).doczytaj(id, drugi);
     expect(zwrot(db, id, drugi).korekta_numer).toBeNull();
   });
@@ -299,7 +357,9 @@ describe('doczytanie numeru korekty — cudzy dokument', () => {
   // `services/ksef-doczytanie.js`, ktory pisze slad przy FAKCIE (nie przy kazdej odslonie).
   it('zapisany numer zostawia SLAD W LOGU — i tylko przy fakcie, nie przy kazdym zajrzeniu', async () => {
     const wrzesniowa = {
-      uuid: 'uuid-kor-b', number: '2/KOR/09/2026', corrected_invoice_number: 'FV 1/08/2026',
+      uuid: 'uuid-kor-b',
+      number: '2/KOR/09/2026',
+      corrected_invoice_number: 'FV 1/08/2026',
       invoice_date: '2026-09-02',
     };
     const infakt = { listaKorekt: vi.fn().mockResolvedValue([KOREKTA_A, wrzesniowa]) };
@@ -311,8 +371,7 @@ describe('doczytanie numeru korekty — cudzy dokument', () => {
     expect(oKorekcie[0].akcja).toMatch(/korekta/);
     // Drugie wejscie na ekran juz nic nie dopisuje — numer jest, doczytanie nawet nie pyta.
     await usluga.doczytaj(id, drugi);
-    expect(db.prepare('SELECT COUNT(*) AS n FROM log WHERE zamowienie_id = ?').get(id).n)
-      .toBe(wpisy.length);
+    expect(db.prepare('SELECT COUNT(*) AS n FROM log WHERE zamowienie_id = ?').get(id).n).toBe(wpisy.length);
   });
 });
 
@@ -331,7 +390,9 @@ describe('doczytanie numeru korekty — cudzy dokument', () => {
  */
 describe('W3: doczytanie NIE ZGADUJE, gdy otwartych spraw korekty jest wiecej niz jedna', () => {
   const KOREKTA_B = {
-    uuid: 'uuid-kor-b', number: '5/KOR/09/2026', corrected_invoice_number: 'FV 1/08/2026',
+    uuid: 'uuid-kor-b',
+    number: '5/KOR/09/2026',
+    corrected_invoice_number: 'FV 1/08/2026',
     invoice_date: '2026-09-02',
   };
 
@@ -377,10 +438,8 @@ describe('K1: reczny numer korekty blokuje wystawienie przez panel', () => {
     zapiszRecznyNumerKorekty(db, id, zwrotId, '9/KOR/08/2026');
     const infakt = { pobierzFakture: vi.fn(), wystawKorekte: vi.fn() };
 
-    await expect(createKorekta({ db, infakt }).wystaw(id, zwrotId))
-      .rejects.toMatchObject({ dlaOperatora: true });
-    await expect(createKorekta({ db, infakt }).wystaw(id, zwrotId))
-      .rejects.toThrow(/9\/KOR\/08\/2026/);
+    await expect(createKorekta({ db, infakt }).wystaw(id, zwrotId)).rejects.toMatchObject({ dlaOperatora: true });
+    await expect(createKorekta({ db, infakt }).wystaw(id, zwrotId)).rejects.toThrow(/9\/KOR\/08\/2026/);
     expect(infakt.wystawKorekte).not.toHaveBeenCalled();
     expect(infakt.pobierzFakture).not.toHaveBeenCalled();
     // Numer reczny ZOSTAJE nietkniety — to on jest dokumentem rozliczajacym ten zwrot.

@@ -1,8 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import {
-  zapiszKoszt, kosztyMiesiaca, kosztPoNumerze, kosztyBezArchiwum, zapiszSciezki,
-  zapiszRecznyKoszt, zaktualizujRecznyKoszt, usunRecznyKoszt, przypnijKategorieDoDokumentu,
+  zapiszKoszt,
+  kosztyMiesiaca,
+  kosztPoNumerze,
+  kosztyBezArchiwum,
+  zapiszSciezki,
+  zapiszRecznyKoszt,
+  zaktualizujRecznyKoszt,
+  usunRecznyKoszt,
+  przypnijKategorieDoDokumentu,
 } from '../../../src/oms/db/koszty.js';
 import { naWierszReczny, czyKluczReczny } from '../../../src/domena/koszt-reczny.js';
 import { kategoriaDlaNip } from '../../../src/oms/db/kategorie-kosztow.js';
@@ -11,10 +18,19 @@ import { createCzuwaczKosztow } from '../../../src/moduly/koszty/services/czuwac
 
 // Dokument Z KSeF — ten sam kształt, co oddaje `naWiersz` (kwoty jako napisy).
 const zKsef = (n = {}) => ({
-  ksefNumber: 'K-1', numerDokumentu: 'FV/1', sprzedawcaNip: '5252674798',
-  sprzedawcaNazwa: 'Allegro', dataWystawienia: '2026-08-05',
-  dataTrwalegoZapisu: '2026-08-05T14:00:00Z', netto: '100.00', vat: '23.00', brutto: '123.00',
-  waluta: 'PLN', rodzaj: 'Vat', maZalacznik: 0, ...n,
+  ksefNumber: 'K-1',
+  numerDokumentu: 'FV/1',
+  sprzedawcaNip: '5252674798',
+  sprzedawcaNazwa: 'Allegro',
+  dataWystawienia: '2026-08-05',
+  dataTrwalegoZapisu: '2026-08-05T14:00:00Z',
+  netto: '100.00',
+  vat: '23.00',
+  brutto: '123.00',
+  waluta: 'PLN',
+  rodzaj: 'Vat',
+  maZalacznik: 0,
+  ...n,
 });
 
 // Dokument WPISANY RĘKĄ — Facebook, Google, Anthropic, paragon. W KSeF go nie ma i nie będzie.
@@ -22,12 +38,13 @@ const zKsef = (n = {}) => ({
 // ⚠️ TRZY POLA: firma, data, kwota. Definicja firmy przychodzi ze słownika
 // (db/firmy-reczne.js) i to ona niesie nazwę sprzedawcy, kategorię i typ.
 const GOOGLE = {
-  nazwa: 'Google', sprzedawca: 'Google Ireland Limited', kategoria: 'Reklama', typ: 'zmienny',
+  nazwa: 'Google',
+  sprzedawca: 'Google Ireland Limited',
+  kategoria: 'Reklama',
+  typ: 'zmienny',
 };
-const reczny = (n = {}, firma = GOOGLE) => naWierszReczny(
-  { dataWystawienia: '2026-08-06', kwota: '200.00', ...n },
-  firma,
-);
+const reczny = (n = {}, firma = GOOGLE) =>
+  naWierszReczny({ dataWystawienia: '2026-08-06', kwota: '200.00', ...n }, firma);
 
 describe('reczna faktura kosztowa — zapis, edycja, usuniecie', () => {
   it('zapisany wiersz leży w TEJ SAMEJ tabeli i wchodzi do miesiąca', () => {
@@ -134,7 +151,13 @@ describe('⚠️ czuwacz KSeF nie tyka wierszy recznych', () => {
     const pytania = [];
     const czuwacz = createCzuwaczKosztow({
       db,
-      klient: { ...pustyKlient, pobierzXml: async ({ ksefNumber }) => { pytania.push(ksefNumber); return '<x/>'; } },
+      klient: {
+        ...pustyKlient,
+        pobierzXml: async ({ ksefNumber }) => {
+          pytania.push(ksefNumber);
+          return '<x/>';
+        },
+      },
       sesja,
       teraz: wNocy,
       katalogArchiwum: 'C:/nie-istnieje-i-nie-ma-byc-uzyte',
@@ -191,9 +214,7 @@ describe('kategoria przypieta wprost do dokumentu', () => {
       kategoria: (nip) => kategoriaDlaNip(db, nip),
     });
     expect(widok.nieprzypisane.ile).toBe(0);
-    expect(widok.kategorie).toEqual([
-      { kategoria: 'Reklama', typ: 'zmienny', netto: '200.00', udzial: 100 },
-    ]);
+    expect(widok.kategorie).toEqual([{ kategoria: 'Reklama', typ: 'zmienny', netto: '200.00', udzial: 100 }]);
     expect(kosztPoNumerze(db, klucz).kategoria_dokumentu).toBe('Reklama');
   });
 
@@ -223,11 +244,21 @@ describe('kategoria przypieta wprost do dokumentu', () => {
 
   it('bez kategorii na dokumencie dalej rządzi mapa po NIP-ie', () => {
     const widok = zlozWidok({
-      wiersze: [{
-        ksef_number: 'K-1', numer_dokumentu: 'FV/1', sprzedawca_nip: '5252674798',
-        data_wystawienia: '2026-08-05', netto: '100.00', vat: '23.00', brutto: '123.00',
-        waluta: 'PLN', rodzaj: 'Vat', kategoria_dokumentu: null, typ_dokumentu: null,
-      }],
+      wiersze: [
+        {
+          ksef_number: 'K-1',
+          numer_dokumentu: 'FV/1',
+          sprzedawca_nip: '5252674798',
+          data_wystawienia: '2026-08-05',
+          netto: '100.00',
+          vat: '23.00',
+          brutto: '123.00',
+          waluta: 'PLN',
+          rodzaj: 'Vat',
+          kategoria_dokumentu: null,
+          typ_dokumentu: null,
+        },
+      ],
       kategoria: () => ({ kategoria: 'Prowizje sprzedażowe', typ: 'zmienny' }),
     });
     expect(widok.kategorie.map((k) => k.kategoria)).toEqual(['Prowizje sprzedażowe']);

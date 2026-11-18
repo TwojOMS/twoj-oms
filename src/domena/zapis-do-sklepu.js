@@ -40,7 +40,11 @@ import { wymagajListyKanalow } from './lista-kanalow.js';
 // ⚠️ WYLACZNIE METRYCZNE. `in` i `yd` WooCommerce zna, ale 70 cm to 27,5590551181… cala —
 // do sklepu pojechalaby liczba zaokraglona, czyli INNY wymiar niz ten, ktory trzyma
 // karta. Odmowa jest tu tansza niz cicha zaokraglona prawda.
-const PRZELICZNIKI = new Map([['mm', 1], ['cm', 10], ['m', 1000]]);
+const PRZELICZNIKI = new Map([
+  ['mm', 1],
+  ['cm', 10],
+  ['m', 1000],
+]);
 
 const JEDNOSTKI_ZNANE = [...PRZELICZNIKI.keys()].join(', ');
 
@@ -72,9 +76,11 @@ function jednostkaKanalu(jednostki, kanal) {
   const j = Object.hasOwn(jednostki ?? {}, kanal) ? jednostki[kanal] : null;
   const dzielnik = typeof j === 'string' ? PRZELICZNIKI.get(j) : undefined;
   if (!dzielnik) {
-    throw new Error(`Nie znam jednostki wymiarów sklepu „${kanal}" (przyszło: `
-      + `${JSON.stringify(j ?? null)}). Znam wyłącznie ${JEDNOSTKI_ZNANE} — nie zgaduję, `
-      + 'bo pomyłka daje produkt 70 milimetrów zamiast 70 centymetrów.');
+    throw new Error(
+      `Nie znam jednostki wymiarów sklepu „${kanal}" (przyszło: ` +
+        `${JSON.stringify(j ?? null)}). Znam wyłącznie ${JEDNOSTKI_ZNANE} — nie zgaduję, ` +
+        'bo pomyłka daje produkt 70 milimetrów zamiast 70 centymetrów.',
+    );
   }
   return { jednostka: j, dzielnik };
 }
@@ -129,10 +135,11 @@ export function czyWolnoNadpisac(naszSku, wSklepie) {
   if (!nasz || !ich || tenSamNumer(nasz, ich)) return { wolno: true, powod: null };
   return {
     wolno: false,
-    powod: `Produkt ma w sklepie numer „${ich}", a nasz rejestr mówi „${nasz}". Nie nadpisuję: `
-      + 'numer w sklepie jest tożsamością produktu (adresy, eksporty, feed do Google), '
-      + 'a takiego zapisu nie da się cofnąć z panelu. Najpierw przejmij numer ze sklepu albo '
-      + 'popraw numer w sklepie.',
+    powod:
+      `Produkt ma w sklepie numer „${ich}", a nasz rejestr mówi „${nasz}". Nie nadpisuję: ` +
+      'numer w sklepie jest tożsamością produktu (adresy, eksporty, feed do Google), ' +
+      'a takiego zapisu nie da się cofnąć z panelu. Najpierw przejmij numer ze sklepu albo ' +
+      'popraw numer w sklepie.',
   };
 }
 
@@ -146,8 +153,8 @@ const SAME_CYFRY = /^\d+$/u;
 
 // ——— OPIS DLA CZLOWIEKA ——————————————————————————————————————————————————————
 
-const opisWymiaru = (w, jednostka) => (w
-  ? `${w.length} × ${w.width}${napis(w.height) ? ` × ${w.height}` : ''} ${jednostka}` : 'nieznane');
+const opisWymiaru = (w, jednostka) =>
+  w ? `${w.length} × ${w.width}${napis(w.height) ? ` × ${w.height}` : ''} ${jednostka}` : 'nieznane';
 
 /**
  * Zdanie „co sie zmieni z czego na co" — jedyna rzecz, po ktorej czlowiek pozna, ze klika
@@ -161,8 +168,9 @@ function opisZmiany({ pola, skuWSklepie, naszSku, wymiaryWSklepie, jednostka }) 
     czesci.push(`SKU bez zmiany („${napis(naszSku)}")`);
   }
   if (Object.hasOwn(pola, 'dimensions')) {
-    czesci.push(`wymiary: ${opisWymiaru(wymiaryWSklepie, jednostka)}`
-      + ` → ${opisWymiaru(pola.dimensions, jednostka)}`);
+    czesci.push(
+      `wymiary: ${opisWymiaru(wymiaryWSklepie, jednostka)}` + ` → ${opisWymiaru(pola.dimensions, jednostka)}`,
+    );
   }
   return czesci.join('; ');
 }
@@ -217,16 +225,19 @@ export function ocenZapis(karta, produkty, jednostki, kanalySklepow) {
     // wycofanie ze sprzedazy), ale PUT poszedlby albo w nieistniejacy zasob, albo w produkt,
     // ktorego sklep juz nie sprzedaje.
     if (napis(p?.zniknal_at)) {
-      wstrzymaj('Produkt zniknął ze sklepu przy ostatnim odczycie katalogów — nie piszę do '
-        + 'czegoś, czego sklep już nie pokazuje. Odczytaj katalogi jeszcze raz.');
+      wstrzymaj(
+        'Produkt zniknął ze sklepu przy ostatnim odczycie katalogów — nie piszę do ' +
+          'czegoś, czego sklep już nie pokazuje. Odczytaj katalogi jeszcze raz.',
+      );
       continue;
     }
 
-    if (!SAME_CYFRY.test(wspolne.produkt_id)
-      || (wspolne.wariant_id && !SAME_CYFRY.test(wspolne.wariant_id))) {
-      wstrzymaj(`Identyfikator produktu w sklepie („${wspolne.produkt_id}"`
-        + `${wspolne.wariant_id ? `, wariant „${wspolne.wariant_id}"` : ''}) nie jest liczbą, `
-        + 'więc nie złożę z niego adresu zapisu. To wygląda na uszkodzony wiersz lustra.');
+    if (!SAME_CYFRY.test(wspolne.produkt_id) || (wspolne.wariant_id && !SAME_CYFRY.test(wspolne.wariant_id))) {
+      wstrzymaj(
+        `Identyfikator produktu w sklepie („${wspolne.produkt_id}"` +
+          `${wspolne.wariant_id ? `, wariant „${wspolne.wariant_id}"` : ''}) nie jest liczbą, ` +
+          'więc nie złożę z niego adresu zapisu. To wygląda na uszkodzony wiersz lustra.',
+      );
       continue;
     }
 
@@ -269,7 +280,11 @@ export function ocenZapis(karta, produkty, jednostki, kanalySklepow) {
         : `products/${wspolne.produkt_id}`,
       pola,
       opis: opisZmiany({
-        pola, skuWSklepie: p?.sku_sklepu, naszSku, wymiaryWSklepie: p?.wymiary, jednostka,
+        pola,
+        skuWSklepie: p?.sku_sklepu,
+        naszSku,
+        wymiaryWSklepie: p?.wymiary,
+        jednostka,
       }),
     });
   }

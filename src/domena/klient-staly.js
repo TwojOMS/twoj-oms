@@ -55,10 +55,14 @@ export function kluczZNazwy(surowy, nazwa) {
     // Zakres zapisany UCIECZKAMI, nie znakami wprost: znaki łączące są w pliku niewidoczne,
     // więc wpisane dosłownie kasuje je pierwszy lepszy edytor „czyszczący" i regexp po cichu
     // przestaje cokolwiek robić.
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/ł/gi, 'l')
-    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
-    .slice(0, 32).replace(/-+$/, '');
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 32)
+    .replace(/-+$/, '');
   // Pusty wynik uzupełni warstwa bazy jako klient-<id> w transakcji INSERT-u.
   return zNazwy;
 }
@@ -66,9 +70,7 @@ export function kluczZNazwy(surowy, nazwa) {
 // Checkbox z formularza: wysłany i nie „pusty”/„0”.
 const zaznaczony = (wartosc) => wartosc !== undefined && wartosc !== '' && wartosc !== '0';
 
-const blok = (body, pola, przedrostek) => Object.fromEntries(
-  pola.map((p) => [p, tekst(body?.[`${przedrostek}${p}`])]),
-);
+const blok = (body, pola, przedrostek) => Object.fromEntries(pola.map((p) => [p, tekst(body?.[`${przedrostek}${p}`])]));
 
 /**
  * Formularz klienta → wiersz gotowy do zapisania.
@@ -102,8 +104,8 @@ export function znormalizujKlienta(body = {}) {
   // zorientował, bo na ekranie wygląda poprawnie. Numer nierozpoznany ma zatrzymać zapis.
   if (surowyNip && !nipRozpoznany(surowyNip)) {
     throw bladOperatora(
-      `Numer „${surowyNip}" nie wygląda ani na polski NIP, ani na numer VAT-UE. `
-      + 'Polski wpisz samymi cyframi, zagraniczny z kodem kraju (np. „SK1234567890").',
+      `Numer „${surowyNip}" nie wygląda ani na polski NIP, ani na numer VAT-UE. ` +
+        'Polski wpisz samymi cyframi, zagraniczny z kodem kraju (np. „SK1234567890").',
     );
   }
 
@@ -116,9 +118,8 @@ export function znormalizujKlienta(body = {}) {
   // powstaje tylko z wpisanego wprost „0”; pusty koszt jest bezpieczny, bo „Wstaw dane”
   // podstawia kwotę domyślną z Ustawień.
   const metodaWysylki = wybor(body.metoda_wysylki, DOSTAWY, 'sposobu dostawy', '');
-  const kosztDostawy = metodaWysylki && tekst(body.koszt_dostawy_brutto) !== null
-    ? parsujKosztDostawy(body.koszt_dostawy_brutto)
-    : '';
+  const kosztDostawy =
+    metodaWysylki && tekst(body.koszt_dostawy_brutto) !== null ? parsujKosztDostawy(body.koszt_dostawy_brutto) : '';
 
   return {
     klucz: kluczZNazwy(body.klucz, nazwa),
@@ -207,8 +208,13 @@ function warunkiUmowyZbiorczej(body) {
     ['prog_darmowej_dostawy', 'prog_darmowej_dostawy_gr', 'ustalony próg darmowej dostawy'],
     ['oplata_obslugi', 'oplata_obslugi_gr', 'ustaloną opłatę za obsługę'],
   ]) {
-    if (!wlaczony(`${pole}_wlaczony`)) { wynik[kolumna] = null; continue; }
-    const surowa = String(body[pole] ?? '').trim().replace(',', '.');
+    if (!wlaczony(`${pole}_wlaczony`)) {
+      wynik[kolumna] = null;
+      continue;
+    }
+    const surowa = String(body[pole] ?? '')
+      .trim()
+      .replace(',', '.');
     if (surowa === '') throw bladOperatora(`Klient musi mieć ${opis} — uzupełnij kwotę albo wyłącz przełącznik.`);
     if (!Number.isFinite(Number(surowa)) || Number(surowa) < 0) {
       throw bladOperatora(`Nie umiem odczytać kwoty „${body[pole]}” — podaj ${opis} w złotych.`);
@@ -293,8 +299,10 @@ export function opisKlienta(klient, { zwolniona = false } = {}) {
   if (klient.rabat_procent) czesci.push(`rabat ${klient.rabat_procent}%`);
   const koszt = String(klient.koszt_dostawy_brutto ?? '').trim();
   if (koszt === '0.00') czesci.push('wysyłka gratis');
-  if (klient.prog_darmowej_dostawy_gr != null) czesci.push(`darmowa dostawa od ${(klient.prog_darmowej_dostawy_gr / 100).toFixed(2)} zł`);
-  if (klient.oplata_obslugi_gr != null) czesci.push(`obsługa ${(klient.oplata_obslugi_gr / 100).toFixed(2)} zł przy własnej etykiecie`);
+  if (klient.prog_darmowej_dostawy_gr != null)
+    czesci.push(`darmowa dostawa od ${(klient.prog_darmowej_dostawy_gr / 100).toFixed(2)} zł`);
+  if (klient.oplata_obslugi_gr != null)
+    czesci.push(`obsługa ${(klient.oplata_obslugi_gr / 100).toFixed(2)} zł przy własnej etykiecie`);
   const platnosc = PLATNOSCI[klient.platnosc] ?? null;
   const termin = ETYKIETY_TERMINU[klient.termin_platnosci] ?? null;
   if (platnosc) czesci.push(termin ? `${platnosc}, ${termin}` : platnosc);

@@ -29,8 +29,7 @@ import { znormalizujNip } from '../../domena/gus.js';
 // najblizszym restarcie — po cichu i bez sladu, a restart zdarza sie przy kazdym wdrozeniu.
 // To ta sama zasada, co przy `zapiszKoszt`: migracja idempotentna ma dokladac to, czego
 // brakuje, i nie dotykac niczego wiecej.
-const STARTOWE = [
-];
+const STARTOWE = [];
 
 // ⚠️⚠️ KATEGORIE, KTORE NIE MAJA JESZCZE ANI JEDNEGO DOSTAWCY — i to jest caly powod, dla
 // ktorego slownik kategorii istnieje osobno od tabeli przypisań.
@@ -75,16 +74,20 @@ const STARA_NAZWA_HOSTINGU = 'Hosting';
 const NOWA_NAZWA_HOSTINGU = 'Hosting i domeny';
 
 function przemianujHosting(db, teraz) {
-  const juz = db.prepare('SELECT 1 AS x FROM migracje_jednorazowe WHERE nazwa = ?')
-    .get(MIGRACJA_HOSTING);
+  const juz = db.prepare('SELECT 1 AS x FROM migracje_jednorazowe WHERE nazwa = ?').get(MIGRACJA_HOSTING);
   if (juz) return;
-  db.prepare('UPDATE kategorie_kosztow SET kategoria = ?, zmienione_at = ? WHERE kategoria = ?')
-    .run(NOWA_NAZWA_HOSTINGU, teraz, STARA_NAZWA_HOSTINGU);
+  db.prepare('UPDATE kategorie_kosztow SET kategoria = ?, zmienione_at = ? WHERE kategoria = ?').run(
+    NOWA_NAZWA_HOSTINGU,
+    teraz,
+    STARA_NAZWA_HOSTINGU,
+  );
   // Slownik moze miec stara nazwe wylacznie wtedy, gdy powstal z przypisan istniejacej bazy
   // — kasujemy ja, zeby na liscie wyboru nie stanely OBIE nazwy tej samej kategorii.
   db.prepare('DELETE FROM slownik_kategorii_kosztow WHERE kategoria = ?').run(STARA_NAZWA_HOSTINGU);
-  db.prepare('INSERT OR IGNORE INTO migracje_jednorazowe (nazwa, wykonana_at) VALUES (?,?)')
-    .run(MIGRACJA_HOSTING, teraz);
+  db.prepare('INSERT OR IGNORE INTO migracje_jednorazowe (nazwa, wykonana_at) VALUES (?,?)').run(
+    MIGRACJA_HOSTING,
+    teraz,
+  );
 }
 
 export function wgrajKategorieStartowe(db) {
@@ -108,9 +111,11 @@ export function wgrajKategorieStartowe(db) {
 function doSlownika(db, kategoria, typ, kiedy = new Date().toISOString()) {
   const nazwa = String(kategoria ?? '').trim();
   if (!nazwa) return;
-  db.prepare(
-    'INSERT OR IGNORE INTO slownik_kategorii_kosztow (kategoria, typ, dodana_at) VALUES (?,?,?)',
-  ).run(nazwa, typ, kiedy);
+  db.prepare('INSERT OR IGNORE INTO slownik_kategorii_kosztow (kategoria, typ, dodana_at) VALUES (?,?,?)').run(
+    nazwa,
+    typ,
+    kiedy,
+  );
 }
 
 // ⚠️ `znormalizujNip` sama nigdy nie oddaje NULL-a — dla braku
@@ -128,8 +133,7 @@ export function kategoriaDlaNip(db, nip) {
   const znormalizowany = nipDoKlucza(nip);
   // Brak NIP-u nie ma czego szukac — pusty napis bylby KLUCZEM i trafilby w cudza kategorie.
   if (znormalizowany === null) return null;
-  const w = db.prepare('SELECT kategoria, typ FROM kategorie_kosztow WHERE nip = ?')
-    .get(znormalizowany);
+  const w = db.prepare('SELECT kategoria, typ FROM kategorie_kosztow WHERE nip = ?').get(znormalizowany);
   return w ? { kategoria: w.kategoria, typ: w.typ } : null;
 }
 
@@ -144,11 +148,13 @@ export function przypnijKategorie(db, nip, kategoria, typ) {
     throw bladOperatora(`Nie mozna przypisac kategorii bez NIP-u sprzedawcy (podano: "${nip}").`);
   }
   const kiedy = new Date().toISOString();
-  db.prepare(`
+  db.prepare(
+    `
     INSERT INTO kategorie_kosztow (nip, kategoria, typ, zmienione_at) VALUES (?,?,?,?)
     ON CONFLICT(nip) DO UPDATE SET kategoria = excluded.kategoria, typ = excluded.typ,
       zmienione_at = excluded.zmienione_at
-  `).run(znormalizowany, kategoria, typ, kiedy);
+  `,
+  ).run(znormalizowany, kategoria, typ, kiedy);
   // ⚠️ WLASNA KATEGORIA OPERATORA WCHODZI DO SLOWNIKA. Pole na ekranie zostaje tekstowe —
   // nowa kategoria ma dac sie zalozyc bez wchodzenia do bazy — ale wpisana raz musi zostac
   // na liscie takze wtedy, gdy operator przepnie pozniej tego dostawce gdzie indziej.
@@ -169,12 +175,17 @@ export function przypnijKategorie(db, nip, kategoria, typ) {
 // `UNION` (nie `UNION ALL`) skleja pary powtorzone w obu zrodlach. Tozsamoscia zostaje PARA
 // (kategoria, typ) — ta sama nazwa z innym typem inaczej wchodzi do progu rentownosci, wiec
 // jest osobna podpowiedzia, tak samo jak przed rozdzieleniem tabel.
-export const wszystkieKategorie = (db) => db.prepare(`
+export const wszystkieKategorie = (db) =>
+  db
+    .prepare(
+      `
   SELECT kategoria, typ FROM slownik_kategorii_kosztow
   UNION
   SELECT kategoria, typ FROM kategorie_kosztow
   ORDER BY kategoria
-`).all();
+`,
+    )
+    .all();
 
 // TYP KATEGORII PO NAZWIE — dla ekranu, ktory pyta o kategorie i NIE PYTA o typ (dopisanie
 // firmy spoza KSeF, db/firmy-reczne.js). Kategoria typ juz zna, wiec pytanie o niego drugi raz
@@ -188,11 +199,17 @@ export const wszystkieKategorie = (db) => db.prepare(`
 export function typKategorii(db, kategoria) {
   const nazwa = String(kategoria ?? '').trim();
   if (!nazwa) return null;
-  return db.prepare(`
+  return (
+    db
+      .prepare(
+        `
     SELECT typ FROM (
       SELECT kategoria, typ FROM slownik_kategorii_kosztow
       UNION
       SELECT kategoria, typ FROM kategorie_kosztow
     ) WHERE kategoria = ? LIMIT 1
-  `).get(nazwa)?.typ ?? null;
+  `,
+      )
+      .get(nazwa)?.typ ?? null
+  );
 }

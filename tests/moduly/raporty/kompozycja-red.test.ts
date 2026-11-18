@@ -7,9 +7,15 @@ import { KANALY, envRaportowHistorycznyFixture } from '../../pomoc/przykladowe-d
 
 // Produkcyjna kompozycja raportów: domyślna lista modułów bootstrapu,
 // prawdziwa baza z migracji i jawnie fikcyjne dane.
-const env = { ...envRaportowHistorycznyFixture, OMS_USER: 'operator027', OMS_PASS: 'fixture-027',
-  OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000',
-  OMS_PROFORMY_KATALOG: tmpdir(), OMS_ETYKIETY_KATALOG: tmpdir() };
+const env = {
+  ...envRaportowHistorycznyFixture,
+  OMS_USER: 'operator027',
+  OMS_PASS: 'fixture-027',
+  OMS_SPRZEDAWCA_NIP: '1234563218',
+  OMS_RACHUNEK: '34109010140000000000000000',
+  OMS_PROFORMY_KATALOG: tmpdir(),
+  OMS_ETYKIETY_KATALOG: tmpdir(),
+};
 const headers = { authorization: `Basic ${Buffer.from('operator027:fixture-027').toString('base64')}` };
 const BOM = String.fromCharCode(65279);
 const CRLF = String.fromCharCode(13) + String.fromCharCode(10);
@@ -18,26 +24,40 @@ const CRLF = String.fromCharCode(13) + String.fromCharCode(10);
 // bez nazw sklepów i bez filtrów firmy, więc brak konfiguracji WDT/testowych niczego nie wyklucza.
 function zasiej(db: any) {
   for (const k of KANALY) ustawGranice(db, k, '2026-07-02', 'fixture-027', null);
-  const historia = (apiloId: string, numer: string, dzien: string, brutto: string) => zapiszHistorie(db, {
-    apiloId, platformAccountId: 21, numer, dzien, utworzoneAt: `${dzien}T10:00:00.000Z`, brutto,
-    tagi: [], status: 15, paymentStatus: 2, klientEmail: 'k@klient.example', klientNazwa: 'Klient Fikcyjny',
-    faktura: 0, pozycje: [{ nazwa: 'Produkt fikcyjny', ilosc: 1, bruttoLinii: brutto, typ: 1 }],
-  });
+  const historia = (apiloId: string, numer: string, dzien: string, brutto: string) =>
+    zapiszHistorie(db, {
+      apiloId,
+      platformAccountId: 21,
+      numer,
+      dzien,
+      utworzoneAt: `${dzien}T10:00:00.000Z`,
+      brutto,
+      tagi: [],
+      status: 15,
+      paymentStatus: 2,
+      klientEmail: 'k@klient.example',
+      klientNazwa: 'Klient Fikcyjny',
+      faktura: 0,
+      pozycje: [{ nazwa: 'Produkt fikcyjny', ilosc: 1, bruttoLinii: brutto, typ: 1 }],
+    });
   historia('FX-H1', 'R-1001', '2026-06-10', '246.00');
   historia('FX-H2', 'R-1002', '2026-06-12', '54.00');
   // Zamówienie OMS po granicy: kwota ręcznego zamówienia jest kwotą oczekiwaną.
-  db.prepare('INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, klient_json, utworzone_at, indywidualne)'
-    + " VALUES ('reczne', 27001, 'R-2001', '123.00', ?, '2026-07-10T10:00:00Z', 0)")
-    .run(JSON.stringify({ email: 'oms@klient.example' }));
+  db.prepare(
+    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, klient_json, utworzone_at, indywidualne)' +
+      " VALUES ('reczne', 27001, 'R-2001', '123.00', ?, '2026-07-10T10:00:00Z', 0)",
+  ).run(JSON.stringify({ email: 'oms@klient.example' }));
   // Statystyki sierpnia: dwie paczki DPD (jedna w dniu wpłaty, jedna po 5 dniach) i jeden paczkomat.
   const wysylka = (zrodloId: number, metoda: string, wyslane: string) => {
-    db.prepare(`INSERT INTO zamowienia (sklep, zrodlo_id, numer, metoda_wysylki, pobranie, b2b, indywidualne,
+    db.prepare(
+      `INSERT INTO zamowienia (sklep, zrodlo_id, numer, metoda_wysylki, pobranie, b2b, indywidualne,
       metoda_platnosci, kwota_brutto, klient_json, oplacone_at, wyslane_at, anulowane, utworzone_at)
-      VALUES ('reczne', ?, ?, ?, 0, 0, 0, 'BLIK', '100.00', ?, '2026-08-13T06:00:00Z', ?, 0, '2026-08-13T06:00:00Z')`)
-      .run(zrodloId, `S-${zrodloId}`, metoda, JSON.stringify({ email: 'stat@klient.example' }), wyslane);
+      VALUES ('reczne', ?, ?, ?, 0, 0, 0, 'BLIK', '100.00', ?, '2026-08-13T06:00:00Z', ?, 0, '2026-08-13T06:00:00Z')`,
+    ).run(zrodloId, `S-${zrodloId}`, metoda, JSON.stringify({ email: 'stat@klient.example' }), wyslane);
     const { id } = db.prepare("SELECT id FROM zamowienia WHERE sklep = 'reczne' AND zrodlo_id = ?").get(zrodloId);
-    db.prepare("INSERT INTO platnosci (zamowienie_id, kwota, data, metoda, uwaga, zrodlo, utworzona_at) VALUES (?,?,?,?,NULL,'sklep',?)")
-      .run(id, '100.00', '2026-08-13T06:00:00Z', 'BLIK', '2026-08-13T06:00:00Z');
+    db.prepare(
+      "INSERT INTO platnosci (zamowienie_id, kwota, data, metoda, uwaga, zrodlo, utworzona_at) VALUES (?,?,?,?,NULL,'sklep',?)",
+    ).run(id, '100.00', '2026-08-13T06:00:00Z', 'BLIK', '2026-08-13T06:00:00Z');
   };
   wysylka(27101, 'dpd', '2026-08-13T14:00:00Z');
   wysylka(27102, 'dpd', '2026-08-18T07:00:00Z');
@@ -54,7 +74,12 @@ async function zAplikacja(test: (z: Awaited<ReturnType<typeof zbudujOms>>) => Pr
     await test(z);
     expect(transport).not.toHaveBeenCalled();
   } finally {
-    try { if (z) await z.app.close(); } finally { db.close(); transport.mockRestore(); }
+    try {
+      if (z) await z.app.close();
+    } finally {
+      db.close();
+      transport.mockRestore();
+    }
   }
 }
 
@@ -89,20 +114,33 @@ describe('kompozycja — RED brakujących tras raportów i statystyk', () => {
 
   it('GET /raporty/eksport.csv oddaje te same wiersze co do grosza, z BOM i bez e-maili domyślnie', async () => {
     await zAplikacja(async (z) => {
-      const odp = await z.app.inject({ method: 'GET', url: '/raporty/eksport.csv?od=2026-06-01&do=2026-07-31', headers });
+      const odp = await z.app.inject({
+        method: 'GET',
+        url: '/raporty/eksport.csv?od=2026-06-01&do=2026-07-31',
+        headers,
+      });
       expect(odp.statusCode).toBe(200);
       expect(z.app.hasRoute({ method: 'GET', url: '/raporty/eksport.csv' })).toBe(true);
       expect(odp.headers['content-type']).toBe('text/csv; charset=utf-8');
       expect(odp.headers['content-disposition']).toBe('attachment; filename="sprzedaz-2026-06-01_2026-07-31.csv"');
-      expect(odp.body).toBe(BOM + [
-        'Dzień;Kanał;Numer;Źródło;Brutto;Netto;Faktura;Opłacone',
-        '2026-06-10;RECZNE;R-1001;Apilo;246,00;200,00;nie;tak',
-        '2026-06-12;RECZNE;R-1002;Apilo;54,00;43,90;nie;tak',
-        '2026-07-10;RECZNE;R-2001;OMS;123,00;100,00;nie;nie',
-      ].join(CRLF));
-      const zKlientem = await z.app.inject({ method: 'GET', url: '/raporty/eksport.csv?od=2026-06-01&do=2026-07-31&klient=1', headers });
+      expect(odp.body).toBe(
+        BOM +
+          [
+            'Dzień;Kanał;Numer;Źródło;Brutto;Netto;Faktura;Opłacone',
+            '2026-06-10;RECZNE;R-1001;Apilo;246,00;200,00;nie;tak',
+            '2026-06-12;RECZNE;R-1002;Apilo;54,00;43,90;nie;tak',
+            '2026-07-10;RECZNE;R-2001;OMS;123,00;100,00;nie;nie',
+          ].join(CRLF),
+      );
+      const zKlientem = await z.app.inject({
+        method: 'GET',
+        url: '/raporty/eksport.csv?od=2026-06-01&do=2026-07-31&klient=1',
+        headers,
+      });
       expect(zKlientem.statusCode).toBe(200);
-      expect(zKlientem.body.split(CRLF)[3]).toBe('2026-07-10;RECZNE;R-2001;OMS;123,00;100,00;nie;nie;oms@klient.example');
+      expect(zKlientem.body.split(CRLF)[3]).toBe(
+        '2026-07-10;RECZNE;R-2001;OMS;123,00;100,00;nie;nie;oms@klient.example',
+      );
     });
   });
 

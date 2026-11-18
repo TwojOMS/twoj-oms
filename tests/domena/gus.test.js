@@ -1,7 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import {
-  znormalizujNip, nipPoprawny, nipDoZapytania, firmaZOdpowiedzi, sformatujKod,
-  kopertaZaloguj, kopertaSzukajPoNip, rozpakuj,
+  znormalizujNip,
+  nipPoprawny,
+  nipDoZapytania,
+  firmaZOdpowiedzi,
+  sformatujKod,
+  kopertaZaloguj,
+  kopertaSzukajPoNip,
+  rozpakuj,
 } from '../../src/domena/gus.js';
 
 // GUS BIR1.1 — warstwa CZYSTA: normalizacja NIP-u, koperty SOAP, czytanie odpowiedzi.
@@ -130,7 +136,9 @@ describe('firma z odpowiedzi DaneSzukajPodmioty', () => {
   });
 
   it('bez numeru lokalu skleja sam numer nieruchomości', () => {
-    const xml = odpowiedzGus('<dane><Nazwa>X</Nazwa><Ulica>ul. Leśna</Ulica><NrNieruchomosci>12</NrNieruchomosci></dane>');
+    const xml = odpowiedzGus(
+      '<dane><Nazwa>X</Nazwa><Ulica>ul. Leśna</Ulica><NrNieruchomosci>12</NrNieruchomosci></dane>',
+    );
     expect(firmaZOdpowiedzi(xml).ulica).toBe('ul. Leśna 12');
   });
 
@@ -151,7 +159,9 @@ describe('firma z odpowiedzi DaneSzukajPodmioty', () => {
   });
 
   it('ErrorCode w środku bloku <dane> to też „nie znaleziono"', () => {
-    const xml = odpowiedzGus('<dane><ErrorCode>4</ErrorCode><ErrorMessagePl>Nie znaleziono podmiotu</ErrorMessagePl></dane>');
+    const xml = odpowiedzGus(
+      '<dane><ErrorCode>4</ErrorCode><ErrorMessagePl>Nie znaleziono podmiotu</ErrorMessagePl></dane>',
+    );
     expect(firmaZOdpowiedzi(xml)).toBeNull();
   });
 

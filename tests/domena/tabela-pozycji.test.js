@@ -6,7 +6,15 @@ const zamowienie = (nad = {}) => ({
   koszt_dostawy_brutto: '89.90',
   koszt_dostawy_netto: '73.09',
   pozycje: [
-    { nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 2, cena_brutto: '61.50', cena_netto: '50.00', brutto_linii: '123.00', netto_linii: '100.00' },
+    {
+      nazwa: 'STOP',
+      sku: 'PRO-STOP-001',
+      ilosc: 2,
+      cena_brutto: '61.50',
+      cena_netto: '50.00',
+      brutto_linii: '123.00',
+      netto_linii: '100.00',
+    },
   ],
   ...nad,
 });
@@ -15,21 +23,47 @@ describe('wierszePozycji', () => {
   it('numeruje pozycje od 1 i przenosi nazwę/SKU/ilość/ceny', () => {
     const w = wierszePozycji(zamowienie());
     expect(w[0]).toMatchObject({
-      lp: 1, nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 2,
-      cenaNetto: '50.00', cenaBrutto: '61.50', suma: '123.00', wysylka: false,
+      lp: 1,
+      nazwa: 'STOP',
+      sku: 'PRO-STOP-001',
+      ilosc: 2,
+      cenaNetto: '50.00',
+      cenaBrutto: '61.50',
+      suma: '123.00',
+      wysylka: false,
     });
   });
 
   it('brak brutto_linii → suma liczona fallbackiem cena_brutto × ilość (wiersz sprzed migracji)', () => {
     const z = zamowienie({
-      pozycje: [{ nazwa: 'STOP', sku: null, ilosc: 2, cena_brutto: '61.50', cena_netto: null, brutto_linii: null, netto_linii: null }],
+      pozycje: [
+        {
+          nazwa: 'STOP',
+          sku: null,
+          ilosc: 2,
+          cena_brutto: '61.50',
+          cena_netto: null,
+          brutto_linii: null,
+          netto_linii: null,
+        },
+      ],
     });
     expect(wierszePozycji(z)[0].suma).toBe('123.00');
   });
 
   it('brak netto (wiersz sprzed migracji, bez surowe_json) → null, NIGDY dzielenie brutto', () => {
     const z = zamowienie({
-      pozycje: [{ nazwa: 'STOP', sku: null, ilosc: 3, cena_brutto: '33.33', cena_netto: null, brutto_linii: '100.00', netto_linii: null }],
+      pozycje: [
+        {
+          nazwa: 'STOP',
+          sku: null,
+          ilosc: 3,
+          cena_brutto: '33.33',
+          cena_netto: null,
+          brutto_linii: '100.00',
+          netto_linii: null,
+        },
+      ],
     });
     const w = wierszePozycji(z)[0];
     expect(w.cenaNetto).toBeNull();
@@ -130,15 +164,40 @@ describe('wierszePozycji — wiersz podsumowania', () => {
 });
 
 describe('wierszePozycji — pozycje ręczne i nadpisania', () => {
-  const zReczna = () => zamowienie({
-    kwota_brutto: '292.90',
-    pozycje: [
-      // Netto ze sklepu jest tu CELOWO nizsze niz brutto/1,23 (linia z rabatem) — inaczej
-      // test nie odroznilby wartosci ze zrodla od wyliczonej ze stawki VAT.
-      { nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 2, cena_brutto: '61.50', cena_netto: '45.00', brutto_linii: '123.00', netto_linii: '90.00', zrodlo: 'sklep', klucz: 's1', polaZmienione: [] },
-      { id: 91, nazwa: 'Dopłata', sku: null, ilosc: 1, cena_brutto: '80.00', cena_netto: null, brutto_linii: '80.00', netto_linii: null, zrodlo: 'reczna', sklep: null, klucz: 'r91', polaZmienione: [] },
-    ],
-  });
+  const zReczna = () =>
+    zamowienie({
+      kwota_brutto: '292.90',
+      pozycje: [
+        // Netto ze sklepu jest tu CELOWO nizsze niz brutto/1,23 (linia z rabatem) — inaczej
+        // test nie odroznilby wartosci ze zrodla od wyliczonej ze stawki VAT.
+        {
+          nazwa: 'STOP',
+          sku: 'PRO-STOP-001',
+          ilosc: 2,
+          cena_brutto: '61.50',
+          cena_netto: '45.00',
+          brutto_linii: '123.00',
+          netto_linii: '90.00',
+          zrodlo: 'sklep',
+          klucz: 's1',
+          polaZmienione: [],
+        },
+        {
+          id: 91,
+          nazwa: 'Dopłata',
+          sku: null,
+          ilosc: 1,
+          cena_brutto: '80.00',
+          cena_netto: null,
+          brutto_linii: '80.00',
+          netto_linii: null,
+          zrodlo: 'reczna',
+          sklep: null,
+          klucz: 'r91',
+          polaZmienione: [],
+        },
+      ],
+    });
 
   it('pozycja dopisana ręcznie jest wyraźnie oznaczona', () => {
     const w = wierszePozycji(zReczna());
@@ -173,14 +232,39 @@ describe('wierszePozycji — pozycje ręczne i nadpisania', () => {
   // stawka VAT — tak samo jak przy pozycji dopisanej.
   it('pozycja sklepowa z ręcznie zmienioną ceną pokazuje netto ze stawki VAT', () => {
     const z = zamowienie({
-      pozycje: [{ nazwa: 'STOP', ilosc: 2, cena_brutto: '70.00', cena_netto: null, brutto_linii: '140.00', zrodlo: 'sklep', klucz: 's1', polaZmienione: ['cena_brutto'], sklep: { nazwa: 'STOP', ilosc: 2, cena_brutto: '61.50', brutto_linii: '123.00' } }],
+      pozycje: [
+        {
+          nazwa: 'STOP',
+          ilosc: 2,
+          cena_brutto: '70.00',
+          cena_netto: null,
+          brutto_linii: '140.00',
+          zrodlo: 'sklep',
+          klucz: 's1',
+          polaZmienione: ['cena_brutto'],
+          sklep: { nazwa: 'STOP', ilosc: 2, cena_brutto: '61.50', brutto_linii: '123.00' },
+        },
+      ],
     });
     expect(wierszePozycji(z)[0].cenaNetto).toBe('56.91');
   });
 
-  const zNadpisaniem = () => zamowienie({
-    pozycje: [{ nazwa: 'STOP', ilosc: 3, cena_brutto: '61.50', cena_netto: null, brutto_linii: '184.50', zrodlo: 'sklep', klucz: 's1', polaZmienione: ['ilosc'], sklep: { nazwa: 'STOP', ilosc: 2, cena_brutto: '61.50', brutto_linii: '123.00' } }],
-  });
+  const zNadpisaniem = () =>
+    zamowienie({
+      pozycje: [
+        {
+          nazwa: 'STOP',
+          ilosc: 3,
+          cena_brutto: '61.50',
+          cena_netto: null,
+          brutto_linii: '184.50',
+          zrodlo: 'sklep',
+          klucz: 's1',
+          polaZmienione: ['ilosc'],
+          sklep: { nazwa: 'STOP', ilosc: 2, cena_brutto: '61.50', brutto_linii: '123.00' },
+        },
+      ],
+    });
 
   it('przenosi listę pól zmienionych ręcznie (oznaczenie na karcie)', () => {
     expect(wierszePozycji(zNadpisaniem())[0].polaZmienione).toEqual(['ilosc']);
@@ -265,16 +349,33 @@ describe('podsumowaniePozycji', () => {
 // pokazywała transport dwa razy, w tym raz jako darmowy. Kwoty były cały czas dobre
 // (sumują się do kwoty zamówienia); kłamał sam obraz.
 // ============================================================================
-const zOferty = (nad = {}) => zamowienie({
-  kwota_brutto: '115.00',
-  koszt_dostawy_brutto: '0.00',
-  koszt_dostawy_netto: '0.00',
-  pozycje: [
-    { nazwa: 'lampa wisząca na zamówienie - klosz mleczny, mosiądz', sku: 'psm-zam-placeholder', ilosc: 2, cena_brutto: '48.00', cena_netto: '48.00', brutto_linii: '96.00', netto_linii: '96.00' },
-    { nazwa: 'wysyłka kurierem DPD', sku: 'psm-zam-placeholder', ilosc: 1, cena_brutto: '19.00', cena_netto: '19.00', brutto_linii: '19.00', netto_linii: '19.00' },
-  ],
-  ...nad,
-});
+const zOferty = (nad = {}) =>
+  zamowienie({
+    kwota_brutto: '115.00',
+    koszt_dostawy_brutto: '0.00',
+    koszt_dostawy_netto: '0.00',
+    pozycje: [
+      {
+        nazwa: 'lampa wisząca na zamówienie - klosz mleczny, mosiądz',
+        sku: 'psm-zam-placeholder',
+        ilosc: 2,
+        cena_brutto: '48.00',
+        cena_netto: '48.00',
+        brutto_linii: '96.00',
+        netto_linii: '96.00',
+      },
+      {
+        nazwa: 'wysyłka kurierem DPD',
+        sku: 'psm-zam-placeholder',
+        ilosc: 1,
+        cena_brutto: '19.00',
+        cena_netto: '19.00',
+        brutto_linii: '19.00',
+        netto_linii: '19.00',
+      },
+    ],
+    ...nad,
+  });
 
 describe('wierszePozycji — zamówienie z oferty (wysyłka jako pozycja)', () => {
   it('NIE dokłada pustego wiersza „Wysyłka 0,00", gdy transport jest już pozycją', () => {
@@ -294,7 +395,9 @@ describe('wierszePozycji — zamówienie z oferty (wysyłka jako pozycja)', () =
   // a nie brakiem wiersza — i ma być widoczne (patrz poprawka z 20.08: „bez zmian wobec sklepu").
   it('darmowa dostawa BEZ pozycji transportowej → wiersz „Wysyłka 0,00" ZOSTAJE', () => {
     const z = zamowienie({
-      kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00', koszt_dostawy_netto: '0.00',
+      kwota_brutto: '123.00',
+      koszt_dostawy_brutto: '0.00',
+      koszt_dostawy_netto: '0.00',
     });
     const wys = wierszePozycji(z).find((x) => x.wysylka);
     expect(wys).toBeTruthy();
@@ -307,8 +410,20 @@ describe('wierszePozycji — zamówienie z oferty (wysyłka jako pozycja)', () =
     const z = zOferty({
       kwota_brutto: '126.00',
       pozycje: [
-        { nazwa: 'Pozycja indywidualna', sku: 'psm-zam-placeholder', ilosc: 1, cena_brutto: '96.00', brutto_linii: '96.00' },
-        { nazwa: 'Realizacja priorytetowa', sku: 'psm-zam-placeholder', ilosc: 1, cena_brutto: '30.00', brutto_linii: '30.00' },
+        {
+          nazwa: 'Pozycja indywidualna',
+          sku: 'psm-zam-placeholder',
+          ilosc: 1,
+          cena_brutto: '96.00',
+          brutto_linii: '96.00',
+        },
+        {
+          nazwa: 'Realizacja priorytetowa',
+          sku: 'psm-zam-placeholder',
+          ilosc: 1,
+          cena_brutto: '30.00',
+          brutto_linii: '30.00',
+        },
       ],
     });
     expect(wierszePozycji(z).filter((x) => x.wysylka)).toHaveLength(1);
@@ -363,7 +478,9 @@ describe('wierszePozycji — SKU zaślepki', () => {
   // `startsWith`, a nie równość — tak samo, jak rozpoznaje to `czyPozycjaPlaceholdera`.
   it('wariant SKU z przyrostkiem też znika', () => {
     const z = zamowienie({
-      pozycje: [{ nazwa: 'X', sku: 'psm-zam-placeholder-wysylka', ilosc: 1, cena_brutto: '10.00', brutto_linii: '10.00' }],
+      pozycje: [
+        { nazwa: 'X', sku: 'psm-zam-placeholder-wysylka', ilosc: 1, cena_brutto: '10.00', brutto_linii: '10.00' },
+      ],
       kwota_brutto: '99.90',
     });
     expect(wierszePozycji(z)[0].skuDoPokazania).toBeNull();

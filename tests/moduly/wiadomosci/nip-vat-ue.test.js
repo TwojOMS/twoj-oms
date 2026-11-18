@@ -51,8 +51,9 @@ describe('numer VAT-UE na karcie stałego klienta', () => {
   it('odmawia głośno, gdy numeru nie da się rozpoznać, zamiast zapisać jego kawałek', () => {
     // „XY" nie jest kodem kraju z Unii. Stara reguła zrobiłaby z tego „123456" i zapisała
     // bez słowa — czyli klienta z numerem, którego nikt nie wpisał.
-    expect(() => znormalizujKlienta({ nazwa: 'Alfatrend', nip: 'XY123456' }))
-      .toThrow(/nie wygląda ani na polski NIP, ani na numer VAT-UE/);
+    expect(() => znormalizujKlienta({ nazwa: 'Alfatrend', nip: 'XY123456' })).toThrow(
+      /nie wygląda ani na polski NIP, ani na numer VAT-UE/,
+    );
   });
 });
 
@@ -91,16 +92,26 @@ describe('normalizacja numeru — zgodność wstecz dla numerów polskich', () =
 
 describe('dopasowanie klienta z numerem VAT-UE', () => {
   let db;
-  beforeEach(() => { db = openOmsDb(':memory:'); });
+  beforeEach(() => {
+    db = openOmsDb(':memory:');
+  });
 
   it('znajduje kartę po numerze wpisanym w dowolnym zapisie', () => {
     // To jest trasa, po której zamówienie trafia do okresu (services/okres.js) i po której
     // karta pokazuje historię (db/zamowienia.js) — bez niej „zamówienie okresowe" nie ma
     // do czego przylgnąć.
     dopiszKlienta(db, {
-      klucz: 'testowy', nazwa: 'Pracownia Testowa s.r.o.', nip: ALFATREND, b2b: 1,
-      rabat_procent: 0, chce_fakture: 1, metoda_wysylki: 'dpd', aktywny: 1,
-      koszt_dostawy_brutto: '0.00', platnosc: 'przelew', termin_platnosci: null,
+      klucz: 'testowy',
+      nazwa: 'Pracownia Testowa s.r.o.',
+      nip: ALFATREND,
+      b2b: 1,
+      rabat_procent: 0,
+      chce_fakture: 1,
+      metoda_wysylki: 'dpd',
+      aktywny: 1,
+      koszt_dostawy_brutto: '0.00',
+      platnosc: 'przelew',
+      termin_platnosci: null,
       komentarz: null,
     });
 

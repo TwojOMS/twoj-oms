@@ -7,8 +7,12 @@ import { daneNabywcyNaKarcie } from '../../src/domena/klient-staly.js';
 // dziś nie dochodzi (pusty NIP — trasa znajduje istniejącego klienta właśnie po NIP-ie).
 
 const KARTA = {
-  id: 7, klucz: 'przykladowa', nazwa: 'Pracownia Przykładowa', nip: '1234500011',
-  rozliczenie_zbiorcze: 1, prog_darmowej_dostawy_gr: 50000,
+  id: 7,
+  klucz: 'przykladowa',
+  nazwa: 'Pracownia Przykładowa',
+  nip: '1234500011',
+  rozliczenie_zbiorcze: 1,
+  prog_darmowej_dostawy_gr: 50000,
   faktura: { firma: 'Pracownia Przykładowa sp. z o.o.', nip: '1234500011', ulica: 'Stara 1' },
   wysylka: { telefon: '500000001' },
 };
@@ -16,7 +20,10 @@ const KARTA = {
 describe('daneNabywcyNaKarcie', () => {
   it('pusty NIP z zamówienia nie kasuje NIP-u z karty', () => {
     const wynik = daneNabywcyNaKarcie(KARTA, {
-      nazwa: 'Inna', nip: null, faktura: { nip: null, ulica: '  ' }, wysylka: { telefon: '' },
+      nazwa: 'Inna',
+      nip: null,
+      faktura: { nip: null, ulica: '  ' },
+      wysylka: { telefon: '' },
     });
     expect(wynik.nip).toBe('1234500011');
     expect(wynik.faktura).toEqual(KARTA.faktura);
@@ -40,7 +47,12 @@ describe('daneNabywcyNaKarcie', () => {
         faktura: { ulica: null, kod: null, miasto: 'Kraków' },
         wysylka: { firma: null, ulica: 'Nowa 5', kod: '', miasto: null },
       });
-      expect(wynik.faktura).toMatchObject({ ulica: null, kod: null, miasto: 'Kraków', firma: 'Pracownia Przykładowa sp. z o.o.' });
+      expect(wynik.faktura).toMatchObject({
+        ulica: null,
+        kod: null,
+        miasto: 'Kraków',
+        firma: 'Pracownia Przykładowa sp. z o.o.',
+      });
       expect(wynik.wysylka).toEqual({ firma: null, ulica: 'Nowa 5', kod: null, miasto: null, telefon: '500000001' });
     });
 
@@ -54,6 +66,11 @@ describe('daneNabywcyNaKarcie', () => {
 
   it('pól spoza danych nabywcy nie bierze z zamówienia', () => {
     const wynik = daneNabywcyNaKarcie(KARTA, { nazwa: 'X', nip: '1234500011', rozliczenie_zbiorcze: 0, klucz: 'inny' });
-    expect(wynik).toMatchObject({ id: 7, klucz: 'przykladowa', rozliczenie_zbiorcze: 1, prog_darmowej_dostawy_gr: 50000 });
+    expect(wynik).toMatchObject({
+      id: 7,
+      klucz: 'przykladowa',
+      rozliczenie_zbiorcze: 1,
+      prog_darmowej_dostawy_gr: 50000,
+    });
   });
 });

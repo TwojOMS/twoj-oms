@@ -21,7 +21,11 @@ export function otworzBaze(sciezka: string): BazaSqlite {
   return db;
 }
 
-export function wykonajMigracje(db: BazaSqlite, moduly: readonly ModulOms[], teraz: () => Date = () => new Date()): WynikMigracji[] {
+export function wykonajMigracje(
+  db: BazaSqlite,
+  moduly: readonly ModulOms[],
+  teraz: () => Date = () => new Date(),
+): WynikMigracji[] {
   const byla = db.prepare('SELECT 1 FROM migracje WHERE modul = ? AND numer = ?');
   const zapisz = db.prepare('INSERT INTO migracje (modul, numer, nazwa, zastosowana_at) VALUES (?, ?, ?, ?)');
   const wynik: WynikMigracji[] = [];
@@ -38,34 +42,58 @@ export function wykonajMigracje(db: BazaSqlite, moduly: readonly ModulOms[], ter
         const kontroluj = !(m.nazwa === 'rdzen' && mig.numer === 1);
         if (!kontroluj && kolumnyBazy(db).size) tryb = 'oznaczona';
         const znany = poPoprzedniej && poPoprzedniej.wersja === wersjaSchematu(db) ? poPoprzedniej : null;
-        const przed = kontroluj ? znany?.schemat ?? schematBazy(db) : [];
-        const kolumnyPrzed = kontroluj ? znany?.kolumny ?? kolumnyBazy(db) : new Map<string, Kolumna[]>();
+        const przed = kontroluj ? (znany?.schemat ?? schematBazy(db)) : [];
+        const kolumnyPrzed = kontroluj ? (znany?.kolumny ?? kolumnyBazy(db)) : new Map<string, Kolumna[]>();
         const exec = db.exec;
         const prepare = db.prepare;
         const sprawdz = (sql: string) => {
-          if (zakazaneInstrukcjeMigracji(sql).length) throw new Error('Migracja nieaddytywna: niedozwolona instrukcja SQL');
+          if (zakazaneInstrukcjeMigracji(sql).length)
+            throw new Error('Migracja nieaddytywna: niedozwolona instrukcja SQL');
         };
         if (kontroluj) {
-          db.exec = (sql) => { sprawdz(sql); return exec.call(db, sql); };
-          db.prepare = (sql) => { sprawdz(sql); return prepare.call(db, sql); };
+          db.exec = (sql) => {
+            sprawdz(sql);
+            return exec.call(db, sql);
+          };
+          db.prepare = (sql) => {
+            sprawdz(sql);
+            return prepare.call(db, sql);
+          };
         }
-        try { mig.wykonaj(db); }
-        finally { db.exec = exec; db.prepare = prepare; }
+        try {
+          mig.wykonaj(db);
+        } finally {
+          db.exec = exec;
+          db.prepare = prepare;
+        }
         let poTej: OdciskMigracji | null = null;
         if (kontroluj) {
           const schematPo = schematBazy(db);
           const kolumnyPo = kolumnyBazy(db);
           const po = new Set(schematPo);
           const usuniete = przed.filter((wpis) => !po.has(wpis));
-          const wyzwalacze = db.prepare(`SELECT name, tbl_name, 'main' AS schemat FROM sqlite_master WHERE type = 'trigger'
-            UNION ALL SELECT name, tbl_name, 'temp' AS schemat FROM sqlite_temp_master WHERE type = 'trigger'`).all() as { name: string; tbl_name: string; schemat: string }[];
+          const wyzwalacze = db
+            .prepare(
+              `SELECT name, tbl_name, 'main' AS schemat FROM sqlite_master WHERE type = 'trigger'
+            UNION ALL SELECT name, tbl_name, 'temp' AS schemat FROM sqlite_temp_master WHERE type = 'trigger'`,
+            )
+            .all() as { name: string; tbl_name: string; schemat: string }[];
           const bylo = new Set(przed);
-          const noweOgraniczenia = [...po].filter((wpis) => !bylo.has(wpis) && (
-            [...kolumnyPrzed.keys()].some((t) => wpis.startsWith(`${t} CHECK `) || wpis.startsWith(`${t} FK `)
-              || (wpis.startsWith(`${t} indeks `) && wpis.includes(' u=1 ')))
-            || wyzwalacze.some((w) => (w.tbl_name === 'migracje' || kolumnyPrzed.has(w.tbl_name))
-              && wpis.startsWith(`${w.schemat === 'temp' ? 'temp ' : ''}trigger ${w.name} `))
-          ));
+          const noweOgraniczenia = [...po].filter(
+            (wpis) =>
+              !bylo.has(wpis) &&
+              ([...kolumnyPrzed.keys()].some(
+                (t) =>
+                  wpis.startsWith(`${t} CHECK `) ||
+                  wpis.startsWith(`${t} FK `) ||
+                  (wpis.startsWith(`${t} indeks `) && wpis.includes(' u=1 ')),
+              ) ||
+                wyzwalacze.some(
+                  (w) =>
+                    (w.tbl_name === 'migracje' || kolumnyPrzed.has(w.tbl_name)) &&
+                    wpis.startsWith(`${w.schemat === 'temp' ? 'temp ' : ''}trigger ${w.name} `),
+                )),
+          );
           const bezDomyslnej: string[] = [];
           for (const [tabela, kolumny] of kolumnyPo) {
             const stare = kolumnyPrzed.get(tabela);
@@ -77,7 +105,9 @@ export function wykonajMigracje(db: BazaSqlite, moduly: readonly ModulOms[], ter
             }
           }
           if (usuniete.length || bezDomyslnej.length || noweOgraniczenia.length) {
-            throw new Error(`Migracja nieaddytywna. Usunięte lub zmienione: ${usuniete.join('; ') || '—'}; NOT NULL bez DEFAULT: ${bezDomyslnej.join('; ') || '—'}; nowe ograniczenia: ${noweOgraniczenia.join('; ') || '—'}`);
+            throw new Error(
+              `Migracja nieaddytywna. Usunięte lub zmienione: ${usuniete.join('; ') || '—'}; NOT NULL bez DEFAULT: ${bezDomyslnej.join('; ') || '—'}; nowe ograniczenia: ${noweOgraniczenia.join('; ') || '—'}`,
+            );
           }
           poTej = { schemat: schematPo, kolumny: kolumnyPo, wersja: wersjaSchematu(db) };
         }
@@ -98,14 +128,26 @@ type Kolumna = { name: string; type: string; notnull: number; dflt_value: string
 type Indeks = { name: string; unique: number; origin: string; partial: number };
 type KolumnaIndeksu = { seqno: number; name: string | null; desc: number; coll: string; key: number };
 type OdciskMigracji = { schemat: string[]; kolumny: Map<string, Kolumna[]>; wersja: string };
-type KluczObcy ={ id: number; seq: number; table: string; from: string; to: string | null; on_update: string; on_delete: string; match: string };
+type KluczObcy = {
+  id: number;
+  seq: number;
+  table: string;
+  from: string;
+  to: string | null;
+  on_update: string;
+  on_delete: string;
+  match: string;
+};
 type TokenSql = { slowo: string; kanon: string; pozycja: number };
 
 const cytuj = (nazwa: string): string => `"${nazwa.replaceAll('"', '""')}"`;
 /** Licznik zmian schematu main i TEMP — SQLite podbija go przy każdym DDL, także z innego połączenia. */
-const wersjaSchematu = (db: BazaSqlite): string => ['main', 'temp']
-  .map((s) => (db.prepare(`PRAGMA ${s}.schema_version`).get() as { schema_version: number }).schema_version).join('/');
-const TOKEN_SQL = /--[^\n]*|\/\*[\s\S]*?\*\/|'(?:''|[^'])*'|"(?:""|[^"])*"|`(?:``|[^`])*`|\[[^\]]*\]|[a-z_][a-z_0-9$]*|(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?|[^\s]/gi;
+const wersjaSchematu = (db: BazaSqlite): string =>
+  ['main', 'temp']
+    .map((s) => (db.prepare(`PRAGMA ${s}.schema_version`).get() as { schema_version: number }).schema_version)
+    .join('/');
+const TOKEN_SQL =
+  /--[^\n]*|\/\*[\s\S]*?\*\/|'(?:''|[^'])*'|"(?:""|[^"])*"|`(?:``|[^`])*`|\[[^\]]*\]|[a-z_][a-z_0-9$]*|(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?|[^\s]/gi;
 
 function tokenySql(sql: string): TokenSql[] {
   return [...sql.matchAll(TOKEN_SQL)]
@@ -131,15 +173,19 @@ export function zakazaneInstrukcjeMigracji(sql: string): { pozycja: number; oper
     const slowa = instrukcja.map((t) => t.slowo);
     const alter = slowa[0] === 'ALTER' && slowa[1] === 'TABLE';
     const transakcja = ['BEGIN', 'COMMIT', 'ROLLBACK', 'END'].includes(slowa[0]);
-    const writableSchema = slowa[0] === 'PRAGMA'
-      && instrukcja.some((t) => t.kanon === 'i:WRITABLE_SCHEMA' || t.kanon.toUpperCase() === "S:'WRITABLE_SCHEMA'");
+    const writableSchema =
+      slowa[0] === 'PRAGMA' &&
+      instrukcja.some((t) => t.kanon === 'i:WRITABLE_SCHEMA' || t.kanon.toUpperCase() === "S:'WRITABLE_SCHEMA'");
     if (transakcja || writableSchema) bledy.push({ pozycja: instrukcja[0].pozycja, operacja: slowa[0] });
     for (let i = 0; i < instrukcja.length; i++) {
-      const usuwanie = slowa[i] === 'DROP' && (alter || ['TABLE', 'COLUMN', 'INDEX', 'VIEW', 'TRIGGER'].includes(slowa[i + 1]));
+      const usuwanie =
+        slowa[i] === 'DROP' && (alter || ['TABLE', 'COLUMN', 'INDEX', 'VIEW', 'TRIGGER'].includes(slowa[i + 1]));
       const przemianowanie = slowa[i] === 'RENAME';
       const dodawanie = alter && slowa[i] === 'ADD';
-      const bezDomyslnej = dodawanie && !slowa.slice(i + 1).includes('DEFAULT')
-        && slowa.slice(i + 1).some((s, n, reszta) => s === 'NOT' && reszta[n + 1] === 'NULL');
+      const bezDomyslnej =
+        dodawanie &&
+        !slowa.slice(i + 1).includes('DEFAULT') &&
+        slowa.slice(i + 1).some((s, n, reszta) => s === 'NOT' && reszta[n + 1] === 'NULL');
       if (usuwanie || przemianowanie || bezDomyslnej) {
         bledy.push({ pozycja: instrukcja[i].pozycja, operacja: slowa[i] });
       }
@@ -173,7 +219,12 @@ function wyrazenia(tokeny: TokenSql[], slowo: string): string[] {
       if (tokeny[j].kanon === '(') poziom++;
       if (tokeny[j].kanon === ')') poziom--;
     }
-    wynik.push(tokeny.slice(i + 2, j - 1).map((t) => t.kanon).join(' '));
+    wynik.push(
+      tokeny
+        .slice(i + 2, j - 1)
+        .map((t) => t.kanon)
+        .join(' '),
+    );
     i = j - 1;
   }
   return wynik.sort();
@@ -184,8 +235,10 @@ function deklaracjeKolumn(tokeny: TokenSql[]): Map<string, TokenSql[]> {
   let poziom = 1;
   let fragment: TokenSql[] = [];
   const zapisz = () => {
-    if (fragment[0]?.kanon.startsWith('i:')
-      && !['CONSTRAINT', 'PRIMARY', 'UNIQUE', 'CHECK', 'FOREIGN'].includes(fragment[0].slowo)) {
+    if (
+      fragment[0]?.kanon.startsWith('i:') &&
+      !['CONSTRAINT', 'PRIMARY', 'UNIQUE', 'CHECK', 'FOREIGN'].includes(fragment[0].slowo)
+    ) {
       wynik.set(fragment[0].kanon.slice(2), fragment);
     }
     fragment = [];
@@ -194,7 +247,10 @@ function deklaracjeKolumn(tokeny: TokenSql[]): Map<string, TokenSql[]> {
     const t = tokeny[i];
     if (t.kanon === '(') poziom++;
     if (t.kanon === ')') poziom--;
-    if (!poziom) { zapisz(); break; }
+    if (!poziom) {
+      zapisz();
+      break;
+    }
     if (t.kanon === ',' && poziom === 1) zapisz();
     else fragment.push(t);
   }
@@ -221,13 +277,20 @@ const odciski = new Map<string, { schemat?: string[]; kolumny?: Map<string, Kolu
 function wSpojnymOdczycie<T>(db: BazaSqlite, odczyt: () => T): T {
   if (db.isTransaction) return odczyt();
   db.exec('BEGIN');
-  try { return odczyt(); }
-  finally { db.exec('COMMIT'); }
+  try {
+    return odczyt();
+  } finally {
+    db.exec('COMMIT');
+  }
 }
 
 function wpisOdcisku(db: BazaSqlite) {
-  const obiekty = db.prepare(`SELECT 'main' AS s, type, name, tbl_name, sql FROM sqlite_master
-    UNION ALL SELECT 'temp', type, name, tbl_name, sql FROM sqlite_temp_master`).all() as Record<string, string | null>[];
+  const obiekty = db
+    .prepare(
+      `SELECT 'main' AS s, type, name, tbl_name, sql FROM sqlite_master
+    UNION ALL SELECT 'temp', type, name, tbl_name, sql FROM sqlite_temp_master`,
+    )
+    .all() as Record<string, string | null>[];
   const skrot = createHash('sha256').update(`${wersjaSchematu(db)}\u0001`);
   for (const o of obiekty) skrot.update(`${o.s}\0${o.type}\0${o.name}\0${o.tbl_name}\0${o.sql ?? ''}\u0001`);
   const klucz = skrot.digest('base64');
@@ -250,21 +313,31 @@ function kolumnyBazy(db: BazaSqlite): Map<string, Kolumna[]> {
 
 /** Strukturalny odcisk kolumn, ograniczeń, indeksów, opcji tabel i pozostałych obiektów, także wyzwalaczy TEMP. Bez danych i tabeli migracje. */
 export function schematBazy(db: BazaSqlite): string[] {
-  return [...wSpojnymOdczycie(db, () => {
-    const wpis = wpisOdcisku(db);
-    return (wpis.schemat ??= policzSchematBazy(db));
-  })];
+  return [
+    ...wSpojnymOdczycie(db, () => {
+      const wpis = wpisOdcisku(db);
+      return (wpis.schemat ??= policzSchematBazy(db));
+    }),
+  ];
 }
 
 function policzKolumnyBazy(db: BazaSqlite): Map<string, Kolumna[]> {
-  const tabele = db.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'
-    AND name NOT LIKE 'sqlite_%' AND name <> 'migracje' ORDER BY name`).all() as { name: string }[];
+  const tabele = db
+    .prepare(
+      `SELECT name FROM sqlite_master WHERE type = 'table'
+    AND name NOT LIKE 'sqlite_%' AND name <> 'migracje' ORDER BY name`,
+    )
+    .all() as { name: string }[];
   return new Map(tabele.map(({ name }) => [name, db.prepare(`PRAGMA table_xinfo(${cytuj(name)})`).all() as Kolumna[]]));
 }
 
 function policzSchematBazy(db: BazaSqlite): string[] {
-  const tabele = db.prepare(`SELECT name, sql FROM sqlite_master WHERE type = 'table'
-    AND name NOT LIKE 'sqlite_%' AND name <> 'migracje' ORDER BY name`).all() as { name: string; sql: string }[];
+  const tabele = db
+    .prepare(
+      `SELECT name, sql FROM sqlite_master WHERE type = 'table'
+    AND name NOT LIKE 'sqlite_%' AND name <> 'migracje' ORDER BY name`,
+    )
+    .all() as { name: string; sql: string }[];
   const opcje = db.prepare('PRAGMA table_list').all() as { schema: string; name: string; wr: number; strict: number }[];
   const odcisk: string[] = [];
   for (const { name: t, sql } of tabele) {
@@ -277,7 +350,9 @@ function policzSchematBazy(db: BazaSqlite): string[] {
       const kolacja = deklaracja.findIndex((d) => d.slowo === 'COLLATE');
       const coll = kolacja < 0 ? 'i:BINARY' : deklaracja[kolacja + 1].kanon;
       const auto = deklaracja.some((d) => d.slowo === 'AUTOINCREMENT');
-      odcisk.push(`${t}.${k.name} ${k.type} nn=${k.notnull} d=${k.dflt_value ?? ''} pk=${k.pk} h=${k.hidden} auto=${Number(auto)} coll=${coll} as=${wyrazenia(deklaracja, 'AS').join(';')}`);
+      odcisk.push(
+        `${t}.${k.name} ${k.type} nn=${k.notnull} d=${k.dflt_value ?? ''} pk=${k.pk} h=${k.hidden} auto=${Number(auto)} coll=${coll} as=${wyrazenia(deklaracja, 'AS').join(';')}`,
+      );
     }
     for (const check of wyrazenia(tokeny, 'CHECK')) odcisk.push(`${t} CHECK ${check}`);
     const grupy = new Map<number, KluczObcy[]>();
@@ -292,16 +367,25 @@ function policzSchematBazy(db: BazaSqlite): string[] {
     }
     for (const i of db.prepare(`PRAGMA index_list(${cytuj(t)})`).all() as Indeks[]) {
       const kolumny = (db.prepare(`PRAGMA index_xinfo(${cytuj(i.name)})`).all() as KolumnaIndeksu[])
-        .filter((k) => k.key).map(({ seqno, name, desc, coll }) => ({ seqno, name, desc, coll }));
-      const definicja = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'index' AND name = ?").get(i.name) as { sql: string | null } | undefined;
+        .filter((k) => k.key)
+        .map(({ seqno, name, desc, coll }) => ({ seqno, name, desc, coll }));
+      const definicja = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'index' AND name = ?").get(i.name) as
+        { sql: string | null } | undefined;
       const nazwa = i.origin === 'c' ? i.name : `auto:${i.origin}`;
-      odcisk.push(`${t} indeks ${nazwa} u=${i.unique} partial=${i.partial} ${JSON.stringify(kolumny)} sql=${definicja?.sql ? kanonSql(definicja.sql) : ''}`);
+      odcisk.push(
+        `${t} indeks ${nazwa} u=${i.unique} partial=${i.partial} ${JSON.stringify(kolumny)} sql=${definicja?.sql ? kanonSql(definicja.sql) : ''}`,
+      );
     }
   }
-  const pozostale = db.prepare(`SELECT type, name, sql, 'main' AS schemat FROM sqlite_master
+  const pozostale = db
+    .prepare(
+      `SELECT type, name, sql, 'main' AS schemat FROM sqlite_master
     WHERE type IN ('view', 'trigger') AND name NOT LIKE 'sqlite_%'
     UNION ALL SELECT type, name, sql, 'temp' AS schemat FROM sqlite_temp_master
-    WHERE type = 'trigger' AND name NOT LIKE 'sqlite_%'`).all() as { type: string; name: string; sql: string; schemat: string }[];
-  for (const obiekt of pozostale) odcisk.push(`${obiekt.schemat === 'temp' ? 'temp ' : ''}${obiekt.type} ${obiekt.name} ${kanonSql(obiekt.sql)}`);
+    WHERE type = 'trigger' AND name NOT LIKE 'sqlite_%'`,
+    )
+    .all() as { type: string; name: string; sql: string; schemat: string }[];
+  for (const obiekt of pozostale)
+    odcisk.push(`${obiekt.schemat === 'temp' ? 'temp ' : ''}${obiekt.type} ${obiekt.name} ${kanonSql(obiekt.sql)}`);
   return odcisk.sort();
 }

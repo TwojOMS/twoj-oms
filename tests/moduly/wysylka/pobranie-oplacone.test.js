@@ -16,13 +16,34 @@ const __dir = dirname(fileURLToPath(import.meta.url));
 const fixture = (n) => readFileSync(join(__dir, 'fixtures', 'dpd', n), 'utf8');
 const odp = (status, tekst) => ({ status, ok: status >= 200 && status < 300, text: async () => tekst });
 
-const naglowki = { authorization: 'Basic ' + Buffer.from('operator:atrapa').toString('base64'), origin: 'http://localhost' };
-const ADRES = { nazwa: 'Ala Przykładowa', ulica: 'Przykładowa 12', kod: '00-001', miasto: 'Warszawa', kraj: 'PL', phone: '+48500100200', email: 'ala@example.test' };
+const naglowki = {
+  authorization: 'Basic ' + Buffer.from('operator:atrapa').toString('base64'),
+  origin: 'http://localhost',
+};
+const ADRES = {
+  nazwa: 'Ala Przykładowa',
+  ulica: 'Przykładowa 12',
+  kod: '00-001',
+  miasto: 'Warszawa',
+  kraj: 'PL',
+  phone: '+48500100200',
+  email: 'ala@example.test',
+};
 const NADAWCA = { ...ADRES, nazwa: 'Pracownia Półcień' };
-const FORMULARZ_DPD = { ...ADRES, waga: '1', dlugosc: '30', szerokosc: '20', wysokosc: '10', kolejnosc: '1', kwota_pobrania: '212.90' };
+const FORMULARZ_DPD = {
+  ...ADRES,
+  waga: '1',
+  dlugosc: '30',
+  szerokosc: '20',
+  wysokosc: '10',
+  kolejnosc: '1',
+  kwota_pobrania: '212.90',
+};
 
 let db, serwer, katalog;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 afterEach(async () => {
   if (serwer) await serwer.close();
   serwer = undefined;
@@ -33,7 +54,8 @@ afterEach(async () => {
 
 function atrapaDpd() {
   const v10 = fixture('v10-ok.xml');
-  return vi.fn()
+  return vi
+    .fn()
     .mockResolvedValueOnce(odp(200, v10))
     .mockResolvedValueOnce(odp(200, fixture('v4-ok.xml')))
     .mockResolvedValueOnce(odp(200, fixture('v4-ok-zpl.xml')));
@@ -42,21 +64,55 @@ function atrapaDpd() {
 // kanal: 'polcien' = sklep WooCommerce „Pracowni Półcień", 'reczne' = zamówienie założone w OMS-ie.
 function przygotuj({ kanal, metoda = 'dpd' }) {
   const fetchDpd = atrapaDpd();
-  const dpd = createDpdClient({ url: 'https://dpd.example.test/api', login: '99999999', haslo: 'x', fid: '100137', nadawca: NADAWCA, fetchImpl: fetchDpd });
+  const dpd = createDpdClient({
+    url: 'https://dpd.example.test/api',
+    login: '99999999',
+    haslo: 'x',
+    fid: '100137',
+    nadawca: NADAWCA,
+    fetchImpl: fetchDpd,
+  });
   katalog = mkdtempSync(join(tmpdir(), 'pobranie-oplacone-137-'));
   const nadanie = createNadanie({ db, kurierzy: { dpd }, katalogEtykiet: katalog });
-  const config = { auth: { user: 'operator', pass: 'atrapa' },
+  const config = {
+    auth: { user: 'operator', pass: 'atrapa' },
     definicje: [{ klucz: 'polcien', typ: 'woo', prefiks: 'PC', etykieta: 'Pracownia Półcień', raport: 'PC' }],
-    kanaly: { polcien: {} }, sklepy: {} };
+    kanaly: { polcien: {} },
+    sklepy: {},
+  };
   serwer = buildOmsServer({ db, config, nadanie, poller: { stan: () => ({}) } });
-  const id = zapiszZamowienie(db, kanal, {
-    zrodlo_id: 'pc-137', numer: 'PC-137', klient: { email: ADRES.email, phone: ADRES.phone },
-    dostawa: { first_name: 'Ala', last_name: 'Przykładowa', address_1: ADRES.ulica, postcode: ADRES.kod, city: ADRES.miasto, country: 'PL' },
-    metoda_wysylki: metoda, pobranie: 1, kwota_pobrania: '212.90', kwota_brutto: '212.90', chce_fakture: 0, nip: null,
-    punkt_odbioru: metoda === 'inpost_paczkomat' ? 'POL01A' : null, status_woo: 'processing', oplacone_at: null, anulowane: 0,
-    pozycje: [], utworzone_at: '2026-11-03T12:00:00',
-  }, {});
-  const post = (payload) => serwer.inject({ method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowki, payload });
+  const id = zapiszZamowienie(
+    db,
+    kanal,
+    {
+      zrodlo_id: 'pc-137',
+      numer: 'PC-137',
+      klient: { email: ADRES.email, phone: ADRES.phone },
+      dostawa: {
+        first_name: 'Ala',
+        last_name: 'Przykładowa',
+        address_1: ADRES.ulica,
+        postcode: ADRES.kod,
+        city: ADRES.miasto,
+        country: 'PL',
+      },
+      metoda_wysylki: metoda,
+      pobranie: 1,
+      kwota_pobrania: '212.90',
+      kwota_brutto: '212.90',
+      chce_fakture: 0,
+      nip: null,
+      punkt_odbioru: metoda === 'inpost_paczkomat' ? 'POL01A' : null,
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane: 0,
+      pozycje: [],
+      utworzone_at: '2026-11-03T12:00:00',
+    },
+    {},
+  );
+  const post = (payload) =>
+    serwer.inject({ method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowki, payload });
   const get = () => serwer.inject({ method: 'GET', url: `/zamowienia/${id}/nadaj`, headers: naglowki });
   const przesylki = () => db.prepare('SELECT * FROM przesylki WHERE zamowienie_id = ?').all(id);
   return { id, post, get, fetchDpd, przesylki, nadanie };
@@ -73,14 +129,21 @@ describe('przedpłata i pobranie — rzeczywista trasa, usługa i koperta kurier
     const t = zPrzedplata('212.90');
     const r = await t.post(FORMULARZ_DPD);
     expect(r.statusCode).toBe(400);
-    expect(r.body).toContain('Zamówienie ma wpłaty 212.90 zł — pobierz najwyżej 0.00 zł albo wyłącz pobranie. Panel niczego nie nadał.');
+    expect(r.body).toContain(
+      'Zamówienie ma wpłaty 212.90 zł — pobierz najwyżej 0.00 zł albo wyłącz pobranie. Panel niczego nie nadał.',
+    );
     expect(t.fetchDpd).not.toHaveBeenCalled();
     expect(t.przesylki()).toHaveLength(0);
-    await expect(t.nadanie.nadaj(t.id, undefined, { pobranieNaTejPaczce: false })).rejects.toThrow('Panel niczego nie nadał.');
+    await expect(t.nadanie.nadaj(t.id, undefined, { pobranieNaTejPaczce: false })).rejects.toThrow(
+      'Panel niczego nie nadał.',
+    );
     expect(t.fetchDpd).not.toHaveBeenCalled();
     expect(t.przesylki()).toHaveLength(0);
   });
-  it.each([['212.90', 'opłacone — wyłącz pobranie'], ['100.00', 'częściowo opłacone — nadaj z karty']])('hurt: %s → %s', (kwota, powod) => {
+  it.each([
+    ['212.90', 'opłacone — wyłącz pobranie'],
+    ['100.00', 'częściowo opłacone — nadaj z karty'],
+  ])('hurt: %s → %s', (kwota, powod) => {
     const t = zPrzedplata(kwota);
     const wynik = podzielDoNadania([pobierzZamowienie(db, t.id)]);
     expect(wynik.doNadania).toHaveLength(0);
@@ -108,7 +171,11 @@ describe('przedpłata i pobranie — rzeczywista trasa, usługa i koperta kurier
   });
   it('stare Woo: wpłata sklep 212.90 → P=0 i pełne pobranie', async () => {
     const t = przygotuj({ kanal: 'polcien', metoda: 'dpd' });
-    zsynchronizujWplateSklepu(db, t.id, { kwota: '212.90', metoda: 'Płatność przy odbiorze', oplacone_at: '2026-11-03' });
+    zsynchronizujWplateSklepu(db, t.id, {
+      kwota: '212.90',
+      metoda: 'Płatność przy odbiorze',
+      oplacone_at: '2026-11-03',
+    });
     const z = pobierzZamowienie(db, t.id);
     expect(przedplatyPrzedPobraniem(z, z.platnosci)).toBe(0);
     expect(podzielDoNadania([z]).doNadania).toHaveLength(1);
@@ -117,4 +184,3 @@ describe('przedpłata i pobranie — rzeczywista trasa, usługa i koperta kurier
     expect(t.fetchDpd.mock.calls[0][1].body).toContain('<cod><amount>212.90</amount><currency>PLN</currency></cod>');
   });
 });
-

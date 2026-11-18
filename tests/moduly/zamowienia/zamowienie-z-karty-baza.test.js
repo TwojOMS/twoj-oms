@@ -3,13 +3,14 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { utworzZamowienieReczne } from '../../../src/oms/db/zamowienia-reczne.js';
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 
 describe('zamowienie reczne z karty indywidualnej', () => {
   it('drugie zamowienie z tym samym karta_id odbija sie od indeksu', () => {
     utworzZamowienieReczne(db, { karta_id: 'karta-1', indywidualne: 1 });
-    expect(() => utworzZamowienieReczne(db, { karta_id: 'karta-1', indywidualne: 1 }))
-      .toThrow(/UNIQUE|constraint/i);
+    expect(() => utworzZamowienieReczne(db, { karta_id: 'karta-1', indywidualne: 1 })).toThrow(/UNIQUE|constraint/i);
   });
 
   it('zamowienia BEZ karty nie przeszkadzaja sobie nawzajem (indeks czesciowy)', () => {

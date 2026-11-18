@@ -11,7 +11,11 @@ import { dodajZwrot, zapiszKorekte } from '../../../src/oms/db/zwroty.js';
 import { createFakturyWidok } from '../../../src/moduly/faktury/services/faktury-widok.js';
 import { createWysylkaKsef } from '../../../src/moduly/faktury/services/wysylka-ksef.js';
 import { createAutomatKsef } from '../../../src/moduly/faktury/services/ksef-automat.js';
-import { zapiszUstawieniaAutomatu, wczytajAutomatKsef, wstrzymajFakture } from '../../../src/moduly/faktury/db/ksef-automat.js';
+import {
+  zapiszUstawieniaAutomatu,
+  wczytajAutomatKsef,
+  wstrzymajFakture,
+} from '../../../src/moduly/faktury/db/ksef-automat.js';
 import { POWOD_KOREKTA_CZEKA, POWOD_KONSUMENCKA } from '../../../src/domena/wysylka-ksef.js';
 
 const NIP = '1234500011';
@@ -24,11 +28,25 @@ let licznik = 7100;
 function zamowienie(db) {
   licznik += 1;
   const numer = String(licznik);
-  const id = zapiszZamowienie(db, 'pro', {
-    zrodlo_id: `w-${numer}`, numer, klient: { first_name: 'Ida' }, dostawa: {},
-    metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: NIP,
-    kwota_brutto: '158.99', status_woo: 'processing', oplacone_at: null, anulowane: 0,
-  }, {});
+  const id = zapiszZamowienie(
+    db,
+    'pro',
+    {
+      zrodlo_id: `w-${numer}`,
+      numer,
+      klient: { first_name: 'Ida' },
+      dostawa: {},
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: 1,
+      nip: NIP,
+      kwota_brutto: '158.99',
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane: 0,
+    },
+    {},
+  );
   return { id, numer };
 }
 
@@ -39,13 +57,31 @@ function faktura(db, zamowienieId, { dokumentId, numer, ksefNumer }) {
 }
 
 const vat = (uuid, number, nadpisz = {}) => ({
-  uuid, number, rodzaj: 'vat', invoice_date: '2026-11-03', sale_date: '2026-11-03', ksef_number: null,
-  client_company_name: 'Pracownia Półcień', client_tax_code: NIP, gross_price: 15899, left_to_pay: 0, ...nadpisz,
+  uuid,
+  number,
+  rodzaj: 'vat',
+  invoice_date: '2026-11-03',
+  sale_date: '2026-11-03',
+  ksef_number: null,
+  client_company_name: 'Pracownia Półcień',
+  client_tax_code: NIP,
+  gross_price: 15899,
+  left_to_pay: 0,
+  ...nadpisz,
 });
 const korekta = (uuid, number, korygowana, nadpisz = {}) => ({
-  uuid, number, rodzaj: 'korekta', invoice_date: '2026-11-03', sale_date: '2026-11-03', ksef_number: null,
-  corrected_invoice_number: korygowana, client_company_name: 'Pracownia Półcień', client_tax_code: NIP,
-  gross_price: -2700, left_to_pay: 0, ...nadpisz,
+  uuid,
+  number,
+  rodzaj: 'korekta',
+  invoice_date: '2026-11-03',
+  sale_date: '2026-11-03',
+  ksef_number: null,
+  corrected_invoice_number: korygowana,
+  client_company_name: 'Pracownia Półcień',
+  client_tax_code: NIP,
+  gross_price: -2700,
+  left_to_pay: 0,
+  ...nadpisz,
 });
 
 // Zestaw jak na koncie inFaktu: V — faktura VAT; KZ — korekta zwrotu z panelu, koryguje fakturę
@@ -66,30 +102,43 @@ function zestaw({ wyslijDoKsef = true, odmowa = null, wpisTf = null, dataKZ = '2
     vat('V', 'FV 3/11/2026'),
     korekta('KZ', '1/KOR/11/2026', 'FV 1/10/2026', { invoice_date: dataKZ }),
     korekta('K0', '2/KOR/11/2026', 'FV 99/09/2026'),
-    korekta('KB', '3/KOR/11/2026', 'FV 2/10/2026', { client_tax_code: '', client_company_name: '', client_first_name: 'Ida', client_last_name: 'Nowak' }),
+    korekta('KB', '3/KOR/11/2026', 'FV 2/10/2026', {
+      client_tax_code: '',
+      client_company_name: '',
+      client_first_name: 'Ida',
+      client_last_name: 'Nowak',
+    }),
   ];
   const wyslane = [];
-  const zakres = (rodzaj) => async ({ od, do: koniec, pole = 'invoice_date' } = {}) => dokumenty
-    .filter((d) => d.rodzaj === rodzaj && (!od || (String(d[pole]) >= od && String(d[pole]) <= koniec)))
-    .map((d) => ({ ...d }));
+  const zakres =
+    (rodzaj) =>
+    async ({ od, do: koniec, pole = 'invoice_date' } = {}) =>
+      dokumenty
+        .filter((d) => d.rodzaj === rodzaj && (!od || (String(d[pole]) >= od && String(d[pole]) <= koniec)))
+        .map((d) => ({ ...d }));
   const klient = {
     listaFaktur: zakres('vat'),
     listaKorekt: zakres('korekta'),
     listaNieoplaconych: async () => [],
-    ...(wyslijDoKsef ? {
-      wyslijDokumentDoKsef: async (uuid) => {
-        if (odmowa && odmowa === uuid) throw Object.assign(new Error('odmowa 422'), { dlaOperatora: true, status: 422 });
-        wyslane.push(uuid);
-        return { odpowiedzInfaktu: { ok: true, uuid } };
-      },
-    } : {}),
+    ...(wyslijDoKsef
+      ? {
+          wyslijDokumentDoKsef: async (uuid) => {
+            if (odmowa && odmowa === uuid)
+              throw Object.assign(new Error('odmowa 422'), { dlaOperatora: true, status: 422 });
+            wyslane.push(uuid);
+            return { odpowiedzInfaktu: { ok: true, uuid } };
+          },
+        }
+      : {}),
   };
   const fakturyWidok = createFakturyWidok({ db, infakt: klient });
   const wysylkaKsef = createWysylkaKsef({ db, infakt: klient, fakturyWidok, log: () => {}, wpisTf });
-  const automat = (teraz) => createAutomatKsef({ db, fakturyWidok, wysylkaKsef, teraz: () => new Date(teraz), log: () => {} });
+  const automat = (teraz) =>
+    createAutomatKsef({ db, fakturyWidok, wysylkaKsef, teraz: () => new Date(teraz), log: () => {} });
   return { db, z, wyslane, wysylkaKsef, automat };
 }
-const wlacz = (db) => zapiszUstawieniaAutomatu(db, { wlaczony: true, godzina: '20:00', ostatniPrzebieg: null, login: 'adam' });
+const wlacz = (db) =>
+  zapiszUstawieniaAutomatu(db, { wlaczony: true, godzina: '20:00', ostatniPrzebieg: null, login: 'adam' });
 // 20:01 w Warszawie (CET) 4 listopada.
 const PRZEBIEG = '2026-11-04T19:01:00Z';
 
@@ -102,7 +151,10 @@ describe('usługa: program z `wyslijDoKsef` (nie wbudowany) wysyła korekty', ()
       expect(z.wysylkaKsef.niedostepna).toBeNull();
       expect(bez.wysylkaKsef.korekty).toBe(false);
       expect(bez.wysylkaKsef.niedostepna).toEqual(expect.any(String));
-    } finally { z.db.close(); bez.db.close(); }
+    } finally {
+      z.db.close();
+      bez.db.close();
+    }
   });
 
   it('podgląd: korekta z pierwotną w KSeF „do wysłania”, bez — POWOD_KOREKTA_CZEKA znak w znak', async () => {
@@ -112,28 +164,39 @@ describe('usługa: program z `wyslijDoKsef` (nie wbudowany) wysyła korekty', ()
       const p = await z.wysylkaKsef.podglad(ARGS(['V', 'KZ', 'K0']));
       expect(p.doWyslania.map((d) => d.uuid)).toEqual(['V', 'KZ']);
       expect(p.pominiete).toEqual([{ numer: '2/KOR/11/2026', powod: ZDANIE_CZEKA }]);
-    } finally { z.db.close(); }
+    } finally {
+      z.db.close();
+    }
   });
 
-  it('zatwierdzenie: `wyslijDokumentDoKsef` z uuid korekty, rezerwacja z jej numerem, ślad w logu zamówienia, '
-    + 'drugi raz — odmowa „już zlecił”', async () => {
-    const z = zestaw();
-    try {
-      const w = await z.wysylkaKsef.wyslij(ARGS(['KZ']), 'adam');
-      expect(z.wyslane).toEqual(['KZ']);
-      expect(w.wyslane.map((d) => d.uuid)).toEqual(['KZ']);
-      expect(z.db.prepare('SELECT numer FROM wysylki_ksef WHERE uuid = ?').get('KZ')).toEqual({ numer: '1/KOR/11/2026' });
-      const wpisy = z.db.prepare("SELECT wynik FROM log WHERE zamowienie_id = ? AND akcja = 'ksef'").all(z.z.id)
-        .map((x) => x.wynik);
-      expect(wpisy).toContain('(adam) zlecono wysyłkę do KSeF z panelu (1/KOR/11/2026) — czeka na numer KSeF');
+  it(
+    'zatwierdzenie: `wyslijDokumentDoKsef` z uuid korekty, rezerwacja z jej numerem, ślad w logu zamówienia, ' +
+      'drugi raz — odmowa „już zlecił”',
+    async () => {
+      const z = zestaw();
+      try {
+        const w = await z.wysylkaKsef.wyslij(ARGS(['KZ']), 'adam');
+        expect(z.wyslane).toEqual(['KZ']);
+        expect(w.wyslane.map((d) => d.uuid)).toEqual(['KZ']);
+        expect(z.db.prepare('SELECT numer FROM wysylki_ksef WHERE uuid = ?').get('KZ')).toEqual({
+          numer: '1/KOR/11/2026',
+        });
+        const wpisy = z.db
+          .prepare("SELECT wynik FROM log WHERE zamowienie_id = ? AND akcja = 'ksef'")
+          .all(z.z.id)
+          .map((x) => x.wynik);
+        expect(wpisy).toContain('(adam) zlecono wysyłkę do KSeF z panelu (1/KOR/11/2026) — czeka na numer KSeF');
 
-      const drugi = await z.wysylkaKsef.wyslij(ARGS(['KZ']), 'adam');
-      expect(z.wyslane).toEqual(['KZ']);
-      expect(drugi.wyslane).toEqual([]);
-      expect(drugi.pominiete).toHaveLength(1);
-      expect(drugi.pominiete[0].powod).toMatch(/^Panel już zlecił wysyłkę tego dokumentu do KSeF/);
-    } finally { z.db.close(); }
-  });
+        const drugi = await z.wysylkaKsef.wyslij(ARGS(['KZ']), 'adam');
+        expect(z.wyslane).toEqual(['KZ']);
+        expect(drugi.wyslane).toEqual([]);
+        expect(drugi.pominiete).toHaveLength(1);
+        expect(drugi.pominiete[0].powod).toMatch(/^Panel już zlecił wysyłkę tego dokumentu do KSeF/);
+      } finally {
+        z.db.close();
+      }
+    },
+  );
 
   it('korekta konsumencka przy wyłączonej wysyłce B2C — odmowa konsumencka, nic nie poszło', async () => {
     const z = zestaw();
@@ -144,19 +207,30 @@ describe('usługa: program z `wyslijDoKsef` (nie wbudowany) wysyła korekty', ()
       const w = await z.wysylkaKsef.wyslij(ARGS(['KB']), 'adam');
       expect(z.wyslane).toEqual([]);
       expect(w.pominiete).toEqual([{ numer: '3/KOR/11/2026', powod: POWOD_KONSUMENCKA }]);
-    } finally { z.db.close(); }
+    } finally {
+      z.db.close();
+    }
   });
 
   it('`uzgodnijWstrzymane` NIE wołane dla programu nie wbudowanego (wpisTf podany jak w modul.ts)', async () => {
     const wpisTf = { stanKsef: vi.fn(() => null), otwartaNieWyslana: vi.fn(() => false) };
     const z = zestaw({ wpisTf });
     try {
-      wstrzymajFakture(z.db, { uuid: 'V', numer: 'FV 3/11/2026', dzien: '2026-11-03', powod: 'próba', kod: 'nie-wyslano', wersja: 1 });
+      wstrzymajFakture(z.db, {
+        uuid: 'V',
+        numer: 'FV 3/11/2026',
+        dzien: '2026-11-03',
+        powod: 'próba',
+        kod: 'nie-wyslano',
+        wersja: 1,
+      });
       await z.wysylkaKsef.wyslij(ARGS(['V']), 'adam');
       expect(z.wyslane).toEqual(['V']);
       expect(wpisTf.stanKsef).not.toHaveBeenCalled();
       expect(wczytajAutomatKsef(z.db).wstrzymane.map((x) => x.uuid)).toEqual(['V']);
-    } finally { z.db.close(); }
+    } finally {
+      z.db.close();
+    }
   });
 });
 
@@ -168,12 +242,16 @@ describe('automat dzienny: korekty razem z fakturami', () => {
       const w = await z.automat(PRZEBIEG).przebieg();
       expect([...z.wyslane].sort()).toEqual(['KZ', 'V']);
       expect(w.stan).toBe('ok');
-      expect(w.poZasadzie).toEqual(expect.arrayContaining([
-        { numer: '2/KOR/11/2026', powod: ZDANIE_CZEKA },
-        { numer: '3/KOR/11/2026', powod: POWOD_KONSUMENCKA },
-      ]));
+      expect(w.poZasadzie).toEqual(
+        expect.arrayContaining([
+          { numer: '2/KOR/11/2026', powod: ZDANIE_CZEKA },
+          { numer: '3/KOR/11/2026', powod: POWOD_KONSUMENCKA },
+        ]),
+      );
       expect(w.poZasadzie.map((x) => x.numer)).not.toContain('1/KOR/11/2026');
-    } finally { z.db.close(); }
+    } finally {
+      z.db.close();
+    }
   });
 
   it('pewna odmowa (422) przy korekcie — przebieg staje, korekta wstrzymana jak faktura', async () => {
@@ -185,10 +263,13 @@ describe('automat dzienny: korekty razem z fakturami', () => {
       expect(z.wyslane).not.toContain('KZ');
       expect(z.wyslane).toEqual(['V']);
       expect(w.wyslane.map((d) => d.uuid)).toEqual(['V']);
-      expect(wczytajAutomatKsef(z.db).wstrzymane.map((x) => ({ uuid: x.uuid, numer: x.numer })))
-        .toEqual([{ uuid: 'KZ', numer: '1/KOR/11/2026' }]);
+      expect(wczytajAutomatKsef(z.db).wstrzymane.map((x) => ({ uuid: x.uuid, numer: x.numer }))).toEqual([
+        { uuid: 'KZ', numer: '1/KOR/11/2026' },
+      ]);
       expect(z.db.prepare('SELECT 1 FROM wysylki_ksef WHERE uuid = ?').get('KZ')).toBeUndefined();
-    } finally { z.db.close(); }
+    } finally {
+      z.db.close();
+    }
   });
 
   // Lista jest od najnowszej daty, więc korekta z późniejszą datą stała przed fakturą — jej 422
@@ -202,7 +283,9 @@ describe('automat dzienny: korekty razem z fakturami', () => {
       expect(z.wyslane).toEqual(['V']);
       expect(w.wyslane.map((d) => d.uuid)).toEqual(['V']);
       expect(wczytajAutomatKsef(z.db).wstrzymane.map((x) => x.uuid)).toEqual(['KZ']);
-    } finally { z.db.close(); }
+    } finally {
+      z.db.close();
+    }
   });
 
   it('kolejność wysyłki: najpierw faktury VAT, potem korekty (także gdy korekta ma późniejszą datę)', async () => {
@@ -212,7 +295,9 @@ describe('automat dzienny: korekty razem z fakturami', () => {
       const w = await z.automat(PRZEBIEG).przebieg();
       expect(w.stan).toBe('ok');
       expect(z.wyslane).toEqual(['V', 'KZ']);
-    } finally { z.db.close(); }
+    } finally {
+      z.db.close();
+    }
   });
 
   // Automat przechodzi poprzedni i bieżący miesiąc — kolejność „faktury przed korektami”
@@ -226,7 +311,9 @@ describe('automat dzienny: korekty razem z fakturami', () => {
       expect(z.wyslane).toEqual(['V']);
       expect(w.wyslane.map((d) => d.uuid)).toEqual(['V']);
       expect(wczytajAutomatKsef(z.db).wstrzymane.map((x) => x.uuid)).toEqual(['KZ']);
-    } finally { z.db.close(); }
+    } finally {
+      z.db.close();
+    }
   });
 
   // Odbiór 50ed0def: pewna odmowa faktury VAT w pierwszej rundzie kończy przebieg — runda korekt się nie zaczyna.
@@ -241,7 +328,9 @@ describe('automat dzienny: korekty razem z fakturami', () => {
       expect(w.wyslane).toEqual([]);
       expect(wczytajAutomatKsef(z.db).wstrzymane.map((x) => x.uuid)).toEqual(['V']);
       expect(z.db.prepare('SELECT 1 FROM wysylki_ksef WHERE uuid = ?').get('KZ')).toBeUndefined();
-    } finally { z.db.close(); }
+    } finally {
+      z.db.close();
+    }
   });
 
   it('kolejność przez oba miesiące: faktura z bieżącego przed korektą z poprzedniego', async () => {
@@ -251,6 +340,8 @@ describe('automat dzienny: korekty razem z fakturami', () => {
       const w = await z.automat(PRZEBIEG).przebieg();
       expect(w.stan).toBe('ok');
       expect(z.wyslane).toEqual(['V', 'KZ']);
-    } finally { z.db.close(); }
+    } finally {
+      z.db.close();
+    }
   });
 });

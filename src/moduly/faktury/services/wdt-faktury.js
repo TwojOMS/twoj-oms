@@ -21,8 +21,10 @@ export function nazwaProgramu(program) {
   return program?.opis?.nazwa ?? BEZ_NAZWY;
 }
 const BEZ_NAZWY = Object.freeze({
-  mianownik: 'program fakturowy', dopelniacz: 'programu fakturowego',
-  miejscownik: 'programie fakturowym', narzednik: 'programem fakturowym',
+  mianownik: 'program fakturowy',
+  dopelniacz: 'programu fakturowego',
+  miejscownik: 'programie fakturowym',
+  narzednik: 'programem fakturowym',
 });
 
 /**
@@ -34,8 +36,8 @@ export function sprawdzNumeracjeWlasna(program) {
   if (typeof program?.iluMaNumer === 'function') return;
   const n = nazwaProgramu(program);
   throw bladOperatora(
-    `${n.mianownik} nie umie sprawdzić, czy numer z własnej serii WDT jest wolny (brak numeracji własnej) — `
-    + `panel nie wystawi w ${n.miejscownik} faktury WDT z numerem serii. Faktura NIE została wystawiona.`,
+    `${n.mianownik} nie umie sprawdzić, czy numer z własnej serii WDT jest wolny (brak numeracji własnej) — ` +
+      `panel nie wystawi w ${n.miejscownik} faktury WDT z numerem serii. Faktura NIE została wystawiona.`,
   );
 }
 
@@ -51,18 +53,26 @@ export async function sprawdzWdtWVies({ vies, nip, dopisz, nazwa = BEZ_NAZWY }) 
   const v = vies ? await vies.sprawdz(nip) : { wynik: 'niedostepny' };
   if (v.wynik === 'niewazny') {
     throw bladOperatora(
-      `VIES: numer ${nip} jest NIEWAŻNY. Faktury WDT ze stawką 0% nie wolno wystawić — `
-      + 'bez ważnego numeru VAT-UE to dostawa krajowa 23% (art. 42 ust. 1 pkt 1 ustawy '
-      + `o VAT). Wyjaśnij numer z klientem albo wystaw dokument krajowy ręcznie w ${nazwa.miejscownik}.`,
+      `VIES: numer ${nip} jest NIEWAŻNY. Faktury WDT ze stawką 0% nie wolno wystawić — ` +
+        'bez ważnego numeru VAT-UE to dostawa krajowa 23% (art. 42 ust. 1 pkt 1 ustawy ' +
+        `o VAT). Wyjaśnij numer z klientem albo wystaw dokument krajowy ręcznie w ${nazwa.miejscownik}.`,
     );
   }
   if (v.wynik === 'wazny') {
-    dopisz('wdt.vies', (`VIES: numer ${nip} WAŻNY (${v.nazwa ?? 'bez nazwy'}), `
-      + `konsultacja ${v.numerKonsultacji ?? 'bez numeru'}, ${v.dataZapytania ?? ''}`).trim());
+    dopisz(
+      'wdt.vies',
+      (
+        `VIES: numer ${nip} WAŻNY (${v.nazwa ?? 'bez nazwy'}), ` +
+        `konsultacja ${v.numerKonsultacji ?? 'bez numeru'}, ${v.dataZapytania ?? ''}`
+      ).trim(),
+    );
     return;
   }
-  dopisz('wdt.vies', `VIES NIEDOSTĘPNY dla ${nip} — wystawiam bez potwierdzenia numeru. `
-    + 'Zweryfikuj numer w VIES i zachowaj dowód (warunek stawki 0%, art. 42 ust. 1 pkt 1).');
+  dopisz(
+    'wdt.vies',
+    `VIES NIEDOSTĘPNY dla ${nip} — wystawiam bez potwierdzenia numeru. ` +
+      'Zweryfikuj numer w VIES i zachowaj dowód (warunek stawki 0%, art. 42 ust. 1 pkt 1).',
+  );
 }
 
 /**
@@ -79,11 +89,11 @@ export async function przygotujSerieWdt({ db, program, dzien }) {
   const kolejny = zarezerwujNumerWdt(db, { rok, miesiac });
   const seria = { rok, miesiac, kolejny, numer: numerWdt(rok, miesiac, kolejny) };
   try {
-    if (await program.iluMaNumer(seria.numer) > 0) {
+    if ((await program.iluMaNumer(seria.numer)) > 0) {
       throw bladOperatora(
-        `W ${n.miejscownik} istnieje już dokument o numerze ${seria.numer} — seria WDT panelu `
-        + `rozjechała się z kontem. Sprawdź listę faktur w ${n.miejscownik} i wyrównaj licznik, `
-        + 'zanim wystawisz kolejną fakturę WDT.',
+        `W ${n.miejscownik} istnieje już dokument o numerze ${seria.numer} — seria WDT panelu ` +
+          `rozjechała się z kontem. Sprawdź listę faktur w ${n.miejscownik} i wyrównaj licznik, ` +
+          'zanim wystawisz kolejną fakturę WDT.',
       );
     }
   } catch (e) {
@@ -105,8 +115,11 @@ export function seriaWdtPoAwarii({ db, seria, jednoznaczna, dopisz, nazwa = BEZ_
     cofnijRezerwacjeWdt(db, seria);
     return;
   }
-  dopisz('wdt.numeracja', `Numer ${seria.numer} zostaje ZAJĘTY po awarii niejednoznacznej — `
-    + `dokument mógł powstać w ${nazwa.miejscownik}; jeśli go tam nie ma, w serii WDT będzie dziura.`);
+  dopisz(
+    'wdt.numeracja',
+    `Numer ${seria.numer} zostaje ZAJĘTY po awarii niejednoznacznej — ` +
+      `dokument mógł powstać w ${nazwa.miejscownik}; jeśli go tam nie ma, w serii WDT będzie dziura.`,
+  );
 }
 
 /**
@@ -119,7 +132,10 @@ export function seriaWdtPoAwarii({ db, seria, jednoznaczna, dopisz, nazwa = BEZ_
 export function seriaWdtPoSukcesie({ db, seria, numerZwrocony, dopisz, nazwa = BEZ_NAZWY }) {
   if (!seria || numerZwrocony === seria.numer) return;
   cofnijRezerwacjeWdt(db, seria);
-  dopisz('wdt.numeracja', `${nazwa.mianownik} nadał numer ${numerZwrocony ?? '(bez numeru)'} zamiast `
-    + `${seria.numer} — osobna numeracja WDT nie zadziałała. Dokument jest ważny (numeracja `
-    + 'główna), ale zgłoś ten rozjazd, zanim wystawisz kolejną fakturę WDT.');
+  dopisz(
+    'wdt.numeracja',
+    `${nazwa.mianownik} nadał numer ${numerZwrocony ?? '(bez numeru)'} zamiast ` +
+      `${seria.numer} — osobna numeracja WDT nie zadziałała. Dokument jest ważny (numeracja ` +
+      'główna), ale zgłoś ten rozjazd, zanim wystawisz kolejną fakturę WDT.',
+  );
 }

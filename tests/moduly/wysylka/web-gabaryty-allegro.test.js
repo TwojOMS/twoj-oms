@@ -14,33 +14,64 @@ const AUTH = { authorization: `Basic ${Buffer.from('adam:x').toString('base64')}
 const CONFIG = { auth: { user: 'adam', pass: 'x' } };
 const POLLER = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) };
 const ADRES = {
-  nazwa: 'Jan Kowalski', company: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-950',
-  miasto: 'Warszawa', kraj: 'PL', phone: '+48500600700', email: 'j@k.pl',
+  nazwa: 'Jan Kowalski',
+  company: 'Jan Kowalski',
+  ulica: 'Polna 1',
+  kod: '00-950',
+  miasto: 'Warszawa',
+  kraj: 'PL',
+  phone: '+48500600700',
+  email: 'j@k.pl',
 };
 
 const zamowienie = (nad = {}) => ({
-  zrodlo_id: 'ord-gabaryty-1', numer: 'ord-gabaryty-1',
+  zrodlo_id: 'ord-gabaryty-1',
+  numer: 'ord-gabaryty-1',
   klient: { email: 'j@allegromail.pl', phone: '+48500600700' },
   dostawa: {
-    first_name: 'Jan', last_name: 'Kowalski', company: '', address_1: 'Polna 1',
-    postcode: '00-950', city: 'Warszawa', country: 'PL',
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    company: '',
+    address_1: 'Polna 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
   },
-  metoda_wysylki: 'allegro_punkt', kwota_pobrania: null, chce_fakture: 0, nip: null,
-  kwota_brutto: '99.00', status_woo: 'processing', oplacone_at: '2026-09-20T13:00:00',
-  anulowane: 0, utworzone_at: '2026-09-20T13:19:52', pozycje: [], ...nad,
+  metoda_wysylki: 'allegro_punkt',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '99.00',
+  status_woo: 'processing',
+  oplacone_at: '2026-09-20T13:00:00',
+  anulowane: 0,
+  utworzone_at: '2026-09-20T13:19:52',
+  pozycje: [],
+  ...nad,
 });
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 
 function zServerem({ liveId = ONE_BOX, nad = {} } = {}) {
   const nadania = [];
-  const nadanie = { nadaj: async (...args) => { nadania.push(args); return { numerListu: 'TEST-GABARYT' }; } };
+  const nadanie = {
+    nadaj: async (...args) => {
+      nadania.push(args);
+      return { numerListu: 'TEST-GABARYT' };
+    },
+  };
   const stan = { liveId };
-  const kurierzy = { allegro_wza: { pobierzMetodeDostawy: async () => {
-    if (stan.blad) throw stan.blad;
-    return stan.liveId;
-  } } };
+  const kurierzy = {
+    allegro_wza: {
+      pobierzMetodeDostawy: async () => {
+        if (stan.blad) throw stan.blad;
+        return stan.liveId;
+      },
+    },
+  };
   const serwer = buildOmsServer({ db, config: CONFIG, poller: POLLER, nadanie, kurierzy });
   const id = zapiszZamowienie(db, 'allegro_swietlik', zamowienie(nad), {});
   return { serwer, id, nadania, stan };
@@ -87,7 +118,11 @@ describe('gabaryty Allegro na formularzu nadania', () => {
   // Automat bez ustawienia „Paczkomaty i automaty” dostaje jego
   // wartość startową S i 1 kg, jak One Box i jak nadanie hurtem — wcześniej pusta waga bez zaznaczenia.
   it.each([
-    [ONE_BOX_DPD, 64], [ORLEN, 60], [DHL_BOX, 64], [DHL_POINT, 64], [DPD_AUTOMAT, 59],
+    [ONE_BOX_DPD, 64],
+    [ORLEN, 60],
+    [DHL_BOX, 64],
+    [DHL_POINT, 64],
+    [DPD_AUTOMAT, 59],
   ])('%s dostaje S i 1 kg z wartości startowej ustawienia automatów', async (liveId, dlugosc) => {
     const { serwer, id } = zServerem({ liveId });
     const f = formularz((await ekran(serwer, id)).body, id);
@@ -130,8 +165,14 @@ describe('gabaryty Allegro na formularzu nadania', () => {
     const r = await post(serwer, id, PACZKA);
     expect(r.statusCode).toBe(302);
     expect(nadania).toHaveLength(1);
-    expect(nadania[0][1]).toEqual({ waga: 0.5, dlugosc: 64, szerokosc: 38, wysokosc: 19,
-      gabaryt: 'M', oczekiwanyDeliveryMethodId: ONE_BOX });
+    expect(nadania[0][1]).toEqual({
+      waga: 0.5,
+      dlugosc: 64,
+      szerokosc: 38,
+      wysokosc: 19,
+      gabaryt: 'M',
+      oczekiwanyDeliveryMethodId: ONE_BOX,
+    });
   });
 
   it.each([
@@ -160,7 +201,9 @@ describe('gabaryty Allegro na formularzu nadania', () => {
   it('nieznana usługa nie dostaje mylącego formularza ani nadania', async () => {
     const { serwer, id, nadania } = zServerem({ liveId: 'nieznany-identyfikator' });
     expect((await ekran(serwer, id)).statusCode).toBe(400);
-    expect((await post(serwer, id, { ...PACZKA, delivery_method_id_allegro: 'nieznany-identyfikator' })).statusCode).toBe(400);
+    expect(
+      (await post(serwer, id, { ...PACZKA, delivery_method_id_allegro: 'nieznany-identyfikator' })).statusCode,
+    ).toBe(400);
     expect(nadania).toHaveLength(0);
   });
 

@@ -20,14 +20,29 @@ import { sprawdzanieWarunkow } from '../../../src/moduly/automatyzacje/services/
 const EKRAN = '/ustawienia/automatyzacje';
 const NOWA = `${EKRAN}/nowa`;
 const otwarte = [];
-afterEach(async () => { for (const p of otwarte.splice(0)) { await p.app.close(); p.db.close(); } });
+afterEach(async () => {
+  for (const p of otwarte.splice(0)) {
+    await p.app.close();
+    p.db.close();
+  }
+});
 
 function panel() {
   const listy = [];
   // Usługa wiadomości z atrapą poczty na tej samej bazie (nic nie wychodzi naprawdę).
   const db = openOmsDb(':memory:');
-  const usluga = { ...createWiadomosci({ db, mailer: { sendMail: async (m) => { listy.push(m); } },
-    config: { klienciZbiorczy: [], oprawaPoczty: { podpis: 'Pracownia Przykładowa', footer: 'Stopka' } } }), gotowe: () => true };
+  const usluga = {
+    ...createWiadomosci({
+      db,
+      mailer: {
+        sendMail: async (m) => {
+          listy.push(m);
+        },
+      },
+      config: { klienciZbiorczy: [], oprawaPoczty: { podpis: 'Pracownia Przykładowa', footer: 'Stopka' } },
+    }),
+    gotowe: () => true,
+  };
   const p = nowyPanel({ db, wiadomosci: usluga });
   zalozKonto(p.db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
   zalozKonto(p.db, { login: 'ewa', imie: 'Ewa', haslo: 'h', rola: 'sprzedaz' });
@@ -37,31 +52,76 @@ function panel() {
   return wynik;
 }
 function zWlasnymStatusemISzablonem(db) {
-  zapiszStatusy(db, [...domyslneStatusy(), { klucz: 'w_klosz', etykieta: 'Czeka na klosz', kolor: domyslneStatusy()[0].kolor, jak: 'w_realizacji' }]);
-  db.prepare("INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('szablony.wiadomosci', ?, '2026-10-21')")
-    .run(JSON.stringify({ wbudowane: {}, wlasne: [{ id: 'wlasny-1', nazwa: 'Paczka w drodze', temat: 'Paczka', tresc: 'Jedzie.\n\n{podpis}' }], licznik: 1 }));
+  zapiszStatusy(db, [
+    ...domyslneStatusy(),
+    { klucz: 'w_klosz', etykieta: 'Czeka na klosz', kolor: domyslneStatusy()[0].kolor, jak: 'w_realizacji' },
+  ]);
+  db.prepare(
+    "INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('szablony.wiadomosci', ?, '2026-10-21')",
+  ).run(
+    JSON.stringify({
+      wbudowane: {},
+      wlasne: [{ id: 'wlasny-1', nazwa: 'Paczka w drodze', temat: 'Paczka', tresc: 'Jedzie.\n\n{podpis}' }],
+      licznik: 1,
+    }),
+  );
 }
 let nr = 0;
 function zamowienieWyslane(db, { sklep = 'pro', email = 'kupujacy@example.invalid', numer = null } = {}) {
   nr += 1;
   const id = zapiszZamowienie(db, sklep, {
-    zrodlo_id: 8000 + nr, numer: `K-${nr}`, klient: { first_name: 'Ewa', last_name: 'Lis', email, phone: '' },
+    zrodlo_id: 8000 + nr,
+    numer: `K-${nr}`,
+    klient: { first_name: 'Ewa', last_name: 'Lis', email, phone: '' },
     dostawa: { first_name: 'Ewa', last_name: 'Lis', address_1: 'Polna 1', postcode: '00-001', city: 'Kraków' },
-    metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '99.00',
-    koszt_dostawy_brutto: '10.00', koszt_dostawy_netto: '8.13', status_woo: 'processing', oplacone_at: null, anulowane: 0,
-    utworzone_at: new Date(Date.now() - 864e5).toISOString(), /* wczoraj: starsze niż 14 dni przed włączeniem = historia */ pozycje: [{ zrodlo_id: 9500 + nr, nazwa: 'Klosz lniany 40 cm', sku: 'KLS-LEN-40', ilosc: 1,
-      cena_brutto: '89.00', cena_netto: '72.36', brutto_linii: '89.00', netto_linii: '72.36', vat: null }],
+    metoda_wysylki: 'dpd',
+    kwota_pobrania: null,
+    chce_fakture: 0,
+    nip: null,
+    kwota_brutto: '99.00',
+    koszt_dostawy_brutto: '10.00',
+    koszt_dostawy_netto: '8.13',
+    status_woo: 'processing',
+    oplacone_at: null,
+    anulowane: 0,
+    utworzone_at: new Date(Date.now() - 864e5).toISOString(),
+    /* wczoraj: starsze niż 14 dni przed włączeniem = historia */ pozycje: [
+      {
+        zrodlo_id: 9500 + nr,
+        nazwa: 'Klosz lniany 40 cm',
+        sku: 'KLS-LEN-40',
+        ilosc: 1,
+        cena_brutto: '89.00',
+        cena_netto: '72.36',
+        brutto_linii: '89.00',
+        netto_linii: '72.36',
+        vat: null,
+      },
+    ],
   });
   if (numer) {
-    db.prepare("INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at) VALUES (?, 'dpd', 'nadana', ?, 1, ?)")
-      .run(id, numer, new Date().toISOString());
+    db.prepare(
+      "INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at) VALUES (?, 'dpd', 'nadana', ?, 1, ?)",
+    ).run(id, numer, new Date().toISOString());
   }
   zapiszFaktyStatusu(db, id, { ...faktyDlaStatusu(pobierzZamowienie(db, id), 'wyslane'), kto: 'adam' });
   return id;
 }
-const FORM = { nazwa: 'Wysłane — sklep', zdarzenie: 'status_zmieniony', zdarzenie_status: 'wyslane', kanaly: ['pro'],
-  opoznienie: '30', status_warunek: 'jeden_z', statusy: ['wyslane'], ma_numer_listu: '1', dostawa: '', pobranie: 'dowolne',
-  akcja: 'mail_kupujacy', szablon: 'wyslane', limit: '20' };
+const FORM = {
+  nazwa: 'Wysłane — sklep',
+  zdarzenie: 'status_zmieniony',
+  zdarzenie_status: 'wyslane',
+  kanaly: ['pro'],
+  opoznienie: '30',
+  status_warunek: 'jeden_z',
+  statusy: ['wyslane'],
+  ma_numer_listu: '1',
+  dostawa: '',
+  pobranie: 'dowolne',
+  akcja: 'mail_kupujacy',
+  szablon: 'wyslane',
+  limit: '20',
+};
 const reguly = (db) => db.prepare('SELECT * FROM automatyzacje_reguly ORDER BY id').all();
 
 describe('9. kreator z prawdziwym rejestrem', () => {
@@ -95,7 +155,8 @@ describe('9. kreator z prawdziwym rejestrem', () => {
     expect(r.body).toContain('name="pobranie"');
     expect(r.body).toMatch(/<option value="wyslane" selected>Zamówienie wysłane<\/option>/u);
     expect(r.body).toContain('value="wlasny-1"');
-    for (const s of ['proforma', 'faktura', 'przypomnienie', 'potwierdzenie']) expect(r.body).not.toContain(`<option value="${s}"`);
+    for (const s of ['proforma', 'faktura', 'przypomnienie', 'potwierdzenie'])
+      expect(r.body).not.toContain(`<option value="${s}"`);
     expect(r.body).toContain('Adres e-mail kupującego z zamówienia');
   });
   it('krok 2 z „paczka nadana”: szablon „Zamówienie wysłane” i własne; status dowolny', async () => {
@@ -110,7 +171,9 @@ describe('9. kreator z prawdziwym rejestrem', () => {
   });
   it('krok 2 ze statusem spoza listy → 400', async () => {
     const p = panel();
-    expect((await get(p.app, `${NOWA}?zdarzenie=status_zmieniony&zdarzenie_status=anulowane`, p.admin)).statusCode).toBe(400);
+    expect(
+      (await get(p.app, `${NOWA}?zdarzenie=status_zmieniony&zdarzenie_status=anulowane`, p.admin)).statusCode,
+    ).toBe(400);
   });
   it('zapis: szablon „Zamówienie wysłane” bez pola „ma numer listu” → warunek wymuszony; jawne „nie” → 400', async () => {
     const p = panel();
@@ -118,7 +181,12 @@ describe('9. kreator z prawdziwym rejestrem', () => {
     expect((await post(p.app, NOWA, p.admin, bez)).statusCode).toBe(303);
     const r = reguly(p.db)[0];
     expect(JSON.parse(r.zdarzenie_json)).toEqual({ status: 'wyslane' });
-    expect(JSON.parse(r.warunki_json)).toMatchObject({ kanaly: ['pro'], statusy: ['wyslane'], maNumerListu: true, pobranie: 'dowolne' });
+    expect(JSON.parse(r.warunki_json)).toMatchObject({
+      kanaly: ['pro'],
+      statusy: ['wyslane'],
+      maNumerListu: true,
+      pobranie: 'dowolne',
+    });
     expect(r.wlaczona).toBe(0);
     const nie = await post(p.app, NOWA, p.admin, { ...FORM, ma_numer_listu: '0' });
     expect(nie.statusCode).toBe(400);
@@ -159,9 +227,27 @@ describe('9. kreator z prawdziwym rejestrem', () => {
 describe('1. status ustawiony prawdziwymi trasami (karta, zmiana masowa, ręczna rejestracja paczki)', () => {
   it('każda z trzech dróg „Wysłane” daje 1 wykonanie i 1 mail; zamówienie nietknięte — 0', async () => {
     const p = panel();
-    const id = utworzRegule(p.db, { nazwa: 'Wysłane — sklep', zdarzenie: 'status_zmieniony', zdarzenie_json: { status: 'wyslane' },
-      warunki: { kanaly: ['pro'], kanalyZnane: ['pro'], statusy: ['wyslane'], maNumerListu: true, metody: [], pobranie: 'dowolne' },
-      akcja: 'mail_kupujacy', akcja_json: { szablon: 'wyslane' }, opoznienie_min: 0, limit_na_godzine: 20 }, { login: 'adam' });
+    const id = utworzRegule(
+      p.db,
+      {
+        nazwa: 'Wysłane — sklep',
+        zdarzenie: 'status_zmieniony',
+        zdarzenie_json: { status: 'wyslane' },
+        warunki: {
+          kanaly: ['pro'],
+          kanalyZnane: ['pro'],
+          statusy: ['wyslane'],
+          maNumerListu: true,
+          metody: [],
+          pobranie: 'dowolne',
+        },
+        akcja: 'mail_kupujacy',
+        akcja_json: { szablon: 'wyslane' },
+        opoznienie_min: 0,
+        limit_na_godzine: 20,
+      },
+      { login: 'adam' },
+    );
     expect((await post(p.app, `${EKRAN}/${id}/wlacz`, p.admin, {})).statusCode).toBe(303);
     const nowe = (numer) => {
       const z = zamowienieWyslane(p.db, { numer });
@@ -172,15 +258,31 @@ describe('1. status ustawiony prawdziwymi trasami (karta, zmiana masowa, ręczna
     const masowa = nowe('0000000000202U');
     const reczna = nowe(null);
     const nietkniete = nowe('0000000000204U');
-    expect((await post(p.app, `/zamowienia/${karta}/status`, p.admin, { status: 'wyslane' })).statusCode).toBeLessThan(400);
-    expect((await post(p.app, '/zamowienia/masowe/status', p.admin, { id: [String(masowa)], status: 'wyslane' })).statusCode).toBeLessThan(400);
-    expect((await post(p.app, `/zamowienia/${reczna}/przesylki/reczna`, p.admin, { numer_listu: '0000000000203U' })).statusCode).toBeLessThan(400);
-    const silnik = createSilnikAutomatyzacji({ db: p.db, zdarzenia: ZDARZENIA, akcje: utworzAkcje({ wiadomosci: () => p.usluga }),
-      sprawdzWarunki: sprawdzanieWarunkow, pocztaGotowa: () => true });
+    expect((await post(p.app, `/zamowienia/${karta}/status`, p.admin, { status: 'wyslane' })).statusCode).toBeLessThan(
+      400,
+    );
+    expect(
+      (await post(p.app, '/zamowienia/masowe/status', p.admin, { id: [String(masowa)], status: 'wyslane' })).statusCode,
+    ).toBeLessThan(400);
+    expect(
+      (await post(p.app, `/zamowienia/${reczna}/przesylki/reczna`, p.admin, { numer_listu: '0000000000203U' }))
+        .statusCode,
+    ).toBeLessThan(400);
+    const silnik = createSilnikAutomatyzacji({
+      db: p.db,
+      zdarzenia: ZDARZENIA,
+      akcje: utworzAkcje({ wiadomosci: () => p.usluga }),
+      sprawdzWarunki: sprawdzanieWarunkow,
+      pocztaGotowa: () => true,
+    });
     await silnik.przebieg();
     const w = p.db.prepare('SELECT zamowienie_id, stan FROM automatyzacje_wykonania ORDER BY zamowienie_id').all();
     expect(w).toEqual([karta, masowa, reczna].map((zamowienie_id) => ({ zamowienie_id, stan: 'wyslane' })));
-    expect(p.listy.map((m) => m.text.match(/0000000000\d{3}U/u)[0]).sort()).toEqual(['0000000000201U', '0000000000202U', '0000000000203U']);
+    expect(p.listy.map((m) => m.text.match(/0000000000\d{3}U/u)[0]).sort()).toEqual([
+      '0000000000201U',
+      '0000000000202U',
+      '0000000000203U',
+    ]);
     expect(w.some((x) => x.zamowienie_id === nietkniete)).toBe(false);
   });
 });
@@ -188,9 +290,27 @@ describe('1. status ustawiony prawdziwymi trasami (karta, zmiana masowa, ręczna
 describe('reguła z nieistniejącym statusem albo szablonem', () => {
   it('status własny usunięty z Ustawień → lista i dziennik na czerwono „status nie istnieje”; włączenie → 409', async () => {
     const p = panel();
-    const id = utworzRegule(p.db, { nazwa: 'Klosz', zdarzenie: 'status_zmieniony', zdarzenie_json: { status: 'w_usuniety' },
-      warunki: { kanaly: ['pro'], kanalyZnane: ['pro'], statusy: [], maNumerListu: false, metody: [], pobranie: 'dowolne' },
-      akcja: 'mail_kupujacy', akcja_json: { szablon: 'wyslane' }, opoznienie_min: 0, limit_na_godzine: 20 }, { login: 'adam' });
+    const id = utworzRegule(
+      p.db,
+      {
+        nazwa: 'Klosz',
+        zdarzenie: 'status_zmieniony',
+        zdarzenie_json: { status: 'w_usuniety' },
+        warunki: {
+          kanaly: ['pro'],
+          kanalyZnane: ['pro'],
+          statusy: [],
+          maNumerListu: false,
+          metody: [],
+          pobranie: 'dowolne',
+        },
+        akcja: 'mail_kupujacy',
+        akcja_json: { szablon: 'wyslane' },
+        opoznienie_min: 0,
+        limit_na_godzine: 20,
+      },
+      { login: 'adam' },
+    );
     const lista = await get(p.app, EKRAN, p.admin);
     expect(lista.body).toContain('status nie istnieje');
     const d = await get(p.app, `${EKRAN}/${id}`, p.admin);
@@ -199,9 +319,27 @@ describe('reguła z nieistniejącym statusem albo szablonem', () => {
   });
   it('szablon własny usunięty → lista „szablon usunięty”', async () => {
     const p = panel();
-    utworzRegule(p.db, { nazwa: 'Własny', zdarzenie: 'paczka_nadana', zdarzenie_json: {},
-      warunki: { kanaly: ['pro'], kanalyZnane: ['pro'], statusy: [], maNumerListu: false, metody: [], pobranie: 'dowolne' },
-      akcja: 'mail_kupujacy', akcja_json: { szablon: 'wlasny-9' }, opoznienie_min: 0, limit_na_godzine: 20 }, { login: 'adam' });
+    utworzRegule(
+      p.db,
+      {
+        nazwa: 'Własny',
+        zdarzenie: 'paczka_nadana',
+        zdarzenie_json: {},
+        warunki: {
+          kanaly: ['pro'],
+          kanalyZnane: ['pro'],
+          statusy: [],
+          maNumerListu: false,
+          metody: [],
+          pobranie: 'dowolne',
+        },
+        akcja: 'mail_kupujacy',
+        akcja_json: { szablon: 'wlasny-9' },
+        opoznienie_min: 0,
+        limit_na_godzine: 20,
+      },
+      { login: 'adam' },
+    );
     expect((await get(p.app, EKRAN, p.admin)).body).toContain('szablon usunięty');
   });
 });
@@ -209,14 +347,40 @@ describe('reguła z nieistniejącym statusem albo szablonem', () => {
 describe('ostrzeżenie na stronie głównej (tylko admin)', () => {
   it('reguła wstrzymana i niepewna wysyłka → wiersze dla admina; konto bez admina ich nie widzi', async () => {
     const p = panel();
-    const id = utworzRegule(p.db, { nazwa: 'Wysłane — sklep', zdarzenie: 'status_zmieniony', zdarzenie_json: { status: 'wyslane' },
-      warunki: { kanaly: ['pro'], kanalyZnane: ['pro'], statusy: ['wyslane'], maNumerListu: true, metody: [], pobranie: 'dowolne' },
-      akcja: 'mail_kupujacy', akcja_json: { szablon: 'wyslane' }, opoznienie_min: 0, limit_na_godzine: 20 }, { login: 'adam' });
+    const id = utworzRegule(
+      p.db,
+      {
+        nazwa: 'Wysłane — sklep',
+        zdarzenie: 'status_zmieniony',
+        zdarzenie_json: { status: 'wyslane' },
+        warunki: {
+          kanaly: ['pro'],
+          kanalyZnane: ['pro'],
+          statusy: ['wyslane'],
+          maNumerListu: true,
+          metody: [],
+          pobranie: 'dowolne',
+        },
+        akcja: 'mail_kupujacy',
+        akcja_json: { szablon: 'wyslane' },
+        opoznienie_min: 0,
+        limit_na_godzine: 20,
+      },
+      { login: 'adam' },
+    );
     wlaczRegule(p.db, id, { login: 'adam' });
-    p.db.prepare("UPDATE automatyzacje_reguly SET wstrzymana_powod = '51 zamówień naraz w jednym sprawdzeniu' WHERE id = ?").run(id);
+    p.db
+      .prepare(
+        "UPDATE automatyzacje_reguly SET wstrzymana_powod = '51 zamówień naraz w jednym sprawdzeniu' WHERE id = ?",
+      )
+      .run(id);
     const z = zamowienieWyslane(p.db, { numer: '0000000000130U' });
-    p.db.prepare(`INSERT INTO automatyzacje_wykonania (regula_id, przedmiot, zamowienie_id, stan, powod, zdarzenie_at, wykryte_at, termin_at, zakonczone_at)
-      VALUES (?, ?, ?, 'niepewne', 'zerwane', ?, ?, ?, ?)`).run(id, `zamowienie:${z}`, z, ...Array(4).fill(new Date().toISOString()));
+    p.db
+      .prepare(
+        `INSERT INTO automatyzacje_wykonania (regula_id, przedmiot, zamowienie_id, stan, powod, zdarzenie_at, wykryte_at, termin_at, zakonczone_at)
+      VALUES (?, ?, ?, 'niepewne', 'zerwane', ?, ?, ?, ?)`,
+      )
+      .run(id, `zamowienie:${z}`, z, ...Array(4).fill(new Date().toISOString()));
     const admin = await get(p.app, '/', p.admin);
     expect(admin.statusCode).toBe(200);
     expect(admin.body).toContain('Automatyzacja „Wysłane — sklep” jest wstrzymana');
@@ -231,7 +395,10 @@ describe('ostrzeżenie na stronie głównej (tylko admin)', () => {
 describe('stary adres zapisu automatu KSeF', () => {
   it('błąd formularza → 400 z automatami systemowymi, a reguły są dostępne osobno', async () => {
     const p = panel();
-    const r = await post(p.app, '/ustawienia/integracje/infakt/ksef-automat', p.admin, { wlaczony: '1', godzina: '25:00' });
+    const r = await post(p.app, '/ustawienia/integracje/infakt/ksef-automat', p.admin, {
+      wlaczony: '1',
+      godzina: '25:00',
+    });
     expect(r.statusCode).toBe(400);
     expect(r.body).toContain('Automaty systemowe');
     const reguly = await get(p.app, EKRAN, p.admin);
@@ -249,7 +416,10 @@ describe('kreator — „Kurier odebrał paczkę”', () => {
     expect(r.statusCode).toBe(200);
     expect(r.body).toMatch(/name="zdarzenie" value="paczka_odebrana"/u);
     expect(r.body).not.toMatch(/Kurier odebrał paczkę<span class="menu-ustawien-wkrotce">/u);
-    const fragment = r.body.slice(r.body.indexOf('value="paczka_odebrana"'), r.body.indexOf('value="paczka_doreczona"'));
+    const fragment = r.body.slice(
+      r.body.indexOf('value="paczka_odebrana"'),
+      r.body.indexOf('value="paczka_doreczona"'),
+    );
     expect(fragment).toContain('DPD');
     expect(fragment).toContain('InPost');
     expect(fragment).toMatch(/bez śledzenia/u);

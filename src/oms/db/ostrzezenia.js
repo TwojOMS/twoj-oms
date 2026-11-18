@@ -16,12 +16,14 @@ const teraz = () => new Date().toISOString();
  * kliknięcie liczy się od nowa.
  */
 export function odrzuc(db, klucz, { kto = null, kiedy = teraz() } = {}) {
-  db.prepare(`
+  db.prepare(
+    `
     INSERT INTO ostrzezenia_odrzucone (klucz, odrzucone_at, odrzucone_przez)
     VALUES (?, ?, ?)
     ON CONFLICT (klucz) DO UPDATE SET odrzucone_at = excluded.odrzucone_at,
       odrzucone_przez = excluded.odrzucone_przez
-  `).run(klucz, kiedy, kto);
+  `,
+  ).run(klucz, kiedy, kto);
 }
 
 /** Mapa klucz → odrzucone_at. Mapa, bo domena pyta o pojedyncze klucze przy filtrze. */
@@ -83,9 +85,11 @@ export function podmienPoTerminie(db, faktury, { sprawdzonaAt = teraz() } = {}) 
 
 /** Bieżące przeterminowane — najstarszy termin pierwszy (on jest treścią zdania). */
 export function poTerminie(db) {
-  return db.prepare(
-    'SELECT uuid, numer, payment_date, pozostalo_gr, sprawdzona_at FROM faktury_po_terminie ORDER BY payment_date, uuid',
-  ).all();
+  return db
+    .prepare(
+      'SELECT uuid, numer, payment_date, pozostalo_gr, sprawdzona_at FROM faktury_po_terminie ORDER BY payment_date, uuid',
+    )
+    .all();
 }
 
 /**
@@ -98,14 +102,18 @@ export function poTerminie(db) {
  * zlecenie potrafi przepaść — patrz `korektaPrzepadla`).
  */
 export function zwrotyBezKorekty(db) {
-  return db.prepare(`
+  return db
+    .prepare(
+      `
     SELECT w.id, w.zamowienie_id, w.data, w.utworzony_at, z.numer AS zamowienie_numer
     FROM zwroty w
     JOIN zamowienia z ON z.id = w.zamowienie_id
     WHERE w.korekta_numer IS NULL
       AND EXISTS (SELECT 1 FROM faktury f WHERE f.zamowienie_id = w.zamowienie_id)
     ORDER BY w.utworzony_at, w.id
-  `).all();
+  `,
+    )
+    .all();
 }
 
 /**
@@ -130,7 +138,9 @@ export function zwrotyBezKorekty(db) {
  * czyta czuwacz pobrań i pas długów, i ma taka zostać (patrz jej docblock).
  */
 export function pobraniaBezGotowki(db) {
-  return db.prepare(`
+  return db
+    .prepare(
+      `
     SELECT
       z.id AS zamowienie_id, z.numer AS zamowienie_numer, z.pobranie, z.wysylka_reczna_json,
       f.numer AS faktura_numer, ${idDokumentuSql('f')} AS dokument_id,
@@ -141,5 +151,7 @@ export function pobraniaBezGotowki(db) {
     WHERE (z.pobranie = 1 OR z.wysylka_reczna_json IS NOT NULL)
       AND NOT EXISTS (SELECT 1 FROM zwroty w WHERE w.zamowienie_id = z.id)
     ORDER BY z.id
-  `).all();
+  `,
+    )
+    .all();
 }

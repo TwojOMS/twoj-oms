@@ -2,14 +2,21 @@ import { describe, it, expect } from 'vitest';
 import { modelOswiadczenia } from '../../src/domena/oswiadczenie-wywozu.js';
 
 const SPRZEDAWCA = {
-  nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'Przykładowa 1', kod: '00-950', miasto: 'Warszawa', nip: '1234563218',
+  nazwa: 'Pracownia Półcień Anna Wzorcowa',
+  ulica: 'Przykładowa 1',
+  kod: '00-950',
+  miasto: 'Warszawa',
+  nip: '1234563218',
 };
 
 const zamowienieWdt = (nad = {}) => ({
   numer: 'R/2026/031',
   nip: 'SK1000000001',
   klient: {
-    company: 'Alfatrend s.r.o.', address_1: '1. mája 1', postcode: '01001', city: 'Žilina',
+    company: 'Alfatrend s.r.o.',
+    address_1: '1. mája 1',
+    postcode: '01001',
+    city: 'Žilina',
   },
   faktura: { numer: 'WDT/1/08/2026' },
   pozycje: [
@@ -47,23 +54,25 @@ describe('modelOswiadczenia', () => {
   });
 
   it('odmawia dla nabywcy krajowego — to dokument wyłącznie WDT', () => {
-    expect(() => modelOswiadczenia(zamowienieWdt({ nip: '1200001097' }), { sprzedawca: SPRZEDAWCA }))
-      .toThrow(/WDT|VAT-UE/);
+    expect(() => modelOswiadczenia(zamowienieWdt({ nip: '1200001097' }), { sprzedawca: SPRZEDAWCA })).toThrow(
+      /WDT|VAT-UE/,
+    );
   });
 
   it('odmawia bez adresu sprzedawcy i bez pozycji — dokument połowiczny kłamie', () => {
-    expect(() => modelOswiadczenia(zamowienieWdt(), { sprzedawca: { nip: '1234563218' } }))
-      .toThrow(/sprzedawcy/i);
-    expect(() => modelOswiadczenia(zamowienieWdt({ pozycje: [] }), { sprzedawca: SPRZEDAWCA }))
-      .toThrow(/pozycji/i);
+    expect(() => modelOswiadczenia(zamowienieWdt(), { sprzedawca: { nip: '1234563218' } })).toThrow(/sprzedawcy/i);
+    expect(() => modelOswiadczenia(zamowienieWdt({ pozycje: [] }), { sprzedawca: SPRZEDAWCA })).toThrow(/pozycji/i);
   });
 
   // Ręczna poprawka danych nabywcy na karcie wygrywa — ta sama reguła co faktura
   // (daneFaktury), więc dokument wywozu i faktura nazywają nabywcę tak samo.
   it('nadpisania ręczne nabywcy wchodzą do dokumentu', () => {
-    const m = modelOswiadczenia(zamowienieWdt({
-      klient_reczny_json: JSON.stringify({ firma: 'ALFATREND s. r. o. (oddział)' }),
-    }), { sprzedawca: SPRZEDAWCA });
+    const m = modelOswiadczenia(
+      zamowienieWdt({
+        klient_reczny_json: JSON.stringify({ firma: 'ALFATREND s. r. o. (oddział)' }),
+      }),
+      { sprzedawca: SPRZEDAWCA },
+    );
     expect(m.nabywca.nazwa).toBe('ALFATREND s. r. o. (oddział)');
   });
 });

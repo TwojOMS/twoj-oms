@@ -27,25 +27,39 @@ function main() {
     if (!konto) throw new Error('Nie ma takiego konta.');
     if (!konto.czynne) throw new Error('Konto jest wyłączone — nie można wydać linku.');
     if (!konto.admin) throw new Error('Konto nie jest administratorem — użyj panelu do zarządzania kontami.');
-    const adres = adresPaneluZEnv(process.env.OMS_ADRES_PANELU)
-      ?? adresPaneluZZapisu(wczytajKonfiguracjeIntegracji(db, 'adres_panelu'));
+    const adres =
+      adresPaneluZEnv(process.env.OMS_ADRES_PANELU) ??
+      adresPaneluZZapisu(wczytajKonfiguracjeIntegracji(db, 'adres_panelu'));
     // Cel jak przy „Pokaż link” w panelu (trasy/konta.js): konto zaproszone (bez zapisu scrypt) dostaje zaproszenie.
-    const zaproszone = !String(db.prepare('SELECT hash_hasla FROM konta WHERE id = ?').get(konto.id)?.hash_hasla ?? '').startsWith('scrypt$');
-    const { token } = wydajLink(db, { kontoId: konto.id, cel: zaproszone ? 'zaproszenie' : 'reset', teraz: () => new Date(), zastapPoprzednie: true });
+    const zaproszone = !String(
+      db.prepare('SELECT hash_hasla FROM konta WHERE id = ?').get(konto.id)?.hash_hasla ?? '',
+    ).startsWith('scrypt$');
+    const { token } = wydajLink(db, {
+      kontoId: konto.id,
+      cel: zaproszone ? 'zaproszenie' : 'reset',
+      teraz: () => new Date(),
+      zastapPoprzednie: true,
+    });
     // Ten sam dziennik co ustawienie hasła z linku. Bez tokenu; operator nie jest kontem panelu.
     dopiszLogowanie(db, { login: konto.login, usluga: 'oms', ip: 'konsola serwera', wynik: 'link-hasla-z-konsoli' });
     process.stderr.write('Link jest jednorazowy, ważny 48 godzin. Poprzednie linki tego konta są nieważne.\n');
     if (!adres) process.stderr.write('Ścieżkę poniżej doklej do adresu panelu.\n');
     process.stdout.write(`${adres ?? ''}/haslo/${token}\n`);
-  } finally { db.close(); }
+  } finally {
+    db.close();
+  }
 }
 
-try { main(); }
-catch (e) {
+try {
+  main();
+} catch (e) {
   // Tylko własne komunikaty i walidacja adresu; błędy SQLite mogą zawierać dane z bazy.
-  const komunikat = e instanceof Error && (e.message.startsWith('OMS_ADRES_PANELU:')
-    || /^(Użycie:|Brak istniejącej bazy|Brak włączonych kont|Nie ma takiego konta|Konto )/.test(e.message))
-    ? e.message : 'Nie udało się wydać linku — sprawdź dostęp do bazy i wersję OMS.';
+  const komunikat =
+    e instanceof Error &&
+    (e.message.startsWith('OMS_ADRES_PANELU:') ||
+      /^(Użycie:|Brak istniejącej bazy|Brak włączonych kont|Nie ma takiego konta|Konto )/.test(e.message))
+      ? e.message
+      : 'Nie udało się wydać linku — sprawdź dostęp do bazy i wersję OMS.';
   process.stderr.write(`${komunikat}\n`);
   process.exitCode = 1;
 }

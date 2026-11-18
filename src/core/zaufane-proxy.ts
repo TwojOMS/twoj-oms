@@ -16,8 +16,11 @@ export function zaufaneProxy(env: Srodowisko): false | string[] {
 }
 
 function bladProxy() {
-  return new BladKonfiguracji('OMS_TRUST_PROXY', 'Niepoprawna konfiguracja OMS_TRUST_PROXY',
-    'na listę zaufanych adresów IP lub CIDR oddzielonych przecinkami, bez spacji, albo usuń zmienną przy dostępie bez proxy.');
+  return new BladKonfiguracji(
+    'OMS_TRUST_PROXY',
+    'Niepoprawna konfiguracja OMS_TRUST_PROXY',
+    'na listę zaufanych adresów IP lub CIDR oddzielonych przecinkami, bez spacji, albo usuń zmienną przy dostępie bez proxy.',
+  );
 }
 
 function obejmujeWszystkieAdresy(proxy: readonly string[]): boolean {
@@ -53,11 +56,16 @@ function liczbaAdresu(ip: string, rodzina: number): bigint | null {
   const osadzonyIpv4 = bezStrefy.slice(ostatniDwukropek + 1);
   if (osadzonyIpv4.includes('.')) {
     const oktety = osadzonyIpv4.split('.').map(Number);
-    if (oktety.length !== 4 || oktety.some((oktet) => !Number.isInteger(oktet) || oktet < 0 || oktet > 255)) return null;
+    if (oktety.length !== 4 || oktety.some((oktet) => !Number.isInteger(oktet) || oktet < 0 || oktet > 255))
+      return null;
     bezStrefy = `${bezStrefy.slice(0, ostatniDwukropek + 1)}${(oktety[0] * 256 + oktety[1]).toString(16)}:${(oktety[2] * 256 + oktety[3]).toString(16)}`;
   }
   const [lewa = '', prawa = ''] = bezStrefy.split('::');
-  const heksy = [...(lewa ? lewa.split(':') : []), ...Array(8 - (lewa ? lewa.split(':').length : 0) - (prawa ? prawa.split(':').length : 0)).fill('0'), ...(prawa ? prawa.split(':') : [])];
+  const heksy = [
+    ...(lewa ? lewa.split(':') : []),
+    ...Array(8 - (lewa ? lewa.split(':').length : 0) - (prawa ? prawa.split(':').length : 0)).fill('0'),
+    ...(prawa ? prawa.split(':') : []),
+  ];
   if (heksy.length !== 8 || heksy.some((czesc) => !/^[0-9a-f]{1,4}$/i.test(czesc))) return null;
   return heksy.reduce((wynik, czesc) => wynik * 65536n + BigInt(`0x${czesc}`), 0n);
 }

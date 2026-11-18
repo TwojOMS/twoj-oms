@@ -13,18 +13,34 @@ import { zbudujOms, uruchomZegary } from '../../pomoc/budowa-oms-testowa.ts';
 // bootstrap w ogole ich nie buduje.
 
 const PELNE = {
-  OMS_AUTH_USER: 'adam', OMS_AUTH_PASS: 'x',
+  OMS_AUTH_USER: 'adam',
+  OMS_AUTH_PASS: 'x',
   OMS_DB_PATH: ':memory:',
-  SHOP_PRO_URL: 'https://drugi-sklep.test', SHOP_PRO_CK: 'ck', SHOP_PRO_CS: 'cs',
+  SHOP_PRO_URL: 'https://drugi-sklep.test',
+  SHOP_PRO_CK: 'ck',
+  SHOP_PRO_CS: 'cs',
 };
 
 const env = (nad = {}) => ({ ...PELNE, OMS_ETYKIETY_DIR: mkdtempSync(join(tmpdir(), 'oms-kamp-')), ...nad });
 function wstawKampanieTestowa(db) {
-  db.prepare(`INSERT INTO kampanie (kod,nazwa,od_dnia,do_dnia,sklep,cel_uzyc,ga4_wlasciwosc,ga4_sciezka,fale_json)
-    VALUES (?,?,?,?,?,?,?,?,?)`).run('promo-test','Kampania testowa','2026-08-24','2026-09-07','sklep-test',10,
-    '123456789','/promocja-test',JSON.stringify([
-      {od:'2026-08-26',napis:'start reklam'}, {od:'2026-08-30',napis:'fala 2'}, {od:'2026-09-04',napis:'fala 3'}
-    ]));
+  db.prepare(
+    `INSERT INTO kampanie (kod,nazwa,od_dnia,do_dnia,sklep,cel_uzyc,ga4_wlasciwosc,ga4_sciezka,fale_json)
+    VALUES (?,?,?,?,?,?,?,?,?)`,
+  ).run(
+    'promo-test',
+    'Kampania testowa',
+    '2026-08-24',
+    '2026-09-07',
+    'sklep-test',
+    10,
+    '123456789',
+    '/promocja-test',
+    JSON.stringify([
+      { od: '2026-08-26', napis: 'start reklam' },
+      { od: '2026-08-30', napis: 'fala 2' },
+      { od: '2026-09-04', napis: 'fala 3' },
+    ]),
+  );
 }
 
 const META = { META_TOKEN: 'SEKRET-SYSTEM-USER', META_KONTA: 'act_101,act_202' };
@@ -87,8 +103,9 @@ describe('zbudujOms — źródła kampanii', () => {
   });
 
   it('literówka w koncie reklamowym wywala start, zamiast cicho nic nie mierzyć', () => {
-    expect(() => zbudujOms({ env: env({ META_TOKEN: 'x', META_KONTA: '101' }) }))
-      .toThrow(/nie wygląda na konto reklamowe/);
+    expect(() => zbudujOms({ env: env({ META_TOKEN: 'x', META_KONTA: '101' }) })).toThrow(
+      /nie wygląda na konto reklamowe/,
+    );
   });
 
   it('konta bez tokenu wywalają start (połowiczna konfiguracja jest głośna)', () => {
@@ -119,11 +136,17 @@ describe('uruchomZegary — zegar kampanii', () => {
   it('awaria przebiegu nie wywraca procesu, tylko ląduje w logu', async () => {
     const ustawInterwal = vi.fn(() => 'uchwyt');
     const log = vi.fn();
-    const czuwaczKampanii = { przebieg: vi.fn(async () => { throw new Error('Meta padła'); }) };
+    const czuwaczKampanii = {
+      przebieg: vi.fn(async () => {
+        throw new Error('Meta padła');
+      }),
+    };
     uruchomZegary({ czuwaczKampanii, ustawInterwal, log });
 
     await ustawInterwal.mock.calls[0][0]();
-    await new Promise((r) => { setTimeout(r, 0); });
+    await new Promise((r) => {
+      setTimeout(r, 0);
+    });
     expect(log).toHaveBeenCalledWith('czuwacz kampanii:', 'Meta padła');
   });
 
@@ -134,7 +157,9 @@ describe('uruchomZegary — zegar kampanii', () => {
     uruchomZegary({ czuwaczKampanii, ustawInterwal, log });
 
     await ustawInterwal.mock.calls[0][0]();
-    await new Promise((r) => { setTimeout(r, 0); });
+    await new Promise((r) => {
+      setTimeout(r, 0);
+    });
     expect(log.mock.calls[0][0]).toMatch(/JESZCZE TRWA/);
   });
 });

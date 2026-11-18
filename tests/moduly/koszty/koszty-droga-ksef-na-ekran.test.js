@@ -41,55 +41,103 @@ const dokument = (n) => ({
 
 const MAJ = [
   dokument({
-    ksefNumber: '5252674798-20260504-AA1111-01', invoiceNumber: 'FV/2026/05/1',
-    issueDate: '2026-05-04', permanentStorageDate: '2026-05-04T09:12:00.000Z',
-    nip: '525-267-47-98', nazwa: 'Allegro sp. z o.o.', netto: 1500, vat: 345, brutto: 1845,
+    ksefNumber: '5252674798-20260504-AA1111-01',
+    invoiceNumber: 'FV/2026/05/1',
+    issueDate: '2026-05-04',
+    permanentStorageDate: '2026-05-04T09:12:00.000Z',
+    nip: '525-267-47-98',
+    nazwa: 'Allegro sp. z o.o.',
+    netto: 1500,
+    vat: 345,
+    brutto: 1845,
   }),
   dokument({
-    ksefNumber: '5250007313-20260521-BB2222-02', invoiceNumber: '2026/05/1123',
-    issueDate: '2026-05-21', permanentStorageDate: '2026-05-21T18:40:00.000Z',
-    nip: '5250007313', nazwa: 'Poczta Polska S.A.', netto: 345.16, vat: 79.39, brutto: 424.55,
+    ksefNumber: '5250007313-20260521-BB2222-02',
+    invoiceNumber: '2026/05/1123',
+    issueDate: '2026-05-21',
+    permanentStorageDate: '2026-05-21T18:40:00.000Z',
+    nip: '5250007313',
+    nazwa: 'Poczta Polska S.A.',
+    netto: 345.16,
+    vat: 79.39,
+    brutto: 424.55,
   }),
 ];
 
 const CZERWIEC = [
   dokument({
-    ksefNumber: '5252674798-20260602-CC3333-01', invoiceNumber: 'FV/2026/06/12',
-    issueDate: '2026-06-02', permanentStorageDate: '2026-06-02T07:05:00.000Z',
-    nip: '5252674798', nazwa: 'Allegro sp. z o.o.', netto: 1000, vat: 230, brutto: 1230,
+    ksefNumber: '5252674798-20260602-CC3333-01',
+    invoiceNumber: 'FV/2026/06/12',
+    issueDate: '2026-06-02',
+    permanentStorageDate: '2026-06-02T07:05:00.000Z',
+    nip: '5252674798',
+    nazwa: 'Allegro sp. z o.o.',
+    netto: 1000,
+    vat: 230,
+    brutto: 1230,
   }),
   dokument({
-    ksefNumber: '5250007313-20260615-DD4444-01', invoiceNumber: '2026/06/2244',
-    issueDate: '2026-06-15', permanentStorageDate: '2026-06-15T11:00:00.000Z',
-    nip: '5250007313', nazwa: 'Poczta Polska S.A.', netto: 1300, vat: 299, brutto: 1599,
+    ksefNumber: '5250007313-20260615-DD4444-01',
+    invoiceNumber: '2026/06/2244',
+    issueDate: '2026-06-15',
+    permanentStorageDate: '2026-06-15T11:00:00.000Z',
+    nip: '5250007313',
+    nazwa: 'Poczta Polska S.A.',
+    netto: 1300,
+    vat: 299,
+    brutto: 1599,
   }),
   dokument({
-    ksefNumber: '6762447410-20260628-EE5555-01', invoiceNumber: 'F/2026/6/9',
-    issueDate: '2026-06-28', permanentStorageDate: '2026-06-28T19:30:00.000Z',
-    nip: '6762447410', nazwa: 'Drobny Dostawca', netto: 81.3, vat: 18.7, brutto: 100,
+    ksefNumber: '6762447410-20260628-EE5555-01',
+    invoiceNumber: 'F/2026/6/9',
+    issueDate: '2026-06-28',
+    permanentStorageDate: '2026-06-28T19:30:00.000Z',
+    nip: '6762447410',
+    nazwa: 'Drobny Dostawca',
+    netto: 81.3,
+    vat: 18.7,
+    brutto: 100,
   }),
   // ⚠️ KOREKTA: kwoty UJEMNE, wprost z KSeF. Ma pomniejszyc sume, a nie ja podniesc.
   dokument({
-    ksefNumber: '5252674798-20260630-FF6666-01', invoiceNumber: 'KOR/2026/06/3',
-    issueDate: '2026-06-30', permanentStorageDate: '2026-06-30T20:15:00.000Z',
-    nip: '5252674798', nazwa: 'Allegro sp. z o.o.', netto: -38.99, vat: -8.97, brutto: -47.96,
+    ksefNumber: '5252674798-20260630-FF6666-01',
+    invoiceNumber: 'KOR/2026/06/3',
+    issueDate: '2026-06-30',
+    permanentStorageDate: '2026-06-30T20:15:00.000Z',
+    nip: '5252674798',
+    nazwa: 'Allegro sp. z o.o.',
+    netto: -38.99,
+    vat: -8.97,
+    brutto: -47.96,
     rodzaj: 'Kor',
   }),
   // ⚠️ EUR: `vatAmount` z KSeF jest zawsze w PLN, wiec dokument nie ma jednej wspolnej waluty
   // i nie wolno go dodac do sumy miesiaca. Kursu nie znamy, a zmyslony kurs jest gorszy niz
   // widoczna dziura.
   dokument({
-    ksefNumber: '9999999999-20260610-GG7777-01', invoiceNumber: 'INV-2026-0610',
-    issueDate: '2026-06-10', permanentStorageDate: '2026-06-10T08:00:00.000Z',
-    nip: 'DE100000004', nazwa: 'Zagraniczny Dostawca GmbH', netto: 900, vat: 0, brutto: 900,
+    ksefNumber: '9999999999-20260610-GG7777-01',
+    invoiceNumber: 'INV-2026-0610',
+    issueDate: '2026-06-10',
+    permanentStorageDate: '2026-06-10T08:00:00.000Z',
+    nip: 'DE100000004',
+    nazwa: 'Zagraniczny Dostawca GmbH',
+    netto: 900,
+    vat: 0,
+    brutto: 900,
     waluta: 'EUR',
   }),
   // ⚠️ BEZ KWOTY: KSeF nie podal `netAmount`. Zero weszloby do sumy jako prawda, wiec dokument
   // idzie do kwarantanny — nie do sumy, ale i nie w niepamiec.
   dokument({
-    ksefNumber: '7010012345-20260620-HH8888-01', invoiceNumber: 'FV/BEZ-KWOTY/1',
-    issueDate: '2026-06-20', permanentStorageDate: '2026-06-20T12:00:00.000Z',
-    nip: '7010012345', nazwa: 'Kontrahent Bez Kwoty', netto: null, vat: 0, brutto: 0,
+    ksefNumber: '7010012345-20260620-HH8888-01',
+    invoiceNumber: 'FV/BEZ-KWOTY/1',
+    issueDate: '2026-06-20',
+    permanentStorageDate: '2026-06-20T12:00:00.000Z',
+    nip: '7010012345',
+    nazwa: 'Kontrahent Bez Kwoty',
+    netto: null,
+    vat: 0,
+    brutto: 0,
   }),
 ];
 
@@ -115,9 +163,12 @@ async function pobierzIPokaz() {
   });
   const wynik = await czuwacz.przebieg();
   const app = buildOmsServer({ db, config: { auth: { user: 't', pass: 'h' } }, czuwaczKosztow: czuwacz });
-  const ekran = async (miesiac) => (await app.inject({
-    method: 'GET', url: `/koszty?miesiac=${miesiac}`, headers: AUTH,
-  }));
+  const ekran = async (miesiac) =>
+    await app.inject({
+      method: 'GET',
+      url: `/koszty?miesiac=${miesiac}`,
+      headers: AUTH,
+    });
   return { db, wynik, ekran };
 }
 
@@ -180,10 +231,12 @@ describe('droga: ksztalt odpowiedzi KSeF → baza → ekran', () => {
   it('⚠️ kwoty leza w bazie jako NAPISY z dwoma miejscami po przecinku', async () => {
     const { db } = await pobierzIPokaz();
 
-    const w = db.prepare('SELECT netto, vat, brutto FROM koszty WHERE ksef_number = ?')
+    const w = db
+      .prepare('SELECT netto, vat, brutto FROM koszty WHERE ksef_number = ?')
       .get('6762447410-20260628-EE5555-01');
     expect(w).toEqual({ netto: '81.30', vat: '18.70', brutto: '100.00' });
-    const korekta = db.prepare('SELECT netto, rodzaj FROM koszty WHERE ksef_number = ?')
+    const korekta = db
+      .prepare('SELECT netto, rodzaj FROM koszty WHERE ksef_number = ?')
       .get('5252674798-20260630-FF6666-01');
     expect(korekta).toEqual({ netto: '-38.99', rodzaj: 'Kor' });
   });
@@ -194,9 +247,10 @@ describe('droga: ksztalt odpowiedzi KSeF → baza → ekran', () => {
   it('⚠️ NIP sprzedawcy trafia do bazy w jednej postaci, bez myslnikow', async () => {
     const { db } = await pobierzIPokaz();
 
-    const nipy = db.prepare(
-      "SELECT DISTINCT sprzedawca_nip FROM koszty WHERE sprzedawca_nazwa LIKE 'Allegro%'",
-    ).all().map((w) => w.sprzedawca_nip);
+    const nipy = db
+      .prepare("SELECT DISTINCT sprzedawca_nip FROM koszty WHERE sprzedawca_nazwa LIKE 'Allegro%'")
+      .all()
+      .map((w) => w.sprzedawca_nip);
     expect(nipy).toEqual(['5252674798']);
   });
 });

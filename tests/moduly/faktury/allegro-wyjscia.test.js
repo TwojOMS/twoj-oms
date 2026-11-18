@@ -22,33 +22,59 @@ const przed = (ms) => new Date(Date.now() - ms).toISOString();
 // do INSERT-a caly komplet kolumn, a brakujace pola trafiaja tam jako `undefined`, czego
 // node:sqlite nie zwiaze (fikstura z planu nie dawala sie wykonac ani raz).
 function baza({
-  sklep = 'allegro_swietlik', chce = 1, ksefStatus = null, ksefNumer = null,
-  invoiceId = null, wyslanaAt = null, utworzonaAt = przed(30 * GODZINA),
+  sklep = 'allegro_swietlik',
+  chce = 1,
+  ksefStatus = null,
+  ksefNumer = null,
+  invoiceId = null,
+  wyslanaAt = null,
+  utworzonaAt = przed(30 * GODZINA),
 } = {}) {
   const db = openOmsDb(':memory:');
-  const id = zapiszZamowienie(db, sklep, {
-    zrodlo_id: 'CF-1', numer: 'CF-1', kwota_brutto: '100.00', chce_fakture: chce, pozycje: [],
-    klient: { first_name: 'Jan', email: 'j@k.pl' }, dostawa: { city: 'Warszawa' },
-    metoda_wysylki: 'allegro_dpd', kwota_pobrania: null, nip: null, status_woo: null,
-    oplacone_at: '2026-08-05T09:00:00', anulowane: 0, utworzone_at: '2026-08-05T08:00:00',
-  }, {});
-  db.prepare(`INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, ksef_status, ksef_numer,
-    allegro_invoice_id, allegro_wyslana_at, utworzona_at) VALUES (?,?,?,?,?,?,?,?)`)
-    .run(id, 'u1', '12/08/2026', ksefStatus, ksefNumer, invoiceId, wyslanaAt, utworzonaAt);
+  const id = zapiszZamowienie(
+    db,
+    sklep,
+    {
+      zrodlo_id: 'CF-1',
+      numer: 'CF-1',
+      kwota_brutto: '100.00',
+      chce_fakture: chce,
+      pozycje: [],
+      klient: { first_name: 'Jan', email: 'j@k.pl' },
+      dostawa: { city: 'Warszawa' },
+      metoda_wysylki: 'allegro_dpd',
+      kwota_pobrania: null,
+      nip: null,
+      status_woo: null,
+      oplacone_at: '2026-08-05T09:00:00',
+      anulowane: 0,
+      utworzone_at: '2026-08-05T08:00:00',
+    },
+    {},
+  );
+  db.prepare(
+    `INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, ksef_status, ksef_numer,
+    allegro_invoice_id, allegro_wyslana_at, utworzona_at) VALUES (?,?,?,?,?,?,?,?)`,
+  ).run(id, 'u1', '12/08/2026', ksefStatus, ksefNumer, invoiceId, wyslanaAt, utworzonaAt);
   return { db, id };
 }
 
 const klientOk = (log = []) => ({
-  pobierzFakturyZamowienia: async () => { log.push('lista'); return []; },
-  zglosFakture: async (cf, dane) => { log.push(['zglos', cf, dane]); return { id: 'INV-1' }; },
+  pobierzFakturyZamowienia: async () => {
+    log.push('lista');
+    return [];
+  },
+  zglosFakture: async (cf, dane) => {
+    log.push(['zglos', cf, dane]);
+    return { id: 'INV-1' };
+  },
   wyslijPlikFaktury: async (cf, inv, b) => {
     log.push(['plik', cf, inv, b.length]);
     return { file: { securityVerification: { status: 'WAITING' } } };
   },
 });
 
-const wpisyLogu = (db, id) =>
-  db.prepare('SELECT * FROM log WHERE zamowienie_id = ? ORDER BY id').all(id);
+const wpisyLogu = (db, id) => db.prepare('SELECT * FROM log WHERE zamowienie_id = ? ORDER BY id').all(id);
 
 // ---------------------------------------------------------------------------------
 // 1. TRZECIA PRZESLANKA ODMOWY KASOWANIA
@@ -85,7 +111,6 @@ describe('„skasowałem fakturę w inFakcie" po wysłaniu do Allegro', () => {
     expect(db.prepare('SELECT COUNT(*) c FROM faktury WHERE zamowienie_id = ?').get(id).c).toBe(0);
   });
 });
-
 
 // ---------------------------------------------------------------------------------
 // SEKCJE 2 i 3 (trasa `/faktura-allegro-bez-ksef` i przycisk furtki na karcie) ZNIKNELY

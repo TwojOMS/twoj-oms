@@ -4,11 +4,15 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie, pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { zapiszWeryfikacjeAllegro } from '../../../src/moduly/faktury/db/faktury.js';
 import {
-  createCzuwaczKsef, LIMIT_WERYFIKACJI, PODLOGA_DNI, najdluzszyPrzebiegMs,
+  createCzuwaczKsef,
+  LIMIT_WERYFIKACJI,
+  PODLOGA_DNI,
+  najdluzszyPrzebiegMs,
 } from '../../../src/moduly/faktury/services/czuwacz-ksef.js';
 import { ODSTEP_CZUWACZA_MS } from '../../pomoc/serwer-testowy-oms.ts';
 import {
-  weryfikacjaNierozstrzygnieta, WARUNEK_WERYFIKACJA_NIEROZSTRZYGNIETA_SQL,
+  weryfikacjaNierozstrzygnieta,
+  WARUNEK_WERYFIKACJA_NIEROZSTRZYGNIETA_SQL,
 } from '../../../src/domena/allegro-faktura.js';
 import { sprawyKarty } from '../../../src/domena/sprawy-karty.js';
 
@@ -35,31 +39,43 @@ const przedDniami = (d) => new Date(Date.now() - d * DZIEN).toISOString();
 
 let licznik = 0;
 
-function zFaktura(db, {
-  sklep = 'allegro_swietlik', invoiceId = 'INV-1', weryfikacja = 'WAITING',
-  wyslanaAt = przedGodzinami(1), ksefNumer = 'KS-1', numer = 'FV/12/2026',
-} = {}) {
+function zFaktura(
+  db,
+  {
+    sklep = 'allegro_swietlik',
+    invoiceId = 'INV-1',
+    weryfikacja = 'WAITING',
+    wyslanaAt = przedGodzinami(1),
+    ksefNumer = 'KS-1',
+    numer = 'FV/12/2026',
+  } = {},
+) {
   licznik += 1;
-  const id = zapiszZamowienie(db, sklep, {
-    zrodlo_id: `${sklep}-${licznik}`,
-    numer: String(3000 + licznik),
-    klient: { first_name: 'Jan', last_name: 'Kowalski' },
-    dostawa: {},
-    metoda_wysylki: 'dpd',
-    kwota_pobrania: null,
-    chce_fakture: 1,
-    nip: null,
-    kwota_brutto: '100.00',
-    koszt_dostawy_brutto: '0.00',
-    status_woo: 'processing',
-    oplacone_at: null,
-    anulowane: 0,
-    utworzone_at: '2026-08-05T09:00:00',
-    pozycje: [],
-  }, {});
+  const id = zapiszZamowienie(
+    db,
+    sklep,
+    {
+      zrodlo_id: `${sklep}-${licznik}`,
+      numer: String(3000 + licznik),
+      klient: { first_name: 'Jan', last_name: 'Kowalski' },
+      dostawa: {},
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: 1,
+      nip: null,
+      kwota_brutto: '100.00',
+      koszt_dostawy_brutto: '0.00',
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane: 0,
+      utworzone_at: '2026-08-05T09:00:00',
+      pozycje: [],
+    },
+    {},
+  );
   db.prepare(
-    'INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, ksef_numer, allegro_invoice_id,'
-    + ' allegro_wyslana_at, allegro_weryfikacja, utworzona_at) VALUES (?,?,?,?,?,?,?,?)',
+    'INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, ksef_numer, allegro_invoice_id,' +
+      ' allegro_wyslana_at, allegro_weryfikacja, utworzona_at) VALUES (?,?,?,?,?,?,?,?)',
   ).run(id, `u${licznik}`, numer, ksefNumer, invoiceId, wyslanaAt, weryfikacja, przedGodzinami(2));
   return id;
 }
@@ -74,7 +90,9 @@ const zrodloZ = (db, id) => db.prepare('SELECT zrodlo_id FROM zamowienia WHERE i
 // z pierwszej petli czuwacza. Atrapa rzuca, gdyby ktos jednak o nia zapytal — cichy przelot
 // przez pierwsza petle ukrylby blad w zakresie zapytania.
 const infaktNieruszany = {
-  pobierzFakture: async () => { throw new Error('pierwsza pętla nie ma tu o co pytać'); },
+  pobierzFakture: async () => {
+    throw new Error('pierwsza pętla nie ma tu o co pytać');
+  },
 };
 
 // Atrapa kanalu liczaca pytania. `pobierzFakturyZamowienia` oddaje LISTE wpisow faktur
@@ -271,7 +289,9 @@ describe('czuwacz — weryfikacja pliku faktury w Allegro', () => {
     const id = zFaktura(db);
     const klienci = {
       allegro_swietlik: {
-        pobierzFakturyZamowienia: async () => { throw new Error('Allegro nieosiągalne: ECONNRESET'); },
+        pobierzFakturyZamowienia: async () => {
+          throw new Error('Allegro nieosiągalne: ECONNRESET');
+        },
       },
     };
     const czuwacz = createCzuwaczKsef({ db, infakt: infaktNieruszany, klienciKanalow: klienci });
@@ -344,7 +364,10 @@ describe('czuwacz — pętla weryfikacji jest OGRANICZONA', () => {
     const k = kanal([]);
 
     await createCzuwaczKsef({
-      db, infakt: infaktNieruszany, klienciKanalow: k.klienci, limitWeryfikacji: 1,
+      db,
+      infakt: infaktNieruszany,
+      klienciKanalow: k.klienci,
+      limitWeryfikacji: 1,
     }).przebieg();
 
     expect(k.pytania).toEqual([zrodloZ(db, stara)]);
@@ -366,7 +389,10 @@ describe('czuwacz — pętla weryfikacji jest OGRANICZONA', () => {
     // kwalifikuja sie do pytania — i to jest cale sedno usterki.
     const k = kanal([]);
     const czuwacz = createCzuwaczKsef({
-      db, infakt: infaktNieruszany, klienciKanalow: k.klienci, limitWeryfikacji: 1,
+      db,
+      infakt: infaktNieruszany,
+      klienciKanalow: k.klienci,
+      limitWeryfikacji: 1,
     });
 
     await czuwacz.przebieg();
@@ -385,7 +411,10 @@ describe('czuwacz — pętla weryfikacji jest OGRANICZONA', () => {
     const b = zFaktura(db, { wyslanaAt: przedDniami(4) });
     const k = kanal([]);
     const czuwacz = createCzuwaczKsef({
-      db, infakt: infaktNieruszany, klienciKanalow: k.klienci, limitWeryfikacji: 1,
+      db,
+      infakt: infaktNieruszany,
+      klienciKanalow: k.klienci,
+      limitWeryfikacji: 1,
     });
 
     await czuwacz.przebieg();
@@ -414,7 +443,10 @@ describe('czuwacz — pętla weryfikacji jest OGRANICZONA', () => {
       },
     };
     const czuwacz = createCzuwaczKsef({
-      db, infakt: infaktNieruszany, klienciKanalow: klienci, limitWeryfikacji: 1,
+      db,
+      infakt: infaktNieruszany,
+      klienciKanalow: klienci,
+      limitWeryfikacji: 1,
     });
 
     await czuwacz.przebieg();
@@ -433,7 +465,10 @@ describe('czuwacz — pętla weryfikacji jest OGRANICZONA', () => {
     const zdrowa = zFaktura(db, { wyslanaAt: przedDniami(4) });
     const k = kanal([]);
     const czuwacz = createCzuwaczKsef({
-      db, infakt: infaktNieruszany, klienciKanalow: k.klienci, limitWeryfikacji: 1,
+      db,
+      infakt: infaktNieruszany,
+      klienciKanalow: k.klienci,
+      limitWeryfikacji: 1,
     });
 
     await czuwacz.przebieg();
@@ -452,7 +487,9 @@ describe('czuwacz — pętla weryfikacji jest OGRANICZONA', () => {
     zFaktura(db, { invoiceId: 'INV-1' });
     zFaktura(db, { invoiceId: 'INV-2' });
     let zwolnij;
-    const brama = new Promise((r) => { zwolnij = r; });
+    const brama = new Promise((r) => {
+      zwolnij = r;
+    });
     const pytania = [];
     const klienci = {
       allegro_swietlik: {
@@ -479,8 +516,8 @@ describe('czuwacz — pętla weryfikacji jest OGRANICZONA', () => {
 // ⚠️⚠️ REJECTED ZNACZY, ZE KUPUJACY FAKTURY NIE MA — a panel bez tej sprawy twierdzilby,
 // ze ma (kolumna `allegro_wyslana_at` jest wypelniona). To musi byc BLOKADA na pasku.
 describe('pasek „Do załatwienia" — weryfikacja pliku w Allegro', () => {
-  const sprawa = (db, id, teraz = Date.now()) => sprawyKarty(pobierzZamowienie(db, id), teraz)
-    .find((s) => s.klucz === 'faktura-allegro');
+  const sprawa = (db, id, teraz = Date.now()) =>
+    sprawyKarty(pobierzZamowienie(db, id), teraz).find((s) => s.klucz === 'faktura-allegro');
 
   it('REJECTED wchodzi na pasek jako BLOKADA i mówi, że kupujący faktury nie ma', () => {
     const db = openOmsDb(':memory:');
@@ -604,12 +641,19 @@ describe('warunek SQL i predykat domeny odpowiadają IDENTYCZNIE', () => {
     ];
     const idy = przypadki.map((p) => zFaktura(db, p));
 
-    const zeSqla = new Set(db.prepare(`
+    const zeSqla = new Set(
+      db
+        .prepare(
+          `
       SELECT f.zamowienie_id
       FROM faktury f
       JOIN zamowienia z ON z.id = f.zamowienie_id
       WHERE ${WARUNEK_WERYFIKACJA_NIEROZSTRZYGNIETA_SQL}
-    `).all().map((w) => w.zamowienie_id));
+    `,
+        )
+        .all()
+        .map((w) => w.zamowienie_id),
+    );
 
     const zPredykatu = new Set(idy.filter((id) => weryfikacjaNierozstrzygnieta(fakturaZ(db, id))));
 

@@ -1,18 +1,27 @@
 import { describe, it, expect } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import {
-  zapewnijOkres, pobierzOkres, zamknijOkres, otworzOkresPonownie, zamowieniaOkresu,
-  rozpocznijFaktureOkresu, zakonczFaktureOkresu, oznaczOkresDoWyjasnienia, odblokujFaktureOkresu,
+  zapewnijOkres,
+  pobierzOkres,
+  zamknijOkres,
+  otworzOkresPonownie,
+  zamowieniaOkresu,
+  rozpocznijFaktureOkresu,
+  zakonczFaktureOkresu,
+  oznaczOkresDoWyjasnienia,
+  odblokujFaktureOkresu,
 } from '../../../src/oms/db/okresy.js';
 import { STAN } from '../../../src/domena/okres-rozliczeniowy.js';
 
 // Zamowienie z minimalnym kompletem kolumn NOT NULL — interesuje nas tu wylacznie
 // przynaleznosc do okresu i kolejnosc zlozenia, wiec reszta naglowka jest atrapa.
 function dodajZamowienie(db, { numer, utworzone, okresId }) {
-  return db.prepare(
-    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at,'
-    + ' okres_rozliczeniowy_id) VALUES (?,?,?,?,?,?) RETURNING id',
-  ).get('test', Number(numer), numer, '100.00', utworzone, okresId).id;
+  return db
+    .prepare(
+      'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at,' +
+        ' okres_rozliczeniowy_id) VALUES (?,?,?,?,?,?) RETURNING id',
+    )
+    .get('test', Number(numer), numer, '100.00', utworzone, okresId).id;
 }
 
 describe('okresy rozliczeniowe w bazie', () => {
@@ -49,7 +58,10 @@ describe('okresy rozliczeniowe w bazie', () => {
 
   it('kolumna okres_rozliczeniowy_id istnieje na zamowieniach', () => {
     const db = openOmsDb();
-    const kolumny = db.prepare('PRAGMA table_info(zamowienia)').all().map((k) => k.name);
+    const kolumny = db
+      .prepare('PRAGMA table_info(zamowienia)')
+      .all()
+      .map((k) => k.name);
     expect(kolumny).toContain('okres_rozliczeniowy_id');
   });
 
@@ -162,8 +174,10 @@ describe('odblokujFaktureOkresu', () => {
   it('rezerwacja osierocona (zawieszona) tez daje sie odblokowac', () => {
     const { db, okres } = nowy();
     rozpocznijFaktureOkresu(db, okres.id);
-    db.prepare('UPDATE okresy_rozliczeniowe SET utworzona_at = ? WHERE id = ?')
-      .run('2020-01-01T00:00:00.000Z', okres.id);
+    db.prepare('UPDATE okresy_rozliczeniowe SET utworzona_at = ? WHERE id = ?').run(
+      '2020-01-01T00:00:00.000Z',
+      okres.id,
+    );
     expect(odblokujFaktureOkresu(db, okres.id).ksef_status).toBeNull();
   });
 

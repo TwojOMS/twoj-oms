@@ -8,17 +8,31 @@
 // Dane zmyślone.
 import { describe, it, expect } from 'vitest';
 import {
-  POWOD_KOREKTA, POWOD_KOREKTA_CZEKA, POWOD_KONSUMENCKA, coWolnoWyslac, doZaznaczeniaWszystkich, wysylkaZKarty,
+  POWOD_KOREKTA,
+  POWOD_KOREKTA_CZEKA,
+  POWOD_KONSUMENCKA,
+  coWolnoWyslac,
+  doZaznaczeniaWszystkich,
+  wysylkaZKarty,
 } from '../../src/domena/wysylka-ksef.js';
 
 const NIP = '1234500011';
 const KSEF_PIERWOTNEJ = '1234563218-20261003-0A1B2C3D4E5F-01';
-const NOWE_ZDANIE = 'Ten program faktur nie wysyła korekt do KSeF z OMS-u — wyślesz je bezpośrednio w programie faktur.';
+const NOWE_ZDANIE =
+  'Ten program faktur nie wysyła korekt do KSeF z OMS-u — wyślesz je bezpośrednio w programie faktur.';
 const ZDANIE_CZEKA = 'Korekta czeka na fakturę pierwotną — wyślesz ją do KSeF, gdy pierwotna dostanie numer KSeF.';
 
 const korekta = (uuid, nadpisz = {}) => ({
-  uuid, number: '1/KOR/11/2026', rodzaj: 'korekta', invoice_date: '2026-11-03', ksef_number: null, stanKsef: 'brak',
-  client_company_name: 'Pracownia Półcień', client_tax_code: NIP, gross_price: -2700, ...nadpisz,
+  uuid,
+  number: '1/KOR/11/2026',
+  rodzaj: 'korekta',
+  invoice_date: '2026-11-03',
+  ksef_number: null,
+  stanKsef: 'brak',
+  client_company_name: 'Pracownia Półcień',
+  client_tax_code: NIP,
+  gross_price: -2700,
+  ...nadpisz,
 });
 
 describe('POWOD_KOREKTA', () => {
@@ -68,19 +82,27 @@ describe('korekty przy `korekty: true` (program, który wysyła do KSeF)', () =>
 describe('wysylkaZKarty: zdanie bez daty zależy od rodzaju', () => {
   it('korekta bez daty wystawienia — zdanie o korekcie', () => {
     expect(wysylkaZKarty({ uuid: 'K1', nip: NIP, rodzaj: 'korekta', dzienWystawienia: null })).toEqual({
-      wolno: false, powod: 'Panel nie zna daty wystawienia tej korekty — wyślij ją z zakładki Faktury.', stan: 'brak',
+      wolno: false,
+      powod: 'Panel nie zna daty wystawienia tej korekty — wyślij ją z zakładki Faktury.',
+      stan: 'brak',
     });
   });
 
   it('domyślnie (faktura VAT) — zdanie jak dawniej', () => {
     expect(wysylkaZKarty({ uuid: 'V1', nip: NIP, dzienWystawienia: null })).toEqual({
-      wolno: false, powod: 'Panel nie zna daty wystawienia tej faktury — wyślij ją z zakładki Faktury.', stan: 'brak',
+      wolno: false,
+      powod: 'Panel nie zna daty wystawienia tej faktury — wyślij ją z zakładki Faktury.',
+      stan: 'brak',
     });
   });
 
   it('korekta z datą — dane formularza podglądu jak przy fakturze', () => {
     expect(wysylkaZKarty({ uuid: 'K1', nip: NIP, rodzaj: 'korekta', dzienWystawienia: '2026-11-03' })).toEqual({
-      wolno: true, uuid: 'K1', miesiac: '2026-11', pole: 'invoice_date', stan: 'brak',
+      wolno: true,
+      uuid: 'K1',
+      miesiac: '2026-11',
+      pole: 'invoice_date',
+      stan: 'brak',
     });
   });
 });

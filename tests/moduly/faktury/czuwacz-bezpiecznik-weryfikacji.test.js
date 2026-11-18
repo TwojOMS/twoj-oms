@@ -21,36 +21,49 @@ let licznik = 0;
 
 function zFaktura(db, { sklep = 'allegro_swietlik', invoiceId } = {}) {
   licznik += 1;
-  const id = zapiszZamowienie(db, sklep, {
-    zrodlo_id: `${sklep}-${licznik}`,
-    numer: String(4000 + licznik),
-    klient: { first_name: 'Jan', last_name: 'Kowalski' },
-    dostawa: {},
-    metoda_wysylki: 'dpd',
-    kwota_pobrania: null,
-    chce_fakture: 1,
-    nip: null,
-    kwota_brutto: '100.00',
-    koszt_dostawy_brutto: '0.00',
-    status_woo: 'processing',
-    oplacone_at: null,
-    anulowane: 0,
-    utworzone_at: '2026-08-05T09:00:00',
-    pozycje: [],
-  }, {});
+  const id = zapiszZamowienie(
+    db,
+    sklep,
+    {
+      zrodlo_id: `${sklep}-${licznik}`,
+      numer: String(4000 + licznik),
+      klient: { first_name: 'Jan', last_name: 'Kowalski' },
+      dostawa: {},
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: 1,
+      nip: null,
+      kwota_brutto: '100.00',
+      koszt_dostawy_brutto: '0.00',
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane: 0,
+      utworzone_at: '2026-08-05T09:00:00',
+      pozycje: [],
+    },
+    {},
+  );
   db.prepare(
-    'INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, ksef_numer, allegro_invoice_id,'
-    + ' allegro_wyslana_at, allegro_weryfikacja, utworzona_at) VALUES (?,?,?,?,?,?,?,?)',
+    'INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, ksef_numer, allegro_invoice_id,' +
+      ' allegro_wyslana_at, allegro_weryfikacja, utworzona_at) VALUES (?,?,?,?,?,?,?,?)',
   ).run(
-    id, `u${licznik}`, `FV/${licznik}/2026`, `KS-${licznik}`, invoiceId ?? `INV-${licznik}`,
-    new Date(Date.now() - GODZINA).toISOString(), 'WAITING', new Date(Date.now() - 2 * GODZINA).toISOString(),
+    id,
+    `u${licznik}`,
+    `FV/${licznik}/2026`,
+    `KS-${licznik}`,
+    invoiceId ?? `INV-${licznik}`,
+    new Date(Date.now() - GODZINA).toISOString(),
+    'WAITING',
+    new Date(Date.now() - 2 * GODZINA).toISOString(),
   );
   return id;
 }
 
 // inFakt nie ma tu nic do roboty — kazda faktura ma juz numer KSeF, wiec wypada z pierwszej petli.
 const infaktNieruszany = {
-  pobierzFakture: async () => { throw new Error('pierwsza pętla nie ma tu o co pytać'); },
+  pobierzFakture: async () => {
+    throw new Error('pierwsza pętla nie ma tu o co pytać');
+  },
 };
 
 // Atrapa liczaca pytania. `odpowiedz` moze byc tablica albo funkcja (zrodloId) => tablica.
@@ -70,15 +83,20 @@ function kanaly(odpowiedz = [], kanal = 'allegro_swietlik') {
 }
 
 const wpis = (id, status = 'WAITING') => ({ id, file: { securityVerification: { status } } });
-const pytanaAt = (db) => db.prepare('SELECT allegro_pytana_at FROM faktury ORDER BY id').all()
-  .map((w) => w.allegro_pytana_at);
+const pytanaAt = (db) =>
+  db
+    .prepare('SELECT allegro_pytana_at FROM faktury ORDER BY id')
+    .all()
+    .map((w) => w.allegro_pytana_at);
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(START);
   licznik = 0;
 });
-afterEach(() => { vi.useRealTimers(); });
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe('bezpiecznik odpytywania zasobu faktur Allegro w czuwaczu', () => {
   it('martwy zasób: jeden przebieg pyta najwyżej trzy razy, a nie o każdą fakturę', async () => {
@@ -141,16 +159,16 @@ describe('bezpiecznik odpytywania zasobu faktur Allegro w czuwaczu', () => {
     const k = kanaly(() => (zasobZyje ? [wpis('INV-1')] : []));
     const czuwacz = createCzuwaczKsef({ db, infakt: infaktNieruszany, klienciKanalow: k.klienci });
 
-    await czuwacz.przebieg();                                   // otwiera bezpiecznik
-    zasobZyje = true;                                           // Allegro naprawilo zasob
+    await czuwacz.przebieg(); // otwiera bezpiecznik
+    zasobZyje = true; // Allegro naprawilo zasob
     vi.setSystemTime(new Date(START.getTime() + 25 * GODZINA));
-    await czuwacz.przebieg();                                   // sonda -> zamyka
+    await czuwacz.przebieg(); // sonda -> zamyka
 
     expect(stanWeryfikacji(db, 'allegro_swietlik').bezpiecznik_od).toBe(null);
 
     const przedTrzecim = k.pytania.length;
     vi.setSystemTime(new Date(START.getTime() + 26 * GODZINA));
-    await czuwacz.przebieg();                                   // pelne odpytywanie wraca
+    await czuwacz.przebieg(); // pelne odpytywanie wraca
     expect(k.pytania.length - przedTrzecim).toBe(5);
   });
 
@@ -175,7 +193,10 @@ describe('bezpiecznik odpytywania zasobu faktur Allegro w czuwaczu', () => {
     const klienci = {
       ...kanaly([]).klienci,
       allegro_polcien2: {
-        pobierzFakturyZamowienia: async (z) => { pytaniaDrugiego.push(z); return [wpis('INV-X')]; },
+        pobierzFakturyZamowienia: async (z) => {
+          pytaniaDrugiego.push(z);
+          return [wpis('INV-X')];
+        },
       },
     };
 

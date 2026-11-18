@@ -2,11 +2,23 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszProduktSklepowy, utworzKarte, powiazProdukt } from '../../../src/oms/db/magazyn.js';
-import { zapiszZamowienie, zapiszFaktyStatusu, zapiszNadpisaniaPozycji, dodajPozycjeReczna } from '../../../src/oms/db/zamowienia.js';
+import {
+  zapiszZamowienie,
+  zapiszFaktyStatusu,
+  zapiszNadpisaniaPozycji,
+  dodajPozycjeReczna,
+} from '../../../src/oms/db/zamowienia.js';
 import { planImportuOtwarcia } from '../../../src/domena/stany-magazynowe.js';
 import {
-  przelacznikStanow, przelaczStany, stanyKart, stanKarty, historiaKarty, dodajRuch, pozycjeBezKarty,
-  podgladImportuOtwarcia, zapiszImportOtwarcia,
+  przelacznikStanow,
+  przelaczStany,
+  stanyKart,
+  stanKarty,
+  historiaKarty,
+  dodajRuch,
+  pozycjeBezKarty,
+  podgladImportuOtwarcia,
+  zapiszImportOtwarcia,
 } from '../../../src/oms/db/stany-magazynowe.js';
 
 const WLACZONE_AT = '2026-10-17T08:00:00.000Z';
@@ -23,8 +35,18 @@ beforeEach(() => {
   numer = 0;
   karta = utworzKarte(db, { nazwa: 'Lampa stołowa Grzybek', sku: 'LMP-GRZ-30' });
   kartaB = utworzKarte(db, { nazwa: 'Kinkiet Ramię', sku: 'LMP-KIN-01' });
-  const lustro = (kanal, produktId, wariantId, kartaId) => powiazProdukt(db, zapiszProduktSklepowy(db, {
-    kanal, produkt_id: produktId, wariant_id: wariantId, nazwa: 'x', odczytane_at: WLACZONE_AT }), kartaId);
+  const lustro = (kanal, produktId, wariantId, kartaId) =>
+    powiazProdukt(
+      db,
+      zapiszProduktSklepowy(db, {
+        kanal,
+        produkt_id: produktId,
+        wariant_id: wariantId,
+        nazwa: 'x',
+        odczytane_at: WLACZONE_AT,
+      }),
+      kartaId,
+    );
   lustro('sklep', '10', '', karta);
   lustro('sklep', '20', '201', kartaB);
   lustro('sklep', '20', '202', karta);
@@ -34,13 +56,39 @@ beforeEach(() => {
 const wlacz = (at = WLACZONE_AT) => przelaczStany(db, { wlacz: true, konto, at });
 const zamowienie = (sklep, pozycje, { at = PO, anulowane = 0, status = null } = {}) => {
   numer += 1;
-  return zapiszZamowienie(db, sklep, {
-    zrodlo_id: String(numer), numer: String(numer), klient: { first_name: 'Anna' }, dostawa: { city: 'Pęki' },
-    metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '100.00', status_woo: null,
-    oplacone_at: null, anulowane, utworzone_at: at, status_woo: status,
-    pozycje: pozycje.map((p, i) => ({ nazwa: 'poz', sku: null, cena_brutto: '50.00', vat: '23', zdjecie_url: null,
-      zrodlo_id: 1000 + i, produkt_id: null, oferta_id: null, wariant_id: null, ...p })),
-  }, {});
+  return zapiszZamowienie(
+    db,
+    sklep,
+    {
+      zrodlo_id: String(numer),
+      numer: String(numer),
+      klient: { first_name: 'Anna' },
+      dostawa: { city: 'Pęki' },
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: 0,
+      nip: null,
+      kwota_brutto: '100.00',
+      status_woo: null,
+      oplacone_at: null,
+      anulowane,
+      utworzone_at: at,
+      status_woo: status,
+      pozycje: pozycje.map((p, i) => ({
+        nazwa: 'poz',
+        sku: null,
+        cena_brutto: '50.00',
+        vat: '23',
+        zdjecie_url: null,
+        zrodlo_id: 1000 + i,
+        produkt_id: null,
+        oferta_id: null,
+        wariant_id: null,
+        ...p,
+      })),
+    },
+    {},
+  );
 };
 const stan = (id) => stanKarty(db, id)?.stan;
 let kl = 0;
@@ -96,9 +144,21 @@ describe('rozchód z zamówień — od razu, wyliczany', () => {
     const id = zamowienie('sklep', [{ produkt_id: 10, ilosc: 4 }]);
     zamowienie('sklep', [{ produkt_id: 10, ilosc: 1 }], { anulowane: 1 });
     expect(stan(karta)).toBe(6);
-    zapiszFaktyStatusu(db, id, { w_realizacji_at: null, wyslane_at: null, zwrot_at: null, zwrot_powod: null, anulowane_recznie: 1 });
+    zapiszFaktyStatusu(db, id, {
+      w_realizacji_at: null,
+      wyslane_at: null,
+      zwrot_at: null,
+      zwrot_powod: null,
+      anulowane_recznie: 1,
+    });
     expect(stan(karta)).toBe(10);
-    zapiszFaktyStatusu(db, id, { w_realizacji_at: null, wyslane_at: null, zwrot_at: null, zwrot_powod: null, anulowane_recznie: 0 });
+    zapiszFaktyStatusu(db, id, {
+      w_realizacji_at: null,
+      wyslane_at: null,
+      zwrot_at: null,
+      zwrot_powod: null,
+      anulowane_recznie: 0,
+    });
     expect(stan(karta)).toBe(6);
   });
 
@@ -118,11 +178,33 @@ describe('rozchód z zamówień — od razu, wyliczany', () => {
 
   it('wiersz lustra bez karty obok wiersza z kartą: pozycja bez karty, a nie cichy rozchód z tej jednej', () => {
     // pozycja ręczna nie zna kanału cennika — produkt 30 jest w dwóch sklepach, z kartą tylko w jednym
-    zapiszProduktSklepowy(db, { kanal: 'sklep', produkt_id: '30', wariant_id: '', nazwa: 'x', odczytane_at: WLACZONE_AT });
-    powiazProdukt(db, zapiszProduktSklepowy(db, { kanal: 'sklep_b', produkt_id: '30', wariant_id: '', nazwa: 'x',
-      odczytane_at: WLACZONE_AT }), karta);
+    zapiszProduktSklepowy(db, {
+      kanal: 'sklep',
+      produkt_id: '30',
+      wariant_id: '',
+      nazwa: 'x',
+      odczytane_at: WLACZONE_AT,
+    });
+    powiazProdukt(
+      db,
+      zapiszProduktSklepowy(db, {
+        kanal: 'sklep_b',
+        produkt_id: '30',
+        wariant_id: '',
+        nazwa: 'x',
+        odczytane_at: WLACZONE_AT,
+      }),
+      karta,
+    );
     const id = zamowienie('reczne', []);
-    dodajPozycjeReczna(db, id, { nazwa: 'Nie wiadomo który', ilosc: 3, cena_brutto: '50.00', brutto_linii: '150.00', produkt_id: 30, wariant_id: null });
+    dodajPozycjeReczna(db, id, {
+      nazwa: 'Nie wiadomo który',
+      ilosc: 3,
+      cena_brutto: '50.00',
+      brutto_linii: '150.00',
+      produkt_id: 30,
+      wariant_id: null,
+    });
     expect(stan(karta)).toBe(10);
     expect(pozycjeBezKarty(db).map((p) => p.nazwa)).toEqual(['Nie wiadomo który']);
   });
@@ -143,7 +225,10 @@ describe('rozchód z zamówień — od razu, wyliczany', () => {
 
   // Usunięta pozycja sklepowa nie zdejmuje towaru; przywrócenie znów zdejmuje.
   it('usunięta pozycja sklepowa oddaje towar, przywrócona znów zdejmuje', () => {
-    const id = zamowienie('sklep', [{ produkt_id: 10, ilosc: 2 }, { produkt_id: 10, ilosc: 1 }]);
+    const id = zamowienie('sklep', [
+      { produkt_id: 10, ilosc: 2 },
+      { produkt_id: 10, ilosc: 1 },
+    ]);
     expect(stan(karta)).toBe(7);
     zapiszNadpisaniaPozycji(db, id, { s1000: { usunieta: true } });
     expect(stan(karta)).toBe(9);
@@ -160,14 +245,22 @@ describe('rozchód z zamówień — od razu, wyliczany', () => {
   });
 
   it('wariant Woo trafia w swoją kartę; produkt wariantowy bez wariantu — pozycja bez karty, stan nietknięty', () => {
-    zamowienie('sklep', [{ produkt_id: 20, wariant_id: '202', ilosc: 2 }, { produkt_id: 20, wariant_id: '201', ilosc: 1 }]);
+    zamowienie('sklep', [
+      { produkt_id: 20, wariant_id: '202', ilosc: 2 },
+      { produkt_id: 20, wariant_id: '201', ilosc: 1 },
+    ]);
     zamowienie('sklep', [{ produkt_id: 20, ilosc: 5, nazwa: 'Kinkiet bez wariantu' }]);
     const s = stanyKart(db);
     expect(s.stany.get(karta).stan).toBe(8);
     expect(s.stany.get(kartaB).stan).toBe(-1);
     expect(s.bezKarty).toBe(1);
-    expect(pozycjeBezKarty(db)).toEqual([expect.objectContaining({ nazwa: 'Kinkiet bez wariantu', ilosc: 5,
-      powod: expect.stringMatching(/kilka wariantów/) })]);
+    expect(pozycjeBezKarty(db)).toEqual([
+      expect.objectContaining({
+        nazwa: 'Kinkiet bez wariantu',
+        ilosc: 5,
+        powod: expect.stringMatching(/kilka wariantów/),
+      }),
+    ]);
   });
 
   it('brak na stanie: zamówienie przyjęte, stan na minusie (ostrzeżenie robi ekran)', () => {
@@ -176,28 +269,43 @@ describe('rozchód z zamówień — od razu, wyliczany', () => {
   });
 
   it('oferta bez karty i pozycja bez identyfikatora: pierwsza na liście bez karty, druga pominięta (dopłata)', () => {
-    zamowienie('allegro_a', [{ oferta_id: '9999999999', ilosc: 1, nazwa: 'Oferta nieznana' }, { ilosc: 1, nazwa: 'Dopłata' }]);
+    zamowienie('allegro_a', [
+      { oferta_id: '9999999999', ilosc: 1, nazwa: 'Oferta nieznana' },
+      { ilosc: 1, nazwa: 'Dopłata' },
+    ]);
     expect(pozycjeBezKarty(db).map((p) => p.nazwa)).toEqual(['Oferta nieznana']);
     expect(stanyKart(db).bezKarty).toBe(1);
   });
 
   it('pozycja ręczna z magazynu (bez kanału) zdejmuje z karty po identyfikatorze produktu', () => {
     const id = zamowienie('reczne', []);
-    dodajPozycjeReczna(db, id, { nazwa: 'Grzybek', ilosc: 2, cena_brutto: '50.00', brutto_linii: '100.00', produkt_id: 10, wariant_id: null });
+    dodajPozycjeReczna(db, id, {
+      nazwa: 'Grzybek',
+      ilosc: 2,
+      cena_brutto: '50.00',
+      brutto_linii: '100.00',
+      produkt_id: 10,
+      wariant_id: null,
+    });
     expect(stan(karta)).toBe(8);
   });
 
   it('historia karty: ruch ręczny i zamówienie, najnowsze pierwsze', () => {
     zamowienie('sklep', [{ produkt_id: 10, ilosc: 2 }], { at: '2026-10-17T12:00:00.000Z' });
     const h = historiaKarty(db, karta);
-    expect(h.map((w) => [w.typ, w.ilosc])).toEqual([['zamowienie', -2], ['ruch', 10]]);
+    expect(h.map((w) => [w.typ, w.ilosc])).toEqual([
+      ['zamowienie', -2],
+      ['ruch', 10],
+    ]);
   });
 });
 
 describe('ruchy ręczne i import otwarcia', () => {
   it('E4 D52 — zero jest stanem znanym: plan zachowuje je bez ruchu', () => {
     const plan = planImportuOtwarcia('PP-LAMPA-1;0', () => ({ id: 1, nazwa: 'Lampa Półcień' }));
-    expect(plan.doZapisu).toEqual([{ karta_id: 1, nazwa: 'Lampa Półcień', sku: 'PP-LAMPA-1', ilosc: 0, tylkoOtwarcie: true }]);
+    expect(plan.doZapisu).toEqual([
+      { karta_id: 1, nazwa: 'Lampa Półcień', sku: 'PP-LAMPA-1', ilosc: 0, tylkoOtwarcie: true },
+    ]);
     expect(plan.odrzucone).toEqual([]);
   });
   beforeEach(() => wlacz());

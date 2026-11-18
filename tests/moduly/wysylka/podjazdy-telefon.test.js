@@ -3,20 +3,36 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { createPodjazdy } from '../../../src/moduly/wysylka/services/podjazdy.js';
 import { createAllegroClient } from '../../../src/oms/allegro/client.js';
 
-const adres = { name: 'Test', street: 'Testowa 1', postalCode: '00-001', city: 'Test',
-  countryCode: 'PL', email: 'test@example.invalid', phone: '501234567' };
+const adres = {
+  name: 'Test',
+  street: 'Testowa 1',
+  postalCode: '00-001',
+  city: 'Test',
+  countryCode: 'PL',
+  email: 'test@example.invalid',
+  phone: '501234567',
+};
 const termin = { date: '2026-10-09', minTime: '09:00', maxTime: '13:00' };
 const bazy = [];
-afterEach(() => { for (const db of bazy.splice(0)) db.close(); });
+afterEach(() => {
+  for (const db of bazy.splice(0)) db.close();
+});
 
 function przygotujUsluge(telefonOdpowiedzi) {
   const db = openOmsDb();
   bazy.push(db);
-  const z = db.prepare(`INSERT INTO zamowienia (sklep,zrodlo_id,numer,utworzone_at,kwota_brutto)
-    VALUES ('allegro_test',1,'TEST-055','2026-10-08T08:00:00Z','0')`).run();
-  const p = db.prepare(`INSERT INTO przesylki
+  const z = db
+    .prepare(
+      `INSERT INTO zamowienia (sklep,zrodlo_id,numer,utworzone_at,kwota_brutto)
+    VALUES ('allegro_test',1,'TEST-055','2026-10-08T08:00:00Z','0')`,
+    )
+    .run();
+  const p = db
+    .prepare(
+      `INSERT INTO przesylki
     (zamowienie_id,kurier,status,numer_listu,id_przesylki_kuriera,etykieta_sciezka,utworzona_at,kolejnosc)
-    VALUES (?,'allegro_wza','nadana','TEST-LIST','shipment-055','test.pdf','2026-10-08T08:00:00Z',1)`)
+    VALUES (?,'allegro_wza','nadana','TEST-LIST','shipment-055','test.pdf','2026-10-08T08:00:00Z',1)`,
+    )
     .run(z.lastInsertRowid);
   const zadania = [];
   const klient = createAllegroClient({
@@ -25,21 +41,39 @@ function przygotujUsluge(telefonOdpowiedzi) {
     fetchImpl: async (url, opcje) => {
       const body = opcje.body ? JSON.parse(opcje.body) : null;
       zadania.push({ url, metoda: opcje.method, body });
-      if (url.endsWith('/shipments/shipment-055')) return { ok: true, json: async () => ({
-        id: 'shipment-055', deliveryMethodId: '03f26351-f683-4db2-8895-f2c599280e3c',
-        transport: ['DPD'], pickupAvailable: true, packages: [{ waybill: 'TEST-LIST' }],
-      }) };
-      if (url.endsWith('/pickup-proposals')) return { ok: true, json: async () => [{
-        address: { ...body.address, phone: telefonOdpowiedzi ?? body.address.phone, company: null, state: null },
-        proposals: [{ shipmentId: 'shipment-055', pickupTimes: [termin] }],
-      }] };
+      if (url.endsWith('/shipments/shipment-055'))
+        return {
+          ok: true,
+          json: async () => ({
+            id: 'shipment-055',
+            deliveryMethodId: '03f26351-f683-4db2-8895-f2c599280e3c',
+            transport: ['DPD'],
+            pickupAvailable: true,
+            packages: [{ waybill: 'TEST-LIST' }],
+          }),
+        };
+      if (url.endsWith('/pickup-proposals'))
+        return {
+          ok: true,
+          json: async () => [
+            {
+              address: { ...body.address, phone: telefonOdpowiedzi ?? body.address.phone, company: null, state: null },
+              proposals: [{ shipmentId: 'shipment-055', pickupTimes: [termin] }],
+            },
+          ],
+        };
       if (url.endsWith('/pickups/create-commands')) return { ok: true, json: async () => ({ status: 'IN_PROGRESS' }) };
       throw new Error(`Nieoczekiwane lokalne zapytanie ${url}`);
     },
   });
   let nr = 0;
-  const usluga = createPodjazdy({ db, allegroDla: () => klient,
-    teraz: () => new Date('2026-10-08T10:00:00Z'), uuid: () => `test-055-${++nr}`, moznaZlecac: true });
+  const usluga = createPodjazdy({
+    db,
+    allegroDla: () => klient,
+    teraz: () => new Date('2026-10-08T10:00:00Z'),
+    uuid: () => `test-055-${++nr}`,
+    moznaZlecac: true,
+  });
   return { db, usluga, zadania, ids: [Number(p.lastInsertRowid)] };
 }
 
@@ -62,8 +96,9 @@ it.each([
   const podglad = await usluga.przygotuj({ ids, data: termin.date, adres: wejscie });
   expect(zadania.find((z) => z.body)?.body.address.phone).toBe(wynik);
   expect(podglad.adres.phone).toBe(wynik);
-  const snapshot = JSON.parse(db.prepare('SELECT snapshot_json FROM podjazdy_podglady WHERE id=?')
-    .get(podglad.id).snapshot_json);
+  const snapshot = JSON.parse(
+    db.prepare('SELECT snapshot_json FROM podjazdy_podglady WHERE id=?').get(podglad.id).snapshot_json,
+  );
   expect(snapshot.adres.phone).toBe(wynik);
   expect(wejscie.phone).toBe(phone);
 });
@@ -76,10 +111,11 @@ it('Allegro z +48 i opcjonalnymi null daje terminy, a zlecenie używa adresu ze 
   expect(usluga.pobierzPodglad({ id: podglad.id }).adres.phone).toBe('+48501234567');
   const zlecenie = await usluga.zlec({ podgladId: podglad.id, grupaId: podglad.grupy[0].id, termin });
   expect(zlecenie.stan).toBe('oczekuje');
-  expect(zadania.filter((z) => z.url.endsWith('/pickup-proposals')).map((z) => z.body.address.phone))
-    .toEqual(['+48501234567', '+48501234567']);
-  expect(zadania.find((z) => z.url.endsWith('/pickups/create-commands')).body.input.address.phone)
-    .toBe('+48501234567');
+  expect(zadania.filter((z) => z.url.endsWith('/pickup-proposals')).map((z) => z.body.address.phone)).toEqual([
+    '+48501234567',
+    '+48501234567',
+  ]);
+  expect(zadania.find((z) => z.url.endsWith('/pickups/create-commands')).body.input.address.phone).toBe('+48501234567');
   const zapis = db.prepare('SELECT adres_json FROM podjazdy WHERE id=?').get(zlecenie.id);
   expect(JSON.parse(zapis.adres_json).phone).toBe('+48501234567');
 });

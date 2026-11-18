@@ -9,8 +9,13 @@ import { podzielDoStatusu, podzielDoNadania, wybraneZListy } from '../../src/dom
 // ekran podglądu pokazywał DOKŁADNIE to, co potem wykona trasa.
 
 const zam = (nad = {}) => ({
-  id: 1, numer: '1281', metoda_wysylki: 'dpd', anulowane: 0, oplacone_at: '2026-07-30T10:00:00',
-  przesylki: [], ...nad,
+  id: 1,
+  numer: '1281',
+  metoda_wysylki: 'dpd',
+  anulowane: 0,
+  oplacone_at: '2026-07-30T10:00:00',
+  przesylki: [],
+  ...nad,
 });
 
 describe('wybraneZListy', () => {
@@ -148,9 +153,7 @@ describe('podzielDoNadania', () => {
   // Paczkomat idzie hurtem, więc pomijany jest już tylko paczkomat BEZ
   // KODU — z tym samym zdaniem, co na karcie, a nie z „ustaw metodę na karcie zamówienia".
   it('pomija paczkomat bez kodu z WŁASNYM powodem, nie z „nieznana metoda"', () => {
-    const { doNadania, pominiete } = podzielDoNadania([
-      zam({ numer: 'P', metoda_wysylki: 'inpost_paczkomat' }),
-    ]);
+    const { doNadania, pominiete } = podzielDoNadania([zam({ numer: 'P', metoda_wysylki: 'inpost_paczkomat' })]);
     expect(doNadania).toEqual([]);
     expect(pominiete[0].powod).toMatch(/nie ma kodu paczkomatu/);
     // Właściwość, która się dziś psuje: paczkomat NIE MA prawa dostać powodu, który mówi
@@ -170,12 +173,14 @@ describe('podzielDoNadania', () => {
   // Te zamowienia NIE sa z kanalu Allegro (fixture bez `sklep`) — metoda allegrowa przy
   // zamowieniu sklepowym to reczna korekta, ktorej adapter WzA i tak by nie nadal.
   it('metoda allegrowa przy zamówieniu spoza Allegro — KAŻDA, także ta, której słownik nie zna', () => {
-    const lista = ['allegro_dpd', 'allegro_paczkomat', 'allegro_punkt', 'allegro_kurier', 'allegro_inne']
-      .map((m, i) => zam({ id: i + 1, numer: m, metoda_wysylki: m }));
+    const lista = ['allegro_dpd', 'allegro_paczkomat', 'allegro_punkt', 'allegro_kurier', 'allegro_inne'].map((m, i) =>
+      zam({ id: i + 1, numer: m, metoda_wysylki: m }),
+    );
     const { doNadania, pominiete } = podzielDoNadania(lista);
     expect(doNadania).toEqual([]);
     expect(pominiete).toHaveLength(5);
-    for (const p of pominiete) expect(p.powod).toBe('metoda allegrowa przy zamówieniu spoza Allegro — popraw metodę na karcie zamówienia');
+    for (const p of pominiete)
+      expect(p.powod).toBe('metoda allegrowa przy zamówieniu spoza Allegro — popraw metodę na karcie zamówienia');
   });
 
   // ⚠️ KOLEJNOSC WARUNKOW = KOLEJNOSC WAZNOSCI, a te trzy testy sa jedynym, co jej pilnuje.
@@ -187,7 +192,9 @@ describe('podzielDoNadania', () => {
     const { pominiete } = podzielDoNadania([
       zam({ metoda_wysylki: 'allegro_dpd', pobranie: 1, kwota_pobrania: '99.00' }),
     ]);
-    expect(pominiete[0].powod).toBe('metoda allegrowa przy zamówieniu spoza Allegro — popraw metodę na karcie zamówienia');
+    expect(pominiete[0].powod).toBe(
+      'metoda allegrowa przy zamówieniu spoza Allegro — popraw metodę na karcie zamówienia',
+    );
     expect(pominiete[0].powod).not.toMatch(/potwierdź na karcie/);
   });
 
@@ -195,7 +202,9 @@ describe('podzielDoNadania', () => {
     const { pominiete } = podzielDoNadania([
       zam({ metoda_wysylki: 'allegro_paczkomat', przesylki: [{ status: 'nadana', numer_listu: 'AD123' }] }),
     ]);
-    expect(pominiete[0].powod).toBe('metoda allegrowa przy zamówieniu spoza Allegro — popraw metodę na karcie zamówienia');
+    expect(pominiete[0].powod).toBe(
+      'metoda allegrowa przy zamówieniu spoza Allegro — popraw metodę na karcie zamówienia',
+    );
   });
 
   it('anulowanie dalej wyprzedza Allegro — to jedyny stan, w którym paczka nie ma wyjechać W OGÓLE', () => {
@@ -243,7 +252,9 @@ describe('podzielDoNadania', () => {
     ]);
     expect(doNadania).toEqual([]);
     expect(pominiete).toHaveLength(1);
-    expect(pominiete[0].powod).toBe('zamówienie z Allegro ma ręcznie ustawioną metodę sklepową — nadaj je z karty zamówienia');
+    expect(pominiete[0].powod).toBe(
+      'zamówienie z Allegro ma ręcznie ustawioną metodę sklepową — nadaj je z karty zamówienia',
+    );
   });
 
   // Kazda metoda, ktora panel UMIE nadac (dzis dpd hurtem, paczkomat pojedynczo) i kazda,
@@ -253,11 +264,11 @@ describe('podzielDoNadania', () => {
   it.each(['dpd', 'inpost_paczkomat', 'odbior_osobisty'])(
     'kanał Allegro bije metodę „%s” wpisaną ręcznie — powód zawsze ten sam',
     (metoda) => {
-      const { doNadania, pominiete } = podzielDoNadania([
-        zam({ sklep: 'allegro_polcien2', metoda_wysylki: metoda }),
-      ]);
+      const { doNadania, pominiete } = podzielDoNadania([zam({ sklep: 'allegro_polcien2', metoda_wysylki: metoda })]);
       expect(doNadania).toEqual([]);
-      expect(pominiete[0].powod).toBe('zamówienie z Allegro ma ręcznie ustawioną metodę sklepową — nadaj je z karty zamówienia');
+      expect(pominiete[0].powod).toBe(
+        'zamówienie z Allegro ma ręcznie ustawioną metodę sklepową — nadaj je z karty zamówienia',
+      );
     },
   );
 

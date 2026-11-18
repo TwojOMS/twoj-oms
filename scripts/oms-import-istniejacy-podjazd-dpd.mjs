@@ -4,15 +4,26 @@
 import { openOmsDb } from '../src/oms/db/db.ts';
 import { importujPotwierdzonyPodjazd } from '../src/moduly/wysylka/db/podjazdy.js';
 
-const [idTekst, kanal, shipmentId, numerListu, commandId, pickupId,
-  carrierPickupId, date, minTime, maxTime] = process.argv.slice(2);
+const [idTekst, kanal, shipmentId, numerListu, commandId, pickupId, carrierPickupId, date, minTime, maxTime] =
+  process.argv.slice(2);
 const przesylkaId = Number(idTekst);
-if (!Number.isSafeInteger(przesylkaId) || przesylkaId <= 0 || !kanal?.startsWith('allegro_')
-  || !shipmentId || !numerListu || !commandId || !pickupId || !carrierPickupId
-  || !/^\d{4}-\d{2}-\d{2}$/.test(date ?? '')
-  || !/^\d{2}:\d{2}$/.test(minTime ?? '') || !/^\d{2}:\d{2}$/.test(maxTime ?? '')
-  || !process.env.OMS_DB_PATH) {
-  throw new Error('Wymagane: ID, kanał, shipmentId, numer listu, commandId, pickupId, carrierPickupId, data, minTime, maxTime i OMS_DB_PATH.');
+if (
+  !Number.isSafeInteger(przesylkaId) ||
+  przesylkaId <= 0 ||
+  !kanal?.startsWith('allegro_') ||
+  !shipmentId ||
+  !numerListu ||
+  !commandId ||
+  !pickupId ||
+  !carrierPickupId ||
+  !/^\d{4}-\d{2}-\d{2}$/.test(date ?? '') ||
+  !/^\d{2}:\d{2}$/.test(minTime ?? '') ||
+  !/^\d{2}:\d{2}$/.test(maxTime ?? '') ||
+  !process.env.OMS_DB_PATH
+) {
+  throw new Error(
+    'Wymagane: ID, kanał, shipmentId, numer listu, commandId, pickupId, carrierPickupId, data, minTime, maxTime i OMS_DB_PATH.',
+  );
 }
 
 const adres = {
@@ -28,18 +39,33 @@ if (Object.values(adres).some((v) => !v)) throw new Error('Brak pełnego adresu 
 
 const db = openOmsDb(process.env.OMS_DB_PATH);
 try {
-  const zamowienie = db.prepare(`SELECT z.metoda_wysylki FROM przesylki p
-    JOIN zamowienia z ON z.id=p.zamowienie_id WHERE p.id=?`).get(przesylkaId);
+  const zamowienie = db
+    .prepare(
+      `SELECT z.metoda_wysylki FROM przesylki p
+    JOIN zamowienia z ON z.id=p.zamowienie_id WHERE p.id=?`,
+    )
+    .get(przesylkaId);
   if (zamowienie?.metoda_wysylki !== 'allegro_dpd') {
     throw new Error('Lokalna metoda wysyłki nie jest Allegro Kurier DPD.');
   }
   const wynik = importujPotwierdzonyPodjazd(db, {
-    przesylkaId, kanal, shipmentId, numerListu, commandId, pickupId, carrierPickupId,
-    pickupCarrier: 'DPD', metoda: '03f26351-f683-4db2-8895-f2c599280e3c',
-    termin: { date, minTime, maxTime }, adres, kto: 'potwierdzony podjazd Allegro poza OMS',
+    przesylkaId,
+    kanal,
+    shipmentId,
+    numerListu,
+    commandId,
+    pickupId,
+    carrierPickupId,
+    pickupCarrier: 'DPD',
+    metoda: '03f26351-f683-4db2-8895-f2c599280e3c',
+    termin: { date, minTime, maxTime },
+    adres,
+    kto: 'potwierdzony podjazd Allegro poza OMS',
   });
-  process.stdout.write(JSON.stringify({ id: wynik.id, stan: wynik.stan,
-    pickupId: wynik.pickup_id, pickupCarrier: wynik.pickup_carrier }) + '\n');
+  process.stdout.write(
+    JSON.stringify({ id: wynik.id, stan: wynik.stan, pickupId: wynik.pickup_id, pickupCarrier: wynik.pickup_carrier }) +
+      '\n',
+  );
 } finally {
   db.close();
 }

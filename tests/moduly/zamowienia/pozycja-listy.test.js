@@ -71,9 +71,15 @@ describe('pozycja listy w jednej karcie przeglądarki', () => {
 
   it('odmowa dostępu do sessionStorage nie wywala strony', async () => {
     const storage = {
-      getItem: () => { throw new Error('SecurityError'); },
-      setItem: () => { throw new Error('SecurityError'); },
-      removeItem: () => { throw new Error('SecurityError'); },
+      getItem: () => {
+        throw new Error('SecurityError');
+      },
+      setItem: () => {
+        throw new Error('SecurityError');
+      },
+      removeItem: () => {
+        throw new Error('SecurityError');
+      },
     };
     expect(await zapiszPozycje({ storage, klucz: KLUCZ_A, y: 10 })).toBe(false);
     expect(await odczytajPozycje({ storage, klucz: KLUCZ_A })).toBeNull();
@@ -81,8 +87,12 @@ describe('pozycja listy w jednej karcie przeglądarki', () => {
 
   it('bootstrap używa wyłącznie sessionStorage i milczy, gdy przeglądarka go blokuje', async () => {
     const okno = {
-      get sessionStorage() { throw new Error('SecurityError'); },
-      get localStorage() { throw new Error('localStorage nie może być czytany'); },
+      get sessionStorage() {
+        throw new Error('SecurityError');
+      },
+      get localStorage() {
+        throw new Error('localStorage nie może być czytany');
+      },
     };
     const dokument = {
       querySelector: () => ({ dataset: { kluczListy: KLUCZ_A } }),
@@ -95,7 +105,9 @@ describe('pozycja listy w jednej karcie przeglądarki', () => {
     const zdarzenia = new Map();
     const okno = {
       sessionStorage: storage,
-      get crypto() { throw new Error('HTTP LAN nie udostępnia crypto.subtle'); },
+      get crypto() {
+        throw new Error('HTTP LAN nie udostępnia crypto.subtle');
+      },
       scrollY: 913,
       location: { hash: '#zamowienie-123' },
       addEventListener: (nazwa, fn) => zdarzenia.set(nazwa, fn),

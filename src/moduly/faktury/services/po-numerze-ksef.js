@@ -47,15 +47,17 @@ export function createPoNumerzeKsef({ db, fakturaAllegro = null }) {
       if (e?.czekaNaKsef) {
         dopiszLog(db, zamowienieId, {
           akcja: 'faktura-allegro',
-          wynik: `AUTOMAT: faktura czeka na numer KSeF — PDF dla kupującego jeszcze niegotowy. ${e.message} `
-            + 'Gdy KSeF przyjmie fakturę, wyślij ją przyciskiem na karcie.',
+          wynik:
+            `AUTOMAT: faktura czeka na numer KSeF — PDF dla kupującego jeszcze niegotowy. ${e.message} ` +
+            'Gdy KSeF przyjmie fakturę, wyślij ją przyciskiem na karcie.',
         });
         return;
       }
       dopiszLog(db, zamowienieId, {
         akcja: 'faktura-allegro',
-        wynik: `AUTOMAT: nie udało się wysłać faktury do Allegro — ${e.message} `
-          + 'Numer KSeF jest zapisany; dokument możesz wysłać przyciskiem na karcie.',
+        wynik:
+          `AUTOMAT: nie udało się wysłać faktury do Allegro — ${e.message} ` +
+          'Numer KSeF jest zapisany; dokument możesz wysłać przyciskiem na karcie.',
       });
     }
   }

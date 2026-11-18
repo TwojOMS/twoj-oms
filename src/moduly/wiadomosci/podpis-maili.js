@@ -30,7 +30,8 @@ export function podpisZPliku(oprawaPoczty) {
 
 /** Zapis z panelu: `{ marka, stopka, zmienioneAt }`; brak wiersza = `null`. */
 export function wczytajPodpisMaili(db) {
-  const wiersze = db.prepare('SELECT klucz, wartosc, zmienione_at FROM ustawienia WHERE klucz IN (?, ?)')
+  const wiersze = db
+    .prepare('SELECT klucz, wartosc, zmienione_at FROM ustawienia WHERE klucz IN (?, ?)')
     .all(KLUCZE_PODPISU.marka, KLUCZE_PODPISU.stopka);
   const w = Object.fromEntries(wiersze.map((r) => [r.klucz, r]));
   const daty = wiersze.map((r) => r.zmienione_at).sort();
@@ -76,16 +77,24 @@ export function sprawdzPolePodpisu(pole, surowa) {
   const tekst = String(surowa ?? '').replace(/\r\n?/gu, '\n');
   if (pole === 'marka') {
     const wartosc = tekst.trim();
-    if (ZAKAZANE.test(wartosc)) return { wartosc, blad: 'Marka to jedna linia tekstu — bez nowych linii, tabulatorów i znaków sterujących.' };
-    if (wartosc.length > MAKS_PODPISU.marka) return { wartosc, blad: `Marka może mieć najwyżej ${MAKS_PODPISU.marka} znaków (wpisano ${wartosc.length}).` };
+    if (ZAKAZANE.test(wartosc))
+      return { wartosc, blad: 'Marka to jedna linia tekstu — bez nowych linii, tabulatorów i znaków sterujących.' };
+    if (wartosc.length > MAKS_PODPISU.marka)
+      return { wartosc, blad: `Marka może mieć najwyżej ${MAKS_PODPISU.marka} znaków (wpisano ${wartosc.length}).` };
     return { wartosc, blad: null };
   }
   if (pole === 'stopka') {
     const linie = tekst.split('\n');
-    if (linie.some((l) => ZAKAZANE.test(l))) return { wartosc: tekst, blad: 'Stopka może mieć nowe linie, ale bez tabulatorów i innych znaków sterujących.' };
-    const wartosc = linie.map((l) => l.trim()).filter(Boolean).join('\n');
-    if (wartosc.length > MAKS_PODPISU.stopka) return { wartosc, blad: `Stopka może mieć najwyżej ${MAKS_PODPISU.stopka} znaków (wpisano ${wartosc.length}).` };
-    if (wartosc && wartosc.split('\n').length > MAKS_PODPISU.linieStopki) return { wartosc, blad: `Stopka może mieć najwyżej ${MAKS_PODPISU.linieStopki} linii.` };
+    if (linie.some((l) => ZAKAZANE.test(l)))
+      return { wartosc: tekst, blad: 'Stopka może mieć nowe linie, ale bez tabulatorów i innych znaków sterujących.' };
+    const wartosc = linie
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .join('\n');
+    if (wartosc.length > MAKS_PODPISU.stopka)
+      return { wartosc, blad: `Stopka może mieć najwyżej ${MAKS_PODPISU.stopka} znaków (wpisano ${wartosc.length}).` };
+    if (wartosc && wartosc.split('\n').length > MAKS_PODPISU.linieStopki)
+      return { wartosc, blad: `Stopka może mieć najwyżej ${MAKS_PODPISU.linieStopki} linii.` };
     return { wartosc, blad: null };
   }
   return { wartosc: '', blad: 'Nieznane pole podpisu.' };
@@ -99,13 +108,22 @@ export function zapiszPolePodpisu(db, pole, wartosc, teraz = new Date().toISOStr
     db.prepare('DELETE FROM ustawienia WHERE klucz = ?').run(klucz);
     return;
   }
-  db.prepare(`INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
-    ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc, zmienione_at = excluded.zmienione_at`).run(klucz, wartosc, teraz);
+  db.prepare(
+    `INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
+    ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc, zmienione_at = excluded.zmienione_at`,
+  ).run(klucz, wartosc, teraz);
 }
 
 // Akapit tuż nad {podpis} dostaje w mailu styl zdania zamykającego — jak w prawdziwych wiadomościach.
-const PRZYKLAD = ['Dzień dobry,', '', 'tu stoi treść wiadomości — zależy od szablonu (Ustawienia → Komunikacja → Szablony wiadomości).', '',
-  'W razie pytań wystarczy odpowiedzieć na tę wiadomość.', '', '{podpis}'].join('\n');
+const PRZYKLAD = [
+  'Dzień dobry,',
+  '',
+  'tu stoi treść wiadomości — zależy od szablonu (Ustawienia → Komunikacja → Szablony wiadomości).',
+  '',
+  'W razie pytań wystarczy odpowiedzieć na tę wiadomość.',
+  '',
+  '{podpis}',
+].join('\n');
 
 /**
  * Podgląd na ekranie Poczty: ten sam renderer co mail ze szablonu (renderSzablonHtml → kopertaMaila), więc marka
@@ -114,7 +132,10 @@ const PRZYKLAD = ['Dzień dobry,', '', 'tu stoi treść wiadomości — zależy 
 // `zdania` — „Pozdrawiamy," z Ustawień → Szablony wiadomości (zdaniaPlatnosciTeraz), jak w prawdziwym mailu.
 export function podgladPodpisu(oprawa, { zdania = null } = {}) {
   const { pozdrowienie } = zdaniaDoMaila(zdania ?? {});
-  const { czesci, tekst } = zlozTresc(PRZYKLAD, { pola: {}, bloki: { podpis: liniePodpisu(oprawa.podpis, pozdrowienie) } });
+  const { czesci, tekst } = zlozTresc(PRZYKLAD, {
+    pola: {},
+    bloki: { podpis: liniePodpisu(oprawa.podpis, pozdrowienie) },
+  });
   return {
     html: renderSzablonHtml(czesci, { podpis: podpisHtml(oprawa.podpis, pozdrowienie) }, oprawa),
     tekst: tekstZeStopka(tekst, oprawa.footer),
@@ -131,7 +152,8 @@ export function utworzPodpisMaili({ db, oprawaPoczty, teraz = () => new Date() }
   /** Oprawa maila: bieżąca albo — przy podglądzie niezapisanych pól — z wpisanymi wartościami tam, gdzie plik nie blokuje. */
   const oprawa = (wpisane = null) => {
     const nadpisanie = { ...podpisZPanelu(db, zPliku) };
-    for (const p of ['marka', 'stopka']) if (wpisane && !zPliku[p] && Object.hasOwn(wpisane, p)) nadpisanie[p] = wpisane[p];
+    for (const p of ['marka', 'stopka'])
+      if (wpisane && !zPliku[p] && Object.hasOwn(wpisane, p)) nadpisanie[p] = wpisane[p];
     // Puste pole w podglądzie = oprawa z pliku dla tego pola (domyślny podpis albo brak stopki), jak po zapisie pustego.
     return oprawaMaila(nalozPodpis(oprawaPoczty, nadpisanie));
   };
@@ -149,7 +171,8 @@ export function utworzPodpisMaili({ db, oprawaPoczty, teraz = () => new Date() }
     podglad: (wpisane = null) => podgladPodpisu(oprawa(wpisane), { zdania: zdaniaPlatnosciTeraz(db) }),
     /** Walidacja wpisanych pól do podglądu — te same reguły co zapis; pola z pliku pomijane. */
     sprawdz(pola) {
-      const wartosci = {}; const bledy = [];
+      const wartosci = {};
+      const bledy = [];
       for (const p of ['marka', 'stopka']) {
         if (zPliku[p] || !Object.hasOwn(pola ?? {}, p)) continue;
         const w = sprawdzPolePodpisu(p, pola[p]);
@@ -171,7 +194,10 @@ export function utworzPodpisMaili({ db, oprawaPoczty, teraz = () => new Date() }
       try {
         for (const s of sprawdzone) zapiszPolePodpisu(db, s.pole, s.wartosc, kiedy);
         db.exec('COMMIT');
-      } catch (e) { db.exec('ROLLBACK'); throw e; }
+      } catch (e) {
+        db.exec('ROLLBACK');
+        throw e;
+      }
       return { kod: 303 };
     },
   };

@@ -33,8 +33,9 @@ export function wolnoOdpiac({ okres, teraz = Date.now() } = {}) {
   if (faktura !== 'brak') {
     return {
       wolno: false,
-      powod: 'Za ten okres jest już faktura — dokument opiewa na tę listę zamówień, '
-        + 'więc odpięcie zmieniłoby jego podstawę. To sprawa dla korekty w inFakcie, nie dla panelu.',
+      powod:
+        'Za ten okres jest już faktura — dokument opiewa na tę listę zamówień, ' +
+        'więc odpięcie zmieniłoby jego podstawę. To sprawa dla korekty w inFakcie, nie dla panelu.',
     };
   }
   return { wolno: true, powod: null };
@@ -58,8 +59,9 @@ export function wolnoPrzypisac({ zamowienie, faktura, klient } = {}) {
   if (faktura) {
     return {
       wolno: false,
-      powod: `To zamówienie ma już fakturę ${faktura.numer ?? ''}`.trim()
-        + '. Dopisanie go do miesiąca oznaczałoby drugi dokument za tę samą sprzedaż.',
+      powod:
+        `To zamówienie ma już fakturę ${faktura.numer ?? ''}`.trim() +
+        '. Dopisanie go do miesiąca oznaczałoby drugi dokument za tę samą sprzedaż.',
     };
   }
   // ⚠️ ZAMÓWIENIE SCALONE NIE WCHODZI DO OKRESU. Faktura okresu czyta
@@ -70,15 +72,17 @@ export function wolnoPrzypisac({ zamowienie, faktura, klient } = {}) {
   if (zamowienie.scalone_do) {
     return {
       wolno: false,
-      powod: `To zamówienie jest scalone z zamówieniem ${zamowienie.scalone_do_numer ?? `#${zamowienie.scalone_do}`} — `
-        + 'okres rozliczeniowy nie obejmie go osobno. Najpierw rozdziel zamówienia (karta głównego → „Rozdziel”).',
+      powod:
+        `To zamówienie jest scalone z zamówieniem ${zamowienie.scalone_do_numer ?? `#${zamowienie.scalone_do}`} — ` +
+        'okres rozliczeniowy nie obejmie go osobno. Najpierw rozdziel zamówienia (karta głównego → „Rozdziel”).',
     };
   }
   if (idsDolaczonych(zamowienie).length) {
     return {
       wolno: false,
-      powod: 'To zamówienie ma dołączone zamówienia — faktura okresu objęłaby tylko jego własne pozycje. '
-        + 'Jeśli ma wejść do okresu, najpierw je rozdziel (karta → „Rozdziel”).',
+      powod:
+        'To zamówienie ma dołączone zamówienia — faktura okresu objęłaby tylko jego własne pozycje. ' +
+        'Jeśli ma wejść do okresu, najpierw je rozdziel (karta → „Rozdziel”).',
     };
   }
   if (zamowienie.okres_rozliczeniowy_id) {
@@ -92,8 +96,9 @@ export function wolnoPrzypisac({ zamowienie, faktura, klient } = {}) {
   if (zamowienie.do_siedziby_klienta) {
     return {
       wolno: false,
-      powod: 'Zamówienie jest oznaczone jako hurt do siedziby klienta — takie rozlicza się '
-        + 'osobno, fakturą z terminem, i nie wchodzi na fakturę zbiorczą.',
+      powod:
+        'Zamówienie jest oznaczone jako hurt do siedziby klienta — takie rozlicza się ' +
+        'osobno, fakturą z terminem, i nie wchodzi na fakturę zbiorczą.',
     };
   }
   // Bez klienta zbiorczego nie ma DOKAD przypisac — panel nie pokazuje przycisku, ktorego

@@ -13,9 +13,14 @@ const zamowienie = (nad = {}) => ({
 
 describe('pozycjeDokumentu — stawka dokumentu z NIP-u nabywcy', () => {
   it('nabywca z UE (WDT): każda pozycja i dostawa z tax_symbol 0', () => {
-    const services = pozycjeDokumentu(zamowienie({
-      nip: 'SK1000000001', kwota_brutto: '139.00', koszt_dostawy_brutto: '16.00',
-    }), { stawkaDomyslna: '23' });
+    const services = pozycjeDokumentu(
+      zamowienie({
+        nip: 'SK1000000001',
+        kwota_brutto: '139.00',
+        koszt_dostawy_brutto: '16.00',
+      }),
+      { stawkaDomyslna: '23' },
+    );
     expect(services).toEqual([
       { name: 'STOP', quantity: 2, gross_price: 12300, tax_symbol: '0' },
       { name: 'Dostawa', quantity: 1, gross_price: 1600, tax_symbol: '0' },
@@ -31,10 +36,13 @@ describe('pozycjeDokumentu — stawka dokumentu z NIP-u nabywcy', () => {
   // ta sama reguła, którą faktura wskazuje nabywcę (daneFaktury). Bez tego karta
   // pokazywałaby nabywcę SK, a stawka szłaby po starym numerze.
   it('nadpisany ręcznie NIP rozstrzyga stawkę', () => {
-    const services = pozycjeDokumentu(zamowienie({
-      nip: '1200001097',
-      klient_reczny_json: JSON.stringify({ nip: 'SK1000000001' }),
-    }), { stawkaDomyslna: '23' });
+    const services = pozycjeDokumentu(
+      zamowienie({
+        nip: '1200001097',
+        klient_reczny_json: JSON.stringify({ nip: 'SK1000000001' }),
+      }),
+      { stawkaDomyslna: '23' },
+    );
     expect(services[0].tax_symbol).toBe('0');
   });
 

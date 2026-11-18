@@ -1,10 +1,21 @@
 import { describe, it, expect } from 'vitest';
 import {
-  adresOdbiorcy, adresZeSklepu, polaReczneAdresu, brakujacePolaAdresu,
+  adresOdbiorcy,
+  adresZeSklepu,
+  polaReczneAdresu,
+  brakujacePolaAdresu,
 } from '../../src/domena/adres-odbiorcy.js';
 
 const zamowienie = (nad = {}) => ({
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', company: '', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
+  dostawa: {
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    company: '',
+    address_1: 'Polna 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
+  },
   klient: { phone: '+48500600700', email: 'j@k.pl' },
   ...nad,
 });

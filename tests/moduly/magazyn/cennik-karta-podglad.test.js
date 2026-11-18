@@ -8,7 +8,13 @@ import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { definicjeKanalowHistoryczne } from '../../pomoc/przykladowe-definicje-kanalow.js';
 import { szyfrTestowy } from '../../pomoc/sejf-testowy.ts';
 import { utworzKarte } from '../../../src/oms/db/magazyn.js';
-import { ofertyKarty, wstawOferte, zmienOferte, zapiszUstawieniaOfertKonta, ustawieniaOfertKonta } from '../../../src/oms/db/oferty-kanalow.ts';
+import {
+  ofertyKarty,
+  wstawOferte,
+  zmienOferte,
+  zapiszUstawieniaOfertKonta,
+  ustawieniaOfertKonta,
+} from '../../../src/oms/db/oferty-kanalow.ts';
 import { wyjatekCennika, zapiszWyjatekCennika, usunWyjatekCennika } from '../../../src/oms/db/cenniki-kart.ts';
 import { migracjaCennikowDostaw } from '../../../src/moduly/magazyn/migracje/0003-cenniki-dostaw.ts';
 import { ofertaAllegroKarty } from '../../../src/moduly/magazyn/services/tresc-oferty-allegro.js';
@@ -24,10 +30,14 @@ const KONTO = 'allegro_polcien';
 const ERLI = 'erli-polcien';
 const T0 = '2026-11-14T08:00:00.000Z';
 const OFERTY = ['allegro:api:sale:offers:write', 'allegro:api:sale:settings:read'];
-const ODMOWA_WYMIAROW = 'Odmowa: Brak wymiarów/wagi — OMS nie wie, czy produkt zmieści się w paczkomacie. '
-  + 'Uzupełnij wymiary albo ustaw cennik na karcie.';
-const jwt = scope => ['e30', Buffer.from(JSON.stringify({ scope })).toString('base64url'), 'podpis'].join('.');
-const auth = { authorization: `Basic ${Buffer.from('operator:atrapa').toString('base64')}`, origin: 'http://localhost' };
+const ODMOWA_WYMIAROW =
+  'Odmowa: Brak wymiarów/wagi — OMS nie wie, czy produkt zmieści się w paczkomacie. ' +
+  'Uzupełnij wymiary albo ustaw cennik na karcie.';
+const jwt = (scope) => ['e30', Buffer.from(JSON.stringify({ scope })).toString('base64url'), 'podpis'].join('.');
+const auth = {
+  authorization: `Basic ${Buffer.from('operator:atrapa').toString('base64')}`,
+  origin: 'http://localhost',
+};
 
 // Reguły rozmiaru: paczkomat A, paczkomat C, dla większych. Allegro: identyfikatory z listy konta; ERLI: nazwy.
 const REGULY_ALLEGRO = [
@@ -56,27 +66,47 @@ let db, app, klienci;
 const post = (url, payload, headers = auth) => app.inject({ method: 'POST', url, payload, headers });
 const get = (url, headers = auth) => app.inject({ method: 'GET', url, headers });
 const podglad = (zaznaczone, konto = KONTO) => post('/magazyn/oferty/podglad', { konto, zaznaczone });
-const zatwierdz = (r, zaznaczone, konto = KONTO) => post('/magazyn/oferty/zatwierdz',
-  { konto, zaznaczone, podglad: /name="podglad" value="([^"]+)"/.exec(r.body)?.[1] });
+const zatwierdz = (r, zaznaczone, konto = KONTO) =>
+  post('/magazyn/oferty/zatwierdz', { konto, zaznaczone, podglad: /name="podglad" value="([^"]+)"/.exec(r.body)?.[1] });
 const zapiszCennik = (id, pola, headers) => post(`/magazyn/${id}/cenniki`, pola, headers);
-const sekcja = body => body.match(/<section[^>]*id="cenniki-karty"[\s\S]*?<\/section>/)?.[0] ?? '';
+const sekcja = (body) => body.match(/<section[^>]*id="cenniki-karty"[\s\S]*?<\/section>/)?.[0] ?? '';
 /** Sekcja podglądu jednej karty (nagłówek z odnośnikiem do karty). */
 const wierszPodgladu = (body, id) => body.match(new RegExp(`<a href="/magazyn/${id}">[\\s\\S]*?</section>`))?.[0] ?? '';
 const atrapa = () => ({
   podgladOplat: vi.fn(async () => structuredClone(slowniki.podgladOplat)),
-  utworzOferte: vi.fn(), zmienOferte: vi.fn(), zmienStatusOferty: vi.fn(), komendaIlosci: vi.fn(), komendaCeny: vi.fn(),
-  pobierzOferte: vi.fn(), wgrajZdjecie: vi.fn(),
+  utworzOferte: vi.fn(),
+  zmienOferte: vi.fn(),
+  zmienStatusOferty: vi.fn(),
+  komendaIlosci: vi.fn(),
+  komendaCeny: vi.fn(),
+  pobierzOferte: vi.fn(),
+  wgrajZdjecie: vi.fn(),
 });
 
 /** Karta gotowa do wystawienia na Allegro i ERLI (kategoria z mapy, marka, GPSR konta, 3 zdjęcia) z podanym rozmiarem. */
 function karta(n, rozmiar) {
-  const id = utworzKarte(db, { nazwa: `Lampa stołowa Gliwka ${n}`, sku: `GLW-${n}`, cena_gr: 5900, stawka_vat: '23',
-    marka: 'Pracownia Półcień', kategoria_glowna: 'Lampy stołowe', ...rozmiar,
-    opis_sekcje_json: JSON.stringify({ sekcje: [{ elementy: [{ typ: 'tekst', html: '<p>Lampa z mlecznym kloszem.</p>' }] }] }) },
-  { at: T0 });
-  db.prepare('UPDATE karty_produktow SET informacja_bezpieczenstwa = ? WHERE id = ?')
-    .run(JSON.stringify({ typ: 'TEXT', tekst: 'Nie zostawiaj włączonej lampy bez nadzoru.' }), id);
-  const zdj = db.prepare(`INSERT INTO zdjecia_kart (karta_id, kolejnosc, zrodlo, adres_zrodlowy, sha256, typ, ai, ai_reczne, utworzono_at)
+  const id = utworzKarte(
+    db,
+    {
+      nazwa: `Lampa stołowa Gliwka ${n}`,
+      sku: `GLW-${n}`,
+      cena_gr: 5900,
+      stawka_vat: '23',
+      marka: 'Pracownia Półcień',
+      kategoria_glowna: 'Lampy stołowe',
+      ...rozmiar,
+      opis_sekcje_json: JSON.stringify({
+        sekcje: [{ elementy: [{ typ: 'tekst', html: '<p>Lampa z mlecznym kloszem.</p>' }] }],
+      }),
+    },
+    { at: T0 },
+  );
+  db.prepare('UPDATE karty_produktow SET informacja_bezpieczenstwa = ? WHERE id = ?').run(
+    JSON.stringify({ typ: 'TEXT', tekst: 'Nie zostawiaj włączonej lampy bez nadzoru.' }),
+    id,
+  );
+  const zdj =
+    db.prepare(`INSERT INTO zdjecia_kart (karta_id, kolejnosc, zrodlo, adres_zrodlowy, sha256, typ, ai, ai_reczne, utworzono_at)
     VALUES (?, ?, 'reczne', ?, NULL, 'image/jpeg', 0, 1, ?)`);
   for (let i = 0; i < 3; i++) zdj.run(id, i, `https://polcien.example.invalid/gliwka-${id}-${i + 1}.jpg`, T0);
   return id;
@@ -85,37 +115,103 @@ function karta(n, rozmiar) {
 beforeEach(async () => {
   db = openOmsDb(':memory:');
   klienci = { [KONTO]: atrapa(), [ERLI]: { utworzProdukt: vi.fn(), zmienProdukt: vi.fn() } };
-  app = buildOmsServer({ db, config: { auth: { user: 'operator', pass: 'atrapa' },
-    definicje: [...definicjeKanalowHistoryczne, { klucz: ERLI, typ: 'erli', prefiks: 'ERLI_POLCIEN', etykieta: 'ERLI Półcień' }] },
+  app = buildOmsServer({
+    db,
+    config: {
+      auth: { user: 'operator', pass: 'atrapa' },
+      definicje: [
+        ...definicjeKanalowHistoryczne,
+        { klucz: ERLI, typ: 'erli', prefiks: 'ERLI_POLCIEN', etykieta: 'ERLI Półcień' },
+      ],
+    },
     magazyn: { stan: () => ({ trwa: false, kanaly: [] }) },
-    nadpisania: { 'kanaly.klienciKanalow': klienci, 'kanaly.repozytoriumKanalow': {
-      listaTypu: typ => (typ === 'allegro' ? [{ klucz: KONTO, nazwa: 'Półcień', autoryzacja: 'polaczone', srodowisko: 'produkcja' }]
-        : typ === 'erli' ? [{ klucz: ERLI, nazwa: 'Półcień' }] : []),
-      zapisyZablokowane: () => false, konfliktKlucza: () => false,
-    } },
+    nadpisania: {
+      'kanaly.klienciKanalow': klienci,
+      'kanaly.repozytoriumKanalow': {
+        listaTypu: (typ) =>
+          typ === 'allegro'
+            ? [{ klucz: KONTO, nazwa: 'Półcień', autoryzacja: 'polaczone', srodowisko: 'produkcja' }]
+            : typ === 'erli'
+              ? [{ klucz: ERLI, nazwa: 'Półcień' }]
+              : [],
+        zapisyZablokowane: () => false,
+        konfliktKlucza: () => false,
+      },
+    },
   });
   await app.ready();
-  db.prepare(`INSERT OR REPLACE INTO tokeny_kanalu (kanal, access_token, refresh_token, wygasa_at, refresh_wygasa_at, zaktualizowane_at)
-    VALUES (?, ?, ?, '2026-11-14T11:00:00Z', '2027-01-01T00:00:00Z', '2026-11-14T10:00:00Z')`)
-    .run(KONTO, szyfrTestowy(db, 'tokeny_kanalu', 'access_token', KONTO, jwt(['allegro:api:orders:read', ...OFERTY])),
-      szyfrTestowy(db, 'tokeny_kanalu', 'refresh_token', KONTO, 'REFRESH-ATRAPA'));
-  db.prepare(`INSERT INTO allegro_mapa_kategorii (kategoria_karty, srodowisko, kategoria_allegro_id) VALUES ('Lampy stołowe', 'produkcja', '257')`).run();
-  const regula = db.prepare(`INSERT INTO allegro_reguly_parametrow (srodowisko, kategoria_allegro_id, parametr_id, rodzaj,
+  db.prepare(
+    `INSERT OR REPLACE INTO tokeny_kanalu (kanal, access_token, refresh_token, wygasa_at, refresh_wygasa_at, zaktualizowane_at)
+    VALUES (?, ?, ?, '2026-11-14T11:00:00Z', '2027-01-01T00:00:00Z', '2026-11-14T10:00:00Z')`,
+  ).run(
+    KONTO,
+    szyfrTestowy(db, 'tokeny_kanalu', 'access_token', KONTO, jwt(['allegro:api:orders:read', ...OFERTY])),
+    szyfrTestowy(db, 'tokeny_kanalu', 'refresh_token', KONTO, 'REFRESH-ATRAPA'),
+  );
+  db.prepare(
+    `INSERT INTO allegro_mapa_kategorii (kategoria_karty, srodowisko, kategoria_allegro_id) VALUES ('Lampy stołowe', 'produkcja', '257')`,
+  ).run();
+  const regula =
+    db.prepare(`INSERT INTO allegro_reguly_parametrow (srodowisko, kategoria_allegro_id, parametr_id, rodzaj,
     wartosc_json, pole, zmieniono_at) VALUES ('produkcja', '257', ?, ?, ?, ?, ?)`);
   regula.run('11323', 'stala', JSON.stringify({ valuesIds: ['11323_1'] }), null, T0);
   regula.run('248811', 'pole', null, 'marka', T0);
-  db.prepare(`INSERT INTO allegro_marki (marka, srodowisko, parametr_id, wartosc_id, kategorie_sprawdzone_json, zmieniono_at)
-    VALUES ('Pracownia Półcień', 'produkcja', '248811', '248811_9001', '["257"]', ?)`).run(T0);
+  db.prepare(
+    `INSERT INTO allegro_marki (marka, srodowisko, parametr_id, wartosc_id, kategorie_sprawdzone_json, zmieniono_at)
+    VALUES ('Pracownia Półcień', 'produkcja', '248811', '248811_9001', '["257"]', ?)`,
+  ).run(T0);
   const opis = opisKategorii(['5', '256', '257'].map(kategoriaAllegroDemo), parametryKategoriiAllegroDemo('257'));
-  db.prepare(`INSERT INTO allegro_marki_gpsr (marka, konto, zrodlo, zmieniono_at) VALUES ('Pracownia Półcień', ?, 'konto', ?)`).run(KONTO, T0);
-  db.prepare(`INSERT INTO kanaly_kategorie (polaczenie, kategoria_id, sciezka_json, parametry_json, pobrano_at) VALUES (?, '257', ?, ?, ?)`)
-    .run(KONTO, JSON.stringify(opis.sciezka), JSON.stringify({ wersja: opis.wersja, lisc: opis.lisc, tworzenieProduktu: opis.tworzenieProduktu, parametry: opis.parametry }), T0);
-  zapiszUstawieniaOfertKonta(db, KONTO, { narzutProcent: 0, stalaIlosc: 5, czasWysylkiDni: 2, cennikDostaw: 'cennik-1',
-    stawkaVat: '23', zwrotyId: 'zwrot-1', reklamacjeId: 'rekl-1', producentId: 'prod-konta',
-    slowniki: { pobranoAt: T0, cenniki: CENNIKI_KONTA, zwroty: [], reklamacje: [], gwarancje: [], producenci: [], osoby: [] } }, { teraz: T0 });
-  zapiszUstawieniaOfertKonta(db, ERLI, { narzutProcent: 0, stalaIlosc: 5, czasWysylkiDni: 2, cennikDostaw: 'Lampy', stawkaVat: '23' }, { teraz: T0 });
+  db.prepare(
+    `INSERT INTO allegro_marki_gpsr (marka, konto, zrodlo, zmieniono_at) VALUES ('Pracownia Półcień', ?, 'konto', ?)`,
+  ).run(KONTO, T0);
+  db.prepare(
+    `INSERT INTO kanaly_kategorie (polaczenie, kategoria_id, sciezka_json, parametry_json, pobrano_at) VALUES (?, '257', ?, ?, ?)`,
+  ).run(
+    KONTO,
+    JSON.stringify(opis.sciezka),
+    JSON.stringify({
+      wersja: opis.wersja,
+      lisc: opis.lisc,
+      tworzenieProduktu: opis.tworzenieProduktu,
+      parametry: opis.parametry,
+    }),
+    T0,
+  );
+  zapiszUstawieniaOfertKonta(
+    db,
+    KONTO,
+    {
+      narzutProcent: 0,
+      stalaIlosc: 5,
+      czasWysylkiDni: 2,
+      cennikDostaw: 'cennik-1',
+      stawkaVat: '23',
+      zwrotyId: 'zwrot-1',
+      reklamacjeId: 'rekl-1',
+      producentId: 'prod-konta',
+      slowniki: {
+        pobranoAt: T0,
+        cenniki: CENNIKI_KONTA,
+        zwroty: [],
+        reklamacje: [],
+        gwarancje: [],
+        producenci: [],
+        osoby: [],
+      },
+    },
+    { teraz: T0 },
+  );
+  zapiszUstawieniaOfertKonta(
+    db,
+    ERLI,
+    { narzutProcent: 0, stalaIlosc: 5, czasWysylkiDni: 2, cennikDostaw: 'Lampy', stawkaVat: '23' },
+    { teraz: T0 },
+  );
 });
-afterEach(async () => { await app.close(); db.close(); });
+afterEach(async () => {
+  await app.close();
+  db.close();
+});
 
 const regulyRozmiaru = () => {
   zapiszUstawieniaOfertKonta(db, KONTO, { cenniki: REGULY_ALLEGRO }, { teraz: T0 });
@@ -128,8 +224,12 @@ describe('podgląd Allegro — cennik i powód', () => {
     const [a, b, c, d] = [karta(1, MALA), karta(2, SREDNIA), karta(3, DUZA), karta(4, BEZ_WAGI)];
     const r = await podglad([a, b, c, d]);
     expect(r.statusCode).toBe(200);
-    expect(wierszPodgladu(r.body, a)).toContain('Cennik: Pracownia Półcień — paczkomat A — reguła 1: do 8×38×64 cm, 25 kg');
-    expect(wierszPodgladu(r.body, b)).toContain('Cennik: Pracownia Półcień — paczkomat C — reguła 2: do 41×38×64 cm, 25 kg');
+    expect(wierszPodgladu(r.body, a)).toContain(
+      'Cennik: Pracownia Półcień — paczkomat A — reguła 1: do 8×38×64 cm, 25 kg',
+    );
+    expect(wierszPodgladu(r.body, b)).toContain(
+      'Cennik: Pracownia Półcień — paczkomat C — reguła 2: do 41×38×64 cm, 25 kg',
+    );
     expect(wierszPodgladu(r.body, c)).toContain('Cennik: Pracownia Półcień — kurier gabaryt — dla większych');
     expect(wierszPodgladu(r.body, d)).toContain(ODMOWA_WYMIAROW);
     expect(wierszPodgladu(r.body, d)).not.toContain('Cennik:');
@@ -200,7 +300,7 @@ describe('decyzja kierownika: wyjątek z karty wystarcza na koncie bez reguł (A
     expect(r.body).toContain('Uzupełnij ustawienia: cennik dostaw');
     zapiszWyjatekCennika(db, { kartaId: a, konto: KONTO, cennik: 'cen-a' }, { teraz: T0 });
     const w = ofertaAllegroKarty(db, a, { klucz: KONTO, srodowisko: 'produkcja' });
-    expect(w.bledy.map(x => x.kod)).not.toContain('ustawienia');
+    expect(w.bledy.map((x) => x.kod)).not.toContain('ustawienia');
     expect(w.zadanie.delivery.shippingRates).toEqual({ id: 'cen-a' });
     r = await podglad([a, b]);
     expect(r.body).not.toContain('Uzupełnij ustawienia: cennik dostaw');
@@ -251,7 +351,10 @@ describe('karta — sekcja „Cennik dostaw” i zapis wyjątku', () => {
 
   it('zapis wyjątku Allegro spoza listy cenników konta → odmowa, nic nie zapisane (także ERLI w tym samym formularzu)', async () => {
     const id = karta(1, MALA);
-    const r = await zapiszCennik(id, { [`cennik:${KONTO}`]: 'cennik-z-innego-konta', [`cennik:${ERLI}`]: 'Paczkomat A' });
+    const r = await zapiszCennik(id, {
+      [`cennik:${KONTO}`]: 'cennik-z-innego-konta',
+      [`cennik:${ERLI}`]: 'Paczkomat A',
+    });
     expect(r.statusCode).toBe(400);
     expect(r.body).toContain('nie jest na liście cenników konta');
     expect(wyjatekCennika(db, { kartaId: id, konto: KONTO })).toBeNull();
@@ -274,7 +377,10 @@ describe('karta — sekcja „Cennik dostaw” i zapis wyjątku', () => {
     zalozKonto(db, { login: 'admin', imie: 'Admin', haslo: 'test', rola: 'admin', admin: true });
     const user = zalozKonto(db, { login: 'czytelnik', imie: 'Czytelnik', haslo: 'test', rola: 'operator' });
     ustawUprawnienia(db, user, ['magazyn']);
-    const headers = { origin: 'http://localhost', cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz('czytelnik', wczytajSekret(db), Date.now(), 0)}` };
+    const headers = {
+      origin: 'http://localhost',
+      cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz('czytelnik', wczytajSekret(db), Date.now(), 0)}`,
+    };
     expect((await zapiszCennik(id, pola, headers)).statusCode).toBe(403);
     expect(wyjatekCennika(db, { kartaId: id, konto: KONTO })).toBeNull();
     const s = sekcja((await get(`/magazyn/${id}`, headers)).body);
@@ -291,13 +397,19 @@ describe('wyjątek cennika z karty — objęcie ERLI, zapis, odmowy i dopisek re
   it('objęcie ERLI bez reguł wymaga wyjątku; po jego zapisaniu przechodzi', async () => {
     zapiszUstawieniaOfertKonta(db, ERLI, { cenniki: [] }, { teraz: T0 });
     const id = karta(1, MALA);
-    const oferta = wstawOferte(db, { kartaId: id, kanal: ERLI, idZewnetrzne: 'reczna-1',
-      tryb: 'obserwowana', pochodzenie: 'przejeta', stan: 'aktywna' });
+    const oferta = wstawOferte(db, {
+      kartaId: id,
+      kanal: ERLI,
+      idZewnetrzne: 'reczna-1',
+      tryb: 'obserwowana',
+      pochodzenie: 'przejeta',
+      stan: 'aktywna',
+    });
     zmienOferte(db, oferta.id, { odczytCenaGr: 5900, odczytIlosc: 5 });
     const url = `/magazyn/${id}/oferty/${oferta.id}/objecie`;
     let r = await post(`${url}/podglad`);
     expect(r.body).toContain('Uzupełnij ustawienia: cennik dostaw');
-    const token = r => /name="podglad" value="([^"]+)"/.exec(r.body)?.[1];
+    const token = (r) => /name="podglad" value="([^"]+)"/.exec(r.body)?.[1];
     expect(token(r)).toBeUndefined();
     // Prawdziwy token: podgląd z wyjątkiem, potem wyjątek znika, zatwierdzenie tym tokenem.
     zapiszWyjatekCennika(db, { kartaId: id, konto: ERLI, cennik: 'Paczkomat A' }, { teraz: T0 });
@@ -332,7 +444,9 @@ describe('wyjątek cennika z karty — objęcie ERLI, zapis, odmowy i dopisek re
     const sekcjaKarty = sekcja((await get(`/magazyn/${id}`)).body);
     expect(sekcjaKarty).toContain('<option value="cen-old" selected>cen-old (spoza listy konta)</option>');
     expect(sekcjaKarty).toContain('Odmowa: Cennik z karty nie istnieje już na koncie Allegro — wybierz inny');
-    expect((await zapiszCennik(id, { [`cennik:${KONTO}`]: 'cen-old', [`cennik:${ERLI}`]: 'Nowy kurier' })).statusCode).toBe(303);
+    expect(
+      (await zapiszCennik(id, { [`cennik:${KONTO}`]: 'cen-old', [`cennik:${ERLI}`]: 'Nowy kurier' })).statusCode,
+    ).toBe(303);
     expect(wyjatekCennika(db, { kartaId: id, konto: KONTO })).toBe('cen-old');
     expect(wyjatekCennika(db, { kartaId: id, konto: ERLI })).toBe('Nowy kurier');
   });
@@ -341,38 +455,67 @@ describe('wyjątek cennika z karty — objęcie ERLI, zapis, odmowy i dopisek re
     const id = karta(1, MALA);
     zapiszWyjatekCennika(db, { kartaId: id, konto: KONTO, cennik: 'cen-old' }, { teraz: T0 });
     const r = await podglad([id]);
-    expect(wierszPodgladu(r.body, id)).toContain('Odmowa: Cennik z karty nie istnieje już na koncie Allegro — wybierz inny');
+    expect(wierszPodgladu(r.body, id)).toContain(
+      'Odmowa: Cennik z karty nie istnieje już na koncie Allegro — wybierz inny',
+    );
     // Odmowa pochodzi z budowniczego, ale tylko przy tworzeniu oferty: pętla
     // (synchronizacja ceny/ilości, wznowienie) woła go bez `tworzenie` i dostaje treść z cennikiem z karty.
     const w = ofertaAllegroKarty(db, id, { klucz: KONTO, srodowisko: 'produkcja' }, { tworzenie: true });
-    expect(w.bledy.map(x => x.kod)).toContain('cennik');
+    expect(w.bledy.map((x) => x.kod)).toContain('cennik');
     expect(w.zadanie).toBeNull();
     const wPetli = ofertaAllegroKarty(db, id, { klucz: KONTO, srodowisko: 'produkcja' });
-    expect(wPetli.bledy.map(x => x.kod)).not.toContain('cennik');
+    expect(wPetli.bledy.map((x) => x.kod)).not.toContain('cennik');
     expect((await zatwierdz(r, [id])).body).toContain('W kolejce: 0. Odmówiono: 1.');
     expect(ofertyKarty(db, id)).toHaveLength(0);
     expect(klienci[KONTO].utworzOferte).not.toHaveBeenCalled();
   });
 
   it.each([
-    [MALA, 'cen-gabaryt', 'Kurier gabaryt', 'Pracownia Półcień — paczkomat A — reguła 1: do 8×38×64 cm, 25 kg', 'Paczkomat A — reguła 1: do 8×38×64 cm, 25 kg'],
-    [DUZA, 'cen-a', 'Paczkomat A', 'Pracownia Półcień — kurier gabaryt — dla większych', 'Kurier gabaryt — dla większych'],
-    [BEZ_WAGI, 'cen-a', 'Paczkomat A', ODMOWA_WYMIAROW.slice('Odmowa: '.length), ODMOWA_WYMIAROW.slice('Odmowa: '.length)],
-  ])('podgląd i karta pokazują inny dobór reguł z nazwą i powodem (%j)', async (rozmiar, allegro, erli, opisAllegro, opisErli) => {
-    regulyRozmiaru();
-    const id = karta(1, rozmiar);
-    for (const [konto, cennik, opis] of [[KONTO, allegro, opisAllegro], [ERLI, erli, opisErli]]) {
-      zapiszWyjatekCennika(db, { kartaId: id, konto, cennik }, { teraz: T0 });
-      const dopisek = `(reguły dałyby: ${opis})`;
-      expect(wierszPodgladu((await podglad([id], konto)).body, id)).toContain(`wyjątek na karcie ${dopisek}`);
-      expect(sekcja((await get(`/magazyn/${id}`)).body)).toContain(`wyjątek na karcie ${dopisek}`);
-    }
-  });
+    [
+      MALA,
+      'cen-gabaryt',
+      'Kurier gabaryt',
+      'Pracownia Półcień — paczkomat A — reguła 1: do 8×38×64 cm, 25 kg',
+      'Paczkomat A — reguła 1: do 8×38×64 cm, 25 kg',
+    ],
+    [
+      DUZA,
+      'cen-a',
+      'Paczkomat A',
+      'Pracownia Półcień — kurier gabaryt — dla większych',
+      'Kurier gabaryt — dla większych',
+    ],
+    [
+      BEZ_WAGI,
+      'cen-a',
+      'Paczkomat A',
+      ODMOWA_WYMIAROW.slice('Odmowa: '.length),
+      ODMOWA_WYMIAROW.slice('Odmowa: '.length),
+    ],
+  ])(
+    'podgląd i karta pokazują inny dobór reguł z nazwą i powodem (%j)',
+    async (rozmiar, allegro, erli, opisAllegro, opisErli) => {
+      regulyRozmiaru();
+      const id = karta(1, rozmiar);
+      for (const [konto, cennik, opis] of [
+        [KONTO, allegro, opisAllegro],
+        [ERLI, erli, opisErli],
+      ]) {
+        zapiszWyjatekCennika(db, { kartaId: id, konto, cennik }, { teraz: T0 });
+        const dopisek = `(reguły dałyby: ${opis})`;
+        expect(wierszPodgladu((await podglad([id], konto)).body, id)).toContain(`wyjątek na karcie ${dopisek}`);
+        expect(sekcja((await get(`/magazyn/${id}`)).body)).toContain(`wyjątek na karcie ${dopisek}`);
+      }
+    },
+  );
 
-  it.each([true, false])('bez dopisku, gdy reguły dają to samo lub ich brak (reguły: %s)', async saReguly => {
+  it.each([true, false])('bez dopisku, gdy reguły dają to samo lub ich brak (reguły: %s)', async (saReguly) => {
     regulyRozmiaru();
     const id = karta(1, MALA);
-    for (const [konto, cennik] of [[KONTO, 'cen-a'], [ERLI, 'Paczkomat A']]) {
+    for (const [konto, cennik] of [
+      [KONTO, 'cen-a'],
+      [ERLI, 'Paczkomat A'],
+    ]) {
       if (!saReguly) zapiszUstawieniaOfertKonta(db, konto, { cenniki: [] }, { teraz: T0 });
       zapiszWyjatekCennika(db, { kartaId: id, konto, cennik }, { teraz: T0 });
       const wiersz = wierszPodgladu((await podglad([id], konto)).body, id);
@@ -394,7 +537,7 @@ describe('migracja magazyn/0003 — warunek pustej wartości (length(trim(...)) 
     wstaw.run('konto_null', null, T0);
     wstaw.run('konto_pelne', ' cennik-7 ', T0);
     migracjaCennikowDostaw.wykonaj(db);
-    const json = k => db.prepare('SELECT cenniki_json j FROM oferty_ustawienia_kont WHERE klucz = ?').get(k).j;
+    const json = (k) => db.prepare('SELECT cenniki_json j FROM oferty_ustawienia_kont WHERE klucz = ?').get(k).j;
     expect(json('konto_spacje')).toBeNull();
     expect(json('konto_puste')).toBeNull();
     expect(json('konto_null')).toBeNull();

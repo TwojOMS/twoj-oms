@@ -17,8 +17,18 @@ const PRZYGOTUJ_PRZED_MS = 5 * 60_000;
 const CZEKAJ_NA_GENERATOR_MS = 3 * 60_000;
 
 export function cyklResetu({
-  env, msDo, uruchom, przygotuj, sprawdzIzolacje, podmien, usunBaze, wyjdz,
-  log = console.log, teraz = () => new Date(), wyprzedzenieMs = PRZYGOTUJ_PRZED_MS, czekajMaxMs = CZEKAJ_NA_GENERATOR_MS,
+  env,
+  msDo,
+  uruchom,
+  przygotuj,
+  sprawdzIzolacje,
+  podmien,
+  usunBaze,
+  wyjdz,
+  log = console.log,
+  teraz = () => new Date(),
+  wyprzedzenieMs = PRZYGOTUJ_PRZED_MS,
+  czekajMaxMs = CZEKAJ_NA_GENERATOR_MS,
 }) {
   let aplikacja = null;
   let termin = null;
@@ -26,14 +36,28 @@ export function cyklResetu({
   let zegary = [];
   let zatrzymany = false;
 
-  const wyczyscZegary = () => { for (const z of zegary) clearTimeout(z); zegary = []; };
-  const zaplanuj = (fn, ms) => { zegary.push(setTimeout(() => { void fn(); }, Math.max(0, ms))); };
+  const wyczyscZegary = () => {
+    for (const z of zegary) clearTimeout(z);
+    zegary = [];
+  };
+  const zaplanuj = (fn, ms) => {
+    zegary.push(
+      setTimeout(
+        () => {
+          void fn();
+        },
+        Math.max(0, ms),
+      ),
+    );
+  };
 
   const przygotujRaz = () => {
-    przygotowanie ??= Promise.resolve().then(() => przygotuj(dzienResetu(termin))).catch((e) => {
-      log(`demo: przygotowanie następnej bazy padło — ${e?.message ?? e}`);
-      return false;
-    });
+    przygotowanie ??= Promise.resolve()
+      .then(() => przygotuj(dzienResetu(termin)))
+      .catch((e) => {
+        log(`demo: przygotowanie następnej bazy padło — ${e?.message ?? e}`);
+        return false;
+      });
     return przygotowanie;
   };
 
@@ -43,7 +67,9 @@ export function cyklResetu({
     przygotowanie = null;
     env.DEMO_RESET_PLANOWY = termin.toISOString();
     aplikacja = await uruchom(env);
-    log(`demo: najbliższy reset ${termin.toISOString()} (za ${Math.round(za / 1000)} s), następna baza ${Math.round(Math.max(0, za - wyprzedzenieMs) / 1000)} s przed nim`);
+    log(
+      `demo: najbliższy reset ${termin.toISOString()} (za ${Math.round(za / 1000)} s), następna baza ${Math.round(Math.max(0, za - wyprzedzenieMs) / 1000)} s przed nim`,
+    );
     zaplanuj(przygotujRaz, za - wyprzedzenieMs);
     zaplanuj(reset, za);
   }
@@ -52,11 +78,15 @@ export function cyklResetu({
     if (zatrzymany) return;
     wyczyscZegary();
     const t0 = Date.now();
-    const limit = new Promise((r) => { zegary.push(setTimeout(() => r('limit'), czekajMaxMs)); });
+    const limit = new Promise((r) => {
+      zegary.push(setTimeout(() => r('limit'), czekajMaxMs));
+    });
     const gotowa = await Promise.race([przygotujRaz(), limit]);
     if (zatrzymany) return;
     if (gotowa !== true) {
-      log(`demo: reset ${new Date().toISOString()} bez następnej bazy (${gotowa === 'limit' ? 'generator nie zdążył' : 'generator padł'}) — kasuję bazę, kontener wstanie od nowa`);
+      log(
+        `demo: reset ${new Date().toISOString()} bez następnej bazy (${gotowa === 'limit' ? 'generator nie zdążył' : 'generator padł'}) — kasuję bazę, kontener wstanie od nowa`,
+      );
       await zamknij();
       usunBaze();
       wyjdz(0);
@@ -83,7 +113,9 @@ export function cyklResetu({
       wyjdz(1);
       return;
     }
-    log(`demo: reset ${new Date().toISOString()} — dane na ${dzis}, panel niedostępny ${Date.now() - tZamkniecia} ms (czekanie na generator ${tZamkniecia - t0} ms)`);
+    log(
+      `demo: reset ${new Date().toISOString()} — dane na ${dzis}, panel niedostępny ${Date.now() - tZamkniecia} ms (czekanie na generator ${tZamkniecia - t0} ms)`,
+    );
   }
 
   async function zamknij() {
@@ -95,7 +127,10 @@ export function cyklResetu({
   return {
     start,
     zamknij,
-    zatrzymaj: () => { zatrzymany = true; wyczyscZegary(); },
+    zatrzymaj: () => {
+      zatrzymany = true;
+      wyczyscZegary();
+    },
     termin: () => termin,
   };
 }

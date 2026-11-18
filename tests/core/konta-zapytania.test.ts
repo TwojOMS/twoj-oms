@@ -7,7 +7,10 @@ import { zgodneHaslo } from '../../src/domena/hasla.js';
 
 // Tu sprawdzamy rzeczywiste zapytania przeszczepu na obecnych migracjach rdzenia.
 let db: DatabaseSync;
-beforeEach(() => { db = otworzBaze(':memory:'); wykonajMigracje(db, [modulRdzen]); });
+beforeEach(() => {
+  db = otworzBaze(':memory:');
+  wykonajMigracje(db, [modulRdzen]);
+});
 afterEach(() => db.close());
 
 describe('zapytania kont na bazie rdzenia', () => {

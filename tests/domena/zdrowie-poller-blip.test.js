@@ -24,12 +24,13 @@ const TERAZ = new Date('2026-09-09T12:00:00.000Z');
 const iso = (sekundTemu) => new Date(TERAZ.getTime() - sekundTemu * 1000).toISOString();
 
 // Komplet zdrowy z JEDNYM zrodlem — nadpisania robia z niego awarie albo czknieccie.
-const zdrowie = (wierszPro) => ocenZdrowie({
-  teraz: TERAZ,
-  startAt: new Date(TERAZ.getTime() - 24 * 3600 * 1000),
-  zrodla: ['pro'],
-  stanyPollera: [wierszPro],
-});
+const zdrowie = (wierszPro) =>
+  ocenZdrowie({
+    teraz: TERAZ,
+    startAt: new Date(TERAZ.getTime() - 24 * 3600 * 1000),
+    zrodla: ['pro'],
+    stanyPollera: [wierszPro],
+  });
 
 const zrodloPro = (w) => w.poller.zrodla.find((z) => z.zrodlo === 'pro');
 

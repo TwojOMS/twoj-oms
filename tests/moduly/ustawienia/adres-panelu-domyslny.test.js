@@ -5,7 +5,10 @@
 // wychodzi. Dane zmyślone.
 import { describe, it, expect, vi } from 'vitest';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
-import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji } from '../../../src/oms/db/konfiguracja-integracji.js';
+import {
+  wczytajKonfiguracjeIntegracji,
+  zapiszKonfiguracjeIntegracji,
+} from '../../../src/oms/db/konfiguracja-integracji.js';
 import { adresLinkow, adresPaneluZZadania } from '../../../src/moduly/ustawienia/adres-panelu.ts';
 import { nowyPanel, jako, get, post } from '../../pomoc/panel-konta-testowe.js';
 
@@ -13,7 +16,13 @@ const BIURO = '192.168.1.20:3001';
 const Z_ZAPISU = 'https://panel.pracownia.example.test';
 const Z_PLIKU = 'https://z-pliku.pracownia.example.test';
 const EKRAN_POCZTY = '/ustawienia/integracje/poczta';
-const NOWA = { imie: 'Nowa Osoba', login: 'nowa', email: 'nowa@pracownia.example.test', rola: 'produkcja', sposob: 'mail' };
+const NOWA = {
+  imie: 'Nowa Osoba',
+  login: 'nowa',
+  email: 'nowa@pracownia.example.test',
+  rola: 'produkcja',
+  sposob: 'mail',
+};
 const UWAGA = 'adres, z którego teraz korzystasz';
 const atrapa = () => ({ sendMail: vi.fn(async () => ({ messageId: 'atrapa' })) });
 
@@ -25,9 +34,13 @@ function panel({ env = {} } = {}) {
 }
 /** Żądanie admina „z biura”: Host i Origin tego samego adresu (CSRF porównuje jedno z drugim). */
 const zBiura = (db, login = 'adam', host = BIURO) => ({ ...jako(db, login), host, origin: `http://${host}` });
-const wyslij = (app, naglowki, url = '/ustawienia/konta/nowe', payload = NOWA) => app.inject({
-  method: 'POST', url, headers: { accept: 'text/html', ...naglowki }, payload,
-});
+const wyslij = (app, naglowki, url = '/ustawienia/konta/nowe', payload = NOWA) =>
+  app.inject({
+    method: 'POST',
+    url,
+    headers: { accept: 'text/html', ...naglowki },
+    payload,
+  });
 const tekstMaila = (mailer) => mailer.sendMail.mock.calls[0][0].text;
 const liczbaLinkow = (db) => db.prepare('SELECT count(*) AS n FROM linki_hasla').get().n;
 
@@ -40,11 +53,20 @@ describe('adres linków — jedna funkcja, kolejność źródeł', () => {
   });
 
   it('adres z żądania: ta sama walidacja co wpis — sam schemat, host i port', () => {
-    expect(adresPaneluZZadania({ protocol: 'https', host: 'panel.example.test:443' })).toBe('https://panel.example.test');
+    expect(adresPaneluZZadania({ protocol: 'https', host: 'panel.example.test:443' })).toBe(
+      'https://panel.example.test',
+    );
     expect(adresPaneluZZadania({ protocol: 'http', host: '[::1]:3001' })).toBe('http://[::1]:3001');
-    for (const [protocol, host] of [['ftp', 'panel.example.test'], ['http', 'ktos@panel.example.test'], ['http', 'panel.example.test/x'],
-      ['http', 'panel.example.test?a=1'], ['http', 'panel.example.test#x'], ['http', ''], ['http', 'panel.example.test:99999'],
-      [undefined, 'panel.example.test']]) {
+    for (const [protocol, host] of [
+      ['ftp', 'panel.example.test'],
+      ['http', 'ktos@panel.example.test'],
+      ['http', 'panel.example.test/x'],
+      ['http', 'panel.example.test?a=1'],
+      ['http', 'panel.example.test#x'],
+      ['http', ''],
+      ['http', 'panel.example.test:99999'],
+      [undefined, 'panel.example.test'],
+    ]) {
       expect(adresPaneluZZadania({ protocol, host }), `${protocol}://${host}`).toBeNull();
     }
   });
@@ -56,7 +78,9 @@ describe('zaproszenie i reset mailem bez wpisanego adresu', () => {
     const r = await wyslij(app, zBiura(db));
     expect(r.statusCode, r.body).toBe(302);
     expect(mailer.sendMail).toHaveBeenCalledTimes(1);
-    expect(tekstMaila(mailer)).toMatch(new RegExp(`http://${BIURO.replace(/\./gu, '\\.')}/haslo/[A-Za-z0-9_-]{43}`, 'u'));
+    expect(tekstMaila(mailer)).toMatch(
+      new RegExp(`http://${BIURO.replace(/\./gu, '\\.')}/haslo/[A-Za-z0-9_-]{43}`, 'u'),
+    );
     expect(mailer.sendMail.mock.calls[0][0].html).toContain(`http://${BIURO}/haslo/`);
     // Reset istniejącego konta tą samą drogą.
     const id = kontoPoLoginie(db, 'nowa').id;
@@ -93,8 +117,10 @@ describe('zaproszenie i reset mailem bez wpisanego adresu', () => {
     expect(r.statusCode, r.body).toBe(302);
     const strona = await get(domyslny.app, r.headers.location, zBiura(domyslny.db));
     expect(strona.statusCode).toBe(200);
-    expect(strona.body).toContain(`Wysłano. Link w mailu prowadzi do http://${BIURO} (adres, z którego teraz korzystasz). `
-      + 'Jeśli pracownik otworzy go spoza tej sieci, wpisz adres w Ustawienia → Integracje → Poczta wychodząca.');
+    expect(strona.body).toContain(
+      `Wysłano. Link w mailu prowadzi do http://${BIURO} (adres, z którego teraz korzystasz). ` +
+        'Jeśli pracownik otworzy go spoza tej sieci, wpisz adres w Ustawienia → Integracje → Poczta wychodząca.',
+    );
 
     const zapisany = panel();
     zapiszKonfiguracjeIntegracji(zapisany.db, 'adres_panelu', { ustawienia: { adres: Z_ZAPISU }, sekrety: {} });
@@ -107,8 +133,11 @@ describe('zaproszenie i reset mailem bez wpisanego adresu', () => {
   it('(e) adres żądania nie przechodzi walidacji → mail odmawia obecnym komunikatem, konto nie powstaje, nic nie wysłane', async () => {
     // Za zaufanym proxy Host i protokół przychodzą z X-Forwarded-*; CSRF porównuje Origin z samym Host, więc przejdzie.
     const { db, app, mailer } = panel({ env: { OMS_TRUST_PROXY: '127.0.0.1' } });
-    for (const [i, zle] of [{ 'x-forwarded-proto': 'ftp' }, { 'x-forwarded-host': 'ktos@zly.example' },
-      { 'x-forwarded-host': 'zly.example/sciezka' }].entries()) {
+    for (const [i, zle] of [
+      { 'x-forwarded-proto': 'ftp' },
+      { 'x-forwarded-host': 'ktos@zly.example' },
+      { 'x-forwarded-host': 'zly.example/sciezka' },
+    ].entries()) {
       const r = await wyslij(app, { ...zBiura(db), ...zle }, '/ustawienia/konta/nowe', { ...NOWA, login: `nowa${i}` });
       expect(r.statusCode, JSON.stringify(zle)).toBe(400);
       expect(r.body).toContain('Wysyłka mailem wymaga adresu panelu');

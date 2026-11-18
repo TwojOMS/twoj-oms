@@ -8,22 +8,56 @@ import { MODULY_KURIEROW } from '../../src/domena/moduly-kurierow.ts';
 
 describe('katalog integracji', () => {
   it('WooCommerce i Allegro biorą adres i napis przycisku z opisu modułu', () => {
-    const woo = KATALOG_INTEGRACJI.find(u => u.id === 'woocommerce');
+    const woo = KATALOG_INTEGRACJI.find((u) => u.id === 'woocommerce');
     expect(woo).toMatchObject({ dostepnosc: 'dostepna', href: '/ustawienia/integracje/woocommerce/nowy' });
-    expect(woo?.konfigurator).toEqual({ dodaj: MODUL_WOO.konfigurator.dodaj, href: `${MODUL_WOO.konfigurator.sciezka}/${MODUL_WOO.konfigurator.nowy}` });
-    const allegro = KATALOG_INTEGRACJI.find(u => u.id === 'allegro');
-    expect(allegro?.konfigurator).toEqual({ dodaj: MODUL_ALLEGRO.konfigurator.dodaj, href: `${MODUL_ALLEGRO.konfigurator.sciezka}/${MODUL_ALLEGRO.konfigurator.nowy}` });
+    expect(woo?.konfigurator).toEqual({
+      dodaj: MODUL_WOO.konfigurator.dodaj,
+      href: `${MODUL_WOO.konfigurator.sciezka}/${MODUL_WOO.konfigurator.nowy}`,
+    });
+    const allegro = KATALOG_INTEGRACJI.find((u) => u.id === 'allegro');
+    expect(allegro?.konfigurator).toEqual({
+      dodaj: MODUL_ALLEGRO.konfigurator.dodaj,
+      href: `${MODUL_ALLEGRO.konfigurator.sciezka}/${MODUL_ALLEGRO.konfigurator.nowy}`,
+    });
     expect(allegro?.href).toBe(allegro?.konfigurator?.href);
   });
   it('dostępne sklepy przed planowanymi — ERLI trzecie', () => {
-    expect(KATALOG_INTEGRACJI.filter(u => u.kategoria === 'sklepy').map(u => u.id)).toEqual(['allegro', 'woocommerce', 'erli', 'shoper', 'empik', 'etsy', 'tiktok-shop']);
+    expect(KATALOG_INTEGRACJI.filter((u) => u.kategoria === 'sklepy').map((u) => u.id)).toEqual([
+      'allegro',
+      'woocommerce',
+      'erli',
+      'shoper',
+      'empik',
+      'etsy',
+      'tiktok-shop',
+    ]);
   });
   it('obejmuje wymagane usługi bez duplikatów i bez TwojeFaktury', () => {
-    expect(KATALOG_INTEGRACJI.map((usluga) => usluga.id).sort()).toEqual([
-      'allegro', 'woocommerce', 'shoper', 'empik', 'erli', 'etsy', 'tiktok-shop',
-      'dpd', 'inpost', 'wza', 'gls', 'dhl', 'apaczka', 'infakt', 'fakturownia',
-      'ksef', 'gus', 'smtp', 'meta', 'ga4', 'google_ads',
-    ].sort());
+    expect(KATALOG_INTEGRACJI.map((usluga) => usluga.id).sort()).toEqual(
+      [
+        'allegro',
+        'woocommerce',
+        'shoper',
+        'empik',
+        'erli',
+        'etsy',
+        'tiktok-shop',
+        'dpd',
+        'inpost',
+        'wza',
+        'gls',
+        'dhl',
+        'apaczka',
+        'infakt',
+        'fakturownia',
+        'ksef',
+        'gus',
+        'smtp',
+        'meta',
+        'ga4',
+        'google_ads',
+      ].sort(),
+    );
   });
 
   it('oznacza siedem zapowiedzi (z TikTok Shop) bez odnośnika do podłączenia', () => {
@@ -47,9 +81,11 @@ describe('katalog integracji', () => {
   });
 
   it('domyślnie zwraca również planowane usługi', () => {
-    expect(filtrujIntegracje().map((usluga) => usluga.id).sort()).toEqual(
-      KATALOG_INTEGRACJI.map((usluga) => usluga.id).sort(),
-    );
+    expect(
+      filtrujIntegracje()
+        .map((usluga) => usluga.id)
+        .sort(),
+    ).toEqual(KATALOG_INTEGRACJI.map((usluga) => usluga.id).sort());
   });
 
   it('wyszukuje niezależnie od wielkości liter i polskich znaków', () => {
@@ -58,21 +94,30 @@ describe('katalog integracji', () => {
 
   it('łączy kategorię i wyszukiwanie z ukryciem planowanych', () => {
     expect(filtrujIntegracje({ kategoria: 'wysylka', szukaj: 'gls', planowane: false })).toEqual([]);
-    expect(filtrujIntegracje({ kategoria: 'wysylka', szukaj: 'gls', planowane: true }).map((usluga) => usluga.id)).toEqual(['gls']);
+    expect(
+      filtrujIntegracje({ kategoria: 'wysylka', szukaj: 'gls', planowane: true }).map((usluga) => usluga.id),
+    ).toEqual(['gls']);
     expect(filtrujIntegracje({ kategoria: 'sklepy', szukaj: 'gls' })).toEqual([]);
   });
 });
 
 describe('katalog integracji — wysyłka z rejestru kurierów', () => {
   it('wpis wysyłki z rejestru: każdy kurier z metodami ma wpis z polami z opisu, w kolejności rejestru', () => {
-    const kurierzy = Object.values(MODULY_KURIEROW).filter((opis) => opis.metody.length > 0 && (opis as { wKatalogu?: false }).wKatalogu !== false);
+    const kurierzy = Object.values(MODULY_KURIEROW).filter(
+      (opis) => opis.metody.length > 0 && (opis as { wKatalogu?: false }).wKatalogu !== false,
+    );
     const dostepne = KATALOG_INTEGRACJI.filter((u) => u.kategoria === 'wysylka' && u.dostepnosc === 'dostepna');
     expect(dostepne.map((u) => u.id)).toEqual(kurierzy.map((opis) => opis.idKatalogu));
     for (const opis of kurierzy) {
       expect(KATALOG_INTEGRACJI.find((u) => u.id === opis.idKatalogu)).toEqual({
-        id: opis.idKatalogu, nazwa: opis.nazwa, kategoria: 'wysylka', opis: opis.opisKatalogu, logo: opis.logo,
+        id: opis.idKatalogu,
+        nazwa: opis.nazwa,
+        kategoria: 'wysylka',
+        opis: opis.opisKatalogu,
+        logo: opis.logo,
         dostepnosc: 'dostepna', // WzA nie ma ekranu — cel to grupa kont Allegro na liście.
-        href: opis.idKatalogu === 'wza' ? '/ustawienia/integracje#grupa-sprzedaz' : opis.konfigurator.sciezka, konfigurator: null,
+        href: opis.idKatalogu === 'wza' ? '/ustawienia/integracje#grupa-sprzedaz' : opis.konfigurator.sciezka,
+        konfigurator: null,
       });
     }
   });
@@ -85,7 +130,13 @@ describe('katalog integracji — wysyłka z rejestru kurierów', () => {
       expect(wpis).toMatchObject({ kategoria: gls?.kategoria, dostepnosc: gls?.dostepnosc, href: gls?.href });
       expect(Object.hasOwn(MODULY_KURIEROW, id)).toBe(false);
     }
-    expect(KATALOG_INTEGRACJI.find((u) => u.id === 'apaczka')?.opis).toBe('Broker — wiele firm kurierskich w jednej umowie.');
-    expect(filtrujIntegracje({ kategoria: 'wysylka', planowane: false }).map((u) => u.id)).toEqual(['dpd', 'inpost', 'wza']);
+    expect(KATALOG_INTEGRACJI.find((u) => u.id === 'apaczka')?.opis).toBe(
+      'Broker — wiele firm kurierskich w jednej umowie.',
+    );
+    expect(filtrujIntegracje({ kategoria: 'wysylka', planowane: false }).map((u) => u.id)).toEqual([
+      'dpd',
+      'inpost',
+      'wza',
+    ]);
   });
 });

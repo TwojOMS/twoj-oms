@@ -8,12 +8,23 @@ import { modulUstawienia } from '../../../src/moduly/ustawienia/modul.ts';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
 import { ekranyRoli } from '../../../src/domena/ekrany.js';
 import {
-  synchronizujRole, rolaPoKluczu, listaRol, kluczeEkranow, dodajRole, przypiszRole, usunRole, odciskMacierzy, BladRoli,
+  synchronizujRole,
+  rolaPoKluczu,
+  listaRol,
+  kluczeEkranow,
+  dodajRole,
+  przypiszRole,
+  usunRole,
+  odciskMacierzy,
+  BladRoli,
 } from '../../../src/moduly/ustawienia/role.js';
 import { nowyPanel, jako, get, post } from '../../pomoc/panel-konta-testowe.js';
 
 const teraz = () => new Date('2026-10-14T02:00:00Z');
-const kluczeTestowe = () => { let n = 0; return () => `r-test${String(++n).padStart(4, '0')}`; };
+const kluczeTestowe = () => {
+  let n = 0;
+  return () => `r-test${String(++n).padStart(4, '0')}`;
+};
 
 function bazaZTabelami() {
   const db = openOmsDb(':memory:');
@@ -23,7 +34,13 @@ function bazaZTabelami() {
 /** Budowa modułu jak przy starcie, z atrapą usług innych modułów i przechwyconym logiem. */
 function zbuduj(db) {
   const log = [];
-  modulUstawienia.zbuduj({ db, teraz, log: (...t) => log.push(t.join(' ')), konfiguracja: { adresPanelu: null }, usluga: () => () => [] });
+  modulUstawienia.zbuduj({
+    db,
+    teraz,
+    log: (...t) => log.push(t.join(' ')),
+    konfiguracja: { adresPanelu: null },
+    usluga: () => () => [],
+  });
   return log;
 }
 function panel() {
@@ -38,7 +55,13 @@ const ekranyPosortowane = (db, klucz) => [...rolaPoKluczu(db, klucz).ekrany].sor
 describe('start modułu — synchronizacja ról i kont', () => {
   it('loguje przejęte konta (login → klucz roli) i poszerzonych administratorów; bez hashy haseł', () => {
     const db = bazaZTabelami();
-    zalozKonto(db, { login: 'ola', imie: 'Ola', haslo: 'tajne', rola: 'sprzedaz', ekrany: [...ekranyRoli('sprzedaz'), 'finanse'] });
+    zalozKonto(db, {
+      login: 'ola',
+      imie: 'Ola',
+      haslo: 'tajne',
+      rola: 'sprzedaz',
+      ekrany: [...ekranyRoli('sprzedaz'), 'finanse'],
+    });
     zalozKonto(db, { login: 'szef', imie: 'Szef', haslo: 'tajne', rola: 'sprzedaz', admin: true });
     const log = zbuduj(db);
     expect(log).toHaveLength(1);
@@ -70,7 +93,12 @@ describe('start modułu — synchronizacja ról i kont', () => {
     synchronizujRole(db, { teraz, losowyKlucz: kluczeTestowe() });
     db.exec("DELETE FROM role_ekrany WHERE rola = 'administrator'; DELETE FROM role WHERE klucz = 'administrator'");
     expect(() => synchronizujRole(db, { teraz, losowyKlucz: kluczeTestowe() })).not.toThrow();
-    expect(rolaPoKluczu(db, 'administrator')).toMatchObject({ admin: true, zablokowana: true, osobista: false, nazwa: 'Administrator' });
+    expect(rolaPoKluczu(db, 'administrator')).toMatchObject({
+      admin: true,
+      zablokowana: true,
+      osobista: false,
+      nazwa: 'Administrator',
+    });
     expect(rolaPoKluczu(db, 'administrator').ekrany).toEqual(new Set(kluczeEkranow()));
     expect(kontoPoLoginie(db, 'adam')).toMatchObject({ rola: 'administrator', admin: true });
     db.exec("DELETE FROM role_ekrany WHERE rola = 'administrator'; DELETE FROM role WHERE klucz = 'administrator'");
@@ -82,7 +110,14 @@ describe('start modułu — synchronizacja ról i kont', () => {
 
   it('konto z kluczem administrator bez flagi admin dostaje rolę osobistą z nazwą mówiącą „bez admina”', () => {
     const db = bazaZTabelami();
-    zalozKonto(db, { login: 'falszywy', imie: 'Fałsz', haslo: 'h', rola: 'administrator', admin: false, ekrany: ['faktury'] });
+    zalozKonto(db, {
+      login: 'falszywy',
+      imie: 'Fałsz',
+      haslo: 'h',
+      rola: 'administrator',
+      admin: false,
+      ekrany: ['faktury'],
+    });
     synchronizujRole(db, { teraz, losowyKlucz: kluczeTestowe() });
     const rola = rolaPoKluczu(db, kontoPoLoginie(db, 'falszywy').rola);
     expect(rola).toMatchObject({ nazwa: 'Własna bez admina — Fałsz', admin: false, osobista: true });
@@ -100,7 +135,11 @@ describe('role osobiste i stara trasa /uprawnienia', () => {
     expect(ekranyPosortowane(db, mag)).toEqual([...ekranyRoli('produkcja')].sort());
     const nowa = kontoPoLoginie(db, 'ewa').rola;
     expect(nowa).not.toBe(mag);
-    expect(rolaPoKluczu(db, nowa)).toMatchObject({ nazwa: 'Magazynier — Barbara', osobista: true, ekrany: new Set(['magazyn']) });
+    expect(rolaPoKluczu(db, nowa)).toMatchObject({
+      nazwa: 'Magazynier — Barbara',
+      osobista: true,
+      ekrany: new Set(['magazyn']),
+    });
     const ile = listaRol(db).length;
     await post(app, `/ustawienia/konta/${idEwa}/uprawnienia`, admin, { ekran: ['magazyn', 'finanse'] });
     expect(kontoPoLoginie(db, 'ewa').rola).toBe(nowa);
@@ -114,7 +153,10 @@ describe('role osobiste i stara trasa /uprawnienia', () => {
     const r = await post(app, `/ustawienia/konta/${idKasia}/uprawnienia`, admin, { ekran: ['faktury'] });
     expect(r.statusCode).toBe(302);
     expect(kontoPoLoginie(db, 'kasia').admin).toBe(false);
-    expect(rolaPoKluczu(db, kontoPoLoginie(db, 'kasia').rola)).toMatchObject({ nazwa: 'Własna bez admina — Kasia', admin: false });
+    expect(rolaPoKluczu(db, kontoPoLoginie(db, 'kasia').rola)).toMatchObject({
+      nazwa: 'Własna bez admina — Kasia',
+      admin: false,
+    });
   });
 });
 
@@ -123,7 +165,12 @@ describe('/ustawienia/konta/nowe w jednej transakcji', () => {
     const { db, app, admin } = panel();
     await app.ready();
     db.exec("CREATE TEMP TRIGGER awaria_roli BEFORE UPDATE OF rola ON konta BEGIN SELECT RAISE(ABORT, 'awaria'); END");
-    const r = await post(app, '/ustawienia/konta/nowe', admin, { login: 'pako', imie: 'Pako', haslo: 'haslo-ok', rola: 'produkcja' });
+    const r = await post(app, '/ustawienia/konta/nowe', admin, {
+      login: 'pako',
+      imie: 'Pako',
+      haslo: 'haslo-ok',
+      rola: 'produkcja',
+    });
     expect(r.statusCode).toBe(500);
     expect(kontoPoLoginie(db, 'pako')).toBeNull();
   });
@@ -132,7 +179,10 @@ describe('/ustawienia/konta/nowe w jednej transakcji', () => {
     const { db, app, admin } = panel();
     const mag = dodajRole(db, { nazwa: 'Magazynier', teraz });
     db.prepare("INSERT INTO role_ekrany (rola, ekran) VALUES (?, 'magazyn')").run(mag);
-    expect((await post(app, '/ustawienia/konta/nowe', admin, { login: 'pako', imie: 'Pako', haslo: 'haslo-ok', rola: mag })).statusCode).toBe(302);
+    expect(
+      (await post(app, '/ustawienia/konta/nowe', admin, { login: 'pako', imie: 'Pako', haslo: 'haslo-ok', rola: mag }))
+        .statusCode,
+    ).toBe(302);
     expect(kontoPoLoginie(db, 'pako')).toMatchObject({ rola: mag, admin: false, uprawnienia: new Set(['magazyn']) });
   });
 });
@@ -148,14 +198,24 @@ describe('zapis macierzy uprawnień (odcisk, transakcja)', () => {
   it('odcisk sprzed zmiany (druga karta) → 409 z komunikatem, bez zapisu', async () => {
     const { db, app, admin } = panel();
     const stary = odciskMacierzy(db);
-    const druga = await post(app, '/ustawienia/role', admin, { odcisk: stary, rola: ['sprzedaz', 'produkcja'], uprawnienie: ['sprzedaz:magazyn', ...ekranyRoli('produkcja').map((e) => `produkcja:${e}`)] });
+    const druga = await post(app, '/ustawienia/role', admin, {
+      odcisk: stary,
+      rola: ['sprzedaz', 'produkcja'],
+      uprawnienie: ['sprzedaz:magazyn', ...ekranyRoli('produkcja').map((e) => `produkcja:${e}`)],
+    });
     expect(druga.statusCode).toBe(302);
     const poDrugiej = { sprzedaz: ekranyPosortowane(db, 'sprzedaz'), produkcja: ekranyPosortowane(db, 'produkcja') };
-    const r = await post(app, '/ustawienia/role', admin, { odcisk: stary, rola: ['sprzedaz', 'produkcja'], uprawnienie: ['produkcja:faktury'] });
+    const r = await post(app, '/ustawienia/role', admin, {
+      odcisk: stary,
+      rola: ['sprzedaz', 'produkcja'],
+      uprawnienie: ['produkcja:faktury'],
+    });
     expect(r.statusCode).toBe(409);
     expect(r.body).toContain('Uprawnienia zmieniły się w międzyczasie — odśwież i zaznacz ponownie');
     expect(r.body).toContain(`name="odcisk" value="${odciskMacierzy(db)}"`);
-    expect({ sprzedaz: ekranyPosortowane(db, 'sprzedaz'), produkcja: ekranyPosortowane(db, 'produkcja') }).toEqual(poDrugiej);
+    expect({ sprzedaz: ekranyPosortowane(db, 'sprzedaz'), produkcja: ekranyPosortowane(db, 'produkcja') }).toEqual(
+      poDrugiej,
+    );
   });
 
   it('brak odcisku → 409 bez zapisu', async () => {
@@ -171,10 +231,18 @@ describe('zapis macierzy uprawnień (odcisk, transakcja)', () => {
     await app.ready();
     const przed = { sprzedaz: ekranyPosortowane(db, 'sprzedaz'), produkcja: ekranyPosortowane(db, 'produkcja') };
     const dostepAgi = kontoPoLoginie(db, 'ewa').uprawnienia;
-    db.exec("CREATE TEMP TRIGGER awaria_macierzy BEFORE INSERT ON role_ekrany WHEN NEW.rola = 'produkcja' BEGIN SELECT RAISE(ABORT, 'awaria'); END");
-    const r = await post(app, '/ustawienia/role', admin, { odcisk: odciskMacierzy(db), rola: ['sprzedaz', 'produkcja'], uprawnienie: ['sprzedaz:magazyn', 'produkcja:faktury'] });
+    db.exec(
+      "CREATE TEMP TRIGGER awaria_macierzy BEFORE INSERT ON role_ekrany WHEN NEW.rola = 'produkcja' BEGIN SELECT RAISE(ABORT, 'awaria'); END",
+    );
+    const r = await post(app, '/ustawienia/role', admin, {
+      odcisk: odciskMacierzy(db),
+      rola: ['sprzedaz', 'produkcja'],
+      uprawnienie: ['sprzedaz:magazyn', 'produkcja:faktury'],
+    });
     expect(r.statusCode).toBe(500);
-    expect({ sprzedaz: ekranyPosortowane(db, 'sprzedaz'), produkcja: ekranyPosortowane(db, 'produkcja') }).toEqual(przed);
+    expect({ sprzedaz: ekranyPosortowane(db, 'sprzedaz'), produkcja: ekranyPosortowane(db, 'produkcja') }).toEqual(
+      przed,
+    );
     expect(kontoPoLoginie(db, 'ewa').uprawnienia).toEqual(dostepAgi);
   });
 });
@@ -194,7 +262,11 @@ describe('rola zablokowana', () => {
     const db = bazaZTabelami();
     synchronizujRole(db, { teraz });
     expect(() => usunRole(db, 'administrator')).toThrow(BladRoli);
-    try { usunRole(db, 'administrator'); } catch (e) { expect(e.kod).toBe('zablokowana'); }
+    try {
+      usunRole(db, 'administrator');
+    } catch (e) {
+      expect(e.kod).toBe('zablokowana');
+    }
     expect(rolaPoKluczu(db, 'administrator')).not.toBeNull();
   });
 });

@@ -14,17 +14,35 @@ const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('bas
 const poller = { stan: () => ({ ostatni_przebieg_at: '2026-10-29T08:00:00', ostatni_blad: null }) };
 
 const zmapowane = (nad = {}) => ({
-  zrodlo_id: 12601, numer: 'PC-12601',
-  klient: { first_name: 'Anna', last_name: 'Półcień', email: 'anna@polcien.invalid', address_1: 'Fikcyjna 1', postcode: '00-001', city: 'Miasto Testowe' }, dostawa: { city: 'Warszawa' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null,
-  kwota_brutto: '129.00', koszt_dostawy_brutto: '0.00',
-  status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-10-28T10:00:00',
+  zrodlo_id: 12601,
+  numer: 'PC-12601',
+  klient: {
+    first_name: 'Anna',
+    last_name: 'Półcień',
+    email: 'anna@polcien.invalid',
+    address_1: 'Fikcyjna 1',
+    postcode: '00-001',
+    city: 'Miasto Testowe',
+  },
+  dostawa: { city: 'Warszawa' },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '129.00',
+  koszt_dostawy_brutto: '0.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-10-28T10:00:00',
   pozycje: [{ nazwa: 'Lampa wisząca Półcień', sku: 'LAMPA-W1', ilosc: 1, cena_brutto: '129.00', vat: null }],
   ...nad,
 });
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 
 async function karta(nad = {}) {
   const infakt = {

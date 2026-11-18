@@ -4,7 +4,10 @@ import { zajmijOznaczenieZaplaty } from '../db/oznaczenia-zaplaty.js';
 import { dopiszLog } from '../../../oms/db/zamowienia.js';
 import { OSTATNIA_ZYWA_PACZKA } from '../db/ostatnia-paczka.js';
 import {
-  idDokumentu, idDokumentuSql, programDokumentuSql, czyDokumentProgramu,
+  idDokumentu,
+  idDokumentuSql,
+  programDokumentuSql,
+  czyDokumentProgramu,
 } from '../../../domena/dokument-programu.js';
 import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
@@ -135,21 +138,37 @@ export const LIMIT_PRZEBIEGU_POBRAN = 20;
 // Dokument i oznaczenie zapłaty daje PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez
 // `zProgramu`); teksty w logu zamówienia jego nazwą (dla inFaktu znak w znak jak przed zmianą).
 export async function oznaczDoreczonePobrania({
-  db, program: programPodany = null, infakt = null, limit = LIMIT_PRZEBIEGU_POBRAN,
+  db,
+  program: programPodany = null,
+  infakt = null,
+  limit = LIMIT_PRZEBIEGU_POBRAN,
 }) {
   const program = zProgramu({ program: programPodany, infakt });
   // Panel bez programu fakturowego (albo program bez zdolności `oznaczZaplacona`) ma po prostu nie mieć tego kroku —
   // to nie jest awaria.
   if (!program?.oznaczZaplacona || !program?.pobierzFakture) {
     return {
-      kandydatow: 0, obsluzone: 0, ponadSufit: 0, zlecone: 0, pominiete: 0, bezDaty: 0, bledy: 0,
+      kandydatow: 0,
+      obsluzone: 0,
+      ponadSufit: 0,
+      zlecone: 0,
+      pominiete: 0,
+      bezDaty: 0,
+      bledy: 0,
     };
   }
 
   const { mianownik, miejscownik } = program.opis.nazwa;
-  const rozliczone = db.prepare(KANDYDACI).all().filter((w) => czyPobranieRozliczone({
-    zamowienie: w, przesylka: w, uuidFaktury: idDokumentu(w),
-  }));
+  const rozliczone = db
+    .prepare(KANDYDACI)
+    .all()
+    .filter((w) =>
+      czyPobranieRozliczone({
+        zamowienie: w,
+        przesylka: w,
+        uuidFaktury: idDokumentu(w),
+      }),
+    );
   // Dokument INNEGO programu (np. inFaktu przy innym module faktur) automat POMIJA — bez odczytu,
   // bez rezerwacji, bez wpisu w logu zamówienia — a przebieg idzie dalej. Odsiew PRZED sufitem: cudze dokumenty nie
   // wracają do nas nigdy, więc stojąc w `doObslugi` zjadałyby miejsca w każdym przebiegu.
@@ -199,22 +218,25 @@ export async function oznaczDoreczonePobrania({
         const jednoznaczna = jednoznacznaOdmowa(e);
         if (jednoznaczna) {
           zajmijOznaczenieZaplaty(db, idDokumentu(w), {
-            powod: 'nieznana_w_infakcie', dataZaplaty: null,
+            powod: 'nieznana_w_infakcie',
+            dataZaplaty: null,
           });
         }
         try {
           dopiszLog(db, w.zamowienie_id, {
             akcja: 'faktura',
             wynik: jednoznaczna
-              ? `UWAGA: paczka za pobraniem została doręczona, ale ${mianownik} NIE ZNA faktury `
-                + `${w.faktura_numer ?? '(bez numeru)'} (odrzucił odczyt) — panel NIE ZLECIŁ `
-                + 'oznaczenia zapłaty i NIE BĘDZIE PONAWIAŁ. Jeśli dokument został skasowany '
-                + `w ${miejscownik}, nie ma tu nic do zrobienia; jeśli nie — sprawdź go ręcznie. `
-                + `Powód: ${e.message}`
-              : `Paczka za pobraniem doręczona, ale ${mianownik} nie oddał dokumentu, więc panel `
-                + `nie zlecił oznaczenia zapłaty. Spróbuje ponownie. Powód: ${e.message}`,
+              ? `UWAGA: paczka za pobraniem została doręczona, ale ${mianownik} NIE ZNA faktury ` +
+                `${w.faktura_numer ?? '(bez numeru)'} (odrzucił odczyt) — panel NIE ZLECIŁ ` +
+                'oznaczenia zapłaty i NIE BĘDZIE PONAWIAŁ. Jeśli dokument został skasowany ' +
+                `w ${miejscownik}, nie ma tu nic do zrobienia; jeśli nie — sprawdź go ręcznie. ` +
+                `Powód: ${e.message}`
+              : `Paczka za pobraniem doręczona, ale ${mianownik} nie oddał dokumentu, więc panel ` +
+                `nie zlecił oznaczenia zapłaty. Spróbuje ponownie. Powód: ${e.message}`,
           });
-        } catch { /* celowo puste */ }
+        } catch {
+          /* celowo puste */
+        }
         continue;
       }
 
@@ -238,13 +260,16 @@ export async function oznaczDoreczonePobrania({
         try {
           dopiszLog(db, w.zamowienie_id, {
             akcja: 'faktura',
-            wynik: `UWAGA: paczka za pobraniem została doręczona, ale ${mianownik} oddał dokument BEZ `
-              + 'STATUSU I BEZ KWOTY DO ZAPŁATY, więc panel nie wie, czy faktura '
-              + `${w.faktura_numer ?? '(bez numeru)'} nie została już opłacona ręcznie — NIE `
-              + `ZLECIŁ oznaczenia zapłaty i w ${miejscownik} zostaje na razie jako NIEOPŁACONA. `
-              + 'Panel spróbuje ponownie przy następnym przebiegu.',
+            wynik:
+              `UWAGA: paczka za pobraniem została doręczona, ale ${mianownik} oddał dokument BEZ ` +
+              'STATUSU I BEZ KWOTY DO ZAPŁATY, więc panel nie wie, czy faktura ' +
+              `${w.faktura_numer ?? '(bez numeru)'} nie została już opłacona ręcznie — NIE ` +
+              `ZLECIŁ oznaczenia zapłaty i w ${miejscownik} zostaje na razie jako NIEOPŁACONA. ` +
+              'Panel spróbuje ponownie przy następnym przebiegu.',
           });
-        } catch { /* celowo puste */ }
+        } catch {
+          /* celowo puste */
+        }
         continue;
       }
 
@@ -274,13 +299,16 @@ export async function oznaczDoreczonePobrania({
         try {
           dopiszLog(db, w.zamowienie_id, {
             akcja: 'faktura',
-            wynik: 'UWAGA: paczka za pobraniem została doręczona, ale panel NIE ZNA daty zapłaty '
-              + `(kurier nie podał czasu doręczenia, a ${mianownik} nie podał daty wystawienia), więc `
-              + `NIE ZLECIŁ oznaczenia faktury ${w.faktura_numer ?? '(bez numeru)'} jako opłaconej `
-              + `— w ${miejscownik} zostanie jako NIEOPŁACONA. Przestaw jej status ręcznie. Panel NIE `
-              + 'ponowi tego sam.',
+            wynik:
+              'UWAGA: paczka za pobraniem została doręczona, ale panel NIE ZNA daty zapłaty ' +
+              `(kurier nie podał czasu doręczenia, a ${mianownik} nie podał daty wystawienia), więc ` +
+              `NIE ZLECIŁ oznaczenia faktury ${w.faktura_numer ?? '(bez numeru)'} jako opłaconej ` +
+              `— w ${miejscownik} zostanie jako NIEOPŁACONA. Przestaw jej status ręcznie. Panel NIE ` +
+              'ponowi tego sam.',
           });
-        } catch { /* celowo puste */ }
+        } catch {
+          /* celowo puste */
+        }
         continue;
       }
 
@@ -289,7 +317,8 @@ export async function oznaczDoreczonePobrania({
       // zostać oznaczony, więc ponowienie byłoby zgadywaniem. Wiersz zostaje, a wyjściem jest
       // człowiek i skrypt sprzątający.
       const { zajete } = zajmijOznaczenieZaplaty(db, idDokumentu(w), {
-        powod: 'pobranie_doreczone', dataZaplaty: paidDate,
+        powod: 'pobranie_doreczone',
+        dataZaplaty: paidDate,
       });
       // Równoległy przebieg zdążył pierwszy — nic się nie stało, po prostu nie nasza kolej.
       if (!zajete) continue;
@@ -300,22 +329,27 @@ export async function oznaczDoreczonePobrania({
         await program.oznaczZaplacona(idDokumentu(w), { paidDate });
         zlecone += 1;
         // ⚠️ „ZLECONO", NIGDY „OZNACZONO" — panel nie sprawdza, czy status się zmienił.
-        wynik = `Paczka za pobraniem doręczona — zlecono w ${miejscownik} oznaczenie faktury `
-          + `${w.faktura_numer ?? '(bez numeru)'} jako opłaconej (data zapłaty ${paidDate}). `
-          + `${mianownik} przetwarza to zadanie w tle.`;
+        wynik =
+          `Paczka za pobraniem doręczona — zlecono w ${miejscownik} oznaczenie faktury ` +
+          `${w.faktura_numer ?? '(bez numeru)'} jako opłaconej (data zapłaty ${paidDate}). ` +
+          `${mianownik} przetwarza to zadanie w tle.`;
       } catch (e) {
         bledy += 1;
         // Status „opłacona” przyjęty, padł sam zapis daty zapłaty — faktura JEST opłacona.
         wynik = e?.zaplataOznaczona
-          ? `UWAGA: paczka za pobraniem została doręczona; faktura ${w.faktura_numer ?? '(bez numeru)'} jest już oznaczona `
-            + `jako opłacona w ${miejscownik} — popraw tylko datę zapłaty (${paidDate}). Powód: ${e.message}`
-          : 'UWAGA: paczka za pobraniem została doręczona, ale nie udało się zlecić '
-          + `oznaczenia faktury ${w.faktura_numer ?? '(bez numeru)'} jako opłaconej — `
-          + `w ${miejscownik} zostanie jako NIEOPŁACONA. Przestaw jej status ręcznie. Panel NIE `
-          + `ponowi tego sam, bo zlecenie mogło dojść mimo błędu. Powód: ${e.message}`;
+          ? `UWAGA: paczka za pobraniem została doręczona; faktura ${w.faktura_numer ?? '(bez numeru)'} jest już oznaczona ` +
+            `jako opłacona w ${miejscownik} — popraw tylko datę zapłaty (${paidDate}). Powód: ${e.message}`
+          : 'UWAGA: paczka za pobraniem została doręczona, ale nie udało się zlecić ' +
+            `oznaczenia faktury ${w.faktura_numer ?? '(bez numeru)'} jako opłaconej — ` +
+            `w ${miejscownik} zostanie jako NIEOPŁACONA. Przestaw jej status ręcznie. Panel NIE ` +
+            `ponowi tego sam, bo zlecenie mogło dojść mimo błędu. Powód: ${e.message}`;
       }
       // Nawet zapis do logu nie ma prawa wywalić przebiegu.
-      try { dopiszLog(db, w.zamowienie_id, { akcja: 'faktura', wynik }); } catch { /* celowo puste */ }
+      try {
+        dopiszLog(db, w.zamowienie_id, { akcja: 'faktura', wynik });
+      } catch {
+        /* celowo puste */
+      }
     } catch (e) {
       // Awaria SPOZA dwóch znanych dróg (odczyt / zlecenie) — nie wiemy, czy rezerwacja
       // powstała, więc niczego tu nie zakładamy i nie sprzątamy. Liczy się jako błąd, żeby
@@ -324,12 +358,15 @@ export async function oznaczDoreczonePobrania({
       try {
         dopiszLog(db, w.zamowienie_id, {
           akcja: 'faktura',
-          wynik: 'UWAGA: paczka za pobraniem została doręczona, ale rozliczenie faktury '
-            + `${w.faktura_numer ?? '(bez numeru)'} przerwała awaria panelu — w ${miejscownik} `
-            + 'zostanie jako NIEOPŁACONA. Sprawdź jej status ręcznie. '
-            + `Powód: ${e?.message ?? e}`,
+          wynik:
+            'UWAGA: paczka za pobraniem została doręczona, ale rozliczenie faktury ' +
+            `${w.faktura_numer ?? '(bez numeru)'} przerwała awaria panelu — w ${miejscownik} ` +
+            'zostanie jako NIEOPŁACONA. Sprawdź jej status ręcznie. ' +
+            `Powód: ${e?.message ?? e}`,
         });
-      } catch { /* celowo puste */ }
+      } catch {
+        /* celowo puste */
+      }
       continue;
     }
   }

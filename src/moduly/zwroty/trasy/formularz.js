@@ -1,11 +1,22 @@
 import { pobierzZamowienie, dopiszLog } from '../../../oms/db/zamowienia.js';
 import {
-  dodajZwrot, usunZwrot, oznaczPieniadzeOddane, zwrot, odblokujKorekte, zapiszRecznyNumerKorekty,
+  dodajZwrot,
+  usunZwrot,
+  oznaczPieniadzeOddane,
+  zwrot,
+  odblokujKorekte,
+  zapiszRecznyNumerKorekty,
 } from '../../../oms/db/zwroty.js';
 import {
-  parsujZwrot, powodOdmowyUsunieciaZwrotu, korektaPrzepadla, powodOdmowyOdblokowaniaKorekty,
-  parsujNumerKorekty, korektaNieSprawdzona, powodOdmowyKorektyDlaFaktury,
-  powodOdmowyRejestracjiZwrotu, wierszeFormularzaZwrotu,
+  parsujZwrot,
+  powodOdmowyUsunieciaZwrotu,
+  korektaPrzepadla,
+  powodOdmowyOdblokowaniaKorekty,
+  parsujNumerKorekty,
+  korektaNieSprawdzona,
+  powodOdmowyKorektyDlaFaktury,
+  powodOdmowyRejestracjiZwrotu,
+  wierszeFormularzaZwrotu,
 } from '../../../domena/zwrot.js';
 import { formularzZwrotu, przygotujKrok2, razemZwrotuZl } from '../../../domena/zwrot-formularz.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
@@ -16,7 +27,12 @@ import { ktoKlikal } from '../../zamowienia/wspolne.js';
 
 import { createWspolne } from './wspolne.js';
 export function registerFormularzRoutes(app, { db, korekta = null, definicje, infakt = null }) {
-  const { powrotKarty, adresKarty, zamowienieAlbo404, slad, decyzja, pokazKrok1 } = createWspolne({ db, korekta, definicje, infakt });
+  const { powrotKarty, adresKarty, zamowienieAlbo404, slad, decyzja, pokazKrok1 } = createWspolne({
+    db,
+    korekta,
+    definicje,
+    infakt,
+  });
   app.get('/zamowienia/:id/zwrot', async (req, reply) => {
     let z = zamowienieAlbo404(req, reply);
     if (!z) return reply;
@@ -117,5 +133,4 @@ export function registerFormularzRoutes(app, { db, korekta = null, definicje, in
     if (!z) return reply;
     return pokazKrok1(req, reply, z, { wpisane: req.body });
   });
-
 }

@@ -31,9 +31,7 @@ const napis = (x) => (typeof x === 'string' ? x.trim() : '');
  */
 export function atrybutyZWariantu(wariant) {
   const surowe = Array.isArray(wariant?.attributes) ? wariant.attributes : [];
-  return surowe
-    .map((a) => ({ nazwa: napis(a?.name), wartosc: napis(a?.option) }))
-    .filter((a) => a.nazwa && a.wartosc);
+  return surowe.map((a) => ({ nazwa: napis(a?.name), wartosc: napis(a?.option) })).filter((a) => a.nazwa && a.wartosc);
 }
 
 /**
@@ -55,9 +53,7 @@ export function atrybutyWariantu(produkt) {
     return null;
   }
   if (!Array.isArray(lista)) return null;
-  return lista
-    .map((a) => ({ nazwa: napis(a?.nazwa), wartosc: napis(a?.wartosc) }))
-    .filter((a) => a.nazwa && a.wartosc);
+  return lista.map((a) => ({ nazwa: napis(a?.nazwa), wartosc: napis(a?.wartosc) })).filter((a) => a.nazwa && a.wartosc);
 }
 
 /**

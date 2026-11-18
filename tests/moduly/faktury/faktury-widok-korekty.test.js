@@ -25,11 +25,25 @@ let licznik = 5100;
 function zamowienie(db) {
   licznik += 1;
   const numer = String(licznik);
-  const id = zapiszZamowienie(db, 'pro', {
-    zrodlo_id: `w-${numer}`, numer, klient: { first_name: 'Ida' }, dostawa: {},
-    metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: NIP,
-    kwota_brutto: '158.99', status_woo: 'processing', oplacone_at: null, anulowane: 0,
-  }, {});
+  const id = zapiszZamowienie(
+    db,
+    'pro',
+    {
+      zrodlo_id: `w-${numer}`,
+      numer,
+      klient: { first_name: 'Ida' },
+      dostawa: {},
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: 1,
+      nip: NIP,
+      kwota_brutto: '158.99',
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane: 0,
+    },
+    {},
+  );
   return { id, numer };
 }
 
@@ -47,13 +61,30 @@ function zwrotZKorekta(db, zamowienieId, korektaUuid) {
 }
 
 const vat = (uuid, number, nadpisz = {}) => ({
-  uuid, number, rodzaj: 'vat', invoice_date: '2026-11-03', sale_date: '2026-11-03', ksef_number: null,
-  client_company_name: 'Pracownia Półcień', client_tax_code: NIP, gross_price: 15899, left_to_pay: 0, ...nadpisz,
+  uuid,
+  number,
+  rodzaj: 'vat',
+  invoice_date: '2026-11-03',
+  sale_date: '2026-11-03',
+  ksef_number: null,
+  client_company_name: 'Pracownia Półcień',
+  client_tax_code: NIP,
+  gross_price: 15899,
+  left_to_pay: 0,
+  ...nadpisz,
 });
 const korekta = (uuid, korygowana, nadpisz = {}) => ({
-  uuid, number: `${uuid}/KOR/11/2026`, rodzaj: 'korekta', invoice_date: '2026-11-03', sale_date: '2026-11-03',
-  corrected_invoice_number: korygowana, client_company_name: 'Pracownia Półcień', client_tax_code: NIP,
-  gross_price: -2700, left_to_pay: 0, ...nadpisz,
+  uuid,
+  number: `${uuid}/KOR/11/2026`,
+  rodzaj: 'korekta',
+  invoice_date: '2026-11-03',
+  sale_date: '2026-11-03',
+  corrected_invoice_number: korygowana,
+  client_company_name: 'Pracownia Półcień',
+  client_tax_code: NIP,
+  gross_price: -2700,
+  left_to_pay: 0,
+  ...nadpisz,
 });
 
 // Surowy klient programu bez opisu (jak inFakt w etapie A) — `zProgramu` traktuje go jako inFakt.
@@ -115,7 +146,10 @@ describe('korekta bez numeru KSeF pierwotnej: panel wylicza `ksef_korygowanej`',
     const db = openOmsDb(':memory:');
     const z = zamowienie(db);
     faktura(db, z.id, {
-      program: 'twojefaktury', dokumentId: 'TF-9', numer: 'FV 9/10/2026', ksefNumer: KSEF_INNEGO_PROGRAMU,
+      program: 'twojefaktury',
+      dokumentId: 'TF-9',
+      numer: 'FV 9/10/2026',
+      ksefNumer: KSEF_INNEGO_PROGRAMU,
     });
     const k = await wiersz(db, [], [korekta('U-KOR-9', 'FV 9/10/2026')], 'U-KOR-9');
     expect(k.ksef_korygowanej).toBeNull();
@@ -160,9 +194,7 @@ describe('korekta bez numeru KSeF pierwotnej: panel wylicza `ksef_korygowanej`',
     const z = zamowienie(db);
     faktura(db, z.id, { dokumentId: 'U-FV-6', numer: 'FV 6/10/2026', ksefNumer: KSEF_ZAMOWIENIA });
     zwrotZKorekta(db, z.id, 'U-KOR-6');
-    const faktury = [
-      vat('U-FV-6', 'FV 6/10/2026', { ksef_number: KSEF_Z_LISTY }),
-    ];
+    const faktury = [vat('U-FV-6', 'FV 6/10/2026', { ksef_number: KSEF_Z_LISTY })];
     // Numer korygowanej = faktura zamówienia zwrotu, więc źródło 1 (ZAMOWIENIA) obowiązuje; 2 mówi PO_NUMERZE,
     // 3 mówi Z_LISTY — wygrywa 1. K7: bez zwrotu — źródło 2 (baza) wygrywa z wierszem listy (3).
     const korekty = [korekta('U-KOR-6', 'FV 6/10/2026'), korekta('U-KOR-7', 'FV 6/10/2026')];
@@ -188,7 +220,12 @@ describe('korekta bez numeru KSeF pierwotnej: panel wylicza `ksef_korygowanej`',
     expect(lista.find((d) => d.uuid === 'U-KOR-8').ksef_korygowanej).toBeNull();
     expect(lista.find((d) => d.uuid === 'U-KOR-81').ksef_korygowanej).toBe(KSEF_INNEGO_PROGRAMU);
     // Faktura VAT nie dostaje pola wcale (kształt wiersza bez zmian).
-    expect(Object.hasOwn(lista.find((d) => d.uuid === 'U-FV-8'), 'ksef_korygowanej')).toBe(false);
+    expect(
+      Object.hasOwn(
+        lista.find((d) => d.uuid === 'U-FV-8'),
+        'ksef_korygowanej',
+      ),
+    ).toBe(false);
     db.close();
   });
 });
@@ -200,7 +237,8 @@ describe('korekta zwrotu powiązana z zamówieniem', () => {
     faktura(db, z.id, { dokumentId: 'U-FV-10', numer: 'FV 10/10/2026', ksefNumer: KSEF_ZAMOWIENIA });
     zwrotZKorekta(db, z.id, 'U-KOR-10');
     const w = createFakturyWidok({
-      db, infakt: programZ([vat('U-FV-10', 'FV 10/10/2026')], [korekta('U-KOR-10', 'FV 10/10/2026')]),
+      db,
+      infakt: programZ([vat('U-FV-10', 'FV 10/10/2026')], [korekta('U-KOR-10', 'FV 10/10/2026')]),
     });
     const lista = await w.dokumenty({ miesiac: '2026-11', pole: 'invoice_date' });
     expect(lista.find((d) => d.uuid === 'U-KOR-10').zamowienie).toEqual({ id: z.id, numer: z.numer });
@@ -222,28 +260,47 @@ describe('korekta zwrotu powiązana z zamówieniem', () => {
   it('wysyłka korekty z panelu → wpis „zlecono wysyłkę do KSeF” w logu zamówienia zwrotu', async () => {
     const db = openOmsDb(':memory:');
     const z = zamowienie(db);
-    faktura(db, z.id, { program: 'wbudowany-testowy', dokumentId: 'V-11', numer: 'FV 11/10/2026', ksefNumer: KSEF_ZAMOWIENIA });
+    faktura(db, z.id, {
+      program: 'wbudowany-testowy',
+      dokumentId: 'V-11',
+      numer: 'FV 11/10/2026',
+      ksefNumer: KSEF_ZAMOWIENIA,
+    });
     zwrotZKorekta(db, z.id, 'K-11');
     const wyslane = [];
     // Program, który już dziś wysyła korekty (flaga usługi = program wbudowany); ślad zależy tylko od powiązania.
     const program = {
       opis: {
-        id: 'wbudowany-testowy', wbudowany: true, regulaVat: 'wierszami', zdolnosci: ['wyslijDoKsef'],
+        id: 'wbudowany-testowy',
+        wbudowany: true,
+        regulaVat: 'wierszami',
+        zdolnosci: ['wyslijDoKsef'],
         wystawienieWysylaDoKsef: false,
-        nazwa: Object.freeze({ mianownik: 'Program', dopelniacz: 'Programu', miejscownik: 'Programie', narzednik: 'Programem' }),
+        nazwa: Object.freeze({
+          mianownik: 'Program',
+          dopelniacz: 'Programu',
+          miejscownik: 'Programie',
+          narzednik: 'Programem',
+        }),
         limity: { zadanieMs: 30000, najdluzszaListaMs: 120000, stronaListy: 25, sufitStron: 40, rownolegleStron: 4 },
-        adres: 'https://program.invalid', ekran: '/ustawienia/integracje/program',
+        adres: 'https://program.invalid',
+        ekran: '/ustawienia/integracje/program',
       },
       listaFaktur: async () => [],
       listaKorekt: async () => [korekta('K-11', 'FV 11/10/2026', { ksef_korygowanej: KSEF_ZAMOWIENIA })],
       listaNieoplaconych: async () => [],
-      wyslijDokumentDoKsef: async (uuid) => { wyslane.push(uuid); return { odpowiedzInfaktu: { ok: true, uuid } }; },
+      wyslijDokumentDoKsef: async (uuid) => {
+        wyslane.push(uuid);
+        return { odpowiedzInfaktu: { ok: true, uuid } };
+      },
     };
     const fakturyWidok = createFakturyWidok({ db, program });
     const wysylkaKsef = createWysylkaKsef({ db, program, fakturyWidok, log: () => {} });
     await wysylkaKsef.wyslij({ uuids: ['K-11'], miesiac: '2026-11', pole: 'invoice_date' }, 'adam');
     expect(wyslane).toEqual(['K-11']);
-    const wpisy = db.prepare("SELECT wynik FROM log WHERE zamowienie_id = ? AND akcja = 'ksef'").all(z.id)
+    const wpisy = db
+      .prepare("SELECT wynik FROM log WHERE zamowienie_id = ? AND akcja = 'ksef'")
+      .all(z.id)
       .map((w) => w.wynik);
     expect(wpisy).toContain('(adam) zlecono wysyłkę do KSeF z panelu (K-11/KOR/11/2026) — czeka na numer KSeF');
     db.close();

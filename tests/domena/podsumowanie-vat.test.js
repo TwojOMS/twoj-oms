@@ -95,8 +95,7 @@ describe('podsumowanieVat — grupowanie i sortowanie', () => {
   });
 
   it('każda stawka dostaje własny wiersz, posortowane malejąco', () => {
-    const wiersze = podsumowanieVat([poz(1000, '8'), poz(65400, '23'), poz(500, '5')])
-      .filter((w) => !w.suma);
+    const wiersze = podsumowanieVat([poz(1000, '8'), poz(65400, '23'), poz(500, '5')]).filter((w) => !w.suma);
     expect(wiersze.map((w) => w.stawka)).toEqual([23, 8, 5]);
     expect(wiersze.map((w) => w.bruttoGr)).toEqual([65400, 1000, 500]);
   });

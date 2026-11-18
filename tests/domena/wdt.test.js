@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  czyNipUe, rozbijNipUe, stawkaDokumentu, numerWdt, polaWdtInfakt,
-} from '../../src/domena/wdt.js';
+import { czyNipUe, rozbijNipUe, stawkaDokumentu, numerWdt, polaWdtInfakt } from '../../src/domena/wdt.js';
 import { STAWKA_VAT } from '../../src/domena/vat.js';
 import { rodzajKorekty, polaWdtKorekty } from '../../src/domena/wdt.js';
 

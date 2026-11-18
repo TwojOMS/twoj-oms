@@ -21,11 +21,18 @@ const teraz = () => new Date();
 function naglowkiPrzegladarki(polityka, adresStrony) {
   const u = new URL(adresStrony);
   switch (polityka) {
-    case 'no-referrer': return { origin: 'null' };
-    case 'strict-origin': case 'origin': return { origin: u.origin, referer: `${u.origin}/` };
-    case undefined: case 'same-origin': case 'strict-origin-when-cross-origin': case 'no-referrer-when-downgrade':
+    case 'no-referrer':
+      return { origin: 'null' };
+    case 'strict-origin':
+    case 'origin':
+      return { origin: u.origin, referer: `${u.origin}/` };
+    case undefined:
+    case 'same-origin':
+    case 'strict-origin-when-cross-origin':
+    case 'no-referrer-when-downgrade':
       return { origin: u.origin, referer: u.href };
-    default: throw Error(`polityka spoza pomiaru: ${polityka}`);
+    default:
+      throw Error(`polityka spoza pomiaru: ${polityka}`);
   }
 }
 
@@ -36,7 +43,12 @@ function panel({ env = {}, mailer = null } = {}) {
   const link = () => wydajLink(p.db, { kontoId: id, cel: 'reset', utworzylKontoId: null, teraz }).token;
   return { ...p, id, link, admin: jako(p.db, 'adam') };
 }
-const aktywne = (db, id) => db.prepare('SELECT count(*) AS n FROM linki_hasla WHERE konto_id = ? AND uzyte_at IS NULL AND uniewaznione_at IS NULL').get(id).n;
+const aktywne = (db, id) =>
+  db
+    .prepare(
+      'SELECT count(*) AS n FROM linki_hasla WHERE konto_id = ? AND uzyte_at IS NULL AND uniewaznione_at IS NULL',
+    )
+    .get(id).n;
 
 describe('P1-1: Referrer-Policy stron z linkiem a CSRF po Origin (przeglądarka, nie app.inject)', () => {
   it('/haslo/:token — POST z nagłówkami, jakie przeglądarka wyśle przy polityce strony, ustawia hasło; Referer bez tokenu', async () => {
@@ -48,7 +60,12 @@ describe('P1-1: Referrer-Policy stron z linkiem a CSRF po Origin (przeglądarka,
     expect(polityka).toBe('strict-origin');
     const przegladarka = naglowkiPrzegladarki(polityka, `http://localhost/haslo/${token}`);
     expect(String(przegladarka.referer ?? '')).not.toContain(token);
-    const r = await app.inject({ method: 'POST', url: `/haslo/${token}`, headers: { accept: 'text/html', host: 'localhost', ...przegladarka }, payload: NOWE });
+    const r = await app.inject({
+      method: 'POST',
+      url: `/haslo/${token}`,
+      headers: { accept: 'text/html', host: 'localhost', ...przegladarka },
+      payload: NOWE,
+    });
     expect(r.statusCode).toBe(302);
     expect(r.headers.location).toBe('/login?haslo=ustawione');
     expect(kontoPoLoginie(db, 'ewa').wersja_hasla).toBe(1);
@@ -57,7 +74,12 @@ describe('P1-1: Referrer-Policy stron z linkiem a CSRF po Origin (przeglądarka,
   it('CSRF nie osłabiony: Origin „null” (np. polityka no-referrer albo sandbox) dalej 403, hasło bez zmian', async () => {
     const { db, app, link } = panel();
     const token = link();
-    const r = await app.inject({ method: 'POST', url: `/haslo/${token}`, headers: { accept: 'text/html', host: 'localhost', origin: 'null', referer: `http://localhost/haslo/${token}` }, payload: NOWE });
+    const r = await app.inject({
+      method: 'POST',
+      url: `/haslo/${token}`,
+      headers: { accept: 'text/html', host: 'localhost', origin: 'null', referer: `http://localhost/haslo/${token}` },
+      payload: NOWE,
+    });
     expect(r.statusCode).toBe(403);
     expect(kontoPoLoginie(db, 'ewa').wersja_hasla).toBe(0);
     expect(aktywnyLink(db, token, teraz)).not.toBeNull();
@@ -71,7 +93,12 @@ describe('P1-1: Referrer-Policy stron z linkiem a CSRF po Origin (przeglądarka,
     const polityka = strona.headers['referrer-policy'];
     expect(polityka).toBe('strict-origin');
     const przegladarka = naglowkiPrzegladarki(polityka, `http://localhost/ustawienia/konta/${id}/link`);
-    const r = await app.inject({ method: 'POST', url: `/ustawienia/konta/${id}/email`, headers: { accept: 'text/html', host: 'localhost', ...admin, ...przegladarka }, payload: { email: 'ewa@example.test' } });
+    const r = await app.inject({
+      method: 'POST',
+      url: `/ustawienia/konta/${id}/email`,
+      headers: { accept: 'text/html', host: 'localhost', ...admin, ...przegladarka },
+      payload: { email: 'ewa@example.test' },
+    });
     expect(r.statusCode).toBe(302);
     expect(db.prepare('SELECT email FROM konta_email WHERE konto_id = ?').get(id).email).toBe('ewa@example.test');
   });
@@ -81,7 +108,11 @@ describe('P3-1: zmiana hasła inną drogą unieważnia linki', () => {
   it('/konto/haslo (własne hasło) unieważnia nieużyty link', async () => {
     const { db, app, id, link } = panel();
     const token = link();
-    const r = await post(app, '/konto/haslo', jako(db, 'ewa'), { obecne: 'stare-haslo-123', nowe: 'inne-haslo-12345', nowe2: 'inne-haslo-12345' });
+    const r = await post(app, '/konto/haslo', jako(db, 'ewa'), {
+      obecne: 'stare-haslo-123',
+      nowe: 'inne-haslo-12345',
+      nowe2: 'inne-haslo-12345',
+    });
     expect(r.statusCode).toBe(302);
     expect(aktywne(db, id)).toBe(0);
     expect((await get(app, `/haslo/${token}`)).statusCode).toBe(410);
@@ -90,7 +121,9 @@ describe('P3-1: zmiana hasła inną drogą unieważnia linki', () => {
   it('stara trasa admina /ustawienia/konta/:id/haslo unieważnia nieużyty link', async () => {
     const { db, app, id, link, admin } = panel();
     const token = link();
-    expect((await post(app, `/ustawienia/konta/${id}/haslo`, admin, { haslo: 'haslo-od-admina-1' })).statusCode).toBe(302);
+    expect((await post(app, `/ustawienia/konta/${id}/haslo`, admin, { haslo: 'haslo-od-admina-1' })).statusCode).toBe(
+      302,
+    );
     expect(aktywne(db, id)).toBe(0);
     expect((await get(app, `/haslo/${token}`)).statusCode).toBe(410);
   });
@@ -98,7 +131,11 @@ describe('P3-1: zmiana hasła inną drogą unieważnia linki', () => {
 
 describe('P3-2 i P3-5: wysyłka mailem nie zabija poprzedniego linku przed udaną wysyłką', () => {
   it('błąd SMTP: nowy link wycofany, poprzedni nadal działa, komunikat mówi to wprost', async () => {
-    const mailer = { sendMail: vi.fn(async () => { throw new Error('ECONNREFUSED'); }) };
+    const mailer = {
+      sendMail: vi.fn(async () => {
+        throw new Error('ECONNREFUSED');
+      }),
+    };
     const { db, app, id, admin } = panel({ env: { OMS_ADRES_PANELU: ADRES }, mailer });
     db.prepare("INSERT INTO konta_email (konto_id, email, zmieniono_at) VALUES (?, 'ewa@example.test', 'x')").run(id);
     const pokaz = await post(app, `/ustawienia/konta/${id}/link`, admin, { sposob: 'pokaz' });
@@ -139,7 +176,9 @@ describe('P3-2 i P3-5: wysyłka mailem nie zabija poprzedniego linku przed udan�
 });
 
 describe('P3-3: hamulec /haslo/ — zerowanie, wygaszanie, przycinanie', () => {
-  afterEach(() => { vi.useRealTimers(); });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
   it('udane użycie linku zeruje licznik prób', async () => {
     const { app, link } = panel();
@@ -184,7 +223,13 @@ describe('P3-4: login konta serwisowego z .env jest zarezerwowany', () => {
   for (const login of [CONFIG.auth.user, CONFIG.auth.user.toUpperCase()]) {
     it(`zaproszenie z loginem „${login}” → 400, konto nie powstaje`, async () => {
       const { db, app, admin } = panel();
-      const r = await post(app, '/ustawienia/konta/nowe', admin, { imie: 'X', login, email: '', rola: 'produkcja', sposob: 'pokaz' });
+      const r = await post(app, '/ustawienia/konta/nowe', admin, {
+        imie: 'X',
+        login,
+        email: '',
+        rola: 'produkcja',
+        sposob: 'pokaz',
+      });
       expect(r.statusCode).toBe(400);
       expect(r.body).toContain('zarezerwowany dla konta serwisowego');
       expect(kontoPoLoginie(db, login)).toBeNull();
@@ -193,7 +238,12 @@ describe('P3-4: login konta serwisowego z .env jest zarezerwowany', () => {
 
   it('stara trasa /nowe z hasłem: login serwisowy → 400', async () => {
     const { db, app, admin } = panel();
-    const r = await post(app, '/ustawienia/konta/nowe', admin, { imie: 'X', login: CONFIG.auth.user, haslo: 'haslo-ok-12345', rola: 'produkcja' });
+    const r = await post(app, '/ustawienia/konta/nowe', admin, {
+      imie: 'X',
+      login: CONFIG.auth.user,
+      haslo: 'haslo-ok-12345',
+      rola: 'produkcja',
+    });
     expect(r.statusCode).toBe(400);
     expect(r.body).toContain('zarezerwowany dla konta serwisowego');
     expect(kontoPoLoginie(db, CONFIG.auth.user)).toBeNull();
@@ -202,13 +252,20 @@ describe('P3-4: login konta serwisowego z .env jest zarezerwowany', () => {
 
 describe('P3-6: wyścig o ten sam e-mail albo login → 400, nie 500', () => {
   // Wyzwalacz wstawia ten sam adres „między” sprawdzeniem w kodzie a INSERT — tak jak drugi proces na tej samej bazie.
-  const wyscigEmail = (db, kontoId, email) => db.exec(`CREATE TEMP TRIGGER wyscig BEFORE INSERT ON konta_email WHEN NEW.email = '${email}'
+  const wyscigEmail = (db, kontoId, email) =>
+    db.exec(`CREATE TEMP TRIGGER wyscig BEFORE INSERT ON konta_email WHEN NEW.email = '${email}'
     BEGIN INSERT INTO konta_email (konto_id, email, zmieniono_at) VALUES (${kontoId}, NEW.email, 'x'); END`);
 
   it('zaproszenie: e-mail zajęty w wyścigu → 400 z tym samym komunikatem, konto nie powstaje', async () => {
     const { db, app, admin } = panel();
     wyscigEmail(db, kontoPoLoginie(db, 'adam').id, 'nowa@example.test');
-    const r = await post(app, '/ustawienia/konta/nowe', admin, { imie: 'Nowa', login: 'nowa', email: 'nowa@example.test', rola: 'produkcja', sposob: 'pokaz' });
+    const r = await post(app, '/ustawienia/konta/nowe', admin, {
+      imie: 'Nowa',
+      login: 'nowa',
+      email: 'nowa@example.test',
+      rola: 'produkcja',
+      sposob: 'pokaz',
+    });
     expect(r.statusCode).toBe(400);
     expect(r.body).toContain('Ten adres e-mail ma już inne konto.');
     expect(kontoPoLoginie(db, 'nowa')).toBeNull();
@@ -226,7 +283,13 @@ describe('P3-6: wyścig o ten sam e-mail albo login → 400, nie 500', () => {
     const { db, app, admin } = panel();
     db.exec(`CREATE TEMP TRIGGER wyscig BEFORE INSERT ON konta WHEN NEW.login = 'nowa' AND NEW.imie <> 'drugi'
       BEGIN INSERT INTO konta (login, imie, hash_hasla, rola, czynne, admin, utworzone_at) VALUES ('nowa', 'drugi', 'x', 'produkcja', 1, 0, 'x'); END`);
-    const r = await post(app, '/ustawienia/konta/nowe', admin, { imie: 'Nowa', login: 'nowa', email: '', rola: 'produkcja', sposob: 'pokaz' });
+    const r = await post(app, '/ustawienia/konta/nowe', admin, {
+      imie: 'Nowa',
+      login: 'nowa',
+      email: '',
+      rola: 'produkcja',
+      sposob: 'pokaz',
+    });
     expect(r.statusCode).toBe(400);
     expect(r.body).toContain('Login „nowa” jest już zajęty przez inne konto — wybierz inny.');
   });
@@ -236,8 +299,14 @@ describe('P3-7: kształt tokenu i prefiks otwarty', () => {
   it('token o złym kształcie nie pasuje, nawet gdy jego skrót jest w bazie', () => {
     const { db, id } = panel();
     const krotki = 'abc';
-    db.prepare(`INSERT INTO linki_hasla (konto_id, hash_tokenu, cel, utworzone_at, wygasa_at) VALUES (?, ?, 'reset', ?, ?)`)
-      .run(id, createHash('sha256').update(krotki).digest('hex'), new Date().toISOString(), new Date(Date.now() + 3_600_000).toISOString());
+    db.prepare(
+      `INSERT INTO linki_hasla (konto_id, hash_tokenu, cel, utworzone_at, wygasa_at) VALUES (?, ?, 'reset', ?, ?)`,
+    ).run(
+      id,
+      createHash('sha256').update(krotki).digest('hex'),
+      new Date().toISOString(),
+      new Date(Date.now() + 3_600_000).toISOString(),
+    );
     expect(aktywnyLink(db, krotki, teraz)).toBeNull();
   });
 

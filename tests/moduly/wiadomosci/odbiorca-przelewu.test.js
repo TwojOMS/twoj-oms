@@ -16,26 +16,72 @@ import { podgladSzablonu } from '../../../src/moduly/wiadomosci/szablony.js';
 
 const RACHUNEK = '34109010140000000000000000';
 const zamowienie = () => ({
-  zrodlo_id: 6001, numer: 'PRZELEW-093',
+  zrodlo_id: 6001,
+  numer: 'PRZELEW-093',
   klient: { first_name: 'Jan', last_name: 'Testowy', email: 'klient@fikcja.invalid', company: 'Nabywca Testowy' },
-  dostawa: { first_name: 'Jan', last_name: 'Testowy', address_1: 'Odbiorcza 4', postcode: '00-950', city: 'Nibylandia' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null,
-  kwota_brutto: '990.00', koszt_dostawy_brutto: '0.00', koszt_dostawy_netto: '0.00',
-  status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-10-01T09:15:00',
+  dostawa: {
+    first_name: 'Jan',
+    last_name: 'Testowy',
+    address_1: 'Odbiorcza 4',
+    postcode: '00-950',
+    city: 'Nibylandia',
+  },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '990.00',
+  koszt_dostawy_brutto: '0.00',
+  koszt_dostawy_netto: '0.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-10-01T09:15:00',
   termin_platnosci: '14',
-  pozycje: [{ zrodlo_id: 7001, nazwa: 'Lampa', sku: 'LAMPA-1', ilosc: 10, cena_brutto: '99.00', cena_netto: '80.49',
-    brutto_linii: '990.00', netto_linii: '804.88', vat: null }],
+  pozycje: [
+    {
+      zrodlo_id: 7001,
+      nazwa: 'Lampa',
+      sku: 'LAMPA-1',
+      ilosc: 10,
+      cena_brutto: '99.00',
+      cena_netto: '80.49',
+      brutto_linii: '990.00',
+      netto_linii: '804.88',
+      vat: null,
+    },
+  ],
 });
-const ADRES_BAZY = { nazwa: 'Pracownia Zmyślona', ulica: 'Wymyślona 12', kod: '00-950', miasto: 'Nibylandia', kraj: 'PL',
-  phone: '', email: '' };
-const PLIK = { DPD_NADAWCA_NAZWA: 'Firma z Pliku', DPD_NADAWCA_ULICA: 'Plikowa 1', DPD_NADAWCA_KOD: '00-001', DPD_NADAWCA_MIASTO: 'Plikowo' };
+const ADRES_BAZY = {
+  nazwa: 'Pracownia Zmyślona',
+  ulica: 'Wymyślona 12',
+  kod: '00-950',
+  miasto: 'Nibylandia',
+  kraj: 'PL',
+  phone: '',
+  email: '',
+};
+const PLIK = {
+  DPD_NADAWCA_NAZWA: 'Firma z Pliku',
+  DPD_NADAWCA_ULICA: 'Plikowa 1',
+  DPD_NADAWCA_KOD: '00-001',
+  DPD_NADAWCA_MIASTO: 'Plikowo',
+};
 const odbiorca = (tekst) => /Odbiorca: ?(.*)/u.exec(tekst)?.[1] ?? null;
 
 function usluga(config) {
   const db = openOmsDb(':memory:');
-  const mailer = { sendMail: async () => { throw new Error('podgląd nie wysyła'); } };
-  const w = createWiadomosci({ db, mailer, config: { proforma: { rachunek: RACHUNEK }, ...config },
-    teraz: () => '2026-10-02T10:00:00.000Z' });
+  const mailer = {
+    sendMail: async () => {
+      throw new Error('podgląd nie wysyła');
+    },
+  };
+  const w = createWiadomosci({
+    db,
+    mailer,
+    config: { proforma: { rachunek: RACHUNEK }, ...config },
+    teraz: () => '2026-10-02T10:00:00.000Z',
+  });
   return { w, id: zapiszZamowienie(db, 'reczne', zamowienie(), {}) };
 }
 
@@ -68,52 +114,97 @@ describe('odbiorca przelewu w mailu płatniczym', () => {
   });
 });
 
-it.each([null, ADRES_BAZY])('podgląd szablonu ma tego samego odbiorcę co mail, bez podstawiania marki: %s', async (adres) => {
-  const config = { adresFirmy: () => adres };
-  const { w, id } = usluga(config);
-  const mail = await w.podglad(id, 'przypomnienie');
-  const p = podgladSzablonu('przypomnienie', { temat: 'Przypomnienie', tresc: '{dane_platnosci}\n{podpis}' }, {
-    oprawa: { podpis: 'Marka Lamp' }, config, teraz: new Date('2026-10-02'),
-  });
-  expect(odbiorca(p.tekst)).toBe(odbiorca(mail.tekst));
-  expect(p.html.includes('Odbiorca')).toBe(Boolean(adres));
-  expect(p.html).not.toMatch(/Odbiorca<\/td><td[^>]*>Marka Lamp/);
-});
+it.each([null, ADRES_BAZY])(
+  'podgląd szablonu ma tego samego odbiorcę co mail, bez podstawiania marki: %s',
+  async (adres) => {
+    const config = { adresFirmy: () => adres };
+    const { w, id } = usluga(config);
+    const mail = await w.podglad(id, 'przypomnienie');
+    const p = podgladSzablonu(
+      'przypomnienie',
+      { temat: 'Przypomnienie', tresc: '{dane_platnosci}\n{podpis}' },
+      {
+        oprawa: { podpis: 'Marka Lamp' },
+        config,
+        teraz: new Date('2026-10-02'),
+      },
+    );
+    expect(odbiorca(p.tekst)).toBe(odbiorca(mail.tekst));
+    expect(p.html.includes('Odbiorca')).toBe(Boolean(adres));
+    expect(p.html).not.toMatch(/Odbiorca<\/td><td[^>]*>Marka Lamp/);
+  },
+);
 
-it.each([null, ADRES_BAZY])('faktura przez atrapę poczty: bez pustego odbiorcy, rachunek i tytuł zostają: %s', async (adres) => {
-  const db = openOmsDb(':memory:');
-  const wyslane = [];
-  try {
-    if (adres) zapiszAdresFirmy(db, { ...adres, telefon: '' });
-    const config = { proforma: { rachunek: RACHUNEK }, adresFirmy: zrodloAdresuFirmy({ db, zPliku: adresFirmyZEnv({}) }).adres };
-    const w = createWiadomosci({ db, config, mailer: { sendMail: async m => { wyslane.push(m); } },
-      infakt: { pobierzPdf: async () => Buffer.from('%PDF-atrapa') }, teraz: () => '2026-10-02T10:00:00.000Z' });
-    const id = zapiszZamowienie(db, 'reczne', zamowienie(), {});
-    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)')
-      .run(id, 'fikcyjna-faktura', 'FV/18/2026', '2026-10-01');
-    await w.wyslij(id, 'faktura');
-    expect(wyslane).toHaveLength(1);
-    const m = wyslane[0];
-    expect(odbiorca(m.text)).toBe(adres?.nazwa ?? null);
-    expect(m.html.includes('Odbiorca')).toBe(Boolean(adres));
-    expect(m.text).toContain(`Rachunek: ${RACHUNEK}`);
-    expect(m.text).toContain('Tytuł przelewu: FV/18/2026');
-    expect(m.html).toContain(RACHUNEK);
-    expect(m.html).toContain('FV/18/2026');
-  } finally { db.close(); }
-});
+it.each([null, ADRES_BAZY])(
+  'faktura przez atrapę poczty: bez pustego odbiorcy, rachunek i tytuł zostają: %s',
+  async (adres) => {
+    const db = openOmsDb(':memory:');
+    const wyslane = [];
+    try {
+      if (adres) zapiszAdresFirmy(db, { ...adres, telefon: '' });
+      const config = {
+        proforma: { rachunek: RACHUNEK },
+        adresFirmy: zrodloAdresuFirmy({ db, zPliku: adresFirmyZEnv({}) }).adres,
+      };
+      const w = createWiadomosci({
+        db,
+        config,
+        mailer: {
+          sendMail: async (m) => {
+            wyslane.push(m);
+          },
+        },
+        infakt: { pobierzPdf: async () => Buffer.from('%PDF-atrapa') },
+        teraz: () => '2026-10-02T10:00:00.000Z',
+      });
+      const id = zapiszZamowienie(db, 'reczne', zamowienie(), {});
+      db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)').run(
+        id,
+        'fikcyjna-faktura',
+        'FV/18/2026',
+        '2026-10-01',
+      );
+      await w.wyslij(id, 'faktura');
+      expect(wyslane).toHaveLength(1);
+      const m = wyslane[0];
+      expect(odbiorca(m.text)).toBe(adres?.nazwa ?? null);
+      expect(m.html.includes('Odbiorca')).toBe(Boolean(adres));
+      expect(m.text).toContain(`Rachunek: ${RACHUNEK}`);
+      expect(m.text).toContain('Tytuł przelewu: FV/18/2026');
+      expect(m.html).toContain(RACHUNEK);
+      expect(m.html).toContain('FV/18/2026');
+    } finally {
+      db.close();
+    }
+  },
+);
 
 // Prawdziwy skład: funkcja adresu z modułu faktur dociera do usługi wiadomości przez kopiowanie configu.
 describe('odbiorca przelewu przez prawdziwy skład modułów', () => {
   let katalog;
   beforeEach(() => {
     katalog = mkdtempSync(join(tmpdir(), 'prz093-przelew-'));
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => { throw Error('Sieć zabroniona'); });
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+      throw Error('Sieć zabroniona');
+    });
   });
-  afterEach(() => { vi.restoreAllMocks(); rmSync(katalog, { recursive: true, force: true }); });
-  const env = (dodatkowe = {}) => ({ OMS_TRYB: 'produkcja', OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: RACHUNEK,
-    OMS_USER: 'operator', OMS_PASS: 'fixture', OMS_PROFORMY_KATALOG: katalog, OMS_ETYKIETY_KATALOG: katalog,
-    SMTP_HOST: 'smtp.fikcja.invalid', SMTP_USER: 'sklep@fikcja.invalid', SMTP_PASS: 'atrapa', ...dodatkowe });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    rmSync(katalog, { recursive: true, force: true });
+  });
+  const env = (dodatkowe = {}) => ({
+    OMS_TRYB: 'produkcja',
+    OMS_SPRZEDAWCA_NIP: '1234563218',
+    OMS_RACHUNEK: RACHUNEK,
+    OMS_USER: 'operator',
+    OMS_PASS: 'fixture',
+    OMS_PROFORMY_KATALOG: katalog,
+    OMS_ETYKIETY_KATALOG: katalog,
+    SMTP_HOST: 'smtp.fikcja.invalid',
+    SMTP_USER: 'sklep@fikcja.invalid',
+    SMTP_PASS: 'atrapa',
+    ...dodatkowe,
+  });
 
   for (const [wariant, dodatkowe, oczekiwany] of [
     ['adres tylko w Ustawieniach', {}, 'Pracownia Zmyślona'],
@@ -122,16 +213,33 @@ describe('odbiorca przelewu przez prawdziwy skład modułów', () => {
     it(wariant, async () => {
       const a = await zbudujOms({ env: env(dodatkowe) });
       try {
-        zapiszAdresFirmy(a.db, { nazwa: 'Pracownia Zmyślona', ulica: 'Wymyślona 12', kod: '00-950', miasto: 'Nibylandia', kraj: 'PL', telefon: '', email: '' });
+        zapiszAdresFirmy(a.db, {
+          nazwa: 'Pracownia Zmyślona',
+          ulica: 'Wymyślona 12',
+          kod: '00-950',
+          miasto: 'Nibylandia',
+          kraj: 'PL',
+          telefon: '',
+          email: '',
+        });
         const id = zapiszZamowienie(a.db, 'reczne', zamowienie(), {});
         const p = await a.usluga('wiadomosci', 'wiadomosci').podglad(id, 'przypomnienie');
         expect(odbiorca(p.tekst)).toBe(oczekiwany);
-        const q = new URLSearchParams({ podglad: '1', temat: 'Faktura', tresc: '{dane_platnosci}\n{zamkniecie}\n{podpis}' });
-        const r = await a.app.inject({ url: `/ustawienia/szablony-wiadomosci/faktura?${q}`,
-          headers: { authorization: `Basic ${Buffer.from('operator:fixture').toString('base64')}` } });
+        const q = new URLSearchParams({
+          podglad: '1',
+          temat: 'Faktura',
+          tresc: '{dane_platnosci}\n{zamkniecie}\n{podpis}',
+        });
+        const r = await a.app.inject({
+          url: `/ustawienia/szablony-wiadomosci/faktura?${q}`,
+          headers: { authorization: `Basic ${Buffer.from('operator:fixture').toString('base64')}` },
+        });
         expect(r.statusCode).toBe(200);
         expect(r.body).toContain(`Odbiorca: ${oczekiwany}`);
-      } finally { await a.app.close(); a.db.close(); }
+      } finally {
+        await a.app.close();
+        a.db.close();
+      }
     });
   }
 });

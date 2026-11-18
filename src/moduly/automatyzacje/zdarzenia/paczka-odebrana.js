@@ -26,23 +26,33 @@ export const zdarzeniePaczkaOdebrana = Object.freeze({
   klucz: 'paczka_odebrana',
   etykieta: 'Kurier odebrał paczkę',
   grupa: 'przesylka',
-  opis: 'Działa dla paczek, których status OMS sprawdza u przewoźnika: DPD i InPost podłączone w Ustawieniach oraz paczki '
-    + 'Allegro ze śledzeniem. OMS pyta przewoźnika co godzinę, więc zdarzenie przychodzi do około godziny po odbiorze.',
-  pomoc: 'Paczka bez śledzenia — numer wpisany ręcznie u przewoźnika, którego OMS nie pyta — nigdy nie wywoła tej reguły. '
-    + 'Kupujących z Allegro powiadamia o wysyłce samo Allegro, dlatego kanały Allegro zwykle zostawia się odznaczone.',
+  opis:
+    'Działa dla paczek, których status OMS sprawdza u przewoźnika: DPD i InPost podłączone w Ustawieniach oraz paczki ' +
+    'Allegro ze śledzeniem. OMS pyta przewoźnika co godzinę, więc zdarzenie przychodzi do około godziny po odbiorze.',
+  pomoc:
+    'Paczka bez śledzenia — numer wpisany ręcznie u przewoźnika, którego OMS nie pyta — nigdy nie wywoła tej reguły. ' +
+    'Kupujących z Allegro powiadamia o wysyłce samo Allegro, dlatego kanały Allegro zwykle zostawia się odznaczone.',
 
   kandydaci(db, { granica, od, po = null, limit, kanaly = null }) {
-    const odKiedy = od && granica?.at && od > granica.at ? od : granica?.at ?? od ?? '';
+    const odKiedy = od && granica?.at && od > granica.at ? od : (granica?.at ?? od ?? '');
     const filtrKanalu = Array.isArray(kanaly) ? ` AND z.sklep IN (${znaki(kanaly.length)})` : '';
     const filtrPo = po ? ' AND (p.odebrana_at > ? OR (p.odebrana_at = ? AND p.id > ?))' : '';
     // Plan: indeks `przesylki_odebrana_at` (zakres od kursora), potem PK zamówienia — koszt rośnie z liczbą odbiorów
     // od kursora, nie z wiekiem reguły.
-    return db.prepare(`SELECT p.id, p.zamowienie_id, z.sklep, p.id AS przesylka_id, p.odebrana_at AS zdarzenie_at
+    return db
+      .prepare(
+        `SELECT p.id, p.zamowienie_id, z.sklep, p.id AS przesylka_id, p.odebrana_at AS zdarzenie_at
       FROM przesylki p JOIN zamowienia z ON z.id = p.zamowienie_id
       WHERE p.odebrana_at >= ? AND p.id > ? AND p.status = 'nadana'${filtrKanalu}${filtrPo}
-      ORDER BY p.odebrana_at, p.id LIMIT ?`)
-      .all(odKiedy, Number(granica?.przesylki ?? 0),
-        ...(Array.isArray(kanaly) ? kanaly : []), ...(po ? [po.at, po.at, po.id] : []), limit ?? 1000);
+      ORDER BY p.odebrana_at, p.id LIMIT ?`,
+      )
+      .all(
+        odKiedy,
+        Number(granica?.przesylki ?? 0),
+        ...(Array.isArray(kanaly) ? kanaly : []),
+        ...(po ? [po.at, po.at, po.id] : []),
+        limit ?? 1000,
+      );
   },
 
   /**
@@ -51,17 +61,26 @@ export const zdarzeniePaczkaOdebrana = Object.freeze({
    * najnowsze pierwsze. Zero zapisów.
    */
   symulacja(db, od) {
-    const wiersze = db.prepare(`SELECT p.id, p.zamowienie_id, z.sklep, p.status_kuriera, p.status_kuriera_kod, p.przejeta_at,
+    const wiersze = db
+      .prepare(
+        `SELECT p.id, p.zamowienie_id, z.sklep, p.status_kuriera, p.status_kuriera_kod, p.przejeta_at,
         p.odebrana_at, COALESCE(p.odebrana_at, p.utworzona_at) AS zdarzenie_at
       FROM przesylki p JOIN zamowienia z ON z.id = p.zamowienie_id
       WHERE p.utworzona_at >= ? AND p.status = 'nadana' AND (p.odebrana_at IS NOT NULL OR p.przejeta_at IS NOT NULL
         OR p.status_kuriera IS NOT NULL OR p.status_kuriera_kod IS NOT NULL)
-      ORDER BY zdarzenie_at DESC, p.id DESC`).all(od);
+      ORDER BY zdarzenie_at DESC, p.id DESC`,
+      )
+      .all(od);
     const naZamowienie = new Map();
     for (const w of wiersze) {
       // `odebrana_at` = dowód już zapisany (także z historii odpowiedzi, której stan bieżący nie pokazuje).
       if (naZamowienie.has(w.zamowienie_id) || !(w.odebrana_at || dowodOdbioru(w))) continue;
-      naZamowienie.set(w.zamowienie_id, { zamowienie_id: w.zamowienie_id, sklep: w.sklep, przesylka_id: w.id, zdarzenie_at: w.zdarzenie_at });
+      naZamowienie.set(w.zamowienie_id, {
+        zamowienie_id: w.zamowienie_id,
+        sklep: w.sklep,
+        przesylka_id: w.id,
+        zdarzenie_at: w.zdarzenie_at,
+      });
     }
     return [...naZamowienie.values()];
   },

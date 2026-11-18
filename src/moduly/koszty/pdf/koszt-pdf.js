@@ -49,9 +49,9 @@ const PLIKI_FONTOW = {
 
 const A4_SZER = 595.28;
 const MARGINES = 40;
-const L = MARGINES;                 // lewa krawedz tresci
-const R = A4_SZER - MARGINES;       // prawa krawedz tresci (555.28)
-const PRAWA_KOLUMNA = 300;          // poczatek prawego bloku (metryczka, nabywca, sumy)
+const L = MARGINES; // lewa krawedz tresci
+const R = A4_SZER - MARGINES; // prawa krawedz tresci (555.28)
+const PRAWA_KOLUMNA = 300; // poczatek prawego bloku (metryczka, nabywca, sumy)
 const SZER_LEWEJ = PRAWA_KOLUMNA - L - 15;
 
 const CZARNY = '#1a1a1a';
@@ -92,9 +92,10 @@ const PRZYPIS_BRUTTO = '* kwota wyliczona przez panel — brak pola w dokumencie
 // w rozbiciu na stawki kolumna „VAT" idzie w walucie dokumentu (`P_14_*`), a złotówki stoją
 // dopiero w wierszu „VAT przeliczony na złote" (`P_14_*W`). W złotych jest WYŁĄCZNIE wiersz
 // „Razem VAT" z metadanych KSeF — i tylko o nim ta nota ma prawo mówić.
-const NOTA_VAT_W_PLN = 'Razem VAT w złotych (art. 106e ust. 11 ustawy o VAT); pozostałe kwoty '
-  + 'w walucie dokumentu — VAT w tabeli stawek podany w walucie, przeliczenie na PLN '
-  + 'w wierszu „VAT przeliczony na złote".';
+const NOTA_VAT_W_PLN =
+  'Razem VAT w złotych (art. 106e ust. 11 ustawy o VAT); pozostałe kwoty ' +
+  'w walucie dokumentu — VAT w tabeli stawek podany w walucie, przeliczenie na PLN ' +
+  'w wierszu „VAT przeliczony na złote".';
 
 // Kolumny tabeli pozycji — DANE, a nie wartosci rozsypane po kodzie: naglowek rysuje sie od
 // nowa po kazdym lamaniu strony i musi stanac dokladnie tam, gdzie wiersze. Suma `x + w`
@@ -206,16 +207,16 @@ function kwotaDokladna(surowa, waluta = '') {
 function naglowekSekcji(doc, x, y, tekst) {
   const DUZA = 11;
   const MALA = 8.5;
-  doc.rect(x, y + 4, 24, 5).fillColor(SZARY_PASEK).fill();
+  doc
+    .rect(x, y + 4, 24, 5)
+    .fillColor(SZARY_PASEK)
+    .fill();
   const t = String(tekst);
   zwykly(doc, DUZA).text(t.slice(0, 1).toUpperCase(), x + 30, y, { lineBreak: false });
   const szerPierwszej = doc.widthOfString(t.slice(0, 1).toUpperCase());
-  zwykly(doc, MALA).text(
-    t.slice(1).toUpperCase(),
-    x + 30 + szerPierwszej,
-    y + (DUZA - MALA) * 0.72,
-    { lineBreak: false },
-  );
+  zwykly(doc, MALA).text(t.slice(1).toUpperCase(), x + 30 + szerPierwszej, y + (DUZA - MALA) * 0.72, {
+    lineBreak: false,
+  });
   return y + DUZA + 7;
 }
 
@@ -226,7 +227,8 @@ function naglowekSekcji(doc, x, y, tekst) {
 function blokSekcja(doc, x, y, szerokosc, tytul, linieTekstu, { pierwszaGruba = false } = {}) {
   let biezace = naglowekSekcji(doc, x, y, tytul);
   linieTekstu.forEach((l, i) => {
-    if (i === 0 && pierwszaGruba) gruby(doc, 9); else zwykly(doc, 8.5);
+    if (i === 0 && pierwszaGruba) gruby(doc, 9);
+    else zwykly(doc, 8.5);
     doc.text(l, x, biezace, { width: szerokosc });
     biezace += Math.max(doc.heightOfString(l, { width: szerokosc }), 11) + 1;
   });
@@ -251,13 +253,13 @@ function para(doc, x, y, szerCalosci, etykieta, wartosc, { mocna = false, lamana
   const SZER_ETYKIETY = 92;
   const tekst = napis(wartosc);
   if (tekst === '') return y;
-  zwykly(doc, 8, SZARY_TEKST)
-    .text(etykieta, x, y, { width: SZER_ETYKIETY, lineBreak: lamanaEtykieta });
+  zwykly(doc, 8, SZARY_TEKST).text(etykieta, x, y, { width: SZER_ETYKIETY, lineBreak: lamanaEtykieta });
   // Wysokosc etykiety mierzona PRZY JEJ WLASNYM ROZMIARZE (8 pkt) — czyli tutaj, zanim
   // ponizej ustawimy font wartosci.
   const wysEtykiety = lamanaEtykieta ? doc.heightOfString(etykieta, { width: SZER_ETYKIETY }) : 0;
   const szerWartosci = szerCalosci - SZER_ETYKIETY;
-  if (mocna) gruby(doc, 8.5); else zwykly(doc, 8.5);
+  if (mocna) gruby(doc, 8.5);
+  else zwykly(doc, 8.5);
   doc.text(tekst, x + SZER_ETYKIETY, y, { width: szerWartosci });
   return y + Math.max(doc.heightOfString(tekst, { width: szerWartosci }), wysEtykiety, 11) + 1.5;
 }
@@ -317,7 +319,10 @@ function wierszPozycji(doc, y, pozycja, lp) {
   const wys = wysokoscPozycji(doc, pozycja);
 
   if (lp % 2 === 1) {
-    doc.rect(L, y - 3, R - L, wys).fillColor(SZARY_WIERSZ).fill();
+    doc
+      .rect(L, y - 3, R - L, wys)
+      .fillColor(SZARY_WIERSZ)
+      .fill();
   }
 
   zwykly(doc, 8);
@@ -367,13 +372,15 @@ function wierszPozycji(doc, y, pozycja, lp) {
 function stopka(doc, nrStrony, ileStron) {
   const dolny = doc.page.margins.bottom;
   doc.page.margins.bottom = 0;
-  zwykly(doc, 8, SZARY_TEKST).text(
-    'Wyrysowana w panelu zamówień z pliku pobranego z KSeF.',
-    L, doc.page.height - 36, { width: R - L, lineBreak: false },
-  );
+  zwykly(doc, 8, SZARY_TEKST).text('Wyrysowana w panelu zamówień z pliku pobranego z KSeF.', L, doc.page.height - 36, {
+    width: R - L,
+    lineBreak: false,
+  });
   if (ileStron > 1) {
     zwykly(doc, 8, SZARY_TEKST).text(`Strona ${nrStrony} z ${ileStron}`, L, doc.page.height - 36, {
-      width: R - L, align: 'right', lineBreak: false,
+      width: R - L,
+      align: 'right',
+      lineBreak: false,
     });
   }
   doc.page.margins.bottom = dolny;
@@ -413,10 +420,10 @@ function bajty(doc) {
  */
 function wierszKontynuacji(doc, wiersz, nrStrony) {
   const y = MARGINES;
-  gruby(doc, 9).text(
-    `Wizualizacja faktury nr ${napis(wiersz?.numer_dokumentu)} — str. ${nrStrony}`,
-    L, y, { width: R - L, lineBreak: false },
-  );
+  gruby(doc, 9).text(`Wizualizacja faktury nr ${napis(wiersz?.numer_dokumentu)} — str. ${nrStrony}`, L, y, {
+    width: R - L,
+    lineBreak: false,
+  });
   linia(doc, y + 13);
   return y + 20;
 }
@@ -431,34 +438,30 @@ function uwagiPozycji(pozycje) {
     .map((p, i) => ({ poz: i + 1, lp: napis(p?.lp) }))
     .filter((p) => p.lp !== '' && p.lp !== String(p.poz));
   if (zNumeracja.length > 0) {
-    opisy.push(`Numeracja pozycji u wystawcy: ${zNumeracja
-      .map((p) => `${p.poz} → ${p.lp}`).join('; ')}`);
+    opisy.push(`Numeracja pozycji u wystawcy: ${zNumeracja.map((p) => `${p.poz} → ${p.lp}`).join('; ')}`);
   }
-  const zData = pozycje
-    .map((p, i) => ({ poz: i + 1, data: napis(p?.dataDostawy) }))
-    .filter((p) => p.data !== '');
+  const zData = pozycje.map((p, i) => ({ poz: i + 1, data: napis(p?.dataDostawy) })).filter((p) => p.data !== '');
   if (zData.length > 0) {
-    opisy.push(`Data dostawy przy pozycjach: ${zData
-      .map((p) => `${p.poz} — ${p.data}`).join('; ')}`);
+    opisy.push(`Data dostawy przy pozycjach: ${zData.map((p) => `${p.poz} — ${p.data}`).join('; ')}`);
   }
   const zRabatem = pozycje
     .map((p, i) => ({ poz: i + 1, rabat: kwotaDokladna(p?.rabat) }))
     .filter((p) => p.rabat !== '');
   if (zRabatem.length > 0) {
-    opisy.push(`Rabat przy pozycjach: ${zRabatem
-      .map((p) => `${p.poz} — ${p.rabat}`).join('; ')}`);
+    opisy.push(`Rabat przy pozycjach: ${zRabatem.map((p) => `${p.poz} — ${p.rabat}`).join('; ')}`);
   }
   // Cena jednostkowa BRUTTO (`P_9B`) — wylacznie tam, gdzie wystawca NIE PODAL ceny netto.
   // Slowo „brutto" musi stac przy kwocie: bez niego liczba pod naglowkiem „Cena netto" byla
   // po prostu nieprawda (patrz komentarz przy kolumnie ceny w `wierszPozycji`).
   const zCenaBrutto = pozycje
     .map((p, i) => ({
-      poz: i + 1, netto: napis(p?.cenaNetto), cena: kwotaDokladna(p?.cenaBrutto),
+      poz: i + 1,
+      netto: napis(p?.cenaNetto),
+      cena: kwotaDokladna(p?.cenaBrutto),
     }))
     .filter((p) => p.netto === '' && p.cena !== '');
   if (zCenaBrutto.length > 0) {
-    opisy.push(`Cena jedn. brutto przy pozycjach: ${zCenaBrutto
-      .map((p) => `${p.poz} — ${p.cena}`).join('; ')}`);
+    opisy.push(`Cena jedn. brutto przy pozycjach: ${zCenaBrutto.map((p) => `${p.poz} — ${p.cena}`).join('; ')}`);
   }
   return opisy;
 }
@@ -506,7 +509,10 @@ export async function zbudujKosztPdf({ wiersz = {}, dokument = null, pozycje } =
     // Strony trzymane w pamieci do `end()` — patrz `stopkaNaKazdejStronie`.
     bufferPages: true,
     margins: {
-      top: MARGINES, bottom: MARGINES, left: MARGINES, right: MARGINES,
+      top: MARGINES,
+      bottom: MARGINES,
+      left: MARGINES,
+      right: MARGINES,
     },
     info: {
       Title: `Wizualizacja faktury ${napis(wiersz.numer_dokumentu)}`.trim(),
@@ -528,7 +534,8 @@ export async function zbudujKosztPdf({ wiersz = {}, dokument = null, pozycje } =
   // NIE PRZYWRACAĆ bez nowej decyzji.
   let y = MARGINES;
   gruby(doc, 17).text(d.czyKorekta ? 'e-Faktura korygująca' : 'e-Faktura', L, y, {
-    width: SZER_LEWEJ, lineBreak: false,
+    width: SZER_LEWEJ,
+    lineBreak: false,
   });
   y += 22;
   const dolTytulu = y + 4;
@@ -552,13 +559,33 @@ export async function zbudujKosztPdf({ wiersz = {}, dokument = null, pozycje } =
   //
   // ⚠️ ETYKIETA LAMIE SIE NA DWIE LINIE („Data wytworzenia" / „(system wystawcy)") — ma
   // 151,5 pkt przy kolumnie 92 pkt. Lamie sie ETYKIETA, a nie wartosc: patrz `para()`.
-  yM = para(doc, PRAWA_KOLUMNA, yM, szerMetryczki, 'Data wytworzenia (system wystawcy)',
-    napis(d.dataWytworzenia).replace('T', ' '), { lamanaEtykieta: true });
-  yM = para(doc, PRAWA_KOLUMNA, yM, szerMetryczki, 'Data wystawienia', d.dataWystawienia || dzien(wiersz.data_wystawienia));
+  yM = para(
+    doc,
+    PRAWA_KOLUMNA,
+    yM,
+    szerMetryczki,
+    'Data wytworzenia (system wystawcy)',
+    napis(d.dataWytworzenia).replace('T', ' '),
+    { lamanaEtykieta: true },
+  );
+  yM = para(
+    doc,
+    PRAWA_KOLUMNA,
+    yM,
+    szerMetryczki,
+    'Data wystawienia',
+    d.dataWystawienia || dzien(wiersz.data_wystawienia),
+  );
   yM = para(doc, PRAWA_KOLUMNA, yM, szerMetryczki, 'Miejsce wystawienia', d.miejsceWystawienia);
   yM = para(doc, PRAWA_KOLUMNA, yM, szerMetryczki, 'Data sprzedaży', d.dataSprzedazy);
-  yM = para(doc, PRAWA_KOLUMNA, yM, szerMetryczki, 'Okres rozliczeniowy',
-    d.okresOd || d.okresDo ? `${napis(d.okresOd)} – ${napis(d.okresDo)}` : '');
+  yM = para(
+    doc,
+    PRAWA_KOLUMNA,
+    yM,
+    szerMetryczki,
+    'Okres rozliczeniowy',
+    d.okresOd || d.okresDo ? `${napis(d.okresOd)} – ${napis(d.okresDo)}` : '',
+  );
   yM = para(doc, PRAWA_KOLUMNA, yM, szerMetryczki, 'Rodzaj', d.rodzajOpis || napis(wiersz.rodzaj));
   yM = para(doc, PRAWA_KOLUMNA, yM, szerMetryczki, 'Waluta', waluta);
 
@@ -574,14 +601,11 @@ export async function zbudujKosztPdf({ wiersz = {}, dokument = null, pozycje } =
   const linieSprzedawcy = [
     napis(d.sprzedawca?.nazwa) || napis(wiersz.sprzedawca_nazwa),
     ...(d.sprzedawca?.adres ?? []),
-    napis(d.sprzedawca?.identyfikator)
-      || (napis(wiersz.sprzedawca_nip) ? `NIP: ${napis(wiersz.sprzedawca_nip)}` : ''),
+    napis(d.sprzedawca?.identyfikator) || (napis(wiersz.sprzedawca_nip) ? `NIP: ${napis(wiersz.sprzedawca_nip)}` : ''),
   ].filter((s) => s !== '');
-  const linieNabywcy = [
-    napis(d.nabywca?.nazwa),
-    ...(d.nabywca?.adres ?? []),
-    napis(d.nabywca?.identyfikator),
-  ].filter((s) => s !== '');
+  const linieNabywcy = [napis(d.nabywca?.nazwa), ...(d.nabywca?.adres ?? []), napis(d.nabywca?.identyfikator)].filter(
+    (s) => s !== '',
+  );
   if (linieNabywcy.length === 0) {
     linieNabywcy.push('Danych nabywcy nie ma w tym dokumencie.');
   }
@@ -601,9 +625,11 @@ export async function zbudujKosztPdf({ wiersz = {}, dokument = null, pozycje } =
   const czesciowe = p.zaplatyCzesciowe ?? [];
   // Dokument MOWI o zaplacie czesciowej, gdy niesie wplaty albo sam znacznik `= 1`.
   const maCzesciowa = czesciowe.length > 0 || p.czesciowa === true;
-  const maCoPowiedziec = p.zaplacono === true || p.zaplacono === false
-    || maCzesciowa
-    || [p.dataZaplaty, p.termin, p.forma, p.opis, p.rachunek].some((s) => napis(s) !== '');
+  const maCoPowiedziec =
+    p.zaplacono === true ||
+    p.zaplacono === false ||
+    maCzesciowa ||
+    [p.dataZaplaty, p.termin, p.forma, p.opis, p.rachunek].some((s) => napis(s) !== '');
   if (dokument && maCoPowiedziec) {
     let status;
     if (p.zaplacono === true) {
@@ -707,7 +733,9 @@ export async function zbudujKosztPdf({ wiersz = {}, dokument = null, pozycje } =
     // wywolaniu bez zawijania, zeby dalo sie je odczytac z powrotem w calosci.
     zwykly(doc, 8.5, SZARY_TEKST).text(
       'XML z KSeF nie zawiera pozycji — kwoty poniżej pochodzą z metadanych dokumentu.',
-      L, y, { width: R - L, lineBreak: false },
+      L,
+      y,
+      { width: R - L, lineBreak: false },
     );
     y += 18;
   }
@@ -746,8 +774,7 @@ export async function zbudujKosztPdf({ wiersz = {}, dokument = null, pozycje } =
   const obcaWaluta = waluta !== '' && waluta !== 'PLN';
   // ⚠️ REZERWA NA NOTĘ O DWÓCH WALUTACH TO DWIE LINIE, NIE JEDNA: nota ma blisko 190 znaków
   // i przy 7 pkt łamie się na dwie linie pełnej szerokości.
-  const potrzeba = 18 + stawki.length * 13 + wierszeVatPln * 10
-    + 4 * 16 + 24 + (obcaWaluta ? 32 : 0);
+  const potrzeba = 18 + stawki.length * 13 + wierszeVatPln * 10 + 4 * 16 + 24 + (obcaWaluta ? 32 : 0);
   y = miejsceNa(doc, stan, wiersz, y + 10, potrzeba);
   linia(doc, y);
   y += 8;
@@ -777,7 +804,9 @@ export async function zbudujKosztPdf({ wiersz = {}, dokument = null, pozycje } =
       if (napis(s.vatPln) !== '') {
         zwykly(doc, 7, SZARY_TEKST).text(
           `VAT przeliczony na złote: ${kwota(s.vatPln, 'PLN')}`,
-          STAWKI_KOL.etykieta.x, y - 3, { width: R - STAWKI_KOL.etykieta.x },
+          STAWKI_KOL.etykieta.x,
+          y - 3,
+          { width: R - STAWKI_KOL.etykieta.x },
         );
         y += 10;
       }
@@ -800,8 +829,10 @@ export async function zbudujKosztPdf({ wiersz = {}, dokument = null, pozycje } =
   ];
   sumy.forEach(([etykieta, wartosc, walutaKwoty], i) => {
     if (i % 2 === 0) {
-      doc.rect(PODSUMOWANIE.etykieta.x, y - 4, R - PODSUMOWANIE.etykieta.x, 16)
-        .fillColor(SZARY_WIERSZ).fill();
+      doc
+        .rect(PODSUMOWANIE.etykieta.x, y - 4, R - PODSUMOWANIE.etykieta.x, 16)
+        .fillColor(SZARY_WIERSZ)
+        .fill();
     }
     zwykly(doc, 8.5);
     komorka(doc, etykieta, PODSUMOWANIE.etykieta, y);
@@ -855,24 +886,28 @@ export async function zbudujKosztPdf({ wiersz = {}, dokument = null, pozycje } =
       const x = i % 2 === 0 ? L : L + SZER_KOL + 20;
       const yBiez = i % 2 === 0 ? yLewa : yPrawa;
       zwykly(doc, 8, SZARY_TEKST).text(napis(a.etykieta), x, yBiez, {
-        width: SZER_KOL - 40, lineBreak: false,
+        width: SZER_KOL - 40,
+        lineBreak: false,
       });
       gruby(doc, 8).text(napis(a.wartosc), x + SZER_KOL - 36, yBiez, { width: 36, lineBreak: false });
-      if (i % 2 === 0) yLewa = yBiez + 12; else yPrawa = yBiez + 12;
+      if (i % 2 === 0) yLewa = yBiez + 12;
+      else yPrawa = yBiez + 12;
     });
     y = Math.max(yLewa, yPrawa) + 2;
 
     // Podstawa zwolnienia jako POLE dokumentu — art. 106e ust. 1 pkt 19. Zdanie potrafi byc
     // dlugie („ZWOLNIENIE NA PODSTAWIE ART. 43, UST. 1, PKT 40 USTAWY O VAT"), wiec idzie
     // pelna szerokoscia, pod dwiema kolumnami.
-    adnotacje.filter((a) => napis(a.podstawa) !== '').forEach((a) => {
-      const tekst = `Podstawa zwolnienia: ${napis(a.podstawa)}`;
-      zwykly(doc, 8);
-      const wysPodstawy = doc.heightOfString(tekst, { width: R - L });
-      y = miejsceNa(doc, stan, wiersz, y + 2, wysPodstawy);
-      zwykly(doc, 8).text(tekst, L, y, { width: R - L });
-      y += wysPodstawy + 2;
-    });
+    adnotacje
+      .filter((a) => napis(a.podstawa) !== '')
+      .forEach((a) => {
+        const tekst = `Podstawa zwolnienia: ${napis(a.podstawa)}`;
+        zwykly(doc, 8);
+        const wysPodstawy = doc.heightOfString(tekst, { width: R - L });
+        y = miejsceNa(doc, stan, wiersz, y + 2, wysPodstawy);
+        zwykly(doc, 8).text(tekst, L, y, { width: R - L });
+        y += wysPodstawy + 2;
+      });
   }
 
   return bajty(doc);

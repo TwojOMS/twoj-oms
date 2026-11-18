@@ -5,39 +5,98 @@ import { zalozKluczApi } from '../../../src/core/bezpieczenstwo/klucze-api.js';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 
 let app, db, odczyt, sprzedaz, druk, id;
-const bearer = klucz => ({ authorization: `Bearer ${klucz}` });
+const bearer = (klucz) => ({ authorization: `Bearer ${klucz}` });
 beforeAll(async () => {
   ({ app, db } = nowyPanel());
   await app.ready();
-  const kontoId = zalozKonto(db, { login: 'tester-api', imie: 'Tester', haslo: 'h', admin: true, rola: 'administrator' });
-  const klucz = zakresy => bearer(zalozKluczApi(db, {
-    nazwa: 'Pracownia Półcień', zakresy, kontoId, teraz: new Date().toISOString(),
-  }).klucz);
+  const kontoId = zalozKonto(db, {
+    login: 'tester-api',
+    imie: 'Tester',
+    haslo: 'h',
+    admin: true,
+    rola: 'administrator',
+  });
+  const klucz = (zakresy) =>
+    bearer(
+      zalozKluczApi(db, {
+        nazwa: 'Pracownia Półcień',
+        zakresy,
+        kontoId,
+        teraz: new Date().toISOString(),
+      }).klucz,
+    );
   odczyt = klucz(['zamowienia:odczyt']);
   sprzedaz = klucz(['sprzedaz:odczyt']);
   druk = klucz(['druk']);
-  id = zapiszZamowienie(db, 'sklep-testowy', {
-    zrodlo_id: 701, numer: '701', kwota_brutto: '123.00', kwota_pobrania: null,
-    utworzone_at: '2026-11-01T10:00:00.000Z', metoda_wysylki: 'dpd',
-    pozycje: [], chce_fakture: 0, nip: null, status_woo: 'processing', oplacone_at: null, anulowane: 0,
-    dostawa: { first_name: 'Ala', last_name: 'Testowa', company: 'Pracownia Półcień',
-      address_1: 'Testowa 7', postcode: '00-001', city: 'Testowo', country: 'PL' },
-    klient: { email: 'ala@example.test', first_name: 'Ala', last_name: 'Testowa' },
-  }, {});
-  db.prepare('UPDATE zamowienia SET karta_id = ?, wyslane_at = ? WHERE id = ?')
-    .run('karta-testowa', '2026-11-02T12:00:00.000Z', id);
+  id = zapiszZamowienie(
+    db,
+    'sklep-testowy',
+    {
+      zrodlo_id: 701,
+      numer: '701',
+      kwota_brutto: '123.00',
+      kwota_pobrania: null,
+      utworzone_at: '2026-11-01T10:00:00.000Z',
+      metoda_wysylki: 'dpd',
+      pozycje: [],
+      chce_fakture: 0,
+      nip: null,
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane: 0,
+      dostawa: {
+        first_name: 'Ala',
+        last_name: 'Testowa',
+        company: 'Pracownia Półcień',
+        address_1: 'Testowa 7',
+        postcode: '00-001',
+        city: 'Testowo',
+        country: 'PL',
+      },
+      klient: { email: 'ala@example.test', first_name: 'Ala', last_name: 'Testowa' },
+    },
+    {},
+  );
+  db.prepare('UPDATE zamowienia SET karta_id = ?, wyslane_at = ? WHERE id = ?').run(
+    'karta-testowa',
+    '2026-11-02T12:00:00.000Z',
+    id,
+  );
   // Ten sam numer w innym sklepie nie może zmienić wyniku wyszukiwania.
-  zapiszZamowienie(db, 'drugi-sklep', {
-    zrodlo_id: 702, numer: '701', kwota_brutto: '99.00', kwota_pobrania: null, pozycje: [],
-    klient: {}, dostawa: {}, metoda_wysylki: 'dpd', chce_fakture: 0, nip: null,
-    status_woo: 'processing', oplacone_at: null, anulowane: 0,
-    utworzone_at: '2026-11-01T11:00:00.000Z',
-  }, {});
+  zapiszZamowienie(
+    db,
+    'drugi-sklep',
+    {
+      zrodlo_id: 702,
+      numer: '701',
+      kwota_brutto: '99.00',
+      kwota_pobrania: null,
+      pozycje: [],
+      klient: {},
+      dostawa: {},
+      metoda_wysylki: 'dpd',
+      chce_fakture: 0,
+      nip: null,
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane: 0,
+      utworzone_at: '2026-11-01T11:00:00.000Z',
+    },
+    {},
+  );
 });
-afterAll(async () => { await app?.close(); db?.close(); });
+afterAll(async () => {
+  await app?.close();
+  db?.close();
+});
 
 const trasy = [
-  ['z karty', () => '/zamowienia-z-karty/karta-testowa', () => '/zamowienia/z-karty/karta-testowa', 'zamowienia:odczyt'],
+  [
+    'z karty',
+    () => '/zamowienia-z-karty/karta-testowa',
+    () => '/zamowienia/z-karty/karta-testowa',
+    'zamowienia:odczyt',
+  ],
   ['po numerze', () => '/zamowienia/po-numerze/701?sklep=sklep-testowy', null, 'zamowienia:odczyt'],
   ['dostawa', () => `/zamowienia/${id}/dostawa`, null, 'zamowienia:odczyt'],
   ['stan wysyłki', () => `/zamowienia/${id}/stan-wysylki`, null, 'zamowienia:odczyt'],
@@ -60,10 +119,24 @@ describe('Przeniesione odczyty: Basic /api i klucz /api/v1', () => {
         // byłoby tautologią (ten sam handler), więc v1 sprawdzamy dosłownym ciałem.
         const r = await app.inject({ url: `/api/v1${stara()}`, headers: sprzedaz });
         expect(r.statusCode).toBe(200);
-        expect(r.json()).toEqual({ zamowienia: [
-          { numer: '701', kanal: 'SKLEP', kwotaBrutto: '123.00', dataZlozenia: '2026-11-01T10:00:00.000Z', dzien: '2026-11-01' },
-          { numer: '701', kanal: 'SKLEP', kwotaBrutto: '99.00', dataZlozenia: '2026-11-01T11:00:00.000Z', dzien: '2026-11-01' },
-        ] });
+        expect(r.json()).toEqual({
+          zamowienia: [
+            {
+              numer: '701',
+              kanal: 'SKLEP',
+              kwotaBrutto: '123.00',
+              dataZlozenia: '2026-11-01T10:00:00.000Z',
+              dzien: '2026-11-01',
+            },
+            {
+              numer: '701',
+              kanal: 'SKLEP',
+              kwotaBrutto: '99.00',
+              dataZlozenia: '2026-11-01T11:00:00.000Z',
+              dzien: '2026-11-01',
+            },
+          ],
+        });
         return;
       }
       const wynik = await porownaj(stara(), nowa?.(), 200, odczyt);

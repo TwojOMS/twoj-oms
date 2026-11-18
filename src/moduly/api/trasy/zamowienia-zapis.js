@@ -1,6 +1,9 @@
 import { wymagajZakresu } from '../zakres.js';
 import {
-  obslugaZalozeniaZKarty, obslugaWRealizacji, obslugaProformy, obslugaPdfProformy,
+  obslugaZalozeniaZKarty,
+  obslugaWRealizacji,
+  obslugaProformy,
+  obslugaPdfProformy,
 } from '../../api-panelu/trasy/api-zamowienia-z-karty.js';
 
 /** Te same zapisy i usługi co w panelu; dostęp według zakresów klucza API. */

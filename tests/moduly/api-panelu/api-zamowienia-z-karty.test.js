@@ -18,9 +18,13 @@ const config = { auth: { user: 'adam', pass: 'x' }, klienciZbiorczy: [] };
 // nalezala — dokladnie ten uklad, w ktorym zamowienie z karty dostawalo doklejone 19 zl.
 // ⚠️ Od 24.08.2026 warunki umowy stoja na KARCIE KLIENTA, wiec test wstawia go do bazy.
 const KLIENT_ZBIORCZY = {
-  klucz: 'przykladowa', nazwa: 'Pracownia Przykładowa sp. z o.o.', nip: '1234500011',
-  rabat_procent: 0, prog_darmowej_dostawy_gr: 50000,
-  oplata_obslugi_gr: 400, oplata_kurierska_gr: 1900,
+  klucz: 'przykladowa',
+  nazwa: 'Pracownia Przykładowa sp. z o.o.',
+  nip: '1234500011',
+  rabat_procent: 0,
+  prog_darmowej_dostawy_gr: 50000,
+  oplata_obslugi_gr: 400,
+  oplata_kurierska_gr: 1900,
 };
 const configZbiorczy = { ...config };
 // Basic Auth jak w kazdym tescie trasy. `origin` jest KONIECZNE: straznik CSRF
@@ -35,7 +39,8 @@ const cialo = {
   kartaId: 'karta-abc',
   klient: { first_name: 'Jan', last_name: 'Kowalski', email: 'jan@example.com', phone: '500900008' },
   dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Długa 45', postcode: '30-001', city: 'Kraków' },
-  nip: null, chceFakture: false,
+  nip: null,
+  chceFakture: false,
   kosztDostawyBrutto: '19.00',
   pozycje: [{ nazwa: 'Lampa wisząca — Kopuła 40x60cm', ilosc: 1, cena_brutto: '250.00' }],
   uwagi: 'Zamówienie indywidualne — karta karta-abc',
@@ -77,7 +82,9 @@ describe('POST /api/zamowienia-z-karty', () => {
     const zApp = buildOmsServer({ db, config: configZbiorczy });
     await zApp.ready();
     const res = await zApp.inject({
-      method: 'POST', url: '/api/zamowienia-z-karty', headers: naglowki,
+      method: 'POST',
+      url: '/api/zamowienia-z-karty',
+      headers: naglowki,
       payload: { ...cialo, nip: KLIENT_ZBIORCZY.nip, chceFakture: true },
     });
     expect(res.statusCode).toBe(201);
@@ -90,7 +97,12 @@ describe('POST /api/zamowienia-z-karty', () => {
     // API karty wyżej zachowuje 19 zł dostawy z zaakceptowanej oferty.
     const kontrolne = zalozZamowienieReczne({
       db,
-      dane: parsujZamowienieZKarty({ ...cialo, kartaId: 'karta-kontrolna', nip: KLIENT_ZBIORCZY.nip, chceFakture: true }),
+      dane: parsujZamowienieZKarty({
+        ...cialo,
+        kartaId: 'karta-kontrolna',
+        nip: KLIENT_ZBIORCZY.nip,
+        chceFakture: true,
+      }),
       znacznik: new Date().toISOString(),
       okresId: null,
     });
@@ -101,7 +113,9 @@ describe('POST /api/zamowienia-z-karty', () => {
   });
 
   it('drugie zadanie z ta sama karta oddaje 409 z numerem PIERWSZEGO zamowienia', async () => {
-    const pierwsze = (await app.inject({ method: 'POST', url: '/api/zamowienia-z-karty', headers: naglowki, payload: cialo })).json();
+    const pierwsze = (
+      await app.inject({ method: 'POST', url: '/api/zamowienia-z-karty', headers: naglowki, payload: cialo })
+    ).json();
     const res = await app.inject({ method: 'POST', url: '/api/zamowienia-z-karty', headers: naglowki, payload: cialo });
     expect(res.statusCode).toBe(409);
     expect(res.json()).toMatchObject({ id: pierwsze.id, numer: pierwsze.numer });
@@ -115,7 +129,9 @@ describe('POST /api/zamowienia-z-karty', () => {
     // Licznik, ktory ma ZOSTAC na 1, dowodzi tego, o co chodzi: odmowa niczego nie zapisala
     // i niczego nie skasowala.
     await app.inject({
-      method: 'POST', url: '/api/zamowienia-z-karty', headers: naglowki,
+      method: 'POST',
+      url: '/api/zamowienia-z-karty',
+      headers: naglowki,
       payload: { ...cialo, kartaId: 'karta-inna' },
     });
     expect(db.prepare('SELECT COUNT(*) c FROM zamowienia').get().c).toBe(1);
@@ -129,7 +145,12 @@ describe('POST /api/zamowienia-z-karty', () => {
 
   it('zadanie bez Origin odbija sie od ochrony CSRF', async () => {
     const { origin, ...bezOrigin } = naglowki;
-    const res = await app.inject({ method: 'POST', url: '/api/zamowienia-z-karty', headers: bezOrigin, payload: cialo });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/zamowienia-z-karty',
+      headers: bezOrigin,
+      payload: cialo,
+    });
     expect(res.statusCode).toBe(403);
     expect(origin).toBe('http://localhost');
   });
@@ -145,9 +166,18 @@ describe('POST /api/zamowienia-z-karty', () => {
     // okno `od`/`do` wskazywalo DZIEN POPRZEDNI i zamowienie z niego wypadalo.
     const dzis = dzienWarszawa(new Date().toISOString());
     // `/api/v1/sprzedaz` wymaga klucza API z zakresem `sprzedaz:odczyt`.
-    const kontoId = zalozKonto(db, { login: 'tester-api', imie: 'Tester', haslo: 'h', admin: true, rola: 'administrator' });
+    const kontoId = zalozKonto(db, {
+      login: 'tester-api',
+      imie: 'Tester',
+      haslo: 'h',
+      admin: true,
+      rola: 'administrator',
+    });
     const { klucz } = zalozKluczApi(db, {
-      nazwa: 'Pracownia Półcień', zakresy: ['sprzedaz:odczyt'], kontoId, teraz: new Date().toISOString(),
+      nazwa: 'Pracownia Półcień',
+      zakresy: ['sprzedaz:odczyt'],
+      kontoId,
+      teraz: new Date().toISOString(),
     });
     const res = await app.inject({
       method: 'GET',
@@ -187,7 +217,9 @@ describe('POST /api/zamowienia-z-karty', () => {
     expect(res.json().powod).not.toContain('dysk pełny');
     // Wpis w dzienniku przypiety do TEGO zamowienia — inaczej wisialby luzem i karta
     // w OMS-ie nie pokazalaby, co sie stalo.
-    const wpis = db.prepare("SELECT zamowienie_id, wynik FROM log WHERE akcja = 'zamowienie.z-karty' ORDER BY id DESC").get();
+    const wpis = db
+      .prepare("SELECT zamowienie_id, wynik FROM log WHERE akcja = 'zamowienie.z-karty' ORDER BY id DESC")
+      .get();
     expect(wpis.zamowienie_id).toBe(z.id);
     expect(wpis.wynik).toContain('dysk pełny');
   });
@@ -207,7 +239,11 @@ describe('POST /api/zamowienia-z-karty', () => {
     // tworzona na nowo w `beforeEach`, wiec podmiany nie trzeba cofac.
     db.prepare = (sql) => {
       if (/INSERT INTO pozycje/i.test(sql)) {
-        return { run: () => { throw Object.freeze(new Error('dysk pełny')); } };
+        return {
+          run: () => {
+            throw Object.freeze(new Error('dysk pełny'));
+          },
+        };
       }
       return prepare(sql);
     };
@@ -237,7 +273,9 @@ describe('GET /api/zamowienia-z-karty/:kartaId', () => {
   // widzialaby oplaty zaksiegowanej w prawdziwym OMS-ie — bo pobierzZamowienie liczy
   // `oplacone_at` z listy wplat, a nie z tej kolumny.
   it('oddaje numer i stan wplaty', async () => {
-    const { id } = (await app.inject({ method: 'POST', url: '/api/zamowienia-z-karty', headers: naglowki, payload: cialo })).json();
+    const { id } = (
+      await app.inject({ method: 'POST', url: '/api/zamowienia-z-karty', headers: naglowki, payload: cialo })
+    ).json();
     dodajWplateReczna(db, id, { kwota: '269.00', data: '2026-08-05' });
     const res = await app.inject({ method: 'GET', url: '/api/zamowienia-z-karty/karta-abc', headers: naglowkiGet });
     expect(res.statusCode).toBe(200);
@@ -258,19 +296,33 @@ describe('GET /api/zamowienia-z-karty/:kartaId', () => {
   // dopiero dopłata reszty (169 zl) daje `true`. Wplaty ida przez `dodajWplateReczna` — ta
   // sama droga, co reszta pliku (patrz komentarz przy tescie „oddaje numer i stan wplaty").
   it('wplata czesciowa oddaje oplacone:false, dopiero dopłata reszty oplacone:true', async () => {
-    const { id } = (await app.inject({ method: 'POST', url: '/api/zamowienia-z-karty', headers: naglowki, payload: cialo })).json();
+    const { id } = (
+      await app.inject({ method: 'POST', url: '/api/zamowienia-z-karty', headers: naglowki, payload: cialo })
+    ).json();
 
     dodajWplateReczna(db, id, { kwota: '100.00', data: '2026-08-05' });
-    const czesciowa = await app.inject({ method: 'GET', url: '/api/zamowienia-z-karty/karta-abc', headers: naglowkiGet });
+    const czesciowa = await app.inject({
+      method: 'GET',
+      url: '/api/zamowienia-z-karty/karta-abc',
+      headers: naglowkiGet,
+    });
     expect(czesciowa.json().oplacone).toBe(false);
 
     dodajWplateReczna(db, id, { kwota: '169.00', data: '2026-08-05' });
-    const dopelnione = await app.inject({ method: 'GET', url: '/api/zamowienia-z-karty/karta-abc', headers: naglowkiGet });
+    const dopelnione = await app.inject({
+      method: 'GET',
+      url: '/api/zamowienia-z-karty/karta-abc',
+      headers: naglowkiGet,
+    });
     expect(dopelnione.json().oplacone).toBe(true);
   });
 
   it('karta bez zamowienia dostaje 404 z komunikatem, ze karta nie ma zamowienia w OMS-ie', async () => {
-    const res = await app.inject({ method: 'GET', url: '/api/zamowienia-z-karty/karta-nieznana', headers: naglowkiGet });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/zamowienia-z-karty/karta-nieznana',
+      headers: naglowkiGet,
+    });
     expect(res.statusCode).toBe(404);
     // ⚠️ Kryterium akceptacji: `statusCode === 404` sam z siebie NIE GRYZIE — to domyslna
     // odpowiedz Fastify dla kazdej nieistniejacej trasy, przeszlaby takze wtedy, gdyby ta

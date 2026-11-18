@@ -9,9 +9,18 @@
 // ⚠️ Hasło SMTP nie wraca na ekran nigdy — także po błędzie formularza (pole hasła zawsze puste) — i nie trafia do
 // logu: przy nieudanej wiadomości próbnej log dostaje wyłącznie kod błędu nodemailera.
 import { stronaOdmowy } from '../../../core/web/odmowa.js';
-import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji, usunKonfiguracjeIntegracji, stanDlaEkranu }
-  from '../../../oms/db/konfiguracja-integracji.js';
-import { EKRAN_POCZTY, PORT_DOMYSLNY, sprawdzFormularzPoczty, komunikatBleduPoczty } from '../../wiadomosci/poczta-ustawien.ts';
+import {
+  wczytajKonfiguracjeIntegracji,
+  zapiszKonfiguracjeIntegracji,
+  usunKonfiguracjeIntegracji,
+  stanDlaEkranu,
+} from '../../../oms/db/konfiguracja-integracji.js';
+import {
+  EKRAN_POCZTY,
+  PORT_DOMYSLNY,
+  sprawdzFormularzPoczty,
+  komunikatBleduPoczty,
+} from '../../wiadomosci/poczta-ustawien.ts';
 import { adresPaneluZZapisu, adresPaneluZZadania, sprawdzFormularzAdresuPanelu } from '../adres-panelu.ts';
 import { emailKonta } from '../konta-dostep.js';
 import { renderMailHtml } from '../../../core/poczta/mail-html.js';
@@ -20,7 +29,8 @@ import { nawigacjaUstawien } from '../nawigacja.js';
 const KOMUNIKATY = {
   zapisano: 'Zapisano ustawienia poczty wychodzącej. Działają od następnego maila.',
   adres: 'Zapisano adres panelu. Linki w kolejnych mailach będą prowadzić pod ten adres.',
-  'adres-usuniety': 'Usunięto zapisany adres panelu. Linki w kolejnych mailach prowadzą pod adres, z którego korzysta administrator wysyłający zaproszenie.',
+  'adres-usuniety':
+    'Usunięto zapisany adres panelu. Linki w kolejnych mailach prowadzą pod adres, z którego korzysta administrator wysyłający zaproszenie.',
   odlaczono: 'Ustawienia poczty usunięte z OMS-u (razem z hasłem).',
   podpis: 'Zapisano podpis maili. Następny mail do klienta pójdzie z tą marką i stopką.',
 };
@@ -33,44 +43,87 @@ export const TEMAT_PROBNEJ = 'Wiadomość próbna z panelu';
  * `podpis` — usługa wiadomosci.podpisMaili (marka i stopka maili do klientów) albo null bez modułu wiadomości.
  * @param {{ db: any, adresPaneluZEnv: string | null, poczta: () => any, mailer: () => any, podpis?: () => any, log?: (...t: string[]) => void }} opcje
  */
-export function registerUstawieniaPocztyRoutes(app, { db, adresPaneluZEnv, poczta, mailer, podpis = () => null, log = () => {} }) {
+export function registerUstawieniaPocztyRoutes(
+  app,
+  { db, adresPaneluZEnv, poczta, mailer, podpis = () => null, log = () => {} },
+) {
   /** Sekcja „Podpis maili”: stan pól, wartości w formularzu i podgląd (bieżący albo z wpisanych, niezapisanych pól). */
   function ekranPodpisu({ wpisanyPodpis = null, bledyPodpisu = [], podgladWpisany = false, zapisano = false } = {}) {
     const usl = podpis();
     if (!usl) return null;
     const stan = usl.stan();
     const pola = { marka: stan.marka.wartosc, stopka: stan.stopka.wartosc, ...(wpisanyPodpis ?? {}) };
-    return { stan, pola, bledy: bledyPodpisu, podgladWpisany, zapisano: zapisano ? KOMUNIKATY.podpis : null,
-      podglad: usl.podglad(podgladWpisany && !bledyPodpisu.length ? wpisanyPodpis : null) };
+    return {
+      stan,
+      pola,
+      bledy: bledyPodpisu,
+      podgladWpisany,
+      zapisano: zapisano ? KOMUNIKATY.podpis : null,
+      podglad: usl.podglad(podgladWpisany && !bledyPodpisu.length ? wpisanyPodpis : null),
+    };
   }
-  function widok(req, reply, { wpisane = null, bledy = [], bledyAdresu = [], wpisanyAdres = null, proba = null, adresProby = null, podpisMaili = undefined } = {}) {
+  function widok(
+    req,
+    reply,
+    {
+      wpisane = null,
+      bledy = [],
+      bledyAdresu = [],
+      wpisanyAdres = null,
+      proba = null,
+      adresProby = null,
+      podpisMaili = undefined,
+    } = {},
+  ) {
     const stanPoczty = poczta() ?? { zEnv: false, atrapa: false, ustawien: null };
     const stan = stanDlaEkranu(wczytajKonfiguracjeIntegracji(db, 'poczta'));
     const zapisAdresu = wczytajKonfiguracjeIntegracji(db, 'adres_panelu');
     const adresZapisany = adresPaneluZZapisu(zapisAdresu);
     const zapisane = stan?.ustawienia ?? {};
-    return reply.view('ustawienia-poczta.ejs', { szerokosc: 'formularz',
-      nawigacja: nawigacjaUstawien(req, reply), title: nawigacjaUstawien(req, reply).kontekst.aktywnyDzial === 'komunikacja' ? 'Podpis i stopka' : 'Poczta wychodząca',
-      zEnv: stanPoczty.zEnv, atrapa: stanPoczty.atrapa, stan,
-      pola: { ...PUSTY, ...Object.fromEntries(Object.entries(zapisane).map(([k, v]) => [k, String(v ?? '')])), ...(wpisane ?? {}) },
+    return reply.view('ustawienia-poczta.ejs', {
+      szerokosc: 'formularz',
+      nawigacja: nawigacjaUstawien(req, reply),
+      title:
+        nawigacjaUstawien(req, reply).kontekst.aktywnyDzial === 'komunikacja' ? 'Podpis i stopka' : 'Poczta wychodząca',
+      zEnv: stanPoczty.zEnv,
+      atrapa: stanPoczty.atrapa,
+      stan,
+      pola: {
+        ...PUSTY,
+        ...Object.fromEntries(Object.entries(zapisane).map(([k, v]) => [k, String(v ?? '')])),
+        ...(wpisane ?? {}),
+      },
       moznaProbowac: Boolean(mailer()),
       adresProby: adresProby ?? emailKonta(db, req.konto?.id ?? -1) ?? '',
       // Tylko do podpowiedzi przy pustym polu — link z tokenem liczy wyłącznie trasa admina (konta.js).
       adresDomyslny: adresPaneluZZadania(req),
-      adresZEnv: adresPaneluZEnv, adresZapisany, zapisAdresu: zapisAdresu ? { kontoLogin: zapisAdresu.kontoLogin, zmienionoAt: zapisAdresu.zmienionoAt } : null,
+      adresZEnv: adresPaneluZEnv,
+      adresZapisany,
+      zapisAdresu: zapisAdresu ? { kontoLogin: zapisAdresu.kontoLogin, zmienionoAt: zapisAdresu.zmienionoAt } : null,
       wpisanyAdres: wpisanyAdres ?? adresZapisany ?? '',
-      bledy, bledyAdresu, proba,
-      podpisMaili: podpisMaili === undefined ? ekranPodpisu({ zapisano: req.query?.zapisano === 'podpis' }) : podpisMaili,
+      bledy,
+      bledyAdresu,
+      proba,
+      podpisMaili:
+        podpisMaili === undefined ? ekranPodpisu({ zapisano: req.query?.zapisano === 'podpis' }) : podpisMaili,
       // Potwierdzenie zapisu podpisu stoi w jego sekcji (adres kończy się #podpis-maili), nie na górze strony.
-      zapisano: req.query?.zapisano === 'podpis' ? null : KOMUNIKATY[req.query?.zapisano] ?? null,
+      zapisano: req.query?.zapisano === 'podpis' ? null : (KOMUNIKATY[req.query?.zapisano] ?? null),
     });
   }
   const PODPIS_EKRAN = '/ustawienia/komunikacja/podpis';
   const WROC_POCZTA = { wroc: EKRAN_POCZTY, napisWroc: 'Wróć do ustawień poczty' };
-  const WROC_PODPIS = { tytul: 'Nie zapisano podpisu maili', wroc: `${PODPIS_EKRAN}#podpis-maili`, napisWroc: 'Wróć do podpisu maili' };
-  const odmowaZPliku = (reply, co) => stronaOdmowy(reply, 409,
-    `${co} jest ustawiony w pliku konfiguracji (oms.env) — tam go zmień. Formularz niczego nie zapisał.`,
-    { tytul: 'Nie zapisano ustawień poczty', ...WROC_POCZTA });
+  const WROC_PODPIS = {
+    tytul: 'Nie zapisano podpisu maili',
+    wroc: `${PODPIS_EKRAN}#podpis-maili`,
+    napisWroc: 'Wróć do podpisu maili',
+  };
+  const odmowaZPliku = (reply, co) =>
+    stronaOdmowy(
+      reply,
+      409,
+      `${co} jest ustawiony w pliku konfiguracji (oms.env) — tam go zmień. Formularz niczego nie zapisał.`,
+      { tytul: 'Nie zapisano ustawień poczty', ...WROC_POCZTA },
+    );
   const kto = (req) => (req.konto ? { id: req.konto.id ?? null, login: req.konto.login ?? null } : null);
 
   const widokGet = async (req, reply) => {
@@ -78,19 +131,37 @@ export function registerUstawieniaPocztyRoutes(app, { db, adresPaneluZEnv, poczt
     const usl = podpis();
     if (req.query?.podglad === undefined || !usl) return widok(req, reply);
     const wpisane = {};
-    for (const p of ['marka', 'stopka']) if (req.query[p] !== undefined) wpisane[p] = String(req.query[p]).slice(0, 2000);
+    for (const p of ['marka', 'stopka'])
+      if (req.query[p] !== undefined) wpisane[p] = String(req.query[p]).slice(0, 2000);
     const { wartosci, bledy: bledyPodpisu } = usl.sprawdz(wpisane);
-    return widok(req, reply, { podpisMaili: ekranPodpisu({ wpisanyPodpis: bledyPodpisu.length ? wpisane : wartosci, bledyPodpisu, podgladWpisany: true }) });
+    return widok(req, reply, {
+      podpisMaili: ekranPodpisu({
+        wpisanyPodpis: bledyPodpisu.length ? wpisane : wartosci,
+        bledyPodpisu,
+        podgladWpisany: true,
+      }),
+    });
   };
   app.get(EKRAN_POCZTY, widokGet);
   app.get('/ustawienia/komunikacja/podpis', widokGet);
 
   app.post(EKRAN_POCZTY, async (req, reply) => {
     if (poczta()?.zEnv) return odmowaZPliku(reply, 'Serwer poczty (SMTP_…)');
-    const { ustawienia, sekrety, bledy } = sprawdzFormularzPoczty(req.body ?? {}, wczytajKonfiguracjeIntegracji(db, 'poczta'));
+    const { ustawienia, sekrety, bledy } = sprawdzFormularzPoczty(
+      req.body ?? {},
+      wczytajKonfiguracjeIntegracji(db, 'poczta'),
+    );
     if (bledy.length) {
       reply.code(400);
-      return widok(req, reply, { wpisane: { host: ustawienia.host, port: String(ustawienia.port), user: ustawienia.user, nadawca: ustawienia.nadawca }, bledy });
+      return widok(req, reply, {
+        wpisane: {
+          host: ustawienia.host,
+          port: String(ustawienia.port),
+          user: ustawienia.user,
+          nadawca: ustawienia.nadawca,
+        },
+        bledy,
+      });
     }
     zapiszKonfiguracjeIntegracji(db, 'poczta', { ustawienia, sekrety }, { konto: kto(req) });
     return reply.code(303).redirect(`${EKRAN_POCZTY}?zapisano=zapisano`);
@@ -118,24 +189,45 @@ export function registerUstawieniaPocztyRoutes(app, { db, adresPaneluZEnv, poczt
     const adres = String(req.body?.adres ?? '').trim();
     if (!ADRES_EMAIL.test(adres) || adres.length > 254) {
       reply.code(400);
-      return widok(req, reply, { proba: { ok: false, tekst: 'Podaj jeden poprawny adres e-mail odbiorcy wiadomości próbnej.' } });
+      return widok(req, reply, {
+        proba: { ok: false, tekst: 'Podaj jeden poprawny adres e-mail odbiorcy wiadomości próbnej.' },
+      });
     }
     const m = mailer();
-    if (!m) return widok(req, reply, { adresProby: adres, proba: { ok: false, tekst: 'Najpierw zapisz serwer poczty, potem wyślij wiadomość próbną.' } });
-    const text = ['Dzień dobry,', '', 'to wiadomość próbna z panelu obsługi zamówień.',
-      'Skoro ją czytasz, poczta wychodząca działa: zaproszenia do kont i linki do ustawienia hasła dojdą tą samą drogą.', '',
-      'Nie trzeba na nią odpowiadać.'].join('\n');
+    if (!m)
+      return widok(req, reply, {
+        adresProby: adres,
+        proba: { ok: false, tekst: 'Najpierw zapisz serwer poczty, potem wyślij wiadomość próbną.' },
+      });
+    const text = [
+      'Dzień dobry,',
+      '',
+      'to wiadomość próbna z panelu obsługi zamówień.',
+      'Skoro ją czytasz, poczta wychodząca działa: zaproszenia do kont i linki do ustawienia hasła dojdą tą samą drogą.',
+      '',
+      'Nie trzeba na nią odpowiadać.',
+    ].join('\n');
     try {
       await m.sendMail({ to: adres, subject: TEMAT_PROBNEJ, text, html: renderMailHtml({ text }) });
     } catch (e) {
       // Do logu tylko kod (EAUTH, ESOCKET…) — nigdy treść błędu: serwery SMTP odbijają w niej login, a bywa że i hasło.
-      log(`poczta: wiadomość próbna nieudana (kod ${String(e?.code ?? (e?.dlaOperatora ? 'brak-ustawien' : 'nieznany')).replace(/[^A-Za-z0-9_-]/gu, '').slice(0, 30)})`);
+      log(
+        `poczta: wiadomość próbna nieudana (kod ${String(e?.code ?? (e?.dlaOperatora ? 'brak-ustawien' : 'nieznany'))
+          .replace(/[^A-Za-z0-9_-]/gu, '')
+          .slice(0, 30)})`,
+      );
       return widok(req, reply, { adresProby: adres, proba: { ok: false, tekst: komunikatBleduPoczty(e) } });
     }
     const atrapa = Boolean(poczta()?.atrapa);
-    return widok(req, reply, { adresProby: adres, proba: { ok: true, tekst: atrapa
-      ? `Wysłano wiadomość próbną na ${adres} — w piaskownicy przejęła ją atrapa poczty, nic nie wyszło z serwera.`
-      : `Wysłano wiadomość próbną na ${adres}. Sprawdź skrzynkę, także folder ze spamem.` } });
+    return widok(req, reply, {
+      adresProby: adres,
+      proba: {
+        ok: true,
+        tekst: atrapa
+          ? `Wysłano wiadomość próbną na ${adres} — w piaskownicy przejęła ją atrapa poczty, nic nie wyszło z serwera.`
+          : `Wysłano wiadomość próbną na ${adres}. Sprawdź skrzynkę, także folder ze spamem.`,
+      },
+    });
   });
 
   // Podpis maili do klientów. Pole ustawione w pliku (OMS_MAIL_MARKA / OMS_MAIL_STOPKA) = 409, jak reszta ekranu.
@@ -143,12 +235,20 @@ export function registerUstawieniaPocztyRoutes(app, { db, adresPaneluZEnv, poczt
     const usl = podpis();
     if (!usl) return stronaOdmowy(reply, 404, 'Podpis maili wymaga modułu wiadomości.', WROC_PODPIS);
     const body = req.body ?? {};
-    const pola = Object.fromEntries(['marka', 'stopka'].filter((p) => Object.hasOwn(body, p)).map((p) => [p, String(body[p] ?? '')]));
+    const pola = Object.fromEntries(
+      ['marka', 'stopka'].filter((p) => Object.hasOwn(body, p)).map((p) => [p, String(body[p] ?? '')]),
+    );
     const wynik = usl.zapisz(pola);
     if (wynik.kod === 409) {
-      const nazwy = wynik.zablokowane.map((p) => (p === 'marka' ? 'Marka (OMS_MAIL_MARKA)' : 'Stopka (OMS_MAIL_STOPKA)')).join(' i ');
-      return stronaOdmowy(reply, 409,
-        `${nazwy}: ustawione w pliku konfiguracji (oms.env) — tam je zmień. Formularz niczego nie zapisał.`, WROC_PODPIS);
+      const nazwy = wynik.zablokowane
+        .map((p) => (p === 'marka' ? 'Marka (OMS_MAIL_MARKA)' : 'Stopka (OMS_MAIL_STOPKA)'))
+        .join(' i ');
+      return stronaOdmowy(
+        reply,
+        409,
+        `${nazwy}: ustawione w pliku konfiguracji (oms.env) — tam je zmień. Formularz niczego nie zapisał.`,
+        WROC_PODPIS,
+      );
     }
     if (wynik.kod === 400) {
       reply.code(400);

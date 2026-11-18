@@ -23,8 +23,9 @@ const TRASY = {
 
 /** Trasy kolejek druku zarejestrowane w kodzie: „GET /kolejka-druku/:id/zpl”. */
 function trasyKodu(plik) {
-  return [...czytaj(plik).matchAll(/app\.(get|post)\('(\/kolejka-druku[^']*)'/g)]
-    .map((m) => `${m[1].toUpperCase()} ${m[2]}`);
+  return [...czytaj(plik).matchAll(/app\.(get|post)\('(\/kolejka-druku[^']*)'/g)].map(
+    (m) => `${m[1].toUpperCase()} ${m[2]}`,
+  );
 }
 
 /** Wywołania panelu w skrypcie: instrukcje z `/kolejka-druku`, z metodą i z `$($poz.id)` zamienionym na `:id`. */
@@ -38,8 +39,12 @@ function wywolaniaSkryptu(tresc) {
   });
 }
 
-const pliki = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], { cwd: ROOT, encoding: 'utf8' })
-  .split('\0').filter(Boolean);
+const pliki = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], {
+  cwd: ROOT,
+  encoding: 'utf8',
+})
+  .split('\0')
+  .filter(Boolean);
 
 describe('agent druku w repo i w paczce', () => {
   it('pliki agenta istnieją w repo i wchodzą do paczki klienta', () => {
@@ -49,8 +54,9 @@ describe('agent druku w repo i w paczce', () => {
   });
 
   it('dokładne nazwy z listy paczki: wzorzec nie wciąga cudzych plików z deploy/', () => {
-    expect(plikiPaczki(['deploy/drukarka/README.md', 'deploy/nas/oms-release-remote.sh', 'deploy/wydaj.ps1']))
-      .toEqual(['deploy/drukarka/README.md']);
+    expect(plikiPaczki(['deploy/drukarka/README.md', 'deploy/nas/oms-release-remote.sh', 'deploy/wydaj.ps1'])).toEqual([
+      'deploy/drukarka/README.md',
+    ]);
   });
 
   it('skrypty wołają dokładnie te trasy (metoda i adres), które istnieją w kodzie', () => {
@@ -71,7 +77,8 @@ describe('agent druku w repo i w paczce', () => {
     const etykiety = JSON.parse(czytaj('deploy/drukarka/config.przyklad.json'));
     const faktury = JSON.parse(czytaj('deploy/drukarka/config-faktury.przyklad.json'));
     for (const pole of ['url', 'user', 'pass', 'drukarka']) expect(etykiety).toHaveProperty(pole);
-    for (const pole of ['url', 'user', 'pass', 'drukarka', 'pdfProgram', 'pdfArgumenty']) expect(faktury).toHaveProperty(pole);
+    for (const pole of ['url', 'user', 'pass', 'drukarka', 'pdfProgram', 'pdfArgumenty'])
+      expect(faktury).toHaveProperty(pole);
   });
 
   it('instrukcja instalacji odsyła do instrukcji agenta druku, a ta jest w paczce', () => {

@@ -9,14 +9,27 @@ import type { Srodowisko } from './kontrakty.ts';
 // INPOST_TOKEN) nadal sprawdzają pełny adres w pliku przy starcie (moduly/wysylka/kurierzy.ts) — ich klient
 // powstaje raz, przy uruchomieniu.
 
-export type AdresFirmy = { nazwa: string; ulica: string; kod: string; miasto: string; kraj: string; phone: string; email: string };
+export type AdresFirmy = {
+  nazwa: string;
+  ulica: string;
+  kod: string;
+  miasto: string;
+  kraj: string;
+  phone: string;
+  email: string;
+};
 
 /** Adres z pliku — dokładnie ten kształt, który moduł faktur składał, zanim adres trafił do Ustawień (puste pola = ''). */
 export function adresFirmyZEnv(env: Srodowisko): AdresFirmy {
-  return { nazwa: env.DPD_NADAWCA_NAZWA?.trim() ?? '', ulica: env.DPD_NADAWCA_ULICA?.trim() ?? '',
-    kod: env.DPD_NADAWCA_KOD?.trim() ?? '', miasto: env.DPD_NADAWCA_MIASTO?.trim() ?? '',
-    kraj: env.DPD_NADAWCA_KRAJ?.trim() || 'PL', phone: env.DPD_NADAWCA_TELEFON?.trim() ?? '',
-    email: env.DPD_NADAWCA_EMAIL?.trim() ?? '' };
+  return {
+    nazwa: env.DPD_NADAWCA_NAZWA?.trim() ?? '',
+    ulica: env.DPD_NADAWCA_ULICA?.trim() ?? '',
+    kod: env.DPD_NADAWCA_KOD?.trim() ?? '',
+    miasto: env.DPD_NADAWCA_MIASTO?.trim() ?? '',
+    kraj: env.DPD_NADAWCA_KRAJ?.trim() || 'PL',
+    phone: env.DPD_NADAWCA_TELEFON?.trim() ?? '',
+    email: env.DPD_NADAWCA_EMAIL?.trim() ?? '',
+  };
 }
 
 /**

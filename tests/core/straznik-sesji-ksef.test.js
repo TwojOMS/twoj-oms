@@ -28,8 +28,11 @@ const WOLNO_IMPORTOWAC = new Set([
 ]);
 const KOD = new Set(['.js', '.mjs', '.cjs', '.ts']);
 const NAPISY = new Set([
-  ts.SyntaxKind.StringLiteral, ts.SyntaxKind.NoSubstitutionTemplateLiteral,
-  ts.SyntaxKind.TemplateHead, ts.SyntaxKind.TemplateMiddle, ts.SyntaxKind.TemplateTail,
+  ts.SyntaxKind.StringLiteral,
+  ts.SyntaxKind.NoSubstitutionTemplateLiteral,
+  ts.SyntaxKind.TemplateHead,
+  ts.SyntaxKind.TemplateMiddle,
+  ts.SyntaxKind.TemplateTail,
 ]);
 
 function plikiKodu(katalog, wynik = []) {
@@ -43,7 +46,10 @@ function plikiKodu(katalog, wynik = []) {
 
 const doKlienta = (wzgledna, plik) => {
   if (!wzgledna.startsWith('.')) return false;
-  const cel = path.relative(SRC, path.resolve(path.dirname(path.join(SRC, plik)), wzgledna)).split(path.sep).join('/');
+  const cel = path
+    .relative(SRC, path.resolve(path.dirname(path.join(SRC, plik)), wzgledna))
+    .split(path.sep)
+    .join('/');
   return cel === KLIENT || cel === KLIENT.replace(/\.js$/, '') || cel === KLIENT.replace(/\.js$/, '.ts');
 };
 
@@ -56,7 +62,8 @@ function naruszenia(plik, tekst) {
       const napis = w.text ?? '';
       const linia = zrodlo.getLineAndCharacterOfPosition(w.getStart()).line + 1;
       if (napis.includes('/sessions') && plik !== KLIENT) wynik.push(`${plik}:${linia} ścieżka sesji KSeF „${napis}”`);
-      if (doKlienta(napis, plik) && !WOLNO_IMPORTOWAC.has(plik)) wynik.push(`${plik}:${linia} import klienta wysyłki „${napis}”`);
+      if (doKlienta(napis, plik) && !WOLNO_IMPORTOWAC.has(plik))
+        wynik.push(`${plik}:${linia} import klienta wysyłki „${napis}”`);
     }
     ts.forEachChild(w, odwiedz);
   };
@@ -80,8 +87,9 @@ describe('strażnik wysyłki do KSeF', () => {
 
   describe('samokontrola na zmyślonych plikach', () => {
     it('łapie POST /sessions poza klientem — napis i szablon', () => {
-      expect(naruszenia('moduly/faktury/services/wysylka-ksef.js', "await f('/sessions/online', { method: 'POST' });"))
-        .toHaveLength(1);
+      expect(
+        naruszenia('moduly/faktury/services/wysylka-ksef.js', "await f('/sessions/online', { method: 'POST' });"),
+      ).toHaveLength(1);
       expect(naruszenia('oms/ksef/client.js', 'zapytaj(`/sessions/online/${ref}/invoices`);')).toHaveLength(1);
     });
 
@@ -98,8 +106,12 @@ describe('strażnik wysyłki do KSeF', () => {
     });
 
     it('przepuszcza plik z listy i inne pliki o tej nazwie', () => {
-      expect(naruszenia('moduly/faktury/szew-twojefaktury.ts', "import { createKsefWysylka } from '../../oms/ksef/wysylka.js';"))
-        .toEqual([]);
+      expect(
+        naruszenia(
+          'moduly/faktury/szew-twojefaktury.ts',
+          "import { createKsefWysylka } from '../../oms/ksef/wysylka.js';",
+        ),
+      ).toEqual([]);
       expect(naruszenia('moduly/faktury/x.js', "import { a } from './services/wysylka-ksef.js';")).toEqual([]);
     });
   });

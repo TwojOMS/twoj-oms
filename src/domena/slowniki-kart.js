@@ -32,9 +32,15 @@ export function markaZParametrow(parametry) {
   if (!parametry || typeof parametry !== 'object') return null;
   for (const grupa of [parametry.produkt, parametry.oferta]) {
     for (const p of Array.isArray(grupa) ? grupa : []) {
-      if (String(p?.nazwa ?? '').trim().toLowerCase() !== 'marka') continue;
+      if (
+        String(p?.nazwa ?? '')
+          .trim()
+          .toLowerCase() !== 'marka'
+      )
+        continue;
       const wartosc = (Array.isArray(p.wartosci) ? p.wartosci : [])
-        .map(w => (typeof w === 'string' ? w.trim() : '')).find(Boolean);
+        .map((w) => (typeof w === 'string' ? w.trim() : ''))
+        .find(Boolean);
       if (wartosc) return wartosc;
     }
   }

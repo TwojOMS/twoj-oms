@@ -16,7 +16,10 @@ export const ADRES_INFAKT = 'https://api.infakt.pl/api';
 export const EKRAN_INFAKTU = '/ustawienia/integracje/infakt';
 /** Odmiana nazwy „inFakt” do zdań dla człowieka (`opis.nazwa` programu inFakt; jedno źródło z adapterem). */
 export const NAZWA_INFAKTU = Object.freeze({
-  mianownik: 'inFakt', dopelniacz: 'inFaktu', miejscownik: 'inFakcie', narzednik: 'inFaktem',
+  mianownik: 'inFakt',
+  dopelniacz: 'inFaktu',
+  miejscownik: 'inFakcie',
+  narzednik: 'inFaktem',
 });
 /** Dopisek do odmów „inFakt nie jest skonfigurowany” w odpowiedziach tekstowych (503) — dokąd pójść. */
 export const GDZIE_KLUCZ_INFAKTU = `Klucz API inFaktu wpiszesz w Ustawienia → Integracje → inFakt (${EKRAN_INFAKTU}).`;
@@ -33,10 +36,12 @@ export function sprawdzFormularzInfakt(body = {}, zapisane = null) {
   // Klucz wklejany ze schowka często niesie spację albo koniec linii na brzegu — te obcinamy.
   const klucz = tekst(body.apiKey);
   const stary = String(zapisane?.sekrety?.apiKey ?? '');
-  if (!klucz) bledy.push(stary ? 'Wpisz nowy klucz API — zapisany klucz zostaje bez zmian.' : 'Podaj klucz API inFaktu.');
+  if (!klucz)
+    bledy.push(stary ? 'Wpisz nowy klucz API — zapisany klucz zostaje bez zmian.' : 'Podaj klucz API inFaktu.');
   else if (/\s/u.test(klucz)) bledy.push('Klucz API nie może zawierać spacji — skopiuj go w całości, bez dopisków.');
   // Dolna granica chroni też maskowanie klucza w komunikatach (bardzo krótki „klucz” zamazałby zwykłe słowa).
-  else if (klucz.length < 16) bledy.push('To za krótkie na klucz API inFaktu — skopiuj cały klucz z inFaktu (Ustawienia → API).');
+  else if (klucz.length < 16)
+    bledy.push('To za krótkie na klucz API inFaktu — skopiuj cały klucz z inFaktu (Ustawienia → API).');
   else if (klucz.length > 200) bledy.push('Klucz API może mieć najwyżej 200 znaków.');
   return { ustawienia: {}, sekrety: { apiKey: klucz || stary }, bledy };
 }

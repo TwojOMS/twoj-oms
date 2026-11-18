@@ -71,7 +71,8 @@ function odczytajAdresUzyty(json) {
 
 // Pola adresu porównywane z adresem zamówienia, plus punkt odbioru.
 const POLA_POROWNANIA = ['nazwa', 'ulica', 'kod', 'miasto', 'kraj', 'punkt_odbioru'];
-const doPorownania = (a) => Object.fromEntries(POLA_POROWNANIA.map((k) => [k, k === 'kraj' ? krajPL(a?.[k]) : tekst(a?.[k])]));
+const doPorownania = (a) =>
+  Object.fromEntries(POLA_POROWNANIA.map((k) => [k, k === 'kraj' ? krajPL(a?.[k]) : tekst(a?.[k])]));
 
 /**
  * Wiersz „Do:” — adres użyty przy TYM nadaniu (operator mógł go poprawić na ekranie nadania),
@@ -95,8 +96,7 @@ export function adresPaczki(p, z) {
     czesci = [firma && firma !== nazwa ? firma : '', nazwa, tekst(a.ulica), miejscowosc];
   }
   if (kraj !== 'PL') czesci.push(kraj);
-  const inny = Boolean(uzyty)
-    && JSON.stringify(doPorownania(uzyty)) !== JSON.stringify(doPorownania(zamowienia));
+  const inny = Boolean(uzyty) && JSON.stringify(doPorownania(uzyty)) !== JSON.stringify(doPorownania(zamowienia));
   return { tekst: czesci.filter(Boolean).join(', '), inny };
 }
 
@@ -124,7 +124,8 @@ export function stopkaPaczki(p, kol, teraz = new Date()) {
   const nadana = fmtKiedy(p?.utworzona_at, teraz);
   if (nadana) czesci.push({ tekst: `Nadana ${nadana}`, zle: false });
   if (kol?.status === 'oczekuje') czesci.push({ tekst: 'czeka na wydruk', zle: false });
-  else if (kol?.status === 'wydrukowano') czesci.push({ tekst: `etykieta wydrukowana ${kiedy(kol.wydrukowane_at)}`.trim(), zle: false });
+  else if (kol?.status === 'wydrukowano')
+    czesci.push({ tekst: `etykieta wydrukowana ${kiedy(kol.wydrukowane_at)}`.trim(), zle: false });
   else if (kol?.status === 'porzucone') czesci.push({ tekst: 'wydruk porzucony', zle: true });
   if (p?.status_kuriera_blad) {
     czesci.push({ tekst: `status niedostępny (ostatnia próba ${kiedy(p.status_kuriera_pobrany_at)})`, zle: true });

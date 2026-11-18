@@ -34,8 +34,8 @@ export function znormalizujKomentarz(tekst) {
   if (czysty === '') return null;
   if (czysty.length > MAX_ZNAKOW) {
     throw bladOperatora(
-      `Komentarz wewnętrzny ma ${czysty.length} znaków, a mieści się ${MAX_ZNAKOW}. `
-      + 'Skróć go albo załóż sprawę w Asanie i zostaw tu sam odnośnik.',
+      `Komentarz wewnętrzny ma ${czysty.length} znaków, a mieści się ${MAX_ZNAKOW}. ` +
+        'Skróć go albo załóż sprawę w Asanie i zostaw tu sam odnośnik.',
     );
   }
   return czysty;

@@ -19,21 +19,44 @@ function skrypt(...argumenty) {
   const r = spawnSync(process.execPath, [SKRYPT, ...argumenty], { cwd: ROOT, encoding: 'utf8', timeout: 150000 });
   const linie = (r.stdout ?? '').trim().split('\n').filter(Boolean);
   let wynik = null;
-  try { wynik = JSON.parse(linie.at(-1) ?? ''); } catch { /* wynik zostaje null — asercja pokaże stdout */ }
+  try {
+    wynik = JSON.parse(linie.at(-1) ?? '');
+  } catch {
+    /* wynik zostaje null — asercja pokaże stdout */
+  }
   return { kod: r.status, wynik, stdout: r.stdout, stderr: r.stderr };
 }
-const wolnyPort = () => new Promise((ok, zle) => {
-  const s = net.createServer();
-  s.once('error', zle);
-  s.listen(0, '127.0.0.1', () => { const { port } = s.address(); s.close(() => ok(port)); });
-});
-const portZajety = (port) => new Promise((ok) => {
-  const g = net.connect({ port, host: '127.0.0.1' });
-  g.once('connect', () => { g.destroy(); ok(true); });
-  g.once('error', () => ok(false));
-});
-const zyje = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
-const nowyKatalog = () => { const k = path.join(os.tmpdir(), `oms-lokalnie-test-${process.pid}-${katalogi.length}`); katalogi.push(k); return k; };
+const wolnyPort = () =>
+  new Promise((ok, zle) => {
+    const s = net.createServer();
+    s.once('error', zle);
+    s.listen(0, '127.0.0.1', () => {
+      const { port } = s.address();
+      s.close(() => ok(port));
+    });
+  });
+const portZajety = (port) =>
+  new Promise((ok) => {
+    const g = net.connect({ port, host: '127.0.0.1' });
+    g.once('connect', () => {
+      g.destroy();
+      ok(true);
+    });
+    g.once('error', () => ok(false));
+  });
+const zyje = (pid) => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+};
+const nowyKatalog = () => {
+  const k = path.join(os.tmpdir(), `oms-lokalnie-test-${process.pid}-${katalogi.length}`);
+  katalogi.push(k);
+  return k;
+};
 
 // Sprzątanie ZAWSZE, także gdy test padł w połowie: `stop --sila` (nie wymaga odpowiedzi /health), a gdyby i to
 // zawiodło — zabicie PID-u wprost z pliku stanu. Dopiero potem kasujemy katalog. Bez tego osierocony serwer
@@ -41,9 +64,19 @@ const nowyKatalog = () => { const k = path.join(os.tmpdir(), `oms-lokalnie-test-
 afterAll(() => {
   for (const k of katalogi) {
     let pid = null;
-    try { pid = JSON.parse(fs.readFileSync(path.join(k, 'stan.json'), 'utf8')).pid; } catch { /* brak stanu = nic nie wstało */ }
+    try {
+      pid = JSON.parse(fs.readFileSync(path.join(k, 'stan.json'), 'utf8')).pid;
+    } catch {
+      /* brak stanu = nic nie wstało */
+    }
     skrypt('stop', '--sila', '--katalog', k);
-    if (pid && zyje(pid)) { try { process.kill(pid); } catch { /* już nie żyje */ } }
+    if (pid && zyje(pid)) {
+      try {
+        process.kill(pid);
+      } catch {
+        /* już nie żyje */
+      }
+    }
     fs.rmSync(k, { recursive: true, force: true });
   }
 }, 120000);
@@ -64,7 +97,9 @@ describe('scripts/uruchom-lokalnie.mjs — OMS na laptopie wykonawcy', () => {
     expect(fs.existsSync(path.join(katalog, 'oms.sqlite'))).toBe(true);
     expect(path.resolve(w.log).startsWith(path.resolve(katalog))).toBe(true);
     // Klucz poświadczeń z pliku klucz.env w katalogu próby (trwały, nie losowany w pamięci); nie na ekranie.
-    const klucz = /^OMS_KLUCZ_SEKRETOW=([A-Za-z0-9_-]{43})$/m.exec(fs.readFileSync(path.join(katalog, 'klucz.env'), 'utf8'))?.[1];
+    const klucz = /^OMS_KLUCZ_SEKRETOW=([A-Za-z0-9_-]{43})$/m.exec(
+      fs.readFileSync(path.join(katalog, 'klucz.env'), 'utf8'),
+    )?.[1];
     expect(klucz).toBeTruthy();
     expect(start.stdout + start.stderr).not.toContain(klucz);
     expect(fs.readFileSync(w.log, 'utf8')).not.toContain(klucz);
@@ -74,9 +109,12 @@ describe('scripts/uruchom-lokalnie.mjs — OMS na laptopie wykonawcy', () => {
 
     const konto = JSON.parse(fs.readFileSync(w.plikKonta, 'utf8'));
     expect(konto.login).toBe(w.login);
-    const login = await fetch(`${w.adres}/login`, { method: 'POST', redirect: 'manual',
+    const login = await fetch(`${w.adres}/login`, {
+      method: 'POST',
+      redirect: 'manual',
       headers: { origin: w.adres, 'content-type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ uzytkownik: konto.login, haslo: konto.haslo, powrot: '/' }) });
+      body: new URLSearchParams({ uzytkownik: konto.login, haslo: konto.haslo, powrot: '/' }),
+    });
     expect(login.status).toBe(302);
     const cookie = login.headers.get('set-cookie')?.match(/sesja_oms_proba=[^;]+/)?.[0];
     expect(cookie, 'ciasteczko sesji trybu próby').toBeTruthy();
@@ -88,14 +126,20 @@ describe('scripts/uruchom-lokalnie.mjs — OMS na laptopie wykonawcy', () => {
     // Dane z generatora demo, nie pusta lista: najnowsze zamówienie z bazy stoi na ekranie.
     const db = new DatabaseSync(path.join(katalog, 'oms.sqlite'), { readOnly: true });
     let najnowsze;
-    try { najnowsze = db.prepare('SELECT numer FROM zamowienia ORDER BY utworzone_at DESC LIMIT 1').get()?.numer; }
-    finally { db.close(); }
+    try {
+      najnowsze = db.prepare('SELECT numer FROM zamowienia ORDER BY utworzone_at DESC LIMIT 1').get()?.numer;
+    } finally {
+      db.close();
+    }
     expect(najnowsze).toBeTruthy();
     expect(html).toContain(String(najnowsze));
     // Złe hasło nie wpuszcza (konto naprawdę ma hasło z pliku, a nie „cokolwiek”).
-    const zle = await fetch(`${w.adres}/login`, { method: 'POST', redirect: 'manual',
+    const zle = await fetch(`${w.adres}/login`, {
+      method: 'POST',
+      redirect: 'manual',
       headers: { origin: w.adres, 'content-type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ uzytkownik: konto.login, haslo: 'zle-haslo', powrot: '/' }) });
+      body: new URLSearchParams({ uzytkownik: konto.login, haslo: 'zle-haslo', powrot: '/' }),
+    });
     expect(zle.headers.get('set-cookie') ?? '').not.toMatch(/sesja_oms_proba=[^;]{10,}/);
 
     // Drugi start w tym samym katalogu nie stawia drugiego procesu — oddaje działający.
@@ -134,12 +178,12 @@ describe('scripts/uruchom-lokalnie.mjs — OMS na laptopie wykonawcy', () => {
     expect(haslo.length).toBeGreaterThan(10);
     // Hasła nie ma ani w wyniku `start` (to ta sama powłoka agenta).
     // Porównanie na wartości logicznej: przy porażce komunikat asercji nie wypisze hasła.
-    expect((start.stdout + start.stderr).includes(haslo), "hasło w wyjściu start").toBe(false);
+    expect((start.stdout + start.stderr).includes(haslo), 'hasło w wyjściu start').toBe(false);
 
     const wejscie = skrypt('zaloguj', '--katalog', katalog);
     expect(wejscie.kod, wejscie.stderr + wejscie.stdout).toBe(0);
     // Wyjście polecenia — całe, nie tylko ostatnia linia — nie zawiera hasła ani samego ciasteczka sesji.
-    expect((wejscie.stdout + wejscie.stderr).includes(haslo), "hasło w wyjściu zaloguj").toBe(false);
+    expect((wejscie.stdout + wejscie.stderr).includes(haslo), 'hasło w wyjściu zaloguj').toBe(false);
     expect(wejscie.stdout + wejscie.stderr).not.toMatch(/sesja_oms/);
     expect(wejscie.wynik).toMatchObject({ status: 'gotowe', jednorazowy: true });
     const link = wejscie.wynik.link;
@@ -202,7 +246,9 @@ describe('scripts/uruchom-lokalnie.mjs — OMS na laptopie wykonawcy', () => {
       expect(start.kod).not.toBe(0);
       expect(start.stderr).toMatch(new RegExp(`port ${port} zajęty`));
       expect(fs.existsSync(path.join(katalog, 'oms.sqlite'))).toBe(false);
-    } finally { await new Promise((ok) => blokada.close(ok)); }
+    } finally {
+      await new Promise((ok) => blokada.close(ok));
+    }
   }, 60000);
 
   it('stop bez działającego serwera kończy się czysto (kod 0, status „nie-dziala”)', () => {

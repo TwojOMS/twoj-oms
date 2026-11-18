@@ -3,7 +3,9 @@ import { openOmsDb } from '../../src/oms/db/db.ts';
 import { wczytajUstawienia, zapiszUstawienia, ustawieniaZmienioneAt } from '../../src/oms/db/ustawienia.js';
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 
 describe('tabela ustawień', () => {
   it('świeża baza nie ma żadnego ustawienia', () => {

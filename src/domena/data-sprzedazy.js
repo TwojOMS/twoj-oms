@@ -104,8 +104,9 @@ export function proponowanaDataSprzedazy(zamowienie, dzis = dzisWarszawa()) {
     // `czyInkasoKuriera` wyżej. Kwota progu zostaje PEŁNA (`kwotaOczekiwanaGrosze`), więc
     // zamówienie opłacone w części przelewem, a w części pobraniem, nie domyka się przed
     // dostawą i słusznie spada do gałęzi „wydanie".
-    const przedplaty = (zamowienie?.platnosci ?? [])
-      .filter((p) => !czyInkasoKuriera(p) && !czyDatePaidPrzyPobraniu(zamowienie, p));
+    const przedplaty = (zamowienie?.platnosci ?? []).filter(
+      (p) => !czyInkasoKuriera(p) && !czyDatePaidPrzyPobraniu(zamowienie, p),
+    );
     dataZaplaty = dataPokryciaWplat(przedplaty, progOczekiwanyZl);
   } catch {
     // Kwota zamówienia, pozycji albo którejś wpłaty jest uszkodzona/nieliczbowa — nie da się
@@ -144,8 +145,9 @@ export function proponowanaDataSprzedazy(zamowienie, dzis = dzisWarszawa()) {
     return {
       data: dzienZaplaty,
       podstawa: 'zaplata',
-      wyjasnienie: `zapłacono ${poPolsku(dzienZaplaty)} — obowiązek podatkowy powstał w dniu `
-        + 'zapłaty (art. 19a ust. 8 ustawy o VAT).',
+      wyjasnienie:
+        `zapłacono ${poPolsku(dzienZaplaty)} — obowiązek podatkowy powstał w dniu ` +
+        'zapłaty (art. 19a ust. 8 ustawy o VAT).',
     };
   }
 
@@ -153,21 +155,20 @@ export function proponowanaDataSprzedazy(zamowienie, dzis = dzisWarszawa()) {
     // Gdy zapłata BYŁA, ale dopiero po wydaniu, zdanie mówi to wprost — inaczej operator
     // widziałby datę wysyłki na zamówieniu, o którym wie, że jest opłacone, i nie wiedziałby,
     // czy panel po prostu nie zauważył wpłaty.
-    const poWydaniu = dzienZaplaty
-      ? `, zapłacono dopiero ${poPolsku(dzienZaplaty)} (po wydaniu)`
-      : '';
+    const poWydaniu = dzienZaplaty ? `, zapłacono dopiero ${poPolsku(dzienZaplaty)} (po wydaniu)` : '';
     return {
       data: dataWyslania,
       podstawa: 'wydanie',
-      wyjasnienie: `wysłano ${poPolsku(dataWyslania)}${poWydaniu} — obowiązek podatkowy powstał `
-        + 'w dniu wydania towaru (art. 19a ust. 1 ustawy o VAT).',
+      wyjasnienie:
+        `wysłano ${poPolsku(dataWyslania)}${poWydaniu} — obowiązek podatkowy powstał ` +
+        'w dniu wydania towaru (art. 19a ust. 1 ustawy o VAT).',
     };
   }
 
   return {
     data: dzis,
     podstawa: 'wydanie',
-    wyjasnienie: 'brak daty wysyłki — przyjęto dzień dzisiejszy jako dzień wydania towaru '
-      + '(art. 19a ust. 1 ustawy o VAT).',
+    wyjasnienie:
+      'brak daty wysyłki — przyjęto dzień dzisiejszy jako dzień wydania towaru ' + '(art. 19a ust. 1 ustawy o VAT).',
   };
 }

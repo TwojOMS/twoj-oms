@@ -14,9 +14,13 @@ const naglowek = {
 };
 
 const KLIENT = {
-  klucz: 'przykladowa', nazwa: 'Pracownia Przykładowa sp. z o.o.', nip: '1234500011',
-  rabat_procent: 10, prog_darmowej_dostawy_gr: 30000,
-  oplata_obslugi_gr: 400, oplata_kurierska_gr: 1900,
+  klucz: 'przykladowa',
+  nazwa: 'Pracownia Przykładowa sp. z o.o.',
+  nip: '1234500011',
+  rabat_procent: 10,
+  prog_darmowej_dostawy_gr: 30000,
+  oplata_obslugi_gr: 400,
+  oplata_kurierska_gr: 1900,
 };
 const config = { auth: { user: 'adam', pass: 'x' } };
 
@@ -65,13 +69,13 @@ const wierszZamowienia = (body, numer) => {
 // arytmetyczna faktury (services/faktura-okresu.js) przepuszczala okres bez ceregieli.
 function dodajZamowienie({ numer, kwota, okresId = okres.id, anulowane = 0 }) {
   db.prepare(
-    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, okres_rozliczeniowy_id, anulowane, utworzone_at)'
-    + " VALUES ('reczne', ?, ?, ?, ?, ?, '2026-07-10T10:00:00.000Z')",
+    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, okres_rozliczeniowy_id, anulowane, utworzone_at)' +
+      " VALUES ('reczne', ?, ?, ?, ?, ?, '2026-07-10T10:00:00.000Z')",
   ).run(Number(String(numer).replace(/\D/g, '')), numer, kwota, okresId, anulowane ? 1 : 0);
   const id = db.prepare('SELECT id FROM zamowienia WHERE numer = ?').get(numer).id;
   db.prepare(
-    'INSERT INTO pozycje (zamowienie_id, nazwa, ilosc, cena_brutto, brutto_linii, zrodlo)'
-    + " VALUES (?, 'STOP 70x100', 1, ?, ?, 'reczna')",
+    'INSERT INTO pozycje (zamowienie_id, nazwa, ilosc, cena_brutto, brutto_linii, zrodlo)' +
+      " VALUES (?, 'STOP 70x100', 1, ?, ?, 'reczna')",
   ).run(id, kwota, kwota);
   return id;
 }
@@ -173,8 +177,8 @@ describe('GET /okresy/:id (karta okresu)', () => {
   // ale MA sie pokazac jako blad — nigdy jako ciche „wszystko gra".
   it('uszkodzona kwota wpłaty → karta się otwiera i mówi o błędzie, nie 500', async () => {
     db.prepare(
-      'INSERT INTO platnosci_okresu (okres_rozliczeniowy_id, kwota, data, zrodlo, utworzona_at)'
-      + " VALUES (?, 'undefined', '2026-07-05', 'reczna', '2026-07-05T10:00:00.000Z')",
+      'INSERT INTO platnosci_okresu (okres_rozliczeniowy_id, kwota, data, zrodlo, utworzona_at)' +
+        " VALUES (?, 'undefined', '2026-07-05', 'reczna', '2026-07-05T10:00:00.000Z')",
     ).run(okres.id);
     const odp = await get(`/okresy/${okres.id}`);
     expect(odp.statusCode).toBe(200);
@@ -307,13 +311,13 @@ describe('GET /okresy/:id — zamówienie ANULOWANE poza sumą, ale widoczne', (
   it('faktura BEZ żadnego anulowanego zamówienia + nadpłata → prawdziwa „NADPŁATA ... zwrócić"', async () => {
     const inny = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 8 });
     db.prepare(
-      'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, okres_rozliczeniowy_id, anulowane, utworzone_at)'
-      + " VALUES ('reczne', 501, 'R/2026/501', '100.00', ?, 0, '2026-08-10T10:00:00.000Z')",
+      'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, okres_rozliczeniowy_id, anulowane, utworzone_at)' +
+        " VALUES ('reczne', 501, 'R/2026/501', '100.00', ?, 0, '2026-08-10T10:00:00.000Z')",
     ).run(inny.id);
     const id = db.prepare('SELECT id FROM zamowienia WHERE numer = ?').get('R/2026/501').id;
     db.prepare(
-      'INSERT INTO pozycje (zamowienie_id, nazwa, ilosc, cena_brutto, brutto_linii, zrodlo)'
-      + " VALUES (?, 'STOP 70x100', 1, '100.00', '100.00', 'reczna')",
+      'INSERT INTO pozycje (zamowienie_id, nazwa, ilosc, cena_brutto, brutto_linii, zrodlo)' +
+        " VALUES (?, 'STOP 70x100', 1, '100.00', '100.00', 'reczna')",
     ).run(id);
 
     await post(`/okresy/${inny.id}/wystaw-fakture`);
@@ -440,7 +444,9 @@ describe('POST /okresy/:id/wystaw-fakture', () => {
     const bezInfaktu = buildOmsServer({ db, config });
     await bezInfaktu.ready();
     const odp = await bezInfaktu.inject({
-      method: 'POST', url: `/okresy/${okres.id}/wystaw-fakture`, headers: naglowek,
+      method: 'POST',
+      url: `/okresy/${okres.id}/wystaw-fakture`,
+      headers: naglowek,
     });
     expect(odp.statusCode).toBe(503);
   });
@@ -456,9 +462,9 @@ describe('POST /okresy/:id/wystaw-fakture', () => {
     const id = dodajZamowienie({ numer: 'R/2026/001', kwota: '104.00' });
     infakt.wystaw.mockRejectedValueOnce(new Error('zerwane połączenie'));
     await post(`/okresy/${okres.id}/wystaw-fakture`);
-    const wpis = db.prepare(
-      "SELECT wynik FROM log WHERE zamowienie_id = ? AND akcja = 'faktura-okresu' ORDER BY id DESC",
-    ).get(id);
+    const wpis = db
+      .prepare("SELECT wynik FROM log WHERE zamowienie_id = ? AND akcja = 'faktura-okresu' ORDER BY id DESC")
+      .get(id);
     expect(wpis.wynik).toMatch(/BŁĄD/);
     expect(wpis.wynik).toContain('adam');
   });
@@ -556,7 +562,9 @@ describe('POST /okresy/:id/wplata', () => {
 
   it('bez nagłówka Origin → odmowa CSRF', async () => {
     const odp = await app.inject({
-      method: 'POST', url: `/okresy/${okres.id}/wplata`, payload: { kwota: '10.00' },
+      method: 'POST',
+      url: `/okresy/${okres.id}/wplata`,
+      payload: { kwota: '10.00' },
       headers: { authorization: naglowek.authorization },
     });
     expect(odp.statusCode).toBe(403);

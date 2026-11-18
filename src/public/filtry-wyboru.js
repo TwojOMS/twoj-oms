@@ -6,7 +6,8 @@ const pola = [...document.querySelectorAll('details.wybor-filtra')];
 
 // Ta sama odmiana, co w podsumowaniu składanym przez serwer (domena/filtry-listy.js).
 export function ileWybranych(n) {
-  const d = n % 10; const s = n % 100;
+  const d = n % 10;
+  const s = n % 100;
   return `${n} ${d >= 2 && d <= 4 && !(s >= 12 && s <= 14) ? 'wybrane' : 'wybranych'}`;
 }
 
@@ -14,8 +15,11 @@ function podsumuj(pole) {
   const zaznaczone = [...pole.querySelectorAll('input[type="checkbox"]:checked')];
   const tekst = pole.querySelector('.wybor-filtra-tekst');
   if (!tekst) return;
-  tekst.textContent = !zaznaczone.length ? (pole.dataset.wszystkie || 'Wszystkie')
-    : zaznaczone.length === 1 ? zaznaczone[0].dataset.etykieta : ileWybranych(zaznaczone.length);
+  tekst.textContent = !zaznaczone.length
+    ? pole.dataset.wszystkie || 'Wszystkie'
+    : zaznaczone.length === 1
+      ? zaznaczone[0].dataset.etykieta
+      : ileWybranych(zaznaczone.length);
   tekst.classList.toggle('wybor-filtra-tekst--wybrane', zaznaczone.length > 0);
 }
 

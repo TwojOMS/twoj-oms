@@ -3,9 +3,7 @@ import { openOmsDb } from '../../pomoc/testowe-dane-miesieczne.js';
 import { ustawGranice, zapiszHistorie } from '../../../src/oms/db/historia-sprzedazy.js';
 import { KANALY } from '../../pomoc/przykladowe-dane-raportow.js';
 import { zapiszDaneMiesiaca } from '../../pomoc/testowe-dane-miesieczne.js';
-import {
-  zapiszKoszt, zapiszRecznyKoszt, przypnijKategorieDoDokumentu,
-} from '../../../src/oms/db/koszty.js';
+import { zapiszKoszt, zapiszRecznyKoszt, przypnijKategorieDoDokumentu } from '../../../src/oms/db/koszty.js';
 import { rachunekOkresu } from '../../pomoc/testowe-reguly-raportow.js';
 
 let db;
@@ -18,21 +16,39 @@ beforeEach(() => {
   }
 });
 
-const sprzedaz = (dzien, brutto) => zapiszHistorie(db, {
-  apiloId: `S${dzien}${brutto}`, platformAccountId: 9, dzien,
-  utworzoneAt: `${dzien}T10:00:00.000Z`, brutto, tagi: [], status: 15,
-  paymentStatus: 2, klientEmail: 'k@klient.pl', pozycje: [],
-});
+const sprzedaz = (dzien, brutto) =>
+  zapiszHistorie(db, {
+    apiloId: `S${dzien}${brutto}`,
+    platformAccountId: 9,
+    dzien,
+    utworzoneAt: `${dzien}T10:00:00.000Z`,
+    brutto,
+    tagi: [],
+    status: 15,
+    paymentStatus: 2,
+    klientEmail: 'k@klient.pl',
+    pozycje: [],
+  });
 
 // ⚠️ `dataTrwalegoZapisu`, `waluta`, `rodzaj` i `numerDokumentu` sa NOT NULL, a `zapiszKoszt`
 // idzie przez `INSERT OR IGNORE` — fikstura bez ktoregokolwiek z nich NIE ZAPISZE SIE I NIE
 // RZUCI, tylko odbije sie od bazy jak dokument „juz znany". Test swiecilby wtedy na zielono
 // przy zerowych kosztach. Fikstura wymaga wlasnego straznika (patrz nizej).
-const koszt = (numer, dzien, netto, nip = '5252674798') => zapiszKoszt(db, {
-  ksefNumber: numer, numerDokumentu: numer, sprzedawcaNip: nip, sprzedawcaNazwa: 'X',
-  dataWystawienia: dzien, dataTrwalegoZapisu: `${dzien}T12:00:00Z`,
-  netto, vat: '0.00', brutto: netto, waluta: 'PLN', rodzaj: 'VAT', maZalacznik: 0,
-});
+const koszt = (numer, dzien, netto, nip = '5252674798') =>
+  zapiszKoszt(db, {
+    ksefNumber: numer,
+    numerDokumentu: numer,
+    sprzedawcaNip: nip,
+    sprzedawcaNazwa: 'X',
+    dataWystawienia: dzien,
+    dataTrwalegoZapisu: `${dzien}T12:00:00Z`,
+    netto,
+    vat: '0.00',
+    brutto: netto,
+    waluta: 'PLN',
+    rodzaj: 'VAT',
+    maZalacznik: 0,
+  });
 
 describe('rachunek zarzadczy', () => {
   it('STRAZNIK FIKSTURY: koszt naprawde zapisal sie do bazy', () => {
@@ -44,7 +60,7 @@ describe('rachunek zarzadczy', () => {
   });
 
   it('przychod minus koszty daje wynik, a po ZUS i PIT — „zostaje"', () => {
-    sprzedaz('2026-06-10', '12300.00');           // netto 10 000
+    sprzedaz('2026-06-10', '12300.00'); // netto 10 000
     koszt('K1', '2026-06-05', '2000.00');
     zapiszDaneMiesiaca(db, '2026-06', { zusRazem: '2821.06', pit5: '779.00' });
     const r = rachunekOkresu(db, { od: '2026-06-01', do: '2026-06-30' });
@@ -115,7 +131,7 @@ describe('rachunek zarzadczy', () => {
   });
 
   it('POLE KONTROLNE PRZYCHODU pokazuje roznice, NIGDY sumy', () => {
-    sprzedaz('2026-06-10', '12300.00');           // netto 10 000
+    sprzedaz('2026-06-10', '12300.00'); // netto 10 000
     zapiszDaneMiesiaca(db, '2026-06', { zusRazem: '100.00', kpirPrzychod: '9500.00' });
     const r = rachunekOkresu(db, { od: '2026-06-01', do: '2026-06-30' });
     expect(r.roznicaPrzychodu.kpirGrosze).toBe(950_000);
@@ -130,7 +146,7 @@ describe('rachunek zarzadczy', () => {
   // „Nieprzypisane"/„drobne", a ekran kosztow pokazywal ich prawdziwa kategorie. Suma sie
   // zgadzala, wiec nic nie krzyczalo — falszywe bylo ROZBICIE i prog rentownosci.
   it('KATEGORIA DOKUMENTU wchodzi do rachunku, a nie kategoria z mapy NIP-u', () => {
-    koszt('K9', '2026-06-05', '1000.00');           // NIP Allegro → mapa daje „Prowizje sprzedażowe"
+    koszt('K9', '2026-06-05', '1000.00'); // NIP Allegro → mapa daje „Prowizje sprzedażowe"
     przypnijKategorieDoDokumentu(db, 'K9', 'Reklama', 'zmienny');
     // ⚠️ `wgrajDaneStartowe` wgrywa czerwiec z `kpir_koszty = 2881.04` przy KAZDYM otwarciu
     // bazy, takze ':memory:' — bez nadpisania pokrycie wychodzi 35% i rozbicie na kategorie
@@ -145,15 +161,20 @@ describe('rachunek zarzadczy', () => {
     // Dokladnie przypadek Google/Meta/Anthropic: sprzedawca bez polskiego NIP-u nie ma jak
     // trafic do mapy (jej kluczem glownym JEST NIP), wiec kategoria zyje przy dokumencie.
     zapiszRecznyKoszt(db, {
-      numerDokumentu: 'GOOGLE-06', sprzedawcaNip: null, sprzedawcaNazwa: 'Google',
-      dataWystawienia: '2026-06-07', netto: '400.00', vat: '0.00', brutto: '400.00',
-      waluta: 'PLN', kategoriaDokumentu: 'Reklama', typDokumentu: 'zmienny',
+      numerDokumentu: 'GOOGLE-06',
+      sprzedawcaNip: null,
+      sprzedawcaNazwa: 'Google',
+      dataWystawienia: '2026-06-07',
+      netto: '400.00',
+      vat: '0.00',
+      brutto: '400.00',
+      waluta: 'PLN',
+      kategoriaDokumentu: 'Reklama',
+      typDokumentu: 'zmienny',
     });
     zapiszDaneMiesiaca(db, '2026-06', { zusRazem: '2821.06', kpirKoszty: '400.00' });
     const r = rachunekOkresu(db, { od: '2026-06-01', do: '2026-06-30' });
-    expect(r.kategorie).toEqual([
-      { kategoria: 'Reklama', typ: 'zmienny', nettoGrosze: 40_000, dokumentow: 1 },
-    ]);
+    expect(r.kategorie).toEqual([{ kategoria: 'Reklama', typ: 'zmienny', nettoGrosze: 40_000, dokumentow: 1 }]);
     // ⚠️ TYP JEDZIE RAZEM Z KATEGORIA — na nim stoi prog rentownosci. Wpadniety do „drobne"
     // koszt reklamy nie wchodzil ani do stalych, ani do zmiennych, wiec marza po kosztach
     // zmiennych wychodzila za wysoka, a prog za niski. Oba wygladaly wiarygodnie.
@@ -165,7 +186,7 @@ describe('rachunek zarzadczy', () => {
   // rodzina bledu, co faktura prowizyjna dotyczaca miesiaca poprzedniego.
   it('PROWIZJA ALLEGRO liczy sie tylko dla PELNEGO miesiaca kalendarzowego', () => {
     sprzedaz('2026-06-10', '12300.00');
-    koszt('P1', '2026-06-01', '500.00');            // NIP Allegro, numer bez okresu
+    koszt('P1', '2026-06-01', '500.00'); // NIP Allegro, numer bez okresu
     const pelny = rachunekOkresu(db, { od: '2026-06-01', do: '2026-06-30' });
     expect(pelny.prowizjaAllegro).toEqual({ nettoGrosze: 50_000, dokumentow: 1 });
     const czesciowy = rachunekOkresu(db, { od: '2026-06-05', do: '2026-06-20' });
@@ -176,20 +197,26 @@ describe('rachunek zarzadczy', () => {
   // Bez sprzedazy Allegro w okresie oddaje `null`: dzielenie daloby nieskonczonosc, a wpisane
   // „0%" bylo by zdaniem o faktach, ktorych nie ma.
   it('UDZIAL PROWIZJI ALLEGRO liczy sie w domenie, a bez sprzedazy Allegro jest nullem', () => {
-    koszt('P2', '2026-06-01', '500.00');            // NIP Allegro
+    koszt('P2', '2026-06-01', '500.00'); // NIP Allegro
     // Sprzedaz idzie kontem 9 (WooCommerce), wiec kanal NIE jest allegrowy.
     sprzedaz('2026-06-10', '12300.00');
-    expect(rachunekOkresu(db, { od: '2026-06-01', do: '2026-06-30' }).udzialProwizjiAllegro)
-      .toBeNull();
+    expect(rachunekOkresu(db, { od: '2026-06-01', do: '2026-06-30' }).udzialProwizjiAllegro).toBeNull();
 
     zapiszHistorie(db, {
-      apiloId: 'A1', platformAccountId: 3, dzien: '2026-06-11',
-      utworzoneAt: '2026-06-11T10:00:00.000Z', brutto: '12300.00', tagi: [], status: 15,
-      paymentStatus: 2, klientEmail: 'k@klient.pl', pozycje: [],
+      apiloId: 'A1',
+      platformAccountId: 3,
+      dzien: '2026-06-11',
+      utworzoneAt: '2026-06-11T10:00:00.000Z',
+      brutto: '12300.00',
+      tagi: [],
+      status: 15,
+      paymentStatus: 2,
+      klientEmail: 'k@klient.pl',
+      pozycje: [],
     });
     const r = rachunekOkresu(db, { od: '2026-06-01', do: '2026-06-30' });
     expect(r.sprzedazAllegroGrosze).toBe(1_000_000);
-    expect(r.udzialProwizjiAllegro).toBeCloseTo(5, 3);   // 500 zl z 10 000 zl
+    expect(r.udzialProwizjiAllegro).toBeCloseTo(5, 3); // 500 zl z 10 000 zl
   });
 
   it('ZAKRES URWANY W POLOWIE MIESIACA jest oznaczony — koszty sa miesieczne', () => {
@@ -200,8 +227,7 @@ describe('rachunek zarzadczy', () => {
   });
 
   it('PODLOGA: okres sprzed 2026-01 ODMAWIA — kosztow sprzed KSeF nie ma', () => {
-    expect(() => rachunekOkresu(db, { od: '2025-06-01', do: '2025-06-30' }))
-      .toThrow(/2026/);
+    expect(() => rachunekOkresu(db, { od: '2025-06-01', do: '2025-06-30' })).toThrow(/2026/);
   });
 
   it('miesiace sumuja sie do rachunku okresu CO DO GROSZA', () => {

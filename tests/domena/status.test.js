@@ -4,8 +4,13 @@ import { PROG_ZAWIESZONEJ_FAKTURY_MS } from '../../src/domena/faktura-stan.js';
 import { PROG_ZAWIESZONEGO_NADANIA_MS } from '../../src/domena/przesylka-stan.js';
 
 const z = (o = {}) => ({
-  anulowane: 0, zwrot_at: null, w_realizacji_at: null, wyslane_at: null,
-  przesylki: [], faktura: null, ...o,
+  anulowane: 0,
+  zwrot_at: null,
+  w_realizacji_at: null,
+  wyslane_at: null,
+  przesylki: [],
+  faktura: null,
+  ...o,
 });
 const teraz = () => new Date().toISOString();
 const dawno = () => new Date(Date.now() - PROG_ZAWIESZONEJ_FAKTURY_MS - 60_000).toISOString();
@@ -16,8 +21,13 @@ const dawnoNadanie = () => new Date(Date.now() - PROG_ZAWIESZONEGO_NADANIA_MS - 
 // czlowieku" — wczesniej testy uzywaly atrapy `{ status: 'nadana' }`, ktora W RZECZYWISTOSCI
 // opisuje paczke bez etykiety, czyli jeden z tych stanow, ktore wlasnie znikaly z listy.
 const nadana = (nad = {}) => ({
-  status: 'nadana', numer_listu: '1000000000001U', etykieta_sciezka: '/etykiety/1301.pdf',
-  sync_woo_blad: null, status_kuriera_blad: null, utworzona_at: teraz(), ...nad,
+  status: 'nadana',
+  numer_listu: '1000000000001U',
+  etykieta_sciezka: '/etykiety/1301.pdf',
+  sync_woo_blad: null,
+  status_kuriera_blad: null,
+  utworzona_at: teraz(),
+  ...nad,
 });
 
 describe('wyliczStatus', () => {
@@ -104,24 +114,46 @@ describe('doZrobienia', () => {
   // wiszaca w stanie bez wyjscia, mialo status „wyslane" i wypadalo z listy roboczej.
   // Ostrzezenie widzial wylacznie ten, kto otworzyl akurat te karte.
   it('faktura „do wyjaśnienia” trzyma wysłane zamówienie na liście roboczej', () => {
-    const zam = z({ wyslane_at: teraz(), przesylki: [nadana()], faktura: { ksef_status: 'do_wyjasnienia', utworzona_at: teraz() } });
+    const zam = z({
+      wyslane_at: teraz(),
+      przesylki: [nadana()],
+      faktura: { ksef_status: 'do_wyjasnienia', utworzona_at: teraz() },
+    });
     expect(wyliczStatus(zam)).toBe('wyslane');
     expect(doZrobienia(zam)).toBe(true);
   });
 
   it('osierocona rezerwacja faktury też trzyma zamówienie na liście roboczej', () => {
-    expect(doZrobienia(z({ wyslane_at: teraz(), przesylki: [nadana()], faktura: { ksef_status: 'w_toku', utworzona_at: dawno() } }))).toBe(true);
+    expect(
+      doZrobienia(
+        z({ wyslane_at: teraz(), przesylki: [nadana()], faktura: { ksef_status: 'w_toku', utworzona_at: dawno() } }),
+      ),
+    ).toBe(true);
   });
 
   // Wiszaca faktura przy zamowieniu ANULOWANYM jest jeszcze grozniejsza: dokument mogl
   // powstac do zamowienia, ktore nie dojdzie do skutku.
   it('anulowane zamówienie z wiszącą fakturą zostaje na liście roboczej', () => {
-    expect(doZrobienia(z({ anulowane: 1, faktura: { ksef_status: 'do_wyjasnienia', utworzona_at: teraz() } }))).toBe(true);
+    expect(doZrobienia(z({ anulowane: 1, faktura: { ksef_status: 'do_wyjasnienia', utworzona_at: teraz() } }))).toBe(
+      true,
+    );
   });
 
   it('faktura wystawiona i faktura właśnie wystawiana NIE trzymają zamówienia na liście', () => {
-    expect(doZrobienia(z({ wyslane_at: teraz(), przesylki: [nadana()], faktura: { ksef_status: 'sent', numer: 'FV/1/2026', utworzona_at: teraz() } }))).toBe(false);
-    expect(doZrobienia(z({ wyslane_at: teraz(), przesylki: [nadana()], faktura: { ksef_status: 'w_toku', utworzona_at: teraz() } }))).toBe(false);
+    expect(
+      doZrobienia(
+        z({
+          wyslane_at: teraz(),
+          przesylki: [nadana()],
+          faktura: { ksef_status: 'sent', numer: 'FV/1/2026', utworzona_at: teraz() },
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      doZrobienia(
+        z({ wyslane_at: teraz(), przesylki: [nadana()], faktura: { ksef_status: 'w_toku', utworzona_at: teraz() } }),
+      ),
+    ).toBe(false);
   });
 
   // ⚠️ TA SAMA zasada, co dwie powyżej — „stan wymagający
@@ -180,7 +212,9 @@ describe('doZrobienia — nadana przesyłka z nierozwiązaną sprawą', () => {
   // Kontrola pozytywna, ktora dzialala od dawna — pilnujemy, ze nie zgubilismy jej
   // po drodze przy przepisywaniu warunku na sprawyPrzesylki().
   it('przesyłka „do wyjaśnienia” nadal zostaje na liście roboczej', () => {
-    expect(doZrobienia(z({ przesylki: [{ status: 'do_wyjasnienia', numer_listu: 'X1', utworzona_at: teraz() }] }))).toBe(true);
+    expect(
+      doZrobienia(z({ przesylki: [{ status: 'do_wyjasnienia', numer_listu: 'X1', utworzona_at: teraz() }] })),
+    ).toBe(true);
   });
 
   // Osierocone 'w_trakcie' po restarcie procesu: wiersz zostaje na zawsze, a status
@@ -191,10 +225,14 @@ describe('doZrobienia — nadana przesyłka z nierozwiązaną sprawą', () => {
   });
 
   it('nadanie, które naprawdę trwa, nie jest liczone jako sprawa człowieka', () => {
-    expect(doZrobienia(z({
-      zwrot_at: '2026-07-31',
-      przesylki: [{ status: 'w_trakcie', utworzona_at: teraz() }],
-    }))).toBe(false);
+    expect(
+      doZrobienia(
+        z({
+          zwrot_at: '2026-07-31',
+          przesylki: [{ status: 'w_trakcie', utworzona_at: teraz() }],
+        }),
+      ),
+    ).toBe(false);
   });
 });
 
@@ -240,7 +278,10 @@ describe('anulowane z żywą przesyłką albo fakturą', () => {
   // Reguła kluczowana surową kolumną uciszyłaby wtedy paczkę żywą.
   describe('ukryta paczka nie trzyma anulowanego zamówienia na liście', () => {
     const ukryta = (nadpis = {}) => ({
-      ...nadana(), ukryta_at: '2026-08-25T07:20:55.456Z', ukryta_przez: 'adam', ...nadpis,
+      ...nadana(),
+      ukryta_at: '2026-08-25T07:20:55.456Z',
+      ukryta_przez: 'adam',
+      ...nadpis,
     });
 
     it('anulowane z JEDYNĄ paczką ukrytą schodzi z listy', () => {

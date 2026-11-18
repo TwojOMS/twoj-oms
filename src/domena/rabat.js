@@ -57,15 +57,15 @@ export function parsujRabat(surowy) {
   }
   if (!Number.isInteger(liczba)) {
     throw bladOperatora(
-      `Rabat musi być pełnym procentem, a jest „${surowy}". Rabat ułamkowy wpisz jako cenę `
-      + 'pozycji — panel liczy w groszach na liczbach całkowitych.',
+      `Rabat musi być pełnym procentem, a jest „${surowy}". Rabat ułamkowy wpisz jako cenę ` +
+        'pozycji — panel liczy w groszach na liczbach całkowitych.',
     );
   }
   if (liczba < 0) throw bladOperatora('Rabat nie może być ujemny — to byłaby podwyżka.');
   if (liczba > RABAT_MAX) {
     throw bladOperatora(
-      `Rabat ${liczba}% jest większy niż dopuszczalne ${RABAT_MAX}% — jeśli to nie literówka, `
-      + 'wpisz uzgodnioną cenę wprost w pozycji.',
+      `Rabat ${liczba}% jest większy niż dopuszczalne ${RABAT_MAX}% — jeśli to nie literówka, ` +
+        'wpisz uzgodnioną cenę wprost w pozycji.',
     );
   }
   return liczba;
@@ -95,7 +95,8 @@ export function cenaPoRabacieGrosze(cenaKatalogowaGr, rabatProcent) {
 }
 
 /** Ta sama cena jako napis „12.34" — postać, w jakiej kwoty leżą w bazie. */
-export const cenaPoRabacie = (cenaKatalogowaGr, rabatProcent) => zl(cenaPoRabacieGrosze(cenaKatalogowaGr, rabatProcent));
+export const cenaPoRabacie = (cenaKatalogowaGr, rabatProcent) =>
+  zl(cenaPoRabacieGrosze(cenaKatalogowaGr, rabatProcent));
 
 // Cena, jaką panel SAM wpisuje do pozycji z ceny katalogowej: rabat, a przy zamówieniu WDT
 // dodatkowo ÷(1 + stawka) na sztuce (cenaWdtGrosze — tam cała wykładnia). JEDNO miejsce, którym
@@ -134,7 +135,12 @@ export function czyPozycjaPanelu(pozycja, rabatPoprzedni, { wdt = false, stawkaD
   // Przy zamówieniu WDT „cena panelu" zawiera też ÷(1 + stawka) (cenaPanelowaGrosze) — bez tego
   // każda pozycja WDT wyglądałaby na ręcznie wycenioną i zmiana rabatu pomijałaby cały
   // wsad z magazynu, z komunikatem mylącym dokładnie tam, gdzie miał wyjaśniać.
-  const oczekiwana = cenaPanelowaGrosze(grosze(katalogowa, `cena katalogowa "${pozycja?.nazwa}"`), rabatPoprzedni, wdt, stawkaDomyslna);
+  const oczekiwana = cenaPanelowaGrosze(
+    grosze(katalogowa, `cena katalogowa "${pozycja?.nazwa}"`),
+    rabatPoprzedni,
+    wdt,
+    stawkaDomyslna,
+  );
   return grosze(pozycja?.cena_brutto, `pozycja "${pozycja?.nazwa}"`) === oczekiwana;
 }
 

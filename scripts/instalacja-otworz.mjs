@@ -1,7 +1,16 @@
 #!/usr/bin/env node
 import path from 'node:path';
 import fs from 'node:fs';
-import { PLIKI_INSTALACJI, envEtapu, odczytajEnv, opcje, oczyscPowod, sciezkaKlucza, sekretyKatalogu, zapewnijKlucz } from './instalacja-wspolne.mjs';
+import {
+  PLIKI_INSTALACJI,
+  envEtapu,
+  odczytajEnv,
+  opcje,
+  oczyscPowod,
+  sciezkaKlucza,
+  sekretyKatalogu,
+  zapewnijKlucz,
+} from './instalacja-wspolne.mjs';
 // Dynamicznie, PO kontroli wersji z instalacja-wspolne.mjs — statyczny import .ts wywraca stary Node bez słowa.
 const { uruchomOms } = await import('../src/main.ts');
 let sekrety = [];
@@ -10,12 +19,16 @@ async function main() {
   const plikKlucza = sciezkaKlucza(katalog);
   sekrety = sekretyKatalogu(katalog, plikKlucza);
   const proba = odczytajEnv(path.join(katalog, PLIKI_INSTALACJI.proba));
-  if (!fs.existsSync(path.join(katalog, PLIKI_INSTALACJI.znacznik))
-    || !fs.existsSync(path.join(katalog, PLIKI_INSTALACJI.baza))
-    || proba.OMS_TRYB !== 'proba' || proba.OMS_KANALY !== '[]' || proba.OMS_PORT !== String(port)
-    || path.resolve(proba.OMS_DB_PATH ?? '') !== path.join(katalog, PLIKI_INSTALACJI.baza)
-    || path.resolve(proba.OMS_PROFORMY_KATALOG ?? '') !== path.join(katalog, 'proformy')
-    || path.resolve(proba.OMS_ETYKIETY_KATALOG ?? '') !== path.join(katalog, 'etykiety')) {
+  if (
+    !fs.existsSync(path.join(katalog, PLIKI_INSTALACJI.znacznik)) ||
+    !fs.existsSync(path.join(katalog, PLIKI_INSTALACJI.baza)) ||
+    proba.OMS_TRYB !== 'proba' ||
+    proba.OMS_KANALY !== '[]' ||
+    proba.OMS_PORT !== String(port) ||
+    path.resolve(proba.OMS_DB_PATH ?? '') !== path.join(katalog, PLIKI_INSTALACJI.baza) ||
+    path.resolve(proba.OMS_PROFORMY_KATALOG ?? '') !== path.join(katalog, 'proformy') ||
+    path.resolve(proba.OMS_ETYKIETY_KATALOG ?? '') !== path.join(katalog, 'etykiety')
+  ) {
     throw new Error('INSTALACJA_NIEZGODNY_KATALOG');
   }
   // Katalog próby sprzed szyfrowania nie ma pliku klucza — `klucz-zapewnij` tworzy go tylko wtedy, gdy
@@ -29,7 +42,10 @@ async function main() {
   const stop = () => {
     process.removeListener('SIGINT', stop);
     process.removeListener('SIGTERM', stop);
-    void zamknij().catch(() => { console.error('INSTALACJA_ZAMKNIECIE_ODMOWA'); process.exitCode = 1; });
+    void zamknij().catch(() => {
+      console.error('INSTALACJA_ZAMKNIECIE_ODMOWA');
+      process.exitCode = 1;
+    });
   };
   process.once('SIGINT', stop);
   process.once('SIGTERM', stop);

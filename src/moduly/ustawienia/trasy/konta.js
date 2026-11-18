@@ -5,8 +5,15 @@
 // podejrzewa włamanie, ma zobaczyć oba naraz: kto ma dostęp i kto próbował go zdobyć).
 
 import {
-  zalozKonto, listaKont, ustawUprawnienia, ustawCzynne, ustawAdmina,
-  zmienHaslo, uprawnieniaKonta, ostatnieLogowania, kontoPoLoginie,
+  zalozKonto,
+  listaKont,
+  ustawUprawnienia,
+  ustawCzynne,
+  ustawAdmina,
+  zmienHaslo,
+  uprawnieniaKonta,
+  ostatnieLogowania,
+  kontoPoLoginie,
 } from '../../../core/bezpieczenstwo/konta.js';
 import { EKRANY, ROLE, ekranyRoli } from '../../../domena/ekrany.js';
 import { nawigacjaUstawien } from '../nawigacja.js';
@@ -17,7 +24,14 @@ import { polaczenieBezpieczne } from '../../../core/bezpieczenstwo/logowanie-wsp
 import { listaRol, rolaPoKluczu, przypiszRole, ustawPtaszkiPrzezRole, opisRoliKonta } from '../role.js';
 // E-mail konta, zaproszenia i reset hasła jednorazowym linkiem (mail albo „Pokaż link”).
 import { wydajLink, uniewaznijLinkiKonta, zastapPoprzednieLinki, wycofajLink } from '../linki-hasla.js';
-import { zalozKontoZaproszone, zalozKontoZHaslem, ustawEmail, sprawdzEmail, emailKonta, BladKonta } from '../konta-dostep.js';
+import {
+  zalozKontoZaproszone,
+  zalozKontoZHaslem,
+  ustawEmail,
+  sprawdzEmail,
+  emailKonta,
+  BladKonta,
+} from '../konta-dostep.js';
 import { trescMaila } from '../poczta-kont.js';
 import { oznaczBladPoczty, komunikatWysylkiMaila } from '../../wiadomosci/poczta-ustawien.ts';
 import { wczytajSzablonyWiadomosci } from '../../../oms/db/szablony-wiadomosci.js';
@@ -100,10 +114,11 @@ function pozostanieCzynnyAdmin(db, kontoId, { czynne, admin }) {
   return Boolean(czynne) && Boolean(admin);
 }
 
-const KOMUNIKAT_OSTATNI_ADMIN = 'Nie można tego zrobić — to jest OSTATNI czynny administrator. '
-  + 'Bez ani jednego czynnego admina hasło serwisowe z .env znowu stałoby się pełnym adminem, '
-  + 'więc panel musi mieć zawsze co najmniej jednego. Załóż albo włącz drugie konto '
-  + 'administratora, zanim odbierzesz to uprawnienie tutaj.';
+const KOMUNIKAT_OSTATNI_ADMIN =
+  'Nie można tego zrobić — to jest OSTATNI czynny administrator. ' +
+  'Bez ani jednego czynnego admina hasło serwisowe z .env znowu stałoby się pełnym adminem, ' +
+  'więc panel musi mieć zawsze co najmniej jednego. Załóż albo włącz drugie konto ' +
+  'administratora, zanim odbierzesz to uprawnienie tutaj.';
 
 const KOMUNIKATY_ZAPISU = {
   nowe: 'Założono konto.',
@@ -157,16 +172,28 @@ function opisWynikuLogowania(wynik) {
  * @param {any} app
  * @param {{ db: any, teraz?: () => Date, adresPanelu?: string | null | (() => string | null), mailer?: () => any, loginSerwisowy?: string | null, nazwaCiasteczka?: string }} opcje
  */
-export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPanelu: adresPaneluOpcja = null, mailer = () => null, loginSerwisowy = null, nazwaCiasteczka = NAZWA_CIASTECZKA_OMS }) {
+export function registerKontaRoutes(
+  app,
+  {
+    db,
+    teraz = () => new Date(),
+    adresPanelu: adresPaneluOpcja = null,
+    mailer = () => null,
+    loginSerwisowy = null,
+    nazwaCiasteczka = NAZWA_CIASTECZKA_OMS,
+  },
+) {
   // Adres panelu czytany przy każdym żądaniu (OMS_ADRES_PANELU albo zapis z Ustawień → Poczta wychodząca).
   const adresTeraz = typeof adresPaneluOpcja === 'function' ? adresPaneluOpcja : () => adresPaneluOpcja;
   // Strona z jednorazowym linkiem nie trafia do pamięci przeglądarki; Referer bez ścieżki.
   // Polityka `strict-origin`, nie `no-referrer` — inaczej każdy formularz tej strony dostaje 403.
-  const pokazLinkuNaglowki = (reply) => reply.header('Cache-Control', 'no-store').header('Referrer-Policy', POLITYKA_REFERERA_LINKU);
+  const pokazLinkuNaglowki = (reply) =>
+    reply.header('Cache-Control', 'no-store').header('Referrer-Policy', POLITYKA_REFERERA_LINKU);
   // Konto z tabeli o loginie konta serwisowego `.env` przesłoniłoby je w strażniku
   // (konto z tabeli ma pierwszeństwo) — dwa różne „serwis” w jednym panelu. Bez względu na wielkość liter.
   const loginZarezerwowany = (login) => Boolean(loginSerwisowy) && malymi(login) === malymi(loginSerwisowy);
-  const KOMUNIKAT_LOGIN_SERWISOWY = (login) => `Login „${login}” jest zarezerwowany dla konta serwisowego z .env — wybierz inny.`;
+  const KOMUNIKAT_LOGIN_SERWISOWY = (login) =>
+    `Login „${login}” jest zarezerwowany dla konta serwisowego z .env — wybierz inny.`;
   const komunikatLoginZajety = (login) => `Login „${login}” jest już zajęty przez inne konto — wybierz inny.`;
   // Mail i „Pokaż link” — ta sama zasada (adres-panelu.ts, adresLinkow): plik → zapis → adres, z którego
   // admin właśnie korzysta. Adres z żądania jest tu dopuszczalny, bo każda trasa tego pliku, która wydaje link, stoi
@@ -176,22 +203,33 @@ export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPa
     if (req.query?.zapisano !== 'wyslano-domyslny') return KOMUNIKATY_ZAPISU[req.query?.zapisano] ?? null;
     const adres = adresLinkowDla(req);
     return adres?.domyslny
-      ? `Wysłano. Link w mailu prowadzi do ${adres.adres} (adres, z którego teraz korzystasz). `
-        + 'Jeśli pracownik otworzy go spoza tej sieci, wpisz adres w Ustawienia → Integracje → Poczta wychodząca.'
+      ? `Wysłano. Link w mailu prowadzi do ${adres.adres} (adres, z którego teraz korzystasz). ` +
+          'Jeśli pracownik otworzy go spoza tej sieci, wpisz adres w Ustawienia → Integracje → Poczta wychodząca.'
       : KOMUNIKATY_ZAPISU.wyslano;
   };
 
   function stronaKonta(req, reply, id, extra = {}) {
-    return reply.view('konto.ejs', { szerokosc: 'formularz',
-      title: 'Konto użytkownika', adminWidok: true, wlasne: id === req.konto?.id, serwisowe: false,
+    return reply.view('konto.ejs', {
+      szerokosc: 'formularz',
+      title: 'Konto użytkownika',
+      adminWidok: true,
+      wlasne: id === req.konto?.id,
+      serwisowe: false,
       // Gość demo w podglądzie nie widzi loginu ani imienia administratora (podglad-demo.js).
       konto: req.konto?.podgladDemo
-        ? kontoWPodgladzieDemo(modelKonta(db, id), db.prepare('SELECT admin FROM konta WHERE id = ?').get(id)?.admin === 1)
+        ? kontoWPodgladzieDemo(
+            modelKonta(db, id),
+            db.prepare('SELECT admin FROM konta WHERE id = ?').get(id)?.admin === 1,
+          )
         : modelKonta(db, id),
       role: listaRol(db).map((r) => ({ klucz: r.klucz, etykieta: r.nazwa })),
       rolaKlucz: db.prepare('SELECT rola FROM konta WHERE id = ?').get(id)?.rola ?? null,
-      link: null, adresZPrzegladarki: false, zapisano: komunikatZapisu(req), blad: null,
-      nawigacja: nawigacjaUstawien(req, reply), ...extra,
+      link: null,
+      adresZPrzegladarki: false,
+      zapisano: komunikatZapisu(req),
+      blad: null,
+      nawigacja: nawigacjaUstawien(req, reply),
+      ...extra,
     });
   }
 
@@ -219,14 +257,23 @@ export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPa
       // Poprzedni link przestaje działać DOPIERO po udanej wysyłce. Przy błędzie SMTP
       // nowy link jest wycofany, a poprzedni (np. z „Pokaż link”, już przekazany pracownikowi) działa dalej.
       // W oknie wysyłki konto ma dwa aktywne linki — użycie jednego unieważnia drugi (uzyjLinku).
-      const { token, id: linkId } = wydajLink(db, { kontoId: id, cel, utworzylKontoId, teraz, zastapPoprzednie: false });
+      const { token, id: linkId } = wydajLink(db, {
+        kontoId: id,
+        cel,
+        utworzylKontoId,
+        teraz,
+        zastapPoprzednie: false,
+      });
       try {
         // Szablon z Ustawień → Szablony wiadomości → Maile do zespołu, czytany przy każdej wysyłce.
         const szablon = wczytajSzablonyWiadomosci(db).wbudowane[cel] ?? null;
         // Znacznik błędu poczty TYLKO na błędzie samego sendMail — błąd odczytu szablonu
         // (np. SQLite z kodem) nie jest odmową serwera poczty.
-        await mailer().sendMail({ to: konto.email, ...trescMaila({ cel, imie: konto.imie, link: adresLinku(token), szablon }) })
-          .catch((bladWysylki) => { throw oznaczBladPoczty(bladWysylki); });
+        await mailer()
+          .sendMail({ to: konto.email, ...trescMaila({ cel, imie: konto.imie, link: adresLinku(token), szablon }) })
+          .catch((bladWysylki) => {
+            throw oznaczBladPoczty(bladWysylki);
+          });
       } catch (e) {
         wycofajLink(db, linkId, teraz);
         // Odmowa serwera poczty (kod nodemailera) — zdanie z kodu i wskazówka do Ustawień (ekran tylko dla
@@ -264,7 +311,12 @@ export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPa
     if (loginZarezerwowany(login)) return odmow(KOMUNIKAT_LOGIN_SERWISOWY(login));
     if (kontoPoLoginie(db, login)) return odmow(komunikatLoginZajety(login));
     if (email) {
-      try { sprawdzEmail(db, null, email); } catch (e) { if (e instanceof BladKonta) return odmow(e.message); throw e; }
+      try {
+        sprawdzEmail(db, null, email);
+      } catch (e) {
+        if (e instanceof BladKonta) return odmow(e.message);
+        throw e;
+      }
     }
     const blad = bladWysylki(req, sposob, email || null);
     if (blad) return odmow(blad);
@@ -301,12 +353,17 @@ export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPa
     });
     const podglad = req.konto?.podgladDemo === true;
     return reply.view('konta.ejs', {
-      title: 'Użytkownicy i uprawnienia', konta: podglad ? konta.map((k) => kontoWPodgladzieDemo(k, k.admin)) : konta, EKRANY,
+      title: 'Użytkownicy i uprawnienia',
+      konta: podglad ? konta.map((k) => kontoWPodgladzieDemo(k, k.admin)) : konta,
+      EKRANY,
       nawigacja: nawigacjaUstawien(req, reply),
       role: listaRol(db).map((r) => ({ klucz: r.klucz, etykieta: r.nazwa })),
       // `ip` już płynie z ostatnieLogowania — dołączamy tylko czytelny opis wyniku.
       // W podglądzie demo zmyślony — prawdziwy niesie loginy i IP innych gości (podglad-demo.js).
-      logowania: (podglad ? logowaniaDemo(teraz()) : ostatnieLogowania(db, 50)).map((l) => ({ ...l, opisWyniku: opisWynikuLogowania(l.wynik) })),
+      logowania: (podglad ? logowaniaDemo(teraz()) : ostatnieLogowania(db, 50)).map((l) => ({
+        ...l,
+        opisWyniku: opisWynikuLogowania(l.wynik),
+      })),
       wlasneId: req.konto?.id ?? null,
       sekretZmieniony: sekretZmienionyAt(db),
       zapisano: KOMUNIKATY_ZAPISU[req.query?.zapisano] ?? null,
@@ -348,7 +405,8 @@ export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPa
     const rolaZBazy = rolaPoKluczu(db, rola);
     if (!login || !imie || !haslo || !rolaZBazy) {
       return widok(req, reply.code(400), {
-        blad: 'Brak loginu, imienia, hasła albo nieznana rola. Hasło wpisz ponownie.', noweKonto,
+        blad: 'Brak loginu, imienia, hasła albo nieznana rola. Hasło wpisz ponownie.',
+        noweKonto,
       });
     }
     // ⚠️⚠️ Duplikat loginu (najczęstsza pomyłka na tym ekranie — „ewa” drugi raz) sprawdzamy
@@ -369,7 +427,8 @@ export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPa
     try {
       zalozKontoZHaslem(db, { login, imie, haslo, rola: rolaZBazy.klucz });
     } catch (e) {
-      if (e instanceof BladKonta && e.kod === 'login-zajety') return widok(req, reply.code(400), { blad: komunikatLoginZajety(login), noweKonto });
+      if (e instanceof BladKonta && e.kod === 'login-zajety')
+        return widok(req, reply.code(400), { blad: komunikatLoginZajety(login), noweKonto });
       throw e;
     }
     return reply.redirect('/ustawienia/konta?zapisano=nowe');
@@ -385,7 +444,7 @@ export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPa
     // Pole `ekran` z formularza: jeden ptaszek przychodzi jako napis, kilka jako tablica,
     // zero — nie przychodzi wcale. Wszystkie trzy postacie to ta sama rzecz.
     const surowe = req.body?.ekran;
-    const wybrane = surowe == null ? [] : (Array.isArray(surowe) ? surowe : [surowe]);
+    const wybrane = surowe == null ? [] : Array.isArray(surowe) ? surowe : [surowe];
     const znane = new Set(EKRANY.map((e) => e.klucz));
     // ⚠️ `'api'` NIE JEST W `EKRANY` (to syntetyczny klucz z `ekranDlaAdresu` w domena/ekrany.js
     // dla `/api/*` — trasy programu zewnętrznego), więc dostaje wyjątek TUTAJ, zamiast
@@ -400,7 +459,8 @@ export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPa
     // ktos inny moglby to zrobic za niego.
     if (!pozostanieCzynnyAdmin(db, id, { czynne: cel.czynne, admin })) {
       return widok(req, reply.code(400), {
-        blad: KOMUNIKAT_OSTATNI_ADMIN, edycjaUprawnien: { id, ekrany: new Set(ekrany), admin },
+        blad: KOMUNIKAT_OSTATNI_ADMIN,
+        edycjaUprawnien: { id, ekrany: new Set(ekrany), admin },
       });
     }
     // ⚠️⚠️ DWA BEZPIECZNIKI. Odebranie sobie `admin` albo wylaczenie wlasnego konta zamyka
@@ -512,9 +572,13 @@ export function registerKontaRoutes(app, { db, teraz = () => new Date(), adresPa
     if (odmowa) return odmowa;
     const cel = kontoZTrasy(req);
     if (!cel) return stronaOdmowy(reply, 404, 'Nie ma takiego konta', BRAK_KONTA);
-    if (!cel.czynne) return stronaKonta(req, reply.code(400), cel.id, { blad: 'Konto jest wyłączone — włącz je, zanim wyślesz link.' });
+    if (!cel.czynne)
+      return stronaKonta(req, reply.code(400), cel.id, {
+        blad: 'Konto jest wyłączone — włącz je, zanim wyślesz link.',
+      });
     const sposob = String(req.body?.sposob ?? '');
-    if (!SPOSOBY_LINKU.includes(sposob)) return stronaKonta(req, reply.code(400), cel.id, { blad: 'Wybierz: mail albo link do skopiowania.' });
+    if (!SPOSOBY_LINKU.includes(sposob))
+      return stronaKonta(req, reply.code(400), cel.id, { blad: 'Wybierz: mail albo link do skopiowania.' });
     const blad = bladWysylki(req, sposob, emailKonta(db, cel.id));
     if (blad) return stronaKonta(req, reply.code(400), cel.id, { blad });
     return wyslijAlboPokaz(req, reply, { id: cel.id, cel: cel.zaproszone ? 'zaproszenie' : 'reset', sposob });

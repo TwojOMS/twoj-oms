@@ -8,25 +8,50 @@ import { metaDni, ga4Dni, stanyZrodel } from '../../../src/oms/db/kampanie.js';
 
 const teraz = (dzien) => () => new Date(`${dzien}T09:00:00Z`);
 
-const metaAtrapa = (dni) => ({ dzienneStatystyki: async () => dni, });
+const metaAtrapa = (dni) => ({ dzienneStatystyki: async () => dni });
 const ga4Atrapa = (dni) => ({ dzienneStatystyki: async () => dni });
-const odmowa = (tresc) => ({ dzienneStatystyki: async () => { throw new Error(tresc); } });
+const odmowa = (tresc) => ({
+  dzienneStatystyki: async () => {
+    throw new Error(tresc);
+  },
+});
 
 const METADZIEN = {
-  dzien: '2026-08-24', wydatek: '30.00', wyswietlenia: 1000, zasieg: 800, klikniecia: 40, kliknieciaLinku: 12,
+  dzien: '2026-08-24',
+  wydatek: '30.00',
+  wyswietlenia: 1000,
+  zasieg: 800,
+  klikniecia: 40,
+  kliknieciaLinku: 12,
 };
 const GA4DZIEN = { dzien: '2026-08-24', sesje: 28, uzytkownicy: 24, sesjeMeta: 5, odslonyPromo: 3 };
 
 function wstawKampanieTestowa(db) {
-  db.prepare(`INSERT INTO kampanie (kod,nazwa,od_dnia,do_dnia,sklep,cel_uzyc,ga4_wlasciwosc,ga4_sciezka,fale_json)
-    VALUES (?,?,?,?,?,?,?,?,?)`).run('promo-test','Kampania testowa','2026-08-24','2026-09-07','sklep-test',10,
-    '123456789','/promocja-test',JSON.stringify([
-      {od:'2026-08-26',napis:'start reklam'}, {od:'2026-08-30',napis:'fala 2'}, {od:'2026-09-04',napis:'fala 3'}
-    ]));
+  db.prepare(
+    `INSERT INTO kampanie (kod,nazwa,od_dnia,do_dnia,sklep,cel_uzyc,ga4_wlasciwosc,ga4_sciezka,fale_json)
+    VALUES (?,?,?,?,?,?,?,?,?)`,
+  ).run(
+    'promo-test',
+    'Kampania testowa',
+    '2026-08-24',
+    '2026-09-07',
+    'sklep-test',
+    10,
+    '123456789',
+    '/promocja-test',
+    JSON.stringify([
+      { od: '2026-08-26', napis: 'start reklam' },
+      { od: '2026-08-30', napis: 'fala 2' },
+      { od: '2026-09-04', napis: 'fala 3' },
+    ]),
+  );
 }
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); wstawKampanieTestowa(db); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+  wstawKampanieTestowa(db);
+});
 
 describe('kampanieDoOdswiezenia', () => {
   const k = { od_dnia: '2026-08-24', do_dnia: '2026-09-07' };
@@ -50,12 +75,17 @@ describe('kampanieDoOdswiezenia', () => {
 describe('czuwacz kampanii — zapis do lustra', () => {
   it('zapisuje dni Meta i GA4 dla kampanii, która trwa', async () => {
     const czuwacz = createCzuwaczKampanii({
-      db, meta: metaAtrapa([METADZIEN]), ga4: ga4Atrapa([GA4DZIEN]), teraz: teraz('2026-08-25'),
+      db,
+      meta: metaAtrapa([METADZIEN]),
+      ga4: ga4Atrapa([GA4DZIEN]),
+      teraz: teraz('2026-08-25'),
     });
     await czuwacz.przebieg();
 
     expect(metaDni(db, 'promo-test')).toMatchObject([{ dzien: '2026-08-24', wydatek: '30.00', wyswietlenia: 1000 }]);
-    expect(ga4Dni(db, 'promo-test')).toMatchObject([{ dzien: '2026-08-24', sesje: 28, sesje_meta: 5, odslony_promo: 3 }]);
+    expect(ga4Dni(db, 'promo-test')).toMatchObject([
+      { dzien: '2026-08-24', sesje: 28, sesje_meta: 5, odslony_promo: 3 },
+    ]);
   });
 
   // ⚠️ Statystyki dnia dojrzewaja — drugi przebieg ma NADPISAC, nie dopisac drugiego wiersza.
@@ -63,7 +93,9 @@ describe('czuwacz kampanii — zapis do lustra', () => {
     const pierwszy = createCzuwaczKampanii({ db, meta: metaAtrapa([METADZIEN]), teraz: teraz('2026-08-25') });
     await pierwszy.przebieg();
     const drugi = createCzuwaczKampanii({
-      db, meta: metaAtrapa([{ ...METADZIEN, wydatek: '45.50' }]), teraz: teraz('2026-08-25'),
+      db,
+      meta: metaAtrapa([{ ...METADZIEN, wydatek: '45.50' }]),
+      teraz: teraz('2026-08-25'),
     });
     await drugi.przebieg();
 
@@ -74,7 +106,10 @@ describe('czuwacz kampanii — zapis do lustra', () => {
 
   it('nie pyta o kampanię sprzed okna (żadnego zapisu)', async () => {
     const czuwacz = createCzuwaczKampanii({
-      db, meta: metaAtrapa([METADZIEN]), ga4: ga4Atrapa([GA4DZIEN]), teraz: teraz('2026-08-20'),
+      db,
+      meta: metaAtrapa([METADZIEN]),
+      ga4: ga4Atrapa([GA4DZIEN]),
+      teraz: teraz('2026-08-20'),
     });
     expect(await czuwacz.przebieg()).toMatchObject({ kampanii: 0 });
     expect(metaDni(db, 'promo-test')).toEqual([]);
@@ -92,7 +127,10 @@ describe('czuwacz kampanii — awarie i ślad', () => {
   // ⚠️⚠️ SEDNO: wygasly klucz Google nie ma prawa zabrac ekranowi wydatkow z Mety.
   it('awaria GA4 NIE zabiera danych z Mety', async () => {
     const czuwacz = createCzuwaczKampanii({
-      db, meta: metaAtrapa([METADZIEN]), ga4: odmowa('Google odmówił tokenu: invalid_grant'), teraz: teraz('2026-08-25'),
+      db,
+      meta: metaAtrapa([METADZIEN]),
+      ga4: odmowa('Google odmówił tokenu: invalid_grant'),
+      teraz: teraz('2026-08-25'),
     });
     const wynik = await czuwacz.przebieg();
 
@@ -105,7 +143,10 @@ describe('czuwacz kampanii — awarie i ślad', () => {
 
   it('awaria Mety NIE zabiera danych z GA4', async () => {
     const czuwacz = createCzuwaczKampanii({
-      db, meta: odmowa('Meta odmówiła (OAuthException): token wygasł'), ga4: ga4Atrapa([GA4DZIEN]), teraz: teraz('2026-08-25'),
+      db,
+      meta: odmowa('Meta odmówiła (OAuthException): token wygasł'),
+      ga4: ga4Atrapa([GA4DZIEN]),
+      teraz: teraz('2026-08-25'),
     });
     await czuwacz.przebieg();
     expect(ga4Dni(db, 'promo-test')).toHaveLength(1);
@@ -144,21 +185,36 @@ describe('czuwacz kampanii — awarie i ślad', () => {
 describe('czuwacz kampanii — okno zapytania', () => {
   it('pyta od początku kampanii do DZIŚ, nie do końca okna (bez przyszłości)', async () => {
     let zapytanie = null;
-    const meta = { dzienneStatystyki: async (p) => { zapytanie = p; return []; } };
+    const meta = {
+      dzienneStatystyki: async (p) => {
+        zapytanie = p;
+        return [];
+      },
+    };
     await createCzuwaczKampanii({ db, meta, teraz: teraz('2026-08-25') }).przebieg();
     expect(zapytanie).toMatchObject({ od: '2026-08-24', do: '2026-08-25' });
   });
 
   it('po zakończeniu kampanii pyta do jej ostatniego dnia', async () => {
     let zapytanie = null;
-    const meta = { dzienneStatystyki: async (p) => { zapytanie = p; return []; } };
+    const meta = {
+      dzienneStatystyki: async (p) => {
+        zapytanie = p;
+        return [];
+      },
+    };
     await createCzuwaczKampanii({ db, meta, teraz: teraz('2026-09-08') }).przebieg();
     expect(zapytanie).toMatchObject({ od: '2026-08-24', do: '2026-09-07' });
   });
 
   it('przekazuje ścieżkę strony promocji do GA4', async () => {
     let zapytanie = null;
-    const ga4 = { dzienneStatystyki: async (p) => { zapytanie = p; return []; } };
+    const ga4 = {
+      dzienneStatystyki: async (p) => {
+        zapytanie = p;
+        return [];
+      },
+    };
     await createCzuwaczKampanii({ db, ga4, teraz: teraz('2026-08-25') }).przebieg();
     expect(zapytanie).toMatchObject({ wlasciwosc: '123456789', sciezkaPromo: '/promocja-test' });
   });
@@ -166,7 +222,12 @@ describe('czuwacz kampanii — okno zapytania', () => {
   it('zawężenie do wskazanych kampanii reklamowych jedzie do klienta Meta', async () => {
     db.prepare("UPDATE kampanie SET meta_kampanie = '111, 222' WHERE kod = 'promo-test'").run();
     let zapytanie = null;
-    const meta = { dzienneStatystyki: async (p) => { zapytanie = p; return []; } };
+    const meta = {
+      dzienneStatystyki: async (p) => {
+        zapytanie = p;
+        return [];
+      },
+    };
     await createCzuwaczKampanii({ db, meta, teraz: teraz('2026-08-25') }).przebieg();
     expect(zapytanie.kampanie).toEqual(['111', '222']);
   });

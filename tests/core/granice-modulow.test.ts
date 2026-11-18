@@ -6,15 +6,14 @@ import { zbadajGranice } from '../../scripts/granice-modulow.mjs';
 const repo = fileURLToPath(new URL('../../', import.meta.url));
 const plikWyjatkow = 'granice-modulow-wyjatki.json';
 
-function porownajLimity(
-  aktualne: Record<string, readonly string[]>,
-  limity: Record<string, number>,
-): string[] {
+function porownajLimity(aktualne: Record<string, readonly string[]>, limity: Record<string, number>): string[] {
   const roznice: string[] = [];
   for (const [klucz, krawedzie] of Object.entries(aktualne)) {
     const limit = limity[klucz] ?? 0;
     if (krawedzie.length > limit) {
-      roznice.push(`Nowa para lub krawędź ponad limit (${klucz}, ${krawedzie.length}/${limit}):\n${krawedzie.join('\n')}`);
+      roznice.push(
+        `Nowa para lub krawędź ponad limit (${klucz}, ${krawedzie.length}/${limit}):\n${krawedzie.join('\n')}`,
+      );
     }
   }
   for (const [klucz, limit] of Object.entries(limity)) {

@@ -2,7 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import {
-  zalozKonto, kontoPoLoginie, ustawUprawnienia, dopiszLogowanie, ustawCzynne,
+  zalozKonto,
+  kontoPoLoginie,
+  ustawUprawnienia,
+  dopiszLogowanie,
+  ustawCzynne,
 } from '../../../src/core/bezpieczenstwo/konta.js';
 import { pozostanieCzynnyAdmin } from '../../../src/moduly/ustawienia/trasy/konta.js';
 import { podpisz, NAZWA_CIASTECZKA_OMS } from '../../../src/core/bezpieczenstwo/sesja.js';
@@ -48,21 +52,28 @@ describe('ekran kont', () => {
   it('udane operacje wracają na Konta z komunikatem ze skończonego klucza', async () => {
     const przypadki = [
       {
-        klucz: 'nowe', komunikat: 'Założono konto.',
+        klucz: 'nowe',
+        komunikat: 'Założono konto.',
         url: () => '/ustawienia/konta/nowe',
         payload: () => ({ login: 'nowe-konto', imie: 'Nowa Osoba', haslo: 'sekret', rola: 'produkcja' }),
       },
       {
-        klucz: 'uprawnienia', komunikat: 'Zapisano uprawnienia.',
-        url: (id) => `/ustawienia/konta/${id}/uprawnienia`, payload: () => ({ ekran: ['magazyn'] }),
+        klucz: 'uprawnienia',
+        komunikat: 'Zapisano uprawnienia.',
+        url: (id) => `/ustawienia/konta/${id}/uprawnienia`,
+        payload: () => ({ ekran: ['magazyn'] }),
       },
       {
-        klucz: 'haslo', komunikat: 'Zmieniono hasło.',
-        url: (id) => `/ustawienia/konta/${id}/haslo`, payload: () => ({ haslo: 'nowy-sekret' }),
+        klucz: 'haslo',
+        komunikat: 'Zmieniono hasło.',
+        url: (id) => `/ustawienia/konta/${id}/haslo`,
+        payload: () => ({ haslo: 'nowy-sekret' }),
       },
       {
-        klucz: 'czynne', komunikat: 'Zmieniono stan konta.',
-        url: (id) => `/ustawienia/konta/${id}/czynne`, payload: () => ({ czynne: '0' }),
+        klucz: 'czynne',
+        komunikat: 'Zmieniono stan konta.',
+        url: (id) => `/ustawienia/konta/${id}/czynne`,
+        payload: () => ({ czynne: '0' }),
       },
     ];
 
@@ -73,12 +84,19 @@ describe('ekran kont', () => {
       const naglowki = { ...HTML, ...ORIGIN, ...jako(db, 'adam') };
 
       const zapis = await app.inject({
-        method: 'POST', url: przypadek.url(idEwa), headers: naglowki, payload: przypadek.payload(),
+        method: 'POST',
+        url: przypadek.url(idEwa),
+        headers: naglowki,
+        payload: przypadek.payload(),
       });
       expect(zapis.statusCode).toBe(302);
       expect(zapis.headers.location).toBe(`/ustawienia/konta?zapisano=${przypadek.klucz}`);
 
-      const ekran = await app.inject({ method: 'GET', url: zapis.headers.location, headers: { ...HTML, ...jako(db, 'adam') } });
+      const ekran = await app.inject({
+        method: 'GET',
+        url: zapis.headers.location,
+        headers: { ...HTML, ...jako(db, 'adam') },
+      });
       expect(ekran.body).toContain(przypadek.komunikat);
     }
   });
@@ -89,7 +107,8 @@ describe('ekran kont', () => {
     const znacznik = 'NIE-ZAUFANY-KOMUNIKAT';
 
     const r = await app.inject({
-      method: 'GET', url: `/ustawienia/konta?zapisano=${znacznik}`,
+      method: 'GET',
+      url: `/ustawienia/konta?zapisano=${znacznik}`,
       headers: { ...HTML, ...jako(db, 'adam') },
     });
 
@@ -103,7 +122,8 @@ describe('ekran kont', () => {
     const sekret = 'HASLO-NIE-MOZE-WROCIC-DO-HTML';
 
     const r = await app.inject({
-      method: 'POST', url: '/ustawienia/konta/nowe',
+      method: 'POST',
+      url: '/ustawienia/konta/nowe',
       headers: { ...HTML, ...ORIGIN, ...jako(db, 'adam') },
       payload: { login: '  nowa-osoba  ', imie: 'Nowa Osoba', haslo: sekret, rola: 'rola-spoza-listy' },
     });
@@ -122,7 +142,8 @@ describe('ekran kont', () => {
     zalozKonto(db, { login: 'kasia', imie: 'Kasia', haslo: 'h', rola: 'administrator', admin: true });
 
     const r = await app.inject({
-      method: 'POST', url: `/ustawienia/konta/${idAdam}/uprawnienia`,
+      method: 'POST',
+      url: `/ustawienia/konta/${idAdam}/uprawnienia`,
       headers: { ...HTML, ...ORIGIN, ...jako(db, 'adam') },
       payload: { ekran: ['magazyn', 'api'] },
     });
@@ -140,8 +161,10 @@ describe('ekran kont', () => {
     const idEwa = zalozKonto(db, { login: 'ewa', imie: 'Barbara', haslo: 'stare', rola: 'sprzedaz', admin: false });
 
     const r = await app.inject({
-      method: 'POST', url: `/ustawienia/konta/${idEwa}/haslo`,
-      headers: { ...HTML, ...ORIGIN, ...jako(db, 'adam') }, payload: { haslo: '' },
+      method: 'POST',
+      url: `/ustawienia/konta/${idEwa}/haslo`,
+      headers: { ...HTML, ...ORIGIN, ...jako(db, 'adam') },
+      payload: { haslo: '' },
     });
 
     expect(r.statusCode).toBe(400);
@@ -158,7 +181,8 @@ describe('ekran kont', () => {
     ustawUprawnienia(db, idEwa, ['ustawienia']);
 
     const r = await app.inject({
-      method: 'GET', url: '/ustawienia/konta',
+      method: 'GET',
+      url: '/ustawienia/konta',
       headers: { ...HTML, ...jako(db, 'ewa') },
     });
 
@@ -178,7 +202,8 @@ describe('ekran kont', () => {
     zalozKonto(db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
 
     const r = await app.inject({
-      method: 'POST', url: '/ustawienia/konta/nowe',
+      method: 'POST',
+      url: '/ustawienia/konta/nowe',
       headers: { ...HTML, ...ORIGIN, ...jako(db, 'adam') },
       payload: { login: 'pako', imie: 'Pakowanie', haslo: 'haslo-ok', rola: 'produkcja' },
     });
@@ -187,9 +212,7 @@ describe('ekran kont', () => {
     expect(r.headers.location).toBe('/ustawienia/konta?zapisano=nowe');
     const konto = kontoPoLoginie(db, 'pako');
     expect(konto).not.toBeNull();
-    expect(konto.uprawnienia).toEqual(new Set([
-      'zamowienia', 'przesylki', 'faktury-zamowienia', 'zwroty-zamowienia',
-    ]));
+    expect(konto.uprawnienia).toEqual(new Set(['zamowienia', 'przesylki', 'faktury-zamowienia', 'zwroty-zamowienia']));
   });
 
   it('formularz oddaje KOMPLET ptaszkow — odznaczony ptaszek ZNIKA', async () => {
@@ -198,7 +221,8 @@ describe('ekran kont', () => {
     const idEwa = zalozKonto(db, { login: 'ewa', imie: 'Barbara', haslo: 'h', rola: 'sprzedaz', admin: false });
 
     const r = await app.inject({
-      method: 'POST', url: `/ustawienia/konta/${idEwa}/uprawnienia`,
+      method: 'POST',
+      url: `/ustawienia/konta/${idEwa}/uprawnienia`,
       headers: { ...HTML, ...ORIGIN, ...jako(db, 'adam') },
       payload: { ekran: ['magazyn'] },
     });
@@ -221,7 +245,8 @@ describe('ekran kont', () => {
     zalozKonto(db, { login: 'kasia', imie: 'Kasia', haslo: 'h', rola: 'administrator', admin: true });
 
     const r = await app.inject({
-      method: 'POST', url: `/ustawienia/konta/${id}/uprawnienia`,
+      method: 'POST',
+      url: `/ustawienia/konta/${id}/uprawnienia`,
       headers: { ...HTML, ...ORIGIN, ...jako(db, 'adam') },
       payload: { ekran: ['zamowienia'] }, // brak pola "admin" = ptaszek odznaczony
     });
@@ -239,7 +264,8 @@ describe('ekran kont', () => {
     const id = zalozKonto(db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
 
     const r = await app.inject({
-      method: 'POST', url: `/ustawienia/konta/${id}/czynne`,
+      method: 'POST',
+      url: `/ustawienia/konta/${id}/czynne`,
       headers: { ...HTML, ...ORIGIN, ...jako(db, 'adam') },
       payload: { czynne: '0' },
     });
@@ -258,7 +284,8 @@ describe('ekran kont', () => {
     ustawUprawnienia(db, idEwa, ['zamowienia']);
 
     const r = await app.inject({
-      method: 'GET', url: '/ustawienia/konta',
+      method: 'GET',
+      url: '/ustawienia/konta',
       headers: { ...HTML, ...jako(db, 'adam') },
     });
 
@@ -272,7 +299,8 @@ describe('ekran kont', () => {
     dopiszLogowanie(db, { login: 'ktos-obcy', usluga: 'oms', wynik: 'zle-haslo' });
 
     const r = await app.inject({
-      method: 'GET', url: '/ustawienia/zespol/logowania',
+      method: 'GET',
+      url: '/ustawienia/zespol/logowania',
       headers: { ...HTML, ...jako(db, 'adam') },
     });
 
@@ -289,7 +317,11 @@ describe('ekran kont', () => {
     // zatrzymuje je WYLACZNIE `tylkoAdmin` w TYM pliku. Usuniecie go z ktorejkolwiek z tych
     // czterech tras osobno przechodzilo dotad zielono, bo zaden test nie sprawdzal ZAPISU.
     const przypadki = [
-      ['POST', () => '/ustawienia/konta/nowe', () => ({ login: 'ktos-nowy', imie: 'Ktos', haslo: 'h', rola: 'produkcja' })],
+      [
+        'POST',
+        () => '/ustawienia/konta/nowe',
+        () => ({ login: 'ktos-nowy', imie: 'Ktos', haslo: 'h', rola: 'produkcja' }),
+      ],
       ['POST', (id) => `/ustawienia/konta/${id}/uprawnienia`, () => ({ ekran: ['zamowienia'] })],
       ['POST', (id) => `/ustawienia/konta/${id}/haslo`, () => ({ haslo: 'nowe-tajne-haslo' })],
       ['POST', (id) => `/ustawienia/konta/${id}/czynne`, () => ({ czynne: '1' })],
@@ -301,7 +333,8 @@ describe('ekran kont', () => {
       ustawUprawnienia(db, idEwa, ['ustawienia']);
 
       const r = await app.inject({
-        method: metoda, url: urlZId(idEwa),
+        method: metoda,
+        url: urlZId(idEwa),
         headers: { ...HTML, ...ORIGIN, ...jako(db, 'ewa') },
         payload: payloadZ(),
       });
@@ -317,7 +350,8 @@ describe('ekran kont', () => {
     const idEwa = zalozKonto(db, { login: 'ewa', imie: 'Barbara', haslo: 'h', rola: 'sprzedaz', admin: false });
 
     const r = await app.inject({
-      method: 'POST', url: `/ustawienia/konta/${idEwa}/uprawnienia`,
+      method: 'POST',
+      url: `/ustawienia/konta/${idEwa}/uprawnienia`,
       headers: { ...HTML, ...ORIGIN, ...jako(db, 'adam') },
       payload: { ekran: ['magazyn', 'nieistniejacy', '../etc', 'finanse'] },
     });
@@ -334,7 +368,8 @@ describe('ekran kont', () => {
     // Brak pola (zero zaznaczonych ptaszkow) — formularz oddaje KOMPLET, wiec zero ptaszkow
     // ma wyczyscic uprawnienia do zera, nie zostawic starych.
     let r = await app.inject({
-      method: 'POST', url: `/ustawienia/konta/${idEwa}/uprawnienia`,
+      method: 'POST',
+      url: `/ustawienia/konta/${idEwa}/uprawnienia`,
       headers: { ...HTML, ...ORIGIN, ...jako(db, 'adam') },
       payload: {},
     });
@@ -344,7 +379,8 @@ describe('ekran kont', () => {
     // JEDEN zaznaczony ptaszek przychodzi z przegladarki jako NAPIS, nie tablica
     // jednoelementowa — to jest DOKLADNIE mutacja, ktora ginela po cichu na produkcji.
     r = await app.inject({
-      method: 'POST', url: `/ustawienia/konta/${idEwa}/uprawnienia`,
+      method: 'POST',
+      url: `/ustawienia/konta/${idEwa}/uprawnienia`,
       headers: { ...HTML, ...ORIGIN, ...jako(db, 'adam') },
       payload: { ekran: 'magazyn' },
     });
@@ -353,7 +389,8 @@ describe('ekran kont', () => {
 
     // Kilka zaznaczonych ptaszkow przychodzi jako tablica.
     r = await app.inject({
-      method: 'POST', url: `/ustawienia/konta/${idEwa}/uprawnienia`,
+      method: 'POST',
+      url: `/ustawienia/konta/${idEwa}/uprawnienia`,
       headers: { ...HTML, ...ORIGIN, ...jako(db, 'adam') },
       payload: { ekran: ['magazyn', 'finanse'] },
     });
@@ -366,17 +403,20 @@ describe('ekran kont', () => {
     zalozKonto(db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
 
     await app.inject({
-      method: 'POST', url: '/ustawienia/konta/nowe',
+      method: 'POST',
+      url: '/ustawienia/konta/nowe',
       headers: { ...HTML, ...ORIGIN, ...jako(db, 'adam') },
       payload: { login: 'pako', imie: 'Pakowanie', haslo: 'haslo-ok', rola: 'produkcja' },
     });
     await app.inject({
-      method: 'POST', url: '/ustawienia/konta/nowe',
+      method: 'POST',
+      url: '/ustawienia/konta/nowe',
       headers: { ...HTML, ...ORIGIN, ...jako(db, 'adam') },
       payload: { login: 'aga2', imie: 'Ewa Druga', haslo: 'haslo-ok', rola: 'sprzedaz' },
     });
     await app.inject({
-      method: 'POST', url: '/ustawienia/konta/nowe',
+      method: 'POST',
+      url: '/ustawienia/konta/nowe',
       headers: { ...HTML, ...ORIGIN, ...jako(db, 'adam') },
       payload: { login: 'nowyadmin', imie: 'Nowy Admin', haslo: 'haslo-ok', rola: 'administrator' },
     });
@@ -395,7 +435,8 @@ describe('ekran kont', () => {
     zalozKonto(db, { login: zly, imie: zly, haslo: 'h', rola: 'sprzedaz', admin: false });
 
     const r = await app.inject({
-      method: 'GET', url: '/ustawienia/konta',
+      method: 'GET',
+      url: '/ustawienia/konta',
       headers: { ...HTML, ...jako(db, 'adam') },
     });
 
@@ -413,7 +454,8 @@ describe('ekran kont', () => {
     dopiszLogowanie(db, { login: '<script>alert(2)</script>', usluga: 'oms', wynik: 'zle-haslo' });
 
     const r = await app.inject({
-      method: 'GET', url: '/ustawienia/zespol/logowania',
+      method: 'GET',
+      url: '/ustawienia/zespol/logowania',
       headers: { ...HTML, ...jako(db, 'adam') },
     });
 
@@ -429,14 +471,16 @@ describe('ekran kont', () => {
     zalozKonto(db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
 
     const idNieistniejace = await app.inject({
-      method: 'POST', url: '/ustawienia/konta/9999/haslo',
+      method: 'POST',
+      url: '/ustawienia/konta/9999/haslo',
       headers: { ...HTML, ...ORIGIN, ...jako(db, 'adam') },
       payload: { haslo: 'nowe-haslo-123' },
     });
     expect(idNieistniejace.statusCode).toBe(404);
 
     const idNieliczbowe = await app.inject({
-      method: 'POST', url: '/ustawienia/konta/abc/haslo',
+      method: 'POST',
+      url: '/ustawienia/konta/abc/haslo',
       headers: { ...HTML, ...ORIGIN, ...jako(db, 'adam') },
       payload: { haslo: 'nowe-haslo-123' },
     });
@@ -449,7 +493,8 @@ describe('ekran kont', () => {
     zalozKonto(db, { login: 'ewa', imie: 'Barbara', haslo: 'h', rola: 'sprzedaz', admin: false });
 
     const r = await app.inject({
-      method: 'POST', url: '/ustawienia/konta/nowe',
+      method: 'POST',
+      url: '/ustawienia/konta/nowe',
       headers: { ...HTML, ...ORIGIN, ...jako(db, 'adam') },
       payload: { login: 'ewa', imie: 'Barbara Druga', haslo: 'HASLO-DUPLIKAT-SENTINEL', rola: 'sprzedaz' },
     });
@@ -471,7 +516,8 @@ describe('ekran kont', () => {
     zalozKonto(db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
 
     const r = await app.inject({
-      method: 'POST', url: '/ustawienia/konta/nowe',
+      method: 'POST',
+      url: '/ustawienia/konta/nowe',
       headers: { ...HTML, ...ORIGIN, ...jako(db, 'adam') },
       payload: { login: '  ewa  ', imie: 'Barbara', haslo: 'haslo-ok', rola: 'sprzedaz' },
     });
@@ -482,7 +528,8 @@ describe('ekran kont', () => {
 
     // Duplikat z bialymi znakami ma zostac ZLAPANY, nie zalozony jako „inny" login.
     const drugie = await app.inject({
-      method: 'POST', url: '/ustawienia/konta/nowe',
+      method: 'POST',
+      url: '/ustawienia/konta/nowe',
       headers: { ...HTML, ...ORIGIN, ...jako(db, 'adam') },
       payload: { login: ' ewa', imie: 'Barbara Druga', haslo: 'haslo-ok', rola: 'sprzedaz' },
     });
@@ -498,9 +545,12 @@ describe('ekran kont', () => {
 
     // Konto SERWISOWE (haslo z .env) jest jedyna droga wejscia na ten ekran, gdy nie ma
     // zadnego czynnego admina — dokladnie ten przypadek z brief-u „ktos odzyskuje panel".
-    const auth = { authorization: `Basic ${Buffer.from(`${config.auth.user}:${config.auth.pass}`).toString('base64')}` };
+    const auth = {
+      authorization: `Basic ${Buffer.from(`${config.auth.user}:${config.auth.pass}`).toString('base64')}`,
+    };
     const r = await app.inject({
-      method: 'POST', url: `/ustawienia/konta/${idSprzedaz}/uprawnienia`,
+      method: 'POST',
+      url: `/ustawienia/konta/${idSprzedaz}/uprawnienia`,
       headers: { ...HTML, ...ORIGIN, ...auth },
       payload: { ekran: ['zamowienia'], admin: '1' },
     });
@@ -530,7 +580,8 @@ describe('ekran kont', () => {
     dopiszLogowanie(db, { login: 'ktos-obcy', usluga: 'oms', wynik: 'zle-haslo', ip: '10.20.30.40' });
 
     const r = await app.inject({
-      method: 'GET', url: '/ustawienia/zespol/logowania',
+      method: 'GET',
+      url: '/ustawienia/zespol/logowania',
       headers: { ...HTML, ...jako(db, 'adam') },
     });
 
@@ -548,7 +599,8 @@ describe('ekran kont', () => {
     dopiszLogowanie(db, { login: 'ktos', usluga: 'oms', wynik: 'przyszly-typ-logowania' });
 
     const r = await app.inject({
-      method: 'GET', url: '/ustawienia/zespol/logowania',
+      method: 'GET',
+      url: '/ustawienia/zespol/logowania',
       headers: { ...HTML, ...jako(db, 'adam') },
     });
 
@@ -588,7 +640,8 @@ describe('trzeci bezpiecznik: ostatni czynny administrator', () => {
     const id = zalozKonto(db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
 
     const r = await app.inject({
-      method: 'POST', url: `/ustawienia/konta/${id}/uprawnienia`,
+      method: 'POST',
+      url: `/ustawienia/konta/${id}/uprawnienia`,
       headers: { ...HTML, ...ORIGIN, ...jako(db, 'adam') },
       payload: { ekran: ['zamowienia'] },
     });
@@ -604,7 +657,8 @@ describe('trzeci bezpiecznik: ostatni czynny administrator', () => {
     const id = zalozKonto(db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
 
     const r = await app.inject({
-      method: 'POST', url: `/ustawienia/konta/${id}/czynne`,
+      method: 'POST',
+      url: `/ustawienia/konta/${id}/czynne`,
       headers: { ...HTML, ...ORIGIN, ...jako(db, 'adam') },
       payload: { czynne: '0' },
     });
@@ -621,7 +675,8 @@ describe('trzeci bezpiecznik: ostatni czynny administrator', () => {
     const idKasia = zalozKonto(db, { login: 'kasia', imie: 'Kasia', haslo: 'h', rola: 'administrator', admin: true });
 
     const r = await app.inject({
-      method: 'POST', url: `/ustawienia/konta/${idKasia}/czynne`,
+      method: 'POST',
+      url: `/ustawienia/konta/${idKasia}/czynne`,
       headers: { ...HTML, ...ORIGIN, ...jako(db, 'adam') },
       payload: { czynne: '0' },
     });
@@ -640,7 +695,8 @@ describe('trzeci bezpiecznik: ostatni czynny administrator', () => {
     zalozKonto(db, { login: 'kasia', imie: 'Kasia', haslo: 'h', rola: 'administrator', admin: true });
 
     const r = await app.inject({
-      method: 'POST', url: `/ustawienia/konta/${id}/czynne`,
+      method: 'POST',
+      url: `/ustawienia/konta/${id}/czynne`,
       headers: { ...HTML, ...ORIGIN, ...jako(db, 'adam') },
       payload: { czynne: '0' },
     });
@@ -659,14 +715,17 @@ describe('trzeci bezpiecznik: ostatni czynny administrator', () => {
 describe('pierwszy start: konto serwisowe na pustej tabeli', () => {
   it('konto serwisowe (haslo z .env) wchodzi na /ustawienia/konta na PUSTEJ tabeli i zaklada pierwsze konto', async () => {
     const { db, app } = nowyPanel();
-    const auth = { authorization: `Basic ${Buffer.from(`${config.auth.user}:${config.auth.pass}`).toString('base64')}` };
+    const auth = {
+      authorization: `Basic ${Buffer.from(`${config.auth.user}:${config.auth.pass}`).toString('base64')}`,
+    };
 
     const wejscie = await app.inject({ method: 'GET', url: '/ustawienia/konta', headers: { ...HTML, ...auth } });
     expect(wejscie.statusCode).toBe(200);
     expect(wejscie.body).toContain('Nowe konto');
 
     const zalozenie = await app.inject({
-      method: 'POST', url: '/ustawienia/konta/nowe',
+      method: 'POST',
+      url: '/ustawienia/konta/nowe',
       headers: { ...HTML, ...ORIGIN, ...auth },
       payload: { login: 'adam', imie: 'Adam', haslo: 'pierwsze-haslo', rola: 'administrator' },
     });

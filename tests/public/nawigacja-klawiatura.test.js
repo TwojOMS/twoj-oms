@@ -9,21 +9,39 @@ function szczegoly(nazwa) {
     nazwa,
     open: false,
     summary,
-    addEventListener(typ, fn) { listenery.set(typ, fn); },
-    removeEventListener(typ) { listenery.delete(typ); },
-    querySelector(selektor) { return selektor === 'summary' ? summary : null; },
-    contains(cel) { return cel === this || cel === summary || cel?.wewnatrz === this; },
-    emit(typ, event = {}) { listenery.get(typ)?.({ target: this, ...event }); },
+    addEventListener(typ, fn) {
+      listenery.set(typ, fn);
+    },
+    removeEventListener(typ) {
+      listenery.delete(typ);
+    },
+    querySelector(selektor) {
+      return selektor === 'summary' ? summary : null;
+    },
+    contains(cel) {
+      return cel === this || cel === summary || cel?.wewnatrz === this;
+    },
+    emit(typ, event = {}) {
+      listenery.get(typ)?.({ target: this, ...event });
+    },
   };
 }
 
 function korzen(elementy) {
   const listenery = new Map();
   return {
-    addEventListener(typ, fn) { listenery.set(typ, fn); },
-    removeEventListener(typ) { listenery.delete(typ); },
-    querySelectorAll(selektor) { return selektor === SELEKTOR_MENU ? elementy : []; },
-    emit(typ, event) { listenery.get(typ)?.(event); },
+    addEventListener(typ, fn) {
+      listenery.set(typ, fn);
+    },
+    removeEventListener(typ) {
+      listenery.delete(typ);
+    },
+    querySelectorAll(selektor) {
+      return selektor === SELEKTOR_MENU ? elementy : [];
+    },
+    emit(typ, event) {
+      listenery.get(typ)?.(event);
+    },
   };
 }
 
@@ -33,12 +51,16 @@ const pozycja = (panel) => ({
   closest: (selektor) => (selektor.includes('.wydruki-menu a') ? {} : null),
 });
 
-afterEach(() => { vi.useRealTimers(); });
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe('podlaczMenu', () => {
   it('C07a: Pobierz zostawia Enter natywnemu details, a Escape zamyka i przywraca fokus', () => {
     const html = readFileSync('src/moduly/faktury/widoki/faktury.ejs', 'utf8');
-    expect(html).toMatch(/<details class="wydruki wydruki--masowe">\s*<summary class="btn btn--maly">Pobierz<\/summary>/);
+    expect(html).toMatch(
+      /<details class="wydruki wydruki--masowe">\s*<summary class="btn btn--maly">Pobierz<\/summary>/,
+    );
     const pobierz = szczegoly('Pobierz');
     const root = korzen([pobierz]);
     const preventDefault = vi.fn();

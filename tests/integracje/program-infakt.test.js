@@ -8,7 +8,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createRequire } from 'node:module';
 import {
-  createInfaktClient, METODY_INFAKTU, LIMIT_ZADANIA_MS, NAJDLUZSZA_LISTA_MS, STRONA_INFAKTU, SUFIT_STRON, ROWNOLEGLE_STRON,
+  createInfaktClient,
+  METODY_INFAKTU,
+  LIMIT_ZADANIA_MS,
+  NAJDLUZSZA_LISTA_MS,
+  STRONA_INFAKTU,
+  SUFIT_STRON,
+  ROWNOLEGLE_STRON,
 } from '../../src/oms/infakt/client.js';
 import { createAtrapaInfaktu } from '../../deploy/proba/atrapy/infakt.mjs';
 import { infaktZUstawien, odmowaInfaktuWProbie } from '../../src/moduly/faktury/infakt-ustawien.ts';
@@ -18,23 +24,59 @@ import { programInfakt } from '../../src/integracje/programy/infakt.ts';
 import { sprawdzProgramFakturowy } from '../../src/integracje/program-fakturowy.ts';
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite');
 
-const metody = (o) => Object.keys(o).filter((k) => typeof o[k] === 'function').sort();
-const WSZYSTKIE_ZDOLNOSCI = ['nieoplacone', 'numeracjaWlasna', 'odczytKorekty', 'oznaczZaplacona', 'statusKorekty', 'wyslijDoKsef'];
+const metody = (o) =>
+  Object.keys(o)
+    .filter((k) => typeof o[k] === 'function')
+    .sort();
+const WSZYSTKIE_ZDOLNOSCI = [
+  'nieoplacone',
+  'numeracjaWlasna',
+  'odczytKorekty',
+  'oznaczZaplacona',
+  'statusKorekty',
+  'wyslijDoKsef',
+];
 const METODY_PROGRAMU = [
-  'iluMaNumer', 'listaFaktur', 'listaKorekt', 'listaNieoplaconych', 'oznaczZaplacona', 'pobierzFakture', 'pobierzKorekte', 'pobierzPdf',
-  'pobierzPdfKorekty', 'przygotujNabywce', 'sprawdzPolaczenie', 'statusKorekty', 'wyslijDokumentDoKsef', 'wystaw', 'wystawKorekte',
+  'iluMaNumer',
+  'listaFaktur',
+  'listaKorekt',
+  'listaNieoplaconych',
+  'oznaczZaplacona',
+  'pobierzFakture',
+  'pobierzKorekte',
+  'pobierzPdf',
+  'pobierzPdfKorekty',
+  'przygotujNabywce',
+  'sprawdzPolaczenie',
+  'statusKorekty',
+  'wyslijDokumentDoKsef',
+  'wystaw',
+  'wystawKorekte',
 ];
 // Metoda klienta ↔ zdolność, którą jej obecność daje.
 const ZDOLNOSC_METODY = {
-  listaNieoplaconych: 'nieoplacone', oznaczZaplacona: 'oznaczZaplacona', wyslijDokumentDoKsef: 'wyslijDoKsef', iluMaNumer: 'numeracjaWlasna',
+  listaNieoplaconych: 'nieoplacone',
+  oznaczZaplacona: 'oznaczZaplacona',
+  wyslijDokumentDoKsef: 'wyslijDoKsef',
+  iluMaNumer: 'numeracjaWlasna',
 };
 
-const bezSieci = async () => { throw new Error('sieć wyłączona w teście'); };
+const bezSieci = async () => {
+  throw new Error('sieć wyłączona w teście');
+};
 const klientPrawdziwy = () => createInfaktClient({ apiKey: 'syntetyczny-klucz-testowy', fetchImpl: bezSieci });
-const atrapa = () => createAtrapaInfaktu({ db: new DatabaseSync(':memory:'), env: { OMS_TRYB: 'proba' }, log: () => {} });
-const posrednik = () => infaktZUstawien({ wczytaj: () => null, fabryka: () => { throw new Error('bez zapisu fabryka nie rusza'); } });
+const atrapa = () =>
+  createAtrapaInfaktu({ db: new DatabaseSync(':memory:'), env: { OMS_TRYB: 'proba' }, log: () => {} });
+const posrednik = () =>
+  infaktZUstawien({
+    wczytaj: () => null,
+    fabryka: () => {
+      throw new Error('bez zapisu fabryka nie rusza');
+    },
+  });
 /** Atrapa w stylu testów usług: 14 metod-szpiegów (vi.fn), każda oddaje obietnicę. */
-const mock = (bez = []) => Object.fromEntries(METODY_INFAKTU.filter((m) => !bez.includes(m)).map((m) => [m, vi.fn(async () => null)]));
+const mock = (bez = []) =>
+  Object.fromEntries(METODY_INFAKTU.filter((m) => !bez.includes(m)).map((m) => [m, vi.fn(async () => null)]));
 
 describe('owinięty inFakt przechodzi kontrakt', () => {
   it('pośrednik udostępnia statusKorekty i adapter przekazuje wynik', async () => {
@@ -60,8 +102,11 @@ describe('owinięty inFakt przechodzi kontrakt', () => {
       zdolnosci: expect.any(Array),
       wystawienieWysylaDoKsef: false,
       limity: {
-        zadanieMs: LIMIT_ZADANIA_MS, najdluzszaListaMs: NAJDLUZSZA_LISTA_MS, stronaListy: STRONA_INFAKTU,
-        sufitStron: SUFIT_STRON, rownolegleStron: ROWNOLEGLE_STRON,
+        zadanieMs: LIMIT_ZADANIA_MS,
+        najdluzszaListaMs: NAJDLUZSZA_LISTA_MS,
+        stronaListy: STRONA_INFAKTU,
+        sufitStron: SUFIT_STRON,
+        rownolegleStron: ROWNOLEGLE_STRON,
       },
       adres: ADRES_INFAKT,
       ekran: EKRAN_INFAKTU,
@@ -73,7 +118,12 @@ describe('owinięty inFakt przechodzi kontrakt', () => {
   });
 
   it('opis przyjmuje nazwę, adres i ekran z wywołania (reszta zostaje inFaktu)', () => {
-    const nazwa = { mianownik: 'inFakt (próba)', dopelniacz: 'inFaktu (próba)', miejscownik: 'inFakcie (próba)', narzednik: 'inFaktem (próba)' };
+    const nazwa = {
+      mianownik: 'inFakt (próba)',
+      dopelniacz: 'inFaktu (próba)',
+      miejscownik: 'inFakcie (próba)',
+      narzednik: 'inFaktem (próba)',
+    };
     const { opis } = programInfakt(klientPrawdziwy(), { nazwa, adres: 'http://127.0.0.1:9/api', ekran: '/inny' });
     expect(opis.nazwa).toEqual(nazwa);
     expect(opis.adres).toBe('http://127.0.0.1:9/api');
@@ -146,7 +196,12 @@ describe('zdolność obecna ⇔ metoda istnieje', () => {
 
 describe('przygotujNabywce — wpis kartoteki jak services/faktura.js', () => {
   const firma = {
-    firma: 'Pracownia Półcień', nip: '1234563218', ulica: 'Lampowa 3', kod: '00-950', miasto: 'Warszawa', kraj: 'PL',
+    firma: 'Pracownia Półcień',
+    nip: '1234563218',
+    ulica: 'Lampowa 3',
+    kod: '00-950',
+    miasto: 'Warszawa',
+    kraj: 'PL',
     email: 'biuro@polcien.invalid',
   };
 
@@ -166,24 +221,54 @@ describe('przygotujNabywce — wpis kartoteki jak services/faktura.js', () => {
     expect(await p.przygotujNabywce(firma, { zalozGdyBrak: true })).toStrictEqual({ client_id: 77 });
     expect(k.znajdzKlientaPoNip.mock.calls).toEqual([['1234563218']]);
     expect(k.zalozKlienta.mock.calls).toHaveLength(1);
-    expect(k.zalozKlienta.mock.calls[0]).toStrictEqual([{
-      company_name: 'Pracownia Półcień', nip: '1234563218', street: 'Lampowa 3', postal_code: '00-950', city: 'Warszawa',
-      country: 'PL', email: 'biuro@polcien.invalid',
-    }]);
-    expect(Object.keys(k.zalozKlienta.mock.calls[0][0]))
-      .toEqual(['company_name', 'nip', 'street', 'postal_code', 'city', 'country', 'email']);
+    expect(k.zalozKlienta.mock.calls[0]).toStrictEqual([
+      {
+        company_name: 'Pracownia Półcień',
+        nip: '1234563218',
+        street: 'Lampowa 3',
+        postal_code: '00-950',
+        city: 'Warszawa',
+        country: 'PL',
+        email: 'biuro@polcien.invalid',
+      },
+    ]);
+    expect(Object.keys(k.zalozKlienta.mock.calls[0][0])).toEqual([
+      'company_name',
+      'nip',
+      'street',
+      'postal_code',
+      'city',
+      'country',
+      'email',
+    ]);
   });
 
   it('osoba prywatna bez firmy i bez NIP-u → bez wyszukiwania, company_name „Nabywca”, nip null', async () => {
     const k = mock();
     k.zalozKlienta.mockResolvedValue(78);
     const p = programInfakt(k);
-    const osoba = { firma: null, nip: null, ulica: 'Kloszowa 7/2', kod: '30-001', miasto: 'Kraków', kraj: 'PL', email: null };
+    const osoba = {
+      firma: null,
+      nip: null,
+      ulica: 'Kloszowa 7/2',
+      kod: '30-001',
+      miasto: 'Kraków',
+      kraj: 'PL',
+      email: null,
+    };
     expect(await p.przygotujNabywce(osoba, { zalozGdyBrak: true })).toStrictEqual({ client_id: 78 });
     expect(k.znajdzKlientaPoNip).not.toHaveBeenCalled();
-    expect(k.zalozKlienta.mock.calls[0]).toStrictEqual([{
-      company_name: 'Nabywca', nip: null, street: 'Kloszowa 7/2', postal_code: '30-001', city: 'Kraków', country: 'PL', email: null,
-    }]);
+    expect(k.zalozKlienta.mock.calls[0]).toStrictEqual([
+      {
+        company_name: 'Nabywca',
+        nip: null,
+        street: 'Kloszowa 7/2',
+        postal_code: '30-001',
+        city: 'Kraków',
+        country: 'PL',
+        email: null,
+      },
+    ]);
   });
 
   it('pusta firma ("") i pusty NIP ("") — ta sama prawdziwość co faktura.js: „Nabywca”, nip null, bez wyszukiwania', async () => {
@@ -199,13 +284,28 @@ describe('przygotujNabywce — wpis kartoteki jak services/faktura.js', () => {
     const k = mock();
     k.zalozKlienta.mockResolvedValue(80);
     const p = programInfakt(k);
-    const unijny = { firma: 'Lampen Halbschatten GmbH', nip: 'DE123456789', ulica: 'Lampenweg 1', kod: '10115', miasto: 'Berlin', kraj: 'PL', email: 'einkauf@halbschatten.invalid' };
+    const unijny = {
+      firma: 'Lampen Halbschatten GmbH',
+      nip: 'DE123456789',
+      ulica: 'Lampenweg 1',
+      kod: '10115',
+      miasto: 'Berlin',
+      kraj: 'PL',
+      email: 'einkauf@halbschatten.invalid',
+    };
     await p.przygotujNabywce(unijny, { zalozGdyBrak: true });
     expect(k.znajdzKlientaPoNip.mock.calls).toEqual([['DE123456789']]);
-    expect(k.zalozKlienta.mock.calls[0]).toStrictEqual([{
-      company_name: 'Lampen Halbschatten GmbH', nip: 'DE123456789', street: 'Lampenweg 1', postal_code: '10115', city: 'Berlin',
-      country: 'DE', email: 'einkauf@halbschatten.invalid',
-    }]);
+    expect(k.zalozKlienta.mock.calls[0]).toStrictEqual([
+      {
+        company_name: 'Lampen Halbschatten GmbH',
+        nip: 'DE123456789',
+        street: 'Lampenweg 1',
+        postal_code: '10115',
+        city: 'Berlin',
+        country: 'DE',
+        email: 'einkauf@halbschatten.invalid',
+      },
+    ]);
   });
 
   it('zalozGdyBrak: false (faktura okresu) → null bez zakładania; znaleziony → { client_id }', async () => {
@@ -252,7 +352,10 @@ describe('adapter przezroczysty — argumenty, wynik, błąd', () => {
     const k = mock();
     const pdf = Buffer.from('%PDF-1.4 lampa');
     const lista = [{ uuid: 'u-1', number: 'FV 1/10/2026' }];
-    const ladunek = { client_id: 41, services: [{ name: 'Lampa wisząca Półcień', quantity: 1, gross_price: 34900, tax_symbol: '23' }] };
+    const ladunek = {
+      client_id: 41,
+      services: [{ name: 'Lampa wisząca Półcień', quantity: 1, gross_price: 34900, tax_symbol: '23' }],
+    };
     const zakres = { od: '2026-10-01', do: '2026-10-31' };
     const opcje = { sufitStron: 3 };
     k.pobierzPdf.mockResolvedValue(pdf);
@@ -303,7 +406,9 @@ describe('adapter przezroczysty — argumenty, wynik, błąd', () => {
     const k = mock();
     const blad = new Error('fetch failed');
     k.wyslijDokumentDoKsef.mockRejectedValue(blad);
-    const zlapany = await programInfakt(k).wyslijDokumentDoKsef('u-1').catch((e) => e);
+    const zlapany = await programInfakt(k)
+      .wyslijDokumentDoKsef('u-1')
+      .catch((e) => e);
     expect(zlapany).toBe(blad);
     expect(zlapany).not.toHaveProperty('status');
     expect(zlapany).not.toHaveProperty('bezProgramu');
@@ -313,7 +418,9 @@ describe('adapter przezroczysty — argumenty, wynik, błąd', () => {
     const k = mock();
     const blad = bladOperatora('inFakt nie jest skonfigurowany.', { status: 400, bezInfaktu: true });
     k.pobierzFakture.mockRejectedValue(blad);
-    const zlapany = await programInfakt(k).pobierzFakture('u-1').catch((e) => e);
+    const zlapany = await programInfakt(k)
+      .pobierzFakture('u-1')
+      .catch((e) => e);
     expect(zlapany).toBe(blad);
     expect(zlapany).toMatchObject({ status: 400, dlaOperatora: true, bezInfaktu: true, bezProgramu: true });
   });

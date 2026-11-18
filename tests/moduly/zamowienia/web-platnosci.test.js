@@ -12,9 +12,19 @@ const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('bas
 const poller = { stan: () => ({ ostatni_przebieg_at: '2026-07-29T12:00:00', ostatni_blad: null }) };
 
 const zmapowane = (nad = {}) => ({
-  zrodlo_id: 1301, numer: '1301', klient: { first_name: 'Jan', email: 'j@k.pl' }, dostawa: { city: 'Warszawa' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '212.90',
-  koszt_dostawy_brutto: '0.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
+  zrodlo_id: 1301,
+  numer: '1301',
+  klient: { first_name: 'Jan', email: 'j@k.pl' },
+  dostawa: { city: 'Warszawa' },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '212.90',
+  koszt_dostawy_brutto: '0.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
   utworzone_at: '2026-07-29T13:19:52',
   pozycje: [{ nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 2, cena_brutto: '106.45', brutto_linii: '212.90', vat: null }],
   ...nad,
@@ -42,7 +52,10 @@ const sekcjaPlatnosci = (body) => body.match(/<section class="panel" id="platnos
 
 describe('jedna lista ruchów', () => {
   it('pokazuje plakietkę, cztery liczby i zwrot z minusem oraz przecinkiem, bez sekund', async () => {
-    const id = zamowienieZRozjechanymiLicznikami({ kwota_brutto: '51.80', pozycje: [{ nazwa: 'Próbka', sku: 'DEMO', ilosc: 1, cena_brutto: '51.80', brutto_linii: '51.80', vat: null }] });
+    const id = zamowienieZRozjechanymiLicznikami({
+      kwota_brutto: '51.80',
+      pozycje: [{ nazwa: 'Próbka', sku: 'DEMO', ilosc: 1, cena_brutto: '51.80', brutto_linii: '51.80', vat: null }],
+    });
     dodajWplateReczna(db, id, { kwota: '51.80', data: '2026-08-01T13:38:27', metoda: 'BLIK' });
     const zwrot = dodajZwrot(db, id, { kwota: '51.80', data: '2026-08-02' });
     oznaczPieniadzeOddane(db, id, zwrot.id, '2026-08-02T14:39:28');
@@ -81,7 +94,12 @@ describe('jedna lista ruchów', () => {
   });
 
   it('przy pobraniu pokazuje kwotę pobrania i oczekiwanie na kuriera, pomija date_paid w sumie', async () => {
-    const id = zamowienieZRozjechanymiLicznikami({ pobranie: 1, metoda_platnosci: 'cod', kwota_pobrania: '212.90', oplacone_at: '2026-08-01T12:00:00' });
+    const id = zamowienieZRozjechanymiLicznikami({
+      pobranie: 1,
+      metoda_platnosci: 'cod',
+      kwota_pobrania: '212.90',
+      oplacone_at: '2026-08-01T12:00:00',
+    });
     dodajWplateReczna(db, id, { kwota: '12.90', data: '2026-07-30', metoda: 'BLIK' });
     const html = sekcjaPlatnosci((await karta(id)).body);
     expect(html).toContain('Wpłata pojawi się, gdy kurier rozliczy pobranie');
@@ -207,7 +225,9 @@ describe('POST /zamowienia/:id/platnosci', () => {
   it('dopisuje wpłatę ręczną i wpisuje ją do logu', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/platnosci`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/platnosci`,
+      headers: naglowek,
       payload: { kwota: '50.00', data: '2026-08-01', metoda: 'BLIK', uwaga: 'dopłata' },
     });
     expect(r.statusCode).toBeLessThan(400);
@@ -216,15 +236,29 @@ describe('POST /zamowienia/:id/platnosci', () => {
     // ⚠️ Data WSTECZNA dostaje godzine zero (od 07.08.2026) — `oplacone_at` czyta sie z niej
     // jako znacznik czasu, a godziny przeoczonego przelewu nie znamy, wiec jej nie zmyslamy.
     expect(wplaty[0]).toMatchObject({
-      zrodlo: 'reczna', kwota: '50.00', data: '2026-08-01T00:00:00', metoda: 'BLIK', uwaga: 'dopłata',
+      zrodlo: 'reczna',
+      kwota: '50.00',
+      data: '2026-08-01T00:00:00',
+      metoda: 'BLIK',
+      uwaga: 'dopłata',
     });
     expect(log(id).at(-1).wynik).toMatch(/Ręcznie \(adam\).*50\.00/);
   });
 
   it('dwie wpłaty na jedno zamówienie — sedno całego zadania', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
-    await app.inject({ method: 'POST', url: `/zamowienia/${id}/platnosci`, headers: naglowek, payload: { kwota: '162.90', metoda: 'Przelew' } });
-    await app.inject({ method: 'POST', url: `/zamowienia/${id}/platnosci`, headers: naglowek, payload: { kwota: '50.00', metoda: 'BLIK', uwaga: 'dopłata za dodatkowy szablon' } });
+    await app.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/platnosci`,
+      headers: naglowek,
+      payload: { kwota: '162.90', metoda: 'Przelew' },
+    });
+    await app.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/platnosci`,
+      headers: naglowek,
+      payload: { kwota: '50.00', metoda: 'BLIK', uwaga: 'dopłata za dodatkowy szablon' },
+    });
     expect(platnosciZamowienia(db, id)).toHaveLength(2);
     expect(pobierzZamowienie(db, id).oplacone_at).toBeTruthy();
   });
@@ -232,7 +266,9 @@ describe('POST /zamowienia/:id/platnosci', () => {
   it('brak kwoty → 400 na karcie z otwartym formularzem, wartościami i BEZ zapisu', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/platnosci`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/platnosci`,
+      headers: naglowek,
       payload: { kwota: '', data: '2026-08-01', metoda: 'BLIK', uwaga: 'dopłata Półcień' },
     });
     expect(r.statusCode).toBe(400);
@@ -249,21 +285,32 @@ describe('POST /zamowienia/:id/platnosci', () => {
 
   it('wartości po odmowie są escapowane w polach formularza', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
-    const r = await app.inject({ method: 'POST', url: `/zamowienia/${id}/platnosci`, headers: naglowek,
-      payload: { kwota: '', data: '', metoda: 'BLIK', uwaga: '\"><script>alert(1)</script>' } });
+    const r = await app.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/platnosci`,
+      headers: naglowek,
+      payload: { kwota: '', data: '', metoda: 'BLIK', uwaga: '\"><script>alert(1)</script>' },
+    });
     expect(r.statusCode).toBe(400);
     expect(sekcjaPlatnosci(r.body)).toMatch(/value="(?:&quot;|&#34;)&gt;&lt;script&gt;alert\(1\)&lt;\/script&gt;"/);
   });
 
   it('nieistniejące zamówienie → 404', async () => {
-    const r = await app.inject({ method: 'POST', url: '/zamowienia/999/platnosci', headers: naglowek, payload: { kwota: '10.00' } });
+    const r = await app.inject({
+      method: 'POST',
+      url: '/zamowienia/999/platnosci',
+      headers: naglowek,
+      payload: { kwota: '10.00' },
+    });
     expect(r.statusCode).toBe(404);
   });
 
   it('bez nagłówka Origin → odmowa CSRF', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/platnosci`, payload: { kwota: '10.00' },
+      method: 'POST',
+      url: `/zamowienia/${id}/platnosci`,
+      payload: { kwota: '10.00' },
       headers: { authorization: naglowek.authorization },
     });
     expect(r.statusCode).toBe(403);
@@ -277,7 +324,11 @@ describe('POST /zamowienia/:id/platnosci/:platnoscId/usun', () => {
     const wplata = platnosciZamowienia(db, id)[0];
     expect(wplata.id).not.toBe(id);
 
-    const r = await app.inject({ method: 'POST', url: `/zamowienia/${id}/platnosci/${wplata.id}/usun`, headers: naglowek });
+    const r = await app.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/platnosci/${wplata.id}/usun`,
+      headers: naglowek,
+    });
     expect(r.statusCode).toBeLessThan(400);
     expect(platnosciZamowienia(db, id)).toHaveLength(0);
 
@@ -292,7 +343,11 @@ describe('POST /zamowienia/:id/platnosci/:platnoscId/usun', () => {
     const wplata = platnosciZamowienia(db, id)[0];
     expect(wplata.zrodlo).toBe('sklep');
 
-    const r = await app.inject({ method: 'POST', url: `/zamowienia/${id}/platnosci/${wplata.id}/usun`, headers: naglowek });
+    const r = await app.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/platnosci/${wplata.id}/usun`,
+      headers: naglowek,
+    });
     expect(r.statusCode).toBe(400);
     expect(r.body).toMatch(/Wpłaty ze sklepu nie da się usunąć/);
     expect(platnosciZamowienia(db, id)).toHaveLength(1);
@@ -304,7 +359,11 @@ describe('POST /zamowienia/:id/platnosci/:platnoscId/usun', () => {
     dodajWplateReczna(db, b, { kwota: '50.00', data: '2026-08-01' });
     const cudza = platnosciZamowienia(db, b)[0];
 
-    const r = await app.inject({ method: 'POST', url: `/zamowienia/${a}/platnosci/${cudza.id}/usun`, headers: naglowek });
+    const r = await app.inject({
+      method: 'POST',
+      url: `/zamowienia/${a}/platnosci/${cudza.id}/usun`,
+      headers: naglowek,
+    });
     expect(r.statusCode).toBe(400);
     expect(platnosciZamowienia(db, b)).toHaveLength(1);
   });
@@ -368,7 +427,10 @@ describe('formularz „Dodaj wpłatę” — pola i wartości domyślne', () => 
   it('kwota podstawia BRAKUJĄCĄ resztę, nie całość zamówienia', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
     await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/platnosci`, headers: naglowek, payload: { kwota: '100.00', metoda: 'Przelew' },
+      method: 'POST',
+      url: `/zamowienia/${id}/platnosci`,
+      headers: naglowek,
+      payload: { kwota: '100.00', metoda: 'Przelew' },
     });
     const f = formularz((await karta(id, '?edytuj=wplata')).body);
     const saldo = saldoWplat(pobierzZamowienie(db, id));
@@ -381,7 +443,10 @@ describe('formularz „Dodaj wpłatę” — pola i wartości domyślne', () => 
   it('kwota jest edytowalna, a niepełna wpłata pokazuje brakującą część', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/platnosci`, headers: naglowek, payload: { kwota: '12.34', metoda: 'Przelew' },
+      method: 'POST',
+      url: `/zamowienia/${id}/platnosci`,
+      headers: naglowek,
+      payload: { kwota: '12.34', metoda: 'Przelew' },
     });
     expect(r.statusCode).toBeLessThan(400);
     const body = (await karta(id)).body;

@@ -17,37 +17,63 @@ import { buildOmsServer } from '../pomoc/serwer-testowy-oms.ts';
 // Druga część: rzeczywiste role kont (administrator/sprzedaz/produkcja) dostają nowe prawa
 // raportów i wiadomości przez prawdziwe rozdajNoweUprawnienia.
 
-const env = { OMS_USER: 'operator', OMS_PASS: 'fixture',
-  OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000',
-  OMS_PROFORMY_KATALOG: tmpdir(), OMS_ETYKIETY_KATALOG: tmpdir(),
-  SMTP_HOST: 'smtp.fikcja.test', SMTP_USER: 'nadawca@fikcja.test', SMTP_PASS: 'fikcyjne' };
+const env = {
+  OMS_USER: 'operator',
+  OMS_PASS: 'fixture',
+  OMS_SPRZEDAWCA_NIP: '1234563218',
+  OMS_RACHUNEK: '34109010140000000000000000',
+  OMS_PROFORMY_KATALOG: tmpdir(),
+  OMS_ETYKIETY_KATALOG: tmpdir(),
+  SMTP_HOST: 'smtp.fikcja.test',
+  SMTP_USER: 'nadawca@fikcja.test',
+  SMTP_PASS: 'fikcyjne',
+};
 const headers = { authorization: `Basic ${Buffer.from('operator:fixture').toString('base64')}` };
 const ODLOZONE: string[] = [];
 const HISTORYCZNIE_ODLOZONE = ['kampania', 'finanse'];
 const ODNOSNIK_ODLOZONY = /href=["']\/(kampania|finanse)(?=["'?#/])/g;
 // Rama renderuje menu w wariancie desktopowym i mobilnym — liczymy unikalne adresy.
-const odnosnikiOdlozone = (html: string) => [...new Set([...html.matchAll(ODNOSNIK_ODLOZONY)].map(m => m[1]))];
+const odnosnikiOdlozone = (html: string) => [...new Set([...html.matchAll(ODNOSNIK_ODLOZONY)].map((m) => m[1]))];
 const maOdnosnik = (html: string, adres: string) => new RegExp(`href=["']${adres}["']`).test(html);
-const hrefyNawigacji = (n: ReturnType<typeof nawigacjaDla>) =>
-  [...n.dzialy.map(d => d.href), ...(n.kontekst?.grupy ?? []).flatMap(g => g.pozycje.map(p => p.href))];
+const hrefyNawigacji = (n: ReturnType<typeof nawigacjaDla>) => [
+  ...n.dzialy.map((d) => d.href),
+  ...(n.kontekst?.grupy ?? []).flatMap((g) => g.pozycje.map((p) => p.href)),
+];
 
 type Oms = Awaited<ReturnType<typeof zbudujOms>>;
 let transport: MockInstance<typeof fetch>;
-beforeAll(() => { transport = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Sieć zabroniona')); });
-afterAll(() => { expect(transport).not.toHaveBeenCalled(); transport.mockRestore(); });
+beforeAll(() => {
+  transport = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Sieć zabroniona'));
+});
+afterAll(() => {
+  expect(transport).not.toHaveBeenCalled();
+  transport.mockRestore();
+});
 
 describe('zakres — domyślny bootstrap bez odłożonych ekranów', () => {
   let a: Oms | undefined;
-  beforeAll(async () => { a = await zbudujOms({ env }); });
-  afterAll(async () => { try { if (a) await a.app.close(); } finally { a?.db.close(); } });
+  beforeAll(async () => {
+    a = await zbudujOms({ env });
+  });
+  afterAll(async () => {
+    try {
+      if (a) await a.app.close();
+    } finally {
+      a?.db.close();
+    }
+  });
 
   for (const url of ['/raporty', '/statystyki']) {
     it(`GET ${url} — 200, menu z Raporty/Statystyki/Koszty, bez odnośników do odłożonych ekranów`, async () => {
       const odp = await a!.app.inject({ method: 'GET', url, headers });
-      expect({ status: odp.statusCode, raporty: maOdnosnik(odp.body, '/raporty'),
-        statystyki: maOdnosnik(odp.body, '/statystyki'), koszty: maOdnosnik(odp.body, '/koszty'), finanse: maOdnosnik(odp.body, '/finanse'),
-        kampania: maOdnosnik(odp.body, '/kampania') })
-        .toEqual({ status: 200, raporty: true, statystyki: true, koszty: true, finanse: true, kampania: true });
+      expect({
+        status: odp.statusCode,
+        raporty: maOdnosnik(odp.body, '/raporty'),
+        statystyki: maOdnosnik(odp.body, '/statystyki'),
+        koszty: maOdnosnik(odp.body, '/koszty'),
+        finanse: maOdnosnik(odp.body, '/finanse'),
+        kampania: maOdnosnik(odp.body, '/kampania'),
+      }).toEqual({ status: 200, raporty: true, statystyki: true, koszty: true, finanse: true, kampania: true });
     });
   }
 
@@ -58,15 +84,24 @@ describe('zakres — domyślny bootstrap bez odłożonych ekranów', () => {
       wynik[k] = { status: odp.statusCode, trasa: a!.app.hasRoute({ method: 'GET', url: `/${k}` }) };
     }
     expect(wynik).toEqual({ kampania: { status: 200, trasa: true } });
-    expect({ status: (await a!.app.inject({ method: 'GET', url: '/finanse', headers })).statusCode,
-      trasa: a!.app.hasRoute({ method: 'GET', url: '/finanse' }) }).toEqual({ status: 400, trasa: true });
+    expect({
+      status: (await a!.app.inject({ method: 'GET', url: '/finanse', headers })).statusCode,
+      trasa: a!.app.hasRoute({ method: 'GET', url: '/finanse' }),
+    }).toEqual({ status: 400, trasa: true });
   });
 
   it('marketing zachowuje config, menu Kampanii i produkcyjną definicję zegara reklam', () => {
     expect({
-      zegary: a!.zegary.map(z => z.nazwa).filter(n => /kampani|marketing|reklam|meta|ga4|cel/i.test(n)),
-      menu: a!.menu.filter(p => p.adres === '/kampania').map(p => p.adres),
-      usluga: (() => { try { a!.usluga('marketing', 'config'); return 'jest'; } catch { return 'brak'; } })(),
+      zegary: a!.zegary.map((z) => z.nazwa).filter((n) => /kampani|marketing|reklam|meta|ga4|cel/i.test(n)),
+      menu: a!.menu.filter((p) => p.adres === '/kampania').map((p) => p.adres),
+      usluga: (() => {
+        try {
+          a!.usluga('marketing', 'config');
+          return 'jest';
+        } catch {
+          return 'brak';
+        }
+      })(),
     }).toEqual({ zegary: ['czuwaczReklam'], menu: ['/kampania'], usluga: 'jest' });
   });
 
@@ -74,7 +109,9 @@ describe('zakres — domyślny bootstrap bez odłożonych ekranów', () => {
     const config = a!.usluga<any>('web', 'config');
     expect(config.odlozoneEkrany).toEqual(ODLOZONE);
     try {
-      a!.db.prepare("INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('moduly.wylaczone', ?, '2026-10-20')").run('["klienci"]');
+      a!.db
+        .prepare("INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('moduly.wylaczone', ?, '2026-10-20')")
+        .run('["klienci"]');
       expect(config.odlozoneEkrany).toEqual(['klienci']);
     } finally {
       a!.db.prepare("DELETE FROM ustawienia WHERE klucz = 'moduly.wylaczone'").run();
@@ -85,18 +122,20 @@ describe('zakres — domyślny bootstrap bez odłożonych ekranów', () => {
 describe('zakres — nawigacjaDla z listą i bez listy odłożonych', () => {
   it('z odlozoneEkrany w sekcji Analiz zostają Raporty i Statystyki, a Koszty są pod Fakturami', () => {
     const hrefy = hrefyNawigacji(nawigacjaDla({ sciezka: '/raporty', konto: null, odlozoneEkrany: ODLOZONE } as any));
-    expect({ odlozone: hrefy.filter(h => ODLOZONE.some(k => h === `/${k}`)),
-      zostaja: ['/raporty', '/statystyki'].every(h => hrefy.includes(h)) })
-      .toEqual({ odlozone: [], zostaja: true });
+    expect({
+      odlozone: hrefy.filter((h) => ODLOZONE.some((k) => h === `/${k}`)),
+      zostaja: ['/raporty', '/statystyki'].every((h) => hrefy.includes(h)),
+    }).toEqual({ odlozone: [], zostaja: true });
     expect(hrefy).not.toContain('/koszty');
-    const faktury = nawigacjaDla({ konto: null, odlozoneEkrany: ODLOZONE }).boczne
-      .flatMap(g => g.pozycje).find(p => p.klucz === 'faktury');
-    expect(faktury?.podmenu?.map(p => p.href)).toContain('/koszty');
+    const faktury = nawigacjaDla({ konto: null, odlozoneEkrany: ODLOZONE })
+      .boczne.flatMap((g) => g.pozycje)
+      .find((p) => p.klucz === 'faktury');
+    expect(faktury?.podmenu?.map((p) => p.href)).toContain('/koszty');
   });
 
   it('kontrola: bez listy nawigacja zachowuje frozen pełne menu (zielona przed i po)', () => {
     const hrefy = hrefyNawigacji(nawigacjaDla({ sciezka: '/raporty', konto: null }));
-    expect(HISTORYCZNIE_ODLOZONE.map(k => hrefy.includes(`/${k}`))).toEqual([true, true]);
+    expect(HISTORYCZNIE_ODLOZONE.map((k) => hrefy.includes(`/${k}`))).toEqual([true, true]);
   });
 
   it('kontrola: historyczny helper z jawnym web config bez listy renderuje pełne menu', async () => {
@@ -104,9 +143,17 @@ describe('zakres — nawigacjaDla z listą i bez listy odłożonych', () => {
     const s = buildOmsServer({ db, config: { auth: { user: 'operator', pass: 'fixture' } } });
     try {
       const odp = await s.inject({ method: 'GET', url: '/raporty', headers });
-      expect({ status: odp.statusCode, odlozone: odnosnikiOdlozone(odp.body).toSorted() })
-        .toEqual({ status: 200, odlozone: ['finanse', 'kampania'] });
-    } finally { try { await s.close(); } finally { db.close(); } }
+      expect({ status: odp.statusCode, odlozone: odnosnikiOdlozone(odp.body).toSorted() }).toEqual({
+        status: 200,
+        odlozone: ['finanse', 'kampania'],
+      });
+    } finally {
+      try {
+        await s.close();
+      } finally {
+        db.close();
+      }
+    }
   });
 });
 
@@ -131,19 +178,29 @@ describe('dystrybucja praw raporty/statystyki/wiadomosci/klienci rzeczywistym ro
       db.prepare("DELETE FROM uprawnienia WHERE konto_id = ? AND ekran = 'kampania'").run(sprzedaz);
 
       const rozdane = rozdajNoweUprawnienia(db, MODULY, teraz);
-      const nowe = (id: number) => NOWE.filter(k => uprawnieniaKonta(db, id).has(k));
-      expect({ rozdane: rozdane.toSorted(), admin: nowe(admin), sprzedaz: nowe(sprzedaz), produkcja: nowe(produkcja) })
-        .toEqual({ rozdane: NOWE.toSorted(), admin: NOWE, sprzedaz: NOWE, produkcja: [] });
+      const nowe = (id: number) => NOWE.filter((k) => uprawnieniaKonta(db, id).has(k));
+      expect({
+        rozdane: rozdane.toSorted(),
+        admin: nowe(admin),
+        sprzedaz: nowe(sprzedaz),
+        produkcja: nowe(produkcja),
+      }).toEqual({ rozdane: NOWE.toSorted(), admin: NOWE, sprzedaz: NOWE, produkcja: [] });
       expect({
         admin: [...uprawnieniaKonta(db, admin)].toSorted(),
         sprzedaz: [...uprawnieniaKonta(db, sprzedaz)].toSorted(),
         produkcja: [...uprawnieniaKonta(db, produkcja)].toSorted(),
       }).toEqual({
-        admin: ekranyRoli('administrator').filter(k => k !== 'koszty').toSorted(),
-        sprzedaz: ekranyRoli('sprzedaz').filter(k => k !== 'kampania').toSorted(),
+        admin: ekranyRoli('administrator')
+          .filter((k) => k !== 'koszty')
+          .toSorted(),
+        sprzedaz: ekranyRoli('sprzedaz')
+          .filter((k) => k !== 'kampania')
+          .toSorted(),
         produkcja: ekranyRoli('produkcja').toSorted(),
       });
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 
   it('powtórzenie rozdania nie przywraca prawa odebranego po pierwszym rozdaniu', () => {
@@ -154,11 +211,16 @@ describe('dystrybucja praw raporty/statystyki/wiadomosci/klienci rzeczywistym ro
       db.prepare(`DELETE FROM uprawnienia WHERE ekran IN (${lista})`).run(...NOWE);
       db.prepare(`DELETE FROM uprawnienia_rozdane WHERE klucz IN (${lista})`).run(...NOWE);
       rozdajNoweUprawnienia(db, MODULY, teraz);
-      const poPierwszym = NOWE.filter(k => uprawnieniaKonta(db, sprzedaz).has(k));
+      const poPierwszym = NOWE.filter((k) => uprawnieniaKonta(db, sprzedaz).has(k));
       db.prepare("DELETE FROM uprawnienia WHERE konto_id = ? AND ekran = 'raporty'").run(sprzedaz);
       const drugie = rozdajNoweUprawnienia(db, MODULY, teraz);
-      expect({ poPierwszym, drugie, poDrugim: NOWE.filter(k => uprawnieniaKonta(db, sprzedaz).has(k)) })
-        .toEqual({ poPierwszym: NOWE, drugie: [], poDrugim: NOWE.filter(k => k !== 'raporty') });
-    } finally { db.close(); }
+      expect({ poPierwszym, drugie, poDrugim: NOWE.filter((k) => uprawnieniaKonta(db, sprzedaz).has(k)) }).toEqual({
+        poPierwszym: NOWE,
+        drugie: [],
+        poDrugim: NOWE.filter((k) => k !== 'raporty'),
+      });
+    } finally {
+      db.close();
+    }
   });
 });

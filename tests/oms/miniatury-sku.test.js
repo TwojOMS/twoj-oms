@@ -12,7 +12,9 @@ function baza() {
   const db = new DatabaseSync(':memory:');
   db.exec(`CREATE TABLE produkty_sklepowe (id INTEGER PRIMARY KEY AUTOINCREMENT, kanal TEXT NOT NULL, produkt_id TEXT NOT NULL,
     sku_sklepu TEXT, miniatura TEXT, zniknal_at TEXT)`);
-  const dodaj = db.prepare('INSERT INTO produkty_sklepowe (kanal, produkt_id, sku_sklepu, miniatura, zniknal_at) VALUES (?,?,?,?,?)');
+  const dodaj = db.prepare(
+    'INSERT INTO produkty_sklepowe (kanal, produkt_id, sku_sklepu, miniatura, zniknal_at) VALUES (?,?,?,?,?)',
+  );
   dodaj.run('sklep_a', '1', 'LMP-1', 'https://sklep.example/lmp1-stary-247x296.jpg', '2026-10-01');
   dodaj.run('sklep_a', '2', 'LMP-1', 'https://sklep.example/lmp1-247x296.jpg', null);
   dodaj.run('sklep_b', '3', 'LMP-1', 'https://inny.example/lmp1-150x150.jpg', null);
@@ -32,28 +34,45 @@ describe('miniatura pozycji po SKU', () => {
   });
 
   it('bez SKU do sprawdzenia nie dotyka bazy', () => {
-    expect(miniaturySku({ prepare() { throw new Error('nie wolno pytać bazy'); } }, []).size).toBe(0);
+    expect(
+      miniaturySku(
+        {
+          prepare() {
+            throw new Error('nie wolno pytać bazy');
+          },
+        },
+        [],
+      ).size,
+    ).toBe(0);
   });
 
   it('SKU zbierane tylko z pozycji bez zdjęcia i bez produktu sklepu; zaślepka panelu indywidualnego odpada', () => {
-    const zamowienia = [{ sklep: 'erli_polcien', pozycje: [
-      { sku: 'LMP-1', produkt_id: null, zdjecie_url: null },
-      { sku: ' LMP-2 ', produkt_id: null, zdjecie_url: null },
-      { sku: 'LMP-3', produkt_id: null, zdjecie_url: 'https://allegro.example/original/abc' },
-      { sku: 'LMP-4', produkt_id: 44, zdjecie_url: null },
-      { sku: 'TECHNICZNY-WTYCZKI-INDYWIDUALNE', produkt_id: null, zdjecie_url: null },
-      { sku: '', produkt_id: null, zdjecie_url: null },
-    ] }];
+    const zamowienia = [
+      {
+        sklep: 'erli_polcien',
+        pozycje: [
+          { sku: 'LMP-1', produkt_id: null, zdjecie_url: null },
+          { sku: ' LMP-2 ', produkt_id: null, zdjecie_url: null },
+          { sku: 'LMP-3', produkt_id: null, zdjecie_url: 'https://allegro.example/original/abc' },
+          { sku: 'LMP-4', produkt_id: 44, zdjecie_url: null },
+          { sku: 'TECHNICZNY-WTYCZKI-INDYWIDUALNE', produkt_id: null, zdjecie_url: null },
+          { sku: '', produkt_id: null, zdjecie_url: null },
+        ],
+      },
+    ];
     expect(skuPozycji(zamowienia, (sku) => sku.startsWith('TECHNICZNY'))).toEqual(['LMP-1', 'LMP-2']);
   });
 
   it('reguła: zdjęcie pozycji wygrywa z SKU; SKU tylko, gdy pozycja nie ma żadnego zdjęcia', () => {
     const poSku = new Map([['LMP-1', 'https://sklep.example/lmp1-247x296.jpg']]);
     // ERLI: brak produktu i zdjęcia → miniatura z magazynu, BEZ doklejania rozmiaru (to już jest miniatura).
-    expect(miniaturaPozycji(new Map(), 'erli_polcien', null, null, 'LMP-1', poSku)).toBe('https://sklep.example/lmp1-247x296.jpg');
+    expect(miniaturaPozycji(new Map(), 'erli_polcien', null, null, 'LMP-1', poSku)).toBe(
+      'https://sklep.example/lmp1-247x296.jpg',
+    );
     // Pozycja ze zdjęciem (Allegro, sklep) — jak dotąd, SKU nie zmienia niczego.
-    expect(miniaturaPozycji(new Map(), 'allegro_a', null, 'https://a.allegroimg.com/original/abc', 'LMP-1', poSku))
-      .toBe('https://a.allegroimg.com/s150/abc');
+    expect(
+      miniaturaPozycji(new Map(), 'allegro_a', null, 'https://a.allegroimg.com/original/abc', 'LMP-1', poSku),
+    ).toBe('https://a.allegroimg.com/s150/abc');
     // Brak SKU w lustrze albo brak mapy → pusto, jak dotąd.
     expect(miniaturaPozycji(new Map(), 'erli_polcien', null, null, 'LMP-9', poSku)).toBeNull();
     expect(miniaturaPozycji(new Map(), 'erli_polcien', null, null, 'LMP-1')).toBeNull();
@@ -61,7 +80,9 @@ describe('miniatura pozycji po SKU', () => {
 
   it('ekran (lista, karta, nadanie): pozycja ERLI dostaje miniaturę z lustra po SKU', () => {
     const db = baza();
-    const miniatura = miniaturyEkranu(db, [{ sklep: 'erli_polcien', pozycje: [{ sku: 'LMP-1', produkt_id: null, zdjecie_url: null }] }]);
+    const miniatura = miniaturyEkranu(db, [
+      { sklep: 'erli_polcien', pozycje: [{ sku: 'LMP-1', produkt_id: null, zdjecie_url: null }] },
+    ]);
     expect(miniatura('erli_polcien', null, null, 'LMP-1')).toBe('https://sklep.example/lmp1-247x296.jpg');
     // Wywołanie bez SKU (stary widok) działa jak przed zmianą.
     expect(miniatura('erli_polcien', null, null)).toBeNull();

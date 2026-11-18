@@ -11,16 +11,52 @@ const mapa = {
 };
 
 const surowe = {
-  id: 1301, number: '1301', status: 'processing', total: '212.90',
-  date_paid: '2026-07-29T13:21:26', date_created: '2026-07-29T13:19:52',
-  billing: { first_name: 'Jan', last_name: 'Kowalski', email: 'j@k.pl', phone: '+48500600700', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL', company: 'ACME' },
-  shipping: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
+  id: 1301,
+  number: '1301',
+  status: 'processing',
+  total: '212.90',
+  date_paid: '2026-07-29T13:21:26',
+  date_created: '2026-07-29T13:19:52',
+  billing: {
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    email: 'j@k.pl',
+    phone: '+48500600700',
+    address_1: 'Polna 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
+    company: 'ACME',
+  },
+  shipping: {
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    address_1: 'Polna 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
+  },
   shipping_lines: [{ method_id: 'flat_rate', instance_id: '1' }],
   // Woo trzyma koszt wysylki na poziomie ZAMOWIENIA, netto + osobny podatek.
   // 73.09 + 16.81 = 89.90; razem z pozycjami (123.00) daje total 212.90.
-  shipping_total: '73.09', shipping_tax: '16.81',
-  line_items: [{ id: 4321, name: 'STOP', sku: 'PRO-STOP-001', quantity: 2, total: '100.00', total_tax: '23.00', subtotal: '100.00', subtotal_tax: '23.00' }],
-  meta_data: [{ key: '_billing_faktura', value: '1' }, { key: '_billing_nip', value: '1200001200' }],
+  shipping_total: '73.09',
+  shipping_tax: '16.81',
+  line_items: [
+    {
+      id: 4321,
+      name: 'STOP',
+      sku: 'PRO-STOP-001',
+      quantity: 2,
+      total: '100.00',
+      total_tax: '23.00',
+      subtotal: '100.00',
+      subtotal_tax: '23.00',
+    },
+  ],
+  meta_data: [
+    { key: '_billing_faktura', value: '1' },
+    { key: '_billing_nip', value: '1200001200' },
+  ],
 };
 
 describe('mapujZamowienie', () => {
@@ -108,8 +144,14 @@ describe('mapujZamowienie', () => {
         // (kluczPozycji w domain/pozycje-reczne.js). Nasze `pozycje.id` sie do tego nie
         // nadaje, bo poller kasuje i wstawia pozycje sklepowe przy kazdej synchronizacji.
         zrodlo_id: 4321,
-        nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 2,
-        cena_brutto: '61.50', cena_netto: '50.00', brutto_linii: '123.00', netto_linii: '100.00', vat: null,
+        nazwa: 'STOP',
+        sku: 'PRO-STOP-001',
+        ilosc: 2,
+        cena_brutto: '61.50',
+        cena_netto: '50.00',
+        brutto_linii: '123.00',
+        netto_linii: '100.00',
+        vat: null,
         // Pozycja bez zdjecia w Woo — miniatura na liscie po prostu sie nie narysuje.
         zdjecie_url: null,
         // Fikstura nie niesie `product_id`, wiec identyfikator produktu ma byc NULL-em,
@@ -122,7 +164,13 @@ describe('mapujZamowienie', () => {
   });
 
   it('pozycja wariantu niesie variation_id jako wariant_id (tekst), produkt prosty (0) — null', () => {
-    const zWariantem = { ...surowe, line_items: [{ ...surowe.line_items[0], product_id: 944, variation_id: 1091 }, { ...surowe.line_items[0], id: 4322, product_id: 945, variation_id: 0 }] };
+    const zWariantem = {
+      ...surowe,
+      line_items: [
+        { ...surowe.line_items[0], product_id: 944, variation_id: 1091 },
+        { ...surowe.line_items[0], id: 4322, product_id: 945, variation_id: 0 },
+      ],
+    };
     const [wariant, prosty] = mapujZamowienie(zWariantem, mapa).pozycje;
     expect(wariant).toMatchObject({ produkt_id: 944, wariant_id: '1091' });
     expect(prosty).toMatchObject({ produkt_id: 945, wariant_id: null });
@@ -133,7 +181,10 @@ describe('mapujZamowienie', () => {
   // bo to ono idzie na dokument, a mnozenie 33,33 x 3 dawalo 99,99 i deterministyczna odmowe.
   it('brutto linii jest dokładne, gdy suma nie dzieli się równo przez ilość', () => {
     const zRabatem = {
-      ...surowe, total: '100.00', shipping_total: '0.00', shipping_tax: '0.00',
+      ...surowe,
+      total: '100.00',
+      shipping_total: '0.00',
+      shipping_tax: '0.00',
       line_items: [{ name: 'STOP', sku: 'A', quantity: 3, total: '81.30', total_tax: '18.70' }],
     };
     const p = mapujZamowienie(zRabatem, mapa).pozycje[0];
@@ -156,21 +207,26 @@ describe('mapujZamowienie', () => {
     const trudne = {
       // 100,00 (3 szt., nie dzieli sie rowno) + 48,00 (7 szt., nie dzieli sie rowno)
       // + 41,00 dostawy = 189,00. Kwoty policzone jawnie, nie przepisane z przebiegu.
-      ...surowe, total: '189.00', shipping_total: '33.33', shipping_tax: '7.67',
+      ...surowe,
+      total: '189.00',
+      shipping_total: '33.33',
+      shipping_tax: '7.67',
       line_items: [
         { name: 'A', sku: 'A', quantity: 3, total: '81.30', total_tax: '18.70' },
         { name: 'B', sku: 'B', quantity: 7, total: '39.02', total_tax: '8.98' },
       ],
     };
     const z = mapujZamowienie(trudne, mapa);
-    const suma = z.pozycje.reduce((acc, p) => acc + Math.round(Number(p.brutto_linii) * 100), 0)
-      + Math.round(Number(z.koszt_dostawy_brutto) * 100);
+    const suma =
+      z.pozycje.reduce((acc, p) => acc + Math.round(Number(p.brutto_linii) * 100), 0) +
+      Math.round(Number(z.koszt_dostawy_brutto) * 100);
     expect(suma).toBe(18900);
     // Ta sama suma liczona po staremu (cena jednostkowa x ilosc) CHYBIA — czyli dokladnie
     // to, o co panel sam sie odbijal: 33,33x3 = 99,99 (zanizone) i 6,86x7 = 48,02
     // (zawyzone), razem z dostawa 189,01 zamiast 189,00.
-    const poStaremu = z.pozycje.reduce((acc, p) => acc + Math.round(Number(p.cena_brutto) * 100) * p.ilosc, 0)
-      + Math.round(Number(z.koszt_dostawy_brutto) * 100);
+    const poStaremu =
+      z.pozycje.reduce((acc, p) => acc + Math.round(Number(p.cena_brutto) * 100) * p.ilosc, 0) +
+      Math.round(Number(z.koszt_dostawy_brutto) * 100);
     expect(poStaremu).toBe(18901);
   });
 
@@ -219,7 +275,8 @@ describe('mapujZamowienie', () => {
     const wielopozycyjne = {
       ...surowe,
       total: '190.00',
-      shipping_total: '33.33', shipping_tax: '7.67',
+      shipping_total: '33.33',
+      shipping_tax: '7.67',
       line_items: [
         { name: 'STOP A', sku: 'A', quantity: 1, total: '80.49', total_tax: '18.51' },
         { name: 'STOP B', sku: 'B', quantity: 2, total: '40.66', total_tax: '9.34' },
@@ -237,7 +294,7 @@ describe('mapujZamowienie', () => {
     expect((sumaPozycji + Number(z.koszt_dostawy_brutto)).toFixed(2)).toBe('212.90');
   });
 
-// Uwagi klienta z zamówienia. WooCommerce trzyma je w `customer_note` na
+  // Uwagi klienta z zamówienia. WooCommerce trzyma je w `customer_note` na
   // poziomie zamówienia (nie w meta_data, jak NIP/faktura) — sprawdzone na produkcji,
   // zamówienia 1267 („moje uwagi") i 1276 („uwagi") mają to pole wypełnione.
   it('mapuje uwagi klienta z customer_note', () => {
@@ -262,10 +319,13 @@ describe('mapujZamowienie', () => {
   // notatka 2026-08-04-zamowienia-indywidualne-rozpoznanie.md): pozycja niesie
   // `product_id` i `variation_id: 0` obok siebie.
   it('pozycja niesie product_id ze sklepu', () => {
-    const z = mapujZamowienie({
-      ...surowe,
-      line_items: [{ id: 1, name: 'A', quantity: 1, product_id: 28040, variation_id: 0 }],
-    }, mapa);
+    const z = mapujZamowienie(
+      {
+        ...surowe,
+        line_items: [{ id: 1, name: 'A', quantity: 1, product_id: 28040, variation_id: 0 }],
+      },
+      mapa,
+    );
     expect(z.pozycje[0].produkt_id).toBe(28040);
   });
 
@@ -281,22 +341,25 @@ describe('mapujZamowienie', () => {
   // czy klient kupil produkt prosty czy wariantowy) jest gorszy niz jego brak: operator
   // przestaje mu ufac i przestaje w niego klikac.
   it('wariant produktu daje product_id RODZICA, nigdy variation_id', () => {
-    const z = mapujZamowienie({
-      ...surowe,
-      line_items: [{ id: 1, name: 'A', quantity: 1, product_id: 28040, variation_id: 28041 }],
-    }, mapa);
+    const z = mapujZamowienie(
+      {
+        ...surowe,
+        line_items: [{ id: 1, name: 'A', quantity: 1, product_id: 28040, variation_id: 28041 }],
+      },
+      mapa,
+    );
     expect(z.pozycje[0].produkt_id).toBe(28040);
   });
 
   // ⚠️ Brak identyfikatora ma dac NULL, a nie zero: „produkt numer 0" nie istnieje,
-// a adres do niego prowadzi donikad. Odnośnik budujemy WLASNIE na tej wartosci,
+  // a adres do niego prowadzi donikad. Odnośnik budujemy WLASNIE na tej wartosci,
   // wiec zero zamiast NULL-a znaczyloby link na kazdej pozycji — i kazdy zepsuty.
   it('brak product_id daje null, nie zero', () => {
     const z = mapujZamowienie({ ...surowe, line_items: [{ id: 1, name: 'A', quantity: 1 }] }, mapa);
     expect(z.pozycje[0].produkt_id).toBe(null);
   });
 
-// Kolumny netto obok istniejących kolumn brutto.
+  // Kolumny netto obok istniejących kolumn brutto.
   //
   // ⚠️ Netto MUSI iść wprost z Woo (total/total_tax), NIGDY dzieleniem brutto przez 1,23 —
   // dokładnie ten błąd zablokował już raz fakturowanie zamówień z rabatem (przewodnik, 4.5).
@@ -383,7 +446,10 @@ describe('mapujZamowienie', () => {
         ],
       };
       expect(mapujZamowienie(zAtrybucja, mapa).atrybucja).toMatchObject({
-        typ: 'typein', zrodlo: '(direct)', wejscie: 'https://swietlik.example.test/produkt/x/', urzadzenie: 'Mobile',
+        typ: 'typein',
+        zrodlo: '(direct)',
+        wejscie: 'https://swietlik.example.test/produkt/x/',
+        urzadzenie: 'Mobile',
       });
     });
 

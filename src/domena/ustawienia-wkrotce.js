@@ -3,7 +3,10 @@
 export const STRONY_WKROTCE = Object.freeze([
   {
     // Drukowanie faktur już działa (sekcja niżej) — bez ramki „nie działa” i plakietki w menu.
-    klucz: 'druk', href: '/ustawienia/druk', tytul: 'Etykiety i druk', dziala: true,
+    klucz: 'druk',
+    href: '/ustawienia/druk',
+    tytul: 'Etykiety i druk',
+    dziala: true,
     opis: 'Jedno miejsce na ustawienia wydruków, niezależnie od kuriera.',
     punkty: [
       'domyślny format etykiety: 10×15 cm albo kartka A4',
@@ -22,21 +25,19 @@ export const STRONY_WKROTCE = Object.freeze([
     ],
   },
   {
-    klucz: 'import-eksport', href: '/ustawienia/import-eksport', tytul: 'Import i eksport',
+    klucz: 'import-eksport',
+    href: '/ustawienia/import-eksport',
+    tytul: 'Import i eksport',
     opis: 'Dane panelu w plikach CSV, do arkusza i z arkusza.',
-    punkty: [
-      'eksport zamówień, klientów i kart produktów do CSV',
-      'import kart produktów z arkusza',
-    ],
+    punkty: ['eksport zamówień, klientów i kart produktów do CSV', 'import kart produktów z arkusza'],
     dzis: 'Sprzedaż z wybranego okresu pobierzesz jako CSV w Raportach („Pobierz CSV”).',
     odnosnik: { href: '/raporty', etykieta: 'Raporty' },
   },
   {
-    klucz: 'api', href: '/ustawienia/api', tytul: 'API i webhooki',
+    klucz: 'api',
+    href: '/ustawienia/api',
+    tytul: 'API i webhooki',
     opis: 'Dostęp do danych panelu dla zewnętrznych narzędzi.',
-    punkty: [
-      'klucze API dla zewnętrznych narzędzi',
-      'powiadomienia HTTP (webhooki) o nowych zamówieniach',
-    ],
+    punkty: ['klucze API dla zewnętrznych narzędzi', 'powiadomienia HTTP (webhooki) o nowych zamówieniach'],
   },
 ]);

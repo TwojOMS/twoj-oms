@@ -1,6 +1,10 @@
 import { bladOperatora } from './bledy.js';
 import {
-  zl, sumaPozycjiZWysylkaGrosze, kwotaOczekiwanaGrosze, wartoscPozycjiGrosze, wysylkaBruttoGrosze,
+  zl,
+  sumaPozycjiZWysylkaGrosze,
+  kwotaOczekiwanaGrosze,
+  wartoscPozycjiGrosze,
+  wysylkaBruttoGrosze,
 } from './suma-pozycji.js';
 import { wysylkaEfektywna } from './wysylka-kwota.js';
 // Stawka DOKUMENTU liczy sie z NIP-u nabywcy (domena/wdt.js): nabywca z panstwa UE dostaje
@@ -95,8 +99,10 @@ export function pozycjeDokumentu(z, { stawkaDomyslna, zw = false, zwolniona = fa
   if (Array.isArray(wysylkiGrupy)) {
     const suma = wysylkiGrupy.reduce((s, w) => s + w.grosze, 0);
     if (suma !== dostawa) {
-      throw bladOperatora(`Suma wysyłek grupy (${zl(suma)} zł) nie zgadza się z wysyłką zamówienia scalonego (${zl(dostawa)} zł). `
-        + 'Faktura NIE została wystawiona.');
+      throw bladOperatora(
+        `Suma wysyłek grupy (${zl(suma)} zł) nie zgadza się z wysyłką zamówienia scalonego (${zl(dostawa)} zł). ` +
+          'Faktura NIE została wystawiona.',
+      );
     }
     for (const w of wysylkiGrupy) {
       services.push({
@@ -134,8 +140,8 @@ export function sprawdzSumeDokumentu(services, z) {
   // trafi tam i też będzie wymagał korekty.
   if (services.length === 0) {
     throw bladOperatora(
-      'Zamówienie nie ma żadnej pozycji do zafakturowania — faktury bez pozycji panel nie wystawi. '
-      + 'Sprawdź zamówienie w sklepie.',
+      'Zamówienie nie ma żadnej pozycji do zafakturowania — faktury bez pozycji panel nie wystawi. ' +
+        'Sprawdź zamówienie w sklepie.',
     );
   }
   // Suma liczona WSPÓLNĄ funkcją z domena/suma-pozycji.js, DOKŁADNIE tą samą, którą karta
@@ -156,8 +162,8 @@ export function sprawdzSumeDokumentu(services, z) {
   const oczekiwana = kwotaOczekiwanaGrosze(z);
   if (suma !== oczekiwana) {
     throw bladOperatora(
-      `Suma pozycji faktury (${zl(suma)} zł) nie zgadza się z kwotą zamówienia (${zl(oczekiwana)} zł). `
-      + 'Faktura NIE została wystawiona — popraw zamówienie albo wystaw dokument ręcznie w inFakcie.',
+      `Suma pozycji faktury (${zl(suma)} zł) nie zgadza się z kwotą zamówienia (${zl(oczekiwana)} zł). ` +
+        'Faktura NIE została wystawiona — popraw zamówienie albo wystaw dokument ręcznie w inFakcie.',
     );
   }
 }

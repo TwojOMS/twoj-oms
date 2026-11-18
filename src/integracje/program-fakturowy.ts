@@ -5,15 +5,24 @@ import { PROG_ZAWIESZONEJ_FAKTURY_MS } from '../domena/faktura-stan.js';
 import { programInfakt } from './programy/infakt.ts';
 
 type MetodaKontraktu = Exclude<keyof ProgramFakturowy, 'opis'>;
-type MetodaOpcjonalna = { [K in MetodaKontraktu]-?: undefined extends ProgramFakturowy[K] ? K : never }[MetodaKontraktu];
+type MetodaOpcjonalna = {
+  [K in MetodaKontraktu]-?: undefined extends ProgramFakturowy[K] ? K : never;
+}[MetodaKontraktu];
 type MetodaObowiazkowa = Exclude<MetodaKontraktu, MetodaOpcjonalna>;
 /** `true` tylko, gdy lista wymienia KAŻDĄ metodę danego rodzaju — nowa metoda w typie bez wpisu tutaj = błąd tsc. */
 type Komplet<Wszystkie, Wymienione> = [Exclude<Wszystkie, Wymienione>] extends [never] ? true : never;
 
 /** Metody, bez których program nie wchodzi. `przygotujNabywce` — jedyna, której nie ma klient inFaktu. */
 export const METODY_OBOWIAZKOWE = Object.freeze([
-  'sprawdzPolaczenie', 'przygotujNabywce', 'wystaw', 'wystawKorekte', 'pobierzPdf', 'pobierzPdfKorekty',
-  'pobierzFakture', 'listaFaktur', 'listaKorekt',
+  'sprawdzPolaczenie',
+  'przygotujNabywce',
+  'wystaw',
+  'wystawKorekte',
+  'pobierzPdf',
+  'pobierzPdfKorekty',
+  'pobierzFakture',
+  'listaFaktur',
+  'listaKorekt',
 ] as const satisfies readonly MetodaObowiazkowa[]);
 
 /** Zdolność ↔ metoda, która ją daje. Zdolność jest obecna ⇔ program ma tę metodę. */
@@ -28,7 +37,8 @@ export const METODA_ZDOLNOSCI = Object.freeze({
 
 const pelneObowiazkowe: Komplet<MetodaObowiazkowa, (typeof METODY_OBOWIAZKOWE)[number]> = true;
 const pelneOpcjonalne: Komplet<MetodaOpcjonalna, (typeof METODA_ZDOLNOSCI)[ZdolnoscProgramu]> = true;
-void pelneObowiazkowe; void pelneOpcjonalne;
+void pelneObowiazkowe;
+void pelneOpcjonalne;
 
 const FORMY_NAZWY = ['mianownik', 'dopelniacz', 'miejscownik', 'narzednik'] as const;
 const LIMITY = ['zadanieMs', 'najdluzszaListaMs', 'stronaListy', 'sufitStron', 'rownolegleStron'] as const;
@@ -44,7 +54,9 @@ export function sprawdzProgramFakturowy(p: unknown): ProgramFakturowy {
   if (!opis || typeof opis !== 'object') throw new Error('Program fakturowy: brak opisu programu (`opis`).');
   const nazwa = opis.nazwa as Record<string, unknown> | undefined;
   const kto = `Program fakturowy „${typeof nazwa?.mianownik === 'string' ? nazwa.mianownik : String(opis.id)}”`;
-  const odmowa = (powod: string): never => { throw new Error(`${kto}: ${powod} — panel nie wstanie z tym programem.`); };
+  const odmowa = (powod: string): never => {
+    throw new Error(`${kto}: ${powod} — panel nie wstanie z tym programem.`);
+  };
 
   if (typeof opis.id !== 'string' || !opis.id) odmowa('opis bez identyfikatora (`opis.id`)');
   for (const forma of FORMY_NAZWY) {
@@ -83,7 +95,9 @@ export function sprawdzProgramFakturowy(p: unknown): ProgramFakturowy {
   }
   // Ten sam strażnik co src/oms/infakt/client.js przy wczytaniu: rezerwacja starsza od progu MUSI znaczyć „nic nie leci”.
   if ((limity!.zadanieMs as number) >= PROG_ZAWIESZONEJ_FAKTURY_MS) {
-    odmowa(`limity.zadanieMs (${String(limity!.zadanieMs)} ms) musi być krótszy niż próg zawieszonej faktury (${PROG_ZAWIESZONEJ_FAKTURY_MS} ms)`);
+    odmowa(
+      `limity.zadanieMs (${String(limity!.zadanieMs)} ms) musi być krótszy niż próg zawieszonej faktury (${PROG_ZAWIESZONEJ_FAKTURY_MS} ms)`,
+    );
   }
   return p as ProgramFakturowy;
 }
@@ -99,9 +113,17 @@ function jestProgramem(o: unknown): o is ProgramFakturowy {
   return typeof p.opis?.id === 'string' && typeof p.przygotujNabywce === 'function';
 }
 
-export function zProgramu({ program, infakt }: { program?: ProgramFakturowy | null; infakt?: unknown }): ProgramFakturowy | null {
+export function zProgramu({
+  program,
+  infakt,
+}: {
+  program?: ProgramFakturowy | null;
+  infakt?: unknown;
+}): ProgramFakturowy | null {
   if (program != null && infakt != null) {
-    throw new Error('Usługa dostała naraz `program` i `infakt` — podaj jedno (`infakt` to stara nazwa na czas PRZ-118).');
+    throw new Error(
+      'Usługa dostała naraz `program` i `infakt` — podaj jedno (`infakt` to stara nazwa na czas PRZ-118).',
+    );
   }
   if (program != null) return program;
   // Szew `fabryki.programFakturowy` (moduly/faktury/modul.ts) podaje program pod starą nazwą `infakt` — już jest

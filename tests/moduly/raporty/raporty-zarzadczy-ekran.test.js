@@ -19,20 +19,37 @@ beforeEach(() => {
     ustawGranice(db, k, '2026-07-02', 'test', null);
   }
   zapiszHistorie(db, {
-    apiloId: 'S1', platformAccountId: 9, dzien: '2026-06-10',
-    utworzoneAt: '2026-06-10T10:00:00.000Z', brutto: '12300.00', tagi: [], status: 15,
-    paymentStatus: 2, klientEmail: 'k@klient.pl', pozycje: [],
+    apiloId: 'S1',
+    platformAccountId: 9,
+    dzien: '2026-06-10',
+    utworzoneAt: '2026-06-10T10:00:00.000Z',
+    brutto: '12300.00',
+    tagi: [],
+    status: 15,
+    paymentStatus: 2,
+    klientEmail: 'k@klient.pl',
+    pozycje: [],
   });
 });
 
 // ⚠️ `dataTrwalegoZapisu`, `waluta`, `rodzaj` i `numerDokumentu` sa NOT NULL, a `zapiszKoszt`
 // idzie przez `INSERT OR IGNORE` — fikstura bez ktoregokolwiek z nich NIE ZAPISZE SIE I NIE
 // RZUCI (ta sama pulapka, co w rachunek-zarzadczy.test.js).
-const koszt = (numer, dzien, netto, nip = '5252674798') => zapiszKoszt(db, {
-  ksefNumber: numer, numerDokumentu: numer, sprzedawcaNip: nip, sprzedawcaNazwa: 'X',
-  dataWystawienia: dzien, dataTrwalegoZapisu: `${dzien}T12:00:00Z`,
-  netto, vat: '0.00', brutto: netto, waluta: 'PLN', rodzaj: 'VAT', maZalacznik: 0,
-});
+const koszt = (numer, dzien, netto, nip = '5252674798') =>
+  zapiszKoszt(db, {
+    ksefNumber: numer,
+    numerDokumentu: numer,
+    sprzedawcaNip: nip,
+    sprzedawcaNazwa: 'X',
+    dataWystawienia: dzien,
+    dataTrwalegoZapisu: `${dzien}T12:00:00Z`,
+    netto,
+    vat: '0.00',
+    brutto: netto,
+    waluta: 'PLN',
+    rodzaj: 'VAT',
+    maZalacznik: 0,
+  });
 
 const wejdz = async (url) => {
   const app = buildOmsServer({ db, config });
@@ -137,10 +154,10 @@ describe('ekran zarzadczy', () => {
   it('roznica przychodu pokazuje obie liczby i nazwana roznice, nie sume', async () => {
     zapiszDaneMiesiaca(db, '2026-06', { zusRazem: '2821.06', kpirPrzychod: '9500.00' });
     const odp = await wejdz('/finanse?od=2026-06-01&do=2026-06-30');
-    expect(odp.body).toContain('10 000,00');       // panel
-    expect(odp.body).toContain('9 500,00');        // KPiR
-    expect(odp.body).toContain('500,00');          // roznica, nazwana
-    expect(odp.body).not.toContain('19 500,00');   // NIGDY zsumowane
+    expect(odp.body).toContain('10 000,00'); // panel
+    expect(odp.body).toContain('9 500,00'); // KPiR
+    expect(odp.body).toContain('500,00'); // roznica, nazwana
+    expect(odp.body).not.toContain('19 500,00'); // NIGDY zsumowane
     // Roznica ma byc NAZWANA, a nie zostawiona czytelnikowi do odjecia w glowie. Po
     // przebudowie nazywa ja pas („Rozjazd…" powyzej 5%, „Różnica…" ponizej) zamiast
     // naglowka tabeli — test pilnuje wiec ZNACZENIA, nie tamtego `<th>`.
@@ -252,11 +269,19 @@ describe('ekran zarzadczy', () => {
 // KPI z deltą, kaskada zamiast tabeli, kategorie bez kolumny typu, prognoza progu.
 describe('przebudowany ekran finansow', () => {
   // Duza sprzedaz w marcu — podstawa podatku rosnie na tyle, ze prognoza roku mija prog.
-  const duzaSprzedaz = () => zapiszHistorie(db, {
-    apiloId: 'S2', platformAccountId: 9, dzien: '2026-03-10',
-    utworzoneAt: '2026-03-10T10:00:00.000Z', brutto: '123000.00', tagi: [], status: 15,
-    paymentStatus: 2, klientEmail: 'k2@klient.pl', pozycje: [],
-  });
+  const duzaSprzedaz = () =>
+    zapiszHistorie(db, {
+      apiloId: 'S2',
+      platformAccountId: 9,
+      dzien: '2026-03-10',
+      utworzoneAt: '2026-03-10T10:00:00.000Z',
+      brutto: '123000.00',
+      tagi: [],
+      status: 15,
+      paymentStatus: 2,
+      klientEmail: 'k2@klient.pl',
+      pozycje: [],
+    });
 
   it('KPI stoja NA GORZE, przed kaskada — po nie czlowiek tu przychodzi', async () => {
     const odp = await wejdz('/finanse?od=2026-06-01&do=2026-06-30');
@@ -270,9 +295,16 @@ describe('przebudowany ekran finansow', () => {
 
   it('KPI maja delte wzgledem okresu POPRZEDNIEGO, z podpisem z czym porownuja', async () => {
     zapiszHistorie(db, {
-      apiloId: 'S3', platformAccountId: 9, dzien: '2026-05-10',
-      utworzoneAt: '2026-05-10T10:00:00.000Z', brutto: '6150.00', tagi: [], status: 15,
-      paymentStatus: 2, klientEmail: 'k3@klient.pl', pozycje: [],
+      apiloId: 'S3',
+      platformAccountId: 9,
+      dzien: '2026-05-10',
+      utworzoneAt: '2026-05-10T10:00:00.000Z',
+      brutto: '6150.00',
+      tagi: [],
+      status: 15,
+      paymentStatus: 2,
+      klientEmail: 'k3@klient.pl',
+      pozycje: [],
     });
     const odp = await wejdz('/finanse?od=2026-06-01&do=2026-06-30');
     const t = tresc(odp);
@@ -291,8 +323,9 @@ describe('przebudowany ekran finansow', () => {
     // porównania')` przechodzilo TAKZE z podmieniona regula delty — bo ta sama fraza stoi
     // w akapicie metodologii („wtedy zamiast liczby stoi «brak porównania»"). Test mierzyl
     // wiec wlasny opis zamiast zachowania (mutacja `zmiana → 0` przezyla go).
-    const delty = [...tresc(odp).matchAll(/<span class="kafel-delta[^"]*">([\s\S]{0,60}?)<\/span>/g)]
-      .map((m) => m[1].replace(/\s+/g, ' ').trim());
+    const delty = [...tresc(odp).matchAll(/<span class="kafel-delta[^"]*">([\s\S]{0,60}?)<\/span>/g)].map((m) =>
+      m[1].replace(/\s+/g, ' ').trim(),
+    );
     expect(delty.length).toBeGreaterThanOrEqual(3);
     // Trzy pierwsze kafle (przychod, wynik, zostaje) nie maja z czym sie porownac.
     expect(delty.slice(0, 3).every((d) => d.includes('brak porównania'))).toBe(true);
@@ -323,8 +356,9 @@ describe('przebudowany ekran finansow', () => {
     // „width: -" bylo za slabe (mutacja zdejmujaca przyciecie przezyla je):
     // przy ujemnym wyniku psuje sie najpierw `left`, a szerokosc wychodzi DODATNIA
     // i wieksza od stu — pasek wyjezdza poza tor i miesiac na minusie wyglada jak dobry.
-    const liczby = [...t.matchAll(/class="kaskada-czesc[^"]*"\s*style="left: ([-\d.]+)%; width: ([-\d.]+)%"/g)]
-      .flatMap((m) => [Number(m[1]), Number(m[2])]);
+    const liczby = [...t.matchAll(/class="kaskada-czesc[^"]*"\s*style="left: ([-\d.]+)%; width: ([-\d.]+)%"/g)].flatMap(
+      (m) => [Number(m[1]), Number(m[2])],
+    );
     expect(liczby.length).toBeGreaterThan(0);
     expect(liczby.every((n) => n >= 0 && n <= 100)).toBe(true);
   });
@@ -388,7 +422,9 @@ describe('rachunek zarzadczy trzyma sie PELNYCH okresow', () => {
     const app = buildOmsServer({ db, config });
     await app.ready();
     const odp = await app.inject({
-      method: 'GET', url: '/finanse?skrot=ten-miesiac', headers: naglowek,
+      method: 'GET',
+      url: '/finanse?skrot=ten-miesiac',
+      headers: naglowek,
     });
     await app.close();
     return odp;
@@ -489,7 +525,9 @@ describe('pasek filtrow rachunku zarzadczego', () => {
       // Q4 jeszcze nie — jest napisem, nie odnosnikiem.
       expect(pasek).not.toContain('href="/finanse?skrot=q4"');
       expect(pasek).toMatch(/class="[^"]*btn--przyszly[^"]*"[^>]*>Q4</);
-    } finally { vi.useRealTimers(); }
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('w GRUDNIU wszystkie cztery kwartały są klikalne', async () => {
@@ -499,7 +537,9 @@ describe('pasek filtrow rachunku zarzadczego', () => {
       const pasek = paskiem(await wejdz('/finanse?od=2026-06-01&do=2026-06-30'));
       for (const q of ['q1', 'q2', 'q3', 'q4']) expect(pasek).toContain(`href="/finanse?skrot=${q}"`);
       expect(pasek).not.toContain('btn--przyszly');
-    } finally { vi.useRealTimers(); }
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   // ——— WYBOR MIESIACA ————————————————————————————————————————————————————————

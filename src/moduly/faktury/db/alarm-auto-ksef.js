@@ -10,7 +10,11 @@
 export const KLUCZ_ALARMU_AUTO_KSEF = 'faktury.fakturownia.alarm-auto-ksef';
 
 const NIECZYTELNY = Object.freeze({
-  dokument: null, numer: null, gov_status: 'nieczytelny zapis alarmu', oid: null, chwila: null,
+  dokument: null,
+  numer: null,
+  gov_status: 'nieczytelny zapis alarmu',
+  oid: null,
+  chwila: null,
 });
 
 function odczytaj(db) {
@@ -19,15 +23,18 @@ function odczytaj(db) {
   try {
     const dane = JSON.parse(w.wartosc);
     if (Array.isArray(dane)) return dane;
-  } catch { /* niżej */ }
+  } catch {
+    /* niżej */
+  }
   // Zepsuty zapis NIE gasi alarmu po cichu — świeci jako jeden wpis „nieczytelny”, aż operator go zgasi.
   return [{ ...NIECZYTELNY }];
 }
 
 function zapisz(db, wpisy, chwila) {
-  db.prepare(`INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
-    ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc, zmienione_at = excluded.zmienione_at`)
-    .run(KLUCZ_ALARMU_AUTO_KSEF, JSON.stringify(wpisy), chwila);
+  db.prepare(
+    `INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
+    ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc, zmienione_at = excluded.zmienione_at`,
+  ).run(KLUCZ_ALARMU_AUTO_KSEF, JSON.stringify(wpisy), chwila);
 }
 
 /** Magazyn alarmu na bazie OMS: `dopisz(wpis)`, `wczytaj()`, `zgas()` (tylko „Sprawdziłem”). */
@@ -38,7 +45,11 @@ export function utworzAlarmAutoKsef(db, { teraz = () => new Date() } = {}) {
       const dokument = wpis?.dokument == null ? null : String(wpis.dokument);
       const wpisy = odczytaj(db).filter((w) => dokument === null || w?.dokument !== dokument);
       wpisy.push({
-        dokument, numer: wpis?.numer ?? null, gov_status: wpis?.gov_status ?? null, oid: wpis?.oid ?? null, chwila,
+        dokument,
+        numer: wpis?.numer ?? null,
+        gov_status: wpis?.gov_status ?? null,
+        oid: wpis?.oid ?? null,
+        chwila,
       });
       zapisz(db, wpisy, chwila);
     },

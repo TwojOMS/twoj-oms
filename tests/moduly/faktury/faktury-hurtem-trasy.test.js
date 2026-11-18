@@ -1,9 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { SUFIT_FAKTUR_HURTEM } from '../../../src/domena/masowe.js';
 import { zapiszFakturaDlaKazdego } from '../../../src/moduly/faktury/db/faktury-dla-kazdego.js';
-import {
-  AUTH, POST, zamowienie, serwer, cialo,
-} from './_hurtem-pomocniki.js';
+import { AUTH, POST, zamowienie, serwer, cialo } from './_hurtem-pomocniki.js';
 
 /**
  * Identyfikatory, ktore ekran podgladu poda do zatwierdzenia — W KOLEJNOSCI RENDEROWANIA.
@@ -59,7 +57,11 @@ describe('trasy faktur hurtem', () => {
     const { app, db } = serwer({
       wystawWiele: async (lista) => {
         dostane = lista.map((z) => ({ id: z.id, numer: z.numer }));
-        return { wystawione: lista.map((z) => ({ id: z.id, numer: z.numer, numerFaktury: 'F' })), bledy: [], nietkniete: [] };
+        return {
+          wystawione: lista.map((z) => ({ id: z.id, numer: z.numer, numerFaktury: 'F' })),
+          bledy: [],
+          nietkniete: [],
+        };
       },
     });
     const a = zamowienie(db, { numer: 'A', zrodlo: 1, oplacone: true });
@@ -67,7 +69,10 @@ describe('trasy faktur hurtem', () => {
     const c = zamowienie(db, { numer: 'C', zrodlo: 3, oplacone: true });
 
     const podglad = await app.inject({
-      method: 'POST', url: '/zamowienia/faktury-hurtem/podglad', headers: POST, payload: cialo([a, b, c]),
+      method: 'POST',
+      url: '/zamowienia/faktury-hurtem/podglad',
+      headers: POST,
+      payload: cialo([a, b, c]),
     });
     expect(podglad.statusCode).toBe(200);
     expect(idZPodgladu(podglad.body)).toEqual([a, c]);
@@ -82,10 +87,16 @@ describe('trasy faktur hurtem', () => {
     expect(podglad.body).toMatch(/<b>B<\/b> — [^<]*wpłat/i);
 
     const wynik = await app.inject({
-      method: 'POST', url: '/zamowienia/faktury-hurtem', headers: POST, payload: cialo([a, b, c]),
+      method: 'POST',
+      url: '/zamowienia/faktury-hurtem',
+      headers: POST,
+      payload: cialo([a, b, c]),
     });
     expect(wynik.statusCode).toBe(200);
-    expect(dostane).toEqual([{ id: a, numer: 'A' }, { id: c, numer: 'C' }]);
+    expect(dostane).toEqual([
+      { id: a, numer: 'A' },
+      { id: c, numer: 'C' },
+    ]);
     // Ta sama obietnica z drugiej strony: identyfikatory z podgladu === identyfikatory,
     // ktore poszly do wystawienia.
     expect(dostane.map((z) => z.id)).toEqual(idZPodgladu(podglad.body));
@@ -116,22 +127,38 @@ describe('trasy faktur hurtem', () => {
       oplacone: true,
       pozycje: [
         {
-          nazwa: 'STOP 70x100', sku: 'S1', ilosc: 1, cena_brutto: '100.00', brutto_linii: '100.00', vat: null,
+          nazwa: 'STOP 70x100',
+          sku: 'S1',
+          ilosc: 1,
+          cena_brutto: '100.00',
+          brutto_linii: '100.00',
+          vat: null,
         },
         {
-          nazwa: 'Dopisek', sku: 'S2', ilosc: 1, cena_brutto: '40.00', brutto_linii: '40.00', vat: null,
+          nazwa: 'Dopisek',
+          sku: 'S2',
+          ilosc: 1,
+          cena_brutto: '40.00',
+          brutto_linii: '40.00',
+          vat: null,
         },
       ],
     });
 
     const podglad = await app.inject({
-      method: 'POST', url: '/zamowienia/faktury-hurtem/podglad', headers: POST, payload: cialo([dobre, rozjazd]),
+      method: 'POST',
+      url: '/zamowienia/faktury-hurtem/podglad',
+      headers: POST,
+      payload: cialo([dobre, rozjazd]),
     });
     expect(idZPodgladu(podglad.body)).toEqual([dobre]);
     expect(podglad.body).toMatch(/<b>B<\/b> — [^<]*sumują się/i);
 
     const wynik = await app.inject({
-      method: 'POST', url: '/zamowienia/faktury-hurtem', headers: POST, payload: cialo([dobre, rozjazd]),
+      method: 'POST',
+      url: '/zamowienia/faktury-hurtem',
+      headers: POST,
+      payload: cialo([dobre, rozjazd]),
     });
     expect(wynik.statusCode).toBe(200);
     expect(dostane).toEqual([{ id: dobre, numer: 'A' }]);
@@ -152,7 +179,12 @@ describe('trasy faktur hurtem', () => {
     const a = zamowienie(db, { numer: 'A', zrodlo: 1, oplacone: true });
 
     const przed = Date.now();
-    const r = await app.inject({ method: 'POST', url: '/zamowienia/faktury-hurtem', headers: POST, payload: cialo([a]) });
+    const r = await app.inject({
+      method: 'POST',
+      url: '/zamowienia/faktury-hurtem',
+      headers: POST,
+      payload: cialo([a]),
+    });
     const po = Date.now();
 
     expect(r.statusCode).toBe(200);
@@ -189,9 +221,19 @@ describe('trasy faktur hurtem', () => {
   // miedzy podgladem a zatwierdzeniem operator mogl otworzyc druga zakladke.
   it('odmawia partii ponad sufit i nie wystawia niczego', async () => {
     let wolane = false;
-    const { app, db } = serwer({ wystawWiele: async () => { wolane = true; return { wystawione: [], bledy: [], nietkniete: [] }; } });
+    const { app, db } = serwer({
+      wystawWiele: async () => {
+        wolane = true;
+        return { wystawione: [], bledy: [], nietkniete: [] };
+      },
+    });
     const ids = ponadSufit(db);
-    const r = await app.inject({ method: 'POST', url: '/zamowienia/faktury-hurtem', headers: POST, payload: cialo(ids) });
+    const r = await app.inject({
+      method: 'POST',
+      url: '/zamowienia/faktury-hurtem',
+      headers: POST,
+      payload: cialo(ids),
+    });
     expect(r.statusCode).toBe(200);
     // TRESC komunikatu, nie sama liczba: liczba trafia sie na ekranie takze z innych powodow.
     expect(r.body).toMatch(KOMUNIKAT_SUFITU);
@@ -202,9 +244,19 @@ describe('trasy faktur hurtem', () => {
   // ktory i tak odmowi.
   it('podglad tez mowi o przekroczonym suficie, nie oferuje zatwierdzenia i nic nie wystawia', async () => {
     let wolane = false;
-    const { app, db } = serwer({ wystawWiele: async () => { wolane = true; return { wystawione: [], bledy: [], nietkniete: [] }; } });
+    const { app, db } = serwer({
+      wystawWiele: async () => {
+        wolane = true;
+        return { wystawione: [], bledy: [], nietkniete: [] };
+      },
+    });
     const ids = ponadSufit(db);
-    const r = await app.inject({ method: 'POST', url: '/zamowienia/faktury-hurtem/podglad', headers: POST, payload: cialo(ids) });
+    const r = await app.inject({
+      method: 'POST',
+      url: '/zamowienia/faktury-hurtem/podglad',
+      headers: POST,
+      payload: cialo(ids),
+    });
     expect(r.statusCode).toBe(200);
     expect(r.body).toMatch(KOMUNIKAT_SUFITU);
     expect(idZPodgladu(r.body)).toEqual([]);
@@ -216,7 +268,12 @@ describe('trasy faktur hurtem', () => {
   it('podglad bez podpietego inFaktu nie oferuje zatwierdzenia', async () => {
     const { app, db } = serwer({ fakturaHurtem: null });
     const a = zamowienie(db, { numer: 'A', zrodlo: 1, oplacone: true });
-    const r = await app.inject({ method: 'POST', url: '/zamowienia/faktury-hurtem/podglad', headers: POST, payload: cialo([a]) });
+    const r = await app.inject({
+      method: 'POST',
+      url: '/zamowienia/faktury-hurtem/podglad',
+      headers: POST,
+      payload: cialo([a]),
+    });
     expect(r.statusCode).toBe(200);
     expect(r.body).toMatch(/nie jest skonfigurowane/i);
     expect(idZPodgladu(r.body)).toEqual([]);
@@ -224,7 +281,12 @@ describe('trasy faktur hurtem', () => {
 
   it('bez zaznaczenia niczego nie wystawia', async () => {
     let wolane = false;
-    const { app } = serwer({ wystawWiele: async () => { wolane = true; return { wystawione: [], bledy: [], nietkniete: [] }; } });
+    const { app } = serwer({
+      wystawWiele: async () => {
+        wolane = true;
+        return { wystawione: [], bledy: [], nietkniete: [] };
+      },
+    });
     const r = await app.inject({ method: 'POST', url: '/zamowienia/faktury-hurtem', headers: POST, payload: '' });
     expect(r.statusCode).toBe(200);
     expect(wolane).toBe(false);
@@ -235,7 +297,12 @@ describe('trasy faktur hurtem', () => {
   it('bez podpietego inFaktu odmawia czytelnie, zamiast sie wywalic', async () => {
     const { app, db } = serwer({ fakturaHurtem: null });
     const a = zamowienie(db, { numer: 'A', zrodlo: 1, oplacone: true });
-    const r = await app.inject({ method: 'POST', url: '/zamowienia/faktury-hurtem', headers: POST, payload: cialo([a]) });
+    const r = await app.inject({
+      method: 'POST',
+      url: '/zamowienia/faktury-hurtem',
+      headers: POST,
+      payload: cialo([a]),
+    });
     expect(r.statusCode).toBe(503);
   });
 
@@ -247,7 +314,11 @@ describe('trasy faktur hurtem', () => {
       const { app, db } = serwer({
         wystawWiele: async (lista) => {
           dostane = lista.map((z) => z.id);
-          return { wystawione: lista.map((z) => ({ id: z.id, numer: z.numer, numerFaktury: 'F' })), bledy: [], nietkniete: [] };
+          return {
+            wystawione: lista.map((z) => ({ id: z.id, numer: z.numer, numerFaktury: 'F' })),
+            bledy: [],
+            nietkniete: [],
+          };
         },
       });
       const a = zamowienie(db, { numer: 'A', zrodlo: 1, oplacone: true });
@@ -255,12 +326,20 @@ describe('trasy faktur hurtem', () => {
       db.prepare('UPDATE zamowienia SET chce_fakture = 0, nip = NULL WHERE id = ?').run(b);
       return { app, db, a, b, dostane: () => dostane };
     }
-    const podglad = (app, ids) => app.inject({
-      method: 'POST', url: '/zamowienia/faktury-hurtem/podglad', headers: POST, payload: cialo(ids),
-    });
-    const wykonaj = (app, ids) => app.inject({
-      method: 'POST', url: '/zamowienia/faktury-hurtem', headers: POST, payload: cialo(ids),
-    });
+    const podglad = (app, ids) =>
+      app.inject({
+        method: 'POST',
+        url: '/zamowienia/faktury-hurtem/podglad',
+        headers: POST,
+        payload: cialo(ids),
+      });
+    const wykonaj = (app, ids) =>
+      app.inject({
+        method: 'POST',
+        url: '/zamowienia/faktury-hurtem',
+        headers: POST,
+        payload: cialo(ids),
+      });
 
     it('opcja wylaczona: pominiete z dzisiejszym powodem, do uslugi nie trafia', async () => {
       const { app, a, b, dostane } = przygotuj();

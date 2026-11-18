@@ -17,15 +17,21 @@ const KLUCZ = 'zmyslony0klucz0z0pliku0restartu0prz121006';
 
 let siec;
 beforeEach(() => {
-  siec = vi.fn(async () => new Response(JSON.stringify({ metainfo: { count: 0, total_count: 0 }, entities: [] }), { status: 200 }));
+  siec = vi.fn(
+    async () => new Response(JSON.stringify({ metainfo: { count: 0, total_count: 0 }, entities: [] }), { status: 200 }),
+  );
   vi.stubGlobal('fetch', siec);
 });
-afterEach(() => { vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 /** Panel z kluczem w pliku (działa inFakt) i szwem ubicia; `zdarzenia` — kolejność odpowiedzi i ubicia. */
 function panel(restart) {
   const zdarzenia = [];
-  const zakonczProces = vi.fn(() => { zdarzenia.push('ubicie'); });
+  const zakonczProces = vi.fn(() => {
+    zdarzenia.push('ubicie');
+  });
   const modul = createModulFaktury({ fabryki: { zakonczProces } });
   const env = { INFAKT_API_KEY: KLUCZ, ...(restart === undefined ? {} : { OMS_RESTART_Z_PANELU: restart }) };
   const p = nowyPanel({ env, moduly: MODULY.map((m) => (m.nazwa === 'faktury' ? modul : m)) });
@@ -59,7 +65,10 @@ describe('przycisk „Uruchom OMS ponownie”', () => {
       await poKolejce();
       expect(zakonczProces).toHaveBeenCalledTimes(1);
       expect(zdarzenia).toEqual(['odpowiedz', 'ubicie']);
-    } finally { await app.close(); db.close(); }
+    } finally {
+      await app.close();
+      db.close();
+    }
   });
 
   it('bez zmiennej: zamiast przycisku zdanie z poleceniem; POST nic nie robi, szew niewołany', async () => {
@@ -75,7 +84,10 @@ describe('przycisk „Uruchom OMS ponownie”', () => {
       expect(r.statusCode).toBe(404);
       await poKolejce();
       expect(zakonczProces).not.toHaveBeenCalled();
-    } finally { await app.close(); db.close(); }
+    } finally {
+      await app.close();
+      db.close();
+    }
   });
 
   it.each(['nie', 'TAKK', ''])('wartość „%s” = brak przycisku, start bez błędu, POST 404', async (wartosc) => {
@@ -88,7 +100,10 @@ describe('przycisk „Uruchom OMS ponownie”', () => {
       expect((await post(app, RESTART, admin)).statusCode).toBe(404);
       await poKolejce();
       expect(zakonczProces).not.toHaveBeenCalled();
-    } finally { await app.close(); db.close(); }
+    } finally {
+      await app.close();
+      db.close();
+    }
   });
 
   it('operator z uprawnieniem „ustawienia”, bez admina: 403, szew niewołany', async () => {
@@ -100,7 +115,10 @@ describe('przycisk „Uruchom OMS ponownie”', () => {
       expect(formularzRestartu((await get(app, ADRES, ida)).body)).toBe('');
       await poKolejce();
       expect(zakonczProces).not.toHaveBeenCalled();
-    } finally { await app.close(); db.close(); }
+    } finally {
+      await app.close();
+      db.close();
+    }
   });
 
   it('nic nie czeka na restart: przycisku nie ma (także bez zapisu)', async () => {
@@ -112,6 +130,9 @@ describe('przycisk „Uruchom OMS ponownie”', () => {
       const tenSam = await get(app, ADRES, admin);
       expect(tenSam.body).not.toContain('ponownym uruchomieniu');
       expect(tenSam.body).not.toContain(PRZYCISK);
-    } finally { await app.close(); db.close(); }
+    } finally {
+      await app.close();
+      db.close();
+    }
   });
 });

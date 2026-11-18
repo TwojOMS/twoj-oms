@@ -4,16 +4,33 @@ import { zapiszZamowienie, pobierzZamowienie } from '../../../src/oms/db/zamowie
 import { createSyncSklep } from '../../../src/moduly/zamowienia/services/sync-sklep.js';
 
 // Klient ERLI w mapie kanałów nie może zrobić z zamówienia Allegro bez konta Allegro sprawy na karcie.
-const zam = (id) => ({ zrodlo_id: String(id), numer: 'A-' + id, klient: {}, dostawa: {}, metoda_wysylki: 'allegro_dpd',
-  kwota_pobrania: null, chce_fakture: 0, nip: null, oplacone_at: null, anulowane: 0, punkt_odbioru: null,
-  kwota_brutto: '10.00', status_woo: 'READY_FOR_PROCESSING', utworzone_at: '2026-11-11T10:00:00Z', pozycje: [] });
+const zam = (id) => ({
+  zrodlo_id: String(id),
+  numer: 'A-' + id,
+  klient: {},
+  dostawa: {},
+  metoda_wysylki: 'allegro_dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  oplacone_at: null,
+  anulowane: 0,
+  punkt_odbioru: null,
+  kwota_brutto: '10.00',
+  status_woo: 'READY_FOR_PROCESSING',
+  utworzone_at: '2026-11-11T10:00:00Z',
+  pozycje: [],
+});
 
-for (const [opis, mapa] of [['pusta mapa', {}], ['tylko klient ERLI w mapie', { erli_polcien: { atrapa: true } }]]) {
+for (const [opis, mapa] of [
+  ['pusta mapa', {}],
+  ['tylko klient ERLI w mapie', { erli_polcien: { atrapa: true } }],
+]) {
   it(`zamówienie Allegro bez konta Allegro (${opis}) — kanał milczy, bez błędu na karcie`, async () => {
     const db = openOmsDb();
     const id = zapiszZamowienie(db, 'allegro_polcien', zam(5551), {});
     db.prepare("UPDATE zamowienia SET wyslane_at='2026-11-11T12:00:00' WHERE id=?").run(id);
-    const s = createSyncSklep({ db, klienci: {}, klienciKanalow: mapa, czynny: () => Object.keys(mapa).length > 0 });  // jak zamowienia/modul.ts
+    const s = createSyncSklep({ db, klienci: {}, klienciKanalow: mapa, czynny: () => Object.keys(mapa).length > 0 }); // jak zamowienia/modul.ts
     const w = await s.odeslijStatus(id);
     expect(w.blad).toBeUndefined();
     expect(pobierzZamowienie(db, id).sync_woo_blad ?? null).toBeNull();

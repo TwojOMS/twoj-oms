@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
-  PROG_PODLACZENIA_MIN, DLAWIENIE_S, NAJWIECEJ_STANOWISK, stanStanowisk, czyZapisac, dopisz, nazwaStanowiska,
+  PROG_PODLACZENIA_MIN,
+  DLAWIENIE_S,
+  NAJWIECEJ_STANOWISK,
+  stanStanowisk,
+  czyZapisac,
+  dopisz,
+  nazwaStanowiska,
 } from '../../src/domena/druk-faktur.js';
 
 // Komputer z drukarką faktur zgłasza się przy każdym odpytaniu kolejki (co 10 s). Panel uznaje go

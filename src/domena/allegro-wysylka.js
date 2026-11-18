@@ -53,21 +53,49 @@ import { czyKanalAllegro } from './wysylka.js';
 // za pobraniem na takiej usłudze odbija się o `pobranieDoWysylki`, i tak ma zostać.
 export const METODY_WZA = {
   '03f26351-f683-4db2-8895-f2c599280e3c': { nazwa: 'Allegro Kurier DPD (AD)', pobranie: false, wymagaKonta: false },
-  '13f26351-26fb-48d4-b5dd-f2c599280e3c': { nazwa: 'Allegro Kurier DPD pobranie (AD)', pobranie: true, wymagaKonta: false },
+  '13f26351-26fb-48d4-b5dd-f2c599280e3c': {
+    nazwa: 'Allegro Kurier DPD pobranie (AD)',
+    pobranie: true,
+    wymagaKonta: false,
+  },
   '0b9bed2c-0bc1-4e1f-9694-29bb39ebb483': { nazwa: 'Allegro One Box, One Kurier', pobranie: false, wymagaKonta: false },
-  '0d83955a-4297-4169-adef-9790d53b11ff': { nazwa: 'Allegro One Kurier - dostawa jutro', pobranie: false, wymagaKonta: false },
-  '09164667-daa5-42dc-8087-33d7485790ac': { nazwa: 'Allegro Automat ORLEN Paczka', pobranie: false, wymagaKonta: false },
-  '09bcdcdb-c62a-41c4-ba42-f2c599280e3c': { nazwa: 'Allegro Automaty Paczkowe DPD (AD)', pobranie: false, wymagaKonta: false },
+  '0d83955a-4297-4169-adef-9790d53b11ff': {
+    nazwa: 'Allegro One Kurier - dostawa jutro',
+    pobranie: false,
+    wymagaKonta: false,
+  },
+  '09164667-daa5-42dc-8087-33d7485790ac': {
+    nazwa: 'Allegro Automat ORLEN Paczka',
+    pobranie: false,
+    wymagaKonta: false,
+  },
+  '09bcdcdb-c62a-41c4-ba42-f2c599280e3c': {
+    nazwa: 'Allegro Automaty Paczkowe DPD (AD)',
+    pobranie: false,
+    wymagaKonta: false,
+  },
   '0960fef9-cc88-4558-b2b2-62331a20b5b2': { nazwa: 'Allegro Kurier DHL (AD)', pobranie: false, wymagaKonta: false },
-  '0fe5b4af-9f09-443d-9d49-62331a20b5b2': { nazwa: 'Allegro Automat DHL BOX 24/7 (AD)', pobranie: false, wymagaKonta: false },
-  '0560b75e-88c3-4b79-bcf7-62331a20b5b2': { nazwa: 'Allegro Odbiór w Punkcie DHL (AD)', pobranie: false, wymagaKonta: false },
+  '0fe5b4af-9f09-443d-9d49-62331a20b5b2': {
+    nazwa: 'Allegro Automat DHL BOX 24/7 (AD)',
+    pobranie: false,
+    wymagaKonta: false,
+  },
+  '0560b75e-88c3-4b79-bcf7-62331a20b5b2': {
+    nazwa: 'Allegro Odbiór w Punkcie DHL (AD)',
+    pobranie: false,
+    wymagaKonta: false,
+  },
   '0b257488-c85d-4507-b967-9b45ffbfa2e8': { nazwa: 'Allegro One Box, DPD', pobranie: false, wymagaKonta: false },
   // Zmierzone w katalogu: owner ALLEGRO, credentialsId null,
   // cashOnDelivery {"limit":6000,"currency":"PLN","paymentType":"WALLET_TRANSFER","forceRequireIban":false}
   // — ten sam profil pobrania, co „Kurier DPD pobranie (AD)". `delivery-proposals` prawdziwego zamówienia
   // oddało `receiver.point` równy `punkt_odbioru` i kwotę pobrania równą kwocie zamówienia.
   // Wariant bez pobrania (`06af1169-…`) jest w katalogu, ale nie w żadnym zamówieniu — nie wpisany.
-  '16af1169-db74-4e94-a16d-f2c599280e3c': { nazwa: 'Allegro Odbiór w Punkcie DPD Pickup pobranie (AD)', pobranie: true, wymagaKonta: false },
+  '16af1169-db74-4e94-a16d-f2c599280e3c': {
+    nazwa: 'Allegro Odbiór w Punkcie DPD Pickup pobranie (AD)',
+    pobranie: true,
+    wymagaKonta: false,
+  },
 };
 
 // Usługi InPostu, które Allegro wystawia na umowie NADAWCY (`owner: CLIENT`, zmierzone w katalogu).
@@ -114,17 +142,17 @@ export function wolnoNadacZOms(zamowienie, { deliveryMethodIdZywy } = {}) {
     // przewoźnika na umowie Allegro, której brak na liście — i odesłałby człowieka w złą stronę.
     if (INPOST_UMOWA_NADAWCY.has(deliveryMethodIdZywy)) {
       return nie(
-        'Tej metody dostawy panel nie nada przez „Wysyłam z Allegro". Metody InPostu Allegro '
-        + 'wystawia na WŁASNEJ UMOWIE nadawcy, a nie na swojej — paczkę nadaj jak dotąd.',
+        'Tej metody dostawy panel nie nada przez „Wysyłam z Allegro". Metody InPostu Allegro ' +
+          'wystawia na WŁASNEJ UMOWIE nadawcy, a nie na swojej — paczkę nadaj jak dotąd.',
       );
     }
     // ⚠️ `INPOST_UMOWA_NADAWCY` zna 3 z 6 uslug `owner: CLIENT` (brak id Kurier24 pobranie
     // i miniKurier24 w obu wariantach) — stad zastrzezenie w tekscie, zeby zgloszenie nie
     // skonczylo sie dopisaniem InPostu do `METODY_WZA`.
     return nie(
-      'Panel nie zna jeszcze tej usługi Allegro, więc jej nie nada przez „Wysyłam z Allegro" — '
-      + 'paczkę nadaj jak dotąd. Jeśli to nie InPost, zgłoś usługę do sprawdzenia '
-      + `(id ${deliveryMethodIdZywy}).`,
+      'Panel nie zna jeszcze tej usługi Allegro, więc jej nie nada przez „Wysyłam z Allegro" — ' +
+        'paczkę nadaj jak dotąd. Jeśli to nie InPost, zgłoś usługę do sprawdzenia ' +
+        `(id ${deliveryMethodIdZywy}).`,
     );
   }
 
@@ -155,7 +183,13 @@ const GROSZE = (kwota) => Math.round(Number(String(kwota ?? '').replace(',', '.'
 const IBAN_PL = /^(PL)?\d{26}$/;
 
 export function pobranieDoWysylki({
-  pobranieUslugi, cashOnDelivery, limit, ownerName, iban, nadpisanieOperatora, wymaganeKonto = false,
+  pobranieUslugi,
+  cashOnDelivery,
+  limit,
+  ownerName,
+  iban,
+  nadpisanieOperatora,
+  wymaganeKonto = false,
 }) {
   const maKwote = cashOnDelivery && GROSZE(cashOnDelivery.amount) > 0;
 
@@ -167,7 +201,9 @@ export function pobranieDoWysylki({
     return nie('Allegro nie podało kwoty pobrania dla tej przesyłki — bez niej kurier nie zainkasowałby nic.');
   }
   if (!pobranieUslugi && maKwote) {
-    return nie('To zamówienie jest za pobraniem, a wybrana usługa Allegro jest przedpłacona — panel niczego nie nadał.');
+    return nie(
+      'To zamówienie jest za pobraniem, a wybrana usługa Allegro jest przedpłacona — panel niczego nie nadał.',
+    );
   }
   if (!pobranieUslugi) return { wolno: true, cashOnDelivery: null };
 
@@ -183,12 +219,15 @@ export function pobranieDoWysylki({
   // Przy naszej umowie operator wolno zmienic kwote (dosylka, korekta). Tutaj kwota jest
   // zobowiazaniem miedzy KUPUJACYM A ALLEGRO — zmiana jej znaczylaby, ze kurier inkasuje
   // co innego, niz kupujacy widzial przy zakupie. Rozbieznosc = ODMOWA z nazwaniem obu liczb.
-  if (nadpisanieOperatora != null && String(nadpisanieOperatora) !== ''
-      && GROSZE(nadpisanieOperatora) !== GROSZE(cashOnDelivery.amount)) {
+  if (
+    nadpisanieOperatora != null &&
+    String(nadpisanieOperatora) !== '' &&
+    GROSZE(nadpisanieOperatora) !== GROSZE(cashOnDelivery.amount)
+  ) {
     return nie(
-      `Wpisano kwotę pobrania ${nadpisanieOperatora} zł, a Allegro rozliczy `
-      + `${cashOnDelivery.amount} zł — przy „Wysyłam z Allegro" kwota musi być ta, którą `
-      + 'zobowiązał się zapłacić kupujący. Panel niczego nie nadał.',
+      `Wpisano kwotę pobrania ${nadpisanieOperatora} zł, a Allegro rozliczy ` +
+        `${cashOnDelivery.amount} zł — przy „Wysyłam z Allegro" kwota musi być ta, którą ` +
+        'zobowiązał się zapłacić kupujący. Panel niczego nie nadał.',
     );
   }
 
@@ -212,7 +251,9 @@ export function pobranieDoWysylki({
   }
 
   if (!String(ownerName ?? '').trim()) return nie('Ta usługa wymaga konta do zwrotu pobrania, a panel go nie ma.');
-  const kontoBezSpacji = String(iban ?? '').replace(/\s+/g, '').toUpperCase();
+  const kontoBezSpacji = String(iban ?? '')
+    .replace(/\s+/g, '')
+    .toUpperCase();
   if (!IBAN_PL.test(kontoBezSpacji)) {
     return nie('Numer rachunku do pobrania w konfiguracji panelu nie wygląda na polski IBAN.');
   }

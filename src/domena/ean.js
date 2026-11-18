@@ -10,6 +10,8 @@ export function poprawnyEan(napis) {
   const cyfry = [...napis].map(Number);
   const kontrolna = cyfry.pop();
   let suma = 0;
-  cyfry.reverse().forEach((c, i) => { suma += c * (i % 2 === 0 ? 3 : 1); });
+  cyfry.reverse().forEach((c, i) => {
+    suma += c * (i % 2 === 0 ? 3 : 1);
+  });
   return (10 - (suma % 10)) % 10 === kontrolna;
 }

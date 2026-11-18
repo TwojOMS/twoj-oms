@@ -2,15 +2,15 @@ import { describe, it, expect } from 'vitest';
 import { rozkladUslug, udzialProcent } from '../../src/domena/statystyki-wysylki.js';
 
 const z = (d = {}) => ({
-  metoda_wysylki: 'dpd', metoda_wysylki_nazwa: null, pobranie: 0, ...d,
+  metoda_wysylki: 'dpd',
+  metoda_wysylki_nazwa: null,
+  pobranie: 0,
+  ...d,
 });
 
 describe('rozkladUslug', () => {
   it('liczy pozycje i udziały, malejąco', () => {
-    const { pozycje, suma } = rozkladUslug([
-      z(), z(), z(),
-      z({ metoda_wysylki: 'inpost_paczkomat' }),
-    ]);
+    const { pozycje, suma } = rozkladUslug([z(), z(), z(), z({ metoda_wysylki: 'inpost_paczkomat' })]);
     expect(suma).toBe(4);
     expect(pozycje).toEqual([
       { etykieta: 'Kurier DPD', ile: 3, udzial: 75 },
@@ -23,8 +23,10 @@ describe('rozkladUslug', () => {
       z({ metoda_wysylki: 'allegro_punkt', metoda_wysylki_nazwa: 'Allegro Automat ORLEN Paczka' }),
       z({ metoda_wysylki: 'allegro_punkt', metoda_wysylki_nazwa: 'Allegro One Box, One Kurier' }),
     ]);
-    expect(pozycje.map((p) => p.etykieta).sort())
-      .toEqual(['Allegro Automat ORLEN Paczka', 'Allegro One Box, One Kurier']);
+    expect(pozycje.map((p) => p.etykieta).sort()).toEqual([
+      'Allegro Automat ORLEN Paczka',
+      'Allegro One Box, One Kurier',
+    ]);
   });
 
   // ⚠️⚠️ POBRANIE NIE DZIELI USŁUGI NA DWA WIERSZE. `etykietaWysylki` dokłada „(pobranie)",
@@ -47,7 +49,11 @@ describe('rozkladUslug', () => {
       z({ metoda_wysylki: 'allegro_dpd', metoda_wysylki_nazwa: 'Allegro Kurier DPD' }),
       z({ metoda_wysylki: 'allegro_dpd', metoda_wysylki_nazwa: 'Allegro Kurier DPD pobranie', pobranie: 1 }),
       z({ metoda_wysylki: 'allegro_paczkomat', metoda_wysylki_nazwa: 'Allegro Paczkomaty InPost' }),
-      z({ metoda_wysylki: 'allegro_paczkomat', metoda_wysylki_nazwa: 'Allegro Paczkomaty InPost pobranie', pobranie: 1 }),
+      z({
+        metoda_wysylki: 'allegro_paczkomat',
+        metoda_wysylki_nazwa: 'Allegro Paczkomaty InPost pobranie',
+        pobranie: 1,
+      }),
     ]);
     expect(pozycje).toEqual([
       { etykieta: 'Allegro Kurier DPD', ile: 2, udzial: 50 },
@@ -169,9 +175,7 @@ describe('rozkladUslug — metoda EFEKTYWNA, ta sama co w kolumnie „Dostawa"',
   // ⚠️ Śmieciowy JSON w kolumnie (ręczny UPDATE w pliku SQLite) nie ma prawa wywalić ekranu
   // ani zmienić przewoźnika — wtedy rządzi sklep. Ta sama zasada, co przy karcie.
   it('uszkodzone nadpisanie zostawia metodę ze sklepu', () => {
-    const { pozycje } = rozkladUslug([
-      z({ metoda_wysylki: 'inpost_paczkomat', wysylka_reczna_json: '{niepoprawny' }),
-    ]);
+    const { pozycje } = rozkladUslug([z({ metoda_wysylki: 'inpost_paczkomat', wysylka_reczna_json: '{niepoprawny' })]);
     expect(pozycje).toEqual([{ etykieta: 'InPost Paczkomat', ile: 1, udzial: 100 }]);
   });
 });

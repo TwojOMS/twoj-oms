@@ -74,7 +74,7 @@ export function createAllegroSledzenieClient({ allegroDla }) {
     // at the sorting center" o 00:48:01) — Allegro porzadkuje je czyms innym niz sam czas.
     // Branie ostatniego elementu dzialaloby na zmierzonych danych i przeklamalo przy
     // pierwszej zmianie kolejnosci po ich stronie.
-    const najnowsze = zdarzenia.reduce((a, b) => ((czas(b) > czas(a)) ? b : a));
+    const najnowsze = zdarzenia.reduce((a, b) => (czas(b) > czas(a) ? b : a));
     return {
       opis: najnowsze?.description ?? null,
       at: najnowsze?.occurredAt ?? null,

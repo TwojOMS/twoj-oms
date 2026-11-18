@@ -16,10 +16,21 @@ import { createPoller } from '../../../src/moduly/kanaly/services/poller.js';
 // Test idzie na PLIK, bo dwa razy ':memory:' to dwie osobne bazy i nie sprawdzaloby niczego.
 
 const zmapowane = (nad = {}) => ({
-  zrodlo_id: 1267, numer: '1267', klient: { email: 'j@k.pl' }, dostawa: { city: 'Warszawa' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null,
-  kwota_brutto: '212.90', koszt_dostawy_brutto: '0.00', status_woo: 'processing',
-  oplacone_at: null, anulowane: 0, utworzone_at: '2026-07-29T13:19:52', pozycje: [],
+  zrodlo_id: 1267,
+  numer: '1267',
+  klient: { email: 'j@k.pl' },
+  dostawa: { city: 'Warszawa' },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '212.90',
+  koszt_dostawy_brutto: '0.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-07-29T13:19:52',
+  pozycje: [],
   ...nad,
 });
 
@@ -31,7 +42,8 @@ function bazaSprzedZmiany({ oplaconeAt, oplaconeRecznie, surowe = {} }) {
   const pierwsza = openOmsDb(plik);
   const id = zapiszZamowienie(pierwsza, 'pro', zmapowane(), { id: 1267, ...surowe });
   pierwsza.prepare('DELETE FROM platnosci WHERE zamowienie_id = ?').run(id);
-  pierwsza.prepare('UPDATE zamowienia SET oplacone_at = ?, oplacone_recznie = ? WHERE id = ?')
+  pierwsza
+    .prepare('UPDATE zamowienia SET oplacone_at = ?, oplacone_recznie = ? WHERE id = ?')
     .run(oplaconeAt, oplaconeRecznie, id);
   pierwsza.close();
   return { plik, id };
@@ -40,14 +52,18 @@ function bazaSprzedZmiany({ oplaconeAt, oplaconeRecznie, surowe = {} }) {
 describe('przeniesienie istniejących wpłat na listę', () => {
   it('zamówienie opłacone w sklepie dostaje wpłatę źródła „sklep”', () => {
     const { plik, id } = bazaSprzedZmiany({
-      oplaconeAt: '2026-07-29T13:21:26', oplaconeRecznie: 0,
+      oplaconeAt: '2026-07-29T13:21:26',
+      oplaconeRecznie: 0,
       surowe: { payment_method_title: 'Przelewy24' },
     });
     const db = openOmsDb(plik);
     const wplaty = platnosciZamowienia(db, id);
     expect(wplaty).toHaveLength(1);
     expect(wplaty[0]).toMatchObject({
-      zrodlo: 'sklep', kwota: '212.90', data: '2026-07-29T13:21:26', metoda: 'Przelewy24',
+      zrodlo: 'sklep',
+      kwota: '212.90',
+      data: '2026-07-29T13:21:26',
+      metoda: 'Przelewy24',
     });
     // I sedno: zamowienie dalej jest OPLACONE, wiec panel nie zacznie ostrzegac przy nadaniu.
     expect(pobierzZamowienie(db, id).oplacone_at).toBe('2026-07-29T13:21:26');
@@ -70,12 +86,22 @@ describe('przeniesienie istniejących wpłat na listę', () => {
     const db = openOmsDb(plik);
     const woo = {
       pobierzZamowienia: vi.fn().mockResolvedValue({
-        zamowienia: [{
-          id: 1267, number: '1267', status: 'processing', total: '212.90',
-          date_created: '2026-07-29T10:00:00', date_modified_gmt: '2026-07-29T12:00:00',
-          date_paid: null, billing: {}, shipping: {},
-          shipping_lines: [{ method_id: 'flat_rate', instance_id: '1' }], line_items: [], meta_data: [],
-        }],
+        zamowienia: [
+          {
+            id: 1267,
+            number: '1267',
+            status: 'processing',
+            total: '212.90',
+            date_created: '2026-07-29T10:00:00',
+            date_modified_gmt: '2026-07-29T12:00:00',
+            date_paid: null,
+            billing: {},
+            shipping: {},
+            shipping_lines: [{ method_id: 'flat_rate', instance_id: '1' }],
+            line_items: [],
+            meta_data: [],
+          },
+        ],
         stron: 1,
       }),
     };
@@ -119,8 +145,10 @@ describe('przeniesienie istniejących wpłat na listę', () => {
   it('po przeniesieniu wpłaty ręcznej stara kolumna jest wyczyszczona i nie wskrzesza wpłaty', () => {
     const { plik, id } = bazaSprzedZmiany({ oplaconeAt: '2026-07-30T08:00:00', oplaconeRecznie: 1 });
     const druga = openOmsDb(plik);
-    expect(druga.prepare('SELECT oplacone_at, oplacone_recznie FROM zamowienia WHERE id = ?').get(id))
-      .toMatchObject({ oplacone_at: null, oplacone_recznie: 0 });
+    expect(druga.prepare('SELECT oplacone_at, oplacone_recznie FROM zamowienia WHERE id = ?').get(id)).toMatchObject({
+      oplacone_at: null,
+      oplacone_recznie: 0,
+    });
     druga.prepare('DELETE FROM platnosci WHERE zamowienie_id = ?').run(id);
     druga.close();
 

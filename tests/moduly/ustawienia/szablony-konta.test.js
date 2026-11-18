@@ -54,11 +54,21 @@ describe('zapisany szablon w prawdziwej wysyłce', () => {
     });
     expect(zapis.statusCode).toBe(303);
 
-    const r = await post(app, '/ustawienia/konta/nowe', admin, { imie: 'Nowa Osoba', login: 'nowa', email: 'nowa@example.test', rola: 'produkcja', sposob: 'mail' });
+    const r = await post(app, '/ustawienia/konta/nowe', admin, {
+      imie: 'Nowa Osoba',
+      login: 'nowa',
+      email: 'nowa@example.test',
+      rola: 'produkcja',
+      sposob: 'mail',
+    });
     expect(r.statusCode, r.body).toBe(302);
     const m = mailer.sendMail.mock.calls[0][0];
     expect(m.subject).toBe('Witaj w zespole, Nowa Osoba');
-    expect(m.text).toMatch(new RegExp(`^Cześć Nowa Osoba,\\n\\nzałóż hasło tutaj: ${ADRES}/haslo/[A-Za-z0-9_-]{43}\\n\\nLink jest ważny 48 h\\.$`));
+    expect(m.text).toMatch(
+      new RegExp(
+        `^Cześć Nowa Osoba,\\n\\nzałóż hasło tutaj: ${ADRES}/haslo/[A-Za-z0-9_-]{43}\\n\\nLink jest ważny 48 h\\.$`,
+      ),
+    );
     expect(m.html).toContain(`${ADRES}/haslo/`);
     expect(m.text + m.subject).not.toMatch(/[{}]/);
 
@@ -73,12 +83,21 @@ describe('zapisany szablon w prawdziwej wysyłce', () => {
 
   it('reset: zapisany szablon resetu nie zmienia zaproszenia', async () => {
     const { db, app, admin, mailer } = panel();
-    await post(app, '/ustawienia/szablony-wiadomosci/reset', admin, { temat: 'Nowe hasło', tresc: 'Hasło ustawisz tu: {link}' });
+    await post(app, '/ustawienia/szablony-wiadomosci/reset', admin, {
+      temat: 'Nowe hasło',
+      tresc: 'Hasło ustawisz tu: {link}',
+    });
     const id = zalozKonto(db, { login: 'ewa', imie: 'Ewa', haslo: 'stare-haslo-123', rola: 'sprzedaz' });
     ustawEmail(db, id, 'ewa@example.test', () => new Date());
     await post(app, `/ustawienia/konta/${id}/link`, admin, { sposob: 'mail' });
     expect(mailer.sendMail.mock.calls[0][0]).toMatchObject({ subject: 'Nowe hasło' });
-    await post(app, '/ustawienia/konta/nowe', admin, { imie: 'Nowa', login: 'nowa', email: 'nowa@example.test', rola: 'produkcja', sposob: 'mail' });
+    await post(app, '/ustawienia/konta/nowe', admin, {
+      imie: 'Nowa',
+      login: 'nowa',
+      email: 'nowa@example.test',
+      rola: 'produkcja',
+      sposob: 'mail',
+    });
     expect(mailer.sendMail.mock.calls[1][0].subject).toBe('Zaproszenie do panelu');
   });
 });
@@ -99,17 +118,28 @@ describe('ekran Szablony wiadomości — maile do zespołu', () => {
 
   it('odmowa zapisu bez {link} — z powodem, nic nie zapisane', async () => {
     const { app, admin, mailer } = panel();
-    const r = await post(app, '/ustawienia/szablony-wiadomosci/zaproszenie', admin, { temat: 'Witaj', tresc: 'Cześć {imie}, zaloguj się w panelu.' });
+    const r = await post(app, '/ustawienia/szablony-wiadomosci/zaproszenie', admin, {
+      temat: 'Witaj',
+      tresc: 'Cześć {imie}, zaloguj się w panelu.',
+    });
     expect(r.statusCode).toBe(400);
     expect(r.body).toContain('{link}');
-    await post(app, '/ustawienia/konta/nowe', admin, { imie: 'Nowa', login: 'nowa', email: 'nowa@example.test', rola: 'produkcja', sposob: 'mail' });
+    await post(app, '/ustawienia/konta/nowe', admin, {
+      imie: 'Nowa',
+      login: 'nowa',
+      email: 'nowa@example.test',
+      rola: 'produkcja',
+      sposob: 'mail',
+    });
     expect(mailer.sendMail.mock.calls[0][0].subject).toBe('Zaproszenie do panelu');
   });
 
   it('edytor: pola {imie}, {link} (obowiązkowe), {waznosc}; bez pól zamówienia', async () => {
     const { app, admin } = panel();
     const r = await get(app, '/ustawienia/szablony-wiadomosci/reset', admin);
-    expect(r.body).toMatch(/<code>\{link\}<\/code> <span class="szw-znacznik szw-znacznik--wymagane">obowiązkowe<\/span>/);
+    expect(r.body).toMatch(
+      /<code>\{link\}<\/code> <span class="szw-znacznik szw-znacznik--wymagane">obowiązkowe<\/span>/,
+    );
     expect(r.body).toContain('<code>{waznosc}</code>');
     expect(r.body).toContain('<code>{imie}</code>');
     expect(r.body).not.toContain('<code>{kwota}</code>');

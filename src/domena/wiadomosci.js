@@ -201,15 +201,15 @@ export function stanTematu(z, temat_id, kontekst = {}) {
     // kiedyś zniknął tamten strażnik, ma tu wyjść puste miejsce w napisie, a nie cicha
     // podmiana na zdanie brzmiące jak stan dopuszczalny.
     // `kontekst.nazwaProgramu` — odmiana nazwy programu fakturowego (domyślnie inFakt).
-    return [`${kontekst.faktura.numer} · PDF z ${(kontekst.nazwaProgramu ?? NAZWA_ZAPASOWA).dopelniacz}`, ostatnio].filter(Boolean).join(' · ');
+    return [`${kontekst.faktura.numer} · PDF z ${(kontekst.nazwaProgramu ?? NAZWA_ZAPASOWA).dopelniacz}`, ostatnio]
+      .filter(Boolean)
+      .join(' · ');
   }
 
   if (temat_id === 'wyslane') return [numeryPaczek(z), ostatnio].filter(Boolean).join(' · ');
 
   const saldo = saldoWplat(z);
   const termin = terminZamowienia(z, kontekst.dzis);
-  const oTerminie = termin?.data
-    ? (termin.minal ? `termin minął ${termin.data}` : `termin mija ${termin.data}`)
-    : null;
+  const oTerminie = termin?.data ? (termin.minal ? `termin minął ${termin.data}` : `termin mija ${termin.data}`) : null;
   return [`brakuje ${zlotowki(saldo.roznicaZl)}`, oTerminie, ostatnio].filter(Boolean).join(' — ');
 }

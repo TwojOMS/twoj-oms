@@ -16,13 +16,24 @@ let db;
 beforeEach(() => {
   db = openOmsDb(':memory:');
   dopiszKlienta(db, {
-    klucz: 'przykladowa', nazwa: 'Pracownia Przykładowa', nip: NIP, b2b: 1, rabat_procent: 40,
-    chce_fakture: 1, metoda_wysylki: 'dpd', aktywny: 1,
-    koszt_dostawy_brutto: '19.00', platnosc: 'Przelew', termin_platnosci: null, komentarz: null,
+    klucz: 'przykladowa',
+    nazwa: 'Pracownia Przykładowa',
+    nip: NIP,
+    b2b: 1,
+    rabat_procent: 40,
+    chce_fakture: 1,
+    metoda_wysylki: 'dpd',
+    aktywny: 1,
+    koszt_dostawy_brutto: '19.00',
+    platnosc: 'Przelew',
+    termin_platnosci: null,
+    komentarz: null,
     // ⚠️ WARUNKI UMOWY MIESZKAJA OD 24.08.2026 NA KARCIE KLIENTA — do tego dnia szly
     // z `OMS_KLIENCI_ZBIORCZY`, wiec ten sam test budowal je w `config`.
-    rozliczenie_zbiorcze: 1, prog_darmowej_dostawy_gr: 50000,
-    oplata_obslugi_gr: 400, oplata_kurierska_gr: 1900,
+    rozliczenie_zbiorcze: 1,
+    prog_darmowej_dostawy_gr: 50000,
+    oplata_obslugi_gr: 400,
+    oplata_kurierska_gr: 1900,
   });
 });
 
@@ -39,10 +50,16 @@ const daneZ = ({ nip = NIP, rabat = 0, cena = '100.00', ilosc = 1 } = {}) => ({
   b2b: 1,
   termin_platnosci: null,
   rabat_procent: rabat,
-  pozycje: [{
-    nazwa: 'Szablon PIESI', sku: null, ilosc, cena_brutto: cena,
-    brutto_linii: (Number(cena) * ilosc).toFixed(2), cena_katalogowa: cena,
-  }],
+  pozycje: [
+    {
+      nazwa: 'Szablon PIESI',
+      sku: null,
+      ilosc,
+      cena_brutto: cena,
+      brutto_linii: (Number(cena) * ilosc).toFixed(2),
+      cena_katalogowa: cena,
+    },
+  ],
 });
 
 const pozycjeTowaru = (z) => z.pozycje.filter((p) => p.nazwa === 'Szablon PIESI');
@@ -63,7 +80,9 @@ describe('rabat kontraktowy przy zakładaniu zamówienia', () => {
   // kolejność kroków.
   it('próg darmowej dostawy liczy się od ceny PO rabacie', () => {
     const { id } = zalozZamowienieReczne({
-      db, dane: daneZ({ cena: '520.00' }), znacznik,
+      db,
+      dane: daneZ({ cena: '520.00' }),
+      znacznik,
     });
     const z = pobierzZamowienie(db, id);
     expect(pozycjeTowaru(z)[0].cena_brutto).toBe('312.00');
@@ -74,7 +93,9 @@ describe('rabat kontraktowy przy zakładaniu zamówienia', () => {
 
   it('rabat uzgodniony ręcznie (25%) NIE jest nadpisywany stawką z umowy', () => {
     const { id } = zalozZamowienieReczne({
-      db, dane: daneZ({ rabat: 25, cena: '100.00' }), znacznik,
+      db,
+      dane: daneZ({ rabat: 25, cena: '100.00' }),
+      znacznik,
     });
     const z = pobierzZamowienie(db, id);
     expect(z.rabat_procent).toBe(25);
@@ -83,7 +104,9 @@ describe('rabat kontraktowy przy zakładaniu zamówienia', () => {
 
   it('klient bez umowy nie dostaje żadnego rabatu', () => {
     const { id } = zalozZamowienieReczne({
-      db, dane: daneZ({ nip: '5252248481' }), znacznik,
+      db,
+      dane: daneZ({ nip: '5252248481' }),
+      znacznik,
     });
     const z = pobierzZamowienie(db, id);
     expect(z.rabat_procent).toBe(0);

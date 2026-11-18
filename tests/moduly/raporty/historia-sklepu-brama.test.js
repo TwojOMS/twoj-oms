@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { decyzja } from '../../pomoc/przykladowy-import-sklepu.js';
 
 const zam = (nad = {}) => ({
-  id: 1, number: '1', status: 'completed',
+  id: 1,
+  number: '1',
+  status: 'completed',
   billing: { email: 'k@klient.pl', first_name: 'Anna', last_name: 'Nowak', company: '' },
   ...nad,
 });

@@ -42,10 +42,19 @@ const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('bas
 const poller = { stan: () => ({ ostatni_przebieg_at: '2026-08-04T12:00:00', ostatni_blad: null }) };
 
 const zmapowane = (id, nad = {}) => ({
-  zrodlo_id: String(id), numer: String(id), klient: { first_name: 'Jan', email: 'j@k.pl' },
-  dostawa: { city: 'Warszawa' }, metoda_wysylki: 'allegro_dpd', kwota_pobrania: null, chce_fakture: 0,
-  nip: null, kwota_brutto: '99.00', status_woo: null, oplacone_at: '2026-08-04T09:00:00',
-  anulowane: 0, utworzone_at: '2026-08-04T08:00:00',
+  zrodlo_id: String(id),
+  numer: String(id),
+  klient: { first_name: 'Jan', email: 'j@k.pl' },
+  dostawa: { city: 'Warszawa' },
+  metoda_wysylki: 'allegro_dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '99.00',
+  status_woo: null,
+  oplacone_at: '2026-08-04T09:00:00',
+  anulowane: 0,
+  utworzone_at: '2026-08-04T08:00:00',
   pozycje: [{ nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 1, cena_brutto: '99.00', vat: null }],
   ...nad,
 });
@@ -59,7 +68,11 @@ const klientZ = (przesylki) => ({ pobierzPrzesylki: vi.fn().mockResolvedValue(pr
 
 const otworzKarte = async (id, { klienci = {}, ...reszta } = {}) => {
   const serwer = buildOmsServer({
-    db, config, poller, przesylkiAllegro: createPrzesylkiAllegro({ db, klienci }), ...reszta,
+    db,
+    config,
+    poller,
+    przesylkiAllegro: createPrzesylkiAllegro({ db, klienci }),
+    ...reszta,
   });
   await serwer.ready();
   return serwer.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
@@ -160,8 +173,10 @@ describe('karta zamówienia dociąga numer listu z Allegro', () => {
   it('zamówienie WYSŁANE dawno i bez paczki też nie jest odpytywane', async () => {
     const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane('e2a3'), {});
     oznaczWyslane(db, id);
-    db.prepare('UPDATE zamowienia SET wyslane_at = ? WHERE id = ?')
-      .run(new Date(Date.now() - 45 * 86400_000).toISOString(), id);
+    db.prepare('UPDATE zamowienia SET wyslane_at = ? WHERE id = ?').run(
+      new Date(Date.now() - 45 * 86400_000).toISOString(),
+      id,
+    );
     const klient = klientZ([{ waybill: 'AD3' }]);
 
     await otworzKarte(id, { klienci: { allegro_swietlik: klient } });
@@ -226,7 +241,8 @@ describe('karta zamówienia dociąga numer listu z Allegro', () => {
   it('INNY błąd Allegro dopisuje się mimo dławika', async () => {
     const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane('e2a1'), {});
     const klient = {
-      pobierzPrzesylki: vi.fn()
+      pobierzPrzesylki: vi
+        .fn()
         .mockRejectedValueOnce(new Error('Allegro: HTTP 401 przy /shipments'))
         .mockRejectedValueOnce(new Error('Allegro: HTTP 401 przy /shipments'))
         .mockRejectedValueOnce(new Error('Allegro: HTTP 500 przy /shipments')),
@@ -307,10 +323,7 @@ describe('karta zamówienia dociąga numer listu z Allegro', () => {
       const klient = klientZ([]);
       const klienci = { allegro_swietlik: klient };
 
-      await zGodzinami([
-        () => otworzKarte(id, { klienci }),
-        () => otworzKarte(id, { klienci }),
-      ]);
+      await zGodzinami([() => otworzKarte(id, { klienci }), () => otworzKarte(id, { klienci })]);
 
       expect(klient.pobierzPrzesylki).toHaveBeenCalledTimes(2);
     });

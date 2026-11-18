@@ -12,8 +12,12 @@ import { createMagazynPrzebieg } from '../../../src/moduly/magazyn/services/maga
 // Obietnica, ktorej mozna dokonczyc z zewnatrz — bez niej nie da sie sprawdzic, ze
 // `start` wraca PRZED koncem odczytu.
 function wstrzymana() {
-  let dokoncz; let wywroc;
-  const obietnica = new Promise((ok, zle) => { dokoncz = ok; wywroc = zle; });
+  let dokoncz;
+  let wywroc;
+  const obietnica = new Promise((ok, zle) => {
+    dokoncz = ok;
+    wywroc = zle;
+  });
   return { obietnica, dokoncz, wywroc };
 }
 
@@ -24,12 +28,15 @@ const przebiegZeZrodlem = (opcje) => createMagazynPrzebieg({ sklepy: { pro: {} }
 
 describe('createMagazynPrzebieg', () => {
   it('pusta instalacja odmawia, a źródło dodane po starcie odblokowuje odczyt bez restartu', async () => {
-    const allegro = {}, odswiez = vi.fn(async () => ({ kanaly: [] }));
+    const allegro = {},
+      odswiez = vi.fn(async () => ({ kanaly: [] }));
     const przebieg = createMagazynPrzebieg({ db, allegro, odswiez });
-    expect(przebieg.start()).toEqual({ wystartowal: false });expect(odswiez).not.toHaveBeenCalled();
+    expect(przebieg.start()).toEqual({ wystartowal: false });
+    expect(odswiez).not.toHaveBeenCalled();
     allegro.pierwsze = {};
     expect(przebieg.start()).toEqual({ wystartowal: true });
-    await vi.waitFor(() => expect(przebieg.stan().trwa).toBe(false));expect(odswiez).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(przebieg.stan().trwa).toBe(false));
+    expect(odswiez).toHaveBeenCalledOnce();
   });
   it('start WRACA, zanim odczyt sie skonczy, i melduje, ze przebieg trwa', async () => {
     const { obietnica, dokoncz } = wstrzymana();
@@ -68,7 +75,9 @@ describe('createMagazynPrzebieg', () => {
 
   it('...ale PO zakonczeniu startuje normalnie (straznik milczy, gdy nic nie trwa)', async () => {
     let numer = 0;
-    const odswiez = vi.fn(async () => ({ kanaly: [{ kanal: 'pro', zapisane: numer += 1, znikniete: 0, blad: null }] }));
+    const odswiez = vi.fn(async () => ({
+      kanaly: [{ kanal: 'pro', zapisane: (numer += 1), znikniete: 0, blad: null }],
+    }));
     const przebieg = przebiegZeZrodlem({ db, odswiez });
 
     przebieg.start();
@@ -96,7 +105,9 @@ describe('createMagazynPrzebieg', () => {
   it('awaria CALEGO przebiegu laduje w stanie, a nie w niezlapanej obietnicy', async () => {
     const przebieg = przebiegZeZrodlem({
       db,
-      odswiez: async () => { throw new Error('„nie-chwila" nie jest chwilą'); },
+      odswiez: async () => {
+        throw new Error('„nie-chwila" nie jest chwilą');
+      },
     });
 
     przebieg.start();
@@ -133,7 +144,10 @@ describe('createMagazynPrzebieg', () => {
     let zglos;
     const przebieg = przebiegZeZrodlem({
       db,
-      odswiez: ({ postep }) => { zglos = postep; return obietnica; },
+      odswiez: ({ postep }) => {
+        zglos = postep;
+        return obietnica;
+      },
     });
 
     przebieg.start();
@@ -148,7 +162,8 @@ describe('createMagazynPrzebieg', () => {
 
   it('stan oddany na zewnatrz jest KOPIA — ekran nie ma jak przestawic przebiegu', async () => {
     const przebieg = przebiegZeZrodlem({
-      db, odswiez: async () => ({ kanaly: [{ kanal: 'pro', zapisane: 1, znikniete: 0, blad: null }] }),
+      db,
+      odswiez: async () => ({ kanaly: [{ kanal: 'pro', zapisane: 1, znikniete: 0, blad: null }] }),
     });
     przebieg.start();
     await vi.waitFor(() => expect(przebieg.stan().trwa).toBe(false));

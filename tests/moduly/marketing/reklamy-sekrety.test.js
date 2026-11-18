@@ -41,8 +41,9 @@ describe('magazyn sekretów reklam', () => {
     expect(() => magazyn.sciezka('../poza')).toThrow();
     await expect(magazyn.zapisz({ typ: '../meta', polaczenieId: randomUUID(), tresc: 'tajne' })).rejects.toThrow();
     await expect(magazyn.zapisz({ typ: 'meta', polaczenieId: '../poza', tresc: 'tajne' })).rejects.toThrow();
-    await magazyn.zapisz({ typ: 'meta', polaczenieId: randomUUID(), tresc: 'tajne' }).then((ref) =>
-      expect(magazyn.odczytaj(`${ref}/../x`)).rejects.toThrow());
+    await magazyn
+      .zapisz({ typ: 'meta', polaczenieId: randomUUID(), tresc: 'tajne' })
+      .then((ref) => expect(magazyn.odczytaj(`${ref}/../x`)).rejects.toThrow());
   });
 
   it('równoległe aktualizacje jednego połączenia nie zostawiają częściowego tokenu ani pliku tymczasowego', async () => {

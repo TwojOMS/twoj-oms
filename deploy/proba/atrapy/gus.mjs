@@ -6,15 +6,18 @@
 // z wpisanym kluczem: przyjmuje każdy poza „zle” (odmowa jak prawdziwy GUS przy złym kluczu). Nic nie wychodzi do sieci.
 import { wymagajTrybuProby } from './tryb.mjs';
 
-export const KOMUNIKAT_GUS_DEMO = 'Pobieranie danych z GUS nie działa w wersji demonstracyjnej. '
-  + 'W Twoim OMS-ie ten przycisk wpisuje nazwę i adres firmy z rejestru REGON — tutaj wpisz je ręcznie.';
+export const KOMUNIKAT_GUS_DEMO =
+  'Pobieranie danych z GUS nie działa w wersji demonstracyjnej. ' +
+  'W Twoim OMS-ie ten przycisk wpisuje nazwę i adres firmy z rejestru REGON — tutaj wpisz je ręcznie.';
 
 export function createAtrapaGus({ env = process.env, klucz = null } = {}) {
   wymagajTrybuProby(env, 'atrapa GUS');
   async function zaloguj() {
     if (klucz === 'zle') {
-      throw Object.assign(new Error('Piaskownica: atrapa GUS odrzuciła logowanie (klucz „zle”) — nic nie poszło do GUS.'),
-        { dlaOperatora: true, status: 400 });
+      throw Object.assign(
+        new Error('Piaskownica: atrapa GUS odrzuciła logowanie (klucz „zle”) — nic nie poszło do GUS.'),
+        { dlaOperatora: true, status: 400 },
+      );
     }
     return 'SID-ATRAPA';
   }
@@ -23,7 +26,10 @@ export function createAtrapaGus({ env = process.env, klucz = null } = {}) {
       throw Object.assign(new Error(KOMUNIKAT_GUS_DEMO), { dlaOperatora: true, wylaczoneWDemo: true });
     },
     zaloguj,
-    async sprawdzPolaczenie() { await zaloguj(); return { ok: true }; },
+    async sprawdzPolaczenie() {
+      await zaloguj();
+      return { ok: true };
+    },
     atrapa: true,
   };
 }

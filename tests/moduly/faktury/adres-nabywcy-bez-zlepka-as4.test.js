@@ -14,16 +14,27 @@ function tekstPdf(dane) {
     const plik = path.join(katalog, 'p.pdf');
     writeFileSync(plik, zbudujProformePdf(dane));
     return execFileSync('pdftotext', ['-layout', '-enc', 'UTF-8', plik, '-'], { encoding: 'utf8' });
-  } finally { rmSync(katalog, { recursive: true, force: true }); }
+  } finally {
+    rmSync(katalog, { recursive: true, force: true });
+  }
 }
 
 describe('AS4: nabywca bez adresu w PDF proformy', () => {
   it('nie wypisuje „—, —” ani samotnego „—” w bloku nabywcy; nazwa i kraj zostają', () => {
     const tekst = tekstPdf({
-      numer: 'PF/1/2026', dataWystawienia: '2026-10-28',
-      sprzedawca: { nazwa: 'Pracownia Półcień', ulica: 'Lampowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL', nip: '1234563218' },
+      numer: 'PF/1/2026',
+      dataWystawienia: '2026-10-28',
+      sprzedawca: {
+        nazwa: 'Pracownia Półcień',
+        ulica: 'Lampowa 1',
+        kod: '00-950',
+        miasto: 'Warszawa',
+        kraj: 'PL',
+        nip: '1234563218',
+      },
       nabywca: { nazwa: 'Jan Przykładowy', kraj: 'PL' },
-      pozycje: [], podsumowanieVat: [],
+      pozycje: [],
+      podsumowanieVat: [],
     });
     expect(tekst).toContain('Jan Przykładowy');
     expect(tekst).not.toMatch(/—,\s*—/);

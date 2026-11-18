@@ -10,7 +10,12 @@ import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
 import { NAZWA_CIASTECZKA_OMS, nazwaCiasteczkaOms } from '../../../src/core/bezpieczenstwo/sesja.js';
 import { ENV_DEMO } from '../../../scripts/demo-dane.mjs';
 
-const wspolne = { OMS_USER: 'serwis', OMS_PASS: 'serwis-haslo', OMS_PROFORMY_KATALOG: tmpdir(), OMS_ETYKIETY_KATALOG: tmpdir() };
+const wspolne = {
+  OMS_USER: 'serwis',
+  OMS_PASS: 'serwis-haslo',
+  OMS_PROFORMY_KATALOG: tmpdir(),
+  OMS_ETYKIETY_KATALOG: tmpdir(),
+};
 const envProba = { ...ENV_DEMO, ...wspolne, OMS_TRYB: 'proba' };
 const envProdukcja = { ...ENV_DEMO, ...wspolne, OMS_TRYB: 'produkcja' };
 const origin = { origin: 'http://localhost' };
@@ -19,7 +24,12 @@ const HASLO = 'haslo-operatora-123';
 afterEach(() => vi.unstubAllGlobals());
 
 async function kompozycja(env) {
-  vi.stubGlobal('fetch', vi.fn(async () => { throw Error('Sieć zabroniona'); }));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => {
+      throw Error('Sieć zabroniona');
+    }),
+  );
   const a = await zbudujOms({ env });
   zalozKonto(a.db, { login: 'adam', imie: 'Adam', haslo: HASLO, rola: 'administrator', admin: true });
   return a;
@@ -45,12 +55,22 @@ function sloik() {
 }
 
 const zaloguj = async (a, s, haslo = HASLO) => {
-  const r = s.przyjmij(await a.app.inject({ method: 'POST', url: '/login', headers: { ...origin, cookie: s.naglowek() },
-    payload: { uzytkownik: 'adam', haslo, powrot: '/' } }));
+  const r = s.przyjmij(
+    await a.app.inject({
+      method: 'POST',
+      url: '/login',
+      headers: { ...origin, cookie: s.naglowek() },
+      payload: { uzytkownik: 'adam', haslo, powrot: '/' },
+    }),
+  );
   expect(r.statusCode, r.body).toBe(302);
 };
-const wejdz = async (a, s) => s.przyjmij(await a.app.inject({ method: 'GET', url: '/konto', headers: { accept: 'text/html', cookie: s.naglowek() } }));
-const post = async (a, s, url, payload = {}) => s.przyjmij(await a.app.inject({ method: 'POST', url, headers: { ...origin, cookie: s.naglowek() }, payload }));
+const wejdz = async (a, s) =>
+  s.przyjmij(
+    await a.app.inject({ method: 'GET', url: '/konto', headers: { accept: 'text/html', cookie: s.naglowek() } }),
+  );
+const post = async (a, s, url, payload = {}) =>
+  s.przyjmij(await a.app.inject({ method: 'POST', url, headers: { ...origin, cookie: s.naglowek() }, payload }));
 
 describe('ciasteczko sesji zależne od trybu', () => {
   it('produkcja zostaje na `sesja_oms` (wydanie nikogo nie wylogowuje), próba ma własną nazwę', () => {
@@ -84,7 +104,11 @@ describe('ciasteczko sesji zależne od trybu', () => {
     await zaloguj(produkcja, s);
     await zaloguj(proba, s);
 
-    const haslo = await post(proba, s, '/konto/haslo', { obecne: HASLO, nowe: 'nowe-haslo-proby-1', nowe2: 'nowe-haslo-proby-1' });
+    const haslo = await post(proba, s, '/konto/haslo', {
+      obecne: HASLO,
+      nowe: 'nowe-haslo-proby-1',
+      nowe2: 'nowe-haslo-proby-1',
+    });
     expect(haslo.statusCode, haslo.body).toBe(302);
     expect(String(haslo.headers['set-cookie'])).toMatch(/^sesja_oms_proba=/);
     expect((await wejdz(proba, s)).statusCode, 'piaskownica po zmianie hasła').toBe(200);

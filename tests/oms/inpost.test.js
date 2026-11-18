@@ -25,7 +25,15 @@ const URL_API = 'https://shipx.test/v1';
 // bez nich (`sender: email: required, phone: required`) — a fikstura bez tych pol opisywala
 // nadawce, ktory NIGDY nie moglby nadac prawdziwej paczki. Dlatego cala suita byla zielona,
 // podczas gdy produkcja odmawiala pierwszego nadania do paczkomatu (zam. 28173). Nie usuwac.
-const nadawca = { nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL', phone: '338451234', email: 'sklep@swietlik.example.test' };
+const nadawca = {
+  nazwa: 'Pracownia Półcień Anna Wzorcowa',
+  ulica: 'ul. Przykładowa 1',
+  kod: '00-950',
+  miasto: 'Warszawa',
+  kraj: 'PL',
+  phone: '338451234',
+  email: 'sklep@swietlik.example.test',
+};
 
 // Zamowienie 28045 z rozpoznania: telefon w Woo ma prefiks '+48', a w przesylce InPostu
 // leza gole dziewiec cyfr. Paczkomat SLN06M to jeden z trzech kodow zmierzonych na koncie.
@@ -34,7 +42,14 @@ const zamowienie = {
   kwota_pobrania: null,
   punkt_odbioru: 'SLN06M',
   punkt_odbioru_opis: 'Przy myjni bezdotykowej',
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
+  dostawa: {
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    address_1: 'Polna 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
+  },
   klient: { email: 'j@k.pl', phone: '+48500900008' },
 };
 
@@ -188,7 +203,12 @@ describe('createInpostClient.nadaj — kształt żądania z rozpoznania', () => 
     await c.nadaj({ zamowienie, paczka });
     const { sender } = cialoPost(fetchImpl);
     expect(sender.company_name).toBe('Pracownia Półcień Anna Wzorcowa');
-    expect(sender.address).toEqual({ line1: 'ul. Przykładowa 1', city: 'Warszawa', post_code: '00-950', country_code: 'PL' });
+    expect(sender.address).toEqual({
+      line1: 'ul. Przykładowa 1',
+      city: 'Warszawa',
+      post_code: '00-950',
+      country_code: 'PL',
+    });
     expect(sender.address.street).toBeUndefined();
     expect(sender.address.building_number).toBeUndefined();
   });
@@ -211,8 +231,7 @@ describe('createInpostClient.nadaj — kształt żądania z rozpoznania', () => 
   // Kod paczkomatu to ADRES przesylki. Bez niego nie ma dokad jej nadac.
   it('zamówienie bez kodu paczkomatu → błąd operatora, żadnej przesyłki u kuriera', async () => {
     const { c, fetchImpl } = klient(OK());
-    await expect(c.nadaj({ zamowienie: { ...zamowienie, punkt_odbioru: null }, paczka }))
-      .rejects.toThrow(/paczkomat/i);
+    await expect(c.nadaj({ zamowienie: { ...zamowienie, punkt_odbioru: null }, paczka })).rejects.toThrow(/paczkomat/i);
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
@@ -272,7 +291,8 @@ describe('createInpostClient.nadaj — pobranie', () => {
   it('za pobraniem wysyła kwotę i walutę', async () => {
     const { c, fetchImpl } = klient([
       json(201, { ...PRZESYLKA_Z_NUMEREM, cod: { amount: 212.9, currency: 'PLN' } }),
-      bin(200, PDF), bin(200, ZPL),
+      bin(200, PDF),
+      bin(200, ZPL),
     ]);
     await c.nadaj({ zamowienie: { ...zamowienie, kwota_pobrania: '212.90' }, paczka });
     expect(cialoPost(fetchImpl).cod).toEqual({ amount: 212.9, currency: 'PLN' });
@@ -288,8 +308,9 @@ describe('createInpostClient.nadaj — pobranie', () => {
 
   it('kwota nie do odczytania → rzuca, zamiast po cichu wysłać paczkę jako przedpłaconą', async () => {
     const { c, fetchImpl } = klient(OK());
-    await expect(c.nadaj({ zamowienie: { ...zamowienie, kwota_pobrania: '212,90' }, paczka }))
-      .rejects.toThrow(/pobrani/i);
+    await expect(c.nadaj({ zamowienie: { ...zamowienie, kwota_pobrania: '212,90' }, paczka })).rejects.toThrow(
+      /pobrani/i,
+    );
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
@@ -322,16 +343,25 @@ describe('createInpostClient.nadaj — pobranie MUSI wrócić z InPostu', () => 
   const zPobraniem = { ...zamowienie, kwota_pobrania: '41.29' };
 
   it('odmawia GŁOŚNO, gdy InPost oddał przesyłkę bez pobrania, o które prosiliśmy', async () => {
-    const { c } = klient([json(201, { ...PRZESYLKA_Z_NUMEREM, cod: { amount: null, currency: null } }), bin(200, PDF), bin(200, ZPL)]);
+    const { c } = klient([
+      json(201, { ...PRZESYLKA_Z_NUMEREM, cod: { amount: null, currency: null } }),
+      bin(200, PDF),
+      bin(200, ZPL),
+    ]);
     await expect(c.nadaj({ zamowienie: zPobraniem, paczka })).rejects.toThrow(/pobrani/i);
   });
 
   // ⚠️ PRZESYLKA JUZ ISTNIEJE, WIEC IDENTYFIKATOR JEST CENNIEJSZY NIZ KOMUNIKAT. Bez niego
   // nie da sie jej ANULOWAC — a anulowanie jest jedyna reakcja na tak zakonczone nadanie.
   it('wyjątek niesie shipmentId, bo tylko z nim da się tę przesyłkę anulować', async () => {
-    const { c } = klient([json(201, { ...PRZESYLKA_Z_NUMEREM, cod: { amount: null, currency: null } }), bin(200, PDF), bin(200, ZPL)]);
-    await expect(c.nadaj({ zamowienie: zPobraniem, paczka }))
-      .rejects.toMatchObject({ shipmentId: PRZESYLKA_Z_NUMEREM.id });
+    const { c } = klient([
+      json(201, { ...PRZESYLKA_Z_NUMEREM, cod: { amount: null, currency: null } }),
+      bin(200, PDF),
+      bin(200, ZPL),
+    ]);
+    await expect(c.nadaj({ zamowienie: zPobraniem, paczka })).rejects.toMatchObject({
+      shipmentId: PRZESYLKA_Z_NUMEREM.id,
+    });
   });
 
   it('odmawia też, gdy InPost W OGÓLE nie odesłał pola `cod`', async () => {
@@ -343,7 +373,11 @@ describe('createInpostClient.nadaj — pobranie MUSI wrócić z InPostu', () => 
   // Kwota rozjechana to nie „drobiazg do poprawienia na karcie" — to inna suma inkasowana
   // od klienta niż ta, której zażądało zamówienie.
   it('odmawia, gdy InPost oddał INNĄ kwotę niż wysłana', async () => {
-    const { c } = klient([json(201, { ...PRZESYLKA_Z_NUMEREM, cod: { amount: 4.129, currency: 'PLN' } }), bin(200, PDF), bin(200, ZPL)]);
+    const { c } = klient([
+      json(201, { ...PRZESYLKA_Z_NUMEREM, cod: { amount: 4.129, currency: 'PLN' } }),
+      bin(200, PDF),
+      bin(200, ZPL),
+    ]);
     await expect(c.nadaj({ zamowienie: zPobraniem, paczka })).rejects.toThrow(/pobrani/i);
   });
 
@@ -353,10 +387,10 @@ describe('createInpostClient.nadaj — pobranie MUSI wrócić z InPostu', () => 
   it('zgodna kwota przechodzi — przesyłka nadana, numer listu oddany', async () => {
     const { c } = klient([
       json(201, { ...PRZESYLKA_Z_NUMEREM, cod: { amount: 41.29, currency: 'PLN' } }),
-      bin(200, PDF), bin(200, ZPL),
+      bin(200, PDF),
+      bin(200, ZPL),
     ]);
-    await expect(c.nadaj({ zamowienie: zPobraniem, paczka }))
-      .resolves.toMatchObject({ numerListu: NUMER });
+    await expect(c.nadaj({ zamowienie: zPobraniem, paczka })).resolves.toMatchObject({ numerListu: NUMER });
   });
 
   // ⚠️ TO JEST POWÓD, DLA KTÓREGO PORÓWNANIE IDZIE PO GROSZACH, A NIE PO LICZBACH.
@@ -368,10 +402,10 @@ describe('createInpostClient.nadaj — pobranie MUSI wrócić z InPostu', () => 
   it('szum zmiennoprzecinkowy (41.290000000000003) to TA SAMA kwota, nie rozjazd', async () => {
     const { c } = klient([
       json(201, { ...PRZESYLKA_Z_NUMEREM, cod: { amount: 41.290000000000003, currency: 'PLN' } }),
-      bin(200, PDF), bin(200, ZPL),
+      bin(200, PDF),
+      bin(200, ZPL),
     ]);
-    await expect(c.nadaj({ zamowienie: zPobraniem, paczka }))
-      .resolves.toMatchObject({ numerListu: NUMER });
+    await expect(c.nadaj({ zamowienie: zPobraniem, paczka })).resolves.toMatchObject({ numerListu: NUMER });
   });
 
   // Bez pobrania niczego nie sprawdzamy — `cod: { amount: null }` w odpowiedzi jest wtedy
@@ -379,7 +413,8 @@ describe('createInpostClient.nadaj — pobranie MUSI wrócić z InPostu', () => 
   it('bez pobrania odpowiedź z pustym `cod` NIE jest błędem', async () => {
     const { c } = klient([
       json(201, { ...PRZESYLKA_Z_NUMEREM, cod: { amount: null, currency: null } }),
-      bin(200, PDF), bin(200, ZPL),
+      bin(200, PDF),
+      bin(200, ZPL),
     ]);
     await expect(c.nadaj({ zamowienie, paczka })).resolves.toMatchObject({ numerListu: NUMER });
   });
@@ -426,7 +461,10 @@ describe('createInpostClient.nadaj — numer nadawany asynchronicznie', () => {
     fetchImpl.mockResolvedValue(json(200, PRZESYLKA_BEZ_NUMERU));
 
     let skonczone = false;
-    const p = c.nadaj({ zamowienie, paczka }).then((w) => { skonczone = true; return w; });
+    const p = c.nadaj({ zamowienie, paczka }).then((w) => {
+      skonczone = true;
+      return w;
+    });
     await vi.advanceTimersByTimeAsync(LIMIT_ODPYTYWANIA_MS + 5000);
 
     expect(skonczone).toBe(true);
@@ -633,8 +671,9 @@ describe('createInpostClient — walidacja konfiguracji', () => {
 
   it('nadawca z PUSTYMI polami → błąd wskazujący pola, a nie cicha zgoda', () => {
     const pusty = { nazwa: 'Pracownia Półcień', ulica: '', kod: '', miasto: '' };
-    expect(() => createInpostClient({ ...pelna, nadawca: pusty }))
-      .toThrow(/nadawca\.ulica.*nadawca\.kod.*nadawca\.miasto/);
+    expect(() => createInpostClient({ ...pelna, nadawca: pusty })).toThrow(
+      /nadawca\.ulica.*nadawca\.kod.*nadawca\.miasto/,
+    );
   });
 
   it.each(['token', 'organizacja', 'url'])('brak %s → czytelny błąd przy tworzeniu klienta', (klucz) => {
@@ -642,8 +681,7 @@ describe('createInpostClient — walidacja konfiguracji', () => {
   });
 
   it('telefon nadawcy nie do odczytania → błąd konfiguracji przy starcie, nie przy paczce', () => {
-    expect(() => createInpostClient({ ...pelna, nadawca: { ...nadawca, phone: '12-34' } }))
-      .toThrow(/NADAWCA_TELEFON/);
+    expect(() => createInpostClient({ ...pelna, nadawca: { ...nadawca, phone: '12-34' } })).toThrow(/NADAWCA_TELEFON/);
   });
 
   it('poprawny telefon nadawcy jedzie jako dziewięć cyfr', async () => {
@@ -729,10 +767,15 @@ describe('createInpostClient — e-mail i telefon nadawcy (usterka 05.08.2026)',
 
   // Sedno decyzji z 05.08: brak konfiguracji paczkomatowej nie ma prawa polozyc panelu.
   it('brak obu pól NIE przeszkadza usłudze wstać — DPD ma działać dalej', () => {
-    expect(() => createInpostClient({
-      url: URL_API, token: TOKEN, organizacja: ORGANIZACJA, fetchImpl: vi.fn(),
-      nadawca: { ...nadawca, phone: '', email: '' },
-    })).not.toThrow();
+    expect(() =>
+      createInpostClient({
+        url: URL_API,
+        token: TOKEN,
+        organizacja: ORGANIZACJA,
+        fetchImpl: vi.fn(),
+        nadawca: { ...nadawca, phone: '', email: '' },
+      }),
+    ).not.toThrow();
   });
 
   // Telefon nadawcy przechodzi TA SAMA normalizacje, co telefon odbiorcy: InPost chce

@@ -7,12 +7,23 @@ import { odczytajSekret } from '../../../src/core/bezpieczenstwo/sekret-sesji.js
 
 // Odmowy marketingu (reklamy w Ustawieniach, kampania) w układzie OMS.
 const CONFIG = { auth: { user: 'serwis', pass: 'haslo-env' }, klienciZbiorczy: [] };
-const BASIC = { authorization: `Basic ${Buffer.from('serwis:haslo-env').toString('base64')}`, origin: 'http://localhost' };
+const BASIC = {
+  authorization: `Basic ${Buffer.from('serwis:haslo-env').toString('base64')}`,
+  origin: 'http://localhost',
+};
 const FORM = { ...BASIC, 'content-type': 'application/x-www-form-urlencoded' };
 const REKL = '/ustawienia/integracje/reklamy';
 let db, app;
-afterEach(async () => { await app?.close(); db?.close(); app = db = null; });
-const start = (nad = {}) => { db = openOmsDb(':memory:'); app = buildOmsServer({ db, config: CONFIG, ...nad }); return app; };
+afterEach(async () => {
+  await app?.close();
+  db?.close();
+  app = db = null;
+});
+const start = (nad = {}) => {
+  db = openOmsDb(':memory:');
+  app = buildOmsServer({ db, config: CONFIG, ...nad });
+  return app;
+};
 
 const sprawdz = (r, status, tekst, href, napis) => {
   expect(r.statusCode).toBe(status);
@@ -35,8 +46,16 @@ describe('reklamy w Ustawieniach', () => {
     const id = zalozKonto(db, { login: 'ewa', imie: 'Barbara', haslo: 'h', rola: 'sprzedaz', admin: false });
     ustawUprawnienia(db, id, ['ustawienia']);
     const jakoAga = { ...FORM, cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz('ewa', odczytajSekret(db))}` };
-    wRekl(await wyslij('POST', `${REKL}/zapisz`, PELNE, jakoAga), 403, 'Tylko administrator może zmieniać połączenia reklam.');
-    wRekl(await wyslij('POST', `${REKL}/test`, 'polaczenieId=1', jakoAga), 403, 'Tylko administrator może testować połączenia reklam.');
+    wRekl(
+      await wyslij('POST', `${REKL}/zapisz`, PELNE, jakoAga),
+      403,
+      'Tylko administrator może zmieniać połączenia reklam.',
+    );
+    wRekl(
+      await wyslij('POST', `${REKL}/test`, 'polaczenieId=1', jakoAga),
+      403,
+      'Tylko administrator może testować połączenia reklam.',
+    );
   });
   it('zapis bez HTTPS (403)', async () => {
     start();
@@ -48,10 +67,23 @@ describe('reklamy w Ustawieniach', () => {
   });
   it('zapis z brakami w formularzu (400)', async () => {
     start({ reklamy: { magazyn: { zapisz: async () => 'meta:x' }, zaufaneHttps: () => true } });
-    wRekl(await wyslij('POST', `${REKL}/zapisz`, `typ=meta&kontoId=act_1&kanal=&tresc=${SEKRET}`), 400, 'Uzupełnij źródło, konto, kanał i poświadczenie.');
+    wRekl(
+      await wyslij('POST', `${REKL}/zapisz`, `typ=meta&kontoId=act_1&kanal=&tresc=${SEKRET}`),
+      400,
+      'Uzupełnij źródło, konto, kanał i poświadczenie.',
+    );
   });
   it('zapis, gdy magazyn zawodzi (400)', async () => {
-    start({ reklamy: { magazyn: { zapisz: async () => { throw new Error(`awaria ${SEKRET}`); } }, zaufaneHttps: () => true } });
+    start({
+      reklamy: {
+        magazyn: {
+          zapisz: async () => {
+            throw new Error(`awaria ${SEKRET}`);
+          },
+        },
+        zaufaneHttps: () => true,
+      },
+    });
     wRekl(await wyslij('POST', `${REKL}/zapisz`, PELNE), 400, 'Nie udało się zapisać połączenia reklam.');
   });
   it('test nieistniejącego połączenia (404)', async () => {
@@ -63,10 +95,22 @@ describe('reklamy w Ustawieniach', () => {
 describe('kampania', () => {
   it('odświeżenie reklam bez czuwacza (503)', async () => {
     start({ czuwaczReklam: null });
-    sprawdz(await wyslij('POST', '/kampania/odswiez-reklamy'), 503, 'Odczyt reklam nie jest dostępny.', '/kampania', 'Wróć do reklam');
+    sprawdz(
+      await wyslij('POST', '/kampania/odswiez-reklamy'),
+      503,
+      'Odczyt reklam nie jest dostępny.',
+      '/kampania',
+      'Wróć do reklam',
+    );
   });
   it('odświeżenie bez Mety i GA4 (503)', async () => {
     start({ czuwaczKampanii: null });
-    sprawdz(await wyslij('POST', '/kampania/odswiez'), 503, 'Panel nie ma podpiętej ani Mety, ani GA4 — nie ma czego odświeżać.', '/kampania', 'Wróć do reklam');
+    sprawdz(
+      await wyslij('POST', '/kampania/odswiez'),
+      503,
+      'Panel nie ma podpiętej ani Mety, ani GA4 — nie ma czego odświeżać.',
+      '/kampania',
+      'Wróć do reklam',
+    );
   });
 });

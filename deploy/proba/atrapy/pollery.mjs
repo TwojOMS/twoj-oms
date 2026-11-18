@@ -21,7 +21,13 @@ export function uruchomPulsPollerow({ db, env, zrodla, teraz = () => new Date() 
     for (const z of zrodla) zapisz.run(z, at);
   };
   puls();
-  const zegar = setInterval(() => { try { puls(); } catch { /* baza zamknięta przy wyłączaniu */ } }, CO_ILE_MS_PULSU_POLLEROW);
+  const zegar = setInterval(() => {
+    try {
+      puls();
+    } catch {
+      /* baza zamknięta przy wyłączaniu */
+    }
+  }, CO_ILE_MS_PULSU_POLLEROW);
   zegar.unref?.();
   return () => clearInterval(zegar);
 }

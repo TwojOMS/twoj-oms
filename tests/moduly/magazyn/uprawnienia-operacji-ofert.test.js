@@ -8,27 +8,43 @@ import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { definicjeKanalowHistoryczne } from '../../pomoc/przykladowe-definicje-kanalow.js';
 import { szyfrTestowy } from '../../pomoc/sejf-testowy.ts';
 import { utworzKarte } from '../../../src/oms/db/magazyn.js';
-import { wstawOferte, zmienOferte, ofertaPoId, zapiszUstawieniaOfertKonta } from '../../../src/oms/db/oferty-kanalow.ts';
+import {
+  wstawOferte,
+  zmienOferte,
+  ofertaPoId,
+  zapiszUstawieniaOfertKonta,
+} from '../../../src/oms/db/oferty-kanalow.ts';
 import { zalozKonto, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
 import { podpisz, NAZWA_CIASTECZKA_OMS } from '../../../src/core/bezpieczenstwo/sesja.js';
 import { wczytajSekret } from '../../../src/core/bezpieczenstwo/sekret-sesji.js';
 
-const P9 = JSON.parse(readFileSync(new URL('../../fixtures/allegro/e3-pomiar-p9-kategoria.json', import.meta.url), 'utf8'));
-const KATEGORIE = Object.fromEntries(P9.sciezka.map(k => [k.id, k]));
-const CZYNNE = 'allegro-polcien';        // oferty czynne, zapisy wolne
-const WSTRZYMANE = 'allegro-polcien-2';  // oferty_czynne = 0
-const ODCZYT = 'allegro-polcien-3';      // oferty czynne, ale zapisy zablokowane (tryb tylko odczyt)
+const P9 = JSON.parse(
+  readFileSync(new URL('../../fixtures/allegro/e3-pomiar-p9-kategoria.json', import.meta.url), 'utf8'),
+);
+const KATEGORIE = Object.fromEntries(P9.sciezka.map((k) => [k.id, k]));
+const CZYNNE = 'allegro-polcien'; // oferty czynne, zapisy wolne
+const WSTRZYMANE = 'allegro-polcien-2'; // oferty_czynne = 0
+const ODCZYT = 'allegro-polcien-3'; // oferty czynne, ale zapisy zablokowane (tryb tylko odczyt)
 const ADRES_KATEGORII = `/magazyn/kategorie/${encodeURIComponent('Lampy stołowe')}/allegro`;
 const ADRES_MARKI = `/magazyn/marki/${encodeURIComponent('Pracownia Półcień')}/allegro`;
-const PELNY_ZAKRES = ['allegro:api:sale:offers:read', 'allegro:api:sale:offers:write', 'allegro:api:sale:settings:read'];
-const DUPLIKAT = { kod: 'duplikat', oferty: [{ id: '7700000001', nazwa: 'Lampa Gliwka', status: 'INACTIVE' },
-  { id: '7700000002', nazwa: 'Lampa Gliwka', status: 'ACTIVE' }] };
+const PELNY_ZAKRES = [
+  'allegro:api:sale:offers:read',
+  'allegro:api:sale:offers:write',
+  'allegro:api:sale:settings:read',
+];
+const DUPLIKAT = {
+  kod: 'duplikat',
+  oferty: [
+    { id: '7700000001', nazwa: 'Lampa Gliwka', status: 'INACTIVE' },
+    { id: '7700000002', nazwa: 'Lampa Gliwka', status: 'ACTIVE' },
+  ],
+};
 const WIELE = { kod: 'wiele-produktow', produkty: [{ id: 'prod-1', nazwa: 'Lampa Gliwka biała', ean: null }] };
 const OSTRZEZENIE = /nie zostaną zakończone, dopóki/;
-const jwt = scope => ['e30', Buffer.from(JSON.stringify({ scope })).toString('base64url'), 'podpis'].join('.');
+const jwt = (scope) => ['e30', Buffer.from(JSON.stringify({ scope })).toString('base64url'), 'podpis'].join('.');
 
 const atrapaKlienta = () => ({
-  pobierzKategorie: vi.fn(async id => {
+  pobierzKategorie: vi.fn(async (id) => {
     if (!KATEGORIE[id]) throw Object.assign(new Error('nie ma'), { status: 404 });
     return structuredClone(KATEGORIE[id]);
   }),
@@ -40,33 +56,57 @@ let db, app, klienci, admin, operator, kartaId;
 const post = (url, payload, headers) => app.inject({ method: 'POST', url, payload, headers });
 const get = (url, headers) => app.inject({ url, headers });
 const kartaAllegro = () => db.prepare('SELECT * FROM karty_allegro WHERE karta_id = ?').get(kartaId);
-const mapa = () => db.prepare('SELECT kategoria_karty, srodowisko, kategoria_allegro_id FROM allegro_mapa_kategorii').all();
+const mapa = () =>
+  db.prepare('SELECT kategoria_karty, srodowisko, kategoria_allegro_id FROM allegro_mapa_kategorii').all();
 const oferta = (kanal, idZewnetrzne, zmiany = {}) => {
   const o = wstawOferte(db, { kartaId, kanal, idZewnetrzne, stan: 'problem', pochodzenie: 'oms', tryb: 'zarzadzana' });
   return zmienOferte(db, o.id, zmiany);
 };
 const reguly = () => db.prepare('SELECT parametr_id, potwierdzil FROM allegro_reguly_parametrow').all();
 const marki = () => db.prepare('SELECT marka, wartosc_id FROM allegro_marki').all();
-const tokenKonta = (k, scope) => db.prepare(`INSERT OR REPLACE INTO tokeny_kanalu (kanal, access_token, refresh_token, wygasa_at, refresh_wygasa_at, zaktualizowane_at)
-  VALUES (?, ?, ?, '2026-11-14T11:00:00Z', '2027-01-01T00:00:00Z', '2026-11-14T10:00:00Z')`).run(k,
-  szyfrTestowy(db, 'tokeny_kanalu', 'access_token', k, jwt(scope)), szyfrTestowy(db, 'tokeny_kanalu', 'refresh_token', k, 'REFRESH-ATRAPA'));
-const sekcjaSprzedazy = body => body.match(/<section[^>]*id="sprzedaz-karty"[\s\S]*?<\/section>/)?.[0] ?? '';
+const tokenKonta = (k, scope) =>
+  db
+    .prepare(
+      `INSERT OR REPLACE INTO tokeny_kanalu (kanal, access_token, refresh_token, wygasa_at, refresh_wygasa_at, zaktualizowane_at)
+  VALUES (?, ?, ?, '2026-11-14T11:00:00Z', '2027-01-01T00:00:00Z', '2026-11-14T10:00:00Z')`,
+    )
+    .run(
+      k,
+      szyfrTestowy(db, 'tokeny_kanalu', 'access_token', k, jwt(scope)),
+      szyfrTestowy(db, 'tokeny_kanalu', 'refresh_token', k, 'REFRESH-ATRAPA'),
+    );
+const sekcjaSprzedazy = (body) => body.match(/<section[^>]*id="sprzedaz-karty"[\s\S]*?<\/section>/)?.[0] ?? '';
 
 beforeEach(async () => {
   db = openOmsDb(':memory:');
   klienci = { [CZYNNE]: atrapaKlienta(), [WSTRZYMANE]: atrapaKlienta(), [ODCZYT]: atrapaKlienta() };
-  const konta = [CZYNNE, WSTRZYMANE, ODCZYT].map(klucz => ({ klucz, nazwa: klucz, autoryzacja: 'polaczone', srodowisko: 'produkcja' }));
-  app = buildOmsServer({ db, config: { auth: { user: 'operator', pass: 'atrapa' }, definicje: definicjeKanalowHistoryczne },
+  const konta = [CZYNNE, WSTRZYMANE, ODCZYT].map((klucz) => ({
+    klucz,
+    nazwa: klucz,
+    autoryzacja: 'polaczone',
+    srodowisko: 'produkcja',
+  }));
+  app = buildOmsServer({
+    db,
+    config: { auth: { user: 'operator', pass: 'atrapa' }, definicje: definicjeKanalowHistoryczne },
     magazyn: { stan: () => ({ trwa: false, kanaly: [] }) },
-    nadpisania: { 'kanaly.klienciKanalow': klienci, 'kanaly.repozytoriumKanalow': {
-      listaTypu: typ => (typ === 'allegro' ? konta : []), zapisyZablokowane: klucz => klucz === ODCZYT, konfliktKlucza: () => false,
-    } },
+    nadpisania: {
+      'kanaly.klienciKanalow': klienci,
+      'kanaly.repozytoriumKanalow': {
+        listaTypu: (typ) => (typ === 'allegro' ? konta : []),
+        zapisyZablokowane: (klucz) => klucz === ODCZYT,
+        konfliktKlucza: () => false,
+      },
+    },
   });
   await app.ready();
   const konto = (login, czyAdmin, prawa) => {
     const id = zalozKonto(db, { login, imie: login, haslo: 'atrapa-testowa', rola: 'operator', admin: czyAdmin });
     ustawUprawnienia(db, id, prawa);
-    return { origin: 'http://localhost', cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz(login, wczytajSekret(db), Date.now(), 0)}` };
+    return {
+      origin: 'http://localhost',
+      cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz(login, wczytajSekret(db), Date.now(), 0)}`,
+    };
   };
   admin = konto('administrator-testowy', true, []);
   operator = konto('sprzedawca-testowy', false, ['magazyn']);
@@ -74,11 +114,25 @@ beforeEach(async () => {
   for (const k of [CZYNNE, WSTRZYMANE, ODCZYT]) tokenKonta(k, PELNY_ZAKRES);
   zapiszUstawieniaOfertKonta(db, CZYNNE, { czynne: true });
   zapiszUstawieniaOfertKonta(db, ODCZYT, { czynne: true });
-  db.prepare('INSERT OR IGNORE INTO kategorie_kart (nazwa, utworzona_at) VALUES (?, ?)').run('Lampy stołowe', '2026-11-01T10:00:00Z');
-  db.prepare('INSERT OR IGNORE INTO marki (nazwa, utworzona_at) VALUES (?, ?)').run('Pracownia Półcień', '2026-11-01T10:00:00Z');
-  kartaId = utworzKarte(db, { nazwa: 'Lampa stołowa Gliwka', sku: 'GLW-1', kategoria_glowna: 'Lampy stołowe', marka: 'Pracownia Półcień' });
+  db.prepare('INSERT OR IGNORE INTO kategorie_kart (nazwa, utworzona_at) VALUES (?, ?)').run(
+    'Lampy stołowe',
+    '2026-11-01T10:00:00Z',
+  );
+  db.prepare('INSERT OR IGNORE INTO marki (nazwa, utworzona_at) VALUES (?, ?)').run(
+    'Pracownia Półcień',
+    '2026-11-01T10:00:00Z',
+  );
+  kartaId = utworzKarte(db, {
+    nazwa: 'Lampa stołowa Gliwka',
+    sku: 'GLW-1',
+    kategoria_glowna: 'Lampy stołowe',
+    marka: 'Pracownia Półcień',
+  });
 });
-afterEach(async () => { await app?.close(); db?.close(); });
+afterEach(async () => {
+  await app?.close();
+  db?.close();
+});
 
 // ——— N5 ———
 it('N5: Ponów na problemie `duplikat` → 409 na karcie i na ekranie problemów, wiersz bez zmian', async () => {
@@ -98,7 +152,9 @@ it('N5: zamiast Ponów zdanie o wyborze jednej z ofert (karta i ekran problemów
   const problemy = (await get('/magazyn/problemy-ofert', admin)).body;
   expect(problemy).not.toContain(`/problemy-ofert/${dup.id}/ponow`);
   expect(problemy).toContain('Wybierz jedną z ofert w Allegro');
-  const inny = oferta(WSTRZYMANE, 'ext:gliwka-2', { problemy: [{ kod: 'walidacja', tekst: 'Allegro odrzuciło ofertę.' }] });
+  const inny = oferta(WSTRZYMANE, 'ext:gliwka-2', {
+    problemy: [{ kod: 'walidacja', tekst: 'Allegro odrzuciło ofertę.' }],
+  });
   expect((await get(`/magazyn/${kartaId}`, admin)).body).toContain(`/oferty/${inny.id}/ponow`);
   expect((await get('/magazyn/problemy-ofert', admin)).body).toContain(`/problemy-ofert/${inny.id}/ponow`);
 });
@@ -107,7 +163,11 @@ it('N5: zamiast Ponów zdanie o wyborze jednej z ofert (karta i ekran problemów
 it('N6: konto z prawem `magazyn` bez admina → 403 na trzech trasach zapisu Allegro i brak zapisu', async () => {
   const o = oferta(CZYNNE, 'ext:gliwka-1', { problemy: [WIELE] });
   const r1 = await post(`/magazyn/${kartaId}/allegro`, { nazwa: 'Lampa Gliwka nowa' }, operator);
-  const r2 = await post(`/magazyn/${kartaId}/allegro/produkt`, { ofertaId: String(o.id), produktId: 'prod-1' }, operator);
+  const r2 = await post(
+    `/magazyn/${kartaId}/allegro/produkt`,
+    { ofertaId: String(o.id), produktId: 'prod-1' },
+    operator,
+  );
   const r3 = await post(ADRES_KATEGORII, { srodowisko: 'produkcja', kategoria_id: '257' }, operator);
   for (const r of [r1, r2, r3]) {
     expect(r.statusCode).toBe(403);
@@ -123,7 +183,10 @@ it('N6: admin zapisuje jak dotąd (dane Allegro, wybór produktu, mapa kategorii
   const o = oferta(CZYNNE, 'ext:gliwka-1', { problemy: [WIELE] });
   expect((await post(`/magazyn/${kartaId}/allegro`, { nazwa: 'Lampa Gliwka nowa' }, admin)).statusCode).toBe(303);
   expect(kartaAllegro()).toMatchObject({ nazwa: 'Lampa Gliwka nowa' });
-  expect((await post(`/magazyn/${kartaId}/allegro/produkt`, { ofertaId: String(o.id), produktId: 'prod-1' }, admin)).statusCode).toBe(303);
+  expect(
+    (await post(`/magazyn/${kartaId}/allegro/produkt`, { ofertaId: String(o.id), produktId: 'prod-1' }, admin))
+      .statusCode,
+  ).toBe(303);
   expect(ofertaPoId(db, o.id)).toMatchObject({ stan: 'do_wyslania' });
   expect(kartaAllegro()).toMatchObject({ produkt_id: 'prod-1' });
   expect((await post(ADRES_KATEGORII, { srodowisko: 'produkcja', kategoria_id: '257' }, admin)).statusCode).toBe(303);
@@ -162,7 +225,10 @@ it('N6 (T2): reguła parametru kategorii i marka Allegro — nie-admin 403 bez z
   const regulyPrzed = reguly(); // zatwierdzenie kategorii samo zakłada regułę „Stan”
   const regula = { srodowisko: 'produkcja', parametr_id: '224017', rodzaj: 'stala', wartosc: 'GLW-KOD-1' };
   const marka = { srodowisko: 'produkcja', parametr_id: '248811', wartosc_id: '248811_100001' };
-  for (const r of [await post(`${ADRES_KATEGORII}/regula`, regula, operator), await post(ADRES_MARKI, marka, operator)]) {
+  for (const r of [
+    await post(`${ADRES_KATEGORII}/regula`, regula, operator),
+    await post(ADRES_MARKI, marka, operator),
+  ]) {
     expect(r.statusCode).toBe(403);
     expect(r.body).toContain('Tylko administrator');
   }

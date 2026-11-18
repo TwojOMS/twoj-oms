@@ -18,7 +18,10 @@ describe('zapis do sklepu „Odczyt” z Magazynu', () => {
     const wyniki = await wyslijDoSklepow({ sklepy: { pro }, zmiany: [zmiana(), zmiana({ sciezka: 'products/901' })] });
     expect(pro.zapiszProdukt).not.toHaveBeenCalled();
     expect(pro.pobierzProdukt).not.toHaveBeenCalled();
-    expect(wyniki.map((w) => [w.ok, w.blad])).toEqual([[false, TYLKO_ODCZYT], [false, TYLKO_ODCZYT]]);
+    expect(wyniki.map((w) => [w.ok, w.blad])).toEqual([
+      [false, TYLKO_ODCZYT],
+      [false, TYLKO_ODCZYT],
+    ]);
   });
 
   it('sklep „Zapis/odczyt” zapisuje jak dotąd', async () => {

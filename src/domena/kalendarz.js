@@ -18,8 +18,15 @@ export function naNumerDnia(rok, miesiac, dzien) {
   const a = Math.floor((14 - miesiac) / 12);
   const r = rok + 4800 - a;
   const m = miesiac + 12 * a - 3;
-  return dzien + Math.floor((153 * m + 2) / 5) + 365 * r
-    + Math.floor(r / 4) - Math.floor(r / 100) + Math.floor(r / 400) - 32045;
+  return (
+    dzien +
+    Math.floor((153 * m + 2) / 5) +
+    365 * r +
+    Math.floor(r / 4) -
+    Math.floor(r / 100) +
+    Math.floor(r / 400) -
+    32045
+  );
 }
 
 export function zNumeruDnia(numer) {

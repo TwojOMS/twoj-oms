@@ -21,23 +21,56 @@ const PANEL = '09109010140000000000000062';
 const kanal = { klucz: 'rynek', typ: 'allegro' as const, prefiks: 'RYNEK' };
 
 async function kompozycja(dodatkowe: Srodowisko) {
-  const createAllegroWza = vi.fn((_o: Parameters<NonNullable<FabrykiKurierow['createAllegroWza']>>[0]) => ({ nadaj: async () => ({ numerListu: null }) }));
+  const createAllegroWza = vi.fn((_o: Parameters<NonNullable<FabrykiKurierow['createAllegroWza']>>[0]) => ({
+    nadaj: async () => ({ numerListu: null }),
+  }));
   const katalog = mkdtempSync(join(tmpdir(), 'prz102-20-wza-'));
-  const env = { OMS_USER: 'operator', OMS_PASS: 'test', OMS_SPRZEDAWCA_NIP: '1234563218',
-    OMS_ETYKIETY_KATALOG: katalog, OMS_PROFORMY_KATALOG: katalog,
-    RYNEK_CLIENT_ID: 'test', RYNEK_CLIENT_SECRET: 'test', RYNEK_USER_AGENT: 'Fixture/1.0 (+https://fixture.invalid)', RYNEK_OD: '2026-01-01',
-    RYNEK_API: 'https://przyklad.invalid/allegro', RYNEK_AUTH: 'https://przyklad.invalid/oauth', ...dodatkowe };
+  const env = {
+    OMS_USER: 'operator',
+    OMS_PASS: 'test',
+    OMS_SPRZEDAWCA_NIP: '1234563218',
+    OMS_ETYKIETY_KATALOG: katalog,
+    OMS_PROFORMY_KATALOG: katalog,
+    RYNEK_CLIENT_ID: 'test',
+    RYNEK_CLIENT_SECRET: 'test',
+    RYNEK_USER_AGENT: 'Fixture/1.0 (+https://fixture.invalid)',
+    RYNEK_OD: '2026-01-01',
+    RYNEK_API: 'https://przyklad.invalid/allegro',
+    RYNEK_AUTH: 'https://przyklad.invalid/oauth',
+    ...dodatkowe,
+  };
   const db = openOmsDb();
   try {
-    const app = await zbudujAplikacje({ db, env, log: () => {},
-      moduly: [modulRdzen, createModulWeb([kanal]), createModulKanaly([kanal]),
-        modulFaktury, modulZamowienia, createModulWysylka({ fabryki: { createAllegroWza } })] as unknown as readonly ModulOms[] });
+    const app = await zbudujAplikacje({
+      db,
+      env,
+      log: () => {},
+      moduly: [
+        modulRdzen,
+        createModulWeb([kanal]),
+        createModulKanaly([kanal]),
+        modulFaktury,
+        modulZamowienia,
+        createModulWysylka({ fabryki: { createAllegroWza } }),
+      ] as unknown as readonly ModulOms[],
+    });
     const konto = createAllegroWza.mock.calls[0]![0].pobranieNadawca!;
     return { ...app, db, konto };
-  } catch (e) { db.close(); throw e; }
+  } catch (e) {
+    db.close();
+    throw e;
+  }
 }
-const pobranie = (iban: string | undefined) => pobranieDoWysylki({ pobranieUslugi: true, cashOnDelivery: { amount: '83.99', currency: 'PLN' },
-  limit: '6000', ownerName: 'Pracownia', iban, nadpisanieOperatora: null, wymaganeKonto: true });
+const pobranie = (iban: string | undefined) =>
+  pobranieDoWysylki({
+    pobranieUslugi: true,
+    cashOnDelivery: { amount: '83.99', currency: 'PLN' },
+    limit: '6000',
+    ownerName: 'Pracownia',
+    iban,
+    nadpisanieOperatora: null,
+    wymaganeKonto: true,
+  });
 
 describe('WzA a rachunek firmy', () => {
   it('bez OMS_RACHUNEK: panel wstaje, WzA bez rachunku odmawia pobrania z kontem; po zapisie w panelu bierze go bez restartu', async () => {
@@ -48,7 +81,10 @@ describe('WzA a rachunek firmy', () => {
       zapiszRachunekFirmy(a.db, { rachunek: PANEL, bank: '' });
       expect(a.konto.rachunek).toBe(PANEL);
       expect(pobranie(a.konto.rachunek)).toMatchObject({ wolno: true, cashOnDelivery: { iban: `PL${PANEL}` } });
-    } finally { await a.app.close(); a.db.close(); }
+    } finally {
+      await a.app.close();
+      a.db.close();
+    }
   });
 
   it('OMS_RACHUNEK w pliku wygrywa nad zapisem w panelu (IBAN jak przed zmianą)', async () => {
@@ -57,6 +93,9 @@ describe('WzA a rachunek firmy', () => {
       zapiszRachunekFirmy(a.db, { rachunek: PANEL, bank: '' });
       expect(a.konto.rachunek).toBe('34109010140000000000000000');
       expect(a.konto.rachunek).toBe(a.usluga<{ rachunek: string }>('rdzen', 'sprzedawca').rachunek);
-    } finally { await a.app.close(); a.db.close(); }
+    } finally {
+      await a.app.close();
+      a.db.close();
+    }
   });
 });

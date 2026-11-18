@@ -1,8 +1,15 @@
 // Ekran „Problemy ofert”: oferty ERLI i Allegro czekające na decyzję w jednej tabeli.
 // Akcje zapisują tylko zamiar w rejestrze; do kanału nic nie idzie z trasy (wysyła pętla).
 // Wznów: sam znacznik `wyslanePola.wznow` bez kwoty i bez osobnej zgody na opłatę.
-import { ofertaPoId, zmienOferte, ofertyDoDecyzji, liczbaOfertDoDecyzji, ofertyKarty, ofertyZProblememIlosci, ustawieniaOfertKonta }
-  from '../../oms/db/oferty-kanalow.ts';
+import {
+  ofertaPoId,
+  zmienOferte,
+  ofertyDoDecyzji,
+  liczbaOfertDoDecyzji,
+  ofertyKarty,
+  ofertyZProblememIlosci,
+  ustawieniaOfertKonta,
+} from '../../oms/db/oferty-kanalow.ts';
 import { przelacznikStanow, migawkaStanow, stanKarty, dodajRuch } from '../../oms/db/stany-magazynowe.js';
 import { PROBLEMY_ILOSCI, iloscDlaKanalu } from '../../domena/ilosc-kanalu.js';
 import { iloscOferty } from './services/tresc-oferty.js';
@@ -11,11 +18,19 @@ import { kwotaDziesietna } from '../../domena/cena-kanalu.js';
 import { fmtDataCzas } from '../../domena/format-daty.js';
 import { stronaOdmowy } from '../../core/web/odmowa.js';
 import { BRAK_ZGODY_OFERT } from '../kanaly/services/oferty-allegro-ustawienia.ts';
-import { mozePonowic, duplikatDoWyboru, ponowOferte, mozeWznowic, zakonczonaDoWznowienia, brakWAllegro, ODMOWA_BRAK_W_ALLEGRO } from './oferty.js';
+import {
+  mozePonowic,
+  duplikatDoWyboru,
+  ponowOferte,
+  mozeWznowic,
+  zakonczonaDoWznowienia,
+  brakWAllegro,
+  ODMOWA_BRAK_W_ALLEGRO,
+} from './oferty.js';
 
 const LIMIT = 200;
 const ADRES = '/magazyn/problemy-ofert';
-const zl = gr => `${kwotaDziesietna(gr).replace('.', ',')} zł`;
+const zl = (gr) => `${kwotaDziesietna(gr).replace('.', ',')} zł`;
 // Przycisk alarmu ilości według kodu (trasa `/:ofertaId/ilosc/:akcja` sprawdza, że kod się zgadza).
 const AKCJE_ILOSCI = Object.freeze({
   'potwierdz-skok': { kod: 'skok', napis: 'Potwierdź skok' },
@@ -26,13 +41,16 @@ const AKCJE_ILOSCI = Object.freeze({
 const ODMOWA_ZMIANY = 'Dane się zmieniły — odśwież listę.';
 // Odmowa według powodu z iloscDlaKanalu, gdy karta nie daje ilości.
 const BEZ_STANU = Object.freeze({
-  'stany-niezatwierdzone': 'Stany magazynowe nie są jeszcze zatwierdzone — do zatwierdzenia podglądu OMS nie zmienia ilości ofert.',
+  'stany-niezatwierdzone':
+    'Stany magazynowe nie są jeszcze zatwierdzone — do zatwierdzenia podglądu OMS nie zmienia ilości ofert.',
   'brak-stanu': 'Stan karty nie jest znany — uzupełnij stan otwarcia.',
 });
-const ofert = n => `${n} ${n === 1 ? 'oferta' : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? 'oferty' : 'ofert'}`;
-const szt = n => `${n} szt.`;
+const ofert = (n) =>
+  `${n} ${n === 1 ? 'oferta' : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? 'oferty' : 'ofert'}`;
+const szt = (n) => `${n} szt.`;
 /** Alarm ilości widoczny na ekranie: wstrzymujący albo `brak-stanu` (jak w zapytaniu ofertyDoDecyzji). */
-const problemIlosci = o => (o.iloscProblem && (o.iloscProblem.wstrzymuje === true || o.iloscProblem.kod === 'brak-stanu') ? o.iloscProblem : null);
+const problemIlosci = (o) =>
+  o.iloscProblem && (o.iloscProblem.wstrzymuje === true || o.iloscProblem.kod === 'brak-stanu') ? o.iloscProblem : null;
 /** Baza W/T po decyzji człowieka: najświeższy odczyt kanału i jego chwila — sprzedaż po alarmie wypada po T.
  * W z `odczytIlosc`, bo pętle zapisują go zawsze razem z `odczytanoAt` (`odczytIloscKanalu` bywa starszy).
  * Odczyt z alarmu tylko zapasowo, z T = chwila kliknięcia. */
@@ -43,29 +61,46 @@ const bazaOdczytu = (o, at) => {
   }
   return Number.isFinite(o.iloscProblem?.odczyt) ? { ilosc: o.iloscProblem.odczyt, at } : null;
 };
-const data = iso => (iso ? fmtDataCzas(iso).replace(/^(\d{4})-(\d{2})-(\d{2})/, '$3.$2.$1').slice(0, 16) : '');
+const data = (iso) =>
+  iso
+    ? fmtDataCzas(iso)
+        .replace(/^(\d{4})-(\d{2})-(\d{2})/, '$3.$2.$1')
+        .slice(0, 16)
+    : '';
 
-export function registerProblemyOfert(app, { db, pomoc, kontaErli, kontaAllegro = /** @returns {{ klucz: string, zgoda?: boolean }[]} */ () => [],
-  sklepy = /** @type {Record<string, unknown>} */ ({}), kanalySklepow = /** @type {readonly string[]} */ ([]) }) {
-  const odmowa = (reply, kod, tekst) => stronaOdmowy(reply, kod, tekst, { tytul: 'Problemy ofert', wroc: ADRES, napisWroc: 'Wróć do problemów ofert' });
-  const uprawniony = req => req.konto?.admin === true;
+export function registerProblemyOfert(
+  app,
+  {
+    db,
+    pomoc,
+    kontaErli,
+    kontaAllegro = /** @returns {{ klucz: string, zgoda?: boolean }[]} */ () => [],
+    sklepy = /** @type {Record<string, unknown>} */ ({}),
+    kanalySklepow = /** @type {readonly string[]} */ ([]),
+  },
+) {
+  const odmowa = (reply, kod, tekst) =>
+    stronaOdmowy(reply, kod, tekst, { tytul: 'Problemy ofert', wroc: ADRES, napisWroc: 'Wróć do problemów ofert' });
+  const uprawniony = (req) => req.konto?.admin === true;
   const kontaOfert = () => {
     const erli = kontaErli();
     const allegro = kontaAllegro();
-    return klucz => kontoOfert(klucz, erli, allegro);
+    return (klucz) => kontoOfert(klucz, erli, allegro);
   };
   const kontoOfert = (klucz, kontaE = kontaErli(), kontaA = kontaAllegro()) => {
-    const erli = kontaE.find(k => k.klucz === klucz);
+    const erli = kontaE.find((k) => k.klucz === klucz);
     if (erli) return { rodzaj: 'erli', konto: erli };
-    const allegro = kontaA.find(k => k.klucz === klucz);
+    const allegro = kontaA.find((k) => k.klucz === klucz);
     if (allegro) return { rodzaj: 'allegro', konto: allegro };
     // Sklep Woo z podłączonym klientem (ta sama mapa co pętla stanów Woo) — akcje ilości jak ERLI;
     // Ponów, Wznów i potwierdzenie ceny nie są dla Woo. Jak pętla — tylko sklepy z konfiguracji.
-    return kanalySklepow.includes(klucz) && Object.hasOwn(sklepy, klucz) && sklepy[klucz] ? { rodzaj: 'woo', konto: { klucz } } : null;
+    return kanalySklepow.includes(klucz) && Object.hasOwn(sklepy, klucz) && sklepy[klucz]
+      ? { rodzaj: 'woo', konto: { klucz } }
+      : null;
   };
   const NAZWY_RODZAJOW = Object.freeze({ erli: 'ERLI', allegro: 'Allegro', woo: 'WooCommerce' });
-  const wroc = reply => reply.code(303).redirect(ADRES);
-  const wrocDoIlosci = reply => reply.code(303).redirect(`${ADRES}?filtr=ilosc`);
+  const wroc = (reply) => reply.code(303).redirect(ADRES);
+  const wrocDoIlosci = (reply) => reply.code(303).redirect(`${ADRES}?filtr=ilosc`);
   const stanyWlaczone = () => przelacznikStanow(db).wlaczone;
   /** Ilość z karty dla konta oferty (stan − bufor); `ilosc: null` i `powod`, gdy stanu nie znamy. */
   const celOferty = (o, migawka = migawkaStanow(db)) => {
@@ -80,9 +115,11 @@ export function registerProblemyOfert(app, { db, pomoc, kontaErli, kontaAllegro 
   const wznowienieIlosci = (o, migawka) => {
     if (!stanyWlaczone()) return {};
     const p = problemIlosci(o);
-    if (p?.wstrzymuje && p.kod !== 'czeste-wznawianie') return { odmowa: 'Najpierw rozwiąż problem ilości tej oferty.' };
+    if (p?.wstrzymuje && p.kod !== 'czeste-wznawianie')
+      return { odmowa: 'Najpierw rozwiąż problem ilości tej oferty.' };
     const { ilosc, powod } = celOferty(o, migawka);
-    if (!ilosc) return { odmowa: BEZ_STANU[powod] ?? 'Karta nie ma sztuk do wystawienia — wznów ofertę, gdy przyjdzie towar.' };
+    if (!ilosc)
+      return { odmowa: BEZ_STANU[powod] ?? 'Karta nie ma sztuk do wystawienia — wznów ofertę, gdy przyjdzie towar.' };
     return { ilosc };
   };
   /** `wlaczone` = false: zalegający alarm po wyłączeniu stanów — sam opis, bez przycisków (trasy i tak odmówią). */
@@ -91,14 +128,33 @@ export function registerProblemyOfert(app, { db, pomoc, kontaErli, kontaAllegro 
     const szczegoly = [
       Number.isFinite(p.odczyt) ? `odczyt ${szt(p.odczyt)}` : null,
       Number.isFinite(p.cel) ? `cel ${szt(p.cel)}` : null,
-      Number.isFinite(p.zakres?.min) && Number.isFinite(p.zakres?.max) ? `zakres ${p.zakres.min}–${szt(p.zakres.max)}` : null,
+      Number.isFinite(p.zakres?.min) && Number.isFinite(p.zakres?.max)
+        ? `zakres ${p.zakres.min}–${szt(p.zakres.max)}`
+        : null,
       p.od ? `od ${data(p.od)}` : null,
     ].filter(Boolean);
-    const akcje = wlaczone ? Object.entries(AKCJE_ILOSCI).filter(([, a]) => a.kod === p.kod).map(([akcja, a]) => ({ akcja, napis: a.napis })) : [];
-    const tez = wlaczone && p.kod === 'rozjazd-dol'
-      ? [...new Set(ofertyKarty(db, o.kartaId).filter(x => x.id !== o.id).map(x => x.kanal))] : [];
-    return { tekst: typeof p.tekst === 'string' && p.tekst.trim() ? p.tekst : szablon, szczegoly, akcje, tez,
-      otwarcie: wlaczone && p.kod === 'brak-stanu' };
+    const akcje = wlaczone
+      ? Object.entries(AKCJE_ILOSCI)
+          .filter(([, a]) => a.kod === p.kod)
+          .map(([akcja, a]) => ({ akcja, napis: a.napis }))
+      : [];
+    const tez =
+      wlaczone && p.kod === 'rozjazd-dol'
+        ? [
+            ...new Set(
+              ofertyKarty(db, o.kartaId)
+                .filter((x) => x.id !== o.id)
+                .map((x) => x.kanal),
+            ),
+          ]
+        : [];
+    return {
+      tekst: typeof p.tekst === 'string' && p.tekst.trim() ? p.tekst : szablon,
+      szczegoly,
+      akcje,
+      tez,
+      otwarcie: wlaczone && p.kod === 'brak-stanu',
+    };
   };
 
   app.get(ADRES, async (req, reply) => {
@@ -114,17 +170,24 @@ export function registerProblemyOfert(app, { db, pomoc, kontaErli, kontaAllegro 
     const wlaczone = przelacznik.wlaczone;
     const migawka = wlaczone ? migawkaStanow(db) : null;
     const zera = new Map();
-    const wiersze = ofertyDoDecyzji(db, { limit: LIMIT, ilosc: filtr === 'ilosc' }).map(o => {
+    const wiersze = ofertyDoDecyzji(db, { limit: LIMIT, ilosc: filtr === 'ilosc' }).map((o) => {
       const k = znajdzKonto(o.kanal);
       const akcje = k ? akcjeProblemu(o, k.rodzaj) : { wznow: null, cena: null };
-      const wznow = akcje.wznow && mozeWznowic(o) && k.konto.zgoda !== false && !wznowienieIlosci(o, migawka).odmowa ? akcje.wznow : null;
+      const wznow =
+        akcje.wznow && mozeWznowic(o) && k.konto.zgoda !== false && !wznowienieIlosci(o, migawka).odmowa
+          ? akcje.wznow
+          : null;
       const p = problemIlosci(o);
       // Formularz niesie listę pokazanych ofert — trasa potwierdza tylko ją.
       if (p?.kod === 'zero-masowe' && k && wlaczone && !zera.has(o.kanal)) zera.set(o.kanal, idyZer(o.kanal));
       return {
-        id: o.id, kartaId: o.kartaId, nazwa: o.nazwa, konto: o.kanal,
+        id: o.id,
+        kartaId: o.kartaId,
+        nazwa: o.nazwa,
+        konto: o.kanal,
         kanal: k ? NAZWY_RODZAJOW[k.rodzaj] : 'konto odłączone',
-        powody: powodyProblemu(o), od: data(o.problemyOd ?? p?.od ?? o.zmienionoAt),
+        powody: powodyProblemu(o),
+        od: data(o.problemyOd ?? p?.od ?? o.zmienionoAt),
         ilosc: p ? opisIlosci(o, p, wlaczone) : null,
         ponow: Boolean(k) && k.rodzaj !== 'woo' && o.tryb === 'zarzadzana' && mozePonowic(o),
         duplikat: duplikatDoWyboru(o),
@@ -133,15 +196,30 @@ export function registerProblemyOfert(app, { db, pomoc, kontaErli, kontaAllegro 
         cena: akcje.cena && o.tryb === 'zarzadzana' ? { nowaGr: akcje.cena.nowaGr, nowa: zl(akcje.cena.nowaGr) } : null,
       };
     });
-    return reply.view('magazyn-problemy-ofert.ejs', { szerokosc: 'tabela', title: 'Magazyn — problemy ofert',
-      wiersze, wszystkich: pokazanych, liczby: { wszystkich, ilosci }, filtr, etap4, adres: ADRES,
-      zera: [...zera].map(([konto, ids]) => ({ konto, n: ids.length, oferty: ids.join(','),
-        napis: `Wyślij zera — ${konto} (${ofert(ids.length)})` })) });
+    return reply.view('magazyn-problemy-ofert.ejs', {
+      szerokosc: 'tabela',
+      title: 'Magazyn — problemy ofert',
+      wiersze,
+      wszystkich: pokazanych,
+      liczby: { wszystkich, ilosci },
+      filtr,
+      etap4,
+      adres: ADRES,
+      zera: [...zera].map(([konto, ids]) => ({
+        konto,
+        n: ids.length,
+        oferty: ids.join(','),
+        napis: `Wyślij zera — ${konto} (${ofert(ids.length)})`,
+      })),
+    });
   });
 
   const oferta = (req, reply) => {
     const o = ofertaPoId(db, Number(req.params.ofertaId));
-    if (!o) { odmowa(reply, 404, 'Nie ma takiej oferty.'); return null; }
+    if (!o) {
+      odmowa(reply, 404, 'Nie ma takiej oferty.');
+      return null;
+    }
     return o;
   };
 
@@ -169,8 +247,19 @@ export function registerProblemyOfert(app, { db, pomoc, kontaErli, kontaAllegro 
     const { odmowa: bezIlosci, ilosc } = wznowienieIlosci(o);
     if (bezIlosci) return odmowa(reply, 409, bezIlosci);
     const czeste = o.iloscProblem?.kod === 'czeste-wznawianie' ? { iloscProblem: null } : {};
-    zmienOferte(db, o.id, { wyslanePola: { ...o.wyslanePola, wznow: { login: req.konto?.login ?? null, at: new Date().toISOString(),
-      ...(ilosc === undefined ? {} : { ilosc }) } }, liczbaProb: 0, nastepnaProbaAt: null, ...czeste });
+    zmienOferte(db, o.id, {
+      wyslanePola: {
+        ...o.wyslanePola,
+        wznow: {
+          login: req.konto?.login ?? null,
+          at: new Date().toISOString(),
+          ...(ilosc === undefined ? {} : { ilosc }),
+        },
+      },
+      liczbaProb: 0,
+      nastepnaProbaAt: null,
+      ...czeste,
+    });
     return wroc(reply);
   });
 
@@ -215,9 +304,15 @@ export function registerProblemyOfert(app, { db, pomoc, kontaErli, kontaAllegro 
     db.exec('BEGIN IMMEDIATE');
     try {
       if (odczyt !== cel) {
-        dodajRuch(db, { kartaId: o.kartaId, rodzaj: 'korekta', ilosc: odczyt - cel,
+        dodajRuch(db, {
+          kartaId: o.kartaId,
+          rodzaj: 'korekta',
+          ilosc: odczyt - cel,
           powod: `rozjazd: ${o.kanal}`,
-          klucz: `rozjazd:${o.id}:${o.iloscProblem.od ?? at}`, konto: req.konto ?? null, at });
+          klucz: `rozjazd:${o.id}:${o.iloscProblem.od ?? at}`,
+          konto: req.konto ?? null,
+          at,
+        });
       }
       // Korekta z chwilą kliknięcia — inne oferty karty widzą ją jako wyjaśnioną, a ta oferta
       // nie liczy jej dwa razy, bo wyjaśnienia pomijają jej własną korektę (klucz `rozjazd:<id>:…`), a S ją zawiera.
@@ -233,7 +328,10 @@ export function registerProblemyOfert(app, { db, pomoc, kontaErli, kontaAllegro 
   });
 
   /** Id ofert konta z `zero-masowe`, rosnąco — lista pokazana na ekranie i porównywana przy kliknięciu. */
-  const idyZer = konto => ofertyZProblememIlosci(db, konto, 'zero-masowe').map(o => o.id).sort((a, b) => a - b);
+  const idyZer = (konto) =>
+    ofertyZProblememIlosci(db, konto, 'zero-masowe')
+      .map((o) => o.id)
+      .sort((a, b) => a - b);
 
   // „Wyślij zera” — jedno kliknięcie zdejmuje `zero-masowe` z ofert jednego konta.
   // Tylko z ofert z listy, którą pokazał formularz; nowe zera spoza niej → 409, nic nie zapisuje.
@@ -246,16 +344,23 @@ export function registerProblemyOfert(app, { db, pomoc, kontaErli, kontaAllegro 
     if (iloscDlaKanalu({ migawka: migawkaStanow(db), tryb: 'zarzadzana' }).powod === 'stany-niezatwierdzone') {
       return odmowa(reply, 409, BEZ_STANU['stany-niezatwierdzone']);
     }
-    const pokazane = new Set(String(pomoc.pole(req.body, 'oferty') ?? '').split(',').map(Number)
-      .filter(id => Number.isSafeInteger(id) && id > 0));
+    const pokazane = new Set(
+      String(pomoc.pole(req.body, 'oferty') ?? '')
+        .split(',')
+        .map(Number)
+        .filter((id) => Number.isSafeInteger(id) && id > 0),
+    );
     if (!pokazane.size) return odmowa(reply, 400, 'Brak listy ofert do potwierdzenia — odśwież listę.');
     // Potwierdzenie ważne tylko w bieżącym przełączeniu stanów (pętle porównują z migawką).
-    const zaznaczenie = { login: req.konto?.login ?? null, at: new Date().toISOString(),
-      przelaczenieId: przelacznikStanow(db).przelaczenieId };
+    const zaznaczenie = {
+      login: req.konto?.login ?? null,
+      at: new Date().toISOString(),
+      przelaczenieId: przelacznikStanow(db).przelaczenieId,
+    };
     db.exec('BEGIN IMMEDIATE');
     try {
       const biezace = ofertyZProblememIlosci(db, konto, 'zero-masowe');
-      if (biezace.some(o => !pokazane.has(o.id))) {
+      if (biezace.some((o) => !pokazane.has(o.id))) {
         db.exec('ROLLBACK');
         return odmowa(reply, 409, 'Doszły nowe oferty do zera — odśwież');
       }
@@ -276,10 +381,12 @@ export function registerProblemyOfert(app, { db, pomoc, kontaErli, kontaAllegro 
     if (!o) return reply;
     const k = kontoOfert(o.kanal);
     if (!k || k.rodzaj === 'woo') return odmowa(reply, 409, 'Konto tej oferty jest odłączone.');
-    if (o.cenaDoPotwierdzeniaGr == null || o.wyslanePola?.cenaPotwierdzonaGr === o.cenaDoPotwierdzeniaGr) return wroc(reply);
+    if (o.cenaDoPotwierdzeniaGr == null || o.wyslanePola?.cenaPotwierdzonaGr === o.cenaDoPotwierdzeniaGr)
+      return wroc(reply);
     if (o.tryb !== 'zarzadzana') return odmowa(reply, 409, 'Ta oferta nie pozwala na tę akcję.');
     const cenaGr = Number(pomoc.pole(req.body, 'cenaGr'));
-    if (!Number.isInteger(cenaGr) || cenaGr !== o.cenaDoPotwierdzeniaGr) return odmowa(reply, 409, 'Dane się zmieniły — odśwież listę.');
+    if (!Number.isInteger(cenaGr) || cenaGr !== o.cenaDoPotwierdzeniaGr)
+      return odmowa(reply, 409, 'Dane się zmieniły — odśwież listę.');
     zmienOferte(db, o.id, { wyslanePola: { ...o.wyslanePola, cenaPotwierdzonaGr: cenaGr } });
     return wroc(reply);
   });

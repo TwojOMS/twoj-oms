@@ -1,12 +1,23 @@
 import { stronaOdmowy } from '../../../core/web/odmowa.js';
 import { pobierzZamowienie, dopiszLog } from '../../../oms/db/zamowienia.js';
 import {
-  dodajZwrot, usunZwrot, oznaczPieniadzeOddane, zwrot, odblokujKorekte, zapiszRecznyNumerKorekty,
+  dodajZwrot,
+  usunZwrot,
+  oznaczPieniadzeOddane,
+  zwrot,
+  odblokujKorekte,
+  zapiszRecznyNumerKorekty,
 } from '../../../oms/db/zwroty.js';
 import {
-  parsujZwrot, powodOdmowyUsunieciaZwrotu, korektaPrzepadla, powodOdmowyOdblokowaniaKorekty,
-  parsujNumerKorekty, korektaNieSprawdzona, powodOdmowyKorektyDlaFaktury,
-  powodOdmowyRejestracjiZwrotu, wierszeFormularzaZwrotu,
+  parsujZwrot,
+  powodOdmowyUsunieciaZwrotu,
+  korektaPrzepadla,
+  powodOdmowyOdblokowaniaKorekty,
+  parsujNumerKorekty,
+  korektaNieSprawdzona,
+  powodOdmowyKorektyDlaFaktury,
+  powodOdmowyRejestracjiZwrotu,
+  wierszeFormularzaZwrotu,
 } from '../../../domena/zwrot.js';
 import { formularzZwrotu, przygotujKrok2, razemZwrotuZl } from '../../../domena/zwrot-formularz.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
@@ -19,16 +30,36 @@ import { bezpiecznyPowrotNaListe } from '../../../domena/filtry-listy.js';
 import { ktoKlikal } from '../../zamowienia/wspolne.js';
 
 import { createWspolne } from './wspolne.js';
-export function registerKorektyRoutes(app, { db, korekta = null, definicje, infakt: programFaktur = null, wyborProgramu = null }) {
-  const { powrotKarty, adresKarty, adresZwrotu, zamowienieAlbo404, slad, decyzja, pokazKrok1 } = createWspolne({ db, korekta, definicje, infakt: programFaktur });
+export function registerKorektyRoutes(
+  app,
+  { db, korekta = null, definicje, infakt: programFaktur = null, wyborProgramu = null },
+) {
+  const { powrotKarty, adresKarty, adresZwrotu, zamowienieAlbo404, slad, decyzja, pokazKrok1 } = createWspolne({
+    db,
+    korekta,
+    definicje,
+    infakt: programFaktur,
+  });
   // Nazwa programu w odmowach korekty (bez programu — inFakt, jak dotąd).
-  const nazwaProgramu = odmianaNazwyProgramu(programFaktur), gdzieProgramu = gdzieDokument(programFaktur);
+  const nazwaProgramu = odmianaNazwyProgramu(programFaktur),
+    gdzieProgramu = gdzieDokument(programFaktur);
   app.post('/zamowienia/:id/zwroty/:zwrotId/korekta', async (req, reply) => {
     const z = zamowienieAlbo404(req, reply);
     if (!z) return reply;
     // `null` (panel bez inFaktu) to tryb POPRAWNY — odmawiamy czytelnie, jak nadanie
     // bez skonfigurowanego kuriera.
-    if (!korekta) return stronaOdmowy(reply, 503, zdanieBrakuProgramu(wyborProgramu) ?? `Wystawianie korekt nie jest skonfigurowane (brak inFaktu). ${GDZIE_KLUCZ_INFAKTU}`, { tytul: 'Nie udało się obsłużyć zwrotu', wroc: `/zamowienia/${z.id}/zwrot`, napisWroc: 'Wróć do ekranu zwrotu' });
+    if (!korekta)
+      return stronaOdmowy(
+        reply,
+        503,
+        zdanieBrakuProgramu(wyborProgramu) ??
+          `Wystawianie korekt nie jest skonfigurowane (brak inFaktu). ${GDZIE_KLUCZ_INFAKTU}`,
+        {
+          tytul: 'Nie udało się obsłużyć zwrotu',
+          wroc: `/zamowienia/${z.id}/zwrot`,
+          napisWroc: 'Wróć do ekranu zwrotu',
+        },
+      );
     const zwrotId = Number(req.params.zwrotId);
     try {
       await korekta.wystaw(z.id, zwrotId);
@@ -37,15 +68,23 @@ export function registerKorektyRoutes(app, { db, korekta = null, definicje, infa
       // (services/korekta.js), wiec bez wpisu w logu nie da sie potem odroznic „zlecenie
       // przepadlo" od „nikt nigdy nie kliknal".
       slad(z.id, 'zwrot.korekta', `BŁĄD: ${e.message}`);
-      return stronaOdmowy(reply, 400, komunikatDlaOperatora(e), { tytul: 'Nie udało się obsłużyć zwrotu', wroc: `/zamowienia/${z.id}/zwrot`, napisWroc: 'Wróć do ekranu zwrotu' });
+      return stronaOdmowy(reply, 400, komunikatDlaOperatora(e), {
+        tytul: 'Nie udało się obsłużyć zwrotu',
+        wroc: `/zamowienia/${z.id}/zwrot`,
+        napisWroc: 'Wróć do ekranu zwrotu',
+      });
     }
     const po = zwrot(db, z.id, zwrotId);
-    slad(z.id, 'zwrot.korekta', decyzja(
-      req,
-      `zlecona korekta do zwrotu z ${po?.data ?? '?'} (${po?.kwota ?? '?'} zł)`
-      + `${po?.korekta_referencja ? `, referencja ${po.korekta_referencja}` : ''}`
-      + `${po?.korekta_numer ? `, numer ${po.korekta_numer}` : ' — numer pojawi się po przetworzeniu'}.`,
-    ));
+    slad(
+      z.id,
+      'zwrot.korekta',
+      decyzja(
+        req,
+        `zlecona korekta do zwrotu z ${po?.data ?? '?'} (${po?.kwota ?? '?'} zł)` +
+          `${po?.korekta_referencja ? `, referencja ${po.korekta_referencja}` : ''}` +
+          `${po?.korekta_numer ? `, numer ${po.korekta_numer}` : ' — numer pojawi się po przetworzeniu'}.`,
+      ),
+    );
     // ⚠️ `reply.redirect(302, url)` NIE ISTNIEJE od Fastify 5
     // (w v4 bylo FSTDEP021; sygnatura to `redirect(url, code)`), a caly ten plik
     // uzywa jednoargumentowego wywolania (302 jest domyslnym kodem). Ta sama forma tutaj.
@@ -78,28 +117,45 @@ export function registerKorektyRoutes(app, { db, korekta = null, definicje, infa
     const z = zamowienieAlbo404(req, reply);
     if (!z) return reply;
     const w = zwrot(db, z.id, Number(req.params.zwrotId));
-    if (!w) return stronaOdmowy(reply, 404, 'Nie ma takiego zwrotu przy tym zamówieniu.', { tytul: 'Nie udało się obsłużyć zwrotu', wroc: `/zamowienia/${z.id}/zwrot`, napisWroc: 'Wróć do ekranu zwrotu' });
+    if (!w)
+      return stronaOdmowy(reply, 404, 'Nie ma takiego zwrotu przy tym zamówieniu.', {
+        tytul: 'Nie udało się obsłużyć zwrotu',
+        wroc: `/zamowienia/${z.id}/zwrot`,
+        napisWroc: 'Wróć do ekranu zwrotu',
+      });
     // Regula (prog, numer, brak rezerwacji) mieszka w domenie — trasa jej nie liczy.
     const powod = powodOdmowyOdblokowaniaKorekty(w, { nazwa: nazwaProgramu });
     if (powod) {
       slad(z.id, 'zwrot.korekta.odblokowanie', `BŁĄD: ${powod}`);
-      return stronaOdmowy(reply, 400, powod, { tytul: 'Nie udało się obsłużyć zwrotu', wroc: `/zamowienia/${z.id}/zwrot`, napisWroc: 'Wróć do ekranu zwrotu' });
+      return stronaOdmowy(reply, 400, powod, {
+        tytul: 'Nie udało się obsłużyć zwrotu',
+        wroc: `/zamowienia/${z.id}/zwrot`,
+        napisWroc: 'Wróć do ekranu zwrotu',
+      });
     }
     let przed;
     try {
       przed = odblokujKorekte(db, z.id, w.id);
     } catch (e) {
       slad(z.id, 'zwrot.korekta.odblokowanie', `BŁĄD: ${e.message}`);
-      return stronaOdmowy(reply, 400, `Nie udało się odblokować korekty: ${komunikatDlaOperatora(e)}`, { tytul: 'Nie udało się obsłużyć zwrotu', wroc: `/zamowienia/${z.id}/zwrot`, napisWroc: 'Wróć do ekranu zwrotu' });
+      return stronaOdmowy(reply, 400, `Nie udało się odblokować korekty: ${komunikatDlaOperatora(e)}`, {
+        tytul: 'Nie udało się obsłużyć zwrotu',
+        wroc: `/zamowienia/${z.id}/zwrot`,
+        napisWroc: 'Wróć do ekranu zwrotu',
+      });
     }
-    slad(z.id, 'zwrot.korekta.odblokowanie', decyzja(
-      req,
-      'sprawdzone w inFakcie, korekty nie ma — rezerwacja zwrotu '
-      + `z ${przed.data} (${przed.kwota} zł), zlecona ${przed.korekta_zlecona_at}`
-      + `${przed.korekta_referencja ? `, referencja ${przed.korekta_referencja}` : ''}`
-      + `${przed.korekta_blad ? `, błąd „${przed.korekta_blad}"` : ''} skasowana. `
-      + 'Panel niczego w inFakcie nie kasował.',
-    ));
+    slad(
+      z.id,
+      'zwrot.korekta.odblokowanie',
+      decyzja(
+        req,
+        'sprawdzone w inFakcie, korekty nie ma — rezerwacja zwrotu ' +
+          `z ${przed.data} (${przed.kwota} zł), zlecona ${przed.korekta_zlecona_at}` +
+          `${przed.korekta_referencja ? `, referencja ${przed.korekta_referencja}` : ''}` +
+          `${przed.korekta_blad ? `, błąd „${przed.korekta_blad}"` : ''} skasowana. ` +
+          'Panel niczego w inFakcie nie kasował.',
+      ),
+    );
     return reply.redirect(adresKarty(req, z.id));
   });
 
@@ -112,23 +168,40 @@ export function registerKorektyRoutes(app, { db, korekta = null, definicje, infa
     const z = zamowienieAlbo404(req, reply);
     if (!z) return reply;
     const w = zwrot(db, z.id, Number(req.params.zwrotId));
-    if (!w) return stronaOdmowy(reply, 404, 'Nie ma takiego zwrotu przy tym zamówieniu.', { tytul: 'Nie udało się obsłużyć zwrotu', wroc: `/zamowienia/${z.id}/zwrot`, napisWroc: 'Wróć do ekranu zwrotu' });
+    if (!w)
+      return stronaOdmowy(reply, 404, 'Nie ma takiego zwrotu przy tym zamówieniu.', {
+        tytul: 'Nie udało się obsłużyć zwrotu',
+        wroc: `/zamowienia/${z.id}/zwrot`,
+        napisWroc: 'Wróć do ekranu zwrotu',
+      });
     const { numer, blad } = parsujNumerKorekty(w, req.body?.numer, { nazwa: nazwaProgramu, gdzie: gdzieProgramu });
     if (blad) {
       slad(z.id, 'zwrot.korekta.reczna', `BŁĄD: ${blad}`);
-      return stronaOdmowy(reply, 400, blad, { tytul: 'Nie udało się obsłużyć zwrotu', wroc: `/zamowienia/${z.id}/zwrot`, napisWroc: 'Wróć do ekranu zwrotu' });
+      return stronaOdmowy(reply, 400, blad, {
+        tytul: 'Nie udało się obsłużyć zwrotu',
+        wroc: `/zamowienia/${z.id}/zwrot`,
+        napisWroc: 'Wróć do ekranu zwrotu',
+      });
     }
     try {
       zapiszRecznyNumerKorekty(db, z.id, w.id, numer);
     } catch (e) {
       slad(z.id, 'zwrot.korekta.reczna', `BŁĄD: ${e.message}`);
-      return stronaOdmowy(reply, 400, `Nie udało się zapisać numeru korekty: ${komunikatDlaOperatora(e)}`, { tytul: 'Nie udało się obsłużyć zwrotu', wroc: `/zamowienia/${z.id}/zwrot`, napisWroc: 'Wróć do ekranu zwrotu' });
+      return stronaOdmowy(reply, 400, `Nie udało się zapisać numeru korekty: ${komunikatDlaOperatora(e)}`, {
+        tytul: 'Nie udało się obsłużyć zwrotu',
+        wroc: `/zamowienia/${z.id}/zwrot`,
+        napisWroc: 'Wróć do ekranu zwrotu',
+      });
     }
-    slad(z.id, 'zwrot.korekta.reczna', decyzja(
-      req,
-      `korekta ${numer} do zwrotu z ${w.data} (${w.kwota} zł) została wystawiona RĘCZNIE `
-      + 'w inFakcie — panel jej nie wystawiał, tylko odnotował numer podany przez człowieka.',
-    ));
+    slad(
+      z.id,
+      'zwrot.korekta.reczna',
+      decyzja(
+        req,
+        `korekta ${numer} do zwrotu z ${w.data} (${w.kwota} zł) została wystawiona RĘCZNIE ` +
+          'w inFakcie — panel jej nie wystawiał, tylko odnotował numer podany przez człowieka.',
+      ),
+    );
     return reply.redirect(adresKarty(req, z.id));
   });
 }

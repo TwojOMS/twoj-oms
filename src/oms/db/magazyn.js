@@ -36,20 +36,29 @@ const idTekstem = (x) => (x === null || x === undefined ? '' : String(x));
 // Z tego samego powodu nie ma tu `zniknal_at`: ta kolumna ma byc ZEROWANA (produkt
 // wrocil do sklepu), a nie przepisywana z wejscia.
 const KOLUMNY_LUSTRA = [
-  'nazwa', 'sku_sklepu', 'cena_gr', 'kategorie_json', 'zdjecia_json', 'adres',
+  'nazwa',
+  'sku_sklepu',
+  'cena_gr',
+  'kategorie_json',
+  'zdjecia_json',
+  'adres',
   // ⚠️ ADRES MINIATURY JEST KOLUMNA LUSTRA, nie nasza — sklep, ktory przeliczyl zdjecia
   // na nowo albo zmienil rozmiar miniatury, ma zostac ODWZOROWANY, a nie przemilczany.
   // Stad `DO UPDATE SET`, tak samo jak przy nazwie i cenie. To odroznia te kolumne od
   // `karta_id` i `zniknal_at`, ktorych ta lista dotykac nie moze.
   'miniatura',
-  'rozmiar_tekst', 'kategoria_glowna_zrodla', 'opis_zrodlowy', 'status_publikacji',
+  'rozmiar_tekst',
+  'kategoria_glowna_zrodla',
+  'opis_zrodlowy',
+  'status_publikacji',
   // ⚠️ ATRYBUTY WARIANTU SA KOLUMNA LUSTRA, nie nasza. Wlasciciel, ktory przemianowal wartosc
   // atrybutu w sklepie („Mosiądz" → „Mosiadz"), ma zobaczyc nowa wartosc po odczycie —
   // stad `DO UPDATE SET`, tak samo jak przy nazwie i cenie. Zbior kart, ktore juz powstaly,
   // to nie zmienia: `karta_id` tej listy NIE DOTYKA i dotykac nie moze (patrz wyzej).
   'atrybuty_json',
   // Wymiary i waga, ktore podaje sklep (z jednostka) — kolumny lustra, przepisywane przy kazdym odczycie.
-  'wymiary_json', 'waga_tekst',
+  'wymiary_json',
+  'waga_tekst',
   'odczytane_at',
 ];
 
@@ -74,16 +83,18 @@ export function zapiszProduktSklepowy(db, produkt) {
   for (const k of KOLUMNY_LUSTRA) wartosci.push(produkt[k] ?? null);
 
   const kolumny = ['kanal', 'produkt_id', 'wariant_id', ...KOLUMNY_LUSTRA];
-  const wiersz = db.prepare(
-    `INSERT INTO produkty_sklepowe (${kolumny.join(', ')})`
-    + ` VALUES (${kolumny.map(() => '?').join(', ')})`
-    + ' ON CONFLICT (kanal, produkt_id, wariant_id) DO UPDATE SET '
-    + KOLUMNY_LUSTRA.map((k) => `${k} = excluded.${k}`).join(', ')
-    // Produkt, ktory wrocil do sklepu, przestaje byc znikniety — inaczej raz oznaczony
-    // wiersz zostawalby wycofany na zawsze i cena nie wrocilaby juz do listy.
-    + ', zniknal_at = NULL'
-    + ' RETURNING id',
-  ).get(...wartosci);
+  const wiersz = db
+    .prepare(
+      `INSERT INTO produkty_sklepowe (${kolumny.join(', ')})` +
+        ` VALUES (${kolumny.map(() => '?').join(', ')})` +
+        ' ON CONFLICT (kanal, produkt_id, wariant_id) DO UPDATE SET ' +
+        KOLUMNY_LUSTRA.map((k) => `${k} = excluded.${k}`).join(', ') +
+        // Produkt, ktory wrocil do sklepu, przestaje byc znikniety — inaczej raz oznaczony
+        // wiersz zostawalby wycofany na zawsze i cena nie wrocilaby juz do listy.
+        ', zniknal_at = NULL' +
+        ' RETURNING id',
+    )
+    .get(...wartosci);
   return liczba(wiersz.id);
 }
 
@@ -99,10 +110,11 @@ export function zapiszProduktSklepowy(db, produkt) {
  * kolejny przebieg nie przestemplowal daty, ktora juz o czyms mowi.
  */
 export function oznaczZnikniete(db, kanal, odczytaneAt) {
-  const r = db.prepare(
-    'UPDATE produkty_sklepowe SET zniknal_at = ?'
-    + ' WHERE kanal = ? AND odczytane_at < ? AND zniknal_at IS NULL',
-  ).run(odczytaneAt, kanal, odczytaneAt);
+  const r = db
+    .prepare(
+      'UPDATE produkty_sklepowe SET zniknal_at = ?' + ' WHERE kanal = ? AND odczytane_at < ? AND zniknal_at IS NULL',
+    )
+    .run(odczytaneAt, kanal, odczytaneAt);
   return liczba(r.changes);
 }
 
@@ -120,9 +132,9 @@ export function oznaczZnikniete(db, kanal, odczytaneAt) {
  * stan ustalony, nie awaria.
  */
 export function liczZyweProdukty(db, kanal) {
-  const r = db.prepare(
-    'SELECT COUNT(*) AS ile FROM produkty_sklepowe WHERE kanal = ? AND zniknal_at IS NULL',
-  ).get(kanal);
+  const r = db
+    .prepare('SELECT COUNT(*) AS ile FROM produkty_sklepowe WHERE kanal = ? AND zniknal_at IS NULL')
+    .get(kanal);
   return liczba(r.ile);
 }
 
@@ -131,11 +143,21 @@ export function liczZyweProdukty(db, kanal) {
 // ochrona przed edycja hurtem, ktora „ustawia" pole, o ktorym baza nic nie wie.
 const POLA_KARTY = [
   'opis_sekcje_json',
-  'sku', 'nazwa', 'szerokosc_mm', 'wysokosc_mm', 'kategoria_glowna', 'paczkomat',
-  'opis', 'glebokosc_mm', 'waga_g',
+  'sku',
+  'nazwa',
+  'szerokosc_mm',
+  'wysokosc_mm',
+  'kategoria_glowna',
+  'paczkomat',
+  'opis',
+  'glebokosc_mm',
+  'waga_g',
   // Pola z migracji 0011 (API v1 i ekran karty). Edycja hurtem ma WLASNA, wezsza liste
   // (`domena/magazyn-hurt.js`) — dopisanie tutaj nie wlacza tych pol do hurtu ani do przenoszenia ze sklepu.
-  'cena_gr', 'stawka_vat', 'ean', 'wycofana',
+  'cena_gr',
+  'stawka_vat',
+  'ean',
+  'wycofana',
   // Marka ze słownika marek (migracja 0016); poza hurtem, jak pola wyżej.
   'marka',
 ];
@@ -143,9 +165,8 @@ const POLA_KARTY = [
 // Paczkomat ma TRZY stany i pilnuje ich domena/paczkomat.js. Czwarta wartosc w kolumnie
 // zepsulaby filtr „bez oznaczenia paczkomatu" — karta z napisem 'moze' nie bylaby ani
 // oznaczona, ani nieoznaczona.
-const wartoscPola = (pole, wartosc) => (
-  pole === 'paczkomat' ? czyPaczkomat({ paczkomat: wartosc }) : (wartosc ?? null)
-);
+const wartoscPola = (pole, wartosc) =>
+  pole === 'paczkomat' ? czyPaczkomat({ paczkomat: wartosc }) : (wartosc ?? null);
 
 // Porównanie zgodne z typem kolumny SQLite, bez parsowania tekstowych JSON-ów.
 const POLA_LICZBOWE = ['szerokosc_mm', 'wysokosc_mm', 'glebokosc_mm', 'waga_g', 'cena_gr', 'wycofana'];
@@ -155,13 +176,15 @@ const doPorownania = (pole, wartosc) => {
 };
 const zmienionePola = (db, id, zmiany) => {
   const karta = db.prepare('SELECT * FROM karty_produktow WHERE id = ?').get(id);
-  return karta ? Object.keys(zmiany).filter(pole => doPorownania(pole, zmiany[pole]) !== karta[pole]) : [];
+  return karta ? Object.keys(zmiany).filter((pole) => doPorownania(pole, zmiany[pole]) !== karta[pole]) : [];
 };
 function oznaczReczne(db, id, pola, zrodlo, at) {
-  for (const pole of pola.filter(p => POLA_ZASTANE.includes(p) || p === 'opis_sekcje_json' || p === 'marka')) {
-    db.prepare(`INSERT INTO karty_zrodla_pol (karta_id, pole, zrodlo, reczne, zmieniono_at)
+  for (const pole of pola.filter((p) => POLA_ZASTANE.includes(p) || p === 'opis_sekcje_json' || p === 'marka')) {
+    db.prepare(
+      `INSERT INTO karty_zrodla_pol (karta_id, pole, zrodlo, reczne, zmieniono_at)
       VALUES (?, ?, ?, 1, ?) ON CONFLICT (karta_id, pole) DO UPDATE SET
-      zrodlo = excluded.zrodlo, reczne = 1, zmieniono_at = excluded.zmieniono_at`).run(id, pole, zrodlo, at);
+      zrodlo = excluded.zrodlo, reczne = 1, zmieniono_at = excluded.zmieniono_at`,
+    ).run(id, pole, zrodlo, at);
   }
 }
 
@@ -172,9 +195,9 @@ export function utworzKarte(db, karta, { at = teraz(), zrodlo = null } = {}) {
   const kolumny = [...pola, 'utworzony_at', 'zmieniony_at'];
   const wartosci = [...pola.map((k) => wartoscPola(k, karta[k])), at, at];
 
-  const r = db.prepare(
-    `INSERT INTO karty_produktow (${kolumny.join(', ')}) VALUES (${kolumny.map(() => '?').join(', ')})`,
-  ).run(...wartosci);
+  const r = db
+    .prepare(`INSERT INTO karty_produktow (${kolumny.join(', ')}) VALUES (${kolumny.map(() => '?').join(', ')})`)
+    .run(...wartosci);
   const id = liczba(r.lastInsertRowid);
   if (zrodlo === 'reczne') oznaczReczne(db, id, pola, zrodlo, at);
   return id;
@@ -239,14 +262,15 @@ export function zapiszKarte(db, id, zmiany, { at = teraz(), zrodlo = 'reczne' } 
  * karty w tym porzadku, w ktorym czlowiek ich szuka wzrokiem.
  */
 export function kartyPoIdach(db, ids) {
-  const numery = [...new Set(
-    (ids ?? []).filter((x) => Number.isSafeInteger(Number(x)) && Number(x) > 0).map(Number),
-  )];
+  const numery = [...new Set((ids ?? []).filter((x) => Number.isSafeInteger(Number(x)) && Number(x) > 0).map(Number))];
   if (!numery.length) return [];
-  return db.prepare(
-    `SELECT * FROM karty_produktow WHERE id IN (${numery.map(() => '?').join(', ')})`
-    + ' ORDER BY nazwa COLLATE NOCASE ASC, id ASC',
-  ).all(...numery).map((w) => ({ ...w }));
+  return db
+    .prepare(
+      `SELECT * FROM karty_produktow WHERE id IN (${numery.map(() => '?').join(', ')})` +
+        ' ORDER BY nazwa COLLATE NOCASE ASC, id ASC',
+    )
+    .all(...numery)
+    .map((w) => ({ ...w }));
 }
 
 /**
@@ -287,9 +311,12 @@ export function zastosujHurtem(db, plan, { at = teraz(), zrodlo = 'reczne' } = {
   const zapytanie = (pola) => {
     const klucz = pola.join(',');
     if (!zapytania.has(klucz)) {
-      zapytania.set(klucz, db.prepare(
-        `UPDATE karty_produktow SET ${pola.map((k) => `${k} = ?`).join(', ')}, zmieniony_at = ? WHERE id = ?`,
-      ));
+      zapytania.set(
+        klucz,
+        db.prepare(
+          `UPDATE karty_produktow SET ${pola.map((k) => `${k} = ?`).join(', ')}, zmieniony_at = ? WHERE id = ?`,
+        ),
+      );
     }
     return zapytania.get(klucz);
   };
@@ -347,23 +374,24 @@ export function zastosujHurtem(db, plan, { at = teraz(), zrodlo = 'reczne' } = {
 export function zajeteSku(db, { pomijajProduktyKart = [] } = {}) {
   const zajete = new Map();
   const dodaj = (sku, skad) => {
-    const klucz = String(sku ?? '').trim().toUpperCase();
+    const klucz = String(sku ?? '')
+      .trim()
+      .toUpperCase();
     if (klucz && !zajete.has(klucz)) zajete.set(klucz, skad);
   };
 
-  for (const w of db.prepare(
-    "SELECT id, nazwa, sku FROM karty_produktow WHERE sku IS NOT NULL AND TRIM(sku) <> '' ORDER BY id",
-  ).all()) {
+  for (const w of db
+    .prepare("SELECT id, nazwa, sku FROM karty_produktow WHERE sku IS NOT NULL AND TRIM(sku) <> '' ORDER BY id")
+    .all()) {
     dodaj(w.sku, `karta „${w.nazwa}" (#${w.id})`);
   }
 
   // ⚠️ NUMERY KART ODSIEWANE TAK SAMO, JAK W `kartyPoIdach`: identyfikatory przychodza
   // z zadania HTTP, a `IN` sklejane jest z tekstu. Wartosc, ktora nie jest bezpieczna liczba
   // calkowita, nie ma prawa dojsc do SQL-a.
-  const pomijane = [...new Set(
-    (pomijajProduktyKart ?? [])
-      .filter((x) => Number.isSafeInteger(Number(x)) && Number(x) > 0).map(Number),
-  )];
+  const pomijane = [
+    ...new Set((pomijajProduktyKart ?? []).filter((x) => Number.isSafeInteger(Number(x)) && Number(x) > 0).map(Number)),
+  ];
   // ⚠️ `karta_id IS NULL OR karta_id NOT IN (...)`: produkt NIEPOWIAZANY z zadna karta ma
   // zostac. `NOT IN` na kolumnie nullowalnej sam z siebie odsiewa NULL-e (porownanie z NULL
   // nie jest prawdziwe), czyli bez tego warunku znikneloby 1241 numerow niepowiazanych.
@@ -371,11 +399,13 @@ export function zajeteSku(db, { pomijajProduktyKart = [] } = {}) {
     ? ` AND (karta_id IS NULL OR karta_id NOT IN (${pomijane.map(() => '?').join(', ')}))`
     : '';
 
-  for (const p of db.prepare(
-    'SELECT kanal, nazwa, sku_sklepu FROM produkty_sklepowe'
-    + " WHERE sku_sklepu IS NOT NULL AND TRIM(sku_sklepu) <> ''"
-    + `${gdzie} ORDER BY kanal, id`,
-  ).all(...pomijane)) {
+  for (const p of db
+    .prepare(
+      'SELECT kanal, nazwa, sku_sklepu FROM produkty_sklepowe' +
+        " WHERE sku_sklepu IS NOT NULL AND TRIM(sku_sklepu) <> ''" +
+        `${gdzie} ORDER BY kanal, id`,
+    )
+    .all(...pomijane)) {
     dodaj(p.sku_sklepu, `${p.kanal} — „${p.nazwa}"`);
   }
 
@@ -418,8 +448,7 @@ export function nadajSku(db, plan, { at = teraz() } = {}) {
   db.exec('BEGIN IMMEDIATE');
   try {
     const zapytanie = db.prepare(
-      'UPDATE karty_produktow SET sku = ?, zmieniony_at = ?'
-      + " WHERE id = ? AND (sku IS NULL OR TRIM(sku) = '')",
+      'UPDATE karty_produktow SET sku = ?, zmieniony_at = ?' + " WHERE id = ? AND (sku IS NULL OR TRIM(sku) = '')",
     );
     for (const { id, sku } of kroki) {
       const r = zapytanie.run(sku, at, id);
@@ -444,21 +473,29 @@ export function nadajSku(db, plan, { at = teraz() } = {}) {
  */
 export function powiazProdukt(db, produktSklepowyId, kartaId, { konto = null } = {}) {
   if (kartaId !== null && kartaId !== undefined) wymagajKarty(db, kartaId);
-  const stara = db.prepare('SELECT karta_id FROM produkty_sklepowe WHERE id = ?').get(produktSklepowyId)?.karta_id ?? null;
+  const stara =
+    db.prepare('SELECT karta_id FROM produkty_sklepowe WHERE id = ?').get(produktSklepowyId)?.karta_id ?? null;
   // Pierwsze wiązanie (stara = null) nie mierzy zużycia — import i „Utwórz karty”
   // wiążą setki produktów.
   // Ślad i tak powstaje, gdy oferta miała sprzedaż, bo mierzymy tylko przy przepięciu albo odpięciu.
-  wSavepoincie(db, 'powiaz_produkt', () => przeniesPowiazanie(db, produktSklepowyId, kartaId ?? null, () => {
-    db.prepare('UPDATE produkty_sklepowe SET karta_id = ? WHERE id = ?')
-      .run(kartaId ?? null, produktSklepowyId);
-    // Przepięcie z karty na inną (albo odpięcie) zeruje `tresc_pobrana_at` — oferta wraca do kolejki
-    // „Pobierz treść i zdjęcia ofert". Tylko wtedy, bo pierwsze wiązanie (stara = null) działa też
-    // na bazie sprzed migracji rdzen/0012.
-    if (stara !== null && String(stara) !== String(kartaId ?? '')) {
-      db.prepare('UPDATE produkty_sklepowe SET tresc_pobrana_at = NULL WHERE id = ?').run(produktSklepowyId);
-    }
-    return true;
-  }, { konto, mierz: stara !== null }));
+  wSavepoincie(db, 'powiaz_produkt', () =>
+    przeniesPowiazanie(
+      db,
+      produktSklepowyId,
+      kartaId ?? null,
+      () => {
+        db.prepare('UPDATE produkty_sklepowe SET karta_id = ? WHERE id = ?').run(kartaId ?? null, produktSklepowyId);
+        // Przepięcie z karty na inną (albo odpięcie) zeruje `tresc_pobrana_at` — oferta wraca do kolejki
+        // „Pobierz treść i zdjęcia ofert". Tylko wtedy, bo pierwsze wiązanie (stara = null) działa też
+        // na bazie sprzed migracji rdzen/0012.
+        if (stara !== null && String(stara) !== String(kartaId ?? '')) {
+          db.prepare('UPDATE produkty_sklepowe SET tresc_pobrana_at = NULL WHERE id = ?').run(produktSklepowyId);
+        }
+        return true;
+      },
+      { konto, mierz: stara !== null },
+    ),
+  );
 }
 
 // ================================================================================
@@ -470,8 +507,10 @@ export function powiazProdukt(db, produktSklepowyId, kartaId, { konto = null } =
 // (NOT NULL), więc wyłącza wysyłkę ilości (`ilosc_z_oms = 0`) i zapisuje problem `brak-karty`.
 // Przy włączonych stanach sprzedaż od granicy przechodzi z ofertą; ile — zapisuje ślad `stany_przepiecia`.
 
-const maTabeleM = (db, nazwa) => Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(nazwa));
-const maKolumne = (db, tabela, kolumna) => Boolean(db.prepare('SELECT 1 FROM pragma_table_info(?) WHERE name = ?').get(tabela, kolumna));
+const maTabeleM = (db, nazwa) =>
+  Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(nazwa));
+const maKolumne = (db, tabela, kolumna) =>
+  Boolean(db.prepare('SELECT 1 FROM pragma_table_info(?) WHERE name = ?').get(tabela, kolumna));
 
 /** Przełącznik stanów, gdy stany są włączone; `null` przy wyłączonych albo bazie bez tabeli przełącznika. */
 function stanyWlaczone(db) {
@@ -503,23 +542,26 @@ function przeniesWRejestrze(db, produkt, naKarte, at) {
   if (!maTabeleM(db, 'oferty_kanalow')) return;
   const idZewnetrzne = produkt.wariant_id ? `${produkt.produkt_id}/${produkt.wariant_id}` : String(produkt.produkt_id);
   if (naKarte !== null) {
-    db.prepare(`UPDATE oferty_kanalow SET karta_id = ?, zmieniono_at = ?
-      WHERE kanal = ? AND id_zewnetrzne = ? AND pochodzenie = 'przejeta' AND karta_id <> ?`)
-      .run(naKarte, at, produkt.kanal, idZewnetrzne, naKarte);
+    db.prepare(
+      `UPDATE oferty_kanalow SET karta_id = ?, zmieniono_at = ?
+      WHERE kanal = ? AND id_zewnetrzne = ? AND pochodzenie = 'przejeta' AND karta_id <> ?`,
+    ).run(naKarte, at, produkt.kanal, idZewnetrzne, naKarte);
     // Ponowne powiązanie po odpięciu: `brak-karty` stawiamy tylko przy fladze 1, więc wracamy do wysyłki z OMS-u;
     // pierwszą wysyłkę i tak pilnuje próg skoku (`skokIlosci` w domena/ilosc-kanalu.js).
     if (maKolumne(db, 'oferty_kanalow', 'ilosc_z_oms')) {
-      db.prepare(`UPDATE oferty_kanalow SET ilosc_z_oms = 1, ilosc_problem_json = NULL, zmieniono_at = ?
+      db.prepare(
+        `UPDATE oferty_kanalow SET ilosc_z_oms = 1, ilosc_problem_json = NULL, zmieniono_at = ?
         WHERE kanal = ? AND id_zewnetrzne = ? AND pochodzenie = 'przejeta' AND ilosc_z_oms = 0
-          AND json_extract(ilosc_problem_json, '$.kod') = 'brak-karty'`)
-        .run(at, produkt.kanal, idZewnetrzne);
+          AND json_extract(ilosc_problem_json, '$.kod') = 'brak-karty'`,
+      ).run(at, produkt.kanal, idZewnetrzne);
     }
     return;
   }
   if (!maKolumne(db, 'oferty_kanalow', 'ilosc_z_oms')) return;
-  db.prepare(`UPDATE oferty_kanalow SET ilosc_z_oms = 0, ilosc_problem_json = ?, zmieniono_at = ?
-    WHERE kanal = ? AND id_zewnetrzne = ? AND pochodzenie = 'przejeta' AND ilosc_z_oms = 1`)
-    .run(JSON.stringify({ ...PROBLEMY_ILOSCI['brak-karty'], od: at }), at, produkt.kanal, idZewnetrzne);
+  db.prepare(
+    `UPDATE oferty_kanalow SET ilosc_z_oms = 0, ilosc_problem_json = ?, zmieniono_at = ?
+    WHERE kanal = ? AND id_zewnetrzne = ? AND pochodzenie = 'przejeta' AND ilosc_z_oms = 1`,
+  ).run(JSON.stringify({ ...PROBLEMY_ILOSCI['brak-karty'], od: at }), at, produkt.kanal, idZewnetrzne);
 }
 
 /**
@@ -527,7 +569,8 @@ function przeniesWRejestrze(db, produkt, naKarte, at) {
  * Dopiero potem rejestr i ślad — w tej samej transakcji, co wołający.
  */
 function przeniesPowiazanie(db, produktSklepowyId, naKarte, zmienLustro, { konto = null, mierz = true } = {}) {
-  const produkt = db.prepare('SELECT id, kanal, produkt_id, wariant_id, karta_id FROM produkty_sklepowe WHERE id = ?')
+  const produkt = db
+    .prepare('SELECT id, kanal, produkt_id, wariant_id, karta_id FROM produkty_sklepowe WHERE id = ?')
     .get(produktSklepowyId);
   const przelacznik = produkt ? stanyWlaczone(db) : null;
   const przed = przelacznik && mierz ? zuzycieProduktuOdGranicy(db, produkt.produkt_id, przelacznik) : null;
@@ -542,10 +585,19 @@ function przeniesPowiazanie(db, produktSklepowyId, naKarte, zmienLustro, { konto
   const roznica = (id) => (id === null ? 0 : Math.abs((po.get(id) ?? 0) - (przed.get(id) ?? 0)));
   const iloscWstecz = Math.max(roznica(zKarty), roznica(naKarte));
   if (zKarty === null && iloscWstecz === 0) return zmieniono;
-  zapiszPrzepiecie(db, {
-    kanal: produkt.kanal, produktId: String(produkt.produkt_id), wariantId: produkt.wariant_id ? String(produkt.wariant_id) : null,
-    zKarty, naKarte, iloscWstecz, kontoLogin: konto?.login ?? null,
-  }, { teraz: at });
+  zapiszPrzepiecie(
+    db,
+    {
+      kanal: produkt.kanal,
+      produktId: String(produkt.produkt_id),
+      wariantId: produkt.wariant_id ? String(produkt.wariant_id) : null,
+      zKarty,
+      naKarte,
+      iloscWstecz,
+      kontoLogin: konto?.login ?? null,
+    },
+    { teraz: at },
+  );
   return zmieniono;
 }
 
@@ -570,11 +622,18 @@ export function podgladPrzepiec(db, zmiany) {
     db.exec('RELEASE podglad_przepiecia');
   }
   const stan = (mapa, id) => mapa.get(id)?.stan ?? 0;
-  const ids = [...new Set([...przed.keys(), ...po.keys()])].filter((id) => stan(przed, id) !== stan(po, id)).sort((a, b) => a - b);
+  const ids = [...new Set([...przed.keys(), ...po.keys()])]
+    .filter((id) => stan(przed, id) !== stan(po, id))
+    .sort((a, b) => a - b);
   const nazwa = db.prepare('SELECT nazwa FROM karty_produktow WHERE id = ?');
   return {
     granica: przelacznik.granica,
-    karty: ids.map((kartaId) => ({ kartaId, nazwa: nazwa.get(kartaId)?.nazwa ?? `#${kartaId}`, przed: stan(przed, kartaId), po: stan(po, kartaId) })),
+    karty: ids.map((kartaId) => ({
+      kartaId,
+      nazwa: nazwa.get(kartaId)?.nazwa ?? `#${kartaId}`,
+      przed: stan(przed, kartaId),
+      po: stan(po, kartaId),
+    })),
   };
 }
 
@@ -612,23 +671,26 @@ function zarejestrujDekodowanie(db) {
   zDekodowaniem.add(db);
 }
 
-const BRAK_KATEGORII_SQL ="(w.kategoria_glowna IS NULL OR w.kategoria_glowna = '')";
+const BRAK_KATEGORII_SQL = "(w.kategoria_glowna IS NULL OR w.kategoria_glowna = '')";
 const BRAK_ZDJECIA_SQL = 'NOT EXISTS (SELECT 1 FROM zdjecia_kart z WHERE z.karta_id = w.id)';
 // json_valid w CASE: json_array_length na popsutym napisie RZUCA i wywraca całą listę
 // (jak przy filtrze kategorii niżej).
-const BRAK_OPISU_SQL = "(w.opis_sekcje_json IS NULL OR COALESCE(CASE WHEN json_valid(w.opis_sekcje_json) THEN json_array_length(w.opis_sekcje_json, '$.sekcje') END, 0) = 0)";
+const BRAK_OPISU_SQL =
+  "(w.opis_sekcje_json IS NULL OR COALESCE(CASE WHEN json_valid(w.opis_sekcje_json) THEN json_array_length(w.opis_sekcje_json, '$.sekcje') END, 0) = 0)";
 // ⚠️ Wartosci stanow z domena/paczkomat.js interpolowane RAZ przy starcie procesu. To stale
 // APLIKACJI, a nie dane z zadania HTTP — i inaczej niz przy dawnym `nieoznaczony()` to
 // wyrazenie idzie takze do SELECT-a i do ORDER BY, gdzie parametry zapytania nie siegaja.
 // Czwarty stan nadal wymaga zmiany wylacznie w domenie.
-const BRAK_PACZKOMATU_SQL = `(w.paczkomat IS NULL OR w.paczkomat NOT IN (${
-  [...PACZKOMAT_WARTOSCI].map((v) => `'${v}'`).join(', ')}))`;
-const LICZBA_BRAKOW_SQL = `((CASE WHEN ${BRAK_SKU_SQL} THEN 1 ELSE 0 END)`
-  + ` + (CASE WHEN ${BRAK_WYMIAROW_SQL} THEN 1 ELSE 0 END)`
-  + ` + (CASE WHEN ${BRAK_KATEGORII_SQL} THEN 1 ELSE 0 END)`
-  + ` + (CASE WHEN ${BRAK_PACZKOMATU_SQL} THEN 1 ELSE 0 END)`
-  + ` + (CASE WHEN ${BRAK_ZDJECIA_SQL} THEN 1 ELSE 0 END)`
-  + ` + (CASE WHEN ${BRAK_OPISU_SQL} THEN 1 ELSE 0 END))`;
+const BRAK_PACZKOMATU_SQL = `(w.paczkomat IS NULL OR w.paczkomat NOT IN (${[...PACZKOMAT_WARTOSCI]
+  .map((v) => `'${v}'`)
+  .join(', ')}))`;
+const LICZBA_BRAKOW_SQL =
+  `((CASE WHEN ${BRAK_SKU_SQL} THEN 1 ELSE 0 END)` +
+  ` + (CASE WHEN ${BRAK_WYMIAROW_SQL} THEN 1 ELSE 0 END)` +
+  ` + (CASE WHEN ${BRAK_KATEGORII_SQL} THEN 1 ELSE 0 END)` +
+  ` + (CASE WHEN ${BRAK_PACZKOMATU_SQL} THEN 1 ELSE 0 END)` +
+  ` + (CASE WHEN ${BRAK_ZDJECIA_SQL} THEN 1 ELSE 0 END)` +
+  ` + (CASE WHEN ${BRAK_OPISU_SQL} THEN 1 ELSE 0 END))`;
 
 // Biala lista sortowania: klucz z adresu → WYRAZENIE SQL. Klucze sa dwojakie, bo widok
 // mowi „wysokosc", a schemat „wysokosc_mm" — obie postacie maja dzialac, zeby odnosnik
@@ -680,7 +742,10 @@ function warunkiKart({ fraza, filtry = {} }) {
     const istnieje = 'EXISTS (SELECT 1 FROM oferty_kanalow ok WHERE ok.karta_id = w.id';
     if (filtry.oferty === 'bez') czesci.push(`NOT ${istnieje})`);
     else if (filtry.oferty === 'z') czesci.push(`${istnieje})`);
-    else if (filtry.oferty === 'problem') czesci.push(`${istnieje} AND (ok.stan IN ('problem', 'blad') OR ok.blad IS NOT NULL OR ok.problemy_json <> '[]'))`);
+    else if (filtry.oferty === 'problem')
+      czesci.push(
+        `${istnieje} AND (ok.stan IN ('problem', 'blad') OR ok.blad IS NOT NULL OR ok.problemy_json <> '[]'))`,
+      );
     else czesci.push('1 = 0');
   }
 
@@ -710,12 +775,24 @@ function warunkiKart({ fraza, filtry = {} }) {
   // tutaj z mysla o „zewnetrznym" `p`, albo usuniety alias z podzapytania, zaczalby po cichu
   // znaczyc co innego, bez bledu skladni i bez czerwonego testu na malych danych.
   const { kanal, cenaOd, cenaDo, kategoria, marka, paczkomat, brak } = filtry;
-  if (marka) { czesci.push('w.marka = ?'); params.push(marka); }
+  if (marka) {
+    czesci.push('w.marka = ?');
+    params.push(marka);
+  }
   if (kanal || cenaOd != null || cenaDo != null) {
     const pod = ['pf.karta_id = w.id', 'pf.zniknal_at IS NULL'];
-    if (kanal) { pod.push('pf.kanal = ?'); params.push(kanal); }
-    if (cenaOd != null) { pod.push('pf.cena_gr >= ?'); params.push(Number(cenaOd)); }
-    if (cenaDo != null) { pod.push('pf.cena_gr <= ?'); params.push(Number(cenaDo)); }
+    if (kanal) {
+      pod.push('pf.kanal = ?');
+      params.push(kanal);
+    }
+    if (cenaOd != null) {
+      pod.push('pf.cena_gr >= ?');
+      params.push(Number(cenaOd));
+    }
+    if (cenaDo != null) {
+      pod.push('pf.cena_gr <= ?');
+      params.push(Number(cenaDo));
+    }
     czesci.push(`EXISTS (SELECT 1 FROM produkty_sklepowe pf WHERE ${pod.join(' AND ')})`);
   }
 
@@ -742,11 +819,11 @@ function warunkiKart({ fraza, filtry = {} }) {
   // i w produkt lustra z „DIY &amp;amp; Craft". Funkcje SQL rejestruje `kartyZKanalami`.
   if (kategoria) {
     czesci.push(
-      `(${DEKODUJ_SQL}(w.kategoria_glowna) = ?`
-      + ' OR EXISTS (SELECT 1 FROM produkty_sklepowe pk WHERE pk.karta_id = w.id'
-      + ' AND pk.zniknal_at IS NULL AND EXISTS (SELECT 1 FROM json_each('
-      + "CASE WHEN json_valid(pk.kategorie_json) THEN pk.kategorie_json ELSE '[]' END"
-      + `) jk WHERE ${DEKODUJ_SQL}(jk.value) = ?)))`,
+      `(${DEKODUJ_SQL}(w.kategoria_glowna) = ?` +
+        ' OR EXISTS (SELECT 1 FROM produkty_sklepowe pk WHERE pk.karta_id = w.id' +
+        ' AND pk.zniknal_at IS NULL AND EXISTS (SELECT 1 FROM json_each(' +
+        "CASE WHEN json_valid(pk.kategorie_json) THEN pk.kategorie_json ELSE '[]' END" +
+        `) jk WHERE ${DEKODUJ_SQL}(jk.value) = ?)))`,
     );
     const szukana = dekodujEncje(kategoria);
     params.push(szukana, szukana);
@@ -756,8 +833,10 @@ function warunkiKart({ fraza, filtry = {} }) {
   // stanu nie wymaga poprawki tutaj. „Nieoznaczony" to DOKLADNIE to samo wyrazenie, ktorego
   // uzywa kolumna `liczba_brakow`, kafel i sortowanie (patrz `BRAK_PACZKOMATU_SQL`).
   if (paczkomat) {
-    if (PACZKOMAT_WARTOSCI.has(paczkomat)) { czesci.push('w.paczkomat = ?'); params.push(paczkomat); }
-    else if (paczkomat === 'nieoznaczone') czesci.push(BRAK_PACZKOMATU_SQL);
+    if (PACZKOMAT_WARTOSCI.has(paczkomat)) {
+      czesci.push('w.paczkomat = ?');
+      params.push(paczkomat);
+    } else if (paczkomat === 'nieoznaczone') czesci.push(BRAK_PACZKOMATU_SQL);
     else czesci.push('1 = 0');
   }
 
@@ -805,37 +884,44 @@ export function kartyZKanalami(db, { fraza, filtry, sort, kier } = {}) {
   // nie zlapie, a do ORDER BY trafia `function Object() { [native code] }`, czyli
   // `SqliteError` i 500 zamiast listy. `Object.hasOwn` sprawdza WYLACZNIE WLASNOSC
   // wlasna wiersza, nigdy lancuch prototypow — to jest tu jedyna wlasciwa biala lista.
-  const wyrazenie = Object.hasOwn(SORTOWANIE, sort)
-    ? SORTOWANIE[sort]
-    : SORTOWANIE[SORTOWANIE_DOMYSLNE];
+  const wyrazenie = Object.hasOwn(SORTOWANIE, sort) ? SORTOWANIE[sort] : SORTOWANIE[SORTOWANIE_DOMYSLNE];
   const kierunek = String(kier).toLowerCase() === 'desc' ? 'DESC' : 'ASC';
 
-  const karty = db.prepare(
-    // `NULLS LAST` w OBU kierunkach: brak wartosci nie jest ani najmniejszy, ani najwiekszy
-    // — to brak. Tysiac kart bez SKU na czele listy sortowanej po SKU nie odpowiada na
-    // zadne pytanie; od szukania brakow jest filtr braków. `w.id` na koncu daje kolejnosc
-    // powtarzalna miedzy odswiezeniami przy remisie.
-    // `liczba_brakow` jedzie TYM SAMYM wyrazeniem, co filtr i kafel — wiersz listy nie ma
-    // prawa twierdzic czego innego niz zawezenie, ktore go na te liste wpuscilo.
-    `SELECT w.*, ${LICZBA_BRAKOW_SQL} AS liczba_brakow FROM karty_produktow w`
-    + ` WHERE ${gdzie} ORDER BY ${wyrazenie} ${kierunek} NULLS LAST, w.id ASC`,
-  ).all(...params);
+  const karty = db
+    .prepare(
+      // `NULLS LAST` w OBU kierunkach: brak wartosci nie jest ani najmniejszy, ani najwiekszy
+      // — to brak. Tysiac kart bez SKU na czele listy sortowanej po SKU nie odpowiada na
+      // zadne pytanie; od szukania brakow jest filtr braków. `w.id` na koncu daje kolejnosc
+      // powtarzalna miedzy odswiezeniami przy remisie.
+      // `liczba_brakow` jedzie TYM SAMYM wyrazeniem, co filtr i kafel — wiersz listy nie ma
+      // prawa twierdzic czego innego niz zawezenie, ktore go na te liste wpuscilo.
+      `SELECT w.*, ${LICZBA_BRAKOW_SQL} AS liczba_brakow FROM karty_produktow w` +
+        ` WHERE ${gdzie} ORDER BY ${wyrazenie} ${kierunek} NULLS LAST, w.id ASC`,
+    )
+    .all(...params);
   if (!karty.length) return [];
 
-  const produkty = db.prepare(
-    'SELECT p.* FROM produkty_sklepowe p'
-    + ` WHERE p.zniknal_at IS NULL AND p.karta_id IN (SELECT w.id FROM karty_produktow w WHERE ${gdzie})`
-    // Po `p.id` rosnaco, bo przy dwoch wariantach tego samego kanalu wygrywa pierwszy —
-    // wybor ma byc TEN SAM przy kazdym odswiezeniu, a nie zalezny od planu zapytania.
-    + ' ORDER BY p.id ASC',
-  ).all(...params);
+  const produkty = db
+    .prepare(
+      'SELECT p.* FROM produkty_sklepowe p' +
+        ` WHERE p.zniknal_at IS NULL AND p.karta_id IN (SELECT w.id FROM karty_produktow w WHERE ${gdzie})` +
+        // Po `p.id` rosnaco, bo przy dwoch wariantach tego samego kanalu wygrywa pierwszy —
+        // wybor ma byc TEN SAM przy kazdym odswiezeniu, a nie zalezny od planu zapytania.
+        ' ORDER BY p.id ASC',
+    )
+    .all(...params);
 
   // ⚠️ `kanaly` MUSI byc bez prototypu. `p.kanal` pochodzi z danych sklepu (lustro cudzego
   // API) — kanal o nazwie 'constructor' albo 'toString' na literale `{}` nie ustawilby
   // wlasnej wlasnosci, tylko po cichu odczytal/nadpisal metode z `Object.prototype`,
   // dokladnie ten sam wzorzec co przy bialej liscie sortowania wyzej.
   const oferty = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'oferty_kanalow'").get()
-    ? db.prepare(`SELECT karta_id, kanal, stan, blad FROM oferty_kanalow WHERE karta_id IN (SELECT w.id FROM karty_produktow w WHERE ${gdzie}) ORDER BY kanal, id`).all(...params) : [];
+    ? db
+        .prepare(
+          `SELECT karta_id, kanal, stan, blad FROM oferty_kanalow WHERE karta_id IN (SELECT w.id FROM karty_produktow w WHERE ${gdzie}) ORDER BY kanal, id`,
+        )
+        .all(...params)
+    : [];
   const wiersze = karty.map((w) => ({ ...w, kanaly: Object.create(null), oferty: [] }));
   const poId = new Map(wiersze.map((w) => [w.id, w]));
   for (const o of oferty) poId.get(o.karta_id)?.oferty.push(o);
@@ -861,11 +947,15 @@ export function kartyZKanalami(db, { fraza, filtry, sort, kier } = {}) {
  */
 export function kanalyDostepnosciKart(db, kartaIds, { kanalyZeStatusem = [] } = {}) {
   if (!kartaIds.length) return [];
-  return /** @type {any[]} */ (db.prepare(
-    'SELECT DISTINCT karta_id, kanal FROM produkty_sklepowe'
-    + ' WHERE zniknal_at IS NULL AND karta_id IN (SELECT value FROM json_each(?))'
-    + " AND (kanal NOT IN (SELECT value FROM json_each(?)) OR status_publikacji = 'ACTIVE')",
-  ).all(JSON.stringify(kartaIds.map(Number)), JSON.stringify([...kanalyZeStatusem])));
+  return /** @type {any[]} */ (
+    db
+      .prepare(
+        'SELECT DISTINCT karta_id, kanal FROM produkty_sklepowe' +
+          ' WHERE zniknal_at IS NULL AND karta_id IN (SELECT value FROM json_each(?))' +
+          " AND (kanal NOT IN (SELECT value FROM json_each(?)) OR status_publikacji = 'ACTIVE')",
+      )
+      .all(JSON.stringify(kartaIds.map(Number)), JSON.stringify([...kanalyZeStatusem]))
+  );
 }
 
 /**
@@ -890,20 +980,22 @@ export function kanalyDostepnosciKart(db, kartaIds, { kanalyZeStatusem = [] } = 
  *            bezKategorii: number, bezPaczkomatu: number, komplet: number}}
  */
 export function zliczeniaBrakow(db) {
-  return db.prepare(
-    'SELECT COUNT(*) AS razem'
-    + `, COALESCE(SUM(CASE WHEN ${BRAK_SKU_SQL} THEN 1 ELSE 0 END), 0) AS bezSku`
-    + `, COALESCE(SUM(CASE WHEN ${BRAK_SKU_SQL} AND EXISTS (SELECT 1 FROM produkty_sklepowe pz`
-    + " WHERE pz.karta_id = w.id AND pz.zniknal_at IS NULL AND pz.sku_sklepu IS NOT NULL AND pz.sku_sklepu != '')"
-    + ' THEN 1 ELSE 0 END), 0) AS doPrzejecia'
-    + `, COALESCE(SUM(CASE WHEN ${BRAK_WYMIAROW_SQL} THEN 1 ELSE 0 END), 0) AS bezWymiarow`
-    + `, COALESCE(SUM(CASE WHEN ${BRAK_KATEGORII_SQL} THEN 1 ELSE 0 END), 0) AS bezKategorii`
-    + `, COALESCE(SUM(CASE WHEN ${BRAK_PACZKOMATU_SQL} THEN 1 ELSE 0 END), 0) AS bezPaczkomatu`
-    + `, COALESCE(SUM(CASE WHEN ${BRAK_ZDJECIA_SQL} THEN 1 ELSE 0 END), 0) AS bezZdjecia`
-    + `, COALESCE(SUM(CASE WHEN ${BRAK_OPISU_SQL} THEN 1 ELSE 0 END), 0) AS bezOpisu`
-    + `, COALESCE(SUM(CASE WHEN ${LICZBA_BRAKOW_SQL} = 0 THEN 1 ELSE 0 END), 0) AS komplet`
-    + ' FROM karty_produktow w',
-  ).get();
+  return db
+    .prepare(
+      'SELECT COUNT(*) AS razem' +
+        `, COALESCE(SUM(CASE WHEN ${BRAK_SKU_SQL} THEN 1 ELSE 0 END), 0) AS bezSku` +
+        `, COALESCE(SUM(CASE WHEN ${BRAK_SKU_SQL} AND EXISTS (SELECT 1 FROM produkty_sklepowe pz` +
+        " WHERE pz.karta_id = w.id AND pz.zniknal_at IS NULL AND pz.sku_sklepu IS NOT NULL AND pz.sku_sklepu != '')" +
+        ' THEN 1 ELSE 0 END), 0) AS doPrzejecia' +
+        `, COALESCE(SUM(CASE WHEN ${BRAK_WYMIAROW_SQL} THEN 1 ELSE 0 END), 0) AS bezWymiarow` +
+        `, COALESCE(SUM(CASE WHEN ${BRAK_KATEGORII_SQL} THEN 1 ELSE 0 END), 0) AS bezKategorii` +
+        `, COALESCE(SUM(CASE WHEN ${BRAK_PACZKOMATU_SQL} THEN 1 ELSE 0 END), 0) AS bezPaczkomatu` +
+        `, COALESCE(SUM(CASE WHEN ${BRAK_ZDJECIA_SQL} THEN 1 ELSE 0 END), 0) AS bezZdjecia` +
+        `, COALESCE(SUM(CASE WHEN ${BRAK_OPISU_SQL} THEN 1 ELSE 0 END), 0) AS bezOpisu` +
+        `, COALESCE(SUM(CASE WHEN ${LICZBA_BRAKOW_SQL} = 0 THEN 1 ELSE 0 END), 0) AS komplet` +
+        ' FROM karty_produktow w',
+    )
+    .get();
 }
 
 /**
@@ -926,11 +1018,13 @@ export function zliczeniaBrakow(db) {
 export function zliczeniaNiepowiazanych(db, kanalyAllegro) {
   wymagajListyKanalow(kanalyAllegro);
   const konta = [...kanalyAllegro];
-  return db.prepare(
-    'SELECT COUNT(*) AS pominiete'
-    + `, COALESCE(SUM(CASE WHEN kanal IN (${konta.map(() => '?').join(', ')}) THEN 1 ELSE 0 END), 0) AS ofertyAllegro`
-    + ' FROM produkty_sklepowe WHERE karta_id IS NULL AND zniknal_at IS NULL',
-  ).get(...konta);
+  return db
+    .prepare(
+      'SELECT COUNT(*) AS pominiete' +
+        `, COALESCE(SUM(CASE WHEN kanal IN (${konta.map(() => '?').join(', ')}) THEN 1 ELSE 0 END), 0) AS ofertyAllegro` +
+        ' FROM produkty_sklepowe WHERE karta_id IS NULL AND zniknal_at IS NULL',
+    )
+    .get(...konta);
 }
 
 /**
@@ -980,23 +1074,29 @@ export function zliczeniaNiepowiazanych(db, kanalyAllegro) {
  */
 export function kategorieDoFiltra(db) {
   zarejestrujDekodowanie(db);
-  return db.prepare(
-    'SELECT DISTINCT k FROM ('
-    + `  SELECT NULLIF(TRIM(${DEKODUJ_SQL}(w.kategoria_glowna)), '') AS k FROM karty_produktow w`
-    + '  UNION'
-    + `  SELECT NULLIF(TRIM(${DEKODUJ_SQL}(jk.value)), '') AS k FROM produkty_sklepowe pk, json_each(`
-    + "    CASE WHEN json_valid(pk.kategorie_json) THEN pk.kategorie_json ELSE '[]' END"
-    + "  ) jk WHERE pk.zniknal_at IS NULL AND pk.karta_id IS NOT NULL AND jk.type = 'text'"
-    + ') WHERE k IS NOT NULL ORDER BY k COLLATE NOCASE',
-  ).all().map((w) => w.k);
+  return db
+    .prepare(
+      'SELECT DISTINCT k FROM (' +
+        `  SELECT NULLIF(TRIM(${DEKODUJ_SQL}(w.kategoria_glowna)), '') AS k FROM karty_produktow w` +
+        '  UNION' +
+        `  SELECT NULLIF(TRIM(${DEKODUJ_SQL}(jk.value)), '') AS k FROM produkty_sklepowe pk, json_each(` +
+        "    CASE WHEN json_valid(pk.kategorie_json) THEN pk.kategorie_json ELSE '[]' END" +
+        "  ) jk WHERE pk.zniknal_at IS NULL AND pk.karta_id IS NOT NULL AND jk.type = 'text'" +
+        ') WHERE k IS NOT NULL ORDER BY k COLLATE NOCASE',
+    )
+    .all()
+    .map((w) => w.k);
 }
 
 /** Marki występujące na kartach — dokładnie wartości osiągalne przez filtr marki. */
 export function markiDoFiltra(db) {
-  return db.prepare(
-    "SELECT DISTINCT marka FROM karty_produktow WHERE marka IS NOT NULL AND marka != ''"
-    + ' ORDER BY marka COLLATE NOCASE',
-  ).all().map(w => w.marka);
+  return db
+    .prepare(
+      "SELECT DISTINCT marka FROM karty_produktow WHERE marka IS NOT NULL AND marka != ''" +
+        ' ORDER BY marka COLLATE NOCASE',
+    )
+    .all()
+    .map((w) => w.marka);
 }
 
 /**
@@ -1006,9 +1106,10 @@ export function markiDoFiltra(db) {
  * doklada rejestrowi wiersz bez zadnego zastosowania.
  */
 export function niepowiazaneProdukty(db) {
-  return db.prepare(
-    'SELECT * FROM produkty_sklepowe WHERE karta_id IS NULL AND zniknal_at IS NULL ORDER BY id ASC',
-  ).all().map((p) => ({ ...p }));
+  return db
+    .prepare('SELECT * FROM produkty_sklepowe WHERE karta_id IS NULL AND zniknal_at IS NULL ORDER BY id ASC')
+    .all()
+    .map((p) => ({ ...p }));
 }
 
 /**
@@ -1089,10 +1190,13 @@ export function niepowiazaneOfertyAllegro(db, kanaly) {
   wymagajListyKanalow(kanaly);
   if (!kanaly.length) return [];
   const warunek = `p.kanal IN (${kanaly.map(() => '?').join(', ')}) AND p.zniknal_at IS NULL`;
-  return db.prepare(
-    `SELECT p.* FROM produkty_sklepowe p WHERE ${warunek} AND p.karta_id IS NULL`
-    + ' ORDER BY p.nazwa COLLATE NOCASE ASC, p.id ASC',
-  ).all(...kanaly).map((p) => ({ ...p }));
+  return db
+    .prepare(
+      `SELECT p.* FROM produkty_sklepowe p WHERE ${warunek} AND p.karta_id IS NULL` +
+        ' ORDER BY p.nazwa COLLATE NOCASE ASC, p.id ASC',
+    )
+    .all(...kanaly)
+    .map((p) => ({ ...p }));
 }
 
 /**
@@ -1107,13 +1211,16 @@ export function powiazaneOfertyAllegro(db, kanaly) {
   wymagajListyKanalow(kanaly);
   if (!kanaly.length) return [];
   const warunek = `p.kanal IN (${kanaly.map(() => '?').join(', ')}) AND p.zniknal_at IS NULL`;
-  return db.prepare(
-    'SELECT p.id AS id, p.kanal AS kanal, p.nazwa AS nazwa, p.karta_id AS karta_id,'
-    + ' w.nazwa AS karta_nazwa, w.sku AS karta_sku'
-    + ' FROM produkty_sklepowe p JOIN karty_produktow w ON w.id = p.karta_id'
-    + ` WHERE ${warunek}`
-    + ' ORDER BY p.nazwa COLLATE NOCASE ASC, p.id ASC',
-  ).all(...kanaly).map((p) => ({ ...p }));
+  return db
+    .prepare(
+      'SELECT p.id AS id, p.kanal AS kanal, p.nazwa AS nazwa, p.karta_id AS karta_id,' +
+        ' w.nazwa AS karta_nazwa, w.sku AS karta_sku' +
+        ' FROM produkty_sklepowe p JOIN karty_produktow w ON w.id = p.karta_id' +
+        ` WHERE ${warunek}` +
+        ' ORDER BY p.nazwa COLLATE NOCASE ASC, p.id ASC',
+    )
+    .all(...kanaly)
+    .map((p) => ({ ...p }));
 }
 
 /**
@@ -1129,10 +1236,13 @@ export function powiazaneOfertyAllegro(db, kanaly) {
  * ze najpierw trzeba zalozyc karty (patrz `web/routes/magazyn.js`).
  */
 export function kartyDoPowiazania(db) {
-  return db.prepare(
-    'SELECT id, nazwa, sku, szerokosc_mm, wysokosc_mm FROM karty_produktow'
-    + ' ORDER BY nazwa COLLATE NOCASE ASC, id ASC',
-  ).all().map((w) => ({ ...w }));
+  return db
+    .prepare(
+      'SELECT id, nazwa, sku, szerokosc_mm, wysokosc_mm FROM karty_produktow' +
+        ' ORDER BY nazwa COLLATE NOCASE ASC, id ASC',
+    )
+    .all()
+    .map((w) => ({ ...w }));
 }
 
 /**
@@ -1165,13 +1275,18 @@ export function powiazOfertyHurtem(db, pary, kanaly, { konto = null } = {}) {
   db.exec('BEGIN IMMEDIATE');
   try {
     const zapytanie = db.prepare(
-      'UPDATE produkty_sklepowe SET karta_id = ?'
-      + ` WHERE id = ? AND ${warunekKanalu} AND karta_id IS NULL AND zniknal_at IS NULL`,
+      'UPDATE produkty_sklepowe SET karta_id = ?' +
+        ` WHERE id = ? AND ${warunekKanalu} AND karta_id IS NULL AND zniknal_at IS NULL`,
     );
     for (const { produktId, kartaId } of pary ?? []) {
       wymagajKarty(db, kartaId);
-      const ok = przeniesPowiazanie(db, produktId, liczba(kartaId),
-        () => liczba(zapytanie.run(kartaId, produktId, ...kanaly).changes) > 0, { konto });
+      const ok = przeniesPowiazanie(
+        db,
+        produktId,
+        liczba(kartaId),
+        () => liczba(zapytanie.run(kartaId, produktId, ...kanaly).changes) > 0,
+        { konto },
+      );
       (ok ? powiazane : nieaktualne).push(produktId);
     }
     db.exec('COMMIT');
@@ -1198,9 +1313,22 @@ export function powiazOfertyHurtem(db, pary, kanaly, { konto = null } = {}) {
 export function odepnijOferte(db, produktSklepowyId, kanaly, { konto = null } = {}) {
   wymagajListyKanalow(kanaly);
   const warunekKanalu = kanaly.length ? `kanal IN (${kanaly.map(() => '?').join(', ')})` : '0 = 1';
-  return wSavepoincie(db, 'odepnij_oferte', () => przeniesPowiazanie(db, produktSklepowyId, null, () => liczba(db.prepare(
-    `UPDATE produkty_sklepowe SET karta_id = NULL, tresc_pobrana_at = NULL WHERE id = ? AND ${warunekKanalu}`,
-  ).run(produktSklepowyId, ...kanaly).changes) > 0, { konto }));
+  return wSavepoincie(db, 'odepnij_oferte', () =>
+    przeniesPowiazanie(
+      db,
+      produktSklepowyId,
+      null,
+      () =>
+        liczba(
+          db
+            .prepare(
+              `UPDATE produkty_sklepowe SET karta_id = NULL, tresc_pobrana_at = NULL WHERE id = ? AND ${warunekKanalu}`,
+            )
+            .run(produktSklepowyId, ...kanaly).changes,
+        ) > 0,
+      { konto },
+    ),
+  );
 }
 
 // ================================================================================
@@ -1239,9 +1367,10 @@ export function kartaPoId(db, id) {
 export function produktyKarty(db, kartaId) {
   const numer = Number(kartaId);
   if (!Number.isInteger(numer)) return [];
-  return db.prepare(
-    'SELECT * FROM produkty_sklepowe WHERE karta_id = ? ORDER BY kanal ASC, id ASC',
-  ).all(numer).map((p) => ({ ...p }));
+  return db
+    .prepare('SELECT * FROM produkty_sklepowe WHERE karta_id = ? ORDER BY kanal ASC, id ASC')
+    .all(numer)
+    .map((p) => ({ ...p }));
 }
 
 /**
@@ -1264,16 +1393,17 @@ export function produktyKarty(db, kartaId) {
  * sklejane jest z tekstu.
  */
 export function produktyKart(db, ids) {
-  const numery = [...new Set(
-    (ids ?? []).filter((x) => Number.isSafeInteger(Number(x)) && Number(x) > 0).map(Number),
-  )];
+  const numery = [...new Set((ids ?? []).filter((x) => Number.isSafeInteger(Number(x)) && Number(x) > 0).map(Number))];
   if (!numery.length) return [];
-  return db.prepare(
-    `SELECT * FROM produkty_sklepowe WHERE karta_id IN (${numery.map(() => '?').join(', ')})`
-    // Kolejnosc jawna: opis rozbieznosci wymienia numery po kolei, a czlowiek ma zobaczyc
-    // ten sam ekran przy podgladzie i przy zatwierdzeniu.
-    + ' ORDER BY kanal ASC, id ASC',
-  ).all(...numery).map((p) => ({ ...p }));
+  return db
+    .prepare(
+      `SELECT * FROM produkty_sklepowe WHERE karta_id IN (${numery.map(() => '?').join(', ')})` +
+        // Kolejnosc jawna: opis rozbieznosci wymienia numery po kolei, a czlowiek ma zobaczyc
+        // ten sam ekran przy podgladzie i przy zatwierdzeniu.
+        ' ORDER BY kanal ASC, id ASC',
+    )
+    .all(...numery)
+    .map((p) => ({ ...p }));
 }
 
 /**
@@ -1293,10 +1423,9 @@ export function produktyKart(db, ids) {
  * drugiego zapisu do sklepu, ktory sprzedaje.
  */
 export function zapiszSkuSklepu(db, { kanal, produkt_id: produktId, wariant_id: wariantId }, sku) {
-  const r = db.prepare(
-    'UPDATE produkty_sklepowe SET sku_sklepu = ?'
-    + ' WHERE kanal = ? AND produkt_id = ? AND wariant_id = ?',
-  ).run(sku, kanal, idTekstem(produktId), idTekstem(wariantId));
+  const r = db
+    .prepare('UPDATE produkty_sklepowe SET sku_sklepu = ?' + ' WHERE kanal = ? AND produkt_id = ? AND wariant_id = ?')
+    .run(sku, kanal, idTekstem(produktId), idTekstem(wariantId));
   return liczba(r.changes);
 }
 
@@ -1325,11 +1454,18 @@ export function kartaZeSku(db, sku) {
  */
 export function szukajkaKartDoImportu(db) {
   const poSku = new Map();
-  for (const w of db.prepare('SELECT p.sku_sklepu, p.karta_id, p.zniknal_at FROM produkty_sklepowe p JOIN karty_produktow k ON k.id = p.karta_id').iterate()) {
+  for (const w of db
+    .prepare(
+      'SELECT p.sku_sklepu, p.karta_id, p.zniknal_at FROM produkty_sklepowe p JOIN karty_produktow k ON k.id = p.karta_id',
+    )
+    .iterate()) {
     const s = String(w.sku_sklepu ?? '').trim();
     if (!s) continue;
     let wpis = poSku.get(s);
-    if (!wpis) { wpis = { zywe: new Set(), znikniete: new Set() }; poSku.set(s, wpis); }
+    if (!wpis) {
+      wpis = { zywe: new Set(), znikniete: new Set() };
+      poSku.set(s, wpis);
+    }
     (w.zniknal_at === null || w.zniknal_at === undefined ? wpis.zywe : wpis.znikniete).add(Number(w.karta_id));
   }
   return (sku) => {
@@ -1382,7 +1518,11 @@ export function produktyPominiete(db, kanalySklepow) {
 const SLOWA_MAX = 6;
 
 export function szukajDoZamowienia(db, { fraza, kanal, limit = 20 } = {}) {
-  const slowa = String(fraza ?? '').trim().split(/\s+/u).filter(Boolean).slice(0, SLOWA_MAX);
+  const slowa = String(fraza ?? '')
+    .trim()
+    .split(/\s+/u)
+    .filter(Boolean)
+    .slice(0, SLOWA_MAX);
   if (slowa.length === 0) return [];
 
   const czesci = ['kanal = ?', 'zniknal_at IS NULL'];
@@ -1395,14 +1535,18 @@ export function szukajDoZamowienia(db, { fraza, kanal, limit = 20 } = {}) {
 
   // Produkty Z CENA ida pierwsze: bezcenowy wiersz i tak nie da sie dodac jednym
   // kliknieciem, wiec spychanie go na dol jest uczciwsze niz mieszanie z reszta.
-  return db.prepare(`
+  return db
+    .prepare(
+      `
     SELECT kanal, produkt_id, wariant_id, nazwa, sku_sklepu, cena_gr, rozmiar_tekst,
            miniatura, adres, status_publikacji
     FROM produkty_sklepowe
     WHERE ${czesci.join(' AND ')}
     ORDER BY (cena_gr IS NULL) ASC, nazwa ASC, rozmiar_tekst ASC
     LIMIT ?
-  `).all(...params, Number(limit) || 20);
+  `,
+    )
+    .all(...params, Number(limit) || 20);
 }
 
 /**
@@ -1414,15 +1558,23 @@ export function szukajDoZamowienia(db, { fraza, kanal, limit = 20 } = {}) {
  * szukanie po samym `produkt_id` oddaloby cene z przypadkowego cennika.
  */
 export function produktDoZamowienia(db, { kanal, produkt_id: produktId, wariant_id: wariantId }) {
-  return db.prepare(`
+  return (
+    db
+      .prepare(
+        `
     SELECT kanal, produkt_id, wariant_id, nazwa, sku_sklepu, cena_gr, rozmiar_tekst, status_publikacji
     FROM produkty_sklepowe
     WHERE kanal = ? AND produkt_id = ? AND wariant_id = ? AND zniknal_at IS NULL
-  `).get(String(kanal), String(produktId), String(wariantId ?? '')) ?? null;
+  `,
+      )
+      .get(String(kanal), String(produktId), String(wariantId ?? '')) ?? null
+  );
 }
 
 /** Kiedy ostatnio czytalismy katalog tego sklepu — ekran ma powiedziec, jak swieze sa ceny. */
 export function odczytKatalogu(db, kanal) {
-  return db.prepare('SELECT MAX(odczytane_at) AS kiedy FROM produkty_sklepowe WHERE kanal = ?')
-    .get(String(kanal))?.kiedy ?? null;
+  return (
+    db.prepare('SELECT MAX(odczytane_at) AS kiedy FROM produkty_sklepowe WHERE kanal = ?').get(String(kanal))?.kiedy ??
+    null
+  );
 }

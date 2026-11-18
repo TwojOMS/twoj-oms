@@ -50,6 +50,6 @@ export function saldoOkresuGrosze({ kwotaFakturyGr, wplaty }) {
   return {
     saldoGr,
     oplacony: saldoGr >= 0,
-    stan: saldoGr === 0 ? 'pokryte' : (saldoGr < 0 ? 'niedoplata' : 'nadplata'),
+    stan: saldoGr === 0 ? 'pokryte' : saldoGr < 0 ? 'niedoplata' : 'nadplata',
   };
 }

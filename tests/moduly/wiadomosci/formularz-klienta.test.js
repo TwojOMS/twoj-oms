@@ -7,8 +7,8 @@ import { runInNewContext } from 'node:vm';
 
 const headers = { authorization: `Basic ${Buffer.from('tester:x').toString('base64')}`, origin: 'http://localhost' };
 let db, app, klient, gus;
-const get = url => app.inject({ method: 'GET', url, headers });
-const post = payload => app.inject({ method: 'POST', url: '/klienci', headers, payload });
+const get = (url) => app.inject({ method: 'GET', url, headers });
+const post = (payload) => app.inject({ method: 'POST', url: '/klienci', headers, payload });
 beforeEach(async () => {
   db = openOmsDb(':memory:');
   gus = { firmaPoNip: vi.fn() };
@@ -16,7 +16,10 @@ beforeEach(async () => {
   await app.ready();
   klient = klientPoId(db, dopiszKlienta(db, znormalizujKlienta({ nazwa: 'Pracownia Półcień' })));
 });
-afterEach(async () => { await app.close(); db.close(); });
+afterEach(async () => {
+  await app.close();
+  db.close();
+});
 
 describe('osobny formularz klienta', () => {
   it('lista ma szer-tabela, oba formularze szer-karta i nie zawierają listy', async () => {
@@ -36,7 +39,11 @@ describe('osobny formularz klienta', () => {
     }
   });
   it('stare adresy przekierowują 303 na osobne ekrany', async () => {
-    for (const [stary, nowy] of [['/klienci?nowy', '/klienci/nowy'], [`/klienci?edytuj=${klient.id}`, `/klienci/${klient.id}`], [`/klienci/${klient.id}/edytuj`, `/klienci/${klient.id}`]]) {
+    for (const [stary, nowy] of [
+      ['/klienci?nowy', '/klienci/nowy'],
+      [`/klienci?edytuj=${klient.id}`, `/klienci/${klient.id}`],
+      [`/klienci/${klient.id}/edytuj`, `/klienci/${klient.id}`],
+    ]) {
       const r = await get(stary);
       expect(r.statusCode).toBe(303);
       expect(r.headers.location).toBe(nowy);
@@ -66,7 +73,19 @@ describe('osobny formularz klienta', () => {
   it('ustalenia handlowe mają kolejność 1–8 i przełączniki bez cenowych podpowiedzi', async () => {
     const html = (await get(`/klienci/${klient.id}`)).body;
     const ustalenia = html.slice(html.indexOf('<h2>Ustalenia handlowe</h2>'));
-    const pola = ['b2b', 'rozliczenie_zbiorcze', 'rabat_procent', 'metoda_wysylki', 'koszt_dostawy_brutto', 'prog_darmowej_dostawy_wlaczony', 'prog_darmowej_dostawy', 'oplata_obslugi_wlaczony', 'oplata_obslugi', 'platnosc', 'termin_platnosci'];
+    const pola = [
+      'b2b',
+      'rozliczenie_zbiorcze',
+      'rabat_procent',
+      'metoda_wysylki',
+      'koszt_dostawy_brutto',
+      'prog_darmowej_dostawy_wlaczony',
+      'prog_darmowej_dostawy',
+      'oplata_obslugi_wlaczony',
+      'oplata_obslugi',
+      'platnosc',
+      'termin_platnosci',
+    ];
     let poprzedni = -1;
     for (const pole of pola) {
       const pozycja = ustalenia.indexOf(`name="${pole}"`);
@@ -76,15 +95,26 @@ describe('osobny formularz klienta', () => {
     expect(html).not.toContain('<h2>Rozliczenie zbiorcze</h2>');
     expect(html).toContain('Liczony w raportach jako kanał B2B (hurt)');
     expect(html).toContain('puste = kwota domyślna z Ustawień, 0 = wysyłka gratis');
-    expect(html).toContain('doliczana jako osobna pozycja „Obsługa zamówienia”, gdy paczkę nadaje klient na swojej etykiecie');
-    for (const [pole, id] of [['prog_darmowej_dostawy', 'prog-dostawy'], ['oplata_obslugi', 'oplata-obslugi']]) {
+    expect(html).toContain(
+      'doliczana jako osobna pozycja „Obsługa zamówienia”, gdy paczkę nadaje klient na swojej etykiecie',
+    );
+    for (const [pole, id] of [
+      ['prog_darmowej_dostawy', 'prog-dostawy'],
+      ['oplata_obslugi', 'oplata-obslugi'],
+    ]) {
       expect(html).toContain(`aria-controls="${id}"`);
       expect(html.match(new RegExp(`<input[^>]*name="${pole}"[^>]*>`))[0]).not.toContain('placeholder');
     }
   });
   it('bez JS ignoruje odznaczone kwoty i zachowuje jawne zero po włączeniu', async () => {
     for (const wlaczony of [false, true]) {
-      const r = await post({ id: String(klient.id), nazwa: 'Pracownia Półcień', prog_darmowej_dostawy: '0', oplata_obslugi: '0', ...(wlaczony ? { prog_darmowej_dostawy_wlaczony: 'on', oplata_obslugi_wlaczony: 'on' } : {}) });
+      const r = await post({
+        id: String(klient.id),
+        nazwa: 'Pracownia Półcień',
+        prog_darmowej_dostawy: '0',
+        oplata_obslugi: '0',
+        ...(wlaczony ? { prog_darmowej_dostawy_wlaczony: 'on', oplata_obslugi_wlaczony: 'on' } : {}),
+      });
       expect(r.statusCode).toBe(302);
       const zapisany = klientPoId(db, klient.id);
       expect(zapisany.prog_darmowej_dostawy_gr).toBe(wlaczony ? 0 : null);
@@ -97,14 +127,25 @@ describe('osobny formularz klienta', () => {
     const pola = new Map();
     const przelaczniki = ['prog-dostawy', 'oplata-obslugi'].map((id, i) => {
       pola.set(id, { value: '0', disabled: false });
-      return { checked: Boolean(i), getAttribute: () => id, addEventListener: function (_, fn) { this.zmiana = fn; } };
+      return {
+        checked: Boolean(i),
+        getAttribute: () => id,
+        addEventListener: function (_, fn) {
+          this.zmiana = fn;
+        },
+      };
     });
-    runInNewContext(skrypt, { document: { querySelectorAll: () => przelaczniki, getElementById: id => pola.get(id) } });
+    runInNewContext(skrypt, {
+      document: { querySelectorAll: () => przelaczniki, getElementById: (id) => pola.get(id) },
+    });
     expect(pola.get('prog-dostawy').disabled).toBe(true);
     expect(pola.get('oplata-obslugi').disabled).toBe(false);
-    for (const p of przelaczniki) { p.checked = !p.checked; p.zmiana(); }
+    for (const p of przelaczniki) {
+      p.checked = !p.checked;
+      p.zmiana();
+    }
     expect(pola.get('prog-dostawy').disabled).toBe(false);
     expect(pola.get('oplata-obslugi').disabled).toBe(true);
-    expect([...pola.values()].map(p => p.value)).toEqual(['0', '0']);
+    expect([...pola.values()].map((p) => p.value)).toEqual(['0', '0']);
   });
 });

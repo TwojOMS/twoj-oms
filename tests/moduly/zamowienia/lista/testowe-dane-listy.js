@@ -7,9 +7,10 @@ import { modulRdzen } from '../../../../src/moduly/rdzen/modul.ts';
 import { migracjaIndeksuListy } from '../../../../src/moduly/zamowienia/migracje/0001-indeks-listy.ts';
 
 /** Baza z rdzeniem i migracją modułu zamówień (tabele indeksu listy) — jak w panelu. */
-export const otworzBazeListy = (sciezka = ':memory:') => openOmsDb(sciezka, {
-  moduly: [modulRdzen, { nazwa: 'zamowienia', migracje: [migracjaIndeksuListy] }],
-});
+export const otworzBazeListy = (sciezka = ':memory:') =>
+  openOmsDb(sciezka, {
+    moduly: [modulRdzen, { nazwa: 'zamowienia', migracje: [migracjaIndeksuListy] }],
+  });
 
 export const KANALY_TESTOWE = [
   { klucz: 'kanal_a', typ: 'woo', prefiks: 'A', etykieta: 'Sklep syntetyczny A', raport: 'SKLEP_A' },
@@ -28,7 +29,10 @@ export function wstawGole(db, n, { utworzone = () => '2026-10-01T10:00:00', skle
   try {
     for (let i = od; i < od + n; i++) ids.push(Number(ins.run(sklep, i, `T-${i}`, utworzone(i)).lastInsertRowid));
     db.exec('COMMIT');
-  } catch (e) { db.exec('ROLLBACK'); throw e; }
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
   return ids;
 }
 
@@ -38,15 +42,25 @@ export function wstawGole(db, n, { utworzone = () => '2026-10-01T10:00:00', skle
  * nieudany sync, opłacone dawno = po terminie), po kilka sztuk, z dziećmi.
  */
 export function wstawMieszane(db, { powtorzen = 3 } = {}) {
-  const insZ = db.prepare(`INSERT INTO zamowienia (sklep, zrodlo_id, numer, klient_json, dostawa_json, metoda_wysylki, kwota_brutto,
+  const insZ =
+    db.prepare(`INSERT INTO zamowienia (sklep, zrodlo_id, numer, klient_json, dostawa_json, metoda_wysylki, kwota_brutto,
     oplacone_at, anulowane, anulowane_recznie, w_realizacji_at, zwrot_at, utworzone_at, wyslane_at, metoda_platnosci, indywidualne, sync_woo_blad, pobranie, b2b)
     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
-  const insP = db.prepare(`INSERT INTO pozycje (zamowienie_id, nazwa, sku, ilosc, cena_brutto, brutto_linii, vat) VALUES (?,?,?,1,'10.00','10.00','23')`);
-  const insPl = db.prepare(`INSERT INTO platnosci (zamowienie_id, kwota, data, metoda, zrodlo, utworzona_at) VALUES (?, '10.00', ?, 'Przelew', 'sklep', ?)`);
-  const insPrz = db.prepare(`INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, etykieta_sciezka, status_kuriera, status_kuriera_at, utworzona_at, kolejnosc)
+  const insP = db.prepare(
+    `INSERT INTO pozycje (zamowienie_id, nazwa, sku, ilosc, cena_brutto, brutto_linii, vat) VALUES (?,?,?,1,'10.00','10.00','23')`,
+  );
+  const insPl = db.prepare(
+    `INSERT INTO platnosci (zamowienie_id, kwota, data, metoda, zrodlo, utworzona_at) VALUES (?, '10.00', ?, 'Przelew', 'sklep', ?)`,
+  );
+  const insPrz =
+    db.prepare(`INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, etykieta_sciezka, status_kuriera, status_kuriera_at, utworzona_at, kolejnosc)
     VALUES (?, 'dpd', ?, ?, ?, ?, ?, ?, 1)`);
-  const insF = db.prepare(`INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, ksef_status, utworzona_at) VALUES (?,?,?,?,?)`);
-  const insZw = db.prepare(`INSERT INTO zwroty (zamowienie_id, data, kwota, pieniadze_oddane_at, utworzony_at) VALUES (?, '2026-09-20', '10.00', ?, '2026-09-20T10:00:00Z')`);
+  const insF = db.prepare(
+    `INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, ksef_status, utworzona_at) VALUES (?,?,?,?,?)`,
+  );
+  const insZw = db.prepare(
+    `INSERT INTO zwroty (zamowienie_id, data, kwota, pieniadze_oddane_at, utworzony_at) VALUES (?, '2026-09-20', '10.00', ?, '2026-09-20T10:00:00Z')`,
+  );
   const rodzaje = [
     { nazwa: 'nowe' },
     // Ręczna zmiana metody wysyłki: sklep mówi dpd, panel — odbiór osobisty (filtr ma widzieć efektywną).
@@ -57,12 +71,46 @@ export function wstawMieszane(db, { powtorzen = 3 } = {}) {
     { nazwa: 'indywidualne', indywidualne: 1 },
     { nazwa: 'w-realizacji', wReal: '2026-09-30T10:00:00Z' },
     { nazwa: 'wyslane-czyste', wyslane: '2026-09-25T10:00:00Z', paczka: 'doreczona', oplacone: '2026-09-24T10:00:00Z' },
-    { nazwa: 'wyslane-bez-etykiety', wyslane: '2026-09-25T10:00:00Z', paczka: 'bez-etykiety', oplacone: '2026-09-24T10:00:00Z' },
-    { nazwa: 'wyslane-faktura-do-wyjasnienia', wyslane: '2026-09-25T10:00:00Z', paczka: 'doreczona', faktura: 'do_wyjasnienia', oplacone: '2026-09-24T10:00:00Z' },
-    { nazwa: 'wyslane-sync', wyslane: '2026-09-25T10:00:00Z', paczka: 'doreczona', sync: 'odmowa', oplacone: '2026-09-24T10:00:00Z' },
-    { nazwa: 'wyslane-w-drodze', wyslane: '2026-09-25T10:00:00Z', paczka: 'w-drodze', oplacone: '2026-09-24T10:00:00Z' },
-    { nazwa: 'zwrot-rozliczony', wyslane: '2026-09-15T10:00:00Z', paczka: 'doreczona', zwrot: 'oddane', oplacone: '2026-09-14T10:00:00Z' },
-    { nazwa: 'zwrot-nierozliczony', wyslane: '2026-09-15T10:00:00Z', paczka: 'doreczona', zwrot: 'nieoddane', oplacone: '2026-09-14T10:00:00Z' },
+    {
+      nazwa: 'wyslane-bez-etykiety',
+      wyslane: '2026-09-25T10:00:00Z',
+      paczka: 'bez-etykiety',
+      oplacone: '2026-09-24T10:00:00Z',
+    },
+    {
+      nazwa: 'wyslane-faktura-do-wyjasnienia',
+      wyslane: '2026-09-25T10:00:00Z',
+      paczka: 'doreczona',
+      faktura: 'do_wyjasnienia',
+      oplacone: '2026-09-24T10:00:00Z',
+    },
+    {
+      nazwa: 'wyslane-sync',
+      wyslane: '2026-09-25T10:00:00Z',
+      paczka: 'doreczona',
+      sync: 'odmowa',
+      oplacone: '2026-09-24T10:00:00Z',
+    },
+    {
+      nazwa: 'wyslane-w-drodze',
+      wyslane: '2026-09-25T10:00:00Z',
+      paczka: 'w-drodze',
+      oplacone: '2026-09-24T10:00:00Z',
+    },
+    {
+      nazwa: 'zwrot-rozliczony',
+      wyslane: '2026-09-15T10:00:00Z',
+      paczka: 'doreczona',
+      zwrot: 'oddane',
+      oplacone: '2026-09-14T10:00:00Z',
+    },
+    {
+      nazwa: 'zwrot-nierozliczony',
+      wyslane: '2026-09-15T10:00:00Z',
+      paczka: 'doreczona',
+      zwrot: 'nieoddane',
+      oplacone: '2026-09-14T10:00:00Z',
+    },
     { nazwa: 'anulowane', anulowane: 1 },
     { nazwa: 'anulowane-z-paczka', anulowane: 1, paczka: 'doreczona' },
     { nazwa: 'anulowane-recznie', anulowaneRecznie: 1 },
@@ -70,7 +118,14 @@ export function wstawMieszane(db, { powtorzen = 3 } = {}) {
     // Przejścia w czasie wokół 2026-10-01T09:30Z (chwila T0 testu klasyfikacji): zegar
     // wysyłki rusza tuż przed T0, faktura „w toku" staje się sprawą 3 minuty po T0.
     { nazwa: 'oplacone-swiezo', oplacone: '2026-10-01T08:00:00Z' },
-    { nazwa: 'faktura-swiezo-w-toku', wyslane: '2026-09-30T10:00:00Z', paczka: 'doreczona', faktura: 'w_toku', fakturaAt: '2026-10-01T09:28:00Z', oplacone: '2026-09-29T10:00:00Z' },
+    {
+      nazwa: 'faktura-swiezo-w-toku',
+      wyslane: '2026-09-30T10:00:00Z',
+      paczka: 'doreczona',
+      faktura: 'w_toku',
+      fakturaAt: '2026-10-01T09:28:00Z',
+      oplacone: '2026-09-29T10:00:00Z',
+    },
     // Każda gałąź reguł zależna od czasu ma tu zamówienie, które w horyzoncie PRZECHODZI.
     // T0 to czwartek 11:30 PL.
     // Allegro opłacone przed 12:00 w dzień roboczy: limit 0, po terminie od piątku.
@@ -79,11 +134,21 @@ export function wstawMieszane(db, { powtorzen = 3 } = {}) {
     { nazwa: 'pobranie-swieze', pobranie: 1, utw: '2026-10-01T09:00:00Z' },
     { nazwa: 'b2b-swieze', b2b: 1, utw: '2026-10-01T09:00:00Z' },
     // Ekspres (po nazwie pozycji): limit 2 dni robocze.
-    { nazwa: 'ekspres-oplacone', pozycja: 'Realizacja ekspresowa', oplacone: '2026-10-01T08:00:00Z', utw: '2026-10-01T07:55:00Z' },
+    {
+      nazwa: 'ekspres-oplacone',
+      pozycja: 'Realizacja ekspresowa',
+      oplacone: '2026-10-01T08:00:00Z',
+      utw: '2026-10-01T07:55:00Z',
+    },
     // Indywidualne opłacone: limit 7 dni roboczych.
     { nazwa: 'indywidualne-oplacone', indywidualne: 1, oplacone: '2026-10-01T08:00:00Z', utw: '2026-10-01T07:55:00Z' },
     // Paczka „w trakcie" nadania: po 5 minutach „zawieszona" = sprawa.
-    { nazwa: 'paczka-w-trakcie', wyslane: '2026-09-30T10:00:00Z', paczka: 'w-trakcie', oplacone: '2026-09-29T10:00:00Z' },
+    {
+      nazwa: 'paczka-w-trakcie',
+      wyslane: '2026-09-30T10:00:00Z',
+      paczka: 'w-trakcie',
+      oplacone: '2026-09-29T10:00:00Z',
+    },
     // Paczka wysłana wczoraj, ostatni ruch wczoraj: „bez ruchu" po 3 dniach roboczych.
     { nazwa: 'paczka-stanie', wyslane: '2026-09-30T10:00:00Z', paczka: 'w-drodze', oplacone: '2026-09-29T10:00:00Z' },
   ];
@@ -95,21 +160,62 @@ export function wstawMieszane(db, { powtorzen = 3 } = {}) {
     for (let k = 0; k < powtorzen; k++) {
       for (const r of rodzaje) {
         n++;
-        const utw = r.utw ?? `2026-09-${String(10 + (n % 18)).padStart(2, '0')}T${String(8 + (n % 10)).padStart(2, '0')}:00:00`;
+        const utw =
+          r.utw ?? `2026-09-${String(10 + (n % 18)).padStart(2, '0')}T${String(8 + (n % 10)).padStart(2, '0')}:00:00`;
         const sklep = r.sklep ?? (n % 3 === 0 ? 'kanal_b' : 'kanal_a');
-        const id = Number(insZ.run(sklep, n, `M-${n}`,
-          JSON.stringify({ first_name: `Imię${n}`, last_name: n % 4 === 0 ? 'Kowalski' : `Zażółć${n}`, email: `m${n}@email.invalid`,
-            ...(r.telefon ? { phone: `+48 600 ${String(n).padStart(3, '0')} 777` } : {}) }),
-          JSON.stringify({ first_name: `Imię${n}`, last_name: n % 4 === 0 ? 'Kowalski' : `Zażółć${n}`, city: n % 2 ? 'Łódź' : 'Miasto' }),
-          r.wysylkaReczna ? 'dpd' : n % 2 ? 'dpd' : 'inpost_paczkomat', '10.00', r.oplacone ?? null, r.anulowane ?? 0, r.anulowaneRecznie ?? null, r.wReal ?? null, null, utw,
-          r.wyslane ?? null, n % 2 ? 'Przelew' : 'BLIK', r.indywidualne ?? null, r.sync ?? null, r.pobranie ?? 0, r.b2b ?? 0).lastInsertRowid);
+        const id = Number(
+          insZ.run(
+            sklep,
+            n,
+            `M-${n}`,
+            JSON.stringify({
+              first_name: `Imię${n}`,
+              last_name: n % 4 === 0 ? 'Kowalski' : `Zażółć${n}`,
+              email: `m${n}@email.invalid`,
+              ...(r.telefon ? { phone: `+48 600 ${String(n).padStart(3, '0')} 777` } : {}),
+            }),
+            JSON.stringify({
+              first_name: `Imię${n}`,
+              last_name: n % 4 === 0 ? 'Kowalski' : `Zażółć${n}`,
+              city: n % 2 ? 'Łódź' : 'Miasto',
+            }),
+            r.wysylkaReczna ? 'dpd' : n % 2 ? 'dpd' : 'inpost_paczkomat',
+            '10.00',
+            r.oplacone ?? null,
+            r.anulowane ?? 0,
+            r.anulowaneRecznie ?? null,
+            r.wReal ?? null,
+            null,
+            utw,
+            r.wyslane ?? null,
+            n % 2 ? 'Przelew' : 'BLIK',
+            r.indywidualne ?? null,
+            r.sync ?? null,
+            r.pobranie ?? 0,
+            r.b2b ?? 0,
+          ).lastInsertRowid,
+        );
         insP.run(id, r.pozycja ?? `Produkt ${n % 5}`, `SKU-${n}`);
-        if (r.wysylkaReczna) db.prepare('UPDATE zamowienia SET wysylka_reczna_json = ? WHERE id = ?').run(JSON.stringify({ metoda: r.wysylkaReczna }), id);
+        if (r.wysylkaReczna)
+          db.prepare('UPDATE zamowienia SET wysylka_reczna_json = ? WHERE id = ?').run(
+            JSON.stringify({ metoda: r.wysylkaReczna }),
+            id,
+          );
         if (r.telefon) wynik.telefon = { id, cyfry: `600${String(n).padStart(3, '0')}777` };
         if (r.oplacone) insPl.run(id, r.oplacone, r.oplacone);
-        if (r.paczka === 'doreczona') insPrz.run(id, 'nadana', `L${n}`, `/tmp/e${n}.pdf`, 'Doręczona', r.wyslane ?? '2026-09-25T10:00:00Z', r.wyslane ?? '2026-09-25T10:00:00Z');
+        if (r.paczka === 'doreczona')
+          insPrz.run(
+            id,
+            'nadana',
+            `L${n}`,
+            `/tmp/e${n}.pdf`,
+            'Doręczona',
+            r.wyslane ?? '2026-09-25T10:00:00Z',
+            r.wyslane ?? '2026-09-25T10:00:00Z',
+          );
         if (r.paczka === 'bez-etykiety') insPrz.run(id, 'nadana', `L${n}`, null, 'Doręczona', r.wyslane, r.wyslane);
-        if (r.paczka === 'w-drodze') insPrz.run(id, 'nadana', `L${n}`, `/tmp/e${n}.pdf`, 'W drodze', r.wyslane, r.wyslane);
+        if (r.paczka === 'w-drodze')
+          insPrz.run(id, 'nadana', `L${n}`, `/tmp/e${n}.pdf`, 'W drodze', r.wyslane, r.wyslane);
         if (r.paczka === 'w-trakcie') insPrz.run(id, 'w_trakcie', null, null, null, null, '2026-10-01T09:28:00Z');
         if (r.faktura === 'do_wyjasnienia') insF.run(id, `u${n}`, `FV/${n}`, 'do_wyjasnienia', '2026-09-25T10:00:00Z');
         if (r.faktura === 'w_toku') insF.run(id, `u${n}`, null, 'w_toku', r.fakturaAt);
@@ -118,6 +224,9 @@ export function wstawMieszane(db, { powtorzen = 3 } = {}) {
       }
     }
     db.exec('COMMIT');
-  } catch (e) { db.exec('ROLLBACK'); throw e; }
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
   return wynik;
 }

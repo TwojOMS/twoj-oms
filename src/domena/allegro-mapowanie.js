@@ -177,15 +177,15 @@ function klientAllegro(surowe) {
   const inv = surowe?.invoice?.address ?? null;
   const podstawa = inv
     ? adresPanelu(inv, {
-      imie: inv?.naturalPerson?.firstName ?? buyer?.firstName ?? null,
-      nazwisko: inv?.naturalPerson?.lastName ?? buyer?.lastName ?? null,
-      firma: inv?.company?.name ?? null,
-    })
+        imie: inv?.naturalPerson?.firstName ?? buyer?.firstName ?? null,
+        nazwisko: inv?.naturalPerson?.lastName ?? buyer?.lastName ?? null,
+        firma: inv?.company?.name ?? null,
+      })
     : adresPanelu(buyer?.address, {
-      imie: buyer?.firstName ?? null,
-      nazwisko: buyer?.lastName ?? null,
-      firma: buyer?.companyName ?? null,
-    });
+        imie: buyer?.firstName ?? null,
+        nazwisko: buyer?.lastName ?? null,
+        firma: buyer?.companyName ?? null,
+      });
   // ⚠️ TO JEDNO `return null` JEST CALA OCHRONA ADRESU NABYWCY. Ponizej doklejamy `email`
   // i `phone` z `buyer`/`delivery`, a mail posrednika („…@allegromail.pl") ma najwieksza
   // szanse przezyc wygasniecie danych. Gdyby pusta koperta szla dalej, do bazy poszedlby

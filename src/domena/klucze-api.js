@@ -1,8 +1,16 @@
 import { createHash, randomBytes, randomInt } from 'node:crypto';
 
 export const ZAKRESY_API = Object.freeze([
-  'zamowienia:odczyt', 'zamowienia:zapis', 'proformy:zapis', 'produkty:odczyt',
-  'produkty:zapis', 'zdjecia:zapis', 'stany:odczyt', 'stany:zapis', 'sprzedaz:odczyt', 'druk',
+  'zamowienia:odczyt',
+  'zamowienia:zapis',
+  'proformy:zapis',
+  'produkty:odczyt',
+  'produkty:zapis',
+  'zdjecia:zapis',
+  'stany:odczyt',
+  'stany:zapis',
+  'sprzedaz:odczyt',
+  'druk',
 ]);
 
 export function skrotKlucza(klucz) {
@@ -26,7 +34,10 @@ export function rozbierzNaglowek(naglowek) {
 }
 
 export function czyZakresyPoprawne(zakresy) {
-  return Array.isArray(zakresy) && zakresy.length > 0
-    && Array.from(zakresy).every(zakres => ZAKRESY_API.includes(zakres))
-    && new Set(zakresy).size === zakresy.length;
+  return (
+    Array.isArray(zakresy) &&
+    zakresy.length > 0 &&
+    Array.from(zakresy).every((zakres) => ZAKRESY_API.includes(zakres)) &&
+    new Set(zakresy).size === zakresy.length
+  );
 }

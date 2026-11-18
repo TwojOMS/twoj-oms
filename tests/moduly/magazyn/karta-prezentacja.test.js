@@ -11,16 +11,41 @@ let db, app, id, oferta, tresc;
 beforeEach(() => {
   db = openOmsDb(':memory:');
   id = utworzKarte(db, { nazwa: 'Karta próbna', waga_g: 1900, cena_gr: 28900, szerokosc_mm: 315, wysokosc_mm: 400 });
-  oferta = zapiszProduktSklepowy(db, { kanal, produkt_id: '501', nazwa: 'Oferta próbna', cena_gr: 28900, odczytane_at: '2026-11-13' });
+  oferta = zapiszProduktSklepowy(db, {
+    kanal,
+    produkt_id: '501',
+    nazwa: 'Oferta próbna',
+    cena_gr: 28900,
+    odczytane_at: '2026-11-13',
+  });
   powiazProdukt(db, oferta, id);
   tresc = { gotowy: () => true, stan: () => ({ trwa: false }), start: vi.fn(() => ({ wystartowal: true })) };
-  app = buildOmsServer({ db, config: { auth: { user: 'operator', pass: 'x' }, sklepy: { sklep_demo: {} }, kanaly: { [kanal]: {} },
-    definicje: [{ klucz: kanal, typ: 'allegro', etykieta: 'Konto próbne' }, { klucz: 'sklep_demo', typ: 'woo', etykieta: 'Sklep próbny' }] },
-    magazyn: { gotowy: () => true }, nadpisania: { 'magazyn.trescAllegro': tresc } });
+  app = buildOmsServer({
+    db,
+    config: {
+      auth: { user: 'operator', pass: 'x' },
+      sklepy: { sklep_demo: {} },
+      kanaly: { [kanal]: {} },
+      definicje: [
+        { klucz: kanal, typ: 'allegro', etykieta: 'Konto próbne' },
+        { klucz: 'sklep_demo', typ: 'woo', etykieta: 'Sklep próbny' },
+      ],
+    },
+    magazyn: { gotowy: () => true },
+    nadpisania: { 'magazyn.trescAllegro': tresc },
+  });
 });
-afterEach(async () => { await app?.close(); db.close(); });
-const strona = async () => { const r = await app.inject({ url: `/magazyn/${id}`, headers: auth }); expect(r.statusCode).toBe(200); return r.body; };
-const post = (pid = oferta, headers = auth) => app.inject({ method: 'POST', url: `/magazyn/${id}/tresc-oferty/${pid}`, headers, payload: {} });
+afterEach(async () => {
+  await app?.close();
+  db.close();
+});
+const strona = async () => {
+  const r = await app.inject({ url: `/magazyn/${id}`, headers: auth });
+  expect(r.statusCode).toBe(200);
+  return r.body;
+};
+const post = (pid = oferta, headers = auth) =>
+  app.inject({ method: 'POST', url: `/magazyn/${id}/tresc-oferty/${pid}`, headers, payload: {} });
 
 it('pokazuje polskie liczby, wagę, wymiary i cenę oferty', async () => {
   const html = await strona();
@@ -30,12 +55,21 @@ it('pokazuje polskie liczby, wagę, wymiary i cenę oferty', async () => {
   expect(html).toContain(`action="/magazyn/${id}/tresc-oferty/${oferta}"`);
 });
 it.each([
-  ['reczne', 1, 'ręcznie'], ['zastane', 1, 'zastane'], ['api', 1, 'API'],
-  [`allegro:${kanal}`, 0, 'Allegro: Konto próbne'], ['woo:sklep_demo', 0, 'sklep: Sklep próbny'],
+  ['reczne', 1, 'ręcznie'],
+  ['zastane', 1, 'zastane'],
+  ['api', 1, 'API'],
+  [`allegro:${kanal}`, 0, 'Allegro: Konto próbne'],
+  ['woo:sklep_demo', 0, 'sklep: Sklep próbny'],
 ])('pokazuje źródło %s przy każdym polu', async (zrodlo, reczne, etykieta) => {
   db.prepare('DELETE FROM karty_zrodla_pol WHERE karta_id = ?').run(id);
   for (const pole of ['nazwa', 'ean', 'cena_gr', 'stawka_vat', 'opis_sekcje_json', 'zdjecia']) {
-    db.prepare('INSERT INTO karty_zrodla_pol (karta_id,pole,zrodlo,reczne,zmieniono_at) VALUES (?,?,?,?,?)').run(id,pole,zrodlo,reczne,'2026-11-13');
+    db.prepare('INSERT INTO karty_zrodla_pol (karta_id,pole,zrodlo,reczne,zmieniono_at) VALUES (?,?,?,?,?)').run(
+      id,
+      pole,
+      zrodlo,
+      reczne,
+      '2026-11-13',
+    );
   }
   const html = await strona();
   expect(html.match(/class="zrodlo-pola"/g)?.length).toBe(6);
@@ -50,13 +84,23 @@ it('umieszcza pełny powód ruchu w nazwanym kontenerze dostępnym z klawiatury'
   const powod = 'Korekta po przeliczeniu długiej partii próbnej — pełne wyjaśnienie ruchu magazynowego';
   dodajRuch(db, { kartaId: id, rodzaj: 'korekta', ilosc: 2, powod, klucz: '07d-ruch', at: '2026-11-13T08:00:00Z' });
   const html = await strona();
-  expect(html).toMatch(/class="ruchy-przewijanie" tabindex="0" role="region" aria-label="Historia ruchów magazynowych">\s*<table/);
+  expect(html).toMatch(
+    /class="ruchy-przewijanie" tabindex="0" role="region" aria-label="Historia ruchów magazynowych">\s*<table/,
+  );
   expect(html).toContain(`<td>${powod}</td>`);
 });
 it('pokazuje błąd z datą bez pełnego URL i nie renderuje przycisku dla Woo', async () => {
-  db.prepare('UPDATE produkty_sklepowe SET tresc_blad = ?, tresc_blad_at = ? WHERE id = ?')
-    .run('Treść nie pobrana: Błąd zdjęcia https://foto.example/a.jpg?prywatne=1', '2026-11-13T08:10:00Z', oferta);
-  const woo = zapiszProduktSklepowy(db, { kanal: 'sklep_demo', produkt_id: '12', nazwa: 'Produkt próbny', odczytane_at: '2026-11-13' });
+  db.prepare('UPDATE produkty_sklepowe SET tresc_blad = ?, tresc_blad_at = ? WHERE id = ?').run(
+    'Treść nie pobrana: Błąd zdjęcia https://foto.example/a.jpg?prywatne=1',
+    '2026-11-13T08:10:00Z',
+    oferta,
+  );
+  const woo = zapiszProduktSklepowy(db, {
+    kanal: 'sklep_demo',
+    produkt_id: '12',
+    nazwa: 'Produkt próbny',
+    odczytane_at: '2026-11-13',
+  });
   powiazProdukt(db, woo, id);
   const html = await strona();
   expect(html).toContain('Treść nie pobrana: Błąd zdjęcia');
@@ -114,7 +158,9 @@ it('chroni POST przez CSRF', async () => {
 });
 it('przekazuje wskazanie przez rzeczywisty przebieg i ponawia ofertę już pobraną', async () => {
   db.prepare('UPDATE produkty_sklepowe SET tresc_pobrana_at = ? WHERE id = ?').run('2026-11-12', oferta);
-  const pobierzOferte = vi.fn(async () => { throw new Error('kontrolowany błąd próby'); });
+  const pobierzOferte = vi.fn(async () => {
+    throw new Error('kontrolowany błąd próby');
+  });
   const przebieg = createTrescAllegroPrzebieg({ db, kanalyAllegro: [kanal], allegro: { [kanal]: { pobierzOferte } } });
   expect(przebieg.start({ ofertaWskazana: oferta })).toEqual({ wystartowal: true });
   await vi.waitFor(() => expect(przebieg.stan().trwa).toBe(false));

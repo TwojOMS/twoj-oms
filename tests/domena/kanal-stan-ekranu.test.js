@@ -13,8 +13,8 @@ const zdrowy = (n = {}) => ({
   ...n,
 });
 
-const BLAD_ZUZYTEGO = 'Odświeżenie tokenu odrzucone (HTTP 400, invalid_grant) — refresh token '
-  + 'wygasł albo został już zużyty.';
+const BLAD_ZUZYTEGO =
+  'Odświeżenie tokenu odrzucone (HTTP 400, invalid_grant) — refresh token ' + 'wygasł albo został już zużyty.';
 
 describe('stan kanału na ekranie', () => {
   it('kanał zdrowy: żyje, bez ostrzeżenia', () => {
@@ -114,7 +114,8 @@ describe('stan kanału na ekranie', () => {
 // (`poller.stan()` oddaje PIERWSZEGO pollera z błędem). Reguła wróciła do domeny.
 describe('które kanały trafiają na ekran', () => {
   const martwy = (kanal) => stanKanalu({ kanal, polaczony: true, zostaloDni: 80, ostatniBlad: 'invalid_grant' });
-  const wygasa = (kanal) => stanKanalu({ kanal, polaczony: true, zostaloDni: 3, refreshWygasaAt: '2026-08-17T00:00:00Z' });
+  const wygasa = (kanal) =>
+    stanKanalu({ kanal, polaczony: true, zostaloDni: 3, refreshWygasaAt: '2026-08-17T00:00:00Z' });
   const zdrowy2 = (kanal) => stanKanalu({ kanal, polaczony: true, zostaloDni: 80, ostatniBlad: null });
 
   it('pokazuje WSZYSTKIE zepsute kanały, nie pierwszy z brzegu', () => {

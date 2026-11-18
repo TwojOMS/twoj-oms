@@ -7,8 +7,10 @@ const AUTH = { authorization: `Basic ${Buffer.from('t:h').toString('base64')}` }
 
 function serwer(infakt) {
   return buildOmsServer({
-    db: openOmsDb(':memory:'), config: { auth: { user: 't', pass: 'h' } },
-    infakt, fakturyWidok: { dokumenty: async () => [], nieoplacone: async () => [], proformy: () => [] },
+    db: openOmsDb(':memory:'),
+    config: { auth: { user: 't', pass: 'h' } },
+    infakt,
+    fakturyWidok: { dokumenty: async () => [], nieoplacone: async () => [], proformy: () => [] },
   });
 }
 
@@ -16,7 +18,16 @@ describe('GET /faktury/:uuid/pdf', () => {
   // Pobranie PDF zamyka fakturę TwojeFaktury — HEAD (domyślnie handler GET w Fastify) nie woła programu.
   it('HEAD nie pobiera PDF-u (404, program niewołany)', async () => {
     let wolane = 0;
-    const app = serwer({ pobierzPdf: async () => { wolane += 1; return PDF; }, pobierzPdfKorekty: async () => { wolane += 1; return PDF; } });
+    const app = serwer({
+      pobierzPdf: async () => {
+        wolane += 1;
+        return PDF;
+      },
+      pobierzPdfKorekty: async () => {
+        wolane += 1;
+        return PDF;
+      },
+    });
     const r = await app.inject({ method: 'HEAD', url: '/faktury/u1/pdf?rodzaj=vat', headers: AUTH });
     expect(r.statusCode).toBe(404);
     expect(wolane).toBe(0);
@@ -24,7 +35,15 @@ describe('GET /faktury/:uuid/pdf', () => {
 
   it('faktura VAT idzie po zasób /invoices/', async () => {
     let wolane = null;
-    const app = serwer({ pobierzPdf: async (u) => { wolane = ['vat', u]; return PDF; }, pobierzPdfKorekty: async () => { throw new Error('nie ten zasób'); } });
+    const app = serwer({
+      pobierzPdf: async (u) => {
+        wolane = ['vat', u];
+        return PDF;
+      },
+      pobierzPdfKorekty: async () => {
+        throw new Error('nie ten zasób');
+      },
+    });
     const r = await app.inject({ method: 'GET', url: '/faktury/u1/pdf?rodzaj=vat&numer=1%2F08%2F2026', headers: AUTH });
     expect(r.statusCode).toBe(200);
     expect(r.headers['content-type']).toContain('application/pdf');
@@ -36,8 +55,20 @@ describe('GET /faktury/:uuid/pdf', () => {
   // ktoś inny i wolno mu zmienić format bez uprzedzenia.
   it('korekta idzie po zasób /corrective_invoices/', async () => {
     let wolane = null;
-    const app = serwer({ pobierzPdf: async () => { throw new Error('nie ten zasób'); }, pobierzPdfKorekty: async (u) => { wolane = ['korekta', u]; return PDF; } });
-    const r = await app.inject({ method: 'GET', url: '/faktury/k1/pdf?rodzaj=korekta&numer=1%2FKOR%2F08%2F2026', headers: AUTH });
+    const app = serwer({
+      pobierzPdf: async () => {
+        throw new Error('nie ten zasób');
+      },
+      pobierzPdfKorekty: async (u) => {
+        wolane = ['korekta', u];
+        return PDF;
+      },
+    });
+    const r = await app.inject({
+      method: 'GET',
+      url: '/faktury/k1/pdf?rodzaj=korekta&numer=1%2FKOR%2F08%2F2026',
+      headers: AUTH,
+    });
     expect(r.statusCode).toBe(200);
     expect(wolane).toEqual(['korekta', 'k1']);
   });
@@ -59,8 +90,14 @@ describe('GET /faktury/:uuid/pdf', () => {
   it('nieznany rodzaj dokumentu odmawia czytelnie i NIE pyta inFaktu', async () => {
     let pytano = false;
     const app = serwer({
-      pobierzPdf: async () => { pytano = true; return PDF; },
-      pobierzPdfKorekty: async () => { pytano = true; return PDF; },
+      pobierzPdf: async () => {
+        pytano = true;
+        return PDF;
+      },
+      pobierzPdfKorekty: async () => {
+        pytano = true;
+        return PDF;
+      },
     });
     const r = await app.inject({ method: 'GET', url: '/faktury/u1/pdf?rodzaj=vt', headers: AUTH });
     expect(r.statusCode).toBe(400);
@@ -75,7 +112,12 @@ describe('GET /faktury/:uuid/pdf', () => {
   });
 
   it('awaria inFaktu daje 400 z komunikatem, nie 500', async () => {
-    const app = serwer({ pobierzPdf: async () => { throw new Error('inFakt odrzucił pobranie PDF (404)'); }, pobierzPdfKorekty: async () => PDF });
+    const app = serwer({
+      pobierzPdf: async () => {
+        throw new Error('inFakt odrzucił pobranie PDF (404)');
+      },
+      pobierzPdfKorekty: async () => PDF,
+    });
     const r = await app.inject({ method: 'GET', url: '/faktury/u1/pdf?rodzaj=vat', headers: AUTH });
     expect(r.statusCode).toBe(400);
   });

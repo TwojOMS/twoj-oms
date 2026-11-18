@@ -16,7 +16,9 @@ function plik(dir: string, nazwa: string, zawartosc: string, czas: string) {
   fs.writeFileSync(p, zawartosc);
   fs.utimesSync(p, new Date(czas), new Date(czas));
 }
-afterEach(() => { for (const dir of katalogi.splice(0)) fs.rmSync(dir, { recursive: true, force: true }); });
+afterEach(() => {
+  for (const dir of katalogi.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
+});
 
 describe('odczyt stanu kopii', () => {
   it('bez katalogu nie zgaduje konfiguracji ani historii', () => {
@@ -31,7 +33,12 @@ describe('odczyt stanu kopii', () => {
   it('odróżnia pusty katalog od nieodczytywalnego', () => {
     const dir = katalog();
     expect(odczytajKopie({ katalog: dir, teraz }).stan).toBe('brak');
-    const io = { ...fs, readdirSync: (() => { throw Object.assign(new Error('EACCES tajna ścieżka'), { code: 'EACCES' }); }) as typeof fs.readdirSync };
+    const io = {
+      ...fs,
+      readdirSync: (() => {
+        throw Object.assign(new Error('EACCES tajna ścieżka'), { code: 'EACCES' });
+      }) as typeof fs.readdirSync,
+    };
     const w = odczytajKopie({ katalog: dir, teraz, io });
     expect(w.stan).toBe('blad');
     expect(w.historia).toEqual([]);
@@ -66,7 +73,12 @@ describe('odczyt stanu kopii', () => {
   it('błąd stat pojedynczego pliku nie jest pustą historią ani sukcesem', () => {
     const dir = katalog();
     plik(dir, 'oms-2026-10-31.sqlite', 'x', '2026-10-31T11:00:00Z');
-    const io = { ...fs, lstatSync: (() => { throw Object.assign(new Error('EACCES'), { code: 'EACCES' }); }) as typeof fs.lstatSync };
+    const io = {
+      ...fs,
+      lstatSync: (() => {
+        throw Object.assign(new Error('EACCES'), { code: 'EACCES' });
+      }) as typeof fs.lstatSync,
+    };
     expect(odczytajKopie({ katalog: dir, teraz, io }).stan).toBe('blad');
   });
 
@@ -84,9 +96,23 @@ describe('odczyt stanu kopii', () => {
     const lokalny = katalog();
     const zewnetrzny = katalog();
     plik(zewnetrzny, 'oms-2026-10-31.sqlite', 'x', '2026-10-31T11:00:00Z');
-    const io = { ...fs, statSync: (() => { throw new Error('EACCES'); }) as typeof fs.statSync };
-    const nadzor = () => ({ alarmy: [], uwagi: [], ostatnia: null, katalogDostepny: true, zewnetrzna: true, zewnetrznaStan: 'ok' as const });
-    expect(odczytajKopie({ katalog: lokalny, zewnetrzna: zewnetrzny, teraz, io, nadzor }).zewnetrzna.stan).toBe('nieustalono');
+    const io = {
+      ...fs,
+      statSync: (() => {
+        throw new Error('EACCES');
+      }) as typeof fs.statSync,
+    };
+    const nadzor = () => ({
+      alarmy: [],
+      uwagi: [],
+      ostatnia: null,
+      katalogDostepny: true,
+      zewnetrzna: true,
+      zewnetrznaStan: 'ok' as const,
+    });
+    expect(odczytajKopie({ katalog: lokalny, zewnetrzna: zewnetrzny, teraz, io, nadzor }).zewnetrzna.stan).toBe(
+      'nieustalono',
+    );
   });
 
   it('pokazuje ograniczenia zakresu bez obietnicy pełnej ochrony', () => {

@@ -19,12 +19,20 @@ import { propozycje, propozycjeOfert } from '../../src/domena/dopasowanie-ofert.
 
 // Karta tak, jak wyglada wiersz tabeli `karty`: nazwa i (czasem) wymiary w milimetrach.
 const karta = (id, nazwa, szerokosc_mm = null, wysokosc_mm = null) => ({
-  id, nazwa, sku: null, szerokosc_mm, wysokosc_mm,
+  id,
+  nazwa,
+  sku: null,
+  szerokosc_mm,
+  wysokosc_mm,
 });
 
 // Oferta tak, jak wyglada wiersz lustra: sama nazwa sprzedazowa.
 const oferta = (nazwa, reszta = {}) => ({
-  id: 1, kanal: 'allegro_swietlik', nazwa, rozmiar_tekst: null, ...reszta,
+  id: 1,
+  kanal: 'allegro_swietlik',
+  nazwa,
+  rozmiar_tekst: null,
+  ...reszta,
 });
 
 const nazwy = (lista) => lista.map((p) => p.karta.nazwa);
@@ -50,9 +58,7 @@ describe('propozycje — miara SYMETRYCZNA (F1 z obu pokryc)', () => {
       karta(2, 'Lampa stołowa w stylu skandynawskim salonu dużego mieszkania'),
       karta(3, 'Lampa'),
     ];
-    const wynik = propozycje(
-      oferta('Lampa stołowa nocna - DUŻY abażur lniany do sypialni'), karty,
-    );
+    const wynik = propozycje(oferta('Lampa stołowa nocna - DUŻY abażur lniany do sypialni'), karty);
 
     expect(nazwy(wynik)).toEqual([
       'Lampa stołowa - 64cm',
@@ -90,12 +96,8 @@ describe('propozycje — rozmiar w nazwie sklepowej nie psuje dopasowania', () =
   // sklepowej i spychaja poprawne trafienie pod kandydata przypadkowego. Zdejmuje go
   // ISTNIEJACA `nazwaBezRozmiaru` z domain/rozmiar.js — ta sama, ktora buduje nazwy kart.
   it('„60x62cm" w nazwie karty nie liczy sie jako slowo', () => {
-    const zRozmiarem = propozycje(
-      oferta('Plafon okrągły - klosz szklany'), [karta(1, 'Plafon okrągły - 60x62cm')],
-    );
-    const bezRozmiaru = propozycje(
-      oferta('Plafon okrągły - klosz szklany'), [karta(1, 'Plafon okrągły')],
-    );
+    const zRozmiarem = propozycje(oferta('Plafon okrągły - klosz szklany'), [karta(1, 'Plafon okrągły - 60x62cm')]);
+    const bezRozmiaru = propozycje(oferta('Plafon okrągły - klosz szklany'), [karta(1, 'Plafon okrągły')]);
 
     // Ta sama ocena w obu przypadkach: rozmiar zniknal z liczenia bez reszty.
     expect(zRozmiarem[0].ocena).toBe(bezRozmiaru[0].ocena);
@@ -147,11 +149,7 @@ describe('propozycje — rozmiar jest ROZSTRZYGACZEM, nie warunkiem', () => {
   // w postaci, ktorej `wymiaryZTekstu` nie uznaje (ukosnik zamiast „x", brak jednostki przy
   // pierwszej liczbie). Dlatego musi dzialac TAKZE jako zwykle slowo.
   it('KLOSZ 23cm/28cm trafia we wlasciwy z trzech rozmiarow', () => {
-    const karty = [
-      karta(1, 'KLOSZ 15cm/20cm'),
-      karta(2, 'KLOSZ 23cm/28cm'),
-      karta(3, 'KLOSZ 28cm/35cm'),
-    ];
+    const karty = [karta(1, 'KLOSZ 15cm/20cm'), karta(2, 'KLOSZ 23cm/28cm'), karta(3, 'KLOSZ 28cm/35cm')];
     const wynik = propozycje(oferta('Lampa KLOSZ 23cm/28cm szklany opalowy'), karty);
 
     expect(wynik[0].karta.nazwa).toBe('KLOSZ 23cm/28cm');
@@ -161,10 +159,7 @@ describe('propozycje — rozmiar jest ROZSTRZYGACZEM, nie warunkiem', () => {
   // ⚠️ ZGODNY ROZMIAR PODNOSI. Dwie nazwy identyczne co do slowa, a rozne co do wymiaru,
   // maja to samo pokrycie slowne — bez rozstrzygacza kolejnosc bralaby sie z bazy.
   it('zgodny wymiar podnosi ocene ponad te sama karte z wymiarem sprzecznym', () => {
-    const karty = [
-      karta(1, 'Plafon okrągły', 700, 1000),
-      karta(2, 'Plafon okrągły', 600, 620),
-    ];
+    const karty = [karta(1, 'Plafon okrągły', 700, 1000), karta(2, 'Plafon okrągły', 600, 620)];
     const wynik = propozycje(oferta('Plafon okrągły 60x62 cm klosz'), karty);
 
     expect(wynik[0].karta.id).toBe(2);
@@ -176,15 +171,9 @@ describe('propozycje — rozmiar jest ROZSTRZYGACZEM, nie warunkiem', () => {
   // ze wymiarow nie ma — inaczej ekran spychalby na dol wszystko, czego jeszcze nie
   // uzupelniono, czyli dokladnie te karty, ktore najbardziej potrzebuja powiazania.
   it('brak wymiarow po ktorejkolwiek stronie NIE zmienia oceny', () => {
-    const bezWymiarow = propozycje(oferta('Plafon okrągły 60x62 cm klosz'), [
-      karta(1, 'Plafon okrągły'),
-    ]);
-    const ofertaBezWymiaru = propozycje(oferta('Plafon okrągły klosz'), [
-      karta(1, 'Plafon okrągły', 600, 620),
-    ]);
-    const nicPoObuStronach = propozycje(oferta('Plafon okrągły klosz'), [
-      karta(1, 'Plafon okrągły'),
-    ]);
+    const bezWymiarow = propozycje(oferta('Plafon okrągły 60x62 cm klosz'), [karta(1, 'Plafon okrągły')]);
+    const ofertaBezWymiaru = propozycje(oferta('Plafon okrągły klosz'), [karta(1, 'Plafon okrągły', 600, 620)]);
+    const nicPoObuStronach = propozycje(oferta('Plafon okrągły klosz'), [karta(1, 'Plafon okrągły')]);
 
     expect(bezWymiarow[0].ocena).toBe(nicPoObuStronach[0].ocena);
     expect(ofertaBezWymiaru[0].ocena).toBe(nicPoObuStronach[0].ocena);
@@ -194,9 +183,7 @@ describe('propozycje — rozmiar jest ROZSTRZYGACZEM, nie warunkiem', () => {
   // — bo wymiar karty bywa niewpisany, wpisany z pomylka albo opisuje inny wariant tego
   // samego modelu. Kandydat schowany to kandydat, ktorego czlowiek nie ma jak poprawic.
   it('sprzeczny wymiar obniza ocene, ale kandydat ZOSTAJE na liscie', () => {
-    const wynik = propozycje(oferta('Plafon okrągły 60x62 cm'), [
-      karta(1, 'Plafon okrągły', 700, 1000),
-    ]);
+    const wynik = propozycje(oferta('Plafon okrągły 60x62 cm'), [karta(1, 'Plafon okrągły', 700, 1000)]);
 
     expect(wynik).toHaveLength(1);
     expect(wynik[0].ocena).toBeGreaterThan(0);

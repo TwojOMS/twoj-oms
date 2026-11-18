@@ -17,37 +17,74 @@ const odp = (status, tekst) => ({ status, ok: status >= 200 && status < 300, tex
 const config = { auth: { user: 'adam', pass: 'x' } };
 const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64'), origin: 'http://localhost' };
 const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) };
-const NADAWCA = { nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL' };
+const NADAWCA = {
+  nazwa: 'Pracownia Półcień Anna Wzorcowa',
+  ulica: 'ul. Przykładowa 1',
+  kod: '00-950',
+  miasto: 'Warszawa',
+  kraj: 'PL',
+};
 // Adres odbiorcy, DOKŁADNIE taki, jaki GET wypełniłby na ekranie nadania z adresOdbiorcy()
 // dla domyślnego `zmapowane()` niżej — POST wymaga go W
 // FORMULARZU (patrz domain/adres-formularza.js: puste pole wymagane blokuje zatwierdzenie),
 // więc każdy test, który ma dojść do prawdziwego wywołania nadaj(), musi go podać, tak jak
 // PRAWDZIWA przeglądarka odesłałaby wartości, którymi GET wypełnił pola.
 const ADRES = {
-  nazwa: 'Jan Kowalski', company: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-950',
-  miasto: 'Warszawa', kraj: 'PL', phone: '+48500600700', email: 'j@k.pl',
+  nazwa: 'Jan Kowalski',
+  company: 'Jan Kowalski',
+  ulica: 'Polna 1',
+  kod: '00-950',
+  miasto: 'Warszawa',
+  kraj: 'PL',
+  phone: '+48500600700',
+  email: 'j@k.pl',
 };
 //  jest teraz czescia formularza nadania i trasa POST bez niej odmawia —
 // to ona pilnuje podwojnego klikniecia (patrz komentarz przy POST /zamowienia/:id/nadaj).
 const PACZKA = { waga: '1', dlugosc: '110', szerokosc: '75', wysokosc: '1', kolejnosc: '1', ...ADRES };
 
 const zmapowane = (nad = {}) => ({
-  zrodlo_id: 1301, numer: '1301',
+  zrodlo_id: 1301,
+  numer: '1301',
   klient: { email: 'j@k.pl', phone: '+48500600700' },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', company: '', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '212.90',
-  status_woo: 'processing', oplacone_at: '2026-07-29T13:00:00', anulowane: 0,
-  utworzone_at: '2026-07-29T13:19:52', pozycje: [], ...nad,
+  dostawa: {
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    company: '',
+    address_1: 'Polna 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
+  },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '212.90',
+  status_woo: 'processing',
+  oplacone_at: '2026-07-29T13:00:00',
+  anulowane: 0,
+  utworzone_at: '2026-07-29T13:19:52',
+  pozycje: [],
+  ...nad,
 });
 
 // Klient DPD z fetchImpl stubem odpowiadajacym PRAWDZIWYMI fikstsurami — te same,
 // z ktorych korzysta tests/oms/dpd.test.js. ZERO zadan sieciowych: fetchImpl nigdy nie
 // dotyka dpdservices.dpd.com.pl.
 function dpdKlient() {
-  const fetchImpl = vi.fn()
+  const fetchImpl = vi
+    .fn()
     .mockResolvedValueOnce(odp(200, fixture('v10-ok.xml')))
     .mockResolvedValueOnce(odp(200, fixture('v4-ok.xml')));
-  const dpd = createDpdClient({ url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '876543', nadawca: NADAWCA, fetchImpl });
+  const dpd = createDpdClient({
+    url: 'https://dpd/api',
+    login: '99999999',
+    haslo: 'x',
+    fid: '876543',
+    nadawca: NADAWCA,
+    fetchImpl,
+  });
   return { dpd, fetchImpl };
 }
 
@@ -62,11 +99,19 @@ beforeEach(() => {
 // „zawodzi" (fetchImpl bez trzeciej atrapy), co jest dokładnie tym, czego potrzeba
 // do testu „brak ZPL nie blokuje „Nadaj i drukuj"".
 function dpdKlientZZpl() {
-  const fetchImpl = vi.fn()
+  const fetchImpl = vi
+    .fn()
     .mockResolvedValueOnce(odp(200, fixture('v10-ok.xml')))
     .mockResolvedValueOnce(odp(200, fixture('v4-ok.xml')))
     .mockResolvedValueOnce(odp(200, fixture('v4-ok-zpl.xml')));
-  const dpd = createDpdClient({ url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '876543', nadawca: NADAWCA, fetchImpl });
+  const dpd = createDpdClient({
+    url: 'https://dpd/api',
+    login: '99999999',
+    haslo: 'x',
+    fid: '876543',
+    nadawca: NADAWCA,
+    fetchImpl,
+  });
   return { dpd, fetchImpl };
 }
 
@@ -86,13 +131,17 @@ describe('GET /zamowienia/:id/nadaj — ekran nadania', () => {
     await serwer.ready();
     const powrot = '/?status=nowe&kanal=pro';
     const ekran = await serwer.inject({
-      method: 'GET', url: `/zamowienia/${id}/nadaj?powrot=${encodeURIComponent(powrot)}`, headers: naglowek,
+      method: 'GET',
+      url: `/zamowienia/${id}/nadaj?powrot=${encodeURIComponent(powrot)}`,
+      headers: naglowek,
     });
     expect(ekran.body).toContain(`<input type="hidden" name="powrot" value="/?status=nowe&amp;kanal=pro">`);
     expect(ekran.body).toContain(`href="/zamowienia/${id}?powrot=%2F%3Fstatus%3Dnowe%26kanal%3Dpro"`);
 
     const zapis = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
       payload: { ...PACZKA, powrot },
     });
     expect(zapis.statusCode).toBe(302);
@@ -177,10 +226,17 @@ describe('GET /zamowienia/:id/nadaj — ekran nadania', () => {
   it('Zadanie 2: ekran nadania pokazuje zawartość paczki (pozycje), tylko do odczytu', async () => {
     const { serwer, id } = zServerem({
       nad: {
-        pozycje: [{
-          klucz: 'k1', nazwa: 'Lampa wisząca Plecionka, rattan', sku: 'LMP-WIS-004',
-          ilosc: 2, cena_brutto: '110.00', cena_netto: '89.43', vat: 23,
-        }],
+        pozycje: [
+          {
+            klucz: 'k1',
+            nazwa: 'Lampa wisząca Plecionka, rattan',
+            sku: 'LMP-WIS-004',
+            ilosc: 2,
+            cena_brutto: '110.00',
+            cena_netto: '89.43',
+            vat: 23,
+          },
+        ],
       },
     });
     await serwer.ready();
@@ -245,7 +301,9 @@ describe('GET /zamowienia/:id/nadaj — ekran nadania', () => {
   // Zamówienie założone w adminie sklepu potrafi mieć
   // całkowicie pusty blok `shipping`.
   it('pusty blok shipping → wyraźne ostrzeżenie przy KAŻDYM brakującym polu (ulica, kod, miasto)', async () => {
-    const { serwer, id } = zServerem({ nad: { dostawa: { first_name: '', last_name: '', address_1: '', postcode: '', city: '', country: '' } } });
+    const { serwer, id } = zServerem({
+      nad: { dostawa: { first_name: '', last_name: '', address_1: '', postcode: '', city: '', country: '' } },
+    });
     await serwer.ready();
     const r = await serwer.inject({ method: 'GET', url: `/zamowienia/${id}/nadaj`, headers: naglowek });
     expect(r.statusCode).toBe(200);
@@ -316,7 +374,10 @@ describe('GET /zamowienia/:id/nadaj — ekran nadania', () => {
 // wisi na miniaturze, a gdy miniatury nie ma — na nazwie. Bez tego drugiego pozycja z Allegro
 // nie ma na czym powiesić linku (Allegro nie oddaje zdjęcia pozycji).
 describe('GET /zamowienia/:id/nadaj — pozycja prowadzi do swojego źródła', () => {
-  const configZeSklepem = { auth: { user: 'adam', pass: 'x' }, sklepy: { pro: { baseUrl: 'https://pro.swietlik.example.test' } } };
+  const configZeSklepem = {
+    auth: { user: 'adam', pass: 'x' },
+    sklepy: { pro: { baseUrl: 'https://pro.swietlik.example.test' } },
+  };
   const ZDJECIE = 'https://pro.swietlik.example.test/wp-content/uploads/2026/07/lampa.jpg';
 
   // Własny wariant `zServerem` — inny sklep (kanał!) i konfiguracja z `baseUrl`. Reszta
@@ -329,7 +390,10 @@ describe('GET /zamowienia/:id/nadaj — pozycja prowadzi do swojego źródła', 
   const ekran = async ({ sklep = 'pro', nad = {}, config: cfg = configZeSklepem, query = '' } = {}) => {
     const katalogEtykiet = mkdtempSync(join(tmpdir(), 'oms-nadaj-link-'));
     const nadanie = createNadanie({
-      db, kurierzy: { dpd: dpdKlient().dpd }, woo: { dodajNotatke: vi.fn() }, katalogEtykiet,
+      db,
+      kurierzy: { dpd: dpdKlient().dpd },
+      woo: { dodajNotatke: vi.fn() },
+      katalogEtykiet,
     });
     const serwer = buildOmsServer({ db, config: cfg, poller, nadanie });
     const id = zapiszZamowienie(db, sklep, zmapowane(nad), {});
@@ -342,10 +406,18 @@ describe('GET /zamowienia/:id/nadaj — pozycja prowadzi do swojego źródła', 
   it('pozycja ze sklepu — odnośnik na miniaturze, tak jak na karcie', async () => {
     const html = await ekran({
       nad: {
-        pozycje: [{
-          nazwa: 'Lampa Kałamarz', sku: 'PRO-1', ilosc: 1, cena_brutto: '100.00',
-          brutto_linii: '100.00', vat: 23, zdjecie_url: ZDJECIE, produkt_id: 28040,
-        }],
+        pozycje: [
+          {
+            nazwa: 'Lampa Kałamarz',
+            sku: 'PRO-1',
+            ilosc: 1,
+            cena_brutto: '100.00',
+            brutto_linii: '100.00',
+            vat: 23,
+            zdjecie_url: ZDJECIE,
+            produkt_id: 28040,
+          },
+        ],
       },
     });
     // EJS escapuje `&` w `<%= %>`, więc w HTML-u jest `&amp;`, nie surowe `&`.
@@ -362,11 +434,19 @@ describe('GET /zamowienia/:id/nadaj — pozycja prowadzi do swojego źródła', 
       query: '?kurier=dpd',
       nad: {
         metoda_wysylki: 'allegro_dpd',
-        pozycje: [{
-          nazwa: 'Lampa stołowa Mosiądz 30x35cm', sku: null, ilosc: 1,
-          cena_brutto: '100.00', brutto_linii: '100.00', vat: 23,
-          zdjecie_url: null, produkt_id: null, oferta_id: '1234567890',
-        }],
+        pozycje: [
+          {
+            nazwa: 'Lampa stołowa Mosiądz 30x35cm',
+            sku: null,
+            ilosc: 1,
+            cena_brutto: '100.00',
+            brutto_linii: '100.00',
+            vat: 23,
+            zdjecie_url: null,
+            produkt_id: null,
+            oferta_id: '1234567890',
+          },
+        ],
       },
     });
     expect(html).toContain('href="https://allegro.pl/oferta/1234567890"');
@@ -384,10 +464,19 @@ describe('GET /zamowienia/:id/nadaj — pozycja prowadzi do swojego źródła', 
       query: '?kurier=dpd',
       nad: {
         metoda_wysylki: 'allegro_dpd',
-        pozycje: [{
-          nazwa: 'Pozycja bez oferty', sku: null, ilosc: 1, cena_brutto: '100.00',
-          brutto_linii: '100.00', vat: 23, zdjecie_url: null, produkt_id: null, oferta_id: null,
-        }],
+        pozycje: [
+          {
+            nazwa: 'Pozycja bez oferty',
+            sku: null,
+            ilosc: 1,
+            cena_brutto: '100.00',
+            brutto_linii: '100.00',
+            vat: 23,
+            zdjecie_url: null,
+            produkt_id: null,
+            oferta_id: null,
+          },
+        ],
       },
     });
     expect(html).toContain('Pozycja bez oferty');
@@ -400,10 +489,18 @@ describe('GET /zamowienia/:id/nadaj — pozycja prowadzi do swojego źródła', 
   it('pozycja sklepowa ze zdjęciem trzyma odnośnik na miniaturze, nie na nazwie', async () => {
     const html = await ekran({
       nad: {
-        pozycje: [{
-          nazwa: 'Lampa Kałamarz', sku: 'PRO-1', ilosc: 1, cena_brutto: '100.00',
-          brutto_linii: '100.00', vat: 23, zdjecie_url: ZDJECIE, produkt_id: 28040,
-        }],
+        pozycje: [
+          {
+            nazwa: 'Lampa Kałamarz',
+            sku: 'PRO-1',
+            ilosc: 1,
+            cena_brutto: '100.00',
+            brutto_linii: '100.00',
+            vat: 23,
+            zdjecie_url: ZDJECIE,
+            produkt_id: 28040,
+          },
+        ],
       },
     });
     expect(html).not.toMatch(/<a[^>]*>Lampa Kałamarz<\/a>/);
@@ -419,7 +516,10 @@ describe('POST /zamowienia/:id/nadaj — kraj (ukryte pole) dalej blokuje przesy
     const { serwer, id } = zServerem({ dpd, nad: { dostawa: { ...zmapowane().dostawa, country: 'GB' } } });
     await serwer.ready();
     const r = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: { ...PACZKA, kraj: 'GB' },
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: { ...PACZKA, kraj: 'GB' },
     });
     expect(r.statusCode).toBe(400);
     expect(r.body).toMatch(/zagraniczne/i);
@@ -432,7 +532,12 @@ describe('POST /zamowienia/:id/nadaj — walidacja wagi i wymiarów', () => {
     const { dpd, fetchImpl } = dpdKlient();
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
-    const r = await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: PACZKA });
+    const r = await serwer.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: PACZKA,
+    });
     expect(r.statusCode).toBe(302);
     const body = fetchImpl.mock.calls[0][1].body;
     expect(body).toContain('<weight>1</weight>');
@@ -446,7 +551,9 @@ describe('POST /zamowienia/:id/nadaj — walidacja wagi i wymiarów', () => {
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
     await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
       payload: { waga: '3.5', dlugosc: '20', szerokosc: '15', wysokosc: '10', kolejnosc: '1', ...ADRES },
     });
     const body = fetchImpl.mock.calls[0][1].body;
@@ -460,7 +567,9 @@ describe('POST /zamowienia/:id/nadaj — walidacja wagi i wymiarów', () => {
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
     const r = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
       payload: { ...PACZKA, waga: '1,5' },
     });
     expect(r.statusCode).toBe(302);
@@ -472,7 +581,9 @@ describe('POST /zamowienia/:id/nadaj — walidacja wagi i wymiarów', () => {
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
     const r = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
       payload: { ...PACZKA, waga: 'dużo' },
     });
     expect(r.statusCode).toBe(400);
@@ -485,7 +596,9 @@ describe('POST /zamowienia/:id/nadaj — walidacja wagi i wymiarów', () => {
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
     const r = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
       payload: { ...PACZKA, dlugosc: '-110' },
     });
     expect(r.statusCode).toBe(400);
@@ -498,7 +611,9 @@ describe('POST /zamowienia/:id/nadaj — walidacja wagi i wymiarów', () => {
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
     const r = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
       payload: { ...PACZKA, waga: '0' },
     });
     expect(r.statusCode).toBe(400);
@@ -517,7 +632,12 @@ describe('POST /zamowienia/:id/nadaj — walidacja wagi i wymiarów', () => {
   it('nieistniejące zamówienie → 404', async () => {
     const { serwer } = zServerem();
     await serwer.ready();
-    const r = await serwer.inject({ method: 'POST', url: '/zamowienia/9999/nadaj', headers: naglowek, payload: PACZKA });
+    const r = await serwer.inject({
+      method: 'POST',
+      url: '/zamowienia/9999/nadaj',
+      headers: naglowek,
+      payload: PACZKA,
+    });
     expect(r.statusCode).toBe(404);
   });
 });
@@ -546,7 +666,12 @@ describe('POST /zamowienia/:id/nadaj — walidacja adresu odbiorcy', () => {
     const { dpd } = dpdKlient();
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
-    await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: { ...PACZKA, miasto: '' } });
+    await serwer.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: { ...PACZKA, miasto: '' },
+    });
     expect(pobierzZamowienie(db, id).przesylki).toEqual([]);
   });
 
@@ -554,7 +679,12 @@ describe('POST /zamowienia/:id/nadaj — walidacja adresu odbiorcy', () => {
     const { dpd, fetchImpl } = dpdKlient();
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
-    const r = await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: { ...PACZKA, ulica: '   ' } });
+    const r = await serwer.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: { ...PACZKA, ulica: '   ' },
+    });
     expect(r.statusCode).toBe(400);
     expect(fetchImpl).not.toHaveBeenCalled();
   });
@@ -563,7 +693,12 @@ describe('POST /zamowienia/:id/nadaj — walidacja adresu odbiorcy', () => {
     const { dpd } = dpdKlient();
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
-    const r = await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: PACZKA });
+    const r = await serwer.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: PACZKA,
+    });
     expect(r.statusCode).toBe(302);
   });
 });
@@ -577,7 +712,10 @@ describe('POST /zamowienia/:id/nadaj — „Nadaj i drukuj" (kolejka druku)', ()
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
     const r = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: { ...PACZKA, zatwierdzenie: 'nadaj' },
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: { ...PACZKA, zatwierdzenie: 'nadaj' },
     });
     expect(r.statusCode).toBe(302);
     expect(db.prepare('SELECT COUNT(*) c FROM kolejka_druku').get().c).toBe(0);
@@ -588,7 +726,10 @@ describe('POST /zamowienia/:id/nadaj — „Nadaj i drukuj" (kolejka druku)', ()
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
     const r = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: { ...PACZKA, zatwierdzenie: 'nadaj_i_drukuj' },
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: { ...PACZKA, zatwierdzenie: 'nadaj_i_drukuj' },
     });
     expect(r.statusCode).toBe(302);
     expect(pobierzZamowienie(db, id).przesylki[0].status).toBe('nadana');
@@ -606,7 +747,10 @@ describe('POST /zamowienia/:id/nadaj — „Nadaj i drukuj" (kolejka druku)', ()
     await serwer.ready();
     db.exec('DROP TABLE kolejka_druku');
     const r = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: { ...PACZKA, zatwierdzenie: 'nadaj_i_drukuj' },
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: { ...PACZKA, zatwierdzenie: 'nadaj_i_drukuj' },
     });
     expect(r.statusCode).toBe(302);
     expect(r.headers.location).toBe(`/zamowienia/${id}`);
@@ -623,7 +767,10 @@ describe('POST /zamowienia/:id/nadaj — „Nadaj i drukuj" (kolejka druku)', ()
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
     const r = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: { ...PACZKA, zatwierdzenie: 'nadaj_i_drukuj' },
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: { ...PACZKA, zatwierdzenie: 'nadaj_i_drukuj' },
     });
     expect(r.statusCode).toBe(302);
     expect(pobierzZamowienie(db, id).przesylki[0].status).toBe('nadana');
@@ -658,7 +805,9 @@ describe('ekran nadania i POST /nadaj: do DPD leci DOKŁADNIE to, co było w for
     const { serwer, id } = zServerem({ dpd, nad: { dostawa: { ...zmapowane().dostawa, first_name: MARKER } } });
     await serwer.ready();
     const wyslanie = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
       payload: { ...PACZKA, nazwa: MARKER, company: MARKER },
     });
     expect(wyslanie.statusCode).toBe(302);
@@ -676,7 +825,9 @@ describe('ekran nadania i POST /nadaj: do DPD leci DOKŁADNIE to, co było w for
     const { serwer, id } = zServerem({ dpd });
     await serwer.ready();
     const wyslanie = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
       payload: { ...PACZKA, miasto: 'Miasto-Po-Poprawce-Operatora', ulica: 'Ulica-Po-Poprawce-Operatora' },
     });
     expect(wyslanie.statusCode).toBe(302);
@@ -701,7 +852,10 @@ describe('ekran nadania i POST /nadaj: do DPD leci DOKŁADNIE to, co było w for
     expect(ekran.body).toContain(MARKER);
 
     await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek, payload: { ...PACZKA, miasto: MARKER },
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: { ...PACZKA, miasto: MARKER },
     });
     expect(fetchImpl.mock.calls[0][1].body).toContain(`<city>${MARKER}</city>`);
   });
@@ -715,7 +869,10 @@ describe('ekran nadania startuje wartościami z ustawień', () => {
     const { dpd } = dpdKlient();
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
     zapiszUstawienia(db, {
-      'paczka.waga': '3', 'paczka.dlugosc': '60', 'paczka.szerokosc': '40', 'paczka.wysokosc': '20',
+      'paczka.waga': '3',
+      'paczka.dlugosc': '60',
+      'paczka.szerokosc': '40',
+      'paczka.wysokosc': '20',
     });
     const nadanie = createNadanie({ db, kurierzy: { dpd }, katalogEtykiet: mkdtempSync(join(tmpdir(), 'oms-')) });
     const app = buildOmsServer({ db, config, poller, nadanie });
@@ -749,14 +906,18 @@ describe('ekran nadania startuje wartościami z ustawień', () => {
     const { dpd } = dpdKlient();
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
     zapiszUstawienia(db, {
-      'paczka.waga': '3', 'paczka.dlugosc': '60', 'paczka.szerokosc': '40', 'paczka.wysokosc': '20',
+      'paczka.waga': '3',
+      'paczka.dlugosc': '60',
+      'paczka.szerokosc': '40',
+      'paczka.wysokosc': '20',
     });
     const nadanie = createNadanie({ db, kurierzy: { dpd }, katalogEtykiet: mkdtempSync(join(tmpdir(), 'oms-')) });
     const app = buildOmsServer({ db, config, poller, nadanie });
     await app.ready();
 
     const r = await app.inject({
-      method: 'POST', url: '/zamowienia/masowe/nadaj-podglad',
+      method: 'POST',
+      url: '/zamowienia/masowe/nadaj-podglad',
       headers: naglowek,
       payload: { id: String(id) },
     });
@@ -773,17 +934,25 @@ describe('ekran nadania startuje wartościami z ustawień', () => {
     const { dpd, fetchImpl } = dpdKlient();
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
     zapiszUstawienia(db, {
-      'paczka.waga': '3', 'paczka.dlugosc': '60', 'paczka.szerokosc': '40', 'paczka.wysokosc': '20',
+      'paczka.waga': '3',
+      'paczka.dlugosc': '60',
+      'paczka.szerokosc': '40',
+      'paczka.wysokosc': '20',
     });
     const nadanie = createNadanie({
-      db, kurierzy: { dpd }, woo: { dodajNotatke: vi.fn().mockResolvedValue({}) },
+      db,
+      kurierzy: { dpd },
+      woo: { dodajNotatke: vi.fn().mockResolvedValue({}) },
       katalogEtykiet: mkdtempSync(join(tmpdir(), 'oms-')),
     });
     const app = buildOmsServer({ db, config, poller, nadanie });
     await app.ready();
 
     await app.inject({
-      method: 'POST', url: '/zamowienia/masowe/nadaj', headers: naglowek, payload: { id: String(id) },
+      method: 'POST',
+      url: '/zamowienia/masowe/nadaj',
+      headers: naglowek,
+      payload: { id: String(id) },
     });
 
     expect(fetchImpl).toHaveBeenCalled();
@@ -814,7 +983,12 @@ describe('ekran nadania — netto stawką domyślną z Ustawień', () => {
     const { programTestowy } = await import('../../pomoc/program-testowy.js');
     const p = programTestowy({ id: 'twojefaktury' });
     const { serwer, id } = zServerem({ infakt: { ...p, opis: Object.freeze({ ...p.opis, wbudowany: true }) } });
-    dodajPozycjeReczna(db, id, { nazwa: 'Kurs lutowania', ilosc: 1, cena_brutto: '57.00', brutto_linii: '57.00', vat: 'zw' }, { zw: true });
+    dodajPozycjeReczna(
+      db,
+      id,
+      { nazwa: 'Kurs lutowania', ilosc: 1, cena_brutto: '57.00', brutto_linii: '57.00', vat: 'zw' },
+      { zw: true },
+    );
     await serwer.ready();
     const r = await serwer.inject({ method: 'GET', url: `/zamowienia/${id}/nadaj`, headers: naglowek });
     expect(r.body).toMatch(/Kurs lutowania[\s\S]*?57\.00 zł[\s\S]*?57\.00 zł/u);

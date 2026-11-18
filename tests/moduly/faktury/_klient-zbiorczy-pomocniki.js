@@ -42,7 +42,6 @@ export function dopiszKlientaZbiorczego(db, nadpisania = {}) {
   });
   // P2.04 nie migruje starych kluczy. Te testy okresów muszą nadal obejmować
   // historyczne klucze niezależne od nazwy; nowe klucze sprawdza klucz-klienta-prz160p2.
-  db.prepare('UPDATE klienci SET klucz = ? WHERE id = ?')
-    .run(nadpisania.klucz ?? PRZYKLADOWA.klucz, id);
+  db.prepare('UPDATE klienci SET klucz = ? WHERE id = ?').run(nadpisania.klucz ?? PRZYKLADOWA.klucz, id);
   return id;
 }

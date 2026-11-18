@@ -12,21 +12,24 @@ function bazaZOkresem() {
   const db = openOmsDb();
   const okres = zapewnijOkres(db, { klientKlucz: 'alfatrend', rok: 2026, miesiac: 7 });
   db.prepare(
-    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, okres_rozliczeniowy_id, utworzone_at)'
-    + " VALUES ('reczne', 202600001, 'R/2026/001', '96.48', ?, '2026-07-10T10:00:00.000Z')",
+    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, okres_rozliczeniowy_id, utworzone_at)' +
+      " VALUES ('reczne', 202600001, 'R/2026/001', '96.48', ?, '2026-07-10T10:00:00.000Z')",
   ).run(okres.id);
   const zamId = db.prepare('SELECT id FROM zamowienia WHERE numer = ?').get('R/2026/001').id;
   db.prepare(
-    'INSERT INTO pozycje (zamowienie_id, nazwa, ilosc, cena_brutto, brutto_linii, zrodlo)'
-    + " VALUES (?, 'Lampa stołowa Kałamarz 30x45cm', 2, '40.24', '80.48', 'reczna'),"
-    + " (?, 'Kurier DPD', 1, '16.00', '16.00', 'reczna')",
+    'INSERT INTO pozycje (zamowienie_id, nazwa, ilosc, cena_brutto, brutto_linii, zrodlo)' +
+      " VALUES (?, 'Lampa stołowa Kałamarz 30x45cm', 2, '40.24', '80.48', 'reczna')," +
+      " (?, 'Kurier DPD', 1, '16.00', '16.00', 'reczna')",
   ).run(zamId, zamId);
   return { db, okres, zamId };
 }
 
 const VIES_WAZNY = {
-  wynik: 'wazny', nazwa: 'ALFATREND s.r.o.', adres: null,
-  dataZapytania: '2026-08-26T12:00:00.000Z', numerKonsultacji: 'WAPIAAAAY123456',
+  wynik: 'wazny',
+  nazwa: 'ALFATREND s.r.o.',
+  adres: null,
+  dataZapytania: '2026-08-26T12:00:00.000Z',
+  numerKonsultacji: 'WAPIAAAAY123456',
 };
 
 const infaktUdany = (nad = {}) => ({
@@ -37,18 +40,24 @@ const infaktUdany = (nad = {}) => ({
   ...nad,
 });
 
-const usluga = (db, infakt, vies = { sprawdz: vi.fn().mockResolvedValue(VIES_WAZNY) }) => createFakturaOkresu({
-  db, infakt, vies, teraz: () => '2026-08-26T12:00:00.000Z',
-});
+const usluga = (db, infakt, vies = { sprawdz: vi.fn().mockResolvedValue(VIES_WAZNY) }) =>
+  createFakturaOkresu({
+    db,
+    infakt,
+    vies,
+    teraz: () => '2026-08-26T12:00:00.000Z',
+  });
 
 const KLIENT_WDT = { nip: 'SK1000000001', nazwa: 'Alfatrend s.r.o.' };
 const log = (db, id) => db.prepare('SELECT * FROM log WHERE zamowienie_id = ? ORDER BY id').all(id);
 
 describe('pozycjeOkresu — stawka dokumentu', () => {
-  const zamowienia = [{
-    pozycje: [{ nazwa: 'STOP', ilosc: 2, cena_brutto: '40.24', brutto_linii: '80.48' }],
-    koszt_dostawy_brutto: '0.00',
-  }];
+  const zamowienia = [
+    {
+      pozycje: [{ nazwa: 'STOP', ilosc: 2, cena_brutto: '40.24', brutto_linii: '80.48' }],
+      koszt_dostawy_brutto: '0.00',
+    },
+  ];
 
   // Zmiana zachowania — „bez opcji 23%” zastąpione odmową: stawka domyślna przychodzi z Ustawień
   // i jej brak ma być błędem, nie cichym 23 (instalacja z domyślną 8 dostałaby fakturę zbiorczą z 23).
@@ -61,14 +70,30 @@ describe('pozycjeOkresu — stawka dokumentu', () => {
   });
 
   it('nabywca okresu z UE (wdt) — każda pozycja i dostawa 0%, także ręczna z 8%', () => {
-    const z = [{ ...zamowienia[0], koszt_dostawy_brutto: '10.00',
-      pozycje: [...zamowienia[0].pozycje, { nazwa: 'Album', ilosc: 1, brutto_linii: '10.80', zrodlo: 'reczna', vat: '8' }] }];
+    const z = [
+      {
+        ...zamowienia[0],
+        koszt_dostawy_brutto: '10.00',
+        pozycje: [
+          ...zamowienia[0].pozycje,
+          { nazwa: 'Album', ilosc: 1, brutto_linii: '10.80', zrodlo: 'reczna', vat: '8' },
+        ],
+      },
+    ];
     expect(pozycjeOkresu(z, { stawkaDomyslna: '23', wdt: true }).map((s) => s.tax_symbol)).toEqual(['0', '0', '0']);
   });
 
   it('stawka per pozycja — ręczna z 8% → 8, sklepowa i dostawa → domyślna', () => {
-    const z = [{ ...zamowienia[0], koszt_dostawy_brutto: '10.00',
-      pozycje: [...zamowienia[0].pozycje, { nazwa: 'Album', ilosc: 1, brutto_linii: '10.80', zrodlo: 'reczna', vat: '8' }] }];
+    const z = [
+      {
+        ...zamowienia[0],
+        koszt_dostawy_brutto: '10.00',
+        pozycje: [
+          ...zamowienia[0].pozycje,
+          { nazwa: 'Album', ilosc: 1, brutto_linii: '10.80', zrodlo: 'reczna', vat: '8' },
+        ],
+      },
+    ];
     expect(pozycjeOkresu(z, { stawkaDomyslna: '5' }).map((s) => s.tax_symbol)).toEqual(['5', '8', '5']);
   });
 });
@@ -116,7 +141,8 @@ describe('faktura okresu WDT', () => {
   it('jednoznaczna odmowa inFaktu zwalnia numer serii — ponowienie dostaje ten sam', async () => {
     const { db, okres } = bazaZOkresem();
     const infakt = infaktUdany({
-      wystaw: vi.fn()
+      wystaw: vi
+        .fn()
         .mockRejectedValueOnce(Object.assign(new Error('Wadliwy zasób'), { dlaOperatora: true, status: 422 }))
         .mockResolvedValueOnce({ uuid: 'u-2', numer: 'WDT/1/08/2026', ksefStatus: null }),
     });

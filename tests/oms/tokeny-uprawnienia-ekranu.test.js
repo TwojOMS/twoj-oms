@@ -11,22 +11,27 @@ import { szyfrTestowy } from '../pomoc/sejf-testowy.ts';
 
 const ustawienia = {
   auth: 'https://allegro.pl/auth/oauth',
-  clientId: 'id', clientSecret: 'sekret',
+  clientId: 'id',
+  clientSecret: 'sekret',
   userAgent: 'Panel/0.0.0 (+https://przyklad.invalid)',
 };
 
-const jwt = (scope) => [
-  'naglowek', Buffer.from(JSON.stringify({ scope })).toString('base64url'), 'podpis',
-].join('.');
+const jwt = (scope) => ['naglowek', Buffer.from(JSON.stringify({ scope })).toString('base64url'), 'podpis'].join('.');
 
 function baza(accessToken) {
   const db = openOmsDb(':memory:');
-  db.prepare(`INSERT INTO tokeny_kanalu
+  db.prepare(
+    `INSERT INTO tokeny_kanalu
     (kanal, access_token, refresh_token, wygasa_at, refresh_wygasa_at, zaktualizowane_at)
-    VALUES (?,?,?,?,?,?)`)
-    .run('allegro_swietlik', szyfrTestowy(db, 'tokeny_kanalu', 'access_token', 'allegro_swietlik', accessToken),
-      szyfrTestowy(db, 'tokeny_kanalu', 'refresh_token', 'allegro_swietlik', 'refresz'), '2027-01-01T00:00:00.000Z',
-      '2027-01-01T00:00:00.000Z', '2026-08-28T06:39:38.999Z');
+    VALUES (?,?,?,?,?,?)`,
+  ).run(
+    'allegro_swietlik',
+    szyfrTestowy(db, 'tokeny_kanalu', 'access_token', 'allegro_swietlik', accessToken),
+    szyfrTestowy(db, 'tokeny_kanalu', 'refresh_token', 'allegro_swietlik', 'refresz'),
+    '2027-01-01T00:00:00.000Z',
+    '2027-01-01T00:00:00.000Z',
+    '2026-08-28T06:39:38.999Z',
+  );
   return db;
 }
 
@@ -40,8 +45,11 @@ describe('stanDlaEkranu — brakujące uprawnienia', () => {
   // Dokladnie ten zestaw zmierzono na produkcji 28.08.2026 na OBU kanalach.
   it('token sprzed dodania uprawnień zgłasza messaging i disputes', () => {
     const piec = [
-      'allegro:api:orders:read', 'allegro:api:sale:offers:read',
-      'allegro:api:shipments:read', 'allegro:api:shipments:write', 'allegro:api:orders:write',
+      'allegro:api:orders:read',
+      'allegro:api:sale:offers:read',
+      'allegro:api:shipments:read',
+      'allegro:api:shipments:write',
+      'allegro:api:orders:write',
     ];
     const braki = stan(baza(jwt(piec))).brakujaceUprawnienia;
     expect(braki).toEqual(['allegro:api:messaging', 'allegro:api:disputes']);
@@ -71,9 +79,8 @@ describe('stanDlaEkranu — brakujące uprawnienia', () => {
 // pokazac, a bariera kolizji nie ma czego porownac: kanal zwiazany z cudzym kontem znowu
 // przeszedlby jako zdrowy, dokladnie jak 28.08.2026.
 describe('stanDlaEkranu — konto Allegro', () => {
-  const jwtZKontem = (user_name) => [
-    'naglowek', Buffer.from(JSON.stringify({ user_name, scope: [] })).toString('base64url'), 'podpis',
-  ].join('.');
+  const jwtZKontem = (user_name) =>
+    ['naglowek', Buffer.from(JSON.stringify({ user_name, scope: [] })).toString('base64url'), 'podpis'].join('.');
 
   it('oddaje identyfikator konta z tokenu', () => {
     expect(stan(baza(jwtZKontem('36457435'))).kontoAllegro).toBe('36457435');

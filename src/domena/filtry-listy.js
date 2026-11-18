@@ -97,7 +97,7 @@ export const kanalyDoFiltra = (definicje) => kanalyWidoku(definicje);
  * filtra"), nigdy nie leci dalej — ta sama zasada, co przy `?status=` i `?szukaj=`.
  */
 export function parsujFiltry(query = {}, definicje) {
-  const dozwoloneKanaly = kanalyWidoku(definicje).map(k=>k.klucz);
+  const dozwoloneKanaly = kanalyWidoku(definicje).map((k) => k.klucz);
   // Metoda płatności to CZYTELNA nazwa ze sklepu („Przelew tradycyjny", „Za pobraniem"),
   // więc listy dopuszczalnych wartości nie ma i być nie może — sklep dokłada bramki bez
   // pytania nas o zdanie. Nazwa spoza bazy po prostu nie trafi w żadne zamówienie.
@@ -106,7 +106,8 @@ export function parsujFiltry(query = {}, definicje) {
   const platnosc = wartosciFiltra(query?.platnosc).filter((p) => {
     const k = normalizujMetode(p).klucz;
     if (kubelki.has(k)) return false;
-    kubelki.add(k); return true;
+    kubelki.add(k);
+    return true;
   });
   return {
     od: data(query?.od),
@@ -121,7 +122,8 @@ export function parsujFiltry(query = {}, definicje) {
 
 // „2 wybrane", „5 wybranych", „22 wybrane" — liczebnik po polsku.
 function ileWybranych(n) {
-  const d = n % 10; const s = n % 100;
+  const d = n % 10;
+  const s = n % 100;
   return `${n} ${d >= 2 && d <= 4 && !(s >= 12 && s <= 14) ? 'wybrane' : 'wybranych'}`;
 }
 
@@ -136,7 +138,11 @@ export function polaWyboruFiltrow(filtry, { wysylka = [], platnosc = [], kanal =
   const pole = (nazwa, etykieta, opcje, wybrane) => {
     const zaznaczone = opcje.map((o) => ({ ...o, zaznaczona: wybrane.includes(o.klucz) }));
     const ile = zaznaczone.filter((o) => o.zaznaczona);
-    const podsumowanie = !ile.length ? 'Wszystkie' : ile.length === 1 ? (ile[0].krotko ?? ile[0].etykieta) : ileWybranych(ile.length);
+    const podsumowanie = !ile.length
+      ? 'Wszystkie'
+      : ile.length === 1
+        ? (ile[0].krotko ?? ile[0].etykieta)
+        : ileWybranych(ile.length);
     return { nazwa, etykieta, opcje: zaznaczone, podsumowanie, ileWybranych: ile.length };
   };
   const platnosci = wartosciFiltra(filtry?.platnosc).map((p) => normalizujMetode(p).klucz);
@@ -145,9 +151,17 @@ export function polaWyboruFiltrow(filtry, { wysylka = [], platnosc = [], kanal =
     pole('wysylka', 'Sposób wysyłki', wysylka, wartosciFiltra(filtry?.wysylka)),
     pole('platnosc', 'Sposób płatności', platnosc, platnosci),
     pole('kanal', 'Kanał sprzedaży', kanal, wartosciFiltra(filtry?.kanal)),
-    pole('faktura', 'Faktura', FAKTURA_DO_FILTRA.map((k) => ({
-      klucz: k, etykieta: { tak: 'Tak', nie: 'Nie', wystawiona: 'Wystawiona', niewystawiona: 'Niewystawiona' }[k], grupa: grupaFaktury(k), krotko: ETYKIETY_FAKTURY[k],
-    })), wartosciFiltra(filtry?.faktura)),
+    pole(
+      'faktura',
+      'Faktura',
+      FAKTURA_DO_FILTRA.map((k) => ({
+        klucz: k,
+        etykieta: { tak: 'Tak', nie: 'Nie', wystawiona: 'Wystawiona', niewystawiona: 'Niewystawiona' }[k],
+        grupa: grupaFaktury(k),
+        krotko: ETYKIETY_FAKTURY[k],
+      })),
+      wartosciFiltra(filtry?.faktura),
+    ),
   ];
 }
 
@@ -226,7 +240,8 @@ export function pasujaKlucze(k, filtry) {
   // tam ma numer i tam wraca notatka o nadaniu. Wykluczenie go znaczyloby, ze dwa filtry
   // trzeba zsumowac, zeby zobaczyc wszystko z jednego sklepu — a nikt sie tego nie domysli.
   const kanaly = wartosciFiltra(filtry?.kanal);
-  if (kanaly.length && !kanaly.some((kanal) => (kanal === 'indywidualne' ? k.indywidualne : k.sklep === kanal))) return false;
+  if (kanaly.length && !kanaly.some((kanal) => (kanal === 'indywidualne' ? k.indywidualne : k.sklep === kanal)))
+    return false;
   // ⚠️ OBIE STRONY przez slownik (domena/metody-platnosci.js), nie porownanie surowych
   // napisow: „BLIK" i „Blik" to jeden filtr, a stara zakladka z surowa nazwa
   // („?platnosc=Przelew%20tradycyjny") dalej trafia, bo normalizacja sprowadza ja do tego
@@ -255,7 +270,10 @@ export function filtrujFiltrami(zamowienia, filtry) {
  * Kolejność parametrów jest STAŁA, żeby adres tego samego widoku wyglądał zawsze tak samo
  * (historia przeglądarki, zakładki, porównanie w teście).
  */
-export function adresZFiltrami(filtry, { szukaj = null, status = null, wszystkie = false, poTerminie = false, strona = null, zaznacz = null } = {}) {
+export function adresZFiltrami(
+  filtry,
+  { szukaj = null, status = null, wszystkie = false, poTerminie = false, strona = null, zaznacz = null } = {},
+) {
   const czesci = [];
   if (status) czesci.push(['status', status]);
   // „Po terminie" jest zakładką jak status/wszystkie (nawigacja, nie filtr) — dokładnie
@@ -311,11 +329,14 @@ export function bezpiecznyPowrotNaListe(surowy, definicje, etykiety = ETYKIETY) 
     if (parametry.getAll(klucz).length > 1) return '/';
   }
 
-  const filtry = parsujFiltry({
-    od: parametry.get('od') ?? undefined,
-    do: parametry.get('do') ?? undefined,
-    ...Object.fromEntries(FILTRY_WIELU.map((k) => [k, parametry.getAll(k)])),
-  }, definicje);
+  const filtry = parsujFiltry(
+    {
+      od: parametry.get('od') ?? undefined,
+      do: parametry.get('do') ?? undefined,
+      ...Object.fromEntries(FILTRY_WIELU.map((k) => [k, parametry.getAll(k)])),
+    },
+    definicje,
+  );
   const status = parametry.get('status');
   // Czyste generatory odnośników nie mają bazy. Zachowują tylko bezpieczny format klucza
   // własnego; trasa listy sprawdza jego istnienie w aktualnej konfiguracji. Gdy caller

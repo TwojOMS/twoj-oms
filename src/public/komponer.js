@@ -90,7 +90,11 @@
 
   function rozszerzenie(nazwa) {
     var i = String(nazwa).lastIndexOf('.');
-    return i === -1 ? '' : String(nazwa).slice(i + 1).toLowerCase();
+    return i === -1
+      ? ''
+      : String(nazwa)
+          .slice(i + 1)
+          .toLowerCase();
   }
 
   // Lustro reguł serwera o załącznikach. ⚠️ To jest WYGODA, nie zabezpieczenie — rozstrzyga
@@ -111,14 +115,18 @@
   }
 
   function suma() {
-    return pliki.reduce(function (s, p) { return s + p.size; }, 0);
+    return pliki.reduce(function (s, p) {
+      return s + p.size;
+    }, 0);
   }
 
   // FileList jest niezapisywalna wprost — odbudowujemy ją z własnej listy, żeby FormData
   // (a przez nie htmx) wysłało dokładnie to, co widać na ekranie.
   function przepiszDoInputa() {
     var dt = new DataTransfer();
-    pliki.forEach(function (p) { dt.items.add(p); });
+    pliki.forEach(function (p) {
+      dt.items.add(p);
+    });
     wejscie.files = dt.files;
   }
 
@@ -131,7 +139,9 @@
       var li = document.createElement('li');
       li.className = 'zal' + (powod ? ' zly' : '');
       li.innerHTML =
-        '<span class="ikona">' + (powod ? '⛔' : '📄') + '</span>' +
+        '<span class="ikona">' +
+        (powod ? '⛔' : '📄') +
+        '</span>' +
         '<span class="nazwa"></span>' +
         '<span class="waga"></span>' +
         '<span class="sp"></span>' +
@@ -189,7 +199,9 @@
    */
   function dodajPliki(nowe, grupa) {
     if (grupa) {
-      pliki = pliki.filter(function (p) { return grupy.get(p) !== grupa; });
+      pliki = pliki.filter(function (p) {
+        return grupy.get(p) !== grupa;
+      });
     }
     Array.prototype.forEach.call(nowe, function (p) {
       if (grupa) grupy.set(p, grupa);
@@ -200,8 +212,12 @@
     zerujPotwierdzenie();
   }
 
-  document.getElementById('zal-wybierz').addEventListener('click', function () { wejscie.click(); });
-  document.getElementById('zal-dodaj-btn').addEventListener('click', function () { wejscie.click(); });
+  document.getElementById('zal-wybierz').addEventListener('click', function () {
+    wejscie.click();
+  });
+  document.getElementById('zal-dodaj-btn').addEventListener('click', function () {
+    wejscie.click();
+  });
   wejscie.addEventListener('change', function () {
     // Pliki z inputa kopiujemy do własnej listy i input zaraz potem i tak nadpiszemy —
     // inaczej drugi wybór skasowałby pierwszy (FileList się nie sumuje).
@@ -211,10 +227,16 @@
   });
 
   ['dragenter', 'dragover'].forEach(function (ev) {
-    strefa.addEventListener(ev, function (e) { e.preventDefault(); strefa.classList.add('drag'); });
+    strefa.addEventListener(ev, function (e) {
+      e.preventDefault();
+      strefa.classList.add('drag');
+    });
   });
   ['dragleave', 'drop'].forEach(function (ev) {
-    strefa.addEventListener(ev, function (e) { e.preventDefault(); strefa.classList.remove('drag'); });
+    strefa.addEventListener(ev, function (e) {
+      e.preventDefault();
+      strefa.classList.remove('drag');
+    });
   });
   strefa.addEventListener('drop', function (e) {
     if (e.dataTransfer && e.dataTransfer.files.length) dodajPliki(e.dataTransfer.files);
@@ -247,10 +269,12 @@
   // Czy w komponerze jest COKOLWIEK, co wyczyszczenie by zabrało. Sam temat domyślny się
   // nie liczy — z nim komponer jest „pusty".
   function maCoCzyscic() {
-    return poleTemat.value !== TEMAT_DOMYSLNY
-      || poleTresc.value.trim() !== ''
-      || pliki.length > 0
-      || Boolean(TRYBY[poleKind.value]);
+    return (
+      poleTemat.value !== TEMAT_DOMYSLNY ||
+      poleTresc.value.trim() !== '' ||
+      pliki.length > 0 ||
+      Boolean(TRYBY[poleKind.value])
+    );
   }
 
   // ⚠️ Przycisk pokazuje się TYLKO wtedy, gdy jest co czyścić;
@@ -408,7 +432,11 @@
    */
   function dolaczListe(box, json) {
     var pozycje = [];
-    try { pozycje = JSON.parse(json) || []; } catch (e) { pozycje = []; }
+    try {
+      pozycje = JSON.parse(json) || [];
+    } catch (e) {
+      pozycje = [];
+    }
     pozycje.forEach(function (p) {
       if (!p || !p.url) return;
       var nazwa = p.nazwa || 'zalacznik';
@@ -440,7 +468,9 @@
 
   document.body.addEventListener('htmx:afterSwap', function (e) {
     var boxy = e.target.querySelectorAll ? e.target.querySelectorAll('.reply-box') : [];
-    Array.prototype.forEach.call(boxy, function (box) { obsluzPudelko(box); });
+    Array.prototype.forEach.call(boxy, function (box) {
+      obsluzPudelko(box);
+    });
     if (e.target.classList && e.target.classList.contains('reply-box')) obsluzPudelko(e.target);
   });
 
@@ -524,24 +554,31 @@
 
   // ⚠️ Zasada „mail nigdy nie wychodzi sam" ZOSTAJE — zmienił się tylko mechanizm.
   // Pierwsze kliknięcie nie wysyła: przestawia przycisk w „Potwierdź wysyłkę do <adres>".
-  form.addEventListener('submit', function (e) {
-    if (poleConfirm.value === '1' && uzbrojony === 'wyslij') return;
-    e.preventDefault();
-    e.stopPropagation();
-    if (btnWyslij.disabled) return;
-    if (!poleTresc.value.trim()) {
-      pokazUwage('Pusta treść — nie ma czego wysłać.');
-      return;
-    }
-    poleConfirm.value = '1';
-    uzbrojony = 'wyslij';
-    btnWyslij.textContent = 'Potwierdź wysyłkę do ' + komuIdzie();
-    btnWyslij.classList.add('potwierdz');
-    btnAnuluj.hidden = false;
-    // Uzbrojone przed chwilą „Wyślij rano" musi się rozbroić — inaczej dwa przyciski
-    // naraz obiecywałyby, że to ONE pójdą przy następnym kliknięciu.
-    if (btnRano) { btnRano.classList.remove('potwierdz'); odswiezRano(); }
-  }, true);
+  form.addEventListener(
+    'submit',
+    function (e) {
+      if (poleConfirm.value === '1' && uzbrojony === 'wyslij') return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (btnWyslij.disabled) return;
+      if (!poleTresc.value.trim()) {
+        pokazUwage('Pusta treść — nie ma czego wysłać.');
+        return;
+      }
+      poleConfirm.value = '1';
+      uzbrojony = 'wyslij';
+      btnWyslij.textContent = 'Potwierdź wysyłkę do ' + komuIdzie();
+      btnWyslij.classList.add('potwierdz');
+      btnAnuluj.hidden = false;
+      // Uzbrojone przed chwilą „Wyślij rano" musi się rozbroić — inaczej dwa przyciski
+      // naraz obiecywałyby, że to ONE pójdą przy następnym kliknięciu.
+      if (btnRano) {
+        btnRano.classList.remove('potwierdz');
+        odswiezRano();
+      }
+    },
+    true,
+  );
 
   // Po każdej odpowiedzi serwera wracamy do stanu „przed potwierdzeniem". Przy udanej
   // wysyłce i tak leci HX-Redirect i strona się przeładowuje; przy błędzie operator ma
@@ -590,9 +627,7 @@
     var start = a.h * 60 + a.m;
     var koniec = b.h * 60 + b.m;
     if (start === koniec) return false;
-    return start < koniec
-      ? (chwila >= start && chwila < koniec)
-      : (chwila >= start || chwila < koniec);
+    return start < koniec ? chwila >= start && chwila < koniec : chwila >= start || chwila < koniec;
   }
 
   /**
@@ -616,8 +651,7 @@
   function odswiezRano() {
     if (!btnRano) return;
     var teraz = new Date();
-    var widac = ODRACZALNE.indexOf(poleKind.value) !== -1
-      && wOknie(teraz, btnRano.dataset.od, btnRano.dataset.godzina);
+    var widac = ODRACZALNE.indexOf(poleKind.value) !== -1 && wOknie(teraz, btnRano.dataset.od, btnRano.dataset.godzina);
     btnRano.hidden = !widac;
     // W kroku potwierdzenia przycisk mówi „Potwierdź…" — tykający co minutę odświeżacz nie
     // ma prawa zabrać mu tego napisu w połowie decyzji operatora.
@@ -652,7 +686,8 @@
       btnWyslij.classList.remove('potwierdz');
       // ⚠️ Potwierdzenie mówi o GODZINIE, nie o wysyłce „teraz". To jedyne miejsce, gdzie
       // operator widzi, co dokładnie obiecuje kliknięcie.
-      btnRano.textContent = 'Potwierdź: wyślij ' + etykietaRano(new Date(), btnRano.dataset.godzina) + ' do ' + komuIdzie();
+      btnRano.textContent =
+        'Potwierdź: wyślij ' + etykietaRano(new Date(), btnRano.dataset.godzina) + ' do ' + komuIdzie();
       btnRano.classList.add('potwierdz');
       btnAnuluj.hidden = false;
     });

@@ -30,8 +30,8 @@ function istniejacyDzien(s) {
   return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))).toISOString().slice(0, 10) === s;
 }
 
-const przesunDzien = (dzienIso, dni) => new Date(Date.parse(`${dzienIso}T00:00:00Z`) + dni * DZIEN_MS)
-  .toISOString().slice(0, 10);
+const przesunDzien = (dzienIso, dni) =>
+  new Date(Date.parse(`${dzienIso}T00:00:00Z`) + dni * DZIEN_MS).toISOString().slice(0, 10);
 
 /**
  * Ręczna data wysyłki z zamówienia albo `null` = standardowy termin.
@@ -85,7 +85,13 @@ export function typZamowienia(z) {
   if (z?.indywidualne) return 'indywidualne';
   // Kanał Allegro z konfiguracji (dowolny klucz) liczy się jak Allegro. Luźniejsza reguła
   // „zaczyna się od allegro, bez względu na wielkość liter” zostaje obok.
-  if (umiejetnosciZamowienia(z).terminWysylki || String(z?.sklep ?? '').toLowerCase().startsWith('allegro')) return 'allegro';
+  if (
+    umiejetnosciZamowienia(z).terminWysylki ||
+    String(z?.sklep ?? '')
+      .toLowerCase()
+      .startsWith('allegro')
+  )
+    return 'allegro';
   return 'krotki';
 }
 

@@ -9,9 +9,19 @@ const granice = [
   { kanal: 'GDD', do_dnia: '2026-07-02', zrodlo: 'pomiar', uwaga: null },
 ];
 const w = (extra = {}) => ({
-  zrodlo: 'historia', zrodloDanych: 'apilo', id: 'A', dzien: '2026-06-10', kanal: 'SWIETLIK_PL',
-  bruttoGrosze: 10000, nettoGrosze: 8130, faktura: false, oplacone: true,
-  email: 'a@b.pl', tagi: [3], pozycje: [], ...extra,
+  zrodlo: 'historia',
+  zrodloDanych: 'apilo',
+  id: 'A',
+  dzien: '2026-06-10',
+  kanal: 'SWIETLIK_PL',
+  bruttoGrosze: 10000,
+  nettoGrosze: 8130,
+  faktura: false,
+  oplacone: true,
+  email: 'a@b.pl',
+  tagi: [3],
+  pozycje: [],
+  ...extra,
 });
 
 const kody = (wiersze, zakres = { od: '2026-06-01', do: '2026-06-30' }) =>
@@ -44,8 +54,11 @@ describe('pas ostrzezen', () => {
     // bruttoGrosze:12300 / nettoGrosze:10000 to spojna para (12300 / 1.23 = 10000 dokladnie) —
     // ostrzezenie liczy NETTO z wiersza, wiec oba pola musza sie zgadzac, inaczej test sprawdza
     // przypadek, ktory nie moze wystapic w prawdziwych danych.
-    const o = ostrzezenia([w({ oplacone: false, bruttoGrosze: 12300, nettoGrosze: 10000 })],
-      { od: '2026-06-01', do: '2026-06-30', granice });
+    const o = ostrzezenia([w({ oplacone: false, bruttoGrosze: 12300, nettoGrosze: 10000 })], {
+      od: '2026-06-01',
+      do: '2026-06-30',
+      granice,
+    });
     const wpis = o.find((x) => x.kod === 'bez-platnosci');
     expect(wpis.tresc).toMatch(/1 zamówienie/);
     expect(wpis.tresc).toMatch(/100,00/);

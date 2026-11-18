@@ -18,16 +18,29 @@ afterEach(async () => {
 });
 
 async function ekran({ admin = false, wbudowany = false, blad = POWOD_BRAK_ZGODY, wyjatek = false } = {}) {
-  vi.stubGlobal('fetch', vi.fn(() => { throw new Error('Sieć zabroniona'); }));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(() => {
+      throw new Error('Sieć zabroniona');
+    }),
+  );
   const db = openOmsDb(':memory:');
-  const app = buildOmsServer({ db, config: { auth: { user: 'serwis', pass: 'fikcyjne' } }, env: wbudowany ? { OMS_TWOJEFAKTURY: 'tak', OMS_PROGRAM_FAKTUROWY: 'twojefaktury' } : {},
+  const app = buildOmsServer({
+    db,
+    config: { auth: { user: 'serwis', pass: 'fikcyjne' } },
+    env: wbudowany ? { OMS_TWOJEFAKTURY: 'tak', OMS_PROGRAM_FAKTUROWY: 'twojefaktury' } : {},
     fakturyWidok: { dokumenty: async () => [], nieoplacone: async () => [], proformy: () => [] },
-    wysylkaKsef: { wyslij: async () => {
-      if (wyjatek) throw bladOperatora(blad);
-      return { wyslane: [], pominiete: [], niepewne: [], blad };
-    } },
+    wysylkaKsef: {
+      wyslij: async () => {
+        if (wyjatek) throw bladOperatora(blad);
+        return { wyslane: [], pominiete: [], niepewne: [], blad };
+      },
+    },
   });
-  sprzatanie.push(() => db.close(), () => app.close());
+  sprzatanie.push(
+    () => db.close(),
+    () => app.close(),
+  );
   await app.ready();
   zalozKonto(db, { login: 'ola', imie: 'Ola', haslo: 'fikcyjne', rola: 'sprzedaz', admin });
   ustawUprawnienia(db, kontoPoLoginie(db, 'ola').id, ['faktury', 'ustawienia']);
@@ -36,10 +49,19 @@ async function ekran({ admin = false, wbudowany = false, blad = POWOD_BRAK_ZGODY
 }
 
 describe('komunikaty błędów faktur', () => {
-  it.each([[true, false], [false, false], [true, true], [false, true]])('link do zgody: admin=%s, wyjątek=%s (samo prawo ustawień nie wystarcza)', async (admin, wyjatek) => {
+  it.each([
+    [true, false],
+    [false, false],
+    [true, true],
+    [false, true],
+  ])('link do zgody: admin=%s, wyjątek=%s (samo prawo ustawień nie wystarcza)', async (admin, wyjatek) => {
     const { app, headers } = await ekran({ admin, wyjatek });
-    const r = await app.inject({ method: 'POST', url: '/faktury/ksef/wyslij', headers,
-      payload: { miesiac: '2026-10', pole: 'invoice_date' } });
+    const r = await app.inject({
+      method: 'POST',
+      url: '/faktury/ksef/wyslij',
+      headers,
+      payload: { miesiac: '2026-10', pole: 'invoice_date' },
+    });
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain(POWOD_BRAK_ZGODY);
     expect(r.body.includes(`<a href="${EKRAN_KSEF_SPRZEDAZY}">Otwórz ustawienia wysyłki do KSeF</a>`)).toBe(admin);
@@ -48,17 +70,26 @@ describe('komunikaty błędów faktur', () => {
 
   it('inny błąd jest escapowany i nie dostaje linku do zgody', async () => {
     const { app, headers } = await ekran({ admin: true, blad: '<b>awaria</b>' });
-    const r = await app.inject({ method: 'POST', url: '/faktury/ksef/wyslij', headers,
-      payload: { miesiac: '2026-10' } });
+    const r = await app.inject({
+      method: 'POST',
+      url: '/faktury/ksef/wyslij',
+      headers,
+      payload: { miesiac: '2026-10' },
+    });
     expect(r.body).toContain('&lt;b&gt;awaria&lt;/b&gt;');
     expect(r.body).not.toContain('Otwórz ustawienia wysyłki do KSeF');
   });
 
-  it.each([[true, false], [false, false]])('archiwum: admin=%s, wbudowany=%s', async (admin, wbudowany) => {
+  it.each([
+    [true, false],
+    [false, false],
+  ])('archiwum: admin=%s, wbudowany=%s', async (admin, wbudowany) => {
     const { app, headers } = await ekran({ admin, wbudowany });
     const r = await app.inject({ url: '/faktury?miesiac=2026-10', headers });
     expect(r.statusCode).toBe(200);
-    expect(r.body).toContain('Archiwum na serwerze: wyłączone. Gdy je włączysz, OMS zapisuje kopię PDF i XML każdej faktury sprzedaży w katalogu na serwerze.');
+    expect(r.body).toContain(
+      'Archiwum na serwerze: wyłączone. Gdy je włączysz, OMS zapisuje kopię PDF i XML każdej faktury sprzedaży w katalogu na serwerze.',
+    );
     expect(r.body.includes('Przy TwojeFaktury nie jest konieczne — faktury i tak leżą w KSeF.')).toBe(wbudowany);
     const zmienna = wbudowany ? 'OMS_ARCHIWUM_SPRZEDAZY' : 'INFAKT_ARCHIWUM';
     expect(r.body.includes(`Włącza administrator: zmienna ${zmienna} = ścieżka katalogu.`)).toBe(admin);
@@ -73,14 +104,35 @@ describe('komunikaty błędów faktur', () => {
     const app = Fastify();
     // Odmowa druku idzie przez stronaOdmowy (reply.view); goły Fastify bez szablonów —
     // atrapa oddaje sam komunikat, żeby sprawdzić odmianę znak w znak (strona: odmowy-pdf-drukowania-faktur.test.js).
-    app.decorateReply('view', function (_szablon, dane) { return this.send(dane.komunikat); });
-    sprzatanie.push(() => db.close(), () => app.close());
+    app.decorateReply('view', function (_szablon, dane) {
+      return this.send(dane.komunikat);
+    });
+    sprzatanie.push(
+      () => db.close(),
+      () => app.close(),
+    );
     const program = programTestowy({ nazwa });
     program.opis = { ...program.opis, wbudowany };
     registerDrukFakturRoutes(app, { db, config: { definicje: [] }, infakt: program });
-    const id = zapiszZamowienie(db, 'demo', { zrodlo_id: 'c01', numer: '1', klient: {}, dostawa: {},
-      metoda_wysylki: 'osobisty', kwota_pobrania: null, chce_fakture: 1, nip: null,
-      kwota_brutto: '123.00', status_woo: 'processing', oplacone_at: null, anulowane: 0 }, {});
+    const id = zapiszZamowienie(
+      db,
+      'demo',
+      {
+        zrodlo_id: 'c01',
+        numer: '1',
+        klient: {},
+        dostawa: {},
+        metoda_wysylki: 'osobisty',
+        kwota_pobrania: null,
+        chce_fakture: 1,
+        nip: null,
+        kwota_brutto: '123.00',
+        status_woo: 'processing',
+        oplacone_at: null,
+        anulowane: 0,
+      },
+      {},
+    );
     db.prepare('INSERT INTO faktury (zamowienie_id, utworzona_at) VALUES (?, ?)').run(id, '2026-10-29T07:27:00Z');
     const r = await app.inject({ method: 'POST', url: `/zamowienia/${id}/faktura/drukuj` });
     expect(r.statusCode).toBe(400);

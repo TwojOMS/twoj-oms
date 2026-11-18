@@ -1,12 +1,8 @@
-import {
-  describe, it, expect, beforeEach,
-} from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
-import {
-  dopiszKlienta, klientPoNip, wgrajUmowyZbiorczeZKonfiguracji,
-} from '../../../src/oms/db/klienci.js';
+import { dopiszKlienta, klientPoNip, wgrajUmowyZbiorczeZKonfiguracji } from '../../../src/oms/db/klienci.js';
 import { znormalizujKlienta } from '../../../src/domena/klient-staly.js';
 import { dopiszKlientaZbiorczego } from '../faktury/_klient-zbiorczy-pomocniki.js';
 
@@ -25,15 +21,28 @@ const naglowek = {
 const config = { auth: { user: 'adam', pass: 'x' } };
 
 /** Klient stały BEZ umowy zbiorczej — dokładnie taki, jaki leżał w bazie przed migracją. */
-const dopiszZwyklego = (db, nadpisania = {}) => dopiszKlienta(db, {
-  klucz: 'przykladowa', nazwa: 'Pracownia Przykładowa', nip: NIP, b2b: 1, rabat_procent: 40,
-  chce_fakture: 1, metoda_wysylki: 'dpd', aktywny: 1, koszt_dostawy_brutto: '0.00',
-  platnosc: 'przelew', termin_platnosci: null, komentarz: null, ...nadpisania,
-});
+const dopiszZwyklego = (db, nadpisania = {}) =>
+  dopiszKlienta(db, {
+    klucz: 'przykladowa',
+    nazwa: 'Pracownia Przykładowa',
+    nip: NIP,
+    b2b: 1,
+    rabat_procent: 40,
+    chce_fakture: 1,
+    metoda_wysylki: 'dpd',
+    aktywny: 1,
+    koszt_dostawy_brutto: '0.00',
+    platnosc: 'przelew',
+    termin_platnosci: null,
+    komentarz: null,
+    ...nadpisania,
+  });
 
 describe('migracja warunków umowy z OMS_KLIENCI_ZBIORCZY', () => {
   let db;
-  beforeEach(() => { db = openOmsDb(':memory:'); });
+  beforeEach(() => {
+    db = openOmsDb(':memory:');
+  });
 
   it('przenosi próg i obsługę bez osobnej kurierskiej na kartę klienta dopasowanego po NIP-ie', () => {
     dopiszZwyklego(db);
@@ -126,13 +135,18 @@ describe('migracja warunków umowy z OMS_KLIENCI_ZBIORCZY', () => {
 
 describe('formularz karty klienta — warunki umowy', () => {
   const pola = {
-    nazwa: 'Pracownia Przykładowa', nip: NIP, metoda_wysylki: 'dpd', platnosc: 'przelew',
+    nazwa: 'Pracownia Przykładowa',
+    nip: NIP,
+    metoda_wysylki: 'dpd',
+    platnosc: 'przelew',
   };
 
   it('przełącznik z kompletem kwot zapisuje je w groszach', () => {
     const d = znormalizujKlienta({
       ...pola,
-      rozliczenie_zbiorcze: 'on', prog_darmowej_dostawy_wlaczony: 'on', oplata_obslugi_wlaczony: 'on',
+      rozliczenie_zbiorcze: 'on',
+      prog_darmowej_dostawy_wlaczony: 'on',
+      oplata_obslugi_wlaczony: 'on',
       prog_darmowej_dostawy: '500',
       oplata_obslugi: '4,00',
       oplata_kurierska: '19,00',
@@ -148,7 +162,9 @@ describe('formularz karty klienta — warunki umowy', () => {
   it('kwota z groszami przelicza się co do grosza', () => {
     const d = znormalizujKlienta({
       ...pola,
-      rozliczenie_zbiorcze: 'on', prog_darmowej_dostawy_wlaczony: 'on', oplata_obslugi_wlaczony: 'on',
+      rozliczenie_zbiorcze: 'on',
+      prog_darmowej_dostawy_wlaczony: 'on',
+      oplata_obslugi_wlaczony: 'on',
       prog_darmowej_dostawy: '499,99',
       oplata_obslugi: '4,05',
       oplata_kurierska: '19',
@@ -175,7 +191,9 @@ describe('formularz karty klienta — warunki umowy', () => {
   ])('pusta kwota %s przy włączonym przełączniku to ODMOWA', (puste, opis) => {
     const body = {
       ...pola,
-      rozliczenie_zbiorcze: 'on', prog_darmowej_dostawy_wlaczony: 'on', oplata_obslugi_wlaczony: 'on',
+      rozliczenie_zbiorcze: 'on',
+      prog_darmowej_dostawy_wlaczony: 'on',
+      oplata_obslugi_wlaczony: 'on',
       prog_darmowej_dostawy: '500',
       oplata_obslugi: '4',
       oplata_kurierska: '19',
@@ -185,13 +203,17 @@ describe('formularz karty klienta — warunki umowy', () => {
   });
 
   it('literówka w kwocie to odmowa, a nie ciche zero', () => {
-    expect(() => znormalizujKlienta({
-      ...pola,
-      rozliczenie_zbiorcze: 'on', prog_darmowej_dostawy_wlaczony: 'on', oplata_obslugi_wlaczony: 'on',
-      prog_darmowej_dostawy: 'piecset',
-      oplata_obslugi: '4',
-      oplata_kurierska: '19',
-    })).toThrow(/Nie umiem odczytać kwoty/);
+    expect(() =>
+      znormalizujKlienta({
+        ...pola,
+        rozliczenie_zbiorcze: 'on',
+        prog_darmowej_dostawy_wlaczony: 'on',
+        oplata_obslugi_wlaczony: 'on',
+        prog_darmowej_dostawy: 'piecset',
+        oplata_obslugi: '4',
+        oplata_kurierska: '19',
+      }),
+    ).toThrow(/Nie umiem odczytać kwoty/);
   });
   it('dawna kwota kurierska nie jest wymagana ani używana przy zapisie', () => {
     const d = znormalizujKlienta({ ...pola, rozliczenie_zbiorcze: 'on', oplata_kurierska: '   ' });
@@ -260,7 +282,9 @@ describe('ekrany karty klienta', () => {
         nip: NIP,
         metoda_wysylki: 'dpd',
         platnosc: 'przelew',
-        rozliczenie_zbiorcze: 'on', prog_darmowej_dostawy_wlaczony: 'on', oplata_obslugi_wlaczony: 'on',
+        rozliczenie_zbiorcze: 'on',
+        prog_darmowej_dostawy_wlaczony: 'on',
+        oplata_obslugi_wlaczony: 'on',
         prog_darmowej_dostawy: '500,00',
         oplata_obslugi: '4,00',
         oplata_kurierska: '19,00',
@@ -283,7 +307,9 @@ describe('ekrany karty klienta', () => {
         nip: NIP,
         metoda_wysylki: 'dpd',
         platnosc: 'przelew',
-        rozliczenie_zbiorcze: 'on', prog_darmowej_dostawy_wlaczony: 'on', oplata_obslugi_wlaczony: 'on',
+        rozliczenie_zbiorcze: 'on',
+        prog_darmowej_dostawy_wlaczony: 'on',
+        oplata_obslugi_wlaczony: 'on',
         prog_darmowej_dostawy: '500,00',
         oplata_obslugi: '',
         oplata_kurierska: '19,00',

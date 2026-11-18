@@ -19,10 +19,17 @@ describe('zegary wiadomości Allegro', () => {
 
   it('odrzucona obietnica pollera NIE wywala procesu', async () => {
     const zadania = [];
-    const ustawInterwal = (fn) => { zadania.push(fn); return 1; };
+    const ustawInterwal = (fn) => {
+      zadania.push(fn);
+      return 1;
+    };
     const log = vi.fn();
     uruchomZegary({
-      pollerWiadomosci: { przebieg: async () => { throw new Error('bum'); } },
+      pollerWiadomosci: {
+        przebieg: async () => {
+          throw new Error('bum');
+        },
+      },
       ustawInterwal,
       log,
     });
@@ -33,10 +40,17 @@ describe('zegary wiadomości Allegro', () => {
 
   it('odrzucona obietnica czuwacza formułki też jest złapana', async () => {
     const zadania = [];
-    const ustawInterwal = (fn) => { zadania.push(fn); return 1; };
+    const ustawInterwal = (fn) => {
+      zadania.push(fn);
+      return 1;
+    };
     const log = vi.fn();
     uruchomZegary({
-      czuwaczFormulki: { przebieg: async () => { throw new Error('bum') } },
+      czuwaczFormulki: {
+        przebieg: async () => {
+          throw new Error('bum');
+        },
+      },
       ustawInterwal,
       log,
     });
@@ -49,7 +63,10 @@ describe('zegary wiadomości Allegro', () => {
   // wyglada DOKLADNIE tak samo jak spokojny dzien bez wiadomosci.
   it('wstrzymany bezpiecznik zostawia ślad w logu', async () => {
     const zadania = [];
-    const ustawInterwal = (fn) => { zadania.push(fn); return 1; };
+    const ustawInterwal = (fn) => {
+      zadania.push(fn);
+      return 1;
+    };
     const log = vi.fn();
     uruchomZegary({
       czuwaczFormulki: { przebieg: async () => ({ wstrzymany: true }) },
@@ -63,7 +80,10 @@ describe('zegary wiadomości Allegro', () => {
 
   it('normalny przebieg czuwacza NIE zasypuje logu', async () => {
     const zadania = [];
-    const ustawInterwal = (fn) => { zadania.push(fn); return 1; };
+    const ustawInterwal = (fn) => {
+      zadania.push(fn);
+      return 1;
+    };
     const log = vi.fn();
     uruchomZegary({
       czuwaczFormulki: { przebieg: async () => ({ wyslane: 0, wstrzymany: false }) },

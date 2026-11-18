@@ -5,46 +5,96 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import {
-  dodajZwrot, zwrot, zarezerwujKorekte, zapiszKorekte, odrzucZlecenieKorekty,
+  dodajZwrot,
+  zwrot,
+  zarezerwujKorekte,
+  zapiszKorekte,
+  odrzucZlecenieKorekty,
 } from '../../../src/oms/db/zwroty.js';
 import { createKorekta } from '../../../src/moduly/zwroty/services/korekta.js';
 
 const NUMER_FV = 'FV 3/11/2026';
-const OPIS_ODMOWY = 'inFakt nie wystawił korekty: klient — Proszę wybrać klienta.; '
-  + 'powód korekty — Proszę podać powód korekty. Popraw i wystaw ponownie.';
+const OPIS_ODMOWY =
+  'inFakt nie wystawił korekty: klient — Proszę wybrać klienta.; ' +
+  'powód korekty — Proszę podać powód korekty. Popraw i wystaw ponownie.';
 const ODRZUCONA = {
-  stan: 'odrzucona', uuid: null, bledy: [
+  stan: 'odrzucona',
+  uuid: null,
+  bledy: [
     { pole: 'klient', komunikaty: ['Proszę wybrać klienta.'] },
     { pole: 'powód korekty', komunikaty: ['Proszę podać powód korekty.'] },
   ],
 };
-const KOREKTA = (uuid, numer) => ({ uuid, number: numer, corrected_invoice_number: NUMER_FV, invoice_date: '2026-11-04' });
+const KOREKTA = (uuid, numer) => ({
+  uuid,
+  number: numer,
+  corrected_invoice_number: NUMER_FV,
+  invoice_date: '2026-11-04',
+});
 
 const FAKTURA = {
-  number: NUMER_FV, invoice_date: '2026-11-02', uuid: 'polcien-fv-3', client_id: 14702,
+  number: NUMER_FV,
+  invoice_date: '2026-11-02',
+  uuid: 'polcien-fv-3',
+  client_id: 14702,
   services: [{ name: 'Lampa Półcień', quantity: 2, gross_price: 25800, tax_symbol: '23' }],
 };
 
-let db; let id;
-const zwrotNa = (data = '2026-11-04') => dodajZwrot(db, id, { data, kwota: '129.00',
-  pozycje: [{ klucz_pozycji: 's11', nazwa: 'Lampa Półcień', ilosc: 1, kwota: '129.00' }] }).id;
+let db;
+let id;
+const zwrotNa = (data = '2026-11-04') =>
+  dodajZwrot(db, id, {
+    data,
+    kwota: '129.00',
+    pozycje: [{ klucz_pozycji: 's11', nazwa: 'Lampa Półcień', ilosc: 1, kwota: '129.00' }],
+  }).id;
 // Wiersz „jak zostawił go stary kod”: rezerwacja i referencja wstawione wprost, bez numeru i bez błędu.
-const zlecona = (zwrotId, referencja, kiedy = '2026-11-04T10:00:00Z') => db.prepare(
-  'UPDATE zwroty SET korekta_zlecona_at = ?, korekta_referencja = ? WHERE id = ?',
-).run(kiedy, referencja, zwrotId);
-const wpisyOdczytu = () => db.prepare("SELECT wynik FROM log WHERE zamowienie_id = ? AND akcja = 'zwrot.korekta.odczyt'").all(id);
+const zlecona = (zwrotId, referencja, kiedy = '2026-11-04T10:00:00Z') =>
+  db
+    .prepare('UPDATE zwroty SET korekta_zlecona_at = ?, korekta_referencja = ? WHERE id = ?')
+    .run(kiedy, referencja, zwrotId);
+const wpisyOdczytu = () =>
+  db.prepare("SELECT wynik FROM log WHERE zamowienie_id = ? AND akcja = 'zwrot.korekta.odczyt'").all(id);
 
 beforeEach(() => {
   db = openOmsDb(':memory:');
-  id = zapiszZamowienie(db, 'reczne', {
-    zrodlo_id: 14701, numer: '14701', klient: { company: 'Pracownia Półcień', email: 'biuro@polcien.example.test' },
-    dostawa: {}, metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: null, kwota_brutto: '258.00',
-    status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-11-01T10:00:00',
-    pozycje: [{ zrodlo_id: 11, nazwa: 'Lampa Półcień', sku: 'LAMPA-P1', ilosc: 2, cena_brutto: '129.00',
-      brutto_linii: '258.00', vat: null }],
-  }, {});
-  db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)')
-    .run(id, 'polcien-fv-3', NUMER_FV, '2026-11-02T10:00:00Z');
+  id = zapiszZamowienie(
+    db,
+    'reczne',
+    {
+      zrodlo_id: 14701,
+      numer: '14701',
+      klient: { company: 'Pracownia Półcień', email: 'biuro@polcien.example.test' },
+      dostawa: {},
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: 1,
+      nip: null,
+      kwota_brutto: '258.00',
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane: 0,
+      utworzone_at: '2026-11-01T10:00:00',
+      pozycje: [
+        {
+          zrodlo_id: 11,
+          nazwa: 'Lampa Półcień',
+          sku: 'LAMPA-P1',
+          ilosc: 2,
+          cena_brutto: '129.00',
+          brutto_linii: '258.00',
+          vat: null,
+        },
+      ],
+    },
+    {},
+  );
+  db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)').run(
+    id,
+    'polcien-fv-3',
+    NUMER_FV,
+    '2026-11-02T10:00:00Z',
+  );
 });
 
 describe('odczyt stanu zlecenia w doczytaj', () => {
@@ -80,7 +130,10 @@ describe('odczyt stanu zlecenia w doczytaj', () => {
     const b = zwrotNa('2026-11-03');
     db.prepare('UPDATE zwroty SET korekta_zlecona_at = NULL WHERE id = ?').run(a);
     zlecona(b, 'REF-POLCIEN-B');
-    const zlyKsztalt = { statusKorekty: vi.fn().mockResolvedValue({ stan: 'odrzucona', bledy: 'zły' }), listaKorekt: vi.fn() };
+    const zlyKsztalt = {
+      statusKorekty: vi.fn().mockResolvedValue({ stan: 'odrzucona', bledy: 'zły' }),
+      listaKorekt: vi.fn(),
+    };
     await expect(createKorekta({ db, infakt: zlyKsztalt }).doczytaj(id, b)).resolves.toBeUndefined();
     // Błąd przy składaniu opisu = cisza: rezerwacja zostaje jak była.
     expect(zwrot(db, id, b).korekta_zlecona_at).not.toBeNull();
@@ -95,7 +148,12 @@ describe('odczyt stanu zlecenia w doczytaj', () => {
     expect(zwrot(db, id, a).korekta_zlecona_at).toBeNull();
     expect(zwrot(db, id, a).korekta_blad).toBe(OPIS_ODMOWY);
     const wb = zwrot(db, id, b);
-    expect([wb.korekta_zlecona_at, wb.korekta_blad, wb.korekta_referencja, wb.korekta_numer]).toEqual([null, null, null, null]);
+    expect([wb.korekta_zlecona_at, wb.korekta_blad, wb.korekta_referencja, wb.korekta_numer]).toEqual([
+      null,
+      null,
+      null,
+      null,
+    ]);
     expect(infakt.listaKorekt).not.toHaveBeenCalled();
   });
 
@@ -103,8 +161,10 @@ describe('odczyt stanu zlecenia w doczytaj', () => {
     const a = zwrotNa();
     zlecona(a, 'REF-POLCIEN-A');
     const przed = zwrot(db, id, a);
-    const infakt = { statusKorekty: vi.fn().mockResolvedValue({ stan: 'w_toku', uuid: null, bledy: [] }),
-      listaKorekt: vi.fn().mockResolvedValue([KOREKTA('kor-x', '1/KOR/11/2026')]) };
+    const infakt = {
+      statusKorekty: vi.fn().mockResolvedValue({ stan: 'w_toku', uuid: null, bledy: [] }),
+      listaKorekt: vi.fn().mockResolvedValue([KOREKTA('kor-x', '1/KOR/11/2026')]),
+    };
     await createKorekta({ db, infakt }).doczytaj(id, a);
     expect(zwrot(db, id, a)).toEqual(przed);
     expect(infakt.listaKorekt).not.toHaveBeenCalled();
@@ -124,7 +184,10 @@ describe('odczyt stanu zlecenia w doczytaj', () => {
     expect(w.korekta_blad).toBeNull();
     expect(pusta.listaKorekt).toHaveBeenCalledTimes(1);
 
-    const zLista = { statusKorekty: status(), listaKorekt: vi.fn().mockResolvedValue([KOREKTA('kor-x', '1/KOR/11/2026')]) };
+    const zLista = {
+      statusKorekty: status(),
+      listaKorekt: vi.fn().mockResolvedValue([KOREKTA('kor-x', '1/KOR/11/2026')]),
+    };
     await createKorekta({ db, infakt: zLista }).doczytaj(id, a);
     expect(zwrot(db, id, a).korekta_numer).toBe('1/KOR/11/2026');
     expect(zwrot(db, id, a).korekta_zlecona_at).toBe('2026-11-04T10:00:00Z');
@@ -134,15 +197,20 @@ describe('odczyt stanu zlecenia w doczytaj', () => {
     const a = zwrotNa();
     zlecona(a, 'REF-POLCIEN-A');
     const wystawiona = vi.fn().mockResolvedValue({ stan: 'wystawiona', uuid: 'kor-x', bledy: [] });
-    const zY = { statusKorekty: wystawiona, listaKorekt: vi.fn().mockResolvedValue([KOREKTA('kor-y', '2/KOR/11/2026')]) };
+    const zY = {
+      statusKorekty: wystawiona,
+      listaKorekt: vi.fn().mockResolvedValue([KOREKTA('kor-y', '2/KOR/11/2026')]),
+    };
     await createKorekta({ db, infakt: zY }).doczytaj(id, a);
     expect(zY.listaKorekt).toHaveBeenCalledTimes(1);
     expect(zwrot(db, id, a).korekta_numer).toBeNull();
     expect(zwrot(db, id, a).korekta_uuid).toBeNull();
     expect(wpisyOdczytu()).toHaveLength(0);
 
-    const zX = { statusKorekty: wystawiona,
-      listaKorekt: vi.fn().mockResolvedValue([KOREKTA('kor-y', '2/KOR/11/2026'), KOREKTA('kor-x', '1/KOR/11/2026')]) };
+    const zX = {
+      statusKorekty: wystawiona,
+      listaKorekt: vi.fn().mockResolvedValue([KOREKTA('kor-y', '2/KOR/11/2026'), KOREKTA('kor-x', '1/KOR/11/2026')]),
+    };
     await createKorekta({ db, infakt: zX }).doczytaj(id, a);
     expect(zwrot(db, id, a).korekta_numer).toBe('1/KOR/11/2026');
     expect(zwrot(db, id, a).korekta_uuid).toBe('kor-x');
@@ -225,7 +293,9 @@ describe('baza: odrzucZlecenieKorekty i zarezerwujKorekte', () => {
 
   it('zarezerwujKorekte czyści starą referencję i błąd', () => {
     const a = zwrotNa();
-    db.prepare("UPDATE zwroty SET korekta_referencja = 'REF-POLCIEN-STARA', korekta_blad = 'stary błąd' WHERE id = ?").run(a);
+    db.prepare(
+      "UPDATE zwroty SET korekta_referencja = 'REF-POLCIEN-STARA', korekta_blad = 'stary błąd' WHERE id = ?",
+    ).run(a);
     expect(zarezerwujKorekte(db, id, a, '2026-11-04T12:00:00Z')).toBe(true);
     const w = zwrot(db, id, a);
     expect([w.korekta_zlecona_at, w.korekta_referencja, w.korekta_blad]).toEqual(['2026-11-04T12:00:00Z', null, null]);

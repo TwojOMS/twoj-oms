@@ -10,7 +10,10 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { createAllegroClient } from '../../src/oms/allegro/client.js';
 
-const ustawienia = { api: 'https://api.allegro.pl.allegrosandbox.pl', userAgent: 'OMS-polcien/1.0.0 (+https://polcien.example.test/oms/)' };
+const ustawienia = {
+  api: 'https://api.allegro.pl.allegrosandbox.pl',
+  userAgent: 'OMS-polcien/1.0.0 (+https://polcien.example.test/oms/)',
+};
 const tokeny = { waznyToken: async () => 'TOKEN' };
 const ID = 'ID';
 const PDF = Buffer.from('%PDF-1.4 przykład');
@@ -38,7 +41,12 @@ const ARGUMENTY = {
   pobierzEtykieteWza: [[ID]],
   pobierzSledzenie: ['INPOST', ID],
   pobierzPropozycjePodjazdu: [{ shipmentIds: [ID], readyDate: '2026-11-20', address: { city: 'Przykładowo' } }],
-  zlecPodjazd: [{ commandId: ID, input: { shipmentIds: [ID], pickupTime: { date: '2026-11-20' }, address: { city: 'Przykładowo' } } }],
+  zlecPodjazd: [
+    {
+      commandId: ID,
+      input: { shipmentIds: [ID], pickupTime: { date: '2026-11-20' }, address: { city: 'Przykładowo' } },
+    },
+  ],
   stanZleceniaPodjazdu: [ID],
   pobierzPodjazd: [ID],
   pobierzWatki: [],
@@ -98,10 +106,29 @@ const ZAPISY = [
 ].sort();
 
 const BOGATA = {
-  id: ID, offers: [], totalCount: 0, checkoutForms: [], shipments: [], tasks: [], products: [], threads: [],
-  messages: [], issues: [], invoices: [], parameters: [], location: 'https://obraz.example.test/1', expiresAt: '2026-11-20T00:00:00Z',
-  shippingRates: [], returnPolicies: [], impliedWarranties: [], warranties: [], responsibleProducers: [],
-  responsiblePersons: [], matchingCategories: [], quotes: [], commissions: [],
+  id: ID,
+  offers: [],
+  totalCount: 0,
+  checkoutForms: [],
+  shipments: [],
+  tasks: [],
+  products: [],
+  threads: [],
+  messages: [],
+  issues: [],
+  invoices: [],
+  parameters: [],
+  location: 'https://obraz.example.test/1',
+  expiresAt: '2026-11-20T00:00:00Z',
+  shippingRates: [],
+  returnPolicies: [],
+  impliedWarranties: [],
+  warranties: [],
+  responsibleProducers: [],
+  responsiblePersons: [],
+  matchingCategories: [],
+  quotes: [],
+  commissions: [],
 };
 
 function szpieg() {
@@ -122,14 +149,21 @@ function szpieg() {
 function znormalizuj({ url, metoda }) {
   const u = new URL(url);
   const host = u.host.startsWith('upload.') ? 'upload:' : '';
-  const sciezka = u.pathname.split('/').map((s) => (s === ID ? '{id}' : s)).join('/');
+  const sciezka = u.pathname
+    .split('/')
+    .map((s) => (s === ID ? '{id}' : s))
+    .join('/');
   return `${metoda} ${host}${sciezka}`;
 }
 
 async function wywolajWszystkie() {
   const { k, wolania } = szpieg();
   for (const [nazwa, argumenty] of Object.entries(ARGUMENTY)) {
-    try { await k[nazwa](...argumenty); } catch { /* liczy się tylko to, co wyszło do sieci */ }
+    try {
+      await k[nazwa](...argumenty);
+    } catch {
+      /* liczy się tylko to, co wyszło do sieci */
+    }
   }
   return { k, wolania };
 }
@@ -143,7 +177,11 @@ describe('biała lista metod zapisujących', () => {
   it('każda metoda wychodzi do sieci (tabela argumentów przechodzi kontrole przed siecią)', async () => {
     for (const [nazwa, argumenty] of Object.entries(ARGUMENTY)) {
       const { k, wolania } = szpieg();
-      try { await k[nazwa](...argumenty); } catch { /* jw. */ }
+      try {
+        await k[nazwa](...argumenty);
+      } catch {
+        /* jw. */
+      }
       expect(wolania.length, nazwa).toBeGreaterThan(0);
     }
   });

@@ -4,7 +4,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { odczytajWydanie, porownajWersje, sprawdzNajnowsze, REPO_AKTUALIZACJI } from '../../../src/moduly/ustawienia/aktualizacje.ts';
+import {
+  odczytajWydanie,
+  porownajWersje,
+  sprawdzNajnowsze,
+  REPO_AKTUALIZACJI,
+} from '../../../src/moduly/ustawienia/aktualizacje.ts';
 
 const COMMIT = 'abc123def4560000000000000000000000000000';
 
@@ -18,20 +23,33 @@ function plikWydania(tresc: unknown): URL {
 type Wywolanie = { adres: string; init?: RequestInit };
 function atrapaHttp(odpowiedz: () => Response | Promise<Response>) {
   const wywolania: Wywolanie[] = [];
-  const http = async (adres: string, init?: RequestInit) => { wywolania.push({ adres, init }); return odpowiedz(); };
+  const http = async (adres: string, init?: RequestInit) => {
+    wywolania.push({ adres, init });
+    return odpowiedz();
+  };
   return { http, wywolania };
 }
-const json = (cialo: unknown, status = 200) => new Response(JSON.stringify(cialo), { status, headers: { 'content-type': 'application/json' } });
-const WYDANIE_GH = { tag_name: 'v0.3.0', published_at: '2026-10-25T09:00:00Z', body: 'Nowy ekran.', html_url: 'https://github.com/TwojOMS/twoj-oms/releases/tag/v0.3.0' };
+const json = (cialo: unknown, status = 200) =>
+  new Response(JSON.stringify(cialo), { status, headers: { 'content-type': 'application/json' } });
+const WYDANIE_GH = {
+  tag_name: 'v0.3.0',
+  published_at: '2026-10-25T09:00:00Z',
+  body: 'Nowy ekran.',
+  html_url: 'https://github.com/TwojOMS/twoj-oms/releases/tag/v0.3.0',
+};
 
 describe('odczytajWydanie', () => {
   it('pełny plik → commit, wersja i data paczki', () => {
-    expect(odczytajWydanie(plikWydania({ commit: COMMIT, wersja: 'v0.2.0', utworzono: '2026-10-18T12:02:00Z' })))
-      .toEqual({ commit: COMMIT, wersja: 'v0.2.0', utworzono: '2026-10-18T12:02:00Z' });
+    expect(
+      odczytajWydanie(plikWydania({ commit: COMMIT, wersja: 'v0.2.0', utworzono: '2026-10-18T12:02:00Z' })),
+    ).toEqual({ commit: COMMIT, wersja: 'v0.2.0', utworzono: '2026-10-18T12:02:00Z' });
   });
   it('paczka bez pola wersja → wersja null, commit zostaje', () => {
-    expect(odczytajWydanie(plikWydania({ commit: COMMIT, utworzono: '2026-10-18T12:02:00Z' })))
-      .toEqual({ commit: COMMIT, wersja: null, utworzono: '2026-10-18T12:02:00Z' });
+    expect(odczytajWydanie(plikWydania({ commit: COMMIT, utworzono: '2026-10-18T12:02:00Z' }))).toEqual({
+      commit: COMMIT,
+      wersja: null,
+      utworzono: '2026-10-18T12:02:00Z',
+    });
   });
   it('wersja spoza wzorca vX.Y.Z → null w polu', () => {
     expect(odczytajWydanie(plikWydania({ commit: COMMIT, wersja: '0.2' }))?.wersja).toBeNull();
@@ -56,7 +74,11 @@ describe('sprawdzNajnowsze', () => {
   it('200 → jest; pyta o releases/latest repo produktu z User-Agent i Accept GitHuba', async () => {
     const { http, wywolania } = atrapaHttp(() => json(WYDANIE_GH));
     expect(await sprawdzNajnowsze({ http })).toEqual({
-      stan: 'jest', wersja: 'v0.3.0', opublikowano: '2026-10-25T09:00:00Z', opis: 'Nowy ekran.', adres: WYDANIE_GH.html_url,
+      stan: 'jest',
+      wersja: 'v0.3.0',
+      opublikowano: '2026-10-25T09:00:00Z',
+      opis: 'Nowy ekran.',
+      adres: WYDANIE_GH.html_url,
     });
     expect(REPO_AKTUALIZACJI).toBe('TwojOMS/twoj-oms');
     expect(wywolania).toHaveLength(1);
@@ -80,11 +102,19 @@ describe('sprawdzNajnowsze', () => {
     expect(await sprawdzNajnowsze({ http })).toEqual({ stan: 'blad' });
   });
   it('404 → brak-wydan; 403 i 429 → limit; 500 → blad; wyjątek transportu → blad', async () => {
-    expect(await sprawdzNajnowsze(atrapaHttp(() => json({ message: 'Not Found' }, 404)))).toEqual({ stan: 'brak-wydan' });
+    expect(await sprawdzNajnowsze(atrapaHttp(() => json({ message: 'Not Found' }, 404)))).toEqual({
+      stan: 'brak-wydan',
+    });
     expect(await sprawdzNajnowsze(atrapaHttp(() => json({ message: 'rate limit' }, 403)))).toEqual({ stan: 'limit' });
     expect(await sprawdzNajnowsze(atrapaHttp(() => json({}, 429)))).toEqual({ stan: 'limit' });
     expect(await sprawdzNajnowsze(atrapaHttp(() => json({}, 500)))).toEqual({ stan: 'blad' });
-    expect(await sprawdzNajnowsze({ http: async () => { throw new Error('api.github.com: limit czasu'); } })).toEqual({ stan: 'blad' });
+    expect(
+      await sprawdzNajnowsze({
+        http: async () => {
+          throw new Error('api.github.com: limit czasu');
+        },
+      }),
+    ).toEqual({ stan: 'blad' });
     expect(await sprawdzNajnowsze(atrapaHttp(() => new Response('<html>', { status: 200 })))).toEqual({ stan: 'blad' });
   });
 });

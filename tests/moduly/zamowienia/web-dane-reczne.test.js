@@ -4,7 +4,12 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { zapiszZamowienie, pobierzZamowienie, zapiszNadpisaniaWysylki, zapiszNadpisaniaFaktury } from '../../../src/oms/db/zamowienia.js';
+import {
+  zapiszZamowienie,
+  pobierzZamowienie,
+  zapiszNadpisaniaWysylki,
+  zapiszNadpisaniaFaktury,
+} from '../../../src/oms/db/zamowienia.js';
 import { utworzZamowienieReczne } from '../../../src/oms/db/zamowienia-reczne.js';
 import { createNadanie } from '../../../src/moduly/wysylka/services/nadanie.js';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
@@ -16,15 +21,38 @@ const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('bas
 const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) };
 
 const zmapowane = (nad = {}) => ({
-  zrodlo_id: 1501, numer: '1501',
+  zrodlo_id: 1501,
+  numer: '1501',
   klient: {
-    first_name: 'Jan', last_name: 'Kowalski', company: 'ACME sp. z o.o.', email: 'j@k.pl',
-    phone: '+48500600700', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL',
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    company: 'ACME sp. z o.o.',
+    email: 'j@k.pl',
+    phone: '+48500600700',
+    address_1: 'Polna 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
   },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', company: '', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: '5234567891',
-  kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00', status_woo: 'processing',
-  oplacone_at: null, anulowane: 0, utworzone_at: '2026-07-29T13:19:52',
+  dostawa: {
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    company: '',
+    address_1: 'Polna 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
+  },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 1,
+  nip: '5234567891',
+  kwota_brutto: '123.00',
+  koszt_dostawy_brutto: '0.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-07-29T13:19:52',
   pozycje: [{ nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 1, cena_brutto: '123.00', brutto_linii: '123.00', vat: null }],
   ...nad,
 });
@@ -35,11 +63,20 @@ const FORMULARZ_WYSYLKI = {
   // Pole `company` niesie firme z bloku PLATNOSCI: sklep zostawia shipping.company puste,
   // a panel podstawia wtedy firme z platnosci (ten sam adres) — i to ona stoi w formularzu
   // na karcie, dopoki nikt go nie tknal. Formularz w tescie ma byc tym, co wysyla karta.
-  nazwa: 'Jan Kowalski', company: 'ACME sp. z o.o.', ulica: 'Polna 1', kod: '00-950',
-  miasto: 'Warszawa', phone: '+48500600700', email: 'j@k.pl',
+  nazwa: 'Jan Kowalski',
+  company: 'ACME sp. z o.o.',
+  ulica: 'Polna 1',
+  kod: '00-950',
+  miasto: 'Warszawa',
+  phone: '+48500600700',
+  email: 'j@k.pl',
 };
 const FORMULARZ_FAKTURY = {
-  firma: 'ACME sp. z o.o.', nip: '5234567891', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa',
+  firma: 'ACME sp. z o.o.',
+  nip: '5234567891',
+  ulica: 'Polna 1',
+  kod: '00-950',
+  miasto: 'Warszawa',
   chce_fakture: 'on',
 };
 
@@ -239,7 +276,10 @@ describe('zwijanie sekcji „Dane do faktury", gdy klient nie chce faktury', () 
   it('gdy klient NIE chce faktury, w odczycie widać wyłącznie wiersz „Klient chce fakturę: Nie"', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane({ chce_fakture: 0, nip: null }), {});
     const body = (await karta(id)).body;
-    const blok = body.slice(body.indexOf('<h2>Dane do faktury</h2>'), body.indexOf('</section>', body.indexOf('<h2>Dane do faktury</h2>')));
+    const blok = body.slice(
+      body.indexOf('<h2>Dane do faktury</h2>'),
+      body.indexOf('</section>', body.indexOf('<h2>Dane do faktury</h2>')),
+    );
     expect(blok).toContain('Klient chce fakturę');
     expect(blok).toContain('Nie');
     expect(blok).toContain('<details');
@@ -252,7 +292,10 @@ describe('zwijanie sekcji „Dane do faktury", gdy klient nie chce faktury', () 
   it('gdy klient NIE chce faktury, ale sekcja jest w trybie edycji, formularz jest rozwinięty od razu (bez <details>)', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane({ chce_fakture: 0, nip: null }), {});
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}?edytuj=faktura`, headers: naglowek });
-    const blok = r.body.slice(r.body.indexOf('<h2>Dane do faktury</h2>'), r.body.indexOf('</section>', r.body.indexOf('<h2>Dane do faktury</h2>')));
+    const blok = r.body.slice(
+      r.body.indexOf('<h2>Dane do faktury</h2>'),
+      r.body.indexOf('</section>', r.body.indexOf('<h2>Dane do faktury</h2>')),
+    );
     expect(blok).not.toContain('<details');
     expect(blok).toContain(`action="/zamowienia/${id}/dane/faktura"`);
   });
@@ -260,7 +303,10 @@ describe('zwijanie sekcji „Dane do faktury", gdy klient nie chce faktury', () 
   it('gdy klient CHCE faktury, sekcja wygląda dokładnie jak dziś — bez <details>', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {}); // domyślnie chce_fakture: 1
     const body = (await karta(id)).body;
-    const blok = body.slice(body.indexOf('<h2>Dane do faktury</h2>'), body.indexOf('</section>', body.indexOf('<h2>Dane do faktury</h2>')));
+    const blok = body.slice(
+      body.indexOf('<h2>Dane do faktury</h2>'),
+      body.indexOf('</section>', body.indexOf('<h2>Dane do faktury</h2>')),
+    );
     expect(blok).not.toContain('<details');
     expect(blok).toContain('NIP');
     expect(blok).toContain('Skopiuj do wysyłki');
@@ -273,7 +319,10 @@ describe('zwijanie sekcji „Dane do faktury", gdy klient nie chce faktury', () 
     const { chce_fakture, ...bezPrzelacznika } = FORMULARZ_FAKTURY;
     await wyslij(`/zamowienia/${id}/dane/faktura`, bezPrzelacznika);
     const body = (await karta(id)).body;
-    const blok = body.slice(body.indexOf('<h2>Dane do faktury</h2>'), body.indexOf('</section>', body.indexOf('<h2>Dane do faktury</h2>')));
+    const blok = body.slice(
+      body.indexOf('<h2>Dane do faktury</h2>'),
+      body.indexOf('</section>', body.indexOf('<h2>Dane do faktury</h2>')),
+    );
     const idxDetails = blok.indexOf('<details');
     expect(idxDetails === -1 ? Infinity : idxDetails).toBeGreaterThan(blok.indexOf('Klient chce fakturę'));
     expect(blok.slice(0, idxDetails === -1 ? blok.length : idxDetails)).toContain('zmienione ręcznie');
@@ -306,7 +355,9 @@ describe('POST /zamowienia/:id/dane/wysylka', () => {
   it('formularz identyczny ze sklepem nie zostawia żadnego nadpisania', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
     await wyslij(`/zamowienia/${id}/dane/wysylka`, FORMULARZ_WYSYLKI);
-    expect(db.prepare('SELECT dostawa_reczna_json FROM zamowienia WHERE id = ?').get(id).dostawa_reczna_json).toBeNull();
+    expect(
+      db.prepare('SELECT dostawa_reczna_json FROM zamowienia WHERE id = ?').get(id).dostawa_reczna_json,
+    ).toBeNull();
   });
 
   it('poprawka jest widoczna na karcie i oznaczona jako zmieniona ręcznie', async () => {
@@ -336,7 +387,9 @@ describe('POST /zamowienia/:id/dane/wysylka', () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
     const r = await wyslij(`/zamowienia/${id}/dane/wysylka`, { cokolwiek: '1' });
     expect(r.statusCode).toBe(400);
-    expect(db.prepare('SELECT dostawa_reczna_json FROM zamowienia WHERE id = ?').get(id).dostawa_reczna_json).toBeNull();
+    expect(
+      db.prepare('SELECT dostawa_reczna_json FROM zamowienia WHERE id = ?').get(id).dostawa_reczna_json,
+    ).toBeNull();
   });
 
   // ...ale RECZNE wyczyszczenie pola ma sie zapisac: formularz odsyla wtedy klucze, tylko
@@ -366,7 +419,9 @@ describe('POST /zamowienia/:id/dane/wysylka', () => {
   it('bez nagłówka Origin → 403 (ochrona CSRF)', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/dane/wysylka`, payload: FORMULARZ_WYSYLKI,
+      method: 'POST',
+      url: `/zamowienia/${id}/dane/wysylka`,
+      payload: FORMULARZ_WYSYLKI,
       headers: { authorization: naglowek.authorization },
     });
     expect(r.statusCode).toBe(403);
@@ -392,7 +447,9 @@ describe('POST /zamowienia/:id/dane/faktura', () => {
   it('zaznaczenie zgodne ze sklepem nie zostawia nadpisania przełącznika', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
     await wyslij(`/zamowienia/${id}/dane/faktura`, FORMULARZ_FAKTURY);
-    expect(db.prepare('SELECT chce_fakture_reczne FROM zamowienia WHERE id = ?').get(id).chce_fakture_reczne).toBeNull();
+    expect(
+      db.prepare('SELECT chce_fakture_reczne FROM zamowienia WHERE id = ?').get(id).chce_fakture_reczne,
+    ).toBeNull();
   });
 });
 
@@ -435,10 +492,14 @@ describe('POST /zamowienia/:id/dane/przywroc', () => {
   // czyli czyscilo ulice, kod i miasto do pustki. Nie ma sklepu, do ktorego mozna wrocic.
   it('zamówienie ręczne z wpisanym adresem NIE pokazuje przycisku „Przywróć dane ze sklepu”', async () => {
     const id = utworzZamowienieReczne(db, {
-      metoda_wysylki: 'dpd', klient: { first_name: 'Jan', last_name: 'Kowalski' },
+      metoda_wysylki: 'dpd',
+      klient: { first_name: 'Jan', last_name: 'Kowalski' },
     });
     await wyslij(`/zamowienia/${id}/dane/wysylka`, {
-      nazwa: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa',
+      nazwa: 'Jan Kowalski',
+      ulica: 'Polna 1',
+      kod: '00-950',
+      miasto: 'Warszawa',
     });
     const r = await karta(id);
     // Sedno bledu, ktory mial byc naprawiony: adres MA zostac widoczny na karcie —
@@ -452,7 +513,9 @@ describe('POST /zamowienia/:id/dane/przywroc', () => {
   it('zamówienie ręczne z wpisanym NIP-em do faktury NIE pokazuje przycisku przywracania', async () => {
     const id = utworzZamowienieReczne(db, { metoda_wysylki: 'dpd' });
     await wyslij(`/zamowienia/${id}/dane/faktura`, {
-      firma: 'ACME sp. z o.o.', nip: '5234567891', chce_fakture: 'on',
+      firma: 'ACME sp. z o.o.',
+      nip: '5234567891',
+      chce_fakture: 'on',
     });
     const r = await karta(id);
     expect(r.body).toContain('5234567891');
@@ -469,10 +532,13 @@ describe('POST /zamowienia/:id/dane/przywroc', () => {
 });
 
 describe('panel mówi prawdę o tym, czego edycja NIE naprawia', () => {
-  const nadanaPaczka = (id) => db.prepare(
-    "INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at)"
-    + " VALUES (?, 'dpd', 'nadana', '0000123456789A', 1, '2026-07-30T10:00:00')",
-  ).run(id);
+  const nadanaPaczka = (id) =>
+    db
+      .prepare(
+        'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at)' +
+          " VALUES (?, 'dpd', 'nadana', '0000123456789A', 1, '2026-07-30T10:00:00')",
+      )
+      .run(id);
 
   // ⚠️ OSTRZEŻENIE PRZENIESIONE DO TRYBU EDYCJI. Mówi o SKUTKU POPRAWKI, więc
   // ma sens dokładnie wtedy, gdy ktoś tę poprawkę robi; na karcie do odczytu był czerwonym
@@ -480,10 +546,10 @@ describe('panel mówi prawdę o tym, czego edycja NIE naprawia', () => {
   it('przy nadanej paczce ostrzega — ale dopiero w trybie edycji', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
     nadanaPaczka(id);
-    expect((await karta(id)).body, 'karta do odczytu ma być czysta')
-      .not.toContain('Paczka została już nadana.');
-    expect((await karta(id, '?edytuj=wysylka')).body, 'edycja ma ostrzegać')
-      .toContain('Paczka została już nadana. Poprawka danych dotyczy kolejnych przesyłek.');
+    expect((await karta(id)).body, 'karta do odczytu ma być czysta').not.toContain('Paczka została już nadana.');
+    expect((await karta(id, '?edytuj=wysylka')).body, 'edycja ma ostrzegać').toContain(
+      'Paczka została już nadana. Poprawka danych dotyczy kolejnych przesyłek.',
+    );
   });
 
   it('bez nadanej paczki tego ostrzeżenia nie ma nawet w edycji', async () => {
@@ -493,7 +559,9 @@ describe('panel mówi prawdę o tym, czego edycja NIE naprawia', () => {
 
   it('przy wystawionej fakturze ostrzega, że treści dokumentu to nie zmienia', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
-    db.prepare("INSERT INTO faktury (zamowienie_id, numer, infakt_uuid, utworzona_at) VALUES (?, 'FV/1/2026', 'u1', '2026-07-30T10:00:00')").run(id);
+    db.prepare(
+      "INSERT INTO faktury (zamowienie_id, numer, infakt_uuid, utworzona_at) VALUES (?, 'FV/1/2026', 'u1', '2026-07-30T10:00:00')",
+    ).run(id);
     expect((await karta(id)).body).not.toContain('Faktura została już wystawiona');
     expect((await karta(id, '?edytuj=faktura')).body).toContain('Faktura została już wystawiona. Dane popraw korektą.');
   });
@@ -507,7 +575,9 @@ describe('panel mówi prawdę o tym, czego edycja NIE naprawia', () => {
 describe('ekran nadania startuje z danych Z KARTY, nie ze sklepu', () => {
   const zNadaniem = () => {
     const nadanie = createNadanie({
-      db, kurierzy: { dpd: { nadaj: vi.fn() } }, woo: { dodajNotatke: vi.fn() },
+      db,
+      kurierzy: { dpd: { nadaj: vi.fn() } },
+      woo: { dodajNotatke: vi.fn() },
       katalogEtykiet: mkdtempSync(join(tmpdir(), 'oms-etykiety-')),
     });
     return buildOmsServer({ db, config, poller, nadanie });

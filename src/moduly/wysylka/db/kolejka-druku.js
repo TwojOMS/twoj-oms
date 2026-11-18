@@ -21,9 +21,9 @@ function wymagajWiersza(db, id) {
 // może się zaciąć, rozmazać, zgubić. Każde wywołanie tworzy NOWY wiersz, w odróżnieniu
 // od rozpocznijPrzesylke, gdzie druga próba jest zawsze błędem.
 export function dodajDoKolejki(db, przesylkaId) {
-  const wynik = db.prepare(
-    "INSERT INTO kolejka_druku (przesylka_id, status, proby, utworzone_at) VALUES (?, 'oczekuje', 0, ?)",
-  ).run(przesylkaId, teraz());
+  const wynik = db
+    .prepare("INSERT INTO kolejka_druku (przesylka_id, status, proby, utworzone_at) VALUES (?, 'oczekuje', 0, ?)")
+    .run(przesylkaId, teraz());
   return pobierzWiersz(db, Number(wynik.lastInsertRowid));
 }
 
@@ -36,25 +36,33 @@ export function dodajDoKolejki(db, przesylkaId) {
 // czuwacz — patrz deploy/drukarka/czuwacz-etykiet.ps1 ($poz.id / $poz.numerListu /
 // $poz.zamowienie). Nazwy MUSZĄ się zgadzać co do znaku, on definiuje kontrakt.
 export function pozycjeDoWziecia(db, terazIso = teraz()) {
-  return db.prepare(`
+  return db
+    .prepare(
+      `
     SELECT k.id AS id, p.numer_listu AS numerListu, z.numer AS zamowienie
     FROM kolejka_druku k
     JOIN przesylki p ON p.id = k.przesylka_id
     JOIN zamowienia z ON z.id = p.zamowienie_id
     WHERE k.status = 'oczekuje' AND (k.nastepna_proba_at IS NULL OR k.nastepna_proba_at <= ?)
     ORDER BY k.utworzone_at ASC, k.id ASC
-  `).all(terazIso);
+  `,
+    )
+    .all(terazIso);
 }
 
 // Ścieżka pliku ZPL dla danej pozycji kolejki — czytana z PRZESYŁKI, nie z samej pozycji
 // (ZPL jest pobierany RAZ, przy nadaniu, patrz kurierzy/dpd.js i services/nadanie.js;
 // kolejka_druku tylko wskazuje, KTÓRĄ przesyłkę wydrukować, a nie niesie własnej kopii pliku).
 export function zplDlaPozycji(db, id) {
-  const wynik = db.prepare(`
+  const wynik = db
+    .prepare(
+      `
     SELECT p.etykieta_zpl_sciezka AS sciezka
     FROM kolejka_druku k JOIN przesylki p ON p.id = k.przesylka_id
     WHERE k.id = ?
-  `).get(id);
+  `,
+    )
+    .get(id);
   return wynik ?? null;
 }
 
@@ -72,8 +80,12 @@ export function oznaczBladDruku(db, id, powod) {
   const w = wymagajWiersza(db, id);
   const nowyProby = w.proby + 1;
   const nastepnaProba = new Date(Date.now() + odroczenieMs(nowyProby)).toISOString();
-  db.prepare('UPDATE kolejka_druku SET proby = ?, ostatni_blad = ?, nastepna_proba_at = ? WHERE id = ?')
-    .run(nowyProby, powod, nastepnaProba, id);
+  db.prepare('UPDATE kolejka_druku SET proby = ?, ostatni_blad = ?, nastepna_proba_at = ? WHERE id = ?').run(
+    nowyProby,
+    powod,
+    nastepnaProba,
+    id,
+  );
 }
 
 // JEDYNE wyjście ze stanu „pozycja ciągle się nie drukuje" — operator wie coś, czego
@@ -88,7 +100,9 @@ export function porzucPozycje(db, id) {
 // Stan pokazywany na karcie zamówienia: TYLKO najnowszy wiersz się liczy — starsze wiersze
 // (np. już wydrukowane przed reprintem) są historią, nie aktualnym stanem.
 export function ostatniaPozycjaDlaPrzesylki(db, przesylkaId) {
-  return db.prepare('SELECT * FROM kolejka_druku WHERE przesylka_id = ? ORDER BY id DESC LIMIT 1').get(przesylkaId) ?? null;
+  return (
+    db.prepare('SELECT * FROM kolejka_druku WHERE przesylka_id = ? ORDER BY id DESC LIMIT 1').get(przesylkaId) ?? null
+  );
 }
 
 // Zapytania wiązane przez moduł do jego kontekstu bazy; istniejące eksporty zachowują parytet testów.

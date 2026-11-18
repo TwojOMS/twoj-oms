@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { wczytajSprzedawce, sprawdzNumerNip, sprawdzNumerBdo, ZDANIE_NIP_SUMA, ZDANIE_NIP_FORMAT, ZDANIE_BDO } from '../../src/core/sprzedawca.ts';
+import {
+  wczytajSprzedawce,
+  sprawdzNumerNip,
+  sprawdzNumerBdo,
+  ZDANIE_NIP_SUMA,
+  ZDANIE_NIP_FORMAT,
+  ZDANIE_BDO,
+} from '../../src/core/sprzedawca.ts';
 import { poprawnyNip, poprawnyRachunek } from '../../src/core/walidatory.ts';
 
 const OK = { OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000' };
@@ -13,7 +20,12 @@ describe('walidatory', () => {
   });
   it('NRB wymaga 26 cyfr oraz poprawnej sumy mod 97', () => {
     expect(poprawnyRachunek(OK.OMS_RACHUNEK)).toBe(true);
-    for (const nrb of ['34109010140000000000000001', '3410901014000000000000000', '341090101400000000000000000', '3410901014000000000000000x']) {
+    for (const nrb of [
+      '34109010140000000000000001',
+      '3410901014000000000000000',
+      '341090101400000000000000000',
+      '3410901014000000000000000x',
+    ]) {
       expect(poprawnyRachunek(nrb)).toBe(false);
     }
   });
@@ -21,8 +33,12 @@ describe('walidatory', () => {
 
 describe('wczytajSprzedawce', () => {
   it('normalizuje prefiks PL, spacje i myślniki, nie dokłada BDO ani banku', () => {
-    expect(wczytajSprzedawce({ OMS_SPRZEDAWCA_NIP: ' pl 123-456-32-18 ', OMS_RACHUNEK: 'PL34 1090 1014 0000 0000 0000 0000' }))
-      .toEqual({ nip: '1234563218', rachunek: '34109010140000000000000000', bdo: null, bank: null });
+    expect(
+      wczytajSprzedawce({
+        OMS_SPRZEDAWCA_NIP: ' pl 123-456-32-18 ',
+        OMS_RACHUNEK: 'PL34 1090 1014 0000 0000 0000 0000',
+      }),
+    ).toEqual({ nip: '1234563218', rachunek: '34109010140000000000000000', bdo: null, bank: null });
   });
   // Brak rachunku nie blokuje startu — rachunek można wpisać w panelu (Ustawienia → Firma).
   // Brak NIP-u też nie blokuje startu —
@@ -41,22 +57,35 @@ describe('wczytajSprzedawce', () => {
     expect(sprawdzNumerNip('12345632x8')).toEqual({ nip: null, blad: ZDANIE_NIP_FORMAT });
     expect(sprawdzNumerBdo(' 000123456 ')).toEqual({ bdo: '000123456', blad: null });
     expect(sprawdzNumerBdo('')).toEqual({ bdo: null, blad: null });
-    for (const zly of ['12345', '000 123 456', '00012345x']) expect(sprawdzNumerBdo(zly)).toEqual({ bdo: null, blad: ZDANIE_BDO });
-    expect(() => wczytajSprzedawce({ OMS_SPRZEDAWCA_NIP: '1234563219' })).toThrow(`OMS_SPRZEDAWCA_NIP: ${ZDANIE_NIP_SUMA}`);
+    for (const zly of ['12345', '000 123 456', '00012345x'])
+      expect(sprawdzNumerBdo(zly)).toEqual({ bdo: null, blad: ZDANIE_BDO });
+    expect(() => wczytajSprzedawce({ OMS_SPRZEDAWCA_NIP: '1234563219' })).toThrow(
+      `OMS_SPRZEDAWCA_NIP: ${ZDANIE_NIP_SUMA}`,
+    );
     expect(() => wczytajSprzedawce({ OMS_SPRZEDAWCA_BDO: '12345' })).toThrow(`OMS_SPRZEDAWCA_BDO: ${ZDANIE_BDO}`);
   });
   it('literówka rachunku blokuje start', () => {
-    expect(() => wczytajSprzedawce({ ...OK, OMS_RACHUNEK: '34109010140000000000000001' })).toThrow('OMS_RACHUNEK: niepoprawny numer rachunku');
+    expect(() => wczytajSprzedawce({ ...OK, OMS_RACHUNEK: '34109010140000000000000001' })).toThrow(
+      'OMS_RACHUNEK: niepoprawny numer rachunku',
+    );
   });
   it('BDO ma 9 cyfr, bank pochodzi z konfiguracji', () => {
-    expect(wczytajSprzedawce({ ...OK, OMS_SPRZEDAWCA_BDO: ' 000123456 ', OMS_BANK: ' Bank próbny ' }))
-      .toEqual({ nip: '1234563218', rachunek: '34109010140000000000000000', bdo: '000123456', bank: 'Bank próbny' });
+    expect(wczytajSprzedawce({ ...OK, OMS_SPRZEDAWCA_BDO: ' 000123456 ', OMS_BANK: ' Bank próbny ' })).toEqual({
+      nip: '1234563218',
+      rachunek: '34109010140000000000000000',
+      bdo: '000123456',
+      bank: 'Bank próbny',
+    });
     expect(() => wczytajSprzedawce({ ...OK, OMS_SPRZEDAWCA_BDO: '12345' })).toThrow('OMS_SPRZEDAWCA_BDO');
     expect(wczytajSprzedawce({ ...OK, OMS_SPRZEDAWCA_BDO: ' ', OMS_BANK: ' ' }).bank).toBeNull();
   });
   describe('komunikat mówi, którą zmienną poprawić, w jakim formacie i w którym pliku', () => {
     const blad = (env: Record<string, string>) => {
-      try { wczytajSprzedawce(env); } catch (e) { return (e as Error).message; }
+      try {
+        wczytajSprzedawce(env);
+      } catch (e) {
+        return (e as Error).message;
+      }
       throw new Error('Oczekiwano odmowy startu');
     };
     // Brak NIP-u przestał być błędem startu — plik konfiguracji wskazuje teraz komunikat o ZŁYM NIP-ie.
@@ -100,7 +129,12 @@ describe('wczytajSprzedawce', () => {
     });
   });
   it('błąd wymienia nazwy zmiennych, lecz nie wartości wejściowych', () => {
-    const odczyt = () => wczytajSprzedawce({ OMS_SPRZEDAWCA_NIP: '1234563219', OMS_RACHUNEK: 'rachunek-sekret', OMS_SPRZEDAWCA_BDO: 'bdo-sekret' });
+    const odczyt = () =>
+      wczytajSprzedawce({
+        OMS_SPRZEDAWCA_NIP: '1234563219',
+        OMS_RACHUNEK: 'rachunek-sekret',
+        OMS_SPRZEDAWCA_BDO: 'bdo-sekret',
+      });
     expect(odczyt).toThrow(/OMS_SPRZEDAWCA_NIP[\s\S]*OMS_RACHUNEK[\s\S]*OMS_SPRZEDAWCA_BDO/);
     expect(odczyt).not.toThrow(/1234563219|rachunek-sekret|bdo-sekret/);
   });

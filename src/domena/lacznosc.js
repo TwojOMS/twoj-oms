@@ -46,7 +46,9 @@ export function celeLacznosci(config = {}) {
   }
   dodajZKanalow('sklep');
   for (const [klucz, kanal] of Object.entries(config.kanaly ?? {})) {
-    cele.push(cel(`allegro:${klucz}`, kanal?.etykieta ? `Allegro — ${kanal.etykieta}` : `Allegro ${klucz}`, kanal?.api));
+    cele.push(
+      cel(`allegro:${klucz}`, kanal?.etykieta ? `Allegro — ${kanal.etykieta}` : `Allegro ${klucz}`, kanal?.api),
+    );
   }
   dodajZKanalow('allegro');
   for (const c of zKanalow) {

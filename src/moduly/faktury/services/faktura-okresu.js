@@ -1,5 +1,9 @@
 import {
-  zl, wartoscPozycjiGrosze, kwotaOczekiwanaGrosze, sumaPozycjiZWysylkaGrosze, wysylkaBruttoGrosze,
+  zl,
+  wartoscPozycjiGrosze,
+  kwotaOczekiwanaGrosze,
+  sumaPozycjiZWysylkaGrosze,
+  wysylkaBruttoGrosze,
 } from '../../../domena/suma-pozycji.js';
 import { wysylkaEfektywna } from '../../../domena/wysylka-kwota.js';
 import { czyStawkaVat, stawkaPozycji, opcjeZwProgramu } from '../../../domena/vat.js';
@@ -7,8 +11,13 @@ import { czytajStawkeDomyslna } from '../db/stawka-vat.js';
 import { bladOperatora } from '../../../domena/bledy.js';
 import { pobierzZamowienie, dopiszLog } from '../../../oms/db/zamowienia.js';
 import {
-  pobierzOkres, zamowieniaOkresu, zamknijOkres,
-  rozpocznijFaktureOkresu, zakonczFaktureOkresu, zwolnijFaktureOkresu, oznaczOkresDoWyjasnienia,
+  pobierzOkres,
+  zamowieniaOkresu,
+  zamknijOkres,
+  rozpocznijFaktureOkresu,
+  zakonczFaktureOkresu,
+  zwolnijFaktureOkresu,
+  oznaczOkresDoWyjasnienia,
 } from '../../../oms/db/okresy.js';
 import { stanFakturyOkresu } from '../../../domena/okres-rozliczeniowy.js';
 import { datyFaktury } from '../../../domena/termin-platnosci.js';
@@ -16,12 +25,15 @@ import { datyFaktury } from '../../../domena/termin-platnosci.js';
 // OKRESU (nabywcy dokumentu); VIES i serie numeracji trzyma WSPOLNA galaz obu drog
 // wystawiania (services/wdt-faktury.js) — zeby okres i karta nie mialy dwoch kopii.
 // WDT = numer UE klienta okresu I sprzedawca niezwolniony (`czyWdt` + `sprzedawcaZwolniony`).
-import {
-  czyNipUe, czyWdt, polaWdtInfakt, nipSprzedawcyDoWdt, LOG_NIE_WDT_ZWOLNIONA,
-} from '../../../domena/wdt.js';
+import { czyNipUe, czyWdt, polaWdtInfakt, nipSprzedawcyDoWdt, LOG_NIE_WDT_ZWOLNIONA } from '../../../domena/wdt.js';
 import { sprzedawcaZwolniony } from '../db/zwolnienie-vat.js';
 import {
-  sprawdzWdtWVies, przygotujSerieWdt, seriaWdtPoAwarii, seriaWdtPoSukcesie, sprawdzNumeracjeWlasna, nazwaProgramu,
+  sprawdzWdtWVies,
+  przygotujSerieWdt,
+  seriaWdtPoAwarii,
+  seriaWdtPoSukcesie,
+  sprawdzNumeracjeWlasna,
+  nazwaProgramu,
 } from './wdt-faktury.js';
 // Program fakturowy (kontrakt) zamiast klienta inFaktu — `{ program }` albo stary `{ infakt }`.
 import { zProgramu } from '../../../integracje/program-fakturowy.ts';
@@ -70,7 +82,10 @@ export function pozycjeOkresu(zamowienia, { stawkaDomyslna, wdt = false, zw = fa
     const dostawa = wysylkaBruttoGrosze(z);
     if (dostawa > 0) {
       services.push({
-        name: 'Dostawa', quantity: wysylkaEfektywna(z).ilosc, gross_price: dostawa, tax_symbol: stawka,
+        name: 'Dostawa',
+        quantity: wysylkaEfektywna(z).ilosc,
+        gross_price: dostawa,
+        tax_symbol: stawka,
       });
     }
   }
@@ -125,9 +140,7 @@ export function sprawdzSumeOkresu(services, zamowienia) {
   // inFaktu poszlaby faktura z pustym `services`. Dokument bez pozycji trzeba by recznie
   // znaleźć i skasować w inFakcie, zanim pojedzie do KSeF.
   if (services.length === 0) {
-    throw bladOperatora(
-      'Okres nie ma żadnej pozycji do zafakturowania — faktury bez pozycji panel nie wystawi.',
-    );
+    throw bladOperatora('Okres nie ma żadnej pozycji do zafakturowania — faktury bez pozycji panel nie wystawi.');
   }
 
   // ⚠️ SPRAWDZENIE IDZIE ZAMOWIENIE PO ZAMOWIENIU, I TO JEST ISTOTA TEJ BARIERY.
@@ -153,9 +166,9 @@ export function sprawdzSumeOkresu(services, zamowienia) {
       // na fakturze za caly miesiac i musi przeszukac go recznie. `numer` (R/2026/007) jest
       // jedynym identyfikatorem, ktory czlowiek rozpozna na karcie i w sklepie.
       throw bladOperatora(
-        `Zamówienie ${z.numer}: suma pozycji (${zl(sumaZam)} zł) nie zgadza się z kwotą `
-        + `zamówienia (${zl(oczekiwanaZam)} zł). Różnica: ${zl(sumaZam - oczekiwanaZam)} zł. `
-        + 'Faktura za okres NIE została wystawiona.',
+        `Zamówienie ${z.numer}: suma pozycji (${zl(sumaZam)} zł) nie zgadza się z kwotą ` +
+          `zamówienia (${zl(oczekiwanaZam)} zł). Różnica: ${zl(sumaZam - oczekiwanaZam)} zł. ` +
+          'Faktura za okres NIE została wystawiona.',
       );
     }
   }
@@ -167,8 +180,8 @@ export function sprawdzSumeOkresu(services, zamowienia) {
   const oczekiwana = sumaOczekiwanaOkresuGrosze(zamowienia);
   if (suma !== oczekiwana) {
     throw bladOperatora(
-      `Suma pozycji (${zl(suma)} zł) nie zgadza się z sumą zamówień okresu `
-      + `(${zl(oczekiwana)} zł). Różnica: ${zl(suma - oczekiwana)} zł. Faktura nie została wystawiona.`,
+      `Suma pozycji (${zl(suma)} zł) nie zgadza się z sumą zamówień okresu ` +
+        `(${zl(oczekiwana)} zł). Różnica: ${zl(suma - oczekiwana)} zł. Faktura nie została wystawiona.`,
     );
   }
 }
@@ -183,7 +196,12 @@ export function sprawdzSumeOkresu(services, zamowienia) {
  * wysyła) zostaje już tylko korekta.
  */
 export function createFakturaOkresu({
-  db, program: programFakturowy = null, infakt = null, vies = null, nipSprzedawcy, teraz = () => new Date().toISOString(),
+  db,
+  program: programFakturowy = null,
+  infakt = null,
+  vies = null,
+  nipSprzedawcy,
+  teraz = () => new Date().toISOString(),
 }) {
   const program = zProgramu({ program: programFakturowy, infakt });
   // Odmiana nazwy programu do komunikatow (inFakt / inFaktu / inFakcie / inFaktem).
@@ -204,24 +222,29 @@ export function createFakturaOkresu({
   // Tresc idzie za `opisKolizji` z db/faktury.js, bo sytuacja jest ta sama.
   function opisOdmowyFaktury(stan, okres) {
     if (stan === 'do_wyjasnienia' || stan === 'zawieszona') {
-      const powod = stan === 'zawieszona'
-        ? `Rezerwacja faktury tego okresu wisi od ${okres.utworzona_at} i żadne wystawianie już nie trwa `
-          + `— panel najpewniej został zrestartowany w trakcie wywołania ${nazwa.dopelniacz}.`
-        : 'Poprzednia próba wystawienia faktury za ten okres zerwała się w miejscu, w którym dokument mógł już powstać'
-          + `${okres.blad_opis ? ` (${okres.blad_opis})` : ''}.`;
+      const powod =
+        stan === 'zawieszona'
+          ? `Rezerwacja faktury tego okresu wisi od ${okres.utworzona_at} i żadne wystawianie już nie trwa ` +
+            `— panel najpewniej został zrestartowany w trakcie wywołania ${nazwa.dopelniacz}.`
+          : 'Poprzednia próba wystawienia faktury za ten okres zerwała się w miejscu, w którym dokument mógł już powstać' +
+            `${okres.blad_opis ? ` (${okres.blad_opis})` : ''}.`;
       // ⚠️ KOMUNIKAT NIE OBIECUJE PONOWIENIA: ze stanów 'do_wyjasnienia' i 'zawieszona' panel
       // sam nie wychodzi. Jedyne wyjście to świadome „odblokuj” na ekranie okresu
       // (POST /okresy/:id/faktura/odblokuj → `odblokujFaktureOkresu` w oms/db/okresy.js).
       // Komunikat ma mówić prawdę: blokada zostaje, dopóki ktoś jej świadomie nie zdejmie.
-      return `${powod} Sprawdź RĘCZNIE ${gdzieDokument(program)}, czy faktura za ten okres istnieje. `
-        + 'Jeśli JEST i jeszcze nie poszła do KSeF — '
-        + 'skasuj ją tam. Panel sam z tego stanu NIE WYJDZIE i wystawienia nie ponowi: okres '
-        + 'zostaje zablokowany, dopóki ktoś go świadomie nie odblokuje. Ta blokada jest po to, '
-        + 'żeby drugie podejście nie dołożyło drugiej faktury za ten sam miesiąc.';
+      return (
+        `${powod} Sprawdź RĘCZNIE ${gdzieDokument(program)}, czy faktura za ten okres istnieje. ` +
+        'Jeśli JEST i jeszcze nie poszła do KSeF — ' +
+        'skasuj ją tam. Panel sam z tego stanu NIE WYJDZIE i wystawienia nie ponowi: okres ' +
+        'zostaje zablokowany, dopóki ktoś go świadomie nie odblokuje. Ta blokada jest po to, ' +
+        'żeby drugie podejście nie dołożyło drugiej faktury za ten sam miesiąc.'
+      );
     }
     if (stan === 'w_toku') return 'Wystawianie faktury za ten okres właśnie trwa.';
-    return `Faktura za ten okres jest już wystawiona${okres.numer ? ` (${okres.numer})` : ''} `
-      + '— panel nie wystawi jej drugi raz.';
+    return (
+      `Faktura za ten okres jest już wystawiona${okres.numer ? ` (${okres.numer})` : ''} ` +
+      '— panel nie wystawi jej drugi raz.'
+    );
   }
 
   /**
@@ -276,11 +299,11 @@ export function createFakturaOkresu({
     const zFaktura = zamowienia.find((z) => z.faktura);
     if (zFaktura) {
       throw bladOperatora(
-        `Zamówienie ${zFaktura.numer} ma już własną fakturę`
-        + `${zFaktura.faktura.numer ? ` (${zFaktura.faktura.numer})` : ' (wystawianie w toku albo do wyjaśnienia)'}`
-        + ', więc faktura zbiorcza obciążyłaby klienta za ten sam towar drugi raz. '
-        + 'Faktura za okres NIE została wystawiona — rozstrzygnij najpierw tamten dokument '
-        + `${gdzieDokument(program)} (skasuj go, dopóki nie poszedł do KSeF; potem zostaje korekta).`,
+        `Zamówienie ${zFaktura.numer} ma już własną fakturę` +
+          `${zFaktura.faktura.numer ? ` (${zFaktura.faktura.numer})` : ' (wystawianie w toku albo do wyjaśnienia)'}` +
+          ', więc faktura zbiorcza obciążyłaby klienta za ten sam towar drugi raz. ' +
+          'Faktura za okres NIE została wystawiona — rozstrzygnij najpierw tamten dokument ' +
+          `${gdzieDokument(program)} (skasuj go, dopóki nie poszedł do KSeF; potem zostaje korekta).`,
       );
     }
 
@@ -328,9 +351,7 @@ export function createFakturaOkresu({
     // raz i recznie; automat na pierwszej literowce w NIP-ie zalozylby duplikat, a duplikat
     // w kartotece blokuje potem KAZDE wyszukanie (patrz znajdzKlientaPoNip).
     if (!klient?.nip) {
-      throw bladOperatora(
-        'Klient zbiorczy nie ma NIP-u w konfiguracji — bez niego panel nie wskaże nabywcy faktury.',
-      );
+      throw bladOperatora('Klient zbiorczy nie ma NIP-u w konfiguracji — bez niego panel nie wskaże nabywcy faktury.');
     }
     // WDT: numer nabywcy MUSI byc wazny w VIES (art. 42 ust. 1 pkt 1) — sprawdzenie stoi
     // PRZED rezerwacja i zamknieciem okresu, jak lookup nabywcy nizej: odmowa niczego
@@ -382,13 +403,12 @@ export function createFakturaOkresu({
       zwolnijFaktureOkresu(db, okresId);
       // Numery, nie identyfikatory z bazy — czlowiek rozpoznaje zamowienie po `R/2026/007`.
       const numery = (ids) => ids.map((id) => pobierzZamowienie(db, id)?.numer ?? `#${id}`).join(', ');
-      const co = dopisane.length > 0
-        ? `dopisano zamówienie ${numery(dopisane)}`
-        : `zniknęło zamówienie ${numery(zniknely)}`;
+      const co =
+        dopisane.length > 0 ? `dopisano zamówienie ${numery(dopisane)}` : `zniknęło zamówienie ${numery(zniknely)}`;
       throw bladOperatora(
-        `W trakcie wystawiania faktury zmienił się skład okresu (${co}) — panel przerwał, `
-        + `zanim cokolwiek poszło do ${nazwa.dopelniacz}. Faktura za okres NIE została wystawiona i nic `
-        + 'się nie zablokowało: odśwież ekran okresu, sprawdź kwotę i wystaw ją jeszcze raz.',
+        `W trakcie wystawiania faktury zmienił się skład okresu (${co}) — panel przerwał, ` +
+          `zanim cokolwiek poszło do ${nazwa.dopelniacz}. Faktura za okres NIE została wystawiona i nic ` +
+          'się nie zablokowało: odśwież ekran okresu, sprawdź kwotę i wystaw ją jeszcze raz.',
       );
     }
 
@@ -408,17 +428,20 @@ export function createFakturaOkresu({
 
     let odp;
     try {
-      odp = await program.wystaw({
-        client_id: nabywca.client_id,
-        services,
-        ...daty,
-        // Pola WYLACZNIE dokumentu WDT (domena/wdt.js) — dla klienta krajowego oba
-        // rozsypania sa puste i payload zostaje bajt w bajt taki, jaki byl.
-        ...(wdt ? polaWdtInfakt(klient.nip, { nipSprzedawcy: nipWlasny }) : {}),
-        ...(seriaWdt ? { number: seriaWdt.numer } : {}),
-      // Identyfikator dokumentu okresu dla programu (Fakturownia: `oid` + `oid_unique`) — klient i miesiąc,
-      // nie id wiersza: po resecie bazy ten sam okres nie dostaje cudzego oid (fałszywy duplikat).
-      }, { oid: `okres-${okres.klient_klucz}-${okres.rok}-${String(okres.miesiac).padStart(2, '0')}` });
+      odp = await program.wystaw(
+        {
+          client_id: nabywca.client_id,
+          services,
+          ...daty,
+          // Pola WYLACZNIE dokumentu WDT (domena/wdt.js) — dla klienta krajowego oba
+          // rozsypania sa puste i payload zostaje bajt w bajt taki, jaki byl.
+          ...(wdt ? polaWdtInfakt(klient.nip, { nipSprzedawcy: nipWlasny }) : {}),
+          ...(seriaWdt ? { number: seriaWdt.numer } : {}),
+          // Identyfikator dokumentu okresu dla programu (Fakturownia: `oid` + `oid_unique`) — klient i miesiąc,
+          // nie id wiersza: po resecie bazy ten sam okres nie dostaje cudzego oid (fałszywy duplikat).
+        },
+        { oid: `okres-${okres.klient_klucz}-${okres.rok}-${String(okres.miesiac).padStart(2, '0')}` },
+      );
     } catch (e) {
       // Los numeru serii rozstrzyga wspolna galaz: 4xx zwalnia, niejednoznaczna zostawia
       // zajety z glosnym sladem w logu zamowien okresu.
@@ -450,14 +473,15 @@ export function createFakturaOkresu({
     // polami” zdjęłoby blokadę drugiego wystawienia i zostawiło okres udający rozliczony
     // dokumentem, o którym panel nie wie NIC. Niewiedza ma isc do czlowieka, tak samo jak zerwane polaczenie.
     if (!uuid && !numer) {
-      const opis = `${nazwa.mianownik} odpowiedział bez numeru i bez identyfikatora dokumentu `
-        + '(puste albo nieczytelne ciało odpowiedzi) — faktura mogła powstać.';
+      const opis =
+        `${nazwa.mianownik} odpowiedział bez numeru i bez identyfikatora dokumentu ` +
+        '(puste albo nieczytelne ciało odpowiedzi) — faktura mogła powstać.';
       oznaczOkresDoWyjasnienia(db, okresId, opis);
       throw bladOperatora(
-        `${opis} Sprawdź RĘCZNIE ${gdzieDokument(program)}, czy faktura za ten okres istnieje. Jeśli JEST `
-        + 'i jeszcze nie poszła do KSeF — skasuj ją tam. '
-        + 'Panel sam z tego stanu NIE WYJDZIE i wystawienia nie ponowi: okres zostaje zablokowany, '
-        + 'dopóki ktoś go świadomie nie odblokuje.',
+        `${opis} Sprawdź RĘCZNIE ${gdzieDokument(program)}, czy faktura za ten okres istnieje. Jeśli JEST ` +
+          'i jeszcze nie poszła do KSeF — skasuj ją tam. ' +
+          'Panel sam z tego stanu NIE WYJDZIE i wystawienia nie ponowi: okres zostaje zablokowany, ' +
+          'dopóki ktoś go świadomie nie odblokuje.',
       );
     }
 

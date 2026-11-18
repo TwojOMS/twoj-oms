@@ -24,7 +24,9 @@ export function stanErliWPamieci(poczatek = {}) {
   let biezacy = { ...poczatek };
   return {
     wczytaj: () => ({ ...biezacy }),
-    zapisz: (zmiany) => { biezacy = { ...biezacy, ...zmiany }; },
+    zapisz: (zmiany) => {
+      biezacy = { ...biezacy, ...zmiany };
+    },
   };
 }
 
@@ -51,7 +53,12 @@ const nowsze = (a, b) => String(b?.updated ?? '') >= String(a?.updated ?? '');
  *   domyslnyCzasWysylki?: any, teraz?: () => Date, limitUzgodnienia?: number, stronUzgodnieniaNaPrzebieg?: number }} opcje
  */
 export function createErliAdapter({
-  klient, stan, domyslnyCzasWysylki = null, teraz = () => new Date(), limitUzgodnienia = 200, stronUzgodnieniaNaPrzebieg = 5,
+  klient,
+  stan,
+  domyslnyCzasWysylki = null,
+  teraz = () => new Date(),
+  limitUzgodnienia = 200,
+  stronUzgodnieniaNaPrzebieg = 5,
 }) {
   // Wiadomości do potwierdzenia po udanym przebiegu: { tor, lastMessageId } i kursor uzgodnienia.
   let oczekujace = null;
@@ -74,7 +81,10 @@ export function createErliAdapter({
     } catch (e) {
       if (limitZadan(e)) {
         przerwaMs = Math.min(przerwaMs ? przerwaMs * 2 : 60_000, 15 * 60_000);
-        const ms = Number.isSafeInteger(e.retryAfterS) && e.retryAfterS >= 0 ? Math.min(e.retryAfterS * 1000, 15 * 60_000) : przerwaMs;
+        const ms =
+          Number.isSafeInteger(e.retryAfterS) && e.retryAfterS >= 0
+            ? Math.min(e.retryAfterS * 1000, 15 * 60_000)
+            : przerwaMs;
         przerwaDo = teraz().getTime() + ms;
         bladLimitu = e;
       }
@@ -86,13 +96,18 @@ export function createErliAdapter({
     const o = zapisanePotwierdzenie;
     if (!o || trwaPrzerwa()) return;
     try {
-      await zapytaj(() => o.tor === 'inbox'
-        ? klient.inboxOznacz({ lastMessageId: o.lastMessageId })
-        : klient.oznaczPrzeczytane({ lastMessageId: o.lastMessageId }));
+      await zapytaj(() =>
+        o.tor === 'inbox'
+          ? klient.inboxOznacz({ lastMessageId: o.lastMessageId })
+          : klient.oznaczPrzeczytane({ lastMessageId: o.lastMessageId }),
+      );
       zapisanePotwierdzenie = null;
     } catch (e) {
       // Inny błąd niż 429 nie może blokować importu: wiadomości wrócą w kolejnym odczycie (zapis idempotentny).
-      if (!limitZadan(e)) { zapisanePotwierdzenie = null; throw e; }
+      if (!limitZadan(e)) {
+        zapisanePotwierdzenie = null;
+        throw e;
+      }
     }
   }
 
@@ -140,7 +155,10 @@ export function createErliAdapter({
       zamowienia.push(...strona);
       const ostatni = strona.at(-1)?.cursor ?? null;
       if (ostatni) after = ostatni;
-      if (strona.length < limitUzgodnienia || !ostatni) { koniec = true; break; }
+      if (strona.length < limitUzgodnienia || !ostatni) {
+        koniec = true;
+        break;
+      }
     }
     return { zamowienia, kursor: after, koniec, blad };
   }
@@ -206,7 +224,8 @@ export function createErliAdapter({
     for (const z of zamowienia) {
       // Tylko czasy produktów tego zamówienia (potrzebne do terminu), nie cała paczka z przebiegu.
       const czasy = {};
-      for (const p of z.items ?? []) if (p?.externalId != null && pamiec.has(p.externalId)) czasy[p.externalId] = pamiec.get(p.externalId);
+      for (const p of z.items ?? [])
+        if (p?.externalId != null && pamiec.has(p.externalId)) czasy[p.externalId] = pamiec.get(p.externalId);
       const oms = { czasyProduktow: czasy, domyslnyCzasWysylki };
       const zOms = { ...z, _oms: oms };
       z._oms = { ...oms, termin: terminWysylkiErli(zOms), sprawy: sprawyErli(zOms) };
@@ -223,9 +242,16 @@ export function createErliAdapter({
     }
     if (o.uzg) {
       // Postęp uzgodnienia zapisany po zapisie zamówień w bazie; zaliczone dopiero po przejściu do końca.
-      stan.zapisz(o.uzg.koniec
-        ? { uzgodnienieAt: teraz().toISOString(), uzgodnienieKursor: o.uzg.kursor ?? undefined, uzgodnienieWToku: false, uzgodnienieBlad: null }
-        : { uzgodnienieKursor: o.uzg.kursor ?? undefined, uzgodnienieWToku: true });
+      stan.zapisz(
+        o.uzg.koniec
+          ? {
+              uzgodnienieAt: teraz().toISOString(),
+              uzgodnienieKursor: o.uzg.kursor ?? undefined,
+              uzgodnienieWToku: false,
+              uzgodnienieBlad: null,
+            }
+          : { uzgodnienieKursor: o.uzg.kursor ?? undefined, uzgodnienieWToku: true },
+      );
     }
     oczekujace = null;
     await potwierdzZapisane();

@@ -23,14 +23,19 @@ const WAZNOSC_OPISU_MS = WAZNOSC_OPISU_DNI * 86_400_000;
 export const LIMIT_TRAFIEN_SLOWNIKA = 20;
 /** Zgoda, bez której konto nie czyta opisu kategorii dla mapy. */
 export const ZGODA_ODCZYTU = 'allegro:api:sale:offers:read';
-const odmowa = e => e?.status === 401 || e?.status === 403;
+const odmowa = (e) => e?.status === 401 || e?.status === 403;
 
 function opisZWiersza(wiersz) {
   const sciezka = JSON.parse(wiersz.sciezka_json);
   const zapis = JSON.parse(wiersz.parametry_json ?? '[]');
   if (Array.isArray(zapis)) return { wersja: 1, lisc: null, tworzenieProduktu: null, sciezka, parametry: zapis };
-  return { wersja: zapis?.wersja ?? 1, lisc: zapis?.lisc ?? null, tworzenieProduktu: zapis?.tworzenieProduktu ?? null,
-    sciezka, parametry: Array.isArray(zapis?.parametry) ? zapis.parametry : [] };
+  return {
+    wersja: zapis?.wersja ?? 1,
+    lisc: zapis?.lisc ?? null,
+    tworzenieProduktu: zapis?.tworzenieProduktu ?? null,
+    sciezka,
+    parametry: Array.isArray(zapis?.parametry) ? zapis.parametry : [],
+  };
 }
 
 function aktualny(opis, pobranoAt, teraz) {
@@ -48,7 +53,10 @@ export async function opisKategoriiAllegro({ db, klient, polaczenie, kategoriaId
   if (kategoriaId === null || kategoriaId === undefined || !String(kategoriaId).trim()) return null;
   const id = String(kategoriaId);
 
-  const wiersz = db.prepare('SELECT sciezka_json, parametry_json, pobrano_at FROM kanaly_kategorie WHERE polaczenie = ? AND kategoria_id = ?')
+  const wiersz = db
+    .prepare(
+      'SELECT sciezka_json, parametry_json, pobrano_at FROM kanaly_kategorie WHERE polaczenie = ? AND kategoria_id = ?',
+    )
     .get(polaczenie, id);
   const stary = wiersz ? opisZWiersza(wiersz) : null;
   if (stary && aktualny(stary, wiersz.pobrano_at, teraz)) return stary;
@@ -79,12 +87,18 @@ export async function opisKategoriiAllegro({ db, klient, polaczenie, kategoriaId
   }
 
   const opis = opisKategorii(sciezka, parametry);
-  const zapis = { wersja: opis.wersja, lisc: opis.lisc, tworzenieProduktu: opis.tworzenieProduktu, parametry: opis.parametry };
-  db.prepare(`INSERT INTO kanaly_kategorie (polaczenie, kategoria_id, sciezka_json, parametry_json, pobrano_at)
+  const zapis = {
+    wersja: opis.wersja,
+    lisc: opis.lisc,
+    tworzenieProduktu: opis.tworzenieProduktu,
+    parametry: opis.parametry,
+  };
+  db.prepare(
+    `INSERT INTO kanaly_kategorie (polaczenie, kategoria_id, sciezka_json, parametry_json, pobrano_at)
     VALUES (?, ?, ?, ?, ?)
     ON CONFLICT (polaczenie, kategoria_id) DO UPDATE SET sciezka_json = excluded.sciezka_json,
-      parametry_json = excluded.parametry_json, pobrano_at = excluded.pobrano_at`)
-    .run(polaczenie, id, JSON.stringify(opis.sciezka), JSON.stringify(zapis), teraz().toISOString());
+      parametry_json = excluded.parametry_json, pobrano_at = excluded.pobrano_at`,
+  ).run(polaczenie, id, JSON.stringify(opis.sciezka), JSON.stringify(zapis), teraz().toISOString());
   return opis;
 }
 
@@ -96,13 +110,21 @@ export async function opisKategoriiAllegro({ db, klient, polaczenie, kategoriaId
  * @param {'produkcja'|'sandbox'} srodowisko
  */
 export function kontoOpisuSrodowiska(konta, srodowisko) {
-  const pasujace = (Array.isArray(konta) ? konta : []).filter(k => k?.srodowisko === srodowisko
-    && k.autoryzacja === 'polaczone' && Array.isArray(k.uprawnienia) && k.uprawnienia.includes(ZGODA_ODCZYTU));
+  const pasujace = (Array.isArray(konta) ? konta : []).filter(
+    (k) =>
+      k?.srodowisko === srodowisko &&
+      k.autoryzacja === 'polaczone' &&
+      Array.isArray(k.uprawnienia) &&
+      k.uprawnienia.includes(ZGODA_ODCZYTU),
+  );
   pasujace.sort((a, b) => (a.klucz < b.klucz ? -1 : a.klucz > b.klucz ? 1 : 0));
   return pasujace[0] ?? null;
 }
 
-const doPorownania = v => String(v ?? '').trim().toLocaleLowerCase('pl');
+const doPorownania = (v) =>
+  String(v ?? '')
+    .trim()
+    .toLocaleLowerCase('pl');
 
 /**
  * Wyszukanie w słowniku parametru (np. marek, kilkanaście tysięcy wartości) na żądanie. Pobiera opis parametrów
@@ -115,13 +137,19 @@ export async function szukajWartosciSlownika({ klient, kategoriaId, parametrId, 
   const szukane = doPorownania(tekst);
   if (!szukane) return [];
   const odpowiedz = await klient.pobierzParametryKategorii(String(kategoriaId));
-  const parametr = (Array.isArray(odpowiedz?.parameters) ? odpowiedz.parameters : [])
-    .find(p => String(p?.id) === String(parametrId));
+  const parametr = (Array.isArray(odpowiedz?.parameters) ? odpowiedz.parameters : []).find(
+    (p) => String(p?.id) === String(parametrId),
+  );
   const slownik = Array.isArray(parametr?.dictionary) ? parametr.dictionary : [];
   const trafienia = [];
   for (const w of slownik) {
     if (trafienia.length >= LIMIT_TRAFIEN_SLOWNIKA) break;
-    if (typeof w?.value === 'string' && w.id !== undefined && w.id !== null && doPorownania(w.value).includes(szukane)) {
+    if (
+      typeof w?.value === 'string' &&
+      w.id !== undefined &&
+      w.id !== null &&
+      doPorownania(w.value).includes(szukane)
+    ) {
       trafienia.push({ id: String(w.id), wartosc: w.value });
     }
   }

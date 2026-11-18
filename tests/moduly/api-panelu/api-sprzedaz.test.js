@@ -22,15 +22,28 @@ let licznik = 202600000;
  *    (domain/mapowanie.js) — porównywanie tego napisu z instantem UTC jest z definicji złe.
  */
 function dodaj({
-  numer, kwota = '104.00', utworzone, okresId = null,
-  anulowane = 0, anulowaneRecznie = null, sklep = 'reczne', indywidualne = 0,
+  numer,
+  kwota = '104.00',
+  utworzone,
+  okresId = null,
+  anulowane = 0,
+  anulowaneRecznie = null,
+  sklep = 'reczne',
+  indywidualne = 0,
 }) {
   licznik += 1;
   db.prepare(
-    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, okres_rozliczeniowy_id,'
-    + ' anulowane, anulowane_recznie, utworzone_at, indywidualne) VALUES (?,?,?,?,?,?,?,?,?)',
+    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, okres_rozliczeniowy_id,' +
+      ' anulowane, anulowane_recznie, utworzone_at, indywidualne) VALUES (?,?,?,?,?,?,?,?,?)',
   ).run(
-    sklep, licznik, numer, kwota, okresId, anulowane ? 1 : 0, anulowaneRecznie, utworzone,
+    sklep,
+    licznik,
+    numer,
+    kwota,
+    okresId,
+    anulowane ? 1 : 0,
+    anulowaneRecznie,
+    utworzone,
     // Znacznik zamowienia z panelu ofert indywidualnych — w produkcji liczy go poller
     // z surowej odpowiedzi sklepu (domain/indywidualne.js), tu podajemy go wprost, bo
     // testowane jest zachowanie ENDPOINTU, a nie rozpoznawanie znacznika.
@@ -48,9 +61,18 @@ async function numery(url) {
 
 beforeEach(() => {
   db = openOmsDb();
-  const kontoId = zalozKonto(db, { login: 'tester-api', imie: 'Tester', haslo: 'h', admin: true, rola: 'administrator' });
+  const kontoId = zalozKonto(db, {
+    login: 'tester-api',
+    imie: 'Tester',
+    haslo: 'h',
+    admin: true,
+    rola: 'administrator',
+  });
   const { klucz } = zalozKluczApi(db, {
-    nazwa: 'Pracownia Półcień', zakresy: ['sprzedaz:odczyt'], kontoId, teraz: new Date().toISOString(),
+    nazwa: 'Pracownia Półcień',
+    zakresy: ['sprzedaz:odczyt'],
+    kontoId,
+    teraz: new Date().toISOString(),
   });
   naglowek = { authorization: `Bearer ${klucz}` };
 });
@@ -62,7 +84,9 @@ describe('GET /api/v1/sprzedaz', () => {
     dodaj({ numer: 'R/2026/002', kwota: '900.00', utworzone: '2026-07-11T10:00:00.000Z' });
 
     const odp = await serwer().inject({
-      method: 'GET', url: '/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31', headers: naglowek,
+      method: 'GET',
+      url: '/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31',
+      headers: naglowek,
     });
     expect(odp.statusCode).toBe(200);
     const { zamowienia } = odp.json();
@@ -102,8 +126,10 @@ describe('GET /api/v1/sprzedaz', () => {
 
     it('anulowane_recznie = 0 NIE odanulowuje zamowienia anulowanego w sklepie', async () => {
       dodaj({
-        numer: 'R/2026/001', utworzone: '2026-07-10T10:00:00.000Z',
-        anulowane: 1, anulowaneRecznie: 0,
+        numer: 'R/2026/001',
+        utworzone: '2026-07-10T10:00:00.000Z',
+        anulowane: 1,
+        anulowaneRecznie: 0,
       });
       expect(await numery('/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31')).toEqual([]);
     });
@@ -196,7 +222,9 @@ describe('GET /api/v1/sprzedaz', () => {
 
     it('komunikat o odwroconym zakresie mowi, ktore granice sa zle', async () => {
       const odp = await serwer().inject({
-        method: 'GET', url: '/api/v1/sprzedaz?od=2026-07-31&do=2026-07-01', headers: naglowek,
+        method: 'GET',
+        url: '/api/v1/sprzedaz?od=2026-07-31&do=2026-07-01',
+        headers: naglowek,
       });
       expect(odp.json().blad).toMatch(/od.*do|do.*od/i);
     });
@@ -224,7 +252,9 @@ describe('GET /api/v1/sprzedaz', () => {
       dodaj({ numer: 'R/2026/001', utworzone: '2026-07-05T22:30:00.000Z' });
 
       const odp = await serwer().inject({
-        method: 'GET', url: '/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31', headers: naglowek,
+        method: 'GET',
+        url: '/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31',
+        headers: naglowek,
       });
       const [z] = odp.json().zamowienia;
       expect(z.dzien).toBe('2026-07-06');
@@ -236,7 +266,9 @@ describe('GET /api/v1/sprzedaz', () => {
       dodaj({ numer: 'W/1', utworzone: '2026-07-06T00:30:00', sklep: 'swietlik' });
 
       const odp = await serwer().inject({
-        method: 'GET', url: '/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31', headers: naglowek,
+        method: 'GET',
+        url: '/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31',
+        headers: naglowek,
       });
       expect(odp.json().zamowienia[0].dzien).toBe('2026-07-06');
     });
@@ -247,7 +279,9 @@ describe('GET /api/v1/sprzedaz', () => {
       dodaj({ numer: 'R/2026/001', utworzone: '2026-07-31T23:30:00.000Z' });
 
       const odp = await serwer().inject({
-        method: 'GET', url: '/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31', headers: naglowek,
+        method: 'GET',
+        url: '/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31',
+        headers: naglowek,
       });
       expect(odp.json().zamowienia[0].dzien).toBe('2026-08-01');
     });
@@ -263,7 +297,9 @@ describe('GET /api/v1/sprzedaz', () => {
       dodaj({ numer: 'W/2', utworzone: '2026-07-11T10:00:00', sklep: 'pro' });
 
       const odp = await serwer().inject({
-        method: 'GET', url: '/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31', headers: naglowek,
+        method: 'GET',
+        url: '/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31',
+        headers: naglowek,
       });
       const kanaly = odp.json().zamowienia.map((z) => z.kanal);
       expect(kanaly).not.toContain('B2B');
@@ -278,7 +314,9 @@ describe('GET /api/v1/sprzedaz', () => {
       dodaj({ numer: 'W/1', utworzone: '2026-07-10T10:00:00', sklep: 'swietlik', okresId: o.id });
 
       const odp = await serwer().inject({
-        method: 'GET', url: '/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31', headers: naglowek,
+        method: 'GET',
+        url: '/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31',
+        headers: naglowek,
       });
       expect(odp.json().zamowienia[0].kanal).toBe('SKLEP');
     });
@@ -287,8 +325,7 @@ describe('GET /api/v1/sprzedaz', () => {
       dodaj({ numer: 'W/1', utworzone: '2026-07-10T10:00:00', sklep: 'swietlik' });
       dodaj({ numer: 'R/2026/001', utworzone: '2026-07-11T10:00:00.000Z' });
 
-      expect(await numery('/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31'))
-        .toEqual(['W/1', 'R/2026/001']);
+      expect(await numery('/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31')).toEqual(['W/1', 'R/2026/001']);
     });
 
     // ── I-2: KANAL ALLEGRO ──────────────────────────────────────
@@ -303,7 +340,9 @@ describe('GET /api/v1/sprzedaz', () => {
       dodaj({ numer: 'ALG-2', utworzone: '2026-08-10T11:00:00', sklep: 'allegro_polcien2' });
 
       const odp = await serwer().inject({
-        method: 'GET', url: '/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31', headers: naglowek,
+        method: 'GET',
+        url: '/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31',
+        headers: naglowek,
       });
       const kanaly = odp.json().zamowienia.map((z) => z.kanal);
       expect(kanaly).toEqual(['ALLEGRO', 'ALLEGRO']);
@@ -319,7 +358,9 @@ describe('GET /api/v1/sprzedaz', () => {
       dodaj({ numer: 'ALG-1', utworzone: '2026-08-10T10:00:00', sklep: 'allegro_swietlik' });
 
       const odp = await serwer().inject({
-        method: 'GET', url: '/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31', headers: naglowek,
+        method: 'GET',
+        url: '/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31',
+        headers: naglowek,
       });
       const kanaly = odp.json().zamowienia.map((z) => z.kanal);
       // Po TABLICY, nie po tresci odpowiedzi: 'ALLEGRO_SWIETLIK' zawiera w sobie 'ALLEGRO',
@@ -337,8 +378,7 @@ describe('GET /api/v1/sprzedaz', () => {
       dodaj({ numer: 'ALG-1', utworzone: '2026-08-10T10:00:00', sklep: 'allegro_swietlik' });
       dodaj({ numer: 'R/2026/001', utworzone: '2026-08-11T10:00:00.000Z' });
 
-      expect(await numery('/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31'))
-        .toEqual(['ALG-1', 'R/2026/001']);
+      expect(await numery('/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31')).toEqual(['ALG-1', 'R/2026/001']);
     });
 
     // Sklep o kluczu podobnym do kanalu NIE JEST kanalem Allegro — ten sam prefiks
@@ -348,7 +388,9 @@ describe('GET /api/v1/sprzedaz', () => {
       dodaj({ numer: 'W/1', utworzone: '2026-08-10T10:00:00', sklep: 'allegrowy' });
 
       const odp = await serwer().inject({
-        method: 'GET', url: '/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31', headers: naglowek,
+        method: 'GET',
+        url: '/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31',
+        headers: naglowek,
       });
       expect(odp.json().zamowienia[0].kanal).toBe('SKLEP');
     });
@@ -364,7 +406,9 @@ describe('GET /api/v1/sprzedaz', () => {
       dodaj({ numer: 'W/I1', utworzone: '2026-08-10T10:00:00', sklep: 'swietlik', indywidualne: 1 });
 
       const odp = await serwer().inject({
-        method: 'GET', url: '/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31', headers: naglowek,
+        method: 'GET',
+        url: '/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31',
+        headers: naglowek,
       });
       const kanaly = odp.json().zamowienia.map((z) => z.kanal);
       // ⚠️ ASERCJE MUSZA ISC PO TABLICY WARTOSCI KANALOW, nie po napisie calej odpowiedzi:
@@ -384,7 +428,9 @@ describe('GET /api/v1/sprzedaz', () => {
       dodaj({ numer: 'W/I1', utworzone: '2026-08-11T10:00:00', sklep: 'swietlik', indywidualne: 1 });
 
       const odp = await serwer().inject({
-        method: 'GET', url: '/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31', headers: naglowek,
+        method: 'GET',
+        url: '/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31',
+        headers: naglowek,
       });
       const kanal = (n) => odp.json().zamowienia.find((z) => z.numer === n).kanal;
       expect(kanal('W/1')).toBe('SKLEP');
@@ -398,8 +444,7 @@ describe('GET /api/v1/sprzedaz', () => {
       dodaj({ numer: 'W/I1', utworzone: '2026-08-10T10:00:00', sklep: 'swietlik', indywidualne: 1 });
       dodaj({ numer: 'R/2026/001', utworzone: '2026-08-11T10:00:00.000Z' });
 
-      expect(await numery('/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31'))
-        .toEqual(['W/I1', 'R/2026/001']);
+      expect(await numery('/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31')).toEqual(['W/I1', 'R/2026/001']);
     });
 
     it('reczne dalej rozdziela sie na DROPSHIPPING i B2B mimo nowej reguly', async () => {
@@ -412,7 +457,9 @@ describe('GET /api/v1/sprzedaz', () => {
       dodaj({ numer: 'W/I1', utworzone: '2026-08-13T10:00:00', sklep: 'swietlik', indywidualne: 1 });
 
       const odp = await serwer().inject({
-        method: 'GET', url: '/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31', headers: naglowek,
+        method: 'GET',
+        url: '/api/v1/sprzedaz?od=2026-08-01&do=2026-08-31',
+        headers: naglowek,
       });
       const kanal = (n) => odp.json().zamowienia.find((z) => z.numer === n).kanal;
       expect(kanal('R/2026/001')).toBe('DROPSHIPPING');
@@ -427,7 +474,9 @@ describe('GET /api/v1/sprzedaz', () => {
       dodaj({ numer: 'R/2026/002', utworzone: '2026-07-11T10:00:00.000Z' });
 
       const odp = await serwer().inject({
-        method: 'GET', url: '/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31', headers: naglowek,
+        method: 'GET',
+        url: '/api/v1/sprzedaz?od=2026-07-01&do=2026-07-31',
+        headers: naglowek,
       });
       const kanal = (n) => odp.json().zamowienia.find((z) => z.numer === n).kanal;
       expect(kanal('R/2026/001')).toBe('DROPSHIPPING');
@@ -445,16 +494,14 @@ describe('GET /api/v1/sprzedaz', () => {
       dodaj({ numer: 'R/2026/001', utworzone: '2026-07-09T23:00:00.000Z' });
       dodaj({ numer: 'W/1', utworzone: '2026-07-10T00:30:00', sklep: 'swietlik' });
 
-      expect(await numery('/api/v1/sprzedaz?od=2026-07-09&do=2026-07-10'))
-        .toEqual(['W/1', 'R/2026/001']);
+      expect(await numery('/api/v1/sprzedaz?od=2026-07-09&do=2026-07-10')).toEqual(['W/1', 'R/2026/001']);
     });
 
     it('zamowienia z tej samej chwili ida po id — kolejnosc jest deterministyczna', async () => {
       dodaj({ numer: 'R/2026/002', utworzone: '2026-07-10T10:00:00.000Z' });
       dodaj({ numer: 'R/2026/001', utworzone: '2026-07-10T10:00:00.000Z' });
 
-      expect(await numery('/api/v1/sprzedaz?od=2026-07-10&do=2026-07-10'))
-        .toEqual(['R/2026/002', 'R/2026/001']);
+      expect(await numery('/api/v1/sprzedaz?od=2026-07-10&do=2026-07-10')).toEqual(['R/2026/002', 'R/2026/001']);
     });
 
     it('zamowienie z data NIE DO ODCZYTANIA nie wchodzi do zadnego okna', async () => {

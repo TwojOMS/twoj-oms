@@ -40,7 +40,9 @@ describe('wybierzKuriera — dzisiejsza mapa metod na integracje', () => {
     expect(() => wybierzKuriera(metoda, {} as any)).toThrow(odmowaPustej);
   });
   it('teksty odmów dosłownie', () => {
-    expect(() => wybierzKuriera('odbior_osobisty', PELNA)).toThrow('Metoda „odbior_osobisty” nie jest obsługiwana w tym panelu.');
+    expect(() => wybierzKuriera('odbior_osobisty', PELNA)).toThrow(
+      'Metoda „odbior_osobisty” nie jest obsługiwana w tym panelu.',
+    );
     expect(() => wybierzKuriera('dpd', {} as any)).toThrow('Kurier dpd nie jest skonfigurowany.');
   });
 });
@@ -64,8 +66,14 @@ describe('kurierWpisuRecznego', () => {
 describe('METODY_WYSYLKI i ETYKIETY_WYSYLKI', () => {
   it('kolejność metod', () => {
     expect([...METODY_WYSYLKI]).toEqual([
-      'dpd', 'inpost_paczkomat', 'odbior_osobisty',
-      'allegro_dpd', 'allegro_paczkomat', 'allegro_punkt', 'allegro_kurier', 'allegro_inne',
+      'dpd',
+      'inpost_paczkomat',
+      'odbior_osobisty',
+      'allegro_dpd',
+      'allegro_paczkomat',
+      'allegro_punkt',
+      'allegro_kurier',
+      'allegro_inne',
     ]);
   });
   it('etykiety — całość', () => {
@@ -97,48 +105,80 @@ describe('kurierzyDoWyboru — metoda × pobranie × numer paczki', () => {
     TABELA.push([m, 0, 1, [DPD, PACZ]], [m, 0, 2, [DPD, PACZ]], [m, 1, 1, [DPD]], [m, 1, 2, [DPD, PACZ]]);
   }
   for (const m of ['allegro_dpd', 'allegro_punkt', 'allegro_kurier', 'allegro_inne']) {
-    TABELA.push([m, 0, 1, [WZA, DPD, PACZ]], [m, 0, 2, [WZA, DPD, PACZ]], [m, 1, 1, [WZA, DPD]], [m, 1, 2, [WZA, DPD, PACZ]]);
+    TABELA.push(
+      [m, 0, 1, [WZA, DPD, PACZ]],
+      [m, 0, 2, [WZA, DPD, PACZ]],
+      [m, 1, 1, [WZA, DPD]],
+      [m, 1, 2, [WZA, DPD, PACZ]],
+    );
   }
-  it('tabela ma 7 metod × 4 kombinacje', () => { expect(TABELA).toHaveLength(28); });
+  it('tabela ma 7 metod × 4 kombinacje', () => {
+    expect(TABELA).toHaveLength(28);
+  });
   it.each(TABELA)('%s pobranie=%i paczka=%i', (m, pobranie, paczka, oczekiwane) => {
     expect(pary(m, pobranie, paczka)).toEqual(oczekiwane);
   });
   it('pobranie na paczce nr 2 jedzie tylko gdy wskazano wprost (zamiennik) — wtedy znów sam DPD', () => {
     const z: any = { metoda_wysylki: 'inpost_paczkomat', pobranie: 1 };
     expect(kurierzyDoWyboru(z, 2, { pobranieNaTejPaczce: true } as any).map((k: any) => k.klucz)).toEqual(['dpd']);
-    expect(kurierzyDoWyboru(z, 1, { pobranieNaTejPaczce: false } as any).map((k: any) => k.klucz)).toEqual(['dpd', 'inpost_paczkomat']);
+    expect(kurierzyDoWyboru(z, 1, { pobranieNaTejPaczce: false } as any).map((k: any) => k.klucz)).toEqual([
+      'dpd',
+      'inpost_paczkomat',
+    ]);
   });
 });
 
 describe('metodaNadania', () => {
   it('zamówienie Allegro (allegro_dpd) z wyborem inpost_paczkomat → nadajemy sami, ręcznie', () => {
-    expect(metodaNadania({ sklep: 'allegro_a', metoda_wysylki: 'allegro_dpd' } as any, 'inpost_paczkomat'))
-      .toEqual({ metoda: 'inpost_paczkomat', wskazanyRecznie: true, metodaZamowienia: 'allegro_dpd' });
+    expect(metodaNadania({ sklep: 'allegro_a', metoda_wysylki: 'allegro_dpd' } as any, 'inpost_paczkomat')).toEqual({
+      metoda: 'inpost_paczkomat',
+      wskazanyRecznie: true,
+      metodaZamowienia: 'allegro_dpd',
+    });
   });
   it('allegro_punkt z wyborem inpost_paczkomat', () => {
-    expect(metodaNadania({ sklep: 'allegro_a', metoda_wysylki: 'allegro_punkt' } as any, 'inpost_paczkomat'))
-      .toEqual({ metoda: 'inpost_paczkomat', wskazanyRecznie: true, metodaZamowienia: 'allegro_punkt' });
+    expect(metodaNadania({ sklep: 'allegro_a', metoda_wysylki: 'allegro_punkt' } as any, 'inpost_paczkomat')).toEqual({
+      metoda: 'inpost_paczkomat',
+      wskazanyRecznie: true,
+      metodaZamowienia: 'allegro_punkt',
+    });
   });
   it('allegro_inne bez wyboru → metoda domyślna WzA', () => {
-    expect(metodaNadania({ sklep: 'allegro_a', metoda_wysylki: 'allegro_inne' } as any, '')).toEqual({ metoda: 'allegro_inne' });
+    expect(metodaNadania({ sklep: 'allegro_a', metoda_wysylki: 'allegro_inne' } as any, '')).toEqual({
+      metoda: 'allegro_inne',
+    });
   });
   it('allegro_paczkomat → zawsze nasz InPost, wybór ignorowany', () => {
-    expect(metodaNadania({ sklep: 'allegro_a', metoda_wysylki: 'allegro_paczkomat' } as any, 'dpd')).toEqual({ metoda: 'inpost_paczkomat' });
+    expect(metodaNadania({ sklep: 'allegro_a', metoda_wysylki: 'allegro_paczkomat' } as any, 'dpd')).toEqual({
+      metoda: 'inpost_paczkomat',
+    });
   });
   it('zamówienie sklepowe z wyborem inpost_paczkomat → wybór IGNOROWANY (pieniądze przy pobraniu)', () => {
-    expect(metodaNadania({ sklep: 'woo', metoda_wysylki: 'dpd', pobranie: 1 } as any, 'inpost_paczkomat')).toEqual({ metoda: 'dpd' });
+    expect(metodaNadania({ sklep: 'woo', metoda_wysylki: 'dpd', pobranie: 1 } as any, 'inpost_paczkomat')).toEqual({
+      metoda: 'dpd',
+    });
   });
   it('Allegro z wyborem spoza listy → odmowa dosłownie', () => {
-    expect(metodaNadania({ sklep: 'allegro_a', metoda_wysylki: 'allegro_dpd', pobranie: 1 } as any, 'inpost_paczkomat')).toEqual({
-      blad: 'Nie umiem nadać tej paczki jako „inpost_paczkomat" — do wyboru jest '
-        + 'Wysyłam z Allegro — umowa Allegro (domyślnie) albo DPD — nasza umowa. Panel niczego nie nadał.',
+    expect(
+      metodaNadania({ sklep: 'allegro_a', metoda_wysylki: 'allegro_dpd', pobranie: 1 } as any, 'inpost_paczkomat'),
+    ).toEqual({
+      blad:
+        'Nie umiem nadać tej paczki jako „inpost_paczkomat" — do wyboru jest ' +
+        'Wysyłam z Allegro — umowa Allegro (domyślnie) albo DPD — nasza umowa. Panel niczego nie nadał.',
     });
   });
 });
 
 describe('ZPL i rodzaj formularza nadania', () => {
   it('METODY_Z_ZPL', () => {
-    expect([...METODY_Z_ZPL]).toEqual(['dpd', 'inpost_paczkomat', 'allegro_dpd', 'allegro_punkt', 'allegro_kurier', 'allegro_inne']);
+    expect([...METODY_Z_ZPL]).toEqual([
+      'dpd',
+      'inpost_paczkomat',
+      'allegro_dpd',
+      'allegro_punkt',
+      'allegro_kurier',
+      'allegro_inne',
+    ]);
   });
   // [metoda, nadanieDaZpl, rodzajFormularzaNadania]
   it.each<[string, boolean, string | null]>([
@@ -206,12 +246,19 @@ describe('przewoźnik przesyłki i linki śledzenia', () => {
 });
 
 describe('sledzeniePrzesylki dla WzA', () => {
-  const surowa = (carrierId: string, carrierWaybill: string) => JSON.stringify({
-    carrier: 'DPD', packages: [{ waybill: 'AL1' }], transportingInfo: { carrierId, carrierWaybill },
-  });
+  const surowa = (carrierId: string, carrierWaybill: string) =>
+    JSON.stringify({
+      carrier: 'DPD',
+      packages: [{ waybill: 'AL1' }],
+      transportingInfo: { carrierId, carrierWaybill },
+    });
   const dpd = { nazwa: 'klient-dpd' };
   const allegro = { nazwa: 'klient-allegro' };
-  const wza = (id: string, wb: string, numer = 'AL1') => ({ kurier: 'allegro_wza', odpowiedz_surowa: surowa(id, wb), numer_listu: numer });
+  const wza = (id: string, wb: string, numer = 'AL1') => ({
+    kurier: 'allegro_wza',
+    odpowiedz_surowa: surowa(id, wb),
+    numer_listu: numer,
+  });
 
   it('podwykonawca DPD z kanałem → pytamy DPD jego numerem', () => {
     const w = sledzeniePrzesylki(wza('DPD', 'DW9'), { dpd, allegro } as any);

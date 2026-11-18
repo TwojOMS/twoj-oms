@@ -17,7 +17,12 @@
 // policzone. Moduły wykonują się w kolejności dokumentu, więc ten plik stoi w stronie PRZED tamtym.
 
 const zaokr = (x) => (Math.round(x) / 100).toFixed(2);
-const liczba = (v) => Number(String(v ?? '').trim().replace(',', '.'));
+const liczba = (v) =>
+  Number(
+    String(v ?? '')
+      .trim()
+      .replace(',', '.'),
+  );
 // „zw” (zwolnienie — lista ma ją tylko przy TwojeFaktury) liczy się jak 0: netto = brutto, tak jak
 // serwer (domena/vat.js). Bez tego `Number('zw')` = NaN i skrypt brał `data-vat` formularza (np. 23).
 const stawkaLiczbowa = (v) => (String(v ?? '').trim() === 'zw' ? 0 : Number(v));
@@ -67,9 +72,13 @@ export function przelicz(zdarzenie, formularz) {
   // „Netto 100, potem 8%” ma dać brutto 108, a nie zostawić 123 policzone starą stawką. Bez znacznika
   // (wiersz z magazynu, formularz wczytany z serwera) brutto — wartość przechowywana — zostaje.
   const znacznik = zasieg.dataset ?? {};
-  if (toNetto) { znacznik.zrodlo = 'netto'; zNetto(); }
-  else if (toBrutto) { znacznik.zrodlo = 'brutto'; zBrutto(); }
-  else if (znacznik.zrodlo === 'netto' && String(netto.value).trim()) zNetto();
+  if (toNetto) {
+    znacznik.zrodlo = 'netto';
+    zNetto();
+  } else if (toBrutto) {
+    znacznik.zrodlo = 'brutto';
+    zBrutto();
+  } else if (znacznik.zrodlo === 'netto' && String(netto.value).trim()) zNetto();
   else if (String(brutto.value).trim()) zBrutto();
   else if (String(netto.value).trim()) zNetto();
 }

@@ -51,11 +51,25 @@ describe('czy doczytac numer KSeF', () => {
 
 function baza() {
   const db = openOmsDb(':memory:');
-  const id = zapiszZamowienie(db, 'pro', {
-    zrodlo_id: 1, numer: '3001', klient: { first_name: 'Jan' }, dostawa: {},
-    metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: null,
-    kwota_brutto: '123.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
-  }, {});
+  const id = zapiszZamowienie(
+    db,
+    'pro',
+    {
+      zrodlo_id: 1,
+      numer: '3001',
+      klient: { first_name: 'Jan' },
+      dostawa: {},
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: 1,
+      nip: null,
+      kwota_brutto: '123.00',
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane: 0,
+    },
+    {},
+  );
   const f = rozpocznijFakture(db, id);
   zakonczFakture(db, f.id, { uuid: 'u1', numer: '1/08/2026', ksefStatus: null });
   return { db, id };
@@ -65,19 +79,21 @@ describe('doczytanie numeru KSeF przy otwarciu karty', () => {
   it('zapisuje numer i melduje zmiane, gdy inFakt go ma', async () => {
     const { db, id } = baza();
     const usluga = createDoczytanieKsef({
-      db, infakt: { pobierzFakture: async () => ({ ksefNumer: 'KSEF-1' }) },
+      db,
+      infakt: { pobierzFakture: async () => ({ ksefNumer: 'KSEF-1' }) },
     });
     expect(await usluga.dlaFaktury(fakturaZ(db, id), id)).toBe(true);
     expect(fakturaZ(db, id).ksef_numer).toBe('KSEF-1');
     // Fakt trafia do historii zamowienia — inaczej nikt sie nie dowie, skad numer.
-    expect(String(ostatniWpisLogu(db, id, "ksef")?.wynik).includes("KSEF-1")).toBe(true);
+    expect(String(ostatniWpisLogu(db, id, 'ksef')?.wynik).includes('KSEF-1')).toBe(true);
   });
 
   // TwojeFaktury oddaje numer jako `ksef_number` (ksztalt v3).
   it('zapisuje numer z odczytu TwojeFaktury (`ksef_number`)', async () => {
     const { db, id } = baza();
     const usluga = createDoczytanieKsef({
-      db, infakt: { pobierzFakture: async () => ({ number: '1/08/2026', ksef_number: 'KSEF-TF' }) },
+      db,
+      infakt: { pobierzFakture: async () => ({ number: '1/08/2026', ksef_number: 'KSEF-TF' }) },
     });
     expect(await usluga.dlaFaktury(fakturaZ(db, id), id)).toBe(true);
     expect(fakturaZ(db, id).ksef_numer).toBe('KSEF-TF');
@@ -88,7 +104,8 @@ describe('doczytanie numeru KSeF przy otwarciu karty', () => {
   it('bez numeru nie melduje zmiany, ale odnotowuje pytanie', async () => {
     const { db, id } = baza();
     const usluga = createDoczytanieKsef({
-      db, infakt: { pobierzFakture: async () => ({ ksefNumer: null }) },
+      db,
+      infakt: { pobierzFakture: async () => ({ ksefNumer: null }) },
     });
     expect(await usluga.dlaFaktury(fakturaZ(db, id), id)).toBe(false);
     expect(fakturaZ(db, id).ksef_sprawdzona_at).toBeTruthy();
@@ -99,7 +116,12 @@ describe('doczytanie numeru KSeF przy otwarciu karty', () => {
   it('awaria inFaktu nie rzuca i zostawia slad pytania', async () => {
     const { db, id } = baza();
     const usluga = createDoczytanieKsef({
-      db, infakt: { pobierzFakture: async () => { throw new Error('inFakt lezy'); } },
+      db,
+      infakt: {
+        pobierzFakture: async () => {
+          throw new Error('inFakt lezy');
+        },
+      },
     });
     await expect(usluga.dlaFaktury(fakturaZ(db, id), id)).resolves.toBe(false);
     expect(fakturaZ(db, id).ksef_sprawdzona_at).toBeTruthy();
@@ -110,7 +132,13 @@ describe('doczytanie numeru KSeF przy otwarciu karty', () => {
     const { db, id } = baza();
     let wolane = 0;
     const usluga = createDoczytanieKsef({
-      db, infakt: { pobierzFakture: async () => { wolane += 1; return { ksefNumer: 'X' }; } },
+      db,
+      infakt: {
+        pobierzFakture: async () => {
+          wolane += 1;
+          return { ksefNumer: 'X' };
+        },
+      },
     });
     await usluga.dlaFaktury({ ...fakturaZ(db, id), ksef_numer: 'JUZ-JEST' }, id);
     expect(wolane).toBe(0);
@@ -140,7 +168,11 @@ describe('doczytanie numeru KSeF przy otwarciu karty', () => {
     const usluga = createDoczytanieKsef({
       db,
       infakt: { pobierzFakture: async () => ({ ksefNumer: 'KSEF-1' }) },
-      poNumerzeKsef: { wyslijDoAllegroJesliWolno: async (zid) => { wolane.push(zid); } },
+      poNumerzeKsef: {
+        wyslijDoAllegroJesliWolno: async (zid) => {
+          wolane.push(zid);
+        },
+      },
     });
     await usluga.dlaFaktury(fakturaZ(db, id), id);
     expect(wolane).toEqual([id]);
@@ -152,7 +184,11 @@ describe('doczytanie numeru KSeF przy otwarciu karty', () => {
     const usluga = createDoczytanieKsef({
       db,
       infakt: { pobierzFakture: async () => ({ ksefNumer: null }) },
-      poNumerzeKsef: { wyslijDoAllegroJesliWolno: async () => { wolane += 1; } },
+      poNumerzeKsef: {
+        wyslijDoAllegroJesliWolno: async () => {
+          wolane += 1;
+        },
+      },
     });
     await usluga.dlaFaktury(fakturaZ(db, id), id);
     expect(wolane).toBe(0);
@@ -164,7 +200,11 @@ describe('doczytanie numeru KSeF przy otwarciu karty', () => {
     const usluga = createDoczytanieKsef({
       db,
       infakt: { pobierzFakture: async () => ({ ksefNumer: 'KSEF-1' }) },
-      poNumerzeKsef: { wyslijDoAllegroJesliWolno: async () => { throw new Error('Allegro lezy'); } },
+      poNumerzeKsef: {
+        wyslijDoAllegroJesliWolno: async () => {
+          throw new Error('Allegro lezy');
+        },
+      },
     });
     await expect(usluga.dlaFaktury(fakturaZ(db, id), id)).resolves.toBe(true);
     expect(fakturaZ(db, id).ksef_numer).toBe('KSEF-1');
@@ -198,7 +238,10 @@ describe('karta zamowienia dociaga numer KSeF przy otwarciu', () => {
   it('nie pyta drugi raz przy odswiezeniu — dlawik dziala przez trase', async () => {
     let wolane = 0;
     const { app, id } = serwer({
-      pobierzFakture: async () => { wolane += 1; return { ksefNumer: null }; },
+      pobierzFakture: async () => {
+        wolane += 1;
+        return { ksefNumer: null };
+      },
     });
     await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: AUTH });
     await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: AUTH });
@@ -209,7 +252,11 @@ describe('karta zamowienia dociaga numer KSeF przy otwarciu', () => {
   // ⚠️ Karta ma sie otworzyc takze wtedy, gdy inFakt lezy — inaczej awaria cudzego API
   // zabiera operatorowi dostep do zamowienia.
   it('awaria inFaktu nie wywala karty', async () => {
-    const { app, id } = serwer({ pobierzFakture: async () => { throw new Error('inFakt lezy'); } });
+    const { app, id } = serwer({
+      pobierzFakture: async () => {
+        throw new Error('inFakt lezy');
+      },
+    });
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: AUTH });
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('1/08/2026');

@@ -16,20 +16,38 @@ const historia = (h: object) => JSON.stringify({ konta: [], ...h });
 describe('kanały raportowe GDD i INDYWIDUALNE tylko z konfiguracji', () => {
   it('czysta instalacja: tylko kanały ogólne (ręczne, hurt, okres rozliczeniowy)', () => {
     expect(raporty({})).toEqual(['B2B', 'DROPSHIPPING', 'RECZNE']);
-    expect(planGranic({ OMS_KANALY: '[]' }, new Date('2026-10-16T09:00:00Z')).plan.map(p => p.kanal)).toEqual(['B2B', 'DROPSHIPPING', 'RECZNE']);
+    expect(planGranic({ OMS_KANALY: '[]' }, new Date('2026-10-16T09:00:00Z')).plan.map((p) => p.kanal)).toEqual([
+      'B2B',
+      'DROPSHIPPING',
+      'RECZNE',
+    ]);
   });
   it('GDD pojawia się z tagGdd', () => {
-    expect(raporty({ OMS_HISTORIA_KLASYFIKACJA: historia({ tagGdd: 9 }) })).toEqual(['B2B', 'DROPSHIPPING', 'GDD', 'RECZNE']);
+    expect(raporty({ OMS_HISTORIA_KLASYFIKACJA: historia({ tagGdd: 9 }) })).toEqual([
+      'B2B',
+      'DROPSHIPPING',
+      'GDD',
+      'RECZNE',
+    ]);
   });
   it('INDYWIDUALNE: jawnie OMS_KANAL_INDYWIDUALNY=1, a bez wpisu — gdy historia ma prefiksy indywidualne', () => {
     expect(raporty({ OMS_KANAL_INDYWIDUALNY: '1' })).toEqual(['B2B', 'DROPSHIPPING', 'INDYWIDUALNE', 'RECZNE']);
-    expect(raporty({ OMS_HISTORIA_KLASYFIKACJA: historia({ prefiksyIndywidualne: ['28040|'] }) })).toEqual(['B2B', 'DROPSHIPPING', 'INDYWIDUALNE', 'RECZNE']);
+    expect(raporty({ OMS_HISTORIA_KLASYFIKACJA: historia({ prefiksyIndywidualne: ['28040|'] }) })).toEqual([
+      'B2B',
+      'DROPSHIPPING',
+      'INDYWIDUALNE',
+      'RECZNE',
+    ]);
     expect(kanalIndywidualnyWlaczony({})).toBe(false);
     expect(kanalIndywidualnyWlaczony({ OMS_KANAL_INDYWIDUALNY: '0' })).toBe(false);
   });
   it('sprzeczna albo błędna konfiguracja nie wstaje', () => {
-    expect(() => wczytajKlasyfikacje({ OMS_KANAL_INDYWIDUALNY: '0', OMS_HISTORIA_KLASYFIKACJA: historia({ prefiksyIndywidualne: ['28040|'] }) }, []))
-      .toThrow(/OMS_KANAL_INDYWIDUALNY/);
+    expect(() =>
+      wczytajKlasyfikacje(
+        { OMS_KANAL_INDYWIDUALNY: '0', OMS_HISTORIA_KLASYFIKACJA: historia({ prefiksyIndywidualne: ['28040|'] }) },
+        [],
+      ),
+    ).toThrow(/OMS_KANAL_INDYWIDUALNY/);
     expect(() => kanalIndywidualnyWlaczony({ OMS_KANAL_INDYWIDUALNY: 'tak' })).toThrow(/OMS_KANAL_INDYWIDUALNY/);
   });
   it('konfiguracja produkcji Pracownia Świetlik (fixture historii) — te same pięć kanałów algorytmicznych co przed wprowadzeniem kanałów warunkowych', () => {
@@ -37,19 +55,43 @@ describe('kanały raportowe GDD i INDYWIDUALNE tylko z konfiguracji', () => {
     for (const k of ['DROPSHIPPING', 'GDD', 'B2B', 'RECZNE', 'INDYWIDUALNE']) expect(r.has(k), k).toBe(true);
   });
   it('API panelu odmawia zamówienia z karty, gdy kanał indywidualny jest wyłączony', async () => {
-    const naglowki = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64'), origin: 'http://localhost', host: 'localhost' };
-    const cialo = { kartaId: 'karta-089', klient: { first_name: 'Jan', last_name: 'Testowy', email: 'jan@example.com', phone: '600000000' },
-      dostawa: { first_name: 'Jan', last_name: 'Testowy', address_1: 'Długa 1', postcode: '30-001', city: 'Kraków' }, nip: null, chceFakture: false,
-      kosztDostawyBrutto: '0.00', pozycje: [{ nazwa: 'Produkt', ilosc: 1, cena_brutto: '10.00' }] };
-    for (const [wartosc, kod] of [['0', 503], ['1', 201]] as const) {
+    const naglowki = {
+      authorization: 'Basic ' + Buffer.from('adam:x').toString('base64'),
+      origin: 'http://localhost',
+      host: 'localhost',
+    };
+    const cialo = {
+      kartaId: 'karta-089',
+      klient: { first_name: 'Jan', last_name: 'Testowy', email: 'jan@example.com', phone: '600000000' },
+      dostawa: { first_name: 'Jan', last_name: 'Testowy', address_1: 'Długa 1', postcode: '30-001', city: 'Kraków' },
+      nip: null,
+      chceFakture: false,
+      kosztDostawyBrutto: '0.00',
+      pozycje: [{ nazwa: 'Produkt', ilosc: 1, cena_brutto: '10.00' }],
+    };
+    for (const [wartosc, kod] of [
+      ['0', 503],
+      ['1', 201],
+    ] as const) {
       const db = openOmsDb(':memory:');
-      const app = buildOmsServer({ db, config: { auth: { user: 'adam', pass: 'x' }, klienciZbiorczy: [] }, env: { OMS_KANAL_INDYWIDUALNY: wartosc } });
+      const app = buildOmsServer({
+        db,
+        config: { auth: { user: 'adam', pass: 'x' }, klienciZbiorczy: [] },
+        env: { OMS_KANAL_INDYWIDUALNY: wartosc },
+      });
       await app.ready();
       try {
-        const r = await app.inject({ method: 'POST', url: '/api/zamowienia-z-karty', headers: naglowki, payload: cialo });
+        const r = await app.inject({
+          method: 'POST',
+          url: '/api/zamowienia-z-karty',
+          headers: naglowki,
+          payload: cialo,
+        });
         expect(r.statusCode, `${wartosc}: ${r.body}`).toBe(kod);
         expect((db.prepare('SELECT COUNT(*) AS n FROM zamowienia').get() as any).n).toBe(kod === 201 ? 1 : 0);
-      } finally { await app.close(); }
+      } finally {
+        await app.close();
+      }
     }
   });
 });

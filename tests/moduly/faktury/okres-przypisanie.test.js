@@ -2,7 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { przypiszDoOkresu } from '../../../src/moduly/faktury/services/okres.js';
 import {
-  zapewnijOkres, zamknijOkres, pobierzOkres, znajdzOkres, zamowieniaOkresu,
+  zapewnijOkres,
+  zamknijOkres,
+  pobierzOkres,
+  znajdzOkres,
+  zamowieniaOkresu,
 } from '../../../src/oms/db/okresy.js';
 import { STAN } from '../../../src/domena/okres-rozliczeniowy.js';
 import { parsujNoweZamowienie } from '../../../src/domena/nowe-zamowienie.js';
@@ -28,7 +32,9 @@ function bazaZKlientem(sciezka) {
 // Polska) oba wyliczenia mylily sie zgodnie i test przechodzil.
 function terazWarszawa() {
   const czesci = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Warsaw', year: 'numeric', month: '2-digit',
+    timeZone: 'Europe/Warsaw',
+    year: 'numeric',
+    month: '2-digit',
   }).formatToParts(new Date());
   const g = (t) => Number(czesci.find((x) => x.type === t).value);
   return { rok: g('year'), miesiac: g('month') };
@@ -41,7 +47,10 @@ describe('przypiszDoOkresu', () => {
   it('drop klienta zbiorczego dostaje okres z daty zlozenia', () => {
     const db = bazaZKlientem();
     const id = przypiszDoOkresu({
-      db, nip: '1234500011', dataZlozenia: '2026-07-31T20:00:00.000Z', hurt: false,
+      db,
+      nip: '1234500011',
+      dataZlozenia: '2026-07-31T20:00:00.000Z',
+      hurt: false,
     });
     const o = pobierzOkres(db, id);
     expect(o.rok).toBe(2026);
@@ -50,25 +59,40 @@ describe('przypiszDoOkresu', () => {
 
   it('HURT nie trafia do okresu wcale', () => {
     const db = bazaZKlientem();
-    expect(przypiszDoOkresu({
-      db, nip: '1234500011', dataZlozenia: '2026-07-15T10:00:00.000Z', hurt: true,
-    })).toBeNull();
+    expect(
+      przypiszDoOkresu({
+        db,
+        nip: '1234500011',
+        dataZlozenia: '2026-07-15T10:00:00.000Z',
+        hurt: true,
+      }),
+    ).toBeNull();
   });
 
   it('obcy klient nie trafia do okresu', () => {
     const db = bazaZKlientem();
-    expect(przypiszDoOkresu({
-      db, nip: '1234567890', dataZlozenia: '2026-07-15T10:00:00.000Z', hurt: false,
-    })).toBeNull();
+    expect(
+      przypiszDoOkresu({
+        db,
+        nip: '1234567890',
+        dataZlozenia: '2026-07-15T10:00:00.000Z',
+        hurt: false,
+      }),
+    ).toBeNull();
   });
 
   it('zamkniety okres ODMAWIA, zamiast cicho przeniesc na kolejny miesiac', () => {
     const db = bazaZKlientem();
     const o = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
     zamknijOkres(db, o.id);
-    expect(() => przypiszDoOkresu({
-      db, nip: '1234500011', dataZlozenia: '2026-07-20T10:00:00.000Z', hurt: false,
-    })).toThrow(/lipiec 2026/i);
+    expect(() =>
+      przypiszDoOkresu({
+        db,
+        nip: '1234500011',
+        dataZlozenia: '2026-07-20T10:00:00.000Z',
+        hurt: false,
+      }),
+    ).toThrow(/lipiec 2026/i);
   });
 
   // ⚠️ ODMOWA NIE MOZE ZOSTAWIC PO SOBIE OKRESU SIERPNIOWEGO. Gdyby straz stala PO
@@ -80,9 +104,14 @@ describe('przypiszDoOkresu', () => {
     zamknijOkres(db, o.id);
     try {
       przypiszDoOkresu({
-        db, nip: '1234500011', dataZlozenia: '2026-07-20T10:00:00.000Z', hurt: false,
+        db,
+        nip: '1234500011',
+        dataZlozenia: '2026-07-20T10:00:00.000Z',
+        hurt: false,
       });
-    } catch { /* odmowa sprawdzona wyzej */ }
+    } catch {
+      /* odmowa sprawdzona wyzej */
+    }
     expect(db.prepare('SELECT COUNT(*) AS ile FROM okresy_rozliczeniowe').get().ile).toBe(1);
     expect(pobierzOkres(db, o.id).stan).toBe(STAN.ZAMKNIETY);
   });
@@ -93,9 +122,14 @@ describe('przypiszDoOkresu', () => {
     const db = bazaZKlientem();
     const o = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
     db.prepare('UPDATE okresy_rozliczeniowe SET stan = ? WHERE id = ?').run(STAN.ZAFAKTUROWANY, o.id);
-    expect(() => przypiszDoOkresu({
-      db, nip: '1234500011', dataZlozenia: '2026-07-20T10:00:00.000Z', hurt: false,
-    })).toThrow(/lipiec 2026/i);
+    expect(() =>
+      przypiszDoOkresu({
+        db,
+        nip: '1234500011',
+        dataZlozenia: '2026-07-20T10:00:00.000Z',
+        hurt: false,
+      }),
+    ).toThrow(/lipiec 2026/i);
   });
 
   // Ten sam okres dla drugiego zamowienia z tego samego miesiaca — inaczej kazde zamowienie
@@ -103,10 +137,16 @@ describe('przypiszDoOkresu', () => {
   it('drugie zamowienie tego miesiaca trafia do TEGO SAMEGO okresu', () => {
     const db = bazaZKlientem();
     const a = przypiszDoOkresu({
-      db, nip: '1234500011', dataZlozenia: '2026-07-02T08:00:00.000Z', hurt: false,
+      db,
+      nip: '1234500011',
+      dataZlozenia: '2026-07-02T08:00:00.000Z',
+      hurt: false,
     });
     const b = przypiszDoOkresu({
-      db, nip: '123-450-00-11', dataZlozenia: '2026-07-29T08:00:00.000Z', hurt: false,
+      db,
+      nip: '123-450-00-11',
+      dataZlozenia: '2026-07-29T08:00:00.000Z',
+      hurt: false,
     });
     expect(b).toBe(a);
     expect(db.prepare('SELECT COUNT(*) AS ile FROM okresy_rozliczeniowe').get().ile).toBe(1);
@@ -117,18 +157,28 @@ describe('przypiszDoOkresu', () => {
   // takie zamowienie wyladowaloby na fakturze nie tego miesiaca, co trzeba.
   it('brak daty zlozenia RZUCA, zamiast wziac dzisiejsza', () => {
     const db = bazaZKlientem();
-    expect(() => przypiszDoOkresu({
-      db, nip: '1234500011', dataZlozenia: undefined, hurt: false,
-    })).toThrow(/data złożenia/i);
+    expect(() =>
+      przypiszDoOkresu({
+        db,
+        nip: '1234500011',
+        dataZlozenia: undefined,
+        hurt: false,
+      }),
+    ).toThrow(/data złożenia/i);
     expect(db.prepare('SELECT COUNT(*) AS ile FROM okresy_rozliczeniowe').get().ile).toBe(0);
   });
 
   // Baza bez ani jednego klienta zbiorczego to POPRAWNY tryb panelu, nie awaria — tak samo
   // jak do 24.08.2026 poprawnym trybem byl brak sekcji `OMS_KLIENCI_ZBIORCZY`.
   it('baza bez klientow zbiorczych nie wywala trasy', () => {
-    expect(przypiszDoOkresu({
-      db: openOmsDb(), nip: '1234500011', dataZlozenia: '2026-07-15T10:00:00.000Z', hurt: false,
-    })).toBeNull();
+    expect(
+      przypiszDoOkresu({
+        db: openOmsDb(),
+        nip: '1234500011',
+        dataZlozenia: '2026-07-15T10:00:00.000Z',
+        hurt: false,
+      }),
+    ).toBeNull();
   });
 
   // ⚠️ GRANICA, KTOREJ WCZESNIEJ NIE BYLO: klient JEST w bazie stalych klientow, ale nie ma
@@ -141,9 +191,14 @@ describe('przypiszDoOkresu', () => {
       oplata_obslugi_gr: null,
       oplata_kurierska_gr: null,
     });
-    expect(przypiszDoOkresu({
-      db, nip: '1234500011', dataZlozenia: '2026-07-15T10:00:00.000Z', hurt: false,
-    })).toBeNull();
+    expect(
+      przypiszDoOkresu({
+        db,
+        nip: '1234500011',
+        dataZlozenia: '2026-07-15T10:00:00.000Z',
+        hurt: false,
+      }),
+    ).toBeNull();
   });
 });
 
@@ -254,7 +309,9 @@ describe('trasa zakładania przypisuje okres', () => {
     const o = zapewnijOkres(db, { klientKlucz: 'przykladowa', ...terazWarszawa() });
     zamknijOkres(db, o.id);
     const r = await app.inject({
-      method: 'POST', url: '/zamowienia/nowe', headers: naglowek,
+      method: 'POST',
+      url: '/zamowienia/nowe',
+      headers: naglowek,
       payload: { f_nip: '1234500011', ...towar('100,00') },
     });
     expect(r.statusCode).toBe(400);

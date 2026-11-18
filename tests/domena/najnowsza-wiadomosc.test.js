@@ -24,7 +24,10 @@ import { najnowszaWiadomosc } from '../../src/domena/najnowsza-wiadomosc.js';
 // to zakład o niepisany szczegół cudzego API.
 
 const m = (createdAt, odKupujacego) => ({
-  id: `m_${createdAt}`, text: 't', createdAt, author: { isInterlocutor: odKupujacego },
+  id: `m_${createdAt}`,
+  text: 't',
+  createdAt,
+  author: { isInterlocutor: odKupujacego },
 });
 
 describe('najnowsza wiadomość wątku', () => {

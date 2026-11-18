@@ -9,14 +9,27 @@ afterAll(() => rmSync(katalog, { recursive: true, force: true }));
 
 function start(zmiany: Record<string, string> = {}, kod?: string) {
   // Wyłącznie systemowe env i fikcyjna konfiguracja; bez .env i integracji z powłoki.
-  const system = Object.fromEntries(Object.entries(process.env).filter(([k]) =>
-    /^(PATH|SystemRoot|WINDIR|TEMP|TMP|HOME|USERPROFILE)$/i.test(k)));
+  const system = Object.fromEntries(
+    Object.entries(process.env).filter(([k]) => /^(PATH|SystemRoot|WINDIR|TEMP|TMP|HOME|USERPROFILE)$/i.test(k)),
+  );
   const wynik = spawnSync(process.execPath, kod ? ['--input-type=module', '--eval', kod] : ['src/oms.js'], {
-    cwd: process.cwd(), encoding: 'utf8', timeout: 30_000,
-    env: { ...system, OMS_TRYB: 'produkcja', OMS_USER: 'operator', OMS_PASS: 'fikcyjne',
-      OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000',
-      OMS_PROFORMY_KATALOG: katalog, OMS_ETYKIETY_KATALOG: katalog,
-      OMS_DB_PATH: join(katalog, 'oms.sqlite'), OMS_PORT: '0', OMS_KLUCZ_SEKRETOW: KLUCZ_TESTOWY, ...zmiany },
+    cwd: process.cwd(),
+    encoding: 'utf8',
+    timeout: 30_000,
+    env: {
+      ...system,
+      OMS_TRYB: 'produkcja',
+      OMS_USER: 'operator',
+      OMS_PASS: 'fikcyjne',
+      OMS_SPRZEDAWCA_NIP: '1234563218',
+      OMS_RACHUNEK: '34109010140000000000000000',
+      OMS_PROFORMY_KATALOG: katalog,
+      OMS_ETYKIETY_KATALOG: katalog,
+      OMS_DB_PATH: join(katalog, 'oms.sqlite'),
+      OMS_PORT: '0',
+      OMS_KLUCZ_SEKRETOW: KLUCZ_TESTOWY,
+      ...zmiany,
+    },
   });
   expect(wynik.error).toBeUndefined();
   expect(wynik.signal).toBeNull();
@@ -34,14 +47,20 @@ function komunikat(stderr: string, zmienna: string) {
 
 describe('komunikaty rzeczywistego procesu startu', () => {
   it.each([
-    ['OMS_TRUST_PROXY', 'true'], ['OMS_TRYB', 'nieznany'],
+    ['OMS_TRUST_PROXY', 'true'],
+    ['OMS_TRYB', 'nieznany'],
     // Pusty NIP przestał być błędem (NIP w panelu) — odmowę sprawdzamy na złej cyfrze kontrolnej.
-    ['OMS_USER', ''], ['OMS_SPRZEDAWCA_NIP', '1234563219'], ['OMS_KANALY', '{'],
+    ['OMS_USER', ''],
+    ['OMS_SPRZEDAWCA_NIP', '1234563219'],
+    ['OMS_KANALY', '{'],
   ])('%s: czytelna odmowa bez stosu', (zmienna, wartosc) => {
     komunikat(start({ [zmienna]: wartosc }), zmienna);
   });
 
-  it.each([['brak', ''], ['zła postać', 'za-krotki-klucz']])('klucz poświadczeń %s: czytelna odmowa bez stosu, bazy nie ma', (_, wartosc) => {
+  it.each([
+    ['brak', ''],
+    ['zła postać', 'za-krotki-klucz'],
+  ])('klucz poświadczeń %s: czytelna odmowa bez stosu, bazy nie ma', (_, wartosc) => {
     const plik = join(katalog, `bez-klucza-${wartosc.length}.sqlite`);
     komunikat(start({ OMS_KLUCZ_SEKRETOW: wartosc, OMS_DB_PATH: plik }), 'OMS_KLUCZ_SEKRETOW');
     expect(existsSync(plik)).toBe(false);
@@ -62,13 +81,19 @@ describe('komunikaty rzeczywistego procesu startu', () => {
   });
 
   it('brak prawa zapisu katalogu: wskazuje OMS_DB_PATH', () => {
-    komunikat(start({}, `
+    komunikat(
+      start(
+        {},
+        `
       import fs from 'node:fs';
       import { syncBuiltinESMExports } from 'node:module';
       fs.accessSync = () => { throw Object.assign(new Error('odmowa-fixture'), { code: 'EACCES' }); };
       syncBuiltinESMExports();
       await import('./src/oms.js');
-    `), 'OMS_DB_PATH');
+    `,
+      ),
+      'OMS_DB_PATH',
+    );
   });
 
   it('nieoczekiwana awaria SQLite zachowuje stos', () => {
@@ -80,11 +105,14 @@ describe('komunikaty rzeczywistego procesu startu', () => {
   });
 
   it.each(['Error', 'TypeError'])('nieoczekiwany %s konfiguratora zachowuje stos i przyczynę', (typ) => {
-    const stderr = start({}, `
+    const stderr = start(
+      {},
+      `
       import { MODULY } from './src/moduly/lista.ts';
       MODULY.find(m => m.nazwa === 'rdzen').konfiguracja = () => { throw new ${typ}('awaria-fixture'); };
       await import('./src/oms.js');
-    `);
+    `,
+    );
     expect(stderr).toContain('awaria-fixture');
     expect(stderr).toMatch(/^\s+at /m);
     expect(stderr).not.toContain('Błąd konfiguracji:');

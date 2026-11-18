@@ -1,39 +1,59 @@
 import { describe, it, expect } from 'vitest';
-import { czyPobranieRozliczone, czyPaczkaBezGotowki, dataZaplatyPobrania } from '../../src/domena/pobranie-zaplacone.js';
+import {
+  czyPobranieRozliczone,
+  czyPaczkaBezGotowki,
+  dataZaplatyPobrania,
+} from '../../src/domena/pobranie-zaplacone.js';
 import { etapPrzesylki } from '../../src/domena/etap-przesylki.js';
 
 const zamPobranie = (nadpisz) => ({ pobranie: 1, wysylka_reczna_json: null, ...nadpisz });
-const doreczona = { status_kuriera: 'Przesyłka doręczona', status_kuriera_kod: null, status_kuriera_at: '2026-08-25T14:20:00.000' };
+const doreczona = {
+  status_kuriera: 'Przesyłka doręczona',
+  status_kuriera_kod: null,
+  status_kuriera_at: '2026-08-25T14:20:00.000',
+};
 
 describe('czy pobranie jest rozliczone', () => {
   it('pobranie z doręczoną paczką i fakturą jest rozliczone', () => {
-    expect(czyPobranieRozliczone({
-      zamowienie: zamPobranie(), przesylka: doreczona, uuidFaktury: 'u-1',
-    })).toBe(true);
+    expect(
+      czyPobranieRozliczone({
+        zamowienie: zamPobranie(),
+        przesylka: doreczona,
+        uuidFaktury: 'u-1',
+      }),
+    ).toBe(true);
   });
 
   // ⚠️⚠️ TO JEST CAŁY SENS TEJ REGUŁY. „Pobranie = opłacone" byłoby fałszem: paczka
   // nieodebrana wraca zwrotem i pieniędzy NIE MA. Rozstrzyga DORĘCZENIE, nie metoda.
   it('zwrot NIE jest zapłatą', () => {
-    expect(czyPobranieRozliczone({
-      zamowienie: zamPobranie(),
-      przesylka: { status_kuriera: 'Zwrot do nadawcy', status_kuriera_kod: null },
-      uuidFaktury: 'u-1',
-    })).toBe(false);
+    expect(
+      czyPobranieRozliczone({
+        zamowienie: zamPobranie(),
+        przesylka: { status_kuriera: 'Zwrot do nadawcy', status_kuriera_kod: null },
+        uuidFaktury: 'u-1',
+      }),
+    ).toBe(false);
   });
 
   it('paczka w drodze nie jest zapłatą', () => {
-    expect(czyPobranieRozliczone({
-      zamowienie: zamPobranie(),
-      przesylka: { status_kuriera: 'Przyjęcie przesyłki w sortowni', status_kuriera_kod: null },
-      uuidFaktury: 'u-1',
-    })).toBe(false);
+    expect(
+      czyPobranieRozliczone({
+        zamowienie: zamPobranie(),
+        przesylka: { status_kuriera: 'Przyjęcie przesyłki w sortowni', status_kuriera_kod: null },
+        uuidFaktury: 'u-1',
+      }),
+    ).toBe(false);
   });
 
   it('brak statusu u kuriera nie jest zapłatą', () => {
-    expect(czyPobranieRozliczone({
-      zamowienie: zamPobranie(), przesylka: { status_kuriera: null, status_kuriera_kod: null }, uuidFaktury: 'u-1',
-    })).toBe(false);
+    expect(
+      czyPobranieRozliczone({
+        zamowienie: zamPobranie(),
+        przesylka: { status_kuriera: null, status_kuriera_kod: null },
+        uuidFaktury: 'u-1',
+      }),
+    ).toBe(false);
     expect(czyPobranieRozliczone({ zamowienie: zamPobranie(), przesylka: null, uuidFaktury: 'u-1' })).toBe(false);
   });
 
@@ -44,16 +64,23 @@ describe('czy pobranie jest rozliczone', () => {
   // ⚠️ Wartość EFEKTYWNA, po ręcznych korektach. Zamówienie przełączone na przedpłatę
   // (klient zapłacił z góry) NIE jest pobraniem — kurier niczego nie inkasował.
   it('pobranie przełączone ręcznie na przedpłatę nie jest pobraniem', () => {
-    expect(czyPobranieRozliczone({
-      zamowienie: zamPobranie({ wysylka_reczna_json: JSON.stringify({ metoda: 'dpd', pobranie: 0 }) }),
-      przesylka: doreczona, uuidFaktury: 'u-1',
-    })).toBe(false);
+    expect(
+      czyPobranieRozliczone({
+        zamowienie: zamPobranie({ wysylka_reczna_json: JSON.stringify({ metoda: 'dpd', pobranie: 0 }) }),
+        przesylka: doreczona,
+        uuidFaktury: 'u-1',
+      }),
+    ).toBe(false);
   });
 
   it('zwykła przesyłka bez pobrania nie jest rozliczana tą drogą', () => {
-    expect(czyPobranieRozliczone({
-      zamowienie: { pobranie: 0, wysylka_reczna_json: null }, przesylka: doreczona, uuidFaktury: 'u-1',
-    })).toBe(false);
+    expect(
+      czyPobranieRozliczone({
+        zamowienie: { pobranie: 0, wysylka_reczna_json: null },
+        przesylka: doreczona,
+        uuidFaktury: 'u-1',
+      }),
+    ).toBe(false);
   });
 
   // ⚠️⚠️ `etapPrzesylki` łapie „nie doręczono" i
@@ -62,44 +89,56 @@ describe('czy pobranie jest rozliczone', () => {
   // czuwacza), tylko stawiamy własny bezpiecznik w ścieżce pieniędzy.
   describe('bezpiecznik nieudanego doręczenia', () => {
     it('„Nie doręczono — adresat nieobecny" nie jest zapłatą', () => {
-      expect(czyPobranieRozliczone({
-        zamowienie: zamPobranie(),
-        przesylka: { status_kuriera: 'Nie doręczono — adresat nieobecny', status_kuriera_kod: null },
-        uuidFaktury: 'u-1',
-      })).toBe(false);
+      expect(
+        czyPobranieRozliczone({
+          zamowienie: zamPobranie(),
+          przesylka: { status_kuriera: 'Nie doręczono — adresat nieobecny', status_kuriera_kod: null },
+          uuidFaktury: 'u-1',
+        }),
+      ).toBe(false);
     });
 
     it('„Nieudana próba doręczenia, odbiorca nieobecny" nie jest zapłatą', () => {
-      expect(czyPobranieRozliczone({
-        zamowienie: zamPobranie(),
-        przesylka: { status_kuriera: 'Nieudana próba doręczenia, odbiorca nieobecny', status_kuriera_kod: null },
-        uuidFaktury: 'u-1',
-      })).toBe(false);
+      expect(
+        czyPobranieRozliczone({
+          zamowienie: zamPobranie(),
+          przesylka: { status_kuriera: 'Nieudana próba doręczenia, odbiorca nieobecny', status_kuriera_kod: null },
+          uuidFaktury: 'u-1',
+        }),
+      ).toBe(false);
     });
 
     it('„Awizo pozostawione" nie jest zapłatą', () => {
-      expect(czyPobranieRozliczone({
-        zamowienie: zamPobranie(),
-        przesylka: { status_kuriera: 'Awizo pozostawione', status_kuriera_kod: null },
-        uuidFaktury: 'u-1',
-      })).toBe(false);
+      expect(
+        czyPobranieRozliczone({
+          zamowienie: zamPobranie(),
+          przesylka: { status_kuriera: 'Awizo pozostawione', status_kuriera_kod: null },
+          uuidFaktury: 'u-1',
+        }),
+      ).toBe(false);
     });
 
     // Bezpiecznik nie może zjeść poprawnego przypadku — „Przesyłka doręczona" dalej płaci.
     it('„Przesyłka doręczona" dalej jest zapłatą — bezpiecznik nie łapie prawdziwego doręczenia', () => {
-      expect(czyPobranieRozliczone({
-        zamowienie: zamPobranie(), przesylka: doreczona, uuidFaktury: 'u-1',
-      })).toBe(true);
+      expect(
+        czyPobranieRozliczone({
+          zamowienie: zamPobranie(),
+          przesylka: doreczona,
+          uuidFaktury: 'u-1',
+        }),
+      ).toBe(true);
     });
 
     // Kod maszynowy Allegro rozstrzyga i opis go nie rusza — nawet gdy opis brzmi jak
     // nieudane doręczenie (np. dołączony po polsku obok kodu, który jednak mówi co innego).
     it('kod DELIVERED rozstrzyga mimo opisu brzmiącego jak nieudane doręczenie', () => {
-      expect(czyPobranieRozliczone({
-        zamowienie: zamPobranie(),
-        przesylka: { status_kuriera: 'Nieudana próba doręczenia', status_kuriera_kod: 'DELIVERED' },
-        uuidFaktury: 'u-1',
-      })).toBe(true);
+      expect(
+        czyPobranieRozliczone({
+          zamowienie: zamPobranie(),
+          przesylka: { status_kuriera: 'Nieudana próba doręczenia', status_kuriera_kod: 'DELIVERED' },
+          uuidFaktury: 'u-1',
+        }),
+      ).toBe(true);
     });
   });
 });
@@ -117,7 +156,9 @@ describe('czy przy paczce nie ma gotówki', () => {
 
   it('nieudane doręczenie to brak gotówki, choć etap mówi „doreczona"', () => {
     expect(etapPrzesylki('Nie doręczono — adresat nieobecny', null)).toBe('doreczona');
-    expect(czyPaczkaBezGotowki({ status_kuriera: 'Nie doręczono — adresat nieobecny', status_kuriera_kod: null })).toBe(true);
+    expect(czyPaczkaBezGotowki({ status_kuriera: 'Nie doręczono — adresat nieobecny', status_kuriera_kod: null })).toBe(
+      true,
+    );
     expect(czyPaczkaBezGotowki({ status_kuriera: 'Awizo pozostawione', status_kuriera_kod: null })).toBe(true);
   });
 
@@ -128,13 +169,17 @@ describe('czy przy paczce nie ma gotówki', () => {
   // ⚠️ „W drodze" to NIE jest ta odpowiedź: gotówki jeszcze nie ma, ale BĘDZIE — i właśnie
   // dlatego pas długów takiego dokumentu nie pokazuje.
   it('paczka w drodze i paczka bez statusu to NIE jest brak gotówki', () => {
-    expect(czyPaczkaBezGotowki({ status_kuriera: 'Przyjęcie przesyłki w sortowni', status_kuriera_kod: null })).toBe(false);
+    expect(czyPaczkaBezGotowki({ status_kuriera: 'Przyjęcie przesyłki w sortowni', status_kuriera_kod: null })).toBe(
+      false,
+    );
     expect(czyPaczkaBezGotowki({ status_kuriera: null, status_kuriera_kod: null })).toBe(false);
     expect(czyPaczkaBezGotowki(null)).toBe(false);
   });
 
   it('kod DELIVERED rozstrzyga mimo opisu brzmiącego jak nieudane doręczenie', () => {
-    expect(czyPaczkaBezGotowki({ status_kuriera: 'Nieudana próba doręczenia', status_kuriera_kod: 'DELIVERED' })).toBe(false);
+    expect(czyPaczkaBezGotowki({ status_kuriera: 'Nieudana próba doręczenia', status_kuriera_kod: 'DELIVERED' })).toBe(
+      false,
+    );
   });
 });
 

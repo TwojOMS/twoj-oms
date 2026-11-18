@@ -13,26 +13,40 @@ import { mapujZamowienie } from '../../src/domena/mapowanie.js';
 // payloady) — wtedy bez zmian, a wiersz domknie backfill (db/zamowienia.js).
 
 const surowe = (nad = {}) => ({
-  id: 1278, number: '1278', total: '174.80', status: 'processing',
-  payment_method: 'bacs', payment_method_title: 'Przelew tradycyjny',
-  billing: {}, shipping: {}, line_items: [], shipping_lines: [], meta_data: [],
+  id: 1278,
+  number: '1278',
+  total: '174.80',
+  status: 'processing',
+  payment_method: 'bacs',
+  payment_method_title: 'Przelew tradycyjny',
+  billing: {},
+  shipping: {},
+  line_items: [],
+  shipping_lines: [],
+  meta_data: [],
   ...nad,
 });
 
 describe('mapowanie dat Woo na UTC', () => {
   it('utworzone_at bierze date_created_gmt i doklada Z', () => {
-    const z = mapujZamowienie(surowe({
-      date_created: '2026-07-30T13:32:22',
-      date_created_gmt: '2026-07-30T11:32:22',
-    }), {});
+    const z = mapujZamowienie(
+      surowe({
+        date_created: '2026-07-30T13:32:22',
+        date_created_gmt: '2026-07-30T11:32:22',
+      }),
+      {},
+    );
     expect(z.utworzone_at).toBe('2026-07-30T11:32:22Z');
   });
 
   it('oplacone_at bierze date_paid_gmt i doklada Z', () => {
-    const z = mapujZamowienie(surowe({
-      date_paid: '2026-07-30T13:50:26',
-      date_paid_gmt: '2026-07-30T11:50:26',
-    }), {});
+    const z = mapujZamowienie(
+      surowe({
+        date_paid: '2026-07-30T13:50:26',
+        date_paid_gmt: '2026-07-30T11:50:26',
+      }),
+      {},
+    );
     expect(z.oplacone_at).toBe('2026-07-30T11:50:26Z');
   });
 

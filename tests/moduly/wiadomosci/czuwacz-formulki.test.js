@@ -4,7 +4,10 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszUstawienia } from '../../../src/oms/db/ustawienia.js';
 import { zapiszWatek, dowody, zapiszDowod, oznaczWyslane, zamknijWatek } from '../../../src/oms/db/allegro-watki.js';
 import { KLUCZE } from '../../../src/domena/ustawienia-formulki.js';
-import { createCzuwaczFormulki, MAKS_FORMULEK_NA_GODZINE } from '../../../src/moduly/wiadomosci/services/czuwacz-formulki.js';
+import {
+  createCzuwaczFormulki,
+  MAKS_FORMULEK_NA_GODZINE,
+} from '../../../src/moduly/wiadomosci/services/czuwacz-formulki.js';
 
 // 2026-08-28 22:00Z = piatek 00:00 w Warszawie -> sobota. Uzywamy okna 18-8 i wszystkich dni.
 const TERAZ = new Date('2026-08-28T21:00:00Z'); // 23:00 Warszawa, piatek
@@ -12,10 +15,18 @@ const teraz = () => TERAZ;
 
 function baza({ wlaczona = '1', dni = '0,1,2,3,4,5,6', karencja = '10' } = {}) {
   const db = openOmsDb(':memory:');
-  zapiszUstawienia(db, {
-    [KLUCZE.wlaczony]: wlaczona, [KLUCZE.tresc]: 'Dziękujemy, odpiszemy rano.',
-    [KLUCZE.od]: '18', [KLUCZE.do]: '8', [KLUCZE.dni]: dni, [KLUCZE.karencja]: karencja,
-  }, TERAZ.toISOString());
+  zapiszUstawienia(
+    db,
+    {
+      [KLUCZE.wlaczony]: wlaczona,
+      [KLUCZE.tresc]: 'Dziękujemy, odpiszemy rano.',
+      [KLUCZE.od]: '18',
+      [KLUCZE.do]: '8',
+      [KLUCZE.dni]: dni,
+      [KLUCZE.karencja]: karencja,
+    },
+    TERAZ.toISOString(),
+  );
   return db;
 }
 
@@ -25,9 +36,16 @@ const PRZED_CHWILA = '2026-08-28T20:57:00Z'; // 3 minuty temu
 
 function dodajWatek(db, nadpisz = {}) {
   zapiszWatek(db, {
-    kanal: 'allegro_swietlik', threadId: 't1', interlocutorLogin: 'kup',
-    lastMessageDateTime: DAWNO, typ: 'COMMON', przeczytany: 0,
-    ostatniaOdKupujacego: 1, ostatniaTresc: 'pytanie', pobranyAt: DAWNO, ...nadpisz,
+    kanal: 'allegro_swietlik',
+    threadId: 't1',
+    interlocutorLogin: 'kup',
+    lastMessageDateTime: DAWNO,
+    typ: 'COMMON',
+    przeczytany: 0,
+    ostatniaOdKupujacego: 1,
+    ostatniaTresc: 'pytanie',
+    pobranyAt: DAWNO,
+    ...nadpisz,
   });
 }
 
@@ -35,24 +53,39 @@ function klientSzpieg(zachowanie = async () => ({ id: 'm1' })) {
   const wyslane = [];
   return {
     wyslane,
-    wyslijWiadomosc: async (threadId, tekst) => { wyslane.push({ threadId, tekst }); return zachowanie(); },
+    wyslijWiadomosc: async (threadId, tekst) => {
+      wyslane.push({ threadId, tekst });
+      return zachowanie();
+    },
   };
 }
 
-const czuwacz = (db, klient) => createCzuwaczFormulki({
-  db, klienci: { allegro_swietlik: klient }, teraz,
-});
+const czuwacz = (db, klient) =>
+  createCzuwaczFormulki({
+    db,
+    klienci: { allegro_swietlik: klient },
+    teraz,
+  });
 
 describe('autoresponder — czuwacz formulki', () => {
   it('blokada po reconnect nie rezerwuje dowodu; dopiero zatwierdzenie pozwala wysłać', async () => {
-    const db = baza(); dodajWatek(db); const k = klientSzpieg(); let wolno = false;
-    const c = createCzuwaczFormulki({db,klienci:{allegro_swietlik:k},teraz,wolnoZapisywac:()=>wolno});
-    await c.przebieg(); expect(k.wyslane).toEqual([]); expect(dowody(db,'allegro_swietlik','t1')).toEqual([]);
-    wolno = true; await c.przebieg(); expect(k.wyslane).toHaveLength(1); expect(dowody(db,'allegro_swietlik','t1')).toHaveLength(1);
+    const db = baza();
+    dodajWatek(db);
+    const k = klientSzpieg();
+    let wolno = false;
+    const c = createCzuwaczFormulki({ db, klienci: { allegro_swietlik: k }, teraz, wolnoZapisywac: () => wolno });
+    await c.przebieg();
+    expect(k.wyslane).toEqual([]);
+    expect(dowody(db, 'allegro_swietlik', 't1')).toEqual([]);
+    wolno = true;
+    await c.przebieg();
+    expect(k.wyslane).toHaveLength(1);
+    expect(dowody(db, 'allegro_swietlik', 't1')).toHaveLength(1);
     db.close();
   });
   it('wysyla formulke, gdy wszystkie warunki sa spelnione', async () => {
-    const db = baza(); dodajWatek(db);
+    const db = baza();
+    dodajWatek(db);
     const k = klientSzpieg();
     const wynik = await czuwacz(db, k).przebieg();
 
@@ -61,14 +94,16 @@ describe('autoresponder — czuwacz formulki', () => {
   });
 
   it('NIE wysyla, gdy autoresponder jest wylaczony', async () => {
-    const db = baza({ wlaczona: '0' }); dodajWatek(db);
+    const db = baza({ wlaczona: '0' });
+    dodajWatek(db);
     const k = klientSzpieg();
     await czuwacz(db, k).przebieg();
     expect(k.wyslane).toEqual([]);
   });
 
   it('NIE wysyla, gdy ostatnia wiadomosc jest NASZA', async () => {
-    const db = baza(); dodajWatek(db, { ostatniaOdKupujacego: 0 });
+    const db = baza();
+    dodajWatek(db, { ostatniaOdKupujacego: 0 });
     const k = klientSzpieg();
     await czuwacz(db, k).przebieg();
     expect(k.wyslane).toEqual([]);
@@ -76,29 +111,37 @@ describe('autoresponder — czuwacz formulki', () => {
 
   it('NIE wysyla, gdy wiadomosc PRZYSZLA poza oknem godzin', async () => {
     // 10:00 Warszawy — poza oknem 18-8, mimo ze czuwacz chodzi o 23:00.
-    const db = baza(); dodajWatek(db, { lastMessageDateTime: '2026-08-28T08:00:00Z' });
+    const db = baza();
+    dodajWatek(db, { lastMessageDateTime: '2026-08-28T08:00:00Z' });
     const k = klientSzpieg();
     await czuwacz(db, k).przebieg();
     expect(k.wyslane).toEqual([]);
   });
 
   it('NIE wysyla przed uplywem karencji', async () => {
-    const db = baza(); dodajWatek(db, { lastMessageDateTime: PRZED_CHWILA });
+    const db = baza();
+    dodajWatek(db, { lastMessageDateTime: PRZED_CHWILA });
     const k = klientSzpieg();
     await czuwacz(db, k).przebieg();
     expect(k.wyslane).toEqual([]);
   });
 
   it('NIE wysyla na watek POST_PURCHASE_ISSUE — formulka nigdy nie idzie na spor', async () => {
-    const db = baza(); dodajWatek(db, { typ: 'POST_PURCHASE_ISSUE' });
+    const db = baza();
+    dodajWatek(db, { typ: 'POST_PURCHASE_ISSUE' });
     const k = klientSzpieg();
     await czuwacz(db, k).przebieg();
     expect(k.wyslane).toEqual([]);
   });
 
   it('NIE wysyla drugi raz w tym samym watku — raz na watek, nigdy wiecej', async () => {
-    const db = baza(); dodajWatek(db);
-    const { id } = zapiszDowod(db, { kanal: 'allegro_swietlik', threadId: 't1', rodzaj: 'formulka', tresc: 'stara' }, DAWNO);
+    const db = baza();
+    dodajWatek(db);
+    const { id } = zapiszDowod(
+      db,
+      { kanal: 'allegro_swietlik', threadId: 't1', rodzaj: 'formulka', tresc: 'stara' },
+      DAWNO,
+    );
     oznaczWyslane(db, id, DAWNO);
     const k = klientSzpieg();
     await czuwacz(db, k).przebieg();
@@ -107,8 +150,11 @@ describe('autoresponder — czuwacz formulki', () => {
 
   it('NIE wysyla drugi raz nawet po NIEUDANEJ probie — dowod zostaje', async () => {
     // ⚠️ To jest cala stawka bezpiecznika: przy zerwaniu po wyslaniu nie wiemy, czy doszlo.
-    const db = baza(); dodajWatek(db);
-    const padajacy = klientSzpieg(async () => { throw new Error('Allegro: HTTP 500 przy /messaging'); });
+    const db = baza();
+    dodajWatek(db);
+    const padajacy = klientSzpieg(async () => {
+      throw new Error('Allegro: HTTP 500 przy /messaging');
+    });
     await czuwacz(db, padajacy).przebieg();
     expect(padajacy.wyslane).toHaveLength(1);
 
@@ -118,7 +164,8 @@ describe('autoresponder — czuwacz formulki', () => {
   });
 
   it('dowod powstaje PRZED strzalem do Allegro', async () => {
-    const db = baza(); dodajWatek(db);
+    const db = baza();
+    dodajWatek(db);
     let bylDowodPrzedWyslaniem = false;
     const k = {
       wyslijWiadomosc: async () => {
@@ -131,8 +178,11 @@ describe('autoresponder — czuwacz formulki', () => {
   });
 
   it('nieudana wysylka zapisuje blad przy dowodzie', async () => {
-    const db = baza(); dodajWatek(db);
-    const k = klientSzpieg(async () => { throw new Error('Allegro: HTTP 500 przy /messaging'); });
+    const db = baza();
+    dodajWatek(db);
+    const k = klientSzpieg(async () => {
+      throw new Error('Allegro: HTTP 500 przy /messaging');
+    });
     const wynik = await czuwacz(db, k).przebieg();
     expect(dowody(db, 'allegro_swietlik', 't1')[0].blad).toContain('HTTP 500');
     expect(wynik.bledy).toHaveLength(1);
@@ -141,7 +191,11 @@ describe('autoresponder — czuwacz formulki', () => {
   it('BEZPIECZNIK: po pieciu formulkach w godzine czuwacz sie wstrzymuje', async () => {
     const db = baza();
     for (let i = 0; i < MAKS_FORMULEK_NA_GODZINE; i += 1) {
-      const { id } = zapiszDowod(db, { kanal: 'allegro_swietlik', threadId: `stary${i}`, rodzaj: 'formulka', tresc: 'x' }, '2026-08-28T20:50:00Z');
+      const { id } = zapiszDowod(
+        db,
+        { kanal: 'allegro_swietlik', threadId: `stary${i}`, rodzaj: 'formulka', tresc: 'x' },
+        '2026-08-28T20:50:00Z',
+      );
       oznaczWyslane(db, id, '2026-08-28T20:50:00Z');
     }
     dodajWatek(db);
@@ -153,9 +207,15 @@ describe('autoresponder — czuwacz formulki', () => {
   });
 
   it('drugi przebieg w trakcie pierwszego jest POMINIETY', async () => {
-    const db = baza(); dodajWatek(db);
+    const db = baza();
+    dodajWatek(db);
     let zwolnij;
-    const k = { wyslijWiadomosc: () => new Promise((res) => { zwolnij = () => res({ id: 'm' }); }) };
+    const k = {
+      wyslijWiadomosc: () =>
+        new Promise((res) => {
+          zwolnij = () => res({ id: 'm' });
+        }),
+    };
     const c = czuwacz(db, k);
     const pierwszy = c.przebieg();
     expect(await c.przebieg()).toEqual({ pominiety: true });
@@ -179,9 +239,9 @@ describe('autoresponder — czuwacz formulki', () => {
 describe('czuwacz formulki — gorna granica wieku wiadomosci', () => {
   // Okno 18-8 Warszawa, TERAZ = piatek 23:00 Warszawa. Wszystkie trzy chwile ponizej sa
   // W OKNIE i po karencji — jedyne, co je rozroznia, to WIEK.
-  const STARA_25H = '2026-08-27T20:00:00Z';   // czw 22:00 Warszawa — 25 h temu
-  const ROWNO_24H = '2026-08-27T21:00:00Z';   // czw 23:00 Warszawa — dokladnie 24 h temu
-  const SWIEZA_23H = '2026-08-27T22:00:00Z';  // pt  00:00 Warszawa — 23 h temu
+  const STARA_25H = '2026-08-27T20:00:00Z'; // czw 22:00 Warszawa — 25 h temu
+  const ROWNO_24H = '2026-08-27T21:00:00Z'; // czw 23:00 Warszawa — dokladnie 24 h temu
+  const SWIEZA_23H = '2026-08-27T22:00:00Z'; // pt  00:00 Warszawa — 23 h temu
 
   it('NIE wysyla formulki na wiadomosc starsza niz doba', async () => {
     const db = baza();

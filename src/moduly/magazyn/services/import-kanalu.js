@@ -12,21 +12,46 @@ import { kolejka } from './allegro-tresc-kart.js';
 // Kolejność = kolejność na ekranie. `wiaze` — łączy wiersz z kartą o tym samym SKU; `tworzy` — zakłada kartę,
 // gdy takiej nie ma; `aktualizuje` — przepisuje treść do kart już powiązanych.
 export const TYPY_IMPORTU = Object.freeze([
-  { klucz: 'powiaz', nazwa: 'Produkty są już w magazynie — tylko powiąż je z tym kanałem',
+  {
+    klucz: 'powiaz',
+    nazwa: 'Produkty są już w magazynie — tylko powiąż je z tym kanałem',
     opis: 'Łączy po SKU z istniejącymi kartami. Nie tworzy kart i nie zmienia ich treści.',
-    wiaze: true, tworzy: false, aktualizuje: false },
-  { klucz: 'czesc', nazwa: 'Część produktów jest w magazynie — powiąż istniejące i utwórz brakujące',
+    wiaze: true,
+    tworzy: false,
+    aktualizuje: false,
+  },
+  {
+    klucz: 'czesc',
+    nazwa: 'Część produktów jest w magazynie — powiąż istniejące i utwórz brakujące',
     opis: 'Łączy po SKU, a dla produktów bez karty zakłada nową. Treści istniejących kart nie zmienia.',
-    wiaze: true, tworzy: true, aktualizuje: false },
-  { klucz: 'pelny', nazwa: 'Pobierz nowe i zaktualizuj istniejące',
+    wiaze: true,
+    tworzy: true,
+    aktualizuje: false,
+  },
+  {
+    klucz: 'pelny',
+    nazwa: 'Pobierz nowe i zaktualizuj istniejące',
     opis: 'Łączy, zakłada brakujące karty i przepisuje treść z kanału. Pola wpisane ręcznie zostają.',
-    wiaze: true, tworzy: true, aktualizuje: true },
-  { klucz: 'aktualizuj', nazwa: 'Tylko zaktualizuj wcześniej zaimportowane',
+    wiaze: true,
+    tworzy: true,
+    aktualizuje: true,
+  },
+  {
+    klucz: 'aktualizuj',
+    nazwa: 'Tylko zaktualizuj wcześniej zaimportowane',
     opis: 'Przepisuje treść do kart już powiązanych z tym kanałem. Nowych nie łączy i nie zakłada.',
-    wiaze: false, tworzy: false, aktualizuje: true },
-  { klucz: 'nowe', nazwa: 'Tylko pobierz nowe (bez aktualizacji)',
+    wiaze: false,
+    tworzy: false,
+    aktualizuje: true,
+  },
+  {
+    klucz: 'nowe',
+    nazwa: 'Tylko pobierz nowe (bez aktualizacji)',
     opis: 'Zakłada karty dla produktów, których w magazynie nie ma. Istniejących kart nie rusza.',
-    wiaze: false, tworzy: true, aktualizuje: false },
+    wiaze: false,
+    tworzy: true,
+    aktualizuje: false,
+  },
 ]);
 
 export const typImportu = (klucz) => TYPY_IMPORTU.find((t) => t.klucz === klucz) ?? null;
@@ -37,7 +62,8 @@ const POWOD_JEST_KARTA = 'karta z tym SKU już jest — ten typ tylko zakłada n
 const POWOD_KILKA_KART = 'kilka kart z tym SKU — powiąż ręcznie';
 
 // Wiersze lustra WYŁĄCZNIE wybranego kanału. To zawężenie jest treścią „część": drugi kanał zostaje nietknięty.
-const wierszeKanalu = (db, kanal) => db.prepare('SELECT * FROM produkty_sklepowe WHERE kanal = ? AND zniknal_at IS NULL ORDER BY id').all(kanal);
+const wierszeKanalu = (db, kanal) =>
+  db.prepare('SELECT * FROM produkty_sklepowe WHERE kanal = ? AND zniknal_at IS NULL ORDER BY id').all(kanal);
 
 /**
  * Plan importu jednego kanału. Czyta, nie zapisuje.
@@ -61,24 +87,42 @@ export function planImportu(db, { kanal, typ, kanalyZrodlowe, allegro, tresc = [
       if (typ.aktualizuje && !allegro && zTrescia.has(w.id)) doAktualizacji.add(w.karta_id);
       continue;
     }
-    if (!typ.wiaze && !typ.tworzy) { pominiete.push({ id: w.id, nazwa: w.nazwa, powod: POWOD_NIEZAIMPORTOWANY }); continue; }
+    if (!typ.wiaze && !typ.tworzy) {
+      pominiete.push({ id: w.id, nazwa: w.nazwa, powod: POWOD_NIEZAIMPORTOWANY });
+      continue;
+    }
     const sku = String(w.sku_sklepu ?? '').trim();
     // Drugi wiersz z SKU, dla którego ten import zakłada kartę: wiąże się z nią (każdy typ, który tworzy — to nie
     // jest „istniejąca karta"). Wykonanie bierze jej id z mapy `nowychKart` (karta powstaje dopiero w wykonaniu).
-    if (sku && nowychSku.has(sku)) { powiaz.push({ id: w.id, sku, zNowejKarty: true }); continue; }
+    if (sku && nowychSku.has(sku)) {
+      powiaz.push({ id: w.id, sku, zNowejKarty: true });
+      continue;
+    }
     // Karta po `karty_produktow.sku` albo po powiązanym lustrze innego kanału — tylko jedna.
     const znaleziona = kartaDoImportu(sku);
-    if (znaleziona?.kilka) { pominiete.push({ id: w.id, nazwa: w.nazwa, powod: POWOD_KILKA_KART }); continue; }
+    if (znaleziona?.kilka) {
+      pominiete.push({ id: w.id, nazwa: w.nazwa, powod: POWOD_KILKA_KART });
+      continue;
+    }
     const karta = znaleziona?.karta;
     if (karta) {
-      if (!typ.wiaze) { pominiete.push({ id: w.id, nazwa: w.nazwa, powod: POWOD_JEST_KARTA }); continue; }
+      if (!typ.wiaze) {
+        pominiete.push({ id: w.id, nazwa: w.nazwa, powod: POWOD_JEST_KARTA });
+        continue;
+      }
       powiaz.push({ id: w.id, sku, kartaId: karta.id });
       if (typ.aktualizuje && (allegro || zTrescia.has(w.id))) doAktualizacji.add(karta.id);
       continue;
     }
-    if (!typ.tworzy) { pominiete.push({ id: w.id, nazwa: w.nazwa, powod: POWOD_BEZ_KARTY }); continue; }
+    if (!typ.tworzy) {
+      pominiete.push({ id: w.id, nazwa: w.nazwa, powod: POWOD_BEZ_KARTY });
+      continue;
+    }
     const powod = powodPominiecia(w, kanalyZrodlowe);
-    if (powod) { pominiete.push({ id: w.id, nazwa: w.nazwa, powod }); continue; }
+    if (powod) {
+      pominiete.push({ id: w.id, nazwa: w.nazwa, powod });
+      continue;
+    }
     utworz.push(w);
     if (sku) nowychSku.add(sku);
   }
@@ -88,9 +132,17 @@ export function planImportu(db, { kanal, typ, kanalyZrodlowe, allegro, tresc = [
   const powody = new Map();
   for (const p of pominiete) powody.set(p.powod, (powody.get(p.powod) ?? 0) + 1);
   return {
-    powiaz, utworz, pominiete, juzPowiazane,
+    powiaz,
+    utworz,
+    pominiete,
+    juzPowiazane,
     powody: [...powody].map(([powod, ile]) => ({ powod, ile })),
-    liczby: { powiaze: powiaz.length, utworzy: utworz.length, zaktualizuje: doAktualizacji.size, pominie: pominiete.length },
+    liczby: {
+      powiaze: powiaz.length,
+      utworzy: utworz.length,
+      zaktualizuje: doAktualizacji.size,
+      pominie: pominiete.length,
+    },
   };
 }
 
@@ -99,7 +151,10 @@ export function planImportu(db, { kanal, typ, kanalyZrodlowe, allegro, tresc = [
  * po niej w tle (`trescAllegro.start`), zawężona do tego konta (i do nowych kart przy typach bez aktualizacji).
  * @returns {{liczby: object, powody: Array, juzPowiazane: number, nowe: number[], trescAllegro: 'ruszyla'|'zajeta'|'niedostepna'|null}}
  */
-export function wykonajImport(db, { kanal, typ, kanalyZrodlowe, allegro, tresc = [], trescAllegro = null, teraz = () => new Date().toISOString() }) {
+export function wykonajImport(
+  db,
+  { kanal, typ, kanalyZrodlowe, allegro, tresc = [], trescAllegro = null, teraz = () => new Date().toISOString() },
+) {
   const at = teraz();
   const nowe = [];
   let plan;
@@ -138,11 +193,21 @@ export function wykonajImport(db, { kanal, typ, kanalyZrodlowe, allegro, tresc =
 
   let stanTresci = null;
   if (allegro && trescAllegro) {
-    const zakres = typ.aktualizuje ? (plan.liczby.zaktualizuje > 0 ? { kanaly: [kanal] } : null)
-      : (nowe.length ? { kanaly: [kanal], karty: nowe } : null);
+    const zakres = typ.aktualizuje
+      ? plan.liczby.zaktualizuje > 0
+        ? { kanaly: [kanal] }
+        : null
+      : nowe.length
+        ? { kanaly: [kanal], karty: nowe }
+        : null;
     // „zajeta" tylko, gdy przebieg treści naprawdę trwa; konto bez odczytu ofert to „niedostepna".
     if (zakres && trescAllegro.gotowy?.() === false) stanTresci = 'niedostepna';
-    else if (zakres) stanTresci = trescAllegro.start(zakres)?.wystartowal ? 'ruszyla' : (trescAllegro.stan?.().trwa ? 'zajeta' : 'niedostepna');
+    else if (zakres)
+      stanTresci = trescAllegro.start(zakres)?.wystartowal
+        ? 'ruszyla'
+        : trescAllegro.stan?.().trwa
+          ? 'zajeta'
+          : 'niedostepna';
   }
   return { liczby: plan.liczby, powody: plan.powody, juzPowiazane: plan.juzPowiazane, nowe, trescAllegro: stanTresci };
 }

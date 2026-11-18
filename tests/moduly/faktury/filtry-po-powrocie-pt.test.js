@@ -3,14 +3,28 @@ import { nowyPanel, jako, get, post } from '../../pomoc/panel-konta-testowe.js';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
 
 let p;
-afterEach(async () => { if (p) { await p.app.close(); p.db.close(); p = null; } vi.restoreAllMocks(); });
+afterEach(async () => {
+  if (p) {
+    await p.app.close();
+    p.db.close();
+    p = null;
+  }
+  vi.restoreAllMocks();
+});
 function panel() {
   vi.spyOn(globalThis, 'fetch').mockRejectedValue(Error('Sieć zabroniona'));
   const odmowa = Object.assign(new Error('Brak dokumentów'), { dlaOperatora: true });
   p = nowyPanel({
-    wysylkaKsef: { podglad: async () => ({ doWyslania: [{ uuid: 'u1', number: 'FV/1' }], pominiete: [], dokumenty: [] }),
-      wyslij: async () => ({ wyslane: [], pominiete: [], niepewne: [] }) },
-    paczkaDlaBiura: { zbuduj: async () => { throw odmowa; }, zbudujZaznaczone: vi.fn() },
+    wysylkaKsef: {
+      podglad: async () => ({ doWyslania: [{ uuid: 'u1', number: 'FV/1' }], pominiete: [], dokumenty: [] }),
+      wyslij: async () => ({ wyslane: [], pominiete: [], niepewne: [] }),
+    },
+    paczkaDlaBiura: {
+      zbuduj: async () => {
+        throw odmowa;
+      },
+      zbudujZaznaczone: vi.fn(),
+    },
   });
   zalozKonto(p.db, { login: 'test', imie: 'Test', haslo: 'h', rola: 'sprzedaz' });
   ustawUprawnienia(p.db, kontoPoLoginie(p.db, 'test').id, ['faktury']);
@@ -30,7 +44,12 @@ describe('filtry po powrocie z faktur', () => {
     expect(r.body).toContain('&amp;typ=korekta&amp;platnosc=niezaplacona');
     const bez = await post(app, '/faktury/ksef/podglad', headers, { ...baza, uuid: 'u1' });
     expect(bez.body).not.toContain('name="typ"');
-    const zly = await post(app, '/faktury/ksef/podglad', headers, { ...baza, uuid: 'u1', typ: 'zle"><x', platnosc: 'tak' });
+    const zly = await post(app, '/faktury/ksef/podglad', headers, {
+      ...baza,
+      uuid: 'u1',
+      typ: 'zle"><x',
+      platnosc: 'tak',
+    });
     expect(zly.body).not.toContain('name="typ"');
     expect(zly.body).not.toContain('name="platnosc"');
     const wynik = await post(app, '/faktury/ksef/wyslij', headers, dane);

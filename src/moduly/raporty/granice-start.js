@@ -12,8 +12,8 @@ const DATA = /^\d{4}-\d{2}-\d{2}$/;
  * DROPSHIPPING i kanał tagu klienta (tagGdd) — z panelu, z datą chwili założenia (dziś > wczoraj), więc bez źródeł.
  */
 function zrodlaKanalu(kanal, zrodla) {
-  if (kanal === 'INDYWIDUALNE') return zrodla.filter(z => z.typ === 'woo');
-  return zrodla.filter(z => z.raport === kanal);
+  if (kanal === 'INDYWIDUALNE') return zrodla.filter((z) => z.typ === 'woo');
+  return zrodla.filter((z) => z.raport === kanal);
 }
 
 /**
@@ -30,14 +30,17 @@ export function planGranicDlaRaportow(config, teraz = new Date()) {
   const plan = [];
   const pominiete = [];
   for (const kanal of [...klasyfikacja.raporty].sort()) {
-    if (historyczne.has(kanal)) { pominiete.push(kanal); continue; }
+    if (historyczne.has(kanal)) {
+      pominiete.push(kanal);
+      continue;
+    }
     const zrodla = zrodlaKanalu(kanal, config.zrodlaKanalow);
     let doDnia = wczoraj;
     const braki = [];
     for (const z of zrodla) {
       const odPoprawne = DATA.test(z.od);
       if (odPoprawne && dzienPrzed(z.od) < doDnia) doDnia = dzienPrzed(z.od);
-      const klucze = z.braki.filter(n => n !== `${z.prefiks}_OD`);
+      const klucze = z.braki.filter((n) => n !== `${z.prefiks}_OD`);
       if (!odPoprawne) braki.push(`brak ${z.prefiks}_OD`);
       if (klucze.length) braki.push(`niepełna konfiguracja (brak ${klucze.join(', ')})`);
     }
@@ -65,13 +68,18 @@ export function zalozGraniceDlaRaportow(db, config, teraz = new Date(), log = ()
     if (istniejace.has(kanal)) continue;
     if (!automat) {
       doRecznego.push(kanal);
-      log(`raporty: kanał ${kanal}: granica do założenia ręcznie (\`--granice\`) po pierwszym pobraniu zamówień — ${powod}`);
+      log(
+        `raporty: kanał ${kanal}: granica do założenia ręcznie (\`--granice\`) po pierwszym pobraniu zamówień — ${powod}`,
+      );
       continue;
     }
-    try { inicjalizujGraniceBezHistorii(db, kanal, doDnia, klasyfikacja); }
-    catch (e) {
+    try {
+      inicjalizujGraniceBezHistorii(db, kanal, doDnia, klasyfikacja);
+    } catch (e) {
       odmowy.push(kanal);
-      log(`raporty: granice raportów — nie udało się założyć ${kanal}=${doDnia}: ${e instanceof Error ? e.message : e}`);
+      log(
+        `raporty: granice raportów — nie udało się założyć ${kanal}=${doDnia}: ${e instanceof Error ? e.message : e}`,
+      );
       continue;
     }
     zalozone.push(`${kanal}=${doDnia}`);
@@ -88,15 +96,20 @@ export function zalozGraniceDlaRaportow(db, config, teraz = new Date(), log = ()
 export function zalozGranice(db, env, teraz = new Date()) {
   const { plan, pominiete, klasyfikacja } = planGranic(env, teraz);
   const istniejace = granice(db);
-  const brakujace = plan.filter(p => !istniejace.has(p.kanal));
-  const zPlanu = new Map(brakujace.map(p => [p.kanal, p.doDnia]));
-  const pierwsze = brakujace.length ? pierwszeDniOms(db, klasyfikacja, kanal => zPlanu.get(kanal) ?? null) : new Map();
+  const brakujace = plan.filter((p) => !istniejace.has(p.kanal));
+  const zPlanu = new Map(brakujace.map((p) => [p.kanal, p.doDnia]));
+  const pierwsze = brakujace.length
+    ? pierwszeDniOms(db, klasyfikacja, (kanal) => zPlanu.get(kanal) ?? null)
+    : new Map();
   const zalozone = [];
   for (const { kanal, doDnia: planowany } of brakujace) {
     const pierwszy = pierwsze.get(kanal);
     const doDnia = pierwszy && dzienPrzed(pierwszy) < planowany ? dzienPrzed(pierwszy) : planowany;
-    try { inicjalizujGraniceBezHistorii(db, kanal, doDnia, klasyfikacja); }
-    catch (e) { throw new Error(`PRODUKCJA_GRANICA_ODMOWA ${kanal} ${doDnia}: ${e instanceof Error ? e.message : e}`); }
+    try {
+      inicjalizujGraniceBezHistorii(db, kanal, doDnia, klasyfikacja);
+    } catch (e) {
+      throw new Error(`PRODUKCJA_GRANICA_ODMOWA ${kanal} ${doDnia}: ${e instanceof Error ? e.message : e}`);
+    }
     zalozone.push(`${kanal}=${doDnia}`);
   }
   return { zalozone, pominiete };

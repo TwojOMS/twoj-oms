@@ -1,17 +1,32 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../src/oms/db/db.ts';
 import {
-  zapiszHistorie, historiaWOknie, ustawGranice, granice,
-  wczytajKursorImportu, zapiszKursorImportu,
+  zapiszHistorie,
+  historiaWOknie,
+  ustawGranice,
+  granice,
+  wczytajKursorImportu,
+  zapiszKursorImportu,
 } from '../../src/oms/db/historia-sprzedazy.js';
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 
 const zam = (n) => ({
-  apiloId: n, platformAccountId: 9, numer: n, dzien: '2026-01-05',
-  utworzoneAt: '2026-01-05T10:00:00.000Z', brutto: '123.00', waluta: 'PLN',
-  status: 15, paymentStatus: 2, tagi: [3], klientEmail: 'a@b.pl', klientNazwa: 'A',
+  apiloId: n,
+  platformAccountId: 9,
+  numer: n,
+  dzien: '2026-01-05',
+  utworzoneAt: '2026-01-05T10:00:00.000Z',
+  brutto: '123.00',
+  waluta: 'PLN',
+  status: 15,
+  paymentStatus: 2,
+  tagi: [3],
+  klientEmail: 'a@b.pl',
+  klientNazwa: 'A',
   faktura: 1,
   pozycje: [{ nazwa: 'Szablon', sku: 'S1', originalCode: '1|2', ilosc: 2, bruttoLinii: '100.00', typ: 1 }],
 });
@@ -41,14 +56,16 @@ describe('historia sprzedazy', () => {
     // przeszly (kazdy `run()` to osobny autocommit), wiec baza zostalaby z brutto=999.00
     // i JEDNA pozycja ("OK") zamiast oryginalnego "Szablon" — naglowek klamalby o wlasnych
     // pozycjach, a suma zamowienia bylaby INNA niz przed nieudana proba.
-    expect(() => zapiszHistorie(db, {
-      ...zam('A'),
-      brutto: '999.00',
-      pozycje: [
-        { nazwa: 'OK', sku: null, originalCode: null, ilosc: 1, bruttoLinii: '50.00', typ: 1 },
-        { nazwa: 'ZLA', sku: null, originalCode: null, ilosc: null, bruttoLinii: '50.00', typ: 1 },
-      ],
-    })).toThrow(/NOT NULL/);
+    expect(() =>
+      zapiszHistorie(db, {
+        ...zam('A'),
+        brutto: '999.00',
+        pozycje: [
+          { nazwa: 'OK', sku: null, originalCode: null, ilosc: 1, bruttoLinii: '50.00', typ: 1 },
+          { nazwa: 'ZLA', sku: null, originalCode: null, ilosc: null, bruttoLinii: '50.00', typ: 1 },
+        ],
+      }),
+    ).toThrow(/NOT NULL/);
     // Rollback ma przywrocic DOKLADNIE stary stan — nie „naglowek bez pozycji", tylko stan
     // sprzed tej wywolania w calosci: stare brutto i stara, jedyna pozycja.
     const [w] = historiaWOknie(db, '2026-01-01', '2026-01-31');
@@ -61,8 +78,7 @@ describe('historia sprzedazy', () => {
     zapiszHistorie(db, { ...zam('A'), dzien: '2026-01-01' });
     zapiszHistorie(db, { ...zam('B'), dzien: '2026-01-31' });
     zapiszHistorie(db, { ...zam('C'), dzien: '2026-02-01' });
-    expect(historiaWOknie(db, '2026-01-01', '2026-01-31').map((w) => w.apilo_id))
-      .toEqual(['A', 'B']);
+    expect(historiaWOknie(db, '2026-01-01', '2026-01-31').map((w) => w.apilo_id)).toEqual(['A', 'B']);
   });
 
   it('granice zapisuja sie i czytaja jako mapa', () => {
@@ -79,20 +95,21 @@ describe('historia sprzedazy', () => {
   });
 
   it('WIERSZ APILO NIE MOZE NIESC KLUCZA SKLEPOWEGO — dwie przestrzenie id w jednym PK', () => {
-    expect(() => zapiszHistorie(db, { ...zam('woo:swietlik:28225'), zrodlo: 'apilo' }))
-      .toThrow(/klucz sklepowy/);
+    expect(() => zapiszHistorie(db, { ...zam('woo:swietlik:28225'), zrodlo: 'apilo' })).toThrow(/klucz sklepowy/);
   });
 
   it('WIERSZ SKLEPOWY MUSI NIESC PREFIKS — inaczej nadpisze zamowienie z Apilo', () => {
-    expect(() => zapiszHistorie(db, { ...zam('28225'), zrodlo: 'woo:swietlik' }))
-      .toThrow(/musi miec klucz/);
+    expect(() => zapiszHistorie(db, { ...zam('28225'), zrodlo: 'woo:swietlik' })).toThrow(/musi miec klucz/);
   });
 
   it('zapisuje zrodlo i surowy status sklepu', () => {
     zapiszHistorie(db, {
-      ...zam('woo:swietlik:28225'), zrodlo: 'woo:swietlik', statusZrodla: 'completed',
+      ...zam('woo:swietlik:28225'),
+      zrodlo: 'woo:swietlik',
+      statusZrodla: 'completed',
     });
-    const w = db.prepare('SELECT zrodlo, status_zrodla FROM sprzedaz_historyczna WHERE apilo_id = ?')
+    const w = db
+      .prepare('SELECT zrodlo, status_zrodla FROM sprzedaz_historyczna WHERE apilo_id = ?')
       .get('woo:swietlik:28225');
     expect(w.zrodlo).toBe('woo:swietlik');
     expect(w.status_zrodla).toBe('completed');

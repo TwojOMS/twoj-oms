@@ -25,25 +25,31 @@ afterEach(async () => {
 async function przygotujDemo() {
   const siec = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Test: sieć zabroniona'));
   katalog = mkdtempSync(new URL('../../.tmp-erli-demo-metody-', import.meta.url));
-  const env = { ...ENV_DEMO, OMS_USER: 'test', OMS_PASS: 'fikcyjne',
-    OMS_PROFORMY_KATALOG: join(katalog, 'proformy'), OMS_ETYKIETY_KATALOG: join(katalog, 'etykiety') };
+  const env = {
+    ...ENV_DEMO,
+    OMS_USER: 'test',
+    OMS_PASS: 'fikcyjne',
+    OMS_PROFORMY_KATALOG: join(katalog, 'proformy'),
+    OMS_ETYKIETY_KATALOG: join(katalog, 'etykiety'),
+  };
   const moduly = modulyPiaskownicy(env, { baza: () => db });
   db = openOmsDb(':memory:', { moduly });
   wygenerujDaneDemo(db, { dzis: '2026-11-11', env });
-  aplikacja = await zbudujAplikacje({ db, env, moduly,
-    teraz: () => new Date('2026-11-11T12:00:00Z'), log: () => {} });
+  aplikacja = await zbudujAplikacje({ db, env, moduly, teraz: () => new Date('2026-11-11T12:00:00Z'), log: () => {} });
   return siec;
 }
 
 async function lista(kanal) {
-  const r = await aplikacja.app.inject({ url: `/?wszystkie=1&kanal=${kanal}`,
-    headers: { authorization: 'Basic ' + Buffer.from('test:fikcyjne').toString('base64') } });
+  const r = await aplikacja.app.inject({
+    url: `/?wszystkie=1&kanal=${kanal}`,
+    headers: { authorization: 'Basic ' + Buffer.from('test:fikcyjne').toString('base64') },
+  });
   expect(r.statusCode).toBe(200);
   return r.body;
 }
 
 function dostawa(html, numer) {
-  const wiersz = html.match(/<tr\b[^>]*>[\s\S]*?<\/tr>/g)?.find(w => w.includes(numer));
+  const wiersz = html.match(/<tr\b[^>]*>[\s\S]*?<\/tr>/g)?.find((w) => w.includes(numer));
   expect(wiersz, numer).toBeTruthy();
   return wiersz.match(/<td class="komorka-dostawa">([\s\S]*?)<\/td>/)[1];
 }
@@ -51,17 +57,23 @@ function dostawa(html, numer) {
 it('demo: lista po pollerze pokazuje nazwy dostaw ERLI, obie drogi i żadnej blokady nadania', async () => {
   const siec = await przygotujDemo();
   vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
-  zegary = uruchomZegary(aplikacja.zegary.filter(z => z.nazwa === 'poller'));
+  zegary = uruchomZegary(aplikacja.zegary.filter((z) => z.nazwa === 'poller'));
   await vi.advanceTimersByTimeAsync(120_000);
   const zamowienia = db.prepare("SELECT * FROM zamowienia WHERE sklep='erli_polcien' ORDER BY numer").all();
   expect(zamowienia).toHaveLength(30);
   // Ta baza nie ma lustra sklepu (demo je ma z generatora) — zakładamy je dla SKU pozycji ERLI.
-  const dodajDoLustra = db.prepare("INSERT INTO produkty_sklepowe (kanal, produkt_id, nazwa, sku_sklepu, miniatura, odczytane_at) VALUES ('polcien', ?, ?, ?, ?, '2026-11-11T12:00:00Z')");
-  for (const p of db.prepare("SELECT DISTINCT p.sku, p.nazwa FROM pozycje p JOIN zamowienia z ON z.id = p.zamowienie_id WHERE z.sklep = 'erli_polcien'").all()) {
+  const dodajDoLustra = db.prepare(
+    "INSERT INTO produkty_sklepowe (kanal, produkt_id, nazwa, sku_sklepu, miniatura, odczytane_at) VALUES ('polcien', ?, ?, ?, ?, '2026-11-11T12:00:00Z')",
+  );
+  for (const p of db
+    .prepare(
+      "SELECT DISTINCT p.sku, p.nazwa FROM pozycje p JOIN zamowienia z ON z.id = p.zamowienie_id WHERE z.sklep = 'erli_polcien'",
+    )
+    .all()) {
     dodajDoLustra.run(p.sku, p.nazwa, p.sku, `https://demo.twojoms.pl/public/demo-produkty/${p.sku}.jpg`);
   }
   const html = await lista('erli_polcien');
-  const komorki = zamowienia.map(z => dostawa(html, z.numer));
+  const komorki = zamowienia.map((z) => dostawa(html, z.numer));
   // Dostawa ERLI jak u innych kanałów — plakietka przewoźnika, bez dopisku drogi.
   // Reguła: „w demo nie może takiego być” — żadne zamówienie demo nie ma nieznanej metody ani blokady nadania
   // (ostrzeżenie blokady sprawdzają karta-erli-nadanie, nadanie-erli-07c i lista-dostawa-erli-prz158 na kanale własnym).
@@ -71,8 +83,8 @@ it('demo: lista po pollerze pokazuje nazwy dostaw ERLI, obie drogi i żadnej blo
     expect(komorki[i]).toContain('class="nazwa-dostawy"');
     expect(komorki[i]).not.toContain('kurier z umowy');
   }
-  expect(komorki.some(k => k.includes('plakietka--erli'))).toBe(true);
-  expect(komorki.some(k => k.includes('plakietka--dpd'))).toBe(true);
+  expect(komorki.some((k) => k.includes('plakietka--erli'))).toBe(true);
+  expect(komorki.some((k) => k.includes('plakietka--dpd'))).toBe(true);
   expect(dostawa(html, 'PC-ERLI-0001')).toContain('title="Kurier DPD">Kurier DPD</span>');
   expect(dostawa(html, 'PC-ERLI-0002')).toContain('title="Kurier DPD (pobranie)">Kurier DPD (pobranie)</span>');
   expect(dostawa(html, 'PC-ERLI-0003')).toContain('title="Erli Paczkomat InPost">Erli Paczkomat InPost</span>');
@@ -82,8 +94,10 @@ it('demo: lista po pollerze pokazuje nazwy dostaw ERLI, obie drogi i żadnej blo
   // Pozycje ERLI (bez zdjęcia w zamówieniu) mają miniaturę produktu z lustra magazynu po SKU.
   const wiersze = html.match(/<tr\b[^>]*>[\s\S]*?<\/tr>/g) ?? [];
   for (const z of zamowienia) {
-    const wiersz = wiersze.find(w => w.includes(z.numer));
-    expect(wiersz, z.numer).toMatch(/<img class="mini" src="https:\/\/demo\.twojoms\.pl\/public\/demo-produkty\/[^"]+"/);
+    const wiersz = wiersze.find((w) => w.includes(z.numer));
+    expect(wiersz, z.numer).toMatch(
+      /<img class="mini" src="https:\/\/demo\.twojoms\.pl\/public\/demo-produkty\/[^"]+"/,
+    );
   }
   // Karta zamówienia i ekran nadania — ta sama droga (miniaturyEkranu).
   const auth = { authorization: 'Basic ' + Buffer.from('test:fikcyjne').toString('base64') };
@@ -92,11 +106,13 @@ it('demo: lista po pollerze pokazuje nazwy dostaw ERLI, obie drogi i żadnej blo
     expect(r.body, adres).toMatch(/src="https:\/\/demo\.twojoms\.pl\/public\/demo-produkty\/[^"]+"/);
   }
   const metodaKuriera = modulyKurierow.metodaKuriera;
-  vi.spyOn(modulyKurierow, 'metodaKuriera').mockImplementation(kurier =>
-    kurier === 'inpost_paczkomat' ? undefined : metodaKuriera(kurier));
-  expect(dostawa(await lista('erli_polcien'), 'PC-ERLI-0012'))
-    .toMatch(/<small>[^<]*OMS nie ma modułu tego kuriera[^<]*<\/small>/);
-  expect(zamowienia.every(z => z.metoda_wysylki === 'nieznana')).toBe(true);
+  vi.spyOn(modulyKurierow, 'metodaKuriera').mockImplementation((kurier) =>
+    kurier === 'inpost_paczkomat' ? undefined : metodaKuriera(kurier),
+  );
+  expect(dostawa(await lista('erli_polcien'), 'PC-ERLI-0012')).toMatch(
+    /<small>[^<]*OMS nie ma modułu tego kuriera[^<]*<\/small>/,
+  );
+  expect(zamowienia.every((z) => z.metoda_wysylki === 'nieznana')).toBe(true);
   expect(siec).not.toHaveBeenCalled();
 });
 
@@ -112,7 +128,9 @@ it.each([
 ])('lista: nazwa i title dla drogi %j, także przy pobraniu', async (droga, nazwa) => {
   const siec = await przygotujDemo();
   const { id, numer } = db.prepare('SELECT id,numer FROM zamowienia LIMIT 1').get();
-  db.prepare("UPDATE zamowienia SET sklep='erli_polcien', metoda_wysylki='nieznana', metoda_wysylki_nazwa='Surowa nazwa metody', pobranie=1 WHERE id=?").run(id);
+  db.prepare(
+    "UPDATE zamowienia SET sklep='erli_polcien', metoda_wysylki='nieznana', metoda_wysylki_nazwa='Surowa nazwa metody', pobranie=1 WHERE id=?",
+  ).run(id);
   vi.spyOn(kanalErli, 'drogaErliDlaZamowienia').mockReturnValue(droga);
   const komorka = dostawa(await lista('erli_polcien'), numer);
   if (droga?.droga === 'blokada') {
@@ -141,7 +159,9 @@ it('lista ERLI z wyłączonym pobieraniem pokazuje powód blokady zamiast odsył
 it('lista ERLI bez gotowych słowników pokazuje samą nazwę dostawy', async () => {
   const siec = await przygotujDemo();
   const { id } = db.prepare('SELECT id FROM zamowienia LIMIT 1').get();
-  db.prepare("UPDATE zamowienia SET sklep='erli_polcien', metoda_wysylki='nieznana', metoda_wysylki_nazwa='Dostawa przed synchronizacją' WHERE id=?").run(id);
+  db.prepare(
+    "UPDATE zamowienia SET sklep='erli_polcien', metoda_wysylki='nieznana', metoda_wysylki_nazwa='Dostawa przed synchronizacją' WHERE id=?",
+  ).run(id);
   const z = db.prepare('SELECT * FROM zamowienia WHERE id=?').get(id);
   const komorka = dostawa(await lista('erli_polcien'), z.numer);
   expect(komorka).toContain(z.metoda_wysylki_nazwa);
@@ -164,11 +184,11 @@ it('lista nadal ostrzega o nieznanej metodzie dla kanału spoza ERLI', async () 
 it('lista ERLI z ręcznie zmienioną metodą pokazuje tę metodę, nie drogę ERLI (jak nadanie)', async () => {
   await przygotujDemo();
   vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
-  zegary = uruchomZegary(aplikacja.zegary.filter(z => z.nazwa === 'poller'));
+  zegary = uruchomZegary(aplikacja.zegary.filter((z) => z.nazwa === 'poller'));
   await vi.advanceTimersByTimeAsync(120_000);
   const wiersze = db.prepare("SELECT id,numer FROM zamowienia WHERE sklep='erli_polcien' ORDER BY numer").all();
   const przed = await lista('erli_polcien');
-  const cel = wiersze.find(w => dostawa(przed, w.numer).includes('plakietka--erli'));
+  const cel = wiersze.find((w) => dostawa(przed, w.numer).includes('plakietka--erli'));
   expect(cel).toBeTruthy();
   db.prepare(`UPDATE zamowienia SET wysylka_reczna_json='{"metoda":"dpd"}' WHERE id=?`).run(cel.id);
   const komorka = dostawa(await lista('erli_polcien'), cel.numer);

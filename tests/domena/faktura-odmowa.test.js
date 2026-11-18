@@ -2,9 +2,17 @@ import { describe, it, expect } from 'vitest';
 import { powodOdmowyFaktury, powodOdmowyZaplaconej } from '../../src/domena/faktura-odmowa.js';
 
 const zam = (n) => ({
-  id: 1, numer: '3001', okres_rozliczeniowy_id: null, anulowane: 0, chce_fakture: 1,
-  nip: '1234563218', kwota_brutto: '123.00', pozycje: [], platnosci: [],
-  klient: { company: 'Pracownia Półcień', address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa', country: 'PL' }, ...n,
+  id: 1,
+  numer: '3001',
+  okres_rozliczeniowy_id: null,
+  anulowane: 0,
+  chce_fakture: 1,
+  nip: '1234563218',
+  kwota_brutto: '123.00',
+  pozycje: [],
+  platnosci: [],
+  klient: { company: 'Pracownia Półcień', address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
+  ...n,
 });
 
 describe('powod odmowy faktury', () => {
@@ -47,7 +55,9 @@ describe('powod odmowy faktury — opcja dla kazdego', () => {
   it('bez opcji i z dlaKazdego: false odmawia zamowieniu bez zadania dokladnie ta sama trescia', () => {
     expect(powodOdmowyFaktury(bezZadania())).toBe('Klient nie prosił o fakturę.');
     expect(powodOdmowyFaktury(bezZadania(), {})).toBe('Klient nie prosił o fakturę.');
-    expect(powodOdmowyFaktury(bezZadania(), { okresyWlaczone: true, dlaKazdego: false })).toBe('Klient nie prosił o fakturę.');
+    expect(powodOdmowyFaktury(bezZadania(), { okresyWlaczone: true, dlaKazdego: false })).toBe(
+      'Klient nie prosił o fakturę.',
+    );
   });
 
   it('z dlaKazdego: true przepuszcza zamowienie bez zadania', () => {
@@ -55,11 +65,7 @@ describe('powod odmowy faktury — opcja dla kazdego', () => {
   });
 
   it('z dlaKazdego: true nadal odmawia anulowanemu, scalonemu i z okresu — ta sama tresc co bez opcji', () => {
-    for (const n of [
-      { anulowane: 1 },
-      { scalone_do: 9, scalone_do_numer: '3009' },
-      { okres_rozliczeniowy_id: 7 },
-    ]) {
+    for (const n of [{ anulowane: 1 }, { scalone_do: 9, scalone_do_numer: '3009' }, { okres_rozliczeniowy_id: 7 }]) {
       const dzis = powodOdmowyFaktury(bezZadania(n));
       expect(dzis).not.toBeNull();
       expect(powodOdmowyFaktury(bezZadania(n), { dlaKazdego: true })).toBe(dzis);
@@ -78,14 +84,20 @@ describe('powod odmowy faktury — adres nabywcy', () => {
 
   it('odmawia bez adresu i wymienia braki po kolei', () => {
     expect(powodOdmowyFaktury(bezAdresu())).toBe(
-      'Brak adresu nabywcy (ulica, kod pocztowy, miasto). Uzupełnij dane do faktury na karcie zamówienia.');
+      'Brak adresu nabywcy (ulica, kod pocztowy, miasto). Uzupełnij dane do faktury na karcie zamówienia.',
+    );
     expect(powodOdmowyFaktury(zam({ klient: { address_1: 'Lampowa 1', city: 'Warszawa' } }))).toBe(
-      'Brak adresu nabywcy (kod pocztowy). Uzupełnij dane do faktury na karcie zamówienia.');
+      'Brak adresu nabywcy (kod pocztowy). Uzupełnij dane do faktury na karcie zamówienia.',
+    );
   });
 
   it('osoba prywatna (bez NIP i firmy) z adresem — można; bez adresu — odmowa', () => {
     const osoba = { first_name: 'Ala', last_name: 'Przykładowa' };
-    expect(powodOdmowyFaktury(zam({ nip: null, klient: { ...osoba, address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa' } }))).toBeNull();
+    expect(
+      powodOdmowyFaktury(
+        zam({ nip: null, klient: { ...osoba, address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa' } }),
+      ),
+    ).toBeNull();
     expect(powodOdmowyFaktury(zam({ nip: null, klient: osoba }))).toMatch(/^Brak adresu nabywcy/);
   });
 
@@ -103,7 +115,9 @@ describe('powod odmowy faktury — adres nabywcy', () => {
     expect(powodOdmowyFaktury(bezAdresu({ okres_rozliczeniowy_id: 7 }))).toContain('/okresy/7');
     expect(powodOdmowyFaktury(bezAdresu({ scalone_do: 9, scalone_do_numer: '3009' }))).toMatch(/scalone/);
     expect(powodOdmowyFaktury(bezAdresu({ chce_fakture: 0, nip: null }))).toBe('Klient nie prosił o fakturę.');
-    expect(powodOdmowyFaktury(bezAdresu({ chce_fakture: 0, nip: null }), { dlaKazdego: true })).toMatch(/^Brak adresu nabywcy/);
+    expect(powodOdmowyFaktury(bezAdresu({ chce_fakture: 0, nip: null }), { dlaKazdego: true })).toMatch(
+      /^Brak adresu nabywcy/,
+    );
   });
 });
 

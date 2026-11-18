@@ -1,7 +1,12 @@
 import { it, expect, beforeEach, afterEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { dopiszKlienta } from '../../../src/oms/db/klienci.js';
-import { pobierzZamowienie, dodajPozycjeReczna, zapiszPozycjeReczna, zapiszNadpisaniaPozycji } from '../../../src/oms/db/zamowienia.js';
+import {
+  pobierzZamowienie,
+  dodajPozycjeReczna,
+  zapiszPozycjeReczna,
+  zapiszNadpisaniaPozycji,
+} from '../../../src/oms/db/zamowienia.js';
 import { przeliczKwoteRecznego } from '../../../src/oms/db/zamowienia-reczne.js';
 import { planZapisuPozycji } from '../../../src/domena/usuniecie-pozycji.js';
 import { przypiszDoOkresu } from '../../../src/moduly/faktury/services/okres.js';
@@ -13,29 +18,55 @@ let db;
 const nip = '1234500011';
 beforeEach(() => {
   db = openOmsDb(':memory:');
-  dopiszKlienta(db, { klucz: 'polcien', nazwa: 'Pracownia Półcień', nip, aktywny: 1,
-    b2b: 1, rabat_procent: 0, chce_fakture: 1, metoda_wysylki: 'dpd', platnosc: 'przelew',
-    koszt_dostawy_brutto: '19.00', rozliczenie_zbiorcze: 0,
-    prog_darmowej_dostawy_gr: 50000, oplata_obslugi_gr: 400 });
+  dopiszKlienta(db, {
+    klucz: 'polcien',
+    nazwa: 'Pracownia Półcień',
+    nip,
+    aktywny: 1,
+    b2b: 1,
+    rabat_procent: 0,
+    chce_fakture: 1,
+    metoda_wysylki: 'dpd',
+    platnosc: 'przelew',
+    koszt_dostawy_brutto: '19.00',
+    rozliczenie_zbiorcze: 0,
+    prog_darmowej_dostawy_gr: 50000,
+    oplata_obslugi_gr: 400,
+  });
 });
 afterEach(() => db.close());
 function zamow(cena = '100.00', inne = {}, naliczajOplate = true, okresId = null) {
-  const { id } = zalozZamowienieReczne({ db, znacznik: '2026-11-13T10:00:00Z', naliczajOplate, okresId,
-    dane: { nip, klient: {}, dostawa: {}, metoda_wysylki: 'dpd', koszt_dostawy_brutto: '19.00',
-      pozycje: [{ nazwa: 'Lampa', ilosc: 1, cena_brutto: cena, cena_katalogowa: cena, brutto_linii: cena }], ...inne } });
+  const { id } = zalozZamowienieReczne({
+    db,
+    znacznik: '2026-11-13T10:00:00Z',
+    naliczajOplate,
+    okresId,
+    dane: {
+      nip,
+      klient: {},
+      dostawa: {},
+      metoda_wysylki: 'dpd',
+      koszt_dostawy_brutto: '19.00',
+      pozycje: [{ nazwa: 'Lampa', ilosc: 1, cena_brutto: cena, cena_katalogowa: cena, brutto_linii: cena }],
+      ...inne,
+    },
+  });
   return pobierzZamowienie(db, id);
 }
 it('niezbiorczy z własną etykietą płaci obsługę, z domyślnym VAT, bez dostawy', () => {
   const z = zamow('100.00', { etykietaKlienta: true });
   expect(z.koszt_dostawy_brutto).toBe('0.00');
   expect(z.kwota_brutto).toBe('104.00');
-  expect(z.pozycje.find(p => p.nazwa === 'Obsługa zamówienia')).toMatchObject({ cena_brutto: '4.00', vat: '23' });
+  expect(z.pozycje.find((p) => p.nazwa === 'Obsługa zamówienia')).toMatchObject({ cena_brutto: '4.00', vat: '23' });
 });
-it.each([['499.99', '19.00'], ['500.00', '0.00']])('towar %s → dostawa %s', (cena, koszt) => {
+it.each([
+  ['499.99', '19.00'],
+  ['500.00', '0.00'],
+])('towar %s → dostawa %s', (cena, koszt) => {
   const z = zamow(cena);
   expect(z.koszt_dostawy_brutto).toBe(koszt);
   expect(z.kwota_brutto).toBe((Number(cena) + Number(koszt)).toFixed(2));
-  expect(z.pozycje.map(p => p.nazwa)).not.toContain('Usługa kurierska');
+  expect(z.pozycje.map((p) => p.nazwa)).not.toContain('Usługa kurierska');
 });
 it('próg jest liczony po rabacie umownym', () => {
   db.prepare('UPDATE klienci SET rabat_procent = 40').run();
@@ -84,10 +115,14 @@ it.each([
   expect(z.kwota_brutto).toBe((Number(cena) + Number(koszt)).toFixed(2));
   const p = z.pozycje[0];
   let plan;
-  expect(() => { plan = planZapisuPozycji(z, {
-    klucz: [p.klucz, 'wysylka'], nazwa: ['Lampa po poprawce', 'Wysyłka'],
-    ilosc: ['1', '1'], cena_brutto: [cena, koszt],
-  }); }).not.toThrow();
+  expect(() => {
+    plan = planZapisuPozycji(z, {
+      klucz: [p.klucz, 'wysylka'],
+      nazwa: ['Lampa po poprawce', 'Wysyłka'],
+      ilosc: ['1', '1'],
+      cena_brutto: [cena, koszt],
+    });
+  }).not.toThrow();
   const surowe = db.prepare('SELECT koszt_dostawy_brutto, pozycje_reczne_json FROM zamowienia WHERE id = ?').get(z.id);
   expect(surowe.koszt_dostawy_brutto).toBe(koszt);
   expect(JSON.parse(surowe.pozycje_reczne_json ?? '{}')).not.toHaveProperty('wysylka');
@@ -107,7 +142,7 @@ it('okres i opłata obsługi działają razem przy etykiecie klienta', () => {
   const z = zamow('100.00', { etykietaKlienta: true }, true, okresId);
   expect(z.okres_rozliczeniowy_id).toBe(okresId);
   expect(zamowieniaOkresu(db, okresId)).toContain(z.id);
-  expect(z.pozycje.find(p => p.nazwa === 'Obsługa zamówienia')).toMatchObject({ cena_brutto: '4.00' });
+  expect(z.pozycje.find((p) => p.nazwa === 'Obsługa zamówienia')).toMatchObject({ cena_brutto: '4.00' });
   expect(z.koszt_dostawy_brutto).toBe('0.00');
   expect(z.kwota_brutto).toBe('104.00');
 });

@@ -62,7 +62,10 @@ function run(args) {
     // Kontener narzędziowy nie ma globalnej konfiguracji Git; laptop ma autocrlf=true,
     // co zmieniłoby bajty `git archive` względem NAS-a.
     const env = {
-      ...process.env, GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'core.autocrlf', GIT_CONFIG_VALUE_0: 'false',
+      ...process.env,
+      GIT_CONFIG_COUNT: '1',
+      GIT_CONFIG_KEY_0: 'core.autocrlf',
+      GIT_CONFIG_VALUE_0: 'false',
     };
     delete env.MSYS_NO_PATHCONV;
     const wynik = spawnSync(BASH, [flaga, mapuj(skrypt, mapa), ...pozostale], { stdio: 'inherit', env });
@@ -97,7 +100,8 @@ function image([pod, ...args]) {
     if (f === -1) return;
     const format = args[f + 1];
     if (format === '{{.Id}}') process.stdout.write(`${id}\n`);
-    else if (format.includes('org.opencontainers.image.revision')) process.stdout.write(`${stan.images[id].revision}\n`);
+    else if (format.includes('org.opencontainers.image.revision'))
+      process.stdout.write(`${stan.images[id].revision}\n`);
     else zakoncz(98, `ATRAPA: nieobsługiwany format ${format}`);
     return;
   }

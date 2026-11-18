@@ -1,6 +1,4 @@
-import {
-  describe, it, expect, beforeEach,
-} from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
@@ -40,15 +38,32 @@ const zalozZamowienie = (metoda) => {
     znacznik: '2026-10-20T09:00:00.000Z',
     dane: {
       klient: {
-        first_name: 'Jan', last_name: 'Kowalski', company: 'Lampy Przykładowe sp. z o.o.',
-        address_1: 'Świetlna 3', postcode: '00-003', city: 'Łódź', email: 'zakupy@lampy.test',
+        first_name: 'Jan',
+        last_name: 'Kowalski',
+        company: 'Lampy Przykładowe sp. z o.o.',
+        address_1: 'Świetlna 3',
+        postcode: '00-003',
+        city: 'Łódź',
+        email: 'zakupy@lampy.test',
       },
       dostawa: {
-        first_name: 'Jan', last_name: 'Kowalski', company: 'Lampy Przykładowe sp. z o.o.',
-        address_1: 'Magazynowa 7', postcode: '00-004', city: 'Łódź', phone: '500000002',
+        first_name: 'Jan',
+        last_name: 'Kowalski',
+        company: 'Lampy Przykładowe sp. z o.o.',
+        address_1: 'Magazynowa 7',
+        postcode: '00-004',
+        city: 'Łódź',
+        phone: '500000002',
       },
-      nip: NIP, chce_fakture: 1, metoda_wysylki: 'dpd', koszt_dostawy_brutto: '19.99',
-      metoda_platnosci: 'Przelew', b2b: 0, termin_platnosci: '7', rabat_procent: 0, pozycje: [],
+      nip: NIP,
+      chce_fakture: 1,
+      metoda_wysylki: 'dpd',
+      koszt_dostawy_brutto: '19.99',
+      metoda_platnosci: 'Przelew',
+      b2b: 0,
+      termin_platnosci: '7',
+      rabat_procent: 0,
+      pozycje: [],
     },
   });
   if (metoda !== 'dpd') db.prepare('UPDATE zamowienia SET metoda_wysylki = ? WHERE id = ?').run(metoda, id);
@@ -77,7 +92,11 @@ describe('„Zapamiętaj klienta” — nowy klient z nierozpoznaną dostawą', 
       expect(k.chce_fakture).toBe(1);
       expect(k.termin_platnosci).toBe('7');
       expect(k.faktura).toMatchObject({
-        firma: 'Lampy Przykładowe sp. z o.o.', nip: NIP, ulica: 'Świetlna 3', kod: '00-003', miasto: 'Łódź',
+        firma: 'Lampy Przykładowe sp. z o.o.',
+        nip: NIP,
+        ulica: 'Świetlna 3',
+        kod: '00-003',
+        miasto: 'Łódź',
       });
       expect(k.wysylka).toMatchObject({ ulica: 'Magazynowa 7', kod: '00-004', miasto: 'Łódź' });
     });
@@ -102,7 +121,10 @@ describe('„Zapamiętaj klienta” — nowy klient z nierozpoznaną dostawą', 
     expect(odp.body).toMatch(/<option value="dpd" selected/);
   });
 
-  for (const [opis, koszt] of [['kupon darmowej wysyłki (0.00)', '0.00'], ['dwie paczki (38.00)', '38.00']]) {
+  for (const [opis, koszt] of [
+    ['kupon darmowej wysyłki (0.00)', '0.00'],
+    ['dwie paczki (38.00)', '38.00'],
+  ]) {
     it(`dostawa rozpoznana, ${opis}: koszt zamówienia nie trafia na kartę klienta`, async () => {
       const id = zalozZamowienie('dpd');
       db.prepare('UPDATE zamowienia SET koszt_dostawy_brutto = ? WHERE id = ?').run(koszt, id);
@@ -169,8 +191,13 @@ describe('„Zapamiętaj klienta” — nowy klient z nierozpoznaną dostawą', 
 // zamieniała się po cichu w DPD).
 function formularzZEkranu(html) {
   const forma = html.match(/<form method="post" action="\/klienci">([\s\S]*?)<\/form>/)?.[1] ?? '';
-  const dekoduj = (s) => s.replace(/&#34;|&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  const dekoduj = (s) =>
+    s
+      .replace(/&#34;|&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&');
   const atrybut = (tag, nazwa) => tag.match(new RegExp(`\\s${nazwa}="([^"]*)"`))?.[1];
   const pola = {};
   for (const [tag] of forma.matchAll(/<input\b[^>]*>/g)) {

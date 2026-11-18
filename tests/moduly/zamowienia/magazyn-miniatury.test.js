@@ -43,9 +43,7 @@ const produktStore = (id, obrazy) => ({ id, name: `Produkt ${id}`, images: obraz
 
 describe('miniaturyZeStoreApi — mapa id → adres miniatury', () => {
   it('bierze `thumbnail` PIERWSZEGO zdjęcia produktu', () => {
-    const mapa = miniaturyZeStoreApi([
-      produktStore(7179, [{ src: ORYGINAL, thumbnail: MINIATURA }]),
-    ]);
+    const mapa = miniaturyZeStoreApi([produktStore(7179, [{ src: ORYGINAL, thumbnail: MINIATURA }])]);
     expect(mapa.get('7179')).toBe(MINIATURA);
   });
 
@@ -103,8 +101,7 @@ const odp = (cialo, naglowki = {}) => ({
   json: async () => cialo,
 });
 
-const klient = (fetchImpl) =>
-  createWooClient({ baseUrl: 'https://swietlik.test', ck: 'ck_a', cs: 'cs_b', fetchImpl });
+const klient = (fetchImpl) => createWooClient({ baseUrl: 'https://swietlik.test', ck: 'ck_a', cs: 'cs_b', fetchImpl });
 
 describe('pobierzMiniatury — odczyt ze Store API', () => {
   it('pyta pod adresem Store API, a nie pod REST v3', async () => {
@@ -126,7 +123,8 @@ describe('pobierzMiniatury — odczyt ze Store API', () => {
   });
 
   it('idzie po stronach do końca, wg X-WP-TotalPages', async () => {
-    const fetchImpl = vi.fn()
+    const fetchImpl = vi
+      .fn()
       .mockResolvedValueOnce(odp([produktStore(1, [{ thumbnail: MINIATURA }])], { 'x-wp-totalpages': '2' }))
       .mockResolvedValueOnce(odp([produktStore(2, [{ thumbnail: ORYGINAL }])], { 'x-wp-totalpages': '2' }));
     const mapa = await klient(fetchImpl).pobierzMiniatury();
@@ -142,7 +140,10 @@ describe('pobierzMiniatury — odczyt ze Store API', () => {
   // awarię sklepu w „ten sklep nie ma miniatur", czyli w stan nieodróżnialny od dzisiejszego.
   it('odmowa sklepu RZUCA, zamiast oddać pustą mapę', async () => {
     const fetchImpl = vi.fn(async () => ({
-      ok: false, status: 503, headers: { get: () => null }, json: async () => ({ message: 'serwis' }),
+      ok: false,
+      status: 503,
+      headers: { get: () => null },
+      json: async () => ({ message: 'serwis' }),
     }));
     await expect(klient(fetchImpl).pobierzMiniatury()).rejects.toThrow(/503/);
   });
@@ -160,9 +161,10 @@ const sklepAtrapa = ({ produkty, warianty = {}, miniatury = new Map() }) => ({
   pobierzMiniatury: vi.fn(async () => miniatury),
 });
 
-const wiersze = (db) => db.prepare(
-  'SELECT kanal, produkt_id, wariant_id, miniatura FROM produkty_sklepowe ORDER BY produkt_id, wariant_id',
-).all();
+const wiersze = (db) =>
+  db
+    .prepare('SELECT kanal, produkt_id, wariant_id, miniatura FROM produkty_sklepowe ORDER BY produkt_id, wariant_id')
+    .all();
 
 describe('odswiezMagazyn — miniatura zapisana, nie zgadnięta', () => {
   // ⚠️⚠️ TO JEST SEDNO CAŁEJ POPRAWKI, przypięte wprost: adres miniatury w lustrze pochodzi
@@ -173,14 +175,26 @@ describe('odswiezMagazyn — miniatura zapisana, nie zgadnięta', () => {
     const db = openOmsDb(':memory:');
     const sklepy = {
       swietlik: sklepAtrapa({
-        produkty: [{
-          id: 7179, type: 'simple', name: 'Kandelabr', price: '99',
-          images: [{ src: ORYGINAL }],
-        }],
+        produkty: [
+          {
+            id: 7179,
+            type: 'simple',
+            name: 'Kandelabr',
+            price: '99',
+            images: [{ src: ORYGINAL }],
+          },
+        ],
         miniatury: new Map([['7179', MINIATURA]]),
       }),
     };
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: () => TERAZ });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: () => TERAZ,
+    });
 
     expect(wiersze(db)[0].miniatura).toBe(MINIATURA);
     expect(wiersze(db)[0].miniatura).not.toBe(ZGADNIETY);
@@ -198,7 +212,14 @@ describe('odswiezMagazyn — miniatura zapisana, nie zgadnięta', () => {
         miniatury: new Map([['7179', MINIATURA]]),
       }),
     };
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: () => TERAZ });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: () => TERAZ,
+    });
 
     expect(wiersze(db)[0]).toMatchObject({ produkt_id: '7179', wariant_id: '7180', miniatura: MINIATURA });
   });
@@ -215,13 +236,21 @@ describe('odswiezMagazyn — miniatura zapisana, nie zgadnięta', () => {
         miniatury: new Map(),
       }),
     };
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: () => TERAZ });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: () => TERAZ,
+    });
 
     const w = wiersze(db)[0];
     expect(w.miniatura).toBe(null);
     // Galeria oryginałów ma zostać nietknięta — brak miniatury nie jest brakiem zdjęcia.
-    expect(db.prepare('SELECT zdjecia_json FROM produkty_sklepowe').get().zdjecia_json)
-      .toBe(JSON.stringify([ORYGINAL]));
+    expect(db.prepare('SELECT zdjecia_json FROM produkty_sklepowe').get().zdjecia_json).toBe(
+      JSON.stringify([ORYGINAL]),
+    );
   });
 
   // ⚠️ AWARIA STORE API NIE MA PRAWA WYWRÓCIĆ ODCZYTU KATALOGÓW. To ta sama zasada, co przy
@@ -236,10 +265,20 @@ describe('odswiezMagazyn — miniatura zapisana, nie zgadnięta', () => {
           { id: 7179, type: 'simple', name: 'Kandelabr', price: '99', images: [{ src: ORYGINAL }] },
         ]),
         pobierzWarianty: vi.fn(async () => []),
-        pobierzMiniatury: vi.fn(async () => { throw new Error('Sklep odpowiedział 503'); }),
+        pobierzMiniatury: vi.fn(async () => {
+          throw new Error('Sklep odpowiedział 503');
+        }),
       },
     };
-    const wynik = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: () => TERAZ, log });
+    const wynik = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: () => TERAZ,
+      log,
+    });
 
     expect(wynik.kanaly[0]).toMatchObject({ kanal: 'swietlik', zapisane: 1, blad: null });
     expect(wiersze(db)[0].miniatura).toBe(null);
@@ -260,7 +299,15 @@ describe('odswiezMagazyn — miniatura zapisana, nie zgadnięta', () => {
         miniatury: new Map([['7179', MINIATURA]]),
       }),
     };
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: () => TERAZ, log });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: () => TERAZ,
+      log,
+    });
     // Asercja na SAMYM milczeniu byłaby spełniona także wtedy, gdyby odczytu miniatur
     // w ogóle nie było — stąd dowód, że ścieżka przebiegła i coś zapisała.
     expect(wiersze(db)[0].miniatura).toBe(MINIATURA);
@@ -276,18 +323,27 @@ describe('odswiezMagazyn — miniatura zapisana, nie zgadnięta', () => {
     const db = openOmsDb(':memory:');
     const allegro = {
       allegro_swietlik: {
-        pobierzOferty: vi.fn(async () => [{
-          id: '17281234', name: 'Ozdobny kandelabr',
-          sellingMode: { price: { amount: '89.00', currency: 'PLN' } },
-          publication: { status: 'ACTIVE' },
-          primaryImage: { url: 'https://9.allegroimg.com/original/03e7d6/772bd11044a79ce6967b62cfa489' },
-        }]),
+        pobierzOferty: vi.fn(async () => [
+          {
+            id: '17281234',
+            name: 'Ozdobny kandelabr',
+            sellingMode: { price: { amount: '89.00', currency: 'PLN' } },
+            publication: { status: 'ACTIVE' },
+            primaryImage: { url: 'https://9.allegroimg.com/original/03e7d6/772bd11044a79ce6967b62cfa489' },
+          },
+        ]),
       },
     };
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy: null, allegro, teraz: () => TERAZ });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: null,
+      allegro,
+      teraz: () => TERAZ,
+    });
 
-    expect(wiersze(db)[0].miniatura)
-      .toBe('https://9.allegroimg.com/s150/03e7d6/772bd11044a79ce6967b62cfa489');
+    expect(wiersze(db)[0].miniatura).toBe('https://9.allegroimg.com/s150/03e7d6/772bd11044a79ce6967b62cfa489');
   });
 
   // ⚠️ PARA: oferta bez zdjęcia zostaje z pustą kolumną, a nie ze sklejonym adresem —
@@ -296,13 +352,23 @@ describe('odswiezMagazyn — miniatura zapisana, nie zgadnięta', () => {
     const db = openOmsDb(':memory:');
     const allegro = {
       allegro_swietlik: {
-        pobierzOferty: vi.fn(async () => [{
-          id: '17281234', name: 'Ozdobny kandelabr',
-          sellingMode: { price: { amount: '89.00', currency: 'PLN' } },
-        }]),
+        pobierzOferty: vi.fn(async () => [
+          {
+            id: '17281234',
+            name: 'Ozdobny kandelabr',
+            sellingMode: { price: { amount: '89.00', currency: 'PLN' } },
+          },
+        ]),
       },
     };
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy: null, allegro, teraz: () => TERAZ });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: null,
+      allegro,
+      teraz: () => TERAZ,
+    });
     expect(wiersze(db)[0].miniatura).toBe(null);
   });
 
@@ -311,17 +377,20 @@ describe('odswiezMagazyn — miniatura zapisana, nie zgadnięta', () => {
   it('kolejny odczyt odświeża miniaturę', async () => {
     const db = openOmsDb(':memory:');
     const inna = 'https://sklep-polcien.example.invalid/wp-content/uploads/2026/08/nowa-247x296.jpg';
-    const przebieg = (mapa) => odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
-      db,
-      sklepy: {
-        swietlik: sklepAtrapa({
-          produkty: [{ id: 7179, type: 'simple', name: 'Kandelabr', price: '99' }],
-          miniatury: mapa,
-        }),
-      },
-      allegro: null,
-      teraz: () => TERAZ,
-    });
+    const przebieg = (mapa) =>
+      odswiezMagazyn({
+        kanalySklepow: ['pro', 'swietlik'],
+        kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+        db,
+        sklepy: {
+          swietlik: sklepAtrapa({
+            produkty: [{ id: 7179, type: 'simple', name: 'Kandelabr', price: '99' }],
+            miniatury: mapa,
+          }),
+        },
+        allegro: null,
+        teraz: () => TERAZ,
+      });
     await przebieg(new Map([['7179', MINIATURA]]));
     await przebieg(new Map([['7179', inna]]));
     expect(wiersze(db)[0].miniatura).toBe(inna);
@@ -342,22 +411,60 @@ describe('lustro trzyma adres miniatury we WŁASNEJ kolumnie', () => {
       const pierwsza = openOmsDb(plik);
       let id;
       try {
-        pierwsza.prepare("INSERT INTO karty_produktow(id,nazwa,sku,utworzony_at,zmieniony_at) VALUES(7,'Kandelabr','TEST-7','x','x')").run();
-        id = zapiszProduktSklepowy(pierwsza, { kanal: 'kanal-testowy', produkt_id: '7179', wariant_id: '',
-          nazwa: 'Kandelabr produktu', sku_sklepu: 'SKU-TEST', cena_gr: 9900,
-          miniatura: MINIATURA, zdjecia_json: JSON.stringify([ORYGINAL]), odczytane_at: TERAZ });
+        pierwsza
+          .prepare(
+            "INSERT INTO karty_produktow(id,nazwa,sku,utworzony_at,zmieniony_at) VALUES(7,'Kandelabr','TEST-7','x','x')",
+          )
+          .run();
+        id = zapiszProduktSklepowy(pierwsza, {
+          kanal: 'kanal-testowy',
+          produkt_id: '7179',
+          wariant_id: '',
+          nazwa: 'Kandelabr produktu',
+          sku_sklepu: 'SKU-TEST',
+          cena_gr: 9900,
+          miniatura: MINIATURA,
+          zdjecia_json: JSON.stringify([ORYGINAL]),
+          odczytane_at: TERAZ,
+        });
         pierwsza.prepare('UPDATE produkty_sklepowe SET karta_id=7 WHERE id=?').run(id);
-      } finally { pierwsza.close(); }
+      } finally {
+        pierwsza.close();
+      }
       const druga = openOmsDb(plik);
       try {
-        const kolumny = druga.prepare('PRAGMA table_info(produkty_sklepowe)').all().map((k) => k.name);
+        const kolumny = druga
+          .prepare('PRAGMA table_info(produkty_sklepowe)')
+          .all()
+          .map((k) => k.name);
         expect(kolumny).toContain('miniatura');
-        expect(druga.prepare('SELECT kanal,produkt_id,wariant_id,nazwa,sku_sklepu,cena_gr,miniatura,zdjecia_json,karta_id FROM produkty_sklepowe WHERE id=?').get(id))
-          .toEqual({ kanal: 'kanal-testowy', produkt_id: '7179', wariant_id: '', nazwa: 'Kandelabr produktu',
-            sku_sklepu: 'SKU-TEST', cena_gr: 9900, miniatura: MINIATURA, zdjecia_json: JSON.stringify([ORYGINAL]), karta_id: 7 });
-        expect(druga.prepare('SELECT nazwa,sku FROM karty_produktow WHERE id=7').get()).toEqual({ nazwa: 'Kandelabr', sku: 'TEST-7' });
-      } finally { druga.close(); }
-    } finally { rmSync(katalog, { recursive: true, force: true }); }
+        expect(
+          druga
+            .prepare(
+              'SELECT kanal,produkt_id,wariant_id,nazwa,sku_sklepu,cena_gr,miniatura,zdjecia_json,karta_id FROM produkty_sklepowe WHERE id=?',
+            )
+            .get(id),
+        ).toEqual({
+          kanal: 'kanal-testowy',
+          produkt_id: '7179',
+          wariant_id: '',
+          nazwa: 'Kandelabr produktu',
+          sku_sklepu: 'SKU-TEST',
+          cena_gr: 9900,
+          miniatura: MINIATURA,
+          zdjecia_json: JSON.stringify([ORYGINAL]),
+          karta_id: 7,
+        });
+        expect(druga.prepare('SELECT nazwa,sku FROM karty_produktow WHERE id=7').get()).toEqual({
+          nazwa: 'Kandelabr',
+          sku: 'TEST-7',
+        });
+      } finally {
+        druga.close();
+      }
+    } finally {
+      rmSync(katalog, { recursive: true, force: true });
+    }
   });
 
   // ⚠️ PARA: kolumna lustra przepisuje się przy każdym odczycie, ale POWIĄZANIE Z KARTĄ ma
@@ -365,10 +472,16 @@ describe('lustro trzyma adres miniatury we WŁASNEJ kolumnie', () => {
   // zrywałoby ręczną pracę właściciela — po cichu i bez jednego błędu.
   it('zapis miniatury nie zrywa powiązania z kartą', () => {
     const db = openOmsDb(':memory:');
-    db.prepare("INSERT INTO karty_produktow (id, nazwa, utworzony_at, zmieniony_at) VALUES (7,'Kandelabr','x','x')").run();
+    db.prepare(
+      "INSERT INTO karty_produktow (id, nazwa, utworzony_at, zmieniony_at) VALUES (7,'Kandelabr','x','x')",
+    ).run();
     const wiersz = {
-      kanal: 'swietlik', produkt_id: '7179', wariant_id: '', nazwa: 'Kandelabr',
-      odczytane_at: TERAZ, miniatura: MINIATURA,
+      kanal: 'swietlik',
+      produkt_id: '7179',
+      wariant_id: '',
+      nazwa: 'Kandelabr',
+      odczytane_at: TERAZ,
+      miniatura: MINIATURA,
     };
     const id = zapiszProduktSklepowy(db, wiersz);
     db.prepare('UPDATE produkty_sklepowe SET karta_id = 7 WHERE id = ?').run(id);

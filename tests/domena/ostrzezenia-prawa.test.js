@@ -3,8 +3,12 @@
 // a klik dawał 403 (Produkcja nie ma ekranu `wiadomosci`).
 import { it, expect } from 'vitest';
 import {
-  ostrzezeniaDlaKonta, ostrzezeniaWiadomosci, ostrzezeniaFaktur, ostrzezeniaTerminow,
-  ostrzezeniaZwrotow, ostrzezeniaIntegracji,
+  ostrzezeniaDlaKonta,
+  ostrzezeniaWiadomosci,
+  ostrzezeniaFaktur,
+  ostrzezeniaTerminow,
+  ostrzezeniaZwrotow,
+  ostrzezeniaIntegracji,
 } from '../../src/domena/ostrzezenia.js';
 import { ekranyRoli } from '../../src/domena/ekrany.js';
 
@@ -14,11 +18,29 @@ const konto = (rola, admin = false) => ({ id: 1, admin, uprawnienia: new Set(ekr
 // Wiersze z PRAWDZIWYCH budowniczych — adres przycisku ma być ten, który naprawdę stoi na ekranie.
 const wiersze = [
   ...ostrzezeniaIntegracji({ zdrowie: { poller: { zrodla: [{ zrodlo: 'woo', zdrowy: false, blad: 'timeout' }] } } }),
-  ...ostrzezeniaFaktur({ luki: [{ uuid: 'u1', numer: 'FV 1/10/2026', invoice_date: '2026-10-01' }], dzis: '2026-10-20' }),
-  ...ostrzezeniaTerminow({ poTerminie: [{ uuid: 'u2', numer: 'FV 2/09/2026', payment_date: '2026-09-30', pozostalo_gr: 12300 }] }),
-  ...ostrzezeniaZwrotow({ zwroty: [{ id: 7, zamowienie_id: 42, zamowienie_numer: 'Z-42', data: '2026-10-10', utworzony_at: '2026-10-10T08:00:00Z' }], dzis: '2026-10-20' }),
+  ...ostrzezeniaFaktur({
+    luki: [{ uuid: 'u1', numer: 'FV 1/10/2026', invoice_date: '2026-10-01' }],
+    dzis: '2026-10-20',
+  }),
+  ...ostrzezeniaTerminow({
+    poTerminie: [{ uuid: 'u2', numer: 'FV 2/09/2026', payment_date: '2026-09-30', pozostalo_gr: 12300 }],
+  }),
+  ...ostrzezeniaZwrotow({
+    zwroty: [
+      { id: 7, zamowienie_id: 42, zamowienie_numer: 'Z-42', data: '2026-10-10', utworzony_at: '2026-10-10T08:00:00Z' },
+    ],
+    dzis: '2026-10-20',
+  }),
   ...ostrzezeniaWiadomosci({
-    watki: [{ kanal: 'allegro', thread_id: 't1', interlocutor_login: 'kupujacy_1', last_message_date_time: '2026-10-19T12:00:00Z', ostatnia_od_kupujacego: 1 }],
+    watki: [
+      {
+        kanal: 'allegro',
+        thread_id: 't1',
+        interlocutor_login: 'kupujacy_1',
+        last_message_date_time: '2026-10-19T12:00:00Z',
+        ostatnia_od_kupujacego: 1,
+      },
+    ],
     teraz,
   }),
 ];
@@ -42,8 +64,12 @@ it('administrator dostaje wszystkie wiersze', () => {
 });
 
 it('Sprzedaż (bez finansów i ustawień) widzi faktury, zwrot i wiadomość, ale nie integrację (/ustawienia)', () => {
-  expect(typy(ostrzezeniaDlaKonta({ wiersze, konto: konto('sprzedaz') })))
-    .toEqual(['faktura-ksef', 'faktura-termin', 'zwrot-korekta', 'wiadomosc-allegro']);
+  expect(typy(ostrzezeniaDlaKonta({ wiersze, konto: konto('sprzedaz') }))).toEqual([
+    'faktura-ksef',
+    'faktura-termin',
+    'zwrot-korekta',
+    'wiadomosc-allegro',
+  ]);
 });
 
 it('pojedynczy ptaszek rozstrzyga: Produkcja z dopisanym ekranem Wiadomości widzi wiadomość', () => {

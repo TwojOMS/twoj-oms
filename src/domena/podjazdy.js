@@ -32,9 +32,10 @@ export function normalizujTelefon(telefon, countryCode) {
   return tekst;
 }
 
-const takieSamePole = (k, wyslany, odeslany) => (k === 'phone'
-  ? normalizujTelefon(wyslany.phone, wyslany.countryCode) === normalizujTelefon(odeslany.phone, odeslany.countryCode)
-  : (wyslany[k] ?? '') === (odeslany[k] ?? ''));
+const takieSamePole = (k, wyslany, odeslany) =>
+  k === 'phone'
+    ? normalizujTelefon(wyslany.phone, wyslany.countryCode) === normalizujTelefon(odeslany.phone, odeslany.countryCode)
+    : (wyslany[k] ?? '') === (odeslany[k] ?? '');
 
 // Allegro podaje terminy per shipmentId. Zlecenie grupowe może użyć tylko
 // IDENTYCZNEJ oferty obecnej dla każdej paczki; geometria okien nie jest ofertą.
@@ -44,13 +45,19 @@ export function wspolneTerminy(propozycje) {
   if (ids.some((id) => !id) || new Set(ids).size !== ids.length) return [];
   const first = propozycje[0].pickupTimes ?? [];
   const pozostale = propozycje.slice(1).map((p) => new Set((p.pickupTimes ?? []).map(kluczTerminu)));
-  return first.filter((t) => t?.date && t?.minTime && t?.maxTime && pozostale.every((s) => s.has(kluczTerminu(t))))
+  return first
+    .filter((t) => t?.date && t?.minTime && t?.maxTime && pozostale.every((s) => s.has(kluczTerminu(t))))
     .filter((t, i, all) => all.findIndex((x) => kluczTerminu(x) === kluczTerminu(t)) === i);
 }
 
 function ocenOdpowiedz(odpowiedz, shipmentIds, adres) {
-  if (!Array.isArray(shipmentIds) || !shipmentIds.length || shipmentIds.length > 100
-    || shipmentIds.some((id) => !id) || new Set(shipmentIds).size !== shipmentIds.length) {
+  if (
+    !Array.isArray(shipmentIds) ||
+    !shipmentIds.length ||
+    shipmentIds.length > 100 ||
+    shipmentIds.some((id) => !id) ||
+    new Set(shipmentIds).size !== shipmentIds.length
+  ) {
     return { przyczyna: 'niezgodny-zestaw', propozycje: [] };
   }
   if (!Array.isArray(odpowiedz) || !odpowiedz.length) {
@@ -64,17 +71,29 @@ function ocenOdpowiedz(odpowiedz, shipmentIds, adres) {
   // Łączymy wyłącznie dokładny zestaw, bez pominięć, duplikatów i obcych paczek.
   const propozycje = odpowiedz.flatMap((g) => g.proposals);
   const ids = propozycje.map((p) => p?.shipmentId);
-  if (ids.length !== shipmentIds.length || new Set(ids).size !== ids.length
-    || ids.some((id) => !shipmentIds.includes(id))) {
+  if (
+    ids.length !== shipmentIds.length ||
+    new Set(ids).size !== ids.length ||
+    ids.some((id) => !shipmentIds.includes(id))
+  ) {
     return { przyczyna: 'niezgodny-zestaw', propozycje: [] };
   }
   // API może dopisać null do opcjonalnych pól. Każda rzeczywista różnica,
   // także kontaktu czy punktu, blokuje użycie oferty pod adresem operatora.
   // Telefon to jedyny wyjątek od dosłownej równości: ten sam numer w zapisie 9 cyfr i +48.
-  if (!adres || typeof adres !== 'object' || Array.isArray(adres)
-    || !Object.keys(adres).length || odpowiedz.some((g) => !g.address
-      || typeof g.address !== 'object' || Array.isArray(g.address)
-      || Object.keys({ ...adres, ...g.address }).some((k) => !takieSamePole(k, adres, g.address)))) {
+  if (
+    !adres ||
+    typeof adres !== 'object' ||
+    Array.isArray(adres) ||
+    !Object.keys(adres).length ||
+    odpowiedz.some(
+      (g) =>
+        !g.address ||
+        typeof g.address !== 'object' ||
+        Array.isArray(g.address) ||
+        Object.keys({ ...adres, ...g.address }).some((k) => !takieSamePole(k, adres, g.address)),
+    )
+  ) {
     return { przyczyna: 'niezgodny-adres', propozycje: [] };
   }
   return { przyczyna: null, propozycje };
@@ -111,13 +130,18 @@ export function diagnozaTerminow(odpowiedz, shipmentIds, adres) {
   const paczki = shipmentIds.map((shipmentId) => {
     const nr = grupy.findIndex((g) => g.proposals.some((p) => p?.shipmentId === shipmentId));
     const oferta = nr < 0 ? null : grupy[nr].proposals.find((p) => p?.shipmentId === shipmentId);
-    return { shipmentId, grupaAllegro: nr < 0 ? null : nr + 1,
-      terminy: (oferta?.pickupTimes ?? []).map((t) => ({ date: t?.date, minTime: t?.minTime, maxTime: t?.maxTime })) };
+    return {
+      shipmentId,
+      grupaAllegro: nr < 0 ? null : nr + 1,
+      terminy: (oferta?.pickupTimes ?? []).map((t) => ({ date: t?.date, minTime: t?.minTime, maxTime: t?.maxTime })),
+    };
   });
   const ocena = adres ? ocenOdpowiedz(odpowiedz, shipmentIds, adres) : null;
-  const przyczyna = !grupy.length ? 'pusta-odpowiedz'
-    : paczki.some((p) => !p.terminy.length) ? 'paczka-bez-terminu'
-      : ocena?.przyczyna ?? 'rozne-okna';
+  const przyczyna = !grupy.length
+    ? 'pusta-odpowiedz'
+    : paczki.some((p) => !p.terminy.length)
+      ? 'paczka-bez-terminu'
+      : (ocena?.przyczyna ?? 'rozne-okna');
   return { przyczyna, grupAllegro: grupy.length, paczki };
 }
 
@@ -126,8 +150,13 @@ export function podjazdPoTerminie(termin, terazIso = new Date().toISOString()) {
   const d = new Date(terazIso);
   if (!Number.isFinite(d.getTime())) return false;
   const czesci = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/Warsaw', year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    timeZone: 'Europe/Warsaw',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
   }).formatToParts(d);
   const w = Object.fromEntries(czesci.map((p) => [p.type, p.value]));
   const lokalnie = `${w.year}-${w.month}-${w.day}T${w.hour}:${w.minute}`;

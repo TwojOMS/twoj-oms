@@ -35,10 +35,12 @@ export const HORYZONT_KLASYFIKACJI_MS = 90 * 24 * 3600 * 1000;
 export function pierwszaChwila(pred, od, doChwili) {
   if (pred(od)) return od;
   if (!pred(doChwili)) return null;
-  let nie = od; let tak = doChwili;
+  let nie = od;
+  let tak = doChwili;
   while (tak - nie > 1) {
     const srodek = nie + Math.floor((tak - nie) / 2);
-    if (pred(srodek)) tak = srodek; else nie = srodek;
+    if (pred(srodek)) tak = srodek;
+    else nie = srodek;
   }
   return tak;
 }

@@ -7,11 +7,13 @@
 
 /** Zajmuje i oddaje kolejny numer serii w danym miesiącu (1, 2, 3…). */
 export function zarezerwujNumerWdt(db, { rok, miesiac }) {
-  return db.prepare(
-    'INSERT INTO wdt_numery (rok, miesiac, kolejny) VALUES (?, ?, 1) '
-    + 'ON CONFLICT (rok, miesiac) DO UPDATE SET kolejny = kolejny + 1 '
-    + 'RETURNING kolejny',
-  ).get(rok, miesiac).kolejny;
+  return db
+    .prepare(
+      'INSERT INTO wdt_numery (rok, miesiac, kolejny) VALUES (?, ?, 1) ' +
+        'ON CONFLICT (rok, miesiac) DO UPDATE SET kolejny = kolejny + 1 ' +
+        'RETURNING kolejny',
+    )
+    .get(rok, miesiac).kolejny;
 }
 
 /**
@@ -22,8 +24,8 @@ export function zarezerwujNumerWdt(db, { rok, miesiac }) {
  * w serii, do odnotowania w logu).
  */
 export function cofnijRezerwacjeWdt(db, { rok, miesiac, kolejny }) {
-  const wynik = db.prepare(
-    'UPDATE wdt_numery SET kolejny = kolejny - 1 WHERE rok = ? AND miesiac = ? AND kolejny = ?',
-  ).run(rok, miesiac, kolejny);
+  const wynik = db
+    .prepare('UPDATE wdt_numery SET kolejny = kolejny - 1 WHERE rok = ? AND miesiac = ? AND kolejny = ?')
+    .run(rok, miesiac, kolejny);
   return wynik.changes > 0;
 }

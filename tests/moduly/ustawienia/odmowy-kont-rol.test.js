@@ -17,7 +17,10 @@ function panel() {
 
 /** Cała zawartość bazy (wszystkie tabele, wiersze po kolei) — do porównania przed i po odmowie. */
 function zrzutBazy(db) {
-  const tabele = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").all().map((t) => t.name);
+  const tabele = db
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
+    .all()
+    .map((t) => t.name);
   return Object.fromEntries(tabele.map((t) => [t, db.prepare(`SELECT * FROM "${t}" ORDER BY rowid`).all()]));
 }
 
@@ -30,9 +33,24 @@ function sprawdz(r, { status = 404, tekst, tytul, wroc, napis }) {
   expect(r.body).toContain(`<a class="btn" href="${wroc}">${napis}</a>`);
 }
 
-const KONTO = { tekst: 'Nie ma takiego konta', tytul: 'Nie znaleziono konta', wroc: '/ustawienia/konta', napis: 'Wróć do kont' };
-const ROLA_KONTA = { tekst: 'Nie ma takiej roli', tytul: 'Nie znaleziono roli', wroc: '/ustawienia/konta', napis: 'Wróć do kont' };
-const ROLA = { tekst: 'Nie ma takiej roli', tytul: 'Nie znaleziono roli', wroc: '/ustawienia/role', napis: 'Wróć do ról i uprawnień' };
+const KONTO = {
+  tekst: 'Nie ma takiego konta',
+  tytul: 'Nie znaleziono konta',
+  wroc: '/ustawienia/konta',
+  napis: 'Wróć do kont',
+};
+const ROLA_KONTA = {
+  tekst: 'Nie ma takiej roli',
+  tytul: 'Nie znaleziono roli',
+  wroc: '/ustawienia/konta',
+  napis: 'Wróć do kont',
+};
+const ROLA = {
+  tekst: 'Nie ma takiej roli',
+  tytul: 'Nie znaleziono roli',
+  wroc: '/ustawienia/role',
+  napis: 'Wróć do ról i uprawnień',
+};
 
 describe('konta: brak konta → 404 w układzie OMS, baza bez zmian', () => {
   const przypadki = [
@@ -70,8 +88,20 @@ describe('konta: brak konta → 404 w układzie OMS, baza bez zmian', () => {
     ustawUprawnienia(db, kontoPoLoginie(db, 'bartek').id, ['ustawienia']);
     const bartek = jako(db, 'bartek');
     const przed = zrzutBazy(db);
-    for (const url of ['/ustawienia/konta/9999/rola', '/ustawienia/konta/9999/haslo', '/ustawienia/konta/9999/czynne', '/ustawienia/konta/9999/email', '/ustawienia/konta/9999/link', '/ustawienia/konta/9999/uprawnienia']) {
-      const r = await post(app, url, bartek, { rola: 'administrator', haslo: HASLO_TESTOWE, czynne: '1', email: 'ktos@example.test' });
+    for (const url of [
+      '/ustawienia/konta/9999/rola',
+      '/ustawienia/konta/9999/haslo',
+      '/ustawienia/konta/9999/czynne',
+      '/ustawienia/konta/9999/email',
+      '/ustawienia/konta/9999/link',
+      '/ustawienia/konta/9999/uprawnienia',
+    ]) {
+      const r = await post(app, url, bartek, {
+        rola: 'administrator',
+        haslo: HASLO_TESTOWE,
+        czynne: '1',
+        email: 'ktos@example.test',
+      });
       expect(r.statusCode, url).toBe(403);
       expect(r.body, url).not.toContain('Nie ma takiego konta');
     }
@@ -85,7 +115,10 @@ describe('role: nieznana rola → 404 w układzie OMS, baza bez zmian', () => {
     ['/ustawienia/role/nie-ma-takiej/nazwa', () => ({ nazwa: 'Pakowanie' })],
     ['/ustawienia/role/nie-ma-takiej/usun', () => ({})],
     ['/ustawienia/role/nowa', () => ({ nazwa: 'Pakowanie', kopiujZ: 'nie-ma-takiej' })],
-    ['/ustawienia/role', (db) => ({ rola: 'nie-ma-takiej', uprawnienie: 'nie-ma-takiej:zamowienia', odcisk: odciskMacierzy(db) })],
+    [
+      '/ustawienia/role',
+      (db) => ({ rola: 'nie-ma-takiej', uprawnienie: 'nie-ma-takiej:zamowienia', odcisk: odciskMacierzy(db) }),
+    ],
   ];
   for (const [url, dane] of przypadki) {
     it(`POST ${url}`, async () => {

@@ -18,8 +18,14 @@ import { dzienWarszawa } from '../../../domena/format-daty.js';
 // Początek pokrycia danych otrzymujemy z konfiguracji, a bez niej — z pierwszego zamówienia w bazie.
 
 const SKROTY = [
-  'dzisiaj', 'ten-miesiac', 'poprzedni-miesiac', 'ten-kwartal', 'poprzedni-kwartal',
-  'ten-rok', 'poprzedni-rok', 'ostatnie-30',
+  'dzisiaj',
+  'ten-miesiac',
+  'poprzedni-miesiac',
+  'ten-kwartal',
+  'poprzedni-kwartal',
+  'ten-rok',
+  'poprzedni-rok',
+  'ostatnie-30',
 ];
 
 // ⚠️ CZAS WARSZAWSKI, nie UTC — ta sama funkcja, co przy /raporty. Pierwszego dnia miesiaca
@@ -33,8 +39,13 @@ export function zarejestrujTrasyStatystyk(app, { db, config }) {
     const skroty = SKROTY.map((klucz) => ({ klucz, etykieta: nazwaSkrotu(klucz, dzien) }));
     if (blad) {
       return reply.view('statystyki.ejs', {
-        blad, zakres: null, skroty,
-        uslugi: null, termin: null, platnosci: null, przedOmsem: false,
+        blad,
+        zakres: null,
+        skroty,
+        uslugi: null,
+        termin: null,
+        platnosci: null,
+        przedOmsem: false,
       });
     }
     const statystyki = await statystykiWOkresie(db, zakres, config.regulySprzedazy);

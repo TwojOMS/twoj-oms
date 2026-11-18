@@ -34,14 +34,27 @@ describe('zwarte tabele Przesyłek i Faktur', () => {
     const faktury = odczytaj('src/moduly/faktury/widoki/faktury.ejs');
 
     for (const fragment of [
-      'name="pokaz"', 'name="od"', 'name="do"', 'name="kurier"', 'name="sklep"',
-      '/przesylki/podjazdy', '/przesylki/podjazdy/historia', '/ukryj', '/przywroc',
-    ]) expect(przesylki).toContain(fragment);
+      'name="pokaz"',
+      'name="od"',
+      'name="do"',
+      'name="kurier"',
+      'name="sklep"',
+      '/przesylki/podjazdy',
+      '/przesylki/podjazdy/historia',
+      '/ukryj',
+      '/przywroc',
+    ])
+      expect(przesylki).toContain(fragment);
 
     for (const fragment of [
-      'name="miesiac"', 'name="pole"', '/faktury/ksef/podglad',
-      '/faktury/archiwum/uruchom', '/faktury/zestawienie-przychodow', 'doOdnotowaniaSkasowania',
-    ]) expect(faktury).toContain(fragment);
+      'name="miesiac"',
+      'name="pole"',
+      '/faktury/ksef/podglad',
+      '/faktury/archiwum/uruchom',
+      '/faktury/zestawienie-przychodow',
+      'doOdnotowaniaSkasowania',
+    ])
+      expect(faktury).toContain(fragment);
   });
 });
 

@@ -4,7 +4,13 @@ import { anulowaneEfektywnie } from '../../../src/domena/status-reczny.js';
 import { czyTestowe } from '../../../src/domena/sprzedaz-okresu.js';
 import { listaZamowien } from '../../../src/oms/db/zamowienia.js';
 
-const bezpiecznyJson = (s) => { try { return JSON.parse(s ?? '{}') ?? {}; } catch { return {}; } };
+const bezpiecznyJson = (s) => {
+  try {
+    return JSON.parse(s ?? '{}') ?? {};
+  } catch {
+    return {};
+  }
+};
 
 export function zamowieniaOkresu(db, { od, do: doDnia }, reguly = {}) {
   const wybrane = [];

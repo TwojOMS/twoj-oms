@@ -4,13 +4,25 @@ import { buildOmsServer } from '../pomoc/serwer-testowy-oms.ts';
 import { adresLokalny } from '../../src/core/web/odmowa.js';
 
 // Wspólna strona odmowy (stronaOdmowy) na pierwszej trasie, która jej używa.
-const headers = { authorization: `Basic ${Buffer.from('operator:x').toString('base64')}`, origin: 'http://localhost', 'content-type': 'application/x-www-form-urlencoded' };
+const headers = {
+  authorization: `Basic ${Buffer.from('operator:x').toString('base64')}`,
+  origin: 'http://localhost',
+  'content-type': 'application/x-www-form-urlencoded',
+};
 let db, server;
-afterEach(async () => { await server?.close(); db?.close(); server = db = null; });
+afterEach(async () => {
+  await server?.close();
+  db?.close();
+  server = db = null;
+});
 
 it('odmowa z formularza w układzie OMS: status i tekst bez zmian, pasek uwagi, droga powrotu', async () => {
   db = openOmsDb(':memory:');
-  server = buildOmsServer({ db, config: { auth: { user: 'operator', pass: 'x' }, sklepy: {}, kanaly: {}, definicje: [] }, poller: { stan: () => ({}) } });
+  server = buildOmsServer({
+    db,
+    config: { auth: { user: 'operator', pass: 'x' }, sklepy: {}, kanaly: {}, definicje: [] },
+    poller: { stan: () => ({}) },
+  });
   const r = await server.inject({ method: 'POST', url: '/ostrzezenia/odrzuc', headers, payload: 'klucz=%3Cb%3Ezly' });
   expect(r.statusCode).toBe(400);
   expect(r.headers['content-type']).toMatch(/^text\/html/);
@@ -22,5 +34,6 @@ it('odmowa z formularza w układzie OMS: status i tekst bez zmian, pasek uwagi, 
 
 it('powrót tylko w obrębie panelu', () => {
   expect(adresLokalny('/zamowienia/7?powrot=%2F')).toBe('/zamowienia/7?powrot=%2F');
-  for (const zly of ['//obcy.example.test/x', '/\\obcy.example.test', 'https://obcy.example.test', '', undefined, 7]) expect(adresLokalny(zly)).toBe('/');
+  for (const zly of ['//obcy.example.test/x', '/\\obcy.example.test', 'https://obcy.example.test', '', undefined, 7])
+    expect(adresLokalny(zly)).toBe('/');
 });

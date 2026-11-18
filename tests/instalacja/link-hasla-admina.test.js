@@ -17,9 +17,11 @@ const SKRYPT = path.join(ROOT, 'scripts/link-hasla-admina.mjs');
 const SH = process.platform === 'win32' ? 'C:/Program Files/Git/bin/bash.exe' : '/bin/sh';
 const teraz = () => new Date();
 let katalog, plik, db, admin;
-const uruchom = (args = [], env = {}) => spawnSync(process.execPath, [SKRYPT, ...args], {
-  encoding: 'utf8', env: { ...process.env, OMS_DB_PATH: plik, OMS_ADRES_PANELU: '', ...env },
-});
+const uruchom = (args = [], env = {}) =>
+  spawnSync(process.execPath, [SKRYPT, ...args], {
+    encoding: 'utf8',
+    env: { ...process.env, OMS_DB_PATH: plik, OMS_ADRES_PANELU: '', ...env },
+  });
 const tokenZ = (r) => r.stdout.match(/\/haslo\/([A-Za-z0-9_-]{43})/)?.[1];
 
 beforeEach(() => {
@@ -28,22 +30,38 @@ beforeEach(() => {
   db = openOmsDb(plik);
   wykonajMigracje(db, [modulUstawienia]);
   synchronizujRole(db, { teraz });
-  admin = zalozKonto(db, { login: 'szef', imie: 'Administrator', haslo: 'Stare-testowe-123!', rola: 'administrator', admin: true });
+  admin = zalozKonto(db, {
+    login: 'szef',
+    imie: 'Administrator',
+    haslo: 'Stare-testowe-123!',
+    rola: 'administrator',
+    admin: true,
+  });
   zalozKonto(db, { login: 'sprzedawca', imie: 'Sprzedaż', haslo: 'Testowe-123!', rola: 'sprzedaz' });
-  db.prepare('INSERT INTO konta_email (konto_id, email, zmieniono_at) VALUES (?, ?, ?)').run(admin, 'szef@example.test', teraz().toISOString());
+  db.prepare('INSERT INTO konta_email (konto_id, email, zmieniono_at) VALUES (?, ?, ?)').run(
+    admin,
+    'szef@example.test',
+    teraz().toISOString(),
+  );
 });
-afterEach(() => { db?.close(); fs.rmSync(katalog, { recursive: true, force: true }); });
+afterEach(() => {
+  db?.close();
+  fs.rmSync(katalog, { recursive: true, force: true });
+});
 
 describe('odzyskanie hasła administratora z konsoli serwera', () => {
   it('paczka i obraz klienta zawierają skrypt uruchamiany przez aktualizator', () => {
     const plikSkryptu = 'scripts/link-hasla-admina.mjs';
     expect(plikiPaczki([plikSkryptu])).toEqual([plikSkryptu]);
     const dockerfile = fs.readFileSync(path.join(ROOT, 'deploy/klient/Dockerfile'), 'utf8');
-    const kopie = dockerfile.split(/\r?\n/).filter(l => l.startsWith('COPY ')).flatMap(l => {
-      const pola = l.trim().split(/\s+/).slice(1);
-      const cel = pola.pop();
-      return pola.filter(p => p === plikSkryptu).map(p => path.posix.join('/app', cel, path.posix.basename(p)));
-    });
+    const kopie = dockerfile
+      .split(/\r?\n/)
+      .filter((l) => l.startsWith('COPY '))
+      .flatMap((l) => {
+        const pola = l.trim().split(/\s+/).slice(1);
+        const cel = pola.pop();
+        return pola.filter((p) => p === plikSkryptu).map((p) => path.posix.join('/app', cel, path.posix.basename(p)));
+      });
     expect(kopie).toContain('/app/scripts/link-hasla-admina.mjs');
   });
 
@@ -98,7 +116,12 @@ describe('odzyskanie hasła administratora z konsoli serwera', () => {
     const wpisy = db.prepare('SELECT * FROM logowania').all();
     expect(wpisy).toHaveLength(1);
     expect(JSON.stringify(wpisy).includes(tokenZ(r))).toBe(false);
-    expect(wpisy[0]).toMatchObject({ login: 'szef', usluga: 'oms', ip: 'konsola serwera', wynik: 'link-hasla-z-konsoli' });
+    expect(wpisy[0]).toMatchObject({
+      login: 'szef',
+      usluga: 'oms',
+      ip: 'konsola serwera',
+      wynik: 'link-hasla-z-konsoli',
+    });
     expect(JSON.stringify(wpisy)).not.toContain('Stare-testowe-123!');
     expect(r.stderr).not.toContain(tokenZ(r));
   });
@@ -106,7 +129,9 @@ describe('odzyskanie hasła administratora z konsoli serwera', () => {
   it('używa adresu z Ustawień, ale env ma pierwszeństwo', () => {
     zapiszKonfiguracjeIntegracji(db, 'adres_panelu', { ustawienia: { adres: 'https://zapis.example.test' } });
     expect(uruchom(['szef']).stdout).toMatch(/^https:\/\/zapis\.example\.test\/haslo\//);
-    expect(uruchom(['szef'], { OMS_ADRES_PANELU: 'https://env.example.test' }).stdout).toMatch(/^https:\/\/env\.example\.test\/haslo\//);
+    expect(uruchom(['szef'], { OMS_ADRES_PANELU: 'https://env.example.test' }).stdout).toMatch(
+      /^https:\/\/env\.example\.test\/haslo\//,
+    );
   });
 
   it('bez adresu zwraca samą ścieżkę raz i instrukcję doklejenia', () => {
@@ -117,7 +142,9 @@ describe('odzyskanie hasła administratora z konsoli serwera', () => {
   });
 
   it.each([
-    ['brak', 'Nie ma takiego konta'], ['sprzedawca', 'nie jest administratorem'], ['szef', 'wyłączone'],
+    ['brak', 'Nie ma takiego konta'],
+    ['sprzedawca', 'nie jest administratorem'],
+    ['szef', 'wyłączone'],
   ])('odmawia dla konta %s bez wydania linku', (login, komunikat) => {
     if (login === 'szef') db.prepare('UPDATE konta SET czynne = 0 WHERE id = ?').run(admin);
     const r = uruchom([login]);
@@ -137,13 +164,29 @@ describe('odzyskanie hasła administratora z konsoli serwera', () => {
 
   it('podpolecenie aktualizatora przekazuje login do skryptu w kontenerze, także bez loginu i z błędem', () => {
     const docker = path.join(katalog, 'docker-test.sh');
-    fs.writeFileSync(docker, `#!/bin/sh\nset -eu\n[ "$1" = exec ] && [ "$2" = oms ] && [ "$3" = node ] && [ "$4" = /app/scripts/link-hasla-admina.mjs ] || exit 98\nshift 4\nexec node "$TEST_SKRYPT" "$@"\n`, { mode: 0o755 });
+    fs.writeFileSync(
+      docker,
+      `#!/bin/sh\nset -eu\n[ "$1" = exec ] && [ "$2" = oms ] && [ "$3" = node ] && [ "$4" = /app/scripts/link-hasla-admina.mjs ] || exit 98\nshift 4\nexec node "$TEST_SKRYPT" "$@"\n`,
+      { mode: 0o755 },
+    );
     const aktualizator = path.join(katalog, 'aktualizuj.sh');
-    fs.writeFileSync(aktualizator, fs.readFileSync(path.join(ROOT, 'deploy/klient/aktualizuj.sh'), 'utf8').replaceAll('\r\n', '\n'));
-    const akt = (args) => spawnSync(SH, [aktualizator, 'link-hasla', ...args], { encoding: 'utf8', env: {
-      ...process.env, OMS_AKT_BEZ_ROOTA: '1', OMS_DOCKER_BIN: docker.replaceAll('\\', '/'),
-      OMS_KATALOG: katalog.replaceAll('\\', '/'), OMS_DB_PATH: plik, OMS_ADRES_PANELU: '', TEST_SKRYPT: SKRYPT.replaceAll('\\', '/'),
-    } });
+    fs.writeFileSync(
+      aktualizator,
+      fs.readFileSync(path.join(ROOT, 'deploy/klient/aktualizuj.sh'), 'utf8').replaceAll('\r\n', '\n'),
+    );
+    const akt = (args) =>
+      spawnSync(SH, [aktualizator, 'link-hasla', ...args], {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          OMS_AKT_BEZ_ROOTA: '1',
+          OMS_DOCKER_BIN: docker.replaceAll('\\', '/'),
+          OMS_KATALOG: katalog.replaceAll('\\', '/'),
+          OMS_DB_PATH: plik,
+          OMS_ADRES_PANELU: '',
+          TEST_SKRYPT: SKRYPT.replaceAll('\\', '/'),
+        },
+      });
     expect(akt([]).stdout.trim()).toBe('szef');
     const r = akt(['szef']);
     expect(r.status).toBe(0);

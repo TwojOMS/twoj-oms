@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { statusDlaAllegro, stanAllegroPotwierdzaZgodnosc, STATUS_ALLEGRO_DLA } from '../../src/domena/allegro-status.js';
+import {
+  statusDlaAllegro,
+  stanAllegroPotwierdzaZgodnosc,
+  STATUS_ALLEGRO_DLA,
+} from '../../src/domena/allegro-status.js';
 
 // ⚠️ Minimalne zamówienie: `wyliczStatus` liczy status z FAKTÓW (przewodnik 4.1), a fakty
 // dla „w realizacji" i „wysłane" ZAPISUJE CZŁOWIEK (`domain/status-reczny.js`): `w_realizacji_at`
@@ -10,9 +14,14 @@ import { statusDlaAllegro, stanAllegroPotwierdzaZgodnosc, STATUS_ALLEGRO_DLA } f
 // celowo nie występuje w tej fikstrurze: gdyby reguła po nią sięgnęła, testy by tego nie
 // zauważyły, a produkcja cofnęłaby status kupującemu.
 const z = (nadpisania) => ({
-  sklep: 'allegro_swietlik', zrodlo_id: 'abc', kwota_brutto: '100.00',
-  platnosci: [{ kwota: '100.00', zrodlo: 'sklep' }], przesylki: [], anulowane: 0,
-  w_realizacji_at: '2026-08-05T09:00:00Z', ...nadpisania,
+  sklep: 'allegro_swietlik',
+  zrodlo_id: 'abc',
+  kwota_brutto: '100.00',
+  platnosci: [{ kwota: '100.00', zrodlo: 'sklep' }],
+  przesylki: [],
+  anulowane: 0,
+  w_realizacji_at: '2026-08-05T09:00:00Z',
+  ...nadpisania,
 });
 
 describe('statusDlaAllegro', () => {
@@ -92,7 +101,8 @@ describe('statusDlaAllegro', () => {
   it('kanał BEZ zrodlo_id nie wysyła niczego — nie ma czego zaadresować', () => {
     expect(statusDlaAllegro(z({ zrodlo_id: null }), 'NEW')).toBeNull();
     expect(statusDlaAllegro(z({ zrodlo_id: '' }), 'NEW')).toBeNull();
-    const bez = z({}); delete bez.zrodlo_id;
+    const bez = z({});
+    delete bez.zrodlo_id;
     expect(statusDlaAllegro(bez, 'NEW')).toBeNull();
   });
 

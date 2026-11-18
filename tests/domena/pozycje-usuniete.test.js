@@ -24,32 +24,68 @@ beforeEach(() => {
   db = openOmsDb(':memory:');
 });
 
-const zamowienie = (sklep, { zrodloId, kwota, dostawa, pozycje }) => zapiszZamowienie(db, sklep, {
-  zrodlo_id: zrodloId, numer: zrodloId, klient: KLIENT, dostawa: { city: 'Pęki' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: null, kwota_brutto: kwota,
-  koszt_dostawy_brutto: dostawa, status_woo: 'processing', oplacone_at: null, anulowane: 0,
-  utworzone_at: '2026-11-04T09:00:00.000Z',
-  pozycje: pozycje.map((p) => ({ sku: null, vat: '23', zdjecie_url: null, produkt_id: null, oferta_id: null, wariant_id: null, ...p })),
-}, {});
+const zamowienie = (sklep, { zrodloId, kwota, dostawa, pozycje }) =>
+  zapiszZamowienie(
+    db,
+    sklep,
+    {
+      zrodlo_id: zrodloId,
+      numer: zrodloId,
+      klient: KLIENT,
+      dostawa: { city: 'Pęki' },
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: 1,
+      nip: null,
+      kwota_brutto: kwota,
+      koszt_dostawy_brutto: dostawa,
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane: 0,
+      utworzone_at: '2026-11-04T09:00:00.000Z',
+      pozycje: pozycje.map((p) => ({
+        sku: null,
+        vat: '23',
+        zdjecie_url: null,
+        produkt_id: null,
+        oferta_id: null,
+        wariant_id: null,
+        ...p,
+      })),
+    },
+    {},
+  );
 
 // Woo: 2 × 61,50 + 1 × 45,00 (usuwana) + 1 × 50,00 + wysyłka 19,99 = 237,99.
-const woo = () => zamowienie('sklep', {
-  zrodloId: '7101', kwota: '237.99', dostawa: '19.99',
-  pozycje: [
-    { zrodlo_id: 11, nazwa: 'Szablon „Liść”', ilosc: 2, cena_brutto: '61.50', brutto_linii: '123.00' },
-    { zrodlo_id: 12, nazwa: 'Szablon „Kropka”', ilosc: 1, cena_brutto: '45.00', brutto_linii: '45.00' },
-    { zrodlo_id: 13, nazwa: 'Wałek piankowy', ilosc: 1, cena_brutto: '50.00', brutto_linii: '50.00' },
-  ],
-});
+const woo = () =>
+  zamowienie('sklep', {
+    zrodloId: '7101',
+    kwota: '237.99',
+    dostawa: '19.99',
+    pozycje: [
+      { zrodlo_id: 11, nazwa: 'Szablon „Liść”', ilosc: 2, cena_brutto: '61.50', brutto_linii: '123.00' },
+      { zrodlo_id: 12, nazwa: 'Szablon „Kropka”', ilosc: 1, cena_brutto: '45.00', brutto_linii: '45.00' },
+      { zrodlo_id: 13, nazwa: 'Wałek piankowy', ilosc: 1, cena_brutto: '50.00', brutto_linii: '50.00' },
+    ],
+  });
 
 // Allegro: 1 × 129,00 + 2 × 35,00 (usuwana) + wysyłka 12,99 = 211,99. Linia Allegro ma id-napis.
-const allegro = () => zamowienie('allegro_a', {
-  zrodloId: 'a-7202', kwota: '211.99', dostawa: '12.99',
-  pozycje: [
-    { zrodlo_id: 'li-aa01', nazwa: 'Zestaw szablonów „Ogród”', ilosc: 1, cena_brutto: '129.00', brutto_linii: '129.00' },
-    { zrodlo_id: 'li-bb02', nazwa: 'Pędzel okrągły', ilosc: 2, cena_brutto: '35.00', brutto_linii: '70.00' },
-  ],
-});
+const allegro = () =>
+  zamowienie('allegro_a', {
+    zrodloId: 'a-7202',
+    kwota: '211.99',
+    dostawa: '12.99',
+    pozycje: [
+      {
+        zrodlo_id: 'li-aa01',
+        nazwa: 'Zestaw szablonów „Ogród”',
+        ilosc: 1,
+        cena_brutto: '129.00',
+        brutto_linii: '129.00',
+      },
+      { zrodlo_id: 'li-bb02', nazwa: 'Pędzel okrągły', ilosc: 2, cena_brutto: '35.00', brutto_linii: '70.00' },
+    ],
+  });
 
 const dokument = (z) => {
   const linie = pozycjeDokumentu(z, { stawkaDomyslna: '23' });
@@ -63,12 +99,17 @@ describe('złoty wynik — Woo z usuniętą pozycją', () => {
     zapiszNadpisaniaPozycji(db, id, { s12: { usunieta: true } });
     const z = pobierzZamowienie(db, id);
     expect(z.pozycje.map((p) => p.klucz)).toEqual(['s11', 's13']);
-    expect(z.pozycje_usuniete.map((p) => [p.klucz, p.nazwa, p.brutto_linii])).toEqual([['s12', 'Szablon „Kropka”', '45.00']]);
+    expect(z.pozycje_usuniete.map((p) => [p.klucz, p.nazwa, p.brutto_linii])).toEqual([
+      ['s12', 'Szablon „Kropka”', '45.00'],
+    ]);
     expect(kwotaOczekiwanaGrosze(z)).toBe(19299);
     expect(sumaPozycjiZWysylkaGrosze(z)).toBe(19299);
     expect(podsumowaniePozycji(z)).toMatchObject({ sumaZl: '192.99', oczekiwanaZl: '192.99', zgadzaSie: true });
     expect(podsumowanieVatKarty(z, { stawkaDomyslna: '23' })).toMatchObject({
-      nettoZl: '156.90', vatZl: '36.09', bruttoZl: '192.99', blad: null,
+      nettoZl: '156.90',
+      vatZl: '36.09',
+      bruttoZl: '192.99',
+      blad: null,
     });
   });
 
@@ -77,7 +118,9 @@ describe('złoty wynik — Woo z usuniętą pozycją', () => {
     zapiszNadpisaniaPozycji(db, id, { s12: { usunieta: true } });
     const linie = dokument(pobierzZamowienie(db, id));
     expect(linie.map((l) => [l.name, l.gross_price])).toEqual([
-      ['Szablon „Liść”', 12300], ['Wałek piankowy', 5000], ['Dostawa', 1999],
+      ['Szablon „Liść”', 12300],
+      ['Wałek piankowy', 5000],
+      ['Dostawa', 1999],
     ]);
   });
 
@@ -85,7 +128,11 @@ describe('złoty wynik — Woo z usuniętą pozycją', () => {
     const id = woo();
     zapiszNadpisaniaPozycji(db, id, { s12: { usunieta: true } });
     dodajWplateReczna(db, id, { kwota: '237.99', data: '2026-11-04' });
-    expect(saldoWplat(pobierzZamowienie(db, id))).toMatchObject({ kwotaZl: '192.99', stan: 'nadplata', roznicaZl: '45.00' });
+    expect(saldoWplat(pobierzZamowienie(db, id))).toMatchObject({
+      kwotaZl: '192.99',
+      stan: 'nadplata',
+      roznicaZl: '45.00',
+    });
   });
 
   it('wpłata 192,99 pokrywa zamówienie po usunięciu (opłacone), a przed — nie', () => {
@@ -117,7 +164,10 @@ describe('złoty wynik — Allegro z usuniętą pozycją', () => {
     expect(z.pozycje.map((p) => p.nazwa)).toEqual(['Zestaw szablonów „Ogród”']);
     expect(kwotaOczekiwanaGrosze(z)).toBe(14199);
     expect(podsumowanieVatKarty(z, { stawkaDomyslna: '23' })).toMatchObject({
-      nettoZl: '115.44', vatZl: '26.55', bruttoZl: '141.99', blad: null,
+      nettoZl: '115.44',
+      vatZl: '26.55',
+      bruttoZl: '141.99',
+      blad: null,
     });
     expect(dokument(z).map((l) => l.gross_price)).toEqual([12900, 1299]);
   });
@@ -144,7 +194,9 @@ describe('grupa scalona z usuniętą pozycją w obu członkach', () => {
 describe('zwrot zamówienia z usuniętą pozycją (klucz z nakładki)', () => {
   const bezIdLinii = () => {
     const id = zamowienie('sklep', {
-      zrodloId: '7303', kwota: '237.99', dostawa: '19.99',
+      zrodloId: '7303',
+      kwota: '237.99',
+      dostawa: '19.99',
       pozycje: [
         { zrodlo_id: null, nazwa: 'Szablon „Liść”', ilosc: 2, cena_brutto: '61.50', brutto_linii: '123.00' },
         { zrodlo_id: null, nazwa: 'Szablon „Kropka”', ilosc: 1, cena_brutto: '45.00', brutto_linii: '45.00' },
@@ -155,15 +207,24 @@ describe('zwrot zamówienia z usuniętą pozycją (klucz z nakładki)', () => {
     return pobierzZamowienie(db, id);
   };
   const cialo = (nad = {}) => ({
-    data: '2026-11-04', kwota: '50.00', kwota_dostawy: '', powod: 'nie pasuje',
-    klucz: ['p2'], ilosc: ['2'], nazwa: ['Wałek piankowy'], pozycja_kwota: ['50.00'], ...nad,
+    data: '2026-11-04',
+    kwota: '50.00',
+    kwota_dostawy: '',
+    powod: 'nie pasuje',
+    klucz: ['p2'],
+    ilosc: ['2'],
+    nazwa: ['Wałek piankowy'],
+    pozycja_kwota: ['50.00'],
+    ...nad,
   });
 
   it('formularz zwrotu niesie klucze p0 i p2', () => {
     const z = bezIdLinii();
     expect(z.pozycje.map((p) => p.klucz)).toEqual(['p0', 'p2']);
-    expect(formularzZwrotu(z, { dzis: '2026-11-04' }).pozycje.map((p) => [p.klucz, p.nazwa]))
-      .toEqual([['p0', 'Szablon „Liść”'], ['p2', 'Wałek piankowy']]);
+    expect(formularzZwrotu(z, { dzis: '2026-11-04' }).pozycje.map((p) => [p.klucz, p.nazwa])).toEqual([
+      ['p0', 'Szablon „Liść”'],
+      ['p2', 'Wałek piankowy'],
+    ]);
   });
 
   it('parsujZwrot przyjmuje 2 szt. pozycji p2', () => {

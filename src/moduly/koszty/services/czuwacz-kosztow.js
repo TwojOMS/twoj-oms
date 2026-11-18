@@ -2,8 +2,15 @@ import { czyPoraPobrania } from '../../../domena/pora-pobrania.js';
 import { odKursora, podzielNaOkna, nastepnyKrok } from '../../../domena/okna-pobrania.js';
 import { naWiersz } from '../../../domena/koszt-metadane.js';
 import {
-  zapiszKoszt, wczytajKursor, zapiszKursor, odnotujUdanyPrzebieg, zapiszBladPobrania,
-  zapiszOdrzuconyKoszt, usunOdrzucony, liczbaOdrzuconych, kosztyBezArchiwum,
+  zapiszKoszt,
+  wczytajKursor,
+  zapiszKursor,
+  odnotujUdanyPrzebieg,
+  zapiszBladPobrania,
+  zapiszOdrzuconyKoszt,
+  usunOdrzucony,
+  liczbaOdrzuconych,
+  kosztyBezArchiwum,
 } from '../../../oms/db/koszty.js';
 import { zarchiwizuj } from './archiwum-kosztow.js';
 // ⚠️ TYLKO STALE CZASOWE — do policzenia najgorszego przebiegu (nizej). Klient KSeF jedzie do
@@ -88,9 +95,8 @@ export const BUDZET_ARCHIWUM_MS = 10 * 60 * 1000;
 // Ginie dopiero przy przebiegu dluzszym niz DOBA: on zabiera nastepne okno pobrania, czyli
 // cala dobe kosztow. Porownanie z godzina byloby warunkiem nie do spelnienia (sam sufit stron
 // to ponad trzy godziny) i musialoby zostac „naprawione" wylaczeniem straznika.
-export const NAJDLUZSZY_PRZEBIEG_KOSZTOW_MS = NAJDLUZSZE_ODPYTYWANIE_MS
-  + SUFIT_STRON * LIMIT_ZADANIA_MS
-  + BUDZET_ARCHIWUM_MS + LIMIT_ZADANIA_MS;
+export const NAJDLUZSZY_PRZEBIEG_KOSZTOW_MS =
+  NAJDLUZSZE_ODPYTYWANIE_MS + SUFIT_STRON * LIMIT_ZADANIA_MS + BUDZET_ARCHIWUM_MS + LIMIT_ZADANIA_MS;
 
 // ⚠️ HAMULEC NA MARTWE ZRODLO. KSeF nieosiagalny znaczy, ze KAZDY dokument odbije sie tak samo
 // — bez tego licznika przebieg waliby w martwe API tyle razy, ile jest niezarchiwizowanych
@@ -113,7 +119,10 @@ function pozniejsza(a, b) {
 }
 
 export function createCzuwaczKosztow({
-  db, klient, sesja, teraz = () => new Date(),
+  db,
+  klient,
+  sesja,
+  teraz = () => new Date(),
   // ⚠️ SCIEZKA BAZOWA ARCHIWUM XML (`KSEF_ARCHIWUM`, modul.ts) — OPCJONALNA I TAKA MA ZOSTAC.
   // Brak ścieżki znaczy „nie archiwizujemy" i NIC WIĘCEJ: koszty pobierają się tak samo,
   // bo plik w archiwum jest dodatkiem do lustra w bazie, a nie odwrotnie.
@@ -123,7 +132,10 @@ export function createCzuwaczKosztow({
   archiwizuj = zarchiwizuj,
   // ⚠️ CZEKANIE PO ODMOWIE Z LIMITU KSeF (ksef/limit.js) — wstrzykiwalne WYLACZNIE po to, zeby
   // testy nie spaly po 55 s na prawdziwym zegarze. W produkcji jedzie zwykly `setTimeout`.
-  spij = (ms) => new Promise((r) => { setTimeout(r, ms); }),
+  spij = (ms) =>
+    new Promise((r) => {
+      setTimeout(r, ms);
+    }),
   log = console.error,
 }) {
   // ⚠️ JEDEN PRZEBIEG NARAZ — ten sam straznik, co w pollerze i w czuwaczu KSeF. Zegar tyka
@@ -237,8 +249,10 @@ export function createCzuwaczKosztow({
     let bledyZRzedu = 0;
     for (const wiersz of kosztyBezArchiwum(db)) {
       if (teraz().getTime() >= koniecBudzetu) {
-        log('Archiwum kosztow: budzet czasu na archiwizacje wyczerpany — reszta dokumentow '
-          + 'pojedzie nastepnym przebiegiem. Dane w bazie sa kompletne, brakuje tylko plikow.');
+        log(
+          'Archiwum kosztow: budzet czasu na archiwizacje wyczerpany — reszta dokumentow ' +
+            'pojedzie nastepnym przebiegiem. Dane w bazie sa kompletne, brakuje tylko plikow.',
+        );
         break;
       }
       try {
@@ -273,7 +287,11 @@ export function createCzuwaczKosztow({
           log,
           limit: { spij, teraz, doKiedy: koniecBudzetu, log },
         });
-        if (wynik?.xml) { zrobionych += 1; bledyZRzedu = 0; continue; }
+        if (wynik?.xml) {
+          zrobionych += 1;
+          bledyZRzedu = 0;
+          continue;
+        }
         // Nieudany ZAPIS na dysk (`zarchiwizuj` zjada go sam i tylko loguje) liczy sie do tego
         // samego licznika, co błąd pobrania: padnięty dysk archiwum odbije tak samo każdy następny
         // dokument, a kazda taka proba kosztuje jedno POBRANIE z KSeF.
@@ -294,19 +312,25 @@ export function createCzuwaczKosztow({
         // ⚠️ ROZPOZNANIE PO `powod`, A NIE PO TRESCI ZDANIA: komunikat 429 pisze MF i zmieni
         // sie bez uprzedzenia, a wtedy limit wrocilby po cichu do liczenia sie jako awaria.
         if (e?.powod === 'limit') {
-          log(`Archiwum kosztow: KSeF odmowil na limicie zadan (${e.message}) — archiwizacja `
-            + 'konczy sie na ten przebieg, a reszta dokumentow pojedzie nastepnej nocy. '
-            + 'Dane w bazie sa kompletne, brakuje tylko plikow.');
+          log(
+            `Archiwum kosztow: KSeF odmowil na limicie zadan (${e.message}) — archiwizacja ` +
+              'konczy sie na ten przebieg, a reszta dokumentow pojedzie nastepnej nocy. ' +
+              'Dane w bazie sa kompletne, brakuje tylko plikow.',
+          );
           break;
         }
         bledyZRzedu += 1;
-        log(`Archiwum kosztow: nie udalo sie pobrac XML-a dokumentu ${wiersz.ksef_number} `
-          + `(${e.message}) — dokument JEST w kosztach i w sumie miesiaca, brakuje tylko pliku `
-          + 'w archiwum. Panel sprobuje ponownie przy kolejnym przebiegu.');
+        log(
+          `Archiwum kosztow: nie udalo sie pobrac XML-a dokumentu ${wiersz.ksef_number} ` +
+            `(${e.message}) — dokument JEST w kosztach i w sumie miesiaca, brakuje tylko pliku ` +
+            'w archiwum. Panel sprobuje ponownie przy kolejnym przebiegu.',
+        );
       }
       if (bledyZRzedu >= LIMIT_KOLEJNYCH_BLEDOW_ARCHIWUM) {
-        log(`Archiwum kosztow: ${bledyZRzedu} bledy z rzedu — archiwizacja przerwana na ten `
-          + 'przebieg (zrodlo albo dysk sa niedostepne). Pobranie kosztow to NIE dotyka.');
+        log(
+          `Archiwum kosztow: ${bledyZRzedu} bledy z rzedu — archiwizacja przerwana na ten ` +
+            'przebieg (zrodlo albo dysk sa niedostepne). Pobranie kosztow to NIE dotyka.',
+        );
         break;
       }
     }
@@ -318,7 +342,9 @@ export function createCzuwaczKosztow({
     if (!wymuszony && !czyPoraPobrania(teraz())) return { pominiety: true, powod: POWOD_NIE_TA_PORA };
     trwa = true;
     try {
-      let nowych = 0; let przeczytanych = 0; let odrzuconych = 0;
+      let nowych = 0;
+      let przeczytanych = 0;
+      let odrzuconych = 0;
       // ⚠️⚠️ KURSOR NIE JEST „OSTATNIA WIDZIANA DATA" — jest NAJDALSZA. Zmienna
       // niosaca date ostatniego rekordu MUSI byc per-okno (`ostatniaData` nizej, w ciele petli),
       // bo sluzy do PRZESUWANIA OKNA i jest jedyna przeslanka straznika `!ostatniaData`
@@ -368,7 +394,8 @@ export function createCzuwaczKosztow({
       let oknaPrzetworzone = 0;
       for (const okno of okna) {
         oknaPrzetworzone += 1;
-        let { from } = okno; let pageOffset = 0;
+        let { from } = okno;
+        let pageOffset = 0;
         // ⚠️ PER-OKNO, CELOWO. Patrz `najdalszaData` wyzej: ta zmienna prowadzi PRZESUWANIE
         // OKNA, wiec data z okna poprzedniego jest tu wartoscia bogusowa, a nie zapasowa.
         let ostatniaData = null;
@@ -381,10 +408,11 @@ export function createCzuwaczKosztow({
           // do sieci dopiero przy wygasnieciu — wiec pobranie go raz na starcie kupowalo
           // dokladnie nic, a kosztowalo cala klase awarii „401 w polowie nocy".
           const accessToken = await sesja.accessToken();
-          const {
-            faktury, hasMore, isTruncated, koniecNiepewny,
-          } = await klient.pobierzMetadane({
-            accessToken, from, to: okno.to, pageOffset,
+          const { faktury, hasMore, isTruncated, koniecNiepewny } = await klient.pobierzMetadane({
+            accessToken,
+            from,
+            to: okno.to,
+            pageOffset,
           });
           for (const m of faktury) {
             przeczytanych += 1;
@@ -402,17 +430,36 @@ export function createCzuwaczKosztow({
           // dokumentu, tylko utrata pewnosci co do calego okna, wiec przebieg pada, kursor
           // zostaje, a slad idzie do `zapiszBladPobrania` nizej.
           const krok = nastepnyKrok({
-            hasMore, isTruncated, pageOffset, ostatniaData,
+            hasMore,
+            isTruncated,
+            pageOffset,
+            ostatniaData,
           });
-          if (krok.koniec) { niepewnyKoniec = koniecNiepewny === true; break; }
-          if (krok.from) { from = krok.from; pageOffset = 0; } else { pageOffset = krok.pageOffset; }
+          if (krok.koniec) {
+            niepewnyKoniec = koniecNiepewny === true;
+            break;
+          }
+          if (krok.from) {
+            from = krok.from;
+            pageOffset = 0;
+          } else {
+            pageOffset = krok.pageOffset;
+          }
         }
         // Petla wyszla po warunku, a nie przez `break` — czyli sufit zostal wyczerpany
         // i to okno NIE JEST doczytane do konca.
-        if (strona === SUFIT_STRON) { niedokonczone = true; powodPrzerwania = SUFIT; break; }
+        if (strona === SUFIT_STRON) {
+          niedokonczone = true;
+          powodPrzerwania = SUFIT;
+          break;
+        }
         // Okno skonczylo sie na NASZYM domysle, a nie na zdaniu KSeF-u (patrz `koniecNiepewny`
         // w ksef/client.js) — wiec nie wolno na tym oprzec przeskoku nad ogonem okna.
-        if (niepewnyKoniec) { niedokonczone = true; powodPrzerwania = NIEPEWNY_KONIEC; break; }
+        if (niepewnyKoniec) {
+          niedokonczone = true;
+          powodPrzerwania = NIEPEWNY_KONIEC;
+          break;
+        }
       }
       // ⚠️ KURSOR PRZESUWA SIE DOPIERO PO CALYM UDANYM PRZEBIEGU. Przesuwanie go po kazdej
       // stronie znaczyloby, ze awaria w polowie zostawia dziure w lustrze — a dziura w kosztach
@@ -421,7 +468,8 @@ export function createCzuwaczKosztow({
       // zapisem `ostatnie_udane_at`, spokojna doba bez faktur kosztowych zostawiałaby ekran ze
       // zdaniem „nigdy się nie udało" i z dawną awarią wciąż zapaloną.
       // Kursor zostaje tam, gdzie stal — nie ma czym go przesunac (uzasadnienie w db/koszty.js).
-      if (najdalszaData) zapiszKursor(db, najdalszaData); else odnotujUdanyPrzebieg(db);
+      if (najdalszaData) zapiszKursor(db, najdalszaData);
+      else odnotujUdanyPrzebieg(db);
       // ⚠️ SLADY IDA PO `zapiszKursor`, A NIE PRZED — ta funkcja CZYSCI `ostatni_blad` (bo udany
       // przebieg gasi stara awarie). Odwrotna kolejnosc skasowalaby komunikat w tej samej
       // milisekundzie, w ktorej powstal. Wynik: pasek zakladki mowi jednoczesnie „pobrano teraz"
@@ -436,20 +484,26 @@ export function createCzuwaczKosztow({
       const wKwarantannie = liczbaOdrzuconych(db);
       if (wKwarantannie) uwagi.push(opisOdrzuconych(wKwarantannie));
       if (kursorZPrzyszlosci) {
-        uwagi.push(`Kursor pobierania (${kursor}) był z przyszłości — zegar panelu albo daty `
-          + 'z KSeF się rozjechały. Panel przeczytał ostatnie dni zamiast nie robić nic, ale '
-          + 'sprawdź, czy suma miesiąca jest kompletna.');
+        uwagi.push(
+          `Kursor pobierania (${kursor}) był z przyszłości — zegar panelu albo daty ` +
+            'z KSeF się rozjechały. Panel przeczytał ostatnie dni zamiast nie robić nic, ale ' +
+            'sprawdź, czy suma miesiąca jest kompletna.',
+        );
       }
       if (powodPrzerwania === SUFIT) {
-        uwagi.push(`Pobranie przerwane na limicie ${SUFIT_STRON} stron w jednym oknie — reszta `
-          + 'pojedzie następnym przebiegiem, od miejsca, w którym stanął kursor. Żaden dokument '
-          + 'nie przepadł, ale suma miesiąca może być jeszcze niepełna.');
+        uwagi.push(
+          `Pobranie przerwane na limicie ${SUFIT_STRON} stron w jednym oknie — reszta ` +
+            'pojedzie następnym przebiegiem, od miejsca, w którym stanął kursor. Żaden dokument ' +
+            'nie przepadł, ale suma miesiąca może być jeszcze niepełna.',
+        );
       }
       if (powodPrzerwania === NIEPEWNY_KONIEC) {
-        uwagi.push('Pobranie przerwane: KSeF oddał pełną stronę BEZ znacznika hasMore, więc panel '
-          + 'nie wie, czy przeczytał okno do końca — i nie przeskoczył nad nim do okresów '
-          + 'późniejszych. Reszta pojedzie następnym przebiegiem, od miejsca, w którym stanął '
-          + 'kursor. Żaden dokument nie przepadł, ale suma miesiąca może być jeszcze niepełna.');
+        uwagi.push(
+          'Pobranie przerwane: KSeF oddał pełną stronę BEZ znacznika hasMore, więc panel ' +
+            'nie wie, czy przeczytał okno do końca — i nie przeskoczył nad nim do okresów ' +
+            'późniejszych. Reszta pojedzie następnym przebiegiem, od miejsca, w którym stanął ' +
+            'kursor. Żaden dokument nie przepadł, ale suma miesiąca może być jeszcze niepełna.',
+        );
       }
       if (uwagi.length) zapiszBladPobrania(db, uwagi.join(' '));
       // ⚠️ NA SAMYM KONCU I POZA CALA PETLA POBIERANIA — uzasadnienie w naglowku
@@ -487,13 +541,16 @@ export function createCzuwaczKosztow({
   // ktory sam nic nie odrzucil, nie jest zadnym powodem, zeby o nim przestac mowic. Zdanie
   // gasnie dopiero razem z ostatnim wierszem kwarantanny (`usunOdrzucony` po udanym zapisie).
   function opisOdrzuconych(ile) {
-    const numery = db.prepare(
-      'SELECT ksef_number FROM koszty_odrzucone ORDER BY ostatnia_proba_at DESC LIMIT 5',
-    ).all().map((w) => w.ksef_number);
+    const numery = db
+      .prepare('SELECT ksef_number FROM koszty_odrzucone ORDER BY ostatnia_proba_at DESC LIMIT 5')
+      .all()
+      .map((w) => w.ksef_number);
     const reszta = ile > numery.length ? ` i ${ile - numery.length} więcej` : '';
-    return `Pobrano koszty, ale ${ile} dokument(y) leżą odrzucone i NIE weszły do sumy miesiąca `
-      + `(${numery.join(', ')}${reszta}). Panel nie zna ich kwot i nie zmyśli ich: sprawdź te `
-      + 'dokumenty w KSeF.';
+    return (
+      `Pobrano koszty, ale ${ile} dokument(y) leżą odrzucone i NIE weszły do sumy miesiąca ` +
+      `(${numery.join(', ')}${reszta}). Panel nie zna ich kwot i nie zmyśli ich: sprawdź te ` +
+      'dokumenty w KSeF.'
+    );
   }
 
   return { przebieg };

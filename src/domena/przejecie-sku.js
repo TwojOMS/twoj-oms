@@ -26,7 +26,10 @@
  * jako DWA rozne numery, a w sklepie beda JEDNYM — czyli zapis odbilby sie o duplikat
  * dopiero na produkcji. Ta sama regula stoi w `sku-generator.js` i `oms/db/magazyn.js`.
  */
-const kluczNumeru = (sku) => String(sku ?? '').trim().toUpperCase();
+const kluczNumeru = (sku) =>
+  String(sku ?? '')
+    .trim()
+    .toUpperCase();
 
 /** Numer ze sklepu bez otoczki. Sam napis z odstepow to BRAK numeru, a nie numer. */
 const numerSklepu = (sku) => String(sku ?? '').trim();
@@ -51,21 +54,24 @@ function indeksZajetych(zajete) {
     if (klucz && !indeks.has(klucz)) indeks.set(klucz, opis ?? null);
   };
   if (zajete instanceof Map) for (const [sku, opis] of zajete) dodaj(sku, opis);
-  else for (const p of zajete) (typeof p === 'string' ? dodaj(p, null) : dodaj(p?.sku, p?.opis));
+  else for (const p of zajete) typeof p === 'string' ? dodaj(p, null) : dodaj(p?.sku, p?.opis);
   return indeks;
 }
 
-const OPIS_ROZBIEZNOSCI = (zrodla) => 'Produkty tej karty mają w sklepach różne numery: '
-  + `${zrodla.map((z) => `„${z.sku}" (${z.opis})`).join(', ')}. `
-  + 'Nie wybieram za Ciebie — który z nich jest numerem tej karty, wie wyłącznie człowiek. '
-  + 'Wpisz go na karcie produktu albo popraw numer w sklepie.';
+const OPIS_ROZBIEZNOSCI = (zrodla) =>
+  'Produkty tej karty mają w sklepach różne numery: ' +
+  `${zrodla.map((z) => `„${z.sku}" (${z.opis})`).join(', ')}. ` +
+  'Nie wybieram za Ciebie — który z nich jest numerem tej karty, wie wyłącznie człowiek. ' +
+  'Wpisz go na karcie produktu albo popraw numer w sklepie.';
 
-const OPIS_KOLIZJI = (sku, skad) => `Numer „${sku}" jest już zajęty${skad ? ` — ${skad}` : ''}. `
-  + 'Nie przejmę go: w rejestrze powstałby drugi wiersz z tym samym numerem, a w sklepie '
-  + 'jest to tożsamość jednego produktu.';
+const OPIS_KOLIZJI = (sku, skad) =>
+  `Numer „${sku}" jest już zajęty${skad ? ` — ${skad}` : ''}. ` +
+  'Nie przejmę go: w rejestrze powstałby drugi wiersz z tym samym numerem, a w sklepie ' +
+  'jest to tożsamość jednego produktu.';
 
-const OPIS_SPORU = (sku, nazwa) => `Numer „${sku}" chce przejąć także karta „${nazwa}". `
-  + 'Dwie karty z jednym numerem sklep odrzuci jako duplikat — rozstrzygnij, która go ma.';
+const OPIS_SPORU = (sku, nazwa) =>
+  `Numer „${sku}" chce przejąć także karta „${nazwa}". ` +
+  'Dwie karty z jednym numerem sklep odrzuci jako duplikat — rozstrzygnij, która go ma.';
 
 /**
  * Propozycje PRZEJECIA numerow ze sklepu.
@@ -108,11 +114,9 @@ export function przejeciaZeSklepu(karty, produkty, zajete) {
   // ⚠️ SORTOWANIE JAWNE — po nazwie, tak jak na liscie, generatorze i ekranie powiazan;
   // `id` domyka remis. To ono daje POWTARZALNOSC: kolejnosc wierszy z bazy zalezy od planu
   // zapytania, a czlowiek ma zobaczyc przy zatwierdzeniu ten sam ekran, co przy podgladzie.
-  const doPrzejecia = [...poId.values()].filter(
-    (w) => bezSku(w) && (zrodla.get(w.id) ?? []).length,
-  ).sort(
-    (a, b) => String(a.nazwa ?? '').localeCompare(String(b.nazwa ?? ''), 'pl') || (a.id - b.id),
-  );
+  const doPrzejecia = [...poId.values()]
+    .filter((w) => bezSku(w) && (zrodla.get(w.id) ?? []).length)
+    .sort((a, b) => String(a.nazwa ?? '').localeCompare(String(b.nazwa ?? ''), 'pl') || a.id - b.id);
 
   const indeks = indeksZajetych(zajete);
 
@@ -125,16 +129,24 @@ export function przejeciaZeSklepu(karty, produkty, zajete) {
     const rozne = [...new Set(moje.map((z) => z.sku))];
     if (rozne.length > 1) {
       return {
-        karta, sku: null, zrodlo: null, uwaga: OPIS_ROZBIEZNOSCI(moje),
-        zla: true, rodzaj: 'rozbieznosc',
+        karta,
+        sku: null,
+        zrodlo: null,
+        uwaga: OPIS_ROZBIEZNOSCI(moje),
+        zla: true,
+        rodzaj: 'rozbieznosc',
       };
     }
     const [{ sku, opis }] = moje;
     const skad = indeks.get(kluczNumeru(sku));
     if (skad !== undefined) {
       return {
-        karta, sku: null, zrodlo: opis, uwaga: OPIS_KOLIZJI(sku, skad),
-        zla: true, rodzaj: 'kolizja',
+        karta,
+        sku: null,
+        zrodlo: opis,
+        uwaga: OPIS_KOLIZJI(sku, skad),
+        zla: true,
+        rodzaj: 'kolizja',
       };
     }
     return { karta, sku, zrodlo: opis, uwaga: null, zla: false, rodzaj: 'gotowe' };
@@ -162,6 +174,12 @@ export function przejeciaZeSklepu(karty, produkty, zajete) {
   }
 
   return wstepne.map(({ karta, sku, zrodlo, uwaga, zla, rodzaj }) => ({
-    id: karta.id, nazwa: karta.nazwa, sku, zrodlo, uwaga, zla, rodzaj,
+    id: karta.id,
+    nazwa: karta.nazwa,
+    sku,
+    zrodlo,
+    uwaga,
+    zla,
+    rodzaj,
   }));
 }

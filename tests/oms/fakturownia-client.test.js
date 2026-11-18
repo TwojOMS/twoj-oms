@@ -6,13 +6,26 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  createFakturowniaClient, METODY_FAKTUROWNI, LIMIT_ZADANIA_MS, STRONA_FAKTUROWNI, SUFIT_STRON,
+  createFakturowniaClient,
+  METODY_FAKTUROWNI,
+  LIMIT_ZADANIA_MS,
+  STRONA_FAKTUROWNI,
+  SUFIT_STRON,
 } from '../../src/oms/fakturownia/client.js';
 import { PROG_ZAWIESZONEJ_FAKTURY_MS } from '../../src/domena/faktura-stan.js';
 import { utworzHttp } from '../../src/core/http.ts';
 
 const FIX = fileURLToPath(new URL('../fixtures/fakturownia/', import.meta.url));
-const pomiar = (nr) => JSON.parse(fs.readFileSync(path.join(FIX, fs.readdirSync(FIX).find((n) => n.startsWith(`${nr}-`))), 'utf8'));
+const pomiar = (nr) =>
+  JSON.parse(
+    fs.readFileSync(
+      path.join(
+        FIX,
+        fs.readdirSync(FIX).find((n) => n.startsWith(`${nr}-`)),
+      ),
+      'utf8',
+    ),
+  );
 const wymiana = (nr, i) => pomiar(nr).wymiany[i];
 
 // Zmyślony token w kształcie tokenu Fakturowni (część po ukośniku = domena) — ukośnik daje inną postać
@@ -29,9 +42,11 @@ function klucz(url) {
   return `${u.origin}${u.pathname}?${p.join('&')}`;
 }
 
-const json = (cialo, status = 200, naglowki = {}) => new Response(cialo === undefined ? null : JSON.stringify(cialo), {
-  status, headers: { 'content-type': 'application/json; charset=utf-8', ...naglowki },
-});
+const json = (cialo, status = 200, naglowki = {}) =>
+  new Response(cialo === undefined ? null : JSON.stringify(cialo), {
+    status,
+    headers: { 'content-type': 'application/json; charset=utf-8', ...naglowki },
+  });
 
 /**
  * fetch, który zapisuje każde żądanie i odpowiada według `odpowiedz(zadanie)`.
@@ -41,8 +56,11 @@ function nagrywacz(odpowiedz) {
   const zadania = [];
   const fetchImpl = async (url, opcje = {}) => {
     const zadanie = {
-      url: String(url), metoda: opcje.method ?? 'GET', naglowki: { ...(opcje.headers ?? {}) },
-      cialo: opcje.body ?? null, signal: opcje.signal,
+      url: String(url),
+      metoda: opcje.method ?? 'GET',
+      naglowki: { ...(opcje.headers ?? {}) },
+      cialo: opcje.body ?? null,
+      signal: opcje.signal,
     };
     zadania.push(zadanie);
     return odpowiedz(zadanie);
@@ -59,9 +77,17 @@ function zPomiaru(wymiany) {
   });
 }
 
-const klient = (fetchImpl, dodatki = {}) => createFakturowniaClient({ token: TOKEN, domena: DOMENA, fetchImpl, ...dodatki });
+const klient = (fetchImpl, dodatki = {}) =>
+  createFakturowniaClient({ token: TOKEN, domena: DOMENA, fetchImpl, ...dodatki });
 const cialoZadania = (w) => (typeof w.zadanie.cialo === 'string' ? JSON.parse(w.zadanie.cialo) : w.zadanie.cialo);
-const blad = async (obietnica) => { try { await obietnica; } catch (e) { return e; } throw new Error('oczekiwano odmowy'); };
+const blad = async (obietnica) => {
+  try {
+    await obietnica;
+  } catch (e) {
+    return e;
+  }
+  throw new Error('oczekiwano odmowy');
+};
 
 // Postacie tokenu, które serwer albo pośrednik mógłby odbić w treści błędu.
 const POSTACIE_TOKENU = [
@@ -83,16 +109,23 @@ describe('klient Fakturowni — stałe i budowa', () => {
 
   it('domena konta tylko z małych liter, cyfr i myślnika; bez tokenu klienta nie ma', () => {
     for (const zla of ['', 'Firma', '-firma', 'firma.zla', 'firma/x', 'a@b', 'x'.repeat(64), 'firma testowa']) {
-      expect(() => createFakturowniaClient({ token: TOKEN, domena: zla, fetchImpl: async () => json([]) }), zla).toThrow(/domen/i);
+      expect(
+        () => createFakturowniaClient({ token: TOKEN, domena: zla, fetchImpl: async () => json([]) }),
+        zla,
+      ).toThrow(/domen/i);
     }
-    expect(() => createFakturowniaClient({ token: '', domena: DOMENA, fetchImpl: async () => json([]) })).toThrow(/token/i);
+    expect(() => createFakturowniaClient({ token: '', domena: DOMENA, fetchImpl: async () => json([]) })).toThrow(
+      /token/i,
+    );
     expect(() => klient(async () => json([]))).not.toThrow();
   });
 
   it('wstrzyknięty `http` → odmowa przy budowie (transport z ponowieniami powtórzyłby wysyłkę do KSeF)', () => {
     const http = utworzHttp({ fetchImpl: async () => json([]), czekaj: async () => {}, log: () => {} });
     expect(() => createFakturowniaClient({ token: TOKEN, domena: DOMENA, http })).toThrow(/http/);
-    expect(() => createFakturowniaClient({ token: TOKEN, domena: DOMENA, fetchImpl: async () => json([]), http })).toThrow(/http/);
+    expect(() =>
+      createFakturowniaClient({ token: TOKEN, domena: DOMENA, fetchImpl: async () => json([]), http }),
+    ).toThrow(/http/);
   });
 
   it('każde żądanie: Bearer w nagłówku, token nigdy w adresie, narzucony limit czasu', async () => {
@@ -152,7 +185,11 @@ describe('błędy na odpowiedziach z pomiaru', () => {
   });
 
   it('429: status i sekundy z Retry-After (Fakturownia nie dławiła w pomiarze, ale klient to rozumie)', async () => {
-    const e = await blad(klient(async () => json({ code: 'error', message: 'Too many requests' }, 429, { 'Retry-After': '30' })).pobierzFakture(1));
+    const e = await blad(
+      klient(async () =>
+        json({ code: 'error', message: 'Too many requests' }, 429, { 'Retry-After': '30' }),
+      ).pobierzFakture(1),
+    );
     expect(e.status).toBe(429);
     expect(e.ponowZaS).toBe(30);
     expect(e.message).toMatch(/30 s/);
@@ -176,7 +213,11 @@ describe('błędy na odpowiedziach z pomiaru', () => {
       expect(e.message).toMatch(/\[token\]/);
     }
     // Błąd sieci z adresem i tokenem w opisie (np. pośrednik) — ta sama zasada.
-    const siec = await blad(klient(async () => { throw new TypeError(`fetch failed ${ADRES}/?x=${encodeURIComponent(TOKEN)} ${TOKEN}`); }).pobierzFakture(1));
+    const siec = await blad(
+      klient(async () => {
+        throw new TypeError(`fetch failed ${ADRES}/?x=${encodeURIComponent(TOKEN)} ${TOKEN}`);
+      }).pobierzFakture(1),
+    );
     bezTokenu(siec.message);
     bezTokenu(siec.stack);
     expect(siec.message).not.toMatch(/firma-testowa\.fakturownia\.pl/);
@@ -211,11 +252,12 @@ describe('stronicowanie: goła tablica, koniec = strona krótsza niż per_page',
   });
 
   const pelna = wymiana('F07', 28).odpowiedz.cialo;
-  const strony = (ile) => nagrywacz((z) => {
-    const nr = Number(new URL(z.url).searchParams.get('page'));
-    const zostalo = ile - (nr - 1) * STRONA_FAKTUROWNI;
-    return json(pelna.slice(0, Math.max(0, Math.min(STRONA_FAKTUROWNI, zostalo))));
-  });
+  const strony = (ile) =>
+    nagrywacz((z) => {
+      const nr = Number(new URL(z.url).searchParams.get('page'));
+      const zostalo = ile - (nr - 1) * STRONA_FAKTUROWNI;
+      return json(pelna.slice(0, Math.max(0, Math.min(STRONA_FAKTUROWNI, zostalo))));
+    });
 
   it('600 = komplet po sprawdzeniu strony 7; 601 = odmowa (sufit), bez cichej części', async () => {
     const r600 = strony(600);
@@ -259,7 +301,13 @@ describe('stronicowanie: goła tablica, koniec = strona krótsza niż per_page',
 
   it('parametry spoza listy dozwolonych → odmowa bez żądania (nieznany filtr Fakturownia przemilcza)', async () => {
     const { fetchImpl, zadania } = nagrywacz(() => json([]));
-    for (const zle of [{ send_to_ksef: 'yes' }, { api_token: 'x' }, { page: '3' }, { per_page: '1000' }, { numer_nieistniejacy_filtr: 'x' }]) {
+    for (const zle of [
+      { send_to_ksef: 'yes' },
+      { api_token: 'x' },
+      { page: '3' },
+      { per_page: '1000' },
+      { numer_nieistniejacy_filtr: 'x' },
+    ]) {
       const e = await blad(klient(fetchImpl).listaFaktur(zle));
       expect(e.status, JSON.stringify(zle)).toBe(400);
     }
@@ -287,8 +335,12 @@ describe('operacje na pomiarze', () => {
   it('pobierzFakture z polami i z pozycjami korekty — surowy obiekt', async () => {
     const { fetchImpl } = zPomiaru([...pomiar('F12').wymiany, ...pomiar('F15').wymiany]);
     const k = klient(fetchImpl);
-    await expect(k.pobierzFakture(595670707, { 'fields[invoice]': 'id,number,gov_status' })).resolves.toEqual(wymiana('F12', 0).odpowiedz.cialo);
-    await expect(k.pobierzFakture('595671213', { correction_positions: 'full' })).resolves.toEqual(wymiana('F15', 3).odpowiedz.cialo);
+    await expect(k.pobierzFakture(595670707, { 'fields[invoice]': 'id,number,gov_status' })).resolves.toEqual(
+      wymiana('F12', 0).odpowiedz.cialo,
+    );
+    await expect(k.pobierzFakture('595671213', { correction_positions: 'full' })).resolves.toEqual(
+      wymiana('F15', 3).odpowiedz.cialo,
+    );
   });
 
   it('identyfikator dokumentu tylko z cyfr — inaczej odmowa 400 bez żądania', async () => {
@@ -321,17 +373,27 @@ describe('operacje na pomiarze', () => {
 
   it('oznaczZaplacona', async () => {
     const { fetchImpl } = zPomiaru(pomiar('F09').wymiany);
-    await expect(klient(fetchImpl).oznaczZaplacona(595670707)).resolves.toMatchObject({ id: 595670707, status: 'paid' });
+    await expect(klient(fetchImpl).oznaczZaplacona(595670707)).resolves.toMatchObject({
+      id: 595670707,
+      status: 'paid',
+    });
   });
 
   // F09 — `change_status` ustawia `paid_date` na DZIŚ, więc data zapłaty
   // z zamówienia idzie osobnym `PUT /invoices/{id}.json` (NIEZMIERZONE — pomiar przed profilem próby).
   it('oznaczZaplacona z paidDate: change_status, potem PUT {invoice:{paid_date}}', async () => {
-    const { fetchImpl, zadania } = nagrywacz((z) => json(z.metoda === 'PUT'
-      ? { id: 595670707, status: 'paid', paid_date: '2026-11-10' }
-      : { id: 595670707, status: 'paid' }));
-    await expect(klient(fetchImpl).oznaczZaplacona(595670707, { paidDate: '2026-11-10' }))
-      .resolves.toMatchObject({ id: 595670707, status: 'paid', paid_date: '2026-11-10' });
+    const { fetchImpl, zadania } = nagrywacz((z) =>
+      json(
+        z.metoda === 'PUT'
+          ? { id: 595670707, status: 'paid', paid_date: '2026-11-10' }
+          : { id: 595670707, status: 'paid' },
+      ),
+    );
+    await expect(klient(fetchImpl).oznaczZaplacona(595670707, { paidDate: '2026-11-10' })).resolves.toMatchObject({
+      id: 595670707,
+      status: 'paid',
+      paid_date: '2026-11-10',
+    });
     expect(zadania.map((z) => `${z.metoda} ${z.url}`)).toEqual([
       `POST ${ADRES}/invoices/595670707/change_status.json?status=paid`,
       `PUT ${ADRES}/invoices/595670707.json`,
@@ -348,8 +410,11 @@ describe('operacje na pomiarze', () => {
   });
 
   it('oznaczZaplacona: data nieprzyjęta → błąd mówi, że faktura JUŻ jest opłacona', async () => {
-    const { fetchImpl, zadania } = nagrywacz((z) => (z.metoda === 'PUT'
-      ? json({ code: 'error', message: 'zmyślony błąd' }, 422) : json({ id: 595670707, status: 'paid' })));
+    const { fetchImpl, zadania } = nagrywacz((z) =>
+      z.metoda === 'PUT'
+        ? json({ code: 'error', message: 'zmyślony błąd' }, 422)
+        : json({ id: 595670707, status: 'paid' }),
+    );
     const e = await blad(klient(fetchImpl).oznaczZaplacona(595670707, { paidDate: '2026-11-10' }));
     expect(zadania).toHaveLength(2);
     expect(e.zaplataOznaczona).toBe(true);
@@ -373,7 +438,9 @@ describe('operacje na pomiarze', () => {
 
   it('pobierzPdf: Accept application/pdf, oddaje bajty; nie-PDF → odmowa', async () => {
     const bajty = Buffer.from('%PDF-1.4\n% Pracownia Półcień — zmyślona faktura\n');
-    const { fetchImpl, zadania } = nagrywacz(() => new Response(bajty, { status: 200, headers: { 'content-type': 'application/pdf' } }));
+    const { fetchImpl, zadania } = nagrywacz(
+      () => new Response(bajty, { status: 200, headers: { 'content-type': 'application/pdf' } }),
+    );
     const pdf = await klient(fetchImpl).pobierzPdf(595670959);
     expect(Buffer.isBuffer(pdf)).toBe(true);
     expect(pdf.equals(bajty)).toBe(true);
@@ -395,14 +462,25 @@ describe('operacje na pomiarze', () => {
 
 describe('strażnik adresów: send_to_ksef tylko w wyslijDokumentDoKsef', () => {
   it('żadne żądanie poza wysyłką nie niesie send_to_ksef, gov_save_and_send ani api_token — w adresie ani treści', async () => {
-    const { fetchImpl, zadania } = nagrywacz((z) => (z.url.includes('.pdf')
-      ? new Response(Buffer.from('%PDF-1.4'), { status: 200 })
-      : json(z.url.includes('invoices.json?') || z.url.includes('clients.json') ? [] : { id: 1 })));
+    const { fetchImpl, zadania } = nagrywacz((z) =>
+      z.url.includes('.pdf')
+        ? new Response(Buffer.from('%PDF-1.4'), { status: 200 })
+        : json(z.url.includes('invoices.json?') || z.url.includes('clients.json') ? [] : { id: 1 }),
+    );
     const k = klient(fetchImpl);
     const wolane = new Set();
-    const wywolaj = async (nazwa, ...args) => { wolane.add(nazwa); await k[nazwa](...args); };
+    const wywolaj = async (nazwa, ...args) => {
+      wolane.add(nazwa);
+      await k[nazwa](...args);
+    };
     await wywolaj('sprawdzPolaczenie');
-    await wywolaj('listaFaktur', { period: 'more', date_from: '2026-10-10', date_to: '2026-10-11', 'kinds[]': ['vat', 'wdt'], include_positions: 'true' });
+    await wywolaj('listaFaktur', {
+      period: 'more',
+      date_from: '2026-10-10',
+      date_to: '2026-10-11',
+      'kinds[]': ['vat', 'wdt'],
+      include_positions: 'true',
+    });
     await wywolaj('pobierzFakture', 595670707);
     await wywolaj('pobierzFakture', 595670707, { 'fields[invoice]': 'id,number,gov_status' });
     await wywolaj('pobierzPdf', 595670707);
@@ -423,8 +501,12 @@ describe('strażnik adresów: send_to_ksef tylko w wyslijDokumentDoKsef', () => 
   it('treść z zakazanym kluczem → odmowa bez żądania (adapter nie przemyci wysyłki w wystawieniu)', async () => {
     const { fetchImpl, zadania } = nagrywacz(() => json({ id: 1 }));
     const k = klient(fetchImpl);
-    for (const zle of [{ kind: 'vat', send_to_ksef: 'yes' }, { kind: 'vat', api_token: 'x' }, { kind: 'vat', ['gov_save_and_send']: true },
-      { kind: 'vat', positions: [{ name: 'x', gov_cokolwiek: 1 }] }]) {
+    for (const zle of [
+      { kind: 'vat', send_to_ksef: 'yes' },
+      { kind: 'vat', api_token: 'x' },
+      { kind: 'vat', ['gov_save_and_send']: true },
+      { kind: 'vat', positions: [{ name: 'x', gov_cokolwiek: 1 }] },
+    ]) {
       expect((await blad(k.wystaw(zle))).status, JSON.stringify(zle)).toBe(400);
     }
     expect(zadania).toHaveLength(0);
@@ -442,7 +524,9 @@ describe('strażnik adresów: send_to_ksef tylko w wyslijDokumentDoKsef', () => 
   });
 
   it('wyslijDokumentDoKsef: timeout = „nie wiadomo”, bez ponowienia i bez statusu', async () => {
-    const { fetchImpl, zadania } = nagrywacz(() => { throw new DOMException('The operation was aborted due to timeout', 'TimeoutError'); });
+    const { fetchImpl, zadania } = nagrywacz(() => {
+      throw new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+    });
     const e = await blad(klient(fetchImpl).wyslijDokumentDoKsef(595670707));
     expect(zadania).toHaveLength(1);
     expect(e.status).toBeUndefined();

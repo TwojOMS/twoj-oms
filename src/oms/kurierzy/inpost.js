@@ -56,13 +56,16 @@ const NAJDLUZSZE_NADANIE_MS = LIMIT_ODPYTYWANIA_MS + 4 * LIMIT_ZADANIA_MS;
 // NIE WSTAC, zamiast po cichu wrocic do tego wyscigu.
 if (NAJDLUZSZE_NADANIE_MS >= PROG_ZAWIESZONEGO_NADANIA_MS) {
   throw new Error(
-    'Limity zadan InPostu (z oknem odpytywania) musza sumowac sie do czasu KROTSZEGO niz prog '
-    + 'zawieszonego nadania — inaczej „zawieszone" moze oznaczac zywe wywolanie, a odblokowanie '
-    + 'da druga paczke.',
+    'Limity zadan InPostu (z oknem odpytywania) musza sumowac sie do czasu KROTSZEGO niz prog ' +
+      'zawieszonego nadania — inaczej „zawieszone" moze oznaczac zywe wywolanie, a odblokowanie ' +
+      'da druga paczke.',
   );
 }
 
-const uspij = (ms) => new Promise((koniec) => { setTimeout(koniec, ms); });
+const uspij = (ms) =>
+  new Promise((koniec) => {
+    setTimeout(koniec, ms);
+  });
 
 // Stany przesyłki po polsku. Źródłem jest pomiar na żywym koncie:
 // `confirmed` → `ready_to_pickup` → `delivered`, plus `returned_to_sender`
@@ -136,14 +139,22 @@ function parsujJson(tekst) {
 function splaszcz(wartosc) {
   if (Array.isArray(wartosc)) return wartosc.map(splaszcz).join(', ');
   if (wartosc && typeof wartosc === 'object') {
-    return Object.entries(wartosc).map(([k, w]) => `${k}: ${splaszcz(w)}`).join(', ');
+    return Object.entries(wartosc)
+      .map(([k, w]) => `${k}: ${splaszcz(w)}`)
+      .join(', ');
   }
   return String(wartosc);
 }
 
 /** @param {import('../../integracje/opcje.ts').OpcjeInpost} opcje */
 export function createInpostClient({
-  url, token, organizacja, nadawca, paczkomatNadawczy = null, fetchImpl, http = transport({ fetchImpl }),
+  url,
+  token,
+  organizacja,
+  nadawca,
+  paczkomatNadawczy = null,
+  fetchImpl,
+  http = transport({ fetchImpl }),
 }) {
   // Bez walidacji tutaj brak np. `nadawcy` wywala sie dopiero przy pierwszym nadaniu
   // niezrozumialym TypeError — zbyt pozno i zbyt niejasno na cos, co jest bledem
@@ -191,7 +202,12 @@ export function createInpostClient({
   // ⚠️ TOKEN TO SEKRET. Komunikaty bledow i `odpowiedz_surowa` trafiaja do BAZY i do logu
   // zamowienia, wiec token nie ma prawa tam wyladowac — ani przez echo serwera, ani przez
   // komunikat sterownika sieci. Ta sama maszyneria co maskowanie loginu i hasła w dpd.js.
-  const oczysc = (t) => (token ? String(t ?? '').split(token).join('***') : String(t ?? ''));
+  const oczysc = (t) =>
+    token
+      ? String(t ?? '')
+          .split(token)
+          .join('***')
+      : String(t ?? '');
 
   // ⚠️ INPOST_URL MOŻE MIEĆ KOŃCOWY UKOŚNIK — konfiguracja go nie obcina (patrz
   // moduly/wysylka/kurierzy.ts). Sklejanie „${url}/shipments" dawaloby wtedy podwojny ukosnik
@@ -206,7 +222,12 @@ export function createInpostClient({
     if (dane?.details && typeof dane.details === 'object') czesci.push(splaszcz(dane.details));
     // Brak czytelnego pola = pokazujemy poczatek tresci. Pusty komunikat („InPost odrzucil
     // przesylke: ") nie mowi operatorowi NICZEGO, a to jest jedyny slad, jaki dostanie.
-    if (!czesci.length) czesci.push(String(tekst ?? '').trim().slice(0, 300) || `HTTP ${status}`);
+    if (!czesci.length)
+      czesci.push(
+        String(tekst ?? '')
+          .trim()
+          .slice(0, 300) || `HTTP ${status}`,
+      );
     return oczysc(czesci.join('; '));
   }
 
@@ -245,7 +266,9 @@ export function createInpostClient({
   }
 
   function szablonGabarytu(gabaryt) {
-    const klucz = String(gabaryt ?? '').trim().toUpperCase();
+    const klucz = String(gabaryt ?? '')
+      .trim()
+      .toUpperCase();
     const szablon = SZABLONY_GABARYTU[klucz];
     // ⚠️ NIGDY CICHA DOMYSLKA. Paczka zgloszona w zlym gabarycie to paczka, ktorej automat
     // fizycznie nie przyjmie — a domyslne wymiary panelu (110 x 75 x 1 cm) nie mieszcza sie
@@ -298,7 +321,10 @@ export function createInpostClient({
   // podzial „Anna Maria | Nowak" niczego nie psuje — paczka jedzie tam, gdzie miala.
   // Numer domu wyciety z ulicy psulby ADRES, czyli miejsce doreczenia.
   function podzielNazwe(nazwa) {
-    const czlony = String(nazwa ?? '').trim().split(/\s+/).filter(Boolean);
+    const czlony = String(nazwa ?? '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
     if (!czlony.length) return {};
     // Jednoczlonowa nazwa idzie w `last_name`: powtorzenie jej w obu polach wydrukowaloby
     // na etykiecie „Kowalski Kowalski".
@@ -343,7 +369,9 @@ export function createInpostClient({
    * nikt nie mogl otworzyc. Etykieta ma zaczynac sie od `%PDF` albo `^XA` — kropka.
    */
   async function pobierzEtykiete(shipmentId, format) {
-    const klucz = String(format ?? '').trim().toLowerCase();
+    const klucz = String(format ?? '')
+      .trim()
+      .toLowerCase();
     const sygnatura = SYGNATURY_ETYKIETY[klucz];
     if (!sygnatura) {
       throw bladOperatora(
@@ -412,7 +440,13 @@ export function createInpostClient({
     // normalny stan. Odpowiedz musi wiec wygladac jak sledzenie przesylki.
     if (!dane || typeof dane !== 'object' || (dane.tracking_number == null && dane.status == null)) {
       throw bladOperatora(
-        `InPost nie oddał statusu przesyłki: ${oczysc(String(tekst ?? '').trim().slice(0, 300)) || '(pusta odpowiedź)'}`,
+        `InPost nie oddał statusu przesyłki: ${
+          oczysc(
+            String(tekst ?? '')
+              .trim()
+              .slice(0, 300),
+          ) || '(pusta odpowiedź)'
+        }`,
       );
     }
 
@@ -439,9 +473,9 @@ export function createInpostClient({
       // czego pokazac. To rozroznienie jest cala tresc tego warunku.
       if (!szczegoly.length) return null;
       throw bladOperatora(
-        `InPost oddał zdarzenia przesyłki (${szczegoly.length}), ale panel nie znalazł w nich `
-        + `znacznika czasu — sprawdzane nazwy pól: ${POLA_CZASU.join(', ')}. Śledzenie paczkomatowe `
-        + 'nie działa, dopóki ta nazwa nie zostanie poprawiona (kurierzy/inpost.js, POLA_CZASU).',
+        `InPost oddał zdarzenia przesyłki (${szczegoly.length}), ale panel nie znalazł w nich ` +
+          `znacznika czasu — sprawdzane nazwy pól: ${POLA_CZASU.join(', ')}. Śledzenie paczkomatowe ` +
+          'nie działa, dopóki ta nazwa nie zostanie poprawiona (kurierzy/inpost.js, POLA_CZASU).',
       );
     }
 
@@ -480,10 +514,9 @@ export function createInpostClient({
       // HTTP 200 NIE ZNACZY SUKCES — ale i odwrotnie: blad odpytywania NIE jest dowodem,
       // ze przesylki nie ma. Rzucamy glosno, a wolajacy (nadaj() nizej) dokleja `shipmentId`.
       if (!g.res.ok || !g.dane?.id) {
-        throw bladOperatora(
-          `InPost: nie udało się sprawdzić przesyłki: ${opisBledu(g)}`,
-          { surowa: oczysc(odpowiedzi.join('\n---\n')) },
-        );
+        throw bladOperatora(`InPost: nie udało się sprawdzić przesyłki: ${opisBledu(g)}`, {
+          surowa: oczysc(odpowiedzi.join('\n---\n')),
+        });
       }
       numer = numerZOdpowiedzi(g.dane);
     }
@@ -541,7 +574,11 @@ export function createInpostClient({
    */
   /** @param {import('../../core/kontrakty.ts').ZlecenieKuriera} zlecenie */
   async function nadaj({
-    zamowienie, paczka, kolejnosc = 1, adres: adresPrzekazany, punktOdbioru: punktPrzekazany,
+    zamowienie,
+    paczka,
+    kolejnosc = 1,
+    adres: adresPrzekazany,
+    punktOdbioru: punktPrzekazany,
     // ⚠️ Nadpisanie kwoty pobrania z ekranu nadania — spójnie z dpd.js. Nazwa
     // zmieniona przy destrukturyzacji, bo `kwotaPobrania` to funkcja w tym module (ta sama
     // pulapka, co `adres` w dpd.js: przeslonieta nazwa wywalilaby nadaj() na TypeError).
@@ -571,14 +608,16 @@ export function createInpostClient({
     if (!emailNadawcy) brakNadawcy.push('DPD_NADAWCA_EMAIL');
     if (brakNadawcy.length) {
       throw bladOperatora(
-        `InPost wymaga telefonu i e-maila NADAWCY, a w konfiguracji panelu ich nie ma: ${brakNadawcy.join(', ')}. `
-        + 'Dopisz je do .env.oms i zrestartuj usługę — DPD działa bez nich, dlatego brakowało ich niezauważenie.',
+        `InPost wymaga telefonu i e-maila NADAWCY, a w konfiguracji panelu ich nie ma: ${brakNadawcy.join(', ')}. ` +
+          'Dopisz je do .env.oms i zrestartuj usługę — DPD działa bez nich, dlatego brakowało ich niezauważenie.',
       );
     }
 
     // Kod paczkomatu to ADRES tej przesylki. Bez niego nie ma dokad jej nadac — i lepiej
     // powiedziec to przed wywolaniem, niz utworzyc u kuriera przesylke donikad.
-    const punkt = String(punktPrzekazany ?? zamowienie?.punkt_odbioru ?? '').trim().toUpperCase();
+    const punkt = String(punktPrzekazany ?? zamowienie?.punkt_odbioru ?? '')
+      .trim()
+      .toUpperCase();
     if (!punkt) {
       throw bladOperatora('InPost: zamówienie nie ma kodu paczkomatu — nie wiadomo, dokąd ma jechać paczka.');
     }
@@ -632,14 +671,16 @@ export function createInpostClient({
       ...(cod == null ? {} : { cod: { amount: cod, currency: 'PLN' } }),
     };
 
-    const { res, tekst, dane, status } = await wywolaj(
-      sciezka('organizations', organizacja, 'shipments'),
-      { method: 'POST', body: JSON.stringify(cialo) },
-    );
+    const { res, tekst, dane, status } = await wywolaj(sciezka('organizations', organizacja, 'shipments'), {
+      method: 'POST',
+      body: JSON.stringify(cialo),
+    });
 
     // HTTP 200 NIE ZNACZY SUKCES — sprawdzamy KSZTALT odpowiedzi, nie sam status.
     if (!res.ok) {
-      throw bladOperatora(`InPost odrzucił przesyłkę: ${opisBledu({ dane, tekst, status })}`, { surowa: oczysc(tekst) });
+      throw bladOperatora(`InPost odrzucił przesyłkę: ${opisBledu({ dane, tekst, status })}`, {
+        surowa: oczysc(tekst),
+      });
     }
     const shipmentId = dane?.id;
     if (!shipmentId) {
@@ -669,10 +710,10 @@ export function createInpostClient({
       const grosze = (k) => Math.round(Number(k) * 100);
       if (oddane == null || !Number.isFinite(Number(oddane)) || grosze(oddane) !== grosze(cod)) {
         throw bladOperatora(
-          `InPost przyjął przesyłkę, ale NIE POTWIERDZIŁ pobrania ${cod.toFixed(2)} zł `
-          + `(oddał: ${oddane == null ? 'brak' : oddane}). Przesyłka u kuriera ISTNIEJE — `
-          + 'nie wrzucaj paczki do automatu, tylko anuluj ją w Managerze Paczek, bo klient '
-          + 'odebrałby ją nic nie płacąc. Sprawdź, czy umowa z InPostem obejmuje przesyłki pobraniowe.',
+          `InPost przyjął przesyłkę, ale NIE POTWIERDZIŁ pobrania ${cod.toFixed(2)} zł ` +
+            `(oddał: ${oddane == null ? 'brak' : oddane}). Przesyłka u kuriera ISTNIEJE — ` +
+            'nie wrzucaj paczki do automatu, tylko anuluj ją w Managerze Paczek, bo klient ' +
+            'odebrałby ją nic nie płacąc. Sprawdź, czy umowa z InPostem obejmuje przesyłki pobraniowe.',
           // ⚠️ `pobranieNiepotwierdzone` KIERUJE WIERSZ NA 'do_wyjasnienia' (services/nadanie.js).
           // Bez tej flagi sam `shipmentId` wpychalby sprawe na 'w_trakcie' z przyciskiem
           // „Sprawdz ponownie" — a to klikniecie dobiera numer i etykiety, KONCZAC nadanie
@@ -713,14 +754,18 @@ export function createInpostClient({
   async function sprawdzPolaczenie() {
     const g = await wywolaj(sciezka('organizations', organizacja));
     if (g.status === 403 || g.status === 404) {
-      throw bladOperatora(`InPost nie udostępnia organizacji ${organizacja} temu tokenowi (HTTP ${g.status}) — sprawdź numer organizacji i token: ${opisBledu(g)}`);
+      throw bladOperatora(
+        `InPost nie udostępnia organizacji ${organizacja} temu tokenowi (HTTP ${g.status}) — sprawdź numer organizacji i token: ${opisBledu(g)}`,
+      );
     }
     if (!g.res.ok) throw bladOperatora(`InPost odrzucił żądanie (HTTP ${g.status}): ${opisBledu(g)}`);
     if (!Array.isArray(g.dane?.services)) {
       throw bladOperatora('InPost odpowiedział, ale nie rozpoznaję odpowiedzi — sprawdź adres API.');
     }
     if (g.dane.id != null && String(g.dane.id) !== String(organizacja)) {
-      throw bladOperatora(`InPost oddał organizację ${oczysc(g.dane.id)}, a wpisana jest ${organizacja} — sprawdź numer organizacji.`);
+      throw bladOperatora(
+        `InPost oddał organizację ${oczysc(g.dane.id)}, a wpisana jest ${organizacja} — sprawdź numer organizacji.`,
+      );
     }
     return { ok: true };
   }

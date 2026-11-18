@@ -12,14 +12,25 @@ import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 // NIE na 'PRO'. Brief mówił 'PRO' — to nazwa, której w kodzie nie ma; poprawione po sprawdzeniu
 // src/oms/domain/kanaly-raportowe.js.
 const zmapowane = (nad = {}) => ({
-  zrodlo_id: 1301, numer: '1301', klient: { email: 'j@k.pl' }, dostawa: {},
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null,
-  kwota_brutto: '123.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
-  utworzone_at: '2026-08-01T10:00:00', pozycje: [],
+  zrodlo_id: 1301,
+  numer: '1301',
+  klient: { email: 'j@k.pl' },
+  dostawa: {},
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '123.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-08-01T10:00:00',
+  pozycje: [],
   ...nad,
 });
 
-let db; let id;
+let db;
+let id;
 beforeEach(() => {
   db = openOmsDb(':memory:');
   // ⚠️ granice_historii ma kolumny (kanal, do_dnia, zrodlo, uwaga) — nie (kanal, granica), jak
@@ -60,7 +71,9 @@ describe('agregacja ze zwrotami', () => {
   it('zwrot pomniejsza sprzedaz, ale NIE zmienia liczby zamowien ani sztuk', () => {
     const wiersze = sprzedazWOkresie(db, ZAKRES);
     const bez = agreguj(wiersze, []);
-    const ze = agreguj(wiersze, [{ dzien: '2026-08-14', kanal: 'SWIETLIK_PRO', bruttoGrosze: 5000, nettoGrosze: 4065 }]);
+    const ze = agreguj(wiersze, [
+      { dzien: '2026-08-14', kanal: 'SWIETLIK_PRO', bruttoGrosze: 5000, nettoGrosze: 4065 },
+    ]);
     expect(ze.kpi.zamowien).toBe(bez.kpi.zamowien);
     expect(ze.kpi.sztuk).toBe(bez.kpi.sztuk);
     expect(ze.kpi.aovGrosze).toBe(bez.kpi.aovGrosze);
@@ -113,8 +126,18 @@ describe('rachunek zarzadczy — zwroty w rozbiciu miesiac po miesiacu i w podat
   const zam = (nad) => zapiszZamowienie(db, 'pro', zmapowane(nad), {});
 
   it('suma miesiecy zgadza sie co do grosza z rachunkiem calego okresu, gdy zwroty sa rozlozone na rozne miesiace', () => {
-    const idMaj = zam({ zrodlo_id: 3001, numer: '3001', utworzone_at: '2026-05-10T10:00:00', kwota_brutto: '12300.00' }); // netto 1_000_000
-    const idCzerwiec = zam({ zrodlo_id: 3002, numer: '3002', utworzone_at: '2026-06-10T10:00:00', kwota_brutto: '24600.00' }); // netto 2_000_000
+    const idMaj = zam({
+      zrodlo_id: 3001,
+      numer: '3001',
+      utworzone_at: '2026-05-10T10:00:00',
+      kwota_brutto: '12300.00',
+    }); // netto 1_000_000
+    const idCzerwiec = zam({
+      zrodlo_id: 3002,
+      numer: '3002',
+      utworzone_at: '2026-06-10T10:00:00',
+      kwota_brutto: '24600.00',
+    }); // netto 2_000_000
     dodajZwrot(db, idMaj, { data: '2026-05-20', kwota: '123.00', pozycje: [] }); // zwrot W TYM SAMYM miesiacu, netto 10_000
     dodajZwrot(db, idCzerwiec, { data: '2026-06-25', kwota: '246.00', pozycje: [] }); // netto 20_000
     dodajZwrot(db, idMaj, { data: '2026-06-05', pozycje: [], kwota: '123.00' }); // zwrot majowego zamowienia, ALE datowany na czerwiec
@@ -126,12 +149,17 @@ describe('rachunek zarzadczy — zwroty w rozbiciu miesiac po miesiacu i w podat
 
     const maj = r.miesiacami.find((m) => m.miesiac === '2026-05');
     const czerwiec = r.miesiacami.find((m) => m.miesiac === '2026-06');
-    expect(maj.przychodNettoGrosze).toBe(990_000);        // 1_000_000 - zwrot majowy (10_000)
+    expect(maj.przychodNettoGrosze).toBe(990_000); // 1_000_000 - zwrot majowy (10_000)
     expect(czerwiec.przychodNettoGrosze).toBe(1_970_000); // 2_000_000 - (20_000 + 10_000 przekazany z maja)
   });
 
   it('zwrot z INNEGO miesiaca nie rusza rachunku TEGO miesiaca w rozbiciu miesiac po miesiacu', () => {
-    const idMaj = zam({ zrodlo_id: 3101, numer: '3101', utworzone_at: '2026-05-10T10:00:00', kwota_brutto: '12300.00' });
+    const idMaj = zam({
+      zrodlo_id: 3101,
+      numer: '3101',
+      utworzone_at: '2026-05-10T10:00:00',
+      kwota_brutto: '12300.00',
+    });
     zam({ zrodlo_id: 3102, numer: '3102', utworzone_at: '2026-06-10T10:00:00', kwota_brutto: '24600.00' });
     // zwrot do MAJOWEGO zamowienia, ale datowany na CZERWIEC
     dodajZwrot(db, idMaj, { data: '2026-06-15', kwota: '123.00', pozycje: [] });
@@ -139,8 +167,8 @@ describe('rachunek zarzadczy — zwroty w rozbiciu miesiac po miesiacu i w podat
     const r = rachunekOkresu(db, { od: '2026-05-01', do: '2026-06-30' });
     const maj = r.miesiacami.find((m) => m.miesiac === '2026-05');
     const czerwiec = r.miesiacami.find((m) => m.miesiac === '2026-06');
-    expect(maj.przychodNettoGrosze).toBe(1_000_000);          // maj NIE dotkniety
-    expect(czerwiec.przychodNettoGrosze).toBe(1_990_000);     // 2_000_000 - 10_000, zwrot obciaza czerwiec
+    expect(maj.przychodNettoGrosze).toBe(1_000_000); // maj NIE dotkniety
+    expect(czerwiec.przychodNettoGrosze).toBe(1_990_000); // 2_000_000 - 10_000, zwrot obciaza czerwiec
   });
 
   it('zwrot pomniejsza dochod narastajaco (podstawe podatku) W MIESIACU ZWROTU', () => {

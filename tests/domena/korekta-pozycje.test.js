@@ -3,7 +3,8 @@ import { paryKorekty } from '../../src/domena/korekta-pozycje.js';
 
 // „Przed" pochodzi Z INFAKTU, nie z zamowienia — patrz komentarz w module.
 const faktura = () => ({
-  number: 'FV 1/08/2026', invoice_date: '2026-08-01',
+  number: 'FV 1/08/2026',
+  invoice_date: '2026-08-01',
   services: [
     { name: 'Kot 70x100', quantity: 2, gross_price: 19800, tax_symbol: '23' },
     { name: 'Dostawa', quantity: 1, gross_price: 1900, tax_symbol: '23' },
@@ -16,16 +17,27 @@ const faktura = () => ({
 describe('pary przed/po', () => {
   it('kazda pozycja daje DWA wiersze o wspolnym `group`, rozroznione flaga `correction`', () => {
     const { services, blad } = paryKorekty(faktura(), {
-      kwota: '99.00', kwota_dostawy: null,
+      kwota: '99.00',
+      kwota_dostawy: null,
       pozycje: [{ nazwa: 'Kot 70x100', ilosc: 1, kwota: '99.00' }],
     });
     expect(blad).toBeNull();
     expect(services).toHaveLength(4);
     expect(services[0]).toEqual({
-      name: 'Kot 70x100', quantity: 2, gross_price: 19800, tax_symbol: '23', group: 1, correction: false,
+      name: 'Kot 70x100',
+      quantity: 2,
+      gross_price: 19800,
+      tax_symbol: '23',
+      group: 1,
+      correction: false,
     });
     expect(services[1]).toEqual({
-      name: 'Kot 70x100', quantity: 1, gross_price: 9900, tax_symbol: '23', group: 1, correction: true,
+      name: 'Kot 70x100',
+      quantity: 1,
+      gross_price: 9900,
+      tax_symbol: '23',
+      group: 1,
+      correction: true,
     });
     // Pozycja NIETKNIETA tez musi wystapic w parze — korekta opisuje CALY dokument.
     expect(services[2]).toMatchObject({ name: 'Dostawa', quantity: 1, gross_price: 1900, group: 2, correction: false });
@@ -34,7 +46,9 @@ describe('pary przed/po', () => {
 
   it('zwrot SAMEJ dostawy zeruje wiersz „po” przy dostawie', () => {
     const { services } = paryKorekty(faktura(), {
-      kwota: '0.00', kwota_dostawy: '19.00', pozycje: [],
+      kwota: '0.00',
+      kwota_dostawy: '19.00',
+      pozycje: [],
     });
     expect(services[2]).toMatchObject({ name: 'Dostawa', gross_price: 1900, correction: false });
     expect(services[3]).toMatchObject({ name: 'Dostawa', gross_price: 0, quantity: 0, correction: true });
@@ -42,7 +56,8 @@ describe('pary przed/po', () => {
 
   it('ODMAWIA, gdy pozycji zwrotu NIE MA na fakturze — zamiast po cichu podstawic', () => {
     const { services, blad } = paryKorekty(faktura(), {
-      kwota: '50.00', kwota_dostawy: null,
+      kwota: '50.00',
+      kwota_dostawy: null,
       pozycje: [{ nazwa: 'Sowa 30x40', ilosc: 1, kwota: '50.00' }],
     });
     expect(services).toBeNull();
@@ -51,7 +66,8 @@ describe('pary przed/po', () => {
 
   it('ODMAWIA zwrotu wiecej sztuk, niz stoi na fakturze', () => {
     const { blad } = paryKorekty(faktura(), {
-      kwota: '297.00', kwota_dostawy: null,
+      kwota: '297.00',
+      kwota_dostawy: null,
       pozycje: [{ nazwa: 'Kot 70x100', ilosc: 3, kwota: '297.00' }],
     });
     expect(blad).toMatch(/faktur/i);
@@ -68,7 +84,8 @@ describe('faktura ze ZDUBLOWANA nazwa pozycji', () => {
   // 198,00 zl zamiast 99,00 zl i ANI JEDNEGO ostrzezenia. Bariera „ilosc > iloscPrzed" tego
   // nie lapala, bo liczy per linia.
   const zDwiemaLiniami = () => ({
-    number: 'FV 2/08/2026', invoice_date: '2026-08-02',
+    number: 'FV 2/08/2026',
+    invoice_date: '2026-08-02',
     services: [
       { name: 'Kot 70x100', quantity: 1, gross_price: 9900, tax_symbol: '23' },
       { name: 'Kot 70x100', quantity: 1, gross_price: 9900, tax_symbol: '23' },
@@ -77,7 +94,8 @@ describe('faktura ze ZDUBLOWANA nazwa pozycji', () => {
 
   it('ODMAWIA zamiast zerowac OBIE linie przy zwrocie jednej sztuki', () => {
     const { services, blad } = paryKorekty(zDwiemaLiniami(), {
-      kwota: '99.00', kwota_dostawy: null,
+      kwota: '99.00',
+      kwota_dostawy: null,
       pozycje: [{ nazwa: 'Kot 70x100', ilosc: 1, kwota: '99.00' }],
     });
     expect(services).toBeNull();
@@ -103,13 +121,16 @@ describe('faktura ze ZDUBLOWANA nazwa pozycji', () => {
 // BEZ tych pieniedzy i bez sladu: raport zdejmowal 19 zl, korekta nie.
 describe('zwrot dostawy przy fakturze BEZ pozycji „Dostawa”', () => {
   const bezDostawy = () => ({
-    number: 'FV 3/08/2026', invoice_date: '2026-08-03',
+    number: 'FV 3/08/2026',
+    invoice_date: '2026-08-03',
     services: [{ name: 'Kot 70x100', quantity: 2, gross_price: 19800, tax_symbol: '23' }],
   });
 
   it('ODMAWIA, zamiast po cichu zgubic zwrocona dostawe', () => {
     const { services, blad } = paryKorekty(bezDostawy(), {
-      kwota: '0.00', kwota_dostawy: '19.00', pozycje: [],
+      kwota: '0.00',
+      kwota_dostawy: '19.00',
+      pozycje: [],
     });
     expect(services).toBeNull();
     expect(blad).toMatch(/[Dd]ostaw/);
@@ -117,14 +138,20 @@ describe('zwrot dostawy przy fakturze BEZ pozycji „Dostawa”', () => {
   });
 
   it('NIE odmawia, gdy zwrotu dostawy nie ma (pole puste albo zerowe)', () => {
-    expect(paryKorekty(bezDostawy(), {
-      kwota: '99.00', kwota_dostawy: null,
-      pozycje: [{ nazwa: 'Kot 70x100', ilosc: 1, kwota: '99.00' }],
-    }).blad).toBeNull();
-    expect(paryKorekty(bezDostawy(), {
-      kwota: '99.00', kwota_dostawy: '0.00',
-      pozycje: [{ nazwa: 'Kot 70x100', ilosc: 1, kwota: '99.00' }],
-    }).blad).toBeNull();
+    expect(
+      paryKorekty(bezDostawy(), {
+        kwota: '99.00',
+        kwota_dostawy: null,
+        pozycje: [{ nazwa: 'Kot 70x100', ilosc: 1, kwota: '99.00' }],
+      }).blad,
+    ).toBeNull();
+    expect(
+      paryKorekty(bezDostawy(), {
+        kwota: '99.00',
+        kwota_dostawy: '0.00',
+        pozycje: [{ nazwa: 'Kot 70x100', ilosc: 1, kwota: '99.00' }],
+      }).blad,
+    ).toBeNull();
   });
 });
 
@@ -138,7 +165,8 @@ describe('zwrot dostawy przy fakturze BEZ pozycji „Dostawa”', () => {
 describe('zwracana pozycja o nazwie „Dostawa" RAZEM ze zwrotem kosztu dostawy', () => {
   it('ODMAWIA zamiast po cichu nadpisac kwote policzona z pozycji', () => {
     const { services, blad } = paryKorekty(faktura(), {
-      kwota: '19.00', kwota_dostawy: '19.00',
+      kwota: '19.00',
+      kwota_dostawy: '19.00',
       pozycje: [{ nazwa: 'Dostawa', ilosc: 1, kwota: '19.00' }],
     });
     expect(services).toBeNull();
@@ -151,7 +179,9 @@ describe('zwracana pozycja o nazwie „Dostawa" RAZEM ze zwrotem kosztu dostawy'
   // i zapisac jeszcze raz poprawnie uksztaltowany — ta rada jest wtedy WYKONALNA.
   it('gdy pieniedzy JESZCZE nie oddano — rada to skasowanie i ponowny zapis (WYKONALNE)', () => {
     const { blad } = paryKorekty(faktura(), {
-      kwota: '19.00', kwota_dostawy: '19.00', pieniadze_oddane_at: null,
+      kwota: '19.00',
+      kwota_dostawy: '19.00',
+      pieniadze_oddane_at: null,
       pozycje: [{ nazwa: 'Dostawa', ilosc: 1, kwota: '19.00' }],
     });
     expect(blad).toMatch(/usuń ten zwrot i zapisz go jeszcze raz/i);
@@ -164,7 +194,9 @@ describe('zwracana pozycja o nazwie „Dostawa" RAZEM ze zwrotem kosztu dostawy'
   // nie przejdzie.
   it('gdy pieniadze JUZ ODDANE — rada NIE każe kasować zwrotu (i tak dostałaby odmowę)', () => {
     const { blad } = paryKorekty(faktura(), {
-      kwota: '19.00', kwota_dostawy: '19.00', pieniadze_oddane_at: '2026-08-14T10:00:00Z',
+      kwota: '19.00',
+      kwota_dostawy: '19.00',
+      pieniadze_oddane_at: '2026-08-14T10:00:00Z',
       pozycje: [{ nazwa: 'Dostawa', ilosc: 1, kwota: '19.00' }],
     });
     expect(blad).toMatch(/[Dd]ostaw/);
@@ -176,12 +208,19 @@ describe('zwracana pozycja o nazwie „Dostawa" RAZEM ze zwrotem kosztu dostawy'
   });
 
   it('kazde ze zrodel OSOBNO dziala jak dotad — odmowa dotyczy wylacznie zbiegu obu', () => {
-    expect(paryKorekty(faktura(), {
-      kwota: '19.00', kwota_dostawy: null,
-      pozycje: [{ nazwa: 'Dostawa', ilosc: 1, kwota: '19.00' }],
-    }).blad).toBeNull();
-    expect(paryKorekty(faktura(), {
-      kwota: '0.00', kwota_dostawy: '19.00', pozycje: [],
-    }).blad).toBeNull();
+    expect(
+      paryKorekty(faktura(), {
+        kwota: '19.00',
+        kwota_dostawy: null,
+        pozycje: [{ nazwa: 'Dostawa', ilosc: 1, kwota: '19.00' }],
+      }).blad,
+    ).toBeNull();
+    expect(
+      paryKorekty(faktura(), {
+        kwota: '0.00',
+        kwota_dostawy: '19.00',
+        pozycje: [],
+      }).blad,
+    ).toBeNull();
   });
 });

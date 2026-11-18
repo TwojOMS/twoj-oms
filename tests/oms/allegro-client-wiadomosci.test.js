@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
-  createAllegroClient, LIMIT_STRONY_WATKOW, LIMIT_ZAPYTANIA_WIADOMOSCI_MS,
+  createAllegroClient,
+  LIMIT_STRONY_WATKOW,
+  LIMIT_ZAPYTANIA_WIADOMOSCI_MS,
 } from '../../src/oms/allegro/client.js';
 
 const tokeny = { waznyToken: async () => 'TOKEN' };

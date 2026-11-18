@@ -1,6 +1,12 @@
 import {
-  kosztyMiesiaca, stanKosztow, odrzuconeKoszty, kosztPoNumerze,
-  zapiszRecznyKoszt, zaktualizujRecznyKoszt, usunRecznyKoszt, przypnijKategorieDoDokumentu,
+  kosztyMiesiaca,
+  stanKosztow,
+  odrzuconeKoszty,
+  kosztPoNumerze,
+  zapiszRecznyKoszt,
+  zaktualizujRecznyKoszt,
+  usunRecznyKoszt,
+  przypnijKategorieDoDokumentu,
 } from '../../../oms/db/koszty.js';
 import { kategoriaDlaNip, przypnijKategorie, wszystkieKategorie } from '../../../oms/db/kategorie-kosztow.js';
 import { dopiszFirmeReczna, firmaReczna, wszystkieFirmyReczne } from '../../../oms/db/firmy-reczne.js';
@@ -54,12 +60,15 @@ function opisPrzebiegu(wynik) {
   if (wynik?.pominiety) return `Nic nie pobrano — ${wynik.powod}.`;
   const zdania = [`Pobrano nowych dokumentów: ${wynik?.nowych ?? 0}.`];
   if (wynik?.odrzuconych) {
-    zdania.push(`Odłożonych do kwarantanny w tym przebiegu: ${wynik.odrzuconych} `
-      + '— te dokumenty nie wchodzą do sumy miesiąca.');
+    zdania.push(
+      `Odłożonych do kwarantanny w tym przebiegu: ${wynik.odrzuconych} ` +
+        '— te dokumenty nie wchodzą do sumy miesiąca.',
+    );
   }
   if (wynik?.niedokonczone) {
-    zdania.push('Pobranie nie doszło do końca — reszta pojedzie następnym przebiegiem, '
-      + 'od miejsca, w którym stanął kursor.');
+    zdania.push(
+      'Pobranie nie doszło do końca — reszta pojedzie następnym przebiegiem, ' + 'od miejsca, w którym stanął kursor.',
+    );
   }
   return zdania.join(' ');
 }
@@ -69,10 +78,16 @@ function opisPrzebiegu(wynik) {
 // sama LISTA kosztów miesiąca w dwóch osobnych częściach — z KSeF i dopisane ręcznie. Czyta
 // wyłącznie bazę (żadnego KSeF, żadnego programu fakturowego), więc działa także w panelu bez
 // sekcji KSEF_* i nie potrzebuje `paczkaDlaBiura`.
-export function zarejestrujTrasyKosztow(app, {
-  db, czuwaczKosztow = null, wizualizacjaKosztu = null, paczkaDlaBiura = null,
-  zestawienieKosztow = createZestawienieKosztow({ db }),
-} = {}) {
+export function zarejestrujTrasyKosztow(
+  app,
+  {
+    db,
+    czuwaczKosztow = null,
+    wizualizacjaKosztu = null,
+    paczkaDlaBiura = null,
+    zestawienieKosztow = createZestawienieKosztow({ db }),
+  } = {},
+) {
   const ekran = (reply, miesiac, komunikat = null) => {
     const widok = zlozWidok({
       wiersze: kosztyMiesiaca(db, miesiac),
@@ -87,7 +102,8 @@ export function zarejestrujTrasyKosztow(app, {
     // pelnej listy dawalby dwie wartosci o tym samym, ktore nie maja jak sie zgodzic lepiej
     // niz jedna — a tabela i tak pokazuje wszystkie wiersze.
     const odrzucone = odrzuconeKoszty(db);
-    return reply.view('koszty.ejs', { szerokosc: 'tabela',
+    return reply.view('koszty.ejs', {
+      szerokosc: 'tabela',
       title: 'Koszty',
       miesiac,
       ...widok,
@@ -128,7 +144,12 @@ export function zarejestrujTrasyKosztow(app, {
       // nie ma jak zakwestionowac. Trasa zamienia to na zdanie dla czlowieka — literowka
       // w adresie nie ma prawa dac piecsetki. Blad TECHNICZNY leci dalej, do logu.
       if (!e?.dlaOperatora) throw e;
-      return odmowaKosztow(reply, 400, `Nie da się pokazać kosztów: ${komunikatDlaOperatora(e)}`, 'Nie da się pokazać kosztów');
+      return odmowaKosztow(
+        reply,
+        400,
+        `Nie da się pokazać kosztów: ${komunikatDlaOperatora(e)}`,
+        'Nie da się pokazać kosztów',
+      );
     }
   });
 
@@ -137,7 +158,13 @@ export function zarejestrujTrasyKosztow(app, {
   // niz zamowiony wyglada dokladnie tak samo jak poprawne.
   app.get('/koszty/zestawienie', async (req, reply) => {
     const miesiac = String(req.query.miesiac ?? '');
-    if (!/^\d{4}-\d{2}$/.test(miesiac)) return odmowaKosztow(reply, 400, `„${miesiac}" to nie jest miesiąc w formacie RRRR-MM.`, 'Nie da się przygotować zestawienia');
+    if (!/^\d{4}-\d{2}$/.test(miesiac))
+      return odmowaKosztow(
+        reply,
+        400,
+        `„${miesiac}" to nie jest miesiąc w formacie RRRR-MM.`,
+        'Nie da się przygotować zestawienia',
+      );
     let wynik;
     try {
       wynik = await zestawienieKosztow.zbuduj(miesiac);
@@ -146,7 +173,8 @@ export function zarejestrujTrasyKosztow(app, {
       if (!e?.dlaOperatora) throw e;
       return odmowaKosztow(reply, 400, komunikatDlaOperatora(e), 'Nie da się przygotować zestawienia');
     }
-    return reply.type('application/pdf')
+    return reply
+      .type('application/pdf')
       .header('Content-Disposition', `inline; filename="${wynik.nazwa}"`)
       .send(wynik.bajty);
   });
@@ -161,7 +189,12 @@ export function zarejestrujTrasyKosztow(app, {
   app.get('/koszty/:ksefNumber/pdf', async (req, reply) => {
     // Usługa z modułu odpowiada przy każdym żądaniu (token z Ustawień, bez restartu).
     if (!uslugaKsefDostepna(wizualizacjaKosztu)) {
-      return odmowaKosztow(reply, 503, powodNiedostepnosciKsef(wizualizacjaKosztu) ?? 'Panel nie ma podpiętego KSeF — nie ma skąd pobrać dokumentu.', 'Nie da się pobrać dokumentu');
+      return odmowaKosztow(
+        reply,
+        503,
+        powodNiedostepnosciKsef(wizualizacjaKosztu) ?? 'Panel nie ma podpiętego KSeF — nie ma skąd pobrać dokumentu.',
+        'Nie da się pobrać dokumentu',
+      );
     }
     let wynik;
     try {
@@ -170,12 +203,15 @@ export function zarejestrujTrasyKosztow(app, {
       // Nieznany numer KSeF i awaria po stronie KSeF to oba odmowy OPISANE dla czlowieka —
       // maja wrocic zdaniem, a nie piecsetka. Blad techniczny leci dalej, do logu.
       if (!e?.dlaOperatora) throw e;
-      return odmowaKosztow(reply, 400, `Nie udało się przygotować dokumentu: ${komunikatDlaOperatora(e)}`, 'Nie da się pobrać dokumentu');
+      return odmowaKosztow(
+        reply,
+        400,
+        `Nie udało się przygotować dokumentu: ${komunikatDlaOperatora(e)}`,
+        'Nie da się pobrać dokumentu',
+      );
     }
     const nazwa = `koszt-${bezpiecznaNazwa(wynik.wiersz.numer_dokumentu || req.params.ksefNumber)}.pdf`;
-    return reply.type('application/pdf')
-      .header('Content-Disposition', `inline; filename="${nazwa}"`)
-      .send(wynik.bajty);
+    return reply.type('application/pdf').header('Content-Disposition', `inline; filename="${nazwa}"`).send(wynik.bajty);
   });
 
   app.post('/koszty/kategoria', async (req, reply) => {
@@ -188,9 +224,15 @@ export function zarejestrujTrasyKosztow(app, {
     // kategorii; rozne jest wylacznie to, do czego decyzja sie przypina.
     const dokument = String(req.body?.ksefNumber ?? '').trim();
     if ((!nip && !dokument) || !nazwa || !TYPY.includes(typ)) {
-      return odmowaKosztow(reply, 400, 'Niepoprawne dane kategorii: potrzebny jest NIP sprzedawcy '
-        + 'albo dokument, do którego kategoria ma się przypiąć, nazwa kategorii i typ z listy: '
-        + `${TYPY.join(', ')}.`, 'Nie udało się przypiąć kategorii', listaMiesiaca(miesiac));
+      return odmowaKosztow(
+        reply,
+        400,
+        'Niepoprawne dane kategorii: potrzebny jest NIP sprzedawcy ' +
+          'albo dokument, do którego kategoria ma się przypiąć, nazwa kategorii i typ z listy: ' +
+          `${TYPY.join(', ')}.`,
+        'Nie udało się przypiąć kategorii',
+        listaMiesiaca(miesiac),
+      );
     }
     try {
       // Przypiecie dziala dla WSZYSTKICH faktur tego NIP-u, takze juz lezacych w bazie —
@@ -202,7 +244,13 @@ export function zarejestrujTrasyKosztow(app, {
       // NIP bez ani jednej cyfry odbija sie od `przypnijKategorie` — to odmowa opisana
       // dla czlowieka, wiec ma wrocic jako zdanie, a nie jako piecsetka.
       if (!e?.dlaOperatora) throw e;
-      return odmowaKosztow(reply, 400, komunikatDlaOperatora(e), 'Nie udało się przypiąć kategorii', listaMiesiaca(miesiac));
+      return odmowaKosztow(
+        reply,
+        400,
+        komunikatDlaOperatora(e),
+        'Nie udało się przypiąć kategorii',
+        listaMiesiaca(miesiac),
+      );
     }
   });
 
@@ -215,8 +263,13 @@ export function zarejestrujTrasyKosztow(app, {
   app.post('/koszty/odswiez', async (req, reply) => {
     const miesiac = miesiacPowrotu(req.body?.miesiac);
     if (!uslugaKsefDostepna(czuwaczKosztow)) {
-      return odmowaKosztow(reply, 503, powodNiedostepnosciKsef(czuwaczKosztow) ?? 'Panel nie ma podpiętego KSeF — nie ma skąd pobrać kosztów.',
-        'Nie da się pobrać kosztów z KSeF', listaMiesiaca(miesiac));
+      return odmowaKosztow(
+        reply,
+        503,
+        powodNiedostepnosciKsef(czuwaczKosztow) ?? 'Panel nie ma podpiętego KSeF — nie ma skąd pobrać kosztów.',
+        'Nie da się pobrać kosztów z KSeF',
+        listaMiesiaca(miesiac),
+      );
     }
     let komunikat;
     try {
@@ -237,7 +290,12 @@ export function zarejestrujTrasyKosztow(app, {
       return ekran(reply, miesiac, komunikat);
     } catch (e) {
       if (!e?.dlaOperatora) throw e;
-      return odmowaKosztow(reply, 400, `Nie da się pokazać kosztów: ${komunikatDlaOperatora(e)}`, 'Nie da się pokazać kosztów');
+      return odmowaKosztow(
+        reply,
+        400,
+        `Nie da się pokazać kosztów: ${komunikatDlaOperatora(e)}`,
+        'Nie da się pokazać kosztów',
+      );
     }
   });
 
@@ -259,9 +317,11 @@ export function zarejestrujTrasyKosztow(app, {
   // Odmowa OPISANA dla czlowieka wraca EKRANEM z czerwonym pasem i kodem 400, a nie golym
   // napisem: komunikat oderwany od ekranu zostawia operatora z formularzem, ktorego nie widzi,
   // i bez wskazowki, ktore z trzech pol go odbilo.
-  const odmowa = (reply, miesiac, e) => ekran(reply.code(400), miesiac, {
-    zle: true, tresc: komunikatDlaOperatora(e),
-  });
+  const odmowa = (reply, miesiac, e) =>
+    ekran(reply.code(400), miesiac, {
+      zle: true,
+      tresc: komunikatDlaOperatora(e),
+    });
 
   // Firma przychodzi jako NAZWA z listy wyboru; slownik oddaje `undefined`, gdy takiej nie zna,
   // a odmowe formuluje `naWierszReczny` — razem z reszta sprawdzen wpisu recznego.
@@ -292,7 +352,8 @@ export function zarejestrujTrasyKosztow(app, {
     try {
       const nazwa = dopiszFirmeReczna(db, req.body?.nazwa, req.body?.kategoria);
       return ekran(reply, miesiac, {
-        zle: false, tresc: `Firma „${nazwa}" jest już na liście — możesz dopisać jej koszt.`,
+        zle: false,
+        tresc: `Firma „${nazwa}" jest już na liście — możesz dopisać jej koszt.`,
       });
     } catch (e) {
       if (!e?.dlaOperatora) throw e;
@@ -306,8 +367,13 @@ export function zarejestrujTrasyKosztow(app, {
   app.get('/koszty/reczne/:klucz', async (req, reply) => {
     const wiersz = kosztPoNumerze(db, req.params.klucz);
     if (!wiersz || wiersz.zrodlo !== 'reczne') {
-      return odmowaKosztow(reply, 404, 'Panel nie zna kosztu wpisanego ręcznie o takim numerze. '
-        + 'Dokumentu pobranego z KSeF nie da się tu poprawić — panel jest lustrem KSeF-u.', 'Nie ma takiego kosztu');
+      return odmowaKosztow(
+        reply,
+        404,
+        'Panel nie zna kosztu wpisanego ręcznie o takim numerze. ' +
+          'Dokumentu pobranego z KSeF nie da się tu poprawić — panel jest lustrem KSeF-u.',
+        'Nie ma takiego kosztu',
+      );
     }
     const firmy = wszystkieFirmyReczne(db);
     return reply.view('koszt-reczny.ejs', {
@@ -329,7 +395,8 @@ export function zarejestrujTrasyKosztow(app, {
       const wiersz = wpisReczny(req.body);
       zaktualizujRecznyKoszt(db, req.params.klucz, wiersz);
       return ekran(reply, miesiacDokumentu(wiersz.dataWystawienia), {
-        zle: false, tresc: `Poprawiono koszt ${wiersz.numerDokumentu}.`,
+        zle: false,
+        tresc: `Poprawiono koszt ${wiersz.numerDokumentu}.`,
       });
     } catch (e) {
       if (!e?.dlaOperatora) throw e;

@@ -2,7 +2,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import {
-  zapiszZamowienie, pobierzZamowienie, dodajPozycjeReczna, zapiszNadpisaniaPozycji,
+  zapiszZamowienie,
+  pobierzZamowienie,
+  dodajPozycjeReczna,
+  zapiszNadpisaniaPozycji,
 } from '../../../src/oms/db/zamowienia.js';
 import { parsujNowaPozycje } from '../../../src/domena/pozycje-reczne.js';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
@@ -22,14 +25,34 @@ const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('bas
 const poller = { stan: () => ({ ostatni_przebieg_at: '2026-07-29T12:00:00', ostatni_blad: null }) };
 
 const zmapowane = (nad = {}) => ({
-  zrodlo_id: 1301, numer: '1301', klient: { first_name: 'Jan', email: 'j@k.pl' }, dostawa: { city: 'Warszawa' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '212.90',
-  koszt_dostawy_brutto: '89.90', koszt_dostawy_netto: '73.09', status_woo: 'processing',
-  oplacone_at: null, anulowane: 0, utworzone_at: '2026-07-29T13:19:52',
-  pozycje: [{
-    zrodlo_id: 4321, nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 2, cena_brutto: '61.50',
-    cena_netto: '50.00', brutto_linii: '123.00', netto_linii: '100.00', vat: null,
-  }],
+  zrodlo_id: 1301,
+  numer: '1301',
+  klient: { first_name: 'Jan', email: 'j@k.pl' },
+  dostawa: { city: 'Warszawa' },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '212.90',
+  koszt_dostawy_brutto: '89.90',
+  koszt_dostawy_netto: '73.09',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-07-29T13:19:52',
+  pozycje: [
+    {
+      zrodlo_id: 4321,
+      nazwa: 'STOP',
+      sku: 'PRO-STOP-001',
+      ilosc: 2,
+      cena_brutto: '61.50',
+      cena_netto: '50.00',
+      brutto_linii: '123.00',
+      netto_linii: '100.00',
+      vat: null,
+    },
+  ],
   ...nad,
 });
 
@@ -192,8 +215,9 @@ describe('dopisana pozycja a saldo wpłat', () => {
     const id = zamowienieZRozjechanymiLicznikami({ oplacone_at: '2026-07-29T14:00:00' });
     await wyslij(`/zamowienia/${id}/pozycje`, { nazwa: 'Dopłata', ilosc: '1', cena_brutto: '80.00' });
     expect(db.prepare('SELECT kwota_brutto FROM zamowienia WHERE id = ?').get(id).kwota_brutto).toBe('212.90');
-    expect(db.prepare("SELECT kwota FROM platnosci WHERE zamowienie_id = ? AND zrodlo = 'sklep'").get(id).kwota)
-      .toBe('212.90');
+    expect(db.prepare("SELECT kwota FROM platnosci WHERE zamowienie_id = ? AND zrodlo = 'sklep'").get(id).kwota).toBe(
+      '212.90',
+    );
   });
 });
 
@@ -247,13 +271,22 @@ describe('edycja pozycji', () => {
   it('zapis hurtem zachowuje nadpisanie pozycji spoza formularza', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
     // Poprawka pozycji, ktorej w zamowieniu (i w formularzu) juz nie ma.
-    db.prepare('UPDATE zamowienia SET pozycje_reczne_json = ? WHERE id = ?')
-      .run(JSON.stringify({ s9999: { ilosc: 7 } }), id);
+    db.prepare('UPDATE zamowienia SET pozycje_reczne_json = ? WHERE id = ?').run(
+      JSON.stringify({ s9999: { ilosc: 7 } }),
+      id,
+    );
 
-    const r = await wyslij(`/zamowienia/${id}/pozycje/zapisz`, { klucz: 's4321', nazwa: 'STOP', ilosc: '3', cena_brutto: '61.50' });
+    const r = await wyslij(`/zamowienia/${id}/pozycje/zapisz`, {
+      klucz: 's4321',
+      nazwa: 'STOP',
+      ilosc: '3',
+      cena_brutto: '61.50',
+    });
     expect(r.statusCode).toBe(302);
 
-    const mapa = JSON.parse(db.prepare('SELECT pozycje_reczne_json FROM zamowienia WHERE id = ?').get(id).pozycje_reczne_json);
+    const mapa = JSON.parse(
+      db.prepare('SELECT pozycje_reczne_json FROM zamowienia WHERE id = ?').get(id).pozycje_reczne_json,
+    );
     expect(mapa).toEqual({ s9999: { ilosc: 7 }, s4321: { ilosc: 3 } });
   });
 
@@ -268,14 +301,20 @@ describe('edycja pozycji', () => {
 
   it('edycja pozycji SKLEPOWEJ zapisuje nadpisanie, nie rusza wiersza ze sklepu', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
-    const r = await wyslij(`/zamowienia/${id}/pozycje/zapisz`, { klucz: 's4321', nazwa: 'STOP', ilosc: '3', cena_brutto: '61.50' });
+    const r = await wyslij(`/zamowienia/${id}/pozycje/zapisz`, {
+      klucz: 's4321',
+      nazwa: 'STOP',
+      ilosc: '3',
+      cena_brutto: '61.50',
+    });
     expect(r.statusCode).toBe(302);
 
     // Wiersz w bazie DALEJ ma wartości ze sklepu...
     expect(db.prepare("SELECT ilosc FROM pozycje WHERE zamowienie_id = ? AND zrodlo = 'sklep'").get(id).ilosc).toBe(2);
     // ...a nadpisanie leży obok, POLOWO: wyłącznie ilość.
-    expect(JSON.parse(db.prepare('SELECT pozycje_reczne_json FROM zamowienia WHERE id = ?').get(id).pozycje_reczne_json))
-      .toEqual({ s4321: { ilosc: 3 } });
+    expect(
+      JSON.parse(db.prepare('SELECT pozycje_reczne_json FROM zamowienia WHERE id = ?').get(id).pozycje_reczne_json),
+    ).toEqual({ s4321: { ilosc: 3 } });
     // Karta pokazuje wartość efektywną i oznaczenie.
     expect((await karta(id)).body).toContain('zmienione ręcznie: ilosc');
   });
@@ -285,7 +324,12 @@ describe('edycja pozycji', () => {
   // i panel krzyczałby o rozjeździe przy każdej poprawionej pozycji.
   it('suma w tabeli idzie za wartością POPRAWIONĄ, bez fałszywego ostrzeżenia o rozjeździe', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
-    await wyslij(`/zamowienia/${id}/pozycje/zapisz`, { klucz: 's4321', nazwa: 'STOP', ilosc: '3', cena_brutto: '61.50' });
+    await wyslij(`/zamowienia/${id}/pozycje/zapisz`, {
+      klucz: 's4321',
+      nazwa: 'STOP',
+      ilosc: '3',
+      cena_brutto: '61.50',
+    });
 
     const r = await karta(id);
     // 3 × 61,50 = 184,50 w linii; razem z wysyłką 89,90 → 274,40.
@@ -299,16 +343,35 @@ describe('edycja pozycji', () => {
   // by już nie doszła, a panel pokazywałby dane tym starsze, im dawniej ktoś kliknął „zapisz".
   it('po zmianie SAMEJ ilości przez formularz zmiana ceny w sklepie DALEJ dochodzi', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
-    await wyslij(`/zamowienia/${id}/pozycje/zapisz`, { klucz: 's4321', nazwa: 'STOP', ilosc: '3', cena_brutto: '61.50' });
+    await wyslij(`/zamowienia/${id}/pozycje/zapisz`, {
+      klucz: 's4321',
+      nazwa: 'STOP',
+      ilosc: '3',
+      cena_brutto: '61.50',
+    });
 
     // Sklep podnosi cenę: 2 szt. po 70,00 zł brutto. To robi zwykła synchronizacja.
-    zapiszZamowienie(db, 'pro', zmapowane({
-      kwota_brutto: '229.90',
-      pozycje: [{
-        zrodlo_id: 4321, nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 2, cena_brutto: '70.00',
-        cena_netto: '56.91', brutto_linii: '140.00', netto_linii: '113.82', vat: null,
-      }],
-    }), {});
+    zapiszZamowienie(
+      db,
+      'pro',
+      zmapowane({
+        kwota_brutto: '229.90',
+        pozycje: [
+          {
+            zrodlo_id: 4321,
+            nazwa: 'STOP',
+            sku: 'PRO-STOP-001',
+            ilosc: 2,
+            cena_brutto: '70.00',
+            cena_netto: '56.91',
+            brutto_linii: '140.00',
+            netto_linii: '113.82',
+            vat: null,
+          },
+        ],
+      }),
+      {},
+    );
 
     const p = pobierzZamowienie(db, id).pozycje[0];
     expect(p.cena_brutto).toBe('70.00');
@@ -321,24 +384,41 @@ describe('edycja pozycji', () => {
     dodajPozycjeReczna(db, id, parsujNowaPozycje({ nazwa: 'Dopłata', ilosc: '1', cena_brutto: '80.00' }));
     const klucz = kluczReczna(id);
 
-    await wyslij(`/zamowienia/${id}/pozycje/zapisz`, { klucz: `${klucz}`, nazwa: 'Dopłata x2', ilosc: '2', cena_brutto: '80,00' });
+    await wyslij(`/zamowienia/${id}/pozycje/zapisz`, {
+      klucz: `${klucz}`,
+      nazwa: 'Dopłata x2',
+      ilosc: '2',
+      cena_brutto: '80,00',
+    });
 
     const p = pobierzZamowienie(db, id).pozycje.find((w) => w.reczna);
     expect(p).toMatchObject({ nazwa: 'Dopłata x2', ilosc: 2, brutto_linii: '160.00' });
-    expect(db.prepare('SELECT pozycje_reczne_json FROM zamowienia WHERE id = ?').get(id).pozycje_reczne_json).toBeNull();
+    expect(
+      db.prepare('SELECT pozycje_reczne_json FROM zamowienia WHERE id = ?').get(id).pozycje_reczne_json,
+    ).toBeNull();
   });
 
   it('edycja pozycji ręcznej NIE gubi SKU', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
     dodajPozycjeReczna(db, id, parsujNowaPozycje({ nazwa: 'Dopłata', sku: 'X-1', ilosc: '1', cena_brutto: '80.00' }));
     const klucz = kluczReczna(id);
-    await wyslij(`/zamowienia/${id}/pozycje/zapisz`, { klucz: `${klucz}`, nazwa: 'Dopłata', ilosc: '2', cena_brutto: '80.00' });
+    await wyslij(`/zamowienia/${id}/pozycje/zapisz`, {
+      klucz: `${klucz}`,
+      nazwa: 'Dopłata',
+      ilosc: '2',
+      cena_brutto: '80.00',
+    });
     expect(pobierzZamowienie(db, id).pozycje.find((w) => w.reczna).sku).toBe('X-1');
   });
 
   it('edycja idzie do logu jako decyzja człowieka', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
-    await wyslij(`/zamowienia/${id}/pozycje/zapisz`, { klucz: 's4321', nazwa: 'STOP', ilosc: '3', cena_brutto: '61.50' });
+    await wyslij(`/zamowienia/${id}/pozycje/zapisz`, {
+      klucz: 's4321',
+      nazwa: 'STOP',
+      ilosc: '3',
+      cena_brutto: '61.50',
+    });
     const wpis = log(id).at(-1);
     expect(wpis.akcja).toBe('pozycje.zapisz');
     expect(wpis.wynik).toMatch(/Ręcznie \(adam\)/);
@@ -347,10 +427,17 @@ describe('edycja pozycji', () => {
 
   it('błędna wartość → 400 z wyjaśnieniem, nadpisanie nie powstaje', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
-    const r = await wyslij(`/zamowienia/${id}/pozycje/zapisz`, { klucz: 's4321', nazwa: 'STOP', ilosc: '1,5', cena_brutto: '61.50' });
+    const r = await wyslij(`/zamowienia/${id}/pozycje/zapisz`, {
+      klucz: 's4321',
+      nazwa: 'STOP',
+      ilosc: '1,5',
+      cena_brutto: '61.50',
+    });
     expect(r.statusCode).toBe(400);
     expect(r.body).toMatch(/całkowit/i);
-    expect(db.prepare('SELECT pozycje_reczne_json FROM zamowienia WHERE id = ?').get(id).pozycje_reczne_json).toBeNull();
+    expect(
+      db.prepare('SELECT pozycje_reczne_json FROM zamowienia WHERE id = ?').get(id).pozycje_reczne_json,
+    ).toBeNull();
   });
 
   // ZMIANA ŚWIADOMA: przy zapisie hurtem obcy klucz jest POMIJANY, a nie odrzucany całym
@@ -359,9 +446,16 @@ describe('edycja pozycji', () => {
   // zapisać; odmowa całości kasowałaby pracę operatora z powodu, na który nie ma wpływu.
   it('nieznany klucz pozycji jest POMIJANY, nic nie zapisane', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
-    const r = await wyslij(`/zamowienia/${id}/pozycje/zapisz`, { klucz: 's9999', nazwa: 'X', ilosc: '1', cena_brutto: '1.00' });
+    const r = await wyslij(`/zamowienia/${id}/pozycje/zapisz`, {
+      klucz: 's9999',
+      nazwa: 'X',
+      ilosc: '1',
+      cena_brutto: '1.00',
+    });
     expect(r.statusCode).toBe(302);
-    expect(db.prepare('SELECT pozycje_reczne_json FROM zamowienia WHERE id = ?').get(id).pozycje_reczne_json).toBeNull();
+    expect(
+      db.prepare('SELECT pozycje_reczne_json FROM zamowienia WHERE id = ?').get(id).pozycje_reczne_json,
+    ).toBeNull();
   });
 });
 
@@ -383,7 +477,9 @@ describe('„Przywróć ze sklepu" przy pozycji', () => {
     const p = pobierzZamowienie(db, id).pozycje[0];
     expect(p).toMatchObject({ ilosc: 2, cena_brutto: '61.50', brutto_linii: '123.00' });
     expect(p.polaZmienione).toEqual([]);
-    expect(db.prepare('SELECT pozycje_reczne_json FROM zamowienia WHERE id = ?').get(id).pozycje_reczne_json).toBeNull();
+    expect(
+      db.prepare('SELECT pozycje_reczne_json FROM zamowienia WHERE id = ?').get(id).pozycje_reczne_json,
+    ).toBeNull();
   });
 
   it('przywrócenie idzie do logu jako decyzja człowieka', async () => {
@@ -403,7 +499,9 @@ describe('„Przywróć ze sklepu" przy pozycji', () => {
     expect(r.body).toMatch(/sklep o niej nie wie/i);
     // Odmowa wraca jako karta z pozycjami w edycji i paskiem w sekcji pozycji, nie goły tekst.
     const sekcja = r.body.match(/<section class="panel panel--edycja" id="pozycje">[\s\S]*?<\/section>/)?.[0] ?? '';
-    expect(sekcja).toMatch(/<p class="pasek-blokada" id="blad-dane-pozycje">Nie udało się zapisać pozycji: [^<]*sklep o niej nie wie/i);
+    expect(sekcja).toMatch(
+      /<p class="pasek-blokada" id="blad-dane-pozycje">Nie udało się zapisać pozycji: [^<]*sklep o niej nie wie/i,
+    );
     expect(sekcja).toContain('/pozycje/zapisz');
     expect(r.body.match(/id="blad-dane-/g)).toHaveLength(1);
   });
@@ -481,18 +579,33 @@ describe('ochrona przed CSRF', () => {
 // (probka, gratis z promocji) niosla `0.00` i bezwarunkowa odmowa parsera wywracala zapis
 // CALEGO zamowienia — razem z pozycjami, ktore operator faktycznie poprawil.
 describe('pozycja ze sklepu za 0 zł nie blokuje zapisu', () => {
-  const zGratisem = () => zamowienieZRozjechanymiLicznikami({
-    pozycje: [
-      {
-        zrodlo_id: 4321, nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 2, cena_brutto: '61.50',
-        cena_netto: '50.00', brutto_linii: '123.00', netto_linii: '100.00', vat: null,
-      },
-      {
-        zrodlo_id: 4322, nazwa: 'Próbka gratis', sku: 'PRO-GRATIS', ilosc: 1, cena_brutto: '0.00',
-        cena_netto: '0.00', brutto_linii: '0.00', netto_linii: '0.00', vat: null,
-      },
-    ],
-  });
+  const zGratisem = () =>
+    zamowienieZRozjechanymiLicznikami({
+      pozycje: [
+        {
+          zrodlo_id: 4321,
+          nazwa: 'STOP',
+          sku: 'PRO-STOP-001',
+          ilosc: 2,
+          cena_brutto: '61.50',
+          cena_netto: '50.00',
+          brutto_linii: '123.00',
+          netto_linii: '100.00',
+          vat: null,
+        },
+        {
+          zrodlo_id: 4322,
+          nazwa: 'Próbka gratis',
+          sku: 'PRO-GRATIS',
+          ilosc: 1,
+          cena_brutto: '0.00',
+          cena_netto: '0.00',
+          brutto_linii: '0.00',
+          netto_linii: '0.00',
+          vat: null,
+        },
+      ],
+    });
 
   it('poprawka płatnej pozycji przechodzi, choć obok jedzie wiersz za 0 zł', async () => {
     const id = zGratisem();
@@ -505,8 +618,9 @@ describe('pozycja ze sklepu za 0 zł nie blokuje zapisu', () => {
     expect(r.statusCode).toBe(302);
 
     // Gratis zostaje bez nadpisania — zero rowne sklepowi to brak zmiany, nie decyzja.
-    const mapa = JSON.parse(db.prepare('SELECT pozycje_reczne_json FROM zamowienia WHERE id = ?')
-      .get(id).pozycje_reczne_json);
+    const mapa = JSON.parse(
+      db.prepare('SELECT pozycje_reczne_json FROM zamowienia WHERE id = ?').get(id).pozycje_reczne_json,
+    );
     expect(mapa).toEqual({ s4321: { ilosc: 3 } });
   });
 
@@ -520,8 +634,9 @@ describe('pozycja ze sklepu za 0 zł nie blokuje zapisu', () => {
     });
     expect(r.statusCode).toBe(400);
     expect(r.body).toMatch(/większa od zera/);
-    expect(db.prepare('SELECT pozycje_reczne_json FROM zamowienia WHERE id = ?').get(id).pozycje_reczne_json)
-      .toBe(null);
+    expect(db.prepare('SELECT pozycje_reczne_json FROM zamowienia WHERE id = ?').get(id).pozycje_reczne_json).toBe(
+      null,
+    );
   });
 });
 
@@ -536,26 +651,41 @@ describe('pozycja ze sklepu za 0 zł nie blokuje zapisu', () => {
 // jak zobaczyc.
 // =====================================================================================
 describe('odnośnik do produktu na karcie', () => {
-  const zOferty = (nad = {}) => zmapowane({
-    zrodlo_id: 28216,
-    numer: '28216',
-    kwota_brutto: '115.00',
-    koszt_dostawy_brutto: '0.00',
-    koszt_dostawy_netto: '0.00',
-    pozycje: [
-      {
-        zrodlo_id: 9001, nazwa: 'lampa wisząca na zamówienie - klosz mleczny, mosiądz',
-        sku: 'psm-zam-placeholder', ilosc: 2, cena_brutto: '48.00', cena_netto: '48.00',
-        brutto_linii: '96.00', netto_linii: '96.00', vat: null, produkt_id: 28040,
-      },
-      {
-        zrodlo_id: 9002, nazwa: 'wysyłka kurierem DPD', sku: 'psm-zam-placeholder', ilosc: 1,
-        cena_brutto: '19.00', cena_netto: '19.00', brutto_linii: '19.00', netto_linii: '19.00',
-        vat: null, produkt_id: 28040,
-      },
-    ],
-    ...nad,
-  });
+  const zOferty = (nad = {}) =>
+    zmapowane({
+      zrodlo_id: 28216,
+      numer: '28216',
+      kwota_brutto: '115.00',
+      koszt_dostawy_brutto: '0.00',
+      koszt_dostawy_netto: '0.00',
+      pozycje: [
+        {
+          zrodlo_id: 9001,
+          nazwa: 'lampa wisząca na zamówienie - klosz mleczny, mosiądz',
+          sku: 'psm-zam-placeholder',
+          ilosc: 2,
+          cena_brutto: '48.00',
+          cena_netto: '48.00',
+          brutto_linii: '96.00',
+          netto_linii: '96.00',
+          vat: null,
+          produkt_id: 28040,
+        },
+        {
+          zrodlo_id: 9002,
+          nazwa: 'wysyłka kurierem DPD',
+          sku: 'psm-zam-placeholder',
+          ilosc: 1,
+          cena_brutto: '19.00',
+          cena_netto: '19.00',
+          brutto_linii: '19.00',
+          netto_linii: '19.00',
+          vat: null,
+          produkt_id: 28040,
+        },
+      ],
+      ...nad,
+    });
 
   it('pozycja z oferty NIE prowadzi do ukrytego produktu-zaślepki', async () => {
     const id = zapiszZamowienie(db, 'swietlik', zOferty(), {});
@@ -573,20 +703,36 @@ describe('odnośnik do produktu na karcie', () => {
   // GRANICA: zwykla pozycja sklepowa odnosnik dalej MA — bez tego test wyzej przechodzilby
   // takze wtedy, gdyby ktos skasowal odnosniki w ogole.
   it('zwykła pozycja sklepowa dalej ma odnośnik do produktu', async () => {
-    const id = zapiszZamowienie(db, 'pro', zmapowane({
-      zrodlo_id: 7777,
-      pozycje: [{
-        zrodlo_id: 9003, nazwa: 'Kałamarz 30x45', sku: 'PRO-KAL-001', ilosc: 1, cena_brutto: '123.00',
-        cena_netto: '100.00', brutto_linii: '123.00', netto_linii: '100.00', vat: null, produkt_id: 5150,
-      }],
-    }), {});
+    const id = zapiszZamowienie(
+      db,
+      'pro',
+      zmapowane({
+        zrodlo_id: 7777,
+        pozycje: [
+          {
+            zrodlo_id: 9003,
+            nazwa: 'Kałamarz 30x45',
+            sku: 'PRO-KAL-001',
+            ilosc: 1,
+            cena_brutto: '123.00',
+            cena_netto: '100.00',
+            brutto_linii: '123.00',
+            netto_linii: '100.00',
+            vat: null,
+            produkt_id: 5150,
+          },
+        ],
+      }),
+      {},
+    );
     expect((await karta(id)).body).toContain('p=5150');
   });
 });
 
 // Stawka VAT pozycji ręcznej dopisywanej i edytowanej na karcie.
 describe('karta — stawka VAT pozycji ręcznej', () => {
-  const stawkaReczna = (id) => db.prepare("SELECT vat FROM pozycje WHERE zamowienie_id = ? AND zrodlo = 'reczna'").get(id)?.vat;
+  const stawkaReczna = (id) =>
+    db.prepare("SELECT vat FROM pozycje WHERE zamowienie_id = ? AND zrodlo = 'reczna'").get(id)?.vat;
 
   it('„Dodaj pozycję” z vat 8 zapisuje 8; netto przelicza się stawką wiersza', async () => {
     const id = zamowienieZRozjechanymiLicznikami();
@@ -613,7 +759,10 @@ describe('karta — stawka VAT pozycji ręcznej', () => {
     const id = zamowienieZRozjechanymiLicznikami();
     dodajPozycjeReczna(db, id, parsujNowaPozycje({ nazwa: 'Album', ilosc: '1', cena_brutto: '10.80', vat: '8' }));
     const r = await wyslij(`/zamowienia/${id}/pozycje/zapisz`, {
-      klucz: ['s4321', kluczReczna(id)], nazwa: ['STOP', 'Album'], ilosc: ['2', '2'], cena_brutto: ['61.50', '10.80'],
+      klucz: ['s4321', kluczReczna(id)],
+      nazwa: ['STOP', 'Album'],
+      ilosc: ['2', '2'],
+      cena_brutto: ['61.50', '10.80'],
     });
     expect(r.statusCode, r.body).toBeLessThan(400);
     expect(stawkaReczna(id)).toBe('8');
@@ -628,8 +777,15 @@ describe('karta — kolumna VAT i podsumowanie', () => {
     const id = zamowienieZRozjechanymiLicznikami();
     dodajPozycjeReczna(db, id, parsujNowaPozycje({ nazwa: 'Album', ilosc: '1', cena_brutto: '10.80', vat: '8' }));
     const s = sekcjaPozycji((await karta(id)).body);
-    expect(s).toMatch(/<th>Nazwa<\/th><th class="kol-sku">SKU<\/th><th class="liczba">Cena netto<\/th><th class="liczba kol-vat">Stawka VAT<\/th><th class="liczba">Cena brutto<\/th>/u);
-    expect([...s.matchAll(/<td class="liczba kol-vat">([^<]*)<\/td>/gu)].map((m) => m[1].trim())).toEqual(['23%', '8%', '23%', '']);
+    expect(s).toMatch(
+      /<th>Nazwa<\/th><th class="kol-sku">SKU<\/th><th class="liczba">Cena netto<\/th><th class="liczba kol-vat">Stawka VAT<\/th><th class="liczba">Cena brutto<\/th>/u,
+    );
+    expect([...s.matchAll(/<td class="liczba kol-vat">([^<]*)<\/td>/gu)].map((m) => m[1].trim())).toEqual([
+      '23%',
+      '8%',
+      '23%',
+      '',
+    ]);
   });
 
   it('pod tabelą: Razem netto · VAT · Razem brutto — liczby z reguły faktury', async () => {
@@ -653,7 +809,10 @@ describe('karta — kolumna VAT i podsumowanie', () => {
     const id = zamowienieZRozjechanymiLicznikami();
     zapiszStawkeDomyslna(db, '8');
     const r = await karta(id, '?edytuj=pozycje');
-    const f = /<form method="post" action="\/zamowienia\/\d+\/pozycje\/zapisz" class="formularz-pozycji"[\s\S]*?<\/form>/u.exec(r.body)?.[0] ?? '';
+    const f =
+      /<form method="post" action="\/zamowienia\/\d+\/pozycje\/zapisz" class="formularz-pozycji"[\s\S]*?<\/form>/u.exec(
+        r.body,
+      )?.[0] ?? '';
     expect(f).toMatch(/name="cena_netto"[\s\S]*name="vat"[\s\S]*name="cena_brutto"/u);
     expect(f).toMatch(/<option value="8" selected>/u);
   });
@@ -662,13 +821,17 @@ describe('karta — kolumna VAT i podsumowanie', () => {
     const id = zamowienieZRozjechanymiLicznikami();
     dodajPozycjeReczna(db, id, parsujNowaPozycje({ nazwa: 'Album', ilosc: '1', cena_brutto: '10.80', vat: '8' }));
     const r = await karta(id, '?edytuj=pozycje');
-    const f = /<form method="post" action="\/zamowienia\/\d+\/pozycje\/zapisz"[^>]*>[\s\S]*?<\/form>/u.exec(r.body)?.[0] ?? '';
+    const f =
+      /<form method="post" action="\/zamowienia\/\d+\/pozycje\/zapisz"[^>]*>[\s\S]*?<\/form>/u.exec(r.body)?.[0] ?? '';
     const istniejace = f.replace(/<tr data-wiersz-pozycji>[\s\S]*?<\/tr>/u, '');
     expect((istniejace.match(/<select[^>]*name="vat"/gu) ?? []).length).toBe(1);
     expect((istniejace.match(/name="vat"/gu) ?? []).length).toBe(3);
     const z = await wyslij(`/zamowienia/${id}/pozycje/zapisz`, {
-      klucz: ['s4321', kluczReczna(id), 'wysylka'], nazwa: ['STOP', 'Album', 'Wysyłka'], ilosc: ['2', '1', '1'],
-      cena_brutto: ['61.50', '10.80', '89.90'], vat: ['', '5', ''],
+      klucz: ['s4321', kluczReczna(id), 'wysylka'],
+      nazwa: ['STOP', 'Album', 'Wysyłka'],
+      ilosc: ['2', '1', '1'],
+      cena_brutto: ['61.50', '10.80', '89.90'],
+      vat: ['', '5', ''],
     });
     expect(z.statusCode, z.body).toBeLessThan(400);
     expect(db.prepare("SELECT vat FROM pozycje WHERE zamowienie_id = ? AND zrodlo = 'reczna'").get(id).vat).toBe('5');
@@ -682,11 +845,15 @@ describe('edycja zbiorcza — pozycja ręczna bez stawki zostaje bez stawki', ()
     const id = zamowienieZRozjechanymiLicznikami();
     dodajPozycjeReczna(db, id, { nazwa: 'Stara dopłata', ilosc: 1, cena_brutto: '10.00', brutto_linii: '10.00' });
     const r = await karta(id, '?edytuj=pozycje');
-    const f = /<form method="post" action="\/zamowienia\/\d+\/pozycje\/zapisz"[^>]*>[\s\S]*?<\/form>/u.exec(r.body)?.[0] ?? '';
+    const f =
+      /<form method="post" action="\/zamowienia\/\d+\/pozycje\/zapisz"[^>]*>[\s\S]*?<\/form>/u.exec(r.body)?.[0] ?? '';
     expect(f).toMatch(/<select[^>]*name="vat"[^>]*><option value="" selected>domyślna \(23%\)<\/option>/u);
     await wyslij(`/zamowienia/${id}/pozycje/zapisz`, {
-      klucz: ['s4321', kluczReczna(id), 'wysylka'], nazwa: ['STOP', 'Stara dopłata', 'Wysyłka'], ilosc: ['2', '1', '1'],
-      cena_brutto: ['61.50', '10.00', '89.90'], vat: ['', '', ''],
+      klucz: ['s4321', kluczReczna(id), 'wysylka'],
+      nazwa: ['STOP', 'Stara dopłata', 'Wysyłka'],
+      ilosc: ['2', '1', '1'],
+      cena_brutto: ['61.50', '10.00', '89.90'],
+      vat: ['', '', ''],
     });
     expect(db.prepare("SELECT vat FROM pozycje WHERE zamowienie_id = ? AND zrodlo = 'reczna'").get(id).vat).toBeNull();
   });

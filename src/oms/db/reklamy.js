@@ -19,7 +19,8 @@ function wymagajKwoty(wartosc, pole) {
 
 function wymagajDnia(dzien) {
   if (typeof dzien !== 'string' || !DATA.test(dzien)) throw new Error('Niepoprawny dzień raportu.');
-  if (new Date(`${dzien}T00:00:00Z`).toISOString().slice(0, 10) !== dzien) throw new Error('Niepoprawny dzień raportu.');
+  if (new Date(`${dzien}T00:00:00Z`).toISOString().slice(0, 10) !== dzien)
+    throw new Error('Niepoprawny dzień raportu.');
   return dzien;
 }
 
@@ -48,30 +49,54 @@ function wTransakcji(db, nazwa, praca) {
   }
 }
 
-export function zapiszPolaczenie(db, {
-  typ, kontoId, kanal = null, regulaId = 'zrodlo_id', waluta = null, strefa = null, sekretRef = null,
-}) {
+export function zapiszPolaczenie(
+  db,
+  { typ, kontoId, kanal = null, regulaId = 'zrodlo_id', waluta = null, strefa = null, sekretRef = null },
+) {
   wymagajTypu(typ);
   const konto = wymagajId(kontoId, 'Konto');
   const walutaKod = waluta == null ? null : String(waluta).toUpperCase();
   if (!['zrodlo_id', 'numer'].includes(regulaId)) throw new Error('Nieznana reguła dopasowania zamówień.');
   if (walutaKod && !/^[A-Z]{3}$/.test(walutaKod)) throw new Error('Waluta musi mieć kod ISO 4217.');
   if (strefa) {
-    try { new Intl.DateTimeFormat('en', { timeZone: strefa }); } catch { throw new Error('Niepoprawna strefa czasu.'); }
+    try {
+      new Intl.DateTimeFormat('en', { timeZone: strefa });
+    } catch {
+      throw new Error('Niepoprawna strefa czasu.');
+    }
   }
-  const wynik = db.prepare(`INSERT INTO reklamy_polaczenia
-    (typ, konto_id, kanal, regula_id, waluta, strefa, sekret_ref) VALUES (?, ?, ?, ?, ?, ?, ?)`)
+  const wynik = db
+    .prepare(
+      `INSERT INTO reklamy_polaczenia
+    (typ, konto_id, kanal, regula_id, waluta, strefa, sekret_ref) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    )
     .run(typ, konto, kanal, regulaId, walutaKod, strefa, sekretRef);
-  return { id: Number(wynik.lastInsertRowid), typ, kontoId: konto, kanal, regulaId, waluta: walutaKod, strefa, sekretRef };
+  return {
+    id: Number(wynik.lastInsertRowid),
+    typ,
+    kontoId: konto,
+    kanal,
+    regulaId,
+    waluta: walutaKod,
+    strefa,
+    sekretRef,
+  };
 }
 
 export function polaczenia(db, { typ = null } = {}) {
-  const wiersze = typ == null
-    ? db.prepare('SELECT * FROM reklamy_polaczenia ORDER BY typ, id').all()
-    : db.prepare('SELECT * FROM reklamy_polaczenia WHERE typ = ? ORDER BY id').all(wymagajTypu(typ));
+  const wiersze =
+    typ == null
+      ? db.prepare('SELECT * FROM reklamy_polaczenia ORDER BY typ, id').all()
+      : db.prepare('SELECT * FROM reklamy_polaczenia WHERE typ = ? ORDER BY id').all(wymagajTypu(typ));
   return wiersze.map((w) => ({
-    id: w.id, typ: w.typ, kontoId: w.konto_id, kanal: w.kanal,
-    regulaId: w.regula_id, waluta: w.waluta, strefa: w.strefa, sekretRef: w.sekret_ref,
+    id: w.id,
+    typ: w.typ,
+    kontoId: w.konto_id,
+    kanal: w.kanal,
+    regulaId: w.regula_id,
+    waluta: w.waluta,
+    strefa: w.strefa,
+    sekretRef: w.sekret_ref,
   }));
 }
 
@@ -86,9 +111,10 @@ export function zapiszDni(db, { typ, polaczenieId, wiersze, pobranoAt, od = null
   const polaczenie = polaczenieDla(db, polaczenieId, typ);
   if (!Array.isArray(wiersze) || !pobranoAt) throw new Error('Brak wierszy lub czasu pobrania.');
   const tabela = typ === 'ga4' ? 'reklamy_google_dni' : 'reklamy_meta_dni';
-  const kolumny = typ === 'ga4'
-    ? 'polaczenie_id, dzien, kampania_id, nazwa, koszt, klikniecia, wyswietlenia, waluta, pobrane_at'
-    : 'polaczenie_id, dzien, kampania_id, nazwa, wydatek, klikniecia, wyswietlenia, klikniecia_linku, waluta, pobrane_at';
+  const kolumny =
+    typ === 'ga4'
+      ? 'polaczenie_id, dzien, kampania_id, nazwa, koszt, klikniecia, wyswietlenia, waluta, pobrane_at'
+      : 'polaczenie_id, dzien, kampania_id, nazwa, wydatek, klikniecia, wyswietlenia, klikniecia_linku, waluta, pobrane_at';
   const miejsca = typ === 'ga4' ? '?, ?, ?, ?, ?, ?, ?, ?, ?' : '?, ?, ?, ?, ?, ?, ?, ?, ?, ?';
   const sql = `INSERT INTO ${tabela} (${kolumny}) VALUES (${miejsca})
     ON CONFLICT(polaczenie_id,dzien,kampania_id) DO UPDATE SET
@@ -99,14 +125,21 @@ export function zapiszDni(db, { typ, polaczenieId, wiersze, pobranoAt, od = null
   const insert = db.prepare(sql);
   return wTransakcji(db, 'zapis_reklamy_dni', () => {
     if (od != null && doDnia != null) {
-      db.prepare(`DELETE FROM ${tabela} WHERE polaczenie_id = ? AND dzien BETWEEN ? AND ?`)
-        .run(polaczenieId, wymagajDnia(od), wymagajDnia(doDnia));
+      db.prepare(`DELETE FROM ${tabela} WHERE polaczenie_id = ? AND dzien BETWEEN ? AND ?`).run(
+        polaczenieId,
+        wymagajDnia(od),
+        wymagajDnia(doDnia),
+      );
     }
     for (const w of wiersze) {
       const wspolne = [
-        polaczenieId, wymagajDnia(w.dzien), wymagajId(w.kampaniaId, 'Kampania'),
-        w.nazwa ?? null, wymagajKwoty(typ === 'ga4' ? w.koszt : w.wydatek, 'Wydatek'),
-        wymagajLicznika(w.klikniecia, 'Kliknięcia'), wymagajLicznika(w.wyswietlenia, 'Wyświetlenia'),
+        polaczenieId,
+        wymagajDnia(w.dzien),
+        wymagajId(w.kampaniaId, 'Kampania'),
+        w.nazwa ?? null,
+        wymagajKwoty(typ === 'ga4' ? w.koszt : w.wydatek, 'Wydatek'),
+        wymagajLicznika(w.klikniecia, 'Kliknięcia'),
+        wymagajLicznika(w.wyswietlenia, 'Wyświetlenia'),
       ];
       if (typ === 'meta') wspolne.push(wymagajLicznika(w.kliknieciaLinku, 'Kliknięcia linku'));
       insert.run(...wspolne, w.waluta ?? polaczenie.waluta, pobranoAt);
@@ -120,17 +153,38 @@ export function dni(db, { typ, polaczenieId = null, kampaniaId = null, od = null
   const tabela = typ === 'ga4' ? 'reklamy_google_dni' : 'reklamy_meta_dni';
   const warunki = [];
   const args = [];
-  if (polaczenieId != null) { warunki.push('polaczenie_id = ?'); args.push(polaczenieId); }
-  if (kampaniaId != null) { warunki.push('kampania_id = ?'); args.push(kampaniaId); }
-  if (od != null) { warunki.push('dzien >= ?'); args.push(wymagajDnia(od)); }
-  if (doDnia != null) { warunki.push('dzien <= ?'); args.push(wymagajDnia(doDnia)); }
+  if (polaczenieId != null) {
+    warunki.push('polaczenie_id = ?');
+    args.push(polaczenieId);
+  }
+  if (kampaniaId != null) {
+    warunki.push('kampania_id = ?');
+    args.push(kampaniaId);
+  }
+  if (od != null) {
+    warunki.push('dzien >= ?');
+    args.push(wymagajDnia(od));
+  }
+  if (doDnia != null) {
+    warunki.push('dzien <= ?');
+    args.push(wymagajDnia(doDnia));
+  }
   const where = warunki.length ? ` WHERE ${warunki.join(' AND ')}` : '';
-  return db.prepare(`SELECT * FROM ${tabela}${where} ORDER BY dzien, polaczenie_id, kampania_id`).all(...args)
+  return db
+    .prepare(`SELECT * FROM ${tabela}${where} ORDER BY dzien, polaczenie_id, kampania_id`)
+    .all(...args)
     .map((w) => ({
-      polaczenieId: w.polaczenie_id, dzien: w.dzien, kampaniaId: w.kampania_id,
-      nazwa: w.nazwa, koszt: w.koszt, wydatek: w.wydatek,
-      klikniecia: w.klikniecia, wyswietlenia: w.wyswietlenia,
-      kliknieciaLinku: w.klikniecia_linku, waluta: w.waluta, pobranoAt: w.pobrane_at,
+      polaczenieId: w.polaczenie_id,
+      dzien: w.dzien,
+      kampaniaId: w.kampania_id,
+      nazwa: w.nazwa,
+      koszt: w.koszt,
+      wydatek: w.wydatek,
+      klikniecia: w.klikniecia,
+      wyswietlenia: w.wyswietlenia,
+      kliknieciaLinku: w.klikniecia_linku,
+      waluta: w.waluta,
+      pobranoAt: w.pobrane_at,
     }));
 }
 
@@ -145,13 +199,22 @@ export function zapiszTransakcje(db, { polaczenieId, wiersze, pobranoAt, od = nu
     przychod=excluded.przychod, waluta=excluded.waluta, pobrane_at=excluded.pobrane_at`);
   return wTransakcji(db, 'zapis_reklamy_tx', () => {
     if (od != null && doDnia != null) {
-      db.prepare('DELETE FROM reklamy_google_transakcje WHERE polaczenie_id = ? AND dzien BETWEEN ? AND ?')
-        .run(polaczenieId, wymagajDnia(od), wymagajDnia(doDnia));
+      db.prepare('DELETE FROM reklamy_google_transakcje WHERE polaczenie_id = ? AND dzien BETWEEN ? AND ?').run(
+        polaczenieId,
+        wymagajDnia(od),
+        wymagajDnia(doDnia),
+      );
     }
     for (const w of wiersze) {
-      insert.run(polaczenieId, wymagajDnia(w.dzien), wymagajId(w.kampaniaId, 'Kampania'),
-        wymagajId(w.transactionId, 'Transakcja'), wymagajKwoty(w.przychod, 'Przychód'),
-        w.waluta ?? polaczenie.waluta, pobranoAt);
+      insert.run(
+        polaczenieId,
+        wymagajDnia(w.dzien),
+        wymagajId(w.kampaniaId, 'Kampania'),
+        wymagajId(w.transactionId, 'Transakcja'),
+        wymagajKwoty(w.przychod, 'Przychód'),
+        w.waluta ?? polaczenie.waluta,
+        pobranoAt,
+      );
     }
     return wiersze.length;
   });
@@ -160,34 +223,57 @@ export function zapiszTransakcje(db, { polaczenieId, wiersze, pobranoAt, od = nu
 export function transakcje(db, { polaczenieId = null, od = null, do: doDnia = null } = {}) {
   const warunki = [];
   const args = [];
-  if (polaczenieId != null) { warunki.push('polaczenie_id = ?'); args.push(polaczenieId); }
-  if (od != null) { warunki.push('dzien >= ?'); args.push(wymagajDnia(od)); }
-  if (doDnia != null) { warunki.push('dzien <= ?'); args.push(wymagajDnia(doDnia)); }
-  return db.prepare(`SELECT * FROM reklamy_google_transakcje
+  if (polaczenieId != null) {
+    warunki.push('polaczenie_id = ?');
+    args.push(polaczenieId);
+  }
+  if (od != null) {
+    warunki.push('dzien >= ?');
+    args.push(wymagajDnia(od));
+  }
+  if (doDnia != null) {
+    warunki.push('dzien <= ?');
+    args.push(wymagajDnia(doDnia));
+  }
+  return db
+    .prepare(
+      `SELECT * FROM reklamy_google_transakcje
     ${warunki.length ? 'WHERE ' + warunki.join(' AND ') : ''}
-    ORDER BY dzien, polaczenie_id, kampania_id, transaction_id`).all(...args)
+    ORDER BY dzien, polaczenie_id, kampania_id, transaction_id`,
+    )
+    .all(...args)
     .map((w) => ({
-      polaczenieId: w.polaczenie_id, dzien: w.dzien, kampaniaId: w.kampania_id,
-      transactionId: w.transaction_id, przychod: w.przychod,
-      waluta: w.waluta, pobranoAt: w.pobrane_at,
+      polaczenieId: w.polaczenie_id,
+      dzien: w.dzien,
+      kampaniaId: w.kampania_id,
+      transactionId: w.transaction_id,
+      przychod: w.przychod,
+      waluta: w.waluta,
+      pobranoAt: w.pobrane_at,
     }));
 }
 
 export function zapiszStan(db, { polaczenieId, ostatniaProbaAt, ostatniSukcesAt = null, kodBledu = null }) {
-  db.prepare(`INSERT INTO reklamy_zrodla (polaczenie_id,ostatnia_proba_at,ostatni_sukces_at,kod_bledu)
+  db.prepare(
+    `INSERT INTO reklamy_zrodla (polaczenie_id,ostatnia_proba_at,ostatni_sukces_at,kod_bledu)
     VALUES (?,?,?,?)
     ON CONFLICT(polaczenie_id) DO UPDATE SET
     ostatnia_proba_at=excluded.ostatnia_proba_at,
     ostatni_sukces_at=COALESCE(excluded.ostatni_sukces_at,reklamy_zrodla.ostatni_sukces_at),
-    kod_bledu=excluded.kod_bledu`).run(polaczenieId, ostatniaProbaAt, ostatniSukcesAt, kodBledu);
+    kod_bledu=excluded.kod_bledu`,
+  ).run(polaczenieId, ostatniaProbaAt, ostatniSukcesAt, kodBledu);
 }
 
 export function stanPolaczenia(db, polaczenieId) {
   const w = db.prepare('SELECT * FROM reklamy_zrodla WHERE polaczenie_id = ?').get(polaczenieId);
-  return w ? {
-    polaczenieId: w.polaczenie_id, ostatniaProbaAt: w.ostatnia_proba_at,
-    ostatniSukcesAt: w.ostatni_sukces_at, kodBledu: w.kod_bledu,
-  } : null;
+  return w
+    ? {
+        polaczenieId: w.polaczenie_id,
+        ostatniaProbaAt: w.ostatnia_proba_at,
+        ostatniSukcesAt: w.ostatni_sukces_at,
+        kodBledu: w.kod_bledu,
+      }
+    : null;
 }
 
 export function zapiszMetaKampanie(db, { polaczenieId, kampanie, pobranoAt }) {
@@ -202,9 +288,17 @@ export function zapiszMetaKampanie(db, { polaczenieId, kampanie, pobranoAt }) {
   return wTransakcji(db, 'zapis_reklamy_meta_kampanie', () => {
     db.prepare('DELETE FROM reklamy_meta_kampanie WHERE polaczenie_id = ?').run(polaczenieId);
     for (const k of kampanie) {
-      insert.run(polaczenieId, wymagajId(k.id ?? k.kampaniaId, 'Kampania'), k.nazwa ?? null,
-        k.effectiveStatus ?? null, k.budzetDzienny ?? null, k.budzetCalkowity ?? null,
-        JSON.stringify(k.budzety ?? []), k.waluta ?? null, pobranoAt);
+      insert.run(
+        polaczenieId,
+        wymagajId(k.id ?? k.kampaniaId, 'Kampania'),
+        k.nazwa ?? null,
+        k.effectiveStatus ?? null,
+        k.budzetDzienny ?? null,
+        k.budzetCalkowity ?? null,
+        JSON.stringify(k.budzety ?? []),
+        k.waluta ?? null,
+        pobranoAt,
+      );
     }
     return kampanie.length;
   });
@@ -214,12 +308,19 @@ export function metaKampanie(db, { polaczenieId = null } = {}) {
   const sql = `SELECT * FROM reklamy_meta_kampanie
     ${polaczenieId == null ? '' : 'WHERE polaczenie_id = ?'}
     ORDER BY polaczenie_id,kampania_id`;
-  return db.prepare(sql).all(...(polaczenieId == null ? [] : [polaczenieId]))
+  return db
+    .prepare(sql)
+    .all(...(polaczenieId == null ? [] : [polaczenieId]))
     .map((w) => ({
-      polaczenieId: w.polaczenie_id, kampaniaId: w.kampania_id,
-      nazwa: w.nazwa, effectiveStatus: w.effective_status,
-      budzetDzienny: w.budzet_dzienny, budzetCalkowity: w.budzet_calosciowy,
-      budzety: JSON.parse(w.budzety_json || '[]'), waluta: w.waluta, pobranoAt: w.pobrane_at,
+      polaczenieId: w.polaczenie_id,
+      kampaniaId: w.kampania_id,
+      nazwa: w.nazwa,
+      effectiveStatus: w.effective_status,
+      budzetDzienny: w.budzet_dzienny,
+      budzetCalkowity: w.budzet_calosciowy,
+      budzety: JSON.parse(w.budzety_json || '[]'),
+      waluta: w.waluta,
+      pobranoAt: w.pobrane_at,
     }));
 }
 
@@ -237,11 +338,26 @@ function kwotaZGroszy(grosze) {
 // zakup zapisany przez sklep jako wejście bezpośrednie. Kluczem jest wyłącznie
 // transactionId GA4 i zewnętrzny identyfikator zamówienia w przypiętym kanale.
 export function potwierdzoneZamowienia(db, { polaczenieId, transactionIds = [] }) {
-  const p = db.prepare('SELECT kanal, regula_id, waluta FROM reklamy_polaczenia WHERE id = ? AND typ = ?')
+  const p = db
+    .prepare('SELECT kanal, regula_id, waluta FROM reklamy_polaczenia WHERE id = ? AND typ = ?')
     .get(polaczenieId, 'ga4');
   if (!p) throw new Error('Nie ma połączenia GA4.');
-  if (!p.kanal) return { przychod: null, liczba: null, niepotwierdzone: transactionIds.length, powod: 'BRAK_KANALU', zamowienia: [] };
-  if (p.waluta !== 'PLN') return { przychod: null, liczba: null, niepotwierdzone: transactionIds.length, powod: 'NIEZGODNA_WALUTA', zamowienia: [] };
+  if (!p.kanal)
+    return {
+      przychod: null,
+      liczba: null,
+      niepotwierdzone: transactionIds.length,
+      powod: 'BRAK_KANALU',
+      zamowienia: [],
+    };
+  if (p.waluta !== 'PLN')
+    return {
+      przychod: null,
+      liczba: null,
+      niepotwierdzone: transactionIds.length,
+      powod: 'NIEZGODNA_WALUTA',
+      zamowienia: [],
+    };
   const pole = p.regula_id === 'numer' ? 'numer' : 'CAST(zrodlo_id AS TEXT)';
   const query = db.prepare(`SELECT id, sklep, zrodlo_id, numer, kwota_brutto, anulowane, anulowane_recznie, zwrot_at
     FROM zamowienia WHERE sklep = ? AND ${pole} = ?`);
@@ -282,16 +398,34 @@ export function potwierdzoneZamowienia(db, { polaczenieId, transactionIds = [] }
     const linie = pozycje.all(w.id);
     if (!linie.length || linie.some((linia) => linia.netto_linii == null)) {
       brakKwotyNetto = true;
-      zamowienia.push({ transactionId, zamowienieId: w.id, kwota: null,
-        kwotaBrutto: kwotaZGroszy(brutto), status: 'potwierdzone' });
+      zamowienia.push({
+        transactionId,
+        zamowienieId: w.id,
+        kwota: null,
+        kwotaBrutto: kwotaZGroszy(brutto),
+        status: 'potwierdzone',
+      });
       continue;
     }
     const netto = linie.reduce((acc, linia) => acc + dodajGrosze(linia.netto_linii), 0n);
     suma += netto;
-    zamowienia.push({ transactionId, zamowienieId: w.id, kwota: kwotaZGroszy(netto),
-      kwotaBrutto: kwotaZGroszy(brutto), status: 'potwierdzone' });
+    zamowienia.push({
+      transactionId,
+      zamowienieId: w.id,
+      kwota: kwotaZGroszy(netto),
+      kwotaBrutto: kwotaZGroszy(brutto),
+      status: 'potwierdzone',
+    });
   }
-  return { przychod: brakKwotyNetto ? null : kwotaZGroszy(suma),
-    przychodBrutto: kwotaZGroszy(sumaBrutto), powod: brakKwotyNetto ? 'BRAK_KWOTY_NETTO' : null,
-    liczba, niepotwierdzone, anulowane, zwroty, kolizje, zamowienia };
+  return {
+    przychod: brakKwotyNetto ? null : kwotaZGroszy(suma),
+    przychodBrutto: kwotaZGroszy(sumaBrutto),
+    powod: brakKwotyNetto ? 'BRAK_KWOTY_NETTO' : null,
+    liczba,
+    niepotwierdzone,
+    anulowane,
+    zwroty,
+    kolizje,
+    zamowienia,
+  };
 }

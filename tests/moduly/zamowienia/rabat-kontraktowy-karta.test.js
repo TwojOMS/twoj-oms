@@ -2,9 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
-import {
-  dodajPozycjeReczna, pobierzZamowienie, zapiszPozycjeReczna,
-} from '../../../src/oms/db/zamowienia.js';
+import { dodajPozycjeReczna, pobierzZamowienie, zapiszPozycjeReczna } from '../../../src/oms/db/zamowienia.js';
 import { dopiszKlienta } from '../../../src/oms/db/klienci.js';
 import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
 import { zalozZamowienieReczne } from '../../../src/moduly/zamowienia/services/zamowienie-reczne.js';
@@ -25,38 +23,56 @@ let db;
 beforeEach(() => {
   db = openOmsDb(':memory:');
   dopiszKlienta(db, {
-    klucz: 'przykladowa', nazwa: 'Pracownia Przykładowa', nip: NIP, b2b: 1, rabat_procent: 40,
-    chce_fakture: 1, metoda_wysylki: 'dpd', aktywny: 1,
-    koszt_dostawy_brutto: '0.00', platnosc: 'Przelew', termin_platnosci: null, komentarz: null,
+    klucz: 'przykladowa',
+    nazwa: 'Pracownia Przykładowa',
+    nip: NIP,
+    b2b: 1,
+    rabat_procent: 40,
+    chce_fakture: 1,
+    metoda_wysylki: 'dpd',
+    aktywny: 1,
+    koszt_dostawy_brutto: '0.00',
+    platnosc: 'Przelew',
+    termin_platnosci: null,
+    komentarz: null,
     // ⚠️ WARUNKI UMOWY MIESZKAJA OD 24.08.2026 NA KARCIE KLIENTA — do tego dnia szly
     // z `OMS_KLIENCI_ZBIORCZY`, wiec ten sam test budowal je w `config`.
-    rozliczenie_zbiorcze: 1, prog_darmowej_dostawy_gr: 50000,
-    oplata_obslugi_gr: 400, oplata_kurierska_gr: 1900,
+    rozliczenie_zbiorcze: 1,
+    prog_darmowej_dostawy_gr: 50000,
+    oplata_obslugi_gr: 400,
+    oplata_kurierska_gr: 1900,
   });
 });
 
 /** Zamówienie ręczne BEZ NIP-u i bez rabatu, z pozycją po cenie katalogowej. */
-const zamowienieBezNipu = () => zalozZamowienieReczne({
-  db,
-  znacznik,
-  dane: {
-    klient: { first_name: 'Anna', last_name: 'Przykładowa', email: 'biuro@przykladowa.example' },
-    dostawa: { first_name: 'Anna', last_name: 'Przykładowa', address_1: 'Długa 1' },
-    nip: null,
-    chce_fakture: 1,
-    metoda_wysylki: 'dpd',
-    pobranie: 0,
-    metoda_platnosci: 'Przelew',
-    koszt_dostawy_brutto: '0.00',
-    b2b: 0,
-    termin_platnosci: null,
-    rabat_procent: 0,
-    pozycje: [{
-      nazwa: 'Szablon PIESI', sku: null, ilosc: 1, cena_brutto: '100.00',
-      brutto_linii: '100.00', cena_katalogowa: '100.00',
-    }],
-  },
-}).id;
+const zamowienieBezNipu = () =>
+  zalozZamowienieReczne({
+    db,
+    znacznik,
+    dane: {
+      klient: { first_name: 'Anna', last_name: 'Przykładowa', email: 'biuro@przykladowa.example' },
+      dostawa: { first_name: 'Anna', last_name: 'Przykładowa', address_1: 'Długa 1' },
+      nip: null,
+      chce_fakture: 1,
+      metoda_wysylki: 'dpd',
+      pobranie: 0,
+      metoda_platnosci: 'Przelew',
+      koszt_dostawy_brutto: '0.00',
+      b2b: 0,
+      termin_platnosci: null,
+      rabat_procent: 0,
+      pozycje: [
+        {
+          nazwa: 'Szablon PIESI',
+          sku: null,
+          ilosc: 1,
+          cena_brutto: '100.00',
+          brutto_linii: '100.00',
+          cena_katalogowa: '100.00',
+        },
+      ],
+    },
+  }).id;
 
 const zapiszFakture = async (id, pola, headers = naglowek) => {
   const app = buildOmsServer({ db, config });
@@ -64,7 +80,13 @@ const zapiszFakture = async (id, pola, headers = naglowek) => {
     method: 'POST',
     url: `/zamowienia/${id}/dane/faktura`,
     headers,
-    payload: { firma: 'Pracownia Przykładowa sp. z o.o.', ulica: 'Długa 1', kod: '43-300', miasto: 'Warszawa', ...pola },
+    payload: {
+      firma: 'Pracownia Przykładowa sp. z o.o.',
+      ulica: 'Długa 1',
+      kod: '43-300',
+      miasto: 'Warszawa',
+      ...pola,
+    },
   });
   await app.close();
   return odp;
@@ -132,12 +154,20 @@ describe('rabat kontraktowy przy zapisie danych faktury', () => {
     // lecz rozpoznanie recznej zmiany ceny musi go zatrzymac.
     for (const id of [idSprzedaz, idProdukcja]) {
       dodajPozycjeReczna(db, id, {
-        nazwa: 'Ustalenie reczne', ilosc: 1, cena_brutto: '10.00', brutto_linii: '10.00',
-        produkt_id: 991, wariant_id: 992, cena_katalogowa: '10.00',
+        nazwa: 'Ustalenie reczne',
+        ilosc: 1,
+        cena_brutto: '10.00',
+        brutto_linii: '10.00',
+        produkt_id: 991,
+        wariant_id: 992,
+        cena_katalogowa: '10.00',
       });
       const pozycja = pobierzZamowienie(db, id).pozycje.find((p) => p.nazwa === 'Ustalenie reczne');
       zapiszPozycjeReczna(db, id, pozycja.id, {
-        nazwa: pozycja.nazwa, ilosc: 1, cena_brutto: '4.00', brutto_linii: '4.00',
+        nazwa: pozycja.nazwa,
+        ilosc: 1,
+        cena_brutto: '4.00',
+        brutto_linii: '4.00',
       });
     }
 
@@ -145,7 +175,8 @@ describe('rabat kontraktowy przy zapisie danych faktury', () => {
     zalozKonto(db, { login: 'ewa', imie: 'Ewa', haslo: 'h', rola: 'sprzedaz', admin: false });
     zalozKonto(db, { login: 'pako', imie: 'Produkcja', haslo: 'h', rola: 'produkcja', admin: false });
     const jako = (login) => ({
-      origin: 'http://localhost', accept: 'text/html',
+      origin: 'http://localhost',
+      accept: 'text/html',
       cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz(login, wczytajSekret(db))}`,
     });
 
@@ -162,7 +193,10 @@ describe('rabat kontraktowy przy zapisie danych faktury', () => {
     expect(wyniki[0].kwota_brutto).toBe(wyniki[1].kwota_brutto);
 
     const app = buildOmsServer({ db, config, faktura: { wystaw: async () => {} } });
-    for (const [id, login] of [[idSprzedaz, 'ewa'], [idProdukcja, 'pako']]) {
+    for (const [id, login] of [
+      [idSprzedaz, 'ewa'],
+      [idProdukcja, 'pako'],
+    ]) {
       const kartaRoli = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: jako(login) });
       expect(kartaRoli.statusCode).toBe(200);
       expect(kartaRoli.body).toContain(`action="/zamowienia/${id}/faktura"`);

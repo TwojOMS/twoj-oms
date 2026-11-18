@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { grupyUstawien, podmenuUstawien, POZYCJE_USTAWIEN } from '../../src/domena/podmenu-ustawien.js';
 
 const uklad = (grupy) => grupy.map((g) => [g.etykieta, g.pozycje.map((p) => p.etykieta)]);
-const aktywne = (sciezka, opcje = { admin: true }) => grupyUstawien(sciezka, opcje)
-  .flatMap((g) => g.pozycje).filter((p) => p.aktywna).map((p) => p.klucz);
+const aktywne = (sciezka, opcje = { admin: true }) =>
+  grupyUstawien(sciezka, opcje)
+    .flatMap((g) => g.pozycje)
+    .filter((p) => p.aktywna)
+    .map((p) => p.klucz);
 
 describe('podmenu Ustawień', () => {
   // Poziomy pasek nie mieścił się w wierszu — menu z lewej, w pięciu grupach.
@@ -22,12 +25,24 @@ describe('podmenu Ustawień', () => {
   it('adresy dotychczasowych ekranów zostają bez zmian, nowe atrapy mają własne', () => {
     const adresy = Object.fromEntries(podmenuUstawien('/ustawienia', { admin: true }).map((p) => [p.klucz, p.href]));
     expect(adresy).toEqual({
-      firma: '/ustawienia/firma', konta: '/ustawienia/konta', role: '/ustawienia/role',
-      statusy: '/ustawienia/statusy', automatyzacje: '/ustawienia/automatyzacje', 'zamowienia-i-wysylka': '/ustawienia/zamowienia-i-wysylka', magazyn: '/ustawienia/magazyn', druk: '/ustawienia/druk',
-      'szablony-wiadomosci': '/ustawienia/szablony-wiadomosci', 'wiadomosci-i-automatyzacje': '/ustawienia/wiadomosci-i-automatyzacje', powiadomienia: '/ustawienia/powiadomienia',
+      firma: '/ustawienia/firma',
+      konta: '/ustawienia/konta',
+      role: '/ustawienia/role',
+      statusy: '/ustawienia/statusy',
+      automatyzacje: '/ustawienia/automatyzacje',
+      'zamowienia-i-wysylka': '/ustawienia/zamowienia-i-wysylka',
+      magazyn: '/ustawienia/magazyn',
+      druk: '/ustawienia/druk',
+      'szablony-wiadomosci': '/ustawienia/szablony-wiadomosci',
+      'wiadomosci-i-automatyzacje': '/ustawienia/wiadomosci-i-automatyzacje',
+      powiadomienia: '/ustawienia/powiadomienia',
       integracje: '/ustawienia/integracje',
-      moduly: '/ustawienia/moduly', diagnostyka: '/ustawienia/lacznosc', aktualizacje: '/ustawienia/aktualizacje', kopie: '/ustawienia/kopie',
-      'import-eksport': '/ustawienia/import-eksport', api: '/ustawienia/api',
+      moduly: '/ustawienia/moduly',
+      diagnostyka: '/ustawienia/lacznosc',
+      aktualizacje: '/ustawienia/aktualizacje',
+      kopie: '/ustawienia/kopie',
+      'import-eksport': '/ustawienia/import-eksport',
+      api: '/ustawienia/api',
     });
   });
 
@@ -47,12 +62,22 @@ describe('podmenu Ustawień', () => {
       ['Integracje', ['Sklepy i usługi']],
       ['System', ['Diagnostyka', 'Kopie zapasowe', 'Import i eksport', 'API i webhooki']],
     ]);
-    expect(aktywne('/ustawienia/zamowienia-i-wysylka?zapisano=paczka', { admin: false })).toEqual(['zamowienia-i-wysylka']);
+    expect(aktywne('/ustawienia/zamowienia-i-wysylka?zapisano=paczka', { admin: false })).toEqual([
+      'zamowienia-i-wysylka',
+    ]);
   });
 
   it('grupa bez widocznej pozycji znika razem z nagłówkiem', () => {
-    const pozycje = [...POZYCJE_USTAWIEN.filter((p) => p.grupa !== 'firma'), { klucz: 'x', etykieta: 'X', href: '/ustawienia/x', grupa: 'firma', tylkoAdmin: true }];
-    expect(grupyUstawien('/ustawienia', { admin: false, pozycje }).map((g) => g.klucz)).toEqual(['sprzedaz', 'komunikacja', 'integracje', 'system']);
+    const pozycje = [
+      ...POZYCJE_USTAWIEN.filter((p) => p.grupa !== 'firma'),
+      { klucz: 'x', etykieta: 'X', href: '/ustawienia/x', grupa: 'firma', tylkoAdmin: true },
+    ];
+    expect(grupyUstawien('/ustawienia', { admin: false, pozycje }).map((g) => g.klucz)).toEqual([
+      'sprzedaz',
+      'komunikacja',
+      'integracje',
+      'system',
+    ]);
   });
 
   it.each([
@@ -94,9 +119,15 @@ describe('podmenu Ustawień', () => {
   // Wykonawcy 02 i 03 dopisują swoje pozycje NA KOŃCU tablicy — tylko {klucz, etykieta, href, grupa}.
   it('obca pozycja dopisana na końcu trafia do swojej grupy, statusy i szablony na miejsce z planu', () => {
     // Szablony wiadomości są już w liście — tu sprawdzamy mechanizm dopisania, więc bez nich w bazie.
-    const pozycje = [...POZYCJE_USTAWIEN.filter((p) => !['szablony-wiadomosci', 'statusy'].includes(p.klucz)),
+    const pozycje = [
+      ...POZYCJE_USTAWIEN.filter((p) => !['szablony-wiadomosci', 'statusy'].includes(p.klucz)),
       { klucz: 'statusy', etykieta: 'Statusy zamówień', href: '/ustawienia/statusy', grupa: 'sprzedaz' },
-      { klucz: 'szablony-wiadomosci', etykieta: 'Szablony wiadomości', href: '/ustawienia/szablony-wiadomosci', grupa: 'komunikacja' },
+      {
+        klucz: 'szablony-wiadomosci',
+        etykieta: 'Szablony wiadomości',
+        href: '/ustawienia/szablony-wiadomosci',
+        grupa: 'komunikacja',
+      },
       { klucz: 'nowa', etykieta: 'Nowa', href: '/ustawienia/nowa', grupa: 'system' },
     ];
     const grupy = grupyUstawien('/ustawienia/statusy/7', { admin: true, pozycje });
@@ -105,8 +136,20 @@ describe('podmenu Ustawień', () => {
       ['Komunikacja', ['Szablony wiadomości', 'Autoodpowiedź Allegro', 'Powiadomienia']],
     ]);
     expect(uklad(grupy)[4][1].at(-1)).toBe('Nowa');
-    expect(grupy.flatMap((g) => g.pozycje).filter((p) => p.aktywna).map((p) => p.klucz)).toEqual(['statusy']);
-    expect(grupy[1].pozycje[0]).toEqual({ klucz: 'statusy', etykieta: 'Statusy zamówień', href: '/ustawienia/statusy', grupa: 'sprzedaz', wkrotce: false, aktywna: true });
+    expect(
+      grupy
+        .flatMap((g) => g.pozycje)
+        .filter((p) => p.aktywna)
+        .map((p) => p.klucz),
+    ).toEqual(['statusy']);
+    expect(grupy[1].pozycje[0]).toEqual({
+      klucz: 'statusy',
+      etykieta: 'Statusy zamówień',
+      href: '/ustawienia/statusy',
+      grupa: 'sprzedaz',
+      wkrotce: false,
+      aktywna: true,
+    });
   });
 
   it('pozycja z nieznaną grupą nie znika po cichu — błąd od razu', () => {

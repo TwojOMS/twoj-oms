@@ -8,7 +8,10 @@ import { zbudujOms } from '../../../src/oms/bootstrap.ts';
 import { modulyDla } from '../../../src/moduly/lista.ts';
 import { createModulKoszty } from '../../../src/moduly/koszty/modul.ts';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
-import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji } from '../../../src/oms/db/konfiguracja-integracji.js';
+import {
+  wczytajKonfiguracjeIntegracji,
+  zapiszKonfiguracjeIntegracji,
+} from '../../../src/oms/db/konfiguracja-integracji.js';
 import { jako } from '../../pomoc/panel-konta-testowe.js';
 
 const ADRES = '/ustawienia/integracje/ksef';
@@ -16,18 +19,29 @@ const NIP = '1234563218';
 const TOKEN = '20261020-EC-ZMYSLONY0001|nip-1234563218|aaaaaaaaaaaaaaaa';
 const TOKEN_2 = '20261020-EC-ZMYSLONY0002|nip-1234563218|bbbbbbbbbbbbbbbb';
 const TOKEN_PLIKU = '20261020-EC-ZMYSLONYPLIK|nip-1234563218|cccccccccccccccc';
-const ZDANIE = 'Wygeneruj w KSeF token z uprawnieniem tylko do przeglądania faktur zakupowych — OMS niczego przez KSeF nie wysyła.';
-const ENV = { OMS_USER: 'operator', OMS_PASS: 'fixture', OMS_SPRZEDAWCA_NIP: NIP, OMS_RACHUNEK: '34109010140000000000000000',
-  OMS_PROFORMY_KATALOG: tmpdir(), OMS_ETYKIETY_KATALOG: tmpdir() };
+const ZDANIE =
+  'Wygeneruj w KSeF token z uprawnieniem tylko do przeglądania faktur zakupowych — OMS niczego przez KSeF nie wysyła.';
+const ENV = {
+  OMS_USER: 'operator',
+  OMS_PASS: 'fixture',
+  OMS_SPRZEDAWCA_NIP: NIP,
+  OMS_RACHUNEK: '34109010140000000000000000',
+  OMS_PROFORMY_KATALOG: tmpdir(),
+  OMS_ETYKIETY_KATALOG: tmpdir(),
+};
 // 03:30 czasu Warszawy — pora nocnego pobrania kosztów (zegar bez `wymuszony` pobiera tylko o 3).
 const TERAZ = new Date('2026-10-20T01:30:00Z');
 
 let siec;
 beforeEach(() => {
-  siec = vi.fn(async () => { throw new Error('Sieć zabroniona w teście KSeF z panelu'); });
+  siec = vi.fn(async () => {
+    throw new Error('Sieć zabroniona w teście KSeF z panelu');
+  });
   vi.stubGlobal('fetch', siec);
 });
-afterEach(() => { vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 /** Atrapa klienta KSeF: zapamiętuje, z jakim tokenem powstała i które metody wołano. */
 function atrapaKsef({ odrzucaToken = null } = {}) {
@@ -35,14 +49,28 @@ function atrapaKsef({ odrzucaToken = null } = {}) {
   const fabryka = vi.fn(({ token, nip }) => {
     const wolania = [];
     const klient = {
-      token, nip, wolania,
+      token,
+      nip,
+      wolania,
       zaloguj: vi.fn(async () => {
         wolania.push('zaloguj');
-        if (token === odrzucaToken) throw Object.assign(new Error('KSeF odmówił przy uwierzytelnianiu tokenem: HTTP 401 — token nieważny'), { dlaOperatora: true, status: 401 });
-        return { accessToken: `access-${klienci.length}`, accessDo: '2027-01-01T00:00:00Z', refreshToken: 'refresh', refreshDo: '2027-02-01T00:00:00Z' };
+        if (token === odrzucaToken)
+          throw Object.assign(new Error('KSeF odmówił przy uwierzytelnianiu tokenem: HTTP 401 — token nieważny'), {
+            dlaOperatora: true,
+            status: 401,
+          });
+        return {
+          accessToken: `access-${klienci.length}`,
+          accessDo: '2027-01-01T00:00:00Z',
+          refreshToken: 'refresh',
+          refreshDo: '2027-02-01T00:00:00Z',
+        };
       }),
       odswiez: vi.fn(async () => ({ accessToken: 'odswiezony', accessDo: '2027-01-01T00:00:00Z' })),
-      pobierzMetadane: vi.fn(async () => { wolania.push('pobierzMetadane'); return { faktury: [], hasMore: false, isTruncated: false }; }),
+      pobierzMetadane: vi.fn(async () => {
+        wolania.push('pobierzMetadane');
+        return { faktury: [], hasMore: false, isTruncated: false };
+      }),
       pobierzXml: vi.fn(async () => '<Faktura/>'),
     };
     klienci.push(klient);
@@ -51,27 +79,53 @@ function atrapaKsef({ odrzucaToken = null } = {}) {
   return { fabryka, klienci, tokeny: () => klienci.map((k) => k.token) };
 }
 
-async function oms({ env = {}, atrapa = atrapaKsef(), zapisPrzedStartem = null, fabryki = undefined, db: bazaZewnetrzna = null } = {}) {
+async function oms({
+  env = {},
+  atrapa = atrapaKsef(),
+  zapisPrzedStartem = null,
+  fabryki = undefined,
+  db: bazaZewnetrzna = null,
+} = {}) {
   const logi = [];
   const e = { ...ENV, ...env };
-  const moduly = modulyDla(e).map((m) => (m.nazwa === 'koszty' ? createModulKoszty({ createKlient: atrapa.fabryka, fabryki }) : m));
+  const moduly = modulyDla(e).map((m) =>
+    m.nazwa === 'koszty' ? createModulKoszty({ createKlient: atrapa.fabryka, fabryki }) : m,
+  );
   let db = bazaZewnetrzna;
   if (zapisPrzedStartem && !db) {
     const { openOmsDb } = await import('../../../src/oms/db/db.ts');
     db = openOmsDb(':memory:', { moduly });
     zapiszKonfiguracjeIntegracji(db, 'ksef', { ustawienia: {}, sekrety: { token: zapisPrzedStartem } });
   }
-  const z = await zbudujOms({ env: e, moduly, ...(db ? { db } : {}), teraz: () => new Date(TERAZ), log: (...t) => logi.push(t.join(' ')) });
+  const z = await zbudujOms({
+    env: e,
+    moduly,
+    ...(db ? { db } : {}),
+    teraz: () => new Date(TERAZ),
+    log: (...t) => logi.push(t.join(' ')),
+  });
   if (!bazaZewnetrzna) {
-  zalozKonto(z.db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
-  zalozKonto(z.db, { login: 'ewa', imie: 'Ewa', haslo: 'h', rola: 'sprzedaz' });
-  ustawUprawnienia(z.db, kontoPoLoginie(z.db, 'ewa').id, ['zamowienia', 'koszty']);
+    zalozKonto(z.db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
+    zalozKonto(z.db, { login: 'ewa', imie: 'Ewa', haslo: 'h', rola: 'sprzedaz' });
+    ustawUprawnienia(z.db, kontoPoLoginie(z.db, 'ewa').id, ['zamowienia', 'koszty']);
   }
   const naglowki = (login) => ({ accept: 'text/html', ...jako(z.db, login) });
   const get = (url, kto = 'adam') => z.app.inject({ method: 'GET', url, headers: naglowki(kto) });
-  const post = (url, payload = {}, kto = 'adam') => z.app.inject({ method: 'POST', url, headers: { ...naglowki(kto), origin: 'http://localhost' }, payload });
+  const post = (url, payload = {}, kto = 'adam') =>
+    z.app.inject({ method: 'POST', url, headers: { ...naglowki(kto), origin: 'http://localhost' }, payload });
   const zegar = () => z.zegary.find((x) => x.nazwa === 'czuwaczKosztow');
-  return { ...z, atrapa, logi, get, post, zegar, zamknij: async () => { await z.app.close(); z.db.close(); } };
+  return {
+    ...z,
+    atrapa,
+    logi,
+    get,
+    post,
+    zegar,
+    zamknij: async () => {
+      await z.app.close();
+      z.db.close();
+    },
+  };
 }
 const formularz = (html) => /<form id="ksef-formularz"[\s\S]*?<\/form>/u.exec(html)?.[0] ?? '';
 
@@ -91,7 +145,9 @@ describe('Ustawienia → Integracje → KSeF (faktury kosztowe)', () => {
       expect(r.body).toContain(ZDANIE);
       expect(r.body).toContain('Niepodłączony');
       expect(r.body.includes('api.ksef.mf.gov.pl')).toBe(false);
-    } finally { await o.zamknij(); }
+    } finally {
+      await o.zamknij();
+    }
   });
 
   it('zapis tokenu w panelu → bez restartu zegar czuwacza kosztów pobiera tym tokenem; ten sam token = ta sama sesja, nowy token = nowy klient', async () => {
@@ -130,7 +186,9 @@ describe('Ustawienia → Integracje → KSeF (faktury kosztowe)', () => {
 
       const zdrowie = (await o.get('/health')).json();
       expect(zdrowie.czuwaczKosztow.wlaczony).toBe(true);
-    } finally { await o.zamknij(); }
+    } finally {
+      await o.zamknij();
+    }
   });
 
   it('sekret nie wraca na żaden ekran, do odpowiedzi, logu zdarzeń ani logu procesu', async () => {
@@ -145,11 +203,15 @@ describe('Ustawienia → Integracje → KSeF (faktury kosztowe)', () => {
       }
       const ekran = await o.get(ADRES);
       expect(ekran.body).toContain('Podłączony');
-      expect(formularz(ekran.body)).toMatch(/<input id="ksef-token"[^>]* value=""[^>]* placeholder="zapisany — wpisz nowy, żeby zmienić">/u);
+      expect(formularz(ekran.body)).toMatch(
+        /<input id="ksef-token"[^>]* value=""[^>]* placeholder="zapisany — wpisz nowy, żeby zmienić">/u,
+      );
       expect(JSON.stringify(o.db.prepare('SELECT * FROM log').all()).includes(TOKEN)).toBe(false);
       expect(o.logi.join('\n').includes(TOKEN)).toBe(false);
       expect(siec).not.toHaveBeenCalled();
-    } finally { await o.zamknij(); }
+    } finally {
+      await o.zamknij();
+    }
   });
 
   it('usunięcie tokenu: czuwacz nic nie robi, /health jak bez tokenu, „Odśwież teraz” 503', async () => {
@@ -168,7 +230,9 @@ describe('Ustawienia → Integracje → KSeF (faktury kosztowe)', () => {
       const zdrowie = (await o.get('/health')).json();
       expect(zdrowie.czuwaczKosztow).toMatchObject({ wlaczony: false, zdrowy: true });
       expect((await o.post('/koszty/odswiez', { miesiac: '2026-10' })).statusCode).toBe(503);
-    } finally { await o.zamknij(); }
+    } finally {
+      await o.zamknij();
+    }
   });
 
   it('token w pliku: ekran tylko informuje, zapis 409, czuwacz pobiera tokenem z pliku — także przy starym zapisie z ekranu', async () => {
@@ -185,7 +249,9 @@ describe('Ustawienia → Integracje → KSeF (faktury kosztowe)', () => {
       for (const t of [TOKEN, TOKEN_PLIKU]) expect(ekran.body.includes(t)).toBe(false);
       await o.zegar().przebieg();
       expect(o.atrapa.tokeny()).toEqual([TOKEN_PLIKU]);
-    } finally { await o.zamknij(); }
+    } finally {
+      await o.zamknij();
+    }
   });
 
   it('„Sprawdź połączenie” loguje się zapisanym tokenem i tylko czyta; zły token = czytelna odmowa bez tokenu', async () => {
@@ -208,14 +274,20 @@ describe('Ustawienia → Integracje → KSeF (faktury kosztowe)', () => {
       expect(zle.body).toContain('Nie działa.');
       expect(zle.body).toContain('token nieważny');
       expect(zle.body.includes(TOKEN_2)).toBe(false);
-    } finally { await o.zamknij(); }
+    } finally {
+      await o.zamknij();
+    }
   });
 
   it('błędy formularza: pusty, ze spacją, za krótki, NIP inny niż sprzedawcy — nic nie zapisane, wartość nie wraca', async () => {
     const o = await oms();
     try {
-      for (const [body, tekst] of [[{ token: '' }, 'Podaj token'], [{ token: 'ab cd ef gh ij kl mn op qr st' }, 'spacji'],
-        [{ token: 'krotki' }, 'za krótkie'], [{ token: TOKEN, nip: '1111111111' }, 'OMS_SPRZEDAWCA_NIP']]) {
+      for (const [body, tekst] of [
+        [{ token: '' }, 'Podaj token'],
+        [{ token: 'ab cd ef gh ij kl mn op qr st' }, 'spacji'],
+        [{ token: 'krotki' }, 'za krótkie'],
+        [{ token: TOKEN, nip: '1111111111' }, 'OMS_SPRZEDAWCA_NIP'],
+      ]) {
         const r = await o.post(ADRES, body);
         expect(r.statusCode, JSON.stringify(body)).toBe(400);
         expect(r.body).toContain('Nie zapisano.');
@@ -226,15 +298,27 @@ describe('Ustawienia → Integracje → KSeF (faktury kosztowe)', () => {
       // NIP zgodny ze sprzedawcą (z przedrostkiem i kreskami) przechodzi.
       expect((await o.post(ADRES, { token: TOKEN, nip: 'PL 123-456-32-18' })).statusCode).toBe(303);
       expect(wczytajKonfiguracjeIntegracji(o.db, 'ksef').ustawienia).toEqual({ nip: NIP });
-    } finally { await o.zamknij(); }
+    } finally {
+      await o.zamknij();
+    }
   });
 
   // Przebieg na tokenie A trwa, admin zapisuje token B. Stary zestaw loguje się A
   // PO skasowaniu sesji i zapisuje parę A z powrotem — zestaw B nie może jej przejąć (zły B = odmowa, nie „działa”).
   it('nowy token nie przejmuje sesji starego, także gdy stary przebieg zaloguje się po zapisie nowego', async () => {
     const atrapa = atrapaKsef({ odrzucaToken: TOKEN_2 });
-    let zwolnij; const brama = new Promise((r) => { zwolnij = r; });
-    const createCzuwaczKosztow = ({ sesja }) => ({ przebieg: async () => { await sesja.accessToken(); await brama; await sesja.accessToken(); return { nowych: 0, przeczytanych: 0, okien: 1 }; } });
+    let zwolnij;
+    const brama = new Promise((r) => {
+      zwolnij = r;
+    });
+    const createCzuwaczKosztow = ({ sesja }) => ({
+      przebieg: async () => {
+        await sesja.accessToken();
+        await brama;
+        await sesja.accessToken();
+        return { nowych: 0, przeczytanych: 0, okien: 1 };
+      },
+    });
     const o = await oms({ atrapa, fabryki: { createCzuwaczKosztow } });
     try {
       await o.post(ADRES, { token: TOKEN });
@@ -247,7 +331,9 @@ describe('Ustawienia → Integracje → KSeF (faktury kosztowe)', () => {
       expect(zle.body).toContain('Nie działa.');
       expect(atrapa.tokeny()).toEqual([TOKEN, TOKEN_2]);
       expect(atrapa.klienci[1].zaloguj).toHaveBeenCalledTimes(1);
-    } finally { await o.zamknij(); }
+    } finally {
+      await o.zamknij();
+    }
   });
 
   // Ten sam efekt bez wyścigu: token z pliku usunięty z oms.env + restart, a w bazie leży starszy zapis z ekranu.
@@ -267,7 +353,9 @@ describe('Ustawienia → Integracje → KSeF (faktury kosztowe)', () => {
       const zle = await drugi.post(`${ADRES}/sprawdz`);
       expect(zle.body).toContain('Nie działa.');
       expect(atrapa.tokeny()).toEqual([TOKEN_2]);
-    } finally { await drugi.zamknij(); }
+    } finally {
+      await drugi.zamknij();
+    }
   });
 
   it('nie-admin (bez uprawnienia „ustawienia”) dostaje 403 na ekranie, zapisie, sprawdzeniu i usunięciu', async () => {
@@ -279,7 +367,9 @@ describe('Ustawienia → Integracje → KSeF (faktury kosztowe)', () => {
       expect((await o.post(`${ADRES}/odlacz`, {}, 'ewa')).statusCode).toBe(403);
       expect(wczytajKonfiguracjeIntegracji(o.db, 'ksef').sekrety).toEqual({ token: TOKEN });
       expect(o.atrapa.fabryka).not.toHaveBeenCalled();
-    } finally { await o.zamknij(); }
+    } finally {
+      await o.zamknij();
+    }
   });
 
   it('zapisany token — zdanie o nocnym pobieraniu mówi „OMS pobiera”, bez wewnętrznej nazwy czuwacza', async () => {
@@ -288,10 +378,15 @@ describe('Ustawienia → Integracje → KSeF (faktury kosztowe)', () => {
       await o.post(ADRES, { token: TOKEN });
       const r = await o.get(ADRES);
       expect(r.statusCode, r.body).toBe(200);
-      const widoczny = r.body.replace(/<script[\s\S]*?<\/script>/gu, ' ').replace(/<[^>]+>/gu, ' ').replace(/\s+/gu, ' ');
+      const widoczny = r.body
+        .replace(/<script[\s\S]*?<\/script>/gu, ' ')
+        .replace(/<[^>]+>/gu, ' ')
+        .replace(/\s+/gu, ' ');
       expect(widoczny).toContain('Podłączony');
       expect(widoczny).toContain('OMS pobiera nim co noc (o 3) faktury, na których firma jest nabywcą');
       expect(widoczny).not.toMatch(/czuwacz/iu);
-    } finally { await o.zamknij(); }
+    } finally {
+      await o.zamknij();
+    }
   });
 });

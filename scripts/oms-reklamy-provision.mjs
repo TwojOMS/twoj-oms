@@ -11,7 +11,13 @@ export function provisionReklam(db, args, env = process.env) {
     if (!match) throw new Error('Oczekiwano --ga4=ID:kanal lub --meta=ID[:kanal].');
     const [, typ, kontoId, kanal = null] = match;
     if (typ === 'ga4' && (!env.GA4_KLUCZ || !kanal)) throw new Error('GA4 wymaga istniejącego klucza i kanału OMS.');
-    if (typ === 'meta' && (!env.META_TOKEN || !String(env.META_KONTA ?? '').split(',').includes(kontoId))) {
+    if (
+      typ === 'meta' &&
+      (!env.META_TOKEN ||
+        !String(env.META_KONTA ?? '')
+          .split(',')
+          .includes(kontoId))
+    ) {
       throw new Error('Konto Meta musi należeć do skonfigurowanej listy kont.');
     }
     const zapisane = polaczenia(db).find((p) => p.typ === typ && p.kontoId === kontoId);
@@ -20,8 +26,7 @@ export function provisionReklam(db, args, env = process.env) {
       wynik.push({ typ, kontoId, id: zapisane.id, stan: 'istnieje' });
       continue;
     }
-    const p = zapiszPolaczenie(db, { typ, kontoId, kanal, strefa: 'Europe/Warsaw',
-      sekretRef: `legacy-${typ}` });
+    const p = zapiszPolaczenie(db, { typ, kontoId, kanal, strefa: 'Europe/Warsaw', sekretRef: `legacy-${typ}` });
     wynik.push({ typ, kontoId, id: p.id, stan: 'dodano' });
   }
   return wynik;

@@ -35,7 +35,12 @@ const auth = {
 };
 
 const STAN_PUSTY = {
-  trwa: false, zaczety_at: null, skonczony_at: null, postep: null, kanaly: [], blad: null,
+  trwa: false,
+  zaczety_at: null,
+  skonczony_at: null,
+  postep: null,
+  kanaly: [],
+  blad: null,
 };
 const atrapaMagazynu = () => ({ start: vi.fn(), stan: () => STAN_PUSTY });
 
@@ -67,16 +72,21 @@ function produktO(kartaId, { kanal = 'pro', sku = null } = {}) {
 const wiersz = (id) => db.prepare('SELECT * FROM karty_produktow WHERE id = ?').get(id);
 
 const get = (app, url) => app.inject({ method: 'GET', url, headers: auth });
-const post = (app, url, payload) => app.inject({
-  method: 'POST', url, headers: auth, payload,
-});
+const post = (app, url, payload) =>
+  app.inject({
+    method: 'POST',
+    url,
+    headers: auth,
+    payload,
+  });
 // Cialo zadania SUROWE — jedyna droga, zeby wyslac ten sam klucz DWA RAZY.
-const postSurowy = (app, url, tresc) => app.inject({
-  method: 'POST',
-  url,
-  headers: { ...auth, 'content-type': 'application/x-www-form-urlencoded' },
-  payload: tresc,
-});
+const postSurowy = (app, url, tresc) =>
+  app.inject({
+    method: 'POST',
+    url,
+    headers: { ...auth, 'content-type': 'application/x-www-form-urlencoded' },
+    payload: tresc,
+  });
 
 // ————————————————————————————————————————————————————————————————————————————————
 // POMOCNIKI ASERCJI
@@ -123,7 +133,10 @@ function przyciskiZakresu(html) {
     znalezione.push({
       wartosc: wartosc ? wartosc[1] : null,
       formaction: formaction ? formaction[1] : null,
-      napis: m[2].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim(),
+      napis: m[2]
+        .replace(/<[^>]*>/g, '')
+        .replace(/\s+/g, ' ')
+        .trim(),
     });
   }
   return znalezione;
@@ -162,7 +175,9 @@ async function klikniecie(app, adresListy, idPanelu, wartoscZakresu, dodatkowe =
   const { action, zawezenie } = formularzAkcji(strona.body);
   const przycisk = przyciskZakresu(panel(strona.body, idPanelu), wartoscZakresu);
   return post(app, przycisk.formaction ?? action, {
-    zakres: przycisk.wartosc, zawezenie, ...dodatkowe,
+    zakres: przycisk.wartosc,
+    zawezenie,
+    ...dodatkowe,
   });
 }
 
@@ -289,11 +304,7 @@ describe('parametr zakresu nie ma jak przyjść dwa razy', () => {
     const a = kartaO('Kandelabr');
     const b = kartaO('Chmurka');
 
-    const r = await postSurowy(
-      serwer(),
-      '/magazyn/hurt',
-      'zakres=pasujace&zakres=pasujace&zawezenie=&szerokosc_cm=70',
-    );
+    const r = await postSurowy(serwer(), '/magazyn/hurt', 'zakres=pasujace&zakres=pasujace&zawezenie=&szerokosc_cm=70');
 
     expect(r.statusCode).toBe(400);
     expect(r.body).toMatch(/nie zaznaczono/i);
@@ -317,7 +328,9 @@ describe('edycja hurtem: kliknięty przycisk rozstrzyga zbiór', () => {
     const { kandelabr } = trzyBezWymiaru();
 
     const r = await klikniecie(serwer(), '/magazyn?brak=wymiary', 'hurt-pasek', 'zaznaczone', {
-      zaznaczone: String(kandelabr), szerokosc_cm: '70', wysokosc_cm: '100',
+      zaznaczone: String(kandelabr),
+      szerokosc_cm: '70',
+      wysokosc_cm: '100',
     });
 
     expect(r.statusCode).toBe(200);
@@ -328,7 +341,9 @@ describe('edycja hurtem: kliknięty przycisk rozstrzyga zbiór', () => {
     const { kandelabr } = trzyBezWymiaru();
 
     const r = await klikniecie(serwer(), '/magazyn?brak=wymiary', 'hurt-pasek', 'pasujace', {
-      zaznaczone: String(kandelabr), szerokosc_cm: '70', wysokosc_cm: '100',
+      zaznaczone: String(kandelabr),
+      szerokosc_cm: '70',
+      wysokosc_cm: '100',
     });
 
     expect(r.statusCode).toBe(200);
@@ -341,7 +356,8 @@ describe('edycja hurtem: kliknięty przycisk rozstrzyga zbiór', () => {
     kartaO('Zmierzona', { szerokosc_mm: 300, wysokosc_mm: 400 });
 
     const r = await klikniecie(serwer(), '/magazyn?brak=wymiary', 'hurt-pasek', 'pasujace', {
-      szerokosc_cm: '70', wysokosc_cm: '100',
+      szerokosc_cm: '70',
+      wysokosc_cm: '100',
     });
 
     expect(nazwyWPodgladzie(r.body, 'zmiany-hurtem')).not.toContain('Zmierzona');
@@ -353,7 +369,11 @@ describe('przejęcie numerów: kliknięty przycisk rozstrzyga zbiór', () => {
   // zglosil: „musze kliknac ponad 100 razy".
   function trzyDoPrzejecia() {
     const idy = {};
-    for (const [klucz, nazwa] of [['a', 'Bursztyn'], ['b', 'Kandelabr'], ['c', 'Sowa']]) {
+    for (const [klucz, nazwa] of [
+      ['a', 'Bursztyn'],
+      ['b', 'Kandelabr'],
+      ['c', 'Sowa'],
+    ]) {
       idy[klucz] = kartaO(nazwa);
       produktO(idy[klucz], { sku: `SKU-${nazwa.toUpperCase()}-1` });
     }
@@ -379,8 +399,7 @@ describe('przejęcie numerów: kliknięty przycisk rozstrzyga zbiór', () => {
     const r = await klikniecie(serwer(), '/magazyn?brak=sku', 'przejecie-pasek', 'pasujace');
 
     expect(r.statusCode).toBe(200);
-    expect(nazwyWPodgladzie(r.body, 'przejecie-pozycje').sort())
-      .toEqual(['Bursztyn', 'Kandelabr', 'Sowa']);
+    expect(nazwyWPodgladzie(r.body, 'przejecie-pozycje').sort()).toEqual(['Bursztyn', 'Kandelabr', 'Sowa']);
   });
 
   // ⚠️⚠️ PODGLAD JEST OBOWIAZKOWY I ZOSTAJE OBOWIAZKOWY. Zmieniamy sposob wyboru zakresu,

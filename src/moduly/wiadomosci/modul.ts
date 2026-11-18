@@ -15,36 +15,73 @@ import { mapaNaZadanie } from '../kanaly/kolekcje-na-zadanie.ts';
 
 export { utworzUslugiWiadomosci } from './uslugi.ts';
 
-export function createModulWiadomosci({ fabryki = {}, uslugi }: {
-  fabryki?: FabrykiWiadomosci; uslugi?: UslugiWiadomosci;
+export function createModulWiadomosci({
+  fabryki = {},
+  uslugi,
+}: {
+  fabryki?: FabrykiWiadomosci;
+  uslugi?: UslugiWiadomosci;
 } = {}): ModulOms<ReturnType<typeof konfiguracjaWiadomosci>> {
   return {
-    nazwa: 'wiadomosci', wersja: '1.0.0', wymaga: ['rdzen', 'web', 'kanaly', 'faktury'], migracje: [migracjaZalacznikow],
-    konfiguracja: konfiguracjaWiadomosci, kluczeIntegracji: ['SMTP_USER', 'SMTP_PASS'],
+    nazwa: 'wiadomosci',
+    wersja: '1.0.0',
+    wymaga: ['rdzen', 'web', 'kanaly', 'faktury'],
+    migracje: [migracjaZalacznikow],
+    konfiguracja: konfiguracjaWiadomosci,
+    kluczeIntegracji: ['SMTP_USER', 'SMTP_PASS'],
     uprawnienia: [
       { klucz: 'wiadomosci', etykieta: 'Wiadomości', role: ['administrator', 'sprzedaz'] },
       { klucz: 'klienci', etykieta: 'Klienci B2B', role: ['administrator', 'sprzedaz'] },
     ],
     menu: [
       // Grupa „Klienci” w menu bocznym (zgodnie z EKRANY.nawigacja).
-      { dzial: 'sprzedaz', grupa: 'klienci', etykieta: 'Wiadomości', adres: '/wiadomosci', uprawnienie: 'wiadomosci', kolejnosc: 40 },
-      { dzial: 'sprzedaz', grupa: 'klienci', etykieta: 'Klienci B2B', adres: '/klienci', uprawnienie: 'klienci', kolejnosc: 50 },
+      {
+        dzial: 'sprzedaz',
+        grupa: 'klienci',
+        etykieta: 'Wiadomości',
+        adres: '/wiadomosci',
+        uprawnienie: 'wiadomosci',
+        kolejnosc: 40,
+      },
+      {
+        dzial: 'sprzedaz',
+        grupa: 'klienci',
+        etykieta: 'Klienci B2B',
+        adres: '/klienci',
+        uprawnienie: 'klienci',
+        kolejnosc: 50,
+      },
     ],
-    zbuduj: ctx => {
+    zbuduj: (ctx) => {
       // Faktury posiadają dane dokumentów; jawny sprzedawca pochodzi z rdzenia.
       // Zamówienia są konsumentem wiadomości, więc GUS pobieramy dopiero w fazie tras.
-      const u: UslugiWiadomosci = uslugi ?? utworzUslugiWiadomosci({
-        db: ctx.db, config: { ...ctx.usluga<object>('kanaly', 'config'),
-          ...ctx.usluga<object>('faktury', 'config'), ...ctx.konfiguracja,
-          sprzedawca: ctx.usluga<DaneSprzedawcy>('rdzen', 'sprzedawca') },
-        klienciKanalow: ctx.usluga('kanaly', 'klienciKanalow'),
-        tokenyKanalow: ctx.usluga('kanaly', 'tokenyKanalow'),
-        wolnoZapisywac: ctx.usluga<{wolnoZapisywac:(k:string)=>boolean}>('kanaly','rejestrKanalow').wolnoZapisywac,
-        proforma: ctx.usluga('faktury', 'proforma'), infakt: ctx.usluga('faktury', 'infakt'),
-        // Wybór modułu faktur — zdanie „faktury wyłączone” w odmowie maila z fakturą (bez usługi — `null`).
-        wyborProgramu: (() => { try { return ctx.usluga('faktury', 'wyborProgramu'); } catch { return null; } })(),
-        teraz: ctx.teraz, fabryki,
-      });
+      const u: UslugiWiadomosci =
+        uslugi ??
+        utworzUslugiWiadomosci({
+          db: ctx.db,
+          config: {
+            ...ctx.usluga<object>('kanaly', 'config'),
+            ...ctx.usluga<object>('faktury', 'config'),
+            ...ctx.konfiguracja,
+            sprzedawca: ctx.usluga<DaneSprzedawcy>('rdzen', 'sprzedawca'),
+          },
+          klienciKanalow: ctx.usluga('kanaly', 'klienciKanalow'),
+          tokenyKanalow: ctx.usluga('kanaly', 'tokenyKanalow'),
+          wolnoZapisywac: ctx.usluga<{ wolnoZapisywac: (k: string) => boolean }>('kanaly', 'rejestrKanalow')
+            .wolnoZapisywac,
+          proforma: ctx.usluga('faktury', 'proforma'),
+          infakt: ctx.usluga('faktury', 'infakt'),
+          // Wybór modułu faktur — zdanie „faktury wyłączone” w odmowie maila z fakturą (bez usługi — `null`).
+          wyborProgramu: (() => {
+            try {
+              return ctx.usluga('faktury', 'wyborProgramu');
+            } catch {
+              return null;
+            }
+          })(),
+          teraz: ctx.teraz,
+          fabryki,
+        });
       // Te same dwa argumenty frozen dochodzą do loggera rzeczywistego produktu.
       const log = ctx.log;
       const zegary: Zegar[] = [];
@@ -52,22 +89,41 @@ export function createModulWiadomosci({ fabryki = {}, uslugi }: {
       if (u.czuwaczFormulki) zegary.push(zegarCzuwaczaFormulki({ czuwaczFormulki: u.czuwaczFormulki, log }));
       // Podpis maili (marka, stopka) z Ustawień → Poczta — usługa dla tamtego ekranu i źródło oprawy tras
       // poniżej, liczonej przy każdym żądaniu (zmiana bez restartu; pole z pliku wygrywa).
-      const podpisMaili = utworzPodpisMaili({ db: ctx.db, oprawaPoczty: ctx.konfiguracja.oprawaPoczty, teraz: ctx.teraz });
-      return { uslugi: { ...u, podpisMaili }, zegary, trasy: app => {
-        const wszyscyKlienci = ctx.usluga<Record<string, any>>('wiadomosci', 'klienciWiadomosci');
-        const klienci = mapaNaZadanie(() => Object.keys(wszyscyKlienci).filter(kanalZWiadomosciami), sklep => wszyscyKlienci[sklep]);
-        // Szablony wiadomości — ekran w Ustawieniach i „Wstaw szablon" w wątku Allegro. Działają także
-        // bez skonfigurowanej poczty (szablon da się przygotować przed podłączeniem SMTP).
-        const oprawa = () => podpisMaili.oprawa();
-        registerWiadomosciRoutes(app, { db: ctx.db, klienci, podpis: () => oprawa().podpis });
-        registerSzablonyWiadomosciRoutes(app, { db: ctx.db, oprawa, config: u.config, teraz: ctx.teraz });
-        const gus = Object.hasOwn(u, 'gus') ? u.gus : ctx.usluga('zamowienia', 'gus');
-        // Firma zwolniona z VAT — ta sama reguła co karta zamówienia (`sprzedawcaZwolniony`), czytana
-        // przy każdym żądaniu; przy inFakcie (i bez modułu faktur) `false`.
-        const program = zProgramu({ infakt: (() => { try { return ctx.usluga('faktury', 'infakt'); } catch { return null; } })() });
-        const zwolnionaFirma = () => sprzedawcaZwolniony(ctx.db, program?.opis);
-        registerKlienciRoutes(app, { db: ctx.db, gus: gus as any, zwolnionaFirma });
-      } };
+      const podpisMaili = utworzPodpisMaili({
+        db: ctx.db,
+        oprawaPoczty: ctx.konfiguracja.oprawaPoczty,
+        teraz: ctx.teraz,
+      });
+      return {
+        uslugi: { ...u, podpisMaili },
+        zegary,
+        trasy: (app) => {
+          const wszyscyKlienci = ctx.usluga<Record<string, any>>('wiadomosci', 'klienciWiadomosci');
+          const klienci = mapaNaZadanie(
+            () => Object.keys(wszyscyKlienci).filter(kanalZWiadomosciami),
+            (sklep) => wszyscyKlienci[sklep],
+          );
+          // Szablony wiadomości — ekran w Ustawieniach i „Wstaw szablon" w wątku Allegro. Działają także
+          // bez skonfigurowanej poczty (szablon da się przygotować przed podłączeniem SMTP).
+          const oprawa = () => podpisMaili.oprawa();
+          registerWiadomosciRoutes(app, { db: ctx.db, klienci, podpis: () => oprawa().podpis });
+          registerSzablonyWiadomosciRoutes(app, { db: ctx.db, oprawa, config: u.config, teraz: ctx.teraz });
+          const gus = Object.hasOwn(u, 'gus') ? u.gus : ctx.usluga('zamowienia', 'gus');
+          // Firma zwolniona z VAT — ta sama reguła co karta zamówienia (`sprzedawcaZwolniony`), czytana
+          // przy każdym żądaniu; przy inFakcie (i bez modułu faktur) `false`.
+          const program = zProgramu({
+            infakt: (() => {
+              try {
+                return ctx.usluga('faktury', 'infakt');
+              } catch {
+                return null;
+              }
+            })(),
+          });
+          const zwolnionaFirma = () => sprzedawcaZwolniony(ctx.db, program?.opis);
+          registerKlienciRoutes(app, { db: ctx.db, gus: gus as any, zwolnionaFirma });
+        },
+      };
     },
   };
 }

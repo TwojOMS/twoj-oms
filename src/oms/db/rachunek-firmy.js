@@ -1,7 +1,10 @@
 // Rachunek firmy z Ustawień: wiersz „rachunek_firmy” w tabeli konfiguracja_integracji (migracja rdzenia 6,
 // bez nowej migracji). Jawne ustawienia, puste sekrety — rachunek stoi w każdym mailu o płatności.
-import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji, usunKonfiguracjeIntegracji }
-  from './konfiguracja-integracji.js';
+import {
+  wczytajKonfiguracjeIntegracji,
+  zapiszKonfiguracjeIntegracji,
+  usunKonfiguracjeIntegracji,
+} from './konfiguracja-integracji.js';
 import { KLUCZ_RACHUNKU_FIRMY, rozstrzygnijRachunekFirmy, rachunekWPliku } from '../../domena/rachunek-firmy.js';
 
 export const wczytajZapisRachunkuFirmy = (db) => wczytajKonfiguracjeIntegracji(db, KLUCZ_RACHUNKU_FIRMY);

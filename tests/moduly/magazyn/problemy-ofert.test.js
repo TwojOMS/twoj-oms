@@ -14,38 +14,87 @@ import { podpisz, NAZWA_CIASTECZKA_OMS } from '../../../src/core/bezpieczenstwo/
 import { wczytajSekret } from '../../../src/core/bezpieczenstwo/sekret-sesji.js';
 import { registerProblemyOfert } from '../../../src/moduly/magazyn/problemy-ofert.js';
 
-const KONTO = 'allegro_swietlik';      // zgoda na oferty
-const BEZ_ZGODY = 'allegro_polcien2';  // token bez zakresów ofert
-const ODLACZONE = 'allegro_dawne';     // konta już nie ma w konfiguracji
+const KONTO = 'allegro_swietlik'; // zgoda na oferty
+const BEZ_ZGODY = 'allegro_polcien2'; // token bez zakresów ofert
+const ODLACZONE = 'allegro_dawne'; // konta już nie ma w konfiguracji
 const ERLI = 'erli-polcien';
 const T0 = '2026-11-14T08:00:00.000Z';
 const T1 = '2026-11-14T09:30:00.000Z';
 const OFERTY = ['allegro:api:sale:offers:write', 'allegro:api:sale:settings:read'];
-const jwt = scope => ['e30', Buffer.from(JSON.stringify({ scope })).toString('base64url'), 'podpis'].join('.');
-const auth = { authorization: `Basic ${Buffer.from('operator:atrapa').toString('base64')}`, origin: 'http://localhost' };
+const jwt = (scope) => ['e30', Buffer.from(JSON.stringify({ scope })).toString('base64url'), 'podpis'].join('.');
+const auth = {
+  authorization: `Basic ${Buffer.from('operator:atrapa').toString('base64')}`,
+  origin: 'http://localhost',
+};
 
 let db, app, klienci;
 const post = (url, payload = {}, headers = auth) => app.inject({ method: 'POST', url, payload, headers });
 const get = (url, headers = auth) => app.inject({ method: 'GET', url, headers });
-const wywolania = () => Object.values(klienci).flatMap(k => Object.entries(k).filter(([, f]) => f.mock.calls.length).map(([n]) => n));
+const wywolania = () =>
+  Object.values(klienci).flatMap((k) =>
+    Object.entries(k)
+      .filter(([, f]) => f.mock.calls.length)
+      .map(([n]) => n),
+  );
 const atrapa = () => ({
-  podgladOplat: vi.fn(), utworzOferte: vi.fn(), zmienOferte: vi.fn(), zmienStatusOferty: vi.fn(),
-  komendaIlosci: vi.fn(), komendaCeny: vi.fn(), pobierzOferte: vi.fn(), wgrajZdjecie: vi.fn(),
+  podgladOplat: vi.fn(),
+  utworzOferte: vi.fn(),
+  zmienOferte: vi.fn(),
+  zmienStatusOferty: vi.fn(),
+  komendaIlosci: vi.fn(),
+  komendaCeny: vi.fn(),
+  pobierzOferte: vi.fn(),
+  wgrajZdjecie: vi.fn(),
 });
-const tokeny = (kanal, scope) => db.prepare(`INSERT OR REPLACE INTO tokeny_kanalu (kanal, access_token, refresh_token, wygasa_at, refresh_wygasa_at, zaktualizowane_at)
-  VALUES (?, ?, ?, '2026-11-14T11:00:00Z', '2027-01-01T00:00:00Z', '2026-11-14T10:00:00Z')`).run(kanal,
-  szyfrTestowy(db, 'tokeny_kanalu', 'access_token', kanal, jwt(scope)), szyfrTestowy(db, 'tokeny_kanalu', 'refresh_token', kanal, 'REFRESH-ATRAPA'));
-const karta = n => utworzKarte(db, { nazwa: `Lampa stołowa Gliwka ${n}`, sku: `GLW-${n}`, cena_gr: 9900, stawka_vat: '23', marka: 'Pracownia Półcień' });
-const oferta = (kanal, { stan = 'problem', kartaId = karta(kanal), id = `TEST-${kanal}`, ...zmiany } = {}, teraz = T0) => {
-  const o = wstawOferte(db, { kartaId, kanal, idZewnetrzne: id, stan, pochodzenie: 'oms', tryb: 'zarzadzana' }, { teraz });
+const tokeny = (kanal, scope) =>
+  db
+    .prepare(
+      `INSERT OR REPLACE INTO tokeny_kanalu (kanal, access_token, refresh_token, wygasa_at, refresh_wygasa_at, zaktualizowane_at)
+  VALUES (?, ?, ?, '2026-11-14T11:00:00Z', '2027-01-01T00:00:00Z', '2026-11-14T10:00:00Z')`,
+    )
+    .run(
+      kanal,
+      szyfrTestowy(db, 'tokeny_kanalu', 'access_token', kanal, jwt(scope)),
+      szyfrTestowy(db, 'tokeny_kanalu', 'refresh_token', kanal, 'REFRESH-ATRAPA'),
+    );
+const karta = (n) =>
+  utworzKarte(db, {
+    nazwa: `Lampa stołowa Gliwka ${n}`,
+    sku: `GLW-${n}`,
+    cena_gr: 9900,
+    stawka_vat: '23',
+    marka: 'Pracownia Półcień',
+  });
+const oferta = (
+  kanal,
+  { stan = 'problem', kartaId = karta(kanal), id = `TEST-${kanal}`, ...zmiany } = {},
+  teraz = T0,
+) => {
+  const o = wstawOferte(
+    db,
+    { kartaId, kanal, idZewnetrzne: id, stan, pochodzenie: 'oms', tryb: 'zarzadzana' },
+    { teraz },
+  );
   return zmienOferte(db, o.id, zmiany, { teraz });
 };
 /** Allegro zakończona ręcznie — bez prognozy opłaty. */
-const zakonczonaRecznie = (kanal = KONTO) => oferta(kanal, { odczytStatus: 'ENDED', odczytIlosc: 0, problemy: [{ kod: 'zakonczona', sztuk: 0,
-  tekst: 'Oferta zakończona ręcznie.' }] });
-const cenaErli = () => oferta(ERLI, { stan: 'aktywna', odczytCenaGr: 9900, cenaDoPotwierdzeniaGr: 12900,
-  problemy: [{ kod: 'cena', tekst: 'Zmiana ceny przekracza próg — czeka na potwierdzenie, do ERLI nic nie poszło.' }] });
-const ciasteczko = login => ({ origin: 'http://localhost', cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz(login, wczytajSekret(db), Date.now(), 0)}` });
+const zakonczonaRecznie = (kanal = KONTO) =>
+  oferta(kanal, {
+    odczytStatus: 'ENDED',
+    odczytIlosc: 0,
+    problemy: [{ kod: 'zakonczona', sztuk: 0, tekst: 'Oferta zakończona ręcznie.' }],
+  });
+const cenaErli = () =>
+  oferta(ERLI, {
+    stan: 'aktywna',
+    odczytCenaGr: 9900,
+    cenaDoPotwierdzeniaGr: 12900,
+    problemy: [{ kod: 'cena', tekst: 'Zmiana ceny przekracza próg — czeka na potwierdzenie, do ERLI nic nie poszło.' }],
+  });
+const ciasteczko = (login) => ({
+  origin: 'http://localhost',
+  cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz(login, wczytajSekret(db), Date.now(), 0)}`,
+});
 
 beforeEach(async () => {
   db = openOmsDb(':memory:');
@@ -55,29 +104,52 @@ beforeEach(async () => {
     { klucz: KONTO, nazwa: 'Świetlik', autoryzacja: 'polaczone', srodowisko: 'produkcja' },
     { klucz: BEZ_ZGODY, nazwa: 'Półcień Druga', autoryzacja: 'polaczone', srodowisko: 'produkcja' },
   ];
-  app = buildOmsServer({ db, config: { auth: { user: 'operator', pass: 'atrapa' },
-    definicje: [...definicjeKanalowHistoryczne, { klucz: ERLI, typ: 'erli', prefiks: 'ERLI_POLCIEN', etykieta: 'ERLI Półcień' }] },
+  app = buildOmsServer({
+    db,
+    config: {
+      auth: { user: 'operator', pass: 'atrapa' },
+      definicje: [
+        ...definicjeKanalowHistoryczne,
+        { klucz: ERLI, typ: 'erli', prefiks: 'ERLI_POLCIEN', etykieta: 'ERLI Półcień' },
+      ],
+    },
     magazyn: { stan: () => ({ trwa: false, kanaly: [] }) },
-    nadpisania: { 'kanaly.klienciKanalow': klienci, 'kanaly.repozytoriumKanalow': {
-      listaTypu: typ => (typ === 'allegro' ? kontaAllegro : typ === 'erli' ? [{ klucz: ERLI, nazwa: 'Półcień' }] : []),
-      zapisyZablokowane: () => false, konfliktKlucza: () => false,
-    } },
+    nadpisania: {
+      'kanaly.klienciKanalow': klienci,
+      'kanaly.repozytoriumKanalow': {
+        listaTypu: (typ) =>
+          typ === 'allegro' ? kontaAllegro : typ === 'erli' ? [{ klucz: ERLI, nazwa: 'Półcień' }] : [],
+        zapisyZablokowane: () => false,
+        konfliktKlucza: () => false,
+      },
+    },
   });
   await app.ready();
   tokeny(KONTO, ['allegro:api:orders:read', ...OFERTY]);
   tokeny(BEZ_ZGODY, ['allegro:api:orders:read']);
 });
-afterEach(async () => { await app.close(); db.close(); });
+afterEach(async () => {
+  await app.close();
+  db.close();
+});
 
 it('ERLI i Allegro w jednej tabeli: kanał, konto, powód po polsku, „od kiedy”; przyciski według wiersza', async () => {
   const cena = cenaErli();
   const zak = zakonczonaRecznie();
-  const kom = oferta(KONTO, { id: 'TEST-kom', kartaId: karta('k'), odczytStatus: 'ACTIVE',
-    problemy: [{ kod: 'komenda', rodzaj: 'ilosc', tekst: 'Allegro odrzuciło zmianę ilości.' }] }, T1);
+  const kom = oferta(
+    KONTO,
+    {
+      id: 'TEST-kom',
+      kartaId: karta('k'),
+      odczytStatus: 'ACTIVE',
+      problemy: [{ kod: 'komenda', rodzaj: 'ilosc', tekst: 'Allegro odrzuciło zmianę ilości.' }],
+    },
+    T1,
+  );
   const odl = oferta(ODLACZONE, { problemy: [{ kod: 'walidacja', bledy: [] }] });
   const r = await get('/magazyn/problemy-ofert');
   expect(r.statusCode).toBe(200);
-  const wiersz = o => new RegExp(`<tr[^>]*id="oferta-${o.id}"[^>]*>([\\s\\S]*?)</tr>`).exec(r.body)?.[1] ?? '';
+  const wiersz = (o) => new RegExp(`<tr[^>]*id="oferta-${o.id}"[^>]*>([\\s\\S]*?)</tr>`).exec(r.body)?.[1] ?? '';
   expect(wiersz(cena)).toContain('ERLI');
   expect(wiersz(cena)).toContain(ERLI);
   expect(wiersz(cena)).toContain('Lampa stołowa Gliwka erli-polcien');
@@ -101,7 +173,11 @@ it('ERLI i Allegro w jednej tabeli: kanał, konto, powód po polsku, „od kiedy
   // Najstarsze „od” najpierw; komenda (T1) po wierszach z T0.
   expect(r.body.indexOf(`id="oferta-${kom.id}"`)).toBeGreaterThan(r.body.indexOf(`id="oferta-${zak.id}"`));
   expect(r.body).toContain('href="/magazyn/1#produkty-karty"');
-  for (const [o, nazwa] of [[zak, 'Wznów ofertę'], [kom, 'Ponów ofertę'], [cena, 'Potwierdź cenę 129,00 zł dla']]) {
+  for (const [o, nazwa] of [
+    [zak, 'Wznów ofertę'],
+    [kom, 'Ponów ofertę'],
+    [cena, 'Potwierdź cenę 129,00 zł dla'],
+  ]) {
     expect(wiersz(o)).toMatch(new RegExp(`<button[^>]*aria-label="${nazwa} Lampa stołowa Gliwka`));
     expect(wiersz(o)).not.toMatch(/<form[^>]*aria-label=/);
   }
@@ -126,7 +202,8 @@ it('pusta strona, gdy nic nie czeka na decyzję', async () => {
 });
 
 it('napis „pokazano 200 z N”, gdy ofert jest więcej niż limit', async () => {
-  for (let i = 0; i < 201; i++) oferta(KONTO, { id: `TEST-L${i}`, kartaId: karta(`L${i}`), problemy: [{ kod: 'walidacja' }] });
+  for (let i = 0; i < 201; i++)
+    oferta(KONTO, { id: `TEST-L${i}`, kartaId: karta(`L${i}`), problemy: [{ kod: 'walidacja' }] });
   const r = await get('/magazyn/problemy-ofert');
   expect(r.body).toContain('pokazano 200 z 201');
   expect(r.body.match(/<tr[^>]*id="oferta-/g)).toHaveLength(200);
@@ -139,8 +216,15 @@ it('listy kont są liczone raz na żądanie, także przy wielu wierszach; kolejn
   let lista;
   const allegro = vi.fn(() => [{ klucz: KONTO }]);
   const erli = vi.fn(() => [{ klucz: ERLI }]);
-  registerProblemyOfert({ get: (_adres, obsluga) => { lista = obsluga; }, post: () => {} },
-    { db, pomoc: {}, kontaAllegro: allegro, kontaErli: erli });
+  registerProblemyOfert(
+    {
+      get: (_adres, obsluga) => {
+        lista = obsluga;
+      },
+      post: () => {},
+    },
+    { db, pomoc: {}, kontaAllegro: allegro, kontaErli: erli },
+  );
   const view = vi.fn((_szablon, dane) => dane);
   const r = await lista({ konto: { admin: true } }, { view });
   expect(r.wiersze).toHaveLength(3);
@@ -148,7 +232,9 @@ it('listy kont są liczone raz na żądanie, także przy wielu wierszach; kolejn
   expect(erli).toHaveBeenCalledTimes(1);
   allegro.mockReturnValue([]);
   const drugi = await lista({ konto: { admin: true } }, { view });
-  expect(drugi.wiersze.filter(w => w.konto === KONTO).every(w => w.kanal === 'konto odłączone' && !w.wznow && !w.ponow)).toBe(true);
+  expect(
+    drugi.wiersze.filter((w) => w.konto === KONTO).every((w) => w.kanal === 'konto odłączone' && !w.wznow && !w.ponow),
+  ).toBe(true);
   expect(allegro).toHaveBeenCalledTimes(2);
   expect(erli).toHaveBeenCalledTimes(2);
 });
@@ -172,12 +258,19 @@ it('Potwierdź cenę: zapis cenaPotwierdzonaGr; zła kwota 409; drugie kliknięc
 
 it('Wznów (decyzja właściciela 14.11: bez sprawdzania opłat): flaga bez kwoty i bez zgody; drugie kliknięcie bez zmian', async () => {
   const o = zakonczonaRecznie();
-  zmienOferte(db, o.id, { liczbaProb: 3, nastepnaProbaAt: '2026-11-14T12:00:00.000Z', wyslanePola: { produktId: '42' } });
+  zmienOferte(db, o.id, {
+    liczbaProb: 3,
+    nastepnaProbaAt: '2026-11-14T12:00:00.000Z',
+    wyslanePola: { produktId: '42' },
+  });
   const r = await post(`/magazyn/problemy-ofert/${o.id}/wznow`);
   expect(r.statusCode).toBe(303);
   expect(r.headers.location).toBe('/magazyn/problemy-ofert');
   const po = ofertaPoId(db, o.id);
-  expect(po.wyslanePola).toEqual({ produktId: '42', wznow: { login: 'operator', at: expect.stringMatching(/^\d{4}-\d\d-\d\dT/) } });
+  expect(po.wyslanePola).toEqual({
+    produktId: '42',
+    wznow: { login: 'operator', at: expect.stringMatching(/^\d{4}-\d\d-\d\dT/) },
+  });
   expect(po).toMatchObject({ liczbaProb: 0, nastepnaProbaAt: null, stan: 'problem' });
   expect((await post(`/magazyn/problemy-ofert/${o.id}/wznow`)).statusCode).toBe(303);
   expect(ofertaPoId(db, o.id)).toEqual(po);
@@ -194,19 +287,36 @@ it('Wznów: konto bez zgody 400, ERLI i zakończona bez decyzji pętli 409, ofer
   expect((await post(`/magazyn/problemy-ofert/${erli.id}/wznow`)).statusCode).toBe(409);
   const czeka = oferta(KONTO, { id: 'TEST-czeka', kartaId: karta('c'), problemy: [{ kod: 'zakonczona', sztuk: 0 }] });
   expect((await post(`/magazyn/problemy-ofert/${czeka.id}/wznow`)).statusCode).toBe(409);
-  const zdejmowana = oferta(KONTO, { id: 'TEST-zd', kartaId: karta('z'), problemy: [{ kod: 'zakonczona', sztuk: 2 }], wyslanePola: { zdejmij: true } });
+  const zdejmowana = oferta(KONTO, {
+    id: 'TEST-zd',
+    kartaId: karta('z'),
+    problemy: [{ kod: 'zakonczona', sztuk: 2 }],
+    wyslanePola: { zdejmij: true },
+  });
   expect((await post(`/magazyn/problemy-ofert/${zdejmowana.id}/wznow`)).statusCode).toBe(409);
   const aktywna = oferta(KONTO, { id: 'TEST-akt', kartaId: karta('a'), stan: 'aktywna' });
   expect((await post(`/magazyn/problemy-ofert/${aktywna.id}/wznow`)).statusCode).toBe(303);
-  for (const x of [bez, erli, czeka, zdejmowana, aktywna]) expect(ofertaPoId(db, x.id).wyslanePola?.wznow).toBeUndefined();
+  for (const x of [bez, erli, czeka, zdejmowana, aktywna])
+    expect(ofertaPoId(db, x.id).wyslanePola?.wznow).toBeUndefined();
   expect(wywolania()).toEqual([]);
 });
 
 it('Ponów na komendzie idzie ścieżką E3.27 (bez POST); na zakończonej brak przycisku na ekranie i karcie, POST 409', async () => {
-  const kom = oferta(KONTO, { id: '7700012345', kartaId: karta('kom'), odczytStatus: 'ACTIVE', liczbaProb: 5,
-    problemy: [{ kod: 'komenda', rodzaj: 'ilosc', tekst: 'Odrzucona' }], wyslanePola: { komendaIlosci: { id: 'k-1', wartosc: 4 }, produktId: '42' } });
+  const kom = oferta(KONTO, {
+    id: '7700012345',
+    kartaId: karta('kom'),
+    odczytStatus: 'ACTIVE',
+    liczbaProb: 5,
+    problemy: [{ kod: 'komenda', rodzaj: 'ilosc', tekst: 'Odrzucona' }],
+    wyslanePola: { komendaIlosci: { id: 'k-1', wartosc: 4 }, produktId: '42' },
+  });
   expect((await post(`/magazyn/problemy-ofert/${kom.id}/ponow`)).statusCode).toBe(303);
-  expect(ofertaPoId(db, kom.id)).toMatchObject({ stan: 'aktywna', liczbaProb: 0, problemy: [], wyslanePola: { produktId: '42' } });
+  expect(ofertaPoId(db, kom.id)).toMatchObject({
+    stan: 'aktywna',
+    liczbaProb: 0,
+    problemy: [],
+    wyslanePola: { produktId: '42' },
+  });
   expect(ofertaPoId(db, kom.id).wyslanePola.komendaIlosci).toBeUndefined();
   // Drugie kliknięcie: oferta wyszła ze stanu problemu → 303 bez zmian.
   const po = ofertaPoId(db, kom.id);
@@ -228,19 +338,26 @@ it('Ponów na komendzie idzie ścieżką E3.27 (bez POST); na zakończonej brak 
 it('nie-admin z prawem magazynu dostaje 403 na GET i każdym POST; obcy Origin 403; nic się nie zmienia', async () => {
   const cena = cenaErli();
   const zak = zakonczonaRecznie();
-  const kom = oferta(KONTO, { id: 'TEST-kom', kartaId: karta('k'), problemy: [{ kod: 'komenda', tekst: 'Odrzucona' }] });
-  const posty = [[`/magazyn/problemy-ofert/${kom.id}/ponow`, {}],
+  const kom = oferta(KONTO, {
+    id: 'TEST-kom',
+    kartaId: karta('k'),
+    problemy: [{ kod: 'komenda', tekst: 'Odrzucona' }],
+  });
+  const posty = [
+    [`/magazyn/problemy-ofert/${kom.id}/ponow`, {}],
     [`/magazyn/problemy-ofert/${zak.id}/wznow`, {}],
-    [`/magazyn/problemy-ofert/${cena.id}/potwierdz-cene`, { cenaGr: '12900' }]];
-  const przed = [cena, zak, kom].map(o => ofertaPoId(db, o.id));
-  for (const [url, dane] of posty) expect((await post(url, dane, { ...auth, origin: 'https://obcy.example' })).statusCode).toBe(403);
+    [`/magazyn/problemy-ofert/${cena.id}/potwierdz-cene`, { cenaGr: '12900' }],
+  ];
+  const przed = [cena, zak, kom].map((o) => ofertaPoId(db, o.id));
+  for (const [url, dane] of posty)
+    expect((await post(url, dane, { ...auth, origin: 'https://obcy.example' })).statusCode).toBe(403);
   zalozKonto(db, { login: 'admin', imie: 'Admin', haslo: 'test', rola: 'admin', admin: true });
   const user = zalozKonto(db, { login: 'czytelnik', imie: 'Czytelnik', haslo: 'test', rola: 'operator' });
   ustawUprawnienia(db, user, ['magazyn']);
   const naglowki = ciasteczko('czytelnik');
   expect((await get('/magazyn/problemy-ofert', naglowki)).statusCode).toBe(403);
   for (const [url, dane] of posty) expect((await post(url, dane, naglowki)).statusCode).toBe(403);
-  expect([cena, zak, kom].map(o => ofertaPoId(db, o.id))).toEqual(przed);
+  expect([cena, zak, kom].map((o) => ofertaPoId(db, o.id))).toEqual(przed);
   // Admin z ciasteczkiem widzi ekran.
   expect((await get('/magazyn/problemy-ofert', ciasteczko('admin'))).statusCode).toBe(200);
   expect(wywolania()).toEqual([]);

@@ -2,35 +2,50 @@ import { createHash } from 'node:crypto';
 import { STATUSY_WOO_BEZ_ROZCHODU } from './stany-magazynowe.js';
 
 // Szablony problemów. Konkretna decyzja uzupełnia od, cel, odczyt i ewentualny zakres.
-export const PROBLEMY_ILOSCI = Object.freeze(Object.fromEntries([
-  ['skok', true, 'Niewyjaśniony skok stanu karty.'],
-  ['rozjazd-dol', true, 'Stan kanału poniżej wyjaśnionego zakresu.'],
-  ['rozjazd-gora', true, 'Stan kanału powyżej wyjaśnionego zakresu; wysyłamy obniżkę OMS.'],
-  ['zero-masowe', true, 'Wiele ofert konta jednocześnie przechodzi do zera.'],
-  ['stan-rodzica', true, 'Wariant korzysta ze stanu rodzica.'],
-  ['bez-stanu-w-sklepie', true, 'Sklep nie prowadzi stanu produktu.'],
-  ['ujemny-stan', true, 'Sklep pokazuje ujemny stan (sprzedaż na zamówienie); ilości nie wysyłamy, póki stan nie wróci do zera lub wyżej.'],
-  ['ilosc-niezmienialna', true, 'Kanał nie pozwala zmienić ilości.'],
-  ['zamrozona-ilosc', true, 'Ilość oferty jest zamrożona.'],
-  ['brak-karty', true, 'Oferta nie ma powiązanej karty.'],
-  // Kod nadaje pętla ofert; ekran „Problemy ofert” daje tylko ręczne „Wznów”.
-  ['czeste-wznawianie', true, 'Oferta wznawiana przez OMS ponad 3 razy na dobę — wznów ręcznie.'],
-  ['brak-stanu', false, 'Stan karty nie jest znany.'],
-  ['stany-niezatwierdzone', false, 'Bieżące włączenie stanów czeka na zatwierdzenie.'],
-  ['stany-wylaczone', false, 'Stany magazynowe są wyłączone.'],
-  ['brak-pollera', false, 'Brak pollera konta; podwyżka czeka.'],
-  ['karencja', false, 'Czekamy na stabilny odczyt, poller i migawkę po nim.'],
-].map(([kod, wstrzymuje, tekst]) => [kod, Object.freeze({ kod, wstrzymuje, od: null, cel: null, odczyt: null, tekst })])));
+export const PROBLEMY_ILOSCI = Object.freeze(
+  Object.fromEntries(
+    [
+      ['skok', true, 'Niewyjaśniony skok stanu karty.'],
+      ['rozjazd-dol', true, 'Stan kanału poniżej wyjaśnionego zakresu.'],
+      ['rozjazd-gora', true, 'Stan kanału powyżej wyjaśnionego zakresu; wysyłamy obniżkę OMS.'],
+      ['zero-masowe', true, 'Wiele ofert konta jednocześnie przechodzi do zera.'],
+      ['stan-rodzica', true, 'Wariant korzysta ze stanu rodzica.'],
+      ['bez-stanu-w-sklepie', true, 'Sklep nie prowadzi stanu produktu.'],
+      [
+        'ujemny-stan',
+        true,
+        'Sklep pokazuje ujemny stan (sprzedaż na zamówienie); ilości nie wysyłamy, póki stan nie wróci do zera lub wyżej.',
+      ],
+      ['ilosc-niezmienialna', true, 'Kanał nie pozwala zmienić ilości.'],
+      ['zamrozona-ilosc', true, 'Ilość oferty jest zamrożona.'],
+      ['brak-karty', true, 'Oferta nie ma powiązanej karty.'],
+      // Kod nadaje pętla ofert; ekran „Problemy ofert” daje tylko ręczne „Wznów”.
+      ['czeste-wznawianie', true, 'Oferta wznawiana przez OMS ponad 3 razy na dobę — wznów ręcznie.'],
+      ['brak-stanu', false, 'Stan karty nie jest znany.'],
+      ['stany-niezatwierdzone', false, 'Bieżące włączenie stanów czeka na zatwierdzenie.'],
+      ['stany-wylaczone', false, 'Stany magazynowe są wyłączone.'],
+      ['brak-pollera', false, 'Brak pollera konta; podwyżka czeka.'],
+      ['karencja', false, 'Czekamy na stabilny odczyt, poller i migawkę po nim.'],
+    ].map(([kod, wstrzymuje, tekst]) => [
+      kod,
+      Object.freeze({ kod, wstrzymuje, od: null, cel: null, odczyt: null, tekst }),
+    ]),
+  ),
+);
 
 const problem = (kod, dane) => ({ ...PROBLEMY_ILOSCI[kod], ...dane });
 // Data bez strefy (zapis SQLite) jest UTC, jak `dataUtc` w `moduly/api/trasy/produkty-odczyt.js`.
 const BEZ_STREFY = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/;
-const czas = wartosc => wartosc == null ? NaN
-  : new Date(typeof wartosc === 'string' && BEZ_STREFY.test(wartosc) ? `${wartosc.replace(' ', 'T')}Z` : wartosc).getTime();
+const czas = (wartosc) =>
+  wartosc == null
+    ? NaN
+    : new Date(
+        typeof wartosc === 'string' && BEZ_STREFY.test(wartosc) ? `${wartosc.replace(' ', 'T')}Z` : wartosc,
+      ).getTime();
 
 /** Brak znanego stanu nigdy nie oznacza zera. */
 export function iloscDlaKanalu({ migawka, kartaId, tryb, iloscZOms, bufor = 0, stalaIlosc }) {
-  const brak = powod => ({ ilosc: null, zrodlo: null, powod });
+  const brak = (powod) => ({ ilosc: null, zrodlo: null, powod });
   if (tryb !== 'zarzadzana' && !(tryb === 'obserwowana' && iloscZOms)) return brak(null);
   if (!migawka.wlaczone) {
     if (tryb === 'obserwowana') return brak('stany-wylaczone');
@@ -46,7 +61,15 @@ export function iloscDlaKanalu({ migawka, kartaId, tryb, iloscZOms, bufor = 0, s
 }
 
 /** Wyjaśnienie to suma wartości bezwzględnych pozycji i ruchów po wysyłce. */
-export function skokIlosci({ stan, stanKartyWyslany, wyjasnioneKarty = 0, prog = 5, od = null, cel = null, odczyt = null }) {
+export function skokIlosci({
+  stan,
+  stanKartyWyslany,
+  wyjasnioneKarty = 0,
+  prog = 5,
+  od = null,
+  cel = null,
+  odczyt = null,
+}) {
   if (stanKartyWyslany == null) return null;
   const skok = Math.abs(stan - stanKartyWyslany) - wyjasnioneKarty;
   return skok > prog ? problem('skok', { od, cel, odczyt }) : null;
@@ -55,9 +78,12 @@ export function skokIlosci({ stan, stanKartyWyslany, wyjasnioneKarty = 0, prog =
 // Puls pollera: przebieg bez błędu (albo z pominięciem) po upływie `pollerMs` od odczytu, a migawka policzona po nim —
 // dotyczy podwyżki i karencji rozjazdu. Kursor nie jest dowodem pracy pollera.
 function poPulsie({ poller, od, policzonoAt, pollerMs }) {
-  return !!poller && (poller.ostatniBlad == null || poller.ostatniBladRodzaj === 'pominiecie')
-    && czas(poller.ostatniPrzebiegAt) >= czas(od) + pollerMs
-    && czas(policzonoAt) > czas(poller.ostatniPrzebiegAt);
+  return (
+    !!poller &&
+    (poller.ostatniBlad == null || poller.ostatniBladRodzaj === 'pominiecie') &&
+    czas(poller.ostatniPrzebiegAt) >= czas(od) + pollerMs &&
+    czas(policzonoAt) > czas(poller.ostatniPrzebiegAt)
+  );
 }
 
 /** Podwyżka wymaga stabilnego odczytu i pulsu pollera. poprzedniOdczyt: {ilosc, odczytanoAt} sprzed przebiegu.
@@ -75,29 +101,50 @@ export function wolnoPodniesc({ cel, odczyt, poprzedniOdczyt, poller, policzonoA
  * alarmOd to zachowana chwila pierwszego odczytu poza dolnym zakresem, wToku: {cel,at}
  * albo komenda Allegro {wartosc}. baza jest propozycją aktualizacji W/T, bez efektów ubocznych.
  * wolnoWyslac dotyczy wyłącznie rozjazdu; skok, karencję podwyżki i inne bramki sprawdza wywołujący. */
-export function ocenRozjazdu({ wyslanaIlosc, odczyt, cel, wyjasnienie = {}, wToku,
-  odczytanoAt, alarmOd, poller, policzonoAt, pollerMs }) {
+export function ocenRozjazdu({
+  wyslanaIlosc,
+  odczyt,
+  cel,
+  wyjasnienie = {},
+  wToku,
+  odczytanoAt,
+  alarmOd,
+  poller,
+  policzonoAt,
+  pollerMs,
+}) {
   if (!Number.isFinite(odczyt)) {
-    return { zgodny: false, wolnoWyslac: false, problem: problem('karencja', { od: alarmOd ?? odczytanoAt, cel }), baza: null };
+    return {
+      zgodny: false,
+      wolnoWyslac: false,
+      problem: problem('karencja', { od: alarmOd ?? odczytanoAt, cel }),
+      baza: null,
+    };
   }
-  const zgodny = baza => ({ zgodny: true, wolnoWyslac: true, problem: null, baza });
+  const zgodny = (baza) => ({ zgodny: true, wolnoWyslac: true, problem: null, baza });
   const baza = { wyslanaIlosc: odczyt, iloscWyslanaAt: odczytanoAt };
   if (odczyt === (wToku?.cel ?? wToku?.wartosc) || odczyt === cel) return zgodny(baza);
   if (wyslanaIlosc == null) return zgodny(null);
-  const zakres = { min: wyslanaIlosc - (wyjasnienie.sprzedaneOd ?? 0),
-    max: wyslanaIlosc + (wyjasnienie.anulowaneOd ?? 0) };
+  const zakres = {
+    min: wyslanaIlosc - (wyjasnienie.sprzedaneOd ?? 0),
+    max: wyslanaIlosc + (wyjasnienie.anulowaneOd ?? 0),
+  };
   if (odczyt >= zakres.min && odczyt <= zakres.max) return zgodny(null);
   const od = alarmOd ?? odczytanoAt;
   let kod;
   if (odczyt > zakres.max) kod = 'rozjazd-gora';
   else kod = poPulsie({ poller, od, policzonoAt, pollerMs }) ? 'rozjazd-dol' : 'karencja';
-  return { zgodny: false, wolnoWyslac: kod !== 'rozjazd-dol' && cel <= odczyt,
-    problem: problem(kod, { od, cel, odczyt, zakres }), baza: null };
+  return {
+    zgodny: false,
+    wolnoWyslac: kod !== 'rozjazd-dol' && cel <= odczyt,
+    problem: problem(kod, { od, cel, odczyt, zakres }),
+    baza: null,
+  };
 }
 
 /** Wejście zawiera wszystkie oferty konta objęte ilością z OMS, także bez celu/odczytu. */
 export function zeroMasowe(oferty) {
-  const zerowane = oferty.filter(o => o.cel === 0 && o.odczyt > 0).length;
+  const zerowane = oferty.filter((o) => o.cel === 0 && o.odczyt > 0).length;
   return zerowane >= 3 && zerowane * 2 >= oferty.length;
 }
 
@@ -137,42 +184,65 @@ export function kluczKomendyIlosci({ cel, odczyt }) {
 }
 
 export function kolejnoscWysylek(wysylki) {
-  return [...wysylki].sort((a, b) => String(a.konto).localeCompare(String(b.konto))
-    || Number(a.cel > a.odczyt) - Number(b.cel > b.odczyt));
+  return [...wysylki].sort(
+    (a, b) => String(a.konto).localeCompare(String(b.konto)) || Number(a.cel > a.odczyt) - Number(b.cel > b.odczyt),
+  );
 }
 
 /** Każdy element kanaly dotyczy jednej karty i jednego konta: {kanal: 'woo'|'erli'|'allegro',
  * odczyt, odczytanoAt, manage_stock?, zamowienia?: [{ilosc,zlozonoAt,status,anulowane}]}.
  * Zamówienia muszą być już ograniczone do tej karty i konta. Świeżość odczytu sprawdza trasa podglądu. */
 export function propozycjaOtwarcia({ kanaly, granica }) {
-  const wartosci = kanaly.filter(k => Number.isFinite(k.odczyt)
-    && (k.kanal !== 'woo' || k.manage_stock === true)).map(k => {
-    const sprzedane = (k.zamowienia ?? []).filter(z => czas(z.zlozonoAt) >= czas(granica)
-      && czas(z.zlozonoAt) <= czas(k.odczytanoAt) && !z.anulowane
-      && z.status !== 'cancelled' && (k.kanal !== 'woo'
-        || (!STATUSY_WOO_BEZ_ROZCHODU.includes(z.status) && z.status !== 'pending')))
-      .reduce((suma, z) => suma + z.ilosc, 0);
-    return { ...k, sprzedane, wartosc: Math.max(0, k.odczyt + sprzedane) };
-  });
-  const ilosc = wartosci.length ? Math.min(...wartosci.map(k => k.wartosc)) : null;
-  return { ilosc, kanaly: wartosci.map(k => ({ ...k, roznica: k.wartosc !== ilosc })) };
+  const wartosci = kanaly
+    .filter((k) => Number.isFinite(k.odczyt) && (k.kanal !== 'woo' || k.manage_stock === true))
+    .map((k) => {
+      const sprzedane = (k.zamowienia ?? [])
+        .filter(
+          (z) =>
+            czas(z.zlozonoAt) >= czas(granica) &&
+            czas(z.zlozonoAt) <= czas(k.odczytanoAt) &&
+            !z.anulowane &&
+            z.status !== 'cancelled' &&
+            (k.kanal !== 'woo' || (!STATUSY_WOO_BEZ_ROZCHODU.includes(z.status) && z.status !== 'pending')),
+        )
+        .reduce((suma, z) => suma + z.ilosc, 0);
+      return { ...k, sprzedane, wartosc: Math.max(0, k.odczyt + sprzedane) };
+    });
+  const ilosc = wartosci.length ? Math.min(...wartosci.map((k) => k.wartosc)) : null;
+  return { ilosc, kanaly: wartosci.map((k) => ({ ...k, roznica: k.wartosc !== ilosc })) };
 }
 
 // Porządek zbiorów i kluczy obiektów nie ma wpływu na zatwierdzenie.
 function kanonicznie(w) {
   if (Array.isArray(w)) return `[${w.map(kanonicznie).join(',')}]`;
-  if (w && typeof w === 'object') return `{${Object.keys(w).sort().map(k => `${JSON.stringify(k)}:${kanonicznie(w[k])}`).join(',')}}`;
+  if (w && typeof w === 'object')
+    return `{${Object.keys(w)
+      .sort()
+      .map((k) => `${JSON.stringify(k)}:${kanonicznie(w[k])}`)
+      .join(',')}}`;
   return JSON.stringify(w);
 }
-const zbior = w => [...w].map(kanonicznie).sort();
+const zbior = (w) => [...w].map(kanonicznie).sort();
 
 /** oferty: wiersze rejestru, maxRuchId: MAX(ruchy_magazynowe.id), bufory: wiersze kont.
  * Stany, zużycie, zamówienia i czas obliczenia migawki celowo nie uczestniczą w skrócie. */
 export function skrotZatwierdzenia({ oferty, migawka, maxRuchId, bufory }) {
-  const objete = oferty.filter(o => o.tryb === 'zarzadzana' || (o.tryb === 'obserwowana' && o.ilosc_z_oms))
-    .map(o => ({ id: o.id, kanal: o.kanal, id_zewnetrzne: o.id_zewnetrzne, karta_id: o.karta_id,
-      tryb: o.tryb, ilosc_z_oms: o.ilosc_z_oms }));
-  const dane = { oferty: zbior(objete), znane: zbior(migawka.znane),
-    otwarcia: zbior(migawka.otwarcia), maxRuchId, bufory: zbior(bufory) };
+  const objete = oferty
+    .filter((o) => o.tryb === 'zarzadzana' || (o.tryb === 'obserwowana' && o.ilosc_z_oms))
+    .map((o) => ({
+      id: o.id,
+      kanal: o.kanal,
+      id_zewnetrzne: o.id_zewnetrzne,
+      karta_id: o.karta_id,
+      tryb: o.tryb,
+      ilosc_z_oms: o.ilosc_z_oms,
+    }));
+  const dane = {
+    oferty: zbior(objete),
+    znane: zbior(migawka.znane),
+    otwarcia: zbior(migawka.otwarcia),
+    maxRuchId,
+    bufory: zbior(bufory),
+  };
   return createHash('sha256').update(kanonicznie(dane)).digest('hex');
 }

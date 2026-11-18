@@ -4,8 +4,17 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import {
-  opcje, PLIKI_INSTALACJI, powodPotomka, sekretyKatalogu, oczyscPowod, coDalejLokalnie, krokDemoMs,
-  sciezkaKlucza, wymagajPustegoKatalogu, zapewnijKlucz, ZMIENNA_PLIKU_KLUCZA,
+  opcje,
+  PLIKI_INSTALACJI,
+  powodPotomka,
+  sekretyKatalogu,
+  oczyscPowod,
+  coDalejLokalnie,
+  krokDemoMs,
+  sciezkaKlucza,
+  wymagajPustegoKatalogu,
+  zapewnijKlucz,
+  ZMIENNA_PLIKU_KLUCZA,
 } from './instalacja-wspolne.mjs';
 
 const LIMIT_ETAPU_MS = 60_000;
@@ -16,10 +25,17 @@ function bezDowiazan(katalog) {
   for (const part of katalog.slice(root.length).split(path.sep).filter(Boolean)) {
     current = path.join(current, part);
     let stat;
-    try { stat = fs.lstatSync(current); }
-    catch (error) { if (error.code === 'ENOENT') continue; throw error; }
-    if (stat.isSymbolicLink() || !stat.isDirectory()
-      || fs.realpathSync(current).toLowerCase() !== path.resolve(current).toLowerCase()) {
+    try {
+      stat = fs.lstatSync(current);
+    } catch (error) {
+      if (error.code === 'ENOENT') continue;
+      throw error;
+    }
+    if (
+      stat.isSymbolicLink() ||
+      !stat.isDirectory() ||
+      fs.realpathSync(current).toLowerCase() !== path.resolve(current).toLowerCase()
+    ) {
       throw Error('INSTALACJA_DEMO_SCIEZKA_ODMOWA');
     }
   }
@@ -34,7 +50,10 @@ function etap(name, katalog, port, plikKlucza) {
   const script = fileURLToPath(new URL(`./instalacja-${name}.mjs`, import.meta.url));
   // Etap dostaje wyłącznie ścieżkę pliku klucza — żadnej innej zmiennej z powłoki (klucze integracji, OMS_*).
   const result = spawnSync(process.execPath, [script, '--katalog', katalog, '--port', String(port)], {
-    cwd: fileURLToPath(new URL('..', import.meta.url)), env: { [ZMIENNA_PLIKU_KLUCZA]: plikKlucza }, encoding: 'utf8', timeout: LIMIT_ETAPU_MS,
+    cwd: fileURLToPath(new URL('..', import.meta.url)),
+    env: { [ZMIENNA_PLIKU_KLUCZA]: plikKlucza },
+    encoding: 'utf8',
+    timeout: LIMIT_ETAPU_MS,
   });
   // Kod etapu zostaje (parsują go testy i kontener), ale z powodem — wcześniej przyczyna
   // (zajęty port, stary Node, limit 60 s) ginęła i człowiek widział samo INSTALACJA_DEMO_PROBA_ODMOWA.
@@ -48,7 +67,7 @@ function etap(name, katalog, port, plikKlucza) {
 // odstępy krótsze, żeby wszystkie zostały w dzisiejszym dniu Warszawy (`krokDemoMs`).
 async function wygeneruj(db, teraz = Date.now()) {
   const krok = krokDemoMs(teraz);
-  const godzinTemu = (od, h, min = 0) => new Date(od - h * krok + min * krok / 60).toISOString();
+  const godzinTemu = (od, h, min = 0) => new Date(od - h * krok + (min * krok) / 60).toISOString();
   const { zapiszZamowienie, zapiszFaktyStatusu } = await import('../src/oms/db/zamowienia.js');
   for (let number = 1; number <= 3; number++) {
     const code = String(number).padStart(3, '0');
@@ -56,17 +75,54 @@ async function wygeneruj(db, teraz = Date.now()) {
     // instalacja demo ma tę listę pustą — zamówienie o sklepie `demo` kończyło zakładkę RAPORTY odmową (400).
     // `reczne` produkt zna zawsze (kanał RECZNE), bez konfiguracji i bez wyjątku „demo” w kodzie raportów.
     // zrodlo_id 1…3 nie koliduje z numeracją ręczną (rok × 100 000 + n), a numery DEMO-nnn są poza serią R/RRRR/nnn.
-    const id = zapiszZamowienie(db, 'reczne', {
-      zrodlo_id: number, numer: `DEMO-${code}`,
-      klient: { first_name: `Osoba demonstracyjna ${number}`, last_name: 'Dane syntetyczne', email: `demo-${code}@email.invalid`, phone: '' },
-      dostawa: { first_name: `Osoba demonstracyjna ${number}`, last_name: 'Dane syntetyczne', address_1: 'Ulica Przykładowa 1', city: 'Miasto demonstracyjne', postcode: '00-000', country: 'PL' },
-      metoda_wysylki: 'odbior_osobisty', metoda_wysylki_nazwa: 'Odbiór osobisty — demo',
-      kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '24.60',
-      koszt_dostawy_brutto: '0.00', koszt_dostawy_netto: '0.00', status_woo: 'processing',
-      oplacone_at: number === 1 ? null : godzinTemu(teraz, number, 10), anulowane: 0,
-      utworzone_at: godzinTemu(teraz, number), uwagi: 'DEMO — wszystkie dane wygenerowane syntetycznie; bez integracji.',
-      pozycje: [{ nazwa: `Produkt demonstracyjny ${number}`, sku: `DEMO-SKU-${code}`, ilosc: 1, cena_brutto: '24.60', cena_netto: '20.00', brutto_linii: '24.60', netto_linii: '20.00', vat: 23 }],
-    }, { demo: true });
+    const id = zapiszZamowienie(
+      db,
+      'reczne',
+      {
+        zrodlo_id: number,
+        numer: `DEMO-${code}`,
+        klient: {
+          first_name: `Osoba demonstracyjna ${number}`,
+          last_name: 'Dane syntetyczne',
+          email: `demo-${code}@email.invalid`,
+          phone: '',
+        },
+        dostawa: {
+          first_name: `Osoba demonstracyjna ${number}`,
+          last_name: 'Dane syntetyczne',
+          address_1: 'Ulica Przykładowa 1',
+          city: 'Miasto demonstracyjne',
+          postcode: '00-000',
+          country: 'PL',
+        },
+        metoda_wysylki: 'odbior_osobisty',
+        metoda_wysylki_nazwa: 'Odbiór osobisty — demo',
+        kwota_pobrania: null,
+        chce_fakture: 0,
+        nip: null,
+        kwota_brutto: '24.60',
+        koszt_dostawy_brutto: '0.00',
+        koszt_dostawy_netto: '0.00',
+        status_woo: 'processing',
+        oplacone_at: number === 1 ? null : godzinTemu(teraz, number, 10),
+        anulowane: 0,
+        utworzone_at: godzinTemu(teraz, number),
+        uwagi: 'DEMO — wszystkie dane wygenerowane syntetycznie; bez integracji.',
+        pozycje: [
+          {
+            nazwa: `Produkt demonstracyjny ${number}`,
+            sku: `DEMO-SKU-${code}`,
+            ilosc: 1,
+            cena_brutto: '24.60',
+            cena_netto: '20.00',
+            brutto_linii: '24.60',
+            netto_linii: '20.00',
+            vat: 23,
+          },
+        ],
+      },
+      { demo: true },
+    );
     if (number === 2) zapiszFaktyStatusu(db, id, { w_realizacji_at: godzinTemu(teraz, number, 20) });
   }
 }
@@ -87,29 +143,53 @@ async function main() {
   const { DatabaseSync } = await import('node:sqlite');
   const database = path.join(katalog, PLIKI_INSTALACJI.baza);
   const stat = fs.lstatSync(database);
-  if (!stat.isFile() || stat.isSymbolicLink()
-    || fs.realpathSync(database).toLowerCase() !== path.resolve(database).toLowerCase()) {
+  if (
+    !stat.isFile() ||
+    stat.isSymbolicLink() ||
+    fs.realpathSync(database).toLowerCase() !== path.resolve(database).toLowerCase()
+  ) {
     throw Error('INSTALACJA_DEMO_SCIEZKA_ODMOWA');
   }
   const db = new DatabaseSync(database);
   try {
     await wygeneruj(db);
-    if (db.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok') throw Error('INSTALACJA_DEMO_INTEGRITY_ODMOWA');
+    if (db.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok')
+      throw Error('INSTALACJA_DEMO_INTEGRITY_ODMOWA');
     db.exec(`VACUUM INTO '${backup.replaceAll("'", "''")}'`);
-  } finally { db.close(); }
+  } finally {
+    db.close();
+  }
   fs.mkdirSync(restore);
   fs.copyFileSync(backup, path.join(restore, PLIKI_INSTALACJI.baza), fs.constants.COPYFILE_EXCL);
   for (const file of [backup, path.join(restore, PLIKI_INSTALACJI.baza)]) {
     const copy = new DatabaseSync(file, { readOnly: true });
-    try { if (copy.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok') throw Error('INSTALACJA_DEMO_INTEGRITY_ODMOWA'); }
-    finally { copy.close(); }
+    try {
+      if (copy.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok')
+        throw Error('INSTALACJA_DEMO_INTEGRITY_ODMOWA');
+    } finally {
+      copy.close();
+    }
   }
   for (const linia of coDalejLokalnie({ katalog, port, klucz: plikKlucza })) console.log(linia);
-  console.log(JSON.stringify({ status: 'demo-zakonczone', katalog, port, kopiaDemo: backup, odtworzenieDemo: restore, kluczPoswiadczen: plikKlucza, idKlucza, dane: '3 zamówienia syntetyczne; integracje niepodłączone' }));
+  console.log(
+    JSON.stringify({
+      status: 'demo-zakonczone',
+      katalog,
+      port,
+      kopiaDemo: backup,
+      odtworzenieDemo: restore,
+      kluczPoswiadczen: plikKlucza,
+      idKlucza,
+      dane: '3 zamówienia syntetyczne; integracje niepodłączone',
+    }),
+  );
 }
-main().catch(error => {
+main().catch((error) => {
   // Demo nie trzyma haseł w pamięci; powód to komunikat błędu (np. ścieżka, SQLite) w jednej linii.
-  console.error(error instanceof Error && /^INSTALACJA_/.test(error.message) ? error.message
-    : `INSTALACJA_DEMO_ODMOWA: ${oczyscPowod(error instanceof Error ? error.message : error)}`);
+  console.error(
+    error instanceof Error && /^INSTALACJA_/.test(error.message)
+      ? error.message
+      : `INSTALACJA_DEMO_ODMOWA: ${oczyscPowod(error instanceof Error ? error.message : error)}`,
+  );
   process.exitCode = 1;
 });

@@ -17,7 +17,11 @@ function pliki(katalog) {
 /** 10 znaków hex z SHA-256 nazw i treści .css/.js/.png; zamienniki to znak instalacji czytany przy starcie. */
 export function wersjaZasobow(katalog, zamienniki = {}) {
   const h = createHash('sha256');
-  for (const nazwa of pliki(katalog)) h.update(nazwa).update('\0').update(zamienniki[nazwa] ?? readFileSync(join(katalog, nazwa))).update('\0');
+  for (const nazwa of pliki(katalog))
+    h.update(nazwa)
+      .update('\0')
+      .update(zamienniki[nazwa] ?? readFileSync(join(katalog, nazwa)))
+      .update('\0');
   return h.digest('hex').slice(0, 10);
 }
 

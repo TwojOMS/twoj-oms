@@ -7,9 +7,7 @@
 // kopii. Okno listy = 60 dni wstecz: dwa razy dluzsze niz okno zegara, zeby paczka, ktora
 // wypadla z odpytywania, nie znikala tez z oczu.
 
-import {
-  przesylkiDoSledzenia, pobierzPrzesylke, ukryjPrzesylke, przywrocPrzesylke,
-} from '../db/przesylki.js';
+import { przesylkiDoSledzenia, pobierzPrzesylke, ukryjPrzesylke, przywrocPrzesylke } from '../db/przesylki.js';
 import { dopiszLog, pobierzZamowienie } from '../../../oms/db/zamowienia.js';
 import { przesylkaUkryta } from '../../../domena/przesylka-stan.js';
 import { nazwaDostawy } from '../../../domena/wysylka.js';
@@ -19,7 +17,11 @@ import { podjazdPoTerminie } from '../../../domena/podjazdy.js';
 import { ktoKlikal } from '../../zamowienia/lista.js';
 import { stronaOdmowy } from '../../../core/web/odmowa.js';
 import {
-  etapPrzesylki, etykietaEtapu, dniKalendarzowe, bezRuchu, kategoriaPrzesylki,
+  etapPrzesylki,
+  etykietaEtapu,
+  dniKalendarzowe,
+  bezRuchu,
+  kategoriaPrzesylki,
 } from '../../../domena/etap-przesylki.js';
 
 const OKNO_LISTY_DNI = 60;
@@ -43,9 +45,7 @@ function data(surowa) {
   // a wtedy filtr po cichu oddaje pusta liste zamiast powiedziec, ze data jest bledna.
   const [rok, miesiac, dzien] = s.split('-').map(Number);
   const d = new Date(Date.UTC(rok, miesiac - 1, dzien));
-  const istnieje = d.getUTCFullYear() === rok
-    && d.getUTCMonth() === miesiac - 1
-    && d.getUTCDate() === dzien;
+  const istnieje = d.getUTCFullYear() === rok && d.getUTCMonth() === miesiac - 1 && d.getUTCDate() === dzien;
   return istnieje ? s : null;
 }
 
@@ -127,12 +127,19 @@ export function registerPrzesylkiRoutes(app, { db, kurierzy = {} }) {
       const dokument = await klient.protokolOdbioru(p.id_przesylki_kuriera, z);
       return reply.redirect(dokument.url);
     } catch {
-      return stronaOdmowy(reply, 400, 'Nie udało się pobrać protokołu odbioru. Spróbuj ponownie.', { wroc: '/przesylki' });
+      return stronaOdmowy(reply, 400, 'Nie udało się pobrać protokołu odbioru. Spróbuj ponownie.', {
+        wroc: '/przesylki',
+      });
     }
   });
   app.get('/przesylki', async (req, reply) => {
     const filtry = parseFiltry(req.query);
-    if (filtry.blad) return stronaOdmowy(reply, 400, filtry.blad, { tytul: 'Zły filtr listy przesyłek', wroc: '/przesylki', napisWroc: 'Wróć do listy przesyłek' });
+    if (filtry.blad)
+      return stronaOdmowy(reply, 400, filtry.blad, {
+        tytul: 'Zły filtr listy przesyłek',
+        wroc: '/przesylki',
+        napisWroc: 'Wróć do listy przesyłek',
+      });
 
     const teraz = new Date();
     const dzisWarszawa = dzienWarszawa(teraz.toISOString());
@@ -147,15 +154,20 @@ export function registerPrzesylkiRoutes(app, { db, kurierzy = {} }) {
     // policzyc dzien po warszawsku — czyli filtr gubilby wieczorne paczki z pierwszego dnia
     // zakresu i nikt by tego nie zauwazyl poza dniem, w ktorym akurat nadano cos po 22:00.
     // Dokladne ciecie robi `pasujeNaFiltr`; SQL ma tylko nie odciac za duzo.
-    const bazaOd = filtry.od
-      ? new Date(`${filtry.od}T00:00:00.000Z`).getTime() - 24 * 3600 * 1000
-      : null;
+    const bazaOd = filtry.od ? new Date(`${filtry.od}T00:00:00.000Z`).getTime() - 24 * 3600 * 1000 : null;
     const bazaOdIso = bazaOd === null ? odIso : new Date(bazaOd).toISOString();
 
-    const numery = new Map(db.prepare(`
+    const numery = new Map(
+      db
+        .prepare(
+          `
       SELECT id, numer, sklep, metoda_wysylki, metoda_wysylki_nazwa, pobranie, wysylka_reczna_json
       FROM zamowienia
-    `).all().map((z) => [z.id, z]));
+    `,
+        )
+        .all()
+        .map((z) => [z.id, z]),
+    );
 
     // ⚠️ SUROWE trzymamy osobno, bo listy rozwijane filtrow musza pochodzic z PELNEGO
     // zbioru, a nie z tego, co zostalo po zawezeniu (listy filtrów z pełnego zbioru — lista wartosci
@@ -174,52 +186,72 @@ export function registerPrzesylkiRoutes(app, { db, kurierzy = {} }) {
     const wiersze = zPrzewoznikiem
       .filter((p) => pasujeNaFiltr(p, filtry))
       .map((p) => {
-      const etap = etapPrzesylki(p.status_kuriera, p.status_kuriera_kod);
-      const stoi = bezRuchu({
-        etap, statusKurieraAt: p.status_kuriera_at, nadanaAt: p.utworzona_at, teraz,
-      });
-      // ⚠️ TA SAMA FUNKCJA, CO NA KARCIE (domena/przesylka-stan.js). Ukrycie dzialajace
-      // w zakladce, ale nie w sprawach karty, zostawialoby zamowienie na liscie roboczej
-      // z odznaka, ktorej juz nic nie zdejmie — czyli sprzatanie bylo by polsrodkiem.
-      const ukryta = przesylkaUkryta(p);
-      const aktywnyPodjazd = db.prepare(`SELECT j.stan, j.id, j.termin_json FROM podjazdy_przesylki pp
+        const etap = etapPrzesylki(p.status_kuriera, p.status_kuriera_kod);
+        const stoi = bezRuchu({
+          etap,
+          statusKurieraAt: p.status_kuriera_at,
+          nadanaAt: p.utworzona_at,
+          teraz,
+        });
+        // ⚠️ TA SAMA FUNKCJA, CO NA KARCIE (domena/przesylka-stan.js). Ukrycie dzialajace
+        // w zakladce, ale nie w sprawach karty, zostawialoby zamowienie na liscie roboczej
+        // z odznaka, ktorej juz nic nie zdejmie — czyli sprzatanie bylo by polsrodkiem.
+        const ukryta = przesylkaUkryta(p);
+        const aktywnyPodjazd = db
+          .prepare(
+            `SELECT j.stan, j.id, j.termin_json FROM podjazdy_przesylki pp
         JOIN podjazdy j ON j.id=pp.podjazd_id
-        WHERE pp.przesylka_id=? AND pp.aktywna_rezerwacja=1 ORDER BY j.id DESC LIMIT 1`).get(p.id);
-      let poTerminie = false;
-      try { poTerminie = aktywnyPodjazd?.stan === 'potwierdzony'
-        && podjazdPoTerminie(JSON.parse(aktywnyPodjazd.termin_json), teraz.toISOString()); }
-      catch { poTerminie = false; }
-      const { zamowienie } = p;
-      // Nazwa uslugi (np. „Allegro Kurier DPD pobranie") zostaje pod logo dla przesylek Allegro —
-      // pobranie i rodzaj uslugi operator musi widziec. Dla wlasnego DPD/InPostu logo wystarcza.
-      const zAllegro = p.kurier === 'allegro_wza' || p.kurier === 'allegro';
-      const kurierEtykieta = zAllegro && zamowienie ? nazwaDostawy(zamowienie) : p.kurier;
-      return {
-        ...p,
-        maProtokol: !!p.id_przesylki_kuriera && typeof kurierzy[p.kurier]?.protokolOdbioru === 'function',
-        kurierEtykieta,
-        usluga: zAllegro && zamowienie ? kurierEtykieta : null,
-        // Ta sama funkcja co karta zamowienia i mail „Zamowienie wyslane".
-        adresSledzenia: linkSledzeniaPaczki(p, zamowienie),
-        etap,
-        kategoria: kategoriaPrzesylki(p, etap),
-        etykietaEtapu: etykietaEtapu(etap ?? 'nadana', dniKalendarzowe(p.utworzona_at, teraz.toISOString())),
-        // Ukryta paczka NIE „stoi bez ruchu" — czlowiek juz o niej zdecydowal. Liczymy
-        // to jednak osobno od `ukryta`, zeby chip „Ukryte" mogl pokazac, co tam wpadlo.
-        bezRuchu: stoi && !ukryta,
-        ukryta,
-        aktywnyPodjazd,
-        podjazdPoTerminie: poTerminie,
-        mozePodjazd: !ukryta && p.kurier === 'allegro_wza' && p.status === 'nadana'
-          && !p.przejeta_at && !aktywnyPodjazd && !!p.id_przesylki_kuriera
-          && !!(p.etykieta_sciezka || p.etykieta_zpl_sciezka),
-      };
-    });
+        WHERE pp.przesylka_id=? AND pp.aktywna_rezerwacja=1 ORDER BY j.id DESC LIMIT 1`,
+          )
+          .get(p.id);
+        let poTerminie = false;
+        try {
+          poTerminie =
+            aktywnyPodjazd?.stan === 'potwierdzony' &&
+            podjazdPoTerminie(JSON.parse(aktywnyPodjazd.termin_json), teraz.toISOString());
+        } catch {
+          poTerminie = false;
+        }
+        const { zamowienie } = p;
+        // Nazwa uslugi (np. „Allegro Kurier DPD pobranie") zostaje pod logo dla przesylek Allegro —
+        // pobranie i rodzaj uslugi operator musi widziec. Dla wlasnego DPD/InPostu logo wystarcza.
+        const zAllegro = p.kurier === 'allegro_wza' || p.kurier === 'allegro';
+        const kurierEtykieta = zAllegro && zamowienie ? nazwaDostawy(zamowienie) : p.kurier;
+        return {
+          ...p,
+          maProtokol: !!p.id_przesylki_kuriera && typeof kurierzy[p.kurier]?.protokolOdbioru === 'function',
+          kurierEtykieta,
+          usluga: zAllegro && zamowienie ? kurierEtykieta : null,
+          // Ta sama funkcja co karta zamowienia i mail „Zamowienie wyslane".
+          adresSledzenia: linkSledzeniaPaczki(p, zamowienie),
+          etap,
+          kategoria: kategoriaPrzesylki(p, etap),
+          etykietaEtapu: etykietaEtapu(etap ?? 'nadana', dniKalendarzowe(p.utworzona_at, teraz.toISOString())),
+          // Ukryta paczka NIE „stoi bez ruchu" — czlowiek juz o niej zdecydowal. Liczymy
+          // to jednak osobno od `ukryta`, zeby chip „Ukryte" mogl pokazac, co tam wpadlo.
+          bezRuchu: stoi && !ukryta,
+          ukryta,
+          aktywnyPodjazd,
+          podjazdPoTerminie: poTerminie,
+          mozePodjazd:
+            !ukryta &&
+            p.kurier === 'allegro_wza' &&
+            p.status === 'nadana' &&
+            !p.przejeta_at &&
+            !aktywnyPodjazd &&
+            !!p.id_przesylki_kuriera &&
+            !!(p.etykieta_sciezka || p.etykieta_zpl_sciezka),
+        };
+      });
 
     // Unikalni przewoznicy z PELNEGO zbioru, po nazwie. Wartosc w adresie = klucz.
-    const przewozcy = [...new Map(zPrzewoznikiem.filter((w) => w.przewoznik)
-      .map((w) => [w.przewoznik.klucz, { klucz: w.przewoznik.klucz, nazwa: w.przewoznik.nazwa }])).values()]
-      .sort((a, b) => a.nazwa.localeCompare(b.nazwa, 'pl'));
+    const przewozcy = [
+      ...new Map(
+        zPrzewoznikiem
+          .filter((w) => w.przewoznik)
+          .map((w) => [w.przewoznik.klucz, { klucz: w.przewoznik.klucz, nazwa: w.przewoznik.nazwa }]),
+      ).values(),
+    ].sort((a, b) => a.nazwa.localeCompare(b.nazwa, 'pl'));
     const kurierNieznany = !!filtry.kurier && !przewozcy.some((p) => p.klucz === filtry.kurier);
     const sklepy = [...new Set(surowe.map((w) => w.sklep).filter(Boolean))].sort();
     // ⚠️ LICZNIKI ZAWSZE PELNE (liczone przed filtrem), ale UKRYTE WYPADAJA ze wszystkich
@@ -242,7 +274,8 @@ export function registerPrzesylkiRoutes(app, { db, kurierzy = {} }) {
       return w.kategoria === pokaz;
     });
 
-    return reply.view('przesylki-lista.ejs', { szerokosc: 'tabela',
+    return reply.view('przesylki-lista.ejs', {
+      szerokosc: 'tabela',
       title: 'Przesyłki',
       wiersze: widoczne,
       filtry,
@@ -262,14 +295,20 @@ export function registerPrzesylkiRoutes(app, { db, kurierzy = {} }) {
         {
           etykieta: 'Ten miesiąc',
           adres: adresPrzesylki({
-            ...filtry, pokaz, od: `${dzisWarszawa.slice(0, 8)}01`, do: dzisWarszawa,
+            ...filtry,
+            pokaz,
+            od: `${dzisWarszawa.slice(0, 8)}01`,
+            do: dzisWarszawa,
           }),
         },
         {
           etykieta: 'Ostatnie 7 dni',
           // Siedem dni WLACZNIE z dzisiejszym, czyli dzis i szesc wstecz.
           adres: adresPrzesylki({
-            ...filtry, pokaz, od: przesunDni(dzisWarszawa, -6), do: dzisWarszawa,
+            ...filtry,
+            pokaz,
+            od: przesunDni(dzisWarszawa, -6),
+            do: dzisWarszawa,
           }),
         },
       ],
@@ -290,24 +329,42 @@ export function registerPrzesylkiRoutes(app, { db, kurierzy = {} }) {
   // ⚠️ WPIS DO LOGU ZAMOWIENIA, a nie tylko kolumna. Ukrycie zdejmuje zamowienie z listy
   // roboczej, wiec musi zostac slad KTO i KIEDY — ta sama formulka „Ręcznie (kto): …",
   // co przy „sprawa zalatwiona recznie".
-  const akcja = (nazwa, wykonaj, opis, tytulOdmowy) => app.post(`/przesylki/:id/${nazwa}`, async (req, reply) => {
-    const p = pobierzPrzesylke(db, Number(req.params.id));
-    if (!p) return stronaOdmowy(reply, 404, 'Nie ma takiej przesyłki.', { tytul: tytulOdmowy,
-      wroc: adresPrzesylki({ pokaz: POKAZ.includes(req.body?.pokaz) ? req.body.pokaz : DOMYSLNY_POKAZ }), napisWroc: 'Wróć do listy przesyłek' });
-    const kto = ktoKlikal(req);
-    const filtrPoAkcji = parseFiltry(req.body);
-    if (filtrPoAkcji.blad) return reply.redirect(adresPrzesylki({ pokaz: POKAZ.includes(req.body?.pokaz) ? req.body.pokaz : DOMYSLNY_POKAZ }));
-    wykonaj(p, kto);
-    dopiszLog(db, p.zamowienie_id, {
-      akcja: `przesylka.${nazwa}`,
-      wynik: `Ręcznie (${kto}): paczka nr ${p.kolejnosc} (${p.numer_listu ?? 'bez numeru'}) — ${opis}`,
+  const akcja = (nazwa, wykonaj, opis, tytulOdmowy) =>
+    app.post(`/przesylki/:id/${nazwa}`, async (req, reply) => {
+      const p = pobierzPrzesylke(db, Number(req.params.id));
+      if (!p)
+        return stronaOdmowy(reply, 404, 'Nie ma takiej przesyłki.', {
+          tytul: tytulOdmowy,
+          wroc: adresPrzesylki({ pokaz: POKAZ.includes(req.body?.pokaz) ? req.body.pokaz : DOMYSLNY_POKAZ }),
+          napisWroc: 'Wróć do listy przesyłek',
+        });
+      const kto = ktoKlikal(req);
+      const filtrPoAkcji = parseFiltry(req.body);
+      if (filtrPoAkcji.blad)
+        return reply.redirect(
+          adresPrzesylki({ pokaz: POKAZ.includes(req.body?.pokaz) ? req.body.pokaz : DOMYSLNY_POKAZ }),
+        );
+      wykonaj(p, kto);
+      dopiszLog(db, p.zamowienie_id, {
+        akcja: `przesylka.${nazwa}`,
+        wynik: `Ręcznie (${kto}): paczka nr ${p.kolejnosc} (${p.numer_listu ?? 'bez numeru'}) — ${opis}`,
+      });
+      // Wracamy na TEN filtr, z ktorego przyszlo klikniecie: po ukryciu z „Bez ruchu" operator
+      // ma zobaczyc te sama liste bez tej paczki, a nie zostac przerzucony na widok domyslny.
+      const skad = POKAZ.includes(req.body?.pokaz) ? req.body.pokaz : DOMYSLNY_POKAZ;
+      return reply.redirect(adresPrzesylki({ ...filtrPoAkcji, pokaz: skad }));
     });
-    // Wracamy na TEN filtr, z ktorego przyszlo klikniecie: po ukryciu z „Bez ruchu" operator
-    // ma zobaczyc te sama liste bez tej paczki, a nie zostac przerzucony na widok domyslny.
-    const skad = POKAZ.includes(req.body?.pokaz) ? req.body.pokaz : DOMYSLNY_POKAZ;
-    return reply.redirect(adresPrzesylki({ ...filtrPoAkcji, pokaz: skad }));
-  });
 
-  akcja('ukryj', (p, kto) => ukryjPrzesylke(db, p.id, kto), 'ukryta z listy przesyłek', 'Nie udało się ukryć przesyłki');
-  akcja('przywroc', (p) => przywrocPrzesylke(db, p.id), 'przywrócona na listę przesyłek', 'Nie udało się przywrócić przesyłki');
+  akcja(
+    'ukryj',
+    (p, kto) => ukryjPrzesylke(db, p.id, kto),
+    'ukryta z listy przesyłek',
+    'Nie udało się ukryć przesyłki',
+  );
+  akcja(
+    'przywroc',
+    (p) => przywrocPrzesylke(db, p.id),
+    'przywrócona na listę przesyłek',
+    'Nie udało się przywrócić przesyłki',
+  );
 }

@@ -50,17 +50,40 @@ const SEP = '\n';
 const rozdziel = (s) => (s === '' ? [] : s.split(SEP));
 
 function zarejestrujFunkcje(db) {
-  let ostatnie = null; let sparsowane = null;
-  db.function('lista_filtr', { deterministic: true },
+  let ostatnie = null;
+  let sparsowane = null;
+  db.function(
+    'lista_filtr',
+    { deterministic: true },
     (dzien, wysylka, indywidualne, sklep, platnosc, chceFakture, fakturaWystawiona, filtryJson) => {
-      if (filtryJson !== ostatnie) { ostatnie = filtryJson; sparsowane = JSON.parse(filtryJson); }
-      return pasujaKlucze({ dzien, wysylka, indywidualne: Boolean(indywidualne), sklep, platnosc,
-        chceFakture: Boolean(chceFakture), fakturaWystawiona: Boolean(fakturaWystawiona) }, sparsowane) ? 1 : 0;
-    });
+      if (filtryJson !== ostatnie) {
+        ostatnie = filtryJson;
+        sparsowane = JSON.parse(filtryJson);
+      }
+      return pasujaKlucze(
+        {
+          dzien,
+          wysylka,
+          indywidualne: Boolean(indywidualne),
+          sklep,
+          platnosc,
+          chceFakture: Boolean(chceFakture),
+          fakturaWystawiona: Boolean(fakturaWystawiona),
+        },
+        sparsowane,
+      )
+        ? 1
+        : 0;
+    },
+  );
   // Fraza rozkładana raz na zapytanie, nie raz na wiersz.
-  let ostatniaFraza = null; let dopasuj = null;
+  let ostatniaFraza = null;
+  let dopasuj = null;
   db.function('lista_szukaj', { deterministic: true }, (tekst, cyfry, fraza) => {
-    if (fraza !== ostatniaFraza) { ostatniaFraza = fraza; dopasuj = dopasowanieFrazy(fraza); }
+    if (fraza !== ostatniaFraza) {
+      ostatniaFraza = fraza;
+      dopasuj = dopasowanieFrazy(fraza);
+    }
     return dopasuj({ tekst: rozdziel(tekst), cyfry: rozdziel(cyfry) }) ? 1 : 0;
   });
 }
@@ -83,7 +106,9 @@ const STATUS_USZKODZONE = 'blad';
  */
 export function przyczynaUszkodzenia(e) {
   if (e instanceof SyntaxError) return 'uszkodzony JSON w danych zamówienia';
-  return `${e?.name ?? 'Error'}: ${String(e?.message ?? e).replace(/"[^"]*"/g, '"…"').replace(/'[^']*'/g, "'…'")}`.slice(0, 160);
+  return `${e?.name ?? 'Error'}: ${String(e?.message ?? e)
+    .replace(/"[^"]*"/g, '"…"')
+    .replace(/'[^']*'/g, "'…'")}`.slice(0, 160);
 }
 
 export const PRZYCZYNA_POMINIETEGO = 'nie daje się odczytać — indeks jeszcze o tym nie wie (zmiana spoza panelu?)';
@@ -93,22 +118,39 @@ const indeksy = new WeakMap();
 /** Indeks listy dla połączenia — jeden na `db`, tworzony przy pierwszym użyciu listy. */
 export function indeksListy(db) {
   let i = indeksy.get(db);
-  if (!i) { i = utworz(db); indeksy.set(db, i); }
+  if (!i) {
+    i = utworz(db);
+    indeksy.set(db, i);
+  }
   return i;
 }
 
 function utworz(db) {
-  if (!sledzZmianyListy(db)) throw new Error('Brak tabel indeksu listy — migracja modułu zamówień nie została wykonana');
+  if (!sledzZmianyListy(db))
+    throw new Error('Brak tabel indeksu listy — migracja modułu zamówień nie została wykonana');
   // Baza ze schematem indeksu z wczesnej, niezatwierdzonej wersji (bez kolumny `blad`) — czytelna odmowa
   // zamiast surowego błędu SQL przy pierwszym zapisie.
-  if (!db.prepare('PRAGMA table_info(lista_stan)').all().some((k) => k.name === 'blad')) {
-    throw new Error('Tabela lista_stan bez kolumny blad — baza z niezatwierdzonej wersji PRZ-051; odtwórz ją z kopii sprzed migracji');
+  if (
+    !db
+      .prepare('PRAGMA table_info(lista_stan)')
+      .all()
+      .some((k) => k.name === 'blad')
+  ) {
+    throw new Error(
+      'Tabela lista_stan bez kolumny blad — baza z niezatwierdzonej wersji PRZ-051; odtwórz ją z kopii sprzed migracji',
+    );
   }
   zarejestrujFunkcje(db);
-  const maScalenia = db.prepare('PRAGMA table_info(zamowienia)').all().some((k) => k.name === 'scalone_do');
+  const maScalenia = db
+    .prepare('PRAGMA table_info(zamowienia)')
+    .all()
+    .some((k) => k.name === 'scalone_do');
   // Kolumny filtra faktury dochodzą migracją modułu zamówień; baza złożona z samej pierwszej
   // migracji (testy indeksu) ich nie ma — wtedy filtr faktury widzi „nie chce, niewystawiona".
-  const maFakture = db.prepare('PRAGMA table_info(lista_stan)').all().some((k) => k.name === 'faktura_wystawiona');
+  const maFakture = db
+    .prepare('PRAGMA table_info(lista_stan)')
+    .all()
+    .some((k) => k.name === 'faktura_wystawiona');
   const kolumnyFaktury = maFakture ? 'chce_fakture, faktura_wystawiona' : 'NULL, NULL';
   const wstawWiersz = db.prepare(`INSERT OR REPLACE INTO lista_stan (zamowienie_id, utworzone_at, status, robocze_od,
     po_terminie_od, wazne_do, dzien, wysylka, indywidualne, sklep, platnosc, szukaj_tekst, szukaj_cyfry, blad
@@ -121,8 +163,25 @@ function utworz(db) {
   // budowie każde żądanie liczyło całą tabelę od nowa. Teraz takie zamówienie trafia do indeksu
   // jako „do zrobienia" (widoczne, nie zgubione), z przyczyną, a reszta liczy się normalnie.
   // Status `blad` nie jest żadną zakładką — zamówienie liczy się do „Wszystkie" i „Do zrobienia".
-  const wstawUszkodzone = (w, e, teraz) => wstaw.run(w.id, w.utworzone_at, STATUS_USZKODZONE, teraz - MARGINES_MS, null,
-    teraz + PONOW_USZKODZONE_MS, null, null, 0, w.sklep ?? null, null, normalizuj(w.numer ?? ''), '', przyczynaUszkodzenia(e), null, null);
+  const wstawUszkodzone = (w, e, teraz) =>
+    wstaw.run(
+      w.id,
+      w.utworzone_at,
+      STATUS_USZKODZONE,
+      teraz - MARGINES_MS,
+      null,
+      teraz + PONOW_USZKODZONE_MS,
+      null,
+      null,
+      0,
+      w.sklep ?? null,
+      null,
+      normalizuj(w.numer ?? ''),
+      '',
+      przyczynaUszkodzenia(e),
+      null,
+      null,
+    );
   let kolejka = Promise.resolve();
   let sprawdzenieRuszylo = false;
   let sprawdzenie = null; // { kursor, sprawdzone, wszystkie } w trakcie sprawdzania w tle
@@ -140,8 +199,15 @@ function utworz(db) {
     // tylko jego wiersz — a ten nie ma wiersza w indeksie. Wynik GŁÓWNEGO zależy od dołączonych
     // (`uwagaDolaczonychAnulowanych`), więc główne liczy się w tej samej porcji, co dołączone.
     // Baza bez migracji scaleń (testy indeksu na samej migracji 0001) kolumny nie ma — wtedy nie ma też grup.
-    const glowne = maScalenia ? db.prepare(`SELECT DISTINCT scalone_do AS id FROM zamowienia WHERE id IN (${idsWejscie.map(() => '?').join(',')})
-      AND scalone_do IS NOT NULL`).all(...idsWejscie).map((w) => w.id) : [];
+    const glowne = maScalenia
+      ? db
+          .prepare(
+            `SELECT DISTINCT scalone_do AS id FROM zamowienia WHERE id IN (${idsWejscie.map(() => '?').join(',')})
+      AND scalone_do IS NOT NULL`,
+          )
+          .all(...idsWejscie)
+          .map((w) => w.id)
+      : [];
     const ids = [...new Set([...idsWejscie, ...glowne])];
     const znaki = ids.map(() => '?').join(',');
     db.exec('SAVEPOINT lista_porcja');
@@ -155,7 +221,12 @@ function utworz(db) {
         // Wiersz skasowany wyżej, więc rozdzielenie (UPDATE → wyzwalacz) przywraca je samo.
         if (z.scalone_do) continue;
         let k;
-        try { k = klasyfikacjaListy(z, teraz - MARGINES_MS); } catch (e) { wstawUszkodzone(z, e, teraz); continue; }
+        try {
+          k = klasyfikacjaListy(z, teraz - MARGINES_MS);
+        } catch (e) {
+          wstawUszkodzone(z, e, teraz);
+          continue;
+        }
         // …a jego numer szuka się na GŁÓWNYM: fraza z numerem dołączonego prowadzi do głównego.
         const dolaczone = idsDolaczonych(z);
         if (dolaczone.length) {
@@ -165,21 +236,39 @@ function utworz(db) {
             if (cyfry) k.szukaj.cyfry.push(cyfry);
           }
         }
-        wstaw.run(z.id, z.utworzone_at, k.status, k.robocze_od, k.po_terminie_od, k.wazne_do - rozrzut(z.id),
-          k.filtr.dzien, k.filtr.wysylka, k.filtr.indywidualne ? 1 : 0, k.filtr.sklep, k.filtr.platnosc,
-          k.szukaj.tekst.join(SEP), k.szukaj.cyfry.join(SEP), null,
-          k.filtr.chceFakture ? 1 : 0, k.filtr.fakturaWystawiona ? 1 : 0);
+        wstaw.run(
+          z.id,
+          z.utworzone_at,
+          k.status,
+          k.robocze_od,
+          k.po_terminie_od,
+          k.wazne_do - rozrzut(z.id),
+          k.filtr.dzien,
+          k.filtr.wysylka,
+          k.filtr.indywidualne ? 1 : 0,
+          k.filtr.sklep,
+          k.filtr.platnosc,
+          k.szukaj.tekst.join(SEP),
+          k.szukaj.cyfry.join(SEP),
+          null,
+          k.filtr.chceFakture ? 1 : 0,
+          k.filtr.fakturaWystawiona ? 1 : 0,
+        );
       }
       db.exec('RELEASE lista_porcja');
     } catch (e) {
-      db.exec('ROLLBACK TO lista_porcja'); db.exec('RELEASE lista_porcja');
+      db.exec('ROLLBACK TO lista_porcja');
+      db.exec('RELEASE lista_porcja');
       throw e;
     }
   }
 
   async function przeliczBrudne(teraz) {
     for (;;) {
-      const ids = db.prepare('SELECT zamowienie_id FROM lista_brudne LIMIT ?').all(PORCJA).map((w) => w.zamowienie_id);
+      const ids = db
+        .prepare('SELECT zamowienie_id FROM lista_brudne LIMIT ?')
+        .all(PORCJA)
+        .map((w) => w.zamowienie_id);
       if (!ids.length) return;
       klasyfikuj(ids, teraz);
       if (ids.length < PORCJA) return;
@@ -191,18 +280,27 @@ function utworz(db) {
   // identyfikatorze większym niż kursor, rosnąco — nowe zamówienia dochodzą na koniec
   // i i tak są już śledzone wyzwalaczami.
   function krokSprawdzenia() {
-    if (!sprawdzenie || !db.isOpen) { sprawdzenie = null; return; }
+    if (!sprawdzenie || !db.isOpen) {
+      sprawdzenie = null;
+      return;
+    }
     try {
-      const ids = db.prepare('SELECT id FROM zamowienia WHERE id > ? ORDER BY id LIMIT ?')
-        .all(sprawdzenie.kursor, PORCJA_TLA).map((w) => w.id);
-      if (!ids.length) { sprawdzenie = null; return; }
+      const ids = db
+        .prepare('SELECT id FROM zamowienia WHERE id > ? ORDER BY id LIMIT ?')
+        .all(sprawdzenie.kursor, PORCJA_TLA)
+        .map((w) => w.id);
+      if (!ids.length) {
+        sprawdzenie = null;
+        return;
+      }
       klasyfikuj(ids, ostatnieTeraz);
       sprawdzenie.kursor = ids[ids.length - 1];
       sprawdzenie.sprawdzone += ids.length;
     } catch {
       // Zamknięta baza albo awaria odczytu: sprawdzenie odpuszcza, a lista zostaje przy
       // ostatnim stanie — następny start procesu sprawdzi całość od nowa.
-      sprawdzenie = null; return;
+      sprawdzenie = null;
+      return;
     }
     setTimeout(krokSprawdzenia, PRZERWA_TLA_MS).unref?.();
   }
@@ -214,7 +312,10 @@ function utworz(db) {
     db.exec('DELETE FROM lista_stan WHERE zamowienie_id NOT IN (SELECT id FROM zamowienia)');
     const wszystkie = db.prepare('SELECT COUNT(*) AS n FROM zamowienia').get().n;
     if (wszystkie <= PORCJA) {
-      const ids = db.prepare('SELECT id FROM zamowienia').all().map((w) => w.id);
+      const ids = db
+        .prepare('SELECT id FROM zamowienia')
+        .all()
+        .map((w) => w.id);
       if (ids.length) klasyfikuj(ids, teraz);
       return;
     }
@@ -231,7 +332,9 @@ function utworz(db) {
     // otwiera transakcji zapisu — gdy inny proces trzyma blokadę zapisu,
     // pusty INSERT czekałby na nią synchronicznie i zatrzymał cały proces.
     if (db.prepare('SELECT 1 FROM lista_stan WHERE wazne_do <= ? LIMIT 1').get(teraz)) {
-      db.prepare('INSERT OR IGNORE INTO lista_brudne SELECT zamowienie_id FROM lista_stan WHERE wazne_do <= ?').run(teraz);
+      db.prepare('INSERT OR IGNORE INTO lista_brudne SELECT zamowienie_id FROM lista_stan WHERE wazne_do <= ?').run(
+        teraz,
+      );
     }
     const zbudowany = db.prepare("SELECT 1 FROM lista_meta WHERE klucz = 'zbudowany_at'").get();
     if (!zbudowany) {
@@ -242,7 +345,9 @@ function utworz(db) {
     }
     await przeliczBrudne(teraz);
     if (!zbudowany) {
-      db.prepare("INSERT OR REPLACE INTO lista_meta (klucz, wartosc) VALUES ('zbudowany_at', ?)").run(new Date(teraz).toISOString());
+      db.prepare("INSERT OR REPLACE INTO lista_meta (klucz, wartosc) VALUES ('zbudowany_at', ?)").run(
+        new Date(teraz).toISOString(),
+      );
     }
     if (!sprawdzenieRuszylo) ruszSprawdzenie(teraz, !zbudowany);
   }
@@ -268,7 +373,8 @@ function utworz(db) {
       const statusy = Object.fromEntries(statusyWKolejnosci(db).map((s) => [s.klucz, 0]));
       let wszystkie = 0;
       for (const w of db.prepare('SELECT status, COUNT(*) AS n FROM lista_stan GROUP BY status').all()) {
-        statusy[w.status] = w.n; wszystkie += w.n;
+        statusy[w.status] = w.n;
+        wszystkie += w.n;
       }
       const ile = (kol) => db.prepare(`SELECT COUNT(*) AS n FROM lista_stan WHERE ${kol} <= ?`).get(teraz).n;
       return { wszystkie, do_zrobienia: ile('robocze_od'), po_terminie: ile('po_terminie_od'), statusy };
@@ -280,15 +386,26 @@ function utworz(db) {
      * albo {rodzaj:'status', status}. `filtry` jak z `parsujFiltry`, `szukaj` — fraza.
      */
     strona({ zakladka, filtry, szukaj, offset, limit, teraz }) {
-      const warunki = []; const arg = [];
-      if (zakladka?.rodzaj === 'status') { warunki.push('status = ?'); arg.push(zakladka.status); }
-      else if (zakladka?.rodzaj === 'robocze') { warunki.push('robocze_od <= ?'); arg.push(teraz); }
-      else if (zakladka?.rodzaj === 'po_terminie') { warunki.push('po_terminie_od <= ?'); arg.push(teraz); }
+      const warunki = [];
+      const arg = [];
+      if (zakladka?.rodzaj === 'status') {
+        warunki.push('status = ?');
+        arg.push(zakladka.status);
+      } else if (zakladka?.rodzaj === 'robocze') {
+        warunki.push('robocze_od <= ?');
+        arg.push(teraz);
+      } else if (zakladka?.rodzaj === 'po_terminie') {
+        warunki.push('po_terminie_od <= ?');
+        arg.push(teraz);
+      }
       if (saJakiesFiltry(filtry)) {
         warunki.push(`lista_filtr(dzien, wysylka, indywidualne, sklep, platnosc, ${kolumnyFaktury}, ?) = 1`);
         arg.push(JSON.stringify(filtry));
       }
-      if (szukaj) { warunki.push('lista_szukaj(szukaj_tekst, szukaj_cyfry, ?) = 1'); arg.push(szukaj); }
+      if (szukaj) {
+        warunki.push('lista_szukaj(szukaj_tekst, szukaj_cyfry, ?) = 1');
+        arg.push(szukaj);
+      }
       const gdzie = warunki.length ? `WHERE ${warunki.join(' AND ')}` : '';
       const ileWszystkich = () => db.prepare(`SELECT COUNT(*) AS n FROM lista_stan ${gdzie}`).get(...arg).n;
       // Filtr albo fraza i tak przechodzą przez KAŻDY wiersz (funkcja JS na wiersz), więc liczbę
@@ -296,20 +413,36 @@ function utworz(db) {
       // Sama zakładka idzie indeksem: strona kończy się po LIMIT, a COUNT
       // po indeksie kolumny jest tani — okno wymusiłoby tam pełne przejście i sortowanie.
       if (saJakiesFiltry(filtry) || szukaj) {
-        const wiersze = db.prepare(`SELECT zamowienie_id, COUNT(*) OVER () AS lacznie FROM lista_stan ${gdzie}
-          ORDER BY utworzone_at DESC, zamowienie_id DESC LIMIT ? OFFSET ?`).all(...arg, limit, offset);
-        return { ids: wiersze.map((w) => w.zamowienie_id), lacznie: wiersze.length ? wiersze[0].lacznie : ileWszystkich() };
+        const wiersze = db
+          .prepare(
+            `SELECT zamowienie_id, COUNT(*) OVER () AS lacznie FROM lista_stan ${gdzie}
+          ORDER BY utworzone_at DESC, zamowienie_id DESC LIMIT ? OFFSET ?`,
+          )
+          .all(...arg, limit, offset);
+        return {
+          ids: wiersze.map((w) => w.zamowienie_id),
+          lacznie: wiersze.length ? wiersze[0].lacznie : ileWszystkich(),
+        };
       }
-      const ids = db.prepare(`SELECT zamowienie_id FROM lista_stan ${gdzie}
-        ORDER BY utworzone_at DESC, zamowienie_id DESC LIMIT ? OFFSET ?`).all(...arg, limit, offset).map((w) => w.zamowienie_id);
+      const ids = db
+        .prepare(
+          `SELECT zamowienie_id FROM lista_stan ${gdzie}
+        ORDER BY utworzone_at DESC, zamowienie_id DESC LIMIT ? OFFSET ?`,
+        )
+        .all(...arg, limit, offset)
+        .map((w) => w.zamowienie_id);
       return { ids, lacznie: ileWszystkich() };
     },
 
     /** Zamówienia, których nie da się odczytać: `[{ id, numer, blad }]` (najwyżej 20). */
     uszkodzone() {
-      return db.prepare(`SELECT s.zamowienie_id AS id, z.numer, s.blad FROM lista_stan s
-        LEFT JOIN zamowienia z ON z.id = s.zamowienie_id WHERE s.status = ? ORDER BY s.zamowienie_id LIMIT 20`)
-        .all(STATUS_USZKODZONE).map((w) => ({ id: w.id, numer: w.numer, blad: w.blad }));
+      return db
+        .prepare(
+          `SELECT s.zamowienie_id AS id, z.numer, s.blad FROM lista_stan s
+        LEFT JOIN zamowienia z ON z.id = s.zamowienie_id WHERE s.status = ? ORDER BY s.zamowienie_id LIMIT 20`,
+        )
+        .all(STATUS_USZKODZONE)
+        .map((w) => ({ id: w.id, numer: w.numer, blad: w.blad }));
     },
   };
 }

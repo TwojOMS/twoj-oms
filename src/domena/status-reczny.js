@@ -63,7 +63,8 @@ export function powodOdmowyStatusu(z, docelowy) {
   // wiec zatwierdzenie bez wybrania czegokolwiek jest normalna pomylka — a „Nieznany
   // status: „"" nie mowiloby czlowiekowi absolutnie nic.
   if (!docelowy) return 'Nie wybrano statusu — panel niczego nie zmienił.';
-  if (!STATUSY_RECZNE.includes(docelowy) && !(z?.statusy_wlasne ?? []).some(s => s.klucz === docelowy)) return `Nieznany status: „${docelowy}".`;
+  if (!STATUSY_RECZNE.includes(docelowy) && !(z?.statusy_wlasne ?? []).some((s) => s.klucz === docelowy))
+    return `Nieznany status: „${docelowy}".`;
   // Dołączone jest częścią głównego — jego „Wysłane” przenosi zapis głównego
   // (oms/db/zamowienia.js). Anulowanie głównego zostawiłoby dołączone ukryte i bez właściciela.
   if (z?.scalone_do) {
@@ -76,16 +77,20 @@ export function powodOdmowyStatusu(z, docelowy) {
   // w sklepie, otworzyloby droge do nadania mu paczki i do wystawienia faktury — a karta
   // mowi dzis wprost „najpierw wycofaj anulowanie w sklepie" i to zdanie ma zostac prawdziwe.
   if (anulowaneWSklepie(z) && docelowy !== 'anulowane') {
-    return 'To zamówienie jest anulowane W SKLEPIE — panel nie odanuluje go za sklep. '
-      + 'Najpierw wycofaj anulowanie w sklepie, potem wróć tutaj.';
+    return (
+      'To zamówienie jest anulowane W SKLEPIE — panel nie odanuluje go za sklep. ' +
+      'Najpierw wycofaj anulowanie w sklepie, potem wróć tutaj.'
+    );
   }
   // ⚠️ BEZ TEJ ODMOWY KLIKNIECIE NIC BY NIE ROBILO — i wygladaloby na wykonane.
   // `wyliczStatus` czyta tabele `zwroty`, wiec status i tak wrocilby na „Zwrot" przy
   // pierwszym odswiezeniu, a `faktyDlaStatusu` skasowalby przy okazji `zwrot_at`.
   // Akcja, ktora udaje skutek, jest gorsza niz jej brak. Wyjsciem jest skasowanie zwrotu.
   if (z?.ma_zwrot) {
-    return `To zamówienie ma zarejestrowany zwrot — status „${z?.etykiety_statusow?.zwrot ?? ETYKIETY.zwrot}" wynika z tego faktu `
-      + 'i nie da się go przestawić. Jeśli zwrot wpisano omyłkowo, skasuj go na ekranie zwrotu.';
+    return (
+      `To zamówienie ma zarejestrowany zwrot — status „${z?.etykiety_statusow?.zwrot ?? ETYKIETY.zwrot}" wynika z tego faktu ` +
+      'i nie da się go przestawić. Jeśli zwrot wpisano omyłkowo, skasuj go na ekranie zwrotu.'
+    );
   }
   return null;
 }
@@ -100,7 +105,7 @@ export function powodOdmowyStatusu(z, docelowy) {
  * a awans nie zmysla przeszlosci.
  */
 export function faktyDlaStatusu(z, docelowy, { powod = null, teraz = new Date().toISOString() } = {}) {
-  const wlasny = (z?.statusy_wlasne ?? []).find(s => s.klucz === docelowy);
+  const wlasny = (z?.statusy_wlasne ?? []).find((s) => s.klucz === docelowy);
   if (wlasny && ['nowe', 'w_realizacji'].includes(wlasny.jak)) {
     return { ...faktyDlaStatusu(z, wlasny.jak, { powod, teraz }), status_wlasny: docelowy };
   }
@@ -116,7 +121,9 @@ export function faktyDlaStatusu(z, docelowy, { powod = null, teraz = new Date().
         // Cofniecie z „Wyslane" do „W realizacji" MUSI skasowac date wysylki — inaczej
         // status wrocilby na Wyslane przy pierwszym odswiezeniu karty.
         wyslane_at: null,
-        zwrot_at: null, zwrot_powod: null, anulowane_recznie: 0,
+        zwrot_at: null,
+        zwrot_powod: null,
+        anulowane_recznie: 0,
       };
     // Wyslane to wlasny fakt: data wyjazdu paczki, ktora zna czlowiek, a nie panel.
     // Realizacja ZOSTAJE — wysylka nastepuje po niej, a jej skasowanie zmyslaloby przeszlosc.
@@ -124,7 +131,9 @@ export function faktyDlaStatusu(z, docelowy, { powod = null, teraz = new Date().
       return {
         w_realizacji_at: z?.w_realizacji_at ?? null,
         wyslane_at: z?.wyslane_at || teraz,
-        zwrot_at: null, zwrot_powod: null, anulowane_recznie: 0,
+        zwrot_at: null,
+        zwrot_powod: null,
+        anulowane_recznie: 0,
       };
     case 'zwrot':
       return {

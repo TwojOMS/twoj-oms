@@ -1,7 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import {
-  mkdtempSync, writeFileSync, rmSync, existsSync,
-} from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -38,7 +36,8 @@ export function pdfNaTekst(buf, { uklad = false } = {}) {
     const plik = path.join(kat, 'p.pdf');
     writeFileSync(plik, buf);
     return execFileSync(PDFTOTEXT, [...(uklad ? ['-layout'] : []), '-enc', 'UTF-8', plik, '-'], {
-      encoding: 'utf8', maxBuffer: 8 * 1024 * 1024,
+      encoding: 'utf8',
+      maxBuffer: 8 * 1024 * 1024,
     });
   } finally {
     rmSync(kat, { recursive: true, force: true });

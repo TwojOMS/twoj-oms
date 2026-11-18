@@ -37,23 +37,32 @@ describe('atrybucjaZeSurowych', () => {
   });
 
   it('czyta odsyłacz i medium (zamówienie z Facebooka)', () => {
-    const a = atrybucjaZeSurowych(meta({
-      _wc_order_attribution_source_type: 'referral',
-      _wc_order_attribution_utm_source: 'm.facebook.com',
-      _wc_order_attribution_utm_medium: 'referral',
-      _wc_order_attribution_referrer: 'https://m.facebook.com/',
-      _wc_order_attribution_device_type: 'Mobile',
-    }));
-    expect(a).toMatchObject({ typ: 'referral', zrodlo: 'm.facebook.com', medium: 'referral', odsylacz: 'https://m.facebook.com/' });
+    const a = atrybucjaZeSurowych(
+      meta({
+        _wc_order_attribution_source_type: 'referral',
+        _wc_order_attribution_utm_source: 'm.facebook.com',
+        _wc_order_attribution_utm_medium: 'referral',
+        _wc_order_attribution_referrer: 'https://m.facebook.com/',
+        _wc_order_attribution_device_type: 'Mobile',
+      }),
+    );
+    expect(a).toMatchObject({
+      typ: 'referral',
+      zrodlo: 'm.facebook.com',
+      medium: 'referral',
+      odsylacz: 'https://m.facebook.com/',
+    });
   });
 
   it('czyta kampanię UTM, gdy link był otagowany', () => {
-    const a = atrybucjaZeSurowych(meta({
-      _wc_order_attribution_source_type: 'utm',
-      _wc_order_attribution_utm_source: 'instagram',
-      _wc_order_attribution_utm_medium: 'social',
-      _wc_order_attribution_utm_campaign: 'wrzesien30',
-    }));
+    const a = atrybucjaZeSurowych(
+      meta({
+        _wc_order_attribution_source_type: 'utm',
+        _wc_order_attribution_utm_source: 'instagram',
+        _wc_order_attribution_utm_medium: 'social',
+        _wc_order_attribution_utm_campaign: 'wrzesien30',
+      }),
+    );
     expect(a).toMatchObject({ typ: 'utm', zrodlo: 'instagram', kampania: 'wrzesien30' });
   });
 
@@ -67,8 +76,10 @@ describe('atrybucjaZeSurowych', () => {
   });
 
   it('sam typ źródła wystarczy, żeby atrybucja istniała', () => {
-    expect(atrybucjaZeSurowych(meta({ _wc_order_attribution_source_type: 'organic' })))
-      .toMatchObject({ typ: 'organic', zrodlo: null });
+    expect(atrybucjaZeSurowych(meta({ _wc_order_attribution_source_type: 'organic' }))).toMatchObject({
+      typ: 'organic',
+      zrodlo: null,
+    });
   });
 
   it('liczby sesji wychodzą liczbami, nie napisami', () => {
@@ -105,7 +116,9 @@ describe('opisAtrybucji', () => {
   it('wyszukiwarka, odsyłacz i link z tagiem mają czytelne etykiety', () => {
     expect(opis({ typ: 'organic', zrodlo: 'google' }).etykieta).toBe('Google — wyszukiwarka');
     expect(opis({ typ: 'referral', zrodlo: 'm.facebook.com' }).etykieta).toBe('m.facebook.com — odsyłacz');
-    expect(opis({ typ: 'utm', zrodlo: 'instagram', kampania: 'wrzesien30' }).etykieta).toBe('instagram — link z tagiem');
+    expect(opis({ typ: 'utm', zrodlo: 'instagram', kampania: 'wrzesien30' }).etykieta).toBe(
+      'instagram — link z tagiem',
+    );
   });
 
   it('kampania z UTM-u stoi w szczególe, bo to ona odpowiada na pytanie „która akcja"', () => {
@@ -131,7 +144,9 @@ describe('opisAtrybucji', () => {
   });
 
   it('wejście z wyszukiwarki wskazówki nie dostaje, choćby było w głąb sklepu', () => {
-    expect(opis({ typ: 'organic', zrodlo: 'google', wejscie: 'https://swietlik.example.test/produkt/x/' }).wskazowka).toBeNull();
+    expect(
+      opis({ typ: 'organic', zrodlo: 'google', wejscie: 'https://swietlik.example.test/produkt/x/' }).wskazowka,
+    ).toBeNull();
   });
 
   // Grupowanie na zakladce kampanii idzie po KLUCZU, nie po etykiecie — etykieta jest

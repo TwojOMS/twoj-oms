@@ -135,7 +135,9 @@ export function blokPlatnosci(z, opcje = {}) {
     // Zdanie o terminie zmienia BRZMIENIE po jego minięciu — „termin 14 dni — do 04.09"
     // przeczytane 10 września brzmi jak informacja, a nie jak zaległość.
     termin: termin?.data
-      ? (termin.minal ? `termin minął ${termin.data}` : `${termin.etykieta} — do ${termin.data}`)
+      ? termin.minal
+        ? `termin minął ${termin.data}`
+        : `${termin.etykieta} — do ${termin.data}`
       : (termin?.etykieta ?? null),
   };
 }

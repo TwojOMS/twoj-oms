@@ -12,20 +12,25 @@ export function numerErli(klient) {
       if (!slowniki.has(klient)) slowniki.set(klient, createSlownikiErli(klient));
       const cache = slowniki.get(klient);
       let delivery;
-      try { delivery = JSON.parse(z.surowe_json ?? '{}').delivery ?? {}; }
-      catch { return { pominiety: true }; }
+      try {
+        delivery = JSON.parse(z.surowe_json ?? '{}').delivery ?? {};
+      } catch {
+        return { pominiety: true };
+      }
       await cache.przygotuj([{ delivery }]);
       if (!cache.dostepne()) throw new Error('Słowniki dostawy są niedostępne.');
       const droga = cache.rozpoznaj(delivery);
       if (droga?.droga !== 'umowa') return { pominiety: true };
       const vendor = przewoznicy[p.kurier];
       if (!vendor || !p.numer_listu) return { pominiety: true };
-      const odpowiedz = await klient.utworzPaczkiZewnetrzne([{ orderId: z.zrodlo_id, vendor,
-        trackingNumber: p.numer_listu, ...(vendor === 'dpd' ? { typeId: 'dpd' } : {}) }]);
+      const odpowiedz = await klient.utworzPaczkiZewnetrzne([
+        { orderId: z.zrodlo_id, vendor, trackingNumber: p.numer_listu, ...(vendor === 'dpd' ? { typeId: 'dpd' } : {}) },
+      ]);
       const id = odpowiedz?.[0]?.id;
-      if (id == null || String(id) === '') throw new Error('ERLI nie potwierdziło identyfikatora przesyłki. Sprawdź panel ERLI.');
+      if (id == null || String(id) === '')
+        throw new Error('ERLI nie potwierdziło identyfikatora przesyłki. Sprawdź panel ERLI.');
       return { id: String(id) };
     },
-    usunNumer: id => klient.usunPaczkeZewnetrzna(id),
+    usunNumer: (id) => klient.usunPaczkeZewnetrzna(id),
   };
 }

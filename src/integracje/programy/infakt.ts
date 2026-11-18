@@ -12,10 +12,20 @@
 //
 // ⚠️ Import cykliczny z ../program-fakturowy.ts (zProgramu woła programInfakt): listy metod czytamy WYŁĄCZNIE
 // wewnątrz programInfakt, nigdy przy wczytaniu modułu.
-import type { NabywcaDokumentu, OdmianaNazwy, OpisProgramu, ProgramFakturowy, ZdolnoscProgramu } from '../../core/kontrakty.ts';
+import type {
+  NabywcaDokumentu,
+  OdmianaNazwy,
+  OpisProgramu,
+  ProgramFakturowy,
+  ZdolnoscProgramu,
+} from '../../core/kontrakty.ts';
 import { METODY_OBOWIAZKOWE, METODA_ZDOLNOSCI } from '../program-fakturowy.ts';
 import {
-  LIMIT_ZADANIA_MS, NAJDLUZSZA_LISTA_MS, STRONA_INFAKTU, SUFIT_STRON, ROWNOLEGLE_STRON,
+  LIMIT_ZADANIA_MS,
+  NAJDLUZSZA_LISTA_MS,
+  STRONA_INFAKTU,
+  SUFIT_STRON,
+  ROWNOLEGLE_STRON,
 } from '../../oms/infakt/client.js';
 import { ADRES_INFAKT, EKRAN_INFAKTU, NAZWA_INFAKTU } from '../../domena/konfiguracja-infakt.js';
 import { czyNipUe, rozbijNipUe } from '../../domena/wdt.js';
@@ -32,26 +42,40 @@ const zbudowane = new WeakSet<object>();
  */
 function oznaczBezProgramu(e: unknown): void {
   if (e && typeof e === 'object' && (e as { bezInfaktu?: unknown }).bezInfaktu && !('bezProgramu' in e)) {
-    try { (e as { bezProgramu?: boolean }).bezProgramu = true; } catch { /* zamrożony błąd zostaje jak był */ }
+    try {
+      (e as { bezProgramu?: boolean }).bezProgramu = true;
+    } catch {
+      /* zamrożony błąd zostaje jak był */
+    }
   }
 }
 
 function przekaz(klient: KlientInfaktu, nazwa: string): Metoda {
   // Wołamy metodę obiektu w chwili WYWOŁANIA (`this` = klient; szpieg dopięty po owinięciu też działa).
   return async (...a: unknown[]) => {
-    try { return await (klient[nazwa] as Metoda)(...a); } catch (e) { oznaczBezProgramu(e); throw e; }
+    try {
+      return await (klient[nazwa] as Metoda)(...a);
+    } catch (e) {
+      oznaczBezProgramu(e);
+      throw e;
+    }
   };
 }
 
 export function programInfakt(
   klient: KlientInfaktu,
-  { nazwa = NAZWA_INFAKTU, adres = ADRES_INFAKT, ekran = EKRAN_INFAKTU }: { nazwa?: OdmianaNazwy; adres?: string; ekran?: string } = {},
+  {
+    nazwa = NAZWA_INFAKTU,
+    adres = ADRES_INFAKT,
+    ekran = EKRAN_INFAKTU,
+  }: { nazwa?: OdmianaNazwy; adres?: string; ekran?: string } = {},
 ): ProgramFakturowy {
   if (zbudowane.has(klient)) return klient as unknown as ProgramFakturowy;
   const ma = (m: string) => typeof klient[m] === 'function';
 
   const zdolnosci = (Object.entries(METODA_ZDOLNOSCI) as [ZdolnoscProgramu, string][])
-    .filter(([, metoda]) => ma(metoda)).map(([zdolnosc]) => zdolnosc);
+    .filter(([, metoda]) => ma(metoda))
+    .map(([zdolnosc]) => zdolnosc);
   const opis: OpisProgramu = Object.freeze({
     id: 'infakt',
     nazwa: Object.freeze({ ...nazwa }),
@@ -60,8 +84,11 @@ export function programInfakt(
     wystawienieWysylaDoKsef: false,
     // Limity z eksportów klienta — jedno źródło z transportem i ze strażnikiem przy wczytaniu src/oms/infakt/client.js.
     limity: Object.freeze({
-      zadanieMs: LIMIT_ZADANIA_MS, najdluzszaListaMs: NAJDLUZSZA_LISTA_MS, stronaListy: STRONA_INFAKTU,
-      sufitStron: SUFIT_STRON, rownolegleStron: ROWNOLEGLE_STRON,
+      zadanieMs: LIMIT_ZADANIA_MS,
+      najdluzszaListaMs: NAJDLUZSZA_LISTA_MS,
+      stronaListy: STRONA_INFAKTU,
+      sufitStron: SUFIT_STRON,
+      rownolegleStron: ROWNOLEGLE_STRON,
     }),
     adres,
     ekran,
@@ -73,7 +100,8 @@ export function programInfakt(
    * fakturę pod cudzy wpis). `null` = nie ma i nie założono — komunikat odmowy zostaje w usłudze.
    */
   async function przygotujNabywce(
-    nabywca: NabywcaDokumentu, { zalozGdyBrak = false }: Readonly<{ zalozGdyBrak?: boolean }> = {},
+    nabywca: NabywcaDokumentu,
+    { zalozGdyBrak = false }: Readonly<{ zalozGdyBrak?: boolean }> = {},
   ): Promise<{ client_id: unknown } | null> {
     try {
       const d = nabywca;

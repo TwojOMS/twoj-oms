@@ -18,8 +18,9 @@ import { tekstyModelu } from '../../domena/zdania-platnosci.js';
 //   • style WYŁĄCZNIE inline — Gmail i Outlook wycinają <style> z <head>;
 //   • font systemowy, żadnych obrazków dla treści.
 
-const akapit = (tekst, extra = '') => `<p style="margin:0 0 14px;font-family:${FONT};font-size:15px;`
-  + `line-height:1.6;color:${KOLOR.tekst};${extra}">${esc(tekst)}</p>`;
+const akapit = (tekst, extra = '') =>
+  `<p style="margin:0 0 14px;font-family:${FONT};font-size:15px;` +
+  `line-height:1.6;color:${KOLOR.tekst};${extra}">${esc(tekst)}</p>`;
 
 // ⚠️ `naglowekSekcji` IMPORTOWANY Z `mail-html.js`, NIE PRZEPISANY TUTAJ (tak samo w
 // potwierdzeniu przyjęcia zamówienia). Dwie kopie tego samego stylu rozjeżdżają się przy
@@ -29,17 +30,20 @@ const akapit = (tekst, extra = '') => `<p style="margin:0 0 14px;font-family:${F
 // Kwota do zapłaty jest NAJWIĘKSZĄ liczbą w tym mailu i to jest cały powód osobnego stylu:
 // klient otwiera taką wiadomość po to, żeby zobaczyć, ile ma przelać.
 // Dopisek („brutto") z Ustawień → Szablony wiadomości, escapowany jak każda wartość.
-const kwota = (tekst, dopisek) => `<p style="margin:0 0 4px;font-family:${FONT};font-size:22px;font-weight:bold;`
-  + `line-height:1.4;color:${KOLOR.tekst};">${esc(tekst)} `
-  + `<span style="font-size:14px;font-weight:normal;color:${KOLOR.muted};">${esc(dopisek)}</span></p>`;
+const kwota = (tekst, dopisek) =>
+  `<p style="margin:0 0 4px;font-family:${FONT};font-size:22px;font-weight:bold;` +
+  `line-height:1.4;color:${KOLOR.tekst};">${esc(tekst)} ` +
+  `<span style="font-size:14px;font-weight:normal;color:${KOLOR.muted};">${esc(dopisek)}</span></p>`;
 
-const komorkaK = `padding:7px 4px;border-bottom:1px solid ${KOLOR.linia};font-family:${FONT};`
-  + `font-size:12px;letter-spacing:.3px;color:${KOLOR.muted};white-space:nowrap;`;
-const komorkaW = `padding:7px 4px;border-bottom:1px solid ${KOLOR.linia};font-family:${FONT};`
-  + `font-size:14px;color:${KOLOR.tekst};`;
+const komorkaK =
+  `padding:7px 4px;border-bottom:1px solid ${KOLOR.linia};font-family:${FONT};` +
+  `font-size:12px;letter-spacing:.3px;color:${KOLOR.muted};white-space:nowrap;`;
+const komorkaW =
+  `padding:7px 4px;border-bottom:1px solid ${KOLOR.linia};font-family:${FONT};` +
+  `font-size:14px;color:${KOLOR.tekst};`;
 
-const wiersz = (klucz, wartosc, extra = '') => `<tr><td style="${komorkaK}">${esc(klucz)}</td>`
-  + `<td style="${komorkaW}${extra}">${esc(wartosc)}</td></tr>`;
+const wiersz = (klucz, wartosc, extra = '') =>
+  `<tr><td style="${komorkaK}">${esc(klucz)}</td>` + `<td style="${komorkaW}${extra}">${esc(wartosc)}</td></tr>`;
 
 // Numer rachunku klient PRZEPISUJE do banku — w czcionce proporcjonalnej cyfry zlewają się
 // w jeden ciąg. TA SAMA reguła i to samo uzasadnienie, co przy numerze konta w treściach
@@ -60,13 +64,15 @@ const wiersz = (klucz, wartosc, extra = '') => `<tr><td style="${komorkaK}">${es
  * i to, który wiersz pada, zostają w kodzie.
  */
 function tabelaPrzelewu(p, e) {
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" `
-    + `style="border-collapse:collapse;margin:2px 0 4px;">`
-    + (p.odbiorca ? wiersz(e.etykieta_odbiorca, p.odbiorca) : '')
-    + wiersz(e.etykieta_rachunek, p.rachunek, MONO)
-    + wiersz(e.etykieta_tytul, p.tytul, 'font-weight:bold;')
-    + (p.termin ? wiersz(e.etykieta_termin, p.termin) : '')
-    + '</table>';
+  return (
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" ` +
+    `style="border-collapse:collapse;margin:2px 0 4px;">` +
+    (p.odbiorca ? wiersz(e.etykieta_odbiorca, p.odbiorca) : '') +
+    wiersz(e.etykieta_rachunek, p.rachunek, MONO) +
+    wiersz(e.etykieta_tytul, p.tytul, 'font-weight:bold;') +
+    (p.termin ? wiersz(e.etykieta_termin, p.termin) : '') +
+    '</table>'
+  );
 }
 
 /**
@@ -76,20 +82,26 @@ function tabelaPrzelewu(p, e) {
 function srodekHtml(m) {
   const e = tekstyModelu(m);
   return [
-    ...(m.platnosc ? [
-      naglowekSekcji(naglowkiModelu(m).doZaplaty),
-      kwota(m.platnosc.doZaplaty, e.dopisek_brutto),
-      naglowekSekcji(naglowkiModelu(m).przelew),
-      tabelaPrzelewu(m.platnosc, e),
-    ] : []),
-    ...(m.zdanieDokumentu ? [
-      `<p style="margin:14px 0 4px;font-family:${FONT};font-size:14px;line-height:1.6;`
-        + `color:${KOLOR.tekst};">${esc(m.zdanieDokumentu)}</p>`,
-    ] : []),
-    ...(m.zdanieWywozu ? [
-      `<p style="margin:14px 0 4px;font-family:${FONT};font-size:14px;line-height:1.6;`
-        + `color:${KOLOR.tekst};">${esc(m.zdanieWywozu)}</p>`,
-    ] : []),
+    ...(m.platnosc
+      ? [
+          naglowekSekcji(naglowkiModelu(m).doZaplaty),
+          kwota(m.platnosc.doZaplaty, e.dopisek_brutto),
+          naglowekSekcji(naglowkiModelu(m).przelew),
+          tabelaPrzelewu(m.platnosc, e),
+        ]
+      : []),
+    ...(m.zdanieDokumentu
+      ? [
+          `<p style="margin:14px 0 4px;font-family:${FONT};font-size:14px;line-height:1.6;` +
+            `color:${KOLOR.tekst};">${esc(m.zdanieDokumentu)}</p>`,
+        ]
+      : []),
+    ...(m.zdanieWywozu
+      ? [
+          `<p style="margin:14px 0 4px;font-family:${FONT};font-size:14px;line-height:1.6;` +
+            `color:${KOLOR.tekst};">${esc(m.zdanieWywozu)}</p>`,
+        ]
+      : []),
   ];
 }
 
@@ -106,12 +118,11 @@ export function renderWiadomoscHtml(m, { footer = '', naglowek: naglowekMarki = 
     akapit('Dzień dobry,'),
     akapit(m.wiodace),
     ...srodekHtml(m),
-    `<p style="margin:22px 0 14px;font-family:${FONT};font-size:14px;line-height:1.6;`
-      + `color:${KOLOR.muted};border-top:1px solid ${KOLOR.linia};padding-top:14px;">${esc(m.zamkniecie)}</p>`,
+    `<p style="margin:22px 0 14px;font-family:${FONT};font-size:14px;line-height:1.6;` +
+      `color:${KOLOR.muted};border-top:1px solid ${KOLOR.linia};padding-top:14px;">${esc(m.zamkniecie)}</p>`,
     akapit(tekstyModelu(m).pozdrowienie, 'margin-bottom:2px;'),
     akapit(m.sprzedawca, 'font-weight:bold;'),
   ].join('');
 
   return kopertaMaila({ body, footer, naglowek: naglowekMarki });
 }
-

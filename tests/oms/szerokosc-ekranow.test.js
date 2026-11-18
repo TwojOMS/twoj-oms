@@ -7,36 +7,70 @@ describe('szerokość deklarowana przez ekran', () => {
   let app, db, id;
   beforeAll(() => {
     ({ app, db } = nowyPanel());
-    id = zapiszZamowienie(db, 'reczne', {
-      zrodlo_id: 'szerokosc-1', numer: 'TEST-1', klient: {}, dostawa: {},
-      metoda_wysylki: 'odbior_osobisty', kwota_pobrania: null, chce_fakture: 0,
-      nip: null, status_woo: 'processing', oplacone_at: null, kwota_brutto: '100.00',
-      koszt_dostawy_brutto: '0.00', pozycje: [], anulowane: 0,
-      utworzone_at: '2026-11-01T10:00:00Z',
-    }, {});
+    id = zapiszZamowienie(
+      db,
+      'reczne',
+      {
+        zrodlo_id: 'szerokosc-1',
+        numer: 'TEST-1',
+        klient: {},
+        dostawa: {},
+        metoda_wysylki: 'odbior_osobisty',
+        kwota_pobrania: null,
+        chce_fakture: 0,
+        nip: null,
+        status_woo: 'processing',
+        oplacone_at: null,
+        kwota_brutto: '100.00',
+        koszt_dostawy_brutto: '0.00',
+        pozycje: [],
+        anulowane: 0,
+        utworzone_at: '2026-11-01T10:00:00Z',
+      },
+      {},
+    );
   });
-  afterAll(async () => { await app.close(); db.close(); });
+  afterAll(async () => {
+    await app.close();
+    db.close();
+  });
 
   it.each([
-    ['/', 'tabela'], ['/przesylki', 'tabela'], ['/faktury', 'tabela'],
-    ['/magazyn', 'tabela'], ['/magazyn/pominiete', 'tabela'],
-    ['/koszty', 'tabela'], ['/klienci', 'tabela'], ['/okresy', 'tabela'],
-    ['/wiadomosci', 'tabela'], ['/przesylki/podjazdy/historia', 'tabela'],
+    ['/', 'tabela'],
+    ['/przesylki', 'tabela'],
+    ['/faktury', 'tabela'],
+    ['/magazyn', 'tabela'],
+    ['/magazyn/pominiete', 'tabela'],
+    ['/koszty', 'tabela'],
+    ['/klienci', 'tabela'],
+    ['/okresy', 'tabela'],
+    ['/wiadomosci', 'tabela'],
+    ['/przesylki/podjazdy/historia', 'tabela'],
     ['/zamowienia/nowe', 'karta'],
-    ['/konto', 'formularz'], ['/konto/powiadomienia', 'formularz'],
-    ['/ustawienia/firma', 'formularz'], ['/ustawienia/statusy', 'karta'],
+    ['/konto', 'formularz'],
+    ['/konto/powiadomienia', 'formularz'],
+    ['/ustawienia/firma', 'formularz'],
+    ['/ustawienia/statusy', 'karta'],
     ['/ustawienia/zamowienia-i-wysylka', 'karta'],
-    ['/ustawienia/firma/rejestrowe', 'formularz'], ['/ustawienia/firma/rachunek', 'formularz'],
-    ['/ustawienia/powiadomienia', 'formularz'], ['/ustawienia/integracje/gus', 'formularz'],
-    ['/ustawienia/integracje/dpd', 'formularz'], ['/ustawienia/integracje/inpost', 'formularz'],
-    ['/ustawienia/integracje/infakt', 'formularz'], ['/ustawienia/integracje/ksef', 'formularz'],
+    ['/ustawienia/firma/rejestrowe', 'formularz'],
+    ['/ustawienia/firma/rachunek', 'formularz'],
+    ['/ustawienia/powiadomienia', 'formularz'],
+    ['/ustawienia/integracje/gus', 'formularz'],
+    ['/ustawienia/integracje/dpd', 'formularz'],
+    ['/ustawienia/integracje/inpost', 'formularz'],
+    ['/ustawienia/integracje/infakt', 'formularz'],
+    ['/ustawienia/integracje/ksef', 'formularz'],
     ['/ustawienia/integracje/poczta', 'formularz'],
     ['/ustawienia/wiadomosci-i-automatyzacje', 'formularz'],
     ['/ustawienia/automatyzacje/nowa', 'formularz'],
-    ['/ustawienia/magazyn', 'karta'], ['/ustawienia/szablony-wiadomosci', 'karta'],
-    ['/ustawienia/konta', 'karta'], ['/ustawienia/role', 'karta'],
-    ['/ustawienia/integracje', 'karta'], ['/ustawienia/integracje/katalog', 'karta'],
-    ['/kampania', 'karta'], ['/kampania?kampania=przykladowa', 'karta'],
+    ['/ustawienia/magazyn', 'karta'],
+    ['/ustawienia/szablony-wiadomosci', 'karta'],
+    ['/ustawienia/konta', 'karta'],
+    ['/ustawienia/role', 'karta'],
+    ['/ustawienia/integracje', 'karta'],
+    ['/ustawienia/integracje/katalog', 'karta'],
+    ['/kampania', 'karta'],
+    ['/kampania?kampania=przykladowa', 'karta'],
   ])('%s → %s', async (url, szerokosc) => {
     const r = await get(app, url, BASIC);
     expect(r.statusCode).toBe(200);

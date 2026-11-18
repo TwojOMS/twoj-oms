@@ -20,8 +20,9 @@ describe('zastrzezenia do okresu sprzed ery Apilo', () => {
   });
 
   it('BEZ GRANICY NIE UDAJE, ZE WIE — mowi wprost, ze nie wie', () => {
-    expect(zastrzezenia({ od: '2016-01-01', sufitApilo: null }).join(' '))
-      .toMatch(/nie wiadomo, gdzie przebiega granica/i);
+    expect(zastrzezenia({ od: '2016-01-01', sufitApilo: null }).join(' ')).toMatch(
+      /nie wiadomo, gdzie przebiega granica/i,
+    );
   });
 
   it('dzien granicy jest juz era Apilo — bez zastrzezen', () => {

@@ -28,13 +28,21 @@ function zadanie(url, { method = 'GET', headers = {}, body = null } = {}) {
     });
     req.once('error', reject);
     req.setTimeout(10_000, () => req.destroy(new Error('PRODUKCJA_HTTP_TIMEOUT')));
-    if (body !== null) req.end(body); else req.end();
+    if (body !== null) req.end(body);
+    else req.end();
   });
 }
-const formularz = (url, pola, headers = {}) => zadanie(url, { method: 'POST', body: new URLSearchParams(pola).toString(),
-  headers: { origin: new URL(url).origin, 'content-type': 'application/x-www-form-urlencoded', ...headers } });
+const formularz = (url, pola, headers = {}) =>
+  zadanie(url, {
+    method: 'POST',
+    body: new URLSearchParams(pola).toString(),
+    headers: { origin: new URL(url).origin, 'content-type': 'application/x-www-form-urlencoded', ...headers },
+  });
 function ciastko(odp) {
-  const m = [odp.headers['set-cookie'] ?? ''].flat().join('; ').match(/sesja_oms(?:_proba)?=[^;]+/);
+  const m = [odp.headers['set-cookie'] ?? '']
+    .flat()
+    .join('; ')
+    .match(/sesja_oms(?:_proba)?=[^;]+/);
   if (!m) throw new Error('PRODUKCJA_BRAK_SESJI');
   return m[0];
 }
@@ -42,9 +50,17 @@ function ciastko(odp) {
 /** Pierwszy administrator przez panel; konto serwisowe z oms.env po nim nie loguje (sprawdzane). */
 export async function zalozAdministratora(url, env) {
   const haslo = randomBytes(24).toString('base64url');
-  const serwis = await formularz(`${url}/login`, { uzytkownik: env.OMS_USER, haslo: env.OMS_PASS, powrot: '/ustawienia/konta' });
+  const serwis = await formularz(`${url}/login`, {
+    uzytkownik: env.OMS_USER,
+    haslo: env.OMS_PASS,
+    powrot: '/ustawienia/konta',
+  });
   if (serwis.status !== 302) throw new Error('PRODUKCJA_LOGIN_SERWISOWY_ODMOWA');
-  const nowe = await formularz(`${url}/ustawienia/konta/nowe`, { login: LOGIN_ADMINA, imie: 'Administrator', haslo, rola: 'administrator' }, { cookie: ciastko(serwis) });
+  const nowe = await formularz(
+    `${url}/ustawienia/konta/nowe`,
+    { login: LOGIN_ADMINA, imie: 'Administrator', haslo, rola: 'administrator' },
+    { cookie: ciastko(serwis) },
+  );
   if (nowe.status !== 302) throw new Error('PRODUKCJA_ADMIN_ODMOWA');
   const poAdminie = await formularz(`${url}/login`, { uzytkownik: env.OMS_USER, haslo: env.OMS_PASS, powrot: '/' });
   if (poAdminie.status !== 401) throw new Error('PRODUKCJA_KONTO_SERWISOWE_NADAL_LOGUJE');
@@ -62,8 +78,11 @@ async function main() {
     // dzień przed <P>_OD albo wczoraj — zamiast daty liczonej w głowie.
     // OMS działa obok i pisze do tej samej bazy: czekamy do 10 s na blokadę zamiast „database is locked”.
     const baza = new DatabaseSync(env.OMS_DB_PATH, { timeout: 10_000 });
-    try { process.stdout.write(JSON.stringify({ status: 'granice', ...zalozGranice(baza, env) }) + '\n'); }
-    finally { baza.close(); }
+    try {
+      process.stdout.write(JSON.stringify({ status: 'granice', ...zalozGranice(baza, env) }) + '\n');
+    } finally {
+      baza.close();
+    }
     return;
   }
   const db = new DatabaseSync(env.OMS_DB_PATH);
@@ -74,16 +93,28 @@ async function main() {
     if (ile('konta') > 0) throw new Error('PRODUKCJA_KONTO_JUZ_ISTNIEJE');
     if (ile('zamowienia') > 0 || ile('sprzedaz_historyczna') > 0) throw new Error('PRODUKCJA_BAZA_NIE_JEST_NOWA');
     wynik = zalozGranice(db, env);
-  } finally { db.close(); }
+  } finally {
+    db.close();
+  }
   const haslo = await zalozAdministratora(`http://127.0.0.1:${env.OMS_PORT || 3001}`, env);
   process.stdout.write(`login=${LOGIN_ADMINA}\nhaslo=${haslo}\n`);
-  process.stderr.write(JSON.stringify({ status: 'produkcja-pierwszy-start', konto: LOGIN_ADMINA, granice: wynik.zalozone,
-    graniceDoPomiaru: wynik.pominiete }) + '\n');
+  process.stderr.write(
+    JSON.stringify({
+      status: 'produkcja-pierwszy-start',
+      konto: LOGIN_ADMINA,
+      granice: wynik.zalozone,
+      graniceDoPomiaru: wynik.pominiete,
+    }) + '\n',
+  );
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(sciezkaBezwzgledna(process.argv[1])).href) {
   main().catch((e) => {
-    process.stderr.write((e instanceof Error && /^PRODUKCJA_/.test(e.message) ? e.message : `PRODUKCJA_PIERWSZY_START_ODMOWA: ${e instanceof Error ? e.message : e}`) + '\n');
+    process.stderr.write(
+      (e instanceof Error && /^PRODUKCJA_/.test(e.message)
+        ? e.message
+        : `PRODUKCJA_PIERWSZY_START_ODMOWA: ${e instanceof Error ? e.message : e}`) + '\n',
+    );
     process.exitCode = 1;
   });
 }

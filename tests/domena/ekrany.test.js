@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import {
-  EKRANY, ROLE, ekranDlaAdresu, ekranyRoli, maDostepDoEkranu, maDostepDoAdresu,
+  EKRANY,
+  ROLE,
+  ekranDlaAdresu,
+  ekranyRoli,
+  maDostepDoEkranu,
+  maDostepDoAdresu,
 } from '../../src/domena/ekrany.js';
 
 describe('EKRANY', () => {
@@ -100,9 +105,7 @@ describe('wspolne sprawdzenie uprawnienia', () => {
   });
 
   it('adapter adresu rozdziela trzy zakresy i obsluguje wzorce Fastify', () => {
-    const wszystkie = konto([
-      'faktury-zamowienia', 'zwroty-zamowienia', 'pozostale-dokumenty-zamowienia',
-    ]);
+    const wszystkie = konto(['faktury-zamowienia', 'zwroty-zamowienia', 'pozostale-dokumenty-zamowienia']);
     expect(maDostepDoAdresu(wszystkie, '/zamowienia/:id/faktura')).toBe(true);
     expect(maDostepDoAdresu(konto(['zwroty-zamowienia']), '/zamowienia/7/zwrot/podglad')).toBe(true);
     expect(maDostepDoAdresu(konto(['pozostale-dokumenty-zamowienia']), '/proformy/:id/pdf')).toBe(true);
@@ -118,9 +121,7 @@ describe('wspolne sprawdzenie uprawnienia', () => {
   });
 
   it('trzy bezlinkowe zakresy dokumentow zachowuja kontekst Sprzedazy', () => {
-    for (const klucz of [
-      'faktury-zamowienia', 'zwroty-zamowienia', 'pozostale-dokumenty-zamowienia',
-    ]) {
+    for (const klucz of ['faktury-zamowienia', 'zwroty-zamowienia', 'pozostale-dokumenty-zamowienia']) {
       const ekran = EKRANY.find((pozycja) => pozycja.klucz === klucz);
       expect(ekran).toMatchObject({ href: null, nawigacja: { dzial: 'sprzedaz' } });
     }
@@ -146,9 +147,7 @@ describe('ROLE jako presety', () => {
   });
 
   it('produkcja ma zamowienia, przesylki, faktury i zwroty bez pozostalych dokumentow', () => {
-    expect(ekranyRoli('produkcja')).toEqual([
-      'zamowienia', 'przesylki', 'faktury-zamowienia', 'zwroty-zamowienia',
-    ]);
+    expect(ekranyRoli('produkcja')).toEqual(['zamowienia', 'przesylki', 'faktury-zamowienia', 'zwroty-zamowienia']);
   });
 
   it('nieznana rola nie daje zadnego ekranu', () => {

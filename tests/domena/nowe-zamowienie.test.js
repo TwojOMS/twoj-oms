@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import {
-  DOSTAWY, PLATNOSCI, metodaWysylkiZWyboru, parsujNoweZamowienie, wstawPozycjeDoFormularza, dodajWierszFormularza,
+  DOSTAWY,
+  PLATNOSCI,
+  metodaWysylkiZWyboru,
+  parsujNoweZamowienie,
+  wstawPozycjeDoFormularza,
+  dodajWierszFormularza,
 } from '../../src/domena/nowe-zamowienie.js';
 import { METODY_WYSYLKI } from '../../src/domena/wysylka.js';
 import { adresOdbiorcy } from '../../src/domena/adres-odbiorcy.js';
@@ -44,7 +49,11 @@ describe('metodaWysylkiZWyboru — dostawa i płatność jako DWIE niezależne w
     for (const dostawa of Object.keys(DOSTAWY)) {
       for (const platnosc of Object.keys(PLATNOSCI)) {
         let para = null;
-        try { para = metodaWysylkiZWyboru(dostawa, platnosc); } catch { continue; }
+        try {
+          para = metodaWysylkiZWyboru(dostawa, platnosc);
+        } catch {
+          continue;
+        }
         expect(METODY_WYSYLKI).toContain(para.metoda);
         // ...a pobranie ma byc 0/1, nie czymkolwiek — to wprost jedzie do kolumny.
         expect([0, 1]).toContain(para.pobranie);
@@ -68,9 +77,13 @@ describe('parsujNoweZamowienie — pola', () => {
 
   it('dane wysyłki trafiają w blok, który czyta adres odbiorcy', () => {
     const d = parsujNoweZamowienie({
-      w_nazwa: 'Anna Maria Kowalska', w_firma: 'Pracownia Kropka',
-      w_ulica: 'Krótka 12/3', w_kod: '32-600', w_miasto: 'Oświęcim',
-      w_telefon: '600100200', w_email: 'anna@example.pl',
+      w_nazwa: 'Anna Maria Kowalska',
+      w_firma: 'Pracownia Kropka',
+      w_ulica: 'Krótka 12/3',
+      w_kod: '32-600',
+      w_miasto: 'Oświęcim',
+      w_telefon: '600100200',
+      w_email: 'anna@example.pl',
     });
     // Czytamy TA SAMA funkcja, ktora karmi ekran nadania i klienta DPD — nie samym
     // ksztaltem JSON-a. Zapis do niewlasciwego pola bloku przeszedlby porownanie kluczy,
@@ -89,8 +102,12 @@ describe('parsujNoweZamowienie — pola', () => {
   it('dane do faktury trafiają w blok, który czyta nabywcę', () => {
     const d = parsujNoweZamowienie({
       w_nazwa: 'Jan Nowak',
-      f_chce_fakture: 'on', f_firma: 'PRACOWNIA PÓŁCIEŃ', f_nip: '1234563218',
-      f_ulica: 'Przykładowa 5', f_kod: '32-600', f_miasto: 'Oświęcim',
+      f_chce_fakture: 'on',
+      f_firma: 'PRACOWNIA PÓŁCIEŃ',
+      f_nip: '1234563218',
+      f_ulica: 'Przykładowa 5',
+      f_kod: '32-600',
+      f_miasto: 'Oświęcim',
     });
     const nabywca = daneFaktury({ klient: d.klient, nip: d.nip });
     expect(nabywca.firma).toBe('PRACOWNIA PÓŁCIEŃ');
@@ -105,8 +122,14 @@ describe('parsujNoweZamowienie — pola', () => {
   // faktura na siedzibe) — ta sama zasada, co na karcie.
   it('adres do faktury nie podmienia adresu wysyłki', () => {
     const d = parsujNoweZamowienie({
-      w_nazwa: 'Jan Nowak', w_ulica: 'Budowlana 1', w_kod: '31-000', w_miasto: 'Kraków',
-      f_firma: 'PRACOWNIA PÓŁCIEŃ', f_ulica: 'Przykładowa 5', f_kod: '32-600', f_miasto: 'Oświęcim',
+      w_nazwa: 'Jan Nowak',
+      w_ulica: 'Budowlana 1',
+      w_kod: '31-000',
+      w_miasto: 'Kraków',
+      f_firma: 'PRACOWNIA PÓŁCIEŃ',
+      f_ulica: 'Przykładowa 5',
+      f_kod: '32-600',
+      f_miasto: 'Oświęcim',
     });
     expect(adresOdbiorcy({ dostawa: d.dostawa, klient: d.klient }).miasto).toBe('Kraków');
     expect(daneFaktury({ klient: d.klient, nip: d.nip }).miasto).toBe('Oświęcim');
@@ -118,8 +141,9 @@ describe('parsujNoweZamowienie — pola', () => {
   it('inny e-mail do faktury zapisuje się jako nadpisanie, nie podmienia e-maila wysyłki', () => {
     const d = parsujNoweZamowienie({ w_email: 'anna@example.pl', f_email: 'faktury@firma.pl' });
     expect(d.nadpisaniaFaktury).toEqual({ email: 'faktury@firma.pl' });
-    expect(daneFaktury({ klient: d.klient, klient_reczny_json: JSON.stringify(d.nadpisaniaFaktury) }).email)
-      .toBe('faktury@firma.pl');
+    expect(daneFaktury({ klient: d.klient, klient_reczny_json: JSON.stringify(d.nadpisaniaFaktury) }).email).toBe(
+      'faktury@firma.pl',
+    );
     expect(adresOdbiorcy({ dostawa: d.dostawa, klient: d.klient }).email).toBe('anna@example.pl');
   });
 
@@ -151,15 +175,24 @@ describe('parsujNoweZamowienie — pozycje z pięciu wierszy', () => {
       poz_cena_brutto: ['80,00', '', '50.00', '', ''],
     });
     expect(d.pozycje).toHaveLength(2);
-    expect(d.pozycje[0]).toMatchObject({ nazwa: 'Szablon', sku: 'SZ-1', ilosc: 2, cena_brutto: '80.00', brutto_linii: '160.00' });
+    expect(d.pozycje[0]).toMatchObject({
+      nazwa: 'Szablon',
+      sku: 'SZ-1',
+      ilosc: 2,
+      cena_brutto: '80.00',
+      brutto_linii: '160.00',
+    });
     expect(d.pozycje[1]).toMatchObject({ nazwa: 'Projekt', ilosc: 1, cena_brutto: '50.00', brutto_linii: '50.00' });
   });
 
   // Netto to WYGODA WEJSCIA — przechowywana wartoscia zostaje brutto (domain/vat.js).
   it('wiersz z samym netto dostaje policzone brutto', () => {
     const d = parsujNoweZamowienie({
-      poz_nazwa: ['Szablon'], poz_sku: [''], poz_ilosc: ['1'],
-      poz_cena_netto: ['65,04'], poz_cena_brutto: [''],
+      poz_nazwa: ['Szablon'],
+      poz_sku: [''],
+      poz_ilosc: ['1'],
+      poz_cena_netto: ['65,04'],
+      poz_cena_brutto: [''],
     });
     expect(d.pozycje[0].cena_brutto).toBe('80.00');
   });
@@ -168,23 +201,36 @@ describe('parsujNoweZamowienie — pozycje z pięciu wierszy', () => {
   // przy telefonie i musi sie dowiedziec, ze ceny brakuje — inaczej zamowienie zapisze sie
   // bez pozycji, za ktora klient ma zaplacic.
   it('wiersz z nazwą, ale bez ceny to odmowa ze wskazaniem numeru wiersza', () => {
-    expect(() => parsujNoweZamowienie({
-      poz_nazwa: ['', 'Szablon'], poz_sku: ['', ''], poz_ilosc: ['', '1'],
-      poz_cena_netto: ['', ''], poz_cena_brutto: ['', ''],
-    })).toThrow(/wiersz 2/i);
+    expect(() =>
+      parsujNoweZamowienie({
+        poz_nazwa: ['', 'Szablon'],
+        poz_sku: ['', ''],
+        poz_ilosc: ['', '1'],
+        poz_cena_netto: ['', ''],
+        poz_cena_brutto: ['', ''],
+      }),
+    ).toThrow(/wiersz 2/i);
   });
 
   it('wiersz z ceną, ale bez nazwy to odmowa', () => {
-    expect(() => parsujNoweZamowienie({
-      poz_nazwa: [''], poz_sku: [''], poz_ilosc: ['1'],
-      poz_cena_netto: [''], poz_cena_brutto: ['80.00'],
-    })).toThrow(/wiersz 1/i);
+    expect(() =>
+      parsujNoweZamowienie({
+        poz_nazwa: [''],
+        poz_sku: [''],
+        poz_ilosc: ['1'],
+        poz_cena_netto: [''],
+        poz_cena_brutto: ['80.00'],
+      }),
+    ).toThrow(/wiersz 1/i);
   });
 
   it('same puste wiersze dają zamówienie bez pozycji, nie odmowę', () => {
     const d = parsujNoweZamowienie({
-      poz_nazwa: ['', ''], poz_sku: ['', ''], poz_ilosc: ['', ''],
-      poz_cena_netto: ['', ''], poz_cena_brutto: ['', ''],
+      poz_nazwa: ['', ''],
+      poz_sku: ['', ''],
+      poz_ilosc: ['', ''],
+      poz_cena_netto: ['', ''],
+      poz_cena_brutto: ['', ''],
     });
     expect(d.pozycje).toEqual([]);
   });
@@ -192,8 +238,11 @@ describe('parsujNoweZamowienie — pozycje z pięciu wierszy', () => {
   // Pojedynczy wiersz przychodzi z przegladarki jako SAM NAPIS, nie tablica jednoelementowa.
   it('pojedynczy wiersz podany bez tablicy też się czyta', () => {
     const d = parsujNoweZamowienie({
-      poz_nazwa: 'Szablon', poz_sku: '', poz_ilosc: '3',
-      poz_cena_netto: '', poz_cena_brutto: '10.00',
+      poz_nazwa: 'Szablon',
+      poz_sku: '',
+      poz_ilosc: '3',
+      poz_cena_netto: '',
+      poz_cena_brutto: '10.00',
     });
     expect(d.pozycje).toHaveLength(1);
     expect(d.pozycje[0].brutto_linii).toBe('30.00');
@@ -204,8 +253,13 @@ describe('parsujNoweZamowienie — pozycje z pięciu wierszy', () => {
 // sama stawka nie robi wiersza niepustego, NIP z UE (f_nip) przelicza netto stawką 0.
 describe('parsujNoweZamowienie — stawka VAT wiersza', () => {
   const wiersz = (nad = {}) => ({
-    poz_nazwa: ['Album o lampach'], poz_sku: [''], poz_ilosc: ['1'], poz_cena_netto: [''], poz_cena_brutto: [''],
-    poz_vat: [''], ...nad,
+    poz_nazwa: ['Album o lampach'],
+    poz_sku: [''],
+    poz_ilosc: ['1'],
+    poz_cena_netto: [''],
+    poz_cena_brutto: [''],
+    poz_vat: [''],
+    ...nad,
   });
 
   it('stawka z wiersza: netto 100 przy 8% → brutto 108,00, vat 8', () => {
@@ -219,28 +273,38 @@ describe('parsujNoweZamowienie — stawka VAT wiersza', () => {
   });
 
   it('wiersz z samą ilością i stawką jest pusty — pomijany', () => {
-    const d = parsujNoweZamowienie({
-      poz_nazwa: ['A', ''], poz_sku: ['', ''], poz_ilosc: ['1', '1'], poz_cena_netto: ['', ''],
-      poz_cena_brutto: ['10.00', ''], poz_vat: ['23', '8'],
-    }, { stawkaDomyslna: '23' });
+    const d = parsujNoweZamowienie(
+      {
+        poz_nazwa: ['A', ''],
+        poz_sku: ['', ''],
+        poz_ilosc: ['1', '1'],
+        poz_cena_netto: ['', ''],
+        poz_cena_brutto: ['10.00', ''],
+        poz_vat: ['23', '8'],
+      },
+      { stawkaDomyslna: '23' },
+    );
     expect(d.pozycje).toHaveLength(1);
   });
 
   it('stawka spoza listy → odmowa z numerem wiersza', () => {
-    expect(() => parsujNoweZamowienie(wiersz({ poz_cena_brutto: ['10.00'], poz_vat: ['22'] }), { stawkaDomyslna: '23' }))
-      .toThrow(/wiersz 1.*stawk/i);
+    expect(() =>
+      parsujNoweZamowienie(wiersz({ poz_cena_brutto: ['10.00'], poz_vat: ['22'] }), { stawkaDomyslna: '23' }),
+    ).toThrow(/wiersz 1.*stawk/i);
   });
 
   // Dokument zdejmuje etykietę „NIP:” (dane-faktury.js: bezEtykietyNip) — ekran też musi.
   it('NIP z etykietą „NIP: DE…” to też WDT', () => {
-    const d = parsujNoweZamowienie(wiersz({ f_nip: 'NIP: DE123456789', poz_cena_netto: ['100'], poz_vat: ['23'] }),
-      { stawkaDomyslna: '23' });
+    const d = parsujNoweZamowienie(wiersz({ f_nip: 'NIP: DE123456789', poz_cena_netto: ['100'], poz_vat: ['23'] }), {
+      stawkaDomyslna: '23',
+    });
     expect(d.pozycje[0].cena_brutto).toBe('100.00');
   });
 
   it('NIP z UE: netto 100 → brutto 100,00 (0%)', () => {
-    const d = parsujNoweZamowienie(wiersz({ f_nip: 'de 123456789', poz_cena_netto: ['100'], poz_vat: ['23'] }),
-      { stawkaDomyslna: '23' });
+    const d = parsujNoweZamowienie(wiersz({ f_nip: 'de 123456789', poz_cena_netto: ['100'], poz_vat: ['23'] }), {
+      stawkaDomyslna: '23',
+    });
     expect(d.pozycje[0].cena_brutto).toBe('100.00');
   });
 });

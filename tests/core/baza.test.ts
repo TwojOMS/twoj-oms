@@ -16,8 +16,14 @@ const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as typeof
 
 const BASELINE = readFileSync(new URL('../../src/moduly/rdzen/migracje/0001-baseline.sql', import.meta.url), 'utf8');
 const rdzen = (dodatkowe: ModulOms['migracje'] = []): ModulOms => ({
-  nazwa: 'rdzen', wersja: '1.0.0', wymaga: [], konfiguracja: () => ({}),
-  migracje: [migracjaBaseline, ...dodatkowe], uprawnienia: [], menu: [], zbuduj: () => ({}),
+  nazwa: 'rdzen',
+  wersja: '1.0.0',
+  wymaga: [],
+  konfiguracja: () => ({}),
+  migracje: [migracjaBaseline, ...dodatkowe],
+  uprawnienia: [],
+  menu: [],
+  zbuduj: () => ({}),
 });
 
 describe('strażnik migracji addytywnych', () => {
@@ -28,7 +34,11 @@ describe('strażnik migracji addytywnych', () => {
     const migracje = join(katalog, 'src/moduly', modul, 'migracje');
     mkdirSync(migracje, { recursive: true });
     writeFileSync(join(migracje, plik), sql);
-    return spawnSync(process.execPath, [fileURLToPath(new URL('../../scripts/straznik-migracji.mjs', import.meta.url))], { cwd: katalog, encoding: 'utf8' });
+    return spawnSync(
+      process.execPath,
+      [fileURLToPath(new URL('../../scripts/straznik-migracji.mjs', import.meta.url))],
+      { cwd: katalog, encoding: 'utf8' },
+    );
   };
 
   it.each([
@@ -49,7 +59,10 @@ describe('strażnik migracji addytywnych', () => {
     ['DROP INDEX', 'DROP INDEX ix;'],
     ['DROP VIEW', 'DROP VIEW v;'],
     ['DROP TRIGGER', 'DROP TRIGGER tr;'],
-    ['CASE przed DROP bez COLUMN', 'UPDATE t SET a = CASE WHEN 1 THEN 2 END; ALTER TABLE t DROP x; ALTER TABLE t ADD x TEXT;'],
+    [
+      'CASE przed DROP bez COLUMN',
+      'UPDATE t SET a = CASE WHEN 1 THEN 2 END; ALTER TABLE t DROP x; ALTER TABLE t ADD x TEXT;',
+    ],
   ])('odmawia dla %s rozłożonego na wiele linii', (_nazwa, sql) => {
     const wynik = uruchom(sql);
     expect(wynik.status).toBe(1);
@@ -75,7 +88,9 @@ describe('strażnik migracji addytywnych', () => {
 const staraBazaProdukcyjna = (): BazaSqlite => {
   const db = otworzBaze(':memory:');
   db.exec(BASELINE);
-  db.exec("INSERT INTO konta (login, imie, hash_hasla, rola, utworzone_at) VALUES ('ewa', 'Ewa', 'x', 'sprzedaz', '2026-09-01')");
+  db.exec(
+    "INSERT INTO konta (login, imie, hash_hasla, rola, utworzone_at) VALUES ('ewa', 'Ewa', 'x', 'sprzedaz', '2026-09-01')",
+  );
   return db;
 };
 
@@ -85,12 +100,22 @@ describe('migracje', () => {
     try {
       wykonajMigracje(db, [rdzen()]);
       db.exec("CREATE TABLE chroniona (id INTEGER, wartosc TEXT); INSERT INTO chroniona VALUES (1, 'zachowaj')");
-      const m = rdzen([{ numer: 2, nazwa: 'CASE i DROP', wykonaj: (d) => {
-        d.exec('UPDATE chroniona SET id = CASE WHEN 1 THEN 2 END; ALTER TABLE chroniona DROP wartosc; ALTER TABLE chroniona ADD wartosc TEXT;');
-      } }]);
+      const m = rdzen([
+        {
+          numer: 2,
+          nazwa: 'CASE i DROP',
+          wykonaj: (d) => {
+            d.exec(
+              'UPDATE chroniona SET id = CASE WHEN 1 THEN 2 END; ALTER TABLE chroniona DROP wartosc; ALTER TABLE chroniona ADD wartosc TEXT;',
+            );
+          },
+        },
+      ]);
       expect(() => wykonajMigracje(db, [m])).toThrow('nieaddytywna');
       expect(db.prepare('SELECT id, wartosc FROM chroniona').get()).toEqual({ id: 1, wartosc: 'zachowaj' });
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 
   // Odcisk „po” migracji jest odciskiem „przed” następnej w tym samym wywołaniu — kontrola ma widzieć
@@ -101,12 +126,23 @@ describe('migracje', () => {
       const m = rdzen([
         { numer: 2, nazwa: 'nowa tabela', wykonaj: (d) => d.exec('CREATE TABLE nowa (id INTEGER, wartosc TEXT)') },
         // surowy exec z prototypu omija kontrolę tekstu SQL — zostaje tylko porównanie odcisków
-        { numer: 3, nazwa: 'usuwa kolumne', wykonaj: (d) => Object.getPrototypeOf(d).exec.call(d, 'ALTER TABLE nowa DROP COLUMN wartosc') },
+        {
+          numer: 3,
+          nazwa: 'usuwa kolumne',
+          wykonaj: (d) => Object.getPrototypeOf(d).exec.call(d, 'ALTER TABLE nowa DROP COLUMN wartosc'),
+        },
       ]);
       expect(() => wykonajMigracje(db, [m])).toThrow(/rdzen\/3.*Usunięte lub zmienione: nowa\.wartosc/s);
       expect(db.prepare('SELECT numer FROM migracje ORDER BY numer').all()).toEqual([{ numer: 1 }, { numer: 2 }]);
-      expect(db.prepare('PRAGMA table_xinfo(nowa)').all().map((k: any) => k.name)).toEqual(['id', 'wartosc']);
-    } finally { db.close(); }
+      expect(
+        db
+          .prepare('PRAGMA table_xinfo(nowa)')
+          .all()
+          .map((k: any) => k.name),
+      ).toEqual(['id', 'wartosc']);
+    } finally {
+      db.close();
+    }
   });
 
   it('w jednym wywołaniu kolejna migracja nie doda unikalnego indeksu na tabeli założonej przez poprzednią', () => {
@@ -118,7 +154,9 @@ describe('migracje', () => {
       ]);
       expect(() => wykonajMigracje(db, [m])).toThrow(/rdzen\/3.*nowe ograniczenia: nowa indeks nowa_id u=1/s);
       expect(db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE name = 'nowa_id'").get()).toEqual({ n: 0 });
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 
   // Między COMMIT jednej migracji a BEGIN IMMEDIATE następnej inny proces (np. skrypt
@@ -129,17 +167,32 @@ describe('migracje', () => {
     const obce = otworzBaze(plik);
     try {
       const drugi: ModulOms = {
-        nazwa: 'drugi', wersja: '1.0.0', wymaga: [], konfiguracja: () => ({}), uprawnienia: [], menu: [], zbuduj: () => ({}),
+        nazwa: 'drugi',
+        wersja: '1.0.0',
+        wymaga: [],
+        konfiguracja: () => ({}),
+        uprawnienia: [],
+        menu: [],
+        zbuduj: () => ({}),
         // getter czyta pętla po COMMIT ostatniej migracji rdzenia, przed BEGIN pierwszej migracji tego modułu
         get migracje() {
           obce.exec('CREATE TABLE obca (id INTEGER)');
-          return [{ numer: 1, nazwa: 'indeks na obcej', wykonaj: (d: BazaSqlite) => d.exec('CREATE UNIQUE INDEX obca_id ON obca (id)') }];
+          return [
+            {
+              numer: 1,
+              nazwa: 'indeks na obcej',
+              wykonaj: (d: BazaSqlite) => d.exec('CREATE UNIQUE INDEX obca_id ON obca (id)'),
+            },
+          ];
         },
       };
       const m = rdzen([{ numer: 2, nazwa: 'swoja tabela', wykonaj: (d) => d.exec('CREATE TABLE swoja (id INTEGER)') }]);
       expect(() => wykonajMigracje(db, [m, drugi])).toThrow(/drugi\/1.*nowe ograniczenia: obca indeks obca_id u=1/s);
       expect(db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE name = 'obca_id'").get()).toEqual({ n: 0 });
-    } finally { obce.close(); db.close(); }
+    } finally {
+      obce.close();
+      db.close();
+    }
   });
 
   it('blokuje wyzwalacz na tabeli migracje przed zapisaniem znacznika', () => {
@@ -147,14 +200,22 @@ describe('migracje', () => {
     try {
       wykonajMigracje(db, [rdzen()]);
       db.exec('CREATE TABLE chroniona (id INTEGER); INSERT INTO chroniona VALUES (1)');
-      const m = rdzen([{ numer: 2, nazwa: 'wyzwalacz znacznika', wykonaj: (d) => {
-        d.exec('CREATE TRIGGER zly AFTER INSERT ON migracje BEGIN DELETE FROM chroniona; END');
-      } }]);
+      const m = rdzen([
+        {
+          numer: 2,
+          nazwa: 'wyzwalacz znacznika',
+          wykonaj: (d) => {
+            d.exec('CREATE TRIGGER zly AFTER INSERT ON migracje BEGIN DELETE FROM chroniona; END');
+          },
+        },
+      ]);
       expect(() => wykonajMigracje(db, [m])).toThrow('nieaddytywna');
       expect(db.prepare('SELECT count(*) AS n FROM chroniona').get()).toEqual({ n: 1 });
       expect(db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE name = 'zly'").get()).toEqual({ n: 0 });
       expect(db.prepare('SELECT count(*) AS n FROM migracje WHERE numer = 2').get()).toEqual({ n: 0 });
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 
   it.each(['main.migracje', 'main.chroniona'])('blokuje wyzwalacz TEMP na istniejącej tabeli %s', (tabela) => {
@@ -162,16 +223,24 @@ describe('migracje', () => {
     try {
       wykonajMigracje(db, [rdzen()]);
       db.exec('CREATE TABLE chroniona (id INTEGER); INSERT INTO chroniona VALUES (1)');
-      const m = rdzen([{ numer: 2, nazwa: 'wyzwalacz TEMP', wykonaj: (d) => {
-        d.exec(`CREATE TEMP TRIGGER zly AFTER INSERT ON ${tabela} BEGIN DELETE FROM chroniona; END`);
-      } }]);
+      const m = rdzen([
+        {
+          numer: 2,
+          nazwa: 'wyzwalacz TEMP',
+          wykonaj: (d) => {
+            d.exec(`CREATE TEMP TRIGGER zly AFTER INSERT ON ${tabela} BEGIN DELETE FROM chroniona; END`);
+          },
+        },
+      ]);
       expect(() => wykonajMigracje(db, [m])).toThrow('nieaddytywna');
       expect(db.prepare('SELECT id FROM chroniona').all()).toEqual([{ id: 1 }]);
       expect(db.prepare("SELECT count(*) AS n FROM sqlite_temp_master WHERE name = 'zly'").get()).toEqual({ n: 0 });
       expect(db.prepare('SELECT count(*) AS n FROM migracje WHERE numer = 2').get()).toEqual({ n: 0 });
       db.exec('INSERT INTO chroniona VALUES (2)');
       expect(db.prepare('SELECT id FROM chroniona ORDER BY id').all()).toEqual([{ id: 1 }, { id: 2 }]);
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 
   it('rozróżnia wyzwalacze main i TEMP o tej samej nazwie i treści', () => {
@@ -180,72 +249,118 @@ describe('migracje', () => {
       wykonajMigracje(db, [rdzen()]);
       db.exec('CREATE TABLE chroniona (id INTEGER); INSERT INTO chroniona VALUES (1)');
       db.exec('CREATE TRIGGER wspolny AFTER INSERT ON main.chroniona BEGIN SELECT 1; END');
-      const m = rdzen([{ numer: 2, nazwa: 'ta sama nazwa wyzwalacza', wykonaj: (d) => {
-        d.exec('CREATE TEMP TRIGGER wspolny AFTER INSERT ON main.chroniona BEGIN SELECT 1; END');
-      } }]);
+      const m = rdzen([
+        {
+          numer: 2,
+          nazwa: 'ta sama nazwa wyzwalacza',
+          wykonaj: (d) => {
+            d.exec('CREATE TEMP TRIGGER wspolny AFTER INSERT ON main.chroniona BEGIN SELECT 1; END');
+          },
+        },
+      ]);
       expect(() => wykonajMigracje(db, [m])).toThrow('nieaddytywna');
       expect(db.prepare('SELECT id FROM chroniona').all()).toEqual([{ id: 1 }]);
-      expect(db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type = 'trigger' AND name = 'wspolny'").get()).toEqual({ n: 1 });
-      expect(db.prepare("SELECT count(*) AS n FROM sqlite_temp_master WHERE type = 'trigger' AND name = 'wspolny'").get()).toEqual({ n: 0 });
+      expect(
+        db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type = 'trigger' AND name = 'wspolny'").get(),
+      ).toEqual({ n: 1 });
+      expect(
+        db.prepare("SELECT count(*) AS n FROM sqlite_temp_master WHERE type = 'trigger' AND name = 'wspolny'").get(),
+      ).toEqual({ n: 0 });
       expect(db.prepare('SELECT count(*) AS n FROM migracje WHERE numer = 2').get()).toEqual({ n: 0 });
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 
-  it.each(['"writable_schema"', '[writable_schema]', "'writable_schema'"])('blokuje cytowaną nazwę pragmy %s', (nazwa) => {
-    const db = otworzBaze(':memory:');
-    try {
-      wykonajMigracje(db, [rdzen()]);
-      const m = rdzen([{ numer: 2, nazwa: 'cytowana pragma', wykonaj: (d) => d.exec(`PRAGMA ${nazwa} = ON`) }]);
-      expect(() => wykonajMigracje(db, [m])).toThrow('nieaddytywna');
-      expect(db.prepare('PRAGMA writable_schema').get()).toEqual({ writable_schema: 0 });
-    } finally { db.close(); }
-  });
+  it.each(['"writable_schema"', '[writable_schema]', "'writable_schema'"])(
+    'blokuje cytowaną nazwę pragmy %s',
+    (nazwa) => {
+      const db = otworzBaze(':memory:');
+      try {
+        wykonajMigracje(db, [rdzen()]);
+        const m = rdzen([{ numer: 2, nazwa: 'cytowana pragma', wykonaj: (d) => d.exec(`PRAGMA ${nazwa} = ON`) }]);
+        expect(() => wykonajMigracje(db, [m])).toThrow('nieaddytywna');
+        expect(db.prepare('PRAGMA writable_schema').get()).toEqual({ writable_schema: 0 });
+      } finally {
+        db.close();
+      }
+    },
+  );
 
   it('zachowuje przyczynę po automatycznym rollbacku SQLite', () => {
     const db = otworzBaze(':memory:');
     try {
       wykonajMigracje(db, [rdzen()]);
       db.exec('CREATE TABLE chroniona (id INTEGER UNIQUE); INSERT INTO chroniona VALUES (1)');
-      const m = rdzen([{ numer: 2, nazwa: 'automatyczny rollback', wykonaj: (d) => {
-        d.exec('CREATE TABLE chwilowa (x); INSERT OR ROLLBACK INTO chroniona VALUES (1)');
-      } }]);
+      const m = rdzen([
+        {
+          numer: 2,
+          nazwa: 'automatyczny rollback',
+          wykonaj: (d) => {
+            d.exec('CREATE TABLE chwilowa (x); INSERT OR ROLLBACK INTO chroniona VALUES (1)');
+          },
+        },
+      ]);
       expect(() => wykonajMigracje(db, [m])).toThrow('UNIQUE constraint failed');
       expect(db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE name = 'chwilowa'").get()).toEqual({ n: 0 });
       expect(db.prepare('SELECT count(*) AS n FROM migracje WHERE numer = 2').get()).toEqual({ n: 0 });
       expect(db.prepare('SELECT count(*) AS n FROM chroniona').get()).toEqual({ n: 1 });
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 
   it.each(['exec', 'prepare'] as const)('chroni wartości przed DROP/ADD bez COLUMN przez %s', (metoda) => {
     const db = otworzBaze(':memory:');
     try {
       wykonajMigracje(db, [rdzen()]);
-      db.exec("CREATE TABLE chroniona (id INTEGER PRIMARY KEY, wartosc TEXT); INSERT INTO chroniona VALUES (1, 'zachowaj')");
-      const m = rdzen([{ numer: 2, nazwa: 'odtworzenie kolumny', wykonaj: (d) => {
-        if (metoda === 'exec') d.exec('ALTER TABLE chroniona DROP wartosc');
-        else d.prepare('ALTER TABLE chroniona DROP wartosc').run();
-        d.exec('ALTER TABLE chroniona ADD wartosc TEXT');
-      } }]);
+      db.exec(
+        "CREATE TABLE chroniona (id INTEGER PRIMARY KEY, wartosc TEXT); INSERT INTO chroniona VALUES (1, 'zachowaj')",
+      );
+      const m = rdzen([
+        {
+          numer: 2,
+          nazwa: 'odtworzenie kolumny',
+          wykonaj: (d) => {
+            if (metoda === 'exec') d.exec('ALTER TABLE chroniona DROP wartosc');
+            else d.prepare('ALTER TABLE chroniona DROP wartosc').run();
+            d.exec('ALTER TABLE chroniona ADD wartosc TEXT');
+          },
+        },
+      ]);
       expect(() => wykonajMigracje(db, [m])).toThrow('nieaddytywna');
       expect(db.prepare('SELECT wartosc FROM chroniona').get()).toEqual({ wartosc: 'zachowaj' });
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 
-  it.each(['COMMIT', 'END', 'ROLLBACK', 'BEGIN', 'PRAGMA writable_schema = ON'])('migracja nie może sterować transakcją ani schematem przez %s', (sql) => {
-    const db = otworzBaze(':memory:');
-    try {
-      wykonajMigracje(db, [rdzen()]);
-      const m = rdzen([{ numer: 2, nazwa: 'transakcja', wykonaj: (d) => {
-        d.exec('CREATE TABLE tymczasowa (x INTEGER)');
-        d.exec(sql);
-        throw new Error('bum');
-      } }]);
-      expect(() => wykonajMigracje(db, [m])).toThrow('nieaddytywna');
-      expect(db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE name = 'tymczasowa'").get()).toEqual({ n: 0 });
-      expect(db.prepare('SELECT count(*) AS n FROM migracje WHERE numer = 2').get()).toEqual({ n: 0 });
-      expect(db.prepare('PRAGMA writable_schema').get()).toEqual({ writable_schema: 0 });
-    } finally { db.close(); }
-  });
+  it.each(['COMMIT', 'END', 'ROLLBACK', 'BEGIN', 'PRAGMA writable_schema = ON'])(
+    'migracja nie może sterować transakcją ani schematem przez %s',
+    (sql) => {
+      const db = otworzBaze(':memory:');
+      try {
+        wykonajMigracje(db, [rdzen()]);
+        const m = rdzen([
+          {
+            numer: 2,
+            nazwa: 'transakcja',
+            wykonaj: (d) => {
+              d.exec('CREATE TABLE tymczasowa (x INTEGER)');
+              d.exec(sql);
+              throw new Error('bum');
+            },
+          },
+        ]);
+        expect(() => wykonajMigracje(db, [m])).toThrow('nieaddytywna');
+        expect(db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE name = 'tymczasowa'").get()).toEqual({ n: 0 });
+        expect(db.prepare('SELECT count(*) AS n FROM migracje WHERE numer = 2').get()).toEqual({ n: 0 });
+        expect(db.prepare('PRAGMA writable_schema').get()).toEqual({ writable_schema: 0 });
+      } finally {
+        db.close();
+      }
+    },
+  );
 
   it.each([
     'CREATE UNIQUE INDEX nowy ON chroniona (wartosc)',
@@ -263,7 +378,9 @@ describe('migracje', () => {
       expect(() => wykonajMigracje(db, [m])).toThrow('nieaddytywna');
       expect(schematBazy(db)).toEqual(przed);
       expect(db.prepare('SELECT count(*) AS n FROM migracje WHERE numer = 2').get()).toEqual({ n: 0 });
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 
   it.each([false, true])('przywraca metody po migracji, także po błędzie=%s', (blad) => {
@@ -272,7 +389,15 @@ describe('migracje', () => {
       wykonajMigracje(db, [rdzen()]);
       const exec = db.exec;
       const prepare = db.prepare;
-      const m = rdzen([{ numer: 2, nazwa: 'przywracanie metod', wykonaj: () => { if (blad) throw new Error('bum'); } }]);
+      const m = rdzen([
+        {
+          numer: 2,
+          nazwa: 'przywracanie metod',
+          wykonaj: () => {
+            if (blad) throw new Error('bum');
+          },
+        },
+      ]);
       if (blad) expect(() => wykonajMigracje(db, [m])).toThrow('bum');
       else wykonajMigracje(db, [m]);
       expect(db.exec).toBe(exec);
@@ -280,37 +405,74 @@ describe('migracje', () => {
       db.exec('CREATE TABLE chwilowa (x); DROP TABLE chwilowa');
       db.exec('CREATE TABLE chwilowa (x)');
       db.prepare('DROP TABLE chwilowa').run();
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 
-  it.each(['exec', 'prepare'] as const)('blokuje DROP przed wykonaniem przez %s, nawet gdy funkcja odtworzyłaby ten sam schemat', (metoda) => {
-    const db = otworzBaze(':memory:');
-    try {
-      wykonajMigracje(db, [rdzen()]);
-      db.exec('CREATE TABLE chroniona (id INTEGER PRIMARY KEY); INSERT INTO chroniona VALUES (1)');
-      const m = rdzen([{ numer: 2, nazwa: 'odtworzenie', wykonaj: (d) => {
-        if (metoda === 'exec') d.exec('DROP TABLE chroniona');
-        else d.prepare('DROP TABLE chroniona').run();
-        d.exec('CREATE TABLE chroniona (id INTEGER PRIMARY KEY)');
-      } }]);
-      expect(() => wykonajMigracje(db, [m])).toThrow('nieaddytywna');
-      expect(db.prepare('SELECT count(*) AS n FROM chroniona').get()).toEqual({ n: 1 });
-    } finally { db.close(); }
-  });
+  it.each(['exec', 'prepare'] as const)(
+    'blokuje DROP przed wykonaniem przez %s, nawet gdy funkcja odtworzyłaby ten sam schemat',
+    (metoda) => {
+      const db = otworzBaze(':memory:');
+      try {
+        wykonajMigracje(db, [rdzen()]);
+        db.exec('CREATE TABLE chroniona (id INTEGER PRIMARY KEY); INSERT INTO chroniona VALUES (1)');
+        const m = rdzen([
+          {
+            numer: 2,
+            nazwa: 'odtworzenie',
+            wykonaj: (d) => {
+              if (metoda === 'exec') d.exec('DROP TABLE chroniona');
+              else d.prepare('DROP TABLE chroniona').run();
+              d.exec('CREATE TABLE chroniona (id INTEGER PRIMARY KEY)');
+            },
+          },
+        ]);
+        expect(() => wykonajMigracje(db, [m])).toThrow('nieaddytywna');
+        expect(db.prepare('SELECT count(*) AS n FROM chroniona').get()).toEqual({ n: 1 });
+      } finally {
+        db.close();
+      }
+    },
+  );
 
   it.each([
     ['FK', 'CREATE TABLE t (x INTEGER REFERENCES p(id))', 'CREATE TABLE t (x INTEGER)'],
     ['CHECK', 'CREATE TABLE t (x INTEGER CHECK (x > 0))', 'CREATE TABLE t (x INTEGER CHECK (x >= 0))'],
     ['UNIQUE', 'CREATE TABLE t (x INTEGER UNIQUE)', 'CREATE TABLE t (x INTEGER)'],
-    ['DESC', 'CREATE TABLE t (x INTEGER); CREATE INDEX ix ON t (x DESC)', 'CREATE TABLE t (x INTEGER); CREATE INDEX ix ON t (x ASC)'],
-    ['WHERE', 'CREATE TABLE t (x INTEGER); CREATE INDEX ix ON t (x) WHERE x > 0', 'CREATE TABLE t (x INTEGER); CREATE INDEX ix ON t (x) WHERE x >= 0'],
-    ['trigger', 'CREATE TABLE t (x INTEGER); CREATE TRIGGER tr AFTER INSERT ON t BEGIN UPDATE t SET x = 1; END', 'CREATE TABLE t (x INTEGER); CREATE TRIGGER tr AFTER INSERT ON t BEGIN UPDATE t SET x = 2; END'],
+    [
+      'DESC',
+      'CREATE TABLE t (x INTEGER); CREATE INDEX ix ON t (x DESC)',
+      'CREATE TABLE t (x INTEGER); CREATE INDEX ix ON t (x ASC)',
+    ],
+    [
+      'WHERE',
+      'CREATE TABLE t (x INTEGER); CREATE INDEX ix ON t (x) WHERE x > 0',
+      'CREATE TABLE t (x INTEGER); CREATE INDEX ix ON t (x) WHERE x >= 0',
+    ],
+    [
+      'trigger',
+      'CREATE TABLE t (x INTEGER); CREATE TRIGGER tr AFTER INSERT ON t BEGIN UPDATE t SET x = 1; END',
+      'CREATE TABLE t (x INTEGER); CREATE TRIGGER tr AFTER INSERT ON t BEGIN UPDATE t SET x = 2; END',
+    ],
     ['COLLATE', 'CREATE TABLE t (x TEXT COLLATE NOCASE)', 'CREATE TABLE t (x TEXT COLLATE BINARY)'],
-    ['WITHOUT ROWID', 'CREATE TABLE t (x INTEGER NOT NULL PRIMARY KEY) WITHOUT ROWID', 'CREATE TABLE t (x INTEGER NOT NULL PRIMARY KEY)'],
+    [
+      'WITHOUT ROWID',
+      'CREATE TABLE t (x INTEGER NOT NULL PRIMARY KEY) WITHOUT ROWID',
+      'CREATE TABLE t (x INTEGER NOT NULL PRIMARY KEY)',
+    ],
     ['STRICT', 'CREATE TABLE t (x INTEGER) STRICT', 'CREATE TABLE t (x INTEGER)'],
     ['AUTOINCREMENT', 'CREATE TABLE t (x INTEGER PRIMARY KEY AUTOINCREMENT)', 'CREATE TABLE t (x INTEGER PRIMARY KEY)'],
-    ['wyrażenie indeksu', 'CREATE TABLE t (x TEXT); CREATE INDEX ix ON t (lower(x))', 'CREATE TABLE t (x TEXT); CREATE INDEX ix ON t (upper(x))'],
-    ['kolumna generowana', 'CREATE TABLE t (x INTEGER, y INTEGER AS (x + 1))', 'CREATE TABLE t (x INTEGER, y INTEGER AS (x + 2))'],
+    [
+      'wyrażenie indeksu',
+      'CREATE TABLE t (x TEXT); CREATE INDEX ix ON t (lower(x))',
+      'CREATE TABLE t (x TEXT); CREATE INDEX ix ON t (upper(x))',
+    ],
+    [
+      'kolumna generowana',
+      'CREATE TABLE t (x INTEGER, y INTEGER AS (x + 1))',
+      'CREATE TABLE t (x INTEGER, y INTEGER AS (x + 2))',
+    ],
   ])('odcisk wykrywa różnicę %s', (_nazwa, sqlA, sqlB) => {
     const a = new DatabaseSync(':memory:');
     const b = new DatabaseSync(':memory:');
@@ -320,17 +482,27 @@ describe('migracje', () => {
       a.exec(sqlA);
       b.exec(sqlB);
       expect(schematBazy(a)).not.toEqual(schematBazy(b));
-    } finally { a.close(); b.close(); }
+    } finally {
+      a.close();
+      b.close();
+    }
   });
 
   it('odcisk ignoruje kolejność FK i kolumn oraz formatowanie i cytowanie wyrażenia CHECK', () => {
     const a = new DatabaseSync(':memory:');
     const b = new DatabaseSync(':memory:');
     try {
-      a.exec('CREATE TABLE p (id INTEGER PRIMARY KEY); CREATE TABLE t (x INTEGER REFERENCES p(id), y INTEGER REFERENCES p(id), CHECK (x > 0))');
-      b.exec('CREATE TABLE p (id INTEGER PRIMARY KEY); CREATE TABLE t (y INTEGER REFERENCES p(id), x INTEGER REFERENCES p(id), CHECK ("x">0))');
+      a.exec(
+        'CREATE TABLE p (id INTEGER PRIMARY KEY); CREATE TABLE t (x INTEGER REFERENCES p(id), y INTEGER REFERENCES p(id), CHECK (x > 0))',
+      );
+      b.exec(
+        'CREATE TABLE p (id INTEGER PRIMARY KEY); CREATE TABLE t (y INTEGER REFERENCES p(id), x INTEGER REFERENCES p(id), CHECK ("x">0))',
+      );
       expect(schematBazy(a)).toEqual(schematBazy(b));
-    } finally { a.close(); b.close(); }
+    } finally {
+      a.close();
+      b.close();
+    }
   });
 
   it.each([
@@ -349,21 +521,32 @@ describe('migracje', () => {
     db.close();
   });
 
-  it.each(['', 'TEMP '])('przepuszcza funkcję dodającą kolumnę z DEFAULT oraz nową tabelę z wyzwalaczem %s', (rodzaj) => {
-    const db = otworzBaze(':memory:');
-    wykonajMigracje(db, [rdzen()]);
-    db.exec('CREATE TABLE chroniona (id INTEGER PRIMARY KEY)');
-    const m = rdzen([{ numer: 2, nazwa: 'addytywna', wykonaj: (d) => {
-      d.exec("ALTER TABLE chroniona ADD COLUMN x TEXT DEFAULT 'a' NOT NULL");
-      d.exec('CREATE TABLE nowa (y TEXT NOT NULL UNIQUE CHECK (length(y) > 0))');
-      d.exec(`CREATE ${rodzaj}TRIGGER nowy AFTER INSERT ON nowa BEGIN UPDATE nowa SET y = CASE WHEN y = 'a' THEN 'b' ELSE y END; END`);
-    } }]);
-    expect(wykonajMigracje(db, [m])).toHaveLength(1);
-    expect(db.prepare('SELECT count(*) AS n FROM migracje WHERE numer = 2').get()).toEqual({ n: 1 });
-    db.exec("INSERT INTO nowa VALUES ('a')");
-    expect(db.prepare('SELECT y FROM nowa').get()).toEqual({ y: 'b' });
-    db.close();
-  });
+  it.each(['', 'TEMP '])(
+    'przepuszcza funkcję dodającą kolumnę z DEFAULT oraz nową tabelę z wyzwalaczem %s',
+    (rodzaj) => {
+      const db = otworzBaze(':memory:');
+      wykonajMigracje(db, [rdzen()]);
+      db.exec('CREATE TABLE chroniona (id INTEGER PRIMARY KEY)');
+      const m = rdzen([
+        {
+          numer: 2,
+          nazwa: 'addytywna',
+          wykonaj: (d) => {
+            d.exec("ALTER TABLE chroniona ADD COLUMN x TEXT DEFAULT 'a' NOT NULL");
+            d.exec('CREATE TABLE nowa (y TEXT NOT NULL UNIQUE CHECK (length(y) > 0))');
+            d.exec(
+              `CREATE ${rodzaj}TRIGGER nowy AFTER INSERT ON nowa BEGIN UPDATE nowa SET y = CASE WHEN y = 'a' THEN 'b' ELSE y END; END`,
+            );
+          },
+        },
+      ]);
+      expect(wykonajMigracje(db, [m])).toHaveLength(1);
+      expect(db.prepare('SELECT count(*) AS n FROM migracje WHERE numer = 2').get()).toEqual({ n: 1 });
+      db.exec("INSERT INTO nowa VALUES ('a')");
+      expect(db.prepare('SELECT y FROM nowa').get()).toEqual({ y: 'b' });
+      db.close();
+    },
+  );
 
   it('pusta baza: baseline tworzy schemat i zapisuje się w tabeli migracje', () => {
     const db = otworzBaze(':memory:');
@@ -390,16 +573,28 @@ describe('migracje', () => {
   it('odmawia baseline, gdy jedyną różnicą jest dodatkowy FK świeżej bazy starego kodu', () => {
     const db = otworzBaze(':memory:');
     try {
-      db.exec(BASELINE.replace('zamowienie_zrodlowe_id INTEGER', 'zamowienie_zrodlowe_id INTEGER REFERENCES zamowienia(id)'));
+      db.exec(
+        BASELINE.replace('zamowienie_zrodlowe_id INTEGER', 'zamowienie_zrodlowe_id INTEGER REFERENCES zamowienia(id)'),
+      );
       expect(() => wykonajMigracje(db, [rdzen()])).toThrow('FK');
       expect(db.prepare('SELECT count(*) AS n FROM migracje').get()).toEqual({ n: 0 });
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 
   it('migracja wykonuje się raz — drugi start niczego nie powtarza', () => {
     const db = otworzBaze(':memory:');
     let ile = 0;
-    const m = rdzen([{ numer: 2, nazwa: 'licznik', wykonaj: () => { ile++; } }]);
+    const m = rdzen([
+      {
+        numer: 2,
+        nazwa: 'licznik',
+        wykonaj: () => {
+          ile++;
+        },
+      },
+    ]);
     wykonajMigracje(db, [m]);
     wykonajMigracje(db, [m]);
     expect(ile).toBe(1);
@@ -407,7 +602,16 @@ describe('migracje', () => {
 
   it('nieudana migracja cofa swoje zmiany i nie zapisuje się jako wykonana', () => {
     const db = otworzBaze(':memory:');
-    const zla = rdzen([{ numer: 2, nazwa: 'zla', wykonaj: (d) => { d.exec('CREATE TABLE tymczasowa (a)'); throw new Error('bum'); } }]);
+    const zla = rdzen([
+      {
+        numer: 2,
+        nazwa: 'zla',
+        wykonaj: (d) => {
+          d.exec('CREATE TABLE tymczasowa (a)');
+          throw new Error('bum');
+        },
+      },
+    ]);
     expect(() => wykonajMigracje(db, [zla])).toThrow('Migracja rdzen/2 „zla" nie powiodła się: bum');
     expect(db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE name = 'tymczasowa'").get()).toEqual({ n: 0 });
     expect(db.prepare('SELECT count(*) AS n FROM migracje WHERE numer = 2').get()).toEqual({ n: 0 });
@@ -432,15 +636,25 @@ describe('pamięć odcisku schematu', () => {
     const zbuduj = (licznik: { n: number }) => {
       const db = otworzBaze(':memory:');
       const prepare = db.prepare;
-      db.prepare = ((sql: string) => { if (/PRAGMA table_list/.test(sql)) licznik.n++; return prepare.call(db, sql); }) as typeof db.prepare;
-      try { return wykonajMigracje(db, MODULY).length; } finally { db.close(); }
+      db.prepare = ((sql: string) => {
+        if (/PRAGMA table_list/.test(sql)) licznik.n++;
+        return prepare.call(db, sql);
+      }) as typeof db.prepare;
+      try {
+        return wykonajMigracje(db, MODULY).length;
+      } finally {
+        db.close();
+      }
     };
     const pierwsza = { n: 0 };
     const migracji = zbuduj(pierwsza);
     expect(pierwsza.n, 'pierwsza budowa powinna liczyć odciski — inaczej test niczego nie mierzy').toBeGreaterThan(0);
     const druga = { n: 0 };
     zbuduj(druga);
-    expect(druga.n, `odciski liczone od nowa przy ${migracji} migracjach — podnieś ODCISKOW_W_PAMIECI w src/core/baza.ts`).toBe(0);
+    expect(
+      druga.n,
+      `odciski liczone od nowa przy ${migracji} migracjach — podnieś ODCISKOW_W_PAMIECI w src/core/baza.ts`,
+    ).toBe(0);
   });
 
   it('każda zmiana schematu na tym samym połączeniu zmienia odcisk', () => {
@@ -457,12 +671,17 @@ describe('pamięć odcisku schematu', () => {
       ]) {
         db.exec(sql);
         const teraz = schematBazy(db);
-        expect(kolejne.some((o) => JSON.stringify(o) === JSON.stringify(teraz)), sql).toBe(false);
+        expect(
+          kolejne.some((o) => JSON.stringify(o) === JSON.stringify(teraz)),
+          sql,
+        ).toBe(false);
         kolejne.push(teraz);
       }
       db.exec('DROP TRIGGER temp.tg');
       expect(schematBazy(db)).toEqual(kolejne.at(-2));
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 
   it('wyzwalacz przeniesiony z main do temp z identycznym tekstem zmienia odcisk', () => {
@@ -474,11 +693,14 @@ describe('pamięć odcisku schematu', () => {
       db.exec('DROP TRIGGER g');
       db.exec('CREATE TEMP TRIGGER g AFTER INSERT ON t BEGIN SELECT 1; END');
       // ten sam tekst w sqlite_temp_master co wcześniej w sqlite_master (SQLite nie zapisuje słowa TEMP)
-      expect(db.prepare("SELECT sql FROM sqlite_temp_master WHERE name = 'g'").get())
-        .toEqual({ sql: 'CREATE TRIGGER g AFTER INSERT ON t BEGIN SELECT 1; END' });
+      expect(db.prepare("SELECT sql FROM sqlite_temp_master WHERE name = 'g'").get()).toEqual({
+        sql: 'CREATE TRIGGER g AFTER INSERT ON t BEGIN SELECT 1; END',
+      });
       expect(schematBazy(db)).not.toEqual(wMain);
       expect(schematBazy(db).some((w) => w.startsWith('temp trigger g '))).toBe(true);
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 
   // Gdyby migracja obeszła nakładkę i podmieniła tekst w sqlite_master przez writable_schema, tekst
@@ -491,16 +713,29 @@ describe('pamięć odcisku schematu', () => {
       db.exec('CREATE TABLE chroniona (id INTEGER, wartosc TEXT)');
       const tekst = (db.prepare("SELECT sql FROM sqlite_master WHERE name = 'chroniona'").get() as { sql: string }).sql;
       schematBazy(db);
-      const m = rdzen([{ numer: 2, nazwa: 'podmiana tekstu', wykonaj: (d) => {
-        const surowy = (sql: string) => Object.getPrototypeOf(d).exec.call(d, sql);
-        surowy('ALTER TABLE chroniona DROP COLUMN wartosc');
-        surowy('PRAGMA writable_schema = ON');
-        surowy(`UPDATE sqlite_master SET sql = '${tekst.replaceAll("'", "''")}' WHERE name = 'chroniona'`);
-        surowy('PRAGMA writable_schema = OFF');
-      } }]);
+      const m = rdzen([
+        {
+          numer: 2,
+          nazwa: 'podmiana tekstu',
+          wykonaj: (d) => {
+            const surowy = (sql: string) => Object.getPrototypeOf(d).exec.call(d, sql);
+            surowy('ALTER TABLE chroniona DROP COLUMN wartosc');
+            surowy('PRAGMA writable_schema = ON');
+            surowy(`UPDATE sqlite_master SET sql = '${tekst.replaceAll("'", "''")}' WHERE name = 'chroniona'`);
+            surowy('PRAGMA writable_schema = OFF');
+          },
+        },
+      ]);
       expect(() => wykonajMigracje(db, [m])).toThrow(/sqlite_master may not be modified/);
-      expect(db.prepare('PRAGMA table_xinfo(chroniona)').all().map((k: any) => k.name)).toEqual(['id', 'wartosc']);
-    } finally { db.close(); }
+      expect(
+        db
+          .prepare('PRAGMA table_xinfo(chroniona)')
+          .all()
+          .map((k: any) => k.name),
+      ).toEqual(['id', 'wartosc']);
+    } finally {
+      db.close();
+    }
   });
 
   it('tabela TEMP przesłaniająca główną zmienia odcisk (kolumny z tabeli TEMP)', () => {
@@ -511,7 +746,9 @@ describe('pamięć odcisku schematu', () => {
       db.exec('CREATE TEMP TABLE t (id INTEGER, inna TEXT NOT NULL)');
       expect(schematBazy(db)).not.toEqual(przed);
       expect(schematBazy(db).some((w) => w.startsWith('t.inna '))).toBe(true);
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 
   it('zwraca kopię — zmiana wyniku nie psuje następnego odczytu', () => {
@@ -523,7 +760,9 @@ describe('pamięć odcisku schematu', () => {
       pierwszy.push('obcy wpis');
       pierwszy.reverse();
       expect(schematBazy(db)).toEqual(wzor);
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 
   it('kontrola migracji widzi kolumnę dodaną poza migracją między dwoma wywołaniami', () => {
@@ -533,8 +772,16 @@ describe('pamięć odcisku schematu', () => {
       db.exec('CREATE TABLE chroniona (id INTEGER, wartosc TEXT)');
       // ten sam schemat liczony raz (pamięć), potem kolumna znika — kontrola musi to zobaczyć
       schematBazy(db);
-      const m = rdzen([{ numer: 2, nazwa: 'usuwa kolumne', wykonaj: (d) => Object.getPrototypeOf(d).exec.call(d, 'ALTER TABLE chroniona DROP COLUMN wartosc') }]);
+      const m = rdzen([
+        {
+          numer: 2,
+          nazwa: 'usuwa kolumne',
+          wykonaj: (d) => Object.getPrototypeOf(d).exec.call(d, 'ALTER TABLE chroniona DROP COLUMN wartosc'),
+        },
+      ]);
       expect(() => wykonajMigracje(db, [m])).toThrow(/Usunięte lub zmienione: chroniona\.wartosc/);
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 });

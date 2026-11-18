@@ -2,13 +2,29 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import {
-  zarejestrujPrzesylkeReczna, nastepnaKolejnosc, rozpocznijPrzesylke, zakonczPrzesylke, skasujPrzesylkeReczna,
+  zarejestrujPrzesylkeReczna,
+  nastepnaKolejnosc,
+  rozpocznijPrzesylke,
+  zakonczPrzesylke,
+  skasujPrzesylkeReczna,
 } from '../../../src/moduly/wysylka/db/przesylki.js';
 
 const zmapowane = (id) => ({
-  zrodlo_id: id, numer: String(id), klient: {}, dostawa: {}, metoda_wysylki: 'dpd', kwota_pobrania: null,
-  chce_fakture: 0, nip: null, kwota_brutto: '10.00', koszt_dostawy_brutto: '0.00', status_woo: 'processing',
-  oplacone_at: null, anulowane: 0, utworzone_at: '2026-07-29T10:00:00', pozycje: [],
+  zrodlo_id: id,
+  numer: String(id),
+  klient: {},
+  dostawa: {},
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '10.00',
+  koszt_dostawy_brutto: '0.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-07-29T10:00:00',
+  pozycje: [],
 });
 
 let db, id;
@@ -29,8 +45,9 @@ describe('zarejestrujPrzesylkeReczna', () => {
   });
 
   it('numer listu jest wymagany — bez niego odmowa i ZERO wierszy', () => {
-    expect(() => zarejestrujPrzesylkeReczna(db, id, { kurier: 'dpd', kolejnosc: 1, numerListu: '  ' }))
-      .toThrow(/numer listu/i);
+    expect(() => zarejestrujPrzesylkeReczna(db, id, { kurier: 'dpd', kolejnosc: 1, numerListu: '  ' })).toThrow(
+      /numer listu/i,
+    );
     expect(wiersze()).toHaveLength(0);
   });
 
@@ -38,8 +55,9 @@ describe('zarejestrujPrzesylkeReczna', () => {
   // byc furtka omijajaca siatke, ktora chroni przed druga paczka pod tym samym numerem.
   it('druga rejestracja pod TYM SAMYM numerem kolejnym odbija sie od indeksu', () => {
     zarejestrujPrzesylkeReczna(db, id, { kurier: 'dpd', kolejnosc: 1, numerListu: '0000111111111A' });
-    expect(() => zarejestrujPrzesylkeReczna(db, id, { kurier: 'dpd', kolejnosc: 1, numerListu: '0000222222222A' }))
-      .toThrow(/ma juz nadana przesylke|ma już nadaną przesyłkę/i);
+    expect(() =>
+      zarejestrujPrzesylkeReczna(db, id, { kurier: 'dpd', kolejnosc: 1, numerListu: '0000222222222A' }),
+    ).toThrow(/ma juz nadana przesylke|ma już nadaną przesyłkę/i);
     expect(wiersze()).toHaveLength(1);
     expect(wiersze()[0].numer_listu).toBe('0000111111111A');
   });
@@ -63,8 +81,9 @@ describe('zarejestrujPrzesylkeReczna', () => {
   // powstala, dokladanie nastepnej jest wlasnie tym bledem, ktory panel ma wykluczac.
   it('odmawia, gdy inna paczka wisi w toku', () => {
     rozpocznijPrzesylke(db, id, 'dpd', 1);
-    expect(() => zarejestrujPrzesylkeReczna(db, id, { kurier: 'dpd', kolejnosc: 2, numerListu: '0000222222222A' }))
-      .toThrow(/wlasnie trwa|właśnie trwa/i);
+    expect(() =>
+      zarejestrujPrzesylkeReczna(db, id, { kurier: 'dpd', kolejnosc: 2, numerListu: '0000222222222A' }),
+    ).toThrow(/wlasnie trwa|właśnie trwa/i);
     expect(wiersze()).toHaveLength(1);
   });
 });
@@ -82,10 +101,14 @@ describe('skasujPrzesylkeReczna', () => {
   // wiersza otworzyloby droge do drugiego nadania pod ta sama referencja.
   it('NIGDY nie kasuje przesylki nadanej z panelu (nadana_recznie nie ustawione)', () => {
     const p = zakonczPrzesylke(db, rozpocznijPrzesylke(db, id, 'dpd', 1).id, {
-      numerListu: '0000999999999A', etykietaSciezka: '/tmp/e.pdf', surowa: '{}',
+      numerListu: '0000999999999A',
+      etykietaSciezka: '/tmp/e.pdf',
+      surowa: '{}',
     });
     const wiersz = wiersze()[0];
-    expect(() => skasujPrzesylkeReczna(db, wiersz.id)).toThrow(/nie jest zarejestrowana ręcznie|nie jest zarejestrowana recznie/i);
+    expect(() => skasujPrzesylkeReczna(db, wiersz.id)).toThrow(
+      /nie jest zarejestrowana ręcznie|nie jest zarejestrowana recznie/i,
+    );
     expect(wiersze()).toHaveLength(1);
     expect(wiersze()[0].numer_listu).toBe('0000999999999A');
     void p;
@@ -113,7 +136,10 @@ describe('skasujPrzesylkeReczna', () => {
   // kurierem i ma sie skasowac.
   it('NIGDY nie kasuje przesylki z ALLEGRO — numer listu przepadlby bezpowrotnie', () => {
     const p = zarejestrujPrzesylkeReczna(db, id, {
-      kurier: 'allegro', kolejnosc: 1, numerListu: 'AD0LK57DLG0756H4H', zrodloNumeru: 'allegro',
+      kurier: 'allegro',
+      kolejnosc: 1,
+      numerListu: 'AD0LK57DLG0756H4H',
+      zrodloNumeru: 'allegro',
     });
     expect(p.nadana_recznie).toBe(1); // wlasnie dlatego sprawdzenie `nadana_recznie` nie wystarcza
 
@@ -147,9 +173,19 @@ describe('skasujPrzesylkeReczna', () => {
 
   it('powod odmowy dla Allegro mowi CZLOWIEKOWI, o co chodzi', () => {
     const p = zarejestrujPrzesylkeReczna(db, id, {
-      kurier: 'allegro', kolejnosc: 1, numerListu: 'AD1', zrodloNumeru: 'allegro',
+      kurier: 'allegro',
+      kolejnosc: 1,
+      numerListu: 'AD1',
+      zrodloNumeru: 'allegro',
     });
-    const blad = (() => { try { skasujPrzesylkeReczna(db, p.id); return null; } catch (e) { return e; } })();
+    const blad = (() => {
+      try {
+        skasujPrzesylkeReczna(db, p.id);
+        return null;
+      } catch (e) {
+        return e;
+      }
+    })();
 
     // Komunikat idzie na ekran operatora, wiec musi byc oznaczony jako jego, a nie jako
     // „blad techniczny panelu" (ta sama zasada, co przy pozostalych odmowach tej funkcji).

@@ -9,13 +9,24 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  WYMAGANY_NODE, sprawdzWersjeNode, powodPotomka, sekretyKatalogu, coDalejLokalnie, coDalejKontener,
+  WYMAGANY_NODE,
+  sprawdzWersjeNode,
+  powodPotomka,
+  sekretyKatalogu,
+  coDalejLokalnie,
+  coDalejKontener,
 } from '../../scripts/instalacja-wspolne.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const katalogi = [];
-function katalog() { const p = fs.mkdtempSync(path.join(os.tmpdir(), 'oms-komunikaty-')); katalogi.push(p); return p; }
-afterEach(() => { for (const p of katalogi.splice(0)) fs.rmSync(p, { recursive: true, force: true }); });
+function katalog() {
+  const p = fs.mkdtempSync(path.join(os.tmpdir(), 'oms-komunikaty-'));
+  katalogi.push(p);
+  return p;
+}
+afterEach(() => {
+  for (const p of katalogi.splice(0)) fs.rmSync(p, { recursive: true, force: true });
+});
 
 function zajmijPort(port) {
   return new Promise((resolve, reject) => {
@@ -24,7 +35,7 @@ function zajmijPort(port) {
     serwer.listen(port, '127.0.0.1', () => resolve(serwer));
   });
 }
-const zwolnij = serwer => new Promise(resolve => serwer.close(() => resolve()));
+const zwolnij = (serwer) => new Promise((resolve) => serwer.close(() => resolve()));
 
 describe('kontrola wersji Node przed instalacją', () => {
   it('na starym Node mówi, jakiej wersji trzeba, jaką masz i skąd wziąć nową', () => {
@@ -53,10 +64,18 @@ describe('kontrola wersji Node przed instalacją', () => {
   // Kontrola siedzi w instalacja-wspolne.mjs i działa przy jego ewaluacji. ESM najpierw wiąże WSZYSTKIE statyczne
   // importy, więc import 'node:sqlite' (brak w Node 20) albo pliku .ts wywróciłby skrypt, zanim kontrola ruszy.
   it('skrypty instalacji statycznie importują tylko moduły obecne w starym Node i wspólny plik z kontrolą', () => {
-    const dozwolone = new Set(['node:fs', 'node:path', 'node:url', 'node:child_process', 'node:http', 'node:crypto', './instalacja-wspolne.mjs']);
+    const dozwolone = new Set([
+      'node:fs',
+      'node:path',
+      'node:url',
+      'node:child_process',
+      'node:http',
+      'node:crypto',
+      './instalacja-wspolne.mjs',
+    ]);
     for (const nazwa of ['demo', 'proba', 'kontener', 'otworz', 'przygotuj', 'wspolne']) {
       const tekst = fs.readFileSync(path.join(ROOT, `scripts/instalacja-${nazwa}.mjs`), 'utf8');
-      const importy = [...tekst.matchAll(/^import\s[^;]*?from\s+'([^']+)'/gm)].map(m => m[1]);
+      const importy = [...tekst.matchAll(/^import\s[^;]*?from\s+'([^']+)'/gm)].map((m) => m[1]);
       expect(importy.length, nazwa).toBeGreaterThan(0);
       for (const modul of importy) expect.soft(dozwolone.has(modul), `${nazwa}: statyczny import ${modul}`).toBe(true);
       if (nazwa !== 'wspolne') expect(importy, nazwa).toContain('./instalacja-wspolne.mjs');
@@ -67,7 +86,10 @@ describe('kontrola wersji Node przed instalacją', () => {
 
 describe('powód błędu etapu potomnego', () => {
   it('przekroczenie czasu nazywa wprost, z limitem w sekundach', () => {
-    const wynik = spawnSync(process.execPath, ['-e', 'setTimeout(() => {}, 20000)'], { encoding: 'utf8', timeout: 300 });
+    const wynik = spawnSync(process.execPath, ['-e', 'setTimeout(() => {}, 20000)'], {
+      encoding: 'utf8',
+      timeout: 300,
+    });
     expect(wynik.error?.code).toBe('ETIMEDOUT');
     expect(powodPotomka(wynik, { limitMs: 60_000 })).toMatch(/przekroczono 60 s/);
   });
@@ -96,7 +118,10 @@ describe('powód błędu etapu potomnego', () => {
 
   it('sekrety katalogu to hasło serwisowe z proba.env i hasło administratora', () => {
     const p = katalog();
-    fs.writeFileSync(path.join(p, 'proba.env'), 'OMS_TRYB=proba\nOMS_USER=serwis-proby\nOMS_PASS=haslo-serwisowe-abc\nOMS_KANALY=[]\n');
+    fs.writeFileSync(
+      path.join(p, 'proba.env'),
+      'OMS_TRYB=proba\nOMS_USER=serwis-proby\nOMS_PASS=haslo-serwisowe-abc\nOMS_KANALY=[]\n',
+    );
     fs.writeFileSync(path.join(p, 'administrator-proby.env'), 'login=administrator-proby\nhaslo=haslo-admina-xyz\n');
     expect(sekretyKatalogu(p).sort()).toEqual(['haslo-admina-xyz', 'haslo-serwisowe-abc']);
     expect(sekretyKatalogu(path.join(p, 'brak'))).toEqual([]);
@@ -118,9 +143,14 @@ describe('powód błędu etapu potomnego', () => {
     const p = path.join(katalog(), 'demo');
     let wynik;
     try {
-      wynik = spawnSync(process.execPath, [path.join(ROOT, 'scripts/instalacja-demo.mjs'), '--katalog', p, '--port', String(port)],
-        { cwd: ROOT, encoding: 'utf8', timeout: 90_000 });
-    } finally { await zwolnij(serwer); }
+      wynik = spawnSync(
+        process.execPath,
+        [path.join(ROOT, 'scripts/instalacja-demo.mjs'), '--katalog', p, '--port', String(port)],
+        { cwd: ROOT, encoding: 'utf8', timeout: 90_000 },
+      );
+    } finally {
+      await zwolnij(serwer);
+    }
     expect(wynik.status).toBe(1);
     expect(wynik.stderr).toMatch(/^INSTALACJA_DEMO_PROBA_ODMOWA: .*EADDRINUSE/m);
     for (const sekret of sekretyKatalogu(p)) expect(wynik.stdout + wynik.stderr).not.toContain(sekret);
@@ -131,14 +161,24 @@ describe('powód błędu etapu potomnego', () => {
     const port = 39392;
     const serwer = await zajmijPort(port);
     const baza = katalog();
-    const dane = path.join(baza, 'data'); const konfiguracja = path.join(baza, 'config');
-    fs.mkdirSync(dane); fs.mkdirSync(konfiguracja);
+    const dane = path.join(baza, 'data');
+    const konfiguracja = path.join(baza, 'config');
+    fs.mkdirSync(dane);
+    fs.mkdirSync(konfiguracja);
     let wynik;
     try {
-      wynik = spawnSync(process.execPath, [path.join(ROOT, 'scripts/instalacja-kontener.mjs'), '--port', String(port)], {
-        encoding: 'utf8', timeout: 120_000, env: { ...process.env, OMS_KATALOG_DANYCH: dane, OMS_KATALOG_KONFIGURACJI: konfiguracja },
-      });
-    } finally { await zwolnij(serwer); }
+      wynik = spawnSync(
+        process.execPath,
+        [path.join(ROOT, 'scripts/instalacja-kontener.mjs'), '--port', String(port)],
+        {
+          encoding: 'utf8',
+          timeout: 120_000,
+          env: { ...process.env, OMS_KATALOG_DANYCH: dane, OMS_KATALOG_KONFIGURACJI: konfiguracja },
+        },
+      );
+    } finally {
+      await zwolnij(serwer);
+    }
     expect(wynik.status).toBe(1);
     expect(wynik.stderr).toMatch(/^INSTALACJA_DEMO_PROBA_ODMOWA: .*EADDRINUSE/m);
     expect(wynik.stderr).toMatch(/^INSTALACJA_KONTENER_DEMO_ODMOWA/m);
@@ -162,9 +202,16 @@ describe('„co dalej” po udanej instalacji', () => {
     expect(tekst).toContain('sudo docker compose down');
     expect(tekst).toContain(':3001/login');
     expect(tekst).toContain(path.join('/opt/oms/config', 'administrator-proby.env'));
-    const zKluczem = coDalejKontener({ konfiguracja: '/opt/oms/config', port: 3001, klucz: '/opt/oms/config/klucz.env', idKlucza: 'abcd1234' }).join('\n');
+    const zKluczem = coDalejKontener({
+      konfiguracja: '/opt/oms/config',
+      port: 3001,
+      klucz: '/opt/oms/config/klucz.env',
+      idKlucza: 'abcd1234',
+    }).join('\n');
     expect(zKluczem).toContain('/opt/oms/config/klucz.env');
     expect(zKluczem).toContain('abcd1234');
-    expect(zKluczem).toContain('Zapisz zawartość tego pliku w menedżerze haseł. Bez niego kopia bazy nie odda podłączonych integracji.');
+    expect(zKluczem).toContain(
+      'Zapisz zawartość tego pliku w menedżerze haseł. Bez niego kopia bazy nie odda podłączonych integracji.',
+    );
   });
 });

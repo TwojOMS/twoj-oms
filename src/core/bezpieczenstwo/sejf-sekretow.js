@@ -18,7 +18,9 @@ import { BladKonfiguracji } from '../blad-konfiguracji.ts';
 
 /** Format danych w bazie, który zna ten kod. Liczba leży w pliku danych, żeby generator paczki mógł ją
  * odczytać z pakowanego commita bez wykonywania jego kodu. */
-export const FORMAT_SEKRETOW = Number(JSON.parse(readFileSync(new URL('./format-sekretow.json', import.meta.url), 'utf8')).format);
+export const FORMAT_SEKRETOW = Number(
+  JSON.parse(readFileSync(new URL('./format-sekretow.json', import.meta.url), 'utf8')).format,
+);
 
 export const ZMIENNA_KLUCZA = 'OMS_KLUCZ_SEKRETOW';
 export const ZMIENNA_POPRZEDNIEGO = 'OMS_KLUCZ_SEKRETOW_POPRZEDNI';
@@ -29,7 +31,8 @@ const WERSJA = 'oms1';
 const DLUGOSC_KLUCZA = 32;
 const DLUGOSC_NONCE = 12;
 const DLUGOSC_ZNACZNIKA = 16;
-const WSKAZOWKA = 'na klucz zapisany przy instalacji (plik klucz.env, kopia w menedżerze haseł). Opis odzyskania: docs/instalacja-docker.md, rozdział „Klucz poświadczeń”.';
+const WSKAZOWKA =
+  'na klucz zapisany przy instalacji (plik klucz.env, kopia w menedżerze haseł). Opis odzyskania: docs/instalacja-docker.md, rozdział „Klucz poświadczeń”.';
 
 export class BladSekretow extends Error {
   /** @param {'BRAK_KLUCZA'|'INNY_KLUCZ'|'USZKODZONY'|'NIEZNANA_WERSJA'|'JAWNY_WIERSZ'} kod */
@@ -120,18 +123,37 @@ export function utworzSejf(biezacy, poprzedni = null) {
   function odszyfrujSzczegolowo(zapis, miejsce) {
     const klasa = klasyfikuj(zapis);
     const gdzie = { tabela: miejsce.tabela, wiersz: String(miejsce.id) };
-    if (klasa === 'nieznana-wersja') throw new BladSekretow('NIEZNANA_WERSJA', `Sekret w ${opisMiejsca(miejsce)} ma nieznaną wersję formatu — baza z nowszego wydania.`, gdzie);
-    if (klasa === 'uszkodzony') throw new BladSekretow('USZKODZONY', `Sekret w ${opisMiejsca(miejsce)} jest uszkodzony.`, gdzie);
-    if (klasa !== 'szyfrogram') throw new BladSekretow('JAWNY_WIERSZ', `Sekret w ${opisMiejsca(miejsce)} nie jest zaszyfrowany.`, gdzie);
+    if (klasa === 'nieznana-wersja')
+      throw new BladSekretow(
+        'NIEZNANA_WERSJA',
+        `Sekret w ${opisMiejsca(miejsce)} ma nieznaną wersję formatu — baza z nowszego wydania.`,
+        gdzie,
+      );
+    if (klasa === 'uszkodzony')
+      throw new BladSekretow('USZKODZONY', `Sekret w ${opisMiejsca(miejsce)} jest uszkodzony.`, gdzie);
+    if (klasa !== 'szyfrogram')
+      throw new BladSekretow('JAWNY_WIERSZ', `Sekret w ${opisMiejsca(miejsce)} nie jest zaszyfrowany.`, gdzie);
     const czesci = czesciZapisu(String(zapis));
-    const kandydaci = [kluczB, kluczP].filter(k => k && k.id === czesci.id);
+    const kandydaci = [kluczB, kluczP].filter((k) => k && k.id === czesci.id);
     if (!kandydaci.length) {
-      throw new BladSekretow('INNY_KLUCZ', `Sekret w ${opisMiejsca(miejsce)} zaszyfrowano kluczem o id ${czesci.id}, a w konfiguracji jest klucz o id ${kluczB.id}${kluczP ? ` (poprzedni: ${kluczP.id})` : ''}.`, gdzie);
+      throw new BladSekretow(
+        'INNY_KLUCZ',
+        `Sekret w ${opisMiejsca(miejsce)} zaszyfrowano kluczem o id ${czesci.id}, a w konfiguracji jest klucz o id ${kluczB.id}${kluczP ? ` (poprzedni: ${kluczP.id})` : ''}.`,
+        gdzie,
+      );
     }
     for (const k of kandydaci) {
-      try { return { tekst: odszyfrujKluczem(k.bajty, czesci, miejsce), poprzedni: k === kluczP }; } catch { /* następny kandydat */ }
+      try {
+        return { tekst: odszyfrujKluczem(k.bajty, czesci, miejsce), poprzedni: k === kluczP };
+      } catch {
+        /* następny kandydat */
+      }
     }
-    throw new BladSekretow('USZKODZONY', `Sekret w ${opisMiejsca(miejsce)} nie przechodzi uwierzytelnienia kluczem o id ${czesci.id} — uszkodzony albo przeniesiony z innego wiersza.`, gdzie);
+    throw new BladSekretow(
+      'USZKODZONY',
+      `Sekret w ${opisMiejsca(miejsce)} nie przechodzi uwierzytelnienia kluczem o id ${czesci.id} — uszkodzony albo przeniesiony z innego wiersza.`,
+      gdzie,
+    );
   }
   return Object.freeze({
     idKlucza: kluczB.id,
@@ -150,15 +172,26 @@ function bladKlucza(zmienna, opis) {
 export function sejfZEnv(env) {
   const tekst = env?.[ZMIENNA_KLUCZA];
   if (tekst === undefined || String(tekst).trim() === '') {
-    throw bladKlucza(ZMIENNA_KLUCZA, `Brak klucza poświadczeń ${ZMIENNA_KLUCZA} — bez niego OMS nie odczyta poświadczeń integracji zapisanych w bazie.`);
+    throw bladKlucza(
+      ZMIENNA_KLUCZA,
+      `Brak klucza poświadczeń ${ZMIENNA_KLUCZA} — bez niego OMS nie odczyta poświadczeń integracji zapisanych w bazie.`,
+    );
   }
   const biezacy = bajtyKlucza(tekst);
-  if (!biezacy) throw bladKlucza(ZMIENNA_KLUCZA, `${ZMIENNA_KLUCZA}: zła postać klucza — oczekiwane 43 znaki base64url (32 bajty).`);
+  if (!biezacy)
+    throw bladKlucza(
+      ZMIENNA_KLUCZA,
+      `${ZMIENNA_KLUCZA}: zła postać klucza — oczekiwane 43 znaki base64url (32 bajty).`,
+    );
   const tekstP = env?.[ZMIENNA_POPRZEDNIEGO];
   let poprzedni = null;
   if (tekstP !== undefined && String(tekstP).trim() !== '') {
     poprzedni = bajtyKlucza(tekstP);
-    if (!poprzedni) throw bladKlucza(ZMIENNA_POPRZEDNIEGO, `${ZMIENNA_POPRZEDNIEGO}: zła postać klucza — oczekiwane 43 znaki base64url (32 bajty).`);
+    if (!poprzedni)
+      throw bladKlucza(
+        ZMIENNA_POPRZEDNIEGO,
+        `${ZMIENNA_POPRZEDNIEGO}: zła postać klucza — oczekiwane 43 znaki base64url (32 bajty).`,
+      );
   }
   return utworzSejf(biezacy, poprzedni);
 }
@@ -175,7 +208,11 @@ export function przypnijSejf(db, sejf) {
 /** Sejf przypięty do uchwytu bazy. Bez przypięcia — odmowa (BRAK_KLUCZA). */
 export function sejfBazy(db) {
   const s = przypiete.get(db) ?? sejfDomyslny;
-  if (!s) throw new BladSekretow('BRAK_KLUCZA', 'Uchwyt bazy nie ma przypiętego klucza poświadczeń — ścieżka startu pominęła sejf.');
+  if (!s)
+    throw new BladSekretow(
+      'BRAK_KLUCZA',
+      'Uchwyt bazy nie ma przypiętego klucza poświadczeń — ścieżka startu pominęła sejf.',
+    );
   return s;
 }
 

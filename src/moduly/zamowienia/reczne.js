@@ -1,6 +1,24 @@
-import { pobierzZamowienie, dopiszLog, zapiszNadpisaniaWysylki, zapiszNadpisaniaFaktury, przywrocDaneZeSklepu, dodajPozycjeReczna, zapiszPozycjeReczna, usunPozycjeReczna, zapiszNadpisaniaPozycji } from '../../oms/db/zamowienia.js';
+import {
+  pobierzZamowienie,
+  dopiszLog,
+  zapiszNadpisaniaWysylki,
+  zapiszNadpisaniaFaktury,
+  przywrocDaneZeSklepu,
+  dodajPozycjeReczna,
+  zapiszPozycjeReczna,
+  usunPozycjeReczna,
+  zapiszNadpisaniaPozycji,
+} from '../../oms/db/zamowienia.js';
 import { przeliczKwoteRecznego } from '../../oms/db/zamowienia-reczne.js';
-import { DOSTAWY, parsujNoweZamowienie, skopiujFaktureDoWysylki, wstawPozycjeDoFormularza, dodajWierszFormularza, usunWierszFormularza, wdtZFormularza } from '../../domena/nowe-zamowienie.js';
+import {
+  DOSTAWY,
+  parsujNoweZamowienie,
+  skopiujFaktureDoWysylki,
+  wstawPozycjeDoFormularza,
+  dodajWierszFormularza,
+  usunWierszFormularza,
+  wdtZFormularza,
+} from '../../domena/nowe-zamowienie.js';
 import ejs from 'ejs';
 import { ekranOdmowyKarty } from './odmowa-karty.js';
 import { join } from 'node:path';
@@ -22,44 +40,102 @@ import { zmienUstalenia, rabatKontraktowy } from './services/rabat.js';
 import { czyWdt, czyNipUe } from '../../domena/wdt.js';
 import { poprawnyNip } from '../../core/walidatory.ts';
 import { KODY_KRAJOW_UE } from '../../domena/klient-zbiorczy.js';
-import { planZapisuPozycji, sprawdzUsunieciePozycji, sprawdzZmianePozycjiPoFakturze } from '../../domena/usuniecie-pozycji.js';
+import {
+  planZapisuPozycji,
+  sprawdzUsunieciePozycji,
+  sprawdzZmianePozycjiPoFakturze,
+} from '../../domena/usuniecie-pozycji.js';
 import { zwrotyZamowienia } from '../../oms/db/zwroty.js';
 import { zalozZamowienieReczne } from './services/zamowienie-reczne.js';
 import { przypiszDoOkresu } from '../faktury/services/okres.js';
 import { czytajStawkeDomyslna } from '../faktury/db/stawka-vat.js';
-import {teraz,AKCJA_ALLEGRO_PROBA,allegroWymagaOdpytania,miniaturyEkranu,ktoKlikal,sprzedawcaSpecyfikacji,daneKarty,KATALOG_WIDOKOW,fragment} from './wspolne.js';
+import {
+  teraz,
+  AKCJA_ALLEGRO_PROBA,
+  allegroWymagaOdpytania,
+  miniaturyEkranu,
+  ktoKlikal,
+  sprzedawcaSpecyfikacji,
+  daneKarty,
+  KATALOG_WIDOKOW,
+  fragment,
+} from './wspolne.js';
 export function registerReczneRoutes(app, kontekst) {
-const {db,config,poller,nadanie,faktura,proforma,kurierzy,gus,syncSklep,wiadomosci,przesylkiAllegro,stanyKanalow,zdrowie,fakturaAllegro,fakturaHurtem,doczytanieKsef,powrotKarty,adresPowrotuNaKarte,wczytajListe,statusyDlaKarty,OKNO_OSTRZEZEN_PRZESYLEK_DNI,zbierzOstrzezenia,wyborWiadomosci,daneWiadomosci,renderujKarte,renderujNowe,magazynEkranu,niesiePolaFormularza,opisZmian,kopiujDaneFakturyDoWysylki,pozycjaZadania,zWynikami,magazynDlaKarty,cennikiInstalacji,opcjeZw,zwolnionaFirma}=kontekst;
-// `opcjeZw` (kontekst.js) — „zw” tylko przy TwojeFaktury. Stawka domyślna czytana z flagą wszędzie, gdzie
-// trafia do pozycji albo do netto na ekranie; bez flagi (WDT ÷ stawka w magazynie) zostaje odczyt jak dotąd.
-const stawkaDomyslnaZw = () => czytajStawkeDomyslna(db, opcjeZw);
-// Odmowy „×”, przywrócenia, dopisania z magazynu i zmiany kwoty po fakturze
-// wracają na kartę z pozycjami w edycji i paskiem nad tabelą.
-// `wpisane` — to, co człowiek wpisał w tabeli (wpisanePozycje niżej); widok wstawia to w pola
-// zamiast wartości z bazy, żeby odmowa nie kasowała pracy. Nic z tego nie trafia do bazy.
-const odmowaNaKarcie = (req, reply, id, tekst, wpisane = null) => renderujKarte(req, reply.code(400), pobierzZamowienie(db, id),
-  { bladDanych: { sekcja: 'pozycje', tekst, pole: null, wartosci: {}, wpisane } });
-// Pola tabeli pozycji z formularza (kolumny równoległe; pojedyncze pola dopisania to jeden nowy wiersz).
-// Wiersze z kluczem → `istniejace[klucz]`, bez klucza → `nowe` po kolei, bez wiersza skreślonego „×” (usun_nowy).
-const POLA_WPISANE = ['ilosc', 'nazwa', 'sku', 'cena_netto', 'vat', 'cena_brutto'];
-function wpisanePozycje(body) {
-  if (!body || typeof body !== 'object') return null;
-  const kolumny = Object.fromEntries(['klucz', ...POLA_WPISANE].map((p) => [p, jakoTablica(body[p])]));
-  const n = Math.max(...Object.values(kolumny).map((k) => k.length));
-  if (!n) return null;
-  const wynik = { istniejace: {}, nowe: [] };
-  let indeksNowego = 0;
-  for (let i = 0; i < n; i += 1) {
-    const w = Object.fromEntries(POLA_WPISANE.map((p) => [p, kolumny[p][i] === undefined ? undefined : String(kolumny[p][i])]));
-    const klucz = String(kolumny.klucz[i] ?? '');
-    if (klucz) { wynik.istniejace[klucz] = w; continue; }
-    const indeks = indeksNowego++;
-    if (String(body.usun_nowy ?? '') !== String(indeks)) wynik.nowe.push(w);
+  const {
+    db,
+    config,
+    poller,
+    nadanie,
+    faktura,
+    proforma,
+    kurierzy,
+    gus,
+    syncSklep,
+    wiadomosci,
+    przesylkiAllegro,
+    stanyKanalow,
+    zdrowie,
+    fakturaAllegro,
+    fakturaHurtem,
+    doczytanieKsef,
+    powrotKarty,
+    adresPowrotuNaKarte,
+    wczytajListe,
+    statusyDlaKarty,
+    OKNO_OSTRZEZEN_PRZESYLEK_DNI,
+    zbierzOstrzezenia,
+    wyborWiadomosci,
+    daneWiadomosci,
+    renderujKarte,
+    renderujNowe,
+    magazynEkranu,
+    niesiePolaFormularza,
+    opisZmian,
+    kopiujDaneFakturyDoWysylki,
+    pozycjaZadania,
+    zWynikami,
+    magazynDlaKarty,
+    cennikiInstalacji,
+    opcjeZw,
+    zwolnionaFirma,
+  } = kontekst;
+  // `opcjeZw` (kontekst.js) — „zw” tylko przy TwojeFaktury. Stawka domyślna czytana z flagą wszędzie, gdzie
+  // trafia do pozycji albo do netto na ekranie; bez flagi (WDT ÷ stawka w magazynie) zostaje odczyt jak dotąd.
+  const stawkaDomyslnaZw = () => czytajStawkeDomyslna(db, opcjeZw);
+  // Odmowy „×”, przywrócenia, dopisania z magazynu i zmiany kwoty po fakturze
+  // wracają na kartę z pozycjami w edycji i paskiem nad tabelą.
+  // `wpisane` — to, co człowiek wpisał w tabeli (wpisanePozycje niżej); widok wstawia to w pola
+  // zamiast wartości z bazy, żeby odmowa nie kasowała pracy. Nic z tego nie trafia do bazy.
+  const odmowaNaKarcie = (req, reply, id, tekst, wpisane = null) =>
+    renderujKarte(req, reply.code(400), pobierzZamowienie(db, id), {
+      bladDanych: { sekcja: 'pozycje', tekst, pole: null, wartosci: {}, wpisane },
+    });
+  // Pola tabeli pozycji z formularza (kolumny równoległe; pojedyncze pola dopisania to jeden nowy wiersz).
+  // Wiersze z kluczem → `istniejace[klucz]`, bez klucza → `nowe` po kolei, bez wiersza skreślonego „×” (usun_nowy).
+  const POLA_WPISANE = ['ilosc', 'nazwa', 'sku', 'cena_netto', 'vat', 'cena_brutto'];
+  function wpisanePozycje(body) {
+    if (!body || typeof body !== 'object') return null;
+    const kolumny = Object.fromEntries(['klucz', ...POLA_WPISANE].map((p) => [p, jakoTablica(body[p])]));
+    const n = Math.max(...Object.values(kolumny).map((k) => k.length));
+    if (!n) return null;
+    const wynik = { istniejace: {}, nowe: [] };
+    let indeksNowego = 0;
+    for (let i = 0; i < n; i += 1) {
+      const w = Object.fromEntries(
+        POLA_WPISANE.map((p) => [p, kolumny[p][i] === undefined ? undefined : String(kolumny[p][i])]),
+      );
+      const klucz = String(kolumny.klucz[i] ?? '');
+      if (klucz) {
+        wynik.istniejace[klucz] = w;
+        continue;
+      }
+      const indeks = indeksNowego++;
+      if (String(body.usun_nowy ?? '') !== String(indeks)) wynik.nowe.push(w);
+    }
+    return wynik;
   }
-  return wynik;
-}
-app.get('/zamowienia/nowe', async (req, reply) => renderujNowe(reply));
-app.post('/zamowienia/nowe', async (req, reply) => {
+  app.get('/zamowienia/nowe', async (req, reply) => renderujNowe(reply));
+  app.post('/zamowienia/nowe', async (req, reply) => {
     // ⚠️ CALY FORMULARZ PARSUJEMY PRZED PIERWSZYM ZAPISEM DO BAZY. Odmowa w polowie
     // (np. na trzeciej pozycji) zostawilaby zamowienie z nadanym numerem, bez pozycji
     // i bez ani jednego sladu, ze cos poszlo nie tak — a numeru nie da sie zwolnic.
@@ -75,7 +151,11 @@ app.post('/zamowienia/nowe', async (req, reply) => {
     try {
       // Pusta stawka wiersza = domyślna z Ustawień.
       // Firma zwolniona — numer UE nabywcy to nie WDT, netto liczone stawką wiersza.
-      dane = parsujNoweZamowienie(req.body ?? {}, { stawkaDomyslna: stawkaDomyslnaZw(), ...opcjeZw, zwolniona: zwolnionaFirma() });
+      dane = parsujNoweZamowienie(req.body ?? {}, {
+        stawkaDomyslna: stawkaDomyslnaZw(),
+        ...opcjeZw,
+        zwolniona: zwolnionaFirma(),
+      });
       // ⚠️ KOLEJNOSC W TEJ TRASIE, zeby nikt jej nie przestawial na chybil trafil.
       // Okres i oplata sa od siebie NIEZALEZNE, ale ich miejsca
       // w trasie juz nie:
@@ -138,30 +218,33 @@ app.post('/zamowienia/nowe', async (req, reply) => {
 
     dopiszLog(db, id, {
       akcja: 'zamowienie.reczne',
-      wynik: `Ręcznie (${ktoKlikal(req)}): zamówienie założone ręcznie — `
-        + `${DOSTAWY[req.body?.dostawa] ?? dane.metoda_wysylki}, ${dane.metoda_platnosci}, `
-        + `${dane.pozycje.length} poz., koszt dostawy ${dane.koszt_dostawy_brutto} zł.`
+      wynik:
+        `Ręcznie (${ktoKlikal(req)}): zamówienie założone ręcznie — ` +
+        `${DOSTAWY[req.body?.dostawa] ?? dane.metoda_wysylki}, ${dane.metoda_platnosci}, ` +
+        `${dane.pozycje.length} poz., koszt dostawy ${dane.koszt_dostawy_brutto} zł.` +
         // Oplata doklejona przez PANEL, nie przez czlowieka — dziennik musi umiec
         // odpowiedziec, skad na fakturze wzial sie wiersz, ktorego operator nie wpisywal.
-        + (oplata ? ` Doklejono „${oplata.nazwa}" ${(oplata.kwotaGr / 100).toFixed(2)} zł (rozliczenie zbiorcze).` : '')
+        (oplata ? ` Doklejono „${oplata.nazwa}" ${(oplata.kwotaGr / 100).toFixed(2)} zł (rozliczenie zbiorcze).` : '') +
         // Ręczna data wysyłki zastępuje standardowy termin — dziennik mówi, skąd się wziął.
-        + (dane.termin_wysylki_reczny ? ` Data wysyłki: ${dane.termin_wysylki_reczny.split('-').reverse().join('.')}.` : ''),
+        (dane.termin_wysylki_reczny
+          ? ` Data wysyłki: ${dane.termin_wysylki_reczny.split('-').reverse().join('.')}.`
+          : ''),
     });
     return reply.redirect(`/zamowienia/${id}`);
   });
-app.post('/zamowienia/nowe/kopiuj-do-wysylki', async (req, reply) => (
-    renderujNowe(reply, { formularz: skopiujFaktureDoWysylki(req.body ?? {}) })
-  ));
-// Wiersze pozycji bez JavaScriptu — jak „Skopiuj dane do wysylki", przestawiaja
-// formularz i oddaja go, nic nie zapisuja. Z JavaScriptem (public/pozycje-wiersze.js) te same
-// przyciski dzialaja bez przeladowania, a te trasy zostaja droga zapasowa.
-app.post('/zamowienia/nowe/wiersz/dodaj', async (req, reply) => (
-    renderujNowe(reply, { formularz: dodajWierszFormularza(req.body ?? {}) })
-  ));
-app.post('/zamowienia/nowe/wiersz/usun', async (req, reply) => (
-    renderujNowe(reply, { formularz: usunWierszFormularza(req.body ?? {}, req.body?.usun_wiersz) })
-  ));
-app.post('/zamowienia/nowe/klient', async (req, reply) => {
+  app.post('/zamowienia/nowe/kopiuj-do-wysylki', async (req, reply) =>
+    renderujNowe(reply, { formularz: skopiujFaktureDoWysylki(req.body ?? {}) }),
+  );
+  // Wiersze pozycji bez JavaScriptu — jak „Skopiuj dane do wysylki", przestawiaja
+  // formularz i oddaja go, nic nie zapisuja. Z JavaScriptem (public/pozycje-wiersze.js) te same
+  // przyciski dzialaja bez przeladowania, a te trasy zostaja droga zapasowa.
+  app.post('/zamowienia/nowe/wiersz/dodaj', async (req, reply) =>
+    renderujNowe(reply, { formularz: dodajWierszFormularza(req.body ?? {}) }),
+  );
+  app.post('/zamowienia/nowe/wiersz/usun', async (req, reply) =>
+    renderujNowe(reply, { formularz: usunWierszFormularza(req.body ?? {}, req.body?.usun_wiersz) }),
+  );
+  app.post('/zamowienia/nowe/klient', async (req, reply) => {
     const klucz = String(req.body?.klient_klucz ?? '').trim();
     const klient = klucz ? klientPoKluczu(db, klucz) : null;
     if (!klient) {
@@ -176,27 +259,26 @@ app.post('/zamowienia/nowe/klient', async (req, reply) => {
     // a slad ma zostac — to on tlumaczy pozniej, skad na fakturze wzial sie ten adres.
     dopiszLog(db, null, {
       akcja: 'klient.wstaw',
-      wynik: `Ręcznie (${ktoKlikal(req)}): wstawiono dane klienta B2B `
-        + `„${klient.nazwa}" (${klient.klucz}) do formularza nowego zamówienia — nic jeszcze nie zapisano.`,
+      wynik:
+        `Ręcznie (${ktoKlikal(req)}): wstawiono dane klienta B2B ` +
+        `„${klient.nazwa}" (${klient.klucz}) do formularza nowego zamówienia — nic jeszcze nie zapisano.`,
     });
     return renderujNowe(reply, {
       formularz: wstawKlientaDoFormularza(req.body ?? {}, klient),
       klientWybrany: klient,
     });
   });
-app.get('/zamowienia/nowe/magazyn/wyniki', async (req, reply) => {
+  app.get('/zamowienia/nowe/magazyn/wyniki', async (req, reply) => {
     const stan = magazynEkranu(req);
-    const wyniki = stan.fraza
-      ? zWynikami(szukajDoZamowienia(db, { fraza: stan.fraza, kanal: stan.cennik }))
-      : null;
+    const wyniki = stan.fraza ? zWynikami(szukajDoZamowienia(db, { fraza: stan.fraza, kanal: stan.cennik })) : null;
     return fragment(reply, '_magazyn-wyniki-nowe.ejs', { magazyn: { ...stan, wyniki } });
   });
-app.post('/zamowienia/nowe/magazyn', async (req, reply) => {
+  app.post('/zamowienia/nowe/magazyn', async (req, reply) => {
     const stan = magazynEkranu(req);
     const wyniki = stan.fraza ? zWynikami(szukajDoZamowienia(db, { fraza: stan.fraza, kanal: stan.cennik })) : null;
     return renderujNowe(reply, { formularz: req.body ?? {}, magazyn: { ...stan, wyniki } });
   });
-app.post('/zamowienia/nowe/magazyn/dodaj', async (req, reply) => {
+  app.post('/zamowienia/nowe/magazyn/dodaj', async (req, reply) => {
     const stan = magazynEkranu(req);
     // ⚠️ WYNIKI WROCILY JAKO ROWNOLEGLE TABLICE, a przycisk powiedzial, KTORY wiersz
     // wybrano. Powtorzenie szukania i wziecie n-tego wyniku byloby tanszym kodem i drozszym
@@ -207,13 +289,14 @@ app.post('/zamowienia/nowe/magazyn/dodaj', async (req, reply) => {
     // ⚠️ Kanal z formularza i tak przechodzi przez domene (cennikDlaZamowienia w `magazynEkranu`
     // wyzej rozstrzyga cennik), a tutaj sluzy wylacznie temu, zeby odczytac WLASCIWY wiersz
     // lustra. Allegro odbije sie w `pozycjaZProduktu`.
-    const produkt = Number.isInteger(nr) && nr >= 0
-      ? produktDoZamowienia(db, {
-        kanal: zTablicy('mag_kanal') ?? stan.cennik,
-        produkt_id: zTablicy('mag_produkt_id'),
-        wariant_id: zTablicy('mag_wariant_id'),
-      })
-      : null;
+    const produkt =
+      Number.isInteger(nr) && nr >= 0
+        ? produktDoZamowienia(db, {
+            kanal: zTablicy('mag_kanal') ?? stan.cennik,
+            produkt_id: zTablicy('mag_produkt_id'),
+            wariant_id: zTablicy('mag_wariant_id'),
+          })
+        : null;
 
     let pozycja;
     try {
@@ -245,12 +328,14 @@ app.post('/zamowienia/nowe/magazyn/dodaj', async (req, reply) => {
     }
 
     const formularz = wstawPozycjeDoFormularza(req.body ?? {}, pozycja, {
-      stawkaDomyslna: stawkaDomyslnaZw(), ...opcjeZw, zwolniona: zwolnionaFirma(),
+      stawkaDomyslna: stawkaDomyslnaZw(),
+      ...opcjeZw,
+      zwolniona: zwolnionaFirma(),
     });
     const wyniki = stan.fraza ? zWynikami(szukajDoZamowienia(db, { fraza: stan.fraza, kanal: stan.cennik })) : null;
     return renderujNowe(reply, { formularz, magazyn: { ...stan, wyniki, dodano: pozycja } });
   });
-app.post('/zamowienia/nowe/gus', async (req, reply) => {
+  app.post('/zamowienia/nowe/gus', async (req, reply) => {
     const formularz = req.body ?? {};
     const odmowa = (tekst, rodzaj = 'blad') => renderujNowe(reply, { formularz, komunikatGus: { rodzaj, tekst } });
 
@@ -280,20 +365,22 @@ app.post('/zamowienia/nowe/gus', async (req, reply) => {
 
     dopiszLog(db, null, {
       akcja: 'dane.gus',
-      wynik: `GUS (${ktoKlikal(req)}): pobrano „${firma.firma}" (NIP ${firma.nip ?? nip}, REGON ${firma.regon ?? '—'}) `
-        + '— dane WSTAWIONE DO FORMULARZA nowego zamówienia, nic jeszcze nie zapisano.',
+      wynik:
+        `GUS (${ktoKlikal(req)}): pobrano „${firma.firma}" (NIP ${firma.nip ?? nip}, REGON ${firma.regon ?? '—'}) ` +
+        '— dane WSTAWIONE DO FORMULARZA nowego zamówienia, nic jeszcze nie zapisano.',
     });
     return renderujNowe(reply, {
       formularz,
       daneZGus: firma,
       komunikatGus: {
         rodzaj: 'ok',
-        tekst: `GUS: ${firma.firma}${firma.regon ? ` (REGON ${firma.regon})` : ''}. `
-          + 'Sprawdź dane i załóż zamówienie — dopóki tego nie zrobisz, nic się nie zmieniło.',
+        tekst:
+          `GUS: ${firma.firma}${firma.regon ? ` (REGON ${firma.regon})` : ''}. ` +
+          'Sprawdź dane i załóż zamówienie — dopóki tego nie zrobisz, nic się nie zmieniło.',
       },
     });
   });
-function zapisDanych(sciezka, obsluga) {
+  function zapisDanych(sciezka, obsluga) {
     app.post(`/zamowienia/:id/dane/${sciezka}`, async (req, reply) => {
       const id = Number(req.params.id);
       const z = pobierzZamowienie(db, id);
@@ -305,16 +392,23 @@ function zapisDanych(sciezka, obsluga) {
         dopiszLog(db, id, { akcja: `dane.${sciezka}`, wynik: `BŁĄD: ${e.message}` });
         // Karta z sekcją w edycji i wpisanymi wartościami, nie goły tekst.
         reply.code(400);
-        return renderujKarte(req, reply, pobierzZamowienie(db, id), { bladDanych: {
-          sekcja: sciezka, tekst: `Nie udało się zapisać danych: ${komunikatDlaOperatora(e)}`, pole: e?.pole ?? null, wartosci: req.body ?? {},
-        } });
+        return renderujKarte(req, reply, pobierzZamowienie(db, id), {
+          bladDanych: {
+            sekcja: sciezka,
+            tekst: `Nie udało się zapisać danych: ${komunikatDlaOperatora(e)}`,
+            pole: e?.pole ?? null,
+            wartosci: req.body ?? {},
+          },
+        });
       }
-      return reply.redirect(adresPowrotuNaKarte(req, id, {
-        kotwica: kotwica.replace(/^#/, '') || null,
-      }));
+      return reply.redirect(
+        adresPowrotuNaKarte(req, id, {
+          kotwica: kotwica.replace(/^#/, '') || null,
+        }),
+      );
     });
   }
-zapisDanych('wysylka', (id, z, req) => {
+  zapisDanych('wysylka', (id, z, req) => {
     if (!niesiePolaFormularza(req.body, POLA_ADRESU_RECZNE)) {
       throw bladOperatora('Żądanie nie niosło ani jednego pola formularza — panel niczego nie zmienił.');
     }
@@ -325,24 +419,33 @@ zapisDanych('wysylka', (id, z, req) => {
       wynik: `Ręcznie (${ktoKlikal(req)}): dane do wysyłki poprawione ręcznie — ${opisZmian(nadpisania)}.`,
     });
   });
-zapisDanych('faktura', (id, z, req) => {
+  zapisDanych('faktura', (id, z, req) => {
     // Samo pole wyboru nie wystarczy: przy odznaczonym „chce fakturę" urwane żądanie byłoby
     // nie do odróżnienia od pustego, więc pytamy o pola tekstowe, tak samo jak wyżej.
     if (!niesiePolaFormularza(req.body, POLA_FAKTURY_RECZNE)) {
       throw bladOperatora('Żądanie nie niosło ani jednego pola formularza — panel niczego nie zmienił.');
     }
-    const nadpisania = nadpisaniaPoZapisie(z.klient_reczny_json, daneFakturyZeSklepu(z), req.body ?? {}, POLA_FAKTURY_RECZNE);
+    const nadpisania = nadpisaniaPoZapisie(
+      z.klient_reczny_json,
+      daneFakturyZeSklepu(z),
+      req.body ?? {},
+      POLA_FAKTURY_RECZNE,
+    );
     const danePoZmianie = daneFaktury({ ...z, klient_reczny_json: JSON.stringify(nadpisania) });
     const surowyNip = danePoZmianie.nip;
     // Etykieta „NIP:” zdjęta przed sprawdzeniem, inaczej „NI” udaje prefiks kraju.
-    const normalizuj = (n) => String(bezEtykietyNip(n) ?? '').replace(/[\s.\-/]/g, '').toUpperCase().replace(/^NIP/, '');
+    const normalizuj = (n) =>
+      String(bezEtykietyNip(n) ?? '')
+        .replace(/[\s.\-/]/g, '')
+        .toUpperCase()
+        .replace(/^NIP/, '');
     const numer = normalizuj(surowyNip);
     // Sprawdzamy tylko numer wpisany przez operatora: niezmieniony NIP ze sklepu nie blokuje
     // poprawy adresu ani przełącznika (zły numer i tak zatrzyma wystawienie, `z-ladunku`).
     const zmienionyNip = numer !== normalizuj(daneFakturyZeSklepu(z).nip);
     const kraj = String(danePoZmianie.kraj ?? 'PL').toUpperCase();
-    const zagraniczny = (/^[A-Z]{2}/.test(numer) && !numer.startsWith('PL'))
-      || (kraj !== 'PL' && !KODY_KRAJOW_UE.has(kraj));
+    const zagraniczny =
+      (/^[A-Z]{2}/.test(numer) && !numer.startsWith('PL')) || (kraj !== 'PL' && !KODY_KRAJOW_UE.has(kraj));
     if (numer && zmienionyNip && !czyNipUe(numer) && !zagraniczny && !poprawnyNip(numer.replace(/^PL/, ''))) {
       throw bladOperatora(`NIP „${surowyNip}” jest niepoprawny — sprawdź cyfry.`, { pole: 'nip' });
     }
@@ -365,22 +468,29 @@ zapisDanych('faktura', (id, z, req) => {
     const poZapisie = pobierzZamowienie(db, id);
     const kontrakt = rabatKontraktowy(db, daneFaktury(poZapisie).nip);
     if (kontrakt.decyzja(poZapisie.rabat_procent) === 'ustaw') {
-      const wynik = zmienUstalenia(db, id, {
-        b2b: poZapisie.b2b,
-        termin_platnosci: poZapisie.termin_platnosci,
-        rabat_procent: kontrakt.stawka.procent,
-      }, opcjeZw);
+      const wynik = zmienUstalenia(
+        db,
+        id,
+        {
+          b2b: poZapisie.b2b,
+          termin_platnosci: poZapisie.termin_platnosci,
+          rabat_procent: kontrakt.stawka.procent,
+        },
+        opcjeZw,
+      );
       dopiszLog(db, id, {
         akcja: 'rabat.kontraktowy',
-        wynik: `Rabat ${kontrakt.stawka.procent}% z umowy klienta nałożony po zapisaniu NIP-u:`
-          + ` przecenionych pozycji ${wynik?.zmienione ?? 0}`
-          + `${wynik?.pominiete?.length ? `, pominiętych (cena wpisana ręcznie) ${wynik.pominiete.length}` : ''}.`,
+        wynik:
+          `Rabat ${kontrakt.stawka.procent}% z umowy klienta nałożony po zapisaniu NIP-u:` +
+          ` przecenionych pozycji ${wynik?.zmienione ?? 0}` +
+          `${wynik?.pominiete?.length ? `, pominiętych (cena wpisana ręcznie) ${wynik.pominiete.length}` : ''}.`,
       });
     }
     dopiszLog(db, id, {
       akcja: 'dane.faktura',
-      wynik: `Ręcznie (${ktoKlikal(req)}): dane do faktury poprawione ręcznie — ${opisZmian(nadpisania)}`
-        + `${przelacznik === null ? '' : `; „klient chce fakturę" ustawione ręcznie na ${przelacznik ? 'TAK' : 'NIE'}`}.`,
+      wynik:
+        `Ręcznie (${ktoKlikal(req)}): dane do faktury poprawione ręcznie — ${opisZmian(nadpisania)}` +
+        `${przelacznik === null ? '' : `; „klient chce fakturę" ustawione ręcznie na ${przelacznik ? 'TAK' : 'NIE'}`}.`,
     });
 
     // ⚠️ DRUGI PRZYCISK ZATWIERDZAJACY („Zapisz i skopiuj do wysylki"), tym samym wzorcem
@@ -402,14 +512,14 @@ zapisDanych('faktura', (id, z, req) => {
     }
     return '#wysylka';
   });
-zapisDanych('przywroc', (id, z, req) => {
+  zapisDanych('przywroc', (id, z, req) => {
     przywrocDaneZeSklepu(db, id);
     dopiszLog(db, id, {
       akcja: 'dane.przywroc',
       wynik: `Ręcznie (${ktoKlikal(req)}): ręczne poprawki danych klienta skasowane — rządzi sklep.`,
     });
   });
-function zapisPozycji(sciezka, obsluga) {
+  function zapisPozycji(sciezka, obsluga) {
     app.post(`/zamowienia/:id/pozycje/:klucz/${sciezka}`, async (req, reply) => {
       const cel = pozycjaZadania(req, reply);
       if (!cel) return reply;
@@ -424,13 +534,21 @@ function zapisPozycji(sciezka, obsluga) {
         }
       } catch (e) {
         dopiszLog(db, cel.id, { akcja: `pozycja.${sciezka}`, wynik: `BŁĄD: ${e.message}` });
-        return odmowaNaKarcie(req, reply, cel.id, `Nie udało się zapisać pozycji: ${komunikatDlaOperatora(e)}`, wpisanePozycje(req.body));
+        return odmowaNaKarcie(
+          req,
+          reply,
+          cel.id,
+          `Nie udało się zapisać pozycji: ${komunikatDlaOperatora(e)}`,
+          wpisanePozycje(req.body),
+        );
       }
       const usunieta = (cel.z.pozycje_usuniete ?? []).some((p) => p.klucz === cel.p.klucz);
-      return reply.code(sciezka === 'usun' || usunieta ? 303 : 302).redirect(adresPowrotuNaKarte(req, cel.id, { stan: 'pozycje', kotwica: 'pozycje' }));
+      return reply
+        .code(sciezka === 'usun' || usunieta ? 303 : 302)
+        .redirect(adresPowrotuNaKarte(req, cel.id, { stan: 'pozycje', kotwica: 'pozycje' }));
     });
   }
-app.post('/zamowienia/:id/pozycje/zapisz', async (req, reply) => {
+  app.post('/zamowienia/:id/pozycje/zapisz', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
     if (!z) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
@@ -441,22 +559,28 @@ app.post('/zamowienia/:id/pozycje/zapisz', async (req, reply) => {
       try {
         const zwolniona = zwolnionaFirma();
         const plan = planZapisuPozycji(z, req.body, {
-          stawkaDomyslna: stawkaDomyslnaZw(), ...opcjeZw, zwolniona,
-          wdt: czyWdt(daneFaktury(z).nip, { zwolniona }), zwroty: zwrotyZamowienia(db, id),
+          stawkaDomyslna: stawkaDomyslnaZw(),
+          ...opcjeZw,
+          zwolniona,
+          wdt: czyWdt(daneFaktury(z).nip, { zwolniona }),
+          zwroty: zwrotyZamowienia(db, id),
         });
         for (const p of plan.nowe) dodajPozycjeReczna(db, id, p, opcjeZw);
         for (const r of plan.reczneZmiany) zapiszPozycjeReczna(db, id, r.id, r.pozycja, opcjeZw);
         for (const idPozycji of plan.reczneUsuniete) usunPozycjeReczna(db, id, idPozycji);
         zapiszNadpisaniaPozycji(db, id, Object.keys(plan.mapa).length ? plan.mapa : null);
         przeliczKwoteRecznego(db, id);
-        for (const nazwa of plan.usunieteNazwy) dopiszLog(db, id, {
-          akcja: 'pozycja.usunieta', wynik: `Ręcznie (${ktoKlikal(req)}): usunięta pozycja „${nazwa}”.`,
-        });
+        for (const nazwa of plan.usunieteNazwy)
+          dopiszLog(db, id, {
+            akcja: 'pozycja.usunieta',
+            wynik: `Ręcznie (${ktoKlikal(req)}): usunięta pozycja „${nazwa}”.`,
+          });
         dopiszLog(db, id, {
           akcja: 'pozycje.zapisz',
-          wynik: `Ręcznie (${ktoKlikal(req)}): zapisane pozycje — `
-            + `${plan.zmienione.length ? `zmienione: ${plan.zmienione.join(', ')}` : 'bez zmian wobec sklepu'}. `
-            + 'Kwota zamówienia w sklepie NIE ZMIENIA SIĘ.',
+          wynik:
+            `Ręcznie (${ktoKlikal(req)}): zapisane pozycje — ` +
+            `${plan.zmienione.length ? `zmienione: ${plan.zmienione.join(', ')}` : 'bez zmian wobec sklepu'}. ` +
+            'Kwota zamówienia w sklepie NIE ZMIENIA SIĘ.',
         });
         db.exec('COMMIT');
       } catch (e) {
@@ -467,20 +591,31 @@ app.post('/zamowienia/:id/pozycje/zapisz', async (req, reply) => {
       dopiszLog(db, id, { akcja: 'pozycje.zapisz', wynik: `BŁĄD: ${e.message}` });
       // Każda odmowa (walidacja, po fakturze, niekompletny formularz) — karta z paskiem
       // i tabelą otwartą z wpisanymi wartościami; transakcja już wycofana, w bazie nic się nie zmieniło.
-      return odmowaNaKarcie(req, reply, id, `Nie udało się zapisać pozycji: ${komunikatDlaOperatora(e)}`, wpisanePozycje(req.body));
+      return odmowaNaKarcie(
+        req,
+        reply,
+        id,
+        `Nie udało się zapisać pozycji: ${komunikatDlaOperatora(e)}`,
+        wpisanePozycje(req.body),
+      );
     }
-    const edytuj = req.body?.dodaj_wiersz !== undefined || req.body?.usun !== undefined || req.body?.usun_nowy !== undefined;
-    return reply.code(edytuj ? 303 : 302).redirect(adresPowrotuNaKarte(req, id, { stan: edytuj ? 'pozycje' : null, kotwica: 'pozycje' }));
+    const edytuj =
+      req.body?.dodaj_wiersz !== undefined || req.body?.usun !== undefined || req.body?.usun_nowy !== undefined;
+    return reply
+      .code(edytuj ? 303 : 302)
+      .redirect(adresPowrotuNaKarte(req, id, { stan: edytuj ? 'pozycje' : null, kotwica: 'pozycje' }));
   });
 
-app.get('/zamowienia/:id/magazyn/wyniki', async (req, reply) => {
+  app.get('/zamowienia/:id/magazyn/wyniki', async (req, reply) => {
     const z = pobierzZamowienie(db, Number(req.params.id));
     if (!z) return reply.code(404).send('Nie ma takiego zamówienia');
     return fragment(reply, '_magazyn-wyniki-karta.ejs', {
-      magazyn: magazynDlaKarty(req, z), z, powrot: powrotKarty(req),
+      magazyn: magazynDlaKarty(req, z),
+      z,
+      powrot: powrotKarty(req),
     });
   });
-app.post('/zamowienia/:id/pozycje/z-magazynu', async (req, reply) => {
+  app.post('/zamowienia/:id/pozycje/z-magazynu', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
     if (!z) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
@@ -490,7 +625,9 @@ app.post('/zamowienia/:id/pozycje/z-magazynu', async (req, reply) => {
     // (kanal, produkt, wariant, ilosc) — pole z cena w HTML-u da sie podmienic, a to sa
     // pieniadze, ktore klient zaplaci.
     const produkt = produktDoZamowienia(db, {
-      kanal: cennik, produkt_id: req.body?.produkt_id, wariant_id: req.body?.wariant_id,
+      kanal: cennik,
+      produkt_id: req.body?.produkt_id,
+      wariant_id: req.body?.wariant_id,
     });
 
     let pozycja;
@@ -517,13 +654,14 @@ app.post('/zamowienia/:id/pozycje/z-magazynu', async (req, reply) => {
     przeliczKwoteRecznego(db, id);
     dopiszLog(db, id, {
       akcja: 'pozycja.z-magazynu',
-      wynik: `Ręcznie (${ktoKlikal(req)}): dopisana z magazynu pozycja „${pozycja.nazwa}", `
-        + `${pozycja.ilosc} szt. po ${pozycja.cena_brutto} zł brutto = ${pozycja.brutto_linii} zł `
-        + `(cennik ${cennikiInstalacji.nazwy[cennik]}`
+      wynik:
+        `Ręcznie (${ktoKlikal(req)}): dopisana z magazynu pozycja „${pozycja.nazwa}", ` +
+        `${pozycja.ilosc} szt. po ${pozycja.cena_brutto} zł brutto = ${pozycja.brutto_linii} zł ` +
+        `(cennik ${cennikiInstalacji.nazwy[cennik]}` +
         // Rabat trafia do dziennika WYLACZNIE wtedy, gdy jakis byl — inaczej „rabat 0%"
         // staloby przy kazdej pozycji kazdego zamowienia i przestaloby cokolwiek znaczyc.
-        + `${z.rabat_procent ? `, cena katalogowa ${pozycja.cena_katalogowa} zł, rabat ${z.rabat_procent}%` : ''}). `
-        + 'Kwota zamówienia w sklepie NIE ZMIENIA SIĘ — rośnie kwota oczekiwana od klienta.',
+        `${z.rabat_procent ? `, cena katalogowa ${pozycja.cena_katalogowa} zł, rabat ${z.rabat_procent}%` : ''}). ` +
+        'Kwota zamówienia w sklepie NIE ZMIENIA SIĘ — rośnie kwota oczekiwana od klienta.',
     });
 
     // Wracamy DO WYNIKOW, z ta sama fraza i cennikiem: przy telefonie klient dokłada
@@ -536,15 +674,18 @@ app.post('/zamowienia/:id/pozycje/z-magazynu', async (req, reply) => {
     parametry.set('cennik', cennik);
     return reply.redirect(`/zamowienia/${id}?${parametry.toString()}#pozycje`);
   });
-app.post('/zamowienia/:id/pozycje', async (req, reply) => {
+  app.post('/zamowienia/:id/pozycje', async (req, reply) => {
     const id = Number(req.params.id);
-    if (!pobierzZamowienie(db, id)) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
+    if (!pobierzZamowienie(db, id))
+      return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
     let pozycja;
     try {
       // Stawka z pola (puste = domyślna z Ustawień); przy nabywcy z UE netto liczy się stawką 0.
       const zam = pobierzZamowienie(db, id);
       pozycja = parsujNowaPozycje(req.body, {
-        stawkaDomyslna: stawkaDomyslnaZw(), wdt: czyWdt(daneFaktury(zam).nip, { zwolniona: zwolnionaFirma() }), ...opcjeZw,
+        stawkaDomyslna: stawkaDomyslnaZw(),
+        wdt: czyWdt(daneFaktury(zam).nip, { zwolniona: zwolnionaFirma() }),
+        ...opcjeZw,
       });
     } catch (e) {
       return odmowaNaKarcie(req, reply, id, komunikatDlaOperatora(e), wpisanePozycje(req.body));
@@ -555,13 +696,14 @@ app.post('/zamowienia/:id/pozycje', async (req, reply) => {
     przeliczKwoteRecznego(db, id);
     dopiszLog(db, id, {
       akcja: 'pozycja.dodana',
-      wynik: `Ręcznie (${ktoKlikal(req)}): dopisana pozycja „${pozycja.nazwa}", `
-        + `${pozycja.ilosc} szt. po ${pozycja.cena_brutto} zł brutto = ${pozycja.brutto_linii} zł. `
-        + 'Kwota zamówienia w sklepie NIE ZMIENIA SIĘ — rośnie kwota oczekiwana od klienta.',
+      wynik:
+        `Ręcznie (${ktoKlikal(req)}): dopisana pozycja „${pozycja.nazwa}", ` +
+        `${pozycja.ilosc} szt. po ${pozycja.cena_brutto} zł brutto = ${pozycja.brutto_linii} zł. ` +
+        'Kwota zamówienia w sklepie NIE ZMIENIA SIĘ — rośnie kwota oczekiwana od klienta.',
     });
     return reply.redirect(adresPowrotuNaKarte(req, id));
   });
-zapisPozycji('przywroc', ({ id, z, p }, req) => {
+  zapisPozycji('przywroc', ({ id, z, p }, req) => {
     if (p.reczna) {
       throw bladOperatora('Pozycja dopisana ręcznie nie ma czego przywracać ze sklepu — sklep o niej nie wie.');
     }
@@ -574,7 +716,7 @@ zapisPozycji('przywroc', ({ id, z, p }, req) => {
       wynik: `Ręcznie (${ktoKlikal(req)}): ręczne poprawki pozycji „${(p.sklep ?? p).nazwa}" skasowane — rządzi sklep.`,
     });
   });
-app.post('/zamowienia/:id/wysylka/kwota/przywroc', async (req, reply) => {
+  app.post('/zamowienia/:id/wysylka/kwota/przywroc', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
     if (!z) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
@@ -588,7 +730,7 @@ app.post('/zamowienia/:id/wysylka/kwota/przywroc', async (req, reply) => {
     });
     return reply.redirect(adresPowrotuNaKarte(req, id, { kotwica: 'pozycje' }));
   });
-zapisPozycji('usun', ({ id, z, p }, req) => {
+  zapisPozycji('usun', ({ id, z, p }, req) => {
     sprawdzUsunieciePozycji(z, p.klucz, { zwroty: zwrotyZamowienia(db, id) });
     const usunieta = p.reczna ? usunPozycjeReczna(db, id, p.id) : p;
     if (!p.reczna) zapiszNadpisaniaPozycji(db, id, oznaczUsunieta(odczytajNadpisania(z.pozycje_reczne_json), p.klucz));
@@ -597,8 +739,9 @@ zapisPozycji('usun', ({ id, z, p }, req) => {
     przeliczKwoteRecznego(db, id);
     dopiszLog(db, id, {
       akcja: 'pozycja.usunieta',
-      wynik: `Ręcznie (${ktoKlikal(req)}): usunięta pozycja „${usunieta.nazwa}", `
-        + `${usunieta.ilosc} szt. po ${usunieta.cena_brutto} zł = ${usunieta.brutto_linii} zł.`,
+      wynik:
+        `Ręcznie (${ktoKlikal(req)}): usunięta pozycja „${usunieta.nazwa}", ` +
+        `${usunieta.ilosc} szt. po ${usunieta.cena_brutto} zł = ${usunieta.brutto_linii} zł.`,
     });
   });
 }

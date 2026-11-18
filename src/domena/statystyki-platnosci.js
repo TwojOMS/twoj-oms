@@ -42,7 +42,10 @@ export function agregatorMetod() {
 
   const dodaj = (z) => {
     wszystkie += 1;
-    if (czyKanalAllegro(z)) { allegroBezInformacji += 1; return; }
+    if (czyKanalAllegro(z)) {
+      allegroBezInformacji += 1;
+      return;
+    }
     mianownik += 1;
     const { etykieta } = normalizujMetode(z.metoda_platnosci);
     kubelki.set(etykieta, (kubelki.get(etykieta) ?? 0) + 1);
@@ -51,7 +54,7 @@ export function agregatorMetod() {
   const wynik = () => {
     const pozycje = [...kubelki.entries()]
       .map(([etykieta, ile]) => ({ etykieta, ile, udzial: udzialProcent(ile, mianownik) }))
-      .sort((a, b) => (b.ile - a.ile) || a.etykieta.localeCompare(b.etykieta, 'pl'));
+      .sort((a, b) => b.ile - a.ile || a.etykieta.localeCompare(b.etykieta, 'pl'));
 
     return { pozycje, mianownik, allegroBezInformacji, wszystkie };
   };

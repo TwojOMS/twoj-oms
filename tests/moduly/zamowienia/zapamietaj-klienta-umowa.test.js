@@ -1,6 +1,4 @@
-import {
-  describe, it, expect, beforeEach,
-} from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
@@ -35,15 +33,35 @@ const post = (url, payload) => app.inject({ method: 'POST', url, headers: naglow
 
 /** Klient z umową zbiorczą i ustaleniami — założony tą samą drogą, co z ekranu Klienci. */
 const KLIENT_Z_UMOWA = {
-  nazwa: 'Pracownia Przykładowa', klucz: 'przykladowa', nip: NIP,
-  f_firma: 'Pracownia Przykładowa sp. z o.o.', f_ulica: 'Stara 1', f_kod: '00-001', f_miasto: 'Warszawa',
+  nazwa: 'Pracownia Przykładowa',
+  klucz: 'przykladowa',
+  nip: NIP,
+  f_firma: 'Pracownia Przykładowa sp. z o.o.',
+  f_ulica: 'Stara 1',
+  f_kod: '00-001',
+  f_miasto: 'Warszawa',
   f_email: 'faktury@przyklad.test',
-  w_nazwa: 'Anna Nowak', w_firma: 'Pracownia Przykładowa sp. z o.o.', w_ulica: 'Stara 1',
-  w_kod: '00-001', w_miasto: 'Warszawa', w_telefon: '500000001', w_email: 'biuro@przyklad.test',
-  b2b: 'on', rabat_procent: '30', chce_fakture: 'on',
-  metoda_wysylki: 'dpd', koszt_dostawy_brutto: '0', platnosc: 'przelew', termin_platnosci: '14',
+  w_nazwa: 'Anna Nowak',
+  w_firma: 'Pracownia Przykładowa sp. z o.o.',
+  w_ulica: 'Stara 1',
+  w_kod: '00-001',
+  w_miasto: 'Warszawa',
+  w_telefon: '500000001',
+  w_email: 'biuro@przyklad.test',
+  b2b: 'on',
+  rabat_procent: '30',
+  chce_fakture: 'on',
+  metoda_wysylki: 'dpd',
+  koszt_dostawy_brutto: '0',
+  platnosc: 'przelew',
+  termin_platnosci: '14',
   komentarz: 'Umowa ramowa z 01.09, faktura zbiorcza na koniec miesiąca.',
-  rozliczenie_zbiorcze: 'on', prog_darmowej_dostawy_wlaczony: 'on', oplata_obslugi_wlaczony: 'on', prog_darmowej_dostawy: '500', oplata_obslugi: '4', oplata_kurierska: '19',
+  rozliczenie_zbiorcze: 'on',
+  prog_darmowej_dostawy_wlaczony: 'on',
+  oplata_obslugi_wlaczony: 'on',
+  prog_darmowej_dostawy: '500',
+  oplata_obslugi: '4',
+  oplata_kurierska: '19',
 };
 
 // Zamówienie tego samego podmiotu z NOWYM adresem — i z ustaleniami innymi niż na karcie
@@ -51,26 +69,43 @@ const KLIENT_Z_UMOWA = {
 // ustaleń z zamówienia do bazy było widać.
 // `bezAdresu`: zamówienie, w którym nabywca podał tylko firmę (telefon, mail) — adresu
 // ani na fakturze, ani w wysyłce nie ma. Tak wygląda część zamówień przyjmowanych telefonicznie.
-const zalozZamowienie = ({ nip = NIP, firma = 'Pracownia Przykładowa sp. z o.o.', bezAdresu = false } = {}) => zalozZamowienieReczne({
-  db,
-  znacznik: '2026-10-20T09:00:00.000Z',
-  dane: {
-    klient: bezAdresu
-      ? { company: firma, address_1: '  ', postcode: '', city: null }
-      : {
-        first_name: 'Anna', last_name: 'Nowak', company: firma, address_1: 'Nowa 5',
-        postcode: '00-002', city: 'Kraków', email: 'nowy@przyklad.test',
-      },
-    dostawa: bezAdresu
-      ? { company: firma }
-      : {
-        first_name: 'Anna', last_name: 'Nowak', company: firma, address_1: 'Nowa 5',
-        postcode: '00-002', city: 'Kraków',
-      },
-    nip, chce_fakture: 0, metoda_wysylki: 'inpost_paczkomat', koszt_dostawy_brutto: '19.99',
-    metoda_platnosci: 'Przelew', b2b: 0, termin_platnosci: '7', rabat_procent: 0, pozycje: [],
-  },
-});
+const zalozZamowienie = ({ nip = NIP, firma = 'Pracownia Przykładowa sp. z o.o.', bezAdresu = false } = {}) =>
+  zalozZamowienieReczne({
+    db,
+    znacznik: '2026-10-20T09:00:00.000Z',
+    dane: {
+      klient: bezAdresu
+        ? { company: firma, address_1: '  ', postcode: '', city: null }
+        : {
+            first_name: 'Anna',
+            last_name: 'Nowak',
+            company: firma,
+            address_1: 'Nowa 5',
+            postcode: '00-002',
+            city: 'Kraków',
+            email: 'nowy@przyklad.test',
+          },
+      dostawa: bezAdresu
+        ? { company: firma }
+        : {
+            first_name: 'Anna',
+            last_name: 'Nowak',
+            company: firma,
+            address_1: 'Nowa 5',
+            postcode: '00-002',
+            city: 'Kraków',
+          },
+      nip,
+      chce_fakture: 0,
+      metoda_wysylki: 'inpost_paczkomat',
+      koszt_dostawy_brutto: '19.99',
+      metoda_platnosci: 'Przelew',
+      b2b: 0,
+      termin_platnosci: '7',
+      rabat_procent: 0,
+      pozycje: [],
+    },
+  });
 
 describe('„Uaktualnij dane klienta B2B” u klienta z umową zbiorczą', () => {
   it('aktualizuje adres, a umowy zbiorczej i jej kwot nie rusza', async () => {
@@ -102,8 +137,16 @@ describe('„Uaktualnij dane klienta B2B” u klienta z umową zbiorczą', () =>
 
     const po = klientPoNip(db, NIP);
     for (const pole of [
-      'klucz', 'b2b', 'rabat_procent', 'termin_platnosci', 'platnosc', 'komentarz',
-      'chce_fakture', 'metoda_wysylki', 'koszt_dostawy_brutto', 'aktywny',
+      'klucz',
+      'b2b',
+      'rabat_procent',
+      'termin_platnosci',
+      'platnosc',
+      'komentarz',
+      'chce_fakture',
+      'metoda_wysylki',
+      'koszt_dostawy_brutto',
+      'aktywny',
     ]) {
       expect({ pole, wartosc: po[pole] }).toEqual({ pole, wartosc: przed[pole] });
     }
@@ -128,11 +171,19 @@ describe('„Uaktualnij dane klienta B2B” u klienta z umową zbiorczą', () =>
 
     const po = klientPoNip(db, NIP);
     expect(po.faktura).toMatchObject({
-      ulica: 'Stara 1', kod: '00-001', miasto: 'Warszawa', email: 'faktury@przyklad.test', nip: NIP,
+      ulica: 'Stara 1',
+      kod: '00-001',
+      miasto: 'Warszawa',
+      email: 'faktury@przyklad.test',
+      nip: NIP,
     });
     expect(po.wysylka).toMatchObject({
-      nazwa: 'Anna Nowak', ulica: 'Stara 1', kod: '00-001', miasto: 'Warszawa',
-      telefon: '500000001', email: 'biuro@przyklad.test',
+      nazwa: 'Anna Nowak',
+      ulica: 'Stara 1',
+      kod: '00-001',
+      miasto: 'Warszawa',
+      telefon: '500000001',
+      email: 'biuro@przyklad.test',
     });
     expect(po.nip).toBe(NIP);
     expect(po.rozliczenie_zbiorcze).toBe(1);
@@ -192,8 +243,15 @@ describe('„Uaktualnij dane klienta B2B” u klienta z umową zbiorczą', () =>
       dane: {
         klient: { company: 'Pracownia Przykładowa sp. z o.o.', address_1: 'Nowa 5', postcode: '', city: 'Kraków' },
         dostawa: { company: 'Nowy Odbiorca sp. z o.o.', address_1: 'Magazynowa 9', postcode: '', city: 'Gdańsk' },
-        nip: NIP, chce_fakture: 1, metoda_wysylki: 'dpd', koszt_dostawy_brutto: '0.00',
-        metoda_platnosci: 'Przelew', b2b: 1, termin_platnosci: '14', rabat_procent: 0, pozycje: [],
+        nip: NIP,
+        chce_fakture: 1,
+        metoda_wysylki: 'dpd',
+        koszt_dostawy_brutto: '0.00',
+        metoda_platnosci: 'Przelew',
+        b2b: 1,
+        termin_platnosci: '14',
+        rabat_procent: 0,
+        pozycje: [],
       },
     });
     await post(`/zamowienia/${id}/klient/zapamietaj`);
@@ -201,7 +259,10 @@ describe('„Uaktualnij dane klienta B2B” u klienta z umową zbiorczą', () =>
     const po = klientPoNip(db, NIP);
     expect(po.faktura).toMatchObject({ ulica: 'Nowa 5', miasto: 'Kraków', kod: null });
     expect(po.wysylka).toMatchObject({
-      firma: 'Nowy Odbiorca sp. z o.o.', ulica: 'Magazynowa 9', miasto: 'Gdańsk', kod: null,
+      firma: 'Nowy Odbiorca sp. z o.o.',
+      ulica: 'Magazynowa 9',
+      miasto: 'Gdańsk',
+      kod: null,
     });
     // pola spoza adresu dalej tylko niepuste: telefonu zamówienie nie podało
     expect(po.wysylka.telefon).toBe('500000001');

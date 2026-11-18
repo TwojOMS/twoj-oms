@@ -12,5 +12,6 @@ export const KANALY_CENNIKA = historyczne.kanaly;
 export const CENNIK_DOMYSLNY = historyczne.domyslny;
 export const NAZWY_CENNIKA = historyczne.nazwy;
 export const cennikDlaZamowienia = (zamowienie) => cennik.cennikDlaZamowienia(zamowienie, historyczne);
-export const pozycjaZProduktu = (produkt, ilosc, opcje = {}) => cennik.pozycjaZProduktu(produkt, ilosc, { cenniki: historyczne, ...opcje });
+export const pozycjaZProduktu = (produkt, ilosc, opcje = {}) =>
+  cennik.pozycjaZProduktu(produkt, ilosc, { cenniki: historyczne, ...opcje });
 export const { nazwaPozycji, rozmiarDoPokazania } = cennik;

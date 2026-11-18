@@ -10,21 +10,28 @@ export function inicjalizujKolejnosc(lista, komunikat, wyslij = fetch) {
   let chwyt = null;
   let przewijanie = null;
   const wiersze = () => [...lista.querySelectorAll('[data-klucz]')];
-  const uloz = elementy => lista.append(...elementy);
-  const oglos = tekst => { komunikat.textContent = tekst; };
-  const uchwytWiersza = wiersz => wiersz.querySelector('.ust-uchwyt');
-  const pozycja = wiersz => `${uchwytWiersza(wiersz).dataset.nazwa}: pozycja ${wiersze().indexOf(wiersz) + 1} z ${wiersze().length}.`;
+  const uloz = (elementy) => lista.append(...elementy);
+  const oglos = (tekst) => {
+    komunikat.textContent = tekst;
+  };
+  const uchwytWiersza = (wiersz) => wiersz.querySelector('.ust-uchwyt');
+  const pozycja = (wiersz) =>
+    `${uchwytWiersza(wiersz).dataset.nazwa}: pozycja ${wiersze().indexOf(wiersz) + 1} z ${wiersze().length}.`;
 
   async function zapisz(poprzednie, wiersz) {
-    if (poprzednie.every((w, i) => w === wiersze()[i])) { oglos(`Kolejność bez zmian. ${pozycja(wiersz)}`); return; }
+    if (poprzednie.every((w, i) => w === wiersze()[i])) {
+      oglos(`Kolejność bez zmian. ${pozycja(wiersz)}`);
+      return;
+    }
     zapisuje = true;
     lista.setAttribute('aria-busy', 'true');
     oglos('Zapisywanie kolejności…');
     try {
       const odpowiedz = await wyslij('/ustawienia/statusy', {
-        method: 'POST', credentials: 'same-origin',
+        method: 'POST',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ akcja: 'kolejnosc', kolejnosc: wiersze().map(w => w.dataset.klucz) }),
+        body: JSON.stringify({ akcja: 'kolejnosc', kolejnosc: wiersze().map((w) => w.dataset.klucz) }),
       });
       if (!odpowiedz.ok) throw new Error('Nie zapisano');
       // Wygaśnięcie sesji może przekierować do HTML logowania (200).
@@ -40,8 +47,12 @@ export function inicjalizujKolejnosc(lista, komunikat, wyslij = fetch) {
     }
   }
 
-  lista.addEventListener('keydown', async e => {
-    if (e.key === 'Escape' && chwyt) { e.preventDefault(); zakoncz(false); return; }
+  lista.addEventListener('keydown', async (e) => {
+    if (e.key === 'Escape' && chwyt) {
+      e.preventDefault();
+      zakoncz(false);
+      return;
+    }
     const uchwyt = e.target.closest('.ust-uchwyt');
     if (!uchwyt || !['ArrowUp', 'ArrowDown'].includes(e.key)) return;
     e.preventDefault();
@@ -58,8 +69,8 @@ export function inicjalizujKolejnosc(lista, komunikat, wyslij = fetch) {
 
   function przesun(y) {
     const obecne = wiersze();
-    const pozostale = obecne.filter(w => w !== chwyt.wiersz);
-    let na = pozostale.findIndex(w => {
+    const pozostale = obecne.filter((w) => w !== chwyt.wiersz);
+    let na = pozostale.findIndex((w) => {
       const r = w.getBoundingClientRect();
       return y < r.top + r.height / 2;
     });
@@ -79,11 +90,14 @@ export function inicjalizujKolejnosc(lista, komunikat, wyslij = fetch) {
     const okno = lista.ownerDocument.defaultView;
     const y = chwyt.y;
     const krok = y < 80 ? -12 : y > okno.innerHeight - 80 ? 12 : 0;
-    if (krok) { okno.scrollBy(0, krok); przesun(y); }
+    if (krok) {
+      okno.scrollBy(0, krok);
+      przesun(y);
+    }
     przewijanie = okno.requestAnimationFrame(przewijaj);
   }
 
-  lista.addEventListener('pointerdown', e => {
+  lista.addEventListener('pointerdown', (e) => {
     const uchwyt = e.target.closest('.ust-uchwyt');
     if (!uchwyt || zapisuje || chwyt || e.button !== 0 || !e.isPrimary) return;
     e.preventDefault();
@@ -98,12 +112,16 @@ export function inicjalizujKolejnosc(lista, komunikat, wyslij = fetch) {
   });
 
   const dokument = lista.ownerDocument;
-  dokument.addEventListener('pointermove', e => {
-    if (!chwyt || e.pointerId !== chwyt.id) return;
-    e.preventDefault();
-    chwyt.y = e.clientY;
-    przesun(e.clientY);
-  }, { passive: false });
+  dokument.addEventListener(
+    'pointermove',
+    (e) => {
+      if (!chwyt || e.pointerId !== chwyt.id) return;
+      e.preventDefault();
+      chwyt.y = e.clientY;
+      przesun(e.clientY);
+    },
+    { passive: false },
+  );
 
   async function zakoncz(zapisac) {
     if (!chwyt) return;
@@ -114,12 +132,21 @@ export function inicjalizujKolejnosc(lista, komunikat, wyslij = fetch) {
     uchwyt.setAttribute('aria-pressed', 'false');
     if (uchwyt.hasPointerCapture(id)) uchwyt.releasePointerCapture(id);
     if (zapisac) await zapisz(poprzednie, wiersz);
-    else { uloz(poprzednie); oglos('Anulowano przesuwanie.'); }
+    else {
+      uloz(poprzednie);
+      oglos('Anulowano przesuwanie.');
+    }
     uchwyt.focus({ preventScroll: true });
   }
-  dokument.addEventListener('pointerup', e => { if (chwyt?.id === e.pointerId) void zakoncz(true); });
-  dokument.addEventListener('pointercancel', e => { if (chwyt?.id === e.pointerId) void zakoncz(false); });
-  dokument.defaultView.addEventListener('blur', () => { void zakoncz(false); });
+  dokument.addEventListener('pointerup', (e) => {
+    if (chwyt?.id === e.pointerId) void zakoncz(true);
+  });
+  dokument.addEventListener('pointercancel', (e) => {
+    if (chwyt?.id === e.pointerId) void zakoncz(false);
+  });
+  dokument.defaultView.addEventListener('blur', () => {
+    void zakoncz(false);
+  });
 }
 
 if (typeof document !== 'undefined') {

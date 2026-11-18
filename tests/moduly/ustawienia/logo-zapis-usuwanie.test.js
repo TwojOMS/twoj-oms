@@ -10,14 +10,30 @@ import { nazwaCiasteczkaOms } from '../../../src/core/bezpieczenstwo/sesja.js';
 
 const EKRAN = '/ustawienia/firma';
 const ZAPIS = `${EKRAN}/logo`;
-const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aP1sAAAAASUVORK5CYII=', 'base64');
+const PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aP1sAAAAASUVORK5CYII=',
+  'base64',
+);
 const katalog = mkdtempSync(join(tmpdir(), 'oms-logo-test-'));
 let p;
-afterEach(async () => { await p?.app.close(); p?.db.close(); p = null; });
+afterEach(async () => {
+  await p?.app.close();
+  p?.db.close();
+  p = null;
+});
 afterAll(() => rmSync(katalog, { recursive: true, force: true }));
 async function panel(extra = {}) {
-  p = await zbudujOms({ env: { OMS_USER: 'operator', OMS_PASS: 'fixture', OMS_KANALY: '[]', OMS_SPRZEDAWCA_NIP: '1234563218',
-    OMS_PROFORMY_KATALOG: katalog, OMS_ETYKIETY_KATALOG: katalog, ...extra } });
+  p = await zbudujOms({
+    env: {
+      OMS_USER: 'operator',
+      OMS_PASS: 'fixture',
+      OMS_KANALY: '[]',
+      OMS_SPRZEDAWCA_NIP: '1234563218',
+      OMS_PROFORMY_KATALOG: katalog,
+      OMS_ETYKIETY_KATALOG: katalog,
+      ...extra,
+    },
+  });
   zalozKonto(p.db, { login: 'admin', imie: 'Administrator', haslo: 'h', rola: 'administrator', admin: true });
   zalozKonto(p.db, { login: 'czytelnik', imie: 'Czytelnik', haslo: 'h', rola: 'sprzedaz' });
   ustawUprawnienia(p.db, kontoPoLoginie(p.db, 'czytelnik').id, ['ustawienia']);
@@ -29,10 +45,24 @@ function naglowkiKonta(db, login, proba = false) {
 }
 function upload(app, konto, bajty = PNG, alt = 'Pracownia Przykładowa', nazwa = 'znak.png') {
   const granica = 'oms-logo-test';
-  const payload = Buffer.concat([Buffer.from(`--${granica}\r\nContent-Disposition: form-data; name="alt"\r\n\r\n${alt}\r\n--${granica}\r\nContent-Disposition: form-data; name="logo"; filename="${nazwa}"\r\nContent-Type: application/octet-stream\r\n\r\n`), bajty, Buffer.from(`\r\n--${granica}--\r\n`)]);
-  return app.inject({ method: 'POST', url: ZAPIS, headers: { ...konto, origin: 'http://localhost', 'content-type': `multipart/form-data; boundary=${granica}` }, payload });
+  const payload = Buffer.concat([
+    Buffer.from(
+      `--${granica}\r\nContent-Disposition: form-data; name="alt"\r\n\r\n${alt}\r\n--${granica}\r\nContent-Disposition: form-data; name="logo"; filename="${nazwa}"\r\nContent-Type: application/octet-stream\r\n\r\n`,
+    ),
+    bajty,
+    Buffer.from(`\r\n--${granica}--\r\n`),
+  ]);
+  return app.inject({
+    method: 'POST',
+    url: ZAPIS,
+    headers: { ...konto, origin: 'http://localhost', 'content-type': `multipart/form-data; boundary=${granica}` },
+    payload,
+  });
 }
-const adresy = html => ({ belka: html.match(/class="pas-logo" src="([^"]+)"/)?.[1], ikona: html.match(/rel="icon"[^>]*href="([^"]+)"/)?.[1] });
+const adresy = (html) => ({
+  belka: html.match(/class="pas-logo" src="([^"]+)"/)?.[1],
+  ikona: html.match(/rel="icon"[^>]*href="([^"]+)"/)?.[1],
+});
 
 it('PNG zapisuje się z autorem; przeładowanie zmienia wersję belki i ikony bez restartu; usunięcie przywraca paczkę', async () => {
   const p = await panel();
@@ -54,8 +84,10 @@ it('PNG zapisuje się z autorem; przeładowanie zmienia wersję belki i ikony be
   expect((await post(p.app, `${ZAPIS}/usun`, p.admin)).statusCode).toBe(303);
   expect(wczytajKonfiguracjeIntegracji(p.db, 'logo')).toBeNull();
   expect(adresy((await get(p.app, EKRAN, p.admin)).body)).toEqual(przed);
-  for (const rozmiar of [32, 192]) expect((await p.app.inject(`/public/favicon-${rozmiar}.png`)).rawPayload)
-    .toEqual(readFileSync(new URL(`../../../src/public/favicon-${rozmiar}.png`, import.meta.url)));
+  for (const rozmiar of [32, 192])
+    expect((await p.app.inject(`/public/favicon-${rozmiar}.png`)).rawPayload).toEqual(
+      readFileSync(new URL(`../../../src/public/favicon-${rozmiar}.png`, import.meta.url)),
+    );
 });
 it.each([
   ['SVG', Buffer.from('<svg onload="alert(1)"></svg>'), 'Plik nie jest obrazem PNG'],
@@ -69,7 +101,9 @@ it.each([
 });
 it('limit jest włącznie: dokładnie 256 KB jest dozwolone', async () => {
   const p = await panel();
-  expect((await upload(p.app, p.admin, Buffer.concat([PNG, Buffer.alloc(256 * 1024 - PNG.length)]))).statusCode).toBe(303);
+  expect((await upload(p.app, p.admin, Buffer.concat([PNG, Buffer.alloc(256 * 1024 - PNG.length)]))).statusCode).toBe(
+    303,
+  );
 });
 it('plik konfiguracji wygrywa z bazą: zapis i usunięcie = 409, bajty i alt nadal z pliku', async () => {
   const plik = join(katalog, 'logo.png');
@@ -96,7 +130,9 @@ it('pole pliku leży w strefie przeciągania z etykietą, skrypt ma adres z wers
   expect(strefa[1]).toContain('data-logo-stan');
   expect(strefa[1]).toContain('data-logo-podglad');
   expect(html).toMatch(/<script type="module" src="\/public\/logo-przeciaganie\.js\?v=[a-f0-9]{10}"><\/script>/);
-  expect((await p.app.inject(html.match(/src="(\/public\/logo-przeciaganie\.js\?v=[a-f0-9]{10})"/)[1])).statusCode).toBe(200);
+  expect(
+    (await p.app.inject(html.match(/src="(\/public\/logo-przeciaganie\.js\?v=[a-f0-9]{10})"/)[1])).statusCode,
+  ).toBe(200);
 });
 it('konto bez admina nie dostaje strefy ani skryptu przeciągania', async () => {
   const p = await panel();
@@ -128,12 +164,32 @@ it('zapis przetrwa ponowne zbudowanie aplikacji, a env przykrywa go bez zmiany w
   const zapis = wczytajKonfiguracjeIntegracji(a.db, 'logo');
   await a.app.close();
   const db = a.db;
-  p = await zbudujOms({ db, env: { OMS_USER: 'operator', OMS_PASS: 'fixture', OMS_KANALY: '[]', OMS_SPRZEDAWCA_NIP: '1234563218',
-    OMS_PROFORMY_KATALOG: katalog, OMS_ETYKIETY_KATALOG: katalog } });
+  p = await zbudujOms({
+    db,
+    env: {
+      OMS_USER: 'operator',
+      OMS_PASS: 'fixture',
+      OMS_KANALY: '[]',
+      OMS_SPRZEDAWCA_NIP: '1234563218',
+      OMS_PROFORMY_KATALOG: katalog,
+      OMS_ETYKIETY_KATALOG: katalog,
+    },
+  });
   expect((await p.app.inject('/public/favicon-32.png')).rawPayload).toEqual(PNG);
   await p.app.close();
-  p = await zbudujOms({ db, env: { OMS_USER: 'operator', OMS_PASS: 'fixture', OMS_KANALY: '[]', OMS_SPRZEDAWCA_NIP: '1234563218',
-    OMS_PROFORMY_KATALOG: katalog, OMS_ETYKIETY_KATALOG: katalog, OMS_LOGO_PLIK: plik, OMS_LOGO_ALT: 'Z pliku' } });
+  p = await zbudujOms({
+    db,
+    env: {
+      OMS_USER: 'operator',
+      OMS_PASS: 'fixture',
+      OMS_KANALY: '[]',
+      OMS_SPRZEDAWCA_NIP: '1234563218',
+      OMS_PROFORMY_KATALOG: katalog,
+      OMS_ETYKIETY_KATALOG: katalog,
+      OMS_LOGO_PLIK: plik,
+      OMS_LOGO_ALT: 'Z pliku',
+    },
+  });
   expect((await p.app.inject('/public/favicon-32.png')).rawPayload).toEqual(envLogo);
   expect((await upload(p.app, jako(db, 'admin'))).statusCode).toBe(409);
   expect(wczytajKonfiguracjeIntegracji(db, 'logo')).toEqual(zapis);

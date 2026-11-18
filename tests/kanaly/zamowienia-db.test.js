@@ -1,19 +1,35 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../src/oms/db/db.ts';
 import {
-  zapiszZamowienie, pobierzZamowienie, listaZamowien, potwierdzWplate, dopiszLog, zapiszFaktyStatusu,
+  zapiszZamowienie,
+  pobierzZamowienie,
+  listaZamowien,
+  potwierdzWplate,
+  dopiszLog,
+  zapiszFaktyStatusu,
 } from '../../src/oms/db/zamowienia.js';
 
 const zmapowane = {
-  zrodlo_id: 1301, numer: '1301', klient: { email: 'j@k.pl' }, dostawa: { city: 'Warszawa' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: '1200001200',
-  kwota_brutto: '212.90', status_woo: 'processing', oplacone_at: null, anulowane: 0,
+  zrodlo_id: 1301,
+  numer: '1301',
+  klient: { email: 'j@k.pl' },
+  dostawa: { city: 'Warszawa' },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 1,
+  nip: '1200001200',
+  kwota_brutto: '212.90',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
   utworzone_at: '2026-07-29T13:19:52',
   pozycje: [{ nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 2, cena_brutto: '50.00', vat: null }],
 };
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 
 describe('zapiszZamowienie', () => {
   it('zapisuje zamówienie z pozycjami i oddaje id', () => {
@@ -58,8 +74,10 @@ describe('zapiszZamowienie', () => {
   it('NIE kasuje znaczników ręcznych przy ponownym zapisie', () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane, {});
     zapiszFaktyStatusu(db, id, {
-      w_realizacji_at: '2026-07-29T14:00:00', zwrot_at: '2026-07-31T10:00:00',
-      zwrot_powod: 'uszkodzony w transporcie', anulowane_recznie: 1,
+      w_realizacji_at: '2026-07-29T14:00:00',
+      zwrot_at: '2026-07-31T10:00:00',
+      zwrot_powod: 'uszkodzony w transporcie',
+      anulowane_recznie: 1,
     });
     potwierdzWplate(db, id, '2026-07-30T08:00:00');
     zapiszZamowienie(db, 'pro', zmapowane, {});
@@ -84,8 +102,20 @@ describe('zapiszZamowienie', () => {
   it('zapisuje i odczytuje koszt dostawy netto oraz netto pozycji', () => {
     const zNetto = {
       ...zmapowane,
-      koszt_dostawy_brutto: '89.90', koszt_dostawy_netto: '73.09',
-      pozycje: [{ nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 2, cena_brutto: '61.50', cena_netto: '50.00', brutto_linii: '123.00', netto_linii: '100.00', vat: null }],
+      koszt_dostawy_brutto: '89.90',
+      koszt_dostawy_netto: '73.09',
+      pozycje: [
+        {
+          nazwa: 'STOP',
+          sku: 'PRO-STOP-001',
+          ilosc: 2,
+          cena_brutto: '61.50',
+          cena_netto: '50.00',
+          brutto_linii: '123.00',
+          netto_linii: '100.00',
+          vat: null,
+        },
+      ],
     };
     const id = zapiszZamowienie(db, 'pro', zNetto, {});
     const z = pobierzZamowienie(db, id);
@@ -125,8 +155,10 @@ describe('zapiszFaktyStatusu', () => {
   it('ustawia wszystkie cztery fakty jednym zapisem', () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane, {});
     zapiszFaktyStatusu(db, id, {
-      w_realizacji_at: '2026-07-29T14:00:00', zwrot_at: '2026-07-31T10:00:00',
-      zwrot_powod: 'uszkodzony w transporcie', anulowane_recznie: 1,
+      w_realizacji_at: '2026-07-29T14:00:00',
+      zwrot_at: '2026-07-31T10:00:00',
+      zwrot_powod: 'uszkodzony w transporcie',
+      anulowane_recznie: 1,
     });
     const z = pobierzZamowienie(db, id);
     expect(z.w_realizacji_at).toBe('2026-07-29T14:00:00');
@@ -139,7 +171,12 @@ describe('zapiszFaktyStatusu', () => {
   // zapisem — chodzi o niepodzielnosc, nie o wymuszanie tresci.
   it('brak powodu zapisuje sie razem z data, nie osobno', () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane, {});
-    zapiszFaktyStatusu(db, id, { w_realizacji_at: null, zwrot_at: '2026-07-31T10:00:00', zwrot_powod: null, anulowane_recznie: 0 });
+    zapiszFaktyStatusu(db, id, {
+      w_realizacji_at: null,
+      zwrot_at: '2026-07-31T10:00:00',
+      zwrot_powod: null,
+      anulowane_recznie: 0,
+    });
     const z = pobierzZamowienie(db, id);
     expect(z.zwrot_at).toBe('2026-07-31T10:00:00');
     expect(z.zwrot_powod).toBeNull();
@@ -194,10 +231,17 @@ describe('dopiszLog', () => {
 describe('listaZamowien — pozycje', () => {
   it('każde zamówienie niesie swoje pozycje', () => {
     const id1 = zapiszZamowienie(db, 'pro', zmapowane, {});
-    const id2 = zapiszZamowienie(db, 'pro', {
-      ...zmapowane, zrodlo_id: 1302, numer: '1302',
-      pozycje: [{ nazwa: 'PAUZA', sku: 'PRO-PAUZA-001', ilosc: 1, cena_brutto: '30.00', vat: null }],
-    }, {});
+    const id2 = zapiszZamowienie(
+      db,
+      'pro',
+      {
+        ...zmapowane,
+        zrodlo_id: 1302,
+        numer: '1302',
+        pozycje: [{ nazwa: 'PAUZA', sku: 'PRO-PAUZA-001', ilosc: 1, cena_brutto: '30.00', vat: null }],
+      },
+      {},
+    );
 
     const lista = listaZamowien(db);
     const z1 = lista.find((z) => z.id === id1);

@@ -7,12 +7,22 @@
 // Logika automatu: walidacja i „ostatni przebieg po zapisie” z domena/ksef-automat.js, zapis z db/ksef-automat.js
 // (wyjęte 1:1 z ustawienia-infakt.js). Zapisuje wyłącznie admin — nie każde konto z uprawnieniem „ustawienia”.
 import {
-  sprawdzFormularzAutomatu, ostatniPrzebiegPoZapisie, najblizszyPrzebieg, chwilaWarszawy, sprawdzFormularzTrybu,
-  CO_ILE_PO_WYSTAWIENIU_MIN, ODSTEP_EDYCJI_MAKS,
+  sprawdzFormularzAutomatu,
+  ostatniPrzebiegPoZapisie,
+  najblizszyPrzebieg,
+  chwilaWarszawy,
+  sprawdzFormularzTrybu,
+  CO_ILE_PO_WYSTAWIENIU_MIN,
+  ODSTEP_EDYCJI_MAKS,
 } from '../../../domena/ksef-automat.js';
 import { ustawieniaFormulki } from '../../../domena/ustawienia-formulki.js';
 import { wczytajUstawienia } from '../../../oms/db/ustawienia.js';
-import { wczytajAutomatKsef, zapiszUstawieniaAutomatu, zapiszTrybAutomatu, czyDoZwolnienia } from '../db/ksef-automat.js';
+import {
+  wczytajAutomatKsef,
+  zapiszUstawieniaAutomatu,
+  zapiszTrybAutomatu,
+  czyDoZwolnienia,
+} from '../db/ksef-automat.js';
 import { czyWysylacKonsumenckie, KONSUMENCKIE_POZA_KSEF_TF } from '../db/ksef-konsumenckie.js';
 import { nawigacjaUstawien } from '../../ustawienia/nawigacja.js';
 import { odmianaNazwyProgramu, gdzieDokument } from '../../../domena/nazwa-programu.js';
@@ -34,13 +44,18 @@ const KOMUNIKATY = { 'ksef-automat': 'Zapisano ustawienia automatycznej wysyłki
 function powodBezczynnosciAutomatu(k, automatKsef, nazwa) {
   // Jawny „brak” (plik albo Ustawienia) — automat stoi z powodu wyboru, nie braku klucza. `teraz()` widzi
   // też „brak” zapisany po starcie (automat staje od razu); bez wyboru zdanie jest `null` i idą stare teksty.
-  const brak = zdanieBrakuProgramu(k.wyborProgramu?.teraz?.() ?? k.wyborProgramu, 'Automatyczna wysyłka do KSeF nic nie wyśle.');
+  const brak = zdanieBrakuProgramu(
+    k.wyborProgramu?.teraz?.() ?? k.wyborProgramu,
+    'Automatyczna wysyłka do KSeF nic nie wyśle.',
+  );
   if (brak) return brak;
   if (automatKsef && !k.odlaczonyDoRestartu()) return null;
   // Fakturownia — rodzaj żeński („odłączona”, „jej”); inFakt i reszta jak przed zmianą.
   const [y, go] = k.zenska === true ? ['a', 'jej'] : ['y', 'go'];
-  if (k.odlaczonyDoRestartu()) return `${nazwa.mianownik} jest odłączon${y} — automat nic nie wyśle, dopóki ${go} nie podłączysz i nie uruchomisz OMS-u ponownie.`;
-  if (k.wymagaRestartu()) return `${nazwa.mianownik} jest już podłączon${y}, ale automat ruszy dopiero po ponownym uruchomieniu OMS-u.`;
+  if (k.odlaczonyDoRestartu())
+    return `${nazwa.mianownik} jest odłączon${y} — automat nic nie wyśle, dopóki ${go} nie podłączysz i nie uruchomisz OMS-u ponownie.`;
+  if (k.wymagaRestartu())
+    return `${nazwa.mianownik} jest już podłączon${y}, ale automat ruszy dopiero po ponownym uruchomieniu OMS-u.`;
   return `${nazwa.mianownik} nie jest podłączon${y} — automat nic nie wyśle, dopóki ${go} nie podłączysz (potem potrzebne ponowne uruchomienie OMS-u).`;
 }
 
@@ -56,8 +71,17 @@ export function stanAutomatuKsef(db, teraz = () => new Date()) {
 /** Model sekcji `#ksef-automat` (partial faktury/widoki/_automat-ksef.ejs). */
 // `konfiguracjaProgramu` = stan wybranego programu (inFakt albo Fakturownia); `konfiguracjaInfaktu` zostaje
 // jako stara nazwa tej samej zależności (testy i wołający sprzed zmiany).
-export function modelAutomatuKsef({ db, konfiguracjaProgramu, konfiguracjaInfaktu, automatKsef = null, teraz = () => new Date(), infakt: program = null },
-  { bledy = [], formularz = null } = {}) {
+export function modelAutomatuKsef(
+  {
+    db,
+    konfiguracjaProgramu,
+    konfiguracjaInfaktu,
+    automatKsef = null,
+    teraz = () => new Date(),
+    infakt: program = null,
+  },
+  { bledy = [], formularz = null } = {},
+) {
   const k = konfiguracjaProgramu ?? konfiguracjaInfaktu;
   const stan = wczytajAutomatKsef(db);
   // Usługa `infakt` modułu faktur (klient albo program) — nazwa w zdaniach sekcji automatu.
@@ -66,24 +90,39 @@ export function modelAutomatuKsef({ db, konfiguracjaProgramu, konfiguracjaInfakt
   // Program z własną wysyłką (TwojeFaktury) — wybór trybu i odstępu na poprawki zamiast przełącznika.
   const wyborTrybu = maWyborTrybu(program);
   return {
-    nazwaProgramu, gdzieProgramu: gdzieDokument(program),
+    nazwaProgramu,
+    gdzieProgramu: gdzieDokument(program),
     ...stan,
     // „Albo zwolnij” w pasku tylko, gdy choć jeden wpis da się zwolnić (odrzuconej / niewysłanej nie).
     zwolnienieMozliwe: (stan.wstrzymane ?? []).some(czyDoZwolnienia),
-    wyborTrybu, coIleMin: CO_ILE_PO_WYSTAWIENIU_MIN, odstepMaks: ODSTEP_EDYCJI_MAKS,
+    wyborTrybu,
+    coIleMin: CO_ILE_PO_WYSTAWIENIU_MIN,
+    odstepMaks: ODSTEP_EDYCJI_MAKS,
     // Po błędzie formularza pola pokazują to, co wpisał człowiek, a nie zapis z bazy.
-    formularz: formularz ?? { wlaczony: stan.wlaczony, godzina: stan.godzina, tryb: stan.tryb, odstepEdycji: stan.odstepEdycji },
+    formularz: formularz ?? {
+      wlaczony: stan.wlaczony,
+      godzina: stan.godzina,
+      tryb: stan.tryb,
+      odstepEdycji: stan.odstepEdycji,
+    },
     bledy,
-    najblizszy: wyborTrybu && stan.tryb === 'po_wystawieniu' ? `co ${CO_ILE_PO_WYSTAWIENIU_MIN} minut`
-      : najblizszyPrzebieg(wyborTrybu ? { ...stan, wlaczony: stan.tryb === 'o_godzinie' } : stan, chwilaWarszawy(teraz())),
+    najblizszy:
+      wyborTrybu && stan.tryb === 'po_wystawieniu'
+        ? `co ${CO_ILE_PO_WYSTAWIENIU_MIN} minut`
+        : najblizszyPrzebieg(
+            wyborTrybu ? { ...stan, wlaczony: stan.tryb === 'o_godzinie' } : stan,
+            chwilaWarszawy(teraz()),
+          ),
     powodBezczynnosci: powodBezczynnosciAutomatu(k, automatKsef, nazwaProgramu),
     // Jawny „brak” (też zapisany po starcie) — linia stanu nie mówi „Włączony — najbliższy przebieg”.
     stoiPrzezBrak: jawnyBrak(k?.wyborProgramu?.teraz?.() ?? k?.wyborProgramu),
     // TwojeFaktury wydaje PDF konsumenckiej dopiero z numerem KSeF — przy wyłączonym przełączniku
     // „konsumenckie w KSeF” jedno zdanie ostrzeżenia (to samo, co w odmowie pobrania PDF). inFakt — bez zdania.
     // Wersja TF — przełącznik przy TwojeFaktury stoi na ekranie Wysyłka do KSeF.
-    ostrzezenieKonsumenckie: wyborTrybu && !czyWysylacKonsumenckie(db)
-      ? `${KONSUMENCKIE_POZA_KSEF_TF.charAt(0).toUpperCase()}${KONSUMENCKIE_POZA_KSEF_TF.slice(1)}.` : null,
+    ostrzezenieKonsumenckie:
+      wyborTrybu && !czyWysylacKonsumenckie(db)
+        ? `${KONSUMENCKIE_POZA_KSEF_TF.charAt(0).toUpperCase()}${KONSUMENCKIE_POZA_KSEF_TF.slice(1)}.`
+        : null,
   };
 }
 
@@ -98,14 +137,17 @@ export function tylkoAdmin(req, reply) {
 // ekranie inFaktu rejestruje się wcześniej i go nie zna). Moduł automatyzacji zgłasza swój model tutaj, per baza — bez
 // stanu globalnego między aplikacjami (każdy test i każdy proces ma własną bazę).
 const dodatkiEkranu = new WeakMap();
-export function zglosDodatkiEkranuAutomatyzacji(db, dodatki) { dodatkiEkranu.set(db, dodatki); }
+export function zglosDodatkiEkranuAutomatyzacji(db, dodatki) {
+  dodatkiEkranu.set(db, dodatki);
+}
 
 /** Ekran Ustawienia → Automatyzacje (GET i odpowiedź 400 obu adresów zapisu). */
 export function widokEkranuAutomatyzacji(req, reply, zaleznosci, { bledy = [], formularz = null } = {}) {
   const { db } = zaleznosci;
   const dodatki = zaleznosci.dodatki ?? dodatkiEkranu.get(db);
   return reply.view(WIDOK, {
-    nawigacja: nawigacjaUstawien(req, reply), title: 'Automatyzacje',
+    nawigacja: nawigacjaUstawien(req, reply),
+    title: 'Automatyzacje',
     tylkoAutomatKsef: zaleznosci.tylkoAutomatKsef === true,
     zapisano: KOMUNIKATY[req.query?.zapisano] ?? null,
     automat: modelAutomatuKsef(zaleznosci, { bledy, formularz }),
@@ -122,7 +164,10 @@ export function registerAdresuAutomatuKsef(app, zaleznosciEkranu) {
   // Ten adres nawigacja przypisuje działowi „Faktury i podatki”, nie zakładce „Automaty systemowe” — flaga każe
   // widokowi i tak pokazać sekcję automatów (GET i odpowiedź 400).
   const zaleznosci = { ...zaleznosciEkranu, tylkoAutomatKsef: true };
-  app.get(AUTOMAT_KSEF_PROGRAMU, async (req, reply) => tylkoAdmin(req, reply) ?? widokEkranuAutomatyzacji(req, reply, zaleznosci));
+  app.get(
+    AUTOMAT_KSEF_PROGRAMU,
+    async (req, reply) => tylkoAdmin(req, reply) ?? widokEkranuAutomatyzacji(req, reply, zaleznosci),
+  );
   app.post(AUTOMAT_KSEF_PROGRAMU, obsluzZapisAutomatuKsef(zaleznosci));
 }
 
@@ -140,15 +185,31 @@ export function obsluzZapisAutomatuKsef(zaleznosci) {
     const chwila = teraz();
     const poprzednio = wczytajAutomatKsef(db);
     const login = req.konto?.login ?? null;
-    zapiszTrybAutomatu(db, {
-      tryb: formularz.tryb, odstepEdycji: formularz.odstepEdycji, godzina: formularz.godzina, login,
-      ostatniPrzebieg: ostatniPrzebiegPoZapisie({ ...poprzednio, wlaczony: poprzednio.tryb === 'o_godzinie' },
-        { wlaczony: formularz.tryb === 'o_godzinie', godzina: formularz.godzina }, chwilaWarszawy(chwila)),
-    }, chwila.toISOString());
-    req.log?.info?.({
-      konto: login, tryb: formularz.tryb, odstepEdycji: formularz.odstepEdycji, godzina: formularz.godzina,
-      poprzednio: { tryb: poprzednio.tryb, odstepEdycji: poprzednio.odstepEdycji, godzina: poprzednio.godzina },
-    }, 'Automat KSeF: zmiana trybu wysyłki');
+    zapiszTrybAutomatu(
+      db,
+      {
+        tryb: formularz.tryb,
+        odstepEdycji: formularz.odstepEdycji,
+        godzina: formularz.godzina,
+        login,
+        ostatniPrzebieg: ostatniPrzebiegPoZapisie(
+          { ...poprzednio, wlaczony: poprzednio.tryb === 'o_godzinie' },
+          { wlaczony: formularz.tryb === 'o_godzinie', godzina: formularz.godzina },
+          chwilaWarszawy(chwila),
+        ),
+      },
+      chwila.toISOString(),
+    );
+    req.log?.info?.(
+      {
+        konto: login,
+        tryb: formularz.tryb,
+        odstepEdycji: formularz.odstepEdycji,
+        godzina: formularz.godzina,
+        poprzednio: { tryb: poprzednio.tryb, odstepEdycji: poprzednio.odstepEdycji, godzina: poprzednio.godzina },
+      },
+      'Automat KSeF: zmiana trybu wysyłki',
+    );
     return reply.code(303).redirect(PO_ZAPISIE);
   };
   return async (req, reply) => {
@@ -163,10 +224,15 @@ export function obsluzZapisAutomatuKsef(zaleznosci) {
     const chwila = teraz();
     const poprzednio = wczytajAutomatKsef(db);
     const nowe = { wlaczony: formularz.wlaczony, godzina: formularz.godzina };
-    zapiszUstawieniaAutomatu(db, {
-      ...nowe, login: req.konto?.login ?? null,
-      ostatniPrzebieg: ostatniPrzebiegPoZapisie(poprzednio, nowe, chwilaWarszawy(chwila)),
-    }, chwila.toISOString());
+    zapiszUstawieniaAutomatu(
+      db,
+      {
+        ...nowe,
+        login: req.konto?.login ?? null,
+        ostatniPrzebieg: ostatniPrzebiegPoZapisie(poprzednio, nowe, chwilaWarszawy(chwila)),
+      },
+      chwila.toISOString(),
+    );
     return reply.code(303).redirect(PO_ZAPISIE);
   };
 }

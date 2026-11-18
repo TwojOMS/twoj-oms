@@ -1,5 +1,8 @@
 import {
-  zapiszNumerKsef, zapiszNieudanyOdczytKsef, zapiszWeryfikacjeAllegro, zapiszPytanieOWeryfikacje,
+  zapiszNumerKsef,
+  zapiszNieudanyOdczytKsef,
+  zapiszWeryfikacjeAllegro,
+  zapiszPytanieOWeryfikacje,
 } from '../db/faktury.js';
 import { dopiszLog, ostatniWpisLogu, pobierzZamowienie } from '../../../oms/db/zamowienia.js';
 // ⚠️ TA SAMA BRAMKA, CO PRZY PRZYCISKU NA KARCIE — nigdy wlasna kopia warunkow. Patrz
@@ -8,14 +11,18 @@ import { wolnoWyslacDoAllegro } from '../../../domena/allegro-faktura.js';
 import { createPoNumerzeKsef } from './po-numerze-ksef.js';
 import { wysylkaKsef } from '../db/wysylki-ksef.js';
 import {
-  idDokumentu, idDokumentuSql, programDokumentuSql, czyDokumentProgramu, numerKsefDokumentu,
+  idDokumentu,
+  idDokumentuSql,
+  programDokumentuSql,
+  czyDokumentProgramu,
+  numerKsefDokumentu,
 } from '../../../domena/dokument-programu.js';
 import {
-  warunekCzekaNaKsefSql, KOLUMNA_ZLECONA_Z_PANELU_SQL, czyWierszWZakresieKsef,
+  warunekCzekaNaKsefSql,
+  KOLUMNA_ZLECONA_Z_PANELU_SQL,
+  czyWierszWZakresieKsef,
 } from '../../../domena/ksef-oczekiwanie.js';
-import {
-  statusWeryfikacji, WARUNEK_WERYFIKACJA_NIEROZSTRZYGNIETA_SQL,
-} from '../../../domena/allegro-faktura.js';
+import { statusWeryfikacji, WARUNEK_WERYFIKACJA_NIEROZSTRZYGNIETA_SQL } from '../../../domena/allegro-faktura.js';
 import { LIMIT_ZAPYTANIA_PRZESYLEK_MS } from '../../../oms/allegro/client.js';
 import { wolnoPytac, poOdpowiedzi } from '../../../domena/bezpiecznik-weryfikacji.js';
 import { stanWeryfikacji, zapiszStanWeryfikacji } from '../../../oms/db/stan-weryfikacji.js';
@@ -225,7 +232,12 @@ export function najdluzszyPrzebiegMs(limity) {
 // Numer KSeF czyta PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`). Budżet
 // przebiegu z `opis.limity` programu liczy `najdluzszyPrzebiegMs(limity)` wyżej — strażnik startu w modul.ts.
 export function createCzuwaczKsef({
-  db, program: programPodany = null, infakt = null, klienciKanalow = {}, limit = LIMIT_PRZEBIEGU, limitWeryfikacji = LIMIT_WERYFIKACJI,
+  db,
+  program: programPodany = null,
+  infakt = null,
+  klienciKanalow = {},
+  limit = LIMIT_PRZEBIEGU,
+  limitWeryfikacji = LIMIT_WERYFIKACJI,
   // ⚠️ AUTOMAT WYSYŁKI FAKTURY DO KUPUJĄCEGO NA ALLEGRO, gdy pojawi się numer KSeF. Domyślnie
   // BRAK — panel bez kanału Allegro (albo bez programu fakturowego) nic kupującemu nie wysyła.
   fakturaAllegro = null,
@@ -246,8 +258,9 @@ export function createCzuwaczKsef({
   function zglosSamowolnaWysylke(f, dok, dane) {
     const gov = dane?.gov_status;
     if (gov == null || gov === '' || gov === 'not_connected' || gov === 'not_applicable') return;
-    const wynik = `Fakturownia wysłała dokument do KSeF sama (stan: ${gov}) — OMS tego nie zlecał. `
-      + 'Wyłącz automatyczną wysyłkę do KSeF w ustawieniach konta Fakturowni.';
+    const wynik =
+      `Fakturownia wysłała dokument do KSeF sama (stan: ${gov}) — OMS tego nie zlecał. ` +
+      'Wyłącz automatyczną wysyłkę do KSeF w ustawieniach konta Fakturowni.';
     if (ostatniWpisLogu(db, f.zamowienie_id, 'ksef')?.wynik === wynik) return;
     dopiszLog(db, f.zamowienie_id, { akcja: 'ksef', wynik });
     try {
@@ -315,7 +328,11 @@ export function createCzuwaczKsef({
     // Najpierw rozstrzygnięcie niepewnych wysyłek (może dać numer KSeF), dopiero potem odczyt numerów.
     // Awaria rozstrzygania nie zatrzymuje odczytu numerów.
     if (rozstrzyganie) {
-      try { await rozstrzyganie.przebieg(); } catch (e) { log('ksef: rozstrzyganie niepewnych wysyłek nie wyszło', String(e?.message ?? e)); }
+      try {
+        await rozstrzyganie.przebieg();
+      } catch (e) {
+        log('ksef: rozstrzyganie niepewnych wysyłek nie wyszło', String(e?.message ?? e));
+      }
     }
     const podloga = new Date(Date.now() - PODLOGA_DNI * 24 * 60 * 60 * 1000).toISOString();
     // ⚠️ FILTR DZIALA WYLACZNIE NA GALAZ ALLEGROWA (`czyWierszWZakresieKsef`), a rozpoznanie
@@ -325,7 +342,8 @@ export function createCzuwaczKsef({
     // ⚠️ TA SAMA PODLOGA WCHODZI DWA RAZY — raz na stempel wystawienia, raz na stempel zlecenia
     // wysylki (patrz komentarz przy `doSprawdzeniaSql`). Ma to byc DOKLADNIE ta sama wartosc:
     // dwie liczone osobno rozjechalyby sie o czas wykonania zapytania.
-    const doSprawdzenia = db.prepare(doSprawdzeniaSql())
+    const doSprawdzenia = db
+      .prepare(doSprawdzeniaSql())
       .all(podloga, podloga, idModulu, limit)
       .filter(czyWierszWZakresieKsef);
     let znalezione = 0;
@@ -380,7 +398,8 @@ export function createCzuwaczKsef({
         // treść komunikatu jest dla człowieka i wolno ją zmienić bez uprzedzenia.
         const odczyt = e?.status === 404 ? 'nieznana' : 'blad';
         // Wiersz przepięty w trakcie pytania na fakturę zastępczą: błąd dotyczy starej, nic nie piszemy.
-        if (!zapiszNieudanyOdczytKsef(db, f.id, { sprawdzonaAt: teraz(), odczyt, dokumentId: idDokumentu(f) })) continue;
+        if (!zapiszNieudanyOdczytKsef(db, f.id, { sprawdzonaAt: teraz(), odczyt, dokumentId: idDokumentu(f) }))
+          continue;
         // Log przy ZAMOWIENIU, nie tylko na konsoli: karta jest jedynym miejscem, w ktorym
         // czlowiek szuka historii tego dokumentu.
         //
@@ -397,8 +416,10 @@ export function createCzuwaczKsef({
     }
 
     if (innyProgram) {
-      log(`czuwacz KSeF: pominięte dokumenty innego programu niż moduł faktur OMS-u: ${innyProgram} `
-        + '— o ich numer KSeF OMS nie pyta.');
+      log(
+        `czuwacz KSeF: pominięte dokumenty innego programu niż moduł faktur OMS-u: ${innyProgram} ` +
+          '— o ich numer KSeF OMS nie pyta.',
+      );
     }
 
     await zweryfikujPliki(podloga);

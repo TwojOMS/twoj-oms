@@ -14,7 +14,14 @@ export const KLUCZ_DEMO = Object.freeze({
 
 /** Wstawia klucz demo do świeżej bazy demo (tabela `klucze_api` z migracji 0010). */
 export function zalozKluczDemo(db, { teraz = new Date() } = {}) {
-  db.prepare(`INSERT INTO klucze_api (nazwa, prefiks, skrot, zakresy, utworzyl_konto_id, utworzony_at, wygasa_at)
-    VALUES (?, ?, ?, ?, NULL, ?, NULL)`).run(KLUCZ_DEMO.nazwa, KLUCZ_DEMO.prefiks, skrotKlucza(KLUCZ_DEMO.klucz),
-    JSON.stringify(KLUCZ_DEMO.zakresy), teraz.toISOString());
+  db.prepare(
+    `INSERT INTO klucze_api (nazwa, prefiks, skrot, zakresy, utworzyl_konto_id, utworzony_at, wygasa_at)
+    VALUES (?, ?, ?, ?, NULL, ?, NULL)`,
+  ).run(
+    KLUCZ_DEMO.nazwa,
+    KLUCZ_DEMO.prefiks,
+    skrotKlucza(KLUCZ_DEMO.klucz),
+    JSON.stringify(KLUCZ_DEMO.zakresy),
+    teraz.toISOString(),
+  );
 }

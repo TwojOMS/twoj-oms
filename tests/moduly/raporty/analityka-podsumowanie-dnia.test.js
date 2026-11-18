@@ -23,18 +23,33 @@ let kolejny = 0;
 const wstaw = (d = {}) => {
   kolejny += 1;
   const w = {
-    sklep: 'swietlik', zrodlo_id: kolejny, numer: `N${kolejny}`, metoda_wysylki: 'dpd', kwota_brutto: '100.00',
-    klient_json: JSON.stringify({ email: 'k@klient.pl' }), wyslane_at: null, anulowane: 0,
-    utworzone_at: new Date().toISOString(), ...d,
+    sklep: 'swietlik',
+    zrodlo_id: kolejny,
+    numer: `N${kolejny}`,
+    metoda_wysylki: 'dpd',
+    kwota_brutto: '100.00',
+    klient_json: JSON.stringify({ email: 'k@klient.pl' }),
+    wyslane_at: null,
+    anulowane: 0,
+    utworzone_at: new Date().toISOString(),
+    ...d,
   };
-  db.prepare(`INSERT INTO zamowienia (sklep, zrodlo_id, numer, metoda_wysylki, kwota_brutto, klient_json, wyslane_at,
+  db.prepare(
+    `INSERT INTO zamowienia (sklep, zrodlo_id, numer, metoda_wysylki, kwota_brutto, klient_json, wyslane_at,
     anulowane, utworzone_at, w_realizacji_at) VALUES (@sklep,@zrodlo_id,@numer,@metoda_wysylki,@kwota_brutto,@klient_json,
-    @wyslane_at,@anulowane,@utworzone_at,@w_realizacji_at)`).run({ w_realizacji_at: null, ...w });
+    @wyslane_at,@anulowane,@utworzone_at,@w_realizacji_at)`,
+  ).run({ w_realizacji_at: null, ...w });
 };
 
 // Sprzedaż dziś liczy ta sama funkcja co Raporty → „Dzisiaj”, więc jak tam: każdy kanał potrzebuje granicy historii.
-const zalozGranice = () => { for (const k of KANALY) ustawGranice(db, k, '2026-07-02', 'test', null); };
-beforeEach(() => { db = openOmsDb(':memory:'); kolejny = 0; zalozGranice(); });
+const zalozGranice = () => {
+  for (const k of KANALY) ustawGranice(db, k, '2026-07-02', 'test', null);
+};
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+  kolejny = 0;
+  zalozGranice();
+});
 
 const wejdz = async (url) => {
   const app = buildOmsServer({ db, config });
@@ -45,7 +60,10 @@ const wejdz = async (url) => {
 const kafel = (html, etykieta) => {
   const i = html.indexOf(`<div class="kafel-etykieta">${etykieta}</div>`);
   expect(i, `kafel „${etykieta}”`).toBeGreaterThan(-1);
-  return html.slice(i).match(/<div class="kafel-wartosc">([^<]*)<\/div>/)[1].trim();
+  return html
+    .slice(i)
+    .match(/<div class="kafel-wartosc">([^<]*)<\/div>/)[1]
+    .trim();
 };
 
 describe('ekran /analityka — podsumowanie dnia', () => {
@@ -55,7 +73,11 @@ describe('ekran /analityka — podsumowanie dnia', () => {
     wstaw({ kwota_brutto: '1000.00', wyslane_at: new Date().toISOString() });
     wstaw({ kwota_brutto: '999.00', anulowane: 1 });
     wstaw({ kwota_brutto: '50.00', utworzone_at: wczoraj, wyslane_at: new Date().toISOString() });
-    wstaw({ kwota_brutto: '70.00', utworzone_at: wczoraj, wyslane_at: new Date(Date.now() - 26 * 3600 * 1000).toISOString() }); // w oknie SQL, ale nie dziś
+    wstaw({
+      kwota_brutto: '70.00',
+      utworzone_at: wczoraj,
+      wyslane_at: new Date(Date.now() - 26 * 3600 * 1000).toISOString(),
+    }); // w oknie SQL, ale nie dziś
     const odp = await wejdz('/analityka');
     expect(odp.statusCode).toBe(200);
     expect(kafel(odp.body, 'Nowe zamówienia')).toBe('2');
@@ -66,7 +88,9 @@ describe('ekran /analityka — podsumowanie dnia', () => {
 
   it('„W realizacji” to licznik statusu z indeksu listy zamówień — wszystkie, nie tylko dzisiejsze', async () => {
     const wczoraj = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
-    wstaw(); wstaw({ w_realizacji_at: new Date().toISOString() }); wstaw({ utworzone_at: wczoraj, w_realizacji_at: wczoraj });
+    wstaw();
+    wstaw({ w_realizacji_at: new Date().toISOString() });
+    wstaw({ utworzone_at: wczoraj, w_realizacji_at: wczoraj });
     wstaw({ w_realizacji_at: wczoraj, wyslane_at: new Date().toISOString() });
     const odp = await wejdz('/analityka');
     const teraz = Date.now();
@@ -101,7 +125,12 @@ describe('ekran /analityka — podsumowanie dnia', () => {
   it('prowadzi do podstron analityki', async () => {
     const odp = await wejdz('/analityka');
     const podstrony = odp.body.match(/<nav class="analityka-podstrony"[\s\S]*?<\/nav>/)?.[0] ?? '';
-    expect([...podstrony.matchAll(/href="([^"]+)"/g)].map((m) => m[1])).toEqual(['/raporty', '/statystyki', '/kampania', '/finanse']);
+    expect([...podstrony.matchAll(/href="([^"]+)"/g)].map((m) => m[1])).toEqual([
+      '/raporty',
+      '/statystyki',
+      '/kampania',
+      '/finanse',
+    ]);
     expect((podstrony.match(/<svg /g) ?? []).length).toBe(4);
   });
 
@@ -122,8 +151,11 @@ describe('menu: Analityka w menu bocznym zamiast górnego paska', () => {
     expect(p.etykieta).toBe('Analityka');
     expect(p.href).toBe('/analityka');
     expect(p.podmenu.map((d) => [d.etykieta, d.href])).toEqual([
-      ['Podsumowanie', '/analityka'], ['Raporty', '/raporty'], ['Statystyki', '/statystyki'],
-      ['Reklamy', '/kampania'], ['Finanse', '/finanse'],
+      ['Podsumowanie', '/analityka'],
+      ['Raporty', '/raporty'],
+      ['Statystyki', '/statystyki'],
+      ['Reklamy', '/kampania'],
+      ['Finanse', '/finanse'],
     ]);
   });
 
@@ -146,10 +178,16 @@ describe('menu: Analityka w menu bocznym zamiast górnego paska', () => {
     const widoki = (p) => fileURLToPath(new URL(`../../../src/core/web/widoki/${p}`, import.meta.url));
     const nawigacja = model('/raporty', admin);
     const html = await ejs.renderFile(widoki('layout-oms.ejs'), {
-      title: 'Test', motyw: 'jasny', htmx: false, bezPaska: false, nawigacja,
+      title: 'Test',
+      motyw: 'jasny',
+      htmx: false,
+      bezPaska: false,
+      nawigacja,
       body: await ejs.renderFile(widoki('_naglowek-ekranu.ejs'), { tytul: 'Raporty', nawigacja }),
-      menuKonta: menuKontaDla(admin, { powrot: '/raporty' }), marka: { logoAlt: 'Firma testowa' },
-      modyfikatorStatusu: () => null, zasob: adresZasobu(fileURLToPath(new URL('../../../src/public', import.meta.url))),
+      menuKonta: menuKontaDla(admin, { powrot: '/raporty' }),
+      marka: { logoAlt: 'Firma testowa' },
+      modyfikatorStatusu: () => null,
+      zasob: adresZasobu(fileURLToPath(new URL('../../../src/public', import.meta.url))),
     });
     expect(html).not.toContain('oms-menu-analiz');
     expect(html).not.toContain('oms-zakladki-analiz');
@@ -163,14 +201,24 @@ describe('Ustawienia na dole menu bocznego (ikona w górnym pasku zostaje)', () 
     const widoki = (p) => fileURLToPath(new URL(`../../../src/core/web/widoki/${p}`, import.meta.url));
     const nawigacja = model(sciezka, konto);
     return ejs.renderFile(widoki('layout-oms.ejs'), {
-      title: 'Test', motyw: 'jasny', htmx: false, bezPaska: false, nawigacja, body: '<p>x</p>',
-      menuKonta: menuKontaDla(konto, { powrot: sciezka }), marka: { logoAlt: 'Firma testowa' },
-      modyfikatorStatusu: () => null, zasob: adresZasobu(fileURLToPath(new URL('../../../src/public', import.meta.url))),
+      title: 'Test',
+      motyw: 'jasny',
+      htmx: false,
+      bezPaska: false,
+      nawigacja,
+      body: '<p>x</p>',
+      menuKonta: menuKontaDla(konto, { powrot: sciezka }),
+      marka: { logoAlt: 'Firma testowa' },
+      modyfikatorStatusu: () => null,
+      zasob: adresZasobu(fileURLToPath(new URL('../../../src/public', import.meta.url))),
     });
   };
   it('administrator: ostatnia grupa menu bocznego to Ustawienia, a górny pasek nadal ma ikonę', async () => {
     const html = await renderuj('/', admin);
-    const bok = html.slice(html.indexOf('<div class="oms-menu-desktop">'), html.indexOf('<details class="oms-menu-mobile"'));
+    const bok = html.slice(
+      html.indexOf('<div class="oms-menu-desktop">'),
+      html.indexOf('<details class="oms-menu-mobile"'),
+    );
     const grupy = [...bok.matchAll(/<section class="oms-menu-grupa([^"]*)"/g)].map((m) => m[1].trim());
     expect(grupy.at(-1)).toBe('oms-menu-ustawienia');
     expect(bok.slice(bok.lastIndexOf('<section'))).toContain('href="/ustawienia"');

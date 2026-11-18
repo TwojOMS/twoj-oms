@@ -27,22 +27,40 @@ async function strona(url, { proba = true, integracje = NIEZAPISANE } = {}) {
   const { app, db } = nowyPanel();
   try {
     let dane;
-    createWidokIntegracji({ db, proba, integracje: () => integracje })({ url, query: {} }, { view: (_n, d) => { dane = d; } });
-    const fragment = await renderFile('src/moduly/ustawienia/widoki/ustawienia-polaczenia.ejs',
-      { ...dane, fmtDataCzas: (d) => d, fmtKiedy: (d) => fmtKiedy(d, new Date()) });
+    createWidokIntegracji({ db, proba, integracje: () => integracje })(
+      { url, query: {} },
+      {
+        view: (_n, d) => {
+          dane = d;
+        },
+      },
+    );
+    const fragment = await renderFile('src/moduly/ustawienia/widoki/ustawienia-polaczenia.ejs', {
+      ...dane,
+      fmtDataCzas: (d) => d,
+      fmtKiedy: (d) => fmtKiedy(d, new Date()),
+    });
     // H1 działu i zakładki należą do powłoki, formularz do widoku.
-    const html = await renderFile('src/core/web/widoki/_zakladki-ustawien.ejs', dane) + fragment;
+    const html = (await renderFile('src/core/web/widoki/_zakladki-ustawien.ejs', dane)) + fragment;
     return { dane, html };
-  } finally { await app.close(); db.close(); }
+  } finally {
+    await app.close();
+    db.close();
+  }
 }
-const wiersz = (html, usluga) => (html.match(/<li class="pol-wiersz[\s\S]*?<\/li>/g) ?? []).find((w) => w.includes(`data-usluga="${usluga}"`)) ?? '';
+const wiersz = (html, usluga) =>
+  (html.match(/<li class="pol-wiersz[\s\S]*?<\/li>/g) ?? []).find((w) => w.includes(`data-usluga="${usluga}"`)) ?? '';
 const karta = (html, usluga) => html.split('<article').find((a) => a.includes(`data-usluga="${usluga}"`)) ?? '';
 const tekst = (html) => html.replace(/<[^>]+>/g, '');
 
 it('w piaskownicy DPD, InPost, KSeF i GUS mają wiersze z odnośnikiem do własnego ekranu', async () => {
   const { html } = await strona('/ustawienia/integracje');
-  for (const [usluga, ekran] of [['dpd', '/ustawienia/integracje/dpd'], ['inpost', '/ustawienia/integracje/inpost'],
-    ['ksef', '/ustawienia/integracje/ksef'], ['gus', '/ustawienia/integracje/gus']]) {
+  for (const [usluga, ekran] of [
+    ['dpd', '/ustawienia/integracje/dpd'],
+    ['inpost', '/ustawienia/integracje/inpost'],
+    ['ksef', '/ustawienia/integracje/ksef'],
+    ['gus', '/ustawienia/integracje/gus'],
+  ]) {
     const w = wiersz(html, usluga);
     expect(w, usluga).not.toBe('');
     expect(w, usluga).toContain(`href="${ekran}"`);
@@ -79,7 +97,9 @@ it('#1 i #5: katalog — logo reklam bez leniwego ładowania, „Wysyłam z Alle
     expect(k, usluga).toMatch(/<img src="\/public\/integracje\/[^"]+"/);
     expect(k, usluga).not.toContain('loading="lazy"');
   }
-  expect(karta(html, 'wza')).toMatch(/<a class="btn btn--drugi btn--maly" href="\/ustawienia\/integracje#grupa-sprzedaz">Konfiguruj<\/a>/);
+  expect(karta(html, 'wza')).toMatch(
+    /<a class="btn btn--drugi btn--maly" href="\/ustawienia\/integracje#grupa-sprzedaz">Konfiguruj<\/a>/,
+  );
 });
 
 it('integracja ustawiana na serwerze ma znacznik „Ustawia administrator serwera”, nie „Przez konfigurację”', async () => {
@@ -90,9 +110,14 @@ it('integracja ustawiana na serwerze ma znacznik „Ustawia administrator serwer
   expect(html).not.toContain('Przez konfigurację');
 });
 
-afterEach(() => { vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 it('#12: na ekranie programu do faktur „Fakturownia” nie skleja się z „wkrótce”', async () => {
-  vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 200 })));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => new Response('{}', { status: 200 })),
+  );
   const { app, db } = nowyPanel();
   try {
     zalozKonto(db, { login: 'ola', imie: 'Ola', haslo: 'h', rola: 'administrator', admin: true });
@@ -101,5 +126,8 @@ it('#12: na ekranie programu do faktur „Fakturownia” nie skleja się z „wk
     const t = tekst(r.body);
     expect(t).toContain('Fakturownia');
     expect(t).not.toMatch(/Fakturowniawkrótce|TwojeFakturywkrótce/);
-  } finally { await app.close(); db.close(); }
+  } finally {
+    await app.close();
+    db.close();
+  }
 });

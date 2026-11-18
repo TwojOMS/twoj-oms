@@ -1,12 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import {
-  daneFaktury, daneFakturyZeSklepu, polaReczneFaktury,
-} from '../../src/domena/dane-faktury.js';
+import { daneFaktury, daneFakturyZeSklepu, polaReczneFaktury } from '../../src/domena/dane-faktury.js';
 
 const zamowienie = (nad = {}) => ({
   klient: {
-    first_name: 'Jan', last_name: 'Kowalski', company: 'ACME sp. z o.o.', email: 'j@k.pl',
-    address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL',
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    company: 'ACME sp. z o.o.',
+    email: 'j@k.pl',
+    address_1: 'Polna 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
   },
   nip: '1200001200',
   ...nad,

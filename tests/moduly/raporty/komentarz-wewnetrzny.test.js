@@ -45,8 +45,13 @@ describe('znormalizujKomentarz', () => {
 // niech to pilnuje test, a nie pamięć.
 // ============================================================================
 const zamowienie = () => ({
-  numer: 'PRO/1', utworzone_at: '2026-08-21T09:00:00Z', kwota_brutto: '110.00',
-  koszt_dostawy_brutto: '10.00', metoda_wysylki: 'dpd', metoda_platnosci: 'Przelew', faktura: null,
+  numer: 'PRO/1',
+  utworzone_at: '2026-08-21T09:00:00Z',
+  kwota_brutto: '110.00',
+  koszt_dostawy_brutto: '10.00',
+  metoda_wysylki: 'dpd',
+  metoda_platnosci: 'Przelew',
+  faktura: null,
   komentarz_wewnetrzny: 'NIE POKAZYWAĆ KLIENTOWI: klient marudzi, doliczyć zapas czasu',
   pozycje: [{ nazwa: 'STOP 70x100', sku: 'STOP-70', ilosc: 2, cena_brutto: '50.00', brutto_linii: '100.00' }],
 });

@@ -7,13 +7,26 @@
 // PRG: zapis → 303 na ekran edycji; odmowa → 400 z wpisaną treścią i powodem (nic nie ginie).
 // „Podgląd" to GET z treścią w adresie — niczego nie zapisuje, działa też u gościa demo.
 import {
-  WBUDOWANE, KONTA, MAKS, NOWY_WLASNY, polaSzablonu, rodzajSzablonu, sprawdzSzablon, szablonDoEdycji, zapiszSzablon, usunSzablon,
+  WBUDOWANE,
+  KONTA,
+  MAKS,
+  NOWY_WLASNY,
+  polaSzablonu,
+  rodzajSzablonu,
+  sprawdzSzablon,
+  szablonDoEdycji,
+  zapiszSzablon,
+  usunSzablon,
 } from '../../../domena/szablony-wiadomosci.js';
 import { wczytajSzablonyWiadomosci, zmienSzablonyWiadomosci } from '../../../oms/db/szablony-wiadomosci.js';
 import { podgladSzablonu } from '../szablony.js';
 import { stronaOdmowy } from '../../../core/web/odmowa.js';
 import {
-  wczytajZapisaneZdania, zdaniaPlatnosciTeraz, zapiszZdaniaPlatnosci, przywrocZdanie, zdaniaDoEkranu,
+  wczytajZapisaneZdania,
+  zdaniaPlatnosciTeraz,
+  zapiszZdaniaPlatnosci,
+  przywrocZdanie,
+  zdaniaDoEkranu,
 } from '../zdania-platnosci.js';
 import { MAKS_ZDAN } from '../../../domena/zdania-platnosci.js';
 import { nawigacjaUstawien } from '../../ustawienia/nawigacja.js';
@@ -38,8 +51,8 @@ export function registerSzablonyWiadomosciRoutes(app, { db, oprawa, config = {},
   // Podstrony edycji świecą w menu tą samą pozycją, co lista (podmenu zna wyłącznie adres listy).
   const nawigacja = (req, reply) => nawigacjaUstawien({ url: ADRES, konto: req.konto }, reply);
   // Wąski skład bez modułu automatyzacji może mieć bazę zachowaną z wcześniejszego uruchomienia.
-  const regulySzablonu = id => app.hasRoute({ method: 'GET', url: '/ustawienia/automatyzacje/:id' })
-    ? regulyUzywajaceSzablonu(db, id) : [];
+  const regulySzablonu = (id) =>
+    app.hasRoute({ method: 'GET', url: '/ustawienia/automatyzacje/:id' }) ? regulyUzywajaceSzablonu(db, id) : [];
 
   /** Szablon pod adresem albo `null` (nieznany id, usunięty szablon własny). */
   function szablonPod(id) {
@@ -50,25 +63,42 @@ export function registerSzablonyWiadomosciRoutes(app, { db, oprawa, config = {},
   function ekranEdycji(req, reply, s, { formularz = null, blad = null, podglad = null } = {}) {
     // Ścieżkę do ekranu Użytkownicy dostaje tylko ten, kto go widzi (jak w ekranListy niżej).
     const admin = Boolean(req.konto?.admin || req.konto?.podgladDemo);
-    return reply.view('ustawienia-szablon.ejs', { szerokosc: 'formularz', admin,
+    return reply.view('ustawienia-szablon.ejs', {
+      szerokosc: 'formularz',
+      admin,
       nawigacja: nawigacja(req, reply),
       title: s.nowy ? 'Nowy szablon wiadomości' : `Szablon: ${s.nazwa}`,
-      s, f: formularz ?? { nazwa: s.nazwa ?? '', temat: s.temat, tresc: s.tresc },
-      pola: polaSzablonu(s.rodzaj, { admin }), maks: MAKS, blad, podglad,
-      reguly: !s.wbudowany && !s.nowy ? regulySzablonu(s.id).map(r => ({ ...r,
-        // Dziennik reguły ma dodatkową ochronę admina; gość demo może go tylko oglądać.
-        adres: (req.konto?.admin || req.konto?.podgladDemo)
-          && maDostepDoAdresu(req.konto, `/ustawienia/automatyzacje/${r.id}`) ? `/ustawienia/automatyzacje/${r.id}` : null,
-      })) : [],
+      s,
+      f: formularz ?? { nazwa: s.nazwa ?? '', temat: s.temat, tresc: s.tresc },
+      pola: polaSzablonu(s.rodzaj, { admin }),
+      maks: MAKS,
+      blad,
+      podglad,
+      reguly:
+        !s.wbudowany && !s.nowy
+          ? regulySzablonu(s.id).map((r) => ({
+              ...r,
+              // Dziennik reguły ma dodatkową ochronę admina; gość demo może go tylko oglądać.
+              adres:
+                (req.konto?.admin || req.konto?.podgladDemo) &&
+                maDostepDoAdresu(req.konto, `/ustawienia/automatyzacje/${r.id}`)
+                  ? `/ustawienia/automatyzacje/${r.id}`
+                  : null,
+            }))
+          : [],
       zapisano: req.query?.zapisano === '1' ? 'Zapisano. Następny mail pójdzie z tą treścią.' : null,
     });
   }
 
   function ekranListy(req, reply, { wpisane = null, bledy = {} } = {}) {
     const stan = wczytajSzablonyWiadomosci(db);
-    const reguly = req.query?.zapisano === 'usunieto' && rodzajSzablonu(req.query?.usunietySzablon) === 'wlasny'
-      ? regulySzablonu(req.query.usunietySzablon) : [];
-    const ostrzezenie = reguly.length ? ` Reguły ${reguly.map(r => r.nazwa).join(', ')} mają teraz usunięty szablon.` : '';
+    const reguly =
+      req.query?.zapisano === 'usunieto' && rodzajSzablonu(req.query?.usunietySzablon) === 'wlasny'
+        ? regulySzablonu(req.query.usunietySzablon)
+        : [];
+    const ostrzezenie = reguly.length
+      ? ` Reguły ${reguly.map((r) => r.nazwa).join(', ')} mają teraz usunięty szablon.`
+      : '';
     return reply.view('ustawienia-szablony.ejs', {
       nawigacja: nawigacja(req, reply),
       title: 'Szablony wiadomości',
@@ -78,8 +108,9 @@ export function registerSzablonyWiadomosciRoutes(app, { db, oprawa, config = {},
       wbudowane: WBUDOWANE.map((id) => szablonDoEdycji(stan, id)),
       // Maile do pracowników — osobna sekcja, żeby nikt nie pomylił ich z mailami do klientów.
       zespol: KONTA.map((id) => szablonDoEdycji(stan, id)),
-      wlasne: stan.wlasne, maks: MAKS,
-      komunikat: wpisane ? null : ((KOMUNIKATY[req.query?.zapisano] ?? '') + ostrzezenie || null),
+      wlasne: stan.wlasne,
+      maks: MAKS,
+      komunikat: wpisane ? null : (KOMUNIKATY[req.query?.zapisano] ?? '') + ostrzezenie || null,
       zdania: zdaniaDoEkranu(wczytajZapisaneZdania(db), { wpisane, bledy }),
       maksZdan: MAKS_ZDAN,
       bladZdan: Object.keys(bledy).length ? (bledy._ ?? 'Popraw zaznaczone zdania — nic nie zostało zapisane.') : null,
@@ -113,13 +144,21 @@ export function registerSzablonyWiadomosciRoutes(app, { db, oprawa, config = {},
     if (req.query?.podglad === undefined) return ekranEdycji(req, reply, s);
 
     const formularz = {
-      nazwa: String(req.query.nazwa ?? s.nazwa ?? ''), temat: String(req.query.temat ?? ''), tresc: String(req.query.tresc ?? ''),
+      nazwa: String(req.query.nazwa ?? s.nazwa ?? ''),
+      temat: String(req.query.temat ?? ''),
+      tresc: String(req.query.tresc ?? ''),
     };
     const sprawdzony = sprawdzSzablon(s.rodzaj, formularz);
     if (!sprawdzony.ok) return ekranEdycji(req, reply, s, { formularz, blad: sprawdzony.blad });
-    return ekranEdycji(req, reply, s, { formularz, podglad: podgladSzablonu(s.id, sprawdzony.szablon, {
-      oprawa: typeof oprawa === 'function' ? oprawa() : oprawa, config, teraz: teraz(), zdania: zdaniaPlatnosciTeraz(db),
-    }) });
+    return ekranEdycji(req, reply, s, {
+      formularz,
+      podglad: podgladSzablonu(s.id, sprawdzony.szablon, {
+        oprawa: typeof oprawa === 'function' ? oprawa() : oprawa,
+        config,
+        teraz: teraz(),
+        zdania: zdaniaPlatnosciTeraz(db),
+      }),
+    });
   });
 
   app.post(`${ADRES}/:id`, async (req, reply) => {
@@ -127,7 +166,11 @@ export function registerSzablonyWiadomosciRoutes(app, { db, oprawa, config = {},
     const s = szablonPod(id);
     if (!s) return stronaOdmowy(reply, 404, 'Nie ma takiego szablonu — mógł zostać usunięty.', ODMOWA_SZABLONOW);
     const pola = req.body ?? {};
-    const formularz = { nazwa: String(pola.nazwa ?? ''), temat: String(pola.temat ?? ''), tresc: String(pola.tresc ?? '') };
+    const formularz = {
+      nazwa: String(pola.nazwa ?? ''),
+      temat: String(pola.temat ?? ''),
+      tresc: String(pola.tresc ?? ''),
+    };
     const wynik = zmienSzablonyWiadomosci(db, (stan) => zapiszSzablon(stan, id, formularz, teraz().toISOString()));
     if (!wynik.ok) {
       reply.code(400);
@@ -149,6 +192,8 @@ export function registerSzablonyWiadomosciRoutes(app, { db, oprawa, config = {},
     const wynik = zmienSzablonyWiadomosci(db, (stan) => usunSzablon(stan, id));
     if (!wynik.ok) return stronaOdmowy(reply, 404, wynik.blad, ODMOWA_SZABLONOW);
     const zaleznosci = reguly.length ? `&usunietySzablon=${encodeURIComponent(id)}` : '';
-    return reply.code(303).redirect(`${ADRES}?zapisano=${rodzajSzablonu(id) === 'wlasny' ? 'usunieto' : 'przywrocono'}${zaleznosci}`);
+    return reply
+      .code(303)
+      .redirect(`${ADRES}?zapisano=${rodzajSzablonu(id) === 'wlasny' ? 'usunieto' : 'przywrocono'}${zaleznosci}`);
   });
 }

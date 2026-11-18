@@ -59,7 +59,9 @@ export const KODY_ALLEGRO = {
 export function etapPrzesylki(opis, kod = null) {
   const zKodu = KODY_ALLEGRO[String(kod ?? '').trim()];
   if (zKodu) return zKodu;
-  const s = String(opis ?? '').trim().toLowerCase();
+  const s = String(opis ?? '')
+    .trim()
+    .toLowerCase();
   if (!s) return null;
   if (s.includes('zwrot') || s.includes('zwróc')) return 'zwrot';
   if (s.includes('doręczon') || s.includes('odebrana przez klienta') || s.includes('odbiorc')) return 'doreczona';
@@ -90,8 +92,9 @@ export function kategoriaPrzesylki(p, etap) {
   if (etap === 'doreczona' || etap === 'zwrot') return 'doreczone';
   if (p?.przejeta_at) return 'w_drodze';
   if (etap === 'nadana') return 'utworzone';
-  const jestPlik = [p?.etykieta_sciezka, p?.etykieta_zpl_sciezka]
-    .some((sciezka) => typeof sciezka === 'string' && sciezka.trim().length > 0);
+  const jestPlik = [p?.etykieta_sciezka, p?.etykieta_zpl_sciezka].some(
+    (sciezka) => typeof sciezka === 'string' && sciezka.trim().length > 0,
+  );
   if (etap == null && (jestPlik || p?.etykieta_reczna === 1)) return 'utworzone';
   return 'w_drodze';
 }

@@ -15,7 +15,10 @@ function baza() {
 function kanalObcy(strony) {
   return {
     wolania: [],
-    async pobierzStrone(arg) { this.wolania.push(arg); return strony[arg.strona - 1] ?? { zamowienia: [], stron: strony.length }; },
+    async pobierzStrone(arg) {
+      this.wolania.push(arg);
+      return strony[arg.strona - 1] ?? { zamowienia: [], stron: strony.length };
+    },
     kursorZ: (s) => s.zmienioneKiedy ?? null,
     zlozoneZ: (s) => s.zlozoneKiedy ?? null,
     // Komplet pol wiersza, bo `zapiszZamowienie` wiaze je do SQLite wprost i `undefined`
@@ -43,10 +46,14 @@ function kanalObcy(strony) {
 describe('poller rozmawia z kanałem przez adapter, nie z WooCommerce', () => {
   it('zapisuje zamówienie i przesuwa kursor po polach WSKAZANYCH PRZEZ ADAPTER', async () => {
     const db = baza();
-    const kanal = kanalObcy([{
-      zamowienia: [{ identyfikator: 77, zlozoneKiedy: '2026-08-01T10:00:00Z', zmienioneKiedy: '2026-08-02T11:00:00Z' }],
-      stron: 1,
-    }]);
+    const kanal = kanalObcy([
+      {
+        zamowienia: [
+          { identyfikator: 77, zlozoneKiedy: '2026-08-01T10:00:00Z', zmienioneKiedy: '2026-08-02T11:00:00Z' },
+        ],
+        stron: 1,
+      },
+    ]);
     const poller = createPoller({ db, kanal, sklep: 'allegro_swietlik', od: null });
 
     const wynik = await poller.przebieg();
@@ -58,10 +65,14 @@ describe('poller rozmawia z kanałem przez adapter, nie z WooCommerce', () => {
 
   it('PODŁOGA po dacie złożenia obowiązuje tak samo — a kursor i tak przeskakuje pominięte', async () => {
     const db = baza();
-    const kanal = kanalObcy([{
-      zamowienia: [{ identyfikator: 1, zlozoneKiedy: '2019-05-05T10:00:00Z', zmienioneKiedy: '2026-08-02T11:00:00Z' }],
-      stron: 1,
-    }]);
+    const kanal = kanalObcy([
+      {
+        zamowienia: [
+          { identyfikator: 1, zlozoneKiedy: '2019-05-05T10:00:00Z', zmienioneKiedy: '2026-08-02T11:00:00Z' },
+        ],
+        stron: 1,
+      },
+    ]);
     const poller = createPoller({ db, kanal, sklep: 'allegro_swietlik', od: '2026-07-01' });
 
     const wynik = await poller.przebieg();
@@ -80,13 +91,15 @@ describe('poller rozmawia z kanałem przez adapter, nie z WooCommerce', () => {
   // a każdy następny przebieg czytałby te same zamówienia od nowa.
   it('kursor zostaje na NAJPÓŹNIEJSZEJ modyfikacji, choćby przyszła nie na końcu strony', async () => {
     const db = baza();
-    const kanal = kanalObcy([{
-      zamowienia: [
-        { identyfikator: 1, zlozoneKiedy: '2026-08-01T10:00:00Z', zmienioneKiedy: '2026-08-02T15:00:00Z' },
-        { identyfikator: 2, zlozoneKiedy: '2026-08-01T10:00:00Z', zmienioneKiedy: '2026-08-02T09:00:00Z' },
-      ],
-      stron: 1,
-    }]);
+    const kanal = kanalObcy([
+      {
+        zamowienia: [
+          { identyfikator: 1, zlozoneKiedy: '2026-08-01T10:00:00Z', zmienioneKiedy: '2026-08-02T15:00:00Z' },
+          { identyfikator: 2, zlozoneKiedy: '2026-08-01T10:00:00Z', zmienioneKiedy: '2026-08-02T09:00:00Z' },
+        ],
+        stron: 1,
+      },
+    ]);
     const poller = createPoller({ db, kanal, sklep: 'allegro_swietlik', od: null });
 
     expect((await poller.przebieg()).pobrane).toBe(2);
@@ -116,10 +129,14 @@ describe('poller rozmawia z kanałem przez adapter, nie z WooCommerce', () => {
   // Adapter MUSI widziec prawdziwy brak kursora.
   it('kursor to ZAPISANY kursor: null przy pustym stanie, zapisana wartość później', async () => {
     const db = baza();
-    const kanal = kanalObcy([{
-      zamowienia: [{ identyfikator: 5, zlozoneKiedy: '2026-07-15T10:00:00Z', zmienioneKiedy: '2026-08-02T11:00:00Z' }],
-      stron: 1,
-    }]);
+    const kanal = kanalObcy([
+      {
+        zamowienia: [
+          { identyfikator: 5, zlozoneKiedy: '2026-07-15T10:00:00Z', zmienioneKiedy: '2026-08-02T11:00:00Z' },
+        ],
+        stron: 1,
+      },
+    ]);
     const poller = createPoller({ db, kanal, sklep: 'allegro_swietlik', od: '2026-07-01' });
 
     await poller.przebieg();

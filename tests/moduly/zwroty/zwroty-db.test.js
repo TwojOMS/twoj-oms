@@ -2,15 +2,34 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import {
-  dodajZwrot, zwrotyZamowienia, zwrot, usunZwrot, oznaczPieniadzeOddane, zamowieniaZeZwrotem,
-  zarezerwujKorekte, zapiszKorekte, zapiszBladKorekty, odblokujKorekte, zapiszRecznyNumerKorekty,
+  dodajZwrot,
+  zwrotyZamowienia,
+  zwrot,
+  usunZwrot,
+  oznaczPieniadzeOddane,
+  zamowieniaZeZwrotem,
+  zarezerwujKorekte,
+  zapiszKorekte,
+  zapiszBladKorekty,
+  odblokujKorekte,
+  zapiszRecznyNumerKorekty,
 } from '../../../src/oms/db/zwroty.js';
 
 const zmapowane = (nad = {}) => ({
-  zrodlo_id: 1301, numer: '1301', klient: { email: 'j@k.pl' }, dostawa: { city: 'Warszawa' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null,
-  kwota_brutto: '212.90', status_woo: 'processing', oplacone_at: null, anulowane: 0,
-  utworzone_at: '2026-07-29T13:19:52', pozycje: [],
+  zrodlo_id: 1301,
+  numer: '1301',
+  klient: { email: 'j@k.pl' },
+  dostawa: { city: 'Warszawa' },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '212.90',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-07-29T13:19:52',
+  pozycje: [],
   ...nad,
 });
 
@@ -41,9 +60,7 @@ describe('zapis i odczyt zwrotu', () => {
     expect(lista[0].kwota).toBe('99.00');
     expect(lista[0].kwota_dostawy).toBe('19.00');
     expect(lista[0].pieniadze_oddane_at).toBeNull();
-    expect(lista[0].pozycje).toEqual([
-      { klucz_pozycji: 's77', nazwa: 'Szablon Kot 70x100', ilosc: 1, kwota: '99.00' },
-    ]);
+    expect(lista[0].pozycje).toEqual([{ klucz_pozycji: 's77', nazwa: 'Szablon Kot 70x100', ilosc: 1, kwota: '99.00' }]);
   });
 
   it('dwa zwroty do jednego zamowienia zyja obok siebie, po dacie', () => {
@@ -54,7 +71,8 @@ describe('zapis i odczyt zwrotu', () => {
 
   it('usuniecie zwrotu zabiera ze soba jego pozycje', () => {
     const z = dodajZwrot(db, id, {
-      data: '2026-08-14', kwota: '99.00',
+      data: '2026-08-14',
+      kwota: '99.00',
       pozycje: [{ klucz_pozycji: 's77', nazwa: 'Kot', ilosc: 1, kwota: '99.00' }],
     });
     usunZwrot(db, id, z.id);
@@ -87,17 +105,25 @@ describe('zapis i odczyt zwrotu', () => {
     // zanim doszlo do sedna testu. Kazda inna fikstura pozycji w tym repo (np.
     // tests/oms/web-pozycje.test.js) podaje oba pola wprost z tego samego powodu.
     const zPozycjami = zmapowane({
-      pozycje: [{
-        zrodlo_id: 77, nazwa: 'Kot 70x100', sku: null, ilosc: 2, cena_brutto: '99.00', brutto_linii: '198.00',
-        vat: null,
-      }],
+      pozycje: [
+        {
+          zrodlo_id: 77,
+          nazwa: 'Kot 70x100',
+          sku: null,
+          ilosc: 2,
+          cena_brutto: '99.00',
+          brutto_linii: '198.00',
+          vat: null,
+        },
+      ],
     });
     // ⚠️ Rozbieznosc z briefem: `zapiszZamowienie` oddaje LICZBOWE `id` (nie `{ id }`) — patrz
     // komentarz w beforeEach powyzej. `zam` ponizej jest wiec juz samym identyfikatorem.
     const zam = zapiszZamowienie(db, 'pro', zPozycjami, {});
     const przedId = db.prepare('SELECT id FROM pozycje WHERE zamowienie_id = ?').get(zam).id;
     dodajZwrot(db, zam, {
-      data: '2026-08-14', kwota: '99.00',
+      data: '2026-08-14',
+      kwota: '99.00',
       pozycje: [{ klucz_pozycji: 's77', nazwa: 'Kot 70x100', ilosc: 1, kwota: '99.00' }],
     });
 
@@ -119,7 +145,10 @@ describe('zapis i odczyt zwrotu', () => {
 // Skutek: suma zwrotow sie PODWAJA, a raport zdejmuje kwote z przychodu DWA RAZY.
 describe('dodajZwrot — obrona przed powtornym wyslaniem tego samego formularza', () => {
   const formularz = {
-    data: '2026-08-14', kwota: '99.00', kwotaDostawy: '19.00', powod: 'nie pasuje',
+    data: '2026-08-14',
+    kwota: '99.00',
+    kwotaDostawy: '19.00',
+    powod: 'nie pasuje',
     pozycje: [{ klucz_pozycji: 's77', nazwa: 'Kot 70x100', ilosc: 1, kwota: '99.00' }],
   };
 
@@ -148,7 +177,11 @@ describe('dodajZwrot — obrona przed powtornym wyslaniem tego samego formularza
   it('komunikat proponuje POLACZENIE w jeden zwrot, a nie zmiane daty albo kwoty', () => {
     dodajZwrot(db, id, formularz);
     let zlapany = null;
-    try { dodajZwrot(db, id, formularz); } catch (e) { zlapany = e; }
+    try {
+      dodajZwrot(db, id, formularz);
+    } catch (e) {
+      zlapany = e;
+    }
     expect(zlapany).not.toBeNull();
     expect(zlapany.message).toMatch(/jeden zwrot/i);
     expect(zlapany.message).not.toMatch(/zmień datę albo kwotę/i);
@@ -245,8 +278,7 @@ describe('zapiszRecznyNumerKorekty — korekta wystawiona poza panelem', () => {
     const a = dodajZwrot(db, id, { data: '2026-08-14', kwota: '99.00', pozycje: [] });
     const b = dodajZwrot(db, id, { data: '2026-09-02', kwota: '50.00', pozycje: [] });
     zapiszRecznyNumerKorekty(db, id, a.id, '2/KOR/09/2026');
-    expect(() => zapiszRecznyNumerKorekty(db, id, b.id, '2/KOR/09/2026'))
-      .toThrow(/2\/KOR\/09\/2026/);
+    expect(() => zapiszRecznyNumerKorekty(db, id, b.id, '2/KOR/09/2026')).toThrow(/2\/KOR\/09\/2026/);
     expect(zwrot(db, id, b.id).korekta_numer).toBeNull();
     expect(zwrot(db, id, a.id).korekta_numer).toBe('2/KOR/09/2026');
   });

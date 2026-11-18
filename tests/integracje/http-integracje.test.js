@@ -35,14 +35,33 @@ describe('transport i klucze integracji', () => {
     try {
       expect((await transport()('https://przyklad.invalid/nadanie', { method })).status).toBe(503);
       expect(f).toHaveBeenCalledTimes(1);
-    } finally { vi.unstubAllGlobals(); }
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
   it('deklaruje wszystkie integracje i blokuje każdy klucz w próbie', () => {
-    expect(Object.keys(integracje).sort()).toEqual(['allegro','apilo','dpd','fakturownia','ga4','gus','infakt','inpost','ksef','meta','vies','woo'].sort());
+    expect(Object.keys(integracje).sort()).toEqual(
+      [
+        'allegro',
+        'apilo',
+        'dpd',
+        'fakturownia',
+        'ga4',
+        'gus',
+        'infakt',
+        'inpost',
+        'ksef',
+        'meta',
+        'vies',
+        'woo',
+      ].sort(),
+    );
     for (const [nazwa, deklaracja] of Object.entries(integracje)) {
       expect(deklaracja.kluczeIntegracji, nazwa).toBeDefined();
       for (const klucz of deklaracja.kluczeIntegracji) {
-        expect(() => sprawdzTrybProby({ OMS_TRYB: 'proba', [klucz]: 'test' }, deklaracja.kluczeIntegracji)).toThrow(klucz);
+        expect(() => sprawdzTrybProby({ OMS_TRYB: 'proba', [klucz]: 'test' }, deklaracja.kluczeIntegracji)).toThrow(
+          klucz,
+        );
       }
     }
     expect(integracje.allegro.kluczeIntegracji).toContain('ALLEGRO_CLIENT_SECRET');
@@ -52,16 +71,26 @@ describe('transport i klucze integracji', () => {
     for (const d of Object.values(integracje)) {
       for (const klucz of d.kluczeIntegracji) {
         const konfiguracja = vi.fn(modulRdzen.konfiguracja);
-        await expect(zbudujAplikacje({ moduly: [{ ...modulRdzen, kluczeIntegracji: d.kluczeIntegracji, konfiguracja }], env: { OMS_TRYB: 'proba', [klucz]: 'test' }, db: null })).rejects.toThrow(klucz);
+        await expect(
+          zbudujAplikacje({
+            moduly: [{ ...modulRdzen, kluczeIntegracji: d.kluczeIntegracji, konfiguracja }],
+            env: { OMS_TRYB: 'proba', [klucz]: 'test' },
+            db: null,
+          }),
+        ).rejects.toThrow(klucz);
         expect(konfiguracja).not.toHaveBeenCalled();
       }
     }
   });
   it('blokuje klucze kanałów o prefiksie należącym do klienta', () => {
-    for (const [typ, sufiksy] of [['allegro', ['CLIENT_ID','CLIENT_SECRET']], ['woo', ['CK','CS']]]) {
+    for (const [typ, sufiksy] of [
+      ['allegro', ['CLIENT_ID', 'CLIENT_SECRET']],
+      ['woo', ['CK', 'CS']],
+    ]) {
       const d = kluczeKanalu(typ, 'MOJ_SKLEP');
-      expect(d.kluczeIntegracji).toEqual(sufiksy.map(s => `MOJ_SKLEP_${s}`));
-      for (const klucz of d.kluczeIntegracji) expect(() => sprawdzTrybProby({OMS_TRYB:'proba',[klucz]:'x'},d.kluczeIntegracji)).toThrow(klucz);
+      expect(d.kluczeIntegracji).toEqual(sufiksy.map((s) => `MOJ_SKLEP_${s}`));
+      for (const klucz of d.kluczeIntegracji)
+        expect(() => sprawdzTrybProby({ OMS_TRYB: 'proba', [klucz]: 'x' }, d.kluczeIntegracji)).toThrow(klucz);
     }
     expect(() => kluczeKanalu('inne', 'MOJ_SKLEP')).toThrow();
     expect(() => kluczeKanalu('woo', '../plik')).toThrow();

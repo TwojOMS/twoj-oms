@@ -1,6 +1,14 @@
 import { bladOperatora } from '../../../domena/bledy.js';
 import {
-  zakresMiesiaca, scalDokumenty, stanKsef, stanTerminu, opisTerminu, czekaNaPrzelew, stanZaplaty, wKsef, filtrujDokumenty,
+  zakresMiesiaca,
+  scalDokumenty,
+  stanKsef,
+  stanTerminu,
+  opisTerminu,
+  czekaNaPrzelew,
+  stanZaplaty,
+  wKsef,
+  filtrujDokumenty,
 } from '../../../domena/lista-faktur.js';
 import { zl } from '../../../domena/suma-pozycji.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
@@ -137,10 +145,11 @@ const POBRANIA_PRZESYLKI = `
 export function createFakturyWidok({ db, program: programPodany = null, infakt = null }) {
   const program = zProgramu({ program: programPodany, infakt });
   const nazwa = program?.opis?.nazwa;
-  const brakNieoplaconych = program && !program.opis?.zdolnosci?.includes('nieoplacone')
-    ? `${nazwa.mianownik} nie podaje listy nieopłaconych faktur, więc tej sekcji tu nie ma — `
-      + `kto zalega z przelewem, sprawdzisz bezpośrednio w ${nazwa.miejscownik}.`
-    : null;
+  const brakNieoplaconych =
+    program && !program.opis?.zdolnosci?.includes('nieoplacone')
+      ? `${nazwa.mianownik} nie podaje listy nieopłaconych faktur, więc tej sekcji tu nie ma — ` +
+        `kto zalega z przelewem, sprawdzisz bezpośrednio w ${nazwa.miejscownik}.`
+      : null;
   function powiazania() {
     const zamowienia = new Map();
     for (const w of db.prepare(POWIAZANIA).all()) {
@@ -173,7 +182,12 @@ export function createFakturyWidok({ db, program: programPodany = null, infakt =
       if (czyPaczkaBezGotowki(w)) bezGotowki.add(w.uuid);
     }
     return {
-      zamowienia, okresy, wysylkiKsef, bezGotowki, ksefKorektZwrotow, ksefFakturPoNumerze,
+      zamowienia,
+      okresy,
+      wysylkiKsef,
+      bezGotowki,
+      ksefKorektZwrotow,
+      ksefFakturPoNumerze,
     };
   }
 
@@ -188,9 +202,7 @@ export function createFakturyWidok({ db, program: programPodany = null, infakt =
     const numer = d.corrected_invoice_number;
     const zwrot = mapy.ksefKorektZwrotow.get(d.uuid);
     const zeZwrotu = zwrot && (!numer || zwrot.numer === numer) ? zwrot.ksef : null;
-    return zeZwrotu
-      || (numer ? mapy.ksefFakturPoNumerze.get(numer) || mapy.ksefZListy?.get(numer) : null)
-      || null;
+    return zeZwrotu || (numer ? mapy.ksefFakturPoNumerze.get(numer) || mapy.ksefZListy?.get(numer) : null) || null;
   }
 
   // ⚠️ `d` bywa `null`: zdegradowana odpowiedź inFaktu potrafi wstawić pustą pozycję do
@@ -214,7 +226,8 @@ export function createFakturyWidok({ db, program: programPodany = null, infakt =
       ...(d ?? {}),
       // Wiersz z WŁASNYM polem (TwojeFaktury, także `null` = pierwotna jeszcze nie w KSeF) zostaje nietknięty.
       ...(d?.rodzaj === 'korekta' && !Object.hasOwn(d, 'ksef_korygowanej')
-        ? { ksef_korygowanej: ksefKorygowanej(d, mapy) } : {}),
+        ? { ksef_korygowanej: ksefKorygowanej(d, mapy) }
+        : {}),
       zamowienie: mapy.zamowienia.get(d?.uuid) ?? null,
       okres: mapy.okresy.get(d?.uuid) ?? null,
       stanKsef: stanKsef(d, Boolean(ksefZleconaAt)),
@@ -233,20 +246,28 @@ export function createFakturyWidok({ db, program: programPodany = null, infakt =
       // pokazać WYŁĄCZNIE przy `do_zaplaty`.
       stanZaplaty: stanZaplaty(d),
       // Pola tabeli dokumentów; kontrakt pasa należności pozostaje osobny.
-      ...(tabela ? {
-        nettoZl: zl(Number(d?.net_price ?? 0)),
-        wKsef: wKsef(d),
-      } : {}),
+      ...(tabela
+        ? {
+            nettoZl: zl(Number(d?.net_price ?? 0)),
+            wKsef: wKsef(d),
+          }
+        : {}),
     };
   }
 
-  async function dokumenty({ miesiac, pole = 'invoice_date', typ = '', platnosc = '', dzis = dzienWarszawa(new Date().toISOString()) } = {}) {
+  async function dokumenty({
+    miesiac,
+    pole = 'invoice_date',
+    typ = '',
+    platnosc = '',
+    dzis = dzienWarszawa(new Date().toISOString()),
+  } = {}) {
     const zakres = zakresMiesiaca(miesiac);
     if (!zakres) throw bladOperatora(`„${miesiac ?? ''}" to nie jest miesiąc w formacie RRRR-MM.`);
     if (!POLA_DATY.has(pole)) {
       throw bladOperatora(
-        `„${pole ?? ''}" to nie jest pole daty, po którym można filtrować faktury — `
-        + `dozwolone są tylko: ${[...POLA_DATY].join(', ')}.`,
+        `„${pole ?? ''}" to nie jest pole daty, po którym można filtrować faktury — ` +
+          `dozwolone są tylko: ${[...POLA_DATY].join(', ')}.`,
       );
     }
     const pytanie = { ...zakres, pole };
@@ -258,15 +279,18 @@ export function createFakturyWidok({ db, program: programPodany = null, infakt =
       ksefZListy.set(f.number, f.ksef_number);
     }
     const mapy = { ...powiazania(), ksefZListy };
-    const wiersze = filtrujDokumenty(scalDokumenty(faktury, korekty), { typ, platnosc })
-      .map((d) => wzbogac(d, mapy, dzis, true));
+    const wiersze = filtrujDokumenty(scalDokumenty(faktury, korekty), { typ, platnosc }).map((d) =>
+      wzbogac(d, mapy, dzis, true),
+    );
     // Stan VAT i korekty z adaptera: odnośnik do dokumentu.
     if (program.opis?.wbudowany !== true || typeof program.stanDokumentu !== 'function') return wiersze;
-    return Promise.all(wiersze.map(async (d) => {
-      if (!['vat', 'korekta'].includes(d.rodzaj) || !d.uuid) return d;
-      const stanDokumentu = await program.stanDokumentu(d.uuid);
-      return { ...d, stanDokumentu };
-    }));
+    return Promise.all(
+      wiersze.map(async (d) => {
+        if (!['vat', 'korekta'].includes(d.rodzaj) || !d.uuid) return d;
+        const stanDokumentu = await program.stanDokumentu(d.uuid);
+        return { ...d, stanDokumentu };
+      }),
+    );
   }
 
   // ⚠️ TU CELOWO NIE ROBIMY „?? []" / `Array.isArray ? x : []` — inaczej niż `dokumenty()`
@@ -282,8 +306,8 @@ export function createFakturyWidok({ db, program: programPodany = null, infakt =
     const lista = await program.listaNieoplaconych();
     if (!Array.isArray(lista)) {
       throw bladOperatora(
-        `${nazwa.mianownik} oddał listę nieopłaconych faktur w formacie, którego panel nie rozumie — `
-        + 'nie pokazujemy jej, żeby pusta tabela nie znaczyła „nikt nie zalega".',
+        `${nazwa.mianownik} oddał listę nieopłaconych faktur w formacie, którego panel nie rozumie — ` +
+          'nie pokazujemy jej, żeby pusta tabela nie znaczyła „nikt nie zalega".',
       );
     }
     const mapy = powiazania();
@@ -326,12 +350,16 @@ export function createFakturyWidok({ db, program: programPodany = null, infakt =
     if (!zakres) throw bladOperatora(`„${miesiac ?? ''}" to nie jest miesiąc w formacie RRRR-MM.`);
     // Format sprawdził już `zakresMiesiaca` — tu tylko rozbieramy go na liczby serii.
     const [rok, nrMiesiaca] = String(miesiac).trim().split('-').map(Number);
-    return db.prepare(`
+    return db
+      .prepare(
+        `
       SELECT p.*, z.numer AS zamowienie_numer, z.id AS zamowienie_id
       FROM proformy p JOIN zamowienia z ON z.id = p.zamowienie_id
       WHERE p.rok = ? AND p.miesiac = ?
       ORDER BY p.kolejny DESC, p.id DESC
-    `).all(rok, nrMiesiaca);
+    `,
+      )
+      .all(rok, nrMiesiaca);
   }
 
   return { dokumenty, nieoplacone, proformy, brakNieoplaconych };

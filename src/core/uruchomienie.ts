@@ -15,26 +15,36 @@ export async function uruchomAplikacje(
     uchwyty = [];
     zamykanie = (async () => {
       try {
-        try { await aplikacja?.app.close(); }
-        finally { await Promise.allSettled(przebiegi); }
-      } finally { o.db.close(); }
+        try {
+          await aplikacja?.app.close();
+        } finally {
+          await Promise.allSettled(przebiegi);
+        }
+      } finally {
+        o.db.close();
+      }
     })();
     return zamykanie;
   };
   try {
     aplikacja = await zbudujAplikacje(o);
     await aplikacja.app.listen({ host: o.host, port: o.port });
-    uchwyty = uruchomZegary(aplikacja.zegary.map((z) => ({
-      ...z,
-      przebieg: () => {
-        // Promise.then obejmuje także synchroniczny wyjątek modułu.
-        const przebieg = Promise.resolve().then(() => z.przebieg());
-        przebiegi.add(przebieg);
-        const usun = () => { przebiegi.delete(przebieg); };
-        void przebieg.then(usun, usun);
-        return przebieg;
-      },
-    })), { log: o.log });
+    uchwyty = uruchomZegary(
+      aplikacja.zegary.map((z) => ({
+        ...z,
+        przebieg: () => {
+          // Promise.then obejmuje także synchroniczny wyjątek modułu.
+          const przebieg = Promise.resolve().then(() => z.przebieg());
+          przebiegi.add(przebieg);
+          const usun = () => {
+            przebiegi.delete(przebieg);
+          };
+          void przebieg.then(usun, usun);
+          return przebieg;
+        },
+      })),
+      { log: o.log },
+    );
     return { aplikacja, zamknij };
   } catch (e) {
     await zamknij();

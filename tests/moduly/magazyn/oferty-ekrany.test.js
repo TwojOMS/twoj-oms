@@ -4,46 +4,102 @@ import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { definicjeKanalowHistoryczne } from '../../pomoc/przykladowe-definicje-kanalow.js';
 import { utworzKarte } from '../../../src/oms/db/magazyn.js';
 import { ustawZnacznikAi } from '../../../src/moduly/magazyn/services/znacznik-ai.js';
-import { ofertyKarty, wstawOferte, zmienOferte, ofertaPoId, zapiszUstawieniaOfertKonta } from '../../../src/oms/db/oferty-kanalow.ts';
+import {
+  ofertyKarty,
+  wstawOferte,
+  zmienOferte,
+  ofertaPoId,
+  zapiszUstawieniaOfertKonta,
+} from '../../../src/oms/db/oferty-kanalow.ts';
 import { createPetlaOfert } from '../../../src/moduly/magazyn/services/petla-ofert.js';
 import { zalozKonto, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
 import { podpisz, NAZWA_CIASTECZKA_OMS } from '../../../src/core/bezpieczenstwo/sesja.js';
 import { wczytajSekret } from '../../../src/core/bezpieczenstwo/sekret-sesji.js';
 
 const kanal = 'erli-polcien';
-const auth = { authorization: `Basic ${Buffer.from('operator:atrapa').toString('base64')}`, origin: 'http://localhost' };
+const auth = {
+  authorization: `Basic ${Buffer.from('operator:atrapa').toString('base64')}`,
+  origin: 'http://localhost',
+};
 let db, app, id, klient;
 const post = (url, payload, headers = auth) => app.inject({ method: 'POST', url, payload, headers });
 const podglad = (zaznaczone = [id]) => post('/magazyn/oferty/podglad', { konto: kanal, zaznaczone });
-const decyzja = r => ({ konto: kanal, zaznaczone: [id], podglad: /name="podglad" value="([^"]+)"/.exec(r.body)?.[1] });
-const nowa = (zmiany = {}) => wstawOferte(db, { kartaId: id, kanal, idZewnetrzne: 'LMP-01', stan: 'aktywna', ...zmiany });
+const decyzja = (r) => ({
+  konto: kanal,
+  zaznaczone: [id],
+  podglad: /name="podglad" value="([^"]+)"/.exec(r.body)?.[1],
+});
+const nowa = (zmiany = {}) =>
+  wstawOferte(db, { kartaId: id, kanal, idZewnetrzne: 'LMP-01', stan: 'aktywna', ...zmiany });
 beforeEach(async () => {
   db = openOmsDb(':memory:');
-  klient = { utworzProdukt: vi.fn(), zmienProdukt: vi.fn(), szukajProduktow: vi.fn(), zmienIlosciCeny: vi.fn(), pobierzProdukt: vi.fn() };
-  app = buildOmsServer({ db, config: { auth: { user: 'operator', pass: 'atrapa' },
-    // Kolumna „Kanały” bierze rodzaj i nazwę z definicji — konto ERLI testu musi w nich być.
-    definicje: [...definicjeKanalowHistoryczne, { klucz: kanal, typ: 'erli', prefiks: 'ERLI_POLCIEN', etykieta: 'ERLI Półcień' }] },
+  klient = {
+    utworzProdukt: vi.fn(),
+    zmienProdukt: vi.fn(),
+    szukajProduktow: vi.fn(),
+    zmienIlosciCeny: vi.fn(),
+    pobierzProdukt: vi.fn(),
+  };
+  app = buildOmsServer({
+    db,
+    config: {
+      auth: { user: 'operator', pass: 'atrapa' },
+      // Kolumna „Kanały” bierze rodzaj i nazwę z definicji — konto ERLI testu musi w nich być.
+      definicje: [
+        ...definicjeKanalowHistoryczne,
+        { klucz: kanal, typ: 'erli', prefiks: 'ERLI_POLCIEN', etykieta: 'ERLI Półcień' },
+      ],
+    },
     magazyn: { stan: () => ({ trwa: false, kanaly: [] }) },
-    nadpisania: { 'kanaly.klienciKanalow': { [kanal]: klient }, 'kanaly.repozytoriumKanalow': {
-      listaTypu: typ => typ === 'erli' ? [{ klucz: kanal, nazwa: 'Półcień' }] : [], zapisyZablokowane: () => false,
-    } },
+    nadpisania: {
+      'kanaly.klienciKanalow': { [kanal]: klient },
+      'kanaly.repozytoriumKanalow': {
+        listaTypu: (typ) => (typ === 'erli' ? [{ klucz: kanal, nazwa: 'Półcień' }] : []),
+        zapisyZablokowane: () => false,
+      },
+    },
   });
   await app.ready();
   id = utworzKarte(db, { nazwa: 'Lampa Półcień', sku: 'LMP-01', cena_gr: 10000, stawka_vat: '23' });
-  db.prepare("INSERT INTO zdjecia_kart (karta_id, kolejnosc, zrodlo, adres_zrodlowy, utworzono_at) VALUES (?, 0, 'woo', 'https://polcien.example/lampa.png', '2026-11-13')").run(id);
-  zapiszUstawieniaOfertKonta(db, kanal, { czynne: false, narzutProcent: 10, stalaIlosc: 5, czasWysylkiDni: 2, cennikDostaw: 'Lampy', stawkaVat: '23' });
+  db.prepare(
+    "INSERT INTO zdjecia_kart (karta_id, kolejnosc, zrodlo, adres_zrodlowy, utworzono_at) VALUES (?, 0, 'woo', 'https://polcien.example/lampa.png', '2026-11-13')",
+  ).run(id);
+  zapiszUstawieniaOfertKonta(db, kanal, {
+    czynne: false,
+    narzutProcent: 10,
+    stalaIlosc: 5,
+    czasWysylkiDni: 2,
+    cennikDostaw: 'Lampy',
+    stawkaVat: '23',
+  });
 });
-afterEach(async () => { await app.close(); db.close(); });
+afterEach(async () => {
+  await app.close();
+  db.close();
+});
 
 it('podgląd pokazuje dokładne ciało, ostrzeżenia i wstrzymanie; trasa nie woła kanału', async () => {
   const r = await podglad();
   expect(r.statusCode).toBe(200);
-  for (const tekst of ['Oferty: wstrzymane', '110,00', 'Ilość: 5', 'Czas wysyłki: 2', 'TAX_23', 'Zdjęcia: 1', 'kategorii', 'aiGenerated', '11000']) expect(r.body).toContain(tekst);
+  for (const tekst of [
+    'Oferty: wstrzymane',
+    '110,00',
+    'Ilość: 5',
+    'Czas wysyłki: 2',
+    'TAX_23',
+    'Zdjęcia: 1',
+    'kategorii',
+    'aiGenerated',
+    '11000',
+  ])
+    expect(r.body).toContain(tekst);
   expect(ofertyKarty(db, id)).toHaveLength(0);
   const w = await post('/magazyn/oferty/zatwierdz', decyzja(r));
   expect(w.statusCode).toBe(200);
   expect(w.body).toContain('W kolejce: 1');
-  expect(ofertyKarty(db, id)).toEqual([expect.objectContaining({ stan: 'do_wyslania', tryb: 'zarzadzana', pochodzenie: 'oms' })]);
+  expect(ofertyKarty(db, id)).toEqual([
+    expect.objectContaining({ stan: 'do_wyslania', tryb: 'zarzadzana', pochodzenie: 'oms' }),
+  ]);
   for (const f of Object.values(klient)) expect(f).not.toHaveBeenCalled();
 });
 it('bez podglądu nie tworzy wiersza', async () => {
@@ -103,16 +159,25 @@ it('ponów czyści błąd i próby; obserwowana odmawia obu akcji', async () => 
   expect((await post(`/magazyn/${id}/oferty/${o.id}/ponow`, {})).statusCode).toBe(303);
   expect(ofertaPoId(db, o.id)).toMatchObject({ stan: 'do_wyslania', blad: null, liczbaProb: 0 });
   const ob = nowa({ idZewnetrzne: 'LMP-02', pochodzenie: 'przejeta', tryb: 'obserwowana', stan: 'problem' });
-  for (const akcja of ['ponow', 'zdejmij']) expect((await post(`/magazyn/${id}/oferty/${ob.id}/${akcja}`, {})).statusCode).toBe(409);
+  for (const akcja of ['ponow', 'zdejmij'])
+    expect((await post(`/magazyn/${id}/oferty/${ob.id}/${akcja}`, {})).statusCode).toBe(409);
 });
 it('zdejmij: pętla wysyła tylko inactive i nigdy nie przywraca ilości', async () => {
   const o = nowa();
   expect((await post(`/magazyn/${id}/oferty/${o.id}/zdejmij`, {})).statusCode).toBe(303);
   zapiszUstawieniaOfertKonta(db, kanal, { czynne: true });
   let status = 'active';
-  const katalog = { odczytOfert: vi.fn(async () => ({ ok: true, dane: [{ externalId: o.idZewnetrzne, name: 'Lampa Półcień', status, price: 1, stock: 1, images: [] }] })),
-    zmienOferte: vi.fn(async (_id, pola) => { status = pola.status; return { ok: true, dane: {} }; }),
-    zmienIloscCene: vi.fn() };
+  const katalog = {
+    odczytOfert: vi.fn(async () => ({
+      ok: true,
+      dane: [{ externalId: o.idZewnetrzne, name: 'Lampa Półcień', status, price: 1, stock: 1, images: [] }],
+    })),
+    zmienOferte: vi.fn(async (_id, pola) => {
+      status = pola.status;
+      return { ok: true, dane: {} };
+    }),
+    zmienIloscCene: vi.fn(),
+  };
   const petla = createPetlaOfert({ db, konta: () => [{ klucz: kanal, katalog }] });
   await petla.przebieg();
   await petla.przebieg();
@@ -121,8 +186,16 @@ it('zdejmij: pętla wysyła tylko inactive i nigdy nie przywraca ilości', async
 });
 it('filtr i kolumna listy używają tego samego zbioru; karta pokazuje ofertę i problemy', async () => {
   const o = nowa({ stan: 'problem' });
-  zmienOferte(db, o.id, { problemy: [{ kod: 'delivery', tekst: 'Popraw cennik dostaw' }], blad: 'Odmowa kanału', odczytanoAt: '2026-11-13T10:00:00Z' });
-  for (const [filtr, ile] of [['bez', 0], ['z', 1], ['problem', 1]]) {
+  zmienOferte(db, o.id, {
+    problemy: [{ kod: 'delivery', tekst: 'Popraw cennik dostaw' }],
+    blad: 'Odmowa kanału',
+    odczytanoAt: '2026-11-13T10:00:00Z',
+  });
+  for (const [filtr, ile] of [
+    ['bez', 0],
+    ['z', 1],
+    ['problem', 1],
+  ]) {
     const r = await app.inject({ url: `/magazyn?oferty=${filtr}`, headers: auth });
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('<th>Kanały</th>');
@@ -130,16 +203,41 @@ it('filtr i kolumna listy używają tego samego zbioru; karta pokazuje ofertę i
     if (ile) expect(r.body).toContain('title="ERLI Półcień — problem: Odmowa kanału"');
   }
   const r = await app.inject({ url: `/magazyn/${id}`, headers: auth });
-  for (const tekst of ['Popraw cennik dostaw', 'Odmowa kanału', 'Zdejmij ofertę', 'Wyślij ponownie', 'zarządzana', '13.11.2026']) expect(r.body).toContain(tekst);
+  for (const tekst of [
+    'Popraw cennik dostaw',
+    'Odmowa kanału',
+    'Zdejmij ofertę',
+    'Wyślij ponownie',
+    'zarządzana',
+    '13.11.2026',
+  ])
+    expect(r.body).toContain(tekst);
 });
 it('odrzuca obcy CSRF oraz nie-admina', async () => {
-  expect((await post('/magazyn/oferty/podglad', { konto: kanal, zaznaczone: [id] }, { ...auth, origin: 'https://obcy.example' })).statusCode).toBe(403);
+  expect(
+    (
+      await post(
+        '/magazyn/oferty/podglad',
+        { konto: kanal, zaznaczone: [id] },
+        { ...auth, origin: 'https://obcy.example' },
+      )
+    ).statusCode,
+  ).toBe(403);
   zalozKonto(db, { login: 'admin', imie: 'Admin', haslo: 'test', rola: 'admin', admin: true });
   const user = zalozKonto(db, { login: 'czytelnik', imie: 'Czytelnik', haslo: 'test', rola: 'operator' });
   ustawUprawnienia(db, user, ['magazyn']);
-  const headers = { origin: 'http://localhost', cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz('czytelnik', wczytajSekret(db), Date.now(), 0)}` };
+  const headers = {
+    origin: 'http://localhost',
+    cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz('czytelnik', wczytajSekret(db), Date.now(), 0)}`,
+  };
   const o = nowa();
-  for (const url of ['/magazyn/oferty/podglad', '/magazyn/oferty/zatwierdz', `/magazyn/${id}/oferty/${o.id}/zdejmij`, `/magazyn/${id}/oferty/${o.id}/ponow`]) expect((await post(url, { konto: kanal, zaznaczone: [id] }, headers)).statusCode).toBe(403);
+  for (const url of [
+    '/magazyn/oferty/podglad',
+    '/magazyn/oferty/zatwierdz',
+    `/magazyn/${id}/oferty/${o.id}/zdejmij`,
+    `/magazyn/${id}/oferty/${o.id}/ponow`,
+  ])
+    expect((await post(url, { konto: kanal, zaznaczone: [id] }, headers)).statusCode).toBe(403);
 });
 it('ślad podglądu starszy niż 30 min nie pozwala zatwierdzić', async () => {
   const r = await podglad();
@@ -147,12 +245,16 @@ it('ślad podglądu starszy niż 30 min nie pozwala zatwierdzić', async () => {
   const zegar = vi.spyOn(Date, 'now').mockReturnValue(teraz + 31 * 60_000);
   try {
     expect((await post('/magazyn/oferty/zatwierdz', decyzja(r))).statusCode).toBe(409);
-  } finally { zegar.mockRestore(); }
+  } finally {
+    zegar.mockRestore();
+  }
   expect(ofertyKarty(db, id)).toHaveLength(0);
 });
 it('zdejmij odmawia oferty z konfliktem — pętla jej nie dotyka, więc nic by nie wyszło', async () => {
   const o = nowa({ stan: 'problem' });
-  zmienOferte(db, o.id, { problemy: [{ kod: 'konflikt', tekst: 'Produkt o tym identyfikatorze już istnieje w ERLI.' }] });
+  zmienOferte(db, o.id, {
+    problemy: [{ kod: 'konflikt', tekst: 'Produkt o tym identyfikatorze już istnieje w ERLI.' }],
+  });
   expect((await post(`/magazyn/${id}/oferty/${o.id}/zdejmij`, {})).statusCode).toBe(409);
   expect(ofertaPoId(db, o.id).wyslanePola?.zdejmij).toBeFalsy();
 });

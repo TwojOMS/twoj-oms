@@ -97,7 +97,7 @@ export function nastepnyKrok({ hasMore, isTruncated, pageOffset, ostatniaData })
     // w raporcie zarzadczym podana z pelnym przekonaniem, wiec przerywamy z halasem.
     throw new Error(
       'nastepnyKrok: KSeF zwrocil isTruncated=true bez ostatniaData - nie mozna bezpiecznie ' +
-        'przesunac okna pobierania. Przerywam, zeby nie zostawic cichej dziury w kosztach.'
+        'przesunac okna pobierania. Przerywam, zeby nie zostawic cichej dziury w kosztach.',
     );
   }
   // ZEROWANIE STRONY JEST OBOWIAZKOWE. Przesuniete okno z zachowanym offsetem przeskakuje

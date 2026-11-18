@@ -1,6 +1,4 @@
-import {
-  describe, it, expect, vi, beforeEach,
-} from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -32,7 +30,11 @@ const config = { auth: { user: 'adam', pass: 'x' } };
 const naglowek = { authorization: `Basic ${Buffer.from('adam:x').toString('base64')}`, origin: 'http://localhost' };
 const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) };
 const NADAWCA = {
-  nazwa: 'Pracownia Półcień', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL',
+  nazwa: 'Pracownia Półcień',
+  ulica: 'ul. Przykładowa 1',
+  kod: '00-950',
+  miasto: 'Warszawa',
+  kraj: 'PL',
 };
 
 const zmapowane = (nad = {}) => ({
@@ -40,7 +42,13 @@ const zmapowane = (nad = {}) => ({
   numer: '91671e40-9025-11f1-9622-afa983ea653b',
   klient: { email: 'a@allegromail.pl', phone: '+48500900009' },
   dostawa: {
-    first_name: 'Julia', last_name: 'Lis', company: '', address_1: 'Radosna 7', postcode: '78-100', city: 'Niekanin', country: 'PL',
+    first_name: 'Julia',
+    last_name: 'Lis',
+    company: '',
+    address_1: 'Radosna 7',
+    postcode: '78-100',
+    city: 'Niekanin',
+    country: 'PL',
   },
   metoda_wysylki: 'allegro_punkt',
   kwota_pobrania: null,
@@ -56,16 +64,24 @@ const zmapowane = (nad = {}) => ({
 });
 
 function dpdKlient() {
-  const fetchImpl = vi.fn()
+  const fetchImpl = vi
+    .fn()
     .mockResolvedValueOnce(odp(200, fixture('v10-ok.xml')))
     .mockResolvedValueOnce(odp(200, fixture('v4-ok.xml')));
   return createDpdClient({
-    url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '876543', nadawca: NADAWCA, fetchImpl,
+    url: 'https://dpd/api',
+    login: '99999999',
+    haslo: 'x',
+    fid: '876543',
+    nadawca: NADAWCA,
+    fetchImpl,
   });
 }
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 
 function zServerem({ nad = {}, sklep = 'allegro_swietlik' } = {}) {
   const katalogEtykiet = mkdtempSync(join(tmpdir(), 'oms-bezwyboru-'));

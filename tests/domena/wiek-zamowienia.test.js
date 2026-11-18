@@ -4,9 +4,17 @@ import { wiekZamowienia, czyEkspres } from '../../src/domena/wiek-zamowienia.js'
 // Wiersz jak z listaZamowien: fakty, ktorych zegar uzywa. Daty bez strefy = czas sklepu
 // (Warszawa), daty z `Z` = nasze znaczniki UTC — obie skale musza dzialac.
 const zam = (nad = {}) => ({
-  sklep: 'swietlik', utworzone_at: '2026-08-18T10:00:00', oplacone_at: '2026-08-18T10:00:00',
-  pobranie: 0, b2b: 0, indywidualne: 0, anulowane: 0, anulowane_recznie: null,
-  wyslane_at: null, pozycje: [{ nazwa: 'Lampa wisząca' }], ...nad,
+  sklep: 'swietlik',
+  utworzone_at: '2026-08-18T10:00:00',
+  oplacone_at: '2026-08-18T10:00:00',
+  pobranie: 0,
+  b2b: 0,
+  indywidualne: 0,
+  anulowane: 0,
+  anulowane_recznie: null,
+  wyslane_at: null,
+  pozycje: [{ nazwa: 'Lampa wisząca' }],
+  ...nad,
 });
 
 describe('czyEkspres', () => {
@@ -55,19 +63,23 @@ describe('Allegro — odcięcie 12:00 w czasie polskim', () => {
     expect(w.opis).toBe('wysyłka: jutro');
   });
   it('znacznik UTC: 09:59Z latem = 11:59 PL → przed odcięciem (i 10:00Z = 12:00 PL → po)', () => {
-    expect(wiekZamowienia(allegro({ oplacone_at: '2026-08-17T09:59:00Z' }), '2026-08-17T14:00:00Z')
-      .opis).toBe('wysyłka: dziś · opłacone przed 12:00');
-    expect(wiekZamowienia(allegro({ oplacone_at: '2026-08-17T10:00:00Z' }), '2026-08-17T14:00:00Z')
-      .opis).toBe('wysyłka: jutro');
+    expect(wiekZamowienia(allegro({ oplacone_at: '2026-08-17T09:59:00Z' }), '2026-08-17T14:00:00Z').opis).toBe(
+      'wysyłka: dziś · opłacone przed 12:00',
+    );
+    expect(wiekZamowienia(allegro({ oplacone_at: '2026-08-17T10:00:00Z' }), '2026-08-17T14:00:00Z').opis).toBe(
+      'wysyłka: jutro',
+    );
   });
   it('znacznik UTC zimą: 10:59Z = 11:59 PL → przed odcięciem (i 11:00Z = 12:00 PL → po)', () => {
     // 2026-01-12 to poniedziałek; zimą Warszawa = UTC+1, więc granica 12:00 PL = 11:00Z.
     // Razem z letnim przypadkiem wyżej ten test przypina cutoff do STREFY, nie do stałego
     // przesunięcia — mutacja czytająca godzinę z surowego napisu ginie w obu porach roku.
-    expect(wiekZamowienia(allegro({ oplacone_at: '2026-01-12T10:59:00Z' }), '2026-01-12T14:00:00Z')
-      .opis).toBe('wysyłka: dziś · opłacone przed 12:00');
-    expect(wiekZamowienia(allegro({ oplacone_at: '2026-01-12T11:00:00Z' }), '2026-01-12T14:00:00Z')
-      .opis).toBe('wysyłka: jutro');
+    expect(wiekZamowienia(allegro({ oplacone_at: '2026-01-12T10:59:00Z' }), '2026-01-12T14:00:00Z').opis).toBe(
+      'wysyłka: dziś · opłacone przed 12:00',
+    );
+    expect(wiekZamowienia(allegro({ oplacone_at: '2026-01-12T11:00:00Z' }), '2026-01-12T14:00:00Z').opis).toBe(
+      'wysyłka: jutro',
+    );
   });
   it('start w sobotę → bez dopisku 12:00, wysyłka pn; wtorek po terminie', () => {
     const start = { oplacone_at: '2026-08-22T09:00:00', utworzone_at: '2026-08-22T09:00:00' };
@@ -94,8 +106,10 @@ describe('ekspres i indywidualne', () => {
     expect(w.opis).toBe('od wpłaty 3/7 dni rob.');
   });
   it('ekspres bije indywidualne', () => {
-    const w = wiekZamowienia(zam({ indywidualne: 1, pozycje: [{ nazwa: 'Realizacja ekspresowa' }] }),
-      '2026-08-19T09:00:00Z');
+    const w = wiekZamowienia(
+      zam({ indywidualne: 1, pozycje: [{ nazwa: 'Realizacja ekspresowa' }] }),
+      '2026-08-19T09:00:00Z',
+    );
     expect(w.typ).toBe('ekspres');
   });
 });
@@ -110,8 +124,10 @@ describe('start zegara', () => {
     expect(w.poTerminie).toBe(true);
   });
   it('pobranie Allegro: dopisek mówi „złożone”, nie „opłacone”', () => {
-    const w = wiekZamowienia(zam({ sklep: 'allegro_swietlik', pobranie: 1, oplacone_at: null,
-      utworzone_at: '2026-08-17T09:00:00' }), '2026-08-17T14:00:00Z');
+    const w = wiekZamowienia(
+      zam({ sklep: 'allegro_swietlik', pobranie: 1, oplacone_at: null, utworzone_at: '2026-08-17T09:00:00' }),
+      '2026-08-17T14:00:00Z',
+    );
     expect(w.opis).toBe('wysyłka: dziś · złożone przed 12:00');
   });
   it('nieopłacona przedpłata: zegar nie biegnie, zero koloru', () => {
@@ -143,10 +159,9 @@ describe('odporność na śmieciowe daty', () => {
     expect(w.poTerminie).toBe(false);
   });
   it('data-śmieć (Allegro) też nie rzuca', () => {
-    expect(() => wiekZamowienia(
-      zam({ sklep: 'allegro_swietlik', oplacone_at: '0000-00-00T00:00:00Z' }),
-      '2026-08-19T09:00:00Z',
-    )).not.toThrow();
+    expect(() =>
+      wiekZamowienia(zam({ sklep: 'allegro_swietlik', oplacone_at: '0000-00-00T00:00:00Z' }), '2026-08-19T09:00:00Z'),
+    ).not.toThrow();
   });
 });
 

@@ -9,7 +9,8 @@ import { buildOmsServer } from '../pomoc/serwer-testowy-oms.ts';
 const AUTH = { authorization: `Basic ${Buffer.from('adam:x').toString('base64')}` };
 const CONFIG = { auth: { user: 'adam', pass: 'x' }, klienciZbiorczy: [] };
 
-let db; let app;
+let db;
+let app;
 const wejdz = (opcje) => app.inject({ ...opcje, headers: AUTH });
 
 beforeEach(() => {
@@ -20,7 +21,9 @@ beforeEach(() => {
 describe('bezpiecznik weryfikacji na ekranie łączności', () => {
   it('otwarty bezpiecznik jest WIDOCZNY, z nazwą kanału i datą', async () => {
     zapiszStanWeryfikacji(db, 'allegro_swietlik', {
-      kolejnePuste: 3, bezpiecznikOd: '2026-08-20T10:00:00Z', ostatniaProbaAt: '2026-08-28T11:00:00Z',
+      kolejnePuste: 3,
+      bezpiecznikOd: '2026-08-20T10:00:00Z',
+      ostatniaProbaAt: '2026-08-28T11:00:00Z',
     });
 
     const r = await wejdz({ method: 'GET', url: '/ustawienia/lacznosc' });
@@ -40,7 +43,9 @@ describe('bezpiecznik weryfikacji na ekranie łączności', () => {
 
   it('zamknięty bezpiecznik nie jest pokazywany jako otwarty', async () => {
     zapiszStanWeryfikacji(db, 'allegro_swietlik', {
-      kolejnePuste: 0, bezpiecznikOd: null, ostatniaProbaAt: '2026-08-28T11:00:00Z',
+      kolejnePuste: 0,
+      bezpiecznikOd: null,
+      ostatniaProbaAt: '2026-08-28T11:00:00Z',
     });
 
     const r = await wejdz({ method: 'GET', url: '/ustawienia/lacznosc' });

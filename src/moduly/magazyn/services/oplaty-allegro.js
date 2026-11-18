@@ -12,7 +12,7 @@ const LIMIT_MS = 20_000;
 /** Suma `commissions[].fee.amount` w groszach → „19,00 zł”; brak prowizji w odpowiedzi = niedostępna. */
 function kwotaProwizji(odpowiedz) {
   const prowizje = Array.isArray(odpowiedz?.commissions) ? odpowiedz.commissions : [];
-  const kwoty = prowizje.map(p => Number(p?.fee?.amount)).filter(Number.isFinite);
+  const kwoty = prowizje.map((p) => Number(p?.fee?.amount)).filter(Number.isFinite);
   if (!kwoty.length) return null;
   const grosze = kwoty.reduce((s, k) => s + Math.round(k * 100), 0);
   return `${(grosze / 100).toFixed(2).replace('.', ',')} zł`;
@@ -33,12 +33,16 @@ export function createOplatyAllegro({ teraz = () => Date.now(), limitMs = LIMIT_
   async function prowizje(konto, wiersze) {
     // Wpisy po terminie wypadają przy każdym podglądzie — pamięć nie rośnie z każdą nową ceną.
     for (const [klucz, zapis] of pamiec) if (zapis.do <= teraz()) pamiec.delete(klucz);
-    const doLiczenia = wiersze.filter(w => !w.bledy.length && w.zadanie && w.allegro);
+    const doLiczenia = wiersze.filter((w) => !w.bledy.length && w.zadanie && w.allegro);
     const wybrane = doLiczenia.slice(0, LIMIT_KART_PROWIZJI);
     for (const w of doLiczenia.slice(LIMIT_KART_PROWIZJI)) w.allegro.prowizja = PROWIZJA_NIE_POLICZONO;
     for (const w of wybrane) w.allegro.prowizja = PROWIZJA_NIE_POLICZONO;
-    const zapytaj = typeof konto.klient?.podgladOplat === 'function' ? konto.klient.podgladOplat.bind(konto.klient) : null;
-    if (!zapytaj) { for (const w of wybrane) w.allegro.prowizja = PROWIZJA_NIEDOSTEPNA; return; }
+    const zapytaj =
+      typeof konto.klient?.podgladOplat === 'function' ? konto.klient.podgladOplat.bind(konto.klient) : null;
+    if (!zapytaj) {
+      for (const w of wybrane) w.allegro.prowizja = PROWIZJA_NIEDOSTEPNA;
+      return;
+    }
 
     // Jedno zapytanie na (konto, kategoria, cena) — także w jednym podglądzie.
     const grupy = new Map();
@@ -51,7 +55,10 @@ export function createOplatyAllegro({ teraz = () => Date.now(), limitMs = LIMIT_
     const kolejka = [];
     for (const [klucz, g] of grupy) {
       const zapis = pamiec.get(klucz);
-      if (zapis && zapis.do > teraz()) { for (const w of g.wiersze) w.allegro.prowizja = zapis.tekst; continue; }
+      if (zapis && zapis.do > teraz()) {
+        for (const w of g.wiersze) w.allegro.prowizja = zapis.tekst;
+        continue;
+      }
       kolejka.push([klucz, g]);
     }
     let przerwano = false;
@@ -61,16 +68,29 @@ export function createOplatyAllegro({ teraz = () => Date.now(), limitMs = LIMIT_
         let tekst = PROWIZJA_NIEDOSTEPNA;
         try {
           const kwota = kwotaProwizji(await zapytaj(g.oferta));
-          if (kwota) { tekst = kwota; pamiec.set(klucz, { tekst, do: teraz() + PAMIEC_MS }); }
-        } catch { tekst = PROWIZJA_NIEDOSTEPNA; }
+          if (kwota) {
+            tekst = kwota;
+            pamiec.set(klucz, { tekst, do: teraz() + PAMIEC_MS });
+          }
+        } catch {
+          tekst = PROWIZJA_NIEDOSTEPNA;
+        }
         if (!przerwano) for (const w of g.wiersze) w.allegro.prowizja = tekst;
       }
     };
     let zegar;
-    const limit = new Promise(r => { zegar = setTimeout(() => { przerwano = true; r(); }, limitMs); zegar.unref?.(); });
+    const limit = new Promise((r) => {
+      zegar = setTimeout(() => {
+        przerwano = true;
+        r();
+      }, limitMs);
+      zegar.unref?.();
+    });
     try {
       await Promise.race([Promise.all(Array.from({ length: ROWNOLEGLE }, pracownik)), limit]);
-    } finally { clearTimeout(zegar); }
+    } finally {
+      clearTimeout(zegar);
+    }
   }
 
   return { prowizje, rozmiarPamieci: () => pamiec.size };

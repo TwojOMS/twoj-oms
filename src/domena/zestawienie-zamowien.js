@@ -30,7 +30,9 @@ function linieWysylki(z) {
     a.kraj,
     a.phone,
     a.email,
-  ].map((l) => String(l ?? '').trim()).filter(Boolean);
+  ]
+    .map((l) => String(l ?? '').trim())
+    .filter(Boolean);
 }
 
 /**
@@ -41,14 +43,22 @@ function linieWysylki(z) {
 export function daneZestawienia(z, { kanal = '', klienciWdt = new Set() } = {}) {
   const s = daneSpecyfikacji(z, { sprzedawca: null, klienciWdt });
   const pozycje = s.pozycje.map((p) => ({
-    nazwa: p.nazwa, sku: p.symbol, ilosc: p.ilosc, cenaZl: p.cenaZl, wartoscZl: p.wartoscZl,
+    nazwa: p.nazwa,
+    sku: p.symbol,
+    ilosc: p.ilosc,
+    cenaZl: p.cenaZl,
+    wartoscZl: p.wartoscZl,
   }));
   // Wysylka jako OSTATNI WIERSZ tabeli (jak w Apilo), z kwota liczona przez specyfikacje.
   // Wiersz stoi takze przy 0,00 („Kurier DPD (darmowa wysyłka)") — pakujacy ma widziec,
   // czym jedzie paczka; nie ma go tylko wtedy, gdy zamowienie nie zna ani metody, ani kosztu.
   if (s.dostawa || Number(s.dostawaZl)) {
     pozycje.push({
-      nazwa: s.dostawa || 'Wysyłka', sku: '', ilosc: 1, cenaZl: s.dostawaZl, wartoscZl: s.dostawaZl,
+      nazwa: s.dostawa || 'Wysyłka',
+      sku: '',
+      ilosc: 1,
+      cenaZl: s.dostawaZl,
+      wartoscZl: s.dostawaZl,
     });
   }
   return {

@@ -42,8 +42,7 @@ const kwota = (grosze) => zl(grosze).replace('.', ',');
 // Cudzyslow w srodku pola podwaja sie; nowa linia tez wymusza otoczenie pola cudzyslowami.
 function poleCsv(wartosc) {
   const tekst = String(wartosc ?? '');
-  const trzeba = tekst.includes(';') || tekst.includes(CUDZYSLOW)
-    || tekst.includes(CR) || tekst.includes(LF);
+  const trzeba = tekst.includes(';') || tekst.includes(CUDZYSLOW) || tekst.includes(CR) || tekst.includes(LF);
   if (!trzeba) return tekst;
   return CUDZYSLOW + tekst.split(CUDZYSLOW).join(CUDZYSLOW + CUDZYSLOW) + CUDZYSLOW;
 }

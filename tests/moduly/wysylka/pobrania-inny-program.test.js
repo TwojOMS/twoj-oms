@@ -14,11 +14,23 @@ import { oznaczDoreczonePobrania } from '../../../src/moduly/wysylka/services/oz
 import { programTestowy } from '../../pomoc/program-testowy.js';
 
 const zamowienie = (nr) => ({
-  zrodlo_id: nr, numer: `PZ-${nr}`,
+  zrodlo_id: nr,
+  numer: `PZ-${nr}`,
   klient: { first_name: 'Anna', last_name: 'Półcień', company: 'Pracownia Półcień', email: 'biuro@polcien.invalid' },
-  dostawa: {}, metoda_wysylki: 'dpd', kwota_pobrania: '258.00', pobranie: 1, chce_fakture: 1, nip: null,
-  kwota_brutto: '258.00', status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-10-01T10:00:00Z',
-  pozycje: [{ zrodlo_id: 11, nazwa: 'Lampa wisząca Półcień', sku: 'LAMPA-W1', ilosc: 2, cena_brutto: '129.00', vat: null }],
+  dostawa: {},
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: '258.00',
+  pobranie: 1,
+  chce_fakture: 1,
+  nip: null,
+  kwota_brutto: '258.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-10-01T10:00:00Z',
+  pozycje: [
+    { zrodlo_id: 11, nazwa: 'Lampa wisząca Półcień', sku: 'LAMPA-W1', ilosc: 2, cena_brutto: '129.00', vat: null },
+  ],
 });
 
 /** Doręczone pobranie z fakturą: 'infakt' (program + dokument_id), 'infakt-stara' (sam infakt_uuid), 'test'. */
@@ -26,11 +38,20 @@ function doreczonePobranie(db, nr, rodzaj) {
   const id = zapiszZamowienie(db, 'pro', zamowienie(nr), {});
   const dok = `dok-${rodzaj}-${nr}`;
   if (rodzaj === 'infakt-stara') {
-    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)')
-      .run(id, dok, `FV/${nr}/10/2026`, '2026-10-01T08:00:00.000Z');
+    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)').run(
+      id,
+      dok,
+      `FV/${nr}/10/2026`,
+      '2026-10-01T08:00:00.000Z',
+    );
   } else {
-    db.prepare('INSERT INTO faktury (zamowienie_id, program, dokument_id, numer, utworzona_at) VALUES (?,?,?,?,?)')
-      .run(id, rodzaj, dok, `${rodzaj === 'test' ? 'TST' : 'FV'}/${nr}/10/2026`, '2026-10-01T08:00:00.000Z');
+    db.prepare('INSERT INTO faktury (zamowienie_id, program, dokument_id, numer, utworzona_at) VALUES (?,?,?,?,?)').run(
+      id,
+      rodzaj,
+      dok,
+      `${rodzaj === 'test' ? 'TST' : 'FV'}/${nr}/10/2026`,
+      '2026-10-01T08:00:00.000Z',
+    );
   }
   const p = rozpocznijPrzesylke(db, id, 'dpd', 1);
   zakonczPrzesylke(db, p.id, { numerListu: `N${nr}`, etykietaSciezka: '/tmp/e.pdf', surowa: '<x/>' });
@@ -38,11 +59,23 @@ function doreczonePobranie(db, nr, rodzaj) {
   return { id, dok };
 }
 
-const logZamowienia = (db, id) => db.prepare('SELECT wynik FROM log WHERE zamowienie_id = ? ORDER BY id').all(id).map((w) => w.wynik);
-const nieoplacona = async (uuid) => ({ uuid, number: 'TST', invoice_date: '2026-10-01', status: 'sent', left_to_pay: 25800 });
+const logZamowienia = (db, id) =>
+  db
+    .prepare('SELECT wynik FROM log WHERE zamowienie_id = ? ORDER BY id')
+    .all(id)
+    .map((w) => w.wynik);
+const nieoplacona = async (uuid) => ({
+  uuid,
+  number: 'TST',
+  invoice_date: '2026-10-01',
+  status: 'sent',
+  left_to_pay: 25800,
+});
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 
 describe('czuwacz pobrań pomija dokument innego programu', () => {
   it('[inFakt, inFakt stara, test]: `oznaczZaplacona` raz, dla `test`; inFakt bez odczytu, rezerwacji i wpisu', async () => {
@@ -89,8 +122,12 @@ describe('czuwacz pobrań pomija dokument innego programu', () => {
     const test = doreczonePobranie(db, 7303, 'test');
     const program = programTestowy({ id: 'infakt', metody: { pobierzFakture: nieoplacona } });
     const wynik = await oznaczDoreczonePobrania({ db, program });
-    expect(program.wywolania.filter(([m]) => m === 'oznaczZaplacona').map(([, uuid]) => uuid).sort())
-      .toEqual([nowa.dok, stara.dok].sort());
+    expect(
+      program.wywolania
+        .filter(([m]) => m === 'oznaczZaplacona')
+        .map(([, uuid]) => uuid)
+        .sort(),
+    ).toEqual([nowa.dok, stara.dok].sort());
     expect(wynik).toMatchObject({ zlecone: 2, bledy: 0 });
     expect(oznaczenieZaplaty(db, test.dok)).toBeFalsy();
   });

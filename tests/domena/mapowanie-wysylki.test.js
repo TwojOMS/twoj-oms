@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
-  MAPOWANIE_SKLEPOW, metodaZLinii, metodaZPozycji, metodaWysylkiZamowienia,
+  MAPOWANIE_SKLEPOW,
+  metodaZLinii,
+  metodaZPozycji,
+  metodaWysylkiZamowienia,
 } from '../pomoc/przykladowe-mapowanie-wysylki.js';
 import { METODY_WYSYLKI } from '../../src/domena/wysylka.js';
 import { mapujZamowienie } from '../../src/domena/mapowanie.js';
@@ -9,13 +12,19 @@ const SWIETLIK = MAPOWANIE_SKLEPOW.swietlik;
 
 // Ksztalty ODWZOROWANE Z ZYWEGO SKLEPU, nie zmyslone.
 const zLinia = (instanceId, methodId, tytul) => ({
-  id: 1, number: '28079', total: '212.90', status: 'processing',
+  id: 1,
+  number: '28079',
+  total: '212.90',
+  status: 'processing',
   shipping_lines: [{ instance_id: instanceId, method_id: methodId, method_title: tytul }],
   line_items: [{ name: 'lampa wisząca', sku: 'x', quantity: 1, total: '212.90' }],
 });
 
 const zOferty = () => ({
-  id: 2, number: '28163', total: '386.00', status: 'processing',
+  id: 2,
+  number: '28163',
+  total: '386.00',
+  status: 'processing',
   shipping_lines: [],
   line_items: [
     { name: 'Lampa wisząca Kopuła 40 cm, stal malowana', sku: 'sz-1', quantity: 2, total: '300.00' },
@@ -25,31 +34,34 @@ const zOferty = () => ({
 
 describe('metodaZLinii — droga główna, po instance_id', () => {
   it('flexible_shipping instancji 3 to kurier DPD', () => {
-    expect(metodaZLinii(zLinia(3, 'flexible_shipping', 'Kurier DPD'), SWIETLIK.instancje))
-      .toEqual({ metoda: 'dpd' });
+    expect(metodaZLinii(zLinia(3, 'flexible_shipping', 'Kurier DPD'), SWIETLIK.instancje)).toEqual({ metoda: 'dpd' });
   });
 
   // ⚠️⚠️ SEDNO CALEJ TABLICY. Ta instancja nazywa sie „Kurier DPD pobranie", ale jej
   // `method_id` to `local_pickup` — w WooCommerce „odbior osobisty". Panel czytajacy RODZAJ
   // metody wyslalby te paczke BEZ pobrania: kurier nie zainkasowalby ani zlotowki.
   it('local_pickup instancji 9 to POBRANIE, mimo że WooCommerce nazywa to odbiorem osobistym', () => {
-    expect(metodaZLinii(zLinia(9, 'local_pickup', 'Kurier DPD pobranie'), SWIETLIK.instancje))
-      .toEqual({ metoda: 'dpd', pobranie: true });
+    expect(metodaZLinii(zLinia(9, 'local_pickup', 'Kurier DPD pobranie'), SWIETLIK.instancje)).toEqual({
+      metoda: 'dpd',
+      pobranie: true,
+    });
   });
 
   // Ten sam tytul co wyzej, ale INNA instancja — gdyby mapowanie szlo po tytule, obie
   // dostalyby to samo.
   it('ten sam tytuł na innej instancji NIE daje pobrania', () => {
-    expect(metodaZLinii(zLinia(3, 'local_pickup', 'Kurier DPD pobranie'), SWIETLIK.instancje))
-      .toEqual({ metoda: 'dpd' });
+    expect(metodaZLinii(zLinia(3, 'local_pickup', 'Kurier DPD pobranie'), SWIETLIK.instancje)).toEqual({
+      metoda: 'dpd',
+    });
   });
 
   // Od 2026-08-01 panel umie paczkomaty — instancja 12 przestala byc „nieznana".
   // ⚠️ BEZ pobrania: sklep nie sprzedaje dzis paczkomatu za pobraniem. Pelny komplet
   // testow paczkomatowych siedzi w tests/oms/paczkomat.test.js.
   it('paczkomat (instancja 12) to InPost Paczkomat, bez pobrania', () => {
-    expect(metodaZLinii(zLinia(12, 'easypack_parcel_machines', 'InPost Paczkomat'), SWIETLIK.instancje))
-      .toEqual({ metoda: 'inpost_paczkomat' });
+    expect(metodaZLinii(zLinia(12, 'easypack_parcel_machines', 'InPost Paczkomat'), SWIETLIK.instancje)).toEqual({
+      metoda: 'inpost_paczkomat',
+    });
   });
 
   it('brak linii wysyłki to „nie wiem", nie błąd', () => {
@@ -77,8 +89,9 @@ describe('metodaZPozycji — warstwa zapasowa, gdy sklep nie zapisał metody', (
 
   it('reguła po fragmencie nazwy też działa', () => {
     const reguly = [{ nazwaZawiera: 'paczkomat', metoda: 'dpd' }];
-    expect(metodaZPozycji({ line_items: [{ name: 'Wysyłka PACZKOMAT InPost' }] }, reguly))
-      .toMatchObject({ metoda: 'dpd' });
+    expect(metodaZPozycji({ line_items: [{ name: 'Wysyłka PACZKOMAT InPost' }] }, reguly)).toMatchObject({
+      metoda: 'dpd',
+    });
   });
 
   it('pusta tablica reguł nie rozpoznaje niczego', () => {
@@ -107,15 +120,19 @@ describe('metodaWysylkiZamowienia — jedno wejście dla panelu', () => {
   // „nieznana" jest PELNOPRAWNYM wynikiem: karta pokazuje „nadaj w Apilo", nadanie odmawia,
   // a operator moze ustawic metode recznie.
   it('zamówienie bez żadnego śladu wysyłki wychodzi jako „nieznana"', () => {
-    expect(metodaWysylkiZamowienia({ line_items: [{ name: 'lampa', sku: 'sz-1' }] }, SWIETLIK))
-      .toEqual({ metoda: 'nieznana', pobranie: false });
+    expect(metodaWysylkiZamowienia({ line_items: [{ name: 'lampa', sku: 'sz-1' }] }, SWIETLIK)).toEqual({
+      metoda: 'nieznana',
+      pobranie: false,
+    });
   });
 
   // Literowka w tablicy nie ma prawa wpuscic do bazy wartosci, ktorej nie zna reszta modulu.
   it('śmieć w tablicy nie przecieka do bazy', () => {
     const zepsute = { instancje: { 3: { metoda: 'teleport' } }, poPozycji: [] };
-    expect(metodaWysylkiZamowienia(zLinia(3, 'flexible_shipping', 'x'), zepsute))
-      .toEqual({ metoda: 'nieznana', pobranie: false });
+    expect(metodaWysylkiZamowienia(zLinia(3, 'flexible_shipping', 'x'), zepsute)).toEqual({
+      metoda: 'nieznana',
+      pobranie: false,
+    });
   });
 
   it('każdy możliwy wynik jest wartością, którą rozumie reszta panelu', () => {
@@ -168,7 +185,10 @@ describe('mapujZamowienie — kwota pobrania idzie za rozpoznaną metodą', () =
 const PRO = MAPOWANIE_SKLEPOW.pro;
 
 const zOfertyPro = (pozycje) => ({
-  id: 3, number: '1294', total: '32.16', status: 'processing',
+  id: 3,
+  number: '1294',
+  total: '32.16',
+  status: 'processing',
   shipping_lines: [],
   line_items: pozycje,
 });
@@ -197,7 +217,10 @@ describe('PRO — zamówienie z oferty (wtyczka od 19.08.2026)', () => {
   // wtedy, gdy jest pobraniowa (instancja 2). Reguła po pozycji nie ma prawa jej przykryć.
   it('zwykłe zamówienie z PRO dalej idzie linią wysyłki, z pobraniem włącznie', () => {
     const z = {
-      id: 4, number: '1300', total: '99.00', status: 'processing',
+      id: 4,
+      number: '1300',
+      total: '99.00',
+      status: 'processing',
       shipping_lines: [{ instance_id: 2, method_id: 'flat_rate', method_title: 'Kurier DPD (pobranie)' }],
       line_items: [{ name: 'lampa', sku: 'PRO-1', quantity: 1, total: '80.00' }],
     };
@@ -205,7 +228,9 @@ describe('PRO — zamówienie z oferty (wtyczka od 19.08.2026)', () => {
   });
 
   it('zamówienie z PRO bez śladu wysyłki i bez zaślepki dalej jest „nieznane"', () => {
-    expect(metodaWysylkiZamowienia({ line_items: [{ name: 'lampa', sku: 'PRO-1' }] }, PRO))
-      .toEqual({ metoda: 'nieznana', pobranie: false });
+    expect(metodaWysylkiZamowienia({ line_items: [{ name: 'lampa', sku: 'PRO-1' }] }, PRO)).toEqual({
+      metoda: 'nieznana',
+      pobranie: false,
+    });
   });
 });

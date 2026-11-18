@@ -15,7 +15,12 @@ const z = (n = {}) => ({
   utworzone_at: '2026-10-14T21:41:52',
   klient: { first_name: 'Zofia', last_name: 'Zmyślona', email: 'halina@przyklad.test', phone: '600100200' },
   dostawa: {
-    first_name: 'Zofia', last_name: 'Zmyślona', address_1: 'Leśna 7', city: 'Bździszewo', postcode: '99-999', country: 'PL',
+    first_name: 'Zofia',
+    last_name: 'Zmyślona',
+    address_1: 'Leśna 7',
+    city: 'Bździszewo',
+    postcode: '99-999',
+    country: 'PL',
   },
   metoda_wysylki: 'dpd',
   kwota_brutto: '223.90',
@@ -38,15 +43,22 @@ describe('daneZestawienia', () => {
 
   it('dane wysylki w pelni: imie, ulica, kod z miastem, kraj, telefon, e-mail', () => {
     expect(daneZestawienia(z()).wysylka).toEqual([
-      'Zofia Zmyślona', 'Leśna 7', '99-999 Bździszewo', 'PL', '600100200', 'halina@przyklad.test',
+      'Zofia Zmyślona',
+      'Leśna 7',
+      '99-999 Bździszewo',
+      'PL',
+      '600100200',
+      'halina@przyklad.test',
     ]);
   });
 
   it('paczkomat stoi w danych wysylki, a reczna poprawka adresu wygrywa ze sklepem', () => {
-    const d = daneZestawienia(z({
-      punkt_odbioru: 'CHJ03M',
-      dostawa_reczna_json: JSON.stringify({ ulica: 'Poprawiona 1', phone: '700800900' }),
-    }));
+    const d = daneZestawienia(
+      z({
+        punkt_odbioru: 'CHJ03M',
+        dostawa_reczna_json: JSON.stringify({ ulica: 'Poprawiona 1', phone: '700800900' }),
+      }),
+    );
     expect(d.wysylka).toContain('Paczkomat CHJ03M');
     expect(d.wysylka).toContain('Poprawiona 1');
     expect(d.wysylka).toContain('700800900');
@@ -64,7 +76,9 @@ describe('daneZestawienia', () => {
 
   it('koszt dostawy niezerowy trafia do wiersza wysylki', () => {
     const d = daneZestawienia(z({ koszt_dostawy_brutto: '10.95', kwota_brutto: '234.85' }));
-    expect(d.pozycje.at(-1).wartoscZl).toBe(daneSpecyfikacji(z({ koszt_dostawy_brutto: '10.95' }), { sprzedawca: null }).dostawaZl);
+    expect(d.pozycje.at(-1).wartoscZl).toBe(
+      daneSpecyfikacji(z({ koszt_dostawy_brutto: '10.95' }), { sprzedawca: null }).dostawaZl,
+    );
     expect(Number(d.pozycje.at(-1).wartoscZl.replace(',', '.'))).toBeCloseTo(10.95);
   });
 

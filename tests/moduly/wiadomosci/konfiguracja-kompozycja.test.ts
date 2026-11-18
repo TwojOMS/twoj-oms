@@ -15,33 +15,87 @@ import { dodajPozycjeReczna } from '../../../src/oms/db/zamowienia.js';
 const smtp = vi.hoisted(() => ({ wywolania: [] as any[], mailery: [] as any[] }));
 vi.mock('../../../src/core/poczta/smtp.js', () => ({
   createMailer: (o: any) => {
-    const mailer = { wyslane: [] as any[], sendMail: async (m: any) => { mailer.wyslane.push(m); return { messageId: 'atrapa' }; } };
-    smtp.wywolania.push(o); smtp.mailery.push(mailer);
+    const mailer = {
+      wyslane: [] as any[],
+      sendMail: async (m: any) => {
+        mailer.wyslane.push(m);
+        return { messageId: 'atrapa' };
+      },
+    };
+    smtp.wywolania.push(o);
+    smtp.mailery.push(mailer);
     return mailer;
   },
 }));
 
-const baza = { OMS_USER: 'operator', OMS_PASS: 'fixture',
-  OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000',
-  OMS_PROFORMY_KATALOG: tmpdir(), OMS_ETYKIETY_KATALOG: tmpdir() };
+const baza = {
+  OMS_USER: 'operator',
+  OMS_PASS: 'fixture',
+  OMS_SPRZEDAWCA_NIP: '1234563218',
+  OMS_RACHUNEK: '34109010140000000000000000',
+  OMS_PROFORMY_KATALOG: tmpdir(),
+  OMS_ETYKIETY_KATALOG: tmpdir(),
+};
 const poczta = { SMTP_HOST: 'smtp.fikcja.test', SMTP_USER: 'nadawca@fikcja.test', SMTP_PASS: 'Haslo-Fikcyjne-7Q' };
-const headers = { authorization: `Basic ${Buffer.from('operator:fixture').toString('base64')}`, origin: 'http://localhost' };
-const FIRMY = wzorzecNazw([{"wzor": "\\p{L}{8}", "skrot": "3876cd847a24f6d3a8f3542919b9f6545e500e2eea8583bb58583508cefe9a57", "bezWielkosci": true}, {"wzor": "\\p{L}{8}", "skrot": "a2ac0b2e157811634f85a0cd5e7ec6ae46b6123e724924eba975ef822566f72e", "bezWielkosci": true}, {"wzor": "\\p{L}{6}", "skrot": "22fd0120386bf44db9b2553babeb20e750484883331baed1e36f87aaf1dc7473", "bezWielkosci": true}, {"wzor": "\\p{L}{6}", "skrot": "2b26c3d0b5f3fff76e52503400e750bae306b5bd3fea3f861797207eb4015b4b", "bezWielkosci": true}]);
+const headers = {
+  authorization: `Basic ${Buffer.from('operator:fixture').toString('base64')}`,
+  origin: 'http://localhost',
+};
+const FIRMY = wzorzecNazw([
+  {
+    'wzor': '\\p{L}{8}',
+    'skrot': '3876cd847a24f6d3a8f3542919b9f6545e500e2eea8583bb58583508cefe9a57',
+    'bezWielkosci': true,
+  },
+  {
+    'wzor': '\\p{L}{8}',
+    'skrot': 'a2ac0b2e157811634f85a0cd5e7ec6ae46b6123e724924eba975ef822566f72e',
+    'bezWielkosci': true,
+  },
+  {
+    'wzor': '\\p{L}{6}',
+    'skrot': '22fd0120386bf44db9b2553babeb20e750484883331baed1e36f87aaf1dc7473',
+    'bezWielkosci': true,
+  },
+  {
+    'wzor': '\\p{L}{6}',
+    'skrot': '2b26c3d0b5f3fff76e52503400e750bae306b5bd3fea3f861797207eb4015b4b',
+    'bezWielkosci': true,
+  },
+]);
 
 type Oms = Awaited<ReturnType<typeof zbudujOms>>;
 const zbuduj = async (env: Record<string, string>, log?: (...tekst: string[]) => void) => zbudujOms({ env, log });
-const zamknij = async (a?: Oms) => { try { if (a) await a.app.close(); } finally { a?.db.close(); } };
+const zamknij = async (a?: Oms) => {
+  try {
+    if (a) await a.app.close();
+  } finally {
+    a?.db.close();
+  }
+};
 const fikcyjneZamowienie = (a: Oms) => {
-  const id = utworzZamowienieReczne(a.db, { klient: { email: 'klient@fikcja.test' },
+  const id = utworzZamowienieReczne(a.db, {
+    klient: { email: 'klient@fikcja.test' },
     dostawa: { first_name: 'Anna', last_name: 'Testowa', address_1: 'Fikcyjna 1', postcode: '00-001', city: 'Testowo' },
-    metoda_wysylki: 'dpd', metoda_platnosci: 'Przelew', utworzone_at: '2026-10-01T09:00:00.000Z' });
-  dodajPozycjeReczna(a.db, id, { nazwa: 'Produkt fikcyjny', sku: 'FIK-1', ilosc: 2, cena_brutto: '10.00', brutto_linii: '20.00' });
+    metoda_wysylki: 'dpd',
+    metoda_platnosci: 'Przelew',
+    utworzone_at: '2026-10-01T09:00:00.000Z',
+  });
+  dodajPozycjeReczna(a.db, id, {
+    nazwa: 'Produkt fikcyjny',
+    sku: 'FIK-1',
+    ilosc: 2,
+    cena_brutto: '10.00',
+    brutto_linii: '20.00',
+  });
   przeliczKwoteRecznego(a.db, id);
   return id;
 };
 
 let transport: MockInstance<typeof fetch>;
-beforeAll(() => { transport = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Sieć zabroniona')); });
+beforeAll(() => {
+  transport = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Sieć zabroniona'));
+});
 afterAll(() => {
   // Żaden przebieg tego pliku nie ma prawa dotknąć sieci.
   expect(transport).not.toHaveBeenCalled();
@@ -58,7 +112,14 @@ describe('konfiguracjaWiadomosci — czysta funkcja kontraktu SMTP', () => {
       { SMTP_PASS: 'Haslo-Fikcyjne-7Q' },
       { SMTP_HOST: 'smtp.fikcja.test', SMTP_USER: 'nadawca@fikcja.test', SMTP_PASS: '   ' },
       { MAIL_FROM: 'Sklep <sklep@fikcja.test>' },
-    ].map((env) => { try { konfiguracjaWiadomosci(env); return 'brak odmowy'; } catch (e) { return (e as Error).message; } });
+    ].map((env) => {
+      try {
+        konfiguracjaWiadomosci(env);
+        return 'brak odmowy';
+      } catch (e) {
+        return (e as Error).message;
+      }
+    });
     expect(bledy).toEqual([
       'Brak wymaganej konfiguracji poczty: SMTP_HOST, SMTP_USER',
       'Brak wymaganej konfiguracji poczty: SMTP_PASS',
@@ -69,49 +130,76 @@ describe('konfiguracjaWiadomosci — czysta funkcja kontraktu SMTP', () => {
 
   it('port: domyślnie 465, jawny w zakresie 1–65535, poza nim odmowa', () => {
     expect(konfiguracjaWiadomosci(poczta).poczta?.smtp.port).toBe(465);
-    expect([1, 587, 65535].map((p) => konfiguracjaWiadomosci({ ...poczta, SMTP_PORT: String(p) }).poczta?.smtp.port))
-      .toEqual([1, 587, 65535]);
+    expect(
+      [1, 587, 65535].map((p) => konfiguracjaWiadomosci({ ...poczta, SMTP_PORT: String(p) }).poczta?.smtp.port),
+    ).toEqual([1, 587, 65535]);
     const odmowy = ['0', '65536', '46.5', 'abc', ''].map((p) => {
-      try { konfiguracjaWiadomosci({ ...poczta, SMTP_PORT: p }); return 'przyjęty'; } catch (e) { return (e as Error).message; }
+      try {
+        konfiguracjaWiadomosci({ ...poczta, SMTP_PORT: p });
+        return 'przyjęty';
+      } catch (e) {
+        return (e as Error).message;
+      }
     });
     expect(new Set(odmowy)).toEqual(new Set(['SMTP_PORT musi być liczbą całkowitą od 1 do 65535.']));
   });
 
   it('MAIL_FROM: brak → SMTP_USER; „Nazwa <adres>” przyjęte; HTML/CRLF w nadawcy odrzucone bez echa wartości', () => {
-    expect(konfiguracjaWiadomosci({ ...poczta, SMTP_USER: '  nadawca@fikcja.test  ' }).poczta)
-      .toEqual({ smtp: { host: 'smtp.fikcja.test', port: 465, user: '  nadawca@fikcja.test  ', pass: 'Haslo-Fikcyjne-7Q' }, mailFrom: 'nadawca@fikcja.test' });
-    expect(konfiguracjaWiadomosci({ ...poczta, MAIL_FROM: 'Sklep Fikcja <sklep@fikcja.test>' }).poczta?.mailFrom)
-      .toBe('Sklep Fikcja <sklep@fikcja.test>');
+    expect(konfiguracjaWiadomosci({ ...poczta, SMTP_USER: '  nadawca@fikcja.test  ' }).poczta).toEqual({
+      smtp: { host: 'smtp.fikcja.test', port: 465, user: '  nadawca@fikcja.test  ', pass: 'Haslo-Fikcyjne-7Q' },
+      mailFrom: 'nadawca@fikcja.test',
+    });
+    expect(konfiguracjaWiadomosci({ ...poczta, MAIL_FROM: 'Sklep Fikcja <sklep@fikcja.test>' }).poczta?.mailFrom).toBe(
+      'Sklep Fikcja <sklep@fikcja.test>',
+    );
     const wstrzykniecia = [
       { MAIL_FROM: '<script>alert(1)</script> <sklep@fikcja.test>' },
       { MAIL_FROM: 'sklep@fikcja.test\r\nBcc: obcy@fikcja.test' },
       { MAIL_FROM: '<img src=x onerror=1>@fikcja.test' },
       { SMTP_USER: 'login-bez-malpy' },
-    ].map((nad) => { try { konfiguracjaWiadomosci({ ...poczta, ...nad }); return 'przyjęty'; } catch (e) { return (e as Error).message; } });
-    expect(new Set(wstrzykniecia)).toEqual(new Set(['MAIL_FROM (domyślnie SMTP_USER) musi zawierać poprawny adres nadawcy.']));
+    ].map((nad) => {
+      try {
+        konfiguracjaWiadomosci({ ...poczta, ...nad });
+        return 'przyjęty';
+      } catch (e) {
+        return (e as Error).message;
+      }
+    });
+    expect(new Set(wstrzykniecia)).toEqual(
+      new Set(['MAIL_FROM (domyślnie SMTP_USER) musi zawierać poprawny adres nadawcy.']),
+    );
   });
 });
 
 describe('domyślny bootstrap BEZ SMTP', () => {
   let a: Oms | undefined;
-  beforeAll(async () => { smtp.wywolania.length = 0; a = await zbuduj(baza); });
+  beforeAll(async () => {
+    smtp.wywolania.length = 0;
+    a = await zbuduj(baza);
+  });
   afterAll(() => zamknij(a));
 
   // Usługi powstają zawsze (poczta z Ustawień może dojść po starcie — bez restartu). Mailerem jest
   // pośrednik ustawień, który bez zapisu nie jest gotowy; `wiadomosci.gotowe()` = false. Fabryki SMTP nikt nie woła.
   it('bez poczty: mailer to niegotowy pośrednik Ustawień, wiadomości mówią gotowe() = false, fabryka SMTP nie została wywołana', () => {
     const u = (n: string) => a!.usluga<any>('wiadomosci', n);
-    expect({ zUstawien: u('mailer')?.zUstawien, mailerGotowy: u('mailer')?.gotowy(), potwierdzenie: typeof u('potwierdzenie')?.wyslij,
-      wiadomosciGotowe: u('wiadomosci')?.gotowe(), smtp: smtp.wywolania.length })
-      .toEqual({ zUstawien: true, mailerGotowy: false, potwierdzenie: 'function', wiadomosciGotowe: false, smtp: 0 });
+    expect({
+      zUstawien: u('mailer')?.zUstawien,
+      mailerGotowy: u('mailer')?.gotowy(),
+      potwierdzenie: typeof u('potwierdzenie')?.wyslij,
+      wiadomosciGotowe: u('wiadomosci')?.gotowe(),
+      smtp: smtp.wywolania.length,
+    }).toEqual({ zUstawien: true, mailerGotowy: false, potwierdzenie: 'function', wiadomosciGotowe: false, smtp: 0 });
   });
 
   it('brak SMTP nie robi martwego pollera ani czuwacza — oba zegary stoją z realnymi usługami', () => {
     const zegary = Object.fromEntries(a!.zegary.map((z) => [z.nazwa, z.odstepMs]));
-    expect({ poller: zegary.pollerWiadomosci, czuwacz: zegary.czuwaczFormulki,
+    expect({
+      poller: zegary.pollerWiadomosci,
+      czuwacz: zegary.czuwaczFormulki,
       przebiegPollera: typeof a!.usluga<any>('wiadomosci', 'pollerWiadomosci').przebieg,
-      przebiegCzuwacza: typeof a!.usluga<any>('wiadomosci', 'czuwaczFormulki').przebieg })
-      .toEqual({ poller: 300000, czuwacz: 120000, przebiegPollera: 'function', przebiegCzuwacza: 'function' });
+      przebiegCzuwacza: typeof a!.usluga<any>('wiadomosci', 'czuwaczFormulki').przebieg,
+    }).toEqual({ poller: 300000, czuwacz: 120000, przebiegPollera: 'function', przebiegCzuwacza: 'function' });
   });
 
   it('wysyłka z karty mówi wprost 503, zamiast udawać wysłanie', async () => {
@@ -136,22 +224,42 @@ describe('domyślny bootstrap z rozpoczętą/niepoprawną konfiguracją SMTP', (
     const wyniki: string[] = [];
     for (const env of proby) {
       let a: Oms | undefined;
-      try { a = await zbuduj(env); wyniki.push('wystartował'); } catch (e) { wyniki.push((e as Error).message); } finally { await zamknij(a); }
+      try {
+        a = await zbuduj(env);
+        wyniki.push('wystartował');
+      } catch (e) {
+        wyniki.push((e as Error).message);
+      } finally {
+        await zamknij(a);
+      }
     }
     expect(wyniki.map((w) => w.split('\n')[0])).toEqual(Array(3).fill('OMS nie wystartuje — konfiguracja:'));
-    expect(wyniki.map((w) => /SMTP_HOST|SMTP_PORT|MAIL_FROM/.exec(w)?.[0])).toEqual(['SMTP_HOST', 'SMTP_PORT', 'MAIL_FROM']);
+    expect(wyniki.map((w) => /SMTP_HOST|SMTP_PORT|MAIL_FROM/.exec(w)?.[0])).toEqual([
+      'SMTP_HOST',
+      'SMTP_PORT',
+      'MAIL_FROM',
+    ]);
     expect(wyniki.join('\n')).not.toMatch(/Haslo-Fikcyjne|fikcja\.test|<b>/);
   });
 });
 
 describe('domyślny bootstrap Z SMTP — tożsamość rzeczywistych usług', () => {
   let a: Oms | undefined;
-  beforeAll(async () => { smtp.wywolania.length = 0; smtp.mailery.length = 0; a = await zbuduj({ ...baza, ...poczta, SMTP_PORT: '587' }); });
+  beforeAll(async () => {
+    smtp.wywolania.length = 0;
+    smtp.mailery.length = 0;
+    a = await zbuduj({ ...baza, ...poczta, SMTP_PORT: '587' });
+  });
   afterAll(() => zamknij(a));
   const u = <T = any>(n: string) => a!.usluga<T>('wiadomosci', n);
 
   it('SMTP zbudowane dokładnie raz, z konfiguracją z env, i to ten sam mailer, który wystawia moduł', () => {
-    expect(smtp.wywolania).toEqual([{ smtp: { host: 'smtp.fikcja.test', port: 587, user: 'nadawca@fikcja.test', pass: 'Haslo-Fikcyjne-7Q' }, mailFrom: 'nadawca@fikcja.test' }]);
+    expect(smtp.wywolania).toEqual([
+      {
+        smtp: { host: 'smtp.fikcja.test', port: 587, user: 'nadawca@fikcja.test', pass: 'Haslo-Fikcyjne-7Q' },
+        mailFrom: 'nadawca@fikcja.test',
+      },
+    ]);
     expect(u('mailer')).toBe(smtp.mailery[0]);
   });
 
@@ -164,15 +272,25 @@ describe('domyślny bootstrap Z SMTP — tożsamość rzeczywistych usług', () 
     const wyslij = vi.spyOn(u('potwierdzenie'), 'wyslij');
     try {
       const r = await a!.app.inject({ method: 'POST', url: `/zamowienia/${id}/wiadomosc/potwierdzenie`, headers });
-      expect({ status: r.statusCode, delegacje: wyslij.mock.calls.length, maile: smtp.mailery[0].wyslane.length })
-        .toEqual({ status: 302, delegacje: 1, maile: 1 });
-    } finally { wyslij.mockRestore(); }
+      expect({
+        status: r.statusCode,
+        delegacje: wyslij.mock.calls.length,
+        maile: smtp.mailery[0].wyslane.length,
+      }).toEqual({ status: 302, delegacje: 1, maile: 1 });
+    } finally {
+      wyslij.mockRestore();
+    }
   });
 
   it('sprzedawca rdzenia trafia do konfiguracji wiadomości jako ten sam obiekt, wyłącznie z env', () => {
     const config = u<any>('config');
     expect(config.sprzedawca).toBe(a!.usluga('rdzen', 'sprzedawca'));
-    expect(config.sprzedawca).toEqual({ nip: '1234563218', rachunek: '34109010140000000000000000', bdo: null, bank: null });
+    expect(config.sprzedawca).toEqual({
+      nip: '1234563218',
+      rachunek: '34109010140000000000000000',
+      bdo: null,
+      bank: null,
+    });
   });
 
   it('konfiguracja wiadomości nie zasiewa danych żadnej firmy', () => {
@@ -183,38 +301,55 @@ describe('domyślny bootstrap Z SMTP — tożsamość rzeczywistych usług', () 
 describe('zegary wiadomości — prawdziwe otoczki z bootstrapu', () => {
   let a: Oms | undefined;
   const log: string[][] = [];
-  beforeAll(async () => { a = await zbuduj(baza, (...tekst) => log.push(tekst)); });
+  beforeAll(async () => {
+    a = await zbuduj(baza, (...tekst) => log.push(tekst));
+  });
   afterAll(() => zamknij(a));
   const zegar = (n: string) => a!.zegary.find((z) => z.nazwa === n)!;
 
   it('odstępy są zamrożone: poller 300000 ms, czuwacz 120000 ms, te same co w manifeście', () => {
-    expect({ stalePollera: ODSTEP_POLLERA_WIADOMOSCI_MS, staleCzuwacza: ODSTEP_CZUWACZA_FORMULKI_MS,
-      poller: zegar('pollerWiadomosci').odstepMs, czuwacz: zegar('czuwaczFormulki').odstepMs })
-      .toEqual({ stalePollera: 300000, staleCzuwacza: 120000, poller: 300000, czuwacz: 120000 });
+    expect({
+      stalePollera: ODSTEP_POLLERA_WIADOMOSCI_MS,
+      staleCzuwacza: ODSTEP_CZUWACZA_FORMULKI_MS,
+      poller: zegar('pollerWiadomosci').odstepMs,
+      czuwacz: zegar('czuwaczFormulki').odstepMs,
+    }).toEqual({ stalePollera: 300000, staleCzuwacza: 120000, poller: 300000, czuwacz: 120000 });
   });
 
   it('błąd przebiegu jest łapany i logowany jednym wpisem, zegar nie rzuca', async () => {
     log.length = 0;
-    const p = vi.spyOn(uslugaW(a!,'pollerWiadomosci'), 'przebieg').mockRejectedValue(new Error('awaria fikcyjna P'));
-    const c = vi.spyOn(uslugaW(a!,'czuwaczFormulki'), 'przebieg').mockRejectedValue(new Error('awaria fikcyjna C'));
+    const p = vi.spyOn(uslugaW(a!, 'pollerWiadomosci'), 'przebieg').mockRejectedValue(new Error('awaria fikcyjna P'));
+    const c = vi.spyOn(uslugaW(a!, 'czuwaczFormulki'), 'przebieg').mockRejectedValue(new Error('awaria fikcyjna C'));
     try {
       await expect(zegar('pollerWiadomosci').przebieg()).resolves.toBeUndefined();
       await expect(zegar('czuwaczFormulki').przebieg()).resolves.toBeUndefined();
-      expect(log).toEqual([['poller wiadomości:', 'awaria fikcyjna P'], ['autoresponder:', 'awaria fikcyjna C']]);
-    } finally { p.mockRestore(); c.mockRestore(); }
+      expect(log).toEqual([
+        ['poller wiadomości:', 'awaria fikcyjna P'],
+        ['autoresponder:', 'awaria fikcyjna C'],
+      ]);
+    } finally {
+      p.mockRestore();
+      c.mockRestore();
+    }
   });
 
   it('wstrzymany autoresponder zostawia ślad, zwykły przebieg nie', async () => {
     log.length = 0;
-    const c = vi.spyOn(uslugaW(a!,'czuwaczFormulki'), 'przebieg');
+    const c = vi.spyOn(uslugaW(a!, 'czuwaczFormulki'), 'przebieg');
     try {
       c.mockResolvedValueOnce({ wstrzymany: false }).mockResolvedValueOnce({ wstrzymany: true });
       await zegar('czuwaczFormulki').przebieg();
       await zegar('czuwaczFormulki').przebieg();
-      expect({ przebiegi: c.mock.calls.length, log })
-        .toEqual({ przebiegi: 2, log: [['autoresponder WSTRZYMANY: próg formułek na godzinę przekroczony.']] });
-    } finally { c.mockRestore(); }
+      expect({ przebiegi: c.mock.calls.length, log }).toEqual({
+        przebiegi: 2,
+        log: [['autoresponder WSTRZYMANY: próg formułek na godzinę przekroczony.']],
+      });
+    } finally {
+      c.mockRestore();
+    }
   });
 });
 
-function uslugaW(a: Oms, n: string) { return a.usluga<any>('wiadomosci', n); }
+function uslugaW(a: Oms, n: string) {
+  return a.usluga<any>('wiadomosci', n);
+}

@@ -7,7 +7,12 @@ import { zapiszWatek } from '../../../src/oms/db/allegro-watki.js';
 import { nowyPanel, jako, get } from '../../pomoc/panel-konta-testowe.js';
 
 const panele = [];
-afterEach(async () => { for (const p of panele.splice(0)) { await p.app.close(); p.db.close(); } });
+afterEach(async () => {
+  for (const p of panele.splice(0)) {
+    await p.app.close();
+    p.db.close();
+  }
+});
 
 function panel() {
   const p = nowyPanel();
@@ -18,8 +23,11 @@ function panel() {
   podmienLukiKsef(p.db, [{ uuid: 'luka-1', numer: 'FV-LUKA-1', invoiceDate: '2020-01-01' }]);
   podmienPoTerminie(p.db, [{ uuid: 'dlug-1', numer: 'FV-DLUG-1', paymentDate: '2020-02-01', pozostaloGr: 4500 }]);
   zapiszWatek(p.db, {
-    kanal: 'allegro', threadId: 'watek-1', interlocutorLogin: 'kupujacy_lampa',
-    lastMessageDateTime: new Date(Date.now() - 3600 * 1000).toISOString(), ostatniaOdKupujacego: true,
+    kanal: 'allegro',
+    threadId: 'watek-1',
+    interlocutorLogin: 'kupujacy_lampa',
+    lastMessageDateTime: new Date(Date.now() - 3600 * 1000).toISOString(),
+    ostatniaOdKupujacego: true,
   });
   return {
     ...p,

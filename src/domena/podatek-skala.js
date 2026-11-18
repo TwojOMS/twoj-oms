@@ -24,9 +24,10 @@ export function podatekNarastajaco({ dochodGrosze, spoleczneGrosze }) {
   const wPierwszym = Math.min(podstawaGrosze, PROG_GROSZE);
   const nadwyzka = Math.max(0, podstawaGrosze - PROG_GROSZE);
 
-  const podatekGrosze = Math.max(0, Math.round(
-    wPierwszym * STAWKA_I - KWOTA_ZMNIEJSZAJACA_GROSZE + nadwyzka * STAWKA_II,
-  ));
+  const podatekGrosze = Math.max(
+    0,
+    Math.round(wPierwszym * STAWKA_I - KWOTA_ZMNIEJSZAJACA_GROSZE + nadwyzka * STAWKA_II),
+  );
 
   return {
     podstawaGrosze,
@@ -44,9 +45,8 @@ export function podatekNarastajaco({ dochodGrosze, spoleczneGrosze }) {
 export const MIN_MIESIECY_PROGNOZY = 3;
 
 /** Ostatni dzien miesiaca — dzien 0 nastepnego. Luty przestepny wychodzi sam. */
-const koniecMiesiaca = (dzien) => new Date(
-  Date.UTC(Number(dzien.slice(0, 4)), Number(dzien.slice(5, 7)), 0),
-).toISOString().slice(0, 10);
+const koniecMiesiaca = (dzien) =>
+  new Date(Date.UTC(Number(dzien.slice(0, 4)), Number(dzien.slice(5, 7)), 0)).toISOString().slice(0, 10);
 
 /**
  * Czy przy dzisiejszym tempie prog 32% padnie do konca roku — i ile to kosztuje.

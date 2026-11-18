@@ -1,4 +1,8 @@
-import { utworzZamowienieReczne, zapiszKosztDostawyRecznego, przeliczKwoteRecznego } from '../../../oms/db/zamowienia-reczne.js';
+import {
+  utworzZamowienieReczne,
+  zapiszKosztDostawyRecznego,
+  przeliczKwoteRecznego,
+} from '../../../oms/db/zamowienia-reczne.js';
 import { dodajPozycjeReczna, zapiszNadpisaniaFaktury, pobierzZamowienie } from '../../../oms/db/zamowienia.js';
 import { wartoscTowaruGrosze, darmowaDostawa } from '../../../domena/oplata-obslugi.js';
 import { rabatKontraktowy, zmienUstalenia } from './rabat.js';
@@ -39,35 +43,45 @@ function dokoncz({ db, dane, id, naliczajOplate, zw }) {
   // Ręcznie uzgodnionego rabatu nie nadpisujemy stawką klienta.
   const kontrakt = rabatKontraktowy(db, dane.nip);
   if (kontrakt.decyzja(dane.rabat_procent) === 'ustaw') {
-    zmienUstalenia(db, id, {
-      b2b: dane.b2b,
-      termin_platnosci: dane.termin_platnosci,
-      rabat_procent: kontrakt.stawka.procent,
-    }, { zw });
+    zmienUstalenia(
+      db,
+      id,
+      {
+        b2b: dane.b2b,
+        termin_platnosci: dane.termin_platnosci,
+        rabat_procent: kontrakt.stawka.procent,
+      },
+      { zw },
+    );
   }
   // Pozycje → rabat umowny → reguła dostawy → opłata → przeliczenie kwoty.
   const z = pobierzZamowienie(db, id);
   const wartoscTowaruGr = wartoscTowaruGrosze(z.pozycje);
-  if (naliczajOplate && darmowaDostawa({
-    bezWysylki: dane.metoda_wysylki === 'odbior_osobisty',
-    etykietaKlienta: dane.etykietaKlienta,
-    wartoscTowaruGr,
-    klient: warunkiDostawy(klientPoNip(db, dane.nip)),
-  })) {
+  if (
+    naliczajOplate &&
+    darmowaDostawa({
+      bezWysylki: dane.metoda_wysylki === 'odbior_osobisty',
+      etykietaKlienta: dane.etykietaKlienta,
+      wartoscTowaruGr,
+      klient: warunkiDostawy(klientPoNip(db, dane.nip)),
+    })
+  ) {
     zapiszKosztDostawyRecznego(db, id, '0.00');
   }
-  const oplata = !naliczajOplate ? null : doklejOplate({
-    db,
-    zamowienieId: id,
-    nip: dane.nip,
-    // Etykieta klienta = paczke nadaje klient na SWOIM koncie kurierskim; operator
-    // zaznacza to w formularzu (domena/nowe-zamowienie.js).
-    etykietaKlienta: dane.etykietaKlienta,
-    // Odbiór osobisty ma pierwszeństwo przed własną etykietą.
-    bezWysylki: dane.metoda_wysylki === 'odbior_osobisty',
-    wartoscTowaruGr,
-    zw,
-  });
+  const oplata = !naliczajOplate
+    ? null
+    : doklejOplate({
+        db,
+        zamowienieId: id,
+        nip: dane.nip,
+        // Etykieta klienta = paczke nadaje klient na SWOIM koncie kurierskim; operator
+        // zaznacza to w formularzu (domena/nowe-zamowienie.js).
+        etykietaKlienta: dane.etykietaKlienta,
+        // Odbiór osobisty ma pierwszeństwo przed własną etykietą.
+        bezWysylki: dane.metoda_wysylki === 'odbior_osobisty',
+        wartoscTowaruGr,
+        zw,
+      });
   // Kwota zamowienia recznego IDZIE ZA POZYCJAMI I DOSTAWA (patrz przeliczKwoteRecznego).
   // Wolane PO doklejeniu oplaty — inaczej kwota zamowienia nie objelaby jej i karta
   // zapalilaby blokade bariery arytmetycznej od pierwszej sekundy.

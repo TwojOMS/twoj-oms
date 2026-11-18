@@ -2,25 +2,47 @@
 // złote"). Czysta funkcja na LICZBIE CAŁKOWITEJ groszy: żadnej arytmetyki na floatach, bo
 // 654.00 * 100 w JS-ie potrafi dać 65399.99999999999, a to jest kwota na dokumencie dla klienta.
 
-const JEDNOSCI = [
-  '', 'jeden', 'dwa', 'trzy', 'cztery', 'pięć', 'sześć', 'siedem', 'osiem', 'dziewięć',
-];
+const JEDNOSCI = ['', 'jeden', 'dwa', 'trzy', 'cztery', 'pięć', 'sześć', 'siedem', 'osiem', 'dziewięć'];
 
 // 11-19 NIE dają się złożyć z „dziesięć" + jedność (nie ma „jedennaście") — to jest
 // klasyczna pułapka polskich liczebników, więc leżą tu jako gotowa tablica, nie wzór.
 const NASTOLATKI = [
-  'dziesięć', 'jedenaście', 'dwanaście', 'trzynaście', 'czternaście', 'piętnaście',
-  'szesnaście', 'siedemnaście', 'osiemnaście', 'dziewiętnaście',
+  'dziesięć',
+  'jedenaście',
+  'dwanaście',
+  'trzynaście',
+  'czternaście',
+  'piętnaście',
+  'szesnaście',
+  'siedemnaście',
+  'osiemnaście',
+  'dziewiętnaście',
 ];
 
 const DZIESIATKI = [
-  '', '', 'dwadzieścia', 'trzydzieści', 'czterdzieści', 'pięćdziesiąt',
-  'sześćdziesiąt', 'siedemdziesiąt', 'osiemdziesiąt', 'dziewięćdziesiąt',
+  '',
+  '',
+  'dwadzieścia',
+  'trzydzieści',
+  'czterdzieści',
+  'pięćdziesiąt',
+  'sześćdziesiąt',
+  'siedemdziesiąt',
+  'osiemdziesiąt',
+  'dziewięćdziesiąt',
 ];
 
 const SETKI = [
-  '', 'sto', 'dwieście', 'trzysta', 'czterysta', 'pięćset',
-  'sześćset', 'siedemset', 'osiemset', 'dziewięćset',
+  '',
+  'sto',
+  'dwieście',
+  'trzysta',
+  'czterysta',
+  'pięćset',
+  'sześćset',
+  'siedemset',
+  'osiemset',
+  'dziewięćset',
 ];
 
 // Rzeczowniki odmieniane przez liczbę — para [forma dla 2-4, forma dla 5+ i 0] plus
@@ -89,8 +111,8 @@ function grupaZRzeczownikiem(n, rzeczownik) {
 function rozbijNaGrupy(zlotych) {
   if (zlotych > 999_999_999) {
     throw new RangeError(
-      `kwotaSlownie: ${zlotych} zł przekracza obsługiwany zakres (do 999 999 999 zł) — `
-      + 'dokument na taką kwotę wymaga ręcznej weryfikacji, nie cichego przycięcia liczby.',
+      `kwotaSlownie: ${zlotych} zł przekracza obsługiwany zakres (do 999 999 999 zł) — ` +
+        'dokument na taką kwotę wymaga ręcznej weryfikacji, nie cichego przycięcia liczby.',
     );
   }
   const miliony = Math.floor(zlotych / 1_000_000);

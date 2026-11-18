@@ -18,15 +18,22 @@ import { nazwaDostawy, metodaWysylki } from './wysylka.js';
 import { OPISY_PRZEWOZNIKOW } from './przewoznicy.ts';
 
 const opisy = Object.values(OPISY_PRZEWOZNIKOW);
-export const PRZEWOZNICY = Object.freeze(Object.fromEntries(opisy.map(
-  ({ klucz, nazwa, logo, sledzenie }) => [klucz, Object.freeze({
-    klucz, nazwa, logo, sledzenie: sledzenie.replace('{numer}', ''),
-  })],
-)));
+export const PRZEWOZNICY = Object.freeze(
+  Object.fromEntries(
+    opisy.map(({ klucz, nazwa, logo, sledzenie }) => [
+      klucz,
+      Object.freeze({
+        klucz,
+        nazwa,
+        logo,
+        sledzenie: sledzenie.replace('{numer}', ''),
+      }),
+    ]),
+  ),
+);
 
-const mapaRozpoznania = (pole) => Object.fromEntries(opisy.flatMap(
-  opis => (opis.rozpoznanie[pole] ?? []).map(wartosc => [wartosc, opis.klucz]),
-));
+const mapaRozpoznania = (pole) =>
+  Object.fromEntries(opisy.flatMap((opis) => (opis.rozpoznanie[pole] ?? []).map((wartosc) => [wartosc, opis.klucz])));
 
 // `Object.hasOwn`, nie `PRZEWOZNICY[klucz]`: klucz przychodzi z adresu (`?kurier=`), a
 // `__proto__`/`constructor` daloby obiekt zamiast „nieznany".
@@ -47,8 +54,9 @@ const Z_CARRIERA = mapaRozpoznania('carrier');
 //  3. „One" na koncu — „Allegro One Box, One Kurier" i „Allegro One Kurier - dostawa jutro"
 //     to siec Allegro One.
 // Pelne slowa, bez rozrozniania wielkosci liter: „Phone", „DPDX", „Orlenowo" niczego nie znacza.
-const SLOWA = [...opisy].sort((a, b) => a.kolejnoscSlow - b.kolejnoscSlow)
-  .flatMap(opis => (opis.rozpoznanie.slowa ?? []).map(s => [s, opis.klucz]));
+const SLOWA = [...opisy]
+  .sort((a, b) => a.kolejnoscSlow - b.kolejnoscSlow)
+  .flatMap((opis) => (opis.rozpoznanie.slowa ?? []).map((s) => [s, opis.klucz]));
 const slowo = (s) => new RegExp(`(?:^|[^\\p{L}\\p{N}])${s}(?:[^\\p{L}\\p{N}]|$)`, 'iu');
 const WZORCE = SLOWA.map(([s, klucz]) => [slowo(s), klucz]);
 
@@ -66,7 +74,9 @@ const Z_METODY = mapaRozpoznania('metody');
  */
 export function przewoznikPrzesylki({ kurier = null, carrierAllegro = null, nazwaUslugi = null, metoda = null } = {}) {
   if (kurier && Object.hasOwn(Z_KODU, kurier)) return wpis(Z_KODU[kurier]);
-  const carrier = String(carrierAllegro ?? '').trim().toUpperCase();
+  const carrier = String(carrierAllegro ?? '')
+    .trim()
+    .toUpperCase();
   if (Object.hasOwn(Z_CARRIERA, carrier)) return wpis(Z_CARRIERA[carrier]);
   const nazwa = String(nazwaUslugi ?? '');
   if (nazwa) {
@@ -82,7 +92,7 @@ export function przewoznikPrzesylki({ kurier = null, carrierAllegro = null, nazw
  */
 export function adresSledzenia(klucz, numer) {
   const p = wpis(klucz);
-  const nr = typeof numer === 'string' ? numer.trim() : (numer == null ? '' : String(numer).trim());
+  const nr = typeof numer === 'string' ? numer.trim() : numer == null ? '' : String(numer).trim();
   if (!p || !nr) return null;
   return `${p.sledzenie}${encodeURIComponent(nr)}`;
 }

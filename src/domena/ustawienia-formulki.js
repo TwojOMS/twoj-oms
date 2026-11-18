@@ -33,7 +33,9 @@ export function ustawieniaFormulki(zapis = {}) {
     odGodziny: liczba(zapis[KLUCZE.od], 18),
     doGodziny: liczba(zapis[KLUCZE.do], 8),
     dni: String(zapis[KLUCZE.dni] ?? '')
-      .split(',').map((d) => Number(d)).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6),
+      .split(',')
+      .map((d) => Number(d))
+      .filter((d) => Number.isInteger(d) && d >= 0 && d <= 6),
     karencjaMin: liczba(zapis[KLUCZE.karencja], DOMYSLNA_KARENCJA_MIN),
   };
 }
@@ -55,7 +57,10 @@ export function sprawdzFormularz(pola = {}) {
   const karencja = liczba(pola.karencja, NaN);
 
   if (tresc.length > MAKS_ZNAKOW_WIADOMOSCI) {
-    return { ok: false, blad: `Formułka ma ${tresc.length} znaków, a Allegro przyjmuje najwyżej ${MAKS_ZNAKOW_WIADOMOSCI}.` };
+    return {
+      ok: false,
+      blad: `Formułka ma ${tresc.length} znaków, a Allegro przyjmuje najwyżej ${MAKS_ZNAKOW_WIADOMOSCI}.`,
+    };
   }
   if (!Number.isInteger(od) || od < 0 || od > 23 || !Number.isInteger(doG) || doG < 0 || doG > 23) {
     return { ok: false, blad: 'Godziny muszą być liczbami od 0 do 23.' };

@@ -4,15 +4,25 @@ import { zapiszKoszt, zapiszRecznyKoszt } from '../../../src/oms/db/koszty.js';
 import { naWierszReczny } from '../../../src/domena/koszt-reczny.js';
 import { createWizualizacjaKosztu } from '../../../src/moduly/koszty/services/wizualizacja-kosztu.js';
 
-const XML = '<Faktura><Fa><FaWiersz><NrWierszaFa>1</NrWierszaFa><P_7>Papier ksero</P_7>'
-  + '<P_8A>ryza</P_8A><P_8B>2.0000</P_8B><P_9A>18.50</P_9A><P_11>37.00</P_11>'
-  + '<P_12>23</P_12></FaWiersz></Fa></Faktura>';
+const XML =
+  '<Faktura><Fa><FaWiersz><NrWierszaFa>1</NrWierszaFa><P_7>Papier ksero</P_7>' +
+  '<P_8A>ryza</P_8A><P_8B>2.0000</P_8B><P_9A>18.50</P_9A><P_11>37.00</P_11>' +
+  '<P_12>23</P_12></FaWiersz></Fa></Faktura>';
 
 const wiersz = (n = {}) => ({
-  ksefNumber: 'K-1', numerDokumentu: 'FV/2026/06/12', sprzedawcaNip: '5252674798',
-  sprzedawcaNazwa: 'Księgarnia Świąteczna', dataWystawienia: '2026-06-05',
-  dataTrwalegoZapisu: '2026-06-05T14:00:00Z', netto: '100.00', vat: '23.00', brutto: '123.00',
-  waluta: 'PLN', rodzaj: 'Vat', maZalacznik: 0, ...n,
+  ksefNumber: 'K-1',
+  numerDokumentu: 'FV/2026/06/12',
+  sprzedawcaNip: '5252674798',
+  sprzedawcaNazwa: 'Księgarnia Świąteczna',
+  dataWystawienia: '2026-06-05',
+  dataTrwalegoZapisu: '2026-06-05T14:00:00Z',
+  netto: '100.00',
+  vat: '23.00',
+  brutto: '123.00',
+  waluta: 'PLN',
+  rodzaj: 'Vat',
+  maZalacznik: 0,
+  ...n,
 });
 
 describe('wizualizacja kosztu na żądanie', () => {
@@ -48,8 +58,16 @@ describe('wizualizacja kosztu na żądanie', () => {
   it('⚠️ nieznany numer KSeF odmawia, zamiast narysować pusty dokument', async () => {
     const usluga = createWizualizacjaKosztu({
       db: openOmsDb(),
-      klient: { pobierzXml: async () => { throw new Error('nie wolno bylo tego wolac'); } },
-      sesja: { accessToken: async () => { throw new Error('nie wolno bylo tego wolac'); } },
+      klient: {
+        pobierzXml: async () => {
+          throw new Error('nie wolno bylo tego wolac');
+        },
+      },
+      sesja: {
+        accessToken: async () => {
+          throw new Error('nie wolno bylo tego wolac');
+        },
+      },
     });
 
     await expect(usluga.pdf('NIE-MA-TAKIEGO')).rejects.toMatchObject({
@@ -79,14 +97,25 @@ describe('wizualizacja kosztu na żądanie', () => {
   // przygotować dokumentu": zdanie prawdziwe i mylące.
   it('⚠️ koszt wpisany ręcznie odmawia BEZ pytania KSeF', async () => {
     const db = openOmsDb();
-    const klucz = zapiszRecznyKoszt(db, naWierszReczny(
-      { dataWystawienia: '2026-06-05', kwota: '100.00' },
-      { nazwa: 'Anthropic', sprzedawca: 'Anthropic PBC', kategoria: 'Oprogramowanie', typ: 'staly' },
-    ));
+    const klucz = zapiszRecznyKoszt(
+      db,
+      naWierszReczny(
+        { dataWystawienia: '2026-06-05', kwota: '100.00' },
+        { nazwa: 'Anthropic', sprzedawca: 'Anthropic PBC', kategoria: 'Oprogramowanie', typ: 'staly' },
+      ),
+    );
     const usluga = createWizualizacjaKosztu({
       db,
-      klient: { pobierzXml: async () => { throw new Error('nie wolno bylo tego wolac'); } },
-      sesja: { accessToken: async () => { throw new Error('nie wolno bylo tego wolac'); } },
+      klient: {
+        pobierzXml: async () => {
+          throw new Error('nie wolno bylo tego wolac');
+        },
+      },
+      sesja: {
+        accessToken: async () => {
+          throw new Error('nie wolno bylo tego wolac');
+        },
+      },
     });
 
     await expect(usluga.pdf(klucz)).rejects.toMatchObject({

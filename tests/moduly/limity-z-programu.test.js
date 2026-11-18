@@ -3,7 +3,9 @@ import { readFileSync } from 'node:fs';
 import { najdluzszyPrzebiegMs } from '../../src/moduly/faktury/services/czuwacz-ksef.js';
 import { najdluzszyPrzebiegArchiwumSprzedazyMs } from '../../src/moduly/faktury/services/czuwacz-archiwum-sprzedazy.js';
 import {
-  createCzuwaczOstrzezen, limitKrokuLukMs, limitKrokuTerminowMs,
+  createCzuwaczOstrzezen,
+  limitKrokuLukMs,
+  limitKrokuTerminowMs,
 } from '../../src/moduly/zdrowie/services/czuwacz-ostrzezen.js';
 import { programTestowy } from '../pomoc/program-testowy.js';
 

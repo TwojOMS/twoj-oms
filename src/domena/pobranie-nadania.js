@@ -39,9 +39,10 @@ export function odczytajKwotePobrania(surowa) {
   if (!przycieta) {
     return {
       rodzaj: 'pusta',
-      blad: 'Kwota pobrania jest pusta — podaj kwotę, którą kurier ma zainkasować od klienta. '
-        + 'Puste pole NIE znaczy „nadaj bez pobrania": paczka pojechałaby jako przedpłacona, '
-        + 'a kurier nie pobrałby ani złotówki.',
+      blad:
+        'Kwota pobrania jest pusta — podaj kwotę, którą kurier ma zainkasować od klienta. ' +
+        'Puste pole NIE znaczy „nadaj bez pobrania": paczka pojechałaby jako przedpłacona, ' +
+        'a kurier nie pobrałby ani złotówki.',
     };
   }
   // Przecinek dziesietny to polska klawiatura, nie blad wpisu — dokladnie jak przy wadze
@@ -51,15 +52,15 @@ export function odczytajKwotePobrania(surowa) {
   if (!KSZTALT_KWOTY.test(znormalizowana) || !Number.isFinite(liczba)) {
     return {
       rodzaj: 'ksztalt',
-      blad: `Nie umiem odczytać kwoty pobrania: „${przycieta}" — wpisz samą liczbę `
-        + '(przecinek albo kropka dziesiętna, bez „zł" i bez spacji).',
+      blad:
+        `Nie umiem odczytać kwoty pobrania: „${przycieta}" — wpisz samą liczbę ` +
+        '(przecinek albo kropka dziesiętna, bez „zł" i bez spacji).',
     };
   }
   if (liczba <= 0) {
     return {
       rodzaj: 'zero',
-      blad: 'Kwota pobrania musi być większa od zera — paczka za pobraniem bez kwoty to towar '
-        + 'oddany za darmo.',
+      blad: 'Kwota pobrania musi być większa od zera — paczka za pobraniem bez kwoty to towar ' + 'oddany za darmo.',
     };
   }
   return { kwota: znormalizowana, groszeKwoty: Math.round(liczba * 100) };

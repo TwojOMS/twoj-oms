@@ -11,8 +11,11 @@ import { modulRdzen } from '../../src/moduly/rdzen/modul.ts';
 import type { ModulOms } from '../../src/core/kontrakty.ts';
 
 const env = {
-  OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000',
-  OMS_USER: 'operator', OMS_PASS: 'poprawne', OMS_PROFORMY_KATALOG: 'C:/tmp/proformy',
+  OMS_SPRZEDAWCA_NIP: '1234563218',
+  OMS_RACHUNEK: '34109010140000000000000000',
+  OMS_USER: 'operator',
+  OMS_PASS: 'poprawne',
+  OMS_PROFORMY_KATALOG: 'C:/tmp/proformy',
   OMS_ETYKIETY_KATALOG: 'C:/tmp/etykiety',
 };
 const aplikacje: Awaited<ReturnType<typeof zbudujOms>>[] = [];
@@ -39,37 +42,151 @@ describe('OMS_TRUST_PROXY', () => {
     const a = await zbuduj({ OMS_TRUST_PROXY: '127.0.0.1' });
 
     const basicZle: number[] = [];
-    for (let i = 0; i < 6; i++) basicZle.push((await a.app.inject({ method: 'GET', url: '/ustawienia/konta', ...przezProxy('198.51.100.10'), headers: { ...przezProxy('198.51.100.10').headers, ...basic('zle') } })).statusCode);
+    for (let i = 0; i < 6; i++)
+      basicZle.push(
+        (
+          await a.app.inject({
+            method: 'GET',
+            url: '/ustawienia/konta',
+            ...przezProxy('198.51.100.10'),
+            headers: { ...przezProxy('198.51.100.10').headers, ...basic('zle') },
+          })
+        ).statusCode,
+      );
     expect(basicZle).toEqual([401, 401, 401, 401, 429, 429]);
-    expect((await a.app.inject({ method: 'GET', url: '/ustawienia/konta', ...przezProxy('198.51.100.11'), headers: { ...przezProxy('198.51.100.11').headers, ...basic('poprawne') } })).statusCode).toBe(200);
+    expect(
+      (
+        await a.app.inject({
+          method: 'GET',
+          url: '/ustawienia/konta',
+          ...przezProxy('198.51.100.11'),
+          headers: { ...przezProxy('198.51.100.11').headers, ...basic('poprawne') },
+        })
+      ).statusCode,
+    ).toBe(200);
 
     const formularzZle: number[] = [];
-    for (let i = 0; i < 5; i++) formularzZle.push((await a.app.inject({ method: 'POST', url: '/login', ...przezProxy('198.51.100.20'), headers: { ...przezProxy('198.51.100.20').headers, origin: 'http://localhost' }, payload: { uzytkownik: 'operator', haslo: 'zle' } })).statusCode);
+    for (let i = 0; i < 5; i++)
+      formularzZle.push(
+        (
+          await a.app.inject({
+            method: 'POST',
+            url: '/login',
+            ...przezProxy('198.51.100.20'),
+            headers: { ...przezProxy('198.51.100.20').headers, origin: 'http://localhost' },
+            payload: { uzytkownik: 'operator', haslo: 'zle' },
+          })
+        ).statusCode,
+      );
     expect(formularzZle).toEqual([401, 401, 401, 401, 429]);
-    expect((await a.app.inject({ method: 'POST', url: '/login', ...przezProxy('198.51.100.21'), headers: { ...przezProxy('198.51.100.21').headers, origin: 'http://localhost' }, payload: { uzytkownik: 'operator', haslo: 'poprawne' } })).statusCode).toBe(302);
+    expect(
+      (
+        await a.app.inject({
+          method: 'POST',
+          url: '/login',
+          ...przezProxy('198.51.100.21'),
+          headers: { ...przezProxy('198.51.100.21').headers, origin: 'http://localhost' },
+          payload: { uzytkownik: 'operator', haslo: 'poprawne' },
+        })
+      ).statusCode,
+    ).toBe(302);
   });
 
   it('bez zaufanej listy nie pozwala obejść hamulców zmianą X-Forwarded-For', async () => {
     const a = await zbuduj();
-    for (let i = 0; i < 4; i++) expect((await a.app.inject({ method: 'GET', url: '/ustawienia/konta', ...przezProxy(`198.51.100.${i}`), headers: { ...przezProxy(`198.51.100.${i}`).headers, ...basic('zle') } })).statusCode).toBe(401);
-    expect((await a.app.inject({ method: 'GET', url: '/ustawienia/konta', ...przezProxy('198.51.100.99'), headers: { ...przezProxy('198.51.100.99').headers, ...basic('zle') } })).statusCode).toBe(429);
+    for (let i = 0; i < 4; i++)
+      expect(
+        (
+          await a.app.inject({
+            method: 'GET',
+            url: '/ustawienia/konta',
+            ...przezProxy(`198.51.100.${i}`),
+            headers: { ...przezProxy(`198.51.100.${i}`).headers, ...basic('zle') },
+          })
+        ).statusCode,
+      ).toBe(401);
+    expect(
+      (
+        await a.app.inject({
+          method: 'GET',
+          url: '/ustawienia/konta',
+          ...przezProxy('198.51.100.99'),
+          headers: { ...przezProxy('198.51.100.99').headers, ...basic('zle') },
+        })
+      ).statusCode,
+    ).toBe(429);
   });
 
   it('nie ufa nagłówkowi od niezaufanego nadawcy mimo skonfigurowanej listy', async () => {
     const a = await zbuduj({ OMS_TRUST_PROXY: '127.0.0.1' });
-    for (let i = 0; i < 4; i++) expect((await a.app.inject({ method: 'GET', url: '/ustawienia/konta', ...odNadawcy('192.0.2.1', `198.51.100.${i}`), headers: { ...odNadawcy('192.0.2.1', `198.51.100.${i}`).headers, ...basic('zle') } })).statusCode).toBe(401);
-    expect((await a.app.inject({ method: 'GET', url: '/ustawienia/konta', ...odNadawcy('192.0.2.1', '198.51.100.99'), headers: { ...odNadawcy('192.0.2.1', '198.51.100.99').headers, ...basic('zle') } })).statusCode).toBe(429);
+    for (let i = 0; i < 4; i++)
+      expect(
+        (
+          await a.app.inject({
+            method: 'GET',
+            url: '/ustawienia/konta',
+            ...odNadawcy('192.0.2.1', `198.51.100.${i}`),
+            headers: { ...odNadawcy('192.0.2.1', `198.51.100.${i}`).headers, ...basic('zle') },
+          })
+        ).statusCode,
+      ).toBe(401);
+    expect(
+      (
+        await a.app.inject({
+          method: 'GET',
+          url: '/ustawienia/konta',
+          ...odNadawcy('192.0.2.1', '198.51.100.99'),
+          headers: { ...odNadawcy('192.0.2.1', '198.51.100.99').headers, ...basic('zle') },
+        })
+      ).statusCode,
+    ).toBe(429);
 
-    for (let i = 0; i < 4; i++) expect((await a.app.inject({ method: 'POST', url: '/login', ...odNadawcy('192.0.2.2', `203.0.113.${i}`), headers: { ...odNadawcy('192.0.2.2', `203.0.113.${i}`).headers, origin: 'http://localhost' }, payload: { uzytkownik: 'operator', haslo: 'zle' } })).statusCode).toBe(401);
-    expect((await a.app.inject({ method: 'POST', url: '/login', ...odNadawcy('192.0.2.2', '203.0.113.99'), headers: { ...odNadawcy('192.0.2.2', '203.0.113.99').headers, origin: 'http://localhost' }, payload: { uzytkownik: 'operator', haslo: 'zle' } })).statusCode).toBe(429);
+    for (let i = 0; i < 4; i++)
+      expect(
+        (
+          await a.app.inject({
+            method: 'POST',
+            url: '/login',
+            ...odNadawcy('192.0.2.2', `203.0.113.${i}`),
+            headers: { ...odNadawcy('192.0.2.2', `203.0.113.${i}`).headers, origin: 'http://localhost' },
+            payload: { uzytkownik: 'operator', haslo: 'zle' },
+          })
+        ).statusCode,
+      ).toBe(401);
+    expect(
+      (
+        await a.app.inject({
+          method: 'POST',
+          url: '/login',
+          ...odNadawcy('192.0.2.2', '203.0.113.99'),
+          headers: { ...odNadawcy('192.0.2.2', '203.0.113.99').headers, origin: 'http://localhost' },
+          payload: { uzytkownik: 'operator', haslo: 'zle' },
+        })
+      ).statusCode,
+    ).toBe(429);
   });
 
-  it.each(['true', '*', '0.0.0.0/0', '::/0', '0.0.0.0/1,128.0.0.0/1', '::/1,8000::/1', '::ffff:0.0.0.0/1,8000::/1', '::ffff:0.0.0.0/96', '::ffff:0:0/96', '198.51.100.0/33', 'sekret-niepoprawnej-konfiguracji'])('odmawia %j przed migracjami bez wypisania wartości', async (wartosc) => {
+  it.each([
+    'true',
+    '*',
+    '0.0.0.0/0',
+    '::/0',
+    '0.0.0.0/1,128.0.0.0/1',
+    '::/1,8000::/1',
+    '::ffff:0.0.0.0/1,8000::/1',
+    '::ffff:0.0.0.0/96',
+    '::ffff:0:0/96',
+    '198.51.100.0/33',
+    'sekret-niepoprawnej-konfiguracji',
+  ])('odmawia %j przed migracjami bez wypisania wartości', async (wartosc) => {
     let dotknietoDb = false;
     const proba = zbudujAplikacje({
       moduly: [modulRdzen] as unknown as ModulOms[],
       env: { OMS_SPRZEDAWCA_NIP: env.OMS_SPRZEDAWCA_NIP, OMS_RACHUNEK: env.OMS_RACHUNEK, OMS_TRUST_PROXY: wartosc },
-      get db(): DatabaseSync { dotknietoDb = true; throw Error('DB nie może zostać otwarta'); },
+      get db(): DatabaseSync {
+        dotknietoDb = true;
+        throw Error('DB nie może zostać otwarta');
+      },
     });
     await expect(proba).rejects.toThrow('OMS_TRUST_PROXY');
     await expect(proba).rejects.not.toThrow(wartosc);
@@ -89,7 +206,10 @@ describe('OMS_TRUST_PROXY', () => {
     try {
       for (const plik of [nowa, istniejaca]) {
         const proba = async () => {
-          const uruchomiona = await uruchomOms({ ...env, OMS_DB_PATH: plik, OMS_PORT: '0', OMS_TRUST_PROXY: '*' }, '127.0.0.1');
+          const uruchomiona = await uruchomOms(
+            { ...env, OMS_DB_PATH: plik, OMS_PORT: '0', OMS_TRUST_PROXY: '*' },
+            '127.0.0.1',
+          );
           await uruchomiona.zamknij();
         };
         await expect(proba()).rejects.toThrow('OMS_TRUST_PROXY');
@@ -98,7 +218,8 @@ describe('OMS_TRUST_PROXY', () => {
       expect(readFileSync(istniejaca).equals(przed)).toBe(true);
     } finally {
       const cel = resolve(katalog);
-      if (resolve(tmpdir()) !== resolve(join(cel, '..')) || !cel.includes('oms-proxy-preflight-')) throw Error('Nieprawidłowy własny TEMP');
+      if (resolve(tmpdir()) !== resolve(join(cel, '..')) || !cel.includes('oms-proxy-preflight-'))
+        throw Error('Nieprawidłowy własny TEMP');
       rmSync(cel, { recursive: true, force: true });
     }
   });

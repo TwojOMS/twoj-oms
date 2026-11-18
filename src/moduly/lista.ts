@@ -24,30 +24,57 @@ import { modulAutomatyzacje } from './automatyzacje/modul.ts';
 /** Jedyne miejsce włączenia modułów; kolejność wynika z wymaga.
  * Moduł `twojefaktury` (migracje schematu `tf_*`) rejestruje szew, zaraz po `faktury`; kopia bez
  * modułu TwojeFaktury go nie ma. */
-export const MODULY: readonly ModulOms[] = [modulRdzen, modulWeb, modulKanaly, modulFaktury,
-  ...(szewTwojeFaktury ? [szewTwojeFaktury.modul] : []), modulWiadomosci, createModulZamowienia({ zWiadomosciami: true }), modulWysylka,
-  modulMagazyn, modulZwroty, modulUstawienia, modulAutomatyzacje, modulKoszty, modulRaporty, modulMarketing, modulApiPanelu, modulApi, modulZdrowie] as readonly ModulOms[];
+export const MODULY: readonly ModulOms[] = [
+  modulRdzen,
+  modulWeb,
+  modulKanaly,
+  modulFaktury,
+  ...(szewTwojeFaktury ? [szewTwojeFaktury.modul] : []),
+  modulWiadomosci,
+  createModulZamowienia({ zWiadomosciami: true }),
+  modulWysylka,
+  modulMagazyn,
+  modulZwroty,
+  modulUstawienia,
+  modulAutomatyzacje,
+  modulKoszty,
+  modulRaporty,
+  modulMarketing,
+  modulApiPanelu,
+  modulApi,
+  modulZdrowie,
+] as readonly ModulOms[];
 
 /** Zgoda instalacji bez rzucania: błędną wartość i tak odrzuca konfiguracja modułu `faktury` (to samo zdanie). */
 function zgodaInstalacji(env: Srodowisko): boolean {
-  try { return zgodaTwojeFaktury(env); } catch { return false; }
+  try {
+    return zgodaTwojeFaktury(env);
+  } catch {
+    return false;
+  }
 }
 
 /** Jedyna zmienna część listy: jawne definicje kanałów danego uruchomienia.
  * `szewTwojeFaktury` — szew testów (`null` = lista kopii bez modułu TwojeFaktury); bez klucza — szew z drzewa.
  * Moduł `twojefaktury` (migracje `tf_*`, przedrostki serii próby) tylko przy zgodzie instalacji
  * (`OMS_TWOJEFAKTURY=tak`); bez niej baza nie dostaje tabel TF, a te, które już ma, zostają nietknięte. */
-export function modulyDla(env: Srodowisko, o: { szewTwojeFaktury?: SzewTwojeFaktury | null } = {}): readonly ModulOms[] {
+export function modulyDla(
+  env: Srodowisko,
+  o: { szewTwojeFaktury?: SzewTwojeFaktury | null } = {},
+): readonly ModulOms[] {
   const definicje = definicjeKanalow(env);
   const podmiana = Object.hasOwn(o, 'szewTwojeFaktury');
-  const szewDrzewa = podmiana ? o.szewTwojeFaktury ?? null : szewTwojeFaktury;
+  const szewDrzewa = podmiana ? (o.szewTwojeFaktury ?? null) : szewTwojeFaktury;
   const szew = zgodaInstalacji(env) ? szewDrzewa : null;
-  return MODULY.filter(modul => modul.nazwa !== 'twojefaktury').flatMap(modul => {
-    if (modul.nazwa === 'kanaly') return [createModulKanaly(definicje, true, {userAgent:userAgentAllegro(env)}) as ModulOms];
+  return MODULY.filter((modul) => modul.nazwa !== 'twojefaktury').flatMap((modul) => {
+    if (modul.nazwa === 'kanaly')
+      return [createModulKanaly(definicje, true, { userAgent: userAgentAllegro(env) }) as ModulOms];
     if (modul.nazwa === 'web') return [createModulWeb(definicje) as ModulOms];
     if (modul.nazwa === 'raporty') return [createModulRaporty(definicje) as ModulOms];
     if (modul.nazwa === 'faktury') {
-      const faktury = podmiana ? createModulFaktury({ fabryki: { szewTwojeFaktury: szewDrzewa } }) as ModulOms : modul;
+      const faktury = podmiana
+        ? (createModulFaktury({ fabryki: { szewTwojeFaktury: szewDrzewa } }) as ModulOms)
+        : modul;
       return szew ? [faktury, szew.modul] : [faktury];
     }
     return [modul];

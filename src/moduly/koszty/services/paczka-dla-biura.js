@@ -90,7 +90,7 @@ async function porcjami(elementy, ile, fn) {
   const wyniki = [];
   for (let i = 0; i < elementy.length; i += ile) {
     // eslint-disable-next-line no-await-in-loop
-    wyniki.push(...await Promise.all(elementy.slice(i, i + ile).map(fn)));
+    wyniki.push(...(await Promise.all(elementy.slice(i, i + ile).map(fn))));
   }
   return wyniki;
 }
@@ -99,9 +99,19 @@ async function porcjami(elementy, ile, fn) {
 // `plikiKsef(uuid)` → { xml, upo } | null — pliki KSeF programu wbudowanego z parametru (moduł faktur;
 // w testach paczka-dla-biura-twojefaktury.js). Ten plik nie importuje kodu TwojeFaktury; bez funkcji — paczka jak u inFaktu.
 export function createPaczkaDlaBiura({
-  db, program: programPodany = null, infakt = null, wizualizacjaKosztu = null, katalogSprzedazy = null, katalogKosztow = null,
-  teraz = () => new Date(), rownolegle = 4, spij = undefined, log = console.error,
-  czytajPlik = readFileSync, zbudujZestawienie = zbudujZestawieniePdf, plikiKsef = null,
+  db,
+  program: programPodany = null,
+  infakt = null,
+  wizualizacjaKosztu = null,
+  katalogSprzedazy = null,
+  katalogKosztow = null,
+  teraz = () => new Date(),
+  rownolegle = 4,
+  spij = undefined,
+  log = console.error,
+  czytajPlik = readFileSync,
+  zbudujZestawienie = zbudujZestawieniePdf,
+  plikiKsef = null,
 }) {
   // ⚠️ ZERO (albo cokolwiek nie-dodatniego) w `rownolegle` wywracaloby `porcjami` w
   // NIESKONCZONA PETLE: krok `i += ile` z `ile === 0` nigdy nie przesuwa `i` dalej niz
@@ -128,14 +138,14 @@ export function createPaczkaDlaBiura({
       } catch (e) {
         // Plik ISTNIEJE (inaczej `czytaj` oddalaby `null` bez wolania `czytajPlik`), ale nie
         // da się go przeczytać — awaria wspólnego zasobu (dysku archiwum), a nie „nie mam, weź z sieci".
-        throw bladOperatora(`Nie udało się przygotować zestawienia faktur: nie da się odczytać pliku dokumentu ${dok.number} z archiwum (${e.message}).`);
+        throw bladOperatora(
+          `Nie udało się przygotować zestawienia faktur: nie da się odczytać pliku dokumentu ${dok.number} z archiwum (${e.message}).`,
+        );
       }
       if (z) return z;
     }
     try {
-      return dok.rodzaj === 'korekta'
-        ? await program.pobierzPdfKorekty(dok.uuid)
-        : await program.pobierzPdf(dok.uuid);
+      return dok.rodzaj === 'korekta' ? await program.pobierzPdfKorekty(dok.uuid) : await program.pobierzPdf(dok.uuid);
     } catch (e) {
       // Brak numeru KSeF niczego nie blokuje, tylko jest opisany na wydruku: dokument bez numeru KSeF
       // (faktura VAT B2B/B2C, korekta) wchodzi PODGLĄDEM programu — napis „PODGLĄD — nie jest fakturą”, bez zdarzenia
@@ -146,7 +156,10 @@ export function createPaczkaDlaBiura({
       }
       // Program bez podglądu (inFakt) — paczka czeka (409) z tym samym zdaniem, a nie „brak dokumentu”.
       if (e?.czekaNaKsef) {
-        throw bladOperatora(`Nie udało się przygotować zestawienia faktur: ${e.message}`, { status: 409, czekaNaKsef: true });
+        throw bladOperatora(`Nie udało się przygotować zestawienia faktur: ${e.message}`, {
+          status: 409,
+          czekaNaKsef: true,
+        });
       }
       throw bladOperatora(`Nie udało się przygotować zestawienia faktur: brak dokumentu ${dok.number} (${e.message}).`);
     }
@@ -174,25 +187,32 @@ export function createPaczkaDlaBiura({
     try {
       z = czytaj(katalogKosztow, k.sciezka_pdf, czytajPlik);
     } catch (e) {
-      throw bladOperatora(`Nie udało się przygotować zestawienia faktur: nie da się odczytać pliku dokumentu ${k.numer_dokumentu} z archiwum (${e.message}).`);
+      throw bladOperatora(
+        `Nie udało się przygotować zestawienia faktur: nie da się odczytać pliku dokumentu ${k.numer_dokumentu} z archiwum (${e.message}).`,
+      );
     }
     if (z) return z;
     if (!uslugaKsefDostepna(wizualizacjaKosztu)) {
       throw bladOperatora(
-        `Nie udało się przygotować zestawienia faktur: dokument ${k.numer_dokumentu} nie jest zarchiwizowany, `
-        // Przy zapisanym tokenie bez NIP-u firmy — ta przyczyna, wprost.
-        + (powodNiedostepnosciKsef(wizualizacjaKosztu) ? `a KSeF nie działa. ${powodNiedostepnosciKsef(wizualizacjaKosztu)}`
-          : 'a panel nie ma podpiętego KSeF, żeby go pobrać.'),
+        `Nie udało się przygotować zestawienia faktur: dokument ${k.numer_dokumentu} nie jest zarchiwizowany, ` +
+          // Przy zapisanym tokenie bez NIP-u firmy — ta przyczyna, wprost.
+          (powodNiedostepnosciKsef(wizualizacjaKosztu)
+            ? `a KSeF nie działa. ${powodNiedostepnosciKsef(wizualizacjaKosztu)}`
+            : 'a panel nie ma podpiętego KSeF, żeby go pobrać.'),
       );
     }
     try {
-      const wynik = await zCzekaniemNa429(
-        () => wizualizacjaKosztu.pdf(k.ksef_number),
-        { spij, teraz, doKiedy: Infinity, log },
-      );
+      const wynik = await zCzekaniemNa429(() => wizualizacjaKosztu.pdf(k.ksef_number), {
+        spij,
+        teraz,
+        doKiedy: Infinity,
+        log,
+      });
       return wynik.bajty;
     } catch (e) {
-      throw bladOperatora(`Nie udało się przygotować zestawienia faktur: brak dokumentu ${k.numer_dokumentu} (${e.message}).`);
+      throw bladOperatora(
+        `Nie udało się przygotować zestawienia faktur: brak dokumentu ${k.numer_dokumentu} (${e.message}).`,
+      );
     }
   }
 
@@ -221,7 +241,9 @@ export function createPaczkaDlaBiura({
       doc.getPageIndices();
       return doc;
     } catch (e) {
-      throw bladOperatora(`Nie udało się przygotować zestawienia faktur: plik dokumentu ${numer} nie daje się wczytać jako PDF (${e.message}).`);
+      throw bladOperatora(
+        `Nie udało się przygotować zestawienia faktur: plik dokumentu ${numer} nie daje się wczytać jako PDF (${e.message}).`,
+      );
     }
   }
 
@@ -260,22 +282,23 @@ export function createPaczkaDlaBiura({
     const poUuid = new Map();
     for (const d of dokSprzedazy) {
       if (poUuid.has(d.uuid)) {
-        throw bladOperatora(`Nie udało się przygotować zestawienia faktur: dokument ${d.number} ma zduplikowany identyfikator (uuid) z innym dokumentem tego miesiąca — sprawdź ${gdzieDokument(program)}.`);
+        throw bladOperatora(
+          `Nie udało się przygotować zestawienia faktur: dokument ${d.number} ma zduplikowany identyfikator (uuid) z innym dokumentem tego miesiąca — sprawdź ${gdzieDokument(program)}.`,
+        );
       }
       poUuid.set(d.uuid, d);
     }
-    return porcjami(
-      paczka.sprzedaz,
-      rownoleglePaczki,
-      async (w) => {
-        const dok = poUuid.get(w.uuid);
-        // Wartownik na wypadek niespojnosci z domena (`zlozPaczke`) — wiersz zestawienia bez
-        // dopasowania w surowej liscie. Nie powinno sie zdarzyc, ale gdyby sie zdarzylo, ma
-        // to byc odmowa z numerem, a nie prosba o bajty `undefined.uuid`.
-        if (!dok) throw bladOperatora(`Nie udało się przygotować zestawienia faktur: brak danych dokumentu ${w.numer} (niespójność wewnętrzna zestawienia).`);
-        return wczytaj(await bajtySprzedazy(dok, podglady), w.numer);
-      },
-    );
+    return porcjami(paczka.sprzedaz, rownoleglePaczki, async (w) => {
+      const dok = poUuid.get(w.uuid);
+      // Wartownik na wypadek niespojnosci z domena (`zlozPaczke`) — wiersz zestawienia bez
+      // dopasowania w surowej liscie. Nie powinno sie zdarzyc, ale gdyby sie zdarzylo, ma
+      // to byc odmowa z numerem, a nie prosba o bajty `undefined.uuid`.
+      if (!dok)
+        throw bladOperatora(
+          `Nie udało się przygotować zestawienia faktur: brak danych dokumentu ${w.numer} (niespójność wewnętrzna zestawienia).`,
+        );
+      return wczytaj(await bajtySprzedazy(dok, podglady), w.numer);
+    });
   }
 
   /**
@@ -304,7 +327,10 @@ export function createPaczkaDlaBiura({
       await wynik.attach(pliki.xml, `${nazwa}.xml`, { mimeType: 'application/xml', description: `KSeF ${w.numer}` });
       if (pliki.upo) {
         // eslint-disable-next-line no-await-in-loop
-        await wynik.attach(Buffer.from(pliki.upo, 'utf8'), `${nazwa}-upo.xml`, { mimeType: 'application/xml', description: `UPO ${w.numer}` });
+        await wynik.attach(Buffer.from(pliki.upo, 'utf8'), `${nazwa}-upo.xml`, {
+          mimeType: 'application/xml',
+          description: `UPO ${w.numer}`,
+        });
       }
     }
   }
@@ -320,7 +346,10 @@ export function createPaczkaDlaBiura({
       // odmowa, ktora wywrocilaby cala paczke.
       if (!w.maPlik) continue;
       const k = kosztyPoKluczu.get(w.klucz);
-      if (!k) throw bladOperatora(`Nie udało się przygotować zestawienia faktur: brak danych kosztu ${w.numer} (niespójność wewnętrzna zestawienia).`);
+      if (!k)
+        throw bladOperatora(
+          `Nie udało się przygotować zestawienia faktur: brak danych kosztu ${w.numer} (niespójność wewnętrzna zestawienia).`,
+        );
       // ⚠️ SEKWENCYJNIE, mimo ze sprzedaz idzie po cztery: koszty jada przez WSPOLNA sesje
       // KSeF (ta sama, ktorej uzywa nocny czuwacz) i wspolny limit 16/min. Rownolegle zadania
       // wyscigowaly by sie o odswiezenie tokenu i naganialy 429 zamiast go unikac.
@@ -347,16 +376,24 @@ export function createPaczkaDlaBiura({
     const wygenerowano = teraz().toISOString();
     const liczbaDokumentow = paczka.sprzedaz.length;
     const tytul = 'Zestawienie przychodów';
-    const zestaw = (liczbaStron) => zbudujZestawienie({
-      paczka, czesc: 'sprzedaz', wygenerowano, liczbaStron, liczbaDokumentow, tytul,
-      ...(zrodloSprzedazy ? { zrodlo: zrodloSprzedazy } : {}),
-    });
+    const zestaw = (liczbaStron) =>
+      zbudujZestawienie({
+        paczka,
+        czesc: 'sprzedaz',
+        wygenerowano,
+        liczbaStron,
+        liczbaDokumentow,
+        tytul,
+        ...(zrodloSprzedazy ? { zrodlo: zrodloSprzedazy } : {}),
+      });
     const proba = await PDFDocument.load(await zestaw(0));
     const stron = proba.getPageCount();
     const wynik = await PDFDocument.load(await zestaw(stron));
 
     if (stron !== wynik.getPageCount()) {
-      throw bladOperatora(`Nie udało się przygotować zestawienia: liczba stron w stopce (${stron}) nie zgadza się z plikiem (${wynik.getPageCount()}).`);
+      throw bladOperatora(
+        `Nie udało się przygotować zestawienia: liczba stron w stopce (${stron}) nie zgadza się z plikiem (${wynik.getPageCount()}).`,
+      );
     }
     return {
       bajty: Buffer.from(await wynik.save()),
@@ -371,9 +408,7 @@ export function createPaczkaDlaBiura({
    * dwa przebiegi zestawienia, scalenie z dokumentami, tytul, zalaczniki KSeF (czesc sprzedazowa), straznik stron.
    * Wydzielona mechanicznie z `zbuduj` — obie sciezki skladaja plik JEDNA funkcja.
    */
-  async function scalZDokumentami({
-    paczka, czesc, dokumentyPdf, tytulPliku, opcjeZestawienia = {},
-  }) {
+  async function scalZDokumentami({ paczka, czesc, dokumentyPdf, tytulPliku, opcjeZestawienia = {} }) {
     const stronDok = dokumentyPdf.reduce((s, d) => s + d.getPageCount(), 0);
     const wygenerowano = teraz().toISOString();
     const liczbaDokumentow = paczka[czesc].length;
@@ -387,11 +422,17 @@ export function createPaczkaDlaBiura({
     //
     // ⚠️ LICZBA STRON JEST LICZBA STRON TEGO PLIKU, nie obu razem: ksiegowa liczy kartki
     // wydruku, ktory trzyma w rece, a nie sume dwoch osobnych pobran.
-    const zestaw = (liczbaStron) => zbudujZestawienie({
-      paczka, czesc, wygenerowano, liczbaStron, liczbaDokumentow, ...opcjeZestawienia,
-      // Źródło sprzedaży na wydruku = nazwa programu (bez programu — „inFakt” z tabeli wydruku).
-      ...(czesc === 'sprzedaz' && zrodloSprzedazy ? { zrodlo: zrodloSprzedazy } : {}),
-    });
+    const zestaw = (liczbaStron) =>
+      zbudujZestawienie({
+        paczka,
+        czesc,
+        wygenerowano,
+        liczbaStron,
+        liczbaDokumentow,
+        ...opcjeZestawienia,
+        // Źródło sprzedaży na wydruku = nazwa programu (bez programu — „inFakt” z tabeli wydruku).
+        ...(czesc === 'sprzedaz' && zrodloSprzedazy ? { zrodlo: zrodloSprzedazy } : {}),
+      });
     const proba = await PDFDocument.load(await zestaw(0));
     const stron = stronDok + proba.getPageCount();
     const zestawienie = await PDFDocument.load(await zestaw(stron));
@@ -413,7 +454,9 @@ export function createPaczkaDlaBiura({
     // przebiegami), stopka klamalaby o kompletnosci wydruku PO CICHU. Lepsza odmowa tutaj niz
     // ksiegowa liczaca strony wydruku przeciw stopce, ktora sie nie zgadza.
     if (stron !== wynik.getPageCount()) {
-      throw bladOperatora(`Nie udało się przygotować zestawienia faktur: liczba stron w stopce (${stron}) nie zgadza się z plikiem (${wynik.getPageCount()}).`);
+      throw bladOperatora(
+        `Nie udało się przygotować zestawienia faktur: liczba stron w stopce (${stron}) nie zgadza się z plikiem (${wynik.getPageCount()}).`,
+      );
     }
     return {
       bajty: Buffer.from(await wynik.save()),
@@ -434,7 +477,9 @@ export function createPaczkaDlaBiura({
     // wyglada dokladnie tak samo jak kosztowa, dopoki sie jej nie otworzy. Ta sama zasada,
     // co przy miesiacu wyzej.
     if (!CZESCI.includes(czesc)) {
-      throw bladOperatora(`„${czesc ?? ''}" to nie jest część zestawienia faktur — panel składa dwa pliki: ${CZESCI.join(', ')}.`);
+      throw bladOperatora(
+        `„${czesc ?? ''}" to nie jest część zestawienia faktur — panel składa dwa pliki: ${CZESCI.join(', ')}.`,
+      );
     }
     const sprzedazowa = czesc === 'sprzedaz';
 
@@ -470,7 +515,10 @@ export function createPaczkaDlaBiura({
       : await stronyKosztow(paczka, koszty);
 
     const { bajty, dokumentow, stron } = await scalZDokumentami({
-      paczka: zPodgladami(paczka, wejscie, podglady), czesc, dokumentyPdf, tytulPliku: `Zestawienie faktur ${miesiac} — ${czesc}`,
+      paczka: zPodgladami(paczka, wejscie, podglady),
+      czesc,
+      dokumentyPdf,
+      tytulPliku: `Zestawienie faktur ${miesiac} — ${czesc}`,
     });
     return {
       bajty,
@@ -492,19 +540,32 @@ export function createPaczkaDlaBiura({
     const zakres = zakresMiesiaca(miesiac);
     if (!zakres) throw bladOperatora(`„${miesiac ?? ''}" to nie jest miesiąc w formacie RRRR-MM.`);
     if (!POLA_ZAZNACZONYCH.includes(pole)) {
-      throw bladOperatora(`„${pole ?? ''}" to nie jest pole daty listy faktur — dozwolone: ${POLA_ZAZNACZONYCH.join(', ')}.`);
+      throw bladOperatora(
+        `„${pole ?? ''}" to nie jest pole daty listy faktur — dozwolone: ${POLA_ZAZNACZONYCH.join(', ')}.`,
+      );
     }
-    const wybrane = [...new Set([].concat(uuids ?? []).map((u) => String(u).trim()).filter(Boolean))];
+    const wybrane = [
+      ...new Set(
+        []
+          .concat(uuids ?? [])
+          .map((u) => String(u).trim())
+          .filter(Boolean),
+      ),
+    ];
     if (wybrane.length === 0) throw bladOperatora('Zaznacz co najmniej jedną fakturę.');
     if (wybrane.length > MAX_ZAZNACZONYCH) {
-      throw bladOperatora(`Zaznaczono ${wybrane.length} dokumentów — jedno zestawienie zaznaczonych mieści najwyżej ${MAX_ZAZNACZONYCH}. Większy wybór pobierzesz jako zestawienie faktur za cały miesiąc.`);
+      throw bladOperatora(
+        `Zaznaczono ${wybrane.length} dokumentów — jedno zestawienie zaznaczonych mieści najwyżej ${MAX_ZAZNACZONYCH}. Większy wybór pobierzesz jako zestawienie faktur za cały miesiąc.`,
+      );
     }
     const faktury = await program.listaFaktur({ ...zakres, pole });
     const korekty = await program.listaKorekt({ ...zakres, pole });
     const naLiscie = new Set([...faktury, ...korekty].map((d) => String(d.uuid)));
     const obce = wybrane.filter((u) => !naLiscie.has(u));
     if (obce.length > 0) {
-      throw bladOperatora(`Nie udało się przygotować zestawienia zaznaczonych faktur: dokumentów o identyfikatorach ${obce.join(', ')} nie ma na liście faktur ${miesiac} — odśwież listę i zaznacz ponownie.`);
+      throw bladOperatora(
+        `Nie udało się przygotować zestawienia zaznaczonych faktur: dokumentów o identyfikatorach ${obce.join(', ')} nie ma na liście faktur ${miesiac} — odśwież listę i zaznacz ponownie.`,
+      );
     }
     const zaznaczone = new Set(wybrane);
     const fakturyZ = faktury.filter((d) => zaznaczone.has(String(d.uuid)));

@@ -1,6 +1,10 @@
 import { bladOperatora } from '../../../domena/bledy.js';
 import {
-  stanPrzesylki, sprawyDoZalatwieniaRecznie, STANY_BLOKUJACE_KOLEJNA, ZRODLO_NUMERU, numerZAllegro,
+  stanPrzesylki,
+  sprawyDoZalatwieniaRecznie,
+  STANY_BLOKUJACE_KOLEJNA,
+  ZRODLO_NUMERU,
+  numerZAllegro,
 } from '../../../domena/przesylka-stan.js';
 import { panelKuriera } from '../../../domena/moduly-kurierow.ts';
 
@@ -40,7 +44,9 @@ const SYGNATURA_KOLIZJI = 'UNIQUE constraint failed: przesylki.zamowienie_id, pr
 // Wszystkie ZYWE paczki zamowienia, po numerze kolejnym. „Zywa" znaczy `status <> 'blad'`,
 // czyli dokladnie to samo, co warunek indeksu — jedno zrodlo prawdy dla obu.
 export function zywePrzesylki(db, zamowienieId) {
-  return db.prepare("SELECT * FROM przesylki WHERE zamowienie_id = ? AND status <> 'blad' ORDER BY kolejnosc").all(zamowienieId);
+  return db
+    .prepare("SELECT * FROM przesylki WHERE zamowienie_id = ? AND status <> 'blad' ORDER BY kolejnosc")
+    .all(zamowienieId);
 }
 
 // Numer, ktory dostanie NASTEPNA paczka tego zamowienia.
@@ -52,12 +58,15 @@ export function zywePrzesylki(db, zamowienieId) {
 // To jest wartosc, ktora ekran nadania wklada do formularza, a trasa POST porownuje
 // z przyslana — patrz komentarz przy POST /zamowienia/:id/nadaj.
 export function nastepnaKolejnosc(db, zamowienieId) {
-  const w = db.prepare("SELECT MAX(kolejnosc) AS max FROM przesylki WHERE zamowienie_id = ? AND status <> 'blad'").get(zamowienieId);
+  const w = db
+    .prepare("SELECT MAX(kolejnosc) AS max FROM przesylki WHERE zamowienie_id = ? AND status <> 'blad'")
+    .get(zamowienieId);
   return (w?.max ?? 0) + 1;
 }
 
 function zywaPrzesylkaPod(db, zamowienieId, kolejnosc) {
-  return db.prepare("SELECT * FROM przesylki WHERE zamowienie_id = ? AND kolejnosc = ? AND status <> 'blad'")
+  return db
+    .prepare("SELECT * FROM przesylki WHERE zamowienie_id = ? AND kolejnosc = ? AND status <> 'blad'")
     .get(zamowienieId, kolejnosc);
 }
 
@@ -67,22 +76,28 @@ function opisKolizji(zywa) {
   // ponowienie: „Sprawdz ponownie" na karcie odpytuje o TE SAMA przesylke, a nadanie
   // od nowa utworzyloby u InPostu druga (referencja go nie odsieje).
   if (stan === 'tworzona_u_kuriera') {
-    return 'Przesyłka do tego zamówienia JUŻ ISTNIEJE u kuriera — czeka tylko na numer listu. '
-      + 'Nie nadawaj jej drugi raz: kliknij „Sprawdź ponownie" przy paczce na karcie zamówienia.';
+    return (
+      'Przesyłka do tego zamówienia JUŻ ISTNIEJE u kuriera — czeka tylko na numer listu. ' +
+      'Nie nadawaj jej drugi raz: kliknij „Sprawdź ponownie" przy paczce na karcie zamówienia.'
+    );
   }
   if (stan === 'do_wyjasnienia') {
-    return `To zamówienie ma przesyłkę do wyjaśnienia (list ${zywa.numer_listu}). `
-      + `Kurier odrzuci ponowne nadanie z tą samą referencją — sprawdź paczkę w ${panelKuriera(zywa.kurier)}.`;
+    return (
+      `To zamówienie ma przesyłkę do wyjaśnienia (list ${zywa.numer_listu}). ` +
+      `Kurier odrzuci ponowne nadanie z tą samą referencją — sprawdź paczkę w ${panelKuriera(zywa.kurier)}.`
+    );
   }
   // Wiersz starszy niz prog to sierota po restarcie procesu, a nie trwajace wywolanie.
   // Odpowiedz „wlasnie trwa" byla tu WIECZNA: nic jej nigdy nie zdejmowalo, a jedynym
   // wyjsciem zostawal reczny UPDATE w pliku SQLite.
   if (stan === 'zawieszona') {
-    return `Nadanie tego zamówienia wisi od ${zywa.utworzona_at} i żadne wysyłanie już nie trwa — `
-      + 'panel najpewniej został zrestartowany w trakcie wywołania kuriera. '
-      + `Sprawdź RĘCZNIE w ${panelKuriera(zywa.kurier)}, czy paczka do tego zamówienia powstała: `
-      + 'jeśli ma już numer listu, ponowienie i tak zostanie odrzucone (DUPLICATED_PARCEL_SEARCH_KEY). '
-      + 'Decyzję podejmij przyciskiem na karcie zamówienia.';
+    return (
+      `Nadanie tego zamówienia wisi od ${zywa.utworzona_at} i żadne wysyłanie już nie trwa — ` +
+      'panel najpewniej został zrestartowany w trakcie wywołania kuriera. ' +
+      `Sprawdź RĘCZNIE w ${panelKuriera(zywa.kurier)}, czy paczka do tego zamówienia powstała: ` +
+      'jeśli ma już numer listu, ponowienie i tak zostanie odrzucone (DUPLICATED_PARCEL_SEARCH_KEY). ' +
+      'Decyzję podejmij przyciskiem na karcie zamówienia.'
+    );
   }
   if (stan === 'w_trakcie') return 'Nadanie tego zamówienia właśnie trwa.';
   return 'To zamówienie ma już nadaną przesyłkę.';
@@ -106,13 +121,13 @@ export function rozpocznijPrzesylke(db, zamowienieId, kurier, kolejnosc = 1) {
   // ta sama lista rzadzi przyciskiem na karcie (mozliwaKolejnaPaczka), wiec druga kopia
   // rozjechalaby sie przy pierwszym nowym stanie — a rozjazd tutaj znaczy paczke, ktorej
   // karta nie proponowala, albo odwrotnie: przycisk prowadzacy prosto w odmowe.
-  const wtoku = zywePrzesylki(db, zamowienieId)
-    .find((p) => STANY_BLOKUJACE_KOLEJNA.includes(stanPrzesylki(p)));
+  const wtoku = zywePrzesylki(db, zamowienieId).find((p) => STANY_BLOKUJACE_KOLEJNA.includes(stanPrzesylki(p)));
   if (wtoku) throw bladOperatora(opisKolizji(wtoku));
 
   try {
-    db.prepare("INSERT INTO przesylki (zamowienie_id, kurier, status, kolejnosc, utworzona_at) VALUES (?,?, 'w_trakcie', ?, ?)")
-      .run(zamowienieId, kurier, kolejnosc, teraz());
+    db.prepare(
+      "INSERT INTO przesylki (zamowienie_id, kurier, status, kolejnosc, utworzona_at) VALUES (?,?, 'w_trakcie', ?, ?)",
+    ).run(zamowienieId, kurier, kolejnosc, teraz());
   } catch (e) {
     const zywa = String(e.message).includes(SYGNATURA_KOLIZJI) ? zywaPrzesylkaPod(db, zamowienieId, kolejnosc) : null;
     if (zywa) throw bladOperatora(opisKolizji(zywa));
@@ -154,9 +169,11 @@ export function rozpocznijPrzesylke(db, zamowienieId, kurier, kolejnosc = 1) {
 // Podaje go wylacznie services/przesylki-allegro.js, bo tylko tam ta wartosc istnieje;
 // wpis reczny czlowieka jej nie ma i nie ma skad wziac. NULL znaczy „nie wiemy, kogo pytac"
 // i wtedy panel NIE PYTA (domena/sledzenie-przesylki.js) — nigdy nie podstawia stalej.
-export function zarejestrujPrzesylkeReczna(db, zamowienieId, {
-  kurier, kolejnosc, numerListu, zrodloNumeru = ZRODLO_NUMERU.REKA, carrierAllegro = null,
-}) {
+export function zarejestrujPrzesylkeReczna(
+  db,
+  zamowienieId,
+  { kurier, kolejnosc, numerListu, zrodloNumeru = ZRODLO_NUMERU.REKA, carrierAllegro = null },
+) {
   const numer = String(numerListu ?? '').trim();
   // Bez numeru listu rejestracja bylaby klamstwem: zamowienie wygladaloby na wyslane,
   // a panel nie mialby czego pokazac ani klientowi, ani sobie przy reklamacji. Dokladnie
@@ -167,14 +184,13 @@ export function zarejestrujPrzesylkeReczna(db, zamowienieId, {
   // ta sama lista rzadzi przyciskiem na karcie (mozliwaKolejnaPaczka), wiec druga kopia
   // rozjechalaby sie przy pierwszym nowym stanie — a rozjazd tutaj znaczy paczke, ktorej
   // karta nie proponowala, albo odwrotnie: przycisk prowadzacy prosto w odmowe.
-  const wtoku = zywePrzesylki(db, zamowienieId)
-    .find((p) => STANY_BLOKUJACE_KOLEJNA.includes(stanPrzesylki(p)));
+  const wtoku = zywePrzesylki(db, zamowienieId).find((p) => STANY_BLOKUJACE_KOLEJNA.includes(stanPrzesylki(p)));
   if (wtoku) throw bladOperatora(opisKolizji(wtoku));
 
   try {
     db.prepare(
-      'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, nadana_recznie,'
-      + " zrodlo_numeru, carrier_allegro, utworzona_at) VALUES (?,?, 'nadana', ?, ?, 1, ?, ?, ?)",
+      'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, nadana_recznie,' +
+        " zrodlo_numeru, carrier_allegro, utworzona_at) VALUES (?,?, 'nadana', ?, ?, 1, ?, ?, ?)",
     ).run(zamowienieId, kurier, numer, kolejnosc, zrodloNumeru, carrierAllegro ?? null, teraz());
   } catch (e) {
     const zywa = String(e.message).includes(SYGNATURA_KOLIZJI) ? zywaPrzesylkaPod(db, zamowienieId, kolejnosc) : null;
@@ -203,12 +219,14 @@ export function zarejestrujPrzesylkeReczna(db, zamowienieId, {
  * @param {number} id
  * @param {import('../nadanie-typy.ts').ZapisPrzesylki} dane
  */
-export function zakonczPrzesylke(db, id, {
-  numerListu, etykietaSciezka, etykietaZplSciezka = null, surowa, adresUzyty = null, idPrzesylkiKuriera = null,
-}) {
+export function zakonczPrzesylke(
+  db,
+  id,
+  { numerListu, etykietaSciezka, etykietaZplSciezka = null, surowa, adresUzyty = null, idPrzesylkiKuriera = null },
+) {
   db.prepare(
-    "UPDATE przesylki SET status = 'nadana', numer_listu = ?, etykieta_sciezka = ?, etykieta_zpl_sciezka = ?,"
-    + ' odpowiedz_surowa = ?, adres_uzyty = ?, id_przesylki_kuriera = COALESCE(?, id_przesylki_kuriera) WHERE id = ?',
+    "UPDATE przesylki SET status = 'nadana', numer_listu = ?, etykieta_sciezka = ?, etykieta_zpl_sciezka = ?," +
+      ' odpowiedz_surowa = ?, adres_uzyty = ?, id_przesylki_kuriera = COALESCE(?, id_przesylki_kuriera) WHERE id = ?',
   ).run(numerListu, etykietaSciezka, etykietaZplSciezka, surowa, adresUzyty, naIdentyfikator(idPrzesylkiKuriera), id);
 }
 
@@ -250,8 +268,8 @@ export function zapiszIdPrzesylkiKuriera(db, id, idPrzesylkiKuriera) {
  */
 export function oznaczTworzonaUKuriera(db, id, { idPrzesylkiKuriera, opis = null, surowa = null, adresUzyty = null }) {
   db.prepare(
-    "UPDATE przesylki SET status = 'w_trakcie', id_przesylki_kuriera = ?, blad_opis = ?, odpowiedz_surowa = ?,"
-    + ' adres_uzyty = COALESCE(?, adres_uzyty) WHERE id = ?',
+    "UPDATE przesylki SET status = 'w_trakcie', id_przesylki_kuriera = ?, blad_opis = ?, odpowiedz_surowa = ?," +
+      ' adres_uzyty = COALESCE(?, adres_uzyty) WHERE id = ?',
   ).run(naIdentyfikator(idPrzesylkiKuriera), opis, surowa, adresUzyty, id);
 }
 
@@ -283,10 +301,14 @@ export function oznaczBlad(db, id, opis) {
  * @param {number} id
  * @param {import('../nadanie-typy.ts').ZapisPrzesylki} dane
  */
-export function oznaczDoWyjasnienia(db, id, { numerListu, opis, surowa = null, adresUzyty = null, idPrzesylkiKuriera = null }) {
+export function oznaczDoWyjasnienia(
+  db,
+  id,
+  { numerListu, opis, surowa = null, adresUzyty = null, idPrzesylkiKuriera = null },
+) {
   db.prepare(
-    "UPDATE przesylki SET status = 'do_wyjasnienia', numer_listu = ?, blad_opis = ?, odpowiedz_surowa = ?,"
-    + ' adres_uzyty = ?, id_przesylki_kuriera = COALESCE(?, id_przesylki_kuriera) WHERE id = ?',
+    "UPDATE przesylki SET status = 'do_wyjasnienia', numer_listu = ?, blad_opis = ?, odpowiedz_surowa = ?," +
+      ' adres_uzyty = ?, id_przesylki_kuriera = COALESCE(?, id_przesylki_kuriera) WHERE id = ?',
   ).run(numerListu, opis, surowa, adresUzyty, naIdentyfikator(idPrzesylkiKuriera), id);
 }
 
@@ -310,8 +332,12 @@ export function zapiszBladSync(db, id, opis) {
 // oddala DELIVERED, a potem wrocila do ruchu innym kanalem, wisialaby jako doreczona.
 // Jedno zdarzenie to jeden komplet — opis, czas i kod ida razem albo wcale.
 export function zapiszStatusDpd(db, id, { opis, at, kod = null }) {
-  db.prepare('UPDATE przesylki SET status_kuriera = ?, status_kuriera_at = ?, status_kuriera_kod = ? WHERE id = ?')
-    .run(opis ?? null, at ?? null, kod ?? null, id);
+  db.prepare('UPDATE przesylki SET status_kuriera = ?, status_kuriera_at = ?, status_kuriera_kod = ? WHERE id = ?').run(
+    opis ?? null,
+    at ?? null,
+    kod ?? null,
+    id,
+  );
 }
 
 // Chwila PIERWSZEGO dowodu odbioru przez kuriera (domena/dowod-odbioru.js).
@@ -321,7 +347,10 @@ export function zapiszStatusDpd(db, id, { opis, at, kod = null }) {
 // `kurierAt` — chwila odbioru U KURIERA (domena/dowod-odbioru.js, chwilaDowoduUKuriera), żeby
 // reguła mogła pominąć dowód spóźniony (pierwszy odczyt śledzenia dni po odbiorze).
 export function zapiszOdbiorPrzesylki(db, id, { at, dowod, kurierAt = null }) {
-  const info = db.prepare('UPDATE przesylki SET odebrana_at = ?, odebrana_dowod = ?, odebrana_kurier_at = ? WHERE id = ? AND odebrana_at IS NULL')
+  const info = db
+    .prepare(
+      'UPDATE przesylki SET odebrana_at = ?, odebrana_dowod = ?, odebrana_kurier_at = ? WHERE id = ? AND odebrana_at IS NULL',
+    )
     .run(at, dowod, kurierAt, id);
   return Number(info.changes) === 1 ? at : null;
 }
@@ -338,8 +367,11 @@ export function zapiszOdbiorPrzesylki(db, id, { at, dowod, kurierAt = null }) {
 // Zapisujemy ZAWSZE po probie: takze gdy DPD nie oddalo zdarzen (null) i gdy proba padla.
 // Inaczej te dwa przypadki nie mialyby dlawika w ogole.
 export function zapiszProbeStatusuDpd(db, id, { at, blad = null }) {
-  db.prepare('UPDATE przesylki SET status_kuriera_pobrany_at = ?, status_kuriera_blad = ? WHERE id = ?')
-    .run(at, blad, id);
+  db.prepare('UPDATE przesylki SET status_kuriera_pobrany_at = ?, status_kuriera_blad = ? WHERE id = ?').run(
+    at,
+    blad,
+    id,
+  );
 }
 
 /**
@@ -356,7 +388,8 @@ export function zapiszProbeStatusuDpd(db, id, { at, blad = null }) {
  * skasowany kazalby panelowi pytac od nowa przy KAZDYM otwarciu karty.
  */
 export function wyczyscBladStatusu(db, id) {
-  return db.prepare('UPDATE przesylki SET status_kuriera_blad = NULL WHERE id = ? AND status_kuriera_blad IS NOT NULL')
+  return db
+    .prepare('UPDATE przesylki SET status_kuriera_blad = NULL WHERE id = ? AND status_kuriera_blad IS NOT NULL')
     .run(id).changes;
 }
 
@@ -381,10 +414,12 @@ export function wyczyscBladStatusuBezSledzenia(db, kurierzy = []) {
   // Zostaje, bo „pusta lista niczego nie rusza" ma byc widoczne bez znajomosci dialektu.
   if (!lista.length) return 0;
   const miejsca = lista.map(() => '?').join(', ');
-  return db.prepare(
-    `UPDATE przesylki SET status_kuriera_blad = NULL
+  return db
+    .prepare(
+      `UPDATE przesylki SET status_kuriera_blad = NULL
      WHERE status_kuriera_blad IS NOT NULL AND kurier IN (${miejsca})`,
-  ).run(...lista).changes;
+    )
+    .run(...lista).changes;
 }
 
 // JEDYNE wyjscie z osieroconego 'w_trakcie'. Odpowiednik odblokujFakture — z jedna
@@ -418,22 +453,22 @@ export function odblokujPrzesylke(db, przesylkaId, { numerListu = null, opis } =
     // odsieje jej po referencji. Wyjscie jest tu inne i bezpieczne: „Sprawdz ponownie".
     if (stan === 'tworzona_u_kuriera') {
       throw bladOperatora(
-        `Ta przesyłka istnieje u kuriera (identyfikator ${p.id_przesylki_kuriera}) i czeka wyłącznie na numer `
-        + 'listu — nie ma czego odblokowywać. Kliknij „Sprawdź ponownie": panel dobierze numer i etykiety '
-        + 'tej samej przesyłki, zamiast tworzyć drugą.',
+        `Ta przesyłka istnieje u kuriera (identyfikator ${p.id_przesylki_kuriera}) i czeka wyłącznie na numer ` +
+          'listu — nie ma czego odblokowywać. Kliknij „Sprawdź ponownie": panel dobierze numer i etykiety ' +
+          'tej samej przesyłki, zamiast tworzyć drugą.',
       );
     }
     if (stan === 'do_wyjasnienia') {
       throw bladOperatora(
-        `Ta przesyłka jest już opisana jako „do wyjaśnienia" (list ${p.numer_listu}) — odblokowywać nie ma czego. `
-        + `Dokończ sprawę w ${panelKuriera(p.kurier)} i domknij ją przyciskiem na karcie.`,
+        `Ta przesyłka jest już opisana jako „do wyjaśnienia" (list ${p.numer_listu}) — odblokowywać nie ma czego. ` +
+          `Dokończ sprawę w ${panelKuriera(p.kurier)} i domknij ją przyciskiem na karcie.`,
       );
     }
     throw bladOperatora(
-      `Ta przesyłka jest nadana${p.numer_listu ? ` (list ${p.numer_listu})` : ''} — `
-      + 'odblokowanie pozwoliłoby nadać drugą paczkę pod TYM SAMYM numerem kolejnym, '
-      + 'czyli z tą samą referencją, którą kurier już zna. Kolejną paczkę nadaje się '
-      + 'przyciskiem „Nadaj kolejną paczkę" na karcie.',
+      `Ta przesyłka jest nadana${p.numer_listu ? ` (list ${p.numer_listu})` : ''} — ` +
+        'odblokowanie pozwoliłoby nadać drugą paczkę pod TYM SAMYM numerem kolejnym, ' +
+        'czyli z tą samą referencją, którą kurier już zna. Kolejną paczkę nadaje się ' +
+        'przyciskiem „Nadaj kolejną paczkę" na karcie.',
     );
   }
   const przycietyNumer = String(numerListu ?? '').trim();
@@ -517,9 +552,9 @@ export function skasujPrzesylkeReczna(db, przesylkaId) {
   if (!p) throw bladOperatora('Nie ma takiej przesyłki — nie ma czego kasować.');
   if (!p.nadana_recznie) {
     throw bladOperatora(
-      'Ta przesyłka NIE jest zarejestrowana ręcznie — kurier naprawdę przydzielił jej numer listu '
-      + `${p.numer_listu ? `(${p.numer_listu}) ` : ''}i paczka fizycznie istnieje u kuriera. Skasowanie `
-      + 'wiersza otworzyłoby drogę do drugiego nadania pod tą samą referencją. Panel nie kasuje takich przesyłek.',
+      'Ta przesyłka NIE jest zarejestrowana ręcznie — kurier naprawdę przydzielił jej numer listu ' +
+        `${p.numer_listu ? `(${p.numer_listu}) ` : ''}i paczka fizycznie istnieje u kuriera. Skasowanie ` +
+        'wiersza otworzyłoby drogę do drugiego nadania pod tą samą referencją. Panel nie kasuje takich przesyłek.',
     );
   }
   // ⚠️ DRUGA GRANICA: NUMER PRZECZYTANY Z KONTA ALLEGRO. Wiersz odczytany z API niesie
@@ -548,10 +583,10 @@ export function skasujPrzesylkeReczna(db, przesylkaId) {
   // sledzenia i tym, kogo NIE pytac o status, i w obu tych rolach 'allegro' jest poprawne.
   if (numerZAllegro(p)) {
     throw bladOperatora(
-      'Ta przesyłka NIE została wpisana ręcznie — jej numer listu '
-      + `${p.numer_listu ? `(${p.numer_listu}) ` : ''}panel PRZECZYTAŁ z konta Allegro, więc literówka `
-      + 'jest niemożliwa. Skasowany wiersz nie wróci: kartę przestaje odpytywać Allegro, gdy zamówienie '
-      + 'ma już datę wysyłki, i numer listu byłby stracony bezpowrotnie. Panel nie kasuje przesyłek z Allegro.',
+      'Ta przesyłka NIE została wpisana ręcznie — jej numer listu ' +
+        `${p.numer_listu ? `(${p.numer_listu}) ` : ''}panel PRZECZYTAŁ z konta Allegro, więc literówka ` +
+        'jest niemożliwa. Skasowany wiersz nie wróci: kartę przestaje odpytywać Allegro, gdy zamówienie ' +
+        'ma już datę wysyłki, i numer listu byłby stracony bezpowrotnie. Panel nie kasuje przesyłek z Allegro.',
     );
   }
   db.prepare('DELETE FROM przesylki WHERE id = ?').run(p.id);
@@ -583,8 +618,11 @@ export function zalatwPrzesylkeRecznie(db, przesylkaId) {
 // przesylkaUkryta). Gdyby ta funkcja cokolwiek czyscila, tamten powrot nie mialby z czego
 // nastapic.
 export function ukryjPrzesylke(db, id, kto) {
-  db.prepare('UPDATE przesylki SET ukryta_at = ?, ukryta_przez = ? WHERE id = ?')
-    .run(teraz(), String(kto ?? 'operator'), id);
+  db.prepare('UPDATE przesylki SET ukryta_at = ?, ukryta_przez = ? WHERE id = ?').run(
+    teraz(),
+    String(kto ?? 'operator'),
+    id,
+  );
 }
 
 // ⚠️ `ukryta_przez` KASOWANE RAZEM ZE ZNACZNIKIEM. Zostawiony autor przy pustej dacie mowilby
@@ -609,13 +647,17 @@ export function przywrocPrzesylke(db, id) {
 // LEFT JOIN, nie INNER: przesylka bez wiersza zamowienia (nie powinno sie zdarzyc, ale
 // zapytanie karmi ZEGAR) ma dalej byc sledzona — DPD i InPost kanalu nie potrzebuja.
 export function przesylkiDoSledzenia(db, odIso) {
-  return db.prepare(`
+  return db
+    .prepare(
+      `
     SELECT p.*, z.sklep AS sklep
     FROM przesylki p
     LEFT JOIN zamowienia z ON z.id = p.zamowienie_id
     WHERE p.status = 'nadana' AND p.numer_listu IS NOT NULL AND p.utworzona_at >= ?
     ORDER BY p.id
-  `).all(odIso);
+  `,
+    )
+    .all(odIso);
 }
 
 // Zapytania wiązane przez moduł do jego kontekstu bazy; istniejące eksporty zachowują parytet testów.

@@ -3,7 +3,12 @@ import { nowyPanel, jako, get, post } from '../../pomoc/panel-konta-testowe.js';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
 import { zmienSzablonyWiadomosci, wczytajSzablonyWiadomosci } from '../../../src/oms/db/szablony-wiadomosci.js';
 import { zapiszSzablon } from '../../../src/domena/szablony-wiadomosci.js';
-import { utworzRegule, wlaczRegule, usunRegule, regulyUzywajaceSzablonu } from '../../../src/moduly/automatyzacje/db/reguly.js';
+import {
+  utworzRegule,
+  wlaczRegule,
+  usunRegule,
+  regulyUzywajaceSzablonu,
+} from '../../../src/moduly/automatyzacje/db/reguly.js';
 import { migracjaRegul } from '../../../src/moduly/automatyzacje/migracje/0001-reguly.ts';
 import { MODULY } from '../../../src/moduly/lista.ts';
 
@@ -11,30 +16,49 @@ const ADRES = '/ustawienia/szablony-wiadomosci';
 const ID = 'wlasny-1';
 const otwarte = [];
 afterEach(async () => {
-  for (const p of otwarte.splice(0)) { await p.app.close(); p.db.close(); }
+  for (const p of otwarte.splice(0)) {
+    await p.app.close();
+    p.db.close();
+  }
 });
 
 async function panel({ bezAutomatyzacji = false } = {}) {
-  const p = nowyPanel(bezAutomatyzacji ? { moduly: MODULY.filter(m => m.nazwa !== 'automatyzacje') } : {});
+  const p = nowyPanel(bezAutomatyzacji ? { moduly: MODULY.filter((m) => m.nazwa !== 'automatyzacje') } : {});
   otwarte.push(p);
   await p.app.ready();
   zalozKonto(p.db, { login: 'admin', imie: 'Admin', haslo: 'h', rola: 'administrator', admin: true });
   zalozKonto(p.db, { login: 'operator', imie: 'Operator', haslo: 'h', rola: 'sprzedaz' });
   ustawUprawnienia(p.db, kontoPoLoginie(p.db, 'operator').id, ['ustawienia']);
-  zmienSzablonyWiadomosci(p.db, s => zapiszSzablon(s, 'nowy', {
-    nazwa: 'Informacja o lampie', temat: 'Lampa', tresc: 'Dzień dobry {imie}.',
-  }, '2026-10-23T10:00:00Z'));
+  zmienSzablonyWiadomosci(p.db, (s) =>
+    zapiszSzablon(
+      s,
+      'nowy',
+      {
+        nazwa: 'Informacja o lampie',
+        temat: 'Lampa',
+        tresc: 'Dzień dobry {imie}.',
+      },
+      '2026-10-23T10:00:00Z',
+    ),
+  );
   return { ...p, admin: jako(p.db, 'admin'), operator: jako(p.db, 'operator') };
 }
 
 function regula(db, nazwa, { wlaczona = false, usunieta = false, szablon = ID } = {}) {
-  const id = utworzRegule(db, { nazwa, zdarzenie: 'paczka_nadana', akcja: 'mail_kupujacy',
-    akcja_json: { szablon }, warunki: { kanaly: ['reczne'] }, opoznienie_min: 0, limit_na_godzine: 20 });
+  const id = utworzRegule(db, {
+    nazwa,
+    zdarzenie: 'paczka_nadana',
+    akcja: 'mail_kupujacy',
+    akcja_json: { szablon },
+    warunki: { kanaly: ['reczne'] },
+    opoznienie_min: 0,
+    limit_na_godzine: 20,
+  });
   if (wlaczona) wlaczRegule(db, id);
   if (usunieta) usunRegule(db, id);
   return id;
 }
-const istnieje = db => wczytajSzablonyWiadomosci(db).wlasne.some(s => s.id === ID);
+const istnieje = (db) => wczytajSzablonyWiadomosci(db).wlasne.some((s) => s.id === ID);
 
 describe('usunięcie szablonu używanego przez automatyzacje', () => {
   it('pokazuje włączoną i wyłączoną regułę z odnośnikami oraz wymagane potwierdzenie', async () => {
@@ -48,7 +72,9 @@ describe('usunięcie szablonu używanego przez automatyzacje', () => {
     expect(r.body).toContain('Ten szablon wysyłają reguły automatyzacji:');
     expect(r.body).toContain(`href="/ustawienia/automatyzacje/${a}">Lampy wysłane</a> (włączona)`);
     expect(r.body).toContain(`href="/ustawienia/automatyzacje/${b}">Lampy w kolejce</a> (wyłączona)`);
-    expect(r.body).toContain('Po usunięciu ich maile przestaną wychodzić — najpierw zmień szablon w regule albo ją wyłącz.');
+    expect(r.body).toContain(
+      'Po usunięciu ich maile przestaną wychodzić — najpierw zmień szablon w regule albo ją wyłącz.',
+    );
     expect(r.body).toMatch(/<input[^>]*type="checkbox"[^>]*name="potwierdzUsuniecie"[^>]*value="1"[^>]*required/u);
     expect(r.body).toContain('Rozumiem, reguły przestaną wysyłać ten mail');
     expect(r.body).not.toContain('Usunięta reguła');

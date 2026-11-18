@@ -33,13 +33,27 @@ async function atrapaSerwera() {
         const linia = bufor.slice(0, nl);
         bufor = bufor.slice(nl + 2);
         const komenda = linia.toUpperCase();
-        if (komenda.startsWith('EHLO')) { pisz('250-atrapa.invalid'); pisz('250-AUTH PLAIN LOGIN'); pisz('250 8BITMIME'); }
-        else if (komenda.startsWith('AUTH PLAIN')) { koperta.auth = true; pisz('235 2.7.0 ok'); }
-        else if (komenda.startsWith('MAIL FROM:')) { koperta.from = linia.slice(10).trim(); pisz('250 ok'); }
-        else if (komenda.startsWith('RCPT TO:')) { koperta.to.push(linia.slice(8).trim()); pisz('250 ok'); }
-        else if (komenda === 'DATA') { dane = ''; pisz('354 dalej'); }
-        else if (komenda === 'QUIT') { pisz('221 pa'); gniazdo.end(); return; }
-        else pisz('250 ok');
+        if (komenda.startsWith('EHLO')) {
+          pisz('250-atrapa.invalid');
+          pisz('250-AUTH PLAIN LOGIN');
+          pisz('250 8BITMIME');
+        } else if (komenda.startsWith('AUTH PLAIN')) {
+          koperta.auth = true;
+          pisz('235 2.7.0 ok');
+        } else if (komenda.startsWith('MAIL FROM:')) {
+          koperta.from = linia.slice(10).trim();
+          pisz('250 ok');
+        } else if (komenda.startsWith('RCPT TO:')) {
+          koperta.to.push(linia.slice(8).trim());
+          pisz('250 ok');
+        } else if (komenda === 'DATA') {
+          dane = '';
+          pisz('354 dalej');
+        } else if (komenda === 'QUIT') {
+          pisz('221 pa');
+          gniazdo.end();
+          return;
+        } else pisz('250 ok');
       }
     });
     gniazdo.on('error', () => {});
@@ -49,7 +63,10 @@ async function atrapaSerwera() {
 }
 
 let zamknij = null;
-afterEach(async () => { await zamknij?.(); zamknij = null; });
+afterEach(async () => {
+  await zamknij?.();
+  zamknij = null;
+});
 
 async function mailerNaAtrapie() {
   const s = await atrapaSerwera();
@@ -70,7 +87,9 @@ describe('prawdziwy nodemailer na atrapie serwera SMTP', () => {
       subject: 'Zamówienie 1042 — lampa „Żuraw” wysłana',
       text: 'Dzień dobry, paczka już jedzie.',
       html: '<p>Dzień dobry, paczka już jedzie.</p>',
-      attachments: [{ filename: 'faktura-1042.pdf', content: Buffer.from('%PDF-1.4 atrapa'), contentType: 'application/pdf' }],
+      attachments: [
+        { filename: 'faktura-1042.pdf', content: Buffer.from('%PDF-1.4 atrapa'), contentType: 'application/pdf' },
+      ],
       inReplyTo: '<poprzedni-1042@przyklad.invalid>',
       references: ['<poprzedni-1042@przyklad.invalid>'],
     });
@@ -90,7 +109,11 @@ describe('prawdziwy nodemailer na atrapie serwera SMTP', () => {
   // Na nodemailer 10.1.2 oba poniższe listy szły do obcy@zly.invalid zamiast do jan@ (sprawdzone na VM 210, 26.10).
   it('średnik w cudzysłowie wewnątrz grupy nie robi z nazwy odbiorcy (GHSA-m943-m63m-w62w)', async () => {
     const { mailer, listy } = await mailerNaAtrapie();
-    await mailer.sendMail({ to: 'Grupa: "Kowalski; obcy@zly.invalid" <jan@przyklad.invalid>;', subject: 's', text: 't' });
+    await mailer.sendMail({
+      to: 'Grupa: "Kowalski; obcy@zly.invalid" <jan@przyklad.invalid>;',
+      subject: 's',
+      text: 't',
+    });
     expect(listy[0].to).toEqual(['<jan@przyklad.invalid>']);
   });
 

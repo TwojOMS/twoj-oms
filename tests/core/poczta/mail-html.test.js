@@ -87,7 +87,10 @@ describe('renderMailHtml — tabela wyceny', () => {
 
 describe('renderMailHtml — stopka', () => {
   it('renderuje linie stopki, każda w osobnym wierszu', () => {
-    const html = renderMailHtml({ text: 'x', footer: 'Pracownia Półcień Anna Wzorcowa\nindywidualne@swietlik.example.test' });
+    const html = renderMailHtml({
+      text: 'x',
+      footer: 'Pracownia Półcień Anna Wzorcowa\nindywidualne@swietlik.example.test',
+    });
     expect(html).toContain('Pracownia Półcień Anna Wzorcowa');
     expect(html).toContain('indywidualne@swietlik.example.test');
     expect(html).toMatch(/Pracownia Półcień Anna Wzorcowa<br\s*\/?>/);
@@ -112,13 +115,16 @@ describe('dodatki bez kwoty — „w cenie" i „gratis" po prawej, jak kwota', 
     const start = html.indexOf('border-collapse');
     const pierwsza = html.slice(start, html.indexOf('</table>', start));
     return [...pierwsza.matchAll(/<tr>(.*?)<\/tr>/gs)].map((m) =>
-      [...m[1].matchAll(/<td[^>]*>(.*?)<\/td>/gs)].map((x) => x[1].replace(/<[^>]+>/g, ' ').trim()));
+      [...m[1].matchAll(/<td[^>]*>(.*?)<\/td>/gs)].map((x) => x[1].replace(/<[^>]+>/g, ' ').trim()),
+    );
   };
 
   it('bez kwot: obie pozycje są wierszami tabeli z wartością po prawej', () => {
     const t = [
-      'Wycena:', '1x lampa - 100zł brutto/szt',
-      'przygotowanie projektu - w cenie', 'wysyłka kurierem DPD - gratis',
+      'Wycena:',
+      '1x lampa - 100zł brutto/szt',
+      'przygotowanie projektu - w cenie',
+      'wysyłka kurierem DPD - gratis',
       'Razem: 100zł (81,30zł netto)',
     ].join('\n');
     const wiersze = zTabeli(renderMailHtml({ text: t }));
@@ -128,8 +134,10 @@ describe('dodatki bez kwoty — „w cenie" i „gratis" po prawej, jak kwota', 
 
   it('z kwotami: ten sam kształt wiersza — różni się tylko prawa kolumna', () => {
     const t = [
-      'Wycena:', '1x lampa - 100zł brutto/szt',
-      'przygotowanie projektu - 80zł brutto', 'wysyłka kurierem DPD - 25zł brutto',
+      'Wycena:',
+      '1x lampa - 100zł brutto/szt',
+      'przygotowanie projektu - 80zł brutto',
+      'wysyłka kurierem DPD - 25zł brutto',
       'Razem: 205zł (166,67zł netto)',
     ].join('\n');
     const wiersze = zTabeli(renderMailHtml({ text: t }));
@@ -140,8 +148,10 @@ describe('dodatki bez kwoty — „w cenie" i „gratis" po prawej, jak kwota', 
   // Sedno usterki: żaden wiersz wyceny nie ma prawa rozciągać się na obie kolumny.
   it('żaden wiersz tabeli nie rozciąga się na obie kolumny', () => {
     const t = [
-      'Wycena:', '1x lampa - 100zł brutto/szt',
-      'przygotowanie projektu - w cenie', 'wysyłka kurierem DPD - gratis',
+      'Wycena:',
+      '1x lampa - 100zł brutto/szt',
+      'przygotowanie projektu - w cenie',
+      'wysyłka kurierem DPD - gratis',
       'Razem: 100zł (81,30zł netto)',
     ].join('\n');
     expect(renderMailHtml({ text: t })).not.toContain('colspan');
@@ -152,12 +162,17 @@ describe('dodatki bez kwoty — „w cenie" i „gratis" po prawej, jak kwota', 
      żeby mail i sklep czytały się jak jedno miejsce. Dwukropek jest UMOWĄ TEKSTOWĄ (po nim
      renderer poznaje nagłówek) i dlatego w wersji HTML go nie ma: w wersalikach wygląda
      jak literówka, a w plain-textcie zostaje. */
-  const naglowkiZ = (html) => [...html.matchAll(/letter-spacing:2px;text-transform:uppercase;color:[^"]*">(.*?)<\/p>/g)].map((m) => m[1]);
+  const naglowkiZ = (html) =>
+    [...html.matchAll(/letter-spacing:2px;text-transform:uppercase;color:[^"]*">(.*?)<\/p>/g)].map((m) => m[1]);
 
   it('„Wycena:" i „Czas realizacji:" są nagłówkami sekcji, nie akapitami', () => {
     const t = [
-      'Wycena:', '1x lampa - 100zł brutto/szt', 'Razem: 100zł (81,30zł netto)',
-      '', 'Czas realizacji:', 'Standardowy 3-7 dni - 0zł',
+      'Wycena:',
+      '1x lampa - 100zł brutto/szt',
+      'Razem: 100zł (81,30zł netto)',
+      '',
+      'Czas realizacji:',
+      'Standardowy 3-7 dni - 0zł',
     ].join('\n');
     const naglowki = naglowkiZ(renderMailHtml({ text: t }));
     expect(naglowki).toContain('Wycena');
@@ -178,9 +193,12 @@ describe('dodatki bez kwoty — „w cenie" i „gratis" po prawej, jak kwota', 
      w kilku tekstach w /settings) miałby nad sobą pustą linię i bez limitu słów wyrósłby
      na wersalikowy nagłówek — z całym zdaniem klienta w środku. */
   it('⚠️ długie zdanie z dwukropkiem otwierające akapit NIE jest nagłówkiem', () => {
-    const t = ['Dzień dobry,', '',
+    const t = [
+      'Dzień dobry,',
+      '',
       'dziękuję za akceptację wyceny — poniżej przesyłam wszystkie dane potrzebne do wpłaty:',
-      'Pracownia Półcień Anna Wzorcowa'].join('\n');
+      'Pracownia Półcień Anna Wzorcowa',
+    ].join('\n');
     const html = renderMailHtml({ text: t });
     expect(naglowkiZ(html)).toEqual([]);
     expect(html).toContain('poniżej przesyłam wszystkie dane potrzebne do wpłaty:');
@@ -208,8 +226,14 @@ describe('dodatki bez kwoty — „w cenie" i „gratis" po prawej, jak kwota', 
   });
 
   it('⚠️ długie zdanie z dwukropkiem w środku pudełka NIE jest nagłówkiem', () => {
-    const t = ['Zamówienie:', 'Wybierz:', '', '1. Przelew tradycyjny',
-      'Możesz też przelać należność bezpośrednio na nasze konto:', '07 1090 1014 0000 0000 0000 0001'].join('\n');
+    const t = [
+      'Zamówienie:',
+      'Wybierz:',
+      '',
+      '1. Przelew tradycyjny',
+      'Możesz też przelać należność bezpośrednio na nasze konto:',
+      '07 1090 1014 0000 0000 0000 0001',
+    ].join('\n');
     const html = renderMailHtml({ text: t });
     expect(naglowkiZ(html)).toEqual(['Zamówienie']);
     expect(html).toContain('Możesz też przelać należność bezpośrednio na nasze konto:');
@@ -217,15 +241,19 @@ describe('dodatki bez kwoty — „w cenie" i „gratis" po prawej, jak kwota', 
 
   describe('pudełka opcji płatności', () => {
     const MAIL = [
-      'Zamówienie:', 'Wybierz sposób:', '',
+      'Zamówienie:',
+      'Wybierz sposób:',
+      '',
       '1. Zamówienie w sklepie',
       'Zapłacisz kartą.',
       'Akceptuję wycenę:',
-      'https://pro/?oferta=1', '',
+      'https://pro/?oferta=1',
+      '',
       '2. Faktura proforma',
       'Podaj dane.',
       'Wypełnij dane do proformy:',
-      'https://pro/?proforma=2', '',
+      'https://pro/?proforma=2',
+      '',
       '3. Przelew tradycyjny',
       'Na nasze konto:',
       '07 1090 1014 0000 0000 0000 0001',
@@ -234,7 +262,7 @@ describe('dodatki bez kwoty — „w cenie" i „gratis" po prawej, jak kwota', 
 
     it('każda ponumerowana opcja dostaje własne pudełko z kółkiem numeru', () => {
       const html = renderMailHtml({ text: MAIL });
-      expect((html.match(/background-color:#F4EFE6/g) || [])).toHaveLength(3);
+      expect(html.match(/background-color:#F4EFE6/g) || []).toHaveLength(3);
       expect(html).toContain('>1</span>Zamówienie w sklepie');
       expect(html).toContain('>2</span>Faktura proforma');
       expect(html).toContain('>3</span>Przelew tradycyjny');
@@ -258,7 +286,15 @@ describe('dodatki bez kwoty — „w cenie" i „gratis" po prawej, jak kwota', 
        gdyby kiedyś dostał drugi odnośnik). Reguła „pierwszy wypełniony" ma działać także
        na tej ścieżce; mutacja pokazała, że fixture z samymi pudełkami jej nie dotyka. */
     it('⚠️ kolejność rozstrzyga także dla przycisków POZA pudełkami', () => {
-      const t = ['Dzień dobry,', '', 'Zobacz projekt:', 'https://pro/?a=1', '', 'Pobierz plik:', 'https://pro/?b=2'].join('\n');
+      const t = [
+        'Dzień dobry,',
+        '',
+        'Zobacz projekt:',
+        'https://pro/?a=1',
+        '',
+        'Pobierz plik:',
+        'https://pro/?b=2',
+      ].join('\n');
       const linki = [...renderMailHtml({ text: t }).matchAll(/<a href="([^"]+)" style="([^"]+)"/g)].map((m) => m[2]);
       expect(linki).toHaveLength(2);
       expect(linki[0]).toContain('background-color:#3E5566');
@@ -271,8 +307,10 @@ describe('dodatki bez kwoty — „w cenie" i „gratis" po prawej, jak kwota', 
       // Badamy SAME znaczniki <a>, a nie okno tekstu przed adresem: pudełko niesie między
       // nimi kilkaset znaków własnego stylu (kółko z numerem), więc okno mierzyłoby co innego,
       // niż nazywa test. Ta pomyłka zdarzyła się przy pisaniu tego pliku.
-      const linki = [...renderMailHtml({ text: MAIL }).matchAll(/<a href="([^"]+)" style="([^"]+)"/g)]
-        .map((m) => ({ url: m[1], styl: m[2] }));
+      const linki = [...renderMailHtml({ text: MAIL }).matchAll(/<a href="([^"]+)" style="([^"]+)"/g)].map((m) => ({
+        url: m[1],
+        styl: m[2],
+      }));
       expect(linki.map((l) => l.url)).toEqual(['https://pro/?oferta=1', 'https://pro/?proforma=2']);
       expect(linki[0].styl).toContain('background-color:#3E5566');
       expect(linki[0].styl).toContain('color:#ffffff');

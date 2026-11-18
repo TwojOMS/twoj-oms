@@ -11,13 +11,22 @@ function panel() {
   ustawUprawnienia(p.db, kontoPoLoginie(p.db, 'pracownik').id, ['ustawienia', 'klienci', 'okresy']);
   return { ...p, admin: jako(p.db, 'admin'), pracownik: jako(p.db, 'pracownik') };
 }
-afterEach(async () => { for (const p of panele.splice(0)) { await p.app.close(); p.db.close(); } });
+afterEach(async () => {
+  for (const p of panele.splice(0)) {
+    await p.app.close();
+    p.db.close();
+  }
+});
 const przelacz = (p, modul, wlacz = '0', kto = p.admin) => post(p.app, '/ustawienia/moduly', kto, { modul, wlacz });
 function zapis(db, wartosc) {
-  db.prepare("INSERT OR REPLACE INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('moduly.wylaczone', ?, '2026-10-20')").run(wartosc);
+  db.prepare(
+    "INSERT OR REPLACE INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('moduly.wylaczone', ?, '2026-10-20')",
+  ).run(wartosc);
 }
 function klient(db, zbiorczo = 1) {
-  db.prepare("INSERT INTO klienci (klucz,nazwa,nip,rozliczenie_zbiorcze,rabat_procent,utworzone_at,zmienione_at) VALUES ('przyklad','Pracownia Przykładowa','1234567890',?,10,'2026-10-01','2026-10-01')").run(zbiorczo);
+  db.prepare(
+    "INSERT INTO klienci (klucz,nazwa,nip,rozliczenie_zbiorcze,rabat_procent,utworzone_at,zmienione_at) VALUES ('przyklad','Pracownia Przykładowa','1234567890',?,10,'2026-10-01','2026-10-01')",
+  ).run(zbiorczo);
 }
 
 describe('wyłączanie modułów', () => {
@@ -28,8 +37,12 @@ describe('wyłączanie modułów', () => {
     expect(ekran.body).toContain('role="switch" aria-checked="true" aria-label="Klienci B2B"');
     expect(ekran.body).toContain('role="switch" aria-checked="true" aria-label="Rozliczenia"');
     expect((await przelacz(p, 'klienci')).statusCode).toBe(303);
-    expect(JSON.parse(p.db.prepare("SELECT wartosc FROM ustawienia WHERE klucz='moduly.wylaczone'").get().wartosc)).toEqual(['klienci']);
-    expect((await get(p.app, '/ustawienia/moduly', p.admin)).body).toContain('role="switch" aria-checked="false" aria-label="Klienci B2B"');
+    expect(
+      JSON.parse(p.db.prepare("SELECT wartosc FROM ustawienia WHERE klucz='moduly.wylaczone'").get().wartosc),
+    ).toEqual(['klienci']);
+    expect((await get(p.app, '/ustawienia/moduly', p.admin)).body).toContain(
+      'role="switch" aria-checked="false" aria-label="Klienci B2B"',
+    );
     const menu = await get(p.app, '/', p.admin);
     expect(menu.body).not.toContain('href="/klienci"');
     const odmowa = await get(p.app, '/klienci?nowy', p.admin);
@@ -56,7 +69,8 @@ describe('wyłączanie modułów', () => {
     expect(p.db.prepare("SELECT * FROM ustawienia WHERE klucz='moduly.wylaczone'").get()).toBeUndefined();
   });
   it('odmawia wyłączenia obu ekranów przy kliencie rozliczanym zbiorczo', async () => {
-    const p = panel(); klient(p.db);
+    const p = panel();
+    klient(p.db);
     for (const modul of ['klienci', 'okresy']) {
       const r = await przelacz(p, modul);
       expect(r.statusCode).toBe(409);
@@ -66,8 +80,16 @@ describe('wyłączanie modułów', () => {
   });
   it('odmawia wyłączenia rozliczeń przy okresie z zamówieniami bez faktury, także zamkniętym', async () => {
     const p = panel();
-    const id = p.db.prepare("INSERT INTO okresy_rozliczeniowe (klient_klucz,rok,miesiac,stan,utworzony_at) VALUES ('dawny',2026,10,'zamkniety','2026-10-01')").run().lastInsertRowid;
-    p.db.prepare("INSERT INTO zamowienia (sklep,zrodlo_id,numer,kwota_brutto,utworzone_at,okres_rozliczeniowy_id) VALUES ('reczne',1,'DEMO/1','10.00','2026-10-01',?)").run(id);
+    const id = p.db
+      .prepare(
+        "INSERT INTO okresy_rozliczeniowe (klient_klucz,rok,miesiac,stan,utworzony_at) VALUES ('dawny',2026,10,'zamkniety','2026-10-01')",
+      )
+      .run().lastInsertRowid;
+    p.db
+      .prepare(
+        "INSERT INTO zamowienia (sklep,zrodlo_id,numer,kwota_brutto,utworzone_at,okres_rozliczeniowy_id) VALUES ('reczne',1,'DEMO/1','10.00','2026-10-01',?)",
+      )
+      .run(id);
     const r = await przelacz(p, 'okresy');
     expect(r.statusCode).toBe(409);
     expect(r.body).toContain('1 okresów z zamówieniami bez zakończonej faktury');
@@ -78,7 +100,11 @@ describe('wyłączanie modułów', () => {
       expect((await przelacz(p, 'okresy')).statusCode).toBe(409);
     }
     expect(p.db.prepare("SELECT * FROM ustawienia WHERE klucz='moduly.wylaczone'").get()).toBeUndefined();
-    p.db.prepare("UPDATE okresy_rozliczeniowe SET stan='zafakturowany', numer='DEMO/1', infakt_uuid='demo-uuid', ksef_status=NULL").run();
+    p.db
+      .prepare(
+        "UPDATE okresy_rozliczeniowe SET stan='zafakturowany', numer='DEMO/1', infakt_uuid='demo-uuid', ksef_status=NULL",
+      )
+      .run();
     expect((await przelacz(p, 'okresy')).statusCode).toBe(409);
   });
   it.each([
@@ -90,14 +116,31 @@ describe('wyłączanie modułów', () => {
     ['uszkodzona zaliczka bez zamówień', 'nieznana', false, 409],
   ])('saldo okresu: %s — sprawdza oba przełączniki', async (_opis, kwota, maZamowienia, kod) => {
     const p = panel();
-    const id = p.db.prepare("INSERT INTO okresy_rozliczeniowe (klient_klucz,rok,miesiac,stan,utworzony_at,numer,infakt_uuid) VALUES ('dawny',2026,10,'zafakturowany','2026-10-01','DEMO/1','demo-uuid')").run().lastInsertRowid;
-    if (!maZamowienia) p.db.prepare("UPDATE okresy_rozliczeniowe SET stan='otwarty', numer=NULL, infakt_uuid=NULL WHERE id=?").run(id);
+    const id = p.db
+      .prepare(
+        "INSERT INTO okresy_rozliczeniowe (klient_klucz,rok,miesiac,stan,utworzony_at,numer,infakt_uuid) VALUES ('dawny',2026,10,'zafakturowany','2026-10-01','DEMO/1','demo-uuid')",
+      )
+      .run().lastInsertRowid;
+    if (!maZamowienia)
+      p.db.prepare("UPDATE okresy_rozliczeniowe SET stan='otwarty', numer=NULL, infakt_uuid=NULL WHERE id=?").run(id);
     if (maZamowienia) {
-      p.db.prepare("INSERT INTO zamowienia (sklep,zrodlo_id,numer,kwota_brutto,utworzone_at,okres_rozliczeniowy_id) VALUES ('reczne',1,'DEMO/1','1230.00','2026-10-01',?)").run(id);
+      p.db
+        .prepare(
+          "INSERT INTO zamowienia (sklep,zrodlo_id,numer,kwota_brutto,utworzone_at,okres_rozliczeniowy_id) VALUES ('reczne',1,'DEMO/1','1230.00','2026-10-01',?)",
+        )
+        .run(id);
       // Jak na ekranie okresu: ręcznie anulowane zamówienie nie zwiększa należności.
-      p.db.prepare("INSERT INTO zamowienia (sklep,zrodlo_id,numer,kwota_brutto,utworzone_at,okres_rozliczeniowy_id,anulowane_recznie) VALUES ('reczne',2,'DEMO/2','500.00','2026-10-01',?,1)").run(id);
+      p.db
+        .prepare(
+          "INSERT INTO zamowienia (sklep,zrodlo_id,numer,kwota_brutto,utworzone_at,okres_rozliczeniowy_id,anulowane_recznie) VALUES ('reczne',2,'DEMO/2','500.00','2026-10-01',?,1)",
+        )
+        .run(id);
     }
-    p.db.prepare("INSERT INTO platnosci_okresu (okres_rozliczeniowy_id,kwota,metoda,zrodlo,utworzona_at) VALUES (?,?,'przelew','reczna','2026-10-02')").run(id, kwota);
+    p.db
+      .prepare(
+        "INSERT INTO platnosci_okresu (okres_rozliczeniowy_id,kwota,metoda,zrodlo,utworzona_at) VALUES (?,?,'przelew','reczna','2026-10-02')",
+      )
+      .run(id, kwota);
     for (const modul of ['klienci', 'okresy']) {
       const r = await przelacz(p, modul);
       expect(r.statusCode, r.body).toBe(kod);
@@ -106,25 +149,34 @@ describe('wyłączanie modułów', () => {
         if (kwota === 'nieznana') expect(r.body).toContain('nie można odczytać kwoty');
       }
     }
-    if (kod === 409) expect(p.db.prepare("SELECT * FROM ustawienia WHERE klucz='moduly.wylaczone'").get()).toBeUndefined();
+    if (kod === 409)
+      expect(p.db.prepare("SELECT * FROM ustawienia WHERE klucz='moduly.wylaczone'").get()).toBeUndefined();
     // Włączenie pozostaje możliwe także wtedy, gdy wpłata jest uszkodzona.
     expect((await przelacz(p, 'okresy', '1')).statusCode).toBe(303);
   });
   it('pusty okres nie blokuje; wyłączone Rozliczenia blokują GET i POST przed trasą', async () => {
     const p = panel();
-    p.db.prepare("INSERT INTO okresy_rozliczeniowe (klient_klucz,rok,miesiac,stan,utworzony_at) VALUES ('dawny',2026,10,'otwarty','2026-10-01')").run();
+    p.db
+      .prepare(
+        "INSERT INTO okresy_rozliczeniowe (klient_klucz,rok,miesiac,stan,utworzony_at) VALUES ('dawny',2026,10,'otwarty','2026-10-01')",
+      )
+      .run();
     expect((await przelacz(p, 'okresy')).statusCode).toBe(303);
     for (const r of [await get(p.app, '/okresy', p.admin), await post(p.app, '/okresy/1/zamknij', p.admin)]) {
-      expect(r.statusCode).toBe(404); expect(r.body).toContain('Moduł wyłączony');
+      expect(r.statusCode).toBe(404);
+      expect(r.body).toContain('Moduł wyłączony');
     }
     expect(p.db.prepare('SELECT stan FROM okresy_rozliczeniowe').get().stan).toBe('otwarty');
     await przelacz(p, 'okresy', '1');
     expect((await get(p.app, '/okresy', p.admin)).statusCode).toBe(200);
   });
   it('rabaty zostają, a ekran ról objaśnia wyłączony moduł', async () => {
-    const p = panel(); klient(p.db, 0);
+    const p = panel();
+    klient(p.db, 0);
     expect((await przelacz(p, 'klienci')).statusCode).toBe(303);
-    expect((await get(p.app, '/ustawienia/moduly', p.admin)).body).toContain('1 klientów B2B z rabatem — rabaty nadal działają, edycja po włączeniu modułu');
+    expect((await get(p.app, '/ustawienia/moduly', p.admin)).body).toContain(
+      '1 klientów B2B z rabatem — rabaty nadal działają, edycja po włączeniu modułu',
+    );
     expect(p.db.prepare('SELECT rabat_procent FROM klienci').get().rabat_procent).toBe(10);
     expect((await get(p.app, '/ustawienia/role', p.admin)).body).toContain('Klienci B2B (moduł wyłączony)');
   });
@@ -132,16 +184,24 @@ describe('wyłączanie modułów', () => {
     const p = panel();
     await przelacz(p, 'okresy');
     const r = await post(p.app, '/klienci', p.admin, {
-      nazwa: 'Pracownia Przykładowa', nip: '1234567890', rozliczenie_zbiorcze: 'on',
-      prog_darmowej_dostawy: '100', oplata_obslugi: '10', oplata_kurierska: '20',
+      nazwa: 'Pracownia Przykładowa',
+      nip: '1234567890',
+      rozliczenie_zbiorcze: 'on',
+      prog_darmowej_dostawy: '100',
+      oplata_obslugi: '10',
+      oplata_kurierska: '20',
     });
     expect(r.statusCode).toBe(409);
     expect(r.body).toContain('Włącz Rozliczenia w Ustawieniach → System → Włączone funkcje');
     expect(p.db.prepare('SELECT COUNT(*) AS n FROM klienci').get().n).toBe(0);
   });
-  it.each([null, '', '{zepsute', '{}', '["zamowienia"]', '["klienci",5]'])('pusty/uszkodzony zapis %s niczego nie wyłącza', async wartosc => {
-    const p = panel(); if (wartosc !== null) zapis(p.db, wartosc);
-    expect((await get(p.app, '/klienci', p.admin)).statusCode).toBe(200);
-    expect((await get(p.app, '/okresy', p.admin)).statusCode).toBe(200);
-  });
+  it.each([null, '', '{zepsute', '{}', '["zamowienia"]', '["klienci",5]'])(
+    'pusty/uszkodzony zapis %s niczego nie wyłącza',
+    async (wartosc) => {
+      const p = panel();
+      if (wartosc !== null) zapis(p.db, wartosc);
+      expect((await get(p.app, '/klienci', p.admin)).statusCode).toBe(200);
+      expect((await get(p.app, '/okresy', p.admin)).statusCode).toBe(200);
+    },
+  );
 });

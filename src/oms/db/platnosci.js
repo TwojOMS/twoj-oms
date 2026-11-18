@@ -12,9 +12,7 @@ const teraz = () => new Date().toISOString();
 const PORZADEK_WPLAT = 'COALESCE(data, utworzona_at), id';
 
 export function platnosciZamowienia(db, zamowienieId) {
-  return db.prepare(
-    `SELECT * FROM platnosci WHERE zamowienie_id = ? ORDER BY ${PORZADEK_WPLAT}`,
-  ).all(zamowienieId);
+  return db.prepare(`SELECT * FROM platnosci WHERE zamowienie_id = ? ORDER BY ${PORZADEK_WPLAT}`).all(zamowienieId);
 }
 
 /**
@@ -26,10 +24,12 @@ export function platnosciZamowienia(db, zamowienieId) {
 export function platnosciDlaZamowien(db, zamowienieIds) {
   const mapa = new Map();
   if (!zamowienieIds.length) return mapa;
-  const wiersze = db.prepare(
-    `SELECT * FROM platnosci WHERE zamowienie_id IN (${zamowienieIds.map(() => '?').join(',')})
+  const wiersze = db
+    .prepare(
+      `SELECT * FROM platnosci WHERE zamowienie_id IN (${zamowienieIds.map(() => '?').join(',')})
      ORDER BY zamowienie_id, ${PORZADEK_WPLAT}`,
-  ).all(...zamowienieIds);
+    )
+    .all(...zamowienieIds);
   for (const w of wiersze) {
     if (!mapa.has(w.zamowienie_id)) mapa.set(w.zamowienie_id, []);
     mapa.get(w.zamowienie_id).push(w);
@@ -55,28 +55,32 @@ export function zsynchronizujWplateSklepu(db, zamowienieId, { oplacone_at, kwota
     db.prepare("DELETE FROM platnosci WHERE zamowienie_id = ? AND zrodlo = 'sklep'").run(zamowienieId);
     return;
   }
-  const istniejaca = db.prepare(
-    "SELECT id FROM platnosci WHERE zamowienie_id = ? AND zrodlo = 'sklep'",
-  ).get(zamowienieId);
+  const istniejaca = db
+    .prepare("SELECT id FROM platnosci WHERE zamowienie_id = ? AND zrodlo = 'sklep'")
+    .get(zamowienieId);
   // Wiersz do aktualizacji wskazuje WYLACZNIE zapytanie wyzej (to ono niesie `zrodlo`),
   // wiec warunku nie powtarzamy tutaj drugi raz: dwie kopie tej samej granicy rozjechalyby
   // sie przy pierwszej zmianie, a do tego skutecznie ukrywalyby bledy tej pierwszej.
   if (istniejaca) {
-    db.prepare('UPDATE platnosci SET kwota = ?, data = ?, metoda = ? WHERE id = ?')
-      .run(String(kwota), oplacone_at, metoda ?? null, istniejaca.id);
+    db.prepare('UPDATE platnosci SET kwota = ?, data = ?, metoda = ? WHERE id = ?').run(
+      String(kwota),
+      oplacone_at,
+      metoda ?? null,
+      istniejaca.id,
+    );
     return;
   }
   db.prepare(
-    'INSERT INTO platnosci (zamowienie_id, kwota, data, metoda, uwaga, zrodlo, utworzona_at)'
-    + " VALUES (?,?,?,?,NULL,'sklep',?)",
+    'INSERT INTO platnosci (zamowienie_id, kwota, data, metoda, uwaga, zrodlo, utworzona_at)' +
+      " VALUES (?,?,?,?,NULL,'sklep',?)",
   ).run(zamowienieId, String(kwota), oplacone_at, metoda ?? null, teraz());
 }
 
 /** Wplata dopisana przez czlowieka. Poller jej nie tyka — patrz komentarz wyzej. */
 export function dodajWplateReczna(db, zamowienieId, { kwota, data, metoda = null, uwaga = null }) {
   db.prepare(
-    'INSERT INTO platnosci (zamowienie_id, kwota, data, metoda, uwaga, zrodlo, utworzona_at)'
-    + " VALUES (?,?,?,?,?,'reczna',?)",
+    'INSERT INTO platnosci (zamowienie_id, kwota, data, metoda, uwaga, zrodlo, utworzona_at)' +
+      " VALUES (?,?,?,?,?,'reczna',?)",
   ).run(zamowienieId, String(kwota), data, metoda, uwaga, teraz());
   return { kwota: String(kwota), data, metoda, uwaga };
 }
@@ -93,13 +97,12 @@ export function dodajWplateReczna(db, zamowienieId, { kwota, data, metoda = null
 // AUTOINCREMENT roznych tabel zbiegaja sie, wiec sam `id` przepuscilby pomylke argumentu
 // w trasie.
 export function usunWplateReczna(db, zamowienieId, platnoscId) {
-  const w = db.prepare('SELECT * FROM platnosci WHERE id = ? AND zamowienie_id = ?')
-    .get(platnoscId, zamowienieId);
+  const w = db.prepare('SELECT * FROM platnosci WHERE id = ? AND zamowienie_id = ?').get(platnoscId, zamowienieId);
   if (!w) throw bladOperatora('Nie ma takiej wpłaty przy tym zamówieniu.');
   if (w.zrodlo !== 'reczna') {
     throw bladOperatora(
-      'Wpłaty ze sklepu nie da się usunąć z panelu — należy do sklepu i OMS dopisałby ją'
-      + ' z powrotem przy najbliższej synchronizacji. Jeśli ta wpłata jest błędna, popraw ją w sklepie.',
+      'Wpłaty ze sklepu nie da się usunąć z panelu — należy do sklepu i OMS dopisałby ją' +
+        ' z powrotem przy najbliższej synchronizacji. Jeśli ta wpłata jest błędna, popraw ją w sklepie.',
     );
   }
   db.prepare('DELETE FROM platnosci WHERE id = ?').run(platnoscId);
@@ -142,10 +145,12 @@ export function dodajWplateOkresu(db, okresId, { kwota, data, metoda, uwaga }) {
   // bazie napis „true", ktorego zaden kolejny odczyt salda juz nie parsuje — dokladnie ten
   // zatruty okres, przed ktorym `sprawdzKwoteWplaty` mial bronic. Ten sam wzorzec stosuje
   // `parsujWplate` w domena/platnosci.js.
-  const wynik = db.prepare(
-    'INSERT INTO platnosci_okresu (okres_rozliczeniowy_id, kwota, data, metoda, uwaga, zrodlo, utworzona_at)'
-    + " VALUES (?, ?, ?, ?, ?, 'reczna', ?)",
-  ).run(okresId, zl(kwotaGr), data ?? null, metoda ?? null, uwaga ?? null, teraz());
+  const wynik = db
+    .prepare(
+      'INSERT INTO platnosci_okresu (okres_rozliczeniowy_id, kwota, data, metoda, uwaga, zrodlo, utworzona_at)' +
+        " VALUES (?, ?, ?, ?, ?, 'reczna', ?)",
+    )
+    .run(okresId, zl(kwotaGr), data ?? null, metoda ?? null, uwaga ?? null, teraz());
   // Oddajemy ZAPISANY wiersz (tak jak `dodajWplateReczna` oddaje swoj), i to odczytany
   // z bazy: trasa dostaje `id`, bez ktorego nie ma czego pokazac ani czego usunac.
   return wplataOkresu(db, Number(wynik.lastInsertRowid));
@@ -170,7 +175,8 @@ function wplataOkresu(db, platnoscId) {
 // z banku — to jest miejsce, w ktorym trzeba je oslonic, tak jak `usunWplateReczna` oslania
 // wplaty ze sklepu.
 export function usunWplateOkresu(db, okresId, platnoscId) {
-  const w = db.prepare('SELECT * FROM platnosci_okresu WHERE id = ? AND okres_rozliczeniowy_id = ?')
+  const w = db
+    .prepare('SELECT * FROM platnosci_okresu WHERE id = ? AND okres_rozliczeniowy_id = ?')
     .get(platnoscId, okresId);
   if (!w) throw bladOperatora('Nie ma takiej wpłaty przy tym okresie rozliczeniowym.');
   db.prepare('DELETE FROM platnosci_okresu WHERE id = ?').run(platnoscId);
@@ -190,8 +196,9 @@ export function usunWplateOkresu(db, okresId, platnoscId) {
  * nigdy wlasnym `Number(a) + Number(b)`.
  */
 export function wplatyOkresu(db, okresId) {
-  return db.prepare(
-    'SELECT * FROM platnosci_okresu WHERE okres_rozliczeniowy_id = ?'
-    + ' ORDER BY COALESCE(data, utworzona_at), id',
-  ).all(okresId);
+  return db
+    .prepare(
+      'SELECT * FROM platnosci_okresu WHERE okres_rozliczeniowy_id = ?' + ' ORDER BY COALESCE(data, utworzona_at), id',
+    )
+    .all(okresId);
 }

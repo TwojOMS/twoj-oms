@@ -19,7 +19,12 @@ export function wczytajSprzedawce(env: Srodowisko): DaneSprzedawcy {
   const bdo = env.OMS_SPRZEDAWCA_BDO?.trim() || null;
   if (bdo && !/^\d{9}$/.test(bdo)) bledy.push('OMS_SPRZEDAWCA_BDO: ' + ZDANIE_BDO + BDO_PUSTE_W_PLIKU);
   if (bledy.length) throw new Error([...bledy, GDZIE_POPRAWIC].join('\n'));
-  return { nip: nipSurowy ? nip : null, rachunek: rachSurowy ? rachunek : null, bdo, bank: env.OMS_BANK?.trim() || null };
+  return {
+    nip: nipSurowy ? nip : null,
+    rachunek: rachSurowy ? rachunek : null,
+    bdo,
+    bank: env.OMS_BANK?.trim() || null,
+  };
 }
 
 // Treści komunikatów startu. Stoją pod funkcją, żeby numery linii odczytów zmiennych (docs/konfiguracja.json) się nie
@@ -29,15 +34,22 @@ export function wczytajSprzedawce(env: Srodowisko): DaneSprzedawcy {
 const DOZWOLONE = 'przedrostek PL, spacje i myślniki są dozwolone i pomijane';
 // Zdania o złym NIP-ie i BDO wspólne dla startu (z przedrostkiem „OMS_SPRZEDAWCA_…: ”) i formularzy
 // Ustawienia → Firma (src/domena/nip-bdo-firmy.js) — jedna walidacja, jedno zdanie.
-export const ZDANIE_NIP_FORMAT = 'niepoprawny NIP — ' + DOZWOLONE + ', ale reszta musi mieć dokładnie 10 cyfr, bez liter i innych znaków';
-export const ZDANIE_NIP_SUMA = 'niepoprawny NIP — to 10 cyfr, ale nie zgadza się cyfra kontrolna; sprawdź, czy w numerze nie ma literówki';
+export const ZDANIE_NIP_FORMAT =
+  'niepoprawny NIP — ' + DOZWOLONE + ', ale reszta musi mieć dokładnie 10 cyfr, bez liter i innych znaków';
+export const ZDANIE_NIP_SUMA =
+  'niepoprawny NIP — to 10 cyfr, ale nie zgadza się cyfra kontrolna; sprawdź, czy w numerze nie ma literówki';
 export const ZDANIE_BDO = 'oczekiwano 9 cyfr bez spacji i myślników (numer rejestrowy BDO)';
 const BDO_PUSTE_W_PLIKU = '; jeśli firma nie ma numeru BDO, zostaw zmienną pustą albo usuń jej linię';
 // Zdania o złym rachunku wspólne dla startu (z przedrostkiem „OMS_RACHUNEK: ”) i formularza
 // Ustawienia → Firma (src/domena/rachunek-firmy.js) — jedna walidacja, jedno zdanie.
-export const ZDANIE_RACHUNEK_FORMAT = 'niepoprawny numer rachunku — ' + DOZWOLONE + ', ale reszta musi mieć dokładnie 26 cyfr (NRB), bez liter i innych znaków';
-export const ZDANIE_RACHUNEK_SUMA = 'niepoprawny numer rachunku — to 26 cyfr, ale nie zgadzają się cyfry kontrolne; sprawdź, czy w numerze nie ma literówki';
-const GDZIE_POPRAWIC = 'Popraw w pliku konfiguracji OMS i uruchom OMS od nowa: w instalacji Dockerowej to /opt/oms/config/produkcja.env przy przejściu na pracę, później /opt/oms/config/oms.env (docs/instalacja-docker.md, sekcje 8 i 9); bez Dockera — plik .env.';
+export const ZDANIE_RACHUNEK_FORMAT =
+  'niepoprawny numer rachunku — ' +
+  DOZWOLONE +
+  ', ale reszta musi mieć dokładnie 26 cyfr (NRB), bez liter i innych znaków';
+export const ZDANIE_RACHUNEK_SUMA =
+  'niepoprawny numer rachunku — to 26 cyfr, ale nie zgadzają się cyfry kontrolne; sprawdź, czy w numerze nie ma literówki';
+const GDZIE_POPRAWIC =
+  'Popraw w pliku konfiguracji OMS i uruchom OMS od nowa: w instalacji Dockerowej to /opt/oms/config/produkcja.env przy przejściu na pracę, później /opt/oms/config/oms.env (docs/instalacja-docker.md, sekcje 8 i 9); bez Dockera — plik .env.';
 
 /** Zdanie o niepoprawnym numerze po normalizacji: 26 cyfr = zła suma kontrolna, inaczej zły format. */
 function zdanieORachunku(cyfry: string): string {

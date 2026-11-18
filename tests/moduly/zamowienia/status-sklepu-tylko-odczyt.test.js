@@ -8,16 +8,35 @@ import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { TYLKO_ODCZYT } from '../../../src/domena/woo-uprawnienia.js';
 
 const zmapowane = (id) => ({
-  zrodlo_id: id, numer: String(id), klient: { first_name: 'Anna', last_name: 'Półcień', email: 'anna@polcien.example' },
-  dostawa: { first_name: 'Anna', last_name: 'Półcień', address_1: 'Cicha 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '120.00',
-  koszt_dostawy_brutto: '0.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
-  utworzone_at: '2026-11-03T09:00:00', pozycje: [],
+  zrodlo_id: id,
+  numer: String(id),
+  klient: { first_name: 'Anna', last_name: 'Półcień', email: 'anna@polcien.example' },
+  dostawa: {
+    first_name: 'Anna',
+    last_name: 'Półcień',
+    address_1: 'Cicha 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
+  },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '120.00',
+  koszt_dostawy_brutto: '0.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-11-03T09:00:00',
+  pozycje: [],
 });
 
 describe('odesłanie statusu przy sklepie „Odczyt”', () => {
   let db;
-  beforeEach(() => { db = openOmsDb(':memory:'); });
+  beforeEach(() => {
+    db = openOmsDb(':memory:');
+  });
   const wyslane = (id) => {
     const wewn = zapiszZamowienie(db, 'pro', zmapowane(id), {});
     db.prepare("UPDATE zamowienia SET wyslane_at = '2026-11-03T10:00:00' WHERE id = ?").run(wewn);
@@ -32,7 +51,10 @@ describe('odesłanie statusu przy sklepie „Odczyt”', () => {
     expect(woo.ustawStatus).not.toHaveBeenCalled();
     expect(wynik).toEqual({ wyslany: null, powod: TYLKO_ODCZYT });
     expect(pobierzZamowienie(db, id).sync_woo_blad).toBeNull();
-    const logi = db.prepare('SELECT wynik FROM log WHERE zamowienie_id = ?').all(id).map((w) => w.wynik);
+    const logi = db
+      .prepare('SELECT wynik FROM log WHERE zamowienie_id = ?')
+      .all(id)
+      .map((w) => w.wynik);
     expect(logi).toEqual([`POMINIĘTO: ${TYLKO_ODCZYT}`]);
     expect(sync.tylkoOdczyt('pro')).toBe(true);
   });
@@ -42,14 +64,22 @@ describe('odesłanie statusu przy sklepie „Odczyt”', () => {
     const odmowa = { ustawStatus: vi.fn().mockRejectedValue(new Error('Klucz ma tylko odczyt')) };
     await createSyncSklep({ db, klienci: { pro: odmowa } }).odeslijStatus(id);
     expect(pobierzZamowienie(db, id).sync_woo_blad).toContain('Klucz ma tylko odczyt');
-    const wynik = await createSyncSklep({ db, klienci: { pro: { tylkoOdczyt: true, ustawStatus: vi.fn() } } }).odeslijStatus(id);
+    const wynik = await createSyncSklep({
+      db,
+      klienci: { pro: { tylkoOdczyt: true, ustawStatus: vi.fn() } },
+    }).odeslijStatus(id);
     expect(wynik).toEqual({ wyslany: null, powod: TYLKO_ODCZYT });
     expect(pobierzZamowienie(db, id).sync_woo_blad).toBeNull();
   });
 
   it('sklep „Zapis/odczyt” i sklep bez klienta nie są „tylko do odczytu”', () => {
     const klienci = { pro: { ustawStatus: vi.fn() }, zly: null };
-    Object.defineProperty(klienci, 'rzuca', { get() { throw new Error('nie połączony'); }, enumerable: true });
+    Object.defineProperty(klienci, 'rzuca', {
+      get() {
+        throw new Error('nie połączony');
+      },
+      enumerable: true,
+    });
     const sync = createSyncSklep({ db, klienci });
     expect(sync.tylkoOdczyt('pro')).toBe(false);
     expect(sync.tylkoOdczyt('zly')).toBe(false);

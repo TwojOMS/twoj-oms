@@ -12,15 +12,27 @@ it('PATCH oznacza zmienioną treść jako api i nie oznacza pola o tej samej war
   try {
     await app.ready();
     const kontoId = zalozKonto(db, { login: 'tester', imie: 'Tester', haslo: 'h', admin: true, rola: 'administrator' });
-    const { klucz } = zalozKluczApi(db, { nazwa: 'test źródła', zakresy: ['produkty:zapis'], kontoId, teraz: new Date().toISOString() });
+    const { klucz } = zalozKluczApi(db, {
+      nazwa: 'test źródła',
+      zakresy: ['produkty:zapis'],
+      kontoId,
+      teraz: new Date().toISOString(),
+    });
     const id = utworzKarte(db, { nazwa: 'Lampa Pracowni Półcień', cena_gr: 100 });
-    const r = await app.inject({ method: 'PATCH', url: `/api/v1/produkty/${id}`,
-      headers: { authorization: `Bearer ${klucz}`, 'if-match': etagKarty(db.prepare('SELECT * FROM karty_produktow WHERE id = ?').get(id)) },
-      payload: { nazwa: 'Lampa Pracowni Półcień', opis: 'Poprawka API', cena_gr: 200 } });
+    const r = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/produkty/${id}`,
+      headers: {
+        authorization: `Bearer ${klucz}`,
+        'if-match': etagKarty(db.prepare('SELECT * FROM karty_produktow WHERE id = ?').get(id)),
+      },
+      payload: { nazwa: 'Lampa Pracowni Półcień', opis: 'Poprawka API', cena_gr: 200 },
+    });
     expect(r.statusCode).toBe(200);
     const karta = db.prepare('SELECT * FROM karty_produktow WHERE id = ?').get(id);
-    expect(db.prepare('SELECT pole, zrodlo, reczne, zmieniono_at FROM karty_zrodla_pol ORDER BY pole').all())
-      .toEqual(['cena_gr', 'opis'].map(pole => ({ pole, zrodlo: 'api', reczne: 1, zmieniono_at: karta.zmieniony_at })));
+    expect(db.prepare('SELECT pole, zrodlo, reczne, zmieniono_at FROM karty_zrodla_pol ORDER BY pole').all()).toEqual(
+      ['cena_gr', 'opis'].map((pole) => ({ pole, zrodlo: 'api', reczne: 1, zmieniono_at: karta.zmieniony_at })),
+    );
   } finally {
     await app.close();
     db.close();

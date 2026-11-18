@@ -20,7 +20,14 @@ import { oznaczBladPoczty, opisBleduPocztyDoLogu } from '../poczta-ustawien.ts';
 // wysylac w kolko bez sladu.
 // `podpisPanelu()` — marka i stopka z Ustawień → Poczta (pola niezablokowane plikiem), czytane przy KAŻDEJ
 // wysyłce. Oprawa liczona raz przy starcie dawała stary podpis aż do restartu panelu.
-export function createPotwierdzenie({ db, mailer, sprzedawca = {}, oprawaPoczty = {}, podpisPanelu = null, teraz = () => new Date().toISOString() }) {
+export function createPotwierdzenie({
+  db,
+  mailer,
+  sprzedawca = {},
+  oprawaPoczty = {},
+  podpisPanelu = null,
+  teraz = () => new Date().toISOString(),
+}) {
   const oprawaMailaTeraz = oprawaTeraz(oprawaPoczty, podpisPanelu);
   async function wyslij(id, { ktoKlikal = 'operator' } = {}) {
     const z = pobierzZamowienie(db, id);
@@ -33,7 +40,9 @@ export function createPotwierdzenie({ db, mailer, sprzedawca = {}, oprawaPoczty 
     // Bez zapisu — dzisiejsza treść co do znaku (szablony.js: droga `szablon: null`).
     // Etykiety i stałe teksty (nagłówki, kolumny, „Pozdrawiamy,") z tej samej sekcji, czytane przy każdej wysyłce.
     const mail = mailPotwierdzenia(z, {
-      oprawa, szablon: wczytajSzablonyWiadomosci(db).wbudowane.potwierdzenie ?? null, zdania: zdaniaPlatnosciTeraz(db),
+      oprawa,
+      szablon: wczytajSzablonyWiadomosci(db).wbudowane.potwierdzenie ?? null,
+      zdania: zdaniaPlatnosciTeraz(db),
     });
 
     try {
@@ -71,8 +80,13 @@ export function createPotwierdzenie({ db, mailer, sprzedawca = {}, oprawaPoczty 
     // usługi: dwa wiersze na jednego maila znaczą kartę twierdzącą, że klient dostał
     // potwierdzenie dwa razy (pilnuje tego test „potwierdzenie idzie starą usługą…").
     zapiszWiadomosc(db, {
-      zamowienieId: id, temat_id: 'potwierdzenie', adresat: mail.do, temat: mail.temat,
-      zalacznik: null, kto: ktoKlikal, at: kiedy,
+      zamowienieId: id,
+      temat_id: 'potwierdzenie',
+      adresat: mail.do,
+      temat: mail.temat,
+      zalacznik: null,
+      kto: ktoKlikal,
+      at: kiedy,
     });
     dopiszLog(db, id, {
       akcja: 'potwierdzenie.wyslane',

@@ -13,12 +13,16 @@ export function konfiguracjaZamowien(env: Srodowisko) {
   const sprzedawca = wczytajSprzedawce(env);
   // Cenniki „Dodaj z magazynu"; null = sklepy Woo z OMS_KANALY (kontekst zamówień).
   const cenniki = parsujCenniki(env.OMS_CENNIKI);
-  return { klienciWdt, cenniki, kanalIndywidualny: kanalIndywidualnyWlaczony(env),
-    gus: env.GUS_KLUCZ ? {klucz:env.GUS_KLUCZ,url:env.GUS_URL||ADRES_GUS} : null,
+  return {
+    klienciWdt,
+    cenniki,
+    kanalIndywidualny: kanalIndywidualnyWlaczony(env),
+    gus: env.GUS_KLUCZ ? { klucz: env.GUS_KLUCZ, url: env.GUS_URL || ADRES_GUS } : null,
     // Adres usługi także dla klucza z Ustawień (GUS_URL tylko w pliku); próba = klucz z ekranu nie wychodzi.
-    gusAdres: env.GUS_URL||ADRES_GUS, proba: efektywnyTryb(env)==='proba',
+    gusAdres: env.GUS_URL || ADRES_GUS,
+    proba: efektywnyTryb(env) === 'proba',
     // Adres z pliku; adres z Ustawień dokłada zbuduj modułu (config.adresFirmy).
     nadawca: adresFirmyZEnv(env),
-    proforma:{nip:sprzedawca.nip,bdo:sprzedawca.bdo},
+    proforma: { nip: sprzedawca.nip, bdo: sprzedawca.bdo },
   };
 }

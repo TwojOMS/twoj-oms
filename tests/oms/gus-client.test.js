@@ -5,17 +5,21 @@ import { createGusClient } from '../../src/oms/gus/client.js';
 // `fetchImpl` jest atrapą, tak samo jak przy testach DPD.
 
 const odp = (tresc, ok = true, status = 200) => ({ ok, status, text: async () => tresc });
-const wynikLogowania = (sid) => `<s:Envelope><s:Body><ZalogujResponse><ZalogujResult>${sid}</ZalogujResult></ZalogujResponse></s:Body></s:Envelope>`;
-const wynikSzukania = (srodek) => '<s:Envelope><s:Body><DaneSzukajPodmiotyResponse><DaneSzukajPodmiotyResult>'
-  + `&lt;root&gt;${srodek}&lt;/root&gt;`
-  + '</DaneSzukajPodmiotyResult></DaneSzukajPodmiotyResponse></s:Body></s:Envelope>';
+const wynikLogowania = (sid) =>
+  `<s:Envelope><s:Body><ZalogujResponse><ZalogujResult>${sid}</ZalogujResult></ZalogujResponse></s:Body></s:Envelope>`;
+const wynikSzukania = (srodek) =>
+  '<s:Envelope><s:Body><DaneSzukajPodmiotyResponse><DaneSzukajPodmiotyResult>' +
+  `&lt;root&gt;${srodek}&lt;/root&gt;` +
+  '</DaneSzukajPodmiotyResult></DaneSzukajPodmiotyResponse></s:Body></s:Envelope>';
 // Wygasla sesja: GUS oddaje 200 z PUSTYM elementem wyniku — nie z bledem, nie z pustym
 // dokumentem w srodku. To wlasnie ta postac odpowiedzi jest nie do odroznienia od
 // „nie znaleziono", jesli sie jej nie obsluzy osobno.
-const wynikPusty = () => '<s:Envelope><s:Body><DaneSzukajPodmiotyResponse><DaneSzukajPodmiotyResult></DaneSzukajPodmiotyResult></DaneSzukajPodmiotyResponse></s:Body></s:Envelope>';
-const firmaXml = '&lt;dane&gt;&lt;Nazwa&gt;ACME SP. Z O.O.&lt;/Nazwa&gt;&lt;Nip&gt;5252248481&lt;/Nip&gt;'
-  + '&lt;Ulica&gt;ul. Prosta&lt;/Ulica&gt;&lt;NrNieruchomosci&gt;51&lt;/NrNieruchomosci&gt;'
-  + '&lt;KodPocztowy&gt;00838&lt;/KodPocztowy&gt;&lt;Miejscowosc&gt;WARSZAWA&lt;/Miejscowosc&gt;&lt;/dane&gt;';
+const wynikPusty = () =>
+  '<s:Envelope><s:Body><DaneSzukajPodmiotyResponse><DaneSzukajPodmiotyResult></DaneSzukajPodmiotyResult></DaneSzukajPodmiotyResponse></s:Body></s:Envelope>';
+const firmaXml =
+  '&lt;dane&gt;&lt;Nazwa&gt;ACME SP. Z O.O.&lt;/Nazwa&gt;&lt;Nip&gt;5252248481&lt;/Nip&gt;' +
+  '&lt;Ulica&gt;ul. Prosta&lt;/Ulica&gt;&lt;NrNieruchomosci&gt;51&lt;/NrNieruchomosci&gt;' +
+  '&lt;KodPocztowy&gt;00838&lt;/KodPocztowy&gt;&lt;Miejscowosc&gt;WARSZAWA&lt;/Miejscowosc&gt;&lt;/dane&gt;';
 
 const klient = (kolejka, opcje = {}) => {
   const wywolania = [];
@@ -49,7 +53,9 @@ describe('logowanie i sesja', () => {
 
   it('drugie zapytanie w tej samej sesji NIE loguje się ponownie', async () => {
     const { gus, wywolania } = klient([
-      odp(wynikLogowania('SID-1')), odp(wynikSzukania(firmaXml)), odp(wynikSzukania(firmaXml)),
+      odp(wynikLogowania('SID-1')),
+      odp(wynikSzukania(firmaXml)),
+      odp(wynikSzukania(firmaXml)),
     ]);
     await gus.firmaPoNip('5252248481');
     await gus.firmaPoNip('5252248481');
@@ -61,7 +67,12 @@ describe('logowanie i sesja', () => {
   it('po upływie żywotności loguje się od nowa', async () => {
     let czas = 1_000_000;
     const { gus, wywolania } = klient(
-      [odp(wynikLogowania('SID-1')), odp(wynikSzukania(firmaXml)), odp(wynikLogowania('SID-2')), odp(wynikSzukania(firmaXml))],
+      [
+        odp(wynikLogowania('SID-1')),
+        odp(wynikSzukania(firmaXml)),
+        odp(wynikLogowania('SID-2')),
+        odp(wynikSzukania(firmaXml)),
+      ],
       { teraz: () => czas },
     );
     await gus.firmaPoNip('5252248481');
@@ -99,8 +110,10 @@ describe('wygaśnięcie sesji w trakcie', () => {
   // Pętla ponowień dobijałaby GUS przy złym kluczu — jedno i koniec.
   it('gdy po ponowieniu dalej pusto, oddaje null i NIE próbuje w kółko', async () => {
     const { gus, wywolania } = klient([
-      odp(wynikLogowania('SID-1')), odp(wynikPusty()),
-      odp(wynikLogowania('SID-2')), odp(wynikPusty()),
+      odp(wynikLogowania('SID-1')),
+      odp(wynikPusty()),
+      odp(wynikLogowania('SID-2')),
+      odp(wynikPusty()),
     ]);
     expect(await gus.firmaPoNip('5252248481')).toBeNull();
     expect(wywolania).toHaveLength(4);
@@ -120,13 +133,21 @@ describe('odpowiedzi i awarie', () => {
   });
 
   it('timeout → komunikat dla operatora, nie surowy AbortError', async () => {
-    const { gus } = klient([() => { throw Object.assign(new Error('aborted'), { name: 'AbortError' }); }]);
+    const { gus } = klient([
+      () => {
+        throw Object.assign(new Error('aborted'), { name: 'AbortError' });
+      },
+    ]);
     await expect(gus.firmaPoNip('5252248481')).rejects.toThrow(/nie odpowiedział w 10 sekund/);
   });
 
   // „Sprawdź połączenie” z Ustawień — zawsze świeże logowanie (nie stara sesja), bez pytania o firmę.
   it('sprawdzPolaczenie loguje się od nowa i o nic nie pyta; zły klucz = odmowa dla operatora', async () => {
-    const { gus, wywolania } = klient([odp(wynikLogowania('SID-1')), odp(wynikLogowania('SID-2')), odp(wynikLogowania(''))]);
+    const { gus, wywolania } = klient([
+      odp(wynikLogowania('SID-1')),
+      odp(wynikLogowania('SID-2')),
+      odp(wynikLogowania('')),
+    ]);
     await expect(gus.sprawdzPolaczenie()).resolves.toEqual({ ok: true });
     await expect(gus.sprawdzPolaczenie()).resolves.toEqual({ ok: true });
     expect(gus._sesja().sid).toBe('SID-2');

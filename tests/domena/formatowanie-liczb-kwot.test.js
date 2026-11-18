@@ -12,10 +12,10 @@ it('formatuje liczby przez polskie Intl, również zero i tysiące', () => {
   expect(zlotowki('12345.67')).toBe('12345,67 zł');
 });
 
-it.each(['', null])('zlotowki zachowuje znak braku kwoty dla %s', wartosc => {
+it.each(['', null])('zlotowki zachowuje znak braku kwoty dla %s', (wartosc) => {
   expect(zlotowki(wartosc)).toBe('—');
 });
-it.each(['abc', NaN])('zlotowki nie pokazuje niepoprawnej liczby %s', wartosc => {
+it.each(['abc', NaN])('zlotowki nie pokazuje niepoprawnej liczby %s', (wartosc) => {
   expect(zlotowki(wartosc)).toBe('');
 });
 it('zlotowki przyjmuje przecinek dziesiętny', () => {

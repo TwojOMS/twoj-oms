@@ -18,8 +18,9 @@ import { tekstyModelu } from '../../domena/zdania-platnosci.js';
 //   • font systemowy — webfontów nikt nie załaduje;
 //   • żadnych obrazków dla treści — połowa klientów blokuje je domyślnie.
 
-const kom = (extra = '') => `padding:8px 4px;border-bottom:1px solid ${KOLOR.linia};`
-  + `font-family:${FONT};font-size:14px;color:${KOLOR.tekst};${extra}`;
+const kom = (extra = '') =>
+  `padding:8px 4px;border-bottom:1px solid ${KOLOR.linia};` +
+  `font-family:${FONT};font-size:14px;color:${KOLOR.tekst};${extra}`;
 
 // ⚠️ NAGŁÓWEK SEKCJI IMPORTOWANY Z `mail-html.js` pod nazwą `naglowek`, nie przepisany
 // tutaj (drugą, taką samą kopię miałby wiadomosc-html.js). Krój jest BLISKI, ale nie identyczny z nagłówkiem
@@ -27,12 +28,14 @@ const kom = (extra = '') => `padding:8px 4px;border-bottom:1px solid ${KOLOR.lin
 // bo rozpoznaje nagłówek we wpisanym przez człowieka tekście. Uzasadnienie przy funkcji.
 
 /** Blok linii (adres, dane nabywcy) — jedna linia pod drugą, bez ozdobników. */
-const linie = (lista) => `<p style="margin:0 0 4px;font-family:${FONT};font-size:14px;`
-  + `line-height:1.6;color:${KOLOR.tekst};">${lista.map((l) => esc(l)).join('<br>')}</p>`;
+const linie = (lista) =>
+  `<p style="margin:0 0 4px;font-family:${FONT};font-size:14px;` +
+  `line-height:1.6;color:${KOLOR.tekst};">${lista.map((l) => esc(l)).join('<br>')}</p>`;
 
 /** Te same linie drobniej i wyszarzone — adres pod metodą dostawy, dane nabywcy pod „Tak — wystawimy na:". */
-const linieDrobne = (lista) => `<p style="margin:0 0 4px;font-family:${FONT};font-size:14px;line-height:1.6;color:${KOLOR.muted};">`
-  + `${lista.map((l) => esc(l)).join('<br>')}</p>`;
+const linieDrobne = (lista) =>
+  `<p style="margin:0 0 4px;font-family:${FONT};font-size:14px;line-height:1.6;color:${KOLOR.muted};">` +
+  `${lista.map((l) => esc(l)).join('<br>')}</p>`;
 
 /**
  * Tabela pozycji.
@@ -49,28 +52,41 @@ const linieDrobne = (lista) => `<p style="margin:0 0 4px;font-family:${FONT};fon
  */
 function tabelaPozycji(m, t) {
   const naglowki = [t.kolumna_pozycja, t.kolumna_ilosc, t.kolumna_cena, t.kolumna_wartosc];
-  const wiersze = m.pozycje.map((p) => `<tr>`
-    + `<td style="${kom()}">${esc(p.nazwa)}</td>`
-    + `<td align="right" style="${kom('white-space:nowrap;')}">${esc(p.ilosc)}</td>`
-    + `<td align="right" style="${kom('white-space:nowrap;')}">${esc(p.cena)}</td>`
-    + `<td align="right" style="${kom('white-space:nowrap;')}">${esc(p.suma)}</td>`
-    + '</tr>').join('');
+  const wiersze = m.pozycje
+    .map(
+      (p) =>
+        `<tr>` +
+        `<td style="${kom()}">${esc(p.nazwa)}</td>` +
+        `<td align="right" style="${kom('white-space:nowrap;')}">${esc(p.ilosc)}</td>` +
+        `<td align="right" style="${kom('white-space:nowrap;')}">${esc(p.cena)}</td>` +
+        `<td align="right" style="${kom('white-space:nowrap;')}">${esc(p.suma)}</td>` +
+        '</tr>',
+    )
+    .join('');
 
   const razem = `padding-top:10px;border-bottom:0;border-top:2px solid ${KOLOR.akcent};font-weight:bold;`;
-  return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0"'
-    + ' style="border-collapse:collapse;margin:2px 0 4px;">'
-    + `<tr>${naglowki.map((n, i) => `<td${i ? ' align="right"' : ''} style="${kom(
-      `font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:${KOLOR.muted};`,
-    )}">${esc(n)}</td>`).join('')}</tr>`
-    + wiersze
-    + `<tr><td colspan="3" style="${kom(razem)}">${esc(`${t.etykieta_razem} ${t.dopisek_brutto}`)}</td>`
-    + `<td align="right" style="${kom(`${razem}white-space:nowrap;`)}">${esc(m.razem)}</td></tr>`
-    + '</table>';
+  return (
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0"' +
+    ' style="border-collapse:collapse;margin:2px 0 4px;">' +
+    `<tr>${naglowki
+      .map(
+        (n, i) =>
+          `<td${i ? ' align="right"' : ''} style="${kom(
+            `font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:${KOLOR.muted};`,
+          )}">${esc(n)}</td>`,
+      )
+      .join('')}</tr>` +
+    wiersze +
+    `<tr><td colspan="3" style="${kom(razem)}">${esc(`${t.etykieta_razem} ${t.dopisek_brutto}`)}</td>` +
+    `<td align="right" style="${kom(`${razem}white-space:nowrap;`)}">${esc(m.razem)}</td></tr>` +
+    '</table>'
+  );
 }
 
 /** Akapit zwykłego zdania — ten sam rozmiar, co w mailach z wyceną. */
-const akapit = (tekst, extra = '') => `<p style="margin:0 0 14px;font-family:${FONT};font-size:15px;`
-  + `line-height:1.6;color:${KOLOR.tekst};${extra}">${esc(tekst)}</p>`;
+const akapit = (tekst, extra = '') =>
+  `<p style="margin:0 0 14px;font-family:${FONT};font-size:15px;` +
+  `line-height:1.6;color:${KOLOR.tekst};${extra}">${esc(tekst)}</p>`;
 
 /**
  * Sekcje potwierdzenia jako BLOKI szablonu — te same kawałki HTML, które składa
@@ -85,13 +101,18 @@ export function blokiHtmlPotwierdzenia(m) {
     sposob_platnosci: naglowek(t.naglowek_platnosc) + linie([m.platnosc]),
     // Adres wychodzi POD metodą i drobniejszym drukiem — to metoda jest odpowiedzią na
     // pytanie „jak to do mnie dojedzie", a adres jej uzupełnieniem.
-    wysylka: naglowek(t.naglowek_wysylka) + linie([m.wysylka.metoda]) + (m.wysylka.adres
-      ? linieDrobne(m.wysylka.adres)
-      : `<p style="margin:0 0 4px;font-family:${FONT};font-size:14px;color:${KOLOR.muted};">`
-        + `${esc(t.adres_do_uzgodnienia)}</p>`),
-    dane_do_faktury: naglowek(t.naglowek_faktura) + (m.faktura.chce
-      ? linie([t.faktura_tak]) + linieDrobne(m.faktura.linie.length ? m.faktura.linie : [t.faktura_bez_danych])
-      : linie([t.faktura_nie])),
+    wysylka:
+      naglowek(t.naglowek_wysylka) +
+      linie([m.wysylka.metoda]) +
+      (m.wysylka.adres
+        ? linieDrobne(m.wysylka.adres)
+        : `<p style="margin:0 0 4px;font-family:${FONT};font-size:14px;color:${KOLOR.muted};">` +
+          `${esc(t.adres_do_uzgodnienia)}</p>`),
+    dane_do_faktury:
+      naglowek(t.naglowek_faktura) +
+      (m.faktura.chce
+        ? linie([t.faktura_tak]) + linieDrobne(m.faktura.linie.length ? m.faktura.linie : [t.faktura_bez_danych])
+        : linie([t.faktura_nie])),
   };
 }
 
@@ -104,13 +125,12 @@ export function renderPotwierdzenieHtml(m, { footer = '', naglowek: naglowekMark
     b.sposob_platnosci,
     b.wysylka,
     b.dane_do_faktury,
-    `<p style="margin:22px 0 14px;font-family:${FONT};font-size:14px;line-height:1.6;color:${KOLOR.muted};`
-      + `border-top:1px solid ${KOLOR.linia};padding-top:14px;">`
-      + 'Jeśli coś się nie zgadza, wystarczy odpowiedzieć na tego maila.</p>',
+    `<p style="margin:22px 0 14px;font-family:${FONT};font-size:14px;line-height:1.6;color:${KOLOR.muted};` +
+      `border-top:1px solid ${KOLOR.linia};padding-top:14px;">` +
+      'Jeśli coś się nie zgadza, wystarczy odpowiedzieć na tego maila.</p>',
     akapit(tekstyModelu(m).pozdrowienie, 'margin-bottom:2px;'),
     akapit(m.sprzedawca, 'font-weight:bold;'),
   ].join('');
 
   return kopertaMaila({ body, footer, naglowek: naglowekMarki });
 }
-

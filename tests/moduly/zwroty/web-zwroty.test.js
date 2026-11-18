@@ -4,7 +4,11 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import {
-  zwrotyZamowienia, dodajZwrot, oznaczPieniadzeOddane, zarezerwujKorekte, zapiszKorekte,
+  zwrotyZamowienia,
+  dodajZwrot,
+  oznaczPieniadzeOddane,
+  zarezerwujKorekte,
+  zapiszKorekte,
 } from '../../../src/oms/db/zwroty.js';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { createKorekta } from '../../../src/moduly/zwroty/services/korekta.js';
@@ -35,17 +39,43 @@ const CONFIG = { auth: { user: 'adam', pass: 'x' }, klienciZbiorczy: [] };
 const log = (zamowienieId) => db.prepare('SELECT * FROM log WHERE zamowienie_id = ? ORDER BY id').all(zamowienieId);
 
 const zmapowane = (nad = {}) => ({
-  zrodlo_id: 1301, numer: '1301', klient: { email: 'j@k.pl' }, dostawa: {},
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null,
-  kwota_brutto: '317.90', status_woo: 'processing', oplacone_at: null, anulowane: 0,
+  zrodlo_id: 1301,
+  numer: '1301',
+  klient: { email: 'j@k.pl' },
+  dostawa: {},
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '317.90',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
   // ⚠️ Bez kosztu dostawy fikstura nie miala
   // czego proponowac w polu „Zwrot kosztu dostawy", a 198,00 + 100,90 + 19,00 to dokladnie
   // `kwota_brutto` — zamowienie zaczyna sie w koncu zgadzac samo ze soba.
-  koszt_dostawy_brutto: '19.00', koszt_dostawy_netto: '15.45',
+  koszt_dostawy_brutto: '19.00',
+  koszt_dostawy_netto: '15.45',
   utworzone_at: '2026-08-01T10:00:00',
   pozycje: [
-    { zrodlo_id: 77, nazwa: 'Kot 70x100', sku: 'PRO-KOT-001', ilosc: 2, cena_brutto: '99.00', brutto_linii: '198.00', vat: null },
-    { zrodlo_id: 78, nazwa: 'Pies 50x70', sku: 'PRO-PIES-001', ilosc: 1, cena_brutto: '100.90', brutto_linii: '100.90', vat: null },
+    {
+      zrodlo_id: 77,
+      nazwa: 'Kot 70x100',
+      sku: 'PRO-KOT-001',
+      ilosc: 2,
+      cena_brutto: '99.00',
+      brutto_linii: '198.00',
+      vat: null,
+    },
+    {
+      zrodlo_id: 78,
+      nazwa: 'Pies 50x70',
+      sku: 'PRO-PIES-001',
+      ilosc: 1,
+      cena_brutto: '100.90',
+      brutto_linii: '100.90',
+      vat: null,
+    },
   ],
   ...nad,
 });
@@ -84,27 +114,51 @@ describe('ekran zwrotu', () => {
   it('niesie kontekst listy przez oba kroki i wraca z karty do tego samego wiersza', async () => {
     const powrot = '/?status=nowe&kanal=pro';
     const ekran = await app.inject({
-      method: 'GET', url: `/zamowienia/${id}/zwrot?powrot=${encodeURIComponent(powrot)}`, headers: AUTH,
+      method: 'GET',
+      url: `/zamowienia/${id}/zwrot?powrot=${encodeURIComponent(powrot)}`,
+      headers: AUTH,
     });
     expect(ekran.body).toContain(`<input type="hidden" name="powrot" value="/?status=nowe&amp;kanal=pro">`);
     expect(ekran.body).toContain(`href="/zamowienia/${id}?powrot=%2F%3Fstatus%3Dnowe%26kanal%3Dpro"`);
 
     const podglad = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/zwrot/podglad`, headers: AUTH,
+      method: 'POST',
+      url: `/zamowienia/${id}/zwrot/podglad`,
+      headers: AUTH,
       payload: new URLSearchParams([
-        ['powrot', powrot], ['data', '2026-08-14'], ['kwota_dostawy', ''], ['powod', 'nie pasuje'],
-        ['klucz', 's77'], ['ilosc', '1'], ['nazwa', 'Kot 70x100'], ['pozycja_kwota', '99.00'],
-        ['klucz', 's78'], ['ilosc', '0'], ['nazwa', 'Pies 50x70'], ['pozycja_kwota', '0'],
+        ['powrot', powrot],
+        ['data', '2026-08-14'],
+        ['kwota_dostawy', ''],
+        ['powod', 'nie pasuje'],
+        ['klucz', 's77'],
+        ['ilosc', '1'],
+        ['nazwa', 'Kot 70x100'],
+        ['pozycja_kwota', '99.00'],
+        ['klucz', 's78'],
+        ['ilosc', '0'],
+        ['nazwa', 'Pies 50x70'],
+        ['pozycja_kwota', '0'],
       ]).toString(),
     });
     expect(podglad.body).toContain(`<input type="hidden" name="powrot" value="/?status=nowe&amp;kanal=pro">`);
 
     const zapis = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/zwrot`, headers: AUTH,
+      method: 'POST',
+      url: `/zamowienia/${id}/zwrot`,
+      headers: AUTH,
       payload: new URLSearchParams([
-        ['powrot', powrot], ['data', '2026-08-14'], ['kwota', '99.00'], ['kwota_dostawy', ''],
-        ['klucz', 's77'], ['ilosc', '1'], ['nazwa', 'Kot 70x100'], ['pozycja_kwota', '99.00'],
-        ['klucz', 's78'], ['ilosc', '0'], ['nazwa', 'Pies 50x70'], ['pozycja_kwota', '0'],
+        ['powrot', powrot],
+        ['data', '2026-08-14'],
+        ['kwota', '99.00'],
+        ['kwota_dostawy', ''],
+        ['klucz', 's77'],
+        ['ilosc', '1'],
+        ['nazwa', 'Kot 70x100'],
+        ['pozycja_kwota', '99.00'],
+        ['klucz', 's78'],
+        ['ilosc', '0'],
+        ['nazwa', 'Pies 50x70'],
+        ['pozycja_kwota', '0'],
       ]).toString(),
     });
     expect(zapis.statusCode).toBe(302);
@@ -122,11 +176,22 @@ describe('ekran zwrotu', () => {
 
   it('zapisuje zwrot czesciowy i prowadzi na ekran zwrotu', async () => {
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/zwrot`, headers: AUTH,
+      method: 'POST',
+      url: `/zamowienia/${id}/zwrot`,
+      headers: AUTH,
       payload: new URLSearchParams([
-        ['data', '2026-08-14'], ['kwota', '99.00'], ['kwota_dostawy', ''], ['powod', 'nie pasuje'],
-        ['klucz', 's77'], ['ilosc', '1'], ['nazwa', 'Kot 70x100'], ['pozycja_kwota', '99.00'],
-        ['klucz', 's78'], ['ilosc', '0'], ['nazwa', 'Pies 50x70'], ['pozycja_kwota', '0'],
+        ['data', '2026-08-14'],
+        ['kwota', '99.00'],
+        ['kwota_dostawy', ''],
+        ['powod', 'nie pasuje'],
+        ['klucz', 's77'],
+        ['ilosc', '1'],
+        ['nazwa', 'Kot 70x100'],
+        ['pozycja_kwota', '99.00'],
+        ['klucz', 's78'],
+        ['ilosc', '0'],
+        ['nazwa', 'Pies 50x70'],
+        ['pozycja_kwota', '0'],
       ]).toString(),
     });
     expect(r.statusCode).toBe(302);
@@ -141,10 +206,17 @@ describe('ekran zwrotu', () => {
   // zamówienia", ktorej ma dowodzic.
   it('odmowa reguly wraca 400 z polskim komunikatem i NICZEGO nie zapisuje', async () => {
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/zwrot`, headers: AUTH,
+      method: 'POST',
+      url: `/zamowienia/${id}/zwrot`,
+      headers: AUTH,
       payload: new URLSearchParams([
-        ['data', '2026-08-14'], ['kwota', '31033'], ['kwota_dostawy', ''],
-        ['klucz', 's77'], ['ilosc', '1'], ['nazwa', 'Kot 70x100'], ['pozycja_kwota', '31033'],
+        ['data', '2026-08-14'],
+        ['kwota', '31033'],
+        ['kwota_dostawy', ''],
+        ['klucz', 's77'],
+        ['ilosc', '1'],
+        ['nazwa', 'Kot 70x100'],
+        ['pozycja_kwota', '31033'],
       ]).toString(),
     });
     expect(r.statusCode).toBe(400);
@@ -233,23 +305,33 @@ describe('ekran zwrotu — KROK 1: podsumowanie zamowienia i wypelnione kwoty', 
   // dostać skryptu przeliczającego sumę na żywo, bo wtedy drugi krok stałby się ozdobą.
   it('ekran zwrotu ma tylko wspólne skrypty układu, bez logiki przeliczania', async () => {
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}/zwrot`, headers: AUTH });
-    expect(r.body.match(/<script\b[^>]*>[\s\S]*?<\/script>/gi) ?? []).toEqual([
-      SKRYPT_PODMENU, SKRYPT_NAWIGACJI,
-    ]);
+    expect(r.body.match(/<script\b[^>]*>[\s\S]*?<\/script>/gi) ?? []).toEqual([SKRYPT_PODMENU, SKRYPT_NAWIGACJI]);
   });
 });
 
 describe('ekran zwrotu — KROK 2: sume liczy SERWER', () => {
-  const cialoPelne = () => krok1([
-    ['klucz', 's77'], ['nazwa', 'Kot 70x100'], ['ilosc', '2'], ['pozycja_kwota', '198.00'],
-    ['klucz', 's78'], ['nazwa', 'Pies 50x70'], ['ilosc', '1'], ['pozycja_kwota', '100.90'],
-    ['zwroc_dostawe', '1'], ['kwota_dostawy', '19.00'],
-    ['data', '2026-08-14'], ['powod', 'nie pasuje'],
-  ]);
+  const cialoPelne = () =>
+    krok1([
+      ['klucz', 's77'],
+      ['nazwa', 'Kot 70x100'],
+      ['ilosc', '2'],
+      ['pozycja_kwota', '198.00'],
+      ['klucz', 's78'],
+      ['nazwa', 'Pies 50x70'],
+      ['ilosc', '1'],
+      ['pozycja_kwota', '100.90'],
+      ['zwroc_dostawe', '1'],
+      ['kwota_dostawy', '19.00'],
+      ['data', '2026-08-14'],
+      ['powod', 'nie pasuje'],
+    ]);
 
   it('wypisuje co wraca, dostawe osobno i RAZEM — a NICZEGO nie zapisuje', async () => {
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/zwrot/podglad`, headers: AUTH, payload: cialoPelne(),
+      method: 'POST',
+      url: `/zamowienia/${id}/zwrot/podglad`,
+      headers: AUTH,
+      payload: cialoPelne(),
     });
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('Kot 70x100');
@@ -262,16 +344,29 @@ describe('ekran zwrotu — KROK 2: sume liczy SERWER', () => {
 
   it('niesie kwote laczna w polu ukrytym, a „Zarejestruj zwrot" zapisuje ja bez zmian', async () => {
     const podglad = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/zwrot/podglad`, headers: AUTH, payload: cialoPelne(),
+      method: 'POST',
+      url: `/zamowienia/${id}/zwrot/podglad`,
+      headers: AUTH,
+      payload: cialoPelne(),
     });
     expect(podglad.body).toContain('<input type="hidden" name="kwota" value="298.90">');
     const zapis = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/zwrot`, headers: AUTH,
+      method: 'POST',
+      url: `/zamowienia/${id}/zwrot`,
+      headers: AUTH,
       payload: krok1([
-        ['klucz', 's77'], ['nazwa', 'Kot 70x100'], ['ilosc', '2'], ['pozycja_kwota', '198.00'],
-        ['klucz', 's78'], ['nazwa', 'Pies 50x70'], ['ilosc', '1'], ['pozycja_kwota', '100.90'],
-        ['kwota', '298.90'], ['kwota_dostawy', '19.00'],
-        ['data', '2026-08-14'], ['powod', 'nie pasuje'],
+        ['klucz', 's77'],
+        ['nazwa', 'Kot 70x100'],
+        ['ilosc', '2'],
+        ['pozycja_kwota', '198.00'],
+        ['klucz', 's78'],
+        ['nazwa', 'Pies 50x70'],
+        ['ilosc', '1'],
+        ['pozycja_kwota', '100.90'],
+        ['kwota', '298.90'],
+        ['kwota_dostawy', '19.00'],
+        ['data', '2026-08-14'],
+        ['powod', 'nie pasuje'],
       ]),
     });
     expect(zapis.statusCode).toBe(302);
@@ -289,9 +384,17 @@ describe('ekran zwrotu — KROK 2: sume liczy SERWER', () => {
       url: `/zamowienia/${id}/zwrot/podglad`,
       headers: AUTH,
       payload: krok1([
-        ['klucz', 's77'], ['nazwa', 'Kot 70x100'], ['ilosc', '2'], ['pozycja_kwota', '198.00'],
-        ['klucz', 's78'], ['nazwa', 'Pies 50x70'], ['ilosc', '0'], ['pozycja_kwota', '100.90'],
-        ['kwota_dostawy', '19.00'], ['data', '2026-08-14'], ['powod', ''],
+        ['klucz', 's77'],
+        ['nazwa', 'Kot 70x100'],
+        ['ilosc', '2'],
+        ['pozycja_kwota', '198.00'],
+        ['klucz', 's78'],
+        ['nazwa', 'Pies 50x70'],
+        ['ilosc', '0'],
+        ['pozycja_kwota', '100.90'],
+        ['kwota_dostawy', '19.00'],
+        ['data', '2026-08-14'],
+        ['powod', ''],
       ]),
     });
     expect(r.body).toContain('nie wraca');
@@ -305,8 +408,12 @@ describe('ekran zwrotu — KROK 2: sume liczy SERWER', () => {
       url: `/zamowienia/${id}/zwrot/podglad`,
       headers: AUTH,
       payload: krok1([
-        ['klucz', 's77'], ['nazwa', 'Kot 70x100'], ['ilosc', '1'], ['pozycja_kwota', '99,00'],
-        ['data', '2026-08-14'], ['powod', ''],
+        ['klucz', 's77'],
+        ['nazwa', 'Kot 70x100'],
+        ['ilosc', '1'],
+        ['pozycja_kwota', '99,00'],
+        ['data', '2026-08-14'],
+        ['powod', ''],
       ]),
     });
     expect(r.statusCode).toBe(200);
@@ -324,9 +431,14 @@ describe('ekran zwrotu — KROK 2: sume liczy SERWER', () => {
       url: `/zamowienia/${id}/zwrot`,
       headers: AUTH,
       payload: krok1([
-        ['klucz', 's77'], ['nazwa', 'Kot 70x100'], ['ilosc', '2'], ['pozycja_kwota', '198.00'],
-        ['kwota', '79.00'], ['kwota_dostawy', ''],
-        ['data', '2026-08-14'], ['powod', ''],
+        ['klucz', 's77'],
+        ['nazwa', 'Kot 70x100'],
+        ['ilosc', '2'],
+        ['pozycja_kwota', '198.00'],
+        ['kwota', '79.00'],
+        ['kwota_dostawy', ''],
+        ['data', '2026-08-14'],
+        ['powod', ''],
       ]),
     });
     expect(r.statusCode).toBe(400);
@@ -340,8 +452,12 @@ describe('ekran zwrotu — KROK 2: sume liczy SERWER', () => {
       url: `/zamowienia/${id}/zwrot/podglad`,
       headers: AUTH,
       payload: krok1([
-        ['klucz', 's77'], ['nazwa', 'Kot 70x100'], ['ilosc', '9'], ['pozycja_kwota', '198.00'],
-        ['data', '2026-08-14'], ['powod', 'za duzo sztuk'],
+        ['klucz', 's77'],
+        ['nazwa', 'Kot 70x100'],
+        ['ilosc', '9'],
+        ['pozycja_kwota', '198.00'],
+        ['data', '2026-08-14'],
+        ['powod', 'za duzo sztuk'],
       ]),
     });
     expect(r.statusCode).toBe(400);
@@ -362,10 +478,19 @@ describe('ekran zwrotu — „Wstecz — popraw" z kroku 2', () => {
       url: `/zamowienia/${id}/zwrot/popraw`,
       headers: AUTH,
       payload: krok1([
-        ['klucz', 's77'], ['nazwa', 'Kot 70x100'], ['ilosc', '1'], ['pozycja_kwota', '99.00'],
-        ['klucz', 's78'], ['nazwa', 'Pies 50x70'], ['ilosc', '0'], ['pozycja_kwota', '100.90'],
-        ['kwota', '99.00'], ['kwota_dostawy', '19.00'], ['zwroc_dostawe', '1'],
-        ['data', '2026-08-12'], ['powod', 'uszkodzony w transporcie'],
+        ['klucz', 's77'],
+        ['nazwa', 'Kot 70x100'],
+        ['ilosc', '1'],
+        ['pozycja_kwota', '99.00'],
+        ['klucz', 's78'],
+        ['nazwa', 'Pies 50x70'],
+        ['ilosc', '0'],
+        ['pozycja_kwota', '100.90'],
+        ['kwota', '99.00'],
+        ['kwota_dostawy', '19.00'],
+        ['zwroc_dostawe', '1'],
+        ['data', '2026-08-12'],
+        ['powod', 'uszkodzony w transporcie'],
       ]),
     });
     expect(r.statusCode).toBe(200);
@@ -385,9 +510,14 @@ describe('ekran zwrotu — „Wstecz — popraw" z kroku 2', () => {
       url: `/zamowienia/${id}/zwrot/popraw`,
       headers: AUTH,
       payload: krok1([
-        ['klucz', 's77'], ['nazwa', 'Kot 70x100'], ['ilosc', '2'], ['pozycja_kwota', '198.00'],
-        ['kwota', '198.00'], ['kwota_dostawy', ''],
-        ['data', '2026-08-14'], ['powod', ''],
+        ['klucz', 's77'],
+        ['nazwa', 'Kot 70x100'],
+        ['ilosc', '2'],
+        ['pozycja_kwota', '198.00'],
+        ['kwota', '198.00'],
+        ['kwota_dostawy', ''],
+        ['data', '2026-08-14'],
+        ['powod', ''],
       ]),
     });
     expect(r.body).not.toContain('name="zwroc_dostawe" value="1" checked');
@@ -399,18 +529,39 @@ describe('ekran zwrotu — „Wstecz — popraw" z kroku 2', () => {
 describe('ekran zwrotu — pozycja z RABATEM', () => {
   let idRabat;
   beforeEach(() => {
-    idRabat = zapiszZamowienie(db, 'pro', zmapowane({
-      zrodlo_id: 1302,
-      numer: '1302',
-      kwota_brutto: '139.00',
-      koszt_dostawy_brutto: '19.00',
-      koszt_dostawy_netto: null,
-      pozycje: [
-        // 3 × 35,00 = 105,00, ale sklep policzyl linie na 100,00 (rabat 5,00).
-        { zrodlo_id: 91, nazwa: 'Zestaw 3x', sku: 'Z3', ilosc: 3, cena_brutto: '35.00', brutto_linii: '100.00', vat: null },
-        { zrodlo_id: 92, nazwa: 'Ramka', sku: 'RM', ilosc: 1, cena_brutto: '20.00', brutto_linii: '20.00', vat: null },
-      ],
-    }), {});
+    idRabat = zapiszZamowienie(
+      db,
+      'pro',
+      zmapowane({
+        zrodlo_id: 1302,
+        numer: '1302',
+        kwota_brutto: '139.00',
+        koszt_dostawy_brutto: '19.00',
+        koszt_dostawy_netto: null,
+        pozycje: [
+          // 3 × 35,00 = 105,00, ale sklep policzyl linie na 100,00 (rabat 5,00).
+          {
+            zrodlo_id: 91,
+            nazwa: 'Zestaw 3x',
+            sku: 'Z3',
+            ilosc: 3,
+            cena_brutto: '35.00',
+            brutto_linii: '100.00',
+            vat: null,
+          },
+          {
+            zrodlo_id: 92,
+            nazwa: 'Ramka',
+            sku: 'RM',
+            ilosc: 1,
+            cena_brutto: '20.00',
+            brutto_linii: '20.00',
+            vat: null,
+          },
+        ],
+      }),
+      {},
+    );
   });
 
   it('krok 1 podpowiada WARTOSC LINII, a nie iloczyn ceny przez sztuki', async () => {
@@ -425,10 +576,18 @@ describe('ekran zwrotu — pozycja z RABATEM', () => {
       url: `/zamowienia/${idRabat}/zwrot/podglad`,
       headers: AUTH,
       payload: krok1([
-        ['klucz', 's91'], ['nazwa', 'Zestaw 3x'], ['ilosc', '3'], ['pozycja_kwota', '100.00'],
-        ['klucz', 's92'], ['nazwa', 'Ramka'], ['ilosc', '1'], ['pozycja_kwota', '20.00'],
-        ['zwroc_dostawe', '1'], ['kwota_dostawy', '19.00'],
-        ['data', '2026-08-14'], ['powod', ''],
+        ['klucz', 's91'],
+        ['nazwa', 'Zestaw 3x'],
+        ['ilosc', '3'],
+        ['pozycja_kwota', '100.00'],
+        ['klucz', 's92'],
+        ['nazwa', 'Ramka'],
+        ['ilosc', '1'],
+        ['pozycja_kwota', '20.00'],
+        ['zwroc_dostawe', '1'],
+        ['kwota_dostawy', '19.00'],
+        ['data', '2026-08-14'],
+        ['powod', ''],
       ]),
     });
     expect(r.body).toContain('139.00 zł');
@@ -465,18 +624,39 @@ describe('ekran zwrotu — pozycja z RABATEM', () => {
 describe('ekran zwrotu — kwota PODAZA ZA ILOSCIA (pozycja z RABATEM)', () => {
   let idRabat;
   beforeEach(() => {
-    idRabat = zapiszZamowienie(db, 'pro', zmapowane({
-      zrodlo_id: 1303,
-      numer: '1303',
-      kwota_brutto: '139.00',
-      koszt_dostawy_brutto: '19.00',
-      koszt_dostawy_netto: null,
-      pozycje: [
-        // 3 × 35,00 = 105,00, ale sklep policzyl linie na 100,00 (rabat 5,00).
-        { zrodlo_id: 91, nazwa: 'Zestaw 3x', sku: 'Z3', ilosc: 3, cena_brutto: '35.00', brutto_linii: '100.00', vat: null },
-        { zrodlo_id: 92, nazwa: 'Ramka', sku: 'RM', ilosc: 1, cena_brutto: '20.00', brutto_linii: '20.00', vat: null },
-      ],
-    }), {});
+    idRabat = zapiszZamowienie(
+      db,
+      'pro',
+      zmapowane({
+        zrodlo_id: 1303,
+        numer: '1303',
+        kwota_brutto: '139.00',
+        koszt_dostawy_brutto: '19.00',
+        koszt_dostawy_netto: null,
+        pozycje: [
+          // 3 × 35,00 = 105,00, ale sklep policzyl linie na 100,00 (rabat 5,00).
+          {
+            zrodlo_id: 91,
+            nazwa: 'Zestaw 3x',
+            sku: 'Z3',
+            ilosc: 3,
+            cena_brutto: '35.00',
+            brutto_linii: '100.00',
+            vat: null,
+          },
+          {
+            zrodlo_id: 92,
+            nazwa: 'Ramka',
+            sku: 'RM',
+            ilosc: 1,
+            cena_brutto: '20.00',
+            brutto_linii: '20.00',
+            vat: null,
+          },
+        ],
+      }),
+      {},
+    );
   });
 
   // ⚠️ POLE UKRYTE Z PROPOZYCJA jest calym nosnikiem tej naprawy: bez niego krok 2 nie ma jak
@@ -493,9 +673,18 @@ describe('ekran zwrotu — kwota PODAZA ZA ILOSCIA (pozycja z RABATEM)', () => {
       url: `/zamowienia/${idRabat}/zwrot/podglad`,
       headers: AUTH,
       payload: krok1([
-        ['klucz', 's91'], ['nazwa', 'Zestaw 3x'], ['ilosc', '1'], ['pozycja_kwota', '100.00'], ['pozycja_kwota_propozycja', '100.00'],
-        ['klucz', 's92'], ['nazwa', 'Ramka'], ['ilosc', '0'], ['pozycja_kwota', '20.00'], ['pozycja_kwota_propozycja', '20.00'],
-        ['data', '2026-08-14'], ['powod', ''],
+        ['klucz', 's91'],
+        ['nazwa', 'Zestaw 3x'],
+        ['ilosc', '1'],
+        ['pozycja_kwota', '100.00'],
+        ['pozycja_kwota_propozycja', '100.00'],
+        ['klucz', 's92'],
+        ['nazwa', 'Ramka'],
+        ['ilosc', '0'],
+        ['pozycja_kwota', '20.00'],
+        ['pozycja_kwota_propozycja', '20.00'],
+        ['data', '2026-08-14'],
+        ['powod', ''],
       ]),
     });
     expect(r.statusCode).toBe(200);
@@ -524,9 +713,18 @@ describe('ekran zwrotu — kwota PODAZA ZA ILOSCIA (pozycja z RABATEM)', () => {
       url: `/zamowienia/${idRabat}/zwrot/podglad`,
       headers: AUTH,
       payload: krok1([
-        ['klucz', 's91'], ['nazwa', 'Zestaw 3x'], ['ilosc', '1'], ['pozycja_kwota', '100.00'], ['pozycja_kwota_propozycja', '100.00'],
-        ['klucz', 's92'], ['nazwa', 'Ramka'], ['ilosc', '0'], ['pozycja_kwota', '20.00'], ['pozycja_kwota_propozycja', '20.00'],
-        ['data', '2026-08-14'], ['powod', ''],
+        ['klucz', 's91'],
+        ['nazwa', 'Zestaw 3x'],
+        ['ilosc', '1'],
+        ['pozycja_kwota', '100.00'],
+        ['pozycja_kwota_propozycja', '100.00'],
+        ['klucz', 's92'],
+        ['nazwa', 'Ramka'],
+        ['ilosc', '0'],
+        ['pozycja_kwota', '20.00'],
+        ['pozycja_kwota_propozycja', '20.00'],
+        ['data', '2026-08-14'],
+        ['powod', ''],
       ]),
     });
     expect(r.statusCode).toBe(200);
@@ -544,9 +742,18 @@ describe('ekran zwrotu — kwota PODAZA ZA ILOSCIA (pozycja z RABATEM)', () => {
       url: `/zamowienia/${idRabat}/zwrot/podglad`,
       headers: AUTH,
       payload: krok1([
-        ['klucz', 's91'], ['nazwa', 'Zestaw 3x'], ['ilosc', '3'], ['pozycja_kwota', '100.00'], ['pozycja_kwota_propozycja', '100.00'],
-        ['klucz', 's92'], ['nazwa', 'Ramka'], ['ilosc', '1'], ['pozycja_kwota', '20.00'], ['pozycja_kwota_propozycja', '20.00'],
-        ['data', '2026-08-14'], ['powod', ''],
+        ['klucz', 's91'],
+        ['nazwa', 'Zestaw 3x'],
+        ['ilosc', '3'],
+        ['pozycja_kwota', '100.00'],
+        ['pozycja_kwota_propozycja', '100.00'],
+        ['klucz', 's92'],
+        ['nazwa', 'Ramka'],
+        ['ilosc', '1'],
+        ['pozycja_kwota', '20.00'],
+        ['pozycja_kwota_propozycja', '20.00'],
+        ['data', '2026-08-14'],
+        ['powod', ''],
       ]),
     });
     expect(r.statusCode).toBe(200);
@@ -560,9 +767,18 @@ describe('ekran zwrotu — kwota PODAZA ZA ILOSCIA (pozycja z RABATEM)', () => {
       url: `/zamowienia/${idRabat}/zwrot/podglad`,
       headers: AUTH,
       payload: krok1([
-        ['klucz', 's91'], ['nazwa', 'Zestaw 3x'], ['ilosc', '1'], ['pozycja_kwota', '100.00'], ['pozycja_kwota_propozycja', '100.00'],
-        ['klucz', 's92'], ['nazwa', 'Ramka'], ['ilosc', '0'], ['pozycja_kwota', '20.00'], ['pozycja_kwota_propozycja', '20.00'],
-        ['data', '2026-08-14'], ['powod', 'jedna sztuka wraca'],
+        ['klucz', 's91'],
+        ['nazwa', 'Zestaw 3x'],
+        ['ilosc', '1'],
+        ['pozycja_kwota', '100.00'],
+        ['pozycja_kwota_propozycja', '100.00'],
+        ['klucz', 's92'],
+        ['nazwa', 'Ramka'],
+        ['ilosc', '0'],
+        ['pozycja_kwota', '20.00'],
+        ['pozycja_kwota_propozycja', '20.00'],
+        ['data', '2026-08-14'],
+        ['powod', 'jedna sztuka wraca'],
       ]),
     });
     expect(podglad.statusCode).toBe(200);
@@ -571,18 +787,24 @@ describe('ekran zwrotu — kwota PODAZA ZA ILOSCIA (pozycja z RABATEM)', () => {
       url: `/zamowienia/${idRabat}/zwrot`,
       headers: AUTH,
       payload: krok1([
-        ['klucz', 's91'], ['nazwa', 'Zestaw 3x'], ['ilosc', '1'], ['pozycja_kwota', '33.33'],
-        ['klucz', 's92'], ['nazwa', 'Ramka'], ['ilosc', '0'], ['pozycja_kwota', '20.00'],
-        ['kwota', '33.33'], ['kwota_dostawy', ''],
-        ['data', '2026-08-14'], ['powod', 'jedna sztuka wraca'],
+        ['klucz', 's91'],
+        ['nazwa', 'Zestaw 3x'],
+        ['ilosc', '1'],
+        ['pozycja_kwota', '33.33'],
+        ['klucz', 's92'],
+        ['nazwa', 'Ramka'],
+        ['ilosc', '0'],
+        ['pozycja_kwota', '20.00'],
+        ['kwota', '33.33'],
+        ['kwota_dostawy', ''],
+        ['data', '2026-08-14'],
+        ['powod', 'jedna sztuka wraca'],
       ]),
     });
     expect(zapis.statusCode).toBe(302);
     const [w] = zwrotyZamowienia(db, idRabat);
     expect(w.kwota).toBe('33.33');
-    expect(w.pozycje).toEqual([
-      expect.objectContaining({ klucz_pozycji: 's91', ilosc: 1, kwota: '33.33' }),
-    ]);
+    expect(w.pozycje).toEqual([expect.objectContaining({ klucz_pozycji: 's91', ilosc: 1, kwota: '33.33' })]);
   });
 
   // ⚠️ CZLOWIEK WYGRYWA: kwota przepisana z Allegro rozstrzyga — ale krok 2 MA TO POKAZAC. Ostrzezenie, nie odmowa.
@@ -592,9 +814,18 @@ describe('ekran zwrotu — kwota PODAZA ZA ILOSCIA (pozycja z RABATEM)', () => {
       url: `/zamowienia/${idRabat}/zwrot/podglad`,
       headers: AUTH,
       payload: krok1([
-        ['klucz', 's91'], ['nazwa', 'Zestaw 3x'], ['ilosc', '1'], ['pozycja_kwota', '100.00'], ['pozycja_kwota_propozycja', '33.33'],
-        ['klucz', 's92'], ['nazwa', 'Ramka'], ['ilosc', '0'], ['pozycja_kwota', '20.00'], ['pozycja_kwota_propozycja', '20.00'],
-        ['data', '2026-08-14'], ['powod', ''],
+        ['klucz', 's91'],
+        ['nazwa', 'Zestaw 3x'],
+        ['ilosc', '1'],
+        ['pozycja_kwota', '100.00'],
+        ['pozycja_kwota_propozycja', '33.33'],
+        ['klucz', 's92'],
+        ['nazwa', 'Ramka'],
+        ['ilosc', '0'],
+        ['pozycja_kwota', '20.00'],
+        ['pozycja_kwota_propozycja', '20.00'],
+        ['data', '2026-08-14'],
+        ['powod', ''],
       ]),
     });
     expect(r.statusCode).toBe(200);
@@ -617,10 +848,19 @@ describe('ekran zwrotu — kwota PODAZA ZA ILOSCIA (pozycja z RABATEM)', () => {
       url: `/zamowienia/${idRabat}/zwrot/podglad`,
       headers: AUTH,
       payload: krok1([
-        ['klucz', 's91'], ['nazwa', 'Zestaw 3x'], ['ilosc', '1'], ['pozycja_kwota', '100.00'], ['pozycja_kwota_propozycja', '100.00'],
+        ['klucz', 's91'],
+        ['nazwa', 'Zestaw 3x'],
+        ['ilosc', '1'],
+        ['pozycja_kwota', '100.00'],
+        ['pozycja_kwota_propozycja', '100.00'],
         // Ramka jest jedna, a tu wraca ich piec — odmowa przyjdzie od bariery sztuk.
-        ['klucz', 's92'], ['nazwa', 'Ramka'], ['ilosc', '5'], ['pozycja_kwota', '20.00'], ['pozycja_kwota_propozycja', '20.00'],
-        ['data', '2026-08-14'], ['powod', 'pomylka w sztukach'],
+        ['klucz', 's92'],
+        ['nazwa', 'Ramka'],
+        ['ilosc', '5'],
+        ['pozycja_kwota', '20.00'],
+        ['pozycja_kwota_propozycja', '20.00'],
+        ['data', '2026-08-14'],
+        ['powod', 'pomylka w sztukach'],
       ]),
     });
     expect(r.statusCode).toBe(400);
@@ -639,15 +879,22 @@ describe('ekran zwrotu — kwota PODAZA ZA ILOSCIA (pozycja z RABATEM)', () => {
       url: `/zamowienia/${idRabat}/zwrot/podglad`,
       headers: AUTH,
       payload: krok1([
-        ['klucz', 's91'], ['nazwa', 'Zestaw 3x'], ['ilosc', '3'], ['pozycja_kwota', '100.00'], ['pozycja_kwota_propozycja', '100.00'],
-        ['klucz', 's92'], ['nazwa', 'Ramka'], ['ilosc', '1'], ['pozycja_kwota', '20.00'], ['pozycja_kwota_propozycja', '20.00'],
-        ['data', '2026-08-14'], ['powod', ''],
+        ['klucz', 's91'],
+        ['nazwa', 'Zestaw 3x'],
+        ['ilosc', '3'],
+        ['pozycja_kwota', '100.00'],
+        ['pozycja_kwota_propozycja', '100.00'],
+        ['klucz', 's92'],
+        ['nazwa', 'Ramka'],
+        ['ilosc', '1'],
+        ['pozycja_kwota', '20.00'],
+        ['pozycja_kwota_propozycja', '20.00'],
+        ['data', '2026-08-14'],
+        ['powod', ''],
       ]),
     });
     expect(r.statusCode).toBe(200);
-    expect(r.body.match(/<script\b[^>]*>[\s\S]*?<\/script>/gi) ?? []).toEqual([
-      SKRYPT_PODMENU, SKRYPT_NAWIGACJI,
-    ]);
+    expect(r.body.match(/<script\b[^>]*>[\s\S]*?<\/script>/gi) ?? []).toEqual([SKRYPT_PODMENU, SKRYPT_NAWIGACJI]);
   });
 });
 
@@ -660,9 +907,16 @@ describe('ekran zwrotu — kwota PODAZA ZA ILOSCIA (pozycja z RABATEM)', () => {
 describe('ekran zwrotu — zamowienie, ktore nie sumuje sie samo ze soba', () => {
   let idNiespojne;
   beforeEach(() => {
-    idNiespojne = zapiszZamowienie(db, 'pro', zmapowane({
-      zrodlo_id: 1304, numer: '1304', kwota_brutto: '317.00',
-    }), {});
+    idNiespojne = zapiszZamowienie(
+      db,
+      'pro',
+      zmapowane({
+        zrodlo_id: 1304,
+        numer: '1304',
+        kwota_brutto: '317.00',
+      }),
+      {},
+    );
   });
 
   it('krok 1 MOWI TO WPROST — z obiema liczbami i z roznica do sciecia', async () => {
@@ -697,9 +951,16 @@ describe('ekran zwrotu — zamowienie, ktore nie sumuje sie samo ze soba', () =>
 // zdaniem, ktore oddaje `parsujZwrot`.
 describe('ekran zwrotu — zamowienie anulowane', () => {
   it('mowi o anulowaniu od razu na kroku 1 i NIE rysuje formularza', async () => {
-    const idAnulowane = zapiszZamowienie(db, 'pro', zmapowane({
-      zrodlo_id: 1305, numer: '1305', anulowane: 1,
-    }), {});
+    const idAnulowane = zapiszZamowienie(
+      db,
+      'pro',
+      zmapowane({
+        zrodlo_id: 1305,
+        numer: '1305',
+        anulowane: 1,
+      }),
+      {},
+    );
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${idAnulowane}/zwrot`, headers: AUTH });
     expect(r.statusCode).toBe(200);
     expect(r.body).toMatch(/anulowane — nie ma czego zwracać/i);
@@ -736,9 +997,14 @@ describe('ekran zwrotu — CZESCIOWY zwrot kosztu dostawy', () => {
       url: `/zamowienia/${id}/zwrot`,
       headers: AUTH,
       payload: krok1([
-        ['klucz', 's77'], ['nazwa', 'Kot 70x100'], ['ilosc', '0'], ['pozycja_kwota', '0'],
-        ['kwota', '0'], ['kwota_dostawy', '10.00'],
-        ['data', '2026-08-14'], ['powod', ''],
+        ['klucz', 's77'],
+        ['nazwa', 'Kot 70x100'],
+        ['ilosc', '0'],
+        ['pozycja_kwota', '0'],
+        ['kwota', '0'],
+        ['kwota_dostawy', '10.00'],
+        ['data', '2026-08-14'],
+        ['powod', ''],
       ]),
     });
     expect(r.statusCode).toBe(302);
@@ -753,13 +1019,18 @@ describe('ekran zwrotu — CZESCIOWY zwrot kosztu dostawy', () => {
 describe('ekran zwrotu — pozycja BEZ CENY', () => {
   let idBezCeny;
   beforeEach(() => {
-    idBezCeny = zapiszZamowienie(db, 'pro', zmapowane({
-      zrodlo_id: 1306,
-      numer: '1306',
-      pozycje: [
-        { zrodlo_id: 95, nazwa: 'Bez ceny', sku: 'BC', ilosc: 3, cena_brutto: '', brutto_linii: null, vat: null },
-      ],
-    }), {});
+    idBezCeny = zapiszZamowienie(
+      db,
+      'pro',
+      zmapowane({
+        zrodlo_id: 1306,
+        numer: '1306',
+        pozycje: [
+          { zrodlo_id: 95, nazwa: 'Bez ceny', sku: 'BC', ilosc: 3, cena_brutto: '', brutto_linii: null, vat: null },
+        ],
+      }),
+      {},
+    );
   });
 
   it('krok 1 mowi, dlaczego nie da sie policzyc, i NIE rysuje formularza', async () => {
@@ -775,9 +1046,13 @@ describe('ekran zwrotu — pozycja BEZ CENY', () => {
       url: `/zamowienia/${idBezCeny}/zwrot/podglad`,
       headers: AUTH,
       payload: krok1([
-        ['klucz', 's95'], ['nazwa', 'Bez ceny'], ['ilosc', '1'], ['pozycja_kwota', '10.00'],
+        ['klucz', 's95'],
+        ['nazwa', 'Bez ceny'],
+        ['ilosc', '1'],
+        ['pozycja_kwota', '10.00'],
         ['pozycja_kwota_propozycja', '10.00'],
-        ['data', '2026-08-14'], ['powod', ''],
+        ['data', '2026-08-14'],
+        ['powod', ''],
       ]),
     });
     expect(r.statusCode).toBe(400);
@@ -793,9 +1068,14 @@ describe('ekran zwrotu — sufit zwrotu dostawy', () => {
       url: `/zamowienia/${id}/zwrot`,
       headers: AUTH,
       payload: krok1([
-        ['klucz', 's77'], ['nazwa', 'Kot 70x100'], ['ilosc', '0'], ['pozycja_kwota', '0'],
-        ['kwota', '0'], ['kwota_dostawy', '139.00'],
-        ['data', '2026-08-14'], ['powod', ''],
+        ['klucz', 's77'],
+        ['nazwa', 'Kot 70x100'],
+        ['ilosc', '0'],
+        ['pozycja_kwota', '0'],
+        ['kwota', '0'],
+        ['kwota_dostawy', '139.00'],
+        ['data', '2026-08-14'],
+        ['powod', ''],
       ]),
     });
     expect(r.statusCode).toBe(400);
@@ -848,8 +1128,11 @@ describe('karta zamowienia — trzy elementy zwrotu', () => {
   // ⚠️ Korektę w tabeli dokumentów zapisujemy WPROST przez SQL,
   // aby sprawdzić widok niezależnie od ścieżki wystawiania dokumentu.
   it('korekta zwrotu, gdy istnieje, jest wierszem w tabeli dokumentow', async () => {
-    db.prepare('INSERT INTO faktury (zamowienie_id, numer, utworzona_at) VALUES (?, ?, ?)')
-      .run(id, 'FV/1/2026', '2026-08-01T10:00:00');
+    db.prepare('INSERT INTO faktury (zamowienie_id, numer, utworzona_at) VALUES (?, ?, ?)').run(
+      id,
+      'FV/1/2026',
+      '2026-08-01T10:00:00',
+    );
     const w = dodajZwrot(db, id, { data: '2026-08-14', kwota: '99.00', pozycje: [] });
     db.prepare('UPDATE zwroty SET korekta_numer = ? WHERE id = ?').run('KOR/1/2026', w.id);
 
@@ -861,8 +1144,11 @@ describe('karta zamowienia — trzy elementy zwrotu', () => {
   // Bez korekty (zwrot istnieje, ale nikt jej jeszcze nie wystawil) wiersz NIE rysuje sie —
   // ta sama zasada „nic, dopoki nie ma czego pokazac", co przy pastylce i wierszu platnosci.
   it('bez korekty tabela dokumentow nie dostaje wiersza „Korekta”', async () => {
-    db.prepare('INSERT INTO faktury (zamowienie_id, numer, utworzona_at) VALUES (?, ?, ?)')
-      .run(id, 'FV/1/2026', '2026-08-01T10:00:00');
+    db.prepare('INSERT INTO faktury (zamowienie_id, numer, utworzona_at) VALUES (?, ?, ?)').run(
+      id,
+      'FV/1/2026',
+      '2026-08-01T10:00:00',
+    );
     dodajZwrot(db, id, { data: '2026-08-14', kwota: '99.00', pozycje: [] });
 
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: AUTH });
@@ -887,7 +1173,9 @@ describe('POST /zamowienia/:id/zwroty/:zwrotId/pieniadze', () => {
     expect(w.pieniadze_oddane_at).toBeFalsy();
 
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/zwroty/${w.id}/pieniadze`, headers: AUTH,
+      method: 'POST',
+      url: `/zamowienia/${id}/zwroty/${w.id}/pieniadze`,
+      headers: AUTH,
     });
     expect(r.statusCode).toBe(302);
     expect(r.headers.location).toBe(`/zamowienia/${id}`);
@@ -902,7 +1190,9 @@ describe('POST /zamowienia/:id/zwroty/:zwrotId/usun', () => {
     const w = dodajZwrot(db, id, { data: '2026-08-14', kwota: '99.00', pozycje: [] });
 
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/zwroty/${w.id}/usun`, headers: AUTH,
+      method: 'POST',
+      url: `/zamowienia/${id}/zwroty/${w.id}/usun`,
+      headers: AUTH,
     });
     expect(r.statusCode).toBe(302);
     expect(r.headers.location).toBe(`/zamowienia/${id}`);
@@ -914,7 +1204,9 @@ describe('POST /zamowienia/:id/zwroty/:zwrotId/usun', () => {
     oznaczPieniadzeOddane(db, id, w.id);
 
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/zwroty/${w.id}/usun`, headers: AUTH,
+      method: 'POST',
+      url: `/zamowienia/${id}/zwroty/${w.id}/usun`,
+      headers: AUTH,
     });
     expect(r.statusCode).toBe(400);
     expect(r.body).toMatch(/pieniądze zostały już oddane/);
@@ -946,13 +1238,17 @@ describe('POST /zamowienia/:id/zwroty/:zwrotId/usun', () => {
     expect(a).not.toBe(b);
 
     const rPieniadze = await app.inject({
-      method: 'POST', url: `/zamowienia/${a}/zwroty/${cudzy.id}/pieniadze`, headers: AUTH,
+      method: 'POST',
+      url: `/zamowienia/${a}/zwroty/${cudzy.id}/pieniadze`,
+      headers: AUTH,
     });
     expect(rPieniadze.statusCode).toBe(400);
     expect(zwrotyZamowienia(db, b).find((x) => x.id === cudzy.id).pieniadze_oddane_at).toBeFalsy();
 
     const rUsun = await app.inject({
-      method: 'POST', url: `/zamowienia/${a}/zwroty/${cudzy.id}/usun`, headers: AUTH,
+      method: 'POST',
+      url: `/zamowienia/${a}/zwroty/${cudzy.id}/usun`,
+      headers: AUTH,
     });
     expect(rUsun.statusCode).toBe(404);
     expect(zwrotyZamowienia(db, b)).toHaveLength(1);
@@ -968,18 +1264,23 @@ describe('POST /zamowienia/:id/zwroty/:zwrotId/usun', () => {
 describe('ekran zwrotu — doczytanie numeru korekty z inFaktu', () => {
   let zwrotId;
   beforeEach(() => {
-    db.prepare(
-      'INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)',
-    ).run(id, 'uuid-fv', 'FV 1/08/2026', '2026-08-01T10:00:00Z');
+    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)').run(
+      id,
+      'uuid-fv',
+      'FV 1/08/2026',
+      '2026-08-01T10:00:00Z',
+    );
     zwrotId = dodajZwrot(db, id, { data: '2026-08-14', kwota: '99.00', pozycje: [] }).id;
     zarezerwujKorekte(db, id, zwrotId);
     zapiszKorekte(db, id, zwrotId, { referencja: 'REF-1' });
   });
 
   it('numer znaleziony u inFaktu pojawia sie NA TYM SAMYM wejsciu, bez przeladowania', async () => {
-    const infakt = { listaKorekt: vi.fn().mockResolvedValue([
-      { uuid: 'uuid-kor', number: '1/KOR/08/2026', corrected_invoice_number: 'FV 1/08/2026' },
-    ]) };
+    const infakt = {
+      listaKorekt: vi
+        .fn()
+        .mockResolvedValue([{ uuid: 'uuid-kor', number: '1/KOR/08/2026', corrected_invoice_number: 'FV 1/08/2026' }]),
+    };
     const appZKorekta = buildOmsServer({ db, config: CONFIG, korekta: createKorekta({ db, infakt }) });
     const r = await appZKorekta.inject({ method: 'GET', url: `/zamowienia/${id}/zwrot`, headers: AUTH });
     expect(r.statusCode).toBe(200);
@@ -1029,8 +1330,12 @@ describe('ekran zwrotu — zlecenie korekty, ktore przepadlo', () => {
   // juz nie bylo (warunek `!w.korekta_zlecona_at`), kasowania odmawial
   // `powodOdmowyUsunieciaZwrotu`, a zwrot zostawal nierozliczony NA ZAWSZE.
   it('galaz „przepadlo" rysuje OBA wyjscia: odblokowanie rezerwacji i reczny numer korekty', async () => {
-    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)')
-      .run(id, 'uuid-fv', 'FV 1/08/2026', '2026-08-01T10:00:00Z');
+    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)').run(
+      id,
+      'uuid-fv',
+      'FV 1/08/2026',
+      '2026-08-01T10:00:00Z',
+    );
     const w = dodajZwrot(db, id, { data: '2026-08-14', kwota: '99.00', pozycje: [] });
     const dawno = new Date(Date.now() - 20 * 60 * 1000).toISOString();
     db.prepare('UPDATE zwroty SET korekta_zlecona_at = ? WHERE id = ?').run(dawno, w.id);
@@ -1043,8 +1348,12 @@ describe('ekran zwrotu — zlecenie korekty, ktore przepadlo', () => {
   // ⚠️ Przycisk odblokowania rysuje sie WYLACZNIE w galezi „przepadlo". Przy swiezej
   // rezerwacji zwolnienie jej otwiera droge do DRUGIEJ korekty do tej samej faktury.
   it('swieze zlecenie NIE dostaje przycisku odblokowania', async () => {
-    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)')
-      .run(id, 'uuid-fv', 'FV 1/08/2026', '2026-08-01T10:00:00Z');
+    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)').run(
+      id,
+      'uuid-fv',
+      'FV 1/08/2026',
+      '2026-08-01T10:00:00Z',
+    );
     const w = dodajZwrot(db, id, { data: '2026-08-14', kwota: '99.00', pozycje: [] });
     const przedChwila = new Date(Date.now() - 2 * 60 * 1000).toISOString();
     db.prepare('UPDATE zwroty SET korekta_zlecona_at = ? WHERE id = ?').run(przedChwila, w.id);
@@ -1057,8 +1366,12 @@ describe('ekran zwrotu — zlecenie korekty, ktore przepadlo', () => {
   // faktury — panel jej swiadomie odmawia (services/korekta.js). Bez tego wejscia taki zwrot
   // nie rozliczylby sie nigdy, mimo ze dokument w inFakcie istnieje.
   it('zwrot z faktura i BEZ zadnej korekty tez ma wejscie „wystawilem recznie"', async () => {
-    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)')
-      .run(id, 'uuid-fv', 'FV 1/08/2026', '2026-08-01T10:00:00Z');
+    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)').run(
+      id,
+      'uuid-fv',
+      'FV 1/08/2026',
+      '2026-08-01T10:00:00Z',
+    );
     const w = dodajZwrot(db, id, { data: '2026-08-14', kwota: '99.00', pozycje: [] });
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}/zwrot`, headers: AUTH });
     expect(r.body).toContain(`/zamowienia/${id}/zwroty/${w.id}/korekta/reczna`);
@@ -1070,11 +1383,17 @@ describe('ekran zwrotu — zlecenie korekty, ktore przepadlo', () => {
   // zauwazy. Przycisk odblokowania panel chowa przed progiem CELOWO; ten formularz jest ta sama
   // decyzja o tej samej wadze i ma znikac tak samo.
   it('SWIEZE zlecenie NIE dostaje formularza „wystawilem recznie" — obchodzil prog', async () => {
-    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)')
-      .run(id, 'uuid-fv', 'FV 1/08/2026', '2026-08-01T10:00:00Z');
+    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)').run(
+      id,
+      'uuid-fv',
+      'FV 1/08/2026',
+      '2026-08-01T10:00:00Z',
+    );
     const w = dodajZwrot(db, id, { data: '2026-08-14', kwota: '99.00', pozycje: [] });
-    db.prepare('UPDATE zwroty SET korekta_zlecona_at = ? WHERE id = ?')
-      .run(new Date(Date.now() - 60 * 1000).toISOString(), w.id);
+    db.prepare('UPDATE zwroty SET korekta_zlecona_at = ? WHERE id = ?').run(
+      new Date(Date.now() - 60 * 1000).toISOString(),
+      w.id,
+    );
 
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}/zwrot`, headers: AUTH });
     expect(r.body).not.toContain(`/zamowienia/${id}/zwroty/${w.id}/korekta/reczna`);
@@ -1082,8 +1401,12 @@ describe('ekran zwrotu — zlecenie korekty, ktore przepadlo', () => {
   });
 
   it('zwrot Z NUMEREM korekty nie dostaje juz zadnego z tych wejsc', async () => {
-    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)')
-      .run(id, 'uuid-fv', 'FV 1/08/2026', '2026-08-01T10:00:00Z');
+    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)').run(
+      id,
+      'uuid-fv',
+      'FV 1/08/2026',
+      '2026-08-01T10:00:00Z',
+    );
     const w = dodajZwrot(db, id, { data: '2026-08-14', kwota: '99.00', pozycje: [] });
     db.prepare('UPDATE zwroty SET korekta_numer = ? WHERE id = ?').run('1/KOR/08/2026', w.id);
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}/zwrot`, headers: AUTH });
@@ -1109,8 +1432,12 @@ describe('ekran zwrotu — zlecenie korekty, ktore przepadlo', () => {
  */
 describe('ekran zwrotu — WARUNEK: „nie pytalismy" nie ma prawa brzmiec jak „pytalismy i nie ma"', () => {
   it('sito „wiecej niz jedna otwarta sprawa" zatrzymalo doczytaj — ekran mowi PRAWDE, nie oskarza inFaktu', async () => {
-    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)')
-      .run(id, 'uuid-fv', 'FV 1/08/2026', '2026-08-01T10:00:00Z');
+    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)').run(
+      id,
+      'uuid-fv',
+      'FV 1/08/2026',
+      '2026-08-01T10:00:00Z',
+    );
     const a = dodajZwrot(db, id, { data: '2026-08-14', kwota: '99.00', pozycje: [] });
     const dawno = new Date(Date.now() - 20 * 60 * 1000).toISOString();
     db.prepare('UPDATE zwroty SET korekta_zlecona_at = ? WHERE id = ?').run(dawno, a.id);
@@ -1131,8 +1458,12 @@ describe('ekran zwrotu — WARUNEK: „nie pytalismy" nie ma prawa brzmiec jak �
   });
 
   it('DOKLADNIE JEDNA otwarta sprawa (drugi zwrot ma juz numer) — stary komunikat zostaje PRAWDZIWY', async () => {
-    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)')
-      .run(id, 'uuid-fv', 'FV 1/08/2026', '2026-08-01T10:00:00Z');
+    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)').run(
+      id,
+      'uuid-fv',
+      'FV 1/08/2026',
+      '2026-08-01T10:00:00Z',
+    );
     const a = dodajZwrot(db, id, { data: '2026-08-14', kwota: '99.00', pozycje: [] });
     const dawno = new Date(Date.now() - 20 * 60 * 1000).toISOString();
     db.prepare('UPDATE zwroty SET korekta_zlecona_at = ? WHERE id = ?').run(dawno, a.id);
@@ -1159,8 +1490,12 @@ describe('ekran zwrotu — WARUNEK: „nie pytalismy" nie ma prawa brzmiec jak �
  */
 describe('ekran zwrotu — przycisk „Wystaw korektę" znika, gdy trasa zawsze odda 400', () => {
   it('inny zwrot tego zamowienia ma juz NUMER korekty — przycisk znika, zostaje wyjasnienie', async () => {
-    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)')
-      .run(id, 'uuid-fv', 'FV 1/08/2026', '2026-08-01T10:00:00Z');
+    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)').run(
+      id,
+      'uuid-fv',
+      'FV 1/08/2026',
+      '2026-08-01T10:00:00Z',
+    );
     const a = dodajZwrot(db, id, { data: '2026-08-14', kwota: '99.00', pozycje: [] });
     db.prepare('UPDATE zwroty SET korekta_numer = ? WHERE id = ?').run('1/KOR/08/2026', a.id);
     const b = dodajZwrot(db, id, { data: '2026-08-15', kwota: '50.00', pozycje: [] });
@@ -1179,8 +1514,12 @@ describe('ekran zwrotu — przycisk „Wystaw korektę" znika, gdy trasa zawsze 
   });
 
   it('inny zwrot ma dopiero ZLECONA korekte (bez numeru) — przycisk tez znika', async () => {
-    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)')
-      .run(id, 'uuid-fv', 'FV 1/08/2026', '2026-08-01T10:00:00Z');
+    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)').run(
+      id,
+      'uuid-fv',
+      'FV 1/08/2026',
+      '2026-08-01T10:00:00Z',
+    );
     const a = dodajZwrot(db, id, { data: '2026-08-14', kwota: '99.00', pozycje: [] });
     db.prepare('UPDATE zwroty SET korekta_zlecona_at = ? WHERE id = ?').run(new Date().toISOString(), a.id);
     const b = dodajZwrot(db, id, { data: '2026-08-15', kwota: '50.00', pozycje: [] });
@@ -1193,8 +1532,12 @@ describe('ekran zwrotu — przycisk „Wystaw korektę" znika, gdy trasa zawsze 
   });
 
   it('BEZ innego zwrotu z korekta przycisk „Wystaw korektę" rysuje sie jak dotad', async () => {
-    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)')
-      .run(id, 'uuid-fv', 'FV 1/08/2026', '2026-08-01T10:00:00Z');
+    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)').run(
+      id,
+      'uuid-fv',
+      'FV 1/08/2026',
+      '2026-08-01T10:00:00Z',
+    );
     const w = dodajZwrot(db, id, { data: '2026-08-14', kwota: '99.00', pozycje: [] });
 
     const infakt = { pobierzFakture: vi.fn(), wystawKorekte: vi.fn(), listaKorekt: vi.fn().mockResolvedValue([]) };
@@ -1212,15 +1555,20 @@ describe('POST /zamowienia/:id/zwroty/:zwrotId/korekta/odblokuj', () => {
   const przepadla = () => {
     const w = dodajZwrot(db, id, { data: '2026-08-14', kwota: '99.00', pozycje: [] });
     const dawno = new Date(Date.now() - 20 * 60 * 1000).toISOString();
-    db.prepare('UPDATE zwroty SET korekta_zlecona_at = ?, korekta_referencja = ? WHERE id = ?')
-      .run(dawno, 'REF-1', w.id);
+    db.prepare('UPDATE zwroty SET korekta_zlecona_at = ?, korekta_referencja = ? WHERE id = ?').run(
+      dawno,
+      'REF-1',
+      w.id,
+    );
     return w;
   };
 
   it('kasuje SAMA rezerwacje i wraca na karte', async () => {
     const w = przepadla();
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/zwroty/${w.id}/korekta/odblokuj`, headers: AUTH,
+      method: 'POST',
+      url: `/zamowienia/${id}/zwroty/${w.id}/korekta/odblokuj`,
+      headers: AUTH,
     });
     expect(r.statusCode).toBe(302);
     const po = zwrotyZamowienia(db, id).find((x) => x.id === w.id);
@@ -1231,7 +1579,9 @@ describe('POST /zamowienia/:id/zwroty/:zwrotId/korekta/odblokuj', () => {
   it('zostawia w logu wpis „Ręcznie (kto)” z tym, co skasowal', async () => {
     const w = przepadla();
     await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/zwroty/${w.id}/korekta/odblokuj`, headers: AUTH,
+      method: 'POST',
+      url: `/zamowienia/${id}/zwroty/${w.id}/korekta/odblokuj`,
+      headers: AUTH,
     });
     const wpis = log(id).at(-1);
     expect(wpis.akcja).toBe('zwrot.korekta.odblokowanie');
@@ -1243,11 +1593,15 @@ describe('POST /zamowienia/:id/zwroty/:zwrotId/korekta/odblokuj', () => {
   // zlecenie moze byc jeszcze w przetwarzaniu, a zwolnienie daloby DRUGA korekte.
   it('ODMAWIA dla rezerwacji swiezej — i zostawia slad nieudanej proby', async () => {
     const w = dodajZwrot(db, id, { data: '2026-08-14', kwota: '99.00', pozycje: [] });
-    db.prepare('UPDATE zwroty SET korekta_zlecona_at = ? WHERE id = ?')
-      .run(new Date(Date.now() - 60 * 1000).toISOString(), w.id);
+    db.prepare('UPDATE zwroty SET korekta_zlecona_at = ? WHERE id = ?').run(
+      new Date(Date.now() - 60 * 1000).toISOString(),
+      w.id,
+    );
 
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/zwroty/${w.id}/korekta/odblokuj`, headers: AUTH,
+      method: 'POST',
+      url: `/zamowienia/${id}/zwroty/${w.id}/korekta/odblokuj`,
+      headers: AUTH,
     });
     expect(r.statusCode).toBe(400);
     expect(zwrotyZamowienia(db, id).find((x) => x.id === w.id).korekta_zlecona_at).toBeTruthy();
@@ -1258,7 +1612,9 @@ describe('POST /zamowienia/:id/zwroty/:zwrotId/korekta/odblokuj', () => {
     const inne = zapiszZamowienie(db, 'pro', zmapowane({ zrodlo_id: 1302, numer: '1302' }), {});
     const w = przepadla();
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${inne}/zwroty/${w.id}/korekta/odblokuj`, headers: AUTH,
+      method: 'POST',
+      url: `/zamowienia/${inne}/zwroty/${w.id}/korekta/odblokuj`,
+      headers: AUTH,
     });
     expect(r.statusCode).toBe(404);
     expect(zwrotyZamowienia(db, id).find((x) => x.id === w.id).korekta_zlecona_at).toBeTruthy();
@@ -1267,12 +1623,18 @@ describe('POST /zamowienia/:id/zwroty/:zwrotId/korekta/odblokuj', () => {
 
 describe('POST /zamowienia/:id/zwroty/:zwrotId/korekta/reczna', () => {
   it('zapisuje numer z formularza — i dopiero to rozlicza zwrot przy fakturze', async () => {
-    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)')
-      .run(id, 'uuid-fv', 'FV 1/08/2026', '2026-08-01T10:00:00Z');
+    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)').run(
+      id,
+      'uuid-fv',
+      'FV 1/08/2026',
+      '2026-08-01T10:00:00Z',
+    );
     const w = dodajZwrot(db, id, { data: '2026-08-14', kwota: '99.00', pozycje: [] });
 
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/zwroty/${w.id}/korekta/reczna`, headers: AUTH,
+      method: 'POST',
+      url: `/zamowienia/${id}/zwroty/${w.id}/korekta/reczna`,
+      headers: AUTH,
       payload: new URLSearchParams({ numer: '2/KOR/09/2026' }).toString(),
     });
     expect(r.statusCode).toBe(302);
@@ -1286,7 +1648,9 @@ describe('POST /zamowienia/:id/zwroty/:zwrotId/korekta/reczna', () => {
   it('ODMAWIA pustego numeru, niczego nie zapisuje i zostawia slad', async () => {
     const w = dodajZwrot(db, id, { data: '2026-08-14', kwota: '99.00', pozycje: [] });
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/zwroty/${w.id}/korekta/reczna`, headers: AUTH,
+      method: 'POST',
+      url: `/zamowienia/${id}/zwroty/${w.id}/korekta/reczna`,
+      headers: AUTH,
       payload: new URLSearchParams({ numer: '   ' }).toString(),
     });
     expect(r.statusCode).toBe(400);
@@ -1298,14 +1662,22 @@ describe('POST /zamowienia/:id/zwroty/:zwrotId/korekta/reczna', () => {
   // pole przy swiezej rezerwacji, ale druga otwarta karta i back+resubmit sprzed zlecenia
   // omijaja widok w calosci — a to sa drogi wprost wymienione w specyfikacji.
   it('ODMAWIA przy REZERWACJI W TOKU (przed progiem) i zostawia slad nieudanej proby', async () => {
-    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)')
-      .run(id, 'uuid-fv', 'FV 1/08/2026', '2026-08-01T10:00:00Z');
+    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)').run(
+      id,
+      'uuid-fv',
+      'FV 1/08/2026',
+      '2026-08-01T10:00:00Z',
+    );
     const w = dodajZwrot(db, id, { data: '2026-08-14', kwota: '99.00', pozycje: [] });
-    db.prepare('UPDATE zwroty SET korekta_zlecona_at = ? WHERE id = ?')
-      .run(new Date(Date.now() - 60 * 1000).toISOString(), w.id);
+    db.prepare('UPDATE zwroty SET korekta_zlecona_at = ? WHERE id = ?').run(
+      new Date(Date.now() - 60 * 1000).toISOString(),
+      w.id,
+    );
 
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/zwroty/${w.id}/korekta/reczna`, headers: AUTH,
+      method: 'POST',
+      url: `/zamowienia/${id}/zwroty/${w.id}/korekta/reczna`,
+      headers: AUTH,
       payload: new URLSearchParams({ numer: '9/KOR/08/2026' }).toString(),
     });
     expect(r.statusCode).toBe(400);
@@ -1318,14 +1690,22 @@ describe('POST /zamowienia/:id/zwroty/:zwrotId/korekta/reczna', () => {
 
   // ...ale PO progu ta droga jest jedynym wyjsciem i ma dzialac.
   it('PRZYJMUJE numer, gdy rezerwacja PRZEPADLA', async () => {
-    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)')
-      .run(id, 'uuid-fv', 'FV 1/08/2026', '2026-08-01T10:00:00Z');
+    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)').run(
+      id,
+      'uuid-fv',
+      'FV 1/08/2026',
+      '2026-08-01T10:00:00Z',
+    );
     const w = dodajZwrot(db, id, { data: '2026-08-14', kwota: '99.00', pozycje: [] });
-    db.prepare('UPDATE zwroty SET korekta_zlecona_at = ? WHERE id = ?')
-      .run(new Date(Date.now() - 20 * 60 * 1000).toISOString(), w.id);
+    db.prepare('UPDATE zwroty SET korekta_zlecona_at = ? WHERE id = ?').run(
+      new Date(Date.now() - 20 * 60 * 1000).toISOString(),
+      w.id,
+    );
 
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/zwroty/${w.id}/korekta/reczna`, headers: AUTH,
+      method: 'POST',
+      url: `/zamowienia/${id}/zwroty/${w.id}/korekta/reczna`,
+      headers: AUTH,
       payload: new URLSearchParams({ numer: '9/KOR/08/2026' }).toString(),
     });
     expect(r.statusCode).toBe(302);
@@ -1336,7 +1716,9 @@ describe('POST /zamowienia/:id/zwroty/:zwrotId/korekta/reczna', () => {
     const w = dodajZwrot(db, id, { data: '2026-08-14', kwota: '99.00', pozycje: [] });
     db.prepare('UPDATE zwroty SET korekta_numer = ? WHERE id = ?').run('1/KOR/08/2026', w.id);
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/zwroty/${w.id}/korekta/reczna`, headers: AUTH,
+      method: 'POST',
+      url: `/zamowienia/${id}/zwroty/${w.id}/korekta/reczna`,
+      headers: AUTH,
       payload: new URLSearchParams({ numer: '2/KOR/09/2026' }).toString(),
     });
     expect(r.statusCode).toBe(400);
@@ -1352,10 +1734,18 @@ describe('POST /zamowienia/:id/zwroty/:zwrotId/korekta/reczna', () => {
 describe('slad w logu zamowienia — kazda akcja zwrotu', () => {
   it('rejestracja zwrotu pisze wpis „Ręcznie (kto)” z data, kwota i liczba pozycji', async () => {
     await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/zwrot`, headers: AUTH,
+      method: 'POST',
+      url: `/zamowienia/${id}/zwrot`,
+      headers: AUTH,
       payload: new URLSearchParams([
-        ['data', '2026-08-14'], ['kwota', '99.00'], ['kwota_dostawy', '19.00'], ['powod', 'nie pasuje'],
-        ['klucz', 's77'], ['ilosc', '1'], ['nazwa', 'Kot 70x100'], ['pozycja_kwota', '99.00'],
+        ['data', '2026-08-14'],
+        ['kwota', '99.00'],
+        ['kwota_dostawy', '19.00'],
+        ['powod', 'nie pasuje'],
+        ['klucz', 's77'],
+        ['ilosc', '1'],
+        ['nazwa', 'Kot 70x100'],
+        ['pozycja_kwota', '99.00'],
       ]).toString(),
     });
     const wpis = log(id).at(-1);
@@ -1367,10 +1757,17 @@ describe('slad w logu zamowienia — kazda akcja zwrotu', () => {
 
   it('ODMOWA rejestracji tez zostawia slad — inaczej po miesiacu nie widac, ze ktos probowal', async () => {
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/zwrot`, headers: AUTH,
+      method: 'POST',
+      url: `/zamowienia/${id}/zwrot`,
+      headers: AUTH,
       payload: new URLSearchParams([
-        ['data', '2026-08-14'], ['kwota', '31033'], ['kwota_dostawy', ''],
-        ['klucz', 's77'], ['ilosc', '1'], ['nazwa', 'Kot 70x100'], ['pozycja_kwota', '99.00'],
+        ['data', '2026-08-14'],
+        ['kwota', '31033'],
+        ['kwota_dostawy', ''],
+        ['klucz', 's77'],
+        ['ilosc', '1'],
+        ['nazwa', 'Kot 70x100'],
+        ['pozycja_kwota', '99.00'],
       ]).toString(),
     });
     expect(r.statusCode).toBe(400);
@@ -1406,15 +1803,22 @@ describe('slad w logu zamowienia — kazda akcja zwrotu', () => {
   });
 
   it('zlecenie korekty pisze slad — udane i nieudane', async () => {
-    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)')
-      .run(id, 'uuid-fv', 'FV 1/08/2026', '2026-08-01T10:00:00Z');
+    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)').run(
+      id,
+      'uuid-fv',
+      'FV 1/08/2026',
+      '2026-08-01T10:00:00Z',
+    );
     const w = dodajZwrot(db, id, {
-      data: '2026-08-14', kwota: '99.00',
+      data: '2026-08-14',
+      kwota: '99.00',
       pozycje: [{ klucz_pozycji: 's77', nazwa: 'Kot 70x100', ilosc: 1, kwota: '99.00' }],
     });
     const infakt = {
       pobierzFakture: vi.fn().mockResolvedValue({
-        uuid: 'uuid-fv', number: 'FV 1/08/2026', invoice_date: '2026-08-01',
+        uuid: 'uuid-fv',
+        number: 'FV 1/08/2026',
+        invoice_date: '2026-08-01',
         services: [
           { name: 'Kot 70x100', quantity: 2, gross_price: 19800, tax_symbol: '23' },
           { name: 'Pies 50x70', quantity: 1, gross_price: 10090, tax_symbol: '23' },
@@ -1424,7 +1828,9 @@ describe('slad w logu zamowienia — kazda akcja zwrotu', () => {
     };
     const appZKorekta = buildOmsServer({ db, config: CONFIG, korekta: createKorekta({ db, infakt }) });
     const r = await appZKorekta.inject({
-      method: 'POST', url: `/zamowienia/${id}/zwroty/${w.id}/korekta`, headers: AUTH,
+      method: 'POST',
+      url: `/zamowienia/${id}/zwroty/${w.id}/korekta`,
+      headers: AUTH,
     });
     expect(r.statusCode).toBe(302);
     const wpis = log(id).at(-1);
@@ -1437,7 +1843,9 @@ describe('slad w logu zamowienia — kazda akcja zwrotu', () => {
     const infakt = { pobierzFakture: vi.fn(), wystawKorekte: vi.fn() };
     const appZKorekta = buildOmsServer({ db, config: CONFIG, korekta: createKorekta({ db, infakt }) });
     const r = await appZKorekta.inject({
-      method: 'POST', url: `/zamowienia/${id}/zwroty/${w.id}/korekta`, headers: AUTH,
+      method: 'POST',
+      url: `/zamowienia/${id}/zwroty/${w.id}/korekta`,
+      headers: AUTH,
     });
     expect(r.statusCode).toBe(400);
     expect(log(id).at(-1).akcja).toBe('zwrot.korekta');

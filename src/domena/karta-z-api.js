@@ -2,8 +2,16 @@ import { STAWKI_VAT } from './vat.js';
 import { poprawnyEan } from './ean.js';
 
 const POLA = new Set([
-  'nazwa', 'opis', 'sku', 'ean', 'cena_gr', 'stawka_vat', 'kategoria',
-  'wymiary', 'waga_g', 'wycofana',
+  'nazwa',
+  'opis',
+  'sku',
+  'ean',
+  'cena_gr',
+  'stawka_vat',
+  'kategoria',
+  'wymiary',
+  'waga_g',
+  'wycofana',
 ]);
 const WYMIARY = ['szerokosc_mm', 'wysokosc_mm', 'glebokosc_mm'];
 const obiekt = (wartosc) => wartosc !== null && typeof wartosc === 'object' && !Array.isArray(wartosc);
@@ -62,7 +70,10 @@ export function parsujKarteZApi(cialo, { czesciowa = false } = {}) {
       case 'sku': {
         const limit = pole === 'nazwa' ? 300 : 64;
         if (typeof wartosc !== 'string' || dlugosc(wartosc.trim()) < 1 || dlugosc(wartosc.trim()) > limit) {
-          return blad(pole, `Pole „${pole}” musi zawierać od 1 do ${limit} znaków po usunięciu białych znaków z końców.`);
+          return blad(
+            pole,
+            `Pole „${pole}” musi zawierać od 1 do ${limit} znaków po usunięciu białych znaków z końców.`,
+          );
         }
         wynik = wartosc.trim();
         break;
@@ -80,7 +91,8 @@ export function parsujKarteZApi(cialo, { czesciowa = false } = {}) {
         wynik = wartosc.trim() || null;
         break;
       case 'ean':
-        if (!poprawnyEan(wartosc)) return blad(pole, 'EAN musi być napisem z 8 lub 13 cyframi i poprawną cyfrą kontrolną GTIN.');
+        if (!poprawnyEan(wartosc))
+          return blad(pole, 'EAN musi być napisem z 8 lub 13 cyframi i poprawną cyfrą kontrolną GTIN.');
         break;
       case 'cena_gr':
       case 'waga_g':

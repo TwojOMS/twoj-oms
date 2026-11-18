@@ -24,11 +24,19 @@ describe('przedpłaty przed pobraniem — wyniki w groszach', () => {
     expect(resztaDoPobrania(male, [w('0.10'), w('0.20')])).toBe(0);
   });
   it('czyta wpłaty zamówienia i efektywne nadpisanie kwoty', () => {
-    const nadpisane = { ...z, platnosci: [w('100.00')], wysylka_reczna_json: JSON.stringify({ metoda: 'dpd', pobranie: 1, kwota_pobrania: '150.00' }) };
+    const nadpisane = {
+      ...z,
+      platnosci: [w('100.00')],
+      wysylka_reczna_json: JSON.stringify({ metoda: 'dpd', pobranie: 1, kwota_pobrania: '150.00' }),
+    };
     expect(resztaDoPobrania(nadpisane)).toBe(5000);
   });
   it('pobranie włączone na karcie po opłacie online — wpłata sklepu JEST przedpłatą', () => {
-    const wlaczoneNaKarcie = { pobranie: 0, kwota_pobrania: '212.90', wysylka_reczna_json: JSON.stringify({ metoda: 'dpd', pobranie: 1, kwota_pobrania: '212.90' }) };
+    const wlaczoneNaKarcie = {
+      pobranie: 0,
+      kwota_pobrania: '212.90',
+      wysylka_reczna_json: JSON.stringify({ metoda: 'dpd', pobranie: 1, kwota_pobrania: '212.90' }),
+    };
     expect(przedplatyPrzedPobraniem(wlaczoneNaKarcie, [w('212.90', 'sklep')])).toBe(21290);
     expect(resztaDoPobrania(wlaczoneNaKarcie, [w('212.90', 'sklep')])).toBe(0);
   });
@@ -43,11 +51,31 @@ describe('limitPobraniaGrosze — limit po przedpłatach także bez kwoty pobran
   it.each([
     ['kwota pobrania jest', { ...z, kwota_brutto: '300.00' }, [w('100.00')], { limit: 11290, podstawa: 'pobranie' }],
     ['brak kwoty pobrania → kwota zamówienia', bezKwoty, [w('100.00')], { limit: 11290, podstawa: 'zamowienie' }],
-    ['pusta kwota pobrania → kwota zamówienia', { ...bezKwoty, kwota_pobrania: '' }, [w('100.00')], { limit: 11290, podstawa: 'zamowienie' }],
+    [
+      'pusta kwota pobrania → kwota zamówienia',
+      { ...bezKwoty, kwota_pobrania: '' },
+      [w('100.00')],
+      { limit: 11290, podstawa: 'zamowienie' },
+    ],
     ['wpłaty ponad kwotę zamówienia → 0', bezKwoty, [w('300.00')], { limit: 0, podstawa: 'zamowienie' }],
-    ['wpłata sklepu przy pobraniu sklepowym nie jest przedpłatą', bezKwoty, [w('212.90', 'sklep')], { limit: 21290, podstawa: 'zamowienie' }],
-    ['wpłata „Za pobraniem" nie jest przedpłatą', bezKwoty, [w('50.00', 'reczna', 'Za pobraniem'), w('100.00')], { limit: 11290, podstawa: 'zamowienie' }],
-    ['groszowo: 0.10 + 0.20 przy zamówieniu 0.30', { ...bezKwoty, kwota_brutto: '0.30' }, [w('0.10'), w('0.20')], { limit: 0, podstawa: 'zamowienie' }],
+    [
+      'wpłata sklepu przy pobraniu sklepowym nie jest przedpłatą',
+      bezKwoty,
+      [w('212.90', 'sklep')],
+      { limit: 21290, podstawa: 'zamowienie' },
+    ],
+    [
+      'wpłata „Za pobraniem" nie jest przedpłatą',
+      bezKwoty,
+      [w('50.00', 'reczna', 'Za pobraniem'), w('100.00')],
+      { limit: 11290, podstawa: 'zamowienie' },
+    ],
+    [
+      'groszowo: 0.10 + 0.20 przy zamówieniu 0.30',
+      { ...bezKwoty, kwota_brutto: '0.30' },
+      [w('0.10'), w('0.20')],
+      { limit: 0, podstawa: 'zamowienie' },
+    ],
   ])('%s', (_opis, zam, wplaty, wynik) => {
     expect(limitPobraniaGrosze(zam, wplaty)).toEqual(wynik);
   });
@@ -56,11 +84,20 @@ describe('limitPobraniaGrosze — limit po przedpłatach także bez kwoty pobran
     expect(limitPobraniaGrosze({ ...bezKwoty, kwota_brutto: '' }, [w('100.00')])).toBeNull();
   });
   it('czyta wpłaty zamówienia i nadpisanie kwoty z karty', () => {
-    const nadpisane = { ...bezKwoty, platnosci: [w('100.00')], wysylka_reczna_json: JSON.stringify({ metoda: 'dpd', pobranie: 1, kwota_pobrania: '150.00' }) };
+    const nadpisane = {
+      ...bezKwoty,
+      platnosci: [w('100.00')],
+      wysylka_reczna_json: JSON.stringify({ metoda: 'dpd', pobranie: 1, kwota_pobrania: '150.00' }),
+    };
     expect(limitPobraniaGrosze(nadpisane)).toEqual({ limit: 5000, podstawa: 'pobranie' });
   });
   it('limit nigdy nie przekracza kwoty zamówienia minus przedpłaty, gdy kwoty pobrania brak', () => {
-    for (const [brutto, wplata] of [['212.90', '100.00'], ['0.30', '0.10'], ['99.99', '99.98'], ['10.00', '0.01']]) {
+    for (const [brutto, wplata] of [
+      ['212.90', '100.00'],
+      ['0.30', '0.10'],
+      ['99.99', '99.98'],
+      ['10.00', '0.01'],
+    ]) {
       const wynik = limitPobraniaGrosze({ ...bezKwoty, kwota_brutto: brutto }, [w(wplata)]);
       expect(wynik?.limit).toBe(Math.round(Number(brutto) * 100) - Math.round(Number(wplata) * 100));
     }

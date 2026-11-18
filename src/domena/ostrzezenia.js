@@ -18,9 +18,7 @@
 // zdarzenia): nowe zdarzenie tej samej rzeczy — kolejna wiadomość w wątku, kolejny
 // ruch paczki — daje NOWY klucz, więc odrzucone ostrzeżenie wraca samo.
 
-import {
-  etapPrzesylki, etykietaEtapu, bezRuchu, dniKalendarzowe,
-} from './etap-przesylki.js';
+import { etapPrzesylki, etykietaEtapu, bezRuchu, dniKalendarzowe } from './etap-przesylki.js';
 import { przesylkaUkryta } from './przesylka-stan.js';
 import { czyPaczkaBezGotowki } from './pobranie-zaplacone.js';
 import { czyPobranie } from './wysylka.js';
@@ -48,9 +46,11 @@ export const WYGASANIE_INTEGRACJI_MS = 24 * 60 * 60 * 1000;
  * rozszerzyć bez przebudowy tabeli, a typy mają rosnąć).
  */
 export function kluczDozwolony(klucz) {
-  return typeof klucz === 'string'
-    && klucz.length <= 300
-    && /^(faktura-ksef|faktura-termin|przesylka|wiadomosc|integracja|zwrot|pobranie|automatyzacja):./.test(klucz);
+  return (
+    typeof klucz === 'string' &&
+    klucz.length <= 300 &&
+    /^(faktura-ksef|faktura-termin|przesylka|wiadomosc|integracja|zwrot|pobranie|automatyzacja):./.test(klucz)
+  );
 }
 
 /**
@@ -77,7 +77,9 @@ export function ostrzezeniaFaktur({ luki = [], dzis } = {}) {
         },
         etykietaOdrzucenia: 'Ignoruj',
       });
-    } catch { /* uszkodzony wiersz lustra nie ma prawa zabrać tabelki */ }
+    } catch {
+      /* uszkodzony wiersz lustra nie ma prawa zabrać tabelki */
+    }
   }
   return wiersze;
 }
@@ -94,13 +96,16 @@ export function ostrzezeniaNiepewnychKsef({ wysylki = [] } = {}) {
       wiersze.push({
         klucz: `faktura-ksef:niepewna:${w.dokument_id}:${w.wersja}`,
         typ: 'faktura-ksef',
-        tekst: `Faktura ${w.numer ?? '(bez numeru)'}: KSeF od doby nie potwierdza stanu sesji — sprawdź fakturę w KSeF `
-          + '(aplikacja MF) zanim wyślesz ją ponownie.',
+        tekst:
+          `Faktura ${w.numer ?? '(bez numeru)'}: KSeF od doby nie potwierdza stanu sesji — sprawdź fakturę w KSeF ` +
+          '(aplikacja MF) zanim wyślesz ją ponownie.',
         title: `Wysłana ${dzienIGodzina(w.od)}; OMS sprawdza jej stan w KSeF sam i niczego nie ponawia.`,
         przycisk: { href: '/faktury', etykieta: 'Faktury' },
         etykietaOdrzucenia: 'Ignoruj',
       });
-    } catch { /* uszkodzony wiersz nie ma prawa zabrać tabelki */ }
+    } catch {
+      /* uszkodzony wiersz nie ma prawa zabrać tabelki */
+    }
   }
   return wiersze;
 }
@@ -111,11 +116,19 @@ export function ostrzezeniaNiepewnychKsef({ wysylki = [] } = {}) {
  * dokumenty „nie wiadomo” albo pominięte przy wysyłce. Udany przebieg milczy — szczegóły są pod przyciskiem.
  * Klucz niesie dzień przebiegu: odrzucony wiersz wraca przy następnym kłopocie, nie przy tym samym.
  */
-export function ostrzezeniaAutomatuKsef({ wynik = null, wstrzymane = [], nazwa = NAZWA_ZAPASOWA, gdzie = `w ${nazwa.miejscownik}`, tryb = null } = {}) {
+export function ostrzezeniaAutomatuKsef({
+  wynik = null,
+  wstrzymane = [],
+  nazwa = NAZWA_ZAPASOWA,
+  gdzie = `w ${nazwa.miejscownik}`,
+  tryb = null,
+} = {}) {
   // Dokument odrzucony przez KSeF, który już jest wśród wstrzymanych, ma swój wiersz — bez dubla w wyniku.
   const juzWstrzymane = new Set((Array.isArray(wstrzymane) ? wstrzymane : []).map((w) => w?.uuid).filter(Boolean));
-  const bezDubla = wynik?.tryb && Array.isArray(wynik.odrzucone)
-    ? { ...wynik, odrzucone: wynik.odrzucone.filter((d) => !juzWstrzymane.has(d?.uuid)) } : wynik;
+  const bezDubla =
+    wynik?.tryb && Array.isArray(wynik.odrzucone)
+      ? { ...wynik, odrzucone: wynik.odrzucone.filter((d) => !juzWstrzymane.has(d?.uuid)) }
+      : wynik;
   return [...wierszWynikuAutomatu(bezDubla), ...wierszeWstrzymanych(wstrzymane, nazwa, gdzie, tryb)];
 }
 
@@ -127,29 +140,41 @@ export function ostrzezeniaAutomatuKsef({ wynik = null, wstrzymane = [], nazwa =
 export function zdanieWstrzymanej(w, nazwa = NAZWA_ZAPASOWA, gdzie = `w ${nazwa.miejscownik}`, tryb = null) {
   // Korekta TwojeFaktury, której pierwotną zmieniono po odrzuceniu przez KSeF (409 z adaptera).
   if (w?.kod === 'korekta-nieaktualna') {
-    return `Korekta ${w?.numer ?? '(bez numeru)'} nie poszła do KSeF — faktura pierwotna zmieniła się po wystawieniu `
-      + 'korekty, więc automat KSeF jej nie wyśle. Następny krok: wystaw nową korektę do aktualnej wersji faktury pierwotnej.';
+    return (
+      `Korekta ${w?.numer ?? '(bez numeru)'} nie poszła do KSeF — faktura pierwotna zmieniła się po wystawieniu ` +
+      'korekty, więc automat KSeF jej nie wyśle. Następny krok: wystaw nową korektę do aktualnej wersji faktury pierwotnej.'
+    );
   }
   // KSeF zgłosił duplikat (440), a panel 3 razy nie pobrał oryginału — zdanie „co dalej” składa czuwacz
   // (`opisNiesprawdzonegoDuplikatu` w module faktur; domena go nie importuje), tu tylko zapas na pusty powód.
   if (w?.kod === 'duplikat-niesprawdzony') {
-    return w?.powod || `Faktura ${w?.numer ?? '(bez numeru)'}: KSeF zgłosił duplikat, a panel nie sprawdził oryginału. `
-      + 'Następny krok: kliknij „Sprawdź ponownie” na ekranie wyniku automatu KSeF.';
+    return (
+      w?.powod ||
+      `Faktura ${w?.numer ?? '(bez numeru)'}: KSeF zgłosił duplikat, a panel nie sprawdził oryginału. ` +
+        'Następny krok: kliknij „Sprawdź ponownie” na ekranie wyniku automatu KSeF.'
+    );
   }
   // Automat TwojeFaktury nie ponawia tych samych bajtów — wpis trwa do nowej wersji albo numeru KSeF.
   const numer = w?.numer ?? '(bez numeru)';
   const powod = w?.powod ? ` (${w.powod})` : '';
   if (w?.kod === 'odrzucona') {
-    return `Faktura ${numer} odrzucona przez KSeF ${w?.dzien ?? '?'}${powod} — automat jej nie wyśle. `
-      + (tryb === 'reczna' ? 'Następny krok: popraw fakturę w zakładce FAKTURY i wyślij poprawioną wersję ręcznie.'
-        : 'Następny krok: popraw fakturę w zakładce FAKTURY; poprawioną wersję automat wyśle sam.');
+    return (
+      `Faktura ${numer} odrzucona przez KSeF ${w?.dzien ?? '?'}${powod} — automat jej nie wyśle. ` +
+      (tryb === 'reczna'
+        ? 'Następny krok: popraw fakturę w zakładce FAKTURY i wyślij poprawioną wersję ręcznie.'
+        : 'Następny krok: popraw fakturę w zakładce FAKTURY; poprawioną wersję automat wyśle sam.')
+    );
   }
   if (w?.kod === 'nie-wyslano') {
-    return `Faktura ${numer} nie doszła do KSeF ${w?.dzien ?? '?'}${powod} — automat nie ponawia tej samej wysyłki. `
-      + 'Następny krok: wyślij ją ręcznie bez zmian z zakładki FAKTURY.';
+    return (
+      `Faktura ${numer} nie doszła do KSeF ${w?.dzien ?? '?'}${powod} — automat nie ponawia tej samej wysyłki. ` +
+      'Następny krok: wyślij ją ręcznie bez zmian z zakładki FAKTURY.'
+    );
   }
-  return `Faktura ${w?.numer ?? '(bez numeru)'} wstrzymana — automat jej nie wyśle (${nazwa.mianownik} odrzucił ją ${w?.dzien ?? '?'}`
-    + `${w?.powod ? `: ${w.powod}` : ''}). Następny krok: popraw ${gdzie} i wyślij ręcznie albo zwolnij.`;
+  return (
+    `Faktura ${w?.numer ?? '(bez numeru)'} wstrzymana — automat jej nie wyśle (${nazwa.mianownik} odrzucił ją ${w?.dzien ?? '?'}` +
+    `${w?.powod ? `: ${w.powod}` : ''}). Następny krok: popraw ${gdzie} i wyślij ręcznie albo zwolnij.`
+  );
 }
 
 // Faktura odrzucona przez inFakt przy wysyłce z automatu jest pomijana
@@ -166,7 +191,9 @@ function wierszeWstrzymanych(wstrzymane, nazwa, gdzie, tryb) {
         przycisk: { href: '/faktury/ksef/automat', etykieta: 'Wynik automatu' },
         etykietaOdrzucenia: 'Ignoruj',
       });
-    } catch { /* jw. */ }
+    } catch {
+      /* jw. */
+    }
   }
   return wiersze;
 }
@@ -178,7 +205,8 @@ function dzienIGodzina(iso) {
 }
 
 const faktur = (n) => {
-  const d = n % 10; const s = n % 100;
+  const d = n % 10;
+  const s = n % 100;
   if (n === 1) return 'faktura czeka';
   return d >= 2 && d <= 4 && (s < 12 || s > 14) ? 'faktury czekają' : 'faktur czeka';
 };
@@ -209,32 +237,43 @@ function wierszWynikuTrybu(wynik) {
     // Błąd należy do faktury `numer`; jeśli automat jej nie weźmie (`ponawia: false` — wstrzymana albo
     // niepewna), zdanie mówi to wprost, a licznik pozostałych idzie osobno.
     if (awaria.numer && !awaria.ponawia) {
-      czesci.push(`przebieg zatrzymał się na fakturze ${awaria.numer} (${stanal}): ${blad.replace(/[.!?]$/u, '')} — tej faktury `
-        + `automat nie wyśle ponownie${awaria.czeka > 0 ? `; pozostałe: ${czekaja} — OMS ponowi je ${ponowi}` : ''}`);
+      czesci.push(
+        `przebieg zatrzymał się na fakturze ${awaria.numer} (${stanal}): ${blad.replace(/[.!?]$/u, '')} — tej faktury ` +
+          `automat nie wyśle ponownie${awaria.czeka > 0 ? `; pozostałe: ${czekaja} — OMS ponowi je ${ponowi}` : ''}`,
+      );
     } else {
       const gdzie = awaria.numer ? ` na fakturze ${awaria.numer}` : '';
-      czesci.push(awaria.czeka > 0
-        ? `${czekaja} — przebieg zatrzymał się${gdzie}: ${blad}${/[.!?]$/u.test(blad) ? '' : '.'} OMS ponowi ${ponowi}`
-        : `przebieg zatrzymał się${gdzie} (${stanal}): ${blad.replace(/[.!?]$/u, '')}`);
+      czesci.push(
+        awaria.czeka > 0
+          ? `${czekaja} — przebieg zatrzymał się${gdzie}: ${blad}${/[.!?]$/u.test(blad) ? '' : '.'} OMS ponowi ${ponowi}`
+          : `przebieg zatrzymał się${gdzie} (${stanal}): ${blad.replace(/[.!?]$/u, '')}`,
+      );
     }
   }
   if (przerwany) {
-    czesci.push(wynik.wTrakcie?.numer
-      ? `przebieg przerwany (panel uruchomił się ponownie) w trakcie wysyłki ${wynik.wTrakcie.numer} — stan rozstrzygnie sprawdzanie KSeF`
-      : 'przebieg przerwany (panel uruchomił się ponownie w trakcie)');
+    czesci.push(
+      wynik.wTrakcie?.numer
+        ? `przebieg przerwany (panel uruchomił się ponownie) w trakcie wysyłki ${wynik.wTrakcie.numer} — stan rozstrzygnie sprawdzanie KSeF`
+        : 'przebieg przerwany (panel uruchomił się ponownie w trakcie)',
+    );
   }
-  if (niepewne.length) czesci.push(`NIE WIADOMO, czy poszły: ${numery(niepewne)} — stan rozstrzygnie sprawdzanie KSeF, nie wysyłaj ich ponownie`);
+  if (niepewne.length)
+    czesci.push(
+      `NIE WIADOMO, czy poszły: ${numery(niepewne)} — stan rozstrzygnie sprawdzanie KSeF, nie wysyłaj ich ponownie`,
+    );
   if (odrzucone.length) czesci.push(`KSeF odrzucił: ${numery(odrzucone)} — popraw i wyślij ręcznie`);
   if (czeka.length) czesci.push(`korekty czekają na numer KSeF faktury pierwotnej: ${numery(czeka)}`);
   if (pominiete.length) czesci.push(`pominięte: ${numery(pominiete)}`);
-  return [{
-    klucz: `faktura-ksef:automat:${awaria?.od ?? wynik.dzien}`,
-    typ: 'faktura-ksef',
-    tekst: `Automat KSeF: ${czesci.join('; ')}.`,
-    title: 'Pełny wynik przebiegu: Faktury → automat KSeF.',
-    przycisk: { href: '/faktury/ksef/automat', etykieta: 'Wynik automatu' },
-    etykietaOdrzucenia: 'Ignoruj',
-  }];
+  return [
+    {
+      klucz: `faktura-ksef:automat:${awaria?.od ?? wynik.dzien}`,
+      typ: 'faktura-ksef',
+      tekst: `Automat KSeF: ${czesci.join('; ')}.`,
+      title: 'Pełny wynik przebiegu: Faktury → automat KSeF.',
+      przycisk: { href: '/faktury/ksef/automat', etykieta: 'Wynik automatu' },
+      etykietaOdrzucenia: 'Ignoruj',
+    },
+  ];
 }
 
 function wierszWynikuAutomatu(wynik) {
@@ -247,22 +286,31 @@ function wierszWynikuAutomatu(wynik) {
     if (!wynik.blad && !przerwany && !niepewne.length && !pominiete.length) return [];
     const czesci = [];
     if (przerwany) {
-      czesci.push(wynik.wTrakcie?.numer
-        ? `przebieg przerwany (panel uruchomił się ponownie) w trakcie wysyłki ${wynik.wTrakcie.numer} — sprawdź w inFakcie, czy ma numer KSeF, zanim wyślesz ją ponownie`
-        : 'przebieg przerwany (panel uruchomił się ponownie w trakcie) — sprawdź w inFakcie, co poszło');
+      czesci.push(
+        wynik.wTrakcie?.numer
+          ? `przebieg przerwany (panel uruchomił się ponownie) w trakcie wysyłki ${wynik.wTrakcie.numer} — sprawdź w inFakcie, czy ma numer KSeF, zanim wyślesz ją ponownie`
+          : 'przebieg przerwany (panel uruchomił się ponownie w trakcie) — sprawdź w inFakcie, co poszło',
+      );
     }
     if (wynik.blad) czesci.push(`zatrzymał się: ${wynik.blad}`);
-    if (niepewne.length) czesci.push(`NIE WIADOMO, czy poszły: ${niepewne.map((n) => n?.numer ?? '?').join(', ')} — sprawdź w inFakcie, zanim wyślesz ponownie`);
+    if (niepewne.length)
+      czesci.push(
+        `NIE WIADOMO, czy poszły: ${niepewne.map((n) => n?.numer ?? '?').join(', ')} — sprawdź w inFakcie, zanim wyślesz ponownie`,
+      );
     if (pominiete.length) czesci.push(`pominięte: ${pominiete.map((p) => p?.numer ?? '?').join(', ')}`);
-    return [{
-      klucz: `faktura-ksef:automat:${wynik.dzien}`,
-      typ: 'faktura-ksef',
-      tekst: `Automat KSeF (${wynik.dzien}): ${czesci.join('; ')}.`,
-      title: 'Automat sam niczego nie ponawia. Pełny wynik przebiegu: Faktury → wynik automatu KSeF.',
-      przycisk: { href: '/faktury/ksef/automat', etykieta: 'Wynik automatu' },
-      etykietaOdrzucenia: 'Ignoruj',
-    }];
-  } catch { return []; }
+    return [
+      {
+        klucz: `faktura-ksef:automat:${wynik.dzien}`,
+        typ: 'faktura-ksef',
+        tekst: `Automat KSeF (${wynik.dzien}): ${czesci.join('; ')}.`,
+        title: 'Automat sam niczego nie ponawia. Pełny wynik przebiegu: Faktury → wynik automatu KSeF.',
+        przycisk: { href: '/faktury/ksef/automat', etykieta: 'Wynik automatu' },
+        etykietaOdrzucenia: 'Ignoruj',
+      },
+    ];
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -281,7 +329,10 @@ export function ostrzezeniaPrzesylek({ przesylki = [], zamowienia = new Map(), t
       if (przesylkaUkryta(p)) continue;
       const etap = etapPrzesylki(p.status_kuriera, p.status_kuriera_kod);
       const stoi = bezRuchu({
-        etap, statusKurieraAt: p.status_kuriera_at, nadanaAt: p.utworzona_at, teraz,
+        etap,
+        statusKurieraAt: p.status_kuriera_at,
+        nadanaAt: p.utworzona_at,
+        teraz,
       });
       if (!stoi) continue;
       const od = p.status_kuriera_at || p.utworzona_at;
@@ -296,7 +347,9 @@ export function ostrzezeniaPrzesylek({ przesylki = [], zamowienia = new Map(), t
         przycisk: { href: '/przesylki?pokaz=bez_ruchu', etykieta: 'Przesyłki' },
         etykietaOdrzucenia: 'Ignoruj',
       });
-    } catch { /* jw. */ }
+    } catch {
+      /* jw. */
+    }
   }
   return wiersze;
 }
@@ -338,7 +391,9 @@ export function ostrzezeniaWiadomosci({ watki = [], teraz = new Date() } = {}) {
         przycisk: { href: '/wiadomosci', etykieta: 'Wiadomości' },
         etykietaOdrzucenia: 'Ignoruj',
       });
-    } catch { /* jw. */ }
+    } catch {
+      /* jw. */
+    }
   }
   return wiersze;
 }
@@ -366,18 +421,21 @@ export function ostrzezeniaTerminow({ poTerminie = [] } = {}) {
   if (!poTerminie.length) return [];
   try {
     const sumaGr = poTerminie.reduce((s, f) => s + (Number(f.pozostalo_gr) || 0), 0);
-    const lista = poTerminie.slice(0, 6)
+    const lista = poTerminie
+      .slice(0, 6)
       .map((f) => `${f.numer ?? f.uuid} (termin ${f.payment_date ?? '?'})`)
       .join(', ');
     const ogon = poTerminie.length > 6 ? '…' : '';
-    return [{
-      klucz: `faktura-termin:${poTerminie.length}:${sumaGr}`,
-      typ: 'faktura-termin',
-      tekst: `${fakturPoPolsku(poTerminie.length)} po terminie płatności — łącznie ${zl(sumaGr)} zł do zapłaty.`,
-      title: `${lista}${ogon} Stan z odczytu ${poTerminie[0]?.sprawdzona_at ?? '?'}.`,
-      przycisk: { href: '/faktury', etykieta: 'Faktury' },
-      etykietaOdrzucenia: 'Ignoruj',
-    }];
+    return [
+      {
+        klucz: `faktura-termin:${poTerminie.length}:${sumaGr}`,
+        typ: 'faktura-termin',
+        tekst: `${fakturPoPolsku(poTerminie.length)} po terminie płatności — łącznie ${zl(sumaGr)} zł do zapłaty.`,
+        title: `${lista}${ogon} Stan z odczytu ${poTerminie[0]?.sprawdzona_at ?? '?'}.`,
+        przycisk: { href: '/faktury', etykieta: 'Faktury' },
+        etykietaOdrzucenia: 'Ignoruj',
+      },
+    ];
   } catch {
     return []; /* uszkodzony wiersz lustra nie ma prawa zabrać tabelki */
   }
@@ -403,7 +461,9 @@ export function ostrzezeniaZwrotow({ zwroty = [], dzis } = {}) {
         przycisk: { href: `/zamowienia/${w.zamowienie_id}`, etykieta: 'Zamówienie' },
         etykietaOdrzucenia: 'Ignoruj',
       });
-    } catch { /* jw. */ }
+    } catch {
+      /* jw. */
+    }
   }
   return wiersze;
 }
@@ -440,7 +500,9 @@ export function ostrzezeniaAutomatyzacji({ reguly = [] } = {}) {
           etykietaOdrzucenia: 'Ignoruj',
         });
       }
-    } catch { /* uszkodzony wiersz nie ma prawa zabrać tabelki */ }
+    } catch {
+      /* uszkodzony wiersz nie ma prawa zabrać tabelki */
+    }
   }
   return wiersze;
 }
@@ -486,13 +548,16 @@ export function ostrzezeniaPobran({ pobrania = [] } = {}) {
       wiersze.push({
         klucz: `pobranie:${p.zamowienie_id}:${p.status_kuriera_at ?? ''}`,
         typ: 'pobranie-korekta',
-        tekst: `Paczka za pobraniem do zamówienia ${p.zamowienie_numer ?? '?'} wróciła bez gotówki — `
-          + `faktura ${p.faktura_numer ?? '(bez numeru)'} czeka na korektę do zera.`,
+        tekst:
+          `Paczka za pobraniem do zamówienia ${p.zamowienie_numer ?? '?'} wróciła bez gotówki — ` +
+          `faktura ${p.faktura_numer ?? '(bez numeru)'} czeka na korektę do zera.`,
         title: p.status_kuriera ? `Ostatni status kuriera: ${p.status_kuriera}.` : undefined,
         przycisk: { href: `/zamowienia/${p.zamowienie_id}`, etykieta: 'Zamówienie' },
         etykietaOdrzucenia: 'Ignoruj',
       });
-    } catch { /* uszkodzony wiersz nie ma prawa zabrać tabelki */ }
+    } catch {
+      /* uszkodzony wiersz nie ma prawa zabrać tabelki */
+    }
   }
   return wiersze;
 }
@@ -515,9 +580,10 @@ const ZEGARY = [
 // wiedzy nie chowamy, tak samo jak przy nieparsowalnej dacie odrzucenia niżej.
 const bladAktualny = (z) => Boolean(z?.blad) && z?.bladSwiezszy !== false;
 
-const zdanieZegara = (nazwa, z) => (bladAktualny(z)
-  ? `${nazwa} nie działa: ${z.blad}`
-  : `${nazwa}: ostatni udany przebieg ${z.wiekS != null ? `${fmtWiek(z.wiekS)} temu` : 'nieznany'}.`);
+const zdanieZegara = (nazwa, z) =>
+  bladAktualny(z)
+    ? `${nazwa} nie działa: ${z.blad}`
+    : `${nazwa}: ostatni udany przebieg ${z.wiekS != null ? `${fmtWiek(z.wiekS)} temu` : 'nieznany'}.`;
 
 /**
  * Niedziałające integracje — ze STRUKTURALNEGO wyniku `ocenZdrowie` (reguła zdrowia
@@ -542,7 +608,9 @@ export function ostrzezeniaIntegracji({ zdrowie } = {}) {
         przycisk,
         etykietaOdrzucenia: 'Wycisz na 24 h',
       });
-    } catch { /* jw. */ }
+    } catch {
+      /* jw. */
+    }
   }
   for (const [pole, klucz, nazwa] of ZEGARY) {
     try {
@@ -555,7 +623,9 @@ export function ostrzezeniaIntegracji({ zdrowie } = {}) {
         przycisk,
         etykietaOdrzucenia: 'Wycisz na 24 h',
       });
-    } catch { /* jw. */ }
+    } catch {
+      /* jw. */
+    }
   }
   return wiersze;
 }
@@ -574,15 +644,19 @@ export const PROG_UWAGI_KOPII_H = 26;
  */
 export function ostrzezeniaKopii({ kopie } = {}) {
   if (!kopie) return [];
-  const wiersz = (klucz, tekst) => [{
-    klucz: `integracja:kopia:${klucz}`,
-    typ: 'integracja',
-    tekst,
-    przycisk: { href: '/ustawienia/kopie', etykieta: 'Kopie zapasowe' },
-    etykietaOdrzucenia: 'Wycisz na 24 h',
-  }];
+  const wiersz = (klucz, tekst) => [
+    {
+      klucz: `integracja:kopia:${klucz}`,
+      typ: 'integracja',
+      tekst,
+      przycisk: { href: '/ustawienia/kopie', etykieta: 'Kopie zapasowe' },
+      etykietaOdrzucenia: 'Wycisz na 24 h',
+    },
+  ];
   if (kopie.brakNadzoru) {
-    return kopie.wymagany ? wiersz('brak-nadzoru', `Faktury ${kopie.nazwa} są tylko w bazie, a ten OMS nie widzi katalogu kopii.`) : [];
+    return kopie.wymagany
+      ? wiersz('brak-nadzoru', `Faktury ${kopie.nazwa} są tylko w bazie, a ten OMS nie widzi katalogu kopii.`)
+      : [];
   }
   let wynik = [];
   if (!kopie.katalogDostepny) wynik = wiersz('niedostepny', 'OMS nie widzi katalogu kopii.');
@@ -591,12 +665,28 @@ export function ostrzezeniaKopii({ kopie } = {}) {
     const { plik, wiekH } = kopie.ostatnia;
     if (wiekH >= PROG_UWAGI_KOPII_H) {
       const data = /\d{4}-\d{2}-\d{2}/.exec(String(plik))?.[0] ?? String(plik);
-      wynik = wiersz(`stara:${data}`, `Ostatnia kopia bazy ma ${wiekH} h — oms-kopia nie zrobił kopii w ostatniej dobie.`);
+      wynik = wiersz(
+        `stara:${data}`,
+        `Ostatnia kopia bazy ma ${wiekH} h — oms-kopia nie zrobił kopii w ostatniej dobie.`,
+      );
     }
   }
-  if (kopie.zewnetrznaStan === 'brak-nosnika') wynik.push(...wiersz('nosnik', 'Kopia poza dyskiem nie trafia na nośnik — podłącz nośnik kopii (brak znacznika w katalogu).'));
-  else if (kopie.zewnetrznaStan === 'ten-sam-dysk') wynik.push(...wiersz('nosnik', 'Kopia poza dyskiem leży na dysku serwera — nośnik kopii nie jest zamontowany.'));
-  else if (kopie.zewnetrznaStan === 'stara-na-nosniku') wynik.push(...wiersz('nosnik', 'Kopia poza dyskiem nie odświeża się — na nośniku brak kopii z ostatnich 48 h (sprawdź oms-kopia).'));
+  if (kopie.zewnetrznaStan === 'brak-nosnika')
+    wynik.push(
+      ...wiersz(
+        'nosnik',
+        'Kopia poza dyskiem nie trafia na nośnik — podłącz nośnik kopii (brak znacznika w katalogu).',
+      ),
+    );
+  else if (kopie.zewnetrznaStan === 'ten-sam-dysk')
+    wynik.push(...wiersz('nosnik', 'Kopia poza dyskiem leży na dysku serwera — nośnik kopii nie jest zamontowany.'));
+  else if (kopie.zewnetrznaStan === 'stara-na-nosniku')
+    wynik.push(
+      ...wiersz(
+        'nosnik',
+        'Kopia poza dyskiem nie odświeża się — na nośniku brak kopii z ostatnich 48 h (sprawdź oms-kopia).',
+      ),
+    );
   return wynik;
 }
 
@@ -642,6 +732,6 @@ export function zlozOstrzezenia({ wiersze = [], odrzucone = new Map(), teraz = n
   });
   return widoczne
     .map((w, i) => ({ w, i }))
-    .sort((a, b) => (KOLEJNOSC.indexOf(a.w.typ) - KOLEJNOSC.indexOf(b.w.typ)) || (a.i - b.i))
+    .sort((a, b) => KOLEJNOSC.indexOf(a.w.typ) - KOLEJNOSC.indexOf(b.w.typ) || a.i - b.i)
     .map(({ w }) => w);
 }

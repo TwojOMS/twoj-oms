@@ -15,32 +15,73 @@ const poller = { stan: () => ({ ostatni_przebieg_at: '2026-11-02T12:00:00', osta
 const PDF = Buffer.concat([Buffer.from('%PDF-1.4'), Buffer.alloc(64)]);
 const klient = {
   pobierzFakturyZamowienia: async () => [],
-  zglosFakture: async () => { throw new Error('test nie wysyła do Allegro'); },
-  wyslijPlikFaktury: async () => { throw new Error('test nie wysyła do Allegro'); },
+  zglosFakture: async () => {
+    throw new Error('test nie wysyła do Allegro');
+  },
+  wyslijPlikFaktury: async () => {
+    throw new Error('test nie wysyła do Allegro');
+  },
 };
 
-function baza({ program = 'twojefaktury', invoiceId = null, weryfikacja = 'ACCEPTED', wyslanaAt = '2026-10-20T11:00:00.000Z' } = {}) {
+function baza({
+  program = 'twojefaktury',
+  invoiceId = null,
+  weryfikacja = 'ACCEPTED',
+  wyslanaAt = '2026-10-20T11:00:00.000Z',
+} = {}) {
   const db = openOmsDb(':memory:');
-  const id = zapiszZamowienie(db, 'allegro_polcien', {
-    zrodlo_id: 'PC-1', numer: 'PC-1', kwota_brutto: '100.00', chce_fakture: 1, pozycje: [],
-    klient: { first_name: 'Jan', company: 'Pracownia Półcień', email: 'jan@polcien.example' }, dostawa: { city: 'Warszawa' },
-    metoda_wysylki: 'allegro_dpd', kwota_pobrania: null, nip: '1234563218', status_woo: null,
-    oplacone_at: '2026-10-20T09:00:00', anulowane: 0, utworzone_at: '2026-10-20T08:00:00',
-  }, {});
-  db.prepare(`INSERT INTO faktury (zamowienie_id, program, dokument_id, infakt_uuid, numer, ksef_numer,
+  const id = zapiszZamowienie(
+    db,
+    'allegro_polcien',
+    {
+      zrodlo_id: 'PC-1',
+      numer: 'PC-1',
+      kwota_brutto: '100.00',
+      chce_fakture: 1,
+      pozycje: [],
+      klient: { first_name: 'Jan', company: 'Pracownia Półcień', email: 'jan@polcien.example' },
+      dostawa: { city: 'Warszawa' },
+      metoda_wysylki: 'allegro_dpd',
+      kwota_pobrania: null,
+      nip: '1234563218',
+      status_woo: null,
+      oplacone_at: '2026-10-20T09:00:00',
+      anulowane: 0,
+      utworzone_at: '2026-10-20T08:00:00',
+    },
+    {},
+  );
+  db.prepare(
+    `INSERT INTO faktury (zamowienie_id, program, dokument_id, infakt_uuid, numer, ksef_numer,
     allegro_invoice_id, allegro_wyslana_at, allegro_weryfikacja, utworzona_at)
-    VALUES (?,?,?,?,?,?,?,?,?,?)`)
-    .run(id, program, program === 'infakt' ? null : '17', program === 'infakt' ? 'u-1' : null, 'FV/2/11/2026', null,
-      invoiceId, wyslanaAt, weryfikacja, '2026-11-02T10:00:00.000Z');
+    VALUES (?,?,?,?,?,?,?,?,?,?)`,
+  ).run(
+    id,
+    program,
+    program === 'infakt' ? null : '17',
+    program === 'infakt' ? 'u-1' : null,
+    'FV/2/11/2026',
+    null,
+    invoiceId,
+    wyslanaAt,
+    weryfikacja,
+    '2026-11-02T10:00:00.000Z',
+  );
   return { db, id };
 }
 
 const apki = [];
-afterEach(async () => { for (const a of apki.splice(0)) await a.close(); });
+afterEach(async () => {
+  for (const a of apki.splice(0)) await a.close();
+});
 
 async function karta(opcje) {
   const { db, id } = baza(opcje);
-  const fakturaAllegro = createFakturaAllegro({ db, infakt: { pobierzPdf: async () => PDF }, klienciKanalow: { allegro_polcien: klient } });
+  const fakturaAllegro = createFakturaAllegro({
+    db,
+    infakt: { pobierzPdf: async () => PDF },
+    klienciKanalow: { allegro_polcien: klient },
+  });
   const app = buildOmsServer({ db, config, poller, fakturaAllegro });
   apki.push(app);
   await app.ready();
@@ -49,7 +90,8 @@ async function karta(opcje) {
   return r.body.replace(/\s+/g, ' ');
 }
 
-const ZDANIE_D = 'Kupujący ma w Allegro poprzednią fakturę (sprzed zamiany NIP-u), wysłaną 20.10. Nowej FV/2/11/2026 panel nie wysyła sam.';
+const ZDANIE_D =
+  'Kupujący ma w Allegro poprzednią fakturę (sprzed zamiany NIP-u), wysłaną 20.10. Nowej FV/2/11/2026 panel nie wysyła sam.';
 
 describe('karta zamówienia, znacznik D', () => {
   it('znacznik D → zdanie o poprzedniej fakturze, bez „kupujący ma ją na swoim koncie”', async () => {

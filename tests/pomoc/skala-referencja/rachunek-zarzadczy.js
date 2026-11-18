@@ -42,9 +42,8 @@ function kosztyOkresu(db, miesiace) {
   };
 }
 
-const koniecMiesiaca = (miesiac) => new Date(
-  Date.UTC(Number(miesiac.slice(0, 4)), Number(miesiac.slice(5, 7)), 0),
-).toISOString().slice(0, 10);
+const koniecMiesiaca = (miesiac) =>
+  new Date(Date.UTC(Number(miesiac.slice(0, 4)), Number(miesiac.slice(5, 7)), 0)).toISOString().slice(0, 10);
 
 function rachunekMiesiaca(db, miesiac, regulySprzedazy) {
   const od = `${miesiac}-01`;
@@ -69,11 +68,15 @@ function rachunekMiesiaca(db, miesiac, regulySprzedazy) {
 }
 
 export function rachunekOkresu(db, { od, do: doDnia }, { regulySprzedazy = {}, podlogaKosztow = null } = {}) {
-  if (!podlogaKosztow) { const e = new Error(BRAK_PODLOGI_KOSZTOW); e.dlaOperatora = true; throw e; }
+  if (!podlogaKosztow) {
+    const e = new Error(BRAK_PODLOGI_KOSZTOW);
+    e.dlaOperatora = true;
+    throw e;
+  }
   if (od.slice(0, 7) < podlogaKosztow) {
     const e = new Error(
-      `Rachunek zarządczy zaczyna się od ${podlogaKosztow}: kosztów sprzed KSeF panel nie zna,`
-      + ' więc wcześniejszy wynik byłby zyskiem zawyżonym o niewidoczne wydatki.',
+      `Rachunek zarządczy zaczyna się od ${podlogaKosztow}: kosztów sprzed KSeF panel nie zna,` +
+        ' więc wcześniejszy wynik byłby zyskiem zawyżonym o niewidoczne wydatki.',
     );
     e.dlaOperatora = true;
     throw e;
@@ -90,29 +93,29 @@ export function rachunekOkresu(db, { od, do: doDnia }, { regulySprzedazy = {}, p
   const dane = daneOkresu(db, miesiace);
 
   const wynikGrosze = przychodNettoGrosze - koszty.nettoGrosze;
-  const zostajeGrosze = dane.brakujace.length
-    ? null
-    : wynikGrosze - dane.suma.zusRazemGrosze - dane.suma.pit5Grosze;
+  const zostajeGrosze = dane.brakujace.length ? null : wynikGrosze - dane.suma.zusRazemGrosze - dane.suma.pit5Grosze;
 
   const kpirKoszty = dane.suma.kpirKosztyGrosze;
-  const pokrycieKosztow = kpirKoszty
-    ? (koszty.nettoGrosze / kpirKoszty) * 100
-    : null;
+  const pokrycieKosztow = kpirKoszty ? (koszty.nettoGrosze / kpirKoszty) * 100 : null;
   const kosztyZnane = pokrycieKosztow === null ? true : pokrycieKosztow >= PROG_POKRYCIA;
 
   const kpirPrzychod = dane.suma.kpirPrzychodGrosze;
-  const roznicaPrzychodu = kpirPrzychod ? {
-    kpirGrosze: kpirPrzychod,
-    roznicaGrosze: przychodNettoGrosze - kpirPrzychod,
-    procent: ((przychodNettoGrosze - kpirPrzychod) / kpirPrzychod) * 100,
-  } : null;
+  const roznicaPrzychodu = kpirPrzychod
+    ? {
+        kpirGrosze: kpirPrzychod,
+        roznicaGrosze: przychodNettoGrosze - kpirPrzychod,
+        procent: ((przychodNettoGrosze - kpirPrzychod) / kpirPrzychod) * 100,
+      }
+    : null;
 
   const rok = doDnia.slice(0, 4);
   const odStycznia = miesiaceOkresu({ od: `${rok}-01-01`, do: doDnia });
   const daneRoku = daneOkresu(db, odStycznia);
   const zwrotyRokuNettoGrosze = sumaNetto(zwrotyWOkresie(db, { od: `${rok}-01-01`, do: doDnia }, regulySprzedazy));
-  const dochodRoku = sumaNetto(sprzedazWOkresie(db, { od: `${rok}-01-01`, do: doDnia }, regulySprzedazy))
-    - zwrotyRokuNettoGrosze - kosztyOkresu(db, odStycznia).nettoGrosze;
+  const dochodRoku =
+    sumaNetto(sprzedazWOkresie(db, { od: `${rok}-01-01`, do: doDnia }, regulySprzedazy)) -
+    zwrotyRokuNettoGrosze -
+    kosztyOkresu(db, odStycznia).nettoGrosze;
   const podatek = podatekNarastajaco({
     dochodGrosze: dochodRoku,
     spoleczneGrosze: daneRoku.suma.zusSpoleczneGrosze,
@@ -146,21 +149,21 @@ export function rachunekOkresu(db, { od, do: doDnia }, { regulySprzedazy = {}, p
     miesiacami: miesiace.length >= 2 ? miesiace.map((m) => rachunekMiesiaca(db, m, regulySprzedazy)) : null,
     wskazniki: kosztyZnane
       ? wskazniki({
-        kategorie: koszty.kategorie,
-        przychodNettoGrosze,
-        zamowien: wiersze.length,
-      })
+          kategorie: koszty.kategorie,
+          przychodNettoGrosze,
+          zamowien: wiersze.length,
+        })
       : null,
     prowizjaAllegro,
     sprzedazAllegroGrosze,
-    udzialProwizjiAllegro: prowizjaAllegro && sprzedazAllegroGrosze
-      ? (prowizjaAllegro.nettoGrosze / sprzedazAllegroGrosze) * 100
-      : null,
+    udzialProwizjiAllegro:
+      prowizjaAllegro && sprzedazAllegroGrosze ? (prowizjaAllegro.nettoGrosze / sprzedazAllegroGrosze) * 100 : null,
   };
 }
 
-const BRAK_PODLOGI_KOSZTOW = 'Nie ustawiono podłogi danych kosztów rachunku zarządczego.'
-  + ' Wpisz w pliku konfiguracji OMS (oms.env) linię OMS_RAPORTY_PODLOGA_KOSZTOW=RRRR-MM, np. 2026-05:'
-  + ' pierwszy miesiąc, od którego koszty firmy w OMS-ie (faktury kosztowe z KSeF i koszty dopisane ręcznie)'
-  + ' są kompletne — i uruchom OMS ponownie. Rachunek pokaże wynik od tego miesiąca; wcześniejszych nie policzy,'
-  + ' bo bez części kosztów zysk wyszedłby zawyżony.';
+const BRAK_PODLOGI_KOSZTOW =
+  'Nie ustawiono podłogi danych kosztów rachunku zarządczego.' +
+  ' Wpisz w pliku konfiguracji OMS (oms.env) linię OMS_RAPORTY_PODLOGA_KOSZTOW=RRRR-MM, np. 2026-05:' +
+  ' pierwszy miesiąc, od którego koszty firmy w OMS-ie (faktury kosztowe z KSeF i koszty dopisane ręcznie)' +
+  ' są kompletne — i uruchom OMS ponownie. Rachunek pokaże wynik od tego miesiąca; wcześniejszych nie policzy,' +
+  ' bo bez części kosztów zysk wyszedłby zawyżony.';

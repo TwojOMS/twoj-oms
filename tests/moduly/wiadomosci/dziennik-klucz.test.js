@@ -19,7 +19,11 @@ beforeEach(async () => {
 });
 
 const post = (url, payload) => app.inject({ method: 'POST', url, headers: naglowek, payload });
-const wpisy = (akcja) => db.prepare('SELECT wynik FROM log WHERE akcja = ? ORDER BY id').all(akcja).map(w => w.wynik);
+const wpisy = (akcja) =>
+  db
+    .prepare('SELECT wynik FROM log WHERE akcja = ? ORDER BY id')
+    .all(akcja)
+    .map((w) => w.wynik);
 const klucze = () => db.prepare('SELECT id, klucz FROM klienci ORDER BY id').all();
 
 describe('dziennik zapisu klienta (ekran Klienci B2B) pokazuje klucz z bazy', () => {
@@ -54,10 +58,32 @@ describe('dziennik zapisu klienta (ekran Klienci B2B) pokazuje klucz z bazy', ()
       db,
       znacznik: '2026-08-21T09:00:00.000Z',
       dane: {
-      klient: { first_name: 'Anna', last_name: 'Półcień', company: 'Pracownia Półcień', address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa', email: 'biuro@polcien.invalid' },
-      dostawa: { first_name: 'Anna', last_name: 'Półcień', company: 'Pracownia Półcień', address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa' },
-      nip: '5250000009', chce_fakture: 1, metoda_wysylki: 'dpd', koszt_dostawy_brutto: '0.00',
-      metoda_platnosci: 'Przelew', b2b: 1, termin_platnosci: '14', rabat_procent: 0, pozycje: [],
+        klient: {
+          first_name: 'Anna',
+          last_name: 'Półcień',
+          company: 'Pracownia Półcień',
+          address_1: 'Lampowa 1',
+          postcode: '00-950',
+          city: 'Warszawa',
+          email: 'biuro@polcien.invalid',
+        },
+        dostawa: {
+          first_name: 'Anna',
+          last_name: 'Półcień',
+          company: 'Pracownia Półcień',
+          address_1: 'Lampowa 1',
+          postcode: '00-950',
+          city: 'Warszawa',
+        },
+        nip: '5250000009',
+        chce_fakture: 1,
+        metoda_wysylki: 'dpd',
+        koszt_dostawy_brutto: '0.00',
+        metoda_platnosci: 'Przelew',
+        b2b: 1,
+        termin_platnosci: '14',
+        rabat_procent: 0,
+        pozycje: [],
       },
     });
     expect((await post(`/zamowienia/${z.id}/klient/zapamietaj`)).statusCode).toBe(302);

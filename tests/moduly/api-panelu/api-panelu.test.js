@@ -32,7 +32,12 @@ const zeSklepu = (nad = {}) => ({
   zrodlo_id: 5001,
   numer: '28060',
   klient: {
-    first_name: 'Jan', last_name: 'Kowalski', email: 'j@k.pl', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa',
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    email: 'j@k.pl',
+    address_1: 'Polna 1',
+    postcode: '00-950',
+    city: 'Warszawa',
   },
   dostawa: {},
   metoda_wysylki: 'dpd',
@@ -47,9 +52,15 @@ const zeSklepu = (nad = {}) => ({
   oplacone_at: null,
   anulowane: 0,
   utworzone_at: '2026-08-18T10:00:00',
-  pozycje: [{
-    nazwa: 'STOP 70x100', sku: 'PSM-STOP-001', ilosc: 2, cena_brutto: '61.50', vat: null,
-  }],
+  pozycje: [
+    {
+      nazwa: 'STOP 70x100',
+      sku: 'PSM-STOP-001',
+      ilosc: 2,
+      cena_brutto: '61.50',
+      vat: null,
+    },
+  ],
   ...nad,
 });
 
@@ -62,9 +73,12 @@ describe('GET /api/zamowienia/po-numerze/:numer', () => {
     await app.ready();
   });
 
-  const pytaj = (numer, zapytanie = '') => app.inject({
-    method: 'GET', url: `/api/zamowienia/po-numerze/${numer}${zapytanie}`, headers: naglowkiGet,
-  });
+  const pytaj = (numer, zapytanie = '') =>
+    app.inject({
+      method: 'GET',
+      url: `/api/zamowienia/po-numerze/${numer}${zapytanie}`,
+      headers: naglowkiGet,
+    });
 
   // ⚠️⚠️ TEN TEST JEST O PIENIADZACH I JEST POWODEM ISTNIENIA PARAMETRU `sklep`.
   // NUMER ZAMOWIENIA NIE JEST UNIKALNY MIEDZY SKLEPAMI: swietlik.example.test i pro.swietlik.example.test
@@ -78,13 +92,24 @@ describe('GET /api/zamowienia/po-numerze/:numer', () => {
   // zamowienie. Polowa z jednym pytaniem przechodziłaby takze przy „wez pierwsze z brzegu".
   it('ten sam numer w dwoch sklepach — oddaje zamowienie ze WSKAZANEGO sklepu', async () => {
     const idSwietlik = zapiszZamowienie(db, 'swietlik', zeSklepu({ zrodlo_id: 5001 }), {});
-    const idPro = zapiszZamowienie(db, 'pro', zeSklepu({
-      zrodlo_id: 7002,
-      kwota_brutto: '456.00',
-      pozycje: [{
-        nazwa: 'Szablon PRO', sku: 'PRO-1', ilosc: 1, cena_brutto: '456.00', vat: null,
-      }],
-    }), {});
+    const idPro = zapiszZamowienie(
+      db,
+      'pro',
+      zeSklepu({
+        zrodlo_id: 7002,
+        kwota_brutto: '456.00',
+        pozycje: [
+          {
+            nazwa: 'Szablon PRO',
+            sku: 'PRO-1',
+            ilosc: 1,
+            cena_brutto: '456.00',
+            vat: null,
+          },
+        ],
+      }),
+      {},
+    );
     expect(idSwietlik).not.toBe(idPro);
 
     const zeSwietlik = await pytaj('28060', '?sklep=swietlik');
@@ -97,12 +122,17 @@ describe('GET /api/zamowienia/po-numerze/:numer', () => {
   });
 
   it('oddaje caly kontrakt pol, ktorego panel oczekuje', async () => {
-    const id = zapiszZamowienie(db, 'swietlik', zeSklepu({
-      indywidualne: 1,
-      // Zaplata ze sklepu idzie do tabeli `platnosci` (zsynchronizujWplateSklepu), a
-      // `oplacone` liczy sie Z NIEJ przy odczycie — tak samo jak w reszcie OMS-u.
-      oplacone_at: '2026-08-18T11:00:00',
-    }), {});
+    const id = zapiszZamowienie(
+      db,
+      'swietlik',
+      zeSklepu({
+        indywidualne: 1,
+        // Zaplata ze sklepu idzie do tabeli `platnosci` (zsynchronizujWplateSklepu), a
+        // `oplacone` liczy sie Z NIEJ przy odczycie — tak samo jak w reszcie OMS-u.
+        oplacone_at: '2026-08-18T11:00:00',
+      }),
+      {},
+    );
     const res = await pytaj('28060', '?sklep=swietlik');
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({
@@ -211,7 +241,9 @@ describe('GET /api/zamowienia/po-numerze/:numer', () => {
   it('bez Basic Auth — 401, a nie odpowiedz z danymi', async () => {
     zapiszZamowienie(db, 'swietlik', zeSklepu(), {});
     const res = await app.inject({
-      method: 'GET', url: '/api/zamowienia/po-numerze/28060?sklep=swietlik', headers: { host: 'localhost' },
+      method: 'GET',
+      url: '/api/zamowienia/po-numerze/28060?sklep=swietlik',
+      headers: { host: 'localhost' },
     });
     expect(res.statusCode).toBe(401);
   });
@@ -247,7 +279,10 @@ describe('proforma dla panelu — /api/zamowienia/:id/proforma i /api/proformy/:
       ...config,
       nadawca: NADAWCA,
       proforma: {
-        nip: '1234563218', rachunek: '34109010140000000000000000', bank: 'Millennium', katalog,
+        nip: '1234563218',
+        rachunek: '34109010140000000000000000',
+        bank: 'Millennium',
+        katalog,
       },
     };
     // ⚠️ DWA ZAMOWIENIA-ATRAPY PRZED TYM WLASCIWYM — I TO NIE JEST BALAST DO SPRZATNIECIA.
@@ -263,13 +298,19 @@ describe('proforma dla panelu — /api/zamowienia/:id/proforma i /api/proformy/:
     const app = buildOmsServer({ db, config: configProforma, proforma });
     await app.ready();
     return {
-      db, id, app, proforma,
+      db,
+      id,
+      app,
+      proforma,
     };
   }
 
-  const wystaw = (app, id) => app.inject({
-    method: 'POST', url: `/api/zamowienia/${id}/proforma`, headers: naglowkiPost,
-  });
+  const wystaw = (app, id) =>
+    app.inject({
+      method: 'POST',
+      url: `/api/zamowienia/${id}/proforma`,
+      headers: naglowkiPost,
+    });
 
   // ⚠️ ODPOWIEDZ MA BYC SAMOWYSTARCZALNA: panel dostaje numer dokumentu (idzie do tresci
   // maila) i ADRES DO BAJTOW (idzie do zalacznika). Sklejanie adresu po stronie panelu
@@ -354,7 +395,9 @@ describe('proforma dla panelu — /api/zamowienia/:id/proforma i /api/proformy/:
   it('POST bez naglowka Origin odbija sie od ochrony CSRF', async () => {
     const { app, id, db } = await zestaw();
     const res = await app.inject({
-      method: 'POST', url: `/api/zamowienia/${id}/proforma`, headers: naglowkiGet,
+      method: 'POST',
+      url: `/api/zamowienia/${id}/proforma`,
+      headers: naglowkiGet,
     });
     expect(res.statusCode).toBe(403);
     expect(proformyZamowienia(db, id)).toHaveLength(0);
@@ -380,7 +423,9 @@ describe('proforma dla panelu — /api/zamowienia/:id/proforma i /api/proformy/:
     const { app, id, db } = await zestaw();
 
     const post = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/proforma`, headers: naglowkiPost,
+      method: 'POST',
+      url: `/zamowienia/${id}/proforma`,
+      headers: naglowkiPost,
     });
     expect(post.statusCode).toBe(302);
     expect(post.headers.location).toBe(`/zamowienia/${id}`);

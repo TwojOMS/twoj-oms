@@ -11,7 +11,11 @@ import { bezpiecznyPowrotNaListe } from '../../../domena/filtry-listy.js';
 import { adresKartyZamowienia } from '../../../domena/adres-karty-zamowienia.js';
 
 import {
-  wybraneZListy, podzielDoFaktury, powodZaDuzejPartii, wariantFakturyHurtem, ETYKIETA_WARIANTU,
+  wybraneZListy,
+  podzielDoFaktury,
+  powodZaDuzejPartii,
+  wariantFakturyHurtem,
+  ETYKIETA_WARIANTU,
 } from '../../../domena/masowe.js';
 
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
@@ -51,26 +55,52 @@ import { ktoKlikal } from '../../zamowienia/lista.js';
 import { ekranOdmowyKarty } from '../../zamowienia/odmowa-karty.js';
 import { stronaOdmowy } from '../../../core/web/odmowa.js';
 
-export function registerDokumentyRoutes(app, { db, config = {}, faktura, fakturaHurtem, proforma, infakt: programFaktur, fakturaAllegro, ksefDoczytanie, wczytajListe, miniaturyEkranu, wyborProgramu = null, kartaZamowienia = /** @type {any} */ (null) }) {
+export function registerDokumentyRoutes(
+  app,
+  {
+    db,
+    config = {},
+    faktura,
+    fakturaHurtem,
+    proforma,
+    infakt: programFaktur,
+    fakturaAllegro,
+    ksefDoczytanie,
+    wczytajListe,
+    miniaturyEkranu,
+    wyborProgramu = null,
+    kartaZamowienia = /** @type {any} */ (null),
+  },
+) {
+  const adresPowrotuNaKarte = (req, id, opcje = {}) =>
+    adresKartyZamowienia(
+      id,
+      {
+        powrot: powrotKarty(req),
+        ...opcje,
+      },
+      config.definicje,
+    );
 
-const adresPowrotuNaKarte = (req, id, opcje = {}) => adresKartyZamowienia(id, {
-    powrot: powrotKarty(req),
-    ...opcje,
-  }, config.definicje);
+  const powrotKarty = (req) => bezpiecznyPowrotNaListe(req.query?.powrot ?? req.body?.powrot, config.definicje);
 
-const powrotKarty = (req) => bezpiecznyPowrotNaListe(req.query?.powrot ?? req.body?.powrot, config.definicje);
+  // Podgląd i wykonanie hurtu pytają regułę z TYMI SAMYMI opcjami; „faktura także bez
+  // prośby klienta” czytana z bazy przy każdym żądaniu (wyłączenie działa od następnego kliknięcia).
+  const opcjeOdmowy = (reply) => ({
+    okresyWlaczone: reply.locals.modulWlaczony('okresy'),
+    dlaKazdego: czyFakturaDlaKazdego(db),
+  });
 
-// Podgląd i wykonanie hurtu pytają regułę z TYMI SAMYMI opcjami; „faktura także bez
-// prośby klienta” czytana z bazy przy każdym żądaniu (wyłączenie działa od następnego kliknięcia).
-const opcjeOdmowy = (reply) => ({ okresyWlaczone: reply.locals.modulWlaczony('okresy'), dlaKazdego: czyFakturaDlaKazdego(db) });
-
-app.post('/zamowienia/faktury-hurtem/podglad', async (req, reply) => {
+  app.post('/zamowienia/faktury-hurtem/podglad', async (req, reply) => {
     const wybrane = wybraneZListy(wczytajListe([].concat(req.body?.id ?? [])), req.body?.id);
     const { doWystawienia, pominiete } = podzielDoFaktury(wybrane, Date.now(), opcjeOdmowy(reply));
     const zaDuzo = powodZaDuzejPartii(doWystawienia.length);
     return reply.view('faktury-hurtem-podglad.ejs', {
       doWystawienia: doWystawienia.map((z) => ({
-        id: z.id, numer: z.numer, klient: adresOdbiorcy(z).nazwa, kwota: z.kwotaOczekiwanaZl,
+        id: z.id,
+        numer: z.numer,
+        klient: adresOdbiorcy(z).nazwa,
+        kwota: z.kwotaOczekiwanaZl,
         // Od pobrania wariant bywa „przy odbiorze" — ekran mówi to PRZY KAŻDYM
         // dokumencie, bo to jest różnica na papierze, którego się nie poprawia.
         wariant: ETYKIETA_WARIANTU[wariantFakturyHurtem(z).termin] ?? '',
@@ -81,14 +111,15 @@ app.post('/zamowienia/faktury-hurtem/podglad', async (req, reply) => {
       // Zdanie „faktury wyłączone” (tylko przy jawnym „brak”); `null` = widok zostaje przy starym akapicie.
       zdanieBraku: zdanieBrakuProgramu(wyborProgramu),
       // Nazwa i ekran programu fakturowego (usługa programu w module faktur — klient albo program).
-      nazwaProgramu: odmianaNazwyProgramu(programFaktur), ekranProgramu: ekranProgramu(programFaktur),
+      nazwaProgramu: odmianaNazwyProgramu(programFaktur),
+      ekranProgramu: ekranProgramu(programFaktur),
       // Adres powrotu jedzie DALEJ ukrytym polem formularza zatwierdzenia — tak samo, jak
       // przy nadaniu zbiorczym (reguła: powrót na zawężony widok). Bez tego ekran podgladu zjadalby zawezenie po drodze.
       powrot: bezpiecznyPowrotNaListe(req.body?.powrot, config.definicje),
     });
   });
 
-app.post('/zamowienia/faktury-hurtem', async (req, reply) => {
+  app.post('/zamowienia/faktury-hurtem', async (req, reply) => {
     // ⚠️ MOMENT PRZYJSCIA ZADANIA, liczony PRZED odczytem listy i przed podzialem. Budzet
     // uslugi (services/faktura-hurtem.js) ma obejmowac takze te sekundy, bo mierzy CZEKANIE
     // CZLOWIEKA — a czlowiek czeka od chwili klikniecia, nie od pierwszej faktury.
@@ -102,7 +133,14 @@ app.post('/zamowienia/faktury-hurtem', async (req, reply) => {
     // Podajemy LICZBE milisekund — `null` albo napis daja tam cicha awarie (patrz docblock
     // `wystawWiele`).
     const start = Date.now();
-    if (!fakturaHurtem) return stronaOdmowy(reply, 503, zdanieBrakuProgramu(wyborProgramu) ?? `Wystawianie faktur nie jest skonfigurowane (brak danych inFaktu). ${GDZIE_KLUCZ_INFAKTU}`, { tytul: 'Nie udało się wystawić faktur', wroc: '/', napisWroc: 'Wróć do listy zamówień' });
+    if (!fakturaHurtem)
+      return stronaOdmowy(
+        reply,
+        503,
+        zdanieBrakuProgramu(wyborProgramu) ??
+          `Wystawianie faktur nie jest skonfigurowane (brak danych inFaktu). ${GDZIE_KLUCZ_INFAKTU}`,
+        { tytul: 'Nie udało się wystawić faktur', wroc: '/', napisWroc: 'Wróć do listy zamówień' },
+      );
     const wybrane = wybraneZListy(wczytajListe([].concat(req.body?.id ?? [])), req.body?.id);
     // Podzial liczony PONOWNIE, a nie przepisany z ekranu podgladu: miedzy podgladem
     // a zatwierdzeniem klient mogl anulowac zamowienie, a operator z drugiej zakladki
@@ -118,10 +156,17 @@ app.post('/zamowienia/faktury-hurtem', async (req, reply) => {
     // Z wyniku ma się dać wejść w zamówienie — przy błędzie od
     // razu w edycję danych do faktury (np. NIP z przedrostkiem z Allegro). Adres z TEJ SAMEJ
     // funkcji, co karta, z powrotem na zawężoną listę.
-    const adresKarty = (id, stan = null, kotwica = null) => adresKartyZamowienia(id, { powrot, stan, kotwica }, config.definicje);
+    const adresKarty = (id, stan = null, kotwica = null) =>
+      adresKartyZamowienia(id, { powrot, stan, kotwica }, config.definicje);
     if (zaDuzo) {
       return reply.view('faktury-hurtem-wynik.ejs', {
-        wystawione: [], bledy: [], nietkniete: [], pominiete, zaDuzo, powrot, adresKarty,
+        wystawione: [],
+        bledy: [],
+        nietkniete: [],
+        pominiete,
+        zaDuzo,
+        powrot,
+        adresKarty,
       });
     }
 
@@ -137,10 +182,12 @@ app.post('/zamowienia/faktury-hurtem', async (req, reply) => {
     // wraca tygodniami. `zapiszLubOdpusc`, bo awaria zapisu logu nie ma prawa schowac
     // ekranu z numerami faktur, które JUŻ POWSTAŁY w programie fakturowym.
     for (const w of wynik.wystawione) {
-      zapiszLubOdpusc(() => dopiszLog(db, w.id, {
-        akcja: 'faktura.masowa',
-        wynik: `Ręcznie (${ktoKlikal(req)}): wystawiono hurtem ${w.numerFaktury ?? ''}`.trim(),
-      }));
+      zapiszLubOdpusc(() =>
+        dopiszLog(db, w.id, {
+          akcja: 'faktura.masowa',
+          wynik: `Ręcznie (${ktoKlikal(req)}): wystawiono hurtem ${w.numerFaktury ?? ''}`.trim(),
+        }),
+      );
     }
     for (const b of wynik.bledy) {
       zapiszLubOdpusc(() => dopiszLog(db, b.id, { akcja: 'faktura.masowa', wynik: `BŁĄD: ${b.powod}` }));
@@ -148,11 +195,15 @@ app.post('/zamowienia/faktury-hurtem', async (req, reply) => {
     // Po wystawieniu NIE przekierowujemy nigdy — tak samo, jak po nadaniu. Numery faktur sa
     // jedynym potwierdzeniem operacji, ktorej nie da sie cofnac.
     return reply.view('faktury-hurtem-wynik.ejs', {
-      ...wynik, pominiete, zaDuzo: null, powrot, adresKarty,
+      ...wynik,
+      pominiete,
+      zaDuzo: null,
+      powrot,
+      adresKarty,
     });
   });
 
-app.get('/zamowienia/:id/potwierdzenie-wywozu.pdf', async (req, reply) => {
+  app.get('/zamowienia/:id/potwierdzenie-wywozu.pdf', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
     if (!z) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
@@ -161,20 +212,26 @@ app.get('/zamowienia/:id/potwierdzenie-wywozu.pdf', async (req, reply) => {
       // Adres sprzedawcy TA SAMA regula, co proforma i specyfikacja (adresSprzedawcy);
       // NIP — plik albo Ustawienia → Firma, bez NIP-u odmowa (nipSprzedawcy); prefiks PL doklada model.
       const sprzedawca = { ...adresSprzedawcy(config), nip: nipSprzedawcy(config) };
-      bajty = zbudujOswiadczenieWywozuPdf(modelOswiadczenia(z, {
-        sprzedawca, dzis: dzienWarszawa(new Date().toISOString()),
-      }));
+      bajty = zbudujOswiadczenieWywozuPdf(
+        modelOswiadczenia(z, {
+          sprzedawca,
+          dzis: dzienWarszawa(new Date().toISOString()),
+        }),
+      );
     } catch (e) {
       zapiszLubOdpusc(() => dopiszLog(db, id, { akcja: 'wdt.wywoz.pdf', wynik: `BŁĄD: ${e.message}` }));
-      return ekranOdmowyKarty(reply, `Nie udało się przygotować potwierdzenia wywozu: ${komunikatDlaOperatora(e)}`, adresPowrotuNaKarte(req, id), 400);
+      return ekranOdmowyKarty(
+        reply,
+        `Nie udało się przygotować potwierdzenia wywozu: ${komunikatDlaOperatora(e)}`,
+        adresPowrotuNaKarte(req, id),
+        400,
+      );
     }
     const nazwaPliku = `potwierdzenie-wywozu-${bezpiecznaNazwa(z.numer ?? String(id))}.pdf`;
-    return reply.type('application/pdf')
-      .header('Content-Disposition', `inline; filename="${nazwaPliku}"`)
-      .send(bajty);
+    return reply.type('application/pdf').header('Content-Disposition', `inline; filename="${nazwaPliku}"`).send(bajty);
   });
 
-app.post('/zamowienia/:id/okres', async (req, reply) => {
+  app.post('/zamowienia/:id/okres', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
     if (!z) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
@@ -188,7 +245,10 @@ app.post('/zamowienia/:id/okres', async (req, reply) => {
     let okresId;
     try {
       okresId = przypiszDoOkresu({
-        db, nip, dataZlozenia: z.utworzone_at, hurt: z.do_siedziby_klienta,
+        db,
+        nip,
+        dataZlozenia: z.utworzone_at,
+        hurt: z.do_siedziby_klienta,
       });
       przypiszZamowienieDoOkresu(db, okresId, id);
     } catch (e) {
@@ -204,9 +264,10 @@ app.post('/zamowienia/:id/okres', async (req, reply) => {
     return reply.redirect(adresPowrotuNaKarte(req, id));
   });
 
-app.post('/zamowienia/:id/proforma', async (req, reply) => {
+  app.post('/zamowienia/:id/proforma', async (req, reply) => {
     const id = Number(req.params.id);
-    if (!pobierzZamowienie(db, id)) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
+    if (!pobierzZamowienie(db, id))
+      return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
     if (!proforma) return ekranOdmowyKarty(reply, 'Proformy nie są skonfigurowane.', adresPowrotuNaKarte(req, id), 503);
     try {
       // Stawka „zw” tylko przy programie wbudowanym (opis programu; surowy klient opisu nie ma).
@@ -217,47 +278,71 @@ app.post('/zamowienia/:id/proforma', async (req, reply) => {
       // awarii zapisu pliku, ale TA linia ma zlapac KAZDA odmowe, takze te sprzed zapisu
       // (np. `czyWolnoWystawic`), ktorych serwis sam nie loguje.
       dopiszLog(db, id, { akcja: 'proforma.http', wynik: `BŁĄD: ${e.message}` });
-      return ekranOdmowyKarty(reply, `Nie udało się wystawić proformy: ${komunikatDlaOperatora(e)}`, adresPowrotuNaKarte(req, id), 400);
+      return ekranOdmowyKarty(
+        reply,
+        `Nie udało się wystawić proformy: ${komunikatDlaOperatora(e)}`,
+        adresPowrotuNaKarte(req, id),
+        400,
+      );
     }
     return reply.redirect(adresPowrotuNaKarte(req, id));
   });
 
-app.get('/proformy/:id/pdf', async (req, reply) => {
-    if (!proforma) return stronaOdmowy(reply, 503, 'Proformy nie są skonfigurowane.', { tytul: 'Nie udało się pobrać proformy', wroc: '/faktury', napisWroc: 'Wróć do faktur' });
+  app.get('/proformy/:id/pdf', async (req, reply) => {
+    if (!proforma)
+      return stronaOdmowy(reply, 503, 'Proformy nie są skonfigurowane.', {
+        tytul: 'Nie udało się pobrać proformy',
+        wroc: '/faktury',
+        napisWroc: 'Wróć do faktur',
+      });
     const id = Number(req.params.id);
     let wynik;
     try {
       wynik = proforma.pdf(id);
     } catch (e) {
-      return stronaOdmowy(reply, 404, komunikatDlaOperatora(e), { tytul: 'Nie udało się pobrać proformy', wroc: '/faktury', napisWroc: 'Wróć do faktur' });
+      return stronaOdmowy(reply, 404, komunikatDlaOperatora(e), {
+        tytul: 'Nie udało się pobrać proformy',
+        wroc: '/faktury',
+        napisWroc: 'Wróć do faktur',
+      });
     }
     // Numer proformy ma ukosniki („PF/1/08/2026") — w nazwie pliku sa nielegalne
     // na Windowsie, a ten PDF czesto jedzie prosto do drukarki.
     const nazwaPliku = `proforma-${bezpiecznaNazwa(wynik.numer ?? String(id))}.pdf`;
-    return reply.type('application/pdf')
+    return reply
+      .type('application/pdf')
       .header('Content-Disposition', `inline; filename="${nazwaPliku}"`)
       .send(wynik.bajty);
   });
 
-// Odmowa wystawienia wraca jako KARTA zamówienia z błędem przy polu (`pole` z domeny,
-// np. 'nip'), a wpisane w formularzu termin i daty zostają. Bez usługi karty (moduł zamówień nie
-// złożony) — strona odmowy w układzie panelu z powrotem na kartę, nigdy goły tekst.
-const odmowaWystawienia = (req, reply, id, kod, tekst, pole = null) => {
+  // Odmowa wystawienia wraca jako KARTA zamówienia z błędem przy polu (`pole` z domeny,
+  // np. 'nip'), a wpisane w formularzu termin i daty zostają. Bez usługi karty (moduł zamówień nie
+  // złożony) — strona odmowy w układzie panelu z powrotem na kartę, nigdy goły tekst.
+  const odmowaWystawienia = (req, reply, id, kod, tekst, pole = null) => {
     const karta = kartaZamowienia?.();
     if (!karta) return ekranOdmowyKarty(reply, tekst, adresPowrotuNaKarte(req, id, { kotwica: 'faktura' }), kod);
     reply.code(kod);
     return karta(req, reply, pobierzZamowienie(db, id), {
       bladFaktury: { tekst, pole },
       formularzWystawienia: {
-        termin: req.body?.termin, dataWystawienia: req.body?.data_wystawienia, dataSprzedazy: req.body?.data_sprzedazy,
+        termin: req.body?.termin,
+        dataWystawienia: req.body?.data_wystawienia,
+        dataSprzedazy: req.body?.data_sprzedazy,
       },
     });
   };
 
-app.post('/zamowienia/:id/faktura', async (req, reply) => {
+  app.post('/zamowienia/:id/faktura', async (req, reply) => {
     const id = Number(req.params.id);
-    if (!pobierzZamowienie(db, id)) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
-    if (!faktura) return ekranOdmowyKarty(reply, zdanieBrakuProgramu(wyborProgramu) ?? `inFakt nie jest skonfigurowany. ${GDZIE_KLUCZ_INFAKTU}`, adresPowrotuNaKarte(req, id), 503);
+    if (!pobierzZamowienie(db, id))
+      return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
+    if (!faktura)
+      return ekranOdmowyKarty(
+        reply,
+        zdanieBrakuProgramu(wyborProgramu) ?? `inFakt nie jest skonfigurowany. ${GDZIE_KLUCZ_INFAKTU}`,
+        adresPowrotuNaKarte(req, id),
+        503,
+      );
     try {
       // Termin i data wystawienia Z FORMULARZA (domena/termin-platnosci.js). Nierozpoznana
       // wartosc dostaje odmowe TAM, w domenie — tutaj przekazujemy surowo, zeby nie istnialy
@@ -270,41 +355,61 @@ app.post('/zamowienia/:id/faktura', async (req, reply) => {
       // `dataSprzedazy` SUROWO z formularza (`data_sprzedazy`) — walidacja i propozycja
       // siedza w domenie (data-sprzedazy.js, termin-platnosci.js), zeby nie istnialy dwa
       // miejsca decydujace o tym samym.
-      await faktura.wystaw(id, req.body?.termin === undefined ? null : {
-        dataWystawienia: req.body?.data_wystawienia,
-        dataSprzedazy: req.body?.data_sprzedazy,
-        termin: req.body.termin,
-      });
+      await faktura.wystaw(
+        id,
+        req.body?.termin === undefined
+          ? null
+          : {
+              dataWystawienia: req.body?.data_wystawienia,
+              dataSprzedazy: req.body?.data_sprzedazy,
+              termin: req.body.termin,
+            },
+      );
     } catch (e) {
       // Nieudana proba wystawienia MUSI zostawic slad: to najgrozniejsza akcja w panelu,
       // a bez wpisu w logu awaria sieci po stronie programu fakturowego wyglądałaby jak "nic sie nie stalo".
       dopiszLog(db, id, { akcja: 'faktura.http', wynik: `BŁĄD: ${e.message}` });
-      return odmowaWystawienia(req, reply, id, 400, `Nie udało się wystawić faktury: ${komunikatDlaOperatora(e)}`, e?.pole ?? null);
+      return odmowaWystawienia(
+        req,
+        reply,
+        id,
+        400,
+        `Nie udało się wystawić faktury: ${komunikatDlaOperatora(e)}`,
+        e?.pole ?? null,
+      );
     }
     return reply.redirect(adresPowrotuNaKarte(req, id, { kotwica: 'faktura' }));
   });
 
-app.post('/zamowienia/:id/faktura/odblokuj', async (req, reply) => {
+  app.post('/zamowienia/:id/faktura/odblokuj', async (req, reply) => {
     const id = Number(req.params.id);
-    if (!pobierzZamowienie(db, id)) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
+    if (!pobierzZamowienie(db, id))
+      return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
     let f;
     try {
       f = odblokujFakture(db, id);
     } catch (e) {
       dopiszLog(db, id, { akcja: 'faktura.odblokowanie', wynik: `BŁĄD: ${e.message}` });
-      return ekranOdmowyKarty(reply, `Nie udało się odblokować faktury: ${komunikatDlaOperatora(e)}`, adresPowrotuNaKarte(req, id), 400);
+      return ekranOdmowyKarty(
+        reply,
+        `Nie udało się odblokować faktury: ${komunikatDlaOperatora(e)}`,
+        adresPowrotuNaKarte(req, id),
+        400,
+      );
     }
     dopiszLog(db, id, {
       akcja: 'faktura.odblokowanie',
-      wynik: `Ręcznie (${ktoKlikal(req)}): sprawdzone w inFakcie, dokumentu nie ma — `
-        + `rezerwacja z ${f.utworzona_at} (${f.ksef_status}${f.blad_opis ? `: ${f.blad_opis}` : ''}) skasowana.`,
+      wynik:
+        `Ręcznie (${ktoKlikal(req)}): sprawdzone w inFakcie, dokumentu nie ma — ` +
+        `rezerwacja z ${f.utworzona_at} (${f.ksef_status}${f.blad_opis ? `: ${f.blad_opis}` : ''}) skasowana.`,
     });
     return reply.redirect(adresPowrotuNaKarte(req, id));
   });
 
-app.post('/zamowienia/:id/faktura/skasowana', async (req, reply) => {
+  app.post('/zamowienia/:id/faktura/skasowana', async (req, reply) => {
     const id = Number(req.params.id);
-    if (!pobierzZamowienie(db, id)) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
+    if (!pobierzZamowienie(db, id))
+      return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
     if (programFaktur?.opis?.wbudowany === true) {
       const powod = `Faktury ${odmianaNazwyProgramu(programFaktur).dopelniacz} nie da się skasować — są w bazie panelu. Błędny dokument popraw korektą.`;
       dopiszLog(db, id, { akcja: 'faktura.skasowana', wynik: `ODMOWA: ${powod}` });
@@ -315,13 +420,19 @@ app.post('/zamowienia/:id/faktura/skasowana', async (req, reply) => {
       f = fakturaSkasowanaWInfakcie(db, id);
     } catch (e) {
       dopiszLog(db, id, { akcja: 'faktura.skasowana', wynik: `BŁĄD: ${e.message}` });
-      return ekranOdmowyKarty(reply, `Nie udało się odnotować skasowania faktury: ${komunikatDlaOperatora(e)}`, adresPowrotuNaKarte(req, id), 400);
+      return ekranOdmowyKarty(
+        reply,
+        `Nie udało się odnotować skasowania faktury: ${komunikatDlaOperatora(e)}`,
+        adresPowrotuNaKarte(req, id),
+        400,
+      );
     }
     dopiszLog(db, id, {
       akcja: 'faktura.skasowana',
-      wynik: `Ręcznie (${ktoKlikal(req)}): faktura ${f.numer ?? '(bez numeru)'} `
-        + `(UUID ${idDokumentu(f) ?? 'brak'}) skasowana ręcznie w inFakcie — panel niczego tam nie kasował, `
-        + 'tylko odnotował fakt i zwolnił zamówienie do ponownego wystawienia.',
+      wynik:
+        `Ręcznie (${ktoKlikal(req)}): faktura ${f.numer ?? '(bez numeru)'} ` +
+        `(UUID ${idDokumentu(f) ?? 'brak'}) skasowana ręcznie w inFakcie — panel niczego tam nie kasował, ` +
+        'tylko odnotował fakt i zwolnił zamówienie do ponownego wystawienia.',
     });
     // ⚠️ POWRÓT TAM, SKĄD KLIKNIĘTO. Od przeniesienia tej akcji na zakladke
     // FAKTURY wolajacy bywa DWOJAKI, a odeslanie na karte zamowienia wyrzucaloby operatora
@@ -332,10 +443,17 @@ app.post('/zamowienia/:id/faktura/skasowana', async (req, reply) => {
     return reply.redirect(dokad);
   });
 
-app.post('/zamowienia/:id/faktura-allegro', async (req, reply) => {
+  app.post('/zamowienia/:id/faktura-allegro', async (req, reply) => {
     const id = Number(req.params.id);
-    if (!pobierzZamowienie(db, id)) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
-    if (!fakturaAllegro) return ekranOdmowyKarty(reply, zdanieBrakuProgramu(wyborProgramu) ?? 'Kanał Allegro nie jest skonfigurowany — faktury stąd nie wyślesz.', adresPowrotuNaKarte(req, id), 503);
+    if (!pobierzZamowienie(db, id))
+      return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
+    if (!fakturaAllegro)
+      return ekranOdmowyKarty(
+        reply,
+        zdanieBrakuProgramu(wyborProgramu) ?? 'Kanał Allegro nie jest skonfigurowany — faktury stąd nie wyślesz.',
+        adresPowrotuNaKarte(req, id),
+        503,
+      );
     try {
       await fakturaAllegro.wyslij(id);
     } catch (e) {
@@ -343,9 +461,13 @@ app.post('/zamowienia/:id/faktura-allegro', async (req, reply) => {
       // (POST przeszedl, plik nie), log jest jedynym miejscem, z ktorego da sie odtworzyc,
       // co naprawde poszlo do Allegro.
       dopiszLog(db, id, { akcja: 'faktura-allegro', wynik: `BŁĄD: ${e.message}` });
-      return ekranOdmowyKarty(reply, `Nie udało się wysłać faktury do Allegro: ${komunikatDlaOperatora(e)}`, adresPowrotuNaKarte(req, id), 400);
+      return ekranOdmowyKarty(
+        reply,
+        `Nie udało się wysłać faktury do Allegro: ${komunikatDlaOperatora(e)}`,
+        adresPowrotuNaKarte(req, id),
+        400,
+      );
     }
     return reply.redirect(adresPowrotuNaKarte(req, id));
   });
-
 }

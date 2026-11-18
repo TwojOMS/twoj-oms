@@ -1,6 +1,4 @@
-import {
-  describe, it, expect, beforeEach, vi,
-} from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { rozpocznijPrzesylke, zakonczPrzesylke, zapiszStatusDpd } from '../../../src/moduly/wysylka/db/przesylki.js';
@@ -44,7 +42,8 @@ function nadana(db, zamowienieId, kurier, numer, { status = null, statusAt = nul
   return p.id;
 }
 
-let db; let app;
+let db;
+let app;
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
   // Czwartek 27.08.2026, 12:00 czasu warszawskiego.
@@ -56,7 +55,9 @@ beforeEach(() => {
 
   const id2 = zapiszZamowienie(db, 'pro', zmapowane(2), {});
   nadana(db, id2, 'dpd', 'DORECZONA', {
-    status: 'Przesyłka doręczona', statusAt: '2026-08-22T12:00:00.000', utworzona: '2026-08-22T08:00:00.000Z',
+    status: 'Przesyłka doręczona',
+    statusAt: '2026-08-22T12:00:00.000',
+    utworzona: '2026-08-22T08:00:00.000Z',
   });
 
   const id3 = zapiszZamowienie(db, 'allegro_swietlik', zmapowane(3), {});

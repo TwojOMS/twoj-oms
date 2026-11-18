@@ -9,7 +9,13 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
-  PLIKI_INSTALACJI, powodPotomka, sekretyKatalogu, oczyscPowod, coDalejKontener, kluczZPlikuInstalacji, ZMIENNA_PLIKU_KLUCZA,
+  PLIKI_INSTALACJI,
+  powodPotomka,
+  sekretyKatalogu,
+  oczyscPowod,
+  coDalejKontener,
+  kluczZPlikuInstalacji,
+  ZMIENNA_PLIKU_KLUCZA,
 } from './instalacja-wspolne.mjs';
 
 const LIMIT_DEMO_MS = 600_000;
@@ -33,9 +39,17 @@ function port(argv) {
 function katalogDoZapisu(katalog) {
   if (!path.isAbsolute(katalog)) throw Error('INSTALACJA_KONTENER_KATALOG_ODMOWA');
   let stat;
-  try { stat = fs.statSync(katalog); } catch { throw Error('INSTALACJA_KONTENER_BRAK_KATALOGU'); }
+  try {
+    stat = fs.statSync(katalog);
+  } catch {
+    throw Error('INSTALACJA_KONTENER_BRAK_KATALOGU');
+  }
   if (!stat.isDirectory()) throw Error('INSTALACJA_KONTENER_BRAK_KATALOGU');
-  try { fs.accessSync(katalog, fs.constants.W_OK); } catch { throw Error('INSTALACJA_KONTENER_BRAK_ZAPISU'); }
+  try {
+    fs.accessSync(katalog, fs.constants.W_OK);
+  } catch {
+    throw Error('INSTALACJA_KONTENER_BRAK_ZAPISU');
+  }
 }
 
 function przenies(zrodlo, cel) {
@@ -52,7 +66,10 @@ function trybKlucza(plik) {
   if (process.platform === 'win32') return null;
   const stat = fs.statSync(plik);
   if ((stat.mode & 0o077) === 0) return null;
-  try { fs.chmodSync(plik, 0o600); return null; } catch {
+  try {
+    fs.chmodSync(plik, 0o600);
+    return null;
+  } catch {
     return `UWAGA: plik klucza ${plik} jest czytelny dla innych użytkowników — sudo chown 10001:10001 ${plik}; sudo chmod 600 ${plik}`;
   }
 }
@@ -63,8 +80,8 @@ async function main() {
   const p = port(process.argv.slice(2));
   katalogDoZapisu(dane);
   katalogDoZapisu(konfiguracja);
-  const cele = Object.values(PLIKI_KONFIGURACJI).map(nazwa => path.join(konfiguracja, nazwa));
-  if (cele.some(plik => fs.existsSync(plik))) throw Error('INSTALACJA_ODMOWA_NADPISANIA');
+  const cele = Object.values(PLIKI_KONFIGURACJI).map((nazwa) => path.join(konfiguracja, nazwa));
+  if (cele.some((plik) => fs.existsSync(plik))) throw Error('INSTALACJA_ODMOWA_NADPISANIA');
   if (fs.readdirSync(dane).length) throw Error('INSTALACJA_ODMOWA_NADPISANIA');
   // Klucz poświadczeń od razu w katalogu konfiguracji — nigdy w katalogu danych (ten trafia do kopii).
   // Istniejący klucz.env (ponowienie albo odtwarzanie z kluczem z menedżera haseł) nie jest powodem odmowy:
@@ -74,18 +91,27 @@ async function main() {
 
   const demo = fileURLToPath(new URL('./instalacja-demo.mjs', import.meta.url));
   const wynik = spawnSync(process.execPath, [demo, '--katalog', dane, '--port', String(p)], {
-    cwd: fileURLToPath(new URL('..', import.meta.url)), env: { [ZMIENNA_PLIKU_KLUCZA]: plikKlucza }, encoding: 'utf8', timeout: LIMIT_DEMO_MS,
+    cwd: fileURLToPath(new URL('..', import.meta.url)),
+    env: { [ZMIENNA_PLIKU_KLUCZA]: plikKlucza },
+    encoding: 'utf8',
+    timeout: LIMIT_DEMO_MS,
   });
   if (wynik.status !== 0) {
     // Z demo przechodzą linie „KOD” i „KOD: powód” (dawniej tylko goły kod — powód ginął).
     // Hasła z katalogu danych i klucz odfiltrowane: linia z sekretem nie przechodzi wcale.
     const sekrety = sekretyKatalogu(dane, plikKlucza);
-    const kody = String(wynik.stderr ?? '').split(/\r?\n/)
-      .filter(linia => /^INSTALACJA_[A-Z0-9_]+(: .*)?$/.test(linia) && !sekrety.some(sekret => linia.includes(sekret)));
+    const kody = String(wynik.stderr ?? '')
+      .split(/\r?\n/)
+      .filter(
+        (linia) => /^INSTALACJA_[A-Z0-9_]+(: .*)?$/.test(linia) && !sekrety.some((sekret) => linia.includes(sekret)),
+      );
     for (const kod of kody) console.error(oczyscPowod(kod, sekrety));
     // Bez linii od demo (limit czasu, awaria procesu) powód dopisuje sam kontener.
-    throw Error(kody.length && !wynik.error ? 'INSTALACJA_KONTENER_DEMO_ODMOWA'
-      : `INSTALACJA_KONTENER_DEMO_ODMOWA: ${powodPotomka(wynik, { limitMs: LIMIT_DEMO_MS, sekrety })}`);
+    throw Error(
+      kody.length && !wynik.error
+        ? 'INSTALACJA_KONTENER_DEMO_ODMOWA'
+        : `INSTALACJA_KONTENER_DEMO_ODMOWA: ${powodPotomka(wynik, { limitMs: LIMIT_DEMO_MS, sekrety })}`,
+    );
   }
   przenies(path.join(dane, PLIKI_INSTALACJI.proba), path.join(konfiguracja, PLIKI_KONFIGURACJI.env));
   przenies(path.join(dane, PLIKI_INSTALACJI.daneAdmina), path.join(konfiguracja, PLIKI_KONFIGURACJI.daneAdmina));
@@ -94,21 +120,26 @@ async function main() {
   const uwaga = trybKlucza(plikKlucza);
   for (const linia of coDalejKontener({ konfiguracja, port: p, klucz: plikKlucza, idKlucza })) console.log(linia);
   if (uwaga) console.log(uwaga);
-  console.log(JSON.stringify({
-    status: 'instalacja-zakonczona',
-    konfiguracja: path.join(konfiguracja, PLIKI_KONFIGURACJI.env),
-    kontoAdministratora: path.join(konfiguracja, PLIKI_KONFIGURACJI.daneAdmina),
-    kluczPoswiadczen: plikKlucza,
-    idKlucza,
-    dane,
-    zamowieniaDemo: 3,
-    integracje: 'niepodłączone',
-  }));
+  console.log(
+    JSON.stringify({
+      status: 'instalacja-zakonczona',
+      konfiguracja: path.join(konfiguracja, PLIKI_KONFIGURACJI.env),
+      kontoAdministratora: path.join(konfiguracja, PLIKI_KONFIGURACJI.daneAdmina),
+      kluczPoswiadczen: plikKlucza,
+      idKlucza,
+      dane,
+      zamowieniaDemo: 3,
+      integracje: 'niepodłączone',
+    }),
+  );
 }
 
 main().catch((e) => {
   // Kontener nie trzyma haseł w pamięci (przenosi pliki, błąd fs podaje tylko ścieżkę; z klucza bierze tylko id).
-  console.error(e instanceof Error && /^INSTALACJA_/.test(e.message) ? e.message
-    : `INSTALACJA_KONTENER_ODMOWA: ${oczyscPowod(e instanceof Error ? e.message : e)}`);
+  console.error(
+    e instanceof Error && /^INSTALACJA_/.test(e.message)
+      ? e.message
+      : `INSTALACJA_KONTENER_ODMOWA: ${oczyscPowod(e instanceof Error ? e.message : e)}`,
+  );
   process.exitCode = 1;
 });

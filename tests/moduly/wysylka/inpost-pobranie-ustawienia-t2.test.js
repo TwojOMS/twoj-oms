@@ -20,8 +20,14 @@ import { modulUstawienia } from '../../../src/moduly/ustawienia/modul.ts';
 import { modulMarketing } from '../../../src/moduly/marketing/modul.ts';
 import { modulZdrowie } from '../../../src/moduly/zdrowie/modul.ts';
 
-const NADAWCA = { DPD_NADAWCA_NAZWA: 'Pracownia Półcień', DPD_NADAWCA_ULICA: 'Zmyślona 1', DPD_NADAWCA_KOD: '00-950',
-  DPD_NADAWCA_MIASTO: 'Warszawa', DPD_NADAWCA_TELEFON: '000000000', DPD_NADAWCA_EMAIL: 'nadawca@example.invalid' };
+const NADAWCA = {
+  DPD_NADAWCA_NAZWA: 'Pracownia Półcień',
+  DPD_NADAWCA_ULICA: 'Zmyślona 1',
+  DPD_NADAWCA_KOD: '00-950',
+  DPD_NADAWCA_MIASTO: 'Warszawa',
+  DPD_NADAWCA_TELEFON: '000000000',
+  DPD_NADAWCA_EMAIL: 'nadawca@example.invalid',
+};
 const FORMULARZ = { nazwa: 'InPost', organizacja: '4242', token: 'eyJ.ZMYSLONY-T2.podpis', paczkomatNadawczy: '' };
 const ADRES = '/ustawienia/integracje/inpost';
 const POBRANIE = `${ADRES}/pobranie`;
@@ -29,10 +35,26 @@ const KLUCZ = 'wysylka.umowa_pobrania.inpost';
 
 // `demo` jak w web.config instancji z kontem gościa (OMS_TRYB=proba): wtedy stoi wspólna blokada POST z podglad-demo.js.
 function panel({ env = NADAWCA, demo = null } = {}) {
-  const createInpost = vi.fn(() => ({ nadaj: vi.fn(), sprawdzPrzesylke: vi.fn(), pobierzEtykiete: vi.fn(),
-    statusPrzesylki: vi.fn(), sprawdzPolaczenie: vi.fn(async () => ({ ok: true })) }));
-  const moduly = [modulRdzen, modulWeb, modulKanaly, modulFaktury, modulWiadomosci, createModulZamowienia({ zWiadomosciami: true }),
-    createModulWysylka({ fabryki: { createInpost } }), modulMagazyn, modulUstawienia, modulMarketing, modulZdrowie];
+  const createInpost = vi.fn(() => ({
+    nadaj: vi.fn(),
+    sprawdzPrzesylke: vi.fn(),
+    pobierzEtykiete: vi.fn(),
+    statusPrzesylki: vi.fn(),
+    sprawdzPolaczenie: vi.fn(async () => ({ ok: true })),
+  }));
+  const moduly = [
+    modulRdzen,
+    modulWeb,
+    modulKanaly,
+    modulFaktury,
+    modulWiadomosci,
+    createModulZamowienia({ zWiadomosciami: true }),
+    createModulWysylka({ fabryki: { createInpost } }),
+    modulMagazyn,
+    modulUstawienia,
+    modulMarketing,
+    modulZdrowie,
+  ];
   const db = openOmsDb(':memory:');
   const config = { auth: { ...CONFIG.auth }, ...(demo ? { proba: true, demo } : {}) };
   const p = { db, app: buildOmsServer({ poller: POLLER, moduly, env, db, config }) };

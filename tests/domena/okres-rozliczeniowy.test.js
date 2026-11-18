@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
-  kluczOkresu, okresPrzyjmujeZamowienia, opisOdmowy, stanFakturyOkresu, STAN,
+  kluczOkresu,
+  okresPrzyjmujeZamowienia,
+  opisOdmowy,
+  stanFakturyOkresu,
+  STAN,
 } from '../../src/domena/okres-rozliczeniowy.js';
 
 describe('kluczOkresu', () => {

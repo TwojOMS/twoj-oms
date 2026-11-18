@@ -41,7 +41,11 @@
 // za nimi stala lista metod kanalu bez wlasnego kuriera (odbior osobisty i metody Allegro).
 const METODY_KANALU = [
   'odbior_osobisty',
-  'allegro_dpd', 'allegro_paczkomat', 'allegro_punkt', 'allegro_kurier', 'allegro_inne',
+  'allegro_dpd',
+  'allegro_paczkomat',
+  'allegro_punkt',
+  'allegro_kurier',
+  'allegro_inne',
 ];
 
 /**
@@ -212,7 +216,9 @@ function nazwaAllegroAktualna(z) {
  * robić: tam operator musi widzieć, że kurier ma coś zainkasować.
  */
 const bezDopiskuPobrania = (nazwa) => {
-  const obciete = String(nazwa ?? '').replace(/\s+pobrani\w*\b.*$/i, '').trim();
+  const obciete = String(nazwa ?? '')
+    .replace(/\s+pobrani\w*\b.*$/i, '')
+    .trim();
   return obciete || nazwa;
 };
 
@@ -387,9 +393,10 @@ export function punktOdbioruOpis(z) {
  * paczkomatu jest dokladnie tym samym przypadkiem: metoda zostaje `inpost_paczkomat`,
  * a paczka jedzie gdzie indziej, niz mowi sklep.
  */
-export const metodaZmienionaRecznie = (z) => metodaWysylki(z) !== metodaZeSklepu(z)
-  || czyPobranie(z) !== pobranieZeSklepu(z)
-  || punktOdbioru(z) !== punktOdbioruZeSklepu(z);
+export const metodaZmienionaRecznie = (z) =>
+  metodaWysylki(z) !== metodaZeSklepu(z) ||
+  czyPobranie(z) !== pobranieZeSklepu(z) ||
+  punktOdbioru(z) !== punktOdbioruZeSklepu(z);
 
 /**
  * Bramka na pieniadze: co wolno zapisac jako nadpisanie metody.
@@ -434,9 +441,10 @@ export function sprawdzZmianeMetody(metoda, czyPobranieWybrane, surowaKwota, sur
   if (umiejetnosciZamowienia(zamowienie).wysylkaPlatformy && !metoda.startsWith('allegro_')) {
     return {
       nadpisanie: null,
-      blad: 'To zamówienie przyszło z Allegro — paczki tego kanału nadajesz w Allegro, więc panel nie '
-        + 'pozwala przestawić go na dostawę, którą sam nadaje (poszłaby DRUGA, płatna paczka do klienta, '
-        + 'który już dostał swoją). Metodę wolno poprawić tylko w obrębie metod Allegro.',
+      blad:
+        'To zamówienie przyszło z Allegro — paczki tego kanału nadajesz w Allegro, więc panel nie ' +
+        'pozwala przestawić go na dostawę, którą sam nadaje (poszłaby DRUGA, płatna paczka do klienta, ' +
+        'który już dostał swoją). Metodę wolno poprawić tylko w obrębie metod Allegro.',
     };
   }
   // ⚠️ Odbior osobisty z pobraniem to sprzecznosc, nie wariant: inkasuje KURIER, a przy
@@ -447,15 +455,20 @@ export function sprawdzZmianeMetody(metoda, czyPobranieWybrane, surowaKwota, sur
   if (czyPobranieWybrane && metoda === 'odbior_osobisty') {
     return {
       nadpisanie: null,
-      blad: 'Odbiór osobisty i pobranie wykluczają się — pobranie inkasuje kurier, a przy odbiorze '
-        + 'osobistym kuriera nie ma.',
+      blad:
+        'Odbiór osobisty i pobranie wykluczają się — pobranie inkasuje kurier, a przy odbiorze ' +
+        'osobistym kuriera nie ma.',
     };
   }
   // Kod paczkomatu doklejamy do KAZDEGO wariantu ponizej — i tylko przy metodzie, ktora
   // punkt odbioru w ogole ma. Wielkie litery, bo tak wygladaja kody InPostu na etykietach
   // i w API („wro10b" przepisane z uwag klienta zostaloby odrzucone przez ShipX); to ta
   // sama rodzina normalizacji, co telefon bez `+48` (domena/telefon.js).
-  const punkt = metodaKuriera(metoda)?.punktOdbioru ? String(surowyPunkt ?? '').trim().toUpperCase() : '';
+  const punkt = metodaKuriera(metoda)?.punktOdbioru
+    ? String(surowyPunkt ?? '')
+        .trim()
+        .toUpperCase()
+    : '';
   const zPunktem = (o) => (punkt ? { ...o, punkt_odbioru: punkt } : o);
 
   // Zwykla wysylka NIE ZAPISUJE kwoty w ogole — nie „zapisuje zero". Klucza po prostu nie
@@ -469,8 +482,9 @@ export function sprawdzZmianeMetody(metoda, czyPobranieWybrane, surowaKwota, sur
   if (!przycieta) {
     return {
       nadpisanie: null,
-      blad: 'Przełączenie na pobranie wymaga podania kwoty pobrania — paczka za pobraniem bez kwoty '
-        + 'to paczka, za którą kurier nic nie zainkasuje.',
+      blad:
+        'Przełączenie na pobranie wymaga podania kwoty pobrania — paczka za pobraniem bez kwoty ' +
+        'to paczka, za którą kurier nic nie zainkasuje.',
     };
   }
   const odczyt = odczytajKwotePobrania(przycieta);
@@ -479,7 +493,10 @@ export function sprawdzZmianeMetody(metoda, czyPobranieWybrane, surowaKwota, sur
     return { nadpisanie: null, blad: 'Kwota pobrania musi być większa od zera.' };
   }
   if (odczyt.rodzaj === 'ksztalt') {
-    return { nadpisanie: null, blad: `Nie umiem odczytać kwoty pobrania: „${przycieta}” (wpisz kwotę w złotych, np. 12,50).` };
+    return {
+      nadpisanie: null,
+      blad: `Nie umiem odczytać kwoty pobrania: „${przycieta}” (wpisz kwotę w złotych, np. 12,50).`,
+    };
   }
   if (odczyt.blad) {
     return { nadpisanie: null, blad: 'Kwota pobrania musi być większa od zera.' };

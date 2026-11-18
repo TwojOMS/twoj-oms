@@ -22,7 +22,8 @@ export function minutyResetuDemo(env: Srodowisko): number {
 
 const odmiana = (n: number, jeden: string, kilka: string, wiele: string) => {
   if (n === 1) return jeden;
-  const j = n % 10, d = n % 100;
+  const j = n % 10,
+    d = n % 100;
   return j >= 2 && j <= 4 && (d < 12 || d > 14) ? kilka : wiele;
 };
 
@@ -39,16 +40,24 @@ export function opisResetuDemo(minuty: number): string {
 // Wspólne konto gościa demo publicznego. Login i hasło są JAWNE — stoją na ekranie logowania —
 // więc wolno je mieć wyłącznie w trybie próby. Produkcja z tymi zmiennymi odmawia startu: pomyłka w .env
 // nie może wystawić hasła na ekranie logowania firmy. Konto zakłada wejście kontenera demo (deploy/demo/start.mjs).
-export function kontoDemo(env: Srodowisko): { login: string; haslo: string; reset: string; resetPlanowy: string | null; resetGodzina: string | null } | null {
+export function kontoDemo(
+  env: Srodowisko,
+): { login: string; haslo: string; reset: string; resetPlanowy: string | null; resetGodzina: string | null } | null {
   const login = env.OMS_DEMO_LOGIN ?? '';
   const haslo = env.OMS_DEMO_HASLO ?? '';
   if (login === '' && haslo === '') return null;
-  if (efektywnyTryb(env) !== 'proba') throw new Error('OMS_DEMO_LOGIN/OMS_DEMO_HASLO wolno ustawić tylko z OMS_TRYB=proba');
+  if (efektywnyTryb(env) !== 'proba')
+    throw new Error('OMS_DEMO_LOGIN/OMS_DEMO_HASLO wolno ustawić tylko z OMS_TRYB=proba');
   if (login === '') throw new Error('Ustawione OMS_DEMO_HASLO bez OMS_DEMO_LOGIN');
   if (haslo === '') throw new Error('Ustawione OMS_DEMO_LOGIN bez OMS_DEMO_HASLO');
   const resetPlanowy = resetPlanowyDemo(env);
-  return { login, haslo, reset: opisResetuDemo(minutyResetuDemo(env)), resetPlanowy,
-    resetGodzina: resetPlanowy ? godzinaResetuDemo(resetPlanowy) : null };
+  return {
+    login,
+    haslo,
+    reset: opisResetuDemo(minutyResetuDemo(env)),
+    resetPlanowy,
+    resetGodzina: resetPlanowy ? godzinaResetuDemo(resetPlanowy) : null,
+  };
 }
 
 // Termin najbliższego resetu TEJ instancji panelu. Ustawia go cykl resetu (deploy/demo/cykl.mjs) przed każdym
@@ -60,7 +69,9 @@ function resetPlanowyDemo(env: Srodowisko): string | null {
   if (!z) return null;
   const ms = Date.parse(z);
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/.test(z) || Number.isNaN(ms)) {
-    throw new Error('DEMO_RESET_PLANOWY: chwila w ISO 8601 UTC (np. 2026-10-15T13:00:00.000Z) — ustawia ją deploy/demo/cykl.mjs');
+    throw new Error(
+      'DEMO_RESET_PLANOWY: chwila w ISO 8601 UTC (np. 2026-10-15T13:00:00.000Z) — ustawia ją deploy/demo/cykl.mjs',
+    );
   }
   return new Date(ms).toISOString();
 }

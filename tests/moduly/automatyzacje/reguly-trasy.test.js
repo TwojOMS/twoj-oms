@@ -14,22 +14,52 @@ const EKRAN = '/ustawienia/automatyzacje';
 const NOWA = `${EKRAN}/nowa`;
 
 const ZDARZENIE = {
-  klucz: 'test_zdarzenie', etykieta: 'Zdarzenie testowe', grupa: 'zamowienie', opis: 'Tylko w testach.',
+  klucz: 'test_zdarzenie',
+  etykieta: 'Zdarzenie testowe',
+  grupa: 'zamowienie',
+  opis: 'Tylko w testach.',
   kandydaci: () => [],
-  symulacja: (db, od) => db.prepare(`SELECT id AS zamowienie_id, sklep, wyslane_at AS zdarzenie_at FROM zamowienia
-    WHERE wyslane_at >= ? ORDER BY id`).all(od),
+  symulacja: (db, od) =>
+    db
+      .prepare(
+        `SELECT id AS zamowienie_id, sklep, wyslane_at AS zdarzenie_at FROM zamowienia
+    WHERE wyslane_at >= ? ORDER BY id`,
+      )
+      .all(od),
 };
-const AKCJA = { klucz: 'test_akcja', etykieta: 'Akcja testowa', wymagaPoczty: true, szablon: true, wykonaj: async () => ({}) };
+const AKCJA = {
+  klucz: 'test_akcja',
+  etykieta: 'Akcja testowa',
+  wymagaPoczty: true,
+  szablon: true,
+  wykonaj: async () => ({}),
+};
 
 const otwarte = [];
-afterEach(async () => { for (const p of otwarte.splice(0)) { await p.app.close(); p.db.close(); } });
+afterEach(async () => {
+  for (const p of otwarte.splice(0)) {
+    await p.app.close();
+    p.db.close();
+  }
+});
 
 function panel({ rejestr = true, poczta = false, demo = null } = {}) {
   // Od C1 moduł ma prawdziwe zdarzenia i akcję — świat „rejestr pusty” podaje puste listy jawnie.
-  const nadpisania = rejestr ? { 'automatyzacje.zdarzenia': [ZDARZENIE], 'automatyzacje.akcje': [AKCJA],
-    'automatyzacje.pocztaGotowa': () => poczta } : { 'automatyzacje.zdarzenia': [], 'automatyzacje.akcje': [] };
+  const nadpisania = rejestr
+    ? {
+        'automatyzacje.zdarzenia': [ZDARZENIE],
+        'automatyzacje.akcje': [AKCJA],
+        'automatyzacje.pocztaGotowa': () => poczta,
+      }
+    : { 'automatyzacje.zdarzenia': [], 'automatyzacje.akcje': [] };
   const p = demo
-    ? (() => { const db = openOmsDb(':memory:'); return { db, app: buildOmsServer({ poller: POLLER, db, nadpisania, config: { auth: { ...CONFIG.auth }, demo } }) }; })()
+    ? (() => {
+        const db = openOmsDb(':memory:');
+        return {
+          db,
+          app: buildOmsServer({ poller: POLLER, db, nadpisania, config: { auth: { ...CONFIG.auth }, demo } }),
+        };
+      })()
     : nowyPanel({ nadpisania });
   zalozKonto(p.db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
   zalozKonto(p.db, { login: 'ewa', imie: 'Ewa', haslo: 'h', rola: 'sprzedaz' });
@@ -38,17 +68,47 @@ function panel({ rejestr = true, poczta = false, demo = null } = {}) {
   otwarte.push(wynik);
   return wynik;
 }
-const FORMULARZ = { nazwa: 'Reguła z ekranu', zdarzenie: 'test_zdarzenie', kanaly: ['pro', 'reczne'], opoznienie: '30',
-  limit: '20', akcja: 'test_akcja', szablon: 'wlasny-1' };
+const FORMULARZ = {
+  nazwa: 'Reguła z ekranu',
+  zdarzenie: 'test_zdarzenie',
+  kanaly: ['pro', 'reczne'],
+  opoznienie: '30',
+  limit: '20',
+  akcja: 'test_akcja',
+  szablon: 'wlasny-1',
+};
 function zSzablonemWlasnym(db) {
-  db.prepare("INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('szablony.wiadomosci', ?, '2026-10-21')")
-    .run(JSON.stringify({ wbudowane: {}, wlasne: [{ id: 'wlasny-1', nazwa: 'Paczka w drodze', temat: 'Paczka', tresc: 'Jedzie.' }], licznik: 1 }));
+  db.prepare(
+    "INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('szablony.wiadomosci', ?, '2026-10-21')",
+  ).run(
+    JSON.stringify({
+      wbudowane: {},
+      wlasne: [{ id: 'wlasny-1', nazwa: 'Paczka w drodze', temat: 'Paczka', tresc: 'Jedzie.' }],
+      licznik: 1,
+    }),
+  );
 }
 const reguly = (db) => db.prepare('SELECT * FROM automatyzacje_reguly ORDER BY id').all();
 const teraz = () => new Date();
-const zapiszWprost = (db, o = {}) => utworzRegule(db, { nazwa: 'Reguła wprost', zdarzenie: 'test_zdarzenie', zdarzenie_json: {},
-  warunki: { kanaly: ['pro', 'swietlik'], kanalyZnane: ['pro', 'swietlik', 'allegro_swietlik', 'reczne', 'indywidualne'] },
-  akcja: 'test_akcja', akcja_json: { szablon: 'wlasny-1' }, opoznienie_min: 0, limit_na_godzine: 20, ...o }, { login: 'adam', teraz });
+const zapiszWprost = (db, o = {}) =>
+  utworzRegule(
+    db,
+    {
+      nazwa: 'Reguła wprost',
+      zdarzenie: 'test_zdarzenie',
+      zdarzenie_json: {},
+      warunki: {
+        kanaly: ['pro', 'swietlik'],
+        kanalyZnane: ['pro', 'swietlik', 'allegro_swietlik', 'reczne', 'indywidualne'],
+      },
+      akcja: 'test_akcja',
+      akcja_json: { szablon: 'wlasny-1' },
+      opoznienie_min: 0,
+      limit_na_godzine: 20,
+      ...o,
+    },
+    { login: 'adam', teraz },
+  );
 
 describe('rejestr zdarzeń pusty (B wydane samo)', () => {
   it('lista: bez przycisku „Dodaj automatyzację” i bez tabeli reguł', async () => {
@@ -86,15 +146,25 @@ describe('13. trasy — dostęp', () => {
     for (const url of [NOWA, `${NOWA}?zdarzenie=test_zdarzenie`, `${EKRAN}/${id}`, `${EKRAN}/${id}/edytuj`]) {
       expect((await get(p.app, url, p.ewa)).statusCode, url).toBe(403);
     }
-    for (const url of [NOWA, `${EKRAN}/sprawdz`, `${EKRAN}/${id}`, `${EKRAN}/${id}/wlacz`, `${EKRAN}/${id}/wylacz`,
-      `${EKRAN}/${id}/usun`, `${EKRAN}/${id}/zalegle/wyslij`, `${EKRAN}/${id}/zalegle/pomin`]) {
+    for (const url of [
+      NOWA,
+      `${EKRAN}/sprawdz`,
+      `${EKRAN}/${id}`,
+      `${EKRAN}/${id}/wlacz`,
+      `${EKRAN}/${id}/wylacz`,
+      `${EKRAN}/${id}/usun`,
+      `${EKRAN}/${id}/zalegle/wyslij`,
+      `${EKRAN}/${id}/zalegle/pomin`,
+    ]) {
       expect((await post(p.app, url, p.ewa, FORMULARZ)).statusCode, url).toBe(403);
     }
     expect(reguly(p.db)).toHaveLength(1);
     expect(reguly(p.db)[0]).toMatchObject({ wlaczona: 0, nazwa: 'Reguła wprost', usunieta_at: null });
   });
   it('gość demo ogląda kreator i dziennik (200), nie zapisze (403)', async () => {
-    const p = panel({ demo: { login: 'demo', haslo: 'demo', reset: 'co 60 minut', resetPlanowy: null, resetGodzina: null } });
+    const p = panel({
+      demo: { login: 'demo', haslo: 'demo', reset: 'co 60 minut', resetPlanowy: null, resetGodzina: null },
+    });
     zalozKonto(p.db, { login: 'demo', imie: 'Gość', haslo: 'demo', rola: 'sprzedaz' });
     ustawUprawnienia(p.db, kontoPoLoginie(p.db, 'demo').id, [...ekranyRoli('sprzedaz'), 'ustawienia']);
     const gosc = jako(p.db, 'demo');
@@ -136,8 +206,15 @@ describe('13. kreator i zapis', () => {
     expect(r.statusCode).toBe(303);
     const [regula] = reguly(p.db);
     expect(r.headers.location).toBe(`${EKRAN}/${regula.id}?zapisano=1`);
-    expect(regula).toMatchObject({ nazwa: 'Reguła z ekranu', wlaczona: 0, granica_at: null, opoznienie_min: 30,
-      limit_na_godzine: 20, akcja: 'test_akcja', zmienil_login: 'adam' });
+    expect(regula).toMatchObject({
+      nazwa: 'Reguła z ekranu',
+      wlaczona: 0,
+      granica_at: null,
+      opoznienie_min: 30,
+      limit_na_godzine: 20,
+      akcja: 'test_akcja',
+      zmienil_login: 'adam',
+    });
     expect(JSON.parse(regula.warunki_json).kanaly).toEqual(['pro', 'reczne']);
   });
   it('0 kanałów → 400 „Zaznacz co najmniej jeden kanał”; formularz zachowuje wpisane wartości', async () => {
@@ -219,7 +296,9 @@ describe('13. włączanie, wyłączanie, usuwanie, zaległe', () => {
     const p = panel({ poczta: true });
     const id = zapiszWprost(p.db);
     wlaczRegule(p.db, id, { login: 'adam', teraz });
-    p.db.prepare("UPDATE automatyzacje_reguly SET wstrzymana_powod = '51 zamówień naraz (więcej niż 50)' WHERE id = ?").run(id);
+    p.db
+      .prepare("UPDATE automatyzacje_reguly SET wstrzymana_powod = '51 zamówień naraz (więcej niż 50)' WHERE id = ?")
+      .run(id);
     const r = await get(p.app, EKRAN, p.admin);
     expect(r.body).toContain('Dodaj automatyzację');
     expect(r.body).toContain(`href="${NOWA}"`);

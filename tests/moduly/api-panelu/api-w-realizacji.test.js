@@ -22,7 +22,8 @@ const cialo = {
   kartaId: 'karta-abc',
   klient: { first_name: 'Jan', last_name: 'Kowalski', email: 'jan@example.com', phone: '500900008' },
   dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Długa 45', postcode: '30-001', city: 'Kraków' },
-  nip: null, chceFakture: false,
+  nip: null,
+  chceFakture: false,
   kosztDostawyBrutto: '19.00',
   pozycje: [{ nazwa: 'Lampa wisząca — Kopuła 40x60cm', ilosc: 1, cena_brutto: '250.00' }],
   uwagi: 'Zamówienie indywidualne — karta karta-abc',
@@ -30,11 +31,17 @@ const cialo = {
 
 let db, app, id;
 // Log czytamy wprost z bazy (ta sama droga, co w pozostalych testach OMS-u).
-const logi = (akcja) => db.prepare('SELECT * FROM log WHERE zamowienie_id = ? AND akcja = ? ORDER BY id').all(id, akcja);
-const zaloz = () => zalozZamowienieReczne({
-  db, dane: parsujZamowienieZKarty(cialo), znacznik: new Date().toISOString(), okresId: null,
-}).id;
-const wyslij = (docelowe = id) => app.inject({ method: 'POST', url: `/api/zamowienia/${docelowe}/w-realizacji`, headers: naglowki });
+const logi = (akcja) =>
+  db.prepare('SELECT * FROM log WHERE zamowienie_id = ? AND akcja = ? ORDER BY id').all(id, akcja);
+const zaloz = () =>
+  zalozZamowienieReczne({
+    db,
+    dane: parsujZamowienieZKarty(cialo),
+    znacznik: new Date().toISOString(),
+    okresId: null,
+  }).id;
+const wyslij = (docelowe = id) =>
+  app.inject({ method: 'POST', url: `/api/zamowienia/${docelowe}/w-realizacji`, headers: naglowki });
 
 beforeEach(async () => {
   db = openOmsDb(':memory:');
@@ -91,7 +98,11 @@ describe('POST /api/zamowienia/:id/w-realizacji', () => {
   });
 
   it('bez logowania → 401 (trasa nie jest wyjeta spod ochrony)', async () => {
-    const res = await app.inject({ method: 'POST', url: `/api/zamowienia/${id}/w-realizacji`, headers: { origin: 'http://localhost', host: 'localhost' } });
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/zamowienia/${id}/w-realizacji`,
+      headers: { origin: 'http://localhost', host: 'localhost' },
+    });
     expect(res.statusCode).toBe(401);
   });
 });

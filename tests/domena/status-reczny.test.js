@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import {
-  STATUSY_RECZNE, OPCJE_STATUSU, faktyDlaStatusu, powodOdmowyStatusu,
-  anulowaneWSklepie, anulowaneEfektywnie,
+  STATUSY_RECZNE,
+  OPCJE_STATUSU,
+  faktyDlaStatusu,
+  powodOdmowyStatusu,
+  anulowaneWSklepie,
+  anulowaneEfektywnie,
 } from '../../src/domena/status-reczny.js';
 import { wyliczStatus } from '../../src/domena/status.js';
 
@@ -10,8 +14,15 @@ const TERAZ = '2026-07-30T12:00:00.000Z';
 // Wiersz zamowienia w postaci, jaka oddaje zLinii(): `anulowane` to juz wartosc EFEKTYWNA,
 // a `anulowane_sklep` niesie to, co powiedzial sklep.
 const z = (o = {}) => ({
-  anulowane: 0, anulowane_sklep: 0, anulowane_recznie: 0,
-  w_realizacji_at: null, zwrot_at: null, zwrot_powod: null, przesylki: [], faktura: null, ...o,
+  anulowane: 0,
+  anulowane_sklep: 0,
+  anulowane_recznie: 0,
+  w_realizacji_at: null,
+  zwrot_at: null,
+  zwrot_powod: null,
+  przesylki: [],
+  faktura: null,
+  ...o,
 });
 
 // Zastosowanie faktow do wiersza — dokladnie to, co robi zapiszFaktyStatusu w bazie.
@@ -23,7 +34,9 @@ const z = (o = {}) => ({
 const poZmianie = (wiersz, docelowy, powod = null) => {
   const fakty = faktyDlaStatusu(wiersz, docelowy, { powod, teraz: TERAZ });
   const nowy = { ...wiersz, ...fakty };
-  nowy.anulowane = anulowaneEfektywnie({ anulowane: wiersz.anulowane_sklep, anulowane_recznie: nowy.anulowane_recznie }) ? 1 : 0;
+  nowy.anulowane = anulowaneEfektywnie({ anulowane: wiersz.anulowane_sklep, anulowane_recznie: nowy.anulowane_recznie })
+    ? 1
+    : 0;
   return nowy;
 };
 
@@ -43,9 +56,16 @@ describe('faktyDlaStatusu — wybor statusu zapisuje FAKTY, nie etykiete', () =>
   it('„nowe" kasuje WSZYSTKIE reczne fakty naraz', () => {
     const fakty = faktyDlaStatusu(
       z({ w_realizacji_at: '2026-07-01', zwrot_at: '2026-07-02', zwrot_powod: 'x', anulowane_recznie: 1 }),
-      'nowe', { teraz: TERAZ },
+      'nowe',
+      { teraz: TERAZ },
     );
-    expect(fakty).toEqual({ w_realizacji_at: null, wyslane_at: null, zwrot_at: null, zwrot_powod: null, anulowane_recznie: 0 });
+    expect(fakty).toEqual({
+      w_realizacji_at: null,
+      wyslane_at: null,
+      zwrot_at: null,
+      zwrot_powod: null,
+      anulowane_recznie: 0,
+    });
   });
 
   // ⚠️ 08.2026: „zwrot" ZNIKLO z STATUSY_RECZNE, wiec straznik na gorze
@@ -54,20 +74,30 @@ describe('faktyDlaStatusu — wybor statusu zapisuje FAKTY, nie etykiete', () =>
   // kodzie (zeby nie zmieniac zachowania starego `zwrot_at`), ale jest juz NIEOSIAGALNA
   // stad — sprawdzamy wiec, ze proba w ogole nie przechodzi.
   it('„zwrot" nie da sie juz ustawic przez faktyDlaStatusu — straznik rzuca pierwszy', () => {
-    expect(() => faktyDlaStatusu(z(), 'zwrot', { powod: 'uszkodzony w transporcie', teraz: TERAZ }))
-      .toThrow(/Nieznany status/);
+    expect(() => faktyDlaStatusu(z(), 'zwrot', { powod: 'uszkodzony w transporcie', teraz: TERAZ })).toThrow(
+      /Nieznany status/,
+    );
   });
 
   it('pusty powod tez nie omija straznika — „zwrot" jest odrzucany zawsze', () => {
-    expect(() => faktyDlaStatusu(z({ zwrot_at: '2026-07-02', zwrot_powod: 'stary' }), 'zwrot', { powod: '  ', teraz: TERAZ }))
-      .toThrow(/Nieznany status/);
+    expect(() =>
+      faktyDlaStatusu(z({ zwrot_at: '2026-07-02', zwrot_powod: 'stary' }), 'zwrot', { powod: '  ', teraz: TERAZ }),
+    ).toThrow(/Nieznany status/);
   });
 
   // Anulowanie NIE jest wymazaniem historii: paczka pojechala, zwrot byl — te fakty zostaja.
   it('„anulowane" zostawia pozostale fakty nietkniete', () => {
-    const fakty = faktyDlaStatusu(z({ w_realizacji_at: '2026-07-01', zwrot_at: '2026-07-02', zwrot_powod: 'x' }), 'anulowane', { teraz: TERAZ });
+    const fakty = faktyDlaStatusu(
+      z({ w_realizacji_at: '2026-07-01', zwrot_at: '2026-07-02', zwrot_powod: 'x' }),
+      'anulowane',
+      { teraz: TERAZ },
+    );
     expect(fakty).toEqual({
-      w_realizacji_at: '2026-07-01', wyslane_at: null, zwrot_at: '2026-07-02', zwrot_powod: 'x', anulowane_recznie: 1,
+      w_realizacji_at: '2026-07-01',
+      wyslane_at: null,
+      zwrot_at: '2026-07-02',
+      zwrot_powod: 'x',
+      anulowane_recznie: 1,
     });
   });
 

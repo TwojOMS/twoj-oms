@@ -19,9 +19,12 @@
  * pokazywałby komplet, którym nie jest.
  */
 export function metodyPlatnosciWBazie(db) {
-  return db.prepare(
-    "SELECT DISTINCT metoda_platnosci AS m FROM zamowienia"
-    + " WHERE metoda_platnosci IS NOT NULL AND TRIM(metoda_platnosci) <> ''"
-    + ' ORDER BY m COLLATE NOCASE',
-  ).all().map((w) => w.m);
+  return db
+    .prepare(
+      'SELECT DISTINCT metoda_platnosci AS m FROM zamowienia' +
+        " WHERE metoda_platnosci IS NOT NULL AND TRIM(metoda_platnosci) <> ''" +
+        ' ORDER BY m COLLATE NOCASE',
+    )
+    .all()
+    .map((w) => w.m);
 }

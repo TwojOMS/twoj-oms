@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
-  przewoznikPrzesylki, adresSledzenia, przewoznikWiersza, PRZEWOZNICY,
+  przewoznikPrzesylki,
+  adresSledzenia,
+  przewoznikWiersza,
+  PRZEWOZNICY,
 } from '../../src/domena/przewoznik-przesylki.js';
 
 // Filtr i kolumna „Kurier” w zakładce Przesyłki po PRAWDZIWYM
@@ -31,10 +34,18 @@ allegro_wza||allegro_inne|Allegro Automaty Paczkowe DPD|1|dpd
 allegro_wza||allegro_inne|Allegro Kurier DHL|1|dhl
 dpd||inpost_paczkomat||1|dpd
 inpost||allegro_paczkomat|Allegro Paczkomaty InPost pobranie|1|inpost
-`.trim().split('\n').map((l) => l.split('|'));
+`
+  .trim()
+  .split('\n')
+  .map((l) => l.split('|'));
 
 const NAZWY = {
-  dpd: 'DPD', inpost: 'InPost', dhl: 'DHL', orlen: 'ORLEN Paczka', 'allegro-one': 'Allegro One', packeta: 'Packeta',
+  dpd: 'DPD',
+  inpost: 'InPost',
+  dhl: 'DHL',
+  orlen: 'ORLEN Paczka',
+  'allegro-one': 'Allegro One',
+  packeta: 'Packeta',
 };
 
 describe('przewoznikPrzesylki — 24 kombinacje z produkcji', () => {
@@ -46,7 +57,10 @@ describe('przewoznikPrzesylki — 24 kombinacje z produkcji', () => {
   for (const [kurier, carrier, metoda, nazwa, ile, klucz] of POMIAR) {
     it(`${kurier}|${carrier}|${metoda}|${nazwa} (${ile}) → ${klucz}`, () => {
       const p = przewoznikPrzesylki({
-        kurier, carrierAllegro: carrier || null, nazwaUslugi: nazwa || null, metoda: metoda || null,
+        kurier,
+        carrierAllegro: carrier || null,
+        nazwaUslugi: nazwa || null,
+        metoda: metoda || null,
       });
       expect(p).toEqual(expect.objectContaining({ klucz, nazwa: NAZWY[klucz] }));
     });
@@ -56,14 +70,19 @@ describe('przewoznikPrzesylki — 24 kombinacje z produkcji', () => {
 describe('przewoznikPrzesylki — brzegi', () => {
   it('kod nadania wygrywa z metodą zamówienia (inpost|dpd → InPost, dpd|inpost_paczkomat → DPD)', () => {
     expect(przewoznikPrzesylki({ kurier: 'inpost', metoda: 'dpd', nazwaUslugi: 'Kurier DPD' }).klucz).toBe('inpost');
-    expect(przewoznikPrzesylki({ kurier: 'dpd', metoda: 'inpost_paczkomat', nazwaUslugi: 'InPost Paczkomat' }).klucz).toBe('dpd');
+    expect(
+      przewoznikPrzesylki({ kurier: 'dpd', metoda: 'inpost_paczkomat', nazwaUslugi: 'InPost Paczkomat' }).klucz,
+    ).toBe('dpd');
   });
 
   // WzA nie zapisuje `carrier_allegro` (w pomiarze NULL we wszystkich 104 przesyłkach allegro_wza),
   // więc przy wysyłce na Słowację rozstrzyga sama kolejność słów: Packeta przed ORLEN.
   it('Packeta przed ORLEN także bez carriera (allegro_wza)', () => {
     const nazwa = 'Allegro Wysyłka z Polski do Słowacji - Automaty Paczkowe Packeta, ORLEN Paczka';
-    expect(przewoznikPrzesylki({ kurier: 'allegro_wza', carrierAllegro: null, nazwaUslugi: nazwa, metoda: 'allegro_inne' }).klucz).toBe('packeta');
+    expect(
+      przewoznikPrzesylki({ kurier: 'allegro_wza', carrierAllegro: null, nazwaUslugi: nazwa, metoda: 'allegro_inne' })
+        .klucz,
+    ).toBe('packeta');
   });
 
   it('carrier ALLEGRO nie jest sygnałem — sam w sobie nie daje przewoźnika', () => {
@@ -71,8 +90,12 @@ describe('przewoznikPrzesylki — brzegi', () => {
   });
 
   it('nieznana nazwa i nieznana metoda → null', () => {
-    expect(przewoznikPrzesylki({ kurier: 'allegro_wza', nazwaUslugi: 'Allegro punkt / automat', metoda: 'allegro_punkt' })).toBeNull();
-    expect(przewoznikPrzesylki({ kurier: 'allegro', nazwaUslugi: 'Wysyłka ekspresowa', metoda: 'allegro_inne' })).toBeNull();
+    expect(
+      przewoznikPrzesylki({ kurier: 'allegro_wza', nazwaUslugi: 'Allegro punkt / automat', metoda: 'allegro_punkt' }),
+    ).toBeNull();
+    expect(
+      przewoznikPrzesylki({ kurier: 'allegro', nazwaUslugi: 'Wysyłka ekspresowa', metoda: 'allegro_inne' }),
+    ).toBeNull();
   });
 
   it('NULL wszędzie → null, bez wyjątku', () => {
@@ -131,14 +154,18 @@ describe('adresSledzenia', () => {
   it('każdy przewoźnik ma adres z numerem na końcu', () => {
     expect(adresSledzenia('dpd', '123')).toBe('https://tracktrace.dpd.com.pl/parcelDetails?typ=1&p1=123');
     expect(adresSledzenia('inpost', '123')).toBe('https://inpost.pl/sledzenie-przesylek?number=123');
-    expect(adresSledzenia('dhl', '123')).toBe('https://www.dhl.com/pl-pl/home/sledzenie-przesylek.html?tracking-id=123');
+    expect(adresSledzenia('dhl', '123')).toBe(
+      'https://www.dhl.com/pl-pl/home/sledzenie-przesylek.html?tracking-id=123',
+    );
     expect(adresSledzenia('orlen', '123')).toBe('https://www.orlenpaczka.pl/sledz-paczke/?numer=123');
     expect(adresSledzenia('allegro-one', '123')).toBe('https://allegro.pl/allegrodelivery/sledzenie-paczki?numer=123');
     expect(adresSledzenia('packeta', '123')).toBe('https://tracking.packeta.com/pl/?id=123');
   });
 
   it('numer jest kodowany (spacja, &, #, /)', () => {
-    expect(adresSledzenia('dpd', 'AB 12&x=1#y/z')).toBe('https://tracktrace.dpd.com.pl/parcelDetails?typ=1&p1=AB%2012%26x%3D1%23y%2Fz');
+    expect(adresSledzenia('dpd', 'AB 12&x=1#y/z')).toBe(
+      'https://tracktrace.dpd.com.pl/parcelDetails?typ=1&p1=AB%2012%26x%3D1%23y%2Fz',
+    );
   });
 
   it('numer jest przycinany ze spacji na brzegach', () => {

@@ -18,8 +18,18 @@ export const STAN = {
 // moga kiedys nazwac ten sam miesiac inaczej — a operator porownuje wlasnie te dwa napisy.
 // Trasy podaja te tablice do szablonow; szablony niczego nie nazywaja same.
 export const MIESIACE = [
-  'styczeń', 'luty', 'marzec', 'kwiecień', 'maj', 'czerwiec',
-  'lipiec', 'sierpień', 'wrzesień', 'październik', 'listopad', 'grudzień',
+  'styczeń',
+  'luty',
+  'marzec',
+  'kwiecień',
+  'maj',
+  'czerwiec',
+  'lipiec',
+  'sierpień',
+  'wrzesień',
+  'październik',
+  'listopad',
+  'grudzień',
 ];
 
 // Lapie prefiks RRRR-MM-DD na poczatku napisu — CELOWO bez kotwicy `$`, zeby zlapac
@@ -152,6 +162,8 @@ export function stanFakturyOkresu(okres, teraz = Date.now()) {
 /** Komunikat dla operatora — musi powiedziec, ktory miesiac i ze decyduje czlowiek. */
 export function opisOdmowy(rok, miesiac) {
   const nazwa = MIESIACE[miesiac - 1] ?? `miesiąc ${miesiac}`;
-  return `Okres ${nazwa} ${rok} jest już rozliczony — zamówienie z tą datą złożenia `
-    + 'wymaga Twojej decyzji (korekta faktury albo zmiana daty).';
+  return (
+    `Okres ${nazwa} ${rok} jest już rozliczony — zamówienie z tą datą złożenia ` +
+    'wymaga Twojej decyzji (korekta faktury albo zmiana daty).'
+  );
 }

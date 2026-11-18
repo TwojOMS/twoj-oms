@@ -18,15 +18,30 @@ const wywolania = (k: ReturnType<typeof katalogKanalu>) => [
 
 const umiejetnosci = MODUL_ALLEGRO.umiejetnosci as Record<string, unknown>;
 const zapamietane = { ...umiejetnosci };
-afterEach(() => { Object.assign(umiejetnosci, zapamietane); });
+afterEach(() => {
+  Object.assign(umiejetnosci, zapamietane);
+});
 
 function klientAllegro() {
   const wynik = { przyjete: true };
-  const fn = () => vi.fn(async function (this: { wynik: object }, ..._a: unknown[]) { return this.wynik; });
+  const fn = () =>
+    vi.fn(async function (this: { wynik: object }, ..._a: unknown[]) {
+      return this.wynik;
+    });
   return {
     wynik,
-    ofertyKonta: fn(), utworzOferte: fn(), edytujOferte: fn(), komendaIlosci: fn(), komendaCeny: fn(), pobierzOferte: fn(),
-    wgrajZdjecie: fn(), stanOperacji: fn(), szukajProduktow: fn(), ofertyPoSygnaturze: fn(), wynikKomendy: fn(), oplatyOferty: fn(),
+    ofertyKonta: fn(),
+    utworzOferte: fn(),
+    edytujOferte: fn(),
+    komendaIlosci: fn(),
+    komendaCeny: fn(),
+    pobierzOferte: fn(),
+    wgrajZdjecie: fn(),
+    stanOperacji: fn(),
+    szukajProduktow: fn(),
+    ofertyPoSygnaturze: fn(),
+    wynikKomendy: fn(),
+    oplatyOferty: fn(),
     podgladOplat: fn(),
   };
 }
@@ -38,7 +53,7 @@ it('Allegro deklaruje cały katalog D20, rodzaj stanów zostaje „oferty”', (
 
 it('kanał bez umiejętności (Woo) nadal odmawia, nawet z metodą zwracającą sukces', async () => {
   const sukces = vi.fn(async () => ({ ok: true as const, dane: {} }));
-  const katalog = katalogKanalu(MODULY_KANALOW.woo, Object.fromEntries(metody.map(m => [m, sukces])));
+  const katalog = katalogKanalu(MODULY_KANALOW.woo, Object.fromEntries(metody.map((m) => [m, sukces])));
   for (const [i, wywolaj] of wywolania(katalog).entries()) {
     expect(await wywolaj()).toEqual({ ok: false, powod: `kanał woo nie umie ${metody[i]}` });
   }
@@ -83,29 +98,42 @@ it('zmienIloscCene: komendy z commandId z pozycji, grosze → „zł.gr”, jedn
     { externalId: '7700000004', price: 100000, commandIdCeny: 'kom-cena-3' },
   ] as never);
   expect(klient.komendaIlosci.mock.calls).toEqual([
-    ['kom-ilosc-1', [{ ofertaId: '7700000001', ilosc: 3 }, { ofertaId: '7700000002', ilosc: 3 }]],
+    [
+      'kom-ilosc-1',
+      [
+        { ofertaId: '7700000001', ilosc: 3 },
+        { ofertaId: '7700000002', ilosc: 3 },
+      ],
+    ],
   ]);
   expect(klient.komendaCeny.mock.calls).toEqual([
     ['kom-cena-1', [{ ofertaId: '7700000001', cena: '66.38' }]],
     ['kom-cena-2', [{ ofertaId: '7700000003', cena: '0.05' }]],
     ['kom-cena-3', [{ ofertaId: '7700000004', cena: '1000.00' }]],
   ]);
-  expect(wynik).toEqual({ ok: true, dane: [
-    { rodzaj: 'ilosc', commandId: 'kom-ilosc-1', wynik: klient.wynik },
-    { rodzaj: 'cena', commandId: 'kom-cena-1', wynik: klient.wynik },
-    { rodzaj: 'cena', commandId: 'kom-cena-2', wynik: klient.wynik },
-    { rodzaj: 'cena', commandId: 'kom-cena-3', wynik: klient.wynik },
-  ] });
+  expect(wynik).toEqual({
+    ok: true,
+    dane: [
+      { rodzaj: 'ilosc', commandId: 'kom-ilosc-1', wynik: klient.wynik },
+      { rodzaj: 'cena', commandId: 'kom-cena-1', wynik: klient.wynik },
+      { rodzaj: 'cena', commandId: 'kom-cena-2', wynik: klient.wynik },
+      { rodzaj: 'cena', commandId: 'kom-cena-3', wynik: klient.wynik },
+    ],
+  });
 });
 
 it.each([
   ['bez commandIdIlosci', [{ externalId: '7700000001', stock: 1 }], /commandIdIlosci/],
   ['bez commandIdCeny', [{ externalId: '7700000001', price: 1999 }], /commandIdCeny/],
   ['pusty commandId', [{ externalId: '7700000001', stock: 1, commandIdIlosci: '' }], /commandIdIlosci/],
-  ['jedna pozycja bez commandId wśród poprawnych', [
-    { externalId: '7700000001', stock: 1, commandIdIlosci: 'kom-ilosc-1' },
-    { externalId: '7700000002', price: 1999, commandIdCeny: 'kom-cena-1', stock: 4 },
-  ], /commandIdIlosci/],
+  [
+    'jedna pozycja bez commandId wśród poprawnych',
+    [
+      { externalId: '7700000001', stock: 1, commandIdIlosci: 'kom-ilosc-1' },
+      { externalId: '7700000002', price: 1999, commandIdCeny: 'kom-cena-1', stock: 4 },
+    ],
+    /commandIdIlosci/,
+  ],
   ['cena nie w groszach', [{ externalId: '7700000001', price: 66.38, commandIdCeny: 'kom-cena-1' }], /grosz/],
   ['pozycja bez ilości i ceny', [{ externalId: '7700000001', commandIdIlosci: 'kom-ilosc-1' }], /ani ilości, ani ceny/],
   ['pusta lista', [], /brak pozycji/],
@@ -129,14 +157,31 @@ it('zmienIloscCene bez metody komendy w kliencie odmawia przed wysłaniem czegok
 
 it('wyjątek klienta Allegro przechodzi jako odrzucenie, nigdy sukces', async () => {
   const blad = new Error('HTTP 500');
-  const rzuca = vi.fn(async () => { throw blad; });
-  const klient = { ofertyKonta: rzuca, utworzOferte: rzuca, edytujOferte: rzuca, komendaIlosci: rzuca, pobierzOferte: rzuca };
+  const rzuca = vi.fn(async () => {
+    throw blad;
+  });
+  const klient = {
+    ofertyKonta: rzuca,
+    utworzOferte: rzuca,
+    edytujOferte: rzuca,
+    komendaIlosci: rzuca,
+    pobierzOferte: rzuca,
+  };
   for (const wywolaj of wywolania(katalogAllegro(klient))) await expect(wywolaj()).rejects.toBe(blad);
   expect(rzuca).toHaveBeenCalledTimes(5);
 });
 
-const WEZLY = ['wgrajZdjecie', 'stanOperacji', 'szukajProduktow', 'ofertyPoSygnaturze',
-  'komendaIlosci', 'komendaCeny', 'wynikKomendy', 'oplatyOferty', 'podgladOplat'] as const;
+const WEZLY = [
+  'wgrajZdjecie',
+  'stanOperacji',
+  'szukajProduktow',
+  'ofertyPoSygnaturze',
+  'komendaIlosci',
+  'komendaCeny',
+  'wynikKomendy',
+  'oplatyOferty',
+  'podgladOplat',
+] as const;
 
 it('wezlyAllegro to dokładnie 9 metod (D44 + podgladOplat z E3.17), przekazanych wprost do klienta konta', async () => {
   const klient = klientAllegro();
@@ -163,6 +208,8 @@ it('wezlyAllegro to dokładnie 9 metod (D44 + podgladOplat z E3.17), przekazanyc
 it('wezlyAllegro bez metody klienta rzuca — brak nie udaje wyniku', async () => {
   const wezly = wezlyAllegro({});
   for (const nazwa of WEZLY) {
-    await expect((wezly[nazwa] as () => Promise<unknown>)()).rejects.toThrow(`kanał allegro: ${nazwa} niezaimplementowane`);
+    await expect((wezly[nazwa] as () => Promise<unknown>)()).rejects.toThrow(
+      `kanał allegro: ${nazwa} niezaimplementowane`,
+    );
   }
 });

@@ -1,7 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import {
-  METODY_WYSYLKI, ETYKIETY_WYSYLKI, etykietaWysylki, sprawdzZmianeMetody,
-  punktOdbioru, punktOdbioruOpis, punktOdbioruZeSklepu, metodaZmienionaRecznie,
+  METODY_WYSYLKI,
+  ETYKIETY_WYSYLKI,
+  etykietaWysylki,
+  sprawdzZmianeMetody,
+  punktOdbioru,
+  punktOdbioruOpis,
+  punktOdbioruZeSklepu,
+  metodaZmienionaRecznie,
 } from '../../src/domena/wysylka.js';
 import { MAPOWANIE_SKLEPOW, metodaZLinii, metodaWysylkiZamowienia } from '../pomoc/przykladowe-mapowanie-wysylki.js';
 import { mapujZamowienie, punktOdbioruZeSurowych } from '../../src/domena/mapowanie.js';
@@ -16,9 +22,14 @@ const zPaczkomatem = (nad = {}) => ({
   number: '28079',
   total: '212.90',
   status: 'processing',
-  shipping_lines: [{
-    instance_id: 12, method_id: 'easypack_parcel_machines', method_title: 'InPost Paczkomat', total: '13.00',
-  }],
+  shipping_lines: [
+    {
+      instance_id: 12,
+      method_id: 'easypack_parcel_machines',
+      method_title: 'InPost Paczkomat',
+      total: '13.00',
+    },
+  ],
   meta_data: [
     { key: '_parcel_machine_id', value: 'WRO10B' },
     { key: '_parcel_machine_desc', value: 'Przy Centrum Handlowyn Borek' },
@@ -62,7 +73,8 @@ describe('rozpoznanie po instance_id — instancja 12 swietlik.example.test', ()
   // Dopisanie tu pobrania kazaloby kurierowi inkasowac od klienta, ktory juz zaplacil.
   it('instancja 12 NIE niesie pobrania', () => {
     expect(metodaWysylkiZamowienia(zPaczkomatem(), SWIETLIK)).toEqual({
-      metoda: 'inpost_paczkomat', pobranie: false,
+      metoda: 'inpost_paczkomat',
+      pobranie: false,
     });
     const z = mapujZamowienie(zPaczkomatem(), SWIETLIK);
     expect(z.pobranie).toBe(0);
@@ -82,7 +94,8 @@ describe('rozpoznanie po instance_id — instancja 12 swietlik.example.test', ()
 describe('kod paczkomatu z meta_data zamówienia', () => {
   it('czyta _parcel_machine_id i _parcel_machine_desc', () => {
     expect(punktOdbioruZeSurowych(zPaczkomatem())).toEqual({
-      kod: 'WRO10B', opis: 'Przy Centrum Handlowyn Borek',
+      kod: 'WRO10B',
+      opis: 'Przy Centrum Handlowyn Borek',
     });
   });
 
@@ -94,10 +107,7 @@ describe('kod paczkomatu z meta_data zamówienia', () => {
   });
 
   it.each(['JAB03M', 'SLN06M'])('działa na prawdziwym kodzie %s', (kod) => {
-    const z = mapujZamowienie(
-      zPaczkomatem({ meta_data: [{ key: '_parcel_machine_id', value: kod }] }),
-      SWIETLIK,
-    );
+    const z = mapujZamowienie(zPaczkomatem({ meta_data: [{ key: '_parcel_machine_id', value: kod }] }), SWIETLIK);
     expect(z.punkt_odbioru).toBe(kod);
     expect(z.punkt_odbioru_opis).toBeNull();
   });
@@ -172,7 +182,10 @@ describe('ręczna korekta kodu punktu — nadpisanie WYGRYWA przy odczycie', () 
   it('własny opis wpisany razem z korektą wygrywa', () => {
     const w = surowyWiersz({
       wysylka_reczna_json: nadpisanie({
-        metoda: 'inpost_paczkomat', pobranie: 0, punkt_odbioru: 'JAB03M', punkt_odbioru_opis: 'Przy myjni',
+        metoda: 'inpost_paczkomat',
+        pobranie: 0,
+        punkt_odbioru: 'JAB03M',
+        punkt_odbioru_opis: 'Przy myjni',
       }),
     });
     expect(punktOdbioruOpis(w)).toBe('Przy myjni');
@@ -194,10 +207,14 @@ describe('ręczna korekta kodu punktu — nadpisanie WYGRYWA przy odczycie', () 
 describe('sprawdzZmianeMetody — kod punktu przechodzi przez tę samą bramkę', () => {
   it('zapisuje kod razem z metodą i pobraniem', () => {
     expect(sprawdzZmianeMetody('inpost_paczkomat', false, '', 'WRO10B')).toEqual({
-      nadpisanie: { metoda: 'inpost_paczkomat', pobranie: 0, punkt_odbioru: 'WRO10B' }, blad: null,
+      nadpisanie: { metoda: 'inpost_paczkomat', pobranie: 0, punkt_odbioru: 'WRO10B' },
+      blad: null,
     });
     expect(sprawdzZmianeMetody('inpost_paczkomat', true, '212.90', 'WRO10B').nadpisanie).toEqual({
-      metoda: 'inpost_paczkomat', pobranie: 1, kwota_pobrania: '212.90', punkt_odbioru: 'WRO10B',
+      metoda: 'inpost_paczkomat',
+      pobranie: 1,
+      kwota_pobrania: '212.90',
+      punkt_odbioru: 'WRO10B',
     });
   });
 
@@ -208,16 +225,19 @@ describe('sprawdzZmianeMetody — kod punktu przechodzi przez tę samą bramkę'
   });
 
   it('pusty kod nie zapisuje klucza w ogóle', () => {
-    expect(sprawdzZmianeMetody('inpost_paczkomat', false, '', '  ').nadpisanie)
-      .toEqual({ metoda: 'inpost_paczkomat', pobranie: 0 });
-    expect(sprawdzZmianeMetody('inpost_paczkomat', false, '').nadpisanie)
-      .toEqual({ metoda: 'inpost_paczkomat', pobranie: 0 });
+    expect(sprawdzZmianeMetody('inpost_paczkomat', false, '', '  ').nadpisanie).toEqual({
+      metoda: 'inpost_paczkomat',
+      pobranie: 0,
+    });
+    expect(sprawdzZmianeMetody('inpost_paczkomat', false, '').nadpisanie).toEqual({
+      metoda: 'inpost_paczkomat',
+      pobranie: 0,
+    });
   });
 
   // Kod zostawiony przy przelaczeniu na DPD bylby smieciem udajacym adres.
   it('kod przy metodzie, która punktu odbioru nie ma, jest pomijany', () => {
-    expect(sprawdzZmianeMetody('dpd', false, '', 'WRO10B').nadpisanie)
-      .toEqual({ metoda: 'dpd', pobranie: 0 });
+    expect(sprawdzZmianeMetody('dpd', false, '', 'WRO10B').nadpisanie).toEqual({ metoda: 'dpd', pobranie: 0 });
   });
 
   // Paczkomat NIE jest wyjatkiem od bramki na pieniadze — te same odmowy, co przy DPD.
@@ -239,8 +259,13 @@ describe('sprawdzZmianeMetody — kod punktu przechodzi przez tę samą bramkę'
 describe('nadanie zbiorcze a paczkomaty', () => {
   it('zamówienie paczkomatowe z kodem idzie do nadania jako paczkomat', () => {
     const z = {
-      id: 1, numer: '28079', metoda_wysylki: 'inpost_paczkomat', pobranie: 0,
-      punkt_odbioru: 'WRO10B', przesylki: [], oplacone_at: '2026-08-01T10:00:00Z',
+      id: 1,
+      numer: '28079',
+      metoda_wysylki: 'inpost_paczkomat',
+      pobranie: 0,
+      punkt_odbioru: 'WRO10B',
+      przesylki: [],
+      oplacone_at: '2026-08-01T10:00:00Z',
     };
     const { doNadania, pominiete } = podzielDoNadania([z]);
     expect(pominiete).toEqual([]);

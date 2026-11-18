@@ -31,7 +31,9 @@ describe('limit żądania kontra próg zawieszonej faktury', () => {
   // inFaktu, mimo ze odpowiedzi nie zobaczylismy. Brak `status` to sygnal dla uslugi,
   // zeby zablokowac ponowienie zamiast wystawic drugi dokument.
   it('przerwanie po limicie jest awarią niejednoznaczną, bez statusu', async () => {
-    const fetchImpl = vi.fn().mockRejectedValue(Object.assign(new Error('The operation was aborted'), { name: 'AbortError' }));
+    const fetchImpl = vi
+      .fn()
+      .mockRejectedValue(Object.assign(new Error('The operation was aborted'), { name: 'AbortError' }));
     const c = createInfaktClient({ apiKey: 'SEKRET', fetchImpl });
     const blad = await c.wystaw({}).catch((e) => e);
     expect(blad.status).toBeUndefined();
@@ -86,10 +88,12 @@ describe('createInfaktClient.zalozKlienta', () => {
   // Prawdziwy format bledu inFaktu: `error` to zawsze ten sam ogolnik,
   // cala tresc jest w mapie `errors`.
   it('błąd niesie treść z errors, nie ogólnik z error', async () => {
-    const { c } = klient(odp(422, {
-      error: 'Wadliwy zasób. Popraw błędy i spróbuj ponownie.',
-      errors: { company_name: ['Proszę podać nazwę firmy.'] },
-    }));
+    const { c } = klient(
+      odp(422, {
+        error: 'Wadliwy zasób. Popraw błędy i spróbuj ponownie.',
+        errors: { company_name: ['Proszę podać nazwę firmy.'] },
+      }),
+    );
     await expect(c.zalozKlienta({})).rejects.toThrow(/Proszę podać nazwę firmy/);
   });
 });
@@ -118,7 +122,10 @@ describe('createInfaktClient.wystaw', () => {
   it('przepuszcza daty terminu płatności do koperty { invoice: ... }', async () => {
     const { c, fetchImpl } = klient(odp(201, { uuid: 'u1', number: 'FV/1/2026' }));
     await c.wystaw({
-      client_id: 7, services: [], invoice_date: '2026-08-03', payment_date: '2026-08-17',
+      client_id: 7,
+      services: [],
+      invoice_date: '2026-08-03',
+      payment_date: '2026-08-17',
     });
     const cialo = JSON.parse(fetchImpl.mock.calls[0][1].body);
     expect(cialo.invoice.invoice_date).toBe('2026-08-03');
@@ -175,7 +182,13 @@ describe('createInfaktClient.wystaw', () => {
   });
 
   it('odpowiedź bez treści JSON nie wywraca klienta', async () => {
-    const { c } = klient({ status: 500, ok: false, json: async () => { throw new Error('nie JSON'); } });
+    const { c } = klient({
+      status: 500,
+      ok: false,
+      json: async () => {
+        throw new Error('nie JSON');
+      },
+    });
     await expect(c.wystaw({})).rejects.toThrow(/500/);
   });
 });
@@ -235,7 +248,13 @@ describe('createInfaktClient.oznaczZaplacona', () => {
   // Gdyby inFakt oddal 201 bez tresci, oznaczenie i tak zostalo ZLECONE — brak referencji
   // nie jest awaria i nie ma prawa wywrocic kroku po nieodwracalnym.
   it('201 z pustym ciałem NIE jest błędem — sama referencja jest pusta', async () => {
-    const { c } = klient({ status: 201, ok: true, json: async () => { throw new Error('nie JSON'); } });
+    const { c } = klient({
+      status: 201,
+      ok: true,
+      json: async () => {
+        throw new Error('nie JSON');
+      },
+    });
     await expect(c.oznaczZaplacona('u1')).resolves.toEqual({ referencja: null });
   });
 
@@ -251,11 +270,14 @@ describe('createInfaktClient.oznaczZaplacona', () => {
   });
 
   it('błąd walidacji niesie treść z errors, nie ogólnik z error', async () => {
-    const { c } = klient(odp(422, {
-      error: 'Wadliwy zasób. Popraw błędy i spróbuj ponownie.',
-      errors: { paid_date: ['nie może być wcześniejsza niż data wystawienia'] },
-    }));
-    await expect(c.oznaczZaplacona('u1', { paidDate: '2026-08-01' }))
-      .rejects.toThrow(/wcześniejsza niż data wystawienia/);
+    const { c } = klient(
+      odp(422, {
+        error: 'Wadliwy zasób. Popraw błędy i spróbuj ponownie.',
+        errors: { paid_date: ['nie może być wcześniejsza niż data wystawienia'] },
+      }),
+    );
+    await expect(c.oznaczZaplacona('u1', { paidDate: '2026-08-01' })).rejects.toThrow(
+      /wcześniejsza niż data wystawienia/,
+    );
   });
 });

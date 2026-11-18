@@ -6,7 +6,12 @@ import { krokDemoMs } from '../../scripts/instalacja-wspolne.mjs';
 const dzienPl = (ms) => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Warsaw' }).format(ms);
 
 describe('demo instalatora — zamówienia w dzisiejszym dniu Warszawy', () => {
-  for (const chwila of ['2026-10-28T01:39:00Z', '2026-10-27T23:00:00.500Z', '2026-07-01T22:30:00Z', '2026-03-29T01:30:00Z']) {
+  for (const chwila of [
+    '2026-10-28T01:39:00Z',
+    '2026-10-27T23:00:00.500Z',
+    '2026-07-01T22:30:00Z',
+    '2026-03-29T01:30:00Z',
+  ]) {
     it(`noc ${chwila}: trzy zamówienia nie wychodzą przed północ`, () => {
       const teraz = Date.parse(chwila);
       const krok = krokDemoMs(teraz);

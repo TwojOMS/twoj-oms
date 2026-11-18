@@ -2,14 +2,26 @@ import { describe, it, expect } from 'vitest';
 import { wierszHistorii, KONTA_SKLEPOW } from '../../pomoc/przykladowy-import-sklepu.js';
 
 const zam = (nad = {}) => ({
-  id: 28225, number: '28225', status: 'completed',
-  date_created: '2014-06-13T19:29:24', date_created_gmt: '2014-06-13T17:29:24',
-  date_paid_gmt: '2014-06-13T17:31:00', currency: 'PLN', total: '246.00',
+  id: 28225,
+  number: '28225',
+  status: 'completed',
+  date_created: '2014-06-13T19:29:24',
+  date_created_gmt: '2014-06-13T17:29:24',
+  date_paid_gmt: '2014-06-13T17:31:00',
+  currency: 'PLN',
+  total: '246.00',
   billing: { email: 'k@klient.pl', first_name: 'Anna', last_name: 'Nowak', company: '' },
-  line_items: [{
-    name: 'Szablon kwiaty', sku: 'SZ-1', product_id: 501, variation_id: 0,
-    quantity: 2, total: '160.00', total_tax: '36.80',
-  }],
+  line_items: [
+    {
+      name: 'Szablon kwiaty',
+      sku: 'SZ-1',
+      product_id: 501,
+      variation_id: 0,
+      quantity: 2,
+      total: '160.00',
+      total_tax: '36.80',
+    },
+  ],
   shipping_lines: [{ method_title: 'Kurier DPD', total: '40.00', total_tax: '9.20' }],
   ...nad,
 });
@@ -63,10 +75,17 @@ describe('wiersz historii ze sklepu', () => {
 
   it('ZASLEPKA PANELU OFERT ZOSTAJE ROZPOZNAWALNA — original_code jak w erze Apilo', () => {
     const zZaslepka = zam({
-      line_items: [{
-        name: 'Pozycja indywidualna', sku: 'psm-zam-placeholder', product_id: 28040,
-        variation_id: 0, quantity: 1, total: '100.00', total_tax: '23.00',
-      }],
+      line_items: [
+        {
+          name: 'Pozycja indywidualna',
+          sku: 'psm-zam-placeholder',
+          product_id: 28040,
+          variation_id: 0,
+          quantity: 1,
+          total: '100.00',
+          total_tax: '23.00',
+        },
+      ],
     });
     expect(wierszHistorii('swietlik', zZaslepka).pozycje[0].originalCode).toBe('28040|0');
   });

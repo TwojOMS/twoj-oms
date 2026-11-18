@@ -18,7 +18,9 @@ export function modulKanalu(typ: unknown): OpisKanalu {
 
 let kanalyAllegroZKonfiguracji = new Set<string>();
 /** Klucze kanałów Allegro z konfiguracji uruchomienia. */
-export function ustawKanalyAllegro(klucze?: Iterable<string> | null) { kanalyAllegroZKonfiguracji = new Set(klucze ?? []); }
+export function ustawKanalyAllegro(klucze?: Iterable<string> | null) {
+  kanalyAllegroZKonfiguracji = new Set(klucze ?? []);
+}
 /** Kopia zbioru dla zapytań SQL dzielących zamówienia tak samo jak predykat. */
 export const kanalyAllegro = () => [...kanalyAllegroZKonfiguracji];
 type ZrodloZamowienia = { sklep?: unknown } | null | undefined;
@@ -36,8 +38,13 @@ let modulyZamowien: Readonly<Record<string, OpisKanalu>> = MODULY_KANALOW;
 const nieznaneKanaly = new Set<string>();
 /** Kompozycja kanałów podaje raz przy starcie odczyt rejestru połączeń (domena nie otwiera bazy).
  * `moduly` — rejestr modułów; inny niż MODULY_KANALOW tylko w testach (wpis testowy nowego typu). */
-export function ustawRejestrKanalow(typKanalu: TypPolaczeniaKanalu | null, moduly: Readonly<Record<string, OpisKanalu>> = MODULY_KANALOW) {
-  typPolaczenia = typKanalu; modulyZamowien = moduly; nieznaneKanaly.clear();
+export function ustawRejestrKanalow(
+  typKanalu: TypPolaczeniaKanalu | null,
+  moduly: Readonly<Record<string, OpisKanalu>> = MODULY_KANALOW,
+) {
+  typPolaczenia = typKanalu;
+  modulyZamowien = moduly;
+  nieznaneKanaly.clear();
 }
 /** Klucze z zamówień, których nie ma w rejestrze (albo ich typ nie ma modułu) — do diagnostyki kanałów. */
 export const nieznaneKanalyZamowien = () => [...nieznaneKanaly];
@@ -64,7 +71,7 @@ export function umiejetnosciZamowienia(z: ZrodloZamowienia): UmiejetnosciKanalu 
  * moduł ich nie ma (ERLI). Klucz poza rejestrem albo typu wbudowanego przechodzi — predykat nazw zamieniłby
  * nieznany klucz Allegro w Woo i odciął mu wiadomości. */
 export function kanalZWiadomosciami(klucz: string): boolean {
-  return kanalKlientaUmie(klucz, u => u.wiadomosci);
+  return kanalKlientaUmie(klucz, (u) => u.wiadomosci);
 }
 /** Ta sama reguła dla każdej umiejętności klienta z `klienciKanalow` (magazyn ofert, pliki faktur): typ wbudowany
  * i klucz spoza rejestru przechodzą, odpada tylko typ z rejestru bez tej umiejętności. */
@@ -98,14 +105,17 @@ export function sprawdzOpisyKanalow(moduly: Readonly<Record<string, OpisKanalu>>
       const miejsce = `${klucz}: krok ${krok.id}`;
       if (idKrokow.has(krok.id)) bledy.push(`${miejsce}: powtórzone id kroku`);
       idKrokow.add(krok.id);
-      if (poprzedniNumer !== undefined && krok.numer !== poprzedniNumer + 1) bledy.push(`${miejsce}: numer musi rosnąć o 1`);
+      if (poprzedniNumer !== undefined && krok.numer !== poprzedniNumer + 1)
+        bledy.push(`${miejsce}: numer musi rosnąć o 1`);
       poprzedniNumer = krok.numer;
-      if ((krok.formularz !== undefined) === (krok.widok !== undefined)) bledy.push(`${miejsce}: wymagane dokładnie jedno z formularz/widok`);
+      if ((krok.formularz !== undefined) === (krok.widok !== undefined))
+        bledy.push(`${miejsce}: wymagane dokładnie jedno z formularz/widok`);
       const idPol = new Set<string>();
       for (const pole of krok.formularz?.pola ?? []) {
         if (idPol.has(pole.id)) bledy.push(`${miejsce}: powtórzone id pola ${pole.id}`);
         idPol.add(pole.id);
-        if (pole.opcje !== undefined && pole.rodzaj !== 'wybor') bledy.push(`${miejsce}: opcje tylko dla wyboru (${pole.id})`);
+        if (pole.opcje !== undefined && pole.rodzaj !== 'wybor')
+          bledy.push(`${miejsce}: opcje tylko dla wyboru (${pole.id})`);
       }
     }
   }

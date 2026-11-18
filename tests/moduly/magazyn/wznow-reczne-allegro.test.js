@@ -10,7 +10,12 @@ import { ENV_DEMO } from '../../../scripts/demo-dane.mjs';
 import { eanDemo, kategoriaAllegroDemo, parametryKategoriiAllegroDemo } from '../../../scripts/demo-dane-katalog.mjs';
 import { opisKategorii } from '../../../src/domena/tresc-oferty-allegro.js';
 import { utworzKarte } from '../../../src/oms/db/magazyn.js';
-import { zapiszUstawieniaOfertKonta, wstawOferte, ofertaPoId, zmienOferte } from '../../../src/oms/db/oferty-kanalow.ts';
+import {
+  zapiszUstawieniaOfertKonta,
+  wstawOferte,
+  ofertaPoId,
+  zmienOferte,
+} from '../../../src/oms/db/oferty-kanalow.ts';
 import { znakInstalacji } from '../../../src/moduly/magazyn/services/oferty-wspolne.js';
 import { createAllegroClient } from '../../../src/oms/allegro/client.js';
 import { katalogAllegro, wezlyAllegro } from '../../../src/integracje/kanal-modul.ts';
@@ -24,38 +29,87 @@ const BEZPIECZENSTWO = JSON.stringify({ typ: 'TEXT', tekst: 'Nie zostawiaj włą
 const MIN = 60_000;
 
 const sprzatanie = [];
-afterEach(() => { for (const f of sprzatanie.splice(0)) f(); });
-
-const zawies = (signal) => new Promise((_r, reject) => {
-  if (signal?.aborted) { reject(signal.reason); return; }
-  signal?.addEventListener('abort', () => reject(signal.reason), { once: true });
+afterEach(() => {
+  for (const f of sprzatanie.splice(0)) f();
 });
+
+const zawies = (signal) =>
+  new Promise((_r, reject) => {
+    if (signal?.aborted) {
+      reject(signal.reason);
+      return;
+    }
+    signal?.addEventListener('abort', () => reject(signal.reason), { once: true });
+  });
 
 /** Karta z kategorią z mapy, regułami, marką, GPSR konta, `n` zdjęciami i EAN demo. */
 function karta(db, konto, { nazwa = 'Lampa stołowa Gliwka z kloszem', n = 2 } = {}) {
-  const id = utworzKarte(db, { nazwa, cena_gr: 5900, stawka_vat: '23', marka: 'Pracownia Półcień',
-    kategoria_glowna: 'Lampy stołowe', szerokosc_mm: 255,
-    opis_sekcje_json: JSON.stringify({ sekcje: [{ elementy: [{ typ: 'tekst', html: '<p>Lampa z mlecznym kloszem.</p>' }] }] }) },
-  { at: new Date(T0).toISOString() });
-  db.prepare('UPDATE karty_produktow SET informacja_bezpieczenstwa = ?, ean = ? WHERE id = ?').run(BEZPIECZENSTWO, eanDemo(1), id);
-  const zdj = db.prepare(`INSERT INTO zdjecia_kart (karta_id, kolejnosc, zrodlo, adres_zrodlowy, sha256, typ, ai, ai_reczne, utworzono_at)
+  const id = utworzKarte(
+    db,
+    {
+      nazwa,
+      cena_gr: 5900,
+      stawka_vat: '23',
+      marka: 'Pracownia Półcień',
+      kategoria_glowna: 'Lampy stołowe',
+      szerokosc_mm: 255,
+      opis_sekcje_json: JSON.stringify({
+        sekcje: [{ elementy: [{ typ: 'tekst', html: '<p>Lampa z mlecznym kloszem.</p>' }] }],
+      }),
+    },
+    { at: new Date(T0).toISOString() },
+  );
+  db.prepare('UPDATE karty_produktow SET informacja_bezpieczenstwa = ?, ean = ? WHERE id = ?').run(
+    BEZPIECZENSTWO,
+    eanDemo(1),
+    id,
+  );
+  const zdj =
+    db.prepare(`INSERT INTO zdjecia_kart (karta_id, kolejnosc, zrodlo, adres_zrodlowy, sha256, typ, ai, ai_reczne, utworzono_at)
     VALUES (?, ?, 'reczne', ?, NULL, 'image/jpeg', 0, 1, ?)`);
-  for (let i = 0; i < n; i++) zdj.run(id, i, `https://polcien.example.invalid/gliwka-${id}-${i + 1}.jpg`, new Date(T0).toISOString());
+  for (let i = 0; i < n; i++)
+    zdj.run(id, i, `https://polcien.example.invalid/gliwka-${id}-${i + 1}.jpg`, new Date(T0).toISOString());
   // Opis kategorii 257 (wersja 2) w pamięci konta — ten sam zapis, co `opisKategoriiAllegro` po pobraniu.
   const opis = opisKategorii(['5', '256', '257'].map(kategoriaAllegroDemo), parametryKategoriiAllegroDemo('257'));
-  db.prepare(`INSERT OR IGNORE INTO kanaly_kategorie (polaczenie, kategoria_id, sciezka_json, parametry_json, pobrano_at) VALUES (?, '257', ?, ?, ?)`)
-    .run(konto, JSON.stringify(opis.sciezka), JSON.stringify({ wersja: opis.wersja, lisc: opis.lisc, tworzenieProduktu: opis.tworzenieProduktu, parametry: opis.parametry }), new Date(T0).toISOString());
-  db.prepare(`INSERT OR IGNORE INTO allegro_mapa_kategorii (kategoria_karty, srodowisko, kategoria_allegro_id) VALUES ('Lampy stołowe', 'produkcja', '257')`).run();
-  const regula = db.prepare(`INSERT OR IGNORE INTO allegro_reguly_parametrow (srodowisko, kategoria_allegro_id, parametr_id, rodzaj,
+  db.prepare(
+    `INSERT OR IGNORE INTO kanaly_kategorie (polaczenie, kategoria_id, sciezka_json, parametry_json, pobrano_at) VALUES (?, '257', ?, ?, ?)`,
+  ).run(
+    konto,
+    JSON.stringify(opis.sciezka),
+    JSON.stringify({
+      wersja: opis.wersja,
+      lisc: opis.lisc,
+      tworzenieProduktu: opis.tworzenieProduktu,
+      parametry: opis.parametry,
+    }),
+    new Date(T0).toISOString(),
+  );
+  db.prepare(
+    `INSERT OR IGNORE INTO allegro_mapa_kategorii (kategoria_karty, srodowisko, kategoria_allegro_id) VALUES ('Lampy stołowe', 'produkcja', '257')`,
+  ).run();
+  const regula =
+    db.prepare(`INSERT OR IGNORE INTO allegro_reguly_parametrow (srodowisko, kategoria_allegro_id, parametr_id, rodzaj,
     wartosc_json, pole, zmieniono_at) VALUES ('produkcja', '257', ?, ?, ?, ?, ?)`);
   regula.run('11323', 'stala', JSON.stringify({ valuesIds: ['11323_1'] }), null, new Date(T0).toISOString());
   regula.run('248811', 'pole', null, 'marka', new Date(T0).toISOString());
-  db.prepare(`INSERT OR IGNORE INTO allegro_marki (marka, srodowisko, parametr_id, wartosc_id, kategorie_sprawdzone_json, zmieniono_at)
-    VALUES ('Pracownia Półcień', 'produkcja', '248811', '248811_9001', '["257"]', ?)`).run(new Date(T0).toISOString());
-  db.prepare(`INSERT OR IGNORE INTO allegro_marki_gpsr (marka, konto, zrodlo, zmieniono_at) VALUES ('Pracownia Półcień', ?, 'konto', ?)`)
-    .run(konto, new Date(T0).toISOString());
-  const wiersz = wstawOferte(db, { kartaId: id, kanal: konto, idZewnetrzne: `ext:${znakInstalacji(db)}-K${id}`, tryb: 'zarzadzana', stan: 'do_wyslania' },
-    { teraz: new Date(T0).toISOString() });
+  db.prepare(
+    `INSERT OR IGNORE INTO allegro_marki (marka, srodowisko, parametr_id, wartosc_id, kategorie_sprawdzone_json, zmieniono_at)
+    VALUES ('Pracownia Półcień', 'produkcja', '248811', '248811_9001', '["257"]', ?)`,
+  ).run(new Date(T0).toISOString());
+  db.prepare(
+    `INSERT OR IGNORE INTO allegro_marki_gpsr (marka, konto, zrodlo, zmieniono_at) VALUES ('Pracownia Półcień', ?, 'konto', ?)`,
+  ).run(konto, new Date(T0).toISOString());
+  const wiersz = wstawOferte(
+    db,
+    {
+      kartaId: id,
+      kanal: konto,
+      idZewnetrzne: `ext:${znakInstalacji(db)}-K${id}`,
+      tryb: 'zarzadzana',
+      stan: 'do_wyslania',
+    },
+    { teraz: new Date(T0).toISOString() },
+  );
   return { kartaId: id, ofertaId: wiersz.id };
 }
 
@@ -65,7 +119,9 @@ function srodowisko({ ustawienia = {}, zgoda = true, tylkoOdczyt = () => false }
   const teraz = () => new Date(czas);
   const f = fixtureAllegro();
   const s = f.szkic();
-  const k = daneAllegro(f.repo.zapiszZmiane(s.klucz, s.wersja, { autoryzacja: 'polaczone', kontoId: '123' }, aktorAllegro));
+  const k = daneAllegro(
+    f.repo.zapiszZmiane(s.klucz, s.wersja, { autoryzacja: 'polaczone', kontoId: '123' }, aktorAllegro),
+  );
   const KONTO = k.klucz;
   const dbAtrapy = new DatabaseSync(':memory:');
   const serwer = createSerwerOfertAllegro({ db: dbAtrapy, kanal: KONTO, env: ENV_DEMO, teraz });
@@ -78,42 +134,118 @@ function srodowisko({ ustawienia = {}, zgoda = true, tylkoOdczyt = () => false }
     const sciezka = adres.pathname;
     zdarzenia.push(`${metoda} ${sciezka}`);
     if (typeof init.body === 'string') {
-      try { ciala.push({ zdarzenie: `${metoda} ${sciezka}`, cialo: JSON.parse(init.body) }); } catch { /* ciało nie-JSON */ }
+      try {
+        ciala.push({ zdarzenie: `${metoda} ${sciezka}`, cialo: JSON.parse(init.body) });
+      } catch {
+        /* ciało nie-JSON */
+      }
     }
     const a = st.awaria?.(metoda, sciezka, adres);
-    if (a === 'zgubiona-odpowiedz') { await serwer.fetchImpl(url, init); return zawies(init.signal); }
+    if (a === 'zgubiona-odpowiedz') {
+      await serwer.fetchImpl(url, init);
+      return zawies(init.signal);
+    }
     if (a === 'bez-dotarcia') return zawies(init.signal);
     if (a instanceof Response) return a;
     return serwer.fetchImpl(url, init);
   }
-  const rejestr = createRejestrKanalow({ repozytorium: f.repo, fetchImpl, limitCzasuMs: 200, teraz,
+  const rejestr = createRejestrKanalow({
+    repozytorium: f.repo,
+    fetchImpl,
+    limitCzasuMs: 200,
+    teraz,
     fabryki: ({ http }) => ({
-      klient: createAllegroClient({ ustawienia: { api: API_ATRAPY_ALLEGRO, userAgent: 'test/1 (+https://x.invalid)' },
-        tokeny: { waznyToken: async () => 'token-atrapy-e308a' }, http }),
+      klient: createAllegroClient({
+        ustawienia: { api: API_ATRAPY_ALLEGRO, userAgent: 'test/1 (+https://x.invalid)' },
+        tokeny: { waznyToken: async () => 'token-atrapy-e308a' },
+        http,
+      }),
       poller: { stan: () => null, przebieg: async () => {} },
-    }) });
+    }),
+  });
   const klient = rejestr.klient(KONTO);
   const db = openOmsDb(':memory:', { moduly: modulyDla(ENV_DEMO) });
-  sprzatanie.push(() => { db.close(); dbAtrapy.close(); f.db.close(); });
-  zapiszUstawieniaOfertKonta(db, KONTO, { czynne: true, aktywujPoSprawdzeniu: true, narzutProcent: 0, stalaIlosc: 5,
-    czasWysylkiDni: 2, cennikDostaw: 'cennik-1', stawkaVat: '23', zwrotyId: 'zwrot-1', reklamacjeId: 'rekl-1',
-    producentId: 'prod-konta', ...ustawienia }, { teraz: new Date(T0).toISOString() });
-  const konto = { klucz: KONTO, nazwa: 'Półcień Allegro', srodowisko: 'produkcja', zgoda, tylkoOdczyt,
-    katalog: katalogAllegro(klient), allegro: wezlyAllegro(klient) };
-  const petla = () => createPetlaOfertAllegro({ db, konta: () => [konto], teraz,
-    zwolnijOperacje: (klucz, metoda, zasob) => f.repo.zwolnijOperacje(klucz, metoda, zasob),
-    czytajZdjecie: async (z) => new Uint8Array([7, z.id, z.kolejnosc + 1]) });
-  const przesun = (ms) => { czas += ms; f.setCzas(new Date(czas).toISOString()); };
+  sprzatanie.push(() => {
+    db.close();
+    dbAtrapy.close();
+    f.db.close();
+  });
+  zapiszUstawieniaOfertKonta(
+    db,
+    KONTO,
+    {
+      czynne: true,
+      aktywujPoSprawdzeniu: true,
+      narzutProcent: 0,
+      stalaIlosc: 5,
+      czasWysylkiDni: 2,
+      cennikDostaw: 'cennik-1',
+      stawkaVat: '23',
+      zwrotyId: 'zwrot-1',
+      reklamacjeId: 'rekl-1',
+      producentId: 'prod-konta',
+      ...ustawienia,
+    },
+    { teraz: new Date(T0).toISOString() },
+  );
+  const konto = {
+    klucz: KONTO,
+    nazwa: 'Półcień Allegro',
+    srodowisko: 'produkcja',
+    zgoda,
+    tylkoOdczyt,
+    katalog: katalogAllegro(klient),
+    allegro: wezlyAllegro(klient),
+  };
+  const petla = () =>
+    createPetlaOfertAllegro({
+      db,
+      konta: () => [konto],
+      teraz,
+      zwolnijOperacje: (klucz, metoda, zasob) => f.repo.zwolnijOperacje(klucz, metoda, zasob),
+      czytajZdjecie: async (z) => new Uint8Array([7, z.id, z.kolejnosc + 1]),
+    });
+  const przesun = (ms) => {
+    czas += ms;
+    f.setCzas(new Date(czas).toISOString());
+  };
   const ile = (wzor) => zdarzenia.filter((z) => wzor.test(z)).length;
-  const ofertyAtrapy = (ext) => dbAtrapy.prepare('SELECT dane_json FROM atrapa_allegro_oferty WHERE kanal = ?').all(KONTO)
-    .map((w) => JSON.parse(w.dane_json)).filter((o) => o.external?.id === ext);
-  const wstawDoAtrapy = (o) => dbAtrapy.prepare('INSERT INTO atrapa_allegro_oferty (kanal, id, dane_json) VALUES (?, ?, ?)')
-    .run(KONTO, String(o.id), JSON.stringify(o));
-  const ofertaWAtrapie = (id) => JSON.parse(dbAtrapy.prepare('SELECT dane_json FROM atrapa_allegro_oferty WHERE kanal = ? AND id = ?')
-    .get(KONTO, String(id)).dane_json);
-  const zmienWAtrapie = (id, f) => dbAtrapy.prepare('UPDATE atrapa_allegro_oferty SET dane_json = ? WHERE kanal = ? AND id = ?')
-    .run(JSON.stringify(f(ofertaWAtrapie(id))), KONTO, String(id));
-  return { db, f, KONTO, st, zdarzenia, ciala, petla, przesun, ile, ofertyAtrapy, wstawDoAtrapy, ofertaWAtrapie, zmienWAtrapie, teraz, konto };
+  const ofertyAtrapy = (ext) =>
+    dbAtrapy
+      .prepare('SELECT dane_json FROM atrapa_allegro_oferty WHERE kanal = ?')
+      .all(KONTO)
+      .map((w) => JSON.parse(w.dane_json))
+      .filter((o) => o.external?.id === ext);
+  const wstawDoAtrapy = (o) =>
+    dbAtrapy
+      .prepare('INSERT INTO atrapa_allegro_oferty (kanal, id, dane_json) VALUES (?, ?, ?)')
+      .run(KONTO, String(o.id), JSON.stringify(o));
+  const ofertaWAtrapie = (id) =>
+    JSON.parse(
+      dbAtrapy.prepare('SELECT dane_json FROM atrapa_allegro_oferty WHERE kanal = ? AND id = ?').get(KONTO, String(id))
+        .dane_json,
+    );
+  const zmienWAtrapie = (id, f) =>
+    dbAtrapy
+      .prepare('UPDATE atrapa_allegro_oferty SET dane_json = ? WHERE kanal = ? AND id = ?')
+      .run(JSON.stringify(f(ofertaWAtrapie(id))), KONTO, String(id));
+  return {
+    db,
+    f,
+    KONTO,
+    st,
+    zdarzenia,
+    ciala,
+    petla,
+    przesun,
+    ile,
+    ofertyAtrapy,
+    wstawDoAtrapy,
+    ofertaWAtrapie,
+    zmienWAtrapie,
+    teraz,
+    konto,
+  };
 }
 
 const POST = /^POST \/sale\/product-offers$/;
@@ -127,14 +259,18 @@ async function doKonca(e, p, ofertaId, { krok = 6000, n = 8 } = {}) {
   return ofertaPoId(e.db, ofertaId);
 }
 
-
-const odp = (status, cialo) => new Response(JSON.stringify(cialo), { status, headers: { 'Content-Type': 'application/json' } });
+const odp = (status, cialo) =>
+  new Response(JSON.stringify(cialo), { status, headers: { 'Content-Type': 'application/json' } });
 const PODGLAD = /^POST \/pricing\/offer-fee-preview$/;
 const ZAPISY = /^(PUT|PATCH) /;
 const cialaPo = (e, wzor, od = 0) => e.ciala.slice(od).filter((c) => wzor.test(c.zdarzenie));
 const wznowienia = (e, od) => cialaPo(e, ZAPISY, od).filter((c) => c.cialo?.publication?.status === 'ACTIVE');
-const przebieg = async (e, p, ms = MIN) => { e.przesun(ms); await p.przebieg(); };
-const PATCH_500 = (m, s) => (m === 'PATCH' && s.startsWith('/sale/product-offers/') ? odp(500, { errors: [{ code: 'InternalError' }] }) : null);
+const przebieg = async (e, p, ms = MIN) => {
+  e.przesun(ms);
+  await p.przebieg();
+};
+const PATCH_500 = (m, s) =>
+  m === 'PATCH' && s.startsWith('/sale/product-offers/') ? odp(500, { errors: [{ code: 'InternalError' }] }) : null;
 
 async function wystawiona(e, opcje) {
   const k = karta(e.db, e.KONTO, opcje);
@@ -144,13 +280,25 @@ async function wystawiona(e, opcje) {
   return { ...k, p, o };
 }
 /** Oferta zakończona w Allegro przy `sztuk` sztukach (wyprzedana albo ręcznie). */
-const zakoncz = (e, id, sztuk) => e.zmienWAtrapie(id, (x) => ({ ...x, stock: { ...x.stock, available: sztuk },
-  publication: { ...x.publication, status: 'ENDED' } }));
+const zakoncz = (e, id, sztuk) =>
+  e.zmienWAtrapie(id, (x) => ({
+    ...x,
+    stock: { ...x.stock, available: sztuk },
+    publication: { ...x.publication, status: 'ENDED' },
+  }));
 /** To, co robi przycisk „Wznów”: znacznik `wznow` w wyslanePola, licznik prób od zera. */
 function wcisnijWznow(e, ofertaId) {
   const o = ofertaPoId(e.db, ofertaId);
-  zmienOferte(e.db, ofertaId, { wyslanePola: { ...(o.wyslanePola ?? {}), wznow: { login: 'ala', at: e.teraz().toISOString() } },
-    liczbaProb: 0, nastepnaProbaAt: null }, { teraz: e.teraz().toISOString() });
+  zmienOferte(
+    e.db,
+    ofertaId,
+    {
+      wyslanePola: { ...(o.wyslanePola ?? {}), wznow: { login: 'ala', at: e.teraz().toISOString() } },
+      liczbaProb: 0,
+      nastepnaProbaAt: null,
+    },
+    { teraz: e.teraz().toISOString() },
+  );
 }
 /** Oferta zakończona ręcznie w Allegro (3 sztuki zostały) → problem „zakończona”, czeka na człowieka. */
 async function zakonczonaRecznie(e, opcje) {
@@ -170,7 +318,9 @@ describe('E3.28-02 — ręczne Wznów (znacznik wyslanePola.wznow)', () => {
     expect(wznowienia(e, przed)).toHaveLength(0);
     wcisnijWznow(e, ofertaId);
     await przebieg(e, p);
-    expect(cialaPo(e, ZAPISY, przed).map((c) => c.cialo)).toEqual([{ stock: { available: 5 }, publication: { status: 'ACTIVE' } }]);
+    expect(cialaPo(e, ZAPISY, przed).map((c) => c.cialo)).toEqual([
+      { stock: { available: 5 }, publication: { status: 'ACTIVE' } },
+    ]);
     expect(cialaPo(e, PODGLAD, przed)).toEqual([]);
     const w = ofertaPoId(e.db, ofertaId);
     expect(w.stan).toBe('sprawdzana');
@@ -189,9 +339,14 @@ describe('E3.28-02 — ręczne Wznów (znacznik wyslanePola.wznow)', () => {
     const e = srodowisko();
     const { ofertaId, p, o } = await wystawiona(e);
     zakoncz(e, o.idZewnetrzne, 0);
-    e.st.awaria = (m, s) => (m === 'PATCH' && s.startsWith('/sale/product-offers/') ? odp(422, { errors: [{ code: 'X', userMessage: 'Brak danych' }] }) : null);
+    e.st.awaria = (m, s) =>
+      m === 'PATCH' && s.startsWith('/sale/product-offers/')
+        ? odp(422, { errors: [{ code: 'X', userMessage: 'Brak danych' }] })
+        : null;
     await przebieg(e, p);
-    expect(ofertaPoId(e.db, ofertaId).problemy).toEqual([{ kod: 'zakonczona', sztuk: 0, tekst: expect.stringContaining('Brak danych') }]);
+    expect(ofertaPoId(e.db, ofertaId).problemy).toEqual([
+      { kod: 'zakonczona', sztuk: 0, tekst: expect.stringContaining('Brak danych') },
+    ]);
     e.st.awaria = null;
     const przed = e.ciala.length;
     await przebieg(e, p);
@@ -213,8 +368,10 @@ describe('E3.28-02 — ręczne Wznów (znacznik wyslanePola.wznow)', () => {
     expect(cialaPo(e, ZAPISY, przed)).toEqual([]);
     const po = ofertaPoId(e.db, ofertaId);
     expect(po.stan).toBe('problem');
-    expect(po.problemy).toEqual([{ kod: 'zakonczona', sztuk: 3, tekst: expect.stringContaining('Wznów') },
-      { kod: 'karta', tekst: expect.stringContaining('stała liczba sztuk') }]);
+    expect(po.problemy).toEqual([
+      { kod: 'zakonczona', sztuk: 3, tekst: expect.stringContaining('Wznów') },
+      { kod: 'karta', tekst: expect.stringContaining('stała liczba sztuk') },
+    ]);
     expect(po.wyslanePola.wznow).toBeUndefined();
   });
 
@@ -291,7 +448,10 @@ describe('E3.28-02 — D41 bez prognozy opłat (decyzja właściciela 14.11)', (
     const e = srodowisko();
     const { ofertaId, p, o } = await wystawiona(e);
     zakoncz(e, o.idZewnetrzne, 0);
-    e.st.awaria = (m, s) => (m === 'POST' && s === '/pricing/offer-fee-preview' ? odp(200, { quotes: [{ fee: { amount: '1.00', currency: 'PLN' } }] }) : null);
+    e.st.awaria = (m, s) =>
+      m === 'POST' && s === '/pricing/offer-fee-preview'
+        ? odp(200, { quotes: [{ fee: { amount: '1.00', currency: 'PLN' } }] })
+        : null;
     const przed = e.ciala.length;
     await przebieg(e, p);
     expect(cialaPo(e, PODGLAD, przed)).toEqual([]);
@@ -301,7 +461,8 @@ describe('E3.28-02 — D41 bez prognozy opłat (decyzja właściciela 14.11)', (
 });
 
 describe('E3.28-02 — świeżo wystawiona oferta jeszcze nie na liście /sale/offers (piaskownica r4)', () => {
-  const pustaLista = (m, s) => (m === 'GET' && s === '/sale/offers' ? odp(200, { offers: [], count: 0, totalCount: 0 }) : null);
+  const pustaLista = (m, s) =>
+    m === 'GET' && s === '/sale/offers' ? odp(200, { offers: [], count: 0, totalCount: 0 }) : null;
 
   it('po POST lista bez nowej oferty → bez brak-w-allegro; po 15 min dalej brak → brak-w-allegro', async () => {
     const e = srodowisko();
@@ -331,10 +492,25 @@ describe('E3.28-02 — świeżo wystawiona oferta jeszcze nie na liście /sale/o
     // Wiersz z problemem spoza PROBLEMY_SYNCHRONIZACJI wypadał z kandydatów mimo znacznika „Wznów”.
     const e = srodowisko();
     const { ofertaId, p } = await zakonczonaRecznie(e);
-    zmienOferte(e.db, ofertaId, { stan: 'problem', nastepnaProbaAt: null,
-      problemy: [{ kod: 'zakonczona', sztuk: 3, tekst: 'Nie wznowiono: popraw kartę, potem wciśnij Wznów.' },
-        { kod: 'wiele-produktow', produkty: [{ id: '1', nazwa: 'a', ean: null }, { id: '2', nazwa: 'b', ean: null }] }] },
-    { teraz: e.teraz().toISOString() });
+    zmienOferte(
+      e.db,
+      ofertaId,
+      {
+        stan: 'problem',
+        nastepnaProbaAt: null,
+        problemy: [
+          { kod: 'zakonczona', sztuk: 3, tekst: 'Nie wznowiono: popraw kartę, potem wciśnij Wznów.' },
+          {
+            kod: 'wiele-produktow',
+            produkty: [
+              { id: '1', nazwa: 'a', ean: null },
+              { id: '2', nazwa: 'b', ean: null },
+            ],
+          },
+        ],
+      },
+      { teraz: e.teraz().toISOString() },
+    );
     wcisnijWznow(e, ofertaId);
     for (let i = 0; i < 4; i++) await przebieg(e, p, 30 * MIN);
     expect(ofertaPoId(e.db, ofertaId).wyslanePola.wznow).toBeUndefined();

@@ -18,11 +18,29 @@ function klasy() {
 }
 function element(tag) {
   const el = {
-    tag, textContent: '', className: '', hidden: false, attrs: {}, children: [], dataset: {}, classList: klasy(),
-    setAttribute(k, v) { this.attrs[k] = String(v); }, append(...d) { this.children.push(...d); },
+    tag,
+    textContent: '',
+    className: '',
+    hidden: false,
+    attrs: {},
+    children: [],
+    dataset: {},
+    classList: klasy(),
+    setAttribute(k, v) {
+      this.attrs[k] = String(v);
+    },
+    append(...d) {
+      this.children.push(...d);
+    },
     // Atrapa parsera: wstawienie HTML-a tworzy elementy z jego znaczników (jak przeglądarka) i zostawia ślad.
-    set innerHTML(html) { this.htmlWstawiony = html; this.children = [...String(html).matchAll(/<(\w+)/g)].map((m) => element(m[1])); },
-    replaceChildren(...d) { this.children = [...d]; }, addEventListener() {},
+    set innerHTML(html) {
+      this.htmlWstawiony = html;
+      this.children = [...String(html).matchAll(/<(\w+)/g)].map((m) => element(m[1]));
+    },
+    replaceChildren(...d) {
+      this.children = [...d];
+    },
+    addEventListener() {},
   };
   return el;
 }
@@ -30,27 +48,62 @@ const dokument = { createElement: (t) => element(t) };
 
 function strefa({ maksPlikow = 20, multiple = true } = {}) {
   const sluchacze = {};
-  const pole = { files: [], value: '', multiple, disabled: false,
+  const pole = {
+    files: [],
+    value: '',
+    multiple,
+    disabled: false,
     getAttribute: (k) => (k === 'accept' ? 'image/jpeg,image/png,image/webp' : null),
-    addEventListener(t, f) { (this.sl ??= {})[t] = f; } };
+    addEventListener(t, f) {
+      (this.sl ??= {})[t] = f;
+    },
+  };
   const stan = element('p');
-  const lista = element('ul'); lista.hidden = true;
-  const przycisk = element('button'); przycisk.textContent = 'Wgraj zdjęcia';
+  const lista = element('ul');
+  lista.hidden = true;
+  const przycisk = element('button');
+  przycisk.textContent = 'Wgraj zdjęcia';
   const el = {
     dataset: { maksPlikow: String(maksPlikow), maksBajtow: String(10 * MB), opisTypow: 'JPEG, PNG lub WebP' },
-    classList: klasy(), ownerDocument: dokument,
-    addEventListener(t, f) { sluchacze[t] = f; },
+    classList: klasy(),
+    ownerDocument: dokument,
+    addEventListener(t, f) {
+      sluchacze[t] = f;
+    },
     contains: (cel) => cel?.wewnatrz === true,
     closest: (s) => (s === 'form' ? { querySelector: (q) => (q.includes('przycisk') ? przycisk : null) } : null),
     querySelector: (s) => (s.includes('input') ? pole : s.includes('stan') ? stan : s.includes('lista') ? lista : null),
   };
-  return { el, pole, stan, lista, przycisk, wyslij: (typ, zd = {}) => sluchacze[typ]?.({ preventDefault: vi.fn(), ...zd }) };
+  return {
+    el,
+    pole,
+    stan,
+    lista,
+    przycisk,
+    wyslij: (typ, zd = {}) => sluchacze[typ]?.({ preventDefault: vi.fn(), ...zd }),
+  };
 }
 function srodowisko() {
-  const dt = { items: { dodane: [], add(f) { this.dodane.push(f); } }, get files() { return [...this.items.dodane]; } };
+  const dt = {
+    items: {
+      dodane: [],
+      add(f) {
+        this.dodane.push(f);
+      },
+    },
+    get files() {
+      return [...this.items.dodane];
+    },
+  };
   let n = 0;
-  return { DataTransfer: function DataTransfer() { dt.items.dodane = []; return dt; },
-    URL: { createObjectURL: vi.fn(() => `blob:miniatura-${++n}`), revokeObjectURL: vi.fn() }, dt };
+  return {
+    DataTransfer: function DataTransfer() {
+      dt.items.dodane = [];
+      return dt;
+    },
+    URL: { createObjectURL: vi.fn(() => `blob:miniatura-${++n}`), revokeObjectURL: vi.fn() },
+    dt,
+  };
 }
 const upuszczenie = (pliki, typy = ['Files']) => ({ dataTransfer: { files: pliki, types: typy, dropEffect: '' } });
 const podlacz = (s, env) => podlaczStrefePliku(s.el, opcjeZAtrybutow(s.el), env);
@@ -68,9 +121,11 @@ describe('opcjeZAtrybutow', () => {
 
 describe('strefa zdjęć karty (wiele plików)', () => {
   it('upuszczenie 2 plików ustawia pole.files (2), listę 2 pozycji z miniaturą i rozmiarem, przycisk „Wgraj zdjęcia (2)”', () => {
-    const s = strefa(); const env = srodowisko();
+    const s = strefa();
+    const env = srodowisko();
     podlacz(s, env);
-    const a = plik('stol.jpg', 2 * MB); const b = plik('krzeslo.webp', 300 * 1024, 'image/webp');
+    const a = plik('stol.jpg', 2 * MB);
+    const b = plik('krzeslo.webp', 300 * 1024, 'image/webp');
     s.wyslij('drop', upuszczenie([a, b]));
     expect(s.pole.files.length).toBe(2);
     expect(s.pole.files).toEqual([a, b]);
@@ -86,7 +141,8 @@ describe('strefa zdjęć karty (wiele plików)', () => {
     expect(s.el.dataset.stan).toBe('wybrany');
   });
   it('plik większy niż 10 MB: komunikat po polsku, pole i lista bez zmian', () => {
-    const s = strefa(); const env = srodowisko();
+    const s = strefa();
+    const env = srodowisko();
     podlacz(s, env);
     const dobry = plik('dobry.jpg');
     s.wyslij('drop', upuszczenie([dobry]));
@@ -99,12 +155,14 @@ describe('strefa zdjęć karty (wiele plików)', () => {
     expect(s.przycisk.textContent).toBe('Wgraj zdjęcia (1)');
   });
   it('dokładnie 10 MB przechodzi', () => {
-    const s = strefa(); podlacz(s, srodowisko());
+    const s = strefa();
+    podlacz(s, srodowisko());
     s.wyslij('drop', upuszczenie([plik('rowno.jpg', 10 * MB)]));
     expect(s.pole.files).toHaveLength(1);
   });
   it('zły typ (GIF): komunikat z nazwą pliku, nic nie trafia do pola', () => {
-    const s = strefa(); const env = srodowisko();
+    const s = strefa();
+    const env = srodowisko();
     podlacz(s, env);
     s.wyslij('drop', upuszczenie([plik('a.jpg'), plik('ruch.gif', 1000, 'image/gif')]));
     expect(s.stan.textContent).toMatch(/ruch\.gif/);
@@ -118,7 +176,8 @@ describe('strefa zdjęć karty (wiele plików)', () => {
     expect(sprawdzPliki([plik('a.bmp', 10, '')], opcjeZAtrybutow(strefa().el))).toMatch(/a\.bmp/);
   });
   it('nadmiar ponad wolne miejsce: komunikat z liczbą, nic nie trafia do pola', () => {
-    const s = strefa({ maksPlikow: 2 }); const env = srodowisko();
+    const s = strefa({ maksPlikow: 2 });
+    const env = srodowisko();
     podlacz(s, env);
     s.wyslij('drop', upuszczenie([plik('1.jpg'), plik('2.jpg'), plik('3.jpg')]));
     expect(s.stan.textContent).toMatch(/3/);
@@ -129,9 +188,11 @@ describe('strefa zdjęć karty (wiele plików)', () => {
     expect(s.pole.files).toHaveLength(2);
   });
   it('wybór z dysku (change) przechodzi tę samą kontrolę; zły wybór czyści pole, żeby nie poszedł formularzem', () => {
-    const s = strefa({ maksPlikow: 1 }); const env = srodowisko();
+    const s = strefa({ maksPlikow: 1 });
+    const env = srodowisko();
     podlacz(s, env);
-    s.pole.files = [plik('a.jpg'), plik('b.jpg')]; s.pole.value = 'C:\\fakepath\\a.jpg';
+    s.pole.files = [plik('a.jpg'), plik('b.jpg')];
+    s.pole.value = 'C:\\fakepath\\a.jpg';
     s.pole.sl.change();
     expect(s.el.dataset.stan).toBe('blad');
     expect(s.pole.value).toBe('');
@@ -143,7 +204,8 @@ describe('strefa zdjęć karty (wiele plików)', () => {
     expect(s.przycisk.textContent).toBe('Wgraj zdjęcia (1)');
   });
   it('kolejny wybór zwalnia adresy poprzednich miniatur', () => {
-    const s = strefa(); const env = srodowisko();
+    const s = strefa();
+    const env = srodowisko();
     podlacz(s, env);
     s.wyslij('drop', upuszczenie([plik('a.jpg'), plik('b.jpg')]));
     s.wyslij('drop', upuszczenie([plik('c.jpg')]));
@@ -151,7 +213,8 @@ describe('strefa zdjęć karty (wiele plików)', () => {
     expect(env.URL.revokeObjectURL).toHaveBeenCalledWith('blob:miniatura-2');
   });
   it('podświetlenie strefy przy przeciąganiu plików, upuszczenie blokuje otwarcie pliku w karcie', () => {
-    const s = strefa(); podlacz(s, srodowisko());
+    const s = strefa();
+    podlacz(s, srodowisko());
     s.wyslij('dragenter', upuszczenie([], ['Files']));
     expect(s.el.classList.contains('strefa-pliku--nad')).toBe(true);
     s.wyslij('dragleave', { relatedTarget: null });
@@ -161,27 +224,32 @@ describe('strefa zdjęć karty (wiele plików)', () => {
     expect(preventDefault).toHaveBeenCalled();
   });
   it('brak wolnego miejsca: upuszczenie nic nie dodaje i mówi dlaczego', () => {
-    const s = strefa({ maksPlikow: 0 }); podlacz(s, srodowisko());
+    const s = strefa({ maksPlikow: 0 });
+    podlacz(s, srodowisko());
     s.wyslij('drop', upuszczenie([plik()]));
     expect(s.pole.files).toEqual([]);
     expect(s.stan.textContent).toMatch(/miejsca/);
     expect(s.el.dataset.stan).toBe('blad');
   });
   it('pole wyłączone (karta pełna) przy niezerowym limicie: komunikat „pełna”, nic nie trafia do pola', () => {
-    const s = strefa({ maksPlikow: 5 }); s.pole.disabled = true;
-    const env = srodowisko(); podlacz(s, env);
+    const s = strefa({ maksPlikow: 5 });
+    s.pole.disabled = true;
+    const env = srodowisko();
+    podlacz(s, env);
     s.wyslij('drop', upuszczenie([plik()]));
     expect(s.stan.textContent).toBe(opcjeZAtrybutow(s.el).komunikaty.pelna);
     expect(env.dt.items.dodane).toEqual([]);
     expect(s.pole.files).toEqual([]);
   });
   it('limit 0: komunikat „pełna”, a nie „wybrano N, zostało 0”', () => {
-    const s = strefa({ maksPlikow: 0 }); podlacz(s, srodowisko());
+    const s = strefa({ maksPlikow: 0 });
+    podlacz(s, srodowisko());
     s.wyslij('drop', upuszczenie([plik()]));
     expect(s.stan.textContent).toBe(opcjeZAtrybutow(s.el).komunikaty.pelna);
   });
   it('nazwa pliku z HTML-em trafia na listę jako tekst, bez wstawiania znaczników', () => {
-    const s = strefa(); podlacz(s, srodowisko());
+    const s = strefa();
+    podlacz(s, srodowisko());
     const zla = '<img src=x onerror=alert(1)>.png';
     s.wyslij('drop', upuszczenie([plik(zla, 1000, 'image/png')]));
     const [li] = s.lista.children;
@@ -195,13 +263,15 @@ describe('strefa zdjęć karty (wiele plików)', () => {
 
 describe('logo bierze wspólny moduł z tą samą wersją zasobów', () => {
   it('adres strefa-pliku.js dostaje `?v=` ze skryptu logo', () => {
-    expect(adresStrefy('https://oms.example/public/logo-przeciaganie.js?v=abc1234567'))
-      .toBe('https://oms.example/public/strefa-pliku.js?v=abc1234567');
+    expect(adresStrefy('https://oms.example/public/logo-przeciaganie.js?v=abc1234567')).toBe(
+      'https://oms.example/public/strefa-pliku.js?v=abc1234567',
+    );
     expect(adresStrefy('file:///x/src/public/logo-przeciaganie.js')).toBe('file:///x/src/public/strefa-pliku.js');
   });
   it('żaden skrypt w src/public nie importuje modułu względnym adresem bez wersji', () => {
     const katalog = fileURLToPath(new URL('../../src/public/', import.meta.url));
-    const zle = readdirSync(katalog).filter((n) => n.endsWith('.js'))
+    const zle = readdirSync(katalog)
+      .filter((n) => n.endsWith('.js'))
       .filter((n) => /(?:\bfrom\s*|\bimport\s*\(\s*)['"`]\.\.?\//.test(readFileSync(join(katalog, n), 'utf8')));
     expect(zle).toEqual([]);
   });
@@ -213,8 +283,16 @@ describe('logo na wspólnej strefie — bez zmiany zachowania', () => {
     const stan = { textContent: '' };
     const podglad = { hidden: true, addEventListener() {} };
     const sl = {};
-    const el = { dataset: {}, classList: klasy(), addEventListener: (t, f) => { sl[t] = f; }, contains: () => false,
-      querySelector: (s) => (s.includes('input') ? wejscie : s.includes('stan') ? stan : s.includes('podglad') ? podglad : null) };
+    const el = {
+      dataset: {},
+      classList: klasy(),
+      addEventListener: (t, f) => {
+        sl[t] = f;
+      },
+      contains: () => false,
+      querySelector: (s) =>
+        s.includes('input') ? wejscie : s.includes('stan') ? stan : s.includes('podglad') ? podglad : null,
+    };
     const env = srodowisko();
     podlaczStrefeLogo(el, env);
     sl.drop({ preventDefault() {}, ...upuszczenie([plik('a.png', 10, 'image/png'), plik('b.png', 10, 'image/png')]) });

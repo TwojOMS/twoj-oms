@@ -14,8 +14,7 @@ import { bladOperatora } from './bledy.js';
 
 function bladNumeru(surowy) {
   return bladOperatora(
-    `InPost: numer telefonu musi mieć dokładnie dziewięć cyfr (bez prefiksu kraju) — `
-    + `dostałem „${surowy ?? ''}”.`,
+    `InPost: numer telefonu musi mieć dokładnie dziewięć cyfr (bez prefiksu kraju) — ` + `dostałem „${surowy ?? ''}”.`,
   );
 }
 

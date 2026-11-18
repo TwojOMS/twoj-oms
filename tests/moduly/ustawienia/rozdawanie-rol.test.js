@@ -8,8 +8,16 @@ import { zalozKonto, kontoPoLoginie } from '../../../src/core/bezpieczenstwo/kon
 import { synchronizujRole, rolaPoKluczu, wstawRole, przypiszRole } from '../../../src/moduly/ustawienia/role.js';
 
 const teraz = () => new Date('2026-10-14T02:00:00Z');
-const modul = (klucz, role) => ({ nazwa: klucz, wersja: '1.0.0', wymaga: [], konfiguracja: () => ({}), migracje: [],
-  uprawnienia: [{ klucz, etykieta: klucz, role }], menu: [], zbuduj: () => ({}) });
+const modul = (klucz, role) => ({
+  nazwa: klucz,
+  wersja: '1.0.0',
+  wymaga: [],
+  konfiguracja: () => ({}),
+  migracje: [],
+  uprawnienia: [{ klucz, etykieta: klucz, role }],
+  menu: [],
+  zbuduj: () => ({}),
+});
 function baza() {
   const db = openOmsDb(':memory:');
   wykonajMigracje(db, [modulRdzen, modulUstawienia]);
@@ -35,7 +43,8 @@ describe('rozdawanie nowego ekranu rolom', () => {
   it('manifest z rolami admin/operator nie trafia do żadnej roli (bez mapowania)', () => {
     const db = baza();
     rozdajNoweUprawnienia(db, [modul('inny-ekran', ['admin', 'operator'])], teraz);
-    for (const k of ['sprzedaz', 'produkcja', 'r-magazyn1']) expect(rolaPoKluczu(db, k).ekrany.has('inny-ekran'), k).toBe(false);
+    for (const k of ['sprzedaz', 'produkcja', 'r-magazyn1'])
+      expect(rolaPoKluczu(db, k).ekrany.has('inny-ekran'), k).toBe(false);
   });
 
   it('błąd zapisu wycofuje także ptaszki ról', () => {

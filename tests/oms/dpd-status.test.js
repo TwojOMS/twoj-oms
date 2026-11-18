@@ -8,7 +8,13 @@ const __dir = dirname(fileURLToPath(import.meta.url));
 const fixture = (n) => readFileSync(join(__dir, 'fixtures', 'dpd', n), 'utf8');
 const odp = (status, tekst) => ({ status, ok: status >= 200 && status < 300, text: async () => tekst });
 
-const nadawca = { nazwa: 'Pracownia Półcień', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL' };
+const nadawca = {
+  nazwa: 'Pracownia Półcień',
+  ulica: 'ul. Przykładowa 1',
+  kod: '00-950',
+  miasto: 'Warszawa',
+  kraj: 'PL',
+};
 
 // KANAL jest CELOWO rozny od FID-u i nie jest podciagiem zadnego innego poswiadczenia.
 // W realnej konfiguracji obie wartosci bywaja takie same ('876543') — i wtedy test
@@ -19,10 +25,17 @@ const LOGIN = '<login>';
 const HASLO = 'SEKRETNE-HASLO';
 const FID = '876543';
 
-const zbuduj = (fetchImpl) => createDpdClient({
-  url: 'https://dpd/api', infoUrl: 'https://dpd/info', channel: KANAL,
-  login: LOGIN, haslo: HASLO, fid: FID, nadawca, fetchImpl,
-});
+const zbuduj = (fetchImpl) =>
+  createDpdClient({
+    url: 'https://dpd/api',
+    infoUrl: 'https://dpd/info',
+    channel: KANAL,
+    login: LOGIN,
+    haslo: HASLO,
+    fid: FID,
+    nadawca,
+    fetchImpl,
+  });
 
 describe('statusPrzesylki', () => {
   it('oddaje opis i czas zdarzenia z prawdziwej odpowiedzi', async () => {
@@ -99,17 +112,19 @@ describe('statusPrzesylki', () => {
 
   // Swiezo zarejestrowana przesylka oddaje HTTP 200 z pusta lista. To nie awaria.
   it('brak zdarzeń → null zamiast błędu', async () => {
-    const pusto = '<S:Envelope><S:Body><ns2:getEventsForWaybillV1Response><return><confirmId>0</confirmId></return></ns2:getEventsForWaybillV1Response></S:Body></S:Envelope>';
+    const pusto =
+      '<S:Envelope><S:Body><ns2:getEventsForWaybillV1Response><return><confirmId>0</confirmId></return></ns2:getEventsForWaybillV1Response></S:Body></S:Envelope>';
     const c = zbuduj(vi.fn().mockResolvedValue(odp(200, pusto)));
     expect(await c.statusPrzesylki('1000000000001U')).toBeNull();
   });
 
   it('przy wielu zdarzeniach oddaje NAJNOWSZE, nie pierwsze z brzegu', async () => {
-    const wiele = '<return>'
-      + '<eventsList><description>Nadana</description><eventTime>2026-07-30T08:00:00.000</eventTime></eventsList>'
-      + '<eventsList><description>Doręczona</description><eventTime>2026-07-31T10:00:00.000</eventTime></eventsList>'
-      + '<eventsList><description>W doręczeniu</description><eventTime>2026-07-31T06:00:00.000</eventTime></eventsList>'
-      + '</return>';
+    const wiele =
+      '<return>' +
+      '<eventsList><description>Nadana</description><eventTime>2026-07-30T08:00:00.000</eventTime></eventsList>' +
+      '<eventsList><description>Doręczona</description><eventTime>2026-07-31T10:00:00.000</eventTime></eventsList>' +
+      '<eventsList><description>W doręczeniu</description><eventTime>2026-07-31T06:00:00.000</eventTime></eventsList>' +
+      '</return>';
     const c = zbuduj(vi.fn().mockResolvedValue(odp(200, wiele)));
     expect((await c.statusPrzesylki('1000000000001U')).opis).toBe('Doręczona');
   });
@@ -122,25 +137,29 @@ describe('statusPrzesylki', () => {
     // Wariant CICHY i grozniejszy: brak <eventTime>. Po indeksie wychodzi opis JEDNEGO
     // zdarzenia z czasem INNEGO — karta pokazuje bzdure, ktorej nikt nie zauwazy.
     it('zdarzenie bez eventTime jest pomijane, a opis nie rozjeżdża się z czasem', async () => {
-      const xml = '<return>'
-        + '<eventsList><description>Nadana</description><eventTime>2026-07-30T08:00:00.000</eventTime></eventsList>'
-        + '<eventsList><description>Zwrot do nadawcy</description></eventsList>'
-        + '<eventsList><description>Doręczona</description><eventTime>2026-07-31T10:00:00.000</eventTime></eventsList>'
-        + '</return>';
+      const xml =
+        '<return>' +
+        '<eventsList><description>Nadana</description><eventTime>2026-07-30T08:00:00.000</eventTime></eventsList>' +
+        '<eventsList><description>Zwrot do nadawcy</description></eventsList>' +
+        '<eventsList><description>Doręczona</description><eventTime>2026-07-31T10:00:00.000</eventTime></eventsList>' +
+        '</return>';
       const c = zbuduj(vi.fn().mockResolvedValue(odp(200, xml)));
       // Parowanie po indeksie dawalo tu { opis: 'Zwrot do nadawcy', at: '2026-07-31T10:00…' }.
-      expect(await c.statusPrzesylki('1000000000001U'))
-        .toMatchObject({ opis: 'Doręczona', at: '2026-07-31T10:00:00.000' });
+      expect(await c.statusPrzesylki('1000000000001U')).toMatchObject({
+        opis: 'Doręczona',
+        at: '2026-07-31T10:00:00.000',
+      });
     });
 
     // Wariant HALASLIWY: brak <description>. Po indeksie wychodzil `undefined`, ktorego
     // node:sqlite nie potrafi zbindowac („Provided value cannot be bound") — wyjatek ginal
     // w try/catch odpornosci trasy i status zostawal pusty NA ZAWSZE.
     it('zdarzenie bez description oddaje null (nie undefined) i zachowuje swój czas', async () => {
-      const xml = '<return>'
-        + '<eventsList><description>Nadana</description><eventTime>2026-07-30T08:00:00.000</eventTime></eventsList>'
-        + '<eventsList><eventTime>2026-07-31T10:00:00.000</eventTime></eventsList>'
-        + '</return>';
+      const xml =
+        '<return>' +
+        '<eventsList><description>Nadana</description><eventTime>2026-07-30T08:00:00.000</eventTime></eventsList>' +
+        '<eventsList><eventTime>2026-07-31T10:00:00.000</eventTime></eventsList>' +
+        '</return>';
       const c = zbuduj(vi.fn().mockResolvedValue(odp(200, xml)));
       const wynik = await c.statusPrzesylki('1000000000001U');
       expect(wynik.at).toBe('2026-07-31T10:00:00.000');
@@ -159,9 +178,10 @@ describe('statusPrzesylki', () => {
   // w ktorym hasla, FID-u ani kanalu w ogole nie bylo — `not.toContain(haslo)` nie
   // sprawdzalo wtedy niczego i przechodzilo takze po wykasowaniu ich z listy w oczysc().
   it('błąd usługi nie ujawnia ŻADNEGO poświadczenia (login, hasło, FID, kanał)', async () => {
-    const fault = '<soap:Fault><faultstring>'
-      + `Auth failed for channel=${KANAL} login=${LOGIN} password=${HASLO} masterFid=${FID}`
-      + '</faultstring></soap:Fault>';
+    const fault =
+      '<soap:Fault><faultstring>' +
+      `Auth failed for channel=${KANAL} login=${LOGIN} password=${HASLO} masterFid=${FID}` +
+      '</faultstring></soap:Fault>';
     const c = zbuduj(vi.fn().mockResolvedValue(odp(500, fault)));
     const blad = await c.statusPrzesylki('1000000000001U').catch((e) => e);
     expect(blad.message).not.toContain(LOGIN);
@@ -180,9 +200,13 @@ describe('statusPrzesylki', () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       status: 200,
       ok: true,
-      text: async () => { throw new Error(`terminated while reading (password=${HASLO})`); },
+      text: async () => {
+        throw new Error(`terminated while reading (password=${HASLO})`);
+      },
     });
-    const blad = await zbuduj(fetchImpl).statusPrzesylki('1000000000001U').catch((e) => e);
+    const blad = await zbuduj(fetchImpl)
+      .statusPrzesylki('1000000000001U')
+      .catch((e) => e);
     expect(blad.dlaOperatora).toBe(true);
     expect(blad.message).toContain('DPD nieosiągalne');
     expect(blad.message).not.toContain(HASLO);
@@ -196,17 +220,26 @@ describe('statusPrzesylki', () => {
 // pomija notyfikacje — chyba ze w historii nie ma NICZEGO innego (wtedy lepsza notyfikacja
 // niz falszywe „brak zdarzen").
 describe('statusPrzesylki — zdarzenia-notyfikacje', () => {
-  const xmlZdarzen = (zdarzenia) => `<?xml version="1.0"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><ns:getEventsForWaybillV1Response xmlns:ns="http://events.dpdinfoservices.dpd.com.pl/"><return>${
-    zdarzenia.map(([opis, at]) => `<eventsList><description>${opis}</description><eventTime>${at}</eventTime></eventsList>`).join('')
-  }</return></ns:getEventsForWaybillV1Response></soap:Body></soap:Envelope>`;
+  const xmlZdarzen = (zdarzenia) =>
+    `<?xml version="1.0"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><ns:getEventsForWaybillV1Response xmlns:ns="http://events.dpdinfoservices.dpd.com.pl/"><return>${zdarzenia
+      .map(([opis, at]) => `<eventsList><description>${opis}</description><eventTime>${at}</eventTime></eventsList>`)
+      .join('')}</return></ns:getEventsForWaybillV1Response></soap:Body></soap:Envelope>`;
 
   it('powiadomienie mail NIE przykrywa fizycznego zdarzenia, nawet gdy jest nowsze', async () => {
-    const c = zbuduj(vi.fn().mockResolvedValue(odp(200, xmlZdarzen([
-      ['Przesyłka doręczona', '2026-08-20T11:00:00.000'],
-      ['Powiadomienie mail', '2026-08-20T11:00:05.000'],
-    ]))));
+    const c = zbuduj(
+      vi.fn().mockResolvedValue(
+        odp(
+          200,
+          xmlZdarzen([
+            ['Przesyłka doręczona', '2026-08-20T11:00:00.000'],
+            ['Powiadomienie mail', '2026-08-20T11:00:05.000'],
+          ]),
+        ),
+      ),
+    );
     expect(await c.statusPrzesylki('1049X')).toEqual({
-      opis: 'Przesyłka doręczona', at: '2026-08-20T11:00:00.000',
+      opis: 'Przesyłka doręczona',
+      at: '2026-08-20T11:00:00.000',
       historia: [
         { opis: 'Przesyłka doręczona', at: '2026-08-20T11:00:00.000' },
         { opis: 'Powiadomienie mail', at: '2026-08-20T11:00:05.000' },
@@ -215,17 +248,27 @@ describe('statusPrzesylki — zdarzenia-notyfikacje', () => {
   });
 
   it('sama notyfikacja w historii wraca jako status (lepsza niz „brak zdarzen")', async () => {
-    const c = zbuduj(vi.fn().mockResolvedValue(odp(200, xmlZdarzen([
-      ['Powiadomienie mail', '2026-08-20T09:00:00.000'],
-    ]))));
-    expect(await c.statusPrzesylki('1049X')).toMatchObject({ opis: 'Powiadomienie mail', at: '2026-08-20T09:00:00.000' });
+    const c = zbuduj(
+      vi.fn().mockResolvedValue(odp(200, xmlZdarzen([['Powiadomienie mail', '2026-08-20T09:00:00.000']]))),
+    );
+    expect(await c.statusPrzesylki('1049X')).toMatchObject({
+      opis: 'Powiadomienie mail',
+      at: '2026-08-20T09:00:00.000',
+    });
   });
 
   it('powiadomienie SMS traktowane tak samo jak mail', async () => {
-    const c = zbuduj(vi.fn().mockResolvedValue(odp(200, xmlZdarzen([
-      ['Wydana do doręczenia', '2026-08-20T08:00:00.000'],
-      ['Powiadomienie SMS', '2026-08-20T08:00:03.000'],
-    ]))));
+    const c = zbuduj(
+      vi.fn().mockResolvedValue(
+        odp(
+          200,
+          xmlZdarzen([
+            ['Wydana do doręczenia', '2026-08-20T08:00:00.000'],
+            ['Powiadomienie SMS', '2026-08-20T08:00:03.000'],
+          ]),
+        ),
+      ),
+    );
     expect((await c.statusPrzesylki('1049X')).opis).toBe('Wydana do doręczenia');
   });
 });

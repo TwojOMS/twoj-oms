@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync } from 'node:fs';
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+} from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -8,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const runner = fileURLToPath(new URL('../pomoc/temp-process-probe.mjs', import.meta.url));
 const keys = ['TMPDIR', 'TEMP', 'TMP'];
-const ownRuns = (base: string) => readdirSync(base).filter(name => name.startsWith('twoj-oms-vitest-'));
+const ownRuns = (base: string) => readdirSync(base).filter((name) => name.startsWith('twoj-oms-vitest-'));
 
 function removeOwn(path: string, base: string, prefix: string) {
   const target = resolve(path);
@@ -32,7 +41,14 @@ function probe(mode: 'worker' | 'baza' | 'cleanup-error', check: (data: any, wor
   const workerReport = join(control, 'worker.json');
   const repoBase = join(root, 'dane-lokalne');
   const repoBefore = existsSync(repoBase) ? new Set(readdirSync(repoBase)) : new Set<string>();
-  const childEnv: NodeJS.ProcessEnv = { ...process.env, TMPDIR: base, TEMP: base, TMP: base, OMS_TEMP_WORKER_REPORT: workerReport, OMS_TEMP_PROBE_MODE: mode };
+  const childEnv: NodeJS.ProcessEnv = {
+    ...process.env,
+    TMPDIR: base,
+    TEMP: base,
+    TMP: base,
+    OMS_TEMP_WORKER_REPORT: workerReport,
+    OMS_TEMP_PROBE_MODE: mode,
+  };
   if (mode === 'baza') {
     // Wabik: druga zmienna wskazuje inny katalog. os.tmpdir() bez TMPDIR czyta na Windows TEMP przed TMP,
     // a na Linuksie TMP przed TEMP (dokumentacja Node) — wabik idzie zawsze do tej, która przegrywa.
@@ -45,12 +61,19 @@ function probe(mode: 'worker' | 'baza' | 'cleanup-error', check: (data: any, wor
   }
   try {
     if (mode === 'baza') {
-      const wybrany = spawnSync(process.execPath, ['-e', 'process.stdout.write(require("node:os").tmpdir())'], { encoding: 'utf8', env: childEnv });
-      expect(wybrany.stdout, 'założenie sondy: os.tmpdir() procesu potomnego to katalog systemowy, nie wabik').toBe(base);
+      const wybrany = spawnSync(process.execPath, ['-e', 'process.stdout.write(require("node:os").tmpdir())'], {
+        encoding: 'utf8',
+        env: childEnv,
+      });
+      expect(wybrany.stdout, 'założenie sondy: os.tmpdir() procesu potomnego to katalog systemowy, nie wabik').toBe(
+        base,
+      );
     }
     const before = ownRuns(base).length;
     const child = spawnSync(process.execPath, [runner, root, base, report, mode], {
-      cwd: root, encoding: 'utf8', timeout: 60_000,
+      cwd: root,
+      encoding: 'utf8',
+      timeout: 60_000,
       env: childEnv,
     });
     expect(child.error, child.stdout + child.stderr).toBeUndefined();
@@ -63,7 +86,9 @@ function probe(mode: 'worker' | 'baza' | 'cleanup-error', check: (data: any, wor
     const data = JSON.parse(readFileSync(report, 'utf8'));
     const worker = existsSync(workerReport) ? JSON.parse(readFileSync(workerReport, 'utf8')) : null;
     expect(data.after).toEqual(data.before);
-    expect(ownRuns(base).length - before, 'liczba własnych katalogów po teardown').toBe(mode === 'cleanup-error' ? 1 : 0);
+    expect(ownRuns(base).length - before, 'liczba własnych katalogów po teardown').toBe(
+      mode === 'cleanup-error' ? 1 : 0,
+    );
     check(data, worker, base);
   } finally {
     // RED starego helpera także nie zostawia nowych fixture w repozytorium.
@@ -72,7 +97,11 @@ function probe(mode: 'worker' | 'baza' | 'cleanup-error', check: (data: any, wor
       const ownCreated: string[] = JSON.parse(readFileSync(workerReport, 'utf8')).created;
       for (const path of ownCreated) {
         const name = basename(path);
-        if (dirname(resolve(path)).toLowerCase() === resolve(repoBase).toLowerCase() && !repoBefore.has(name) && name.startsWith('straznik-')) {
+        if (
+          dirname(resolve(path)).toLowerCase() === resolve(repoBase).toLowerCase() &&
+          !repoBefore.has(name) &&
+          name.startsWith('straznik-')
+        ) {
           removeOwn(path, repoBase, 'straznik-');
         }
       }

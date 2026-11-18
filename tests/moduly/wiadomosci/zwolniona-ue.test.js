@@ -50,18 +50,45 @@ describe('opisKlienta — flaga firmy zwolnionej', () => {
 describe('mail „Faktura” — potwierdzenie wywozu', () => {
   function zestaw(program, { zwolniona }) {
     const db = bazaZeZwolnieniem(zwolniona);
-    const id = zapiszZamowienie(db, 'pro', {
-      zrodlo_id: 3101, numer: '3101',
-      klient: { first_name: 'Hans', last_name: 'Testmann', company: 'Leuchten Muster GmbH', email: 'hans@polcien.invalid',
-        address_1: 'Musterweg 1', postcode: '10115', city: 'Berlin' },
-      dostawa: {}, metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: UE, kwota_brutto: '123.00',
-      status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-10-27T09:00:00',
-      pozycje: [{ nazwa: 'Klosz lniany Półcień', sku: null, ilosc: 1, cena_brutto: '123.00', vat: null }],
-    }, {});
+    const id = zapiszZamowienie(
+      db,
+      'pro',
+      {
+        zrodlo_id: 3101,
+        numer: '3101',
+        klient: {
+          first_name: 'Hans',
+          last_name: 'Testmann',
+          company: 'Leuchten Muster GmbH',
+          email: 'hans@polcien.invalid',
+          address_1: 'Musterweg 1',
+          postcode: '10115',
+          city: 'Berlin',
+        },
+        dostawa: {},
+        metoda_wysylki: 'dpd',
+        kwota_pobrania: null,
+        chce_fakture: 1,
+        nip: UE,
+        kwota_brutto: '123.00',
+        status_woo: 'processing',
+        oplacone_at: null,
+        anulowane: 0,
+        utworzone_at: '2026-10-27T09:00:00',
+        pozycje: [{ nazwa: 'Klosz lniany Półcień', sku: null, ilosc: 1, cena_brutto: '123.00', vat: null }],
+      },
+      {},
+    );
     const f = rozpocznijFakture(db, id);
     zakonczFakture(db, f.id, { uuid: 'u-31', numer: 'FV/1/10/2026', ksefStatus: null }, { program: program.opis.id });
     const mailer = { sendMail: vi.fn().mockResolvedValue({}) };
-    const wiadomosci = createWiadomosci({ db, mailer, program, config: SPRZEDAWCA, teraz: () => '2026-10-27T12:00:00.000Z' });
+    const wiadomosci = createWiadomosci({
+      db,
+      mailer,
+      program,
+      config: SPRZEDAWCA,
+      teraz: () => '2026-10-27T12:00:00.000Z',
+    });
     return { id, mailer, wiadomosci };
   }
   const koperta = async (program, opcje) => {
@@ -90,7 +117,10 @@ describe('kartoteka klienta na ekranach (prawdziwy skład modułów)', () => {
   const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64'), origin: 'http://localhost' };
   const poller = { stan: () => ({ ostatni_przebieg_at: '2026-10-27T12:00:00', ostatni_blad: null }) };
   let app;
-  afterEach(async () => { await app?.close(); app = null; });
+  afterEach(async () => {
+    await app?.close();
+    app = null;
+  });
 
   async function panel(program, { zwolniona }) {
     const db = bazaZeZwolnieniem(zwolniona);
@@ -98,8 +128,14 @@ describe('kartoteka klienta na ekranach (prawdziwy skład modułów)', () => {
     app = buildOmsServer({ db, config, poller, infakt: program });
     await app.ready();
     const get = async (url) => (await app.inject({ method: 'GET', url, headers: naglowek })).body;
-    const nowe = (await app.inject({ method: 'POST', url: '/zamowienia/nowe/klient', headers: naglowek,
-      payload: { klient_klucz: 'leuchten-muster-gmbh' } })).body;
+    const nowe = (
+      await app.inject({
+        method: 'POST',
+        url: '/zamowienia/nowe/klient',
+        headers: naglowek,
+        payload: { klient_klucz: 'leuchten-muster-gmbh' },
+      })
+    ).body;
     return { lista: await get('/klienci'), karta: await get(`/klienci/${id}/karta`), nowe };
   }
 

@@ -4,22 +4,36 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import {
-  createCzuwaczKosztow, POWOD_TRWA, POWOD_NIE_TA_PORA, SUFIT_STRON,
-  BUDZET_ARCHIWUM_MS, LIMIT_KOLEJNYCH_BLEDOW_ARCHIWUM,
+  createCzuwaczKosztow,
+  POWOD_TRWA,
+  POWOD_NIE_TA_PORA,
+  SUFIT_STRON,
+  BUDZET_ARCHIWUM_MS,
+  LIMIT_KOLEJNYCH_BLEDOW_ARCHIWUM,
 } from '../../../src/moduly/koszty/services/czuwacz-kosztow.js';
 import {
-  wczytajKursor, stanKosztow, odrzuconeKoszty, zapiszOdrzuconyKoszt, zapiszKursor,
+  wczytajKursor,
+  stanKosztow,
+  odrzuconeKoszty,
+  zapiszOdrzuconyKoszt,
+  zapiszKursor,
   zapiszBladPobrania,
 } from '../../../src/oms/db/koszty.js';
 import { PODLOGA_KOSZTOW, ZAPAS_KURSORA_MS } from '../../../src/domena/okna-pobrania.js';
 import { zarchiwizuj } from '../../../src/moduly/koszty/services/archiwum-kosztow.js';
 
 const faktura = (n) => ({
-  ksefNumber: `K-${n}`, invoiceNumber: `FV/${n}`, issueDate: '2026-06-05',
+  ksefNumber: `K-${n}`,
+  invoiceNumber: `FV/${n}`,
+  issueDate: '2026-06-05',
   permanentStorageDate: `2026-06-0${n}T10:00:00.000Z`,
   seller: { nip: '5252674798', name: 'Allegro' },
-  netAmount: 100, vatAmount: 23, grossAmount: 123, currency: 'PLN',
-  invoiceType: 'Vat', hasAttachment: false,
+  netAmount: 100,
+  vatAmount: 23,
+  grossAmount: 123,
+  currency: 'PLN',
+  invoiceType: 'Vat',
+  hasAttachment: false,
 });
 
 // ⚠️ TRUJACY DOKUMENT: KSeF nie podał kwoty netto. `naWiersz` rzuca na nim głośno
@@ -34,13 +48,21 @@ const klientAtrapa = (strony) => {
 };
 const sesjaAtrapa = { accessToken: async () => 'ACC' };
 const strona = (faktury, reszta = {}) => ({
-  faktury, hasMore: false, isTruncated: false, ...reszta,
+  faktury,
+  hasMore: false,
+  isTruncated: false,
+  ...reszta,
 });
 
 describe('czuwacz kosztow', () => {
   it('poza pora nocna NIE pobiera nic', async () => {
     const db = openOmsDb();
-    const czuwacz = createCzuwaczKosztow({ db, klient: klientAtrapa([strona([faktura(1)])]), sesja: sesjaAtrapa, teraz: () => new Date('2026-08-12T10:00:00Z') });
+    const czuwacz = createCzuwaczKosztow({
+      db,
+      klient: klientAtrapa([strona([faktura(1)])]),
+      sesja: sesjaAtrapa,
+      teraz: () => new Date('2026-08-12T10:00:00Z'),
+    });
     const wynik = await czuwacz.przebieg();
     expect(wynik.pominiety).toBe(true);
     expect(wynik.powod).toBe(POWOD_NIE_TA_PORA);
@@ -49,7 +71,12 @@ describe('czuwacz kosztow', () => {
 
   it('wymuszony przebieg (przycisk) pobiera o kazdej porze', async () => {
     const db = openOmsDb();
-    const czuwacz = createCzuwaczKosztow({ db, klient: klientAtrapa([strona([faktura(1)])]), sesja: sesjaAtrapa, teraz: () => new Date('2026-08-12T10:00:00Z') });
+    const czuwacz = createCzuwaczKosztow({
+      db,
+      klient: klientAtrapa([strona([faktura(1)])]),
+      sesja: sesjaAtrapa,
+      teraz: () => new Date('2026-08-12T10:00:00Z'),
+    });
     const wynik = await czuwacz.przebieg({ wymuszony: true });
     expect(wynik.nowych).toBe(1);
   });
@@ -57,11 +84,10 @@ describe('czuwacz kosztow', () => {
   it('przechodzi kolejne strony, gdy hasMore', async () => {
     const db = openOmsDb();
     const czuwacz = createCzuwaczKosztow({
-      db, sesja: sesjaAtrapa, teraz: () => new Date('2026-08-12T01:30:00Z'),
-      klient: klientAtrapa([
-        strona([faktura(1)], { hasMore: true }),
-        strona([faktura(2)]),
-      ]),
+      db,
+      sesja: sesjaAtrapa,
+      teraz: () => new Date('2026-08-12T01:30:00Z'),
+      klient: klientAtrapa([strona([faktura(1)], { hasMore: true }), strona([faktura(2)])]),
     });
     const wynik = await czuwacz.przebieg();
     expect(wynik.nowych).toBe(2);
@@ -69,15 +95,29 @@ describe('czuwacz kosztow', () => {
 
   it('zapisuje kursor na dacie trwalego zapisu OSTATNIEGO rekordu', async () => {
     const db = openOmsDb();
-    const czuwacz = createCzuwaczKosztow({ db, sesja: sesjaAtrapa, teraz: () => new Date('2026-08-12T01:30:00Z'), klient: klientAtrapa([strona([faktura(1), faktura(2)])]) });
+    const czuwacz = createCzuwaczKosztow({
+      db,
+      sesja: sesjaAtrapa,
+      teraz: () => new Date('2026-08-12T01:30:00Z'),
+      klient: klientAtrapa([strona([faktura(1), faktura(2)])]),
+    });
     await czuwacz.przebieg();
     expect(wczytajKursor(db)).toBe('2026-06-02T10:00:00.000Z');
   });
 
   it('⚠️ blad w polowie NIE przesuwa kursora', async () => {
     const db = openOmsDb();
-    const klient = { pobierzMetadane: async () => { throw new Error('KSeF odmowil'); } };
-    const czuwacz = createCzuwaczKosztow({ db, klient, sesja: sesjaAtrapa, teraz: () => new Date('2026-08-12T01:30:00Z') });
+    const klient = {
+      pobierzMetadane: async () => {
+        throw new Error('KSeF odmowil');
+      },
+    };
+    const czuwacz = createCzuwaczKosztow({
+      db,
+      klient,
+      sesja: sesjaAtrapa,
+      teraz: () => new Date('2026-08-12T01:30:00Z'),
+    });
     await expect(czuwacz.przebieg()).rejects.toThrow(/KSeF/);
     expect(wczytajKursor(db)).toBeNull();
     expect(stanKosztow(db).ostatni_blad).toMatch(/KSeF/);
@@ -95,10 +135,17 @@ describe('czuwacz kosztow', () => {
       pobierzMetadane: () => {
         if (!pierwszeWywolanie) return Promise.resolve(pusto);
         pierwszeWywolanie = false;
-        return new Promise((r) => { zwolnij = () => r(pusto); });
+        return new Promise((r) => {
+          zwolnij = () => r(pusto);
+        });
       },
     };
-    const czuwacz = createCzuwaczKosztow({ db, klient, sesja: sesjaAtrapa, teraz: () => new Date('2026-08-12T01:30:00Z') });
+    const czuwacz = createCzuwaczKosztow({
+      db,
+      klient,
+      sesja: sesjaAtrapa,
+      teraz: () => new Date('2026-08-12T01:30:00Z'),
+    });
     const pierwszy = czuwacz.przebieg();
     const drugi = await czuwacz.przebieg();
     expect(drugi.pominiety).toBe(true);
@@ -112,10 +159,18 @@ describe('czuwacz kosztow', () => {
     const db = openOmsDb();
     const zapytania = [];
     const klient = {
-      pobierzMetadane: async (a) => { zapytania.push(a); return { faktury: [], hasMore: false, isTruncated: false }; },
+      pobierzMetadane: async (a) => {
+        zapytania.push(a);
+        return { faktury: [], hasMore: false, isTruncated: false };
+      },
     };
     // 03:30 CET — zima przesunięcie wynosi godzinę, więc pora pobrania to 02:30 UTC.
-    const czuwacz = createCzuwaczKosztow({ db, klient, sesja: sesjaAtrapa, teraz: () => new Date('2026-03-01T02:30:00Z') });
+    const czuwacz = createCzuwaczKosztow({
+      db,
+      klient,
+      sesja: sesjaAtrapa,
+      teraz: () => new Date('2026-03-01T02:30:00Z'),
+    });
     const wynik = await czuwacz.przebieg();
     expect(zapytania[0].accessToken).toBe('ACC');
     expect(zapytania[0].from).toBe(new Date(PODLOGA_KOSZTOW).toISOString());
@@ -129,15 +184,20 @@ describe('czuwacz kosztow', () => {
   it('przy isTruncated przesuwa okno na ostatnia date i zeruje strone', async () => {
     const db = openOmsDb();
     const zapytania = [];
-    const strony = [
-      strona([faktura(1)], { hasMore: true, isTruncated: true }),
-      strona([faktura(2)]),
-    ];
+    const strony = [strona([faktura(1)], { hasMore: true, isTruncated: true }), strona([faktura(2)])];
     let i = 0;
     const klient = {
-      pobierzMetadane: async (a) => { zapytania.push(a); return strony[i++] ?? { faktury: [], hasMore: false, isTruncated: false }; },
+      pobierzMetadane: async (a) => {
+        zapytania.push(a);
+        return strony[i++] ?? { faktury: [], hasMore: false, isTruncated: false };
+      },
     };
-    const czuwacz = createCzuwaczKosztow({ db, klient, sesja: sesjaAtrapa, teraz: () => new Date('2026-08-12T01:30:00Z') });
+    const czuwacz = createCzuwaczKosztow({
+      db,
+      klient,
+      sesja: sesjaAtrapa,
+      teraz: () => new Date('2026-08-12T01:30:00Z'),
+    });
     await czuwacz.przebieg();
     expect(zapytania[1].from).toBe('2026-06-01T10:00:00.000Z');
     expect(zapytania[1].pageOffset).toBe(0);
@@ -149,7 +209,12 @@ describe('czuwacz kosztow', () => {
   it('⚠️ obciety wynik bez daty ostatniego rekordu przerywa GLOSNO', async () => {
     const db = openOmsDb();
     const klient = { pobierzMetadane: async () => ({ faktury: [], hasMore: true, isTruncated: true }) };
-    const czuwacz = createCzuwaczKosztow({ db, klient, sesja: sesjaAtrapa, teraz: () => new Date('2026-08-12T01:30:00Z') });
+    const czuwacz = createCzuwaczKosztow({
+      db,
+      klient,
+      sesja: sesjaAtrapa,
+      teraz: () => new Date('2026-08-12T01:30:00Z'),
+    });
     await expect(czuwacz.przebieg()).rejects.toThrow(/isTruncated/);
     expect(wczytajKursor(db)).toBeNull();
     expect(stanKosztow(db).ostatni_blad).toMatch(/isTruncated/);
@@ -174,7 +239,12 @@ describe('czuwacz kosztow', () => {
         return { faktury: [kolejna(wywolan)], hasMore: true, isTruncated: false };
       },
     };
-    const czuwacz = createCzuwaczKosztow({ db, klient, sesja: sesjaAtrapa, teraz: () => new Date('2026-08-12T01:30:00Z') });
+    const czuwacz = createCzuwaczKosztow({
+      db,
+      klient,
+      sesja: sesjaAtrapa,
+      teraz: () => new Date('2026-08-12T01:30:00Z'),
+    });
     const wynik = await czuwacz.przebieg();
 
     // Ani jednej strony ponad limit — i ani jednego okna po przerwanym.
@@ -190,7 +260,9 @@ describe('czuwacz kosztow', () => {
   it('normalne zakonczenie okna NIE jest oznaczane jako niedokonczone', async () => {
     const db = openOmsDb();
     const czuwacz = createCzuwaczKosztow({
-      db, sesja: sesjaAtrapa, teraz: () => new Date('2026-08-12T01:30:00Z'),
+      db,
+      sesja: sesjaAtrapa,
+      teraz: () => new Date('2026-08-12T01:30:00Z'),
       klient: klientAtrapa([strona([faktura(1)])]),
     });
     expect((await czuwacz.przebieg()).niedokonczone).toBe(false);
@@ -210,7 +282,9 @@ describe('czuwacz kosztow — trujacy dokument', () => {
   it('nie zatrzymuje przebiegu: reszta strony ladzie w kosztach, dokument w kwarantannie', async () => {
     const db = openOmsDb();
     const czuwacz = createCzuwaczKosztow({
-      db, sesja: sesjaAtrapa, teraz: oPolnocy,
+      db,
+      sesja: sesjaAtrapa,
+      teraz: oPolnocy,
       klient: klientAtrapa([strona([faktura(1), trujaca(2), faktura(3)])]),
     });
     const wynik = await czuwacz.przebieg();
@@ -226,7 +300,10 @@ describe('czuwacz kosztow — trujacy dokument', () => {
   it('kwarantanna niesie POWOD i SUROWE metadane, zeby dalo sie dokument odzyskac', async () => {
     const db = openOmsDb();
     const czuwacz = createCzuwaczKosztow({
-      db, sesja: sesjaAtrapa, teraz: oPolnocy, klient: klientAtrapa([strona([trujaca(2)])]),
+      db,
+      sesja: sesjaAtrapa,
+      teraz: oPolnocy,
+      klient: klientAtrapa([strona([trujaca(2)])]),
     });
     await czuwacz.przebieg();
 
@@ -243,7 +320,9 @@ describe('czuwacz kosztow — trujacy dokument', () => {
   it('⚠️ odrzucenie ZOSTAJE w bazie takze po kolejnym UDANYM przebiegu', async () => {
     const db = openOmsDb();
     const czuwacz = createCzuwaczKosztow({
-      db, sesja: sesjaAtrapa, teraz: oPolnocy,
+      db,
+      sesja: sesjaAtrapa,
+      teraz: oPolnocy,
       klient: klientAtrapa([strona([trujaca(2)]), strona([faktura(3)])]),
     });
     await czuwacz.przebieg();
@@ -256,7 +335,10 @@ describe('czuwacz kosztow — trujacy dokument', () => {
     const db = openOmsDb();
     const klient = { pobierzMetadane: async () => ({ faktury: [trujaca(2)], hasMore: false, isTruncated: false }) };
     const czuwacz = createCzuwaczKosztow({
-      db, klient, sesja: sesjaAtrapa, teraz: oPolnocy,
+      db,
+      klient,
+      sesja: sesjaAtrapa,
+      teraz: oPolnocy,
     });
     await czuwacz.przebieg();
     await czuwacz.przebieg();
@@ -270,7 +352,10 @@ describe('czuwacz kosztow — trujacy dokument', () => {
   it('⚠️ przebieg z odrzuceniem ZAPALA slad w stanie kosztow, mimo ze kursor ruszyl', async () => {
     const db = openOmsDb();
     const czuwacz = createCzuwaczKosztow({
-      db, sesja: sesjaAtrapa, teraz: oPolnocy, klient: klientAtrapa([strona([trujaca(2)])]),
+      db,
+      sesja: sesjaAtrapa,
+      teraz: oPolnocy,
+      klient: klientAtrapa([strona([trujaca(2)])]),
     });
     await czuwacz.przebieg();
 
@@ -288,7 +373,10 @@ describe('czuwacz kosztow — trujacy dokument', () => {
     const db = openOmsDb();
     db.exec('DROP TABLE koszty');
     const czuwacz = createCzuwaczKosztow({
-      db, sesja: sesjaAtrapa, teraz: oPolnocy, klient: klientAtrapa([strona([faktura(1)])]),
+      db,
+      sesja: sesjaAtrapa,
+      teraz: oPolnocy,
+      klient: klientAtrapa([strona([faktura(1)])]),
     });
     await expect(czuwacz.przebieg()).rejects.toThrow(/koszty/);
     expect(wczytajKursor(db)).toBeNull();
@@ -301,7 +389,10 @@ describe('czuwacz kosztow — trujacy dokument', () => {
     const db = openOmsDb();
     const bezNumeru = { ...trujaca(2), ksefNumber: null };
     const czuwacz = createCzuwaczKosztow({
-      db, sesja: sesjaAtrapa, teraz: oPolnocy, klient: klientAtrapa([strona([bezNumeru])]),
+      db,
+      sesja: sesjaAtrapa,
+      teraz: oPolnocy,
+      klient: klientAtrapa([strona([bezNumeru])]),
     });
     await expect(czuwacz.przebieg()).rejects.toThrow(/numeru KSeF/);
     expect(wczytajKursor(db)).toBeNull();
@@ -350,7 +441,10 @@ describe('czuwacz kosztow — kwarantanna widoczna i opuszczalna', () => {
     const db = openOmsDb();
     zapiszOdrzuconyKoszt(db, { ksefNumber: 'K-STARY', invoiceNumber: 'FV/9' }, 'brak kwoty');
     const czuwacz = createCzuwaczKosztow({
-      db, sesja: sesjaAtrapa, teraz: oPolnocy, klient: klientAtrapa([strona([faktura(1)])]),
+      db,
+      sesja: sesjaAtrapa,
+      teraz: oPolnocy,
+      klient: klientAtrapa([strona([faktura(1)])]),
     });
     const wynik = await czuwacz.przebieg();
 
@@ -412,7 +506,10 @@ describe('czuwacz kosztow — granice okien', () => {
       },
     };
     const czuwacz = createCzuwaczKosztow({
-      db, klient, sesja: sesjaAtrapa, teraz: wNocy,
+      db,
+      klient,
+      sesja: sesjaAtrapa,
+      teraz: wNocy,
     });
 
     // Bez daty W TYM oknie nie da się bezpiecznie przesunąć okna — przerywamy głośno.
@@ -439,12 +536,18 @@ describe('czuwacz kosztow — granice okien', () => {
       pobierzMetadane: async (a) => {
         zapytania.push(a);
         return {
-          faktury: [faktura(1)], hasMore: false, isTruncated: false, koniecNiepewny: true,
+          faktury: [faktura(1)],
+          hasMore: false,
+          isTruncated: false,
+          koniecNiepewny: true,
         };
       },
     };
     const czuwacz = createCzuwaczKosztow({
-      db, klient, sesja: sesjaAtrapa, teraz: wNocy,
+      db,
+      klient,
+      sesja: sesjaAtrapa,
+      teraz: wNocy,
     });
     const wynik = await czuwacz.przebieg();
 
@@ -466,12 +569,18 @@ describe('czuwacz kosztow — granice okien', () => {
       pobierzMetadane: async (a) => {
         zapytania.push(a);
         return {
-          faktury: [], hasMore: false, isTruncated: false, koniecNiepewny: false,
+          faktury: [],
+          hasMore: false,
+          isTruncated: false,
+          koniecNiepewny: false,
         };
       },
     };
     const czuwacz = createCzuwaczKosztow({
-      db, klient, sesja: sesjaAtrapa, teraz: wNocy,
+      db,
+      klient,
+      sesja: sesjaAtrapa,
+      teraz: wNocy,
     });
     const wynik = await czuwacz.przebieg();
 
@@ -506,15 +615,26 @@ describe('czuwacz kosztow — granice okien', () => {
   it('⚠️ token idzie z sesji przy KAZDEJ stronie, a nie raz na caly przebieg', async () => {
     const db = openOmsDb();
     let wydan = 0;
-    const sesja = { accessToken: async () => { wydan += 1; return `ACC-${wydan}`; } };
+    const sesja = {
+      accessToken: async () => {
+        wydan += 1;
+        return `ACC-${wydan}`;
+      },
+    };
     const zapytania = [];
     const strony = [strona([faktura(1)], { hasMore: true }), strona([faktura(2)])];
     let i = 0;
     const klient = {
-      pobierzMetadane: async (a) => { zapytania.push(a); return strony[i++] ?? strona([]); },
+      pobierzMetadane: async (a) => {
+        zapytania.push(a);
+        return strony[i++] ?? strona([]);
+      },
     };
     const czuwacz = createCzuwaczKosztow({
-      db, klient, sesja, teraz: wNocy,
+      db,
+      klient,
+      sesja,
+      teraz: wNocy,
     });
     await czuwacz.przebieg();
 
@@ -538,7 +658,10 @@ describe('czuwacz kosztow — udany przebieg bez dokumentow', () => {
     const db = openOmsDb();
     zapiszBladPobrania(db, 'KSeF odmowil trzy tygodnie temu');
     const czuwacz = createCzuwaczKosztow({
-      db, sesja: sesjaAtrapa, teraz: wNocy, klient: klientAtrapa([]),
+      db,
+      sesja: sesjaAtrapa,
+      teraz: wNocy,
+      klient: klientAtrapa([]),
     });
     const wynik = await czuwacz.przebieg();
 
@@ -553,7 +676,10 @@ describe('czuwacz kosztow — udany przebieg bez dokumentow', () => {
     const db = openOmsDb();
     zapiszKursor(db, '2026-06-01T10:00:00.000Z');
     const czuwacz = createCzuwaczKosztow({
-      db, sesja: sesjaAtrapa, teraz: wNocy, klient: klientAtrapa([]),
+      db,
+      sesja: sesjaAtrapa,
+      teraz: wNocy,
+      klient: klientAtrapa([]),
     });
     await czuwacz.przebieg();
 
@@ -575,7 +701,10 @@ describe('czuwacz kosztow — zapas okna przyrostowego', () => {
     const db = openOmsDb();
     const zapytania = [];
     const klient = {
-      pobierzMetadane: async (a) => { zapytania.push(a); return strona([faktura(1)]); },
+      pobierzMetadane: async (a) => {
+        zapytania.push(a);
+        return strona([faktura(1)]);
+      },
     };
     const czuwacz = createCzuwaczKosztow({ db, klient, sesja: sesjaAtrapa, teraz: wNocy });
     await czuwacz.przebieg();
@@ -604,9 +733,7 @@ describe('czuwacz kosztow — zapas okna przyrostowego', () => {
         // Przebieg 1 widzi tylko dokument z 5 czerwca; przebieg 2 doklada dokument z 1 czerwca,
         // czyli SPRZED kursora postawionego poprzedniej nocy.
         const wszystkie = licznik.n === 1 ? [faktura(5)] : [faktura(5), spozniony];
-        return strona(wszystkie.filter(
-          (f) => f.permanentStorageDate >= from && f.permanentStorageDate < to,
-        ));
+        return strona(wszystkie.filter((f) => f.permanentStorageDate >= from && f.permanentStorageDate < to));
       },
     };
     const czuwacz = createCzuwaczKosztow({ db, klient, sesja: sesjaAtrapa, teraz: wNocy });
@@ -625,7 +752,10 @@ describe('czuwacz kosztow — zapas okna przyrostowego', () => {
     zapiszKursor(db, '2027-01-01T00:00:00.000Z');
     const zapytania = [];
     const klient = {
-      pobierzMetadane: async (a) => { zapytania.push(a); return strona([faktura(1)]); },
+      pobierzMetadane: async (a) => {
+        zapytania.push(a);
+        return strona([faktura(1)]);
+      },
     };
     const czuwacz = createCzuwaczKosztow({ db, klient, sesja: sesjaAtrapa, teraz: wNocy });
     const wynik = await czuwacz.przebieg();
@@ -661,10 +791,17 @@ describe('czuwacz kosztow — archiwum XML', () => {
     const pobrane = [];
     const klient = {
       ...klientAtrapa([strona([faktura(1)])]),
-      pobierzXml: async ({ ksefNumber }) => { pobrane.push(ksefNumber); return '<Faktura/>'; },
+      pobierzXml: async ({ ksefNumber }) => {
+        pobrane.push(ksefNumber);
+        return '<Faktura/>';
+      },
     };
     const czuwacz = createCzuwaczKosztow({
-      db, klient, sesja: sesjaAtrapa, teraz: wNocy, katalogArchiwum,
+      db,
+      klient,
+      sesja: sesjaAtrapa,
+      teraz: wNocy,
+      katalogArchiwum,
     });
 
     const wynik = await czuwacz.przebieg();
@@ -682,7 +819,9 @@ describe('czuwacz kosztow — archiwum XML', () => {
     const db = openOmsDb();
     const klient = {
       ...klientAtrapa([strona([faktura(1)])]),
-      pobierzXml: async () => { throw new Error('nie wolno bylo tego wolac'); },
+      pobierzXml: async () => {
+        throw new Error('nie wolno bylo tego wolac');
+      },
     };
     const czuwacz = createCzuwaczKosztow({ db, klient, sesja: sesjaAtrapa, teraz: wNocy });
 
@@ -702,10 +841,17 @@ describe('czuwacz kosztow — archiwum XML', () => {
     const kursorWChwiliPobrania = [];
     const klient = {
       ...klientAtrapa([strona([faktura(1)])]),
-      pobierzXml: async () => { kursorWChwiliPobrania.push(wczytajKursor(db)); return '<F/>'; },
+      pobierzXml: async () => {
+        kursorWChwiliPobrania.push(wczytajKursor(db));
+        return '<F/>';
+      },
     };
     const czuwacz = createCzuwaczKosztow({
-      db, klient, sesja: sesjaAtrapa, teraz: wNocy, katalogArchiwum: katalogTymczasowy(),
+      db,
+      klient,
+      sesja: sesjaAtrapa,
+      teraz: wNocy,
+      katalogArchiwum: katalogTymczasowy(),
     });
 
     await czuwacz.przebieg();
@@ -757,10 +903,17 @@ describe('czuwacz kosztow — archiwum XML', () => {
     const pobrane = [];
     const klient = {
       ...klientAtrapa([strona([faktura(1), trujaca(2)])]),
-      pobierzXml: async ({ ksefNumber }) => { pobrane.push(ksefNumber); return '<F/>'; },
+      pobierzXml: async ({ ksefNumber }) => {
+        pobrane.push(ksefNumber);
+        return '<F/>';
+      },
     };
     const czuwacz = createCzuwaczKosztow({
-      db, klient, sesja: sesjaAtrapa, teraz: wNocy, katalogArchiwum: katalogTymczasowy(),
+      db,
+      klient,
+      sesja: sesjaAtrapa,
+      teraz: wNocy,
+      katalogArchiwum: katalogTymczasowy(),
     });
 
     const wynik = await czuwacz.przebieg();
@@ -780,10 +933,17 @@ describe('czuwacz kosztow — archiwum XML', () => {
     const klient = {
       // Ten sam dokument w obu przebiegach — okna pobrania zachodzą na siebie, to normalny stan.
       pobierzMetadane: async () => strona([faktura(1)]),
-      pobierzXml: async ({ ksefNumber }) => { pobrane.push(ksefNumber); return '<F/>'; },
+      pobierzXml: async ({ ksefNumber }) => {
+        pobrane.push(ksefNumber);
+        return '<F/>';
+      },
     };
     const czuwacz = createCzuwaczKosztow({
-      db, klient, sesja: sesjaAtrapa, teraz: wNocy, katalogArchiwum,
+      db,
+      klient,
+      sesja: sesjaAtrapa,
+      teraz: wNocy,
+      katalogArchiwum,
     });
 
     await czuwacz.przebieg();
@@ -842,7 +1002,12 @@ describe('czuwacz kosztow — archiwum XML', () => {
       },
     };
     const czuwacz = createCzuwaczKosztow({
-      db, klient, sesja: sesjaAtrapa, teraz: wNocy, katalogArchiwum: katalogTymczasowy(), log: () => {},
+      db,
+      klient,
+      sesja: sesjaAtrapa,
+      teraz: wNocy,
+      katalogArchiwum: katalogTymczasowy(),
+      log: () => {},
     });
 
     const wynik = await czuwacz.przebieg();
@@ -874,7 +1039,9 @@ describe('czuwacz kosztow — archiwum XML', () => {
         if (ksefNumber === 'K-3' && !odmowil) {
           odmowil = true;
           throw Object.assign(new Error('KSeF odmówił: HTTP 429'), {
-            status: 429, retryAfterS: 1, dlaOperatora: true,
+            status: 429,
+            retryAfterS: 1,
+            dlaOperatora: true,
           });
         }
         return '<F/>';
@@ -886,7 +1053,9 @@ describe('czuwacz kosztow — archiwum XML', () => {
       sesja: sesjaAtrapa,
       teraz: wNocy,
       katalogArchiwum: katalogTymczasowy(),
-      spij: async (ms) => { spania.push(ms); },
+      spij: async (ms) => {
+        spania.push(ms);
+      },
       log: () => {},
     });
 
@@ -917,7 +1086,9 @@ describe('czuwacz kosztow — archiwum XML', () => {
         // Pobranie zjada budzet niemal w calosci — zostaje 10 s, a KSeF prosi o 54.
         chwila += BUDZET_ARCHIWUM_MS - 10 * 1000;
         throw Object.assign(new Error('KSeF odmówił: HTTP 429'), {
-          status: 429, retryAfterS: 54, dlaOperatora: true,
+          status: 429,
+          retryAfterS: 54,
+          dlaOperatora: true,
         });
       },
     };
@@ -927,7 +1098,9 @@ describe('czuwacz kosztow — archiwum XML', () => {
       sesja: sesjaAtrapa,
       teraz: () => new Date(chwila),
       katalogArchiwum: katalogTymczasowy(),
-      spij: async (ms) => { spania.push(ms); },
+      spij: async (ms) => {
+        spania.push(ms);
+      },
       log: () => {},
     });
 
@@ -997,13 +1170,17 @@ describe('czuwacz kosztow — archiwum XML', () => {
         if (!fazaArchiwum) return 'ACC';
         logowanWArchiwum += 1;
         throw Object.assign(new Error('KSeF odmówił przy uwierzytelnianiu: HTTP 429'), {
-          status: 429, retryAfterS: 1, dlaOperatora: true,
+          status: 429,
+          retryAfterS: 1,
+          dlaOperatora: true,
         });
       },
     };
     const klient = {
       ...klientAtrapa([strona([faktura(1), faktura(2), faktura(3), faktura(4), faktura(5)])]),
-      pobierzXml: async () => { throw new Error('do pobrania XML-a nie mialo prawa dojsc'); },
+      pobierzXml: async () => {
+        throw new Error('do pobrania XML-a nie mialo prawa dojsc');
+      },
     };
     const czuwacz = createCzuwaczKosztow({
       db,
@@ -1011,10 +1188,15 @@ describe('czuwacz kosztow — archiwum XML', () => {
       sesja,
       teraz: wNocy,
       katalogArchiwum: katalogTymczasowy(),
-      spij: async (ms) => { spania.push(ms); },
+      spij: async (ms) => {
+        spania.push(ms);
+      },
       // Prawdziwe `zarchiwizuj`, tylko ze znacznikiem „zaczela sie faza archiwum" — inaczej
       // atrapa sesji nie ma jak odroznic tokenu na strone metadanych od tokenu na XML-a.
-      archiwizuj: (args) => { fazaArchiwum = true; return zarchiwizuj(args); },
+      archiwizuj: (args) => {
+        fazaArchiwum = true;
+        return zarchiwizuj(args);
+      },
       log: () => {},
     });
 
@@ -1040,7 +1222,12 @@ describe('czuwacz kosztow — archiwum XML', () => {
       },
     };
     const czuwacz = createCzuwaczKosztow({
-      db, klient, sesja: sesjaAtrapa, teraz: wNocy, katalogArchiwum: katalogTymczasowy(), log: () => {},
+      db,
+      klient,
+      sesja: sesjaAtrapa,
+      teraz: wNocy,
+      katalogArchiwum: katalogTymczasowy(),
+      log: () => {},
     });
 
     const wynik = await czuwacz.przebieg();

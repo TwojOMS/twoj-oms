@@ -13,16 +13,16 @@ import { typKategorii } from './kategorie-kosztow.js';
 // rzadko, nie potrzebuje sprzątaczki. Zle wpisana firma kosztuje jedna pozycje
 // na liscie wyboru; zle wpisany koszt poprawia sie na ekranie poprawki.
 
-export const wszystkieFirmyReczne = (db) => db.prepare(
-  'SELECT nazwa, sprzedawca, kategoria, typ FROM firmy_reczne ORDER BY nazwa',
-).all();
+export const wszystkieFirmyReczne = (db) =>
+  db.prepare('SELECT nazwa, sprzedawca, kategoria, typ FROM firmy_reczne ORDER BY nazwa').all();
 
 // `undefined` znaczy „takiej firmy nie ma na liscie" i tak ma to czytac wolajacy: o tym, ze
 // jest to odmowa dla czlowieka, decyduje `naWierszReczny` (domena/koszt-reczny.js) — tam,
 // gdzie stoi cala reszta sprawdzen wpisu recznego.
-export const firmaReczna = (db, nazwa) => db.prepare(
-  'SELECT nazwa, sprzedawca, kategoria, typ FROM firmy_reczne WHERE nazwa = ?',
-).get(String(nazwa ?? '').trim());
+export const firmaReczna = (db, nazwa) =>
+  db
+    .prepare('SELECT nazwa, sprzedawca, kategoria, typ FROM firmy_reczne WHERE nazwa = ?')
+    .get(String(nazwa ?? '').trim());
 
 // ⚠️ DOPISANIE FIRMY MA DOKLADNIE DWA POLA: nazwe i kategorie. Typ NIE JEST trzecim polem —
 // dobiera sie go ze slownika kategorii, bo kategoria juz go zna (db/kategorie-kosztow.js).
@@ -41,13 +41,12 @@ export function dopiszFirmeReczna(db, nazwa, kategoria) {
   const typ = typKategorii(db, nazwaKategorii);
   if (!typ) {
     throw bladOperatora(
-      `Panel nie zna kategorii „${nazwaKategorii}" — wybierz jedną z listy. Kategoria niesie `
-      + 'typ kosztu (zmienny / stały / drobne), a bez niego wpis nie wszedłby do rozbicia.',
+      `Panel nie zna kategorii „${nazwaKategorii}" — wybierz jedną z listy. Kategoria niesie ` +
+        'typ kosztu (zmienny / stały / drobne), a bez niego wpis nie wszedłby do rozbicia.',
     );
   }
   db.prepare(
-    'INSERT OR IGNORE INTO firmy_reczne (nazwa, sprzedawca, kategoria, typ, dodana_at)'
-    + ' VALUES (?,?,?,?,?)',
+    'INSERT OR IGNORE INTO firmy_reczne (nazwa, sprzedawca, kategoria, typ, dodana_at)' + ' VALUES (?,?,?,?,?)',
   ).run(nazwaFirmy, nazwaFirmy, nazwaKategorii, typ, new Date().toISOString());
   return nazwaFirmy;
 }

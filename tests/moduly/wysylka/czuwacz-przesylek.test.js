@@ -1,7 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
-import { rozpocznijPrzesylke, zakonczPrzesylke, zapiszStatusDpd, zapiszProbeStatusuDpd } from '../../../src/moduly/wysylka/db/przesylki.js';
+import {
+  rozpocznijPrzesylke,
+  zakonczPrzesylke,
+  zapiszStatusDpd,
+  zapiszProbeStatusuDpd,
+} from '../../../src/moduly/wysylka/db/przesylki.js';
 import { createCzuwaczPrzesylek, OKNO_SLEDZENIA_DNI } from '../../../src/moduly/wysylka/services/czuwacz-przesylek.js';
 
 // CZWARTY ZEGAR — SLEDZENIE PACZEK W DRODZE (audyt 22.08, zgoda właściciela 23.08).
@@ -11,10 +16,21 @@ import { createCzuwaczPrzesylek, OKNO_SLEDZENIA_DNI } from '../../../src/moduly/
 // doreczenie, zwrot i paczka bez ruchu wychodza SAME, a nie dopiero gdy klient napisze.
 
 const zmapowane = (nr, nadpisz = {}) => ({
-  zrodlo_id: nr, numer: String(nr), klient: { email: 'k@k.pl' }, dostawa: {},
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null,
-  kwota_brutto: '50.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
-  utworzone_at: '2026-08-20T10:00:00Z', pozycje: [], ...nadpisz,
+  zrodlo_id: nr,
+  numer: String(nr),
+  klient: { email: 'k@k.pl' },
+  dostawa: {},
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '50.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-08-20T10:00:00Z',
+  pozycje: [],
+  ...nadpisz,
 });
 
 const TERAZ = () => new Date('2026-08-23T12:00:00Z');
@@ -28,7 +44,9 @@ function nadana(db, zamowienieId, kurier, { numer = '123', surowa = '<x/>', utwo
 }
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 
 describe('czuwacz przesylek', () => {
   it('odpytuje nadane paczki z okna i zapisuje status; doreczone oraz stare pomija', async () => {
@@ -41,7 +59,12 @@ describe('czuwacz przesylek', () => {
     nadana(db, id3, 'dpd', { numer: 'OLD1', utworzona: '2026-08-01T10:00:00Z' });
 
     const pytania = [];
-    const dpd = { statusPrzesylki: async (n) => { pytania.push(n); return { opis: 'Przyjęcie przesyłki w sortowni', at: '2026-08-23T09:00:00.000' }; } };
+    const dpd = {
+      statusPrzesylki: async (n) => {
+        pytania.push(n);
+        return { opis: 'Przyjęcie przesyłki w sortowni', at: '2026-08-23T09:00:00.000' };
+      },
+    };
     const czuwacz = createCzuwaczPrzesylek({ db, kurierzy: { dpd }, teraz: TERAZ });
 
     const w = await czuwacz.przebieg();
@@ -56,8 +79,17 @@ describe('czuwacz przesylek', () => {
     const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane(4), {});
     nadana(db, id, 'allegro_wza', { numer: 'AD0XYZ', surowa: surowaWzaDpd });
     const pytania = [];
-    const dpd = { statusPrzesylki: async (n) => { pytania.push(n); return { opis: 'Wydana do doręczenia', at: '2026-08-23T08:00:00.000' }; } };
-    const czuwacz = createCzuwaczPrzesylek({ db, kurierzy: { dpd, allegro_wza: { bezSledzenia: true } }, teraz: TERAZ });
+    const dpd = {
+      statusPrzesylki: async (n) => {
+        pytania.push(n);
+        return { opis: 'Wydana do doręczenia', at: '2026-08-23T08:00:00.000' };
+      },
+    };
+    const czuwacz = createCzuwaczPrzesylek({
+      db,
+      kurierzy: { dpd, allegro_wza: { bezSledzenia: true } },
+      teraz: TERAZ,
+    });
 
     const w = await czuwacz.przebieg();
     expect(pytania).toEqual(['1049000000042U']);
@@ -96,7 +128,12 @@ describe('czuwacz przesylek', () => {
     const pid = nadana(db, id, 'dpd', { numer: 'FRESH1' });
     zapiszProbeStatusuDpd(db, pid, { at: TERAZ().toISOString(), blad: null });
     const pytania = [];
-    const dpd = { statusPrzesylki: async (n) => { pytania.push(n); return null; } };
+    const dpd = {
+      statusPrzesylki: async (n) => {
+        pytania.push(n);
+        return null;
+      },
+    };
     const czuwacz = createCzuwaczPrzesylek({ db, kurierzy: { dpd }, teraz: TERAZ });
 
     const w = await czuwacz.przebieg();
@@ -112,7 +149,10 @@ describe('czuwacz przesylek', () => {
     let pierwsze = true;
     const dpd = {
       statusPrzesylki: async (n) => {
-        if (pierwsze) { pierwsze = false; throw new Error('sieć padła'); }
+        if (pierwsze) {
+          pierwsze = false;
+          throw new Error('sieć padła');
+        }
         return { opis: 'Przesyłka odebrana przez Kuriera', at: '2026-08-23T07:00:00.000' };
       },
     };
@@ -128,20 +168,32 @@ describe('czuwacz przesylek', () => {
   it('po odpytaniu kurierow rozlicza doreczone pobrania, a jego awaria nie psuje sledzenia', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(9, { pobranie: 1, kwota_pobrania: '50.00', chce_fakture: 1 }), {});
     nadana(db, id, 'dpd', { numer: 'COD1' });
-    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)')
-      .run(id, 'u-cod-1', 'F/9', '2026-08-20T08:00:00.000Z');
+    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)').run(
+      id,
+      'u-cod-1',
+      'F/9',
+      '2026-08-20T08:00:00.000Z',
+    );
     const dpd = { statusPrzesylki: async () => ({ opis: 'Przesyłka doręczona', at: '2026-08-23T09:00:00.000' }) };
 
     // Klient inFaktu, ktory zawsze odmawia oznaczenia — przebieg ma to zniesc.
     const infakt = {
-      pobierzFakture: async (uuid) => ({ uuid, number: 'F/9', invoice_date: '2026-08-20', status: 'sent', left_to_pay: 5000 }),
-      oznaczZaplacona: async () => { throw new Error('HTTP 500'); },
+      pobierzFakture: async (uuid) => ({
+        uuid,
+        number: 'F/9',
+        invoice_date: '2026-08-20',
+        status: 'sent',
+        left_to_pay: 5000,
+      }),
+      oznaczZaplacona: async () => {
+        throw new Error('HTTP 500');
+      },
     };
     const czuwacz = createCzuwaczPrzesylek({ db, kurierzy: { dpd }, infakt, teraz: TERAZ });
 
     const wynik = await czuwacz.przebieg();
-    expect(wynik.sprawdzone).toBe(1);      // sledzenie zadzialalo mimo awarii rozliczania
-    expect(wynik.bledy).toBe(0);           // blad rozliczania NIE jest bledem statusu kuriera
+    expect(wynik.sprawdzone).toBe(1); // sledzenie zadzialalo mimo awarii rozliczania
+    expect(wynik.bledy).toBe(0); // blad rozliczania NIE jest bledem statusu kuriera
     expect(wynik.pobrania).toMatchObject({ kandydatow: 1, zlecone: 0, bledy: 1 });
   });
 
@@ -151,10 +203,19 @@ describe('czuwacz przesylek', () => {
   // (pobranie + faktura + doreczona paczka) i cisza znaczy dokladnie to, co ma znaczyc:
   // panel bez klucza inFaktu SLEDZI paczki, a rozliczania po prostu nie robi.
   it('rozliczanie pobran chodzi takze bez klienta inFaktu i nie wywala przebiegu', async () => {
-    const id = zapiszZamowienie(db, 'pro', zmapowane(20, { pobranie: 1, kwota_pobrania: '50.00', chce_fakture: 1 }), {});
+    const id = zapiszZamowienie(
+      db,
+      'pro',
+      zmapowane(20, { pobranie: 1, kwota_pobrania: '50.00', chce_fakture: 1 }),
+      {},
+    );
     nadana(db, id, 'dpd', { numer: 'NOINF1' });
-    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)')
-      .run(id, 'u-noinf-1', 'F/20', '2026-08-20T08:00:00.000Z');
+    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)').run(
+      id,
+      'u-noinf-1',
+      'F/20',
+      '2026-08-20T08:00:00.000Z',
+    );
     const dpd = { statusPrzesylki: async () => ({ opis: 'Przesyłka doręczona', at: '2026-08-23T09:00:00.000' }) };
     const czuwacz = createCzuwaczPrzesylek({ db, kurierzy: { dpd }, teraz: TERAZ });
 
@@ -169,7 +230,12 @@ describe('czuwacz przesylek', () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(8), {});
     nadana(db, id, 'dpd', { numer: 'SLOW1' });
     let odblokuj;
-    const dpd = { statusPrzesylki: () => new Promise((res) => { odblokuj = () => res(null); }) };
+    const dpd = {
+      statusPrzesylki: () =>
+        new Promise((res) => {
+          odblokuj = () => res(null);
+        }),
+    };
     const czuwacz = createCzuwaczPrzesylek({ db, kurierzy: { dpd }, teraz: TERAZ });
     const pierwszy = czuwacz.przebieg();
     const drugi = await czuwacz.przebieg();
@@ -194,12 +260,18 @@ describe('zegar #4 w uruchomZegary', () => {
       czuwaczKsef: { przebieg: async () => ({}) },
       czuwaczKosztow: { przebieg: async () => ({}) },
       czuwaczPrzesylek: { przebieg: async () => ({ kandydatow: 0, sprawdzone: 0, bledy: 0, pominiete: 0 }) },
-      ustawInterwal: (fn, ms) => { zarejestrowane.push({ fn, ms }); return zarejestrowane.length; },
-      log: () => {}, puls,
+      ustawInterwal: (fn, ms) => {
+        zarejestrowane.push({ fn, ms });
+        return zarejestrowane.length;
+      },
+      log: () => {},
+      puls,
     });
     expect(zarejestrowane.map((z) => z.ms)).toEqual([2 * 60 * 1000, 60 * 60 * 1000, 60 * 60 * 1000, 60 * 60 * 1000]);
     zarejestrowane[3].fn();
-    await new Promise((r) => { setTimeout(r, 0); });
+    await new Promise((r) => {
+      setTimeout(r, 0);
+    });
     expect(puls.stan().czuwaczPrzesylek?.okAt).toBeTruthy();
   });
 
@@ -212,14 +284,26 @@ describe('zegar #4 w uruchomZegary', () => {
     uruchomZegary({
       czuwaczPrzesylek: {
         przebieg: async () => ({
-          kandydatow: 0, sprawdzone: 0, bledy: 0, pominiete: 0, pobrania: { kandydatow: 2, zlecone: 0, bledy: 1, bezDaty: 1 },
+          kandydatow: 0,
+          sprawdzone: 0,
+          bledy: 0,
+          pominiete: 0,
+          pobrania: { kandydatow: 2, zlecone: 0, bledy: 1, bezDaty: 1 },
         }),
       },
-      ustawInterwal: (fn) => { zarejestrowane.push(fn); return 1; },
-      log: (...a) => { linie.push(a.join(' ')); }, puls: createPuls(),
+      ustawInterwal: (fn) => {
+        zarejestrowane.push(fn);
+        return 1;
+      },
+      log: (...a) => {
+        linie.push(a.join(' '));
+      },
+      puls: createPuls(),
     });
     zarejestrowane[0]();
-    await new Promise((r) => { setTimeout(r, 0); });
+    await new Promise((r) => {
+      setTimeout(r, 0);
+    });
     const komunikat = linie.find((l) => l.includes('rozliczanie pobrań'));
     expect(komunikat).toMatch(/1 nieudanych zleceń/);
     expect(komunikat).toMatch(/1 bez znanej daty zapłaty/);
@@ -241,15 +325,29 @@ describe('zegar #4 w uruchomZegary', () => {
           // Przebieg BEZ ANI JEDNEGO bledu: gdyby linia o suficie wisiala na `bledy`,
           // ten przypadek przeszedlby w ciszy.
           pobrania: {
-            kandydatow: 35, obsluzone: 20, ponadSufit: 15, zlecone: 20, pominiete: 0, bezDaty: 0, bledy: 0,
+            kandydatow: 35,
+            obsluzone: 20,
+            ponadSufit: 15,
+            zlecone: 20,
+            pominiete: 0,
+            bezDaty: 0,
+            bledy: 0,
           },
         }),
       },
-      ustawInterwal: (fn) => { zarejestrowane.push(fn); return 1; },
-      log: (...a) => { linie.push(a.join(' ')); }, puls: createPuls(),
+      ustawInterwal: (fn) => {
+        zarejestrowane.push(fn);
+        return 1;
+      },
+      log: (...a) => {
+        linie.push(a.join(' '));
+      },
+      puls: createPuls(),
     });
     zarejestrowane[0]();
-    await new Promise((r) => { setTimeout(r, 0); });
+    await new Promise((r) => {
+      setTimeout(r, 0);
+    });
     const komunikat = linie.find((l) => l.includes('NIE ZMIEŚCIŁO'));
     expect(komunikat).toMatch(/15 dokument/);
   });
@@ -259,11 +357,17 @@ describe('zegar #4 w uruchomZegary', () => {
     const puls = createPuls();
     uruchomZegary({
       czuwaczPrzesylek: { przebieg: async () => ({ pominiety: true }) },
-      ustawInterwal: (fn) => { zarejestrowane.push(fn); return 1; },
-      log: () => {}, puls,
+      ustawInterwal: (fn) => {
+        zarejestrowane.push(fn);
+        return 1;
+      },
+      log: () => {},
+      puls,
     });
     zarejestrowane[0]();
-    await new Promise((r) => { setTimeout(r, 0); });
+    await new Promise((r) => {
+      setTimeout(r, 0);
+    });
     expect(puls.stan().czuwaczPrzesylek).toBeUndefined();
   });
 });

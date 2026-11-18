@@ -18,11 +18,12 @@ describe('NIP bez etykiety „NIP”', () => {
     expect(bezEtykietyNip(surowy)).toBe(czysty);
   });
 
-  it.each([
-    ['5250000009'], ['SK1000000001'], ['PL1234563218'], ['123-456-32-18'],
-  ])('numer bez etykiety „%s” zostaje bajt w bajt', (n) => {
-    expect(bezEtykietyNip(n)).toBe(n);
-  });
+  it.each([['5250000009'], ['SK1000000001'], ['PL1234563218'], ['123-456-32-18']])(
+    'numer bez etykiety „%s” zostaje bajt w bajt',
+    (n) => {
+      expect(bezEtykietyNip(n)).toBe(n);
+    },
+  );
 
   it.each([[null], [''], ['NIP:'], ['  ']])('pusty albo sama etykieta (%s) → null', (n) => {
     expect(bezEtykietyNip(n)).toBeNull();
@@ -45,10 +46,16 @@ describe('NIP bez etykiety „NIP”', () => {
       payment: { type: 'ONLINE', finishedAt: '2026-10-13T12:56:00Z' },
       delivery: { method: { id: 'x', name: 'Allegro Kurier DPD (AD)' }, cost: { amount: '0.00', currency: 'PLN' } },
       invoice: { required: true, address: { company: { name: 'Firma Testowa', taxId: 'NIP: 5250000009' } } },
-      lineItems: [{
-        id: 'li1', offer: { id: '111', name: 'Szablon' }, quantity: 1,
-        price: { amount: '74.90', currency: 'PLN' }, boughtAt: '2026-10-13T12:55:00Z', tax: { rate: '23' },
-      }],
+      lineItems: [
+        {
+          id: 'li1',
+          offer: { id: '111', name: 'Szablon' },
+          quantity: 1,
+          price: { amount: '74.90', currency: 'PLN' },
+          boughtAt: '2026-10-13T12:55:00Z',
+          tax: { rate: '23' },
+        },
+      ],
       summary: { totalToPay: { amount: '74.90', currency: 'PLN' } },
       surcharges: [],
     };

@@ -37,10 +37,14 @@ describe('sprawdzZrodlo', () => {
   // Firefox przez dlugi czas NIE wysylal Origin przy formularzu na wlasny serwer.
   // Bez tego zapasu ochrona blokowalaby normalna prace, a wtedy wylatuje w calosci.
   it('Origin ma pierwszenstwo przed Refererem, gdy sa oba', () => {
-    expect(sprawdzZrodlo(zadanie({
-      origin: 'https://zla-strona.example',
-      referer: 'http://panel.local:3001/lista',
-    }))).not.toBe(null);
+    expect(
+      sprawdzZrodlo(
+        zadanie({
+          origin: 'https://zla-strona.example',
+          referer: 'http://panel.local:3001/lista',
+        }),
+      ),
+    ).not.toBe(null);
   });
 
   // Sandboksowana ramka i niektore przekierowania wysylaja doslownie "null".
@@ -79,7 +83,9 @@ describe('sprawdzZrodlo', () => {
 
   it('kazda metoda zmieniajaca stan jest sprawdzana, nie tylko POST', () => {
     for (const m of ['POST', 'PUT', 'PATCH', 'DELETE']) {
-      expect(sprawdzZrodlo({ method: m, host: 'panel.local:3001', origin: 'https://zla-strona.example' })).not.toBe(null);
+      expect(sprawdzZrodlo({ method: m, host: 'panel.local:3001', origin: 'https://zla-strona.example' })).not.toBe(
+        null,
+      );
     }
   });
 });

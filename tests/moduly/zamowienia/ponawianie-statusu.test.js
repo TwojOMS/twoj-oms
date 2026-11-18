@@ -5,23 +5,49 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie, pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
-import { createSyncSklep, bladPrzejsciowy, OKNO_PONAWIANIA_STATUSU_DNI } from '../../../src/moduly/zamowienia/services/sync-sklep.js';
+import {
+  createSyncSklep,
+  bladPrzejsciowy,
+  OKNO_PONAWIANIA_STATUSU_DNI,
+} from '../../../src/moduly/zamowienia/services/sync-sklep.js';
 
 const TERAZ = new Date('2026-10-26T12:30:00Z');
 const zmapowane = (id, nad = {}) => ({
-  zrodlo_id: id, numer: String(id), klient: { email: 'j@k.pl' }, dostawa: {},
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '36.85',
-  koszt_dostawy_brutto: '0.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
-  utworzone_at: '2026-10-26T11:10:09Z', pozycje: [], ...nad,
+  zrodlo_id: id,
+  numer: String(id),
+  klient: { email: 'j@k.pl' },
+  dostawa: {},
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '36.85',
+  koszt_dostawy_brutto: '0.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-10-26T11:10:09Z',
+  pozycje: [],
+  ...nad,
 });
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 
 const zAllegro = (zrodlo = 'afd93fe0-0000-0000-0000-000000000001', nad = {}) => {
-  const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane(zrodlo, {
-    zrodlo_id: zrodlo, metoda_wysylki: 'allegro_paczkomat', status_woo: 'READY_FOR_PROCESSING', ...nad,
-  }), {});
+  const id = zapiszZamowienie(
+    db,
+    'allegro_swietlik',
+    zmapowane(zrodlo, {
+      zrodlo_id: zrodlo,
+      metoda_wysylki: 'allegro_paczkomat',
+      status_woo: 'READY_FOR_PROCESSING',
+      ...nad,
+    }),
+    {},
+  );
   db.prepare('UPDATE zamowienia SET wyslane_at = ? WHERE id = ?').run('2026-10-26T12:12:40Z', id);
   return id;
 };
@@ -46,7 +72,9 @@ describe('zegar ponawia status po błędzie przejściowym', () => {
   it('odmowa (4xx) nie jest ponawiana — klient nie dostaje drugiego strzału', async () => {
     const klient = {
       pobierzStanRealizacji: vi.fn().mockResolvedValue('PROCESSING'),
-      ustawStatusRealizacji: vi.fn().mockRejectedValue(new Error('Allegro: HTTP 422 przy /order/checkout-forms/{id}/fulfillment')),
+      ustawStatusRealizacji: vi
+        .fn()
+        .mockRejectedValue(new Error('Allegro: HTTP 422 przy /order/checkout-forms/{id}/fulfillment')),
     };
     const sync = createSyncSklep({ db, klienciKanalow: { allegro_swietlik: klient } });
     const id = zAllegro();
@@ -60,13 +88,20 @@ describe('zegar ponawia status po błędzie przejściowym', () => {
     const klient = { pobierzStanRealizacji: vi.fn().mockResolvedValue('PROCESSING'), ustawStatusRealizacji: vi.fn() };
     const sync = createSyncSklep({ db, klienciKanalow: { allegro_swietlik: klient } });
     const id = zAllegro('stare-1', { utworzone_at: '2026-09-01T10:00:00Z' });
-    db.prepare("UPDATE zamowienia SET sync_woo_blad = 'status „SENT\" nie dojechał do Allegro: api.allegro.pl: żądanie anulowane' WHERE id = ?").run(id);
+    db.prepare(
+      "UPDATE zamowienia SET sync_woo_blad = 'status „SENT\" nie dojechał do Allegro: api.allegro.pl: żądanie anulowane' WHERE id = ?",
+    ).run(id);
     expect(await sync.ponowPrzejsciowe({ teraz: TERAZ })).toEqual({ kandydatow: 0, wyslane: 0, bledy: 0 });
     expect(klient.pobierzStanRealizacji).not.toHaveBeenCalled();
   });
 
   it('sklep Woo: „Sklep nieosiągalny … błąd sieci” też jest przejściowy i wraca', async () => {
-    const sklep = { ustawStatus: vi.fn().mockRejectedValueOnce(new Error('Sklep nieosiągalny: sklep.invalid: błąd sieci')).mockResolvedValue({}) };
+    const sklep = {
+      ustawStatus: vi
+        .fn()
+        .mockRejectedValueOnce(new Error('Sklep nieosiągalny: sklep.invalid: błąd sieci'))
+        .mockResolvedValue({}),
+    };
     const sync = createSyncSklep({ db, klienci: { pro: sklep } });
     const id = zapiszZamowienie(db, 'pro', zmapowane(90453), {});
     db.prepare('UPDATE zamowienia SET wyslane_at = ? WHERE id = ?').run('2026-10-26T12:00:00Z', id);

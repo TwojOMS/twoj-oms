@@ -97,7 +97,11 @@ export type MetodaKuriera = {
   punktOdbioru: boolean;
 };
 export type OpisKuriera = {
-  klucz: string; nazwa: string; logo: string; idKatalogu: string; opisKatalogu: string;
+  klucz: string;
+  nazwa: string;
+  logo: string;
+  idKatalogu: string;
+  opisKatalogu: string;
   umowa: 'wlasna' | 'platformy';
   przewoznicy: readonly string[];
   metody: readonly MetodaKuriera[];
@@ -114,9 +118,16 @@ export type OpisKuriera = {
   wKatalogu?: false;
 };
 export type OpisPrzewoznika = {
-  klucz: string; nazwa: string; logo: string; sledzenie: string;
-  rozpoznanie: { kod?: readonly string[]; carrier?: readonly string[]; slowa?: readonly string[];
-    metody?: readonly string[] };
+  klucz: string;
+  nazwa: string;
+  logo: string;
+  sledzenie: string;
+  rozpoznanie: {
+    kod?: readonly string[];
+    carrier?: readonly string[];
+    slowa?: readonly string[];
+    metody?: readonly string[];
+  };
 };
 
 // Kurier — kształt wzięty z kurierzy/dpd.js, inpost.js, allegro-wza.js i services/nadanie.js.
@@ -134,36 +145,73 @@ export type WynikNadania = {
 
 /** Blok billing/shipping odczytany z JSON kanału przez db/zamowienia.js. */
 export type AdresKanalu = Readonly<{
-  first_name?: string | null; last_name?: string | null; company?: string | null;
-  address_1?: string | null; address_2?: string | null; postcode?: string | null;
-  city?: string | null; country?: string | null; phone?: string | null; email?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  company?: string | null;
+  address_1?: string | null;
+  address_2?: string | null;
+  postcode?: string | null;
+  city?: string | null;
+  country?: string | null;
+  phone?: string | null;
+  email?: string | null;
 }>;
 
 /** Projekcja pobierzZamowienie używana przez nadanie, adresOdbiorcy i wybór taryfy.
  * Kwoty SQLite są tekstem dziesiętnym, flagi mają 0/1; id Allegro jest tekstowe.
  * Pozostałe kolumny/pozycje zamówienia nie są wejściem kontraktu kurierskiego. */
 export type ZamowienieDoWysylki = Readonly<{
-  id: number; sklep: string; zrodlo_id: string | number; numer: string;
-  metoda_wysylki: string; kwota_pobrania: string | null; pobranie: 0 | 1;
-  anulowane: 0 | 1; punkt_odbioru: string | null; surowe_json: string | null;
-  klient: AdresKanalu | null; dostawa: AdresKanalu | null;
+  id: number;
+  sklep: string;
+  zrodlo_id: string | number;
+  numer: string;
+  metoda_wysylki: string;
+  kwota_pobrania: string | null;
+  pobranie: 0 | 1;
+  anulowane: 0 | 1;
+  punkt_odbioru: string | null;
+  surowe_json: string | null;
+  klient: AdresKanalu | null;
+  dostawa: AdresKanalu | null;
   dostawa_reczna_json: string | null;
 }>;
 
 /** Wyjście parsujPaczke (DPD), parsujPaczkeInpost lub parsujGabarytAllegro. */
-export type PaczkaKuriera = Readonly<{ waga: number }> & (
-  | Readonly<{ dlugosc: number; szerokosc: number; wysokosc: number;
-      gabaryt?: never; oczekiwanyDeliveryMethodId?: never }>
-  | Readonly<{ gabaryt: 'A' | 'B' | 'C'; dlugosc?: never; szerokosc?: never;
-      wysokosc?: never; oczekiwanyDeliveryMethodId?: never }>
-  | Readonly<{ gabaryt: 'S' | 'M' | 'L'; dlugosc: number; szerokosc: number;
-      wysokosc: number; oczekiwanyDeliveryMethodId: string }>
-);
+export type PaczkaKuriera = Readonly<{ waga: number }> &
+  (
+    | Readonly<{
+        dlugosc: number;
+        szerokosc: number;
+        wysokosc: number;
+        gabaryt?: never;
+        oczekiwanyDeliveryMethodId?: never;
+      }>
+    | Readonly<{
+        gabaryt: 'A' | 'B' | 'C';
+        dlugosc?: never;
+        szerokosc?: never;
+        wysokosc?: never;
+        oczekiwanyDeliveryMethodId?: never;
+      }>
+    | Readonly<{
+        gabaryt: 'S' | 'M' | 'L';
+        dlugosc: number;
+        szerokosc: number;
+        wysokosc: number;
+        oczekiwanyDeliveryMethodId: string;
+      }>
+  );
 
 /** Wynik adresOdbiorcy/parsujAdresOdbiorcy z poprawkami operatora. */
 export type AdresOdbiorcyKuriera = Readonly<{
-  nazwa: string | null; company?: string | null; ulica: string | null; kod: string | null;
-  miasto: string | null; kraj: string; phone: string | null; email: string | null;
+  nazwa: string | null;
+  company?: string | null;
+  ulica: string | null;
+  kod: string | null;
+  miasto: string | null;
+  kraj: string;
+  phone: string | null;
+  email: string | null;
   punkt_odbioru?: string;
 }>;
 
@@ -198,9 +246,7 @@ export type ZapisZwrotnyKanalu = Readonly<{
   ustawStatus?: (idZrodla: string, status: string) => Promise<unknown>;
 }>;
 
-export type WynikKataloguKanalu =
-  | Readonly<{ ok: true; dane: unknown }>
-  | Readonly<{ ok: false; powod: string }>;
+export type WynikKataloguKanalu = Readonly<{ ok: true; dane: unknown }> | Readonly<{ ok: false; powod: string }>;
 
 /** Osobny kontrakt ofert. Ładunek przygotowuje adapter kanału, nie zapis statusu zamówienia. */
 export type KatalogKanalu = Readonly<{
@@ -210,7 +256,9 @@ export type KatalogKanalu = Readonly<{
   // `externalId` = identyfikator oferty w kanale (nie sygnatura OMS-u), `price` w groszach (całkowita).
   // Allegro wymaga w każdej pozycji `commandIdIlosci`/`commandIdCeny` (UUID zapisany przez
   // wołającego przed wywołaniem); bez nich łącznik zwraca `{ok:false}`. Pola są poza typem, by nie poszerzać kontraktu.
-  zmienIloscCene: (zmiany: readonly Readonly<{ externalId: string; stock?: number; price?: number }>[]) => Promise<WynikKataloguKanalu>;
+  zmienIloscCene: (
+    zmiany: readonly Readonly<{ externalId: string; stock?: number; price?: number }>[],
+  ) => Promise<WynikKataloguKanalu>;
   stanOferty: (idZewnetrzne: string) => Promise<WynikKataloguKanalu>;
 }>;
 
@@ -273,7 +321,8 @@ export type OpisKanalu = Readonly<{
   konfigurator: OpisKonfiguratora;
 }>;
 
-export type ZdolnoscProgramu = 'nieoplacone' | 'oznaczZaplacona' | 'wyslijDoKsef' | 'numeracjaWlasna' | 'statusKorekty' | 'odczytKorekty';
+export type ZdolnoscProgramu =
+  'nieoplacone' | 'oznaczZaplacona' | 'wyslijDoKsef' | 'numeracjaWlasna' | 'statusKorekty' | 'odczytKorekty';
 
 export type OpisProgramu = Readonly<{
   /** Wartość kolumny `program`: 'infakt'. */
@@ -287,7 +336,13 @@ export type OpisProgramu = Readonly<{
   /** Literał: program, który wysyła do KSeF przy wystawieniu, nie wchodzi (wystawienie ≠ wysyłka). */
   wystawienieWysylaDoKsef: false;
   /** Budżety czasu czuwaczy liczone z limitów programu; `zadanieMs` < PROG_ZAWIESZONEJ_FAKTURY_MS. */
-  limity: Readonly<{ zadanieMs: number; najdluzszaListaMs: number; stronaListy: number; sufitStron: number; rownolegleStron: number }>;
+  limity: Readonly<{
+    zadanieMs: number;
+    najdluzszaListaMs: number;
+    stronaListy: number;
+    sufitStron: number;
+    rownolegleStron: number;
+  }>;
   /** Cel diagnostyki łączności, bez sekretów. */
   adres: string;
   /** Ekran Ustawień programu: '/ustawienia/integracje/infakt'. */
@@ -308,7 +363,10 @@ export type OpisProgramu = Readonly<{
 
 /** Pozycja dokumentu: `gross_price` = SUMA LINII brutto w groszach (domena/pozycje-faktury.js), VAT liczy program. */
 export type PozycjaDokumentu = Readonly<{
-  name: string; quantity: number; gross_price: number; tax_symbol: string;
+  name: string;
+  quantity: number;
+  gross_price: number;
+  tax_symbol: string;
   [pole: string]: unknown;
 }>;
 
@@ -316,18 +374,28 @@ export type PozycjaDokumentu = Readonly<{
 export type LadunekFaktury = Readonly<{
   client_id?: unknown;
   services: readonly PozycjaDokumentu[];
-  invoice_date?: string; sale_date?: string; payment_date?: string; payment_method?: string;
-  paid_price?: number; paid_date?: string; number?: string;
-  sale_type?: string; sales_kind?: string; notes?: string;
+  invoice_date?: string;
+  sale_date?: string;
+  payment_date?: string;
+  payment_method?: string;
+  paid_price?: number;
+  paid_date?: string;
+  number?: string;
+  sale_type?: string;
+  sales_kind?: string;
+  notes?: string;
   [pole: string]: unknown;
 }>;
 
 /** Ładunek `wystawKorekte` (zwroty/services/korekta.js): pozycje przed i po korekcie, wskazanie faktury korygowanej. */
 export type LadunekKorekty = Readonly<{
   client_id?: unknown;
-  corrected_invoice_number?: string; corrected_invoice_date?: string; corrected_invoice_uuid?: string;
+  corrected_invoice_number?: string;
+  corrected_invoice_date?: string;
+  corrected_invoice_uuid?: string;
   /** Tekst przyczyny; symbol słownika dobiera program fakturowy. */
-  correction_reason?: string; correction_reason_symbol?: string;
+  correction_reason?: string;
+  correction_reason_symbol?: string;
   services?: readonly Readonly<Record<string, unknown>>[];
   [pole: string]: unknown;
 }>;
@@ -336,17 +404,33 @@ export type LadunekKorekty = Readonly<{
  * ⚠️ `left_to_pay` bywa nieobecne albo tekstem — patrz `stanZaplaty` w domena/lista-faktur.js; adapter innego programu
  * tłumaczy też tę pułapkę. */
 export type WierszDokumentu = Readonly<{
-  uuid?: string; number?: string; rodzaj?: string; status?: string; invoice_date?: string; sale_date?: string;
-  payment_date?: string | null; payment_method?: string; paid_date?: string | null; ksef_number?: string | null;
-  paid_price?: number | string | null; left_to_pay?: number | string | null; gross_price?: number | string | null;
-  client_company_name?: string | null; client_nip?: string | null;
+  uuid?: string;
+  number?: string;
+  rodzaj?: string;
+  status?: string;
+  invoice_date?: string;
+  sale_date?: string;
+  payment_date?: string | null;
+  payment_method?: string;
+  paid_date?: string | null;
+  ksef_number?: string | null;
+  paid_price?: number | string | null;
+  left_to_pay?: number | string | null;
+  gross_price?: number | string | null;
+  client_company_name?: string | null;
+  client_nip?: string | null;
   [pole: string]: unknown;
 }>;
 
 /** Nabywca do `przygotujNabywce` = wynik `daneFaktury(z)` (domena/dane-faktury.js); faktura okresu podaje sam `nip`. */
 export type NabywcaDokumentu = Readonly<{
-  firma?: string | null; nip?: string | null; ulica?: string | null; kod?: string | null;
-  miasto?: string | null; kraj?: string | null; email?: string | null;
+  firma?: string | null;
+  nip?: string | null;
+  ulica?: string | null;
+  kod?: string | null;
+  miasto?: string | null;
+  kraj?: string | null;
+  email?: string | null;
 }>;
 
 /** Neutralny wynik odczytu zlecenia korekty; nazwy pól błędów tłumaczy klient programu. */
@@ -363,7 +447,10 @@ export type ProgramFakturowy = {
   readonly sprawdzPolaczenie: Operacja<[], unknown>;
   /** Pola do rozsypania w ładunku (`{ client_id }` dla inFaktu) albo `null`, gdy nabywcy nie ma i nie wolno go założyć.
    * KAŻDY błąd znaczy „dokumentu na pewno nie ma” (faza przygotowania zwalnia rezerwację). */
-  readonly przygotujNabywce: (nabywca: NabywcaDokumentu, o?: Readonly<{ zalozGdyBrak?: boolean }>) => Promise<Readonly<Record<string, unknown>> | null>;
+  readonly przygotujNabywce: (
+    nabywca: NabywcaDokumentu,
+    o?: Readonly<{ zalozGdyBrak?: boolean }>,
+  ) => Promise<Readonly<Record<string, unknown>> | null>;
   readonly wystaw: Operacja<[ladunek: LadunekFaktury, ...reszta: unknown[]], unknown>;
   readonly wystawKorekte: Operacja<[ladunek: LadunekKorekty, ...reszta: unknown[]], unknown>;
   readonly pobierzPdf: Operacja<[id: string, ...reszta: unknown[]], Buffer>;

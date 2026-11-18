@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
-  PODLOGA_KOSZTOW, ZAPAS_KURSORA_MS, podzielNaOkna, nastepnyKrok, odKursora,
+  PODLOGA_KOSZTOW,
+  ZAPAS_KURSORA_MS,
+  podzielNaOkna,
+  nastepnyKrok,
+  odKursora,
 } from '../../src/domena/okna-pobrania.js';
 
 describe('okna pobrania', () => {
@@ -26,8 +30,9 @@ describe('okna pobrania', () => {
   });
 
   it('obciecie przesuwa okno na date ostatniego rekordu i ZERUJE strone', () => {
-    expect(nastepnyKrok({ hasMore: true, isTruncated: true, pageOffset: 40, ostatniaData: '2026-03-07T10:00:00Z' }))
-      .toEqual({ from: '2026-03-07T10:00:00Z', pageOffset: 0 });
+    expect(
+      nastepnyKrok({ hasMore: true, isTruncated: true, pageOffset: 40, ostatniaData: '2026-03-07T10:00:00Z' }),
+    ).toEqual({ from: '2026-03-07T10:00:00Z', pageOffset: 0 });
   });
 
   it('⚠️ kursor NIGDY nie schodzi ponizej podlogi', () => {
@@ -51,8 +56,9 @@ describe('okna pobrania', () => {
       // Kursor tuz nad podloga: cofniecie o zapas wypadloby w rok poprzedni, czyli w okres,
       // ktorego panel celowo nie czyta.
       expect(odKursora('2026-01-02T00:00:00.000Z')).toBe(PODLOGA_KOSZTOW);
-      expect(new Date(odKursora('2026-01-08T00:00:00.000Z')).getTime())
-        .toBeGreaterThanOrEqual(new Date(PODLOGA_KOSZTOW).getTime());
+      expect(new Date(odKursora('2026-01-08T00:00:00.000Z')).getTime()).toBeGreaterThanOrEqual(
+        new Date(PODLOGA_KOSZTOW).getTime(),
+      );
     });
 
     // ⚠️ Kursor „z przyszlosci" (skew zegara, data z KSeF w innej strefie) dawal PUSTA
@@ -98,7 +104,6 @@ describe('okna pobrania', () => {
   });
 
   it('⚠️ obciecie bez ostatniaData rzuca zamiast po cichu gubic dane', () => {
-    expect(() => nastepnyKrok({ hasMore: true, isTruncated: true, pageOffset: 40, ostatniaData: undefined }))
-      .toThrow();
+    expect(() => nastepnyKrok({ hasMore: true, isTruncated: true, pageOffset: 40, ostatniaData: undefined })).toThrow();
   });
 });

@@ -1,10 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { znormalizujKlienta, daneNabywcyNaKarcie } from '../../../src/domena/klient-staly.js';
-import { dopiszKlienta, zapiszKlienta, klientPoId, klientPoKluczu, wgrajUmowyZbiorczeZKonfiguracji } from '../../../src/oms/db/klienci.js';
+import {
+  dopiszKlienta,
+  zapiszKlienta,
+  klientPoId,
+  klientPoKluczu,
+  wgrajUmowyZbiorczeZKonfiguracji,
+} from '../../../src/oms/db/klienci.js';
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 afterEach(() => db.close());
 const dane = (nad = {}) => znormalizujKlienta({ nazwa: 'Pracownia Półcień', ...nad });
 const dodaj = (nad = {}) => klientPoId(db, dopiszKlienta(db, dane(nad)));
@@ -22,7 +30,9 @@ describe('stabilny klucz klienta', () => {
 
   it('kolizje dostają kolejne wolne przyrostki -2 i -3', () => {
     expect([dodaj().klucz, dodaj().klucz, dodaj().klucz]).toEqual([
-      'pracownia-polcien', 'pracownia-polcien-2', 'pracownia-polcien-3',
+      'pracownia-polcien',
+      'pracownia-polcien-2',
+      'pracownia-polcien-3',
     ]);
   });
 
@@ -57,8 +67,10 @@ describe('stabilny klucz klienta', () => {
 
   it('edycja nazwy i podanego klucza zachowuje stary klucz i powiązanie okresu', () => {
     const k = dodaj();
-    db.prepare(`INSERT INTO okresy_rozliczeniowe (klient_klucz, rok, miesiac, utworzony_at)
-      VALUES (?, 2026, 11, '2026-11-13')`).run(k.klucz);
+    db.prepare(
+      `INSERT INTO okresy_rozliczeniowe (klient_klucz, rok, miesiac, utworzony_at)
+      VALUES (?, 2026, 11, '2026-11-13')`,
+    ).run(k.klucz);
     zapiszKlienta(db, k.id, dane({ nazwa: 'Nowa nazwa', klucz: 'nowy-klucz' }));
     expect(klientPoId(db, k.id)).toMatchObject({ klucz: k.klucz, nazwa: 'Nowa nazwa' });
     const okres = db.prepare('SELECT klient_klucz FROM okresy_rozliczeniowe').get();

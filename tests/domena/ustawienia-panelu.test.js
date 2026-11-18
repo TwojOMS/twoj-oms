@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
-  PACZKA_DOMYSLNA, KOSZT_DOSTAWY_DOMYSLNY_GR,
-  domyslnaPaczka, kwotyDostawy, kosztDostawy, sprawdzPaczke, sprawdzKoszty,
+  PACZKA_DOMYSLNA,
+  KOSZT_DOSTAWY_DOMYSLNY_GR,
+  domyslnaPaczka,
+  kwotyDostawy,
+  kosztDostawy,
+  sprawdzPaczke,
+  sprawdzKoszty,
 } from '../../src/domena/ustawienia-panelu.js';
 import { DOSTAWY } from '../../src/domena/nowe-zamowienie.js';
 
@@ -18,7 +23,10 @@ describe('domyślna paczka', () => {
 
   it('czyta wartości z zapisu', () => {
     const zapis = {
-      'paczka.waga': '2,5', 'paczka.dlugosc': '100', 'paczka.szerokosc': '70', 'paczka.wysokosc': '5',
+      'paczka.waga': '2,5',
+      'paczka.dlugosc': '100',
+      'paczka.szerokosc': '70',
+      'paczka.wysokosc': '5',
     };
 
     expect(domyslnaPaczka(zapis)).toEqual({ waga: 2.5, dlugosc: 100, szerokosc: 70, wysokosc: 5 });
@@ -54,8 +62,11 @@ describe('kwoty dostawy', () => {
   });
 
   it('zepsuta wartość wraca do domyślnej tej metody', () => {
-    expect(kwotyDostawy({ 'dostawa.dpd': 'ala', 'dostawa.inpost_paczkomat': '-5' }))
-      .toEqual({ dpd: '19,00', inpost_paczkomat: '19,00', odbior_osobisty: '19,00' });
+    expect(kwotyDostawy({ 'dostawa.dpd': 'ala', 'dostawa.inpost_paczkomat': '-5' })).toEqual({
+      dpd: '19,00',
+      inpost_paczkomat: '19,00',
+      odbior_osobisty: '19,00',
+    });
   });
 
   it('kosztDostawy oddaje kwotę jednej metody', () => {
@@ -75,7 +86,10 @@ describe('walidacja formularza paczki', () => {
 
     expect(bledy).toEqual([]);
     expect(wartosci).toEqual({
-      'paczka.waga': '1.5', 'paczka.dlugosc': '110', 'paczka.szerokosc': '75', 'paczka.wysokosc': '1',
+      'paczka.waga': '1.5',
+      'paczka.dlugosc': '110',
+      'paczka.szerokosc': '75',
+      'paczka.wysokosc': '1',
     });
   });
 
@@ -107,7 +121,9 @@ describe('walidacja formularza kosztów', () => {
 
     expect(bledy).toEqual([]);
     expect(wartosci).toEqual({
-      'dostawa.dpd': '1900', 'dostawa.inpost_paczkomat': '1300', 'dostawa.odbior_osobisty': '0',
+      'dostawa.dpd': '1900',
+      'dostawa.inpost_paczkomat': '1300',
+      'dostawa.odbior_osobisty': '0',
     });
   });
 

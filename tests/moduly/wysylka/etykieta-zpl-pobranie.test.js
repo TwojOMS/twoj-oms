@@ -11,9 +11,25 @@ import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
 import { nowyPanel, jako, get, BASIC } from '../../pomoc/panel-konta-testowe.js';
 
 const zmapowane = (id) => ({
-  zrodlo_id: id, numer: String(id), klient: { first_name: 'Jan', email: 'jan@przyklad.test', address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa' },
-  dostawa: { city: 'Warszawa' }, metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '99.00',
-  status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-11-05T10:00:00',
+  zrodlo_id: id,
+  numer: String(id),
+  klient: {
+    first_name: 'Jan',
+    email: 'jan@przyklad.test',
+    address_1: 'Lampowa 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+  },
+  dostawa: { city: 'Warszawa' },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '99.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-11-05T10:00:00',
   pozycje: [{ nazwa: 'Szablon Półcień', sku: 'PC-001', ilosc: 1, cena_brutto: '99.00', vat: null }],
 });
 
@@ -40,7 +56,12 @@ function paczka(numer, { zpl = 'plik', numerListu = 'ZMYSLONY0001' } = {}) {
     sciezka = join(katalog, `etykieta-${numerListu}.zpl`);
     if (zpl === 'plik') writeFileSync(sciezka, BAJTY);
   }
-  zakonczPrzesylke(p.db, prz.id, { numerListu, etykietaSciezka: join(katalog, 'e.pdf'), etykietaZplSciezka: sciezka, surowa: '<x/>' });
+  zakonczPrzesylke(p.db, prz.id, {
+    numerListu,
+    etykietaSciezka: join(katalog, 'e.pdf'),
+    etykietaZplSciezka: sciezka,
+    surowa: '<x/>',
+  });
   return { id, przesylkaId: prz.id, sciezka };
 }
 const adres = (id, pid) => `/zamowienia/${id}/przesylki/${pid}/etykieta-zpl`;

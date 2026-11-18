@@ -5,19 +5,43 @@ import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
 let app, db;
-afterEach(async () => { await app?.close(); db?.close(); app = null; db = null; });
+afterEach(async () => {
+  await app?.close();
+  db?.close();
+  app = null;
+  db = null;
+});
 
 it('karta: status i akcje obok używają małego rozmiaru pola i przycisków', async () => {
   db = openOmsDb(':memory:');
   app = buildOmsServer({ db, config: { auth: { user: 'operator', pass: 'x' } }, poller: { stan: () => ({}) } });
   await app.ready();
-  const id = zapiszZamowienie(db, 'pro', {
-    zrodlo_id: 15442, numer: 'DEMO-15442', klient: { first_name: 'Ewa', email: 'ewa@example.test' },
-    dostawa: { city: 'Miasto', country: 'PL' }, metoda_wysylki: 'dpd', kwota_pobrania: null,
-    chce_fakture: 0, nip: null, kwota_brutto: '50.00', koszt_dostawy_brutto: '0.00',
-    status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-11-07T08:00:00Z', pozycje: [],
-  }, {});
-  const r = await app.inject({ url: `/zamowienia/${id}`, headers: { authorization: 'Basic ' + Buffer.from('operator:x').toString('base64') } });
+  const id = zapiszZamowienie(
+    db,
+    'pro',
+    {
+      zrodlo_id: 15442,
+      numer: 'DEMO-15442',
+      klient: { first_name: 'Ewa', email: 'ewa@example.test' },
+      dostawa: { city: 'Miasto', country: 'PL' },
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: 0,
+      nip: null,
+      kwota_brutto: '50.00',
+      koszt_dostawy_brutto: '0.00',
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane: 0,
+      utworzone_at: '2026-11-07T08:00:00Z',
+      pozycje: [],
+    },
+    {},
+  );
+  const r = await app.inject({
+    url: `/zamowienia/${id}`,
+    headers: { authorization: 'Basic ' + Buffer.from('operator:x').toString('base64') },
+  });
   expect(r.statusCode).toBe(200);
   const form = r.body.match(/<form\b[^>]*class="zmiana-statusu"[\s\S]*?<\/form>/u)?.[0];
   expect(form).toBeDefined();
@@ -42,5 +66,7 @@ it('tabela pozycji rezerwuje miejsce na miniaturę i zachowuje jej szerokość',
   expect(obrazek).toMatch(/\bmax-width:\s*none\s*;/u);
   expect(obrazek).toMatch(/\bobject-fit:\s*contain\s*;/u);
   // Po rezerwacji miejsca na zdjęcie nazwa musi mieć własne miejsce w przewijaku.
-  expect(css).toMatch(/@media\s*\(max-width:\s*40rem\)\s*\{\s*\.tab-pozycje\.tab-stala\[data-tabela-odczytu\]\s*\{\s*min-width:\s*48rem;/u);
+  expect(css).toMatch(
+    /@media\s*\(max-width:\s*40rem\)\s*\{\s*\.tab-pozycje\.tab-stala\[data-tabela-odczytu\]\s*\{\s*min-width:\s*48rem;/u,
+  );
 });

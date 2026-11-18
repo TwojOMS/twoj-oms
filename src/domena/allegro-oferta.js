@@ -67,8 +67,8 @@ export function groszeZCeny(cena, opisOferty) {
   const waluta = cena?.currency;
   if (waluta !== WALUTA_LUSTRA) {
     throw new Error(
-      `Allegro: oferta ${opisOferty} ma cenę w walucie "${String(waluta)}", a lustro magazynu `
-      + `trzyma wyłącznie grosze ${WALUTA_LUSTRA} (kolumna cena_gr nie niesie waluty)`,
+      `Allegro: oferta ${opisOferty} ma cenę w walucie "${String(waluta)}", a lustro magazynu ` +
+        `trzyma wyłącznie grosze ${WALUTA_LUSTRA} (kolumna cena_gr nie niesie waluty)`,
     );
   }
 
@@ -109,9 +109,7 @@ function zdjeciaJson(oferta) {
 export function ofertaNaProdukt(oferta, kanal, dozwoloneKanaly) {
   wymagajListyKanalow(dozwoloneKanaly);
   if (!dozwoloneKanaly.includes(kanal)) {
-    throw new Error(
-      `ofertaNaProdukt: „${String(kanal)}" nie jest kanałem Allegro (są: ${dozwoloneKanaly.join(', ')})`,
-    );
+    throw new Error(`ofertaNaProdukt: „${String(kanal)}" nie jest kanałem Allegro (są: ${dozwoloneKanaly.join(', ')})`);
   }
 
   // ⚠️ NAPIS, DOKLADNIE TAKI, JAKI PRZYSZEDL — nigdy przez `Number()`. Wiodace zera gina po

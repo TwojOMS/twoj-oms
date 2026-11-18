@@ -17,8 +17,9 @@ describe('powiązanie istniejących kont z reklamami', () => {
 
   it('nie dopisuje konta Meta spoza konfiguracji', () => {
     const db = openOmsDb(':memory:');
-    expect(() => provisionReklam(db, ['--meta=act_inne'], { META_TOKEN: 'x', META_KONTA: 'act_1' }))
-      .toThrow('listy kont');
+    expect(() => provisionReklam(db, ['--meta=act_inne'], { META_TOKEN: 'x', META_KONTA: 'act_1' })).toThrow(
+      'listy kont',
+    );
     expect(polaczenia(db)).toHaveLength(0);
     db.close();
   });

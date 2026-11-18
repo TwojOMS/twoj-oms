@@ -17,14 +17,16 @@ function ostrzezPrzyBrakuPdftotext() {
     const tresc = readFileSync(join('tests', wpis), 'utf8');
     if (zaleznePdf.test(tresc) && pomijanie.test(tresc)) liczba += 1;
   }
-  console.warn(`[vitest] Brak pdftotext (poppler): ${liczba} plików testów PDF pominie testy odczytu tekstu. Doinstaluj poppler-utils.`);
+  console.warn(
+    `[vitest] Brak pdftotext (poppler): ${liczba} plików testów PDF pominie testy odczytu tekstu. Doinstaluj poppler-utils.`,
+  );
 }
 
 export default function setup() {
   ostrzezPrzyBrakuPdftotext();
   // tmpdir() czyta bieżące env: zagnieżdżony Vitest dostaje własny podkatalog.
   const parent = realpathSync(tmpdir());
-  const previous = keys.map(key => [key, process.env[key]] as const);
+  const previous = keys.map((key) => [key, process.env[key]] as const);
   const runDirectory = resolve(mkdtempSync(join(parent, 'twoj-oms-vitest-')));
   const restore = () => {
     for (const [key, value] of previous) {
@@ -33,11 +35,13 @@ export default function setup() {
     }
   };
   const cleanup = () => {
-    if (dirname(runDirectory).toLowerCase() !== parent.toLowerCase()
-      || !basename(runDirectory).startsWith('twoj-oms-vitest-')
-      || realpathSync(parent).toLowerCase() !== parent.toLowerCase()
-      || lstatSync(runDirectory).isSymbolicLink()
-      || realpathSync(runDirectory).toLowerCase() !== runDirectory.toLowerCase()) {
+    if (
+      dirname(runDirectory).toLowerCase() !== parent.toLowerCase() ||
+      !basename(runDirectory).startsWith('twoj-oms-vitest-') ||
+      realpathSync(parent).toLowerCase() !== parent.toLowerCase() ||
+      lstatSync(runDirectory).isSymbolicLink() ||
+      realpathSync(runDirectory).toLowerCase() !== runDirectory.toLowerCase()
+    ) {
       throw Error('Odmowa cleanup: katalog TEMP nie jest własnym zwykłym katalogiem przebiegu');
     }
     // Node ponawia EBUSY/ENOTEMPTY (także EPERM) ograniczoną liczbę razy.
@@ -47,14 +51,25 @@ export default function setup() {
   try {
     // Diagnostyka; skrypt mutacji używa PID do cleanup wyłącznie własnej pozostałości.
     // Normalny teardown ma własną niezmienną ścieżkę i nie polega na markerze.
-    writeFileSync(join(runDirectory, '.twoj-oms-temp-owner.json'), JSON.stringify({ pid: process.pid, parent, runDirectory }));
+    writeFileSync(
+      join(runDirectory, '.twoj-oms-temp-owner.json'),
+      JSON.stringify({ pid: process.pid, parent, runDirectory }),
+    );
     for (const key of keys) process.env[key] = runDirectory;
   } catch (error) {
-    try { cleanup(); } finally { restore(); }
+    try {
+      cleanup();
+    } finally {
+      restore();
+    }
     throw error;
   }
   // Teardown wymaga normalnego zamknięcia Vitest; SIGKILL/utrata zasilania go pomija.
   return () => {
-    try { cleanup(); } finally { restore(); }
+    try {
+      cleanup();
+    } finally {
+      restore();
+    }
   };
 }

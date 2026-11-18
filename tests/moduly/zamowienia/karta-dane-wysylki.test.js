@@ -4,19 +4,54 @@ import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
 let app, db;
-afterEach(async () => { await app?.close(); db?.close(); });
+afterEach(async () => {
+  await app?.close();
+  db?.close();
+});
 async function karta({ kraj = 'PL', punkt = false } = {}) {
   db = openOmsDb(':memory:');
   app = buildOmsServer({ db, config: { auth: { user: 'operator', pass: 'x' } }, poller: { stan: () => ({}) } });
   await app.ready();
-  const id = zapiszZamowienie(db, 'pro', {
-    zrodlo_id: 15407, numer: 'DEMO-15407', klient: { first_name: 'Ewa', last_name: 'Próbna', email: 'ewa@example.test' },
-    dostawa: { first_name: 'Ewa', last_name: 'Próbna', company: 'Pracownia Półcień', address_1: 'Przykładowa 7', postcode: '00-000', city: 'Miasto', country: kraj },
-    metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, oplacone_at: null, kwota_brutto: '50.00', koszt_dostawy_brutto: '0.00',
-    status_woo: 'processing', anulowane: 0, utworzone_at: '2026-11-06T10:00:00Z', pozycje: [],
-  }, {});
-  if (punkt) db.prepare('UPDATE zamowienia SET punkt_odbioru = ?, punkt_odbioru_opis = ? WHERE id = ?').run('TST01M', 'Przy sklepie próbnym', id);
-  const r = await app.inject({ url: `/zamowienia/${id}`, headers: { authorization: 'Basic ' + Buffer.from('operator:x').toString('base64') } });
+  const id = zapiszZamowienie(
+    db,
+    'pro',
+    {
+      zrodlo_id: 15407,
+      numer: 'DEMO-15407',
+      klient: { first_name: 'Ewa', last_name: 'Próbna', email: 'ewa@example.test' },
+      dostawa: {
+        first_name: 'Ewa',
+        last_name: 'Próbna',
+        company: 'Pracownia Półcień',
+        address_1: 'Przykładowa 7',
+        postcode: '00-000',
+        city: 'Miasto',
+        country: kraj,
+      },
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: 0,
+      nip: null,
+      oplacone_at: null,
+      kwota_brutto: '50.00',
+      koszt_dostawy_brutto: '0.00',
+      status_woo: 'processing',
+      anulowane: 0,
+      utworzone_at: '2026-11-06T10:00:00Z',
+      pozycje: [],
+    },
+    {},
+  );
+  if (punkt)
+    db.prepare('UPDATE zamowienia SET punkt_odbioru = ?, punkt_odbioru_opis = ? WHERE id = ?').run(
+      'TST01M',
+      'Przy sklepie próbnym',
+      id,
+    );
+  const r = await app.inject({
+    url: `/zamowienia/${id}`,
+    headers: { authorization: 'Basic ' + Buffer.from('operator:x').toString('base64') },
+  });
   expect(r.statusCode).toBe(200);
   return { html: r.body, wysylka: r.body.match(/<section[^>]*id="wysylka"[\s\S]*?<\/section>/u)[0] };
 }
@@ -38,6 +73,8 @@ it('punkt zastępuje adres w wysyłce, znika ze Szczegółów, adres klienta jes
   expect(wysylka).toContain('<strong>TST01M</strong>');
   expect(wysylka).toContain('Przy sklepie próbnym');
   expect(wysylka).not.toContain('<dt>Adres</dt>');
-  expect(wysylka).toMatch(/<details class="drobne"><summary>Adres klienta[^<]*<\/summary>[\s\S]*?Przykładowa 7[\s\S]*?<\/details>/u);
+  expect(wysylka).toMatch(
+    /<details class="drobne"><summary>Adres klienta[^<]*<\/summary>[\s\S]*?Przykładowa 7[\s\S]*?<\/details>/u,
+  );
   expect(html.replace(wysylka, '')).not.toMatch(/<(?:dt|span)>Punkt odbioru<\//u);
 });

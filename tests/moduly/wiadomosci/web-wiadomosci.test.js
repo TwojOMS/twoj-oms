@@ -19,23 +19,54 @@ const config = {
 };
 
 const zmapowane = (nad = {}) => ({
-  zrodlo_id: 6001, numer: '202600014',
+  zrodlo_id: 6001,
+  numer: '202600014',
   klient: { first_name: 'Jan', last_name: 'Kowalski', email: 'klient@firma.pl', company: 'Wzorowy Kontrahent' },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'ul. Testowa 7', postcode: '00-950', city: 'Warszawa' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null,
-  kwota_brutto: '990.00', koszt_dostawy_brutto: '0.00', koszt_dostawy_netto: '0.00',
-  status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-08-21T09:15:00',
+  dostawa: {
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    address_1: 'ul. Testowa 7',
+    postcode: '00-950',
+    city: 'Warszawa',
+  },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '990.00',
+  koszt_dostawy_brutto: '0.00',
+  koszt_dostawy_netto: '0.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-08-21T09:15:00',
   termin_platnosci: '14',
-  pozycje: [{
-    zrodlo_id: 7001, nazwa: 'Szablon', sku: 'SZ-1', ilosc: 10,
-    cena_brutto: '99.00', cena_netto: '80.49', brutto_linii: '990.00', netto_linii: '804.88', vat: null,
-  }],
+  pozycje: [
+    {
+      zrodlo_id: 7001,
+      nazwa: 'Szablon',
+      sku: 'SZ-1',
+      ilosc: 10,
+      cena_brutto: '99.00',
+      cena_netto: '80.49',
+      brutto_linii: '990.00',
+      netto_linii: '804.88',
+      vat: null,
+    },
+  ],
   ...nad,
 });
 
 function atrapaPoczty({ blad = null } = {}) {
   const wyslane = [];
-  return { wyslane, sendMail: async (m) => { if (blad) throw new Error(blad); wyslane.push(m); return { messageId: 't' }; } };
+  return {
+    wyslane,
+    sendMail: async (m) => {
+      if (blad) throw new Error(blad);
+      wyslane.push(m);
+      return { messageId: 't' };
+    },
+  };
 }
 
 let db, poczta, uslugi, wywolaniaPdfFaktury;
@@ -44,13 +75,24 @@ function zbuduj({ mailer = atrapaPoczty(), proformaPdf = null, fakturaBajty = nu
   poczta = mailer;
   wywolaniaPdfFaktury = 0;
   uslugi = createWiadomosci({
-    db, mailer,
-    potwierdzenie: createPotwierdzenie({ db, mailer, sprzedawca: config.sprzedawca, teraz: () => '2026-08-22T10:00:00.000Z' }),
+    db,
+    mailer,
+    potwierdzenie: createPotwierdzenie({
+      db,
+      mailer,
+      sprzedawca: config.sprzedawca,
+      teraz: () => '2026-08-22T10:00:00.000Z',
+    }),
     proforma: proformaPdf ? { pdf: () => proformaPdf } : null,
     // ⚠️ LICZNIK WYWOŁAŃ — bez niego nic w suicie nie sprawdza, że PDF faktury pobiera się
     // z inFaktu DOKŁADNIE RAZ na jedno złożenie (patrz test „faktura: PDF pobierany raz").
     infakt: fakturaBajty
-      ? { pobierzPdf: async () => { wywolaniaPdfFaktury += 1; return fakturaBajty; } }
+      ? {
+          pobierzPdf: async () => {
+            wywolaniaPdfFaktury += 1;
+            return fakturaBajty;
+          },
+        }
       : null,
     config,
     teraz: () => '2026-08-22T10:00:00.000Z',
@@ -58,7 +100,9 @@ function zbuduj({ mailer = atrapaPoczty(), proformaPdf = null, fakturaBajty = nu
   return uslugi;
 }
 
-beforeEach(() => { zbuduj(); });
+beforeEach(() => {
+  zbuduj();
+});
 
 describe('usługa wiadomości', () => {
   it('podgląd przypomnienia niesie adres, temat i obie postacie treści', async () => {
@@ -133,7 +177,9 @@ describe('usługa wiadomości', () => {
     zbuduj({ proformaPdf: { bajty: Buffer.from('%PDF-proforma'), numer: 'PF/1/08/2026' } });
     const id = zapiszZamowienie(db, 'pro', zmapowane());
     zapiszProforme(db, id, {
-      kwotaBrutto: '990.00', plikSciezka: '/dane/proformy/fake.pdf', utworzonaAt: '2026-08-20T10:00:00.000Z',
+      kwotaBrutto: '990.00',
+      plikSciezka: '/dane/proformy/fake.pdf',
+      utworzonaAt: '2026-08-20T10:00:00.000Z',
     });
 
     await uslugi.wyslij(id, 'proforma', { ktoKlikal: 'adam' });
@@ -151,9 +197,12 @@ describe('usługa wiadomości', () => {
   it('faktura: PDF pobierany z inFaktu dokładnie raz na jedno złożenie, nazwa przez bezpiecznaNazwa', async () => {
     zbuduj({ fakturaBajty: Buffer.from('%PDF-faktura') });
     const id = zapiszZamowienie(db, 'pro', zmapowane());
-    db.prepare(
-      'INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)',
-    ).run(id, 'uuid-real-1', 'FV/12/08/2026', '2026-08-21T09:00:00.000Z');
+    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)').run(
+      id,
+      'uuid-real-1',
+      'FV/12/08/2026',
+      '2026-08-21T09:00:00.000Z',
+    );
 
     await uslugi.wyslij(id, 'faktura', { ktoKlikal: 'adam' });
 
@@ -168,7 +217,9 @@ describe('usługa wiadomości', () => {
     zbuduj({ proformaPdf: { bajty: Buffer.from('%PDF-proforma'), numer: 'PF/1/08/2026' } });
     const id = zapiszZamowienie(db, 'pro', zmapowane());
     zapiszProforme(db, id, {
-      kwotaBrutto: '990.00', plikSciezka: '/dane/proformy/fake.pdf', utworzonaAt: '2026-08-20T10:00:00.000Z',
+      kwotaBrutto: '990.00',
+      plikSciezka: '/dane/proformy/fake.pdf',
+      utworzonaAt: '2026-08-20T10:00:00.000Z',
     });
 
     await uslugi.wyslij(id, 'przypomnienie', { ktoKlikal: 'adam' });
@@ -198,9 +249,12 @@ describe('usługa wiadomości', () => {
   // tytuły, a księgowość dopasowuje wpłatę po numerze dokumentu.
   it('przypomnienie z fakturą i BEZ proformy: tytuł przelewu to numer faktury, bez załącznika i bez zdania o nim', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane());
-    db.prepare(
-      'INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)',
-    ).run(id, 'uuid-real-2', 'FV/9/08/2026', '2026-08-19T09:00:00.000Z');
+    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)').run(
+      id,
+      'uuid-real-2',
+      'FV/9/08/2026',
+      '2026-08-19T09:00:00.000Z',
+    );
 
     await uslugi.wyslij(id, 'przypomnienie', { ktoKlikal: 'adam' });
 
@@ -226,11 +280,16 @@ describe('usługa wiadomości', () => {
     zbuduj({ proformaPdf: { bajty: Buffer.from('%PDF-proforma'), numer: 'PF/1/08/2026' } });
     const id = zapiszZamowienie(db, 'pro', zmapowane());
     zapiszProforme(db, id, {
-      kwotaBrutto: '990.00', plikSciezka: '/dane/proformy/fake.pdf', utworzonaAt: '2026-08-20T10:00:00.000Z',
+      kwotaBrutto: '990.00',
+      plikSciezka: '/dane/proformy/fake.pdf',
+      utworzonaAt: '2026-08-20T10:00:00.000Z',
     });
-    db.prepare(
-      'INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)',
-    ).run(id, 'uuid-real-3', 'FV/9/08/2026', '2026-08-21T09:00:00.000Z');
+    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)').run(
+      id,
+      'uuid-real-3',
+      'FV/9/08/2026',
+      '2026-08-21T09:00:00.000Z',
+    );
 
     await uslugi.wyslij(id, 'przypomnienie', { ktoKlikal: 'adam' });
 
@@ -248,12 +307,20 @@ describe('okablowanie', () => {
     const bazaTestowa = openOmsDb(':memory:');
     const id = zapiszZamowienie(bazaTestowa, 'pro', zmapowane());
     const app = buildOmsServer({
-      db: bazaTestowa, config, poller: { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) },
-      wiadomosci: createWiadomosci({ db: bazaTestowa, mailer: atrapaPoczty(), config, teraz: () => '2026-08-22T10:00:00.000Z' }),
+      db: bazaTestowa,
+      config,
+      poller: { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) },
+      wiadomosci: createWiadomosci({
+        db: bazaTestowa,
+        mailer: atrapaPoczty(),
+        config,
+        teraz: () => '2026-08-22T10:00:00.000Z',
+      }),
     });
     await app.ready();
     const res = await app.inject({
-      method: 'GET', url: `/zamowienia/${id}`,
+      method: 'GET',
+      url: `/zamowienia/${id}`,
       headers: { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64') },
     });
     expect(res.statusCode).toBe(200);
@@ -269,8 +336,15 @@ describe('trasy sekcji wiadomości', () => {
     bazaW = openOmsDb(':memory:');
     idZ = zapiszZamowienie(bazaW, 'pro', zmapowane());
     app = buildOmsServer({
-      db: bazaW, config, poller: { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) },
-      wiadomosci: createWiadomosci({ db: bazaW, mailer: atrapaPoczty(), config, teraz: () => '2026-08-22T10:00:00.000Z' }),
+      db: bazaW,
+      config,
+      poller: { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) },
+      wiadomosci: createWiadomosci({
+        db: bazaW,
+        mailer: atrapaPoczty(),
+        config,
+        teraz: () => '2026-08-22T10:00:00.000Z',
+      }),
     });
     await app.ready();
   });
@@ -305,9 +379,9 @@ describe('trasy sekcji wiadomości', () => {
   // dowodziło dotąd, że przy fakturze WYSTAWIONEJ ten wiersz staje się klikalny i mówi, co
   // pojedzie — czyli że ścieżka „mam fakturę, wysyłam ją klientowi" w ogóle istnieje.
   it('temat „Faktura" jest klikalnym wierszem ze stanem, gdy faktura JEST wystawiona', async () => {
-    bazaW.prepare(
-      'INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)',
-    ).run(idZ, 'uuid-real-9', 'FV/12/08/2026', '2026-08-21T09:00:00.000Z');
+    bazaW
+      .prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)')
+      .run(idZ, 'uuid-real-9', 'FV/12/08/2026', '2026-08-21T09:00:00.000Z');
 
     const res = await karta('?wiadomosc=nowa');
     expect(res.body).toMatch(
@@ -353,7 +427,11 @@ describe('trasy sekcji wiadomości', () => {
   });
 
   it('POST wysyła i wraca na kartę', async () => {
-    const res = await app.inject({ method: 'POST', url: `/zamowienia/${idZ}/wiadomosc/przypomnienie`, headers: naglowek });
+    const res = await app.inject({
+      method: 'POST',
+      url: `/zamowienia/${idZ}/wiadomosc/przypomnienie`,
+      headers: naglowek,
+    });
     expect(res.statusCode).toBe(302);
     expect(wiadomosciZamowienia(bazaW, idZ)).toHaveLength(1);
   });
@@ -364,7 +442,11 @@ describe('trasy sekcji wiadomości', () => {
   // „Ta wiadomość poszła już…" i etykieta „Wyślij ponownie" na przycisku. To jest JEDYNY
   // hamulec przed wysłaniem DRUGIEGO maila do tego samego klienta — a maila nie da się cofnąć.
   it('po wysłaniu karta ostrzega przed drugim mailem i pokazuje wpis w „Wysłane"', async () => {
-    const wyslano = await app.inject({ method: 'POST', url: `/zamowienia/${idZ}/wiadomosc/przypomnienie`, headers: naglowek });
+    const wyslano = await app.inject({
+      method: 'POST',
+      url: `/zamowienia/${idZ}/wiadomosc/przypomnienie`,
+      headers: naglowek,
+    });
     expect(wyslano.statusCode).toBe(302);
 
     // Ten sam temat otwarty PONOWNIE (np. operator wraca do niego z historii przeglądarki)
@@ -392,7 +474,8 @@ describe('trasy sekcji wiadomości', () => {
   // podgląd nie pokazywał paska „Ta wiadomość poszła już…", a przycisk „Wyślij" zamiast
   // „Wyślij ponownie" — a maila nie da się cofnąć.
   it('zamówienie potwierdzone PRZED powstaniem rejestru: stara kolumna działa jako rezerwa', async () => {
-    bazaW.prepare('UPDATE zamowienia SET potwierdzenie_wyslane_at = ? WHERE id = ?')
+    bazaW
+      .prepare('UPDATE zamowienia SET potwierdzenie_wyslane_at = ? WHERE id = ?')
       .run('2026-08-21T12:40:00.000Z', idZ);
     // Rejestr milczy — potwierdzone ZANIM rejestr zaczął
     // cokolwiek zapisywać.
@@ -454,7 +537,9 @@ describe('trasy sekcji wiadomości', () => {
   // a stara notatka znika z ekranu bez śladu. Ten test sprawdza obecność pola także bez usługi wiadomości.
   it('bez usługi wiadomości sekcja znika, ale komentarz wewnętrzny ZOSTAJE', async () => {
     const bezPoczty = buildOmsServer({
-      db: bazaW, config, poller: { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) },
+      db: bazaW,
+      config,
+      poller: { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) },
     });
     await bezPoczty.ready();
     const res = await bezPoczty.inject({ method: 'GET', url: `/zamowienia/${idZ}`, headers: naglowek });
@@ -501,14 +586,22 @@ describe('brakująca usługa: powód dla operatora, nigdy TypeError', () => {
     baza = openOmsDb(':memory:');
     idZ = zapiszZamowienie(baza, 'pro', zmapowane());
     app = buildOmsServer({
-      db: baza, config, poller: { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) },
+      db: baza,
+      config,
+      poller: { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) },
       // BEZ `proforma`, BEZ `infakt`, BEZ `potwierdzenie` — same domyślne `null`.
-      wiadomosci: createWiadomosci({ db: baza, mailer: atrapaPoczty(), config, teraz: () => '2026-08-22T10:00:00.000Z' }),
+      wiadomosci: createWiadomosci({
+        db: baza,
+        mailer: atrapaPoczty(),
+        config,
+        teraz: () => '2026-08-22T10:00:00.000Z',
+      }),
     });
     await app.ready();
   });
 
-  const wyslij = (temat) => app.inject({ method: 'POST', url: `/zamowienia/${idZ}/wiadomosc/${temat}`, headers: naglowek });
+  const wyslij = (temat) =>
+    app.inject({ method: 'POST', url: `/zamowienia/${idZ}/wiadomosc/${temat}`, headers: naglowek });
   const log = () => baza.prepare('SELECT * FROM log WHERE zamowienie_id = ? ORDER BY id').all(idZ);
 
   // ⚠️ `not.toContain('błąd techniczny panelu')` JEST TU SEDNEM, nie ozdobą: dokładnie to
@@ -517,7 +610,9 @@ describe('brakująca usługa: powód dla operatora, nigdy TypeError', () => {
   // strażnika nie było wcale, a 400 niósł techniczny bełkot.
   it('proforma bez usługi proform', async () => {
     zapiszProforme(baza, idZ, {
-      kwotaBrutto: '990.00', plikSciezka: '/dane/proformy/fake.pdf', utworzonaAt: '2026-08-20T10:00:00.000Z',
+      kwotaBrutto: '990.00',
+      plikSciezka: '/dane/proformy/fake.pdf',
+      utworzonaAt: '2026-08-20T10:00:00.000Z',
     });
     const res = await wyslij('proforma');
     expect(res.statusCode).toBe(400);
@@ -527,9 +622,9 @@ describe('brakująca usługa: powód dla operatora, nigdy TypeError', () => {
   });
 
   it('faktura bez połączenia z inFaktem', async () => {
-    baza.prepare(
-      'INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)',
-    ).run(idZ, 'uuid-stary', 'FV/1/07/2026', '2026-07-11T09:00:00.000Z');
+    baza
+      .prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)')
+      .run(idZ, 'uuid-stary', 'FV/1/07/2026', '2026-07-11T09:00:00.000Z');
     const res = await wyslij('faktura');
     expect(res.statusCode).toBe(400);
     expect(res.body).toContain('połączenia z inFaktem');
@@ -549,7 +644,9 @@ describe('brakująca usługa: powód dla operatora, nigdy TypeError', () => {
   // dowiaduje się o brakującej usłudze dopiero po kliknięciu operacji nieodwracalnej.
   it('powód widać już w podglądzie na karcie, nie dopiero po kliknięciu', async () => {
     zapiszProforme(baza, idZ, {
-      kwotaBrutto: '990.00', plikSciezka: '/dane/proformy/fake.pdf', utworzonaAt: '2026-08-20T10:00:00.000Z',
+      kwotaBrutto: '990.00',
+      plikSciezka: '/dane/proformy/fake.pdf',
+      utworzonaAt: '2026-08-20T10:00:00.000Z',
     });
     const res = await app.inject({ method: 'GET', url: `/zamowienia/${idZ}?wiadomosc=proforma`, headers: naglowek });
     expect(res.statusCode).toBe(200);

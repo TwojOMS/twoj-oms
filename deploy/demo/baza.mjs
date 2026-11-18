@@ -46,15 +46,22 @@ export async function zalozBazeDemo({ baza, dzis, env, kontoAdmina }) {
     zalozKonto(db, { login: kontoAdmina.login, imie: kontoAdmina.imie, rola: 'administrator', admin: true, ...haslo });
     // Gość ma też ptaszek Ustawień — ogląda je w podglądzie (src/core/bezpieczenstwo/podglad-demo.js:
     // zapis pod /ustawienia od gościa = 403). Finanse dalej poza jego rolą.
-    zalozKonto(db, { login: env.OMS_DEMO_LOGIN, imie: 'Gość demo', haslo: env.OMS_DEMO_HASLO, rola: 'sprzedaz',
-      ekrany: [...ekranyRoli('sprzedaz'), 'ustawienia'] });
+    zalozKonto(db, {
+      login: env.OMS_DEMO_LOGIN,
+      imie: 'Gość demo',
+      haslo: env.OMS_DEMO_HASLO,
+      rola: 'sprzedaz',
+      ekrany: [...ekranyRoli('sprzedaz'), 'ustawienia'],
+    });
     // Zmyślony zespół „Pracowni Półcień” na ekranie Kont — bez hasła do odgadnięcia (losowe, nigdzie niezapisane).
     for (const [login, imie, rola] of ZESPOL_DEMO) {
       zalozKonto(db, { login, imie, rola, haslo: randomBytes(24).toString('base64url') });
     }
     // Jawny klucz API demo, wyłącznie zakresy odczytu (opis w docs/api/README.md).
     zalozKluczDemo(db);
-  } finally { db.close(); }
+  } finally {
+    db.close();
+  }
   return wynik;
 }
 
@@ -67,7 +74,11 @@ export async function przygotujNastepna({ baza, dzis, env, kontoAdmina }) {
   const kat = katalogNastepnej(baza);
   fs.rmSync(kat, { recursive: true, force: true });
   fs.mkdirSync(kat, { recursive: true });
-  const envNastepnej = { ...env, OMS_PROFORMY_KATALOG: path.join(kat, 'proformy'), OMS_ETYKIETY_KATALOG: path.join(kat, 'etykiety') };
+  const envNastepnej = {
+    ...env,
+    OMS_PROFORMY_KATALOG: path.join(kat, 'proformy'),
+    OMS_ETYKIETY_KATALOG: path.join(kat, 'etykiety'),
+  };
   const wynik = await zalozBazeDemo({ baza: path.join(kat, 'oms.sqlite'), dzis, env: envNastepnej, kontoAdmina });
   const db = new DatabaseSync(path.join(kat, 'oms.sqlite'));
   try {
@@ -77,7 +88,9 @@ export async function przygotujNastepna({ baza, dzis, env, kontoAdmina }) {
     }
     // Bez WAL-a w katalogu: podmiana przenosi jeden plik.
     db.exec('PRAGMA wal_checkpoint(TRUNCATE)');
-  } finally { db.close(); }
+  } finally {
+    db.close();
+  }
   // Znacznik na końcu: jego brak = przygotowanie przerwane w połowie, podmiana odmówi.
   // pid: dowód dla testu, że generator chodził w procesie potomnym, nie w procesie panelu.
   fs.writeFileSync(path.join(kat, 'gotowa.json'), JSON.stringify({ dzis, pid: process.pid, wynik }));
@@ -91,12 +104,18 @@ export async function przygotujNastepna({ baza, dzis, env, kontoAdmina }) {
 export function podmienNaNastepna({ baza, dzis, env }) {
   const kat = katalogNastepnej(baza);
   let gotowa;
-  try { gotowa = JSON.parse(fs.readFileSync(path.join(kat, 'gotowa.json'), 'utf8')); }
-  catch { throw new Error('demo: brak gotowej następnej bazy'); }
+  try {
+    gotowa = JSON.parse(fs.readFileSync(path.join(kat, 'gotowa.json'), 'utf8'));
+  } catch {
+    throw new Error('demo: brak gotowej następnej bazy');
+  }
   if (gotowa.dzis !== dzis) throw new Error(`demo: następna baza na dzień ${gotowa.dzis}, reset na ${dzis}`);
   for (const p of pliki(baza)) fs.rmSync(p, { force: true });
   fs.renameSync(path.join(kat, 'oms.sqlite'), baza);
-  for (const [zrodlo, cel] of [['proformy', env.OMS_PROFORMY_KATALOG], ['etykiety', env.OMS_ETYKIETY_KATALOG]]) {
+  for (const [zrodlo, cel] of [
+    ['proformy', env.OMS_PROFORMY_KATALOG],
+    ['etykiety', env.OMS_ETYKIETY_KATALOG],
+  ]) {
     if (!cel) continue;
     // Stare pliki idą razem ze starą bazą — inaczej proformy gości zbierałyby się z godziny na godzinę.
     fs.rmSync(cel, { recursive: true, force: true });
@@ -114,7 +133,11 @@ export function przygotujWTle({ dzis, env, signal }) {
   const skrypt = path.join(path.dirname(fileURLToPath(import.meta.url)), 'nastepna.mjs');
   return new Promise((resolve) => {
     // `signal`: SIGTERM kontenera przerywa generator — inaczej proces czekałby na dziecko, a Docker zabiłby go po 10 s.
-    const dziecko = spawn(process.execPath, [skrypt], { env: { ...env, DEMO_DZIS: dzis }, stdio: 'inherit', ...(signal ? { signal } : {}) });
+    const dziecko = spawn(process.execPath, [skrypt], {
+      env: { ...env, DEMO_DZIS: dzis },
+      stdio: 'inherit',
+      ...(signal ? { signal } : {}),
+    });
     dziecko.on('error', () => resolve(false));
     dziecko.on('exit', (kod) => resolve(kod === 0));
   });

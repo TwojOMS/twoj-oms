@@ -14,7 +14,8 @@ if (process.env.OMS_TWOJEFAKTURY) throw new Error('Demo nie może startować z O
 const baza = process.env.OMS_DB_PATH;
 if (process.env.OMS_TRYB !== 'proba') throw new Error('Demo startuje wyłącznie z OMS_TRYB=proba');
 if (!baza) throw new Error('Brak OMS_DB_PATH');
-if (!process.env.OMS_DEMO_LOGIN || !process.env.OMS_DEMO_HASLO) throw new Error('Demo wymaga OMS_DEMO_LOGIN i OMS_DEMO_HASLO');
+if (!process.env.OMS_DEMO_LOGIN || !process.env.OMS_DEMO_HASLO)
+  throw new Error('Demo wymaga OMS_DEMO_LOGIN i OMS_DEMO_HASLO');
 // Klucz poświadczeń przed czymkolwiek innym: bez niego generator nie zapisze sekretów demo, a panel ich nie odczyta.
 const { sejfZEnv } = await import('../../src/core/bezpieczenstwo/sejf-sekretow.js');
 sejfZEnv(process.env);
@@ -22,7 +23,10 @@ sejfZEnv(process.env);
 // reguły deploy/demo/nas-izolacja.sh, które nie przeżywają restartu NAS-a. Gdy którykolwiek cel odpowie —
 // odmowa startu (kontener restartuje się w kółko, tunel daje 502), zamiast publicznego demo obok produkcji.
 const { wymagajIzolacji } = await import('./sonda.mjs');
-const cele = (process.env.DEMO_SONDA_CELE ?? '').split(',').map((c) => c.trim()).filter(Boolean);
+const cele = (process.env.DEMO_SONDA_CELE ?? '')
+  .split(',')
+  .map((c) => c.trim())
+  .filter(Boolean);
 console.log(`demo: izolacja sprawdzona — ${await wymagajIzolacji(cele)} celów nieosiągalnych`);
 // Kanały, sprzedawca i podłoga raportu z generatora — jedno źródło, jak w piaskownicy (deploy/proba/start.mjs).
 const { ENV_DEMO } = await import('../../scripts/demo-dane.mjs');
@@ -55,7 +59,8 @@ const { msDoResetu, MINUTY_RESETU_DOMYSLNIE } = await import('./reset.mjs');
 const { cyklResetu } = await import('./cykl.mjs');
 const co = process.env.DEMO_RESET_CO_MIN ? Number(process.env.DEMO_RESET_CO_MIN) : MINUTY_RESETU_DOMYSLNIE;
 // Starsza konfiguracja demo może mieć DEMO_RESET_O=03:00 (wydanie jej nie przepisuje) — nie steruje już niczym.
-if (process.env.DEMO_RESET_O) console.log(`demo: DEMO_RESET_O=${process.env.DEMO_RESET_O} pomijane od PRZ-079 — reset co DEMO_RESET_CO_MIN`);
+if (process.env.DEMO_RESET_O)
+  console.log(`demo: DEMO_RESET_O=${process.env.DEMO_RESET_O} pomijane od PRZ-079 — reset co DEMO_RESET_CO_MIN`);
 console.log(`demo: reset co ${co} min (Europe/Warsaw)`);
 
 // OMS z atrapami integracji piaskownicy (deploy/proba/atrapy) — Faktury i Magazyn mają dane demo,
@@ -70,7 +75,9 @@ const cykl = cyklResetu({
   przygotuj: (dzis) => przygotujWTle({ dzis, env: process.env, signal: przerwij.signal }),
   sprawdzIzolacje: () => wymagajIzolacji(cele),
   podmien: (dzis) => podmienNaNastepna({ baza, dzis, env: process.env }),
-  usunBaze: () => { for (const p of plikiBazy) fs.rmSync(p, { force: true }); },
+  usunBaze: () => {
+    for (const p of plikiBazy) fs.rmSync(p, { force: true });
+  },
   wyjdz: (kod) => process.exit(kod),
 });
 await cykl.start();
@@ -79,7 +86,10 @@ const zakoncz = () => {
   process.removeListener('SIGTERM', zakoncz);
   cykl.zatrzymaj();
   przerwij.abort();
-  void cykl.zamknij().catch((e) => { console.error(e); process.exitCode = 1; });
+  void cykl.zamknij().catch((e) => {
+    console.error(e);
+    process.exitCode = 1;
+  });
 };
 process.on('SIGINT', zakoncz);
 process.on('SIGTERM', zakoncz);

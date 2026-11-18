@@ -7,8 +7,14 @@ import { parsujAdresOdbiorcy } from '../../src/domena/adres-formularza.js';
 // serwera — trasa POST przekazuje go dalej DOKŁADNIE takim, jaki stąd wyjdzie (patrz brief
 // „adres-edytowalny": „do DPD leci dokładnie to, co było w formularzu w chwili zatwierdzenia").
 const pelny = () => ({
-  nazwa: 'Jan Kowalski', company: '', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa',
-  kraj: 'PL', phone: '+48500600700', email: 'j@k.pl',
+  nazwa: 'Jan Kowalski',
+  company: '',
+  ulica: 'Polna 1',
+  kod: '00-950',
+  miasto: 'Warszawa',
+  kraj: 'PL',
+  phone: '+48500600700',
+  email: 'j@k.pl',
 });
 
 describe('parsujAdresOdbiorcy', () => {
@@ -16,8 +22,14 @@ describe('parsujAdresOdbiorcy', () => {
     const { adres, blad } = parsujAdresOdbiorcy(pelny());
     expect(blad).toBeUndefined();
     expect(adres).toEqual({
-      nazwa: 'Jan Kowalski', company: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-950',
-      miasto: 'Warszawa', kraj: 'PL', phone: '+48500600700', email: 'j@k.pl',
+      nazwa: 'Jan Kowalski',
+      company: 'Jan Kowalski',
+      ulica: 'Polna 1',
+      kod: '00-950',
+      miasto: 'Warszawa',
+      kraj: 'PL',
+      phone: '+48500600700',
+      email: 'j@k.pl',
     });
   });
 

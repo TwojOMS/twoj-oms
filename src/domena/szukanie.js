@@ -24,7 +24,10 @@ function bezOgonkow(tekst) {
 
 /** Postac porownywalna: bez ogonkow, malymi literami, bez nadmiarowych spacji. */
 export function normalizuj(tekst) {
-  return bezOgonkow(String(tekst ?? '')).toLowerCase().replace(/\s+/g, ' ').trim();
+  return bezOgonkow(String(tekst ?? ''))
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 // Same cyfry pola — osobna sciezka dla NIP-u, telefonu i numeru listu przewozowego, ktore
@@ -43,14 +46,20 @@ export function polaSzukania(z) {
   return [
     z?.numer,
     z?.sklep,
-    adres.nazwa, adres.company, adres.email, adres.phone,
-    adres.ulica, adres.kod, adres.miasto,
+    adres.nazwa,
+    adres.company,
+    adres.email,
+    adres.phone,
+    adres.ulica,
+    adres.kod,
+    adres.miasto,
     // Login kupującego Allegro — ten sam napis, który lista pokazuje w kolumnie Klient
     // (domena/klient-listy.js). Wpisuje go do bloku `klient` wyłącznie mapowanie Allegro. ⚠️ Zamówienia
     // zapisane, zanim mapowanie zaczęło zapisywać login w bloku `klient`, mają go tylko w `surowe_json`, którego indeks listy nie czyta — lista
     // ich loginu nie pokazuje i wyszukiwarka go nie zna, dopóki poller nie zapisze zamówienia ponownie.
     z?.klient?.login,
-    faktura.firma, faktura.nip,
+    faktura.firma,
+    faktura.nip,
     ...(z?.pozycje ?? []).flatMap((p) => [p.nazwa, p.sku]),
     ...(z?.przesylki ?? []).map((p) => p.numer_listu),
     z?.faktura?.numer,
@@ -88,18 +97,22 @@ export function pasujePola(pola, fraza) {
  * więc normalizacja frazy przy każdym wierszu była czystym kosztem.
  */
 export function dopasowanieFrazy(fraza) {
-  const slowa = normalizuj(fraza).split(' ').filter(Boolean).map((slowo) => {
-    // Sciezka cyfrowa WYLACZNIE dla frazy, ktora jest zapisem liczby (dopuszczamy myslniki,
-    // spacje, plusa i nawiasy — czyli to, w czym ludzie zapisuja NIP-y i telefony). Dla
-    // krotszych niz trzy cyfry odpuszczamy: „12" trafialoby w polowe kazdego kodu pocztowego.
-    const szukaneCyfry = sameCyfry(slowo);
-    return { slowo, cyfry: szukaneCyfry.length >= 3 && /^[\d\s+()-]+$/.test(slowo) ? szukaneCyfry : null };
-  });
-  return ({ tekst, cyfry }) => slowa.every(({ slowo, cyfry: szukaneCyfry }) => {
-    if (tekst.some((p) => p.includes(slowo))) return true;
-    if (!szukaneCyfry) return false;
-    return cyfry.some((p) => p.includes(szukaneCyfry));
-  });
+  const slowa = normalizuj(fraza)
+    .split(' ')
+    .filter(Boolean)
+    .map((slowo) => {
+      // Sciezka cyfrowa WYLACZNIE dla frazy, ktora jest zapisem liczby (dopuszczamy myslniki,
+      // spacje, plusa i nawiasy — czyli to, w czym ludzie zapisuja NIP-y i telefony). Dla
+      // krotszych niz trzy cyfry odpuszczamy: „12" trafialoby w polowe kazdego kodu pocztowego.
+      const szukaneCyfry = sameCyfry(slowo);
+      return { slowo, cyfry: szukaneCyfry.length >= 3 && /^[\d\s+()-]+$/.test(slowo) ? szukaneCyfry : null };
+    });
+  return ({ tekst, cyfry }) =>
+    slowa.every(({ slowo, cyfry: szukaneCyfry }) => {
+      if (tekst.some((p) => p.includes(slowo))) return true;
+      if (!szukaneCyfry) return false;
+      return cyfry.some((p) => p.includes(szukaneCyfry));
+    });
 }
 
 /** Pusta fraza NIE filtruje niczego — lista zostaje taka, jaka byla. */

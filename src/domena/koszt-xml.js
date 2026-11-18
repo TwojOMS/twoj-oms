@@ -57,9 +57,7 @@ const rozpakuj = (s) => ENCJE.reduce((tekst, [wzor, na]) => tekst.replace(wzor, 
  * `<P_8A/>`) daja PUSTY NAPIS — nigdy `undefined`, bo to slowo trafiloby wprost na wydruk.
  */
 function tresc(xml, nazwa) {
-  const m = String(xml).match(
-    new RegExp(`<${znacznik(nazwa)}(?:\\s[^>]*)?>([\\s\\S]*?)</${znacznik(nazwa)}>`, 'i'),
-  );
+  const m = String(xml).match(new RegExp(`<${znacznik(nazwa)}(?:\\s[^>]*)?>([\\s\\S]*?)</${znacznik(nazwa)}>`, 'i'));
   return m ? rozpakuj(m[1]).trim() : '';
 }
 
@@ -166,7 +164,9 @@ const LICZBA = /^-?\d+([.,]\d+)?$/;
 
 /** Napis kwoty na grosze calkowite, albo `null` gdy to nie jest kwota. */
 function nagrosze(napis) {
-  const tekst = String(napis ?? '').trim().replace(',', '.');
+  const tekst = String(napis ?? '')
+    .trim()
+    .replace(',', '.');
   return LICZBA.test(tekst) ? grosze(tekst, 'kwota z XML-a FA(3)') : null;
 }
 
@@ -193,7 +193,9 @@ function nettoPlusVat(netto, vat) {
 function bruttoZeStawki(netto, stawkaVat) {
   const gr = nagrosze(netto);
   if (gr === null) return '';
-  const procent = String(stawkaVat ?? '').trim().replace(',', '.');
+  const procent = String(stawkaVat ?? '')
+    .trim()
+    .replace(',', '.');
   if (/^\d+(\.\d+)?$/.test(procent)) return zl(Math.round((gr * (100 + Number(procent))) / 100));
   // Stawki BEZ VAT-u na fakturze: zwolniona, niepodlegajaca, odwrotne obciazenie. Brutto rowna
   // sie tam netto i to NIE JEST zgadywanie stawki — sprzedawca nie dolicza VAT-u w zadnej
@@ -240,11 +242,17 @@ const ADNOTACJE = [
     podstawy: ['P_19A', 'P_19B', 'P_19C'],
   },
   {
-    kod: 'P_22', nie: 'P_22N', blok: 'NoweSrodkiTransportu', etykieta: 'Nowe środki transportu',
+    kod: 'P_22',
+    nie: 'P_22N',
+    blok: 'NoweSrodkiTransportu',
+    etykieta: 'Nowe środki transportu',
   },
   { kod: 'P_23', etykieta: 'Transakcja trójstronna uproszczona' },
   {
-    kod: 'P_PMarzy', nie: 'P_PMarzyN', blok: 'PMarzy', etykieta: 'Procedura marży',
+    kod: 'P_PMarzy',
+    nie: 'P_PMarzyN',
+    blok: 'PMarzy',
+    etykieta: 'Procedura marży',
   },
 ];
 
@@ -258,9 +266,7 @@ const ADNOTACJE = [
  * wartosc odziedziczona nie jest `undefined`. To jest jedyne miejsce, w ktorym napis
  * z XML-a staje sie kluczem, wiec straznik stoi tutaj, a nie w trzech miejscach z osobna.
  */
-const zeSlownika = (slownik, klucz, zapas) => (
-  Object.hasOwn(slownik, klucz) ? slownik[klucz] : zapas
-);
+const zeSlownika = (slownik, klucz, zapas) => (Object.hasOwn(slownik, klucz) ? slownik[klucz] : zapas);
 
 // Formy platnosci wprost ze slownika FA(3). Kod spoza slownika idzie na wydruk DOSLOWNIE
 // (jako „kod N") — zmyslona nazwa byla zdaniem o cudzym dokumencie, ktorego nikt nie sprawdzil.
@@ -342,7 +348,9 @@ function podmiot(xml, nazwaWezla) {
       tresc(adres, 'AdresL1'),
       tresc(adres, 'AdresL2'),
       kodKraju && kodKraju.toUpperCase() !== 'PL' ? kodKraju.toUpperCase() : '',
-    ].map((s) => s.trim()).filter((s) => s !== ''),
+    ]
+      .map((s) => s.trim())
+      .filter((s) => s !== ''),
   };
 }
 
@@ -379,10 +387,17 @@ function adnotacjeZFa(fa) {
     // Podstawa prawna zwolnienia jest POLEM dokumentu (`P_19A/B/C`), a nie zdaniem wplecionym
     // w nazwe pozycji — i wlasnie tego brakowalo ksiegowej na starej wizualizacji.
     const podstawa = (a.podstawy ?? [])
-      .map((p) => tresc(zrodlo, p)).filter((s) => s !== '').join(' ');
-    return [{
-      kod: a.kod, etykieta: a.etykieta, wartosc, podstawa,
-    }];
+      .map((p) => tresc(zrodlo, p))
+      .filter((s) => s !== '')
+      .join(' ');
+    return [
+      {
+        kod: a.kod,
+        etykieta: a.etykieta,
+        wartosc,
+        podstawa,
+      },
+    ];
   });
 }
 
@@ -394,12 +409,10 @@ function adnotacjeZFa(fa) {
  * ksiegowej o zaplacie mniejszej, niz wystawca na dokumencie potwierdzil.
  */
 function zaplatyCzesciowe(platnosc) {
-  const bloki = String(platnosc).match(
-    new RegExp(
-      `<${znacznik('ZaplataCzesciowa')}(?:\\s[^>]*)?>[\\s\\S]*?</${znacznik('ZaplataCzesciowa')}>`,
-      'gi',
-    ),
-  ) ?? [];
+  const bloki =
+    String(platnosc).match(
+      new RegExp(`<${znacznik('ZaplataCzesciowa')}(?:\\s[^>]*)?>[\\s\\S]*?</${znacznik('ZaplataCzesciowa')}>`, 'gi'),
+    ) ?? [];
   return bloki.map((b) => ({
     kwota: tresc(b, 'KwotaZaplatyCzesciowej'),
     data: tresc(b, 'DataZaplatyCzesciowej'),
@@ -519,9 +532,7 @@ export function dokumentZXml(xml) {
     okresOd: tresc(blok(fa, 'OkresFa'), 'P_6_Od'),
     okresDo: tresc(blok(fa, 'OkresFa'), 'P_6_Do'),
     rodzajFaktury,
-    rodzajOpis: zeSlownika(
-      RODZAJE, rodzajFaktury, rodzajFaktury ? `Faktura (${rodzajFaktury})` : '',
-    ),
+    rodzajOpis: zeSlownika(RODZAJE, rodzajFaktury, rodzajFaktury ? `Faktura (${rodzajFaktury})` : ''),
     czyKorekta: rodzajFaktury.startsWith('KOR'),
     naleznoscOgolem: tresc(fa, 'P_15'),
     stawki: stawkiZFa(fa),

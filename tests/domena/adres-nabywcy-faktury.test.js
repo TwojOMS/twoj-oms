@@ -52,9 +52,16 @@ describe('zdanie braku adresu', () => {
 
 // Brak adresu mówi OSTATNI — po stanie faktury w hurcie, po anulowaniu i okresie na karcie.
 describe('kolejność powodu „brak adresu”', () => {
-  const bezAdresu = { id: 1, numer: 'PT5-K', anulowane: 0, chce_fakture: 1, kwota_brutto: '123.00',
+  const bezAdresu = {
+    id: 1,
+    numer: 'PT5-K',
+    anulowane: 0,
+    chce_fakture: 1,
+    kwota_brutto: '123.00',
     pozycje: [{ nazwa: 'Lampa', ilosc: 1, cena_brutto: '123.00', brutto_linii: '123.00' }],
-    platnosci: [{ kwota: '123.00' }], klient: { company: 'Pracownia Półcień' } };
+    platnosci: [{ kwota: '123.00' }],
+    klient: { company: 'Pracownia Półcień' },
+  };
 
   it('hurt: zamówienie z wystawioną fakturą i bez adresu słyszy o fakturze', async () => {
     const { podzielDoFaktury } = await import('../../src/domena/masowe.js');

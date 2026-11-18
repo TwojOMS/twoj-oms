@@ -5,10 +5,23 @@
 // uprawnienie jest to samo, co przy edycji zamówienia (domena/ekrany.js), a gość demo dostaje
 // odmowę każdego POST-a z haka podglądu.
 import { pobierzZamowienie, dopiszLog } from '../../oms/db/zamowienia.js';
-import { scalZamowienia, rozdzielZamowienia, zalogujScalenie, dolaczoneZamowienia, odlaczAnulowane } from '../../oms/db/scalenia.js';
 import {
-  powodyOdmowyScalenia, ostrzezeniaScalenia, roznicaKupujacego, domyslneGlowne, wysylkaGrupyGrosze, kwotaGrupyGrosze,
-  WYSYLKA_Z_GLOWNEGO, WYSYLKA_SUMA, opisWysylekGrupy,
+  scalZamowienia,
+  rozdzielZamowienia,
+  zalogujScalenie,
+  dolaczoneZamowienia,
+  odlaczAnulowane,
+} from '../../oms/db/scalenia.js';
+import {
+  powodyOdmowyScalenia,
+  ostrzezeniaScalenia,
+  roznicaKupujacego,
+  domyslneGlowne,
+  wysylkaGrupyGrosze,
+  kwotaGrupyGrosze,
+  WYSYLKA_Z_GLOWNEGO,
+  WYSYLKA_SUMA,
+  opisWysylekGrupy,
 } from '../../domena/scalanie.js';
 import { zl, kwotaOczekiwanaGrosze, wysylkaBruttoGrosze } from '../../domena/suma-pozycji.js';
 import { adresKanalu } from '../../domena/kanaly.js';
@@ -20,28 +33,49 @@ import { ekranOdmowyKarty } from './odmowa-karty.js';
 // „zaznacz wszystkie” na 200 zamówieniach.
 const SUFIT_SCALENIA = 10;
 
-const bezpieczneGr = (f) => { try { return f(); } catch { return null; } };
+const bezpieczneGr = (f) => {
+  try {
+    return f();
+  } catch {
+    return null;
+  }
+};
 
 export function registerScalanieRoutes(app, kontekst) {
   const { db, config, renderujKarte, adresPowrotuNaKarte } = kontekst;
   const definicje = config.definicje ?? [];
 
   function wczytaj(body) {
-    const ids = [...new Set([].concat(body?.id ?? []).map(Number).filter(Number.isInteger))].slice(0, SUFIT_SCALENIA + 1);
+    const ids = [
+      ...new Set(
+        []
+          .concat(body?.id ?? [])
+          .map(Number)
+          .filter(Number.isInteger),
+      ),
+    ].slice(0, SUFIT_SCALENIA + 1);
     return ids.map((id) => pobierzZamowienie(db, id)).filter(Boolean);
   }
 
   function proformyZamowien(ids) {
     if (!ids.length) return new Set();
-    return new Set(db.prepare(`SELECT DISTINCT zamowienie_id FROM proformy WHERE zamowienie_id IN (${ids.map(() => '?').join(',')})`)
-      .all(...ids).map((w) => w.zamowienie_id));
+    return new Set(
+      db
+        .prepare(`SELECT DISTINCT zamowienie_id FROM proformy WHERE zamowienie_id IN (${ids.map(() => '?').join(',')})`)
+        .all(...ids)
+        .map((w) => w.zamowienie_id),
+    );
   }
 
   function ocena(zamowienia, glowneId) {
-    const powody = zamowienia.length > SUFIT_SCALENIA
-      ? [`Scalić można najwyżej ${SUFIT_SCALENIA} zamówień naraz.`]
-      : powodyOdmowyScalenia(zamowienia, { glowneId });
-    const ostrzezenia = ostrzezeniaScalenia(zamowienia, { glowneId, proformy: proformyZamowien(zamowienia.map((z) => z.id)) });
+    const powody =
+      zamowienia.length > SUFIT_SCALENIA
+        ? [`Scalić można najwyżej ${SUFIT_SCALENIA} zamówień naraz.`]
+        : powodyOdmowyScalenia(zamowienia, { glowneId });
+    const ostrzezenia = ostrzezeniaScalenia(zamowienia, {
+      glowneId,
+      proformy: proformyZamowien(zamowienia.map((z) => z.id)),
+    });
     return { powody, ostrzezenia };
   }
 
@@ -78,7 +112,10 @@ export function registerScalanieRoutes(app, kontekst) {
     });
   }
 
-  const powrotZ = (body) => (typeof body?.powrot === 'string' && body.powrot.startsWith('/') && !body.powrot.startsWith('//') ? body.powrot : '/');
+  const powrotZ = (body) =>
+    typeof body?.powrot === 'string' && body.powrot.startsWith('/') && !body.powrot.startsWith('//')
+      ? body.powrot
+      : '/';
 
   app.post('/zamowienia/masowe/scal-podglad', async (req, reply) => {
     const zamowienia = wczytaj(req.body);
@@ -96,12 +133,18 @@ export function registerScalanieRoutes(app, kontekst) {
     // Odmowy liczone OD NOWA na świeżym odczycie — ekran podglądu mógł stać otwarty, a wybór
     // innego głównego zmienia odmowy (pobranie i faktura liczą się tylko w dołączanych).
     const { powody, ostrzezenia } = ocena(zamowienia, glowneId);
-    if (powody.length) return ekran(reply, zamowienia, { glowneId, wysylka, powrot, blad: 'Scalenie odrzucone — powody poniżej.' }, 400);
+    if (powody.length)
+      return ekran(reply, zamowienia, { glowneId, wysylka, powrot, blad: 'Scalenie odrzucone — powody poniżej.' }, 400);
     if (![WYSYLKA_Z_GLOWNEGO, WYSYLKA_SUMA].includes(wysylka)) {
       return ekran(reply, zamowienia, { glowneId, powrot, blad: 'Wybierz koszt wysyłki.' }, 400);
     }
     if (ostrzezenia.length && req.body?.rozumiem !== '1') {
-      return ekran(reply, zamowienia, { glowneId, wysylka, powrot, blad: 'Zaznacz „Rozumiem” przy ostrzeżeniach.' }, 400);
+      return ekran(
+        reply,
+        zamowienia,
+        { glowneId, wysylka, powrot, blad: 'Zaznacz „Rozumiem” przy ostrzeżeniach.' },
+        400,
+      );
     }
     const glowne = zamowienia.find((z) => z.id === glowneId);
     const dolaczone = zamowienia.filter((z) => z.id !== glowneId);
@@ -110,9 +153,14 @@ export function registerScalanieRoutes(app, kontekst) {
     } catch (e) {
       return ekran(reply, zamowienia, { glowneId, wysylka, powrot, blad: komunikatDlaOperatora(e) }, 409);
     }
-    zalogujScalenie(db, glowne, dolaczone, `Ręcznie (${ktoKlikal(req)}): scalono zamówienia ${[glowne, ...dolaczone].map((z) => z.numer).join(' + ')}, `
-      + `wysyłka: ${wysylka === WYSYLKA_SUMA ? 'suma wysyłek' : 'z zamówienia głównego'}`
-      + `${ostrzezenia.length ? `; potwierdzone ostrzeżenia: ${ostrzezenia.join(' | ')}` : ''}.`);
+    zalogujScalenie(
+      db,
+      glowne,
+      dolaczone,
+      `Ręcznie (${ktoKlikal(req)}): scalono zamówienia ${[glowne, ...dolaczone].map((z) => z.numer).join(' + ')}, ` +
+        `wysyłka: ${wysylka === WYSYLKA_SUMA ? 'suma wysyłek' : 'z zamówienia głównego'}` +
+        `${ostrzezenia.length ? `; potwierdzone ostrzeżenia: ${ostrzezenia.join(' | ')}` : ''}.`,
+    );
     return reply.redirect(`/zamowienia/${glowneId}#scalenie`);
   });
 
@@ -121,29 +169,41 @@ export function registerScalanieRoutes(app, kontekst) {
   // po wystawieniu faktury. Odświeżenie powtórzy POST i dostanie odmowę „nie ma czego odłączać”.
   app.post('/zamowienia/:id/odlacz-anulowane', async (req, reply) => {
     const id = Number(req.params.id);
-    if (!pobierzZamowienie(db, id)) return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
+    if (!pobierzZamowienie(db, id))
+      return ekranOdmowyKarty(reply, 'Nie ma takiego zamówienia', adresPowrotuNaKarte(req, id), 404);
     let wynik;
     try {
       wynik = odlaczAnulowane(db, id);
     } catch (e) {
-      return ekranOdmowyKarty(reply, `Nie udało się odłączyć: ${komunikatDlaOperatora(e)}`, adresPowrotuNaKarte(req, id), 400);
+      return ekranOdmowyKarty(
+        reply,
+        `Nie udało się odłączyć: ${komunikatDlaOperatora(e)}`,
+        adresPowrotuNaKarte(req, id),
+        400,
+      );
     }
     const { glowne, odlaczone, fakturaGrupy } = wynik;
     const numery = odlaczone.map((d) => d.numer).join(', ');
     const korekta = fakturaGrupy
-      ? `faktura grupy obejmuje pozycje anulowanego zamówienia ${numery} — wystaw korektę`
-        + `${fakturaGrupy.numer ? ` (faktura ${fakturaGrupy.numer})` : ''}`
+      ? `faktura grupy obejmuje pozycje anulowanego zamówienia ${numery} — wystaw korektę` +
+        `${fakturaGrupy.numer ? ` (faktura ${fakturaGrupy.numer})` : ''}`
       : null;
     dopiszLog(db, id, {
       akcja: 'scalenie',
-      wynik: `Ręcznie (${ktoKlikal(req)}): odłączono od scalenia anulowane ${odlaczone.length > 1 ? 'zamówienia' : 'zamówienie'} ${numery}, `
-        + `${odlaczone.length > 1 ? 'znów osobne' : 'znów osobno'}.${korekta ? ` Uwaga: ${korekta}.` : ''}`,
+      wynik:
+        `Ręcznie (${ktoKlikal(req)}): odłączono od scalenia anulowane ${odlaczone.length > 1 ? 'zamówienia' : 'zamówienie'} ${numery}, ` +
+        `${odlaczone.length > 1 ? 'znów osobne' : 'znów osobno'}.${korekta ? ` Uwaga: ${korekta}.` : ''}`,
     });
     for (const d of odlaczone) {
-      dopiszLog(db, d.id, { akcja: 'scalenie', wynik: `Ręcznie (${ktoKlikal(req)}): odłączone od ${glowne.numer} jako anulowane.` });
+      dopiszLog(db, d.id, {
+        akcja: 'scalenie',
+        wynik: `Ręcznie (${ktoKlikal(req)}): odłączone od ${glowne.numer} jako anulowane.`,
+      });
     }
     if (!korekta) return reply.redirect(`/zamowienia/${id}`);
-    return renderujKarte(req, reply, pobierzZamowienie(db, id), { komunikatScalenia: `Odłączono ${numery}. Uwaga: ${korekta}.` });
+    return renderujKarte(req, reply, pobierzZamowienie(db, id), {
+      komunikatScalenia: `Odłączono ${numery}. Uwaga: ${korekta}.`,
+    });
   });
 
   app.post('/zamowienia/:id/rozdziel', async (req, reply) => {
@@ -154,11 +214,21 @@ export function registerScalanieRoutes(app, kontekst) {
     try {
       rozdzielZamowienia(db, id);
     } catch (e) {
-      return ekranOdmowyKarty(reply, `Nie udało się rozdzielić: ${komunikatDlaOperatora(e)}`, adresPowrotuNaKarte(req, id), 400);
+      return ekranOdmowyKarty(
+        reply,
+        `Nie udało się rozdzielić: ${komunikatDlaOperatora(e)}`,
+        adresPowrotuNaKarte(req, id),
+        400,
+      );
     }
     const numery = dolaczone.map((d) => d.numer).join(', ');
-    zalogujScalenie(db, z, dolaczone, `Ręcznie (${ktoKlikal(req)}): rozdzielono scalenie, `
-      + `${dolaczone.length > 1 ? `zamówienia ${numery} znów osobne` : `zamówienie ${numery} znów osobno`}.`);
+    zalogujScalenie(
+      db,
+      z,
+      dolaczone,
+      `Ręcznie (${ktoKlikal(req)}): rozdzielono scalenie, ` +
+        `${dolaczone.length > 1 ? `zamówienia ${numery} znów osobne` : `zamówienie ${numery} znów osobno`}.`,
+    );
     return reply.redirect(`/zamowienia/${id}`);
   });
 }

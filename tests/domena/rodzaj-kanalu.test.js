@@ -17,7 +17,11 @@ describe('rodzajKanalu', () => {
   });
   it('nazwa nie rozstrzyga: kanał Allegro nazwany „Woo Sklep” to nadal Allegro, a Woo nazwany „Allegro Sklep” to Woo', () => {
     expect(rodzajKanalu('konto_a', DEFINICJE).klucz).toBe('allegro');
-    expect(rodzajKanalu('sklep_allegro_w_nazwie', [{ klucz: 'sklep_allegro_w_nazwie', typ: 'woo', etykieta: 'Allegro Sklep' }]).klucz).toBe('woo');
+    expect(
+      rodzajKanalu('sklep_allegro_w_nazwie', [
+        { klucz: 'sklep_allegro_w_nazwie', typ: 'woo', etykieta: 'Allegro Sklep' },
+      ]).klucz,
+    ).toBe('woo');
   });
   it('kanały bez marki i nieznane klucze → null (bez plakietki)', () => {
     for (const k of ['reczne', 'indywidualne', 'nie-ma-takiego', '', null, undefined, '__proto__']) {

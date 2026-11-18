@@ -6,7 +6,8 @@
 export const UPRAWNIENIA = Object.freeze(['odczyt', 'zapis']);
 
 export const TYLKO_ODCZYT = 'Sklep podłączony tylko do odczytu — status/notatkę zmień w sklepie';
-export const KLUCZ_TYLKO_ODCZYT = 'Klucz ma tylko odczyt. Zmień w kreatorze na »Odczyt« albo wygeneruj klucz Zapis/odczyt';
+export const KLUCZ_TYLKO_ODCZYT =
+  'Klucz ma tylko odczyt. Zmień w kreatorze na »Odczyt« albo wygeneruj klucz Zapis/odczyt';
 
 /** @param {{uprawnienia?: unknown}|null|undefined} ustawienia @returns {'odczyt'|'zapis'} */
 export function uprawnieniaSklepu(ustawienia) {

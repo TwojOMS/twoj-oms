@@ -10,9 +10,10 @@ import { MODULY_KURIEROW } from '../../../domena/moduly-kurierow.ts';
 
 const PREFIKS = 'wysylka.umowa_pobrania.';
 
-const kurierzyZAdapterem = () => Object.values(MODULY_KURIEROW)
-  .filter((opis) => opis.umiejetnosci.pobranie === 'adapter')
-  .map((opis) => opis.klucz);
+const kurierzyZAdapterem = () =>
+  Object.values(MODULY_KURIEROW)
+    .filter((opis) => opis.umiejetnosci.pobranie === 'adapter')
+    .map((opis) => opis.klucz);
 
 /** Klucze kurierów z `pobranie: 'adapter'` i ustawieniem `tak`. Brak bazy albo błąd odczytu = []. */
 export function umowyPobraniaFirmy(db) {
@@ -30,7 +31,8 @@ export function zapiszUmowePobrania(db, klucz, wlaczone) {
   if (typeof klucz !== 'string' || !kurierzyZAdapterem().includes(klucz)) {
     throw new Error(`Umowy na pobranie nie ustawia się dla kuriera „${String(klucz)}”.`);
   }
-  db.prepare(`INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
-    ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc, zmienione_at = excluded.zmienione_at`)
-    .run(`${PREFIKS}${klucz}`, wlaczone === true ? 'tak' : 'nie', new Date().toISOString());
+  db.prepare(
+    `INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
+    ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc, zmienione_at = excluded.zmienione_at`,
+  ).run(`${PREFIKS}${klucz}`, wlaczone === true ? 'tak' : 'nie', new Date().toISOString());
 }

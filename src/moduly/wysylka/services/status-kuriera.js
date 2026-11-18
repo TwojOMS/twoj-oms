@@ -14,9 +14,7 @@
 // z odznaką bez wyjścia) i wychodzimy cicho, bez wpisu do logu
 // (wpis przy kazdym otwarciu karty utopilby prawdziwe awarie).
 
-import {
-  wyczyscBladStatusu, zapiszStatusDpd, zapiszProbeStatusuDpd, zapiszOdbiorPrzesylki,
-} from '../db/przesylki.js';
+import { wyczyscBladStatusu, zapiszStatusDpd, zapiszProbeStatusuDpd, zapiszOdbiorPrzesylki } from '../db/przesylki.js';
 import { dopiszLog } from '../../../oms/db/zamowienia.js';
 import { zapiszPrzejecie } from '../db/podjazdy.js';
 import { sledzeniePrzesylki } from '../../../domena/sledzenie-przesylki.js';
@@ -58,8 +56,7 @@ export function probaPrzesylkiWymagana(p, terazMs = Date.now()) {
   let odstep = GODZINA_MS;
   if (p.kurier === 'allegro_wza' && !p.przejeta_at) {
     const utworzona = Date.parse(p.utworzona_at ?? '');
-    odstep = Number.isFinite(utworzona) && terazMs - utworzona > CZTERNASCIE_DNI_MS
-      ? DOBA_MS : DZIESIEC_MINUT_MS;
+    odstep = Number.isFinite(utworzona) && terazMs - utworzona > CZTERNASCIE_DNI_MS ? DOBA_MS : DZIESIEC_MINUT_MS;
   }
   return terazMs - od > odstep;
 }
@@ -69,7 +66,12 @@ export function probaPrzesylkiWymagana(p, terazMs = Date.now()) {
 // diagnozowac awarie. Nieudany zapis nie ma tu ratunku (log padnie z tego samego powodu),
 // wiec go odpuszczamy — nieodswiezony stan jest niepomiernie znosniejszy niz HTTP 500.
 export const zapiszLubOdpusc = (operacja) => {
-  try { operacja(); return true; } catch { return false; }
+  try {
+    operacja();
+    return true;
+  } catch {
+    return false;
+  }
 };
 
 /**
@@ -133,13 +135,14 @@ export async function odswiezStatusKuriera(db, kurierzy, z, p, { terazMs = Date.
       zrodlo: cel.podwykonawca === 'DPD' ? 'dpd' : 'allegro',
       zdarzenia: wynik.historia,
     });
-    if (dowod) zapiszLubOdpusc(() => {
-      const zapis = zapiszPrzejecie(db, p.id, dowod);
-      if (zapis) {
-        p.przejeta_at = zapis.przejeta_at;
-        p.przejecie_kod = zapis.przejecie_kod;
-      }
-    });
+    if (dowod)
+      zapiszLubOdpusc(() => {
+        const zapis = zapiszPrzejecie(db, p.id, dowod);
+        if (zapis) {
+          p.przejeta_at = zapis.przejeta_at;
+          p.przejecie_kod = zapis.przejecie_kod;
+        }
+      });
   }
   // Zdarzenie automatyzacji „Kurier odebrał paczkę”: PIERWSZY dowód odbioru z białej listy — stan zapisany
   // wyżej (pola w pamięci są już po zapisie), przejęcie WzA albo historia tej odpowiedzi — daje chwilę odbioru (nasz
@@ -147,12 +150,17 @@ export async function odswiezStatusKuriera(db, kurierzy, z, p, { terazMs = Date.
   if (!p.odebrana_at) {
     const historia = wynik?.historia ?? null;
     const dowod = dowodOdbioru(p, { historia });
-    if (dowod) zapiszLubOdpusc(() => {
-      // Także chwila odbioru U KURIERA — reguła pominie dowód spóźniony o ponad 48 h.
-      const kurierAt = chwilaDowoduUKuriera(p, { historia });
-      const at = zapiszOdbiorPrzesylki(db, p.id, { at: teraz(), dowod, kurierAt });
-      if (at) { p.odebrana_at = at; p.odebrana_dowod = dowod; p.odebrana_kurier_at = kurierAt; }
-    });
+    if (dowod)
+      zapiszLubOdpusc(() => {
+        // Także chwila odbioru U KURIERA — reguła pominie dowód spóźniony o ponad 48 h.
+        const kurierAt = chwilaDowoduUKuriera(p, { historia });
+        const at = zapiszOdbiorPrzesylki(db, p.id, { at: teraz(), dowod, kurierAt });
+        if (at) {
+          p.odebrana_at = at;
+          p.odebrana_dowod = dowod;
+          p.odebrana_kurier_at = kurierAt;
+        }
+      });
   }
   // Akcja w logu niesie NAZWE KURIERA Z WIERSZA (`allegro_wza.status`, `dpd.status`) —
   // takze przy pytaniu podwykonawcy: to paczka WzA ma problem, a nie „jakies DPD".

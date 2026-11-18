@@ -20,27 +20,45 @@ export type UslugaGus = KlientGus & {
   sprawdzZapisany: () => Promise<unknown>;
 };
 
-export function uslugaGus({ zPliku = null, atrapa = null, wczytaj, fabryka, adres }: {
-  zPliku?: KlientGus | null; atrapa?: KlientGus | null;
-  wczytaj: () => ZapisGus; fabryka: (o: { klucz: string; url: string }) => KlientGus; adres: string;
+export function uslugaGus({
+  zPliku = null,
+  atrapa = null,
+  wczytaj,
+  fabryka,
+  adres,
+}: {
+  zPliku?: KlientGus | null;
+  atrapa?: KlientGus | null;
+  wczytaj: () => ZapisGus;
+  fabryka: (o: { klucz: string; url: string }) => KlientGus;
+  adres: string;
 }): UslugaGus {
   let odcisk: string | null = null;
   let klient: KlientGus | null = null;
   const zPanelu = (): KlientGus | null => {
     const klucz = kluczZZapisu(wczytaj());
-    if (!klucz) { odcisk = null; klient = null; return null; }
+    if (!klucz) {
+      odcisk = null;
+      klient = null;
+      return null;
+    }
     const nowy = JSON.stringify([klucz, adres]);
-    if (nowy !== odcisk || !klient) { klient = fabryka({ klucz, url: adres }); odcisk = nowy; }
+    if (nowy !== odcisk || !klient) {
+      klient = fabryka({ klucz, url: adres });
+      odcisk = nowy;
+    }
     return klient;
   };
   // Kolejność rozstrzyga regułę „plik wygrywa”: stary zapis z ekranu nie przesłoni klucza z pliku.
   const biezacy = (): KlientGus | null => zPliku ?? atrapa ?? zPanelu();
-  const wywolaj = (m: string) => async (...a: unknown[]) => {
-    const k = biezacy();
-    // `status: 503` jak dawna odmowa tras bez klucza; trasy i tak pytają dostepny() przed wywołaniem.
-    if (!k) throw bladOperatora(KOMUNIKAT_BRAK_GUS, { status: 503 });
-    return k[m](...a);
-  };
+  const wywolaj =
+    (m: string) =>
+    async (...a: unknown[]) => {
+      const k = biezacy();
+      // `status: 503` jak dawna odmowa tras bez klucza; trasy i tak pytają dostepny() przed wywołaniem.
+      if (!k) throw bladOperatora(KOMUNIKAT_BRAK_GUS, { status: 503 });
+      return k[m](...a);
+    };
   return {
     ...Object.fromEntries(METODY_GUS.map((m: string) => [m, wywolaj(m)])),
     zEnv: Boolean(zPliku),

@@ -3,9 +3,14 @@ import { tmpdir } from 'node:os';
 import { zbudujOms } from '../../../src/oms/bootstrap.ts';
 
 // Obecna rzeczywista kompozycja bootstrapu (domyślna lista modułów, realna DB SQLite).
-const env = { OMS_USER: 'operator', OMS_PASS: 'fixture',
-  OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000',
-  OMS_PROFORMY_KATALOG: tmpdir(), OMS_ETYKIETY_KATALOG: tmpdir() };
+const env = {
+  OMS_USER: 'operator',
+  OMS_PASS: 'fixture',
+  OMS_SPRZEDAWCA_NIP: '1234563218',
+  OMS_RACHUNEK: '34109010140000000000000000',
+  OMS_PROFORMY_KATALOG: tmpdir(),
+  OMS_ETYKIETY_KATALOG: tmpdir(),
+};
 const headers = { authorization: `Basic ${Buffer.from('operator:fixture').toString('base64')}` };
 
 describe('rzeczywista kompozycja wiadomości', () => {
@@ -20,7 +25,12 @@ describe('rzeczywista kompozycja wiadomości', () => {
       expect(statusy).toEqual({ '/wiadomosci': 200, '/klienci': 200, '/ustawienia/wiadomosci-i-automatyzacje': 200 });
       expect(transport).not.toHaveBeenCalled();
     } finally {
-      try { if (z) await z.app.close(); } finally { z?.db.close(); transport.mockRestore(); }
+      try {
+        if (z) await z.app.close();
+      } finally {
+        z?.db.close();
+        transport.mockRestore();
+      }
     }
   });
 
@@ -30,13 +40,28 @@ describe('rzeczywista kompozycja wiadomości', () => {
     try {
       z = await zbudujOms({ env });
       const a = z;
-      const jest = (nazwa: string) => { try { a.usluga('wiadomosci', nazwa); return true; } catch { return false; } };
-      expect(Object.fromEntries(['klienciWiadomosci', 'pollerWiadomosci', 'czuwaczFormulki', 'odswiezanieSpraw'].map(n => [n, jest(n)])))
-        .toEqual({ klienciWiadomosci: true, pollerWiadomosci: true, czuwaczFormulki: true, odswiezanieSpraw: true });
+      const jest = (nazwa: string) => {
+        try {
+          a.usluga('wiadomosci', nazwa);
+          return true;
+        } catch {
+          return false;
+        }
+      };
+      expect(
+        Object.fromEntries(
+          ['klienciWiadomosci', 'pollerWiadomosci', 'czuwaczFormulki', 'odswiezanieSpraw'].map((n) => [n, jest(n)]),
+        ),
+      ).toEqual({ klienciWiadomosci: true, pollerWiadomosci: true, czuwaczFormulki: true, odswiezanieSpraw: true });
       expect(a.usluga('wiadomosci', 'klienciWiadomosci')).toBe(a.usluga('kanaly', 'klienciKanalow'));
       expect(transport).not.toHaveBeenCalled();
     } finally {
-      try { if (z) await z.app.close(); } finally { z?.db.close(); transport.mockRestore(); }
+      try {
+        if (z) await z.app.close();
+      } finally {
+        z?.db.close();
+        transport.mockRestore();
+      }
     }
   });
 
@@ -45,12 +70,19 @@ describe('rzeczywista kompozycja wiadomości', () => {
     let z: Awaited<ReturnType<typeof zbudujOms>> | undefined;
     try {
       z = await zbudujOms({ env });
-      const zegary = Object.fromEntries(z.zegary.map(x => [x.nazwa, x.odstepMs]));
-      expect({ pollerWiadomosci: zegary.pollerWiadomosci, czuwaczFormulki: zegary.czuwaczFormulki })
-        .toEqual({ pollerWiadomosci: 300000, czuwaczFormulki: 120000 });
+      const zegary = Object.fromEntries(z.zegary.map((x) => [x.nazwa, x.odstepMs]));
+      expect({ pollerWiadomosci: zegary.pollerWiadomosci, czuwaczFormulki: zegary.czuwaczFormulki }).toEqual({
+        pollerWiadomosci: 300000,
+        czuwaczFormulki: 120000,
+      });
       expect(transport).not.toHaveBeenCalled();
     } finally {
-      try { if (z) await z.app.close(); } finally { z?.db.close(); transport.mockRestore(); }
+      try {
+        if (z) await z.app.close();
+      } finally {
+        z?.db.close();
+        transport.mockRestore();
+      }
     }
   });
 });

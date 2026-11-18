@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 
-const czytaj = sciezka => readFileSync(new URL(`../../../${sciezka}`, import.meta.url), 'utf8');
+const czytaj = (sciezka) => readFileSync(new URL(`../../../${sciezka}`, import.meta.url), 'utf8');
 
 describe('reszta napisów „Klienci B2B”, pole B2B, linki', () => {
   it('menu i moduł mają etykietę „Klienci B2B”', () => {
@@ -38,7 +38,9 @@ describe('reszta napisów „Klienci B2B”, pole B2B, linki', () => {
   });
 
   it('linki do klienta: karta z historią i adres bez przekierowania', () => {
-    expect(czytaj('src/moduly/zamowienia/widoki/zamowienie.ejs')).toContain('href="/klienci/<%= klientZBazy.id %>/karta"');
+    expect(czytaj('src/moduly/zamowienia/widoki/zamowienie.ejs')).toContain(
+      'href="/klienci/<%= klientZBazy.id %>/karta"',
+    );
     expect(czytaj('src/moduly/wiadomosci/trasy/klienci.js')).toContain('href: `/klienci/${edytowany.id}/karta`');
     expect(czytaj('src/moduly/wiadomosci/widoki/klient.ejs')).toContain('href="/klienci/<%= klient.id %>">Edytuj');
     expect(czytaj('src/moduly/wiadomosci/widoki/klient.ejs')).not.toContain('/edytuj#formularz');

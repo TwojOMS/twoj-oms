@@ -19,14 +19,21 @@ function klientAtrapa({ strony = [], wiadomosci = {} } = {}) {
 
 const strona = (watki, razem) => ({ watki, razem });
 const w = (id, data, extra = {}) => ({
-  id, lastMessageDateTime: data, read: false, type: 'COMMON',
-  interlocutor: { login: `kup_${id}` }, ...extra,
+  id,
+  lastMessageDateTime: data,
+  read: false,
+  type: 'COMMON',
+  interlocutor: { login: `kup_${id}` },
+  ...extra,
 });
 // ⚠️ `createdAt` JEST OBOWIAZKOWE W ATRAPIE (domyslne, zeby nie przepisywac wszystkich
 // wywolan). Do 29.08.2026 atrapa NIE MIALA DATY W OGOLE, wiec zaden test nie mogl zauwazyc,
 // ze poller wybiera wiadomosc po POZYCJI w tablicy — a Allegro oddaje OD NAJNOWSZEJ.
 const msg = (tresc, odKupujacego, createdAt = '2026-08-28T19:00:00.000Z') => ({
-  id: `m_${tresc}`, text: tresc, createdAt, author: { isInterlocutor: odKupujacego },
+  id: `m_${tresc}`,
+  text: tresc,
+  createdAt,
+  author: { isInterlocutor: odKupujacego },
 });
 
 describe('poller wiadomosci Allegro', () => {
@@ -49,21 +56,28 @@ describe('poller wiadomosci Allegro', () => {
 
     await p.przebieg();
 
-    expect(listaWatkow(db).map((x) => `${x.kanal}:${x.thread_id}`))
-      .toEqual(['allegro_swietlik:a', 'allegro_polcien2:b']);
+    expect(listaWatkow(db).map((x) => `${x.kanal}:${x.thread_id}`)).toEqual([
+      'allegro_swietlik:a',
+      'allegro_polcien2:b',
+    ]);
   });
 
   it('NIE zatrzymuje sie na pierwszym znanym watku — kolejnosc nie jest zagwarantowana', async () => {
     const db = openOmsDb(':memory:');
     zapiszWatek(db, {
-      kanal: 'allegro_swietlik', threadId: 'znany', lastMessageDateTime: '2026-08-28T20:00:00Z',
-      typ: 'COMMON', przeczytany: 0, ostatniaOdKupujacego: 1, ostatniaTresc: 'stare',
+      kanal: 'allegro_swietlik',
+      threadId: 'znany',
+      lastMessageDateTime: '2026-08-28T20:00:00Z',
+      typ: 'COMMON',
+      przeczytany: 0,
+      ostatniaOdKupujacego: 1,
+      ostatniaTresc: 'stare',
       pobranyAt: '2026-08-28T20:01:00Z',
     });
     const klient = klientAtrapa({
       strony: [
-        strona([w('znany', '2026-08-28T20:00:00Z')], 2),   // strona 1: bez zmian
-        strona([w('nowy', '2026-08-28T21:00:00Z')], 2),    // strona 2: NOWY, za znanym
+        strona([w('znany', '2026-08-28T20:00:00Z')], 2), // strona 1: bez zmian
+        strona([w('nowy', '2026-08-28T21:00:00Z')], 2), // strona 2: NOWY, za znanym
       ],
       wiadomosci: { nowy: [msg('swieze', true)] },
     });
@@ -77,8 +91,13 @@ describe('poller wiadomosci Allegro', () => {
   it('nie dociaga wiadomosci watku, ktorego lastMessageDateTime sie nie zmienil', async () => {
     const db = openOmsDb(':memory:');
     zapiszWatek(db, {
-      kanal: 'allegro_swietlik', threadId: 'a', lastMessageDateTime: '2026-08-28T20:00:00Z',
-      typ: 'COMMON', przeczytany: 0, ostatniaOdKupujacego: 1, ostatniaTresc: 'stare',
+      kanal: 'allegro_swietlik',
+      threadId: 'a',
+      lastMessageDateTime: '2026-08-28T20:00:00Z',
+      typ: 'COMMON',
+      przeczytany: 0,
+      ostatniaOdKupujacego: 1,
+      ostatniaTresc: 'stare',
       pobranyAt: '2026-08-28T20:01:00Z',
     });
     const klient = klientAtrapa({ strony: [strona([w('a', '2026-08-28T20:00:00Z')], 1)] });
@@ -117,18 +136,14 @@ describe('poller wiadomosci Allegro', () => {
     const klient = klientAtrapa({
       strony: [strona([w('a', '2026-08-28T20:00:00Z')], 1)],
       wiadomosci: {
-        a: [
-          msg('odpowiedz', false, '2026-08-07T07:14:04.265Z'),
-          msg('pytanie', true, '2026-08-06T18:22:05.982Z'),
-        ],
+        a: [msg('odpowiedz', false, '2026-08-07T07:14:04.265Z'), msg('pytanie', true, '2026-08-06T18:22:05.982Z')],
       },
     });
     const p = createPollerWiadomosci({ db, klienci: { allegro_swietlik: klient }, teraz: TERAZ });
 
     await p.przebieg();
 
-    expect(wiadomosciWatku(db, 'allegro_swietlik', 'a').map((m) => m.tresc))
-      .toEqual(['pytanie', 'odpowiedz']);
+    expect(wiadomosciWatku(db, 'allegro_swietlik', 'a').map((m) => m.tresc)).toEqual(['pytanie', 'odpowiedz']);
   });
 
   it('awaria jednego kanalu NIE zabija drugiego', async () => {
@@ -136,7 +151,11 @@ describe('poller wiadomosci Allegro', () => {
     const p = createPollerWiadomosci({
       db,
       klienci: {
-        allegro_swietlik: { pobierzWatki: async () => { throw new Error('Allegro: HTTP 500 przy /messaging/threads'); } },
+        allegro_swietlik: {
+          pobierzWatki: async () => {
+            throw new Error('Allegro: HTTP 500 przy /messaging/threads');
+          },
+        },
         allegro_polcien2: klientAtrapa({
           strony: [strona([w('b', '2026-08-28T19:00:00Z')], 1)],
           wiadomosci: { b: [msg('ok', true)] },
@@ -156,7 +175,10 @@ describe('poller wiadomosci Allegro', () => {
     const db = openOmsDb(':memory:');
     let zwolnij;
     const klient = {
-      pobierzWatki: () => new Promise((res) => { zwolnij = () => res({ watki: [], razem: 0 }); }),
+      pobierzWatki: () =>
+        new Promise((res) => {
+          zwolnij = () => res({ watki: [], razem: 0 });
+        }),
       pobierzWiadomosci: async () => ({ wiadomosci: [] }),
     };
     const p = createPollerWiadomosci({ db, klienci: { allegro_swietlik: klient }, teraz: TERAZ });
@@ -175,7 +197,10 @@ describe('poller wiadomosci Allegro', () => {
       // Allegro w kolko oddaje pelna strone i totalCount w nieskonczonosc.
       pobierzWatki: async () => {
         stron += 1;
-        return { watki: Array.from({ length: 20 }, (_, i) => w(`x${stron}_${i}`, '2026-08-28T20:00:00Z')), razem: 999999 };
+        return {
+          watki: Array.from({ length: 20 }, (_, i) => w(`x${stron}_${i}`, '2026-08-28T20:00:00Z')),
+          razem: 999999,
+        };
       },
       pobierzWiadomosci: async () => ({ wiadomosci: [msg('t', true)] }),
     };

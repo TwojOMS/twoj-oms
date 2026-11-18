@@ -4,7 +4,12 @@
 // `ksef.automat.zmienil` (login). Stan automatu: `ksef.automat.ostatni_przebieg` (dzień `RRRR-MM-DD`) i
 // `ksef.automat.wynik` (JSON ostatniego przebiegu). Reguły (kiedy wysyłać) — domena/ksef-automat.js.
 import {
-  GODZINA_DOMYSLNA, TRYBY_AUTOMATU, TRYB_DOMYSLNY, ODSTEP_EDYCJI_DOMYSLNY, odstepEdycji, chwilaWarszawy,
+  GODZINA_DOMYSLNA,
+  TRYBY_AUTOMATU,
+  TRYB_DOMYSLNY,
+  ODSTEP_EDYCJI_DOMYSLNY,
+  odstepEdycji,
+  chwilaWarszawy,
 } from '../../../domena/ksef-automat.js';
 
 export const KLUCZE_AUTOMATU_KSEF = Object.freeze({
@@ -30,7 +35,9 @@ function parsujWynik(tekst) {
   try {
     const w = JSON.parse(tekst);
     return w && typeof w === 'object' ? w : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -40,7 +47,9 @@ function parsujWynik(tekst) {
 export function wczytajAutomatKsef(db) {
   const zapis = {};
   const zmienione = {};
-  for (const w of db.prepare("SELECT klucz, wartosc, zmienione_at FROM ustawienia WHERE klucz LIKE 'ksef.automat.%'").all()) {
+  for (const w of db
+    .prepare("SELECT klucz, wartosc, zmienione_at FROM ustawienia WHERE klucz LIKE 'ksef.automat.%'")
+    .all()) {
     zapis[w.klucz] = w.wartosc;
     zmienione[w.klucz] = w.zmienione_at;
   }
@@ -71,7 +80,9 @@ function parsujWstrzymane(tekst) {
   try {
     const lista = JSON.parse(tekst);
     return Array.isArray(lista) ? lista.filter((w) => w && typeof w.uuid === 'string') : [];
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 const zapiszWstrzymane = (db, lista, kiedy) => db.prepare(UPSERT).run(K.wstrzymane, JSON.stringify(lista), kiedy);
@@ -85,7 +96,14 @@ const zapiszWstrzymane = (db, lista, kiedy) => db.prepare(UPSERT).run(K.wstrzyma
 export function wstrzymajFakture(db, { uuid, numer, dzien, powod, kod, wersja }, kiedy = terazIso()) {
   const lista = wczytajAutomatKsef(db).wstrzymane.filter((w) => w.uuid !== uuid);
   // `kod` (np. 'korekta-nieaktualna') i `wersja` dokumentu — tylko automat TwojeFaktury; wpis inFaktu bez zmian.
-  lista.push({ uuid, numer: numer ?? null, dzien, powod: powod ?? null, ...(kod ? { kod } : {}), ...(wersja != null ? { wersja } : {}) });
+  lista.push({
+    uuid,
+    numer: numer ?? null,
+    dzien,
+    powod: powod ?? null,
+    ...(kod ? { kod } : {}),
+    ...(wersja != null ? { wersja } : {}),
+  });
   zapiszWstrzymane(db, lista, kiedy);
 }
 
@@ -124,14 +142,23 @@ export function uzgodnijWstrzymane(db, uuidy, kiedy = terazIso(), wpisTf = null)
   let zmiana = false;
   const po = [];
   for (const w of przed) {
-    if (!KODY_BEZ_ZWOLNIENIA.includes(w.kod) || w.wersja == null || (tylko && !tylko.has(w.uuid))) { po.push(w); continue; }
+    if (!KODY_BEZ_ZWOLNIENIA.includes(w.kod) || w.wersja == null || (tylko && !tylko.has(w.uuid))) {
+      po.push(w);
+      continue;
+    }
     const s = stanKsef(db, w.uuid);
     if (s && s.wersja > w.wersja && s.status !== 'odrzucona' && !otwartaNieWyslana(db, w.uuid, s.wersja)) {
       zmiana = true;
       continue;
     }
-    if (w.kod !== 'nie-wyslano') { po.push(w); continue; }
-    if (!s || s.wersja !== w.wersja || otwartaNieWyslana(db, w.uuid, w.wersja)) { po.push(w); continue; }
+    if (w.kod !== 'nie-wyslano') {
+      po.push(w);
+      continue;
+    }
+    if (!s || s.wersja !== w.wersja || otwartaNieWyslana(db, w.uuid, w.wersja)) {
+      po.push(w);
+      continue;
+    }
     zmiana = true;
     if (s.status === 'odrzucona') {
       const powod = [s.kod != null ? `kod ${s.kod}` : '', s.opis ?? ''].filter(Boolean).join(': ');
@@ -162,7 +189,11 @@ export function zapiszUstawieniaAutomatu(db, { wlaczony, godzina, ostatniPrzebie
  * Zapis trybu z ekranu (program z własną wysyłką) — jedną transakcją. `wlaczony` idzie razem z trybem
  * („reczna” = wyłączony), więc stan i zdania wspólne z inFaktem (Zdrowie, ekran) czytają go jak dotąd.
  */
-export function zapiszTrybAutomatu(db, { tryb, odstepEdycji: odstep, godzina, ostatniPrzebieg, login }, kiedy = terazIso()) {
+export function zapiszTrybAutomatu(
+  db,
+  { tryb, odstepEdycji: odstep, godzina, ostatniPrzebieg, login },
+  kiedy = terazIso(),
+) {
   if (!TRYBY_AUTOMATU.includes(tryb)) throw new Error(`Nieznany tryb automatu KSeF: ${tryb}`);
   const minuty = odstepEdycji(odstep);
   if (minuty === null) throw new Error(`Odstęp na poprawki poza zakresem: ${odstep}`);
@@ -202,7 +233,11 @@ export function zajmijPrzebieg(db, dzien, wynik, kiedy = terazIso()) {
     db.exec('COMMIT');
     return true;
   } catch (e) {
-    try { db.exec('ROLLBACK'); } catch { /* transakcja już zamknięta */ }
+    try {
+      db.exec('ROLLBACK');
+    } catch {
+      /* transakcja już zamknięta */
+    }
     throw e;
   }
 }

@@ -3,22 +3,46 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { utworzKarte } from '../../../src/oms/db/magazyn.js';
 
-const auth = { authorization: `Basic ${Buffer.from('operator:atrapa').toString('base64')}`, origin: 'http://localhost' };
+const auth = {
+  authorization: `Basic ${Buffer.from('operator:atrapa').toString('base64')}`,
+  origin: 'http://localhost',
+};
 let db, app;
 beforeEach(() => {
   db = openOmsDb(':memory:');
-  app = buildOmsServer({ db, config: { auth: { user: 'operator', pass: 'atrapa' } }, magazyn: {
-    stan: () => ({ trwa: false, zaczety_at: null, skonczony_at: null, postep: null, kanaly: [], blad: null }),
-  } });
-  for (const [t, n] of [['kategorie_kart', 'Lampy'], ['kategorie_kart', 'Ramki'], ['marki', 'Cienie'], ['marki', 'Pracownia Półcień']]) {
+  app = buildOmsServer({
+    db,
+    config: { auth: { user: 'operator', pass: 'atrapa' } },
+    magazyn: {
+      stan: () => ({ trwa: false, zaczety_at: null, skonczony_at: null, postep: null, kanaly: [], blad: null }),
+    },
+  });
+  for (const [t, n] of [
+    ['kategorie_kart', 'Lampy'],
+    ['kategorie_kart', 'Ramki'],
+    ['marki', 'Cienie'],
+    ['marki', 'Pracownia Półcień'],
+  ]) {
     db.prepare(`INSERT INTO ${t} (nazwa, utworzona_at) VALUES (?, 'x')`).run(n);
   }
 });
-afterEach(async () => { await app.close(); db.close(); });
-const wiersz = id => db.prepare('SELECT kategoria_glowna, marka FROM karty_produktow WHERE id = ?').get(id);
-const zrodla = id => db.prepare("SELECT pole, reczne FROM karty_zrodla_pol WHERE karta_id = ? AND pole IN ('kategoria_glowna', 'marka') ORDER BY pole").all(id);
+afterEach(async () => {
+  await app.close();
+  db.close();
+});
+const wiersz = (id) => db.prepare('SELECT kategoria_glowna, marka FROM karty_produktow WHERE id = ?').get(id);
+const zrodla = (id) =>
+  db
+    .prepare(
+      "SELECT pole, reczne FROM karty_zrodla_pol WHERE karta_id = ? AND pole IN ('kategoria_glowna', 'marka') ORDER BY pole",
+    )
+    .all(id);
 const post = (id, payload) => app.inject({ method: 'POST', url: `/magazyn/${id}`, headers: auth, payload });
-const slownik = t => db.prepare(`SELECT nazwa FROM ${t} ORDER BY nazwa`).all().map(r => r.nazwa);
+const slownik = (t) =>
+  db
+    .prepare(`SELECT nazwa FROM ${t} ORDER BY nazwa`)
+    .all()
+    .map((r) => r.nazwa);
 
 it('karta pokazuje Kategorię główną i Markę jako wybór ze słownika z polem „dodaj nową”', async () => {
   const id = utworzKarte(db, { nazwa: 'Lampa', kategoria_glowna: 'Spoza słownika', marka: 'Cienie' });
@@ -40,10 +64,22 @@ it('zapis karty: wybór ze słownika i „dodaj nową” dopisuje do słownika; 
   const id = utworzKarte(db, { nazwa: 'Lampa' });
   expect((await post(id, { nazwa: 'Lampa', kategoria_glowna: 'Lampy', marka: 'Cienie' })).statusCode).toBe(303);
   expect(wiersz(id)).toEqual({ kategoria_glowna: 'Lampy', marka: 'Cienie' });
-  expect(zrodla(id)).toEqual([{ pole: 'kategoria_glowna', reczne: 1 }, { pole: 'marka', reczne: 1 }]);
+  expect(zrodla(id)).toEqual([
+    { pole: 'kategoria_glowna', reczne: 1 },
+    { pole: 'marka', reczne: 1 },
+  ]);
 
-  expect((await post(id, { nazwa: 'Lampa', kategoria_glowna: 'Lampy', kategoria_glowna_nowa: '  Lampy wiszące ',
-    marka: 'Cienie', marka_nowa: 'Nowa Marka' })).statusCode).toBe(303);
+  expect(
+    (
+      await post(id, {
+        nazwa: 'Lampa',
+        kategoria_glowna: 'Lampy',
+        kategoria_glowna_nowa: '  Lampy wiszące ',
+        marka: 'Cienie',
+        marka_nowa: 'Nowa Marka',
+      })
+    ).statusCode,
+  ).toBe(303);
   expect(wiersz(id)).toEqual({ kategoria_glowna: 'Lampy wiszące', marka: 'Nowa Marka' });
   expect(slownik('kategorie_kart')).toEqual(['Lampy', 'Lampy wiszące', 'Ramki']);
   expect(slownik('marki')).toEqual(['Cienie', 'Nowa Marka', 'Pracownia Półcień']);

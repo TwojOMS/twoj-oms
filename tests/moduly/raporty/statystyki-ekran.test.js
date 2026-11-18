@@ -10,18 +10,31 @@ let kolejny = 0;
 const wstaw = (d = {}) => {
   kolejny += 1;
   const w = {
-    sklep: 'swietlik', zrodlo_id: kolejny, numer: `N${kolejny}`,
-    metoda_wysylki: 'dpd', metoda_wysylki_nazwa: null, pobranie: 0, b2b: 0, indywidualne: 0,
-    metoda_platnosci: 'BLIK', kwota_brutto: '100.00',
-    klient_json: JSON.stringify({ email: 'k@klient.pl' }), oplacone_at: '2026-08-13T06:00:00Z',
-    wyslane_at: '2026-08-13T14:00:00Z', anulowane: 0, utworzone_at: '2026-08-13T06:00:00Z', ...d,
+    sklep: 'swietlik',
+    zrodlo_id: kolejny,
+    numer: `N${kolejny}`,
+    metoda_wysylki: 'dpd',
+    metoda_wysylki_nazwa: null,
+    pobranie: 0,
+    b2b: 0,
+    indywidualne: 0,
+    metoda_platnosci: 'BLIK',
+    kwota_brutto: '100.00',
+    klient_json: JSON.stringify({ email: 'k@klient.pl' }),
+    oplacone_at: '2026-08-13T06:00:00Z',
+    wyslane_at: '2026-08-13T14:00:00Z',
+    anulowane: 0,
+    utworzone_at: '2026-08-13T06:00:00Z',
+    ...d,
   };
-  db.prepare(`INSERT INTO zamowienia
+  db.prepare(
+    `INSERT INTO zamowienia
     (sklep, zrodlo_id, numer, metoda_wysylki, metoda_wysylki_nazwa, pobranie, b2b, indywidualne,
      metoda_platnosci, kwota_brutto, klient_json, oplacone_at, wyslane_at, anulowane, utworzone_at)
     VALUES (@sklep,@zrodlo_id,@numer,@metoda_wysylki,@metoda_wysylki_nazwa,@pobranie,@b2b,
             @indywidualne,@metoda_platnosci,@kwota_brutto,@klient_json,@oplacone_at,
-            @wyslane_at,@anulowane,@utworzone_at)`).run(w);
+            @wyslane_at,@anulowane,@utworzone_at)`,
+  ).run(w);
   // ⚠️ WPŁATA NA LIŚCIE, NIE TYLKO KOLUMNA.
   // Zakładka czyta teraz `oplacone_at` EFEKTYWNE (wyliczone z tabeli `platnosci`, tak samo
   // jak lista zamówień), a nie surową kolumnę. Poller naprawdę dopisuje taki wiersz przy
@@ -31,13 +44,16 @@ const wstaw = (d = {}) => {
   if (w.oplacone_at) {
     const { id } = db.prepare('SELECT id FROM zamowienia WHERE zrodlo_id = ?').get(w.zrodlo_id);
     db.prepare(
-      'INSERT INTO platnosci (zamowienie_id, kwota, data, metoda, uwaga, zrodlo, utworzona_at)'
-      + " VALUES (?,?,?,?,NULL,'sklep',?)",
+      'INSERT INTO platnosci (zamowienie_id, kwota, data, metoda, uwaga, zrodlo, utworzona_at)' +
+        " VALUES (?,?,?,?,NULL,'sklep',?)",
     ).run(id, w.kwota_brutto, w.oplacone_at, w.metoda_platnosci, w.oplacone_at);
   }
 };
 
-beforeEach(() => { db = openOmsDb(':memory:'); kolejny = 0; });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+  kolejny = 0;
+});
 
 const wejdz = async (url) => {
   const app = buildOmsServer({ db, config });
@@ -82,7 +98,8 @@ describe('ekran /statystyki', () => {
   // ⚠️ ASERCJA CELUJE W WIERSZ TABELI, NIE W GOŁE SŁOWO. Gołe „Kurier DPD" trafiłoby też
   // w listę opcji filtra albo w blok <style> layoutu, który jedzie na KAŻDEJ stronie panelu.
   it('nazwa usługi stoi w wierszu tabeli razem z liczbą', async () => {
-    wstaw(); wstaw();
+    wstaw();
+    wstaw();
     wstaw({ metoda_wysylki: 'inpost_paczkomat' });
     const odp = await wejdz(SIERPIEN);
     expect(odp.body).toContain('<td>Kurier DPD</td>');
@@ -91,8 +108,8 @@ describe('ekran /statystyki', () => {
   });
 
   it('pokazuje oba procenty terminowości', async () => {
-    wstaw();                                        // tego samego dnia
-    wstaw({ wyslane_at: '2026-08-18T07:00:00Z' });   // po terminie
+    wstaw(); // tego samego dnia
+    wstaw({ wyslane_at: '2026-08-18T07:00:00Z' }); // po terminie
     const odp = await wejdz(SIERPIEN);
     expect(odp.body).toContain('50,0%');
   });
@@ -104,7 +121,7 @@ describe('ekran /statystyki', () => {
   // wyłączenia miejscami (np. wypisał `przedWplata` tam, gdzie ma stać `bezStartu`), test
   // z trzema jednakowymi liczbami by tego nie złapał.
   it('trzy wyłączenia terminowości są widoczne na ekranie z właściwymi liczbami', async () => {
-    wstaw({ wyslane_at: null });                                            // 1 × niewysłane
+    wstaw({ wyslane_at: null }); // 1 × niewysłane
     wstaw({ oplacone_at: '2026-08-13T06:00:00Z', wyslane_at: '2026-08-12T14:00:00Z' });
     wstaw({ oplacone_at: '2026-08-13T06:00:00Z', wyslane_at: '2026-08-12T14:00:00Z' });
     // ⚠️ wysłane PRZED wpłatą: wyslane_at wcześniejszy niż oplacone_at (2 sztuki powyżej).
@@ -236,7 +253,9 @@ describe('ekran /statystyki', () => {
     expect(odp.body).not.toContain('oms-menu-analiz');
     expect(odp.body).not.toContain('oms-zakladki-analiz');
     const boczne = odp.body.match(/<nav class="oms-menu" aria-label="Główna">[\s\S]*?<\/nav>/)?.[0];
-    const podmenu = boczne?.match(/<ul class="oms-podmenu-lista"[^>]*data-podmenu-lista="analityka"[\s\S]*?<\/ul>/)?.[0];
+    const podmenu = boczne?.match(
+      /<ul class="oms-podmenu-lista"[^>]*data-podmenu-lista="analityka"[\s\S]*?<\/ul>/,
+    )?.[0];
     expect(podmenu).toBeDefined();
     expect(podmenu).toContain('<a href="/statystyki" aria-current="page">Statystyki</a>');
     expect(podmenu).toContain('<a href="/raporty">Raporty</a>');

@@ -28,7 +28,13 @@ export const OKNO_SLEDZENIA_DNI = 14;
 
 // Rozliczenie pobrań idzie PROGRAMEM FAKTUROWYM (`{ program }` albo stary `{ infakt }` przez `zProgramu`).
 export function createCzuwaczPrzesylek({
-  db, kurierzy = {}, program: programPodany = null, infakt = null, teraz = () => new Date(), klienci = {}, klienciKanalow = {},
+  db,
+  kurierzy = {},
+  program: programPodany = null,
+  infakt = null,
+  teraz = () => new Date(),
+  klienci = {},
+  klienciKanalow = {},
 }) {
   const program = zProgramu({ program: programPodany, infakt });
   let trwa = false;
@@ -53,9 +59,9 @@ export function createCzuwaczPrzesylek({
         // oddawałby `null` i zegar tylko udawałby, że pyta: zapisu nie ma, błędu nie ma,
         // znacznik próby rośnie. Karta tego nie pokaże, bo tam leci prawdziwy wiersz zamówienia.
         // Kanal przynosi `przesylkiDoSledzenia` (LEFT JOIN po zamowieniu).
-        const w = await odswiezStatusKuriera(
-          db, kurierzy, { id: p.zamowienie_id, sklep: p.sklep ?? null }, p, { terazMs: chwila.getTime() },
-        );
+        const w = await odswiezStatusKuriera(db, kurierzy, { id: p.zamowienie_id, sklep: p.sklep ?? null }, p, {
+          terazMs: chwila.getTime(),
+        });
         if (w?.pominieta) pominiete += 1;
         else if (w?.blad) bledy += 1;
         else if (w?.ok) sprawdzone += 1;
@@ -73,7 +79,13 @@ export function createCzuwaczPrzesylek({
       // ⚠️ WŁASNY `try` — awaria rozliczania pobrań NIE JEST awarią śledzenia paczek
       // i nie ma prawa zabrać wyniku przebiegu ani zapalić czujki od statusów kurierskich.
       let pobrania = {
-        kandydatow: 0, obsluzone: 0, ponadSufit: 0, zlecone: 0, pominiete: 0, bezDaty: 0, bledy: 0,
+        kandydatow: 0,
+        obsluzone: 0,
+        ponadSufit: 0,
+        zlecone: 0,
+        pominiete: 0,
+        bezDaty: 0,
+        bledy: 0,
       };
       try {
         pobrania = await oznaczDoreczonePobrania({ db, program });
@@ -102,7 +114,12 @@ export function createCzuwaczPrzesylek({
       }
 
       return {
-        kandydatow: kandydaci.length, sprawdzone, bledy, pominiete, pobrania, notatki,
+        kandydatow: kandydaci.length,
+        sprawdzone,
+        bledy,
+        pominiete,
+        pobrania,
+        notatki,
       };
     } finally {
       trwa = false;

@@ -85,8 +85,8 @@ export function metodaWysylkiZWyboru(dostawa, platnosc) {
   }
   if (dostawa === 'odbior_osobisty' && platnosc === 'pobranie') {
     throw bladOperatora(
-      'Odbiór osobisty i pobranie wykluczają się — pobranie inkasuje kurier, a przy odbiorze '
-      + 'osobistym kuriera nie ma. Wybierz gotówkę albo przelew.',
+      'Odbiór osobisty i pobranie wykluczają się — pobranie inkasuje kurier, a przy odbiorze ' +
+        'osobistym kuriera nie ma. Wybierz gotówkę albo przelew.',
     );
   }
   return { metoda: dostawa, pobranie: platnosc === 'pobranie' ? 1 : 0 };
@@ -151,7 +151,9 @@ function tozsamoscWiersza(w) {
 function cenaKatalogowaWiersza(surowa) {
   // `napis`, nie `tekst`: `tekst` jest tu funkcja importowana z dane-reczne.js i przyslonieta
   // zmienna lokalna czytalaby sie jak jej wywolanie.
-  const napis = String(surowa ?? '').trim().replace(',', '.');
+  const napis = String(surowa ?? '')
+    .trim()
+    .replace(',', '.');
   if (napis === '') return null;
   const liczba = Number(napis);
   if (!Number.isFinite(liczba) || liczba <= 0) return null;
@@ -171,12 +173,18 @@ function cenaKatalogowaWiersza(surowa) {
  * dla operatora, a nie granica.
  */
 // `zw: true` (program wbudowany) — domyślna „zw” liczy netto = brutto zamiast „NaN”.
-export function wstawPozycjeDoFormularza(formularz = {}, pozycja, { stawkaDomyslna = STAWKA_VAT, zw = false, zwolniona = false } = {}) {
+export function wstawPozycjeDoFormularza(
+  formularz = {},
+  pozycja,
+  { stawkaDomyslna = STAWKA_VAT, zw = false, zwolniona = false } = {},
+) {
   // Netto jest
   // POKAZANE, liczone stawką wiersza (przy NIP-ie z UE stawką 0 — netto = brutto). Brutto zostaje
   // wartością przechowywaną: parser bierze brutto, gdy jest, więc netto niczego nie nadpisze.
   const stawka = String(stawkaDomyslna);
-  const netto = nettoZBruttoDoPokazania(pozycja.cena_brutto, wdtZFormularza(formularz, { zwolniona }) ? '0' : stawka, { zw });
+  const netto = nettoZBruttoDoPokazania(pozycja.cena_brutto, wdtZFormularza(formularz, { zwolniona }) ? '0' : stawka, {
+    zw,
+  });
   const pola = {
     poz_nazwa: pozycja.nazwa,
     poz_sku: pozycja.sku ?? '',
@@ -196,10 +204,14 @@ export function wstawPozycjeDoFormularza(formularz = {}, pozycja, { stawkaDomysl
 
   let gdzie = -1;
   for (let i = 0; i < ile; i += 1) {
-    const pusty = String(tablice.poz_nazwa[i] ?? '').trim() === ''
-      && String(tablice.poz_cena_brutto[i] ?? '').trim() === ''
-      && String(tablice.poz_cena_netto[i] ?? '').trim() === '';
-    if (pusty) { gdzie = i; break; }
+    const pusty =
+      String(tablice.poz_nazwa[i] ?? '').trim() === '' &&
+      String(tablice.poz_cena_brutto[i] ?? '').trim() === '' &&
+      String(tablice.poz_cena_netto[i] ?? '').trim() === '';
+    if (pusty) {
+      gdzie = i;
+      break;
+    }
   }
   if (gdzie === -1) gdzie = ile;
 
@@ -218,8 +230,15 @@ export function wstawPozycjeDoFormularza(formularz = {}, pozycja, { stawkaDomysl
  * cena sprzed rabatu). Dodanie i skasowanie wiersza dzieje się na WSZYSTKICH naraz.
  */
 export const POLA_WIERSZA_POZYCJI = Object.freeze([
-  'poz_nazwa', 'poz_sku', 'poz_ilosc', 'poz_cena_netto', 'poz_cena_brutto',
-  'poz_produkt_id', 'poz_wariant_id', 'poz_cena_katalogowa', 'poz_vat',
+  'poz_nazwa',
+  'poz_sku',
+  'poz_ilosc',
+  'poz_cena_netto',
+  'poz_cena_brutto',
+  'poz_produkt_id',
+  'poz_wariant_id',
+  'poz_cena_katalogowa',
+  'poz_vat',
 ]);
 
 // Na start jeden wiersz — kolejne dokłada „+ Dodaj wiersz”.
@@ -240,11 +259,13 @@ export function liczbaWierszyFormularza(formularz = {}) {
 // Wszystkie tablice wiersza wyrównane do jednej długości — dziura (tablica krótsza od innych)
 // staje się pustym napisem, inaczej usunięcie po indeksie przesunęłoby ją względem reszty.
 function tabliceWierszy(formularz, ile) {
-  return Object.fromEntries(POLA_WIERSZA_POZYCJI.map((k) => {
-    const t = [...jakoTablica(formularz[k])].map((v) => (v == null ? '' : v));
-    while (t.length < ile) t.push('');
-    return [k, t];
-  }));
+  return Object.fromEntries(
+    POLA_WIERSZA_POZYCJI.map((k) => {
+      const t = [...jakoTablica(formularz[k])].map((v) => (v == null ? '' : v));
+      while (t.length < ile) t.push('');
+      return [k, t];
+    }),
+  );
 }
 
 /** „+ Dodaj wiersz” bez JavaScriptu: jeden pusty wiersz na końcu. Nic nie zapisuje. */
@@ -284,9 +305,7 @@ export function parsujPozycjeFormularza(body, { stawkaDomyslna = STAWKA_VAT, zw 
   const wszystkie = [...KOLUMNY_POZYCJI, ...KOLUMNY_TOZSAMOSCI, ...KOLUMNY_STAWKI];
   // Nabywca z UE (NIP faktury z formularza) — netto przelicza się stawką 0, jak policzy dokument.
   const wdt = wdtZFormularza(body, { zwolniona });
-  const kolumny = Object.fromEntries(
-    wszystkie.map((k) => [k, jakoTablica(body?.[`poz_${k}`])]),
-  );
+  const kolumny = Object.fromEntries(wszystkie.map((k) => [k, jakoTablica(body?.[`poz_${k}`])]));
   // ⚠️ Dlugosc liczona po KOLUMNACH WIDOCZNYCH. Ukryte pola sa w formularzu zawsze (jedno
   // na wiersz), wiec liczone razem z nimi dawalyby stala liczbe wierszy takze wtedy, gdy
   // operator nie wpisal niczego — a `pusteWiersz` i tak by je pominal. Roznicy w wyniku nie
@@ -351,9 +370,10 @@ export function skopiujFaktureDoWysylki(body = {}) {
  * to, co tu zapiszemy, JEST dla panelu daną źródłową.
  */
 // `stawkaDomyslna` (Ustawienia → Firma) podaje trasa.
-export function parsujNoweZamowienie(body = {}, {
-  dzis = dzienWarszawa(new Date().toISOString()), stawkaDomyslna = STAWKA_VAT, zw = false, zwolniona = false,
-} = {}) {
+export function parsujNoweZamowienie(
+  body = {},
+  { dzis = dzienWarszawa(new Date().toISOString()), stawkaDomyslna = STAWKA_VAT, zw = false, zwolniona = false } = {},
+) {
   const dostawaWybor = String(body?.dostawa ?? METODA_DOMYSLNA);
   const platnosc = String(body?.platnosc ?? 'przelew');
   const { metoda: metodaWysylki, pobranie } = metodaWysylkiZWyboru(dostawaWybor, platnosc);
@@ -390,9 +410,7 @@ export function parsujNoweZamowienie(body = {}, {
   // jako ręczne nadpisanie danych nabywcy — dokładnie tą samą drogą, co poprawka tego pola
   // na karcie. Wpisany wprost w blok podmieniłby po cichu adres, pod który idzie
   // powiadomienie o paczce.
-  const nadpisaniaFaktury = emailFaktury && emailFaktury !== emailWysylki
-    ? { email: emailFaktury }
-    : null;
+  const nadpisaniaFaktury = emailFaktury && emailFaktury !== emailWysylki ? { email: emailFaktury } : null;
 
   return {
     klient,
@@ -418,9 +436,8 @@ export function parsujNoweZamowienie(body = {}, {
     //
     // Wielkie litery, bo tak wyglądają kody InPostu na etykietach i w ShipX: „kty01m"
     // przepisane ze słuchu zostałoby przez API odrzucone.
-    punkt_odbioru: metodaKuriera(metodaWysylki)?.punktOdbioru === true
-      ? (tekst(body?.punkt_odbioru)?.toUpperCase() ?? null)
-      : null,
+    punkt_odbioru:
+      metodaKuriera(metodaWysylki)?.punktOdbioru === true ? (tekst(body?.punkt_odbioru)?.toUpperCase() ?? null) : null,
     // ⚠️ TO NIE JEST SPOSOB DOSTAWY, tylko odpowiedz na pytanie „kto placi za transport".
     // Każdy stały klient może nadawać na własnej etykiecie: dostawa jest wtedy zerowana,
     // a włączona obsługa trafia jako pozycja opłaty (moduly/zamowienia/services/oplata.js).

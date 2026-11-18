@@ -23,9 +23,19 @@ const NUMER_DPD = '1000000000001U';
 const NUMER_INPOST = '520000123456789012345678';
 
 const zmapowane = (id, nad = {}) => ({
-  zrodlo_id: id, numer: String(id), klient: { first_name: 'Jan', email: 'j@k.pl' }, dostawa: { city: 'Warszawa' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '212.90',
-  status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-07-29T13:19:52',
+  zrodlo_id: id,
+  numer: String(id),
+  klient: { first_name: 'Jan', email: 'j@k.pl' },
+  dostawa: { city: 'Warszawa' },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '212.90',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-07-29T13:19:52',
   pozycje: [{ nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 2, cena_brutto: '61.50', vat: null }],
   ...nad,
 });
@@ -38,8 +48,8 @@ beforeEach(() => {
 function zPaczka(zrodloId, { kurier, numerListu, kolejnosc = 1 }) {
   const id = zapiszZamowienie(db, 'pro', zmapowane(zrodloId), {});
   db.prepare(
-    'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at)'
-    + " VALUES (?, ?, 'nadana', ?, ?, '2026-07-29T13:00:00')",
+    'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at)' +
+      " VALUES (?, ?, 'nadana', ?, ?, '2026-07-29T13:00:00')",
   ).run(id, kurier, numerListu, kolejnosc);
   return id;
 }
@@ -50,7 +60,9 @@ const otworzKarte = async (id, kurierzy) => {
   return serwer.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
 };
 
-const atrapa = (opis) => ({ statusPrzesylki: vi.fn().mockResolvedValue({ opis, at: '2026-07-30T09:00:00.000+02:00' }) });
+const atrapa = (opis) => ({
+  statusPrzesylki: vi.fn().mockResolvedValue({ opis, at: '2026-07-30T09:00:00.000+02:00' }),
+});
 const przesylki = (id) => pobierzZamowienie(db, id).przesylki;
 const wpisyLogu = (id) => db.prepare('SELECT * FROM log WHERE zamowienie_id = ?').all(id);
 
@@ -89,8 +101,8 @@ describe('odświeżanie statusu pyta kuriera TEJ przesyłki', () => {
   it('dwie paczki różnych kurierów idą każda do swojego', async () => {
     const id = zPaczka(2103, { kurier: 'dpd', numerListu: NUMER_DPD, kolejnosc: 1 });
     db.prepare(
-      'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at)'
-      + " VALUES (?, 'inpost', 'nadana', ?, 2, '2026-07-29T13:30:00')",
+      'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at)' +
+        " VALUES (?, 'inpost', 'nadana', ?, 2, '2026-07-29T13:30:00')",
     ).run(id, NUMER_INPOST);
 
     const dpd = atrapa('W doręczeniu');
@@ -182,8 +194,8 @@ describe('odświeżanie statusu pyta kuriera TEJ przesyłki', () => {
     const id = zPaczka(2108, { kurier: 'dpd', numerListu: NUMER_DPD, kolejnosc: 1 });
     db.prepare('UPDATE przesylki SET status_kuriera_pobrany_at = ? WHERE zamowienie_id = ?').run(swiezo, id);
     db.prepare(
-      'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at)'
-      + " VALUES (?, 'inpost', 'nadana', ?, 2, '2026-07-29T13:30:00')",
+      'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at)' +
+        " VALUES (?, 'inpost', 'nadana', ?, 2, '2026-07-29T13:30:00')",
     ).run(id, NUMER_INPOST);
 
     const dpd = atrapa('W doręczeniu');
@@ -232,8 +244,8 @@ describe('kod zdarzenia przezywa zapis', () => {
   const zPaczkaAllegro = (zrodloId) => {
     const id = zapiszZamowienie(db, 'allegro_swietlik', zmapowane(zrodloId), {});
     db.prepare(
-      'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, carrier_allegro, utworzona_at)'
-      + " VALUES (?, 'allegro', 'nadana', 'A005DUH6H5', 1, 'ALLEGRO', '2026-07-29T13:00:00')",
+      'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, carrier_allegro, utworzona_at)' +
+        " VALUES (?, 'allegro', 'nadana', 'A005DUH6H5', 1, 'ALLEGRO', '2026-07-29T13:00:00')",
     ).run(id);
     return id;
   };
@@ -242,7 +254,9 @@ describe('kod zdarzenia przezywa zapis', () => {
     const id = zPaczkaAllegro(7301);
     const allegro = {
       statusPrzesylki: vi.fn().mockResolvedValue({
-        opis: 'Przesyłka została doręczona', at: '2026-08-21T04:50:56.734Z', kod: 'DELIVERED',
+        opis: 'Przesyłka została doręczona',
+        at: '2026-08-21T04:50:56.734Z',
+        kod: 'DELIVERED',
       }),
     };
 
@@ -260,7 +274,9 @@ describe('kod zdarzenia przezywa zapis', () => {
     const id = zPaczkaAllegro(7302);
     db.prepare("UPDATE przesylki SET status_kuriera_kod = 'DELIVERED' WHERE zamowienie_id = ?").run(id);
     const allegro = {
-      statusPrzesylki: vi.fn().mockResolvedValue({ opis: 'Przesyłka odebrana przez Kuriera', at: '2026-08-22T09:00:00.000Z' }),
+      statusPrzesylki: vi
+        .fn()
+        .mockResolvedValue({ opis: 'Przesyłka odebrana przez Kuriera', at: '2026-08-22T09:00:00.000Z' }),
     };
 
     await otworzKarte(id, { allegro });

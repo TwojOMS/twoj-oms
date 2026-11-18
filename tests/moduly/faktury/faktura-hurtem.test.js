@@ -2,8 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { createFakturaHurtem, BUDZET_HURTU_MS } from '../../../src/moduly/faktury/services/faktura-hurtem.js';
 
 const zam = (id, numer, n = {}) => ({
-  id, numer, kwota_brutto: '100.00', pozycje: [], platnosci: [{ kwota: '100.00' }],
-  wyslane_at: null, ...n,
+  id,
+  numer,
+  kwota_brutto: '100.00',
+  pozycje: [],
+  platnosci: [{ kwota: '100.00' }],
+  wyslane_at: null,
+  ...n,
 });
 
 // Ile „trwa" jedna faktura w testach przerwania budzetem — LICZONE Z BUDZETU, nie wpisane
@@ -21,7 +26,12 @@ const KROK_MS = BUDZET_HURTU_MS / 2;
 describe('wystawianie faktur hurtem', () => {
   it('wystawia po kolei, w podanej kolejnosci, i oddaje numery', async () => {
     const wolania = [];
-    const faktura = { wystaw: async (id) => { wolania.push(id); return { numer: `F-${id}` }; } };
+    const faktura = {
+      wystaw: async (id) => {
+        wolania.push(id);
+        return { numer: `F-${id}` };
+      },
+    };
     const h = createFakturaHurtem({ faktura });
     const wynik = await h.wystawWiele([zam(1, 'A'), zam(2, 'B'), zam(3, 'C')]);
     expect(wolania).toEqual([1, 2, 3]);
@@ -45,17 +55,15 @@ describe('wystawianie faktur hurtem', () => {
     const faktura = {
       wystaw: async (id) => {
         slad.push(`wejscie-${id}`);
-        await new Promise((r) => { setTimeout(r, 0); });
+        await new Promise((r) => {
+          setTimeout(r, 0);
+        });
         slad.push(`wyjscie-${id}`);
         return { numer: `F-${id}` };
       },
     };
     await createFakturaHurtem({ faktura }).wystawWiele([zam(1, 'A'), zam(2, 'B'), zam(3, 'C')]);
-    expect(slad).toEqual([
-      'wejscie-1', 'wyjscie-1',
-      'wejscie-2', 'wyjscie-2',
-      'wejscie-3', 'wyjscie-3',
-    ]);
+    expect(slad).toEqual(['wejscie-1', 'wyjscie-1', 'wejscie-2', 'wyjscie-2', 'wejscie-3', 'wyjscie-3']);
   });
 
   // ⚠️ Zasada wspolna wszystkim akcjom masowym modulu: jedno zamowienie, ktorego nie da sie
@@ -94,13 +102,19 @@ describe('wystawianie faktur hurtem', () => {
   // KOLEJNOSC wpisow: operator ma zobaczyc pominiete w kolejnosci listy, ktora zatwierdzil.
   it('po wyczerpaniu budzetu czasu przestaje zaczynac nowe i oddaje CALA reszte jako nietkniete', async () => {
     let zegar = 0;
-    const faktura = { wystaw: async (id) => { zegar += KROK_MS; return { numer: `F-${id}` }; } };
+    const faktura = {
+      wystaw: async (id) => {
+        zegar += KROK_MS;
+        return { numer: `F-${id}` };
+      },
+    };
     const h = createFakturaHurtem({ faktura, teraz: () => zegar });
-    const wynik = await h.wystawWiele([
-      zam(1, 'A'), zam(2, 'B'), zam(3, 'C'), zam(4, 'D'), zam(5, 'E'),
-    ]);
+    const wynik = await h.wystawWiele([zam(1, 'A'), zam(2, 'B'), zam(3, 'C'), zam(4, 'D'), zam(5, 'E')]);
     expect(wynik.wystawione.map((w) => w.numer)).toEqual(['A', 'B', 'C']);
-    expect(wynik.nietkniete).toEqual([{ id: 4, numer: 'D' }, { id: 5, numer: 'E' }]);
+    expect(wynik.nietkniete).toEqual([
+      { id: 4, numer: 'D' },
+      { id: 5, numer: 'E' },
+    ]);
   });
 
   // Pierwsza faktura idzie ZAWSZE — inaczej wolny dzien inFaktu dawalby partie, ktora
@@ -132,7 +146,12 @@ describe('wystawianie faktur hurtem', () => {
   // napisu: „wyglada jak data" przechodzi rowniez dla wartosci zakazanej.
   it('podaje termin ZAPLACONE i date sprzedazy z dnia zaplaty', async () => {
     const przekazane = [];
-    const faktura = { wystaw: async (id, t) => { przekazane.push(t); return { numer: `F-${id}` }; } };
+    const faktura = {
+      wystaw: async (id, t) => {
+        przekazane.push(t);
+        return { numer: `F-${id}` };
+      },
+    };
     const oplacone = zam(1, 'A', { platnosci: [{ kwota: '100.00', data: '2026-08-03T09:00:00.000Z' }] });
     await createFakturaHurtem({ faktura }).wystawWiele([oplacone]);
     expect(przekazane[0].termin).toBe('zaplacone');
@@ -175,12 +194,16 @@ describe('wystawianie faktur hurtem', () => {
   // Dlatego zegar tu IDZIE — test sprawdza, ze zabezpieczenie nadal tnie.
   it('`start` jako napis nie wylacza budzetu', async () => {
     let zegar = 1_700_000_000_000;
-    const faktura = { wystaw: async (id) => { zegar += KROK_MS; return { numer: `F-${id}` }; } };
+    const faktura = {
+      wystaw: async (id) => {
+        zegar += KROK_MS;
+        return { numer: `F-${id}` };
+      },
+    };
     const h = createFakturaHurtem({ faktura, teraz: () => zegar });
-    const wynik = await h.wystawWiele(
-      [zam(1, 'A'), zam(2, 'B'), zam(3, 'C'), zam(4, 'D')],
-      { start: '2026-08-11T10:00:00Z' },
-    );
+    const wynik = await h.wystawWiele([zam(1, 'A'), zam(2, 'B'), zam(3, 'C'), zam(4, 'D')], {
+      start: '2026-08-11T10:00:00Z',
+    });
     expect(wynik.wystawione.map((w) => w.numer)).toEqual(['A', 'B', 'C']);
     expect(wynik.nietkniete).toEqual([{ id: 4, numer: 'D' }]);
   });

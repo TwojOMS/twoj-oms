@@ -11,22 +11,35 @@ it('import dwa razy: zgłoszenie na karcie, bez duplikatu i bez numeru konta w c
   try {
     zalozKonto(p.db, { login: 'operator', imie: 'Operator', haslo: 'h', rola: 'administrator', admin: true });
     const admin = jako(p.db, 'operator');
-    p.db.prepare(`INSERT INTO kanaly_sprzedazy
+    p.db
+      .prepare(
+        `INSERT INTO kanaly_sprzedazy
       (klucz,typ,nazwa,srodowisko,zrodlo,raport,autoryzacja,pobieranie,od_utc,wersja,generacja,generacja_importu,utworzono_at,zmieniono_at,aktor_id,aktor_login)
-      VALUES ('nietypowy','erli','Test','produkcja','panel','TEST','polaczone','wlaczone','2026-11-01',1,1,1,'2026-11-11','2026-11-11',0,'test')`).run();
+      VALUES ('nietypowy','erli','Test','produkcja','panel','TEST','polaczone','wlaczone','2026-11-01',1,1,1,'2026-11-11','2026-11-11',0,'test')`,
+      )
+      .run();
     const teraz = () => new Date('2026-11-11T12:00:00Z');
     const klient = createAtrapaErli({ db: p.db, kanal: 'nietypowy', env: { OMS_TRYB: 'proba' }, teraz });
     // Surowy transport atrapy omija dodatkową redakcję klienta HTTP: sprawdzamy sam import.
-    const dane = await (await klient.fetchImpl('https://sklep.polcien.example/orders/_search',
-      { method: 'POST', body: JSON.stringify({ pagination: { limit: 200 } }) })).json();
-    const zgloszone = dane.filter(z => z.returns?.length);
+    const dane = await (
+      await klient.fetchImpl('https://sklep.polcien.example/orders/_search', {
+        method: 'POST',
+        body: JSON.stringify({ pagination: { limit: 200 } }),
+      })
+    ).json();
+    const zgloszone = dane.filter((z) => z.returns?.length);
     expect(zgloszone).toHaveLength(1);
     const surowe = zgloszone[0];
     const numerKonta = surowe.returns[0].bankAccount.number;
-    const kanal = createErliAdapter({ klient: { ...klient,
-      zmianyZamowien: async () => dane.map((payload, i) => ({ id: String(i), payload: structuredClone(payload) })),
-      szukajZamowien: async () => [],
-    }, stan: stanErliWPamieci(), teraz });
+    const kanal = createErliAdapter({
+      klient: {
+        ...klient,
+        zmianyZamowien: async () => dane.map((payload, i) => ({ id: String(i), payload: structuredClone(payload) })),
+        szukajZamowien: async () => [],
+      },
+      stan: stanErliWPamieci(),
+      teraz,
+    });
     const poller = createPoller({ db: p.db, sklep: 'nietypowy', kanal });
     for (let i = 0; i < 2; i++) {
       await poller.przebieg();
@@ -34,7 +47,7 @@ it('import dwa razy: zgłoszenie na karcie, bez duplikatu i bez numeru konta w c
       expect(wiersze).toHaveLength(30);
       expect(JSON.stringify(wiersze)).not.toContain(numerKonta);
       expect(JSON.stringify(wiersze)).not.toContain('bankAccount');
-      const z = wiersze.find(w => w.zrodlo_id === surowe.id);
+      const z = wiersze.find((w) => w.zrodlo_id === surowe.id);
       expect(JSON.parse(z.surowe_json).returns).toHaveLength(1);
       const karta = await get(p.app, `/zamowienia/${z.id}`, admin);
       expect(karta.statusCode).toBe(200);
@@ -52,7 +65,9 @@ it('import dwa razy: zgłoszenie na karcie, bez duplikatu i bez numeru konta w c
       expect(p.db.prepare('SELECT COUNT(*) AS n FROM zwroty').get().n).toBe(0);
       expect(p.db.prepare('SELECT COUNT(*) AS n FROM zwroty_pozycje').get().n).toBe(0);
     }
-    const bez = p.db.prepare('SELECT id FROM zamowienia WHERE sklep=? AND zrodlo_id<>? LIMIT 1').get('nietypowy', surowe.id);
+    const bez = p.db
+      .prepare('SELECT id FROM zamowienia WHERE sklep=? AND zrodlo_id<>? LIMIT 1')
+      .get('nietypowy', surowe.id);
     expect((await get(p.app, `/zamowienia/${bez.id}`, admin)).body).not.toContain('Zgłoszenie zwrotu z ERLI');
     const z = p.db.prepare('SELECT id, surowe_json FROM zamowienia WHERE zrodlo_id=?').get(surowe.id);
     const zapis = JSON.parse(z.surowe_json);
@@ -67,5 +82,8 @@ it('import dwa razy: zgłoszenie na karcie, bez duplikatu i bez numeru konta w c
     expect(karta.body).toContain('pozycja nr 99');
     p.db.prepare("UPDATE kanaly_sprzedazy SET typ='woo' WHERE klucz='nietypowy'").run();
     expect((await get(p.app, `/zamowienia/${z.id}`, admin)).body).not.toContain('Zgłoszenie zwrotu z ERLI');
-  } finally { await p.app.close(); p.db.close(); }
+  } finally {
+    await p.app.close();
+    p.db.close();
+  }
 });

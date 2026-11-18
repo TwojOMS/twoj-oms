@@ -34,9 +34,9 @@ const PDFTOTEXT = znajdzPdftotext();
 if (!PDFTOTEXT) {
   // eslint-disable-next-line no-console
   console.warn(
-    '[koszt-pdf] pdftotext (poppler) nie znaleziony — testy odczytu tekstu z PDF-a POMINIETE. '
-    + 'Nie oznacza to, ze dokument jest poprawny: test polskich znakow, ktory jako jedyny lapie '
-    + 'brak osadzonego fontu, NIE zostal uruchomiony.',
+    '[koszt-pdf] pdftotext (poppler) nie znaleziony — testy odczytu tekstu z PDF-a POMINIETE. ' +
+      'Nie oznacza to, ze dokument jest poprawny: test polskich znakow, ktory jako jedyny lapie ' +
+      'brak osadzonego fontu, NIE zostal uruchomiony.',
   );
 }
 
@@ -100,13 +100,16 @@ describe('PDF wizualizacji kosztu', () => {
     expect(tekst).not.toContain('Ksi garnia');
   });
 
-  gdyJestPdftotext('⚠️ zdanie odrozniajace wizualizacje od dokumentu NIE STOI na wydruku (decyzja wlasciciela 03.09.2026)', async () => {
-    const tekst = tekstZPdf(await zbudujKosztPdf({ wiersz, pozycje: [] }));
-    expect(tekst).not.toContain(NAPIS_ODROZNIAJACY);
-    expect(tekst).not.toContain('oryginałem jest plik XML');
-    // Stopka zostaje — tylko krotsze zdanie o pochodzeniu wydruku.
-    expect(tekst).toContain(STOPKA_ZRODLA);
-  });
+  gdyJestPdftotext(
+    '⚠️ zdanie odrozniajace wizualizacje od dokumentu NIE STOI na wydruku (decyzja wlasciciela 03.09.2026)',
+    async () => {
+      const tekst = tekstZPdf(await zbudujKosztPdf({ wiersz, pozycje: [] }));
+      expect(tekst).not.toContain(NAPIS_ODROZNIAJACY);
+      expect(tekst).not.toContain('oryginałem jest plik XML');
+      // Stopka zostaje — tylko krotsze zdanie o pochodzeniu wydruku.
+      expect(tekst).toContain(STOPKA_ZRODLA);
+    },
+  );
 
   gdyJestPdftotext('niesie numer KSeF, numer dokumentu, sprzedawce i kwoty', async () => {
     const tekst = tekstZPdf(await zbudujKosztPdf({ wiersz, pozycje: [] }));
@@ -116,12 +119,23 @@ describe('PDF wizualizacji kosztu', () => {
   });
 
   gdyJestPdftotext('rysuje pozycje dokumentu wprost z podanych danych', async () => {
-    const tekst = tekstZPdf(await zbudujKosztPdf({
-      wiersz,
-      pozycje: [pozycja(), pozycja({
-        lp: '2', nazwa: 'Usługa hostingu', jednostka: 'szt', ilosc: '1.5', cenaNetto: '42.00', wartoscNetto: '63.00', stawkaVat: 'zw',
-      })],
-    }));
+    const tekst = tekstZPdf(
+      await zbudujKosztPdf({
+        wiersz,
+        pozycje: [
+          pozycja(),
+          pozycja({
+            lp: '2',
+            nazwa: 'Usługa hostingu',
+            jednostka: 'szt',
+            ilosc: '1.5',
+            cenaNetto: '42.00',
+            wartoscNetto: '63.00',
+            stawkaVat: 'zw',
+          }),
+        ],
+      }),
+    );
     expect(tekst).toContain('Papier ksero A4 80g');
     expect(tekst).toContain('Usługa hostingu');
     expect(tekst).toContain('18,50');
@@ -137,7 +151,9 @@ describe('PDF wizualizacji kosztu', () => {
   gdyJestPdftotext('⚠️ zdanie odrozniajace jest NIEOBECNE na KAZDEJ stronie, nie tylko na pierwszej', async () => {
     const duzo = Array.from({ length: 60 }, (_, i) => pozycja({ lp: String(i + 1) }));
     const buf = await zbudujKosztPdf({ wiersz, pozycje: duzo });
-    const strony = tekstZPdf(buf).split('\f').filter((s) => s.trim() !== '');
+    const strony = tekstZPdf(buf)
+      .split('\f')
+      .filter((s) => s.trim() !== '');
     expect(strony.length).toBeGreaterThan(1);
     for (const strona of strony) {
       expect(strona).not.toContain(NAPIS_ODROZNIAJACY);
@@ -151,21 +167,29 @@ describe('PDF wizualizacji kosztu', () => {
   });
 
   gdyJestPdftotext('⚠️ waluta dokumentu idzie z wiersza, a nie z zalozenia „zawsze PLN"', async () => {
-    const tekst = tekstZPdf(await zbudujKosztPdf({
-      wiersz: {
-        ...wiersz, waluta: 'CZK', netto: '900.00', vat: '0.00', brutto: '900.00',
-      },
-      pozycje: [],
-    }));
+    const tekst = tekstZPdf(
+      await zbudujKosztPdf({
+        wiersz: {
+          ...wiersz,
+          waluta: 'CZK',
+          netto: '900.00',
+          vat: '0.00',
+          brutto: '900.00',
+        },
+        pozycje: [],
+      }),
+    );
     expect(tekst).toContain('CZK');
     expect(tekst).toContain('900,00');
   });
 
   gdyJestPdftotext('⚠️ brakujaca kwota daje pusta komorke, a nie „NaN" ani zero na dokumencie', async () => {
-    const tekst = tekstZPdf(await zbudujKosztPdf({
-      wiersz: { ...wiersz, vat: null },
-      pozycje: [pozycja({ cenaNetto: null })],
-    }));
+    const tekst = tekstZPdf(
+      await zbudujKosztPdf({
+        wiersz: { ...wiersz, vat: null },
+        pozycje: [pozycja({ cenaNetto: null })],
+      }),
+    );
     expect(tekst).not.toContain('NaN');
     expect(tekst).not.toContain('null');
   });
@@ -235,10 +259,11 @@ const XML_KOREKTA = `<Faktura><Podmiot1><DaneIdentyfikacyjne><NIP>5252674798</NI
   <Platnosc><FormaPlatnosci>6</FormaPlatnosci></Platnosc></Fa></Faktura>`;
 
 describe('PDF wizualizacji kosztu — komplet elementów art. 106e', () => {
-  const zXml = (xml, nadpisz = {}) => zbudujKosztPdf({
-    wiersz: { ...wiersz, ...nadpisz },
-    dokument: dokumentZXml(xml),
-  });
+  const zXml = (xml, nadpisz = {}) =>
+    zbudujKosztPdf({
+      wiersz: { ...wiersz, ...nadpisz },
+      dokument: dokumentZXml(xml),
+    });
 
   gdyJestPdftotext('⚠️ NABYWCA jest na wydruku — bez niego kartka nie nadaje się do biura', async () => {
     const tekst = tekstZPdf(await zXml(XML_DO_WYDRUKU));
@@ -280,14 +305,17 @@ describe('PDF wizualizacji kosztu — komplet elementów art. 106e', () => {
     expect(tekst).toContain('123,00');
   });
 
-  gdyJestPdftotext('⚠️ kwota WYLICZONA przez panel jest oznaczona gwiazdką i wyjaśniona krótkim przypisem (skrócony 03.09.2026)', async () => {
-    // Pozycja druga (zw) nie ma ani `P_11A`, ani `P_11Vat` — brutto bierze się ze stawki.
-    const tekst = tekstZPdf(await zXml(XML_DO_WYDRUKU));
-    expect(tekst).toContain('29,00 *');
-    expect(tekst).toContain('kwota wyliczona przez panel — brak pola w dokumencie');
-    // Stary, dłuższy przypis nie ma prawa zostać na kartce.
-    expect(tekst).not.toContain('Kwota wyliczona (netto + VAT lub ze stawki)');
-  });
+  gdyJestPdftotext(
+    '⚠️ kwota WYLICZONA przez panel jest oznaczona gwiazdką i wyjaśniona krótkim przypisem (skrócony 03.09.2026)',
+    async () => {
+      // Pozycja druga (zw) nie ma ani `P_11A`, ani `P_11Vat` — brutto bierze się ze stawki.
+      const tekst = tekstZPdf(await zXml(XML_DO_WYDRUKU));
+      expect(tekst).toContain('29,00 *');
+      expect(tekst).toContain('kwota wyliczona przez panel — brak pola w dokumencie');
+      // Stary, dłuższy przypis nie ma prawa zostać na kartce.
+      expect(tekst).not.toContain('Kwota wyliczona (netto + VAT lub ze stawki)');
+    },
+  );
 
   gdyJestPdftotext('⚠️ przypis o kwocie wyliczonej NIE STOI, gdy na kartce nie ma ani jednej gwiazdki', async () => {
     // Sama tabela metadanych, bez `dokument` — bez pozycji i bez stawek nic nie jest wyliczone.
@@ -318,14 +346,19 @@ describe('PDF wizualizacji kosztu — komplet elementów art. 106e', () => {
     expect(tekst).toContain('152,00 PLN');
   });
 
-  gdyJestPdftotext('⚠️ napis odrozniajacy jest NIEOBECNY zarowno pod tytulem, jak i w stopce (decyzja wlasciciela 03.09.2026)', async () => {
-    const strony = tekstZPdf(await zXml(XML_DO_WYDRUKU)).split('\f').filter((s) => s.trim() !== '');
-    const pierwsza = strony[0];
-    expect(pierwsza).toContain('e-Faktura');
-    // Zero wystapien na pierwszej stronie — ani pod tytulem, ani w stopce.
-    expect(pierwsza.split('oryginałem jest plik XML').length - 1).toBe(0);
-    expect(pierwsza).toContain(STOPKA_ZRODLA);
-  });
+  gdyJestPdftotext(
+    '⚠️ napis odrozniajacy jest NIEOBECNY zarowno pod tytulem, jak i w stopce (decyzja wlasciciela 03.09.2026)',
+    async () => {
+      const strony = tekstZPdf(await zXml(XML_DO_WYDRUKU))
+        .split('\f')
+        .filter((s) => s.trim() !== '');
+      const pierwsza = strony[0];
+      expect(pierwsza).toContain('e-Faktura');
+      // Zero wystapien na pierwszej stronie — ani pod tytulem, ani w stopce.
+      expect(pierwsza.split('oryginałem jest plik XML').length - 1).toBe(0);
+      expect(pierwsza).toContain(STOPKA_ZRODLA);
+    },
+  );
 
   gdyJestPdftotext('korekta mówi o tym w tytule i pokazuje dokument korygowany', async () => {
     const tekst = tekstZPdf(await zXml(XML_KOREKTA, { numer_dokumentu: 'KOR/2026/06/1' }));
@@ -341,9 +374,10 @@ describe('PDF wizualizacji kosztu — komplet elementów art. 106e', () => {
   // wychodzil z 16-punktowej kolumny „Lp." wprost NA NAZWE TOWARU. Zaden test na strukturze
   // tego nie widzial — obie wartosci byly w PDF-ie, tyle ze jedna na drugiej.
   gdyJestPdftotext('⚠️ własna numeracja wystawcy nie wchodzi w nazwę towaru — idzie pod tabelę', async () => {
-    const xml = XML_DO_WYDRUKU
-      .replace('<NrWierszaFa>1</NrWierszaFa>', '<NrWierszaFa>36228820</NrWierszaFa>')
-      .replace('<NrWierszaFa>2</NrWierszaFa>', '<NrWierszaFa>36228822</NrWierszaFa>');
+    const xml = XML_DO_WYDRUKU.replace('<NrWierszaFa>1</NrWierszaFa>', '<NrWierszaFa>36228820</NrWierszaFa>').replace(
+      '<NrWierszaFa>2</NrWierszaFa>',
+      '<NrWierszaFa>36228822</NrWierszaFa>',
+    );
     const tekst = tekstZPdf(await zXml(xml));
     expect(tekst).toContain('Numeracja pozycji u wystawcy');
     expect(tekst).toContain('36228820');
@@ -352,29 +386,35 @@ describe('PDF wizualizacji kosztu — komplet elementów art. 106e', () => {
   });
 
   gdyJestPdftotext('rabat i data dostawy przy pozycji trafiają na wydruk', async () => {
-    const xml = XML_DO_WYDRUKU
-      .replace('<P_9A>50.00</P_9A>', '<P_9A>50.00</P_9A><P_10>3.50</P_10><P_6A>2026-05-30</P_6A>');
+    const xml = XML_DO_WYDRUKU.replace(
+      '<P_9A>50.00</P_9A>',
+      '<P_9A>50.00</P_9A><P_10>3.50</P_10><P_6A>2026-05-30</P_6A>',
+    );
     const tekst = tekstZPdf(await zXml(xml));
     expect(tekst).toContain('Rabat przy pozycjach: 1 — 3,50');
     expect(tekst).toContain('Data dostawy przy pozycjach: 1 — 2026-05-30');
   });
 
   gdyJestPdftotext('⚠️ nic nie wyjeżdża poza margines — kwota w ostatniej kolumnie mieści się w całości', async () => {
-    const xml = XML_DO_WYDRUKU
-      .replace('<P_11A>123.00</P_11A>', '<P_11A>123456.78</P_11A>')
-      .replace('<P_7>Papier ksero A4 80g „Śnieżka"</P_7>',
-        '<P_7>Bardzo długa nazwa towaru, która musi się zawinąć w swojej kolumnie, '
-        + 'a nie wyjechać na sąsiednią ani poza margines arkusza A4</P_7>');
+    const xml = XML_DO_WYDRUKU.replace('<P_11A>123.00</P_11A>', '<P_11A>123456.78</P_11A>').replace(
+      '<P_7>Papier ksero A4 80g „Śnieżka"</P_7>',
+      '<P_7>Bardzo długa nazwa towaru, która musi się zawinąć w swojej kolumnie, ' +
+        'a nie wyjechać na sąsiednią ani poza margines arkusza A4</P_7>',
+    );
     const tekst = tekstZPdf(await zXml(xml));
     expect(tekst).toContain('123456,78');
     expect(tekst).toContain('a nie wyjechać na sąsiednią');
   });
 
   it('⚠️ długa faktura łamie się na strony i każda ma stopkę', async () => {
-    const wiersze = Array.from({ length: 30 }, (_, i) => `<FaWiersz><NrWierszaFa>${i + 1}</NrWierszaFa>`
-      + `<P_7>Usługa kurierska krajowa — przesyłka numer ${i + 1}</P_7>`
-      + '<P_8A>szt</P_8A><P_8B>1</P_8B><P_9A>13.16</P_9A><P_11>13.16</P_11>'
-      + '<P_11Vat>3.03</P_11Vat><P_12>23</P_12></FaWiersz>').join('');
+    const wiersze = Array.from(
+      { length: 30 },
+      (_, i) =>
+        `<FaWiersz><NrWierszaFa>${i + 1}</NrWierszaFa>` +
+        `<P_7>Usługa kurierska krajowa — przesyłka numer ${i + 1}</P_7>` +
+        '<P_8A>szt</P_8A><P_8B>1</P_8B><P_9A>13.16</P_9A><P_11>13.16</P_11>' +
+        '<P_11Vat>3.03</P_11Vat><P_12>23</P_12></FaWiersz>',
+    ).join('');
     const xml = XML_DO_WYDRUKU.replace('</Fa>', `${wiersze}</Fa>`);
     const buf = await zXml(xml);
     expect(buf.subarray(0, 5).toString()).toBe('%PDF-');
@@ -416,8 +456,7 @@ describe('PDF wizualizacji kosztu — komplet elementów art. 106e', () => {
   // Pierwsza wersja tej poprawki poszerzyła kolumnę ETYKIETY i złamała ten znacznik
   // w połowie ułamka sekundy („…58.8" / „768733+02:00"). Odczyt powrotny to widzi.
   gdyJestPdftotext('⚠️ znacznik czasu z ułamkiem sekundy i strefą mieści się w JEDNEJ linii', async () => {
-    const xml = XML_DO_WYDRUKU
-      .replace('2026-08-04T09:20:10', '2026-08-26T14:45:58.8768733+02:00');
+    const xml = XML_DO_WYDRUKU.replace('2026-08-04T09:20:10', '2026-08-26T14:45:58.8768733+02:00');
     const tekst = tekstZPdf(await zXml(xml));
     expect(liniaZ(tekst, '14:45:58')).toContain('2026-08-26 14:45:58.8768733+02:00');
   });
@@ -442,21 +481,27 @@ const XML_EUR = `<Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/">
   </Fa></Faktura>`;
 
 // ELMAS (Comarch ERP Optima): pozycja bez netto — jest sama cena BRUTTO `P_9B` i `P_11A`.
-const XML_TYLKO_BRUTTO = '<Faktura><Podmiot1><DaneIdentyfikacyjne><NIP>1234563218</NIP>'
-  + '<Nazwa>ELMAS</Nazwa></DaneIdentyfikacyjne></Podmiot1>'
-  + '<Fa><KodWaluty>PLN</KodWaluty><P_1>2026-08-10</P_1><P_2>FS 1/2026</P_2>'
-  + '<RodzajFaktury>VAT</RodzajFaktury><FaWiersz><NrWierszaFa>1</NrWierszaFa>'
-  + '<P_7>Piana niskoprężna</P_7><P_8A>szt</P_8A><P_8B>5.0000</P_8B>'
-  + '<P_9B>19.99</P_9B><P_11A>99.95</P_11A><P_12>23</P_12></FaWiersz></Fa></Faktura>';
+const XML_TYLKO_BRUTTO =
+  '<Faktura><Podmiot1><DaneIdentyfikacyjne><NIP>1234563218</NIP>' +
+  '<Nazwa>ELMAS</Nazwa></DaneIdentyfikacyjne></Podmiot1>' +
+  '<Fa><KodWaluty>PLN</KodWaluty><P_1>2026-08-10</P_1><P_2>FS 1/2026</P_2>' +
+  '<RodzajFaktury>VAT</RodzajFaktury><FaWiersz><NrWierszaFa>1</NrWierszaFa>' +
+  '<P_7>Piana niskoprężna</P_7><P_8A>szt</P_8A><P_8B>5.0000</P_8B>' +
+  '<P_9B>19.99</P_9B><P_11A>99.95</P_11A><P_12>23</P_12></FaWiersz></Fa></Faktura>';
 
 describe('PDF wizualizacji kosztu — waluty, płatność i szczegóły wydruku', () => {
-  const zXml = (xml, nadpisz = {}) => zbudujKosztPdf({
-    wiersz: { ...wiersz, ...nadpisz },
-    dokument: dokumentZXml(xml),
-  });
+  const zXml = (xml, nadpisz = {}) =>
+    zbudujKosztPdf({
+      wiersz: { ...wiersz, ...nadpisz },
+      dokument: dokumentZXml(xml),
+    });
 
   const wierszEur = {
-    numer_dokumentu: 'EUR/2026/8/1', waluta: 'EUR', netto: '9.60', vat: '9.44', brutto: '11.81',
+    numer_dokumentu: 'EUR/2026/8/1',
+    waluta: 'EUR',
+    netto: '9.60',
+    vat: '9.44',
+    brutto: '11.81',
   };
 
   gdyJestPdftotext('⚠️⚠️ „Razem VAT" na fakturze w EUR stoi W ZŁOTYCH — bo taki jest z KSeF', async () => {
@@ -491,8 +536,10 @@ describe('PDF wizualizacji kosztu — waluty, płatność i szczegóły wydruku'
 
   // ── płatność ────────────────────────────────────────────────────────────────
   gdyJestPdftotext('⚠️⚠️ dokument BEZ węzła `Zaplacono` nie dostaje napisu „Nie zapłacono"', async () => {
-    const xml = XML_DO_WYDRUKU.replace('<Zaplacono>1</Zaplacono>', '')
-      .replace('<DataZaplaty>2026-06-07</DataZaplaty>', '');
+    const xml = XML_DO_WYDRUKU.replace('<Zaplacono>1</Zaplacono>', '').replace(
+      '<DataZaplaty>2026-06-07</DataZaplaty>',
+      '',
+    );
     const tekst = tekstZPdf(await zXml(xml));
     expect(tekst).not.toContain('Nie zapłacono');
     expect(tekst).toContain('dokument nie zawiera informacji o zapłacie');
@@ -517,11 +564,11 @@ describe('PDF wizualizacji kosztu — waluty, płatność i szczegóły wydruku'
   gdyJestPdftotext('⚠️ zapłata częściowa idzie na wydruk z kwotą i datą — NIEZALEŻNIE od `Zaplacono`', async () => {
     const xml = XML_DO_WYDRUKU.replace(
       '<Zaplacono>1</Zaplacono>',
-      '<ZnacznikZaplatyCzesciowej>1</ZnacznikZaplatyCzesciowej>'
-      + '<ZaplataCzesciowa><KwotaZaplatyCzesciowej>50.00</KwotaZaplatyCzesciowej>'
-      + '<DataZaplatyCzesciowej>2026-06-10</DataZaplatyCzesciowej></ZaplataCzesciowa>'
-      + '<ZaplataCzesciowa><KwotaZaplatyCzesciowej>102.00</KwotaZaplatyCzesciowej>'
-      + '<DataZaplatyCzesciowej>2026-06-18</DataZaplatyCzesciowej></ZaplataCzesciowa>',
+      '<ZnacznikZaplatyCzesciowej>1</ZnacznikZaplatyCzesciowej>' +
+        '<ZaplataCzesciowa><KwotaZaplatyCzesciowej>50.00</KwotaZaplatyCzesciowej>' +
+        '<DataZaplatyCzesciowej>2026-06-10</DataZaplatyCzesciowej></ZaplataCzesciowa>' +
+        '<ZaplataCzesciowa><KwotaZaplatyCzesciowej>102.00</KwotaZaplatyCzesciowej>' +
+        '<DataZaplatyCzesciowej>2026-06-18</DataZaplatyCzesciowej></ZaplataCzesciowa>',
     ).replace('<DataZaplaty>2026-06-07</DataZaplaty>', '');
     const tekst = tekstZPdf(await zXml(xml));
     // ⚠️ SZUKAMY LINII Z DWUKROPKIEM — od poprawki niżej „Zapłacono częściowo" stoi też
@@ -545,12 +592,13 @@ describe('PDF wizualizacji kosztu — waluty, płatność i szczegóły wydruku'
   // „0,46", a mnożenie na kartce przestawało się zgadzać (0,455 × 1000 = 455,00, ale
   // 0,46 × 1000 = 460,00). Księgowa dostawała dokument, w którym trzy liczby w jednym wierszu
   // przeczą sobie nawzajem — i nie ma jak zgadnąć, która jest przepisana z oryginału.
-  const XML_CENA_4_MIEJSCA = '<Faktura><Podmiot1><DaneIdentyfikacyjne><NIP>5252674798</NIP>'
-    + '<Nazwa>Drukarnia sp. z o.o.</Nazwa></DaneIdentyfikacyjne></Podmiot1>'
-    + '<Fa><KodWaluty>PLN</KodWaluty><P_1>2026-08-10</P_1><P_2>FS 7/2026</P_2>'
-    + '<RodzajFaktury>VAT</RodzajFaktury><FaWiersz><NrWierszaFa>1</NrWierszaFa>'
-    + '<P_7>Wydruk jednostronny A4</P_7><P_8A>szt</P_8A><P_8B>1000</P_8B>'
-    + '<P_9A>0.4550</P_9A><P_11>455.00</P_11><P_12>23</P_12></FaWiersz></Fa></Faktura>';
+  const XML_CENA_4_MIEJSCA =
+    '<Faktura><Podmiot1><DaneIdentyfikacyjne><NIP>5252674798</NIP>' +
+    '<Nazwa>Drukarnia sp. z o.o.</Nazwa></DaneIdentyfikacyjne></Podmiot1>' +
+    '<Fa><KodWaluty>PLN</KodWaluty><P_1>2026-08-10</P_1><P_2>FS 7/2026</P_2>' +
+    '<RodzajFaktury>VAT</RodzajFaktury><FaWiersz><NrWierszaFa>1</NrWierszaFa>' +
+    '<P_7>Wydruk jednostronny A4</P_7><P_8A>szt</P_8A><P_8B>1000</P_8B>' +
+    '<P_9A>0.4550</P_9A><P_11>455.00</P_11><P_12>23</P_12></FaWiersz></Fa></Faktura>';
 
   gdyJestPdftotext('⚠️ cena z czterema miejscami po przecinku NIE jest po cichu zaokrąglana do groszy', async () => {
     const tekst = tekstZPdf(await zXml(XML_CENA_4_MIEJSCA, { numer_dokumentu: 'FS 7/2026' }));
@@ -590,7 +638,9 @@ describe('PDF wizualizacji kosztu — waluty, płatność i szczegóły wydruku'
   gdyJestPdftotext('⚠️⚠️ długa uwaga pod tabelą NIE WCHODZI w stopkę — rezerwa jest ZMIERZONA', async () => {
     const duzo = Array.from({ length: 66 }, (_, i) => pozycja({ lp: String(36228820 + i) }));
     const buf = await zbudujKosztPdf({ wiersz, pozycje: duzo });
-    const strony = tekstZPdf(buf).split('\f').filter((s) => s.trim() !== '');
+    const strony = tekstZPdf(buf)
+      .split('\f')
+      .filter((s) => s.trim() !== '');
     expect(strony.length).toBeGreaterThan(1);
     for (const strona of strony) {
       // Zdanie stopki stoi w SWOJEJ WŁASNEJ linii (dzieli ją co najwyżej z licznikiem stron,

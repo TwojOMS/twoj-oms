@@ -95,8 +95,7 @@ describe('pozycje faktury kosztowej z XML-a FA(3)', () => {
   });
 
   it('radzi sobie z przedrostkiem przestrzeni nazw', () => {
-    const zPrzedrostkiem = XML_FA3
-      .replace(/<(\/?)(FaWiersz|P_7|P_8A|P_8B|P_9A|P_11|P_12|NrWierszaFa)>/g, '<$1tns:$2>');
+    const zPrzedrostkiem = XML_FA3.replace(/<(\/?)(FaWiersz|P_7|P_8A|P_8B|P_9A|P_11|P_12|NrWierszaFa)>/g, '<$1tns:$2>');
     const pozycje = pozycjeZXml(zPrzedrostkiem);
     expect(pozycje).toHaveLength(2);
     expect(pozycje[0].nazwa).toBe('Papier ksero A4 80g „Śnieżka" & spółka');
@@ -104,9 +103,17 @@ describe('pozycje faktury kosztowej z XML-a FA(3)', () => {
 
   it('brakujące pole daje pusty napis, a nie „undefined" na dokumencie', () => {
     const chudy = `<Faktura><Fa><FaWiersz><P_7>Opłata</P_7><P_11>10.00</P_11></FaWiersz></Fa></Faktura>`;
-    expect(pozycjeZXml(chudy)).toEqual([{
-      lp: '1', nazwa: 'Opłata', jednostka: '', ilosc: '', cenaNetto: '', wartoscNetto: '10.00', stawkaVat: '',
-    }]);
+    expect(pozycjeZXml(chudy)).toEqual([
+      {
+        lp: '1',
+        nazwa: 'Opłata',
+        jednostka: '',
+        ilosc: '',
+        cenaNetto: '',
+        wartoscNetto: '10.00',
+        stawkaVat: '',
+      },
+    ]);
   });
 
   it('⚠️ dokument BEZ pozycji oddaje pustą listę, a nie wyjątek — PDF ma i tak powstać', () => {
@@ -116,8 +123,9 @@ describe('pozycje faktury kosztowej z XML-a FA(3)', () => {
   });
 
   it('pusty znacznik samozamykający się nie wywraca odczytu', () => {
-    const zPustym = '<Faktura><Fa><FaWiersz><NrWierszaFa>7</NrWierszaFa>'
-      + '<P_7>Rabat</P_7><P_8A/><P_11>-5.00</P_11></FaWiersz></Fa></Faktura>';
+    const zPustym =
+      '<Faktura><Fa><FaWiersz><NrWierszaFa>7</NrWierszaFa>' +
+      '<P_7>Rabat</P_7><P_8A/><P_11>-5.00</P_11></FaWiersz></Fa></Faktura>';
     const [p] = pozycjeZXml(zPustym);
     expect(p.lp).toBe('7');
     expect(p.jednostka).toBe('');

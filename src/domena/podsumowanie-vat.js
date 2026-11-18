@@ -59,8 +59,8 @@ function groszeZPozycji(s, i) {
   const gr = s?.gross_price;
   if (!Number.isInteger(gr)) {
     throw bladOperatora(
-      `Pozycja ${i + 1} nie ma kwoty brutto w całych groszach („${gr}") — `
-      + 'proformy nie da się wystawić, dopóki kwota pozycji nie jest poprawna.',
+      `Pozycja ${i + 1} nie ma kwoty brutto w całych groszach („${gr}") — ` +
+        'proformy nie da się wystawić, dopóki kwota pozycji nie jest poprawna.',
     );
   }
   return gr;
@@ -81,8 +81,8 @@ function stawkaZPozycji(s, i, zw) {
   if (zw === true && surowa === 'zw') return 'zw';
   if (!/^\d+$/.test(surowa)) {
     throw bladOperatora(
-      `Pozycja ${i + 1} ma nierozpoznaną stawkę VAT („${s?.tax_symbol ?? ''}") — `
-      + 'podsumowanie VAT na proformie przyjmuje wyłącznie stawkę liczbową (np. 23).',
+      `Pozycja ${i + 1} ma nierozpoznaną stawkę VAT („${s?.tax_symbol ?? ''}") — ` +
+        'podsumowanie VAT na proformie przyjmuje wyłącznie stawkę liczbową (np. 23).',
     );
   }
   return Number(surowa);
@@ -124,7 +124,8 @@ export function podsumowanieVat(services = [], { zw = false } = {}) {
   const wiersze = [...bruttoWgStawki.entries()]
     .sort(([a], [b]) => b - a)
     .map(([stawka, bruttoGr]) => wierszStawki(stawka, bruttoGr));
-  if (zwolnione !== undefined) wiersze.push({ stawka: 'zw', suma: false, nettoGr: zwolnione, vatGr: 0, bruttoGr: zwolnione });
+  if (zwolnione !== undefined)
+    wiersze.push({ stawka: 'zw', suma: false, nettoGr: zwolnione, vatGr: 0, bruttoGr: zwolnione });
 
   // Suma jest sumą WIERSZY, nie drugim liczeniem podatku od sumy wszystkich pozycji.
   // Przy dwóch stawkach te dwie drogi dają różne liczby, a kolumna sumy na dokumencie ma

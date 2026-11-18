@@ -11,13 +11,23 @@ const OD = '2026-01-01T00:00:00.000Z';
 let db, app, pelny, drugi, obcy, odczyt, zapis, karta, licznik;
 beforeEach(async () => {
   db = openOmsDb(':memory:');
-  app = buildOmsServer({ db, config: { auth: { user: 'operator', pass: 'x' } },
-    magazyn: { start: vi.fn(), stan: () => ({ trwa: false, kanaly: [] }) } });
+  app = buildOmsServer({
+    db,
+    config: { auth: { user: 'operator', pass: 'x' } },
+    magazyn: { start: vi.fn(), stan: () => ({ trwa: false, kanaly: [] }) },
+  });
   await app.ready();
   const kontoId = zalozKonto(db, { login: 'tester', imie: 'Tester', haslo: 'h', admin: true, rola: 'administrator' });
-  const klucz = (zakresy) => ({ authorization: `Bearer ${zalozKluczApi(db, {
-    nazwa: 'Pracownia Półcień', zakresy, kontoId, teraz: new Date().toISOString(),
-  }).klucz}` });
+  const klucz = (zakresy) => ({
+    authorization: `Bearer ${
+      zalozKluczApi(db, {
+        nazwa: 'Pracownia Półcień',
+        zakresy,
+        kontoId,
+        teraz: new Date().toISOString(),
+      }).klucz
+    }`,
+  });
   pelny = klucz(['stany:odczyt', 'stany:zapis']);
   drugi = klucz(['stany:odczyt', 'stany:zapis']);
   obcy = klucz(['produkty:odczyt']);
@@ -27,11 +37,22 @@ beforeEach(async () => {
   licznik = 0;
   przelaczStany(db, { wlacz: true, at: OD });
 });
-afterEach(async () => { await app.close(); db.close(); });
+afterEach(async () => {
+  await app.close();
+  db.close();
+});
 const get = (query = '', headers = pelny) => app.inject({ method: 'GET', url: `/api/v1/stany${query}`, headers });
-const post = (payload = { karta_id: karta, rodzaj: 'przyjecie', ilosc: 5 }, headers = pelny, key = `ruch-${++licznik}`) =>
-  app.inject({ method: 'POST', url: '/api/v1/stany/ruchy', payload,
-    headers: { ...headers, ...(key === null ? {} : { 'idempotency-key': key }) } });
+const post = (
+  payload = { karta_id: karta, rodzaj: 'przyjecie', ilosc: 5 },
+  headers = pelny,
+  key = `ruch-${++licznik}`,
+) =>
+  app.inject({
+    method: 'POST',
+    url: '/api/v1/stany/ruchy',
+    payload,
+    headers: { ...headers, ...(key === null ? {} : { 'idempotency-key': key }) },
+  });
 const ruchy = () => db.prepare('SELECT * FROM ruchy_magazynowe ORDER BY id').all();
 
 describe('stany API v1', () => {
@@ -59,33 +80,84 @@ describe('stany API v1', () => {
     db.prepare('DELETE FROM karty_produktow WHERE id = ?').run(dziura);
     const ostatnia = utworzKarte(db, { nazwa: 'Kinkiet', sku: 'B' });
     expect((await get('?ile=1')).json()).toEqual({
-      pozycje: [{ karta_id: karta, sku: 'ŻÓŁĆ-1', stan: 0, od: OD }], nastepny: karta,
+      pozycje: [{ karta_id: karta, sku: 'ŻÓŁĆ-1', stan: 0, od: OD }],
+      nastepny: karta,
     });
     expect((await get(`?po=${karta}&ile=1`)).json()).toEqual({
-      pozycje: [{ karta_id: ostatnia, sku: 'B', stan: 0, od: OD }], nastepny: ostatnia,
+      pozycje: [{ karta_id: ostatnia, sku: 'B', stan: 0, od: OD }],
+      nastepny: ostatnia,
     });
     expect((await get(`?po=${ostatnia}`)).json()).toEqual({ pozycje: [], nastepny: null });
-    expect((await get(`?sku=${encodeURIComponent(' żółć-1 ')}`)).json().pozycje.map(p => p.karta_id)).toEqual([karta]);
+    expect((await get(`?sku=${encodeURIComponent(' żółć-1 ')}`)).json().pozycje.map((p) => p.karta_id)).toEqual([
+      karta,
+    ]);
     expect((await get('?sku=nieznany')).json()).toEqual({ pozycje: [], nastepny: null });
     for (const q of ['?sku=A&sku=B', '?ile=0', '?ile=201', '?ile=1.5']) expect((await get(q)).statusCode).toBe(400);
   });
 
   it('stan GET i POST zgodny ze stanyKart także po zamówieniu; przyjęcie 5 i korekta -2 dają +3', async () => {
-    powiazProdukt(db, zapiszProduktSklepowy(db, { kanal: 'sklep', produkt_id: '10', wariant_id: '', nazwa: 'Lampa', odczytane_at: OD }), karta);
-    zapiszZamowienie(db, 'sklep', { zrodlo_id: '1', numer: 'TEST-1', klient: { first_name: 'Ala', email: 'ala@example.test' },
-      dostawa: { city: 'Testowo' }, metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null,
-      kwota_brutto: '100.00', status_woo: null, oplacone_at: null, anulowane: 0, utworzone_at: '2026-02-01T00:00:00.000Z',
-      pozycje: [{ zrodlo_id: 1000, produkt_id: 10, ilosc: 2, nazwa: 'Lampa', sku: null,
-        oferta_id: null, wariant_id: null, zdjecie_url: null, cena_brutto: '50.00', vat: '23' }] }, {});
+    powiazProdukt(
+      db,
+      zapiszProduktSklepowy(db, { kanal: 'sklep', produkt_id: '10', wariant_id: '', nazwa: 'Lampa', odczytane_at: OD }),
+      karta,
+    );
+    zapiszZamowienie(
+      db,
+      'sklep',
+      {
+        zrodlo_id: '1',
+        numer: 'TEST-1',
+        klient: { first_name: 'Ala', email: 'ala@example.test' },
+        dostawa: { city: 'Testowo' },
+        metoda_wysylki: 'dpd',
+        kwota_pobrania: null,
+        chce_fakture: 0,
+        nip: null,
+        kwota_brutto: '100.00',
+        status_woo: null,
+        oplacone_at: null,
+        anulowane: 0,
+        utworzone_at: '2026-02-01T00:00:00.000Z',
+        pozycje: [
+          {
+            zrodlo_id: 1000,
+            produkt_id: 10,
+            ilosc: 2,
+            nazwa: 'Lampa',
+            sku: null,
+            oferta_id: null,
+            wariant_id: null,
+            zdjecie_url: null,
+            cena_brutto: '50.00',
+            vat: '23',
+          },
+        ],
+      },
+      {},
+    );
     const start = stanyKart(db).stany.get(karta).stan;
     expect(start).toBe(-2);
     expect((await get()).json().pozycje[0].stan).toBe(start);
     const a = await post({ sku: ' żółć-1 ', rodzaj: 'przyjecie', ilosc: 5 });
     expect(a.statusCode).toBe(201);
-    expect(a.json()).toEqual({ karta_id: karta, sku: 'ŻÓŁĆ-1', rodzaj: 'przyjecie', ilosc: 5, powod: null, stan: start + 5 });
+    expect(a.json()).toEqual({
+      karta_id: karta,
+      sku: 'ŻÓŁĆ-1',
+      rodzaj: 'przyjecie',
+      ilosc: 5,
+      powod: null,
+      stan: start + 5,
+    });
     const b = await post({ karta_id: karta, rodzaj: 'korekta', ilosc: -2, powod: '  Ubytek  ' });
     expect(b.statusCode).toBe(201);
-    expect(b.json()).toEqual({ karta_id: karta, sku: 'ŻÓŁĆ-1', rodzaj: 'korekta', ilosc: -2, powod: 'Ubytek', stan: start + 3 });
+    expect(b.json()).toEqual({
+      karta_id: karta,
+      sku: 'ŻÓŁĆ-1',
+      rodzaj: 'korekta',
+      ilosc: -2,
+      powod: 'Ubytek',
+      stan: start + 3,
+    });
     expect(b.json().stan).toBe(stanyKart(db).stany.get(karta).stan);
     expect((await get()).json().pozycje[0].stan).toBe(start + 3);
     expect(ruchy()[0]).toMatchObject({ konto_id: null, konto_login: 'api:Pracownia Półcień' });
@@ -127,8 +199,11 @@ describe('stany API v1', () => {
     expect((await post(undefined, pelny, 'wspolny')).json().stan).toBe(5);
     expect((await post(undefined, drugi, 'wspolny')).json().stan).toBe(10);
     expect(ruchy()).toHaveLength(2);
-    const ids = db.prepare('SELECT id FROM klucze_api ORDER BY id LIMIT 2').all().map(w => w.id);
-    expect(ruchy().map(w => w.klucz)).toEqual(ids.map(id => `api:${id}:wspolny`));
+    const ids = db
+      .prepare('SELECT id FROM klucze_api ORDER BY id LIMIT 2')
+      .all()
+      .map((w) => w.id);
+    expect(ruchy().map((w) => w.klucz)).toEqual(ids.map((id) => `api:${id}:wspolny`));
   });
 
   it('wymaga Idempotency-Key (428) i odrzuca pusty oraz za długi nagłówek (400)', async () => {
@@ -139,13 +214,26 @@ describe('stany API v1', () => {
 
   it('odrzuca błędne ciało, rodzaj, ilość, powód i identyfikację (400), bez ruchów', async () => {
     const bazowy = { karta_id: karta, rodzaj: 'przyjecie', ilosc: 1 };
-    const zle = [null, [], {}, { ...bazowy, obce: true }, { ...bazowy, rodzaj: 'otwarcie' }, { ...bazowy, rodzaj: 'wydanie' },
-      ...[0, -1, 1.5, '5'].map(ilosc => ({ ...bazowy, ilosc })),
-      { ...bazowy, sku: 'ŻÓŁĆ-1' }, { rodzaj: 'przyjecie', ilosc: 1 },
-      ...[null, 0, -1, 1.5, '1'].map(karta_id => ({ ...bazowy, karta_id })),
+    const zle = [
+      null,
+      [],
+      {},
+      { ...bazowy, obce: true },
+      { ...bazowy, rodzaj: 'otwarcie' },
+      { ...bazowy, rodzaj: 'wydanie' },
+      ...[0, -1, 1.5, '5'].map((ilosc) => ({ ...bazowy, ilosc })),
+      { ...bazowy, sku: 'ŻÓŁĆ-1' },
+      { rodzaj: 'przyjecie', ilosc: 1 },
+      ...[null, 0, -1, 1.5, '1'].map((karta_id) => ({ ...bazowy, karta_id })),
       { sku: 12, rodzaj: 'przyjecie', ilosc: 1 },
       { ...bazowy, rodzaj: 'korekta', ilosc: 0, powod: 'Ubytek' },
-      ...[undefined, null, '', '  ', 42, 'x'.repeat(501)].map(powod => ({ ...bazowy, rodzaj: 'korekta', ilosc: -1, powod }))];
+      ...[undefined, null, '', '  ', 42, 'x'.repeat(501)].map((powod) => ({
+        ...bazowy,
+        rodzaj: 'korekta',
+        ilosc: -1,
+        powod,
+      })),
+    ];
     for (const payload of zle) expect((await post(payload)).statusCode, JSON.stringify(payload)).toBe(400);
     expect(ruchy()).toHaveLength(0);
   });

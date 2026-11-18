@@ -19,9 +19,11 @@ const KOPIA = path.join(ROOT, 'deploy/klient/kopia.mjs');
 const ATRAPA = path.join(ROOT, 'tests/instalacja/atrapa-dockera.mjs');
 const SH = process.platform === 'win32' ? 'C:/Program Files/Git/bin/bash.exe' : '/bin/sh';
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite');
-const u = p => p.replaceAll('\\', '/');
+const u = (p) => p.replaceAll('\\', '/');
 const katalogi = [];
-afterEach(() => { for (const k of katalogi.splice(0)) fs.rmSync(k, { recursive: true, force: true }); });
+afterEach(() => {
+  for (const k of katalogi.splice(0)) fs.rmSync(k, { recursive: true, force: true });
+});
 
 const COMMIT = 'a'.repeat(39) + '1';
 const WYD = `oms-${COMMIT.slice(0, 12)}`;
@@ -33,11 +35,14 @@ function instalacja({ bezPrzejscia = false } = {}) {
   const baza = fs.mkdtempSync(path.join(os.tmpdir(), 'oms-przejscie-'));
   katalogi.push(baza);
   const oms = path.join(baza, 'opt-oms');
-  for (const d of ['releases', 'config', 'data/etykiety', 'data/proformy', 'backups', '../docker-root']) fs.mkdirSync(path.join(oms, d), { recursive: true });
+  for (const d of ['releases', 'config', 'data/etykiety', 'data/proformy', 'backups', '../docker-root'])
+    fs.mkdirSync(path.join(oms, d), { recursive: true });
   const k = { baza: u(baza), oms: u(oms) };
   const db = new DatabaseSync(path.join(oms, 'data/oms.sqlite'));
   db.exec('PRAGMA journal_mode=WAL');
-  db.exec('CREATE TABLE migracje (modul TEXT, numer INTEGER, nazwa TEXT, zastosowana_at TEXT, PRIMARY KEY (modul, numer))');
+  db.exec(
+    'CREATE TABLE migracje (modul TEXT, numer INTEGER, nazwa TEXT, zastosowana_at TEXT, PRIMARY KEY (modul, numer))',
+  );
   db.exec("INSERT INTO migracje VALUES ('rdzen', 1, 'baseline', '2026-10-01')");
   db.exec('CREATE TABLE zamowienia (id INTEGER PRIMARY KEY, numer TEXT)');
   db.exec('CREATE TABLE konta (login TEXT)');
@@ -45,8 +50,14 @@ function instalacja({ bezPrzejscia = false } = {}) {
   for (const n of ['DEMO-001', 'DEMO-002', 'DEMO-003']) db.prepare('INSERT INTO zamowienia (numer) VALUES (?)').run(n);
   db.close();
   fs.writeFileSync(path.join(oms, 'data/proformy/demo.pdf'), 'proforma próby');
-  fs.writeFileSync(path.join(oms, 'config/oms.env'), `OMS_TRYB=proba\nOMS_USER=serwis-proby\nOMS_PASS=${HASLO_PROBY}\nOMS_SPRZEDAWCA_NIP=1234563218\nOMS_RACHUNEK=34109010140000000000000000\n`);
-  fs.writeFileSync(path.join(oms, 'config/administrator-proby.env'), 'login=administrator-proby\nhaslo=haslo-administratora-proby\n');
+  fs.writeFileSync(
+    path.join(oms, 'config/oms.env'),
+    `OMS_TRYB=proba\nOMS_USER=serwis-proby\nOMS_PASS=${HASLO_PROBY}\nOMS_SPRZEDAWCA_NIP=1234563218\nOMS_RACHUNEK=34109010140000000000000000\n`,
+  );
+  fs.writeFileSync(
+    path.join(oms, 'config/administrator-proby.env'),
+    'login=administrator-proby\nhaslo=haslo-administratora-proby\n',
+  );
   fs.writeFileSync(path.join(oms, 'config/produkcja.env.example'), '# szablon z instalacji\n');
   // Kopia próby z DZIŚ: ta sama nazwa, którą dostanie pierwsza kopia pracy — powrót nie może ich pomylić.
   fs.writeFileSync(path.join(oms, `backups/oms-${DZIS}.sqlite`), 'kopia-proby');
@@ -59,11 +70,20 @@ function instalacja({ bezPrzejscia = false } = {}) {
     // Starsze wydanie nie ma skryptu pierwszego startu pracy.
     ...(bezPrzejscia ? [] : [[`${WYD}/scripts/produkcja-pierwszy-start.mjs`, Buffer.from('// atrapa\n')]]),
   ]);
-  const x = spawnSync('tar', ['-xzf', '-', '-C', u(path.join(oms, 'releases'))], { input: gzipSync(tarUstar(pliki, 1760000000)), encoding: 'utf8' });
+  const x = spawnSync('tar', ['-xzf', '-', '-C', u(path.join(oms, 'releases'))], {
+    input: gzipSync(tarUstar(pliki, 1760000000)),
+    encoding: 'utf8',
+  });
   if (x.status !== 0) throw Error('tar: ' + x.stderr);
   const plikCompose = path.join(oms, 'releases', WYD, 'deploy/klient/compose.yaml');
-  for (const args of [['compose', '-f', plikCompose, 'build', 'oms'], ['compose', '-f', plikCompose, 'up', '-d', 'oms', 'kopia']]) {
-    const r = spawnSync(process.execPath, [ATRAPA, ...args], { encoding: 'utf8', env: { ...process.env, TEST_BAZA: k.baza, OMS_KATALOG: k.oms } });
+  for (const args of [
+    ['compose', '-f', plikCompose, 'build', 'oms'],
+    ['compose', '-f', plikCompose, 'up', '-d', 'oms', 'kopia'],
+  ]) {
+    const r = spawnSync(process.execPath, [ATRAPA, ...args], {
+      encoding: 'utf8',
+      env: { ...process.env, TEST_BAZA: k.baza, OMS_KATALOG: k.oms },
+    });
     if (r.status !== 0) throw Error(r.stderr);
   }
   fs.copyFileSync(AKTUALIZATOR, path.join(oms, 'aktualizuj.sh'));
@@ -71,27 +91,61 @@ function instalacja({ bezPrzejscia = false } = {}) {
 }
 function akt(k, args, env = {}) {
   const wrapper = path.join(k.baza, 'docker');
-  if (!fs.existsSync(wrapper)) fs.writeFileSync(wrapper, `#!/bin/sh\nexport MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'\nexec "${u(process.execPath)}" "${u(ATRAPA)}" "$@"\n`, { mode: 0o755 });
-  const r = spawnSync(SH, [`${k.oms}/aktualizuj.sh`, ...args], { encoding: 'utf8', timeout: 120_000,
-    env: { ...process.env, OMS_KATALOG: k.oms, OMS_DOCKER_BIN: u(wrapper), OMS_AKT_BEZ_ROOTA: '1', OMS_AKT_CZEKAJ_S: '3', OMS_AKT_ODSTEP_S: '1',
-      OMS_AKT_MIN_DOCKER_MB: '1', OMS_AKT_REZERWA_MB: '1', TEST_BAZA: k.baza, ...env } });
+  if (!fs.existsSync(wrapper))
+    fs.writeFileSync(
+      wrapper,
+      `#!/bin/sh\nexport MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'\nexec "${u(process.execPath)}" "${u(ATRAPA)}" "$@"\n`,
+      { mode: 0o755 },
+    );
+  const r = spawnSync(SH, [`${k.oms}/aktualizuj.sh`, ...args], {
+    encoding: 'utf8',
+    timeout: 120_000,
+    env: {
+      ...process.env,
+      OMS_KATALOG: k.oms,
+      OMS_DOCKER_BIN: u(wrapper),
+      OMS_AKT_BEZ_ROOTA: '1',
+      OMS_AKT_CZEKAJ_S: '3',
+      OMS_AKT_ODSTEP_S: '1',
+      OMS_AKT_MIN_DOCKER_MB: '1',
+      OMS_AKT_REZERWA_MB: '1',
+      TEST_BAZA: k.baza,
+      ...env,
+    },
+  });
   return { ...r, wyjscie: `${r.stdout}\n${r.stderr}` };
 }
 const plik = (k, p) => path.join(k.oms, p);
 const istnieje = (k, p) => fs.existsSync(plik(k, p));
 const czytaj = (k, p) => fs.readFileSync(plik(k, p), 'utf8');
-const stanDockera = k => JSON.parse(fs.readFileSync(path.join(k.baza, 'docker-stan.json'), 'utf8'));
-const operacja = r => /operacja=([0-9a-f-]{20})/.exec(r.wyjscie)?.[1];
-const zapytaj = (k, p, sql) => { const d = new DatabaseSync(plik(k, p), { readOnly: true }); try { return d.prepare(sql).all(); } finally { d.close(); } };
-const zamowienia = (k, p = 'data/oms.sqlite') => zapytaj(k, p, 'SELECT numer FROM zamowienia ORDER BY id').map(w => w.numer);
-const konta = (k, p = 'data/oms.sqlite') => zapytaj(k, p, 'SELECT login FROM konta').map(w => w.login);
+const stanDockera = (k) => JSON.parse(fs.readFileSync(path.join(k.baza, 'docker-stan.json'), 'utf8'));
+const operacja = (r) => /operacja=([0-9a-f-]{20})/.exec(r.wyjscie)?.[1];
+const zapytaj = (k, p, sql) => {
+  const d = new DatabaseSync(plik(k, p), { readOnly: true });
+  try {
+    return d.prepare(sql).all();
+  } finally {
+    d.close();
+  }
+};
+const zamowienia = (k, p = 'data/oms.sqlite') =>
+  zapytaj(k, p, 'SELECT numer FROM zamowienia ORDER BY id').map((w) => w.numer);
+const konta = (k, p = 'data/oms.sqlite') => zapytaj(k, p, 'SELECT login FROM konta').map((w) => w.login);
 
 /** Pierwsze wywołanie zakłada szablon; uzupełnienie jak operator (nano). */
 function uzupelnij(k, zmiany = {}) {
-  const pola = { OMS_SPRZEDAWCA_NIP: '1111111111', OMS_RACHUNEK: '09109010140000000000000062', DPD_NADAWCA_NAZWA: 'Pracownia Przykładowa sp. z o.o.',
-    DPD_NADAWCA_ULICA: 'Klockowa 1', DPD_NADAWCA_KOD: '00-950', DPD_NADAWCA_MIASTO: 'Warszawa', ...zmiany };
+  const pola = {
+    OMS_SPRZEDAWCA_NIP: '1111111111',
+    OMS_RACHUNEK: '09109010140000000000000062',
+    DPD_NADAWCA_NAZWA: 'Pracownia Przykładowa sp. z o.o.',
+    DPD_NADAWCA_ULICA: 'Klockowa 1',
+    DPD_NADAWCA_KOD: '00-950',
+    DPD_NADAWCA_MIASTO: 'Warszawa',
+    ...zmiany,
+  };
   let t = czytaj(k, 'config/produkcja.env');
-  for (const [n, w] of Object.entries(pola)) t = t.match(new RegExp(`^${n}=`, 'm')) ? t.replace(new RegExp(`^${n}=.*$`, 'm'), `${n}=${w}`) : `${t}${n}=${w}\n`;
+  for (const [n, w] of Object.entries(pola))
+    t = t.match(new RegExp(`^${n}=`, 'm')) ? t.replace(new RegExp(`^${n}=.*$`, 'm'), `${n}=${w}`) : `${t}${n}=${w}\n`;
   fs.writeFileSync(plik(k, 'config/produkcja.env'), t);
 }
 function przelaczona(k, env = {}) {
@@ -118,10 +172,13 @@ describe('przejście próba → praca: przygotowanie i odmowy', () => {
     // Adres firmy już nie jest polem do uzupełnienia (można go wpisać w panelu) — jest w szablonie, pusty.
     expect(r.stdout).not.toContain('DPD_NADAWCA_');
     const t = czytaj(k, 'config/produkcja.env');
-    for (const n of ['DPD_NADAWCA_NAZWA', 'DPD_NADAWCA_ULICA', 'DPD_NADAWCA_KOD', 'DPD_NADAWCA_MIASTO']) expect(t).toMatch(new RegExp(`^${n}=$`, 'm'));
+    for (const n of ['DPD_NADAWCA_NAZWA', 'DPD_NADAWCA_ULICA', 'DPD_NADAWCA_KOD', 'DPD_NADAWCA_MIASTO'])
+      expect(t).toMatch(new RegExp(`^${n}=$`, 'm'));
     expect(t).toContain('Ustawienia → Firma');
     expect(t).toMatch(/^# Rachunek firmy[^\n]*\n#[^\n]*w panelu \(Ustawienia → Firma[^\n]*\nOMS_RACHUNEK=$/m);
-    expect(t).toMatch(/^# Sprzedawca na proformie[^\n]*\n#[^\n]*w panelu \(Ustawienia → Firma[^\n]*\nOMS_SPRZEDAWCA_NIP=\nOMS_SPRZEDAWCA_BDO=$/m);
+    expect(t).toMatch(
+      /^# Sprzedawca na proformie[^\n]*\n#[^\n]*w panelu \(Ustawienia → Firma[^\n]*\nOMS_SPRZEDAWCA_NIP=\nOMS_SPRZEDAWCA_BDO=$/m,
+    );
     expect(t).toMatch(/^OMS_TRYB=produkcja$/m);
     expect(t).toMatch(/^OMS_PASS=[0-9a-f]{48}$/m);
     expect(t).toMatch(/^OMS_KANALY=\[\]$/m);
@@ -142,13 +199,21 @@ describe('przejście próba → praca: przygotowanie i odmowy', () => {
   it('odmawia wartości przepisanych z próby (hasło serwisowe, fikcyjny NIP i rachunek) — nazwą, bez wartości', () => {
     const k = instalacja();
     akt(k, ['produkcja']);
-    for (const [n, w] of [['OMS_PASS', HASLO_PROBY], ['OMS_SPRZEDAWCA_NIP', '1234563218'], ['OMS_RACHUNEK', '34109010140000000000000000']]) {
+    for (const [n, w] of [
+      ['OMS_PASS', HASLO_PROBY],
+      ['OMS_SPRZEDAWCA_NIP', '1234563218'],
+      ['OMS_RACHUNEK', '34109010140000000000000000'],
+    ]) {
       uzupelnij(k, { [n]: w });
       const r = akt(k, ['produkcja']);
       expect(r.status).toBe(1);
       expect(r.stderr).toContain(`PRODUKCJA_WARTOSC_Z_PROBY: ${n}`);
       expect(r.wyjscie).not.toContain(HASLO_PROBY);
-      uzupelnij(k, { OMS_PASS: 'c'.repeat(48), OMS_SPRZEDAWCA_NIP: '1111111111', OMS_RACHUNEK: '09109010140000000000000062' });
+      uzupelnij(k, {
+        OMS_PASS: 'c'.repeat(48),
+        OMS_SPRZEDAWCA_NIP: '1111111111',
+        OMS_RACHUNEK: '09109010140000000000000062',
+      });
     }
     expect(istnieje(k, 'update-state/blokada')).toBe(false);
     expect(zamowienia(k)).toEqual(['DEMO-001', 'DEMO-002', 'DEMO-003']);
@@ -162,7 +227,10 @@ describe('przejście próba → praca: przygotowanie i odmowy', () => {
     uzupelnij(k, { OMS_PASS: '""', OMS_TRYB: 'proba' });
     // Druga, pusta linia OMS_USER na końcu: compose bierze OSTATNIĄ — więc to brak. Dawniej
     // sprawdzane na OMS_RACHUNEK, który przestał być wymagany (można go wpisać w panelu).
-    fs.writeFileSync(plik(k, 'config/produkcja.env'), (czytaj(k, 'config/produkcja.env') + 'OMS_USER=\n').replaceAll('\n', '\r\n'));
+    fs.writeFileSync(
+      plik(k, 'config/produkcja.env'),
+      (czytaj(k, 'config/produkcja.env') + 'OMS_USER=\n').replaceAll('\n', '\r\n'),
+    );
     const r = akt(k, ['produkcja']);
     expect(r.status).toBe(1);
     expect(r.stderr).toContain('PRODUKCJA_NIEWYPELNIONE_POLA: OMS_TRYB(=produkcja) OMS_USER OMS_PASS — ');
@@ -227,16 +295,20 @@ describe('przejście próba → praca: przełączenie, accept, recover', () => {
     expect(czytaj(k, 'config/oms.env')).toMatch(/^OMS_TRYB=produkcja$/m);
     expect(istnieje(k, 'config/produkcja.env')).toBe(false);
     expect(istnieje(k, 'config/administrator-proby.env')).toBe(false);
-    expect(czytaj(k, 'config/administrator.env')).toBe('login=administrator\nhaslo=atrapa-haslo-administratora-0123456789\n');
+    expect(czytaj(k, 'config/administrator.env')).toBe(
+      'login=administrator\nhaslo=atrapa-haslo-administratora-0123456789\n',
+    );
     expect(r.wyjscie).not.toContain('atrapa-haslo-administratora');
     expect(r.wyjscie).not.toContain(/^OMS_PASS=(.*)$/m.exec(czytaj(k, 'config/oms.env'))[1]);
     // Pierwsza kopia pracy prawdziwym kopia.mjs: baza bez DEMO.
     expect(zamowienia(k, `backups/oms-${DZIS}.sqlite`)).toEqual([]);
     // Kolejność: zatrzymanie próby, kopia próby, dopiero potem start na nowej konfiguracji.
     const w = stanDockera(k).wywolania;
-    const idx = f => w.findIndex(x => x.includes(f));
+    const idx = (f) => w.findIndex((x) => x.includes(f));
     expect(idx('run --rm')).toBeGreaterThan(idx('stop oms-kopia oms'));
-    expect(w.findLastIndex(x => x.includes('up -d --no-build --no-deps --force-recreate oms'))).toBeGreaterThan(idx('run --rm'));
+    expect(w.findLastIndex((x) => x.includes('up -d --no-build --no-deps --force-recreate oms'))).toBeGreaterThan(
+      idx('run --rm'),
+    );
     expect(czytaj(k, 'update-state/blokada/stan')).toMatch(/^typ=produkcja$/m);
     expect(akt(k, ['status']).stdout).toContain(`dalej: odbiór pracy, potem accept ${op}`);
     // deploy w oknie odbioru odmawia.
@@ -269,7 +341,7 @@ describe('przejście próba → praca: przełączenie, accept, recover', () => {
     expect(istnieje(k, 'config/administrator.env')).toBe(false);
     expect(czytaj(k, `backups/oms-${DZIS}.sqlite`)).toBe('kopia-proby');
     const arch = plik(k, `proba-archiwum/${op}`);
-    const odl = fs.readdirSync(arch).find(n => n.startsWith('produkcja-odlozona-'));
+    const odl = fs.readdirSync(arch).find((n) => n.startsWith('produkcja-odlozona-'));
     expect(zamowienia(k, `proba-archiwum/${op}/${odl}/backups/oms-${DZIS}.sqlite`)).toEqual([]);
     expect(konta(k, `proba-archiwum/${op}/${odl}/data/oms.sqlite`)).toEqual(['administrator']);
     expect(istnieje(k, 'update-state/blokada')).toBe(false);
@@ -337,11 +409,11 @@ describe('przejście próba → praca: przełączenie, accept, recover', () => {
   });
 });
 
-
 describe('przejście próba → praca: odmowy i przerwania', () => {
   it('wydanie bez skryptu przejścia: odmowa przed blokadą, próba nie zatrzymana', () => {
     const k = instalacja({ bezPrzejscia: true });
-    akt(k, ['produkcja']); uzupelnij(k);
+    akt(k, ['produkcja']);
+    uzupelnij(k);
     const przed = JSON.stringify(stanDockera(k).kontenery);
     const r = akt(k, ['produkcja']);
     expect(r.status).toBe(1);
@@ -356,7 +428,8 @@ describe('przejście próba → praca: odmowy i przerwania', () => {
     const { r, op } = przelaczona(k);
     expect(r.status, r.wyjscie).toBe(0);
     const db = new DatabaseSync(plik(k, 'data/oms.sqlite'));
-    db.prepare("INSERT INTO zamowienia (numer) VALUES ('PRAWDZIWE-1')").run(); db.close();
+    db.prepare("INSERT INTO zamowienia (numer) VALUES ('PRAWDZIWE-1')").run();
+    db.close();
     const odmowa = akt(k, ['recover', op]);
     expect(odmowa.status).toBe(1);
     expect(odmowa.stderr).toContain('PRACA_MA_ZAMOWIENIA (1)');
@@ -368,7 +441,7 @@ describe('przejście próba → praca: odmowy i przerwania', () => {
     const rc = akt(k, ['recover', op, '--porzuc-prace']);
     expect(rc.status, rc.wyjscie).toBe(0);
     expect(zamowienia(k)).toEqual(['DEMO-001', 'DEMO-002', 'DEMO-003']);
-    const odl = fs.readdirSync(plik(k, `proba-archiwum/${op}`)).find(n => n.startsWith('produkcja-odlozona-'));
+    const odl = fs.readdirSync(plik(k, `proba-archiwum/${op}`)).find((n) => n.startsWith('produkcja-odlozona-'));
     expect(zamowienia(k, `proba-archiwum/${op}/${odl}/data/oms.sqlite`)).toEqual(['PRAWDZIWE-1']);
   });
 
@@ -405,15 +478,22 @@ describe('przejście próba → praca: odmowy i przerwania', () => {
     expect(czytaj(k, `backups/oms-${DZIS}.sqlite`)).toBe('kopia-proby');
     expect(czytaj(k, 'config/oms.env')).toMatch(/^OMS_TRYB=proba$/m);
     expect(czytaj(k, 'config/produkcja.env')).toMatch(/^OMS_TRYB=produkcja$/m);
-    const odl = fs.readdirSync(plik(k, `proba-archiwum/${op}`)).filter(n => n.startsWith('produkcja-odlozona-'));
-    expect(odl.flatMap(n => fs.existsSync(plik(k, `proba-archiwum/${op}/${n}/data/oms.sqlite`)) ? [konta(k, `proba-archiwum/${op}/${n}/data/oms.sqlite`)] : [])).toEqual([['administrator']]);
+    const odl = fs.readdirSync(plik(k, `proba-archiwum/${op}`)).filter((n) => n.startsWith('produkcja-odlozona-'));
+    expect(
+      odl.flatMap((n) =>
+        fs.existsSync(plik(k, `proba-archiwum/${op}/${n}/data/oms.sqlite`))
+          ? [konta(k, `proba-archiwum/${op}/${n}/data/oms.sqlite`)]
+          : [],
+      ),
+    ).toEqual([['administrator']]);
     expect(stanDockera(k).kontenery.oms.dziala).toBe(true);
   });
 
   it('przerwanie w środku przełączania (dane próby już w archiwum, część kopii też, bez znacznika): recover przywraca wszystko', () => {
     const k = instalacja();
     fs.writeFileSync(plik(k, 'backups/oms-2026-10-08.sqlite'), 'kopia-proby-starsza');
-    akt(k, ['produkcja']); uzupelnij(k);
+    akt(k, ['produkcja']);
+    uzupelnij(k);
     const r = akt(k, ['produkcja'], { TEST_ZABIJ_PRZY: 'run --rm' });
     expect(r.status).not.toBe(0);
     const op = /^operacja=(.+)$/m.exec(czytaj(k, 'update-state/blokada/stan'))[1];
@@ -422,7 +502,10 @@ describe('przejście próba → praca: odmowy i przerwania', () => {
     fs.renameSync(plik(k, 'data'), plik(k, `${arch}/data`));
     fs.mkdirSync(plik(k, 'data'));
     fs.renameSync(plik(k, `backups/oms-${DZIS}.sqlite`), plik(k, `${arch}/backups/oms-${DZIS}.sqlite`));
-    fs.writeFileSync(plik(k, 'update-state/blokada/stan'), czytaj(k, 'update-state/blokada/stan').replace(/^etap=.*$/m, 'etap=przelaczanie'));
+    fs.writeFileSync(
+      plik(k, 'update-state/blokada/stan'),
+      czytaj(k, 'update-state/blokada/stan').replace(/^etap=.*$/m, 'etap=przelaczanie'),
+    );
     for (let i = 0; i < 2; i++) {
       const rc = akt(k, ['recover', op]);
       if (i === 0) expect(rc.status, rc.wyjscie).toBe(0);

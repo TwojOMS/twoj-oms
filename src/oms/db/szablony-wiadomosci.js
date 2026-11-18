@@ -23,9 +23,10 @@ export function zmienSzablonyWiadomosci(db, zmiana, teraz = new Date().toISOStri
   try {
     const wynik = zmiana(wczytajSzablonyWiadomosci(db));
     if (wynik.ok) {
-      db.prepare(`INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
-        ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc, zmienione_at = excluded.zmienione_at`)
-        .run(KLUCZ_USTAWIEN, JSON.stringify(wynik.stan), teraz);
+      db.prepare(
+        `INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
+        ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc, zmienione_at = excluded.zmienione_at`,
+      ).run(KLUCZ_USTAWIEN, JSON.stringify(wynik.stan), teraz);
     }
     db.exec('COMMIT');
     return wynik;

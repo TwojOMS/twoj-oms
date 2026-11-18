@@ -1,6 +1,5 @@
 import { dzienWarszawa } from './format-daty.js';
 
-
 // Zamiana surowego zamowienia WooCommerce na wiersz `sprzedaz_historyczna`.
 //
 // ⚠️⚠️ TEN MODUL JEST JEDYNYM MIEJSCEM, W KTORYM DANE OSOBOWE KLIENTA MOGA SIE POJAWIC —
@@ -12,7 +11,6 @@ import { dzienWarszawa } from './format-daty.js';
 
 /** Konto Apilo, ktore w `kanaly-raportowe.js` odpowiada danemu sklepowi. */
 
-
 /** Statusy, ktore SA sprzedaza. Cokolwiek spoza obu list PRZERYWA import (patrz `decyzja`). */
 export const STATUSY_LICZONE = new Set(['completed', 'processing']);
 
@@ -22,7 +20,13 @@ export const STATUSY_LICZONE = new Set(['completed', 'processing']);
  * liczyloby ten sam pieniadz dwa razy.
  */
 export const STATUSY_ODRZUCONE = new Set([
-  'pending', 'on-hold', 'cancelled', 'refunded', 'failed', 'trash', 'checkout-draft',
+  'pending',
+  'on-hold',
+  'cancelled',
+  'refunded',
+  'failed',
+  'trash',
+  'checkout-draft',
 ]);
 
 const dwaMiejsca = (n) => (Math.round(n * 100) / 100).toFixed(2);
@@ -61,12 +65,20 @@ export function wierszHistorii(sklep, z, { konta }) {
       typ: 1,
     })),
     ...(z.shipping_lines ?? []).map((p) => ({
-      nazwa: p.method_title, sku: null, originalCode: null,
-      ilosc: 1, bruttoLinii: bruttoLiniiZl(p), typ: 2,
+      nazwa: p.method_title,
+      sku: null,
+      originalCode: null,
+      ilosc: 1,
+      bruttoLinii: bruttoLiniiZl(p),
+      typ: 2,
     })),
     ...(z.fee_lines ?? []).map((p) => ({
-      nazwa: p.name, sku: null, originalCode: null,
-      ilosc: 1, bruttoLinii: bruttoLiniiZl(p), typ: 2,
+      nazwa: p.name,
+      sku: null,
+      originalCode: null,
+      ilosc: 1,
+      bruttoLinii: bruttoLiniiZl(p),
+      typ: 2,
     })),
   ];
 
@@ -116,9 +128,10 @@ export function decyzja(z, { klienciWdt = new Set(), czyTestowe = () => false } 
   if (klienciWdt.has(email.toLowerCase())) {
     return {
       akcja: 'stop',
-      powod: `Zamowienie ${z.number}: klient WDT w oknie importu. Archiwum nie przechowuje`
-        + ' maila, wiec regula 0% VAT nie zadzialaby przy odczycie i sprzedaz zostalaby'
-        + ' zanizona o 23%. Rozstrzygnij recznie przed wznowieniem.',
+      powod:
+        `Zamowienie ${z.number}: klient WDT w oknie importu. Archiwum nie przechowuje` +
+        ' maila, wiec regula 0% VAT nie zadzialaby przy odczycie i sprzedaz zostalaby' +
+        ' zanizona o 23%. Rozstrzygnij recznie przed wznowieniem.',
     };
   }
   if (czyTestowe(email, nazwa)) return { akcja: 'pomin', powod: 'testowe' };
@@ -126,8 +139,9 @@ export function decyzja(z, { klienciWdt = new Set(), czyTestowe = () => false } 
   if (!STATUSY_LICZONE.has(z.status)) {
     return {
       akcja: 'stop',
-      powod: `Nieznany status WooCommerce: "${z.status}" (zamowienie ${z.number}).`
-        + ' Dopisz go do STATUSY_LICZONE albo STATUSY_ODRZUCONE — po pomiarze, nie na oko.',
+      powod:
+        `Nieznany status WooCommerce: "${z.status}" (zamowienie ${z.number}).` +
+        ' Dopisz go do STATUSY_LICZONE albo STATUSY_ODRZUCONE — po pomiarze, nie na oko.',
     };
   }
   return { akcja: 'zapisz', powod: null };

@@ -8,9 +8,10 @@ import { readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { katalogiWidokow } from '../../src/core/web/widoki.js';
 
-const plikiEjs = (katalog) => readdirSync(katalog, { withFileTypes: true, recursive: true })
-  .filter((d) => d.isFile() && d.name.endsWith('.ejs'))
-  .map((d) => ({ nazwa: relative(katalog, join(d.parentPath ?? d.path, d.name)).replaceAll('\\', '/'), katalog }));
+const plikiEjs = (katalog) =>
+  readdirSync(katalog, { withFileTypes: true, recursive: true })
+    .filter((d) => d.isFile() && d.name.endsWith('.ejs'))
+    .map((d) => ({ nazwa: relative(katalog, join(d.parentPath ?? d.path, d.name)).replaceAll('\\', '/'), katalog }));
 
 describe('nazwy widoków EJS', () => {
   it('lista katalogów obejmuje core/web/widoki i widoki każdego modułu', () => {

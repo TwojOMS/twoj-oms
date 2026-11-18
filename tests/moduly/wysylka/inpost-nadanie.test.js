@@ -19,7 +19,15 @@ import { powodBrakuGotowosciNadania } from '../../../src/domena/gotowosc-nadania
 const TOKEN = 'eyJTESTOWY.TOKEN-INPOST.NIE-MA-PRAWA-WYCIEC';
 const ORGANIZACJA = 13235;
 const URL_API = 'https://shipx.test/v1';
-const NADAWCA = { nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL', phone: '338451234', email: 'sklep@swietlik.example.test' };
+const NADAWCA = {
+  nazwa: 'Pracownia Półcień Anna Wzorcowa',
+  ulica: 'ul. Przykładowa 1',
+  kod: '00-950',
+  miasto: 'Warszawa',
+  kraj: 'PL',
+  phone: '338451234',
+  email: 'sklep@swietlik.example.test',
+};
 
 // Prawdziwy numer paczkomatowy ma 24 cyfry; identyfikator przesylki w ShipX to liczba.
 const NUMER = '520000123456789012345678';
@@ -28,16 +36,38 @@ const PDF = '%PDF-1.4\n1 0 obj\n<<>>\nendobj\n';
 const ZPL = '^XA^FO50,50^FDInPost^FS^XZ';
 
 const zmapowane = (nad = {}) => ({
-  zrodlo_id: 28045, numer: '28045', klient: { email: 'j@k.pl', phone: '+48500900008' },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
-  metoda_wysylki: 'inpost_paczkomat', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '212.90',
-  punkt_odbioru: 'SLN06M', punkt_odbioru_opis: 'Przy myjni bezdotykowej',
-  status_woo: 'processing', oplacone_at: '2026-08-01T10:00:00', anulowane: 0,
-  utworzone_at: '2026-08-01T09:00:00', pozycje: [], ...nad,
+  zrodlo_id: 28045,
+  numer: '28045',
+  klient: { email: 'j@k.pl', phone: '+48500900008' },
+  dostawa: {
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    address_1: 'Polna 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
+  },
+  metoda_wysylki: 'inpost_paczkomat',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '212.90',
+  punkt_odbioru: 'SLN06M',
+  punkt_odbioru_opis: 'Przy myjni bezdotykowej',
+  status_woo: 'processing',
+  oplacone_at: '2026-08-01T10:00:00',
+  anulowane: 0,
+  utworzone_at: '2026-08-01T09:00:00',
+  pozycje: [],
+  ...nad,
 });
 
 const paczka = { waga: 1.2, gabaryt: 'A' };
-const logi = (db, akcja) => db.prepare('SELECT * FROM log WHERE akcja = ?').all(akcja).map((w) => w.wynik);
+const logi = (db, akcja) =>
+  db
+    .prepare('SELECT * FROM log WHERE akcja = ?')
+    .all(akcja)
+    .map((w) => w.wynik);
 const wiersz = (db, id) => db.prepare('SELECT * FROM przesylki WHERE zamowienie_id = ?').get(id);
 
 // Wynik, jaki klient InPostu oddaje po UDANYM nadaniu (kontrakt kurierzy/inpost.js).
@@ -111,7 +141,11 @@ describe('nadanie paczkomatowe — podpięcie klienta InPostu', () => {
       return odp.post;
     });
     const inpostKlient = createInpostClient({
-      url: URL_API, token: TOKEN, organizacja: ORGANIZACJA, nadawca: NADAWCA, fetchImpl,
+      url: URL_API,
+      token: TOKEN,
+      organizacja: ORGANIZACJA,
+      nadawca: NADAWCA,
+      fetchImpl,
     });
     const { db, nadanie } = zestaw({ inpostKlient });
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
@@ -166,12 +200,22 @@ describe('adres użyty przy paczkomacie niesie kod automatu', () => {
     const { db, dpd, nadanie } = zestaw();
     // Atrapa DPD w `zestaw()` nie oddaje wyniku — tutaj nadajemy naprawde, wiec musi.
     dpd.nadaj.mockResolvedValue({
-      numerListu: '1048171723296U', etykietaPdf: Buffer.from(PDF), etykietaZpl: Buffer.from(ZPL),
-      zplBladOpis: null, surowa: '<xml/>',
+      numerListu: '1048171723296U',
+      etykietaPdf: Buffer.from(PDF),
+      etykietaZpl: Buffer.from(ZPL),
+      zplBladOpis: null,
+      surowa: '<xml/>',
     });
-    const id = zapiszZamowienie(db, 'pro', zmapowane({
-      metoda_wysylki: 'dpd', punkt_odbioru: null, punkt_odbioru_opis: null,
-    }), {});
+    const id = zapiszZamowienie(
+      db,
+      'pro',
+      zmapowane({
+        metoda_wysylki: 'dpd',
+        punkt_odbioru: null,
+        punkt_odbioru_opis: null,
+      }),
+      {},
+    );
     await nadanie.nadaj(id, { waga: 1.2, dlugosc: 30, szerokosc: 20, wysokosc: 10 });
     expect(JSON.parse(wiersz(db, id).adres_uzyty)).not.toHaveProperty('punkt_odbioru');
   });
@@ -179,10 +223,12 @@ describe('adres użyty przy paczkomacie niesie kod automatu', () => {
 
 describe('paczkomat bez kodu nie idzie do nadania', () => {
   it('domena nazywa brak kodu, a przy kompletnym zamówieniu milczy', () => {
-    expect(powodBrakuGotowosciNadania({ metoda_wysylki: 'inpost_paczkomat', punkt_odbioru: null }))
-      .toMatch(/kodu paczkomatu/i);
-    expect(powodBrakuGotowosciNadania({ metoda_wysylki: 'inpost_paczkomat', punkt_odbioru: '   ' }))
-      .toMatch(/kodu paczkomatu/i);
+    expect(powodBrakuGotowosciNadania({ metoda_wysylki: 'inpost_paczkomat', punkt_odbioru: null })).toMatch(
+      /kodu paczkomatu/i,
+    );
+    expect(powodBrakuGotowosciNadania({ metoda_wysylki: 'inpost_paczkomat', punkt_odbioru: '   ' })).toMatch(
+      /kodu paczkomatu/i,
+    );
     expect(powodBrakuGotowosciNadania({ metoda_wysylki: 'inpost_paczkomat', punkt_odbioru: 'WRO10B' })).toBeNull();
     expect(powodBrakuGotowosciNadania({ metoda_wysylki: 'dpd', punkt_odbioru: null })).toBeNull();
   });
@@ -201,8 +247,10 @@ describe('paczkomat bez kodu nie idzie do nadania', () => {
   it('ręczna korekta kodu odblokowuje nadanie (brak kodu ma WYJŚCIE)', async () => {
     const { db, inpost, nadanie } = zestaw();
     const id = zapiszZamowienie(db, 'pro', zmapowane({ punkt_odbioru: null }), {});
-    db.prepare('UPDATE zamowienia SET wysylka_reczna_json = ? WHERE id = ?')
-      .run(JSON.stringify({ metoda: 'inpost_paczkomat', pobranie: 0, punkt_odbioru: 'WRO10B' }), id);
+    db.prepare('UPDATE zamowienia SET wysylka_reczna_json = ? WHERE id = ?').run(
+      JSON.stringify({ metoda: 'inpost_paczkomat', pobranie: 0, punkt_odbioru: 'WRO10B' }),
+      id,
+    );
     await nadanie.nadaj(id, paczka);
     expect(inpost.nadaj).toHaveBeenCalledTimes(1);
     expect(inpost.nadaj.mock.calls[0][0].zamowienie.punkt_odbioru).toBe('WRO10B');
@@ -217,7 +265,9 @@ describe('awaria po utworzeniu przesyłki zostawia identyfikator', () => {
   // Przesylka u kuriera ISTNIEJE — bez identyfikatora panel nigdy jej nie dokonczy
   // ani nie odnajdzie, a paczka zostanie oplacona i niewidoczna.
   it('błąd bez numeru listu, ale z identyfikatorem → wiersz żyje i niesie identyfikator', async () => {
-    const inpostKlient = { nadaj: vi.fn().mockRejectedValue(bladPoUtworzeniu('InPost: nie udało się sprawdzić przesyłki: timeout')) };
+    const inpostKlient = {
+      nadaj: vi.fn().mockRejectedValue(bladPoUtworzeniu('InPost: nie udało się sprawdzić przesyłki: timeout')),
+    };
     const { db, nadanie } = zestaw({ inpostKlient });
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
 
@@ -249,7 +299,9 @@ describe('awaria po utworzeniu przesyłki zostawia identyfikator', () => {
   // ⚠️ MUTACJA (d): przerwanie zapisu numeru przy awarii etykiety MUSI zlamac ten test.
   it('awaria etykiety NIE gubi numeru listu ani identyfikatora', async () => {
     const inpostKlient = {
-      nadaj: vi.fn().mockRejectedValue(bladPoUtworzeniu('InPost nie oddał etykiety PDF (HTTP 500)', { numerListu: NUMER })),
+      nadaj: vi
+        .fn()
+        .mockRejectedValue(bladPoUtworzeniu('InPost nie oddał etykiety PDF (HTTP 500)', { numerListu: NUMER })),
     };
     const { db, nadanie } = zestaw({ inpostKlient });
     const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
@@ -282,7 +334,12 @@ describe('awaria po utworzeniu przesyłki zostawia identyfikator', () => {
 // STAN „PRZESYLKA TWORZONA U KURIERA"
 // ---------------------------------------------------------------------------------
 describe('stan „przesyłka tworzona u kuriera"', () => {
-  const wTrakcie = { status: 'w_trakcie', id_przesylki_kuriera: '9993331', numer_listu: null, utworzona_at: '2026-08-01T10:00:00.000Z' };
+  const wTrakcie = {
+    status: 'w_trakcie',
+    id_przesylki_kuriera: '9993331',
+    numer_listu: null,
+    utworzona_at: '2026-08-01T10:00:00.000Z',
+  };
 
   it('identyfikator bez numeru listu daje własny stan, nie „w_trakcie"', () => {
     expect(stanPrzesylki(wTrakcie, Date.parse('2026-08-01T10:00:01Z'))).toBe('tworzona_u_kuriera');
@@ -412,7 +469,9 @@ describe('HTTP — paczkomat na karcie zamówienia', () => {
   const naglowek = { authorization: `Basic ${Buffer.from('adam:x').toString('base64')}`, origin: 'http://localhost' };
   const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) };
   let db;
-  beforeEach(() => { db = openOmsDb(':memory:'); });
+  beforeEach(() => {
+    db = openOmsDb(':memory:');
+  });
 
   const serwer = (nadanie) => buildOmsServer({ db, config, poller, nadanie });
 
@@ -451,7 +510,9 @@ describe('HTTP — paczkomat na karcie zamówienia', () => {
     expect(karta.body).toMatch(/Sprawdź ponownie/);
 
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/przesylki/${przesylkaId}/sprawdz`, headers: naglowek,
+      method: 'POST',
+      url: `/zamowienia/${id}/przesylki/${przesylkaId}/sprawdz`,
+      headers: naglowek,
     });
     expect(r.statusCode).toBe(302);
     expect(inpost.nadaj).toHaveBeenCalledTimes(1);
@@ -481,7 +542,9 @@ describe('Zadanie 7 — ekran nadania dla paczkomatu', () => {
   const naglowek = { authorization: `Basic ${Buffer.from('adam:x').toString('base64')}`, origin: 'http://localhost' };
   const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) };
   let db;
-  beforeEach(() => { db = openOmsDb(':memory:'); });
+  beforeEach(() => {
+    db = openOmsDb(':memory:');
+  });
 
   function zestawHttp({ inpostKlient, nad = {} } = {}) {
     const inpost = inpostKlient ?? { nadaj: vi.fn().mockResolvedValue(wynikGotowy()) };
@@ -545,8 +608,20 @@ describe('Zadanie 7 — ekran nadania dla paczkomatu', () => {
     const inpost = { nadaj: vi.fn().mockResolvedValue(wynikGotowy()) };
     const { app, id } = zestawHttp({ inpostKlient: inpost });
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
-      payload: { waga: '2.5', gabaryt: 'B', kolejnosc: '1', nazwa: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL', punkt_odbioru: 'SLN06M' },
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: {
+        waga: '2.5',
+        gabaryt: 'B',
+        kolejnosc: '1',
+        nazwa: 'Jan Kowalski',
+        ulica: 'Polna 1',
+        kod: '00-950',
+        miasto: 'Warszawa',
+        kraj: 'PL',
+        punkt_odbioru: 'SLN06M',
+      },
     });
     expect(r.statusCode).toBe(302);
     expect(inpost.nadaj).toHaveBeenCalledTimes(1);
@@ -559,8 +634,20 @@ describe('Zadanie 7 — ekran nadania dla paczkomatu', () => {
     const inpost = { nadaj: vi.fn().mockResolvedValue(wynikGotowy()) };
     const { app, id } = zestawHttp({ inpostKlient: inpost });
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
-      payload: { waga: '1', gabaryt: 'A', kolejnosc: '1', nazwa: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL', punkt_odbioru: 'wro10b' },
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: {
+        waga: '1',
+        gabaryt: 'A',
+        kolejnosc: '1',
+        nazwa: 'Jan Kowalski',
+        ulica: 'Polna 1',
+        kod: '00-950',
+        miasto: 'Warszawa',
+        kraj: 'PL',
+        punkt_odbioru: 'wro10b',
+      },
     });
     expect(r.statusCode).toBe(302);
     expect(inpost.nadaj.mock.calls[0][0].punktOdbioru).toBe('WRO10B');
@@ -570,8 +657,19 @@ describe('Zadanie 7 — ekran nadania dla paczkomatu', () => {
     const inpost = { nadaj: vi.fn() };
     const { app, id } = zestawHttp({ inpostKlient: inpost });
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
-      payload: { waga: '1', kolejnosc: '1', nazwa: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL', punkt_odbioru: 'SLN06M' },
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: {
+        waga: '1',
+        kolejnosc: '1',
+        nazwa: 'Jan Kowalski',
+        ulica: 'Polna 1',
+        kod: '00-950',
+        miasto: 'Warszawa',
+        kraj: 'PL',
+        punkt_odbioru: 'SLN06M',
+      },
     });
     expect(r.statusCode).toBe(400);
     expect(r.body).toMatch(/gabaryt/i);
@@ -582,8 +680,20 @@ describe('Zadanie 7 — ekran nadania dla paczkomatu', () => {
     const inpost = { nadaj: vi.fn() };
     const { app, id } = zestawHttp({ inpostKlient: inpost });
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/nadaj`, headers: naglowek,
-      payload: { waga: '1', gabaryt: 'Z', kolejnosc: '1', nazwa: 'Jan Kowalski', ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL', punkt_odbioru: 'SLN06M' },
+      method: 'POST',
+      url: `/zamowienia/${id}/nadaj`,
+      headers: naglowek,
+      payload: {
+        waga: '1',
+        gabaryt: 'Z',
+        kolejnosc: '1',
+        nazwa: 'Jan Kowalski',
+        ulica: 'Polna 1',
+        kod: '00-950',
+        miasto: 'Warszawa',
+        kraj: 'PL',
+        punkt_odbioru: 'SLN06M',
+      },
     });
     expect(r.statusCode).toBe(400);
     expect(inpost.nadaj).not.toHaveBeenCalled();
@@ -596,7 +706,9 @@ describe('Zadanie 7 — karta zamówienia pokazuje punkt odbioru', () => {
   const naglowek = { authorization: `Basic ${Buffer.from('adam:x').toString('base64')}`, origin: 'http://localhost' };
   const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) };
   let db;
-  beforeEach(() => { db = openOmsDb(':memory:'); });
+  beforeEach(() => {
+    db = openOmsDb(':memory:');
+  });
 
   // Punkt odbioru przeszedł ze „Szczegółów zamówienia” do „Danych do wysyłki”.
   it('sekcja „Dane do wysyłki" pokazuje kod punktu odbioru i opis lokalizacji', async () => {
@@ -640,12 +752,22 @@ describe('Zadanie 7 — karta zamówienia pokazuje punkt odbioru', () => {
 describe('zbudujOms — InPost w mapie kurierów', () => {
   const katalogEtykiet = () => mkdtempSync(join(tmpdir(), 'oms-boot-'));
   const PELNE = {
-    OMS_AUTH_USER: 'adam', OMS_AUTH_PASS: 'x', OMS_DB_PATH: ':memory:',
-    SHOP_PRO_URL: 'https://pro.swietlik.test', SHOP_PRO_CK: 'ck', SHOP_PRO_CS: 'cs',
-    DPD_URL: 'https://dpd/api', DPD_LOGIN: '99999999', DPD_PASSWORD: 'tajne', DPD_FID: '876543',
-    DPD_NADAWCA_NAZWA: 'Pracownia Półcień Anna Wzorcowa', DPD_NADAWCA_ULICA: 'ul. Przykładowa 1',
-    DPD_NADAWCA_KOD: '00-950', DPD_NADAWCA_MIASTO: 'Warszawa',
-    DPD_INFO_URL: 'https://dpd/info', DPD_INFO_CHANNEL: '876543',
+    OMS_AUTH_USER: 'adam',
+    OMS_AUTH_PASS: 'x',
+    OMS_DB_PATH: ':memory:',
+    SHOP_PRO_URL: 'https://pro.swietlik.test',
+    SHOP_PRO_CK: 'ck',
+    SHOP_PRO_CS: 'cs',
+    DPD_URL: 'https://dpd/api',
+    DPD_LOGIN: '99999999',
+    DPD_PASSWORD: 'tajne',
+    DPD_FID: '876543',
+    DPD_NADAWCA_NAZWA: 'Pracownia Półcień Anna Wzorcowa',
+    DPD_NADAWCA_ULICA: 'ul. Przykładowa 1',
+    DPD_NADAWCA_KOD: '00-950',
+    DPD_NADAWCA_MIASTO: 'Warszawa',
+    DPD_INFO_URL: 'https://dpd/info',
+    DPD_INFO_CHANNEL: '876543',
   };
   const env = (nad = {}) => ({ ...PELNE, OMS_ETYKIETY_DIR: katalogEtykiet(), ...nad });
   const atrapaDpd = () => vi.fn(() => ({ nadaj: vi.fn() }));
@@ -653,13 +775,19 @@ describe('zbudujOms — InPost w mapie kurierów', () => {
   it('z sekcją INPOST_* klient powstaje i dostaje adres nadawcy z konfiguracji', () => {
     const createInpost = vi.fn(() => ({ nadaj: vi.fn(), sprawdzPrzesylke: vi.fn() }));
     const { inpost, nadanie, config } = zbudujOms({
-      env: env({ INPOST_TOKEN: TOKEN, INPOST_ORGANIZACJA: '13235' }), createDpd: atrapaDpd(), createInpost,
+      env: env({ INPOST_TOKEN: TOKEN, INPOST_ORGANIZACJA: '13235' }),
+      createDpd: atrapaDpd(),
+      createInpost,
     });
     expect(inpost).not.toBeNull();
     expect(nadanie).not.toBeNull();
-    expect(createInpost).toHaveBeenCalledWith(expect.objectContaining({
-      token: TOKEN, organizacja: 13235, nadawca: config.nadawca,
-    }));
+    expect(createInpost).toHaveBeenCalledWith(
+      expect.objectContaining({
+        token: TOKEN,
+        organizacja: 13235,
+        nadawca: config.nadawca,
+      }),
+    );
     // ⚠️ TEN SAM obiekt nadawcy, co u DPD — nie kopia, ktora rozjedzie sie po pierwszej poprawce.
     expect(config.nadawca).toBe(config.dpd.nadawca);
   });
@@ -704,13 +832,20 @@ describe('usługa ShipX i paczkomat nadawczy w ciele żądania', () => {
   const zPrawdziwymKlientem = ({ paczkomatNadawczy, sklep = 'swietlik', nad = {}, surowe: raw = {} } = {}) => {
     const cialaZadan = [];
     const fetchImpl = vi.fn(async (adres, opcje) => {
-      if (String(adres).includes('format=pdf')) return { status: 200, ok: true, arrayBuffer: async () => Buffer.from(PDF, 'latin1') };
-      if (String(adres).includes('format=zpl')) return { status: 200, ok: true, arrayBuffer: async () => Buffer.from(ZPL, 'latin1') };
+      if (String(adres).includes('format=pdf'))
+        return { status: 200, ok: true, arrayBuffer: async () => Buffer.from(PDF, 'latin1') };
+      if (String(adres).includes('format=zpl'))
+        return { status: 200, ok: true, arrayBuffer: async () => Buffer.from(ZPL, 'latin1') };
       if (opcje?.body) cialaZadan.push(JSON.parse(opcje.body));
       return { status: 201, ok: true, text: async () => JSON.stringify({ id: SHIPMENT_ID, tracking_number: NUMER }) };
     });
     const inpostKlient = createInpostClient({
-      url: URL_API, token: TOKEN, organizacja: ORGANIZACJA, nadawca: NADAWCA, paczkomatNadawczy, fetchImpl,
+      url: URL_API,
+      token: TOKEN,
+      organizacja: ORGANIZACJA,
+      nadawca: NADAWCA,
+      paczkomatNadawczy,
+      fetchImpl,
     });
     const { db, nadanie } = zestaw({ inpostKlient });
     const id = zapiszZamowienie(db, sklep, zmapowane(nad), raw);
@@ -731,7 +866,8 @@ describe('usługa ShipX i paczkomat nadawczy w ciele żądania', () => {
   it('paczkomat z Allegro ze Smart! jedzie na taryfie allegro_smart', async () => {
     const { nadanie, id, cialaZadan } = zPrawdziwymKlientem({
       sklep: 'allegro_swietlik',
-      nad: { metoda_wysylki: 'allegro_paczkomat' }, surowe: dostawa(true),
+      nad: { metoda_wysylki: 'allegro_paczkomat' },
+      surowe: dostawa(true),
     });
     await nadanie.nadaj(id, paczka);
     expect(cialaZadan[0].service).toBe('inpost_locker_allegro_smart');
@@ -740,7 +876,8 @@ describe('usługa ShipX i paczkomat nadawczy w ciele żądania', () => {
   it('paczkomat z Allegro bez Smart! jedzie na taryfie allegro zwykłej', async () => {
     const { nadanie, id, cialaZadan } = zPrawdziwymKlientem({
       sklep: 'allegro_swietlik',
-      nad: { metoda_wysylki: 'allegro_paczkomat' }, surowe: dostawa(false),
+      nad: { metoda_wysylki: 'allegro_paczkomat' },
+      surowe: dostawa(false),
     });
     await nadanie.nadaj(id, paczka);
     expect(cialaZadan[0].service).toBe('inpost_locker_allegro');

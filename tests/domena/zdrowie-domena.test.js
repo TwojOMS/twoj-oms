@@ -20,21 +20,32 @@ const TERAZ = new Date('2026-08-22T12:00:00.000Z');
 const iso = (sekundTemu) => new Date(TERAZ.getTime() - sekundTemu * 1000).toISOString();
 
 // Komplet zdrowy — punkt wyjscia kazdego przypadku. Nadpisania robia z niego awarie.
-const zdrowe = (nad = {}) => ocenZdrowie({
-  teraz: TERAZ,
-  startAt: new Date(TERAZ.getTime() - 24 * 3600 * 1000),
-  zrodla: ['pro', 'swietlik'],
-  stanyPollera: [
-    { sklep: 'pro', ostatni_przebieg_at: iso(60), ostatni_blad: null },
-    { sklep: 'swietlik', ostatni_przebieg_at: iso(90), ostatni_blad: null },
-  ],
-  ksefWlaczony: true,
-  pulsKsef: { okAt: iso(600), bladAt: null, blad: null },
-  kosztyWlaczone: true,
-  stanKosztow: { ostatnie_udane_at: iso(9 * 3600), ostatni_blad: null, ostatni_blad_at: null },
-  kanaly: [{ kanal: 'allegro_swietlik', zyje: true, pilne: false, uprzedzenie: false, zostaloDni: 84, refreshWygasaAt: '2026-11-14', powod: null }],
-  ...nad,
-});
+const zdrowe = (nad = {}) =>
+  ocenZdrowie({
+    teraz: TERAZ,
+    startAt: new Date(TERAZ.getTime() - 24 * 3600 * 1000),
+    zrodla: ['pro', 'swietlik'],
+    stanyPollera: [
+      { sklep: 'pro', ostatni_przebieg_at: iso(60), ostatni_blad: null },
+      { sklep: 'swietlik', ostatni_przebieg_at: iso(90), ostatni_blad: null },
+    ],
+    ksefWlaczony: true,
+    pulsKsef: { okAt: iso(600), bladAt: null, blad: null },
+    kosztyWlaczone: true,
+    stanKosztow: { ostatnie_udane_at: iso(9 * 3600), ostatni_blad: null, ostatni_blad_at: null },
+    kanaly: [
+      {
+        kanal: 'allegro_swietlik',
+        zyje: true,
+        pilne: false,
+        uprzedzenie: false,
+        zostaloDni: 84,
+        refreshWygasaAt: '2026-11-14',
+        powod: null,
+      },
+    ],
+    ...nad,
+  });
 
 describe('ocenZdrowie — komplet zdrowy', () => {
   it('oddaje ok:true i ani jednego alarmu ani uwagi', () => {
@@ -144,16 +155,22 @@ describe('ocenZdrowie — czuwacz KSeF (puls w pamieci)', () => {
 
 describe('ocenZdrowie — czuwacz kosztow (stan_kosztow)', () => {
   it('udane pobranie sprzed 27 godzin to alarm, sprzed 25 jeszcze nie (pusta noc tez bije znacznik)', () => {
-    const stary = zdrowe({ stanKosztow: { ostatnie_udane_at: iso(27 * 3600), ostatni_blad: null, ostatni_blad_at: null } });
+    const stary = zdrowe({
+      stanKosztow: { ostatnie_udane_at: iso(27 * 3600), ostatni_blad: null, ostatni_blad_at: null },
+    });
     expect(stary.ok).toBe(false);
     expect(stary.alarmy.some((a) => a.includes('koszt'))).toBe(true);
 
-    const swiezy = zdrowe({ stanKosztow: { ostatnie_udane_at: iso(25 * 3600), ostatni_blad: null, ostatni_blad_at: null } });
+    const swiezy = zdrowe({
+      stanKosztow: { ostatnie_udane_at: iso(25 * 3600), ostatni_blad: null, ostatni_blad_at: null },
+    });
     expect(swiezy.ok).toBe(true);
   });
 
   it('obecny ostatni_blad to alarm (blad gasnie w bazie przy sukcesie, wiec obecnosc = stan biezacy)', () => {
-    const w = zdrowe({ stanKosztow: { ostatnie_udane_at: iso(3600), ostatni_blad: 'KSeF: 401', ostatni_blad_at: iso(1800) } });
+    const w = zdrowe({
+      stanKosztow: { ostatnie_udane_at: iso(3600), ostatni_blad: 'KSeF: 401', ostatni_blad_at: iso(1800) },
+    });
     expect(w.ok).toBe(false);
     expect(w.alarmy.some((a) => a.includes('KSeF: 401'))).toBe(true);
   });
@@ -185,7 +202,10 @@ describe('ocenZdrowie — czuwacz przesylek (puls, zegar #4 od 23.08)', () => {
   });
 
   it('blad swiezszy niz sukces to alarm; wylaczony nie alarmuje', () => {
-    const zly = zdrowe({ przesylkiWlaczone: true, pulsPrzesylek: { okAt: iso(1200), bladAt: iso(600), blad: 'DPD: timeout' } });
+    const zly = zdrowe({
+      przesylkiWlaczone: true,
+      pulsPrzesylek: { okAt: iso(1200), bladAt: iso(600), blad: 'DPD: timeout' },
+    });
     expect(zly.ok).toBe(false);
     expect(zly.alarmy.some((a) => a.includes('DPD: timeout'))).toBe(true);
 
@@ -196,7 +216,8 @@ describe('ocenZdrowie — czuwacz przesylek (puls, zegar #4 od 23.08)', () => {
 
   it('brak przebiegu od startu: mlody proces czeka, stary alarmuje', () => {
     const mlody = zdrowe({
-      przesylkiWlaczone: true, pulsPrzesylek: null,
+      przesylkiWlaczone: true,
+      pulsPrzesylek: null,
       startAt: new Date(TERAZ.getTime() - 10 * 60 * 1000),
     });
     expect(mlody.ok).toBe(true);
@@ -208,7 +229,17 @@ describe('ocenZdrowie — czuwacz przesylek (puls, zegar #4 od 23.08)', () => {
 describe('ocenZdrowie — kanaly Allegro (ocenione wczesniej przez stanKanalu)', () => {
   it('kanal pilny to alarm z jego powodem', () => {
     const w = zdrowe({
-      kanaly: [{ kanal: 'allegro_swietlik', zyje: false, pilne: true, uprzedzenie: false, zostaloDni: null, refreshWygasaAt: null, powod: 'Kanał allegro_swietlik nie pobiera zamówień' }],
+      kanaly: [
+        {
+          kanal: 'allegro_swietlik',
+          zyje: false,
+          pilne: true,
+          uprzedzenie: false,
+          zostaloDni: null,
+          refreshWygasaAt: null,
+          powod: 'Kanał allegro_swietlik nie pobiera zamówień',
+        },
+      ],
     });
     expect(w.ok).toBe(false);
     expect(w.alarmy.some((a) => a.includes('nie pobiera zamówień'))).toBe(true);
@@ -216,7 +247,17 @@ describe('ocenZdrowie — kanaly Allegro (ocenione wczesniej przez stanKanalu)',
 
   it('uprzedzenie (token na dniach) to UWAGA, nie alarm — panel dziala', () => {
     const w = zdrowe({
-      kanaly: [{ kanal: 'allegro_swietlik', zyje: true, pilne: false, uprzedzenie: true, zostaloDni: 5, refreshWygasaAt: '2026-08-27', powod: 'Kanał allegro_swietlik: połączenie z Allegro wygasa 2026-08-27' }],
+      kanaly: [
+        {
+          kanal: 'allegro_swietlik',
+          zyje: true,
+          pilne: false,
+          uprzedzenie: true,
+          zostaloDni: 5,
+          refreshWygasaAt: '2026-08-27',
+          powod: 'Kanał allegro_swietlik: połączenie z Allegro wygasa 2026-08-27',
+        },
+      ],
     });
     expect(w.ok).toBe(true);
     expect(w.uwagi.some((u) => u.includes('wygasa'))).toBe(true);
@@ -232,9 +273,15 @@ describe('ocenZdrowie — ksztalt wyniku dla czujki', () => {
 
   it('kanaly przechodza do wyniku bez dokladania pol (biala lista stanKanalu zostaje jedyna)', () => {
     const w = zdrowe();
-    expect(Object.keys(w.kanaly[0]).sort()).toEqual(
-      ['kanal', 'pilne', 'powod', 'refreshWygasaAt', 'uprzedzenie', 'zostaloDni', 'zyje'],
-    );
+    expect(Object.keys(w.kanaly[0]).sort()).toEqual([
+      'kanal',
+      'pilne',
+      'powod',
+      'refreshWygasaAt',
+      'uprzedzenie',
+      'zostaloDni',
+      'zyje',
+    ]);
   });
 });
 
@@ -261,9 +308,21 @@ describe('ocenZdrowie — kolejność kluczy jest umową z czujką monitoring', 
   });
 
   it('czujka wycina TREŚĆ uwag swoim wzorcem', () => {
-    const json = JSON.stringify(zdrowe({
-      kanaly: [{ kanal: 'allegro_swietlik', zyje: true, pilne: false, uprzedzenie: true, zostaloDni: 5, refreshWygasaAt: '2026-09-15', powod: 'token allegro_swietlik wygasa za 5 dni' }],
-    }));
+    const json = JSON.stringify(
+      zdrowe({
+        kanaly: [
+          {
+            kanal: 'allegro_swietlik',
+            zyje: true,
+            pilne: false,
+            uprzedzenie: true,
+            zostaloDni: 5,
+            refreshWygasaAt: '2026-09-15',
+            powod: 'token allegro_swietlik wygasa za 5 dni',
+          },
+        ],
+      }),
+    );
     expect(json.match(SED_UWAGI)?.[1]).toContain('wygasa za 5 dni');
   });
 });
@@ -295,13 +354,19 @@ describe('ocenZdrowie — czuwacz ostrzezen (puls)', () => {
     expect(ok.ok).toBe(true);
     expect(ok.czuwaczOstrzezen.zdrowy).toBe(true);
 
-    const stary = zdrowe({ ostrzezeniaWlaczone: true, pulsOstrzezen: { okAt: iso(4 * 3600), bladAt: null, blad: null } });
+    const stary = zdrowe({
+      ostrzezeniaWlaczone: true,
+      pulsOstrzezen: { okAt: iso(4 * 3600), bladAt: null, blad: null },
+    });
     expect(stary.ok).toBe(false);
     expect(stary.alarmy.some((a) => a.includes('ostrzeżeń'))).toBe(true);
   });
 
   it('blad swiezszy niz sukces to alarm; wylaczony nie alarmuje', () => {
-    const zly = zdrowe({ ostrzezeniaWlaczone: true, pulsOstrzezen: { okAt: iso(1200), bladAt: iso(600), blad: 'luki KSeF: inFakt 500' } });
+    const zly = zdrowe({
+      ostrzezeniaWlaczone: true,
+      pulsOstrzezen: { okAt: iso(1200), bladAt: iso(600), blad: 'luki KSeF: inFakt 500' },
+    });
     expect(zly.ok).toBe(false);
     expect(zly.alarmy.some((a) => a.includes('inFakt 500'))).toBe(true);
 

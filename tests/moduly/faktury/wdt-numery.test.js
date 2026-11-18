@@ -3,7 +3,9 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zarezerwujNumerWdt, cofnijRezerwacjeWdt } from '../../../src/moduly/faktury/db/wdt-numery.js';
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 
 describe('zarezerwujNumerWdt', () => {
   it('pierwsza rezerwacja miesiąca dostaje 1, kolejne rosną o 1', () => {

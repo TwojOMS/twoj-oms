@@ -23,19 +23,25 @@ const ZAPAS_MS = 5 * 60 * 1000;
 // tokenu z pliku, gdy w bazie leżał zapis z ekranu — i „Sprawdź połączenie” mówiłoby „działa” dla złego tokenu.
 // Odcisk leży w `ustawienia` (bez migracji). Wołający bez `odcisk` dostaje zapisaną parę bez sprawdzania odcisku.
 export function odciskTokenuKsef({ token, nip }) {
-  return createHash('sha256').update(`${nip ?? ''}|${token}`).digest('hex');
+  return createHash('sha256')
+    .update(`${nip ?? ''}|${token}`)
+    .digest('hex');
 }
 const KLUCZ_ODCISKU = 'ksef.sesja.odcisk';
 
 // Oba tokeny leżą w bazie zaszyfrowane kluczem poświadczeń (src/core/bezpieczenstwo/sejf-sekretow.js).
 const miejsce = (kolumna) => ({ tabela: 'tokeny_ksef', kolumna, id: '1' });
-const odszyfrowany = (db, w) => w && { ...w,
-  access_token: zOdczytu(db, miejsce('access_token'), w.access_token),
-  refresh_token: zOdczytu(db, miejsce('refresh_token'), w.refresh_token) };
+const odszyfrowany = (db, w) =>
+  w && {
+    ...w,
+    access_token: zOdczytu(db, miejsce('access_token'), w.access_token),
+    refresh_token: zOdczytu(db, miejsce('refresh_token'), w.refresh_token),
+  };
 
 /** @param {{ db: any, klient: any, teraz?: () => Date, odcisk?: string }} opcje */
 export function createSesjaKsef({ db, klient, teraz = () => new Date(), odcisk = undefined }) {
-  const odciskPary = () => db.prepare('SELECT wartosc FROM ustawienia WHERE klucz = ?').get(KLUCZ_ODCISKU)?.wartosc ?? null;
+  const odciskPary = () =>
+    db.prepare('SELECT wartosc FROM ustawienia WHERE klucz = ?').get(KLUCZ_ODCISKU)?.wartosc ?? null;
   const wczytaj = () => {
     const w = db.prepare('SELECT * FROM tokeny_ksef WHERE id = 1').get() ?? null;
     return w && (odcisk === undefined || odciskPary() === odcisk) ? odszyfrowany(db, w) : null;
@@ -44,21 +50,29 @@ export function createSesjaKsef({ db, klient, teraz = () => new Date(), odcisk =
   // ⚠️ OBA TOKENY JEDNYM ZAPISEM. Zapis samego access tokena
   // zostawiłby refresh token z poprzedniej pary (albo pusty), a redeem działa tylko raz.
   function zapiszPare({ accessToken, accessDo, refreshToken, refreshDo }) {
-    db.prepare(`
+    db.prepare(
+      `
       INSERT INTO tokeny_ksef (id, access_token, access_do, refresh_token, refresh_do, ostatni_blad, zaktualizowane_at)
       VALUES (1,?,?,?,?,NULL,?)
       ON CONFLICT(id) DO UPDATE SET
         access_token = excluded.access_token, access_do = excluded.access_do,
         refresh_token = excluded.refresh_token, refresh_do = excluded.refresh_do,
         ostatni_blad = NULL, zaktualizowane_at = excluded.zaktualizowane_at
-    `).run(doZapisu(db, miejsce('access_token'), accessToken), accessDo, doZapisu(db, miejsce('refresh_token'), refreshToken), refreshDo,
-      teraz().toISOString());
+    `,
+    ).run(
+      doZapisu(db, miejsce('access_token'), accessToken),
+      accessDo,
+      doZapisu(db, miejsce('refresh_token'), refreshToken),
+      refreshDo,
+      teraz().toISOString(),
+    );
     // Odcisk PO parze: przerwa między zapisami zostawia nową parę ze starym odciskiem = brak pary (ponowne logowanie),
     // nigdy starą parę z nowym odciskiem.
     if (odcisk !== undefined) {
-      db.prepare(`INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
-        ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc, zmienione_at = excluded.zmienione_at`)
-        .run(KLUCZ_ODCISKU, odcisk, teraz().toISOString());
+      db.prepare(
+        `INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
+        ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc, zmienione_at = excluded.zmienione_at`,
+      ).run(KLUCZ_ODCISKU, odcisk, teraz().toISOString());
     }
   }
 
@@ -74,8 +88,9 @@ export function createSesjaKsef({ db, klient, teraz = () => new Date(), odcisk =
     try {
       const w = db.prepare('SELECT refresh_token FROM tokeny_ksef WHERE id = 1').get();
       if (w && zOdczytu(db, miejsce('refresh_token'), w.refresh_token) === refreshToken) {
-        db.prepare('UPDATE tokeny_ksef SET access_token = ?, access_do = ?, ostatni_blad = NULL, zaktualizowane_at = ? WHERE id = 1')
-          .run(doZapisu(db, miejsce('access_token'), accessToken), accessDo, teraz().toISOString());
+        db.prepare(
+          'UPDATE tokeny_ksef SET access_token = ?, access_do = ?, ostatni_blad = NULL, zaktualizowane_at = ? WHERE id = 1',
+        ).run(doZapisu(db, miejsce('access_token'), accessToken), accessDo, teraz().toISOString());
       }
       if (wlasna) db.exec('COMMIT');
     } catch (e) {
@@ -89,8 +104,7 @@ export function createSesjaKsef({ db, klient, teraz = () => new Date(), odcisk =
   // są NOT NULL w tabeli `tokeny_ksef`), a to jest wtedy i tak scenariusz brzegowy bez trwałego stanu.
   // Zapisujemy WYŁĄCZNIE komunikat błędu, nigdy żadnego tokena (reguła: sekrety nie wychodzą).
   function zapiszBlad(e) {
-    db.prepare('UPDATE tokeny_ksef SET ostatni_blad = ? WHERE id = 1')
-      .run(String(e?.message ?? e));
+    db.prepare('UPDATE tokeny_ksef SET ostatni_blad = ? WHERE id = 1').run(String(e?.message ?? e));
   }
 
   const zywy = (doKiedy) => new Date(doKiedy).getTime() - teraz().getTime() > ZAPAS_MS;
@@ -113,7 +127,9 @@ export function createSesjaKsef({ db, klient, teraz = () => new Date(), odcisk =
           zapiszBlad(e);
           throw e;
         }
-      })().finally(() => { logowanieWToku = null; });
+      })().finally(() => {
+        logowanieWToku = null;
+      });
     }
     return logowanieWToku;
   }

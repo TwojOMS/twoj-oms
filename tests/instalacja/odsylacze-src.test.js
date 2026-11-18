@@ -22,7 +22,8 @@ import { fileURLToPath } from 'node:url';
 
 const KORZEN = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const ROZSZERZENIA = new Set(['.js', '.ts', '.mjs', '.ejs']);
-const ODWOLANIE = /((?:\.{1,2}\/|\/app\/|[A-Za-z0-9_-]+\/)*)scripts\/([A-Za-z0-9_.-]+\.(?:js|mjs|ts|sh))(?![A-Za-z0-9_])/g;
+const ODWOLANIE =
+  /((?:\.{1,2}\/|\/app\/|[A-Za-z0-9_-]+\/)*)scripts\/([A-Za-z0-9_.-]+\.(?:js|mjs|ts|sh))(?![A-Za-z0-9_])/g;
 
 function pliki(katalog) {
   const wynik = [];
@@ -61,7 +62,7 @@ export function bezKomentarzyJs(zrodlo) {
       i = j;
       continue;
     }
-    if (c === '\'' || c === '"') {
+    if (c === "'" || c === '"') {
       let j = i + 1;
       while (j < n && zrodlo[j] !== c && zrodlo[j] !== '\n') j += zrodlo[j] === '\\' ? 2 : 1;
       j = Math.min(j + 1, n);
@@ -73,8 +74,16 @@ export function bezKomentarzyJs(zrodlo) {
     if (c === '`' || (c === '}' && stos.length && stos[stos.length - 1] === 0)) {
       if (c === '}') stos.pop();
       let j = i + 1;
-      while (j < n && zrodlo[j] !== '`' && !(zrodlo[j] === '$' && zrodlo[j + 1] === '{')) j += zrodlo[j] === '\\' ? 2 : 1;
-      if (j < n && zrodlo[j] === '$') { stos.push(0); j += 2; ostatniZnaczacy = '{'; } else { j = Math.min(j + 1, n); ostatniZnaczacy = 'a'; }
+      while (j < n && zrodlo[j] !== '`' && !(zrodlo[j] === '$' && zrodlo[j + 1] === '{'))
+        j += zrodlo[j] === '\\' ? 2 : 1;
+      if (j < n && zrodlo[j] === '$') {
+        stos.push(0);
+        j += 2;
+        ostatniZnaczacy = '{';
+      } else {
+        j = Math.min(j + 1, n);
+        ostatniZnaczacy = 'a';
+      }
       wynik += zrodlo.slice(i, j);
       i = j;
       continue;
@@ -111,7 +120,10 @@ export function bezKomentarzyEjs(zrodlo) {
 }
 
 function bezWierszyGwiazdki(tekst) {
-  return tekst.split('\n').map((w) => (/^\s*\*/.test(w) ? zamaz(w) : w)).join('\n');
+  return tekst
+    .split('\n')
+    .map((w) => (/^\s*\*/.test(w) ? zamaz(w) : w))
+    .join('\n');
 }
 
 export function odwolania(plik, tekst) {
@@ -139,8 +151,12 @@ describe('odsyłacze do scripts/ w kodzie src/ (poza komentarzami)', () => {
       'const r = /["]/; const t = `/app/scripts/brak-f.mjs`;',
     ].join('\n');
     const znalezione = odwolania(path.join(KORZEN, 'src/x.js'), js).map((o) => [o.linia, path.basename(o.cel)]);
-    expect(znalezione).toEqual([[1, 'brak-a.js'], [5, 'brak-e.sh'], [6, 'brak-f.mjs']]);
-    const ejs = "<%# scripts/brak-a.js %>\n<a href=\"https://x.invalid\">scripts/brak-b.js</a> // scripts/brak-c.js";
+    expect(znalezione).toEqual([
+      [1, 'brak-a.js'],
+      [5, 'brak-e.sh'],
+      [6, 'brak-f.mjs'],
+    ]);
+    const ejs = '<%# scripts/brak-a.js %>\n<a href="https://x.invalid">scripts/brak-b.js</a> // scripts/brak-c.js';
     expect(odwolania(path.join(KORZEN, 'src/x.ejs'), ejs).map((o) => path.basename(o.cel))).toEqual(['brak-b.js']);
   });
 
@@ -150,7 +166,8 @@ describe('odsyłacze do scripts/ w kodzie src/ (poza komentarzami)', () => {
     for (const plik of pliki(path.join(KORZEN, 'src'))) {
       for (const o of odwolania(plik, fs.readFileSync(plik, 'utf8'))) {
         if (fs.existsSync(o.cel)) istniejace += 1;
-        else martwe.push(`${path.relative(KORZEN, plik)}:${o.linia}: ${o.tekst} (brak ${path.relative(KORZEN, o.cel)})`);
+        else
+          martwe.push(`${path.relative(KORZEN, plik)}:${o.linia}: ${o.tekst} (brak ${path.relative(KORZEN, o.cel)})`);
       }
     }
     expect(martwe, `martwe odsyłacze:\n${martwe.join('\n')}`).toEqual([]);

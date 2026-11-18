@@ -2,13 +2,25 @@
 import { describe, it, expect } from 'vitest';
 import { createOplatyAllegro } from '../../../src/moduly/magazyn/services/oplaty-allegro.js';
 
-const wiersz = (cena) => ({ bledy: [], zadanie: { category: { id: '257' }, sellingMode: { price: { amount: String(cena) } } }, allegro: {} });
+const wiersz = (cena) => ({
+  bledy: [],
+  zadanie: { category: { id: '257' }, sellingMode: { price: { amount: String(cena) } } },
+  allegro: {},
+});
 
 describe('pamięć prognoz prowizji', () => {
   it('wpisy po terminie wypadają przy następnym podglądzie; świeże zostają i nie pytają Allegro', async () => {
     let czas = 0;
     let zapytan = 0;
-    const konto = { klucz: 'allegro:polcien', klient: { podgladOplat: async () => { zapytan += 1; return { commissions: [{ fee: { amount: '1.50' } }] }; } } };
+    const konto = {
+      klucz: 'allegro:polcien',
+      klient: {
+        podgladOplat: async () => {
+          zapytan += 1;
+          return { commissions: [{ fee: { amount: '1.50' } }] };
+        },
+      },
+    };
     const oplaty = createOplatyAllegro({ teraz: () => czas });
 
     await oplaty.prowizje(konto, [wiersz(10), wiersz(20), wiersz(30)]);

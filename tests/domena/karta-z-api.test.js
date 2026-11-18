@@ -11,15 +11,39 @@ function blad(cialo, pole, kod = 'walidacja') {
 
 describe('parsujKarteZApi', () => {
   it('mapuje pełną kartę bez zmiany polskich znaków, emoji i wielkości liter SKU', () => {
-    expect(parsujKarteZApi({
-      nazwa: '  Żółta łódź 🛶  ', opis: 'Zażółć 🛶\n opis ', sku: ' abc ',
-      ean: '1234567890128', cena_gr: 123, stawka_vat: '23', kategoria: 'Łodzie',
-      wymiary: { szerokosc_mm: 0, wysokosc_mm: 2, glebokosc_mm: 3 }, waga_g: 0, wycofana: true,
-    }, { czesciowa: false })).toEqual({ ok: true, karta: {
-      nazwa: 'Żółta łódź 🛶', opis: 'Zażółć 🛶\n opis ', sku: 'abc', ean: '1234567890128',
-      cena_gr: 123, stawka_vat: '23', kategoria_glowna: 'Łodzie',
-      szerokosc_mm: 0, wysokosc_mm: 2, glebokosc_mm: 3, waga_g: 0, wycofana: 1,
-    } });
+    expect(
+      parsujKarteZApi(
+        {
+          nazwa: '  Żółta łódź 🛶  ',
+          opis: 'Zażółć 🛶\n opis ',
+          sku: ' abc ',
+          ean: '1234567890128',
+          cena_gr: 123,
+          stawka_vat: '23',
+          kategoria: 'Łodzie',
+          wymiary: { szerokosc_mm: 0, wysokosc_mm: 2, glebokosc_mm: 3 },
+          waga_g: 0,
+          wycofana: true,
+        },
+        { czesciowa: false },
+      ),
+    ).toEqual({
+      ok: true,
+      karta: {
+        nazwa: 'Żółta łódź 🛶',
+        opis: 'Zażółć 🛶\n opis ',
+        sku: 'abc',
+        ean: '1234567890128',
+        cena_gr: 123,
+        stawka_vat: '23',
+        kategoria_glowna: 'Łodzie',
+        szerokosc_mm: 0,
+        wysokosc_mm: 2,
+        glebokosc_mm: 3,
+        waga_g: 0,
+        wycofana: 1,
+      },
+    });
     expect(patch({ sku: ' AbC ' })).toEqual({ ok: true, karta: { sku: 'AbC' } });
     expect(patch({ wycofana: false })).toEqual({ ok: true, karta: { wycofana: 0 } });
   });
@@ -34,7 +58,11 @@ describe('parsujKarteZApi', () => {
   });
 
   it('sprawdza typy i granice tekstów, licząc znaki zamiast jednostek UTF-16', () => {
-    for (const [pole, limit] of [['sku', 64], ['opis', 20000], ['kategoria', 200]]) {
+    for (const [pole, limit] of [
+      ['sku', 64],
+      ['opis', 20000],
+      ['kategoria', 200],
+    ]) {
       const docelowe = pole === 'kategoria' ? 'kategoria_glowna' : pole;
       for (const tekst of ['a'.repeat(limit), '🛶'.repeat(limit)]) {
         expect(patch({ [pole]: tekst })).toEqual({ ok: true, karta: { [docelowe]: tekst } });
@@ -43,7 +71,10 @@ describe('parsujKarteZApi', () => {
       for (const wartosc of [123, true, {}, [], undefined]) blad({ [pole]: wartosc }, pole);
     }
     for (const sku of ['', ' \n ']) blad({ sku }, 'sku');
-    expect(patch({ sku: 'x', opis: '', kategoria: '' })).toEqual({ ok: true, karta: { sku: 'x', opis: '', kategoria_glowna: null } });
+    expect(patch({ sku: 'x', opis: '', kategoria: '' })).toEqual({
+      ok: true,
+      karta: { sku: 'x', opis: '', kategoria_glowna: null },
+    });
   });
 
   it('obcina białe znaki kategorii, a pustą po obcięciu zapisuje jako null (jak NULLIF(TRIM) panelu)', () => {
@@ -51,7 +82,10 @@ describe('parsujKarteZApi', () => {
     for (const kategoria of ['', '   ', ' \r\n\t ']) {
       expect(patch({ kategoria })).toEqual({ ok: true, karta: { kategoria_glowna: null } });
     }
-    expect(patch({ kategoria: ` ${'a'.repeat(200)} ` })).toEqual({ ok: true, karta: { kategoria_glowna: 'a'.repeat(200) } });
+    expect(patch({ kategoria: ` ${'a'.repeat(200)} ` })).toEqual({
+      ok: true,
+      karta: { kategoria_glowna: 'a'.repeat(200) },
+    });
   });
 
   it.each(['12345670', '1234567890128'])('sprawdza cyfrę kontrolną GTIN %s', (ean) => {
@@ -60,14 +94,25 @@ describe('parsujKarteZApi', () => {
   });
 
   it('odrzuca EAN innego typu, długości i znaki inne niż cyfry', () => {
-    for (const ean of [12345670, '', '1234567', '123456789', '12345678901234', '1234567x', ' 12345670', '１２３４５６７０']) blad({ ean }, 'ean');
+    for (const ean of [
+      12345670,
+      '',
+      '1234567',
+      '123456789',
+      '12345678901234',
+      '1234567x',
+      ' 12345670',
+      '１２３４５６７０',
+    ])
+      blad({ ean }, 'ean');
   });
 
   it('przyjmuje wyłącznie całkowite nieujemne kwoty, wagę i każdy wymiar', () => {
     for (const pole of ['cena_gr', 'waga_g', 'szerokosc_mm', 'wysokosc_mm', 'glebokosc_mm']) {
-      const wejscie = (wartosc) => pole.endsWith('_mm') ? { wymiary: { [pole]: wartosc } } : { [pole]: wartosc };
+      const wejscie = (wartosc) => (pole.endsWith('_mm') ? { wymiary: { [pole]: wartosc } } : { [pole]: wartosc });
       const sciezka = pole.endsWith('_mm') ? `wymiary.${pole}` : pole;
-      for (const wartosc of [0, 1, 999]) expect(patch(wejscie(wartosc))).toEqual({ ok: true, karta: { [pole]: wartosc } });
+      for (const wartosc of [0, 1, 999])
+        expect(patch(wejscie(wartosc))).toEqual({ ok: true, karta: { [pole]: wartosc } });
       for (const wartosc of [-1, 0.5, '1', true, NaN, Infinity, undefined, 2 ** 53]) blad(wejscie(wartosc), sciezka);
     }
   });
@@ -80,10 +125,22 @@ describe('parsujKarteZApi', () => {
 
   it('parser mapuje null pól i pojedynczego wymiaru; komplet sprawdzają trasy po scaleniu', () => {
     const pola = ['opis', 'sku', 'ean', 'cena_gr', 'stawka_vat', 'kategoria', 'waga_g'];
-    expect(patch(Object.fromEntries(pola.map((p) => [p, null])))).toEqual({ ok: true, karta: {
-      opis: null, sku: null, ean: null, cena_gr: null, stawka_vat: null, kategoria_glowna: null, waga_g: null,
-    } });
-    expect(patch({ wymiary: null })).toEqual({ ok: true, karta: { szerokosc_mm: null, wysokosc_mm: null, glebokosc_mm: null } });
+    expect(patch(Object.fromEntries(pola.map((p) => [p, null])))).toEqual({
+      ok: true,
+      karta: {
+        opis: null,
+        sku: null,
+        ean: null,
+        cena_gr: null,
+        stawka_vat: null,
+        kategoria_glowna: null,
+        waga_g: null,
+      },
+    });
+    expect(patch({ wymiary: null })).toEqual({
+      ok: true,
+      karta: { szerokosc_mm: null, wysokosc_mm: null, glebokosc_mm: null },
+    });
     for (const pole of ['szerokosc_mm', 'wysokosc_mm', 'glebokosc_mm']) {
       expect(patch({ wymiary: { [pole]: null } })).toEqual({ ok: true, karta: { [pole]: null } });
     }

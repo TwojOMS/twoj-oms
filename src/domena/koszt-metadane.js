@@ -39,12 +39,11 @@ import { znormalizujNip } from './gus.js';
 //
 // ZERO TO NIE BRAK: `0` przechodzi i daje '0.00'. Kwota ujemna (korekta) tak samo.
 const kwota = (n, pole) => {
-  const brak = n === null || n === undefined
-    || (typeof n === 'string' && n.trim() === '');
+  const brak = n === null || n === undefined || (typeof n === 'string' && n.trim() === '');
   if (brak) {
     throw bladOperatora(
-      `KSeF nie podał kwoty „${pole}" na tym dokumencie — panel nie zapisze faktury `
-      + 'kosztowej bez kwoty, bo zero weszłoby do sumy miesiąca jako prawda.',
+      `KSeF nie podał kwoty „${pole}" na tym dokumencie — panel nie zapisze faktury ` +
+        'kosztowej bez kwoty, bo zero weszłoby do sumy miesiąca jako prawda.',
     );
   }
   // Tylko liczba albo napis: `true`, tablica czy obiekt przeszlyby przez `Number(...)`

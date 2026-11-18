@@ -17,31 +17,46 @@ const AUTH = { authorization: `Basic ${Buffer.from('t:h').toString('base64')}`, 
 // nabywcy jest konsumencki i bariera go nie przepuszcza (domain/wysylka-ksef.js). Fikstura
 // bez tego pola odbijalaby sie od reguly przy KAZDYM tescie tego pliku.
 const dok = (u, n, ksef = null) => ({
-  uuid: u, number: n, rodzaj: 'vat', ksef_number: ksef, gross_price: 12300, kwotaZl: '123.00',
-  client_company_name: 'Firma X', client_tax_code: '1234563218', invoice_date: '2026-08-06',
+  uuid: u,
+  number: n,
+  rodzaj: 'vat',
+  ksef_number: ksef,
+  gross_price: 12300,
+  kwotaZl: '123.00',
+  client_company_name: 'Firma X',
+  client_tax_code: '1234563218',
+  invoice_date: '2026-08-06',
 });
 
 function serwer(dokumenty) {
   const widok = { dokumenty: async () => dokumenty, nieoplacone: async () => [], proformy: () => [] };
   return buildOmsServer({
-    db: openOmsDb(':memory:'), config: { auth: { user: 't', pass: 'h' } },
+    db: openOmsDb(':memory:'),
+    config: { auth: { user: 't', pass: 'h' } },
     fakturyWidok: widok,
     // ⚠️ ATRAPA ODDAJE TO SAMO, CO PRAWDZIWA USLUGA: wynik reguly PLUS liste dokumentow,
     // z ktorej ten wynik policzono (services/wysylka-ksef.js, `przelicz`). Bez `dokumenty`
     // ekran nie ma skad wziac nabywcy ani kwoty — `coWolnoWyslac` oddaje wylacznie
     // `{ uuid, numer }`, bo jest regula, a nie zrodlem danych.
-    wysylkaKsef: { podglad: async ({ uuids }) => {
-      const { coWolnoWyslac } = await import('../../../src/domena/wysylka-ksef.js');
-      return { ...coWolnoWyslac(uuids, dokumenty), dokumenty };
-    }, wyslij: async () => ({ wyslane: [], pominiete: [] }) },
+    wysylkaKsef: {
+      podglad: async ({ uuids }) => {
+        const { coWolnoWyslac } = await import('../../../src/domena/wysylka-ksef.js');
+        return { ...coWolnoWyslac(uuids, dokumenty), dokumenty };
+      },
+      wyslij: async () => ({ wyslane: [], pominiete: [] }),
+    },
   });
 }
 
 describe('POST /faktury/ksef/podglad', () => {
   it('pokazuje, co poleci: numery, nabywców, kwoty i liczbę dokumentów', async () => {
     const app = serwer([dok('u1', '1/08/2026'), dok('u2', '2/08/2026')]);
-    const r = await app.inject({ method: 'POST', url: '/faktury/ksef/podglad', headers: AUTH,
-      payload: { uuid: ['u1', 'u2'], miesiac: '2026-08', pole: 'invoice_date' } });
+    const r = await app.inject({
+      method: 'POST',
+      url: '/faktury/ksef/podglad',
+      headers: AUTH,
+      payload: { uuid: ['u1', 'u2'], miesiac: '2026-08', pole: 'invoice_date' },
+    });
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('1/08/2026');
     expect(r.body).toContain('2/08/2026');
@@ -56,8 +71,12 @@ describe('POST /faktury/ksef/podglad', () => {
   it('dokument bez kwoty zostawia pustą komórkę, a nie „0.00 zł"', async () => {
     const bezKwoty = { ...dok('u1', '1/08/2026'), gross_price: null, kwotaZl: '0.00' };
     const app = serwer([bezKwoty]);
-    const r = await app.inject({ method: 'POST', url: '/faktury/ksef/podglad', headers: AUTH,
-      payload: { uuid: 'u1', miesiac: '2026-08', pole: 'invoice_date' } });
+    const r = await app.inject({
+      method: 'POST',
+      url: '/faktury/ksef/podglad',
+      headers: AUTH,
+      payload: { uuid: 'u1', miesiac: '2026-08', pole: 'invoice_date' },
+    });
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('1/08/2026');
     expect(r.body).not.toContain('0.00 zł');
@@ -66,15 +85,23 @@ describe('POST /faktury/ksef/podglad', () => {
   // ⚠️ NIEODWRACALNOŚĆ MA BYĆ NAPISANA, a nie domyślna. Dokumentu w KSeF nie da się skasować.
   it('mówi wprost, że operacji nie da się cofnąć', async () => {
     const app = serwer([dok('u1', '1/08/2026')]);
-    const r = await app.inject({ method: 'POST', url: '/faktury/ksef/podglad', headers: AUTH,
-      payload: { uuid: 'u1', miesiac: '2026-08', pole: 'invoice_date' } });
+    const r = await app.inject({
+      method: 'POST',
+      url: '/faktury/ksef/podglad',
+      headers: AUTH,
+      payload: { uuid: 'u1', miesiac: '2026-08', pole: 'invoice_date' },
+    });
     expect(r.body).toMatch(/nie da się cofnąć|nieodwracaln/i);
   });
 
   it('wypisuje pominięte RAZEM Z POWODEM, zamiast je wyrzucić po cichu', async () => {
     const app = serwer([dok('u1', '1/08/2026'), dok('u3', '3/08/2026', 'JUZ-W-KSEF')]);
-    const r = await app.inject({ method: 'POST', url: '/faktury/ksef/podglad', headers: AUTH,
-      payload: { uuid: ['u1', 'u3'], miesiac: '2026-08', pole: 'invoice_date' } });
+    const r = await app.inject({
+      method: 'POST',
+      url: '/faktury/ksef/podglad',
+      headers: AUTH,
+      payload: { uuid: ['u1', 'u3'], miesiac: '2026-08', pole: 'invoice_date' },
+    });
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('3/08/2026');
     expect(r.body).toContain('Poleci do KSeF — 1');
@@ -90,8 +117,12 @@ describe('POST /faktury/ksef/podglad', () => {
   it('dokument, którego wysyłkę panel już zlecił, jest POMINIĘTY, a nie liczony do wysyłki', async () => {
     const zlecony = { ...dok('u2', '2/08/2026'), ksefZleconaAt: '2026-08-06T14:00:00.000Z' };
     const app = serwer([dok('u1', '1/08/2026'), zlecony]);
-    const r = await app.inject({ method: 'POST', url: '/faktury/ksef/podglad', headers: AUTH,
-      payload: { uuid: ['u1', 'u2'], miesiac: '2026-08', pole: 'invoice_date' } });
+    const r = await app.inject({
+      method: 'POST',
+      url: '/faktury/ksef/podglad',
+      headers: AUTH,
+      payload: { uuid: ['u1', 'u2'], miesiac: '2026-08', pole: 'invoice_date' },
+    });
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('Poleci do KSeF — 1');
     expect(r.body).toContain('Pominięte — 1');
@@ -104,8 +135,12 @@ describe('POST /faktury/ksef/podglad', () => {
 
   it('puste zaznaczenie nie prowadzi do ekranu wysyłki', async () => {
     const app = serwer([dok('u1', '1/08/2026')]);
-    const r = await app.inject({ method: 'POST', url: '/faktury/ksef/podglad', headers: AUTH,
-      payload: { miesiac: '2026-08', pole: 'invoice_date' } });
+    const r = await app.inject({
+      method: 'POST',
+      url: '/faktury/ksef/podglad',
+      headers: AUTH,
+      payload: { miesiac: '2026-08', pole: 'invoice_date' },
+    });
     expect(r.body).toMatch(/nie zaznaczono/i);
     expect(r.body).not.toContain('name="potwierdzam"');
   });
@@ -115,8 +150,12 @@ describe('POST /faktury/ksef/podglad', () => {
   // zrobila, a to jest ten sam falsz, co „wysłano" bez wysylki (przewodnik 4.13a).
   it('gdy z zaznaczenia nic nie przechodzi, przycisku wysyłki NIE MA', async () => {
     const app = serwer([dok('u3', '3/08/2026', 'JUZ-W-KSEF')]);
-    const r = await app.inject({ method: 'POST', url: '/faktury/ksef/podglad', headers: AUTH,
-      payload: { uuid: 'u3', miesiac: '2026-08', pole: 'invoice_date' } });
+    const r = await app.inject({
+      method: 'POST',
+      url: '/faktury/ksef/podglad',
+      headers: AUTH,
+      payload: { uuid: 'u3', miesiac: '2026-08', pole: 'invoice_date' },
+    });
     expect(r.statusCode).toBe(200);
     expect(r.body).not.toContain('name="potwierdzam"');
     expect(r.body).toMatch(/jest już w KSeF/i);
@@ -127,8 +166,12 @@ describe('POST /faktury/ksef/podglad', () => {
   // operator patrzyl, i zatwierdzenie odpytaloby zupelnie inny miesiac.
   it('formularz zatwierdzenia niesie uuidy, miesiąc i pole daty', async () => {
     const app = serwer([dok('u1', '1/08/2026'), dok('u2', '2/08/2026')]);
-    const r = await app.inject({ method: 'POST', url: '/faktury/ksef/podglad', headers: AUTH,
-      payload: { uuid: ['u1', 'u2'], miesiac: '2026-08', pole: 'sale_date' } });
+    const r = await app.inject({
+      method: 'POST',
+      url: '/faktury/ksef/podglad',
+      headers: AUTH,
+      payload: { uuid: ['u1', 'u2'], miesiac: '2026-08', pole: 'sale_date' },
+    });
     expect(r.body).toContain('action="/faktury/ksef/wyslij"');
     expect(r.body).toContain('name="uuid" value="u1"');
     expect(r.body).toContain('name="uuid" value="u2"');
@@ -144,26 +187,38 @@ describe('POST /faktury/ksef/podglad', () => {
     let wolane = 0;
     const dokumenty = [dok('u1', '1/08/2026')];
     const app = buildOmsServer({
-      db: openOmsDb(':memory:'), config: { auth: { user: 't', pass: 'h' } },
+      db: openOmsDb(':memory:'),
+      config: { auth: { user: 't', pass: 'h' } },
       fakturyWidok: { dokumenty: async () => dokumenty, nieoplacone: async () => [], proformy: () => [] },
       wysylkaKsef: {
         podglad: async ({ uuids }) => {
           const { coWolnoWyslac } = await import('../../../src/domena/wysylka-ksef.js');
           return { ...coWolnoWyslac(uuids, dokumenty), dokumenty };
         },
-        wyslij: async () => { wolane += 1; return { wyslane: [], pominiete: [] }; },
+        wyslij: async () => {
+          wolane += 1;
+          return { wyslane: [], pominiete: [] };
+        },
       },
     });
-    const r = await app.inject({ method: 'POST', url: '/faktury/ksef/podglad', headers: AUTH,
-      payload: { uuid: 'u1', miesiac: '2026-08', pole: 'invoice_date' } });
+    const r = await app.inject({
+      method: 'POST',
+      url: '/faktury/ksef/podglad',
+      headers: AUTH,
+      payload: { uuid: 'u1', miesiac: '2026-08', pole: 'invoice_date' },
+    });
     expect(r.statusCode).toBe(200);
     expect(wolane).toBe(0);
   });
 
   it('POST bez nagłówka Origin odbija się od ochrony CSRF', async () => {
     const app = serwer([dok('u1', '1/08/2026')]);
-    const r = await app.inject({ method: 'POST', url: '/faktury/ksef/podglad',
-      headers: { authorization: AUTH.authorization }, payload: { uuid: 'u1' } });
+    const r = await app.inject({
+      method: 'POST',
+      url: '/faktury/ksef/podglad',
+      headers: { authorization: AUTH.authorization },
+      payload: { uuid: 'u1' },
+    });
     expect(r.statusCode).toBe(403);
   });
 
@@ -171,10 +226,15 @@ describe('POST /faktury/ksef/podglad', () => {
   // ani udawac pustego zaznaczenia (ta sama zasada, co przy GET /faktury).
   it('panel bez usługi wysyłki odmawia czytelnie', async () => {
     const app = buildOmsServer({
-      db: openOmsDb(':memory:'), config: { auth: { user: 't', pass: 'h' } },
+      db: openOmsDb(':memory:'),
+      config: { auth: { user: 't', pass: 'h' } },
     });
-    const r = await app.inject({ method: 'POST', url: '/faktury/ksef/podglad', headers: AUTH,
-      payload: { uuid: 'u1', miesiac: '2026-08', pole: 'invoice_date' } });
+    const r = await app.inject({
+      method: 'POST',
+      url: '/faktury/ksef/podglad',
+      headers: AUTH,
+      payload: { uuid: 'u1', miesiac: '2026-08', pole: 'invoice_date' },
+    });
     expect(r.statusCode).toBe(503);
     expect(r.body).toMatch(/inFakt/i);
   });

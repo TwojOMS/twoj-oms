@@ -12,18 +12,35 @@ const CIASTKO = 'oms_sesja';
 
 describe('czyZadanieKluczem', () => {
   it('/api/v1/x z Bearer i bez ciasteczka sesji → true', () => {
-    expect(czyZadanieKluczem({ url: '/api/v1/x', authorization: `Bearer ${KLUCZ}`, cookie: undefined }, CIASTKO)).toBe(true);
-    expect(czyZadanieKluczem({ url: '/api/v1', authorization: `Bearer ${KLUCZ}`, cookie: 'motyw=ciemny' }, CIASTKO)).toBe(true);
-    expect(czyZadanieKluczem({ url: '/api/v1/x?a=1', authorization: `Bearer ${KLUCZ}`, cookie: '' }, CIASTKO)).toBe(true);
+    expect(czyZadanieKluczem({ url: '/api/v1/x', authorization: `Bearer ${KLUCZ}`, cookie: undefined }, CIASTKO)).toBe(
+      true,
+    );
+    expect(
+      czyZadanieKluczem({ url: '/api/v1', authorization: `Bearer ${KLUCZ}`, cookie: 'motyw=ciemny' }, CIASTKO),
+    ).toBe(true);
+    expect(czyZadanieKluczem({ url: '/api/v1/x?a=1', authorization: `Bearer ${KLUCZ}`, cookie: '' }, CIASTKO)).toBe(
+      true,
+    );
   });
   it('bez Bearer → false', () => {
     expect(czyZadanieKluczem({ url: '/api/v1/x', authorization: undefined, cookie: undefined }, CIASTKO)).toBe(false);
-    expect(czyZadanieKluczem({ url: '/api/v1/x', authorization: 'Basic c2Vyd2lzOmhhc2xv', cookie: undefined }, CIASTKO)).toBe(false);
-    expect(czyZadanieKluczem({ url: '/api/v1/x', authorization: 'Bearer toms_zly', cookie: undefined }, CIASTKO)).toBe(false);
+    expect(
+      czyZadanieKluczem({ url: '/api/v1/x', authorization: 'Basic c2Vyd2lzOmhhc2xv', cookie: undefined }, CIASTKO),
+    ).toBe(false);
+    expect(czyZadanieKluczem({ url: '/api/v1/x', authorization: 'Bearer toms_zly', cookie: undefined }, CIASTKO)).toBe(
+      false,
+    );
   });
   it('z ciasteczkiem sesji → false (także z pustą wartością)', () => {
-    expect(czyZadanieKluczem({ url: '/api/v1/x', authorization: `Bearer ${KLUCZ}`, cookie: `${CIASTKO}=abc.def` }, CIASTKO)).toBe(false);
-    expect(czyZadanieKluczem({ url: '/api/v1/x', authorization: `Bearer ${KLUCZ}`, cookie: `motyw=jasny; ${CIASTKO}=` }, CIASTKO)).toBe(false);
+    expect(
+      czyZadanieKluczem({ url: '/api/v1/x', authorization: `Bearer ${KLUCZ}`, cookie: `${CIASTKO}=abc.def` }, CIASTKO),
+    ).toBe(false);
+    expect(
+      czyZadanieKluczem(
+        { url: '/api/v1/x', authorization: `Bearer ${KLUCZ}`, cookie: `motyw=jasny; ${CIASTKO}=` },
+        CIASTKO,
+      ),
+    ).toBe(false);
   });
   it('/zamowienia i inne adresy poza /api/v1 z Bearer → false', () => {
     for (const url of ['/zamowienia', '/api/v1x', '/api/zamowienia', '/login']) {
@@ -39,7 +56,9 @@ describe('czyZadanieKluczem', () => {
     }
   });
   it('bez nazwy ciasteczka nie zwalnia niczego (zawodzimy zamknięciem)', () => {
-    expect(czyZadanieKluczem({ url: '/api/v1/x', authorization: `Bearer ${KLUCZ}`, cookie: undefined }, undefined)).toBe(false);
+    expect(
+      czyZadanieKluczem({ url: '/api/v1/x', authorization: `Bearer ${KLUCZ}`, cookie: undefined }, undefined),
+    ).toBe(false);
   });
 });
 
@@ -49,28 +68,59 @@ describe('CSRF przez HTTP: POST /api/v1/echo z kluczem', () => {
   let klucz;
   beforeEach(async () => {
     const testowy = {
-      nazwa: 'api-echo', wersja: '1.0.0', wymaga: ['api'], migracje: [], menu: [], uprawnienia: [],
+      nazwa: 'api-echo',
+      wersja: '1.0.0',
+      wymaga: ['api'],
+      migracje: [],
+      menu: [],
+      uprawnienia: [],
       konfiguracja: () => null,
-      zbuduj: () => ({ trasy: (a) => { a.register(async (api) => {
-        api.post('/echo', async (req) => ({ echo: req.body ?? null }));
-      }, { prefix: '/api/v1' }); } }),
+      zbuduj: () => ({
+        trasy: (a) => {
+          a.register(
+            async (api) => {
+              api.post('/echo', async (req) => ({ echo: req.body ?? null }));
+            },
+            { prefix: '/api/v1' },
+          );
+        },
+      }),
     };
     db = openOmsDb(':memory:');
-    app = buildOmsServer({ db, config: { auth: { user: 'serwis', pass: 'haslo-env' }, klienciZbiorczy: [] }, moduly: [...MODULY, testowy] });
+    app = buildOmsServer({
+      db,
+      config: { auth: { user: 'serwis', pass: 'haslo-env' }, klienciZbiorczy: [] },
+      moduly: [...MODULY, testowy],
+    });
     await app.ready();
-    klucz = zalozKluczApi(db, { nazwa: 'integracja testowa', zakresy: ['druk'], kontoId: null, teraz: new Date().toISOString() }).klucz;
+    klucz = zalozKluczApi(db, {
+      nazwa: 'integracja testowa',
+      zakresy: ['druk'],
+      kontoId: null,
+      teraz: new Date().toISOString(),
+    }).klucz;
   });
-  afterEach(async () => { await app.close(); db.close(); });
+  afterEach(async () => {
+    await app.close();
+    db.close();
+  });
 
   it('klucz bez Origin i Referer → 200', async () => {
-    const r = await app.inject({ method: 'POST', url: '/api/v1/echo', headers: { authorization: `Bearer ${klucz}` }, payload: { a: 1 } });
+    const r = await app.inject({
+      method: 'POST',
+      url: '/api/v1/echo',
+      headers: { authorization: `Bearer ${klucz}` },
+      payload: { a: 1 },
+    });
     expect(r.statusCode, r.body).toBe(200);
     expect(r.json()).toEqual({ echo: { a: 1 } });
   });
   it('klucz z ciasteczkiem sesji bez Origin → 403 (zwykła ochrona CSRF)', async () => {
     const r = await app.inject({
-      method: 'POST', url: '/api/v1/echo',
-      headers: { authorization: `Bearer ${klucz}`, cookie: `${NAZWA_CIASTECZKA_OMS}=cokolwiek` }, payload: { a: 1 },
+      method: 'POST',
+      url: '/api/v1/echo',
+      headers: { authorization: `Bearer ${klucz}`, cookie: `${NAZWA_CIASTECZKA_OMS}=cokolwiek` },
+      payload: { a: 1 },
     });
     expect(r.statusCode).toBe(403);
   });

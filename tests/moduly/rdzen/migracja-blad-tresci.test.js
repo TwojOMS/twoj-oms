@@ -10,7 +10,9 @@ import { modulRdzen } from '../../../src/moduly/rdzen/modul.ts';
 
 const NOWE_KOLUMNY = ['tresc_blad', 'tresc_blad_at'];
 const katalogi = [];
-afterEach(() => { for (const k of katalogi.splice(0)) rmSync(k, { recursive: true, force: true }); });
+afterEach(() => {
+  for (const k of katalogi.splice(0)) rmSync(k, { recursive: true, force: true });
+});
 
 function nowyPlik() {
   const k = mkdtempSync(join(tmpdir(), 'oms-prz160-06b-'));
@@ -28,9 +30,18 @@ function staraBaza() {
   const plik = nowyPlik();
   const db = openOmsDb(plik, { moduly: [rdzenDo12] });
   expect(kolumny(db).map((k) => k.name)).not.toContain('tresc_blad');
-  const ins = db.prepare(`INSERT INTO produkty_sklepowe (kanal, produkt_id, wariant_id, nazwa, status_publikacji, odczytane_at,
+  const ins =
+    db.prepare(`INSERT INTO produkty_sklepowe (kanal, produkt_id, wariant_id, nazwa, status_publikacji, odczytane_at,
     tresc_pobrana_at, tresc_zmieniona_at) VALUES (?, ?, '', ?, ?, ?, ?, ?)`);
-  ins.run('allegro', '17000000001', 'Lampa Półcień 🌙', 'ACTIVE', '2026-11-01T10:00:00.000Z', '2026-11-02T10:00:00.000Z', '2026-10-30T10:00:00.000Z');
+  ins.run(
+    'allegro',
+    '17000000001',
+    'Lampa Półcień 🌙',
+    'ACTIVE',
+    '2026-11-01T10:00:00.000Z',
+    '2026-11-02T10:00:00.000Z',
+    '2026-10-30T10:00:00.000Z',
+  );
   ins.run('allegro', '17000000002', 'Kinkiet Półcień', 'ENDED', '2026-11-01T10:00:00.000Z', null, null);
   const przed = lustro(db);
   db.close();
@@ -46,21 +57,32 @@ describe('migracja rdzen/0013 — błąd pobrania treści oferty', () => {
       for (const n of NOWE_KOLUMNY) expect(k[n]).toMatchObject({ type: 'TEXT', notnull: 0, dflt_value: null, pk: 0 });
       const po = lustro(db);
       expect(po.map(bezNowych)).toEqual(przed);
-      expect(po.map((w) => [w.tresc_blad, w.tresc_blad_at])).toEqual([[null, null], [null, null]]);
-      expect(db.prepare("SELECT numer FROM migracje WHERE modul = 'rdzen' AND numer = 13").get()).toEqual({ numer: 13 });
-    } finally { db.close(); }
+      expect(po.map((w) => [w.tresc_blad, w.tresc_blad_at])).toEqual([
+        [null, null],
+        [null, null],
+      ]);
+      expect(db.prepare("SELECT numer FROM migracje WHERE modul = 'rdzen' AND numer = 13").get()).toEqual({
+        numer: 13,
+      });
+    } finally {
+      db.close();
+    }
   });
 
   it('ponowne wykonanie migracji niczego nie zmienia', () => {
     const { plik } = staraBaza();
     const db = openOmsDb(plik, { moduly: [rdzenDo13] });
     try {
-      db.prepare("UPDATE produkty_sklepowe SET tresc_blad = 'Zdjęcia pominięte: 1 z 3', tresc_blad_at = '2026-11-13T08:00:00.000Z' WHERE id = 1").run();
+      db.prepare(
+        "UPDATE produkty_sklepowe SET tresc_blad = 'Zdjęcia pominięte: 1 z 3', tresc_blad_at = '2026-11-13T08:00:00.000Z' WHERE id = 1",
+      ).run();
       const przed = [lustro(db), kolumny(db)];
       const mig = modulRdzen.migracje.find((m) => m.numer === 13);
       mig.wykonaj(db);
       mig.wykonaj(db);
       expect([lustro(db), kolumny(db)]).toEqual(przed);
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 });

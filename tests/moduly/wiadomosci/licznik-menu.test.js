@@ -4,28 +4,41 @@ import { zapiszWatek, zamknijWatek } from '../../../src/oms/db/allegro-watki.js'
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
 const headers = { authorization: `Basic ${Buffer.from('operator:x').toString('base64')}` };
-let db; let app;
+let db;
+let app;
 beforeEach(() => {
   db = openOmsDb(':memory:');
   app = buildOmsServer({ db, config: { auth: { user: 'operator', pass: 'x' }, klienciZbiorczy: [] } });
 });
-afterEach(async () => { await app.close(); db.close(); });
-const zapisz = (nadpisz = {}) => zapiszWatek(db, {
-  kanal: 'allegro_test', threadId: 't1', ostatniaOdKupujacego: 1,
-  lastMessageDateTime: new Date().toISOString(), ...nadpisz,
+afterEach(async () => {
+  await app.close();
+  db.close();
 });
-const bok = html => html.split('<div class="oms-menu-desktop">')[1]?.split('<details class="oms-menu-mobile"')[0] ?? '';
-const licznik = html => bok(html).match(/class="licznik oms-wiadomosci-licznik"[^>]*>(\d+)<\/span>/)?.[1];
+const zapisz = (nadpisz = {}) =>
+  zapiszWatek(db, {
+    kanal: 'allegro_test',
+    threadId: 't1',
+    ostatniaOdKupujacego: 1,
+    lastMessageDateTime: new Date().toISOString(),
+    ...nadpisz,
+  });
+const bok = (html) =>
+  html.split('<div class="oms-menu-desktop">')[1]?.split('<details class="oms-menu-mobile"')[0] ?? '';
+const licznik = (html) => bok(html).match(/class="licznik oms-wiadomosci-licznik"[^>]*>(\d+)<\/span>/)?.[1];
 const wejdz = (cookie = '') => app.inject({ url: '/przesylki', headers: { ...headers, cookie } });
 
 it('liczy czekający wątek jednym COUNT i usuwa plakietkę po odpowiedzi sprzedawcy', async () => {
   zapisz();
-  const sql = []; const prepare = db.prepare.bind(db);
-  db.prepare = tekst => { sql.push(tekst); return prepare(tekst); };
+  const sql = [];
+  const prepare = db.prepare.bind(db);
+  db.prepare = (tekst) => {
+    sql.push(tekst);
+    return prepare(tekst);
+  };
   const r = await wejdz();
   expect(r.statusCode).toBe(200);
   expect(licznik(r.body)).toBe('1');
-  const odczyty = sql.filter(s => /FROM allegro_watki/i.test(s));
+  const odczyty = sql.filter((s) => /FROM allegro_watki/i.test(s));
   expect(odczyty).toHaveLength(1);
   expect(odczyty[0]).toMatch(/SELECT COUNT\(\*\)/i);
   zapisz({ ostatniaOdKupujacego: 0 });

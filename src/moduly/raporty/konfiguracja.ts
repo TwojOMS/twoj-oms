@@ -9,8 +9,11 @@ function dzien(env: Srodowisko, klucz: string): string | null {
   const wartosc = env[klucz]?.trim();
   if (!wartosc) return null;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(wartosc)) throw new Error(`${klucz}: oczekiwany dzień RRRR-MM-DD`);
-  try { kluczOkresu(wartosc); }
-  catch { throw new Error(`${klucz}: niepoprawna data kalendarzowa`); }
+  try {
+    kluczOkresu(wartosc);
+  } catch {
+    throw new Error(`${klucz}: niepoprawna data kalendarzowa`);
+  }
   return wartosc;
 }
 
@@ -25,18 +28,24 @@ export function wczytajRaportyDlaKanalow(env: Srodowisko, definicje: readonly De
   if (kontoHistorii !== null && (!/^\d+$/.test(konto!) || !Number.isSafeInteger(kontoHistorii) || kontoHistorii < 0)) {
     throw new Error('OMS_RAPORTY_KONTO_HISTORII: oczekiwany bezpieczny całkowity identyfikator konta >= 0');
   }
-  if (kontoHistorii !== null && !klasyfikacja.konta.has(kontoHistorii)) throw new Error('OMS_RAPORTY_KONTO_HISTORII: nieznane konto historii');
+  if (kontoHistorii !== null && !klasyfikacja.konta.has(kontoHistorii))
+    throw new Error('OMS_RAPORTY_KONTO_HISTORII: nieznane konto historii');
   let nazwy: unknown;
   try {
     nazwy = JSON.parse(env.OMS_RAPORTY_NAZWY_KANALOW ?? '{}');
   } catch {
     throw new Error('OMS_RAPORTY_NAZWY_KANALOW: niepoprawny JSON');
   }
-  if (!nazwy || typeof nazwy !== 'object' || Array.isArray(nazwy)
-    || Object.values(nazwy).some(v => typeof v !== 'string' || !v.trim())) {
+  if (
+    !nazwy ||
+    typeof nazwy !== 'object' ||
+    Array.isArray(nazwy) ||
+    Object.values(nazwy).some((v) => typeof v !== 'string' || !v.trim())
+  ) {
     throw new Error('OMS_RAPORTY_NAZWY_KANALOW: oczekiwany obiekt niepustych etykiet kanałów');
   }
-  for (const kanal of Object.keys(nazwy)) if (!klasyfikacja.raporty.has(kanal)) throw new Error('OMS_RAPORTY_NAZWY_KANALOW: nieznany kanał raportowy');
+  for (const kanal of Object.keys(nazwy))
+    if (!klasyfikacja.raporty.has(kanal)) throw new Error('OMS_RAPORTY_NAZWY_KANALOW: nieznany kanał raportowy');
   return {
     regulySprzedazy: { ...regulyHistorii(env), klasyfikacja },
     kontoHistorii,
@@ -48,13 +57,19 @@ export function wczytajRaportyDlaKanalow(env: Srodowisko, definicje: readonly De
     podlogaKosztow: (() => {
       const m = env.OMS_RAPORTY_PODLOGA_KOSZTOW?.trim();
       if (!m) return null;
-      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(m)) throw new Error('OMS_RAPORTY_PODLOGA_KOSZTOW: oczekiwany miesiąc RRRR-MM');
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(m))
+        throw new Error('OMS_RAPORTY_PODLOGA_KOSZTOW: oczekiwany miesiąc RRRR-MM');
       return m;
     })(),
     definicje,
     // Źródła zamówień dla automatu granic — OD i braki kluczy tą samą regułą, co /health (D01).
-    zrodlaKanalow: definicje.map(d => ({ typ: d.typ, prefiks: d.prefiks, raport: d.raport ?? null,
-      od: String(env[`${d.prefiks}_OD`] ?? '').trim(), braki: brakujaceKluczeKanalu(d, env) })),
+    zrodlaKanalow: definicje.map((d) => ({
+      typ: d.typ,
+      prefiks: d.prefiks,
+      raport: d.raport ?? null,
+      od: String(env[`${d.prefiks}_OD`] ?? '').trim(),
+      braki: brakujaceKluczeKanalu(d, env),
+    })),
   };
 }
 

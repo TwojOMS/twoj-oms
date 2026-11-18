@@ -8640,214 +8640,214 @@
   "odciskiPlikowOdczytow": [
     {
       "path": "src/core/tryb.ts",
-      "sha256": "38f537767c396d405e507796fd4431cdf4d368d36a306a521696975e7ba88a5f",
+      "sha256": "750c2e7b3946d4e75581101c31b4e310ec33097728c9a196dd5a432d4b712e29",
       "normalizacja": "LF"
     },
     {
       "path": "src/core/zaufane-proxy.ts",
-      "sha256": "9266ec03e262ef35dd0ca1d86c20eff9bfb11ff265cfeda4c7c4f402e757e231",
+      "sha256": "516b8aa963c1985fda0f334b6220a11c1621a7b9a48d01ca28142b4ae9765636",
       "normalizacja": "LF"
     },
     {
       "path": "src/core/klienci-wdt.ts",
-      "sha256": "1efb713aed4e69fa3911d23f116e0928e2a7efb229f1ff973b85c350da44b54b",
+      "sha256": "cdfb2f9eb8cd5290adac733015a69d972e601d017d60034bdc84f0481ecb902d",
       "normalizacja": "LF"
     },
     {
       "path": "src/core/sprzedawca.ts",
-      "sha256": "7ff600a728cde498368797d955e1724a1a08d9e77342a8eec5fb1342866ccf6a",
+      "sha256": "1a5dc372d923110b2ae65565f915acf190a57aaaef6fe138946ae578d344285c",
       "normalizacja": "LF"
     },
     {
       "path": "src/core/web/modul.ts",
-      "sha256": "a34704af418846568006197ddb9a7ff97d5c7581d9c40e23d142101b95b67b29",
+      "sha256": "f4a6b8a1ddc4a157fa9e83786ee70e2058748a7a7c2d88cdeb9d67022ab8eec5",
       "normalizacja": "LF"
     },
     {
       "path": "src/domena/klient-zbiorczy.js",
-      "sha256": "b3717976598283ad725b0b89bcd2688449ef6a47e8393c572439944e17140e6c",
+      "sha256": "64252c6bebc3c101259827c70fa5dbecb0493a6691688fc28ff49341eb618ba0",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/kanaly/historia.ts",
-      "sha256": "6ec009d5e63101fcad1417b54f3e106412ad996693bd01d109b632a7aa70223e",
+      "sha256": "f0e478c99f3ee1c210b7140b3cfc118c5b93df7b5c2434a61c798abea47c240e",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/kanaly/kompletnosc.ts",
-      "sha256": "2132afd422b3ee5dc1507d0cdc54f90291df6b2272d5c33828a23b06f0f11ca8",
+      "sha256": "9b8f504921aa912db8d2908c38eeb55cb8ed4883460a1abe2416656debac3a81",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "sha256": "9e9357abd637f267134b45c1e6dadb6d7586beb259e12b3ade43fb47c6ee6a68",
+      "sha256": "1d0cc7c028abb058b47788147b5f825b9f157f2a4b248084b3d9be30bc97bfb6",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/zamowienia/konfiguracja.ts",
-      "sha256": "97be61bd00a1560381b220d6047345ceef071718085ce95155e858513cdf0c79",
+      "sha256": "39f78239203ec73847793982fb092b2e0f04427fb862ecae8e1ddc39210c0cef",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/wysylka/kurierzy.ts",
-      "sha256": "37b65a1567cc3788935a6bd7c43f718d8bf5ed39b9af0c4dd5419d3251d34f4d",
+      "sha256": "7e2ac5e1acc0b6b41f09d2631be37fafdcfc79b02ad5989f19aadbc40e671e2b",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "4ac18360c5f321b5b0f1a9588cebbfdc9f7349927648c8d41e3613bf0ba8904d",
+      "sha256": "5619075a4b5051750616ccb8032c3baae02b5c3fd65071d4d5b45e5f01c11ade",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/wysylka/modul.ts",
-      "sha256": "6a5c02529c1a13fc5264a995c9dfed307e10c551e49da51ff661a97b7780f8b0",
+      "sha256": "0472b9a14f8c0760d7c3756ddce958cfd33158d42a45cdc9055562c06819fa24",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/koszty/modul.ts",
-      "sha256": "f209cd0ef2dac7ced4a6ec631d68e680752e77ee7d1866d36d7e8133b2e3f60d",
+      "sha256": "08cb7098310cef79aa6203dee251997159188d1b8bc8a19522b10fc62eba606a",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/zdrowie/modul.ts",
-      "sha256": "ae6a75e13038931c52a93379b6066b420c624257c53153fce4964d150b9d2016",
+      "sha256": "45d2c0fa27b5aa6852a87af9fb1699d6c18082dff77feed7830929e98ebbb5ec",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/raporty/konfiguracja.ts",
-      "sha256": "cc479f561ac84f811eb655cfe660e3ec53232e0478d489e9507b483f75380e18",
+      "sha256": "68defe24c2820bbf8bfe928dfcb3d4ba816a3c7ad9cded0c3a96227122e97350",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/wiadomosci/konfiguracja.ts",
-      "sha256": "c096f23837895024d6c693644ae9e0cd8bd37df5f7fe35acfe9fe474cb98387e",
+      "sha256": "83fbb834a271ba7ca77d63f29855add076145f15d8e3165f044aaf578bb880d0",
       "normalizacja": "LF"
     },
     {
       "path": "src/main.ts",
-      "sha256": "e65e8794ec1495f1177c68ad50c21913a15ad966be79f7e11bd6ecc82bbbb512",
+      "sha256": "7f680896c64cfd47d70fd140173775f01f4c0d125c3d3ee412cc3b43034e56de",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/kanaly/scripts/import-sklep.mjs",
-      "sha256": "8f95d5680551d5cdf0c5bdb7836cff6530e0f7e6b47873ea4754fe3bfd423040",
+      "sha256": "639c08a855b1ab92874923a5fcf6b024130449e567f0da91bd1c08d25fc8459f",
       "normalizacja": "LF"
     },
     {
       "path": "src/oms/bootstrap.ts",
-      "sha256": "43fe658b0730f85a197ca07b21070a3c8c4c427626237cce40c136b32fb20c58",
+      "sha256": "a77329c517d46694a0206cfbbcba51dfd5c4b3c1cfee8e53317dea1996be88c3",
       "normalizacja": "LF"
     },
     {
       "path": "scripts/oms-import-istniejacy-podjazd-dpd.mjs",
-      "sha256": "430aef4d1480a149a7ada6f9563e5f768dba8d63c7d509e24cbaa8fe252fa6ac",
+      "sha256": "ac815b541bbcc6150b23989b009135b2c95891b486662819a58a4af009d00005",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/kanaly/klasyfikacja.ts",
-      "sha256": "425c3b1eb439a1be1637d2580f0540726dc7ca6c57a0bfe2b3989c32cdddebd2",
+      "sha256": "ea5d64daba8f7d836f89703bd126f72bb219c33f605240f5155d4fa19ef68cfc",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/marketing/konfiguracja.ts",
-      "sha256": "ddcf97aa855c914366d2651b75af9cb658a0a6e8875a4b3d99c0b18c64e7d7e1",
+      "sha256": "d7b036db84e3b1bdca35536b32994b2e8405229ea7eac64c320a81e6597da6bf",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/ustawienia/modul.ts",
-      "sha256": "a0c1048d36e231961b69a29106afdbc44cc872141cdf7789c57264b5fae0881a",
+      "sha256": "6e814b9ff8d29524b879cd6351ae626125691422e257af7296bb833ac0e65e35",
       "normalizacja": "LF"
     },
     {
       "path": "src/core/demo.ts",
-      "sha256": "3597b57d9049a05afd45c7e31457059cc87a82c0743664c41310c8b7a96ac553",
+      "sha256": "bb6ff04818237e159450e18b3a3132f81aa2ad49122792a2413f0f4c07671354",
       "normalizacja": "LF"
     },
     {
       "path": "src/core/adres-firmy.ts",
-      "sha256": "582149dd1913f9af4dab4a7808f7ed644da1ffd7d5ffe3e0939d64512ab4d88e",
+      "sha256": "9205ec774573f7e7a5afd5a68a85030744ee08e47a2ab800f558fafe501c6f35",
       "normalizacja": "LF"
     },
     {
       "path": "src/core/bezpieczenstwo/sejf-sekretow.js",
-      "sha256": "07f0f7cb560bd2e158c06630c53cff5fe0b05ede9c9c1e11b8d81ad522ecf49c",
+      "sha256": "484781a45e9c4d1928d90ae4acdaa37b210fcd284cfa350e5c69e1825548841c",
       "normalizacja": "LF"
     }
   ],
   "dodatkoweDowody": [
     {
       "path": "src/core/aplikacja.ts",
-      "sha256": "b7c87b26cbe6bc704c8cc957eadfb484585d16f665cb86fe92040952ba26bdb0",
+      "sha256": "e419322ea1b7faad408e5084734d877ad13fa565124dcbdeb25ff525c6b77b94",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/kanaly/konfiguracja.ts",
-      "sha256": "9e9357abd637f267134b45c1e6dadb6d7586beb259e12b3ade43fb47c6ee6a68",
+      "sha256": "1d0cc7c028abb058b47788147b5f825b9f157f2a4b248084b3d9be30bc97bfb6",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/kanaly/modul.ts",
-      "sha256": "997b9a3d50be6b92ba54502e93f87ffbebf3ee015faa087b698197c48559a662",
+      "sha256": "76c4191c96e644ebc21c307d138c3fa1cacc9243d1f7d504762e1a53d0597acd",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/faktury/modul.ts",
-      "sha256": "4ac18360c5f321b5b0f1a9588cebbfdc9f7349927648c8d41e3613bf0ba8904d",
+      "sha256": "5619075a4b5051750616ccb8032c3baae02b5c3fd65071d4d5b45e5f01c11ade",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/koszty/modul.ts",
-      "sha256": "f209cd0ef2dac7ced4a6ec631d68e680752e77ee7d1866d36d7e8133b2e3f60d",
+      "sha256": "08cb7098310cef79aa6203dee251997159188d1b8bc8a19522b10fc62eba606a",
       "normalizacja": "LF"
     },
     {
       "path": "src/oms/bootstrap.ts",
-      "sha256": "43fe658b0730f85a197ca07b21070a3c8c4c427626237cce40c136b32fb20c58",
+      "sha256": "a77329c517d46694a0206cfbbcba51dfd5c4b3c1cfee8e53317dea1996be88c3",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/kanaly/kompletnosc.ts",
-      "sha256": "2132afd422b3ee5dc1507d0cdc54f90291df6b2272d5c33828a23b06f0f11ca8",
+      "sha256": "9b8f504921aa912db8d2908c38eeb55cb8ed4883460a1abe2416656debac3a81",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/zdrowie/modul.ts",
-      "sha256": "ae6a75e13038931c52a93379b6066b420c624257c53153fce4964d150b9d2016",
+      "sha256": "45d2c0fa27b5aa6852a87af9fb1699d6c18082dff77feed7830929e98ebbb5ec",
       "normalizacja": "LF"
     },
     {
       "path": "src/main.ts",
-      "sha256": "e65e8794ec1495f1177c68ad50c21913a15ad966be79f7e11bd6ecc82bbbb512",
+      "sha256": "7f680896c64cfd47d70fd140173775f01f4c0d125c3d3ee412cc3b43034e56de",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/lista.ts",
-      "sha256": "e7bc2795e745a943b2bf834fa4ed9df61c32fb6ccb78b35f163df63e773dd459",
+      "sha256": "2171ee50d8ecd0efe7efd332fe5bb754249bd8dc59d83117a17c2741dfd2bf52",
       "normalizacja": "LF"
     },
     {
       "path": "src/domena/lacznosc.js",
-      "sha256": "ad3c14bfc0cabb24d50a0aaf079477ccd001ad12121ac838138aec7900a87a33",
+      "sha256": "dc18aca796b57c800b632fb89528b1d86c8e009601263ec7daad833b19993f43",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/ustawienia/cele-diagnostyki.ts",
-      "sha256": "c5ce48bc8dd3eaea6d679c7a58297edb02e0c56487e2165142ee6fe655d620c0",
+      "sha256": "86454d33a384b32f5618988b04151aa7b174e175ac6acdc3d406128de2fbe27d",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/ustawienia/modul.ts",
-      "sha256": "a0c1048d36e231961b69a29106afdbc44cc872141cdf7789c57264b5fae0881a",
+      "sha256": "6e814b9ff8d29524b879cd6351ae626125691422e257af7296bb833ac0e65e35",
       "normalizacja": "LF"
     },
     {
       "path": "src/oms/ksef/client.js",
-      "sha256": "f260d603890687c53b8fee58fb2d35c3834fa75bda7a6216e36d5624e5e258da",
+      "sha256": "9876db11a7d642221aa5232b2f885dfc071f1e4368275174c34be568782d3a34",
       "normalizacja": "LF"
     },
     {
       "path": "src/moduly/kanaly/klasyfikacja.ts",
-      "sha256": "425c3b1eb439a1be1637d2580f0540726dc7ca6c57a0bfe2b3989c32cdddebd2",
+      "sha256": "ea5d64daba8f7d836f89703bd126f72bb219c33f605240f5155d4fa19ef68cfc",
       "normalizacja": "LF"
     }
   ],

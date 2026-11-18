@@ -39,28 +39,55 @@ const ZGADNIETY = 'kopula-150x150.jpg';
 const PRAWDZIWY = 'https://sklep-polcien.example.invalid/wp-content/uploads/2026/07/kopula-247x296.jpg';
 
 const zmapowane = (nad = {}) => ({
-  zrodlo_id: 5501, numer: '5501',
+  zrodlo_id: 5501,
+  numer: '5501',
   klient: { first_name: 'Jan', last_name: 'Kowalski', email: 'j@k.pl', phone: '+48500600700' },
   dostawa: {
-    first_name: 'Jan', last_name: 'Kowalski', company: '', address_1: 'Polna 1',
-    postcode: '00-950', city: 'Warszawa', country: 'PL',
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    company: '',
+    address_1: 'Polna 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
   },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null,
-  kwota_brutto: '212.90', koszt_dostawy_brutto: '0.00', status_woo: 'processing',
-  oplacone_at: '2026-07-29T13:00:00', anulowane: 0, utworzone_at: '2026-07-29T13:19:52',
-  pozycje: [{
-    nazwa: 'Ozdobny KAN', sku: 'PLC-KAN-1', ilosc: 1, cena_brutto: '212.90',
-    brutto_linii: '212.90', vat: 23, zdjecie_url: ORYGINAL, produkt_id: 944,
-  }],
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '212.90',
+  koszt_dostawy_brutto: '0.00',
+  status_woo: 'processing',
+  oplacone_at: '2026-07-29T13:00:00',
+  anulowane: 0,
+  utworzone_at: '2026-07-29T13:19:52',
+  pozycje: [
+    {
+      nazwa: 'Ozdobny KAN',
+      sku: 'PLC-KAN-1',
+      ilosc: 1,
+      cena_brutto: '212.90',
+      brutto_linii: '212.90',
+      vat: 23,
+      zdjecie_url: ORYGINAL,
+      produkt_id: 944,
+    },
+  ],
   ...nad,
 });
 
 // Wiersz LUSTRA dla tego samego produktu, z adresem, ktory sklep NAPRAWDE wygenerowal.
-const wLustrze = (db, nad = {}) => zapiszProduktSklepowy(db, {
-  kanal: 'swietlik', produkt_id: '944', wariant_id: '', nazwa: 'Ozdobny KAN',
-  zdjecia_json: JSON.stringify([ORYGINAL]), miniatura: PRAWDZIWY,
-  odczytane_at: '2026-08-12T06:00:00.000Z', ...nad,
-});
+const wLustrze = (db, nad = {}) =>
+  zapiszProduktSklepowy(db, {
+    kanal: 'swietlik',
+    produkt_id: '944',
+    wariant_id: '',
+    nazwa: 'Ozdobny KAN',
+    zdjecia_json: JSON.stringify([ORYGINAL]),
+    miniatura: PRAWDZIWY,
+    odczytane_at: '2026-08-12T06:00:00.000Z',
+    ...nad,
+  });
 
 // ⚠️ POMOCNIK WYCINAJACY I RZUCAJACY. Asercja na CALEJ stronie bywa podparta otoczeniem:
 // wspolny `layout-oms.ejs`, sasiednia kolumna, pasek filtrow albo drugie zamowienie w tej
@@ -97,14 +124,22 @@ let db;
 let app;
 beforeEach(async () => {
   db = openOmsDb(':memory:');
-  app = buildOmsServer({ db, config, poller, nadanie: createNadanie({ db, kurierzy: {}, katalogEtykiet: join(mkdtempSync(join(tmpdir(), 'oms-mini-')), 'etykiety') }) });
+  app = buildOmsServer({
+    db,
+    config,
+    poller,
+    nadanie: createNadanie({
+      db,
+      kurierzy: {},
+      katalogEtykiet: join(mkdtempSync(join(tmpdir(), 'oms-mini-')), 'etykiety'),
+    }),
+  });
   await app.ready();
 });
 
 const zalozZamowienie = (sklep = 'swietlik', nad = {}) => {
   zapiszZamowienie(db, sklep, zmapowane(nad), {});
-  return db.prepare('SELECT id FROM zamowienia WHERE sklep=? AND zrodlo_id=?')
-    .get(sklep, nad.zrodlo_id ?? 5501).id;
+  return db.prepare('SELECT id FROM zamowienia WHERE sklep=? AND zrodlo_id=?').get(sklep, nad.zrodlo_id ?? 5501).id;
 };
 
 const pobierz = async (url) => {
@@ -209,28 +244,31 @@ describe('karta produktu — galeria produktu', () => {
 
 function bazaZLicznikiem(db, fraza) {
   const licznik = { zapytania: 0 };
-  return [new Proxy(db, {
-    get(cel, pole) {
-      if (pole !== 'prepare') {
-        const w = cel[pole];
-        return typeof w === 'function' ? w.bind(cel) : w;
-      }
-      return (sql) => {
-        const st = cel.prepare(sql);
-        if (!sql.includes(fraza)) return st;
-        return new Proxy(st, {
-          get(s, p) {
-            const w = s[p];
-            if (typeof w !== 'function') return w;
-            return (...a) => {
-              if (p === 'all' || p === 'get' || p === 'run') licznik.zapytania += 1;
-              return w.apply(s, a);
-            };
-          },
-        });
-      };
-    },
-  }), licznik];
+  return [
+    new Proxy(db, {
+      get(cel, pole) {
+        if (pole !== 'prepare') {
+          const w = cel[pole];
+          return typeof w === 'function' ? w.bind(cel) : w;
+        }
+        return (sql) => {
+          const st = cel.prepare(sql);
+          if (!sql.includes(fraza)) return st;
+          return new Proxy(st, {
+            get(s, p) {
+              const w = s[p];
+              if (typeof w !== 'function') return w;
+              return (...a) => {
+                if (p === 'all' || p === 'get' || p === 'run') licznik.zapytania += 1;
+                return w.apply(s, a);
+              };
+            },
+          });
+        };
+      },
+    }),
+    licznik,
+  ];
 }
 
 describe('lista zamówień — koszt odczytu miniatur', () => {
@@ -238,14 +276,25 @@ describe('lista zamówień — koszt odczytu miniatur', () => {
     const zbuduj = (od, ile) => {
       for (let i = 0; i < ile; i += 1) {
         const numer = od + i;
-        zapiszZamowienie(db, 'swietlik', zmapowane({
-          zrodlo_id: numer,
-          numer: String(numer),
-          pozycje: [1, 2, 3].map((n) => ({
-            nazwa: `Lampa ${n}`, sku: `PLC-${n}`, ilosc: 1, cena_brutto: '10.00',
-            brutto_linii: '10.00', vat: 23, zdjecie_url: ORYGINAL, produkt_id: 900 + n,
-          })),
-        }), {});
+        zapiszZamowienie(
+          db,
+          'swietlik',
+          zmapowane({
+            zrodlo_id: numer,
+            numer: String(numer),
+            pozycje: [1, 2, 3].map((n) => ({
+              nazwa: `Lampa ${n}`,
+              sku: `PLC-${n}`,
+              ilosc: 1,
+              cena_brutto: '10.00',
+              brutto_linii: '10.00',
+              vat: 23,
+              zdjecie_url: ORYGINAL,
+              produkt_id: 900 + n,
+            })),
+          }),
+          {},
+        );
       }
     };
     for (const n of [901, 902, 903]) wLustrze(db, { produkt_id: String(n) });
@@ -286,7 +335,9 @@ describe('lista zamówień — koszt odczytu miniatur', () => {
 
 describe('ekrany zamówień nie odpytują sklepu', () => {
   it('render listy, karty i ekranu nadania nie wykonuje ani jednego żądania HTTP', async () => {
-    const strazFetch = vi.fn(async () => { throw new Error('ekran nie ma prawa odpytywac sklepu'); });
+    const strazFetch = vi.fn(async () => {
+      throw new Error('ekran nie ma prawa odpytywac sklepu');
+    });
     const poprzedni = globalThis.fetch;
     globalThis.fetch = strazFetch;
     try {

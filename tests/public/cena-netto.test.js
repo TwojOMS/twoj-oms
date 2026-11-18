@@ -13,8 +13,14 @@ function wiersz({ netto = '', brutto = '', vat = null } = {}) {
   if (vat !== null) pola.vat = { ...pole('poz_vat', vat), tagName: 'SELECT' };
   const tr = {
     dataset: {},
-    querySelector: (s) => (s.includes('cena_netto') ? pola.netto : s.includes('cena_brutto') ? pola.brutto
-      : s.includes('vat') ? (pola.vat ?? null) : null),
+    querySelector: (s) =>
+      s.includes('cena_netto')
+        ? pola.netto
+        : s.includes('cena_brutto')
+          ? pola.brutto
+          : s.includes('vat')
+            ? (pola.vat ?? null)
+            : null,
   };
   for (const p of Object.values(pola)) p.closest = (s) => (s === 'tr' ? tr : null);
   return { tr, ...pola };

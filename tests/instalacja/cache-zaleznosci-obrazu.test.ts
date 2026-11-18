@@ -7,9 +7,9 @@ import fs from 'node:fs';
 
 it('ARG APP_REVISION i etykieta revision dopiero po RUN npm ci (cache zależności przeżywa nowe wydanie)', () => {
   const linie = fs.readFileSync(new URL('../../deploy/klient/Dockerfile', import.meta.url), 'utf8').split(/\r?\n/);
-  const npm = linie.findIndex(l => l.startsWith('RUN npm ci'));
-  const arg = linie.findIndex(l => l.startsWith('ARG APP_REVISION'));
-  const label = linie.findIndex(l => l.startsWith('LABEL org.opencontainers.image.revision=$APP_REVISION'));
+  const npm = linie.findIndex((l) => l.startsWith('RUN npm ci'));
+  const arg = linie.findIndex((l) => l.startsWith('ARG APP_REVISION'));
+  const label = linie.findIndex((l) => l.startsWith('LABEL org.opencontainers.image.revision=$APP_REVISION'));
   expect(npm).toBeGreaterThan(0);
   expect({ argPoNpm: arg > npm, labelPoArg: label > arg }).toEqual({ argPoNpm: true, labelPoArg: true });
 });

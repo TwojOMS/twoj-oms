@@ -27,10 +27,7 @@ function granicaDla(mapa, kanal) {
   // ⚠️ PRZERYWA. Kanal bez granicy nie ma jak sie policzyc ani z historii, ani z OMS-u —
   // a cicha pustka w jednym kanale wyglada dokladnie jak slaby miesiac.
   if (!g) {
-    const e = new Error(
-      `Raport nie wie, gdzie przebiega granica historii dla kanału ${kanal}.`
-      + JAK_ZALOZYC_GRANICE,
-    );
+    const e = new Error(`Raport nie wie, gdzie przebiega granica historii dla kanału ${kanal}.` + JAK_ZALOZYC_GRANICE);
     e.dlaOperatora = true;
     throw e;
   }
@@ -38,7 +35,7 @@ function granicaDla(mapa, kanal) {
 }
 
 export function sprzedazWOkresie(db, { od, do: doDnia }, reguly = {}) {
-  return [...wierszeSprzedazy(db, { od, do: doDnia }, reguly)].filter(w => w !== null).sort(poDniu);
+  return [...wierszeSprzedazy(db, { od, do: doDnia }, reguly)].filter((w) => w !== null).sort(poDniu);
 }
 
 // Ten sam generator i porządek wyniku. Trasy oddają sterowanie co 500 wierszy,
@@ -52,7 +49,7 @@ export async function sprzedazWOkresieAsync(db, zakres, reguly = {}) {
   return wynik.sort(poDniu);
 }
 
-const poDniu = (a, b) => (a.dzien === b.dzien ? 0 : (a.dzien < b.dzien ? -1 : 1));
+const poDniu = (a, b) => (a.dzien === b.dzien ? 0 : a.dzien < b.dzien ? -1 : 1);
 
 function* wierszeSprzedazy(db, { od, do: doDnia }, reguly) {
   wymagajKlasyfikacji(reguly.klasyfikacja);
@@ -70,17 +67,26 @@ function* wierszeSprzedazy(db, { od, do: doDnia }, reguly) {
     if (w.dzien > granicaDla(mapa, kanal)) continue;
     const bruttoGrosze = grosze(w.brutto, `historia ${w.apilo_id}`);
     yield {
-      zrodlo: 'historia', id: w.apilo_id, numer: w.numer ?? w.apilo_id, dzien: w.dzien, kanal, bruttoGrosze,
+      zrodlo: 'historia',
+      id: w.apilo_id,
+      numer: w.numer ?? w.apilo_id,
+      dzien: w.dzien,
+      kanal,
+      bruttoGrosze,
       // ⚠️ `zrodlo` wyzej mowi „ktora EPOKA" (historia kontra OMS), a `zrodloDanych` — „ktory
       // SYSTEM ZRODLOWY" ('apilo' albo 'woo:<sklep>'). To dwie rozne rzeczy i musza byc dwoma
       // polami: epoka historyczna ma DWA źródła, a reguły, które pytają o tagi
       // albo o dane klienta, dotycza wylacznie tego z Apilo.
       zrodloDanych: w.zrodlo,
       nettoGrosze: nettoZamowieniaGrosze(bruttoGrosze, w.klient_email, reguly.klienciWdt),
-      faktura: Boolean(w.faktura), oplacone: w.payment_status === 2,
-      email: w.klient_email ?? null, tagi: JSON.parse(w.tagi_json ?? '[]'),
+      faktura: Boolean(w.faktura),
+      oplacone: w.payment_status === 2,
+      email: w.klient_email ?? null,
+      tagi: JSON.parse(w.tagi_json ?? '[]'),
       pozycje: w.pozycje.map((p) => ({
-        nazwa: p.nazwa, ilosc: p.ilosc, typ: p.typ,
+        nazwa: p.nazwa,
+        ilosc: p.ilosc,
+        typ: p.typ,
         bruttoGrosze: grosze(p.brutto_linii, `pozycja ${w.apilo_id}`),
       })),
     };
@@ -94,16 +100,18 @@ function* wierszeSprzedazy(db, { od, do: doDnia }, reguly) {
   // oznaczone jako B2B liczyloby sie jako RECZNE, bez ani jednego bledu, wygladajac na
   // „raport nie widzi nowych zamowien". Test tej reguly idzie wiec przez `sprzedazWOkresie`,
   // a nie przez samo `kanalOms`.
-  const kolumny = KOLUMNY_KLASYFIKACJI.join(', ') + ', id, numer, kwota_brutto, utworzone_at,'
-    + ' anulowane, anulowane_recznie, chce_fakture, chce_fakture_reczne, klient_json,'
-    + ' klient_reczny_json, oplacone_at, oplacone_recznie,'
+  const kolumny =
+    KOLUMNY_KLASYFIKACJI.join(', ') +
+    ', id, numer, kwota_brutto, utworzone_at,' +
+    ' anulowane, anulowane_recznie, chce_fakture, chce_fakture_reczne, klient_json,' +
+    ' klient_reczny_json, oplacone_at, oplacone_recznie,' +
     // ⚠️ KOLUMNA LICZY PIENIĄDZE, nie zdobi zapytania: poprawka ceny pozycji ze sklepu nie
     // mieszka w wierszu pozycji, tylko tutaj (domena/pozycje-reczne.js). Bez niej raport
     // policzyłby przecenioną linię po cenie sklepowej — cicho, bo różnica wyszłaby zerowa.
     // ⚠️ WYSYŁKA MA W `kwotaOczekiwanaGrosze` WŁASNY CZŁON RÓŻNICOWY — bez ceny sklepowej
     // z tej kolumny „dwie paczki zamiast jednej" liczyłoby się jako 0 × 2 i dopłata za
     // wysyłkę wypadałaby z raportu.
-    + ' koszt_dostawy_brutto, pozycje_reczne_json';
+    ' koszt_dostawy_brutto, pozycje_reczne_json';
 
   for (const porcja of porcjeZamowienWOkresie(db, kolumny, od, doDnia)) {
     for (const w of porcja) {
@@ -120,7 +128,10 @@ function* wierszeSprzedazy(db, { od, do: doDnia }, reguly) {
       // last_name/company PRZY ZAPISIE) i reczne zamowienie (domena/nowe-zamowienie.js:
       // rozbijNazwe + company). Klucze imie/nazwisko/firma nie istnieja w tym obiekcie NIGDY —
       // regula nazwowa czytajaca je bylaby martwa na kazdym kanale OMS-u.
-      if (czyTestowe(klient.email, `${klient.first_name ?? ''} ${klient.last_name ?? ''} ${klient.company ?? ''}`, reguly)) continue;
+      if (
+        czyTestowe(klient.email, `${klient.first_name ?? ''} ${klient.last_name ?? ''} ${klient.company ?? ''}`, reguly)
+      )
+        continue;
       // ⚠️⚠️ TA SAMA MIARA, CO NA FAKTURZE — i to jest cała treść tej linii. `grosze(w.kwota_brutto)`,
       // czyli kwota ZE SKLEPU, się tu nie nadaje: ta kolumna z założenia NIE ROŚNIE od naszych
       // dopisków (`kwotaZamowieniaGrosze` w domena/suma-pozycji.js i komentarz przy
@@ -136,11 +147,17 @@ function* wierszeSprzedazy(db, { od, do: doDnia }, reguly) {
       const pozycje_usuniete = pozycjeUsuniete(surowe, w.pozycje_reczne_json);
       const bruttoGrosze = kwotaOczekiwanaGrosze({ ...w, pozycje, pozycje_usuniete });
       yield {
-        zrodlo: 'oms', id: w.id, numer: w.numer, dzien, kanal, bruttoGrosze,
+        zrodlo: 'oms',
+        id: w.id,
+        numer: w.numer,
+        dzien,
+        kanal,
+        bruttoGrosze,
         nettoGrosze: nettoZamowieniaGrosze(bruttoGrosze, klient.email, reguly.klienciWdt),
         faktura: Boolean(w.chce_fakture_reczne ?? w.chce_fakture),
         oplacone: Boolean(w.oplacone_at || w.oplacone_recznie),
-        email: klient.email ?? null, tagi: [],
+        email: klient.email ?? null,
+        tagi: [],
         pozycje: doRankingu(pozycje, w.id),
       };
     }
@@ -149,7 +166,11 @@ function* wierszeSprzedazy(db, { od, do: doDnia }, reguly) {
 }
 
 function bezpiecznyJson(s) {
-  try { return JSON.parse(s ?? '{}') ?? {}; } catch { return {}; }
+  try {
+    return JSON.parse(s ?? '{}') ?? {};
+  } catch {
+    return {};
+  }
 }
 
 /**
@@ -176,23 +197,34 @@ function bezpiecznyJson(s) {
  */
 export function zwrotyWOkresie(db, { od, do: doDnia }, reguly = {}) {
   wymagajKlasyfikacji(reguly.klasyfikacja);
-  const wiersze = db.prepare(
-    'SELECT w.id, w.zamowienie_id, w.data, w.kwota, w.kwota_dostawy,'
-    + ' ' + KOLUMNY_KLASYFIKACJI.map(k => `z.${k}`).join(', ') + ', z.anulowane, z.anulowane_recznie, z.klient_json, z.klient_reczny_json'
-    + ' FROM zwroty w JOIN zamowienia z ON z.id = w.zamowienie_id'
-    + ' WHERE w.data >= ? AND w.data <= ? ORDER BY w.data, w.id',
-  ).all(od, doDnia);
+  const wiersze = db
+    .prepare(
+      'SELECT w.id, w.zamowienie_id, w.data, w.kwota, w.kwota_dostawy,' +
+        ' ' +
+        KOLUMNY_KLASYFIKACJI.map((k) => `z.${k}`).join(', ') +
+        ', z.anulowane, z.anulowane_recznie, z.klient_json, z.klient_reczny_json' +
+        ' FROM zwroty w JOIN zamowienia z ON z.id = w.zamowienie_id' +
+        ' WHERE w.data >= ? AND w.data <= ? ORDER BY w.data, w.id',
+    )
+    .all(od, doDnia);
 
   const wynik = [];
   for (const w of wiersze) {
     if (anulowaneEfektywnie(w)) continue;
     const klient = { ...bezpiecznyJson(w.klient_json), ...bezpiecznyJson(w.klient_reczny_json) };
-    if (czyTestowe(klient.email, `${klient.first_name ?? ''} ${klient.last_name ?? ''} ${klient.company ?? ''}`, reguly)) continue;
-    const bruttoGrosze = grosze(w.kwota, `zwrot ${w.id}`)
-      + (w.kwota_dostawy ? grosze(w.kwota_dostawy, `zwrot dostawy ${w.id}`) : 0);
+    if (
+      czyTestowe(klient.email, `${klient.first_name ?? ''} ${klient.last_name ?? ''} ${klient.company ?? ''}`, reguly)
+    )
+      continue;
+    const bruttoGrosze =
+      grosze(w.kwota, `zwrot ${w.id}`) + (w.kwota_dostawy ? grosze(w.kwota_dostawy, `zwrot dostawy ${w.id}`) : 0);
     wynik.push({
-      id: w.id, zamowienieId: w.zamowienie_id, dzien: w.data, kanal: kanalOms(w, reguly.klasyfikacja),
-      bruttoGrosze, nettoGrosze: nettoZamowieniaGrosze(bruttoGrosze, klient.email, reguly.klienciWdt),
+      id: w.id,
+      zamowienieId: w.zamowienie_id,
+      dzien: w.data,
+      kanal: kanalOms(w, reguly.klasyfikacja),
+      bruttoGrosze,
+      nettoGrosze: nettoZamowieniaGrosze(bruttoGrosze, klient.email, reguly.klienciWdt),
     });
   }
   return wynik;
@@ -203,9 +235,11 @@ export function zwrotyWOkresie(db, { od, do: doDnia }, reguly = {}) {
 // z czego przeliczyć kwoty. Trzy kolumny, które wystarczały do samego rankingu, dawałyby tu
 // nakładkę bezczynną: klucz nie trafiałby w nic i różnica wobec sklepu wyszłaby zerowa.
 function pozycjeSurowe(db, zamowienieId) {
-  return db.prepare(
-    'SELECT id, zrodlo_id, nazwa, ilosc, cena_brutto, brutto_linii, zrodlo FROM pozycje WHERE zamowienie_id = ?',
-  ).all(zamowienieId);
+  return db
+    .prepare(
+      'SELECT id, zrodlo_id, nazwa, ilosc, cena_brutto, brutto_linii, zrodlo FROM pozycje WHERE zamowienie_id = ?',
+    )
+    .all(zamowienieId);
 }
 
 // Kształt dla rankingu produktów i licznika sztuk — ten sam, co pozycje z historii. Liczy się
@@ -213,7 +247,9 @@ function pozycjeSurowe(db, zamowienieId) {
 // którą karta pokazuje.
 function doRankingu(pozycje, zamowienieId) {
   return pozycje.map((p) => ({
-    nazwa: p.nazwa, ilosc: p.ilosc, typ: 1,
+    nazwa: p.nazwa,
+    ilosc: p.ilosc,
+    typ: 1,
     bruttoGrosze: grosze(p.brutto_linii ?? '0.00', `pozycja ${zamowienieId}`),
   }));
 }
@@ -222,32 +258,50 @@ function doRankingu(pozycje, zamowienieId) {
 export function inicjalizujGraniceBezHistorii(db, kanal, doDnia, klasyfikacja) {
   wymagajKlasyfikacji(klasyfikacja);
   if (!klasyfikacja.raporty.has(kanal)) throw new Error('Nieznany kanał raportowy');
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(doDnia) || new Date(doDnia + 'T00:00:00Z').toISOString().slice(0,10) !== doDnia) throw new Error('Niepoprawny dzień granicy');
-  if ([...klasyfikacja.konta.values()].includes(kanal)) throw new Error('Kanał ma skonfigurowaną historię; wymaga pomiaru granicy');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(doDnia) || new Date(doDnia + 'T00:00:00Z').toISOString().slice(0, 10) !== doDnia)
+    throw new Error('Niepoprawny dzień granicy');
+  if ([...klasyfikacja.konta.values()].includes(kanal))
+    throw new Error('Kanał ma skonfigurowaną historię; wymaga pomiaru granicy');
   db.exec('BEGIN IMMEDIATE');
   try {
     if (granice(db).has(kanal)) throw new Error('Granica już istnieje; inicjalizacja odmawia nadpisania');
-    if (db.prepare('SELECT COUNT(*) AS ile FROM sprzedaz_historyczna').get().ile > 0) throw new Error('Baza zawiera historię; granica wymaga pomiaru');
+    if (db.prepare('SELECT COUNT(*) AS ile FROM sprzedaz_historyczna').get().ile > 0)
+      throw new Error('Baza zawiera historię; granica wymaga pomiaru');
     const wiersze = db.prepare('SELECT ' + KOLUMNY_KLASYFIKACJI.join(', ') + ', utworzone_at FROM zamowienia').all();
     for (const w of wiersze) {
       if (kanalOms(w, klasyfikacja) !== kanal) continue;
-      const dzien=dzienWarszawa(w.utworzone_at);
+      const dzien = dzienWarszawa(w.utworzone_at);
       if (!dzien || dzien <= doDnia) throw new Error('Granica musi poprzedzać pierwszy dzień sprzedaży OMS');
     }
-    db.prepare('INSERT INTO granice_historii (kanal,do_dnia,zrodlo,uwaga) VALUES (?,?,?,?)').run(kanal,doDnia,'oms-bez-historii','Jawna jednorazowa inicjalizacja');
+    db.prepare('INSERT INTO granice_historii (kanal,do_dnia,zrodlo,uwaga) VALUES (?,?,?,?)').run(
+      kanal,
+      doDnia,
+      'oms-bez-historii',
+      'Jawna jednorazowa inicjalizacja',
+    );
     db.exec('COMMIT');
-  } catch(e) {db.exec('ROLLBACK');throw e;}
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
 }
 
 // Inicjalizacja bez historii nie może później po cichu wyciąć zaimportowanych danych.
 // Kontrola obejmuje całą historię przed oknem/statusami oraz przed odrzuceniem za granicą.
 function sprawdzGraniceBezHistorii(db, klasyfikacja) {
-  const kanaly = new Set(db.prepare("SELECT kanal FROM granice_historii WHERE zrodlo = 'oms-bez-historii'").all().map(w => w.kanal));
+  const kanaly = new Set(
+    db
+      .prepare("SELECT kanal FROM granice_historii WHERE zrodlo = 'oms-bez-historii'")
+      .all()
+      .map((w) => w.kanal),
+  );
   if (!kanaly.size) return;
   for (const w of historiaWOknie(db, '0000-01-01', '9999-12-31')) {
     const kanal = kanalHistoryczny(w, klasyfikacja);
     if (kanaly.has(kanal)) {
-      const e = new Error(`Kanał ${kanal} ma granicę oms-bez-historii, ale zawiera zaimportowaną historię. Wymagany pomiar i jawne uzgodnienie granicy.`);
+      const e = new Error(
+        `Kanał ${kanal} ma granicę oms-bez-historii, ale zawiera zaimportowaną historię. Wymagany pomiar i jawne uzgodnienie granicy.`,
+      );
       e.dlaOperatora = true;
       throw e;
     }
@@ -261,9 +315,15 @@ const KOLUMNY_PIERWSZYCH = KOLUMNY_KLASYFIKACJI.join(', ') + ', utworzone_at, an
 // wartości logiczne. Nieznany sklep nie ma kanału — o jego zamówienia odmawia sam raport okresu.
 function mozliweKanalySklepu(sklep, klasyfikacja) {
   const wynik = new Set();
-  for (const indywidualne of [0, 1]) for (const b2b of [0, 1]) for (const okres_rozliczeniowy_id of [null, 1]) {
-    try { wynik.add(kanalOms({ sklep, indywidualne, b2b, okres_rozliczeniowy_id }, klasyfikacja)); } catch { /* nieznany sklep */ }
-  }
+  for (const indywidualne of [0, 1])
+    for (const b2b of [0, 1])
+      for (const okres_rozliczeniowy_id of [null, 1]) {
+        try {
+          wynik.add(kanalOms({ sklep, indywidualne, b2b, okres_rozliczeniowy_id }, klasyfikacja));
+        } catch {
+          /* nieznany sklep */
+        }
+      }
   return wynik;
 }
 
@@ -286,7 +346,11 @@ export function pierwszeDniOms(db, klasyfikacja, limit, { bezAnulowanych = false
       const dzien = dzienWarszawa(w.utworzone_at);
       if (!dzien) continue;
       let kanal;
-      try { kanal = kanalOms(w, klasyfikacja); } catch { continue; }
+      try {
+        kanal = kanalOms(w, klasyfikacja);
+      } catch {
+        continue;
+      }
       const g = limit(kanal);
       if (!g || dzien > g) continue;
       const dotad = wynik.get(kanal);
@@ -301,31 +365,46 @@ export function pierwszeDniOms(db, klasyfikacja, limit, { bezAnulowanych = false
 // ≤ granicy bez słowa — pusty raport wyglądałby jak słaby miesiąc. Odmowa obejmuje każdą drogę
 // zapisu granicy (automat startu, --granice, skrypt ręczny). Anulowanych raport i tak nie liczy.
 function sprawdzZamowieniaPrzedGranica(db, klasyfikacja) {
-  const bezHistorii = new Map(db.prepare("SELECT kanal, do_dnia FROM granice_historii WHERE zrodlo = 'oms-bez-historii'")
-    .all().map(w => [w.kanal, w.do_dnia]));
+  const bezHistorii = new Map(
+    db
+      .prepare("SELECT kanal, do_dnia FROM granice_historii WHERE zrodlo = 'oms-bez-historii'")
+      .all()
+      .map((w) => [w.kanal, w.do_dnia]),
+  );
   if (!bezHistorii.size) return;
-  const pierwsze = pierwszeDniOms(db, klasyfikacja, kanal => bezHistorii.get(kanal) ?? null, { bezAnulowanych: true });
+  const pierwsze = pierwszeDniOms(db, klasyfikacja, (kanal) => bezHistorii.get(kanal) ?? null, {
+    bezAnulowanych: true,
+  });
   const zle = [...pierwsze].sort(([a], [b]) => (a < b ? -1 : 1));
   if (!zle.length) return;
-  const e = new Error('Raport odmawia: '
-    + zle.map(([kanal, dzien]) => `zamówienia kanału ${kanal} sprzed granicy ${bezHistorii.get(kanal)} (najwcześniejsze z dnia ${dzien})`).join('; ')
-    + ' — granica założona za wcześnie, przed pierwszym pobraniem zamówień; bez tej odmowy te zamówienia wypadłyby z raportu po cichu.'
-    + ' Popraw granicę: usuń wiersz kanału z tabeli granice_historii i załóż go ponownie poleceniem na serwerze OMS:'
-    + ` ${POLECENIE_GRANIC} (dzień granicy wyliczy się przed najwcześniejszym zamówieniem kanału).`);
+  const e = new Error(
+    'Raport odmawia: ' +
+      zle
+        .map(
+          ([kanal, dzien]) =>
+            `zamówienia kanału ${kanal} sprzed granicy ${bezHistorii.get(kanal)} (najwcześniejsze z dnia ${dzien})`,
+        )
+        .join('; ') +
+      ' — granica założona za wcześnie, przed pierwszym pobraniem zamówień; bez tej odmowy te zamówienia wypadłyby z raportu po cichu.' +
+      ' Popraw granicę: usuń wiersz kanału z tabeli granice_historii i załóż go ponownie poleceniem na serwerze OMS:' +
+      ` ${POLECENIE_GRANIC} (dzień granicy wyliczy się przed najwcześniejszym zamówieniem kanału).`,
+  );
   e.dlaOperatora = true;
   throw e;
 }
 
-const POLECENIE_GRANIC = 'sudo sh /opt/oms/aktualizuj.sh compose exec -T oms node scripts/produkcja-pierwszy-start.mjs --granice';
+const POLECENIE_GRANIC =
+  'sudo sh /opt/oms/aktualizuj.sh compose exec -T oms node scripts/produkcja-pierwszy-start.mjs --granice';
 
 // Ciąg dalszy odmowy z `granicaDla` — nowa instalacja dostaje polecenie, które
 // zakłada granicę (docs/instalacja-docker.md, sekcja 9), a nie samo „uzupełnij”. Składnia
 // polecenia jest dosłownie z instrukcji; skrypt pomija kanały z zaimportowaną historią.
 // Start panelu zakłada granicę sam tylko kanałowi z kompletem kluczy i linią OD.
-const JAK_ZALOZYC_GRANICE = ' Kanał z kompletem kluczy i linią PREFIKS_OD dostaje granicę sam przy starcie — wtedy wystarczy restart panelu.'
-  + ' Kanał bez linii PREFIKS_OD albo z niepełną konfiguracją: po pierwszym pobraniu zamówień polecenie na serwerze OMS:'
-  + ` ${POLECENIE_GRANIC}`
-  + ' (instrukcja instalacji, sekcja 9 „Integracje po kolei”; dzień granicy liczy samo: dzień przed datą z linii PREFIKS_OD kanału albo wczoraj,'
-  + ' a gdy kanał ma już zamówienia — dzień przed najwcześniejszym z nich).'
-  + ' Kanał z zaimportowaną historią (OMS_HISTORIA_KLASYFIKACJA) to polecenie pomija — jego granicę trzeba ustalić pomiarem.'
-  + ' Sprawdź też, czy po zmianie raportu nie pozostała osierocona granica starego identyfikatora.';
+const JAK_ZALOZYC_GRANICE =
+  ' Kanał z kompletem kluczy i linią PREFIKS_OD dostaje granicę sam przy starcie — wtedy wystarczy restart panelu.' +
+  ' Kanał bez linii PREFIKS_OD albo z niepełną konfiguracją: po pierwszym pobraniu zamówień polecenie na serwerze OMS:' +
+  ` ${POLECENIE_GRANIC}` +
+  ' (instrukcja instalacji, sekcja 9 „Integracje po kolei”; dzień granicy liczy samo: dzień przed datą z linii PREFIKS_OD kanału albo wczoraj,' +
+  ' a gdy kanał ma już zamówienia — dzień przed najwcześniejszym z nich).' +
+  ' Kanał z zaimportowaną historią (OMS_HISTORIA_KLASYFIKACJA) to polecenie pomija — jego granicę trzeba ustalić pomiarem.' +
+  ' Sprawdź też, czy po zmianie raportu nie pozostała osierocona granica starego identyfikatora.';

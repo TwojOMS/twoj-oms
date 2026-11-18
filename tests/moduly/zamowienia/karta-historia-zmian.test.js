@@ -18,16 +18,46 @@ function panel() {
 let numer = 0;
 function zamowienie(db) {
   numer += 1;
-  return zapiszZamowienie(db, 'pro', {
-    zrodlo_id: 9000 + numer, numer: String(9000 + numer), klient: { first_name: 'Anna' }, dostawa: { city: 'Pęki' },
-    metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '100.00', status_woo: 'processing',
-    oplacone_at: null, anulowane: 0, utworzone_at: '2026-10-17T09:00:00',
-    pozycje: [{ nazwa: 'Lampa', sku: null, cena_brutto: '100.00', vat: '23', zdjecie_url: null, zrodlo_id: 1, produkt_id: null, oferta_id: null, wariant_id: null, ilosc: 1 }],
-  }, {});
+  return zapiszZamowienie(
+    db,
+    'pro',
+    {
+      zrodlo_id: 9000 + numer,
+      numer: String(9000 + numer),
+      klient: { first_name: 'Anna' },
+      dostawa: { city: 'Pęki' },
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: 0,
+      nip: null,
+      kwota_brutto: '100.00',
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane: 0,
+      utworzone_at: '2026-10-17T09:00:00',
+      pozycje: [
+        {
+          nazwa: 'Lampa',
+          sku: null,
+          cena_brutto: '100.00',
+          vat: '23',
+          zdjecie_url: null,
+          zrodlo_id: 1,
+          produkt_id: null,
+          oferta_id: null,
+          wariant_id: null,
+          ilosc: 1,
+        },
+      ],
+    },
+    {},
+  );
 }
 /** Wpis wprost SQL-em: `dopiszLog` bierze `kto` z kontekstu żądania, a tu potrzebny jest każdy z trzech rodzajów. */
 const wpis = (db, id, akcja, wynik, kto = 'automat', at = '2026-10-17T10:00:00.000Z') =>
-  db.prepare('INSERT INTO log (zamowienie_id, at, akcja, wynik, kto) VALUES (?,?,?,?,?)').run(id, at, akcja, wynik, kto);
+  db
+    .prepare('INSERT INTO log (zamowienie_id, at, akcja, wynik, kto) VALUES (?,?,?,?,?)')
+    .run(id, at, akcja, wynik, kto);
 
 const sekcja = (html) => /<section class="panel" id="historia">[\s\S]*?<\/section>/u.exec(html)?.[0] ?? null;
 const wiersze = (s) => [...s.matchAll(/<tr class="hist-wpis">[\s\S]*?<\/tr>/gu)].map((m) => m[0]);
@@ -72,17 +102,20 @@ describe('karta — Historia zmian: stan zwinięty', () => {
     expect(r.body.indexOf('id="historia"', poz + 1)).toBe(-1);
   });
 
-  it.each(['abc', '0', '-1', '1.5', '', '9999999'])('?historia=%s (nie dodatnia liczba całkowita) = zwinięta, bez zapytania', async (v) => {
-    const { db, app, admin } = panel();
-    const id = zamowienie(db);
-    wpis(db, id, 'x.akcja', 'tajny-wpis-123');
-    const sondy = licznikOdczytowLogu(db);
-    const r = await get(app, `/zamowienia/${id}?historia=${v}`, admin);
-    expect(r.statusCode).toBe(200);
-    expect(r.body).not.toContain('tajny-wpis-123');
-    expect(sondy).toEqual([]);
-    vi.restoreAllMocks();
-  });
+  it.each(['abc', '0', '-1', '1.5', '', '9999999'])(
+    '?historia=%s (nie dodatnia liczba całkowita) = zwinięta, bez zapytania',
+    async (v) => {
+      const { db, app, admin } = panel();
+      const id = zamowienie(db);
+      wpis(db, id, 'x.akcja', 'tajny-wpis-123');
+      const sondy = licznikOdczytowLogu(db);
+      const r = await get(app, `/zamowienia/${id}?historia=${v}`, admin);
+      expect(r.statusCode).toBe(200);
+      expect(r.body).not.toContain('tajny-wpis-123');
+      expect(sondy).toEqual([]);
+      vi.restoreAllMocks();
+    },
+  );
 
   it('powtórzony klucz (?historia=1&historia=2 = tablica) = zwinięta', async () => {
     const { db, app, admin } = panel();
@@ -141,7 +174,8 @@ describe('karta — Historia zmian: stan rozwinięty', () => {
     const id = zamowienie(db);
     wpis(db, id, 'a.b', 'c');
     const s = sekcja((await get(app, `/zamowienia/${id}?historia=1`, admin)).body);
-    for (const naglowek of ['Czas', 'Kto', 'Akcja', 'Szczegóły']) expect(s).toMatch(new RegExp(`<th[^>]*>${naglowek}</th>`, 'u'));
+    for (const naglowek of ['Czas', 'Kto', 'Akcja', 'Szczegóły'])
+      expect(s).toMatch(new RegExp(`<th[^>]*>${naglowek}</th>`, 'u'));
   });
 
   it('zamówienie bez wpisów: komunikat zamiast pustej tabeli', async () => {
@@ -205,7 +239,9 @@ describe('karta — Historia zmian: stan rozwinięty', () => {
     const { db, app, admin } = panel();
     const id = zamowienie(db);
     for (let i = 0; i < 60; i += 1) wpis(db, id, 'a.b', `w${i}`);
-    const s = sekcja((await get(app, `/zamowienia/${id}?historia=1&powrot=${encodeURIComponent('/?status=nowe')}`, admin)).body);
+    const s = sekcja(
+      (await get(app, `/zamowienia/${id}?historia=1&powrot=${encodeURIComponent('/?status=nowe')}`, admin)).body,
+    );
     const hrefy = [...s.matchAll(/<a [^>]*href="([^"]*)"/gu)].map((m) => m[1].replaceAll('&amp;', '&'));
     expect(hrefy.length).toBeGreaterThanOrEqual(2);
     for (const h of hrefy) expect(h).toContain('powrot=');

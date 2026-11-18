@@ -20,7 +20,10 @@ beforeEach(async () => {
   app = buildOmsServer({ db, config });
   await app.ready();
 });
-afterEach(async () => { await app.close(); db.close(); });
+afterEach(async () => {
+  await app.close();
+  db.close();
+});
 
 const get = (zapytanie = '') => app.inject({ method: 'GET', url: ADRES + zapytanie, headers: naglowek });
 const post = (url, payload) => app.inject({ method: 'POST', url, headers: naglowekPost, payload });
@@ -129,7 +132,14 @@ describe('tabela szablonów paczek', () => {
 
 describe('paczkomaty i automaty', () => {
   it('bez ustawienia pokazuje dzisiejsze wartości: InPost A + waga szablonu, Allegro S + 1 kg, 7 usług w wyjątkach', async () => {
-    await post('/ustawienia/paczka/szablon', { id: 'domyslna', nazwa: 'Paczka domyślna', waga: '3', dlugosc: '110', szerokosc: '75', wysokosc: '1' });
+    await post('/ustawienia/paczka/szablon', {
+      id: 'domyslna',
+      nazwa: 'Paczka domyślna',
+      waga: '3',
+      dlugosc: '110',
+      szerokosc: '75',
+      wysokosc: '1',
+    });
     const t = tresc((await get()).body);
 
     expect(t).toContain('Paczkomaty i automaty');
@@ -183,7 +193,10 @@ describe('paczkomaty i automaty', () => {
   it('wyjątek usługi wygrywa, „jak wszystkie” go usuwa', async () => {
     await post('/ustawienia/paczka/automat', { cel: 'allegro', gabaryt: 'M', waga: '4' });
     expect((await post('/ustawienia/paczka/automat', { cel: ORLEN, gabaryt: 'L', waga: '12' })).statusCode).toBe(302);
-    expect(propozycjaAutomatu(wczytajUstawienia(db), { rodzaj: 'wza', deliveryMethodId: ORLEN })).toEqual({ gabaryt: 'L', waga: 12 });
+    expect(propozycjaAutomatu(wczytajUstawienia(db), { rodzaj: 'wza', deliveryMethodId: ORLEN })).toEqual({
+      gabaryt: 'L',
+      waga: 12,
+    });
 
     const t = tresc((await get()).body);
     const akcja = `/ustawienia/paczka/automat/${ORLEN}/jak-wszystkie`;
@@ -192,7 +205,10 @@ describe('paczkomaty i automaty', () => {
 
     const r = await post(akcja, {});
     expect(r.statusCode).toBe(302);
-    expect(propozycjaAutomatu(wczytajUstawienia(db), { rodzaj: 'wza', deliveryMethodId: ORLEN })).toEqual({ gabaryt: 'M', waga: 4 });
+    expect(propozycjaAutomatu(wczytajUstawienia(db), { rodzaj: 'wza', deliveryMethodId: ORLEN })).toEqual({
+      gabaryt: 'M',
+      waga: 4,
+    });
     expect(tresc((await get()).body)).not.toContain(`action="${akcja}"`);
   });
 

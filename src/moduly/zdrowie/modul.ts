@@ -9,96 +9,154 @@ import { UWAGA_BRAK_RACHUNKU } from '../../domena/rachunek-firmy.js';
 import { UWAGA_BRAK_NIP } from '../../domena/nip-bdo-firmy.js';
 import { UWAGA_SPRZATANIA, sprzatanieCzeka } from '../../core/bezpieczenstwo/konwersja-sekretow.js';
 
-export const ODSTEP_OSTRZEZEN_MS=3600000;
-export const modulZdrowie: ModulOms<{proba:boolean;kopieKatalog:string;kopiaZewnetrzna:string}> = {
-  nazwa:'zdrowie',wersja:'1.0.0',wymaga:['rdzen','web','kanaly','faktury','wysylka'],
-  konfiguracja:env=>{
-    return {proba:env.OMS_TRYB==='proba',kopieKatalog:(env.OMS_KOPIE_KATALOG??'').trim(),kopiaZewnetrzna:(env.OMS_KOPIA_ZEWNETRZNA??'').trim()};
-  },migracje:[],uprawnienia:[],menu:[],
-  zbuduj:ctx=>{
+export const ODSTEP_OSTRZEZEN_MS = 3600000;
+export const modulZdrowie: ModulOms<{ proba: boolean; kopieKatalog: string; kopiaZewnetrzna: string }> = {
+  nazwa: 'zdrowie',
+  wersja: '1.0.0',
+  wymaga: ['rdzen', 'web', 'kanaly', 'faktury', 'wysylka'],
+  konfiguracja: (env) => {
+    return {
+      proba: env.OMS_TRYB === 'proba',
+      kopieKatalog: (env.OMS_KOPIE_KATALOG ?? '').trim(),
+      kopiaZewnetrzna: (env.OMS_KOPIA_ZEWNETRZNA ?? '').trim(),
+    };
+  },
+  migracje: [],
+  uprawnienia: [],
+  menu: [],
+  zbuduj: (ctx) => {
     // Wersja z obrazu klienta (/app/wydanie.json z paczki); w repo i obrazie produkcji pliku nie ma.
-    const wersja=wersjaWydania(new URL('../../../wydanie.json',import.meta.url));
-    const infakt=ctx.usluga<any>('faktury','infakt');
-    const fakturyWidok=ctx.usluga<any>('faktury','fakturyWidok');
-    const puls=ctx.usluga<any>('faktury','puls');
-    const czuwaczOstrzezen=infakt?createCzuwaczOstrzezen({db:ctx.db,infakt,fakturyWidok}):null;
+    const wersja = wersjaWydania(new URL('../../../wydanie.json', import.meta.url));
+    const infakt = ctx.usluga<any>('faktury', 'infakt');
+    const fakturyWidok = ctx.usluga<any>('faktury', 'fakturyWidok');
+    const puls = ctx.usluga<any>('faktury', 'puls');
+    const czuwaczOstrzezen = infakt ? createCzuwaczOstrzezen({ db: ctx.db, infakt, fakturyWidok }) : null;
     // Strażnik budżetu z limitów programu, który naprawdę stoi za czuwaczem.
-    if(czuwaczOstrzezen&&czuwaczOstrzezen.najdluzszyPrzebiegMs>=ODSTEP_OSTRZEZEN_MS){
-      throw Error(`Budżet czuwacza ostrzeżeń z limitów programu „${czuwaczOstrzezen.program?.opis.nazwa.mianownik}” (${czuwaczOstrzezen.najdluzszyPrzebiegMs} ms) nie mieści się między tyknięciami zegara (${ODSTEP_OSTRZEZEN_MS} ms) — panel nie wstanie z tym programem.`);
+    if (czuwaczOstrzezen && czuwaczOstrzezen.najdluzszyPrzebiegMs >= ODSTEP_OSTRZEZEN_MS) {
+      throw Error(
+        `Budżet czuwacza ostrzeżeń z limitów programu „${czuwaczOstrzezen.program?.opis.nazwa.mianownik}” (${czuwaczOstrzezen.najdluzszyPrzebiegMs} ms) nie mieści się między tyknięciami zegara (${ODSTEP_OSTRZEZEN_MS} ms) — panel nie wstanie z tym programem.`,
+      );
     }
     // Lookup kosztów odroczony do odczytu: nie wprowadza cyklu z faktury.paczkaDlaBiura.
-    const opcjonalna=<T>(modul:string,nazwa:string):T|null=>{
-      try{return ctx.usluga<T>(modul,nazwa);}catch(e){
-        if(e instanceof Error && e.message.startsWith(`Usługa „${modul}.${nazwa}" nie istnieje`))return null;
+    const opcjonalna = <T>(modul: string, nazwa: string): T | null => {
+      try {
+        return ctx.usluga<T>(modul, nazwa);
+      } catch (e) {
+        if (e instanceof Error && e.message.startsWith(`Usługa „${modul}.${nazwa}" nie istnieje`)) return null;
         throw e;
       }
     };
-    const rachunekFirmy=opcjonalna<{biezacy:()=>{rachunek:string|null}}>('rdzen','rachunekFirmy');
-    const nipBdoFirmy=opcjonalna<{biezacy:()=>{nip:string|null}}>('rdzen','nipBdoFirmy');
+    const rachunekFirmy = opcjonalna<{ biezacy: () => { rachunek: string | null } }>('rdzen', 'rachunekFirmy');
+    const nipBdoFirmy = opcjonalna<{ biezacy: () => { nip: string | null } }>('rdzen', 'nipBdoFirmy');
     // Stan kopii bazy dla panelu (tabelka ostrzeżeń). Z katalogiem — wynik stanKopii; bez niego
     // tylko informacja, czy brak nadzoru jest groźny (program wbudowany trzyma faktury wyłącznie w bazie).
-    const kopie=()=>{
-      const katalog=ctx.konfiguracja.kopieKatalog;
-      if(katalog)return stanKopii({katalog,zewnetrzna:ctx.konfiguracja.kopiaZewnetrzna,teraz:ctx.teraz()});
-      const wbudowany=infakt?.opis?.wbudowany===true;
-      const wymagany=nadzorKopiiWymagany({wbudowany,proba:ctx.konfiguracja.proba});
-      return {brakNadzoru:true as const,wbudowany,wymagany,nazwa:wymagany?String(infakt.opis.nazwa?.mianownik??''):null};
+    const kopie = () => {
+      const katalog = ctx.konfiguracja.kopieKatalog;
+      if (katalog) return stanKopii({ katalog, zewnetrzna: ctx.konfiguracja.kopiaZewnetrzna, teraz: ctx.teraz() });
+      const wbudowany = infakt?.opis?.wbudowany === true;
+      const wymagany = nadzorKopiiWymagany({ wbudowany, proba: ctx.konfiguracja.proba });
+      return {
+        brakNadzoru: true as const,
+        wbudowany,
+        wymagany,
+        nazwa: wymagany ? String(infakt.opis.nazwa?.mianownik ?? '') : null,
+      };
     };
-    const zdrowie=()=>{
-      const config=ctx.usluga<any>('kanaly','config');
-      const rejestr=opcjonalna<{lista:()=>{klucz:string;autoryzacja:string;pobieranie:string}[];stany?:()=>{sklep:string}[]}>('kanaly','rejestrKanalow');
-      const zrodlaAllegro=rejestr?rejestr.lista().filter(k=>['polaczone','brak'].includes(k.autoryzacja)&&k.pobieranie==='wlaczone').map(k=>k.klucz):Object.keys(config.kanaly);
-      const kurierzy=ctx.usluga<Record<string,unknown>>('wysylka','kurierzy');
+    const zdrowie = () => {
+      const config = ctx.usluga<any>('kanaly', 'config');
+      const rejestr = opcjonalna<{
+        lista: () => { klucz: string; autoryzacja: string; pobieranie: string }[];
+        stany?: () => { sklep: string }[];
+      }>('kanaly', 'rejestrKanalow');
+      const zrodlaAllegro = rejestr
+        ? rejestr
+            .lista()
+            .filter((k) => ['polaczone', 'brak'].includes(k.autoryzacja) && k.pobieranie === 'wlaczone')
+            .map((k) => k.klucz)
+        : Object.keys(config.kanaly);
+      const kurierzy = ctx.usluga<Record<string, unknown>>('wysylka', 'kurierzy');
       // Koszty mówią to funkcją (token z Ustawień i przełącznik modułu bez restartu); wartość — starsze składy.
-      const wlaczone=opcjonalna<boolean|(()=>boolean)>('koszty','kosztyWlaczone');
-      const kosztyWlaczone=typeof wlaczone==='function'?wlaczone():(wlaczone??false);
-      const kosztyModulWylaczony=opcjonalna<()=>boolean>('koszty','modulWylaczony')?.()??false;
-      const kosztyWlaczoneOd=opcjonalna<()=>string|null>('koszty','wlaczoneOd')?.()??null;
-      const stanKosztow=opcjonalna<()=>any>('koszty','stanKosztow');
-      const p=puls.stan();
-      const teraz=ctx.teraz();
-      const wynik=ocenZdrowie({teraz,startAt:puls.startAt,
+      const wlaczone = opcjonalna<boolean | (() => boolean)>('koszty', 'kosztyWlaczone');
+      const kosztyWlaczone = typeof wlaczone === 'function' ? wlaczone() : (wlaczone ?? false);
+      const kosztyModulWylaczony = opcjonalna<() => boolean>('koszty', 'modulWylaczony')?.() ?? false;
+      const kosztyWlaczoneOd = opcjonalna<() => string | null>('koszty', 'wlaczoneOd')?.() ?? null;
+      const stanKosztow = opcjonalna<() => any>('koszty', 'stanKosztow');
+      const p = puls.stan();
+      const teraz = ctx.teraz();
+      const wynik = ocenZdrowie({
+        teraz,
+        startAt: puls.startAt,
         // JS domeny bez JSDoc inferuje [] jako never[]; ta granica jest taka jak w faktury/wysylka.
         // lista() rejestru obejmuje tylko Allegro; stany() także aktywne połączenia innych typów z panelu.
-        zrodla:[...new Set([...Object.keys(config.sklepy),...zrodlaAllegro,...(rejestr?.stany?.()??[]).map(s=>s.sklep)])] as any,
-        stanyPollera:ctx.db.prepare('SELECT sklep, ostatni_przebieg_at, ostatni_blad, ostatni_blad_od_at, ostatni_blad_rodzaj, ostatni_blad_prob FROM stan_pollera').all() as any,
-        ksefWlaczony:Boolean(ctx.usluga('faktury','czuwaczKsef'))&&Object.keys(config.kanaly).length>0,pulsKsef:p.czuwaczKsef??null,
-        przesylkiWlaczone:opcjonalna<()=>boolean>('wysylka','kurierzyDostepni')?.()??Object.keys(kurierzy).length>0,pulsPrzesylek:p.czuwaczPrzesylek??null,
-        ostrzezeniaWlaczone:Boolean(czuwaczOstrzezen),pulsOstrzezen:p.czuwaczOstrzezen??null,
-        kosztyWlaczone,kosztyModulWylaczony,kosztyWlaczoneOd,stanKosztow:stanKosztow?.()??null,
-        kanaly:ctx.usluga<()=>any[]>('kanaly','stanyKanalow')() as any,
+        zrodla: [
+          ...new Set([
+            ...Object.keys(config.sklepy),
+            ...zrodlaAllegro,
+            ...(rejestr?.stany?.() ?? []).map((s) => s.sklep),
+          ]),
+        ] as any,
+        stanyPollera: ctx.db
+          .prepare(
+            'SELECT sklep, ostatni_przebieg_at, ostatni_blad, ostatni_blad_od_at, ostatni_blad_rodzaj, ostatni_blad_prob FROM stan_pollera',
+          )
+          .all() as any,
+        ksefWlaczony: Boolean(ctx.usluga('faktury', 'czuwaczKsef')) && Object.keys(config.kanaly).length > 0,
+        pulsKsef: p.czuwaczKsef ?? null,
+        przesylkiWlaczone:
+          opcjonalna<() => boolean>('wysylka', 'kurierzyDostepni')?.() ?? Object.keys(kurierzy).length > 0,
+        pulsPrzesylek: p.czuwaczPrzesylek ?? null,
+        ostrzezeniaWlaczone: Boolean(czuwaczOstrzezen),
+        pulsOstrzezen: p.czuwaczOstrzezen ?? null,
+        kosztyWlaczone,
+        kosztyModulWylaczony,
+        kosztyWlaczoneOd,
+        stanKosztow: stanKosztow?.() ?? null,
+        kanaly: ctx.usluga<() => any[]>('kanaly', 'stanyKanalow')() as any,
       });
-      const alarmy=alarmyKonfiguracjiKanalow(ctx.db,config,teraz,ctx.konfiguracja.proba);
+      const alarmy = alarmyKonfiguracjiKanalow(ctx.db, config, teraz, ctx.konfiguracja.proba);
       // Dopisujemy do istniejących pól (alarmy, uwagi), nie dodajemy kluczy — kolejność kluczy odpowiedzi jest umową z czujką monitoring.
       wynik.alarmy.push(...alarmy);
       // Bez rachunku (ani w pliku, ani w panelu) panel działa, ale maile o płatności idą bez danych do
       // przelewu, a proforma odmawia — uwaga, nie alarm: to brak ustawienia, nie awaria do budzenia czujki.
-      if(rachunekFirmy&&!rachunekFirmy.biezacy().rachunek)wynik.uwagi.push(UWAGA_BRAK_RACHUNKU);
+      if (rachunekFirmy && !rachunekFirmy.biezacy().rachunek) wynik.uwagi.push(UWAGA_BRAK_RACHUNKU);
       // Tak samo NIP — bez niego proforma, specyfikacja, wywóz i faktura WDT odmawiają.
-      if(nipBdoFirmy&&!nipBdoFirmy.biezacy().nip)wynik.uwagi.push(UWAGA_BRAK_NIP);
+      if (nipBdoFirmy && !nipBdoFirmy.biezacy().nip) wynik.uwagi.push(UWAGA_BRAK_NIP);
       // Plik bazy po zaszyfrowaniu poświadczeń jeszcze nieprzepakowany — znika po udanym sprzątaniu (start albo `sekrety sprzataj`).
-      if(sprzatanieCzeka(ctx.db))wynik.uwagi.push(UWAGA_SPRZATANIA);
+      if (sprzatanieCzeka(ctx.db)) wynik.uwagi.push(UWAGA_SPRZATANIA);
       // Nadzór kopii tylko tam, gdzie compose klienta ustawia OMS_KOPIE_KATALOG.
-      if(ctx.konfiguracja.kopieKatalog){
-        const kopie=stanKopii({katalog:ctx.konfiguracja.kopieKatalog,zewnetrzna:ctx.konfiguracja.kopiaZewnetrzna,teraz});
+      if (ctx.konfiguracja.kopieKatalog) {
+        const kopie = stanKopii({
+          katalog: ctx.konfiguracja.kopieKatalog,
+          zewnetrzna: ctx.konfiguracja.kopiaZewnetrzna,
+          teraz,
+        });
         wynik.alarmy.push(...kopie.alarmy);
         wynik.uwagi.push(...kopie.uwagi);
         // Klucz kanału niezgodny z regułą Allegro — tylko w instalacji klienta (ten sam przełącznik).
-        wynik.alarmy.push(...alarmyNazwKanalow(config.definicje??[]));
-      }else{
+        wynik.alarmy.push(...alarmyNazwKanalow(config.definicje ?? []));
+      } else {
         // Program wbudowany bez nadzoru kopii — uwaga (ok bez zmian); program zewnętrzny: /health bajt w bajt jak dotąd.
-        const k=kopie();
-        if('wymagany' in k&&k.wymagany)wynik.uwagi.push(uwagaBezNadzoruKopii(k.nazwa??''));
+        const k = kopie();
+        if ('wymagany' in k && k.wymagany) wynik.uwagi.push(uwagaBezNadzoruKopii(k.nazwa ?? ''));
       }
       // Fakturownia wysłała do KSeF bez zlecenia — alarm do „Sprawdziłem” w Ustawieniach.
-      wynik.alarmy.push(...(opcjonalna<()=>string[]>('faktury','alarmyAutoKsef')?.()??[]));
-      wynik.ok=wynik.alarmy.length===0;
+      wynik.alarmy.push(...(opcjonalna<() => string[]>('faktury', 'alarmyAutoKsef')?.() ?? []));
+      wynik.ok = wynik.alarmy.length === 0;
       // Na końcu odpowiedzi (umowa kolejności kluczy z czujką monitoring).
-      return wersja?{...wynik,wersja}:wynik;
+      return wersja ? { ...wynik, wersja } : wynik;
     };
-    const zegary:Zegar[]=czuwaczOstrzezen?[zegarOstrzezen({czuwacz:czuwaczOstrzezen,puls,odstepMs:ODSTEP_OSTRZEZEN_MS,log:ctx.log})]:[];
-    const konfiguracjaKopii=()=>({katalog:ctx.konfiguracja.kopieKatalog,zewnetrzna:ctx.konfiguracja.kopiaZewnetrzna});
-    return {uslugi:{zdrowie,czuwaczOstrzezen,kopie,konfiguracjaKopii},zegary,zdrowie,
-      trasy:app=>registerZdrowieRoutes(app,{zdrowie})};
+    const zegary: Zegar[] = czuwaczOstrzezen
+      ? [zegarOstrzezen({ czuwacz: czuwaczOstrzezen, puls, odstepMs: ODSTEP_OSTRZEZEN_MS, log: ctx.log })]
+      : [];
+    const konfiguracjaKopii = () => ({
+      katalog: ctx.konfiguracja.kopieKatalog,
+      zewnetrzna: ctx.konfiguracja.kopiaZewnetrzna,
+    });
+    return {
+      uslugi: { zdrowie, czuwaczOstrzezen, kopie, konfiguracjaKopii },
+      zegary,
+      zdrowie,
+      trasy: (app) => registerZdrowieRoutes(app, { zdrowie }),
+    };
   },
 };

@@ -4,22 +4,53 @@ import { registerWeb } from './pipeline.js';
 import { efektywnyTryb } from '../tryb.ts';
 import { kontoDemo } from '../demo.ts';
 import { wylaczoneModuly } from '../../oms/db/moduly-opcjonalne.js';
-export function createModulWeb(definicje: readonly DefinicjaKanalu[]): ModulOms<{auth:{user:string;pass:string};definicje:readonly DefinicjaKanalu[];marka:{logoPlik:string|null;logoAlt:string};proba:boolean;demo:ReturnType<typeof kontoDemo>}> { return {
-  nazwa:'web', wersja:'1.0.0', wymaga:['rdzen'], migracje:[],uprawnienia:[],menu:[],
-  konfiguracja:env=>{
-    if(!env.OMS_USER||!env.OMS_PASS)throw new Error('Brak OMS_USER/OMS_PASS dla wspólnego HTTP');
-    // Znak instalacji w belce — PNG z wolumenu danych zamiast neutralnego z paczki.
-    const marka={logoPlik:env.OMS_LOGO_PLIK?.trim()||null,logoAlt:env.OMS_LOGO_ALT?.trim()??''};
-    // Tryb próby i konto gościa demo trafiają do każdego widoku (pipeline.js, reply.locals).
-    return {definicje,auth:{user:env.OMS_USER,pass:env.OMS_PASS},marka,
-      proba:efektywnyTryb(env)==='proba',demo:kontoDemo(env)};
-  },
-  zbuduj:ctx=>({uslugi:{config:{...ctx.konfiguracja,
-    get definicje() { try { return ctx.usluga<{definicje:readonly DefinicjaKanalu[]}>('kanaly','config').definicje; } catch { return definicje; } },
-    get odlozoneEkrany() { return wylaczoneModuly(ctx.db); },
-  }},trasy:app=>{
-    registerWeb(app,{db:ctx.db,config:ctx.usluga('web','config')});
-  }}),
-};
+export function createModulWeb(definicje: readonly DefinicjaKanalu[]): ModulOms<{
+  auth: { user: string; pass: string };
+  definicje: readonly DefinicjaKanalu[];
+  marka: { logoPlik: string | null; logoAlt: string };
+  proba: boolean;
+  demo: ReturnType<typeof kontoDemo>;
+}> {
+  return {
+    nazwa: 'web',
+    wersja: '1.0.0',
+    wymaga: ['rdzen'],
+    migracje: [],
+    uprawnienia: [],
+    menu: [],
+    konfiguracja: (env) => {
+      if (!env.OMS_USER || !env.OMS_PASS) throw new Error('Brak OMS_USER/OMS_PASS dla wspólnego HTTP');
+      // Znak instalacji w belce — PNG z wolumenu danych zamiast neutralnego z paczki.
+      const marka = { logoPlik: env.OMS_LOGO_PLIK?.trim() || null, logoAlt: env.OMS_LOGO_ALT?.trim() ?? '' };
+      // Tryb próby i konto gościa demo trafiają do każdego widoku (pipeline.js, reply.locals).
+      return {
+        definicje,
+        auth: { user: env.OMS_USER, pass: env.OMS_PASS },
+        marka,
+        proba: efektywnyTryb(env) === 'proba',
+        demo: kontoDemo(env),
+      };
+    },
+    zbuduj: (ctx) => ({
+      uslugi: {
+        config: {
+          ...ctx.konfiguracja,
+          get definicje() {
+            try {
+              return ctx.usluga<{ definicje: readonly DefinicjaKanalu[] }>('kanaly', 'config').definicje;
+            } catch {
+              return definicje;
+            }
+          },
+          get odlozoneEkrany() {
+            return wylaczoneModuly(ctx.db);
+          },
+        },
+      },
+      trasy: (app) => {
+        registerWeb(app, { db: ctx.db, config: ctx.usluga('web', 'config') });
+      },
+    }),
+  };
 }
 export const modulWeb = createModulWeb([]);

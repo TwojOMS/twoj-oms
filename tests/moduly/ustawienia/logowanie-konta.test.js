@@ -1,7 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
-import { zalozKonto, ustawCzynne, ustawAdmina, ustawUprawnienia, ostatnieLogowania } from '../../../src/core/bezpieczenstwo/konta.js';
+import {
+  zalozKonto,
+  ustawCzynne,
+  ustawAdmina,
+  ustawUprawnienia,
+  ostatnieLogowania,
+} from '../../../src/core/bezpieczenstwo/konta.js';
 import { sprawdz, podpisz, NAZWA_CIASTECZKA_OMS } from '../../../src/core/bezpieczenstwo/sesja.js';
 import { odczytajSekret } from '../../../src/core/bezpieczenstwo/sekret-sesji.js';
 
@@ -16,7 +22,8 @@ const config = { auth: { user: 'serwis', pass: 'haslo-env' } };
 const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) };
 const ORIGIN = { origin: 'http://localhost' };
 
-let db; let app;
+let db;
+let app;
 beforeEach(() => {
   db = openOmsDb(':memory:');
   app = buildOmsServer({ db, config, poller });
@@ -27,7 +34,9 @@ describe('logowanie kontem z tabeli', () => {
     zalozKonto(db, { login: 'ewa', imie: 'Barbara', haslo: 'sekret123', rola: 'sprzedaz', admin: false });
 
     const r = await app.inject({
-      method: 'POST', url: '/login', headers: ORIGIN,
+      method: 'POST',
+      url: '/login',
+      headers: ORIGIN,
       payload: { uzytkownik: 'ewa', haslo: 'sekret123', powrot: '/koszty' },
     });
 
@@ -51,7 +60,9 @@ describe('logowanie kontem z tabeli', () => {
     zalozKonto(db, { login: 'ewa', imie: 'Barbara', haslo: 'sekret123', rola: 'sprzedaz', admin: false });
 
     const r = await app.inject({
-      method: 'POST', url: '/login', headers: ORIGIN,
+      method: 'POST',
+      url: '/login',
+      headers: ORIGIN,
       payload: { uzytkownik: 'ewa', haslo: 'ZLE', powrot: '/' },
     });
 
@@ -69,7 +80,9 @@ describe('logowanie kontem z tabeli', () => {
     ustawCzynne(db, id, false);
 
     const r = await app.inject({
-      method: 'POST', url: '/login', headers: ORIGIN,
+      method: 'POST',
+      url: '/login',
+      headers: ORIGIN,
       payload: { uzytkownik: 'pako', haslo: 'haslo-ok', powrot: '/' },
     });
 
@@ -88,7 +101,13 @@ describe('logowanie kontem z tabeli', () => {
     ['konto wylaczone z DOBRYM haslem', { uzytkownik: 'pako', haslo: 'haslo-ok' }],
   ])('%s — ekran pokazuje TEN SAM komunikat, dziennik i tak rozroznia', async (_n, dane) => {
     zalozKonto(db, { login: 'ewa', imie: 'Barbara', haslo: 'sekret123', rola: 'sprzedaz', admin: false });
-    const idPako = zalozKonto(db, { login: 'pako', imie: 'Pakowanie', haslo: 'haslo-ok', rola: 'produkcja', admin: false });
+    const idPako = zalozKonto(db, {
+      login: 'pako',
+      imie: 'Pakowanie',
+      haslo: 'haslo-ok',
+      rola: 'produkcja',
+      admin: false,
+    });
     ustawCzynne(db, idPako, false);
 
     const r = await app.inject({ method: 'POST', url: '/login', headers: ORIGIN, payload: { ...dane, powrot: '/' } });
@@ -110,7 +129,9 @@ describe('logowanie kontem z tabeli', () => {
     ustawCzynne(db, id, false);
 
     const r = await app.inject({
-      method: 'POST', url: '/login', headers: ORIGIN,
+      method: 'POST',
+      url: '/login',
+      headers: ORIGIN,
       payload: { uzytkownik: 'pako', haslo: 'ZUPELNIE-INNE', powrot: '/' },
     });
 
@@ -132,7 +153,8 @@ describe('N2 — adres powrotu przy koncie wylaczonym nie wraca na trase POST-ow
     ustawCzynne(db, id, false);
 
     const r = await app.inject({
-      method: 'POST', url: '/wyloguj',
+      method: 'POST',
+      url: '/wyloguj',
       headers: { accept: 'text/html', cookie: ciastko, ...ORIGIN },
     });
 
@@ -148,7 +170,8 @@ describe('N2 — adres powrotu przy koncie wylaczonym nie wraca na trase POST-ow
     ustawCzynne(db, id, false);
 
     const r = await app.inject({
-      method: 'POST', url: '/wyloguj-wszystkie',
+      method: 'POST',
+      url: '/wyloguj-wszystkie',
       headers: { accept: 'text/html', cookie: ciastko, ...ORIGIN },
     });
 
@@ -163,7 +186,8 @@ describe('globalna rotacja sesji', () => {
     const przed = odczytajSekret(db);
 
     const r = await app.inject({
-      method: 'POST', url: '/wyloguj-wszystkie',
+      method: 'POST',
+      url: '/wyloguj-wszystkie',
       headers: { accept: 'text/html', ...ORIGIN, cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz('adam', przed)}` },
     });
 
@@ -178,7 +202,8 @@ describe('globalna rotacja sesji', () => {
     const przed = odczytajSekret(db);
 
     const r = await app.inject({
-      method: 'POST', url: '/ustawienia/konta/wyloguj-wszystkie',
+      method: 'POST',
+      url: '/ustawienia/konta/wyloguj-wszystkie',
       headers: { accept: 'text/html', ...ORIGIN, cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz('ewa', przed)}` },
     });
 
@@ -191,7 +216,8 @@ describe('globalna rotacja sesji', () => {
     const przed = odczytajSekret(db);
 
     const r = await app.inject({
-      method: 'POST', url: '/ustawienia/konta/wyloguj-wszystkie',
+      method: 'POST',
+      url: '/ustawienia/konta/wyloguj-wszystkie',
       headers: { accept: 'text/html', ...ORIGIN, cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz('adam', przed)}` },
     });
 
@@ -210,7 +236,9 @@ describe('Punkt 5 — /login odrzuca haslo z .env, gdy jest juz czynny admin', (
     zalozKonto(db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
 
     const r = await app.inject({
-      method: 'POST', url: '/login', headers: ORIGIN,
+      method: 'POST',
+      url: '/login',
+      headers: ORIGIN,
       payload: { uzytkownik: config.auth.user, haslo: config.auth.pass, powrot: '/' },
     });
 
@@ -228,7 +256,9 @@ describe('Punkt 5 — /login odrzuca haslo z .env, gdy jest juz czynny admin', (
     ustawCzynne(db, id, false);
 
     const r = await app.inject({
-      method: 'POST', url: '/login', headers: ORIGIN,
+      method: 'POST',
+      url: '/login',
+      headers: ORIGIN,
       payload: { uzytkownik: config.auth.user, haslo: config.auth.pass, powrot: '/' },
     });
 
@@ -240,7 +270,9 @@ describe('Punkt 5 — /login odrzuca haslo z .env, gdy jest juz czynny admin', (
     zalozKonto(db, { login: 'ewa', imie: 'Barbara', haslo: 'h', rola: 'sprzedaz', admin: false });
 
     const r = await app.inject({
-      method: 'POST', url: '/login', headers: ORIGIN,
+      method: 'POST',
+      url: '/login',
+      headers: ORIGIN,
       payload: { uzytkownik: config.auth.user, haslo: config.auth.pass, powrot: '/' },
     });
 
@@ -249,7 +281,9 @@ describe('Punkt 5 — /login odrzuca haslo z .env, gdy jest juz czynny admin', (
 
   it('PUSTA TABELA: .env dalej wpuszcza — jedyna droga pierwszego uruchomienia', async () => {
     const r = await app.inject({
-      method: 'POST', url: '/login', headers: ORIGIN,
+      method: 'POST',
+      url: '/login',
+      headers: ORIGIN,
       payload: { uzytkownik: config.auth.user, haslo: config.auth.pass, powrot: '/' },
     });
 
@@ -262,7 +296,9 @@ describe('Punkt 5 — /login odrzuca haslo z .env, gdy jest juz czynny admin', (
     ustawAdmina(db, id, false);
 
     const r = await app.inject({
-      method: 'POST', url: '/login', headers: ORIGIN,
+      method: 'POST',
+      url: '/login',
+      headers: ORIGIN,
       payload: { uzytkownik: config.auth.user, haslo: config.auth.pass, powrot: '/' },
     });
 
@@ -297,7 +333,9 @@ describe('N4 — kanał czasowy: konto istniejące ze złym hasłem vs nieistnie
         const start = process.hrtime.bigint();
         // eslint-disable-next-line no-await-in-loop
         await app.inject({
-          method: 'POST', url: '/login', headers: ORIGIN,
+          method: 'POST',
+          url: '/login',
+          headers: ORIGIN,
           remoteAddress: `10.77.${pasmoIp}.${i + 1}`,
           payload: { uzytkownik, haslo: 'ZUPELNIE-INNE-HASLO', powrot: '/' },
         });

@@ -23,10 +23,12 @@ export function oznaczenieZaplaty(db, uuid) {
  * i skrypt sprzątający, który taki przypadek pokaże w kubełku „nie wiem, dlaczego".
  */
 export function zajmijOznaczenieZaplaty(db, uuid, { powod, dataZaplaty = null, kiedy = teraz() } = {}) {
-  const info = db.prepare(
-    'INSERT INTO oznaczenia_zaplaty (uuid, zlecone_at, powod, data_zaplaty) VALUES (?, ?, ?, ?) '
-    + 'ON CONFLICT(uuid) DO NOTHING',
-  ).run(uuid, kiedy, powod, dataZaplaty);
+  const info = db
+    .prepare(
+      'INSERT INTO oznaczenia_zaplaty (uuid, zlecone_at, powod, data_zaplaty) VALUES (?, ?, ?, ?) ' +
+        'ON CONFLICT(uuid) DO NOTHING',
+    )
+    .run(uuid, kiedy, powod, dataZaplaty);
   if (Number(info.changes) === 1) return { zajete: true, wiersz: null };
   return { zajete: false, wiersz: oznaczenieZaplaty(db, uuid) ?? null };
 }

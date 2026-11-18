@@ -18,18 +18,37 @@ const ZAPIS = '/ustawienia/firma/stawka-vat';
 let katalog;
 beforeEach(() => {
   katalog = mkdtempSync(join(tmpdir(), 'prz105-'));
-  vi.spyOn(globalThis, 'fetch').mockImplementation(async () => { throw Error('Sieć zabroniona'); });
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+    throw Error('Sieć zabroniona');
+  });
 });
-afterEach(() => { vi.restoreAllMocks(); rmSync(katalog, { recursive: true, force: true }); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  rmSync(katalog, { recursive: true, force: true });
+});
 
 async function panel() {
-  const env = { OMS_TRYB: 'produkcja', OMS_SPRZEDAWCA_NIP: '1234563218', OMS_USER: 'operator', OMS_PASS: 'fixture',
-    OMS_PROFORMY_KATALOG: katalog, OMS_ETYKIETY_KATALOG: katalog };
+  const env = {
+    OMS_TRYB: 'produkcja',
+    OMS_SPRZEDAWCA_NIP: '1234563218',
+    OMS_USER: 'operator',
+    OMS_PASS: 'fixture',
+    OMS_PROFORMY_KATALOG: katalog,
+    OMS_ETYKIETY_KATALOG: katalog,
+  };
   const a = await zbudujOms({ env, moduly: modulyDla(env) });
   zalozKonto(a.db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
   zalozKonto(a.db, { login: 'ewa', imie: 'Ewa', haslo: 'h', rola: 'sprzedaz' });
   ustawUprawnienia(a.db, kontoPoLoginie(a.db, 'ewa').id, ['ustawienia', 'zamowienia']);
-  return { ...a, admin: jako(a.db, 'adam'), ewa: jako(a.db, 'ewa'), zamknij: async () => { await a.app.close(); a.db.close(); } };
+  return {
+    ...a,
+    admin: jako(a.db, 'adam'),
+    ewa: jako(a.db, 'ewa'),
+    zamknij: async () => {
+      await a.app.close();
+      a.db.close();
+    },
+  };
 }
 const sekcja = (html) => /<section class="ust-sekcja" id="stawka-vat">[\s\S]*?<\/section>/u.exec(html)?.[0] ?? '';
 
@@ -42,7 +61,9 @@ describe('czytajStawkeDomyslna / zapiszStawkeDomyslna', () => {
       expect(czytajStawkeDomyslna(p.db)).toBe('8');
       p.db.prepare("UPDATE ustawienia SET wartosc = '22' WHERE klucz = 'vat.stawka_domyslna'").run();
       expect(czytajStawkeDomyslna(p.db)).toBe('23');
-    } finally { await p.zamknij(); }
+    } finally {
+      await p.zamknij();
+    }
   });
 
   it('zapis stawki spoza listy rzuca — nic nie trafia do bazy', async () => {
@@ -50,7 +71,9 @@ describe('czytajStawkeDomyslna / zapiszStawkeDomyslna', () => {
     try {
       expect(() => zapiszStawkeDomyslna(p.db, 'zw')).toThrow();
       expect(p.db.prepare("SELECT 1 FROM ustawienia WHERE klucz = 'vat.stawka_domyslna'").get()).toBeUndefined();
-    } finally { await p.zamknij(); }
+    } finally {
+      await p.zamknij();
+    }
   });
 });
 
@@ -65,7 +88,9 @@ describe('Ustawienia → Firma → Domyślna stawka VAT', () => {
       expect([...s.matchAll(/<option value="(\d+)"/gu)].map((m) => m[1])).toEqual(['23', '8', '5', '0']);
       expect(s).toMatch(/<option value="23" selected>/u);
       expect(s).not.toContain('0% krajowe');
-    } finally { await p.zamknij(); }
+    } finally {
+      await p.zamknij();
+    }
   });
 
   it('administrator zapisuje 8 → 303, odczyt 8, ekran zaznacza 8', async () => {
@@ -76,7 +101,9 @@ describe('Ustawienia → Firma → Domyślna stawka VAT', () => {
       expect(czytajStawkeDomyslna(p.db)).toBe('8');
       const e = await get(p.app, r.headers.location, p.admin);
       expect(sekcja(e.body)).toMatch(/<option value="8" selected>/u);
-    } finally { await p.zamknij(); }
+    } finally {
+      await p.zamknij();
+    }
   });
 
   it('0 zapisuje się, a ekran ostrzega „0% krajowe — sprawdź podstawę”', async () => {
@@ -85,7 +112,9 @@ describe('Ustawienia → Firma → Domyślna stawka VAT', () => {
       expect((await post(p.app, ZAPIS, p.admin, { stawka: '0' })).statusCode).toBe(303);
       expect(czytajStawkeDomyslna(p.db)).toBe('0');
       expect(sekcja((await get(p.app, EKRAN, p.admin)).body)).toContain('0% krajowe — sprawdź podstawę');
-    } finally { await p.zamknij(); }
+    } finally {
+      await p.zamknij();
+    }
   });
 
   it('stawka spoza listy (22, zw, pusta) → 400 z komunikatem, nic nie zapisane', async () => {
@@ -97,7 +126,9 @@ describe('Ustawienia → Firma → Domyślna stawka VAT', () => {
         expect(sekcja(r.body)).toContain('Nie zapisano stawki');
       }
       expect(czytajStawkeDomyslna(p.db)).toBe('23');
-    } finally { await p.zamknij(); }
+    } finally {
+      await p.zamknij();
+    }
   });
 
   it('konto z dostępem do Ustawień, ale nie administrator → 403, stawka bez zmian; ekran bez formularza', async () => {
@@ -107,6 +138,8 @@ describe('Ustawienia → Firma → Domyślna stawka VAT', () => {
       expect(r.statusCode).toBe(403);
       expect(czytajStawkeDomyslna(p.db)).toBe('23');
       expect(sekcja((await get(p.app, EKRAN, p.ewa)).body)).not.toContain(`action="${ZAPIS}"`);
-    } finally { await p.zamknij(); }
+    } finally {
+      await p.zamknij();
+    }
   });
 });

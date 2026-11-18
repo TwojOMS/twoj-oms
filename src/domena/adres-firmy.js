@@ -5,7 +5,10 @@
 export const KLUCZ_ADRESU_FIRMY = 'firma';
 export const EKRAN_ADRESU_FIRMY = '/ustawienia/firma';
 
-const tekst = (v) => String(v ?? '').trim().replace(/\s+/gu, ' ');
+const tekst = (v) =>
+  String(v ?? '')
+    .trim()
+    .replace(/\s+/gu, ' ');
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
 
 /**
@@ -36,8 +39,10 @@ export function sprawdzFormularzFirmy(body = {}) {
     if (/^\d{5}$/u.test(kod)) kod = `${kod.slice(0, 2)}-${kod.slice(2)}`;
     if (!/^\d{2}-\d{3}$/u.test(kod)) bledy.push('Polski kod pocztowy ma postać NN-NNN, np. 00-950.');
   } else if (kod.length > 12) bledy.push('Kod pocztowy może mieć najwyżej 12 znaków.');
-  if (telefon && !/^\+?[\d\s()-]{6,20}$/u.test(telefon)) bledy.push('Telefon: same cyfry (może być + na początku, spacje i kreski).');
-  if (email && (email.length > 120 || !EMAIL.test(email))) bledy.push('Podaj poprawny adres e-mail, np. biuro@firma.pl.');
+  if (telefon && !/^\+?[\d\s()-]{6,20}$/u.test(telefon))
+    bledy.push('Telefon: same cyfry (może być + na początku, spacje i kreski).');
+  if (email && (email.length > 120 || !EMAIL.test(email)))
+    bledy.push('Podaj poprawny adres e-mail, np. biuro@firma.pl.');
 
   return { ustawienia: { nazwa, ulica, kod, miasto, kraj, telefon, email }, bledy };
 }
@@ -49,8 +54,15 @@ export function sprawdzFormularzFirmy(body = {}) {
 export function adresFirmyZZapisu(zapis) {
   const u = zapis?.ustawienia;
   if (!u) return null;
-  const a = { nazwa: tekst(u.nazwa), ulica: tekst(u.ulica), kod: tekst(u.kod), miasto: tekst(u.miasto),
-    kraj: tekst(u.kraj) || 'PL', phone: tekst(u.telefon), email: tekst(u.email) };
+  const a = {
+    nazwa: tekst(u.nazwa),
+    ulica: tekst(u.ulica),
+    kod: tekst(u.kod),
+    miasto: tekst(u.miasto),
+    kraj: tekst(u.kraj) || 'PL',
+    phone: tekst(u.telefon),
+    email: tekst(u.email),
+  };
   return a.nazwa && a.ulica && a.kod && a.miasto ? a : null;
 }
 

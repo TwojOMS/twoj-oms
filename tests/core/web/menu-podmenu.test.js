@@ -13,7 +13,10 @@ it('statusy i liczniki pozostają pod Zamówieniami także w Magazynie', async (
     for (const lista of listy) expect(lista).toContain('+ Nowe zamówienie');
     expect(listy[0]).toContain('data-status=');
     expect(listy[1]).not.toContain('data-status=');
-  } finally { await app.close(); db.close(); }
+  } finally {
+    await app.close();
+    db.close();
+  }
 });
 
 it('osobne przyciski kontrolują unikalne podmenu, a Magazyn prowadzi do Produktów, Kategorii i Marek', async () => {
@@ -47,25 +50,33 @@ it('osobne przyciski kontrolują unikalne podmenu, a Magazyn prowadzi do Produkt
       }
       expect(ids.size).toBe(4);
     }
-  } finally { await app.close(); db.close(); }
+  } finally {
+    await app.close();
+    db.close();
+  }
 });
 
 it('zapisane zwinięcie obu podmenu wygrywa z mobilnym display:flex przed inicjalizacją JS', () => {
   const css = readFileSync('src/public/oms-design.css', 'utf8');
   // Te selektory składają się wyłącznie z klas, atrybutów i nazw elementów.
-  const specyficznosc = selektor => [
+  const specyficznosc = (selektor) => [
     (selektor.match(/\.[\w-]+|\[[^\]]+\]/g) ?? []).length,
-    selektor.replace(/\.[\w-]+|\[[^\]]+\]/g, '').trim().split(/\s+/).filter(Boolean).length,
+    selektor
+      .replace(/\.[\w-]+|\[[^\]]+\]/g, '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean).length,
   ];
   const mobilne = [...css.matchAll(/([^{}]+)\{display:flex[;}]/g)]
-    .map(m => m[1].trim()).filter(s => s.startsWith('.oms-menu-mobile .oms-menu '));
+    .map((m) => m[1].trim())
+    .filter((s) => s.startsWith('.oms-menu-mobile .oms-menu '));
   expect(mobilne.length).toBeGreaterThan(0);
   for (const klucz of ['zamowienia', 'magazyn']) {
     const ukrywanie = css.match(new RegExp(`(html\\[data-podmenu-${klucz}="false"\\][^,{]+)`))[1];
     const [klasy, elementy] = specyficznosc(ukrywanie);
     for (const selektor of mobilne) {
       const [klasyMobilne, elementyMobilne] = specyficznosc(selektor);
-      expect(klasy > klasyMobilne || klasy === klasyMobilne && elementy > elementyMobilne).toBe(true);
+      expect(klasy > klasyMobilne || (klasy === klasyMobilne && elementy > elementyMobilne)).toBe(true);
     }
   }
 });
@@ -74,18 +85,32 @@ function uruchom(zapis = new Map(), domyslny = 'false', blokada = false) {
   const atrybuty = { 'aria-expanded': domyslny };
   const lista = { hidden: false };
   let klik;
-  const przycisk = { dataset: { podmenu: 'magazyn' }, hidden: true,
-    getAttribute: k => k === 'aria-controls' ? 'lista' : atrybuty[k],
-    setAttribute: (k, v) => { atrybuty[k] = String(v); },
-    addEventListener: (typ, fn) => { if (typ === 'click') klik = fn; },
+  const przycisk = {
+    dataset: { podmenu: 'magazyn' },
+    hidden: true,
+    getAttribute: (k) => (k === 'aria-controls' ? 'lista' : atrybuty[k]),
+    setAttribute: (k, v) => {
+      atrybuty[k] = String(v);
+    },
+    addEventListener: (typ, fn) => {
+      if (typ === 'click') klik = fn;
+    },
   };
-  const document = { documentElement: { dataset: {} },
-    querySelectorAll: () => [przycisk], getElementById: () => lista,
+  const document = {
+    documentElement: { dataset: {} },
+    querySelectorAll: () => [przycisk],
+    getElementById: () => lista,
     addEventListener: (_, fn) => fn(),
   };
   const localStorage = {
-    getItem: k => { if (blokada) throw Error('brak dostępu'); return zapis.get(k) ?? null; },
-    setItem: (k, v) => { if (blokada) throw Error('brak dostępu'); zapis.set(k, v); },
+    getItem: (k) => {
+      if (blokada) throw Error('brak dostępu');
+      return zapis.get(k) ?? null;
+    },
+    setItem: (k, v) => {
+      if (blokada) throw Error('brak dostępu');
+      zapis.set(k, v);
+    },
   };
   runInNewContext(readFileSync('src/public/oms-podmenu.js', 'utf8'), { document, localStorage });
   return { atrybuty, lista, przycisk, klik, document };

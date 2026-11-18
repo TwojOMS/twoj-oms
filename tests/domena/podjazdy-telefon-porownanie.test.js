@@ -4,7 +4,15 @@ import { diagnozaTerminow, normalizujTelefon, ofertyPodjazdu } from '../../src/d
 // Ten sam numer w dwóch zapisach (9 cyfr i +48) to ten sam kontakt odbioru.
 // Porównanie adresu normalizuje telefon TĄ SAMĄ funkcją po obu stronach; każda inna
 // różnica — inny numer, ulica, kod — nadal blokuje ofertę.
-const adres = { name: 'Firma', street: 'Polna 1', postalCode: '32-600', city: 'Warszawa', countryCode: 'PL', email: 'test@example.com', phone: '500600700' };
+const adres = {
+  name: 'Firma',
+  street: 'Polna 1',
+  postalCode: '32-600',
+  city: 'Warszawa',
+  countryCode: 'PL',
+  email: 'test@example.com',
+  phone: '500600700',
+};
 const termin = { date: '2026-10-09', minTime: '13:00', maxTime: '17:00' };
 const odpowiedz = (address) => [{ proposals: [{ shipmentId: 'a', pickupTimes: [termin] }], address }];
 const terminy = (wyslany, odeslany) => ofertyPodjazdu(odpowiedz(odeslany), ['a'], wyslany);
@@ -36,7 +44,9 @@ describe('porównanie adresu odesłanego przez Allegro', () => {
     ['wysłany +48, odesłany ze spacjami', '+48500600700', '+48 500 600 700'],
     ['wysłany 0048, odesłany +48', '0048500600700', '+48500600700'],
   ])('ten sam numer w dwóch zapisach daje terminy: %s', (_n, wyslany, odeslany) => {
-    expect(terminy({ ...adres, phone: wyslany }, { ...adres, phone: odeslany, company: null, state: null })).toEqual([termin]);
+    expect(terminy({ ...adres, phone: wyslany }, { ...adres, phone: odeslany, company: null, state: null })).toEqual([
+      termin,
+    ]);
     expect(przyczyna({ ...adres, phone: wyslany }, { ...adres, phone: odeslany })).toBe('rozne-okna');
   });
 

@@ -20,7 +20,10 @@ export function podlaczMenu(root = document) {
     // Wybór pozycji wydruku zamyka menu, ale dopiero po obsłudze kliknięcia (setTimeout): link
     // z `target=_blank` i przycisk z `formaction`/`formtarget` wykonują się PO nim, a przycisk
     // w zamkniętym `<details>` jest ukryty. Zdarzenia nie przechwytujemy.
-    if (event.target.closest?.(POZYCJA_WYDRUKOW)) setTimeout(() => { wewnatrz.open = false; }, 0);
+    if (event.target.closest?.(POZYCJA_WYDRUKOW))
+      setTimeout(() => {
+        wewnatrz.open = false;
+      }, 0);
   };
   const zamknijEscape = (event) => {
     if (event.key !== 'Escape') return;
@@ -31,9 +34,7 @@ export function podlaczMenu(root = document) {
     event.preventDefault();
   };
 
-  const obslugaOtwarcia = new Map(menu.map((element) => [
-    element, () => zamknijPozostale(element),
-  ]));
+  const obslugaOtwarcia = new Map(menu.map((element) => [element, () => zamknijPozostale(element)]));
   for (const element of menu) element.addEventListener('toggle', obslugaOtwarcia.get(element));
   root.addEventListener('click', zamknijPoza);
   root.addEventListener('keydown', zamknijEscape);
@@ -58,7 +59,11 @@ function kopiujZapasowo(tekst) {
   pole.style.opacity = '0';
   document.body.append(pole);
   pole.select();
-  try { return document.execCommand('copy'); } finally { pole.remove(); }
+  try {
+    return document.execCommand('copy');
+  } finally {
+    pole.remove();
+  }
 }
 
 export function podlaczKopiowanie(root = document) {
@@ -72,10 +77,17 @@ export function podlaczKopiowanie(root = document) {
       const numer = przycisk.dataset.kopiujNumer;
       let ok = false;
       try {
-        if (api) { await navigator.clipboard.writeText(numer); ok = true; } else ok = kopiujZapasowo(numer);
-      } catch { ok = false; }
+        if (api) {
+          await navigator.clipboard.writeText(numer);
+          ok = true;
+        } else ok = kopiujZapasowo(numer);
+      } catch {
+        ok = false;
+      }
       przycisk.textContent = ok ? 'Skopiowano' : 'Nie udało się — zaznacz numer';
-      setTimeout(() => { przycisk.textContent = napis; }, czasPotwierdzenia);
+      setTimeout(() => {
+        przycisk.textContent = napis;
+      }, czasPotwierdzenia);
     });
   }
 }

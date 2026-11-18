@@ -22,7 +22,10 @@ import { createDpdClient } from '../../src/oms/kurierzy/dpd.js';
 import { createAtrapaDpd, ODMOWY_DPD, zdarzeniaAtrapyDpd, surowaOdpowiedzDpd } from '../../deploy/proba/atrapy/dpd.mjs';
 import { createInpostClient } from '../../src/oms/kurierzy/inpost.js';
 import {
-  createAtrapaInpost, ODMOWY_INPOST, zdarzeniaAtrapyInpost, surowaOdpowiedzInpost,
+  createAtrapaInpost,
+  ODMOWY_INPOST,
+  zdarzeniaAtrapyInpost,
+  surowaOdpowiedzInpost,
 } from '../../deploy/proba/atrapy/inpost.mjs';
 import { openOmsDb } from '../../src/oms/db/db.ts';
 import { dowodOdbioru } from '../../src/domena/dowod-odbioru.js';
@@ -40,29 +43,49 @@ import { pocztaZUstawien } from '../../src/moduly/wiadomosci/poczta-ustawien.ts'
 import { createAtrapaPoczty, createModulWiadomosciAtrapy } from '../../deploy/proba/atrapy/poczta.mjs';
 import { wykonajZlecenieResetu, zlecResetDemo } from '../../src/oms/db/reset-demo.js';
 import { createHash } from 'node:crypto';
-import { API_ATRAPY_ALLEGRO, METODY_OFERT_ALLEGRO, createSerwerOfertAllegro } from '../../deploy/proba/atrapy/allegro-oferty.mjs';
+import {
+  API_ATRAPY_ALLEGRO,
+  METODY_OFERT_ALLEGRO,
+  createSerwerOfertAllegro,
+} from '../../deploy/proba/atrapy/allegro-oferty.mjs';
 
 // Napis na stronie PDF (pdfkit bez kompresji: tekst jako <hex> w tablicach TJ), nie metadane dokumentu.
-const tekstPdf = (b) => [...b.toString('latin1').matchAll(/\[([^\]]*)\]\s*TJ/g)]
-  .map(m => [...m[1].matchAll(/<([0-9a-f]+)>/gi)].map(h => Buffer.from(h[1], 'hex').toString('latin1')).join('')).join('\n');
+const tekstPdf = (b) =>
+  [...b.toString('latin1').matchAll(/\[([^\]]*)\]\s*TJ/g)]
+    .map((m) => [...m[1].matchAll(/<([0-9a-f]+)>/gi)].map((h) => Buffer.from(h[1], 'hex').toString('latin1')).join(''))
+    .join('\n');
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite');
 
 const DZIS = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Warsaw' });
-const metody = (o) => Object.keys(o).filter((k) => typeof o[k] === 'function').sort();
+const metody = (o) =>
+  Object.keys(o)
+    .filter((k) => typeof o[k] === 'function')
+    .sort();
 const ciche = () => {};
 
 describe('kontrakt Fakturowni bez sieci', () => {
-  const opcje = { env: { OMS_TRYB: 'proba' }, token: 'demo', log: ciche, teraz: () => new Date('2026-11-12T12:00:00Z') };
+  const opcje = {
+    env: { OMS_TRYB: 'proba' },
+    token: 'demo',
+    log: ciche,
+    teraz: () => new Date('2026-11-12T12:00:00Z'),
+  };
   const bazy = [];
-  const nowaBaza = () => { const db = new DatabaseSync(':memory:'); bazy.push(db); return db; };
-  afterAll(() => bazy.forEach(db => db.close()));
-  const fixture = (plik) => JSON.parse(fs.readFileSync(new URL(`../fixtures/fakturownia/${plik}`, import.meta.url), 'utf8')).wymiany;
-  const pomiar = fixture('F04-faktura-minimalna.json').find(w => w.zadanie.metoda === 'POST');
+  const nowaBaza = () => {
+    const db = new DatabaseSync(':memory:');
+    bazy.push(db);
+    return db;
+  };
+  afterAll(() => bazy.forEach((db) => db.close()));
+  const fixture = (plik) =>
+    JSON.parse(fs.readFileSync(new URL(`../fixtures/fakturownia/${plik}`, import.meta.url), 'utf8')).wymiany;
+  const pomiar = fixture('F04-faktura-minimalna.json').find((w) => w.zadanie.metoda === 'POST');
   const invoice = pomiar.zadanie.cialo.invoice;
   it('dzieli stan i numerację między połączeniami tej samej bazy, chroni oid', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'baza-'));
     const plik = path.join(dir, 'atrapa.sqlite');
-    const db1 = new DatabaseSync(plik), db2 = new DatabaseSync(plik);
+    const db1 = new DatabaseSync(plik),
+      db2 = new DatabaseSync(plik);
     try {
       const a = createAtrapaFakturowni({ ...opcje, db: db1 });
       const f = await a.wystaw({ ...invoice, oid: 'demo-wspolne', oid_unique: 'yes' });
@@ -71,20 +94,36 @@ describe('kontrakt Fakturowni bez sieci', () => {
       const drugi = await b.wystaw(invoice);
       expect(drugi.id).toBe(f.id + 1);
       expect(drugi.number).toBe('2/11/2026');
-      await expect(b.wystaw({ ...invoice, oid: 'demo-wspolne', oid_unique: 'yes' })).rejects.toMatchObject({ status: 422 });
-      expect((await b.listaFaktur()).map(d => d.id)).toEqual([drugi.id, f.id]);
+      await expect(b.wystaw({ ...invoice, oid: 'demo-wspolne', oid_unique: 'yes' })).rejects.toMatchObject({
+        status: 422,
+      });
+      expect((await b.listaFaktur()).map((d) => d.id)).toEqual([drugi.id, f.id]);
       const { odpowiedzFakturowni: wyslany } = await a.wyslijDokumentDoKsef(f.id);
       expect(wyslany).toMatchObject({ gov_status: 'ok', gov_id: `ATRAPA-20261112-${f.id}` });
       expect(await b.pobierzFakture(f.id)).toMatchObject({ gov_status: 'ok', gov_id: wyslany.gov_id });
-    } finally { db1.close(); db2.close(); fs.rmSync(dir, { recursive: true, force: true }); }
+    } finally {
+      db1.close();
+      db2.close();
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it('liczy netto i VAT pozycji oraz numeruje korekty niezależnie od faktur', async () => {
     const db = nowaBaza();
     const a = createAtrapaFakturowni({ ...opcje, db });
-    const f = await a.wystaw({ ...invoice, positions: [{ name: 'Towar demo', quantity: 2, total_price_gross: 246, tax: 23 }] });
-    expect(f.positions[0]).toMatchObject({ total_price_net: '200.0', total_price_tax: '46.0', price_net: '100.0', price_tax: '23.0' });
-    const pomiar = fixture('F15-korekta.json').find(w => w.zadanie.cialo?.invoice?.kind === 'correction' && w.odpowiedz.status === 201);
+    const f = await a.wystaw({
+      ...invoice,
+      positions: [{ name: 'Towar demo', quantity: 2, total_price_gross: 246, tax: 23 }],
+    });
+    expect(f.positions[0]).toMatchObject({
+      total_price_net: '200.0',
+      total_price_tax: '46.0',
+      price_net: '100.0',
+      price_tax: '23.0',
+    });
+    const pomiar = fixture('F15-korekta.json').find(
+      (w) => w.zadanie.cialo?.invoice?.kind === 'correction' && w.odpowiedz.status === 201,
+    );
     const dane = { ...pomiar.zadanie.cialo.invoice, from_invoice_id: f.id, number: undefined };
     const k1 = await a.wystawKorekte(dane);
     const b = createAtrapaFakturowni({ ...opcje, db });
@@ -105,7 +144,8 @@ describe('kontrakt Fakturowni bez sieci', () => {
     try {
       const db = openOmsDb(baza);
       await createAtrapaFakturowni({ ...opcje, db }).wystaw(invoice);
-      zlecResetDemo(db, { login: 'operator-demo' }); db.close();
+      zlecResetDemo(db, { login: 'operator-demo' });
+      db.close();
       fs.writeFileSync(`${baza}.reset-proba`, '');
       expect(await wykonajZlecenieResetu({ baza, utworzBaze: () => openOmsDb(baza).close() })).toBeTruthy();
       const nowe = openOmsDb(baza);
@@ -114,22 +154,35 @@ describe('kontrakt Fakturowni bez sieci', () => {
         expect(await a.listaFaktur()).toEqual([]);
         expect(await a.znajdzKlientowPoNip(invoice.buyer_tax_no)).toEqual([]);
         expect(await a.wystaw(invoice)).toMatchObject({ id: 1, number: '1/11/2026' });
-      } finally { nowe.close(); }
-    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+      } finally {
+        nowe.close();
+      }
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
   const serwerFakturowniZ = () => {
     const transport = createTransportAtrapyFakturowni({ ...opcje, db: nowaBaza() });
     const wywolania = [];
-    return { wywolania, fetchImpl: async (url, init) => {
-      wywolania.push(new URL(url));
-      return transport(url, init);
-    } };
+    return {
+      wywolania,
+      fetchImpl: async (url, init) => {
+        wywolania.push(new URL(url));
+        return transport(url, init);
+      },
+    };
   };
 
   it('ma każdą metodę klienta i odmawia poza próbą', () => {
     const a = createAtrapaFakturowni({ ...opcje, db: nowaBaza() });
-    const klient = createFakturowniaClient({ token: 'demo', domena: 'demo', fetchImpl: async () => { throw Error('sieć'); } });
-    expect(metody(klient).filter(m => !metody(a).includes(m))).toEqual([]);
+    const klient = createFakturowniaClient({
+      token: 'demo',
+      domena: 'demo',
+      fetchImpl: async () => {
+        throw Error('sieć');
+      },
+    });
+    expect(metody(klient).filter((m) => !metody(a).includes(m))).toEqual([]);
     expect(() => createAtrapaFakturowni({ env: {} })).toThrow('OMS_TRYB=proba');
     expect(() => createTransportAtrapyFakturowni({ env: {} })).toThrow('OMS_TRYB=proba');
   });
@@ -139,36 +192,53 @@ describe('kontrakt Fakturowni bez sieci', () => {
     const serwer = serwerFakturowniZ();
     const klient = createFakturowniaClient({ token: 'demo', domena: 'demo', fetchImpl: serwer.fetchImpl });
     const logi = [];
-    const zLogiem = createAtrapaFakturowni({ ...opcje, db: nowaBaza(), log: t => logi.push(t) });
+    const zLogiem = createAtrapaFakturowni({ ...opcje, db: nowaBaza(), log: (t) => logi.push(t) });
     await zLogiem.wystaw(invoice);
     expect(logi.join('\n')).toMatch(/atrapa Fakturowni:.*nic nie poszło/);
     expect(await a.sprawdzPolaczenie()).toEqual(await klient.sprawdzPolaczenie());
     const dokument = await a.wystaw(invoice);
     expect(await klient.wystaw(invoice)).toEqual(dokument);
-    expect(dokument).toMatchObject({ id: expect.any(Number), number: expect.any(String), gov_status: null,
-      price_gross: pomiar.odpowiedz.cialo.price_gross, paid: pomiar.odpowiedz.cialo.paid });
+    expect(dokument).toMatchObject({
+      id: expect.any(Number),
+      number: expect.any(String),
+      gov_status: null,
+      price_gross: pomiar.odpowiedz.cialo.price_gross,
+      paid: pomiar.odpowiedz.cialo.paid,
+    });
     expect(await a.pobierzFakture(dokument.id)).toEqual(await klient.pobierzFakture(dokument.id));
     const zaplata = await a.oznaczZaplacona(dokument.id);
     expect(await klient.oznaczZaplacona(dokument.id)).toEqual(zaplata);
-    const odpowiedzZaplaty = fixture('F09-zaplata.json').find(w => w.zadanie.url.includes('change_status')).odpowiedz.cialo;
+    const odpowiedzZaplaty = fixture('F09-zaplata.json').find((w) => w.zadanie.url.includes('change_status')).odpowiedz
+      .cialo;
     expect(zaplata).toEqual({ ...odpowiedzZaplaty, id: dokument.id });
-    expect(await klient.pobierzFakture(dokument.id)).toMatchObject({ status: 'paid', paid: dokument.price_gross,
-      paid_date: '2026-11-12', gov_status: null });
+    expect(await klient.pobierzFakture(dokument.id)).toMatchObject({
+      status: 'paid',
+      paid: dokument.price_gross,
+      paid_date: '2026-11-12',
+      gov_status: null,
+    });
     // Data zapłaty z zamówienia (PUT paid_date po change_status) — atrapa ją zapisuje.
     const zData = await a.oznaczZaplacona(dokument.id, { paidDate: '2026-11-10' });
     expect(zData).toMatchObject({ id: dokument.id, paid_date: '2026-11-10' });
     expect(await klient.oznaczZaplacona(dokument.id, { paidDate: '2026-11-10' })).toEqual(zData);
     expect(await a.pobierzFakture(dokument.id)).toMatchObject({ status: 'paid', paid_date: '2026-11-10' });
-    const pomiarKorekty = fixture('F15-korekta.json').find(w => w.zadanie.cialo?.invoice?.kind === 'correction' && w.odpowiedz.status === 201);
+    const pomiarKorekty = fixture('F15-korekta.json').find(
+      (w) => w.zadanie.cialo?.invoice?.kind === 'correction' && w.odpowiedz.status === 201,
+    );
     const korekta = { ...pomiarKorekty.zadanie.cialo.invoice, from_invoice_id: dokument.id, number: 'K1' };
     expect(await a.wystawKorekte(korekta)).toEqual(await klient.wystawKorekte(korekta));
-    expect((await a.listaFaktur()).find(d => d.number === 'K1').kind).toBe('correction');
+    expect((await a.listaFaktur()).find((d) => d.number === 'K1').kind).toBe('correction');
     expect(await a.iluMaNumer(dokument.number)).toBe(await klient.iluMaNumer(dokument.number));
     expect(await klient.iluMaNumer(dokument.number)).toBe(1);
     expect(await klient.iluMaNumer('nie-ma')).toBe(0);
-    expect(await a.znajdzKlientowPoNip(invoice.buyer_tax_no)).toEqual(await klient.znajdzKlientowPoNip(invoice.buyer_tax_no));
+    expect(await a.znajdzKlientowPoNip(invoice.buyer_tax_no)).toEqual(
+      await klient.znajdzKlientowPoNip(invoice.buyer_tax_no),
+    );
     expect(await klient.znajdzKlientowPoNip('nie-ma')).toEqual([]);
-    expect((await klient.znajdzKlientowPoNip(invoice.buyer_tax_no))[0]).toMatchObject({ tax_no: invoice.buyer_tax_no, name: invoice.buyer_name });
+    expect((await klient.znajdzKlientowPoNip(invoice.buyer_tax_no))[0]).toMatchObject({
+      tax_no: invoice.buyer_tax_no,
+      name: invoice.buyer_name,
+    });
     expect(await a.wyslijDokumentDoKsef(dokument.id)).toEqual(await klient.wyslijDokumentDoKsef(dokument.id));
     expect((await klient.pobierzFakture(dokument.id)).gov_status).toBe('ok');
     for (const c of [a, klient]) {
@@ -184,26 +254,37 @@ describe('kontrakt Fakturowni bez sieci', () => {
     const klient = createFakturowniaClient({ token: 'demo', domena: 'demo', fetchImpl: serwer.fetchImpl });
     const naglowki = { Authorization: 'Bearer demo' };
     const res = await serwer.fetchImpl('https://demo.fakturownia.pl/invoices.json', {
-      method: 'POST', headers: naglowki, body: JSON.stringify({ invoice: { ...invoice, oid: 'zam-demo', oid_unique: 'yes' } }),
+      method: 'POST',
+      headers: naglowki,
+      body: JSON.stringify({ invoice: { ...invoice, oid: 'zam-demo', oid_unique: 'yes' } }),
     });
     expect(res.status).toBe(pomiar.odpowiedz.status);
-    const duplikat = fixture('F11-podwojne-wystawienie.json').find(w => w.odpowiedz.status === 422).odpowiedz.cialo;
-    await expect(klient.wystaw({ ...invoice, oid: 'zam-demo', oid_unique: 'yes' })).rejects.toMatchObject({ status: 422, tresc: duplikat });
+    const duplikat = fixture('F11-podwojne-wystawienie.json').find((w) => w.odpowiedz.status === 422).odpowiedz.cialo;
+    await expect(klient.wystaw({ ...invoice, oid: 'zam-demo', oid_unique: 'yes' })).rejects.toMatchObject({
+      status: 422,
+      tresc: duplikat,
+    });
     await klient.wystaw({ ...invoice, oid: 'zam-demo' });
     for (let i = 2; i < 100; i++) await klient.wystaw({ ...invoice, number: `DEMO/${i}` });
     serwer.wywolania.length = 0;
     expect(await klient.listaFaktur()).toHaveLength(100);
-    expect(serwer.wywolania.map(u => u.searchParams.get('page'))).toEqual(['1', '2']);
-    const pusta = await serwer.fetchImpl('https://demo.fakturownia.pl/invoices.json?page=3&per_page=100', { headers: naglowki });
+    expect(serwer.wywolania.map((u) => u.searchParams.get('page'))).toEqual(['1', '2']);
+    const pusta = await serwer.fetchImpl('https://demo.fakturownia.pl/invoices.json?page=3&per_page=100', {
+      headers: naglowki,
+    });
     expect(await pusta.json()).toEqual([]);
     await klient.wystaw(invoice);
     expect(await klient.listaFaktur()).toHaveLength(101);
     expect(await klient.listaFaktur({ number: 'nie-ma' })).toEqual([]);
     for (const token of ['zle', '']) {
-      const odmowa = await serwer.fetchImpl('https://demo.fakturownia.pl/invoices.json', { headers: { Authorization: `Bearer ${token}` } });
+      const odmowa = await serwer.fetchImpl('https://demo.fakturownia.pl/invoices.json', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       expect(odmowa.status).toBe(401);
     }
-    await expect(createFakturowniaClient({ token: 'zle', domena: 'demo', fetchImpl: serwer.fetchImpl }).sprawdzPolaczenie()).rejects.toMatchObject({ status: 401 });
+    await expect(
+      createFakturowniaClient({ token: 'zle', domena: 'demo', fetchImpl: serwer.fetchImpl }).sprawdzPolaczenie(),
+    ).rejects.toMatchObject({ status: 401 });
   });
 });
 
@@ -217,42 +298,72 @@ describe('nadanie WzA atrapy', () => {
       await a.utworzPrzesylke({ commandId: 'przed-resetem', input: { deliveryMethodId: 'demo' } });
       zlecResetDemo(stare, { login: 'operator-demo' });
       stare.close();
-      expect(await wykonajZlecenieResetu({ baza, utworzBaze: () => { openOmsDb(baza).close(); } })).toBeTruthy();
+      expect(
+        await wykonajZlecenieResetu({
+          baza,
+          utworzBaze: () => {
+            openOmsDb(baza).close();
+          },
+        }),
+      ).toBeTruthy();
       const nowe = openOmsDb(baza);
       try {
         const po = createAtrapaAllegro({ db: nowe, kanal: 'allegro', env: ENV_DEMO, log: ciche });
         expect(nowe.prepare('SELECT count(*) AS n FROM atrapa_allegro_przesylki').get().n).toBe(0);
         await expect(po.stanTworzeniaPrzesylki('przed-resetem')).rejects.toThrow();
-      } finally { nowe.close(); }
-    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+      } finally {
+        nowe.close();
+      }
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
   it('zachowuje commandId i przesyłkę po odtworzeniu klienta, oddaje PDF i ZPL', async () => {
     const baza = openOmsDb(':memory:');
     try {
       const opcje = { db: baza, kanal: 'allegro', env: ENV_DEMO, log: ciche };
       const a = createAtrapaAllegro(opcje);
-      const input = { deliveryMethodId: '03f26351-f683-4db2-8895-f2c599280e3c', labelFormat: 'PDF', packages: [{ weight: { value: 1, unit: 'KILOGRAMS' } }] };
+      const input = {
+        deliveryMethodId: '03f26351-f683-4db2-8895-f2c599280e3c',
+        labelFormat: 'PDF',
+        packages: [{ weight: { value: 1, unit: 'KILOGRAMS' } }],
+      };
       const pierwszy = await a.utworzPrzesylke({ commandId: 'demo-command', input });
       const drugi = await createAtrapaAllegro(opcje).utworzPrzesylke({ commandId: 'demo-command', input });
       expect(drugi).toEqual(pierwszy);
-      expect(pierwszy).toEqual({ commandId: 'demo-command', status: 'SUCCESS', errors: null, shipmentId: expect.any(String) });
+      expect(pierwszy).toEqual({
+        commandId: 'demo-command',
+        status: 'SUCCESS',
+        errors: null,
+        shipmentId: expect.any(String),
+      });
       expect(await a.stanTworzeniaPrzesylki('demo-command')).toEqual(pierwszy);
       const p = await a.pobierzPrzesylkeWza(pierwszy.shipmentId);
-      expect(p).toMatchObject({ id: pierwszy.shipmentId, labelFormat: 'PDF', packages: [{ waybill: expect.stringContaining('ATRAPA') }] });
+      expect(p).toMatchObject({
+        id: pierwszy.shipmentId,
+        labelFormat: 'PDF',
+        packages: [{ waybill: expect.stringContaining('ATRAPA') }],
+      });
       expect(baza.prepare('SELECT count(*) AS n FROM atrapa_allegro_przesylki').get().n).toBe(1);
       const pdf = await a.pobierzEtykieteWza([p.id]);
       expect(Buffer.isBuffer(pdf)).toBe(true);
       expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
       expect(tekstPdf(pdf).split('\n')).toContain('ATRAPA');
       const zpl = (await a.pobierzEtykieteWza([p.id], 'ZPL')).toString();
-      expect(zpl).toContain('^XA'); expect(zpl).toContain('ATRAPA'); expect(zpl).toContain('^XZ');
+      expect(zpl).toContain('^XA');
+      expect(zpl).toContain('ATRAPA');
+      expect(zpl).toContain('^XZ');
       await expect(a.utworzPrzesylke({ input })).rejects.toThrow('commandId');
       await expect(a.utworzPrzesylke({ commandId: 'brak-uslugi' })).rejects.toThrow('deliveryMethodId');
       await expect(a.pobierzEtykieteWza([])).rejects.toThrow();
       await expect(a.pobierzPrzesylkeWza('nieznana')).rejects.toThrow();
-      await expect(createAtrapaAllegro({ ...opcje, kanal: 'inne-konto' }).stanTworzeniaPrzesylki('demo-command')).rejects.toThrow();
+      await expect(
+        createAtrapaAllegro({ ...opcje, kanal: 'inne-konto' }).stanTworzeniaPrzesylki('demo-command'),
+      ).rejects.toThrow();
       expect(() => createAtrapaAllegro({ ...opcje, env: {} })).toThrow('OMS_TRYB=proba');
-    } finally { baza.close(); }
+    } finally {
+      baza.close();
+    }
   });
 });
 
@@ -264,19 +375,28 @@ beforeAll(async () => {
   db = new DatabaseSync(path.join(katalog, 'oms.sqlite'));
   infakt = createAtrapaInfaktu({ db, env: ENV_DEMO, log: ciche });
 }, 60000);
-afterAll(() => { db?.close(); fs.rmSync(katalog, { recursive: true, force: true }); });
+afterAll(() => {
+  db?.close();
+  fs.rmSync(katalog, { recursive: true, force: true });
+});
 
 describe('komplet metod', () => {
   it('atrapa ERLI ma każdą metodę createErliClient', () => {
     const baza = new DatabaseSync(':memory:');
     try {
       const atrapa = createAtrapaErli({ db: baza, kanal: 'polcien', env: { OMS_TRYB: 'proba' } });
-      expect(metody(createErliClient()).filter(m => !metody(atrapa).includes(m))).toEqual([]);
-    } finally { baza.close(); }
+      expect(metody(createErliClient()).filter((m) => !metody(atrapa).includes(m))).toEqual([]);
+    } finally {
+      baza.close();
+    }
   });
   it('status korekty atrapy wskazuje zapisany dokument także po odtworzeniu klienta', async () => {
     const [faktura] = await infakt.listaFaktur();
-    const zlecenie = await infakt.wystawKorekte({ corrected_invoice_uuid: faktura.uuid, services: [], notes: 'Zwrot towaru' });
+    const zlecenie = await infakt.wystawKorekte({
+      corrected_invoice_uuid: faktura.uuid,
+      services: [],
+      notes: 'Zwrot towaru',
+    });
     const status = await infakt.statusKorekty(zlecenie.referencja);
     expect(zlecenie.referencja).toMatch(/^atrapa-/);
     expect(status).toEqual({ stan: 'wystawiona', uuid: expect.any(String), bledy: [] });
@@ -287,16 +407,34 @@ describe('komplet metod', () => {
     expect(await odtworzony.statusKorekty('')).toEqual({ stan: 'nieznany', uuid: null, bledy: [] });
   });
   it('atrapa inFaktu ma każdą metodę createInfaktClient', () => {
-    const prawdziwy = metody(createInfaktClient({ apiKey: 'x', fetchImpl: async () => { throw new Error('sieć'); } }));
+    const prawdziwy = metody(
+      createInfaktClient({
+        apiKey: 'x',
+        fetchImpl: async () => {
+          throw new Error('sieć');
+        },
+      }),
+    );
     expect(prawdziwy.length).toBeGreaterThanOrEqual(13);
     expect(prawdziwy.filter((m) => !metody(infakt).includes(m))).toEqual([]);
   });
 
   it('atrapa Woo ma każdą metodę createWooClient; odmowy to podzbiór metod klienta', async () => {
-    const prawdziwy = metody(createWooClient({ baseUrl: 'https://x.invalid', ck: 'a', cs: 'b', fetchImpl: async () => { throw new Error('sieć'); } }));
+    const prawdziwy = metody(
+      createWooClient({
+        baseUrl: 'https://x.invalid',
+        ck: 'a',
+        cs: 'b',
+        fetchImpl: async () => {
+          throw new Error('sieć');
+        },
+      }),
+    );
     const klientAtrapy = createAtrapaWoo({ db, kanal: 'polcien', env: ENV_DEMO, log: ciche });
     const atrapa = metody(klientAtrapy);
-    expect(prawdziwy).toEqual(expect.arrayContaining(['sprawdzPolaczenie', 'pobierzMetodyWysylki', 'pobierzBramkiPlatnosci']));
+    expect(prawdziwy).toEqual(
+      expect.arrayContaining(['sprawdzPolaczenie', 'pobierzMetodyWysylki', 'pobierzBramkiPlatnosci']),
+    );
     expect(atrapa).toContain('pobierzBramkiPlatnosci');
     expect(await klientAtrapy.pobierzBramkiPlatnosci()).toEqual([
       { id: 'cod', tytul: 'Płatność przy odbiorze', nazwaWoo: 'Pobranie', wlaczona: true },
@@ -309,10 +447,22 @@ describe('komplet metod', () => {
 
   // Kategorie produktów sklepu — kształt `GET /products/categories` (nazwa z encjami HTML, count).
   it('atrapa Woo oddaje kategorie produktów: te z katalogu z liczbą produktów, nazwę z encją i pustą', async () => {
-    const lista = await createAtrapaWoo({ db, kanal: 'polcien', env: ENV_DEMO, log: ciche }).pobierzKategorieProduktow();
+    const lista = await createAtrapaWoo({
+      db,
+      kanal: 'polcien',
+      env: ENV_DEMO,
+      log: ciche,
+    }).pobierzKategorieProduktow();
     const zKatalogu = new Set(katalogWoo('polcien').produkty.flatMap((p) => p.categories.map((k) => k.id)));
     expect(lista.length).toBeGreaterThan(zKatalogu.size);
-    for (const k of lista) expect(k).toEqual({ id: expect.any(Number), name: expect.any(String), slug: expect.any(String), parent: expect.any(Number), count: expect.any(Number) });
+    for (const k of lista)
+      expect(k).toEqual({
+        id: expect.any(Number),
+        name: expect.any(String),
+        slug: expect.any(String),
+        parent: expect.any(Number),
+        count: expect.any(Number),
+      });
     expect(lista.filter((k) => zKatalogu.has(k.id)).every((k) => k.count > 0)).toBe(true);
     expect(lista.some((k) => k.name.includes('&amp;'))).toBe(true);
     expect(lista.some((k) => k.count === 0)).toBe(true);
@@ -320,35 +470,59 @@ describe('komplet metod', () => {
 
   // Wystawianie ofert działa w piaskownicy na atrapie — żadna metoda E3 nie jest już odmową.
   it('ODMOWY_ALLEGRO nie zawiera metod ofert; atrapa ma je wszystkie, demo ma mapę, marki i 4 oferty', async () => {
-    const prawdziwy = metody(createAllegroClient({ ustawienia: { api: 'https://x.invalid', userAgent: 'a/1 (+https://x.invalid)' },
-      tokeny: { waznyToken: async () => 't' }, fetchImpl: async () => { throw new Error('sieć'); } }));
+    const prawdziwy = metody(
+      createAllegroClient({
+        ustawienia: { api: 'https://x.invalid', userAgent: 'a/1 (+https://x.invalid)' },
+        tokeny: { waznyToken: async () => 't' },
+        fetchImpl: async () => {
+          throw new Error('sieć');
+        },
+      }),
+    );
     expect(METODY_OFERT_ALLEGRO).toHaveLength(21); // E4.19: +komendaPublikacji
     expect(METODY_OFERT_ALLEGRO.filter((m) => !prawdziwy.includes(m))).toEqual([]);
     expect(ODMOWY_ALLEGRO.filter((m) => METODY_OFERT_ALLEGRO.includes(m))).toEqual([]);
     const allegro = createAtrapaAllegro({ db, kanal: 'allegro', env: ENV_DEMO, log: ciche });
     expect((await allegro.pobierzCenniki()).map((c) => c.name)).toEqual(['Standard']);
-    expect(db.prepare('SELECT kategoria_karty, srodowisko, kategoria_allegro_id FROM allegro_mapa_kategorii').all())
-      .toEqual([{ kategoria_karty: 'Lampy wiszące', srodowisko: 'produkcja', kategoria_allegro_id: '257' }]);
-    const marki = db.prepare('SELECT marka, parametr_id, wartosc_id, kategorie_sprawdzone_json FROM allegro_marki ORDER BY marka').all();
+    expect(
+      db.prepare('SELECT kategoria_karty, srodowisko, kategoria_allegro_id FROM allegro_mapa_kategorii').all(),
+    ).toEqual([{ kategoria_karty: 'Lampy wiszące', srodowisko: 'produkcja', kategoria_allegro_id: '257' }]);
+    const marki = db
+      .prepare('SELECT marka, parametr_id, wartosc_id, kategorie_sprawdzone_json FROM allegro_marki ORDER BY marka')
+      .all();
     expect(marki).toHaveLength(2);
-    const slownik = (await allegro.pobierzParametryKategorii('257')).parameters.find((p) => p.id === '248811').dictionary;
+    const slownik = (await allegro.pobierzParametryKategorii('257')).parameters.find(
+      (p) => p.id === '248811',
+    ).dictionary;
     for (const m of marki) {
       expect(m).toMatchObject({ parametr_id: '248811', kategorie_sprawdzone_json: '["257"]' });
       expect(slownik.find((v) => v.id === m.wartosc_id)?.value, m.marka).toBe(m.marka);
     }
-    const oferty = db.prepare(`SELECT o.stan, o.id_zewnetrzne, o.problemy_json FROM oferty_kanalow o
-      WHERE o.kanal = 'allegro' AND o.pochodzenie = 'oms' ORDER BY o.id`).all();
+    const oferty = db
+      .prepare(
+        `SELECT o.stan, o.id_zewnetrzne, o.problemy_json FROM oferty_kanalow o
+      WHERE o.kanal = 'allegro' AND o.pochodzenie = 'oms' ORDER BY o.id`,
+      )
+      .all();
     expect(oferty.map((o) => o.stan).sort()).toEqual(['aktywna', 'nieaktywna', 'problem', 'szkic']);
     expect(JSON.parse(oferty.find((o) => o.stan === 'problem').problemy_json).length).toBeGreaterThan(0);
     expect(oferty.find((o) => o.stan === 'szkic').id_zewnetrzne).toMatch(/^ext:/);
-    const status = async (stan) => (await allegro.pobierzOferte(oferty.find((o) => o.stan === stan).id_zewnetrzne)).publication.status;
+    const status = async (stan) =>
+      (await allegro.pobierzOferte(oferty.find((o) => o.stan === stan).id_zewnetrzne)).publication.status;
     expect(await status('aktywna')).toBe('ACTIVE');
     expect(await status('nieaktywna')).toBe('INACTIVE');
   });
 
   it('atrapa Allegro ma każdą metodę createAllegroClient; odmowy to podzbiór metod klienta', () => {
-    const prawdziwy = metody(createAllegroClient({ ustawienia: { api: 'https://x.invalid', userAgent: 'a/1 (+https://x.invalid)' },
-      tokeny: { waznyToken: async () => 't' }, fetchImpl: async () => { throw new Error('sieć'); } }));
+    const prawdziwy = metody(
+      createAllegroClient({
+        ustawienia: { api: 'https://x.invalid', userAgent: 'a/1 (+https://x.invalid)' },
+        tokeny: { waznyToken: async () => 't' },
+        fetchImpl: async () => {
+          throw new Error('sieć');
+        },
+      }),
+    );
     const atrapa = metody(createAtrapaAllegro({ db, kanal: 'allegro', env: ENV_DEMO, log: ciche }));
     expect(prawdziwy.length).toBeGreaterThanOrEqual(26);
     expect(prawdziwy.filter((m) => !atrapa.includes(m))).toEqual([]);
@@ -361,10 +535,16 @@ describe('komplet metod', () => {
     const [pierwsza] = await allegro.pobierzOferty();
     const oferta = await allegro.pobierzOferte(pierwsza.id);
     const sciezka = [];
-    for (let id = oferta.category.id; id; id = sciezka[0].parent?.id) sciezka.unshift(await allegro.pobierzKategorie(id));
+    for (let id = oferta.category.id; id; id = sciezka[0].parent?.id)
+      sciezka.unshift(await allegro.pobierzKategorie(id));
     const kategoria = opisKategorii(sciezka, await allegro.pobierzParametryKategorii(oferta.category.id));
     const w = trescOfertyAllegro(oferta, kategoria);
-    expect(w.pola).toEqual({ nazwa: pierwsza.name, ean: expect.stringMatching(/^\d{13}$/), cena_gr: expect.any(Number), stawka_vat: '23' });
+    expect(w.pola).toEqual({
+      nazwa: pierwsza.name,
+      ean: expect.stringMatching(/^\d{13}$/),
+      cena_gr: expect.any(Number),
+      stawka_vat: '23',
+    });
     expect(poprawnyEan(w.pola.ean)).toBe(true);
     // Demo ma 2–3 zdjęcia na ofertę; pierwsze = zdjęcie główne.
     expect(w.zdjecia[0]).toBe(pierwsza.primaryImage.url);
@@ -375,16 +555,31 @@ describe('komplet metod', () => {
     expect(w.daneKanalu.sciezka.map((k) => k.nazwa)).toEqual(['Dom i Ogród', 'Oświetlenie', 'Lampy']);
     expect(w.daneKanalu.parametry.produkt.map((p) => p.id)).toContain('225693');
     expect(w.daneKanalu.parametry.oferta.map((p) => p.id)).toContain('11323');
-    for (const p of [...w.daneKanalu.parametry.produkt, ...w.daneKanalu.parametry.oferta]) expect(p.typ, p.id).not.toBeNull();
-    for (const zle of [() => allegro.pobierzOferte('1'), () => allegro.pobierzKategorie('1'), () => allegro.pobierzParametryKategorii('1')]) {
+    for (const p of [...w.daneKanalu.parametry.produkt, ...w.daneKanalu.parametry.oferta])
+      expect(p.typ, p.id).not.toBeNull();
+    for (const zle of [
+      () => allegro.pobierzOferte('1'),
+      () => allegro.pobierzKategorie('1'),
+      () => allegro.pobierzParametryKategorii('1'),
+    ]) {
       expect((await zle().catch((e) => e))?.status).toBe(404);
     }
   });
 
   // Kurier DPD z Ustawień w piaskownicy.
   it('atrapa DPD ma każdą metodę createDpdClient; nadanie odmawia 400, sprawdzenie nie wychodzi do sieci', async () => {
-    const opcje = { url: 'https://x.invalid', login: 'l', haslo: 'h', fid: '1', infoUrl: '', channel: '',
-      nadawca: { nazwa: 'N', ulica: 'U 1', kod: '00-001', miasto: 'M' }, fetchImpl: async () => { throw new Error('sieć'); } };
+    const opcje = {
+      url: 'https://x.invalid',
+      login: 'l',
+      haslo: 'h',
+      fid: '1',
+      infoUrl: '',
+      channel: '',
+      nadawca: { nazwa: 'N', ulica: 'U 1', kod: '00-001', miasto: 'M' },
+      fetchImpl: async () => {
+        throw new Error('sieć');
+      },
+    };
     const prawdziwy = metody(createDpdClient(opcje));
     const atrapa = createAtrapaDpd({ env: ENV_DEMO })(opcje);
     expect(prawdziwy).toEqual(expect.arrayContaining(['nadaj', 'statusPrzesylki', 'sprawdzPolaczenie']));
@@ -396,17 +591,28 @@ describe('komplet metod', () => {
       expect(e?.message, m).toContain('Piaskownica');
     }
     await expect(atrapa.sprawdzPolaczenie()).resolves.toEqual({ ok: true });
-    await expect(createAtrapaDpd({ env: ENV_DEMO })({ ...opcje, haslo: 'zle' }).sprawdzPolaczenie()).rejects.toThrow('odrzuciło');
+    await expect(createAtrapaDpd({ env: ENV_DEMO })({ ...opcje, haslo: 'zle' }).sprawdzPolaczenie()).rejects.toThrow(
+      'odrzuciło',
+    );
     expect(() => createAtrapaDpd({ env: {} })).toThrow('OMS_TRYB=proba');
   });
 
   // Kurier InPost z Ustawień w piaskownicy.
   it('atrapa InPost ma każdą metodę createInpostClient; nadanie odmawia 400, sprawdzenie nie wychodzi do sieci', async () => {
-    const opcje = { url: 'https://x.invalid', token: 't', organizacja: 1,
-      nadawca: { nazwa: 'N', ulica: 'U 1', kod: '00-001', miasto: 'M' }, fetchImpl: async () => { throw new Error('sieć'); } };
+    const opcje = {
+      url: 'https://x.invalid',
+      token: 't',
+      organizacja: 1,
+      nadawca: { nazwa: 'N', ulica: 'U 1', kod: '00-001', miasto: 'M' },
+      fetchImpl: async () => {
+        throw new Error('sieć');
+      },
+    };
     const prawdziwy = metody(createInpostClient(opcje));
     const atrapa = createAtrapaInpost({ env: ENV_DEMO })(opcje);
-    expect(prawdziwy).toEqual(expect.arrayContaining(['nadaj', 'sprawdzPrzesylke', 'pobierzEtykiete', 'statusPrzesylki', 'sprawdzPolaczenie']));
+    expect(prawdziwy).toEqual(
+      expect.arrayContaining(['nadaj', 'sprawdzPrzesylke', 'pobierzEtykiete', 'statusPrzesylki', 'sprawdzPolaczenie']),
+    );
     expect(prawdziwy.filter((m) => !metody(atrapa).includes(m))).toEqual([]);
     expect(ODMOWY_INPOST.filter((m) => !prawdziwy.includes(m))).toEqual([]);
     expect(ODMOWY_INPOST).toContain('nadaj');
@@ -416,14 +622,24 @@ describe('komplet metod', () => {
       expect(e?.message, m).toContain('Piaskownica');
     }
     await expect(atrapa.sprawdzPolaczenie()).resolves.toEqual({ ok: true });
-    await expect(createAtrapaInpost({ env: ENV_DEMO })({ ...opcje, token: 'zle' }).sprawdzPolaczenie()).rejects.toThrow('odrzucił');
+    await expect(createAtrapaInpost({ env: ENV_DEMO })({ ...opcje, token: 'zle' }).sprawdzPolaczenie()).rejects.toThrow(
+      'odrzucił',
+    );
     expect(() => createAtrapaInpost({ env: {} })).toThrow('OMS_TRYB=proba');
   });
 
   // Klucz GUS z Ustawień w piaskownicy — „Sprawdź połączenie” na atrapie, pobranie firmy odmawia jak w demo.
   it('atrapa GUS ma każdą metodę createGusClient i pośrednika z Ustawień; sprawdzenie nie wychodzi do sieci', async () => {
-    const prawdziwy = metody(createGusClient({ klucz: 'k', url: 'https://x.invalid' }, { fetchImpl: async () => { throw new Error('sieć'); } }))
-      .filter((m) => !m.startsWith('_')); // `_sesja` to podgląd stanu dla testów klienta, nie metoda usługi
+    const prawdziwy = metody(
+      createGusClient(
+        { klucz: 'k', url: 'https://x.invalid' },
+        {
+          fetchImpl: async () => {
+            throw new Error('sieć');
+          },
+        },
+      ),
+    ).filter((m) => !m.startsWith('_')); // `_sesja` to podgląd stanu dla testów klienta, nie metoda usługi
     const atrapa = createAtrapaGus({ env: ENV_DEMO, klucz: 'k' });
     expect(prawdziwy).toEqual(expect.arrayContaining(['firmaPoNip', 'zaloguj', 'sprawdzPolaczenie']));
     expect([...prawdziwy, ...METODY_GUS].filter((m) => !metody(atrapa).includes(m))).toEqual([]);
@@ -435,13 +651,23 @@ describe('komplet metod', () => {
 
   // Token KSeF (faktury kosztowe) z Ustawień w piaskownicy — logowanie i lista faktur bez sieci, PDF odmawia.
   it('atrapa KSeF i odmowa piaskownicy mają każdą metodę createKsefClient; logowanie i lista nie wychodzą do sieci', async () => {
-    const prawdziwy = metody(createKsefClient({ token: 't', nip: '1234563218', fetchImpl: async () => { throw new Error('sieć'); } }));
+    const prawdziwy = metody(
+      createKsefClient({
+        token: 't',
+        nip: '1234563218',
+        fetchImpl: async () => {
+          throw new Error('sieć');
+        },
+      }),
+    );
     const atrapa = createAtrapaKsef({ env: ENV_DEMO, token: 'zmyslony' });
     expect(prawdziwy).toEqual(['odswiez', 'pobierzMetadane', 'pobierzXml', 'zaloguj']);
     expect(prawdziwy.filter((m) => !metody(atrapa).includes(m))).toEqual([]);
     expect(metody(odmowaKsefWProbie())).toEqual(prawdziwy);
     await expect(atrapa.zaloguj()).resolves.toHaveProperty('accessToken');
-    await expect(atrapa.pobierzMetadane({ accessToken: 'a', from: '2026-10-19T00:00:00Z', to: '2026-10-20T00:00:00Z' })).resolves.toMatchObject({ faktury: [], hasMore: false });
+    await expect(
+      atrapa.pobierzMetadane({ accessToken: 'a', from: '2026-10-19T00:00:00Z', to: '2026-10-20T00:00:00Z' }),
+    ).resolves.toMatchObject({ faktury: [], hasMore: false });
     await expect(atrapa.pobierzXml({ accessToken: 'a', ksefNumber: 'K-1' })).rejects.toMatchObject({ status: 400 });
     await expect(createAtrapaKsef({ env: ENV_DEMO, token: 'zle' }).zaloguj()).rejects.toThrow('odrzuciła');
     for (const m of prawdziwy) await expect(odmowaKsefWProbie()[m](), m).rejects.toMatchObject({ status: 400 });
@@ -454,15 +680,35 @@ describe('komplet metod', () => {
 
   // Poczta z Ustawień w piaskownicy — atrapa poczty zastępuje i mailer z pliku, i pośrednika z ekranu.
   it('atrapa poczty ma każdą metodę createMailer i pośrednika poczty z Ustawień; wysyłka nie wychodzi do sieci', async () => {
-    const poczta = { smtp: { host: 'smtp.example.invalid', port: 465, user: 'u@example.invalid', pass: 'p' }, mailFrom: 'u@example.invalid' };
-    const prawdziwy = metody(createMailer({ ...poczta, transportFactory: () => ({ sendMail: async () => { throw new Error('sieć'); } }) }));
-    const zUstawien = metody(pocztaZUstawien({ wczytaj: () => null, fabryka: () => { throw new Error('sieć'); } }))
-      .filter((m) => m !== 'gotowy'); // `gotowy` mówi tylko, czy zapis z ekranu jest kompletny — atrapa jest zawsze gotowa
+    const poczta = {
+      smtp: { host: 'smtp.example.invalid', port: 465, user: 'u@example.invalid', pass: 'p' },
+      mailFrom: 'u@example.invalid',
+    };
+    const prawdziwy = metody(
+      createMailer({
+        ...poczta,
+        transportFactory: () => ({
+          sendMail: async () => {
+            throw new Error('sieć');
+          },
+        }),
+      }),
+    );
+    const zUstawien = metody(
+      pocztaZUstawien({
+        wczytaj: () => null,
+        fabryka: () => {
+          throw new Error('sieć');
+        },
+      }),
+    ).filter((m) => m !== 'gotowy'); // `gotowy` mówi tylko, czy zapis z ekranu jest kompletny — atrapa jest zawsze gotowa
     const logi = [];
     const atrapa = createAtrapaPoczty({ env: ENV_DEMO, log: (t) => logi.push(t) });
     expect(prawdziwy).toContain('sendMail');
     expect([...prawdziwy, ...zUstawien].filter((m) => !metody(atrapa).includes(m))).toEqual([]);
-    await expect(atrapa.sendMail({ to: 'a@example.invalid', subject: 'Wiadomość próbna z panelu' })).resolves.toHaveProperty('messageId');
+    await expect(
+      atrapa.sendMail({ to: 'a@example.invalid', subject: 'Wiadomość próbna z panelu' }),
+    ).resolves.toHaveProperty('messageId');
     expect(logi.join('\n')).toContain('nic nie poszło');
     expect(createModulWiadomosciAtrapy(ENV_DEMO).konfiguracja({}).atrapaPoczty).toBe(true);
     expect(() => createAtrapaPoczty({ env: {} })).toThrow('OMS_TRYB=proba');
@@ -485,7 +731,13 @@ function serwerZ(encje) {
     wolania.push({ url, metoda: opcje.method ?? 'GET' });
     const u = new URL(url);
     const offset = Number(u.searchParams.get('offset') ?? 0);
-    const odp = typeof encje === 'function' ? encje(u, opcje) : { metainfo: { count: Math.min(10, encje.length - offset), total_count: encje.length }, entities: encje.slice(offset, offset + 10) };
+    const odp =
+      typeof encje === 'function'
+        ? encje(u, opcje)
+        : {
+            metainfo: { count: Math.min(10, encje.length - offset), total_count: encje.length },
+            entities: encje.slice(offset, offset + 10),
+          };
     return { ok: true, status: 200, json: async () => odp, arrayBuffer: async () => odp };
   };
   return { fetchImpl, wolania };
@@ -494,7 +746,11 @@ const bezRodzaju = ({ rodzaj, ...e }) => e;
 
 describe('kształty inFaktu: prawdziwy klient na encjach atrapy oddaje to samo', () => {
   it('listaFaktur, listaKorekt, listaNieoplaconych — te same wiersze i ten sam `rodzaj`', async () => {
-    for (const [metoda, zakres] of [['listaFaktur', { od: `${DZIS.slice(0, 7)}-01`, do: DZIS }], ['listaKorekt', {}], ['listaNieoplaconych', undefined]]) {
+    for (const [metoda, zakres] of [
+      ['listaFaktur', { od: `${DZIS.slice(0, 7)}-01`, do: DZIS }],
+      ['listaKorekt', {}],
+      ['listaNieoplaconych', undefined],
+    ]) {
       const zAtrapy = await infakt[metoda](zakres);
       expect(zAtrapy.length, metoda).toBeGreaterThan(0);
       const { fetchImpl } = serwerZ(zAtrapy.map(bezRodzaju));
@@ -506,20 +762,30 @@ describe('kształty inFaktu: prawdziwy klient na encjach atrapy oddaje to samo',
   it('pobierzFakture — mapowanie pól jak w kliencie (numer, ksefNumer, status, left_to_pay, services)', async () => {
     for (const { uuid } of (await infakt.listaFaktur({})).slice(0, 5)) {
       const { fetchImpl } = serwerZ(() => infakt.surowaEncja(uuid));
-      expect(await createInfaktClient({ apiKey: 'x', fetchImpl }).pobierzFakture(uuid)).toEqual(await infakt.pobierzFakture(uuid));
+      expect(await createInfaktClient({ apiKey: 'x', fetchImpl }).pobierzFakture(uuid)).toEqual(
+        await infakt.pobierzFakture(uuid),
+      );
     }
   });
 
   it('wystaw — wynik jak z klienta dla tej samej encji; korekta i oznaczenie zapłaty — te same klucze', async () => {
     const klient = await infakt.zalozKlienta({ company_name: 'Kontrahent kontraktu (demo)', nip: '9990000019' });
-    const w = await infakt.wystaw({ client_id: klient, services: [{ name: 'Lampa (demo)', quantity: 1, gross_price: 12300, tax_symbol: '23' }] });
+    const w = await infakt.wystaw({
+      client_id: klient,
+      services: [{ name: 'Lampa (demo)', quantity: 1, gross_price: 12300, tax_symbol: '23' }],
+    });
     const { fetchImpl } = serwerZ(() => infakt.surowaEncja(w.uuid));
     const prawdziwy = createInfaktClient({ apiKey: 'x', fetchImpl });
     expect(await prawdziwy.wystaw({ client_id: klient, services: [] })).toEqual(w);
-    expect(Object.keys(await infakt.wystawKorekte({ corrected_invoice_uuid: w.uuid, services: [] })).sort())
-      .toEqual(Object.keys(await prawdziwy.wystawKorekte({})).sort());
-    expect(Object.keys(await infakt.oznaczZaplacona(w.uuid)).sort()).toEqual(Object.keys(await prawdziwy.oznaczZaplacona(w.uuid)).sort());
-    expect(Object.keys(await infakt.wyslijDokumentDoKsef(w.uuid)).sort()).toEqual(Object.keys(await prawdziwy.wyslijDokumentDoKsef(w.uuid)).sort());
+    expect(Object.keys(await infakt.wystawKorekte({ corrected_invoice_uuid: w.uuid, services: [] })).sort()).toEqual(
+      Object.keys(await prawdziwy.wystawKorekte({})).sort(),
+    );
+    expect(Object.keys(await infakt.oznaczZaplacona(w.uuid)).sort()).toEqual(
+      Object.keys(await prawdziwy.oznaczZaplacona(w.uuid)).sort(),
+    );
+    expect(Object.keys(await infakt.wyslijDokumentDoKsef(w.uuid)).sort()).toEqual(
+      Object.keys(await prawdziwy.wyslijDokumentDoKsef(w.uuid)).sort(),
+    );
     // Pułapka odtworzona wiernie: zapłata zmienia status, `left_to_pay` zostaje.
     const po = await infakt.pobierzFakture(w.uuid);
     expect([po.status, po.left_to_pay]).toEqual(['paid', 12300]);
@@ -537,13 +803,33 @@ describe('kształty inFaktu: prawdziwy klient na encjach atrapy oddaje to samo',
   });
 
   it('encje mają pola czytane przez widok Faktur i domenę (lista-faktur, termin, KSeF)', async () => {
-    const POLA = ['uuid', 'number', 'invoice_date', 'sale_date', 'payment_date', 'status', 'left_to_pay', 'gross_price',
-      'payment_method', 'ksef_number', 'client_company_name', 'client_first_name', 'client_last_name', 'client_tax_code'];
-    for (const d of [...await infakt.listaFaktur({}), ...await infakt.listaKorekt({})]) {
-      expect(POLA.filter((p) => !Object.hasOwn(d, p)), d.number).toEqual([]);
+    const POLA = [
+      'uuid',
+      'number',
+      'invoice_date',
+      'sale_date',
+      'payment_date',
+      'status',
+      'left_to_pay',
+      'gross_price',
+      'payment_method',
+      'ksef_number',
+      'client_company_name',
+      'client_first_name',
+      'client_last_name',
+      'client_tax_code',
+    ];
+    for (const d of [...(await infakt.listaFaktur({})), ...(await infakt.listaKorekt({}))]) {
+      expect(
+        POLA.filter((p) => !Object.hasOwn(d, p)),
+        d.number,
+      ).toEqual([]);
       expect(Number.isInteger(d.gross_price), d.number).toBe(true);
       // Kolumna „Nabywca” (faktury.ejs): firma albo imię i nazwisko — pusta wartość byłaby błędem atrapy.
-      expect(d.client_company_name || [d.client_first_name, d.client_last_name].filter(Boolean).join(' '), d.number).toBeTruthy();
+      expect(
+        d.client_company_name || [d.client_first_name, d.client_last_name].filter(Boolean).join(' '),
+        d.number,
+      ).toBeTruthy();
     }
   });
 });
@@ -555,22 +841,44 @@ describe('kształty inFaktu: prawdziwy klient na encjach atrapy oddaje to samo',
 describe('przebieg przesyłki w atrapach DPD i InPost', () => {
   const MIN = 60_000;
   const T0 = Date.parse('2026-10-21T10:00:00.000Z');
-  const opcjeDpd = { url: 'https://x.invalid', login: 'l', haslo: 'h', fid: '1', infoUrl: 'https://x.invalid/info', channel: 'k',
-    nadawca: { nazwa: 'N', ulica: 'U 1', kod: '00-001', miasto: 'M' } };
-  const opcjeInpost = { url: 'https://x.invalid', token: 't', organizacja: 1, nadawca: { nazwa: 'N', ulica: 'U 1', kod: '00-001', miasto: 'M' } };
+  const opcjeDpd = {
+    url: 'https://x.invalid',
+    login: 'l',
+    haslo: 'h',
+    fid: '1',
+    infoUrl: 'https://x.invalid/info',
+    channel: 'k',
+    nadawca: { nazwa: 'N', ulica: 'U 1', kod: '00-001', miasto: 'M' },
+  };
+  const opcjeInpost = {
+    url: 'https://x.invalid',
+    token: 't',
+    organizacja: 1,
+    nadawca: { nazwa: 'N', ulica: 'U 1', kod: '00-001', miasto: 'M' },
+  };
   let baza;
   const otworz = () => {
     baza = openOmsDb(':memory:');
-    const zam = baza.prepare("INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at) VALUES ('sklep', ?, ?, '1.00', '2026-10-21')");
-    const pacz = baza.prepare('INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at) VALUES (?, ?, ?, ?, 1, ?)');
-    for (const [i, [kurier, status, numer]] of [['dpd', 'nadana', '0000000000001U'], ['inpost', 'nadana', '000000000000000000000001'],
-      ['dpd', 'do_wyjasnienia', '0000000000002U'], ['dpd', 'blad', '0000000000003U']].entries()) {
+    const zam = baza.prepare(
+      "INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at) VALUES ('sklep', ?, ?, '1.00', '2026-10-21')",
+    );
+    const pacz = baza.prepare(
+      'INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at) VALUES (?, ?, ?, ?, 1, ?)',
+    );
+    for (const [i, [kurier, status, numer]] of [
+      ['dpd', 'nadana', '0000000000001U'],
+      ['inpost', 'nadana', '000000000000000000000001'],
+      ['dpd', 'do_wyjasnienia', '0000000000002U'],
+      ['dpd', 'blad', '0000000000003U'],
+    ].entries()) {
       const id = Number(zam.run(i + 1, String(i + 1)).lastInsertRowid);
       pacz.run(id, kurier, status, numer, new Date(T0).toISOString());
     }
   };
-  const dpd = (terazMs) => createAtrapaDpd({ env: ENV_DEMO, baza: () => baza, teraz: () => new Date(terazMs) })(opcjeDpd);
-  const inpost = (terazMs) => createAtrapaInpost({ env: ENV_DEMO, baza: () => baza, teraz: () => new Date(terazMs) })(opcjeInpost);
+  const dpd = (terazMs) =>
+    createAtrapaDpd({ env: ENV_DEMO, baza: () => baza, teraz: () => new Date(terazMs) })(opcjeDpd);
+  const inpost = (terazMs) =>
+    createAtrapaInpost({ env: ENV_DEMO, baza: () => baza, teraz: () => new Date(terazMs) })(opcjeInpost);
   afterAll(() => baza?.close());
 
   it('DPD: zarejestrowana do 10 min, potem „odebrana przez Kuriera” (dowód z białej listy), na końcu doręczona; czasy rosną', async () => {
@@ -590,10 +898,14 @@ describe('przebieg przesyłki w atrapach DPD i InPost', () => {
 
   it('InPost: „Przesyłka zarejestrowana” do 10 min, potem „Przyjęta w oddziale nadawczym”, na końcu „Odebrana przez klienta”', async () => {
     otworz();
-    expect((await inpost(T0 + 9 * MIN).statusPrzesylki('000000000000000000000001')).opis).toBe('Przesyłka zarejestrowana');
+    expect((await inpost(T0 + 9 * MIN).statusPrzesylki('000000000000000000000001')).opis).toBe(
+      'Przesyłka zarejestrowana',
+    );
     const po = await inpost(T0 + 10 * MIN).statusPrzesylki('000000000000000000000001');
     expect(dowodOdbioru({ status_kuriera: po.opis })).toBe('inpost:adopted_at_source_branch');
-    expect((await inpost(T0 + 3 * 24 * 60 * MIN).statusPrzesylki('000000000000000000000001')).opis).toBe('Odebrana przez klienta');
+    expect((await inpost(T0 + 3 * 24 * 60 * MIN).statusPrzesylki('000000000000000000000001')).opis).toBe(
+      'Odebrana przez klienta',
+    );
   });
 
   it('bez nadania nie ma odbioru: nieznany numer, paczka „do wyjaśnienia” albo z błędem, numer innego kuriera, brak bazy → null', async () => {
@@ -604,7 +916,9 @@ describe('przebieg przesyłki w atrapach DPD i InPost', () => {
     }
     expect(await inpost(pozniej).statusPrzesylki('0000000000001U')).toBeNull();
     expect(await createAtrapaDpd({ env: ENV_DEMO })(opcjeDpd).statusPrzesylki('0000000000001U')).toBeNull();
-    expect(await createAtrapaInpost({ env: ENV_DEMO })(opcjeInpost).statusPrzesylki('000000000000000000000001')).toBeNull();
+    expect(
+      await createAtrapaInpost({ env: ENV_DEMO })(opcjeInpost).statusPrzesylki('000000000000000000000001'),
+    ).toBeNull();
   });
 
   it('prawdziwy klient DPD na surowej odpowiedzi SOAP atrapy oddaje to samo co atrapa (w każdym etapie)', async () => {
@@ -613,7 +927,9 @@ describe('przebieg przesyłki w atrapach DPD i InPost', () => {
       const teraz = T0 + minut * MIN;
       const xml = surowaOdpowiedzDpd(zdarzeniaAtrapyDpd(new Date(T0).toISOString(), teraz));
       const prawdziwy = createDpdClient({ ...opcjeDpd, fetchImpl: async () => new Response(xml, { status: 200 }) });
-      expect(await prawdziwy.statusPrzesylki('0000000000001U'), `${minut} min`).toEqual(await dpd(teraz).statusPrzesylki('0000000000001U'));
+      expect(await prawdziwy.statusPrzesylki('0000000000001U'), `${minut} min`).toEqual(
+        await dpd(teraz).statusPrzesylki('0000000000001U'),
+      );
     }
   });
 
@@ -621,10 +937,16 @@ describe('przebieg przesyłki w atrapach DPD i InPost', () => {
     otworz();
     for (const minut of [0, 10, 300, 1230, 4000]) {
       const teraz = T0 + minut * MIN;
-      const json = JSON.stringify(surowaOdpowiedzInpost('000000000000000000000001', zdarzeniaAtrapyInpost(new Date(T0).toISOString(), teraz)));
-      const prawdziwy = createInpostClient({ ...opcjeInpost, fetchImpl: async () => new Response(json, { status: 200, headers: { 'content-type': 'application/json' } }) });
-      expect(await prawdziwy.statusPrzesylki('000000000000000000000001'), `${minut} min`)
-        .toEqual(await inpost(teraz).statusPrzesylki('000000000000000000000001'));
+      const json = JSON.stringify(
+        surowaOdpowiedzInpost('000000000000000000000001', zdarzeniaAtrapyInpost(new Date(T0).toISOString(), teraz)),
+      );
+      const prawdziwy = createInpostClient({
+        ...opcjeInpost,
+        fetchImpl: async () => new Response(json, { status: 200, headers: { 'content-type': 'application/json' } }),
+      });
+      expect(await prawdziwy.statusPrzesylki('000000000000000000000001'), `${minut} min`).toEqual(
+        await inpost(teraz).statusPrzesylki('000000000000000000000001'),
+      );
     }
   });
 });
@@ -634,20 +956,42 @@ describe('atrapa ofert Allegro', () => {
   const T0 = new Date('2026-11-14T10:00:00.000Z');
   const bazy = [];
   afterAll(() => bazy.forEach((b) => b.close()));
-  const nowaBaza = () => { const b = new DatabaseSync(':memory:'); bazy.push(b); return b; };
-  const atrapa = (baza = nowaBaza()) => createAtrapaAllegro({ db: baza, kanal: 'allegro', env: ENV_DEMO, log: ciche, teraz: () => T0 });
+  const nowaBaza = () => {
+    const b = new DatabaseSync(':memory:');
+    bazy.push(b);
+    return b;
+  };
+  const atrapa = (baza = nowaBaza()) =>
+    createAtrapaAllegro({ db: baza, kanal: 'allegro', env: ENV_DEMO, log: ciche, teraz: () => T0 });
   const ofertaNowa = (nazwa, dodatki = {}) => ({
-    name: nazwa, category: { id: '257' }, external: { id: 'LMP-TEST-001' },
-    productSet: [{ product: { name: nazwa, category: { id: '257' }, parameters: [
-      { id: '248811', valuesIds: ['248811_9001'] }, { id: '225693', values: ['2000000000015'] }] } }],
+    name: nazwa,
+    category: { id: '257' },
+    external: { id: 'LMP-TEST-001' },
+    productSet: [
+      {
+        product: {
+          name: nazwa,
+          category: { id: '257' },
+          parameters: [
+            { id: '248811', valuesIds: ['248811_9001'] },
+            { id: '225693', values: ['2000000000015'] },
+          ],
+        },
+      },
+    ],
     sellingMode: { format: 'BUY_NOW', price: { amount: '199.00', currency: 'PLN' } },
-    stock: { available: 3 }, images: ['https://atrapa.invalid/z/abc'], ...dodatki,
+    stock: { available: 3 },
+    images: ['https://atrapa.invalid/z/abc'],
+    ...dodatki,
   });
   const surowy = (baza) => {
     const { fetchImpl, api } = createSerwerOfertAllegro({ db: baza, kanal: 'allegro', env: ENV_DEMO, teraz: () => T0 });
-    return (metoda, sciezka, cialo, auth = { Authorization: 'Bearer x' }) => fetchImpl(`${api}${sciezka}`, {
-      method: metoda, headers: { ...auth, 'Content-Type': 'application/vnd.allegro.public.v1+json' },
-      ...(cialo ? { body: JSON.stringify(cialo) } : {}) });
+    return (metoda, sciezka, cialo, auth = { Authorization: 'Bearer x' }) =>
+      fetchImpl(`${api}${sciezka}`, {
+        method: metoda,
+        headers: { ...auth, 'Content-Type': 'application/vnd.allegro.public.v1+json' },
+        ...(cialo ? { body: JSON.stringify(cialo) } : {}),
+      });
   };
   const wiersze = (baza, tabela) => baza.prepare(`SELECT count(*) AS n FROM ${tabela}`).get().n;
 
@@ -655,28 +999,42 @@ describe('atrapa ofert Allegro', () => {
     const a = atrapa();
     const p1 = await a.utworzOferte(ofertaNowa('Lampa testowa'));
     const p2 = await a.utworzOferte(ofertaNowa('Lampa testowa'));
-    expect(p1).toMatchObject({ status: 201, operacja: null, dane: { publication: { status: 'INACTIVE' }, validation: { errors: [] } } });
+    expect(p1).toMatchObject({
+      status: 201,
+      operacja: null,
+      dane: { publication: { status: 'INACTIVE' }, validation: { errors: [] } },
+    });
     expect(p1.ofertaId).toMatch(/^\d{11}$/);
     expect(p2.ofertaId).not.toBe(p1.ofertaId);
-    expect((await a.ofertyPoSygnaturze('LMP-TEST-001')).map((o) => o.id).sort()).toEqual([p1.ofertaId, p2.ofertaId].sort());
+    expect((await a.ofertyPoSygnaturze('LMP-TEST-001')).map((o) => o.id).sort()).toEqual(
+      [p1.ofertaId, p2.ofertaId].sort(),
+    );
     const e = await a.edytujOferte(p1.ofertaId, { publication: { status: 'ACTIVE' } });
     expect(e).toMatchObject({ status: 202, ofertaId: p1.ofertaId, retryAfterS: 1 });
     expect(e.operacja.startsWith(`${API_ATRAPY_ALLEGRO}/sale/product-offers/${p1.ofertaId}/operations/`)).toBe(true);
     expect(await a.stanOperacji(e.operacja)).toMatchObject({ status: 202, wToku: true, gotowe: false, retryAfterS: 1 });
     expect((await a.pobierzOferte(p1.ofertaId)).publication.status).toBe('INACTIVE');
-    expect(await a.stanOperacji(e.operacja)).toMatchObject({ status: 303, gotowe: true,
-      location: `${API_ATRAPY_ALLEGRO}/sale/product-offers/${p1.ofertaId}` });
+    expect(await a.stanOperacji(e.operacja)).toMatchObject({
+      status: 303,
+      gotowe: true,
+      location: `${API_ATRAPY_ALLEGRO}/sale/product-offers/${p1.ofertaId}`,
+    });
     expect((await a.pobierzOferte(p1.ofertaId)).publication.status).toBe('ACTIVE');
     expect((await a.stanOperacji(e.operacja)).status).toBe(303);
     // Stan 0 na aktywnej ofercie kończy ją (bez operacji: zmiana bez publikacji jest synchroniczna).
-    expect(await a.edytujOferte(p1.ofertaId, { stock: { available: 0 } })).toMatchObject({ status: 200, operacja: null });
+    expect(await a.edytujOferte(p1.ofertaId, { stock: { available: 0 } })).toMatchObject({
+      status: 200,
+      operacja: null,
+    });
     expect((await a.pobierzOferte(p1.ofertaId)).publication.status).toBe('ENDED');
     // ENDED na nieaktywnym szkicu: 202, a operacja kończy się 422.
     const k = await a.edytujOferte(p2.ofertaId, { publication: { status: 'ENDED' } });
     expect(k.status).toBe(202);
     await a.stanOperacji(k.operacja);
     await expect(a.stanOperacji(k.operacja)).rejects.toMatchObject({ status: 422 });
-    await expect(a.stanOperacji(`${API_ATRAPY_ALLEGRO}/sale/product-offers/${p2.ofertaId}/operations/nie-ma`)).rejects.toMatchObject({ status: 404 });
+    await expect(
+      a.stanOperacji(`${API_ATRAPY_ALLEGRO}/sale/product-offers/${p2.ofertaId}/operations/nie-ma`),
+    ).rejects.toMatchObject({ status: 404 });
     // Od razu ACTIVE przy poprawnej ofercie = 202 z operacją.
     const n = await a.utworzOferte(ofertaNowa('Lampa od razu', { publication: { status: 'ACTIVE' } }));
     expect(n.status).toBe(202);
@@ -688,14 +1046,21 @@ describe('atrapa ofert Allegro', () => {
     const a = atrapa(baza);
     const b = await a.utworzOferte(ofertaNowa('Lampa [błąd]'));
     expect(b.status).toBe(201);
-    expect(b.dane.validation.errors).toEqual([expect.objectContaining({
-      code: 'ConstraintViolationException.AfterSalesServiceConditionsRequiredByCompany' })]);
-    await expect(a.edytujOferte(b.ofertaId, { publication: { status: 'ACTIVE' } })).rejects.toMatchObject({ status: 422 });
+    expect(b.dane.validation.errors).toEqual([
+      expect.objectContaining({
+        code: 'ConstraintViolationException.AfterSalesServiceConditionsRequiredByCompany',
+      }),
+    ]);
+    await expect(a.edytujOferte(b.ofertaId, { publication: { status: 'ACTIVE' } })).rejects.toMatchObject({
+      status: 422,
+    });
     const d = await a.utworzOferte(ofertaNowa('Lampa [duplikat]'));
     expect(d.status).toBe(201);
     await expect(a.edytujOferte(d.ofertaId, { publication: { status: 'ACTIVE' } })).rejects.toThrow(/duplikat/);
     const przed = wiersze(baza, 'atrapa_allegro_oferty');
-    await expect(a.utworzOferte(ofertaNowa('Lampa [duplikat]', { publication: { status: 'ACTIVE' } }))).rejects.toThrow(/duplikat/);
+    await expect(a.utworzOferte(ofertaNowa('Lampa [duplikat]', { publication: { status: 'ACTIVE' } }))).rejects.toThrow(
+      /duplikat/,
+    );
     expect(wiersze(baza, 'atrapa_allegro_oferty')).toBe(przed);
   });
 
@@ -706,15 +1071,28 @@ describe('atrapa ofert Allegro', () => {
     bez.productSet[0].product.parameters = [];
     const r = await http('POST', '/sale/product-offers', bez);
     expect(r.status).toBe(422);
-    expect((await r.json()).errors[0]).toMatchObject({ code: 'ProductValidationException', path: 'productSet[0].product.parameters',
-      metadata: { missingParameterNames: 'Marka, EAN (GTIN)', missingParameterIds: '248811, 225693', categoryId: '257' } });
+    expect((await r.json()).errors[0]).toMatchObject({
+      code: 'ProductValidationException',
+      path: 'productSet[0].product.parameters',
+      metadata: {
+        missingParameterNames: 'Marka, EAN (GTIN)',
+        missingParameterIds: '248811, 225693',
+        categoryId: '257',
+      },
+    });
     expect(wiersze(baza, 'atrapa_allegro_oferty')).toBe(0);
-    const produkt = (ean) => ({ ...ofertaNowa('Z katalogu'), productSet: [{ product: { id: '00000000-0000-4000-8000-000000000001',
-      parameters: [{ id: '225693', values: [ean] }] } }] });
+    const produkt = (ean) => ({
+      ...ofertaNowa('Z katalogu'),
+      productSet: [
+        { product: { id: '00000000-0000-4000-8000-000000000001', parameters: [{ id: '225693', values: [ean] }] } },
+      ],
+    });
     const zly = await http('POST', '/sale/product-offers', produkt(eanDemo(2)));
     expect(zly.status).toBe(422);
-    expect((await zly.json()).errors[0]).toMatchObject({ code: 'PARAMETER_MISMATCH',
-      metadata: { productId: '00000000-0000-4000-8000-000000000001', parameterId: '225693' } });
+    expect((await zly.json()).errors[0]).toMatchObject({
+      code: 'PARAMETER_MISMATCH',
+      metadata: { productId: '00000000-0000-4000-8000-000000000001', parameterId: '225693' },
+    });
     const dobry = await http('POST', '/sale/product-offers', produkt(eanDemo(1)));
     expect(dobry.status).toBe(201);
     expect(dobry.headers.get('Location')).toBe(`${API_ATRAPY_ALLEGRO}/sale/product-offers/${(await dobry.json()).id}`);
@@ -724,7 +1102,9 @@ describe('atrapa ofert Allegro', () => {
 
   it('produkty po EAN: 1 trafienie z katalogu demo, 2 dla prefiksu 2009, 0 dla obcego', async () => {
     const a = atrapa();
-    expect(await a.szukajProduktow(eanDemo(1))).toEqual([expect.objectContaining({ id: '00000000-0000-4000-8000-000000000001' })]);
+    expect(await a.szukajProduktow(eanDemo(1))).toEqual([
+      expect.objectContaining({ id: '00000000-0000-4000-8000-000000000001' }),
+    ]);
     expect(await a.szukajProduktow('2009000000001')).toHaveLength(2);
     expect(await a.szukajProduktow('5901234123457')).toEqual([]);
   });
@@ -735,14 +1115,18 @@ describe('atrapa ofert Allegro', () => {
     expect(razem).toBe(oferty.length);
     expect(oferty.length).toBe(ofertyAllegro('allegro').length + 2);
     const [x, y] = oferty;
-    const pozycje = [{ ofertaId: x.id, ilosc: 0 }, { ofertaId: '99999999999', ilosc: 0 }];
+    const pozycje = [
+      { ofertaId: x.id, ilosc: 0 },
+      { ofertaId: '99999999999', ilosc: 0 },
+    ];
     const k1 = await a.komendaIlosci('kom-1', pozycje);
     expect(k1).toMatchObject({ id: 'kom-1', taskCount: { total: 2, success: 1, failed: 1 } });
     expect(await a.komendaIlosci('kom-1', pozycje)).toEqual(k1);
     await expect(a.komendaIlosci('kom-1', [{ ofertaId: x.id, ilosc: 5 }])).rejects.toMatchObject({ status: 409 });
     expect(await a.wynikKomendy('ilosc', 'kom-1')).toEqual([
       expect.objectContaining({ offer: { id: x.id }, status: 'SUCCESS' }),
-      expect.objectContaining({ offer: { id: '99999999999' }, status: 'FAIL', message: expect.any(String) })]);
+      expect.objectContaining({ offer: { id: '99999999999' }, status: 'FAIL', message: expect.any(String) }),
+    ]);
     const po = await a.pobierzOferte(x.id);
     expect([po.stock.available, po.publication.status]).toEqual([0, 'ENDED']);
     await a.komendaCeny('kom-2', [{ ofertaId: y.id, cena: '149.90' }]);
@@ -758,13 +1142,16 @@ describe('atrapa ofert Allegro', () => {
     const sha = createHash('sha256').update(bajty).digest('hex');
     const z = await a.wgrajZdjecie(bajty, 'image/png');
     expect(z).toEqual({ location: `https://atrapa.invalid/z/${sha}`, expiresAt: '2026-11-14T16:00:00.000Z' });
-    expect(baza.prepare('SELECT sha, adres, wygasa_at FROM atrapa_allegro_zdjecia').all())
-      .toEqual([{ sha, adres: z.location, wygasa_at: z.expiresAt }]);
+    expect(baza.prepare('SELECT sha, adres, wygasa_at FROM atrapa_allegro_zdjecia').all()).toEqual([
+      { sha, adres: z.location, wygasa_at: z.expiresAt },
+    ]);
     await expect(a.wgrajZdjecie(new Uint8Array(26214401), 'image/jpeg')).rejects.toMatchObject({ status: 413 });
     const zdjecia = (n) => Array.from({ length: n }, (_, i) => `https://atrapa.invalid/z/${i}`);
     expect((await a.utworzOferte(ofertaNowa('Szesnaście', { images: zdjecia(16) }))).status).toBe(201);
     await expect(a.utworzOferte(ofertaNowa('Siedemnaście', { images: zdjecia(17) }))).rejects.toThrow(/16/);
-    await expect(a.utworzOferte(ofertaNowa('Długa', { external: { id: 'x'.repeat(101) } }))).rejects.toThrow(/100 znaków/);
+    await expect(a.utworzOferte(ofertaNowa('Długa', { external: { id: 'x'.repeat(101) } }))).rejects.toThrow(
+      /100 znaków/,
+    );
   });
 
   it('słowniki konta, dopasowanie kategorii, podatek, opłaty i słownik marek', async () => {
@@ -785,7 +1172,10 @@ describe('atrapa ofert Allegro', () => {
     expect((await a.oplatyOferty('123')).quotes[0]).toMatchObject({ fee: { amount: '0.00' }, offer: { id: '123' } });
     const marki = (await a.pobierzParametryKategorii('257')).parameters.find((p) => p.id === '248811').dictionary;
     expect(marki.length).toBeGreaterThan(200);
-    expect(marki.slice(0, 2).map((m) => [m.id, m.value])).toEqual([['248811_9001', 'Pracownia Półcień'], ['248811_9002', 'bez marki']]);
+    expect(marki.slice(0, 2).map((m) => [m.id, m.value])).toEqual([
+      ['248811_9001', 'Pracownia Półcień'],
+      ['248811_9002', 'bez marki'],
+    ]);
     expect(new Set(marki.map((m) => m.id)).size).toBe(marki.length);
   });
 
@@ -793,8 +1183,11 @@ describe('atrapa ofert Allegro', () => {
     const baza = nowaBaza();
     const a = atrapa(baza);
     const { fetchImpl, api } = createSerwerOfertAllegro({ db: baza, kanal: 'allegro', env: ENV_DEMO, teraz: () => T0 });
-    const prawdziwy = createAllegroClient({ ustawienia: { api, userAgent: 'test/1 (+https://x.invalid)' },
-      tokeny: { waznyToken: async () => 'inny' }, fetchImpl });
+    const prawdziwy = createAllegroClient({
+      ustawienia: { api, userAgent: 'test/1 (+https://x.invalid)' },
+      tokeny: { waznyToken: async () => 'inny' },
+      fetchImpl,
+    });
     await a.utworzOferte(ofertaNowa('Wspólna'));
     expect(await prawdziwy.pobierzCenniki()).toEqual(await a.pobierzCenniki());
     expect(await prawdziwy.ofertyKonta()).toEqual(await a.ofertyKonta());
@@ -813,12 +1206,24 @@ describe('atrapa ofert Allegro', () => {
       await a.komendaIlosci('przed-resetem', [{ ofertaId: '99999999999', ilosc: 1 }]);
       zlecResetDemo(stare, { login: 'operator-demo' });
       stare.close();
-      expect(await wykonajZlecenieResetu({ baza, utworzBaze: () => { openOmsDb(baza).close(); } })).toBeTruthy();
+      expect(
+        await wykonajZlecenieResetu({
+          baza,
+          utworzBaze: () => {
+            openOmsDb(baza).close();
+          },
+        }),
+      ).toBeTruthy();
       const nowe = openOmsDb(baza);
       try {
         createAtrapaAllegro({ db: nowe, kanal: 'allegro', env: ENV_DEMO, log: ciche });
-        for (const t of ['atrapa_allegro_oferty', 'atrapa_allegro_operacje', 'atrapa_allegro_zdjecia']) expect(wiersze(nowe, t), t).toBe(0);
-      } finally { nowe.close(); }
-    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+        for (const t of ['atrapa_allegro_oferty', 'atrapa_allegro_operacje', 'atrapa_allegro_zdjecia'])
+          expect(wiersze(nowe, t), t).toBe(0);
+      } finally {
+        nowe.close();
+      }
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

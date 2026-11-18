@@ -22,11 +22,19 @@ describe('limit API przez HTTP /api/v1', () => {
     app = buildOmsServer({ db, config: { auth: { user: 'serwis', pass: 'haslo-env' }, klienciZbiorczy: [] } });
     await app.ready();
     zalozKonto(db, { login: 'ala', imie: 'Ala Testowa', haslo: 'haslo-ali-123', rola: 'admin', admin: true });
-    return zalozKluczApi(db, { nazwa: 'integracja testowa', zakresy: ['druk'], kontoId: null, teraz: new Date().toISOString() }).klucz;
+    return zalozKluczApi(db, {
+      nazwa: 'integracja testowa',
+      zakresy: ['druk'],
+      kontoId: null,
+      teraz: new Date().toISOString(),
+    }).klucz;
   }
-  const ja = (klucz, ip = '10.0.0.5') => app.inject({
-    url: '/api/v1/ja', remoteAddress: ip, headers: klucz ? { authorization: `Bearer ${klucz}` } : {},
-  });
+  const ja = (klucz, ip = '10.0.0.5') =>
+    app.inject({
+      url: '/api/v1/ja',
+      remoteAddress: ip,
+      headers: klucz ? { authorization: `Bearer ${klucz}` } : {},
+    });
 
   it('121. wywołanie w 60 s → 429 z Retry-After w sekundach w górę; 1. w następnym oknie → 200', async () => {
     const klucz = await start();
@@ -50,7 +58,10 @@ describe('limit API przez HTTP /api/v1', () => {
     expect(Number(r.headers['retry-after'])).toBeGreaterThan(0);
     expect((await ja(klucz, '10.0.0.6')).statusCode).toBe(200);
     const login = await app.inject({
-      method: 'POST', url: '/login', remoteAddress: '10.0.0.5', headers: { origin: 'http://localhost' },
+      method: 'POST',
+      url: '/login',
+      remoteAddress: '10.0.0.5',
+      headers: { origin: 'http://localhost' },
       payload: { uzytkownik: 'ala', haslo: 'haslo-ali-123', powrot: '/' },
     });
     expect(login.statusCode, login.body).toBe(302);

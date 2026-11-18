@@ -5,16 +5,29 @@
 // ⚠️ NAZWY MIESIECY BEZ POLSKICH ZNAKOW — tak wygladaja katalogi, ktore juz istnieja w archiwum
 // (np. FAKTURY\2026\Sierpien, ...\Kosztowe 2026\Lipiec). Poprawienie ich „na
 // ladniejsze" zalozyloby DRUGI komplet katalogow obok pierwszego, bez ani jednego bledu.
-export const MIESIACE_KATALOGOW = ['Styczen', 'Luty', 'Marzec', 'Kwiecien', 'Maj', 'Czerwiec',
-  'Lipiec', 'Sierpien', 'Wrzesien', 'Pazdziernik', 'Listopad', 'Grudzien'];
+export const MIESIACE_KATALOGOW = [
+  'Styczen',
+  'Luty',
+  'Marzec',
+  'Kwiecien',
+  'Maj',
+  'Czerwiec',
+  'Lipiec',
+  'Sierpien',
+  'Wrzesien',
+  'Pazdziernik',
+  'Listopad',
+  'Grudzien',
+];
 
 // Nazwa trafia do NAZWY PLIKU, wiec musi przezyc system plikow Windows i SMB. Ukosnik
 // w numerze faktury (12/08/2026) zalozylby podkatalogi — to nie jest kosmetyka.
-export const doNazwyPliku = (s) => String(s ?? '')
-  .replace(/[\\/:*?"<>|]/g, '-')
-  .replace(/[.,]/g, '')
-  .replace(/\s+/g, ' ')
-  .trim();
+export const doNazwyPliku = (s) =>
+  String(s ?? '')
+    .replace(/[\\/:*?"<>|]/g, '-')
+    .replace(/[.,]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 // ⚠️ DATA W NAZWIE PLIKU IDZIE SAMYM DNIEM. `data_wystawienia` z KSeF potrafi niesc znacznik
 // czasu, a dwukropek jest na Windowsie i SMB znakiem NIELEGALNYM — zapis padal i probowal

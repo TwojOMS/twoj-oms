@@ -2,13 +2,12 @@
 // Białą listę metod zapisujących pilnuje `tests/oms/allegro-client-zapis.test.js`; tu jest
 // zachowanie tych trzech wywołań: POST metadanych, PUT pliku i pomocniczy GET listy faktur.
 import { describe, it, expect } from 'vitest';
-import {
-  createAllegroClient,
-  MAKS_ROZMIAR_FAKTURY_B,
-  LIMIT_WYSYLKI_FAKTURY_MS,
-} from '../../src/oms/allegro/client.js';
+import { createAllegroClient, MAKS_ROZMIAR_FAKTURY_B, LIMIT_WYSYLKI_FAKTURY_MS } from '../../src/oms/allegro/client.js';
 
-const ustawienia = { api: 'https://api.allegro.pl', userAgent: 'OMS-swietlik/1.0.0 (+https://swietlik.example.test/oms/)' };
+const ustawienia = {
+  api: 'https://api.allegro.pl',
+  userAgent: 'OMS-swietlik/1.0.0 (+https://swietlik.example.test/oms/)',
+};
 const tokeny = { waznyToken: async () => 'TOKEN' };
 const pdf = (bajtow = 100) => Buffer.concat([Buffer.from('%PDF-1.4'), Buffer.alloc(bajtow)]);
 
@@ -18,7 +17,10 @@ function klient(odpowiedz = { ok: true, status: 200, json: async () => ({ id: 'I
     k: createAllegroClient({
       ustawienia,
       tokeny,
-      fetchImpl: async (url, o) => { wolania.push({ url, o }); return odpowiedz; },
+      fetchImpl: async (url, o) => {
+        wolania.push({ url, o });
+        return odpowiedz;
+      },
     }),
     wolania,
   };
@@ -57,14 +59,24 @@ describe('klient Allegro — faktura', () => {
   // u kupującego. Pusta odpowiedź musi być głośna.
   it('odpowiedź bez identyfikatora jest błędem, nie ciszą', async () => {
     const { k } = klient({ ok: true, status: 200, json: async () => ({}) });
-    await expect(k.zglosFakture('CF-1', { nazwaPliku: 'x.pdf', numerFaktury: '1/2026' })).rejects.toThrow(/identyfikator/i);
+    await expect(k.zglosFakture('CF-1', { nazwaPliku: 'x.pdf', numerFaktury: '1/2026' })).rejects.toThrow(
+      /identyfikator/i,
+    );
   });
 
   // 204 z pustym ciałem `wyslijJson` sprowadza do `null` — to samo ma być głośne, bo `null?.id`
   // jest `undefined` i cichy `return null` przepuściłby „zgłoszenie", którego nie ma.
   it('puste ciało odpowiedzi też jest błędem', async () => {
-    const { k } = klient({ ok: true, status: 204, json: async () => { throw new SyntaxError('puste ciało'); } });
-    await expect(k.zglosFakture('CF-1', { nazwaPliku: 'x.pdf', numerFaktury: '1/2026' })).rejects.toThrow(/identyfikator/i);
+    const { k } = klient({
+      ok: true,
+      status: 204,
+      json: async () => {
+        throw new SyntaxError('puste ciało');
+      },
+    });
+    await expect(k.zglosFakture('CF-1', { nazwaPliku: 'x.pdf', numerFaktury: '1/2026' })).rejects.toThrow(
+      /identyfikator/i,
+    );
   });
 
   it('błąd HTTP przy zgłoszeniu nie wynosi tokenu ani ciała odpowiedzi', async () => {
@@ -76,7 +88,11 @@ describe('klient Allegro — faktura', () => {
   });
 
   it('wysyła plik PUT-em z Content-Type application/pdf', async () => {
-    const { k, wolania } = klient({ ok: true, status: 200, json: async () => ({ file: { securityVerification: { status: 'WAITING' } } }) });
+    const { k, wolania } = klient({
+      ok: true,
+      status: 200,
+      json: async () => ({ file: { securityVerification: { status: 'WAITING' } } }),
+    });
     const odp = await k.wyslijPlikFaktury('CF-1', 'INV-1', pdf());
     expect(wolania[0].url).toBe('https://api.allegro.pl/order/checkout-forms/CF-1/invoices/INV-1/file');
     expect(wolania[0].o.method).toBe('PUT');
@@ -104,7 +120,10 @@ describe('klient Allegro — faktura', () => {
     const k = createAllegroClient({
       ustawienia: inny,
       tokeny,
-      fetchImpl: async (url, o) => { wolania.push({ url, o }); return { ok: true, status: 200, json: async () => ({}) }; },
+      fetchImpl: async (url, o) => {
+        wolania.push({ url, o });
+        return { ok: true, status: 200, json: async () => ({}) };
+      },
     });
     await k.wyslijPlikFaktury('CF-1', 'INV-1', pdf());
     expect(wolania[0].o.headers['User-Agent']).toBe('InnaNazwa/9.9.9 (+https://inny.invalid/dok)');
@@ -150,12 +169,22 @@ describe('klient Allegro — faktura', () => {
   });
 
   it('204 bez ciała po wysyłce pliku NIE JEST awarią', async () => {
-    const { k } = klient({ ok: true, status: 204, json: async () => { throw new SyntaxError('Unexpected end of JSON input'); } });
+    const { k } = klient({
+      ok: true,
+      status: 204,
+      json: async () => {
+        throw new SyntaxError('Unexpected end of JSON input');
+      },
+    });
     await expect(k.wyslijPlikFaktury('CF-1', 'INV-1', pdf())).resolves.toBeNull();
   });
 
   it('czyta listę faktur zamówienia', async () => {
-    const { k, wolania } = klient({ ok: true, status: 200, json: async () => ({ invoices: [{ id: 'INV-9', invoiceNumber: '9/2026' }] }) });
+    const { k, wolania } = klient({
+      ok: true,
+      status: 200,
+      json: async () => ({ invoices: [{ id: 'INV-9', invoiceNumber: '9/2026' }] }),
+    });
     const lista = await k.pobierzFakturyZamowienia('CF-1');
     expect(wolania[0].url).toBe('https://api.allegro.pl/order/checkout-forms/CF-1/invoices');
     expect(wolania[0].o.method).toBe('GET');
@@ -193,7 +222,9 @@ describe('klient Allegro — faktura', () => {
     const k = createAllegroClient({
       ustawienia,
       tokeny,
-      fetchImpl: async () => { throw new TypeError('fetch failed'); },
+      fetchImpl: async () => {
+        throw new TypeError('fetch failed');
+      },
     });
     await expect(k.pobierzFakturyZamowienia('CF-1')).rejects.toThrow(/fetch failed/);
   });
@@ -217,29 +248,68 @@ describe('klient Allegro — faktura', () => {
   // kontraktem i blokadą w tests/oms/allegro-podjazdy-klient.test.js.
   it('biała lista metod obejmuje teraz DOKŁADNIE pięćdziesiąt (dwadzieścia metod ofert)', () => {
     const { k } = klient();
-    expect(Object.keys(k).sort()).toEqual([
-      'deklarujZalacznikWiadomosci',
-      'pobierzEtykieteWza', 'pobierzFakturyZamowienia',
-      // Kategoria i jej parametry — wyłącznie odczyt (`GET /sale/categories/{id}[/parameters]`).
-      'pobierzKategorie', 'pobierzMetodeDostawy', 'pobierzMojeKonto', 'pobierzOferte',
-      'pobierzOferty', 'pobierzParametryKategorii', 'pobierzPodjazd', 'pobierzPropozycjePodjazdu', 'pobierzPropozycjeWysylki',
-      // ⚠️ `pobierzWatki` i `pobierzWiadomosci` — Centrum wiadomości (spec 2026-08-28),
-      // wyłącznie odczyt (`GET /messaging/threads…`).
-      // `pobierzSprawy` tylko CZYTA `GET /sale/issues` — bariera zapisu bez zmian.
-      'pobierzPrzesylkeWza', 'pobierzPrzesylki', 'pobierzSledzenie', 'pobierzSprawy',
-      'pobierzStanRealizacji',
-      'pobierzWatki', 'pobierzWiadomosci', 'pobierzZamowienia',
-      'sprawdzZakresZamowien', 'stanTworzeniaPrzesylki', 'stanZleceniaPodjazdu',
-      // Centrum wiadomosci (spec 2026-08-28): `wyslijWiadomosc` PISZE i jest
-      // NIEODWRACALNE — nie wydaje pieniedzy, ale po drugiej stronie jest czlowiek,
-      // ktory dostaje powiadomienie. Bariera zapisu nizej rosnie razem z nia.
-      'ustawStatusRealizacji', 'utworzPrzesylke', 'wgrajZalacznikWiadomosci', 'wyslijPlikFaktury',
-      'wyslijWiadomosc', 'zglosFakture', 'zlecPodjazd',
-      // Wystawianie ofert — zapisy wylicza tests/oms/allegro-client-zapis.test.js.
-      'dopasujKategorie', 'edytujOferte', 'komendaCeny', 'komendaIlosci', 'komendaPublikacji', 'ofertyKonta', 'ofertyPoSygnaturze',
-      'oplatyOferty', 'pobierzCenniki', 'pobierzGwarancje', 'pobierzOsobyOdpowiedzialne', 'pobierzProducentow',
-      'pobierzReklamacje', 'pobierzZwroty', 'podgladOplat', 'stanOperacji', 'szukajProduktow', 'ustawieniaPodatku',
-      'utworzOferte', 'wgrajZdjecie', 'wynikKomendy',
-    ].sort());
+    expect(Object.keys(k).sort()).toEqual(
+      [
+        'deklarujZalacznikWiadomosci',
+        'pobierzEtykieteWza',
+        'pobierzFakturyZamowienia',
+        // Kategoria i jej parametry — wyłącznie odczyt (`GET /sale/categories/{id}[/parameters]`).
+        'pobierzKategorie',
+        'pobierzMetodeDostawy',
+        'pobierzMojeKonto',
+        'pobierzOferte',
+        'pobierzOferty',
+        'pobierzParametryKategorii',
+        'pobierzPodjazd',
+        'pobierzPropozycjePodjazdu',
+        'pobierzPropozycjeWysylki',
+        // ⚠️ `pobierzWatki` i `pobierzWiadomosci` — Centrum wiadomości (spec 2026-08-28),
+        // wyłącznie odczyt (`GET /messaging/threads…`).
+        // `pobierzSprawy` tylko CZYTA `GET /sale/issues` — bariera zapisu bez zmian.
+        'pobierzPrzesylkeWza',
+        'pobierzPrzesylki',
+        'pobierzSledzenie',
+        'pobierzSprawy',
+        'pobierzStanRealizacji',
+        'pobierzWatki',
+        'pobierzWiadomosci',
+        'pobierzZamowienia',
+        'sprawdzZakresZamowien',
+        'stanTworzeniaPrzesylki',
+        'stanZleceniaPodjazdu',
+        // Centrum wiadomosci (spec 2026-08-28): `wyslijWiadomosc` PISZE i jest
+        // NIEODWRACALNE — nie wydaje pieniedzy, ale po drugiej stronie jest czlowiek,
+        // ktory dostaje powiadomienie. Bariera zapisu nizej rosnie razem z nia.
+        'ustawStatusRealizacji',
+        'utworzPrzesylke',
+        'wgrajZalacznikWiadomosci',
+        'wyslijPlikFaktury',
+        'wyslijWiadomosc',
+        'zglosFakture',
+        'zlecPodjazd',
+        // Wystawianie ofert — zapisy wylicza tests/oms/allegro-client-zapis.test.js.
+        'dopasujKategorie',
+        'edytujOferte',
+        'komendaCeny',
+        'komendaIlosci',
+        'komendaPublikacji',
+        'ofertyKonta',
+        'ofertyPoSygnaturze',
+        'oplatyOferty',
+        'pobierzCenniki',
+        'pobierzGwarancje',
+        'pobierzOsobyOdpowiedzialne',
+        'pobierzProducentow',
+        'pobierzReklamacje',
+        'pobierzZwroty',
+        'podgladOplat',
+        'stanOperacji',
+        'szukajProduktow',
+        'ustawieniaPodatku',
+        'utworzOferte',
+        'wgrajZdjecie',
+        'wynikKomendy',
+      ].sort(),
+    );
   });
 });

@@ -6,7 +6,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const stan = vi.hoisted(() => ({ db: null, wTransakcji: [] }));
 vi.mock('../../../src/domena/hasla.js', async (oryginal) => {
   const m = await oryginal();
-  return { ...m, zahaszuj: (h) => { stan.wTransakcji.push(Boolean(stan.db?.isTransaction)); return m.zahaszuj(h); } };
+  return {
+    ...m,
+    zahaszuj: (h) => {
+      stan.wTransakcji.push(Boolean(stan.db?.isTransaction));
+      return m.zahaszuj(h);
+    },
+  };
 });
 
 const { zalozKonto, kontoPoLoginie } = await import('../../../src/core/bezpieczenstwo/konta.js');
@@ -22,17 +28,26 @@ function panel() {
 }
 
 describe('P3-8: haszowanie hasła przed transakcją', () => {
-  beforeEach(() => { stan.wTransakcji = []; });
+  beforeEach(() => {
+    stan.wTransakcji = [];
+  });
 
   it('/ustawienia/konta/nowe z hasłem: scrypt poza BEGIN IMMEDIATE, konto i rola zapisane razem', async () => {
     const { db, app, admin } = panel();
     stan.wTransakcji = [];
-    const r = await post(app, '/ustawienia/konta/nowe', admin, { login: 'pako', imie: 'Pako', haslo: 'haslo-pako-123', rola: 'produkcja' });
+    const r = await post(app, '/ustawienia/konta/nowe', admin, {
+      login: 'pako',
+      imie: 'Pako',
+      haslo: 'haslo-pako-123',
+      rola: 'produkcja',
+    });
     expect(r.statusCode).toBe(302);
     expect(stan.wTransakcji.length).toBeGreaterThan(0);
     expect(stan.wTransakcji.every((w) => w === false)).toBe(true);
     const konto = kontoPoLoginie(db, 'pako');
-    expect(zgodneHaslo('haslo-pako-123', db.prepare('SELECT hash_hasla FROM konta WHERE id = ?').get(konto.id).hash_hasla)).toBe(true);
+    expect(
+      zgodneHaslo('haslo-pako-123', db.prepare('SELECT hash_hasla FROM konta WHERE id = ?').get(konto.id).hash_hasla),
+    ).toBe(true);
     expect(db.prepare('SELECT rola FROM konta WHERE id = ?').get(konto.id).rola).toBe('produkcja');
   });
 
@@ -45,6 +60,8 @@ describe('P3-8: haszowanie hasła przed transakcją', () => {
     expect(r.statusCode).toBe(302);
     expect(stan.wTransakcji.length).toBeGreaterThan(0);
     expect(stan.wTransakcji.every((w) => w === false)).toBe(true);
-    expect(zgodneHaslo('nowe-haslo-12345', db.prepare('SELECT hash_hasla FROM konta WHERE id = ?').get(id).hash_hasla)).toBe(true);
+    expect(
+      zgodneHaslo('nowe-haslo-12345', db.prepare('SELECT hash_hasla FROM konta WHERE id = ?').get(id).hash_hasla),
+    ).toBe(true);
   });
 });

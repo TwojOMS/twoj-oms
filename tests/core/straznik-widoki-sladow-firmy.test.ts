@@ -21,7 +21,11 @@ const PROGRAMY: { nazwa: string; wzor: RegExp; opis: string }[] = [
   { nazwa: 'Apilo', wzor: /apilo/i, opis: 'inny system sprzedaży' },
   { nazwa: 'BaseLinker', wzor: /base\s*linker/i, opis: 'inny system sprzedaży' },
   { nazwa: 'Sellasist', wzor: /sellasist/i, opis: 'inny system sprzedaży' },
-  { nazwa: 'panel zamówień indywidualnych', wzor: /panel\w*\s+zam[óo]wie[ńn]\s+indywidualn/i, opis: 'aplikacja spoza produktu' },
+  {
+    nazwa: 'panel zamówień indywidualnych',
+    wzor: /panel\w*\s+zam[óo]wie[ńn]\s+indywidualn/i,
+    opis: 'aplikacja spoza produktu',
+  },
   { nazwa: 'panel indywidualny', wzor: /panel\w*\s+indywidualn/i, opis: 'aplikacja spoza produktu' },
   { nazwa: 'Dodaj do OMS', wzor: /dodaj do OMS/i, opis: 'przycisk aplikacji spoza produktu' },
 ];
@@ -42,9 +46,11 @@ const bezPrzykladow = (linia: string, wzor: RegExp) =>
  * w cudzysłowach (nazwy zmiennych i funkcji nie trafiają na ekran, napis może). `<%= %>` i `<%- %>` zostają całe.
  * Czysta funkcja — sprawdzana też wprost niżej. */
 export function widocznaTresc(ejs: string): string {
-  return ejs.replace(/<%#[\s\S]*?%>/g, '')
+  return ejs
+    .replace(/<%#[\s\S]*?%>/g, '')
     .replace(/<%(?![=-])([\s\S]*?)%>/g, (_, kod: string) => (kod.match(/'[^'\n]*'|"[^"\n]*"|`[^`]*`/g) ?? []).join(' '))
-    .replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
 }
 
 export function naruszenia(plik: string, ejs: string, katalog: WpisKatalogu[] = KATALOG_INTEGRACJI): string[] {
@@ -61,8 +67,12 @@ export function naruszenia(plik: string, ejs: string, katalog: WpisKatalogu[] = 
   return wynik;
 }
 
-const widoki = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '--', 'src'], { cwd: ROOT, encoding: 'utf8' })
-  .split('\n').filter((p) => p.endsWith('.ejs'));
+const widoki = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '--', 'src'], {
+  cwd: ROOT,
+  encoding: 'utf8',
+})
+  .split('\n')
+  .filter((p) => p.endsWith('.ejs'));
 
 describe('widoki bez nazw programów, których produkt nie obsługuje', () => {
   it('znajduje widoki do sprawdzenia', () => {
@@ -106,14 +116,24 @@ describe('widoki bez nazw programów, których produkt nie obsługuje', () => {
     expect(naruszenia('src/x.ejs', "<p><%= 'Apilo' %></p>", pusty)).not.toEqual([]);
     expect(naruszenia('src/x.ejs', "<% const t = 'Import z Apilo'; %><p><%= t %></p>", pusty)).not.toEqual([]);
     expect(naruszenia('src/x.ejs', '<p>podłączony do innego programu (np. BaseLinker)</p>', pusty)).toEqual([]);
-    expect(naruszenia('src/x.ejs', '<p>podłączony do innego programu (np. BaseLinker, np. Apilo)</p>', pusty)).toEqual([]);
+    expect(naruszenia('src/x.ejs', '<p>podłączony do innego programu (np. BaseLinker, np. Apilo)</p>', pusty)).toEqual(
+      [],
+    );
     // „np. X” zwalnia tylko sam przykład — reszta tej samej linii dalej się liczy.
-    expect(naruszenia('src/x.ejs', '<p>Zamówienia z Apilo przyjdą tu same (np. Apilo Pro).</p>', pusty)).not.toEqual([]);
-    expect(naruszenia('src/x.ejs', '<p>Klucz API skopiuj z Apilo: np. Apilo → Ustawienia → API.</p>', pusty)).not.toEqual([]);
+    expect(naruszenia('src/x.ejs', '<p>Zamówienia z Apilo przyjdą tu same (np. Apilo Pro).</p>', pusty)).not.toEqual(
+      [],
+    );
+    expect(
+      naruszenia('src/x.ejs', '<p>Klucz API skopiuj z Apilo: np. Apilo → Ustawienia → API.</p>', pusty),
+    ).not.toEqual([]);
     expect(naruszenia('src/x.ejs', '<p>nadaj w Apilo</p>', [{ nazwa: 'Apilo', dostepnosc: 'dostepna' }])).toEqual([]);
-    expect(naruszenia('src/x.ejs', '<p>nadaj w Apilo</p>', [{ nazwa: 'Apilo', dostepnosc: 'przez_konfiguracje' }])).toEqual([]);
+    expect(
+      naruszenia('src/x.ejs', '<p>nadaj w Apilo</p>', [{ nazwa: 'Apilo', dostepnosc: 'przez_konfiguracje' }]),
+    ).toEqual([]);
     // Integracja dopiero planowana — produkt jej jeszcze nie obsługuje.
-    expect(naruszenia('src/x.ejs', '<p>nadaj w Apilo</p>', [{ nazwa: 'Apilo', dostepnosc: 'planowana' }])).not.toEqual([]);
+    expect(naruszenia('src/x.ejs', '<p>nadaj w Apilo</p>', [{ nazwa: 'Apilo', dostepnosc: 'planowana' }])).not.toEqual(
+      [],
+    );
     expect(wKatalogu('Allegro', KATALOG_INTEGRACJI)).toBe(true);
   });
 });

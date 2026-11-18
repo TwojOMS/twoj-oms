@@ -1,13 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import {
-  SKU_PLACEHOLDERA, czyPozycjaPlaceholdera, czyIndywidualneZeSurowych,
-} from '../../src/domena/indywidualne.js';
+import { SKU_PLACEHOLDERA, czyPozycjaPlaceholdera, czyIndywidualneZeSurowych } from '../../src/domena/indywidualne.js';
 
 // Ksztalty odwzorowane z prawdziwej odpowiedzi WooCommerce (line_items z meta_data),
 // a nie z obiektu zbudowanego pod teze.
 const linia = (nad = {}) => ({
-  id: 11, name: 'Szablon STOP', sku: 'PRO-1', quantity: 1,
-  total: '81.30', total_tax: '18.70', meta_data: [], ...nad,
+  id: 11,
+  name: 'Szablon STOP',
+  sku: 'PRO-1',
+  quantity: 1,
+  total: '81.30',
+  total_tax: '18.70',
+  meta_data: [],
+  ...nad,
 });
 
 const zamowienie = (linie) => ({ id: 4242, number: '4242', line_items: linie });
@@ -60,8 +64,12 @@ describe('czyIndywidualneZeSurowych', () => {
 
   // Zero i pusty napis to „brak oferty", nie oferta o numerze zero.
   it('puste albo zerowe _zam_offer_id nie liczy sie jako znacznik', () => {
-    expect(czyIndywidualneZeSurowych(zamowienie([linia({ meta_data: [{ key: '_zam_offer_id', value: 0 }] })]))).toBe(false);
-    expect(czyIndywidualneZeSurowych(zamowienie([linia({ meta_data: [{ key: '_zam_offer_id', value: '' }] })]))).toBe(false);
+    expect(czyIndywidualneZeSurowych(zamowienie([linia({ meta_data: [{ key: '_zam_offer_id', value: 0 }] })]))).toBe(
+      false,
+    );
+    expect(czyIndywidualneZeSurowych(zamowienie([linia({ meta_data: [{ key: '_zam_offer_id', value: '' }] })]))).toBe(
+      false,
+    );
   });
 
   // Uszkodzony albo niepelny ksztalt NIE ma prawa rzucic: te funkcje wola przeliczenie

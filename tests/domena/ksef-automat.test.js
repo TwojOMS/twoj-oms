@@ -2,8 +2,14 @@
 // na dzień, okno miesięcy, formularz ustawień. Czyste funkcje, czas podawany wprost — zero zegara systemowego.
 import { describe, it, expect } from 'vitest';
 import {
-  chwilaWarszawy, czyPoraPrzebiegu, miesiaceAutomatu, sprawdzFormularzAutomatu, ostatniPrzebiegPoZapisie,
-  najblizszyPrzebieg, GODZINA_DOMYSLNA, KTO_AUTOMAT,
+  chwilaWarszawy,
+  czyPoraPrzebiegu,
+  miesiaceAutomatu,
+  sprawdzFormularzAutomatu,
+  ostatniPrzebiegPoZapisie,
+  najblizszyPrzebieg,
+  GODZINA_DOMYSLNA,
+  KTO_AUTOMAT,
 } from '../../src/domena/ksef-automat.js';
 import { doZaznaczeniaWszystkich } from '../../src/domena/wysylka-ksef.js';
 
@@ -20,7 +26,9 @@ describe('chwilaWarszawy', () => {
 
 describe('czyPoraPrzebiegu — ustawione 20:00', () => {
   it('wyłączony automat nie ma pory nigdy', () => {
-    expect(czyPoraPrzebiegu({ wlaczony: false, godzina: '20:00', ostatniPrzebieg: null }, o('2026-10-20T18:01:00Z'))).toBe(false);
+    expect(
+      czyPoraPrzebiegu({ wlaczony: false, godzina: '20:00', ostatniPrzebieg: null }, o('2026-10-20T18:01:00Z')),
+    ).toBe(false);
   });
   it('19:59 — jeszcze nie; 20:00 i 20:01 — tak', () => {
     expect(czyPoraPrzebiegu(wl('20:00'), o('2026-10-20T17:59:00Z'))).toBe(false);
@@ -67,8 +75,16 @@ describe('miesiaceAutomatu', () => {
 
 describe('sprawdzFormularzAutomatu', () => {
   it('pole ukryte 0 i zaznaczone pole 1 przychodzą razem — rozstrzyga ostatnie', () => {
-    expect(sprawdzFormularzAutomatu({ wlaczony: ['0', '1'], godzina: '20:00' })).toEqual({ wlaczony: true, godzina: '20:00', bledy: [] });
-    expect(sprawdzFormularzAutomatu({ wlaczony: '0', godzina: '07:05' })).toEqual({ wlaczony: false, godzina: '07:05', bledy: [] });
+    expect(sprawdzFormularzAutomatu({ wlaczony: ['0', '1'], godzina: '20:00' })).toEqual({
+      wlaczony: true,
+      godzina: '20:00',
+      bledy: [],
+    });
+    expect(sprawdzFormularzAutomatu({ wlaczony: '0', godzina: '07:05' })).toEqual({
+      wlaczony: false,
+      godzina: '07:05',
+      bledy: [],
+    });
     expect(sprawdzFormularzAutomatu({ wlaczony: '1', godzina: '00:00' }).bledy).toEqual([]);
     expect(sprawdzFormularzAutomatu({ wlaczony: '1', godzina: '23:45' }).bledy).toEqual([]);
   });
@@ -80,9 +96,12 @@ describe('sprawdzFormularzAutomatu', () => {
   it('23:45 — tyknięcie o 23:59:30 jeszcze wysyła tego dnia', () => {
     expect(czyPoraPrzebiegu(wl('23:45'), o('2026-10-20T21:59:30Z'))).toBe(true);
   });
-  it.each(['24:00', '7:00', '20:60', '', 'abc', '20:00:00', ' 20:00', undefined])('zła godzina %j — błąd', (godzina) => {
-    expect(sprawdzFormularzAutomatu({ wlaczony: '1', godzina }).bledy).toHaveLength(1);
-  });
+  it.each(['24:00', '7:00', '20:60', '', 'abc', '20:00:00', ' 20:00', undefined])(
+    'zła godzina %j — błąd',
+    (godzina) => {
+      expect(sprawdzFormularzAutomatu({ wlaczony: '1', godzina }).bledy).toHaveLength(1);
+    },
+  );
   it.each([undefined, 'tak', '2', ['1', 'x']])('zła wartość przełącznika %j — błąd', (wlaczony) => {
     expect(sprawdzFormularzAutomatu({ wlaczony, godzina: '20:00' }).bledy).toHaveLength(1);
   });
@@ -91,25 +110,37 @@ describe('sprawdzFormularzAutomatu', () => {
 describe('ostatniPrzebiegPoZapisie — włączenie po godzinie nie wysyła od razu', () => {
   const wylaczony = { wlaczony: false, godzina: GODZINA_DOMYSLNA, ostatniPrzebieg: '2026-10-18' };
   it('włączenie o 21:30 z godziną 20:00 — dziś bez przebiegu, pierwszy jutro', () => {
-    expect(ostatniPrzebiegPoZapisie(wylaczony, { wlaczony: true, godzina: '20:00' }, o('2026-10-20T19:30:00Z'))).toBe('2026-10-20');
+    expect(ostatniPrzebiegPoZapisie(wylaczony, { wlaczony: true, godzina: '20:00' }, o('2026-10-20T19:30:00Z'))).toBe(
+      '2026-10-20',
+    );
   });
   it('włączenie o 19:00 z godziną 20:00 — przebieg jeszcze dziś', () => {
-    expect(ostatniPrzebiegPoZapisie(wylaczony, { wlaczony: true, godzina: '20:00' }, o('2026-10-20T17:00:00Z'))).toBe('2026-10-18');
+    expect(ostatniPrzebiegPoZapisie(wylaczony, { wlaczony: true, godzina: '20:00' }, o('2026-10-20T17:00:00Z'))).toBe(
+      '2026-10-18',
+    );
   });
   it('przesunięcie godziny na już miniętą — dziś bez przebiegu', () => {
     const wlaczony = { wlaczony: true, godzina: '22:00', ostatniPrzebieg: '2026-10-19' };
-    expect(ostatniPrzebiegPoZapisie(wlaczony, { wlaczony: true, godzina: '18:00' }, o('2026-10-20T17:00:00Z'))).toBe('2026-10-20');
+    expect(ostatniPrzebiegPoZapisie(wlaczony, { wlaczony: true, godzina: '18:00' }, o('2026-10-20T17:00:00Z'))).toBe(
+      '2026-10-20',
+    );
   });
   it('ponowny zapis bez zmiany i wyłączenie nie ruszają dnia ostatniego przebiegu', () => {
     const wlaczony = { wlaczony: true, godzina: '20:00', ostatniPrzebieg: '2026-10-19' };
-    expect(ostatniPrzebiegPoZapisie(wlaczony, { wlaczony: true, godzina: '20:00' }, o('2026-10-20T19:30:00Z'))).toBe('2026-10-19');
-    expect(ostatniPrzebiegPoZapisie(wlaczony, { wlaczony: false, godzina: '20:00' }, o('2026-10-20T19:30:00Z'))).toBe('2026-10-19');
+    expect(ostatniPrzebiegPoZapisie(wlaczony, { wlaczony: true, godzina: '20:00' }, o('2026-10-20T19:30:00Z'))).toBe(
+      '2026-10-19',
+    );
+    expect(ostatniPrzebiegPoZapisie(wlaczony, { wlaczony: false, godzina: '20:00' }, o('2026-10-20T19:30:00Z'))).toBe(
+      '2026-10-19',
+    );
   });
 });
 
 describe('najblizszyPrzebieg', () => {
   it('opisuje, kiedy automat ruszy', () => {
-    expect(najblizszyPrzebieg({ wlaczony: false, godzina: '20:00', ostatniPrzebieg: null }, o('2026-10-20T10:00:00Z'))).toBeNull();
+    expect(
+      najblizszyPrzebieg({ wlaczony: false, godzina: '20:00', ostatniPrzebieg: null }, o('2026-10-20T10:00:00Z')),
+    ).toBeNull();
     expect(najblizszyPrzebieg(wl('20:00'), o('2026-10-20T10:00:00Z'))).toBe('dziś o 20:00');
     expect(najblizszyPrzebieg(wl('20:00', '2026-10-20'), o('2026-10-20T19:00:00Z'))).toBe('jutro o 20:00');
     expect(najblizszyPrzebieg(wl('20:00', '2026-10-19'), o('2026-10-20T19:00:00Z'))).toBe('w ciągu minuty');
@@ -127,5 +158,7 @@ describe('doZaznaczeniaWszystkich — ta sama reguła co pola wyboru na ekranie 
     expect(doZaznaczeniaWszystkich({ ...vat, stanKsef: 'wyslana_czeka' })).toBe(false);
     expect(doZaznaczeniaWszystkich(null)).toBe(false);
   });
-  it('operator w logu nazywa się „automat KSeF”', () => { expect(KTO_AUTOMAT).toBe('automat KSeF'); });
+  it('operator w logu nazywa się „automat KSeF”', () => {
+    expect(KTO_AUTOMAT).toBe('automat KSeF');
+  });
 });

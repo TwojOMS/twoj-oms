@@ -16,8 +16,7 @@ export async function pluginApiV1(app, { ctx }) {
     if (!req.kluczApi) return blad(reply, 401, 'klucz', 'Brak, zły albo odwołany klucz API.');
   });
   app.addHook('onResponse', wpisDoDziennika(ctx));
-  app.setNotFoundHandler(async (_req, reply) =>
-    blad(reply, 404, 'brak', 'Nie ma takiego adresu w API.'));
+  app.setNotFoundHandler(async (_req, reply) => blad(reply, 404, 'brak', 'Nie ma takiego adresu w API.'));
   app.setErrorHandler((error, req, reply) => {
     if (error.statusCode === 400 && error.kod === 'stronicowanie') {
       return blad(reply, 400, 'stronicowanie', error.message);

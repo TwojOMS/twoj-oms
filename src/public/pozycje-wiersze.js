@@ -17,11 +17,16 @@ export const SELEKTOR_WIERSZA = 'tr[data-wiersz-pozycji]';
  * Ilość wraca do 1 — tak wygląda nowy wiersz; wiersz z samą ilością liczy się jako pusty.
  */
 export function wyczyscWiersz(tr) {
-  tr.querySelectorAll('input').forEach((pole) => { pole.value = /(^|_)ilosc$/.test(pole.name) ? '1' : ''; });
+  tr.querySelectorAll('input').forEach((pole) => {
+    pole.value = /(^|_)ilosc$/.test(pole.name) ? '1' : '';
+  });
   // Lista stawek nowego wiersza wraca do domyślnej z Ustawień (data-vat formularza), a nie
   // zostaje przy stawce sklonowanego wiersza.
   const domyslna = typeof tr.closest === 'function' ? tr.closest('form')?.dataset?.vat : undefined;
-  if (domyslna !== undefined) tr.querySelectorAll('select[name$="vat"]').forEach((l) => { l.value = domyslna; });
+  if (domyslna !== undefined)
+    tr.querySelectorAll('select[name$="vat"]').forEach((l) => {
+      l.value = domyslna;
+    });
   if (tr.dataset) delete tr.dataset.zrodlo;
   const suma = tr.querySelector('[data-suma-linii]');
   if (suma) suma.textContent = '';
@@ -112,11 +117,19 @@ export function podepnij(dokument, srodowisko = {}) {
   // też nie działa przy kotwicy w adresie — tak mówi specyfikacja HTML.
   const szukaj = dokument.querySelector('input[name="magazyn"][autofocus]');
   if (szukaj) {
-    const fokus = () => { szukaj.focus(); szukaj.select(); };
+    const fokus = () => {
+      szukaj.focus();
+      szukaj.select();
+    };
     if (dokument.readyState === 'complete') fokus();
     else dokument.defaultView?.addEventListener('load', () => setTimeout(fokus, 0), { once: true });
   }
   return formularz;
 }
 
-if (typeof document !== 'undefined') podepnij(document, { get htmx() { return globalThis.htmx; } });
+if (typeof document !== 'undefined')
+  podepnij(document, {
+    get htmx() {
+      return globalThis.htmx;
+    },
+  });

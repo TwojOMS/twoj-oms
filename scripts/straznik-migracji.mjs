@@ -6,12 +6,13 @@ const katalogi = readdirSync('src/moduly', { withFileTypes: true }).filter((d) =
 for (const d of katalogi) {
   const kat = join('src/moduly', d.name, 'migracje');
   let pliki = [];
-  try { pliki = readdirSync(kat); } catch (e) {
+  try {
+    pliki = readdirSync(kat);
+  } catch (e) {
     if (e.code === 'ENOENT') continue;
     throw e;
   }
-  for (const p of pliki.filter((x) => /^\d{4}-/.test(x)
-    && !(d.name === 'rdzen' && x === '0001-baseline.sql'))) {
+  for (const p of pliki.filter((x) => /^\d{4}-/.test(x) && !(d.name === 'rdzen' && x === '0001-baseline.sql'))) {
     const sciezka = join(kat, p);
     const sql = readFileSync(sciezka, 'utf8');
     for (const blad of zakazaneInstrukcjeMigracji(sql)) {

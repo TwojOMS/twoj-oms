@@ -26,7 +26,8 @@ const SKLADANIE = new Set(['moduly/faktury/modul.ts']);
 
 /** Programy fakturowe z własnym klientem API: nazwa → katalog klienta względem `src/`. */
 export function programyZKlientem(src = SRC) {
-  return fs.readdirSync(path.join(src, 'integracje/programy'))
+  return fs
+    .readdirSync(path.join(src, 'integracje/programy'))
     .filter((n) => KOD.has(path.extname(n)))
     .map((n) => path.basename(n, path.extname(n)))
     .filter((p) => fs.existsSync(path.join(src, 'oms', p)))
@@ -36,8 +37,13 @@ export function programyZKlientem(src = SRC) {
 /** Ścieżki modułów, które plik importuje (względne rozwiązane do postaci względem `src/`, reszta bez zmian). */
 export function importy(plik, tresc) {
   const roz = path.extname(plik);
-  const zrodlo = ts.createSourceFile(plik, tresc, ts.ScriptTarget.Latest, true,
-    roz === '.ts' ? ts.ScriptKind.TS : ts.ScriptKind.JS);
+  const zrodlo = ts.createSourceFile(
+    plik,
+    tresc,
+    ts.ScriptTarget.Latest,
+    true,
+    roz === '.ts' ? ts.ScriptKind.TS : ts.ScriptKind.JS,
+  );
   const wynik = [];
   const dodaj = (wezel) => {
     if (!wezel || !ts.isStringLiteralLike(wezel)) return;
@@ -46,9 +52,12 @@ export function importy(plik, tresc) {
   };
   const odwiedz = (wezel) => {
     if (ts.isImportDeclaration(wezel) || ts.isExportDeclaration(wezel)) dodaj(wezel.moduleSpecifier);
-    else if (ts.isCallExpression(wezel)
-      && (wezel.expression.kind === ts.SyntaxKind.ImportKeyword
-        || (ts.isIdentifier(wezel.expression) && wezel.expression.text === 'require'))) dodaj(wezel.arguments[0]);
+    else if (
+      ts.isCallExpression(wezel) &&
+      (wezel.expression.kind === ts.SyntaxKind.ImportKeyword ||
+        (ts.isIdentifier(wezel.expression) && wezel.expression.text === 'require'))
+    )
+      dodaj(wezel.arguments[0]);
     ts.forEachChild(wezel, odwiedz);
   };
   odwiedz(zrodlo);
@@ -109,16 +118,22 @@ describe('strażnik granicy programu fakturowego', () => {
 
   it('klienta API programu do faktur importuje tylko jego wykonawca albo składanie modułu faktur', () => {
     const bledy = naruszenia(kodSrc(), programy);
-    expect(bledy, 'program do faktur bierz z kontraktu ProgramFakturowy, nie z klienta API:\n'
-      + bledy.join('\n')).toEqual([]);
+    expect(
+      bledy,
+      'program do faktur bierz z kontraktu ProgramFakturowy, nie z klienta API:\n' + bledy.join('\n'),
+    ).toEqual([]);
   });
 
   it('strażnik widzi programy z klientem (inFakt) i miejsce składania istnieje', () => {
     expect(programy.map((p) => p.program)).toContain('infakt');
     for (const plik of SKLADANIE) expect(fs.existsSync(path.join(SRC, plik)), plik).toBe(true);
     // Lista miejsc wykonawcy i pośrednik opisują prawdziwe drzewo, nie zgadywane nazwy.
-    for (const plik of ['integracje/programy/infakt.ts', 'oms/infakt/client.js', 'moduly/faktury/infakt-ustawien.ts',
-      'moduly/faktury/trasy/ustawienia-infakt.js']) {
+    for (const plik of [
+      'integracje/programy/infakt.ts',
+      'oms/infakt/client.js',
+      'moduly/faktury/infakt-ustawien.ts',
+      'moduly/faktury/trasy/ustawienia-infakt.js',
+    ]) {
       expect(fs.existsSync(path.join(SRC, plik)), plik).toBe(true);
     }
   });
@@ -133,36 +148,54 @@ describe('strażnik granicy programu fakturowego', () => {
       "const x = imp('../oms/infakt/client.js');",
     ].join('\n');
     expect(importy('moduly/zwroty/a.js', t)).toEqual([
-      'oms/infakt/client.js', 'moduly/zwroty/c.js', 'moduly/oms/infakt/client.js',
-      'moduly/oms/fakturownia/client.js', 'node:fs',
+      'oms/infakt/client.js',
+      'moduly/zwroty/c.js',
+      'moduly/oms/infakt/client.js',
+      'moduly/oms/fakturownia/client.js',
+      'node:fs',
     ]);
-    expect(importy('domena/a.ts', "import type { K } from '../oms/infakt/client.js';")).toEqual(['oms/infakt/client.js']);
+    expect(importy('domena/a.ts', "import type { K } from '../oms/infakt/client.js';")).toEqual([
+      'oms/infakt/client.js',
+    ]);
   });
 
   it('reguła: wykonawca i składanie wolno, reszta kodu nie — także dla innego programu', () => {
-    const p = [{ program: 'infakt', katalog: 'oms/infakt/' }, { program: 'fakturownia', katalog: 'oms/fakturownia/' }];
+    const p = [
+      { program: 'infakt', katalog: 'oms/infakt/' },
+      { program: 'fakturownia', katalog: 'oms/fakturownia/' },
+    ];
     const imp = (cel) => `import { k } from '${cel}';`;
-    expect(naruszenia([
-      ['integracje/programy/infakt.ts', imp('../../oms/infakt/client.js')],
-      ['moduly/faktury/infakt-ustawien.ts', imp('../../oms/infakt/client.js')],
-      ['oms/infakt/pomoc.js', imp('./client.js')],
-      ['integracje/programy/infakt-korekty.ts', imp('../../oms/infakt/client.js')],
-      ['moduly/faktury/trasy/ustawienia-infakt.js', imp('../infakt-ustawien.ts')],
-      ['moduly/faktury/modul.ts', imp('../../oms/fakturownia/client.js')],
-      ['moduly/faktury/modul.ts', imp('./fakturownia-ustawien.ts')],
-      ['domena/wysylka-ksef.js', imp('../integracje/program-fakturowy.ts')],
-    ], p)).toEqual([]);
-    expect(naruszenia([
-      ['domena/wiadomosci.js', imp('../oms/infakt/client.js')],
-      ['moduly/faktury/trasy/faktury.js', imp('../../../oms/infakt/client.js')],
-      ['integracje/programy/infakt.ts', imp('../../oms/fakturownia/client.js')],
-      ['moduly/zwroty/modul.ts', imp('../../oms/infakt/client.js')],
-      // Pośrednik o metodach klienta to ta sama droga obok kontraktu co sam klient.
-      ['domena/wiadomosci.js', imp('../moduly/faktury/infakt-ustawien.ts')],
-      // Nazwa programu w nazwie pliku nie robi z domeny wykonawcy.
-      ['domena/infakt-skrot.js', imp('../oms/infakt/client.js')],
-      ['moduly/faktury/trasy/ustawienia-fakturownia.js', imp('../infakt-ustawien.ts')],
-    ], p)).toEqual([
+    expect(
+      naruszenia(
+        [
+          ['integracje/programy/infakt.ts', imp('../../oms/infakt/client.js')],
+          ['moduly/faktury/infakt-ustawien.ts', imp('../../oms/infakt/client.js')],
+          ['oms/infakt/pomoc.js', imp('./client.js')],
+          ['integracje/programy/infakt-korekty.ts', imp('../../oms/infakt/client.js')],
+          ['moduly/faktury/trasy/ustawienia-infakt.js', imp('../infakt-ustawien.ts')],
+          ['moduly/faktury/modul.ts', imp('../../oms/fakturownia/client.js')],
+          ['moduly/faktury/modul.ts', imp('./fakturownia-ustawien.ts')],
+          ['domena/wysylka-ksef.js', imp('../integracje/program-fakturowy.ts')],
+        ],
+        p,
+      ),
+    ).toEqual([]);
+    expect(
+      naruszenia(
+        [
+          ['domena/wiadomosci.js', imp('../oms/infakt/client.js')],
+          ['moduly/faktury/trasy/faktury.js', imp('../../../oms/infakt/client.js')],
+          ['integracje/programy/infakt.ts', imp('../../oms/fakturownia/client.js')],
+          ['moduly/zwroty/modul.ts', imp('../../oms/infakt/client.js')],
+          // Pośrednik o metodach klienta to ta sama droga obok kontraktu co sam klient.
+          ['domena/wiadomosci.js', imp('../moduly/faktury/infakt-ustawien.ts')],
+          // Nazwa programu w nazwie pliku nie robi z domeny wykonawcy.
+          ['domena/infakt-skrot.js', imp('../oms/infakt/client.js')],
+          ['moduly/faktury/trasy/ustawienia-fakturownia.js', imp('../infakt-ustawien.ts')],
+        ],
+        p,
+      ),
+    ).toEqual([
       'domena/wiadomosci.js → oms/infakt/client.js',
       'moduly/faktury/trasy/faktury.js → oms/infakt/client.js',
       'integracje/programy/infakt.ts → oms/fakturownia/client.js',

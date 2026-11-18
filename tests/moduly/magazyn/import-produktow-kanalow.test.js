@@ -16,7 +16,8 @@ const auth = {
   origin: 'http://localhost',
   'content-type': 'application/x-www-form-urlencoded',
 };
-const ZDANIE_D3 = 'Allegro zabrania używania treści pobranych z ofert w innych serwisach sprzedażowych — decyzja należy do Ciebie';
+const ZDANIE_D3 =
+  'Allegro zabrania używania treści pobranych z ofert w innych serwisach sprzedażowych — decyzja należy do Ciebie';
 const TYPY = {
   powiaz: 'Produkty są już w magazynie — tylko powiąż je z tym kanałem',
   czesc: 'Część produktów jest w magazynie — powiąż istniejące i utwórz brakujące',
@@ -26,8 +27,15 @@ const TYPY = {
 };
 
 const produktWoo = (id, sku, nazwa, ean) => ({
-  id, name: nazwa, sku, type: 'simple', global_unique_id: ean, description: `<p>Opis: ${nazwa}</p>`,
-  images: [], categories: [], attributes: [],
+  id,
+  name: nazwa,
+  sku,
+  type: 'simple',
+  global_unique_id: ean,
+  description: `<p>Opis: ${nazwa}</p>`,
+  images: [],
+  categories: [],
+  attributes: [],
 });
 // Sklep „pro": p1 ma kartę o tym SKU (do powiązania), p2 nie ma (do utworzenia), p3 i p4 już powiązane.
 const KATALOG_PRO = [
@@ -37,7 +45,12 @@ const KATALOG_PRO = [
   produktWoo(104, 'PP-RECZNY-04', 'Plafon Półcień 04', '5901234123471'),
 ];
 const OFERTY = [
-  { id: '7001', name: 'Lampa Półcień na Allegro', external: { id: 'PP-LAMPA-01' }, sellingMode: { price: { amount: '120.00', currency: 'PLN' } } },
+  {
+    id: '7001',
+    name: 'Lampa Półcień na Allegro',
+    external: { id: 'PP-LAMPA-01' },
+    sellingMode: { price: { amount: '120.00', currency: 'PLN' } },
+  },
   { id: '7002', name: 'Kubek bez SKU', sellingMode: { price: { amount: '30.00', currency: 'PLN' } } },
 ];
 
@@ -49,10 +62,17 @@ let tresc;
 
 const kartaSql = (id) => db.prepare('SELECT * FROM karty_produktow WHERE id = ?').get(id);
 const liczbaKart = () => db.prepare('SELECT COUNT(*) AS n FROM karty_produktow').get().n;
-const wiersz = (kanal, produktId) => db.prepare('SELECT * FROM produkty_sklepowe WHERE kanal = ? AND produkt_id = ?').get(kanal, produktId);
-const lustro = (kanal, produktId, nazwa, sku) => zapiszProduktSklepowy(db, {
-  kanal, produkt_id: produktId, wariant_id: '', nazwa, sku_sklepu: sku, odczytane_at: '2026-11-01T08:00:00.000Z',
-});
+const wiersz = (kanal, produktId) =>
+  db.prepare('SELECT * FROM produkty_sklepowe WHERE kanal = ? AND produkt_id = ?').get(kanal, produktId);
+const lustro = (kanal, produktId, nazwa, sku) =>
+  zapiszProduktSklepowy(db, {
+    kanal,
+    produkt_id: produktId,
+    wariant_id: '',
+    nazwa,
+    sku_sklepu: sku,
+    odczytane_at: '2026-11-01T08:00:00.000Z',
+  });
 
 beforeEach(() => {
   db = openOmsDb(':memory:');
@@ -62,39 +82,67 @@ beforeEach(() => {
     k4: utworzKarte(db, { nazwa: 'Plafon Półcień 04', sku: 'PP-RECZNY-04', ean: '5900000000017' }),
   };
   // EAN karty k4 wpisany ręcznie — import nie ma prawa go nadpisać.
-  db.prepare("INSERT INTO karty_zrodla_pol (karta_id, pole, zrodlo, reczne, zmieniono_at) VALUES (?, 'ean', 'reczne', 1, '2026-11-01T08:00:00.000Z')")
-    .run(karty.k4);
+  db.prepare(
+    "INSERT INTO karty_zrodla_pol (karta_id, pole, zrodlo, reczne, zmieniono_at) VALUES (?, 'ean', 'reczne', 1, '2026-11-01T08:00:00.000Z')",
+  ).run(karty.k4);
   powiazProdukt(db, lustro('pro', '103', 'Abażur Półcień 03', 'PP-STARY-03'), karty.k3);
   powiazProdukt(db, lustro('pro', '104', 'Plafon Półcień 04', 'PP-RECZNY-04'), karty.k4);
   // Drugi sklep: niepowiązany produkt z wcześniejszego odczytu — „część" na „pro" nie może go ruszyć.
   lustro('swietlik', '501', 'Kubek Świetlik', 'SW-KUBEK-01');
   sklepy = {
     pro: { pobierzWszystkieProdukty: vi.fn(async () => KATALOG_PRO), pobierzWarianty: vi.fn(async () => []) },
-    swietlik: { pobierzWszystkieProdukty: vi.fn(async () => [produktWoo(501, 'SW-KUBEK-01', 'Kubek Świetlik', null)]), pobierzWarianty: vi.fn(async () => []) },
+    swietlik: {
+      pobierzWszystkieProdukty: vi.fn(async () => [produktWoo(501, 'SW-KUBEK-01', 'Kubek Świetlik', null)]),
+      pobierzWarianty: vi.fn(async () => []),
+    },
   };
   allegro = { allegro_swietlik: { pobierzOferty: vi.fn(async () => OFERTY) } };
   tresc = {
     start: vi.fn(() => ({ wystartowal: true })),
-    stan: () => ({ trwa: false, zaczety_at: null, skonczony_at: null, postep: null, razem: 0, pobrane: 0, bledy: [], blad: null }),
+    stan: () => ({
+      trwa: false,
+      zaczety_at: null,
+      skonczony_at: null,
+      postep: null,
+      razem: 0,
+      pobrane: 0,
+      bledy: [],
+      blad: null,
+    }),
     gotowy: () => true,
   };
 });
 
-const serwer = (o = {}) => buildOmsServer({ db, config, sklepy, klienciWiadomosci: allegro,
-  nadpisania: { 'magazyn.trescAllegro': tresc }, ...o });
+const serwer = (o = {}) =>
+  buildOmsServer({
+    db,
+    config,
+    sklepy,
+    klienciWiadomosci: allegro,
+    nadpisania: { 'magazyn.trescAllegro': tresc },
+    ...o,
+  });
 
 async function sprawdz(app, kanal, typ) {
-  const r = await app.inject({ method: 'POST', url: '/magazyn/import/sprawdz', headers: auth, payload: `kanal=${kanal}&typ=${typ}` });
+  const r = await app.inject({
+    method: 'POST',
+    url: '/magazyn/import/sprawdz',
+    headers: auth,
+    payload: `kanal=${kanal}&typ=${typ}`,
+  });
   expect(r.statusCode).toBe(303);
   for (let i = 0; i < 200; i += 1) {
     const g = await app.inject({ method: 'GET', url: r.headers.location, headers: auth });
     expect(g.statusCode).toBe(200);
     if (g.body.includes('data-krok="podglad"')) return g.body;
-    await new Promise((ok) => { setTimeout(ok, 5); });
+    await new Promise((ok) => {
+      setTimeout(ok, 5);
+    });
   }
   throw new Error('podgląd się nie pojawił');
 }
-const importuj = (app, kanal, typ) => app.inject({ method: 'POST', url: '/magazyn/import/importuj', headers: auth, payload: `kanal=${kanal}&typ=${typ}` });
+const importuj = (app, kanal, typ) =>
+  app.inject({ method: 'POST', url: '/magazyn/import/importuj', headers: auth, payload: `kanal=${kanal}&typ=${typ}` });
 const liczba = (html, klucz) => Number(html.match(new RegExp(`data-liczba="${klucz}"[^>]*>(\\d+)<`))?.[1]);
 
 describe('ekran wyboru', () => {
@@ -103,7 +151,8 @@ describe('ekran wyboru', () => {
     expect(r.statusCode).toBe(200);
     const html = r.body;
     expect(html).toMatch(/<form [^>]*action="\/magazyn\/import\/sprawdz"/);
-    for (const kanal of ['pro', 'swietlik', 'allegro_swietlik']) expect(html).toMatch(new RegExp(`<input type="radio" name="kanal" value="${kanal}"`));
+    for (const kanal of ['pro', 'swietlik', 'allegro_swietlik'])
+      expect(html).toMatch(new RegExp(`<input type="radio" name="kanal" value="${kanal}"`));
     // Konto bez klienta nie jest połączeniem — nie ma czego czytać.
     expect(html).not.toMatch(/name="kanal" value="allegro_polcien2"/);
     expect(html).toMatch(/plakietka plakietka--kanal plakietka--allegro/);
@@ -113,7 +162,9 @@ describe('ekran wyboru', () => {
       expect(html).toContain(napis);
     }
     expect(html).toContain(ZDANIE_D3);
-    expect(html).toMatch(/<a [^>]*href="https:\/\/help\.allegro\.com"[^>]*target="_blank"[^>]*rel="noopener noreferrer"/);
+    expect(html).toMatch(
+      /<a [^>]*href="https:\/\/help\.allegro\.com"[^>]*target="_blank"[^>]*rel="noopener noreferrer"/,
+    );
     expect(html).toMatch(/<a [^>]*href="\/magazyn\/powiazania"[^>]*>Powiąż ręcznie oferty z kartami →<\/a>/);
     expect(html).not.toContain('Stany magazynowe z pliku');
   });
@@ -282,7 +333,14 @@ describe('ekran pominiętych zawężony do kanału', () => {
 describe('zawężenie przebiegów do jednego kanału (parametry opcjonalne)', () => {
   it('start({kanal}) czyta jeden kanał bez treści kart; start() bez zmian', async () => {
     const odswiez = vi.fn(async () => ({ kanaly: [] }));
-    const p = createMagazynPrzebieg({ db, sklepy: { a: {}, b: {} }, allegro: { c: {} }, odswiez, kanalySklepow: ['a', 'b'], kanalyAllegro: ['c'] });
+    const p = createMagazynPrzebieg({
+      db,
+      sklepy: { a: {}, b: {} },
+      allegro: { c: {} },
+      odswiez,
+      kanalySklepow: ['a', 'b'],
+      kanalyAllegro: ['c'],
+    });
     expect(p.kanaly()).toEqual(['a', 'b', 'c']);
     expect(p.start({ kanal: 'x' })).toEqual({ wystartowal: false });
     expect(p.start({ kanal: 'b', trescKart: false })).toEqual({ wystartowal: true });
@@ -302,8 +360,8 @@ describe('zawężenie przebiegów do jednego kanału (parametry opcjonalne)', ()
     void a;
     powiazProdukt(db, lustro('allegro_a', '2', 'Oferta A2', null), karty.k3);
     powiazProdukt(db, lustro('allegro_b', '3', 'Oferta B', null), karty.k3);
-    expect(kolejka(db, ['allegro_a', 'allegro_b']).map(w => w.produkt_id)).toEqual(['1', '2', '3']);
-    expect(kolejka(db, ['allegro_a', 'allegro_b'], null, [karty.k3]).map(w => w.produkt_id)).toEqual(['2', '3']);
+    expect(kolejka(db, ['allegro_a', 'allegro_b']).map((w) => w.produkt_id)).toEqual(['1', '2', '3']);
+    expect(kolejka(db, ['allegro_a', 'allegro_b'], null, [karty.k3]).map((w) => w.produkt_id)).toEqual(['2', '3']);
     const klient = () => ({ pobierzOferte: vi.fn(async () => null) });
     const kl = { allegro_a: klient(), allegro_b: klient() };
     const p = createTrescAllegroPrzebieg({ db, allegro: kl, kanalyAllegro: ['allegro_a', 'allegro_b'] });
@@ -321,7 +379,8 @@ describe('dwa wiersze kanału z tym samym SKU, karty o tym SKU nie ma', () => {
       const p = { kanal: 'pro', typ, kanalyZrodlowe: ['pro', 'swietlik'], allegro: false };
       lustro('pro', '201', 'Kinkiet Półcień 09', 'PP-DUBEL-09');
       lustro('pro', '202', 'Kinkiet Półcień 09 (drugi wpis)', 'PP-DUBEL-09');
-      const powiazanych = () => db.prepare("SELECT COUNT(*) AS n FROM produkty_sklepowe WHERE kanal = 'pro' AND karta_id IS NOT NULL").get().n;
+      const powiazanych = () =>
+        db.prepare("SELECT COUNT(*) AS n FROM produkty_sklepowe WHERE kanal = 'pro' AND karta_id IS NOT NULL").get().n;
       const plan = planImportu(db, p);
       expect(plan.liczby).toMatchObject({ utworzy: 1, powiaze: 1, pominie: 0 });
       const n = liczbaKart();
@@ -339,7 +398,12 @@ describe('dwa wiersze kanału z tym samym SKU, karty o tym SKU nie ma', () => {
 });
 
 describe('stan treści Allegro po imporcie', () => {
-  const p = () => ({ kanal: 'allegro_swietlik', typ: typImportu('aktualizuj'), kanalyZrodlowe: ['pro', 'swietlik'], allegro: true });
+  const p = () => ({
+    kanal: 'allegro_swietlik',
+    typ: typImportu('aktualizuj'),
+    kanalyZrodlowe: ['pro', 'swietlik'],
+    allegro: true,
+  });
   beforeEach(() => {
     powiazProdukt(db, lustro('allegro_swietlik', '7001', 'Lampa Półcień 01', 'PP-LAMPA-01'), karty.k1);
   });

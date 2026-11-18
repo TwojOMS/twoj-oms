@@ -20,7 +20,12 @@ import { ustawieniaFormulki } from '../../../domena/ustawienia-formulki.js';
 import { czyjRuch } from '../../../domena/czyj-ruch-watku.js';
 import { wczytajUstawienia } from '../../../oms/db/ustawienia.js';
 import {
-  listaWatkow, dowody, zapiszDowod, oznaczWyslane, oznaczBlad, licznikFormulek,
+  listaWatkow,
+  dowody,
+  zapiszDowod,
+  oznaczWyslane,
+  oznaczBlad,
+  licznikFormulek,
 } from '../../../oms/db/allegro-watki.js';
 
 // ⚠️ BEZPIECZNIK ILOSCIOWY. Formulka odpowiada na pojedyncze wiadomosci poza godzinami — nagly
@@ -46,7 +51,13 @@ const GODZINA_MS = 60 * 60 * 1000;
 // juz tylko kompromitujace.
 const MAKS_WIEK_WIADOMOSCI_MS = 24 * GODZINA_MS;
 
-export function createCzuwaczFormulki({ db, klienci = {}, brakiKanalu = () => [], wolnoZapisywac = () => true, teraz = () => new Date() }) {
+export function createCzuwaczFormulki({
+  db,
+  klienci = {},
+  brakiKanalu = () => [],
+  wolnoZapisywac = () => true,
+  teraz = () => new Date(),
+}) {
   let trwa = false;
 
   async function przebieg() {
@@ -73,10 +84,19 @@ export function createCzuwaczFormulki({ db, klienci = {}, brakiKanalu = () => []
         // napisal „Dziekuje". Patrzenie na sama flage wyslaloby formulke komus, kto wlasnie
         // podziekowal i komu czlowiek swiadomie zamknal temat. Warunek ma byc JEDEN
         // i wspolny z ekranem — dwie kopie rozjechalyby sie przy pierwszej nowej regule.
-        if (czyjRuch(w) !== 'czeka') { pominiete += 1; continue; }
+        if (czyjRuch(w) !== 'czeka') {
+          pominiete += 1;
+          continue;
+        }
         // 5. Nigdy spor.
-        if (w.typ === 'POST_PURCHASE_ISSUE') { pominiete += 1; continue; }
-        if (!w.last_message_date_time) { pominiete += 1; continue; }
+        if (w.typ === 'POST_PURCHASE_ISSUE') {
+          pominiete += 1;
+          continue;
+        }
+        if (!w.last_message_date_time) {
+          pominiete += 1;
+          continue;
+        }
 
         const przyszla = new Date(w.last_message_date_time);
         // ⚠️ NAJPIERW WIEK, przed oknem i karencja: to granica TWARDA, nieustawialna,
@@ -87,32 +107,54 @@ export function createCzuwaczFormulki({ db, klienci = {}, brakiKanalu = () => []
           continue;
         }
         // 3. Okno liczone dla CHWILI NADEJSCIA.
-        if (!czyWOknie(przyszla, u)) { pominiete += 1; continue; }
+        if (!czyWOknie(przyszla, u)) {
+          pominiete += 1;
+          continue;
+        }
         // 4. Karencja — daj czlowiekowi szanse odpisac pierwszemu.
-        if (chwila.getTime() - przyszla.getTime() < u.karencjaMin * 60 * 1000) { pominiete += 1; continue; }
+        if (chwila.getTime() - przyszla.getTime() < u.karencjaMin * 60 * 1000) {
+          pominiete += 1;
+          continue;
+        }
         // 6. Raz na watek. Liczy sie KAZDY dowod formulki, takze nieudany.
-        if (dowody(db, w.kanal, w.thread_id).some((d) => d.rodzaj === 'formulka')) { pominiete += 1; continue; }
+        if (dowody(db, w.kanal, w.thread_id).some((d) => d.rodzaj === 'formulka')) {
+          pominiete += 1;
+          continue;
+        }
 
         const klient = klienci[w.kanal];
-        if (!klient || !kanalZWiadomosciami(w.kanal)) { pominiete += 1; continue; }
+        if (!klient || !kanalZWiadomosciami(w.kanal)) {
+          pominiete += 1;
+          continue;
+        }
         // ⚠️⚠️ NIE WYSYLAMY PRZEZ KANAL BEZ UPRAWNIENIA `messaging` — Allegro odbije 403,
         // a `oznaczBlad` zostawi dowod, ktory przy regule „raz na watek" zablokowalby
         // formulke NA ZAWSZE: po przewiazaniu nigdy by juz nie poszla. Pomijamy PRZED
         // zapisem dowodu, wiec watek czeka nietkniety.
-        if (brakiKanalu(w.kanal).includes('allegro:api:messaging')) { pominiete += 1; continue; }
+        if (brakiKanalu(w.kanal).includes('allegro:api:messaging')) {
+          pominiete += 1;
+          continue;
+        }
         // Po reconnect kolejka czeka na osobny przegląd. Pomijamy PRZED rezerwacją
         // dowodu, żeby blokada transportu nie zużyła jedynej próby autorespondera.
-        if (!wolnoZapisywac(w.kanal)) { pominiete += 1; continue; }
+        if (!wolnoZapisywac(w.kanal)) {
+          pominiete += 1;
+          continue;
+        }
 
         // ⚠️ NAJPIERW DOWOD. Gdy zapis odmowi (wyscig z drugim przebiegiem — indeks
         // `allegro_formulka_raz`), NIE wysylamy: to znaczy, ze ktos byl szybszy.
         let dowod;
         try {
           dowod = zapiszDowod(
-            db, { kanal: w.kanal, threadId: w.thread_id, rodzaj: 'formulka', tresc: u.tresc },
+            db,
+            { kanal: w.kanal, threadId: w.thread_id, rodzaj: 'formulka', tresc: u.tresc },
             chwila.toISOString(),
           );
-        } catch { pominiete += 1; continue; }
+        } catch {
+          pominiete += 1;
+          continue;
+        }
 
         try {
           await klient.wyslijWiadomosc(w.thread_id, u.tresc);

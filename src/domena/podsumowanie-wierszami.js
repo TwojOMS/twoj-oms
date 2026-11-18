@@ -21,7 +21,8 @@ export function podsumowanieWierszami(linie = [], opcje = {}) {
   let nettoGr = 0;
   let bruttoGr = 0;
   linie.forEach((l, i) => {
-    if (!Number.isInteger(l?.bruttoGr)) throw new Error(`Linia ${i + 1}: kwota brutto nie w całych groszach („${l?.bruttoGr}”).`);
+    if (!Number.isInteger(l?.bruttoGr))
+      throw new Error(`Linia ${i + 1}: kwota brutto nie w całych groszach („${l?.bruttoGr}”).`);
     if (!czyStawkaVat(l.stawka, opcje)) throw new Error(`Linia ${i + 1}: stawka VAT spoza listy („${l.stawka}”).`);
     const procent = String(l.stawka).trim() === 'zw' ? 0 : Number(l.stawka);
     nettoGr += Math.round((l.bruttoGr * 100) / (100 + procent));

@@ -45,8 +45,15 @@ import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 
 // PDF faktury pobiera PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`).
 export function createWiadomosci({
-  db, mailer, potwierdzenie = null, proforma = null, program: programPodany = null, infakt = null, config = {},
-  podpisPanelu = null, teraz = () => new Date().toISOString(),
+  db,
+  mailer,
+  potwierdzenie = null,
+  proforma = null,
+  program: programPodany = null,
+  infakt = null,
+  config = {},
+  podpisPanelu = null,
+  teraz = () => new Date().toISOString(),
   // Wybór modułu faktur (usługa `faktury.wyborProgramu`; `null` = bez modułu faktur) — WYŁĄCZNIE do
   // zdania „faktury wyłączone” przy jawnym „Brak”; w innym razie odmowa bez programu zostaje znak w znak.
   wyborProgramu = null,
@@ -57,11 +64,12 @@ export function createWiadomosci({
   // Oprawa liczona przy każdym złożeniu maila (plik + podpis z Ustawień → Poczta), nie raz przy starcie.
   const oprawaMailaTeraz = oprawaTeraz(config.oprawaPoczty, podpisPanelu);
   // Nazwa do logu karty: temat wbudowany ze słownika domeny, szablon własny — jego nazwa z Ustawień.
-  const nazwaTematu = (temat_id) => NAZWA_TEMATU[temat_id]
-    ?? wczytajSzablonyWiadomosci(db).wlasne.find((s) => s.id === temat_id)?.nazwa ?? temat_id;
+  const nazwaTematu = (temat_id) =>
+    NAZWA_TEMATU[temat_id] ?? wczytajSzablonyWiadomosci(db).wlasne.find((s) => s.id === temat_id)?.nazwa ?? temat_id;
   // Rachunek z bieżącej konfiguracji (plik → Ustawienia → Firma → brak), czytany przy KAŻDYM złożeniu maila
   // — zapis w panelu działa od następnego maila, bez restartu. Skład bez `config.rachunekFirmy` czyta config.proforma.
-  const rachunekTeraz = () => (config.rachunekFirmy ? config.rachunekFirmy().rachunek : config.proforma?.rachunek) ?? null;
+  const rachunekTeraz = () =>
+    (config.rachunekFirmy ? config.rachunekFirmy().rachunek : config.proforma?.rachunek) ?? null;
   // Nazwa odbiorcy z TEGO SAMEGO źródła adresu firmy co proforma (plik DPD_NADAWCA_* wygrywa, potem
   // Ustawienia → Firma), czytana przy każdym mailu — liczona raz przy starcie i tylko z pliku dawała pusty
   // „Odbiorca: ” firmie z adresem wpisanym w panelu. Skład bez `config.adresFirmy` czyta config.nadawca jak dotąd.
@@ -103,12 +111,18 @@ export function createWiadomosci({
     // czytane przy KAŻDYM złożeniu (podgląd na karcie i wysyłka) — zapis działa od następnego maila, bez restartu.
     const zdania = zdaniaPlatnosciTeraz(db);
 
-    const wlasny =szablony.wlasne.find((s) => s.id === temat_id);
+    const wlasny = szablony.wlasne.find((s) => s.id === temat_id);
     if (wlasny) {
       const zgW = czyWolnoWyslacWlasny(k.z);
       if (!zgW.wolno) throw bladOperatora(zgW.powod);
       const mail = mailWlasny(k.z, wlasny, { oprawa, zdania });
-      return { do: mail.do, temat: mail.temat, tekst: tekstZeStopka(mail.tekst, oprawa.footer), html: mail.html, zalaczniki: [] };
+      return {
+        do: mail.do,
+        temat: mail.temat,
+        tekst: tekstZeStopka(mail.tekst, oprawa.footer),
+        html: mail.html,
+        zalaczniki: [],
+      };
     }
 
     const zg = czyWolnoWyslac(k.z, temat_id, k);
@@ -116,14 +130,25 @@ export function createWiadomosci({
 
     if (temat_id === 'potwierdzenie') {
       const mail = mailPotwierdzenia(k.z, { oprawa, szablon: szablony.wbudowane.potwierdzenie ?? null, zdania });
-      return { do: mail.do, temat: mail.temat, tekst: tekstZeStopka(mail.tekst, oprawa.footer),
-        html: mail.html, zalaczniki: [] };
+      return {
+        do: mail.do,
+        temat: mail.temat,
+        tekst: tekstZeStopka(mail.tekst, oprawa.footer),
+        html: mail.html,
+        zalaczniki: [],
+      };
     }
 
     // Bez starej drogi — zapisany szablon albo domyślny. Bez załącznika, bez danych do przelewu.
     if (temat_id === 'wyslane') {
       const mail = mailWyslane(k.z, szablony.wbudowane.wyslane ?? DOMYSLNE.wyslane, { oprawa, zdania });
-      return { do: mail.do, temat: mail.temat, tekst: tekstZeStopka(mail.tekst, oprawa.footer), html: mail.html, zalaczniki: [] };
+      return {
+        do: mail.do,
+        temat: mail.temat,
+        tekst: tekstZeStopka(mail.tekst, oprawa.footer),
+        html: mail.html,
+        zalaczniki: [],
+      };
     }
 
     // Dokument, którego numer trafia w TYTUŁ PRZELEWU. Reguła (patrz też komentarze
@@ -140,9 +165,8 @@ export function createWiadomosci({
     // już zakładał, że `dokument` przy przypomnieniu bywa numerem FAKTURY. Skutek:
     // faktura prosiła o przelew z tytułem FV/…, przypomnienie trzy dni później — z tytułem
     // NUMERU ZAMÓWIENIA, więc księgowość nie dopasowywała wpłaty do żadnego dokumentu.
-    const dokument = temat_id === 'faktura' ? k.faktura
-      : temat_id === 'przypomnienie' ? (k.proforma ?? k.faktura)
-      : k.proforma;
+    const dokument =
+      temat_id === 'faktura' ? k.faktura : temat_id === 'przypomnienie' ? (k.proforma ?? k.faktura) : k.proforma;
 
     // ⚠️ ZAŁĄCZNIKI SKŁADAMY PRZED MODELEM, bo zdanie „W załączeniu proforma …" ma opisywać
     // FAKT (co naprawdę jedzie z mailem), a nie temat wiadomości. Odwrotna kolejność dawała
@@ -169,8 +193,10 @@ export function createWiadomosci({
       // Bez programu nie ma czyjej nazwy podać — domyślne zdanie mówi o inFakcie.
       // Przy JAWNYM „Brak” (plik albo Ustawienia) zdanie „faktury wyłączone”; bez wyboru — zdanie domyślne o inFakcie.
       if (!program) {
-        throw bladOperatora(zdanieBrakuProgramu(wyborProgramu, 'PDF-u faktury nie ma skąd pobrać.')
-          ?? 'Panel nie ma połączenia z inFaktem — PDF-u faktury nie ma skąd pobrać.');
+        throw bladOperatora(
+          zdanieBrakuProgramu(wyborProgramu, 'PDF-u faktury nie ma skąd pobrać.') ??
+            'Panel nie ma połączenia z inFaktem — PDF-u faktury nie ma skąd pobrać.',
+        );
       }
       // ⚠️ NA ŚWIEŻO Z INFAKTU, nie z kopii: dopiero tam dokument ma numer KSeF w pierwszej
       // linii. Ta sama droga, co przy wysyłce faktury na konto kupującego w Allegro.
@@ -183,7 +209,11 @@ export function createWiadomosci({
       // PDF przy wysyłce (B2B: „zwykle w kilka minut”; konsumencka przy wyłączonym przełączniku: „nie idą teraz do KSeF”).
       const czeka = podglad && program.podgladPdf ? await program.zdanieCzekaniaNaKsef?.(idPdf) : null;
       if (czeka) {
-        throw bladOperatora(`${czeka}. Mail z fakturą wyślesz potem.`, { status: 409, kod: 'czeka-na-ksef', czekaNaKsef: true });
+        throw bladOperatora(`${czeka}. Mail z fakturą wyślesz potem.`, {
+          status: 409,
+          kod: 'czeka-na-ksef',
+          czekaNaKsef: true,
+        });
       }
       const bajty = podglad && program.podgladPdf ? await program.podgladPdf(idPdf) : await program.pobierzPdf(idPdf);
       zalaczniki.push({ filename: nazwaPliku('Faktura', k.faktura.numer), content: bajty });
@@ -194,11 +224,13 @@ export function createWiadomosci({
       // Zdanie w treści maila zapala FAKT z koperty (`zalacznikWywozu` niżej), nie temat.
       // Firma zwolniona z VAT (TwojeFaktury + zapisane zwolnienie) nie robi WDT — bez wywozu.
       if (czyWdt(daneFaktury(k.z).nip, { zwolniona: sprzedawcaZwolniony(db, program.opis) })) {
-        const oswiadczenie = zbudujOswiadczenieWywozuPdf(modelOswiadczenia(k.z, {
-          // NIP z pliku albo Ustawień → Firma; bez NIP-u odmowa (mail z fakturą WDT nie idzie bez wywozu).
-          sprzedawca: { ...adresSprzedawcy(config), nip: nipSprzedawcy(config) },
-          dzis: k.dzis,
-        }));
+        const oswiadczenie = zbudujOswiadczenieWywozuPdf(
+          modelOswiadczenia(k.z, {
+            // NIP z pliku albo Ustawień → Firma; bez NIP-u odmowa (mail z fakturą WDT nie idzie bez wywozu).
+            sprzedawca: { ...adresSprzedawcy(config), nip: nipSprzedawcy(config) },
+            dzis: k.dzis,
+          }),
+        );
         zalaczniki.push({ filename: nazwaPliku('Potwierdzenie_wywozu', k.faktura.numer), content: oswiadczenie });
       }
     } else if (k.proforma?.plik_sciezka && proforma) {
@@ -213,7 +245,9 @@ export function createWiadomosci({
     }
 
     const model = modelWiadomosci(k.z, {
-      temat_id, dokument, zalacznikProformy,
+      temat_id,
+      dokument,
+      zalacznikProformy,
       // FAKT Z KOPERTY: zdanie o potwierdzeniu wywozu zapala się wyłącznie wtedy, gdy
       // dokument NAPRAWDĘ jedzie w załączniku — ta sama zasada, co `zalacznikProformy`.
       zalacznikWywozu: zalaczniki.some((a) => a.filename.startsWith('Potwierdzenie_wywozu')),
@@ -222,12 +256,20 @@ export function createWiadomosci({
       // wtedy, gdy ten dokument naprawdę jedzie. Ta sama zasada, co przy `zalacznikProformy`
       // linijkę wyżej, i ten sam powód: przypomnienie bez proformy nie ma żadnego załącznika.
       zalaczonyDokument: zalaczniki.length > 0,
-      rachunek: rachunekTeraz(), odbiorca: odbiorcaPrzelewu(config), dzis: k.dzis, podpis: oprawa.podpis,
+      rachunek: rachunekTeraz(),
+      odbiorca: odbiorcaPrzelewu(config),
+      dzis: k.dzis,
+      podpis: oprawa.podpis,
       // Zdania, etykiety i stałe teksty z początku `zloz` — czytane przy KAŻDYM złożeniu.
       zdania,
     });
 
-    const mail = mailPlatniczy(k.z, model, { temat_id, dokument, oprawa, szablon: szablony.wbudowane[temat_id] ?? null });
+    const mail = mailPlatniczy(k.z, model, {
+      temat_id,
+      dokument,
+      oprawa,
+      szablon: szablony.wbudowane[temat_id] ?? null,
+    });
     return {
       // ⚠️ ADRES Z JEDNEJ REGUŁY DOMENY (`adresatKlienta`), nigdy z pola czytanego tutaj —
       // inaczej potwierdzenie poszłoby do zamawiającego, a faktura do księgowości.
@@ -244,7 +286,10 @@ export function createWiadomosci({
   async function podglad(id, temat_id) {
     const w = await zloz(id, temat_id, { podglad: true });
     return {
-      do: w.do, temat: w.temat, tekst: w.tekst, html: w.html,
+      do: w.do,
+      temat: w.temat,
+      tekst: w.tekst,
+      html: w.html,
       zalacznik: w.zalaczniki[0]?.filename ?? null,
     };
   }
@@ -264,11 +309,13 @@ export function createWiadomosci({
     // ⚠️ OSOBNA AKCJA, NIE `wiadomosc.blad`: tamten wpis mówi „BŁĄD wysyłki … do <adres>",
     // czyli opisuje maila, którego PRÓBOWANO wysłać. Tutaj nie próbowano niczego — nie ma
     // nawet adresata (`w.do` jeszcze nie istnieje) — i log nie ma prawa twierdzić inaczej.
-    const odnotujNieudaneZlozenie = (blad) => dopiszLog(db, id, {
-      akcja: 'wiadomosc.nieudane-zlozenie',
-      wynik: `NIE UDAŁO SIĘ PRZYGOTOWAĆ wiadomości „${nazwaTematu(temat_id)}" `
-        + `(${ktoKlikal}): ${blad.message} — nic nie poszło do klienta.`,
-    });
+    const odnotujNieudaneZlozenie = (blad) =>
+      dopiszLog(db, id, {
+        akcja: 'wiadomosc.nieudane-zlozenie',
+        wynik:
+          `NIE UDAŁO SIĘ PRZYGOTOWAĆ wiadomości „${nazwaTematu(temat_id)}" ` +
+          `(${ktoKlikal}): ${blad.message} — nic nie poszło do klienta.`,
+      });
 
     // ⚠️ POTWIERDZENIE: CZYSTA DELEGACJA do starej usługi — ona wysyła, stempluje
     // `potwierdzenie_wyslane_at` I dopisuje wpis do rejestru.
@@ -313,7 +360,10 @@ export function createWiadomosci({
 
     try {
       await mailer.sendMail({
-        to: w.do, subject: w.temat, text: w.tekst, html: w.html,
+        to: w.do,
+        subject: w.temat,
+        text: w.tekst,
+        html: w.html,
         attachments: w.zalaczniki.length ? w.zalaczniki : undefined,
       });
     } catch (e) {
@@ -330,14 +380,21 @@ export function createWiadomosci({
 
     const kiedy = teraz();
     zapiszWiadomosc(db, {
-      zamowienieId: id, temat_id, adresat: w.do, temat: w.temat,
-      zalacznik: w.zalaczniki[0]?.filename ?? null, kto: ktoKlikal, at: kiedy,
+      zamowienieId: id,
+      temat_id,
+      adresat: w.do,
+      temat: w.temat,
+      zalacznik: w.zalaczniki[0]?.filename ?? null,
+      kto: ktoKlikal,
+      at: kiedy,
     });
     dopiszLog(db, id, {
       akcja: 'wiadomosc.wyslana',
       // Adresat, temat i załącznik TAK, treść NIE — log karty czyta się na głos przy reklamacji.
-      wynik: `${automat ? `Automatycznie (reguła „${regula ?? ktoKlikal}”)` : `Ręcznie (${ktoKlikal})`}: „${nazwaTematu(temat_id)}" wysłane na ${w.do}`
-        + (w.zalaczniki[0] ? ` z załącznikiem ${w.zalaczniki[0].filename}` : ' bez załącznika') + '.',
+      wynik:
+        `${automat ? `Automatycznie (reguła „${regula ?? ktoKlikal}”)` : `Ręcznie (${ktoKlikal})`}: „${nazwaTematu(temat_id)}" wysłane na ${w.do}` +
+        (w.zalaczniki[0] ? ` z załącznikiem ${w.zalaczniki[0].filename}` : ' bez załącznika') +
+        '.',
     });
     return { do: w.do, temat: w.temat, kiedy };
   }
@@ -360,7 +417,11 @@ export function createWiadomosci({
     const k = kontekst(zamowienieId);
     if (!program || !k.faktura || typeof program.gotowyDoWydania !== 'function') return { gotowa: true };
     let idPdf;
-    try { idPdf = idDokumentuDla(k.faktura, program); } catch { return { gotowa: true }; }
+    try {
+      idPdf = idDokumentuDla(k.faktura, program);
+    } catch {
+      return { gotowa: true };
+    }
     if (idPdf == null) return { gotowa: true };
     const czeka = await program.zdanieCzekaniaNaKsef?.(idPdf);
     if (czeka) return { gotowa: false, powod: czeka };

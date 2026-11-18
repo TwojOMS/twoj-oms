@@ -15,13 +15,29 @@ const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('bas
 const poller = { stan: () => ({ ostatni_przebieg_at: '2026-10-29T08:00:00', ostatni_blad: null }) };
 
 const zmapowane = (nad = {}) => ({
-  zrodlo_id: 12602, numer: 'PC-12602',
+  zrodlo_id: 12602,
+  numer: 'PC-12602',
   // Formularz zachowujący daty wymaga kompletu danych nabywcy.
-  klient: { first_name: 'Anna', last_name: 'Półcień', email: 'anna@polcien.invalid', company: 'Pracownia Półcień', address_1: 'Fikcyjna 1', postcode: '00-001', city: 'Miasto Testowe' },
+  klient: {
+    first_name: 'Anna',
+    last_name: 'Półcień',
+    email: 'anna@polcien.invalid',
+    company: 'Pracownia Półcień',
+    address_1: 'Fikcyjna 1',
+    postcode: '00-001',
+    city: 'Miasto Testowe',
+  },
   dostawa: { city: 'Warszawa' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: '1234567890',
-  kwota_brutto: '129.00', koszt_dostawy_brutto: '0.00',
-  status_woo: 'processing', oplacone_at: '2026-10-28T10:05:00', anulowane: 0, utworzone_at: '2026-10-28T10:00:00',
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 1,
+  nip: '1234567890',
+  kwota_brutto: '129.00',
+  koszt_dostawy_brutto: '0.00',
+  status_woo: 'processing',
+  oplacone_at: '2026-10-28T10:05:00',
+  anulowane: 0,
+  utworzone_at: '2026-10-28T10:00:00',
   pozycje: [{ nazwa: 'Lampa wisząca Półcień', sku: 'LAMPA-W1', ilosc: 1, cena_brutto: '129.00', vat: null }],
   ...nad,
 });
@@ -29,17 +45,29 @@ const zmapowane = (nad = {}) => ({
 // Odmowa walidacji NIP z polem 'nip' — tak jak ją zgłasza domena programu wbudowanego
 // (src/domena/twojefaktury/z-ladunku.js; samo `pole` sprawdza tests/domena/twojefaktury/z-ladunku-prz122.test.js).
 // Plik wspólny nie importuje programu TF (lista wycięcia, tests/instalacja/wyciecie-twojefaktury.test.js).
-const programZlyNip = () => programTestowy({ metody: {
-  przygotujNabywce: vi.fn().mockRejectedValue(bladOperatora(
-    'NIP nabywcy „1234567890” nie jest poprawnym polskim NIP-em (10 cyfr ze zgodną cyfrą kontrolną) — popraw go w danych do faktury.',
-    { pole: 'nip' },
-  )),
-} });
+const programZlyNip = () =>
+  programTestowy({
+    metody: {
+      przygotujNabywce: vi
+        .fn()
+        .mockRejectedValue(
+          bladOperatora(
+            'NIP nabywcy „1234567890” nie jest poprawnym polskim NIP-em (10 cyfr ze zgodną cyfrą kontrolną) — popraw go w danych do faktury.',
+            { pole: 'nip' },
+          ),
+        ),
+    },
+  });
 
 let db;
 let serwer;
 beforeEach(() => {
-  vi.stubGlobal('fetch', vi.fn(() => { throw new Error('Sieć zabroniona'); }));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(() => {
+      throw new Error('Sieć zabroniona');
+    }),
+  );
   db = openOmsDb(':memory:');
 });
 afterEach(async () => {
@@ -57,10 +85,13 @@ async function przygotuj({ program, opcje = {}, nad = {} } = {}) {
   return id;
 }
 
-const wystaw = (id, payload = {}) => serwer.inject({
-  method: 'POST', url: `/zamowienia/${id}/faktura`, headers: naglowek,
-  payload: { termin: '14', data_wystawienia: '2026-10-27', data_sprzedazy: '2026-10-26', ...payload },
-});
+const wystaw = (id, payload = {}) =>
+  serwer.inject({
+    method: 'POST',
+    url: `/zamowienia/${id}/faktura`,
+    headers: naglowek,
+    payload: { termin: '14', data_wystawienia: '2026-10-27', data_sprzedazy: '2026-10-26', ...payload },
+  });
 
 describe('błąd przy polu przy wystawieniu faktury', () => {
   it('zły NIP (odmowa z polem nip): 400, karta w HTML, komunikat przy polu NIP, wpisane daty zostają', async () => {
@@ -91,15 +122,19 @@ describe('błąd przy polu przy wystawieniu faktury', () => {
   });
 
   it('odmowa bez wskazanego pola: komunikat nad formularzem w sekcji #faktura, 400, HTML', async () => {
-    const program = programTestowy({ metody: {
-      przygotujNabywce: vi.fn().mockRejectedValue(bladOperatora('Testownik nie odpowiada — spróbuj za chwilę.')),
-    } });
+    const program = programTestowy({
+      metody: {
+        przygotujNabywce: vi.fn().mockRejectedValue(bladOperatora('Testownik nie odpowiada — spróbuj za chwilę.')),
+      },
+    });
     const id = await przygotuj({ program, nad: { nip: '1234563218' } });
     const r = await wystaw(id);
     expect(r.statusCode).toBe(400);
     expect(r.headers['content-type']).toMatch(/text\/html/);
     const sekcja = r.body.slice(r.body.indexOf('id="faktura"'));
-    expect(sekcja).toMatch(/<p class="pasek-blokada" id="blad-faktury">Nie udało się wystawić faktury: Testownik nie odpowiada/);
+    expect(sekcja).toMatch(
+      /<p class="pasek-blokada" id="blad-faktury">Nie udało się wystawić faktury: Testownik nie odpowiada/,
+    );
     expect(r.body).not.toContain('aria-invalid="true"');
   });
 
@@ -125,8 +160,18 @@ describe('błąd przy zapisie danych do faktury', () => {
     const id = await przygotuj();
     db.exec("CREATE TRIGGER t_c02 BEFORE UPDATE ON zamowienia BEGIN SELECT RAISE(ABORT, 'baza tylko do odczytu'); END");
     const r = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/dane/faktura`, headers: naglowek,
-      payload: { chce_fakture: '1', firma: 'Pracownia Półcień Nowa', nip: '1234563218', ulica: 'Cicha "1"<b>', kod: '00-001', miasto: 'Warszawa', email: '' },
+      method: 'POST',
+      url: `/zamowienia/${id}/dane/faktura`,
+      headers: naglowek,
+      payload: {
+        chce_fakture: '1',
+        firma: 'Pracownia Półcień Nowa',
+        nip: '1234563218',
+        ulica: 'Cicha "1"<b>',
+        kod: '00-001',
+        miasto: 'Warszawa',
+        email: '',
+      },
     });
     expect(r.statusCode).toBe(400);
     expect(r.headers['content-type']).toMatch(/text\/html/);
@@ -143,8 +188,18 @@ describe('błąd przy zapisie danych do faktury', () => {
     const id = await przygotuj();
     db.exec("CREATE TRIGGER t_c02 BEFORE UPDATE ON zamowienia BEGIN SELECT RAISE(ABORT, 'baza tylko do odczytu'); END");
     const r = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/dane/wysylka`, headers: naglowek,
-      payload: { nazwa: 'Anna Półcień', company: '', ulica: 'Jasna 7', kod: '00-002', miasto: 'Warszawa', phone: '', email: '' },
+      method: 'POST',
+      url: `/zamowienia/${id}/dane/wysylka`,
+      headers: naglowek,
+      payload: {
+        nazwa: 'Anna Półcień',
+        company: '',
+        ulica: 'Jasna 7',
+        kod: '00-002',
+        miasto: 'Warszawa',
+        phone: '',
+        email: '',
+      },
     });
     expect(r.statusCode).toBe(400);
     expect(r.headers['content-type']).toMatch(/text\/html/);
@@ -156,7 +211,10 @@ describe('błąd przy zapisie danych do faktury', () => {
   it('żądanie bez pól (odmowa operatora): 400, karta z komunikatem', async () => {
     const id = await przygotuj();
     const r = await serwer.inject({
-      method: 'POST', url: `/zamowienia/${id}/dane/faktura`, headers: naglowek, payload: { chce_fakture: '1' },
+      method: 'POST',
+      url: `/zamowienia/${id}/dane/faktura`,
+      headers: naglowek,
+      payload: { chce_fakture: '1' },
     });
     expect(r.statusCode).toBe(400);
     expect(r.headers['content-type']).toMatch(/text\/html/);

@@ -14,27 +14,47 @@ import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 const config = { auth: { user: 'adam', pass: 'x' }, klienciZbiorczy: [] };
 const naglowki = {
   authorization: 'Basic ' + Buffer.from('adam:x').toString('base64'),
-  origin: 'http://localhost', host: 'localhost',
+  origin: 'http://localhost',
+  host: 'localhost',
 };
 
 // Zamówienie ze SKLEPU — czyli takie, jakie ma karta na torze automatycznym: bez `karta_id`.
 const ZE_SKLEPU = {
-  zrodlo_id: 28060, numer: '28060', kwota_brutto: '343.00', kwota_pobrania: null,
-  metoda_wysylki: 'dpd', chce_fakture: 1, nip: '1200001111', status_woo: 'processing',
-  oplacone_at: '2026-08-19T10:00:00', anulowane: 0, utworzone_at: '2026-08-19T09:55:00',
+  zrodlo_id: 28060,
+  numer: '28060',
+  kwota_brutto: '343.00',
+  kwota_pobrania: null,
+  metoda_wysylki: 'dpd',
+  chce_fakture: 1,
+  nip: '1200001111',
+  status_woo: 'processing',
+  oplacone_at: '2026-08-19T10:00:00',
+  anulowane: 0,
+  utworzone_at: '2026-08-19T09:55:00',
   pozycje: [],
   dostawa: {
-    first_name: 'Anna', last_name: 'Kowalska', company: 'Pracownia Wnętrz sp. z o.o.',
-    address_1: 'Długa 45/2', postcode: '30-001', city: 'Kraków', country: 'PL',
+    first_name: 'Anna',
+    last_name: 'Kowalska',
+    company: 'Pracownia Wnętrz sp. z o.o.',
+    address_1: 'Długa 45/2',
+    postcode: '30-001',
+    city: 'Kraków',
+    country: 'PL',
   },
   klient: {
-    first_name: 'Anna', last_name: 'Kowalska', company: 'Pracownia Wnętrz sp. z o.o.',
-    email: 'anna@pracownia.pl', phone: '500900008',
-    address_1: 'Długa 45/2', postcode: '30-001', city: 'Kraków',
+    first_name: 'Anna',
+    last_name: 'Kowalska',
+    company: 'Pracownia Wnętrz sp. z o.o.',
+    email: 'anna@pracownia.pl',
+    phone: '500900008',
+    address_1: 'Długa 45/2',
+    postcode: '30-001',
+    city: 'Kraków',
   },
 };
 
-let db; let app;
+let db;
+let app;
 beforeEach(async () => {
   db = openOmsDb(':memory:');
   app = buildOmsServer({ db, config });
@@ -77,8 +97,11 @@ describe('GET /api/zamowienia/:id/dostawa', () => {
      surowego adresu ze sklepu znaczyłoby „potwierdź dane, których i tak nie użyjemy". */
   it('⚠️ poprawiony ręcznie adres i metoda biją wartości ze sklepu', async () => {
     const id = zaloz();
-    db.prepare('UPDATE zamowienia SET dostawa_reczna_json = ?, wysylka_reczna_json = ? WHERE id = ?')
-      .run(JSON.stringify({ ulica: 'Krótka 1', miasto: 'Warszawa', kod: '00-950' }), JSON.stringify({ metoda: 'inpost_paczkomat' }), id);
+    db.prepare('UPDATE zamowienia SET dostawa_reczna_json = ?, wysylka_reczna_json = ? WHERE id = ?').run(
+      JSON.stringify({ ulica: 'Krótka 1', miasto: 'Warszawa', kod: '00-950' }),
+      JSON.stringify({ metoda: 'inpost_paczkomat' }),
+      id,
+    );
     const d = (await pobierz(id)).json();
     expect(d.adres.ulica).toBe('Krótka 1');
     expect(d.adres.miasto).toBe('Warszawa');
@@ -106,7 +129,11 @@ describe('GET /api/zamowienia/:id/dostawa', () => {
   });
 
   it('bez logowania nie oddaje niczego', async () => {
-    const res = await app.inject({ method: 'GET', url: `/api/zamowienia/${zaloz()}/dostawa`, headers: { host: 'localhost' } });
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/zamowienia/${zaloz()}/dostawa`,
+      headers: { host: 'localhost' },
+    });
     expect(res.statusCode).toBe(401);
   });
 });

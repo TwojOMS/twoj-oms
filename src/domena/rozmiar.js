@@ -145,7 +145,11 @@ const SPOIWO_OD_POCZATKU = /^[\s\-–—,;]+/u;
 // Nawias opakowuje rozmiar tylko wtedy, gdy TUZ przed rozmiarem stoi znak otwierajacy,
 // a TUZ za nim jego wlasne domkniecie. Mapa (a nie zwykly obiekt) po to, zeby zapytanie
 // o dowolny znak nazwy nie trafilo przypadkiem w prototyp Object i nie udalo pary.
-const DOMKNIECIE = new Map([['(', ')'], ['[', ']'], ['{', '}']]);
+const DOMKNIECIE = new Map([
+  ['(', ')'],
+  ['[', ']'],
+  ['{', '}'],
+]);
 
 // Znak, ktory realnie NIESIE podzial — w odroznieniu od samej spacji. Jesli wystapil
 // po ktorejkolwiek stronie rozmiaru, to on wraca jako spoiwo.
@@ -261,11 +265,22 @@ export function nazwaBezRozmiaru(nazwa) {
 // `height` = glebokosc. Odwrotne przypisanie tutaj obracaloby karte przy kazdym obiegu sklep → karta → sklep.
 //
 // `Map`, nie literal obiektu: jednostka przychodzi z cudzego API.
-const MM_W_JEDNOSTCE = new Map([['mm', 1], ['cm', 10], ['m', 1000], ['in', 25.4], ['yd', 914.4]]);
-const G_W_JEDNOSTCE = new Map([['g', 1], ['kg', 1000], ['lbs', 453.59237], ['oz', 28.349523125]]);
+const MM_W_JEDNOSTCE = new Map([
+  ['mm', 1],
+  ['cm', 10],
+  ['m', 1000],
+  ['in', 25.4],
+  ['yd', 914.4],
+]);
+const G_W_JEDNOSTCE = new Map([
+  ['g', 1],
+  ['kg', 1000],
+  ['lbs', 453.59237],
+  ['oz', 28.349523125],
+]);
 
 const dodatnia = (x) => {
-  const s = typeof x === 'string' ? x.trim().replace(',', '.') : (typeof x === 'number' ? String(x) : '');
+  const s = typeof x === 'string' ? x.trim().replace(',', '.') : typeof x === 'number' ? String(x) : '';
   if (!SAMA_LICZBA.test(s)) return null;
   const n = Number(s);
   return n > 0 ? n : null;
@@ -279,11 +294,19 @@ const dodatnia = (x) => {
  */
 export function wymiaryZeSklepu(wymiaryJson) {
   let w;
-  try { w = typeof wymiaryJson === 'string' ? JSON.parse(wymiaryJson) : null; } catch { return null; }
+  try {
+    w = typeof wymiaryJson === 'string' ? JSON.parse(wymiaryJson) : null;
+  } catch {
+    return null;
+  }
   if (!w || typeof w !== 'object') return null;
   const mnoznik = typeof w.unit === 'string' ? MM_W_JEDNOSTCE.get(w.unit) : undefined;
   if (!mnoznik) return null;
-  const mm = (x) => { const n = dodatnia(x); const wynik = n === null ? null : Math.round(n * mnoznik); return wynik > 0 ? wynik : null; };
+  const mm = (x) => {
+    const n = dodatnia(x);
+    const wynik = n === null ? null : Math.round(n * mnoznik);
+    return wynik > 0 ? wynik : null;
+  };
   const wysokosc = mm(w.length);
   const szerokosc = mm(w.width);
   if (wysokosc === null || szerokosc === null) return null;

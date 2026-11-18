@@ -1,4 +1,10 @@
-import type { KatalogKanalu, OpisKanalu, UmiejetnosciKanalu, WynikKataloguKanalu, ZapisZwrotnyKanalu } from '../core/kontrakty.ts';
+import type {
+  KatalogKanalu,
+  OpisKanalu,
+  UmiejetnosciKanalu,
+  WynikKataloguKanalu,
+  ZapisZwrotnyKanalu,
+} from '../core/kontrakty.ts';
 import { MODULY_KANALOW, modulZamowienia, umiejetnosciZamowienia } from '../domena/moduly-kanalow.ts';
 import { statusDlaErli } from '../domena/erli-status.js';
 import { numerErli } from '../oms/erli/numer.js';
@@ -8,11 +14,17 @@ const METODA_ZAPISU_ZWROTNEGO = {
 } as const satisfies Partial<Record<keyof UmiejetnosciKanalu, keyof ZapisZwrotnyKanalu>>;
 export const METODA_UMIEJETNOSCI = Object.freeze({
   ...METODA_ZAPISU_ZWROTNEGO,
-  odczytOfert: 'odczytOfert', wystawOferte: 'wystawOferte', zmienOferte: 'zmienOferte',
-  zmienIloscCene: 'zmienIloscCene', stanOferty: 'stanOferty',
+  odczytOfert: 'odczytOfert',
+  wystawOferte: 'wystawOferte',
+  zmienOferte: 'zmienOferte',
+  zmienIloscCene: 'zmienIloscCene',
+  stanOferty: 'stanOferty',
 } as const satisfies Partial<Record<keyof UmiejetnosciKanalu, keyof ZapisZwrotnyKanalu | keyof KatalogKanalu>>);
 type Komplet<Wszystkie, Wymienione> = [Exclude<Wszystkie, Wymienione>] extends [never] ? true : never;
-const komplet: Komplet<keyof ZapisZwrotnyKanalu | keyof KatalogKanalu, (typeof METODA_UMIEJETNOSCI)[keyof typeof METODA_UMIEJETNOSCI]> = true;
+const komplet: Komplet<
+  keyof ZapisZwrotnyKanalu | keyof KatalogKanalu,
+  (typeof METODA_UMIEJETNOSCI)[keyof typeof METODA_UMIEJETNOSCI]
+> = true;
 void komplet;
 
 /** Jedyna droga wywołania katalogu: także atrapa nie omija deklaracji umiejętności. */
@@ -20,15 +32,20 @@ export function katalogKanalu(opis: OpisKanalu, metody: Partial<KatalogKanalu>):
   function chroniona<M extends keyof KatalogKanalu>(umiejetnosc: M): KatalogKanalu[M] {
     const metoda = METODA_UMIEJETNOSCI[umiejetnosc];
     return (async (...args: Parameters<KatalogKanalu[M]>) => {
-      if (opis.umiejetnosci[umiejetnosc] !== true) return { ok: false, powod: `kanał ${opis.typ} nie umie ${umiejetnosc}` };
+      if (opis.umiejetnosci[umiejetnosc] !== true)
+        return { ok: false, powod: `kanał ${opis.typ} nie umie ${umiejetnosc}` };
       const wykonaj = metody[metoda];
-      if (typeof wykonaj !== 'function') return { ok: false, powod: `kanał ${opis.typ}: ${umiejetnosc} niezaimplementowane` };
+      if (typeof wykonaj !== 'function')
+        return { ok: false, powod: `kanał ${opis.typ}: ${umiejetnosc} niezaimplementowane` };
       return (wykonaj as (...args: Parameters<KatalogKanalu[M]>) => Promise<WynikKataloguKanalu>).apply(metody, args);
     }) as KatalogKanalu[M];
   }
   return {
-    odczytOfert: chroniona('odczytOfert'), wystawOferte: chroniona('wystawOferte'),
-    zmienOferte: chroniona('zmienOferte'), zmienIloscCene: chroniona('zmienIloscCene'), stanOferty: chroniona('stanOferty'),
+    odczytOfert: chroniona('odczytOfert'),
+    wystawOferte: chroniona('wystawOferte'),
+    zmienOferte: chroniona('zmienOferte'),
+    zmienIloscCene: chroniona('zmienIloscCene'),
+    stanOferty: chroniona('stanOferty'),
   };
 }
 
@@ -65,8 +82,14 @@ export type WezlyAllegro = Readonly<{
   stanOperacji: (adres: string) => Promise<unknown>;
   szukajProduktow: (ean: string) => Promise<unknown>;
   ofertyPoSygnaturze: (sygnatura: string) => Promise<unknown>;
-  komendaIlosci: (commandId: string, pozycje: readonly Readonly<{ ofertaId: string; ilosc: number }>[]) => Promise<unknown>;
-  komendaCeny: (commandId: string, pozycje: readonly Readonly<{ ofertaId: string; cena: string }>[]) => Promise<unknown>;
+  komendaIlosci: (
+    commandId: string,
+    pozycje: readonly Readonly<{ ofertaId: string; ilosc: number }>[],
+  ) => Promise<unknown>;
+  komendaCeny: (
+    commandId: string,
+    pozycje: readonly Readonly<{ ofertaId: string; cena: string }>[],
+  ) => Promise<unknown>;
   wynikKomendy: (rodzaj: 'ilosc' | 'cena', commandId: string) => Promise<unknown>;
   oplatyOferty: (ofertaId: string) => Promise<unknown>;
   /** Prognoza opłat przed wznowieniem wyprzedanej oferty (`POST /pricing/offer-fee-preview`, bez skutku po stronie
@@ -84,9 +107,11 @@ export type KlientKataloguAllegro = Partial<WezlyAllegro> & {
 };
 
 /** Pozycja `zmienIloscCene` dla Allegro: `externalId` = id oferty, `price` w groszach, klucze idempotencji z pętli. */
-type PozycjaKomendAllegro = Parameters<KatalogKanalu['zmienIloscCene']>[0][number] & Readonly<{
-  commandIdIlosci?: unknown; commandIdCeny?: unknown;
-}>;
+type PozycjaKomendAllegro = Parameters<KatalogKanalu['zmienIloscCene']>[0][number] &
+  Readonly<{
+    commandIdIlosci?: unknown;
+    commandIdCeny?: unknown;
+  }>;
 type KomendaAllegro =
   | { rodzaj: 'ilosc'; commandId: string; pozycje: { ofertaId: string; ilosc: number }[] }
   | { rodzaj: 'cena'; commandId: string; pozycje: { ofertaId: string; cena: string }[] };
@@ -104,7 +129,8 @@ function komendyAllegro(zmiany: readonly PozycjaKomendAllegro[]): KomendaAllegro
   for (const p of zmiany) {
     if (p.stock === undefined && p.price === undefined) return `pozycja ${p.externalId} nie ma ani ilości, ani ceny`;
     if (p.stock !== undefined) {
-      if (!Number.isSafeInteger(p.stock) || p.stock < 0) return `pozycja ${p.externalId}: ilość musi być liczbą całkowitą ≥ 0`;
+      if (!Number.isSafeInteger(p.stock) || p.stock < 0)
+        return `pozycja ${p.externalId}: ilość musi być liczbą całkowitą ≥ 0`;
       const commandId = idKomendy(p.commandIdIlosci);
       if (commandId === null) return `pozycja ${p.externalId} bez commandIdIlosci — komendy ilości nie wysyłam`;
       const k = komendy.get(`ilosc:${commandId}`) ?? { rodzaj: 'ilosc', commandId, pozycje: [] };
@@ -112,11 +138,15 @@ function komendyAllegro(zmiany: readonly PozycjaKomendAllegro[]): KomendaAllegro
       komendy.set(`ilosc:${commandId}`, k);
     }
     if (p.price !== undefined) {
-      if (!Number.isSafeInteger(p.price) || p.price <= 0) return `pozycja ${p.externalId}: cena musi być w groszach (liczba całkowita > 0)`;
+      if (!Number.isSafeInteger(p.price) || p.price <= 0)
+        return `pozycja ${p.externalId}: cena musi być w groszach (liczba całkowita > 0)`;
       const commandId = idKomendy(p.commandIdCeny);
       if (commandId === null) return `pozycja ${p.externalId} bez commandIdCeny — komendy ceny nie wysyłam`;
       const k = komendy.get(`cena:${commandId}`) ?? { rodzaj: 'cena', commandId, pozycje: [] };
-      (k as Extract<KomendaAllegro, { rodzaj: 'cena' }>).pozycje.push({ ofertaId: p.externalId, cena: groszeNaZlGr(p.price) });
+      (k as Extract<KomendaAllegro, { rodzaj: 'cena' }>).pozycje.push({
+        ofertaId: p.externalId,
+        cena: groszeNaZlGr(p.price),
+      });
       komendy.set(`cena:${commandId}`, k);
     }
   }
@@ -124,9 +154,14 @@ function komendyAllegro(zmiany: readonly PozycjaKomendAllegro[]): KomendaAllegro
 }
 
 export function katalogAllegro(klient: KlientKataloguAllegro): KatalogKanalu {
-  const brak = (metoda: keyof KatalogKanalu) => ({ ok: false as const, powod: `kanał allegro: ${metoda} niezaimplementowane` });
+  const brak = (metoda: keyof KatalogKanalu) => ({
+    ok: false as const,
+    powod: `kanał allegro: ${metoda} niezaimplementowane`,
+  });
   function przypnij<M extends Exclude<keyof KatalogKanalu, 'zmienIloscCene'>>(
-    metoda: M, nazwa: keyof KlientKataloguAllegro, argumenty: (...args: Parameters<KatalogKanalu[M]>) => unknown[],
+    metoda: M,
+    nazwa: keyof KlientKataloguAllegro,
+    argumenty: (...args: Parameters<KatalogKanalu[M]>) => unknown[],
   ): KatalogKanalu[M] {
     return (async (...args: Parameters<KatalogKanalu[M]>) => {
       const wykonaj = klient[nazwa];
@@ -139,42 +174,62 @@ export function katalogAllegro(klient: KlientKataloguAllegro): KatalogKanalu {
     const komendy = komendyAllegro(zmiany as readonly PozycjaKomendAllegro[]);
     if (typeof komendy === 'string') return { ok: false, powod: `kanał allegro: ${komendy}` };
     const { komendaIlosci, komendaCeny } = klient;
-    if (komendy.some(k => typeof (k.rodzaj === 'ilosc' ? komendaIlosci : komendaCeny) !== 'function')) return brak('zmienIloscCene');
+    if (komendy.some((k) => typeof (k.rodzaj === 'ilosc' ? komendaIlosci : komendaCeny) !== 'function'))
+      return brak('zmienIloscCene');
     const dane = [];
     for (const k of komendy) {
-      const wynik = k.rodzaj === 'ilosc'
-        ? await komendaIlosci!.call(klient, k.commandId, k.pozycje)
-        : await komendaCeny!.call(klient, k.commandId, k.pozycje);
+      const wynik =
+        k.rodzaj === 'ilosc'
+          ? await komendaIlosci!.call(klient, k.commandId, k.pozycje)
+          : await komendaCeny!.call(klient, k.commandId, k.pozycje);
       dane.push({ rodzaj: k.rodzaj, commandId: k.commandId, wynik });
     }
     return { ok: true, dane };
   };
   return katalogKanalu(MODULY_KANALOW.allegro, {
-    odczytOfert: przypnij('odczytOfert', 'ofertyKonta', filtry => [filtry]),
+    odczytOfert: przypnij('odczytOfert', 'ofertyKonta', (filtry) => [filtry]),
     wystawOferte: przypnij('wystawOferte', 'utworzOferte', (_id, dane) => [dane]),
     zmienOferte: przypnij('zmienOferte', 'edytujOferte', (id, zmiany) => [id, zmiany]),
     zmienIloscCene,
-    stanOferty: przypnij('stanOferty', 'pobierzOferte', id => [id]),
+    stanOferty: przypnij('stanOferty', 'pobierzOferte', (id) => [id]),
   });
 }
 
-const NAZWY_WEZLOW_ALLEGRO = ['wgrajZdjecie', 'stanOperacji', 'szukajProduktow', 'ofertyPoSygnaturze',
-  'komendaIlosci', 'komendaCeny', 'wynikKomendy', 'oplatyOferty', 'podgladOplat'] as const satisfies readonly (keyof WezlyAllegro)[];
+const NAZWY_WEZLOW_ALLEGRO = [
+  'wgrajZdjecie',
+  'stanOperacji',
+  'szukajProduktow',
+  'ofertyPoSygnaturze',
+  'komendaIlosci',
+  'komendaCeny',
+  'wynikKomendy',
+  'oplatyOferty',
+  'podgladOplat',
+] as const satisfies readonly (keyof WezlyAllegro)[];
 
 /** 9 metod klienta konta wprost (bariera i odświeżanie tokenu są w kliencie z `klienciKanalow`). */
 export function wezlyAllegro(klient: Partial<WezlyAllegro>): WezlyAllegro {
-  return Object.freeze(Object.fromEntries(NAZWY_WEZLOW_ALLEGRO.map(nazwa => [nazwa, async (...args: unknown[]) => {
-    const wykonaj = klient[nazwa];
-    if (typeof wykonaj !== 'function') throw new Error(`kanał allegro: ${nazwa} niezaimplementowane`);
-    return (wykonaj as (...a: unknown[]) => Promise<unknown>).apply(klient, args);
-  }])) as WezlyAllegro);
+  return Object.freeze(
+    Object.fromEntries(
+      NAZWY_WEZLOW_ALLEGRO.map((nazwa) => [
+        nazwa,
+        async (...args: unknown[]) => {
+          const wykonaj = klient[nazwa];
+          if (typeof wykonaj !== 'function') throw new Error(`kanał allegro: ${nazwa} niezaimplementowane`);
+          return (wykonaj as (...a: unknown[]) => Promise<unknown>).apply(klient, args);
+        },
+      ]),
+    ) as WezlyAllegro,
+  );
 }
 
 export function sprawdzZapisZwrotny(opis: OpisKanalu, zwrotne: ZapisZwrotnyKanalu): void {
   for (const [umiejetnosc, metoda] of Object.entries(METODA_ZAPISU_ZWROTNEGO)) {
     const wymagana = opis.umiejetnosci[umiejetnosc as keyof typeof METODA_UMIEJETNOSCI] !== 'brak';
     if (wymagana !== (typeof zwrotne[metoda] === 'function')) {
-      throw new Error(`Kanał „${opis.typ}”: ${umiejetnosc}=${opis.umiejetnosci[umiejetnosc as keyof typeof METODA_UMIEJETNOSCI]} wymaga ${wymagana ? 'obecności' : 'braku'} metody ${metoda}`);
+      throw new Error(
+        `Kanał „${opis.typ}”: ${umiejetnosc}=${opis.umiejetnosci[umiejetnosc as keyof typeof METODA_UMIEJETNOSCI]} wymaga ${wymagana ? 'obecności' : 'braku'} metody ${metoda}`,
+      );
     }
   }
 }
@@ -183,8 +238,15 @@ type KlientAllegro = { ustawStatusRealizacji: (id: string, status: string) => Pr
 type KlientSklepu = { ustawStatus: (id: string, status: string) => Promise<unknown> };
 type KlientErli = { ustawStatusSprzedawcy: (id: string, status: string) => Promise<unknown> };
 type ZapisZDecyzja = ZapisZwrotnyKanalu & {
-  przygotujStatus?: (z: Parameters<typeof statusDlaErli>[0], ostatni: (akcja: string) => string | null) => {
-    status: string; klient: KlientErli; gdzie: { nazwa: string; w: string; dokad: string }; akcja: string; sladZapisu: string;
+  przygotujStatus?: (
+    z: Parameters<typeof statusDlaErli>[0],
+    ostatni: (akcja: string) => string | null,
+  ) => {
+    status: string;
+    klient: KlientErli;
+    gdzie: { nazwa: string; w: string; dokad: string };
+    akcja: string;
+    sladZapisu: string;
   } | null;
 };
 
@@ -194,8 +256,15 @@ export function zwrotneErli(klient: KlientErli): ZapisZDecyzja {
     ustawStatus: (id, status) => klient.ustawStatusSprzedawcy(id, status),
     przygotujStatus: (z, ostatni) => {
       const status = statusDlaErli(z, ostatni(sladZapisu));
-      return status ? { status, klient, gdzie: { nazwa: 'ERLI', w: 'w ERLI', dokad: 'do ERLI' },
-        akcja: 'sync-erli.status', sladZapisu } : null;
+      return status
+        ? {
+            status,
+            klient,
+            gdzie: { nazwa: 'ERLI', w: 'w ERLI', dokad: 'do ERLI' },
+            akcja: 'sync-erli.status',
+            sladZapisu,
+          }
+        : null;
     },
   };
 }
@@ -206,7 +275,10 @@ export function zwrotneAllegro(klient: KlientAllegro): ZapisZwrotnyKanalu {
 export function zwrotneSklepu(klient: KlientSklepu): ZapisZwrotnyKanalu {
   return { ustawStatus: (id, status) => klient.ustawStatus(id, status) };
 }
-export function zwrotneZamowienia(z: { sklep?: unknown } | null | undefined, klient: KlientAllegro | KlientSklepu | KlientErli): ZapisZDecyzja {
+export function zwrotneZamowienia(
+  z: { sklep?: unknown } | null | undefined,
+  klient: KlientAllegro | KlientSklepu | KlientErli,
+): ZapisZDecyzja {
   if (modulZamowienia(z).typ === 'erli') return zwrotneErli(klient as KlientErli);
   return umiejetnosciZamowienia(z).statusZwrotny === 'mapa'
     ? zwrotneAllegro(klient as KlientAllegro)

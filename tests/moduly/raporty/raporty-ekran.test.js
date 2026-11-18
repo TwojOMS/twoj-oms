@@ -11,13 +11,22 @@ let db;
 
 // Zamowienie historyczne o podanym dniu i kwocie — reszta pol jest zawsze taka sama,
 // bo w tych testach chodzi o EKRAN, a nie o klasyfikacje (ta ma wlasne testy).
-const zamowienie = (apiloId, dzien, brutto, dodatki = {}) => zapiszHistorie(db, {
-  apiloId, platformAccountId: 9, numer: `WO-${apiloId}`, dzien,
-  utworzoneAt: `${dzien}T10:00:00.000Z`, brutto, tagi: [], status: 15,
-  paymentStatus: 2, klientEmail: 'k@klient.pl', faktura: 0,
-  pozycje: [{ nazwa: 'Szablon Hamptons', ilosc: 1, bruttoLinii: brutto, typ: 1 }],
-  ...dodatki,
-});
+const zamowienie = (apiloId, dzien, brutto, dodatki = {}) =>
+  zapiszHistorie(db, {
+    apiloId,
+    platformAccountId: 9,
+    numer: `WO-${apiloId}`,
+    dzien,
+    utworzoneAt: `${dzien}T10:00:00.000Z`,
+    brutto,
+    tagi: [],
+    status: 15,
+    paymentStatus: 2,
+    klientEmail: 'k@klient.pl',
+    faktura: 0,
+    pozycje: [{ nazwa: 'Szablon Hamptons', ilosc: 1, bruttoLinii: brutto, typ: 1 }],
+    ...dodatki,
+  });
 
 beforeEach(() => {
   db = openOmsDb(':memory:');
@@ -27,9 +36,17 @@ beforeEach(() => {
     ustawGranice(db, k, '2026-07-02', 'test', null);
   }
   zapiszHistorie(db, {
-    apiloId: 'H1', platformAccountId: 9, numer: 'WO1', dzien: '2026-06-10',
-    utworzoneAt: '2026-06-10T10:00:00.000Z', brutto: '246.00', tagi: [], status: 15,
-    paymentStatus: 2, klientEmail: 'k@klient.pl', faktura: 0,
+    apiloId: 'H1',
+    platformAccountId: 9,
+    numer: 'WO1',
+    dzien: '2026-06-10',
+    utworzoneAt: '2026-06-10T10:00:00.000Z',
+    brutto: '246.00',
+    tagi: [],
+    status: 15,
+    paymentStatus: 2,
+    klientEmail: 'k@klient.pl',
+    faktura: 0,
     pozycje: [{ nazwa: 'Szablon Hamptons', ilosc: 1, bruttoLinii: '246.00', typ: 1 }],
   });
 });
@@ -250,9 +267,13 @@ describe('sekcja „Faktura czy paragon" — paski proporcji', () => {
   const pokaz = async (od = '2026-05-01', doDnia = '2026-05-31') => {
     const app = buildOmsServer({ db, config });
     await app.ready();
-    return (await app.inject({
-      method: 'GET', url: `/raporty?od=${od}&do=${doDnia}`, headers: naglowek,
-    })).body;
+    return (
+      await app.inject({
+        method: 'GET',
+        url: `/raporty?od=${od}&do=${doDnia}`,
+        headers: naglowek,
+      })
+    ).body;
   };
 
   it('pokazuje oba paski: po liczbie zamowien i po wartosci', async () => {
@@ -302,7 +323,6 @@ describe('sekcja „Faktura czy paragon" — paski proporcji', () => {
   });
 });
 
-
 // ——— PRZEBIEG SPRZEDAZY: „SPRZEDAZ DZIEN PO DNIU" (przebudowa 17.08.2026) ———————————————
 describe('wykres „Sprzedaż dzień po dniu"', () => {
   it('rysuje slupek dla dnia ze sprzedaza i pusty tor dla dnia bez niej', async () => {
@@ -337,7 +357,12 @@ describe('wykres „Sprzedaż dzień po dniu"', () => {
     expect(odp.body).toMatch(/aria-label="10 czerwca \(śr\)[^"]*246,00 zł/);
     // ⚠️ Po </style>: arkusz niesie regule `.dzien-kwota` i liczenie po calym dokumencie
     // mierzyloby CSS, nie ekran.
-    expect(odp.body.split('</style>').pop().match(/dzien-kwota/g)).toHaveLength(1);
+    expect(
+      odp.body
+        .split('</style>')
+        .pop()
+        .match(/dzien-kwota/g),
+    ).toHaveLength(1);
   });
 
   // ⚠️ Prog 62 dni: dluzszy zakres przechodzi na slupki TYGODNIOWE — 90 dziennych kresek

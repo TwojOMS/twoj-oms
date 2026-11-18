@@ -14,32 +14,53 @@ const STAN = { trwa: false, zaczety_at: null, skonczony_at: null, postep: null, 
 let db, app, zapis, odczyt;
 beforeEach(async () => {
   db = openOmsDb(':memory:');
-  app = buildOmsServer({ db, config: { auth: { user: 'adam', pass: 'x' } }, magazyn: { start: vi.fn(), stan: () => STAN } });
+  app = buildOmsServer({
+    db,
+    config: { auth: { user: 'adam', pass: 'x' } },
+    magazyn: { start: vi.fn(), stan: () => STAN },
+  });
   await app.ready();
   const kontoId = zalozKonto(db, { login: 'tester', imie: 'Tester', haslo: 'h', admin: true, rola: 'administrator' });
-  const klucz = (zakresy) => ({ authorization: `Bearer ${zalozKluczApi(db, {
-    nazwa: 'integracja testowa', zakresy, kontoId, teraz: new Date().toISOString(),
-  }).klucz}` });
+  const klucz = (zakresy) => ({
+    authorization: `Bearer ${
+      zalozKluczApi(db, {
+        nazwa: 'integracja testowa',
+        zakresy,
+        kontoId,
+        teraz: new Date().toISOString(),
+      }).klucz
+    }`,
+  });
   zapis = klucz(['produkty:zapis', 'produkty:odczyt']);
   odczyt = klucz(['produkty:odczyt']);
 });
-afterEach(async () => { await app.close(); db.close(); });
-
-const wolaj = (method, url, payload, naglowki = {}, klucz = zapis) => app.inject({
-  method, url: `/api/v1${url}`, headers: { ...klucz, ...naglowki }, ...(payload === undefined ? {} : { payload }),
+afterEach(async () => {
+  await app.close();
+  db.close();
 });
+
+const wolaj = (method, url, payload, naglowki = {}, klucz = zapis) =>
+  app.inject({
+    method,
+    url: `/api/v1${url}`,
+    headers: { ...klucz, ...naglowki },
+    ...(payload === undefined ? {} : { payload }),
+  });
 const zaloz = (payload, naglowki) => wolaj('POST', '/produkty', payload, naglowki);
 const zmien = (id, payload, naglowki) => wolaj('PATCH', `/produkty/${id}`, payload, naglowki);
 const wiersz = (id) => db.prepare('SELECT * FROM karty_produktow WHERE id = ?').get(id);
 const ileKart = () => db.prepare('SELECT COUNT(*) AS n FROM karty_produktow').get().n;
-const dziennik = () => db.prepare('SELECT metoda, sciezka, status, klucz_id FROM klucze_api_dziennik ORDER BY id').all();
+const dziennik = () =>
+  db.prepare('SELECT metoda, sciezka, status, klucz_id FROM klucze_api_dziennik ORDER BY id').all();
 const karta = (dane = {}) => utworzKarte(db, { nazwa: 'Świecznik Półcień', ...dane }, { at: STARA_DATA });
 const etag = (id) => etagKarty(wiersz(id));
 
 describe('POST /api/v1/produkty', () => {
   it('odrzuca niepełne wymiary bez tworzenia karty; zapamiętuje 400', async () => {
     for (const wymiary of [
-      { szerokosc_mm: 1 }, { wysokosc_mm: 2, glebokosc_mm: 3 }, { glebokosc_mm: 3 },
+      { szerokosc_mm: 1 },
+      { wysokosc_mm: 2, glebokosc_mm: 3 },
+      { glebokosc_mm: 3 },
       { szerokosc_mm: 1, wysokosc_mm: null, glebokosc_mm: 3 },
     ]) {
       const r = await zaloz({ nazwa: 'Niepełna', wymiary });
@@ -67,14 +88,27 @@ describe('POST /api/v1/produkty', () => {
 
   it('zakłada kartę: 201, Location, ETag, karta jak w GET; polskie znaki i emoji bez zmian, SKU obcięte', async () => {
     const r = await zaloz({
-      nazwa: 'Żółta łódź 🛶', opis: 'Zażółć gęślą jaźń 🌙\n', sku: '  Łódź-1 ', kategoria: ' Łodzie ',
-      ean: '5901234123457', cena_gr: 4990, stawka_vat: '23', wymiary: { szerokosc_mm: 100, wysokosc_mm: 200 }, waga_g: 50,
+      nazwa: 'Żółta łódź 🛶',
+      opis: 'Zażółć gęślą jaźń 🌙\n',
+      sku: '  Łódź-1 ',
+      kategoria: ' Łodzie ',
+      ean: '5901234123457',
+      cena_gr: 4990,
+      stawka_vat: '23',
+      wymiary: { szerokosc_mm: 100, wysokosc_mm: 200 },
+      waga_g: 50,
     });
     expect(r.statusCode).toBe(201);
     const id = r.json().id;
     const w = wiersz(id);
     expect(w).toMatchObject({ szerokosc_mm: 100, wysokosc_mm: 200, glebokosc_mm: null });
-    expect(w).toMatchObject({ nazwa: 'Żółta łódź 🛶', opis: 'Zażółć gęślą jaźń 🌙\n', sku: 'Łódź-1', kategoria_glowna: 'Łodzie', wycofana: 0 });
+    expect(w).toMatchObject({
+      nazwa: 'Żółta łódź 🛶',
+      opis: 'Zażółć gęślą jaźń 🌙\n',
+      sku: 'Łódź-1',
+      kategoria_glowna: 'Łodzie',
+      wycofana: 0,
+    });
     expect(r.headers.location).toBe(`/api/v1/produkty/${id}`);
     expect(r.headers.etag).toBe(etagKarty(w));
     expect(r.json()).toEqual(kartaDoApi(db, w));
@@ -84,7 +118,11 @@ describe('POST /api/v1/produkty', () => {
   it('SKU zajęte liczone jak zajeteSku (trim + wielkie litery, także polskie) → 409 z id, karta nie powstaje', async () => {
     const abc = karta({ sku: 'ABC' });
     const zolc = karta({ sku: ' ŻÓŁĆ ' });
-    for (const [sku, id] of [[' abc ', abc], ['ABC', abc], ['żółć', zolc]]) {
+    for (const [sku, id] of [
+      [' abc ', abc],
+      ['ABC', abc],
+      ['żółć', zolc],
+    ]) {
       const r = await zaloz({ nazwa: 'Kopia', sku });
       expect(r.statusCode).toBe(409);
       expect(r.json()).toEqual({ kod: 'sku_zajete', id, powod: expect.any(String) });
@@ -127,15 +165,26 @@ describe('POST /api/v1/produkty', () => {
 
   it('dziennik: udany zapis ma wpis z kluczem; po 4xx wpis tylko z 4xx i karta bez zmian', async () => {
     const r = await zaloz({ nazwa: 'Lampka', sku: 'L-1' });
-    expect(dziennik()).toEqual([{ metoda: 'POST', sciezka: '/api/v1/produkty', status: 201, klucz_id: expect.any(Number) }]);
+    expect(dziennik()).toEqual([
+      { metoda: 'POST', sciezka: '/api/v1/produkty', status: 201, klucz_id: expect.any(Number) },
+    ]);
     const id = r.json().id;
     await zaloz({ nazwa: 'Druga', sku: 'l-1' });
     await zmien(id, { nazwa: 'Bez If-Match' });
-    expect(dziennik().slice(1).map((w) => w.status)).toEqual([409, 428]);
+    expect(
+      dziennik()
+        .slice(1)
+        .map((w) => w.status),
+    ).toEqual([409, 428]);
     expect(ileKart()).toBe(1);
     expect(wiersz(id).nazwa).toBe('Lampka');
     await zmien(id, { nazwa: 'Po zmianie' }, { 'if-match': etag(id) });
-    expect(dziennik().at(-1)).toEqual({ metoda: 'PATCH', sciezka: `/api/v1/produkty/${id}`, status: 200, klucz_id: expect.any(Number) });
+    expect(dziennik().at(-1)).toEqual({
+      metoda: 'PATCH',
+      sciezka: `/api/v1/produkty/${id}`,
+      status: 200,
+      klucz_id: expect.any(Number),
+    });
   });
 
   it('wyjątek po INSERT → 500 bez Location, ROLLBACK (0 kart, bez otwartej transakcji), kolejny POST zakłada kartę', async () => {
@@ -234,7 +283,12 @@ describe('PATCH /api/v1/produkty/:id', () => {
   it('ETag sprzed zmiany człowieka na ekranie MAGAZYNU → 409, zmiana człowieka zostaje', async () => {
     const id = karta();
     const pobrany = await wolaj('GET', `/produkty/${id}`);
-    const ekran = await app.inject({ method: 'POST', url: `/magazyn/${id}`, headers: { ...jako(db, 'tester'), origin: 'http://localhost' }, payload: { nazwa: 'Zmienione na ekranie' } });
+    const ekran = await app.inject({
+      method: 'POST',
+      url: `/magazyn/${id}`,
+      headers: { ...jako(db, 'tester'), origin: 'http://localhost' },
+      payload: { nazwa: 'Zmienione na ekranie' },
+    });
     expect(ekran.statusCode).toBe(303);
     const r = await zmien(id, { nazwa: 'Z integracji' }, { 'if-match': pobrany.headers.etag });
     expect(r.statusCode).toBe(409);

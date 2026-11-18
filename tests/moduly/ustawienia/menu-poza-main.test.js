@@ -25,7 +25,10 @@ describe('menu Ustawień w kolumnie bocznej', () => {
       expect(r.body).toContain('class="oms-menu-local"');
       expect(r.body).not.toContain('action="/menu-boczne"');
       expect(r.headers['set-cookie']).toBeUndefined();
-    } finally { await p.app.close(); p.db.close(); }
+    } finally {
+      await p.app.close();
+      p.db.close();
+    }
   });
 
   it('rola bez Ustawień dostaje odmowę bez menu Ustawień', async () => {
@@ -39,10 +42,15 @@ describe('menu Ustawień w kolumnie bocznej', () => {
       expect(r.body).not.toContain('href="/ustawienia/firma"');
       const przed = migawkaDostepu(p.db);
       const id = p.db.prepare('SELECT id FROM konta WHERE login = ?').get('sprzedawca').id;
-      const zmiana = await post(p.app, `/ustawienia/konta/${id}/rola`, jako(p.db, 'sprzedawca'), { rola: 'administrator' });
+      const zmiana = await post(p.app, `/ustawienia/konta/${id}/rola`, jako(p.db, 'sprzedawca'), {
+        rola: 'administrator',
+      });
       expect(zmiana.statusCode).toBe(403);
       expect(migawkaDostepu(p.db)).toEqual(przed);
-    } finally { await p.app.close(); p.db.close(); }
+    } finally {
+      await p.app.close();
+      p.db.close();
+    }
   });
 });
 
@@ -76,7 +84,10 @@ it('zwinięcie zapamiętane: POST i następny GET kilku ekranów oraz ponowne ro
     expect(rozwin.headers['set-cookie']).toContain('oms_menu=rozwiniete;');
     const pelne = await get(p.app, '/przesylki', { cookie: `${auth.cookie}; oms_menu=rozwiniete` });
     expect(pelne.body).not.toContain('oms-shell--zwiniete');
-  } finally { await p.app.close(); p.db.close(); }
+  } finally {
+    await p.app.close();
+    p.db.close();
+  }
 });
 
 it('zwijanie jest dostępne także dla roli bez Ustawień', async () => {
@@ -84,7 +95,10 @@ it('zwijanie jest dostępne także dla roli bez Ustawień', async () => {
   zalozKonto(p.db, { login: 'sprzedawca', haslo: 'h', rola: 'sprzedaz' });
   try {
     expect((await post(p.app, '/menu-boczne', jako(p.db, 'sprzedawca'))).statusCode).toBe(303);
-  } finally { await p.app.close(); p.db.close(); }
+  } finally {
+    await p.app.close();
+    p.db.close();
+  }
 });
 
 it('Ustawienia: menu telefonu widoczne i zwinięcie z ciasteczka nie przecieka do Ustawień', async () => {
@@ -99,5 +113,8 @@ it('Ustawienia: menu telefonu widoczne i zwinięcie z ciasteczka nie przecieka d
     expect(bok.match(/<div class="oms-menu-desktop">[\s\S]*?<\/nav>/u)?.[0]).toContain('<h2');
     const css = readFileSync(new URL('../../../src/public/oms-ustawienia.css', import.meta.url), 'utf8');
     expect(css).not.toMatch(/\.oms-shell--ustawienia>\.oms-sidebar\{display:none\}/u);
-  } finally { await p.app.close(); p.db.close(); }
+  } finally {
+    await p.app.close();
+    p.db.close();
+  }
 });

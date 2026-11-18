@@ -1,8 +1,11 @@
 // Zapisany wybór modułu faktur: wiersz „program_fakturowy” w tabeli konfiguracja_integracji
 // (migracja rdzenia 6, bez nowej migracji; wzór: rachunek-firmy.js). Jawne ustawienia {"program": "…"}, puste
 // sekrety; zostaje kto i kiedy (konto_login, zmieniono_at). Regułę stosuje domena/wybor-programu.js.
-import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji, usunKonfiguracjeIntegracji }
-  from './konfiguracja-integracji.js';
+import {
+  wczytajKonfiguracjeIntegracji,
+  zapiszKonfiguracjeIntegracji,
+  usunKonfiguracjeIntegracji,
+} from './konfiguracja-integracji.js';
 import { KLUCZ_WYBORU_PROGRAMU, sprawdzFormularzWyboru } from '../../domena/wybor-programu.js';
 import { idDokumentuSql, programDokumentuSql } from '../../domena/dokument-programu.js';
 
@@ -15,7 +18,11 @@ export function wczytajWyborProgramu(db) {
   const zapis = wczytajKonfiguracjeIntegracji(db, KLUCZ_WYBORU_PROGRAMU);
   if (!zapis) return null;
   const program = zapis.ustawienia.program;
-  return { program: typeof program === 'string' ? program : '', kontoLogin: zapis.kontoLogin, zmienionoAt: zapis.zmienionoAt ?? null };
+  return {
+    program: typeof program === 'string' ? program : '',
+    kontoLogin: zapis.kontoLogin,
+    zmienionoAt: zapis.zmienionoAt ?? null,
+  };
 }
 
 /**
@@ -41,8 +48,12 @@ export const usunWyborProgramu = (db) => usunKonfiguracjeIntegracji(db, KLUCZ_WY
 export function liczbaDokumentowWgProgramu(db) {
   const wynik = {};
   for (const tabela of ['faktury', 'okresy_rozliczeniowe']) {
-    const wiersze = db.prepare(`SELECT ${programDokumentuSql()} AS program, COUNT(*) AS ile FROM ${tabela}
-      WHERE ${idDokumentuSql()} IS NOT NULL GROUP BY 1`).all();
+    const wiersze = db
+      .prepare(
+        `SELECT ${programDokumentuSql()} AS program, COUNT(*) AS ile FROM ${tabela}
+      WHERE ${idDokumentuSql()} IS NOT NULL GROUP BY 1`,
+      )
+      .all();
     for (const { program, ile } of wiersze) wynik[program] = (wynik[program] ?? 0) + ile;
   }
   return wynik;

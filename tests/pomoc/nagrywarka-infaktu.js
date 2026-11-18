@@ -31,7 +31,11 @@ const STRONA = 10;
 export function posortowane(w) {
   if (Array.isArray(w)) return w.map(posortowane);
   if (w && typeof w === 'object') {
-    return Object.fromEntries(Object.keys(w).sort().map((k) => [k, posortowane(w[k])]));
+    return Object.fromEntries(
+      Object.keys(w)
+        .sort()
+        .map((k) => [k, posortowane(w[k])]),
+    );
   }
   return w;
 }
@@ -47,7 +51,11 @@ function sciezkaZPosortowanymZapytaniem(url) {
 function cialoZapisu(body) {
   if (body === undefined || body === null) return null;
   const tekst = typeof body === 'string' ? body : Buffer.isBuffer(body) ? body.toString('utf8') : String(body);
-  try { return posortowane(JSON.parse(tekst)); } catch { return { nieJson: tekst }; }
+  try {
+    return posortowane(JSON.parse(tekst));
+  } catch {
+    return { nieJson: tekst };
+  }
 }
 
 function odpowiedzJson(status, dane) {
@@ -61,8 +69,8 @@ export function createNagrywarkaInfaktu({ teraz, kluczApi }) {
   const dbAtrapy = openOmsDb(':memory:');
   const atrapa = createAtrapaInfaktu({ db: dbAtrapy, teraz, log: () => {}, env: { OMS_TRYB: 'proba' } });
 
-  const zapis = [];        // { scenariusz, partia, metoda, sciezka, naglowki, cialo }
-  const obce = [];         // żądania spoza inFaktu: { host, metoda, sciezka }
+  const zapis = []; // { scenariusz, partia, metoda, sciezka, naglowki, cialo }
+  const obce = []; // żądania spoza inFaktu: { host, metoda, sciezka }
   const bledneKlucze = []; // żądania do inFaktu bez klucza testowego w X-inFakt-ApiKey
   const klienciFaktur = new Map(); // API oddaje także identyfikator nabywcy dokumentu.
   let scenariusz = null;
@@ -81,18 +89,25 @@ export function createNagrywarkaInfaktu({ teraz, kluczApi }) {
   async function lista(zasob, u) {
     const p = u.searchParams;
     const filtry = {};
-    let pole; let od; let doDaty;
+    let pole;
+    let od;
+    let doDaty;
     for (const [k, v] of p) {
       const m = /^q\[(\w+?)_(gteq|lteq)\]$/.exec(k);
-      if (m) { pole = m[1]; if (m[2] === 'gteq') od = v; else doDaty = v; } else if (k.startsWith('q[')) filtry[k] = v;
+      if (m) {
+        pole = m[1];
+        if (m[2] === 'gteq') od = v;
+        else doDaty = v;
+      } else if (k.startsWith('q[')) filtry[k] = v;
     }
     if (filtry['q[number_eq]'] !== undefined) {
       const ile = await atrapa.iluMaNumer(filtry['q[number_eq]']);
       return odpowiedzJson(200, { metainfo: { count: 0, total_count: ile }, entities: [] });
     }
     const zakres = { od, do: doDaty, pole, order: p.get('order') ?? undefined, filtry };
-    const wiersze = (zasob === 'invoices' ? await atrapa.listaFaktur(zakres) : await atrapa.listaKorekt(zakres))
-      .map(({ rodzaj, ...encja }) => encja);
+    const wiersze = (zasob === 'invoices' ? await atrapa.listaFaktur(zakres) : await atrapa.listaKorekt(zakres)).map(
+      ({ rodzaj, ...encja }) => encja,
+    );
     const offset = Number(p.get('offset') ?? 0);
     const strona = wiersze.slice(offset, offset + STRONA);
     return odpowiedzJson(200, { metainfo: { count: strona.length, total_count: wiersze.length }, entities: strona });
@@ -105,9 +120,13 @@ export function createNagrywarkaInfaktu({ teraz, kluczApi }) {
     if (metoda === 'GET' && (m = /^\/v3\/(invoices|corrective_invoices)\.json$/.exec(s))) return lista(m[1], u);
     if (metoda === 'GET' && s === '/v3/clients.json') {
       const id = await atrapa.znajdzKlientaPoNip(u.searchParams.get('q[nip_eq]'));
-      return odpowiedzJson(200, { metainfo: { count: id ? 1 : 0, total_count: id ? 1 : 0 }, entities: id ? [{ id }] : [] });
+      return odpowiedzJson(200, {
+        metainfo: { count: id ? 1 : 0, total_count: id ? 1 : 0 },
+        entities: id ? [{ id }] : [],
+      });
     }
-    if (metoda === 'POST' && s === '/v3/clients.json') return odpowiedzJson(201, { id: await atrapa.zalozKlienta(cialo?.client) });
+    if (metoda === 'POST' && s === '/v3/clients.json')
+      return odpowiedzJson(201, { id: await atrapa.zalozKlienta(cialo?.client) });
     if (metoda === 'POST' && s === '/v3/invoices.json') {
       const w = await atrapa.wystaw(cialo?.invoice);
       klienciFaktur.set(w.uuid, cialo?.invoice?.client_id);
@@ -120,7 +139,8 @@ export function createNagrywarkaInfaktu({ teraz, kluczApi }) {
     if (metoda === 'GET' && (m = /^\/v3\/(invoices|corrective_invoices)\/([^/]+)\/pdf\.json$/.exec(s))) {
       const uuid = decodeURIComponent(m[2]);
       const typ = u.searchParams.get('document_type') ?? undefined;
-      const bajty = m[1] === 'invoices' ? await atrapa.pobierzPdf(uuid, typ) : await atrapa.pobierzPdfKorekty(uuid, typ);
+      const bajty =
+        m[1] === 'invoices' ? await atrapa.pobierzPdf(uuid, typ) : await atrapa.pobierzPdfKorekty(uuid, typ);
       return new Response(bajty, { status: 200, headers: { 'content-type': 'application/pdf' } });
     }
     if (metoda === 'POST' && (m = /^\/v3\/async\/invoices\/([^/]+)\/paid\.json$/.exec(s))) {
@@ -129,7 +149,8 @@ export function createNagrywarkaInfaktu({ teraz, kluczApi }) {
     }
     if (metoda === 'GET' && (m = /^\/v3\/invoices\/([^/]+)\.json$/.exec(s))) {
       const encja = atrapa.surowaEncja(decodeURIComponent(m[1]));
-      if (!encja || encja.kind !== 'vat') return odpowiedzJson(404, { error: 'Zasób którego szukasz nie został znaleziony' });
+      if (!encja || encja.kind !== 'vat')
+        return odpowiedzJson(404, { error: 'Zasób którego szukasz nie został znaleziony' });
       return odpowiedzJson(200, { ...encja, client_id: klienciFaktur.get(encja.uuid) });
     }
     if (metoda === 'POST' && (m = /^\/v3\/ksef2\/documents\/([^/]+)\/send\.json$/.exec(s))) {
@@ -140,13 +161,19 @@ export function createNagrywarkaInfaktu({ teraz, kluczApi }) {
   }
 
   async function fetchNagrywarki(wejscie, init = {}) {
-    const url = typeof wejscie === 'string' ? wejscie : wejscie instanceof URL ? wejscie.href : String(wejscie?.url ?? wejscie);
+    const url =
+      typeof wejscie === 'string' ? wejscie : wejscie instanceof URL ? wejscie.href : String(wejscie?.url ?? wejscie);
     const u = new URL(url);
     const metoda = String(init.method ?? 'GET').toUpperCase();
     if (u.hostname === HOST_VIES) {
       obce.push({ host: u.hostname, metoda, sciezka: u.pathname });
-      return odpowiedzJson(200, { isValid: true, requestDate: teraz().toISOString().slice(0, 10),
-        requestIdentifier: 'VIES-NAGRYWARKA', name: 'Kontrahent zmyślony (nagrywarka)', address: 'Erfundene Straße 1' });
+      return odpowiedzJson(200, {
+        isValid: true,
+        requestDate: teraz().toISOString().slice(0, 10),
+        requestIdentifier: 'VIES-NAGRYWARKA',
+        name: 'Kontrahent zmyślony (nagrywarka)',
+        address: 'Erfundene Straße 1',
+      });
     }
     if (u.hostname !== HOST_INFAKTU) {
       obce.push({ host: u.hostname, metoda, sciezka: u.pathname });
@@ -155,33 +182,46 @@ export function createNagrywarkaInfaktu({ teraz, kluczApi }) {
     const naglowki = {};
     let klucz = null;
     for (const [k, v] of new Headers(init.headers ?? {})) {
-      if (k === 'x-infakt-apikey') klucz = v; else naglowki[k] = v;
+      if (k === 'x-infakt-apikey') klucz = v;
+      else naglowki[k] = v;
     }
     if (klucz !== kluczApi) bledneKlucze.push(`${metoda} ${u.pathname}`);
     const cialo = cialoZapisu(init.body);
     if (wLocie === 0) partia += 1;
-    zapis.push({ scenariusz, partia, metoda, sciezka: sciezkaZPosortowanymZapytaniem(url), naglowki: posortowane(naglowki), cialo });
+    zapis.push({
+      scenariusz,
+      partia,
+      metoda,
+      sciezka: sciezkaZPosortowanymZapytaniem(url),
+      naglowki: posortowane(naglowki),
+      cialo,
+    });
     wLocie += 1;
     try {
       let odp;
-      try { odp = await obsluz(metoda, u, cialo && !cialo.nieJson ? cialo : null); } catch (e) {
+      try {
+        odp = await obsluz(metoda, u, cialo && !cialo.nieJson ? cialo : null);
+      } catch (e) {
         odp = odpowiedzJson(Number.isInteger(e?.status) ? e.status : 500, { error: e?.message ?? String(e) });
       }
       odswiezNazwy();
       // Odpowiedź dopiero w następnym takcie zegara: żądania odpalone razem na pewno się nakładają (patrz nagłówek).
-      await new Promise((r) => { setTimeout(r, 2); });
+      await new Promise((r) => {
+        setTimeout(r, 2);
+      });
       return odp;
     } finally {
       wLocie -= 1;
     }
   }
 
-  const nazwij = (tekst) => tekst.replace(UUID, (uuid) => {
-    const klucz = uuid.toLowerCase();
-    if (nazwyUuid.has(klucz)) return nazwyUuid.get(klucz);
-    if (!nazwyObce.has(klucz)) nazwyObce.set(klucz, `X${nazwyObce.size + 1}`);
-    return nazwyObce.get(klucz);
-  });
+  const nazwij = (tekst) =>
+    tekst.replace(UUID, (uuid) => {
+      const klucz = uuid.toLowerCase();
+      if (nazwyUuid.has(klucz)) return nazwyUuid.get(klucz);
+      if (!nazwyObce.has(klucz)) nazwyObce.set(klucz, `X${nazwyObce.size + 1}`);
+      return nazwyObce.get(klucz);
+    });
   const nazwijGleboko = (w) => {
     if (typeof w === 'string') return nazwij(w);
     if (Array.isArray(w)) return w.map(nazwijGleboko);
@@ -203,7 +243,10 @@ export function createNagrywarkaInfaktu({ teraz, kluczApi }) {
     for (const { nazwa, zadania } of partie.values()) {
       const klucz = nazwa ?? '(poza scenariuszem)';
       poScenariuszach[klucz] ??= [];
-      const posort = zadania.map((z) => [JSON.stringify(z), z]).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([, z]) => z);
+      const posort = zadania
+        .map((z) => [JSON.stringify(z), z])
+        .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+        .map(([, z]) => z);
       poScenariuszach[klucz].push(...posort);
     }
     return poScenariuszach;
@@ -212,7 +255,9 @@ export function createNagrywarkaInfaktu({ teraz, kluczApi }) {
   return {
     fetch: fetchNagrywarki,
     atrapa,
-    scenariusz: (nazwa) => { scenariusz = nazwa; },
+    scenariusz: (nazwa) => {
+      scenariusz = nazwa;
+    },
     wynik,
     obce,
     bledneKlucze,

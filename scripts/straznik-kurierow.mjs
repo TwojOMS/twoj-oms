@@ -3,8 +3,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const listaDozwolonych = {
-  'src/oms/erli/numer.js': { liczba: 6, powod: 'vendor i typeId protokołu shipping/external ERLI z kuriera OMS (PRZ-157.06)' },
-  'src/domena/erli-droga-nadania.js': { liczba: 6, powod: 'domyślne mapowanie vendor słownika ERLI na kuriera OMS (PRZ-157.07a), także kontrakt wyniku JSDoc' },
+  'src/oms/erli/numer.js': {
+    liczba: 6,
+    powod: 'vendor i typeId protokołu shipping/external ERLI z kuriera OMS (PRZ-157.06)',
+  },
+  'src/domena/erli-droga-nadania.js': {
+    liczba: 6,
+    powod: 'domyślne mapowanie vendor słownika ERLI na kuriera OMS (PRZ-157.07a), także kontrakt wyniku JSDoc',
+  },
   'src/core/kontrakty.ts': { liczba: 1, powod: 'typ formularza nadania' },
   'src/domena/dowod-odbioru.js': { liczba: 2, powod: 'źródło dowodu odbioru' },
   'src/domena/gotowosc-nadania.js': { liczba: 1, powod: 'warunek punktu odbioru, do przepięcia na rejestr' },
@@ -32,10 +38,12 @@ export const listaDozwolonych = {
   'src/moduly/zamowienia/widoki/zamowienie.ejs': { liczba: 2, powod: 'wskazówka pobrania etykiety' },
   'src/moduly/zamowienia/wspolne.js': { liczba: 1, powod: 'komentarz historyczny' },
   'src/oms/db/uzupelnienia-zamowien.js': { liczba: 2, powod: 'historyczne uzupełnienie zamówień' },
-  'src/oms/erli/client.js': { liczba: 2, powod: 'enum vendor protokołu HTTP ERLI, nie wybór modułu kuriera (PRZ-157.02)' },
+  'src/oms/erli/client.js': {
+    liczba: 2,
+    powod: 'enum vendor protokołu HTTP ERLI, nie wybór modułu kuriera (PRZ-157.02)',
+  },
   'src/oms/kurierzy/index.js': { liczba: 4, powod: 'komentarze historyczne o metodzie domyślnej' },
 };
-
 
 const dozwoloneKatalogi = { 'src/moduly/kanaly/': 'kod modułu kanałów' };
 const rejestr = 'src/domena/moduly-kurierow.ts';
@@ -50,13 +58,15 @@ export function sprawdz(korzen, lista = listaDozwolonych) {
       if (wpis.isDirectory()) odwiedz(plik);
       else if (wpis.isFile() && /\.(?:js|ts|mjs|ejs)$/.test(wpis.name)) {
         const tekst = fs.readFileSync(path.join(korzen, plik), 'utf8');
-        const linie = [...tekst.matchAll(wzorzec)].map(m => tekst.slice(0, m.index).split('\n').length);
-        if (linie.length && plik !== rejestr && !Object.keys(dozwoloneKatalogi).some(k => plik.startsWith(k))) trafienia[plik] = linie;
+        const linie = [...tekst.matchAll(wzorzec)].map((m) => tekst.slice(0, m.index).split('\n').length);
+        if (linie.length && plik !== rejestr && !Object.keys(dozwoloneKatalogi).some((k) => plik.startsWith(k)))
+          trafienia[plik] = linie;
       }
     }
   }
   odwiedz('src');
-  const bledy = [], podpowiedzi = [];
+  const bledy = [],
+    podpowiedzi = [];
   for (const plik of new Set([...Object.keys(trafienia), ...Object.keys(lista)])) {
     const linie = trafienia[plik] ?? [];
     const limit = lista[plik]?.liczba ?? 0;
@@ -67,7 +77,9 @@ export function sprawdz(korzen, lista = listaDozwolonych) {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const korzen = process.argv[2] ? path.resolve(process.argv[2]) : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const korzen = process.argv[2]
+    ? path.resolve(process.argv[2])
+    : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const wynik = sprawdz(korzen);
   for (const komunikat of wynik.podpowiedzi) console.log(komunikat);
   if (wynik.kod) console.error('Nadmiar literałów nazw kurierów:\n' + wynik.bledy.join('\n'));

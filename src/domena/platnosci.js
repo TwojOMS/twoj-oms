@@ -25,9 +25,13 @@ export function sumaWplatGrosze(platnosci) {
 /** Przedpłaty poza inkasem kuriera, w groszach. Stare date_paid Woo nie jest przedpłatą — ale tylko
  *  wtedy, gdy pobranie sprzedał SKLEP; pobranie włączone na karcie po opłacie online to dalej przedpłata. */
 export function przedplatyPrzedPobraniem(z, wplaty = z?.platnosci) {
-  return sumaWplatGrosze((wplaty ?? []).filter((p) =>
-    !(czyPobranie(z) && (p.zrodlo === 'pobranie' || (p.zrodlo === 'sklep' && pobranieZeSklepu(z))))
-    && normalizujMetode(p.metoda).klucz !== 'pobranie'));
+  return sumaWplatGrosze(
+    (wplaty ?? []).filter(
+      (p) =>
+        !(czyPobranie(z) && (p.zrodlo === 'pobranie' || (p.zrodlo === 'sklep' && pobranieZeSklepu(z)))) &&
+        normalizujMetode(p.metoda).klucz !== 'pobranie',
+    ),
+  );
 }
 
 /** Maksymalne pobranie po przedpłatach, w groszach (efektywna kwota z zamówienia). */
@@ -84,7 +88,9 @@ export function niedoplataPobrania(z, wplaty = z?.platnosci) {
     try {
       podstawaGr = kwotaZamowieniaGrosze(z);
     } catch {
-      return { blad: `Kwota zamówienia jest nieczytelna („${z.kwota_brutto}”) — panel nie policzy niedopłaty. Sprawdź zamówienie w sklepie albo popraw je na karcie.` };
+      return {
+        blad: `Kwota zamówienia jest nieczytelna („${z.kwota_brutto}”) — panel nie policzy niedopłaty. Sprawdź zamówienie w sklepie albo popraw je na karcie.`,
+      };
     }
   }
   if (podstawaGr === null || podstawaGr <= 0) {
@@ -171,13 +177,16 @@ export function saldoWplat(zamowienie) {
       roznicaZl: zl(Math.abs(roznicaGr)),
       // Trzy stany, nie dwa: „pokryte" musi znaczyc DOKLADNIE zero roznicy, zeby nadplata
       // nie schowala sie w tym samym worku co rowna zaplata.
-      stan: roznicaGr === 0 ? 'pokryte' : (roznicaGr < 0 ? 'niedoplata' : 'nadplata'),
+      stan: roznicaGr === 0 ? 'pokryte' : roznicaGr < 0 ? 'niedoplata' : 'nadplata',
       blad: null,
     };
   } catch (e) {
     return {
-      sumaZl: null, kwotaZl: zamowienie?.kwota_brutto ?? null, roznicaZl: null,
-      stan: 'blad', blad: e.message,
+      sumaZl: null,
+      kwotaZl: zamowienie?.kwota_brutto ?? null,
+      roznicaZl: null,
+      stan: 'blad',
+      blad: e.message,
     };
   }
 }
@@ -193,7 +202,9 @@ export function parsujWplate(body, teraz = new Date().toISOString()) {
   // przyjmuje pole wagi na ekranie nadania. Odrzucanie go tutaj byloby niespojnoscia
   // w obrebie jednego panelu, a przy `type="number"` przegladarka potrafi oddac PUSTA
   // wartosc zamiast wpisanej, wiec operator zobaczylby „podaj kwote" po tym, jak ja podal.
-  const surowa = String(body?.kwota ?? '').trim().replace(',', '.');
+  const surowa = String(body?.kwota ?? '')
+    .trim()
+    .replace(',', '.');
   if (!surowa) throw bladOperatora('Podaj kwotę wpłaty — bez niej nie ma czego dopisać.');
   if (!Number.isFinite(Number(surowa))) {
     throw bladOperatora(`Kwota wpłaty nie jest liczbą: "${body?.kwota}".`);
@@ -236,8 +247,8 @@ function parsujDateWplaty(surowa, teraz) {
 
   if (!KSZTALT_DATY.test(dzien)) {
     throw bladOperatora(
-      `Nie umiem odczytać daty wpłaty: „${dzien}" — podaj ją w formacie RRRR-MM-DD (np. 2026-08-01). `
-      + 'Panel niczego nie dopisał.',
+      `Nie umiem odczytać daty wpłaty: „${dzien}" — podaj ją w formacie RRRR-MM-DD (np. 2026-08-01). ` +
+        'Panel niczego nie dopisał.',
     );
   }
   // „2026-02-31" przechodzi wzorzec, a Date cicho przesuwa je na 3 marca — czyli wplata
@@ -252,9 +263,7 @@ function parsujDateWplaty(surowa, teraz) {
   // Data z przyszlosci to prawie zawsze literowka w roku, a wplata „z przyszlosci" psuje
   // `oplacone_at` w sposob, ktorego nikt nie zauwazy.
   if (dzien > dzisiaj) {
-    throw bladOperatora(
-      `Data wpłaty „${dzien}" jest z przyszłości (dziś ${dzisiaj}). Panel niczego nie dopisał.`,
-    );
+    throw bladOperatora(`Data wpłaty „${dzien}" jest z przyszłości (dziś ${dzisiaj}). Panel niczego nie dopisał.`);
   }
   // ⚠️ DZIS DOSTAJE PELNY ZNACZNIK CZASU, DZIEN WSTECZNY — POLNOC. Zamowienie zlozone dzis
   // o 10:33 z wplata „dzis 00:00" twierdziloby, ze pieniadze przyszly PRZED zamowieniem.

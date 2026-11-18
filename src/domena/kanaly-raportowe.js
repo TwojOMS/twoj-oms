@@ -13,7 +13,7 @@
 // Historia ma tylko klucz raportowy. Jawny typ wygrywa z nazwą; dla kanałów bez
 // definicji zachowujemy dawny prefiks (również dla archiwalnych kont Allegro).
 export function czyKanalRaportowyAllegro(klucz, definicje) {
-  const definicja = definicje?.find(d => d.raport === klucz);
+  const definicja = definicje?.find((d) => d.raport === klucz);
   if (definicja) return definicja.typ === 'allegro';
   return klucz.startsWith('ALLEGRO_');
 }
@@ -61,8 +61,16 @@ export function kanalHistoryczny(w, klasyfikacja) {
   const t = tagi(w);
   if (klasyfikacja.tagDrop !== null && t.includes(klasyfikacja.tagDrop)) return 'DROPSHIPPING';
   if (klasyfikacja.tagGdd !== null && t.includes(klasyfikacja.tagGdd)) return 'GDD';
-  if (klasyfikacja.kontaB2b.has(w.platform_account_id) || (klasyfikacja.tagB2b !== null && t.includes(klasyfikacja.tagB2b))) return 'B2B';
-  if ((w.pozycje ?? []).some((p) => klasyfikacja.prefiksyIndywidualne.some(prefiks => String(p.original_code ?? '').startsWith(prefiks)))) {
+  if (
+    klasyfikacja.kontaB2b.has(w.platform_account_id) ||
+    (klasyfikacja.tagB2b !== null && t.includes(klasyfikacja.tagB2b))
+  )
+    return 'B2B';
+  if (
+    (w.pozycje ?? []).some((p) =>
+      klasyfikacja.prefiksyIndywidualne.some((prefiks) => String(p.original_code ?? '').startsWith(prefiks)),
+    )
+  ) {
     return 'INDYWIDUALNE';
   }
   const zKonta = klasyfikacja.konta.get(w.platform_account_id);
@@ -106,25 +114,35 @@ export function kanalOms(w, klasyfikacja) {
   // Numer zamówienia (nie dane klienta) + wskazówka, co sprawdzić — komunikat trafia na ekran panelu.
   if (!zeSklepu) {
     const numer = w.numer ? ` ${w.numer}` : '';
-    throw odmowa(`Raport nie zna tego zamówienia${numer}: nieznany sklep OMS: ${w.sklep}. Tego klucza sklepu nie ma w konfiguracji kanałów — sprawdź OMS_KANALY (Ustawienia → Integracje → Moje połączenia).`);
+    throw odmowa(
+      `Raport nie zna tego zamówienia${numer}: nieznany sklep OMS: ${w.sklep}. Tego klucza sklepu nie ma w konfiguracji kanałów — sprawdź OMS_KANALY (Ustawienia → Integracje → Moje połączenia).`,
+    );
   }
   return zeSklepu;
 }
 
 export function wymagajKlasyfikacji(c) {
-  const id = x => Number.isSafeInteger(x) && x >= 0;
-  const raport = x => typeof x === 'string' && /^[A-Z][A-Z0-9_]*$/.test(x);
-  const poprawna = c && c.sklepy instanceof Map && c.konta instanceof Map && c.raporty instanceof Set
-    && c.kontaB2b instanceof Set && Array.isArray(c.prefiksyIndywidualne)
-    && ['tagDrop','tagGdd','tagB2b'].every(k => c[k] === null || id(c[k]))
-    && [...c.sklepy].every(([k,v]) => typeof k === 'string' && k.length > 0 && raport(v) && c.raporty.has(v))
-    && [...c.konta].every(([k,v]) => id(k) && raport(v) && c.raporty.has(v) && !['SKLEP','SKLEP_INDYWIDUALNE','ALLEGRO'].includes(v))
-    && [...c.raporty].every(raport)
-    && [...c.kontaB2b].every(k => id(k) && c.konta.get(k) === 'B2B')
-    && c.prefiksyIndywidualne.every(p => typeof p === 'string' && p.trim() === p && p.length > 1 && p.endsWith('|'))
-    && new Set(c.prefiksyIndywidualne).size === c.prefiksyIndywidualne.length;
+  const id = (x) => Number.isSafeInteger(x) && x >= 0;
+  const raport = (x) => typeof x === 'string' && /^[A-Z][A-Z0-9_]*$/.test(x);
+  const poprawna =
+    c &&
+    c.sklepy instanceof Map &&
+    c.konta instanceof Map &&
+    c.raporty instanceof Set &&
+    c.kontaB2b instanceof Set &&
+    Array.isArray(c.prefiksyIndywidualne) &&
+    ['tagDrop', 'tagGdd', 'tagB2b'].every((k) => c[k] === null || id(c[k])) &&
+    [...c.sklepy].every(([k, v]) => typeof k === 'string' && k.length > 0 && raport(v) && c.raporty.has(v)) &&
+    [...c.konta].every(
+      ([k, v]) => id(k) && raport(v) && c.raporty.has(v) && !['SKLEP', 'SKLEP_INDYWIDUALNE', 'ALLEGRO'].includes(v),
+    ) &&
+    [...c.raporty].every(raport) &&
+    [...c.kontaB2b].every((k) => id(k) && c.konta.get(k) === 'B2B') &&
+    c.prefiksyIndywidualne.every((p) => typeof p === 'string' && p.trim() === p && p.length > 1 && p.endsWith('|')) &&
+    new Set(c.prefiksyIndywidualne).size === c.prefiksyIndywidualne.length;
   if (!poprawna) throw new TypeError('Raport wymaga jawnej klasyfikacji kanałów.');
-  const tagi = [c.tagDrop,c.tagGdd,c.tagB2b].filter(v => v !== null);
-  if (new Set(tagi).size !== tagi.length) throw new TypeError('Raport wymaga jawnej klasyfikacji kanałów: tagi muszą być różne.');
+  const tagi = [c.tagDrop, c.tagGdd, c.tagB2b].filter((v) => v !== null);
+  if (new Set(tagi).size !== tagi.length)
+    throw new TypeError('Raport wymaga jawnej klasyfikacji kanałów: tagi muszą być różne.');
   return c;
 }

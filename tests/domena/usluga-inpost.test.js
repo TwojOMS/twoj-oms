@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
-  uslugaInpost, czySmart, USLUGA_SKLEP, USLUGA_ALLEGRO, USLUGA_ALLEGRO_SMART,
+  uslugaInpost,
+  czySmart,
+  USLUGA_SKLEP,
+  USLUGA_ALLEGRO,
+  USLUGA_ALLEGRO_SMART,
 } from '../../src/domena/usluga-inpost.js';
 
 // ⚠️⚠️ TEN PLIK POWSTAL Z PRAWDZIWEJ POMYLKI, KTORA KOSZTOWALA PIENIADZE.

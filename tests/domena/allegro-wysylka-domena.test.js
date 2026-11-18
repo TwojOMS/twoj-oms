@@ -8,7 +8,10 @@ const PACZKOMAT_INPOST = '2488f7b7-5d1c-4d65-b85c-4cbcf253fd93'; // owner: CLIEN
 const KURIER24_INPOST = '5d9c7838-e05f-4dec-afdd-58e884170ba7'; // owner: CLIENT
 
 const zamowienie = (n = {}) => ({
-  sklep: 'allegro_swietlik', metoda_wysylki: 'allegro_dpd', anulowane: 0, ...n,
+  sklep: 'allegro_swietlik',
+  metoda_wysylki: 'allegro_dpd',
+  anulowane: 0,
+  ...n,
 });
 
 describe('co wolno nadac z OMS-u przez Wysylam z Allegro', () => {
@@ -81,19 +84,21 @@ describe('co wolno nadac z OMS-u przez Wysylam z Allegro', () => {
   // (`delivery.method.id` surowych zamowien × `GET /shipment-management/delivery-services`),
   // nie z dopasowania po nazwie — w katalogu „Allegro Kurier DPD" daje CZTERY trafienia.
   it('mapa zawiera DOKLADNIE uslugi o owner=ALLEGRO — i ani jednej InPostowej', () => {
-    expect(Object.keys(METODY_WZA).sort()).toEqual([
-      DPD,
-      DPD_POBRANIE,
-      '0b9bed2c-0bc1-4e1f-9694-29bb39ebb483', // Allegro One Box, One Kurier
-      '0d83955a-4297-4169-adef-9790d53b11ff', // Allegro One Kurier - dostawa jutro
-      '09164667-daa5-42dc-8087-33d7485790ac', // Allegro Automat ORLEN Paczka
-      '09bcdcdb-c62a-41c4-ba42-f2c599280e3c', // Allegro Automaty Paczkowe DPD (AD)
-      '0960fef9-cc88-4558-b2b2-62331a20b5b2', // Allegro Kurier DHL (AD)
-      '0fe5b4af-9f09-443d-9d49-62331a20b5b2', // Allegro Automat DHL BOX 24/7 (AD)
-      '0560b75e-88c3-4b79-bcf7-62331a20b5b2', // Allegro Odbiór w Punkcie DHL (AD)
-      '0b257488-c85d-4507-b967-9b45ffbfa2e8', // Allegro One Box, DPD
-      '16af1169-db74-4e94-a16d-f2c599280e3c', // Allegro Odbiór w Punkcie DPD Pickup pobranie (AD)
-    ].sort());
+    expect(Object.keys(METODY_WZA).sort()).toEqual(
+      [
+        DPD,
+        DPD_POBRANIE,
+        '0b9bed2c-0bc1-4e1f-9694-29bb39ebb483', // Allegro One Box, One Kurier
+        '0d83955a-4297-4169-adef-9790d53b11ff', // Allegro One Kurier - dostawa jutro
+        '09164667-daa5-42dc-8087-33d7485790ac', // Allegro Automat ORLEN Paczka
+        '09bcdcdb-c62a-41c4-ba42-f2c599280e3c', // Allegro Automaty Paczkowe DPD (AD)
+        '0960fef9-cc88-4558-b2b2-62331a20b5b2', // Allegro Kurier DHL (AD)
+        '0fe5b4af-9f09-443d-9d49-62331a20b5b2', // Allegro Automat DHL BOX 24/7 (AD)
+        '0560b75e-88c3-4b79-bcf7-62331a20b5b2', // Allegro Odbiór w Punkcie DHL (AD)
+        '0b257488-c85d-4507-b967-9b45ffbfa2e8', // Allegro One Box, DPD
+        '16af1169-db74-4e94-a16d-f2c599280e3c', // Allegro Odbiór w Punkcie DPD Pickup pobranie (AD)
+      ].sort(),
+    );
     expect(METODY_WZA[PACZKOMAT_INPOST]).toBeUndefined();
     expect(METODY_WZA[KURIER24_INPOST]).toBeUndefined();
   });

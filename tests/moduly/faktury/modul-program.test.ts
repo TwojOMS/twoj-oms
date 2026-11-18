@@ -9,9 +9,7 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { createModulFaktury, ODSTEP_FAKTUR_MS } from '../../../src/moduly/faktury/modul.ts';
 import { zapiszKonfiguracjeIntegracji } from '../../../src/oms/db/konfiguracja-integracji.js';
 import { najdluzszyPrzebiegMs } from '../../../src/moduly/faktury/services/czuwacz-ksef.js';
-import {
-  najdluzszyPrzebiegArchiwumSprzedazyMs,
-} from '../../../src/moduly/faktury/services/czuwacz-archiwum-sprzedazy.js';
+import { najdluzszyPrzebiegArchiwumSprzedazyMs } from '../../../src/moduly/faktury/services/czuwacz-archiwum-sprzedazy.js';
 import { programInfakt } from '../../../src/integracje/programy/infakt.ts';
 import { METODY_OBOWIAZKOWE } from '../../../src/integracje/program-fakturowy.ts';
 import { zbudujOms } from '../../../src/oms/bootstrap.ts';
@@ -19,44 +17,90 @@ import { modulyPiaskownicy } from '../../../deploy/proba/atrapy/index.mjs';
 import { ENV_DEMO } from '../../../scripts/demo-dane.mjs';
 
 const KATALOG = mkdtempSync(join(tmpdir(), 'prz-118-05-'));
-const ENV = { OMS_PROFORMY_KATALOG: KATALOG, OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000' };
+const ENV = {
+  OMS_PROFORMY_KATALOG: KATALOG,
+  OMS_SPRZEDAWCA_NIP: '1234563218',
+  OMS_RACHUNEK: '34109010140000000000000000',
+};
 const PROBA = { ...ENV, OMS_TRYB: 'proba' };
 const KLUCZ_PLIKU = 'zmyslony-klucz-pliku-prz118-000000000001';
 const KLUCZ_EKRANU_1 = 'zmyslony-klucz-ekranu-prz118-00000000001';
 const KLUCZ_EKRANU_2 = 'zmyslony-klucz-ekranu-prz118-00000000002';
 
 type Uslugi = Record<string, any>;
-function zbuduj(modul: ReturnType<typeof createModulFaktury>, env: Record<string, string>, { klucz }: { klucz?: string } = {}) {
+function zbuduj(
+  modul: ReturnType<typeof createModulFaktury>,
+  env: Record<string, string>,
+  { klucz }: { klucz?: string } = {},
+) {
   const db = openOmsDb();
   if (klucz) zapiszKonfiguracjeIntegracji(db, 'infakt', { ustawienia: {}, sekrety: { apiKey: klucz } });
   const obce: Record<string, unknown> = { 'kanaly.klienciKanalow': {}, 'kanaly.config': { definicje: [], sklepy: {} } };
   const usluga = <T>(m: string, n: string) => {
-    const k = `${m}.${n}`; if (!Object.hasOwn(obce, k)) throw new Error(k); return obce[k] as T;
+    const k = `${m}.${n}`;
+    if (!Object.hasOwn(obce, k)) throw new Error(k);
+    return obce[k] as T;
   };
-  const sprobuj = () => modul.zbuduj({ db, konfiguracja: modul.konfiguracja(env), teraz: () => new Date('2026-10-27T10:00:00Z'),
-    log: () => {}, usluga } as any) as { uslugi: Uslugi };
+  const sprobuj = () =>
+    modul.zbuduj({
+      db,
+      konfiguracja: modul.konfiguracja(env),
+      teraz: () => new Date('2026-10-27T10:00:00Z'),
+      log: () => {},
+      usluga,
+    } as any) as { uslugi: Uslugi };
   return { db, sprobuj };
 }
 
 /** Program testowy spoza inFaktu (zmyślony „Rachmistrz Półcienia”) — wchodzi szwem `fabryki.programFakturowy`. */
-function programTestowy({ limity = {}, regulaVat = 'wierszami' }: { limity?: Record<string, number>; regulaVat?: string } = {}) {
+function programTestowy({
+  limity = {},
+  regulaVat = 'wierszami',
+}: { limity?: Record<string, number>; regulaVat?: string } = {}) {
   const metody = Object.fromEntries(METODY_OBOWIAZKOWE.map((m) => [m, async () => null]));
-  return { ...metody, opis: {
-    id: 'rachmistrz', nazwa: { mianownik: 'Rachmistrz', dopelniacz: 'Rachmistrza', miejscownik: 'Rachmistrzu', narzednik: 'Rachmistrzem' },
-    regulaVat, zdolnosci: [], wystawienieWysylaDoKsef: false,
-    limity: { zadanieMs: 30000, najdluzszaListaMs: 120000, stronaListy: 25, sufitStron: 40, rownolegleStron: 4, ...limity },
-    adres: 'https://rachmistrz.invalid', ekran: '/ustawienia/integracje/rachmistrz' } };
+  return {
+    ...metody,
+    opis: {
+      id: 'rachmistrz',
+      nazwa: {
+        mianownik: 'Rachmistrz',
+        dopelniacz: 'Rachmistrza',
+        miejscownik: 'Rachmistrzu',
+        narzednik: 'Rachmistrzem',
+      },
+      regulaVat,
+      zdolnosci: [],
+      wystawienieWysylaDoKsef: false,
+      limity: {
+        zadanieMs: 30000,
+        najdluzszaListaMs: 120000,
+        stronaListy: 25,
+        sufitStron: 40,
+        rownolegleStron: 4,
+        ...limity,
+      },
+      adres: 'https://rachmistrz.invalid',
+      ekran: '/ustawienia/integracje/rachmistrz',
+    },
+  };
 }
 const vies = { sprawdz: async () => ({ wynik: 'wazny' }) };
 
 let siec: ReturnType<typeof vi.fn>;
 function bezSieci() {
-  siec = vi.fn(async () => new Response(JSON.stringify({ metainfo: { count: 0, total_count: 0 }, entities: [] }),
-    { status: 200, headers: { 'content-type': 'application/json' } }));
+  siec = vi.fn(
+    async () =>
+      new Response(JSON.stringify({ metainfo: { count: 0, total_count: 0 }, entities: [] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+  );
   vi.stubGlobal('fetch', siec);
 }
 const kluczZadania = (i: number) => new Headers((siec.mock.calls[i][1] as RequestInit).headers).get('x-infakt-apikey');
-afterEach(() => { vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('budżet czuwaczy z limitów programu', () => {
   it('dla limitów inFaktu funkcje budżetu zachowują dotychczasowe budżety', () => {
@@ -64,9 +108,14 @@ describe('budżet czuwaczy z limitów programu', () => {
     expect(najdluzszyPrzebiegMs(limity)).toBe(3250000);
     expect(najdluzszyPrzebiegArchiwumSprzedazyMs(limity)).toBe(1320000);
     // Funkcje naprawdę czytają limity (nie oddają stałej): +1 ms zadania = +LIMIT_PRZEBIEGU ms przebiegu KSeF.
-    expect(najdluzszyPrzebiegMs({ ...limity, zadanieMs: limity.zadanieMs + 1 }) - najdluzszyPrzebiegMs(programInfakt({}).opis.limity)).toBe(50);
-    expect(najdluzszyPrzebiegArchiwumSprzedazyMs({ ...limity, najdluzszaListaMs: limity.najdluzszaListaMs + 7 })
-      - najdluzszyPrzebiegArchiwumSprzedazyMs(programInfakt({}).opis.limity)).toBe(7);
+    expect(
+      najdluzszyPrzebiegMs({ ...limity, zadanieMs: limity.zadanieMs + 1 }) -
+        najdluzszyPrzebiegMs(programInfakt({}).opis.limity),
+    ).toBe(50);
+    expect(
+      najdluzszyPrzebiegArchiwumSprzedazyMs({ ...limity, najdluzszaListaMs: limity.najdluzszaListaMs + 7 }) -
+        najdluzszyPrzebiegArchiwumSprzedazyMs(programInfakt({}).opis.limity),
+    ).toBe(7);
   });
 });
 
@@ -119,7 +168,9 @@ describe('moduł faktur składa ProgramFakturowy', () => {
     bez.db.close();
 
     const env = { ...ENV_DEMO, OMS_TRYB: 'proba', OMS_PROFORMY_KATALOG: KATALOG };
-    const faktury = modulyPiaskownicy(env).find((m: { nazwa: string }) => m.nazwa === 'faktury') as ReturnType<typeof createModulFaktury>;
+    const faktury = modulyPiaskownicy(env).find((m: { nazwa: string }) => m.nazwa === 'faktury') as ReturnType<
+      typeof createModulFaktury
+    >;
     const z = zbuduj(faktury, env);
     const { uslugi } = z.sprobuj();
     expect(uslugi.infakt.atrapa).toBe(true);
@@ -131,7 +182,10 @@ describe('moduł faktur składa ProgramFakturowy', () => {
 
   it('program z fabryki: to on jest usługą programFakturowy (i aliasem infakt), gdy przechodzi strażników', () => {
     const p = programTestowy();
-    const { db, sprobuj } = zbuduj(createModulFaktury({ fabryki: { programFakturowy: () => p, createVies: () => vies } }), PROBA);
+    const { db, sprobuj } = zbuduj(
+      createModulFaktury({ fabryki: { programFakturowy: () => p, createVies: () => vies } }),
+      PROBA,
+    );
     const { uslugi } = sprobuj();
     expect(uslugi.programFakturowy).toBe(p);
     expect(uslugi.infakt).toBe(p);
@@ -142,7 +196,10 @@ describe('moduł faktur składa ProgramFakturowy', () => {
     // 50 × 70 s + 50 × 5 s = 62 min 30 s ≥ 60 min; zadanie 70 s < próg zawieszonej faktury (5 min), więc kontrakt przechodzi.
     const p = programTestowy({ limity: { zadanieMs: 70000 } });
     expect(najdluzszyPrzebiegMs(p.opis.limity)).toBeGreaterThanOrEqual(ODSTEP_FAKTUR_MS);
-    const { db, sprobuj } = zbuduj(createModulFaktury({ fabryki: { programFakturowy: () => p, createVies: () => vies } }), PROBA);
+    const { db, sprobuj } = zbuduj(
+      createModulFaktury({ fabryki: { programFakturowy: () => p, createVies: () => vies } }),
+      PROBA,
+    );
     expect(sprobuj).toThrow(/Budżet czuwacza KSeF.*Rachmistrz/);
     db.close();
   });
@@ -150,14 +207,20 @@ describe('moduł faktur składa ProgramFakturowy', () => {
   it('budżet czuwacza archiwum z limitów programu nie mieści się → odmowa startu', () => {
     const p = programTestowy({ limity: { najdluzszaListaMs: 3000000 } });
     expect(najdluzszyPrzebiegMs(p.opis.limity)).toBeLessThan(ODSTEP_FAKTUR_MS);
-    const { db, sprobuj } = zbuduj(createModulFaktury({ fabryki: { programFakturowy: () => p, createVies: () => vies } }), PROBA);
+    const { db, sprobuj } = zbuduj(
+      createModulFaktury({ fabryki: { programFakturowy: () => p, createVies: () => vies } }),
+      PROBA,
+    );
     expect(sprobuj).toThrow(/Budżet czuwacza archiwum sprzedaży.*Rachmistrz/);
     db.close();
   });
 
   it('program z regulaVat „odSumy” → odmowa startu z powodem', () => {
     const p = programTestowy({ regulaVat: 'odSumy' });
-    const { db, sprobuj } = zbuduj(createModulFaktury({ fabryki: { programFakturowy: () => p, createVies: () => vies } }), PROBA);
+    const { db, sprobuj } = zbuduj(
+      createModulFaktury({ fabryki: { programFakturowy: () => p, createVies: () => vies } }),
+      PROBA,
+    );
     expect(sprobuj).toThrow(/Rachmistrz.*regulaVat „odSumy” nieobsługiwana/);
     db.close();
   });
@@ -174,7 +237,10 @@ describe('moduł faktur składa ProgramFakturowy', () => {
 
   it('⛔ szew programu razem z atrapą klienta inFaktu: odmowa (jedno źródło programu)', () => {
     const p = programTestowy();
-    const { db, sprobuj } = zbuduj(createModulFaktury({ fabryki: { programFakturowy: () => p, createInfaktClient: () => ({}) } }), PROBA);
+    const { db, sprobuj } = zbuduj(
+      createModulFaktury({ fabryki: { programFakturowy: () => p, createInfaktClient: () => ({}) } }),
+      PROBA,
+    );
     expect(sprobuj).toThrow(/programFakturowy.*createInfaktClient|createInfaktClient.*programFakturowy/);
     db.close();
   });
@@ -182,15 +248,30 @@ describe('moduł faktur składa ProgramFakturowy', () => {
 
 describe('alias infakt i nadpisanie w kompozycji', () => {
   it('nadpisanie „faktury.infakt” w zbudujOms dociera do usluga(faktury, infakt) jak dotąd', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => { throw new Error('bez sieci'); }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => {
+        throw new Error('bez sieci');
+      }),
+    );
     const mock = { listaFaktur: vi.fn(async () => []) };
-    const env = { OMS_DB_PATH: ':memory:', OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000',
-      OMS_USER: 'operator', OMS_PASS: 'test', OMS_PROFORMY_KATALOG: KATALOG, OMS_ETYKIETY_KATALOG: KATALOG };
+    const env = {
+      OMS_DB_PATH: ':memory:',
+      OMS_SPRZEDAWCA_NIP: '1234563218',
+      OMS_RACHUNEK: '34109010140000000000000000',
+      OMS_USER: 'operator',
+      OMS_PASS: 'test',
+      OMS_PROFORMY_KATALOG: KATALOG,
+      OMS_ETYKIETY_KATALOG: KATALOG,
+    };
     const a = await zbudujOms({ env, nadpisania: { 'faktury.infakt': mock } });
     try {
       expect(a.usluga('faktury', 'infakt')).toBe(mock);
       // Bez inFaktu w konfiguracji moduł nie składa programu — nadpisanie aliasu nie tworzy go za plecami konsumentów.
       expect(a.usluga('faktury', 'programFakturowy')).toBeNull();
-    } finally { await a.app.close(); a.db.close(); }
+    } finally {
+      await a.app.close();
+      a.db.close();
+    }
   });
 });

@@ -15,34 +15,62 @@ import { zapiszKonfiguracjeIntegracji } from '../../../src/oms/db/konfiguracja-i
 const wolania = vi.hoisted(() => [] as Record<string, unknown>[]);
 vi.mock('../../../src/oms/kurierzy/inpost.js', async (oryginal) => {
   const m = await oryginal<typeof import('../../../src/oms/kurierzy/inpost.js')>();
-  return { ...m, createInpostClient: (o: Parameters<typeof m.createInpostClient>[0]) => {
-    wolania.push(o as Record<string, unknown>); return m.createInpostClient(o);
-  } };
+  return {
+    ...m,
+    createInpostClient: (o: Parameters<typeof m.createInpostClient>[0]) => {
+      wolania.push(o as Record<string, unknown>);
+      return m.createInpostClient(o);
+    },
+  };
 });
 
 const TOKEN_PLIKU = 'eyJ.TOKEN-Z-PLIKU.zmyslony';
 const TOKEN_EKRANU = 'eyJ.TOKEN-Z-EKRANU.zmyslony';
 const ENV = {
-  INPOST_TOKEN: TOKEN_PLIKU, INPOST_ORGANIZACJA: '4242', INPOST_PACZKOMAT_NADAWCZY: 'abc01m',
-  DPD_NADAWCA_NAZWA: 'Pracownia Testowa', DPD_NADAWCA_ULICA: 'Zmyślona 1', DPD_NADAWCA_KOD: '00-950',
-  DPD_NADAWCA_MIASTO: 'Warszawa', DPD_NADAWCA_TELEFON: '000000000', DPD_NADAWCA_EMAIL: 'nadawca@example.invalid',
+  INPOST_TOKEN: TOKEN_PLIKU,
+  INPOST_ORGANIZACJA: '4242',
+  INPOST_PACZKOMAT_NADAWCZY: 'abc01m',
+  DPD_NADAWCA_NAZWA: 'Pracownia Testowa',
+  DPD_NADAWCA_ULICA: 'Zmyślona 1',
+  DPD_NADAWCA_KOD: '00-950',
+  DPD_NADAWCA_MIASTO: 'Warszawa',
+  DPD_NADAWCA_TELEFON: '000000000',
+  DPD_NADAWCA_EMAIL: 'nadawca@example.invalid',
 };
-const NADAWCA = { nazwa: 'Pracownia Testowa', ulica: 'Zmyślona 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL',
-  phone: '000000000', email: 'nadawca@example.invalid' };
+const NADAWCA = {
+  nazwa: 'Pracownia Testowa',
+  ulica: 'Zmyślona 1',
+  kod: '00-950',
+  miasto: 'Warszawa',
+  kraj: 'PL',
+  phone: '000000000',
+  email: 'nadawca@example.invalid',
+};
 
 function zbuduj(env: Record<string, string>, { zapisEkranu = false } = {}) {
   const db = openOmsDb();
   if (zapisEkranu) {
-    zapiszKonfiguracjeIntegracji(db, 'inpost', { ustawienia: { nazwa: 'InPost', organizacja: '9999', paczkomatNadawczy: 'ZZZ99Z' },
-      sekrety: { token: TOKEN_EKRANU } });
+    zapiszKonfiguracjeIntegracji(db, 'inpost', {
+      ustawienia: { nazwa: 'InPost', organizacja: '9999', paczkomatNadawczy: 'ZZZ99Z' },
+      sekrety: { token: TOKEN_EKRANU },
+    });
   }
   const uslugi: Record<string, unknown> = {
-    'kanaly.klienciSklepow': { sklep: {} }, 'kanaly.klienciKanalow': {}, 'rdzen.sprzedawca': { rachunek: '' },
-    'kanaly.config': { definicje: [], sklepy: {} }, 'faktury.infakt': null, 'faktury.puls': createPuls({ teraz: () => new Date() }),
+    'kanaly.klienciSklepow': { sklep: {} },
+    'kanaly.klienciKanalow': {},
+    'rdzen.sprzedawca': { rachunek: '' },
+    'kanaly.config': { definicje: [], sklepy: {} },
+    'faktury.infakt': null,
+    'faktury.puls': createPuls({ teraz: () => new Date() }),
   };
   const modul = createModulWysylka();
-  const z = modul.zbuduj({ db, konfiguracja: modul.konfiguracja({ ...env, OMS_ETYKIETY_KATALOG: mkdtempSync(join(tmpdir(), 'prz-093-09-')) }),
-    teraz: () => new Date(), log: () => {}, usluga: <T>(m: string, n: string) => uslugi[`${m}.${n}`] as T } as any);
+  const z = modul.zbuduj({
+    db,
+    konfiguracja: modul.konfiguracja({ ...env, OMS_ETYKIETY_KATALOG: mkdtempSync(join(tmpdir(), 'prz-093-09-')) }),
+    teraz: () => new Date(),
+    log: () => {},
+    usluga: <T>(m: string, n: string) => uslugi[`${m}.${n}`] as T,
+  } as any);
   return { db, kurierzy: (z as any).uslugi.kurierzy as Record<string, any> };
 }
 
@@ -52,15 +80,26 @@ beforeEach(() => {
   siec = vi.fn(async () => new Response(JSON.stringify({ status: 404, error: 'resource_not_found' }), { status: 404 }));
   vi.stubGlobal('fetch', siec);
 });
-afterEach(() => { vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('produkcja: InPost z pliku bez zmian', () => {
   for (const zapisEkranu of [false, true]) {
     it(`jedno wywołanie createInpostClient z argumentami z pliku${zapisEkranu ? ' — mimo zapisu z ekranu w bazie' : ''}`, async () => {
       const { db, kurierzy } = zbuduj(ENV, { zapisEkranu });
-      expect(wolania).toEqual([{ url: 'https://api-shipx-pl.easypack24.net/v1', token: TOKEN_PLIKU, organizacja: 4242,
-        nadawca: NADAWCA, paczkomatNadawczy: 'ABC01M' }]);
-      expect(Object.keys(kurierzy.inpost)).toEqual(expect.arrayContaining(['nadaj', 'sprawdzPrzesylke', 'pobierzEtykiete', 'statusPrzesylki']));
+      expect(wolania).toEqual([
+        {
+          url: 'https://api-shipx-pl.easypack24.net/v1',
+          token: TOKEN_PLIKU,
+          organizacja: 4242,
+          nadawca: NADAWCA,
+          paczkomatNadawczy: 'ABC01M',
+        },
+      ]);
+      expect(Object.keys(kurierzy.inpost)).toEqual(
+        expect.arrayContaining(['nadaj', 'sprawdzPrzesylke', 'pobierzEtykiete', 'statusPrzesylki']),
+      );
       // Klient mapy rozmawia tokenem i adresem z pliku — nie z ekranu.
       await kurierzy.inpost.statusPrzesylki('520000000000000000000001').catch(() => null);
       expect(siec).toHaveBeenCalledTimes(1);
@@ -90,7 +129,12 @@ describe('produkcja: InPost z pliku bez zmian', () => {
     const { db, kurierzy } = zbuduj(ENV);
     // Przekazany dalej drugi argument udawałby „pierwszą odpowiedź POST” z numerem listu — wtedy pierwsze żądanie
     // poszłoby po etykietę, a nie po przesyłkę.
-    await kurierzy.inpost.sprawdzPrzesylke('123', { sklep: 'x', tekst: '{}', dane: { id: 123, tracking_number: '520000000000000000000009' } })
+    await kurierzy.inpost
+      .sprawdzPrzesylke('123', {
+        sklep: 'x',
+        tekst: '{}',
+        dane: { id: 123, tracking_number: '520000000000000000000009' },
+      })
       .catch(() => null);
     expect(siec).toHaveBeenCalled();
     expect(String(siec.mock.calls[0][0])).toBe('https://api-shipx-pl.easypack24.net/v1/shipments/123');

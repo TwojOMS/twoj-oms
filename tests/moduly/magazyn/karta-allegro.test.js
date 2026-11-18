@@ -9,42 +9,101 @@ import { wczytajSekret } from '../../../src/core/bezpieczenstwo/sekret-sesji.js'
 import { wstawOferte, ofertaPoId } from '../../../src/oms/db/oferty-kanalow.ts';
 import { srodowiskoAllegro } from '../../../src/moduly/magazyn/karta.js';
 
-const auth = { authorization: `Basic ${Buffer.from('operator:atrapa').toString('base64')}`, origin: 'http://localhost' };
+const auth = {
+  authorization: `Basic ${Buffer.from('operator:atrapa').toString('base64')}`,
+  origin: 'http://localhost',
+};
 const T0 = '2026-11-14T08:00:00.000Z';
 const KARTA = 1000;
 let db, app;
 
-const opisKategorii = (parametry, { lisc = true } = {}) => JSON.stringify({ wersja: 2, lisc, tworzenieProduktu: true, parametry });
+const opisKategorii = (parametry, { lisc = true } = {}) =>
+  JSON.stringify({ wersja: 2, lisc, tworzenieProduktu: true, parametry });
 const PARAMETRY_257 = [
-  { id: '11323', nazwa: 'Stan', typ: 'dictionary', slownik: [{ id: '11323_1', wartosc: 'Nowy' }], wymagany: true, opisujeProdukt: false },
+  {
+    id: '11323',
+    nazwa: 'Stan',
+    typ: 'dictionary',
+    slownik: [{ id: '11323_1', wartosc: 'Nowy' }],
+    wymagany: true,
+    opisujeProdukt: false,
+  },
   { id: '202717', nazwa: 'Kolor kloszu', typ: 'string', slownik: null, wymagany: true, opisujeProdukt: true },
-  { id: '4388', nazwa: 'Rodzaj gwintu', typ: 'dictionary', slownik: [{ id: '4388_1', wartosc: 'E27' }, { id: '4388_2', wartosc: 'E14' }],
-    wymagany: false, opisujeProdukt: true },
+  {
+    id: '4388',
+    nazwa: 'Rodzaj gwintu',
+    typ: 'dictionary',
+    slownik: [
+      { id: '4388_1', wartosc: 'E27' },
+      { id: '4388_2', wartosc: 'E14' },
+    ],
+    wymagany: false,
+    opisujeProdukt: true,
+  },
 ];
 
 const post = (url, payload, headers = auth) => app.inject({ method: 'POST', url, headers, payload });
 const zapis = (payload, headers) => post(`/magazyn/${KARTA}/allegro`, payload, headers);
 const wybor = (payload, headers) => post(`/magazyn/${KARTA}/allegro/produkt`, payload, headers);
 const kartaAllegro = () => db.prepare('SELECT * FROM karty_allegro WHERE karta_id = ?').get(KARTA);
-const zrodla = () => db.prepare("SELECT pole, zrodlo, reczne FROM karty_zrodla_pol WHERE karta_id = ? AND pole LIKE 'allegro:%' ORDER BY pole").all(KARTA);
-const sekcja = body => body.match(/<section[^>]*id="allegro-karty"[\s\S]*?<\/section>/)?.[0] ?? '';
+const zrodla = () =>
+  db
+    .prepare(
+      "SELECT pole, zrodlo, reczne FROM karty_zrodla_pol WHERE karta_id = ? AND pole LIKE 'allegro:%' ORDER BY pole",
+    )
+    .all(KARTA);
+const sekcja = (body) => body.match(/<section[^>]*id="allegro-karty"[\s\S]*?<\/section>/)?.[0] ?? '';
 
 beforeEach(() => {
   db = openOmsDb(':memory:');
   app = buildOmsServer({ db, config: { auth: { user: 'operator', pass: 'atrapa' } }, magazyn: {} });
   for (const id of [KARTA, KARTA + 1]) {
-    db.prepare(`INSERT INTO karty_produktow (id, nazwa, kategoria_glowna, utworzony_at, zmieniony_at)
-      VALUES (?, 'Lampa stołowa Gliwka', 'Lampy stołowe', ?, ?)`).run(id, T0, T0);
+    db.prepare(
+      `INSERT INTO karty_produktow (id, nazwa, kategoria_glowna, utworzony_at, zmieniony_at)
+      VALUES (?, 'Lampa stołowa Gliwka', 'Lampy stołowe', ?, ?)`,
+    ).run(id, T0, T0);
   }
-  db.prepare(`INSERT INTO allegro_mapa_kategorii (kategoria_karty, srodowisko, kategoria_allegro_id) VALUES ('Lampy stołowe', 'produkcja', '257')`).run();
-  db.prepare(`INSERT INTO allegro_reguly_parametrow (srodowisko, kategoria_allegro_id, parametr_id, rodzaj, wartosc_json, pole, zmieniono_at)
-    VALUES ('produkcja', '257', '202717', 'na_karcie', NULL, NULL, ?)`).run(T0);
-  const kat = db.prepare(`INSERT INTO kanaly_kategorie (polaczenie, kategoria_id, sciezka_json, parametry_json, pobrano_at) VALUES (?, ?, ?, ?, ?)`);
-  kat.run('allegro-demo', '257', JSON.stringify([{ id: '5', nazwa: 'Oświetlenie' }, { id: '257', nazwa: 'Lampy stołowe' }]), opisKategorii(PARAMETRY_257), T0);
-  kat.run('allegro-demo', '258', JSON.stringify([{ id: '258', nazwa: 'Kinkiety' }]),
-    opisKategorii([{ id: '17448', nazwa: 'Liczba punktów światła', typ: 'integer', slownik: null, wymagany: false, opisujeProdukt: true }]), T0);
+  db.prepare(
+    `INSERT INTO allegro_mapa_kategorii (kategoria_karty, srodowisko, kategoria_allegro_id) VALUES ('Lampy stołowe', 'produkcja', '257')`,
+  ).run();
+  db.prepare(
+    `INSERT INTO allegro_reguly_parametrow (srodowisko, kategoria_allegro_id, parametr_id, rodzaj, wartosc_json, pole, zmieniono_at)
+    VALUES ('produkcja', '257', '202717', 'na_karcie', NULL, NULL, ?)`,
+  ).run(T0);
+  const kat = db.prepare(
+    `INSERT INTO kanaly_kategorie (polaczenie, kategoria_id, sciezka_json, parametry_json, pobrano_at) VALUES (?, ?, ?, ?, ?)`,
+  );
+  kat.run(
+    'allegro-demo',
+    '257',
+    JSON.stringify([
+      { id: '5', nazwa: 'Oświetlenie' },
+      { id: '257', nazwa: 'Lampy stołowe' },
+    ]),
+    opisKategorii(PARAMETRY_257),
+    T0,
+  );
+  kat.run(
+    'allegro-demo',
+    '258',
+    JSON.stringify([{ id: '258', nazwa: 'Kinkiety' }]),
+    opisKategorii([
+      {
+        id: '17448',
+        nazwa: 'Liczba punktów światła',
+        typ: 'integer',
+        slownik: null,
+        wymagany: false,
+        opisujeProdukt: true,
+      },
+    ]),
+    T0,
+  );
 });
-afterEach(async () => { await app?.close(); db?.close(); });
+afterEach(async () => {
+  await app?.close();
+  db?.close();
+});
 
 it('karta z brakami: sekcja pokazuje kategorię z mapy, źródła parametrów, licznik nazwy i listę braków bez konta', async () => {
   const r = await app.inject({ url: `/magazyn/${KARTA}`, headers: auth });
@@ -54,7 +113,9 @@ it('karta z brakami: sekcja pokazuje kategorię z mapy, źródła parametrów, l
   expect(s).toContain('z mapy kategorii');
   expect(s).toContain('20 / 75');
   expect(s).toMatch(/Kolor kloszu[\s\S]*?uzupełnij na karcie/);
-  expect(s).toContain('wymaga parametru „Kolor kloszu” dla nowego produktu — uzupełnij parametr „Kolor kloszu” na karcie');
+  expect(s).toContain(
+    'wymaga parametru „Kolor kloszu” dla nowego produktu — uzupełnij parametr „Kolor kloszu” na karcie',
+  );
   expect(s).toContain('name="parametr:202717"');
   expect(s).not.toContain('Gotowa do wystawienia');
 });
@@ -93,9 +154,14 @@ it('parametr spoza kategorii → odmowa 400 bez zapisu', async () => {
 });
 
 it('kategoria-wyjątek i parametr „na karcie” zapisują się do karty_allegro; pusta wartość zdejmuje nadpisanie', async () => {
-  expect((await zapis({ nazwa: '', kategoria: '', 'parametr:202717': 'mleczny', 'parametr:4388': '4388_1' })).statusCode).toBe(303);
+  expect(
+    (await zapis({ nazwa: '', kategoria: '', 'parametr:202717': 'mleczny', 'parametr:4388': '4388_1' })).statusCode,
+  ).toBe(303);
   expect(kartaAllegro()).toMatchObject({ nazwa: null, kategoria_id: null });
-  expect(JSON.parse(kartaAllegro().parametry_json)).toEqual([{ id: '202717', values: ['mleczny'] }, { id: '4388', valuesIds: ['4388_1'] }]);
+  expect(JSON.parse(kartaAllegro().parametry_json)).toEqual([
+    { id: '202717', values: ['mleczny'] },
+    { id: '4388', valuesIds: ['4388_1'] },
+  ]);
   expect(zrodla()).toEqual([{ pole: 'allegro:parametry', zrodlo: 'reczne', reczne: 1 }]);
   const r = await app.inject({ url: `/magazyn/${KARTA}`, headers: auth });
   const s = sekcja(r.body);
@@ -108,9 +174,11 @@ it('kategoria-wyjątek i parametr „na karcie” zapisują się do karty_allegr
 
 it('formularz z ekranu: puste parametry starej kategorii + nowy wyjątek kategorii → zapis przechodzi', async () => {
   const s = sekcja((await app.inject({ url: `/magazyn/${KARTA}`, headers: auth })).body);
-  const nazwy = [...new Set([...s.matchAll(/name="([^"]+)"/g)].map(m => m[1]))].filter(n => n !== 'ofertaId' && n !== 'produktId');
+  const nazwy = [...new Set([...s.matchAll(/name="([^"]+)"/g)].map((m) => m[1]))].filter(
+    (n) => n !== 'ofertaId' && n !== 'produktId',
+  );
   expect(nazwy).toEqual(expect.arrayContaining(['nazwa', 'kategoria', 'parametr:202717']));
-  const payload = Object.fromEntries(nazwy.filter(n => n !== '_csrf').map(n => [n, '']));
+  const payload = Object.fromEntries(nazwy.filter((n) => n !== '_csrf').map((n) => [n, '']));
   payload.kategoria = '258';
   const r = await zapis(payload);
   expect(r.statusCode).toBe(303);
@@ -126,16 +194,31 @@ it('zmiana wyjątku kategorii zdejmuje nadpisania parametrów spoza nowej katego
 });
 
 it('środowisko Allegro: konto produkcyjne ma pierwszeństwo, inaczej pierwsze konto', () => {
-  expect(srodowiskoAllegro(() => [{ klucz: 'a', srodowisko: 'sandbox' }, { klucz: 'b', srodowisko: 'produkcja' }])).toBe('produkcja');
+  expect(
+    srodowiskoAllegro(() => [
+      { klucz: 'a', srodowisko: 'sandbox' },
+      { klucz: 'b', srodowisko: 'produkcja' },
+    ]),
+  ).toBe('produkcja');
   expect(srodowiskoAllegro(() => [{ klucz: 'a', srodowisko: 'sandbox' }])).toBe('sandbox');
   expect(srodowiskoAllegro(() => [])).toBe('produkcja');
 });
 
 it('wybór produktu zapisuje produkt_id i przestawia ofertę na do_wyslania', async () => {
   const o = wstawOferte(db, { kartaId: KARTA, kanal: 'allegro-demo', idZewnetrzne: 'ext:a1', stan: 'problem' });
-  db.prepare('UPDATE oferty_kanalow SET problemy_json = ?, blad = ? WHERE id = ?').run(JSON.stringify([{ kod: 'wiele-produktow',
-    produkty: [{ id: 'prod-1', nazwa: 'Lampa Gliwka biała', ean: '5900000000017' }, { id: 'prod-2', nazwa: 'Lampa Gliwka czarna', ean: null }] }]),
-  'Kilka produktów w Katalogu', o.id);
+  db.prepare('UPDATE oferty_kanalow SET problemy_json = ?, blad = ? WHERE id = ?').run(
+    JSON.stringify([
+      {
+        kod: 'wiele-produktow',
+        produkty: [
+          { id: 'prod-1', nazwa: 'Lampa Gliwka biała', ean: '5900000000017' },
+          { id: 'prod-2', nazwa: 'Lampa Gliwka czarna', ean: null },
+        ],
+      },
+    ]),
+    'Kilka produktów w Katalogu',
+    o.id,
+  );
   const g = sekcja((await app.inject({ url: `/magazyn/${KARTA}`, headers: auth })).body);
   expect(g).toContain('Lampa Gliwka czarna');
   expect((await wybor({ ofertaId: String(o.id), produktId: 'prod-obcy' })).statusCode).toBe(400);
@@ -151,9 +234,15 @@ it('wybór produktu zapisuje produkt_id i przestawia ofertę na do_wyslania', as
 
 it('parameter-mismatch: produkt wskazany przez Allegro; oferta innej karty → 404', async () => {
   const o = wstawOferte(db, { kartaId: KARTA, kanal: 'allegro-demo', idZewnetrzne: 'ext:a2', stan: 'problem' });
-  db.prepare('UPDATE oferty_kanalow SET problemy_json = ? WHERE id = ?').run(JSON.stringify([{ kod: 'parameter-mismatch', produktId: 'prod-9', parametr: 'Kolor kloszu' }]), o.id);
+  db.prepare('UPDATE oferty_kanalow SET problemy_json = ? WHERE id = ?').run(
+    JSON.stringify([{ kod: 'parameter-mismatch', produktId: 'prod-9', parametr: 'Kolor kloszu' }]),
+    o.id,
+  );
   const obca = wstawOferte(db, { kartaId: KARTA + 1, kanal: 'allegro-demo', idZewnetrzne: 'ext:b1', stan: 'problem' });
-  db.prepare('UPDATE oferty_kanalow SET problemy_json = ? WHERE id = ?').run(JSON.stringify([{ kod: 'parameter-mismatch', produktId: 'prod-9', parametr: 'Kolor' }]), obca.id);
+  db.prepare('UPDATE oferty_kanalow SET problemy_json = ? WHERE id = ?').run(
+    JSON.stringify([{ kod: 'parameter-mismatch', produktId: 'prod-9', parametr: 'Kolor' }]),
+    obca.id,
+  );
   expect((await wybor({ ofertaId: String(obca.id), produktId: 'prod-9' })).statusCode).toBe(404);
   expect(ofertaPoId(db, obca.id)?.stan).toBe('problem');
   expect((await wybor({ ofertaId: String(o.id), produktId: 'prod-9' })).statusCode).toBe(303);
@@ -163,7 +252,10 @@ it('parameter-mismatch: produkt wskazany przez Allegro; oferta innej karty → 4
 
 it('odmawia bez CSRF i bez uprawnienia magazyn (zapis i wybór produktu)', async () => {
   const o = wstawOferte(db, { kartaId: KARTA, kanal: 'allegro-demo', idZewnetrzne: 'ext:a3', stan: 'problem' });
-  db.prepare('UPDATE oferty_kanalow SET problemy_json = ? WHERE id = ?').run(JSON.stringify([{ kod: 'parameter-mismatch', produktId: 'prod-9', parametr: 'Kolor' }]), o.id);
+  db.prepare('UPDATE oferty_kanalow SET problemy_json = ? WHERE id = ?').run(
+    JSON.stringify([{ kod: 'parameter-mismatch', produktId: 'prod-9', parametr: 'Kolor' }]),
+    o.id,
+  );
   const bezCsrf = { authorization: auth.authorization };
   expect((await zapis({ nazwa: 'Lampa' }, bezCsrf)).statusCode).toBe(403);
   expect((await wybor({ ofertaId: String(o.id), produktId: 'prod-9' }, bezCsrf)).statusCode).toBe(403);
@@ -171,7 +263,10 @@ it('odmawia bez CSRF i bez uprawnienia magazyn (zapis i wybór produktu)', async
   zalozKonto(db, { login: 'admin', imie: 'Admin', haslo: 'test', rola: 'admin', admin: true });
   const konto = zalozKonto(db, { login: 'czytelnik', imie: 'Czytelnik', haslo: 'test', rola: 'operator' });
   ustawUprawnienia(db, konto, []);
-  const bezRoli = { origin: auth.origin, cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz('czytelnik', wczytajSekret(db), Date.now(), 0)}` };
+  const bezRoli = {
+    origin: auth.origin,
+    cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz('czytelnik', wczytajSekret(db), Date.now(), 0)}`,
+  };
   expect((await zapis({ nazwa: 'Lampa' }, bezRoli)).statusCode).toBe(403);
   expect((await wybor({ ofertaId: String(o.id), produktId: 'prod-9' }, bezRoli)).statusCode).toBe(403);
   expect(kartaAllegro()).toBeUndefined();

@@ -7,26 +7,57 @@
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
 import { stronaOdmowy } from '../../../core/web/odmowa.js';
 import { sprawdzFormularzInfakt, ADRES_INFAKT, EKRAN_INFAKTU } from '../../../domena/konfiguracja-infakt.js';
-import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji, usunKonfiguracjeIntegracji, stanDlaEkranu }
-  from '../../../oms/db/konfiguracja-integracji.js';
+import {
+  wczytajKonfiguracjeIntegracji,
+  zapiszKonfiguracjeIntegracji,
+  usunKonfiguracjeIntegracji,
+  stanDlaEkranu,
+} from '../../../oms/db/konfiguracja-integracji.js';
 import { jawnyBrak } from '../../../domena/wybor-programu.js';
 import { nawigacjaUstawien } from '../../ustawienia/nawigacja.js';
 import { czyWysylacKonsumenckie, zapiszKonsumenckie } from '../db/ksef-konsumenckie.js';
-import { stanAutomatuKsef, obsluzZapisAutomatuKsef, registerAdresuAutomatuKsef, AUTOMAT_KSEF_PROGRAMU } from './automat-ksef-ekran.js';
+import {
+  stanAutomatuKsef,
+  obsluzZapisAutomatuKsef,
+  registerAdresuAutomatuKsef,
+  AUTOMAT_KSEF_PROGRAMU,
+} from './automat-ksef-ekran.js';
 
-const KOMUNIKATY = { zapisano: 'Zapisano klucz API inFaktu.', odlaczono: 'inFakt został odłączony. Klucz API usunięty z OMS-u.' };
+const KOMUNIKATY = {
+  zapisano: 'Zapisano klucz API inFaktu.',
+  odlaczono: 'inFakt został odłączony. Klucz API usunięty z OMS-u.',
+};
 
-export function registerUstawieniaInfaktuRoutes(app, { db, konfiguracjaInfaktu, konfiguracjaProgramu = konfiguracjaInfaktu, automatKsef = null, teraz = () => new Date(), infakt = null }) {
+export function registerUstawieniaInfaktuRoutes(
+  app,
+  {
+    db,
+    konfiguracjaInfaktu,
+    konfiguracjaProgramu = konfiguracjaInfaktu,
+    automatKsef = null,
+    teraz = () => new Date(),
+    infakt = null,
+  },
+) {
   const k = konfiguracjaInfaktu;
   function widok(req, reply, { bledy = [], test = null, bladKonsumenckich = null } = {}) {
     const stan = stanDlaEkranu(wczytajKonfiguracjeIntegracji(db, 'infakt'));
-    return reply.view('ustawienia-infakt.ejs', { szerokosc: 'formularz',
-      nawigacja: nawigacjaUstawien(req, reply), title: 'inFakt',
-      zEnv: k.zEnv, adresWPliku: k.adresWPliku, archiwumWPliku: k.archiwumWPliku, stan, adresApi: ADRES_INFAKT,
-      bledy, test,
-      konsumenckie: czyWysylacKonsumenckie(db), bladKonsumenckich,
+    return reply.view('ustawienia-infakt.ejs', {
+      szerokosc: 'formularz',
+      nawigacja: nawigacjaUstawien(req, reply),
+      title: 'inFakt',
+      zEnv: k.zEnv,
+      adresWPliku: k.adresWPliku,
+      archiwumWPliku: k.archiwumWPliku,
+      stan,
+      adresApi: ADRES_INFAKT,
+      bledy,
+      test,
+      konsumenckie: czyWysylacKonsumenckie(db),
+      bladKonsumenckich,
       zapisano: KOMUNIKATY[req.query?.zapisano] ?? null,
-      wymagaRestartu: k.wymagaRestartu(), odlaczonyDoRestartu: k.odlaczonyDoRestartu(),
+      wymagaRestartu: k.wymagaRestartu(),
+      odlaczonyDoRestartu: k.odlaczonyDoRestartu(),
       // Wybrany „Brak” (plik albo Ustawienia, także zapisany po starcie) — klucz zostaje, OMS go nie używa.
       wybranyBrak: jawnyBrak(k.wyborProgramu?.teraz?.()),
       // Formularz automatu KSeF jest na ekranie Ustawienia → Automatyzacje; tu zostaje stan i odnośnik
@@ -45,19 +76,30 @@ export function registerUstawieniaInfaktuRoutes(app, { db, konfiguracjaInfaktu, 
   app.post(`${EKRAN_INFAKTU}/ksef-automat`, obsluzZapisAutomatuKsef(automat));
   app.get(`${EKRAN_INFAKTU}/ksef-automat`, async (_req, reply) => reply.code(301).redirect(AUTOMAT_KSEF_PROGRAMU));
   registerAdresuAutomatuKsef(app, automat);
-  const zEnv = (reply) => stronaOdmowy(reply, 409, 'inFakt jest ustawiony w pliku konfiguracji (oms.env, INFAKT_API_KEY) — tam go zmień. Formularz niczego nie zapisał.', {
-    tytul: 'Nie zapisano ustawień inFaktu', wroc: EKRAN_INFAKTU, napisWroc: 'Wróć do ustawień inFaktu',
-  });
+  const zEnv = (reply) =>
+    stronaOdmowy(
+      reply,
+      409,
+      'inFakt jest ustawiony w pliku konfiguracji (oms.env, INFAKT_API_KEY) — tam go zmień. Formularz niczego nie zapisał.',
+      {
+        tytul: 'Nie zapisano ustawień inFaktu',
+        wroc: EKRAN_INFAKTU,
+        napisWroc: 'Wróć do ustawień inFaktu',
+      },
+    );
 
   // Prefiks /ustawienia: zapis tylko z prawem do Ustawień, również gdy klucz API pochodzi z pliku.
   // I tylko admin — ten sam klucz zmienia tylko admin na ekranie Wysyłka do KSeF (ustawienia-ksef-sprzedazy.js),
   // a trasa jest czynna także przy TwojeFaktury. Gościa demo zatrzymuje wcześniej hak podglądu.
   app.post(`${EKRAN_INFAKTU}/ksef-konsumenckie`, async (req, reply) => {
-    if (req.konto?.admin !== true) return reply.code(403).view('brak-dostepu.ejs', { title: 'Brak dostępu', wlasnyUklad: true });
+    if (req.konto?.admin !== true)
+      return reply.code(403).view('brak-dostepu.ejs', { title: 'Brak dostępu', wlasnyUklad: true });
     const wartosci = [].concat(req.body?.wlaczony ?? '0');
     if (wartosci.some((w) => w !== '0' && w !== '1')) {
       reply.code(400); // Ekran z błędem przy przełączniku, nie surowy tekst
-      return widok(req, reply, { bladKonsumenckich: 'Nieprawidłowa wartość przełącznika faktur konsumenckich. Nic nie zapisano.' });
+      return widok(req, reply, {
+        bladKonsumenckich: 'Nieprawidłowa wartość przełącznika faktur konsumenckich. Nic nie zapisano.',
+      });
     }
     zapiszKonsumenckie(db, wartosci.includes('1'));
     return reply.code(303).redirect(`${EKRAN_INFAKTU}#ksef-konsumenckie`);
@@ -67,7 +109,10 @@ export function registerUstawieniaInfaktuRoutes(app, { db, konfiguracjaInfaktu, 
 
   app.post(EKRAN_INFAKTU, async (req, reply) => {
     if (k.zEnv) return zEnv(reply);
-    const { ustawienia, sekrety, bledy } = sprawdzFormularzInfakt(req.body ?? {}, wczytajKonfiguracjeIntegracji(db, 'infakt'));
+    const { ustawienia, sekrety, bledy } = sprawdzFormularzInfakt(
+      req.body ?? {},
+      wczytajKonfiguracjeIntegracji(db, 'infakt'),
+    );
     if (bledy.length) {
       reply.code(400);
       return widok(req, reply, { bledy });
@@ -84,9 +129,18 @@ export function registerUstawieniaInfaktuRoutes(app, { db, konfiguracjaInfaktu, 
     }
     try {
       await k.sprawdzPolaczenie();
-      return widok(req, reply, { test: { ok: true, tekst: 'Połączenie z inFaktem działa — inFakt przyjął klucz i oddał listę faktur. Nic nie zostało wystawione ani wysłane do KSeF.' } });
+      return widok(req, reply, {
+        test: {
+          ok: true,
+          tekst:
+            'Połączenie z inFaktem działa — inFakt przyjął klucz i oddał listę faktur. Nic nie zostało wystawione ani wysłane do KSeF.',
+        },
+      });
     } catch (e) {
-      req.log?.warn?.({ infakt: 'sprawdzenie połączenia', dlaOperatora: Boolean(e?.dlaOperatora), status: e?.status ?? null }, 'inFakt: sprawdzenie połączenia nieudane');
+      req.log?.warn?.(
+        { infakt: 'sprawdzenie połączenia', dlaOperatora: Boolean(e?.dlaOperatora), status: e?.status ?? null },
+        'inFakt: sprawdzenie połączenia nieudane',
+      );
       return widok(req, reply, { test: { ok: false, tekst: komunikatDlaOperatora(e) } });
     }
   });

@@ -1,14 +1,20 @@
 import { describe, it, expect } from 'vitest';
 import { createAllegroClient } from '../../src/oms/allegro/client.js';
 
-const ustawienia = { api: 'https://api.allegro.pl', userAgent: 'OMS-swietlik/1.0.0 (+https://swietlik.example.test/oms/)' };
+const ustawienia = {
+  api: 'https://api.allegro.pl',
+  userAgent: 'OMS-swietlik/1.0.0 (+https://swietlik.example.test/oms/)',
+};
 const tokeny = { waznyToken: async () => 'TOKEN' };
 const DPD = '03f26351-f683-4db2-8895-f2c599280e3c';
 
 function klientZeSzpiegiem(odpowiedz) {
   const wolania = [];
   const domyslna = { ok: true, status: 200, json: async () => ({}) };
-  const fetchImpl = async (url, opcje) => { wolania.push({ url, opcje }); return odpowiedz ?? domyslna; };
+  const fetchImpl = async (url, opcje) => {
+    wolania.push({ url, opcje });
+    return odpowiedz ?? domyslna;
+  };
   return { klient: createAllegroClient({ ustawienia, tokeny, fetchImpl }), wolania };
 }
 
@@ -64,8 +70,9 @@ describe('klient Allegro — utworzenie przesyłki (WYDAJE PIENIĄDZE)', () => {
   // Zla usluga to utrata Smart u kupujacego i przewoz, ktorego nikt nie zamawial.
   it.each([[undefined], [null], ['']])('ODMAWIA bez deliveryMethodId (%s) — zanim cokolwiek poleci', async (id) => {
     const { klient, wolania } = klientZeSzpiegiem();
-    await expect(klient.utworzPrzesylke({ commandId: 'cmd-1', input: wejscie({ deliveryMethodId: id }) }))
-      .rejects.toThrow(/deliveryMethodId/);
+    await expect(
+      klient.utworzPrzesylke({ commandId: 'cmd-1', input: wejscie({ deliveryMethodId: id }) }),
+    ).rejects.toThrow(/deliveryMethodId/);
     expect(wolania).toHaveLength(0);
   });
 
@@ -80,7 +87,11 @@ describe('klient Allegro — utworzenie przesyłki (WYDAJE PIENIĄDZE)', () => {
   });
 
   it('błąd HTTP nie wynosi tokenu ani ciała odpowiedzi', async () => {
-    const { klient } = klientZeSzpiegiem({ ok: false, status: 422, json: async () => ({ errors: [{ message: 'TOKEN' }] }) });
+    const { klient } = klientZeSzpiegiem({
+      ok: false,
+      status: 422,
+      json: async () => ({ errors: [{ message: 'TOKEN' }] }),
+    });
     const wywolaj = () => klient.utworzPrzesylke({ commandId: 'cmd-1', input: wejscie() });
     await expect(wywolaj()).rejects.toThrow(/HTTP 422 przy \/shipment-management\/shipments\/create-commands/);
     await expect(wywolaj()).rejects.not.toThrow(/Bearer|TOKEN/);
@@ -102,9 +113,15 @@ describe('klient Allegro — etykieta', () => {
   it('oddaje bajty, nie tekst', async () => {
     const pdf = new Uint8Array([0x25, 0x50, 0x44, 0x46]);
     const { klient, wolania } = klientZeSzpiegiem({
-      ok: true, status: 200, arrayBuffer: async () => pdf.buffer,
-      json: async () => { throw new Error('nie wolno wolac json() na PDF-ie'); },
-      text: async () => { throw new Error('nie wolno wolac text() na PDF-ie'); },
+      ok: true,
+      status: 200,
+      arrayBuffer: async () => pdf.buffer,
+      json: async () => {
+        throw new Error('nie wolno wolac json() na PDF-ie');
+      },
+      text: async () => {
+        throw new Error('nie wolno wolac text() na PDF-ie');
+      },
     });
     const bajty = await klient.pobierzEtykieteWza(['ship-1']);
     expect(Buffer.isBuffer(bajty) || bajty instanceof Uint8Array).toBe(true);
@@ -123,7 +140,9 @@ describe('klient Allegro — etykieta', () => {
   it('dla ZPL nie wysyła ustawień strony PDF do Allegro', async () => {
     const zpl = Buffer.from('^XA^FO20,20^FDTEST^FS^XZ');
     const { klient, wolania } = klientZeSzpiegiem({
-      ok: true, status: 200, arrayBuffer: async () => zpl,
+      ok: true,
+      status: 200,
+      arrayBuffer: async () => zpl,
     });
     const bajty = await klient.pobierzEtykieteWza(['ship-zpl'], 'ZPL');
     expect(Buffer.from(bajty)).toEqual(zpl);
@@ -140,31 +159,70 @@ describe('biała lista rośnie o cztery metody — świadomie', () => {
   // stoi w trzech miejscach. Kto dopisuje metodę, poprawia WSZYSTKIE TRZY.
   it('klient ma DOKŁADNIE te metody i ani jednej więcej', () => {
     const { klient } = klientZeSzpiegiem();
-    expect(Object.keys(klient).sort()).toEqual([
-      'deklarujZalacznikWiadomosci',
-      'pobierzEtykieteWza', 'pobierzFakturyZamowienia',
-      // Kategoria i jej parametry — wyłącznie odczyt (`GET /sale/categories/{id}[/parameters]`).
-      'pobierzKategorie', 'pobierzMetodeDostawy', 'pobierzMojeKonto', 'pobierzOferte',
-      // Podjazdy: trzy odczyty i jedno zlecenie; kontrakt w osobnym teście.
-      'pobierzOferty', 'pobierzParametryKategorii', 'pobierzPodjazd', 'pobierzPropozycjePodjazdu', 'pobierzPropozycjeWysylki',
-      // ⚠️ `pobierzWatki` i `pobierzWiadomosci` — Centrum wiadomości,
-      // wyłącznie odczyt (`GET /messaging/threads…`).
-      // `pobierzSprawy` tylko CZYTA `GET /sale/issues` — bariera zapisu bez zmian.
-      'pobierzPrzesylkeWza', 'pobierzPrzesylki', 'pobierzSledzenie', 'pobierzSprawy',
-      'pobierzStanRealizacji',
-      'pobierzWatki', 'pobierzWiadomosci', 'pobierzZamowienia',
-      'sprawdzZakresZamowien', 'stanTworzeniaPrzesylki', 'stanZleceniaPodjazdu',
-      // Centrum wiadomosci: `wyslijWiadomosc` PISZE i jest
-      // NIEODWRACALNE — nie wydaje pieniedzy, ale po drugiej stronie jest czlowiek,
-      // ktory dostaje powiadomienie. Bariera zapisu nizej rosnie razem z nia.
-      'ustawStatusRealizacji', 'utworzPrzesylke', 'wgrajZalacznikWiadomosci', 'wyslijPlikFaktury',
-      'wyslijWiadomosc', 'zglosFakture', 'zlecPodjazd',
-      // Wystawianie ofert — zapisy wylicza tests/oms/allegro-client-zapis.test.js.
-      'dopasujKategorie', 'edytujOferte', 'komendaCeny', 'komendaIlosci', 'komendaPublikacji', 'ofertyKonta', 'ofertyPoSygnaturze',
-      'oplatyOferty', 'pobierzCenniki', 'pobierzGwarancje', 'pobierzOsobyOdpowiedzialne', 'pobierzProducentow',
-      'pobierzReklamacje', 'pobierzZwroty', 'podgladOplat', 'stanOperacji', 'szukajProduktow', 'ustawieniaPodatku',
-      'utworzOferte', 'wgrajZdjecie', 'wynikKomendy',
-    ].sort());
+    expect(Object.keys(klient).sort()).toEqual(
+      [
+        'deklarujZalacznikWiadomosci',
+        'pobierzEtykieteWza',
+        'pobierzFakturyZamowienia',
+        // Kategoria i jej parametry — wyłącznie odczyt (`GET /sale/categories/{id}[/parameters]`).
+        'pobierzKategorie',
+        'pobierzMetodeDostawy',
+        'pobierzMojeKonto',
+        'pobierzOferte',
+        // Podjazdy: trzy odczyty i jedno zlecenie; kontrakt w osobnym teście.
+        'pobierzOferty',
+        'pobierzParametryKategorii',
+        'pobierzPodjazd',
+        'pobierzPropozycjePodjazdu',
+        'pobierzPropozycjeWysylki',
+        // ⚠️ `pobierzWatki` i `pobierzWiadomosci` — Centrum wiadomości,
+        // wyłącznie odczyt (`GET /messaging/threads…`).
+        // `pobierzSprawy` tylko CZYTA `GET /sale/issues` — bariera zapisu bez zmian.
+        'pobierzPrzesylkeWza',
+        'pobierzPrzesylki',
+        'pobierzSledzenie',
+        'pobierzSprawy',
+        'pobierzStanRealizacji',
+        'pobierzWatki',
+        'pobierzWiadomosci',
+        'pobierzZamowienia',
+        'sprawdzZakresZamowien',
+        'stanTworzeniaPrzesylki',
+        'stanZleceniaPodjazdu',
+        // Centrum wiadomosci: `wyslijWiadomosc` PISZE i jest
+        // NIEODWRACALNE — nie wydaje pieniedzy, ale po drugiej stronie jest czlowiek,
+        // ktory dostaje powiadomienie. Bariera zapisu nizej rosnie razem z nia.
+        'ustawStatusRealizacji',
+        'utworzPrzesylke',
+        'wgrajZalacznikWiadomosci',
+        'wyslijPlikFaktury',
+        'wyslijWiadomosc',
+        'zglosFakture',
+        'zlecPodjazd',
+        // Wystawianie ofert — zapisy wylicza tests/oms/allegro-client-zapis.test.js.
+        'dopasujKategorie',
+        'edytujOferte',
+        'komendaCeny',
+        'komendaIlosci',
+        'komendaPublikacji',
+        'ofertyKonta',
+        'ofertyPoSygnaturze',
+        'oplatyOferty',
+        'pobierzCenniki',
+        'pobierzGwarancje',
+        'pobierzOsobyOdpowiedzialne',
+        'pobierzProducentow',
+        'pobierzReklamacje',
+        'pobierzZwroty',
+        'podgladOplat',
+        'stanOperacji',
+        'szukajProduktow',
+        'ustawieniaPodatku',
+        'utworzOferte',
+        'wgrajZdjecie',
+        'wynikKomendy',
+      ].sort(),
+    );
   });
 
   // ⚠️ TEN ZAKAZ ZOSTAJE W MOCY. `POST /order/checkout-forms/{id}/shipments` to INNA droga:

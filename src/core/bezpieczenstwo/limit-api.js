@@ -21,9 +21,7 @@ export function utworzLimitApi({ limit = 120, oknoMs = 60_000, zleNaIp = 20 } = 
   return {
     sprawdz(kluczId, teraz = Date.now()) {
       const wpis = odnotuj(klucze, kluczId, teraz);
-      return wpis.liczba > limit
-        ? { wolno: false, zostaloMs: wpis.koniec - teraz }
-        : { wolno: true, zostaloMs: 0 };
+      return wpis.liczba > limit ? { wolno: false, zostaloMs: wpis.koniec - teraz } : { wolno: true, zostaloMs: 0 };
     },
     odnotujZly(ip, teraz = Date.now()) {
       odnotuj(adresy, ip, teraz);

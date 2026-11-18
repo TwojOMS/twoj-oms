@@ -28,9 +28,9 @@ function wymagajWiersza(db, id) {
  * NOWY wiersz. To ta sama decyzja, co przy etykietach.
  */
 export function dodajFaktureDoKolejki(db, fakturaId) {
-  const wynik = db.prepare(
-    "INSERT INTO kolejka_druku_faktur (faktura_id, status, proby, utworzone_at) VALUES (?, 'oczekuje', 0, ?)",
-  ).run(fakturaId, teraz());
+  const wynik = db
+    .prepare("INSERT INTO kolejka_druku_faktur (faktura_id, status, proby, utworzone_at) VALUES (?, 'oczekuje', 0, ?)")
+    .run(fakturaId, teraz());
   return pobierzWiersz(db, Number(wynik.lastInsertRowid));
 }
 
@@ -65,29 +65,37 @@ export const PROG_ZAJECIA_MS = 5 * 60 * 1000;
 export function fakturyDoWziecia(db, opcje = {}) {
   // Zgodnosc wsteczna z wolaniem `fakturyDoWziecia(db, '2999-01-01...')` — testy i stary
   // kod podawaly sam znacznik czasu.
-  const { stanowisko = 'nieznane', terazIso = teraz(), prog = PROG_ZAJECIA_MS } = (
-    typeof opcje === 'string' ? { terazIso: opcje } : opcje
-  );
+  const {
+    stanowisko = 'nieznane',
+    terazIso = teraz(),
+    prog = PROG_ZAJECIA_MS,
+  } = typeof opcje === 'string' ? { terazIso: opcje } : opcje;
   const sierota = new Date(new Date(terazIso).getTime() - prog).toISOString();
 
   // ⚠️ NAJPIERW ZAJMUJEMY, POTEM CZYTAMY. Odwrotna kolejnosc (SELECT, potem UPDATE po id)
   // zostawialaby okno miedzy jednym a drugim — dokladnie to okno, przez ktore drugie
   // stanowisko zabraloby to samo zadanie.
-  db.prepare(`
+  db.prepare(
+    `
     UPDATE kolejka_druku_faktur SET zajete_przez = ?, zajete_at = ?
     WHERE status = 'oczekuje'
       AND (nastepna_proba_at IS NULL OR nastepna_proba_at <= ?)
       AND (zajete_przez IS NULL OR zajete_at IS NULL OR zajete_at < ?)
-  `).run(stanowisko, terazIso, terazIso, sierota);
+  `,
+  ).run(stanowisko, terazIso, terazIso, sierota);
 
-  return db.prepare(`
+  return db
+    .prepare(
+      `
     SELECT k.id AS id, f.numer AS numer, z.numer AS zamowienie, z.id AS zamowienieId
     FROM kolejka_druku_faktur k
     JOIN faktury f ON f.id = k.faktura_id
     JOIN zamowienia z ON z.id = f.zamowienie_id
     WHERE k.status = 'oczekuje' AND k.zajete_przez = ? AND k.zajete_at = ?
     ORDER BY k.utworzone_at ASC, k.id ASC
-  `).all(stanowisko, terazIso);
+  `,
+    )
+    .all(stanowisko, terazIso);
 }
 
 /**
@@ -99,18 +107,24 @@ export function fakturyDoWziecia(db, opcje = {}) {
  * po korekcie: z drukarki wyszedłby dokument, którego już nie ma w programie fakturowym.
  */
 export function zamowienieDlaPozycji(db, id) {
-  const w = db.prepare(`
+  const w = db
+    .prepare(
+      `
     SELECT f.zamowienie_id AS zamowienieId, f.numer AS numer
     FROM kolejka_druku_faktur k JOIN faktury f ON f.id = k.faktura_id
     WHERE k.id = ?
-  `).get(id);
+  `,
+    )
+    .get(id);
   return w ?? null;
 }
 
 export function oznaczFaktureWydrukowana(db, id) {
   wymagajWiersza(db, id);
-  db.prepare("UPDATE kolejka_druku_faktur SET status = 'wydrukowano', wydrukowane_at = ? WHERE id = ?")
-    .run(teraz(), id);
+  db.prepare("UPDATE kolejka_druku_faktur SET status = 'wydrukowano', wydrukowane_at = ? WHERE id = ?").run(
+    teraz(),
+    id,
+  );
 }
 
 /**
@@ -126,8 +140,8 @@ export function oznaczBladDrukuFaktury(db, id, powod) {
   // na wygasniecie zajecia (5 min) ZAMIAST wrocic po odroczeniu — a przy dwoch stanowiskach
   // to drugie nie moglo by go przejac, choc jego drukarka moze akurat dzialac.
   db.prepare(
-    'UPDATE kolejka_druku_faktur SET proby = ?, ostatni_blad = ?, nastepna_proba_at = ?,'
-    + ' zajete_przez = NULL, zajete_at = NULL WHERE id = ?',
+    'UPDATE kolejka_druku_faktur SET proby = ?, ostatni_blad = ?, nastepna_proba_at = ?,' +
+      ' zajete_przez = NULL, zajete_at = NULL WHERE id = ?',
   ).run(proby, powod, nastepna, id);
 }
 
@@ -143,8 +157,10 @@ export function porzucFakture(db, id) {
 
 /** Stan na karcie: liczy sie TYLKO najnowszy wiersz — starsze sa historia po powtorkach. */
 export function ostatniaPozycjaDlaFaktury(db, fakturaId) {
-  return db.prepare('SELECT * FROM kolejka_druku_faktur WHERE faktura_id = ? ORDER BY id DESC LIMIT 1')
-    .get(fakturaId) ?? null;
+  return (
+    db.prepare('SELECT * FROM kolejka_druku_faktur WHERE faktura_id = ? ORDER BY id DESC LIMIT 1').get(fakturaId) ??
+    null
+  );
 }
 
 export function createZapytania(db) {

@@ -30,11 +30,13 @@ describe('klient Allegro — wysylka wiadomosci', () => {
 
   it('ODMAWIA przed wyjściem do sieci, gdy tekst przekracza 2000 znaków', async () => {
     let dzwoniono = false;
-    const fetchImpl = async () => { dzwoniono = true; return { ok: true, json: async () => ({}) }; };
+    const fetchImpl = async () => {
+      dzwoniono = true;
+      return { ok: true, json: async () => ({}) };
+    };
     const k = createAllegroClient({ ustawienia, tokeny, fetchImpl });
 
-    await expect(k.wyslijWiadomosc('t1', 'x'.repeat(MAKS_ZNAKOW_WIADOMOSCI + 1)))
-      .rejects.toThrow(/2000/);
+    await expect(k.wyslijWiadomosc('t1', 'x'.repeat(MAKS_ZNAKOW_WIADOMOSCI + 1))).rejects.toThrow(/2000/);
     expect(dzwoniono).toBe(false);
   });
 
@@ -46,7 +48,10 @@ describe('klient Allegro — wysylka wiadomosci', () => {
 
   it('ODMAWIA wysłania pustego tekstu', async () => {
     let dzwoniono = false;
-    const fetchImpl = async () => { dzwoniono = true; return { ok: true, json: async () => ({}) }; };
+    const fetchImpl = async () => {
+      dzwoniono = true;
+      return { ok: true, json: async () => ({}) };
+    };
     const k = createAllegroClient({ ustawienia, tokeny, fetchImpl });
 
     await expect(k.wyslijWiadomosc('t1', '   ')).rejects.toThrow(/pust/i);

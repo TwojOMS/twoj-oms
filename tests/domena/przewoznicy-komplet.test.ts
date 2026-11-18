@@ -20,10 +20,13 @@ describe('komplet opisów przewoźników', () => {
   for (const opis of Object.values(MODULY_KURIEROW) as readonly OpisKuriera[]) {
     it(`${opis.klucz}: kurier ze śledzeniem ma adres lub przewoźnika ze śledzeniem`, () => {
       if (opis.umiejetnosci.sledzenie === 'brak') return;
-      expect(opis.przewoznicy.some(klucz =>
-        Object.hasOwn(OPISY_PRZEWOZNIKOW, klucz)
-        && OPISY_PRZEWOZNIKOW[klucz as keyof typeof OPISY_PRZEWOZNIKOW].sledzenie.includes('{numer}'),
-      )).toBe(true);
+      expect(
+        opis.przewoznicy.some(
+          (klucz) =>
+            Object.hasOwn(OPISY_PRZEWOZNIKOW, klucz) &&
+            OPISY_PRZEWOZNIKOW[klucz as keyof typeof OPISY_PRZEWOZNIKOW].sledzenie.includes('{numer}'),
+        ),
+      ).toBe(true);
     });
   }
 });

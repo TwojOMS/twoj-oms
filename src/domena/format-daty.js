@@ -36,8 +36,15 @@ const WZORZEC_LOKALNY = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2
 // hourCycle: 'h23' JAWNIE obok hour12: false — bez niego ICU potrafi oddać „24" zamiast
 // „00" o północy w niektórych ustawieniach lokalnych, co dawałoby np. „2026-07-31 24:05".
 const FORMATER_WARSZAWA = new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'Europe/Warsaw', year: 'numeric', month: '2-digit', day: '2-digit',
-  hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, hourCycle: 'h23',
+  timeZone: 'Europe/Warsaw',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: false,
+  hourCycle: 'h23',
 });
 
 const PAMIEC_WARSZAWA = new Map();
@@ -50,8 +57,12 @@ function skladoweWarszawa(d) {
   const czesci = FORMATER_WARSZAWA.formatToParts(d);
   const g = (t) => czesci.find((x) => x.type === t)?.value;
   const wynik = {
-    rok: g('year'), miesiac: g('month'), dzien: g('day'),
-    godzina: g('hour'), minuta: g('minute'), sekunda: g('second'),
+    rok: g('year'),
+    miesiac: g('month'),
+    dzien: g('day'),
+    godzina: g('hour'),
+    minuta: g('minute'),
+    sekunda: g('second'),
   };
   if (PAMIEC_WARSZAWA.size >= LIMIT_PAMIECI_WARSZAWA) {
     PAMIEC_WARSZAWA.delete(PAMIEC_WARSZAWA.keys().next().value);
@@ -70,9 +81,15 @@ function skladoweLokalne(s) {
 // Regex sam przepuściłby „2026-13-40 25:99:99" — bez tej walidacji wartość bez strefy,
 // ale bezsensowna, wyszłaby na ekran zamiast pustego stringa.
 function poprawne({ miesiac, dzien, godzina, minuta, sekunda }) {
-  return Number(miesiac) >= 1 && Number(miesiac) <= 12
-    && Number(dzien) >= 1 && Number(dzien) <= 31
-    && Number(godzina) <= 23 && Number(minuta) <= 59 && Number(sekunda) <= 59;
+  return (
+    Number(miesiac) >= 1 &&
+    Number(miesiac) <= 12 &&
+    Number(dzien) >= 1 &&
+    Number(dzien) <= 31 &&
+    Number(godzina) <= 23 &&
+    Number(minuta) <= 59 &&
+    Number(sekunda) <= 59
+  );
 }
 
 function sklej({ rok, miesiac, dzien, godzina, minuta, sekunda }, zSekundami) {
@@ -132,8 +149,20 @@ export function fmtDzienKrotko(iso) {
   return `${d}.${miesiac}${rok === biezacyRok ? '' : `.${rok}`}`;
 }
 
-const MIESIACE_DOPELNIACZ = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca', 'lipca', 'sierpnia',
-  'września', 'października', 'listopada', 'grudnia'];
+const MIESIACE_DOPELNIACZ = [
+  'stycznia',
+  'lutego',
+  'marca',
+  'kwietnia',
+  'maja',
+  'czerwca',
+  'lipca',
+  'sierpnia',
+  'września',
+  'października',
+  'listopada',
+  'grudnia',
+];
 
 /** Dzień przed `RRRR-MM-DD` (kalendarzowo, bez strefy — sam dzień już jest warszawski). */
 function dzienWczesniej(dzien) {

@@ -7,7 +7,10 @@ import { wstawOferte, zmienOferte } from '../../../src/oms/db/oferty-kanalow.ts'
 // Kolumna „Kanały” na liście Magazynu — jedna plakietka na
 // każde połączenie, w którym karta jest dostępna. Dane zmyślone („Pracownia Półcień”).
 
-const auth = { authorization: `Basic ${Buffer.from('operator:atrapa').toString('base64')}`, origin: 'http://localhost' };
+const auth = {
+  authorization: `Basic ${Buffer.from('operator:atrapa').toString('base64')}`,
+  origin: 'http://localhost',
+};
 const DEFINICJE = [
   { klucz: 'sklep_polcien', typ: 'woo', prefiks: 'SKLEP_POLCIEN', etykieta: 'Sklep Półcień' },
   { klucz: 'allegro_druga', typ: 'allegro', prefiks: 'ALLEGRO_DRUGA', etykieta: 'Allegro Półcień Druga' },
@@ -19,24 +22,47 @@ let db, app;
 function serwer(definicje = DEFINICJE) {
   const sklepy = Object.fromEntries(definicje.filter((d) => d.typ === 'woo').map((d) => [d.klucz, {}]));
   const kanaly = Object.fromEntries(definicje.filter((d) => d.typ === 'allegro').map((d) => [d.klucz, {}]));
-  app = buildOmsServer({ db, config: { auth: { user: 'operator', pass: 'atrapa' }, definicje, sklepy, kanaly },
-    magazyn: { start: () => ({ wystartowal: true }), stan: () => ({ trwa: false, kanaly: [] }) } });
+  app = buildOmsServer({
+    db,
+    config: { auth: { user: 'operator', pass: 'atrapa' }, definicje, sklepy, kanaly },
+    magazyn: { start: () => ({ wystartowal: true }), stan: () => ({ trwa: false, kanaly: [] }) },
+  });
   return app;
 }
 // Migracje (m.in. `oferty_kanalow`) wykonuje start serwera — przed wstawianiem danych.
-beforeEach(async () => { db = openOmsDb(':memory:'); await serwer().ready(); });
-afterEach(async () => { await app?.close(); app = null; db.close(); });
+beforeEach(async () => {
+  db = openOmsDb(':memory:');
+  await serwer().ready();
+});
+afterEach(async () => {
+  await app?.close();
+  app = null;
+  db.close();
+});
 
 let nr = 0;
 function produkt(kartaId, kanal, zmiany = {}) {
-  const id = zapiszProduktSklepowy(db, { kanal, produkt_id: `P-${++nr}`, wariant_id: '', nazwa: 'Lampa Półcień',
-    odczytane_at: '2026-11-13T06:00:00.000Z', ...zmiany });
+  const id = zapiszProduktSklepowy(db, {
+    kanal,
+    produkt_id: `P-${++nr}`,
+    wariant_id: '',
+    nazwa: 'Lampa Półcień',
+    odczytane_at: '2026-11-13T06:00:00.000Z',
+    ...zmiany,
+  });
   powiazProdukt(db, id, kartaId);
   return id;
 }
-const plakietki = (html) => [...html.matchAll(/<span class="plakietka plakietka--kanal ([^"]*)"([^>]*)>([^<]*)<\/span>/g)]
-  .map(([, klasy, atrybuty, znak]) => ({ klasy, znak, title: /title="([^"]*)"/.exec(atrybuty)?.[1],
-    aria: /aria-label="([^"]*)"/.exec(atrybuty)?.[1], rola: /role="([^"]*)"/.exec(atrybuty)?.[1] }));
+const plakietki = (html) =>
+  [...html.matchAll(/<span class="plakietka plakietka--kanal ([^"]*)"([^>]*)>([^<]*)<\/span>/g)].map(
+    ([, klasy, atrybuty, znak]) => ({
+      klasy,
+      znak,
+      title: /title="([^"]*)"/.exec(atrybuty)?.[1],
+      aria: /aria-label="([^"]*)"/.exec(atrybuty)?.[1],
+      rola: /role="([^"]*)"/.exec(atrybuty)?.[1],
+    }),
+  );
 const lista = async () => {
   const r = await app.inject({ url: '/magazyn', headers: auth });
   expect(r.statusCode).toBe(200);
@@ -70,9 +96,16 @@ describe('kolumna „Kanały” na liście Magazynu', () => {
 
   it('konto Allegro z definicji bez konfiguracji klienta: ENDED → bez plakietki', async () => {
     await app.close();
-    app = buildOmsServer({ db, config: { auth: { user: 'operator', pass: 'atrapa' }, definicje: DEFINICJE,
-      sklepy: { sklep_polcien: {} }, kanaly: {} },
-      magazyn: { start: () => ({ wystartowal: true }), stan: () => ({ trwa: false, kanaly: [] }) } });
+    app = buildOmsServer({
+      db,
+      config: {
+        auth: { user: 'operator', pass: 'atrapa' },
+        definicje: DEFINICJE,
+        sklepy: { sklep_polcien: {} },
+        kanaly: {},
+      },
+      magazyn: { start: () => ({ wystartowal: true }), stan: () => ({ trwa: false, kanaly: [] }) },
+    });
     await app.ready();
     const karta = utworzKarte(db, { nazwa: 'Lampa Półcień' });
     produkt(karta, 'allegro_pierwsza', { status_publikacji: 'ENDED' });
@@ -109,7 +142,9 @@ describe('kolumna „Kanały” na liście Magazynu', () => {
     produkt(karta, 'allegro_pierwsza', { status_publikacji: 'ACTIVE' });
     const p = plakietki(await lista());
     expect(p.map((x) => [x.klasy, x.title])).toEqual([
-      ['plakietka--allegro', 'Allegro Półcień'], ['plakietka--erli', 'ERLI Pracownia'], ['plakietka--woo', 'Sklep Półcień'],
+      ['plakietka--allegro', 'Allegro Półcień'],
+      ['plakietka--erli', 'ERLI Pracownia'],
+      ['plakietka--woo', 'Sklep Półcień'],
     ]);
   });
 

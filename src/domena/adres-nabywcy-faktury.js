@@ -14,7 +14,10 @@ const POLSKA = new Set(['PL', 'POLSKA', 'POLAND', 'RZECZPOSPOLITA POLSKA']);
 
 /** Braki adresu nabywcy, kolejno: 'ulica', 'kod pocztowy', 'miasto'. Pusta tablica = adres pełny. */
 export function brakiAdresuNabywcy(dane) {
-  const kraj = String(dane?.kraj ?? '').trim().toUpperCase() || 'PL';
+  const kraj =
+    String(dane?.kraj ?? '')
+      .trim()
+      .toUpperCase() || 'PL';
   const braki = [];
   if (pusty(dane?.ulica)) braki.push('ulica');
   if (POLSKA.has(kraj) && pusty(dane?.kod)) braki.push('kod pocztowy');

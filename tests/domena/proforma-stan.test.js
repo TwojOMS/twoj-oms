@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
-  formatNumeru, aktualnaProforma, czyWolnoWystawic, rozjazdKwotyProformy,
+  formatNumeru,
+  aktualnaProforma,
+  czyWolnoWystawic,
+  rozjazdKwotyProformy,
 } from '../../src/domena/proforma-stan.js';
 
 // ⚠️ SERIA `PF/`, NIE `PRO/`. Apilo wystawia dzis proformy w serii `PRO/` i ma chodzic
@@ -36,8 +39,11 @@ describe('formatNumeru', () => {
 // placacy wedlug starej kwoty, dlatego historia zostaje, ale „ta obowiazujaca" musi byc
 // jednoznaczna dla karty, dla PDF-a i dla komunikatu operatora.
 describe('aktualnaProforma', () => {
-  const p = (id, uniewazniona_at = null, utworzona_at = '2026-08-04T10:00:00.000Z') =>
-    ({ id, uniewazniona_at, utworzona_at });
+  const p = (id, uniewazniona_at = null, utworzona_at = '2026-08-04T10:00:00.000Z') => ({
+    id,
+    uniewazniona_at,
+    utworzona_at,
+  });
 
   it('pusta lista nie ma aktualnej proformy', () => {
     expect(aktualnaProforma([])).toBeNull();
@@ -63,10 +69,7 @@ describe('aktualnaProforma', () => {
   // Gdyby (przez awarie miedzy zapisem a uniewaznieniem) zostaly dwie wazne, karta ma
   // pokazac NOWSZA — to ona ma kwote, ktora klient dostal ostatnia.
   it('przy dwóch ważnych bierze najnowszą', () => {
-    const lista = [
-      p(1, null, '2026-08-04T10:00:00.000Z'),
-      p(2, null, '2026-08-06T11:00:00.000Z'),
-    ];
+    const lista = [p(1, null, '2026-08-04T10:00:00.000Z'), p(2, null, '2026-08-06T11:00:00.000Z')];
     expect(aktualnaProforma(lista).id).toBe(2);
   });
 
@@ -113,7 +116,9 @@ describe('rozjazdKwotyProformy', () => {
       ],
     });
     expect(rozjazdKwotyProformy(z, p())).toEqual({
-      numer: 'PF/1/08/2026', proformaZl: '164.55', zamowienieZl: '174.55',
+      numer: 'PF/1/08/2026',
+      proformaZl: '164.55',
+      zamowienieZl: '174.55',
     });
   });
 
@@ -176,10 +181,11 @@ describe('czyWolnoWystawić', () => {
   // ale sprawdzana byla wylacznie PUSTA lista — wiec zamowienie z jedna pozycja za 0,00 zl
   // (gratis, wymiana reklamacyjna, kupon na 100%) przechodzilo: numer spalony, a do klienta
   // szla prosba o przelew zera zlotych.
-  const gratis = (nad = {}) => zamowienie({
-    pozycje: [{ nazwa: 'Gratis (wymiana reklamacyjna)', ilosc: 1, cena_brutto: '0.00', brutto_linii: '0.00' }],
-    ...nad,
-  });
+  const gratis = (nad = {}) =>
+    zamowienie({
+      pozycje: [{ nazwa: 'Gratis (wymiana reklamacyjna)', ilosc: 1, cena_brutto: '0.00', brutto_linii: '0.00' }],
+      ...nad,
+    });
 
   it('jedna pozycja za 0,00 zł — nie wolno, choć lista pozycji nie jest pusta', () => {
     const wynik = czyWolnoWystawic(gratis());
@@ -189,21 +195,27 @@ describe('czyWolnoWystawić', () => {
   });
 
   it('kilka pozycji sumujących się do zera też nie przechodzi', () => {
-    const wynik = czyWolnoWystawic(zamowienie({
-      pozycje: [
-        { nazwa: 'Szablon', ilosc: 1, cena_brutto: '61.50', brutto_linii: '61.50' },
-        { nazwa: 'Rabat 100%', ilosc: 1, cena_brutto: '-61.50', brutto_linii: '-61.50' },
-      ],
-    }));
+    const wynik = czyWolnoWystawic(
+      zamowienie({
+        pozycje: [
+          { nazwa: 'Szablon', ilosc: 1, cena_brutto: '61.50', brutto_linii: '61.50' },
+          { nazwa: 'Rabat 100%', ilosc: 1, cena_brutto: '-61.50', brutto_linii: '-61.50' },
+        ],
+      }),
+    );
     expect(wynik.wolno).toBe(false);
   });
 
   // Kwota UJEMNA to nie proforma, tylko korekta — dokument prosilby klienta o przelew
   // minusowej kwoty.
   it('suma ujemna też nie przechodzi', () => {
-    expect(czyWolnoWystawic(zamowienie({
-      pozycje: [{ nazwa: 'Zwrot', ilosc: 1, cena_brutto: '-10.00', brutto_linii: '-10.00' }],
-    })).wolno).toBe(false);
+    expect(
+      czyWolnoWystawic(
+        zamowienie({
+          pozycje: [{ nazwa: 'Zwrot', ilosc: 1, cena_brutto: '-10.00', brutto_linii: '-10.00' }],
+        }),
+      ).wolno,
+    ).toBe(false);
   });
 
   // Pozycja za zero, ale z platna dostawa, to normalny dokument: klient MA co przelac.

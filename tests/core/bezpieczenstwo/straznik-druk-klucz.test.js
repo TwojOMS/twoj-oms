@@ -31,14 +31,22 @@ let pozycjaEtykiety;
 let pozycjaProformy;
 let zamowienieId;
 const teraz = () => new Date().toISOString();
-const klucz = (zakresy = ['druk']) => zalozKluczApi(db, {
-  nazwa: 'czuwacz testowy', zakresy, kontoId: adminId, teraz: teraz(),
-});
+const klucz = (zakresy = ['druk']) =>
+  zalozKluczApi(db, {
+    nazwa: 'czuwacz testowy',
+    zakresy,
+    kontoId: adminId,
+    teraz: teraz(),
+  });
 const bearer = (k) => ({ authorization: `Bearer ${k}` });
 const pobierz = (url, headers = {}) => app.inject({ method: 'GET', url, headers });
-const wyslij = (url, headers = {}) => app.inject({
-  method: 'POST', url, headers: { 'content-type': 'application/json', ...headers }, payload: '{}',
-});
+const wyslij = (url, headers = {}) =>
+  app.inject({
+    method: 'POST',
+    url,
+    headers: { 'content-type': 'application/json', ...headers },
+    payload: '{}',
+  });
 
 beforeEach(async () => {
   db = openOmsDb(':memory:');
@@ -50,21 +58,45 @@ beforeEach(async () => {
   // Czynny admin w tabeli = konto serwisowe zdegradowane (stan produkcji, w którym czuwacze chodzą dziś na Basic).
   adminId = zalozKonto(db, { login: 'ala', imie: 'Ala Testowa', haslo: 'h', rola: 'admin', admin: true });
 
-  zamowienieId = zapiszZamowienie(db, 'pro', {
-    zrodlo_id: 7001, numer: 'PC-7001', klient: { first_name: 'Anna', company: 'Pracownia Półcień' },
-    dostawa: { city: 'Warszawa' }, metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: null,
-    kwota_brutto: '249.00', koszt_dostawy_brutto: '0.00', status_woo: 'processing', oplacone_at: null,
-    anulowane: 0, utworzone_at: '2026-11-03T09:00:00', pozycje: [],
-  }, {});
+  zamowienieId = zapiszZamowienie(
+    db,
+    'pro',
+    {
+      zrodlo_id: 7001,
+      numer: 'PC-7001',
+      klient: { first_name: 'Anna', company: 'Pracownia Półcień' },
+      dostawa: { city: 'Warszawa' },
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: 1,
+      nip: null,
+      kwota_brutto: '249.00',
+      koszt_dostawy_brutto: '0.00',
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane: 0,
+      utworzone_at: '2026-11-03T09:00:00',
+      pozycje: [],
+    },
+    {},
+  );
   const przesylka = rozpocznijPrzesylke(db, zamowienieId, 'dpd');
   const sciezkaZpl = join(katalog, 'PC-7001-0000000000001U.zpl');
   writeFileSync(sciezkaZpl, ZPL);
   zakonczPrzesylke(db, przesylka.id, {
-    numerListu: '0000000000001U', etykietaSciezka: join(katalog, 'PC-7001.pdf'), etykietaZplSciezka: sciezkaZpl, surowa: '<xml/>',
+    numerListu: '0000000000001U',
+    etykietaSciezka: join(katalog, 'PC-7001.pdf'),
+    etykietaZplSciezka: sciezkaZpl,
+    surowa: '<xml/>',
   });
   pozycjaEtykiety = dodajDoKolejki(db, przesylka.id).id;
 
-  const p = zapiszProforme(db, zamowienieId, { kwotaBrutto: '249.00', rok: 2026, miesiac: 11, utworzonaAt: '2026-11-03T10:00:00.000Z' });
+  const p = zapiszProforme(db, zamowienieId, {
+    kwotaBrutto: '249.00',
+    rok: 2026,
+    miesiac: 11,
+    utworzonaAt: '2026-11-03T10:00:00.000Z',
+  });
   const plik = join(katalog, 'PC-7001-proforma.pdf');
   writeFileSync(plik, PDF_PROFORMY);
   db.prepare('UPDATE proformy SET plik_sciezka = ? WHERE id = ?').run(plik, p.id);
@@ -114,8 +146,12 @@ describe('strażnik: klucz `druk` na kolejkach druku', () => {
 
   it('klucz bez zakresu `druk` → 403 kod brak_zakresu na każdej kolejce', async () => {
     const { klucz: k } = klucz(['zamowienia:odczyt', 'zamowienia:zapis', 'produkty:odczyt']);
-    for (const url of ['/kolejka-druku', `/kolejka-druku/${pozycjaEtykiety}/zpl`, '/kolejka-druku-faktur',
-      `/kolejka-druku-faktur/${pozycjaProformy}/pdf`]) {
+    for (const url of [
+      '/kolejka-druku',
+      `/kolejka-druku/${pozycjaEtykiety}/zpl`,
+      '/kolejka-druku-faktur',
+      `/kolejka-druku-faktur/${pozycjaProformy}/pdf`,
+    ]) {
       const r = await pobierz(url, bearer(k));
       expect(r.statusCode, url).toBe(403);
       expect(r.json(), url).toEqual({ kod: 'brak_zakresu', powod: 'Klucz nie ma zakresu druk.' });
@@ -129,8 +165,16 @@ describe('strażnik: klucz `druk` na kolejkach druku', () => {
   it('klucz `druk` nie otwiera innych adresów panelu → 401 (albo 429 hamulca, jak dziś)', async () => {
     const { klucz: k } = klucz();
     expect((await pobierz('/zamowienia', bearer(k))).statusCode).toBe(401);
-    for (const url of ['/zamowienia', '/ustawienia', '/ustawienia/klucze-api', '/przesylki', `/api/zamowienia/${zamowienieId}/stan-wysylki`,
-      '/kolejka-drukux', '/kolejka-druku-fakturx', '/']) {
+    for (const url of [
+      '/zamowienia',
+      '/ustawienia',
+      '/ustawienia/klucze-api',
+      '/przesylki',
+      `/api/zamowienia/${zamowienieId}/stan-wysylki`,
+      '/kolejka-drukux',
+      '/kolejka-druku-fakturx',
+      '/',
+    ]) {
       for (const accept of ['application/json', 'text/html']) {
         const r = await pobierz(url, { ...bearer(k), accept });
         expect([401, 429], `${url} ${accept}`).toContain(r.statusCode);
@@ -141,14 +185,23 @@ describe('strażnik: klucz `druk` na kolejkach druku', () => {
   it('surowe HTTP: /kolejka-druku/../zamowienia z kluczem nie dochodzi do ekranu zamówień', async () => {
     const { klucz: k } = klucz();
     const adres = new URL(await app.listen({ port: 0, host: '127.0.0.1' }));
-    const surowo = (path) => new Promise((ok, zle) => {
-      const r = http.request({ host: adres.hostname, port: adres.port, path, headers: bearer(k) }, (res) => {
-        let tresc = ''; res.on('data', (c) => { tresc += c; }); res.on('end', () => ok({ status: res.statusCode, tresc }));
+    const surowo = (path) =>
+      new Promise((ok, zle) => {
+        const r = http.request({ host: adres.hostname, port: adres.port, path, headers: bearer(k) }, (res) => {
+          let tresc = '';
+          res.on('data', (c) => {
+            tresc += c;
+          });
+          res.on('end', () => ok({ status: res.statusCode, tresc }));
+        });
+        r.on('error', zle);
+        r.end();
       });
-      r.on('error', zle);
-      r.end();
-    });
-    for (const path of ['/kolejka-druku/../zamowienia', '/kolejka-druku/%2e%2e/zamowienia', '/kolejka-druku%2f..%2fzamowienia']) {
+    for (const path of [
+      '/kolejka-druku/../zamowienia',
+      '/kolejka-druku/%2e%2e/zamowienia',
+      '/kolejka-druku%2f..%2fzamowienia',
+    ]) {
       const r = await surowo(path);
       expect(r.status, path).not.toBe(200);
       expect(r.tresc, path).not.toContain('PC-7001');

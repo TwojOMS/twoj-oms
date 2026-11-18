@@ -17,7 +17,11 @@ describe('czuwacz druku poza tabelą ról', () => {
       const r = await app.inject({ method: 'POST', url, headers: { ...BASIC, ...ORIGIN, accept: 'application/json' } });
       expect([401, 403], url).not.toContain(r.statusCode);
     }
-    const ekran = await app.inject({ method: 'GET', url: '/przesylki', headers: { ...BASIC, accept: 'application/json' } });
+    const ekran = await app.inject({
+      method: 'GET',
+      url: '/przesylki',
+      headers: { ...BASIC, accept: 'application/json' },
+    });
     expect(ekran.statusCode).toBe(403);
   });
 });

@@ -20,21 +20,39 @@ beforeEach(() => {
   // miesiaca NIE MA w tabeli `zamowienia`, wiec plik liczony z samych zamowien panelu bylby
   // pusty i wygladalby jak „nie bylo sprzedazy".
   zapiszHistorie(db, {
-    apiloId: 'WO260600001', platformAccountId: 9, numer: '27001', dzien: '2026-06-10',
-    utworzoneAt: '2026-06-10T10:00:00.000Z', brutto: '246.00', tagi: [], status: 15,
-    paymentStatus: 2, klientEmail: 'k@klient.pl', klientNazwa: 'Klient Testowy', faktura: 1,
+    apiloId: 'WO260600001',
+    platformAccountId: 9,
+    numer: '27001',
+    dzien: '2026-06-10',
+    utworzoneAt: '2026-06-10T10:00:00.000Z',
+    brutto: '246.00',
+    tagi: [],
+    status: 15,
+    paymentStatus: 2,
+    klientEmail: 'k@klient.pl',
+    klientNazwa: 'Klient Testowy',
+    faktura: 1,
     pozycje: [{ nazwa: 'Szablon', ilosc: 1, bruttoLinii: '246.00', typ: 1 }],
   });
   zapiszHistorie(db, {
-    apiloId: 'AL260600002', platformAccountId: 3, numer: '27002', dzien: '2026-06-12',
-    utworzoneAt: '2026-06-12T10:00:00.000Z', brutto: '100.00', tagi: [], status: 15,
-    paymentStatus: 2, klientEmail: 'inny@klient.pl', klientNazwa: 'Drugi', faktura: 0,
+    apiloId: 'AL260600002',
+    platformAccountId: 3,
+    numer: '27002',
+    dzien: '2026-06-12',
+    utworzoneAt: '2026-06-12T10:00:00.000Z',
+    brutto: '100.00',
+    tagi: [],
+    status: 15,
+    paymentStatus: 2,
+    klientEmail: 'inny@klient.pl',
+    klientNazwa: 'Drugi',
+    faktura: 0,
     pozycje: [{ nazwa: 'Szablon B', ilosc: 1, bruttoLinii: '100.00', typ: 1 }],
   });
   // Zamowienie PANELU po granicy — w tym samym pliku, gdy zakres obejmuje obie epoki.
   db.prepare(
-    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at, indywidualne)'
-    + " VALUES ('swietlik', 9001, '28500', '123.00', '2026-07-10 12:00:00', 0)",
+    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at, indywidualne)' +
+      " VALUES ('swietlik', 9001, '28500', '123.00', '2026-07-10 12:00:00', 0)",
   ).run();
 });
 
@@ -46,12 +64,13 @@ const wejdz = async (url) => {
 };
 
 /** Kwoty brutto z pliku, w groszach — czytane tak, jak przeczyta je arkusz. */
-const bruttoZPliku = (body) => body
-  .replace(BOM, '')
-  .split(String.fromCharCode(13) + String.fromCharCode(10))
-  .slice(1)
-  .filter(Boolean)
-  .map((w) => Math.round(Number(w.split(';')[4].replace(',', '.')) * 100));
+const bruttoZPliku = (body) =>
+  body
+    .replace(BOM, '')
+    .split(String.fromCharCode(13) + String.fromCharCode(10))
+    .slice(1)
+    .filter(Boolean)
+    .map((w) => Math.round(Number(w.split(';')[4].replace(',', '.')) * 100));
 
 describe('eksport CSV z raportów', () => {
   it('oddaje plik do pobrania: typ, nazwa z zakresem i BOM dla Excela', async () => {
@@ -83,8 +102,7 @@ describe('eksport CSV z raportów', () => {
 
   it('liczy TO SAMO, co ekran — co do grosza, przez obie epoki', async () => {
     const zakres = { od: '2026-06-01', do: '2026-07-31' };
-    const zEkranu = sprzedazWOkresie(db, zakres)
-      .reduce((s, w) => s + w.bruttoGrosze, 0);
+    const zEkranu = sprzedazWOkresie(db, zakres).reduce((s, w) => s + w.bruttoGrosze, 0);
     const odp = await wejdz(`/raporty/eksport.csv?od=${zakres.od}&do=${zakres.do}`);
     const zPliku = bruttoZPliku(odp.body).reduce((s, g) => s + g, 0);
     expect(zPliku).toBe(zEkranu);

@@ -19,7 +19,9 @@ const dzisiaj = () => dzienWarszawa(new Date().toISOString());
 function wyslaneDzis(db, dzis) {
   // Okno SQL z zapasem dwóch dób (UTC kontra Warszawa), dzień rozstrzyga `dzienWarszawa`.
   const od = new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString();
-  return db.prepare('SELECT wyslane_at FROM zamowienia WHERE wyslane_at >= ? AND anulowane = 0').all(od)
+  return db
+    .prepare('SELECT wyslane_at FROM zamowienia WHERE wyslane_at >= ? AND anulowane = 0')
+    .all(od)
     .filter((w) => dzienWarszawa(w.wyslane_at) === dzis).length;
 }
 

@@ -1,21 +1,32 @@
 import { describe, it, expect } from 'vitest';
 import { createInfaktClient } from '../../src/oms/infakt/client.js';
 
-const odp = (dane, ok = true, status = 200) => async () => ({ ok, status, json: async () => dane });
+const odp =
+  (dane, ok = true, status = 200) =>
+  async () => ({ ok, status, json: async () => dane });
 
-it.each([44900, '44900', 0, null, undefined])('pobierzFakture zachowuje gross_price %s w groszach', async (gross_price) => {
-  const k = createInfaktClient({ apiKey: 'fikcyjny', fetchImpl: odp({ gross_price }) });
-  expect((await k.pobierzFakture('test-fv')).gross_price).toBe(gross_price ?? null);
-});
+it.each([44900, '44900', 0, null, undefined])(
+  'pobierzFakture zachowuje gross_price %s w groszach',
+  async (gross_price) => {
+    const k = createInfaktClient({ apiKey: 'fikcyjny', fetchImpl: odp({ gross_price }) });
+    expect((await k.pobierzFakture('test-fv')).gross_price).toBe(gross_price ?? null);
+  },
+);
 
 describe('inFakt: numer KSeF pojedynczej faktury', () => {
   it('oddaje numer KSeF, gdy dokument już tam jest', async () => {
-    const k = createInfaktClient({ apiKey: 'X', fetchImpl: odp({ number: '12/08/2026', ksef_number: '1234563218-20260804-632857000005-03' }) });
+    const k = createInfaktClient({
+      apiKey: 'X',
+      fetchImpl: odp({ number: '12/08/2026', ksef_number: '1234563218-20260804-632857000005-03' }),
+    });
     // ⚠️ Od Zadania 8 `pobierzFakture` niesie DALEJ pola surowe z API (`number`,
     // `invoice_date`, `uuid`, `services`) — services/korekta.js ich potrzebuje do zbudowania
     // korekty. `toMatchObject`, nie `toEqual`: ten test pilnuje wyłącznie pary numer/KSeF,
     // reszta kształtu ma własne testy przy korekcie.
-    expect(await k.pobierzFakture('uuid-1')).toMatchObject({ numer: '12/08/2026', ksefNumer: '1234563218-20260804-632857000005-03' });
+    expect(await k.pobierzFakture('uuid-1')).toMatchObject({
+      numer: '12/08/2026',
+      ksefNumer: '1234563218-20260804-632857000005-03',
+    });
   });
 
   // ⚠️ Pusty string i null MUSZĄ dać ten sam wynik: czuwacz odróżnia „jest numer" od „nie ma"
@@ -34,7 +45,9 @@ describe('inFakt: numer KSeF pojedynczej faktury', () => {
   // `faktura.services`.
   it('niesie dalej pola surowe potrzebne do zlozenia korekty (number, invoice_date, uuid, services)', async () => {
     const dane = {
-      number: '12/08/2026', invoice_date: '2026-08-01', uuid: 'uuid-1',
+      number: '12/08/2026',
+      invoice_date: '2026-08-01',
+      uuid: 'uuid-1',
       services: [{ name: 'Kot 70x100', quantity: 2, gross_price: 19800, tax_symbol: '23' }],
     };
     const k = createInfaktClient({ apiKey: 'X', fetchImpl: odp(dane) });
@@ -58,8 +71,12 @@ describe('inFakt: numer KSeF pojedynczej faktury', () => {
   // zapłaty w inFakcie tego pola nie zeruje).
   it('niesie status i left_to_pay — na nich stoi rozpoznanie zapłaty w skanie pobrań', async () => {
     const dane = {
-      number: '18/08/2026', invoice_date: '2026-08-10', uuid: 'uuid-cod',
-      status: 'paid', left_to_pay: 22089, payment_method: 'delivery',
+      number: '18/08/2026',
+      invoice_date: '2026-08-10',
+      uuid: 'uuid-cod',
+      status: 'paid',
+      left_to_pay: 22089,
+      payment_method: 'delivery',
     };
     const k = createInfaktClient({ apiKey: 'X', fetchImpl: odp(dane) });
     const wynik = await k.pobierzFakture('uuid-cod');
@@ -89,7 +106,10 @@ describe('inFakt: numer KSeF pojedynczej faktury', () => {
     const wolania = [];
     const k = createInfaktClient({
       apiKey: 'X',
-      fetchImpl: async (url) => { wolania.push(url); return { ok: true, status: 200, json: async () => ({}) }; },
+      fetchImpl: async (url) => {
+        wolania.push(url);
+        return { ok: true, status: 200, json: async () => ({}) };
+      },
     });
     await k.pobierzFakture('uuid-4');
     expect(wolania[0]).toBe('https://api.infakt.pl/api/v3/invoices/uuid-4.json');
@@ -124,10 +144,18 @@ describe('KSeF w kliencie inFaktu', () => {
   // Ta sama rodzina bledu co fikstura nadawcy bez telefonu i e-maila przy pierwszym
   // paczkomacie (05.08) — suita byla zielona, a nadanie odbilo sie od InPostu.
   it('wysyłka idzie na ksef2, PO JEDNYM dokumencie, z uuid w ŚCIEŻCE', async () => {
-    let adres = null; let metoda = null; let cialo = 'NIE-BYLO-POLA';
-    const c = createInfaktClient({ apiKey: 'x', fetchImpl: async (u, o) => {
-      adres = u; metoda = o.method; cialo = o.body; return json({}, 201);
-    } });
+    let adres = null;
+    let metoda = null;
+    let cialo = 'NIE-BYLO-POLA';
+    const c = createInfaktClient({
+      apiKey: 'x',
+      fetchImpl: async (u, o) => {
+        adres = u;
+        metoda = o.method;
+        cialo = o.body;
+        return json({}, 201);
+      },
+    });
     await c.wyslijDokumentDoKsef('uuid-abc');
     expect(adres).toBe('https://api.infakt.pl/api/v3/ksef2/documents/uuid-abc/send.json');
     expect(metoda).toBe('POST');
@@ -139,7 +167,13 @@ describe('KSeF w kliencie inFaktu', () => {
 
   it('identyfikator jest kodowany do adresu, a nie wklejany surowo', async () => {
     let adres = null;
-    const c = createInfaktClient({ apiKey: 'x', fetchImpl: async (u) => { adres = u; return json({}, 201); } });
+    const c = createInfaktClient({
+      apiKey: 'x',
+      fetchImpl: async (u) => {
+        adres = u;
+        return json({}, 201);
+      },
+    });
     await c.wyslijDokumentDoKsef('a/b?c');
     expect(adres).toContain('/documents/a%2Fb%3Fc/send.json');
   });
@@ -150,7 +184,13 @@ describe('KSeF w kliencie inFaktu', () => {
   // rezerwacje NA ZAWSZE za wywolanie, ktore nigdy nie opuscilo panelu.
   it('pusty identyfikator to odmowa PRZED żądaniem, ze statusem 4xx', async () => {
     let wolano = false;
-    const c = createInfaktClient({ apiKey: 'x', fetchImpl: async () => { wolano = true; return json({}, 201); } });
+    const c = createInfaktClient({
+      apiKey: 'x',
+      fetchImpl: async () => {
+        wolano = true;
+        return json({}, 201);
+      },
+    });
     await expect(c.wyslijDokumentDoKsef()).rejects.toMatchObject({ status: 400 });
     await expect(c.wyslijDokumentDoKsef('')).rejects.toThrow(/nie ma czego wysłać/i);
     await expect(c.wyslijDokumentDoKsef('   ')).rejects.toThrow(/nie ma czego wysłać/i);

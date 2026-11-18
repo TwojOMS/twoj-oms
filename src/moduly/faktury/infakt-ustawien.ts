@@ -13,8 +13,12 @@ import { bladOperatora } from '../../domena/bledy.js';
 type ZapisInfakt = { ustawienia: Record<string, unknown>; sekrety: Record<string, unknown> };
 type KlientInfakt = Record<string, (...a: any[]) => Promise<any>>;
 
-export function infaktZUstawien({ wczytaj, fabryka }: {
-  wczytaj: () => ZapisInfakt | null; fabryka: (o: ReturnType<typeof opcjeKlientaInfakt>) => KlientInfakt;
+export function infaktZUstawien({
+  wczytaj,
+  fabryka,
+}: {
+  wczytaj: () => ZapisInfakt | null;
+  fabryka: (o: ReturnType<typeof opcjeKlientaInfakt>) => KlientInfakt;
 }): KlientInfakt {
   let klucz: string | null = null;
   let klient: KlientInfakt | null = null;
@@ -27,10 +31,16 @@ export function infaktZUstawien({ wczytaj, fabryka }: {
     // `bezInfaktu: true` — to NIE jest odpowiedź inFaktu o dokumencie : czuwacz pobrań
     // (wysylka/services/oznaczanie-pobran.js) nie może z tej odmowy zrobić trwałego „inFakt nie zna faktury”.
     if (!opcje?.apiKey) {
-      throw bladOperatora(`inFakt nie jest skonfigurowany — wpisz klucz API w Ustawienia → Integracje → inFakt (${EKRAN_INFAKTU}). Nic nie poszło do inFaktu.`, { status: 400, bezInfaktu: true });
+      throw bladOperatora(
+        `inFakt nie jest skonfigurowany — wpisz klucz API w Ustawienia → Integracje → inFakt (${EKRAN_INFAKTU}). Nic nie poszło do inFaktu.`,
+        { status: 400, bezInfaktu: true },
+      );
     }
     const nowy = JSON.stringify(opcje);
-    if (nowy !== klucz || !klient) { klient = fabryka(opcje); klucz = nowy; }
+    if (nowy !== klucz || !klient) {
+      klient = fabryka(opcje);
+      klucz = nowy;
+    }
     return klient;
   };
   // Metody async: odmowa (brak zapisu) wraca jako odrzucona obietnica, jak błąd samego inFaktu.
@@ -39,15 +49,20 @@ export function infaktZUstawien({ wczytaj, fabryka }: {
 
 /** Piaskownica bez atrapy VIES, a inFakt z Ustawień: VIES też nie wychodzi z panelu próby (sprawdzenie odmawia). */
 export function odmowaViesWProbie() {
-  return { sprawdz: async () => {
-    throw bladOperatora('Piaskownica: prawdziwy VIES jest tu wyłączony — nic nie poszło do VIES.', { status: 400 });
-  } };
+  return {
+    sprawdz: async () => {
+      throw bladOperatora('Piaskownica: prawdziwy VIES jest tu wyłączony — nic nie poszło do VIES.', { status: 400 });
+    },
+  };
 }
 
 /** Piaskownica bez atrapy: klucz wpisany na :3005 / demo nie wychodzi do inFaktu — każda metoda odmawia (4xx: nic nie poszło). */
 export function odmowaInfaktuWProbie(): KlientInfakt {
   const odmowa = async () => {
-    throw bladOperatora('Piaskownica: prawdziwy inFakt jest tu wyłączony — nic nie poszło do inFaktu ani KSeF.', { status: 400, bezInfaktu: true });
+    throw bladOperatora('Piaskownica: prawdziwy inFakt jest tu wyłączony — nic nie poszło do inFaktu ani KSeF.', {
+      status: 400,
+      bezInfaktu: true,
+    });
   };
   return Object.fromEntries(METODY_INFAKTU.map((m: string) => [m, odmowa]));
 }

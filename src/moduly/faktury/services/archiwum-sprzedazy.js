@@ -1,6 +1,4 @@
-import {
-  mkdirSync, writeFileSync, renameSync, statSync, unlinkSync, existsSync,
-} from 'node:fs';
+import { mkdirSync, writeFileSync, renameSync, statSync, unlinkSync, existsSync } from 'node:fs';
 import { dirname, join, basename } from 'node:path';
 import { sciezkaArchiwumSprzedazy } from '../../../domena/nazwa-pliku-archiwum.js';
 import { odciskDokumentu, rozstrzygnij, rodzajDokumentu } from '../../../domena/archiwum-sprzedazy.js';
@@ -21,7 +19,12 @@ const PREFIKS_SKASOWANEJ = 'SKASOWANA_';
 // Tylko zwykly plik: katalog o tej nazwie ma rozmiar > 0 (ext4 4096 B, btrfs NAS-a niepusty > 0)
 // i bez isFile() zostalby „adoptowany” — wiersz wskazywalby katalog, a PDF nie powstalby nigdy.
 const maTresc = (pelna) => {
-  try { const s = statSync(pelna); return s.isFile() && s.size > 0; } catch { return false; }
+  try {
+    const s = statSync(pelna);
+    return s.isFile() && s.size > 0;
+  } catch {
+    return false;
+  }
 };
 
 // Zapis atomowy: caly plik do `.tmp`, potem rename — na SMB polowiczny plik po zerwaniu
@@ -37,14 +40,25 @@ function zapiszAtomowo(pelna, bajty) {
     writeFileSync(tmp, bajty);
     renameSync(tmp, pelna);
   } catch (e) {
-    try { unlinkSync(tmp); } catch { /* plik .tmp mogl nie powstac wcale — nic sie nie stalo */ }
+    try {
+      unlinkSync(tmp);
+    } catch {
+      /* plik .tmp mogl nie powstac wcale — nic sie nie stalo */
+    }
     throw e;
   }
 }
 
 // PDF pobiera PROGRAM FAKTUROWY (`{ program }` albo stary `{ infakt }` przez `zProgramu`).
 export async function zarchiwizujDokument({
-  db, program: programPodany = null, infakt = null, dokument, katalogBazowy, teraz = () => new Date(), log = console.error, usun = unlinkSync,
+  db,
+  program: programPodany = null,
+  infakt = null,
+  dokument,
+  katalogBazowy,
+  teraz = () => new Date(),
+  log = console.error,
+  usun = unlinkSync,
 }) {
   const program = zProgramu({ program: programPodany, infakt });
   const rodzaj = rodzajDokumentu(dokument);
@@ -60,10 +74,14 @@ export async function zarchiwizujDokument({
   if (decyzja === 'bez_zmian') return { stan: 'bez_zmian', sciezka: wiersz.sciezka_pdf };
 
   const wierszDoZapisu = {
-    uuid: dokument.uuid, rodzaj, numer: String(dokument.number ?? ''),
+    uuid: dokument.uuid,
+    rodzaj,
+    numer: String(dokument.number ?? ''),
     invoiceDate: String(dokument.invoice_date ?? '').slice(0, 10),
     saleDate: dokument.sale_date ? String(dokument.sale_date).slice(0, 10) : null,
-    odcisk: odciskDokumentu(dokument), sciezkaPdf: sciezka, zapisanyAt: teraz().toISOString(),
+    odcisk: odciskDokumentu(dokument),
+    sciezkaPdf: sciezka,
+    zapisanyAt: teraz().toISOString(),
   };
 
   // ⚠️ ADOPCJA: archiwum prowadzone wcześniej ręcznie ma już setki plików o dokładnie tych
@@ -78,16 +96,18 @@ export async function zarchiwizujDokument({
   // `pobierzPdf` programu wbudowanego zamyka fakturę (wydano_nabywcy), więc archiwum nie bierze jej
   // w odstępie na poprawki (reguła w adapterze: `gotowyDoWydania`). Pominięcie bez pliku i wiersza = wraca następnej
   // nocy; to nie błąd. Program bez tej metody (inFakt) — jak dotąd.
-  if (rodzaj !== 'korekta' && typeof program.gotowyDoWydania === 'function'
-    && !(await program.gotowyDoWydania(dokument.uuid, teraz()))) {
+  if (
+    rodzaj !== 'korekta' &&
+    typeof program.gotowyDoWydania === 'function' &&
+    !(await program.gotowyDoWydania(dokument.uuid, teraz()))
+  ) {
     return { stan: 'w_edycji', sciezka };
   }
 
   let bajty;
   try {
-    bajty = rodzaj === 'korekta'
-      ? await program.pobierzPdfKorekty(dokument.uuid)
-      : await program.pobierzPdf(dokument.uuid);
+    bajty =
+      rodzaj === 'korekta' ? await program.pobierzPdfKorekty(dokument.uuid) : await program.pobierzPdf(dokument.uuid);
   } catch (e) {
     // Faktura VAT (B2B i B2C — B2C-QR) bez numeru KSeF — archiwum trzyma PDF dla nabywcy, więc czeka (bez pliku i wiersza);
     // następny przebieg pobierze ją po numerze. To nie błąd przebiegu.
@@ -95,14 +115,18 @@ export async function zarchiwizujDokument({
     throw e;
   }
   if (!Buffer.isBuffer(bajty) || bajty.subarray(0, 4).toString() !== '%PDF') {
-    throw bladOperatora(`${program.opis.nazwa.mianownik} oddał coś, co nie jest PDF-em dla dokumentu ${dokument.number} — nie zapisano.`);
+    throw bladOperatora(
+      `${program.opis.nazwa.mianownik} oddał coś, co nie jest PDF-em dla dokumentu ${dokument.number} — nie zapisano.`,
+    );
   }
 
   try {
     zapiszAtomowo(pelna, bajty);
   } catch (e) {
-    log(`Archiwum sprzedazy: zapis dokumentu ${dokument.number} na NAS ("${sciezka}") sie nie udal `
-      + `(${e.message}) — dokument wroci przy kolejnym przebiegu. ${program.opis.nazwa.mianownik} ma go nadal.`);
+    log(
+      `Archiwum sprzedazy: zapis dokumentu ${dokument.number} na NAS ("${sciezka}") sie nie udal ` +
+        `(${e.message}) — dokument wroci przy kolejnym przebiegu. ${program.opis.nazwa.mianownik} ma go nadal.`,
+    );
     return { stan: 'blad_zapisu', sciezka };
   }
 
@@ -118,9 +142,11 @@ export async function zarchiwizujDokument({
     try {
       usun(join(katalogBazowy, wiersz.sciezka_pdf));
     } catch (e) {
-      log(`Archiwum sprzedazy: nie udalo sie usunac starego pliku dokumentu ${dokument.number} `
-        + `("${wiersz.sciezka_pdf}") — ${e.message}. Byc moze plik jest otwarty przez SMB; `
-        + 'nowy plik i wiersz sa juz zapisane poprawnie.');
+      log(
+        `Archiwum sprzedazy: nie udalo sie usunac starego pliku dokumentu ${dokument.number} ` +
+          `("${wiersz.sciezka_pdf}") — ${e.message}. Byc moze plik jest otwarty przez SMB; ` +
+          'nowy plik i wiersz sa juz zapisane poprawnie.',
+      );
     }
   }
 
@@ -131,7 +157,12 @@ export async function zarchiwizujDokument({
 // Dokument zniknął z programu fakturowego. NIE kasujemy pliku — papier mógł już pójść do biura,
 // a ślad „była taka faktura” jest cenniejszy niż porządek na dysku. Nazwa mówi, co się stało.
 export async function oznaczSkasowanyDokument({
-  db, wiersz, katalogBazowy, teraz = () => new Date(), log = console.error, przemianuj = renameSync,
+  db,
+  wiersz,
+  katalogBazowy,
+  teraz = () => new Date(),
+  log = console.error,
+  przemianuj = renameSync,
 }) {
   const stara = wiersz.sciezka_pdf;
   const nowa = join(dirname(stara), `${PREFIKS_SKASOWANEJ}${basename(stara)}`).replace(/\\/g, '/');
@@ -145,8 +176,10 @@ export async function oznaczSkasowanyDokument({
     if (existsSync(join(katalogBazowy, stara))) przemianuj(join(katalogBazowy, stara), join(katalogBazowy, nowa));
     sciezkaDoZapisu = nowa;
   } catch (e) {
-    log(`Archiwum sprzedazy: nie udalo sie przemianowac pliku skasowanej faktury ${wiersz.numer} `
-      + `(${e.message}) — zostaje pod dotychczasowa nazwa.`);
+    log(
+      `Archiwum sprzedazy: nie udalo sie przemianowac pliku skasowanej faktury ${wiersz.numer} ` +
+        `(${e.message}) — zostaje pod dotychczasowa nazwa.`,
+    );
   }
   oznaczSkasowana(db, wiersz.uuid, { at: teraz().toISOString(), sciezkaPdf: sciezkaDoZapisu });
   return { sciezka: sciezkaDoZapisu };

@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
-  etapPrzesylki, etykietaEtapu, dniRoboczeMiedzy, bezRuchu, PROG_BEZ_RUCHU_DNI_ROBOCZYCH,
+  etapPrzesylki,
+  etykietaEtapu,
+  dniRoboczeMiedzy,
+  bezRuchu,
+  PROG_BEZ_RUCHU_DNI_ROBOCZYCH,
   KODY_ALLEGRO,
 } from '../../src/domena/etap-przesylki.js';
 
@@ -153,7 +157,9 @@ describe('bezRuchu', () => {
   const teraz = new Date('2026-08-27T10:00:00Z'); // czwartek
   it('ponad 3 dni robocze od ostatniego zdarzenia = alarm (pt→czw z weekendem = 4)', () => {
     expect(PROG_BEZ_RUCHU_DNI_ROBOCZYCH).toBe(3);
-    expect(bezRuchu({ etap: 'w_drodze', statusKurieraAt: '2026-08-21T10:00:00', nadanaAt: '2026-08-20T10:00:00Z', teraz })).toBe(true);
+    expect(
+      bezRuchu({ etap: 'w_drodze', statusKurieraAt: '2026-08-21T10:00:00', nadanaAt: '2026-08-20T10:00:00Z', teraz }),
+    ).toBe(true);
   });
 
   it('rowno 3 dni roboczych jeszcze nie alarmuje, doreczona i zwrot nigdy', () => {

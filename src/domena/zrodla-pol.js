@@ -15,8 +15,16 @@ export const POLA_DODATNIE = ['szerokosc_mm', 'wysokosc_mm', 'glebokosc_mm', 'wa
 
 // Pola treści, które migracja 0012 oznaczyła jako `zastane` (gdy niepuste). Bez `paczkomat`
 // (decyzja OMS-u, nie treść kanału) i `wycofana` (stan karty).
-export const POLA_ZASTANE = ['nazwa', 'sku', 'opis', 'kategoria_glowna', 'stawka_vat', 'ean', 'cena_gr',
-  ...POLA_DODATNIE];
+export const POLA_ZASTANE = [
+  'nazwa',
+  'sku',
+  'opis',
+  'kategoria_glowna',
+  'stawka_vat',
+  'ean',
+  'cena_gr',
+  ...POLA_DODATNIE,
+];
 
 // Te same znaki co `trim(x, ' '||char(9,10,13))` w SQL migracji — celowo NIE String#trim(),
 // który zdejmuje też twardą spację, \v i \f; wtedy JS i SQL różniłyby się co do pustości.

@@ -15,7 +15,14 @@ const nettoZBruttaGr = (bruttoGr, stawka) => Math.round((bruttoGr * 100) / (100 
 
 // ERLI `taxRate` → stawka panelu. Zwolnienie i „nie podlega" liczą netto jak 0%.
 const STAWKI = {
-  TAX_23: '23', TAX_8: '8', TAX_5: '5', TAX_0: '0', TAX_7: '7', TAX_19: '19', TAX_ZW: 'zw', TAX_NP: 'np',
+  TAX_23: '23',
+  TAX_8: '8',
+  TAX_5: '5',
+  TAX_0: '0',
+  TAX_7: '7',
+  TAX_19: '19',
+  TAX_ZW: 'zw',
+  TAX_NP: 'np',
 };
 const STAWKA_DOMYSLNA = '23';
 const stawkaPozycji = (p) => STAWKI[p?.taxRate] ?? STAWKA_DOMYSLNA;
@@ -63,7 +70,7 @@ function dostawaErli(surowe) {
   return blok ? { ...blok, phone: tekstAlboNull(a.phone) } : null;
 }
 
-const firmowa = (surowe) => surowe?.user?.invoiceAddress?.type === 'company' ? surowe.user.invoiceAddress : null;
+const firmowa = (surowe) => (surowe?.user?.invoiceAddress?.type === 'company' ? surowe.user.invoiceAddress : null);
 
 function klientErli(surowe) {
   const dost = surowe?.user?.deliveryAddress ?? null;
@@ -76,7 +83,8 @@ function klientErli(surowe) {
 function opisPunktu(p) {
   if (!p) return null;
   const czesci = [p.name, p.address, [p.zip, p.city].map(tekstAlboNull).filter(Boolean).join(' '), p.provider]
-    .map(tekstAlboNull).filter(Boolean);
+    .map(tekstAlboNull)
+    .filter(Boolean);
   return czesci.length ? czesci.join(', ') : null;
 }
 
@@ -88,8 +96,10 @@ function pozycjeErli(surowe) {
     const liniaGr = jednostkowoGr * ilosc;
     const stawka = stawkaPozycji(p);
     const pr = procent(stawka);
-    const przedRabatem = Number.isInteger(p?.unitPriceBeforeRebate) && p.unitPriceBeforeRebate > jednostkowoGr
-      ? zGroszy(p.unitPriceBeforeRebate) : null;
+    const przedRabatem =
+      Number.isInteger(p?.unitPriceBeforeRebate) && p.unitPriceBeforeRebate > jednostkowoGr
+        ? zGroszy(p.unitPriceBeforeRebate)
+        : null;
     return {
       zrodlo_id: p?.id != null ? String(p.id) : null,
       nazwa,
@@ -146,7 +156,11 @@ export function terminWysylkiErli(surowe) {
     limit = Math.max(limit, okres);
     if (SILA[c.zrodlo] > SILA[zrodlo]) zrodlo = c.zrodlo;
   }
-  return { termin: dzienTerminu({ dzienStartu: dzienWarszawa(start), limit }), przyblizony: zrodlo === 'domyslny', zrodlo };
+  return {
+    termin: dzienTerminu({ dzienStartu: dzienWarszawa(start), limit }),
+    przyblizony: zrodlo === 'domyslny',
+    zrodlo,
+  };
 }
 
 /** Sprawy do ręcznej obsługi zamówienia ERLI (D3 rynek/waluta, D6 jednostka czasu wysyłki). */
@@ -164,7 +178,10 @@ export function sprawyErli(surowe) {
     if (c?.czas?.unit && c.czas.unit !== 'day') jednostki.add(String(c.czas.unit));
   }
   if (jednostki.size) {
-    sprawy.push({ klucz: 'erli_czas_wysylki', tekst: `ERLI: czas wysyłki w jednostce „${[...jednostki].join(', ')}" — ustal termin ręcznie` });
+    sprawy.push({
+      klucz: 'erli_czas_wysylki',
+      tekst: `ERLI: czas wysyłki w jednostce „${[...jednostki].join(', ')}" — ustal termin ręcznie`,
+    });
   }
   return sprawy;
 }
@@ -176,7 +193,8 @@ export function sprawyErli(surowe) {
 export function mapujZamowienieErli(surowe) {
   // D7: poller zapisuje również TEN obiekt jako surowe_json. Redakcja musi objąć źródło,
   // nie tylko model panelu; działa też dla importu z pominięciem klienta HTTP.
-  if (Array.isArray(surowe?.returns)) for (const zwrot of surowe.returns) if (zwrot && typeof zwrot === 'object') delete zwrot.bankAccount;
+  if (Array.isArray(surowe?.returns))
+    for (const zwrot of surowe.returns) if (zwrot && typeof zwrot === 'object') delete zwrot.bankAccount;
   if (surowe?.status === 'pending') return null;
   const pobranie = surowe?.delivery?.cod ? 1 : 0;
   const razem = groszeErli(surowe?.totalPrice, `kwota zamówienia ${surowe?.id ?? '(bez id)'}`);

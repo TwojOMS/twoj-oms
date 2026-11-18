@@ -15,16 +15,38 @@ const naglowek = { authorization: `Basic ${Buffer.from('adam:x').toString('base6
 const poller = { stan: () => ({ ostatni_przebieg_at: '2026-08-21T09:00:00', ostatni_blad: null }) };
 
 const produkt = (nad = {}) => ({
-  kanal: 'swietlik', produkt_id: '28040', wariant_id: '', nazwa: 'Lampa wisząca Szpulka',
-  sku_sklepu: 'LP-SZP-70', cena_gr: 7490, rozmiar_tekst: '70x100', kategorie: [], zdjecia: [],
-  adres: 'https://sklep-polcien.example.invalid/produkt/szpulka', odczytane_at: '2026-08-21T08:00:00', ...nad,
+  kanal: 'swietlik',
+  produkt_id: '28040',
+  wariant_id: '',
+  nazwa: 'Lampa wisząca Szpulka',
+  sku_sklepu: 'LP-SZP-70',
+  cena_gr: 7490,
+  rozmiar_tekst: '70x100',
+  kategorie: [],
+  zdjecia: [],
+  adres: 'https://sklep-polcien.example.invalid/produkt/szpulka',
+  odczytane_at: '2026-08-21T08:00:00',
+  ...nad,
 });
 
 const zmapowane = (nad = {}) => ({
-  zrodlo_id: 7001, numer: '7001', klient: { first_name: 'Jan' }, dostawa: { city: 'Warszawa' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '100.00',
-  koszt_dostawy_brutto: '0.00', koszt_dostawy_netto: '0.00', status_woo: 'processing',
-  oplacone_at: null, anulowane: 0, utworzone_at: '2026-08-21T09:00:00', pozycje: [], ...nad,
+  zrodlo_id: 7001,
+  numer: '7001',
+  klient: { first_name: 'Jan' },
+  dostawa: { city: 'Warszawa' },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '100.00',
+  koszt_dostawy_brutto: '0.00',
+  koszt_dostawy_netto: '0.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-08-21T09:00:00',
+  pozycje: [],
+  ...nad,
 });
 
 let db;
@@ -59,12 +81,14 @@ describe('fragment z wynikami — ekran zakładania', () => {
   // strona po odświeżeniu — a operator nie miałby jak zgadnąć, która kłamie.
   it('mówi DOKŁADNIE to samo, co pełna strona', async () => {
     const kawalek = (await get(adres)).body.trim();
-    const pelna = (await app.inject({
-      method: 'POST',
-      url: '/zamowienia/nowe/magazyn',
-      headers: naglowek,
-      payload: { magazyn: 'szpulka', cennik: 'swietlik' },
-    })).body;
+    const pelna = (
+      await app.inject({
+        method: 'POST',
+        url: '/zamowienia/nowe/magazyn',
+        headers: naglowek,
+        payload: { magazyn: 'szpulka', cennik: 'swietlik' },
+      })
+    ).body;
     expect(kawalek.length).toBeGreaterThan(50);
     expect(pelna).toContain(kawalek);
   });
@@ -129,15 +153,16 @@ describe('wpięcie htmx', () => {
     expect(body).not.toMatch(/src="https?:\/\//);
   });
 
-  it.each([
-    ['/zamowienia/nowe', '/zamowienia/nowe/magazyn/wyniki'],
-  ])('%s pyta o fragment i podmienia właściwy kawałek', async (url, cel) => {
-    const body = (await get(url)).body;
-    expect(body).toContain(`hx-get="${cel}"`);
-    expect(body).toContain('hx-target="#magazyn-wyniki"');
-    // ⚠️ Cel bez elementu NIE JEST błędem — htmx po prostu cicho nic nie podmienia.
-    expect(body).toContain('id="magazyn-wyniki"');
-  });
+  it.each([['/zamowienia/nowe', '/zamowienia/nowe/magazyn/wyniki']])(
+    '%s pyta o fragment i podmienia właściwy kawałek',
+    async (url, cel) => {
+      const body = (await get(url)).body;
+      expect(body).toContain(`hx-get="${cel}"`);
+      expect(body).toContain('hx-target="#magazyn-wyniki"');
+      // ⚠️ Cel bez elementu NIE JEST błędem — htmx po prostu cicho nic nie podmienia.
+      expect(body).toContain('id="magazyn-wyniki"');
+    },
+  );
 
   // ⚠️ BIBLIOTEKA WCHODZI PO JEDNYM EKRANIE, nie globalnie — i to nie jest oszczędność bajtów,
   // tylko obrona cudzej decyzji: ekran zwrotu ma NIE MIEĆ ani jednego skryptu, bo jego
@@ -163,12 +188,8 @@ describe('wpięcie htmx', () => {
     expect(dopasowanie, 'brak formularza #magazyn-pasek na karcie').not.toBeNull();
     const pasek = dopasowanie[0];
 
-    expect(pasek).toContain(
-      `hx-include="#magazyn-pasek [name='cennik'], #magazyn-pasek [name='powrot']"`,
-    );
-    expect(pasek).toContain(
-      `hx-include="#magazyn-pasek [name='magazyn'], #magazyn-pasek [name='powrot']"`,
-    );
+    expect(pasek).toContain(`hx-include="#magazyn-pasek [name='cennik'], #magazyn-pasek [name='powrot']"`);
+    expect(pasek).toContain(`hx-include="#magazyn-pasek [name='magazyn'], #magazyn-pasek [name='powrot']"`);
     for (const pole of ['cennik', 'magazyn', 'powrot']) {
       expect(pasek).toMatch(new RegExp(`name="${pole}"`));
     }

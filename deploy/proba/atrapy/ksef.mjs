@@ -13,13 +13,25 @@ export function createAtrapaKsef({ env = process.env, token = null } = {}) {
   const za15min = () => new Date(Date.now() + 15 * 60000).toISOString();
   return {
     async zaloguj() {
-      if (token === 'zle') throw odmowa('Piaskownica: atrapa KSeF odrzuciła token (token „zle”) — nic nie poszło do KSeF.');
-      return { accessToken: 'ATRAPA-ACCESS', accessDo: za15min(), refreshToken: 'ATRAPA-REFRESH', refreshDo: new Date(Date.now() + 7 * 86400000).toISOString() };
+      if (token === 'zle')
+        throw odmowa('Piaskownica: atrapa KSeF odrzuciła token (token „zle”) — nic nie poszło do KSeF.');
+      return {
+        accessToken: 'ATRAPA-ACCESS',
+        accessDo: za15min(),
+        refreshToken: 'ATRAPA-REFRESH',
+        refreshDo: new Date(Date.now() + 7 * 86400000).toISOString(),
+      };
     },
-    async odswiez() { return { accessToken: 'ATRAPA-ACCESS', accessDo: za15min() }; },
-    async pobierzMetadane() { return { faktury: [], hasMore: false, isTruncated: false, koniecNiepewny: false }; },
+    async odswiez() {
+      return { accessToken: 'ATRAPA-ACCESS', accessDo: za15min() };
+    },
+    async pobierzMetadane() {
+      return { faktury: [], hasMore: false, isTruncated: false, koniecNiepewny: false };
+    },
     async pobierzXml() {
-      throw odmowa('Piaskownica: oryginałów faktur z KSeF tu nie ma — w Twoim OMS-ie ten przycisk pobiera dokument z KSeF.');
+      throw odmowa(
+        'Piaskownica: oryginałów faktur z KSeF tu nie ma — w Twoim OMS-ie ten przycisk pobiera dokument z KSeF.',
+      );
     },
     atrapa: true,
   };

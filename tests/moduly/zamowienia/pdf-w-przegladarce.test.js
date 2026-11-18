@@ -62,7 +62,12 @@ describe('PDF otwiera sie w przegladarce, nie pobiera', () => {
         const znacznik = m[0];
         const cel = /(?:href|formaction)="([^"]*)"/.exec(znacznik)?.[1] ?? '';
         const sciezka = cel.split('?')[0];
-        if (!/(\.pdf|\/pdf|\/zestawienie-przychodow|\/zestawienie-zaznaczonych|\/koszty\/zestawienie|\/faktury\/paczka)$/.test(sciezka)) continue;
+        if (
+          !/(\.pdf|\/pdf|\/zestawienie-przychodow|\/zestawienie-zaznaczonych|\/koszty\/zestawienie|\/faktury\/paczka)$/.test(
+            sciezka,
+          )
+        )
+          continue;
         if (sciezka.includes('/kolejka-druku-faktur')) continue;
         odnosnikow += 1;
         const atrybut = m[1] === 'a' ? 'target' : 'formtarget';

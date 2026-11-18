@@ -3,7 +3,10 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie, pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import {
-  dodajFaktureDoKolejki, fakturyDoWziecia, oznaczBladDrukuFaktury, ostatniaPozycjaDlaFaktury,
+  dodajFaktureDoKolejki,
+  fakturyDoWziecia,
+  oznaczBladDrukuFaktury,
+  ostatniaPozycjaDlaFaktury,
   PROG_ZAJECIA_MS,
 } from '../../../src/moduly/faktury/db/kolejka-druku-faktur.js';
 
@@ -32,22 +35,43 @@ beforeEach(async () => {
   faktura = { pdf: vi.fn().mockResolvedValue({ numer: 'FV/21/08/2026', bajty: PDF }) };
   app = buildOmsServer({ db, config, poller, faktura });
   await app.ready();
-  id = zapiszZamowienie(db, 'pro', {
-    zrodlo_id: 4242, numer: '4242', klient: { first_name: 'Jan' }, dostawa: { city: 'Warszawa' },
-    metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: '6762432557',
-    kwota_brutto: '123.00', koszt_dostawy_brutto: '23.00', status_woo: 'processing',
-    oplacone_at: null, anulowane: 0, utworzone_at: '2026-08-01T09:00:00',
-    pozycje: [{ nazwa: 'Szablon STOP', sku: 'PRO-1', ilosc: 1, cena_brutto: '100.00', brutto_linii: '100.00', vat: null }],
-  }, {});
+  id = zapiszZamowienie(
+    db,
+    'pro',
+    {
+      zrodlo_id: 4242,
+      numer: '4242',
+      klient: { first_name: 'Jan' },
+      dostawa: { city: 'Warszawa' },
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: 1,
+      nip: '6762432557',
+      kwota_brutto: '123.00',
+      koszt_dostawy_brutto: '23.00',
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane: 0,
+      utworzone_at: '2026-08-01T09:00:00',
+      pozycje: [
+        { nazwa: 'Szablon STOP', sku: 'PRO-1', ilosc: 1, cena_brutto: '100.00', brutto_linii: '100.00', vat: null },
+      ],
+    },
+    {},
+  );
 });
 
 const zFaktura = (nad = {}) => {
-  db.prepare(
-    'INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?, ?, ?, ?)',
-  ).run(id, nad.uuid === undefined ? 'u1' : nad.uuid, nad.numer ?? 'FV/21/08/2026', '2026-08-07T10:00:00');
+  db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?, ?, ?, ?)').run(
+    id,
+    nad.uuid === undefined ? 'u1' : nad.uuid,
+    nad.numer ?? 'FV/21/08/2026',
+    '2026-08-07T10:00:00',
+  );
   return db.prepare('SELECT * FROM faktury WHERE zamowienie_id = ?').get(id);
 };
-const zgloszenieStanowiska = (nazwa = 'BIURO-1') => app.inject({ method: 'GET', url: `/kolejka-druku-faktur?stanowisko=${nazwa}`, headers: naglowek });
+const zgloszenieStanowiska = (nazwa = 'BIURO-1') =>
+  app.inject({ method: 'GET', url: `/kolejka-druku-faktur?stanowisko=${nazwa}`, headers: naglowek });
 const karta = async () => (await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek })).body;
 const wyslij = (url, payload) => app.inject({ method: 'POST', url, headers: naglowek, payload });
 
@@ -62,7 +86,9 @@ describe('przycisk „Drukuj" przy fakturze', () => {
     // formularz schowany atrybutem `hidden` — przycisk byłby w kodzie strony, a operator
     // nie zobaczyłby go nigdy. Weryfikacja mutacyjna złapała dokładnie ten przypadek.
     expect(html).toContain(`<form method="post" action="/zamowienia/${id}/faktura/drukuj" class="w-linii">`);
-    expect(html).toMatch(/<button class="btn btn--maly" aria-label="Drukuj" title="Drukuj na komputerze z drukarką">\s*<svg/);
+    expect(html).toMatch(
+      /<button class="btn btn--maly" aria-label="Drukuj" title="Drukuj na komputerze z drukarką">\s*<svg/,
+    );
   });
 
   // ⚠️ Wiersz w `faktury` istnieje TAKŻE jako REZERWACJA, przed powstaniem dokumentu
@@ -159,7 +185,9 @@ describe('czuwacz pobiera PDF i potwierdza wydruk', () => {
   });
 
   it('nieznana pozycja → 404, nie 500', async () => {
-    expect((await app.inject({ method: 'GET', url: '/kolejka-druku-faktur/999/pdf', headers: naglowek })).statusCode).toBe(404);
+    expect(
+      (await app.inject({ method: 'GET', url: '/kolejka-druku-faktur/999/pdf', headers: naglowek })).statusCode,
+    ).toBe(404);
     expect((await wyslij('/kolejka-druku-faktur/999/wydrukowano')).statusCode).toBe(404);
     expect((await wyslij('/kolejka-druku-faktur/999/blad', { powod: 'x' })).statusCode).toBe(404);
   });
@@ -186,7 +214,11 @@ describe('dwa stanowiska nie drukują tego samego dwa razy', () => {
   it('to samo przez HTTP — dwa odpytania z różnych stanowisk', async () => {
     zFaktura();
     await wyslij(`/zamowienia/${id}/faktura/drukuj`);
-    const a = await app.inject({ method: 'GET', url: '/kolejka-druku-faktur?stanowisko=produkcyjny', headers: naglowek });
+    const a = await app.inject({
+      method: 'GET',
+      url: '/kolejka-druku-faktur?stanowisko=produkcyjny',
+      headers: naglowek,
+    });
     const b = await app.inject({ method: 'GET', url: '/kolejka-druku-faktur?stanowisko=laptop', headers: naglowek });
     expect(a.json()).toHaveLength(1);
     expect(b.json()).toEqual([]);
@@ -294,7 +326,9 @@ describe('zgłoszenia komputerów z drukarką', () => {
     const w = db.prepare("SELECT wartosc, zmienione_at FROM ustawienia WHERE klucz = 'druk.faktury.stanowiska'").get();
     return w ? { mapa: JSON.parse(w.wartosc), at: w.zmienione_at } : null;
   };
-  afterEach(() => { vi.useRealTimers(); });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
   it('dwa odpytania w odstępie 10 s → jeden zapis; po 61 s → drugi', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
@@ -329,7 +363,9 @@ describe('zgłoszenia komputerów z drukarką', () => {
     zFaktura();
     const bez = await karta();
     expect(bez).not.toContain(`/zamowienia/${id}/faktura/drukuj`);
-    expect(bez).toContain('Drukowanie wyłączone — brak komputera z drukarką. <a href="/ustawienia/druk#faktury">Ustawienia → Wysyłka i druk → Etykiety i druk</a>');
+    expect(bez).toContain(
+      'Drukowanie wyłączone — brak komputera z drukarką. <a href="/ustawienia/druk#faktury">Ustawienia → Wysyłka i druk → Etykiety i druk</a>',
+    );
 
     await zgloszenieStanowiska('BIURO-1');
     const z = await karta();
@@ -340,8 +376,10 @@ describe('zgłoszenia komputerów z drukarką', () => {
 
   it('zgłoszenie sprzed ponad 5 minut nie odblokowuje „Drukuj"', async () => {
     zFaktura();
-    db.prepare("INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('druk.faktury.stanowiska', ?, ?)")
-      .run(JSON.stringify({ 'BIURO-1': new Date(Date.now() - 6 * 60_000).toISOString() }), new Date().toISOString());
+    db.prepare("INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('druk.faktury.stanowiska', ?, ?)").run(
+      JSON.stringify({ 'BIURO-1': new Date(Date.now() - 6 * 60_000).toISOString() }),
+      new Date().toISOString(),
+    );
     expect(await karta()).not.toContain(`/zamowienia/${id}/faktura/drukuj`);
   });
 

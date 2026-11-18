@@ -1,4 +1,10 @@
-import { pobierzZamowienie, dopiszLog, oznaczWyslane, znajdzZamowieniaPoNumerze, ustawZamowienieZrodlowe } from '../../../oms/db/zamowienia.js';
+import {
+  pobierzZamowienie,
+  dopiszLog,
+  oznaczWyslane,
+  znajdzZamowieniaPoNumerze,
+  ustawZamowienieZrodlowe,
+} from '../../../oms/db/zamowienia.js';
 import { zamowienieZGrupa } from '../../../oms/db/scalenia.js'; // Paczka głównego = pozycje całej grupy
 
 import { nastepnaKolejnosc, zarejestrujPrzesylkeReczna } from '../db/przesylki.js';
@@ -12,7 +18,15 @@ import { powodBrakuGotowosciNadania } from '../../../domena/gotowosc-nadania.js'
 import { metodaNadaniaErli } from '../services/droga-nadania-erli.js';
 import { wymiaryErli } from '../../kanaly/services/kanal-erli.ts'; // Wymiary z konfiguratora ERLI
 
-import { wymagaWyboruKuriera, kurierzyDoWyboru, metodaNadania, nadanieDaZpl, wymagaUmowyPobrania, powodUmowyPobrania, powodOdmowyZamiennika } from '../../../domena/kurier-nadania.js';
+import {
+  wymagaWyboruKuriera,
+  kurierzyDoWyboru,
+  metodaNadania,
+  nadanieDaZpl,
+  wymagaUmowyPobrania,
+  powodUmowyPobrania,
+  powodOdmowyZamiennika,
+} from '../../../domena/kurier-nadania.js';
 // Kształt formularza, punkt odbioru i napis drogi — z rejestru kurierów, nie z literału metody.
 import { metodaKuriera, MODULY_KURIEROW, kurierDlaMetody } from '../../../domena/moduly-kurierow.ts';
 
@@ -75,63 +89,79 @@ function panelKuriera(metoda) {
   return opis?.umowa === 'wlasna' ? `w panelu ${opis.nazwa}` : 'w panelu przewoźnika';
 }
 
-export function registerNadanieRoutes(app, { db, nadanie, kurierzy = {}, wczytajListe, miniaturyEkranu, config, syncSklep, programFaktur = null }) {
+export function registerNadanieRoutes(
+  app,
+  { db, nadanie, kurierzy = {}, wczytajListe, miniaturyEkranu, config, syncSklep, programFaktur = null },
+) {
   // „zw” tylko przy programie wbudowanym — netto pozycji jak na karcie (kontekst.js).
   const opcjeZw = opcjeZwProgramu(programFaktur?.opis);
 
-const powrotKarty = (req) => bezpiecznyPowrotNaListe(req.query?.powrot ?? req.body?.powrot, config.definicje);
+  const powrotKarty = (req) => bezpiecznyPowrotNaListe(req.query?.powrot ?? req.body?.powrot, config.definicje);
 
-const adresPowrotuNaKarte = (req, id, opcje = {}) => adresKartyZamowienia(id, {
-    powrot: powrotKarty(req),
-    ...opcje,
-  }, config.definicje);
+  const adresPowrotuNaKarte = (req, id, opcje = {}) =>
+    adresKartyZamowienia(
+      id,
+      {
+        powrot: powrotKarty(req),
+        ...opcje,
+      },
+      config.definicje,
+    );
 
-const bladNadania = (req, reply, status, komunikat) => reply.code(status).type('text/html').view('nadanie-blad.ejs', {
-  tytul: 'Nie udało się przygotować przesyłki',
-  komunikat,
-  adresPowrotu: req.params?.id ? adresPowrotuNaKarte(req, req.params.id) : powrotKarty(req),
-  doZamowienia: Boolean(req.params?.id),
-});
-// Zamówienia nie ma — bladNadania wracałby na kartę, której nie ma, więc powrót na listę.
-const brakZamowienia = (req, reply) => stronaOdmowy(reply, 404, 'Nie ma takiego zamówienia',
-  { tytul: 'Nie udało się przygotować przesyłki', wroc: powrotKarty(req), napisWroc: 'Wróć do listy zamówień' });
+  const bladNadania = (req, reply, status, komunikat) =>
+    reply
+      .code(status)
+      .type('text/html')
+      .view('nadanie-blad.ejs', {
+        tytul: 'Nie udało się przygotować przesyłki',
+        komunikat,
+        adresPowrotu: req.params?.id ? adresPowrotuNaKarte(req, req.params.id) : powrotKarty(req),
+        doZamowienia: Boolean(req.params?.id),
+      });
+  // Zamówienia nie ma — bladNadania wracałby na kartę, której nie ma, więc powrót na listę.
+  const brakZamowienia = (req, reply) =>
+    stronaOdmowy(reply, 404, 'Nie ma takiego zamówienia', {
+      tytul: 'Nie udało się przygotować przesyłki',
+      wroc: powrotKarty(req),
+      napisWroc: 'Wróć do listy zamówień',
+    });
 
-// Hurt nadaje wszystkie metody karty. Pętla, budżet czasu i druk
-// mieszkają w usłudze (services/nadanie-hurtem.js) — trasa parsuje, pyta Allegro i renderuje.
-const nadanieHurtem = nadanie ? createNadanieHurtem({ db, nadanie }) : null;
+  // Hurt nadaje wszystkie metody karty. Pętla, budżet czasu i druk
+  // mieszkają w usłudze (services/nadanie-hurtem.js) — trasa parsuje, pyta Allegro i renderuje.
+  const nadanieHurtem = nadanie ? createNadanieHurtem({ db, nadanie }) : null;
 
-// Żywy odczyt usługi Allegro dla wiersza hurtu — TA SAMA para wywołań, co na ekranie nadania
-// karty (`pobierzMetodeDostawy` + `wolnoNadacZOms`), na PEŁNYM wierszu z bazy, nie z listy.
-// ⚠️ Usługa MUSI pochodzić z żywego odczytu: Allegro nie podbija `updatedAt` przy zmianach
-// w zamówieniu, więc kopia w bazie bywa nieświeża z definicji (allegro-wysylka.js).
-// Nigdy nie rzuca: awaria dotyczy wiersza, a reszta partii ma się wyrenderować.
-const uslugaAllegro = async (z) => {
-  const NIE_MOZNA = 'Nie można sprawdzić usługi dostawy Allegro. Spróbuj ponownie później.';
-  if (!kurierzy.allegro_wza?.pobierzMetodeDostawy) return { blad: NIE_MOZNA };
-  const pelne = pobierzZamowienie(db, z.id);
-  let id;
-  try {
-    id = await kurierzy.allegro_wza.pobierzMetodeDostawy(pelne);
-  } catch {
-    return { blad: NIE_MOZNA };
-  }
-  if (!id) return { blad: 'Allegro nie podało identyfikatora usługi dostawy.' };
-  const zgoda = wolnoNadacZOms(pelne, { deliveryMethodIdZywy: id });
-  if (!zgoda.wolno) return { blad: zgoda.powod };
-  return { deliveryMethodId: id, usluga: zgoda.usluga };
-};
+  // Żywy odczyt usługi Allegro dla wiersza hurtu — TA SAMA para wywołań, co na ekranie nadania
+  // karty (`pobierzMetodeDostawy` + `wolnoNadacZOms`), na PEŁNYM wierszu z bazy, nie z listy.
+  // ⚠️ Usługa MUSI pochodzić z żywego odczytu: Allegro nie podbija `updatedAt` przy zmianach
+  // w zamówieniu, więc kopia w bazie bywa nieświeża z definicji (allegro-wysylka.js).
+  // Nigdy nie rzuca: awaria dotyczy wiersza, a reszta partii ma się wyrenderować.
+  const uslugaAllegro = async (z) => {
+    const NIE_MOZNA = 'Nie można sprawdzić usługi dostawy Allegro. Spróbuj ponownie później.';
+    if (!kurierzy.allegro_wza?.pobierzMetodeDostawy) return { blad: NIE_MOZNA };
+    const pelne = pobierzZamowienie(db, z.id);
+    let id;
+    try {
+      id = await kurierzy.allegro_wza.pobierzMetodeDostawy(pelne);
+    } catch {
+      return { blad: NIE_MOZNA };
+    }
+    if (!id) return { blad: 'Allegro nie podało identyfikatora usługi dostawy.' };
+    const zgoda = wolnoNadacZOms(pelne, { deliveryMethodIdZywy: id });
+    if (!zgoda.wolno) return { blad: zgoda.powod };
+    return { deliveryMethodId: id, usluga: zgoda.usluga };
+  };
 
-// Hurt wybiera drogę zamówienia ERLI TĄ SAMĄ funkcją co karta i pojedyncze nadanie
-// (`metodaNadaniaErli` → `drogaErliDlaZamowienia`); null = zwykła metoda OMS (także ręczna zmiana).
-const metodaNadaniaKanalu = (z, wybor, opcje) => metodaNadaniaErli(db, z, wybor, opcje);
-// Przesyłki Erli: domyślne wymiary z kroku 4 kreatora — jak `paczkaDomyslna` ekranu nadania karty.
-const wymiaryKanalu = (z) => (z.metodaUzyta === 'erli_przesylki' ? wymiaryErli(db, z.sklep) : null);
+  // Hurt wybiera drogę zamówienia ERLI TĄ SAMĄ funkcją co karta i pojedyncze nadanie
+  // (`metodaNadaniaErli` → `drogaErliDlaZamowienia`); null = zwykła metoda OMS (także ręczna zmiana).
+  const metodaNadaniaKanalu = (z, wybor, opcje) => metodaNadaniaErli(db, z, wybor, opcje);
+  // Przesyłki Erli: domyślne wymiary z kroku 4 kreatora — jak `paczkaDomyslna` ekranu nadania karty.
+  const wymiaryKanalu = (z) => (z.metodaUzyta === 'erli_przesylki' ? wymiaryErli(db, z.sklep) : null);
 
-// Suma pobrań liczona w groszach na całkowitych — złotówki jako ułamki zgubiłyby grosz
-// przy kilkunastu paczkach, a ta liczba ma się zgadzać z tym, co kurier odda.
-const groszeZ = (k) => Math.round(Number(String(k ?? '').replace(',', '.')) * 100);
+  // Suma pobrań liczona w groszach na całkowitych — złotówki jako ułamki zgubiłyby grosz
+  // przy kilkunastu paczkach, a ta liczba ma się zgadzać z tym, co kurier odda.
+  const groszeZ = (k) => Math.round(Number(String(k ?? '').replace(',', '.')) * 100);
 
-app.post('/zamowienia/masowe/nadaj-podglad', async (req, reply) => {
+  app.post('/zamowienia/masowe/nadaj-podglad', async (req, reply) => {
     const wybrane = wybraneZListy(wczytajListe([].concat(req.body?.id ?? [])), req.body?.id);
     const umowyPobrania = umowyPobraniaFirmy(db);
     const { doNadania, pominiete, uwagi } = podzielDoNadania(wybrane, { umowyPobrania, metodaNadaniaKanalu });
@@ -164,11 +194,21 @@ app.post('/zamowienia/masowe/nadaj-podglad', async (req, reply) => {
         // Zamiast odbiorcy — CO jedzie w paczce,
         // bo rozmiar wybiera się pod zawartość. TE SAME wiersze, co na karcie i ekranie nadania
         // (wierszePozycji), bez wysyłki i sumy; SKU zaślepki oferty wygaszone jak tam.
-        produkty: wierszePozycji(zamowienieZGrupa(db, z), { stawkaDomyslna: czytajStawkeDomyslna(db, opcjeZw), ...opcjeZw }).filter((w) => !w.wysylka && !w.podsumowanie)
+        produkty: wierszePozycji(zamowienieZGrupa(db, z), {
+          stawkaDomyslna: czytajStawkeDomyslna(db, opcjeZw),
+          ...opcjeZw,
+        })
+          .filter((w) => !w.wysylka && !w.podsumowanie)
           .map((w) => ({ ilosc: w.ilosc, nazwa: w.nazwa, sku: w.skuDoPokazania })),
         droga,
         deliveryMethodId,
-        rozmiar: domyslnyRozmiarWiersza({ rodzaj: z.rodzajFormularza, deliveryMethodId, szablony, ustawienia: ustawieniaPaczek, wymiaryKanalu: wymiaryKanalu(z) }),
+        rozmiar: domyslnyRozmiarWiersza({
+          rodzaj: z.rodzajFormularza,
+          deliveryMethodId,
+          szablony,
+          ustawienia: ustawieniaPaczek,
+          wymiaryKanalu: wymiaryKanalu(z),
+        }),
         pobranie: czyPobranie(z) ? (kwotaPobrania(z) ?? '?') : null,
         pobranieAllegro: czyPobranie(z) && z.rodzajFormularza === 'wza',
       });
@@ -191,11 +231,12 @@ app.post('/zamowienia/masowe/nadaj-podglad', async (req, reply) => {
     });
   });
 
-app.post('/zamowienia/masowe/nadaj', async (req, reply) => {
+  app.post('/zamowienia/masowe/nadaj', async (req, reply) => {
     // Moment PRZYJŚCIA żądania — budżet partii mierzy czekanie człowieka, a człowiek czeka
     // także przez sekundy odczytu listy i pytań do Allegro (services/nadanie-hurtem.js).
     const start = Date.now();
-    if (!nadanie || nadanie.gotowe?.() === false) return bladNadania(req, reply, 503, 'Nadawanie nie jest skonfigurowane (brak danych DPD).');
+    if (!nadanie || nadanie.gotowe?.() === false)
+      return bladNadania(req, reply, 503, 'Nadawanie nie jest skonfigurowane (brak danych DPD).');
     const wybrane = wybraneZListy(wczytajListe([].concat(req.body?.id ?? [])), req.body?.id);
     // Podzial liczony PONOWNIE, a nie przepisany z ekranu podgladu: miedzy podgladem
     // a zatwierdzeniem poller mogl przyniesc anulowanie, a formularz przyniosly identyfikatory,
@@ -226,13 +267,21 @@ app.post('/zamowienia/masowe/nadaj', async (req, reply) => {
         // Usługa z ekranu MUSI być tą z tej chwili — inaczej człowiek zatwierdził inny przewóz
         // (inny gabaryt, inna cena) niż ten, który panel by kupił. Adapter sprawdza to drugi raz.
         if (String(req.body?.[`usluga_${z.id}`] ?? '') !== u.deliveryMethodId) {
-          odpadle.push({ id: z.id, numer: z.numer, powod: 'Usługa dostawy Allegro zmieniła się — odśwież podgląd nadania.' });
+          odpadle.push({
+            id: z.id,
+            numer: z.numer,
+            powod: 'Usługa dostawy Allegro zmieniła się — odśwież podgląd nadania.',
+          });
           continue;
         }
         deliveryMethodId = u.deliveryMethodId;
       }
       const { paczka, blad } = paczkaWiersza({
-        rodzaj: z.rodzajFormularza, deliveryMethodId, pola: polaWiersza(req.body, z.id), szablony, ustawienia: ustawieniaPaczek,
+        rodzaj: z.rodzajFormularza,
+        deliveryMethodId,
+        pola: polaWiersza(req.body, z.id),
+        szablony,
+        ustawienia: ustawieniaPaczek,
         wymiaryKanalu: wymiaryKanalu(z),
       });
       if (blad) {
@@ -259,7 +308,10 @@ app.post('/zamowienia/masowe/nadaj', async (req, reply) => {
         ...pominiete,
         ...odpadle,
         ...wynik.nieudane,
-        ...wynik.nietkniete.map((n) => ({ ...n, powod: 'nie nadano — skończył się czas partii; zaznacz i nadaj ponownie' })),
+        ...wynik.nietkniete.map((n) => ({
+          ...n,
+          powod: 'nie nadano — skończył się czas partii; zaznacz i nadaj ponownie',
+        })),
       ],
       // Nadanie nie odsyla statusu, wiec ta sekcja jest tu z definicji pusta — ale szablon
       // ma dostawac komplet pol z KAZDEJ trasy, a nie zgadywac po `typeof`.
@@ -268,9 +320,14 @@ app.post('/zamowienia/masowe/nadaj', async (req, reply) => {
     });
   });
 
-app.post('/zamowienia/:id/dosylka', async (req, reply) => {
+  app.post('/zamowienia/:id/dosylka', async (req, reply) => {
     const id = Number(req.params.id);
-    if (!pobierzZamowienie(db, id)) return stronaOdmowy(reply, 404, 'Nie ma takiego zamówienia', { tytul: 'Nie udało się zapisać dosyłki', wroc: powrotKarty(req), napisWroc: 'Wróć do listy zamówień' });
+    if (!pobierzZamowienie(db, id))
+      return stronaOdmowy(reply, 404, 'Nie ma takiego zamówienia', {
+        tytul: 'Nie udało się zapisać dosyłki',
+        wroc: powrotKarty(req),
+        napisWroc: 'Wróć do listy zamówień',
+      });
 
     const numer = String(req.body?.numer_zrodlowy ?? '').trim();
     let zrodloweId = null;
@@ -282,8 +339,8 @@ app.post('/zamowienia/:id/dosylka', async (req, reply) => {
         const trafienia = znajdzZamowieniaPoNumerze(db, numer);
         if (trafienia.length === 0) {
           throw bladOperatora(
-            `Nie ma zamówienia o numerze „${numer}" — sprawdź numer zamówienia pierwotnego `
-            + 'albo zostaw pole puste.',
+            `Nie ma zamówienia o numerze „${numer}" — sprawdź numer zamówienia pierwotnego ` +
+              'albo zostaw pole puste.',
           );
         }
         // Numery sklepowe i numery serii recznej to dwie rozne przestrzenie (patrz
@@ -291,8 +348,8 @@ app.post('/zamowienia/:id/dosylka', async (req, reply) => {
         // ma dostac odmowe, a NIE ciche polaczenie z pierwszym z brzegu.
         if (trafienia.length > 1) {
           throw bladOperatora(
-            `Numer „${numer}" pasuje do więcej niż jednego zamówienia w bazie — nie da się `
-            + 'jednoznacznie wskazać zamówienia pierwotnego. Zgłoś to jako usterkę.',
+            `Numer „${numer}" pasuje do więcej niż jednego zamówienia w bazie — nie da się ` +
+              'jednoznacznie wskazać zamówienia pierwotnego. Zgłoś to jako usterkę.',
           );
         }
         [zrodloweId] = trafienia;
@@ -307,8 +364,8 @@ app.post('/zamowienia/:id/dosylka', async (req, reply) => {
         // a raport sprzedazy nie mialby jak rozstrzygnac, ktore jest ktorym.
         if (powiazaniaDosylki(db, id).dosylki.some((d) => d.id === zrodloweId)) {
           throw bladOperatora(
-            `Zamówienie „${numer}" jest już dosyłką DO TEGO zamówienia — nie da się powiązać ich `
-            + 'w obie strony naraz. Najpierw skasuj tamto powiązanie.',
+            `Zamówienie „${numer}" jest już dosyłką DO TEGO zamówienia — nie da się powiązać ich ` +
+              'w obie strony naraz. Najpierw skasuj tamto powiązanie.',
           );
         }
       }
@@ -320,14 +377,14 @@ app.post('/zamowienia/:id/dosylka', async (req, reply) => {
 
     dopiszLog(db, id, {
       akcja: 'dosylka',
-      wynik: `Ręcznie (${ktoKlikal(req)}): ${numer
-        ? `zamówienie oznaczone jako dosyłka do „${numer}"`
-        : 'powiązanie z zamówieniem pierwotnym skasowane'}.`,
+      wynik: `Ręcznie (${ktoKlikal(req)}): ${
+        numer ? `zamówienie oznaczone jako dosyłka do „${numer}"` : 'powiązanie z zamówieniem pierwotnym skasowane'
+      }.`,
     });
     return reply.redirect(adresPowrotuNaKarte(req, id, { kotwica: 'szczegoly' }));
   });
 
-app.post('/zamowienia/:id/przesylki/reczna', async (req, reply) => {
+  app.post('/zamowienia/:id/przesylki/reczna', async (req, reply) => {
     const id = Number(req.params.id);
     const zam = pobierzZamowienie(db, id);
     if (!zam) return brakZamowienia(req, reply);
@@ -348,7 +405,9 @@ app.post('/zamowienia/:id/przesylki/reczna', async (req, reply) => {
       // `kolejnosc` liczona TUTAJ i przekazana jawnie — ta sama zasada, co przy nadaniu:
       // funkcja zapisu nigdy nie wylicza numeru sama, a indeks unikalny rozstrzyga wyscig.
       p = zarejestrujPrzesylkeReczna(db, id, {
-        kurier: kurierWpisuRecznego(metoda), kolejnosc: nastepnaKolejnosc(db, id), numerListu,
+        kurier: kurierWpisuRecznego(metoda),
+        kolejnosc: nastepnaKolejnosc(db, id),
+        numerListu,
       });
     } catch (e) {
       dopiszLog(db, id, { akcja: 'przesylka.reczna', wynik: `BŁĄD: ${e.message}` });
@@ -361,9 +420,10 @@ app.post('/zamowienia/:id/przesylki/reczna', async (req, reply) => {
     oznaczWyslane(db, id);
     dopiszLog(db, id, {
       akcja: 'przesylka.reczna',
-      wynik: `Ręcznie (${ktoKlikal(req)}): paczka nr ${p.kolejnosc} nadana POZA panelem, `
-        + `list ${p.numer_listu} — panel niczego nie nadał, tylko odnotował fakt`
-        + `${komentarz ? `; ${komentarz}` : ''}.`,
+      wynik:
+        `Ręcznie (${ktoKlikal(req)}): paczka nr ${p.kolejnosc} nadana POZA panelem, ` +
+        `list ${p.numer_listu} — panel niczego nie nadał, tylko odnotował fakt` +
+        `${komentarz ? `; ${komentarz}` : ''}.`,
     });
     // Ta droga USTAWIA `wyslane_at`, wiec status w sklepie ma pojsc za nia tak samo, jak po
     // recznej zmianie statusu. Nadanie z panelu (ktore `wyslane_at` NIE ustawia) dalej sklepu
@@ -372,13 +432,14 @@ app.post('/zamowienia/:id/przesylki/reczna', async (req, reply) => {
     return reply.redirect(adresPowrotuNaKarte(req, id));
   });
 
-app.get('/zamowienia/:id/nadaj', async (req, reply) => {
+  app.get('/zamowienia/:id/nadaj', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
     if (!z) return brakZamowienia(req, reply);
     // Dołączone nie ma ekranu nadania — paczka jedzie z głównego.
     if (z.scalone_do) return reply.redirect(`/zamowienia/${z.scalone_do}/nadaj`);
-    if (!nadanie || nadanie.gotowe?.() === false) return bladNadania(req, reply, 503, 'Nadawanie nie jest skonfigurowane (brak danych DPD).');
+    if (!nadanie || nadanie.gotowe?.() === false)
+      return bladNadania(req, reply, 503, 'Nadawanie nie jest skonfigurowane (brak danych DPD).');
     const powrot = powrotKarty(req);
     const wspolnyPowrot = {
       powrot,
@@ -400,7 +461,10 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
     // pokazywałby komplet danych paczki nr N i zapewniał, że zatwierdzenie ją nada, podczas
     // gdy `rozpocznijPrzesylke` i tak odmówi. Ekran nadania istnieje po to, żeby NIE kłamać.
     if (!mozliwaKolejnaPaczka(z.przesylki)) {
-      return bladNadania(req, reply, 400,
+      return bladNadania(
+        req,
+        reply,
+        400,
         'Nadanie innej paczki tego zamówienia jeszcze się nie rozstrzygnęło — najpierw domknij tamtą sprawę na karcie zamówienia.',
       );
     }
@@ -420,11 +484,12 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
     // formularza: DPD chce wymiarow, paczkomat gabarytu A/B/C i kodu automatu.
     const drogaErli = metodaNadaniaErli(db, z);
     if (drogaErli?.blad) return bladNadania(req, reply, 400, drogaErli.blad);
-    const wyborKuriera = (drogaErli || wymagaWyboruKuriera(z)) ? String(req.query?.kurier ?? '').trim() : '';
+    const wyborKuriera = drogaErli || wymagaWyboruKuriera(z) ? String(req.query?.kurier ?? '').trim() : '';
     const umowyPobrania = umowyPobraniaFirmy(db);
     const kolejnosc = nastepnaKolejnosc(db, id);
-    const { metoda: metodaUzyta, blad: bladKuriera } = metodaNadaniaErli(db, z, wyborKuriera, { kolejnosc, umowyPobrania })
-      ?? metodaNadania(z, wyborKuriera, { kolejnosc, umowyPobrania });
+    const { metoda: metodaUzyta, blad: bladKuriera } =
+      metodaNadaniaErli(db, z, wyborKuriera, { kolejnosc, umowyPobrania }) ??
+      metodaNadania(z, wyborKuriera, { kolejnosc, umowyPobrania });
 
     // ⚠️⚠️ EKRAN WYBORU ZSZEDL Z DROGI (zasada: lepiej bez ekranu wyboru — niech od razu
     // idzie odpowiednia opcja). Dawniej stawal przy KAZDYM zamowieniu z Allegro,
@@ -446,20 +511,29 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
     const poproszonoOWybor = String(req.query?.wybor ?? '') === '1';
     if (drogaErli && poproszonoOWybor && !wyborKuriera) {
       return reply.view('nadaj-kurier.ejs', {
-        z, ...wspolnyPowrot, kanal: adresKanalu(z.sklep, config.definicje), kolejnosc,
+        z,
+        ...wspolnyPowrot,
+        kanal: adresKanalu(z.sklep, config.definicje),
+        kolejnosc,
         drogaErli,
         kurierzy: [
-          { klucz: drogaErli.metoda, etykieta: `${metodaKuriera(drogaErli.metoda)?.etykieta} — droga zamówienia (domyślnie)` },
-          ...kurierzyDoWyboru(z, kolejnosc, { umowyPobrania }).filter(k => k.klucz !== drogaErli.metoda),
+          {
+            klucz: drogaErli.metoda,
+            etykieta: `${metodaKuriera(drogaErli.metoda)?.etykieta} — droga zamówienia (domyślnie)`,
+          },
+          ...kurierzyDoWyboru(z, kolejnosc, { umowyPobrania }).filter((k) => k.klucz !== drogaErli.metoda),
         ],
-        zPobraniemNaTejPaczce: null, maWza: false, paczkomatPoUmowiePobrania: false,
+        zPobraniemNaTejPaczce: null,
+        maWza: false,
+        paczkomatPoUmowiePobrania: false,
       });
     }
     if (wymagaWyboruKuriera(z) && !wyborKuriera && (!maDrogeDomyslna || poproszonoOWybor)) {
       const dostepniKurierzy = kurierzyDoWyboru(z, kolejnosc, { umowyPobrania });
-      const zPobraniemNaTejPaczce = kolejnosc > 1 && czyPobranie(z)
-        ? kurierzyDoWyboru(z, kolejnosc, { umowyPobrania, pobranieNaTejPaczce: true }).map((k) => k.klucz)
-        : null;
+      const zPobraniemNaTejPaczce =
+        kolejnosc > 1 && czyPobranie(z)
+          ? kurierzyDoWyboru(z, kolejnosc, { umowyPobrania, pobranieNaTejPaczce: true }).map((k) => k.klucz)
+          : null;
       // Podpowiedź tylko wtedy, gdy samo włączenie umowy udostępni paczkomat.
       // Ten ekran to WYBÓR KURIERA W OMS-ie, więc każde pobranie wskazane tu
       // obcym kurierem jest OMS-owe — podpowiedź o umowie jest tu zawsze na miejscu. Pobranie
@@ -468,8 +542,9 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
       // paczkomatu, bez pytania o przełącznik (services/nadanie.js, `wymagaUmowyPobrania`).
       const inpost = MODULY_KURIEROW.inpost;
       const metodaPaczkomatu = inpost.metody[0].klucz;
-      const paczkomatPoWlaczeniu = kurierzyDoWyboru(z, kolejnosc, { umowyPobrania: [...umowyPobrania, inpost.klucz] })
-        .some((k) => k.klucz === metodaPaczkomatu);
+      const paczkomatPoWlaczeniu = kurierzyDoWyboru(z, kolejnosc, {
+        umowyPobrania: [...umowyPobrania, inpost.klucz],
+      }).some((k) => k.klucz === metodaPaczkomatu);
       return reply.view('nadaj-kurier.ejs', {
         drogaErli: null,
         z,
@@ -487,8 +562,8 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
         maWza: maDrogeDomyslna,
         // Sam fakt, ze przy pobraniu na paczce nr 1 zostaje jeden kurier, jest dla operatora
         // niezrozumialy bez powodu — a powod jest o pieniadze (patrz kurier-nadania.js).
-        paczkomatPoUmowiePobrania: czyPobranie(z) && paczkomatPoWlaczeniu
-          && !dostepniKurierzy.some((k) => k.klucz === metodaPaczkomatu),
+        paczkomatPoUmowiePobrania:
+          czyPobranie(z) && paczkomatPoWlaczeniu && !dostepniKurierzy.some((k) => k.klucz === metodaPaczkomatu),
       });
     }
     // Wskazanie spoza listy (stara karta, adres z reki) odbija sie TU, a nie po wypelnieniu
@@ -563,9 +638,8 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
       // ⚠️ WEJSCIE NA EKRAN WYBORU — jedyna droga do dosylki nasza umowa, odkad ten ekran
       // zszedl z przeplywu. `null` dla zamowien spoza Allegro i dla wskazania recznego
       // (tam widok ma juz wlasny odnosnik „zmień").
-      adresWyboruKuriera: (drogaErli || maDrogeDomyslna) && !wyborKuriera
-        ? wspolnyPowrot.adresNadania(null, { wybor: true })
-        : null,
+      adresWyboruKuriera:
+        (drogaErli || maDrogeDomyslna) && !wyborKuriera ? wspolnyPowrot.adresNadania(null, { wybor: true }) : null,
       // Ostrzezenie o brakujacych polach MUSI byc widoczne TU, zanim operator w ogole
       // dotknie przycisku — zamowienie zalozone recznie w adminie sklepu potrafi miec
       // calkowicie pusty blok `shipping`.
@@ -581,7 +655,9 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
       // Netto pozycji stawką domyślną z Ustawień — to samo, co pokazuje karta.
       // Firma zwolniona z VAT — numer UE nabywcy to nie WDT (netto stawką pozycji, jak na karcie).
       pozycjeKarty: wierszePozycji(zamowienieZGrupa(db, z), {
-        stawkaDomyslna: czytajStawkeDomyslna(db, opcjeZw), ...opcjeZw, zwolniona: sprzedawcaZwolniony(db, programFaktur?.opis),
+        stawkaDomyslna: czytajStawkeDomyslna(db, opcjeZw),
+        ...opcjeZw,
+        zwolniona: sprzedawcaZwolniony(db, programFaktur?.opis),
       }).map((w) => {
         const odnosnik = odnosnikPozycji(z, w, { baseUrl: config.sklepy?.[z.sklep]?.baseUrl ?? null });
         return { ...w, linkProduktu: odnosnik?.adres ?? null, linkProduktuTytul: odnosnik?.tytul ?? null };
@@ -591,7 +667,8 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
       // ⚠️ Z USTAWIEN. `nadanie.paczkaDomyslna` jest dzis FALLBACKIEM dla wywolan
       // spoza HTTP — trasa czyta wartosc operatora, bo to ona ma wypelnic formularz.
       // Przesyłki Erli — domyślne wymiary z kroku 4 konfiguratora sklepu (jeśli zapisane).
-      paczkaDomyslna: (metodaUzyta === 'erli_przesylki' && wymiaryErli(db, z.sklep)) || domyslnaPaczka(ustawieniaPaczek),
+      paczkaDomyslna:
+        (metodaUzyta === 'erli_przesylki' && wymiaryErli(db, z.sklep)) || domyslnaPaczka(ustawieniaPaczek),
       szablonyPaczek: odczytajSzablony(ustawieniaPaczek),
       // Wymiary paczkomatu NIE ISTNIEJA — jest tylko litera skrytki (A/B/C). Mapa leci
       // do widoku, zeby litery i wymiary bylo widac RAZEM (jak w formularzu Apilo), a
@@ -602,9 +679,10 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
       // Zaznaczony gabaryt i waga paczkomatu / automatu Allegro — z ustawienia
       // „Paczkomaty i automaty”, TĄ SAMĄ funkcją co nadanie hurtem (domena/nadanie-hurtem.js).
       // Tylko wartość startowa formularza: POST waliduje to, co człowiek wysłał.
-      propozycjaAutomatu: metodaKuriera(metodaUzyta)?.formularz === 'paczkomat'
-        ? propozycjaAutomatu(ustawieniaPaczek, { rodzaj: 'paczkomat' })
-        : propozycjaAutomatu(ustawieniaPaczek, { rodzaj: 'wza', deliveryMethodId: deliveryMethodIdAllegro }),
+      propozycjaAutomatu:
+        metodaKuriera(metodaUzyta)?.formularz === 'paczkomat'
+          ? propozycjaAutomatu(ustawieniaPaczek, { rodzaj: 'paczkomat' })
+          : propozycjaAutomatu(ustawieniaPaczek, { rodzaj: 'wza', deliveryMethodId: deliveryMethodIdAllegro }),
       deliveryMethodIdAllegro,
       // Numer paczki, ktora ten ekran nada. Formularz go NIESIE (ukryte pole), a trasa POST
       // porownuje z aktualnym stanem bazy — patrz komentarz przy POST nizej. To jest cala
@@ -614,20 +692,24 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
       // zmienione na karcie) u kuriera bez włączonej umowy — ten sam warunek i tekst, którym
       // POST (services/nadanie.js) odmówi. Pobranie sklepowe i DPD: `null`, bez ostrzeżenia.
       // Paczka N > 1 ma własny pas o pobraniu, a POST pyta tam o jawne zaznaczenie.
-      umowaPobraniaWymagana: kolejnosc === 1 && wymagaUmowyPobrania(z, metodaUzyta, MODULY_KURIEROW, umowyPobrania)
-        ? powodUmowyPobrania(metodaUzyta)
-        : null,
+      umowaPobraniaWymagana:
+        kolejnosc === 1 && wymagaUmowyPobrania(z, metodaUzyta, MODULY_KURIEROW, umowyPobrania)
+          ? powodUmowyPobrania(metodaUzyta)
+          : null,
       przedplatyPobrania: przedplatyPobraniaGr > 0 ? zl(przedplatyPobraniaGr) : null,
       niedoplataPobrania: niedoplataGr != null ? zl(niedoplataGr) : null,
       podstawaPobrania: niedoplata?.podstawaGr != null ? zl(niedoplata.podstawaGr) : null,
       // Przy brutto 0/pustym podstawą jest K — etykieta mówi, od czego liczono.
       opisPodstawyPobrania: niedoplata?.podstawa === 'pobranie' ? 'kwota pobrania na zamówieniu' : 'kwota zamówienia',
       bladKwotPobrania,
-      roznicaPobrania: kwotaPobraniaGr != null && niedoplataGr != null
-        && kwotaPobraniaGr !== niedoplataGr,
-      proponowanePobranie: wplatyNieczytelne ? null : przedplatyPobraniaGr > 0
-        ? (niedoplataGr > 0 || (niedoplataGr === 0 && odczytPobrania.groszeKwoty != null) ? zl(niedoplataGr) : null)
-        : kwotaPobrania(z),
+      roznicaPobrania: kwotaPobraniaGr != null && niedoplataGr != null && kwotaPobraniaGr !== niedoplataGr,
+      proponowanePobranie: wplatyNieczytelne
+        ? null
+        : przedplatyPobraniaGr > 0
+          ? niedoplataGr > 0 || (niedoplataGr === 0 && odczytPobrania.groszeKwoty != null)
+            ? zl(niedoplataGr)
+            : null
+          : kwotaPobrania(z),
       limitPobrania: niedoplataGr != null ? zl(niedoplataGr) : null,
       brakKwotyPobrania: czyPobranie(z) && String(kwotaPobrania(z) ?? '').trim() === '',
       // Paczka N > 1 — powód, którym POST odmówi, JEŚLI operator zaznaczy
@@ -638,13 +720,14 @@ app.get('/zamowienia/:id/nadaj', async (req, reply) => {
     });
   });
 
-app.post('/zamowienia/:id/nadaj', async (req, reply) => {
+  app.post('/zamowienia/:id/nadaj', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
     if (!z) return brakZamowienia(req, reply);
     // Dołączone — odmowa PRZED formularzem paczki (inaczej odbijałoby się od adresu albo wymiarów).
     if (z.scalone_do) return bladNadania(req, reply, 400, powodBrakuGotowosciNadania(z));
-    if (!nadanie || nadanie.gotowe?.() === false) return bladNadania(req, reply, 503, 'Nadawanie nie jest skonfigurowane (brak danych DPD).');
+    if (!nadanie || nadanie.gotowe?.() === false)
+      return bladNadania(req, reply, 503, 'Nadawanie nie jest skonfigurowane (brak danych DPD).');
     // Walidacja PRZED dotknieciem kuriera, w tym samym duchu co walidacja kraju/kwoty
     // pobrania w dpd.js: wartosc nieliczbowa albo ujemna dostaje czytelna odmowe, NIGDY
     // cichy powrot do wartosci domyslnej — kurier rozlicza po wadze i gabarycie, wiec to sa
@@ -670,13 +753,13 @@ app.post('/zamowienia/:id/nadaj', async (req, reply) => {
     // niczego nie zmienia i nie ma prawa zamienic zamowienia w pobraniowe.
     const pobranieNaTejPaczceZadane = req.body?.pobranie_na_tej_paczce === 'tak';
     const kolejnoscSpodziewana = nastepnaKolejnosc(db, id);
-    const pobranieNaTejPaczce = Boolean(z.pobranie)
-      && (kolejnoscSpodziewana === 1 || pobranieNaTejPaczceZadane);
+    const pobranieNaTejPaczce = Boolean(z.pobranie) && (kolejnoscSpodziewana === 1 || pobranieNaTejPaczceZadane);
 
     const surowyKurier = String(req.body?.kurier ?? '').trim();
     const umowyPobrania = umowyPobraniaFirmy(db);
-    const { metoda: metodaUzyta, blad: bladKuriera } = metodaNadaniaErli(db, z, surowyKurier, { kolejnosc: kolejnoscSpodziewana, umowyPobrania })
-      ?? metodaNadania(z, surowyKurier, { kolejnosc: kolejnoscSpodziewana, umowyPobrania });
+    const { metoda: metodaUzyta, blad: bladKuriera } =
+      metodaNadaniaErli(db, z, surowyKurier, { kolejnosc: kolejnoscSpodziewana, umowyPobrania }) ??
+      metodaNadania(z, surowyKurier, { kolejnosc: kolejnoscSpodziewana, umowyPobrania });
     if (bladKuriera) return bladNadania(req, reply, 400, bladKuriera);
 
     let deliveryMethodIdAllegro = null;
@@ -689,9 +772,13 @@ app.post('/zamowienia/:id/nadaj', async (req, reply) => {
       } catch {
         return bladNadania(req, reply, 503, 'Nie można sprawdzić usługi dostawy Allegro. Spróbuj ponownie później.');
       }
-      if (!deliveryMethodIdAllegro
-        || String(req.body?.delivery_method_id_allegro ?? '') !== deliveryMethodIdAllegro) {
-        return bladNadania(req, reply, 400, 'Usługa dostawy Allegro zmieniła się lub nie jest dostępna. Odśwież ekran nadania.');
+      if (!deliveryMethodIdAllegro || String(req.body?.delivery_method_id_allegro ?? '') !== deliveryMethodIdAllegro) {
+        return bladNadania(
+          req,
+          reply,
+          400,
+          'Usługa dostawy Allegro zmieniła się lub nie jest dostępna. Odśwież ekran nadania.',
+        );
       }
       const zgodaWza = wolnoNadacZOms(z, { deliveryMethodIdZywy: deliveryMethodIdAllegro });
       if (!zgodaWza.wolno) return bladNadania(req, reply, 400, zgodaWza.powod);
@@ -707,11 +794,12 @@ app.post('/zamowienia/:id/nadaj', async (req, reply) => {
 
     const gabarytyAllegro = profilGabarytuAllegro(deliveryMethodIdAllegro);
     const metodaRejestru = metodaKuriera(metodaUzyta);
-    const { paczka, blad } = metodaRejestru?.formularz === 'paczkomat'
-      ? parsujPaczkeInpost(req.body)
-      : gabarytyAllegro
-        ? parsujGabarytAllegro(req.body, deliveryMethodIdAllegro)
-        : parsujPaczke(req.body);
+    const { paczka, blad } =
+      metodaRejestru?.formularz === 'paczkomat'
+        ? parsujPaczkeInpost(req.body)
+        : gabarytyAllegro
+          ? parsujGabarytAllegro(req.body, deliveryMethodIdAllegro)
+          : parsujPaczke(req.body);
     if (blad) return bladNadania(req, reply, 400, blad);
     if (deliveryMethodIdAllegro) paczka.oczekiwanyDeliveryMethodId = deliveryMethodIdAllegro;
 
@@ -748,9 +836,12 @@ app.post('/zamowienia/:id/nadaj', async (req, reply) => {
       // tresc to i tak blad, a przepisywanie jej w calosci zamienia komunikat w sciane
       // tekstu, w ktorej nie widac zdania o tym, co zrobic.
       const wPokazie = surowaKolejnosc.slice(0, 20) || '(brak numeru)';
-      return bladNadania(req, reply, 400,
-        `Ten formularz dotyczy paczki nr ${wPokazie}, a to zamówienie czeka na paczkę `
-        + `nr ${spodziewana} — panel niczego nie nadał. Odśwież kartę zamówienia i otwórz nadanie od nowa.`,
+      return bladNadania(
+        req,
+        reply,
+        400,
+        `Ten formularz dotyczy paczki nr ${wPokazie}, a to zamówienie czeka na paczkę ` +
+          `nr ${spodziewana} — panel niczego nie nadał. Odśwież kartę zamówienia i otwórz nadanie od nowa.`,
       );
     }
 
@@ -771,7 +862,9 @@ app.post('/zamowienia/:id/nadaj', async (req, reply) => {
     // parserze paczki wyzej. Bez tego allegrowa paczka wskazana jako paczkomat leciala by
     // do InPostu BEZ kodu automatu z formularza.
     const punktOdbioru = metodaRejestru?.punktOdbioru
-      ? String(req.body?.punkt_odbioru ?? '').trim().toUpperCase()
+      ? String(req.body?.punkt_odbioru ?? '')
+          .trim()
+          .toUpperCase()
       : undefined;
 
     // ⚠️ KWOTA POBRANIA Z FORMULARZA — TA SAMA rodzina co adres i kod paczkomatu:
@@ -790,13 +883,19 @@ app.post('/zamowienia/:id/nadaj', async (req, reply) => {
     // stara karta i ma zostac zignorowane (zamowienie przedplacone nie ma prawa zamienic
     // sie w pobraniowe jednym polem formularza).
     const { kwotaPobrania, blad: bladPobrania } = parsujNadpisanieKwotyPobrania(req.body, {
-      pobranie: Boolean(z.pobranie), kolejnosc, pobranieNaTejPaczce,
+      pobranie: Boolean(z.pobranie),
+      kolejnosc,
+      pobranieNaTejPaczce,
     });
     if (bladPobrania) return bladNadania(req, reply, 400, bladPobrania);
 
     try {
       await nadanie.nadaj(id, paczka, {
-        kolejnosc, komentarz: req.body?.komentarz ?? null, adres, punktOdbioru, kwotaPobrania,
+        kolejnosc,
+        komentarz: req.body?.komentarz ?? null,
+        adres,
+        punktOdbioru,
+        kwotaPobrania,
         drukowac,
         // Decyzja jedzie DO USLUGI, nie tylko do widoku — dokladnie jak `kurierWybrany`
         // nizej i z tego samego powodu: bariera musi stac tam, gdzie wolaja ja WSZYSCY.
@@ -818,5 +917,4 @@ app.post('/zamowienia/:id/nadaj', async (req, reply) => {
     if (drukowac) wstawEtykieteDoKolejki(db, id, kolejnosc, 'Nadaj i drukuj');
     return reply.redirect(adresPowrotuNaKarte(req, id));
   });
-
 }

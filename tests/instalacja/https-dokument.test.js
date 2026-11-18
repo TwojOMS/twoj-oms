@@ -8,7 +8,12 @@ import { describe, it, expect } from 'vitest';
 const dokument = readFileSync(new URL('../../docs/instalacja-docker.md', import.meta.url), 'utf8');
 
 /** Kotwica nagłówka jak na GitHubie: małe litery, bez znaków innych niż litery, cyfry, spacja i kreska, spacja → kreska. */
-export const kotwica = (tytul) => tytul.trim().toLowerCase().replace(/[^\p{L}\p{N}\p{M} _-]/gu, '').replaceAll(' ', '-');
+export const kotwica = (tytul) =>
+  tytul
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\p{M} _-]/gu, '')
+    .replaceAll(' ', '-');
 
 /** Nagłówki poza blokami kodu: [{ poziom, tytul, kotwica, pozycja }]; powtórzona kotwica dostaje -1, -2… */
 export function naglowki(md) {
@@ -31,19 +36,29 @@ export function naglowki(md) {
 }
 
 /** Odsyłacze wewnątrz dokumentu: [{ cel, pozycja }]. */
-export const odsylacze = (md) => [...md.matchAll(/\]\(#([^)\s]+)\)/g)].map((m) => ({ cel: decodeURIComponent(m[1]), pozycja: m.index }));
+export const odsylacze = (md) =>
+  [...md.matchAll(/\]\(#([^)\s]+)\)/g)].map((m) => ({ cel: decodeURIComponent(m[1]), pozycja: m.index }));
 
 describe('droga od instalacji Dockera do HTTPS', () => {
   it('prowadzi z wcześniejszego kroku do sekcji HTTPS bez zmiany numerów dalszych kroków', () => {
     const lista = naglowki(dokument);
     const kotwice = new Set(lista.map((n) => n.kotwica));
     const linki = odsylacze(dokument);
-    expect(linki.filter((l) => !kotwice.has(l.cel)).map((l) => l.cel), 'odsyłacz bez nagłówka').toEqual([]);
+    expect(
+      linki.filter((l) => !kotwice.has(l.cel)).map((l) => l.cel),
+      'odsyłacz bez nagłówka',
+    ).toEqual([]);
     const https = lista.find((n) => n.poziom === 2 && /HTTPS/.test(n.tytul));
     expect(https, 'sekcja o HTTPS').toBeDefined();
-    expect(linki.some((l) => l.cel === https.kotwica && l.pozycja < https.pozycja), 'odsyłacz z wcześniejszego kroku').toBe(true);
+    expect(
+      linki.some((l) => l.cel === https.kotwica && l.pozycja < https.pozycja),
+      'odsyłacz z wcześniejszego kroku',
+    ).toBe(true);
     // Kroki „## N.” idą 1, 2, 3… bez przeskoku; wstawiony krok ma literę („7a.”) i numer poprzedniego kroku.
-    const kroki = lista.filter((n) => n.poziom === 2).map((n) => /^(\d+)([a-z]?)\./.exec(n.tytul)).filter(Boolean);
+    const kroki = lista
+      .filter((n) => n.poziom === 2)
+      .map((n) => /^(\d+)([a-z]?)\./.exec(n.tytul))
+      .filter(Boolean);
     let numer = 0;
     for (const [, n, litera] of kroki) {
       expect(Number(n), `krok ${n}${litera}`).toBe(litera ? numer : numer + 1);

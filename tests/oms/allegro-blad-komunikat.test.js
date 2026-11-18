@@ -4,20 +4,31 @@ import { createAllegroClient } from '../../src/oms/allegro/client.js';
 const sciezka = '/shipment-management/pickup-proposals';
 const poczatek = `Allegro: HTTP 400 przy ${sciezka}`;
 const opis = 'Numer telefonu musi zawierać prefiks międzynarodowy';
-const validation = { code: 'VALIDATION_ERROR', userMessage: opis, message: 'Technical fallback', path: 'address.phone' };
+const validation = {
+  code: 'VALIDATION_ERROR',
+  userMessage: opis,
+  message: 'Technical fallback',
+  path: 'address.phone',
+};
 
 function klientZ(odpowiedz) {
   const zadania = [];
   const klient = createAllegroClient({
     ustawienia: { api: 'https://allegro.example.invalid', userAgent: 'Test/1.0' },
     tokeny: { waznyToken: async () => 'SECRET-TOKEN-055' },
-    fetchImpl: async (url, opcje) => { zadania.push({ url, opcje }); return odpowiedz; },
+    fetchImpl: async (url, opcje) => {
+      zadania.push({ url, opcje });
+      return odpowiedz;
+    },
   });
   return { klient, zadania };
 }
-const propozycje = (klient) => klient.pobierzPropozycjePodjazdu({
-  shipmentIds: ['shipment-055'], readyDate: '2026-10-09', address: { phone: '501234567' },
-});
+const propozycje = (klient) =>
+  klient.pobierzPropozycjePodjazdu({
+    shipmentIds: ['shipment-055'],
+    readyDate: '2026-10-09',
+    address: { phone: '501234567' },
+  });
 async function bladZ(errors) {
   const { klient } = klientZ({ ok: false, status: 400, json: async () => ({ errors }) });
   return propozycje(klient).catch((e) => e);
@@ -28,18 +39,27 @@ it('POST pokazuje userMessage i path, zachowując początek komunikatu', async (
 });
 
 it('GET korzysta z tego samego opisu i zachowuje Retry-After bez ponowienia', async () => {
-  const { klient, zadania } = klientZ({ ok: false, status: 429,
+  const { klient, zadania } = klientZ({
+    ok: false,
+    status: 429,
     headers: new Headers({ 'Retry-After': '47', 'X-Debug': 'SECRET-HEADER' }),
     json: async () => ({ errors: [validation] }),
   });
-  await expect(klient.stanZleceniaPodjazdu('cmd-055')).rejects.toMatchObject({ status: 429, retryAfterS: 47,
-    message: `Allegro: HTTP 429 przy /shipment-management/pickups/create-commands/cmd-055: ${opis} (address.phone)` });
+  await expect(klient.stanZleceniaPodjazdu('cmd-055')).rejects.toMatchObject({
+    status: 429,
+    retryAfterS: 47,
+    message: `Allegro: HTTP 429 przy /shipment-management/pickups/create-commands/cmd-055: ${opis} (address.phone)`,
+  });
   expect(zadania).toHaveLength(1);
 });
 
 it('POST zachowuje Retry-After także po odczycie ciała odmowy', async () => {
-  const { klient, zadania } = klientZ({ ok: false, status: 429, headers: new Headers({ 'Retry-After': '19' }),
-    json: async () => ({ errors: [validation] }) });
+  const { klient, zadania } = klientZ({
+    ok: false,
+    status: 429,
+    headers: new Headers({ 'Retry-After': '19' }),
+    json: async () => ({ errors: [validation] }),
+  });
   await expect(propozycje(klient)).rejects.toMatchObject({ status: 429, retryAfterS: 19 });
   expect(zadania).toHaveLength(1);
 });
@@ -64,9 +84,16 @@ it('cały dopisek z separatorem ma najwyżej 300 znaków', async () => {
 });
 
 it('odrzuca wszystkie pola poza userMessage/message/path i parametry URL', async () => {
-  const { klient } = klientZ({ ok: false, status: 403, headers: new Headers({ Authorization: 'SECRET-HEADER' }),
-    json: async () => ({ headers: { Authorization: 'SECRET-TOKEN-055' }, request: 'SECRET-BODY',
-      errors: [{ ...validation, code: 'SECRET-CODE', details: 'SECRET-DETAILS' }] }) });
+  const { klient } = klientZ({
+    ok: false,
+    status: 403,
+    headers: new Headers({ Authorization: 'SECRET-HEADER' }),
+    json: async () => ({
+      headers: { Authorization: 'SECRET-TOKEN-055' },
+      request: 'SECRET-BODY',
+      errors: [{ ...validation, code: 'SECRET-CODE', details: 'SECRET-DETAILS' }],
+    }),
+  });
   const blad = await klient.pobierzZamowienia({ od: '2026-10-08', strona: 1 }).catch((e) => e);
   expect(blad.message).toBe(`Allegro: HTTP 403 przy /order/checkout-forms: ${opis} (address.phone)`);
 });
@@ -74,10 +101,27 @@ it('odrzuca wszystkie pola poza userMessage/message/path i parametry URL', async
 it.each([
   ['brak json', {}],
   ['brak ciała', { json: async () => null }],
-  ['nie JSON', { json: async () => { throw new SyntaxError('SECRET-HTML'); } }],
-  ['błąd odczytu', { json: async () => { throw new Error('SECRET-READ'); } }],
+  [
+    'nie JSON',
+    {
+      json: async () => {
+        throw new SyntaxError('SECRET-HTML');
+      },
+    },
+  ],
+  [
+    'błąd odczytu',
+    {
+      json: async () => {
+        throw new Error('SECRET-READ');
+      },
+    },
+  ],
   ['brak tablicy errors', { json: async () => ({ errors: 'SECRET-BODY' }) }],
-  ['niepoprawne pola', { json: async () => ({ errors: [null, { userMessage: { secret: 'SECRET' }, message: 123, path: {} }] }) }],
+  [
+    'niepoprawne pola',
+    { json: async () => ({ errors: [null, { userMessage: { secret: 'SECRET' }, message: 123, path: {} }] }) },
+  ],
 ])('%s zostawia dawny komunikat i metadane', async (_nazwa, body) => {
   const { klient } = klientZ({ ok: false, status: 400, headers: new Headers({ 'Retry-After': '17' }), ...body });
   await expect(propozycje(klient)).rejects.toMatchObject({ status: 400, retryAfterS: 17, message: poczatek });

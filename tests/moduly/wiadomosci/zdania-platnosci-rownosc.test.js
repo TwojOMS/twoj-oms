@@ -14,21 +14,38 @@ import { readFileSync } from 'node:fs';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { modelWiadomosci, jakoTekstWiadomosci } from '../../../src/domena/wiadomosc-platnicza.js';
 import { renderWiadomoscHtml } from '../../../src/core/poczta/wiadomosc-html.js';
-import { mailPlatniczy, mailPotwierdzenia, mailWlasny, mailWyslane, tekstDoWatku } from '../../../src/moduly/wiadomosci/szablony.js';
+import {
+  mailPlatniczy,
+  mailPotwierdzenia,
+  mailWlasny,
+  mailWyslane,
+  tekstDoWatku,
+} from '../../../src/moduly/wiadomosci/szablony.js';
 import { podgladPodpisu } from '../../../src/moduly/wiadomosci/podpis-maili.js';
 import { DOMYSLNE } from '../../../src/domena/szablony-wiadomosci.js';
 import { DOMYSLNE_ZDANIA, ZDANIA } from '../../../src/domena/zdania-platnosci.js';
 import { zdaniaPlatnosciTeraz } from '../../../src/moduly/wiadomosci/zdania-platnosci.js';
 import { SCENARIUSZE, SCENARIUSZE_ZAMOWIENIA, WLASNY, OPRAWA } from '../../pomoc/zdania-platnosci-scenariusze.js';
 
-const WZORZEC = JSON.parse(readFileSync(new URL('../../fixtures/zdania-platnosci-prz102-17.json', import.meta.url), 'utf8'));
+const WZORZEC = JSON.parse(
+  readFileSync(new URL('../../fixtures/zdania-platnosci-prz102-17.json', import.meta.url), 'utf8'),
+);
 const BEZ_ZAMOWIENIA = 'wątek Allegro bez zamówienia';
 const PODGLAD_PODPISU = 'podgląd podpisu (Ustawienia → Poczta)';
 
 const mail = (z, dokument, opcje) => {
   const m = modelWiadomosci(z, opcje);
-  const s = mailPlatniczy(z, m, { temat_id: opcje.temat_id, dokument, oprawa: OPRAWA, szablon: DOMYSLNE[opcje.temat_id] });
-  return { tekst: jakoTekstWiadomosci(m), html: renderWiadomoscHtml(m, OPRAWA), szablon: { temat: s.temat, tekst: s.tekst, html: s.html } };
+  const s = mailPlatniczy(z, m, {
+    temat_id: opcje.temat_id,
+    dokument,
+    oprawa: OPRAWA,
+    szablon: DOMYSLNE[opcje.temat_id],
+  });
+  return {
+    tekst: jakoTekstWiadomosci(m),
+    html: renderWiadomoscHtml(m, OPRAWA),
+    szablon: { temat: s.temat, tekst: s.tekst, html: s.html },
+  };
 };
 
 const trzy = (m) => ({ temat: m.temat, tekst: m.tekst, html: m.html });
@@ -63,7 +80,9 @@ describe('domyślne zdania o płatności = mail ze wzorca, co do bajtu', () => {
     for (const z of ZDANIA) {
       if (z.grupa === 'zamowienie' || z.grupa === 'podpis') {
         // Kolumny tabeli są tylko w HTML-u; reszta stoi w obu postaciach.
-        expect(z.klucz.startsWith('kolumna_') ? html : zamowienia, z.klucz).toContain(z.klucz.startsWith('kolumna_') ? `>${z.domyslne}</td>` : jakWMailu(z));
+        expect(z.klucz.startsWith('kolumna_') ? html : zamowienia, z.klucz).toContain(
+          z.klucz.startsWith('kolumna_') ? `>${z.domyslne}</td>` : jakWMailu(z),
+        );
       }
       if (z.grupa !== 'zamowienie') expect(platnicze, z.klucz).toContain(jakWMailu(z));
     }

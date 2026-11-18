@@ -18,9 +18,13 @@ const SRC = fileURLToPath(new URL('../../src/', import.meta.url));
 const KOLUMNA = /infakt_uuid/i;
 const KOD = new Set(['.js', '.mjs', '.cjs', '.ts']);
 const WEZLY = new Set([
-  ts.SyntaxKind.Identifier, ts.SyntaxKind.PrivateIdentifier, ts.SyntaxKind.StringLiteral,
-  ts.SyntaxKind.NoSubstitutionTemplateLiteral, ts.SyntaxKind.TemplateHead,
-  ts.SyntaxKind.TemplateMiddle, ts.SyntaxKind.TemplateTail,
+  ts.SyntaxKind.Identifier,
+  ts.SyntaxKind.PrivateIdentifier,
+  ts.SyntaxKind.StringLiteral,
+  ts.SyntaxKind.NoSubstitutionTemplateLiteral,
+  ts.SyntaxKind.TemplateHead,
+  ts.SyntaxKind.TemplateMiddle,
+  ts.SyntaxKind.TemplateTail,
 ]);
 
 // Pliki, w których kolumna może występować bez ograniczeń: schemat bazy, migracja przepisująca
@@ -45,8 +49,13 @@ const WOLNO_TYLKO_ZAPIS = {
 export function wystapienia(sciezka, tresc) {
   const roz = path.extname(sciezka);
   if (KOD.has(roz)) {
-    const zrodlo = ts.createSourceFile(sciezka, tresc, ts.ScriptTarget.Latest, true,
-      roz === '.ts' ? ts.ScriptKind.TS : ts.ScriptKind.JS);
+    const zrodlo = ts.createSourceFile(
+      sciezka,
+      tresc,
+      ts.ScriptTarget.Latest,
+      true,
+      roz === '.ts' ? ts.ScriptKind.TS : ts.ScriptKind.JS,
+    );
     const wynik = [];
     const odwiedz = (wezel) => {
       if (WEZLY.has(wezel.kind) && KOLUMNA.test(wezel.text)) {
@@ -59,9 +68,7 @@ export function wystapienia(sciezka, tresc) {
     return wynik;
   }
   // .ejs: komentarz EJS zamieniony na tyle samo nowych linii — numery linii zostają prawdziwe.
-  const bez = roz === '.ejs'
-    ? tresc.replace(/<%#[\s\S]*?%>/g, (k) => k.replace(/[^\n]/g, ''))
-    : tresc;
+  const bez = roz === '.ejs' ? tresc.replace(/<%#[\s\S]*?%>/g, (k) => k.replace(/[^\n]/g, '')) : tresc;
   return bez.split('\n').flatMap((l, i) => (KOLUMNA.test(l) ? [{ linia: i + 1, tekst: l.trim() }] : []));
 }
 
@@ -92,7 +99,10 @@ describe('strażnik kolumny infakt_uuid', () => {
       const dozwolone = [...(WOLNO_TYLKO_ZAPIS[plik] ?? [])];
       for (const t of lista) {
         const i = dozwolone.indexOf(t.tekst);
-        if (i >= 0) { dozwolone.splice(i, 1); continue; }
+        if (i >= 0) {
+          dozwolone.splice(i, 1);
+          continue;
+        }
         naruszenia.push(`${plik}:${t.linia}  ${t.tekst.slice(0, 120)}`);
       }
     }
@@ -101,7 +111,10 @@ describe('strażnik kolumny infakt_uuid', () => {
 
   it('każdy dozwolony zapis naprawdę stoi w swoim pliku (lista nie jest martwa)', () => {
     for (const [plik, napisy] of Object.entries(WOLNO_TYLKO_ZAPIS)) {
-      expect((trafienia[plik] ?? []).map((t) => t.tekst), plik).toEqual(napisy);
+      expect(
+        (trafienia[plik] ?? []).map((t) => t.tekst),
+        plik,
+      ).toEqual(napisy);
     }
     expect(Object.keys(trafienia)).toEqual(expect.arrayContaining([...WOLNO_CALY_PLIK]));
   });

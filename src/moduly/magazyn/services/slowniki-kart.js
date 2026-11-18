@@ -24,12 +24,12 @@ export function wTransakcji(db, praca) {
     throw e;
   }
 }
-const slownik = typ => {
+const slownik = (typ) => {
   const s = SLOWNIKI[typ];
   if (!s) throw new Error(`nieznany słownik „${typ}”`);
   return s;
 };
-export const czystaNazwa = wartosc => (typeof wartosc === 'string' ? wartosc.trim().slice(0, 200) : '');
+export const czystaNazwa = (wartosc) => (typeof wartosc === 'string' ? wartosc.trim().slice(0, 200) : '');
 
 const liczbaKart = (db, { kolumna }, nazwa) =>
   db.prepare(`SELECT COUNT(*) AS ile FROM karty_produktow WHERE ${kolumna} = ?`).get(nazwa).ile;
@@ -37,7 +37,10 @@ const liczbaKart = (db, { kolumna }, nazwa) =>
 /** Nazwy ze słownika (do wyboru na karcie), alfabetycznie. */
 export function nazwySlownika(db, typ) {
   const { tabela } = slownik(typ);
-  return db.prepare(`SELECT nazwa FROM ${tabela} ORDER BY nazwa COLLATE NOCASE, nazwa`).all().map(r => r.nazwa);
+  return db
+    .prepare(`SELECT nazwa FROM ${tabela} ORDER BY nazwa COLLATE NOCASE, nazwa`)
+    .all()
+    .map((r) => r.nazwa);
 }
 
 /**
@@ -46,22 +49,33 @@ export function nazwySlownika(db, typ) {
  */
 export function listaSlownika(db, typ) {
   const { tabela, kolumna } = slownik(typ);
-  const wiersze = db.prepare(`
+  const wiersze = db
+    .prepare(
+      `
     SELECT n.nazwa, COUNT(k.id) AS karty, MAX(s.nazwa IS NOT NULL) AS w_slowniku
     FROM (SELECT nazwa FROM ${tabela}
           UNION SELECT ${kolumna} FROM karty_produktow WHERE ${kolumna} IS NOT NULL AND trim(${kolumna}) <> '') n
     LEFT JOIN karty_produktow k ON k.${kolumna} = n.nazwa
     LEFT JOIN ${tabela} s ON s.nazwa = n.nazwa
-    GROUP BY n.nazwa ORDER BY n.nazwa COLLATE NOCASE, n.nazwa`).all();
+    GROUP BY n.nazwa ORDER BY n.nazwa COLLATE NOCASE, n.nazwa`,
+    )
+    .all();
   const zrodla = new Map();
   if (typ === 'kategorie') {
     for (const r of db.prepare('SELECT DISTINCT nazwa, kanal FROM kategorie_kart_kanaly ORDER BY kanal').all()) {
       zrodla.set(r.nazwa, [...(zrodla.get(r.nazwa) ?? []), r.kanal]);
     }
   }
-  const bez = db.prepare(`SELECT COUNT(*) AS ile FROM karty_produktow WHERE ${kolumna} IS NULL OR trim(${kolumna}) = ''`).get().ile;
+  const bez = db
+    .prepare(`SELECT COUNT(*) AS ile FROM karty_produktow WHERE ${kolumna} IS NULL OR trim(${kolumna}) = ''`)
+    .get().ile;
   return {
-    pozycje: wiersze.map(w => ({ nazwa: w.nazwa, karty: w.karty, wSlowniku: w.w_slowniku === 1, kanaly: zrodla.get(w.nazwa) ?? [] })),
+    pozycje: wiersze.map((w) => ({
+      nazwa: w.nazwa,
+      karty: w.karty,
+      wSlowniku: w.w_slowniku === 1,
+      kanaly: zrodla.get(w.nazwa) ?? [],
+    })),
     bez,
   };
 }
@@ -82,7 +96,10 @@ export function dodajDoSlownika(db, typ, nazwa, { at = teraz() } = {}) {
 // Przy scaleniu z istniejącą nazwą zostaje mapowanie nazwy docelowej (UPDATE OR IGNORE + usunięcie resztek).
 const MAPOWANIA_ALLEGRO = Object.freeze({
   kategorie: [['allegro_mapa_kategorii', 'kategoria_karty']],
-  marki: [['allegro_marki', 'marka'], ['allegro_marki_gpsr', 'marka']],
+  marki: [
+    ['allegro_marki', 'marka'],
+    ['allegro_marki_gpsr', 'marka'],
+  ],
 });
 
 function przeniesMapowaniaAllegro(db, typ, stara, nowa) {
@@ -100,7 +117,10 @@ export function zmienNazwe(db, typ, stara, nowa, { at = teraz() } = {}) {
   if (!z || !n) return { blad: 'Podaj nazwę.' };
   if (z === n) return { karty: 0 };
   return wTransakcji(db, () => {
-    const karty = db.prepare(`SELECT id FROM karty_produktow WHERE ${s.kolumna} = ?`).all(z).map(r => r.id);
+    const karty = db
+      .prepare(`SELECT id FROM karty_produktow WHERE ${s.kolumna} = ?`)
+      .all(z)
+      .map((r) => r.id);
     for (const id of karty) zapiszKarte(db, id, { [s.kolumna]: n }, { at });
     db.prepare(`DELETE FROM ${s.tabela} WHERE nazwa = ?`).run(z);
     db.prepare(`INSERT OR IGNORE INTO ${s.tabela} (nazwa, utworzona_at) VALUES (?, ?)`).run(n, at);
@@ -124,7 +144,8 @@ export function usunZeSlownika(db, typ, nazwa) {
   });
 }
 
-const poleFormularza = (body, klucz) => (body && Object.hasOwn(body, klucz) && typeof body[klucz] === 'string' ? body[klucz] : null);
+const poleFormularza = (body, klucz) =>
+  body && Object.hasOwn(body, klucz) && typeof body[klucz] === 'string' ? body[klucz] : null;
 
 /**
  * Kategoria i marka z formularza karty: wybór ze słownika (`kategoria_glowna`, `marka`) albo — gdy wpisane —
@@ -156,7 +177,8 @@ export function dopiszDoSlownikow(db, zmiany, { at = teraz() } = {}) {
  */
 export function scalKategorieWoo(db, kanal, lista, { at = teraz() } = {}) {
   const wstaw = db.prepare('INSERT OR IGNORE INTO kategorie_kart (nazwa, utworzona_at) VALUES (?, ?)');
-  const zrodlo = db.prepare(`INSERT INTO kategorie_kart_kanaly (nazwa, kanal, id_zewnetrzne, rodzic_id) VALUES (?, ?, ?, ?)
+  const zrodlo =
+    db.prepare(`INSERT INTO kategorie_kart_kanaly (nazwa, kanal, id_zewnetrzne, rodzic_id) VALUES (?, ?, ?, ?)
     ON CONFLICT (kanal, id_zewnetrzne) DO UPDATE SET nazwa = excluded.nazwa, rodzic_id = excluded.rodzic_id`);
   return wTransakcji(db, () => {
     const widziane = new Set();
@@ -170,7 +192,8 @@ export function scalKategorieWoo(db, kanal, lista, { at = teraz() } = {}) {
       zrodlo.run(nazwa, kanal, String(k.id), rodzic);
       if (widziane.has(nazwa)) continue;
       widziane.add(nazwa);
-      if (wstaw.run(nazwa, at).changes === 1) dodano += 1; else bylo += 1;
+      if (wstaw.run(nazwa, at).changes === 1) dodano += 1;
+      else bylo += 1;
     }
     return { dodano, bylo };
   });

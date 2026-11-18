@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
-  stanKampanii, dolaczZrodla, dolaczZamowieniaZReklam, alertyKampanii, faleKampanii,
+  stanKampanii,
+  dolaczZrodla,
+  dolaczZamowieniaZReklam,
+  alertyKampanii,
+  faleKampanii,
 } from '../../src/domena/kampania.js';
 
 // Drugi licznik kampanii: zamowienia z utm_campaign w atrybucji — takze
@@ -10,17 +14,28 @@ import {
 // wydatku.
 
 const KAMPANIA = {
-  id: 1, kod: 'wrzesien30', nazwa: 'Nowy początek. Bez remontu.',
-  od_dnia: '2026-08-24', do_dnia: '2026-09-07', sklep: 'swietlik', cel_uzyc: 10,
+  id: 1,
+  kod: 'wrzesien30',
+  nazwa: 'Nowy początek. Bez remontu.',
+  od_dnia: '2026-08-24',
+  do_dnia: '2026-09-07',
+  sklep: 'swietlik',
+  cel_uzyc: 10,
 };
 
 // Ksztalt zLinii, jak w kampania-domena.test.js.
 const zam = (nad = {}) => ({
-  id: 1, numer: '28225', sklep: 'swietlik', kwota_brutto: '64.79',
-  utworzone_at: '2026-08-27T10:54:27Z', anulowane: 0, oplacone_at: '2026-08-27T10:55:11Z',
+  id: 1,
+  numer: '28225',
+  sklep: 'swietlik',
+  kwota_brutto: '64.79',
+  utworzone_at: '2026-08-27T10:54:27Z',
+  anulowane: 0,
+  oplacone_at: '2026-08-27T10:55:11Z',
   kupony_json: null,
   atrybucja_json: '{"typ":"utm","zrodlo":"facebook","medium":"cpc","kampania":"wrzesien30"}',
-  pozycje: [], ...nad,
+  pozycje: [],
+  ...nad,
 });
 
 const stanBazowy = () => stanKampanii({ kampania: KAMPANIA, zamowienia: [], dzis: '2026-08-27' });
@@ -80,10 +95,7 @@ describe('dolaczZamowieniaZReklam — zasięg i anulowane', () => {
   it('ten sam zasięg co przy kodzie: inny sklep i data poza oknem lądują w „poza zasięgiem"', () => {
     const w = dolaczZamowieniaZReklam(stanBazowy(), {
       kampania: KAMPANIA,
-      zamowieniaUtm: [
-        zam({ sklep: 'pro' }),
-        zam({ id: 2, numer: '28300', utworzone_at: '2026-09-20T10:00:00Z' }),
-      ],
+      zamowieniaUtm: [zam({ sklep: 'pro' }), zam({ id: 2, numer: '28300', utworzone_at: '2026-09-20T10:00:00Z' })],
     });
     expect(w.reklamy.liczba).toBe(0);
     expect(w.reklamy.pozaZasiegiem).toBe(2);
@@ -147,11 +159,14 @@ describe('dolaczZamowieniaZReklam — zasięg i anulowane', () => {
 });
 
 describe('dolaczZamowieniaZReklam — koszt i zwrot', () => {
-  const meta = [{ dzien: '2026-08-26', wydatek: '50.00', wyswietlenia: 1000, zasieg: 800, klikniecia: 60, klikniecia_linku: 20 }];
-  const zeZrodlami = (zamowieniaUtm) => dolaczZamowieniaZReklam(
-    dolaczZrodla(stanBazowy(), { meta, ga4: [], stany: {} }),
-    { kampania: KAMPANIA, zamowieniaUtm },
-  );
+  const meta = [
+    { dzien: '2026-08-26', wydatek: '50.00', wyswietlenia: 1000, zasieg: 800, klikniecia: 60, klikniecia_linku: 20 },
+  ];
+  const zeZrodlami = (zamowieniaUtm) =>
+    dolaczZamowieniaZReklam(dolaczZrodla(stanBazowy(), { meta, ga4: [], stany: {} }), {
+      kampania: KAMPANIA,
+      zamowieniaUtm,
+    });
 
   it('koszt zamówienia z reklam: wydatek ÷ zamówienia z utm', () => {
     const w = zeZrodlami([zam(), zam({ id: 2, numer: '28226' })]);
@@ -183,10 +198,12 @@ describe('stanKampanii — użycia po końcu okna', () => {
   it('kod użyty po do_dnia liczy się osobno (niewygaszony kupon)', () => {
     const stan = stanKampanii({
       kampania: KAMPANIA,
-      zamowienia: [zam({
-        kupony_json: '[{"kod":"wrzesien30","rabat":"10.00"}]',
-        utworzone_at: '2026-09-09T10:00:00Z',
-      })],
+      zamowienia: [
+        zam({
+          kupony_json: '[{"kod":"wrzesien30","rabat":"10.00"}]',
+          utworzone_at: '2026-09-09T10:00:00Z',
+        }),
+      ],
       dzis: '2026-09-09',
     });
     expect(stan.pozaZasiegiem).toBe(1);
@@ -208,11 +225,13 @@ describe('stanKampanii — użycia po końcu okna', () => {
   it('inny sklep po końcu okna też nie alarmuje o kuponie', () => {
     const stan = stanKampanii({
       kampania: KAMPANIA,
-      zamowienia: [zam({
-        sklep: 'pro',
-        kupony_json: '[{"kod":"wrzesien30","rabat":"10.00"}]',
-        utworzone_at: '2026-09-09T10:00:00Z',
-      })],
+      zamowienia: [
+        zam({
+          sklep: 'pro',
+          kupony_json: '[{"kod":"wrzesien30","rabat":"10.00"}]',
+          utworzone_at: '2026-09-09T10:00:00Z',
+        }),
+      ],
       dzis: '2026-09-10',
     });
     expect(stan.uzycPoOknie).toBe(0);
@@ -222,7 +241,9 @@ describe('stanKampanii — użycia po końcu okna', () => {
 // ——— MIARY PRZY ZRODLACH: pokrycie pomiaru GA4 i prognoza wydatku ———————————————————
 
 describe('dolaczZrodla — pokrycie pomiaru GA4', () => {
-  const meta = [{ dzien: '2026-08-26', wydatek: '50.00', wyswietlenia: 1000, zasieg: 800, klikniecia: 60, klikniecia_linku: 20 }];
+  const meta = [
+    { dzien: '2026-08-26', wydatek: '50.00', wyswietlenia: 1000, zasieg: 800, klikniecia: 60, klikniecia_linku: 20 },
+  ];
 
   it('podaje, jaki odsetek kliknięć linkowych z Mety GA4 widzi jako sesje', () => {
     const ga4 = [{ dzien: '2026-08-26', sesje: 30, uzytkownicy: 25, sesje_meta: 7, odslony_promo: 2 }];
@@ -237,7 +258,9 @@ describe('dolaczZrodla — pokrycie pomiaru GA4', () => {
   });
 
   it('bez kliknięć linkowych nie ma czego dzielić', () => {
-    const bezKlikniec = [{ dzien: '2026-08-26', wydatek: '5.00', wyswietlenia: 100, zasieg: 90, klikniecia: 0, klikniecia_linku: 0 }];
+    const bezKlikniec = [
+      { dzien: '2026-08-26', wydatek: '5.00', wyswietlenia: 100, zasieg: 90, klikniecia: 0, klikniecia_linku: 0 },
+    ];
     const ga4 = [{ dzien: '2026-08-26', sesje: 3, uzytkownicy: 3, sesje_meta: 0, odslony_promo: 0 }];
     const w = dolaczZrodla(stanBazowy(), { meta: bezKlikniec, ga4, stany: {} });
     expect(w.ga4.pokryciePct).toBeNull();
@@ -253,7 +276,9 @@ describe('dolaczZrodla — pokrycie pomiaru GA4', () => {
 
 describe('dolaczZrodla — kliknięcia linkowe w dniach (tor lejka)', () => {
   it('dokleja kliknięcia linkowe dnia; dzień bez danych dostaje zero', () => {
-    const meta = [{ dzien: '2026-08-26', wydatek: '50.00', wyswietlenia: 1000, zasieg: 800, klikniecia: 60, klikniecia_linku: 20 }];
+    const meta = [
+      { dzien: '2026-08-26', wydatek: '50.00', wyswietlenia: 1000, zasieg: 800, klikniecia: 60, klikniecia_linku: 20 },
+    ];
     const w = dolaczZrodla(stanBazowy(), { meta, ga4: [], stany: {} });
     expect(w.dni.find((d) => d.dzien === '2026-08-26').kliknieciaLinku).toBe(20);
     expect(w.dni.find((d) => d.dzien === '2026-08-25').kliknieciaLinku).toBe(0);
@@ -274,14 +299,18 @@ describe('dolaczZrodla — prognoza wydatku', () => {
 
   // ⚠️ Jeden NIEPELNY dzien to nie tempo — prognoza z niego bylaby zmysleniem.
   it('bez ani jednego pełnego dnia z wydatkiem prognozy nie ma', () => {
-    const meta = [{ dzien: '2026-08-27', wydatek: '5.00', wyswietlenia: 0, zasieg: 0, klikniecia: 0, klikniecia_linku: 0 }];
+    const meta = [
+      { dzien: '2026-08-27', wydatek: '5.00', wyswietlenia: 0, zasieg: 0, klikniecia: 0, klikniecia_linku: 0 },
+    ];
     const w = dolaczZrodla(stanBazowy(), { meta, ga4: [], stany: {} });
     expect(w.meta.prognozaZl).toBeNull();
   });
 
   it('po końcu okna prognozy nie ma — nie ma już czego prognozować', () => {
     const poOknie = stanKampanii({ kampania: KAMPANIA, zamowienia: [], dzis: '2026-09-20' });
-    const meta = [{ dzien: '2026-08-26', wydatek: '30.00', wyswietlenia: 0, zasieg: 0, klikniecia: 0, klikniecia_linku: 0 }];
+    const meta = [
+      { dzien: '2026-08-26', wydatek: '30.00', wyswietlenia: 0, zasieg: 0, klikniecia: 0, klikniecia_linku: 0 },
+    ];
     const w = dolaczZrodla(poOknie, { meta, ga4: [], stany: {} });
     expect(w.meta.prognozaZl).toBeNull();
   });
@@ -293,7 +322,11 @@ describe('faleKampanii — etapy z wiersza kampanii', () => {
   const kamp = (fale_json) => ({ ...KAMPANIA, fale_json });
 
   it('parsuje, odfiltrowuje wpisy spoza okna i porządkuje po dacie', () => {
-    const f = faleKampanii(kamp('[{"od":"2026-09-04","napis":"fala 3"},{"od":"2026-08-26","napis":"start reklam"},{"od":"2026-10-01","napis":"poza oknem"}]'));
+    const f = faleKampanii(
+      kamp(
+        '[{"od":"2026-09-04","napis":"fala 3"},{"od":"2026-08-26","napis":"start reklam"},{"od":"2026-10-01","napis":"poza oknem"}]',
+      ),
+    );
     expect(f).toEqual([
       { od: '2026-08-26', napis: 'start reklam' },
       { od: '2026-09-04', napis: 'fala 3' },
@@ -316,13 +349,15 @@ describe('alertyKampanii', () => {
   // ⚠️ Domyslne klikniecia daja CPC = 0,125 zl (punkt odniesienia) — fixture „spokoju"
   // nie ma prawa sama z siebie obudzic alertu CPC.
   const metaDzien = (dzien, wydatek, klikniecia = 400) => ({
-    dzien, wydatek, wyswietlenia: 1000, zasieg: 800, klikniecia, klikniecia_linku: 12,
+    dzien,
+    wydatek,
+    wyswietlenia: 1000,
+    zasieg: 800,
+    klikniecia,
+    klikniecia_linku: 12,
   });
   const zloz = ({ zamowienia = [], meta = [], ga4 = [], dzis = '2026-08-27' } = {}) => {
-    const stan = dolaczZrodla(
-      stanKampanii({ kampania: KAMPANIA, zamowienia, dzis }),
-      { meta, ga4, stany: {} },
-    );
+    const stan = dolaczZrodla(stanKampanii({ kampania: KAMPANIA, zamowienia, dzis }), { meta, ga4, stany: {} });
     return alertyKampanii({ stan, meta, dzis });
   };
 
@@ -363,10 +398,12 @@ describe('alertyKampanii', () => {
 
   it('kod użyty po końcu kampanii → alert o niewygaszonym kuponie', () => {
     const alerty = zloz({
-      zamowienia: [zam({
-        kupony_json: '[{"kod":"wrzesien30","rabat":"10.00"}]',
-        utworzone_at: '2026-09-09T10:00:00Z',
-      })],
+      zamowienia: [
+        zam({
+          kupony_json: '[{"kod":"wrzesien30","rabat":"10.00"}]',
+          utworzone_at: '2026-09-09T10:00:00Z',
+        }),
+      ],
       dzis: '2026-09-10',
     });
     expect(alerty.some((a) => a.includes('po końcu kampanii'))).toBe(true);

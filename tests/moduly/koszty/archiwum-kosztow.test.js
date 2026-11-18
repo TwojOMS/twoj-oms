@@ -8,22 +8,44 @@ import { sciezkaArchiwum, zarchiwizuj } from '../../../src/moduly/koszty/service
 
 describe('sciezka w archiwum kosztow', () => {
   it('trzyma istniejaca konwencje: Kosztowe <rok>/<Miesiac>/RRRR-MM-DD_SPRZEDAWCA_numer', () => {
-    expect(sciezkaArchiwum({
-      dataWystawienia: '2026-06-05', sprzedawcaNazwa: 'Allegro sp. z o.o.',
-      numerDokumentu: 'FV/2026/06/12', rozszerzenie: 'xml',
-    })).toBe('Kosztowe 2026/Czerwiec/2026-06-05_ALLEGRO SP Z OO_FV-2026-06-12.xml');
+    expect(
+      sciezkaArchiwum({
+        dataWystawienia: '2026-06-05',
+        sprzedawcaNazwa: 'Allegro sp. z o.o.',
+        numerDokumentu: 'FV/2026/06/12',
+        rozszerzenie: 'xml',
+      }),
+    ).toBe('Kosztowe 2026/Czerwiec/2026-06-05_ALLEGRO SP Z OO_FV-2026-06-12.xml');
   });
 
   it('⚠️ nazwy miesiecy BEZ polskich znakow — tak wygladaja istniejace katalogi', () => {
-    expect(sciezkaArchiwum({ dataWystawienia: '2026-01-05', sprzedawcaNazwa: 'X', numerDokumentu: 'A', rozszerzenie: 'pdf' }))
-      .toContain('/Styczen/');
-    expect(sciezkaArchiwum({ dataWystawienia: '2026-04-05', sprzedawcaNazwa: 'X', numerDokumentu: 'A', rozszerzenie: 'pdf' }))
-      .toContain('/Kwiecien/');
+    expect(
+      sciezkaArchiwum({
+        dataWystawienia: '2026-01-05',
+        sprzedawcaNazwa: 'X',
+        numerDokumentu: 'A',
+        rozszerzenie: 'pdf',
+      }),
+    ).toContain('/Styczen/');
+    expect(
+      sciezkaArchiwum({
+        dataWystawienia: '2026-04-05',
+        sprzedawcaNazwa: 'X',
+        numerDokumentu: 'A',
+        rozszerzenie: 'pdf',
+      }),
+    ).toContain('/Kwiecien/');
   });
 
   it('ukosnik w numerze faktury zamienia sie na myslnik — inaczej powstalby podkatalog', () => {
-    expect(sciezkaArchiwum({ dataWystawienia: '2026-06-05', sprzedawcaNazwa: 'X', numerDokumentu: 'FV/1/2026', rozszerzenie: 'xml' }))
-      .toContain('_FV-1-2026.xml');
+    expect(
+      sciezkaArchiwum({
+        dataWystawienia: '2026-06-05',
+        sprzedawcaNazwa: 'X',
+        numerDokumentu: 'FV/1/2026',
+        rozszerzenie: 'xml',
+      }),
+    ).toContain('_FV-1-2026.xml');
   });
 
   // ⚠️⚠️ DATA ZE ZNACZNIKIEM CZASU. Galaz JAWNIE zaklada, ze
@@ -34,16 +56,25 @@ describe('sciezka w archiwum kosztow', () => {
   // XML-a z KSeF.
   it('⚠️ data ze znacznikiem czasu skraca sie do dnia — dwukropek zabija zapis na SMB', () => {
     const sciezka = sciezkaArchiwum({
-      dataWystawienia: '2026-06-30T22:30:00Z', sprzedawcaNazwa: 'Allegro',
-      numerDokumentu: 'FV/1', rozszerzenie: 'xml',
+      dataWystawienia: '2026-06-30T22:30:00Z',
+      sprzedawcaNazwa: 'Allegro',
+      numerDokumentu: 'FV/1',
+      rozszerzenie: 'xml',
     });
     expect(sciezka).toBe('Kosztowe 2026/Czerwiec/2026-06-30_ALLEGRO_FV-1.xml');
     expect(sciezka).not.toContain(':');
   });
 
   it('sprzedawca bez nazwy dostaje NIP zamiast pustego miejsca w nazwie pliku', () => {
-    expect(sciezkaArchiwum({ dataWystawienia: '2026-06-05', sprzedawcaNazwa: null, sprzedawcaNip: '5252674798', numerDokumentu: 'A', rozszerzenie: 'xml' }))
-      .toContain('_5252674798_A.xml');
+    expect(
+      sciezkaArchiwum({
+        dataWystawienia: '2026-06-05',
+        sprzedawcaNazwa: null,
+        sprzedawcaNip: '5252674798',
+        numerDokumentu: 'A',
+        rozszerzenie: 'xml',
+      }),
+    ).toContain('_5252674798_A.xml');
   });
 });
 
@@ -51,10 +82,19 @@ describe('sciezka w archiwum kosztow', () => {
 // snake_case) — dokladnie tak, jak czytaja go domain/lista-kosztow.js i kosztyMiesiaca (patrz
 // db/koszty.js). Zadnego drugiego mapowania na camelCase tutaj nie ma.
 const wiersz = (nadpisz = {}) => ({
-  ksefNumber: 'K-1', numerDokumentu: 'FV/1', sprzedawcaNip: '5252674798',
-  sprzedawcaNazwa: 'Allegro', dataWystawienia: '2026-06-05',
-  dataTrwalegoZapisu: '2026-06-05T14:00:00Z', netto: '100.00', vat: '23.00', brutto: '123.00',
-  waluta: 'PLN', rodzaj: 'Vat', maZalacznik: 0, ...nadpisz,
+  ksefNumber: 'K-1',
+  numerDokumentu: 'FV/1',
+  sprzedawcaNip: '5252674798',
+  sprzedawcaNazwa: 'Allegro',
+  dataWystawienia: '2026-06-05',
+  dataTrwalegoZapisu: '2026-06-05T14:00:00Z',
+  netto: '100.00',
+  vat: '23.00',
+  brutto: '123.00',
+  waluta: 'PLN',
+  rodzaj: 'Vat',
+  maZalacznik: 0,
+  ...nadpisz,
 });
 
 // Wiersz DOKLADNIE taki, jaki oddaje `SELECT * FROM koszty` — po wstawieniu przez `zapiszKoszt`.
@@ -69,14 +109,29 @@ describe('zarchiwizuj', () => {
   it('⚠️ dokument z JUZ ZAPISANA sciezka jest pomijany bez ani jednego wywolania KSeF', async () => {
     const db = openOmsDb();
     const w = wstawKoszt(db);
-    db.prepare('UPDATE koszty SET sciezka_xml = ? WHERE ksef_number = ?').run('Kosztowe 2026/Czerwiec/juz-jest.xml', 'K-1');
+    db.prepare('UPDATE koszty SET sciezka_xml = ? WHERE ksef_number = ?').run(
+      'Kosztowe 2026/Czerwiec/juz-jest.xml',
+      'K-1',
+    );
     const wZeSciezka = db.prepare('SELECT * FROM koszty WHERE ksef_number = ?').get('K-1');
 
-    const klient = { pobierzXml: async () => { throw new Error('nie wolno bylo tego wolac'); } };
-    const sesja = { accessToken: async () => { throw new Error('nie wolno bylo tego wolac'); } };
+    const klient = {
+      pobierzXml: async () => {
+        throw new Error('nie wolno bylo tego wolac');
+      },
+    };
+    const sesja = {
+      accessToken: async () => {
+        throw new Error('nie wolno bylo tego wolac');
+      },
+    };
 
     const wynik = await zarchiwizuj({
-      db, klient, sesja, wiersz: wZeSciezka, katalogBazowy: katalogTymczasowy(),
+      db,
+      klient,
+      sesja,
+      wiersz: wZeSciezka,
+      katalogBazowy: katalogTymczasowy(),
     });
 
     expect(wynik).toEqual({ pominiete: true, powod: expect.any(String) });
@@ -121,7 +176,12 @@ describe('zarchiwizuj', () => {
     const log = (...czesci) => ostrzezenia.push(czesci.join(' '));
 
     const wynik = await zarchiwizuj({
-      db, klient, sesja, wiersz: w, katalogBazowy, log,
+      db,
+      klient,
+      sesja,
+      wiersz: w,
+      katalogBazowy,
+      log,
     });
 
     expect(wynik.pominiete).toBeUndefined();
@@ -141,9 +201,10 @@ describe('zarchiwizuj', () => {
     const w = wstawKoszt(db);
     const katalogBazowy = katalogTymczasowy();
     const klient = {
-      pobierzXml: async () => '<Faktura><Fa><FaWiersz><NrWierszaFa>1</NrWierszaFa>'
-        + '<P_7>Papier ksero</P_7><P_8A>ryza</P_8A><P_8B>2.0000</P_8B>'
-        + '<P_9A>18.50</P_9A><P_11>37.00</P_11><P_12>23</P_12></FaWiersz></Fa></Faktura>',
+      pobierzXml: async () =>
+        '<Faktura><Fa><FaWiersz><NrWierszaFa>1</NrWierszaFa>' +
+        '<P_7>Papier ksero</P_7><P_8A>ryza</P_8A><P_8B>2.0000</P_8B>' +
+        '<P_9A>18.50</P_9A><P_11>37.00</P_11><P_12>23</P_12></FaWiersz></Fa></Faktura>',
     };
     const sesja = { accessToken: async () => 'ACC' };
 
@@ -175,7 +236,9 @@ describe('zarchiwizuj', () => {
       wiersz: w,
       katalogBazowy,
       log: (...c) => ostrzezenia.push(c.join(' ')),
-      pdf: async () => { throw new Error('pdfkit sie wywrocil'); },
+      pdf: async () => {
+        throw new Error('pdfkit sie wywrocil');
+      },
     });
 
     expect(wynik.xml).toBe('Kosztowe 2026/Czerwiec/2026-06-05_ALLEGRO_FV-1.xml');
@@ -204,14 +267,21 @@ describe('zarchiwizuj', () => {
     let logowan = 0;
     let odmowil = false;
     const spania = [];
-    const sesja = { accessToken: async () => { logowan += 1; return 'ACC'; } };
+    const sesja = {
+      accessToken: async () => {
+        logowan += 1;
+        return 'ACC';
+      },
+    };
     const klient = {
       pobierzXml: async ({ accessToken }) => {
         expect(accessToken).toBe('ACC');
         if (!odmowil) {
           odmowil = true;
           throw Object.assign(new Error('KSeF odmówił: HTTP 429'), {
-            status: 429, retryAfterS: 1, dlaOperatora: true,
+            status: 429,
+            retryAfterS: 1,
+            dlaOperatora: true,
           });
         }
         return '<Faktura/>';
@@ -225,7 +295,9 @@ describe('zarchiwizuj', () => {
       wiersz: w,
       katalogBazowy,
       limit: {
-        spij: async (ms) => { spania.push(ms); },
+        spij: async (ms) => {
+          spania.push(ms);
+        },
         teraz: () => new Date(0),
         doKiedy: 10 * 60 * 1000,
       },
@@ -237,8 +309,7 @@ describe('zarchiwizuj', () => {
     expect(spania).toEqual([2000]);
     expect(wynik.xml).toBe('Kosztowe 2026/Czerwiec/2026-06-05_ALLEGRO_FV-1.xml');
     expect(readFileSync(join(katalogBazowy, wynik.xml), 'utf8')).toBe('<Faktura/>');
-    expect(db.prepare('SELECT sciezka_xml FROM koszty WHERE ksef_number = ?').get('K-1').sciezka_xml)
-      .toBe(wynik.xml);
+    expect(db.prepare('SELECT sciezka_xml FROM koszty WHERE ksef_number = ?').get('K-1').sciezka_xml).toBe(wynik.xml);
   });
 
   it('sprzedawca bez nazwy w bazie archiwizuje sie pod NIP-em, tak samo jak w sciezkaArchiwum', async () => {

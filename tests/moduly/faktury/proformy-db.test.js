@@ -5,30 +5,43 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import {
-  zapiszProforme, proformyZamowienia, pobierzProforme, uniewaznijPoprzednie, nastepnyNumer, usunProforme,
+  zapiszProforme,
+  proformyZamowienia,
+  pobierzProforme,
+  uniewaznijPoprzednie,
+  nastepnyNumer,
+  usunProforme,
 } from '../../../src/moduly/faktury/db/proformy.js';
 
 const nowaBaza = () => openOmsDb(':memory:');
 const plikBazy = () => join(mkdtempSync(join(tmpdir(), 'oms-proformy-')), 'oms.sqlite');
 
-const wstawZamowienie = (db, id = 1) => db.prepare(
-  'INSERT INTO zamowienia (id, sklep, zrodlo_id, numer, kwota_brutto, utworzone_at)'
-  + " VALUES (?, 'pro', ?, ?, '654.00', '2026-08-04T10:00:00.000Z')",
-).run(id, id, String(id));
+const wstawZamowienie = (db, id = 1) =>
+  db
+    .prepare(
+      'INSERT INTO zamowienia (id, sklep, zrodlo_id, numer, kwota_brutto, utworzone_at)' +
+        " VALUES (?, 'pro', ?, ?, '654.00', '2026-08-04T10:00:00.000Z')",
+    )
+    .run(id, id, String(id));
 
 // Surowy INSERT — UDAJE drugi panel, ktory policzyl numer na wlasna reke. Testy wyscigu
 // i indeksow musza wstawiac wiersz Z POMINIECIEM `zapiszProforme`, bo to wlasnie ona jest
 // tu badana: gdyby wstawialy przez nia, sprawdzalyby wylacznie, ze umie liczyc do dwoch.
 const wstawWprost = (db, { zamowienieId = 1, numer, rok, miesiac, kolejny, kwota = '654.00' }) =>
-  db.prepare(
-    'INSERT INTO proformy (zamowienie_id, numer, rok, miesiac, kolejny, kwota_brutto, utworzona_at)'
-    + " VALUES (?,?,?,?,?,?,'2026-08-04T10:00:00.000Z')",
-  ).run(zamowienieId, numer, rok, miesiac, kolejny, kwota);
+  db
+    .prepare(
+      'INSERT INTO proformy (zamowienie_id, numer, rok, miesiac, kolejny, kwota_brutto, utworzona_at)' +
+        " VALUES (?,?,?,?,?,?,'2026-08-04T10:00:00.000Z')",
+    )
+    .run(zamowienieId, numer, rok, miesiac, kolejny, kwota);
 
 describe('tabela proformy', () => {
   it('istnieje po otwarciu bazy', () => {
     const db = nowaBaza();
-    const t = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map((r) => r.name);
+    const t = db
+      .prepare("SELECT name FROM sqlite_master WHERE type='table'")
+      .all()
+      .map((r) => r.name);
     expect(t).toContain('proformy');
   });
 
@@ -37,14 +50,17 @@ describe('tabela proformy', () => {
   // bez niej — i to bez przebudowywania czegokolwiek, co juz tam stoi.
   it('dokłada się do istniejącej bazy i nie kasuje jej danych', () => {
     // Wyjątek zatwierdzony przez właściciela 2026-09-30: odmowa niezgodnego baseline + prawidłowe reopen.
-    potwierdzOdmoweHistorycznegoSchema(["DROP TABLE proformy"], ['proformy']);
+    potwierdzOdmoweHistorycznegoSchema(['DROP TABLE proformy'], ['proformy']);
     const plik = plikBazy();
     const pierwsza = openOmsDb(plik);
     wstawZamowienie(pierwsza);
     pierwsza.close();
 
     const druga = openOmsDb(plik);
-    const t = druga.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map((r) => r.name);
+    const t = druga
+      .prepare("SELECT name FROM sqlite_master WHERE type='table'")
+      .all()
+      .map((r) => r.name);
     expect(t).toContain('proformy');
     expect(druga.prepare('SELECT COUNT(*) c FROM zamowienia').get().c).toBe(1);
     druga.close();
@@ -218,8 +234,14 @@ describe('wyścig o numer', () => {
     // Podsluchana baza: przepuszcza wszystko do prawdziwej, ale zapisuje kolejnosc zapytan.
     // Sprawdzamy ZACHOWANIE (co i w jakiej kolejnosci poszlo do bazy), a nie ksztalt kodu.
     const db = {
-      prepare: (s) => { sql.push(s); return prawdziwa.prepare(s); },
-      exec: (s) => { sql.push(s); return prawdziwa.exec(s); },
+      prepare: (s) => {
+        sql.push(s);
+        return prawdziwa.prepare(s);
+      },
+      exec: (s) => {
+        sql.push(s);
+        return prawdziwa.exec(s);
+      },
     };
 
     zapiszProforme(db, 1, { kwotaBrutto: '654.00', rok: 2026, miesiac: 8 });
@@ -253,8 +275,9 @@ describe('wyścig o numer', () => {
     expect(nB.kolejny).toBe(nA.kolejny);
 
     wstawWprost(a, { numer: nA.numer, rok: nA.rok, miesiac: nA.miesiac, kolejny: nA.kolejny });
-    expect(() => wstawWprost(b, { numer: nB.numer, rok: nB.rok, miesiac: nB.miesiac, kolejny: nB.kolejny }))
-      .toThrow(/UNIQUE/i);
+    expect(() => wstawWprost(b, { numer: nB.numer, rok: nB.rok, miesiac: nB.miesiac, kolejny: nB.kolejny })).toThrow(
+      /UNIQUE/i,
+    );
 
     a.close();
     b.close();
@@ -268,16 +291,16 @@ describe('wyścig o numer', () => {
     const db = nowaBaza();
     wstawZamowienie(db);
     wstawWprost(db, { numer: 'PF/1/08/2026', rok: 2026, miesiac: 8, kolejny: 1 });
-    expect(() => wstawWprost(db, { numer: 'PF/1/08/2026 (kopia)', rok: 2026, miesiac: 8, kolejny: 1 }))
-      .toThrow(/UNIQUE/i);
+    expect(() => wstawWprost(db, { numer: 'PF/1/08/2026 (kopia)', rok: 2026, miesiac: 8, kolejny: 1 })).toThrow(
+      /UNIQUE/i,
+    );
   });
 
   it('indeks na numerze odrzuca drugi dokument o tym samym numerze', () => {
     const db = nowaBaza();
     wstawZamowienie(db);
     wstawWprost(db, { numer: 'PF/1/08/2026', rok: 2026, miesiac: 8, kolejny: 1 });
-    expect(() => wstawWprost(db, { numer: 'PF/1/08/2026', rok: 2026, miesiac: 8, kolejny: 2 }))
-      .toThrow(/UNIQUE/i);
+    expect(() => wstawWprost(db, { numer: 'PF/1/08/2026', rok: 2026, miesiac: 8, kolejny: 2 })).toThrow(/UNIQUE/i);
   });
 
   // Pozytywna strona tej samej reguly: zapis przez `zapiszProforme` na drugim polaczeniu

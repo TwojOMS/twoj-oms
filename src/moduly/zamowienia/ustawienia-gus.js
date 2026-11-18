@@ -6,33 +6,53 @@
 // połączenia buduje klient GUS (bez klucza); błąd techniczny idzie tylko do logu, też bez klucza.
 import { komunikatDlaOperatora } from '../../domena/bledy.js';
 import { sprawdzFormularzGus, EKRAN_GUS } from '../../domena/konfiguracja-gus.js';
-import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji, usunKonfiguracjeIntegracji, stanDlaEkranu }
-  from '../../oms/db/konfiguracja-integracji.js';
+import {
+  wczytajKonfiguracjeIntegracji,
+  zapiszKonfiguracjeIntegracji,
+  usunKonfiguracjeIntegracji,
+  stanDlaEkranu,
+} from '../../oms/db/konfiguracja-integracji.js';
 import { nawigacjaUstawien } from '../ustawienia/nawigacja.js';
 import { stronaOdmowy } from '../../core/web/odmowa.js';
 import { tytulEkranuDlaAdresu } from '../../domena/ekrany.js';
 
-const KOMUNIKATY = { zapisano: 'Zapisano klucz GUS. Przycisk „Pobierz z GUS” działa od teraz.', odlaczono: 'Klucz GUS usunięty z OMS-u.' };
+const KOMUNIKATY = {
+  zapisano: 'Zapisano klucz GUS. Przycisk „Pobierz z GUS” działa od teraz.',
+  odlaczono: 'Klucz GUS usunięty z OMS-u.',
+};
 
 export function registerUstawieniaGusRoutes(app, { db, konfiguracjaGus }) {
   const k = konfiguracjaGus;
   function widok(req, reply, { bledy = [], test = null } = {}) {
     const stan = stanDlaEkranu(wczytajKonfiguracjeIntegracji(db, 'gus'));
-    return reply.view('ustawienia-gus.ejs', { szerokosc: 'formularz',
-      nawigacja: nawigacjaUstawien(req, reply), title: tytulEkranuDlaAdresu(EKRAN_GUS),
-      zEnv: k.zEnv, stan, bledy, test,
+    return reply.view('ustawienia-gus.ejs', {
+      szerokosc: 'formularz',
+      nawigacja: nawigacjaUstawien(req, reply),
+      title: tytulEkranuDlaAdresu(EKRAN_GUS),
+      zEnv: k.zEnv,
+      stan,
+      bledy,
+      test,
       zapisano: KOMUNIKATY[req.query?.zapisano] ?? null,
     });
   }
   // Odmowa w układzie OMS, z powrotem na ekran GUS (status i tekst bez zmian).
-  const zEnv = (reply) => stronaOdmowy(reply, 409,
-    'Klucz GUS jest ustawiony w pliku konfiguracji (oms.env, GUS_KLUCZ) — tam go zmień. Formularz niczego nie zapisał.', { wroc: EKRAN_GUS });
+  const zEnv = (reply) =>
+    stronaOdmowy(
+      reply,
+      409,
+      'Klucz GUS jest ustawiony w pliku konfiguracji (oms.env, GUS_KLUCZ) — tam go zmień. Formularz niczego nie zapisał.',
+      { wroc: EKRAN_GUS },
+    );
 
   app.get(EKRAN_GUS, async (req, reply) => widok(req, reply));
 
   app.post(EKRAN_GUS, async (req, reply) => {
     if (k.zEnv) return zEnv(reply);
-    const { ustawienia, sekrety, bledy } = sprawdzFormularzGus(req.body ?? {}, wczytajKonfiguracjeIntegracji(db, 'gus'));
+    const { ustawienia, sekrety, bledy } = sprawdzFormularzGus(
+      req.body ?? {},
+      wczytajKonfiguracjeIntegracji(db, 'gus'),
+    );
     if (bledy.length) {
       reply.code(400);
       return widok(req, reply, { bledy });
@@ -49,9 +69,17 @@ export function registerUstawieniaGusRoutes(app, { db, konfiguracjaGus }) {
     }
     try {
       await k.sprawdzZapisany();
-      return widok(req, reply, { test: { ok: true, tekst: 'Połączenie z GUS działa — usługa BIR przyjęła klucz. Nic nie zostało pobrane ani zmienione.' } });
+      return widok(req, reply, {
+        test: {
+          ok: true,
+          tekst: 'Połączenie z GUS działa — usługa BIR przyjęła klucz. Nic nie zostało pobrane ani zmienione.',
+        },
+      });
     } catch (e) {
-      req.log?.warn?.({ gus: 'sprawdzenie połączenia', dlaOperatora: Boolean(e?.dlaOperatora), status: e?.status ?? null }, 'GUS: sprawdzenie połączenia nieudane');
+      req.log?.warn?.(
+        { gus: 'sprawdzenie połączenia', dlaOperatora: Boolean(e?.dlaOperatora), status: e?.status ?? null },
+        'GUS: sprawdzenie połączenia nieudane',
+      );
       return widok(req, reply, { test: { ok: false, tekst: komunikatDlaOperatora(e) } });
     }
   });

@@ -1,14 +1,25 @@
 import { describe, it, expect } from 'vitest';
 import {
-  parsujZwrot, zwrotRozliczony, powodOdmowyUsunieciaZwrotu, sumaZwrotowGrosze, korektaPrzepadla,
-  czyTenSamZwrot, powodOdmowyOdblokowaniaKorekty, parsujNumerKorekty,
-  wiecejNizJedenOtwartySprawaKorekty, korektaNieSprawdzona, powodOdmowyRejestracjiZwrotu,
+  parsujZwrot,
+  zwrotRozliczony,
+  powodOdmowyUsunieciaZwrotu,
+  sumaZwrotowGrosze,
+  korektaPrzepadla,
+  czyTenSamZwrot,
+  powodOdmowyOdblokowaniaKorekty,
+  parsujNumerKorekty,
+  wiecejNizJedenOtwartySprawaKorekty,
+  korektaNieSprawdzona,
+  powodOdmowyRejestracjiZwrotu,
 } from '../../src/domena/zwrot.js';
 
 // Zamowienie z DWIEMA pozycjami — jednopozycyjna fikstura nie sprawdza niczego
 // o czesciowosci (patrz [[testy-falszywa-zielen]]: fikstura wymaga wlasnego straznika).
 const zam = (nad = {}) => ({
-  id: 7, kwota_brutto: '317.90', utworzone_at: '2026-08-01T10:00:00', anulowane: 0,
+  id: 7,
+  kwota_brutto: '317.90',
+  utworzone_at: '2026-08-01T10:00:00',
+  anulowane: 0,
   koszt_dostawy_brutto: '19.00',
   pozycje: [
     { id: 11, zrodlo: 'sklep', zrodlo_id: 77, nazwa: 'Kot 70x100', ilosc: 2, brutto_linii: '198.00' },
@@ -19,8 +30,13 @@ const zam = (nad = {}) => ({
 });
 
 const cialo = (nad = {}) => ({
-  data: '2026-08-14', kwota: '99.00', kwota_dostawy: '', powod: 'nie pasuje',
-  klucz: ['s77', 's78'], ilosc: ['1', '0'], nazwa: ['Kot 70x100', 'Pies 50x70'],
+  data: '2026-08-14',
+  kwota: '99.00',
+  kwota_dostawy: '',
+  powod: 'nie pasuje',
+  klucz: ['s77', 's78'],
+  ilosc: ['1', '0'],
+  nazwa: ['Kot 70x100', 'Pies 50x70'],
   pozycja_kwota: ['99.00', '0'],
   ...nad,
 });
@@ -31,9 +47,7 @@ describe('parsowanie zwrotu', () => {
   it('bierze wylacznie pozycje z iloscia wieksza od zera', () => {
     const { zwrot, blad } = parsujZwrot(zam(), cialo(), { dzis: DZIS });
     expect(blad).toBeNull();
-    expect(zwrot.pozycje).toEqual([
-      { klucz_pozycji: 's77', nazwa: 'Kot 70x100', ilosc: 1, kwota: '99.00' },
-    ]);
+    expect(zwrot.pozycje).toEqual([{ klucz_pozycji: 's77', nazwa: 'Kot 70x100', ilosc: 1, kwota: '99.00' }]);
     expect(zwrot.kwota).toBe('99.00');
   });
 
@@ -70,9 +84,9 @@ describe('parsowanie zwrotu', () => {
   });
 
   it('przyjmuje zwrot SAMEJ dostawy, bez pozycji', () => {
-    const { zwrot, blad } = parsujZwrot(
-      zam(), cialo({ ilosc: ['0', '0'], kwota: '0', kwota_dostawy: '19.00' }), { dzis: DZIS },
-    );
+    const { zwrot, blad } = parsujZwrot(zam(), cialo({ ilosc: ['0', '0'], kwota: '0', kwota_dostawy: '19.00' }), {
+      dzis: DZIS,
+    });
     expect(blad).toBeNull();
     expect(zwrot.pozycje).toEqual([]);
     expect(zwrot.kwotaDostawy).toBe('19.00');
@@ -110,18 +124,18 @@ describe('parsowanie zwrotu', () => {
   });
 
   it('kwota z bialymi znakami dookola wychodzi PRZYCIETA/KANONICZNA, nie jako surowy napis formularza', () => {
-    const { zwrot, blad } = parsujZwrot(
-      zam(), cialo({ kwota: '  99.50  ', pozycja_kwota: ['99.50', '0'] }), { dzis: DZIS },
-    );
+    const { zwrot, blad } = parsujZwrot(zam(), cialo({ kwota: '  99.50  ', pozycja_kwota: ['99.50', '0'] }), {
+      dzis: DZIS,
+    });
     expect(blad).toBeNull();
     expect(zwrot.kwota).toBe('99.50');
     expect(zwrot.kwota).not.toBe('  99.50  ');
   });
 
   it('kwota dostawy tez wychodzi przez grosze()/zl(), nie jako surowy napis formularza', () => {
-    const { zwrot, blad } = parsujZwrot(
-      zam(), cialo({ ilosc: ['0', '0'], kwota: '0', kwota_dostawy: '  19.00  ' }), { dzis: DZIS },
-    );
+    const { zwrot, blad } = parsujZwrot(zam(), cialo({ ilosc: ['0', '0'], kwota: '0', kwota_dostawy: '  19.00  ' }), {
+      dzis: DZIS,
+    });
     expect(blad).toBeNull();
     expect(zwrot.kwotaDostawy).toBe('19.00');
     expect(zwrot.kwotaDostawy).not.toBe('  19.00  ');
@@ -181,9 +195,9 @@ describe('parsowanie zwrotu', () => {
 // ktoś nie „posprzątał" jej jako martwej.
 describe('bariera SPÓJNOŚCI: kwota łączna musi zgadzać się z sumą kwot przy pozycjach', () => {
   it('odmawia, gdy kwota łączna rozjeżdża się z sumą kwot przy pozycjach — komunikat podaje obie liczby i różnicę', () => {
-    const { zwrot, blad } = parsujZwrot(
-      zam(), cialo({ kwota: '79.00', pozycja_kwota: ['99.00', '0'] }), { dzis: DZIS },
-    );
+    const { zwrot, blad } = parsujZwrot(zam(), cialo({ kwota: '79.00', pozycja_kwota: ['99.00', '0'] }), {
+      dzis: DZIS,
+    });
     expect(zwrot).toBeNull();
     expect(blad).toContain('79.00');
     expect(blad).toContain('99.00');
@@ -196,9 +210,9 @@ describe('bariera SPÓJNOŚCI: kwota łączna musi zgadzać się z sumą kwot pr
   // POPRAWI kwoty przy pozycjach tak, żeby suma zgodziła się z nagłówkową kwotą z Allegro,
   // zwrot przechodzi bez przeszkód.
   it('kwota pozostaje edytowalna — po poprawieniu kwot przy pozycjach zwrot przechodzi', () => {
-    const { zwrot, blad } = parsujZwrot(
-      zam(), cialo({ kwota: '79.00', pozycja_kwota: ['79.00', '0'] }), { dzis: DZIS },
-    );
+    const { zwrot, blad } = parsujZwrot(zam(), cialo({ kwota: '79.00', pozycja_kwota: ['79.00', '0'] }), {
+      dzis: DZIS,
+    });
     expect(blad).toBeNull();
     expect(zwrot.kwota).toBe('79.00');
   });
@@ -208,9 +222,9 @@ describe('bariera SPÓJNOŚCI: kwota łączna musi zgadzać się z sumą kwot pr
   // tylko przesyłkę) — osobny test, żeby żadna przyszła zmiana bariery spójności nie zamknęła
   // tej drogi po cichu.
   it('zwrot SAMEJ dostawy (bez pozycji) nadal przechodzi — bariera spójności go nie blokuje', () => {
-    const { zwrot, blad } = parsujZwrot(
-      zam(), cialo({ ilosc: ['0', '0'], kwota: '0', kwota_dostawy: '19.00' }), { dzis: DZIS },
-    );
+    const { zwrot, blad } = parsujZwrot(zam(), cialo({ ilosc: ['0', '0'], kwota: '0', kwota_dostawy: '19.00' }), {
+      dzis: DZIS,
+    });
     expect(blad).toBeNull();
     expect(zwrot.pozycje).toEqual([]);
     expect(zwrot.kwotaDostawy).toBe('19.00');
@@ -226,10 +240,19 @@ describe('bariera SPÓJNOŚCI: kwota łączna musi zgadzać się z sumą kwot pr
         { id: 32, zrodlo: 'sklep', zrodlo_id: 202, nazwa: 'B', ilosc: 1, brutto_linii: '0.20' },
       ],
     });
-    const { zwrot, blad } = parsujZwrot(z, {
-      data: '2026-08-14', kwota: '0.30', kwota_dostawy: '',
-      klucz: ['s201', 's202'], ilosc: ['1', '1'], nazwa: ['A', 'B'], pozycja_kwota: ['0.10', '0.20'],
-    }, { dzis: DZIS });
+    const { zwrot, blad } = parsujZwrot(
+      z,
+      {
+        data: '2026-08-14',
+        kwota: '0.30',
+        kwota_dostawy: '',
+        klucz: ['s201', 's202'],
+        ilosc: ['1', '1'],
+        nazwa: ['A', 'B'],
+        pozycja_kwota: ['0.10', '0.20'],
+      },
+      { dzis: DZIS },
+    );
     expect(blad).toBeNull();
     expect(zwrot.kwota).toBe('0.30');
   });
@@ -242,7 +265,10 @@ describe('bariera SPÓJNOŚCI: kwota łączna musi zgadzać się z sumą kwot pr
 // Bez tej fikstury zaden test tego nie lapie: zamowienie `zam()` wyzej nie ma pozycji recznych,
 // wiec obie definicje daja tam DOKLADNIE te sama liczbe.
 const zamZDopisanaPozycja = (nad = {}) => ({
-  id: 8, kwota_brutto: '100.00', utworzone_at: '2026-08-01T10:00:00', anulowane: 0,
+  id: 8,
+  kwota_brutto: '100.00',
+  utworzone_at: '2026-08-01T10:00:00',
+  anulowane: 0,
   koszt_dostawy_brutto: '0.00',
   pozycje: [
     { id: 21, zrodlo: 'sklep', zrodlo_id: 90, nazwa: 'Kot 70x100', ilosc: 1, brutto_linii: '100.00' },
@@ -256,11 +282,19 @@ const zamZDopisanaPozycja = (nad = {}) => ({
 
 describe('bariera kwoty czyta kwote OCZEKIWANA, nie sama kolumne kwota_brutto', () => {
   it('zamowienie 100 zl + dopisana pozycja 50 zl: klient oddaje wszystko i zwrot 150,00 PRZECHODZI', () => {
-    const { zwrot, blad } = parsujZwrot(zamZDopisanaPozycja(), {
-      data: '2026-08-14', kwota: '150.00', kwota_dostawy: '',
-      klucz: ['s90', 'r22'], ilosc: ['1', '1'],
-      nazwa: ['Kot 70x100', 'Dopłata za projekt'], pozycja_kwota: ['100.00', '50.00'],
-    }, { dzis: DZIS });
+    const { zwrot, blad } = parsujZwrot(
+      zamZDopisanaPozycja(),
+      {
+        data: '2026-08-14',
+        kwota: '150.00',
+        kwota_dostawy: '',
+        klucz: ['s90', 'r22'],
+        ilosc: ['1', '1'],
+        nazwa: ['Kot 70x100', 'Dopłata za projekt'],
+        pozycja_kwota: ['100.00', '50.00'],
+      },
+      { dzis: DZIS },
+    );
     expect(blad).toBeNull();
     expect(zwrot.kwota).toBe('150.00');
   });
@@ -269,11 +303,19 @@ describe('bariera kwoty czyta kwote OCZEKIWANA, nie sama kolumne kwota_brutto', 
   // 2026-08-15) — inaczej ten test zlapalby NOWA barierę zamiast bariery "przekracza", ktora
   // ma izolowac.
   it('bariera NADAL odmawia powyzej kwoty oczekiwanej — nie zostala po prostu wylaczona', () => {
-    const { blad } = parsujZwrot(zamZDopisanaPozycja(), {
-      data: '2026-08-14', kwota: '150.01', kwota_dostawy: '',
-      klucz: ['s90', 'r22'], ilosc: ['1', '1'],
-      nazwa: ['Kot 70x100', 'Dopłata za projekt'], pozycja_kwota: ['100.01', '50.00'],
-    }, { dzis: DZIS });
+    const { blad } = parsujZwrot(
+      zamZDopisanaPozycja(),
+      {
+        data: '2026-08-14',
+        kwota: '150.01',
+        kwota_dostawy: '',
+        klucz: ['s90', 'r22'],
+        ilosc: ['1', '1'],
+        nazwa: ['Kot 70x100', 'Dopłata za projekt'],
+        pozycja_kwota: ['100.01', '50.00'],
+      },
+      { dzis: DZIS },
+    );
     expect(blad).toMatch(/przekracza/i);
     // Komunikat ma podac kwote OCZEKIWANA (150,00), a nie sklepowa (100,00) — inaczej
     // operator czytalby liczbe, ktorej nigdzie indziej w panelu nie widzi.
@@ -349,16 +391,18 @@ describe('powod odmowy rejestracji zwrotu (regula dla calego zamowienia)', () =>
 // → „Kwota nie jest liczbą".
 describe('przecinek dziesietny — ta sama normalizacja, co przy wplacie', () => {
   it('kwota zwrotu z przecinkiem zapisuje sie jako 310.33, a nie odbija sie o „nie jest liczbą”', () => {
-    const { zwrot, blad } = parsujZwrot(zam(), cialo({ kwota: '310,33', pozycja_kwota: ['310,33', '0'] }), { dzis: DZIS });
+    const { zwrot, blad } = parsujZwrot(zam(), cialo({ kwota: '310,33', pozycja_kwota: ['310,33', '0'] }), {
+      dzis: DZIS,
+    });
     expect(blad).toBeNull();
     expect(zwrot.kwota).toBe('310.33');
     expect(zwrot.pozycje[0].kwota).toBe('310.33');
   });
 
   it('kwota dostawy z przecinkiem tez przechodzi', () => {
-    const { zwrot, blad } = parsujZwrot(
-      zam(), cialo({ ilosc: ['0', '0'], kwota: '0', kwota_dostawy: '19,00' }), { dzis: DZIS },
-    );
+    const { zwrot, blad } = parsujZwrot(zam(), cialo({ ilosc: ['0', '0'], kwota: '0', kwota_dostawy: '19,00' }), {
+      dzis: DZIS,
+    });
     expect(blad).toBeNull();
     expect(zwrot.kwotaDostawy).toBe('19.00');
   });
@@ -380,9 +424,9 @@ describe('przecinek dziesietny — ta sama normalizacja, co przy wplacie', () =>
   it('kwota z KILKOMA przecinkami jest odmawiana, a nie po cichu obcinana', () => {
     expect(parsujZwrot(zam(), cialo({ kwota: '1,2,3' }), { dzis: DZIS }).blad).toMatch(/liczb/i);
     expect(parsujZwrot(zam(), cialo({ pozycja_kwota: ['1,2,3', '0'] }), { dzis: DZIS }).blad).toMatch(/liczb/i);
-    expect(parsujZwrot(
-      zam(), cialo({ ilosc: ['0', '0'], kwota: '0', kwota_dostawy: '1,2,3' }), { dzis: DZIS },
-    ).blad).toMatch(/liczb/i);
+    expect(
+      parsujZwrot(zam(), cialo({ ilosc: ['0', '0'], kwota: '0', kwota_dostawy: '1,2,3' }), { dzis: DZIS }).blad,
+    ).toMatch(/liczb/i);
   });
 });
 
@@ -391,7 +435,9 @@ describe('przecinek dziesietny — ta sama normalizacja, co przy wplacie', () =>
 // w domenie, bo baza nie liczy regul; baza tylko jej UZYWA wewnatrz transakcji.
 describe('tozsamosc zwrotu (obrona przed powtornym wyslaniem)', () => {
   const a = () => ({
-    data: '2026-08-14', kwota: '99.00', kwota_dostawy: null,
+    data: '2026-08-14',
+    kwota: '99.00',
+    kwota_dostawy: null,
     pozycje: [{ klucz_pozycji: 's77', ilosc: 1 }],
   });
 
@@ -400,8 +446,18 @@ describe('tozsamosc zwrotu (obrona przed powtornym wyslaniem)', () => {
   });
 
   it('rozpoznaje ksztalt Z FORMULARZA (kwotaDostawy) i ksztalt Z BAZY (kwota_dostawy) jako ten sam', () => {
-    const zFormularza = { data: '2026-08-14', kwota: '99.00', kwotaDostawy: '19.00', pozycje: [{ klucz_pozycji: 's77', ilosc: 1 }] };
-    const zBazy = { data: '2026-08-14', kwota: '99.00', kwota_dostawy: '19.00', pozycje: [{ klucz_pozycji: 's77', ilosc: 1 }] };
+    const zFormularza = {
+      data: '2026-08-14',
+      kwota: '99.00',
+      kwotaDostawy: '19.00',
+      pozycje: [{ klucz_pozycji: 's77', ilosc: 1 }],
+    };
+    const zBazy = {
+      data: '2026-08-14',
+      kwota: '99.00',
+      kwota_dostawy: '19.00',
+      pozycje: [{ klucz_pozycji: 's77', ilosc: 1 }],
+    };
     expect(czyTenSamZwrot(zFormularza, zBazy)).toBe(true);
   });
 
@@ -415,10 +471,18 @@ describe('tozsamosc zwrotu (obrona przed powtornym wyslaniem)', () => {
 
   it('kolejnosc pozycji nie robi z tego samego zwrotu dwoch roznych', () => {
     const dwie = (p) => ({ data: '2026-08-14', kwota: '99.00', pozycje: p });
-    expect(czyTenSamZwrot(
-      dwie([{ klucz_pozycji: 's77', ilosc: 1 }, { klucz_pozycji: 's78', ilosc: 1 }]),
-      dwie([{ klucz_pozycji: 's78', ilosc: 1 }, { klucz_pozycji: 's77', ilosc: 1 }]),
-    )).toBe(true);
+    expect(
+      czyTenSamZwrot(
+        dwie([
+          { klucz_pozycji: 's77', ilosc: 1 },
+          { klucz_pozycji: 's78', ilosc: 1 },
+        ]),
+        dwie([
+          { klucz_pozycji: 's78', ilosc: 1 },
+          { klucz_pozycji: 's77', ilosc: 1 },
+        ]),
+      ),
+    ).toBe(true);
   });
 });
 
@@ -431,7 +495,9 @@ describe('rozliczenie zwrotu', () => {
   it('zwrot przy fakturze wymaga TAKZE korekty', () => {
     const w = { pieniadze_oddane_at: '2026-08-15T09:00:00Z', korekta_numer: null };
     expect(zwrotRozliczony({ faktura: { numer: 'FV 1/08/2026' } }, w)).toBe(false);
-    expect(zwrotRozliczony({ faktura: { numer: 'FV 1/08/2026' } }, { ...w, korekta_numer: 'KOR 1/08/2026' })).toBe(true);
+    expect(zwrotRozliczony({ faktura: { numer: 'FV 1/08/2026' } }, { ...w, korekta_numer: 'KOR 1/08/2026' })).toBe(
+      true,
+    );
   });
 
   it('nierozliczony zostaje nierozliczony bez oddanych pieniedzy, nawet z korekta', () => {
@@ -454,8 +520,7 @@ describe('kasowanie zwrotu', () => {
   // zapisuje numer BEZ rezerwacji — bez tego warunku taki zwrot dalej dalby sie skasowac,
   // a w inFakcie zostalaby korekta bez podstawy.
   it('nie wolno skasowac zwrotu z ZAPISANYM numerem korekty, nawet bez rezerwacji', () => {
-    expect(powodOdmowyUsunieciaZwrotu({ korekta_zlecona_at: null, korekta_numer: 'KOR 1/08/2026' }))
-      .toMatch(/korekt/i);
+    expect(powodOdmowyUsunieciaZwrotu({ korekta_zlecona_at: null, korekta_numer: 'KOR 1/08/2026' })).toMatch(/korekt/i);
   });
 });
 
@@ -469,34 +534,38 @@ describe('odblokowanie przepadlej rezerwacji korekty', () => {
   const T = '2026-08-14T12:00:00.000Z';
 
   it('wolno odblokowac rezerwacje, ktora PRZEPADLA', () => {
-    expect(powodOdmowyOdblokowaniaKorekty({ korekta_zlecona_at: '2026-08-14T11:30:00.000Z' }, { teraz: T }))
-      .toBeNull();
+    expect(powodOdmowyOdblokowaniaKorekty({ korekta_zlecona_at: '2026-08-14T11:30:00.000Z' }, { teraz: T })).toBeNull();
   });
 
   // ⚠️ NAJWAZNIEJSZA ODMOWA: swieza rezerwacja NIE JEST przepadnieta. Zwolnienie jej otwiera
   // droge do DRUGIEJ korekty do tej samej faktury, a duplikat rozwiazuje sie wylacznie
   // TRZECIM dokumentem — widocznym u organu i u nabywcy.
   it('odmawia rezerwacji SWIEZEJ — ponizej progu', () => {
-    expect(powodOdmowyOdblokowaniaKorekty({ korekta_zlecona_at: '2026-08-14T11:55:00.000Z' }, { teraz: T }))
-      .toMatch(/nie minęło|jeszcze/i);
+    expect(powodOdmowyOdblokowaniaKorekty({ korekta_zlecona_at: '2026-08-14T11:55:00.000Z' }, { teraz: T })).toMatch(
+      /nie minęło|jeszcze/i,
+    );
   });
 
   it('odmawia, gdy korekta MA numer — dokument istnieje, nie ma czego odblokowywac', () => {
-    expect(powodOdmowyOdblokowaniaKorekty(
-      { korekta_zlecona_at: '2026-08-14T09:00:00.000Z', korekta_numer: '1/KOR/08/2026' }, { teraz: T },
-    )).toMatch(/numer|istnieje/i);
+    expect(
+      powodOdmowyOdblokowaniaKorekty(
+        { korekta_zlecona_at: '2026-08-14T09:00:00.000Z', korekta_numer: '1/KOR/08/2026' },
+        { teraz: T },
+      ),
+    ).toMatch(/numer|istnieje/i);
   });
 
   it('odmawia, gdy zadnej rezerwacji nie ma', () => {
-    expect(powodOdmowyOdblokowaniaKorekty({ korekta_zlecona_at: null }, { teraz: T }))
-      .toMatch(/nie ma czego/i);
+    expect(powodOdmowyOdblokowaniaKorekty({ korekta_zlecona_at: null }, { teraz: T })).toMatch(/nie ma czego/i);
   });
 });
 
 describe('reczny numer korekty („Korektę wystawiłem ręcznie")', () => {
   it('przycina numer i oddaje go do zapisu', () => {
-    expect(parsujNumerKorekty({ korekta_numer: null }, '  1/KOR/08/2026  '))
-      .toEqual({ numer: '1/KOR/08/2026', blad: null });
+    expect(parsujNumerKorekty({ korekta_numer: null }, '  1/KOR/08/2026  ')).toEqual({
+      numer: '1/KOR/08/2026',
+      blad: null,
+    });
   });
 
   it('odmawia pustego numeru — bez numeru nie ma czego odnotowac', () => {
@@ -533,22 +602,22 @@ describe('reczny numer korekty („Korektę wystawiłem ręcznie")', () => {
   // przepadlo, przy fakturze skorygowanej poza panelem.
   it('po progu (rezerwacja PRZEPADLA) reczny numer przechodzi — to jedyne wyjscie', () => {
     const w = { korekta_zlecona_at: '2026-08-14T11:30:00.000Z', korekta_numer: null };
-    expect(parsujNumerKorekty(w, '9/KOR/08/2026', { teraz: T_TOK }))
-      .toEqual({ numer: '9/KOR/08/2026', blad: null });
+    expect(parsujNumerKorekty(w, '9/KOR/08/2026', { teraz: T_TOK })).toEqual({ numer: '9/KOR/08/2026', blad: null });
   });
 
   it('bez zadnej rezerwacji przechodzi jak dotad — korekta wystawiona recznie od poczatku', () => {
-    expect(parsujNumerKorekty({ korekta_zlecona_at: null }, '9/KOR/08/2026', { teraz: T_TOK }).blad)
-      .toBeNull();
+    expect(parsujNumerKorekty({ korekta_zlecona_at: null }, '9/KOR/08/2026', { teraz: T_TOK }).blad).toBeNull();
   });
 });
 
 describe('suma zwrotow', () => {
   it('sumuje pozycje i dostawe w groszach', () => {
-    expect(sumaZwrotowGrosze([
-      { kwota: '99.00', kwota_dostawy: '19.00' },
-      { kwota: '10.90', kwota_dostawy: null },
-    ])).toBe(12890);
+    expect(
+      sumaZwrotowGrosze([
+        { kwota: '99.00', kwota_dostawy: '19.00' },
+        { kwota: '10.90', kwota_dostawy: null },
+      ]),
+    ).toBe(12890);
   });
 });
 
@@ -561,9 +630,12 @@ describe('zlecenie korekty, ktore przepadlo', () => {
     expect(korektaPrzepadla({ korekta_zlecona_at: '2026-08-14T11:30:00.000Z' }, { teraz: T })).toBe(true);
   });
   it('zlecenie Z NUMEREM nigdy nie jest przepadniete', () => {
-    expect(korektaPrzepadla(
-      { korekta_zlecona_at: '2026-08-14T09:00:00.000Z', korekta_numer: '1/KOR/08/2026' }, { teraz: T },
-    )).toBe(false);
+    expect(
+      korektaPrzepadla(
+        { korekta_zlecona_at: '2026-08-14T09:00:00.000Z', korekta_numer: '1/KOR/08/2026' },
+        { teraz: T },
+      ),
+    ).toBe(false);
   });
   it('zwrot bez zleconej korekty nigdy nie jest przepadniety', () => {
     expect(korektaPrzepadla({ korekta_zlecona_at: null }, { teraz: T })).toBe(false);
@@ -590,15 +662,13 @@ describe('korektaNieSprawdzona — czy `doczytaj` swiadomie NIE ZAPYTAL inFaktu 
     expect(wiecejNizJedenOtwartySprawaKorekty([])).toBe(false);
     expect(wiecejNizJedenOtwartySprawaKorekty([{ korekta_numer: null }])).toBe(false);
     // Zwroty Z numerem maja sprawe ZAMKNIETA — nie licza sie do sita.
-    expect(wiecejNizJedenOtwartySprawaKorekty([
-      { korekta_numer: '1/KOR/08/2026' }, { korekta_numer: null },
-    ])).toBe(false);
+    expect(wiecejNizJedenOtwartySprawaKorekty([{ korekta_numer: '1/KOR/08/2026' }, { korekta_numer: null }])).toBe(
+      false,
+    );
   });
 
   it('wiecejNizJedenOtwartySprawaKorekty: dwa zwroty BEZ numeru to „wiecej niz jedna"', () => {
-    expect(wiecejNizJedenOtwartySprawaKorekty([
-      { korekta_numer: null }, { korekta_numer: null },
-    ])).toBe(true);
+    expect(wiecejNizJedenOtwartySprawaKorekty([{ korekta_numer: null }, { korekta_numer: null }])).toBe(true);
   });
 
   it('zwrot bez zleconej korekty — nie ma czego nie sprawdzic', () => {

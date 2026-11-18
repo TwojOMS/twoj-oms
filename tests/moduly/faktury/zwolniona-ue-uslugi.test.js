@@ -10,12 +10,16 @@ import { zapewnijOkres } from '../../../src/oms/db/okresy.js';
 import { createFaktura } from '../../../src/moduly/faktury/services/faktura.js';
 import { createFakturaOkresu } from '../../../src/moduly/faktury/services/faktura-okresu.js';
 import { zapiszStawkeDomyslna } from '../../../src/moduly/faktury/db/stawka-vat.js';
-import { zapiszZwolnienie, sprzedawcaZwolniony, PODSTAWA_ART_113 } from '../../../src/moduly/faktury/db/zwolnienie-vat.js';
+import {
+  zapiszZwolnienie,
+  sprzedawcaZwolniony,
+  PODSTAWA_ART_113,
+} from '../../../src/moduly/faktury/db/zwolnienie-vat.js';
 import { programInfakt } from '../../../src/integracje/programy/infakt.ts';
 import { programTestowy } from '../../pomoc/program-testowy.js';
 
-const NIP_PRACOWNI = '5250000009';   // zmyślony
-const NIP_UE = 'DE123456789';        // zmyślony numer VAT-UE
+const NIP_PRACOWNI = '5250000009'; // zmyślony
+const NIP_UE = 'DE123456789'; // zmyślony numer VAT-UE
 const NIP_SPRZEDAWCY = '1234563218'; // zmyślony
 const TERAZ = () => '2026-10-15T10:00:00.000Z';
 const POLA_WDT = ['sale_type', 'sales_kind', 'number', 'notes'];
@@ -27,23 +31,45 @@ function programWbudowany(o = {}) {
 }
 
 const zamowienie = (nad = {}) => ({
-  zrodlo_id: 4107, numer: 'R/2026/107',
+  zrodlo_id: 4107,
+  numer: 'R/2026/107',
   klient: {
-    first_name: 'Hans', last_name: 'Muster', company: 'Leuchten Test GmbH', email: 'einkauf@leuchten.invalid',
-    address_1: 'Lampenweg 7', postcode: '10115', city: 'Berlin',
+    first_name: 'Hans',
+    last_name: 'Muster',
+    company: 'Leuchten Test GmbH',
+    email: 'einkauf@leuchten.invalid',
+    address_1: 'Lampenweg 7',
+    postcode: '10115',
+    city: 'Berlin',
   },
-  dostawa: {}, metoda_wysylki: 'dpd', kwota_pobrania: null,
-  chce_fakture: 1, nip: NIP_UE, kwota_brutto: '139.00', koszt_dostawy_brutto: '16.00',
+  dostawa: {},
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 1,
+  nip: NIP_UE,
+  kwota_brutto: '139.00',
+  koszt_dostawy_brutto: '16.00',
   status_woo: 'processing',
-  oplacone_at: '2026-10-14T13:00:00', anulowane: 0, utworzone_at: '2026-10-14T13:00:00',
+  oplacone_at: '2026-10-14T13:00:00',
+  anulowane: 0,
+  utworzone_at: '2026-10-14T13:00:00',
   pozycje: [{ nazwa: 'Lampa stołowa Kałamarz', sku: 'LMP-KAL-01', ilosc: 2, cena_brutto: '61.50', vat: null }],
   ...nad,
 });
 
-const VIES_RZUCA = () => ({ sprawdz: vi.fn(async () => { throw new Error('VIES nie powinien być wołany'); }) });
-const VIES_WAZNY = () => ({ sprawdz: vi.fn().mockResolvedValue({
-  wynik: 'wazny', nazwa: 'LEUCHTEN TEST GMBH', dataZapytania: '2026-10-15T10:00:00.000Z', numerKonsultacji: 'WAPI-T-7',
-}) });
+const VIES_RZUCA = () => ({
+  sprawdz: vi.fn(async () => {
+    throw new Error('VIES nie powinien być wołany');
+  }),
+});
+const VIES_WAZNY = () => ({
+  sprawdz: vi.fn().mockResolvedValue({
+    wynik: 'wazny',
+    nazwa: 'LEUCHTEN TEST GMBH',
+    dataZapytania: '2026-10-15T10:00:00.000Z',
+    numerKonsultacji: 'WAPI-T-7',
+  }),
+});
 
 function zwolnij(db) {
   zapiszZwolnienie(db, { zwolniona: true, podstawa: PODSTAWA_ART_113, rodzaj: 'ustawa' });
@@ -63,14 +89,14 @@ function bazaZOkresem({ zwolniona = true } = {}) {
   if (zwolniona) zwolnij(db);
   const okres = zapewnijOkres(db, { klientKlucz: 'leuchten', rok: 2026, miesiac: 9 });
   db.prepare(
-    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, okres_rozliczeniowy_id, utworzone_at)'
-    + " VALUES ('reczne', 202600107, 'R/2026/107', '104.00', ?, '2026-09-10T10:00:00.000Z')",
+    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, okres_rozliczeniowy_id, utworzone_at)' +
+      " VALUES ('reczne', 202600107, 'R/2026/107', '104.00', ?, '2026-09-10T10:00:00.000Z')",
   ).run(okres.id);
   const zamId = db.prepare('SELECT id FROM zamowienia WHERE numer = ?').get('R/2026/107').id;
   db.prepare(
-    'INSERT INTO pozycje (zamowienie_id, nazwa, ilosc, cena_brutto, brutto_linii, zrodlo)'
-    + " VALUES (?, 'Lampa wisząca Półksiężyc', 1, '100.00', '100.00', 'reczna'),"
-    + " (?, 'Obsługa zamówienia', 1, '4.00', '4.00', 'reczna')",
+    'INSERT INTO pozycje (zamowienie_id, nazwa, ilosc, cena_brutto, brutto_linii, zrodlo)' +
+      " VALUES (?, 'Lampa wisząca Półksiężyc', 1, '100.00', '100.00', 'reczna')," +
+      " (?, 'Obsługa zamówienia', 1, '4.00', '4.00', 'reczna')",
   ).run(zamId, zamId);
   return { db, okres, zamId };
 }
@@ -112,7 +138,9 @@ describe('faktura zamówienia — firma zwolniona, nabywca DE123456789', () => {
     expect(vies.sprawdz).not.toHaveBeenCalled();
     expect(program.iluMaNumer).not.toHaveBeenCalled();
     expect(licznikWdt(db)).toEqual([]);
-    const log = wpisy(db, id).map((w) => w.wynik).join('\n');
+    const log = wpisy(db, id)
+      .map((w) => w.wynik)
+      .join('\n');
     expect(log).toContain('Sprzedawca zwolniony z VAT — to nie jest WDT');
     expect(log).toContain('faktura „zw”');
   });
@@ -132,20 +160,26 @@ describe('faktura okresu — firma zwolniona, klient okresu DE123456789', () => 
     const { db, okres, zamId } = bazaZOkresem();
     const program = programWbudowany();
     const vies = VIES_RZUCA();
-    await createFakturaOkresu({ db, program, vies, nipSprzedawcy: NIP_SPRZEDAWCY, teraz: TERAZ })
-      .wystaw(okres.id, { nip: NIP_UE });
+    await createFakturaOkresu({ db, program, vies, nipSprzedawcy: NIP_SPRZEDAWCY, teraz: TERAZ }).wystaw(okres.id, {
+      nip: NIP_UE,
+    });
     const p = ladunek(program);
     for (const pole of POLA_WDT) expect(Object.hasOwn(p, pole)).toBe(false);
     expect(p.services.map((s) => s.tax_symbol)).toEqual(['zw', 'zw']);
     expect(vies.sprawdz).not.toHaveBeenCalled();
     expect(program.iluMaNumer).not.toHaveBeenCalled();
     expect(licznikWdt(db)).toEqual([]);
-    expect(wpisy(db, zamId).map((w) => w.wynik).join('\n')).toContain('Sprzedawca zwolniony z VAT — to nie jest WDT');
+    expect(
+      wpisy(db, zamId)
+        .map((w) => w.wynik)
+        .join('\n'),
+    ).toContain('Sprzedawca zwolniony z VAT — to nie jest WDT');
   });
 });
 
 describe('kontrolne — WDT jak dziś', () => {
-  const programWdt = (fabryka) => fabryka({ metody: { wystaw: async () => ({ uuid: 'dok-w1', numer: 'WDT/1/10/2026', ksefStatus: null }) } });
+  const programWdt = (fabryka) =>
+    fabryka({ metody: { wystaw: async () => ({ uuid: 'dok-w1', numer: 'WDT/1/10/2026', ksefStatus: null }) } });
 
   it('firma NIEzwolniona + program wbudowany + numer UE → VIES, seria WDT, 0%, pola WDT (zaślepka bez wdtWSeriiFaktur)', async () => {
     const program = programWdt(programWbudowany);
@@ -157,7 +191,11 @@ describe('kontrolne — WDT jak dziś', () => {
     expect(p.services.every((s) => s.tax_symbol === '0')).toBe(true);
     expect(vies.sprawdz).toHaveBeenCalledTimes(1);
     expect(licznikWdt(db)).toEqual([{ rok: 2026, miesiac: 10, kolejny: 1 }]);
-    expect(wpisy(db, id).map((w) => w.wynik).join('\n')).not.toContain('to nie jest WDT');
+    expect(
+      wpisy(db, id)
+        .map((w) => w.wynik)
+        .join('\n'),
+    ).not.toContain('to nie jest WDT');
   });
 
   it('program zewnętrzny (bez „zw”, jak inFakt) + zapisane zwolnienie → WDT jak dziś', async () => {
@@ -175,8 +213,9 @@ describe('kontrolne — WDT jak dziś', () => {
     const { db, okres } = bazaZOkresem({ zwolniona: false });
     const program = programWdt(programWbudowany);
     const vies = VIES_WAZNY();
-    await createFakturaOkresu({ db, program, vies, nipSprzedawcy: NIP_SPRZEDAWCY, teraz: TERAZ })
-      .wystaw(okres.id, { nip: NIP_UE });
+    await createFakturaOkresu({ db, program, vies, nipSprzedawcy: NIP_SPRZEDAWCY, teraz: TERAZ }).wystaw(okres.id, {
+      nip: NIP_UE,
+    });
     const p = ladunek(program);
     expect(p.number).toBe('WDT/1/10/2026');
     expect(p.services.every((s) => s.tax_symbol === '0')).toBe(true);

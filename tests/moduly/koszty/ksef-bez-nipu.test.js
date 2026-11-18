@@ -7,7 +7,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { zrodloKsefKosztow, czuwaczZeZrodla, wizualizacjaZeZrodla, POWOD_BRAK_NIP, POWOD_BRAK_TOKENU } from '../../../src/moduly/koszty/ksef-ustawien.ts';
+import {
+  zrodloKsefKosztow,
+  czuwaczZeZrodla,
+  wizualizacjaZeZrodla,
+  POWOD_BRAK_NIP,
+  POWOD_BRAK_TOKENU,
+} from '../../../src/moduly/koszty/ksef-ustawien.ts';
 import { sprawdzFormularzKsef, ODMOWA_KSEF_BRAK_NIP } from '../../../src/domena/konfiguracja-ksef-kosztow.js';
 import { zbudujOms } from '../../../src/oms/bootstrap.ts';
 import { modulyDla } from '../../../src/moduly/lista.ts';
@@ -16,14 +22,24 @@ import { jako, get, post } from '../../pomoc/panel-konta-testowe.js';
 import { zapiszNipFirmy } from '../../../src/oms/db/nip-bdo-firmy.js';
 
 const TOKEN = 'a'.repeat(40);
-const ent = (s) => s.replaceAll('&', '&amp;').replaceAll('"', '&#34;').replaceAll("'", '&#39;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+const ent = (s) =>
+  s
+    .replaceAll('&', '&amp;')
+    .replaceAll('"', '&#34;')
+    .replaceAll("'", '&#39;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
 
 describe('KSeF z tokenem z panelu, bez NIP-u firmy — przyczyna wprost (źródło)', () => {
   it('formularz przyjmuje token bez NIP-u; sprawdzenie, czuwacz i PDF mówią o braku NIP-u, nie o braku tokenu', async () => {
     expect(sprawdzFormularzKsef({ token: TOKEN, nip: '' }, null, null).bledy).toEqual([]);
     let nip = null;
-    const zrodlo = zrodloKsefKosztow({ wczytaj: () => ({ ustawienia: { nip: null }, sekrety: { token: TOKEN } }),
-      nipSprzedawcy: () => nip, fabryka: vi.fn(() => ({})), zestaw: vi.fn(() => ({ czuwacz: { przebieg: async () => ({ ok: true }) } })) });
+    const zrodlo = zrodloKsefKosztow({
+      wczytaj: () => ({ ustawienia: { nip: null }, sekrety: { token: TOKEN } }),
+      nipSprzedawcy: () => nip,
+      fabryka: vi.fn(() => ({})),
+      zestaw: vi.fn(() => ({ czuwacz: { przebieg: async () => ({ ok: true }) } })),
+    });
     expect(zrodlo.zapisany()).toBe(true);
     await expect(zrodlo.sprawdzZapisany()).rejects.toThrow(ODMOWA_KSEF_BRAK_NIP);
     expect(await czuwaczZeZrodla(zrodlo).przebieg()).toEqual({ pominiety: true, powod: POWOD_BRAK_NIP });
@@ -36,7 +52,12 @@ describe('KSeF z tokenem z panelu, bez NIP-u firmy — przyczyna wprost (źród�
   });
 
   it('bez tokenu nic się nie zmienia: „brak tokenu KSeF” i „Najpierw zapisz token”', async () => {
-    const zrodlo = zrodloKsefKosztow({ wczytaj: () => null, nipSprzedawcy: () => null, fabryka: vi.fn(), zestaw: vi.fn() });
+    const zrodlo = zrodloKsefKosztow({
+      wczytaj: () => null,
+      nipSprzedawcy: () => null,
+      fabryka: vi.fn(),
+      zestaw: vi.fn(),
+    });
     expect(zrodlo.powodNiedostepnosci()).toBeNull();
     await expect(zrodlo.sprawdzZapisany()).rejects.toThrow('Najpierw zapisz token');
     expect(await czuwaczZeZrodla(zrodlo).przebieg()).toEqual({ pominiety: true, powod: POWOD_BRAK_TOKENU });
@@ -47,12 +68,23 @@ describe('KSeF bez NIP-u firmy — pełny skład (ekrany)', () => {
   let katalog;
   beforeEach(() => {
     katalog = mkdtempSync(join(tmpdir(), 'prz108-10-ksef-'));
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => { throw Error('Sieć zabroniona'); });
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+      throw Error('Sieć zabroniona');
+    });
   });
-  afterEach(() => { vi.restoreAllMocks(); rmSync(katalog, { recursive: true, force: true }); });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    rmSync(katalog, { recursive: true, force: true });
+  });
 
   it('Sprawdź połączenie, ekran Koszty i Odśwież teraz mówią o braku NIP-u; po wpisaniu NIP-u to zdanie znika', async () => {
-    const env = { OMS_TRYB: 'produkcja', OMS_USER: 'operator', OMS_PASS: 'fixture', OMS_PROFORMY_KATALOG: katalog, OMS_ETYKIETY_KATALOG: katalog };
+    const env = {
+      OMS_TRYB: 'produkcja',
+      OMS_USER: 'operator',
+      OMS_PASS: 'fixture',
+      OMS_PROFORMY_KATALOG: katalog,
+      OMS_ETYKIETY_KATALOG: katalog,
+    };
     const a = await zbudujOms({ env, moduly: modulyDla(env) });
     try {
       zalozKonto(a.db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
@@ -75,6 +107,9 @@ describe('KSeF bez NIP-u firmy — pełny skład (ekrany)', () => {
       zapiszNipFirmy(a.db, '2222222222');
       expect((await get(a.app, '/koszty', admin)).body).not.toContain(ent(ODMOWA_KSEF_BRAK_NIP));
       expect((await get(a.app, '/ustawienia/integracje/ksef', admin)).body).not.toContain(ent(ODMOWA_KSEF_BRAK_NIP));
-    } finally { await a.app.close(); a.db.close(); }
+    } finally {
+      await a.app.close();
+      a.db.close();
+    }
   });
 });

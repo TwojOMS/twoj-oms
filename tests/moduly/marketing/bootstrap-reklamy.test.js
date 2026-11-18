@@ -6,7 +6,9 @@ import { zbudujOms, uruchomZegary } from '../../pomoc/budowa-oms-testowa.ts';
 import { zapiszPolaczenie, dni } from '../../../src/oms/db/reklamy.js';
 
 const env = (nad = {}) => ({
-  OMS_AUTH_USER: 'adam', OMS_AUTH_PASS: 'x', OMS_DB_PATH: ':memory:',
+  OMS_AUTH_USER: 'adam',
+  OMS_AUTH_PASS: 'x',
+  OMS_DB_PATH: ':memory:',
   OMS_ETYKIETY_DIR: mkdtempSync(join(tmpdir(), 'oms-reklamy-')),
   ...nad,
 });
@@ -20,15 +22,31 @@ describe('okablowanie bieżących reklam', () => {
 
   it('istniejący klient GA4 trafia do nowego czuwacza po przypięciu własnej właściwości', async () => {
     const raportReklam = vi.fn(async () => ({
-      waluta: 'PLN', dni: [{ dzien: '2026-09-22', kampaniaId: '42', nazwa: 'Produktowa',
-        koszt: '10.00', klikniecia: 4, wyswietlenia: 100 }], transakcje: [],
+      waluta: 'PLN',
+      dni: [
+        {
+          dzien: '2026-09-22',
+          kampaniaId: '42',
+          nazwa: 'Produktowa',
+          koszt: '10.00',
+          klikniecia: 4,
+          wyswietlenia: 100,
+        },
+      ],
+      transakcje: [],
     }));
     const { db, czuwaczReklam } = zbudujOms({
       env: env({ GA4_KLUCZ: '/data-oms/klucz.json' }),
       createGa4: () => ({ dzienneStatystyki: vi.fn(), raportReklam }),
     });
-    const p = zapiszPolaczenie(db, { typ: 'ga4', kontoId: 'property-firmy', kanal: 'pro',
-      waluta: 'PLN', strefa: 'Europe/Warsaw', sekretRef: 'legacy-ga4' });
+    const p = zapiszPolaczenie(db, {
+      typ: 'ga4',
+      kontoId: 'property-firmy',
+      kanal: 'pro',
+      waluta: 'PLN',
+      strefa: 'Europe/Warsaw',
+      sekretRef: 'legacy-ga4',
+    });
     await czuwaczReklam.przebieg();
     expect(raportReklam).toHaveBeenCalledOnce();
     expect(dni(db, { typ: 'ga4', polaczenieId: p.id })).toHaveLength(1);

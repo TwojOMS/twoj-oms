@@ -18,7 +18,14 @@ export function registerZwrotyRoutes(app, { db, definicje }) {
   const zamowienieAlbo404 = (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
-    if (!z) { stronaOdmowy(reply, 404, 'Nie ma takiego zamówienia', { tytul: 'Nie udało się obsłużyć zwrotu', wroc: '/', napisWroc: 'Wróć do listy zamówień' }); return null; }
+    if (!z) {
+      stronaOdmowy(reply, 404, 'Nie ma takiego zamówienia', {
+        tytul: 'Nie udało się obsłużyć zwrotu',
+        wroc: '/',
+        napisWroc: 'Wróć do listy zamówień',
+      });
+      return null;
+    }
     return z;
   };
 
@@ -36,25 +43,37 @@ export function registerZwrotyRoutes(app, { db, definicje }) {
     // stan, ktorego nikt nie chcial (ta sama zasada, co przy faktach statusu).
     if (blad) {
       slad(z.id, 'zwrot.rejestracja', `BŁĄD: ${blad}`);
-      return stronaOdmowy(reply, 400, blad, { tytul: 'Nie udało się obsłużyć zwrotu', wroc: `/zamowienia/${z.id}/zwrot`, napisWroc: 'Wróć do ekranu zwrotu' });
+      return stronaOdmowy(reply, 400, blad, {
+        tytul: 'Nie udało się obsłużyć zwrotu',
+        wroc: `/zamowienia/${z.id}/zwrot`,
+        napisWroc: 'Wróć do ekranu zwrotu',
+      });
     }
     let zapisany;
     try {
       zapisany = dodajZwrot(db, z.id, nowy);
     } catch (e) {
       slad(z.id, 'zwrot.rejestracja', `BŁĄD: ${e.message}`);
-      return stronaOdmowy(reply, 400, komunikatDlaOperatora(e), { tytul: 'Nie udało się obsłużyć zwrotu', wroc: `/zamowienia/${z.id}/zwrot`, napisWroc: 'Wróć do ekranu zwrotu' });
+      return stronaOdmowy(reply, 400, komunikatDlaOperatora(e), {
+        tytul: 'Nie udało się obsłużyć zwrotu',
+        wroc: `/zamowienia/${z.id}/zwrot`,
+        napisWroc: 'Wróć do ekranu zwrotu',
+      });
     }
     // ⚠️ Slad niesie KWOTE i DATE, a nie samo „zarejestrowano zwrot". Ta kwota schodzi
     // z przychodu w raporcie zarzadczym, wiec po miesiacu ma sie dac odpowiedziec, ile
     // i kiedy zdjeto — bez otwierania karty zamowienia.
-    slad(z.id, 'zwrot.rejestracja', decyzja(
-      req,
-      `zarejestrowany zwrot z ${zapisany.data} na ${zapisany.kwota} zł`
-      + `${zapisany.kwota_dostawy ? ` + dostawa ${zapisany.kwota_dostawy} zł` : ''}`
-      + `, pozycji: ${zapisany.pozycje.length}`
-      + `${zapisany.powod ? `; powód: ${zapisany.powod}` : ''}.`,
-    ));
+    slad(
+      z.id,
+      'zwrot.rejestracja',
+      decyzja(
+        req,
+        `zarejestrowany zwrot z ${zapisany.data} na ${zapisany.kwota} zł` +
+          `${zapisany.kwota_dostawy ? ` + dostawa ${zapisany.kwota_dostawy} zł` : ''}` +
+          `, pozycji: ${zapisany.pozycje.length}` +
+          `${zapisany.powod ? `; powód: ${zapisany.powod}` : ''}.`,
+      ),
+    );
     return reply.redirect(adresZwrotu(req, z.id));
   });
 }

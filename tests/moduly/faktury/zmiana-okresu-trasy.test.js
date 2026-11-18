@@ -1,6 +1,4 @@
-import {
-  describe, it, expect, beforeEach, vi,
-} from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { zapewnijOkres, zamknijOkres } from '../../../src/oms/db/okresy.js';
@@ -15,9 +13,13 @@ const naglowek = {
 
 // ⚠️ Klient zbiorczy jest WIERSZEM TABELY `klienci`, nie wpisem w konfiguracji.
 const KLIENT = {
-  klucz: 'przykladowa', nazwa: 'Pracownia Przykładowa sp. z o.o.', nip: '1234500011',
-  rabat_procent: 10, prog_darmowej_dostawy_gr: 30000,
-  oplata_obslugi_gr: 400, oplata_kurierska_gr: 1900,
+  klucz: 'przykladowa',
+  nazwa: 'Pracownia Przykładowa sp. z o.o.',
+  nip: '1234500011',
+  rabat_procent: 10,
+  prog_darmowej_dostawy_gr: 30000,
+  oplata_obslugi_gr: 400,
+  oplata_kurierska_gr: 1900,
 };
 const config = { auth: { user: 'adam', pass: 'x' } };
 
@@ -47,26 +49,34 @@ function dodajZamowienie({ numer, kwota = '100.00', okresId = null, nip = KLIENT
   // i wywalala WSZYSTKIE 15 testow bledem SQL — czyli czerwien, ktora nic nie mowila
   // o kodzie produkcyjnym.
   db.prepare(
-    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, okres_rozliczeniowy_id,'
-    + ' do_siedziby_klienta, chce_fakture, nip, klient_json, utworzone_at)'
-    + " VALUES ('reczne', ?, ?, ?, ?, ?, 1, ?, ?, '2026-07-10T10:00:00.000Z')",
+    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, okres_rozliczeniowy_id,' +
+      ' do_siedziby_klienta, chce_fakture, nip, klient_json, utworzone_at)' +
+      " VALUES ('reczne', ?, ?, ?, ?, ?, 1, ?, ?, '2026-07-10T10:00:00.000Z')",
   ).run(
-    Number(String(numer).replace(/\D/g, '')), numer, kwota, okresId, hurt, nip,
+    Number(String(numer).replace(/\D/g, '')),
+    numer,
+    kwota,
+    okresId,
+    hurt,
+    nip,
     JSON.stringify({ first_name: 'Jan', last_name: 'Kowalski', company: 'Pracownia Przykładowa sp. z o.o.' }),
   );
   const id = db.prepare('SELECT id FROM zamowienia WHERE numer = ?').get(numer).id;
   db.prepare(
-    'INSERT INTO pozycje (zamowienie_id, nazwa, ilosc, cena_brutto, brutto_linii, zrodlo)'
-    + " VALUES (?, 'STOP 70x100', 1, ?, ?, 'reczna')",
+    'INSERT INTO pozycje (zamowienie_id, nazwa, ilosc, cena_brutto, brutto_linii, zrodlo)' +
+      " VALUES (?, 'STOP 70x100', 1, ?, ?, 'reczna')",
   ).run(id, kwota, kwota);
   return id;
 }
 
 // Okres z WYSTAWIONA faktura — kolumny ustawiane tak, jak robi to `zakonczFaktureOkresu`.
-const zafakturuj = (okresId) => db.prepare(
-  "UPDATE okresy_rozliczeniowe SET stan = 'zafakturowany', infakt_uuid = 'u-1',"
-  + " numer = 'FV/7/2026', ksef_status = NULL WHERE id = ?",
-).run(okresId);
+const zafakturuj = (okresId) =>
+  db
+    .prepare(
+      "UPDATE okresy_rozliczeniowe SET stan = 'zafakturowany', infakt_uuid = 'u-1'," +
+        " numer = 'FV/7/2026', ksef_status = NULL WHERE id = ?",
+    )
+    .run(okresId);
 
 beforeEach(async () => {
   db = openOmsDb();
@@ -182,8 +192,8 @@ describe('POST /zamowienia/:id/okres (przypisanie)', () => {
   it('ODMAWIA zamowieniu, ktore ma juz wlasna fakture', async () => {
     const id = dodajZamowienie({ numer: 'R/2026/009', okresId: null });
     db.prepare(
-      "INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, ksef_status, utworzona_at)"
-      + " VALUES (?, 'u-9', 'FV/112/2026', NULL, '2026-07-11T10:00:00.000Z')",
+      'INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, ksef_status, utworzona_at)' +
+        " VALUES (?, 'u-9', 'FV/112/2026', NULL, '2026-07-11T10:00:00.000Z')",
     ).run(id);
 
     const odp = await post(`/zamowienia/${id}/okres`);

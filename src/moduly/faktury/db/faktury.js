@@ -20,21 +20,25 @@ function opisKolizji(f, nazwa = NAZWA_ZAPASOWA, program) {
   const gdzie = program ? gdzieDokument(program) : `w ${nazwa.miejscownik}`;
   const stan = stanFaktury(f);
   if (stan === 'do_wyjasnienia') {
-    return 'Poprzednia próba wystawienia faktury zerwała się w miejscu, w którym dokument mógł już powstać'
-      + `${f.blad_opis ? ` (${f.blad_opis})` : ''}. `
-      + `Sprawdź RĘCZNIE ${gdzie}, czy faktura do tego zamówienia istnieje. Jeśli jej tam nie ma — `
-      + 'odblokuj zamówienie przyciskiem na karcie. Jeśli JEST i jeszcze nie poszła do KSeF, '
-      + 'po prostu ją tam skasuj, dopiero potem odblokuj — '
-      + 'panel jej sam nie ponowi, żeby drugie kliknięcie nie dołożyło drugiego dokumentu. '
-      + 'Jeśli już poszła do KSeF, została po niej tylko KOREKTA, nie kasowanie.';
+    return (
+      'Poprzednia próba wystawienia faktury zerwała się w miejscu, w którym dokument mógł już powstać' +
+      `${f.blad_opis ? ` (${f.blad_opis})` : ''}. ` +
+      `Sprawdź RĘCZNIE ${gdzie}, czy faktura do tego zamówienia istnieje. Jeśli jej tam nie ma — ` +
+      'odblokuj zamówienie przyciskiem na karcie. Jeśli JEST i jeszcze nie poszła do KSeF, ' +
+      'po prostu ją tam skasuj, dopiero potem odblokuj — ' +
+      'panel jej sam nie ponowi, żeby drugie kliknięcie nie dołożyło drugiego dokumentu. ' +
+      'Jeśli już poszła do KSeF, została po niej tylko KOREKTA, nie kasowanie.'
+    );
   }
   // Rezerwacja starsza niz prog to sierota po restarcie procesu, a nie trwajace wywolanie.
   // Bez tego odpowiedź „właśnie trwa” byłaby wieczna: nic by jej nigdy nie zdejmowało.
   if (stan === 'zawieszona') {
-    return `Rezerwacja faktury wisi od ${f.utworzona_at} i żadne wystawianie już nie trwa — `
-      + `panel najpewniej został zrestartowany w trakcie wywołania ${nazwa.dopelniacz}. `
-      + `Sprawdź RĘCZNIE ${gdzie}, czy faktura do tego zamówienia powstała; jeśli nie, `
-      + 'odblokuj zamówienie przyciskiem na karcie.';
+    return (
+      `Rezerwacja faktury wisi od ${f.utworzona_at} i żadne wystawianie już nie trwa — ` +
+      `panel najpewniej został zrestartowany w trakcie wywołania ${nazwa.dopelniacz}. ` +
+      `Sprawdź RĘCZNIE ${gdzie}, czy faktura do tego zamówienia powstała; jeśli nie, ` +
+      'odblokuj zamówienie przyciskiem na karcie.'
+    );
   }
   if (stan === 'w_toku') return 'Wystawianie faktury do tego zamówienia właśnie trwa.';
   return `Faktura do tego zamówienia jest już wystawiona${f.numer ? ` (${f.numer})` : ''}.`;
@@ -45,8 +49,10 @@ function opisKolizji(f, nazwa = NAZWA_ZAPASOWA, program) {
 // w bazie, a nie od odczytu `z.faktura` sprzed kilkuset milisekund.
 export function rozpocznijFakture(db, zamowienieId, { nazwa = NAZWA_ZAPASOWA, program } = {}) {
   try {
-    db.prepare("INSERT INTO faktury (zamowienie_id, ksef_status, utworzona_at) VALUES (?, 'w_toku', ?)")
-      .run(zamowienieId, teraz());
+    db.prepare("INSERT INTO faktury (zamowienie_id, ksef_status, utworzona_at) VALUES (?, 'w_toku', ?)").run(
+      zamowienieId,
+      teraz(),
+    );
   } catch (e) {
     const f = String(e.message).includes(SYGNATURA_KOLIZJI) ? wiersz(db, zamowienieId) : null;
     if (f) throw bladOperatora(opisKolizji(f, nazwa, program));
@@ -62,8 +68,8 @@ export function rozpocznijFakture(db, zamowienieId, { nazwa = NAZWA_ZAPASOWA, pr
 export function zakonczFakture(db, id, { uuid, numer, ksefStatus }, { program = 'infakt' } = {}) {
   if (typeof program !== 'string' || !program) throw new Error('zakonczFakture: brak nazwy programu fakturowego');
   db.prepare(
-    'UPDATE faktury SET program = ?, dokument_id = ?, infakt_uuid = ?, numer = ?, ksef_status = ?, blad_opis = NULL'
-    + ' WHERE id = ?',
+    'UPDATE faktury SET program = ?, dokument_id = ?, infakt_uuid = ?, numer = ?, ksef_status = ?, blad_opis = NULL' +
+      ' WHERE id = ?',
   ).run(program, uuid, program === 'infakt' ? uuid : null, numer, ksefStatus, id);
 }
 
@@ -86,11 +92,13 @@ export function zakonczFakture(db, id, { uuid, numer, ksefStatus }, { program = 
 // nową fakturę W TRAKCIE pytania — wtedy odpowiedź dotyczy starej i jej numer nie ma prawa trafić do wiersza nowej.
 // Porównanie po `idDokumentuSql()`, bo stare wiersze inFaktu mają sam `infakt_uuid`. Zwraca, czy wiersz się zmienił.
 export function zapiszNumerKsef(db, id, { ksefNumer, sprawdzonaAt, dokumentId = null }) {
-  const info = db.prepare(
-    "UPDATE faktury SET ksef_numer = COALESCE(?, ksef_numer), ksef_sprawdzona_at = ?,"
-    + " ksef_odczyt = 'ok' WHERE id = ?"
-    + (dokumentId == null ? '' : ` AND ${idDokumentuSql()} = ?`),
-  ).run(ksefNumer ?? null, sprawdzonaAt, id, ...(dokumentId == null ? [] : [String(dokumentId)]));
+  const info = db
+    .prepare(
+      'UPDATE faktury SET ksef_numer = COALESCE(?, ksef_numer), ksef_sprawdzona_at = ?,' +
+        " ksef_odczyt = 'ok' WHERE id = ?" +
+        (dokumentId == null ? '' : ` AND ${idDokumentuSql()} = ?`),
+    )
+    .run(ksefNumer ?? null, sprawdzonaAt, id, ...(dokumentId == null ? [] : [String(dokumentId)]));
   return Number(info.changes) === 1;
 }
 
@@ -105,10 +113,12 @@ export function zapiszNumerKsef(db, id, { ksefNumer, sprawdzonaAt, dokumentId = 
 // `dokumentId` jak w `zapiszNumerKsef`: nieudany odczyt STAREJ faktury nie stempluje wiersza
 // przepiętego w trakcie pytania na zastępczą (nowa poczeka na własne pytanie). Zwraca, czy wiersz się zmienił.
 export function zapiszNieudanyOdczytKsef(db, id, { sprawdzonaAt, odczyt = 'blad', dokumentId = null }) {
-  const info = db.prepare(
-    'UPDATE faktury SET ksef_sprawdzona_at = ?, ksef_odczyt = ? WHERE id = ?'
-    + (dokumentId == null ? '' : ` AND ${idDokumentuSql()} = ?`),
-  ).run(sprawdzonaAt, odczyt, id, ...(dokumentId == null ? [] : [String(dokumentId)]));
+  const info = db
+    .prepare(
+      'UPDATE faktury SET ksef_sprawdzona_at = ?, ksef_odczyt = ? WHERE id = ?' +
+        (dokumentId == null ? '' : ` AND ${idDokumentuSql()} = ?`),
+    )
+    .run(sprawdzonaAt, odczyt, id, ...(dokumentId == null ? [] : [String(dokumentId)]));
   return Number(info.changes) === 1;
 }
 
@@ -164,10 +174,12 @@ export function zajmijWysylkeDoAllegro(db, id, { teraz = Date.now(), prog = PROG
   const sierota = new Date(teraz - prog).toISOString();
   // ⚠️ POROWNANIE TEKSTOWE dat ISO — takie samo, jakiego uzywa kursor pollera i podloga
   // czuwacza. Dziala, bo obie strony sa w tym samym formacie i tej samej strefie.
-  const info = db.prepare(
-    'UPDATE faktury SET allegro_zgloszenie_at = ? WHERE id = ?'
-    + ' AND (allegro_zgloszenie_at IS NULL OR allegro_zgloszenie_at < ?)',
-  ).run(znacznik, id, sierota);
+  const info = db
+    .prepare(
+      'UPDATE faktury SET allegro_zgloszenie_at = ? WHERE id = ?' +
+        ' AND (allegro_zgloszenie_at IS NULL OR allegro_zgloszenie_at < ?)',
+    )
+    .run(znacznik, id, sierota);
   return Number(info.changes) === 1;
 }
 
@@ -196,8 +208,11 @@ export function zapiszPytanieOWeryfikacje(db, id, kiedy) {
 }
 
 export function zapiszWysylkeDoAllegro(db, id, { wyslanaAt, weryfikacja }) {
-  db.prepare('UPDATE faktury SET allegro_wyslana_at = ?, allegro_weryfikacja = ? WHERE id = ?')
-    .run(wyslanaAt, weryfikacja ?? null, id);
+  db.prepare('UPDATE faktury SET allegro_wyslana_at = ?, allegro_weryfikacja = ? WHERE id = ?').run(
+    wyslanaAt,
+    weryfikacja ?? null,
+    id,
+  );
 }
 
 // Wynik weryfikacji pliku po stronie Allegro, przeczytany przez czuwacza (services/czuwacz-ksef.js).
@@ -215,10 +230,12 @@ export function zapiszWysylkeDoAllegro(db, id, { wyslanaAt, weryfikacja }) {
 // faktury. Zwraca, czy wiersz się zmienił — przy false wołający nie robi żadnych skutków tego statusu.
 export function zapiszWeryfikacjeAllegro(db, id, status, allegroInvoiceId = null) {
   if (!status) return false;
-  const info = db.prepare(
-    'UPDATE faktury SET allegro_weryfikacja = ? WHERE id = ?'
-    + (allegroInvoiceId == null ? '' : ' AND allegro_invoice_id = ?'),
-  ).run(status, id, ...(allegroInvoiceId == null ? [] : [String(allegroInvoiceId)]));
+  const info = db
+    .prepare(
+      'UPDATE faktury SET allegro_weryfikacja = ? WHERE id = ?' +
+        (allegroInvoiceId == null ? '' : ' AND allegro_invoice_id = ?'),
+    )
+    .run(status, id, ...(allegroInvoiceId == null ? [] : [String(allegroInvoiceId)]));
   return Number(info.changes) === 1;
 }
 
@@ -227,10 +244,11 @@ export function zapiszWeryfikacjeAllegro(db, id, status, allegroInvoiceId = null
 export const ODMOWA_WYSYLKA_ALLEGRO = 'Trwa wysyłka faktury do Allegro — spróbuj za chwilę.';
 const odmowaWysylkiAllegro = () => bladOperatora(ODMOWA_WYSYLKA_ALLEGRO, { kod: 'wysylka-allegro', status: 409 });
 // Wiersz zamówienia wskazuje już inną fakturę niż ta, którą operator zamienia (druga zamiana, nieaktualna karta).
-const odmowaZmienionejFaktury = () => bladOperatora(
-  'Faktura tego zamówienia zmieniła się w międzyczasie — odśwież kartę i spróbuj jeszcze raz.',
-  { kod: 'zamiana-zamowienie', status: 409 },
-);
+const odmowaZmienionejFaktury = () =>
+  bladOperatora('Faktura tego zamówienia zmieniła się w międzyczasie — odśwież kartę i spróbuj jeszcze raz.', {
+    kod: 'zamiana-zamowienie',
+    status: 409,
+  });
 
 function chwila(teraz) {
   const ms = new Date(teraz).getTime();
@@ -271,9 +289,10 @@ export function stanAllegroWiersza(f, { teraz = Date.now(), prog = PROG_ZAJECIA_
 // - `allegro_wyslana_at`/`allegro_weryfikacja` ZOSTAJĄ tylko w 'u-kupujacego' (dokument może być u kupującego — automat nie
 //   wysyła drugiego); w 'odrzucona' (`REJECTED`) znikają, bo inaczej `wolnoWyslacDoAllegro` odmawiałby nowej na zawsze;
 // - `allegro_zgloszenie_at` (dzierżawa) — tu może być już tylko sierota, więc zerowana.
-export function przepnijNaZastepcza(db, {
-  zamowienieId, staryDokumentId, nowyDokumentId, numer, teraz = Date.now(), prog = PROG_ZAJECIA_WYSYLKI_MS,
-} = {}) {
+export function przepnijNaZastepcza(
+  db,
+  { zamowienieId, staryDokumentId, nowyDokumentId, numer, teraz = Date.now(), prog = PROG_ZAJECIA_WYSYLKI_MS } = {},
+) {
   if (zamowienieId == null || staryDokumentId == null || staryDokumentId === '') {
     throw new Error('przepnijNaZastepcza: brak zamówienia albo starej faktury');
   }
@@ -290,17 +309,19 @@ export function przepnijNaZastepcza(db, {
   const stanAllegro = stanAllegroWiersza(f, { teraz: ms, prog });
   if (stanAllegro === 'w-toku') throw odmowaWysylkiAllegro();
 
-  const info = db.prepare(
-    'UPDATE faktury SET dokument_id = ?, numer = ?,'
-    + ' ksef_status = NULL, ksef_numer = NULL, ksef_sprawdzona_at = NULL, ksef_odczyt = NULL, blad_opis = NULL,'
-    + ' allegro_invoice_id = NULL, allegro_pytana_at = NULL, allegro_zgloszenie_at = NULL,'
-    + " allegro_wyslana_at = CASE WHEN allegro_wyslana_at IS NOT NULL AND allegro_weryfikacja IS NOT 'REJECTED'"
-    + ' THEN allegro_wyslana_at END,'
-    + " allegro_weryfikacja = CASE WHEN allegro_wyslana_at IS NOT NULL AND allegro_weryfikacja IS NOT 'REJECTED'"
-    + ' THEN allegro_weryfikacja END'
-    + ' WHERE zamowienie_id = ? AND dokument_id = ?'
-    + ' AND (allegro_zgloszenie_at IS NULL OR allegro_zgloszenie_at < ?)',
-  ).run(String(nowyDokumentId), numer, zamowienieId, String(staryDokumentId), new Date(ms - prog).toISOString());
+  const info = db
+    .prepare(
+      'UPDATE faktury SET dokument_id = ?, numer = ?,' +
+        ' ksef_status = NULL, ksef_numer = NULL, ksef_sprawdzona_at = NULL, ksef_odczyt = NULL, blad_opis = NULL,' +
+        ' allegro_invoice_id = NULL, allegro_pytana_at = NULL, allegro_zgloszenie_at = NULL,' +
+        " allegro_wyslana_at = CASE WHEN allegro_wyslana_at IS NOT NULL AND allegro_weryfikacja IS NOT 'REJECTED'" +
+        ' THEN allegro_wyslana_at END,' +
+        " allegro_weryfikacja = CASE WHEN allegro_wyslana_at IS NOT NULL AND allegro_weryfikacja IS NOT 'REJECTED'" +
+        ' THEN allegro_weryfikacja END' +
+        ' WHERE zamowienie_id = ? AND dokument_id = ?' +
+        ' AND (allegro_zgloszenie_at IS NULL OR allegro_zgloszenie_at < ?)',
+    )
+    .run(String(nowyDokumentId), numer, zamowienieId, String(staryDokumentId), new Date(ms - prog).toISOString());
 
   if (Number(info.changes) !== 1) {
     // Stan zmienił się między odczytem a zapisem. Dzierżawa → ta sama odmowa co wyżej; inaczej wiersz przepięto gdzie indziej.
@@ -345,9 +366,9 @@ export function odblokujFakture(db, zamowienieId) {
       throw bladOperatora('Wystawianie faktury właśnie trwa — poczekaj, aż się skończy, zanim cokolwiek odblokujesz.');
     }
     throw bladOperatora(
-      `Faktura do tego zamówienia jest wystawiona${f.numer ? ` (${f.numer})` : ''} — odblokowanie zdjęłoby blokadę `
-      + 'z dokumentu, który na pewno istnieje w inFakcie, a kolejne kliknięcie wystawiłoby drugi. '
-      + 'Chcesz ją anulować? Skasuj ją w inFakcie (albo, jeśli już poszła do KSeF, wystaw korektę) — panel tego za ciebie nie zrobi.',
+      `Faktura do tego zamówienia jest wystawiona${f.numer ? ` (${f.numer})` : ''} — odblokowanie zdjęłoby blokadę ` +
+        'z dokumentu, który na pewno istnieje w inFakcie, a kolejne kliknięcie wystawiłoby drugi. ' +
+        'Chcesz ją anulować? Skasuj ją w inFakcie (albo, jeśli już poszła do KSeF, wystaw korektę) — panel tego za ciebie nie zrobi.',
     );
   }
   db.prepare('DELETE FROM faktury WHERE id = ?').run(f.id);
@@ -391,16 +412,16 @@ export function fakturaSkasowanaWInfakcie(db, zamowienieId) {
   // zamówienia dałoby drugą fakturę na tę samą sprzedaż. Pusty `program` = wiersz bez dokumentu (migracja 0008).
   if (f.program && f.program !== 'infakt') {
     throw bladOperatora(
-      `Faktura ${f.numer ? `${f.numer} ` : ''}pochodzi z programu wbudowanego w panel — tam dokumentu `
-      + 'nie da się skasować. Błędny dokument popraw korektą.',
+      `Faktura ${f.numer ? `${f.numer} ` : ''}pochodzi z programu wbudowanego w panel — tam dokumentu ` +
+        'nie da się skasować. Błędny dokument popraw korektą.',
     );
   }
   if (stan !== 'wystawiona') {
     throw bladOperatora(
       stan === 'w_toku'
         ? 'Wystawianie faktury właśnie trwa — to jeszcze nie jest dokument, który dałoby się skasować w inFakcie. Poczekaj, aż się skończy.'
-        : 'Ta rezerwacja nie ma jeszcze numeru dokumentu — to nie jest jeszcze to, co dało się skasować w inFakcie. '
-          + 'Jeśli sprawdziłeś tam i dokumentu nie ma, użyj przycisku „Sprawdziłem w inFakcie — faktury nie ma, odblokuj".',
+        : 'Ta rezerwacja nie ma jeszcze numeru dokumentu — to nie jest jeszcze to, co dało się skasować w inFakcie. ' +
+            'Jeśli sprawdziłeś tam i dokumentu nie ma, użyj przycisku „Sprawdziłem w inFakcie — faktury nie ma, odblokuj".',
     );
   }
   // ⚠️⚠️ TRZECIA PRZESŁANKA: DOKUMENT JEST JUŻ NA KONCIE KUPUJĄCEGO
@@ -414,10 +435,10 @@ export function fakturaSkasowanaWInfakcie(db, zamowienieId) {
   // ani słowem.
   if (f.allegro_wyslana_at) {
     throw bladOperatora(
-      `Faktura ${f.numer ? `${f.numer} ` : ''}została wysłana do Allegro ${f.allegro_wyslana_at} `
-      + 'i kupujący ma ją na koncie. Skasowanie jej w inFakcie nie zabiera mu dokumentu, '
-      + 'więc panel nie zwolni tego zamówienia — kolejne wystawienie dałoby kupującemu drugą '
-      + 'fakturę na ten sam towar. Jeśli dokument jest błędny, potrzebna jest KOREKTA.',
+      `Faktura ${f.numer ? `${f.numer} ` : ''}została wysłana do Allegro ${f.allegro_wyslana_at} ` +
+        'i kupujący ma ją na koncie. Skasowanie jej w inFakcie nie zabiera mu dokumentu, ' +
+        'więc panel nie zwolni tego zamówienia — kolejne wystawienie dałoby kupującemu drugą ' +
+        'fakturę na ten sam towar. Jeśli dokument jest błędny, potrzebna jest KOREKTA.',
     );
   }
   // ⚠️ DOWODEM „JEST W KSEF" SĄ OBIE KOLUMNY, NIE SAMA `ksef_status`.
@@ -430,8 +451,8 @@ export function fakturaSkasowanaWInfakcie(db, zamowienieId) {
   const wKsef = f.ksef_numer || f.ksef_status;
   if (wKsef) {
     throw bladOperatora(
-      `Dokument ${f.numer ? `${f.numer} ` : ''}poszedł już do KSeF (${wKsef}) — `
-      + 'takiego dokumentu się nie kasuje, tylko koryguje. Panel tej operacji nie obsługuje.',
+      `Dokument ${f.numer ? `${f.numer} ` : ''}poszedł już do KSeF (${wKsef}) — ` +
+        'takiego dokumentu się nie kasuje, tylko koryguje. Panel tej operacji nie obsługuje.',
     );
   }
   db.prepare('DELETE FROM faktury WHERE id = ?').run(f.id);
@@ -459,8 +480,9 @@ export function fakturaSkasowanaWInfakcie(db, zamowienieId) {
  * z chwili wystawienia i `ksef_numer` od czuwacza) · dokument jest z inFaktu (`program` wiersza).
  */
 export function fakturyMozliweDoOdnotowaniaSkasowania(db, { miesiac } = {}) {
-  return db.prepare(
-    `SELECT f.id, f.zamowienie_id, f.numer, ${idDokumentuSql('f')} AS dokument_id, f.utworzona_at,
+  return db
+    .prepare(
+      `SELECT f.id, f.zamowienie_id, f.numer, ${idDokumentuSql('f')} AS dokument_id, f.utworzona_at,
             z.numer AS zamowienie_numer
        FROM faktury f
        JOIN zamowienia z ON z.id = f.zamowienie_id
@@ -472,7 +494,8 @@ export function fakturyMozliweDoOdnotowaniaSkasowania(db, { miesiac } = {}) {
         AND COALESCE(f.program, @program) = @program
         ${miesiac ? 'AND substr(f.utworzona_at, 1, 7) = @miesiac' : ''}
       ORDER BY f.utworzona_at DESC`,
-  ).all({ program: 'infakt', ...(miesiac ? { miesiac } : {}) });
+    )
+    .all({ program: 'infakt', ...(miesiac ? { miesiac } : {}) });
 }
 
 /**
@@ -484,7 +507,14 @@ export function fakturyMozliweDoOdnotowaniaSkasowania(db, { miesiac } = {}) {
  * OMS-em przechodzi jak dawniej.
  */
 export function dokumentyPoIdentyfikatorach(db, identyfikatory) {
-  const lista = [...new Set([].concat(identyfikatory ?? []).filter((x) => x != null && x !== '').map(String))];
+  const lista = [
+    ...new Set(
+      []
+        .concat(identyfikatory ?? [])
+        .filter((x) => x != null && x !== '')
+        .map(String),
+    ),
+  ];
   const mapa = new Map();
   if (!lista.length) return mapa;
   const zapytanie = (tabela) => `SELECT program, ${idDokumentuSql()} AS dokument_id FROM ${tabela}

@@ -12,9 +12,14 @@ import { modulKanaly } from '../../../src/moduly/kanaly/modul.ts';
 import { modulFaktury } from '../../../src/moduly/faktury/modul.ts';
 import { modulKoszty } from '../../../src/moduly/koszty/modul.ts';
 
-const env = { OMS_USER: 'operator', OMS_PASS: 'fixture',
-  OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000',
-  OMS_PROFORMY_KATALOG: tmpdir(), OMS_ETYKIETY_KATALOG: tmpdir() };
+const env = {
+  OMS_USER: 'operator',
+  OMS_PASS: 'fixture',
+  OMS_SPRZEDAWCA_NIP: '1234563218',
+  OMS_RACHUNEK: '34109010140000000000000000',
+  OMS_PROFORMY_KATALOG: tmpdir(),
+  OMS_ETYKIETY_KATALOG: tmpdir(),
+};
 const headers = { authorization: `Basic ${Buffer.from('operator:fixture').toString('base64')}` };
 
 describe('rzeczywista kompozycja bootstrapu', () => {
@@ -25,30 +30,37 @@ describe('rzeczywista kompozycja bootstrapu', () => {
     wczytajSekret(db);
     // Baza przygotowana przez pierwszy start ma już znacznik formatu poświadczeń — kolejny start nic nie zapisuje.
     konwertujSekrety(db, sejfBazy(db));
-    const zapis = vi.fn(() => { throw new Error('SQLITE_FULL: database or disk is full'); });
+    const zapis = vi.fn(() => {
+      throw new Error('SQLITE_FULL: database or disk is full');
+    });
     const bazaBezZapisow = {
       prepare(sql: string) {
         const st = db.prepare(sql);
         return { get: (...a: any[]) => st.get(...a), all: (...a: any[]) => st.all(...a), run: zapis };
       },
       exec: (sql: string) => db.exec(sql),
-      get isTransaction() { return db.isTransaction; },
+      get isTransaction() {
+        return db.isTransaction;
+      },
     };
     let z: Awaited<ReturnType<typeof zbudujOms>> | undefined;
     try {
       expect(db.prepare('SELECT count(*) n FROM slownik_kategorii_kosztow').get()?.n).toBe(11);
-      const budowa = zbudujOms({env,db:bazaBezZapisow as any,
-        moduly:moduly as any});
+      const budowa = zbudujOms({ env, db: bazaBezZapisow as any, moduly: moduly as any });
       // Rejection po powtórnym INSERT ma być błędem asercji, a nie nieobsłużonym wyjątkiem.
       await expect(budowa).resolves.toHaveProperty('app');
       z = await budowa;
-      const lista = await z.app.inject({method:'GET',url:'/koszty',headers});
+      const lista = await z.app.inject({ method: 'GET', url: '/koszty', headers });
       expect(lista.statusCode).toBe(200);
       expect(lista.body).toContain('Koszty');
       expect(db.prepare('SELECT count(*) n FROM slownik_kategorii_kosztow').get()?.n).toBe(11);
       expect(zapis).not.toHaveBeenCalled();
     } finally {
-      try { if (z) await z.app.close(); } finally { db.close(); }
+      try {
+        if (z) await z.app.close();
+      } finally {
+        db.close();
+      }
     }
   });
 
@@ -60,28 +72,42 @@ describe('rzeczywista kompozycja bootstrapu', () => {
       expect(lista.statusCode).toBe(200);
       expect(lista.body).toContain('Koszty');
       for (const [method, url] of [
-        ['GET', '/koszty/reczne/:klucz'], ['GET', '/koszty/:ksefNumber/pdf'],
-        ['POST', '/koszty/kategoria'], ['POST', '/koszty/odswiez'],
-        ['POST', '/koszty/reczne'], ['POST', '/koszty/firmy'],
-        ['POST', '/koszty/reczne/:klucz'], ['POST', '/koszty/reczne/:klucz/usun'],
-      ] as const) expect(z.app.hasRoute({ method, url })).toBe(true);
+        ['GET', '/koszty/reczne/:klucz'],
+        ['GET', '/koszty/:ksefNumber/pdf'],
+        ['POST', '/koszty/kategoria'],
+        ['POST', '/koszty/odswiez'],
+        ['POST', '/koszty/reczne'],
+        ['POST', '/koszty/firmy'],
+        ['POST', '/koszty/reczne/:klucz'],
+        ['POST', '/koszty/reczne/:klucz/usun'],
+      ] as const)
+        expect(z.app.hasRoute({ method, url })).toBe(true);
       // Czuwacz i zegar stoją zawsze (token zapisany w Ustawieniach działa bez restartu), ale bez tokenu
       // nie ma czym pobierać: usługa mówi „niedostępny”, a przebieg zegara wraca pominięty bez wyjścia do sieci.
       expect(z.usluga<any>('koszty', 'czuwaczKosztow').dostepny()).toBe(false);
       expect(z.usluga('koszty', 'ksefKlient')).toBeNull();
-      const zegar = z.zegary.find(x => x.nazwa === 'czuwaczKosztow');
+      const zegar = z.zegary.find((x) => x.nazwa === 'czuwaczKosztow');
       expect(zegar).toBeTruthy();
-      await expect(z.usluga<any>('koszty', 'czuwaczKosztow').przebieg({ wymuszony: true })).resolves.toEqual({ pominiety: true, powod: 'brak tokenu KSeF' });
+      await expect(z.usluga<any>('koszty', 'czuwaczKosztow').przebieg({ wymuszony: true })).resolves.toEqual({
+        pominiety: true,
+        powod: 'brak tokenu KSeF',
+      });
       await zegar!.przebieg();
       expect(transport).not.toHaveBeenCalled();
-    } finally { await z.app.close(); z.db.close(); transport.mockRestore(); }
+    } finally {
+      await z.app.close();
+      z.db.close();
+      transport.mockRestore();
+    }
   });
 
   it('paczka faktur używa rzeczywistej usługi kosztów i współdzielonego inFaktu po budowie', async () => {
     const infakt = { listaFaktur: vi.fn().mockResolvedValue([]), listaKorekt: vi.fn().mockResolvedValue([]) };
     const transport = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Sieć zabroniona'));
-    const z = await zbudujOms({ env: { ...env, INFAKT_API_KEY: 'fixture-key' },
-      nadpisania: { 'faktury.infakt': infakt } });
+    const z = await zbudujOms({
+      env: { ...env, INFAKT_API_KEY: 'fixture-key' },
+      nadpisania: { 'faktury.infakt': infakt },
+    });
     try {
       const paczka = z.usluga<any>('faktury', 'paczkaDlaBiura');
       const kosztowa = z.usluga<any>('koszty', 'paczkaDlaBiura');
@@ -93,6 +119,10 @@ describe('rzeczywista kompozycja bootstrapu', () => {
       expect(infakt.listaFaktur).toHaveBeenCalledWith({ od: '2026-08-01', do: '2026-08-31', pole: 'sale_date' });
       expect(infakt.listaKorekt).toHaveBeenCalledWith({ od: '2026-08-01', do: '2026-08-31', pole: 'invoice_date' });
       expect(transport).not.toHaveBeenCalled();
-    } finally { await z.app.close(); z.db.close(); transport.mockRestore(); }
+    } finally {
+      await z.app.close();
+      z.db.close();
+      transport.mockRestore();
+    }
   });
 });

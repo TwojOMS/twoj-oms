@@ -28,18 +28,30 @@ import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
 import { nowyPanel, jako, get } from '../../pomoc/panel-konta-testowe.js';
 
 const TERAZ = new Date('2026-10-28T10:00:00Z');
-const NAZWA_TWOJEFAKTURY = Object.freeze({ mianownik: 'TwojeFaktury', dopelniacz: 'TwojeFaktury', miejscownik: 'TwojeFaktury', narzednik: 'TwojeFaktury' });
+const NAZWA_TWOJEFAKTURY = Object.freeze({
+  mianownik: 'TwojeFaktury',
+  dopelniacz: 'TwojeFaktury',
+  miejscownik: 'TwojeFaktury',
+  narzednik: 'TwojeFaktury',
+});
 const katalogi: string[] = [];
 const sprzatanie: Array<() => Promise<void>> = [];
 afterEach(async () => {
   for (const s of sprzatanie.splice(0)) await s();
   for (const k of katalogi.splice(0)) fs.rmSync(k, { recursive: true, force: true });
-  vi.unstubAllGlobals(); vi.useRealTimers();
+  vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
-function katalog() { const k = fs.mkdtempSync(path.join(os.tmpdir(), 'oms-kopie-panel-')); katalogi.push(k); return k; }
+function katalog() {
+  const k = fs.mkdtempSync(path.join(os.tmpdir(), 'oms-kopie-panel-'));
+  katalogi.push(k);
+  return k;
+}
 function kopia(k: string, nazwa: string, wiekH: number) {
-  const p = path.join(k, nazwa); fs.writeFileSync(p, 'x');
-  const t = new Date(TERAZ.getTime() - wiekH * 3600_000); fs.utimesSync(p, t, t);
+  const p = path.join(k, nazwa);
+  fs.writeFileSync(p, 'x');
+  const t = new Date(TERAZ.getTime() - wiekH * 3600_000);
+  fs.utimesSync(p, t, t);
 }
 const ZDANIE_31 = 'Ostatnia kopia bazy ma 31 h — oms-kopia nie zrobił kopii w ostatniej dobie';
 const oKopii = (x: string) => x.startsWith('kopia bazy') || x.startsWith('Ostatnia kopia');
@@ -47,15 +59,21 @@ const oKopii = (x: string) => x.startsWith('kopia bazy') || x.startsWith('Ostatn
 describe('stanKopii — próg uwagi 26 h i pola dla panelu', () => {
   it('kopia sprzed 25 h: bez uwag i alarmów o kopii, panel milczy', () => {
     expect(PROG_UWAGI_KOPII_H).toBe(26);
-    const lok = katalog(); kopia(lok, 'oms-2026-10-27.sqlite', 25);
+    const lok = katalog();
+    kopia(lok, 'oms-2026-10-27.sqlite', 25);
     const s = stanKopii({ katalog: lok, zewnetrzna: '', teraz: TERAZ });
     expect([...s.alarmy, ...s.uwagi].filter(oKopii)).toEqual([]);
-    expect(s).toMatchObject({ ostatnia: { plik: 'oms-2026-10-27.sqlite', wiekH: 25 }, katalogDostepny: true, zewnetrzna: false });
+    expect(s).toMatchObject({
+      ostatnia: { plik: 'oms-2026-10-27.sqlite', wiekH: 25 },
+      katalogDostepny: true,
+      zewnetrzna: false,
+    });
     expect(ostrzezeniaKopii({ kopie: s })).toEqual([]);
   });
 
   it('kopia sprzed 31 h: jedna uwaga, zero alarmów; w panelu jeden wiersz z datą kopii', () => {
-    const lok = katalog(); kopia(lok, 'oms-2026-10-27.sqlite', 31);
+    const lok = katalog();
+    kopia(lok, 'oms-2026-10-27.sqlite', 31);
     const s = stanKopii({ katalog: lok, zewnetrzna: '', teraz: TERAZ });
     expect(s.alarmy).toEqual([]);
     expect(s.uwagi.filter(oKopii)).toEqual([ZDANIE_31]);
@@ -64,7 +82,8 @@ describe('stanKopii — próg uwagi 26 h i pola dla panelu', () => {
   });
 
   it('kopia sprzed 49 h: alarm jak dotąd, bez uwagi 26 h (jedno zdanie), w panelu jeden wiersz', () => {
-    const lok = katalog(); kopia(lok, 'oms-2026-10-26.sqlite', 49);
+    const lok = katalog();
+    kopia(lok, 'oms-2026-10-26.sqlite', 49);
     const s = stanKopii({ katalog: lok, zewnetrzna: '', teraz: TERAZ });
     expect(s.alarmy).toEqual(['kopia bazy: najnowsza oms-2026-10-26.sqlite ma 49 h (próg 48 h)']);
     expect(s.uwagi.filter(oKopii)).toEqual([]);
@@ -72,7 +91,8 @@ describe('stanKopii — próg uwagi 26 h i pola dla panelu', () => {
   });
 
   it('nowa kopia zmienia klucz wiersza (wyciszenie starej nie chowa nowej)', () => {
-    const lok = katalog(); kopia(lok, 'oms-2026-10-26.sqlite', 49);
+    const lok = katalog();
+    kopia(lok, 'oms-2026-10-26.sqlite', 49);
     const [a] = ostrzezeniaKopii({ kopie: stanKopii({ katalog: lok, zewnetrzna: '', teraz: TERAZ }) });
     kopia(lok, 'oms-2026-10-27.sqlite', 31);
     const [b] = ostrzezeniaKopii({ kopie: stanKopii({ katalog: lok, zewnetrzna: '', teraz: TERAZ }) });
@@ -88,7 +108,10 @@ describe('stanKopii — próg uwagi 26 h i pola dla panelu', () => {
     expect(ostrzezeniaKopii({ kopie: pusty }).map((x: any) => x.tekst)).toEqual(['Brak kopii bazy w katalogu kopii.']);
     const brak = stanKopii({ katalog: path.join(lok, 'nie-ma'), zewnetrzna: lok, teraz: TERAZ });
     expect(brak).toMatchObject({ ostatnia: null, katalogDostepny: false, zewnetrzna: true });
-    expect(ostrzezeniaKopii({ kopie: brak }).map((x: any) => x.tekst)).toEqual(['OMS nie widzi katalogu kopii.', 'Kopia poza dyskiem nie trafia na nośnik — podłącz nośnik kopii (brak znacznika w katalogu).']);
+    expect(ostrzezeniaKopii({ kopie: brak }).map((x: any) => x.tekst)).toEqual([
+      'OMS nie widzi katalogu kopii.',
+      'Kopia poza dyskiem nie trafia na nośnik — podłącz nośnik kopii (brak znacznika w katalogu).',
+    ]);
   });
 
   it('nadzorKopiiWymagany: tylko program wbudowany poza próbą (jedno miejsce reguły)', () => {
@@ -99,26 +122,49 @@ describe('stanKopii — próg uwagi 26 h i pola dla panelu', () => {
 });
 
 describe('usługa zdrowie.kopie i /health (kompozycja jak u klienta)', () => {
-  const env = { OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000',
-    OMS_USER: 'operator', OMS_PASS: 'test', OMS_PROFORMY_KATALOG: '/nieuzywany-proformy', OMS_ETYKIETY_KATALOG: '/nieuzywany-etykiety' };
+  const env = {
+    OMS_SPRZEDAWCA_NIP: '1234563218',
+    OMS_RACHUNEK: '34109010140000000000000000',
+    OMS_USER: 'operator',
+    OMS_PASS: 'test',
+    OMS_PROFORMY_KATALOG: '/nieuzywany-proformy',
+    OMS_ETYKIETY_KATALOG: '/nieuzywany-etykiety',
+  };
   /** Program wbudowany w kontrakcie: opis atrapy niezależny od obecności adaptera. */
   // B16 jest wspólne: wystarczy opis programu, bez importu opcjonalnego adaptera.
-  const wbudowany = () => { const p = programTestowy({ id: 'twojefaktury', nazwa: NAZWA_TWOJEFAKTURY as any }); return { ...p, opis: Object.freeze({ ...p.opis, wbudowany: true }) }; };
+  const wbudowany = () => {
+    const p = programTestowy({ id: 'twojefaktury', nazwa: NAZWA_TWOJEFAKTURY as any });
+    return { ...p, opis: Object.freeze({ ...p.opis, wbudowany: true }) };
+  };
   async function oms(e: Record<string, string>, program: unknown) {
-    vi.stubGlobal('fetch', vi.fn(async () => { throw Error('Sieć zabroniona'); }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw Error('Sieć zabroniona');
+      }),
+    );
     const a = await zbudujOms({ env: { ...env, ...e }, teraz: () => TERAZ, nadpisania: { 'faktury.infakt': program } });
-    sprzatanie.push(async () => { await a.app.close(); (a as any).db.close(); });
+    sprzatanie.push(async () => {
+      await a.app.close();
+      (a as any).db.close();
+    });
     return a;
   }
   const UWAGA_TF = `${NAZWA_TWOJEFAKTURY.mianownik} trzyma faktury tylko w bazie, a nadzór kopii jest wyłączony (brak OMS_KOPIE_KATALOG) — kopia bazy musi trafiać poza ten dysk (oms-kopia).`;
 
   // Zrzut sprzed B16a (e265efe): inFakt bez OMS_KOPIE_KATALOG — produkcja właściciela. Umowa z czujką monitoring.
-  const HEALTH_PRZED = '{"ok":true,"alarmy":[],"uwagi":[],"poller":{"zdrowy":true,"zrodla":[]},"czuwaczKsef":{"wlaczony":false,"zdrowy":true,"okAt":null,"wiekS":null,"blad":null,"bladAt":null,"bladSwiezszy":false},"czuwaczPrzesylek":{"wlaczony":false,"zdrowy":true,"okAt":null,"wiekS":null,"blad":null,"bladAt":null,"bladSwiezszy":false},"czuwaczOstrzezen":{"wlaczony":true,"zdrowy":true,"okAt":null,"wiekS":null,"blad":null,"bladAt":null,"bladSwiezszy":false},"czuwaczKosztow":{"wlaczony":false,"zdrowy":true,"ostatnieUdaneAt":null,"wiekS":null,"blad":null,"bladAt":null,"stan":"brak tokenu KSeF"},"kanaly":[],"proces":{"startAt":"2026-10-28T10:00:00.000Z","wiekS":0}}';
+  const HEALTH_PRZED =
+    '{"ok":true,"alarmy":[],"uwagi":[],"poller":{"zdrowy":true,"zrodla":[]},"czuwaczKsef":{"wlaczony":false,"zdrowy":true,"okAt":null,"wiekS":null,"blad":null,"bladAt":null,"bladSwiezszy":false},"czuwaczPrzesylek":{"wlaczony":false,"zdrowy":true,"okAt":null,"wiekS":null,"blad":null,"bladAt":null,"bladSwiezszy":false},"czuwaczOstrzezen":{"wlaczony":true,"zdrowy":true,"okAt":null,"wiekS":null,"blad":null,"bladAt":null,"bladSwiezszy":false},"czuwaczKosztow":{"wlaczony":false,"zdrowy":true,"ostatnieUdaneAt":null,"wiekS":null,"blad":null,"bladAt":null,"stan":"brak tokenu KSeF"},"kanaly":[],"proces":{"startAt":"2026-10-28T10:00:00.000Z","wiekS":0}}';
 
   it('program inFakt bez katalogu kopii: /health bajt w bajt jak przed zmianą, panel milczy', async () => {
     const a = await oms({}, programTestowy({ id: 'infakt' }));
     expect((await a.app.inject('/health')).body).toBe(HEALTH_PRZED);
-    expect(a.usluga<() => any>('zdrowie', 'kopie')()).toEqual({ brakNadzoru: true, wbudowany: false, wymagany: false, nazwa: null });
+    expect(a.usluga<() => any>('zdrowie', 'kopie')()).toEqual({
+      brakNadzoru: true,
+      wbudowany: false,
+      wymagany: false,
+      nazwa: null,
+    });
     expect(ostrzezeniaKopii({ kopie: a.usluga<() => any>('zdrowie', 'kopie')() })).toEqual([]);
   });
 
@@ -129,8 +175,9 @@ describe('usługa zdrowie.kopie i /health (kompozycja jak u klienta)', () => {
     expect(j.uwagi).toEqual([UWAGA_TF]);
     const k = a.usluga<() => any>('zdrowie', 'kopie')();
     expect(k).toEqual({ brakNadzoru: true, wbudowany: true, wymagany: true, nazwa: NAZWA_TWOJEFAKTURY.mianownik });
-    expect(ostrzezeniaKopii({ kopie: k }).map((w: any) => w.tekst))
-      .toEqual([`Faktury ${NAZWA_TWOJEFAKTURY.mianownik} są tylko w bazie, a ten OMS nie widzi katalogu kopii.`]);
+    expect(ostrzezeniaKopii({ kopie: k }).map((w: any) => w.tekst)).toEqual([
+      `Faktury ${NAZWA_TWOJEFAKTURY.mianownik} są tylko w bazie, a ten OMS nie widzi katalogu kopii.`,
+    ]);
   });
 
   it('ten sam stan w próbie: ani uwagi, ani wiersza', async () => {
@@ -141,7 +188,8 @@ describe('usługa zdrowie.kopie i /health (kompozycja jak u klienta)', () => {
   });
 
   it('z katalogiem: kopia 31 h → uwaga w /health, ok=true, kolejność kluczy bez zmian; usługa zwraca stan kopii', async () => {
-    const lok = katalog(); kopia(lok, 'oms-2026-10-27.sqlite', 31);
+    const lok = katalog();
+    kopia(lok, 'oms-2026-10-27.sqlite', 31);
     const a = await oms({ OMS_KOPIE_KATALOG: lok }, wbudowany());
     const j = (await a.app.inject('/health')).json();
     expect(j.ok).toBe(true);
@@ -149,15 +197,25 @@ describe('usługa zdrowie.kopie i /health (kompozycja jak u klienta)', () => {
     expect(j.uwagi).toContain(ZDANIE_31);
     expect(j.uwagi.filter((x: string) => x.includes('nadzór kopii'))).toEqual([]);
     expect(Object.keys(j)).toEqual(Object.keys(JSON.parse(HEALTH_PRZED)));
-    expect(a.usluga<() => any>('zdrowie', 'kopie')()).toMatchObject({ ostatnia: { plik: 'oms-2026-10-27.sqlite', wiekH: 31 }, katalogDostepny: true, zewnetrzna: false });
+    expect(a.usluga<() => any>('zdrowie', 'kopie')()).toMatchObject({
+      ostatnia: { plik: 'oms-2026-10-27.sqlite', wiekH: 31 },
+      katalogDostepny: true,
+      zewnetrzna: false,
+    });
   });
 });
 
 describe('tabelka ostrzeżeń na stronie głównej', () => {
-  const zegar = () => { vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(TERAZ); };
+  const zegar = () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(TERAZ);
+  };
   function panel(o: Record<string, unknown>) {
     const p = nowyPanel(o);
-    sprzatanie.push(async () => { await p.app.close(); p.db.close(); });
+    sprzatanie.push(async () => {
+      await p.app.close();
+      p.db.close();
+    });
     zalozKonto(p.db, { login: 'admin-test', imie: 'Administrator', haslo: 'h', rola: 'administrator', admin: true });
     zalozKonto(p.db, { login: 'prod-test', imie: 'Produkcja', haslo: 'h', rola: 'produkcja' });
     return p;
@@ -165,7 +223,8 @@ describe('tabelka ostrzeżeń na stronie głównej', () => {
 
   it('stara kopia: administrator widzi wiersz z przyciskiem „Kopie zapasowe”, konto bez Ustawień nie', async () => {
     zegar();
-    const lok = katalog(); kopia(lok, 'oms-2026-10-27.sqlite', 31);
+    const lok = katalog();
+    kopia(lok, 'oms-2026-10-27.sqlite', 31);
     const p = panel({ env: { OMS_KOPIE_KATALOG: lok } });
     const admin = await get(p.app, '/', jako(p.db, 'admin-test'));
     expect(admin.statusCode).toBe(200);
@@ -179,8 +238,23 @@ describe('tabelka ostrzeżeń na stronie głównej', () => {
   it('usługa zdrowie niezbudowana (moduł wyłączony): tabelka działa, wiersza kopii brak', async () => {
     zegar();
     const lok = katalog();
-    const moduly = [modulRdzen, modulWeb, modulKanaly, modulFaktury, modulWiadomosci, createModulZamowienia({ zWiadomosciami: true }),
-      modulWysylka, modulMagazyn, modulZwroty, modulKoszty, modulUstawienia, modulAutomatyzacje, modulRaporty, modulMarketing, modulApiPanelu];
+    const moduly = [
+      modulRdzen,
+      modulWeb,
+      modulKanaly,
+      modulFaktury,
+      modulWiadomosci,
+      createModulZamowienia({ zWiadomosciami: true }),
+      modulWysylka,
+      modulMagazyn,
+      modulZwroty,
+      modulKoszty,
+      modulUstawienia,
+      modulAutomatyzacje,
+      modulRaporty,
+      modulMarketing,
+      modulApiPanelu,
+    ];
     const p = panel({ env: { OMS_KOPIE_KATALOG: lok }, moduly });
     const r = await get(p.app, '/', jako(p.db, 'admin-test'));
     expect(r.statusCode).toBe(200);
@@ -189,10 +263,16 @@ describe('tabelka ostrzeżeń na stronie głównej', () => {
 
   it('wyjątek usługi kopii nie gasi reszty tabelki (wiersz pollera zostaje)', async () => {
     zegar();
-    const p = panel({ nadpisania: {
-      'zdrowie.kopie': () => { throw new Error('dysk kopii zniknął'); },
-      'zdrowie.zdrowie': () => ({ poller: { zrodla: [{ zrodlo: 'woo_polcien', zdrowy: false, blad: 'fetch failed' }] } }),
-    } });
+    const p = panel({
+      nadpisania: {
+        'zdrowie.kopie': () => {
+          throw new Error('dysk kopii zniknął');
+        },
+        'zdrowie.zdrowie': () => ({
+          poller: { zrodla: [{ zrodlo: 'woo_polcien', zdrowy: false, blad: 'fetch failed' }] },
+        }),
+      },
+    });
     const r = await get(p.app, '/', jako(p.db, 'admin-test'));
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('Pobieranie zamówień z kanału woo_polcien nie działa: fetch failed');

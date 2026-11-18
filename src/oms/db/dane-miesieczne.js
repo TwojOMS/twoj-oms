@@ -17,11 +17,16 @@ const teraz = () => new Date().toISOString();
 // pomniejszaja dochod, zdrowotna NIE — jedna kwota „razem" nie wystarczylaby do policzenia
 // PIT-u w rachunku zarządczym.
 const POLA = [
-  ['zusSpoleczne', 'zus_spoleczne'], ['zusZdrowotna', 'zus_zdrowotna'],
-  ['zusFunduszPracy', 'zus_fundusz_pracy'], ['zusRazem', 'zus_razem'],
-  ['pit5', 'pit5_zaplacony'], ['vat7', 'vat7_zaplacony'],
-  ['kpirPrzychod', 'kpir_przychod'], ['kpirKoszty', 'kpir_koszty'],
-  ['zwroty', 'zwroty_brutto'], ['uwagi', 'uwagi'],
+  ['zusSpoleczne', 'zus_spoleczne'],
+  ['zusZdrowotna', 'zus_zdrowotna'],
+  ['zusFunduszPracy', 'zus_fundusz_pracy'],
+  ['zusRazem', 'zus_razem'],
+  ['pit5', 'pit5_zaplacony'],
+  ['vat7', 'vat7_zaplacony'],
+  ['kpirPrzychod', 'kpir_przychod'],
+  ['kpirKoszty', 'kpir_koszty'],
+  ['zwroty', 'zwroty_brutto'],
+  ['uwagi', 'uwagi'],
 ];
 
 // Kolumna `uwagi` to jedyne pole, ktore NIE jest kwota — reszta trzyma napisy w zlotowkach.
@@ -56,24 +61,21 @@ export function zapiszDaneMiesiaca(db, miesiac, pola) {
     throw bladOperatora(`Niepoprawny miesiąc: „${miesiac}” (oczekiwane RRRR-MM).`);
   }
   const kolumny = POLA.map(([, k]) => k);
-  const wartosci = POLA.map(
-    ([klucz, kolumna]) => (pola[klucz] === undefined || pola[klucz] === ''
-      ? null
-      : znormalizuj(String(pola[klucz]), kolumna)),
+  const wartosci = POLA.map(([klucz, kolumna]) =>
+    pola[klucz] === undefined || pola[klucz] === '' ? null : znormalizuj(String(pola[klucz]), kolumna),
   );
   db.prepare(
-    `INSERT INTO dane_miesieczne (miesiac, ${kolumny.join(', ')}, zmienione_at)`
-    + ` VALUES (?${',?'.repeat(kolumny.length)}, ?)`
-    + ' ON CONFLICT(miesiac) DO UPDATE SET '
-    + kolumny.map((k) => `${k} = excluded.${k}`).join(', ')
-    + ', zmienione_at = excluded.zmienione_at',
+    `INSERT INTO dane_miesieczne (miesiac, ${kolumny.join(', ')}, zmienione_at)` +
+      ` VALUES (?${',?'.repeat(kolumny.length)}, ?)` +
+      ' ON CONFLICT(miesiac) DO UPDATE SET ' +
+      kolumny.map((k) => `${k} = excluded.${k}`).join(', ') +
+      ', zmienione_at = excluded.zmienione_at',
   ).run(miesiac, ...wartosci, teraz());
 }
 
 /** Wiersz recznych danych jednego miesiaca, albo `null`, gdy nikt go jeszcze nie wpisal. */
-export const daneMiesiaca = (db, miesiac) => db.prepare(
-  'SELECT * FROM dane_miesieczne WHERE miesiac = ?',
-).get(miesiac) ?? null;
+export const daneMiesiaca = (db, miesiac) =>
+  db.prepare('SELECT * FROM dane_miesieczne WHERE miesiac = ?').get(miesiac) ?? null;
 
 /**
  * Miesiace danego roku, ktore MAJA juz wiersz — do paska miesiecy na ekranie danych.
@@ -83,10 +85,13 @@ export const daneMiesiaca = (db, miesiac) => db.prepare(
  * pokazywalby jako zalegly miesiac, ktorego rachunek zarzadczy juz nie zglasza — operator
  * chodzilby wtedy poprawiac coś, co z punktu widzenia rachunku jest zrobione.
  */
-export const miesiaceZDanymi = (db, rok) => new Set(
-  db.prepare('SELECT miesiac FROM dane_miesieczne WHERE miesiac LIKE ?')
-    .all(`${rok}-%`).map((w) => w.miesiac),
-);
+export const miesiaceZDanymi = (db, rok) =>
+  new Set(
+    db
+      .prepare('SELECT miesiac FROM dane_miesieczne WHERE miesiac LIKE ?')
+      .all(`${rok}-%`)
+      .map((w) => w.miesiac),
+  );
 
 // Kolumna pusta/NULL liczy sie jako 0 W SUMIE OKRESU — ale to jest inna sprawa niz miesiac
 // bez wiersza w ogole (ten idzie do `brakujace` i NIE wchodzi do sumy jako zero, patrz nizej).
@@ -103,7 +108,8 @@ export function daneOkresu(db, miesiace) {
   const brakujace = [];
   for (const m of miesiace) {
     const w = daneMiesiaca(db, m);
-    if (w) wiersze.push(w); else brakujace.push(m);
+    if (w) wiersze.push(w);
+    else brakujace.push(m);
   }
   // ⚠️ SUMA IDZIE NA GROSZACH, PRZEZ `grosze()`, NIGDY NA NAPISACH — ta sama zasada, co
   // wszędzie w module (reguła: pieniądze w groszach).
@@ -147,12 +153,19 @@ export function wgrajDaneStartowe(db, { nazwaMigracji, wiersze } = {}) {
   db.exec('BEGIN IMMEDIATE');
   try {
     for (const w of wiersze) {
-      db.prepare('INSERT OR IGNORE INTO dane_miesieczne (miesiac, zus_spoleczne, zus_zdrowotna,'
-        + ' zus_fundusz_pracy, zus_razem, pit5_zaplacony, vat7_zaplacony, kpir_przychod,'
-        + ' kpir_koszty, zwroty_brutto, uwagi, zmienione_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
-        .run(...w, teraz());
+      db.prepare(
+        'INSERT OR IGNORE INTO dane_miesieczne (miesiac, zus_spoleczne, zus_zdrowotna,' +
+          ' zus_fundusz_pracy, zus_razem, pit5_zaplacony, vat7_zaplacony, kpir_przychod,' +
+          ' kpir_koszty, zwroty_brutto, uwagi, zmienione_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+      ).run(...w, teraz());
     }
-    db.prepare('INSERT OR IGNORE INTO migracje_jednorazowe (nazwa, wykonana_at) VALUES (?,?)').run(nazwaMigracji, teraz());
+    db.prepare('INSERT OR IGNORE INTO migracje_jednorazowe (nazwa, wykonana_at) VALUES (?,?)').run(
+      nazwaMigracji,
+      teraz(),
+    );
     db.exec('COMMIT');
-  } catch (e) { db.exec('ROLLBACK'); throw e; }
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
 }

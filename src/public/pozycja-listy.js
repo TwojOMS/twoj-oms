@@ -72,11 +72,15 @@ export async function uruchomPozycjeListy({ okno = window, dokument = document }
     zaplanowany = false;
     zapiszPozycjePodKluczem({ storage, klucz, y: okno.scrollY });
   };
-  okno.addEventListener('scroll', () => {
-    if (zaplanowany) return;
-    zaplanowany = true;
-    okno.requestAnimationFrame(zapisz);
-  }, { passive: true });
+  okno.addEventListener(
+    'scroll',
+    () => {
+      if (zaplanowany) return;
+      zaplanowany = true;
+      okno.requestAnimationFrame(zapisz);
+    },
+    { passive: true },
+  );
   okno.addEventListener('pagehide', zapisz);
 
   odtworzPozycje({

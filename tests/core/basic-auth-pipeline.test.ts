@@ -25,41 +25,64 @@ beforeEach(async () => {
   zalozKonto(db, { login: 'syntetyczny', imie: 'Test', haslo: 'poprawne', rola: 'sprzedaz' });
   const hash = db.prepare('SELECT hash_hasla FROM konta WHERE login = ?').get('syntetyczny')!.hash_hasla;
   wczytajSekret(db);
-  walidacje = 0; aktywne = 0; najwiecejAktywnych = 0;
+  walidacje = 0;
+  aktywne = 0;
+  najwiecejAktywnych = 0;
   app = Fastify({ logger: false });
-  await app.register(basicAuth, { authenticate: true, validate: async (login, haslo) => {
-    walidacje++;
-    aktywne++;
-    najwiecejAktywnych = Math.max(najwiecejAktywnych, aktywne);
-    try {
-      // Prawdziwy asynchroniczny validator + scrypt. To samo okno co callback
-      // wtyczki, rozszerzone dla deterministycznego dowodu niezależności IP.
-      await poczekaj(20);
-      const zgodne = zgodneHaslo(haslo, hash);
-      if (!zgodne || login !== 'syntetyczny') throw new Error('Unauthorized');
-    } finally { aktywne--; }
-  } });
+  await app.register(basicAuth, {
+    authenticate: true,
+    validate: async (login, haslo) => {
+      walidacje++;
+      aktywne++;
+      najwiecejAktywnych = Math.max(najwiecejAktywnych, aktywne);
+      try {
+        // Prawdziwy asynchroniczny validator + scrypt. To samo okno co callback
+        // wtyczki, rozszerzone dla deterministycznego dowodu niezależności IP.
+        await poczekaj(20);
+        const zgodne = zgodneHaslo(haslo, hash);
+        if (!zgodne || login !== 'syntetyczny') throw new Error('Unauthorized');
+      } finally {
+        aktywne--;
+      }
+    },
+  });
   app.addHook('onRequest', zbudujStraznika({ basicAuth: app.basicAuth, db, nazwaCiasteczka: 'syntetyczna' }));
   app.get('/api/proba', async () => 'chronione');
   await app.listen({ host: '127.0.0.1', port: 0 });
   port = (app.server.address() as AddressInfo).port;
 });
-afterEach(async () => { await app?.close(); db?.close(); });
+afterEach(async () => {
+  await app?.close();
+  db?.close();
+});
 
 // Jedno write TCP niesie cały rzeczywisty pipeline HTTP/1.1. Ostatnie żądanie
 // zamyka połączenie; parser odpowiedzi sprawdza status każdej odpowiedzi.
-function pipeline(hasla: string[], localAddress = '127.0.0.1', login = 'syntetyczny', proxyBezKonfiguracji = false): Promise<number[]> {
+function pipeline(
+  hasla: string[],
+  localAddress = '127.0.0.1',
+  login = 'syntetyczny',
+  proxyBezKonfiguracji = false,
+): Promise<number[]> {
   return new Promise((resolve, reject) => {
     let dane = '';
     const socket = connect({ host: '127.0.0.1', port, localAddress });
     socket.setTimeout(10_000, () => socket.destroy(new Error('Timeout lokalnego pipeline HTTP')));
     socket.on('error', reject);
-    socket.on('data', (chunk) => { dane += chunk.toString(); });
+    socket.on('data', (chunk) => {
+      dane += chunk.toString();
+    });
     socket.on('end', () => resolve([...dane.matchAll(/HTTP\/1\.1 (\d+)/g)].map((m) => Number(m[1]))));
-    socket.on('connect', () => socket.write(hasla.map((haslo, i) => {
-      const auth = Buffer.from(`${login}:${haslo}`).toString('base64');
-      return `GET /api/proba HTTP/1.1\r\nHost: localhost\r\n${proxyBezKonfiguracji ? 'X-Forwarded-For: 198.51.100.1\r\n' : ''}Authorization: Basic ${auth}\r\nConnection: ${i === hasla.length - 1 ? 'close' : 'keep-alive'}\r\n\r\n`;
-    }).join('')));
+    socket.on('connect', () =>
+      socket.write(
+        hasla
+          .map((haslo, i) => {
+            const auth = Buffer.from(`${login}:${haslo}`).toString('base64');
+            return `GET /api/proba HTTP/1.1\r\nHost: localhost\r\n${proxyBezKonfiguracji ? 'X-Forwarded-For: 198.51.100.1\r\n' : ''}Authorization: Basic ${auth}\r\nConnection: ${i === hasla.length - 1 ? 'close' : 'keep-alive'}\r\n\r\n`;
+          })
+          .join(''),
+      ),
+    );
   });
 }
 

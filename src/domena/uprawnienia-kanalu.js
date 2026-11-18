@@ -39,10 +39,7 @@ export const WYMAGANE_UPRAWNIENIA = [
  * niekompletne: pas na ekranie, otwarta bariera wiązania, a wiązanie NADPISUJE działającą
  * parę tokenów. Konto bez nich ma działać dokładnie jak dziś; zgodę dostaje na żądanie.
  */
-export const UPRAWNIENIA_OFERT = Object.freeze([
-  'allegro:api:sale:offers:write',
-  'allegro:api:sale:settings:read',
-]);
+export const UPRAWNIENIA_OFERT = Object.freeze(['allegro:api:sale:offers:write', 'allegro:api:sale:settings:read']);
 
 /**
  * Zakresy z tokenu. NIGDY nie rzuca: wola to ekran stanu kanalu i pasek spraw, a wyjatek

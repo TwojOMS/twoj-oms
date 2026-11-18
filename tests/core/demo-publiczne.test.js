@@ -14,7 +14,12 @@ import { ENV_DEMO } from '../../scripts/demo-dane.mjs';
 
 const LOGIN = 'gosc';
 const HASLO = 'pokaz-demo-2026';
-const wspolne = { OMS_USER: 'serwis', OMS_PASS: 'serwis-haslo', OMS_PROFORMY_KATALOG: tmpdir(), OMS_ETYKIETY_KATALOG: tmpdir() };
+const wspolne = {
+  OMS_USER: 'serwis',
+  OMS_PASS: 'serwis-haslo',
+  OMS_PROFORMY_KATALOG: tmpdir(),
+  OMS_ETYKIETY_KATALOG: tmpdir(),
+};
 const envDemo = { ...ENV_DEMO, ...wspolne, OMS_DEMO_LOGIN: LOGIN, OMS_DEMO_HASLO: HASLO };
 const envProdukcja = { ...ENV_DEMO, ...wspolne, OMS_TRYB: 'produkcja' };
 const origin = { origin: 'http://localhost' };
@@ -22,18 +27,32 @@ const origin = { origin: 'http://localhost' };
 afterEach(() => vi.unstubAllGlobals());
 
 async function panel(env) {
-  vi.stubGlobal('fetch', vi.fn(async () => { throw Error('Sieć zabroniona'); }));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => {
+      throw Error('Sieć zabroniona');
+    }),
+  );
   const a = await zbudujOms({ env });
   zalozKonto(a.db, { login: 'adam', imie: 'Adam', haslo: 'admin-haslo-123', rola: 'administrator', admin: true });
   zalozKonto(a.db, { login: LOGIN, imie: 'Gość demo', haslo: HASLO, rola: 'sprzedaz' });
   return a;
 }
 async function zaloguj(a, uzytkownik, haslo) {
-  const r = await a.app.inject({ method: 'POST', url: '/login', headers: origin, payload: { uzytkownik, haslo, powrot: '/' } });
+  const r = await a.app.inject({
+    method: 'POST',
+    url: '/login',
+    headers: origin,
+    payload: { uzytkownik, haslo, powrot: '/' },
+  });
   expect(r.statusCode, r.body).toBe(302);
-  return [].concat(r.headers['set-cookie']).find((c) => [NAZWA_CIASTECZKA_OMS, NAZWA_CIASTECZKA_OMS_PROBA].some((n) => c.startsWith(`${n}=`))).split(';')[0];
+  return []
+    .concat(r.headers['set-cookie'])
+    .find((c) => [NAZWA_CIASTECZKA_OMS, NAZWA_CIASTECZKA_OMS_PROBA].some((n) => c.startsWith(`${n}=`)))
+    .split(';')[0];
 }
-const post = (a, url, cookie, payload) => a.app.inject({ method: 'POST', url, headers: { ...origin, cookie }, payload });
+const post = (a, url, cookie, payload) =>
+  a.app.inject({ method: 'POST', url, headers: { ...origin, cookie }, payload });
 
 describe('kontoDemo — konfiguracja', () => {
   it('bez zmiennych: brak konta demo (produkcja i piaskownica bez zmian)', () => {
@@ -43,13 +62,20 @@ describe('kontoDemo — konfiguracja', () => {
   });
   it('w trybie próby oddaje login i hasło', () => {
     // Obok loginu i hasła opis resetu dla ekranu logowania (z DEMO_RESET_CO_MIN, domyślnie 60 min).
-    expect(kontoDemo({ OMS_TRYB: 'proba', OMS_DEMO_LOGIN: LOGIN, OMS_DEMO_HASLO: HASLO })).toEqual({ login: LOGIN, haslo: HASLO, reset: 'co godzinę',
+    expect(kontoDemo({ OMS_TRYB: 'proba', OMS_DEMO_LOGIN: LOGIN, OMS_DEMO_HASLO: HASLO })).toEqual({
+      login: LOGIN,
+      haslo: HASLO,
+      reset: 'co godzinę',
       // Termin resetu instancji (DEMO_RESET_PLANOWY ustawia cykl demo) — bez zmiennej brak terminu.
-      resetPlanowy: null, resetGodzina: null });
+      resetPlanowy: null,
+      resetGodzina: null,
+    });
   });
   it('produkcja z hasłem demo ODMAWIA startu — hasło nie może stanąć na ekranie logowania firmy', () => {
     for (const tryb of [undefined, '', 'produkcja']) {
-      expect(() => kontoDemo({ OMS_TRYB: tryb, OMS_DEMO_LOGIN: LOGIN, OMS_DEMO_HASLO: HASLO }), String(tryb)).toThrow(/OMS_TRYB=proba/);
+      expect(() => kontoDemo({ OMS_TRYB: tryb, OMS_DEMO_LOGIN: LOGIN, OMS_DEMO_HASLO: HASLO }), String(tryb)).toThrow(
+        /OMS_TRYB=proba/,
+      );
       expect(() => kontoDemo({ OMS_TRYB: tryb, OMS_DEMO_LOGIN: LOGIN }), String(tryb)).toThrow(/OMS_TRYB=proba/);
     }
   });
@@ -58,7 +84,9 @@ describe('kontoDemo — konfiguracja', () => {
     expect(() => kontoDemo({ OMS_TRYB: 'proba', OMS_DEMO_HASLO: HASLO })).toThrow(/OMS_DEMO_LOGIN/);
   });
   it('kompozycja produkcji z hasłem demo nie wstaje', async () => {
-    await expect(zbudujOms({ env: { ...envProdukcja, OMS_DEMO_LOGIN: LOGIN, OMS_DEMO_HASLO: HASLO } })).rejects.toThrow(/OMS_TRYB=proba/);
+    await expect(zbudujOms({ env: { ...envProdukcja, OMS_DEMO_LOGIN: LOGIN, OMS_DEMO_HASLO: HASLO } })).rejects.toThrow(
+      /OMS_TRYB=proba/,
+    );
   });
 });
 
@@ -94,7 +122,11 @@ describe('demo publiczne — ekrany', () => {
     expect(konto.imie).toBe('Gość demo');
     // Inne konto w tej samej instancji nadal zmienia swoje hasło — blokada dotyczy wyłącznie gościa.
     const t = await zaloguj(a, 'adam', 'admin-haslo-123');
-    const ok = await post(a, '/konto/haslo', t, { obecne: 'admin-haslo-123', nowe: 'nowe-admin-123', nowe2: 'nowe-admin-123' });
+    const ok = await post(a, '/konto/haslo', t, {
+      obecne: 'admin-haslo-123',
+      nowe: 'nowe-admin-123',
+      nowe2: 'nowe-admin-123',
+    });
     expect(ok.statusCode, ok.body).toBe(302);
   });
 

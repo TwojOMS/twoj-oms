@@ -16,17 +16,27 @@ beforeEach(() => {
   }
 });
 
-const wHistorii = (dzien, brutto = '100.00', konto = 9) => zapiszHistorie(db, {
-  apiloId: `H${licznik += 1}`, platformAccountId: konto, numer: 'x', dzien,
-  utworzoneAt: `${dzien}T10:00:00.000Z`, brutto, tagi: [], faktura: 0,
-  status: 15, paymentStatus: 2, klientEmail: 'k@example.org', pozycje: [],
-});
+const wHistorii = (dzien, brutto = '100.00', konto = 9) =>
+  zapiszHistorie(db, {
+    apiloId: `H${(licznik += 1)}`,
+    platformAccountId: konto,
+    numer: 'x',
+    dzien,
+    utworzoneAt: `${dzien}T10:00:00.000Z`,
+    brutto,
+    tagi: [],
+    faktura: 0,
+    status: 15,
+    paymentStatus: 2,
+    klientEmail: 'k@example.org',
+    pozycje: [],
+  });
 
 const wOms = (utworzone, kwota = '100.00', sklep = 'swietlik') => {
   licznik += 1;
   db.prepare(
-    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at, indywidualne)'
-    + ' VALUES (?,?,?,?,?,0)',
+    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at, indywidualne)' +
+      ' VALUES (?,?,?,?,?,0)',
   ).run(sklep, licznik, `O${licznik}`, kwota, utworzone);
 };
 
@@ -37,10 +47,12 @@ const wOms = (utworzone, kwota = '100.00', sklep = 'swietlik') => {
 // nietkniety — istniejace testy dalej go uzywaja bez zmian.
 const wOmsZKlientem = (utworzone, { kwota = '100.00', sklep = 'swietlik', klient = null, pozycje = [] } = {}) => {
   licznik += 1;
-  const info = db.prepare(
-    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at, indywidualne, klient_json)'
-    + ' VALUES (?,?,?,?,?,0,?)',
-  ).run(sklep, licznik, `K${licznik}`, kwota, utworzone, klient ? JSON.stringify(klient) : null);
+  const info = db
+    .prepare(
+      'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at, indywidualne, klient_json)' +
+        ' VALUES (?,?,?,?,?,0,?)',
+    )
+    .run(sklep, licznik, `K${licznik}`, kwota, utworzone, klient ? JSON.stringify(klient) : null);
   // ⚠️ FK pozycje.zamowienie_id MUSI byc prawdziwym `zamowienia.id` (AUTOINCREMENT), nie
   // `licznik` uzytym wyzej jako zrodlo_id — to DWIE rozne liczby. Zmierzone: pierwsza wersja
   // tego pomocnika mylila je i dostawala "FOREIGN KEY constraint failed" na kazdym wierszu
@@ -54,13 +66,12 @@ const wOmsZKlientem = (utworzone, { kwota = '100.00', sklep = 'swietlik', klient
   return zamowienieId;
 };
 
-const suma = (od, doD) => sprzedazWOkresie(db, { od, do: doD })
-  .reduce((s, w) => s + w.bruttoGrosze, 0);
+const suma = (od, doD) => sprzedazWOkresie(db, { od, do: doD }).reduce((s, w) => s + w.bruttoGrosze, 0);
 
 describe('granica historia ↔ OMS', () => {
   it('NIE MA ZAKLADKI: ten sam dzien nie liczy sie z obu zrodel', () => {
     wHistorii('2026-07-02', '100.00');
-    wOms('2026-07-02 12:00:00', '100.00');       // ten sam dzien, juz w OMS-ie
+    wOms('2026-07-02 12:00:00', '100.00'); // ten sam dzien, juz w OMS-ie
     // Granica to 2026-07-02 wlacznie → liczy sie WYLACZNIE historia.
     expect(suma('2026-07-01', '2026-07-31')).toBe(10000);
   });
@@ -73,8 +84,8 @@ describe('granica historia ↔ OMS', () => {
   it('okres przecinajacy granice sumuje obie epoki dokladnie raz', () => {
     wHistorii('2026-07-01', '100.00');
     wHistorii('2026-07-02', '100.00');
-    wHistorii('2026-07-03', '100.00');           // historia PO granicy — ignorowana
-    wOms('2026-07-02 12:00:00', '100.00');       // OMS PRZED granica — ignorowany
+    wHistorii('2026-07-03', '100.00'); // historia PO granicy — ignorowana
+    wOms('2026-07-02 12:00:00', '100.00'); // OMS PRZED granica — ignorowany
     wOms('2026-07-03 12:00:00', '100.00');
     wOms('2026-07-04 12:00:00', '100.00');
     expect(suma('2026-07-01', '2026-07-31')).toBe(40000);
@@ -83,8 +94,7 @@ describe('granica historia ↔ OMS', () => {
   it('KANAL BEZ GRANICY PRZERYWA — cicha pustka wyglada jak slaby miesiac', () => {
     db.prepare("DELETE FROM granice_historii WHERE kanal = 'SWIETLIK_PL'").run();
     wOms('2026-07-10 12:00:00');
-    expect(() => sprzedazWOkresie(db, { od: '2026-07-01', do: '2026-07-31' }))
-      .toThrow(/SWIETLIK_PL/);
+    expect(() => sprzedazWOkresie(db, { od: '2026-07-01', do: '2026-07-31' })).toThrow(/SWIETLIK_PL/);
   });
 });
 
@@ -100,15 +110,21 @@ describe('strefa czasowa', () => {
 describe('netto i wykluczenia', () => {
   it('netto to brutto podzielone przez 1,23', () => {
     wOms('2026-07-10 12:00:00', '123.00');
-    expect(sprzedazWOkresie(db, { od: '2026-07-10', do: '2026-07-10' })[0].nettoGrosze)
-      .toBe(10000);
+    expect(sprzedazWOkresie(db, { od: '2026-07-10', do: '2026-07-10' })[0].nettoGrosze).toBe(10000);
   });
 
   it('WDT: Alfatrend ma stawke 0%, wiec netto = brutto', () => {
     zapiszHistorie(db, {
-      apiloId: 'WDT1', platformAccountId: 12, dzien: '2026-06-01',
-      utworzoneAt: '2026-06-01T10:00:00.000Z', brutto: '123.00', tagi: [],
-      klientEmail: 'peter.novak@alfatrend.sk', status: 15, paymentStatus: 2, pozycje: [],
+      apiloId: 'WDT1',
+      platformAccountId: 12,
+      dzien: '2026-06-01',
+      utworzoneAt: '2026-06-01T10:00:00.000Z',
+      brutto: '123.00',
+      tagi: [],
+      klientEmail: 'peter.novak@alfatrend.sk',
+      status: 15,
+      paymentStatus: 2,
+      pozycje: [],
     });
     const [w] = sprzedazWOkresie(db, { od: '2026-06-01', do: '2026-06-01' });
     expect(w.nettoGrosze).toBe(12300);
@@ -116,28 +132,54 @@ describe('netto i wykluczenia', () => {
 
   it('anulowane (21) i ZDUPLIKOWANE (18) wypadaja z sumy', () => {
     zapiszHistorie(db, {
-      apiloId: 'ANU', platformAccountId: 9, dzien: '2026-06-01',
-      utworzoneAt: '2026-06-01T10:00:00.000Z', brutto: '500.00', tagi: [],
-      status: 21, paymentStatus: 2, pozycje: [],
+      apiloId: 'ANU',
+      platformAccountId: 9,
+      dzien: '2026-06-01',
+      utworzoneAt: '2026-06-01T10:00:00.000Z',
+      brutto: '500.00',
+      tagi: [],
+      status: 21,
+      paymentStatus: 2,
+      pozycje: [],
     });
     zapiszHistorie(db, {
-      apiloId: 'DUP', platformAccountId: 9, dzien: '2026-06-01',
-      utworzoneAt: '2026-06-01T10:00:00.000Z', brutto: '500.00', tagi: [],
-      status: 18, paymentStatus: 2, pozycje: [],
+      apiloId: 'DUP',
+      platformAccountId: 9,
+      dzien: '2026-06-01',
+      utworzoneAt: '2026-06-01T10:00:00.000Z',
+      brutto: '500.00',
+      tagi: [],
+      status: 18,
+      paymentStatus: 2,
+      pozycje: [],
     });
     expect(suma('2026-06-01', '2026-06-01')).toBe(0);
   });
 
   it('zamowienia wlasne i testowe wypadaja z KAZDEGO KPI, nie tylko z kanalow', () => {
     zapiszHistorie(db, {
-      apiloId: 'W', platformAccountId: 9, dzien: '2026-06-02',
-      utworzoneAt: '2026-06-02T10:00:00.000Z', brutto: '900.00', tagi: [],
-      klientEmail: 'anna.wzorcowa@example.test', status: 15, paymentStatus: 2, pozycje: [],
+      apiloId: 'W',
+      platformAccountId: 9,
+      dzien: '2026-06-02',
+      utworzoneAt: '2026-06-02T10:00:00.000Z',
+      brutto: '900.00',
+      tagi: [],
+      klientEmail: 'anna.wzorcowa@example.test',
+      status: 15,
+      paymentStatus: 2,
+      pozycje: [],
     });
     zapiszHistorie(db, {
-      apiloId: 'T', platformAccountId: 9, dzien: '2026-06-02',
-      utworzoneAt: '2026-06-02T10:00:00.000Z', brutto: '900.00', tagi: [],
-      klientNazwa: 'Test PSM Sp z oo', status: 15, paymentStatus: 2, pozycje: [],
+      apiloId: 'T',
+      platformAccountId: 9,
+      dzien: '2026-06-02',
+      utworzoneAt: '2026-06-02T10:00:00.000Z',
+      brutto: '900.00',
+      tagi: [],
+      klientNazwa: 'Test PSM Sp z oo',
+      status: 15,
+      paymentStatus: 2,
+      pozycje: [],
     });
     expect(suma('2026-06-02', '2026-06-02')).toBe(0);
   });
@@ -145,8 +187,8 @@ describe('netto i wykluczenia', () => {
   it('anulowane RECZNIE w OMS-ie tez wypada', () => {
     licznik += 1;
     db.prepare(
-      'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at,'
-      + " anulowane_recznie, indywidualne) VALUES ('reczne',?,?,'400.00','2026-07-10 12:00:00','2026-07-11T00:00:00.000Z',0)",
+      'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at,' +
+        " anulowane_recznie, indywidualne) VALUES ('reczne',?,?,'400.00','2026-07-10 12:00:00','2026-07-11T00:00:00.000Z',0)",
     ).run(licznik, `A${licznik}`);
     expect(suma('2026-07-10', '2026-07-10')).toBe(0);
   });
@@ -190,7 +232,10 @@ describe('netto i wykluczenia', () => {
     wOmsZKlientem('2026-07-10 12:00:00', {
       kwota: '123.00',
       klient: {
-        email: 'peter.novak@alfatrend.sk', first_name: 'Peter', last_name: 'Novak', company: 'Alfatrend',
+        email: 'peter.novak@alfatrend.sk',
+        first_name: 'Peter',
+        last_name: 'Novak',
+        company: 'Alfatrend',
       },
     });
     const [w] = sprzedazWOkresie(db, { od: '2026-07-10', do: '2026-07-10' });
@@ -200,36 +245,55 @@ describe('netto i wykluczenia', () => {
   it('OMS: zamowienie z pozycjami oddaje je w polu pozycje, w groszach', () => {
     wOmsZKlientem('2026-07-10 12:00:00', {
       kwota: '246.00',
-      pozycje: [{
-        nazwa: 'Szablon A4', ilosc: 2, cena_brutto: '123.00', brutto_linii: '246.00',
-      }],
+      pozycje: [
+        {
+          nazwa: 'Szablon A4',
+          ilosc: 2,
+          cena_brutto: '123.00',
+          brutto_linii: '246.00',
+        },
+      ],
     });
     const [w] = sprzedazWOkresie(db, { od: '2026-07-10', do: '2026-07-10' });
-    expect(w.pozycje).toEqual([{
-      nazwa: 'Szablon A4', ilosc: 2, typ: 1, bruttoGrosze: 24600,
-    }]);
+    expect(w.pozycje).toEqual([
+      {
+        nazwa: 'Szablon A4',
+        ilosc: 2,
+        typ: 1,
+        bruttoGrosze: 24600,
+      },
+    ]);
   });
 });
 
 // Zamowienie ze sklepu z JEDNA pozycja i nadpisaniami w `pozycje_reczne_json`. Osobny
 // pomocnik od wOmsZKlientem, bo tamten nie zna ani `zrodlo_id` (z niego powstaje klucz
 // nadpisania), ani kolumny z nadpisaniami, ani kosztu dostawy.
-const zeSklepuZNadpisaniem = (utworzone, {
-  kwota = '100.00', pozycja = null, nadpisania = null, kosztDostawy = null,
-} = {}) => {
+const zeSklepuZNadpisaniem = (
+  utworzone,
+  { kwota = '100.00', pozycja = null, nadpisania = null, kosztDostawy = null } = {},
+) => {
   licznik += 1;
-  const info = db.prepare(
-    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at, indywidualne,'
-    + ' pozycje_reczne_json, koszt_dostawy_brutto) VALUES (?,?,?,?,?,0,?,?)',
-  ).run('swietlik', licznik, `N${licznik}`, kwota, utworzone,
-    nadpisania ? JSON.stringify(nadpisania) : null, kosztDostawy);
+  const info = db
+    .prepare(
+      'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at, indywidualne,' +
+        ' pozycje_reczne_json, koszt_dostawy_brutto) VALUES (?,?,?,?,?,0,?,?)',
+    )
+    .run(
+      'swietlik',
+      licznik,
+      `N${licznik}`,
+      kwota,
+      utworzone,
+      nadpisania ? JSON.stringify(nadpisania) : null,
+      kosztDostawy,
+    );
   const zamowienieId = Number(info.lastInsertRowid);
   if (pozycja) {
     db.prepare(
-      'INSERT INTO pozycje (zamowienie_id, zrodlo_id, nazwa, ilosc, cena_brutto, brutto_linii, zrodlo)'
-      + " VALUES (?,?,?,?,?,?,'sklep')",
-    ).run(zamowienieId, pozycja.zrodlo_id, pozycja.nazwa, pozycja.ilosc,
-      pozycja.cena_brutto, pozycja.brutto_linii);
+      'INSERT INTO pozycje (zamowienie_id, zrodlo_id, nazwa, ilosc, cena_brutto, brutto_linii, zrodlo)' +
+        " VALUES (?,?,?,?,?,?,'sklep')",
+    ).run(zamowienieId, pozycja.zrodlo_id, pozycja.nazwa, pozycja.ilosc, pozycja.cena_brutto, pozycja.brutto_linii);
   }
   return zamowienieId;
 };
@@ -263,7 +327,11 @@ describe('raport liczy zamówienie tak samo jak faktura', () => {
     zeSklepuZNadpisaniem('2026-08-03 12:00:00', {
       kwota: '100.00',
       pozycja: {
-        zrodlo_id: 501, nazwa: 'Szablon', ilosc: 1, cena_brutto: '100.00', brutto_linii: '100.00',
+        zrodlo_id: 501,
+        nazwa: 'Szablon',
+        ilosc: 1,
+        cena_brutto: '100.00',
+        brutto_linii: '100.00',
       },
       nadpisania: { s501: { cena_brutto: '150.00' } },
     });
@@ -279,7 +347,11 @@ describe('raport liczy zamówienie tak samo jak faktura', () => {
       kwota: '119.00',
       kosztDostawy: '19.00',
       pozycja: {
-        zrodlo_id: 502, nazwa: 'Szablon', ilosc: 1, cena_brutto: '100.00', brutto_linii: '100.00',
+        zrodlo_id: 502,
+        nazwa: 'Szablon',
+        ilosc: 1,
+        cena_brutto: '100.00',
+        brutto_linii: '100.00',
       },
       nadpisania: { wysylka: { ilosc: 2 } },
     });
@@ -294,9 +366,15 @@ describe('raport liczy zamówienie tak samo jak faktura', () => {
     wOmsZKlientem('2026-08-03 12:00:00', {
       kwota: '500.00',
       sklep: 'reczne',
-      pozycje: [{
-        nazwa: 'Szablon', ilosc: 1, cena_brutto: '500.00', brutto_linii: '500.00', zrodlo: 'reczna',
-      }],
+      pozycje: [
+        {
+          nazwa: 'Szablon',
+          ilosc: 1,
+          cena_brutto: '500.00',
+          brutto_linii: '500.00',
+          zrodlo: 'reczna',
+        },
+      ],
     });
     expect(suma('2026-08-03', '2026-08-03')).toBe(50000);
   });
@@ -313,14 +391,23 @@ describe('raport liczy zamówienie tak samo jak faktura', () => {
     zeSklepuZNadpisaniem('2026-08-03 12:00:00', {
       kwota: '100.00',
       pozycja: {
-        zrodlo_id: 503, nazwa: 'Szablon', ilosc: 1, cena_brutto: '100.00', brutto_linii: '100.00',
+        zrodlo_id: 503,
+        nazwa: 'Szablon',
+        ilosc: 1,
+        cena_brutto: '100.00',
+        brutto_linii: '100.00',
       },
       nadpisania: { s503: { cena_brutto: '150.00' } },
     });
     const [w] = sprzedazWOkresie(db, { od: '2026-08-03', do: '2026-08-03' });
-    expect(w.pozycje).toEqual([{
-      nazwa: 'Szablon', ilosc: 1, typ: 1, bruttoGrosze: 15000,
-    }]);
+    expect(w.pozycje).toEqual([
+      {
+        nazwa: 'Szablon',
+        ilosc: 1,
+        typ: 1,
+        bruttoGrosze: 15000,
+      },
+    ]);
   });
 
   // Usunięta pozycja ze sklepu znika z faktury, więc i z raportu: kwota
@@ -329,13 +416,17 @@ describe('raport liczy zamówienie tak samo jak faktura', () => {
     const id = zeSklepuZNadpisaniem('2026-08-03 12:00:00', {
       kwota: '145.00',
       pozycja: {
-        zrodlo_id: 504, nazwa: 'Szablon', ilosc: 1, cena_brutto: '100.00', brutto_linii: '100.00',
+        zrodlo_id: 504,
+        nazwa: 'Szablon',
+        ilosc: 1,
+        cena_brutto: '100.00',
+        brutto_linii: '100.00',
       },
       nadpisania: { s505: { usunieta: true } },
     });
     db.prepare(
-      'INSERT INTO pozycje (zamowienie_id, zrodlo_id, nazwa, ilosc, cena_brutto, brutto_linii, zrodlo)'
-      + " VALUES (?,?,?,?,?,?,'sklep')",
+      'INSERT INTO pozycje (zamowienie_id, zrodlo_id, nazwa, ilosc, cena_brutto, brutto_linii, zrodlo)' +
+        " VALUES (?,?,?,?,?,?,'sklep')",
     ).run(id, 505, 'Pędzel', 1, '45.00', '45.00');
     const [w] = sprzedazWOkresie(db, { od: '2026-08-03', do: '2026-08-03' });
     expect(w.bruttoGrosze).toBe(10000);

@@ -4,18 +4,25 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { createAllegroClient, LIMIT_STRONY_OFERT } from '../../src/oms/allegro/client.js';
 
-const dok = (nazwa) => JSON.parse(readFileSync(new URL(`../fixtures/allegro/e3-dok-${nazwa}.json`, import.meta.url), 'utf8'));
+const dok = (nazwa) =>
+  JSON.parse(readFileSync(new URL(`../fixtures/allegro/e3-dok-${nazwa}.json`, import.meta.url), 'utf8'));
 const OFERTA = dok('oferta');
 const SL = dok('slowniki');
 
-const ustawienia = { api: 'https://api.allegro.pl.allegrosandbox.pl', userAgent: 'OMS-polcien/1.0.0 (+https://polcien.example.test/oms/)' };
+const ustawienia = {
+  api: 'https://api.allegro.pl.allegrosandbox.pl',
+  userAgent: 'OMS-polcien/1.0.0 (+https://polcien.example.test/oms/)',
+};
 const tokeny = { waznyToken: async () => 'TOKEN-TAJNY' };
 
 const odp = ({ status = 200, cialo = {}, naglowki = {} } = {}) => ({
   ok: status >= 200 && status < 300,
   status,
   headers: { get: (n) => naglowki[Object.keys(naglowki).find((k) => k.toLowerCase() === n.toLowerCase())] ?? null },
-  json: async () => { if (cialo === null) throw new SyntaxError('puste — brak ciała'); return cialo; },
+  json: async () => {
+    if (cialo === null) throw new SyntaxError('puste — brak ciała');
+    return cialo;
+  },
 });
 
 function klient(odpowiadaj) {
@@ -26,7 +33,10 @@ function klient(odpowiadaj) {
   };
   return { k: createAllegroClient({ ustawienia, tokeny, fetchImpl }), wolania };
 }
-const sciezka = (url) => { const u = new URL(url); return u.pathname; };
+const sciezka = (url) => {
+  const u = new URL(url);
+  return u.pathname;
+};
 const zapytanie = (url) => new URL(url).searchParams;
 
 describe('utworzOferte / edytujOferte', () => {
@@ -39,7 +49,13 @@ describe('utworzOferte / edytujOferte', () => {
     expect(JSON.parse(wolania[0].opcje.body)).toEqual(OFERTA.zadanie);
     expect(wolania[0].opcje.headers['Content-Type']).toBe('application/vnd.allegro.public.v1+json');
     expect(wolania[0].opcje.signal).toBeInstanceOf(AbortSignal);
-    expect(w).toEqual({ status: 201, ofertaId: '17000000000101', operacja: null, retryAfterS: null, dane: OFERTA.odpowiedz201 });
+    expect(w).toEqual({
+      status: 201,
+      ofertaId: '17000000000101',
+      operacja: null,
+      retryAfterS: null,
+      dane: OFERTA.odpowiedz201,
+    });
   });
 
   it('202 daje ofertaId i adres operacji z nagłówka location oraz retry-after', async () => {
@@ -60,7 +76,9 @@ describe('utworzOferte / edytujOferte', () => {
   });
 
   it('błąd HTTP idzie przez bladHttp — z kodem i bez tokenu w komunikacie', async () => {
-    const { k } = klient(odp({ status: 422, cialo: { errors: [{ code: 'PARAMETER_MISMATCH', message: 'zły TOKEN-TAJNY' }] } }));
+    const { k } = klient(
+      odp({ status: 422, cialo: { errors: [{ code: 'PARAMETER_MISMATCH', message: 'zły TOKEN-TAJNY' }] } }),
+    );
     const e = await k.utworzOferte(OFERTA.zadanie).catch((x) => x);
     expect(e.status).toBe(422);
     expect(e.message).toContain('HTTP 422 przy /sale/product-offers');
@@ -79,7 +97,11 @@ describe('utworzOferte / edytujOferte', () => {
     expect(wolania[0].opcje.method).toBe('PATCH');
     expect(sciezka(wolania[0].url)).toBe('/sale/product-offers/17000000000102');
     expect(JSON.parse(wolania[0].opcje.body)).toEqual({ publication: { status: 'ACTIVE' } });
-    expect(w).toMatchObject({ status: 202, ofertaId: '17000000000102', operacja: OFERTA.odpowiedz202.naglowki.location });
+    expect(w).toMatchObject({
+      status: 202,
+      ofertaId: '17000000000102',
+      operacja: OFERTA.odpowiedz202.naglowki.location,
+    });
   });
 });
 
@@ -98,7 +120,12 @@ describe('stanOperacji', () => {
   it('303 nie rzuca: gotowe + location oferty', async () => {
     const { k } = klient(odp({ status: 303, cialo: null, naglowki: OFERTA.operacja303.naglowki }));
     const w = await k.stanOperacji(adres);
-    expect(w).toMatchObject({ status: 303, wToku: false, gotowe: true, location: '/sale/product-offers/17000000000102' });
+    expect(w).toMatchObject({
+      status: 303,
+      wToku: false,
+      gotowe: true,
+      location: '/sale/product-offers/17000000000102',
+    });
   });
 
   it('przyjmuje pełny adres na tym samym hoście; obcego hosta i obcej ścieżki nie dotyka (token)', async () => {
@@ -135,11 +162,30 @@ describe('ofertyPoSygnaturze', () => {
   });
 
   it('błąd HTTP niesie kody i metadata z errors (PARAMETER_MISMATCH), bez tokenu', async () => {
-    const { k } = klient(odp({ status: 422, cialo: { errors: [{ code: 'PARAMETER_MISMATCH', message: 'Wartość różni się od produktu',
-      metadata: { productId: 'prod-77', parameterId: '224017', echo: 'Bearer TOKEN-TAJNY', zagniezdzone: { a: 1 } } }] } }));
+    const { k } = klient(
+      odp({
+        status: 422,
+        cialo: {
+          errors: [
+            {
+              code: 'PARAMETER_MISMATCH',
+              message: 'Wartość różni się od produktu',
+              metadata: {
+                productId: 'prod-77',
+                parameterId: '224017',
+                echo: 'Bearer TOKEN-TAJNY',
+                zagniezdzone: { a: 1 },
+              },
+            },
+          ],
+        },
+      }),
+    );
     const e = await k.utworzOferte(OFERTA.zadanie).catch((b) => b);
     expect(e.status).toBe(422);
-    expect(e.bledy).toEqual([{ kod: 'PARAMETER_MISMATCH', metadata: { productId: 'prod-77', parameterId: '224017', echo: '[ukryto]' } }]);
+    expect(e.bledy).toEqual([
+      { kod: 'PARAMETER_MISMATCH', metadata: { productId: 'prod-77', parameterId: '224017', echo: '[ukryto]' } },
+    ]);
     expect(JSON.stringify(e.bledy)).not.toContain('TOKEN-TAJNY');
   });
 
@@ -152,7 +198,10 @@ describe('ofertyPoSygnaturze', () => {
 });
 
 describe('ofertyKonta', () => {
-  const strona = (n, od, total) => ({ offers: Array.from({ length: n }, (_, i) => ({ id: String(od + i) })), totalCount: total });
+  const strona = (n, od, total) => ({
+    offers: Array.from({ length: n }, (_, i) => ({ id: String(od + i) })),
+    totalCount: total,
+  });
 
   // E3.30 (P19): strona 1000 — testy liczą od stałej, żeby sprawdzały stronicowanie, nie jedną liczbę.
   const L = LIMIT_STRONY_OFERT;
@@ -258,15 +307,24 @@ describe('produkty i zdjęcia', () => {
 
   it('wgrajZdjecie: host API bez „api.” → odmowa (bez zgadywania hosta)', async () => {
     const wolania = [];
-    const k = createAllegroClient({ ustawienia: { ...ustawienia, api: 'https://allegro.example.test' }, tokeny,
-      fetchImpl: async (url) => { wolania.push(url); return odp(); } });
+    const k = createAllegroClient({
+      ustawienia: { ...ustawienia, api: 'https://allegro.example.test' },
+      tokeny,
+      fetchImpl: async (url) => {
+        wolania.push(url);
+        return odp();
+      },
+    });
     await expect(k.wgrajZdjecie(Buffer.from([1]), 'image/png')).rejects.toThrow();
     expect(wolania).toHaveLength(0);
   });
 });
 
 describe('komendy ilości i ceny', () => {
-  const POZ = [{ ofertaId: '17000000000101', ilosc: 4 }, { ofertaId: '17000000000103', ilosc: 4 }];
+  const POZ = [
+    { ofertaId: '17000000000101', ilosc: 4 },
+    { ofertaId: '17000000000103', ilosc: 4 },
+  ];
 
   it('komendaIlosci → PUT /sale/offer-quantity-change-commands/{commandId}, ciało z dokumentacji', async () => {
     const { k, wolania } = klient(odp({ status: 201, cialo: { id: 'c1' } }));
@@ -288,7 +346,12 @@ describe('komendy ilości i ceny', () => {
     const { k, wolania } = klient(odp({ status: 201 }));
     await expect(k.komendaIlosci('', POZ)).rejects.toThrow(/commandId/);
     await expect(k.komendaIlosci('c', [])).rejects.toThrow();
-    await expect(k.komendaIlosci('c', [{ ofertaId: '1', ilosc: 1 }, { ofertaId: '2', ilosc: 2 }])).rejects.toThrow();
+    await expect(
+      k.komendaIlosci('c', [
+        { ofertaId: '1', ilosc: 1 },
+        { ofertaId: '2', ilosc: 2 },
+      ]),
+    ).rejects.toThrow();
     await expect(k.komendaIlosci('c', [{ ofertaId: '1', ilosc: -1 }])).rejects.toThrow();
     await expect(k.komendaCeny('c', [{ ofertaId: '1', cena: 18990 }])).rejects.toThrow();
     await expect(k.komendaCeny('c', [{ ofertaId: '1', cena: '189.9' }])).rejects.toThrow();
@@ -349,12 +412,17 @@ describe('słowniki konta i opłaty', () => {
     expect(await k.podgladOplat(OFERTA.zadanie)).toEqual(SL.podgladOplat);
     expect(wolania[0].opcje.method).toBe('POST');
     expect(sciezka(wolania[0].url)).toBe('/pricing/offer-fee-preview');
-    expect(JSON.parse(wolania[0].opcje.body)).toEqual({ offer: { publication: {}, parameters: [], ...OFERTA.zadanie } });
+    expect(JSON.parse(wolania[0].opcje.body)).toEqual({
+      offer: { publication: {}, parameters: [], ...OFERTA.zadanie },
+    });
   });
 
   it('podgladOplat bez publication/parameters dosyła puste (sandbox: bez nich 422)', async () => {
     const { k, wolania } = klient(odp({ cialo: SL.podgladOplat }));
-    const oferta = { category: { id: '257' }, sellingMode: { format: 'BUY_NOW', price: { amount: '49.00', currency: 'PLN' } } };
+    const oferta = {
+      category: { id: '257' },
+      sellingMode: { format: 'BUY_NOW', price: { amount: '49.00', currency: 'PLN' } },
+    };
     await k.podgladOplat(oferta);
     expect(JSON.parse(wolania[0].opcje.body)).toEqual({ offer: { ...oferta, publication: {}, parameters: [] } });
     const wlasne = { ...oferta, publication: { duration: 'PT240H' }, parameters: [{ id: '11323', values: ['Nowy'] }] };
@@ -370,12 +438,37 @@ describe('słowniki konta i opłaty', () => {
   });
 
   it('każde nowe wywołanie ma limit czasu (signal) i User-Agent', async () => {
-    const { k, wolania } = klient(odp({ cialo: { ...SL.cenniki, ...SL.zwroty, ...SL.reklamacje, ...SL.gwarancje, ...SL.producenci,
-      ...SL.osoby, ...SL.kategorie, ...SL.produkty, offers: [], totalCount: 0, tasks: [] } }));
-    await k.pobierzCenniki(); await k.pobierzZwroty(); await k.pobierzReklamacje(); await k.pobierzGwarancje();
-    await k.pobierzProducentow(); await k.pobierzOsobyOdpowiedzialne(); await k.ustawieniaPodatku('1');
-    await k.dopasujKategorie('x'); await k.podgladOplat({}); await k.oplatyOferty('1'); await k.szukajProduktow('5909990000014');
-    await k.ofertyKonta(); await k.ofertyPoSygnaturze('x'); await k.wynikKomendy('ilosc', 'c');
+    const { k, wolania } = klient(
+      odp({
+        cialo: {
+          ...SL.cenniki,
+          ...SL.zwroty,
+          ...SL.reklamacje,
+          ...SL.gwarancje,
+          ...SL.producenci,
+          ...SL.osoby,
+          ...SL.kategorie,
+          ...SL.produkty,
+          offers: [],
+          totalCount: 0,
+          tasks: [],
+        },
+      }),
+    );
+    await k.pobierzCenniki();
+    await k.pobierzZwroty();
+    await k.pobierzReklamacje();
+    await k.pobierzGwarancje();
+    await k.pobierzProducentow();
+    await k.pobierzOsobyOdpowiedzialne();
+    await k.ustawieniaPodatku('1');
+    await k.dopasujKategorie('x');
+    await k.podgladOplat({});
+    await k.oplatyOferty('1');
+    await k.szukajProduktow('5909990000014');
+    await k.ofertyKonta();
+    await k.ofertyPoSygnaturze('x');
+    await k.wynikKomendy('ilosc', 'c');
     for (const w of wolania) {
       expect(w.opcje.signal).toBeInstanceOf(AbortSignal);
       expect(w.opcje.headers['User-Agent']).toBe(ustawienia.userAgent);

@@ -28,9 +28,7 @@ export function rozstrzygnij({ dokument, wiersz }) {
   return wiersz.odcisk === odciskDokumentu(dokument) ? 'bez_zmian' : 'zmieniony';
 }
 
-export const rodzajDokumentu = (dok) => (
-  (dok?.kind === 'correction' || dok?.rodzaj === 'korekta') ? 'korekta' : 'vat'
-);
+export const rodzajDokumentu = (dok) => (dok?.kind === 'correction' || dok?.rodzaj === 'korekta' ? 'korekta' : 'vat');
 
 const przesunMiesiac = (rrrrMm, oIle) => {
   const [r, m] = rrrrMm.split('-').map(Number);

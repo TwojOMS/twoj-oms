@@ -1,8 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import {
-  mkdtempSync, writeFileSync, rmSync, existsSync, readFileSync,
-} from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { zbudujOswiadczenieWywozuPdf } from '../../../src/moduly/faktury/pdf/oswiadczenie-wywozu-pdf.js';
@@ -46,22 +44,33 @@ function tekstZPdf(bajty) {
 }
 
 const SPRZEDAWCA = {
-  nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'Przykładowa 1', kod: '00-950', miasto: 'Warszawa', nip: '1234563218',
+  nazwa: 'Pracownia Półcień Anna Wzorcowa',
+  ulica: 'Przykładowa 1',
+  kod: '00-950',
+  miasto: 'Warszawa',
+  nip: '1234563218',
 };
 
-const model = (nad = {}) => modelOswiadczenia({
-  numer: 'R/2026/031',
-  nip: 'SK1000000001',
-  klient: {
-    company: 'Alfatrend s.r.o.', address_1: '1. mája 1', postcode: '01001', city: 'Žilina',
-  },
-  faktura: { numer: 'WDT/1/08/2026' },
-  pozycje: [
-    { nazwa: 'Lampa stołowa Kałamarz 30x45cm', ilosc: 2 },
-    { nazwa: 'Kurier DPD', ilosc: 1 },
-  ],
-  ...nad,
-}, { sprzedawca: SPRZEDAWCA, dzis: '2026-08-26' });
+const model = (nad = {}) =>
+  modelOswiadczenia(
+    {
+      numer: 'R/2026/031',
+      nip: 'SK1000000001',
+      klient: {
+        company: 'Alfatrend s.r.o.',
+        address_1: '1. mája 1',
+        postcode: '01001',
+        city: 'Žilina',
+      },
+      faktura: { numer: 'WDT/1/08/2026' },
+      pozycje: [
+        { nazwa: 'Lampa stołowa Kałamarz 30x45cm', ilosc: 2 },
+        { nazwa: 'Kurier DPD', ilosc: 1 },
+      ],
+      ...nad,
+    },
+    { sprzedawca: SPRZEDAWCA, dzis: '2026-08-26' },
+  );
 
 describe('zbudujOswiadczenieWywozuPdf', () => {
   it('oddaje poprawny PDF', () => {
@@ -88,7 +97,10 @@ describe('zbudujOswiadczenieWywozuPdf', () => {
   });
 
   it.skipIf(!PDFTOTEXT)('długa tabela łamie się na strony, a każda strona ma stopkę z numerem zamówienia', () => {
-    const duzo = Array.from({ length: 45 }, (_, i) => ({ nazwa: `Lampa stołowa model ${i + 1} — 30x45cm`, ilosc: i + 1 }));
+    const duzo = Array.from({ length: 45 }, (_, i) => ({
+      nazwa: `Lampa stołowa model ${i + 1} — 30x45cm`,
+      ilosc: i + 1,
+    }));
     const tekst = tekstZPdf(zbudujOswiadczenieWywozuPdf(model({ pozycje: duzo })));
     const strony = tekst.split('\f').filter((s) => s.trim() !== '');
     expect(strony.length).toBeGreaterThan(1);

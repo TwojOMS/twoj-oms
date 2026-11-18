@@ -10,14 +10,24 @@ describe('tryb próby a Fakturownia', () => {
   });
 
   it('proba.env z tokenem i domeną Fakturowni → odmowa startu, bez wartości w komunikacie', () => {
-    const start = () => sprawdzTrybProby({ OMS_TRYB: 'proba', FAKTUROWNIA_API_TOKEN: 'zmyslony-token-polcien', FAKTUROWNIA_DOMENA: 'pracownia-polcien' }, []);
+    const start = () =>
+      sprawdzTrybProby(
+        { OMS_TRYB: 'proba', FAKTUROWNIA_API_TOKEN: 'zmyslony-token-polcien', FAKTUROWNIA_DOMENA: 'pracownia-polcien' },
+        [],
+      );
     expect(start).toThrow(/FAKTUROWNIA_API_TOKEN[\s\S]*FAKTUROWNIA_DOMENA/);
     expect(start).not.toThrow(/zmyslony-token-polcien|pracownia-polcien/);
   });
 
   it('każda z dwóch zmiennych osobno też blokuje; produkcja przechodzi', () => {
-    expect(() => sprawdzTrybProby({ OMS_TRYB: 'proba', FAKTUROWNIA_API_TOKEN: 'x' }, [])).toThrow('FAKTUROWNIA_API_TOKEN');
-    expect(() => sprawdzTrybProby({ OMS_TRYB: 'proba', FAKTUROWNIA_DOMENA: 'pracownia-polcien' }, [])).toThrow('FAKTUROWNIA_DOMENA');
-    expect(() => sprawdzTrybProby({ FAKTUROWNIA_API_TOKEN: 'x', FAKTUROWNIA_DOMENA: 'pracownia-polcien' }, [])).not.toThrow();
+    expect(() => sprawdzTrybProby({ OMS_TRYB: 'proba', FAKTUROWNIA_API_TOKEN: 'x' }, [])).toThrow(
+      'FAKTUROWNIA_API_TOKEN',
+    );
+    expect(() => sprawdzTrybProby({ OMS_TRYB: 'proba', FAKTUROWNIA_DOMENA: 'pracownia-polcien' }, [])).toThrow(
+      'FAKTUROWNIA_DOMENA',
+    );
+    expect(() =>
+      sprawdzTrybProby({ FAKTUROWNIA_API_TOKEN: 'x', FAKTUROWNIA_DOMENA: 'pracownia-polcien' }, []),
+    ).not.toThrow();
   });
 });

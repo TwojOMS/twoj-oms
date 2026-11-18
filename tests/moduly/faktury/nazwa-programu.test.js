@@ -73,30 +73,75 @@ export function wpisMigawki(html) {
   const doKonca = n.indexOf('</main>');
   if (od < 0 || doKonca < od) return { glowna: n, reszta: null };
   const glowna = n.slice(od, doKonca + '</main>'.length);
-  const reszta = createHash('sha256').update(n.slice(0, od) + '<main/>' + n.slice(doKonca + '</main>'.length)).digest('hex');
+  const reszta = createHash('sha256')
+    .update(n.slice(0, od) + '<main/>' + n.slice(doKonca + '</main>'.length))
+    .digest('hex');
   return { glowna, reszta };
 }
 
 export function envTestu(katalog, { zKluczem = true, proba = false } = {}) {
   return {
-    OMS_USER: 'operator', OMS_PASS: 'fixture', OMS_SPRZEDAWCA_NIP: '1234563218',
-    OMS_RACHUNEK: '34109010140000000000000000', OMS_PROFORMY_KATALOG: katalog, OMS_ETYKIETY_KATALOG: katalog,
+    OMS_USER: 'operator',
+    OMS_PASS: 'fixture',
+    OMS_SPRZEDAWCA_NIP: '1234563218',
+    OMS_RACHUNEK: '34109010140000000000000000',
+    OMS_PROFORMY_KATALOG: katalog,
+    OMS_ETYKIETY_KATALOG: katalog,
     ...(zKluczem ? { INFAKT_API_KEY: KLUCZ, INFAKT_ARCHIWUM: join(katalog, 'archiwum') } : {}),
     ...(proba ? { OMS_TRYB: 'proba' } : {}),
   };
 }
 
 const zamowienie = (numer, nad = {}) => ({
-  zrodlo_id: Number(numer.replace(/\D/g, '')), numer,
-  klient: { company: 'Pracownia Półcień sp. z o.o.', email: 'biuro@polcien.invalid', phone: '+48500100200',
-    address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
-  dostawa: { first_name: 'Anna', last_name: 'Półcień', address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, pobranie: 0, chce_fakture: 1, nip: NIP_PRACOWNI,
-  kwota_brutto: '357.00', koszt_dostawy_brutto: '15.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
+  zrodlo_id: Number(numer.replace(/\D/g, '')),
+  numer,
+  klient: {
+    company: 'Pracownia Półcień sp. z o.o.',
+    email: 'biuro@polcien.invalid',
+    phone: '+48500100200',
+    address_1: 'Lampowa 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
+  },
+  dostawa: {
+    first_name: 'Anna',
+    last_name: 'Półcień',
+    address_1: 'Lampowa 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
+  },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  pobranie: 0,
+  chce_fakture: 1,
+  nip: NIP_PRACOWNI,
+  kwota_brutto: '357.00',
+  koszt_dostawy_brutto: '15.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
   utworzone_at: '2026-10-10T09:00:00Z',
   pozycje: [
-    { zrodlo_id: 11, nazwa: 'Lampa wisząca Półcień', sku: 'LAMPA-W1', ilosc: 2, cena_brutto: '129.00', brutto_linii: '258.00', vat: null },
-    { zrodlo_id: 12, nazwa: 'Klosz lniany', sku: 'KLOSZ-L', ilosc: 1, cena_brutto: '84.00', brutto_linii: '84.00', vat: null },
+    {
+      zrodlo_id: 11,
+      nazwa: 'Lampa wisząca Półcień',
+      sku: 'LAMPA-W1',
+      ilosc: 2,
+      cena_brutto: '129.00',
+      brutto_linii: '258.00',
+      vat: null,
+    },
+    {
+      zrodlo_id: 12,
+      nazwa: 'Klosz lniany',
+      sku: 'KLOSZ-L',
+      ilosc: 1,
+      cena_brutto: '84.00',
+      brutto_linii: '84.00',
+      vat: null,
+    },
   ],
   ...nad,
 });
@@ -111,8 +156,15 @@ export async function ekranyZProgramem(a, { awaria }) {
   // Komputer z drukarką faktur zgłoszony — „Drukuj” na karcie czynny, jak we wzorcu migawki.
   zapiszZgloszenie(db, 'BIURO-1', new Date());
   const ekrany = {};
-  const http = (metoda, url, pola) => a.app.inject({ method: metoda, url, headers: metoda === 'GET' ? AUTH : POST,
-    ...(metoda === 'GET' ? {} : { payload: typeof pola === 'string' ? pola : new URLSearchParams(pola ?? {}).toString() }) });
+  const http = (metoda, url, pola) =>
+    a.app.inject({
+      method: metoda,
+      url,
+      headers: metoda === 'GET' ? AUTH : POST,
+      ...(metoda === 'GET'
+        ? {}
+        : { payload: typeof pola === 'string' ? pola : new URLSearchParams(pola ?? {}).toString() }),
+    });
   const oczekuj = (r, kod, co) => expect(r.statusCode, `${co}: ${r.body.slice(0, 400)}`).toBe(kod);
   const ekran = async (nazwa, metoda, url, pola) => {
     const r = await http(metoda, url, pola);
@@ -122,28 +174,50 @@ export async function ekranyZProgramem(a, { awaria }) {
 
   // ── faktura krajowa przedpłacona i za pobraniem; karta z fakturą i bez
   const z1 = zapiszZamowienie(db, 'reczne', zamowienie('PC-101'), {});
-  oczekuj(await http('POST', `/zamowienia/${z1}/platnosci`, { kwota: '357,00', data: '2026-10-12', metoda: 'Przelew' }), 302, 'wpłata');
-  oczekuj(await http('POST', `/zamowienia/${z1}/faktura`, { termin: 'zaplacone', data_wystawienia: '', data_sprzedazy: '' }), 302, 'faktura z1');
+  oczekuj(
+    await http('POST', `/zamowienia/${z1}/platnosci`, { kwota: '357,00', data: '2026-10-12', metoda: 'Przelew' }),
+    302,
+    'wpłata',
+  );
+  oczekuj(
+    await http('POST', `/zamowienia/${z1}/faktura`, { termin: 'zaplacone', data_wystawienia: '', data_sprzedazy: '' }),
+    302,
+    'faktura z1',
+  );
   // Jedyna faktura jest zapłacona — pas nieopłaconych mówi „Nikt nie zalega…”.
   await ekran('FAKTURY — nikt nie zalega', 'GET', '/faktury?miesiac=2026-10');
-  const z2 =zapiszZamowienie(db, 'reczne', zamowienie('PC-102', { pobranie: 1, kwota_pobrania: '357.00' }), {});
+  const z2 = zapiszZamowienie(db, 'reczne', zamowienie('PC-102', { pobranie: 1, kwota_pobrania: '357.00' }), {});
   oczekuj(await http('POST', `/zamowienia/${z2}/faktura`, {}), 302, 'faktura z2');
   await ekran('karta z fakturą', 'GET', `/zamowienia/${z1}`);
   const z3 = zapiszZamowienie(db, 'reczne', zamowienie('PC-103'), {});
   // Za pobraniem — hurt wystawi ją „przy odbiorze” (PC-103 bez wpłaty zostaje pominięte: obie listy na ekranie).
-  const z4 = zapiszZamowienie(db, 'reczne', zamowienie('PC-104', { nip: null, pobranie: 1, kwota_pobrania: '357.00' }), {});
+  const z4 = zapiszZamowienie(
+    db,
+    'reczne',
+    zamowienie('PC-104', { nip: null, pobranie: 1, kwota_pobrania: '357.00' }),
+    {},
+  );
   await ekran('karta bez faktury', 'GET', `/zamowienia/${z3}`);
 
   // ── faktury hurtem: podgląd (nic jeszcze nie idzie do programu)
-  await ekran('faktury hurtem — podgląd', 'POST', '/zamowienia/faktury-hurtem/podglad',
-    new URLSearchParams([['id', String(z3)], ['id', String(z4)]]).toString());
+  await ekran(
+    'faktury hurtem — podgląd',
+    'POST',
+    '/zamowienia/faktury-hurtem/podglad',
+    new URLSearchParams([
+      ['id', String(z3)],
+      ['id', String(z4)],
+    ]).toString(),
+  );
 
   // ── okres rozliczeniowy: przed fakturą, po fakturze, karta zamówienia w okresie
   dopiszKlientaZbiorczego(db, { klucz: 'polcien', nazwa: 'Pracownia Półcień sp. z o.o.', nip: NIP_PRACOWNI });
   const z5a = zapiszZamowienie(db, 'reczne', zamowienie('PC-105'), {});
   const z5b = zapiszZamowienie(db, 'reczne', zamowienie('PC-106', { utworzone_at: '2026-10-11T09:00:00Z' }), {});
   for (const id of [z5a, z5b]) oczekuj(await http('POST', `/zamowienia/${id}/okres`, {}), 302, `okres ${id}`);
-  const { okres_rozliczeniowy_id: okresId } = db.prepare('SELECT okres_rozliczeniowy_id FROM zamowienia WHERE id = ?').get(z5a);
+  const { okres_rozliczeniowy_id: okresId } = db
+    .prepare('SELECT okres_rozliczeniowy_id FROM zamowienia WHERE id = ?')
+    .get(z5a);
   await ekran('okres przed fakturą', 'GET', `/okresy/${okresId}`);
   await ekran('karta w okresie przed fakturą', 'GET', `/zamowienia/${z5a}`);
   oczekuj(await http('POST', `/okresy/${okresId}/wystaw-fakture`, {}), 302, 'faktura okresu');
@@ -154,39 +228,72 @@ export async function ekranyZProgramem(a, { awaria }) {
   dodajWplateOkresu(db, okresId, { kwota: '714.00', data: '2026-10-14', metoda: 'Przelew', uwaga: null });
   await ekran('okres — saldo wbrew fakturze', 'GET', `/okresy/${okresId}`);
   // Okresy z fakturą do wyjaśnienia i zawieszoną (stan, który zostawia przerwane wystawianie).
-  const okresWyj = Number(db.prepare(`INSERT INTO okresy_rozliczeniowe (klient_klucz, rok, miesiac, stan, ksef_status, blad_opis, utworzona_at, utworzony_at)
-    VALUES ('polcien', 2026, 8, 'zamkniety', 'do_wyjasnienia', 'zerwane połączenie', '2026-09-01T08:00:00.000Z', '2026-08-01T08:00:00.000Z')`).run().lastInsertRowid);
-  const okresZaw = Number(db.prepare(`INSERT INTO okresy_rozliczeniowe (klient_klucz, rok, miesiac, stan, ksef_status, utworzona_at, utworzony_at)
-    VALUES ('polcien', 2026, 7, 'zamkniety', 'w_toku', '2026-08-01T08:00:00.000Z', '2026-07-01T08:00:00.000Z')`).run().lastInsertRowid);
+  const okresWyj = Number(
+    db
+      .prepare(
+        `INSERT INTO okresy_rozliczeniowe (klient_klucz, rok, miesiac, stan, ksef_status, blad_opis, utworzona_at, utworzony_at)
+    VALUES ('polcien', 2026, 8, 'zamkniety', 'do_wyjasnienia', 'zerwane połączenie', '2026-09-01T08:00:00.000Z', '2026-08-01T08:00:00.000Z')`,
+      )
+      .run().lastInsertRowid,
+  );
+  const okresZaw = Number(
+    db
+      .prepare(
+        `INSERT INTO okresy_rozliczeniowe (klient_klucz, rok, miesiac, stan, ksef_status, utworzona_at, utworzony_at)
+    VALUES ('polcien', 2026, 7, 'zamkniety', 'w_toku', '2026-08-01T08:00:00.000Z', '2026-07-01T08:00:00.000Z')`,
+      )
+      .run().lastInsertRowid,
+  );
   await ekran('okres — faktura do wyjaśnienia', 'GET', `/okresy/${okresWyj}`);
   await ekran('okres — faktura zawieszona', 'GET', `/okresy/${okresZaw}`);
 
   // ── zwrot z korektą (zlecenie przez trasę; numer korekty doczytany przy otwarciu ekranu zwrotu)
-  oczekuj(await http('POST', `/zamowienia/${z1}/zwrot`, {
-    data: '2026-10-14', kwota: '129.00', kwota_dostawy: '', powod: 'klosz pęknięty',
-    klucz: 's11', nazwa: 'Lampa wisząca Półcień', ilosc: '1', pozycja_kwota: '129.00',
-  }), 302, 'zwrot');
+  oczekuj(
+    await http('POST', `/zamowienia/${z1}/zwrot`, {
+      data: '2026-10-14',
+      kwota: '129.00',
+      kwota_dostawy: '',
+      powod: 'klosz pęknięty',
+      klucz: 's11',
+      nazwa: 'Lampa wisząca Półcień',
+      ilosc: '1',
+      pozycja_kwota: '129.00',
+    }),
+    302,
+    'zwrot',
+  );
   const { id: zwrotId } = db.prepare('SELECT id FROM zwroty WHERE zamowienie_id = ?').get(z1);
   oczekuj(await http('POST', `/zamowienia/${z1}/zwroty/${zwrotId}/korekta`, {}), 302, 'korekta');
   await ekran('zwrot z korektą', 'GET', `/zamowienia/${z1}/zwrot`);
   // Zwrot z korektą zleconą dawno i bez numeru (odrzucona) oraz dwa takie przy jednym zamówieniu (panel nie pytał).
-  const wstawZwrot = (zam, zlecona) => db.prepare(`INSERT INTO zwroty (zamowienie_id, data, kwota, powod, korekta_zlecona_at, utworzony_at)
-    VALUES (?, '2026-10-01', '84.00', 'klosz', ?, '2026-10-01T08:00:00.000Z')`).run(zam, zlecona);
+  const wstawZwrot = (zam, zlecona) =>
+    db
+      .prepare(
+        `INSERT INTO zwroty (zamowienie_id, data, kwota, powod, korekta_zlecona_at, utworzony_at)
+    VALUES (?, '2026-10-01', '84.00', 'klosz', ?, '2026-10-01T08:00:00.000Z')`,
+      )
+      .run(zam, zlecona);
   wstawZwrot(z2, '2026-10-01T09:00:00.000Z');
   await ekran('zwrot — korekta odrzucona', 'GET', `/zamowienia/${z2}/zwrot`);
   wstawZwrot(z2, '2026-10-02T09:00:00.000Z');
   await ekran('zwrot — dwie korekty, panel nie pytał', 'GET', `/zamowienia/${z2}/zwrot`);
   const z6 = zapiszZamowienie(db, 'reczne', zamowienie('PC-107'), {});
-  db.prepare("INSERT INTO faktury (zamowienie_id, numer, ksef_status, utworzona_at, program, dokument_id) VALUES (?, 'FV 90/10/2026', NULL, '2026-10-12T08:00:00.000Z', 'infakt', 'dok-reczny-90')").run(z6);
+  db.prepare(
+    "INSERT INTO faktury (zamowienie_id, numer, ksef_status, utworzona_at, program, dokument_id) VALUES (?, 'FV 90/10/2026', NULL, '2026-10-12T08:00:00.000Z', 'infakt', 'dok-reczny-90')",
+  ).run(z6);
   wstawZwrot(z6, null);
   await ekran('zwrot — bez korekty (pole numeru ręcznej)', 'GET', `/zamowienia/${z6}/zwrot`);
 
   // ── karta: faktura do wyjaśnienia, zawieszona, zamówienie anulowane po fakturze
   const z7 = zapiszZamowienie(db, 'reczne', zamowienie('PC-108'), {});
-  db.prepare("INSERT INTO faktury (zamowienie_id, ksef_status, blad_opis, utworzona_at) VALUES (?, 'do_wyjasnienia', 'zerwane połączenie', '2026-10-14T08:00:00.000Z')").run(z7);
+  db.prepare(
+    "INSERT INTO faktury (zamowienie_id, ksef_status, blad_opis, utworzona_at) VALUES (?, 'do_wyjasnienia', 'zerwane połączenie', '2026-10-14T08:00:00.000Z')",
+  ).run(z7);
   await ekran('karta — faktura do wyjaśnienia', 'GET', `/zamowienia/${z7}`);
   const z8 = zapiszZamowienie(db, 'reczne', zamowienie('PC-109'), {});
-  db.prepare("INSERT INTO faktury (zamowienie_id, ksef_status, utworzona_at) VALUES (?, 'w_toku', '2026-10-14T08:00:00.000Z')").run(z8);
+  db.prepare(
+    "INSERT INTO faktury (zamowienie_id, ksef_status, utworzona_at) VALUES (?, 'w_toku', '2026-10-14T08:00:00.000Z')",
+  ).run(z8);
   await ekran('karta — faktura zawieszona', 'GET', `/zamowienia/${z8}`);
   db.prepare('UPDATE zamowienia SET anulowane = 1 WHERE id = ?').run(z2);
   await ekran('karta — anulowane z fakturą', 'GET', `/zamowienia/${z2}`);
@@ -198,21 +305,51 @@ export async function ekranyZProgramem(a, { awaria }) {
   awaria([]);
 
   // ── KSeF: podgląd i wynik wysyłki dwóch faktur z NIP-em
-  const faktury = await a.usluga('faktury', 'fakturyWidok').dokumenty({ miesiac: '2026-10', pole: 'invoice_date', dzis: '2026-10-15' });
+  const faktury = await a
+    .usluga('faktury', 'fakturyWidok')
+    .dokumenty({ miesiac: '2026-10', pole: 'invoice_date', dzis: '2026-10-15' });
   const doKsef = ['FV 1/10/2026', 'FV 2/10/2026'].map((n) => faktury.find((f) => f.number === n).uuid);
-  const ksef = new URLSearchParams([['miesiac', '2026-10'], ['pole', 'invoice_date'], ...doKsef.map((u) => ['uuid', u])]).toString();
+  const ksef = new URLSearchParams([
+    ['miesiac', '2026-10'],
+    ['pole', 'invoice_date'],
+    ...doKsef.map((u) => ['uuid', u]),
+  ]).toString();
   await ekran('KSeF — podgląd', 'POST', '/faktury/ksef/podglad', ksef);
   await ekran('KSeF — wynik', 'POST', '/faktury/ksef/wyslij', ksef);
 
   // ── automat KSeF: przebieg przerwany z wynikiem niepewnym i wstrzymaną fakturą; ekran wyniku i Automatyzacje
-  zapiszWynikAutomatu(db, { dzien: '2026-10-14', stan: 'przerwany', startAt: '2026-10-14T18:00:00.000Z', koniecAt: null,
-    wTrakcie: { numer: 'FV 7/10/2026' }, wyslane: [{ numer: 'FV 5/10/2026' }], niepewne: [{ numer: 'FV 6/10/2026' }],
-    pominiete: [], blad: 'zerwane połączenie', poZasadzie: [] });
-  wstrzymajFakture(db, { uuid: 'dok-wstrzymany-8', numer: 'FV 8/10/2026', dzien: '2026-10-14', powod: 'nabywca bez adresu' });
+  zapiszWynikAutomatu(db, {
+    dzien: '2026-10-14',
+    stan: 'przerwany',
+    startAt: '2026-10-14T18:00:00.000Z',
+    koniecAt: null,
+    wTrakcie: { numer: 'FV 7/10/2026' },
+    wyslane: [{ numer: 'FV 5/10/2026' }],
+    niepewne: [{ numer: 'FV 6/10/2026' }],
+    pominiete: [],
+    blad: 'zerwane połączenie',
+    poZasadzie: [],
+  });
+  wstrzymajFakture(db, {
+    uuid: 'dok-wstrzymany-8',
+    numer: 'FV 8/10/2026',
+    dzien: '2026-10-14',
+    powod: 'nabywca bez adresu',
+  });
   await ekran('automat KSeF — wynik', 'GET', '/faktury/ksef/automat');
   await ekran('Ustawienia → Automatyzacje', 'GET', '/ustawienia/automatyzacje/systemowe');
-  zapiszWynikAutomatu(db, { dzien: '2026-10-14', stan: 'przerwany', startAt: '2026-10-14T18:00:00.000Z', koniecAt: null,
-    wTrakcie: null, wyslane: [], niepewne: [], pominiete: [], blad: null, poZasadzie: [] });
+  zapiszWynikAutomatu(db, {
+    dzien: '2026-10-14',
+    stan: 'przerwany',
+    startAt: '2026-10-14T18:00:00.000Z',
+    koniecAt: null,
+    wTrakcie: null,
+    wyslane: [],
+    niepewne: [],
+    pominiete: [],
+    blad: null,
+    poZasadzie: [],
+  });
   await ekran('automat KSeF — przerwany przed pierwszym dokumentem', 'GET', '/faktury/ksef/automat');
 
   // ── koszty: Ustawienia → Integracje → KSeF (zdanie o wysyłce sprzedaży przez program)
@@ -226,15 +363,31 @@ export async function ekranyZProgramem(a, { awaria }) {
 }
 
 async function ekranyAllegro(db, ekran, przedrostek, nr) {
-  const wstawFakture = (zam, numer, dodatki = {}) => db.prepare(`INSERT INTO faktury (zamowienie_id, numer, ksef_status, ksef_numer,
+  const wstawFakture = (zam, numer, dodatki = {}) =>
+    db
+      .prepare(
+        `INSERT INTO faktury (zamowienie_id, numer, ksef_status, ksef_numer,
     utworzona_at, program, dokument_id, allegro_invoice_id, allegro_wyslana_at, allegro_weryfikacja)
-    VALUES (?, ?, NULL, ?, '2026-10-13T08:00:00.000Z', 'infakt', ?, ?, ?, ?)`).run(zam, numer, `${NIP_PRACOWNI}-20261013-0A1B2C3D4E5F-0${zam % 10}`,
-    `dok-allegro-${zam}`, dodatki.invoiceId ?? null, dodatki.wyslana ?? null, dodatki.weryfikacja ?? null);
+    VALUES (?, ?, NULL, ?, '2026-10-13T08:00:00.000Z', 'infakt', ?, ?, ?, ?)`,
+      )
+      .run(
+        zam,
+        numer,
+        `${NIP_PRACOWNI}-20261013-0A1B2C3D4E5F-0${zam % 10}`,
+        `dok-allegro-${zam}`,
+        dodatki.invoiceId ?? null,
+        dodatki.wyslana ?? null,
+        dodatki.weryfikacja ?? null,
+      );
   const za = zapiszZamowienie(db, 'allegro_lampy', zamowienie(`AL-${nr}`), {});
   wstawFakture(za, `FV ${nr}/10/2026`);
   await ekran(`${przedrostek}karta Allegro — faktura dla kupującego`, 'GET', `/zamowienia/${za}`);
   const zr = zapiszZamowienie(db, 'allegro_lampy', zamowienie(`AL-${nr + 1}`), {});
-  wstawFakture(zr, `FV ${nr + 1}/10/2026`, { invoiceId: 'alg-inv-92', wyslana: '2026-10-14T08:00:00.000Z', weryfikacja: 'REJECTED' });
+  wstawFakture(zr, `FV ${nr + 1}/10/2026`, {
+    invoiceId: 'alg-inv-92',
+    wyslana: '2026-10-14T08:00:00.000Z',
+    weryfikacja: 'REJECTED',
+  });
   await ekran(`${przedrostek}karta Allegro — plik odrzucony`, 'GET', `/zamowienia/${zr}`);
 }
 
@@ -244,8 +397,15 @@ export async function ekranyBezProgramu(a) {
   // Jak w ekranyZProgramem — komputer z drukarką zgłoszony, „Drukuj” czynny jak w migawce.
   zapiszZgloszenie(db, 'BIURO-1', new Date());
   const ekrany = {};
-  const http = (metoda, url, pola) => a.app.inject({ method: metoda, url, headers: metoda === 'GET' ? AUTH : POST,
-    ...(metoda === 'GET' ? {} : { payload: typeof pola === 'string' ? pola : new URLSearchParams(pola ?? {}).toString() }) });
+  const http = (metoda, url, pola) =>
+    a.app.inject({
+      method: metoda,
+      url,
+      headers: metoda === 'GET' ? AUTH : POST,
+      ...(metoda === 'GET'
+        ? {}
+        : { payload: typeof pola === 'string' ? pola : new URLSearchParams(pola ?? {}).toString() }),
+    });
   const ekran = async (nazwa, metoda, url, pola) => {
     const r = await http(metoda, url, pola);
     expect(r.statusCode, `${nazwa}: ${r.body.slice(0, 400)}`).toBe(200);
@@ -258,7 +418,9 @@ export async function ekranyBezProgramu(a) {
   dopiszKlientaZbiorczego(db, { klucz: 'polcien', nazwa: 'Pracownia Półcień sp. z o.o.', nip: NIP_PRACOWNI });
   const zo = zapiszZamowienie(db, 'reczne', zamowienie('PC-202'), {});
   expect((await http('POST', `/zamowienia/${zo}/okres`, {})).statusCode).toBe(302);
-  const { okres_rozliczeniowy_id: okresId } = db.prepare('SELECT okres_rozliczeniowy_id FROM zamowienia WHERE id = ?').get(zo);
+  const { okres_rozliczeniowy_id: okresId } = db
+    .prepare('SELECT okres_rozliczeniowy_id FROM zamowienia WHERE id = ?')
+    .get(zo);
   await ekran('bez programu: okres', 'GET', `/okresy/${okresId}`);
   await ekran('bez programu: Ustawienia → Automatyzacje', 'GET', '/ustawienia/automatyzacje/systemowe');
   await ekran('bez programu: Ustawienia → KSeF kosztów', 'GET', '/ustawienia/integracje/ksef');
@@ -284,7 +446,8 @@ describe('nazwa programu w tekstach i widokach', () => {
     for (const m of ['listaFaktur', 'listaKorekt', 'listaNieoplaconych']) {
       const oryginal = nagrywarka.atrapa[m].bind(nagrywarka.atrapa);
       nagrywarka.atrapa[m] = async (...a) => {
-        if (atrapaRzuca.has(m)) throw Object.assign(new Error('Atrapa: awaria odczytu (test PRZ-118.09).'), { status: 500 });
+        if (atrapaRzuca.has(m))
+          throw Object.assign(new Error('Atrapa: awaria odczytu (test PRZ-118.09).'), { status: 500 });
         return oryginal(...a);
       };
     }
@@ -299,7 +462,10 @@ describe('nazwa programu w tekstach i widokach', () => {
     vi.useRealTimers();
     if (katalog) rmSync(katalog, { recursive: true, force: true });
   });
-  const awaria = (metody) => { atrapaRzuca.clear(); for (const m of metody) atrapaRzuca.add(m); };
+  const awaria = (metody) => {
+    atrapaRzuca.clear();
+    for (const m of metody) atrapaRzuca.add(m);
+  };
 
   it('inFakt: każdy ekran programu fakturowego renderuje ten sam HTML co wzorzec (migawka)', async () => {
     const teraz = () => new Date();
@@ -307,15 +473,22 @@ describe('nazwa programu w tekstach i widokach', () => {
     const a = await zbudujOms({ env: envTestu(katalog), teraz, log: () => {}, nadpisania: Z_FAKTURA_ALLEGRO });
     try {
       for (const [k, v] of Object.entries(await ekranyZProgramem(a, { awaria }))) wynik[k] = wpisMigawki(v);
-    } finally { await a.app.close(); a.db.close(); }
+    } finally {
+      await a.app.close();
+      a.db.close();
+    }
     const b = await zbudujOms({ env: envTestu(katalog, { zKluczem: false }), teraz, log: () => {} });
     let c = null;
     try {
       for (const [k, v] of Object.entries(await ekranyBezProgramu(b))) wynik[k] = wpisMigawki(v);
       // Automat KSeF przy kluczu zapisanym w Ustawieniach: przed restartem („już podłączony…”), a po restarcie
       // i odłączeniu („odłączony…”) — dwa pozostałe zdania powodu bezczynności automatu.
-      const zapis = await b.app.inject({ method: 'POST', url: '/ustawienia/integracje/infakt', headers: POST,
-        payload: new URLSearchParams({ apiKey: KLUCZ }).toString() });
+      const zapis = await b.app.inject({
+        method: 'POST',
+        url: '/ustawienia/integracje/infakt',
+        headers: POST,
+        payload: new URLSearchParams({ apiKey: KLUCZ }).toString(),
+      });
       expect(zapis.statusCode, zapis.body.slice(0, 300)).toBe(303);
       const r1 = await b.app.inject({ method: 'GET', url: '/ustawienia/automatyzacje/systemowe', headers: AUTH });
       expect(r1.statusCode).toBe(200);
@@ -326,44 +499,86 @@ describe('nazwa programu w tekstach i widokach', () => {
       const r2 = await c.app.inject({ method: 'GET', url: '/ustawienia/automatyzacje/systemowe', headers: AUTH });
       expect(r2.statusCode).toBe(200);
       wynik['program odłączony do restartu: Automatyzacje'] = wpisMigawki(r2.body);
-    } finally { await b.app.close(); if (c) await c.app.close(); b.db.close(); }
+    } finally {
+      await b.app.close();
+      if (c) await c.app.close();
+      b.db.close();
+    }
 
     if (process.env.ZAPISZ_MIGAWKE === '1') {
-      const brudne = execFileSync('git', ['status', '--porcelain', '--', 'src'], { cwd: KORZEN, encoding: 'utf8' }).trim();
+      const brudne = execFileSync('git', ['status', '--porcelain', '--', 'src'], {
+        cwd: KORZEN,
+        encoding: 'utf8',
+      }).trim();
       if (brudne) throw new Error(`ZAPISZ_MIGAWKE=1 odmawia: src/ ma niezatwierdzone zmiany:\n${brudne}`);
       const sha = execFileSync('git', ['rev-parse', '--short=7', 'HEAD'], { cwd: KORZEN, encoding: 'utf8' }).trim();
       const drzewoSrc = execFileSync('git', ['rev-parse', 'HEAD:src'], { cwd: KORZEN, encoding: 'utf8' }).trim();
-      writeFileSync(MIGAWKA, `${JSON.stringify({ sha, drzewoSrc,
-        opis: 'HTML ekranów programu fakturowego z inFaktem i bez programu — wzorzec ramy stron faktur. Przepisywać tylko świadomie, razem ze zmianą widoku.',
-        ekrany: wynik }, null, 1)}\n`);
+      writeFileSync(
+        MIGAWKA,
+        `${JSON.stringify(
+          {
+            sha,
+            drzewoSrc,
+            opis: 'HTML ekranów programu fakturowego z inFaktem i bez programu — wzorzec ramy stron faktur. Przepisywać tylko świadomie, razem ze zmianą widoku.',
+            ekrany: wynik,
+          },
+          null,
+          1,
+        )}\n`,
+      );
     }
     // Tylko sześć migawek Ustawień zmienia nawigację; pozostałe dokumenty pozostają strażnikiem zachowania.
     const migawka = JSON.parse(readFileSync(MIGAWKA, 'utf8')).ekrany;
     expect(Object.keys(wynik)).toEqual(Object.keys(migawka));
     for (const k of Object.keys(migawka)) {
       // Lista FAKTURY ma za przyciskiem zestawienia PDF przycisk listy CSV; wpisy wzorca bez niego dostają go tutaj.
-      const pdf = '<button type="submit" formaction="/faktury/zestawienie-zaznaczonych">Zestawienie PDF (XML i UPO w załącznikach)</button>';
-      const csv = '<button type="submit" formaction="/faktury/lista-zaznaczonych.csv">Lista zaznaczonych (CSV, Excel)</button>';
+      const pdf =
+        '<button type="submit" formaction="/faktury/zestawienie-zaznaczonych">Zestawienie PDF (XML i UPO w załącznikach)</button>';
+      const csv =
+        '<button type="submit" formaction="/faktury/lista-zaznaczonych.csv">Lista zaznaczonych (CSV, Excel)</button>';
       // Akapit „własny rachunek panelu” po wysyłce do KSeF i objaśnienie pod tabelą faktur
       // usunięte przy każdym programie; puste linie po zdjętych blokach EJS nie liczą się do porównania.
-      const p8 = /\n[ \t]*<p class="wyjasnienie">\s*(?:Pole wyboru jest przy każdym dokumencie|Powyższa liczba to <b>własny rachunek)[\s\S]*?<\/p>/gu;
+      const p8 =
+        /\n[ \t]*<p class="wyjasnienie">\s*(?:Pole wyboru jest przy każdym dokumencie|Powyższa liczba to <b>własny rachunek)[\s\S]*?<\/p>/gu;
       // Druk w Ustawieniach działa — pozycja menu bez klasy i plakietki „wkrótce”.
-      const drukDawniej = '<li class="wkrotce">\n              <a href="/ustawienia/druk"><span>Druk i etykiety</span><span class="menu-ustawien-wkrotce">wkrótce</span></a>';
+      const drukDawniej =
+        '<li class="wkrotce">\n              <a href="/ustawienia/druk"><span>Druk i etykiety</span><span class="menu-ustawien-wkrotce">wkrótce</span></a>';
       const drukTeraz = '<li>\n              <a href="/ustawienia/druk"><span>Druk i etykiety</span></a>';
       const bezPustych = (html) => html.replace(/\n[ \t]*(?=\n)/gu, '');
       // Przesyłka ręczna nie zakłada DPD — „nie pyta kuriera”.
       // Napisy karty zamówienia — faktura wystawiona (tylko w edycji) i komentarz.
-      const g4 = (html) => html
-        .replace(/\n[ \t]*<p class="pasek-uwaga">Treści faktury JUŻ WYSTAWIONEJ to nie zmienia[^\n]*<\/p>/gu, '')
-        .replaceAll('\n        <span class="notatka-uwaga">Nie jedzie na fakturę, na specyfikację do paczki ani do sklepu.</span>', '');
+      const g4 = (html) =>
+        html
+          .replace(/\n[ \t]*<p class="pasek-uwaga">Treści faktury JUŻ WYSTAWIONEJ to nie zmienia[^\n]*<\/p>/gu, '')
+          .replaceAll(
+            '\n        <span class="notatka-uwaga">Nie jedzie na fakturę, na specyfikację do paczki ani do sklepu.</span>',
+            '',
+          );
       const dpd = (html) => html.replaceAll('o nic nie pyta DPD —', 'o nic nie pyta kuriera —');
       // Korekta zwrotu z panelu jest powiązana z zamówieniem zwrotu — w kolumnie powiązania
       // listy FAKTURY stoi odnośnik do zamówienia zamiast „—”. Zmiana świadoma, tylko w wierszu tej korekty.
-      const k151 = (html) => html.replace(
-        /(<strong>1\/KOR\/10\/2026<\/strong>[\s\S]*?<td>\s*)<span class="wiersz-szczegoly">—<\/span>/u,
-        '$1<a class="link-numer" title="PC-101" href="/zamowienia/1">PC-101</a>',
-      );
-      const oczekiwane = { ...migawka[k], glowna: bezPustych(g4(k151(dpd((migawka[k].glowna.includes(csv) ? migawka[k].glowna : migawka[k].glowna.replace(pdf, `${pdf}\n            ${csv}`)).replace(p8, '').replaceAll(drukDawniej, drukTeraz))))) };
+      const k151 = (html) =>
+        html.replace(
+          /(<strong>1\/KOR\/10\/2026<\/strong>[\s\S]*?<td>\s*)<span class="wiersz-szczegoly">—<\/span>/u,
+          '$1<a class="link-numer" title="PC-101" href="/zamowienia/1">PC-101</a>',
+        );
+      const oczekiwane = {
+        ...migawka[k],
+        glowna: bezPustych(
+          g4(
+            k151(
+              dpd(
+                (migawka[k].glowna.includes(csv)
+                  ? migawka[k].glowna
+                  : migawka[k].glowna.replace(pdf, `${pdf}\n            ${csv}`)
+                )
+                  .replace(p8, '')
+                  .replaceAll(drukDawniej, drukTeraz),
+              ),
+            ),
+          ),
+        ),
+      };
       // Sekcja „Faktura” karty ma przy zwrocie bez korekty przycisk, zdanie blokady
       // albo odnośnik do ekranu zwrotu — nowy blok, poza zakresem migawki.
       const k147 = /\n[ \t]*<(p|div) class="wyjasnienie" id="korekta-zwrotu-\d+">[\s\S]*?<\/\1>/gu;
@@ -374,28 +589,43 @@ describe('nazwa programu w tekstach i widokach', () => {
       const g3a = (html) => html.replace(/\n[ \t]*<div><span>Status(?: płatności)?<\/span>[^\n]*<\/div>/gu, '');
       // Przycisk nadania i „Paczka nadana poza panelem?” stoją
       // w jednym rzędzie `div.paczka-dalej`, bez akapitu wokół przycisku — rama zdjęta z obu stron porównania.
-      const g8 = (html) => html
-        .replace(/\n[ \t]*<div class="paczka-dalej">/gu, '')
-        .replace(/\n[ \t]*<\/div>(?=(?:\n[ \t]*)*\n[ \t]*<\/div>(?:\n[ \t]*)*\n[ \t]*<\/section>(?:\n[ \t]*)*\n[ \t]*<section class="panel" id="platnosci">)/gu, '')
-        .replace(/<p>\s*(<a class="btn btn--glowny" href="\/zamowienia\/\d+\/nadaj">[^<]*<\/a>)\s*<\/p>/gu, '$1')
-        .replace(/\n[ \t]*(<a class="btn btn--glowny" href="\/zamowienia\/\d+\/nadaj">)\s*([^<]*?)\s*<\/a>/gu, '\n$1$2</a>');
+      const g8 = (html) =>
+        html
+          .replace(/\n[ \t]*<div class="paczka-dalej">/gu, '')
+          .replace(
+            /\n[ \t]*<\/div>(?=(?:\n[ \t]*)*\n[ \t]*<\/div>(?:\n[ \t]*)*\n[ \t]*<\/section>(?:\n[ \t]*)*\n[ \t]*<section class="panel" id="platnosci">)/gu,
+            '',
+          )
+          .replace(/<p>\s*(<a class="btn btn--glowny" href="\/zamowienia\/\d+\/nadaj">[^<]*<\/a>)\s*<\/p>/gu, '$1')
+          .replace(
+            /\n[ \t]*(<a class="btn btn--glowny" href="\/zamowienia\/\d+\/nadaj">)\s*([^<]*?)\s*<\/a>/gu,
+            '\n$1$2</a>',
+          );
       // Sekcja „Płatności” karty przebudowana świadomie (plakietka,
       // cztery liczby, lista ruchów) — jej treść pilnuje web-platnosci.test.js, tu cała sekcja poza porównaniem.
-      const g9a = (html) => html.replace(/<section class="panel" id="platnosci">[\s\S]*?<\/section>/gu, '<section id="platnosci"/>');
+      const g9a = (html) =>
+        html.replace(/<section class="panel" id="platnosci">[\s\S]*?<\/section>/gu, '<section id="platnosci"/>');
       // Ekrany zwrotu mają przycisk „← Zamówienie N” przy tytule, a „Wróć do zamówienia”
       // stoi po lewej jako drugorzędny; tytuł strony „Zamówienie N / Zwrot” zmienia resztę strony — jej skrót poza porównaniem.
-      const g12 = (html) => html
-        .replace(/\n[ \t]*<a class="btn" href="\/zamowienia\/\d+">← Zamówienie [^<]*<\/a>/gu, '')
-        .replace(/\n[ \t]*<a class="btn btn--(?:drugi|cichy)" href="\/zamowienia\/\d+">Wróć do zamówienia<\/a>/gu, '')
-        .replace(/\n[ \t]*<span class="rozpychacz"><\/span>/gu, '');
+      const g12 = (html) =>
+        html
+          .replace(/\n[ \t]*<a class="btn" href="\/zamowienia\/\d+">← Zamówienie [^<]*<\/a>/gu, '')
+          .replace(/\n[ \t]*<a class="btn btn--(?:drugi|cichy)" href="\/zamowienia\/\d+">Wróć do zamówienia<\/a>/gu, '')
+          .replace(/\n[ \t]*<span class="rozpychacz"><\/span>/gu, '');
       // Sekcja „Pozycje” przebudowana świadomie (kolumna Cena netto, przewijak) — jej treść pilnują
       // karta-pozycje-odmowy.test.js i web-pozycje; tu cała sekcja (do następnego panelu) poza porównaniem.
-      const g13a = (html) => html.replace(/<section class="panel[^"]*" id="pozycje">[\s\S]*?(?=<section class="panel)/gu, '<section id="pozycje"/>');
+      const g13a = (html) =>
+        html.replace(
+          /<section class="panel[^"]*" id="pozycje">[\s\S]*?(?=<section class="panel)/gu,
+          '<section id="pozycje"/>',
+        );
       const zwrot = k.startsWith('zwrot');
       const norm = (html) => bezPustych(g13a(g9a(g10(g8(g3a(zwrot ? g12(html) : html))))));
-      expect({ ...wynik[k], glowna: norm(wynik[k].glowna.replace(k147, '')), ...(zwrot ? { reszta: '' } : {}) }, `ekran „${k}”`)
-        // Kopia: oczyszczone komentarze ramy zmieniaja wyłącznie jej odcisk; status i tresc nadal porownujemy.
-        .toEqual({ ...oczekiwane, glowna: norm(oczekiwane.glowna), reszta: zwrot ? '' : wynik[k].reszta });
+      // Kopia: oczyszczone komentarze ramy zmieniaja wyłącznie jej odcisk; status i tresc nadal porownujemy.
+      expect(
+        { ...wynik[k], glowna: norm(wynik[k].glowna.replace(k147, '')), ...(zwrot ? { reszta: '' } : {}) },
+        `ekran „${k}”`,
+      ).toEqual({ ...oczekiwane, glowna: norm(oczekiwane.glowna), reszta: zwrot ? '' : wynik[k].reszta });
     }
   }, 120_000);
 
@@ -403,10 +633,13 @@ describe('nazwa programu w tekstach i widokach', () => {
   // ale opis (id, nazwa, ekran) jest Testownika. Szew `fabryki.programFakturowy` działa tylko w trybie próby.
   function programNadAtrapa(zmianyOpisu = {}) {
     const pod = programInfakt(nagrywarka.atrapa);
-    const metody = Object.fromEntries([...METODY_OBOWIAZKOWE, ...Object.values(METODA_ZDOLNOSCI)]
-      .map((m) => [m, (...a) => pod[m](...a)]));
+    const metody = Object.fromEntries(
+      [...METODY_OBOWIAZKOWE, ...Object.values(METODA_ZDOLNOSCI)].map((m) => [m, (...a) => pod[m](...a)]),
+    );
     const p = programTestowy({ metody });
-    return Object.keys(zmianyOpisu).length ? Object.assign(Object.create(null), p, { opis: Object.freeze({ ...p.opis, ...zmianyOpisu }) }) : p;
+    return Object.keys(zmianyOpisu).length
+      ? Object.assign(Object.create(null), p, { opis: Object.freeze({ ...p.opis, ...zmianyOpisu }) })
+      : p;
   }
   async function aplikacjaTestownika({ nadpisania = {}, program = programNadAtrapa() } = {}) {
     const env = envTestu(katalog, { zKluczem: false, proba: true });
@@ -421,20 +654,34 @@ describe('nazwa programu w tekstach i widokach', () => {
   it('program testowy: te same ekrany mówią „Testownik/Testownika/w Testowniku”, ani jednego „inFakt…”', async () => {
     const a = await aplikacjaTestownika({ nadpisania: Z_FAKTURA_ALLEGRO });
     let ekrany;
-    try { ekrany = await ekranyZProgramem(a, { awaria }); } finally { await a.app.close(); a.db.close(); }
+    try {
+      ekrany = await ekranyZProgramem(a, { awaria });
+    } finally {
+      await a.app.close();
+      a.db.close();
+    }
     // Bez usługi faktur Allegro: zdanie „Kanał Allegro albo … nie jest skonfigurowany” z odnośnikiem do ekranu programu.
     const b = await aplikacjaTestownika();
     const http = (url) => b.app.inject({ method: 'GET', url, headers: AUTH });
     try {
-      const ekran = async (nazwa, _m, url) => { const r = await http(url); expect(r.statusCode).toBe(200); ekrany[nazwa] = r.body; };
+      const ekran = async (nazwa, _m, url) => {
+        const r = await http(url);
+        expect(r.statusCode).toBe(200);
+        ekrany[nazwa] = r.body;
+      };
       await ekranyAllegro(b.db, ekran, 'bez usługi Allegro: ', 501);
-    } finally { await b.app.close(); b.db.close(); }
+    } finally {
+      await b.app.close();
+      b.db.close();
+    }
 
     expect(Object.keys(ekrany).length).toBeGreaterThanOrEqual(30);
     // Wszystkie trafienia naraz (ekran → fragmenty), żeby czerwony test pokazał pełną listę, a nie pierwszy ekran.
-    const trafienia = Object.fromEntries(Object.entries(ekrany)
-      .map(([nazwa, html]) => [nazwa, [...html.matchAll(/.{0,80}inFak.{0,40}/g)].map((m) => m[0].trim())])
-      .filter(([, t]) => t.length));
+    const trafienia = Object.fromEntries(
+      Object.entries(ekrany)
+        .map(([nazwa, html]) => [nazwa, [...html.matchAll(/.{0,80}inFak.{0,40}/g)].map((m) => m[0].trim())])
+        .filter(([, t]) => t.length),
+    );
     expect(trafienia, 'ekrany mówią inFakt przy programie testowym').toEqual({});
     for (const html of Object.values(ekrany)) expect(NAZWA_INFAKTU.test(html)).toBe(false);
     const tekst = (n) => ekrany[n].replace(/\s+/g, ' ');
@@ -446,7 +693,9 @@ describe('nazwa programu w tekstach i widokach', () => {
     expect(tekst('FAKTURY')).not.toContain('klient może mieć przed sobą starszy PDF');
     expect(tekst('FAKTURY — program nie odpowiada')).toContain('Nie wiadomo — Testownik nie odpowiedział.');
     expect(tekst('KSeF — podgląd')).toContain('Panel wysyła dokumenty do Testownika, a Testownik do KSeF.');
-    expect(tekst('KSeF — wynik')).toContain('Panel przekazał dokumenty do Testownika, a Testownik przekazuje je organowi.');
+    expect(tekst('KSeF — wynik')).toContain(
+      'Panel przekazał dokumenty do Testownika, a Testownik przekazuje je organowi.',
+    );
     expect(tekst('automat KSeF — wynik')).toContain('Testownik odrzucił ją');
     expect(tekst('faktury hurtem — podgląd')).toContain('Pójdzie do Testownika');
     expect(tekst('faktury hurtem — podgląd')).toContain('w Testowniku </button>');
@@ -458,7 +707,9 @@ describe('nazwa programu w tekstach i widokach', () => {
     // Odnośnik do ekranu programu = opis.ekran (nie ekran inFaktu).
     const allegro = tekst('bez usługi Allegro: karta Allegro — faktura dla kupującego');
     expect(allegro).toContain('Kanał Allegro albo Testownik nie jest skonfigurowany');
-    expect(allegro).toContain('Klucz API Testownika wpiszesz w <a href="/ustawienia/integracje/testownik">Ustawienia → Integracje → Testownik</a>');
+    expect(allegro).toContain(
+      'Klucz API Testownika wpiszesz w <a href="/ustawienia/integracje/testownik">Ustawienia → Integracje → Testownik</a>',
+    );
     expect(allegro).not.toContain('href="/ustawienia/integracje/infakt"');
   }, 120_000);
 
@@ -481,6 +732,9 @@ describe('nazwa programu w tekstach i widokach', () => {
       expect(r.statusCode).toBe(200);
       expect(r.body).toContain(inna.blad.replace(/[„”"]/g, (c) => (c === '"' ? '&#34;' : c)));
       expect(r.body).not.toContain('290.25');
-    } finally { await a.app.close(); a.db.close(); }
+    } finally {
+      await a.app.close();
+      a.db.close();
+    }
   }, 60_000);
 });

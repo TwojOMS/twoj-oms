@@ -50,9 +50,10 @@ export function createNadanieHurtem({ db, nadanie, teraz = () => Date.now(), kol
         if (czyPobranie(z)) {
           dopiszLog(db, z.id, {
             akcja: 'nadanie.pobranie',
-            wynik: z.rodzajFormularza === 'wza'
-              ? `nadanie hurtem: kwotę pobrania poda Allegro (w zamówieniu ${kwotaPobrania(z) ?? '?'} zł)`
-              : `nadanie hurtem: kurier zainkasuje kwotę z zamówienia — ${kwotaPobrania(z)} zł`,
+            wynik:
+              z.rodzajFormularza === 'wza'
+                ? `nadanie hurtem: kwotę pobrania poda Allegro (w zamówieniu ${kwotaPobrania(z) ?? '?'} zł)`
+                : `nadanie hurtem: kurier zainkasuje kwotę z zamówienia — ${kwotaPobrania(z)} zł`,
           });
         }
         // Kolejność ZAWSZE 1 (paczki nr N > 1 podział wyklucza) i BEZ `kwotaPobrania`:
@@ -67,7 +68,8 @@ export function createNadanieHurtem({ db, nadanie, teraz = () => Date.now(), kol
         // ale też nie numer — i nie ma jeszcze etykiety, którą dałoby się wstawić do kolejki.
         if (!w?.numerListu) {
           udane.push({
-            id: z.id, numer: z.numer,
+            id: z.id,
+            numer: z.numer,
             opis: 'przesyłka tworzona u kuriera — dokończ przyciskiem „Sprawdź ponownie” na karcie',
           });
           continue;

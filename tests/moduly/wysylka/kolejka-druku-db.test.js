@@ -3,16 +3,31 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { zakonczPrzesylke, rozpocznijPrzesylke } from '../../../src/moduly/wysylka/db/przesylki.js';
 import {
-  dodajDoKolejki, pozycjeDoWziecia, zplDlaPozycji, oznaczWydrukowano, oznaczBladDruku,
-  porzucPozycje, ostatniaPozycjaDlaPrzesylki,
+  dodajDoKolejki,
+  pozycjeDoWziecia,
+  zplDlaPozycji,
+  oznaczWydrukowano,
+  oznaczBladDruku,
+  porzucPozycje,
+  ostatniaPozycjaDlaPrzesylki,
 } from '../../../src/moduly/wysylka/db/kolejka-druku.js';
 import { SUFIT_ODROCZENIA_MS } from '../../../src/domena/kolejka-druku-stan.js';
 
 const zmapowane = {
-  zrodlo_id: 1301, numer: '1301', klient: { email: 'j@k.pl' }, dostawa: { city: 'Warszawa' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null,
-  kwota_brutto: '212.90', status_woo: 'processing', oplacone_at: null, anulowane: 0,
-  utworzone_at: '2026-07-29T13:19:52', pozycje: [],
+  zrodlo_id: 1301,
+  numer: '1301',
+  klient: { email: 'j@k.pl' },
+  dostawa: { city: 'Warszawa' },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '212.90',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-07-29T13:19:52',
+  pozycje: [],
 };
 
 let db;
@@ -23,7 +38,10 @@ beforeEach(() => {
   const zamowienieId = zapiszZamowienie(db, 'pro', zmapowane, {});
   const p = rozpocznijPrzesylke(db, zamowienieId, 'dpd');
   zakonczPrzesylke(db, p.id, {
-    numerListu: '1000000000001U', etykietaSciezka: '/e/1.pdf', etykietaZplSciezka: '/e/1.zpl', surowa: '<xml/>',
+    numerListu: '1000000000001U',
+    etykietaSciezka: '/e/1.pdf',
+    etykietaZplSciezka: '/e/1.zpl',
+    surowa: '<xml/>',
   });
   przesylkaId = p.id;
 });

@@ -11,13 +11,24 @@ import { mapujZamowienie } from '../../src/domena/mapowanie.js';
 // do pola wyboru nad tabelą.
 
 const surowe = (nad = {}) => ({
-  id: 1281, number: '1281', total: '318.00', status: 'processing',
-  date_created: '2026-07-31T20:58:39', payment_method_title: 'Przelew tradycyjny',
+  id: 1281,
+  number: '1281',
+  total: '318.00',
+  status: 'processing',
+  date_created: '2026-07-31T20:58:39',
+  payment_method_title: 'Przelew tradycyjny',
   shipping_lines: [{ instance_id: 1, method_id: 'flat_rate' }],
-  line_items: [{
-    id: 25, name: 'Lampa Kałamarz', sku: 'PRO-KAL', quantity: 1, total: '258.54', total_tax: '59.46',
-    image: { id: 1092, src: 'https://pro.swietlik.example.test/wp-content/uploads/2026/07/kalamarz.jpg' },
-  }],
+  line_items: [
+    {
+      id: 25,
+      name: 'Lampa Kałamarz',
+      sku: 'PRO-KAL',
+      quantity: 1,
+      total: '258.54',
+      total_tax: '59.46',
+      image: { id: 1092, src: 'https://pro.swietlik.example.test/wp-content/uploads/2026/07/kalamarz.jpg' },
+    },
+  ],
   ...nad,
 });
 
@@ -29,7 +40,9 @@ const mapa = {
 };
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 
 describe('adres zdjęcia z pozycji', () => {
   it('zapisuje się razem z zamówieniem i wraca na listę', () => {
@@ -60,8 +73,9 @@ describe('adres zdjęcia z pozycji', () => {
 
     // Przeliczenia wykonują się przy otwarciu bazy — dokładnie jak przy starcie panelu.
     const druga = openOmsDb(plik);
-    expect(listaZamowien(druga)[0].pozycje[0].zdjecie_url)
-      .toBe('https://pro.swietlik.example.test/wp-content/uploads/2026/07/kalamarz.jpg');
+    expect(listaZamowien(druga)[0].pozycje[0].zdjecie_url).toBe(
+      'https://pro.swietlik.example.test/wp-content/uploads/2026/07/kalamarz.jpg',
+    );
     druga.close();
   });
 
@@ -69,9 +83,11 @@ describe('adres zdjęcia z pozycji', () => {
     const plik = join(mkdtempSync(join(tmpdir(), 'oms-mini2-')), 'oms.sqlite');
     const pierwsza = openOmsDb(plik);
     const id = zapiszZamowienie(pierwsza, 'pro', mapujZamowienie(surowe(), mapa), surowe());
-    pierwsza.prepare(
-      "INSERT INTO pozycje (zamowienie_id, nazwa, sku, ilosc, cena_brutto, zrodlo) VALUES (?,?,?,?,?,'reczna')",
-    ).run(id, 'Dopłata za montaż', null, 1, '90.00');
+    pierwsza
+      .prepare(
+        "INSERT INTO pozycje (zamowienie_id, nazwa, sku, ilosc, cena_brutto, zrodlo) VALUES (?,?,?,?,?,'reczna')",
+      )
+      .run(id, 'Dopłata za montaż', null, 1, '90.00');
     pierwsza.prepare('UPDATE pozycje SET zdjecie_url = NULL WHERE zamowienie_id = ?').run(id);
     pierwsza.close();
 

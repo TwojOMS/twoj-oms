@@ -23,7 +23,12 @@ const auth = {
 };
 
 const STAN_PUSTY = {
-  trwa: false, zaczety_at: null, skonczony_at: null, postep: null, kanaly: [], blad: null,
+  trwa: false,
+  zaczety_at: null,
+  skonczony_at: null,
+  postep: null,
+  kanaly: [],
+  blad: null,
 };
 const atrapaMagazynu = () => ({ start: vi.fn(), stan: () => STAN_PUSTY });
 
@@ -44,8 +49,12 @@ beforeEach(() => {
 function produkt(nazwa, nadpisania = {}) {
   numerKolejny += 1;
   return zapiszProduktSklepowy(db, {
-    kanal: 'allegro_swietlik', produkt_id: `p-${numerKolejny}`, wariant_id: '',
-    nazwa, odczytane_at: '2026-08-12T06:00:00.000Z', ...nadpisania,
+    kanal: 'allegro_swietlik',
+    produkt_id: `p-${numerKolejny}`,
+    wariant_id: '',
+    nazwa,
+    odczytane_at: '2026-08-12T06:00:00.000Z',
+    ...nadpisania,
   });
 }
 const oferta = (nazwa, nadpisania = {}) => produkt(nazwa, nadpisania);
@@ -53,15 +62,17 @@ const produktSklepu = (nazwa, nadpisania = {}) => produkt(nazwa, { kanal: 'pro',
 const kartaO = (nazwa, reszta = {}) => utworzKarte(db, { nazwa, ...reszta });
 
 const get = (app, url) => app.inject({ method: 'GET', url, headers: auth });
-const post = (app, url, payload, naglowki = auth) => app.inject({
-  method: 'POST', url, headers: naglowki, payload,
-});
+const post = (app, url, payload, naglowki = auth) =>
+  app.inject({
+    method: 'POST',
+    url,
+    headers: naglowki,
+    payload,
+  });
 
 const wiersz = (id) => db.prepare('SELECT * FROM karty_produktow WHERE id = ?').get(id);
-const kartaProduktu = (id) => db.prepare('SELECT karta_id FROM produkty_sklepowe WHERE id = ?')
-  .get(id).karta_id;
-const ilePowiazan = () => db
-  .prepare('SELECT COUNT(*) AS c FROM produkty_sklepowe WHERE karta_id IS NOT NULL').get().c;
+const kartaProduktu = (id) => db.prepare('SELECT karta_id FROM produkty_sklepowe WHERE id = ?').get(id).karta_id;
+const ilePowiazan = () => db.prepare('SELECT COUNT(*) AS c FROM produkty_sklepowe WHERE karta_id IS NOT NULL').get().c;
 
 /**
  * JEDNA SEKCJA KARTY — bez reszty strony.
@@ -83,7 +94,9 @@ function sekcja(body, id) {
 /** Wiersz JEDNEGO powiazanego produktu — sam wiersz, bez reszty sekcji. */
 function wierszProduktu(body, nazwa) {
   const znacznik = `<div class="nazwa-produktu">${nazwa}</div>`;
-  const w = sekcja(body, 'produkty-karty').split('<tr').find((t) => t.includes(znacznik));
+  const w = sekcja(body, 'produkty-karty')
+    .split('<tr')
+    .find((t) => t.includes(znacznik));
   if (!w) throw new Error(`Na karcie nie ma powiazanego produktu „${nazwa}"`);
   return w;
 }
@@ -91,15 +104,17 @@ function wierszProduktu(body, nazwa) {
 /** Wiersz JEDNEGO kandydata do dopisania — sam wiersz, bez reszty sekcji. */
 function wierszKandydata(body, nazwa) {
   const znacznik = `<div class="nazwa-kandydata">${nazwa}</div>`;
-  const w = sekcja(body, 'dopisz-oferte').split('<tr').find((t) => t.includes(znacznik));
+  const w = sekcja(body, 'dopisz-oferte')
+    .split('<tr')
+    .find((t) => t.includes(znacznik));
   if (!w) throw new Error(`Na karcie nie ma kandydata „${nazwa}"`);
   return w;
 }
 
-const nazwyProduktow = (body) => [...sekcja(body, 'produkty-karty')
-  .matchAll(/<div class="nazwa-produktu">([^<]*)<\/div>/g)].map((m) => m[1]);
-const nazwyKandydatow = (body) => [...sekcja(body, 'dopisz-oferte')
-  .matchAll(/<div class="nazwa-kandydata">([^<]*)<\/div>/g)].map((m) => m[1]);
+const nazwyProduktow = (body) =>
+  [...sekcja(body, 'produkty-karty').matchAll(/<div class="nazwa-produktu">([^<]*)<\/div>/g)].map((m) => m[1]);
+const nazwyKandydatow = (body) =>
+  [...sekcja(body, 'dopisz-oferte').matchAll(/<div class="nazwa-kandydata">([^<]*)<\/div>/g)].map((m) => m[1]);
 
 /**
  * AKAPIT ODNOSNIKA „Wróć do magazynu" — sam akapit, bez reszty strony. RZUCA, gdy go nie ma.
@@ -118,7 +133,10 @@ function akapitWroc(body) {
 describe('GET /magazyn/:id — karta jest DOMYSLNIE DO ODCZYTU', () => {
   it('pokazuje dane karty jako TEKST, bez ani jednego pola formularza', async () => {
     const id = kartaO('Kandelabr srebrny', {
-      sku: 'LMP-PLA-118', szerokosc_mm: 700, wysokosc_mm: 1000, opis: 'Opis kandelabru',
+      sku: 'LMP-PLA-118',
+      szerokosc_mm: 700,
+      wysokosc_mm: 1000,
+      opis: 'Opis kandelabru',
     });
 
     const r = await get(serwer(), `/magazyn/${id}`);
@@ -144,7 +162,8 @@ describe('GET /magazyn/:id — karta jest DOMYSLNIE DO ODCZYTU', () => {
   it('odnosnik „Edytuj" NIESIE DALEJ szukanie, zamiast je kasowac', async () => {
     const id = kartaO('Kandelabr srebrny');
     const dane = sekcja(
-      (await get(serwer(), `/magazyn/${id}?fraza=kandelabr&kanal=allegro_swietlik`)).body, 'dane-karty',
+      (await get(serwer(), `/magazyn/${id}?fraza=kandelabr&kanal=allegro_swietlik`)).body,
+      'dane-karty',
     );
     expect(dane).toContain('fraza=kandelabr');
     expect(dane).toContain('kanal=allegro_swietlik');
@@ -200,8 +219,11 @@ describe('GET /magazyn/:id — karty moze nie byc', () => {
     // ⚠️ KARTA O ID 1000 ISTNIEJE — inaczej `/magazyn/1e3` odpowiadalby 404 dlatego, ze
     // takiego wiersza nie ma, a nie dlatego, ze adres jest zly. Ta sama karta pod dwoma
     // adresami znaczy, ze odnosnik z listy i adres w zakladce to nie to samo miejsce.
-    db.prepare('INSERT INTO karty_produktow (id, nazwa, utworzony_at, zmieniony_at) VALUES (1000, ?, ?, ?)')
-      .run('Karta tysięczny', '2026-08-12T06:00:00.000Z', '2026-08-12T06:00:00.000Z');
+    db.prepare('INSERT INTO karty_produktow (id, nazwa, utworzony_at, zmieniony_at) VALUES (1000, ?, ?, ?)').run(
+      'Karta tysięczny',
+      '2026-08-12T06:00:00.000Z',
+      '2026-08-12T06:00:00.000Z',
+    );
     const app = serwer();
 
     expect((await get(app, '/magazyn/1000')).statusCode).toBe(200);
@@ -225,7 +247,9 @@ describe('POST /magazyn/:id — wymiary wpisywane w CENTYMETRACH', () => {
     const id = kartaO('Kandelabr srebrny');
 
     const r = await post(serwer(), `/magazyn/${id}`, {
-      nazwa: 'Kandelabr srebrny', szerokosc_cm: '70', wysokosc_cm: '100',
+      nazwa: 'Kandelabr srebrny',
+      szerokosc_cm: '70',
+      wysokosc_cm: '100',
     });
 
     expect(r.statusCode).toBe(303);
@@ -240,7 +264,9 @@ describe('POST /magazyn/:id — wymiary wpisywane w CENTYMETRACH', () => {
   it('przecinek dziesietny jest przyjmowany', async () => {
     const id = kartaO('Kandelabr srebrny');
     await post(serwer(), `/magazyn/${id}`, {
-      nazwa: 'Kandelabr srebrny', szerokosc_cm: '10,5', wysokosc_cm: '20',
+      nazwa: 'Kandelabr srebrny',
+      szerokosc_cm: '10,5',
+      wysokosc_cm: '20',
     });
     expect(wiersz(id).szerokosc_mm).toBe(105);
   });
@@ -273,7 +299,9 @@ describe('POST /magazyn/:id — wymiary wpisywane w CENTYMETRACH', () => {
       const id = kartaO('Kandelabr srebrny', { szerokosc_mm: 450, wysokosc_mm: 650 });
 
       const r = await post(serwer(), `/magazyn/${id}`, {
-        nazwa: 'Kandelabr srebrny', szerokosc_cm: '70', wysokosc_cm: '100',
+        nazwa: 'Kandelabr srebrny',
+        szerokosc_cm: '70',
+        wysokosc_cm: '100',
       });
 
       expect(r.statusCode).toBe(303);
@@ -287,7 +315,9 @@ describe('POST /magazyn/:id — wymiary wpisywane w CENTYMETRACH', () => {
       const id = kartaO('Kandelabr srebrny', { szerokosc_mm: 450, wysokosc_mm: 650 });
 
       const r = await post(serwer(), `/magazyn/${id}`, {
-        nazwa: 'Kandelabr srebrny', szerokosc_cm: '70', wysokosc_cm: '',
+        nazwa: 'Kandelabr srebrny',
+        szerokosc_cm: '70',
+        wysokosc_cm: '',
       });
 
       expect(r.statusCode).toBe(400);
@@ -301,7 +331,9 @@ describe('POST /magazyn/:id — wymiary wpisywane w CENTYMETRACH', () => {
       const id = kartaO('Kandelabr srebrny', { szerokosc_mm: 450, wysokosc_mm: 650 });
 
       const r = await post(serwer(), `/magazyn/${id}`, {
-        nazwa: 'Kandelabr srebrny', szerokosc_cm: '', wysokosc_cm: '100',
+        nazwa: 'Kandelabr srebrny',
+        szerokosc_cm: '',
+        wysokosc_cm: '100',
       });
 
       expect(r.statusCode).toBe(400);
@@ -316,7 +348,9 @@ describe('POST /magazyn/:id — wymiary wpisywane w CENTYMETRACH', () => {
       const id = kartaO('Kandelabr srebrny');
 
       const r = await post(serwer(), `/magazyn/${id}`, {
-        nazwa: 'Kandelabr srebrny', szerokosc_cm: '45', wysokosc_cm: '',
+        nazwa: 'Kandelabr srebrny',
+        szerokosc_cm: '45',
+        wysokosc_cm: '',
       });
 
       expect(r.statusCode).toBe(400);
@@ -328,7 +362,9 @@ describe('POST /magazyn/:id — wymiary wpisywane w CENTYMETRACH', () => {
     it('odmowa mowi WPROST, co zrobic: oba albo zadnego', async () => {
       const id = kartaO('Kandelabr srebrny');
       const r = await post(serwer(), `/magazyn/${id}`, {
-        nazwa: 'Kandelabr srebrny', szerokosc_cm: '45', wysokosc_cm: '',
+        nazwa: 'Kandelabr srebrny',
+        szerokosc_cm: '45',
+        wysokosc_cm: '',
       });
       expect(r.body).toMatch(/oba|obie/i);
     });
@@ -340,8 +376,11 @@ describe('POST /magazyn/:id — wymiary wpisywane w CENTYMETRACH', () => {
       const id = kartaO('Kandelabr srebrny', { kategoria_glowna: 'Aplikacje', opis: 'stary' });
 
       await post(serwer(), `/magazyn/${id}`, {
-        nazwa: 'Nowa nazwa', kategoria_glowna: 'Lampy wiszące', opis: 'nowy',
-        szerokosc_cm: '45', wysokosc_cm: '',
+        nazwa: 'Nowa nazwa',
+        kategoria_glowna: 'Lampy wiszące',
+        opis: 'nowy',
+        szerokosc_cm: '45',
+        wysokosc_cm: '',
       });
 
       const w = wiersz(id);
@@ -353,7 +392,9 @@ describe('POST /magazyn/:id — wymiary wpisywane w CENTYMETRACH', () => {
     it('po odmowie formularz wraca otwarty z tym, co czlowiek wpisal', async () => {
       const id = kartaO('Kandelabr srebrny');
       const r = await post(serwer(), `/magazyn/${id}`, {
-        nazwa: 'Kandelabr srebrny', szerokosc_cm: '45', wysokosc_cm: '',
+        nazwa: 'Kandelabr srebrny',
+        szerokosc_cm: '45',
+        wysokosc_cm: '',
       });
 
       const dane = sekcja(r.body, 'dane-karty');
@@ -367,7 +408,9 @@ describe('POST /magazyn/:id — wymiary wpisywane w CENTYMETRACH', () => {
       const id = kartaO('Kandelabr srebrny', { szerokosc_mm: 450, wysokosc_mm: 650 });
 
       const r = await post(serwer(), `/magazyn/${id}`, {
-        nazwa: 'Kandelabr srebrny', szerokosc_cm: '', wysokosc_cm: '',
+        nazwa: 'Kandelabr srebrny',
+        szerokosc_cm: '',
+        wysokosc_cm: '',
       });
 
       expect(r.statusCode).toBe(303);
@@ -382,7 +425,8 @@ describe('POST /magazyn/:id — wymiary wpisywane w CENTYMETRACH', () => {
       const id = kartaO('Kandelabr srebrny', { szerokosc_mm: 450, wysokosc_mm: 650 });
 
       const r = await post(serwer(), `/magazyn/${id}`, {
-        nazwa: 'Kandelabr srebrny', szerokosc_cm: '70',
+        nazwa: 'Kandelabr srebrny',
+        szerokosc_cm: '70',
       });
 
       expect(r.statusCode).toBe(303);
@@ -400,7 +444,9 @@ describe('POST /magazyn/:id — wymiary wpisywane w CENTYMETRACH', () => {
 
     for (const zly of ['siedemdziesiąt', '70 cm', '70x100', '-70', '0', 'abc']) {
       const r = await post(app, `/magazyn/${id}`, {
-        nazwa: 'Kandelabr srebrny', szerokosc_cm: zly, wysokosc_cm: '100',
+        nazwa: 'Kandelabr srebrny',
+        szerokosc_cm: zly,
+        wysokosc_cm: '100',
       });
       expect(r.statusCode, zly).toBe(400);
       expect(r.body, zly).toMatch(/w centymetrach/i);
@@ -415,7 +461,9 @@ describe('POST /magazyn/:id — wymiary wpisywane w CENTYMETRACH', () => {
   it('po odmowie formularz WRACA OTWARTY, z tym, co czlowiek wpisal', async () => {
     const id = kartaO('Kandelabr srebrny');
     const r = await post(serwer(), `/magazyn/${id}`, {
-      nazwa: 'Kandelabr srebrny', szerokosc_cm: 'siedemdziesiąt', wysokosc_cm: '100',
+      nazwa: 'Kandelabr srebrny',
+      szerokosc_cm: 'siedemdziesiąt',
+      wysokosc_cm: '100',
     });
 
     const dane = sekcja(r.body, 'dane-karty');
@@ -446,7 +494,9 @@ describe('POST /magazyn/:id — SKU, nazwa i paczkomat', () => {
     const id = kartaO('Kandelabr srebrny', { sku: 'LMP-PLA-118' });
 
     const r = await post(serwer(), `/magazyn/${id}`, {
-      nazwa: 'Kandelabr srebrny', sku: 'LMP-PLA-118', opis: 'Nowy opis',
+      nazwa: 'Kandelabr srebrny',
+      sku: 'LMP-PLA-118',
+      opis: 'Nowy opis',
     });
 
     expect(r.statusCode).toBe(303);
@@ -520,8 +570,7 @@ describe('POST /magazyn/:id — SKU, nazwa i paczkomat', () => {
 
   it('bez naglowka Origin ochrona CSRF odmawia i NIC sie nie zapisuje', async () => {
     const id = kartaO('Kandelabr srebrny');
-    const r = await post(serwer(), `/magazyn/${id}`, { nazwa: 'Podmieniona' },
-      { authorization: auth.authorization });
+    const r = await post(serwer(), `/magazyn/${id}`, { nazwa: 'Podmieniona' }, { authorization: auth.authorization });
 
     expect(r.statusCode).toBeGreaterThanOrEqual(400);
     expect(wiersz(id).nazwa).toBe('Kandelabr srebrny');
@@ -547,7 +596,10 @@ describe('POST /magazyn/:id — SKU, nazwa i paczkomat', () => {
     // ktora baza zna, ale formularz nie wysyla, nie wchodzi z zadania HTTP.
     const przed = wiersz(id).utworzony_at;
     const r = await post(serwer(), `/magazyn/${id}`, {
-      nazwa: 'Kandelabr srebrny', utworzony_at: '1999-01-01T00:00:00.000Z', waga_g: '9999', constructor: 'x',
+      nazwa: 'Kandelabr srebrny',
+      utworzony_at: '1999-01-01T00:00:00.000Z',
+      waga_g: '9999',
+      constructor: 'x',
     });
 
     expect(r.statusCode).toBe(303);
@@ -561,7 +613,8 @@ describe('GET /magazyn/:id — powiazane produkty i oferty', () => {
   it('pokazuje powiazany produkt z cena, odnosnikiem i kompletem kategorii', async () => {
     const id = kartaO('Kandelabr srebrny');
     const p = produktSklepu('Kandelabr srebrny – 70x100cm', {
-      cena_gr: 7490, adres: 'https://pro.sklep-polcien.example.invalid/produkt/kandelabr',
+      cena_gr: 7490,
+      adres: 'https://pro.sklep-polcien.example.invalid/produkt/kandelabr',
       kategorie_json: JSON.stringify(['Lampy wiszące', 'Srebrne']),
     });
     powiazProdukt(db, p, id);
@@ -629,8 +682,7 @@ describe('GET /magazyn/:id — powiazane produkty i oferty', () => {
     const id = kartaO('Kandelabr srebrny');
     const p = produktSklepu('Kandelabr srebrny', { cena_gr: 7490 });
     powiazProdukt(db, p, id);
-    db.prepare('UPDATE produkty_sklepowe SET zniknal_at = ? WHERE id = ?')
-      .run('2026-08-12T06:00:00.000Z', p);
+    db.prepare('UPDATE produkty_sklepowe SET zniknal_at = ? WHERE id = ?').run('2026-08-12T06:00:00.000Z', p);
 
     const w = wierszProduktu((await get(serwer(), `/magazyn/${id}`)).body, 'Kandelabr srebrny');
     expect(w).toMatch(/wycofan|zniknął/i);
@@ -672,8 +724,7 @@ describe('odpinanie — produkt sklepowy ZBUDOWAL karte i odpiac go NIE WOLNO', 
 
     expect(r.statusCode).toBe(303);
     expect(kartaProduktu(allegro)).toBe(null);
-    expect(nazwyKandydatow((await get(app, `/magazyn/${id}`)).body))
-      .toContain('KANDELABR ozdobny wysoki');
+    expect(nazwyKandydatow((await get(app, `/magazyn/${id}`)).body)).toContain('KANDELABR ozdobny wysoki');
   });
 
   // ⚠️⚠️ DRUGA POLOWA PARY I NAJWAZNIEJSZA BARIERA TEJ KARTY. Zadanie skladane recznie
@@ -709,8 +760,12 @@ describe('odpinanie — produkt sklepowy ZBUDOWAL karte i odpiac go NIE WOLNO', 
     const allegro = oferta('KANDELABR ozdobny');
     powiazProdukt(db, allegro, id);
 
-    const r = await post(serwer(), `/magazyn/${id}/odepnij`, { produktSklepowyId: String(allegro) },
-      { authorization: auth.authorization });
+    const r = await post(
+      serwer(),
+      `/magazyn/${id}/odepnij`,
+      { produktSklepowyId: String(allegro) },
+      { authorization: auth.authorization },
+    );
 
     expect(r.statusCode).toBeGreaterThanOrEqual(400);
     expect(kartaProduktu(allegro)).toBe(id);
@@ -746,10 +801,10 @@ describe('dopisanie oferty — PODPOWIEDZI PROPONUJA, wiaze klikniecie', () => {
     oferta('KANDELABR srebrny duży 70x100cm');
     const app = serwer();
 
-    const zKarty = /<span class="kandydat-ocena">(\d+)%<\/span>/
-      .exec(wierszKandydata((await get(app, `/magazyn/${id}`)).body, 'KANDELABR srebrny duży 70x100cm'));
-    const zEkranu = /<span class="kandydat-ocena">(\d+)%<\/span>/
-      .exec((await get(app, '/magazyn/powiazania')).body);
+    const zKarty = /<span class="kandydat-ocena">(\d+)%<\/span>/.exec(
+      wierszKandydata((await get(app, `/magazyn/${id}`)).body, 'KANDELABR srebrny duży 70x100cm'),
+    );
+    const zEkranu = /<span class="kandydat-ocena">(\d+)%<\/span>/.exec((await get(app, '/magazyn/powiazania')).body);
 
     expect(zKarty, 'karta nie pokazuje oceny kandydata').not.toBe(null);
     expect(zEkranu, 'ekran powiazan nie pokazuje oceny kandydata').not.toBe(null);
@@ -795,16 +850,19 @@ describe('dopisanie oferty — PODPOWIEDZI PROPONUJA, wiaze klikniecie', () => {
     expect(r.statusCode).toBeGreaterThanOrEqual(400);
     expect(kartaProduktu(sklepowy)).toBe(null);
     // ...i nie stoi wsrod kandydatow, wiec droga do tej pomylki nie zaczyna sie na ekranie.
-    expect(nazwyKandydatow((await get(serwer(), `/magazyn/${id}`)).body))
-      .not.toContain('Kandelabr srebrny – 70x100cm');
+    expect(nazwyKandydatow((await get(serwer(), `/magazyn/${id}`)).body)).not.toContain('Kandelabr srebrny – 70x100cm');
   });
 
   it('bez naglowka Origin ochrona CSRF odmawia i nic sie nie wiaze', async () => {
     const id = kartaO('Kandelabr srebrny');
     const o = oferta('KANDELABR ozdobny');
 
-    const r = await post(serwer(), `/magazyn/${id}/powiaz`, { produktSklepowyId: String(o) },
-      { authorization: auth.authorization });
+    const r = await post(
+      serwer(),
+      `/magazyn/${id}/powiaz`,
+      { produktSklepowyId: String(o) },
+      { authorization: auth.authorization },
+    );
 
     expect(r.statusCode).toBeGreaterThanOrEqual(400);
     expect(kartaProduktu(o)).toBe(null);
@@ -829,17 +887,16 @@ describe('dopisanie oferty — WYSZUKIWARKA, nie sama lista podpowiedzi', () => 
 
     // „Żarówka LED trójkąt E27" nie ma z „Kandelabr srebrny" ani jednego wspolnego slowa,
     // wiec wsrod podpowiedzi go nie ma — i to jest poprawne zachowanie miary.
-    expect(nazwyKandydatow((await get(app, `/magazyn/${id}`)).body))
-      .not.toContain('Żarówka LED trójkąt E27');
+    expect(nazwyKandydatow((await get(app, `/magazyn/${id}`)).body)).not.toContain('Żarówka LED trójkąt E27');
 
-    expect(nazwyKandydatow((await get(app, `/magazyn/${id}?fraza=trójkąt`)).body))
-      .toEqual(['Żarówka LED trójkąt E27']);
+    expect(nazwyKandydatow((await get(app, `/magazyn/${id}?fraza=trójkąt`)).body)).toEqual(['Żarówka LED trójkąt E27']);
   });
 
   it('filtr konta Allegro zaweza wyniki szukania', async () => {
     const id = katalog();
-    expect(nazwyKandydatow((await get(serwer(), `/magazyn/${id}?fraza=&kanal=allegro_polcien2`)).body))
-      .toEqual(['Żarówka LED trójkąt E27']);
+    expect(nazwyKandydatow((await get(serwer(), `/magazyn/${id}?fraza=&kanal=allegro_polcien2`)).body)).toEqual([
+      'Żarówka LED trójkąt E27',
+    ]);
   });
 
   it('nierozpoznana wartosc filtru NIE zaweza wynikow do pustych', async () => {
@@ -856,8 +913,9 @@ describe('dopisanie oferty — WYSZUKIWARKA, nie sama lista podpowiedzi', () => 
 
   it('formularz szukania niesie dalej otwarta sekcje edycji, a nie zamyka jej po cichu', async () => {
     const id = katalog();
-    const szukajka = /<form class="szukajka"[\s\S]*?<\/form>/
-      .exec((await get(serwer(), `/magazyn/${id}?fraza=kandelabr&edytuj=dane`)).body)[0];
+    const szukajka = /<form class="szukajka"[\s\S]*?<\/form>/.exec(
+      (await get(serwer(), `/magazyn/${id}?fraza=kandelabr&edytuj=dane`)).body,
+    )[0];
     // Niezmiennik 4.13b w wersji karty: szukanie oferty nie ma kasowac formularza, w ktorym
     // czlowiek wlasnie cos wpisal.
     expect(szukajka).toContain('<input type="hidden" name="edytuj" value="dane">');
@@ -874,22 +932,22 @@ describe('karta produktu — czego NIE robi', () => {
     powiazProdukt(db, p, id);
 
     await post(serwer(), `/magazyn/${id}`, {
-      nazwa: 'Kandelabr srebrny', sku: 'LMP-PLA-200', szerokosc_cm: '70', wysokosc_cm: '100',
+      nazwa: 'Kandelabr srebrny',
+      sku: 'LMP-PLA-200',
+      szerokosc_cm: '70',
+      wysokosc_cm: '100',
     });
 
     // Usluga magazynu (jedyna droga do sklepow i Allegro w tym module) nie zostala tkniete.
     expect(magazyn.start).not.toHaveBeenCalled();
     // Lustro tez nie: SKU sklepowe jest tym, co stoi W SKLEPIE, i karta go nie przepisuje.
-    expect(db.prepare('SELECT sku_sklepu FROM produkty_sklepowe WHERE id = ?').get(p).sku_sklepu)
-      .toBe('STARE');
+    expect(db.prepare('SELECT sku_sklepu FROM produkty_sklepowe WHERE id = ?').get(p).sku_sklepu).toBe('STARE');
   });
 
   it('trasa magazynu nie zna ani klienta sklepu, ani klienta Allegro', async () => {
     // Ta asercja pilnuje DROGI, a nie skutku: dopoki trasa nie ma czym zapytac sklepu,
     // zaden przyszly dopisek nie zrobi tego przez przeoczenie.
-    const zrodlo = readFileSync(
-      new URL('../../src/oms/web/routes/magazyn.js', import.meta.url), 'utf8',
-    );
+    const zrodlo = readFileSync(new URL('../../src/oms/web/routes/magazyn.js', import.meta.url), 'utf8');
     expect(zrodlo).not.toMatch(/from '\.\.\/\.\.\/(woo|allegro)\//);
   });
 });
@@ -902,17 +960,16 @@ describe('karta produktu — wejscie i wyglad', () => {
     // ⚠️ Odnosnik od dawna niesie DALEJ adres listy jako „?wroc=…" (dokladna wartosc ma
     // wlasny test w opisie „powrót z karty..."), wiec goly `href="/magazyn/{id}">` juz nie
     // wystapi — pilnujemy tu WYLACZNIE, ze nazwa linkuje na WLASCIWA karte (id sie zgadza).
-    const dopasowanie = new RegExp(`<a href="/magazyn/${id}\\?wroc=[^"]*">Kandelabr srebrny</a>`)
-      .exec((await get(serwer(), '/magazyn')).body);
+    const dopasowanie = new RegExp(`<a href="/magazyn/${id}\\?wroc=[^"]*">Kandelabr srebrny</a>`).exec(
+      (await get(serwer(), '/magazyn')).body,
+    );
     expect(dopasowanie).not.toBeNull();
   });
 
   it('widok karty nie ma ANI JEDNEGO koloru wpisanego wprost', async () => {
     // Paleta ma wariant jasny i ciemny; wartosc wpisana w widoku zadziala w jasnym
     // i po cichu zniknie w ciemnym, bo nikt nie oglada obu naraz.
-    const tresc = readFileSync(
-      new URL('../../src/oms/web/views/magazyn-karta.ejs', import.meta.url), 'utf8',
-    );
+    const tresc = readFileSync(new URL('../../src/oms/web/views/magazyn-karta.ejs', import.meta.url), 'utf8');
     expect(tresc).not.toMatch(/#[0-9a-f]{3,8}\b/i);
     expect(tresc).not.toMatch(/rgba?\(/i);
   });
@@ -977,8 +1034,11 @@ describe('powrót z karty produktu z zachowaniem filtrów (wroc)', () => {
     const dopasowanie = new RegExp(`href="/magazyn/${id}\\?wroc=([^"]+)"`).exec(r.body);
     expect(dopasowanie, r.body).not.toBeNull();
     const wroc = decodeURIComponent(dopasowanie[1]);
-    expect(Object.fromEntries(new URLSearchParams(wroc.slice(wroc.indexOf('?') + 1))))
-      .toEqual({ brak: 'sku', sort: 'nazwa', kier: 'asc' });
+    expect(Object.fromEntries(new URLSearchParams(wroc.slice(wroc.indexOf('?') + 1)))).toEqual({
+      brak: 'sku',
+      sort: 'nazwa',
+      kier: 'asc',
+    });
   });
 
   // ⚠️ DRUGA POLOWA NIEZMIENNIKA 4.13b: `wroc` ma niesc DALEJ TAKZE
@@ -992,10 +1052,12 @@ describe('powrót z karty produktu z zachowaniem filtrów (wroc)', () => {
     const dopasowanie = new RegExp(`href="/magazyn/${id}\\?wroc=([^"]+)"`).exec(r.body);
     expect(dopasowanie, r.body).not.toBeNull();
     const wroc = decodeURIComponent(dopasowanie[1]);
-    expect(Object.fromEntries(new URLSearchParams(wroc.slice(wroc.indexOf('?') + 1))))
-      .toEqual({
-        brak: 'sku', sort: 'nazwa', kier: 'asc', widok: 'katalog',
-      });
+    expect(Object.fromEntries(new URLSearchParams(wroc.slice(wroc.indexOf('?') + 1)))).toEqual({
+      brak: 'sku',
+      sort: 'nazwa',
+      kier: 'asc',
+      widok: 'katalog',
+    });
   });
 
   // ⚠️ PIERWSZA POLOWA NIEZMIENNIKA 4.13b: karta otwarta Z `wroc`
@@ -1005,9 +1067,7 @@ describe('powrót z karty produktu z zachowaniem filtrów (wroc)', () => {
     const id = kartaO('Kandelabr srebrny');
     const wroc = '/magazyn?brak=sku';
 
-    const dane = sekcja(
-      (await get(serwer(), `/magazyn/${id}?wroc=${encodeURIComponent(wroc)}`)).body, 'dane-karty',
-    );
+    const dane = sekcja((await get(serwer(), `/magazyn/${id}?wroc=${encodeURIComponent(wroc)}`)).body, 'dane-karty');
 
     // ⚠️ `&amp;` — EJS `<%= %>` html-escapuje domyslnie, wiec surowy `&` w adresie renderuje
     // sie jako encja (ta sama pulapka, co w tescie linku „Wróć" wyzej).
@@ -1022,9 +1082,7 @@ describe('powrót z karty produktu z zachowaniem filtrów (wroc)', () => {
     const id = kartaO('Kandelabr srebrny');
     const wroc = '/magazyn?brak=sku';
 
-    const dane = sekcja(
-      (await get(serwer(), `/magazyn/${id}?wroc=${encodeURIComponent(wroc)}`)).body, 'dopisz-oferte',
-    );
+    const dane = sekcja((await get(serwer(), `/magazyn/${id}?wroc=${encodeURIComponent(wroc)}`)).body, 'dopisz-oferte');
 
     expect(dane).toContain(`<input type="hidden" name="wroc" value="${wroc}">`);
   });
@@ -1033,11 +1091,11 @@ describe('powrót z karty produktu z zachowaniem filtrów (wroc)', () => {
     const id = kartaO('Kandelabr srebrny');
     const wroc = '/magazyn?brak=sku';
 
-    const r = await post(
-      serwer(),
-      `/magazyn/${id}?wroc=${encodeURIComponent(wroc)}`,
-      { nazwa: 'Kandelabr srebrny', szerokosc_cm: '70', wysokosc_cm: '100' },
-    );
+    const r = await post(serwer(), `/magazyn/${id}?wroc=${encodeURIComponent(wroc)}`, {
+      nazwa: 'Kandelabr srebrny',
+      szerokosc_cm: '70',
+      wysokosc_cm: '100',
+    });
 
     expect(r.statusCode).toBe(303);
     expect(r.headers.location).toBe(`/magazyn/${id}?wroc=${encodeURIComponent(wroc)}`);
@@ -1059,11 +1117,9 @@ describe('powrót z karty produktu z zachowaniem filtrów (wroc)', () => {
     powiazProdukt(db, o, id);
     const wroc = '/magazyn?brak=sku';
 
-    const r = await post(
-      serwer(),
-      `/magazyn/${id}/odepnij?wroc=${encodeURIComponent(wroc)}`,
-      { produktSklepowyId: String(o) },
-    );
+    const r = await post(serwer(), `/magazyn/${id}/odepnij?wroc=${encodeURIComponent(wroc)}`, {
+      produktSklepowyId: String(o),
+    });
 
     expect(r.statusCode).toBe(303);
     expect(r.headers.location).toBe(`/magazyn/${id}?wroc=${encodeURIComponent(wroc)}`);
@@ -1084,9 +1140,9 @@ describe('powrót z karty produktu z zachowaniem filtrów (wroc)', () => {
 
     const body = (await get(serwer(), `/magazyn/${id}?wroc=${encodeURIComponent(wroc)}`)).body;
 
-    expect(sekcja(body, 'produkty-karty'))
-      .toContain(`action="/magazyn/${id}/odepnij?wroc=${encodeURIComponent(wroc)}"`);
-    expect(sekcja(body, 'dopisz-oferte'))
-      .toContain(`action="/magazyn/${id}/powiaz?wroc=${encodeURIComponent(wroc)}"`);
+    expect(sekcja(body, 'produkty-karty')).toContain(
+      `action="/magazyn/${id}/odepnij?wroc=${encodeURIComponent(wroc)}"`,
+    );
+    expect(sekcja(body, 'dopisz-oferte')).toContain(`action="/magazyn/${id}/powiaz?wroc=${encodeURIComponent(wroc)}"`);
   });
 });

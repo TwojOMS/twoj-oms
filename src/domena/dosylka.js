@@ -7,7 +7,7 @@
 export function powiazaniaDosylki(db, id) {
   const wiersz = db.prepare('SELECT zamowienie_zrodlowe_id FROM zamowienia WHERE id = ?').get(id);
   const pierwotne = wiersz?.zamowienie_zrodlowe_id
-    ? db.prepare('SELECT id, numer FROM zamowienia WHERE id = ?').get(wiersz.zamowienie_zrodlowe_id) ?? null
+    ? (db.prepare('SELECT id, numer FROM zamowienia WHERE id = ?').get(wiersz.zamowienie_zrodlowe_id) ?? null)
     : null;
   const dosylki = db.prepare('SELECT id, numer FROM zamowienia WHERE zamowienie_zrodlowe_id = ? ORDER BY id').all(id);
   return { pierwotne, dosylki };

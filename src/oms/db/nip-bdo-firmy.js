@@ -1,7 +1,10 @@
 // NIP i BDO firmy z Ustawień: wiersze „nip_firmy” i „bdo_firmy” w tabeli konfiguracja_integracji (migracja
 // rdzenia 6, bez nowej migracji). Jawne ustawienia, puste sekrety — NIP i BDO stoją na każdym dokumencie.
-import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji, usunKonfiguracjeIntegracji }
-  from './konfiguracja-integracji.js';
+import {
+  wczytajKonfiguracjeIntegracji,
+  zapiszKonfiguracjeIntegracji,
+  usunKonfiguracjeIntegracji,
+} from './konfiguracja-integracji.js';
 import { KLUCZ_NIP_FIRMY, KLUCZ_BDO_FIRMY, rozstrzygnijNipBdoFirmy } from '../../domena/nip-bdo-firmy.js';
 
 export const wczytajZapisNipuFirmy = (db) => wczytajKonfiguracjeIntegracji(db, KLUCZ_NIP_FIRMY);
@@ -26,7 +29,11 @@ export const usunBdoFirmy = (db) => usunKonfiguracjeIntegracji(db, KLUCZ_BDO_FIR
  */
 export function zrodloNipuIBdoFirmy({ db, zPliku }) {
   const plik = { nip: zPliku?.nip || null, bdo: zPliku?.bdo || null };
-  const biezacy = () => rozstrzygnijNipBdoFirmy({ zPliku: plik,
-    zapisNip: () => wczytajZapisNipuFirmy(db), zapisBdo: () => wczytajZapisBdoFirmy(db) });
+  const biezacy = () =>
+    rozstrzygnijNipBdoFirmy({
+      zPliku: plik,
+      zapisNip: () => wczytajZapisNipuFirmy(db),
+      zapisBdo: () => wczytajZapisBdoFirmy(db),
+    });
   return { nipWPliku: Boolean(plik.nip), bdoWPliku: Boolean(plik.bdo), zPliku: plik, biezacy };
 }

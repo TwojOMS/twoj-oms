@@ -4,10 +4,25 @@ import { zapiszLubOdpusc } from '../wysylka/services/status-kuriera.js';
 import { zamowienieZGrupa } from '../../oms/db/scalenia.js';
 import { wyliczStatus, doZrobienia } from '../../domena/status.js';
 import { faktyDlaStatusu } from '../../domena/status-reczny.js';
-import { ETYKIETY_WYSYLKI, saNadpisanieWysylki, nazwaDostawy, etykietaWysylki, czyPobranie } from '../../domena/wysylka.js';
+import {
+  ETYKIETY_WYSYLKI,
+  saNadpisanieWysylki,
+  nazwaDostawy,
+  etykietaWysylki,
+  czyPobranie,
+} from '../../domena/wysylka.js';
 import { kurierDomyslnyErli } from '../../domena/erli-droga-nadania.js';
 import { metodaKuriera } from '../../domena/moduly-kurierow.ts';
-import { parsujFiltry, numerStrony, adresZFiltrami, bezpiecznyPowrotNaListe, METODY_DO_FILTRA, kanalyDoFiltra, ETYKIETY_FAKTURY, polaWyboruFiltrow } from '../../domena/filtry-listy.js';
+import {
+  parsujFiltry,
+  numerStrony,
+  adresZFiltrami,
+  bezpiecznyPowrotNaListe,
+  METODY_DO_FILTRA,
+  kanalyDoFiltra,
+  ETYKIETY_FAKTURY,
+  polaWyboruFiltrow,
+} from '../../domena/filtry-listy.js';
 import { adresKartyZamowienia, kluczPozycjiListy } from '../../domena/adres-karty-zamowienia.js';
 import { wybraneZListy, podzielDoStatusu, powodZaDuzegoDruku } from '../../domena/masowe.js';
 import { metodyPlatnosciWBazie } from '../../oms/db/filtry.js';
@@ -31,7 +46,17 @@ import { daneZestawienia } from '../../domena/zestawienie-zamowien.js';
 import { fmtDataCzasKrotko } from '../../domena/format-daty.js';
 import { zbudujSpecyfikacjePdf, zbudujSpecyfikacjeWieluPdf } from './pdf/specyfikacja-pdf.js';
 import { zbudujListeProduktowPdf, zbudujZestawieniePdf } from './pdf/wydruki-pdf.js';
-import {teraz,AKCJA_ALLEGRO_PROBA,allegroWymagaOdpytania,miniaturyEkranu,ktoKlikal,sprzedawcaSpecyfikacji,daneKarty,KATALOG_WIDOKOW,fragment} from './wspolne.js';
+import {
+  teraz,
+  AKCJA_ALLEGRO_PROBA,
+  allegroWymagaOdpytania,
+  miniaturyEkranu,
+  ktoKlikal,
+  sprzedawcaSpecyfikacji,
+  daneKarty,
+  KATALOG_WIDOKOW,
+  fragment,
+} from './wspolne.js';
 // Wierszy na stronie listy. Tyle samo, co sufit druku specyfikacji
 // (SUFIT_SPECYFIKACJI_DRUKU w domena/masowe.js): „zaznacz wszystkie" zaznacza strone, wiec
 // jedno klikniecie nigdy nie przekroczy partii, ktora panel umie wydrukowac. Sklep z mniejsza
@@ -63,14 +88,52 @@ async function wykonajZLimitem(elementy, limit, fn) {
 
 import { stronaOdmowy } from '../../core/web/odmowa.js';
 export function registerListaRoutes(app, kontekst) {
-const {db,config,poller,nadanie,faktura,proforma,kurierzy,gus,syncSklep,wiadomosci,przesylkiAllegro,stanyKanalow,zdrowie,fakturaAllegro,fakturaHurtem,doczytanieKsef,powrotKarty,adresPowrotuNaKarte,wczytajListe,statusyDlaKarty,OKNO_OSTRZEZEN_PRZESYLEK_DNI,zbierzOstrzezenia,wyborWiadomosci,daneWiadomosci,renderujKarte,renderujNowe,magazynEkranu,niesiePolaFormularza,opisZmian,kopiujDaneFakturyDoWysylki,pozycjaZadania,zWynikami,magazynDlaKarty}=kontekst;
-app.post('/ostrzezenia/odrzuc', async (req, reply) => {
+  const {
+    db,
+    config,
+    poller,
+    nadanie,
+    faktura,
+    proforma,
+    kurierzy,
+    gus,
+    syncSklep,
+    wiadomosci,
+    przesylkiAllegro,
+    stanyKanalow,
+    zdrowie,
+    fakturaAllegro,
+    fakturaHurtem,
+    doczytanieKsef,
+    powrotKarty,
+    adresPowrotuNaKarte,
+    wczytajListe,
+    statusyDlaKarty,
+    OKNO_OSTRZEZEN_PRZESYLEK_DNI,
+    zbierzOstrzezenia,
+    wyborWiadomosci,
+    daneWiadomosci,
+    renderujKarte,
+    renderujNowe,
+    magazynEkranu,
+    niesiePolaFormularza,
+    opisZmian,
+    kopiujDaneFakturyDoWysylki,
+    pozycjaZadania,
+    zWynikami,
+    magazynDlaKarty,
+  } = kontekst;
+  app.post('/ostrzezenia/odrzuc', async (req, reply) => {
     const klucz = typeof req.body?.klucz === 'string' ? req.body.klucz : null;
-    if (!kluczDozwolony(klucz)) return stronaOdmowy(reply, 400, 'Nieznany klucz ostrzeżenia.', { tytul: 'Nie udało się ukryć ostrzeżenia', napisWroc: 'Wróć do listy zamówień' });
+    if (!kluczDozwolony(klucz))
+      return stronaOdmowy(reply, 400, 'Nieznany klucz ostrzeżenia.', {
+        tytul: 'Nie udało się ukryć ostrzeżenia',
+        napisWroc: 'Wróć do listy zamówień',
+      });
     odrzuc(db, klucz, { kto: req.konto?.login ?? ktoKlikal(req) });
     return reply.redirect('/');
   });
-app.get('/', async (req, reply) => {
+  app.get('/', async (req, reply) => {
     // ⚠️ LISTA NIE CZYTA CALEJ BAZY. Liczniki zakladek, liczbe wynikow i wybor
     // strony daje indeks listy (oms/db/indeks-listy.js) — odpowiedzi TYCH SAMYCH regul domeny,
     // zapisane przy kazdym zamowieniu; tutaj czytamy pelne wiersze wylacznie dla jednej strony.
@@ -84,7 +147,9 @@ app.get('/', async (req, reply) => {
     // ze moze byc nieaktualna — zamiast surowego bledu sterownika. Ta sama zasada, co przy
     // odswiezaniu statusu kuriera na karcie: awaria zapisu nie zabiera ekranu.
     let indeksNieaktualny = false;
-    try { await indeks.odswiez(terazMs); } catch (e) {
+    try {
+      await indeks.odswiez(terazMs);
+    } catch (e) {
       req.log?.error?.(e, 'indeks listy nie odswiezyl sie');
       indeksNieaktualny = true;
     }
@@ -94,9 +159,11 @@ app.get('/', async (req, reply) => {
     // spada do domyslnego widoku roboczego, bo to jest jedyny bezpieczny domyslny stan
     // tego panelu (patrz komentarz przy doZrobienia w domena/status.js).
     // Ukryty status dodatkowy pozostaje poprawnym adresem pustej listy.
-    const filtrStatus = typeof req.query?.status === 'string' && (req.query.status === 'indywidualne' || Object.hasOwn(etykietyStatusow(db), req.query.status))
-      ? req.query.status
-      : null;
+    const filtrStatus =
+      typeof req.query?.status === 'string' &&
+      (req.query.status === 'indywidualne' || Object.hasOwn(etykietyStatusow(db), req.query.status))
+        ? req.query.status
+        : null;
     // `?wszystkie=1` istnieje od pierwszej wersji listy i jest opisany w dokumentacji —
     // panel boczny go NIE zastepuje, tylko dokleja obok siebie druga droge do tego samego.
     const pokazWszystkie = req.query?.wszystkie === '1';
@@ -158,48 +225,78 @@ app.get('/', async (req, reply) => {
     // Wiersz strony, ktorego nie da sie odczytac, a indeks o tym jeszcze nie wie (zapis spoza
     // panelu): nie znika po cichu — trafia do tej samej notki, co uszkodzone znane indeksowi.
     const pominiete = [];
-    const kanalyErli = new Set(db.prepare("SELECT klucz FROM kanaly_sprzedazy WHERE typ='erli'").all().map(k => k.klucz));
+    const kanalyErli = new Set(
+      db
+        .prepare("SELECT klucz FROM kanaly_sprzedazy WHERE typ='erli'")
+        .all()
+        .map((k) => k.klucz),
+    );
     // Lista pomija duże surowe odpowiedzi sklepów. Tylko ERLI potrzebuje delivery do lokalnego odczytu drogi.
-    const wiersze = wczytajListe(wynik.ids, { teraz: new Date(terazMs), bezSurowych: true, pomijajUszkodzone: true,
-      naPominiete: (z) => pominiete.push({ id: z.id, numer: z.numer, blad: PRZYCZYNA_POMINIETEGO }) });
+    const wiersze = wczytajListe(wynik.ids, {
+      teraz: new Date(terazMs),
+      bezSurowych: true,
+      pomijajUszkodzone: true,
+      naPominiete: (z) => pominiete.push({ id: z.id, numer: z.numer, blad: PRZYCZYNA_POMINIETEGO }),
+    });
     // Ręczna metoda wygrywa także przy nadaniu (metodaNadaniaErli) — lista nie może obiecywać drogi ERLI.
     const zDroga = wiersze.filter((z) => kanalyErli.has(z.sklep) && !saNadpisanieWysylki(z)).map((z) => z.id);
     // Jedno zapytanie na stronę, nie jedno na wiersz (lista czyta z zamówień tylko bieżącą stronę).
-    const suroweErli = new Map(zDroga.length ? db.prepare(`SELECT id, surowe_json FROM zamowienia WHERE id IN (${zDroga.map(() => '?').join(',')})`)
-      .all(...zDroga).map((r) => [r.id, r.surowe_json]) : []);
+    const suroweErli = new Map(
+      zDroga.length
+        ? db
+            .prepare(`SELECT id, surowe_json FROM zamowienia WHERE id IN (${zDroga.map(() => '?').join(',')})`)
+            .all(...zDroga)
+            .map((r) => [r.id, r.surowe_json])
+        : [],
+    );
     const zamowienia = wiersze.map((z) => {
       const droga = suroweErli.has(z.id)
-        ? drogaErliDlaZamowienia(db, { ...z, surowe_json: suroweErli.get(z.id) }) : undefined;
-      const przewoznikUmowy = droga?.droga === 'umowa'
-        ? Object.values(PRZEWOZNICY).find(p => droga.kurier === p.klucz || droga.kurier.startsWith(`${p.klucz}_`)) ?? null
-        : null;
-      const kurierErliListy = droga?.droga === 'umowa'
-        ? ETYKIETY_WYSYLKI[droga.kurier === 'odbior' ? 'odbior_osobisty' : droga.kurier] : null;
+        ? drogaErliDlaZamowienia(db, { ...z, surowe_json: suroweErli.get(z.id) })
+        : undefined;
+      const przewoznikUmowy =
+        droga?.droga === 'umowa'
+          ? (Object.values(PRZEWOZNICY).find(
+              (p) => droga.kurier === p.klucz || droga.kurier.startsWith(`${p.klucz}_`),
+            ) ?? null)
+          : null;
+      const kurierErliListy =
+        droga?.droga === 'umowa'
+          ? ETYKIETY_WYSYLKI[droga.kurier === 'odbior' ? 'odbior_osobisty' : droga.kurier]
+          : null;
       let nazwaErliListy = droga?.droga === 'umowa' && droga.kurier !== 'odbior' ? kurierErliListy : null;
       if (droga?.droga === 'przesylki_erli') {
         // Słownik wskazuje operatora, zamówienie odróżnia paczkomat od kuriera.
         const delivery = JSON.parse(suroweErli.get(z.id)).delivery ?? {};
         const punkt = delivery.pickupPlace || /paczkomat/i.test(droga.metoda.groupId ?? droga.metoda.name ?? '');
         const kurier = kurierDomyslnyErli(droga.metoda.operator?.toLowerCase() ?? droga.metoda.vendor, punkt);
-        const usluga = metodaKuriera(kurier)?.punktOdbioru ? ETYKIETY_WYSYLKI.allegro_paczkomat.replace(/^Allegro /, '')
-          : kurier === 'inpost_kurier' ? 'Kurier InPost' : ETYKIETY_WYSYLKI[kurier];
+        const usluga = metodaKuriera(kurier)?.punktOdbioru
+          ? ETYKIETY_WYSYLKI.allegro_paczkomat.replace(/^Allegro /, '')
+          : kurier === 'inpost_kurier'
+            ? 'Kurier InPost'
+            : ETYKIETY_WYSYLKI[kurier];
         nazwaErliListy = `Erli ${usluga || z.metoda_wysylki_nazwa || droga.metoda.name || droga.metoda.id}`;
       }
       return {
         ...z,
         drogaErliListy: droga,
         kurierErliListy,
-        nazwaDostawyListy: nazwaErliListy ? etykietaWysylki(z.metoda_wysylki, czyPobranie(z), nazwaErliListy) : nazwaDostawy(z),
+        nazwaDostawyListy: nazwaErliListy
+          ? etykietaWysylki(z.metoda_wysylki, czyPobranie(z), nazwaErliListy)
+          : nazwaDostawy(z),
         // Nazwa metody ma pierwszeństwo; przy ogólnej nazwie przewoźnika wskazuje umowa ERLI.
-        przewoznikListy: droga?.droga === 'przesylki_erli' ? { klucz: 'erli' } : (z.przewoznikListy || przewoznikUmowy),
+        przewoznikListy: droga?.droga === 'przesylki_erli' ? { klucz: 'erli' } : z.przewoznikListy || przewoznikUmowy,
         adresKarty: adresKartyZamowienia(z.id, { powrot: adresListy }, config.definicje),
       };
     });
-    const stronicowanie = stron > 1 ? {
-      strona, stron,
-      poprzednia: strona > 1 ? adresZFiltrami(filtry, { ...kontekst, strona: strona - 1 }) : null,
-      nastepna: strona < stron ? adresZFiltrami(filtry, { ...kontekst, strona: strona + 1 }) : null,
-    } : null;
+    const stronicowanie =
+      stron > 1
+        ? {
+            strona,
+            stron,
+            poprzednia: strona > 1 ? adresZFiltrami(filtry, { ...kontekst, strona: strona - 1 }) : null,
+            nastepna: strona < stron ? adresZFiltrami(filtry, { ...kontekst, strona: strona + 1 }) : null,
+          }
+        : null;
 
     // ⚠️ SEDNO TEGO PANELU: liczniki i wiersze licza TE SAME reguly domeny (`wyliczStatus`,
     // `doZrobienia`, zegar wieku) — przez indeks listy, ktory zapisuje ich
@@ -240,16 +337,33 @@ app.get('/', async (req, reply) => {
     // warunki, a wspolny `.map` po `p.klucz === aktywny` kusi przy kazdej kolejnej zmianie.
     const liczniki = indeks.liczniki(terazMs);
     const panelStatusow = [
-      { klucz: 'do_zrobienia', etykieta: 'Do zrobienia', liczba: liczniki.do_zrobienia, href: adresZFiltrami(filtry, {}), aktywna: aktywny === 'do_zrobienia' },
-      { klucz: 'wszystkie', etykieta: 'Wszystkie', liczba: liczniki.wszystkie, href: adresZFiltrami(filtry, { wszystkie: true }), aktywna: aktywny === 'wszystkie' },
+      {
+        klucz: 'do_zrobienia',
+        etykieta: 'Do zrobienia',
+        liczba: liczniki.do_zrobienia,
+        href: adresZFiltrami(filtry, {}),
+        aktywna: aktywny === 'do_zrobienia',
+      },
+      {
+        klucz: 'wszystkie',
+        etykieta: 'Wszystkie',
+        liczba: liczniki.wszystkie,
+        href: adresZFiltrami(filtry, { wszystkie: true }),
+        aktywna: aktywny === 'wszystkie',
+      },
       (() => {
         // Liczba spóźnionych z TEGO SAMEGO indeksu, co pozostałe liczniki — ten sam zegar
         // (`wiekZamowienia`), co kolumna w wierszu. Klasa TYLKO przy N > 0 — pozycja
         // ma krzyczeć, gdy jest o co, a nie być na stałe czerwoną plamą.
         const n = liczniki.po_terminie;
-        return { klucz: 'po_terminie', etykieta: 'Po terminie', liczba: n,
+        return {
+          klucz: 'po_terminie',
+          etykieta: 'Po terminie',
+          liczba: n,
           href: adresZFiltrami(filtry, { poTerminie: true }),
-          aktywna: aktywny === 'po_terminie', klasa: n > 0 ? 'pozycja-po-terminie' : null };
+          aktywna: aktywny === 'po_terminie',
+          klasa: n > 0 ? 'pozycja-po-terminie' : null,
+        };
       })(),
       ...Object.keys(etykietyStatusow(db)).map((klucz) => ({
         klucz,
@@ -284,7 +398,10 @@ app.get('/', async (req, reply) => {
     };
     for (const [klucz, nazwa] of Object.entries(NAZWY_CHIPOW)) {
       for (const w of filtry[klucz] ?? []) {
-        chipy.push({ etykieta: nazwa(w), href: adresZFiltrami({ ...filtry, [klucz]: filtry[klucz].filter((x) => x !== w) }, kontekst) });
+        chipy.push({
+          etykieta: nazwa(w),
+          href: adresZFiltrami({ ...filtry, [klucz]: filtry[klucz].filter((x) => x !== w) }, kontekst),
+        });
       }
     }
 
@@ -300,10 +417,12 @@ app.get('/', async (req, reply) => {
     // Jedno `SELECT 1 … LIMIT 1` i TYLKO przy pustej liście — niepusta lista nie płaci ani zapytania.
     // Pytamy tabelę zamówień, nie liczniki indeksu: indeks mógł się nie odświeżyć (`indeksNieaktualny`),
     // a to pytanie ma odpowiedzieć „czy baza cokolwiek ma”, nie „co widać w zakładce”.
-    const bazaBezZamowien = !zamowienia.length && !szukaj && !chipy.length && !db.prepare('SELECT 1 FROM zamowienia LIMIT 1').get();
+    const bazaBezZamowien =
+      !zamowienia.length && !szukaj && !chipy.length && !db.prepare('SELECT 1 FROM zamowienia LIMIT 1').get();
     // Odnośnik do „Sklepy i usługi” tylko dla roli, której straznik wpuści na ten ekran (inaczej klik kończy się 403).
     const odnosnikDoKanalow = bazaBezZamowien && maDostepDoAdresu(req.konto, '/ustawienia/integracje');
-    return reply.view('lista.ejs', { szerokosc: 'tabela',
+    return reply.view('lista.ejs', {
+      szerokosc: 'tabela',
       zamowienia,
       // Liczba WSZYSTKICH pasujących (nagłówek wyników frazy, licznik filtrów) — nie długość
       // strony. `stronicowanie` = null, gdy wszystko mieści się na jednej stronie.
@@ -311,8 +430,9 @@ app.get('/', async (req, reply) => {
       stronicowanie,
       sprawdzanieIndeksu: indeks.sprawdzanie(),
       // Zamowienia, ktorych nie da sie odczytac — z numerem i przyczyna, zeby dalo sie je naprawic.
-      uszkodzone: [...(indeksNieaktualny ? [] : indeks.uszkodzone()), ...pominiete]
-        .filter((u, i, wszystkie) => wszystkie.findIndex((x) => x.id === u.id) === i),
+      uszkodzone: [...(indeksNieaktualny ? [] : indeks.uszkodzone()), ...pominiete].filter(
+        (u, i, wszystkie) => wszystkie.findIndex((x) => x.id === u.id) === i,
+      ),
       indeksNieaktualny,
       kanalyDoUwagi,
       bazaBezZamowien,
@@ -338,7 +458,9 @@ app.get('/', async (req, reply) => {
         platnosc: opcjeMetodPlatnosci(metodyPlatnosciWBazie(db)),
         // Katalog i etykiety pochodzą z jawnej konfiguracji także przed pierwszym zamówieniem.
         // Kanał lub istniejące zamówienia: ta sama reguła, co statusy w menu.
-        kanal: kanalyDoFiltra(config.definicje).filter(k => k.klucz !== 'indywidualne' || Object.hasOwn(etykietyStatusow(db), 'indywidualne')),
+        kanal: kanalyDoFiltra(config.definicje).filter(
+          (k) => k.klucz !== 'indywidualne' || Object.hasOwn(etykietyStatusow(db), 'indywidualne'),
+        ),
       }),
       // Lista statusow do paska akcji masowych — TA SAMA, co na karcie zamowienia.
       opcjeStatusu: opcjeStatusow(db),
@@ -367,7 +489,11 @@ app.get('/', async (req, reply) => {
       // tam bez końca jak awaria, choć /health mówi `zdrowy: true, zrodla: []`.
       bezKanalow: !stanPollera && !config.definicje?.length,
       stanPollera: stanPollera
-        ?{ ...stanPollera, kanal: adresKanalu(stanPollera.sklep, config.definicje), ostatni_blad: bladPolleraNaEkran(stanPollera) }
+        ? {
+            ...stanPollera,
+            kanal: adresKanalu(stanPollera.sklep, config.definicje),
+            ostatni_blad: bladPolleraNaEkran(stanPollera),
+          }
         : null,
       // „Zaznacz wszystkie" BEZ JAVASCRIPTU — zwykly adres, tak jak filtry i wyszukiwanie
       // (stan chodzi przez adres strony). Odhaczenie pojedynczych wierszy
@@ -390,7 +516,7 @@ app.get('/', async (req, reply) => {
       adresPowrotu: adresZFiltrami(filtry, { ...kontekst, strona }),
     });
   });
-app.post('/zamowienia/masowe/status', async (req, reply) => {
+  app.post('/zamowienia/masowe/status', async (req, reply) => {
     const wybrane = wybraneZListy(wczytajListe(zaznaczone(req.body?.id)), req.body?.id);
     const docelowy = String(req.body?.status ?? '').trim();
     const { doZmiany, pominiete } = podzielDoStatusu(wybrane, docelowy);
@@ -406,7 +532,10 @@ app.post('/zamowienia/masowe/status', async (req, reply) => {
     const doOdeslania = [];
     for (const z of doZmiany) {
       try {
-        zapiszFaktyStatusu(db, z.id, { ...faktyDlaStatusu(z, docelowy, { powod: null }), kto: req.konto?.login ?? ktoKlikal(req) });
+        zapiszFaktyStatusu(db, z.id, {
+          ...faktyDlaStatusu(z, docelowy, { powod: null }),
+          kto: req.konto?.login ?? ktoKlikal(req),
+        });
       } catch (e) {
         // Awaria zapisu JEDNEGO zamowienia nie ma prawa przerwac petli — reszta zaznaczen
         // czeka, a operator ma zobaczyc, ktore konkretnie nie przeszlo.
@@ -419,8 +548,9 @@ app.post('/zamowienia/masowe/status', async (req, reply) => {
       const osiagniety = wyliczStatus(pobierzZamowienie(db, z.id));
       dopiszLog(db, z.id, {
         akcja: 'status.masowy',
-        wynik: `Ręcznie (${ktoKlikal(req)}): zmiana masowa na „${etykietyStatusow(db)[docelowy]}" `
-          + `(${doZmiany.length} zamówień) — status po zmianie: ${etykietyStatusow(db)[osiagniety]}.`,
+        wynik:
+          `Ręcznie (${ktoKlikal(req)}): zmiana masowa na „${etykietyStatusow(db)[docelowy]}" ` +
+          `(${doZmiany.length} zamówień) — status po zmianie: ${etykietyStatusow(db)[osiagniety]}.`,
       });
       doOdeslania.push(z);
     }
@@ -465,112 +595,160 @@ app.post('/zamowienia/masowe/status', async (req, reply) => {
       etykietaUdanych: 'Status zmieniony',
     });
   });
-app.get('/zamowienia/:id/specyfikacja.pdf', async (req, reply) => {
+  app.get('/zamowienia/:id/specyfikacja.pdf', async (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
-    if (!z) return stronaOdmowy(reply, 404, 'Nie ma takiego zamówienia', { tytul: 'Nie udało się przygotować specyfikacji', wroc: adresPowrotuNaKarte(req, req.params.id), napisWroc: 'Wróć do zamówienia' });
+    if (!z)
+      return stronaOdmowy(reply, 404, 'Nie ma takiego zamówienia', {
+        tytul: 'Nie udało się przygotować specyfikacji',
+        wroc: adresPowrotuNaKarte(req, req.params.id),
+        napisWroc: 'Wróć do zamówienia',
+      });
     let bajty;
     try {
       const sprzedawca = sprzedawcaSpecyfikacji(config);
       // Główne grupy scalonej drukuje pozycje CAŁEJ grupy (ta sama funkcja, co faktura).
-      bajty = await zbudujSpecyfikacjePdf(daneSpecyfikacji(zamowienieZGrupa(db, z), { sprzedawca, klienciWdt: config.klienciWdt }));
+      bajty = await zbudujSpecyfikacjePdf(
+        daneSpecyfikacji(zamowienieZGrupa(db, z), { sprzedawca, klienciWdt: config.klienciWdt }),
+      );
     } catch (e) {
       // ⚠️ `zapiszLubOdpusc`, ta sama zasada, co przy odswiezaniu statusu kuriera wyzej:
       // awaria zapisu logu (dysk pelny, baza tylko do odczytu) nie ma prawa zamienic
       // czytelnego 400 w surowy blad sterownika bazy (HTTP 500).
       zapiszLubOdpusc(() => dopiszLog(db, id, { akcja: 'specyfikacja.pdf', wynik: `BŁĄD: ${e.message}` }));
-      return stronaOdmowy(reply, 400, `Nie udało się przygotować specyfikacji: ${komunikatDlaOperatora(e)}`, { tytul: 'Nie udało się przygotować specyfikacji', wroc: adresPowrotuNaKarte(req, req.params.id), napisWroc: 'Wróć do zamówienia' });
+      return stronaOdmowy(reply, 400, `Nie udało się przygotować specyfikacji: ${komunikatDlaOperatora(e)}`, {
+        tytul: 'Nie udało się przygotować specyfikacji',
+        wroc: adresPowrotuNaKarte(req, req.params.id),
+        napisWroc: 'Wróć do zamówienia',
+      });
     }
     const nazwaPliku = `specyfikacja-${bezpiecznaNazwa(z.numer ?? String(id))}.pdf`;
-    return reply.type('application/pdf')
-      .header('Content-Disposition', `inline; filename="${nazwaPliku}"`)
-      .send(bajty);
+    return reply.type('application/pdf').header('Content-Disposition', `inline; filename="${nazwaPliku}"`).send(bajty);
   });
-// Wydruki wewnetrzne z menu „Wydruki": „Lista produktów" (same produkty z iloscia,
-// bez danych klienta, cen i wysylki — domena/lista-produktow.js) i „Zestawienie zamówień"
-// (jak „order-shipping" z Apilo — domena/zestawienie-zamowien.js). Dawniej lista byla
-// strona HTML; teraz otwiera sie jako PDF do druku.
-//
-// ⚠️ `inline`, nie `attachment`: menu otwiera je w nowej karcie, a kartka ma od razu stac
-// w podgladzie przegladarki z przyciskiem druku — nie w Pobranych. Tak samo
-// specyfikacja i wszystkie PDF-y dla czlowieka: pobranie po `http://` z LAN Chrome blokuje
-// ostrzezeniem „niebezpieczny plik” (tests/moduly/zamowienia/pdf-w-przegladarce.test.js).
-// Ekran w straznik trafia przez prefiks `/zamowienia` (domena/ekrany.js), tak samo jak
-// specyfikacja — to kartki do pakowania.
-const wydrukowano = () => fmtDataCzasKrotko(new Date().toISOString());
-const pdfInline = (reply, bajty, nazwaPliku) => reply.type('application/pdf')
-  .header('Content-Disposition', `inline; filename="${nazwaPliku}"`)
-  .send(bajty);
-const WYDRUKI = {
-  'lista-produktow': {
-    co: 'listy produktów',
-    akcja: 'lista-produktow.pdf',
-    zbuduj: (zamowienia) => zbudujListeProduktowPdf(listaProduktowZbiorcza(zamowienia), { wydrukowano: wydrukowano() }),
-  },
-  zestawienie: {
-    co: 'zestawienia zamówień',
-    akcja: 'zestawienie.pdf',
-    zbuduj: (zamowienia) => zbudujZestawieniePdf(
-      zamowienia.map((z) => daneZestawienia(z, { kanal: adresKanalu(z.sklep, config.definicje), klienciWdt: config.klienciWdt })),
-      { wydrukowano: wydrukowano() },
-    ),
-  },
-};
-for (const [nazwa, wydruk] of Object.entries(WYDRUKI)) {
-  app.get(`/zamowienia/:id/${nazwa}.pdf`, async (req, reply) => {
-    const id = Number(req.params.id);
-    const z = pobierzZamowienie(db, id);
-    if (!z) return stronaOdmowy(reply, 404, 'Nie ma takiego zamówienia', { tytul: 'Nie udało się przygotować wydruku', wroc: adresPowrotuNaKarte(req, req.params.id), napisWroc: 'Wróć do zamówienia' });
-    let bajty;
-    try {
-      bajty = await wydruk.zbuduj([zamowienieZGrupa(db, z)]);
-    } catch (e) {
-      zapiszLubOdpusc(() => dopiszLog(db, id, { akcja: wydruk.akcja, wynik: `BŁĄD: ${e.message}` }));
-      return stronaOdmowy(reply, 400, `Nie udało się przygotować ${wydruk.co}: ${komunikatDlaOperatora(e)}`, { tytul: 'Nie udało się przygotować wydruku', wroc: adresPowrotuNaKarte(req, req.params.id), napisWroc: 'Wróć do zamówienia' });
-    }
-    return pdfInline(reply, bajty, `${nazwa}-${bezpiecznaNazwa(z.numer ?? String(id))}.pdf`);
-  });
-  // Hurtem: JEDEN dokument dla wszystkich zaznaczonych — ten sam odczyt zaznaczenia i ten sam
-  // sufit partii, co specyfikacje nizej (rysowanie jest synchroniczne, patrz tam).
-  app.post(`/zamowienia/${nazwa}.pdf`, async (req, reply) => {
-    const wybrane = wybraneZListy(wczytajListe(zaznaczone(req.body?.id)), req.body?.id);
-    if (!wybrane.length) return stronaOdmowy(reply, 400, 'Nie zaznaczono żadnego zamówienia.', { tytul: 'Nie udało się przygotować wydruku', wroc: powrotKarty(req), napisWroc: 'Wróć do listy zamówień' });
-    const zaDuzo = powodZaDuzegoDruku(wybrane.length, wydruk.co);
-    if (zaDuzo) return stronaOdmowy(reply, 400, zaDuzo, { tytul: 'Nie udało się przygotować wydruku', wroc: powrotKarty(req), napisWroc: 'Wróć do listy zamówień' });
-    let bajty;
-    try {
-      bajty = await wydruk.zbuduj(wybrane.map((z) => zamowienieZGrupa(db, z)));
-    } catch (e) {
-      for (const z of wybrane) {
-        zapiszLubOdpusc(() => dopiszLog(db, z.id, { akcja: `${wydruk.akcja}.masowa`, wynik: `BŁĄD: ${e.message}` }));
+  // Wydruki wewnetrzne z menu „Wydruki": „Lista produktów" (same produkty z iloscia,
+  // bez danych klienta, cen i wysylki — domena/lista-produktow.js) i „Zestawienie zamówień"
+  // (jak „order-shipping" z Apilo — domena/zestawienie-zamowien.js). Dawniej lista byla
+  // strona HTML; teraz otwiera sie jako PDF do druku.
+  //
+  // ⚠️ `inline`, nie `attachment`: menu otwiera je w nowej karcie, a kartka ma od razu stac
+  // w podgladzie przegladarki z przyciskiem druku — nie w Pobranych. Tak samo
+  // specyfikacja i wszystkie PDF-y dla czlowieka: pobranie po `http://` z LAN Chrome blokuje
+  // ostrzezeniem „niebezpieczny plik” (tests/moduly/zamowienia/pdf-w-przegladarce.test.js).
+  // Ekran w straznik trafia przez prefiks `/zamowienia` (domena/ekrany.js), tak samo jak
+  // specyfikacja — to kartki do pakowania.
+  const wydrukowano = () => fmtDataCzasKrotko(new Date().toISOString());
+  const pdfInline = (reply, bajty, nazwaPliku) =>
+    reply.type('application/pdf').header('Content-Disposition', `inline; filename="${nazwaPliku}"`).send(bajty);
+  const WYDRUKI = {
+    'lista-produktow': {
+      co: 'listy produktów',
+      akcja: 'lista-produktow.pdf',
+      zbuduj: (zamowienia) =>
+        zbudujListeProduktowPdf(listaProduktowZbiorcza(zamowienia), { wydrukowano: wydrukowano() }),
+    },
+    zestawienie: {
+      co: 'zestawienia zamówień',
+      akcja: 'zestawienie.pdf',
+      zbuduj: (zamowienia) =>
+        zbudujZestawieniePdf(
+          zamowienia.map((z) =>
+            daneZestawienia(z, { kanal: adresKanalu(z.sklep, config.definicje), klienciWdt: config.klienciWdt }),
+          ),
+          { wydrukowano: wydrukowano() },
+        ),
+    },
+  };
+  for (const [nazwa, wydruk] of Object.entries(WYDRUKI)) {
+    app.get(`/zamowienia/:id/${nazwa}.pdf`, async (req, reply) => {
+      const id = Number(req.params.id);
+      const z = pobierzZamowienie(db, id);
+      if (!z)
+        return stronaOdmowy(reply, 404, 'Nie ma takiego zamówienia', {
+          tytul: 'Nie udało się przygotować wydruku',
+          wroc: adresPowrotuNaKarte(req, req.params.id),
+          napisWroc: 'Wróć do zamówienia',
+        });
+      let bajty;
+      try {
+        bajty = await wydruk.zbuduj([zamowienieZGrupa(db, z)]);
+      } catch (e) {
+        zapiszLubOdpusc(() => dopiszLog(db, id, { akcja: wydruk.akcja, wynik: `BŁĄD: ${e.message}` }));
+        return stronaOdmowy(reply, 400, `Nie udało się przygotować ${wydruk.co}: ${komunikatDlaOperatora(e)}`, {
+          tytul: 'Nie udało się przygotować wydruku',
+          wroc: adresPowrotuNaKarte(req, req.params.id),
+          napisWroc: 'Wróć do zamówienia',
+        });
       }
-      return stronaOdmowy(reply, 400, `Nie udało się przygotować ${wydruk.co}: ${komunikatDlaOperatora(e)}`, { tytul: 'Nie udało się przygotować wydruku', wroc: powrotKarty(req), napisWroc: 'Wróć do listy zamówień' });
-    }
-    const nazwaPliku = wybrane.length === 1
-      ? `${nazwa}-${bezpiecznaNazwa(wybrane[0].numer ?? '')}.pdf`
-      : `${nazwa}-${wybrane.length}-zamowien.pdf`;
-    return pdfInline(reply, bajty, nazwaPliku);
-  });
-}
-app.post('/zamowienia/specyfikacje.pdf', async (req, reply) => {
+      return pdfInline(reply, bajty, `${nazwa}-${bezpiecznaNazwa(z.numer ?? String(id))}.pdf`);
+    });
+    // Hurtem: JEDEN dokument dla wszystkich zaznaczonych — ten sam odczyt zaznaczenia i ten sam
+    // sufit partii, co specyfikacje nizej (rysowanie jest synchroniczne, patrz tam).
+    app.post(`/zamowienia/${nazwa}.pdf`, async (req, reply) => {
+      const wybrane = wybraneZListy(wczytajListe(zaznaczone(req.body?.id)), req.body?.id);
+      if (!wybrane.length)
+        return stronaOdmowy(reply, 400, 'Nie zaznaczono żadnego zamówienia.', {
+          tytul: 'Nie udało się przygotować wydruku',
+          wroc: powrotKarty(req),
+          napisWroc: 'Wróć do listy zamówień',
+        });
+      const zaDuzo = powodZaDuzegoDruku(wybrane.length, wydruk.co);
+      if (zaDuzo)
+        return stronaOdmowy(reply, 400, zaDuzo, {
+          tytul: 'Nie udało się przygotować wydruku',
+          wroc: powrotKarty(req),
+          napisWroc: 'Wróć do listy zamówień',
+        });
+      let bajty;
+      try {
+        bajty = await wydruk.zbuduj(wybrane.map((z) => zamowienieZGrupa(db, z)));
+      } catch (e) {
+        for (const z of wybrane) {
+          zapiszLubOdpusc(() => dopiszLog(db, z.id, { akcja: `${wydruk.akcja}.masowa`, wynik: `BŁĄD: ${e.message}` }));
+        }
+        return stronaOdmowy(reply, 400, `Nie udało się przygotować ${wydruk.co}: ${komunikatDlaOperatora(e)}`, {
+          tytul: 'Nie udało się przygotować wydruku',
+          wroc: powrotKarty(req),
+          napisWroc: 'Wróć do listy zamówień',
+        });
+      }
+      const nazwaPliku =
+        wybrane.length === 1
+          ? `${nazwa}-${bezpiecznaNazwa(wybrane[0].numer ?? '')}.pdf`
+          : `${nazwa}-${wybrane.length}-zamowien.pdf`;
+      return pdfInline(reply, bajty, nazwaPliku);
+    });
+  }
+  app.post('/zamowienia/specyfikacje.pdf', async (req, reply) => {
     const wybrane = wybraneZListy(wczytajListe(zaznaczone(req.body?.id)), req.body?.id);
     // ⚠️ Pusty PDF wyglada jak plik, ktory sie udal — a przy wydruku do paczki znaczy paczke
     // BEZ dokumentu. Odmowa CZYTELNA jest tu tansza niz cisza (ta sama zasada, co w
     // pdf/specyfikacja-pdf.js: `zbudujSpecyfikacjeWieluPdf` odmawia identycznie na pustej
     // liscie — ale nie ma prawa polegac WYLACZNIE na tamtej odmowie, bo trasa ma dac
     // komunikat operatorski, a nie techniczny wyjatek).
-    if (!wybrane.length) return stronaOdmowy(reply, 400, 'Nie zaznaczono żadnego zamówienia.', { tytul: 'Nie udało się przygotować specyfikacji', wroc: powrotKarty(req), napisWroc: 'Wróć do listy zamówień' });
+    if (!wybrane.length)
+      return stronaOdmowy(reply, 400, 'Nie zaznaczono żadnego zamówienia.', {
+        tytul: 'Nie udało się przygotować specyfikacji',
+        wroc: powrotKarty(req),
+        napisWroc: 'Wróć do listy zamówień',
+      });
     // ⚠️ SUFIT PARTII DRUKU. Kiedys trasa nie miala go wcale, bo „rysowanie
     // jest lokalne, wiec nic nie grozi". Grozi, i to z rzeczy niewidocznych stad: lista nie ma
     // stronicowania, „zaznacz wszystkie" zaznacza KAZDY wyrenderowany wiersz, a rysowanie jest
     // SYNCHRONICZNE — czyli jedno pomylkowe klikniecie zatrzymuje panel dla wszystkich na czas
     // rysowania calej bazy. Uzasadnienie liczby stoi przy stalej w domena/masowe.js.
     const zaDuzo = powodZaDuzegoDruku(wybrane.length);
-    if (zaDuzo) return stronaOdmowy(reply, 400, zaDuzo, { tytul: 'Nie udało się przygotować specyfikacji', wroc: powrotKarty(req), napisWroc: 'Wróć do listy zamówień' });
+    if (zaDuzo)
+      return stronaOdmowy(reply, 400, zaDuzo, {
+        tytul: 'Nie udało się przygotować specyfikacji',
+        wroc: powrotKarty(req),
+        napisWroc: 'Wróć do listy zamówień',
+      });
     let bajty;
     try {
       const sprzedawca = sprzedawcaSpecyfikacji(config);
-      bajty = await zbudujSpecyfikacjeWieluPdf(wybrane.map((z) => daneSpecyfikacji(zamowienieZGrupa(db, z), { sprzedawca, klienciWdt: config.klienciWdt })));
+      bajty = await zbudujSpecyfikacjeWieluPdf(
+        wybrane.map((z) => daneSpecyfikacji(zamowienieZGrupa(db, z), { sprzedawca, klienciWdt: config.klienciWdt })),
+      );
     } catch (e) {
       // Dokument jest JEDEN dla calego zaznaczenia, wiec awaria jest wspolna — slad idzie
       // do KAZDEGO zaznaczonego zamowienia (ta sama zasada, co przy fakturach hurtem: log ma
@@ -580,14 +758,17 @@ app.post('/zamowienia/specyfikacje.pdf', async (req, reply) => {
       for (const z of wybrane) {
         zapiszLubOdpusc(() => dopiszLog(db, z.id, { akcja: 'specyfikacja.pdf.masowa', wynik: `BŁĄD: ${e.message}` }));
       }
-      return stronaOdmowy(reply, 400, `Nie udało się przygotować specyfikacji: ${komunikatDlaOperatora(e)}`, { tytul: 'Nie udało się przygotować specyfikacji', wroc: powrotKarty(req), napisWroc: 'Wróć do listy zamówień' });
+      return stronaOdmowy(reply, 400, `Nie udało się przygotować specyfikacji: ${komunikatDlaOperatora(e)}`, {
+        tytul: 'Nie udało się przygotować specyfikacji',
+        wroc: powrotKarty(req),
+        napisWroc: 'Wróć do listy zamówień',
+      });
     }
-    const nazwaPliku = wybrane.length === 1
-      ? `specyfikacja-${bezpiecznaNazwa(wybrane[0].numer ?? '')}.pdf`
-      : `specyfikacje-${wybrane.length}-zamowien.pdf`;
-    return reply.type('application/pdf')
-      .header('Content-Disposition', `inline; filename="${nazwaPliku}"`)
-      .send(bajty);
+    const nazwaPliku =
+      wybrane.length === 1
+        ? `specyfikacja-${bezpiecznaNazwa(wybrane[0].numer ?? '')}.pdf`
+        : `specyfikacje-${wybrane.length}-zamowien.pdf`;
+    return reply.type('application/pdf').header('Content-Disposition', `inline; filename="${nazwaPliku}"`).send(bajty);
   });
 }
 export { ktoKlikal, miniaturyEkranu } from './wspolne.js';

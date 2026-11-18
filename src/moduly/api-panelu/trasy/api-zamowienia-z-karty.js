@@ -4,7 +4,13 @@ import { parsujZamowienieZKarty } from '../../../domena/zamowienie-z-karty.js';
 import { czytajStawkeDomyslna } from '../../faktury/db/stawka-vat.js';
 import { zwolnionaZFlagi } from '../../faktury/db/zwolnienie-vat.js';
 import { zalozZamowienieReczne } from '../../zamowienia/services/zamowienie-reczne.js';
-import { dopiszLog, pobierzZamowienie, znajdzZamowieniaPoNumerze, zapiszFaktyStatusu, ostatniWpisLogu } from '../../../oms/db/zamowienia.js';
+import {
+  dopiszLog,
+  pobierzZamowienie,
+  znajdzZamowieniaPoNumerze,
+  zapiszFaktyStatusu,
+  ostatniWpisLogu,
+} from '../../../oms/db/zamowienia.js';
 import { faktyDlaStatusu, anulowaneEfektywnie } from '../../../domena/status-reczny.js';
 import { wyliczStatus } from '../../../domena/status.js';
 import { adresOdbiorcy } from '../../../domena/adres-odbiorcy.js';
@@ -25,8 +31,10 @@ const POWOD_POWTORKI = 'Zamówienie z tej karty już istnieje.';
 // OMS_PROFORMY_*) to tryb POPRAWNY — trasa odmawia wtedy czytelnie 503, zamiast udawac,
 // ze dokument powstal.
 // `opcjeZw()` — flaga „zw” programu fakturowego z kontekstu karty (zamówienia); bez niej jak dotąd.
-export function trasaApiZamowieniaZKarty(app, { db, config, proforma = null, syncSklep = null, kanalIndywidualny = true,
-  opcjeZw = () => ({ zw: false }) }) {
+export function trasaApiZamowieniaZKarty(
+  app,
+  { db, config, proforma = null, syncSklep = null, kanalIndywidualny = true, opcjeZw = () => ({ zw: false }) },
+) {
   app.post('/api/zamowienia-z-karty', obslugaZalozeniaZKarty({ db, kanalIndywidualny, opcjeZw }));
 
   // Odczyt stanu zamówienia założonego z karty — panel odpytuje tę trasę co 10 minut,
@@ -183,39 +191,39 @@ export function obslugaDostawy({ db }) {
 }
 
 export function dostawaZamowienia(z) {
-    const adres = adresOdbiorcy(z);
-    const faktura = chceFakture(z) ? daneFaktury(z) : null;
-    return {
-      id: z.id,
-      numer: z.numer,
-      adres: {
-        // `firma` OSOBNO od `nazwa` — dla osoby prywatnej firmy nie ma i nie wolno jej
-        // podstawiac imieniem (patrz firmaNabywcy w domena/dane-faktury.js).
-        nazwa: adres?.nazwa || null,
-        firma: adres?.company || null,
-        ulica: adres?.ulica || null,
-        kod: adres?.kod || null,
-        miasto: adres?.miasto || null,
-        telefon: adres?.phone || null,
-      },
-      // ⚠️ „Nieznana metoda" NIE JEDZIE DO KLIENTA. Wewnątrz OMS-u to sensowna wartość
-      // („do wyjaśnienia przez operatora"), ale na stronie, na której klient sprawdza swoje
-      // dane, brzmi jak awaria u nas. Zamiast tego nie mówimy nic i strona pomija tę linię —
-      // stan spotykany w produkcji (zamówienia sprzed mapowania metod).
-      metoda: metodaWysylki(z) === 'nieznana' ? null : nazwaDostawy(z),
-      punkt: punktOdbioru(z),
-      punktOpis: punktOdbioruOpis(z),
-      dokument: faktura ? 'faktura' : 'paragon',
-      faktura: faktura
-        ? {
+  const adres = adresOdbiorcy(z);
+  const faktura = chceFakture(z) ? daneFaktury(z) : null;
+  return {
+    id: z.id,
+    numer: z.numer,
+    adres: {
+      // `firma` OSOBNO od `nazwa` — dla osoby prywatnej firmy nie ma i nie wolno jej
+      // podstawiac imieniem (patrz firmaNabywcy w domena/dane-faktury.js).
+      nazwa: adres?.nazwa || null,
+      firma: adres?.company || null,
+      ulica: adres?.ulica || null,
+      kod: adres?.kod || null,
+      miasto: adres?.miasto || null,
+      telefon: adres?.phone || null,
+    },
+    // ⚠️ „Nieznana metoda" NIE JEDZIE DO KLIENTA. Wewnątrz OMS-u to sensowna wartość
+    // („do wyjaśnienia przez operatora"), ale na stronie, na której klient sprawdza swoje
+    // dane, brzmi jak awaria u nas. Zamiast tego nie mówimy nic i strona pomija tę linię —
+    // stan spotykany w produkcji (zamówienia sprzed mapowania metod).
+    metoda: metodaWysylki(z) === 'nieznana' ? null : nazwaDostawy(z),
+    punkt: punktOdbioru(z),
+    punktOpis: punktOdbioruOpis(z),
+    dokument: faktura ? 'faktura' : 'paragon',
+    faktura: faktura
+      ? {
           firma: firmaNabywcy(z) ?? faktura.firma ?? null,
           nip: faktura.nip ?? null,
           ulica: faktura.ulica ?? null,
           kod: faktura.kod ?? null,
           miasto: faktura.miasto ?? null,
         }
-        : null,
-    };
+      : null,
+  };
 }
 
 /** Wspólna obsługa GET panelu i API v1. */
@@ -247,9 +255,10 @@ export function obslugaZamowieniaPoNumerze({ db }) {
     const sklep = String(req.query?.sklep ?? '').trim();
     if (!sklep) {
       return reply.code(400).send({
-        powod: 'Brakuje parametru „sklep". Numer zamówienia nie jest unikalny między sklepami '
-          + '(sklepy numerują niezależnie), więc bez wskazania sklepu nie da się '
-          + 'powiedzieć, o które zamówienie chodzi.',
+        powod:
+          'Brakuje parametru „sklep". Numer zamówienia nie jest unikalny między sklepami ' +
+          '(sklepy numerują niezależnie), więc bez wskazania sklepu nie da się ' +
+          'powiedzieć, o które zamówienie chodzi.',
       });
     }
 
@@ -278,8 +287,9 @@ export function obslugaZamowieniaPoNumerze({ db }) {
     // bo panel, ktory je dostanie, i tak go uzyje.
     if (trafienia.length > 1) {
       return reply.code(409).send({
-        powod: `Numer „${numer}" pasuje w sklepie „${sklep}" do więcej niż jednego zamówienia `
-          + `(${trafienia.length}) — nie da się wskazać jednoznacznie. Zgłoś to jako usterkę.`,
+        powod:
+          `Numer „${numer}" pasuje w sklepie „${sklep}" do więcej niż jednego zamówienia ` +
+          `(${trafienia.length}) — nie da się wskazać jednoznacznie. Zgłoś to jako usterkę.`,
       });
     }
 
@@ -323,7 +333,8 @@ export function obslugaZalozeniaZKarty({ db, kanalIndywidualny = true, opcjeZw =
   return async (req, reply) => {
     // Zamówienie z karty liczy się w raporcie jako INDYWIDUALNE — bez tego kanału raport odmówiłby
     // („brak granicy”), więc odmowa stoi tu, przy wejściu, a nie po zapisie.
-    if (!kanalIndywidualny) return reply.code(503).send({ powod: 'Kanał zamówień indywidualnych jest wyłączony (OMS_KANAL_INDYWIDUALNY).' });
+    if (!kanalIndywidualny)
+      return reply.code(503).send({ powod: 'Kanał zamówień indywidualnych jest wyłączony (OMS_KANAL_INDYWIDUALNY).' });
     let dane;
     // ⚠️ ZEGAR ODCZYTANY RAZ, NA CAŁĄ TRASĘ — ta sama zasada, co w trasie formularza:
     // `utworzone_at` i rok serii numeracji mają pochodzić z JEDNEJ wartości.
@@ -332,7 +343,9 @@ export function obslugaZalozeniaZKarty({ db, kanalIndywidualny = true, opcjeZw =
     try {
       // Firma zwolniona z VAT — numer UE nabywcy to nie WDT (netto stawką pozycji, nie 0).
       dane = parsujZamowienieZKarty(req.body ?? {}, {
-        stawkaDomyslna: czytajStawkeDomyslna(db, flagaZw), ...flagaZw, zwolniona: zwolnionaZFlagi(db, flagaZw),
+        stawkaDomyslna: czytajStawkeDomyslna(db, flagaZw),
+        ...flagaZw,
+        zwolniona: zwolnionaZFlagi(db, flagaZw),
       });
     } catch (e) {
       return reply.code(400).send({ powod: komunikatDlaOperatora(e) });
@@ -357,7 +370,12 @@ export function obslugaZalozeniaZKarty({ db, kanalIndywidualny = true, opcjeZw =
       // to jak zwykle „klient jeszcze nie zaplacil". To takze jedyna spojna czytelnosc
       // `okresId: null` ponizej: to zamowienie stoi POZA rozliczeniem zbiorczym.
       const { id, numer } = zalozZamowienieReczne({
-        db, dane, znacznik, okresId: null, naliczajOplate: false, ...flagaZw,
+        db,
+        dane,
+        znacznik,
+        okresId: null,
+        naliczajOplate: false,
+        ...flagaZw,
       });
       dopiszLog(db, id, {
         akcja: 'zamowienie.z-karty',
@@ -428,7 +446,12 @@ export function obslugaZalozeniaZKarty({ db, kanalIndywidualny = true, opcjeZw =
 }
 
 /** Wspólna obsługa panelu i API v1. */
-export function obslugaProformy({ db, proforma = null, opcjeZw = () => ({ zw: false }), adresProform = '/api/proformy' }) {
+export function obslugaProformy({
+  db,
+  proforma = null,
+  opcjeZw = () => ({ zw: false }),
+  adresProform = '/api/proformy',
+}) {
   return async (req, reply) => {
     const id = Number(req.params.id);
     if (!pobierzZamowienie(db, id)) return reply.code(404).send({ powod: 'Nie ma takiego zamówienia.' });
@@ -486,9 +509,12 @@ export function obslugaWRealizacji({ db, syncSklep = null }) {
     // akceptacja zdjelaby zamowieniu status „Wyslane", paczka wrocilaby na liste robocza
     // i dalaby sie nadac DRUGI RAZ. Tak samo anulowanie i zwrot: automat nie ma prawa
     // wskrzeszac zamowien, ktore czlowiek zamknal.
-    const odmowa = z.wyslane_at ? 'Zamówienie jest już wysłane — status zostaje bez zmian.'
-      : anulowaneEfektywnie(z) ? 'Zamówienie jest anulowane — status zostaje bez zmian.'
-        : (z.zwrot_at || z.ma_zwrot) ? 'Zamówienie ma zarejestrowany zwrot — status zostaje bez zmian.'
+    const odmowa = z.wyslane_at
+      ? 'Zamówienie jest już wysłane — status zostaje bez zmian.'
+      : anulowaneEfektywnie(z)
+        ? 'Zamówienie jest anulowane — status zostaje bez zmian.'
+        : z.zwrot_at || z.ma_zwrot
+          ? 'Zamówienie ma zarejestrowany zwrot — status zostaje bez zmian.'
           : null;
     if (odmowa) {
       dopiszLog(db, id, { akcja: 'status.automat', wynik: `ODMOWA: akceptacja projektu w panelu, ale ${odmowa}` });
@@ -498,7 +524,7 @@ export function obslugaWRealizacji({ db, syncSklep = null }) {
     // Idempotencja: `faktyDlaStatusu` zachowuje istniejace `w_realizacji_at` (`|| teraz`),
     // wiec drugi przebieg pollera niczego nie przestawia. Zapis i tak wykonujemy, bo ten
     // sam UPDATE zeruje ewentualny stary `zwrot_powod` — a dlawimy LOG, nie zapis.
-    const zachowajEtap = (z.statusy_wlasne ?? []).some(s => s.klucz === z.status_wlasny && s.jak === 'w_realizacji');
+    const zachowajEtap = (z.statusy_wlasne ?? []).some((s) => s.klucz === z.status_wlasny && s.jak === 'w_realizacji');
     zapiszFaktyStatusu(db, id, { ...faktyDlaStatusu(z, 'w_realizacji'), zachowaj_status_wlasny: zachowajEtap });
 
     // Log mowi WPROST, ze zrobil to automat — inaczej wpis wygladalby jak decyzja czlowieka,

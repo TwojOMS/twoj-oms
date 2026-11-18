@@ -2,9 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
-import {
-  DOSTAWY, parsujNoweZamowienie, skopiujFaktureDoWysylki,
-} from '../../../src/domena/nowe-zamowienie.js';
+import { DOSTAWY, parsujNoweZamowienie, skopiujFaktureDoWysylki } from '../../../src/domena/nowe-zamowienie.js';
 import { punktOdbioru, metodaWysylki } from '../../../src/domena/wysylka.js';
 import { adresOdbiorcy } from '../../../src/domena/adres-odbiorcy.js';
 import { zapiszUstawienia } from '../../../src/oms/db/ustawienia.js';
@@ -44,9 +42,16 @@ describe('paczkomat na ekranie zakładania', () => {
   // ⚠️ KOD PACZKOMATU JEST ADRESEM — zamówienie założone bez niego nie ma czego nadać.
   it('kod punktu zapisuje się z zamówieniem i wielkimi literami', async () => {
     const r = await wyslij('/zamowienia/nowe', {
-      w_nazwa: 'Jan Kowalski', dostawa: 'inpost_paczkomat', platnosc: 'przelew',
-      punkt_odbioru: ' kty01m ', koszt_dostawy_brutto: '12,90',
-      poz_nazwa: 'Lampa', poz_ilosc: '1', poz_cena_brutto: '61.50', poz_sku: '', poz_cena_netto: '',
+      w_nazwa: 'Jan Kowalski',
+      dostawa: 'inpost_paczkomat',
+      platnosc: 'przelew',
+      punkt_odbioru: ' kty01m ',
+      koszt_dostawy_brutto: '12,90',
+      poz_nazwa: 'Lampa',
+      poz_ilosc: '1',
+      poz_cena_brutto: '61.50',
+      poz_sku: '',
+      poz_cena_netto: '',
     });
     expect(r.statusCode).toBeLessThan(400);
     const z = pobierzZamowienie(db, 1);
@@ -69,15 +74,21 @@ describe('paczkomat na ekranie zakładania', () => {
 
 describe('„Skopiuj dane do wysyłki" przy zakładaniu', () => {
   const faktura = {
-    f_firma: 'Pracownia Przykładowa sp. z o.o.', f_ulica: 'Przemysłowa 4', f_kod: '00-950',
-    f_miasto: 'Warszawa', f_email: 'faktury@przykladowa.example',
+    f_firma: 'Pracownia Przykładowa sp. z o.o.',
+    f_ulica: 'Przemysłowa 4',
+    f_kod: '00-950',
+    f_miasto: 'Warszawa',
+    f_email: 'faktury@przykladowa.example',
   };
 
   it('przepisuje firmę, adres i e-mail', () => {
     const wynik = skopiujFaktureDoWysylki({ ...faktura, w_nazwa: 'Jan Kowalski', w_telefon: '600100200' });
     expect(wynik).toMatchObject({
-      w_firma: 'Pracownia Przykładowa sp. z o.o.', w_ulica: 'Przemysłowa 4',
-      w_kod: '00-950', w_miasto: 'Warszawa', w_email: 'faktury@przykladowa.example',
+      w_firma: 'Pracownia Przykładowa sp. z o.o.',
+      w_ulica: 'Przemysłowa 4',
+      w_kod: '00-950',
+      w_miasto: 'Warszawa',
+      w_email: 'faktury@przykladowa.example',
     });
   });
 
@@ -144,7 +155,10 @@ describe('koszt dostawy domyślnie 19 zł', () => {
 
   it('domyślne 19 zł naprawdę ląduje w zamówieniu, gdy nikt go nie tknie', async () => {
     await wyslij('/zamowienia/nowe', {
-      w_nazwa: 'Jan', dostawa: 'dpd', platnosc: 'przelew', koszt_dostawy_brutto: '19,00',
+      w_nazwa: 'Jan',
+      dostawa: 'dpd',
+      platnosc: 'przelew',
+      koszt_dostawy_brutto: '19,00',
     });
     expect(pobierzZamowienie(db, 1).koszt_dostawy_brutto).toBe('19.00');
   });
@@ -263,9 +277,20 @@ describe('ekran zakładania nie skacze do góry', () => {
 
   it('„Wstaw dane" stałego klienta wraca do paska wyboru', async () => {
     dopiszKlienta(db, {
-      klucz: 'kontrahent', nazwa: 'Wzorowy Kontrahent', nip: '1234500028', b2b: 1, rabat_procent: 0,
-      chce_fakture: 1, metoda_wysylki: 'dpd', koszt_dostawy_brutto: '19.00', platnosc: 'przelew',
-      termin_platnosci: '14', komentarz: null, aktywny: 1, faktura: {}, wysylka: {},
+      klucz: 'kontrahent',
+      nazwa: 'Wzorowy Kontrahent',
+      nip: '1234500028',
+      b2b: 1,
+      rabat_procent: 0,
+      chce_fakture: 1,
+      metoda_wysylki: 'dpd',
+      koszt_dostawy_brutto: '19.00',
+      platnosc: 'przelew',
+      termin_platnosci: '14',
+      komentarz: null,
+      aktywny: 1,
+      faktura: {},
+      wysylka: {},
     });
     const body = (await ekran()).body;
     expect(body).toContain('formaction="/zamowienia/nowe/klient#klient"');
@@ -276,16 +301,29 @@ describe('ekran zakładania nie skacze do góry', () => {
   // klika się pięć razy pod rząd, więc jego kotwica boli najbardziej.
   it('„Dodaj" z magazynu wraca do wyszukiwarki i potwierdza, co dodał', async () => {
     zapiszProduktSklepowy(db, {
-      kanal: 'swietlik', produkt_id: '28040', wariant_id: '', nazwa: 'Lampa stołowa Grzybek',
-      sku_sklepu: 'LMP-GRZ-30', cena_gr: 7490, rozmiar_tekst: '30x45', kategorie: [], zdjecia: [],
-      adres: 'https://swietlik.example.test/produkt/grzybek', odczytane_at: '2026-08-21T08:00:00',
+      kanal: 'swietlik',
+      produkt_id: '28040',
+      wariant_id: '',
+      nazwa: 'Lampa stołowa Grzybek',
+      sku_sklepu: 'LMP-GRZ-30',
+      cena_gr: 7490,
+      rozmiar_tekst: '30x45',
+      kategorie: [],
+      zdjecia: [],
+      adres: 'https://swietlik.example.test/produkt/grzybek',
+      odczytane_at: '2026-08-21T08:00:00',
     });
     const zWynikami = await wyslij('/zamowienia/nowe/magazyn', { magazyn: 'grzybek', cennik: 'swietlik' });
     expect(zWynikami.body).toContain('formaction="/zamowienia/nowe/magazyn/dodaj#magazyn"');
 
     const poDodaniu = await wyslij('/zamowienia/nowe/magazyn/dodaj', {
-      magazyn: 'grzybek', cennik: 'swietlik', wybrany: '0',
-      mag_kanal: 'swietlik', mag_produkt_id: '28040', mag_wariant_id: '', mag_ilosc: '3',
+      magazyn: 'grzybek',
+      cennik: 'swietlik',
+      wybrany: '0',
+      mag_kanal: 'swietlik',
+      mag_produkt_id: '28040',
+      mag_wariant_id: '',
+      mag_ilosc: '3',
     });
     // Potwierdzenie stoi przy wyszukiwarce, bo tam wraca ekran — dopisana pozycja jest wyżej,
     // często poza widokiem.
@@ -296,14 +334,19 @@ describe('ekran zakładania nie skacze do góry', () => {
 // Kolumna „Stawka VAT” między netto a brutto (domyślna z Ustawień), wiersz dostawy nad „Razem”
 // i podsumowanie netto / VAT / brutto pod tabelą. Zapis niesie stawkę wiersza do bazy.
 describe('ekran zakładania — stawka VAT, dostawa i podsumowanie', () => {
-  const tabela = (html) => html.slice(html.indexOf('data-podglad-kwoty'), html.indexOf('</table>', html.indexOf('data-podglad-kwoty')));
+  const tabela = (html) =>
+    html.slice(html.indexOf('data-podglad-kwoty'), html.indexOf('</table>', html.indexOf('data-podglad-kwoty')));
 
   it('nagłówek: Cena netto → Stawka VAT → Cena brutto; w wierszu lista z zaznaczoną domyślną z Ustawień', async () => {
     const { zapiszStawkeDomyslna } = await import('../../../src/moduly/faktury/db/stawka-vat.js');
     zapiszStawkeDomyslna(db, '8');
     const t = tabela((await ekran()).body);
-    expect(t).toMatch(/Cena netto<\/th>\s*<th class="liczba kol-vat">Stawka VAT<\/th>\s*<th class="liczba">Cena brutto/u);
-    expect(t).toMatch(/name="poz_cena_netto"[\s\S]*?<select name="poz_vat"[\s\S]*?<option value="8" selected>[\s\S]*?name="poz_cena_brutto"/u);
+    expect(t).toMatch(
+      /Cena netto<\/th>\s*<th class="liczba kol-vat">Stawka VAT<\/th>\s*<th class="liczba">Cena brutto/u,
+    );
+    expect(t).toMatch(
+      /name="poz_cena_netto"[\s\S]*?<select name="poz_vat"[\s\S]*?<option value="8" selected>[\s\S]*?name="poz_cena_brutto"/u,
+    );
   });
 
   it('wiersz dostawy w stopce między „+ Dodaj wiersz” a „Razem”; colspan dodawania obejmuje 8 kolumn', async () => {

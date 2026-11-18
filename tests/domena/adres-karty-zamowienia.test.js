@@ -8,16 +8,23 @@ import {
 
 describe('adres karty zamówienia', () => {
   it('koduje kanoniczny powrót i dokłada dozwolony stan przed kotwicą', () => {
-    expect(adresKartyZamowienia('12/3', {
-      powrot: '/?status=w_realizacji&szukaj=Jan%20Kowalski',
-      stan: 'wysylka',
-      kotwica: 'wysylka',
-    }, definicjeKanalowHistoryczne)).toBe('/zamowienia/12%2F3?powrot=%2F%3Fstatus%3Dw_realizacji%26szukaj%3DJan%2520Kowalski&edytuj=wysylka#wysylka');
+    expect(
+      adresKartyZamowienia(
+        '12/3',
+        {
+          powrot: '/?status=w_realizacji&szukaj=Jan%20Kowalski',
+          stan: 'wysylka',
+          kotwica: 'wysylka',
+        },
+        definicjeKanalowHistoryczne,
+      ),
+    ).toBe('/zamowienia/12%2F3?powrot=%2F%3Fstatus%3Dw_realizacji%26szukaj%3DJan%2520Kowalski&edytuj=wysylka#wysylka');
   });
 
   it('odrzuca nieznany stan i nie pozwala wstrzyknąć własnej kotwicy', () => {
-    expect(adresKartyZamowienia(17, { powrot: '/', stan: 'admin', kotwica: '#x?y' }, definicjeKanalowHistoryczne))
-      .toBe('/zamowienia/17');
+    expect(adresKartyZamowienia(17, { powrot: '/', stan: 'admin', kotwica: '#x?y' }, definicjeKanalowHistoryczne)).toBe(
+      '/zamowienia/17',
+    );
   });
 
   it('zewnętrzny, tablicowy i niekanoniczny powrót zastępuje gołą listą', () => {
@@ -27,10 +34,10 @@ describe('adres karty zamówienia', () => {
   });
 
   it('powrót do listy kończy się stabilną kotwicą wiersza', () => {
-    expect(adresPowrotuDoWiersza('/?status=nowe', 123, definicjeKanalowHistoryczne))
-      .toBe('/?status=nowe#zamowienie-123');
-    expect(adresPowrotuDoWiersza('javascript:alert(1)', 123, definicjeKanalowHistoryczne))
-      .toBe('/#zamowienie-123');
+    expect(adresPowrotuDoWiersza('/?status=nowe', 123, definicjeKanalowHistoryczne)).toBe(
+      '/?status=nowe#zamowienie-123',
+    );
+    expect(adresPowrotuDoWiersza('javascript:alert(1)', 123, definicjeKanalowHistoryczne)).toBe('/#zamowienie-123');
   });
 
   it('serwer tworzy osobny klucz SHA-256 bez ujawnienia frazy wyszukiwania', () => {

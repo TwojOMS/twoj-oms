@@ -8,9 +8,7 @@ const NIP_ALLEGRO = '5252674798';
 const OBSLUGA = ['Prowizje sprzedażowe', 'Kurierzy', 'Opakowania'];
 
 export function wskazniki({ kategorie, przychodNettoGrosze, zamowien }) {
-  const suma = (typ) => (kategorie ?? [])
-    .filter((k) => k.typ === typ)
-    .reduce((s, k) => s + k.nettoGrosze, 0);
+  const suma = (typ) => (kategorie ?? []).filter((k) => k.typ === typ).reduce((s, k) => s + k.nettoGrosze, 0);
 
   // ⚠️ „drobne" to TRZECI typ i celowo nie wchodzi ani do stalych, ani do zmiennych —
   // to koszty, ktorych nie umiemy przypisac. Doliczenie ich do stalych podnioslby prog
@@ -29,9 +27,7 @@ export function wskazniki({ kategorie, przychodNettoGrosze, zamowien }) {
   }
 
   const marzaPoZmiennych = ((przychodNettoGrosze - kosztyZmienneGrosze) / przychodNettoGrosze) * 100;
-  const obsluga = (kategorie ?? [])
-    .filter((k) => OBSLUGA.includes(k.kategoria))
-    .reduce((s, k) => s + k.nettoGrosze, 0);
+  const obsluga = (kategorie ?? []).filter((k) => OBSLUGA.includes(k.kategoria)).reduce((s, k) => s + k.nettoGrosze, 0);
 
   return {
     kosztyStaleGrosze,
@@ -41,9 +37,7 @@ export function wskazniki({ kategorie, przychodNettoGrosze, zamowien }) {
     // ⚠️ Marza po zmiennych <= 0 znaczy, ze kazda sprzedaz doklada do interesu — progu
     // wtedy NIE MA i `null` jest jedyna uczciwa odpowiedzia (dzielenie daloby liczbe ujemna,
     // ktora wygladalaby jak bardzo dobry wynik).
-    progRentownosciGrosze: marzaPoZmiennych > 0
-      ? Math.round(kosztyStaleGrosze / (marzaPoZmiennych / 100))
-      : null,
+    progRentownosciGrosze: marzaPoZmiennych > 0 ? Math.round(kosztyStaleGrosze / (marzaPoZmiennych / 100)) : null,
     kosztObslugiGrosze: zamowien ? Math.round(obsluga / zamowien) : null,
   };
 }
@@ -65,15 +59,15 @@ export function prowizjaAllegroZaMiesiac(db, miesiac) {
   const wzorzecOkresu = new RegExp(`/${rok}/${mm}(?!\\d)`);
   const wzorzecJakiegokolwiek = /\/(\d{4})\/(\d{2})(?!\d)/;
 
-  const kandydaci = [...kosztyMiesiaca(db, miesiac), ...kosztyMiesiaca(db, nastepny)]
-    .filter((k) => String(k.sprzedawca_nip ?? '').replace(/\D/g, '') === NIP_ALLEGRO);
+  const kandydaci = [...kosztyMiesiaca(db, miesiac), ...kosztyMiesiaca(db, nastepny)].filter(
+    (k) => String(k.sprzedawca_nip ?? '').replace(/\D/g, '') === NIP_ALLEGRO,
+  );
 
   const wybrane = kandydaci.filter((k) => {
     const numer = String(k.numer_dokumentu ?? '');
     if (wzorzecOkresu.test(numer)) return true;
     // Bez rozpoznawalnego okresu — zostaje przy swoim miesiacu wystawienia.
-    return !wzorzecJakiegokolwiek.test(numer)
-      && String(k.data_wystawienia ?? '').slice(0, 7) === miesiac;
+    return !wzorzecJakiegokolwiek.test(numer) && String(k.data_wystawienia ?? '').slice(0, 7) === miesiac;
   });
 
   return {

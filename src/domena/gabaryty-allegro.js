@@ -49,7 +49,8 @@ export function parsujGabarytAllegro(dane, deliveryMethodId) {
 
 export function sprawdzLimityGabarytuAllegro(paczka, deliveryOptions) {
   const opcje = Array.isArray(deliveryOptions)
-    ? deliveryOptions.filter((opcja) => opcja?.packageType === 'PACKAGE') : [];
+    ? deliveryOptions.filter((opcja) => opcja?.packageType === 'PACKAGE')
+    : [];
   if (!opcje.length) return { blad: 'Allegro nie podało limitu paczki dla tej usługi.' };
 
   for (const opcja of opcje) {

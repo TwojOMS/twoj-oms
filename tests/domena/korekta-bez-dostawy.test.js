@@ -5,22 +5,30 @@ import { powodOdmowyKorektyBezDostawy, zwrotWymagaPozycjiDostawy } from '../../s
 import { paryKorekty } from '../../src/domena/korekta-pozycje.js';
 
 const fakturaZ = (...nazwy) => ({
-  number: 'FV 3/11/2026', invoice_date: '2026-11-02',
+  number: 'FV 3/11/2026',
+  invoice_date: '2026-11-02',
   services: nazwy.map((name) => ({ name, quantity: 1, gross_price: 1900, tax_symbol: '23' })),
 });
 const zwrotZDostawa = { id: 5, data: '2026-11-03', kwota: '0.00', kwota_dostawy: '19.00', pozycje: [] };
-const SUBIEKT = { mianownik: 'Fakturownik Półcień', dopelniacz: 'Fakturownika Półcień', miejscownik: 'Fakturowniku Półcień' };
+const SUBIEKT = {
+  mianownik: 'Fakturownik Półcień',
+  dopelniacz: 'Fakturownika Półcień',
+  miejscownik: 'Fakturowniku Półcień',
+};
 
 describe('powodOdmowyKorektyBezDostawy', () => {
   it('odmawia zdaniem po polsku, gdy zwrot ma dostawę, a faktura nie ma pozycji „Dostawa”', () => {
     const zdanie = powodOdmowyKorektyBezDostawy(zwrotZDostawa, fakturaZ('Lampa Półcień', 'Wysyłka'));
-    expect(zdanie).toBe('Zwrot obejmuje 19.00 zł dostawy, a faktura FV 3/11/2026 nie ma pozycji „Dostawa"'
-      + ' — korekty nie da się złożyć. Wystaw ją ręcznie w inFakcie.');
+    expect(zdanie).toBe(
+      'Zwrot obejmuje 19.00 zł dostawy, a faktura FV 3/11/2026 nie ma pozycji „Dostawa"' +
+        ' — korekty nie da się złożyć. Wystaw ją ręcznie w inFakcie.',
+    );
   });
 
   it('nazwa programu w zdaniu z odmiany', () => {
-    expect(powodOdmowyKorektyBezDostawy(zwrotZDostawa, fakturaZ('Wysyłka'), { nazwa: SUBIEKT }))
-      .toMatch(/Wystaw ją ręcznie w Fakturowniku Półcień\.$/u);
+    expect(powodOdmowyKorektyBezDostawy(zwrotZDostawa, fakturaZ('Wysyłka'), { nazwa: SUBIEKT })).toMatch(
+      /Wystaw ją ręcznie w Fakturowniku Półcień\.$/u,
+    );
   });
 
   it('nie odmawia, gdy faktura ma pozycję „Dostawa”', () => {
@@ -40,8 +48,9 @@ describe('powodOdmowyKorektyBezDostawy', () => {
 
   it('paryKorekty oddaje TO SAMO zdanie (jedna reguła, nie dwie kopie)', () => {
     const f = fakturaZ('Lampa Półcień', 'Wysyłka');
-    expect(paryKorekty(f, zwrotZDostawa, { nazwaProgramu: SUBIEKT }).blad)
-      .toBe(powodOdmowyKorektyBezDostawy(zwrotZDostawa, f, { nazwa: SUBIEKT }));
+    expect(paryKorekty(f, zwrotZDostawa, { nazwaProgramu: SUBIEKT }).blad).toBe(
+      powodOdmowyKorektyBezDostawy(zwrotZDostawa, f, { nazwa: SUBIEKT }),
+    );
   });
 });
 
@@ -56,8 +65,7 @@ describe('zwrotWymagaPozycjiDostawy', () => {
 });
 
 describe('odbiór: paryKorekty przy fakturze bez listy pozycji', () => {
-  it("zwrot z dostawą i faktura bez services → odmowa jak przed przeniesieniem reguły", () => {
-
+  it('zwrot z dostawą i faktura bez services → odmowa jak przed przeniesieniem reguły', () => {
     const wynik = paryKorekty({ number: 'FV 7/11/2026' }, { kwota_dostawy: '19.00', pozycje: [] });
     expect(wynik.services).toBeNull();
     expect(wynik.blad).toBeTruthy();
@@ -74,7 +82,17 @@ describe('podgląd faktury z terminem', () => {
     expect(Date.now() - start).toBeLessThan(1000);
   });
   it('błąd programu → null; odpowiedź w terminie → dokument', async () => {
-    expect(await podgladFakturyZTerminem({ pobierzFakture: () => { throw new Error('401'); } }, 'x', 50)).toBeNull();
+    expect(
+      await podgladFakturyZTerminem(
+        {
+          pobierzFakture: () => {
+            throw new Error('401');
+          },
+        },
+        'x',
+        50,
+      ),
+    ).toBeNull();
     const f = fakturaZ('Dostawa');
     expect(await podgladFakturyZTerminem({ pobierzFakture: async () => f }, 'x', 50)).toBe(f);
   });

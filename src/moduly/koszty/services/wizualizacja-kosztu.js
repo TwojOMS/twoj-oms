@@ -33,8 +33,8 @@ export function createWizualizacjaKosztu({ db, klient, sesja }) {
     const wiersz = kosztPoNumerze(db, ksefNumber);
     if (!wiersz) {
       throw bladOperatora(
-        `Panel nie zna faktury kosztowej o numerze KSeF „${ksefNumber ?? ''}" — `
-        + 'nie ma z czego zrobić wizualizacji.',
+        `Panel nie zna faktury kosztowej o numerze KSeF „${ksefNumber ?? ''}" — ` +
+          'nie ma z czego zrobić wizualizacji.',
       );
     }
     // ⚠️⚠️ DOKUMENT WPISANY RECZNIE NIE MA ORYGINALU W KSeF — i nie ma go czym zastapic.
@@ -44,8 +44,8 @@ export function createWizualizacjaKosztu({ db, klient, sesja }) {
     // prawdziwe i mylace. Powod jest tutaj, a nie w tresci bledu KSeF-u.
     if (wiersz.zrodlo === 'reczne') {
       throw bladOperatora(
-        `Koszt „${wiersz.numer_dokumentu}" został wpisany ręcznie — nie ma go w KSeF, `
-        + 'więc nie ma z czego zrobić wizualizacji. Oryginałem jest dokument od sprzedawcy.',
+        `Koszt „${wiersz.numer_dokumentu}" został wpisany ręcznie — nie ma go w KSeF, ` +
+          'więc nie ma z czego zrobić wizualizacji. Oryginałem jest dokument od sprzedawcy.',
       );
     }
     const accessToken = await sesja.accessToken();

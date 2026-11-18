@@ -6,29 +6,28 @@ import { poPolsku } from '../../src/domena/blad-po-polsku.js';
 
 describe('poPolsku — angielskie frazy techniczne na ekranie', () => {
   it('tlumaczy fraze ze zgloszenia', () => {
-    expect(poPolsku('The operation was aborted due to timeout'))
-      .toBe('przekroczony czas oczekiwania na odpowiedź');
+    expect(poPolsku('The operation was aborted due to timeout')).toBe('przekroczony czas oczekiwania na odpowiedź');
   });
 
   it('podmienia FRAGMENT zlozonego zdania, zostawiajac polska ramke', () => {
     // Tak wyglada prawdziwy wiersz z produkcji (czuwacz ostrzezen, 09.09.2026).
-    expect(poPolsku('terminy płatności: inFakt nieosiągalny: The operation was aborted due to timeout'))
-      .toBe('terminy płatności: inFakt nieosiągalny: przekroczony czas oczekiwania na odpowiedź');
+    expect(poPolsku('terminy płatności: inFakt nieosiągalny: The operation was aborted due to timeout')).toBe(
+      'terminy płatności: inFakt nieosiągalny: przekroczony czas oczekiwania na odpowiedź',
+    );
   });
 
   it('tlumaczy „fetch failed" w srodku komunikatu sklepu', () => {
-    expect(poPolsku('Sklep nieosiągalny: fetch failed'))
-      .toBe('Sklep nieosiągalny: połączenie nie doszło do skutku');
+    expect(poPolsku('Sklep nieosiągalny: fetch failed')).toBe('Sklep nieosiągalny: połączenie nie doszło do skutku');
   });
 
   it('zostawia nazwe serwera przy bledzie DNS — bez niej nie wiadomo, co nie odpowiada', () => {
-    expect(poPolsku('getaddrinfo ENOTFOUND api.allegro.pl'))
-      .toBe('nieznana nazwa serwera: api.allegro.pl');
+    expect(poPolsku('getaddrinfo ENOTFOUND api.allegro.pl')).toBe('nieznana nazwa serwera: api.allegro.pl');
   });
 
   it('dluzsza fraza wygrywa z krotsza — „connect ETIMEDOUT" nie rozpada sie na dwa kawalki', () => {
-    expect(poPolsku('connect ETIMEDOUT 51.83.1.1:443'))
-      .toBe('przekroczony czas nawiązywania połączenia: 51.83.1.1:443');
+    expect(poPolsku('connect ETIMEDOUT 51.83.1.1:443')).toBe(
+      'przekroczony czas nawiązywania połączenia: 51.83.1.1:443',
+    );
   });
 
   it('kod gniazda bez prefiksu tez ma polska nazwe', () => {

@@ -16,35 +16,79 @@ const katalogi = [];
 const aplikacje = [];
 afterAll(async () => {
   vi.unstubAllGlobals();
-  for (const a of aplikacje.splice(0)) { await a.app.close(); a.db.close(); }
+  for (const a of aplikacje.splice(0)) {
+    await a.app.close();
+    a.db.close();
+  }
   for (const p of katalogi.splice(0)) rmSync(p, { recursive: true, force: true });
 });
 
-const headers = { authorization: 'Basic ' + Buffer.from('operator:fixture').toString('base64'), origin: 'http://localhost' };
+const headers = {
+  authorization: 'Basic ' + Buffer.from('operator:fixture').toString('base64'),
+  origin: 'http://localhost',
+};
 
-const zamowienie = (nr) => ({ zrodlo_id: nr, numer: `PZ-${nr}`, klient: { first_name: 'Anna', last_name: 'Półcień', company: 'Pracownia Półcień',
-  address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa', email: 'biuro@polcien.invalid' },
-dostawa: {}, metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: '5250000009',
-kwota_brutto: '258.00', koszt_dostawy_brutto: '0.00', anulowane: 0, status_woo: 'processing', oplacone_at: null,
-utworzone_at: '2026-10-01T10:00:00Z', sklep: 'reczne',
-pozycje: [{ nazwa: 'Lampa wisząca Półcień', sku: 'LAMPA-W1', ilosc: 2, cena_brutto: '129.00', vat: null }] });
+const zamowienie = (nr) => ({
+  zrodlo_id: nr,
+  numer: `PZ-${nr}`,
+  klient: {
+    first_name: 'Anna',
+    last_name: 'Półcień',
+    company: 'Pracownia Półcień',
+    address_1: 'Lampowa 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    email: 'biuro@polcien.invalid',
+  },
+  dostawa: {},
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 1,
+  nip: '5250000009',
+  kwota_brutto: '258.00',
+  koszt_dostawy_brutto: '0.00',
+  anulowane: 0,
+  status_woo: 'processing',
+  oplacone_at: null,
+  utworzone_at: '2026-10-01T10:00:00Z',
+  sklep: 'reczne',
+  pozycje: [{ nazwa: 'Lampa wisząca Półcień', sku: 'LAMPA-W1', ilosc: 2, cena_brutto: '129.00', vat: null }],
+});
 
 async function karta({ klucz = false, plik = null, zapis = null }) {
-  const katalog = mkdtempSync(join(tmpdir(), 'karta-przyciski-prz121-')); katalogi.push(katalog);
+  const katalog = mkdtempSync(join(tmpdir(), 'karta-przyciski-prz121-'));
+  katalogi.push(katalog);
   const sciezka = join(katalog, 'oms.db');
   const przed = openOmsDb(sciezka);
   if (zapis) zapiszWyborProgramu(przed, zapis);
   przed.close();
-  const fetchPuste = vi.fn(async () => { throw new Error('Sieć zabroniona'); });
+  const fetchPuste = vi.fn(async () => {
+    throw new Error('Sieć zabroniona');
+  });
   vi.stubGlobal('fetch', fetchPuste);
-  const env = { OMS_DB_PATH: sciezka, OMS_PROFORMY_KATALOG: katalog, OMS_ETYKIETY_KATALOG: katalog,
-    OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000', OMS_USER: 'operator', OMS_PASS: 'fixture',
-    ...(klucz ? { INFAKT_API_KEY: KLUCZ } : {}), ...(plik ? { OMS_PROGRAM_FAKTUROWY: plik } : {}) };
-  const a = await zbudujOms({ env, teraz: () => new Date('2026-10-27T10:00:00Z') }); aplikacje.push(a);
+  const env = {
+    OMS_DB_PATH: sciezka,
+    OMS_PROFORMY_KATALOG: katalog,
+    OMS_ETYKIETY_KATALOG: katalog,
+    OMS_SPRZEDAWCA_NIP: '1234563218',
+    OMS_RACHUNEK: '34109010140000000000000000',
+    OMS_USER: 'operator',
+    OMS_PASS: 'fixture',
+    ...(klucz ? { INFAKT_API_KEY: KLUCZ } : {}),
+    ...(plik ? { OMS_PROGRAM_FAKTUROWY: plik } : {}),
+  };
+  const a = await zbudujOms({ env, teraz: () => new Date('2026-10-27T10:00:00Z') });
+  aplikacje.push(a);
   const id = zapiszZamowienie(a.db, 'reczne', zamowienie(5107), {});
-  a.db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, program, dokument_id, numer, utworzona_at) VALUES (?,?,?,?,?,?)')
+  a.db
+    .prepare(
+      'INSERT INTO faktury (zamowienie_id, infakt_uuid, program, dokument_id, numer, utworzona_at) VALUES (?,?,?,?,?,?)',
+    )
     .run(id, 'dok-przyciski-prz121', 'infakt', 'dok-przyciski-prz121', 'FV/9/10/2026', '2026-10-02T10:00:00Z');
-  const proforma = a.db.prepare('INSERT INTO proformy (zamowienie_id, numer, rok, miesiac, kolejny, kwota_brutto, utworzona_at) VALUES (?,?,?,?,?,?,?)')
+  const proforma = a.db
+    .prepare(
+      'INSERT INTO proformy (zamowienie_id, numer, rok, miesiac, kolejny, kwota_brutto, utworzona_at) VALUES (?,?,?,?,?,?,?)',
+    )
     .run(id, 'PRO/3/10/2026', 2026, 10, 3, '258.00', '2026-10-01T11:00:00Z').lastInsertRowid;
   const r = await a.app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers });
   expect(r.statusCode).toBe(200);

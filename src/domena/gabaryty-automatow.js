@@ -21,9 +21,11 @@ const ALLEGRO_DOMYSLNY_GABARYT = 'S';
 const ALLEGRO_DOMYSLNA_WAGA = 1;
 
 /** Usługi Allegro z profilem gabarytu S/M/L — nazwa z METODY_WZA, długość z profilu. */
-export const USLUGI_AUTOMATOW = Object.freeze(Object.entries(METODY_WZA)
-  .filter(([id]) => profilGabarytuAllegro(id))
-  .map(([id, { nazwa }]) => Object.freeze({ id, nazwa, dlugosc: profilGabarytuAllegro(id).dlugosc })));
+export const USLUGI_AUTOMATOW = Object.freeze(
+  Object.entries(METODY_WZA)
+    .filter(([id]) => profilGabarytuAllegro(id))
+    .map(([id, { nazwa }]) => Object.freeze({ id, nazwa, dlugosc: profilGabarytuAllegro(id).dlugosc })),
+);
 
 const usluga = (id) => USLUGI_AUTOMATOW.find((u) => u.id === id) ?? null;
 
@@ -35,7 +37,9 @@ function sprawdzInpost(dane) {
 }
 
 function sprawdzAllegro(dane, deliveryMethodId) {
-  const gabaryt = String(dane?.gabaryt ?? '').trim().toUpperCase();
+  const gabaryt = String(dane?.gabaryt ?? '')
+    .trim()
+    .toUpperCase();
   const { paczka, blad } = parsujGabarytAllegro({ gabaryt, waga: dane?.waga }, deliveryMethodId);
   return blad ? { blad } : { wartosc: { gabaryt: paczka.gabaryt, waga: paczka.waga } };
 }
@@ -46,7 +50,11 @@ const pustyStan = () => ({ inpost: null, allegro: null, wyjatki: {} });
 export function odczytajAutomaty(zapis = {}) {
   const stan = pustyStan();
   let surowy;
-  try { surowy = JSON.parse(zapis[KLUCZ]); } catch { return stan; }
+  try {
+    surowy = JSON.parse(zapis[KLUCZ]);
+  } catch {
+    return stan;
+  }
   if (surowy?.version !== 1) return stan;
   if (surowy.inpost) stan.inpost = sprawdzInpost(surowy.inpost).wartosc ?? null;
   if (surowy.allegro) stan.allegro = sprawdzAllegro(surowy.allegro, USLUGI_AUTOMATOW[0].id).wartosc ?? null;

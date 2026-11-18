@@ -17,32 +17,50 @@ const AUTH = { authorization: `Basic ${Buffer.from('t:h').toString('base64')}` }
 const AUTH_POST = { ...AUTH, origin: 'http://localhost' };
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
-
-const serwer = () => buildOmsServer({
-  db,
-  config: { auth: { user: 't', pass: 'h' } },
-  // inFakt milczy — sekcja stoi na bazie panelu i ma działać także wtedy.
-  fakturyWidok: { dokumenty: async () => [], nieoplacone: async () => [], proformy: () => [] },
+beforeEach(() => {
+  db = openOmsDb(':memory:');
 });
 
+const serwer = () =>
+  buildOmsServer({
+    db,
+    config: { auth: { user: 't', pass: 'h' } },
+    // inFakt milczy — sekcja stoi na bazie panelu i ma działać także wtedy.
+    fakturyWidok: { dokumenty: async () => [], nieoplacone: async () => [], proformy: () => [] },
+  });
+
 const zmapowane = (numer) => ({
-  zrodlo_id: `src-${numer}`, numer: String(numer), klient: { email: 'k@k.pl' }, dostawa: {},
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: '1234563218',
-  kwota_brutto: '100.00', status_woo: 'processing', oplacone_at: '2026-09-01T09:00:00',
-  anulowane: 0, utworzone_at: '2026-09-01T08:00:00', pozycje: [],
+  zrodlo_id: `src-${numer}`,
+  numer: String(numer),
+  klient: { email: 'k@k.pl' },
+  dostawa: {},
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 1,
+  nip: '1234563218',
+  kwota_brutto: '100.00',
+  status_woo: 'processing',
+  oplacone_at: '2026-09-01T09:00:00',
+  anulowane: 0,
+  utworzone_at: '2026-09-01T08:00:00',
+  pozycje: [],
 });
 
 // Faktura WYSTAWIONA i bez żadnego śladu w KSeF — dokładnie stan, w którym wolno odnotować
 // skasowanie (te same przesłanki, co bariera `fakturaSkasowanaWInfakcie`).
 function fakturaPanelu(id, nad = {}) {
   const w = {
-    ksef_status: null, ksef_numer: null, allegro_wyslana_at: null,
-    numer: 'FV/63/2026', uuid: 'uuid-63', utworzona: '2026-09-01T10:00:00.000Z', ...nad,
+    ksef_status: null,
+    ksef_numer: null,
+    allegro_wyslana_at: null,
+    numer: 'FV/63/2026',
+    uuid: 'uuid-63',
+    utworzona: '2026-09-01T10:00:00.000Z',
+    ...nad,
   };
   db.prepare(
-    'INSERT INTO faktury (zamowienie_id, ksef_status, ksef_numer, allegro_wyslana_at, numer,'
-    + ' infakt_uuid, utworzona_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    'INSERT INTO faktury (zamowienie_id, ksef_status, ksef_numer, allegro_wyslana_at, numer,' +
+      ' infakt_uuid, utworzona_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
   ).run(id, w.ksef_status, w.ksef_numer, w.allegro_wyslana_at, w.numer, w.uuid, w.utworzona);
 }
 
@@ -92,7 +110,9 @@ describe('/faktury — sekcja „Faktura skasowana w inFakcie"', () => {
   // — na to jest osobne wyjście („Sprawdziłem w inFakcie — faktury nie ma, odblokuj").
   it('NIE pokazuje rezerwacji bez numeru dokumentu', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(3005), {});
-    db.prepare("INSERT INTO faktury (zamowienie_id, ksef_status, utworzona_at) VALUES (?, 'w_toku', '2026-09-01T10:00:00.000Z')").run(id);
+    db.prepare(
+      "INSERT INTO faktury (zamowienie_id, ksef_status, utworzona_at) VALUES (?, 'w_toku', '2026-09-01T10:00:00.000Z')",
+    ).run(id);
     const r = await faktury();
     expect(r.body).not.toContain('Faktura skasowana w inFakcie');
   });
@@ -126,7 +146,9 @@ describe('POST /zamowienia/:id/faktura/skasowana — powrót tam, skąd kliknię
     const app = serwer();
     await app.ready();
     const r = await app.inject({
-      method: 'POST', url: `/zamowienia/${id}/faktura/skasowana`, headers: AUTH_POST,
+      method: 'POST',
+      url: `/zamowienia/${id}/faktura/skasowana`,
+      headers: AUTH_POST,
     });
     expect(r.headers.location).toBe(`/zamowienia/${id}`);
   });

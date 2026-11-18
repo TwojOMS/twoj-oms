@@ -63,20 +63,30 @@ export function zapiszHistorie(db, z) {
   db.exec('BEGIN IMMEDIATE');
   try {
     db.prepare(SQL_ZAMOWIENIE).run(
-      z.apiloId, z.platformAccountId ?? null, z.numer ?? null, z.dzien, z.utworzoneAt,
-      z.brutto, z.waluta ?? 'PLN', z.status ?? null, z.paymentStatus ?? null,
-      JSON.stringify(z.tagi ?? []), z.klientEmail ?? null, z.klientNazwa ?? null,
-      z.faktura ? 1 : 0, teraz(),
-      zrodlo, z.statusZrodla ?? null,
+      z.apiloId,
+      z.platformAccountId ?? null,
+      z.numer ?? null,
+      z.dzien,
+      z.utworzoneAt,
+      z.brutto,
+      z.waluta ?? 'PLN',
+      z.status ?? null,
+      z.paymentStatus ?? null,
+      JSON.stringify(z.tagi ?? []),
+      z.klientEmail ?? null,
+      z.klientNazwa ?? null,
+      z.faktura ? 1 : 0,
+      teraz(),
+      zrodlo,
+      z.statusZrodla ?? null,
     );
     db.prepare('DELETE FROM sprzedaz_historyczna_pozycje WHERE apilo_id = ?').run(z.apiloId);
     const wstaw = db.prepare(
-      'INSERT INTO sprzedaz_historyczna_pozycje'
-      + ' (apilo_id, nazwa, sku, original_code, ilosc, brutto_linii, typ) VALUES (?,?,?,?,?,?,?)',
+      'INSERT INTO sprzedaz_historyczna_pozycje' +
+        ' (apilo_id, nazwa, sku, original_code, ilosc, brutto_linii, typ) VALUES (?,?,?,?,?,?,?)',
     );
     for (const p of z.pozycje ?? []) {
-      wstaw.run(z.apiloId, p.nazwa, p.sku ?? null, p.originalCode ?? null,
-        p.ilosc, p.bruttoLinii, p.typ ?? 1);
+      wstaw.run(z.apiloId, p.nazwa, p.sku ?? null, p.originalCode ?? null, p.ilosc, p.bruttoLinii, p.typ ?? 1);
     }
     db.exec('COMMIT');
   } catch (e) {
@@ -94,14 +104,16 @@ export function zapiszHistorie(db, z) {
  * zupelnie.
  */
 export function historiaWOknie(db, od, doDnia) {
-  const wiersze = db.prepare(
-    'SELECT * FROM sprzedaz_historyczna WHERE dzien >= ? AND dzien <= ? ORDER BY dzien, apilo_id',
-  ).all(od, doDnia);
+  const wiersze = db
+    .prepare('SELECT * FROM sprzedaz_historyczna WHERE dzien >= ? AND dzien <= ? ORDER BY dzien, apilo_id')
+    .all(od, doDnia);
   if (!wiersze.length) return [];
-  const pozycje = db.prepare(
-    'SELECT * FROM sprzedaz_historyczna_pozycje WHERE apilo_id IN'
-    + ` (SELECT apilo_id FROM sprzedaz_historyczna WHERE dzien >= ? AND dzien <= ?)`,
-  ).all(od, doDnia);
+  const pozycje = db
+    .prepare(
+      'SELECT * FROM sprzedaz_historyczna_pozycje WHERE apilo_id IN' +
+        ` (SELECT apilo_id FROM sprzedaz_historyczna WHERE dzien >= ? AND dzien <= ?)`,
+    )
+    .all(od, doDnia);
   // Jedno zapytanie na pozycje zamiast N+1: raport roczny to tysiące zamówień, czyli tyle samo
   // zapytań przy naiwnym rozwiązaniu.
   const wg = new Map();
@@ -114,19 +126,21 @@ export function historiaWOknie(db, od, doDnia) {
 
 export function ustawGranice(db, kanal, doDnia, zrodlo, uwaga = null) {
   db.prepare(
-    'INSERT INTO granice_historii (kanal, do_dnia, zrodlo, uwaga) VALUES (?,?,?,?)'
-    + ' ON CONFLICT(kanal) DO UPDATE SET do_dnia = excluded.do_dnia,'
-    + ' zrodlo = excluded.zrodlo, uwaga = excluded.uwaga',
+    'INSERT INTO granice_historii (kanal, do_dnia, zrodlo, uwaga) VALUES (?,?,?,?)' +
+      ' ON CONFLICT(kanal) DO UPDATE SET do_dnia = excluded.do_dnia,' +
+      ' zrodlo = excluded.zrodlo, uwaga = excluded.uwaga',
   ).run(kanal, doDnia, zrodlo, uwaga);
 }
 
-export const granice = (db) => new Map(
-  db.prepare('SELECT kanal, do_dnia FROM granice_historii').all().map((w) => [w.kanal, w.do_dnia]),
-);
+export const granice = (db) =>
+  new Map(
+    db
+      .prepare('SELECT kanal, do_dnia FROM granice_historii')
+      .all()
+      .map((w) => [w.kanal, w.do_dnia]),
+  );
 
-export const wszystkieGranice = (db) => db.prepare(
-  'SELECT * FROM granice_historii ORDER BY kanal',
-).all();
+export const wszystkieGranice = (db) => db.prepare('SELECT * FROM granice_historii ORDER BY kanal').all();
 
 /**
  * Pierwszy dzień, o którym wie ERA APILO dla podanego konta Apilo.
@@ -138,10 +152,11 @@ export const wszystkieGranice = (db) => db.prepare(
  * „skoro nic nie ma, to wszystko wolno".
  */
 export function sufitZApilo(db, konto) {
-  if (!Number.isSafeInteger(konto) || konto < 0) throw new Error('Podaj jawne konto Apilo do zmierzenia sufitu historii.');
-  const w = db.prepare(
-    "SELECT MIN(dzien) AS d FROM sprzedaz_historyczna WHERE zrodlo = 'apilo' AND platform_account_id = ?",
-  ).get(konto);
+  if (!Number.isSafeInteger(konto) || konto < 0)
+    throw new Error('Podaj jawne konto Apilo do zmierzenia sufitu historii.');
+  const w = db
+    .prepare("SELECT MIN(dzien) AS d FROM sprzedaz_historyczna WHERE zrodlo = 'apilo' AND platform_account_id = ?")
+    .get(konto);
   return w?.d ?? null;
 }
 
@@ -152,10 +167,10 @@ export function kursorSklepu(db, sklep) {
 
 export function zapiszKursorSklepu(db, { sklep, odDnia, doDnia, ostatniaStrona, blad = null, zakonczonyAt = null }) {
   db.prepare(
-    'INSERT INTO stan_importu_sklepu (sklep, od_dnia, do_dnia, ostatnia_strona, zakonczony_at, blad)'
-    + ' VALUES (?,?,?,?,?,?) ON CONFLICT(sklep) DO UPDATE SET od_dnia = excluded.od_dnia,'
-    + ' do_dnia = excluded.do_dnia, ostatnia_strona = excluded.ostatnia_strona,'
-    + ' zakonczony_at = excluded.zakonczony_at, blad = excluded.blad',
+    'INSERT INTO stan_importu_sklepu (sklep, od_dnia, do_dnia, ostatnia_strona, zakonczony_at, blad)' +
+      ' VALUES (?,?,?,?,?,?) ON CONFLICT(sklep) DO UPDATE SET od_dnia = excluded.od_dnia,' +
+      ' do_dnia = excluded.do_dnia, ostatnia_strona = excluded.ostatnia_strona,' +
+      ' zakonczony_at = excluded.zakonczony_at, blad = excluded.blad',
   ).run(sklep, odDnia, doDnia, ostatniaStrona, zakonczonyAt, blad);
 }
 
@@ -165,6 +180,8 @@ export function wczytajKursorImportu(db) {
 }
 
 export function zapiszKursorImportu(db, { ostatniDzien, ostatniId }) {
-  db.prepare('UPDATE stan_importu SET ostatni_dzien = ?, ostatni_id = ?, blad = NULL WHERE id = 1')
-    .run(ostatniDzien, ostatniId);
+  db.prepare('UPDATE stan_importu SET ostatni_dzien = ?, ostatni_id = ?, blad = NULL WHERE id = 1').run(
+    ostatniDzien,
+    ostatniId,
+  );
 }

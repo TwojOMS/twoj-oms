@@ -15,7 +15,10 @@ import { odswiezMagazyn } from '../../../src/moduly/magazyn/services/magazyn-syn
 import { utworzKartyZNiepowiazanych } from '../../../src/oms/db/magazyn.js';
 import { ustawieniaOfertKonta, zapiszUstawieniaOfertKonta } from '../../../src/oms/db/oferty-kanalow.ts';
 import {
-  wyjatekCennika, wyjatkiCennikowKarty, zapiszWyjatekCennika, usunWyjatekCennika,
+  wyjatekCennika,
+  wyjatkiCennikowKarty,
+  zapiszWyjatekCennika,
+  usunWyjatekCennika,
 } from '../../../src/oms/db/cenniki-kart.ts';
 import { brakiUstawienOfert } from '../../../src/domena/erli-oferty-ustawienia.js';
 
@@ -41,15 +44,27 @@ function nowyPlik() {
   katalogi.push(k);
   return join(k, 'oms.sqlite');
 }
-const bez0003 = (moduly) => moduly.map((m) => (m.nazwa === 'magazyn' ? { ...m, migracje: m.migracje.filter((x) => x.numer !== 3) } : m));
-const kolumny = (db, t) => db.prepare(`PRAGMA table_info(${t})`).all().map((k) => k.name);
-const tabele = (db) => db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").all().map((w) => w.name);
-const schemat = (db) => db.prepare("SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY name").all();
+const bez0003 = (moduly) =>
+  moduly.map((m) => (m.nazwa === 'magazyn' ? { ...m, migracje: m.migracje.filter((x) => x.numer !== 3) } : m));
+const kolumny = (db, t) =>
+  db
+    .prepare(`PRAGMA table_info(${t})`)
+    .all()
+    .map((k) => k.name);
+const tabele = (db) =>
+  db
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
+    .all()
+    .map((w) => w.name);
+const schemat = (db) =>
+  db.prepare("SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY name").all();
 
 function odcisk(db, lista) {
   const wynik = {};
   for (const t of lista) {
-    const wiersze = db.prepare(`SELECT * FROM "${t}"`).all()
+    const wiersze = db
+      .prepare(`SELECT * FROM "${t}"`)
+      .all()
       .map((w) => JSON.stringify(Object.entries(w).filter(([k]) => k !== 'cenniki_json')))
       .sort();
     wynik[t] = { kolumny: kolumny(db, t).filter((k) => k !== 'cenniki_json'), wiersze };
@@ -60,14 +75,21 @@ function odcisk(db, lista) {
 function bazaPamieci(moduly = modulyDla(ENV_DEMO)) {
   const db = openOmsDb(':memory:', { moduly, teraz: TERAZ });
   bazy.push(db);
-  const karta = db.prepare('INSERT INTO karty_produktow (id, sku, nazwa, utworzony_at, zmieniony_at) VALUES (?, ?, ?, ?, ?)');
+  const karta = db.prepare(
+    'INSERT INTO karty_produktow (id, sku, nazwa, utworzony_at, zmieniony_at) VALUES (?, ?, ?, ?, ?)',
+  );
   karta.run(501, 'LMP-501', 'Lampa Półcień mała', T0, T0);
   karta.run(502, 'LMP-502', 'Lampa Półcień duża', T0, T0);
   return db;
 }
 
-const wstawUstawienia = (db, klucz, cennik) => db.prepare(`INSERT INTO oferty_ustawienia_kont
-  (klucz, oferty_czynne, narzut_bp, stala_ilosc, cennik_dostaw, zmieniono_at) VALUES (?, 1, 0, 5, ?, ?)`).run(klucz, cennik, T0);
+const wstawUstawienia = (db, klucz, cennik) =>
+  db
+    .prepare(
+      `INSERT INTO oferty_ustawienia_kont
+  (klucz, oferty_czynne, narzut_bp, stala_ilosc, cennik_dostaw, zmieniono_at) VALUES (?, 1, 0, 5, ?, ?)`,
+    )
+    .run(klucz, cennik, T0);
 
 describe('migracja magazyn/0003 — cenniki dostaw', () => {
   it('moduł magazynu niesie migrację numer 3', () => {
@@ -106,7 +128,10 @@ describe('migracja magazyn/0003 — cenniki dostaw', () => {
     const json = (k) => db.prepare('SELECT cenniki_json j FROM oferty_ustawienia_kont WHERE klucz = ?').get(k).j;
     expect(JSON.parse(json('allegro_polcien'))).toEqual([{ cennik: 'cennik-7' }]);
     expect(json('erli_polcien')).toBeNull();
-    expect(ustawieniaOfertKonta(db, 'allegro_polcien')).toMatchObject({ cennikDostaw: 'cennik-7', cenniki: [{ cennik: 'cennik-7' }] });
+    expect(ustawieniaOfertKonta(db, 'allegro_polcien')).toMatchObject({
+      cennikDostaw: 'cennik-7',
+      cenniki: [{ cennik: 'cennik-7' }],
+    });
     expect(ustawieniaOfertKonta(db, 'erli_polcien')).toMatchObject({ cennikDostaw: null, cenniki: [] });
   });
 
@@ -133,24 +158,39 @@ describe('migracja magazyn/0003 — cenniki dostaw', () => {
     // Konto przeszło na reguły rozmiaru; stara kolumna została z dawną wartością.
     zapiszUstawieniaOfertKonta(db, 'allegro_polcien', { cenniki: REGULY }, { teraz: T1 });
     zapiszWyjatekCennika(db, { kartaId: 501, konto: 'allegro_polcien', cennik: 'Kurier gabaryt' }, { teraz: T1 });
-    const przed = [schemat(db), odcisk(db, tabele(db)), db.prepare('SELECT klucz, cenniki_json FROM oferty_ustawienia_kont').all()];
+    const przed = [
+      schemat(db),
+      odcisk(db, tabele(db)),
+      db.prepare('SELECT klucz, cenniki_json FROM oferty_ustawienia_kont').all(),
+    ];
     migracjaCennikowDostaw.wykonaj(db);
     migracjaCennikowDostaw.wykonaj(db);
-    expect([schemat(db), odcisk(db, tabele(db)), db.prepare('SELECT klucz, cenniki_json FROM oferty_ustawienia_kont').all()])
-      .toEqual(przed);
+    expect([
+      schemat(db),
+      odcisk(db, tabele(db)),
+      db.prepare('SELECT klucz, cenniki_json FROM oferty_ustawienia_kont').all(),
+    ]).toEqual(przed);
     expect(ustawieniaOfertKonta(db, 'allegro_polcien').cenniki).toEqual(REGULY);
   });
 
   it('strażnik migracji zielony', () => {
-    expect(execFileSync(process.execPath, ['scripts/straznik-migracji.mjs'], { cwd: KORZEN, encoding: 'utf8' })).toBe('');
+    expect(execFileSync(process.execPath, ['scripts/straznik-migracji.mjs'], { cwd: KORZEN, encoding: 'utf8' })).toBe(
+      '',
+    );
   });
 });
 
 describe('ustawienia konta — cenniki i alias cennikDostaw (D4)', () => {
   it('zapis cenników sprawdza reguły; poprawne wracają przy odczycie', () => {
     const db = bazaPamieci();
-    expect(() => zapiszUstawieniaOfertKonta(db, 'erli_polcien', { cenniki: [{ doMm: [1, 2, 3], doG: 5, cennik: 'A' }] }, { teraz: T0 }))
-      .toThrow(/większych/);
+    expect(() =>
+      zapiszUstawieniaOfertKonta(
+        db,
+        'erli_polcien',
+        { cenniki: [{ doMm: [1, 2, 3], doG: 5, cennik: 'A' }] },
+        { teraz: T0 },
+      ),
+    ).toThrow(/większych/);
     expect(ustawieniaOfertKonta(db, 'erli_polcien').cenniki).toEqual([]);
     zapiszUstawieniaOfertKonta(db, 'erli_polcien', { cenniki: REGULY }, { teraz: T0 });
     expect(ustawieniaOfertKonta(db, 'erli_polcien')).toMatchObject({ cenniki: REGULY, cennikDostaw: null });
@@ -160,17 +200,25 @@ describe('ustawienia konta — cenniki i alias cennikDostaw (D4)', () => {
     const db = bazaPamieci();
     zapiszUstawieniaOfertKonta(db, 'erli_polcien', { cenniki: REGULY }, { teraz: T0 });
     zapiszUstawieniaOfertKonta(db, 'erli_polcien', { cennikDostaw: 'Lampy' }, { teraz: T1 });
-    expect(ustawieniaOfertKonta(db, 'erli_polcien')).toMatchObject({ cennikDostaw: 'Lampy', cenniki: [{ cennik: 'Lampy' }] });
+    expect(ustawieniaOfertKonta(db, 'erli_polcien')).toMatchObject({
+      cennikDostaw: 'Lampy',
+      cenniki: [{ cennik: 'Lampy' }],
+    });
     zapiszUstawieniaOfertKonta(db, 'erli_polcien', { cennikDostaw: null }, { teraz: T1 });
     expect(ustawieniaOfertKonta(db, 'erli_polcien')).toMatchObject({ cennikDostaw: null, cenniki: [] });
-    expect(() => zapiszUstawieniaOfertKonta(db, 'erli_polcien', { cennikDostaw: 'X', cenniki: REGULY }, { teraz: T1 })).toThrow();
+    expect(() =>
+      zapiszUstawieniaOfertKonta(db, 'erli_polcien', { cennikDostaw: 'X', cenniki: REGULY }, { teraz: T1 }),
+    ).toThrow();
   });
 
   it('baza bez migracji 0003: stary cennik czyta się jako jedna reguła, zapis aliasu działa', () => {
     const db = bazaPamieci(bez0003(modulyDla(ENV_DEMO)));
     expect(kolumny(db, 'oferty_ustawienia_kont')).not.toContain('cenniki_json');
     zapiszUstawieniaOfertKonta(db, 'allegro_polcien', { cennikDostaw: 'Cennik Półcień' }, { teraz: T0 });
-    expect(ustawieniaOfertKonta(db, 'allegro_polcien')).toMatchObject({ cennikDostaw: 'Cennik Półcień', cenniki: [{ cennik: 'Cennik Półcień' }] });
+    expect(ustawieniaOfertKonta(db, 'allegro_polcien')).toMatchObject({
+      cennikDostaw: 'Cennik Półcień',
+      cenniki: [{ cennik: 'Cennik Półcień' }],
+    });
   });
 });
 
@@ -178,7 +226,11 @@ describe('karty_cenniki_kont — wyjątek cennika na karcie per konto', () => {
   it('zapis, odczyt, nadpisanie, usunięcie; znika z kartą', () => {
     const db = bazaPamieci();
     expect(wyjatekCennika(db, { kartaId: 501, konto: 'allegro_polcien' })).toBeNull();
-    zapiszWyjatekCennika(db, { kartaId: 501, konto: 'allegro_polcien', cennik: ' Kurier gabaryt ' }, { teraz: T0, aktor: 'administrator' });
+    zapiszWyjatekCennika(
+      db,
+      { kartaId: 501, konto: 'allegro_polcien', cennik: ' Kurier gabaryt ' },
+      { teraz: T0, aktor: 'administrator' },
+    );
     zapiszWyjatekCennika(db, { kartaId: 501, konto: 'erli_polcien', cennik: 'Mała paczka' }, { teraz: T0 });
     zapiszWyjatekCennika(db, { kartaId: 501, konto: 'erli_polcien', cennik: 'Średnia paczka' }, { teraz: T1 });
     expect(wyjatekCennika(db, { kartaId: 501, konto: 'allegro_polcien' })).toBe('Kurier gabaryt');
@@ -186,7 +238,9 @@ describe('karty_cenniki_kont — wyjątek cennika na karcie per konto', () => {
       { konto: 'allegro_polcien', cennik: 'Kurier gabaryt', zmienionoAt: T0, aktor: 'administrator' },
       { konto: 'erli_polcien', cennik: 'Średnia paczka', zmienionoAt: T1, aktor: null },
     ]);
-    expect(() => zapiszWyjatekCennika(db, { kartaId: 501, konto: 'erli_polcien', cennik: '  ' }, { teraz: T1 })).toThrow();
+    expect(() =>
+      zapiszWyjatekCennika(db, { kartaId: 501, konto: 'erli_polcien', cennik: '  ' }, { teraz: T1 }),
+    ).toThrow();
     expect(usunWyjatekCennika(db, { kartaId: 501, konto: 'erli_polcien' })).toBe(1);
     expect(usunWyjatekCennika(db, { kartaId: 501, konto: 'erli_polcien' })).toBe(0);
     db.prepare('DELETE FROM karty_produktow WHERE id = 501').run();
@@ -195,8 +249,13 @@ describe('karty_cenniki_kont — wyjątek cennika na karcie per konto', () => {
 
   it('pusty cennik albo konto odrzuca sama tabela', () => {
     const db = bazaPamieci();
-    const wstaw = (konto, cennik) => db.prepare(`INSERT INTO karty_cenniki_kont (karta_id, konto, cennik, zmieniono_at)
-      VALUES (502, ?, ?, ?)`).run(konto, cennik, T0);
+    const wstaw = (konto, cennik) =>
+      db
+        .prepare(
+          `INSERT INTO karty_cenniki_kont (karta_id, konto, cennik, zmieniono_at)
+      VALUES (502, ?, ?, ?)`,
+        )
+        .run(konto, cennik, T0);
     expect(() => wstaw('allegro_polcien', ' ')).toThrow(/CHECK/);
     expect(() => wstaw(' ', 'A')).toThrow(/CHECK/);
     expect(() => wstaw('allegro_polcien', 'A')).not.toThrow();

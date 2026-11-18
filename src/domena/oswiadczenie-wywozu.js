@@ -16,11 +16,33 @@ import { czyNipUe, rozbijNipUe } from './wdt.js';
 // Nazwy panstw czlonkowskich pod kodami VAT-UE — do zdania „na terytorium: Slowacji".
 // `XI` to Irlandia Polnocna (protokol irlandzki) — jedyny kod spoza ISO.
 const NAZWY_PANSTW_UE = {
-  AT: 'Austrii', BE: 'Belgii', BG: 'Bułgarii', CY: 'Cypru', CZ: 'Czech', DE: 'Niemiec',
-  DK: 'Danii', EE: 'Estonii', EL: 'Grecji', ES: 'Hiszpanii', FI: 'Finlandii', FR: 'Francji',
-  HR: 'Chorwacji', HU: 'Węgier', IE: 'Irlandii', IT: 'Włoch', LT: 'Litwy', LU: 'Luksemburga',
-  LV: 'Łotwy', MT: 'Malty', NL: 'Niderlandów', PT: 'Portugalii', RO: 'Rumunii', SE: 'Szwecji',
-  SI: 'Słowenii', SK: 'Słowacji', XI: 'Irlandii Północnej',
+  AT: 'Austrii',
+  BE: 'Belgii',
+  BG: 'Bułgarii',
+  CY: 'Cypru',
+  CZ: 'Czech',
+  DE: 'Niemiec',
+  DK: 'Danii',
+  EE: 'Estonii',
+  EL: 'Grecji',
+  ES: 'Hiszpanii',
+  FI: 'Finlandii',
+  FR: 'Francji',
+  HR: 'Chorwacji',
+  HU: 'Węgier',
+  IE: 'Irlandii',
+  IT: 'Włoch',
+  LT: 'Litwy',
+  LU: 'Luksemburga',
+  LV: 'Łotwy',
+  MT: 'Malty',
+  NL: 'Niderlandów',
+  PT: 'Portugalii',
+  RO: 'Rumunii',
+  SE: 'Szwecji',
+  SI: 'Słowenii',
+  SK: 'Słowacji',
+  XI: 'Irlandii Północnej',
 };
 
 /**
@@ -34,14 +56,14 @@ export function modelOswiadczenia(z, { sprzedawca, dzis = null } = {}) {
   const d = daneFaktury(z);
   if (!czyNipUe(d.nip)) {
     throw bladOperatora(
-      'Potwierdzenie wywozu dotyczy wyłącznie dostawy wewnątrzwspólnotowej (WDT) — '
-      + 'nabywca tego zamówienia nie ma numeru VAT-UE innego państwa członkowskiego.',
+      'Potwierdzenie wywozu dotyczy wyłącznie dostawy wewnątrzwspólnotowej (WDT) — ' +
+        'nabywca tego zamówienia nie ma numeru VAT-UE innego państwa członkowskiego.',
     );
   }
   if (!sprzedawca?.nazwa || !sprzedawca?.ulica) {
     throw bladOperatora(
-      'Panel nie zna adresu sprzedawcy — bez niego dokument wywozu nie ma strony dostawcy. '
-      + 'Wpisz adres firmy w Ustawienia → Firma (/ustawienia/firma) albo w pliku konfiguracji (DPD_NADAWCA_*).',
+      'Panel nie zna adresu sprzedawcy — bez niego dokument wywozu nie ma strony dostawcy. ' +
+        'Wpisz adres firmy w Ustawienia → Firma (/ustawienia/firma) albo w pliku konfiguracji (DPD_NADAWCA_*).',
     );
   }
 
@@ -64,7 +86,9 @@ export function modelOswiadczenia(z, { sprzedawca, dzis = null } = {}) {
       adres: [sprzedawca.ulica, [sprzedawca.kod, sprzedawca.miasto].filter(Boolean).join(' ')].filter(Boolean),
       // Prefiks PL — ten sam wymog, co na fakturze (art. 106e ust. 1 pkt 24): dokument
       // wywozu identyfikuje te same strony, ktore stoja na dokumencie sprzedazy.
-      nip: `PL${String(sprzedawca.nip ?? '').trim().replace(/^PL/i, '')}`,
+      nip: `PL${String(sprzedawca.nip ?? '')
+        .trim()
+        .replace(/^PL/i, '')}`,
     },
     nabywca: {
       nazwa: d.firma ?? '',

@@ -11,7 +11,11 @@ export const NAJWIECEJ_STANOWISK = 20;
 export const NAJDLUZSZA_NAZWA = 64;
 
 export function nazwaStanowiska(stanowisko) {
-  return String(stanowisko ?? '').trim().slice(0, NAJDLUZSZA_NAZWA) || 'bez nazwy';
+  return (
+    String(stanowisko ?? '')
+      .trim()
+      .slice(0, NAJDLUZSZA_NAZWA) || 'bez nazwy'
+  );
 }
 
 const chwila = (wartosc) => (typeof wartosc === 'string' ? Date.parse(wartosc) : Number.NaN);
@@ -29,8 +33,12 @@ export function stanStanowisk(mapa, teraz) {
     .sort((a, b) => b.ms - a.ms)
     .map(({ nazwa, at, ms }) => {
       const roznica = t - ms;
-      return { nazwa, at, minutTemu: Math.max(0, Math.floor(roznica / 60_000)),
-        aktywne: roznica <= PROG_PODLACZENIA_MIN * 60_000 };
+      return {
+        nazwa,
+        at,
+        minutTemu: Math.max(0, Math.floor(roznica / 60_000)),
+        aktywne: roznica <= PROG_PODLACZENIA_MIN * 60_000,
+      };
     });
   return { podlaczone: stanowiska.some((s) => s.aktywne), stanowiska };
 }
@@ -46,8 +54,16 @@ export function czyZapisac(mapa, stanowisko, teraz) {
 
 /** Nowa mapa z bieżącym zgłoszeniem; najwyżej NAJWIECEJ_STANOWISK najświeższych wpisów. */
 export function dopisz(mapa, stanowisko, teraz) {
-  const nowa = { ...(mapa && typeof mapa === 'object' ? mapa : {}), [nazwaStanowiska(stanowisko)]: teraz.toISOString() };
-  const ms = (k) => { const v = chwila(nowa[k]); return Number.isFinite(v) ? v : -Infinity; };
-  const zostaja = Object.keys(nowa).sort((a, b) => ms(b) - ms(a)).slice(0, NAJWIECEJ_STANOWISK);
+  const nowa = {
+    ...(mapa && typeof mapa === 'object' ? mapa : {}),
+    [nazwaStanowiska(stanowisko)]: teraz.toISOString(),
+  };
+  const ms = (k) => {
+    const v = chwila(nowa[k]);
+    return Number.isFinite(v) ? v : -Infinity;
+  };
+  const zostaja = Object.keys(nowa)
+    .sort((a, b) => ms(b) - ms(a))
+    .slice(0, NAJWIECEJ_STANOWISK);
   return Object.fromEntries(zostaja.map((k) => [k, nowa[k]]));
 }

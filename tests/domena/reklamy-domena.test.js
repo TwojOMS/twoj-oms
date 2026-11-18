@@ -5,31 +5,66 @@ const okres = { od: '2026-09-16', do: '2026-09-22', dzis: '2026-09-23' };
 
 describe('podsumujReklamy', () => {
   it('sumuje ułamki grosza z Meta przed zaokrągleniem kwoty na ekranie', () => {
-    const wynik = podsumujReklamy({ ...okres, meta: [
-      { dzien: '2026-09-22', kampaniaId: 'm', wydatek: '0.004', waluta: 'PLN' },
-      { dzien: '2026-09-22', kampaniaId: 'n', wydatek: '0.004', waluta: 'PLN' },
-    ] });
+    const wynik = podsumujReklamy({
+      ...okres,
+      meta: [
+        { dzien: '2026-09-22', kampaniaId: 'm', wydatek: '0.004', waluta: 'PLN' },
+        { dzien: '2026-09-22', kampaniaId: 'n', wydatek: '0.004', waluta: 'PLN' },
+      ],
+    });
     expect(wynik.meta.koszt).toBe('0.01');
     expect(wynik.lacznie.koszt).toBe('0.01');
   });
   it('oddziela przypisany przychód GA4 od potwierdzonej aktualnej kwoty OMS', () => {
     const wynik = podsumujReklamy({
-      ...okres, waluta: 'PLN', stany: { ga4: { stan: 'działa' } },
-      google: [{ dzien: '2026-09-16', kampaniaId: '42', nazwa: 'Search', koszt: '104.06', klikniecia: 253, wyswietlenia: 6936, waluta: 'PLN' }],
+      ...okres,
+      waluta: 'PLN',
+      stany: { ga4: { stan: 'działa' } },
+      google: [
+        {
+          dzien: '2026-09-16',
+          kampaniaId: '42',
+          nazwa: 'Search',
+          koszt: '104.06',
+          klikniecia: 253,
+          wyswietlenia: 6936,
+          waluta: 'PLN',
+        },
+      ],
       transakcje: [{ dzien: '2026-09-16', kampaniaId: '42', transactionId: '1451', przychod: '97.40', waluta: 'PLN' }],
-      zamowienia: [{ zrodloId: '1451', kwota: '97.40', kwotaBrutto: '144.80', waluta: 'PLN', status: 'w_realizacji', atrybucja: 'direct' }],
+      zamowienia: [
+        {
+          zrodloId: '1451',
+          kwota: '97.40',
+          kwotaBrutto: '144.80',
+          waluta: 'PLN',
+          status: 'w_realizacji',
+          atrybucja: 'direct',
+        },
+      ],
     });
     expect(wynik.google).toMatchObject({
-      koszt: '104.06', klikniecia: 253, wyswietlenia: 6936, przychodGa4: '97.40',
-      przychodOms: '97.40', przychodBruttoOms: '144.80', konwersjeGa4: 1, konwersjeOms: 1, niepotwierdzone: 0,
-      ctr: 253 / 6936, roasGa4: expect.any(Number), roasOms: expect.any(Number),
+      koszt: '104.06',
+      klikniecia: 253,
+      wyswietlenia: 6936,
+      przychodGa4: '97.40',
+      przychodOms: '97.40',
+      przychodBruttoOms: '144.80',
+      konwersjeGa4: 1,
+      konwersjeOms: 1,
+      niepotwierdzone: 0,
+      ctr: 253 / 6936,
+      roasGa4: expect.any(Number),
+      roasOms: expect.any(Number),
     });
     expect(wynik.google.roasGa4).toBe(wynik.google.roasOms);
     expect(wynik.google.cpc).toBe('0.41');
   });
 
   it('nie wylicza ROAS OMS z części zamówień, gdy brakuje netto produktu', () => {
-    const wynik = podsumujReklamy({ ...okres, waluta: 'PLN',
+    const wynik = podsumujReklamy({
+      ...okres,
+      waluta: 'PLN',
       google: [{ dzien: '2026-09-16', kampaniaId: 'g', koszt: '10.00', waluta: 'PLN' }],
       transakcje: [
         { dzien: '2026-09-16', transactionId: '1', przychod: '20.00', waluta: 'PLN' },
@@ -60,10 +95,16 @@ describe('podsumujReklamy', () => {
   });
 
   it('nie sumuje kosztów różnych walut i izoluje stan awarii źródła', () => {
-    const wynik = podsumujReklamy({ ...okres, waluta: null,
-      google: [{ dzien: '2026-09-20', kampaniaId: 'g', koszt: '10.10', klikniecia: 1, wyswietlenia: 10, waluta: 'PLN' }],
+    const wynik = podsumujReklamy({
+      ...okres,
+      waluta: null,
+      google: [
+        { dzien: '2026-09-20', kampaniaId: 'g', koszt: '10.10', klikniecia: 1, wyswietlenia: 10, waluta: 'PLN' },
+      ],
       meta: [{ dzien: '2026-09-20', kampaniaId: 'm', wydatek: '2.20', klikniecia: 1, wyswietlenia: 10, waluta: 'EUR' }],
-      transakcje: [], zamowienia: [], stany: { ga4: { stan: 'działa' }, meta: { stan: 'błąd' } },
+      transakcje: [],
+      zamowienia: [],
+      stany: { ga4: { stan: 'działa' }, meta: { stan: 'błąd' } },
     });
     expect(wynik.google.koszt).toBe('10.10');
     expect(wynik.meta.koszt).toBe('2.20');
@@ -74,11 +115,40 @@ describe('podsumujReklamy', () => {
   });
 
   it('ACTIVE bez dzisiejszej lub wczorajszej emisji nie jest emitującą kampanią', () => {
-    const wynik = podsumujReklamy({ ...okres, stany: { meta: { stan: 'działa' } },
+    const wynik = podsumujReklamy({
+      ...okres,
+      stany: { meta: { stan: 'działa' } },
       meta: [
-        { dzien: '2026-09-20', kampaniaId: 'm1', nazwa: 'Stara', effectiveStatus: 'ACTIVE', wydatek: '2.00', wyswietlenia: 100, klikniecia: 4, waluta: 'PLN' },
-        { dzien: '2026-09-22', kampaniaId: 'm2', nazwa: 'Nowa', effectiveStatus: 'ACTIVE', wydatek: '1.00', wyswietlenia: 25, klikniecia: 2, waluta: 'PLN' },
-        { dzien: '2026-09-22', kampaniaId: 'm3', nazwa: 'Pusta', effectiveStatus: 'ACTIVE', wydatek: '0.00', wyswietlenia: 0, klikniecia: 0, waluta: 'PLN' },
+        {
+          dzien: '2026-09-20',
+          kampaniaId: 'm1',
+          nazwa: 'Stara',
+          effectiveStatus: 'ACTIVE',
+          wydatek: '2.00',
+          wyswietlenia: 100,
+          klikniecia: 4,
+          waluta: 'PLN',
+        },
+        {
+          dzien: '2026-09-22',
+          kampaniaId: 'm2',
+          nazwa: 'Nowa',
+          effectiveStatus: 'ACTIVE',
+          wydatek: '1.00',
+          wyswietlenia: 25,
+          klikniecia: 2,
+          waluta: 'PLN',
+        },
+        {
+          dzien: '2026-09-22',
+          kampaniaId: 'm3',
+          nazwa: 'Pusta',
+          effectiveStatus: 'ACTIVE',
+          wydatek: '0.00',
+          wyswietlenia: 0,
+          klikniecia: 0,
+          waluta: 'PLN',
+        },
       ],
     });
     expect(wynik.meta.emitujace).toBe(1);
@@ -90,7 +160,10 @@ describe('podsumujReklamy', () => {
   });
 
   it('filtruje okres i nie potwierdza kolizji, anulowanych ani obcych walut', () => {
-    const wynik = podsumujReklamy({ ...okres, waluta: 'PLN', stany: { ga4: { stan: 'działa' } },
+    const wynik = podsumujReklamy({
+      ...okres,
+      waluta: 'PLN',
+      stany: { ga4: { stan: 'działa' } },
       google: [
         { dzien: '2026-09-16', kampaniaId: 'g', koszt: '0.10', klikniecia: 0, wyswietlenia: 0, waluta: 'PLN' },
         { dzien: '2026-09-15', kampaniaId: 'g', koszt: '100.00', klikniecia: 3, wyswietlenia: 10, waluta: 'PLN' },
@@ -119,7 +192,9 @@ describe('podsumujReklamy', () => {
   });
 
   it('podaje łączny koszt, gdy działa tylko jedno źródło', () => {
-    const wynik = podsumujReklamy({ ...okres, waluta: 'PLN',
+    const wynik = podsumujReklamy({
+      ...okres,
+      waluta: 'PLN',
       google: [{ dzien: '2026-09-16', kampaniaId: 'g', koszt: '0.10', klikniecia: 1, wyswietlenia: 10, waluta: 'PLN' }],
       stany: { ga4: { stan: 'działa' } },
     });
@@ -133,9 +208,12 @@ describe('podsumujReklamy', () => {
     expect(pusty.google.stanDanych).toBe('brak danych');
     expect(pusty.google.koszt).toBeNull();
     expect(pusty.google.przychodGa4).toBeNull();
-    const zero = podsumujReklamy({ ...okres, google: [
-      { dzien: '2026-09-16', kampaniaId: 'g', koszt: '0.00', klikniecia: 0, wyswietlenia: 0, waluta: 'PLN' },
-    ], stany: { ga4: { stan: 'działa' } }, transakcje: [] });
+    const zero = podsumujReklamy({
+      ...okres,
+      google: [{ dzien: '2026-09-16', kampaniaId: 'g', koszt: '0.00', klikniecia: 0, wyswietlenia: 0, waluta: 'PLN' }],
+      stany: { ga4: { stan: 'działa' } },
+      transakcje: [],
+    });
     expect(zero.google.stanDanych).toBe('dane');
     expect(zero.google.koszt).toBe('0.00');
     expect(zero.google.przychodGa4).toBe('0.00');
@@ -144,27 +222,79 @@ describe('podsumujReklamy', () => {
   });
 
   it('dwie waluty jednego źródła pozostają osobnymi seriami i nie tworzą sumy', () => {
-    const wynik = podsumujReklamy({ ...okres,
+    const wynik = podsumujReklamy({
+      ...okres,
       google: [
-        { dzien: '2026-09-16', polaczenieId: 1, kampaniaId: 'g', koszt: '10.00', klikniecia: 1, wyswietlenia: 10, waluta: 'PLN' },
-        { dzien: '2026-09-16', polaczenieId: 2, kampaniaId: 'g', koszt: '20.00', klikniecia: 1, wyswietlenia: 10, waluta: 'EUR' },
+        {
+          dzien: '2026-09-16',
+          polaczenieId: 1,
+          kampaniaId: 'g',
+          koszt: '10.00',
+          klikniecia: 1,
+          wyswietlenia: 10,
+          waluta: 'PLN',
+        },
+        {
+          dzien: '2026-09-16',
+          polaczenieId: 2,
+          kampaniaId: 'g',
+          koszt: '20.00',
+          klikniecia: 1,
+          wyswietlenia: 10,
+          waluta: 'EUR',
+        },
       ],
     });
     expect(wynik.google.koszt).toBeNull();
     expect(wynik.google.powody.koszt).toBe('ROZNE_WALUTY');
-    expect(wynik.google.dni.map((d) => [d.waluta, d.koszt])).toEqual([['PLN', '10.00'], ['EUR', '20.00']]);
+    expect(wynik.google.dni.map((d) => [d.waluta, d.koszt])).toEqual([
+      ['PLN', '10.00'],
+      ['EUR', '20.00'],
+    ]);
     expect(wynik.google.kampanie).toHaveLength(2);
   });
 
   it('to samo ID transakcji z dwóch połączeń GA4 potwierdza właściwe zamówienia osobno', () => {
-    const wynik = podsumujReklamy({ ...okres, waluta: 'PLN',
+    const wynik = podsumujReklamy({
+      ...okres,
+      waluta: 'PLN',
       google: [
-        { dzien: '2026-09-16', polaczenieId: 1, kampaniaId: 'g', koszt: '10.00', klikniecia: 1, wyswietlenia: 10, waluta: 'PLN' },
-        { dzien: '2026-09-16', polaczenieId: 2, kampaniaId: 'g', koszt: '20.00', klikniecia: 1, wyswietlenia: 10, waluta: 'PLN' },
+        {
+          dzien: '2026-09-16',
+          polaczenieId: 1,
+          kampaniaId: 'g',
+          koszt: '10.00',
+          klikniecia: 1,
+          wyswietlenia: 10,
+          waluta: 'PLN',
+        },
+        {
+          dzien: '2026-09-16',
+          polaczenieId: 2,
+          kampaniaId: 'g',
+          koszt: '20.00',
+          klikniecia: 1,
+          wyswietlenia: 10,
+          waluta: 'PLN',
+        },
       ],
       transakcje: [
-        { dzien: '2026-09-16', polaczenieId: 1, kampaniaId: 'g', transactionId: '1451', przychod: '7.00', waluta: 'PLN' },
-        { dzien: '2026-09-16', polaczenieId: 2, kampaniaId: 'g', transactionId: '1451', przychod: '9.00', waluta: 'PLN' },
+        {
+          dzien: '2026-09-16',
+          polaczenieId: 1,
+          kampaniaId: 'g',
+          transactionId: '1451',
+          przychod: '7.00',
+          waluta: 'PLN',
+        },
+        {
+          dzien: '2026-09-16',
+          polaczenieId: 2,
+          kampaniaId: 'g',
+          transactionId: '1451',
+          przychod: '9.00',
+          waluta: 'PLN',
+        },
       ],
       zamowienia: [
         { polaczenieId: 1, zrodloId: '1451', kwota: '11.00', waluta: 'PLN', status: 'nowe' },

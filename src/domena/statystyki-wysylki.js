@@ -1,15 +1,11 @@
 // STATYSTYKI WYSYŁKI — czyste agregacje nad listą z domena/statystyki-okresu.js.
 // Ten moduł nie dotyka bazy i nie zna zegara.
 import { uslugaDostawy } from './wysylka.js';
-import {
-  terminZamowienia, dniRoboczeDoWysylki, dniPoTerminie,
-} from './termin-wysylki.js';
+import { terminZamowienia, dniRoboczeDoWysylki, dniPoTerminie } from './termin-wysylki.js';
 import { dzienWarszawa } from './format-daty.js';
 
 /** Udział w procentach z jednym miejscem po przecinku. Mianownik 0 → `null`, nie `0`. */
-export const udzialProcent = (ile, zCzego) => (zCzego
-  ? Math.round((ile / zCzego) * 1000) / 10
-  : null);
+export const udzialProcent = (ile, zCzego) => (zCzego ? Math.round((ile / zCzego) * 1000) / 10 : null);
 
 /**
  * Rozkład zamówień po USŁUDZE DOSTAWY, którą wybrał klient.
@@ -51,7 +47,7 @@ export function agregatorUslug() {
       .map(([etykieta, ile]) => ({ etykieta, ile, udzial: udzialProcent(ile, suma) }))
       // Drugie kryterium jest obowiązkowe: bez niego kolejność dwóch usług o tej samej
       // liczbie skacze między odświeżeniami i ekran wygląda, jakby dane się zmieniały.
-      .sort((a, b) => (b.ile - a.ile) || a.etykieta.localeCompare(b.etykieta, 'pl'));
+      .sort((a, b) => b.ile - a.ile || a.etykieta.localeCompare(b.etykieta, 'pl'));
     return { pozycje, suma };
   };
   return { dodaj, wynik };
@@ -98,16 +94,25 @@ export function agregatorTerminowosci() {
   let tegoDnia = 0;
 
   const dodaj = (z) => {
-    if (!z.wyslane_at) { wylaczenia.niewyslane += 1; return; }
+    if (!z.wyslane_at) {
+      wylaczenia.niewyslane += 1;
+      return;
+    }
     // ⚠️ KOLEJNOŚĆ TYCH DWÓCH WARUNKÓW JEST TREŚCIĄ. Brak startu (nieopłacona przedpłata)
     // sprawdzamy PRZED wysłaniem przed wpłatą — inaczej zamówienie bez `oplacone_at`
     // wpadłoby do „wysłane przed wpłatą", czyli do kubełka opisującego CO INNEGO.
     // Termin z samej ręcznej daty (bez wpłaty) też nie ma startu — czasu realizacji
     // nie zmierzymy, więc zostaje w tym samym wyłączeniu.
     const termin = terminZamowienia(z);
-    if (!termin?.start) { wylaczenia.bezStartu += 1; return; }
+    if (!termin?.start) {
+      wylaczenia.bezStartu += 1;
+      return;
+    }
     const dni = dniRoboczeDoWysylki(z, termin);
-    if (dni === null) { wylaczenia.przedWplata += 1; return; }
+    if (dni === null) {
+      wylaczenia.przedWplata += 1;
+      return;
+    }
 
     mianownik += 1;
     // „W terminie” rozstrzyga `dniPoTerminie` (ręczna data albo standard), rozkład niżej

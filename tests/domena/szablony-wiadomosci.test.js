@@ -1,26 +1,53 @@
 import { describe, it, expect } from 'vitest';
 import {
-  sprawdzSzablon, zlozTresc, zlozTemat, polaZamowienia, polaSzablonu, odczytajSzablony, zapiszSzablon, usunSzablon,
-  szablonDoEdycji, rodzajSzablonu, DOMYSLNE, MAKS, KLUCZ_USTAWIEN, POLA,
+  sprawdzSzablon,
+  zlozTresc,
+  zlozTemat,
+  polaZamowienia,
+  polaSzablonu,
+  odczytajSzablony,
+  zapiszSzablon,
+  usunSzablon,
+  szablonDoEdycji,
+  rodzajSzablonu,
+  DOMYSLNE,
+  MAKS,
+  KLUCZ_USTAWIEN,
+  POLA,
 } from '../../src/domena/szablony-wiadomosci.js';
 
 // Szablony wiadomości — reguły zapisu i składanie treści (czysta domena).
 
 const PUSTY = { wbudowane: {}, wlasne: [], licznik: 0 };
 const zam = (nad = {}) => ({
-  numer: '1024', utworzone_at: '2026-10-14T09:15:00Z', sklep: 'reczne', kwota_brutto: '476.00',
-  koszt_dostawy_brutto: '19.00', metoda_wysylki: 'dpd',
+  numer: '1024',
+  utworzone_at: '2026-10-14T09:15:00Z',
+  sklep: 'reczne',
+  kwota_brutto: '476.00',
+  koszt_dostawy_brutto: '19.00',
+  metoda_wysylki: 'dpd',
   klient: { email: 'anna.nowak@example.com' },
-  dostawa: { first_name: 'Anna Maria', last_name: 'Nowak', address_1: 'Lipowa 7', postcode: '00-950', city: 'Warszawa' },
-  pozycje: [{ nazwa: 'Lampa Grzybek', ilosc: 2, cena_brutto: '189.00', brutto_linii: '378.00' },
-    { nazwa: 'Klosz lniany', ilosc: 1, cena_brutto: '79.00', brutto_linii: '79.00' }],
+  dostawa: {
+    first_name: 'Anna Maria',
+    last_name: 'Nowak',
+    address_1: 'Lipowa 7',
+    postcode: '00-950',
+    city: 'Warszawa',
+  },
+  pozycje: [
+    { nazwa: 'Lampa Grzybek', ilosc: 2, cena_brutto: '189.00', brutto_linii: '378.00' },
+    { nazwa: 'Klosz lniany', ilosc: 1, cena_brutto: '79.00', brutto_linii: '79.00' },
+  ],
   przesylki: [{ numer_listu: '000111' }, { numer_listu: '000222' }],
   ...nad,
 });
 
 describe('odmowy zapisu', () => {
   it('nieznane pole — odmowa z nazwą pola', () => {
-    const w = sprawdzSzablon('potwierdzenie', { temat: 'Zamówienie {numer_zamowienia}', tresc: 'Dzień dobry {Imię},\n{podpis}' });
+    const w = sprawdzSzablon('potwierdzenie', {
+      temat: 'Zamówienie {numer_zamowienia}',
+      tresc: 'Dzień dobry {Imię},\n{podpis}',
+    });
     expect(w.ok).toBe(false);
     expect(w.blad).toContain('{Imię}');
   });
@@ -32,7 +59,10 @@ describe('odmowy zapisu', () => {
   });
 
   it.each(['proforma', 'faktura', 'przypomnienie'])('%s bez {dane_platnosci} — odmowa (pieniądze)', (rodzaj) => {
-    const w = sprawdzSzablon(rodzaj, { temat: 'Płatność {numer_zamowienia}', tresc: 'Prosimy o wpłatę {kwota}.\n\n{podpis}' });
+    const w = sprawdzSzablon(rodzaj, {
+      temat: 'Płatność {numer_zamowienia}',
+      tresc: 'Prosimy o wpłatę {kwota}.\n\n{podpis}',
+    });
     expect(w.ok).toBe(false);
     expect(w.blad).toContain('{dane_platnosci}');
   });
@@ -40,20 +70,29 @@ describe('odmowy zapisu', () => {
   // Kierownik pętli 18.10: przy pobraniu {zamkniecie} mówi „Należność pobierze kurier" — bez niego klient może
   // zapłacić dwa razy (przelewem i kurierowi). Obowiązkowe jak {dane_platnosci}.
   it.each(['proforma', 'faktura', 'przypomnienie'])('%s bez {zamkniecie} — odmowa z nazwą pola', (rodzaj) => {
-    const w = sprawdzSzablon(rodzaj, { temat: 'P {numer_zamowienia}', tresc: 'Dzień dobry,\n\n{dane_platnosci}\n\nDziękujemy.\n\n{podpis}' });
+    const w = sprawdzSzablon(rodzaj, {
+      temat: 'P {numer_zamowienia}',
+      tresc: 'Dzień dobry,\n\n{dane_platnosci}\n\nDziękujemy.\n\n{podpis}',
+    });
     expect(w.ok).toBe(false);
     expect(w.blad).toContain('{zamkniecie}');
     expect(w.blad).toMatch(/kurier/);
   });
 
   it('{zamkniecie} w zdaniu własnym przechodzi; w szablonie własnym nadal nie działa', () => {
-    expect(sprawdzSzablon('faktura', { temat: 'F', tresc: '{dane_platnosci}\n\nDziękujemy. {zamkniecie}\n\n{podpis}' }).ok).toBe(true);
+    expect(
+      sprawdzSzablon('faktura', { temat: 'F', tresc: '{dane_platnosci}\n\nDziękujemy. {zamkniecie}\n\n{podpis}' }).ok,
+    ).toBe(true);
     expect(sprawdzSzablon('wlasny', { nazwa: 'A', temat: 'T', tresc: 'x {zamkniecie}' }).ok).toBe(false);
   });
 
   // Klamra, która nie tworzy znanego pola, trafiłaby do klienta dosłownie — każda ma dać odmowę.
   it('długa klamra (ponad 40 znaków) — odmowa z fragmentem tekstu', () => {
-    const w = sprawdzSzablon('wlasny', { nazwa: 'A', temat: 'T', tresc: 'Numer: {tu wpisz numer zamówienia, który podał klient}.\n\n{podpis}' });
+    const w = sprawdzSzablon('wlasny', {
+      nazwa: 'A',
+      temat: 'T',
+      tresc: 'Numer: {tu wpisz numer zamówienia, który podał klient}.\n\n{podpis}',
+    });
     expect(w.ok).toBe(false);
     expect(w.blad).toContain('{tu wpisz numer');
   });
@@ -64,23 +103,34 @@ describe('odmowy zapisu', () => {
     expect(w.blad).toMatch(/klamr/i);
   });
 
-  it.each(['Cena {od 10 zł', 'Uśmiech :}', 'a { b', '{{imie}}'])('samotna albo podwójna klamra „%s" — odmowa', (tekst) => {
-    expect(sprawdzSzablon('wlasny', { nazwa: 'A', temat: 'T', tresc: tekst }).ok).toBe(false);
-  });
+  it.each(['Cena {od 10 zł', 'Uśmiech :}', 'a { b', '{{imie}}'])(
+    'samotna albo podwójna klamra „%s" — odmowa',
+    (tekst) => {
+      expect(sprawdzSzablon('wlasny', { nazwa: 'A', temat: 'T', tresc: tekst }).ok).toBe(false);
+    },
+  );
 
   it('klamra w temacie — odmowa', () => {
     expect(sprawdzSzablon('wlasny', { nazwa: 'A', temat: 'Nr {numer_zamowienia', tresc: 'x' }).ok).toBe(false);
   });
 
   it('{do_zaplaty} działa tylko w mailach o płatności', () => {
-    expect(sprawdzSzablon('przypomnienie', { temat: 'P', tresc: 'Prosimy o {do_zaplaty}.\n\n{dane_platnosci}\n\n{zamkniecie}' }).ok).toBe(true);
+    expect(
+      sprawdzSzablon('przypomnienie', {
+        temat: 'P',
+        tresc: 'Prosimy o {do_zaplaty}.\n\n{dane_platnosci}\n\n{zamkniecie}',
+      }).ok,
+    ).toBe(true);
     expect(sprawdzSzablon('wlasny', { nazwa: 'A', temat: 'T', tresc: 'Dopłata {do_zaplaty}' }).ok).toBe(false);
     expect(polaSzablonu('wlasny').find((p) => p.nazwa === 'kwota').opis).toMatch(/nie kwota do zapłaty/);
   });
 
   // Maile do zespołu (zaproszenie, reset hasła) — bez linku pracownik nie ustawi hasła.
   it.each(['zaproszenie', 'reset'])('%s bez {link} — odmowa z nazwą pola', (id) => {
-    const w = sprawdzSzablon(rodzajSzablonu(id), { temat: 'Witaj {imie}', tresc: 'Cześć {imie}, link jest ważny {waznosc}.' });
+    const w = sprawdzSzablon(rodzajSzablonu(id), {
+      temat: 'Witaj {imie}',
+      tresc: 'Cześć {imie}, link jest ważny {waznosc}.',
+    });
     expect(w.ok).toBe(false);
     expect(w.blad).toContain('{link}');
   });
@@ -102,9 +152,14 @@ describe('odmowy zapisu', () => {
   it('zapis i „Przywróć domyślny" szablonu konta', () => {
     const z = zapiszSzablon(PUSTY, 'reset', { temat: 'Nowe hasło', tresc: 'Tu: {link}' }, 't');
     expect(z.ok).toBe(true);
-    expect(odczytajSzablony({ [KLUCZ_USTAWIEN]: JSON.stringify(z.stan) }).wbudowane.reset).toMatchObject({ temat: 'Nowe hasło' });
+    expect(odczytajSzablony({ [KLUCZ_USTAWIEN]: JSON.stringify(z.stan) }).wbudowane.reset).toMatchObject({
+      temat: 'Nowe hasło',
+    });
     expect(szablonDoEdycji(z.stan, 'reset')).toMatchObject({ rodzaj: 'konto', zmieniony: true });
-    expect(szablonDoEdycji(usunSzablon(z.stan, 'reset').stan, 'reset')).toMatchObject({ zmieniony: false, ...DOMYSLNE.reset });
+    expect(szablonDoEdycji(usunSzablon(z.stan, 'reset').stan, 'reset')).toMatchObject({
+      zmieniony: false,
+      ...DOMYSLNE.reset,
+    });
   });
 
   it('{dane_platnosci} w środku zdania nie liczy się jako obecne', () => {
@@ -124,7 +179,10 @@ describe('odmowy zapisu', () => {
   });
 
   it('pusta nazwa szablonu własnego — odmowa', () => {
-    expect(sprawdzSzablon('wlasny', { nazwa: '   ', temat: 'T', tresc: 'Treść' })).toMatchObject({ ok: false, blad: expect.stringMatching(/nazwę/) });
+    expect(sprawdzSzablon('wlasny', { nazwa: '   ', temat: 'T', tresc: 'Treść' })).toMatchObject({
+      ok: false,
+      blad: expect.stringMatching(/nazwę/),
+    });
   });
 
   it('pusty temat albo treść — odmowa', () => {
@@ -165,7 +223,9 @@ describe('składanie treści', () => {
   });
 
   it('puste pole przed przecinkiem zabiera odstęp: „Dzień dobry," zamiast „Dzień dobry ,"', () => {
-    expect(zlozTresc('Dzień dobry {imie},\nnr {numer_zamowienia} jutro', { pola: {} }).tekst).toBe('Dzień dobry,\nnr  jutro');
+    expect(zlozTresc('Dzień dobry {imie},\nnr {numer_zamowienia} jutro', { pola: {} }).tekst).toBe(
+      'Dzień dobry,\nnr  jutro',
+    );
     expect(zlozTresc('Dzień dobry {imie},', { pola: { imie: 'Anna' } }).tekst).toBe('Dzień dobry Anna,');
     expect(zlozTemat('Dla {imie}: zamówienie {numer_zamowienia}', { numer_zamowienia: '7' })).toBe('Dla: zamówienie 7');
   });
@@ -202,11 +262,15 @@ describe('składanie treści', () => {
       if (p.blok) bloki[p.nazwa] = [`BLOK ${p.nazwa}`];
       else pola[p.nazwa] = `<${p.nazwa}>`;
     }
-    const naiwnie = (tekst) => String(tekst).split('\n').map((linia) => {
-      const blok = /^\{([a-z_]+)\}$/.exec(linia);
-      if (blok && bloki[blok[1]]) return bloki[blok[1]][0];
-      return linia.replace(/\{([a-z_]+)\}/g, (_c, n) => pola[n]);
-    }).join('\n');
+    const naiwnie = (tekst) =>
+      String(tekst)
+        .split('\n')
+        .map((linia) => {
+          const blok = /^\{([a-z_]+)\}$/.exec(linia);
+          if (blok && bloki[blok[1]]) return bloki[blok[1]][0];
+          return linia.replace(/\{([a-z_]+)\}/g, (_c, n) => pola[n]);
+        })
+        .join('\n');
     for (const [id, szablon] of Object.entries(DOMYSLNE)) {
       expect(zlozTresc(szablon.tresc, { pola, bloki }).tekst, `treść ${id}`).toBe(naiwnie(szablon.tresc));
       expect(zlozTemat(szablon.temat, pola), `temat ${id}`).toBe(naiwnie(szablon.temat));
@@ -214,7 +278,9 @@ describe('składanie treści', () => {
   });
 
   it('kupujący firma bez osoby w adresie — nazwa firmy', () => {
-    const p = polaZamowienia(zam({ dostawa: { company: 'Półcień sp. z o.o.', address_1: 'Lipowa 7', city: 'Warszawa' } }));
+    const p = polaZamowienia(
+      zam({ dostawa: { company: 'Półcień sp. z o.o.', address_1: 'Lipowa 7', city: 'Warszawa' } }),
+    );
     expect(p).toMatchObject({ kupujacy: 'Półcień sp. z o.o.', imie: '' });
   });
 
@@ -235,7 +301,9 @@ describe('składanie treści', () => {
   });
 
   it('temat: pola podstawione, jeden odstęp, bez nowej linii', () => {
-    expect(zlozTemat('Proforma {numer_dokumentu} — nr {numer_zamowienia} ', { numer_zamowienia: '7' })).toBe('Proforma — nr 7');
+    expect(zlozTemat('Proforma {numer_dokumentu} — nr {numer_zamowienia} ', { numer_zamowienia: '7' })).toBe(
+      'Proforma — nr 7',
+    );
   });
 });
 
@@ -243,8 +311,13 @@ describe('pola z zamówienia', () => {
   it('imię, kupujący, kwota, przesyłki i data', () => {
     const p = polaZamowienia(zam(), { podpis: 'Pracownia Półcień' });
     expect(p).toMatchObject({
-      numer_zamowienia: '1024', data_zamowienia: '2026-10-14', imie: 'Anna Maria', kupujacy: 'Anna Maria Nowak',
-      kwota: '476,00 zł', numer_przesylki: '000111, 000222', nazwa_firmy: 'Pracownia Półcień',
+      numer_zamowienia: '1024',
+      data_zamowienia: '2026-10-14',
+      imie: 'Anna Maria',
+      kupujacy: 'Anna Maria Nowak',
+      kwota: '476,00 zł',
+      numer_przesylki: '000111, 000222',
+      nazwa_firmy: 'Pracownia Półcień',
     });
     expect(p.metoda_wysylki).toMatch(/DPD/);
   });
@@ -255,16 +328,27 @@ describe('pola z zamówienia', () => {
   });
 
   it('lista pól pod edytorem: blok płatniczy obowiązkowy tylko w mailach o płatności', () => {
-    expect(polaSzablonu('faktura').find((p) => p.nazwa === 'dane_platnosci')).toMatchObject({ blok: true, wymagane: true });
+    expect(polaSzablonu('faktura').find((p) => p.nazwa === 'dane_platnosci')).toMatchObject({
+      blok: true,
+      wymagane: true,
+    });
     expect(polaSzablonu('wlasny').map((p) => p.nazwa)).not.toContain('dane_platnosci');
   });
 });
 
 describe('stan zapisany', () => {
   it('edycja wbudowanego, potem „Przywróć domyślny"', () => {
-    const z = zapiszSzablon(PUSTY, 'potwierdzenie', { temat: 'Mamy to: {numer_zamowienia}', tresc: 'Dziękujemy!\n\n{podpis}' }, '2026-10-18T10:00:00Z');
+    const z = zapiszSzablon(
+      PUSTY,
+      'potwierdzenie',
+      { temat: 'Mamy to: {numer_zamowienia}', tresc: 'Dziękujemy!\n\n{podpis}' },
+      '2026-10-18T10:00:00Z',
+    );
     expect(z.ok).toBe(true);
-    expect(szablonDoEdycji(z.stan, 'potwierdzenie')).toMatchObject({ zmieniony: true, temat: 'Mamy to: {numer_zamowienia}' });
+    expect(szablonDoEdycji(z.stan, 'potwierdzenie')).toMatchObject({
+      zmieniony: true,
+      temat: 'Mamy to: {numer_zamowienia}',
+    });
     const p = usunSzablon(z.stan, 'potwierdzenie');
     expect(szablonDoEdycji(p.stan, 'potwierdzenie')).toMatchObject({ zmieniony: false, ...DOMYSLNE.potwierdzenie });
   });

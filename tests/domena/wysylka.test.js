@@ -29,7 +29,9 @@ describe('rozpoznajMetodeWysylki', () => {
 
   // Tytul to tekst do zmiany jednym klikiem w wp-adminie — nie wolno na nim opierac decyzji.
   it('nieznana instancja → nieznana, mimo kuszącego tytułu', () => {
-    expect(rozpoznajMetodeWysylki(zam([{ method_id: 'flat_rate', instance_id: '99', method_title: 'Kurier DPD' }]), mapa)).toBe('nieznana');
+    expect(
+      rozpoznajMetodeWysylki(zam([{ method_id: 'flat_rate', instance_id: '99', method_title: 'Kurier DPD' }]), mapa),
+    ).toBe('nieznana');
   });
 
   // Instancja spoza mapy (nie zdefiniowana w konfiguracji sklepu) → nieznana, nie zgadujemy.
@@ -43,6 +45,8 @@ describe('rozpoznajMetodeWysylki', () => {
   });
 
   it('inna metoda (paczkomat) → nieznana, nie zgadujemy', () => {
-    expect(rozpoznajMetodeWysylki(zam([{ method_id: 'easypack_parcel_machines', instance_id: '12' }]), mapa)).toBe('nieznana');
+    expect(rozpoznajMetodeWysylki(zam([{ method_id: 'easypack_parcel_machines', instance_id: '12' }]), mapa)).toBe(
+      'nieznana',
+    );
   });
 });

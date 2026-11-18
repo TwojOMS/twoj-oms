@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import {
-  STAWKA_VAT, STAWKI_VAT, czyStawkaVat, stawkaPozycji, nettoZBruttoDoPokazania, bruttoZNetto,
+  STAWKA_VAT,
+  STAWKI_VAT,
+  czyStawkaVat,
+  stawkaPozycji,
+  nettoZBruttoDoPokazania,
+  bruttoZNetto,
 } from '../../src/domena/vat.js';
 
 // Stawka per pozycja: 23/8/5/0, bez „zw” i „np”.
@@ -11,7 +16,8 @@ describe('STAWKI_VAT i czyStawkaVat', () => {
   });
 
   it('odrzuca wszystko inne: 22, 7, zw, np, pusty, null', () => {
-    for (const s of ['22', '7', 'zw', 'np', '', null, undefined, '8.0', '08', 'abc']) expect(czyStawkaVat(s)).toBe(false);
+    for (const s of ['22', '7', 'zw', 'np', '', null, undefined, '8.0', '08', 'abc'])
+      expect(czyStawkaVat(s)).toBe(false);
   });
 });
 

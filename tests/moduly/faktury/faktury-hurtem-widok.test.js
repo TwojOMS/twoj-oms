@@ -1,8 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { SUFIT_FAKTUR_HURTEM } from '../../../src/domena/masowe.js';
-import {
-  POST, zamowienie, serwer, cialo,
-} from './_hurtem-pomocniki.js';
+import { POST, zamowienie, serwer, cialo } from './_hurtem-pomocniki.js';
 
 /**
  * Numer zamowienia zlozony WYLACZNIE z liter (A, B, … Z, AA, …) — ten sam wzorzec, co w
@@ -24,7 +22,10 @@ describe('ekrany podgladu i wyniku faktur hurtem', () => {
     const { app, db } = serwer();
     const a = zamowienie(db, { numer: 'A', zrodlo: 1, oplacone: true });
     const r = await app.inject({
-      method: 'POST', url: '/zamowienia/faktury-hurtem/podglad', headers: POST, payload: cialo([a]),
+      method: 'POST',
+      url: '/zamowienia/faktury-hurtem/podglad',
+      headers: POST,
+      payload: cialo([a]),
     });
     // ⚠️ NIE `toContain('A')`: samo „A" trafia sie na tej stronie dziesiatki razy (nawigacja,
     // naglowki), wiec taka asercja przechodzilaby, nawet gdyby numer zamowienia zniknal
@@ -47,7 +48,10 @@ describe('ekrany podgladu i wyniku faktur hurtem', () => {
       ids.push(zamowienie(db, { numer: literami(i), zrodlo: 300 + i, oplacone: true }));
     }
     const r = await app.inject({
-      method: 'POST', url: '/zamowienia/faktury-hurtem/podglad', headers: POST, payload: cialo(ids),
+      method: 'POST',
+      url: '/zamowienia/faktury-hurtem/podglad',
+      headers: POST,
+      payload: cialo(ids),
     });
     expect(r.body).toMatch(/12 faktur\b/);
   });
@@ -59,7 +63,10 @@ describe('ekrany podgladu i wyniku faktur hurtem', () => {
     const a = zamowienie(db, { numer: 'A', zrodlo: 1, oplacone: true });
     const b = zamowienie(db, { numer: 'B', zrodlo: 2, oplacone: false });
     const r = await app.inject({
-      method: 'POST', url: '/zamowienia/faktury-hurtem/podglad', headers: POST, payload: cialo([a, b]),
+      method: 'POST',
+      url: '/zamowienia/faktury-hurtem/podglad',
+      headers: POST,
+      payload: cialo([a, b]),
     });
     // ⚠️ Ta sama pulapka co wyzej: samo „B" nie dowodzi niczego na tej stronie. Powod ma
     // stac PRZY SWOIM numerze, wiec sprawdzamy oba naraz w jednym dopasowaniu.
@@ -73,7 +80,10 @@ describe('ekrany podgladu i wyniku faktur hurtem', () => {
     const { app, db } = serwer();
     const a = zamowienie(db, { numer: 'A', zrodlo: 1, oplacone: true });
     const r = await app.inject({
-      method: 'POST', url: '/zamowienia/faktury-hurtem/podglad', headers: POST, payload: cialo([a]),
+      method: 'POST',
+      url: '/zamowienia/faktury-hurtem/podglad',
+      headers: POST,
+      payload: cialo([a]),
     });
     expect(r.body).toContain('btn--groza');
   });
@@ -88,7 +98,10 @@ describe('ekrany podgladu i wyniku faktur hurtem', () => {
     });
     const a = zamowienie(db, { numer: 'A', zrodlo: 1, oplacone: true });
     const r = await app.inject({
-      method: 'POST', url: '/zamowienia/faktury-hurtem', headers: POST, payload: cialo([a]),
+      method: 'POST',
+      url: '/zamowienia/faktury-hurtem',
+      headers: POST,
+      payload: cialo([a]),
     });
     expect(r.body).toContain('31/08/2026');
     expect(r.body).toContain('inFakt odmówił');
@@ -101,7 +114,10 @@ describe('ekrany podgladu i wyniku faktur hurtem', () => {
     const { app, db } = serwer();
     const a = zamowienie(db, { numer: 'A', zrodlo: 1, oplacone: false });
     const r = await app.inject({
-      method: 'POST', url: '/zamowienia/faktury-hurtem', headers: POST, payload: cialo([a]),
+      method: 'POST',
+      url: '/zamowienia/faktury-hurtem',
+      headers: POST,
+      payload: cialo([a]),
     });
     expect(r.body).toMatch(/nie wystawiono ani jednej faktury/i);
   });
@@ -131,12 +147,20 @@ describe('powrót na zawężoną listę z ekranów faktur hurtem', () => {
     return m[0];
   };
 
-  const podglad = (app, payload) => app.inject({
-    method: 'POST', url: '/zamowienia/faktury-hurtem/podglad', headers: POST, payload,
-  });
-  const wystaw = (app, payload) => app.inject({
-    method: 'POST', url: '/zamowienia/faktury-hurtem', headers: POST, payload,
-  });
+  const podglad = (app, payload) =>
+    app.inject({
+      method: 'POST',
+      url: '/zamowienia/faktury-hurtem/podglad',
+      headers: POST,
+      payload,
+    });
+  const wystaw = (app, payload) =>
+    app.inject({
+      method: 'POST',
+      url: '/zamowienia/faktury-hurtem',
+      headers: POST,
+      payload,
+    });
 
   it('ekran podglądu odsyła na widok, z którego kliknięto — odnośnikiem i przyciskiem „Anuluj"', async () => {
     const { app, db } = serwer();
@@ -161,7 +185,9 @@ describe('powrót na zawężoną listę z ekranów faktur hurtem', () => {
   it('ekran wyniku odsyła tam samo', async () => {
     const { app, db } = serwer({
       wystawWiele: async () => ({
-        wystawione: [{ id: 1, numer: 'A', numerFaktury: '31/08/2026' }], bledy: [], nietkniete: [],
+        wystawione: [{ id: 1, numer: 'A', numerFaktury: '31/08/2026' }],
+        bledy: [],
+        nietkniete: [],
       }),
     });
     const a = zamowienie(db, { numer: 'A', zrodlo: 1, oplacone: true });

@@ -19,7 +19,12 @@ import { dniRoboczeMiedzy } from './etap-przesylki.js';
 import { dzienWarszawa } from './format-daty.js';
 import { anulowaneEfektywnie } from './status-reczny.js';
 import {
-  typZamowienia, startZegara, terminZamowienia, dzienTerminu, dniPoTerminie, zakresDatyWysylki,
+  typZamowienia,
+  startZegara,
+  terminZamowienia,
+  dzienTerminu,
+  dniPoTerminie,
+  zakresDatyWysylki,
 } from './termin-wysylki.js';
 
 // Ta sama zasada, co w panelu indywidualnym: ekspres poznaje się po NAZWIE pozycji („ekspres”,
@@ -63,9 +68,10 @@ export function wiekZamowienia(z, teraz = new Date()) {
   // Wiek liczony DNIAMI WARSZAWSKIMI, nie surową różnicą chwil — daty sklepu i nasze
   // znaczniki UTC muszą wpadać w ten sam dzień, w którym pokazuje je kolumna (format-daty).
   const dzienZlozenia = dzienWarszawa(z?.utworzone_at ?? '');
-  const wiekDni = dzienZlozenia && dzis
-    ? Math.max(0, Math.round((Date.parse(`${dzis}T00:00:00Z`) - Date.parse(`${dzienZlozenia}T00:00:00Z`)) / DZIEN_MS))
-    : 0;
+  const wiekDni =
+    dzienZlozenia && dzis
+      ? Math.max(0, Math.round((Date.parse(`${dzis}T00:00:00Z`) - Date.parse(`${dzienZlozenia}T00:00:00Z`)) / DZIEN_MS))
+      : 0;
   const wiek = odmianaDni(wiekDni);
 
   // ⚠️ JEDNA FORMUŁA TERMINU NA PANEL — typ, start, limit i odcięcie 12:00 liczy
@@ -91,13 +97,23 @@ export function wiekZamowienia(z, teraz = new Date()) {
   // Bez wpłaty ręczna data i tak prowadzi zegar — dopisek mówi, czego brakuje.
   if (termin.reczny) {
     const brakWplaty = termin.start ? '' : ' · czeka na wpłatę';
-    return { wiek, opis: `wysyłka: ${etykietaDnia(termin.reczny, dzis)} · data ręczna${brakWplaty}`, poTerminie: false, typ };
+    return {
+      wiek,
+      opis: `wysyłka: ${etykietaDnia(termin.reczny, dzis)} · data ręczna${brakWplaty}`,
+      poTerminie: false,
+      typ,
+    };
   }
 
   const prefiks = odZlozenia && !z?.oplacone_at ? 'złożone' : 'opłacone';
   if (limit >= 2) {
     const zuzyte = dniRoboczeMiedzy(start, terazIso);
-    return { wiek, opis: `od ${prefiks === 'złożone' ? 'złożenia' : 'wpłaty'} ${zuzyte}/${limit} dni rob.`, poTerminie: false, typ };
+    return {
+      wiek,
+      opis: `od ${prefiks === 'złożone' ? 'złożenia' : 'wpłaty'} ${zuzyte}/${limit} dni rob.`,
+      poTerminie: false,
+      typ,
+    };
   }
   const deadline = dzienTerminu(termin);
   let opis = `wysyłka: ${etykietaDnia(deadline, dzis)}`;

@@ -10,10 +10,26 @@ const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('bas
 const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) };
 
 const zam = (id, nad = {}) => ({
-  zrodlo_id: id, numer: String(id), klient: { first_name: 'Jan', last_name: 'Kowalski', email: 'j@k.pl' },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '100.00',
-  koszt_dostawy_brutto: '0.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
+  zrodlo_id: id,
+  numer: String(id),
+  klient: { first_name: 'Jan', last_name: 'Kowalski', email: 'j@k.pl' },
+  dostawa: {
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    address_1: 'Polna 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
+  },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '100.00',
+  koszt_dostawy_brutto: '0.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
   utworzone_at: '2026-10-17T13:19:52',
   pozycje: [{ nazwa: 'STOP', sku: 'S-1', ilosc: 1, cena_brutto: '100.00', brutto_linii: '100.00', vat: null }],
   ...nad,
@@ -43,7 +59,12 @@ const metoda = (html) => {
 
 describe('plakietka przewoźnika na karcie zamówienia', () => {
   it('InPost i DPD: klasa marki, pełna nazwa metody (z dopiskiem „(pobranie)”) zostaje w tekście', async () => {
-    const dpd = zapiszZamowienie(db, 'pro', zam(8101, { metoda_wysylki: 'dpd', pobranie: 1, kwota_pobrania: '100.00' }), {});
+    const dpd = zapiszZamowienie(
+      db,
+      'pro',
+      zam(8101, { metoda_wysylki: 'dpd', pobranie: 1, kwota_pobrania: '100.00' }),
+      {},
+    );
     const inpost = zapiszZamowienie(db, 'pro', zam(8102, { metoda_wysylki: 'inpost_paczkomat' }), {});
     expect(metoda(await karta(dpd))).toMatch(/plakietka plakietka--dpd"[\s\S]*Kurier DPD \(pobranie\)/);
     expect(metoda(await karta(inpost))).toMatch(/plakietka plakietka--inpost"[\s\S]*InPost Paczkomat/);

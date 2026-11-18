@@ -38,7 +38,8 @@ export function paryKorekty(faktura, zwrot, { nazwaProgramu = NAZWA_ZAPASOWA } =
   const odmowa = (blad) => ({ services: null, blad });
   const wProgramie = nazwaProgramu.miejscownik;
   const oryginalne = faktura?.services ?? [];
-  if (!oryginalne.length) return odmowa(`Faktura z ${nazwaProgramu.dopelniacz} nie ma ani jednej pozycji — korekty nie ma z czego złożyć.`);
+  if (!oryginalne.length)
+    return odmowa(`Faktura z ${nazwaProgramu.dopelniacz} nie ma ani jednej pozycji — korekty nie ma z czego złożyć.`);
 
   // ⚠️⚠️ ZDUBLOWANA NAZWA NA FAKTURZE ZATRUWA CALA MAPE PONIZEJ. Mapa `zwracane` jest
   // kluczowana NAZWA, a petla po pozycjach siega do tego samego kubelka przy KAZDEJ linii
@@ -62,8 +63,8 @@ export function paryKorekty(faktura, zwrot, { nazwaProgramu = NAZWA_ZAPASOWA } =
   for (const [nazwa, ile] of zliczoneNazwy) {
     if (ile > 1) {
       return odmowa(
-        `Faktura ${faktura?.number ?? ''} ma ${ile} pozycje o tej samej nazwie („${nazwa}")`
-        + ` — korekty nie da się złożyć jednoznacznie. Wystaw ją ręcznie w ${wProgramie}.`,
+        `Faktura ${faktura?.number ?? ''} ma ${ile} pozycje o tej samej nazwie („${nazwa}")` +
+          ` — korekty nie da się złożyć jednoznacznie. Wystaw ją ręcznie w ${wProgramie}.`,
       );
     }
   }
@@ -82,8 +83,8 @@ export function paryKorekty(faktura, zwrot, { nazwaProgramu = NAZWA_ZAPASOWA } =
   for (const nazwa of zwracane.keys()) {
     if (!nazwyFaktury.has(nazwa)) {
       return odmowa(
-        `Pozycji „${nazwa}" nie ma na fakturze ${faktura?.number ?? ''} — korekty nie da się złożyć.`
-        + ` Sprawdź, czy faktura nie została poprawiona w ${wProgramie}.`,
+        `Pozycji „${nazwa}" nie ma na fakturze ${faktura?.number ?? ''} — korekty nie da się złożyć.` +
+          ` Sprawdź, czy faktura nie została poprawiona w ${wProgramie}.`,
       );
     }
   }
@@ -121,16 +122,16 @@ export function paryKorekty(faktura, zwrot, { nazwaProgramu = NAZWA_ZAPASOWA } =
     // pieniędzy. `zwrot` tutaj to wiersz ODCZYTANY Z BAZY (docblock modułu wyżej), więc
     // `pieniadze_oddane_at` jest na nim dostępne bez dodatkowego zapytania.
     const naprawa = zwrot?.pieniadze_oddane_at
-      ? 'Pieniądze za ten zwrot zostały już oddane kupującemu, więc panel go nie skasuje —'
-        + ` wystaw korektę ręcznie w ${wProgramie} i wpisz zwrot dostawy tylko RAZ, tą kwotą, która`
-        + ' naprawdę wyszła.'
-      : 'Usuń ten zwrot i zapisz go jeszcze raz, z kwotą dostawy w jednym z tych pól — albo'
-        + ` wystaw korektę ręcznie w ${wProgramie}.`;
+      ? 'Pieniądze za ten zwrot zostały już oddane kupującemu, więc panel go nie skasuje —' +
+        ` wystaw korektę ręcznie w ${wProgramie} i wpisz zwrot dostawy tylko RAZ, tą kwotą, która` +
+        ' naprawdę wyszła.'
+      : 'Usuń ten zwrot i zapisz go jeszcze raz, z kwotą dostawy w jednym z tych pól — albo' +
+        ` wystaw korektę ręcznie w ${wProgramie}.`;
     return odmowa(
-      `Zwrot dostawy jest wpisany w dwóch miejscach naraz: jako pozycja „${NAZWA_DOSTAWY}"`
-      + ` (${zl(zwracane.get(NAZWA_DOSTAWY).grosze)} zł) i jako zwrot kosztu dostawy`
-      + ` (${zl(dostawaGr)} zł) — panel nie zgadnie, czy to te same pieniądze, czy dwie różne`
-      + ` kwoty. ${naprawa}`,
+      `Zwrot dostawy jest wpisany w dwóch miejscach naraz: jako pozycja „${NAZWA_DOSTAWY}"` +
+        ` (${zl(zwracane.get(NAZWA_DOSTAWY).grosze)} zł) i jako zwrot kosztu dostawy` +
+        ` (${zl(dostawaGr)} zł) — panel nie zgadnie, czy to te same pieniądze, czy dwie różne` +
+        ` kwoty. ${naprawa}`,
     );
   }
   const services = [];
@@ -144,9 +145,7 @@ export function paryKorekty(faktura, zwrot, { nazwaProgramu = NAZWA_ZAPASOWA } =
     let bruttoPo = bruttoPrzed;
     if (z) {
       if (z.ilosc > iloscPrzed) {
-        return odmowa(
-          `Zwrot obejmuje ${z.ilosc} szt. „${s.name}", a na fakturze jest ${iloscPrzed} szt.`,
-        );
+        return odmowa(`Zwrot obejmuje ${z.ilosc} szt. „${s.name}", a na fakturze jest ${iloscPrzed} szt.`);
       }
       iloscPo = iloscPrzed - z.ilosc;
       bruttoPo = bruttoPrzed - z.grosze;
@@ -162,12 +161,20 @@ export function paryKorekty(faktura, zwrot, { nazwaProgramu = NAZWA_ZAPASOWA } =
     if (bruttoPo < 0) return odmowa(`Kwota zwrotu przy „${s.name}" przekracza kwotę z faktury.`);
     // DWA wiersze na pozycje, wspolny `group`, flaga `correction` rozroznia stany.
     services.push({
-      name: s.name, quantity: iloscPrzed, gross_price: bruttoPrzed,
-      tax_symbol: s.tax_symbol, group: grupa, correction: false,
+      name: s.name,
+      quantity: iloscPrzed,
+      gross_price: bruttoPrzed,
+      tax_symbol: s.tax_symbol,
+      group: grupa,
+      correction: false,
     });
     services.push({
-      name: s.name, quantity: iloscPo, gross_price: bruttoPo,
-      tax_symbol: s.tax_symbol, group: grupa, correction: true,
+      name: s.name,
+      quantity: iloscPo,
+      gross_price: bruttoPo,
+      tax_symbol: s.tax_symbol,
+      group: grupa,
+      correction: true,
     });
   }
   return { services, blad: null };

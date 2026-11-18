@@ -13,7 +13,10 @@ import { createFakturyWidok } from '../../../src/moduly/faktury/services/faktury
 const otwarte = [];
 afterEach(async () => {
   vi.restoreAllMocks();
-  for (const p of otwarte.splice(0)) { await p.app.close(); p.db.close(); }
+  for (const p of otwarte.splice(0)) {
+    await p.app.close();
+    p.db.close();
+  }
 });
 
 const CSS = readFileSync(new URL('../../../src/public/tabele-prz065.css', import.meta.url), 'utf8');
@@ -22,16 +25,36 @@ function podpisyZCss(klasa) {
   const wzor = new RegExp(`\\.${klasa} td:nth-child\\((\\d+)\\)::before \\{ content: '([^']*)'; \\}`, 'gu');
   return new Map([...CSS.matchAll(wzor)].map((m) => [Number(m[1]), m[2]]));
 }
-const bezZnacznikow = (s) => s.replace(/<%[\s\S]*?%>/gu, '').replace(/<[^>]+>/gu, '').replace(/\s+/gu, ' ').trim();
+const bezZnacznikow = (s) =>
+  s
+    .replace(/<%[\s\S]*?%>/gu, '')
+    .replace(/<[^>]+>/gu, '')
+    .replace(/\s+/gu, ' ')
+    .trim();
 
 describe('podpisy kolumn faktur na telefonie', () => {
   it('każda kolumna tabeli dokumentów ma podpis i jest to tekst jej nagłówka', async () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(Error('Sieć zabroniona'));
     const db = openOmsDb(':memory:');
-    const wiersz = { uuid: 'fv', number: 'FV/1', rodzaj: 'vat', invoice_date: '2026-10-14', net_price: 10000,
-      tax_price: 2300, gross_price: 12300, left_to_pay: 0, status: 'paid', ksef_number: null,
-      client_company_name: 'Lampy Testowe', client_tax_code: '1234500011' };
-    const infakt = { listaFaktur: async () => [wiersz], listaKorekt: async () => [], listaNieoplaconych: async () => [] };
+    const wiersz = {
+      uuid: 'fv',
+      number: 'FV/1',
+      rodzaj: 'vat',
+      invoice_date: '2026-10-14',
+      net_price: 10000,
+      tax_price: 2300,
+      gross_price: 12300,
+      left_to_pay: 0,
+      status: 'paid',
+      ksef_number: null,
+      client_company_name: 'Lampy Testowe',
+      client_tax_code: '1234500011',
+    };
+    const infakt = {
+      listaFaktur: async () => [wiersz],
+      listaKorekt: async () => [],
+      listaNieoplaconych: async () => [],
+    };
     const p = nowyPanel({ db, fakturyWidok: createFakturyWidok({ db, infakt }) });
     otwarte.push(p);
     zalozKonto(p.db, { login: 'test', imie: 'Test', haslo: 'h', rola: 'sprzedaz' });
@@ -40,8 +63,9 @@ describe('podpisy kolumn faktur na telefonie', () => {
     expect(r.statusCode).toBe(200);
 
     const tabela = r.body.match(/<table[^>]*prz065-tabela--dokumenty[^>]*>[\s\S]*?<\/table>/u)[0];
-    const naglowki = [...tabela.match(/<thead>[\s\S]*?<\/thead>/u)[0].matchAll(/<th[^>]*>([\s\S]*?)<\/th>/gu)]
-      .map((m) => bezZnacznikow(m[1]));
+    const naglowki = [...tabela.match(/<thead>[\s\S]*?<\/thead>/u)[0].matchAll(/<th[^>]*>([\s\S]*?)<\/th>/gu)].map(
+      (m) => bezZnacznikow(m[1]),
+    );
     const komorki = tabela.match(/<tbody>[\s\S]*?<tr[^>]*>([\s\S]*?)<\/tr>/u)[1].match(/<td[\s>]/gu).length;
     const podpisy = podpisyZCss('prz065-tabela--dokumenty');
 
@@ -51,7 +75,10 @@ describe('podpisy kolumn faktur na telefonie', () => {
     // nagłówka — karta może powiedzieć więcej („Numer dokumentu” pod „Numer”), ale nie co innego.
     naglowki.forEach((tekst, i) => {
       if (i === 0 || tekst === '') return;
-      expect(podpisy.get(i + 1)?.startsWith(tekst), `kolumna ${i + 1}: podpis „${podpisy.get(i + 1)}”, nagłówek „${tekst}”`).toBe(true);
+      expect(
+        podpisy.get(i + 1)?.startsWith(tekst),
+        `kolumna ${i + 1}: podpis „${podpisy.get(i + 1)}”, nagłówek „${tekst}”`,
+      ).toBe(true);
     });
   });
 });

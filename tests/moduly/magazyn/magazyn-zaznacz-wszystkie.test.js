@@ -37,7 +37,12 @@ const auth = {
 };
 
 const STAN_PUSTY = {
-  trwa: false, zaczety_at: null, skonczony_at: null, postep: null, kanaly: [], blad: null,
+  trwa: false,
+  zaczety_at: null,
+  skonczony_at: null,
+  postep: null,
+  kanaly: [],
+  blad: null,
 };
 const atrapaMagazynu = () => ({ start: vi.fn(), stan: () => STAN_PUSTY });
 
@@ -67,9 +72,13 @@ function produktO(kartaId, sku) {
 }
 
 const get = (app, url) => app.inject({ method: 'GET', url, headers: auth });
-const post = (app, url, payload) => app.inject({
-  method: 'POST', url, headers: auth, payload,
-});
+const post = (app, url, payload) =>
+  app.inject({
+    method: 'POST',
+    url,
+    headers: auth,
+    payload,
+  });
 
 // ————————————————————————————————————————————————————————————————————————————————
 // POMOCNIKI — CZYTAJA EKRAN TAK, JAK PRZEGLADARKA
@@ -96,7 +105,10 @@ function polaWierszy(body) {
 }
 
 /** Identyfikatory wierszy oznaczonych jako zaznaczone — czyli to, co wyslalaby przegladarka. */
-const zaznaczoneIdy = (body) => polaWierszy(body).filter((p) => p.zaznaczone).map((p) => p.id);
+const zaznaczoneIdy = (body) =>
+  polaWierszy(body)
+    .filter((p) => p.zaznaczone)
+    .map((p) => p.id);
 
 /**
  * ODNOSNIK Z NAGLOWKA KOLUMNY ZAZNACZEN. RZUCA, gdy go nie ma — inaczej `not.toContain`
@@ -129,8 +141,8 @@ function zawezenieFormularza(body) {
 // odnosnik nazwy karty od tego zadania niesie DALEJ adres listy jako „?wroc=…", wiec
 // `href="/magazyn/{id}">` bez ogonka juz nie wystapi. `(?:\?[^"]*)?` tylko TOLERUJE ten
 // dopisek — nie zmienia, CO ten test sprawdza (ten sam zbior wierszy przed i po zaznaczeniu).
-const nazwyListy = (body) => [...body.matchAll(/<td class="komorka-karta">([\s\S]*?)<\/td>/g)]
-  .map((m) => {
+const nazwyListy = (body) =>
+  [...body.matchAll(/<td class="komorka-karta">([\s\S]*?)<\/td>/g)].map((m) => {
     const nazwa = /<a href="\/magazyn\/\d+(?:\?[^"]*)?">([^<]*)<\/a>/.exec(m[1]);
     if (!nazwa) throw new Error(`Wiersz listy bez nazwy karty: ${m[1].trim()}`);
     return nazwa[1];
@@ -333,8 +345,7 @@ describe('zaznaczone wiersze naprawdę trafiają w akcję', () => {
     });
 
     expect(r.statusCode).toBe(200);
-    expect(nazwyWPodgladzie(r.body, 'przejecie-pozycje').sort())
-      .toEqual(['Bursztyn', 'Kandelabr', 'Sowa']);
+    expect(nazwyWPodgladzie(r.body, 'przejecie-pozycje').sort()).toEqual(['Bursztyn', 'Kandelabr', 'Sowa']);
   });
 
   // ⚠️ DRUGA POLOWA: bez zaznaczenia ta sama droga ma nie przekazac NICZEGO. Gdyby ten test

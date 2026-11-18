@@ -71,7 +71,7 @@ export function zgodnoscSzablonu(zdarzenie, szablon) {
 }
 
 const lista = (w) => (Array.isArray(w) ? w : w === undefined || w === null || w === '' ? [] : [w]).map(String);
-const tekst = (w) => (Array.isArray(w) ? w[w.length - 1] : w ?? '').toString().trim();
+const tekst = (w) => (Array.isArray(w) ? w[w.length - 1] : (w ?? '')).toString().trim();
 
 function liczbaCalkowita(w, { pusta, min, max }) {
   const s = tekst(w);
@@ -89,7 +89,10 @@ function liczbaCalkowita(w, { pusta, min, max }) {
  * (`zdarzenie_status`) i warunki status / numer listu / dostawa / pobranie — sprawdza je silnik w chwili wykonania
  * (domena/warunki-automatyzacji.js). `statusy` = klucze wszystkich statusów z Ustawień (wbudowane + własne).
  */
-export function sprawdzRegule(formularz = {}, { kanaly = [], zdarzenia = [], akcje = [], szablony = [], statusy = [] } = {}) {
+export function sprawdzRegule(
+  formularz = {},
+  { kanaly = [], zdarzenia = [], akcje = [], szablony = [], statusy = [] } = {},
+) {
   const bledy = [];
   const nazwa = tekst(formularz.nazwa);
   if (!nazwa) bledy.push('Podaj nazwę reguły.');
@@ -106,7 +109,8 @@ export function sprawdzRegule(formularz = {}, { kanaly = [], zdarzenia = [], akc
   for (const k of zaznaczone) if (!znane.includes(k)) bledy.push(`Kanału „${k}” nie ma w konfiguracji.`);
 
   const opoznienie = liczbaCalkowita(formularz.opoznienie, { pusta: 0, min: 0, max: OPOZNIENIE_MAX_MIN });
-  if (opoznienie === null) bledy.push(`Opóźnienie: liczba całkowita minut od 0 do ${OPOZNIENIE_MAX_MIN.toLocaleString('pl-PL')} (7 dni).`);
+  if (opoznienie === null)
+    bledy.push(`Opóźnienie: liczba całkowita minut od 0 do ${OPOZNIENIE_MAX_MIN.toLocaleString('pl-PL')} (7 dni).`);
   const limit = liczbaCalkowita(formularz.limit, { pusta: LIMIT_DOMYSLNY, min: LIMIT_MIN, max: LIMIT_MAX });
   if (limit === null) bledy.push(`Limit: od ${LIMIT_MIN} do ${LIMIT_MAX} maili na godzinę.`);
 
@@ -118,20 +122,33 @@ export function sprawdzRegule(formularz = {}, { kanaly = [], zdarzenia = [], akc
     const szablon = tekst(formularz.szablon);
     if (!szablon) bledy.push('Wybierz szablon maila.');
     else if (!szablony.includes(szablon)) bledy.push('Nie ma takiego szablonu — mógł zostać usunięty.');
-    else if (zdarzenie && !zgodnoscSzablonu(zdarzenie, szablon)) bledy.push('Ten szablon nie pasuje do wybranego zdarzenia.');
+    else if (zdarzenie && !zgodnoscSzablonu(zdarzenie, szablon))
+      bledy.push('Ten szablon nie pasuje do wybranego zdarzenia.');
     akcja_json.szablon = szablon;
   }
 
   // Parametr zdarzenia (np. „status zmienił się na: Wysłane”) i warunki sprawdzane w chwili wykonania.
-  const zdarzenie_json = parametrZdarzenia(formularz, zdarzenia.find((z) => z.klucz === zdarzenie), bledy);
+  const zdarzenie_json = parametrZdarzenia(
+    formularz,
+    zdarzenia.find((z) => z.klucz === zdarzenie),
+    bledy,
+  );
   const warunkiWykonania = warunkiZFormularza(formularz, { statusy, szablon: akcja_json.szablon, bledy });
 
   if (bledy.length) return { ok: false, bledy };
-  return { ok: true, regula: {
-    nazwa, zdarzenie, zdarzenie_json,
-    warunki: { kanaly: zaznaczone, kanalyZnane: znane, ...warunkiWykonania },
-    akcja, akcja_json, opoznienie_min: opoznienie, limit_na_godzine: limit,
-  } };
+  return {
+    ok: true,
+    regula: {
+      nazwa,
+      zdarzenie,
+      zdarzenie_json,
+      warunki: { kanaly: zaznaczone, kanalyZnane: znane, ...warunkiWykonania },
+      akcja,
+      akcja_json,
+      opoznienie_min: opoznienie,
+      limit_na_godzine: limit,
+    },
+  };
 }
 
 /** Szablony, które same wymagają warunku: mail twierdzi, że paczka ma numer listu. */
@@ -147,7 +164,9 @@ function parametrZdarzenia(formularz, wpis, bledy) {
   const status = tekst(formularz.zdarzenie_status);
   if (!status) bledy.push('Wybierz status, na który ma się zmienić zamówienie.');
   else if (!wpis.opcje.includes(status)) {
-    bledy.push('Tego statusu nie da się (jeszcze) rozpoznać jako zdarzenia albo nie ma go już w Ustawieniach → Zamówienia i magazyn → Statusy zamówień — wybierz inny.');
+    bledy.push(
+      'Tego statusu nie da się (jeszcze) rozpoznać jako zdarzenia albo nie ma go już w Ustawieniach → Zamówienia i magazyn → Statusy zamówień — wybierz inny.',
+    );
   }
   return { status };
 }
@@ -164,19 +183,31 @@ function warunkiZFormularza(formularz, { statusy, szablon, bledy }) {
   let wybraneStatusy = [];
   if (tryb !== 'dowolny') {
     wybraneStatusy = [...new Set(lista(formularz.statusy).filter(Boolean))];
-    if (tryb === 'jeden_z' && !wybraneStatusy.length) bledy.push('Zaznacz co najmniej jeden status albo wybierz „dowolny”.');
-    for (const s of wybraneStatusy) if (!statusy.includes(s)) bledy.push(`Statusu „${s}” nie ma w Ustawieniach → Zamówienia i magazyn → Statusy zamówień.`);
+    if (tryb === 'jeden_z' && !wybraneStatusy.length)
+      bledy.push('Zaznacz co najmniej jeden status albo wybierz „dowolny”.');
+    for (const s of wybraneStatusy)
+      if (!statusy.includes(s))
+        bledy.push(`Statusu „${s}” nie ma w Ustawieniach → Zamówienia i magazyn → Statusy zamówień.`);
   }
 
   const pole = formularz.ma_numer_listu;
   const numer = pole === undefined ? null : tekst(pole);
   let maNumerListu = numer === '1';
   if (wymagaNumeruListu(szablon)) {
-    if (numer === '0') bledy.push('Szablon „Zamówienie wysłane” wymaga warunku „przesyłka ma numer listu” — bez numeru ten mail nie ma czego pokazać.');
+    if (numer === '0')
+      bledy.push(
+        'Szablon „Zamówienie wysłane” wymaga warunku „przesyłka ma numer listu” — bez numeru ten mail nie ma czego pokazać.',
+      );
     maNumerListu = true;
   }
 
-  const metody = [...new Set(lista(formularz.dostawa).map((m) => String(m).trim()).filter(Boolean))];
+  const metody = [
+    ...new Set(
+      lista(formularz.dostawa)
+        .map((m) => String(m).trim())
+        .filter(Boolean),
+    ),
+  ];
   for (const m of metody) if (!METODY_WYSYLKI.includes(m)) bledy.push('Nie ma takiego sposobu dostawy.');
   const pobranie = tekst(formularz.pobranie) || 'dowolne';
   if (!POBRANIE.includes(pobranie)) bledy.push('Pobranie: dowolnie, tylko za pobraniem albo tylko bez pobrania.');
@@ -196,7 +227,7 @@ export function czyPasujeKanalom(sklep, warunki) {
 /** Różnica zbiorów: kanały konfiguracji nieznane przy zapisie i zaznaczone kanały, których w konfiguracji już nie ma. */
 export function noweKanalyOdZapisu(warunki, kanaly) {
   const teraz = kanaly.map((k) => k.klucz);
-  const znane = Array.isArray(warunki?.kanalyZnane) ? warunki.kanalyZnane : warunki?.kanaly ?? [];
+  const znane = Array.isArray(warunki?.kanalyZnane) ? warunki.kanalyZnane : (warunki?.kanaly ?? []);
   return {
     nowe: teraz.filter((k) => !znane.includes(k)),
     usuniete: (warunki?.kanaly ?? []).filter((k) => !teraz.includes(k)),
@@ -217,14 +248,20 @@ export function nowaGranica(teraz, migawka = {}) {
 export function zmianaPrzesuwaGranice(stara, nowa) {
   const kanaly = (r) => [...(r.warunki?.kanaly ?? [])].sort();
   const reszta = ({ kanaly: _k, kanalyZnane: _z, ...w } = {}) => w;
-  return stara.zdarzenie !== nowa.zdarzenie
-    || JSON.stringify(stara.zdarzenie_json ?? {}) !== JSON.stringify(nowa.zdarzenie_json ?? {})
-    || JSON.stringify(kanaly(stara)) !== JSON.stringify(kanaly(nowa))
-    || JSON.stringify(reszta(stara.warunki)) !== JSON.stringify(reszta(nowa.warunki));
+  return (
+    stara.zdarzenie !== nowa.zdarzenie ||
+    JSON.stringify(stara.zdarzenie_json ?? {}) !== JSON.stringify(nowa.zdarzenie_json ?? {}) ||
+    JSON.stringify(kanaly(stara)) !== JSON.stringify(kanaly(nowa)) ||
+    JSON.stringify(reszta(stara.warunki)) !== JSON.stringify(reszta(nowa.warunki))
+  );
 }
 
 function parsuj(json) {
-  try { return JSON.parse(json ?? 'null'); } catch { return null; }
+  try {
+    return JSON.parse(json ?? 'null');
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -285,8 +322,9 @@ export function klasyfikujBladPoczty(err) {
 /** Czy reguła ma warunki poza kanałem (sprawdzane w chwili wykonania). */
 export function maWarunkiWykonania(warunki = {}) {
   const { kanaly: _k, kanalyZnane: _z, ...reszta } = warunki ?? {};
-  return Object.values(reszta).some((w) => (Array.isArray(w) ? w.length > 0 : w !== null && w !== undefined
-    && w !== false && w !== 'dowolne'));
+  return Object.values(reszta).some((w) =>
+    Array.isArray(w) ? w.length > 0 : w !== null && w !== undefined && w !== false && w !== 'dowolne',
+  );
 }
 
 /** `RRRR-MM-DD GG:MM` (czas Warszawy) → `DD.MM.RRRR GG:MM`. */

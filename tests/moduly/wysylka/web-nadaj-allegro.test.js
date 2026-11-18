@@ -27,35 +27,81 @@ const odp = (status, tekst) => ({ status, ok: status >= 200 && status < 300, tex
 const config = { auth: { user: 'adam', pass: 'x' } };
 const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64'), origin: 'http://localhost' };
 const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) };
-const NADAWCA = { nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL' };
+const NADAWCA = {
+  nazwa: 'Pracownia Półcień Anna Wzorcowa',
+  ulica: 'ul. Przykładowa 1',
+  kod: '00-950',
+  miasto: 'Warszawa',
+  kraj: 'PL',
+};
 
 const ADRES = {
-  nazwa: 'Julia Lis', company: '', ulica: 'Radosna 7', kod: '78-100',
-  miasto: 'Niekanin', kraj: 'PL', phone: '+48500900009', email: 'a@allegromail.pl',
+  nazwa: 'Julia Lis',
+  company: '',
+  ulica: 'Radosna 7',
+  kod: '78-100',
+  miasto: 'Niekanin',
+  kraj: 'PL',
+  phone: '+48500900009',
+  email: 'a@allegromail.pl',
 };
 const ONE_COURIER = '0d83955a-4297-4169-adef-9790d53b11ff';
-const PACZKA = { waga: '1', dlugosc: '110', szerokosc: '75', wysokosc: '1', kolejnosc: '1',
-  delivery_method_id_allegro: ONE_COURIER, ...ADRES };
+const PACZKA = {
+  waga: '1',
+  dlugosc: '110',
+  szerokosc: '75',
+  wysokosc: '1',
+  kolejnosc: '1',
+  delivery_method_id_allegro: ONE_COURIER,
+  ...ADRES,
+};
 
 const zmapowane = (nad = {}) => ({
-  zrodlo_id: '91671e40-9025-11f1-9622-afa983ea653b', numer: '91671e40-9025-11f1-9622-afa983ea653b',
+  zrodlo_id: '91671e40-9025-11f1-9622-afa983ea653b',
+  numer: '91671e40-9025-11f1-9622-afa983ea653b',
   klient: { email: 'a@allegromail.pl', phone: '+48500900009' },
-  dostawa: { first_name: 'Julia', last_name: 'Lis', company: '', address_1: 'Radosna 7', postcode: '78-100', city: 'Niekanin', country: 'PL' },
-  metoda_wysylki: 'allegro_dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '99.00',
-  status_woo: 'processing', oplacone_at: '2026-08-04T18:58:24', anulowane: 0,
-  utworzone_at: '2026-08-04T18:58:08', pozycje: [], ...nad,
+  dostawa: {
+    first_name: 'Julia',
+    last_name: 'Lis',
+    company: '',
+    address_1: 'Radosna 7',
+    postcode: '78-100',
+    city: 'Niekanin',
+    country: 'PL',
+  },
+  metoda_wysylki: 'allegro_dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '99.00',
+  status_woo: 'processing',
+  oplacone_at: '2026-08-04T18:58:24',
+  anulowane: 0,
+  utworzone_at: '2026-08-04T18:58:08',
+  pozycje: [],
+  ...nad,
 });
 
 function dpdKlient() {
-  const fetchImpl = vi.fn()
+  const fetchImpl = vi
+    .fn()
     .mockResolvedValueOnce(odp(200, fixture('v10-ok.xml')))
     .mockResolvedValueOnce(odp(200, fixture('v4-ok.xml')));
-  const dpd = createDpdClient({ url: 'https://dpd/api', login: '99999999', haslo: 'x', fid: '876543', nadawca: NADAWCA, fetchImpl });
+  const dpd = createDpdClient({
+    url: 'https://dpd/api',
+    login: '99999999',
+    haslo: 'x',
+    fid: '876543',
+    nadawca: NADAWCA,
+    fetchImpl,
+  });
   return { dpd, fetchImpl };
 }
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 
 function zServerem({ nad = {}, sklep = 'allegro_swietlik', inpost, wza } = {}) {
   const katalogEtykiet = mkdtempSync(join(tmpdir(), 'oms-allegro-'));
@@ -144,7 +190,11 @@ describe('formularz nadania po wskazaniu kuriera', () => {
   // a NIE wymiary 110×75×1 cm, które nie mieszczą się w żadnej skrytce.
   it('paczkomat daje gabaryt A/B/C i kod automatu, a NIE wymiary', async () => {
     const { serwer, id } = zServerem({
-      nad: { metoda_wysylki: 'allegro_paczkomat', punkt_odbioru: 'MALK01APP', punkt_odbioru_opis: 'Przy sklepie spożywczym' },
+      nad: {
+        metoda_wysylki: 'allegro_paczkomat',
+        punkt_odbioru: 'MALK01APP',
+        punkt_odbioru_opis: 'Przy sklepie spożywczym',
+      },
     });
     const r = await get(serwer, `/zamowienia/${id}/nadaj?kurier=inpost_paczkomat`);
     expect(r.statusCode).toBe(200);
@@ -255,10 +305,13 @@ describe('POST /nadaj — bariera przeżywa żądanie z ręki', () => {
   // inkasa — omijając tablicę dostaw, która istnieje właśnie po to, żeby tego pilnować.
   it('dla zamówienia ZE SKLEPU wskazanie jest ignorowane — jedzie metoda zamówienia', async () => {
     const { serwer, id } = zServerem({
-      nad: { metoda_wysylki: 'dpd', pobranie: 1, kwota_pobrania: '212.90' }, sklep: 'pro',
+      nad: { metoda_wysylki: 'dpd', pobranie: 1, kwota_pobrania: '212.90' },
+      sklep: 'pro',
     });
     const r = await post(serwer, `/zamowienia/${id}/nadaj`, {
-      ...PACZKA, kurier: 'inpost_paczkomat', kwota_pobrania: '212.90',
+      ...PACZKA,
+      kurier: 'inpost_paczkomat',
+      kwota_pobrania: '212.90',
     });
     expect(r.statusCode).toBe(302);
     expect(db.prepare('SELECT * FROM przesylki WHERE zamowienie_id = ?').get(id).kurier).toBe('dpd');
@@ -277,7 +330,9 @@ describe('POST /nadaj — wybór formatu etykiety WzA', () => {
     bezSledzenia: true,
     pobierzMetodeDostawy: async () => ONE_COURIER,
     nadaj: vi.fn(async ({ drukowac }) => ({
-      shipmentId: 'ship-wza-1', numerListu: 'AD0FORMAT', wTrakcieTworzenia: false,
+      shipmentId: 'ship-wza-1',
+      numerListu: 'AD0FORMAT',
+      wTrakcieTworzenia: false,
       etykietaPdf: drukowac ? null : Buffer.from('%PDF-1.4 test'),
       etykietaZpl: drukowac ? Buffer.from('^XA^FO10,10^FDTEST^FS^XZ') : null,
       surowa: '{"labelFormat":"ZPL"}',
@@ -311,7 +366,11 @@ describe('POST /nadaj — wybór formatu etykiety WzA', () => {
     expect(przesylka.etykieta_sciezka).toMatch(/\.pdf$/);
     expect(przesylka.etykieta_zpl_sciezka).toBeNull();
     expect(db.prepare('SELECT COUNT(*) c FROM kolejka_druku WHERE przesylka_id = ?').get(przesylka.id).c).toBe(0);
-    const log = db.prepare('SELECT wynik FROM log WHERE zamowienie_id = ?').all(id).map((x) => x.wynik).join(' ');
+    const log = db
+      .prepare('SELECT wynik FROM log WHERE zamowienie_id = ?')
+      .all(id)
+      .map((x) => x.wynik)
+      .join(' ');
     expect(log).not.toContain('BRAK ZPL');
     const karta = await get(serwer, `/zamowienia/${id}`);
     expect(karta.body).toContain(`/przesylki/${przesylka.id}/etykieta`);
@@ -323,8 +382,12 @@ describe('POST /nadaj — wybór formatu etykiety WzA', () => {
       pobierzMetodeDostawy: async () => ONE_COURIER,
       nadaj: vi.fn(async () => ({ shipmentId: 'cmd-pdf', numerListu: null, wTrakcieTworzenia: true })),
       sprawdzPrzesylke: vi.fn(async () => ({
-        shipmentId: 'ship-pdf', numerListu: 'AD0LATEPDF', wTrakcieTworzenia: false,
-        etykietaPdf: Buffer.from('%PDF-1.4 test'), etykietaZpl: null, surowa: '{"labelFormat":"PDF"}',
+        shipmentId: 'ship-pdf',
+        numerListu: 'AD0LATEPDF',
+        wTrakcieTworzenia: false,
+        etykietaPdf: Buffer.from('%PDF-1.4 test'),
+        etykietaZpl: null,
+        surowa: '{"labelFormat":"PDF"}',
       })),
     };
     const { serwer, id } = zServerem({ wza: kurier });
@@ -332,7 +395,11 @@ describe('POST /nadaj — wybór formatu etykiety WzA', () => {
     const p = db.prepare('SELECT * FROM przesylki WHERE zamowienie_id = ?').get(id);
     expect((await post(serwer, `/zamowienia/${id}/przesylki/${p.id}/sprawdz`, {})).statusCode).toBe(302);
     expect(db.prepare('SELECT COUNT(*) c FROM kolejka_druku WHERE przesylka_id = ?').get(p.id).c).toBe(0);
-    const log = db.prepare('SELECT wynik FROM log WHERE zamowienie_id = ?').all(id).map((x) => x.wynik).join(' ');
+    const log = db
+      .prepare('SELECT wynik FROM log WHERE zamowienie_id = ?')
+      .all(id)
+      .map((x) => x.wynik)
+      .join(' ');
     expect(log).not.toContain('BRAK ZPL');
     expect((await post(serwer, `/zamowienia/${id}/przesylki/${p.id}/sprawdz`, {})).statusCode).toBe(400);
     expect(kurier.sprawdzPrzesylke).toHaveBeenCalledTimes(1);
@@ -344,13 +411,18 @@ describe('POST /nadaj — wybór formatu etykiety WzA', () => {
       pobierzMetodeDostawy: async () => ONE_COURIER,
       nadaj: vi.fn(async () => ({ shipmentId: 'cmd-zpl', numerListu: null, wTrakcieTworzenia: true })),
       sprawdzPrzesylke: vi.fn(async () => ({
-        shipmentId: 'ship-zpl', numerListu: 'AD0LATEZPL', wTrakcieTworzenia: false,
-        etykietaPdf: null, etykietaZpl: Buffer.from('^XA^FO10,10^FDTEST^FS^XZ'),
+        shipmentId: 'ship-zpl',
+        numerListu: 'AD0LATEZPL',
+        wTrakcieTworzenia: false,
+        etykietaPdf: null,
+        etykietaZpl: Buffer.from('^XA^FO10,10^FDTEST^FS^XZ'),
         surowa: '{"labelFormat":"ZPL"}',
       })),
     };
     const { serwer, id } = zServerem({ wza: kurier });
-    expect((await post(serwer, `/zamowienia/${id}/nadaj`, { ...PACZKA, zatwierdzenie: 'nadaj_i_drukuj' })).statusCode).toBe(302);
+    expect(
+      (await post(serwer, `/zamowienia/${id}/nadaj`, { ...PACZKA, zatwierdzenie: 'nadaj_i_drukuj' })).statusCode,
+    ).toBe(302);
     const p = db.prepare('SELECT * FROM przesylki WHERE zamowienie_id = ?').get(id);
     expect((await post(serwer, `/zamowienia/${id}/przesylki/${p.id}/sprawdz`, {})).statusCode).toBe(302);
     expect(db.prepare('SELECT COUNT(*) c FROM kolejka_druku WHERE przesylka_id = ?').get(p.id).c).toBe(1);
@@ -385,7 +457,8 @@ describe('POST /nadaj — paczkomat z Allegro dociera do kuriera poprawnie', () 
     const { serwer, id } = zServerem({
       nad: {
         metoda_wysylki: 'allegro_paczkomat',
-        punkt_odbioru: 'MALK01APP', punkt_odbioru_opis: 'Przy sklepie spożywczym',
+        punkt_odbioru: 'MALK01APP',
+        punkt_odbioru_opis: 'Przy sklepie spożywczym',
       },
       inpost,
     });
@@ -396,7 +469,11 @@ describe('POST /nadaj — paczkomat z Allegro dociera do kuriera poprawnie', () 
   it('do kuriera jedzie GABARYT, nie wymiary paczki', async () => {
     const { serwer, id, inpost } = zPaczkomatem();
     const r = await post(serwer, `/zamowienia/${id}/nadaj`, {
-      ...ADRES, kolejnosc: '1', kurier: 'inpost_paczkomat', waga: '1.2', gabaryt: 'A',
+      ...ADRES,
+      kolejnosc: '1',
+      kurier: 'inpost_paczkomat',
+      waga: '1.2',
+      gabaryt: 'A',
     });
     expect(r.statusCode).toBe(302);
     const paczka = inpost.nadaj.mock.calls[0][0].paczka;
@@ -407,7 +484,11 @@ describe('POST /nadaj — paczkomat z Allegro dociera do kuriera poprawnie', () 
   it('kod automatu z formularza jedzie do InPostu', async () => {
     const { serwer, id, inpost } = zPaczkomatem();
     await post(serwer, `/zamowienia/${id}/nadaj`, {
-      ...ADRES, kolejnosc: '1', kurier: 'inpost_paczkomat', waga: '1.2', gabaryt: 'A',
+      ...ADRES,
+      kolejnosc: '1',
+      kurier: 'inpost_paczkomat',
+      waga: '1.2',
+      gabaryt: 'A',
       punkt_odbioru: 'malk01app',
     });
     expect(inpost.nadaj.mock.calls[0][0].punktOdbioru).toBe('MALK01APP');
@@ -416,7 +497,11 @@ describe('POST /nadaj — paczkomat z Allegro dociera do kuriera poprawnie', () 
   it('przesyłka zapisuje się z kurierem inpost, a nie dpd', async () => {
     const { serwer, id } = zPaczkomatem();
     await post(serwer, `/zamowienia/${id}/nadaj`, {
-      ...ADRES, kolejnosc: '1', kurier: 'inpost_paczkomat', waga: '1.2', gabaryt: 'A',
+      ...ADRES,
+      kolejnosc: '1',
+      kurier: 'inpost_paczkomat',
+      waga: '1.2',
+      gabaryt: 'A',
     });
     expect(db.prepare('SELECT * FROM przesylki WHERE zamowienie_id = ?').get(id).kurier).toBe('inpost');
   });
@@ -425,7 +510,10 @@ describe('POST /nadaj — paczkomat z Allegro dociera do kuriera poprawnie', () 
   it('brak gabarytu → odmowa, panel niczego nie nadaje', async () => {
     const { serwer, id, inpost } = zPaczkomatem();
     const r = await post(serwer, `/zamowienia/${id}/nadaj`, {
-      ...ADRES, kolejnosc: '1', kurier: 'inpost_paczkomat', waga: '1.2',
+      ...ADRES,
+      kolejnosc: '1',
+      kurier: 'inpost_paczkomat',
+      waga: '1.2',
     });
     expect(r.statusCode).toBe(400);
     expect(inpost.nadaj).not.toHaveBeenCalled();

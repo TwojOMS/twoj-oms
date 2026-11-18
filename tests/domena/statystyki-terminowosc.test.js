@@ -3,18 +3,24 @@ import { terminowosc } from '../../src/domena/statystyki-wysylki.js';
 
 // Czwartek 13.08.2026, opłacone 06:00Z = 08:00 PL.
 const z = (d = {}) => ({
-  sklep: 'swietlik', pobranie: 0, b2b: 0, indywidualne: 0, pozycje: [],
-  utworzone_at: '2026-08-13T06:00:00Z', oplacone_at: '2026-08-13T06:00:00Z',
-  wyslane_at: '2026-08-13T14:00:00Z', ...d,
+  sklep: 'swietlik',
+  pobranie: 0,
+  b2b: 0,
+  indywidualne: 0,
+  pozycje: [],
+  utworzone_at: '2026-08-13T06:00:00Z',
+  oplacone_at: '2026-08-13T06:00:00Z',
+  wyslane_at: '2026-08-13T14:00:00Z',
+  ...d,
 });
 
 describe('terminowosc — procenty i mianownik', () => {
   it('liczy oba procenty z mianownika wysłanych', () => {
     const w = terminowosc([
-      z(),                                          // tego samego dnia, w terminie
-      z({ wyslane_at: '2026-08-14T07:00:00Z' }),     // 1 dzień rob., w terminie
-      z({ wyslane_at: '2026-08-18T07:00:00Z' }),     // 3 dni rob., PO terminie
-      z({ wyslane_at: '2026-08-17T07:00:00Z' }),     // 2 dni rob., PO terminie
+      z(), // tego samego dnia, w terminie
+      z({ wyslane_at: '2026-08-14T07:00:00Z' }), // 1 dzień rob., w terminie
+      z({ wyslane_at: '2026-08-18T07:00:00Z' }), // 3 dni rob., PO terminie
+      z({ wyslane_at: '2026-08-17T07:00:00Z' }), // 2 dni rob., PO terminie
     ]);
     expect(w.mianownik).toBe(4);
     expect(w.wTerminie).toBe(2);
@@ -25,8 +31,7 @@ describe('terminowosc — procenty i mianownik', () => {
 
   it('rozkład ma cztery pozycje w stałej kolejności, także gdy są puste', () => {
     const w = terminowosc([z()]);
-    expect(w.rozklad.map((p) => p.etykieta))
-      .toEqual(['tego samego dnia', '1 dzień rob.', '2 dni rob.', '3+ dni rob.']);
+    expect(w.rozklad.map((p) => p.etykieta)).toEqual(['tego samego dnia', '1 dzień rob.', '2 dni rob.', '3+ dni rob.']);
     expect(w.rozklad.map((p) => p.ile)).toEqual([1, 0, 0, 0]);
   });
 
@@ -45,10 +50,7 @@ describe('terminowosc — procenty i mianownik', () => {
   });
 
   it('3+ zbiera wszystko powyżej dwóch dni roboczych', () => {
-    const w = terminowosc([
-      z({ wyslane_at: '2026-08-18T07:00:00Z' }),
-      z({ wyslane_at: '2026-08-25T07:00:00Z' }),
-    ]);
+    const w = terminowosc([z({ wyslane_at: '2026-08-18T07:00:00Z' }), z({ wyslane_at: '2026-08-25T07:00:00Z' })]);
     expect(w.rozklad[3].ile).toBe(2);
   });
 
@@ -79,10 +81,7 @@ describe('terminowosc — trzy wyłączenia stoją osobno i NIE wchodzą do proc
 
   // ⚠️ Zmierzone na produkcji: 15 zamówień, jedno o 217 h (28171: wysłane 4.08, opłacone 13.08).
   it('wysłane przed wpłatą', () => {
-    const w = terminowosc([
-      z(),
-      z({ oplacone_at: '2026-08-13T06:00:00Z', wyslane_at: '2026-08-04T10:07:34.648Z' }),
-    ]);
+    const w = terminowosc([z(), z({ oplacone_at: '2026-08-13T06:00:00Z', wyslane_at: '2026-08-04T10:07:34.648Z' })]);
     expect(w.mianownik).toBe(1);
     expect(w.wylaczenia.przedWplata).toBe(1);
     expect(w.procentWTerminie).toBe(100);
@@ -114,7 +113,8 @@ describe('terminowosc — trzy wyłączenia stoją osobno i NIE wchodzą do proc
 
   it('trzy wyłączenia i mianownik sumują się do długości listy', () => {
     const lista = [
-      z(), z(),
+      z(),
+      z(),
       z({ wyslane_at: null }),
       z({ oplacone_at: null }),
       z({ oplacone_at: '2026-08-13T06:00:00Z', wyslane_at: '2026-08-04T06:00:00Z' }),
@@ -139,18 +139,25 @@ describe('terminowosc — limit zależy od typu zamówienia', () => {
   });
 
   it('ekspres ma 2 dni i bije indywidualne', () => {
-    const w = terminowosc([z({
-      indywidualne: 1, pozycje: [{ nazwa: 'Realizacja ekspresowa' }],
-      wyslane_at: '2026-08-18T07:00:00Z',
-    })]);
+    const w = terminowosc([
+      z({
+        indywidualne: 1,
+        pozycje: [{ nazwa: 'Realizacja ekspresowa' }],
+        wyslane_at: '2026-08-18T07:00:00Z',
+      }),
+    ]);
     expect(w.wTerminie).toBe(0);
   });
 
   it('pobranie liczy od złożenia, bo wpłaty przed wysyłką nie ma', () => {
-    const w = terminowosc([z({
-      pobranie: 1, oplacone_at: null,
-      utworzone_at: '2026-08-13T06:00:00Z', wyslane_at: '2026-08-14T07:00:00Z',
-    })]);
+    const w = terminowosc([
+      z({
+        pobranie: 1,
+        oplacone_at: null,
+        utworzone_at: '2026-08-13T06:00:00Z',
+        wyslane_at: '2026-08-14T07:00:00Z',
+      }),
+    ]);
     expect(w.mianownik).toBe(1);
     expect(w.wTerminie).toBe(1);
     expect(w.wylaczenia.bezStartu).toBe(0);

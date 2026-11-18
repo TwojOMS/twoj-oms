@@ -23,7 +23,8 @@ export function bladKonfiguracji(opis: string): BladKonfiguracji {
 export function bladWalidatora(e: unknown): BladKonfiguracji | undefined {
   if (e instanceof BladKonfiguracji) return e;
   if (!(e instanceof Error) || e.name !== 'Error' || 'code' in e) return;
-  const nazwany = /^(?:[A-Z][A-Z0-9]*_[A-Z0-9_]+(?=[: /])|Brak (?:wymaganej zmiennej: |wymaganej konfiguracji poczty: |poprawnego |)|Ustawione |Konflikt |Sekcja KSeF wymaga )/;
+  const nazwany =
+    /^(?:[A-Z][A-Z0-9]*_[A-Z0-9_]+(?=[: /])|Brak (?:wymaganej zmiennej: |wymaganej konfiguracji poczty: |poprawnego |)|Ustawione |Konflikt |Sekcja KSeF wymaga )/;
   if (!nazwany.test(e.message) || !/\b[A-Z][A-Z0-9]*_[A-Z0-9_]+\b/.test(e.message)) return;
   return bladKonfiguracji(e.message);
 }

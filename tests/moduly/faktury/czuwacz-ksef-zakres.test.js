@@ -19,23 +19,28 @@ let licznik = 0;
 function zamowienieZFaktura(db, { sklep, wyslanaZPanelu }) {
   licznik += 1;
   const uuid = `uuid-${sklep}-${licznik}`;
-  const id = zapiszZamowienie(db, sklep, {
-    zrodlo_id: `${sklep}-${licznik}`,
-    numer: String(3000 + licznik),
-    klient: { first_name: 'Jan' },
-    dostawa: {},
-    metoda_wysylki: 'dpd',
-    kwota_pobrania: null,
-    chce_fakture: 1,
-    nip: null,
-    kwota_brutto: '123.00',
-    koszt_dostawy_brutto: '0.00',
-    status_woo: 'processing',
-    oplacone_at: null,
-    anulowane: 0,
-    utworzone_at: '2026-08-05T09:00:00',
-    pozycje: [],
-  }, {});
+  const id = zapiszZamowienie(
+    db,
+    sklep,
+    {
+      zrodlo_id: `${sklep}-${licznik}`,
+      numer: String(3000 + licznik),
+      klient: { first_name: 'Jan' },
+      dostawa: {},
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: 1,
+      nip: null,
+      kwota_brutto: '123.00',
+      koszt_dostawy_brutto: '0.00',
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane: 0,
+      utworzone_at: '2026-08-05T09:00:00',
+      pozycje: [],
+    },
+    {},
+  );
   const f = rozpocznijFakture(db, id);
   zakonczFakture(db, f.id, { uuid, numer: '1/08/2026', ksefStatus: null });
   // Dokladnie to, co robi services/wysylka-ksef.js przed wywolaniem inFaktu.

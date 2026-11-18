@@ -47,9 +47,12 @@ function programSzpieg() {
     opis: {
       id: 'test',
       nazwa: { mianownik: 'Testownik', dopelniacz: 'Testownika', miejscownik: 'Testowniku', narzednik: 'Testownikiem' },
-      regulaVat: 'wierszami', zdolnosci: Object.keys(METODA_ZDOLNOSCI), wystawienieWysylaDoKsef: false,
+      regulaVat: 'wierszami',
+      zdolnosci: Object.keys(METODA_ZDOLNOSCI),
+      wystawienieWysylaDoKsef: false,
       limity: { zadanieMs: 30000, najdluzszaListaMs: 120000, stronaListy: 25, sufitStron: 40, rownolegleStron: 4 },
-      adres: 'https://testownik.invalid', ekran: '/ustawienia/integracje/testownik',
+      adres: 'https://testownik.invalid',
+      ekran: '/ustawienia/integracje/testownik',
     },
   };
 }
@@ -58,17 +61,42 @@ let licznik = 0;
 /** Zamówienie z fakturą. `dok` = kolumny dokumentu (`program`, `dokument_id`, `infakt_uuid`). */
 function zFaktura(db, dok, { ksefNumer = null } = {}) {
   licznik += 1;
-  const id = zapiszZamowienie(db, SKLEP, {
-    zrodlo_id: `PC-${licznik}`, numer: `PC-${700 + licznik}`,
-    klient: { company: 'Pracownia Półcień sp. z o.o.', email: 'biuro@polcien.invalid' }, dostawa: { city: 'Warszawa' },
-    metoda_wysylki: 'allegro_dpd', kwota_pobrania: null, chce_fakture: 1, nip: NIP_PRACOWNI,
-    kwota_brutto: '258.00', koszt_dostawy_brutto: '0.00', status_woo: 'processing',
-    oplacone_at: '2026-10-10T09:00:00Z', anulowane: 0, utworzone_at: '2026-10-10T08:00:00Z',
-    pozycje: [{ zrodlo_id: 11, nazwa: 'Lampa wisząca Półcień', sku: 'LAMPA-W1', ilosc: 2, cena_brutto: '129.00', vat: null }],
-  }, {});
-  db.prepare(`INSERT INTO faktury (zamowienie_id, program, dokument_id, infakt_uuid, numer, ksef_numer, utworzona_at)
-    VALUES (?,?,?,?,?,?,?)`).run(id, dok.program ?? null, dok.dokument_id ?? null, dok.infakt_uuid ?? null,
-    `${licznik}/10/2026`, ksefNumer, new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString());
+  const id = zapiszZamowienie(
+    db,
+    SKLEP,
+    {
+      zrodlo_id: `PC-${licznik}`,
+      numer: `PC-${700 + licznik}`,
+      klient: { company: 'Pracownia Półcień sp. z o.o.', email: 'biuro@polcien.invalid' },
+      dostawa: { city: 'Warszawa' },
+      metoda_wysylki: 'allegro_dpd',
+      kwota_pobrania: null,
+      chce_fakture: 1,
+      nip: NIP_PRACOWNI,
+      kwota_brutto: '258.00',
+      koszt_dostawy_brutto: '0.00',
+      status_woo: 'processing',
+      oplacone_at: '2026-10-10T09:00:00Z',
+      anulowane: 0,
+      utworzone_at: '2026-10-10T08:00:00Z',
+      pozycje: [
+        { zrodlo_id: 11, nazwa: 'Lampa wisząca Półcień', sku: 'LAMPA-W1', ilosc: 2, cena_brutto: '129.00', vat: null },
+      ],
+    },
+    {},
+  );
+  db.prepare(
+    `INSERT INTO faktury (zamowienie_id, program, dokument_id, infakt_uuid, numer, ksef_numer, utworzona_at)
+    VALUES (?,?,?,?,?,?,?)`,
+  ).run(
+    id,
+    dok.program ?? null,
+    dok.dokument_id ?? null,
+    dok.infakt_uuid ?? null,
+    `${licznik}/10/2026`,
+    ksefNumer,
+    new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString(),
+  );
   return id;
 }
 
@@ -82,11 +110,21 @@ let katalog;
 let a;
 let program;
 beforeAll(async () => {
-  vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('PRZ-121.04a: sieć zabroniona w teście'); }));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => {
+      throw new Error('PRZ-121.04a: sieć zabroniona w teście');
+    }),
+  );
   katalog = mkdtempSync(join(tmpdir(), 'prz121-04a-'));
   const env = {
-    OMS_TRYB: 'proba', OMS_USER: 'operator', OMS_PASS: 'fixture', OMS_SPRZEDAWCA_NIP: '1234563218',
-    OMS_RACHUNEK: '34109010140000000000000000', OMS_PROFORMY_KATALOG: katalog, OMS_ETYKIETY_KATALOG: katalog,
+    OMS_TRYB: 'proba',
+    OMS_USER: 'operator',
+    OMS_PASS: 'fixture',
+    OMS_SPRZEDAWCA_NIP: '1234563218',
+    OMS_RACHUNEK: '34109010140000000000000000',
+    OMS_PROFORMY_KATALOG: katalog,
+    OMS_ETYKIETY_KATALOG: katalog,
   };
   program = programSzpieg();
   const fabryki = { programFakturowy: () => program, createVies: () => createAtrapaVies({ env }) };
@@ -100,7 +138,11 @@ afterAll(async () => {
   vi.unstubAllGlobals();
 });
 
-const wierszeRezerwacji = () => a.db.prepare('SELECT uuid FROM wysylki_ksef ORDER BY uuid').all().map((w) => w.uuid);
+const wierszeRezerwacji = () =>
+  a.db
+    .prepare('SELECT uuid FROM wysylki_ksef ORDER BY uuid')
+    .all()
+    .map((w) => w.uuid);
 const odmowa409 = { status: 409, bezProgramu: true };
 
 describe('PDF faktury zamówienia', () => {
@@ -127,14 +169,26 @@ describe('faktura do Allegro', () => {
     program.pobierzPdf.mockClear();
     const sygnaly = [];
     const klient = {
-      pobierzFakturyZamowienia: vi.fn(async () => { sygnaly.push('lista'); return []; }),
-      zglosFakture: vi.fn(async () => { sygnaly.push('zglos'); return { id: 'INV-PC-1' }; }),
-      wyslijPlikFaktury: vi.fn(async () => { sygnaly.push('plik'); return { file: { securityVerification: { status: 'WAITING' } } }; }),
+      pobierzFakturyZamowienia: vi.fn(async () => {
+        sygnaly.push('lista');
+        return [];
+      }),
+      zglosFakture: vi.fn(async () => {
+        sygnaly.push('zglos');
+        return { id: 'INV-PC-1' };
+      }),
+      wyslijPlikFaktury: vi.fn(async () => {
+        sygnaly.push('plik');
+        return { file: { securityVerification: { status: 'WAITING' } } };
+      }),
     };
     const usluga = createFakturaAllegro({ db: a.db, program, klienciKanalow: { [SKLEP]: klient } });
     for (const dok of [DOK.infaktNowa, DOK.infaktStara]) {
-      const id = zFaktura(a.db, { ...dok, dokument_id: dok.dokument_id && `${dok.dokument_id}-a`,
-        infakt_uuid: `${dok.infakt_uuid}-a` }, { ksefNumer: 'KSEF-PC-1' });
+      const id = zFaktura(
+        a.db,
+        { ...dok, dokument_id: dok.dokument_id && `${dok.dokument_id}-a`, infakt_uuid: `${dok.infakt_uuid}-a` },
+        { ksefNumer: 'KSEF-PC-1' },
+      );
       // Dzierżawa wysyłki (`allegro_zgloszenie_at`) ŚWIEŻO zajęta: gdyby odmowa stała za `zajmijWysylkeDoAllegro`,
       // odpowiedzią byłoby „WŁAŚNIE TRWA”, a nie 409 o programie dokumentu.
       const dzierzawa = new Date().toISOString();
@@ -157,7 +211,13 @@ describe('faktura do Allegro', () => {
 });
 
 describe('wysyłka do KSeF', () => {
-  const dokument = (uuid, n) => ({ uuid, number: `${n}/10/2026`, rodzaj: 'vat', client_tax_code: NIP_PRACOWNI, ksef_number: null });
+  const dokument = (uuid, n) => ({
+    uuid,
+    number: `${n}/10/2026`,
+    rodzaj: 'vat',
+    client_tax_code: NIP_PRACOWNI,
+    ksef_number: null,
+  });
 
   it('[inFakt nowa, inFakt stara, test, spoza OMS-u] → inFakt odmówiony bez wiersza rezerwacji, reszta wysłana', async () => {
     program.wyslijDokumentDoKsef.mockClear();
@@ -165,8 +225,18 @@ describe('wysyłka do KSeF', () => {
     zFaktura(a.db, { program: 'infakt', dokument_id: k(INFAKT_NOWA), infakt_uuid: k(INFAKT_NOWA) });
     zFaktura(a.db, { infakt_uuid: k(INFAKT_STARA) });
     zFaktura(a.db, { program: 'test', dokument_id: k(TEST_DOK) });
-    const dokumenty = [dokument(k(INFAKT_NOWA), 81), dokument(k(INFAKT_STARA), 82), dokument(k(TEST_DOK), 83), dokument(SPOZA_OMS, 84)];
-    const usluga = createWysylkaKsef({ db: a.db, program, fakturyWidok: { dokumenty: async () => dokumenty }, log: () => {} });
+    const dokumenty = [
+      dokument(k(INFAKT_NOWA), 81),
+      dokument(k(INFAKT_STARA), 82),
+      dokument(k(TEST_DOK), 83),
+      dokument(SPOZA_OMS, 84),
+    ];
+    const usluga = createWysylkaKsef({
+      db: a.db,
+      program,
+      fakturyWidok: { dokumenty: async () => dokumenty },
+      log: () => {},
+    });
     const args = { uuids: dokumenty.map((d) => d.uuid), miesiac: '2026-10', pole: 'invoice_date' };
     const w = await usluga.wyslij(args);
     expect(w.wyslane.map((d) => d.uuid)).toEqual([k(TEST_DOK), SPOZA_OMS]);
@@ -183,7 +253,12 @@ describe('wysyłka do KSeF', () => {
     const ID = '123';
     zFaktura(a.db, { program: 'fakturownia', dokument_id: ID });
     zFaktura(a.db, { program: 'test', dokument_id: ID });
-    const usluga = createWysylkaKsef({ db: a.db, program, fakturyWidok: { dokumenty: async () => [dokument(ID, 93)] }, log: () => {} });
+    const usluga = createWysylkaKsef({
+      db: a.db,
+      program,
+      fakturyWidok: { dokumenty: async () => [dokument(ID, 93)] },
+      log: () => {},
+    });
     const w = await usluga.wyslij({ uuids: [ID], miesiac: '2026-10', pole: 'invoice_date' });
     expect(w.pominiete).toEqual([]);
     expect(w.wyslane.map((d) => d.uuid)).toEqual([ID]);
@@ -193,10 +268,18 @@ describe('wysyłka do KSeF', () => {
   it('faktura okresu z inFaktu przy aktywnym „test” → odmówiona bez wiersza rezerwacji', async () => {
     program.wyslijDokumentDoKsef.mockClear();
     const OKRES = 'inf-okres-0005';
-    a.db.prepare(`INSERT INTO okresy_rozliczeniowe (klient_klucz, rok, miesiac, stan, program, dokument_id, infakt_uuid, numer,
-      utworzony_at) VALUES ('polcien', 2026, 9, 'zamkniety', 'infakt', ?, ?, 'FZ/9/2026', ?)`)
+    a.db
+      .prepare(
+        `INSERT INTO okresy_rozliczeniowe (klient_klucz, rok, miesiac, stan, program, dokument_id, infakt_uuid, numer,
+      utworzony_at) VALUES ('polcien', 2026, 9, 'zamkniety', 'infakt', ?, ?, 'FZ/9/2026', ?)`,
+      )
       .run(OKRES, OKRES, new Date().toISOString());
-    const usluga = createWysylkaKsef({ db: a.db, program, fakturyWidok: { dokumenty: async () => [dokument(OKRES, 94)] }, log: () => {} });
+    const usluga = createWysylkaKsef({
+      db: a.db,
+      program,
+      fakturyWidok: { dokumenty: async () => [dokument(OKRES, 94)] },
+      log: () => {},
+    });
     const w = await usluga.wyslij({ uuids: [OKRES], miesiac: '2026-10', pole: 'invoice_date' });
     expect(w.wyslane).toEqual([]);
     expect(w.pominiete.filter((p) => p.powod.includes(ODMOWA)).map((p) => p.numer)).toEqual(['94/10/2026']);
@@ -210,8 +293,17 @@ describe('wysyłka do KSeF', () => {
     zFaktura(a.db, { program: 'infakt', dokument_id: p(INFAKT_NOWA), infakt_uuid: p(INFAKT_NOWA) });
     zFaktura(a.db, { program: 'test', dokument_id: p(TEST_DOK) });
     const dokumenty = [dokument(p(INFAKT_NOWA), 91), dokument(p(TEST_DOK), 92)];
-    const usluga = createWysylkaKsef({ db: a.db, program, fakturyWidok: { dokumenty: async () => dokumenty }, log: () => {} });
-    const podglad = await usluga.podglad({ uuids: dokumenty.map((d) => d.uuid), miesiac: '2026-10', pole: 'invoice_date' });
+    const usluga = createWysylkaKsef({
+      db: a.db,
+      program,
+      fakturyWidok: { dokumenty: async () => dokumenty },
+      log: () => {},
+    });
+    const podglad = await usluga.podglad({
+      uuids: dokumenty.map((d) => d.uuid),
+      miesiac: '2026-10',
+      pole: 'invoice_date',
+    });
     expect(podglad.doWyslania.map((d) => d.uuid)).toEqual([p(TEST_DOK)]);
     expect(podglad.pominiete.filter((x) => x.powod.includes(ODMOWA)).map((x) => x.numer)).toEqual(['91/10/2026']);
     expect(wierszeRezerwacji()).not.toContain(p(TEST_DOK));

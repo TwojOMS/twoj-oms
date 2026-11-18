@@ -1,12 +1,13 @@
 // Referencyjna implementacja sprzed optymalizacji do porównania wyników obliczeń.
 import { uslugaDostawy } from '../../../src/domena/wysylka.js';
 import {
-  terminZamowienia, dniRoboczeDoWysylki, poTerminie, tegoSamegoDnia,
+  terminZamowienia,
+  dniRoboczeDoWysylki,
+  poTerminie,
+  tegoSamegoDnia,
 } from '../../../src/domena/termin-wysylki.js';
 
-export const udzialProcent = (ile, zCzego) => (zCzego
-  ? Math.round((ile / zCzego) * 1000) / 10
-  : null);
+export const udzialProcent = (ile, zCzego) => (zCzego ? Math.round((ile / zCzego) * 1000) / 10 : null);
 
 export function rozkladUslug(zamowienia) {
   const suma = zamowienia.length;
@@ -17,7 +18,7 @@ export function rozkladUslug(zamowienia) {
   }
   const pozycje = [...kubelki.entries()]
     .map(([etykieta, ile]) => ({ etykieta, ile, udzial: udzialProcent(ile, suma) }))
-    .sort((a, b) => (b.ile - a.ile) || a.etykieta.localeCompare(b.etykieta, 'pl'));
+    .sort((a, b) => b.ile - a.ile || a.etykieta.localeCompare(b.etykieta, 'pl'));
   return { pozycje, suma };
 }
 
@@ -38,10 +39,19 @@ export function terminowosc(zamowienia) {
   let tegoDnia = 0;
 
   for (const z of zamowienia) {
-    if (!z.wyslane_at) { wylaczenia.niewyslane += 1; continue; }
-    if (!terminZamowienia(z)) { wylaczenia.bezStartu += 1; continue; }
+    if (!z.wyslane_at) {
+      wylaczenia.niewyslane += 1;
+      continue;
+    }
+    if (!terminZamowienia(z)) {
+      wylaczenia.bezStartu += 1;
+      continue;
+    }
     const dni = dniRoboczeDoWysylki(z);
-    if (dni === null) { wylaczenia.przedWplata += 1; continue; }
+    if (dni === null) {
+      wylaczenia.przedWplata += 1;
+      continue;
+    }
 
     mianownik += 1;
     if (poTerminie(z) === false) wTerminie += 1;

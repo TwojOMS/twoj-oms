@@ -10,13 +10,26 @@ import { createFakturyWidok } from '../../../src/moduly/faktury/services/faktury
 
 function baza() {
   const db = openOmsDb(':memory:');
-  const id = zapiszZamowienie(db, 'pro', {
-    zrodlo_id: 'w-1', numer: '3001', klient: { first_name: 'Jan' }, dostawa: {},
-    metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: null,
-    kwota_brutto: '123.00', status_woo: 'processing',
-    // Kolumny NOT NULL-owe wprost — sterownik SQLite nie zwiaze `undefined`.
-    oplacone_at: null, anulowane: 0,
-  }, {});
+  const id = zapiszZamowienie(
+    db,
+    'pro',
+    {
+      zrodlo_id: 'w-1',
+      numer: '3001',
+      klient: { first_name: 'Jan' },
+      dostawa: {},
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: 1,
+      nip: null,
+      kwota_brutto: '123.00',
+      status_woo: 'processing',
+      // Kolumny NOT NULL-owe wprost — sterownik SQLite nie zwiaze `undefined`.
+      oplacone_at: null,
+      anulowane: 0,
+    },
+    {},
+  );
   const f = rozpocznijFakture(db, id);
   zakonczFakture(db, f.id, { uuid: 'u1', numer: '1/08/2026', ksefStatus: null });
   return { db, id };
@@ -31,14 +44,34 @@ const infaktZ = (faktury, korekty = [], nieoplacone = []) => ({
 // Zamówienie za pobraniem z fakturą, do wyposażenia w paczkę (paczki) — bez ich stanu
 // u kuriera dokument nie mówi nic o zwrocie, więc obie funkcje niżej domykają go same.
 function zamowieniePobrania(db, nr, uuid) {
-  const id = zapiszZamowienie(db, 'pro', {
-    zrodlo_id: nr, numer: String(nr), klient: { email: 'k@k.pl' }, dostawa: {},
-    metoda_wysylki: 'dpd', kwota_pobrania: '83.99', pobranie: 1, chce_fakture: 1, nip: null,
-    kwota_brutto: '83.99', status_woo: 'processing', oplacone_at: null, anulowane: 0,
-    utworzone_at: '2026-08-20T10:00:00Z', pozycje: [],
-  }, {});
-  db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?, ?, ?, ?)')
-    .run(id, uuid, `${nr}/08/2026`, '2026-08-20T08:00:00.000Z');
+  const id = zapiszZamowienie(
+    db,
+    'pro',
+    {
+      zrodlo_id: nr,
+      numer: String(nr),
+      klient: { email: 'k@k.pl' },
+      dostawa: {},
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: '83.99',
+      pobranie: 1,
+      chce_fakture: 1,
+      nip: null,
+      kwota_brutto: '83.99',
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane: 0,
+      utworzone_at: '2026-08-20T10:00:00Z',
+      pozycje: [],
+    },
+    {},
+  );
+  db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?, ?, ?, ?)').run(
+    id,
+    uuid,
+    `${nr}/08/2026`,
+    '2026-08-20T08:00:00.000Z',
+  );
   return id;
 }
 
@@ -59,7 +92,9 @@ function pobranieZDwiemaPaczkami(db, { nr, uuid, paczki }) {
   for (const { opisKuriera, at, kolejnosc } of paczki) {
     const p = rozpocznijPrzesylke(db, id, 'dpd', kolejnosc);
     zakonczPrzesylke(db, p.id, {
-      numerListu: `N${nr}-${kolejnosc}`, etykietaSciezka: '/tmp/e.pdf', surowa: '<x/>',
+      numerListu: `N${nr}-${kolejnosc}`,
+      etykietaSciezka: '/tmp/e.pdf',
+      surowa: '<x/>',
     });
     zapiszStatusDpd(db, p.id, { opis: opisKuriera, at });
   }
@@ -67,16 +102,31 @@ function pobranieZDwiemaPaczkami(db, { nr, uuid, paczki }) {
 }
 
 const nieoplaconyDok = (uuid, number) => ({
-  uuid, number, status: 'sent', left_to_pay: 8399, payment_method: 'delivery',
-  gross_price: 8399, payment_date: '2026-08-27',
+  uuid,
+  number,
+  status: 'sent',
+  left_to_pay: 8399,
+  payment_method: 'delivery',
+  gross_price: 8399,
+  payment_date: '2026-08-27',
 });
 
 describe('widok faktur', () => {
   it('doczepia zamówienie po infakt_uuid', async () => {
     const { db, id } = baza();
-    const w = createFakturyWidok({ db, infakt: infaktZ([
-      { uuid: 'u1', number: '1/08/2026', gross_price: 12300, left_to_pay: 0, rodzaj: 'vat', invoice_date: '2026-08-03' },
-    ]) });
+    const w = createFakturyWidok({
+      db,
+      infakt: infaktZ([
+        {
+          uuid: 'u1',
+          number: '1/08/2026',
+          gross_price: 12300,
+          left_to_pay: 0,
+          rodzaj: 'vat',
+          invoice_date: '2026-08-03',
+        },
+      ]),
+    });
     const wynik = await w.dokumenty({ miesiac: '2026-08', pole: 'invoice_date' });
     expect(wynik[0].zamowienie).toEqual({ id, numer: '3001' });
     expect(wynik[0].kwotaZl).toBe('123.00');
@@ -84,17 +134,41 @@ describe('widok faktur', () => {
 
   it('faktura wystawiona poza panelem nie ma zamówienia i to NIE jest błąd', async () => {
     const { db } = baza();
-    const w = createFakturyWidok({ db, infakt: infaktZ([
-      { uuid: 'obcy', number: '9/08/2026', gross_price: 100, left_to_pay: 0, rodzaj: 'vat', invoice_date: '2026-08-03' },
-    ]) });
+    const w = createFakturyWidok({
+      db,
+      infakt: infaktZ([
+        {
+          uuid: 'obcy',
+          number: '9/08/2026',
+          gross_price: 100,
+          left_to_pay: 0,
+          rodzaj: 'vat',
+          invoice_date: '2026-08-03',
+        },
+      ]),
+    });
     expect((await w.dokumenty({ miesiac: '2026-08', pole: 'invoice_date' }))[0].zamowienie).toBeNull();
   });
 
   it('liczy termin i pozostałą kwotę dla nieopłaconych', async () => {
     const { db, id } = baza();
-    const w = createFakturyWidok({ db, infakt: infaktZ([], [], [
-      { uuid: 'u1', number: '1/08/2026', gross_price: 12300, left_to_pay: 12300, payment_date: '2026-08-01', rodzaj: 'vat' },
-    ]) });
+    const w = createFakturyWidok({
+      db,
+      infakt: infaktZ(
+        [],
+        [],
+        [
+          {
+            uuid: 'u1',
+            number: '1/08/2026',
+            gross_price: 12300,
+            left_to_pay: 12300,
+            payment_date: '2026-08-01',
+            rodzaj: 'vat',
+          },
+        ],
+      ),
+    });
     const wynik = await w.nieoplacone({ dzis: '2026-08-06' });
     expect(wynik[0].stanTerminu).toBe('po_terminie');
     expect(wynik[0].opisTerminu).toBe('po terminie o 5 dni');
@@ -108,11 +182,45 @@ describe('widok faktur', () => {
   // w zapytaniu jako tanie zawężenie, ale ROZSTRZYGA `czekaNaPrzelew` (domain/lista-faktur.js).
   it('odsiewa dokumenty oznaczone w inFakcie jako zapłacone', async () => {
     const { db } = baza();
-    const w = createFakturyWidok({ db, infakt: infaktZ([], [], [
-      { uuid: 'a', number: '64/07/2026', status: 'sent', left_to_pay: 88842, payment_method: 'transfer', payment_date: '2026-08-14', gross_price: 88842, rodzaj: 'vat' },
-      { uuid: 'b', number: '19/12/2025', status: 'paid', left_to_pay: 12300, payment_method: 'transfer', payment_date: '2025-12-24', gross_price: 12300, rodzaj: 'vat' },
-      { uuid: 'c', number: '32/12/2025', status: 'paid', left_to_pay: 5000, payment_method: 'delivery', payment_date: '2025-12-28', gross_price: 5000, rodzaj: 'vat' },
-    ]) });
+    const w = createFakturyWidok({
+      db,
+      infakt: infaktZ(
+        [],
+        [],
+        [
+          {
+            uuid: 'a',
+            number: '64/07/2026',
+            status: 'sent',
+            left_to_pay: 88842,
+            payment_method: 'transfer',
+            payment_date: '2026-08-14',
+            gross_price: 88842,
+            rodzaj: 'vat',
+          },
+          {
+            uuid: 'b',
+            number: '19/12/2025',
+            status: 'paid',
+            left_to_pay: 12300,
+            payment_method: 'transfer',
+            payment_date: '2025-12-24',
+            gross_price: 12300,
+            rodzaj: 'vat',
+          },
+          {
+            uuid: 'c',
+            number: '32/12/2025',
+            status: 'paid',
+            left_to_pay: 5000,
+            payment_method: 'delivery',
+            payment_date: '2025-12-28',
+            gross_price: 5000,
+            rodzaj: 'vat',
+          },
+        ],
+      ),
+    });
     const wynik = await w.nieoplacone({ dzis: '2026-08-06' });
     expect(wynik.map((d) => d.number)).toEqual(['64/07/2026']);
   });
@@ -122,9 +230,25 @@ describe('widok faktur', () => {
   // po statusie — a ten pilnuje wiersza, którego status jeszcze nie zdążył się zmienić.
   it('nie dopisuje faktur za pobraniem, choćby były jeszcze nieopłacone', async () => {
     const { db } = baza();
-    const w = createFakturyWidok({ db, infakt: infaktZ([], [], [
-      { uuid: 'p', number: '30/08/2026', status: 'sent', left_to_pay: 17180, payment_method: 'delivery', payment_date: '2026-08-06', gross_price: 17180, rodzaj: 'vat' },
-    ]) });
+    const w = createFakturyWidok({
+      db,
+      infakt: infaktZ(
+        [],
+        [],
+        [
+          {
+            uuid: 'p',
+            number: '30/08/2026',
+            status: 'sent',
+            left_to_pay: 17180,
+            payment_method: 'delivery',
+            payment_date: '2026-08-06',
+            gross_price: 17180,
+            rodzaj: 'vat',
+          },
+        ],
+      ),
+    });
     expect(await w.nieoplacone({ dzis: '2026-08-06' })).toEqual([]);
   });
 
@@ -142,8 +266,12 @@ describe('widok faktur', () => {
   it('NIE dokłada własnego zdania o opłaceniu — sędzią jest status z inFaktu (przez stanZaplaty)', async () => {
     const { db } = baza();
     const surowy = {
-      uuid: 'u1', number: '1/08/2026', gross_price: 12300, left_to_pay: 12300,
-      payment_date: '2026-08-01', rodzaj: 'vat',
+      uuid: 'u1',
+      number: '1/08/2026',
+      gross_price: 12300,
+      left_to_pay: 12300,
+      payment_date: '2026-08-01',
+      rodzaj: 'vat',
     };
     const w = createFakturyWidok({ db, infakt: infaktZ([], [], [surowy]) });
     const wynik = await w.nieoplacone({ dzis: '2026-08-06' });
@@ -153,8 +281,14 @@ describe('widok faktur', () => {
       // FAKT z `wysylki_ksef` — „panel zlecił wysyłkę tego dokumentu do KSeF" — a nie zdanie
       // o pieniądzach. Bez niego lista mówiła „brak KSeF" przez ~70 sekund po wysyłce, którą
       // sama zleciła, i oddawała pole wyboru do drugiego, nieodwracalnego zgłoszenia.
-      'zamowienie', 'okres', 'stanKsef', 'ksefZleconaAt', 'stanTerminu', 'opisTerminu',
-      'kwotaZl', 'pozostaloZl',
+      'zamowienie',
+      'okres',
+      'stanKsef',
+      'ksefZleconaAt',
+      'stanTerminu',
+      'opisTerminu',
+      'kwotaZl',
+      'pozostaloZl',
       // `stanZaplaty` dopisane ŚWIADOMIE 28.08.2026: to jest wynik wspólnej reguły
       // `stanZaplaty` z domain/lista-faktur.js, nie własne zdanie widoku o
       // opłaceniu — ta sama kategoria co `stanKsef` czy `stanTerminu` wyżej.
@@ -165,10 +299,31 @@ describe('widok faktur', () => {
 
   it('scala faktury z korektami w jedną listę', async () => {
     const { db } = baza();
-    const w = createFakturyWidok({ db, infakt: infaktZ(
-      [{ uuid: 'u1', number: '1/08/2026', invoice_date: '2026-08-01', gross_price: 100, left_to_pay: 0, rodzaj: 'vat' }],
-      [{ uuid: 'k1', number: '1/KOR/08/2026', invoice_date: '2026-08-05', gross_price: -100, left_to_pay: 0, rodzaj: 'korekta' }],
-    ) });
+    const w = createFakturyWidok({
+      db,
+      infakt: infaktZ(
+        [
+          {
+            uuid: 'u1',
+            number: '1/08/2026',
+            invoice_date: '2026-08-01',
+            gross_price: 100,
+            left_to_pay: 0,
+            rodzaj: 'vat',
+          },
+        ],
+        [
+          {
+            uuid: 'k1',
+            number: '1/KOR/08/2026',
+            invoice_date: '2026-08-05',
+            gross_price: -100,
+            left_to_pay: 0,
+            rodzaj: 'korekta',
+          },
+        ],
+      ),
+    });
     const wynik = await w.dokumenty({ miesiac: '2026-08', pole: 'invoice_date' });
     expect(wynik.map((d) => d.number)).toEqual(['1/KOR/08/2026', '1/08/2026']);
   });
@@ -208,10 +363,20 @@ describe('widok faktur', () => {
 
   it('null wśród faktur z inFaktu też nie wywraca ekranu', async () => {
     const { db } = baza();
-    const w = createFakturyWidok({ db, infakt: infaktZ([
-      null,
-      { uuid: 'u1', number: '1/08/2026', invoice_date: '2026-08-01', gross_price: 100, left_to_pay: 0, rodzaj: 'vat' },
-    ]) });
+    const w = createFakturyWidok({
+      db,
+      infakt: infaktZ([
+        null,
+        {
+          uuid: 'u1',
+          number: '1/08/2026',
+          invoice_date: '2026-08-01',
+          gross_price: 100,
+          left_to_pay: 0,
+          rodzaj: 'vat',
+        },
+      ]),
+    });
     const wynik = await w.dokumenty({ miesiac: '2026-08', pole: 'invoice_date' });
     expect(wynik).toHaveLength(2);
   });
@@ -224,11 +389,14 @@ describe('widok faktur', () => {
   // (ta sama zasada, co przy `wszystkieStrony` w infakt/client.js).
   it('nie-tablica z listy nieopłaconych daje odmowę, a nie pustą tabelę długów', async () => {
     const { db } = baza();
-    const w = createFakturyWidok({ db, infakt: {
-      listaFaktur: async () => [],
-      listaKorekt: async () => [],
-      listaNieoplaconych: async () => ({ error: 'coś poszło nie tak' }),
-    } });
+    const w = createFakturyWidok({
+      db,
+      infakt: {
+        listaFaktur: async () => [],
+        listaKorekt: async () => [],
+        listaNieoplaconych: async () => ({ error: 'coś poszło nie tak' }),
+      },
+    });
     await expect(w.nieoplacone({ dzis: '2026-08-06' })).rejects.toMatchObject({ dlaOperatora: true });
     await expect(w.nieoplacone({ dzis: '2026-08-06' })).rejects.toThrow(/nie rozumie|format/i);
   });
@@ -237,10 +405,24 @@ describe('widok faktur', () => {
   // zwalić całej zakładki — to inny przypadek niż zły KONTENER wyżej.
   it('null wśród nieopłaconych renderuje się jako pusty wiersz, nie wywraca ekranu', async () => {
     const { db } = baza();
-    const w = createFakturyWidok({ db, infakt: infaktZ([], [], [
-      null,
-      { uuid: 'u1', number: '1/08/2026', gross_price: 12300, left_to_pay: 12300, payment_date: '2026-08-01', rodzaj: 'vat' },
-    ]) });
+    const w = createFakturyWidok({
+      db,
+      infakt: infaktZ(
+        [],
+        [],
+        [
+          null,
+          {
+            uuid: 'u1',
+            number: '1/08/2026',
+            gross_price: 12300,
+            left_to_pay: 12300,
+            payment_date: '2026-08-01',
+            rodzaj: 'vat',
+          },
+        ],
+      ),
+    });
     const wynik = await w.nieoplacone({ dzis: '2026-08-06' });
     expect(wynik).toHaveLength(2);
     expect(wynik[0].zamowienie).toBeNull();
@@ -253,7 +435,7 @@ describe('widok faktur', () => {
   it('nieopłacone pobranie ze ZWRÓCONĄ paczką zostaje na pasie długów', async () => {
     const db = openOmsDb(':memory:');
     pobranieZPaczka(db, { nr: 33, uuid: 'u-zwrot', opisKuriera: 'Zwrot do nadawcy' });
-    const infakt = { listaNieoplaconych: async () => ([nieoplaconyDok('u-zwrot', '33/08/2026')]) };
+    const infakt = { listaNieoplaconych: async () => [nieoplaconyDok('u-zwrot', '33/08/2026')] };
     const lista = await createFakturyWidok({ db, infakt }).nieoplacone({ dzis: '2026-08-28' });
     expect(lista.map((d) => d.number)).toContain('33/08/2026');
   });
@@ -261,7 +443,7 @@ describe('widok faktur', () => {
   it('nieopłacone pobranie w drodze jest dalej odsiane — kurier dopiero zainkasuje', async () => {
     const db = openOmsDb(':memory:');
     pobranieZPaczka(db, { nr: 28, uuid: 'u-droga', opisKuriera: 'Przyjęcie przesyłki w sortowni' });
-    const infakt = { listaNieoplaconych: async () => ([nieoplaconyDok('u-droga', '28/08/2026')]) };
+    const infakt = { listaNieoplaconych: async () => [nieoplaconyDok('u-droga', '28/08/2026')] };
     const lista = await createFakturyWidok({ db, infakt }).nieoplacone({ dzis: '2026-08-28' });
     expect(lista).toEqual([]);
   });
@@ -281,7 +463,7 @@ describe('widok faktur', () => {
         { opisKuriera: 'Przesyłka doręczona', at: '2026-08-26T10:00:00.000', kolejnosc: 2 },
       ],
     });
-    const infakt = { listaNieoplaconych: async () => ([nieoplaconyDok('u-dwie-paczki', '40/08/2026')]) };
+    const infakt = { listaNieoplaconych: async () => [nieoplaconyDok('u-dwie-paczki', '40/08/2026')] };
     const lista = await createFakturyWidok({ db, infakt }).nieoplacone({ dzis: '2026-08-28' });
     expect(lista).toEqual([]);
   });
@@ -296,21 +478,43 @@ describe('widok faktur', () => {
   // długów mimo że nikt nie zapłacił — dokładnie ten dług, który to zapytanie ma wykrywać.
   it('pobranie włączone RĘCZNIE z karty, paczka ZWRÓCONA — dokument zostaje na pasie długów', async () => {
     const db = openOmsDb(':memory:');
-    const id = zapiszZamowienie(db, 'pro', {
-      zrodlo_id: '50', numer: '50', klient: { email: 'k@k.pl' }, dostawa: {},
-      metoda_wysylki: 'dpd', kwota_pobrania: null, pobranie: 0, chce_fakture: 1, nip: null,
-      kwota_brutto: '83.99', status_woo: 'processing', oplacone_at: null, anulowane: 0,
-      utworzone_at: '2026-08-20T10:00:00Z', pozycje: [],
-    }, {});
-    db.prepare('UPDATE zamowienia SET wysylka_reczna_json = ? WHERE id = ?')
-      .run('{"metoda":"dpd","pobranie":1,"kwota_pobrania":"83.99"}', id);
-    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?, ?, ?, ?)')
-      .run(id, 'u-reczne', '50/08/2026', '2026-08-20T08:00:00.000Z');
+    const id = zapiszZamowienie(
+      db,
+      'pro',
+      {
+        zrodlo_id: '50',
+        numer: '50',
+        klient: { email: 'k@k.pl' },
+        dostawa: {},
+        metoda_wysylki: 'dpd',
+        kwota_pobrania: null,
+        pobranie: 0,
+        chce_fakture: 1,
+        nip: null,
+        kwota_brutto: '83.99',
+        status_woo: 'processing',
+        oplacone_at: null,
+        anulowane: 0,
+        utworzone_at: '2026-08-20T10:00:00Z',
+        pozycje: [],
+      },
+      {},
+    );
+    db.prepare('UPDATE zamowienia SET wysylka_reczna_json = ? WHERE id = ?').run(
+      '{"metoda":"dpd","pobranie":1,"kwota_pobrania":"83.99"}',
+      id,
+    );
+    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?, ?, ?, ?)').run(
+      id,
+      'u-reczne',
+      '50/08/2026',
+      '2026-08-20T08:00:00.000Z',
+    );
     const p = rozpocznijPrzesylke(db, id, 'dpd');
     zakonczPrzesylke(db, p.id, { numerListu: 'N50', etykietaSciezka: '/tmp/e.pdf', surowa: '<x/>' });
     zapiszStatusDpd(db, p.id, { opis: 'Zwrot do nadawcy', at: '2026-08-25T14:00:00.000' });
 
-    const infakt = { listaNieoplaconych: async () => ([nieoplaconyDok('u-reczne', '50/08/2026')]) };
+    const infakt = { listaNieoplaconych: async () => [nieoplaconyDok('u-reczne', '50/08/2026')] };
     const lista = await createFakturyWidok({ db, infakt }).nieoplacone({ dzis: '2026-08-28' });
     expect(lista.map((d) => d.number)).toContain('50/08/2026');
   });
@@ -325,12 +529,11 @@ describe('widok faktur', () => {
   it('pobranie WYŁĄCZONE ręcznie z karty, paczka zwrócona — to NIE jest zwrócone pobranie', async () => {
     const db = openOmsDb(':memory:');
     const id = pobranieZPaczka(db, { nr: 51, uuid: 'u-przedplata', opisKuriera: 'Zwrot do nadawcy' });
-    db.prepare('UPDATE zamowienia SET wysylka_reczna_json = ? WHERE id = ?')
-      .run('{"metoda":"dpd","pobranie":0}', id);
+    db.prepare('UPDATE zamowienia SET wysylka_reczna_json = ? WHERE id = ?').run('{"metoda":"dpd","pobranie":0}', id);
 
     // Dokument dalej niesie `payment_method: 'delivery'`, więc gdyby zbiór „bez gotówki" liczył
     // sam prefiltr SQL, wiersz zostałby na pasie długów jako zwrócone pobranie.
-    const infakt = { listaNieoplaconych: async () => ([nieoplaconyDok('u-przedplata', '51/08/2026')]) };
+    const infakt = { listaNieoplaconych: async () => [nieoplaconyDok('u-przedplata', '51/08/2026')] };
     const lista = await createFakturyWidok({ db, infakt }).nieoplacone({ dzis: '2026-08-28' });
     expect(lista).toEqual([]);
   });
@@ -344,7 +547,7 @@ describe('widok faktur', () => {
   it('nieudane doręczenie („adresat nieobecny") WRACA na pas długów', async () => {
     const db = openOmsDb(':memory:');
     pobranieZPaczka(db, { nr: 52, uuid: 'u-awizo', opisKuriera: 'Nie doręczono — adresat nieobecny' });
-    const infakt = { listaNieoplaconych: async () => ([nieoplaconyDok('u-awizo', '52/08/2026')]) };
+    const infakt = { listaNieoplaconych: async () => [nieoplaconyDok('u-awizo', '52/08/2026')] };
     const lista = await createFakturyWidok({ db, infakt }).nieoplacone({ dzis: '2026-08-28' });
     expect(lista.map((d) => d.number)).toContain('52/08/2026');
   });
@@ -354,7 +557,7 @@ describe('widok faktur', () => {
   it('prawdziwe doręczenie dalej NIE wraca na pas długów', async () => {
     const db = openOmsDb(':memory:');
     pobranieZPaczka(db, { nr: 53, uuid: 'u-doreczona', opisKuriera: 'Przesyłka doręczona' });
-    const infakt = { listaNieoplaconych: async () => ([nieoplaconyDok('u-doreczona', '53/08/2026')]) };
+    const infakt = { listaNieoplaconych: async () => [nieoplaconyDok('u-doreczona', '53/08/2026')] };
     const lista = await createFakturyWidok({ db, infakt }).nieoplacone({ dzis: '2026-08-28' });
     expect(lista).toEqual([]);
   });
@@ -369,11 +572,18 @@ describe('stan zapłaty na wzbogaconym dokumencie', () => {
   it('dokument opłacony w inFakcie dostaje stanZaplaty „zaplacona" mimo niezerowego left_to_pay', async () => {
     const { db } = baza();
     const infakt = {
-      listaFaktur: async () => ([{
-        uuid: 'u-51', number: '51/08/2026', rodzaj: 'vat', status: 'paid',
-        left_to_pay: 99000, gross_price: 99000, invoice_date: '2026-08-26',
-      }]),
-      listaKorekt: async () => ([]),
+      listaFaktur: async () => [
+        {
+          uuid: 'u-51',
+          number: '51/08/2026',
+          rodzaj: 'vat',
+          status: 'paid',
+          left_to_pay: 99000,
+          gross_price: 99000,
+          invoice_date: '2026-08-26',
+        },
+      ],
+      listaKorekt: async () => [],
     };
     const widok = createFakturyWidok({ db, infakt });
     const [d] = await widok.dokumenty({ miesiac: '2026-08', dzis: '2026-08-28' });
@@ -385,11 +595,18 @@ describe('stan zapłaty na wzbogaconym dokumencie', () => {
   it('dokument realnie niezapłacony dostaje „do_zaplaty"', async () => {
     const { db } = baza();
     const infakt = {
-      listaFaktur: async () => ([{
-        uuid: 'u-44', number: '44/08/2026', rodzaj: 'vat', status: 'sent',
-        left_to_pay: 5489, gross_price: 5489, invoice_date: '2026-08-20',
-      }]),
-      listaKorekt: async () => ([]),
+      listaFaktur: async () => [
+        {
+          uuid: 'u-44',
+          number: '44/08/2026',
+          rodzaj: 'vat',
+          status: 'sent',
+          left_to_pay: 5489,
+          gross_price: 5489,
+          invoice_date: '2026-08-20',
+        },
+      ],
+      listaKorekt: async () => [],
     };
     const widok = createFakturyWidok({ db, infakt });
     const [d] = await widok.dokumenty({ miesiac: '2026-08', dzis: '2026-08-28' });
@@ -409,9 +626,19 @@ describe('widok faktur — wysyłka do KSeF zlecona z panelu', () => {
   it('bez numeru KSeF, ale z rezerwacją — stanKsef „wyslana_czeka" i moment zlecenia', async () => {
     const { db } = baza();
     zajmijWysylkeKsef(db, 'u1', { numer: '1/08/2026', kiedy: '2026-08-06T14:00:00.000Z' });
-    const w = createFakturyWidok({ db, infakt: infaktZ([
-      { uuid: 'u1', number: '1/08/2026', gross_price: 12300, left_to_pay: 0, rodzaj: 'vat', invoice_date: '2026-08-06' },
-    ]) });
+    const w = createFakturyWidok({
+      db,
+      infakt: infaktZ([
+        {
+          uuid: 'u1',
+          number: '1/08/2026',
+          gross_price: 12300,
+          left_to_pay: 0,
+          rodzaj: 'vat',
+          invoice_date: '2026-08-06',
+        },
+      ]),
+    });
     const [d] = await w.dokumenty({ miesiac: '2026-08', pole: 'invoice_date' });
     expect(d.stanKsef).toBe('wyslana_czeka');
     expect(d.wKsef).toBe(false);
@@ -421,9 +648,19 @@ describe('widok faktur — wysyłka do KSeF zlecona z panelu', () => {
 
   it('bez rezerwacji dalej jest „brak" — i to jest jedyny stan z polem wyboru', async () => {
     const { db } = baza();
-    const w = createFakturyWidok({ db, infakt: infaktZ([
-      { uuid: 'u1', number: '1/08/2026', gross_price: 12300, left_to_pay: 0, rodzaj: 'vat', invoice_date: '2026-08-06' },
-    ]) });
+    const w = createFakturyWidok({
+      db,
+      infakt: infaktZ([
+        {
+          uuid: 'u1',
+          number: '1/08/2026',
+          gross_price: 12300,
+          left_to_pay: 0,
+          rodzaj: 'vat',
+          invoice_date: '2026-08-06',
+        },
+      ]),
+    });
     const [d] = await w.dokumenty({ miesiac: '2026-08', pole: 'invoice_date' });
     expect(d.stanKsef).toBe('brak');
     expect(d.wKsef).toBe(false);
@@ -435,9 +672,20 @@ describe('widok faktur — wysyłka do KSeF zlecona z panelu', () => {
   it('gdy numer KSeF już przyszedł, rezerwacja niczego nie zmienia', async () => {
     const { db } = baza();
     zajmijWysylkeKsef(db, 'u1', { numer: '1/08/2026' });
-    const w = createFakturyWidok({ db, infakt: infaktZ([
-      { uuid: 'u1', number: '1/08/2026', ksef_number: 'KS-1', gross_price: 12300, left_to_pay: 0, rodzaj: 'vat', invoice_date: '2026-08-06' },
-    ]) });
+    const w = createFakturyWidok({
+      db,
+      infakt: infaktZ([
+        {
+          uuid: 'u1',
+          number: '1/08/2026',
+          ksef_number: 'KS-1',
+          gross_price: 12300,
+          left_to_pay: 0,
+          rodzaj: 'vat',
+          invoice_date: '2026-08-06',
+        },
+      ]),
+    });
     expect((await w.dokumenty({ miesiac: '2026-08', pole: 'invoice_date' }))[0].stanKsef).toBe('jest');
   });
 
@@ -446,9 +694,19 @@ describe('widok faktur — wysyłka do KSeF zlecona z panelu', () => {
   it('rezerwacja dokumentu wystawionego poza panelem też jest widoczna', async () => {
     const { db } = baza();
     zajmijWysylkeKsef(db, 'obcy', { numer: '9/08/2026', kiedy: '2026-08-06T14:00:00.000Z' });
-    const w = createFakturyWidok({ db, infakt: infaktZ([
-      { uuid: 'obcy', number: '9/08/2026', gross_price: 100, left_to_pay: 0, rodzaj: 'vat', invoice_date: '2026-08-06' },
-    ]) });
+    const w = createFakturyWidok({
+      db,
+      infakt: infaktZ([
+        {
+          uuid: 'obcy',
+          number: '9/08/2026',
+          gross_price: 100,
+          left_to_pay: 0,
+          rodzaj: 'vat',
+          invoice_date: '2026-08-06',
+        },
+      ]),
+    });
     const [d] = await w.dokumenty({ miesiac: '2026-08', pole: 'invoice_date' });
     expect(d.stanKsef).toBe('wyslana_czeka');
     expect(d.wKsef).toBe(false);
@@ -461,9 +719,23 @@ describe('widok faktur — wysyłka do KSeF zlecona z panelu', () => {
   it('pas nieopłaconych zna ten sam stan', async () => {
     const { db } = baza();
     zajmijWysylkeKsef(db, 'u1', { numer: '1/08/2026', kiedy: '2026-08-06T14:00:00.000Z' });
-    const w = createFakturyWidok({ db, infakt: infaktZ([], [], [
-      { uuid: 'u1', number: '1/08/2026', gross_price: 12300, left_to_pay: 12300, payment_date: '2026-08-01', rodzaj: 'vat' },
-    ]) });
+    const w = createFakturyWidok({
+      db,
+      infakt: infaktZ(
+        [],
+        [],
+        [
+          {
+            uuid: 'u1',
+            number: '1/08/2026',
+            gross_price: 12300,
+            left_to_pay: 12300,
+            payment_date: '2026-08-01',
+            rodzaj: 'vat',
+          },
+        ],
+      ),
+    });
     expect((await w.nieoplacone({ dzis: '2026-08-06' }))[0].stanKsef).toBe('wyslana_czeka');
   });
 });
@@ -477,10 +749,27 @@ describe('widok faktur — faktury okresów rozliczeniowych', () => {
     const okres = zapewnijOkres(db, { klientKlucz: 'hurt-abc', rok: 2026, miesiac: 8 });
     zakonczFaktureOkresu(db, okres.id, { uuid: 'okres-1', numer: '5/08/2026', ksefStatus: null });
 
-    const w = createFakturyWidok({ db, infakt: infaktZ([
-      { uuid: 'okres-1', number: '5/08/2026', invoice_date: '2026-08-31', gross_price: 88842, left_to_pay: 0, rodzaj: 'vat' },
-      { uuid: 'u1', number: '1/08/2026', invoice_date: '2026-08-03', gross_price: 12300, left_to_pay: 0, rodzaj: 'vat' },
-    ]) });
+    const w = createFakturyWidok({
+      db,
+      infakt: infaktZ([
+        {
+          uuid: 'okres-1',
+          number: '5/08/2026',
+          invoice_date: '2026-08-31',
+          gross_price: 88842,
+          left_to_pay: 0,
+          rodzaj: 'vat',
+        },
+        {
+          uuid: 'u1',
+          number: '1/08/2026',
+          invoice_date: '2026-08-03',
+          gross_price: 12300,
+          left_to_pay: 0,
+          rodzaj: 'vat',
+        },
+      ]),
+    });
     const [zbiorcza, zwykla] = await w.dokumenty({ miesiac: '2026-08', pole: 'invoice_date' });
 
     expect(zbiorcza.okres).toEqual({ id: okres.id, klient: 'hurt-abc', rok: 2026, miesiac: 8 });
@@ -495,9 +784,19 @@ describe('widok faktur — faktury okresów rozliczeniowych', () => {
     const { db } = baza();
     const okres = zapewnijOkres(db, { klientKlucz: 'hurt-abc', rok: 2026, miesiac: 8 });
     zakonczFaktureOkresu(db, okres.id, { uuid: 'okres-1', numer: '5/08/2026', ksefStatus: null });
-    const w = createFakturyWidok({ db, infakt: infaktZ([
-      { uuid: 'obcy', number: '9/08/2026', invoice_date: '2026-08-03', gross_price: 100, left_to_pay: 0, rodzaj: 'vat' },
-    ]) });
+    const w = createFakturyWidok({
+      db,
+      infakt: infaktZ([
+        {
+          uuid: 'obcy',
+          number: '9/08/2026',
+          invoice_date: '2026-08-03',
+          gross_price: 100,
+          left_to_pay: 0,
+          rodzaj: 'vat',
+        },
+      ]),
+    });
     const [d] = await w.dokumenty({ miesiac: '2026-08', pole: 'invoice_date' });
     expect(d.okres).toBeNull();
     expect(d.zamowienie).toBeNull();
@@ -517,9 +816,19 @@ describe('widok faktur — faktury okresów rozliczeniowych', () => {
     // Ten sam uuid co faktura zwykła z `baza()` ('u1') — kolizja, która w produkcji nie
     // powstaje, bo oba wiersze zawsze wskazują różne dokumenty inFaktu.
     zakonczFaktureOkresu(db, okres.id, { uuid: 'u1', numer: '5/08/2026', ksefStatus: null });
-    const w = createFakturyWidok({ db, infakt: infaktZ([
-      { uuid: 'u1', number: '1/08/2026', invoice_date: '2026-08-03', gross_price: 12300, left_to_pay: 0, rodzaj: 'vat' },
-    ]) });
+    const w = createFakturyWidok({
+      db,
+      infakt: infaktZ([
+        {
+          uuid: 'u1',
+          number: '1/08/2026',
+          invoice_date: '2026-08-03',
+          gross_price: 12300,
+          left_to_pay: 0,
+          rodzaj: 'vat',
+        },
+      ]),
+    });
     const [d] = await w.dokumenty({ miesiac: '2026-08', pole: 'invoice_date' });
     expect(d.zamowienie).toEqual({ id, numer: '3001' });
     expect(d.okres).toEqual({ id: okres.id, klient: 'hurt-abc', rok: 2026, miesiac: 8 });
@@ -556,7 +865,10 @@ describe('widok faktur — proformy miesiąca', () => {
   it('proforma z września po UTC-owym sierpniu jest we WRZEŚNIU, nie w sierpniu', () => {
     const { db, id } = baza();
     zapiszProforme(db, id, {
-      kwotaBrutto: '123.00', rok: 2026, miesiac: 9, utworzonaAt: '2026-08-31T23:30:00.000Z',
+      kwotaBrutto: '123.00',
+      rok: 2026,
+      miesiac: 9,
+      utworzonaAt: '2026-08-31T23:30:00.000Z',
     });
     const w = createFakturyWidok({ db, infakt: infaktZ([]) });
     expect(w.proformy({ miesiac: '2026-09' }).map((p) => p.numer)).toEqual(['PF/1/09/2026']);
@@ -568,7 +880,10 @@ describe('widok faktur — proformy miesiąca', () => {
   it('proforma wystawiona za poprzedni miesiąc idzie za swoim numerem, nie za stemplem', () => {
     const { db, id } = baza();
     zapiszProforme(db, id, {
-      kwotaBrutto: '123.00', rok: 2026, miesiac: 7, utworzonaAt: '2026-08-04T10:00:00.000Z',
+      kwotaBrutto: '123.00',
+      rok: 2026,
+      miesiac: 7,
+      utworzonaAt: '2026-08-04T10:00:00.000Z',
     });
     const w = createFakturyWidok({ db, infakt: infaktZ([]) });
     expect(w.proformy({ miesiac: '2026-07' }).map((p) => p.numer)).toEqual(['PF/1/07/2026']);
@@ -580,7 +895,12 @@ describe('widok faktur — proformy miesiąca', () => {
   // że operator nie widzi dokumentu, o który dzwoni klient.
   it('unieważniona proforma zostaje na liście, ze swoim znacznikiem', () => {
     const { db, id } = baza();
-    const p = zapiszProforme(db, id, { kwotaBrutto: '123.00', rok: 2026, miesiac: 8, utworzonaAt: '2026-08-10T09:00:00.000Z' });
+    const p = zapiszProforme(db, id, {
+      kwotaBrutto: '123.00',
+      rok: 2026,
+      miesiac: 8,
+      utworzonaAt: '2026-08-10T09:00:00.000Z',
+    });
     uniewaznijPoprzednie(db, id, null, { teraz: '2026-08-11T09:00:00.000Z' });
     const w = createFakturyWidok({ db, infakt: infaktZ([]) });
     const wynik = w.proformy({ miesiac: '2026-08' });

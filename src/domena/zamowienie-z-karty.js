@@ -30,8 +30,11 @@ export function parsujZamowienieZKarty(body = {}, { stawkaDomyslna, zw = false, 
 
   const wejscie = Array.isArray(body?.pozycje) ? body.pozycje : [];
   const pozycje = wejscie.map((p, i) => {
-    try { return parsujNowaPozycje(p, { stawkaDomyslna, wdt: czyWdt(body?.nip, { zwolniona }), zw }); }
-    catch (e) { throw bladOperatora(`Pozycja ${i + 1}: ${e.message}`); }
+    try {
+      return parsujNowaPozycje(p, { stawkaDomyslna, wdt: czyWdt(body?.nip, { zwolniona }), zw });
+    } catch (e) {
+      throw bladOperatora(`Pozycja ${i + 1}: ${e.message}`);
+    }
   });
 
   return {

@@ -35,7 +35,10 @@ export { PACZKA_DOMYSLNA } from './szablony-paczek.js';
 export const KOSZT_DOSTAWY_DOMYSLNY_GR = 1900;
 
 const ETYKIETY_PACZKI = {
-  waga: 'waga (kg)', dlugosc: 'długość (cm)', szerokosc: 'szerokość (cm)', wysokosc: 'wysokość (cm)',
+  waga: 'waga (kg)',
+  dlugosc: 'długość (cm)',
+  szerokosc: 'szerokość (cm)',
+  wysokosc: 'wysokość (cm)',
 };
 
 /** Grosze z zapisu — liczba całkowita nieujemna albo `null`, gdy wartości nie ma lub jest zepsuta. */
@@ -115,7 +118,9 @@ export function sprawdzKoszty(formularz = {}) {
     const surowa = formularz[metoda];
     // Przecinek dziesiętny przyjmujemy z tego samego powodu, co przy wadze paczki i przy
     // kwocie pobrania: to polska klawiatura, nie błąd wpisu.
-    const tekst = String(surowa ?? '').trim().replace(',', '.');
+    const tekst = String(surowa ?? '')
+      .trim()
+      .replace(',', '.');
     if (!tekst) {
       bledy.push(`${etykieta} — wpisz kwotę (0,00 znaczy „bez opłaty”).`);
       continue;

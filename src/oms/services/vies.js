@@ -23,8 +23,13 @@ const LIMIT_MS = 10 * 1000;
 
 // Kody userError mówiące o USŁUDZE, nie o numerze — pełna lista z dokumentacji VIES.
 const USTERKI_USLUGI = new Set([
-  'MS_UNAVAILABLE', 'TIMEOUT', 'SERVICE_UNAVAILABLE', 'GLOBAL_MAX_CONCURRENT_REQ',
-  'MS_MAX_CONCURRENT_REQ', 'IP_BLOCKED', 'VAT_BLOCKED',
+  'MS_UNAVAILABLE',
+  'TIMEOUT',
+  'SERVICE_UNAVAILABLE',
+  'GLOBAL_MAX_CONCURRENT_REQ',
+  'MS_MAX_CONCURRENT_REQ',
+  'IP_BLOCKED',
+  'VAT_BLOCKED',
 ]);
 
 export function createVies({ fetchImpl, http = transport({ fetchImpl }), nipSprzedawcy, baseUrl = BAZA }) {
@@ -41,7 +46,8 @@ export function createVies({ fetchImpl, http = transport({ fetchImpl }), nipSprz
       const res = await http(`${baseUrl}/${czesci.kraj}/vat/${czesci.numer}?${p.toString()}`, {
         signal: AbortSignal.timeout(LIMIT_MS),
       });
-      if (!res.ok) return { wynik: 'niedostepny', nazwa: null, adres: null, dataZapytania: null, numerKonsultacji: null };
+      if (!res.ok)
+        return { wynik: 'niedostepny', nazwa: null, adres: null, dataZapytania: null, numerKonsultacji: null };
       dane = await res.json();
     } catch {
       return { wynik: 'niedostepny', nazwa: null, adres: null, dataZapytania: null, numerKonsultacji: null };

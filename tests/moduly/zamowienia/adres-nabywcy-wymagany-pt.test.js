@@ -12,13 +12,25 @@ import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 // i przed programem, odmowa per zamówienie w hurcie. Dane zmyślone. Część TwojeFaktury (licznik
 // serii) jest w tests/integracje/adres-nabywcy-twojefaktury-pt5.test.js — na liście wycięcia.
 
-const headers = { authorization: 'Basic ' + Buffer.from('operator:fixture').toString('base64'), origin: 'http://localhost' };
+const headers = {
+  authorization: 'Basic ' + Buffer.from('operator:fixture').toString('base64'),
+  origin: 'http://localhost',
+};
 const ADRES = { address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa' };
 const BEZ = { address_1: '', postcode: '', city: '' };
 const ZDANIE = 'Brak adresu nabywcy (ulica, kod pocztowy, miasto)';
-const POZYCJA = { nazwa: 'Lampa testowa', sku: 'LT-1', ilosc: 1, cena_brutto: '129.00', brutto_linii: '129.00', vat: null };
+const POZYCJA = {
+  nazwa: 'Lampa testowa',
+  sku: 'LT-1',
+  ilosc: 1,
+  cena_brutto: '129.00',
+  brutto_linii: '129.00',
+  vat: null,
+};
 
-beforeEach(() => { vi.spyOn(globalThis, 'fetch').mockRejectedValue(Error('Sieć zabroniona')); });
+beforeEach(() => {
+  vi.spyOn(globalThis, 'fetch').mockRejectedValue(Error('Sieć zabroniona'));
+});
 const sprzatanie = [];
 afterEach(async () => {
   vi.restoreAllMocks();
@@ -26,12 +38,28 @@ afterEach(async () => {
 });
 
 function zamowienie(db, { zrodlo, klient = BEZ, oplacone = false }) {
-  const id = zapiszZamowienie(db, 'reczne', { zrodlo_id: zrodlo, numer: `PT5-${zrodlo}`,
-    klient: { company: 'Pracownia Półcień', first_name: 'Ala', last_name: 'Przykładowa', ...klient },
-    dostawa: { address_1: 'Dostawcza 2', postcode: '00-951', city: 'Warszawa' },
-    metoda_wysylki: 'dpd', kwota_pobrania: null, nip: null, status_woo: 'processing', oplacone_at: null,
-    kwota_brutto: '129.00', koszt_dostawy_brutto: '0.00', chce_fakture: 1, anulowane: 0,
-    utworzone_at: `2026-10-28T10:00:0${zrodlo % 10}`, pozycje: [POZYCJA] }, {});
+  const id = zapiszZamowienie(
+    db,
+    'reczne',
+    {
+      zrodlo_id: zrodlo,
+      numer: `PT5-${zrodlo}`,
+      klient: { company: 'Pracownia Półcień', first_name: 'Ala', last_name: 'Przykładowa', ...klient },
+      dostawa: { address_1: 'Dostawcza 2', postcode: '00-951', city: 'Warszawa' },
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      nip: null,
+      status_woo: 'processing',
+      oplacone_at: null,
+      kwota_brutto: '129.00',
+      koszt_dostawy_brutto: '0.00',
+      chce_fakture: 1,
+      anulowane: 0,
+      utworzone_at: `2026-10-28T10:00:0${zrodlo % 10}`,
+      pozycje: [POZYCJA],
+    },
+    {},
+  );
   if (oplacone) {
     dodajWplateReczna(db, id, { kwota: '129.00', data: '2026-10-28' });
   }
@@ -40,11 +68,21 @@ function zamowienie(db, { zrodlo, klient = BEZ, oplacone = false }) {
 
 async function panelInfakt() {
   const db = openOmsDb(':memory:');
-  const infakt = { znajdzKlientaPoNip: vi.fn().mockResolvedValue(null), zalozKlienta: vi.fn().mockResolvedValue(555),
-    wystaw: vi.fn().mockResolvedValue({ uuid: 'fixture-pt5', numer: 'FV/PT5', ksefStatus: null }) };
-  const app = buildOmsServer({ db, config: { auth: { user: 'operator', pass: 'fixture' } },
-    poller: { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) }, faktura: createFaktura({ db, infakt }) });
-  sprzatanie.push(async () => { await app.close(); db.close(); });
+  const infakt = {
+    znajdzKlientaPoNip: vi.fn().mockResolvedValue(null),
+    zalozKlienta: vi.fn().mockResolvedValue(555),
+    wystaw: vi.fn().mockResolvedValue({ uuid: 'fixture-pt5', numer: 'FV/PT5', ksefStatus: null }),
+  };
+  const app = buildOmsServer({
+    db,
+    config: { auth: { user: 'operator', pass: 'fixture' } },
+    poller: { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) },
+    faktura: createFaktura({ db, infakt }),
+  });
+  sprzatanie.push(async () => {
+    await app.close();
+    db.close();
+  });
   await app.ready();
   return { db, app, infakt };
 }
@@ -78,9 +116,13 @@ it('POST bez adresu: odmowa z tym zdaniem, bez rezerwacji i bez wywołania progr
 it('po uzupełnieniu adresu w „Dane do faktury” przycisk aktywny i POST wystawia jedną fakturę', async () => {
   const p = await panelInfakt();
   const id = zamowienie(p.db, { zrodlo: 3 });
-  const zapis = await p.app.inject({ method: 'POST', url: `/zamowienia/${id}/dane/faktura`,
+  const zapis = await p.app.inject({
+    method: 'POST',
+    url: `/zamowienia/${id}/dane/faktura`,
     headers: { ...headers, 'content-type': 'application/x-www-form-urlencoded' },
-    payload: 'firma=Pracownia+P%C3%B3%C5%82cie%C5%84&nip=&ulica=Lampowa+1&kod=00-950&miasto=Warszawa&email=&chce_fakture=1' });
+    payload:
+      'firma=Pracownia+P%C3%B3%C5%82cie%C5%84&nip=&ulica=Lampowa+1&kod=00-950&miasto=Warszawa&email=&chce_fakture=1',
+  });
   expect(zapis.statusCode, zapis.body.slice(0, 300)).toBe(302);
   const r = await p.app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers });
   expect(przycisk(r.body)).not.toContain('disabled');
@@ -99,7 +141,9 @@ it('faktury hurtem: jedno z adresem wystawione, drugie bez adresu w odmowach z t
   expect(podzial.doWystawienia.map((w) => w.id)).toEqual([z]);
   expect(podzial.pominiete).toEqual([expect.objectContaining({ id: bez, powod: expect.stringContaining(ZDANIE) })]);
   // Usługa hurtu dostaje obie (np. stan sprzed sekund) — odmowa i tak przychodzi z tej samej reguły.
-  const wynik = await createFakturaHurtem({ faktura: createFaktura({ db: p.db, infakt: p.infakt }) }).wystawWiele(wiersze);
+  const wynik = await createFakturaHurtem({ faktura: createFaktura({ db: p.db, infakt: p.infakt }) }).wystawWiele(
+    wiersze,
+  );
   expect(wynik.wystawione.map((w) => w.id)).toEqual([z]);
   expect(wynik.bledy).toEqual([expect.objectContaining({ id: bez, powod: expect.stringContaining(ZDANIE) })]);
   expect(liczFaktury(p.db, bez)).toBe(0);

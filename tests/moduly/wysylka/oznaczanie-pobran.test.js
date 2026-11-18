@@ -6,18 +6,33 @@ import { oznaczDoreczonePobrania } from '../../../src/moduly/wysylka/services/oz
 import { oznaczenieZaplaty } from '../../../src/moduly/wysylka/db/oznaczenia-zaplaty.js';
 
 const zmapowane = (nr, nadpisz = {}) => ({
-  zrodlo_id: nr, numer: String(nr), klient: { email: 'k@k.pl' }, dostawa: {},
-  metoda_wysylki: 'dpd', kwota_pobrania: '123.00', pobranie: 1, chce_fakture: 1, nip: null,
-  kwota_brutto: '123.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
-  utworzone_at: '2026-08-20T10:00:00Z', pozycje: [], ...nadpisz,
+  zrodlo_id: nr,
+  numer: String(nr),
+  klient: { email: 'k@k.pl' },
+  dostawa: {},
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: '123.00',
+  pobranie: 1,
+  chce_fakture: 1,
+  nip: null,
+  kwota_brutto: '123.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-08-20T10:00:00Z',
+  pozycje: [],
+  ...nadpisz,
 });
 
 // Faktura powiązana z zamówieniem — tak, jak zapisuje ją panel po wystawieniu.
 // ⚠️ Tabela `faktury` NIE MA daty wystawienia; ta przychodzi z inFaktu (patrz `dokumenty` niżej).
 function zFaktura(db, zamowienieId, uuid, { numer = 'F/1' } = {}) {
-  db.prepare(
-    'INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?, ?, ?, ?)',
-  ).run(zamowienieId, uuid, numer, '2026-08-20T08:00:00.000Z');
+  db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?, ?, ?, ?)').run(
+    zamowienieId,
+    uuid,
+    numer,
+    '2026-08-20T08:00:00.000Z',
+  );
 }
 
 // Klient inFaktu: co oddaje na odczyt dokumentu i co przyjmuje na oznaczenie zapłaty.
@@ -40,7 +55,12 @@ function klientInfaktu(dokumenty, { oznacz } = {}) {
   };
 }
 
-const dokWystawiony = (invoiceDate = '2026-08-20') => ({ status: 'sent', left_to_pay: 12300, invoice_date: invoiceDate, number: 'F/1' });
+const dokWystawiony = (invoiceDate = '2026-08-20') => ({
+  status: 'sent',
+  left_to_pay: 12300,
+  invoice_date: invoiceDate,
+  number: 'F/1',
+});
 
 function paczka(db, zamowienieId, { opis, at = '2026-08-25T14:00:00.000', kolejnosc = 1 } = {}) {
   const p = rozpocznijPrzesylke(db, zamowienieId, 'dpd', kolejnosc);
@@ -49,12 +69,13 @@ function paczka(db, zamowienieId, { opis, at = '2026-08-25T14:00:00.000', kolejn
   return p.id;
 }
 
-const logZamowienia = (db, zamowienieId) => db
-  .prepare('SELECT * FROM log WHERE zamowienie_id = ? ORDER BY id')
-  .all(zamowienieId);
+const logZamowienia = (db, zamowienieId) =>
+  db.prepare('SELECT * FROM log WHERE zamowienie_id = ? ORDER BY id').all(zamowienieId);
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 
 describe('oznaczanie doręczonych pobrań', () => {
   it('doręczone pobranie z fakturą leci do inFaktu z datą doręczenia', async () => {
@@ -88,7 +109,9 @@ describe('oznaczanie doręczonych pobrań', () => {
     zFaktura(db, id, 'u-11');
     paczka(db, id, { opis: 'Przesyłka doręczona' });
 
-    const infakt = klientInfaktu({ 'u-11': { status: 'paid', left_to_pay: 22089, invoice_date: '2026-08-10', number: '18/08/2026' } });
+    const infakt = klientInfaktu({
+      'u-11': { status: 'paid', left_to_pay: 22089, invoice_date: '2026-08-10', number: '18/08/2026' },
+    });
     const wynik = await oznaczDoreczonePobrania({ db, infakt });
 
     expect(infakt.zlecenia).toEqual([]);
@@ -182,7 +205,14 @@ describe('oznaczanie doręczonych pobrań', () => {
     zFaktura(db, id, 'u-4');
     paczka(db, id, { opis: 'Przesyłka doręczona' });
 
-    const infakt = klientInfaktu({ 'u-4': dokWystawiony() }, { oznacz: () => { throw new Error('HTTP 500'); } });
+    const infakt = klientInfaktu(
+      { 'u-4': dokWystawiony() },
+      {
+        oznacz: () => {
+          throw new Error('HTTP 500');
+        },
+      },
+    );
     const wynik = await oznaczDoreczonePobrania({ db, infakt });
 
     expect(wynik).toMatchObject({ zlecone: 0, bledy: 1 });
@@ -193,13 +223,19 @@ describe('oznaczanie doręczonych pobrań', () => {
   // który pilnuje WSZYSTKICH paczek.
   it('awaria jednego dokumentu nie zatrzymuje reszty', async () => {
     const a = zapiszZamowienie(db, 'pro', zmapowane(5), {});
-    zFaktura(db, a, 'u-zly'); paczka(db, a, { opis: 'Przesyłka doręczona' });
+    zFaktura(db, a, 'u-zly');
+    paczka(db, a, { opis: 'Przesyłka doręczona' });
     const b = zapiszZamowienie(db, 'pro', zmapowane(6), {});
-    zFaktura(db, b, 'u-dobry'); paczka(db, b, { opis: 'Przesyłka doręczona' });
+    zFaktura(db, b, 'u-dobry');
+    paczka(db, b, { opis: 'Przesyłka doręczona' });
 
     const infakt = klientInfaktu(
       { 'u-zly': dokWystawiony(), 'u-dobry': dokWystawiony() },
-      { oznacz: (uuid) => { if (uuid === 'u-zly') throw new TypeError('cokolwiek z naszego kodu'); } },
+      {
+        oznacz: (uuid) => {
+          if (uuid === 'u-zly') throw new TypeError('cokolwiek z naszego kodu');
+        },
+      },
     );
     const wynik = await oznaczDoreczonePobrania({ db, infakt });
     expect(infakt.zlecenia.map((z) => z.uuid)).toEqual(['u-dobry']);
@@ -226,9 +262,15 @@ describe('oznaczanie doręczonych pobrań', () => {
     const infakt = {
       // DOKŁADNIE to, co składa `pobierzFakture` po odpowiedzi 2xx bez parsowalnego ciała.
       pobierzFakture: async (uuid) => ({
-        uuid, number: null, invoice_date: null, status: null, left_to_pay: null,
+        uuid,
+        number: null,
+        invoice_date: null,
+        status: null,
+        left_to_pay: null,
       }),
-      oznaczZaplacona: async (uuid, opcje) => { zlecenia.push({ uuid, ...opcje }); },
+      oznaczZaplacona: async (uuid, opcje) => {
+        zlecenia.push({ uuid, ...opcje });
+      },
     };
     const wynik = await oznaczDoreczonePobrania({ db, infakt });
 
@@ -253,7 +295,9 @@ describe('oznaczanie doręczonych pobrań', () => {
           ? { uuid, number: null, invoice_date: null, status: null, left_to_pay: null }
           : dokWystawiony('2026-08-20');
       },
-      oznaczZaplacona: async (uuid, opcje) => { zlecenia.push({ uuid, ...opcje }); },
+      oznaczZaplacona: async (uuid, opcje) => {
+        zlecenia.push({ uuid, ...opcje });
+      },
     };
     await oznaczDoreczonePobrania({ db, infakt });
     await oznaczDoreczonePobrania({ db, infakt });
@@ -270,8 +314,12 @@ describe('oznaczanie doręczonych pobrań', () => {
     paczka(db, id, { opis: 'Przesyłka doręczona' });
 
     const infakt = {
-      pobierzFakture: async () => { throw new Error('HTTP 503'); },
-      oznaczZaplacona: async () => { throw new Error('nie powinno się zdarzyć'); },
+      pobierzFakture: async () => {
+        throw new Error('HTTP 503');
+      },
+      oznaczZaplacona: async () => {
+        throw new Error('nie powinno się zdarzyć');
+      },
     };
     const wynik = await oznaczDoreczonePobrania({ db, infakt });
     expect(wynik).toMatchObject({ zlecone: 0, bledy: 1 });
@@ -340,8 +388,10 @@ describe('oznaczanie doręczonych pobrań', () => {
   // trafiał do żadnego kubełka: ani zlecony, ani pominięty, ani policzony jako bez daty.
   it('pobranie włączone RĘCZNIE z karty też jest kandydatem', async () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(15, { pobranie: 0, kwota_pobrania: null }), {});
-    db.prepare('UPDATE zamowienia SET wysylka_reczna_json = ? WHERE id = ?')
-      .run('{"metoda":"dpd","pobranie":1,"kwota_pobrania":"123.00"}', id);
+    db.prepare('UPDATE zamowienia SET wysylka_reczna_json = ? WHERE id = ?').run(
+      '{"metoda":"dpd","pobranie":1,"kwota_pobrania":"123.00"}',
+      id,
+    );
     zFaktura(db, id, 'u-15');
     paczka(db, id, { opis: 'Przesyłka doręczona', at: '2026-08-25T14:00:00.000' });
 
@@ -367,7 +417,9 @@ describe('oznaczanie doręczonych pobrań', () => {
         odczyty.push(uuid);
         throw Object.assign(new Error('inFakt odrzucił odczyt faktury (404): nie znaleziono'), { status: 404 });
       },
-      oznaczZaplacona: async () => { throw new Error('nie powinno się zdarzyć'); },
+      oznaczZaplacona: async () => {
+        throw new Error('nie powinno się zdarzyć');
+      },
     };
 
     const wynik = await oznaczDoreczonePobrania({ db, infakt });
@@ -399,7 +451,9 @@ describe('oznaczanie doręczonych pobrań', () => {
         odczyty.push(uuid);
         throw Object.assign(new Error('inFakt odrzucił odczyt faktury (503): serwis niedostępny'), { status: 503 });
       },
-      oznaczZaplacona: async () => { throw new Error('nie powinno się zdarzyć'); },
+      oznaczZaplacona: async () => {
+        throw new Error('nie powinno się zdarzyć');
+      },
     };
 
     await oznaczDoreczonePobrania({ db, infakt });
@@ -429,7 +483,10 @@ describe('oznaczanie doręczonych pobrań', () => {
     const wynik = await oznaczDoreczonePobrania({ db, infakt, limit: 2 });
 
     expect(wynik).toMatchObject({
-      kandydatow: 3, obsluzone: 2, ponadSufit: 1, zlecone: 2,
+      kandydatow: 3,
+      obsluzone: 2,
+      ponadSufit: 1,
+      zlecone: 2,
     });
     expect(infakt.odczyty).toHaveLength(2);
 
@@ -445,8 +502,7 @@ describe('oznaczanie doręczonych pobrań', () => {
     paczka(db, id, { opis: 'Przesyłka doręczona', at: '2026-08-25T14:00:00.000' });
 
     const infakt = klientInfaktu({ 'u-27': dokWystawiony('2026-08-20') });
-    expect(await oznaczDoreczonePobrania({ db, infakt }))
-      .toMatchObject({ kandydatow: 1, obsluzone: 1, ponadSufit: 0 });
+    expect(await oznaczDoreczonePobrania({ db, infakt })).toMatchObject({ kandydatow: 1, obsluzone: 1, ponadSufit: 0 });
   });
 
   // ⚠️⚠️ AWARIA SPOZA DWÓCH ZNANYCH DRÓG: nie odczyt, nie zlecenie,
@@ -460,18 +516,29 @@ describe('oznaczanie doręczonych pobrań', () => {
   // pustej odpowiedzi, świeciłby na zielono także po usunięciu zewnętrznego `try`.
   it('awaria spoza znanych dróg nie przerywa przebiegu — następny kandydat jedzie dalej', async () => {
     const a = zapiszZamowienie(db, 'pro', zmapowane(16), {});
-    zFaktura(db, a, 'u-zepsuty', { numer: 'F/16' }); paczka(db, a, { opis: 'Przesyłka doręczona' });
+    zFaktura(db, a, 'u-zepsuty', { numer: 'F/16' });
+    paczka(db, a, { opis: 'Przesyłka doręczona' });
     const b = zapiszZamowienie(db, 'pro', zmapowane(17), {});
-    zFaktura(db, b, 'u-dobry-17', { numer: 'F/17' }); paczka(db, b, { opis: 'Przesyłka doręczona' });
+    zFaktura(db, b, 'u-dobry-17', { numer: 'F/17' });
+    paczka(db, b, { opis: 'Przesyłka doręczona' });
 
     const zlecenia = [];
     const infakt = {
-      pobierzFakture: async (uuid) => (uuid === 'u-zepsuty'
-        // Dokument POPRAWNY dla `stanZaplaty` (`sent`), ale czytanie daty wystawienia rzuca —
-        // czyli awaria dokładnie tam, gdzie nie sięga żaden z węższych bloków `try`.
-        ? { status: 'sent', left_to_pay: 12300, get invoice_date() { throw new TypeError('cokolwiek z naszego kodu'); } }
-        : dokWystawiony('2026-08-20')),
-      oznaczZaplacona: async (uuid, opcje) => { zlecenia.push({ uuid, ...opcje }); },
+      pobierzFakture: async (uuid) =>
+        uuid === 'u-zepsuty'
+          ? // Dokument POPRAWNY dla `stanZaplaty` (`sent`), ale czytanie daty wystawienia rzuca —
+            // czyli awaria dokładnie tam, gdzie nie sięga żaden z węższych bloków `try`.
+            {
+              status: 'sent',
+              left_to_pay: 12300,
+              get invoice_date() {
+                throw new TypeError('cokolwiek z naszego kodu');
+              },
+            }
+          : dokWystawiony('2026-08-20'),
+      oznaczZaplacona: async (uuid, opcje) => {
+        zlecenia.push({ uuid, ...opcje });
+      },
     };
 
     // Samo dojście do następnej linii jest częścią asercji: rzucenie stąd wywala test.
@@ -486,11 +553,15 @@ describe('oznaczanie doręczonych pobrań', () => {
   // Fakturownia — status „opłacona” przyjęty, padł sam zapis daty zapłaty (`zaplataOznaczona`).
   it('padł sam zapis daty zapłaty → wpis „już oznaczona jako opłacona — popraw tylko datę zapłaty”, bez „NIEOPŁACONA”', async () => {
     const a = zapiszZamowienie(db, 'pro', zmapowane(19), {});
-    zFaktura(db, a, 'u-put-19', { numer: 'F/19' }); paczka(db, a, { opis: 'Przesyłka doręczona' });
+    zFaktura(db, a, 'u-put-19', { numer: 'F/19' });
+    paczka(db, a, { opis: 'Przesyłka doręczona' });
     const infakt = {
       pobierzFakture: async () => dokWystawiony('2026-08-20'),
       oznaczZaplacona: async () => {
-        throw Object.assign(new Error('nie przyjęto daty zapłaty (zmyślony błąd)'), { status: 422, zaplataOznaczona: true });
+        throw Object.assign(new Error('nie przyjęto daty zapłaty (zmyślony błąd)'), {
+          status: 422,
+          zaplataOznaczona: true,
+        });
       },
     };
 
@@ -506,14 +577,18 @@ describe('oznaczanie doręczonych pobrań', () => {
   // rezerwacji, z błędem i śladem w logu. Przebieg leci dalej.
   it('pusta odpowiedź inFaktu nie przerywa przebiegu — następny kandydat jedzie dalej', async () => {
     const a = zapiszZamowienie(db, 'pro', zmapowane(16), {});
-    zFaktura(db, a, 'u-pusty', { numer: 'F/16' }); paczka(db, a, { opis: 'Przesyłka doręczona' });
+    zFaktura(db, a, 'u-pusty', { numer: 'F/16' });
+    paczka(db, a, { opis: 'Przesyłka doręczona' });
     const b = zapiszZamowienie(db, 'pro', zmapowane(17), {});
-    zFaktura(db, b, 'u-dobry-17', { numer: 'F/17' }); paczka(db, b, { opis: 'Przesyłka doręczona' });
+    zFaktura(db, b, 'u-dobry-17', { numer: 'F/17' });
+    paczka(db, b, { opis: 'Przesyłka doręczona' });
 
     const zlecenia = [];
     const infakt = {
       pobierzFakture: async (uuid) => (uuid === 'u-pusty' ? null : dokWystawiony('2026-08-20')),
-      oznaczZaplacona: async (uuid, opcje) => { zlecenia.push({ uuid, ...opcje }); },
+      oznaczZaplacona: async (uuid, opcje) => {
+        zlecenia.push({ uuid, ...opcje });
+      },
     };
 
     // Samo dojście do następnej linii jest częścią asercji: rzucenie stąd wywala test.

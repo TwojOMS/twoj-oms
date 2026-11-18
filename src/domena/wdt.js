@@ -106,7 +106,9 @@ export function numerWdt(rok, miesiac, kolejny) {
  */
 export function polaWdtInfakt(nip, { nipSprzedawcy }) {
   if (!czyNipUe(nip)) return {};
-  const bezPl = String(nipSprzedawcy ?? '').trim().replace(/^PL/i, '');
+  const bezPl = String(nipSprzedawcy ?? '')
+    .trim()
+    .replace(/^PL/i, '');
   return {
     sale_type: 'merchandise',
     sales_kind: 'sprzedaz_podstawowa',
@@ -118,7 +120,8 @@ export function polaWdtInfakt(nip, { nipSprzedawcy }) {
 export function rodzajKorekty(nipNabywcy, pozycjeFaktury, { zwolniona = false } = {}) {
   if (!czyWdt(nipNabywcy, { zwolniona })) return 'krajowa';
   return pozycjeFaktury?.length > 0 && pozycjeFaktury.every((p) => String(p.tax_symbol).trim() === '0')
-    ? 'wdt' : 'niezgodna';
+    ? 'wdt'
+    : 'niezgodna';
 }
 
 /** Adnotacja ma wspólne źródło z fakturą; inFakt nie przepisuje jej na korektę. */
@@ -137,9 +140,14 @@ export function nipSprzedawcyDoWdt(nipNabywcy, nipSprzedawcy) {
   if (!czyNipUe(nipNabywcy)) return null;
   const nip = String((typeof nipSprzedawcy === 'function' ? nipSprzedawcy() : nipSprzedawcy) ?? '').trim();
   if (!nip) {
-    throw Object.assign(new Error('Faktura WDT musi nieść NIP sprzedawcy z prefiksem PL, a panel go nie zna. '
-      + 'Wpisz NIP firmy w Ustawienia → Firma (/ustawienia/firma) albo OMS_SPRZEDAWCA_NIP w pliku konfiguracji. '
-      + 'Faktura NIE została wystawiona.'), { dlaOperatora: true });
+    throw Object.assign(
+      new Error(
+        'Faktura WDT musi nieść NIP sprzedawcy z prefiksem PL, a panel go nie zna. ' +
+          'Wpisz NIP firmy w Ustawienia → Firma (/ustawienia/firma) albo OMS_SPRZEDAWCA_NIP w pliku konfiguracji. ' +
+          'Faktura NIE została wystawiona.',
+      ),
+      { dlaOperatora: true },
+    );
   }
   return nip;
 }

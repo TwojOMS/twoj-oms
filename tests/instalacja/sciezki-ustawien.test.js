@@ -42,12 +42,19 @@ const WYJATKI = [
 ];
 
 const zamaz = (s) => s.replace(/[^\n]/g, ' ');
-const bezWierszyGwiazdki = (t) => t.split('\n').map((w) => (/^\s*\*/.test(w) ? zamaz(w) : w)).join('\n');
+const bezWierszyGwiazdki = (t) =>
+  t
+    .split('\n')
+    .map((w) => (/^\s*\*/.test(w) ? zamaz(w) : w))
+    .join('\n');
 
 // .env.example i deploy/klient/*.yaml: dla czytelnika liczą się tylko wiersze komentarza „#” (opis zmiennej).
 // Sam znak „#” zamazujemy, żeby etykieta złamana między wierszami („Poczta\n# wychodząca”) była jedną etykietą.
-const tylkoWierszeHash = (t) => t.split('\n')
-  .map((w) => (/^\s*#/.test(w) ? w.replace(/^\s*#/, zamaz) : zamaz(w))).join('\n');
+const tylkoWierszeHash = (t) =>
+  t
+    .split('\n')
+    .map((w) => (/^\s*#/.test(w) ? w.replace(/^\s*#/, zamaz) : zamaz(w)))
+    .join('\n');
 
 // .json: ucieczki w napisie („\n”, „\"”) zamieniamy na białe znaki tej samej długości, żeby nie kleiły się z etykietą.
 const bezUcieczekJson = (t) => t.replace(/\\[nrt]/g, '  ').replace(/\\"/g, ' "');
@@ -61,8 +68,12 @@ export function tekstDoSkanu(plik, zrodlo) {
 }
 
 // Etykiety zakładek z modelu nawigacji (admin + dane demo = komplet, także „System → Dane demo”).
-const ZAKLADKI = new Map(DZIALY_USTAWIEN.map((d) => [d.etykieta,
-  modelNawigacjiUstawien(d.zakladki[0].href, { admin: true, daneDemo: true }).zakladki.map((z) => z.etykieta)]));
+const ZAKLADKI = new Map(
+  DZIALY_USTAWIEN.map((d) => [
+    d.etykieta,
+    modelNawigacjiUstawien(d.zakladki[0].href, { admin: true, daneDemo: true }).zakladki.map((z) => z.etykieta),
+  ]),
+);
 const DZIAL_INTEGRACJE = DZIALY_USTAWIEN.find((d) => d.klucz === 'integracje');
 // Integracja planowana nie ma ekranu (karta „wkrótce”), więc nie jest celem ścieżki.
 const INTEGRACJE = KATALOG_INTEGRACJI.filter((i) => i.dostepnosc !== 'planowana').map((i) => i.nazwa);
@@ -72,9 +83,33 @@ ZAKLADKI.get(DZIAL_INTEGRACJE.etykieta).push(...INTEGRACJE);
 const ZAKLADKI_Z_INTEGRACJAMI = DZIAL_INTEGRACJE.zakladki.map((z) => z.etykieta);
 
 const ucieknij = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const OGONKI = { ą: 'a', ć: 'c', ę: 'e', ł: 'l', ń: 'n', ó: 'o', ś: 's', ź: 'z', ż: 'z', Ą: 'A', Ć: 'C', Ę: 'E', Ł: 'L', Ń: 'N', Ó: 'O', Ś: 'S', Ź: 'Z', Ż: 'Z' };
-const wzorEtykiety = (e) => [...e].map((c) => (c === ' ' ? '\\s+' : OGONKI[c] ? `[${c}${OGONKI[c]}]` : ucieknij(c))).join('');
-const wzorListy = (etykiety) => [...new Set(etykiety)].sort((a, b) => b.length - a.length).map(wzorEtykiety).join('|');
+const OGONKI = {
+  ą: 'a',
+  ć: 'c',
+  ę: 'e',
+  ł: 'l',
+  ń: 'n',
+  ó: 'o',
+  ś: 's',
+  ź: 'z',
+  ż: 'z',
+  Ą: 'A',
+  Ć: 'C',
+  Ę: 'E',
+  Ł: 'L',
+  Ń: 'N',
+  Ó: 'O',
+  Ś: 'S',
+  Ź: 'Z',
+  Ż: 'Z',
+};
+const wzorEtykiety = (e) =>
+  [...e].map((c) => (c === ' ' ? '\\s+' : OGONKI[c] ? `[${c}${OGONKI[c]}]` : ucieknij(c))).join('');
+const wzorListy = (etykiety) =>
+  [...new Set(etykiety)]
+    .sort((a, b) => b.length - a.length)
+    .map(wzorEtykiety)
+    .join('|');
 // Ozdoby przed etykietą: markdown (**, _, `), cudzysłów, znacznik HTML (<a …>, <strong>).
 const OZDOBY = String.raw`(?:\*\*?|_|\x60|„|"|“|<[^<>\n]*>|\s)*`;
 const OZDOBY_PO = String.raw`(?:\*\*?|_|\x60|”|"|<\/[a-z]+>)*`;
@@ -82,7 +117,10 @@ const OZDOBY_PO = String.raw`(?:\*\*?|_|\x60|”|"|<\/[a-z]+>)*`;
 const STRZALKA = String.raw`(?:\s*(?:→|->|»)|[ \t]+>(?=[ \t]))`;
 const STRZALKA_PRZED = String.raw`(?:→|->|»|[ \t]>)`;
 const WSTAWKA = String.raw`(?:\$\{[^}\n]*\}|<%[^%]*%>)`;
-const POCZATEK = new RegExp(String.raw`(?<![\p{L}\p{N}])Ustawie(?:nia(?:ch)?|niami|[ńn])(?![\p{L}\p{N}])${OZDOBY_PO}${STRZALKA}`, 'gu');
+const POCZATEK = new RegExp(
+  String.raw`(?<![\p{L}\p{N}])Ustawie(?:nia(?:ch)?|niami|[ńn])(?![\p{L}\p{N}])${OZDOBY_PO}${STRZALKA}`,
+  'gu',
+);
 const dopasowanie = (wzor) => new RegExp(String.raw`${OZDOBY}(?:(${WSTAWKA})|(${wzor})(?![\p{L}\p{N}]))`, 'uy');
 const DZIAL = dopasowanie(wzorListy([...ZAKLADKI.keys()]));
 const ZAKLADKA = new Map([...ZAKLADKI].map(([dzial, etykiety]) => [dzial, dopasowanie(wzorListy(etykiety))]));
@@ -97,8 +135,11 @@ const DALEJ = new RegExp(String.raw`${OZDOBY_PO}${STRZALKA}`, 'uy');
 // „</a>”, „””) jest skończona; „i”/„oraz” + etykieta działu (albo „Analizy i finanse”) i „→” zaczyna
 // następną ścieżkę („Ustawienia → Integracje oraz Analizy i finanse → Finanse”, docs/zmienne.md).
 const SPOJNIK = String.raw`(?:i|oraz)\s(?!${OZDOBY}(?:${wzorListy([...ZAKLADKI.keys(), 'Analizy i finanse'])})${OZDOBY_PO}\s*→)`;
-const KONIEC_ETYKIETY = new RegExp(String.raw`(?:${OZDOBY_PO.replace(/\*$/, '+')}|${OZDOBY_PO}(?:$|[ \t]*\n(?![\s#*]*${SPOJNIK})`
-  + String.raw`|[.,;:!?…)\]”"'<]|\s+(?!\s)(?!${SPOJNIK})(?!\p{Lu})))`, 'uy');
+const KONIEC_ETYKIETY = new RegExp(
+  String.raw`(?:${OZDOBY_PO.replace(/\*$/, '+')}|${OZDOBY_PO}(?:$|[ \t]*\n(?![\s#*]*${SPOJNIK})` +
+    String.raw`|[.,;:!?…)\]”"'<]|\s+(?!\s)(?!${SPOJNIK})(?!\p{Lu})))`,
+  'uy',
+);
 // Dopisek małą literą sklejony z etykietą w nieistniejącą nazwę — JEDNO słowo (albo „i”/„oraz”
 // + jedno słowo) w tym samym wierszu, zaraz po nim koniec zdania, wiersza, napisu albo znacznika:
 // „→ Włączone funkcje sklepu.”, „**Ustawienia → Firma** i logo”. Zdanie, które toczy się dalej, przechodzi:
@@ -106,8 +147,11 @@ const KONIEC_ETYKIETY = new RegExp(String.raw`(?:${OZDOBY_PO.replace(/\*$/, '+')
 // przecinek, „;” albo „:” — zdanie biegnie dalej), „→ Fakturownia ponownie.” (słowo zdania, nie nazwy: krótka lista
 // przysłówków z tekstów repo). Ozdoba zamykająca („**”, „</a>”) nie zwalnia z tego sprawdzenia.
 const SLOWA_ZDANIA = ['ponownie', 'jeszcze', 'też', 'także', 'teraz', 'potem', 'najpierw', 'wcześniej', 'ręcznie'];
-const DOPISEK = new RegExp(String.raw`${OZDOBY_PO}[ \t]+(?:(?:i|oraz)[ \t]+)?(?!(?:${SLOWA_ZDANIA.join('|')})(?![\p{L}\p{N}]))`
-  + String.raw`\p{Ll}[\p{L}\p{N}-]*${OZDOBY_PO}(?:$|[ \t]*\n|[.!?…)\]”"'\x60<])`, 'uy');
+const DOPISEK = new RegExp(
+  String.raw`${OZDOBY_PO}[ \t]+(?:(?:i|oraz)[ \t]+)?(?!(?:${SLOWA_ZDANIA.join('|')})(?![\p{L}\p{N}]))` +
+    String.raw`\p{Ll}[\p{L}\p{N}-]*${OZDOBY_PO}(?:$|[ \t]*\n|[.!?…)\]”"'\x60<])`,
+  'uy',
+);
 // Wszystkie etykiety menu: zakładka, po której stoi dalszy ciąg innej etykiety („Kopie zapasowe → Historia logowań”
 // — „Historia logowań” jest w Zespół i dostęp), to pomyłka działu, choć dopisek jest z małej litery.
 const KAZDA_ZAKLADKA = dopasowanie(wzorListy([...ZAKLADKI.values()].flat()));
@@ -126,7 +170,10 @@ export const ELEMENTY_EKRANU = {
   DPD: ['Odłącz DPD'],
   InPost: ['Pobranie przy paczkomatach', 'Odłącz InPost'],
   'Pobranie przy paczkomatach': ['Mam umowę z InPostem na przesyłki za pobraniem'],
-  'Poczta wychodząca': [...naglowkiH2(fs.readFileSync(path.join(KORZEN, EKRAN_POCZTY), 'utf8')), 'Usuń ustawienia poczty'],
+  'Poczta wychodząca': [
+    ...naglowkiH2(fs.readFileSync(path.join(KORZEN, EKRAN_POCZTY), 'utf8')),
+    'Usuń ustawienia poczty',
+  ],
   'Stany magazynowe': ['Wyłącz stany'],
   'Automaty systemowe': ['Automatyczna wysyłka do KSeF'],
 };
@@ -152,9 +199,16 @@ const KAZDY_ELEMENT = dopasowanie(wzorListy(WSZYSTKIE_ELEMENTY));
 const POLECENIE = new RegExp(String.raw`${OZDOBY}\p{Ll}`, 'uy');
 // Dział bez przedrostka („Otwórz Integracje → Reklamy”): ten sam wymóg dla B. Pomijamy dział, przed którym stoi
 // strzałka — to część ścieżki „Ustawienia → …”, sprawdzanej wyżej.
-const GOLY_DZIAL = new RegExp(String.raw`(?<!${STRZALKA_PRZED}${OZDOBY})(?<![\p{L}\p{N}])(${wzorListy([...ZAKLADKI.keys()])})${OZDOBY_PO}${STRZALKA}`, 'gu');
+const GOLY_DZIAL = new RegExp(
+  String.raw`(?<!${STRZALKA_PRZED}${OZDOBY})(?<![\p{L}\p{N}])(${wzorListy([...ZAKLADKI.keys()])})${OZDOBY_PO}${STRZALKA}`,
+  'gu',
+);
 
-const sciezkaDoRaportu = (tekst, od) => `Ustawienia → ${tekst.slice(od, od + 70).replace(/\s+/g, ' ').trim()}`;
+const sciezkaDoRaportu = (tekst, od) =>
+  `Ustawienia → ${tekst
+    .slice(od, od + 70)
+    .replace(/\s+/g, ' ')
+    .trim()}`;
 const kanoniczna = (lista, etykieta) => lista.find((e) => new RegExp(`^${wzorEtykiety(e)}$`, 'u').test(etykieta));
 const NIEZNANA = Symbol('wstawka');
 
@@ -180,8 +234,12 @@ function kandydaci(poziom, dzial, poprzednia) {
   if (poziom === 1) return DZIAL;
   if (poziom === 2) return dzial === NIEZNANA ? KAZDA_ZAKLADKA : ZAKLADKA.get(dzial);
   if (poprzednia === NIEZNANA) return poziom === 3 ? TRZECI_POZIOM_I_ELEMENTY : KAZDY_ELEMENT;
-  if (poziom === 3 && (dzial === NIEZNANA || dzial === DZIAL_INTEGRACJE.etykieta)
-    && ZAKLADKI_Z_INTEGRACJAMI.includes(poprzednia)) return TRZECI_POZIOM;
+  if (
+    poziom === 3 &&
+    (dzial === NIEZNANA || dzial === DZIAL_INTEGRACJE.etykieta) &&
+    ZAKLADKI_Z_INTEGRACJAMI.includes(poprzednia)
+  )
+    return TRZECI_POZIOM;
   return ELEMENTY.get(poprzednia) ?? null;
 }
 
@@ -225,8 +283,15 @@ export function sprawdzSciezki(tekst) {
   for (const m of tekst.matchAll(POCZATEK)) {
     const od = m.index + m[0].length;
     const linia = tekst.slice(0, m.index).split('\n').length;
-    const dalej = tekst.slice(od, od + 80).replace(/\s+/g, ' ').trim().replace(/^(\*\*?|„|")/, '');
-    if (WYJATKI.some(([poczatek]) => dalej.startsWith(poczatek))) { wynik.wyjatki += 1; continue; }
+    const dalej = tekst
+      .slice(od, od + 80)
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(/^(\*\*?|„|")/, '');
+    if (WYJATKI.some(([poczatek]) => dalej.startsWith(poczatek))) {
+      wynik.wyjatki += 1;
+      continue;
+    }
     wynik.sprawdzone += 1;
     if (!sciezkaDobra(tekst, od, 1, null)) wynik.naruszenia.push({ linia, sciezka: sciezkaDoRaportu(tekst, od) });
   }
@@ -234,8 +299,13 @@ export function sprawdzSciezki(tekst) {
     wynik.sprawdzone += 1;
     const od = m.index + m[0].length;
     if (!sciezkaDobra(tekst, od, 2, kanoniczna([...ZAKLADKI.keys()], m[1].replace(/\s+/g, ' ')))) {
-      wynik.naruszenia.push({ linia: tekst.slice(0, m.index).split('\n').length,
-        sciezka: `${m[1].replace(/\s+/g, ' ')} → ${tekst.slice(od, od + 60).replace(/\s+/g, ' ').trim()}` });
+      wynik.naruszenia.push({
+        linia: tekst.slice(0, m.index).split('\n').length,
+        sciezka: `${m[1].replace(/\s+/g, ' ')} → ${tekst
+          .slice(od, od + 60)
+          .replace(/\s+/g, ' ')
+          .trim()}`,
+      });
     }
   }
   wynik.naruszenia.sort((x, y) => x.linia - y.linia);
@@ -261,8 +331,20 @@ const KONFIGURACJA = 'docs/konfiguracja.json';
 // „stan skanu” w teście niżej), ale każdy > 0: skaner, który w grupie nic nie widzi, pada.
 // Dwa pliki deploy/ mają własny próg: przykład konfiguracji drukarki (JSON) i skrypt powłoki, bo ich rodzaje
 // (.json, .sh) skanuje osobna gałąź tekstDoSkanu — zgubiona gałąź nie może zniknąć w sumie grupy deploy.
-const PLIKI_Z_PROGIEM = { 'deploy/drukarka/config.przyklad.json': 'drukarka-json', 'deploy/klient/aktualizuj.sh': 'aktualizuj-sh' };
-const PROGI = { src: 65, docs: 65, konfiguracja: 40, scripts: 15, deploy: 2, env: 1, 'drukarka-json': 1, 'aktualizuj-sh': 1 };
+const PLIKI_Z_PROGIEM = {
+  'deploy/drukarka/config.przyklad.json': 'drukarka-json',
+  'deploy/klient/aktualizuj.sh': 'aktualizuj-sh',
+};
+const PROGI = {
+  src: 65,
+  docs: 65,
+  konfiguracja: 40,
+  scripts: 15,
+  deploy: 2,
+  env: 1,
+  'drukarka-json': 1,
+  'aktualizuj-sh': 1,
+};
 const OGOLEM_MIN = 195;
 
 // Znane rozbieżności tekstu z ekranem, do poprawienia w tekście (nie w teście): sekcja Poczty wychodzącej ma
@@ -284,17 +366,29 @@ function grupa(p) {
 
 function plikiDoSkanu() {
   const src = pliki(path.join(KORZEN, 'src'), (p) => KOD.has(path.extname(p)));
-  const docs = pliki(path.join(KORZEN, 'docs'), (p, nazwa) => nazwa.endsWith('.md') && !nazwa.startsWith('prz')
-    && !POMIJANE_DOKUMENTY.has(wzgledna(p)) && !/^docs\/(plany|archiwum)\//.test(wzgledna(p)));
-    // scripts/ — napisy wypisywane na ekran i wpisywane do dokumentów (zmienne-tabela.mjs → docs/zmienne.md).
+  const docs = pliki(
+    path.join(KORZEN, 'docs'),
+    (p, nazwa) =>
+      nazwa.endsWith('.md') &&
+      !nazwa.startsWith('prz') &&
+      !POMIJANE_DOKUMENTY.has(wzgledna(p)) &&
+      !/^docs\/(plany|archiwum)\//.test(wzgledna(p)),
+  );
+  // scripts/ — napisy wypisywane na ekran i wpisywane do dokumentów (zmienne-tabela.mjs → docs/zmienne.md).
   // Pomijamy jednorazowe skrypty zadań (prz*, mutacje-*): cytują stare teksty i celowo zepsute wersje.
-  const scripts = pliki(path.join(KORZEN, 'scripts'), (p, nazwa) => /\.(?:m?js|ts|sh)$/.test(nazwa)
-    && !/^(?:prz|mutacje-)/.test(nazwa) && !wzgledna(p).startsWith('scripts/testy/'));
+  const scripts = pliki(
+    path.join(KORZEN, 'scripts'),
+    (p, nazwa) =>
+      /\.(?:m?js|ts|sh)$/.test(nazwa) && !/^(?:prz|mutacje-)/.test(nazwa) && !wzgledna(p).startsWith('scripts/testy/'),
+  );
   // Instrukcje instalacji czyta obcy sprzedawca tak samo jak docs/; także skrypty
   // i przykładowe pliki konfiguracji w deploy/ (echo na ekran, zdania wpisywane do produkcja.env).
   const deploy = [
     ...pliki(path.join(KORZEN, 'deploy'), (p, nazwa) => /\.(?:md|json|sh|mjs)$/.test(nazwa)),
-    ...pliki(path.join(KORZEN, 'deploy/klient'), (p, nazwa) => /\.ya?ml$/.test(nazwa) && path.dirname(p) === path.join(KORZEN, 'deploy/klient')),
+    ...pliki(
+      path.join(KORZEN, 'deploy/klient'),
+      (p, nazwa) => /\.ya?ml$/.test(nazwa) && path.dirname(p) === path.join(KORZEN, 'deploy/klient'),
+    ),
     path.join(KORZEN, '.env.example'),
   ];
   return [...src, ...docs, path.join(KORZEN, KONFIGURACJA), ...scripts, ...deploy];
@@ -323,7 +417,7 @@ describe('ścieżki „Ustawienia → …” w src/ i docs/ wskazują pozycje z 
       'Otwórz Integracje → Moje połączenia albo Faktury i podatki → KSeF.',
       'W Ustawienia → Firma uzupełnij NIP, a w Ustawieniach → System (Stan systemu) sprawdź połączenia',
       '**Ustawienia → Kopie zapasowe** — tu kopie.',
-            // Odmienione formy, po jednym dobrym przypadku na każdą
+      // Odmienione formy, po jednym dobrym przypadku na każdą
       'Dane wpiszesz z Ustawień → Firma.', // „z Ustawień →”
       'Zarządzasz Ustawieniami → Zespół i dostęp → Użytkownicy.', // „Ustawieniami →”
       'Rachunek w Ustawienia -> Firma -> Rachunek bankowy.', // „->”
@@ -384,7 +478,7 @@ describe('ścieżki „Ustawienia → …” w src/ i docs/ wskazują pozycje z 
       'Ustawienia → Integracje i Kurierzy → DPD.',
       'Ustawienia → Integracje → DPD i Kurierzy → InPost.',
       'Ustawienia → Firma oraz Rachunek → Rachunek bankowy.',
-            // Odmienione formy, po jednym złym przypadku na każdą
+      // Odmienione formy, po jednym złym przypadku na każdą
       'włącz je z Ustawień → Magazyn.', // M05a
       'Zarządzasz Ustawieniami → Konta.', // „Ustawieniami →”
       'włącz je w Ustawieniach -> Magazyn.', // M05b
@@ -411,11 +505,15 @@ describe('ścieżki „Ustawienia → …” w src/ i docs/ wskazują pozycje z 
     const zgloszone = (zdanie) => sprawdzSciezki(zdanie).naruszenia.map((n) => n.sciezka);
     for (const zdanie of dobre) expect(zgloszone(zdanie), zdanie).toEqual([]);
     for (const zdanie of zle) expect(zgloszone(zdanie), zdanie).toHaveLength(1);
-    expect(sprawdzSciezki('a\nb Ustawienia → Moduły').naruszenia).toEqual([{ linia: 2, sciezka: 'Ustawienia → Moduły' }]);
+    expect(sprawdzSciezki('a\nb Ustawienia → Moduły').naruszenia).toEqual([
+      { linia: 2, sciezka: 'Ustawienia → Moduły' },
+    ]);
     expect(sprawdzSciezki('Klucz z Ustawienia → API.').wyjatki).toBe(1);
     expect(sprawdzSciezki('Ustawienia → Integracje i dodatki → KSeF w Fakturowni.').wyjatki).toBe(1);
     // gałąź .env/.yaml: „#” zamazany na spację, więc „i …” w następnym wierszu ma wcięcie
-    expect(sprawdzSciezki(tekstDoSkanu('.env.example', '# Ustawienia → System\n# i moduły.')).naruszenia).toHaveLength(1);
+    expect(sprawdzSciezki(tekstDoSkanu('.env.example', '# Ustawienia → System\n# i moduły.')).naruszenia).toHaveLength(
+      1,
+    );
   });
 
   it('pliki .json i .sh — ucieczki w napisie JSON, cały skrypt powłoki', () => {
@@ -430,10 +528,14 @@ describe('ścieżki „Ustawienia → …” w src/ i docs/ wskazują pozycje z 
   });
 
   it('elementy ekranu z ELEMENTY_EKRANU stoją w widoku swojego ekranu (lista nie butwieje)', () => {
-    expect(Object.keys(EKRANY_ELEMENTOW).sort(), 'każdy klucz ELEMENTY_EKRANU ma plik ekranu').toEqual(Object.keys(ELEMENTY_EKRANU).sort());
+    expect(Object.keys(EKRANY_ELEMENTOW).sort(), 'każdy klucz ELEMENTY_EKRANU ma plik ekranu').toEqual(
+      Object.keys(ELEMENTY_EKRANU).sort(),
+    );
     const brak = [];
     for (const [klucz, elementy] of Object.entries(ELEMENTY_EKRANU)) {
-      const tekst = EKRANY_ELEMENTOW[klucz].map((plik) => tekstDoSkanu(plik, fs.readFileSync(path.join(KORZEN, plik), 'utf8'))).join('\n');
+      const tekst = EKRANY_ELEMENTOW[klucz]
+        .map((plik) => tekstDoSkanu(plik, fs.readFileSync(path.join(KORZEN, plik), 'utf8')))
+        .join('\n');
       for (const e of elementy) if (!tekst.includes(e)) brak.push(`${klucz} → ${e}`);
     }
     expect(brak, 'element, którego nie ma w widoku swojego ekranu — usuń go z ELEMENTY_EKRANU').toEqual([]);
@@ -442,7 +544,8 @@ describe('ścieżki „Ustawienia → …” w src/ i docs/ wskazują pozycje z 
   it('sekcje Poczty wychodzącej pochodzą z nagłówków <h2> widoku', () => {
     const zrodlo = fs.readFileSync(path.join(KORZEN, EKRAN_POCZTY), 'utf8');
     expect(naglowkiH2('<h2>A</h2><h2 class="x">B c</h2><h2><%= x %></h2>')).toEqual(['A', 'B c']);
-    for (const h of naglowkiH2(zrodlo).filter((t) => !t.includes('<%'))) expect(ELEMENTY_EKRANU['Poczta wychodząca']).toContain(h);
+    for (const h of naglowkiH2(zrodlo).filter((t) => !t.includes('<%')))
+      expect(ELEMENTY_EKRANU['Poczta wychodząca']).toContain(h);
     expect(zrodlo).toContain('<h2>Serwer poczty</h2>');
     expect(sprawdzSciezki('Ustawienia → Integracje → Poczta wychodząca → Serwer poczty.').naruszenia).toEqual([]);
   });
@@ -463,7 +566,8 @@ describe('ścieżki „Ustawienia → …” w src/ i docs/ wskazują pozycje z 
       sprawdzone += wynik.sprawdzone;
       liczby[grupa(plik)] += wynik.sprawdzone;
       for (const n of wynik.naruszenia) {
-        if (!ROZBIEZNE_Z_EKRANEM.some(([f, poczatek]) => f === wzgledna(plik) && n.sciezka.startsWith(poczatek))) naruszenia.push(`${wzgledna(plik)}:${n.linia}: ${n.sciezka}`);
+        if (!ROZBIEZNE_Z_EKRANEM.some(([f, poczatek]) => f === wzgledna(plik) && n.sciezka.startsWith(poczatek)))
+          naruszenia.push(`${wzgledna(plik)}:${n.linia}: ${n.sciezka}`);
       }
     }
     expect(naruszenia, `ścieżki do pozycji, których nie ma w menu Ustawień:\n${naruszenia.join('\n')}`).toEqual([]);

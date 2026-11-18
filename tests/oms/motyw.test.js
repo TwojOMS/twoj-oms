@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
-  MOTYW_DOMYSLNY, motywZNaglowka, przeciwnyMotyw, ciasteczkoMotywu, bezpiecznyPowrot,
+  MOTYW_DOMYSLNY,
+  motywZNaglowka,
+  przeciwnyMotyw,
+  ciasteczkoMotywu,
+  bezpiecznyPowrot,
 } from '../../src/domena/motyw.js';
 import { openOmsDb } from '../../src/oms/db/db.ts';
 import { buildOmsServer } from '../pomoc/serwer-testowy-oms.ts';
@@ -14,9 +18,13 @@ describe('formularz automatyzacji na telefonie', () => {
   it('do 40rem układa etykiety nad polami jak pozostałe Ustawienia', () => {
     const layout = readFileSync(new URL('../../src/public/oms-uklad.css', import.meta.url), 'utf8');
     const css = readFileSync(new URL('../../src/public/oms-design.css', import.meta.url), 'utf8');
-    expect(layout).toMatch(/@media\s*\(max-width:\s*40rem\)\s*\{\s*\.ust-formularz\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\);/);
+    expect(layout).toMatch(
+      /@media\s*\(max-width:\s*40rem\)\s*\{\s*\.ust-formularz\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\);/,
+    );
     // Bez selektora o tej samej szczegółowości dwie kolumny automatyzacji wygrywają z layoutem.
-    expect(css).toMatch(/@media\s*\(max-width:\s*40rem\)\s*\{\s*\.aut-sekcja\s+\.ust-formularz\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*;?\s*\}/);
+    expect(css).toMatch(
+      /@media\s*\(max-width:\s*40rem\)\s*\{\s*\.aut-sekcja\s+\.ust-formularz\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*;?\s*\}/,
+    );
   });
 });
 
@@ -118,7 +126,9 @@ describe('przełącznik motywu w panelu', () => {
 
   it('przełącznik ustawia ciasteczko i wraca tam, gdzie operator był', async () => {
     const r = await app.inject({
-      method: 'POST', url: '/motyw', headers: naglowek,
+      method: 'POST',
+      url: '/motyw',
+      headers: naglowek,
       payload: { powrot: '/zamowienia/7?edytuj=pozycje' },
     });
     expect(r.statusCode).toBe(302);
@@ -128,7 +138,9 @@ describe('przełącznik motywu w panelu', () => {
 
   it('przełącznik przełącza W OBIE STRONY, nie tylko na ciemny', async () => {
     const r = await app.inject({
-      method: 'POST', url: '/motyw', headers: { ...naglowek, cookie: 'oms_motyw=ciemny' },
+      method: 'POST',
+      url: '/motyw',
+      headers: { ...naglowek, cookie: 'oms_motyw=ciemny' },
       payload: { powrot: '/' },
     });
     expect(String(r.headers['set-cookie'])).toContain('oms_motyw=jasny');
@@ -136,7 +148,9 @@ describe('przełącznik motywu w panelu', () => {
 
   it('obcy adres powrotu nie wyprowadza operatora poza panel', async () => {
     const r = await app.inject({
-      method: 'POST', url: '/motyw', headers: naglowek,
+      method: 'POST',
+      url: '/motyw',
+      headers: naglowek,
       payload: { powrot: 'https://obcy.example/zbieram-hasla' },
     });
     expect(r.headers.location).toBe('/');

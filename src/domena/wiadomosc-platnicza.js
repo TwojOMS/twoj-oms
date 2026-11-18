@@ -43,7 +43,8 @@ export const TEMAT_MAILA = Object.freeze({
 const WIODACE = Object.freeze({
   proforma: (z, d) => `w załączeniu przesyłamy proformę ${d?.numer ?? ''} do zamówienia nr ${z.numer}.`,
   faktura: (z, d) => `w załączeniu przesyłamy fakturę ${d?.numer ?? ''} do zamówienia nr ${z.numer}.`,
-  przypomnienie: (z) => `przypominamy o płatności za zamówienie nr ${z.numer} z dnia ${dzienWarszawa(z.utworzone_at ?? '')}.`,
+  przypomnienie: (z) =>
+    `przypominamy o płatności za zamówienie nr ${z.numer} z dnia ${dzienWarszawa(z.utworzone_at ?? '')}.`,
 });
 
 /**
@@ -86,16 +87,25 @@ function zamkniecie(temat_id, stan, zalaczonyDokument, zdania) {
  * sobą (proforma albo faktura), a gdy żadnego nie ma, numer zamówienia. Tytuł niepasujący
  * do dokumentu znaczy przelew, którego księgowość nie dopasuje.
  */
-export function modelWiadomosci(z, {
-  // ⚠️ `zalaczonyDokument` to FAKT ZE ZŁOŻONEJ KOPERTY („czy w załącznikach cokolwiek jest"),
-  // a nie wniosek z tematu maila. Podaje go usługa, bo tylko ona wie, czy PDF się pobrał —
-  // ten moduł niczego nie czyta z dysku ani z inFaktu i nie ma prawa tego zgadywać.
-  temat_id, dokument = null, zalacznikProformy = null, zalacznikWywozu = false,
-  zalaczonyDokument = false,
-  rachunek, odbiorca, dzis, podpis = PODPIS,
-  // Zdania z panelu (zdaniaPlatnosciTeraz w usłudze, czytane przy każdym mailu). Brak = domyślne.
-  zdania = null,
-} = {}) {
+export function modelWiadomosci(
+  z,
+  {
+    // ⚠️ `zalaczonyDokument` to FAKT ZE ZŁOŻONEJ KOPERTY („czy w załącznikach cokolwiek jest"),
+    // a nie wniosek z tematu maila. Podaje go usługa, bo tylko ona wie, czy PDF się pobrał —
+    // ten moduł niczego nie czyta z dysku ani z inFaktu i nie ma prawa tego zgadywać.
+    temat_id,
+    dokument = null,
+    zalacznikProformy = null,
+    zalacznikWywozu = false,
+    zalaczonyDokument = false,
+    rachunek,
+    odbiorca,
+    dzis,
+    podpis = PODPIS,
+    // Zdania z panelu (zdaniaPlatnosciTeraz w usłudze, czytane przy każdym mailu). Brak = domyślne.
+    zdania = null,
+  } = {},
+) {
   // ⚠️ NIEZNANY TEMAT RZUCA, NIE UDAJE PRZYPOMNIENIA. Fallback `WIODACE[temat_id] ??
   // WIODACE.przypomnienie` po cichu wysyłałby treść przypomnienia pod tematem, którego nikt
   // nie wybrał — literówka w wywołaniu (np. `temat_id: 'faktóra'`) nie dawałaby żadnego
@@ -169,12 +179,17 @@ function srodekTekstu(m) {
   const e = tekstyModelu(m);
   return [
     ...sekcja(n.doZaplaty, [m.platnosc && `${m.platnosc.doZaplaty} ${e.dopisek_brutto}`]),
-    ...sekcja(n.przelew, m.platnosc ? [
-      m.platnosc.odbiorca && `${e.etykieta_odbiorca}: ${m.platnosc.odbiorca}`,
-      `${e.etykieta_rachunek}: ${m.platnosc.rachunek}`,
-      `${e.etykieta_tytul}: ${m.platnosc.tytul}`,
-      m.platnosc.termin && `${e.etykieta_termin}: ${m.platnosc.termin}`,
-    ] : []),
+    ...sekcja(
+      n.przelew,
+      m.platnosc
+        ? [
+            m.platnosc.odbiorca && `${e.etykieta_odbiorca}: ${m.platnosc.odbiorca}`,
+            `${e.etykieta_rachunek}: ${m.platnosc.rachunek}`,
+            `${e.etykieta_tytul}: ${m.platnosc.tytul}`,
+            m.platnosc.termin && `${e.etykieta_termin}: ${m.platnosc.termin}`,
+          ]
+        : [],
+    ),
     ...(m.zdanieDokumentu ? ['', m.zdanieDokumentu] : []),
     ...(m.zdanieWywozu ? ['', m.zdanieWywozu] : []),
   ];
@@ -211,4 +226,3 @@ export function jakoTekstWiadomosci(m) {
     m.sprzedawca,
   ].join('\n');
 }
-

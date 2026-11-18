@@ -8,10 +8,22 @@ const KLUCZ = 'fikcyjny/klucz+infakt=09403';
 const KODOWANY = encodeURIComponent(KLUCZ);
 const echo = `invalid api key ${KLUCZ}; URL ${KODOWANY}`;
 const argumenty = {
-  znajdzKlientaPoNip: ['1234567890'], zalozKlienta: [{}], wystaw: [{}], wystawKorekte: [{}],
-  oznaczZaplacona: ['demo'], pobierzPdf: ['demo'], pobierzPdfKorekty: ['demo'], pobierzFakture: ['demo'],
-  listaFaktur: [{}], listaKorekt: [{}], listaNieoplaconych: [], iluMaNumer: ['FV-demo'],
-  wyslijDokumentDoKsef: ['demo'], sprawdzPolaczenie: [], statusKorekty: ['REF-demo'], pobierzKorekte: ['demo-uuid'],
+  znajdzKlientaPoNip: ['1234567890'],
+  zalozKlienta: [{}],
+  wystaw: [{}],
+  wystawKorekte: [{}],
+  oznaczZaplacona: ['demo'],
+  pobierzPdf: ['demo'],
+  pobierzPdfKorekty: ['demo'],
+  pobierzFakture: ['demo'],
+  listaFaktur: [{}],
+  listaKorekt: [{}],
+  listaNieoplaconych: [],
+  iluMaNumer: ['FV-demo'],
+  wyslijDokumentDoKsef: ['demo'],
+  sprawdzPolaczenie: [],
+  statusKorekty: ['REF-demo'],
+  pobierzKorekte: ['demo-uuid'],
 };
 function bezSekretu(wartosc) {
   const tekst = inspect(wartosc, { depth: 30 });
@@ -26,9 +38,10 @@ describe('maskowanie na wyjściu klienta inFaktu', () => {
   for (const metoda of Object.keys(argumenty)) {
     for (const status of [401, 422]) {
       it(`${metoda}: odpowiedź HTTP ${status} nie ujawnia obu form klucza`, async () => {
-        const klient = createInfaktClient({ apiKey: KLUCZ, http: async () => new Response(
-          JSON.stringify({ error: echo }), { status },
-        ) });
+        const klient = createInfaktClient({
+          apiKey: KLUCZ,
+          http: async () => new Response(JSON.stringify({ error: echo }), { status }),
+        });
         const e = await klient[metoda](...argumenty[metoda]).catch((blad) => blad);
         expect(e).toBeInstanceOf(Error);
         expect(e.status).toBe(status);
@@ -41,7 +54,12 @@ describe('maskowanie na wyjściu klienta inFaktu', () => {
     }
   }
   it('awaria transportu JSON i PDF: komunikat oraz stack bez klucza', async () => {
-    const klient = createInfaktClient({ apiKey: KLUCZ, http: async () => { throw new Error(echo); } });
+    const klient = createInfaktClient({
+      apiKey: KLUCZ,
+      http: async () => {
+        throw new Error(echo);
+      },
+    });
     for (const metoda of ['wystaw', 'pobierzPdf']) {
       const e = await klient[metoda](...argumenty[metoda]).catch((blad) => blad);
       expect(e.status).toBeUndefined();
@@ -53,10 +71,20 @@ describe('maskowanie na wyjściu klienta inFaktu', () => {
   it('błąd odczytu PDF: zachowuje rodzaj i metadane, maskuje stack, response i rekurencyjne cause', async () => {
     const przyczyna = Object.assign(new Error(echo), { response: { body: echo } });
     przyczyna.cause = przyczyna;
-    const oryginal = Object.assign(new TypeError(echo, { cause: przyczyna }), { status: 502, code: 'E_DEMO', body: echo });
-    const klient = createInfaktClient({ apiKey: KLUCZ, http: async () => ({
-      ok: true, arrayBuffer: async () => { throw oryginal; },
-    }) });
+    const oryginal = Object.assign(new TypeError(echo, { cause: przyczyna }), {
+      status: 502,
+      code: 'E_DEMO',
+      body: echo,
+    });
+    const klient = createInfaktClient({
+      apiKey: KLUCZ,
+      http: async () => ({
+        ok: true,
+        arrayBuffer: async () => {
+          throw oryginal;
+        },
+      }),
+    });
     const e = await klient.pobierzPdf('demo').catch((blad) => blad);
     expect(e).toBeInstanceOf(TypeError);
     expect(e.name).toBe('TypeError');
@@ -75,9 +103,15 @@ describe('maskowanie na wyjściu klienta inFaktu', () => {
     it(`DOMException ${nazwa} przy odczycie PDF: czytelny błąd i ten sam polski komunikat`, async () => {
       const oryginal = new DOMException(`${komunikat}; ${echo}`, nazwa);
       expect(Object.hasOwn(oryginal, 'message')).toBe(false);
-      const klient = createInfaktClient({ apiKey: KLUCZ, fetchImpl: async () => ({
-        ok: true, arrayBuffer: async () => { throw oryginal; },
-      }) });
+      const klient = createInfaktClient({
+        apiKey: KLUCZ,
+        fetchImpl: async () => ({
+          ok: true,
+          arrayBuffer: async () => {
+            throw oryginal;
+          },
+        }),
+      });
       const e = await klient.pobierzPdf('demo').catch((blad) => blad);
       expect(() => e.message, 'odczyt message nie może rzucać').not.toThrow();
       expect(e).toBeInstanceOf(Error);
@@ -90,19 +124,31 @@ describe('maskowanie na wyjściu klienta inFaktu', () => {
       expect(`${e}`).toBe(String(e));
       expect(e.stack).toBe(oryginal.stack.split(KLUCZ).join('[klucz API]').split(KODOWANY).join('[klucz API]'));
       expect(poPolsku(e.message)).toBe(`${polski}; invalid api key [klucz API]; URL [klucz API]`);
-      expect(poPolsku(e.message)).toBe(poPolsku(oryginal.message).split(KLUCZ).join('[klucz API]').split(KODOWANY).join('[klucz API]'));
+      expect(poPolsku(e.message)).toBe(
+        poPolsku(oryginal.message).split(KLUCZ).join('[klucz API]').split(KODOWANY).join('[klucz API]'),
+      );
       bezSekretu(e);
     });
   }
   it('błąd z odziedziczonym message i code także dostaje działający Error', async () => {
     class BladOdczytu extends Error {
       #kod = 'E_ODCZYT';
-      get message() { return echo; }
-      get code() { return this.#kod; }
+      get message() {
+        return echo;
+      }
+      get code() {
+        return this.#kod;
+      }
     }
-    const klient = createInfaktClient({ apiKey: KLUCZ, fetchImpl: async () => ({
-      ok: true, arrayBuffer: async () => { throw new BladOdczytu(); },
-    }) });
+    const klient = createInfaktClient({
+      apiKey: KLUCZ,
+      fetchImpl: async () => ({
+        ok: true,
+        arrayBuffer: async () => {
+          throw new BladOdczytu();
+        },
+      }),
+    });
     const e = await klient.pobierzPdf('demo').catch((blad) => blad);
     expect(e).toBeInstanceOf(Error);
     expect(Object.getPrototypeOf(e)).toBe(Error.prototype);
@@ -114,9 +160,15 @@ describe('maskowanie na wyjściu klienta inFaktu', () => {
   it('ucina zbyt głębokie cause bez pozostawiania niezamaskowanego ogona', async () => {
     let cause = new Error(echo);
     for (let i = 0; i < 20; i++) cause = new Error(echo, { cause });
-    const klient = createInfaktClient({ apiKey: KLUCZ, http: async () => ({
-      ok: true, arrayBuffer: async () => { throw cause; },
-    }) });
+    const klient = createInfaktClient({
+      apiKey: KLUCZ,
+      http: async () => ({
+        ok: true,
+        arrayBuffer: async () => {
+          throw cause;
+        },
+      }),
+    });
     const e = await klient.pobierzPdf('demo').catch((blad) => blad);
     bezSekretu(e);
     let glebokosc = 0;
@@ -124,11 +176,20 @@ describe('maskowanie na wyjściu klienta inFaktu', () => {
     expect(glebokosc).toBeLessThanOrEqual(10);
   });
   it('tablica szczegółów w cause nie zmienia statusu ani rodzaju błędu', async () => {
-    const klient = createInfaktClient({ apiKey: KLUCZ, http: async () => ({
-      ok: true, arrayBuffer: async () => { throw Object.assign(new TypeError(echo, {
-        cause: { errors: [echo, { body: echo }] },
-      }), { status: 502 }); },
-    }) });
+    const klient = createInfaktClient({
+      apiKey: KLUCZ,
+      http: async () => ({
+        ok: true,
+        arrayBuffer: async () => {
+          throw Object.assign(
+            new TypeError(echo, {
+              cause: { errors: [echo, { body: echo }] },
+            }),
+            { status: 502 },
+          );
+        },
+      }),
+    });
     const e = await klient.pobierzPdf('demo').catch((blad) => blad);
     expect(e.status).toBe(502);
     expect(e).toBeInstanceOf(TypeError);
@@ -138,14 +199,23 @@ describe('maskowanie na wyjściu klienta inFaktu', () => {
   });
   it('błąd przed transportem (serializacja żądania) także przechodzi przez maskowanie', async () => {
     const klient = createInfaktClient({ apiKey: KLUCZ });
-    const e = await klient.wystaw({ toJSON() { throw new TypeError(echo); } }).catch((blad) => blad);
+    const e = await klient
+      .wystaw({
+        toJSON() {
+          throw new TypeError(echo);
+        },
+      })
+      .catch((blad) => blad);
     expect(e).toBeInstanceOf(TypeError);
     expect(e.dlaOperatora).toBeUndefined();
     bezSekretu(e);
   });
   for (const apiKey of ['', 'a', '1234567']) {
     it(`krótki klucz (${apiKey.length}) nie niszczy komunikatu`, async () => {
-      const klient = createInfaktClient({ apiKey, http: async () => new Response(JSON.stringify({ error: 'awaria 1234567' }), { status: 422 }) });
+      const klient = createInfaktClient({
+        apiKey,
+        http: async () => new Response(JSON.stringify({ error: 'awaria 1234567' }), { status: 422 }),
+      });
       await expect(klient.wystaw({})).rejects.toThrow('awaria 1234567');
     });
   }

@@ -15,10 +15,26 @@ const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null })
 const spij = (ms) => new Promise((ok) => setTimeout(ok, ms));
 
 const zmapowane = (id, nad = {}) => ({
-  zrodlo_id: id, numer: `N-${id}`, klient: { first_name: 'Jan', last_name: 'Testowy', email: 'j@example.invalid' },
-  dostawa: { first_name: 'Jan', last_name: 'Testowy', address_1: 'Polna 1', postcode: '00-001', city: 'Testowo', country: 'PL' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '10.00',
-  koszt_dostawy_brutto: '0.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
+  zrodlo_id: id,
+  numer: `N-${id}`,
+  klient: { first_name: 'Jan', last_name: 'Testowy', email: 'j@example.invalid' },
+  dostawa: {
+    first_name: 'Jan',
+    last_name: 'Testowy',
+    address_1: 'Polna 1',
+    postcode: '00-001',
+    city: 'Testowo',
+    country: 'PL',
+  },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '10.00',
+  koszt_dostawy_brutto: '0.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
   utworzone_at: '2026-10-01T09:00:00',
   pozycje: [{ nazwa: 'Szablon', sku: 'T-1', ilosc: 1, cena_brutto: '10.00', brutto_linii: '10.00', vat: null }],
   ...nad,
@@ -27,18 +43,32 @@ const zmapowane = (id, nad = {}) => ({
 // Klient z licznikiem: ile wywołań trwa NARAZ i w jakiej kolejności zaczynały się i kończyły.
 function licznik() {
   const s = { teraz: 0, maks: 0, zdarzenia: [] };
-  const owin = (nazwa, fn, ms = 40) => async (...a) => {
-    s.teraz++; s.maks = Math.max(s.maks, s.teraz); s.zdarzenia.push(`${nazwa}:${a[0]}:start`);
-    try { await spij(ms); return await fn(...a); } finally { s.teraz--; s.zdarzenia.push(`${nazwa}:${a[0]}:koniec`); }
-  };
+  const owin =
+    (nazwa, fn, ms = 40) =>
+    async (...a) => {
+      s.teraz++;
+      s.maks = Math.max(s.maks, s.teraz);
+      s.zdarzenia.push(`${nazwa}:${a[0]}:start`);
+      try {
+        await spij(ms);
+        return await fn(...a);
+      } finally {
+        s.teraz--;
+        s.zdarzenia.push(`${nazwa}:${a[0]}:koniec`);
+      }
+    };
   return { s, owin };
 }
 
 describe('akcja masowa „Zmień status” — odesłanie do sklepu/Allegro z limitem współbieżności', () => {
   let db, app, woo, allegro, l;
   const zbuduj = async () => {
-    app = buildOmsServer({ db, config, poller,
-      syncSklep: createSyncSklep({ db, klienci: { sklep_a: woo }, klienciKanalow: { allegro_a: allegro } }) });
+    app = buildOmsServer({
+      db,
+      config,
+      poller,
+      syncSklep: createSyncSklep({ db, klienci: { sklep_a: woo }, klienciKanalow: { allegro_a: allegro } }),
+    });
     await app.ready();
   };
   beforeEach(() => {
@@ -48,10 +78,16 @@ describe('akcja masowa „Zmień status” — odesłanie do sklepu/Allegro z li
     const stan = new Map();
     allegro = {
       pobierzStanRealizacji: vi.fn(l.owin('get', async (id) => stan.get(String(id)) ?? 'PROCESSING')),
-      ustawStatusRealizacji: vi.fn(l.owin('put', async (id, st) => { stan.set(String(id), st); return null; })),
+      ustawStatusRealizacji: vi.fn(
+        l.owin('put', async (id, st) => {
+          stan.set(String(id), st);
+          return null;
+        }),
+      ),
     };
   });
-  const wyslij = (payload) => app.inject({ method: 'POST', url: '/zamowienia/masowe/status', headers: naglowek, payload });
+  const wyslij = (payload) =>
+    app.inject({ method: 'POST', url: '/zamowienia/masowe/status', headers: naglowek, payload });
   const zeSklepu = (n) => Array.from({ length: n }, (_, i) => zapiszZamowienie(db, 'sklep_a', zmapowane(5000 + i), {}));
 
   it('limit jest mały (3–4): nie zalewa API sklepu ani Allegro', () => {
@@ -105,9 +141,18 @@ describe('akcja masowa „Zmień status” — odesłanie do sklepu/Allegro z li
 
   it('Allegro: w obrębie jednego zamówienia odczyt stanu zawsze kończy się PRZED zapisem — także przy równoległości', async () => {
     await zbuduj();
-    const ids = Array.from({ length: 6 }, (_, i) => zapiszZamowienie(db, 'allegro_a', zmapowane(9000 + i, {
-      zrodlo_id: String(9000 + i), metoda_wysylki: 'allegro_dpd', status_woo: 'READY_FOR_PROCESSING',
-    }), {}));
+    const ids = Array.from({ length: 6 }, (_, i) =>
+      zapiszZamowienie(
+        db,
+        'allegro_a',
+        zmapowane(9000 + i, {
+          zrodlo_id: String(9000 + i),
+          metoda_wysylki: 'allegro_dpd',
+          status_woo: 'READY_FOR_PROCESSING',
+        }),
+        {},
+      ),
+    );
 
     const r = await wyslij({ id: ids.map(String), status: 'wyslane' });
 

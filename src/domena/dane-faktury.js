@@ -35,7 +35,10 @@ const firmaZeSklepu = (zamowienie) => zamowienie?.klient?.company || null;
  * normalizujNip, domena/wdt.js), a numer unijny nie ma prawa zlać się z polskim.
  */
 export function bezEtykietyNip(surowy) {
-  const t = String(surowy ?? '').trim().replace(/^NIP(?![A-Z0-9])\s*[:.\-]?\s*/i, '').trim();
+  const t = String(surowy ?? '')
+    .trim()
+    .replace(/^NIP(?![A-Z0-9])\s*[:.\-]?\s*/i, '')
+    .trim();
   return t || null;
 }
 

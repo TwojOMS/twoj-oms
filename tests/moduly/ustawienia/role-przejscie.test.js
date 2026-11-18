@@ -9,21 +9,47 @@ import { synchronizujRole, listaRol, rolaPoKluczu, kluczeEkranow } from '../../.
 import { migawkaDostepu, nowyPanel } from '../../pomoc/panel-konta-testowe.js';
 
 const teraz = () => new Date('2026-10-14T02:00:00Z');
-const kluczeTestowe = () => { let n = 0; return () => `r-test${String(++n).padStart(4, '0')}`; };
+const kluczeTestowe = () => {
+  let n = 0;
+  return () => `r-test${String(++n).padStart(4, '0')}`;
+};
 
 /** Stan jak na produkcji przed wydaniem: same tabele rdzenia, ptaszki per konto, „+ zmiany”. */
 function bazaPrzedWydaniem() {
   const db = openOmsDb(':memory:');
-  zalozKonto(db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true, ekrany: ['zamowienia'] });
+  zalozKonto(db, {
+    login: 'adam',
+    imie: 'Adam',
+    haslo: 'h',
+    rola: 'administrator',
+    admin: true,
+    ekrany: ['zamowienia'],
+  });
   zalozKonto(db, { login: 'ewa', imie: 'Ewa', haslo: 'h', rola: 'sprzedaz' });
-  zalozKonto(db, { login: 'ola', imie: 'Ola', haslo: 'h', rola: 'sprzedaz', ekrany: [...ekranyRoli('sprzedaz'), 'finanse'] });
+  zalozKonto(db, {
+    login: 'ola',
+    imie: 'Ola',
+    haslo: 'h',
+    rola: 'sprzedaz',
+    ekrany: [...ekranyRoli('sprzedaz'), 'finanse'],
+  });
   zalozKonto(db, { login: 'ola2', imie: 'Ola', haslo: 'h', rola: 'sprzedaz', ekrany: ['zamowienia'] });
   zalozKonto(db, { login: 'pako', imie: 'Pako', haslo: 'h', rola: 'produkcja' });
   zalozKonto(db, { login: 'obcy', imie: 'Obcy', haslo: 'h', rola: 'ksiegowa', ekrany: ['faktury', 'api'] });
-  zalozKonto(db, { login: 'falszywy', imie: 'Fałsz', haslo: 'h', rola: 'administrator', admin: false, ekrany: ['faktury'] });
+  zalozKonto(db, {
+    login: 'falszywy',
+    imie: 'Fałsz',
+    haslo: 'h',
+    rola: 'administrator',
+    admin: false,
+    ekrany: ['faktury'],
+  });
   return db;
 }
-const przejdz = (db, losowyKlucz = kluczeTestowe()) => { wykonajMigracje(db, [modulRdzen, modulUstawienia]); return synchronizujRole(db, { teraz, losowyKlucz }); };
+const przejdz = (db, losowyKlucz = kluczeTestowe()) => {
+  wykonajMigracje(db, [modulRdzen, modulUstawienia]);
+  return synchronizujRole(db, { teraz, losowyKlucz });
+};
 
 describe('przejście kont na role w bazie', () => {
   it('zbiór (login → ekrany, admin) jest identyczny, poza poszerzeniem administratora', () => {
@@ -42,13 +68,26 @@ describe('przejście kont na role w bazie', () => {
     const db = bazaPrzedWydaniem();
     przejdz(db);
     const role = listaRol(db);
-    expect(role.map((r) => r.nazwa)).toEqual(['Administrator', 'Sprzedaż', 'Produkcja', 'Sprzedaż — Ola', 'Sprzedaż — Ola (2)', 'ksiegowa — Obcy', 'Własna bez admina — Fałsz']);
+    expect(role.map((r) => r.nazwa)).toEqual([
+      'Administrator',
+      'Sprzedaż',
+      'Produkcja',
+      'Sprzedaż — Ola',
+      'Sprzedaż — Ola (2)',
+      'ksiegowa — Obcy',
+      'Własna bez admina — Fałsz',
+    ]);
     expect(rolaPoKluczu(db, 'administrator')).toMatchObject({ admin: true, zablokowana: true });
     expect([...rolaPoKluczu(db, 'produkcja').ekrany].sort()).toEqual([...ekranyRoli('produkcja')].sort());
     const falszywy = kontoPoLoginie(db, 'falszywy');
     expect(falszywy.admin).toBe(false);
-    expect(rolaPoKluczu(db, falszywy.rola)).toMatchObject({ admin: false, zablokowana: false, nazwa: 'Własna bez admina — Fałsz' });
-    for (const r of role.filter((x) => !['administrator', 'sprzedaz', 'produkcja'].includes(x.klucz))) expect(r.klucz).toMatch(/^r-/);
+    expect(rolaPoKluczu(db, falszywy.rola)).toMatchObject({
+      admin: false,
+      zablokowana: false,
+      nazwa: 'Własna bez admina — Fałsz',
+    });
+    for (const r of role.filter((x) => !['administrator', 'sprzedaz', 'produkcja'].includes(x.klucz)))
+      expect(r.klucz).toMatch(/^r-/);
   });
 
   it('druga synchronizacja nic nie zmienia', () => {

@@ -15,7 +15,10 @@ const AUTH_POST = { ...AUTH, origin: 'http://localhost', 'content-type': 'applic
 function serwer({ czuwaczKosztow = { przebieg: async () => ({ nowych: 0 }) }, ...dodatkowe } = {}) {
   const db = openOmsDb(':memory:');
   const app = buildOmsServer({
-    db, config: { auth: { user: 't', pass: 'h' } }, czuwaczKosztow, ...dodatkowe,
+    db,
+    config: { auth: { user: 't', pass: 'h' } },
+    czuwaczKosztow,
+    ...dodatkowe,
   });
   return { app, db };
 }
@@ -27,10 +30,19 @@ function serwer({ czuwaczKosztow = { przebieg: async () => ({ nowych: 0 }) }, ..
 // calkowitych (niezmiennik 4.5). Cala droga „KSeF → ekran" ma wlasny test
 // (tests/oms/koszty-droga-ksef-na-ekran.test.js).
 const wiersz = (n = {}) => ({
-  ksefNumber: 'K-1', numerDokumentu: 'FV/2026/06/12', sprzedawcaNip: '5252674798',
-  sprzedawcaNazwa: 'Allegro', dataWystawienia: '2026-06-05',
-  dataTrwalegoZapisu: '2026-06-05T14:00:00Z', netto: '100.00', vat: '23.00', brutto: '123.00',
-  waluta: 'PLN', rodzaj: 'Vat', maZalacznik: 0, ...n,
+  ksefNumber: 'K-1',
+  numerDokumentu: 'FV/2026/06/12',
+  sprzedawcaNip: '5252674798',
+  sprzedawcaNazwa: 'Allegro',
+  dataWystawienia: '2026-06-05',
+  dataTrwalegoZapisu: '2026-06-05T14:00:00Z',
+  netto: '100.00',
+  vat: '23.00',
+  brutto: '123.00',
+  waluta: 'PLN',
+  rodzaj: 'Vat',
+  maZalacznik: 0,
+  ...n,
 });
 
 describe('GET /koszty', () => {
@@ -53,7 +65,17 @@ describe('GET /koszty', () => {
 
   it('⚠️ pas nieprzypisanych podaje LICZBE dokumentow i KWOTE, nie sama etykiete', async () => {
     const { app, db } = serwer();
-    zapiszKoszt(db, wiersz({ ksefNumber: 'K-9', sprzedawcaNip: '9999999999', sprzedawcaNazwa: 'Nowy Dostawca', netto: '40.00', vat: '9.20', brutto: '49.20' }));
+    zapiszKoszt(
+      db,
+      wiersz({
+        ksefNumber: 'K-9',
+        sprzedawcaNip: '9999999999',
+        sprzedawcaNazwa: 'Nowy Dostawca',
+        netto: '40.00',
+        vat: '9.20',
+        brutto: '49.20',
+      }),
+    );
     const r = await app.inject({ method: 'GET', url: '/koszty?miesiac=2026-06', headers: AUTH });
     expect(r.body).toContain('Bez kategorii');
     expect(r.body).toContain('40,00');
@@ -63,7 +85,17 @@ describe('GET /koszty', () => {
   it('⚠️ dokument w obcej walucie stoi osobno i NIE wchodzi do sumy PLN', async () => {
     const { app, db } = serwer();
     zapiszKoszt(db, wiersz());
-    zapiszKoszt(db, wiersz({ ksefNumber: 'K-EUR', numerDokumentu: 'INV-9', waluta: 'EUR', netto: '900.00', vat: '0.00', brutto: '900.00' }));
+    zapiszKoszt(
+      db,
+      wiersz({
+        ksefNumber: 'K-EUR',
+        numerDokumentu: 'INV-9',
+        waluta: 'EUR',
+        netto: '900.00',
+        vat: '0.00',
+        brutto: '900.00',
+      }),
+    );
     const r = await app.inject({ method: 'GET', url: '/koszty?miesiac=2026-06', headers: AUTH });
     expect(r.body).toContain('INV-9');
     expect(r.body).toContain('EUR');
@@ -103,10 +135,15 @@ describe('GET /koszty — kwarantanna', () => {
   it('⚠️ pokazuje LICZBE odrzuconych, ich numery i zdanie, ze NIE wchodza do sumy', async () => {
     const { app, db } = serwer();
     zapiszKoszt(db, wiersz());
-    zapiszOdrzuconyKoszt(db, {
-      ksefNumber: 'K-BRAK-KWOTY', invoiceNumber: 'FV/2026/06/77',
-      permanentStorageDate: '2026-06-07T10:00:00Z',
-    }, 'Brak kwoty: netto (K-BRAK-KWOTY).');
+    zapiszOdrzuconyKoszt(
+      db,
+      {
+        ksefNumber: 'K-BRAK-KWOTY',
+        invoiceNumber: 'FV/2026/06/77',
+        permanentStorageDate: '2026-06-07T10:00:00Z',
+      },
+      'Brak kwoty: netto (K-BRAK-KWOTY).',
+    );
     const r = await app.inject({ method: 'GET', url: '/koszty?miesiac=2026-06', headers: AUTH });
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('K-BRAK-KWOTY');
@@ -146,17 +183,23 @@ describe('POST /koszty/kategoria', () => {
     const { app, db } = serwer();
     zapiszKoszt(db, wiersz({ ksefNumber: 'K-9', sprzedawcaNip: '9999999999' }));
     const r = await app.inject({
-      method: 'POST', url: '/koszty/kategoria', headers: AUTH_POST,
+      method: 'POST',
+      url: '/koszty/kategoria',
+      headers: AUTH_POST,
       payload: 'nip=9999999999&kategoria=Materia%C5%82y&typ=zmienny&miesiac=2026-06',
     });
     expect([200, 303]).toContain(r.statusCode);
-    expect(db.prepare('SELECT kategoria FROM kategorie_kosztow WHERE nip = ?').get('9999999999').kategoria).toBe('Materiały');
+    expect(db.prepare('SELECT kategoria FROM kategorie_kosztow WHERE nip = ?').get('9999999999').kategoria).toBe(
+      'Materiały',
+    );
   });
 
   it('⚠️ nieznany typ jest ODRZUCANY — CHECK w bazie nie moze byc jedyna obrona', async () => {
     const { app } = serwer();
     const r = await app.inject({
-      method: 'POST', url: '/koszty/kategoria', headers: AUTH_POST,
+      method: 'POST',
+      url: '/koszty/kategoria',
+      headers: AUTH_POST,
       payload: 'nip=9999999999&kategoria=X&typ=wymyslony&miesiac=2026-06',
     });
     expect(r.statusCode).toBe(400);
@@ -167,25 +210,47 @@ describe('POST /koszty/kategoria', () => {
   it('⚠️ popsuty miesiac w formularzu nie gubi przypiecia', async () => {
     const { app, db } = serwer();
     const r = await app.inject({
-      method: 'POST', url: '/koszty/kategoria', headers: AUTH_POST,
+      method: 'POST',
+      url: '/koszty/kategoria',
+      headers: AUTH_POST,
       payload: 'nip=9999999999&kategoria=Opakowania&typ=zmienny&miesiac=czerwiec',
     });
     expect(r.statusCode).toBe(200);
-    expect(db.prepare('SELECT kategoria FROM kategorie_kosztow WHERE nip = ?').get('9999999999').kategoria).toBe('Opakowania');
+    expect(db.prepare('SELECT kategoria FROM kategorie_kosztow WHERE nip = ?').get('9999999999').kategoria).toBe(
+      'Opakowania',
+    );
   });
 });
 
 describe('POST /koszty/odswiez', () => {
   it('wola przebieg WYMUSZONY, nie zwykly', async () => {
     let wywolanie = null;
-    const { app } = serwer({ czuwaczKosztow: { przebieg: async (o) => { wywolanie = o; return { nowych: 3 }; } } });
+    const { app } = serwer({
+      czuwaczKosztow: {
+        przebieg: async (o) => {
+          wywolanie = o;
+          return { nowych: 3 };
+        },
+      },
+    });
     await app.inject({ method: 'POST', url: '/koszty/odswiez', headers: AUTH_POST, payload: 'miesiac=2026-06' });
     expect(wywolanie).toEqual({ wymuszony: true });
   });
 
   it('⚠️ blad KSeF oddaje ekran z komunikatem, NIGDY 500', async () => {
-    const { app } = serwer({ czuwaczKosztow: { przebieg: async () => { throw new Error('KSeF odmowil przy pobieraniu: HTTP 401'); } } });
-    const r = await app.inject({ method: 'POST', url: '/koszty/odswiez', headers: AUTH_POST, payload: 'miesiac=2026-06' });
+    const { app } = serwer({
+      czuwaczKosztow: {
+        przebieg: async () => {
+          throw new Error('KSeF odmowil przy pobieraniu: HTTP 401');
+        },
+      },
+    });
+    const r = await app.inject({
+      method: 'POST',
+      url: '/koszty/odswiez',
+      headers: AUTH_POST,
+      payload: 'miesiac=2026-06',
+    });
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('KSeF odmowil');
   });
@@ -194,7 +259,12 @@ describe('POST /koszty/odswiez', () => {
   // dzialac na lustrze w bazie, ale przycisk nie ma czego uruchomic — i musi to POWIEDZIEC.
   it('panel bez KSeF odmawia czytelnie, zamiast wywalic sie na braku czuwacza', async () => {
     const { app } = serwer({ czuwaczKosztow: null });
-    const r = await app.inject({ method: 'POST', url: '/koszty/odswiez', headers: AUTH_POST, payload: 'miesiac=2026-06' });
+    const r = await app.inject({
+      method: 'POST',
+      url: '/koszty/odswiez',
+      headers: AUTH_POST,
+      payload: 'miesiac=2026-06',
+    });
     expect(r.statusCode).toBe(503);
     expect(r.body).toContain('KSeF');
   });
@@ -207,7 +277,10 @@ describe('GET /koszty/:ksefNumber/pdf', () => {
   const zWizualizacja = (wizualizacjaKosztu) => {
     const db = openOmsDb(':memory:');
     const app = buildOmsServer({
-      db, config: { auth: { user: 't', pass: 'h' } }, czuwaczKosztow: null, wizualizacjaKosztu,
+      db,
+      config: { auth: { user: 't', pass: 'h' } },
+      czuwaczKosztow: null,
+      wizualizacjaKosztu,
     });
     return { app, db };
   };
@@ -279,10 +352,18 @@ describe('POST /koszty/reczne', () => {
 
   it('dopisuje koszt spoza KSeF i pokazuje go w miesiącu', async () => {
     const { app, db } = serwer();
-    db.prepare('INSERT INTO firmy_reczne (nazwa,sprzedawca,kategoria,typ,dodana_at) VALUES (?,?,?,?,?)')
-      .run('Google','Google Ireland Limited','Reklama','zmienny','2026-10-01T00:00:00Z');
+    db.prepare('INSERT INTO firmy_reczne (nazwa,sprzedawca,kategoria,typ,dodana_at) VALUES (?,?,?,?,?)').run(
+      'Google',
+      'Google Ireland Limited',
+      'Reklama',
+      'zmienny',
+      '2026-10-01T00:00:00Z',
+    );
     const r = await app.inject({
-      method: 'POST', url: '/koszty/reczne', headers: AUTH_POST, payload: FORMULARZ,
+      method: 'POST',
+      url: '/koszty/reczne',
+      headers: AUTH_POST,
+      payload: FORMULARZ,
     });
     expect(r.statusCode).toBe(200);
     // ⚠️ NAZWA SPRZEDAWCY, KATEGORIA I TYP BIORĄ SIĘ ZE SŁOWNIKA FIRM — operator wpisał
@@ -304,8 +385,13 @@ describe('POST /koszty/reczne', () => {
   // którego oba rodzaje leżą w jednej tabeli.
   it('⚠️ wchodzi do sumy miesiąca razem z dokumentami z KSeF', async () => {
     const { app, db } = serwer();
-    db.prepare('INSERT INTO firmy_reczne (nazwa,sprzedawca,kategoria,typ,dodana_at) VALUES (?,?,?,?,?)')
-      .run('Google','Google Ireland Limited','Reklama','zmienny','2026-10-01T00:00:00Z');
+    db.prepare('INSERT INTO firmy_reczne (nazwa,sprzedawca,kategoria,typ,dodana_at) VALUES (?,?,?,?,?)').run(
+      'Google',
+      'Google Ireland Limited',
+      'Reklama',
+      'zmienny',
+      '2026-10-01T00:00:00Z',
+    );
     zapiszKoszt(db, wiersz());
     await app.inject({ method: 'POST', url: '/koszty/reczne', headers: AUTH_POST, payload: FORMULARZ });
     const r = await app.inject({ method: 'GET', url: '/koszty?miesiac=2026-06', headers: AUTH });
@@ -317,10 +403,17 @@ describe('POST /koszty/reczne', () => {
   // Koszt, dla którego cała ta funkcja powstała, nie wchodził do liczby, którą miał zasilić.
   it('⚠️ kwota jest w PLN i wiersz NIE ląduje poza sumą miesiąca', async () => {
     const { app, db } = serwer();
-    db.prepare('INSERT INTO firmy_reczne (nazwa,sprzedawca,kategoria,typ,dodana_at) VALUES (?,?,?,?,?)')
-      .run('Anthropic','Anthropic PBC','Oprogramowanie','staly','2026-10-01T00:00:00Z');
+    db.prepare('INSERT INTO firmy_reczne (nazwa,sprzedawca,kategoria,typ,dodana_at) VALUES (?,?,?,?,?)').run(
+      'Anthropic',
+      'Anthropic PBC',
+      'Oprogramowanie',
+      'staly',
+      '2026-10-01T00:00:00Z',
+    );
     await app.inject({
-      method: 'POST', url: '/koszty/reczne', headers: AUTH_POST,
+      method: 'POST',
+      url: '/koszty/reczne',
+      headers: AUTH_POST,
       payload: 'firma=Anthropic&dataWystawienia=2026-06-07&kwota=90&waluta=USD&miesiac=2026-06',
     });
     const r = await app.inject({ method: 'GET', url: '/koszty?miesiac=2026-06', headers: AUTH });
@@ -332,8 +425,13 @@ describe('POST /koszty/reczne', () => {
   // wiersz ręczny wolno poprawić i tylko za jego kwotę odpowiada człowiek przy panelu.
   it('⚠️ wiersz ręczny jest na liście ROZPOZNAWALNY i ma odnośnik do poprawki', async () => {
     const { app, db } = serwer();
-    db.prepare('INSERT INTO firmy_reczne (nazwa,sprzedawca,kategoria,typ,dodana_at) VALUES (?,?,?,?,?)')
-      .run('Google','Google Ireland Limited','Reklama','zmienny','2026-10-01T00:00:00Z');
+    db.prepare('INSERT INTO firmy_reczne (nazwa,sprzedawca,kategoria,typ,dodana_at) VALUES (?,?,?,?,?)').run(
+      'Google',
+      'Google Ireland Limited',
+      'Reklama',
+      'zmienny',
+      '2026-10-01T00:00:00Z',
+    );
     await app.inject({ method: 'POST', url: '/koszty/reczne', headers: AUTH_POST, payload: FORMULARZ });
     const klucz = db.prepare('SELECT ksef_number k FROM koszty').get().k;
     const r = await app.inject({ method: 'GET', url: '/koszty?miesiac=2026-06', headers: AUTH });
@@ -343,10 +441,17 @@ describe('POST /koszty/reczne', () => {
 
   it('⚠️ popsuta kwota odmawia zdaniem dla człowieka, a nie piećsetką', async () => {
     const { app, db } = serwer();
-    db.prepare('INSERT INTO firmy_reczne (nazwa,sprzedawca,kategoria,typ,dodana_at) VALUES (?,?,?,?,?)')
-      .run('Google','Google Ireland Limited','Reklama','zmienny','2026-10-01T00:00:00Z');
+    db.prepare('INSERT INTO firmy_reczne (nazwa,sprzedawca,kategoria,typ,dodana_at) VALUES (?,?,?,?,?)').run(
+      'Google',
+      'Google Ireland Limited',
+      'Reklama',
+      'zmienny',
+      '2026-10-01T00:00:00Z',
+    );
     const r = await app.inject({
-      method: 'POST', url: '/koszty/reczne', headers: AUTH_POST,
+      method: 'POST',
+      url: '/koszty/reczne',
+      headers: AUTH_POST,
       payload: 'firma=Google&dataWystawienia=2026-06-07&kwota=osiemdziesi%C4%85t&miesiac=2026-06',
     });
     expect(r.statusCode).toBe(400);
@@ -359,7 +464,9 @@ describe('POST /koszty/reczne', () => {
   it('⚠️ firma spoza słownika odmawia — wiersz byłby kosztem niczyim', async () => {
     const { app, db } = serwer();
     const r = await app.inject({
-      method: 'POST', url: '/koszty/reczne', headers: AUTH_POST,
+      method: 'POST',
+      url: '/koszty/reczne',
+      headers: AUTH_POST,
       payload: 'firma=Wymy%C5%9Blona&dataWystawienia=2026-06-07&kwota=100&miesiac=2026-06',
     });
     expect(r.statusCode).toBe(400);
@@ -369,10 +476,17 @@ describe('POST /koszty/reczne', () => {
 
   it('⚠️ zła data odmawia — po niej liczy się miesiąc kosztów', async () => {
     const { app, db } = serwer();
-    db.prepare('INSERT INTO firmy_reczne (nazwa,sprzedawca,kategoria,typ,dodana_at) VALUES (?,?,?,?,?)')
-      .run('Google','Google Ireland Limited','Reklama','zmienny','2026-10-01T00:00:00Z');
+    db.prepare('INSERT INTO firmy_reczne (nazwa,sprzedawca,kategoria,typ,dodana_at) VALUES (?,?,?,?,?)').run(
+      'Google',
+      'Google Ireland Limited',
+      'Reklama',
+      'zmienny',
+      '2026-10-01T00:00:00Z',
+    );
     const r = await app.inject({
-      method: 'POST', url: '/koszty/reczne', headers: AUTH_POST,
+      method: 'POST',
+      url: '/koszty/reczne',
+      headers: AUTH_POST,
       payload: 'firma=Google&dataWystawienia=7.06.2026&kwota=100&miesiac=2026-06',
     });
     expect(r.statusCode).toBe(400);
@@ -383,10 +497,17 @@ describe('POST /koszty/reczne', () => {
   // potwierdzenia, że cokolwiek się stało, i wpisuje go po raz drugi.
   it('po zapisaniu ekran pokazuje MIESIĄC DOKUMENTU, a nie ten, z którego przyszedł formularz', async () => {
     const { app, db } = serwer();
-    db.prepare('INSERT INTO firmy_reczne (nazwa,sprzedawca,kategoria,typ,dodana_at) VALUES (?,?,?,?,?)')
-      .run('Facebook (Meta)','Meta Platforms Ireland Limited','Reklama','zmienny','2026-10-01T00:00:00Z');
+    db.prepare('INSERT INTO firmy_reczne (nazwa,sprzedawca,kategoria,typ,dodana_at) VALUES (?,?,?,?,?)').run(
+      'Facebook (Meta)',
+      'Meta Platforms Ireland Limited',
+      'Reklama',
+      'zmienny',
+      '2026-10-01T00:00:00Z',
+    );
     const r = await app.inject({
-      method: 'POST', url: '/koszty/reczne', headers: AUTH_POST,
+      method: 'POST',
+      url: '/koszty/reczne',
+      headers: AUTH_POST,
       payload: 'firma=Facebook+%28Meta%29&dataWystawienia=2026-05-02&kwota=100&miesiac=2026-06',
     });
     expect(r.statusCode).toBe(200);
@@ -418,28 +539,40 @@ describe('POST /koszty/firmy — dopisanie firmy do listy', () => {
   it('dopisana firma staje na liście z typem wziętym z kategorii', async () => {
     const { app, db } = serwer();
     const r = await app.inject({
-      method: 'POST', url: '/koszty/firmy', headers: AUTH_POST,
+      method: 'POST',
+      url: '/koszty/firmy',
+      headers: AUTH_POST,
       payload: 'nazwa=OpenAI&kategoria=Oprogramowanie&miesiac=2026-06',
     });
     expect(r.statusCode).toBe(200);
-    expect(db.prepare('SELECT * FROM firmy_reczne WHERE nazwa = ?').get('OpenAI'))
-      .toMatchObject({ sprzedawca: 'OpenAI', kategoria: 'Oprogramowanie', typ: 'staly' });
+    expect(db.prepare('SELECT * FROM firmy_reczne WHERE nazwa = ?').get('OpenAI')).toMatchObject({
+      sprzedawca: 'OpenAI',
+      kategoria: 'Oprogramowanie',
+      typ: 'staly',
+    });
     expect(r.body).toContain('value="OpenAI"');
   });
 
   it('⚠️ dopisana firma od razu daje się wybrać przy koszcie', async () => {
     const { app, db } = serwer();
     await app.inject({
-      method: 'POST', url: '/koszty/firmy', headers: AUTH_POST,
+      method: 'POST',
+      url: '/koszty/firmy',
+      headers: AUTH_POST,
       payload: 'nazwa=OpenAI&kategoria=Oprogramowanie&miesiac=2026-06',
     });
     const r = await app.inject({
-      method: 'POST', url: '/koszty/reczne', headers: AUTH_POST,
+      method: 'POST',
+      url: '/koszty/reczne',
+      headers: AUTH_POST,
       payload: 'firma=OpenAI&dataWystawienia=2026-06-07&kwota=120&miesiac=2026-06',
     });
     expect(r.statusCode).toBe(200);
-    expect(db.prepare('SELECT * FROM koszty').get())
-      .toMatchObject({ sprzedawca_nazwa: 'OpenAI', kategoria_dokumentu: 'Oprogramowanie', typ_dokumentu: 'staly' });
+    expect(db.prepare('SELECT * FROM koszty').get()).toMatchObject({
+      sprzedawca_nazwa: 'OpenAI',
+      kategoria_dokumentu: 'Oprogramowanie',
+      typ_dokumentu: 'staly',
+    });
   });
 
   // ⚠️ KATEGORIA SPOZA LISTY ODMAWIA, bo to ona niesie TYP. Zgadnięty typ wchodziłby do progu
@@ -447,7 +580,9 @@ describe('POST /koszty/firmy — dopisanie firmy do listy', () => {
   it('⚠️ nieznana kategoria odmawia — bez niej firma nie miałaby typu kosztu', async () => {
     const { app, db } = serwer();
     const r = await app.inject({
-      method: 'POST', url: '/koszty/firmy', headers: AUTH_POST,
+      method: 'POST',
+      url: '/koszty/firmy',
+      headers: AUTH_POST,
       payload: 'nazwa=OpenAI&kategoria=Wymy%C5%9Blona&miesiac=2026-06',
     });
     expect(r.statusCode).toBe(400);
@@ -457,7 +592,9 @@ describe('POST /koszty/firmy — dopisanie firmy do listy', () => {
   it('⚠️ pusta nazwa odmawia, zamiast założyć firmę bez nazwy', async () => {
     const { app, db } = serwer();
     const r = await app.inject({
-      method: 'POST', url: '/koszty/firmy', headers: AUTH_POST,
+      method: 'POST',
+      url: '/koszty/firmy',
+      headers: AUTH_POST,
       payload: 'nazwa=+&kategoria=Reklama&miesiac=2026-06',
     });
     expect(r.statusCode).toBe(400);
@@ -467,14 +604,23 @@ describe('POST /koszty/firmy — dopisanie firmy do listy', () => {
 
 describe('edycja i usuniecie kosztu recznego', () => {
   const PODSTAWA = 'firma=Google&dataWystawienia=2026-06-07&kwota=200&miesiac=2026-06';
-  const dopisz = async (app) => app.inject({
-    method: 'POST', url: '/koszty/reczne', headers: AUTH_POST, payload: PODSTAWA,
-  });
+  const dopisz = async (app) =>
+    app.inject({
+      method: 'POST',
+      url: '/koszty/reczne',
+      headers: AUTH_POST,
+      payload: PODSTAWA,
+    });
 
   it('ekran poprawki pokazuje wpisane wartości i wybraną firmę', async () => {
     const { app, db } = serwer();
-    db.prepare('INSERT INTO firmy_reczne (nazwa,sprzedawca,kategoria,typ,dodana_at) VALUES (?,?,?,?,?)')
-      .run('Google','Google Ireland Limited','Reklama','zmienny','2026-10-01T00:00:00Z');
+    db.prepare('INSERT INTO firmy_reczne (nazwa,sprzedawca,kategoria,typ,dodana_at) VALUES (?,?,?,?,?)').run(
+      'Google',
+      'Google Ireland Limited',
+      'Reklama',
+      'zmienny',
+      '2026-10-01T00:00:00Z',
+    );
     await dopisz(app);
     const klucz = db.prepare('SELECT ksef_number k FROM koszty').get().k;
     const r = await app.inject({ method: 'GET', url: '/koszty/reczne/' + encodeURIComponent(klucz), headers: AUTH });
@@ -489,8 +635,13 @@ describe('edycja i usuniecie kosztu recznego', () => {
 
   it('poprawka zmienia kwotę i NIE zakłada drugiego wiersza', async () => {
     const { app, db } = serwer();
-    db.prepare('INSERT INTO firmy_reczne (nazwa,sprzedawca,kategoria,typ,dodana_at) VALUES (?,?,?,?,?)')
-      .run('Google','Google Ireland Limited','Reklama','zmienny','2026-10-01T00:00:00Z');
+    db.prepare('INSERT INTO firmy_reczne (nazwa,sprzedawca,kategoria,typ,dodana_at) VALUES (?,?,?,?,?)').run(
+      'Google',
+      'Google Ireland Limited',
+      'Reklama',
+      'zmienny',
+      '2026-10-01T00:00:00Z',
+    );
     await dopisz(app);
     const klucz = db.prepare('SELECT ksef_number k FROM koszty').get().k;
     const r = await app.inject({
@@ -506,13 +657,20 @@ describe('edycja i usuniecie kosztu recznego', () => {
 
   it('usunięcie kasuje wiersz ręczny', async () => {
     const { app, db } = serwer();
-    db.prepare('INSERT INTO firmy_reczne (nazwa,sprzedawca,kategoria,typ,dodana_at) VALUES (?,?,?,?,?)')
-      .run('Google','Google Ireland Limited','Reklama','zmienny','2026-10-01T00:00:00Z');
+    db.prepare('INSERT INTO firmy_reczne (nazwa,sprzedawca,kategoria,typ,dodana_at) VALUES (?,?,?,?,?)').run(
+      'Google',
+      'Google Ireland Limited',
+      'Reklama',
+      'zmienny',
+      '2026-10-01T00:00:00Z',
+    );
     await dopisz(app);
     const klucz = db.prepare('SELECT ksef_number k FROM koszty').get().k;
     const r = await app.inject({
-      method: 'POST', url: '/koszty/reczne/' + encodeURIComponent(klucz) + '/usun',
-      headers: AUTH_POST, payload: 'miesiac=2026-06',
+      method: 'POST',
+      url: '/koszty/reczne/' + encodeURIComponent(klucz) + '/usun',
+      headers: AUTH_POST,
+      payload: 'miesiac=2026-06',
     });
     expect(r.statusCode).toBe(200);
     expect(db.prepare('SELECT COUNT(*) c FROM koszty').get().c).toBe(0);
@@ -521,11 +679,19 @@ describe('edycja i usuniecie kosztu recznego', () => {
   // ⚠️⚠️ DOKUMENTU Z KSeF NIE WOLNO SKASOWAĆ ANI POPRAWIĆ Z PANELU — panel jest lustrem KSeF-u.
   it('⚠️ dokument z KSeF odbija się od obu tras, a wiersz zostaje nietknięty', async () => {
     const { app, db } = serwer();
-    db.prepare('INSERT INTO firmy_reczne (nazwa,sprzedawca,kategoria,typ,dodana_at) VALUES (?,?,?,?,?)')
-      .run('Google','Google Ireland Limited','Reklama','zmienny','2026-10-01T00:00:00Z');
+    db.prepare('INSERT INTO firmy_reczne (nazwa,sprzedawca,kategoria,typ,dodana_at) VALUES (?,?,?,?,?)').run(
+      'Google',
+      'Google Ireland Limited',
+      'Reklama',
+      'zmienny',
+      '2026-10-01T00:00:00Z',
+    );
     zapiszKoszt(db, wiersz());
     const usun = await app.inject({
-      method: 'POST', url: '/koszty/reczne/K-1/usun', headers: AUTH_POST, payload: 'miesiac=2026-06',
+      method: 'POST',
+      url: '/koszty/reczne/K-1/usun',
+      headers: AUTH_POST,
+      payload: 'miesiac=2026-06',
     });
     expect(usun.statusCode).toBe(400);
     expect(usun.body).toContain('KSeF');
@@ -548,10 +714,17 @@ describe('POST /koszty/kategoria — dokument bez NIP-u', () => {
   // Google potrafi dotyczyć czego innego niż wszystkie poprzednie i musi dać się przepiąć.
   it('przypina kategorię do samego dokumentu i wchodzi ona do rozbicia', async () => {
     const { app, db } = serwer();
-    db.prepare('INSERT INTO firmy_reczne (nazwa,sprzedawca,kategoria,typ,dodana_at) VALUES (?,?,?,?,?)')
-      .run('Facebook (Meta)','Meta Platforms Ireland Limited','Reklama','zmienny','2026-10-01T00:00:00Z');
+    db.prepare('INSERT INTO firmy_reczne (nazwa,sprzedawca,kategoria,typ,dodana_at) VALUES (?,?,?,?,?)').run(
+      'Facebook (Meta)',
+      'Meta Platforms Ireland Limited',
+      'Reklama',
+      'zmienny',
+      '2026-10-01T00:00:00Z',
+    );
     await app.inject({
-      method: 'POST', url: '/koszty/reczne', headers: AUTH_POST,
+      method: 'POST',
+      url: '/koszty/reczne',
+      headers: AUTH_POST,
       payload: 'firma=Facebook+%28Meta%29&dataWystawienia=2026-06-07&kwota=100&miesiac=2026-06',
     });
     const klucz = db.prepare('SELECT ksef_number k FROM koszty').get().k;
@@ -572,7 +745,9 @@ describe('POST /koszty/kategoria — dokument bez NIP-u', () => {
   it('⚠️ bez NIP-u i bez dokumentu nie ma do czego przypiąć — odmowa, nie cisza', async () => {
     const { app } = serwer();
     const r = await app.inject({
-      method: 'POST', url: '/koszty/kategoria', headers: AUTH_POST,
+      method: 'POST',
+      url: '/koszty/kategoria',
+      headers: AUTH_POST,
       payload: 'nip=&ksefNumber=&kategoria=Reklama&typ=zmienny&miesiac=2026-06',
     });
     expect(r.statusCode).toBe(400);
@@ -584,10 +759,14 @@ describe('POST /koszty/kategoria — dokument bez NIP-u', () => {
     const { app, db } = serwer();
     zapiszKoszt(db, wiersz({ ksefNumber: 'K-5', sprzedawcaNip: '9999999999' }));
     await app.inject({
-      method: 'POST', url: '/koszty/kategoria', headers: AUTH_POST,
+      method: 'POST',
+      url: '/koszty/kategoria',
+      headers: AUTH_POST,
       payload: 'ksefNumber=K-5&nip=9999999999&kategoria=Sprz%C4%99t&typ=staly&miesiac=2026-06',
     });
-    expect(db.prepare('SELECT kategoria FROM kategorie_kosztow WHERE nip = ?').get('9999999999').kategoria).toBe('Sprzęt');
+    expect(db.prepare('SELECT kategoria FROM kategorie_kosztow WHERE nip = ?').get('9999999999').kategoria).toBe(
+      'Sprzęt',
+    );
     expect(db.prepare('SELECT kategoria_dokumentu k FROM koszty WHERE ksef_number = ?').get('K-5').k).toBeNull();
   });
 });
@@ -609,7 +788,10 @@ describe('GET /koszty — bez starych przyciskow paczek dla biura', () => {
   it('nie pokazuje paczek takze na ekranie po odswiezeniu', async () => {
     const { app } = serwer({ paczkaDlaBiura: { zbuduj: async () => ({}) } });
     const r = await app.inject({
-      method: 'POST', url: '/koszty/odswiez', headers: AUTH_POST, payload: 'miesiac=2026-08',
+      method: 'POST',
+      url: '/koszty/odswiez',
+      headers: AUTH_POST,
+      payload: 'miesiac=2026-08',
     });
     expect(r.statusCode).toBe(200);
     expect(r.body).not.toContain('/faktury/paczka');

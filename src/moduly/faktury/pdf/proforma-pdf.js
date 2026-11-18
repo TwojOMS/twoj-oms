@@ -30,14 +30,14 @@ const PLIKI_FONTOW = {
 
 const A4_SZER = 595.28;
 const MARGINES = 40;
-const L = MARGINES;                 // lewa krawędź treści
-const R = A4_SZER - MARGINES;       // prawa krawędź treści (555.28)
-const PRAWA_KOLUMNA = 320;          // początek kolumny „NABYWCA" i bloków dosuniętych w prawo
+const L = MARGINES; // lewa krawędź treści
+const R = A4_SZER - MARGINES; // prawa krawędź treści (555.28)
+const PRAWA_KOLUMNA = 320; // początek kolumny „NABYWCA" i bloków dosuniętych w prawo
 
 const CZARNY = '#1a1a1a';
 const SZARY_TEKST = '#666666';
-const SZARY_PASEK = '#c9c9c9';      // prostokąt przed nagłówkiem sekcji
-const SZARY_WIERSZ = '#eeeeee';     // co drugi wiersz tabeli
+const SZARY_PASEK = '#c9c9c9'; // prostokąt przed nagłówkiem sekcji
+const SZARY_WIERSZ = '#eeeeee'; // co drugi wiersz tabeli
 const SZARY_LINIA = '#cccccc';
 
 // Kolumny tabeli pozycji. Trzymane jako DANE, a nie rozsypane po kodzie, bo nagłówek i wiersze
@@ -97,16 +97,16 @@ function linia(doc, y) {
 function naglowekSekcji(doc, x, y, tekst) {
   const DUZA = 12;
   const MALA = 9;
-  doc.rect(x, y + 4, 28, 6).fillColor(SZARY_PASEK).fill();
+  doc
+    .rect(x, y + 4, 28, 6)
+    .fillColor(SZARY_PASEK)
+    .fill();
   const napis = String(tekst);
   zwykly(doc, DUZA).text(napis.slice(0, 1).toUpperCase(), x + 34, y, { lineBreak: false });
   const szerPierwszej = doc.widthOfString(napis.slice(0, 1).toUpperCase());
-  zwykly(doc, MALA).text(
-    napis.slice(1).toUpperCase(),
-    x + 34 + szerPierwszej,
-    y + (DUZA - MALA) * 0.72,
-    { lineBreak: false },
-  );
+  zwykly(doc, MALA).text(napis.slice(1).toUpperCase(), x + 34 + szerPierwszej, y + (DUZA - MALA) * 0.72, {
+    lineBreak: false,
+  });
   return y + DUZA + 8;
 }
 
@@ -126,7 +126,9 @@ function blokStrony(doc, x, y, szerokosc, strona = {}) {
     [strona.kod, strona.miasto].filter(Boolean).join(' '),
     strona.kraj,
     strona.nip ? `NIP: ${strona.nip}` : '',
-  ].map((s) => String(s ?? '').trim()).filter((s) => s !== '');
+  ]
+    .map((s) => String(s ?? '').trim())
+    .filter((s) => s !== '');
   zwykly(doc, 9);
   for (const l of linie) {
     doc.text(l, x, biezace, { width: szerokosc });
@@ -212,7 +214,10 @@ function wierszPozycji(doc, y, pozycja, lp) {
   const wys = Math.max(wysNazwy, 11) + 10;
 
   if (lp % 2 === 1) {
-    doc.rect(L, y - 4, R - L, wys).fillColor(SZARY_WIERSZ).fill();
+    doc
+      .rect(L, y - 4, R - L, wys)
+      .fillColor(SZARY_WIERSZ)
+      .fill();
   }
 
   zwykly(doc, 9);
@@ -240,20 +245,22 @@ function tabelaVat(doc, y, wiersze = []) {
   komorka(doc, 'Kwota VAT', KOLUMNY_VAT.vat, y);
   komorka(doc, 'Brutto', KOLUMNY_VAT.brutto, y);
   let biezace = y + 14;
-  doc.moveTo(KOLUMNY_VAT.stawka.x, biezace).lineTo(R, biezace)
-    .lineWidth(0.5).strokeColor(SZARY_LINIA).stroke();
+  doc.moveTo(KOLUMNY_VAT.stawka.x, biezace).lineTo(R, biezace).lineWidth(0.5).strokeColor(SZARY_LINIA).stroke();
   biezace += 5;
 
   wiersze.forEach((w, i) => {
     if (i % 2 === 0) {
-      doc.rect(KOLUMNY_VAT.stawka.x, biezace - 4, R - KOLUMNY_VAT.stawka.x, 18)
-        .fillColor(SZARY_WIERSZ).fill();
+      doc
+        .rect(KOLUMNY_VAT.stawka.x, biezace - 4, R - KOLUMNY_VAT.stawka.x, 18)
+        .fillColor(SZARY_WIERSZ)
+        .fill();
     }
     // ⚠️ Etykieta „Suma" idzie z FLAGI `w.suma`, nigdy z pozycji w tablicy. Wiersz sumy ma
     // `stawka: null` i jest ostatni, ale rozpoznawanie go po indeksie byłoby drugą regułą na
     // tę samą rzecz — a przy jednej stawce oba warianty wyglądają identycznie, więc pomyłka
     // wyszłaby dopiero na dokumencie z dwiema stawkami.
-    if (w.suma) gruby(doc, 9); else zwykly(doc, 9);
+    if (w.suma) gruby(doc, 9);
+    else zwykly(doc, 9);
     komorka(doc, w.suma ? 'Suma' : etykietaStawki(w.stawka), KOLUMNY_VAT.stawka, biezace);
     komorka(doc, kwota(w.nettoGr), KOLUMNY_VAT.netto, biezace);
     komorka(doc, kwota(w.vatGr), KOLUMNY_VAT.vat, biezace);
@@ -301,11 +308,15 @@ function stopki(doc, nazwaSprzedawcy) {
     doc.page.margins.bottom = 0;
     zwykly(doc, 8, SZARY_TEKST).text(
       `Wystawiono w panelu zamówień${nazwaSprzedawcy ? ` ${nazwaSprzedawcy}` : ''}`,
-      L, doc.page.height - 42, { width: R - L, lineBreak: false },
+      L,
+      doc.page.height - 42,
+      { width: R - L, lineBreak: false },
     );
     if (zakres.count > 1) {
       doc.text(`Strona ${i - zakres.start + 1} z ${zakres.count}`, L, doc.page.height - 42, {
-        width: R - L, align: 'right', lineBreak: false,
+        width: R - L,
+        align: 'right',
+        lineBreak: false,
       });
     }
     doc.page.margins.bottom = dolny;
@@ -342,7 +353,10 @@ export function zbudujProformePdf(dane = {}) {
   const doc = new PDFDocument({
     size: 'A4',
     margins: {
-      top: MARGINES, bottom: MARGINES, left: MARGINES, right: MARGINES,
+      top: MARGINES,
+      bottom: MARGINES,
+      left: MARGINES,
+      right: MARGINES,
     },
     bufferPages: true,
     info: {

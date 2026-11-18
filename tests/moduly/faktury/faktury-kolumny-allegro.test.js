@@ -11,15 +11,13 @@ import { rozpocznijFakture, fakturaSkasowanaWInfakcie } from '../../../src/modul
 // stan panelu ORAZ `ksef_data` z inFaktu), a dodatkowo `fakturaSkasowanaWInfakcie`
 // ODMAWIA kasowania, gdy jest niepusta — wpisanie tam numeru KSeF zmieniłoby tę odmowę
 // przypadkiem. Ostatni test niżej pilnuje właśnie tego rozdziału.
-const NOWE = [
-  'ksef_numer',
-  'ksef_sprawdzona_at',
-  'allegro_invoice_id',
-  'allegro_wyslana_at',
-  'allegro_weryfikacja',
-];
+const NOWE = ['ksef_numer', 'ksef_sprawdzona_at', 'allegro_invoice_id', 'allegro_wyslana_at', 'allegro_weryfikacja'];
 
-const kolumnyFaktur = (db) => db.prepare('PRAGMA table_info(faktury)').all().map((k) => k.name);
+const kolumnyFaktur = (db) =>
+  db
+    .prepare('PRAGMA table_info(faktury)')
+    .all()
+    .map((k) => k.name);
 
 // Baza SPRZED zmiany symulowana tak samo jak w tests/oms/migracja-status-realizacji.test.js:
 // zakładamy ją normalnie (schema.sql tworzy już nowe kolumny), a potem RĘCZNIE je zdejmujemy —
@@ -34,8 +32,8 @@ const nowyPlik = () => join(mkdtempSync(join(tmpdir(), 'oms-faktury-allegro-')),
 
 function zZamowieniem(db) {
   db.prepare(
-    "INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at)"
-    + " VALUES ('allegro_swietlik', 1, '1', '10.00', '2026-08-06')",
+    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at)' +
+      " VALUES ('allegro_swietlik', 1, '1', '10.00', '2026-08-06')",
   ).run();
   return db;
 }
@@ -59,7 +57,7 @@ describe('kolumny faktury dla łańcucha KSeF → Allegro', () => {
   // dostałoby świeży schemat i udowodniło coś zupełnie innego.
   it('STARA baza (bez tych kolumn) dostaje je migracją', () => {
     // Wyjątek zatwierdzony przez właściciela 2026-09-30: odmowa niezgodnego baseline + prawidłowe reopen.
-    potwierdzOdmoweHistorycznegoSchema(["ALTER TABLE faktury DROP COLUMN ksef_numer"], ['ksef_numer']);
+    potwierdzOdmoweHistorycznegoSchema(['ALTER TABLE faktury DROP COLUMN ksef_numer'], ['ksef_numer']);
     const plik = nowyPlik();
     const pierwsza = openOmsDb(plik);
     for (const k of NOWE) expect(kolumnyFaktur(pierwsza)).toContain(k);
@@ -76,22 +74,16 @@ describe('kolumny faktury dla łańcucha KSeF → Allegro', () => {
   // to było wyłącznie w logu kontenera.
   it('po migracji zapis numeru KSeF i danych z Allegro naprawdę siada w kolumnach', () => {
     // Wyjątek zatwierdzony przez właściciela 2026-09-30: odmowa niezgodnego baseline + prawidłowe reopen.
-    potwierdzOdmoweHistorycznegoSchema(["ALTER TABLE faktury DROP COLUMN allegro_invoice_id"], ['allegro_invoice_id']);
+    potwierdzOdmoweHistorycznegoSchema(['ALTER TABLE faktury DROP COLUMN allegro_invoice_id'], ['allegro_invoice_id']);
     const plik = nowyPlik();
     zZamowieniem(openOmsDb(plik)).close();
 
     const db = openOmsDb(plik);
     rozpocznijFakture(db, 1);
     db.prepare(
-      'UPDATE faktury SET ksef_numer = ?, ksef_sprawdzona_at = ?, allegro_invoice_id = ?,'
-      + ' allegro_wyslana_at = ?, allegro_weryfikacja = ? WHERE zamowienie_id = 1',
-    ).run(
-      '1234563218-20260804-632857000005-03',
-      '2026-08-06T10:00:00',
-      'inv-1',
-      '2026-08-06T10:01:00',
-      'WAITING',
-    );
+      'UPDATE faktury SET ksef_numer = ?, ksef_sprawdzona_at = ?, allegro_invoice_id = ?,' +
+        ' allegro_wyslana_at = ?, allegro_weryfikacja = ? WHERE zamowienie_id = 1',
+    ).run('1234563218-20260804-632857000005-03', '2026-08-06T10:00:00', 'inv-1', '2026-08-06T10:01:00', 'WAITING');
 
     const f = db.prepare('SELECT * FROM faktury WHERE zamowienie_id = 1').get();
     expect(f.ksef_numer).toBe('1234563218-20260804-632857000005-03');
@@ -104,7 +96,7 @@ describe('kolumny faktury dla łańcucha KSeF → Allegro', () => {
 
   it('drugie otwarcie niczego nie kasuje ani nie wywala (idempotentność)', () => {
     // Wyjątek zatwierdzony przez właściciela 2026-09-30: odmowa niezgodnego baseline + prawidłowe reopen.
-    potwierdzOdmoweHistorycznegoSchema(["ALTER TABLE faktury DROP COLUMN allegro_wyslana_at"], ['allegro_wyslana_at']);
+    potwierdzOdmoweHistorycznegoSchema(['ALTER TABLE faktury DROP COLUMN allegro_wyslana_at'], ['allegro_wyslana_at']);
     const plik = nowyPlik();
     zZamowieniem(openOmsDb(plik)).close();
 
@@ -116,8 +108,7 @@ describe('kolumny faktury dla łańcucha KSeF → Allegro', () => {
     // Oznaczony poprawny baseline zachowuje kolumny i zapisany numer dokumentu.
     const trzecia = openOmsDb(plik);
     for (const k of NOWE) expect(kolumnyFaktur(trzecia)).toContain(k);
-    expect(trzecia.prepare('SELECT ksef_numer FROM faktury WHERE zamowienie_id = 1').get().ksef_numer)
-      .toBe('KSEF-1');
+    expect(trzecia.prepare('SELECT ksef_numer FROM faktury WHERE zamowienie_id = 1').get().ksef_numer).toBe('KSEF-1');
     trzecia.close();
   });
 
@@ -139,9 +130,12 @@ describe('kolumny faktury dla łańcucha KSeF → Allegro', () => {
   // w tle, a widac by to bylo wylacznie w logu kontenera.
   it('kolumnę ksef_odczyt ma świeża baza i dostaje ją STARA, migracją', () => {
     // Wyjątek zatwierdzony przez właściciela 2026-09-30: odmowa niezgodnego baseline + prawidłowe reopen.
-    potwierdzOdmoweHistorycznegoSchema(["ALTER TABLE faktury DROP COLUMN ksef_odczyt"], ['ksef_odczyt']);
+    potwierdzOdmoweHistorycznegoSchema(['ALTER TABLE faktury DROP COLUMN ksef_odczyt'], ['ksef_odczyt']);
     const swieza = openOmsDb(':memory:');
-    const kolumna = swieza.prepare('PRAGMA table_info(faktury)').all().find((k) => k.name === 'ksef_odczyt');
+    const kolumna = swieza
+      .prepare('PRAGMA table_info(faktury)')
+      .all()
+      .find((k) => k.name === 'ksef_odczyt');
     expect(kolumna).toBeTruthy();
     // NULL ma znaczyc „nikt jeszcze nie pytal" — kazda wartosc domyslna udawalaby wiedze.
     expect(kolumna.dflt_value).toBeNull();
@@ -163,8 +157,7 @@ describe('kolumny faktury dla łańcucha KSeF → Allegro', () => {
 
     rozpocznijFakture(db, 1);
     db.prepare(
-      "UPDATE faktury SET ksef_status = NULL, numer = 'FV/1/2026', ksef_numer = 'KSEF-1'"
-      + ' WHERE zamowienie_id = 1',
+      "UPDATE faktury SET ksef_status = NULL, numer = 'FV/1/2026', ksef_numer = 'KSEF-1'" + ' WHERE zamowienie_id = 1',
     ).run();
 
     const f = db.prepare('SELECT * FROM faktury WHERE zamowienie_id = 1').get();
@@ -180,8 +173,7 @@ describe('kolumny faktury dla łańcucha KSeF → Allegro', () => {
     const db = zZamowieniem(openOmsDb(':memory:'));
     rozpocznijFakture(db, 1);
     db.prepare(
-      "UPDATE faktury SET ksef_status = NULL, numer = 'FV/1/2026', ksef_numer = 'KSEF-1'"
-      + ' WHERE zamowienie_id = 1',
+      "UPDATE faktury SET ksef_status = NULL, numer = 'FV/1/2026', ksef_numer = 'KSEF-1'" + ' WHERE zamowienie_id = 1',
     ).run();
 
     expect(() => fakturaSkasowanaWInfakcie(db, 1)).toThrow(/KSEF-1/);

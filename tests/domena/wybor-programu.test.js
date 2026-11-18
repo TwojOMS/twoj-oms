@@ -3,23 +3,36 @@
 import { describe, it, expect } from 'vitest';
 import { DatabaseSync } from 'node:sqlite';
 import {
-  MODULY_FAKTUR, wyborZPliku, wybierzProgram, sprawdzFormularzWyboru, zdanieBrakuProgramu, zdanieCzekaniaNaRestart,
+  MODULY_FAKTUR,
+  wyborZPliku,
+  wybierzProgram,
+  sprawdzFormularzWyboru,
+  zdanieBrakuProgramu,
+  zdanieCzekaniaNaRestart,
 } from '../../src/domena/wybor-programu.js';
 import {
-  programDokumentu, programDokumentuSql, idDokumentuDla, czyDokumentProgramu,
+  programDokumentu,
+  programDokumentuSql,
+  idDokumentuDla,
+  czyDokumentProgramu,
 } from '../../src/domena/dokument-programu.js';
 import { openOmsDb } from '../../src/oms/db/db.ts';
 import { wczytajWyborProgramu, zapiszWyborProgramu, usunWyborProgramu } from '../../src/oms/db/wybor-programu.js';
 import { wczytajKonfiguracjeIntegracji } from '../../src/oms/db/konfiguracja-integracji.js';
 
-const ZDANIE_USTAWIEN = 'Faktury w OMS-ie są wyłączone — w Ustawienia → Faktury i podatki → Program do faktur wybrano „Brak”.';
+const ZDANIE_USTAWIEN =
+  'Faktury w OMS-ie są wyłączone — w Ustawienia → Faktury i podatki → Program do faktur wybrano „Brak”.';
 const ZDANIE_PLIKU = 'Faktury w OMS-ie są wyłączone — w pliku konfiguracji jest OMS_PROGRAM_FAKTUROWY=brak.';
 
 describe('lista modułów faktur', () => {
   // Fakturownia odblokowana (była „wkrótce”) — nadal tylko z jawnego wyboru.
   it('brak, inFakt i Fakturownia dostępne; TwojeFaktury tylko za zgodą instalacji', () => {
     expect(MODULY_FAKTUR.map((m) => [m.id, m.dostepny])).toEqual([
-      ['brak', true], ['infakt', true], ['fakturownia', true], ['twojefaktury', 'zgoda']]);
+      ['brak', true],
+      ['infakt', true],
+      ['fakturownia', true],
+      ['twojefaktury', 'zgoda'],
+    ]);
     expect(MODULY_FAKTUR.find((m) => m.id === 'twojefaktury').etykieta).toBe('TwojeFaktury (program wbudowany)');
   });
 });
@@ -28,27 +41,43 @@ it('TwojeFaktury dostępne tylko za zgodą instalacji', () => {
   expect(wyborZPliku('twojefaktury', { zgoda: true })).toBe('twojefaktury');
   expect(() => wyborZPliku('twojefaktury', { zgoda: false })).toThrow('wkrótce');
   expect(wybierzProgram({ zUstawien: 'twojefaktury', zgoda: true }).program).toBe('twojefaktury');
-  expect(wybierzProgram({ zUstawien: 'twojefaktury', zgoda: false })).toMatchObject({ program: 'brak', uwaga: expect.any(String) });
+  expect(wybierzProgram({ zUstawien: 'twojefaktury', zgoda: false })).toMatchObject({
+    program: 'brak',
+    uwaga: expect.any(String),
+  });
   expect(sprawdzFormularzWyboru({ program: 'twojefaktury' }, { zgoda: true }).bledy).toEqual([]);
   // Komunikat formularza mówi o programie do faktur, nie o module.
   expect(sprawdzFormularzWyboru({ program: 'twojefaktury' }, { zgoda: false }).bledy).toEqual([
-    'Program do faktur „TwojeFaktury (program wbudowany)” będzie dostępny wkrótce — wybierz inny.']);
+    'Program do faktur „TwojeFaktury (program wbudowany)” będzie dostępny wkrótce — wybierz inny.',
+  ]);
   const db = openOmsDb();
   try {
     expect(() => zapiszWyborProgramu(db, 'twojefaktury')).toThrow('wkrótce');
     expect(wczytajWyborProgramu(db)).toBeNull();
     zapiszWyborProgramu(db, 'twojefaktury', { zgoda: true });
     expect(wczytajWyborProgramu(db).program).toBe('twojefaktury');
-  } finally { db.close(); }
+  } finally {
+    db.close();
+  }
 });
 
 describe('OMS_PROGRAM_FAKTUROWY z pliku', () => {
-  it.each([[undefined, null], ['', null], ['   ', null], ['brak', 'brak'], ['infakt', 'infakt'], [' InFakt ', 'infakt'], ['BRAK', 'brak'],
-    ['fakturownia', 'fakturownia'], [' Fakturownia ', 'fakturownia']])(
-    '%j → %j', (wartosc, wynik) => expect(wyborZPliku(wartosc)).toBe(wynik));
+  it.each([
+    [undefined, null],
+    ['', null],
+    ['   ', null],
+    ['brak', 'brak'],
+    ['infakt', 'infakt'],
+    [' InFakt ', 'infakt'],
+    ['BRAK', 'brak'],
+    ['fakturownia', 'fakturownia'],
+    [' Fakturownia ', 'fakturownia'],
+  ])('%j → %j', (wartosc, wynik) => expect(wyborZPliku(wartosc)).toBe(wynik));
 
   it.each(['infkat', 'twojefaktury', 'xyz'])('„%s” → wyjątek z nazwą zmiennej i listą', (wartosc) => {
-    expect(() => wyborZPliku(wartosc)).toThrow(/^OMS_PROGRAM_FAKTUROWY: .*brak albo infakt albo fakturownia \(twojefaktury — wkrótce\)/);
+    expect(() => wyborZPliku(wartosc)).toThrow(
+      /^OMS_PROGRAM_FAKTUROWY: .*brak albo infakt albo fakturownia \(twojefaktury — wkrótce\)/,
+    );
   });
 
   it('moduł „wkrótce” ma inne zdanie niż literówka', () => {
@@ -60,25 +89,52 @@ describe('OMS_PROGRAM_FAKTUROWY z pliku', () => {
 describe('reguła wyboru', () => {
   it.each([
     // plik wygrywa nad zapisem i nad gotowym inFaktem
-    [{ zPliku: 'brak', zUstawien: 'infakt', infaktGotowy: true }, { program: 'brak', zrodlo: 'plik', uwaga: null }],
-    [{ zPliku: 'infakt', zUstawien: 'brak', infaktGotowy: false }, { program: 'infakt', zrodlo: 'plik', uwaga: null }],
+    [
+      { zPliku: 'brak', zUstawien: 'infakt', infaktGotowy: true },
+      { program: 'brak', zrodlo: 'plik', uwaga: null },
+    ],
+    [
+      { zPliku: 'infakt', zUstawien: 'brak', infaktGotowy: false },
+      { program: 'infakt', zrodlo: 'plik', uwaga: null },
+    ],
     // zapis wygrywa nad regułą domyślną
-    [{ zPliku: null, zUstawien: 'brak', infaktGotowy: true }, { program: 'brak', zrodlo: 'ustawienia', uwaga: null }],
-    [{ zPliku: null, zUstawien: ' InFakt ', infaktGotowy: false }, { program: 'infakt', zrodlo: 'ustawienia', uwaga: null }],
+    [
+      { zPliku: null, zUstawien: 'brak', infaktGotowy: true },
+      { program: 'brak', zrodlo: 'ustawienia', uwaga: null },
+    ],
+    [
+      { zPliku: null, zUstawien: ' InFakt ', infaktGotowy: false },
+      { program: 'infakt', zrodlo: 'ustawienia', uwaga: null },
+    ],
     // bez pliku i bez zapisu: jak przed zmianą
-    [{ zPliku: null, zUstawien: null, infaktGotowy: true }, { program: 'infakt', zrodlo: 'domyslny', uwaga: null }],
-    [{ zPliku: null, zUstawien: null, infaktGotowy: false }, { program: 'brak', zrodlo: 'domyslny', uwaga: null }],
+    [
+      { zPliku: null, zUstawien: null, infaktGotowy: true },
+      { program: 'infakt', zrodlo: 'domyslny', uwaga: null },
+    ],
+    [
+      { zPliku: null, zUstawien: null, infaktGotowy: false },
+      { program: 'brak', zrodlo: 'domyslny', uwaga: null },
+    ],
   ])('%j → %j', (wejscie, wynik) => expect(wybierzProgram(wejscie)).toEqual(wynik));
 
-  it.each(['twojefaktury', 'xyz', ''])('zapis „%s” → „brak” + uwaga (nie wyjątek), nawet przy gotowym inFakcie', (zapis) => {
-    const w = wybierzProgram({ zPliku: null, zUstawien: zapis, infaktGotowy: true });
-    expect(w.program).toBe('brak');
-    expect(w.zrodlo).toBe('ustawienia');
-    expect(w.uwaga).toBe(`Zapisany program do faktur „${zapis}” nie działa w tej wersji OMS-u — faktury są wyłączone. Wybierz program ponownie.`);
-  });
+  it.each(['twojefaktury', 'xyz', ''])(
+    'zapis „%s” → „brak” + uwaga (nie wyjątek), nawet przy gotowym inFakcie',
+    (zapis) => {
+      const w = wybierzProgram({ zPliku: null, zUstawien: zapis, infaktGotowy: true });
+      expect(w.program).toBe('brak');
+      expect(w.zrodlo).toBe('ustawienia');
+      expect(w.uwaga).toBe(
+        `Zapisany program do faktur „${zapis}” nie działa w tej wersji OMS-u — faktury są wyłączone. Wybierz program ponownie.`,
+      );
+    },
+  );
 
   it('zapis „fakturownia” → Fakturownia z Ustawień, także przy gotowym inFakcie', () => {
-    expect(wybierzProgram({ zUstawien: 'fakturownia', infaktGotowy: true })).toEqual({ program: 'fakturownia', zrodlo: 'ustawienia', uwaga: null });
+    expect(wybierzProgram({ zUstawien: 'fakturownia', infaktGotowy: true })).toEqual({
+      program: 'fakturownia',
+      zrodlo: 'ustawienia',
+      uwaga: null,
+    });
   });
 
   it('domyślnie nigdy Fakturownia ani TwojeFaktury', () => {
@@ -90,7 +146,10 @@ describe('reguła wyboru', () => {
 
 describe('formularz wyboru', () => {
   it.each(['brak', 'infakt', ' INFAKT ', 'fakturownia'])('przyjmuje „%s”', (program) => {
-    expect(sprawdzFormularzWyboru({ program })).toEqual({ ustawienia: { program: program.trim().toLowerCase() }, bledy: [] });
+    expect(sprawdzFormularzWyboru({ program })).toEqual({
+      ustawienia: { program: program.trim().toLowerCase() },
+      bledy: [],
+    });
   });
   it.each(['twojefaktury', 'xyz', '', undefined])('odrzuca %j', (program) => {
     expect(sprawdzFormularzWyboru({ program }).bledy.length).toBe(1);
@@ -101,8 +160,9 @@ describe('zdanie „faktury wyłączone”', () => {
   it('jawny „brak” z pliku i z Ustawień → zdanie; z dopiskiem po spacji', () => {
     expect(zdanieBrakuProgramu(wybierzProgram({ zPliku: 'brak' }))).toBe(ZDANIE_PLIKU);
     expect(zdanieBrakuProgramu(wybierzProgram({ zUstawien: 'brak', infaktGotowy: true }))).toBe(ZDANIE_USTAWIEN);
-    expect(zdanieBrakuProgramu(wybierzProgram({ zUstawien: 'brak' }), 'Nic nie poszło do programu.'))
-      .toBe(`${ZDANIE_USTAWIEN} Nic nie poszło do programu.`);
+    expect(zdanieBrakuProgramu(wybierzProgram({ zUstawien: 'brak' }), 'Nic nie poszło do programu.')).toBe(
+      `${ZDANIE_USTAWIEN} Nic nie poszło do programu.`,
+    );
   });
   it('„brak” domyślny i inFakt → null (wołający zostawia stary tekst)', () => {
     expect(zdanieBrakuProgramu(wybierzProgram({ infaktGotowy: false }))).toBeNull();
@@ -112,25 +172,39 @@ describe('zdanie „faktury wyłączone”', () => {
     expect(zdanieBrakuProgramu(null)).toBeNull();
   });
   it('nieznany zapis → jego uwaga', () => {
-    expect(zdanieBrakuProgramu(wybierzProgram({ zUstawien: 'twojefaktury' })))
-      .toBe('Zapisany program do faktur „twojefaktury” nie działa w tej wersji OMS-u — faktury są wyłączone. Wybierz program ponownie.');
+    expect(zdanieBrakuProgramu(wybierzProgram({ zUstawien: 'twojefaktury' }))).toBe(
+      'Zapisany program do faktur „twojefaktury” nie działa w tej wersji OMS-u — faktury są wyłączone. Wybierz program ponownie.',
+    );
   });
   it('czekanie na restart: zdanie tylko przy różnicy, przy „brak” z automatem KSeF', () => {
-    const infakt = { program: 'infakt' }; const brak = { program: 'brak' };
+    const infakt = { program: 'infakt' };
+    const brak = { program: 'brak' };
     expect(zdanieCzekaniaNaRestart(infakt, infakt)).toBeNull();
-    expect(zdanieCzekaniaNaRestart(infakt, brak)).toBe('Zapisany program do faktur „Brak” zadziała po ponownym uruchomieniu OMS-u — do tego czasu działa „inFakt”. Automatyczna wysyłka do KSeF już stoi.');
-    expect(zdanieCzekaniaNaRestart(brak, infakt)).toBe('Zapisany program do faktur „inFakt” zadziała po ponownym uruchomieniu OMS-u — do tego czasu faktury są wyłączone.');
-    expect(zdanieCzekaniaNaRestart(brak, infakt, { gotowy: false })).toMatch(/^Zapisany program do faktur „inFakt” nie ma klucza API/);
+    expect(zdanieCzekaniaNaRestart(infakt, brak)).toBe(
+      'Zapisany program do faktur „Brak” zadziała po ponownym uruchomieniu OMS-u — do tego czasu działa „inFakt”. Automatyczna wysyłka do KSeF już stoi.',
+    );
+    expect(zdanieCzekaniaNaRestart(brak, infakt)).toBe(
+      'Zapisany program do faktur „inFakt” zadziała po ponownym uruchomieniu OMS-u — do tego czasu faktury są wyłączone.',
+    );
+    expect(zdanieCzekaniaNaRestart(brak, infakt, { gotowy: false })).toMatch(
+      /^Zapisany program do faktur „inFakt” nie ma klucza API/,
+    );
     expect(zdanieCzekaniaNaRestart(infakt, brak, { gotowy: false })).toMatch(/zadziała po ponownym uruchomieniu/);
   });
   it('zapisana Fakturownia bez domeny i tokenu → zdanie o konfiguracji; gotowa → zwykłe czekanie', () => {
-    const infakt = { program: 'infakt' }; const fakturownia = { program: 'fakturownia' };
+    const infakt = { program: 'infakt' };
+    const fakturownia = { program: 'fakturownia' };
     expect(zdanieCzekaniaNaRestart(infakt, fakturownia, { gotowy: false })).toBe(
-      'Zapisany program do faktur „Fakturownia” nie ma domeny konta i tokenu API — wpisz je w Ustawienia → Integracje → Fakturownia (/ustawienia/integracje/fakturownia); faktury ruszą po ponownym uruchomieniu OMS-u.');
-    expect(zdanieCzekaniaNaRestart(infakt, fakturownia)).toBe('Zapisany program do faktur „Fakturownia” zadziała po ponownym uruchomieniu OMS-u — do tego czasu działa „inFakt”.');
+      'Zapisany program do faktur „Fakturownia” nie ma domeny konta i tokenu API — wpisz je w Ustawienia → Integracje → Fakturownia (/ustawienia/integracje/fakturownia); faktury ruszą po ponownym uruchomieniu OMS-u.',
+    );
+    expect(zdanieCzekaniaNaRestart(infakt, fakturownia)).toBe(
+      'Zapisany program do faktur „Fakturownia” zadziała po ponownym uruchomieniu OMS-u — do tego czasu działa „inFakt”.',
+    );
   });
   it('lista w błędzie pliku bez pustego „wkrótce”, gdy wszystko dostępne', () => {
-    expect(() => wyborZPliku('xyz', { zgoda: true })).toThrow(/wpisz brak albo infakt albo fakturownia albo twojefaktury lub usuń zmienną\.$/);
+    expect(() => wyborZPliku('xyz', { zgoda: true })).toThrow(
+      /wpisz brak albo infakt albo fakturownia albo twojefaktury lub usuń zmienną\.$/,
+    );
   });
 });
 
@@ -152,8 +226,16 @@ describe('program dokumentu w SQL = programDokumentu', () => {
     for (const [k, w] of Object.entries(WIERSZE)) wstaw.run(k, w.program, w.dokument_id, w.infakt_uuid);
     const oczekiwane = Object.fromEntries(Object.entries(WIERSZE).map(([k, w]) => [k, programDokumentu(w)]));
     expect(oczekiwane).toEqual({ nowy: 'infakt', stary: 'infakt', bezId: null, programBezId: null, test: 'test' });
-    for (const [sql, od] of [[programDokumentuSql(), 'faktury'], [programDokumentuSql('f'), 'faktury f']]) {
-      const wynik = Object.fromEntries(db.prepare(`SELECT k, ${sql} AS p FROM ${od}`).all().map((r) => [r.k, r.p]));
+    for (const [sql, od] of [
+      [programDokumentuSql(), 'faktury'],
+      [programDokumentuSql('f'), 'faktury f'],
+    ]) {
+      const wynik = Object.fromEntries(
+        db
+          .prepare(`SELECT k, ${sql} AS p FROM ${od}`)
+          .all()
+          .map((r) => [r.k, r.p]),
+      );
       expect(wynik).toEqual(oczekiwane);
     }
     expect(() => programDokumentuSql('f; DROP TABLE faktury')).toThrow('niedozwolony alias');
@@ -181,15 +263,25 @@ describe('idDokumentuDla i czyDokumentProgramu', () => {
   ])('%s dla %j', (k, program, czy, id) => {
     const w = WIERSZE[k];
     expect(czyDokumentProgramu(w, program)).toBe(czy);
-    if (id !== 'BLAD') { expect(idDokumentuDla(w, program)).toBe(id); return; }
+    if (id !== 'BLAD') {
+      expect(idDokumentuDla(w, program)).toBe(id);
+      return;
+    }
     let blad = null;
-    try { idDokumentuDla(w, program); } catch (e) { blad = e; }
+    try {
+      idDokumentuDla(w, program);
+    } catch (e) {
+      blad = e;
+    }
     expect(blad).toMatchObject({ status: 409, bezProgramu: true, dlaOperatora: true });
-    expect(blad.message).toMatch(/^Ta faktura jest w .+, a program do faktur OMS-u to teraz „.+” — otworzysz ją w .+\. Nic nie poszło do programu\.$/);
+    expect(blad.message).toMatch(
+      /^Ta faktura jest w .+, a program do faktur OMS-u to teraz „.+” — otworzysz ją w .+\. Nic nie poszło do programu\.$/,
+    );
   });
   it('zdanie dla dokumentu inFaktu przy module „Brak”', () => {
-    expect(() => idDokumentuDla(WIERSZE.nowy, null))
-      .toThrow('Ta faktura jest w inFakcie, a program do faktur OMS-u to teraz „Brak” — otworzysz ją w inFakcie. Nic nie poszło do programu.');
+    expect(() => idDokumentuDla(WIERSZE.nowy, null)).toThrow(
+      'Ta faktura jest w inFakcie, a program do faktur OMS-u to teraz „Brak” — otworzysz ją w inFakcie. Nic nie poszło do programu.',
+    );
   });
 });
 
@@ -197,8 +289,15 @@ describe('zapis wyboru w konfiguracja_integracji', () => {
   it('wiersz program_fakturowy z kontem, bez sekretów; zapis odmawia modułu „wkrótce”; usunięcie', () => {
     const db = openOmsDb();
     expect(wczytajWyborProgramu(db)).toBeNull();
-    zapiszWyborProgramu(db, ' Brak ', { konto: { id: 1, login: 'pracownia' }, teraz: new Date('2026-10-27T10:00:00Z') });
-    expect(wczytajWyborProgramu(db)).toEqual({ program: 'brak', kontoLogin: 'pracownia', zmienionoAt: '2026-10-27T10:00:00.000Z' });
+    zapiszWyborProgramu(db, ' Brak ', {
+      konto: { id: 1, login: 'pracownia' },
+      teraz: new Date('2026-10-27T10:00:00Z'),
+    });
+    expect(wczytajWyborProgramu(db)).toEqual({
+      program: 'brak',
+      kontoLogin: 'pracownia',
+      zmienionoAt: '2026-10-27T10:00:00.000Z',
+    });
     expect(wczytajKonfiguracjeIntegracji(db, 'program_fakturowy').sekrety).toEqual({});
     expect(() => zapiszWyborProgramu(db, 'twojefaktury')).toThrow('wkrótce');
     expect(wczytajWyborProgramu(db).program).toBe('brak');

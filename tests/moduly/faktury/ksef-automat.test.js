@@ -11,24 +11,42 @@ import { zajmijWysylkeKsef } from '../../../src/moduly/faktury/db/wysylki-ksef.j
 import { createFakturyWidok } from '../../../src/moduly/faktury/services/faktury-widok.js';
 import { createWysylkaKsef } from '../../../src/moduly/faktury/services/wysylka-ksef.js';
 import { createAutomatKsef } from '../../../src/moduly/faktury/services/ksef-automat.js';
-import { wczytajAutomatKsef, zapiszUstawieniaAutomatu, zapiszWynikAutomatu } from '../../../src/moduly/faktury/db/ksef-automat.js';
+import {
+  wczytajAutomatKsef,
+  zapiszUstawieniaAutomatu,
+  zapiszWynikAutomatu,
+} from '../../../src/moduly/faktury/db/ksef-automat.js';
 import { ostrzezeniaAutomatuKsef } from '../../../src/domena/ostrzezenia.js';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
 const NIP = '1234563218';
 const dok = (uuid, invoice_date, nadpisz = {}) => ({
-  uuid, number: `${uuid}/2026`, rodzaj: 'vat', invoice_date, sale_date: invoice_date, ksef_number: null,
-  client_company_name: `Firma ${uuid}`, client_tax_code: NIP, gross_price: 12300, left_to_pay: 0, ...nadpisz,
+  uuid,
+  number: `${uuid}/2026`,
+  rodzaj: 'vat',
+  invoice_date,
+  sale_date: invoice_date,
+  ksef_number: null,
+  client_company_name: `Firma ${uuid}`,
+  client_tax_code: NIP,
+  gross_price: 12300,
+  left_to_pay: 0,
+  ...nadpisz,
 });
 
 // Fałszywy inFakt: listy filtrowane po polu daty jak w API, wysyłka zapisuje identyfikator. `ksef_number` się NIE
 // pojawia — inFakt nadaje go po ~70 s, więc przed drugą wysyłką chroni wyłącznie rezerwacja w bazie.
 function falszywyInfakt(dokumenty, { wyslij } = {}) {
   const wyslane = [];
-  const zakres = (rodzaj) => async ({ od, do: koniec, pole = 'invoice_date' }) => dokumenty
-    .filter((d) => d.rodzaj === rodzaj && String(d[pole]) >= od && String(d[pole]) <= koniec).map((d) => ({ ...d }));
+  const zakres =
+    (rodzaj) =>
+    async ({ od, do: koniec, pole = 'invoice_date' }) =>
+      dokumenty
+        .filter((d) => d.rodzaj === rodzaj && String(d[pole]) >= od && String(d[pole]) <= koniec)
+        .map((d) => ({ ...d }));
   return {
-    dokumenty, wyslane,
+    dokumenty,
+    wyslane,
     listaFaktur: zakres('vat'),
     listaKorekt: zakres('korekta'),
     wyslijDokumentDoKsef: async (uuid) => {
@@ -40,11 +58,27 @@ function falszywyInfakt(dokumenty, { wyslij } = {}) {
 }
 
 function zamowienieZFaktura(db, uuid, numer) {
-  const id = zapiszZamowienie(db, 'pro', {
-    zrodlo_id: `w-${uuid}`, numer: `Z-${uuid}`, klient: { first_name: 'Jan', last_name: 'Przykładowy' }, dostawa: {},
-    metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: null, kwota_brutto: '123.00',
-    koszt_dostawy_brutto: '0.00', status_woo: 'processing', oplacone_at: null, anulowane: 0, pozycje: [],
-  }, {});
+  const id = zapiszZamowienie(
+    db,
+    'pro',
+    {
+      zrodlo_id: `w-${uuid}`,
+      numer: `Z-${uuid}`,
+      klient: { first_name: 'Jan', last_name: 'Przykładowy' },
+      dostawa: {},
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: 1,
+      nip: null,
+      kwota_brutto: '123.00',
+      koszt_dostawy_brutto: '0.00',
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane: 0,
+      pozycje: [],
+    },
+    {},
+  );
   const f = rozpocznijFakture(db, id);
   zakonczFakture(db, f.id, { uuid, numer, ksefStatus: null });
   return id;
@@ -55,7 +89,9 @@ function zamowienieZFaktura(db, uuid, numer) {
 function zestaw({ wyslij } = {}) {
   const db = openOmsDb(':memory:');
   const dokumenty = [
-    dok('A', '2026-10-19'), dok('B', '2026-09-30'), dok('H', '2026-10-05', { client_tax_code: 'SK1098765431' }),
+    dok('A', '2026-10-19'),
+    dok('B', '2026-09-30'),
+    dok('H', '2026-10-05', { client_tax_code: 'SK1098765431' }),
     dok('C', '2026-10-02', { ksef_number: '1234563218-20261002-AAAAAA-01' }),
     dok('D', '2026-10-03', { rodzaj: 'korekta' }),
     dok('E', '2026-10-04', { client_tax_code: '' }),
@@ -68,11 +104,19 @@ function zestaw({ wyslij } = {}) {
   const fakturyWidok = createFakturyWidok({ db, infakt });
   const logi = [];
   const wysylkaKsef = createWysylkaKsef({ db, infakt, fakturyWidok, log: () => {} });
-  const automat = (teraz, o = {}) => createAutomatKsef({ db, fakturyWidok, wysylkaKsef, teraz: () => new Date(teraz),
-    log: (...t) => logi.push(t.join(' ')), ...o });
+  const automat = (teraz, o = {}) =>
+    createAutomatKsef({
+      db,
+      fakturyWidok,
+      wysylkaKsef,
+      teraz: () => new Date(teraz),
+      log: (...t) => logi.push(t.join(' ')),
+      ...o,
+    });
   return { db, infakt, fakturyWidok, wysylkaKsef, automat, idA, logi };
 }
-const wlacz = (db, godzina = '20:00') => zapiszUstawieniaAutomatu(db, { wlaczony: true, godzina, ostatniPrzebieg: null, login: 'adam' });
+const wlacz = (db, godzina = '20:00') =>
+  zapiszUstawieniaAutomatu(db, { wlaczony: true, godzina, ostatniPrzebieg: null, login: 'adam' });
 
 it('firmowe B2C działa bez restartu na liście, w podglądzie, wysyłce i automacie', async () => {
   const z = zestaw();
@@ -81,7 +125,9 @@ it('firmowe B2C działa bez restartu na liście, w podglądzie, wysyłce i autom
   const headers = { authorization: `Basic ${Buffer.from('t:h').toString('base64')}` };
   try {
     expect((await z.wysylkaKsef.podglad(args)).doWyslania).toEqual([]);
-    z.db.prepare("INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('ksef.konsumenckie', '1', '2026-10-20')").run();
+    z.db
+      .prepare("INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('ksef.konsumenckie', '1', '2026-10-20')")
+      .run();
     const r = await app.inject({ url: '/faktury?miesiac=2026-10&zaznacz=1', headers });
     expect(r.statusCode).toBe(200);
     expect(r.body).toMatch(/name="uuid" value="E" checked/);
@@ -94,13 +140,21 @@ it('firmowe B2C działa bez restartu na liście, w podglądzie, wysyłce i autom
     wlacz(z.db);
     await z.automat('2026-10-20T18:01:00Z').przebieg();
     expect([...z.infakt.wyslane].sort()).toEqual(['A', 'B', 'E', 'H']);
-  } finally { await app.close(); z.db.close(); }
+  } finally {
+    await app.close();
+    z.db.close();
+  }
 });
 
 describe('automat KSeF — kiedy wysyła', () => {
   it('wyłączony (domyślnie) — tyknięcie po godzinie nic nie wysyła', async () => {
     const z = zestaw();
-    expect(wczytajAutomatKsef(z.db)).toMatchObject({ wlaczony: false, godzina: '20:00', ostatniPrzebieg: null, wynik: null });
+    expect(wczytajAutomatKsef(z.db)).toMatchObject({
+      wlaczony: false,
+      godzina: '20:00',
+      ostatniPrzebieg: null,
+      wynik: null,
+    });
     const w = await z.automat('2026-10-20T18:01:00Z').przebieg();
     expect(w.pominiety).toBe(true);
     expect(z.infakt.wyslane).toEqual([]);
@@ -127,7 +181,10 @@ describe('automat KSeF — kiedy wysyła', () => {
     // Korekta i konsumencka bez KSeF są w wyniku jako „nie wysyłane z zasady”, z powodem z bariery.
     expect(stan.wynik.poZasadzie.map((x) => x.numer).sort()).toEqual(['D/2026', 'E/2026']);
     expect(stan.wynik.poZasadzie.find((x) => x.numer === 'E/2026').powod).toContain('konsumencka');
-    const wpisy = z.db.prepare("SELECT wynik FROM log WHERE zamowienie_id = ? AND akcja = 'ksef'").all(z.idA).map((r) => r.wynik);
+    const wpisy = z.db
+      .prepare("SELECT wynik FROM log WHERE zamowienie_id = ? AND akcja = 'ksef'")
+      .all(z.idA)
+      .map((r) => r.wynik);
     expect(wpisy.some((t) => t.startsWith('(automat KSeF) zlecono wysyłkę do KSeF'))).toBe(true);
     expect(z.logi.some((t) => t.includes('automat KSeF') && t.includes('wysłano 3'))).toBe(true);
   });
@@ -137,16 +194,22 @@ describe('automat KSeF — kiedy wysyła', () => {
   it('zbiór automatu dla miesiąca = zaznaczone przez „zaznacz wszystkie” po filtrze wysyłki', async () => {
     const z = zestaw();
     const app = buildOmsServer({ db: z.db, config: { auth: { user: 't', pass: 'h' } }, fakturyWidok: z.fakturyWidok });
-    const r = await app.inject({ method: 'GET', url: '/faktury?miesiac=2026-10&pole=invoice_date&zaznacz=1',
-      headers: { authorization: `Basic ${Buffer.from('t:h').toString('base64')}` } });
+    const r = await app.inject({
+      method: 'GET',
+      url: '/faktury?miesiac=2026-10&pole=invoice_date&zaznacz=1',
+      headers: { authorization: `Basic ${Buffer.from('t:h').toString('base64')}` },
+    });
     expect(r.statusCode).toBe(200);
     const zaznaczone = [...r.body.matchAll(/name="uuid" value="([^"]+)" checked/g)].map((m) => m[1]).sort();
     await app.close();
     wlacz(z.db);
     await z.automat('2026-10-20T18:01:00Z').przebieg();
     expect(zaznaczone).toEqual(['A', 'C', 'D', 'E', 'F', 'H']);
-    expect(z.infakt.wyslane.filter((u) => z.infakt.dokumenty.find((d) => d.uuid === u).invoice_date.startsWith('2026-10')).sort())
-      .toEqual(['A', 'H']);
+    expect(
+      z.infakt.wyslane
+        .filter((u) => z.infakt.dokumenty.find((d) => d.uuid === u).invoice_date.startsWith('2026-10'))
+        .sort(),
+    ).toEqual(['A', 'H']);
   });
 
   it('bariera liczona od nowa przy wysyłce: faktura zmieniona w inFakcie po wyborze kandydatów (konsumencka, już w KSeF) nie leci', async () => {
@@ -160,8 +223,13 @@ describe('automat KSeF — kiedy wysyła', () => {
       if (p.od !== '2026-10-01') return lista;
       odczyt += 1;
       if (odczyt === 1) return lista;
-      return lista.map((d) => (d.uuid === 'A' ? { ...d, client_tax_code: '' }
-        : d.uuid === 'H' ? { ...d, ksef_number: 'SK-20261005-RECZNIE' } : d));
+      return lista.map((d) =>
+        d.uuid === 'A'
+          ? { ...d, client_tax_code: '' }
+          : d.uuid === 'H'
+            ? { ...d, ksef_number: 'SK-20261005-RECZNIE' }
+            : d,
+      );
     };
     wlacz(z.db);
     const w = await z.automat('2026-10-20T18:01:00Z').przebieg();
@@ -173,7 +241,12 @@ describe('automat KSeF — kiedy wysyła', () => {
 
   it('dzień „ostatniego przebiegu” jest zapisany, ZANIM pierwszy dokument poleci', async () => {
     let wDniuWysylki = 'nie wołano';
-    const z = zestaw({ wyslij: () => { wDniuWysylki = wczytajAutomatKsef(z.db).ostatniPrzebieg; return { ok: true }; } });
+    const z = zestaw({
+      wyslij: () => {
+        wDniuWysylki = wczytajAutomatKsef(z.db).ostatniPrzebieg;
+        return { ok: true };
+      },
+    });
     wlacz(z.db);
     await z.automat('2026-10-20T18:01:00Z').przebieg();
     expect(wDniuWysylki).toBe('2026-10-20');
@@ -213,10 +286,17 @@ describe('automat KSeF — kiedy wysyła', () => {
   });
 
   it('przestawienie przełącznika na „wyłączone” działa od razu — także między dokumentami jednego przebiegu', async () => {
-    const z = zestaw({ wyslij: () => {
-      zapiszUstawieniaAutomatu(z.db, { wlaczony: false, godzina: '20:00', ostatniPrzebieg: '2026-10-20', login: 'adam' });
-      return { ok: true };
-    } });
+    const z = zestaw({
+      wyslij: () => {
+        zapiszUstawieniaAutomatu(z.db, {
+          wlaczony: false,
+          godzina: '20:00',
+          ostatniPrzebieg: '2026-10-20',
+          login: 'adam',
+        });
+        return { ok: true };
+      },
+    });
     wlacz(z.db);
     const w = await z.automat('2026-10-20T18:01:00Z').przebieg();
     expect(z.infakt.wyslane).toHaveLength(1);
@@ -235,7 +315,11 @@ describe('automat KSeF — kiedy wysyła', () => {
 
 describe('automat KSeF — awaria', () => {
   it('awaria inFaktu przy pierwszym dokumencie: stop, dokument „nie wiadomo”, wiersz ostrzeżenia, bez ponowienia', async () => {
-    const z = zestaw({ wyslij: () => { throw Object.assign(new Error('inFakt nie odpowiedział w 30 s'), { dlaOperatora: true }); } });
+    const z = zestaw({
+      wyslij: () => {
+        throw Object.assign(new Error('inFakt nie odpowiedział w 30 s'), { dlaOperatora: true });
+      },
+    });
     wlacz(z.db);
     const w = await z.automat('2026-10-20T18:01:00Z').przebieg();
     expect(z.infakt.wyslane).toHaveLength(1);
@@ -246,8 +330,11 @@ describe('automat KSeF — awaria', () => {
     expect(stan.wynik.blad).toContain('30 s');
     const wiersze = ostrzezeniaAutomatuKsef({ wynik: stan.wynik });
     expect(wiersze).toHaveLength(1);
-    expect(wiersze[0]).toMatchObject({ klucz: 'faktura-ksef:automat:2026-10-20', typ: 'faktura-ksef',
-      przycisk: { href: '/faktury/ksef/automat' } });
+    expect(wiersze[0]).toMatchObject({
+      klucz: 'faktura-ksef:automat:2026-10-20',
+      typ: 'faktura-ksef',
+      przycisk: { href: '/faktury/ksef/automat' },
+    });
     expect(wiersze[0].tekst).toContain(`${pierwszy}/2026`);
     // Kolejne tyknięcie tego dnia — nic. Następnego dnia lecą pozostałe, a „nie wiadomo” NIE (rezerwacja trzyma).
     await z.automat('2026-10-20T18:05:00Z').przebieg();
@@ -256,10 +343,15 @@ describe('automat KSeF — awaria', () => {
 
   it('następnego dnia dokument „nie wiadomo” nie leci drugi raz, reszta leci', async () => {
     let pierwszyRaz = true;
-    const z = zestaw({ wyslij: () => {
-      if (pierwszyRaz) { pierwszyRaz = false; throw new Error('zerwane połączenie'); }
-      return { ok: true };
-    } });
+    const z = zestaw({
+      wyslij: () => {
+        if (pierwszyRaz) {
+          pierwszyRaz = false;
+          throw new Error('zerwane połączenie');
+        }
+        return { ok: true };
+      },
+    });
     wlacz(z.db);
     await z.automat('2026-10-20T18:01:00Z').przebieg();
     const niepewny = z.infakt.wyslane[0];
@@ -270,7 +362,9 @@ describe('automat KSeF — awaria', () => {
 
   it('lista faktur niedostępna — błąd w wyniku, nic nie poszło, bez wyjątku z zegara', async () => {
     const z = zestaw();
-    z.infakt.listaFaktur = async () => { throw new Error('inFakt 503'); };
+    z.infakt.listaFaktur = async () => {
+      throw new Error('inFakt 503');
+    };
     wlacz(z.db);
     const w = await z.automat('2026-10-20T18:01:00Z').przebieg();
     expect(w.stan).toBe('blad');
@@ -280,8 +374,16 @@ describe('automat KSeF — awaria', () => {
 
   it('przebieg przerwany restartem (wynik „trwa” w bazie) — przy starcie staje się „przerwany” i ostrzega', () => {
     const z = zestaw();
-    zapiszWynikAutomatu(z.db, { dzien: '2026-10-20', startAt: '2026-10-20T18:01:00.000Z', stan: 'trwa',
-      wyslane: [{ uuid: 'A', numer: 'A/2026' }], niepewne: [], pominiete: [], poZasadzie: [], blad: null });
+    zapiszWynikAutomatu(z.db, {
+      dzien: '2026-10-20',
+      startAt: '2026-10-20T18:01:00.000Z',
+      stan: 'trwa',
+      wyslane: [{ uuid: 'A', numer: 'A/2026' }],
+      niepewne: [],
+      pominiete: [],
+      poZasadzie: [],
+      blad: null,
+    });
     z.automat('2026-10-20T18:10:00Z');
     const { wynik } = wczytajAutomatKsef(z.db);
     expect(wynik.stan).toBe('przerwany');
@@ -291,9 +393,17 @@ describe('automat KSeF — awaria', () => {
   // Odmowa 4xx zdejmuje rezerwację (usługa — słusznie, dokumentu u organu nie ma),
   // więc bez pamięci automatu ta sama faktura stawałaby pierwsza każdego dnia i blokowała resztę stopem na błędzie.
   it('odmowa inFaktu (4xx) dnia 1 — faktura wstrzymana: dnia 2 nie leci, reszta leci; ostrzeżenie mówi, co zrobić', async () => {
-    const odmowa = () => Object.assign(new Error('inFakt odrzucił wysyłkę do KSeF (422): brak adresu nabywcy'),
-      { dlaOperatora: true, status: 422 });
-    const z = zestaw({ wyslij: (uuid) => { if (uuid === 'B') throw odmowa(); return { ok: true }; } });
+    const odmowa = () =>
+      Object.assign(new Error('inFakt odrzucił wysyłkę do KSeF (422): brak adresu nabywcy'), {
+        dlaOperatora: true,
+        status: 422,
+      });
+    const z = zestaw({
+      wyslij: (uuid) => {
+        if (uuid === 'B') throw odmowa();
+        return { ok: true };
+      },
+    });
     wlacz(z.db);
     const w1 = await z.automat('2026-10-20T18:01:00Z').przebieg();
     expect(z.infakt.wyslane).toEqual(['B']); // poprzedni miesiąc pierwszy, stop na odmowie
@@ -314,10 +424,12 @@ describe('automat KSeF — awaria', () => {
   });
 
   it('wstrzymana faktura z numerem KSeF (wysłana ręcznie) znika z listy wstrzymanych', async () => {
-    const z = zestaw({ wyslij: (uuid) => {
-      if (uuid === 'B') throw Object.assign(new Error('odmowa 422'), { dlaOperatora: true, status: 422 });
-      return { ok: true };
-    } });
+    const z = zestaw({
+      wyslij: (uuid) => {
+        if (uuid === 'B') throw Object.assign(new Error('odmowa 422'), { dlaOperatora: true, status: 422 });
+        return { ok: true };
+      },
+    });
     wlacz(z.db);
     await z.automat('2026-10-20T18:01:00Z').przebieg();
     z.infakt.dokumenty.find((d) => d.uuid === 'B').ksef_number = 'K-RECZNIE-B';
@@ -327,14 +439,31 @@ describe('automat KSeF — awaria', () => {
 
   it('przed każdą wysyłką wynik niesie dokument „w trakcie”; po przerwaniu ostrzeżenie każe go sprawdzić', async () => {
     const widziane = [];
-    const z = zestaw({ wyslij: (uuid) => { widziane.push([uuid, wczytajAutomatKsef(z.db).wynik.wTrakcie]); return { ok: true }; } });
+    const z = zestaw({
+      wyslij: (uuid) => {
+        widziane.push([uuid, wczytajAutomatKsef(z.db).wynik.wTrakcie]);
+        return { ok: true };
+      },
+    });
     wlacz(z.db);
     await z.automat('2026-10-20T18:01:00Z').przebieg();
-    expect(widziane).toEqual([['B', { uuid: 'B', numer: 'B/2026' }], ['A', { uuid: 'A', numer: 'A/2026' }],
-      ['H', { uuid: 'H', numer: 'H/2026' }]]);
+    expect(widziane).toEqual([
+      ['B', { uuid: 'B', numer: 'B/2026' }],
+      ['A', { uuid: 'A', numer: 'A/2026' }],
+      ['H', { uuid: 'H', numer: 'H/2026' }],
+    ]);
     expect(wczytajAutomatKsef(z.db).wynik.wTrakcie).toBeNull();
-    zapiszWynikAutomatu(z.db, { dzien: '2026-10-21', startAt: '2026-10-21T18:01:00.000Z', stan: 'trwa', wTrakcie: { uuid: 'N', numer: 'N/2026' },
-      wyslane: [], niepewne: [], pominiete: [], poZasadzie: [], blad: null });
+    zapiszWynikAutomatu(z.db, {
+      dzien: '2026-10-21',
+      startAt: '2026-10-21T18:01:00.000Z',
+      stan: 'trwa',
+      wTrakcie: { uuid: 'N', numer: 'N/2026' },
+      wyslane: [],
+      niepewne: [],
+      pominiete: [],
+      poZasadzie: [],
+      blad: null,
+    });
     z.automat('2026-10-21T18:10:00Z');
     const tekst = ostrzezeniaAutomatuKsef({ wynik: wczytajAutomatKsef(z.db).wynik })[0].tekst;
     expect(tekst).toContain('N/2026');
@@ -347,7 +476,8 @@ describe('automat KSeF — awaria', () => {
     const oryginalna = z.infakt.listaFaktur;
     let pazdziernik = 0;
     z.infakt.listaFaktur = async (p) => {
-      if (p.od === '2026-10-01' && ++pazdziernik > 1) throw Object.assign(new Error('inFakt odpowiedział 503'), { dlaOperatora: true, status: 503 });
+      if (p.od === '2026-10-01' && ++pazdziernik > 1)
+        throw Object.assign(new Error('inFakt odpowiedział 503'), { dlaOperatora: true, status: 503 });
       return oryginalna(p);
     };
     wlacz(z.db);
@@ -355,8 +485,11 @@ describe('automat KSeF — awaria', () => {
     expect(w.stan).toBe('blad');
     expect(w.wyslane.map((x) => x.numer)).toEqual(['B/2026']);
     const app = buildOmsServer({ db: z.db, config: { auth: { user: 't', pass: 'h' } } });
-    const r = await app.inject({ method: 'GET', url: '/faktury/ksef/automat',
-      headers: { authorization: `Basic ${Buffer.from('t:h').toString('base64')}` } });
+    const r = await app.inject({
+      method: 'GET',
+      url: '/faktury/ksef/automat',
+      headers: { authorization: `Basic ${Buffer.from('t:h').toString('base64')}` },
+    });
     await app.close();
     expect(r.statusCode).toBe(200);
     expect(r.body).not.toContain('Nic nie poszło');

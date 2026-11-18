@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
-  podzielDoFaktury, powodZaDuzejPartii, SUFIT_FAKTUR_HURTEM,
-  powodZaDuzegoDruku, SUFIT_SPECYFIKACJI_DRUKU,
+  podzielDoFaktury,
+  powodZaDuzejPartii,
+  SUFIT_FAKTUR_HURTEM,
+  powodZaDuzegoDruku,
+  SUFIT_SPECYFIKACJI_DRUKU,
 } from '../../src/domena/masowe.js';
 
 // ⚠️ FIXTURE MA POZYCJE SUMUJACA SIE DO KWOTY ZAMOWIENIA — od 12.08.2026.
@@ -12,13 +15,26 @@ import {
 // od niej odpadl. To ta sama pulapka, co przy testach PDF-a z jedna pozycja: dane testowe
 // nie siegaly tam, gdzie mieszkal blad.
 const POZYCJA = {
-  nazwa: 'STOP 70x100', sku: 'STOP-70', ilosc: 1, cena_brutto: '100.00', brutto_linii: '100.00',
+  nazwa: 'STOP 70x100',
+  sku: 'STOP-70',
+  ilosc: 1,
+  cena_brutto: '100.00',
+  brutto_linii: '100.00',
 };
 const zam = (n) => ({
-  id: 1, numer: '3001', utworzone_at: '2026-08-05T10:00:00.000Z',
-  okres_rozliczeniowy_id: null, anulowane: 0, chce_fakture: 1, nip: '1234563218',
+  id: 1,
+  numer: '3001',
+  utworzone_at: '2026-08-05T10:00:00.000Z',
+  okres_rozliczeniowy_id: null,
+  anulowane: 0,
+  chce_fakture: 1,
+  nip: '1234563218',
   klient: { address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa' },
-  kwota_brutto: '100.00', pozycje: [POZYCJA], platnosci: [{ kwota: '100.00' }], faktura: null, ...n,
+  kwota_brutto: '100.00',
+  pozycje: [POZYCJA],
+  platnosci: [{ kwota: '100.00' }],
+  faktura: null,
+  ...n,
 });
 
 describe('podzial zaznaczenia do faktur hurtem', () => {
@@ -43,9 +59,7 @@ describe('podzial zaznaczenia do faktur hurtem', () => {
   });
 
   it('przy rownym stemplu rozstrzyga id rosnaco', () => {
-    const { doWystawienia } = podzielDoFaktury([
-      zam({ id: 9, numer: 'X' }), zam({ id: 4, numer: 'Y' }),
-    ]);
+    const { doWystawienia } = podzielDoFaktury([zam({ id: 9, numer: 'X' }), zam({ id: 4, numer: 'Y' })]);
     expect(doWystawienia.map((z) => z.numer)).toEqual(['Y', 'X']);
   });
 
@@ -125,7 +139,9 @@ describe('podzial zaznaczenia do faktur hurtem', () => {
     // blad w inFakcie. Bez tego czlonu podglad znow obiecywalby cos, czego trasa nie zrobi.
     it('zamowienie na 0,00 zl bez pozycji sumuje sie poprawnie, a mimo to wypada — bo dokument bylby pusty', () => {
       const puste = zam({
-        kwota_brutto: '0.00', pozycje: [], platnosci: [{ kwota: '0.00' }],
+        kwota_brutto: '0.00',
+        pozycje: [],
+        platnosci: [{ kwota: '0.00' }],
       });
       const { doWystawienia, pominiete } = podzielDoFaktury([puste]);
       expect(doWystawienia).toEqual([]);

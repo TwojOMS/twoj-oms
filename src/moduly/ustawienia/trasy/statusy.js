@@ -7,12 +7,16 @@ import { nawigacjaUstawien } from '../nawigacja.js';
 const LICZBA_ZAMOWIEN = new Intl.PluralRules('pl');
 
 export function registerUstawieniaStatusowRoutes(app, { db }) {
-  app.get('/ustawienia/statusy', async (req, reply) => reply.view('ustawienia-statusy.ejs', {
-    title: 'Statusy zamówień', nawigacja: nawigacjaUstawien(req, reply),
-    statusy: statusyWKolejnosci(db), paleta: PALETA_STATUSOW,
-    komunikat: typeof req.query?.komunikat === 'string' ? req.query.komunikat : null,
-    blad: req.query?.blad === '1',
-  }));
+  app.get('/ustawienia/statusy', async (req, reply) =>
+    reply.view('ustawienia-statusy.ejs', {
+      title: 'Statusy zamówień',
+      nawigacja: nawigacjaUstawien(req, reply),
+      statusy: statusyWKolejnosci(db),
+      paleta: PALETA_STATUSOW,
+      komunikat: typeof req.query?.komunikat === 'string' ? req.query.komunikat : null,
+      blad: req.query?.blad === '1',
+    }),
+  );
 
   // Strażnik /ustawienia, blokada zapisu gościa demo i CSRF są wspólne z resztą ustawień.
   app.post('/ustawienia/statusy', async (req, reply) => {
@@ -21,14 +25,22 @@ export function registerUstawieniaStatusowRoutes(app, { db }) {
     let blad = false;
     db.exec('BEGIN IMMEDIATE');
     try {
-      const statusy = statusyWKolejnosci(db).map(s => ({ ...s }));
-      const indeks = statusy.findIndex(s => s.klucz === klucz);
+      const statusy = statusyWKolejnosci(db).map((s) => ({ ...s }));
+      const indeks = statusy.findIndex((s) => s.klucz === klucz);
       const status = statusy[indeks];
       if (akcja === 'kolejnosc') {
-        if (!Array.isArray(kolejnosc) || kolejnosc.length !== statusy.length || new Set(kolejnosc).size !== statusy.length || kolejnosc.some(k => !statusy.some(s => s.klucz === k))) {
+        if (
+          !Array.isArray(kolejnosc) ||
+          kolejnosc.length !== statusy.length ||
+          new Set(kolejnosc).size !== statusy.length ||
+          kolejnosc.some((k) => !statusy.some((s) => s.klucz === k))
+        ) {
           throw new Error('Prześlij pełną kolejność istniejących statusów bez powtórzeń. Odśwież ekran.');
         }
-        zapiszStatusy(db, kolejnosc.map(k => statusy.find(s => s.klucz === k)));
+        zapiszStatusy(
+          db,
+          kolejnosc.map((k) => statusy.find((s) => s.klucz === k)),
+        );
         db.exec('COMMIT');
         return reply.send({ komunikat: 'Zapisano kolejność' });
       } else if (akcja === 'dodaj') {
@@ -48,8 +60,11 @@ export function registerUstawieniaStatusowRoutes(app, { db }) {
           if (cel >= 0 && cel < statusy.length) [statusy[indeks], statusy[cel]] = [statusy[cel], statusy[indeks]];
         } else if (akcja === 'usun') {
           if (!status.jak) throw new Error('Nie można usunąć statusu systemowego.');
-          const ids = db.prepare('SELECT zamowienie_id FROM zamowienia_status_wlasny WHERE klucz = ?').all(klucz).map(w => w.zamowienie_id);
-          const ile = zamowieniaPoId(db, ids).filter(z => wyliczStatus(z) === klucz).length;
+          const ids = db
+            .prepare('SELECT zamowienie_id FROM zamowienia_status_wlasny WHERE klucz = ?')
+            .all(klucz)
+            .map((w) => w.zamowienie_id);
+          const ile = zamowieniaPoId(db, ids).filter((z) => wyliczStatus(z) === klucz).length;
           const slowo = { one: 'zamówienie', few: 'zamówienia', many: 'zamówień' }[LICZBA_ZAMOWIEN.select(ile)];
           if (ile) throw new Error(`Przenieś ${ile} ${slowo} na inny status, zanim usuniesz ten status.`);
           db.prepare('DELETE FROM zamowienia_status_wlasny WHERE klucz = ?').run(klucz);
@@ -66,6 +81,8 @@ export function registerUstawieniaStatusowRoutes(app, { db }) {
       blad = true;
       if (akcja === 'kolejnosc') return reply.code(400).send({ komunikat });
     }
-    return reply.code(303).redirect(`/ustawienia/statusy?komunikat=${encodeURIComponent(komunikat)}${blad ? '&blad=1' : ''}`);
+    return reply
+      .code(303)
+      .redirect(`/ustawienia/statusy?komunikat=${encodeURIComponent(komunikat)}${blad ? '&blad=1' : ''}`);
   });
 }

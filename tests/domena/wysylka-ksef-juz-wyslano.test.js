@@ -8,26 +8,36 @@ const testownik = { opis: { nazwa: { mianownik: 'Testownik', miejscownik: 'Testo
 
 describe('zdanieJuzWyslano', () => {
   it('inFakt (domyślny): zdanie znak w znak z briefu', () => {
-    expect(zdanieJuzWyslano('2026-11-05T07:22:00.000Z', undefined, TERAZ))
-      .toBe('Ten dokument już wysłano do KSeF 5.11 08:22 — sprawdź go w inFakcie.');
+    expect(zdanieJuzWyslano('2026-11-05T07:22:00.000Z', undefined, TERAZ)).toBe(
+      'Ten dokument już wysłano do KSeF 5.11 08:22 — sprawdź go w inFakcie.',
+    );
   });
   it('inny rok → data z rokiem', () => {
-    expect(zdanieJuzWyslano('2025-12-31T22:30:00.000Z', undefined, TERAZ))
-      .toBe('Ten dokument już wysłano do KSeF 31.12.2025 23:30 — sprawdź go w inFakcie.');
+    expect(zdanieJuzWyslano('2025-12-31T22:30:00.000Z', undefined, TERAZ)).toBe(
+      'Ten dokument już wysłano do KSeF 31.12.2025 23:30 — sprawdź go w inFakcie.',
+    );
   });
   it('inny program: nazwa z programu w miejscowniku', () => {
-    expect(zdanieJuzWyslano('2026-11-05T07:22:00.000Z', testownik, TERAZ))
-      .toBe('Ten dokument już wysłano do KSeF 5.11 08:22 — sprawdź go w Testowniku.');
+    expect(zdanieJuzWyslano('2026-11-05T07:22:00.000Z', testownik, TERAZ)).toBe(
+      'Ten dokument już wysłano do KSeF 5.11 08:22 — sprawdź go w Testowniku.',
+    );
   });
   it('program wbudowany: bez odsyłania do innego programu', () => {
-    expect(zdanieJuzWyslano('2026-11-05T07:22:00.000Z', { opis: { wbudowany: true } }, TERAZ))
-      .toBe('Ten dokument już wysłano do KSeF 5.11 08:22.');
+    expect(zdanieJuzWyslano('2026-11-05T07:22:00.000Z', { opis: { wbudowany: true } }, TERAZ)).toBe(
+      'Ten dokument już wysłano do KSeF 5.11 08:22.',
+    );
   });
 });
 
 describe('wysylkaZKarty po zleceniu', () => {
   it('bez długiego powodu, z datą do plakietki', () => {
-    const k = wysylkaZKarty({ uuid: 'u1', ksefNumer: null, nip: '1234563218', zleconaAt: '2026-11-05T07:22:00.000Z', dzienWystawienia: '2026-10-20' });
+    const k = wysylkaZKarty({
+      uuid: 'u1',
+      ksefNumer: null,
+      nip: '1234563218',
+      zleconaAt: '2026-11-05T07:22:00.000Z',
+      dzienWystawienia: '2026-10-20',
+    });
     expect(k.wolno).toBe(false);
     expect(k.stan).toBe('wyslana_czeka');
     expect(k.powod).toBeNull();
@@ -37,7 +47,14 @@ describe('wysylkaZKarty po zleceniu', () => {
 
 describe('blokada serwera bez zmian', () => {
   it('coWolnoWyslac nadal pomija zlecony dokument z długim powodem (log, automat) i znacznikiem do ekranu', () => {
-    const d = { uuid: 'u1', number: '1/10/2026', rodzaj: 'vat', ksef_number: null, client_tax_code: '1234563218', ksefZleconaAt: '2026-11-05T07:22:00.000Z' };
+    const d = {
+      uuid: 'u1',
+      number: '1/10/2026',
+      rodzaj: 'vat',
+      ksef_number: null,
+      client_tax_code: '1234563218',
+      ksefZleconaAt: '2026-11-05T07:22:00.000Z',
+    };
     const w = coWolnoWyslac(['u1'], [d]);
     expect(w.doWyslania).toEqual([]);
     expect(w.pominiete).toHaveLength(1);

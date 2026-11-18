@@ -16,12 +16,40 @@ describe('pasek nagłówka karty zamówienia', () => {
     try {
       zalozKonto(p.db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
       const admin = jako(p.db, 'adam');
-      const id = zapiszZamowienie(p.db, 'pro', {
-        zrodlo_id: 9561, numer: '9561', klient: { first_name: 'Anna' }, dostawa: { city: 'Pęki' },
-        metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '100.00', status_woo: 'processing',
-        oplacone_at: null, anulowane: 0, utworzone_at: '2026-10-17T09:00:00',
-        pozycje: [{ nazwa: 'Lampa', sku: null, cena_brutto: '100.00', vat: '23', zdjecie_url: null, zrodlo_id: 1, produkt_id: null, oferta_id: null, wariant_id: null, ilosc: 1 }],
-      }, {});
+      const id = zapiszZamowienie(
+        p.db,
+        'pro',
+        {
+          zrodlo_id: 9561,
+          numer: '9561',
+          klient: { first_name: 'Anna' },
+          dostawa: { city: 'Pęki' },
+          metoda_wysylki: 'dpd',
+          kwota_pobrania: null,
+          chce_fakture: 0,
+          nip: null,
+          kwota_brutto: '100.00',
+          status_woo: 'processing',
+          oplacone_at: null,
+          anulowane: 0,
+          utworzone_at: '2026-10-17T09:00:00',
+          pozycje: [
+            {
+              nazwa: 'Lampa',
+              sku: null,
+              cena_brutto: '100.00',
+              vat: '23',
+              zdjecie_url: null,
+              zrodlo_id: 1,
+              produkt_id: null,
+              oferta_id: null,
+              wariant_id: null,
+              ilosc: 1,
+            },
+          ],
+        },
+        {},
+      );
 
       const karta = await get(p.app, `/zamowienia/${id}`, admin);
       expect(karta.statusCode).toBe(200);
@@ -36,6 +64,9 @@ describe('pasek nagłówka karty zamówienia', () => {
       const regula = /\.naglowek-ekranu--pasek\{([^}]*)\}/u.exec(CSS)?.[1] ?? '';
       expect(regula).toMatch(/background:var\(--powierzchnia\)/u);
       expect(regula).toMatch(/border:1px solid var\(--ramka\)/u);
-    } finally { await p.app.close(); p.db.close(); }
+    } finally {
+      await p.app.close();
+      p.db.close();
+    }
   });
 });

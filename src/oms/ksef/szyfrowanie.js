@@ -1,6 +1,4 @@
-import {
-  publicEncrypt, constants, X509Certificate, randomBytes, createCipheriv, createHash,
-} from 'node:crypto';
+import { publicEncrypt, constants, X509Certificate, randomBytes, createCipheriv, createHash } from 'node:crypto';
 import { bladOperatora } from '../../domena/bledy.js';
 
 // Klucz publiczny MF przychodzi jako certyfikat w base64 (GET /security/public-key-certificates).
@@ -23,16 +21,17 @@ export function kluczZCertyfikatu(base64Cert) {
 // Pusta lista (albo nie-lista) to czytelna odmowa, a nie TypeError dalej w `kluczZCertyfikatu`.
 export function kluczMf(certy, usage, teraz = new Date()) {
   const lista = (Array.isArray(certy) ? certy : []).filter((c) => c && typeof c === 'object');
-  const odmowa = (powod) => bladOperatora(
-    `KSeF nie oddał ${powod} — nie ma czym zaszyfrować danych, więc nic nie wysłano. `
-    + 'Spróbuj ponownie za chwilę.',
-  );
+  const odmowa = (powod) =>
+    bladOperatora(
+      `KSeF nie oddał ${powod} — nie ma czym zaszyfrować danych, więc nic nie wysłano. ` +
+        'Spróbuj ponownie za chwilę.',
+    );
   if (!lista.some((c) => c.certificate)) {
     throw odmowa(`żadnego certyfikatu klucza publicznego (do użycia „${usage}”)`);
   }
   const t = teraz.getTime();
-  const wazny = (c) => (c.validFrom == null || t >= Date.parse(c.validFrom))
-    && (c.validTo == null || t <= Date.parse(c.validTo));
+  const wazny = (c) =>
+    (c.validFrom == null || t >= Date.parse(c.validFrom)) && (c.validTo == null || t <= Date.parse(c.validTo));
   const maUsage = lista.some((c) => c.usage !== undefined && c.usage !== null);
   const pasujace = maUsage
     ? lista.filter((c) => (Array.isArray(c.usage) ? c.usage.includes(usage) : c.usage === usage))

@@ -33,7 +33,7 @@ export function porownajNumery(a, b) {
   const ma = KLUCZ.exec(String(a ?? ''));
   const mb = KLUCZ.exec(String(b ?? ''));
   if (ma && mb) {
-    return (Number(ma[3]) - Number(mb[3])) || (Number(ma[2]) - Number(mb[2])) || (Number(ma[1]) - Number(mb[1]));
+    return Number(ma[3]) - Number(mb[3]) || Number(ma[2]) - Number(mb[2]) || Number(ma[1]) - Number(mb[1]);
   }
   if (ma) return -1;
   if (mb) return 1;
@@ -62,11 +62,15 @@ export function groszeZInfaktu(wartosc) {
 // Waluta z API bywa mala litera albo ze spacja („pln", " PLN ") — bez normalizacji sumy
 // rozpadlyby sie na dwa koszyki, z ktorych zaden nie jest kwota do deklaracji. Pustka
 // (i brak pola) znaczy zlotowki, tak jak dotad.
-const walutaZ = (w) => String(w ?? '').trim().toUpperCase() || 'PLN';
+const walutaZ = (w) =>
+  String(w ?? '')
+    .trim()
+    .toUpperCase() || 'PLN';
 
 // Konsument nie ma nazwy firmy — zestawienie ma pokazac czlowieka, nie pusta komorke.
-const kontrahentZ = (d) => String(d?.client_company_name ?? '').trim()
-  || [d?.client_first_name, d?.client_last_name].filter(Boolean).join(' ').trim();
+const kontrahentZ = (d) =>
+  String(d?.client_company_name ?? '').trim() ||
+  [d?.client_first_name, d?.client_last_name].filter(Boolean).join(' ').trim();
 
 // Jeden napis, dwa miejsca: uwaga na wierszu i sito, po ktorym paczka zbiera wiersze bez
 // kwoty do ostrzezenia zbiorczego. Dwie kopie tego zdania rozjechalyby sie przy pierwszej
@@ -108,7 +112,7 @@ function wierszSprzedazy(d, miesiac, numeryPoId) {
   }
   // Zamiana faktury przy złym NIP-ie (program wbudowany) — stara, KOR do zera i nowa idą do okresu
   // sprzedaży starej; każda dostaje tę samą uwagę z numerem STAREJ. Tylko tekst — kwoty i kolejność bez zmian.
-  const zastapiona = d.zastapiona_przez ? d.number : (d.zastepujaca ? d.corrected_invoice_number : d.zastepuje);
+  const zastapiona = d.zastapiona_przez ? d.number : d.zastepujaca ? d.corrected_invoice_number : d.zastepuje;
   if (zastapiona) uwagi.push(`zamiana faktury ${zastapiona} (błędny NIP) — rozlicz w tym okresie`);
   if (d.bezNumeruKsef) uwagi.push(UWAGA_PODGLAD);
   else if (!d.ksef_number) uwagi.push('bez KSeF');
@@ -143,7 +147,9 @@ function wierszKosztu(k, miesiac) {
   // Pusty dzien otrzymania zapala uwage TAK SAMO jak data z innego miesiaca: bez niego nie
   // wiadomo, dlaczego dokument lezy w tej paczce, a to jest dokladnie pytanie ksiegowej.
   if (!reczny && (miesiacZ(wystawiona) !== miesiac || otrzymana === '')) {
-    uwagi.push(`${czescData(wystawiona, 'wystawiona', 'brak daty wystawienia')}, ${czescData(otrzymana, 'otrzymana', 'brak daty otrzymania')}`);
+    uwagi.push(
+      `${czescData(wystawiona, 'wystawiona', 'brak daty wystawienia')}, ${czescData(otrzymana, 'otrzymana', 'brak daty otrzymania')}`,
+    );
   }
   if (reczny) uwagi.push(UWAGA_PAPIER);
   return {
@@ -191,7 +197,10 @@ function sumy(wiersze) {
   const s = {};
   let pominiete = 0;
   for (const w of wiersze) {
-    if (w.uwagi.includes(UWAGA_BRAK_KWOTY)) { pominiete += 1; continue; }
+    if (w.uwagi.includes(UWAGA_BRAK_KWOTY)) {
+      pominiete += 1;
+      continue;
+    }
     s[w.waluta] ??= { nettoGr: 0, vatGr: 0, bruttoGr: 0 };
     s[w.waluta].nettoGr += w.nettoGr;
     s[w.waluta].vatGr += w.vatGr;
@@ -225,8 +234,8 @@ const liczebnik = (n, jeden, kilka, wiele) => {
  */
 export function zlozZestawienieKosztow({ miesiac, koszty = [], kwarantanna = 0 }) {
   const p = zlozPaczke({ miesiac, koszty, kwarantanna });
-  const czesc = (reczne) => p.koszty.filter((w) => (w.zrodlo === 'reczne') === reczne)
-    .map((w, i) => ({ ...w, lp: i + 1 }));
+  const czesc = (reczne) =>
+    p.koszty.filter((w) => (w.zrodlo === 'reczne') === reczne).map((w, i) => ({ ...w, lp: i + 1 }));
   const ksef = czesc(false);
   // ⚠️ „dołącz oryginał” znika Z WIERSZY części ręcznej i staje RAZ pod jej nagłówkiem
   // (`opisRecznych`): w osobnej części dotyczy każdego wiersza bez wyjątku, a powtórzone
@@ -242,20 +251,20 @@ export function zlozZestawienieKosztow({ miesiac, koszty = [], kwarantanna = 0 }
   };
 }
 
-export function zlozPaczke({
-  miesiac, faktury = [], korekty = [], koszty = [], kwarantanna = 0,
-}) {
+export function zlozPaczke({ miesiac, faktury = [], korekty = [], koszty = [], kwarantanna = 0 }) {
   // Klucze mapy jako NAPISY (i tylko dla dokumentow, ktore id maja) — inFakt potrafi oddac
   // `id` liczba, a `parent_id` napisem; bez tego korekta gubilaby swoja fakture po cichu,
   // a pusty klucz laczylby ze soba wszystkie dokumenty bez id.
-  const numeryPoId = new Map(faktury
-    .filter((d) => d?.id !== null && d?.id !== undefined)
-    .map((d) => [String(d.id), String(d.number ?? '')]));
+  const numeryPoId = new Map(
+    faktury.filter((d) => d?.id !== null && d?.id !== undefined).map((d) => [String(d.id), String(d.number ?? '')]),
+  );
   // Kopia przed `sort` — `sort` sortuje W MIEJSCU i bez tego modul (czysty z zalozenia)
   // przestawialby liste, ktora dostal od wolajacego.
-  const fak = [...faktury].sort((a, b) => porownajNumery(a.number, b.number))
+  const fak = [...faktury]
+    .sort((a, b) => porownajNumery(a.number, b.number))
     .map((d) => wierszSprzedazy({ ...d, rodzaj: 'vat' }, miesiac, numeryPoId));
-  const kor = [...korekty].sort((a, b) => porownajNumery(a.number, b.number))
+  const kor = [...korekty]
+    .sort((a, b) => porownajNumery(a.number, b.number))
     .map((d) => wierszSprzedazy({ ...d, rodzaj: 'korekta' }, miesiac, numeryPoId));
   // Korekty na koncu, po fakturach — inaczej numeracja stron rozjezdzalaby sie z kolejnoscia
   // wydruku, a korekta czytana przed swoja faktura pierwotna nie mowi nic.
@@ -263,8 +272,11 @@ export function zlozPaczke({
   // Koszty w kolejnosci OTRZYMANIA (tak, jak wpadaly do skrzynki), a przy tym samym dniu
   // po numerze dokumentu — ta sama kolejnosc, ktora oddaje zapytanie z bazy.
   const kosztyW = [...koszty]
-    .sort((a, b) => String(a.dzien_otrzymania).localeCompare(String(b.dzien_otrzymania))
-      || String(a.numer_dokumentu).localeCompare(String(b.numer_dokumentu), 'pl'))
+    .sort(
+      (a, b) =>
+        String(a.dzien_otrzymania).localeCompare(String(b.dzien_otrzymania)) ||
+        String(a.numer_dokumentu).localeCompare(String(b.numer_dokumentu), 'pl'),
+    )
     .map((k, i) => ({ lp: i + 1, ...wierszKosztu(k, miesiac) }));
   const ostrzezenia = [];
   // ⚠️ Brak kwoty widoczny TAKZE NA POZIOMIE PACZKI, nie tylko na wierszu. Ksiegowa czyta
@@ -274,12 +286,16 @@ export function zlozPaczke({
   const bezKwoty = sprzedaz.filter((w) => w.uwagi.includes(UWAGA_BRAK_KWOTY));
   if (bezKwoty.length > 0) {
     const ile = liczebnik(bezKwoty.length, 'dokument sprzedażowy', 'dokumenty sprzedażowe', 'dokumentów sprzedażowych');
-    ostrzezenia.push(`${ile} bez kwoty w inFakcie — sumy sprzedaży są NIEPEŁNE, sprawdź faktury: ${bezKwoty.map((w) => w.numer).join(', ')}`);
+    ostrzezenia.push(
+      `${ile} bez kwoty w inFakcie — sumy sprzedaży są NIEPEŁNE, sprawdź faktury: ${bezKwoty.map((w) => w.numer).join(', ')}`,
+    );
   }
   // Kwarantanna to dokumenty, ktorych panel nie umial zapisac jako koszt. Paczka MUSI o nich
   // powiedziec wprost — milczenie znaczyloby dla ksiegowej „to jest caly miesiac".
   if (kwarantanna > 0) {
-    ostrzezenia.push(`${liczebnik(kwarantanna, 'dokument kosztowy leży', 'dokumenty kosztowe leżą', 'dokumentów kosztowych leży')} w kwarantannie panelu i NIE ma ich w tym zestawieniu.`);
+    ostrzezenia.push(
+      `${liczebnik(kwarantanna, 'dokument kosztowy leży', 'dokumenty kosztowe leżą', 'dokumentów kosztowych leży')} w kwarantannie panelu i NIE ma ich w tym zestawieniu.`,
+    );
   }
   return {
     miesiac,

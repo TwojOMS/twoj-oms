@@ -12,25 +12,45 @@ describe('gabaryty Allegro', () => {
     const { parsujGabarytAllegro } = await import('../../src/domena/gabaryty-allegro.js');
     expect(parsujGabarytAllegro({ gabaryt: 'M', waga: '0,5' }, ORLEN)).toEqual({
       paczka: {
-        waga: 0.5, dlugosc: 60, szerokosc: 38, wysokosc: 19,
-        gabaryt: 'M', oczekiwanyDeliveryMethodId: ORLEN,
+        waga: 0.5,
+        dlugosc: 60,
+        szerokosc: 38,
+        wysokosc: 19,
+        gabaryt: 'M',
+        oczekiwanyDeliveryMethodId: ORLEN,
       },
     });
   });
 
   it.each([
-    [ONE_ONE, 'S', 64, 8], [ONE_ONE, 'M', 64, 19], [ONE_ONE, 'L', 64, 41],
-    [ONE_DPD, 'S', 64, 8], [ONE_DPD, 'M', 64, 19], [ONE_DPD, 'L', 64, 41],
-    [ORLEN, 'S', 60, 8], [ORLEN, 'M', 60, 19], [ORLEN, 'L', 60, 41],
-    [DHL_BOX, 'S', 64, 8], [DHL_BOX, 'M', 64, 19], [DHL_BOX, 'L', 64, 41],
-    [DHL_POINT, 'S', 64, 8], [DHL_POINT, 'M', 64, 19], [DHL_POINT, 'L', 64, 41],
-    [DPD_AUTOMAT, 'S', 59, 8], [DPD_AUTOMAT, 'M', 59, 19], [DPD_AUTOMAT, 'L', 59, 41],
+    [ONE_ONE, 'S', 64, 8],
+    [ONE_ONE, 'M', 64, 19],
+    [ONE_ONE, 'L', 64, 41],
+    [ONE_DPD, 'S', 64, 8],
+    [ONE_DPD, 'M', 64, 19],
+    [ONE_DPD, 'L', 64, 41],
+    [ORLEN, 'S', 60, 8],
+    [ORLEN, 'M', 60, 19],
+    [ORLEN, 'L', 60, 41],
+    [DHL_BOX, 'S', 64, 8],
+    [DHL_BOX, 'M', 64, 19],
+    [DHL_BOX, 'L', 64, 41],
+    [DHL_POINT, 'S', 64, 8],
+    [DHL_POINT, 'M', 64, 19],
+    [DHL_POINT, 'L', 64, 41],
+    [DPD_AUTOMAT, 'S', 59, 8],
+    [DPD_AUTOMAT, 'M', 59, 19],
+    [DPD_AUTOMAT, 'L', 59, 41],
   ])('%s: gabaryt %s daje właściwą długość %i i wysokość %i', async (id, gabaryt, dlugosc, wysokosc) => {
     const { parsujGabarytAllegro } = await import('../../src/domena/gabaryty-allegro.js');
     expect(parsujGabarytAllegro({ gabaryt, waga: '0,5' }, id)).toEqual({
       paczka: {
-        waga: 0.5, dlugosc, szerokosc: 38, wysokosc,
-        gabaryt, oczekiwanyDeliveryMethodId: id,
+        waga: 0.5,
+        dlugosc,
+        szerokosc: 38,
+        wysokosc,
+        gabaryt,
+        oczekiwanyDeliveryMethodId: id,
       },
     });
   });
@@ -48,12 +68,18 @@ describe('gabaryty Allegro', () => {
   it('udostępnia gabaryty tylko dla pięciu znanych identyfikatorów, nie po nazwie usługi', async () => {
     const { profilGabarytuAllegro } = await import('../../src/domena/gabaryty-allegro.js');
     expect(profilGabarytuAllegro(ONE_ONE)).toEqual({
-      dlugosc: 64, szerokosc: 38, gabaryty: { S: 8, M: 19, L: 41 },
-      domyslnaWaga: 1, domyslnyGabaryt: 'S',
+      dlugosc: 64,
+      szerokosc: 38,
+      gabaryty: { S: 8, M: 19, L: 41 },
+      domyslnaWaga: 1,
+      domyslnyGabaryt: 'S',
     });
     expect(profilGabarytuAllegro(ORLEN)).toEqual({
-      dlugosc: 60, szerokosc: 38, gabaryty: { S: 8, M: 19, L: 41 },
-      domyslnaWaga: null, domyslnyGabaryt: null,
+      dlugosc: 60,
+      szerokosc: 38,
+      gabaryty: { S: 8, M: 19, L: 41 },
+      domyslnaWaga: null,
+      domyslnyGabaryt: null,
     });
     expect(profilGabarytuAllegro('Allegro One Box')).toBeNull();
     expect(profilGabarytuAllegro('nieznane-id')).toBeNull();
@@ -62,14 +88,20 @@ describe('gabaryty Allegro', () => {
   // Limit zmierzony 01.10.2026 w `delivery-proposals` zamówienia #1376 (Automaty DPD, APM).
   it('Automat DPD mieści L w żywym limicie 59 × 38 × 41 cm, a domyślnej paczki 110 × 75 nie', async () => {
     const { parsujGabarytAllegro, sprawdzLimityGabarytuAllegro } = await import('../../src/domena/gabaryty-allegro.js');
-    const opcje = [{ deliveryType: 'APM', packageType: 'PACKAGE', limits: {
-      dimensions: {
-        length: { value: 59, unit: 'CENTIMETER' },
-        width: { value: 38, unit: 'CENTIMETER' },
-        height: { value: 41, unit: 'CENTIMETER' },
+    const opcje = [
+      {
+        deliveryType: 'APM',
+        packageType: 'PACKAGE',
+        limits: {
+          dimensions: {
+            length: { value: 59, unit: 'CENTIMETER' },
+            width: { value: 38, unit: 'CENTIMETER' },
+            height: { value: 41, unit: 'CENTIMETER' },
+          },
+          weight: { value: 20, unit: 'KILOGRAMS' },
+        },
       },
-      weight: { value: 20, unit: 'KILOGRAMS' },
-    } }];
+    ];
     const { paczka } = parsujGabarytAllegro({ gabaryt: 'L', waga: '0,5' }, DPD_AUTOMAT);
     expect(sprawdzLimityGabarytuAllegro(paczka, opcje)).toEqual({ paczka });
     const domyslna = { waga: 1, dlugosc: 110, szerokosc: 75, wysokosc: 1 };
@@ -78,14 +110,19 @@ describe('gabaryty Allegro', () => {
 
   it('odmawia M, gdy żywy limit wysokości to 8 cm, lecz dopuszcza S', async () => {
     const { sprawdzLimityGabarytuAllegro } = await import('../../src/domena/gabaryty-allegro.js');
-    const opcje = [{ packageType: 'PACKAGE', limits: {
-      dimensions: {
-        length: { value: 64, unit: 'CENTIMETER' },
-        width: { value: 38, unit: 'CENTIMETER' },
-        height: { value: 8, unit: 'CENTIMETER' },
+    const opcje = [
+      {
+        packageType: 'PACKAGE',
+        limits: {
+          dimensions: {
+            length: { value: 64, unit: 'CENTIMETER' },
+            width: { value: 38, unit: 'CENTIMETER' },
+            height: { value: 8, unit: 'CENTIMETER' },
+          },
+          weight: { value: 20, unit: 'KILOGRAMS' },
+        },
       },
-      weight: { value: 20, unit: 'KILOGRAMS' },
-    } }];
+    ];
     const s = { waga: 0.5, dlugosc: 64, szerokosc: 38, wysokosc: 8 };
     const m = { waga: 0.5, dlugosc: 64, szerokosc: 38, wysokosc: 19 };
     expect(sprawdzLimityGabarytuAllegro(s, opcje)).toEqual({ paczka: s });
@@ -103,37 +140,66 @@ describe('gabaryty Allegro', () => {
   it('odmawia, gdy limit ma błędną jednostkę, null lub rzeczywistą wagę ponad limitem', async () => {
     const { sprawdzLimityGabarytuAllegro } = await import('../../src/domena/gabaryty-allegro.js');
     const paczka = { waga: 10.1, dlugosc: 64, szerokosc: 38, wysokosc: 8 };
-    const opcja = { packageType: 'PACKAGE', limits: {
-      dimensions: {
-        length: { value: 64, unit: 'CENTIMETER' },
-        width: { value: 38, unit: 'CENTIMETER' },
-        height: { value: 41, unit: 'CENTIMETER' },
+    const opcja = {
+      packageType: 'PACKAGE',
+      limits: {
+        dimensions: {
+          length: { value: 64, unit: 'CENTIMETER' },
+          width: { value: 38, unit: 'CENTIMETER' },
+          height: { value: 41, unit: 'CENTIMETER' },
+        },
+        weight: { value: 10, unit: 'KILOGRAMS' },
       },
-      weight: { value: 10, unit: 'KILOGRAMS' },
-    } };
+    };
     expect(sprawdzLimityGabarytuAllegro(paczka, [opcja]).blad).toMatch(/waga/);
-    expect(sprawdzLimityGabarytuAllegro(paczka, [{ ...opcja, limits: {
-      ...opcja.limits, weight: { value: 20, unit: 'GRAM' },
-    } }]).blad).toMatch(/limit/);
-    expect(sprawdzLimityGabarytuAllegro(paczka, [{ ...opcja, limits: {
-      ...opcja.limits, weight: { value: null, unit: 'KILOGRAMS' },
-    } }]).blad).toMatch(/limit/);
+    expect(
+      sprawdzLimityGabarytuAllegro(paczka, [
+        {
+          ...opcja,
+          limits: {
+            ...opcja.limits,
+            weight: { value: 20, unit: 'GRAM' },
+          },
+        },
+      ]).blad,
+    ).toMatch(/limit/);
+    expect(
+      sprawdzLimityGabarytuAllegro(paczka, [
+        {
+          ...opcja,
+          limits: {
+            ...opcja.limits,
+            weight: { value: null, unit: 'KILOGRAMS' },
+          },
+        },
+      ]).blad,
+    ).toMatch(/limit/);
   });
 
   it('stosuje niższy limit z dwóch opcji PACKAGE, nigdy wygodniejszy pierwszy', async () => {
     const { sprawdzLimityGabarytuAllegro } = await import('../../src/domena/gabaryty-allegro.js');
     const paczka = { waga: 0.5, dlugosc: 64, szerokosc: 38, wysokosc: 19 };
-    const opcja = { packageType: 'PACKAGE', limits: {
-      dimensions: {
-        length: { value: 64, unit: 'CENTIMETER' },
-        width: { value: 38, unit: 'CENTIMETER' },
-        height: { value: 41, unit: 'CENTIMETER' },
+    const opcja = {
+      packageType: 'PACKAGE',
+      limits: {
+        dimensions: {
+          length: { value: 64, unit: 'CENTIMETER' },
+          width: { value: 38, unit: 'CENTIMETER' },
+          height: { value: 41, unit: 'CENTIMETER' },
+        },
+        weight: { value: 20, unit: 'KILOGRAMS' },
       },
-      weight: { value: 20, unit: 'KILOGRAMS' },
-    } };
-    const nizsza = { ...opcja, limits: { ...opcja.limits, dimensions: {
-      ...opcja.limits.dimensions, height: { value: 8, unit: 'CENTIMETER' },
-    } } };
+    };
+    const nizsza = {
+      ...opcja,
+      limits: {
+        ...opcja.limits,
+        dimensions: {
+          ...opcja.limits.dimensions,
+          height: { value: 8, unit: 'CENTIMETER' },
+        },
+      },
+    };
     expect(sprawdzLimityGabarytuAllegro(paczka, [opcja, nizsza]).blad).toMatch(/wysokosc/);
   });
 

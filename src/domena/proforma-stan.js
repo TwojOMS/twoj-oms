@@ -120,20 +120,24 @@ export function czyWolnoWystawic(zamowienie) {
   }
   // Dołączone nie ma własnych dokumentów — proforma tylko z zamówienia głównego.
   if (zamowienie.scalone_do) {
-    return { wolno: false, powod: `Zamówienie jest scalone z zamówieniem ${zamowienie.scalone_do_numer ?? `#${zamowienie.scalone_do}`} — proforma w zamówieniu głównym.` };
+    return {
+      wolno: false,
+      powod: `Zamówienie jest scalone z zamówieniem ${zamowienie.scalone_do_numer ?? `#${zamowienie.scalone_do}`} — proforma w zamówieniu głównym.`,
+    };
   }
   if (anulowaneEfektywnie(zamowienie)) {
     return {
       wolno: false,
-      powod: 'To zamówienie jest anulowane — proforma prosiłaby klienta o przelew za coś,'
-        + ' czego nikt nie zrealizuje.',
+      powod:
+        'To zamówienie jest anulowane — proforma prosiłaby klienta o przelew za coś,' + ' czego nikt nie zrealizuje.',
     };
   }
   if (!Array.isArray(zamowienie.pozycje) || zamowienie.pozycje.length === 0) {
     return {
       wolno: false,
-      powod: 'To zamówienie nie ma ani jednej pozycji — proforma wyszłaby na 0,00 zł,'
-        + ' a numer z serii zostałby zużyty bezpowrotnie.',
+      powod:
+        'To zamówienie nie ma ani jednej pozycji — proforma wyszłaby na 0,00 zł,' +
+        ' a numer z serii zostałby zużyty bezpowrotnie.',
     };
   }
   // ⚠️ DRUGI WARUNEK PATRZY NA KWOTE, NIE NA DLUGOSC TABLICY — i to jest cala poprawka.
@@ -145,8 +149,9 @@ export function czyWolnoWystawic(zamowienie) {
   if (kwotaGr !== null && kwotaGr <= 0) {
     return {
       wolno: false,
-      powod: `Ta proforma wyszłaby na ${zl(kwotaGr)} zł — klient nie miałby czego przelać,`
-        + ' a numer z serii zostałby zużyty bezpowrotnie.',
+      powod:
+        `Ta proforma wyszłaby na ${zl(kwotaGr)} zł — klient nie miałby czego przelać,` +
+        ' a numer z serii zostałby zużyty bezpowrotnie.',
     };
   }
   return { wolno: true, powod: null };

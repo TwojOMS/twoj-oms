@@ -30,9 +30,16 @@ export function pocztaZZapisu(zapis: Zapis): PocztaWiadomosci | null {
   const haslo = String(zapis.sekrety?.haslo ?? '');
   if (!tekst(u.host) || !tekst(u.user) || !haslo.trim()) return null;
   try {
-    return konfiguracjaWiadomosci({ SMTP_HOST: tekst(u.host), SMTP_PORT: String(u.port ?? PORT_DOMYSLNY),
-      SMTP_USER: tekst(u.user), SMTP_PASS: haslo, ...(tekst(u.nadawca) ? { MAIL_FROM: tekst(u.nadawca) } : {}) }).poczta;
-  } catch { return null; }
+    return konfiguracjaWiadomosci({
+      SMTP_HOST: tekst(u.host),
+      SMTP_PORT: String(u.port ?? PORT_DOMYSLNY),
+      SMTP_USER: tekst(u.user),
+      SMTP_PASS: haslo,
+      ...(tekst(u.nadawca) ? { MAIL_FROM: tekst(u.nadawca) } : {}),
+    }).poczta;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -49,7 +56,8 @@ export function sprawdzFormularzPoczty(body: Record<string, unknown> = {}, zapis
   const port = portTekst === '' ? PORT_DOMYSLNY : Number(portTekst);
 
   if (!host) bledy.push('Podaj adres serwera poczty wychodzącej (SMTP), np. smtp.twoja-firma.pl.');
-  else if (!HOST.test(host)) bledy.push('Adres serwera to sama nazwa hosta, np. smtp.twoja-firma.pl — bez „smtp://”, spacji i ukośników.');
+  else if (!HOST.test(host))
+    bledy.push('Adres serwera to sama nazwa hosta, np. smtp.twoja-firma.pl — bez „smtp://”, spacji i ukośników.');
   if (!/^\d{1,5}$/.test(portTekst || String(PORT_DOMYSLNY)) || !Number.isInteger(port) || port < 1 || port > 65535) {
     bledy.push('Port to liczba od 1 do 65535 — zwykle 465 (SSL) albo 587 (STARTTLS).');
   }
@@ -64,24 +72,38 @@ export function sprawdzFormularzPoczty(body: Record<string, unknown> = {}, zapis
   const sekrety = { haslo: haslo.trim() ? haslo : stareHaslo };
   // Ostatnia bramka: ta sama funkcja co dla .env (adres nadawcy, domyślnie login, musi być adresem e-mail).
   if (!bledy.length && !pocztaZZapisu({ ustawienia, sekrety })) {
-    bledy.push(nadawca
-      ? 'Nadawca musi zawierać poprawny adres e-mail, np. sklep@twoja-firma.pl albo „Twoja Firma <sklep@twoja-firma.pl>”.'
-      : 'Login nie jest adresem e-mail — wpisz w polu „Nadawca” adres, z którego mają wychodzić maile.');
+    bledy.push(
+      nadawca
+        ? 'Nadawca musi zawierać poprawny adres e-mail, np. sklep@twoja-firma.pl albo „Twoja Firma <sklep@twoja-firma.pl>”.'
+        : 'Login nie jest adresem e-mail — wpisz w polu „Nadawca” adres, z którego mają wychodzić maile.',
+    );
   }
   return { ustawienia, sekrety, bledy };
 }
 
 /** Pośrednik o kontrakcie createMailer, czytający zapis przy każdej wysyłce. `gotowy()` — czy zapis jest kompletny. */
-export function pocztaZUstawien({ wczytaj, fabryka }: { wczytaj: () => Zapis; fabryka: (p: PocztaWiadomosci) => Mailer }) {
+export function pocztaZUstawien({
+  wczytaj,
+  fabryka,
+}: {
+  wczytaj: () => Zapis;
+  fabryka: (p: PocztaWiadomosci) => Mailer;
+}) {
   let klucz: string | null = null;
   let mailer: Mailer | null = null;
   const biezacy = (): Mailer => {
     const poczta = pocztaZZapisu(wczytaj());
     if (!poczta) {
-      throw bladOperatora(`Poczta wychodząca nie jest ustawiona — wpisz serwer SMTP w Ustawienia → Integracje → Poczta wychodząca (${EKRAN_POCZTY}). Nic nie zostało wysłane.`, { status: 400 });
+      throw bladOperatora(
+        `Poczta wychodząca nie jest ustawiona — wpisz serwer SMTP w Ustawienia → Integracje → Poczta wychodząca (${EKRAN_POCZTY}). Nic nie zostało wysłane.`,
+        { status: 400 },
+      );
     }
     const nowy = JSON.stringify(poczta);
-    if (nowy !== klucz || !mailer) { mailer = fabryka(poczta); klucz = nowy; }
+    if (nowy !== klucz || !mailer) {
+      mailer = fabryka(poczta);
+      klucz = nowy;
+    }
     return mailer;
   };
   return {
@@ -96,16 +118,25 @@ export type PocztaUstawien = ReturnType<typeof pocztaZUstawien>;
 /** Trwały log transportu: tylko oczyszczony kod i zdanie ze słownika, nigdy odpowiedź serwera z loginem. */
 export function opisBleduPocztyDoLogu(e: { code?: unknown; message?: string }): string | undefined {
   if (!e.code) return e.message;
-  const kod = String(e.code).replace(/[^A-Z0-9_]/gu, '').slice(0, 20);
+  const kod = String(e.code)
+    .replace(/[^A-Z0-9_]/gu, '')
+    .slice(0, 20);
   return `SMTP error (${kod}) — ${komunikatBleduPoczty({ code: kod })}`;
 }
 
 /** Polski komunikat błędu wysyłki — z kodu nodemailera, nigdy z treści błędu (bywa w niej odpowiedź serwera z loginem). */
-export function komunikatBleduPoczty(e: { code?: unknown; dlaOperatora?: boolean; message?: string } | null | undefined): string {
+export function komunikatBleduPoczty(
+  e: { code?: unknown; dlaOperatora?: boolean; message?: string } | null | undefined,
+): string {
   if (e?.dlaOperatora && e.message) return e.message;
   const kod = String(e?.code ?? '');
-  if (kod === 'EAUTH') return 'Serwer poczty odrzucił login albo hasło. Sprawdź je w ustawieniach skrzynki u dostawcy poczty.';
-  if (['ESOCKET', 'ECONNECTION', 'ETIMEDOUT', 'EDNS', 'ECONNREFUSED', 'ENOTFOUND', 'ECONNRESET', 'EPROTOCOL'].includes(kod)) {
+  if (kod === 'EAUTH')
+    return 'Serwer poczty odrzucił login albo hasło. Sprawdź je w ustawieniach skrzynki u dostawcy poczty.';
+  if (
+    ['ESOCKET', 'ECONNECTION', 'ETIMEDOUT', 'EDNS', 'ECONNREFUSED', 'ENOTFOUND', 'ECONNRESET', 'EPROTOCOL'].includes(
+      kod,
+    )
+  ) {
     return 'Nie udało się połączyć z serwerem poczty. Sprawdź adres serwera i port (465 dla SSL, 587 dla STARTTLS).';
   }
   if (kod === 'ETLS') return 'Połączenie szyfrowane z serwerem poczty nie powiodło się — sprawdź port (465 albo 587).';
@@ -128,8 +159,13 @@ export function oznaczBladPoczty<T>(e: T): T {
  * Zdanie dla operatora po nieudanej wysyłce: błąd transportu → `komunikatBleduPoczty` (+ gdzie poprawić, gdy ekran
  * Ustawień jest dla tego konta otwarty), wszystko inne → `komunikatDlaOperatora`. Treść błędu nie wychodzi na ekran.
  */
-export function komunikatWysylkiMaila(e: { code?: unknown; dlaOperatora?: boolean; message?: string; zTransportuPoczty?: boolean } | null | undefined,
-  { wskazUstawienia = false }: { wskazUstawienia?: boolean } = {}): string {
+export function komunikatWysylkiMaila(
+  e: { code?: unknown; dlaOperatora?: boolean; message?: string; zTransportuPoczty?: boolean } | null | undefined,
+  { wskazUstawienia = false }: { wskazUstawienia?: boolean } = {},
+): string {
   if (!e?.zTransportuPoczty) return komunikatDlaOperatora(e);
-  return komunikatBleduPoczty(e) + (wskazUstawienia ? ' Dane serwera poczty poprawisz w Ustawienia → Integracje → Poczta wychodząca.' : '');
+  return (
+    komunikatBleduPoczty(e) +
+    (wskazUstawienia ? ' Dane serwera poczty poprawisz w Ustawienia → Integracje → Poczta wychodząca.' : '')
+  );
 }

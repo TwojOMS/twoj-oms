@@ -9,12 +9,21 @@ const AUTH = { authorization: `Basic ${Buffer.from('adam:x').toString('base64')}
 const CONFIG = { auth: { user: 'adam', pass: 'x' }, klienciZbiorczy: [] };
 const FORM = { ...AUTH, 'content-type': 'application/x-www-form-urlencoded' };
 const SZ = '/ustawienia/szablony-wiadomosci';
-let db; let app; let wyslane;
+let db;
+let app;
+let wyslane;
 
 const watek = (nadpisz = {}) => ({
-  kanal: 'allegro_swietlik', threadId: 't1', interlocutorLogin: 'kupujacy_jan',
-  lastMessageDateTime: '2026-08-28T20:00:00Z', typ: 'COMMON', przeczytany: 0,
-  ostatniaOdKupujacego: 1, ostatniaTresc: 'Czy jest większy rozmiar?', pobranyAt: '2026-08-28T20:01:00Z', ...nadpisz,
+  kanal: 'allegro_swietlik',
+  threadId: 't1',
+  interlocutorLogin: 'kupujacy_jan',
+  lastMessageDateTime: '2026-08-28T20:00:00Z',
+  typ: 'COMMON',
+  przeczytany: 0,
+  ostatniaOdKupujacego: 1,
+  ostatniaTresc: 'Czy jest większy rozmiar?',
+  pobranyAt: '2026-08-28T20:01:00Z',
+  ...nadpisz,
 });
 const pobierz = (url) => app.inject({ method: 'GET', url, headers: AUTH });
 const wyslij = (url, payload = '') => app.inject({ method: 'POST', url, headers: FORM, payload });
@@ -33,12 +42,24 @@ beforeEach(() => {
   db = openOmsDb(':memory:');
   wyslane = [];
   app = buildOmsServer({
-    db, config: CONFIG,
-    klienciWiadomosci: { allegro_swietlik: { wyslijWiadomosc: async (id, tekst) => { wyslane.push({ id, tekst }); return { id: 'm1' }; } } },
+    db,
+    config: CONFIG,
+    klienciWiadomosci: {
+      allegro_swietlik: {
+        wyslijWiadomosc: async (id, tekst) => {
+          wyslane.push({ id, tekst });
+          return { id: 'm1' };
+        },
+      },
+    },
   });
   zapiszWatek(db, watek());
 });
-afterEach(async () => { await app?.close(); db?.close(); app = db = null; });
+afterEach(async () => {
+  await app?.close();
+  db?.close();
+  app = db = null;
+});
 
 describe('klienci', () => {
   it('karta, edycja i zapis nieznanego klienta', async () => {
@@ -64,25 +85,67 @@ describe('odpowiedź na wątek i „załatwione"', () => {
   const W = '/wiadomosci/allegro_swietlik/t1';
   const op = 'Wróć do wątku';
   it('nieznany wątek odpowiedzi i „załatwione” wraca na listę wiadomości', async () => {
-    sprawdz(await wyslij('/wiadomosci/allegro_swietlik/brak/odpowiedz', 'potwierdzam=tak&tresc=x'), 404, 'Nie ma takiego wątku.', null, '/wiadomosci', 'Wróć do wiadomości');
-    sprawdz(await wyslij('/wiadomosci/allegro_swietlik/brak/zalatwione'), 404, 'Panel nie zna tego wątku.', null, '/wiadomosci', 'Wróć do wiadomości');
+    sprawdz(
+      await wyslij('/wiadomosci/allegro_swietlik/brak/odpowiedz', 'potwierdzam=tak&tresc=x'),
+      404,
+      'Nie ma takiego wątku.',
+      null,
+      '/wiadomosci',
+      'Wróć do wiadomości',
+    );
+    sprawdz(
+      await wyslij('/wiadomosci/allegro_swietlik/brak/zalatwione'),
+      404,
+      'Panel nie zna tego wątku.',
+      null,
+      '/wiadomosci',
+      'Wróć do wiadomości',
+    );
   });
   it('spór, brak potwierdzenia, brak kanału: wątek, nic nie wysłano', async () => {
     zapiszWatek(db, watek({ threadId: 'spor', typ: 'POST_PURCHASE_ISSUE' }));
-    sprawdz(await wyslij('/wiadomosci/allegro_swietlik/spor/odpowiedz', 'potwierdzam=tak&tresc=x'), 400, 'To problem z zakupem — odpowiedz w Allegro, nie stąd.', null, '/wiadomosci/allegro_swietlik/spor', op);
+    sprawdz(
+      await wyslij('/wiadomosci/allegro_swietlik/spor/odpowiedz', 'potwierdzam=tak&tresc=x'),
+      400,
+      'To problem z zakupem — odpowiedz w Allegro, nie stąd.',
+      null,
+      '/wiadomosci/allegro_swietlik/spor',
+      op,
+    );
     sprawdz(await wyslij(`${W}/odpowiedz`, 'tresc=x'), 400, 'Brak potwierdzenia — nic nie wysłano.', null, W, op);
     zapiszWatek(db, watek({ kanal: 'allegro_inny', threadId: 't2' }));
-    sprawdz(await wyslij('/wiadomosci/allegro_inny/t2/odpowiedz', 'potwierdzam=tak&tresc=x'), 503, 'Kanał Allegro nie jest skonfigurowany.', null, '/wiadomosci/allegro_inny/t2', op);
+    sprawdz(
+      await wyslij('/wiadomosci/allegro_inny/t2/odpowiedz', 'potwierdzam=tak&tresc=x'),
+      503,
+      'Kanał Allegro nie jest skonfigurowany.',
+      null,
+      '/wiadomosci/allegro_inny/t2',
+      op,
+    );
     expect(wyslane).toEqual([]);
   });
   it('dowód wysyłki się nie zapisał: 409, nic nie wysłano', async () => {
     db.exec('DROP TABLE allegro_odpowiedzi_zalaczniki');
     db.exec('DROP TABLE allegro_odpowiedzi');
-    sprawdz(await wyslij(`${W}/odpowiedz`, 'potwierdzam=tak&tresc=x'), 409, /<p class="pasek-uwaga" role="alert">Nie zapisano dowodu wysyłki, więc nic nie wysłano: [^<]+<\/p>/, null, W, op);
+    sprawdz(
+      await wyslij(`${W}/odpowiedz`, 'potwierdzam=tak&tresc=x'),
+      409,
+      /<p class="pasek-uwaga" role="alert">Nie zapisano dowodu wysyłki, więc nic nie wysłano: [^<]+<\/p>/,
+      null,
+      W,
+      op,
+    );
     expect(wyslane).toEqual([]);
   });
   it('„załatwione” bez daty ostatniej wiadomości: wątek', async () => {
     db.prepare('UPDATE allegro_watki SET last_message_date_time = NULL WHERE thread_id = ?').run('t1');
-    sprawdz(await wyslij(`${W}/zalatwione`), 409, 'Wątek nie ma daty ostatniej wiadomości — nie ma czego zamknąć.', null, W, op);
+    sprawdz(
+      await wyslij(`${W}/zalatwione`),
+      409,
+      'Wątek nie ma daty ostatniej wiadomości — nie ma czego zamknąć.',
+      null,
+      W,
+      op,
+    );
   });
 });

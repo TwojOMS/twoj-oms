@@ -11,21 +11,42 @@ import { zapiszKonfiguracjeIntegracji } from '../../../src/oms/db/konfiguracja-i
 import { modulyPiaskownicy } from '../../../deploy/proba/atrapy/index.mjs';
 import { ENV_DEMO } from '../../../scripts/demo-dane.mjs';
 
-const ENV = { OMS_PROFORMY_KATALOG: mkdtempSync(join(tmpdir(), 'prz-093-10-proba-')), OMS_SPRZEDAWCA_NIP: '1234563218',
-  OMS_RACHUNEK: '34109010140000000000000000', OMS_TRYB: 'proba' };
+const ENV = {
+  OMS_PROFORMY_KATALOG: mkdtempSync(join(tmpdir(), 'prz-093-10-proba-')),
+  OMS_SPRZEDAWCA_NIP: '1234563218',
+  OMS_RACHUNEK: '34109010140000000000000000',
+  OMS_TRYB: 'proba',
+};
 const usluga = <T>(m: string, n: string) => {
-  const uslugi: Record<string, unknown> = { 'kanaly.klienciKanalow': {}, 'kanaly.config': { definicje: [], sklepy: {} } };
-  const k = `${m}.${n}`; if (!Object.hasOwn(uslugi, k)) throw new Error(k); return uslugi[k] as T;
+  const uslugi: Record<string, unknown> = {
+    'kanaly.klienciKanalow': {},
+    'kanaly.config': { definicje: [], sklepy: {} },
+  };
+  const k = `${m}.${n}`;
+  if (!Object.hasOwn(uslugi, k)) throw new Error(k);
+  return uslugi[k] as T;
 };
 
-function zbuduj(modul: ReturnType<typeof createModulFaktury>, env: Record<string, string>, klucz = 'zmyslony0klucz0proby0infakt0000000000f6') {
+function zbuduj(
+  modul: ReturnType<typeof createModulFaktury>,
+  env: Record<string, string>,
+  klucz = 'zmyslony0klucz0proby0infakt0000000000f6',
+) {
   const db = openOmsDb();
   zapiszKonfiguracjeIntegracji(db, 'infakt', { ustawienia: {}, sekrety: { apiKey: klucz } });
-  const z = modul.zbuduj({ db, konfiguracja: modul.konfiguracja(env), teraz: () => new Date(), log: () => {}, usluga } as any) as any;
+  const z = modul.zbuduj({
+    db,
+    konfiguracja: modul.konfiguracja(env),
+    teraz: () => new Date(),
+    log: () => {},
+    usluga,
+  } as any) as any;
   return { db, uslugi: z.uslugi };
 }
 
-afterEach(() => { vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('piaskownica a inFakt z Ustawień', () => {
   it('bez atrapy: każda metoda i sprawdzenie odmawiają „Piaskownica”, ani jednego żądania sieciowego', async () => {
@@ -47,7 +68,9 @@ describe('piaskownica a inFakt z Ustawień', () => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
     const env = { ...ENV_DEMO, OMS_TRYB: 'proba', OMS_PROFORMY_KATALOG: ENV.OMS_PROFORMY_KATALOG };
-    const faktury = modulyPiaskownicy(env).find((m: { nazwa: string }) => m.nazwa === 'faktury') as ReturnType<typeof createModulFaktury>;
+    const faktury = modulyPiaskownicy(env).find((m: { nazwa: string }) => m.nazwa === 'faktury') as ReturnType<
+      typeof createModulFaktury
+    >;
     const { db, uslugi } = zbuduj(faktury, env);
     expect(uslugi.infakt.atrapa).toBe(true);
     await expect(uslugi.konfiguracjaInfaktu.sprawdzPolaczenie()).resolves.toEqual({ ok: true });

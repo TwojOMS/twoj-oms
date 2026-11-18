@@ -1,10 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
-import {
-  zapiszProduktSklepowy, utworzKarte, powiazProdukt, SORTOWANIE_KART,
-} from '../../../src/oms/db/magazyn.js';
-
+import { zapiszProduktSklepowy, utworzKarte, powiazProdukt, SORTOWANIE_KART } from '../../../src/oms/db/magazyn.js';
 
 // EKRAN MAGAZYNU — pierwsza rzecz widoczna pozycja modułu.
 //
@@ -23,7 +20,12 @@ const auth = {
 };
 
 const STAN_PUSTY = {
-  trwa: false, zaczety_at: null, skonczony_at: null, postep: null, kanaly: [], blad: null,
+  trwa: false,
+  zaczety_at: null,
+  skonczony_at: null,
+  postep: null,
+  kanaly: [],
+  blad: null,
 };
 
 // Atrapa uslugi przebiegu. `start` liczy wywolania, `stan` oddaje to, co ekran ma pokazac.
@@ -45,7 +47,10 @@ function kartaZProduktem(karta, produkty = []) {
   const id = utworzKarte(db, karta);
   for (const p of produkty) {
     const produktId = zapiszProduktSklepowy(db, {
-      wariant_id: '', odczytane_at: '2026-08-11T06:00:00.000Z', nazwa: karta.nazwa, ...p,
+      wariant_id: '',
+      odczytane_at: '2026-08-11T06:00:00.000Z',
+      nazwa: karta.nazwa,
+      ...p,
     });
     powiazProdukt(db, produktId, id);
   }
@@ -55,11 +60,15 @@ function kartaZProduktem(karta, produkty = []) {
 const get = (app, url) => app.inject({ method: 'GET', url, headers: auth });
 
 function uzupelnijTresc(db, id) {
-  db.prepare('UPDATE karty_produktow SET opis_sekcje_json = ? WHERE id = ?')
-    .run(JSON.stringify({ sekcje: [{ elementy: [{ typ: 'tekst', html: '<p>Opis karty</p>' }] }] }), id);
-  db.prepare(`INSERT INTO zdjecia_kart
+  db.prepare('UPDATE karty_produktow SET opis_sekcje_json = ? WHERE id = ?').run(
+    JSON.stringify({ sekcje: [{ elementy: [{ typ: 'tekst', html: '<p>Opis karty</p>' }] }] }),
+    id,
+  );
+  db.prepare(
+    `INSERT INTO zdjecia_kart
     (karta_id, kolejnosc, zrodlo, adres_zrodlowy, utworzono_at)
-    VALUES (?, 0, 'reczne', 'https://example.org/karta.png', '2026-11-13')`).run(id);
+    VALUES (?, 0, 'reczne', 'https://example.org/karta.png', '2026-11-13')`,
+  ).run(id);
 }
 
 /**
@@ -102,15 +111,14 @@ function komorkaMiniatury(body, nazwa) {
 
 // Komorki kanalow TEGO wiersza, w kolejnosci renderowania. Oddaje ich TRESC — po niej
 // widac, ktora cena stoi w ktorej kolumnie.
-const komorkiKanalow = (wiersz) => [...wiersz.matchAll(/<td class="magazyn-kanal">([\s\S]*?)<\/td>/g)]
-  .map((m) => m[1].replace(/<[^>]*>/g, '').trim());
+const komorkiKanalow = (wiersz) =>
+  [...wiersz.matchAll(/<td class="magazyn-kanal">([\s\S]*?)<\/td>/g)].map((m) => m[1].replace(/<[^>]*>/g, '').trim());
 
 describe('GET /magazyn — tabela kart', () => {
   it('pokazuje karta z cena w kolumnie wlasciwego kanalu, a kanal bez produktu kreska', async () => {
-    kartaZProduktem(
-      { nazwa: 'Kandelabr', sku: 'LMP-KAN-1', szerokosc_mm: 700, wysokosc_mm: 1000 },
-      [{ kanal: 'pro', produkt_id: '944', cena_gr: 7490 }],
-    );
+    kartaZProduktem({ nazwa: 'Kandelabr', sku: 'LMP-KAN-1', szerokosc_mm: 700, wysokosc_mm: 1000 }, [
+      { kanal: 'pro', produkt_id: '944', cena_gr: 7490 },
+    ]);
     const app = serwer();
     // ⚠️ KOLUMNY CEN ZYJA W TRYBIE KATALOGOWYM — ekran
     // domyslny pomija kolumny cen kanalow. Zmienil sie ADRES, nie
@@ -150,7 +158,10 @@ describe('GET /magazyn — tabela kart', () => {
     // nazw rozjechalaby sie z kolumna „Kanal sprzedazy" na liscie zamowien.
     const naglowki = [...r.body.matchAll(/<th class="magazyn-kanal">([^<]*)<\/th>/g)].map((m) => m[1].trim());
     expect(naglowki).toEqual([
-      'pro.swietlik.example.test', 'swietlik.example.test', 'Allegro swietlik_pl', 'Allegro Półcień Druga',
+      'pro.swietlik.example.test',
+      'swietlik.example.test',
+      'Allegro swietlik_pl',
+      'Allegro Półcień Druga',
     ]);
   });
 
@@ -168,8 +179,7 @@ describe('GET /magazyn — tabela kart', () => {
     // ⚠️ TRYB KATALOGOWY — to on niesie ceny kanalow po przebudowie.
     const r = await get(serwer(), '/magazyn?widok=katalog');
 
-    expect(komorkiKanalow(wierszKarty(r.body, 'Kandelabr')))
-      .toEqual(['74.90', '99.00', '111.00', '222.00']);
+    expect(komorkiKanalow(wierszKarty(r.body, 'Kandelabr'))).toEqual(['74.90', '99.00', '111.00', '222.00']);
     // Liczba kolumn cen ma sie zgadzac z liczba kanalow, ktore panel w ogole czyta.
     expect(komorkiKanalow(wierszKarty(r.body, 'Kandelabr'))).toHaveLength(4);
   });
@@ -204,11 +214,15 @@ describe('GET /magazyn — tabela kart', () => {
     kartaZProduktem({ nazwa: 'Bkarta', paczkomat: 'nie' }, []);
     kartaZProduktem({ nazwa: 'Ckarta' }, []);
     const app = serwer();
-    for (const [stan, nazwa] of [['tak', 'Akarta'], ['nie', 'Bkarta'], ['nieoznaczone', 'Ckarta']]) {
+    for (const [stan, nazwa] of [
+      ['tak', 'Akarta'],
+      ['nie', 'Bkarta'],
+      ['nieoznaczone', 'Ckarta'],
+    ]) {
       const r = await get(app, `/magazyn?paczkomat=${stan}`);
       expect(r.statusCode).toBe(200);
       expect(wierszKarty(r.body, nazwa)).toContain(`>${nazwa}</a>`);
-      for (const inna of ['Akarta', 'Bkarta', 'Ckarta'].filter(n => n !== nazwa)) {
+      for (const inna of ['Akarta', 'Bkarta', 'Ckarta'].filter((n) => n !== nazwa)) {
         expect(r.body).not.toContain(`>${inna}</a>`);
       }
     }
@@ -220,16 +234,22 @@ describe('GET /magazyn — tabela kart', () => {
   // Sklep A skaluje miniatury do 247x296, wiec zgadywanie skleiloby `-150x150`, ktorego
   // pod zadnym zdjeciem tego sklepu NIE MA (zgadywane adresy często kończą się 404).
   it('miniatura idzie z lustra, a nie z reguly po nazwie pliku, i wczytuje sie leniwie', async () => {
-    kartaZProduktem({ nazwa: 'Kandelabr' }, [{
-      kanal: 'swietlik',
-      produkt_id: '7179',
-      zdjecia_json: JSON.stringify(['https://sklep-polcien.example.invalid/wp-content/uploads/2024/03/kandelabr.jpg']),
-      miniatura: 'https://sklep-polcien.example.invalid/wp-content/uploads/2024/03/kandelabr-247x296.jpg',
-    }]);
+    kartaZProduktem({ nazwa: 'Kandelabr' }, [
+      {
+        kanal: 'swietlik',
+        produkt_id: '7179',
+        zdjecia_json: JSON.stringify([
+          'https://sklep-polcien.example.invalid/wp-content/uploads/2024/03/kandelabr.jpg',
+        ]),
+        miniatura: 'https://sklep-polcien.example.invalid/wp-content/uploads/2024/03/kandelabr-247x296.jpg',
+      },
+    ]);
     const r = await get(serwer(), '/magazyn');
     const komorka = komorkaMiniatury(r.body, 'Kandelabr');
 
-    expect(komorka).toContain('src="https://sklep-polcien.example.invalid/wp-content/uploads/2024/03/kandelabr-247x296.jpg"');
+    expect(komorka).toContain(
+      'src="https://sklep-polcien.example.invalid/wp-content/uploads/2024/03/kandelabr-247x296.jpg"',
+    );
     expect(komorka).not.toContain('-150x150');
     // ~1010 wierszy razy jedno zdjecie — bez `lazy` przegladarka rusza po komplet naraz.
     expect(komorka).toContain('loading="lazy"');
@@ -241,12 +261,16 @@ describe('GET /magazyn — tabela kart', () => {
   // lekarstwo gorsze od choroby. Pusta komorka jest dzis i tak stanem widocznym; wypelni sie
   // sama po najblizszym odczycie katalogow.
   it('wiersz bez zapisanej miniatury nie pokazuje ani zgadnietego adresu, ani oryginalu', async () => {
-    kartaZProduktem({ nazwa: 'Plecionka' }, [{
-      kanal: 'swietlik',
-      produkt_id: '7180',
-      zdjecia_json: JSON.stringify(['https://sklep-polcien.example.invalid/wp-content/uploads/2024/03/plecionka.jpg']),
-      miniatura: null,
-    }]);
+    kartaZProduktem({ nazwa: 'Plecionka' }, [
+      {
+        kanal: 'swietlik',
+        produkt_id: '7180',
+        zdjecia_json: JSON.stringify([
+          'https://sklep-polcien.example.invalid/wp-content/uploads/2024/03/plecionka.jpg',
+        ]),
+        miniatura: null,
+      },
+    ]);
     const r = await get(serwer(), '/magazyn');
     const komorka = komorkaMiniatury(r.body, 'Plecionka');
 
@@ -256,7 +280,12 @@ describe('GET /magazyn — tabela kart', () => {
 
   it('adres produktu spoza http(s) NIE trafia do odnosnika', async () => {
     kartaZProduktem({ nazwa: 'Kandelabr' }, [
-      { kanal: 'pro', produkt_id: '944', cena_gr: 7490, adres: 'https://pro.sklep-polcien.example.invalid/produkt/kandelabr' },
+      {
+        kanal: 'pro',
+        produkt_id: '944',
+        cena_gr: 7490,
+        adres: 'https://pro.sklep-polcien.example.invalid/produkt/kandelabr',
+      },
       { kanal: 'swietlik', produkt_id: '55', cena_gr: 9900, adres: 'javascript:alert(1)' },
     ]);
     // ⚠️ Odnosniki do sklepow siedza w komorkach kanalow, czyli w TRYBIE KATALOGOWYM
@@ -362,15 +391,18 @@ const pasekOdczytu = (html) => /<div class="pasek-odczytu"[\s\S]*?<\/div>/.exec(
 
 describe('GET /magazyn — stan ostatniego odczytu', () => {
   it('blad kanalu widac PRZY KANALE, w pelnej tresci hamulca', async () => {
-    const komunikat = 'Kanał pro: odczyt oddał 0 pozycji, a lustro trzyma 668 żywych. To wygląda na '
-      + 'awarię sklepu (odmowa kodem 200: konflikt wtyczki, tryb konserwacji, przerwany import), a nie '
-      + 'na pusty katalog — więc NIE oznaczam niczego jako zniknięte i zostawiam lustro bez zmian. '
-      + 'Jeśli kanał naprawdę został wygaszony, oznacz jego wiersze ręcznie.';
-    const app = serwer(atrapaMagazynu({
-      ...STAN_PUSTY,
-      skonczony_at: '2026-08-11T07:00:00.000Z',
-      kanaly: [{ kanal: 'pro', zapisane: 0, znikniete: 0, blad: komunikat }],
-    }));
+    const komunikat =
+      'Kanał pro: odczyt oddał 0 pozycji, a lustro trzyma 668 żywych. To wygląda na ' +
+      'awarię sklepu (odmowa kodem 200: konflikt wtyczki, tryb konserwacji, przerwany import), a nie ' +
+      'na pusty katalog — więc NIE oznaczam niczego jako zniknięte i zostawiam lustro bez zmian. ' +
+      'Jeśli kanał naprawdę został wygaszony, oznacz jego wiersze ręcznie.';
+    const app = serwer(
+      atrapaMagazynu({
+        ...STAN_PUSTY,
+        skonczony_at: '2026-08-11T07:00:00.000Z',
+        kanaly: [{ kanal: 'pro', zapisane: 0, znikniete: 0, blad: komunikat }],
+      }),
+    );
     const r = await get(app, '/magazyn');
 
     // ⚠️ CALY komunikat, nie „błąd odczytu". Ten napis mowi, co zrobic — skrocony
@@ -384,11 +416,13 @@ describe('GET /magazyn — stan ostatniego odczytu', () => {
   });
 
   it('kanal bez bledu NIE pokazuje ostrzezenia ani paska (spokój)', async () => {
-    const app = serwer(atrapaMagazynu({
-      ...STAN_PUSTY,
-      skonczony_at: '2026-08-11T07:00:00.000Z',
-      kanaly: [{ kanal: 'pro', zapisane: 104, znikniete: 3, blad: null }],
-    }));
+    const app = serwer(
+      atrapaMagazynu({
+        ...STAN_PUSTY,
+        skonczony_at: '2026-08-11T07:00:00.000Z',
+        kanaly: [{ kanal: 'pro', zapisane: 104, znikniete: 3, blad: null }],
+      }),
+    );
     const r = await get(app, '/magazyn');
 
     expect(pasekOdczytu(r.body)).toBe('');
@@ -397,10 +431,14 @@ describe('GET /magazyn — stan ostatniego odczytu', () => {
   });
 
   it('trwajacy przebieg pokazuje postep, a zakonczony juz nie', async () => {
-    const wTrakcie = serwer(atrapaMagazynu({
-      ...STAN_PUSTY, trwa: true, zaczety_at: '2026-08-11T07:00:00.000Z',
-      postep: { kanal: 'swietlik', zrobione: 120, zTego: 668 },
-    }));
+    const wTrakcie = serwer(
+      atrapaMagazynu({
+        ...STAN_PUSTY,
+        trwa: true,
+        zaczety_at: '2026-08-11T07:00:00.000Z',
+        postep: { kanal: 'swietlik', zrobione: 120, zTego: 668 },
+      }),
+    );
     const r = await get(wTrakcie, '/magazyn');
     // Obie liczby w JEDNYM napisie i przy nazwie czytanego kanalu („120 z 668" to zdanie o postepie).
     expect(pasekOdczytu(r.body)).toMatch(/swietlik\.example\.test: 120 z 668/);
@@ -439,7 +477,9 @@ describe('GET /magazyn — pasek odczytu tylko przy trwaniu albo błędzie', () 
 
   it('przebieg w trakcie = pasek', async () => {
     const stan = {
-      ...STAN_PUSTY, trwa: true, postep: { kanal: 'swietlik', zrobione: 3, zTego: 828 },
+      ...STAN_PUSTY,
+      trwa: true,
+      postep: { kanal: 'swietlik', zrobione: 3, zTego: 828 },
     };
     const r = await get(serwer(atrapaMagazynu(stan)), '/magazyn');
 
@@ -474,7 +514,10 @@ describe('POST /magazyn/odswiez', () => {
   it('startuje przebieg i NATYCHMIAST wraca na liste', async () => {
     const magazyn = atrapaMagazynu();
     const r = await serwer(magazyn).inject({
-      method: 'POST', url: '/magazyn/odswiez', headers: auth, payload: {},
+      method: 'POST',
+      url: '/magazyn/odswiez',
+      headers: auth,
+      payload: {},
     });
 
     expect(magazyn.start.mock.calls).toHaveLength(1);
@@ -535,9 +578,10 @@ describe('GET /magazyn — wyszukiwarka i filtry', () => {
   // (dokladna wartosc ma wlasny test w magazyn-karta.test.js); wzorzec ma tolerowac ten
   // dopisek, a nie przestac widziec wiersza — to, co ten test sprawdza (KTORE karty i w
   // JAKIEJ kolejnosci), z zawartoscia query string nie ma nic wspolnego.
-  const nazwyWTabeli = (body) => [
-    ...body.matchAll(/<td class="komorka-karta">\s*<div><a href="\/magazyn\/\d+(?:\?[^"]*)?">([^<]+)<\/a><\/div>/g),
-  ].map((m) => m[1]);
+  const nazwyWTabeli = (body) =>
+    [
+      ...body.matchAll(/<td class="komorka-karta">\s*<div><a href="\/magazyn\/\d+(?:\?[^"]*)?">([^<]+)<\/a><\/div>/g),
+    ].map((m) => m[1]);
 
   it('fraza i filtr kanalu zawezaja OBA NARAZ, a nie kazdy osobno', async () => {
     katalog();
@@ -545,12 +589,12 @@ describe('GET /magazyn — wyszukiwarka i filtry', () => {
 
     // Kazde kryterium z osobna zostawia dwa karty — dopiero razem jeden. Gdyby trasa gubila
     // ktorekolwiek, ta asercja pokazalaby dwa wiersze zamiast jednego.
-    expect(nazwyWTabeli((await get(app, '/magazyn?fraza=Szpulka')).body))
-      .toEqual(['Szpulka na PRO', 'Szpulka na swietlik']);
-    expect(nazwyWTabeli((await get(app, '/magazyn?kanal=pro')).body))
-      .toEqual(['Kandelabr na PRO', 'Szpulka na PRO']);
-    expect(nazwyWTabeli((await get(app, '/magazyn?fraza=Szpulka&kanal=pro')).body))
-      .toEqual(['Szpulka na PRO']);
+    expect(nazwyWTabeli((await get(app, '/magazyn?fraza=Szpulka')).body)).toEqual([
+      'Szpulka na PRO',
+      'Szpulka na swietlik',
+    ]);
+    expect(nazwyWTabeli((await get(app, '/magazyn?kanal=pro')).body)).toEqual(['Kandelabr na PRO', 'Szpulka na PRO']);
+    expect(nazwyWTabeli((await get(app, '/magazyn?fraza=Szpulka&kanal=pro')).body)).toEqual(['Szpulka na PRO']);
   });
 
   it('formularz filtrow niesie fraze UKRYTYM POLEM, a wyszukiwarka niesie filtry', async () => {
@@ -590,8 +634,7 @@ describe('GET /magazyn — wyszukiwarka i filtry', () => {
     const r = await get(serwer(), '/magazyn?fraza=Szpulka&kanal=pro&brak=sku&cenaOd=10');
     // Wylacznie odnosniki NAGLOWKA (te maja klase `zaznacz-wszystkie`) — „Wyczyść zawężenie"
     // tez niesie `sort`, ale CELOWO bez filtrow, wiec wpadlby tu jako falszywa czerwien.
-    const adresy = [...r.body.matchAll(/<a class="zaznacz-wszystkie" href="(\/magazyn\?[^"]+)"/g)]
-      .map((m) => m[1]);
+    const adresy = [...r.body.matchAll(/<a class="zaznacz-wszystkie" href="(\/magazyn\?[^"]+)"/g)].map((m) => m[1]);
 
     // Naglowki nazwy, SKU, dwoch wymiarow i kategorii — petla ma sprawdzic wszystkie.
     expect(adresy.length).toBeGreaterThanOrEqual(5);
@@ -664,10 +707,14 @@ describe('GET /magazyn — wyszukiwarka i filtry', () => {
     // produktu w lustrze, musi sie znalezc — inaczej nie da sie go nawet oznaczyc hurtem
     // przez ten sam filtr, ktorym sie go szuka.
     kartaZProduktem({ nazwa: 'Recznie oznaczony', kategoria_glowna: 'Aplikacje' }, []);
-    kartaZProduktem({ nazwa: 'Z lustra' }, [{
-      kanal: 'pro', produkt_id: '7', cena_gr: 1000,
-      kategorie_json: JSON.stringify(['Lampy wiszące', 'Boho', 'Na ściany', 'Aplikacje']),
-    }]);
+    kartaZProduktem({ nazwa: 'Z lustra' }, [
+      {
+        kanal: 'pro',
+        produkt_id: '7',
+        cena_gr: 1000,
+        kategorie_json: JSON.stringify(['Lampy wiszące', 'Boho', 'Na ściany', 'Aplikacje']),
+      },
+    ]);
     kartaZProduktem({ nazwa: 'Obcy', kategoria_glowna: 'Boho' }, []);
     const r = await get(serwer(), '/magazyn?kategoria=Aplikacje');
 
@@ -680,9 +727,14 @@ describe('GET /magazyn — wyszukiwarka i filtry', () => {
     // to pole w ogole powstalo. Tyle ze tedy wraca drzwiami, w ktorych literowki popelnic
     // sie nie da.
     kartaZProduktem({ nazwa: 'Recznie oznaczony', kategoria_glowna: 'Aplikacje' }, []);
-    kartaZProduktem({ nazwa: 'Z lustra' }, [{
-      kanal: 'pro', produkt_id: '7', cena_gr: 1000, kategorie_json: JSON.stringify(['Boho']),
-    }]);
+    kartaZProduktem({ nazwa: 'Z lustra' }, [
+      {
+        kanal: 'pro',
+        produkt_id: '7',
+        cena_gr: 1000,
+        kategorie_json: JSON.stringify(['Boho']),
+      },
+    ]);
     // ⚠️⚠️ PRODUKT BEZ KARTY — i to jest CALY ten test. `kartaZProduktem` wiaze KAZDY produkt
     // z kartą, wiec sama ta atrapa GWARANTOWALA badana wlasciwosc, zamiast ja sprawdzac:
     // petla nizej nie miala jak trafic na pozycje, ktorej filtr nie umie znalezc.
@@ -693,23 +745,27 @@ describe('GET /magazyn — wyszukiwarka i filtry', () => {
     // `powodPominiecia` nie powiaze. Kategoria wystepujaca tylko u nich bylaby
     // martwa pozycja bez konca.
     zapiszProduktSklepowy(db, {
-      kanal: 'pro', produkt_id: '99', wariant_id: '', nazwa: 'Swiezo odczytany',
-      cena_gr: 1000, kategorie_json: JSON.stringify(['Farmhouse']),
+      kanal: 'pro',
+      produkt_id: '99',
+      wariant_id: '',
+      nazwa: 'Swiezo odczytany',
+      cena_gr: 1000,
+      kategorie_json: JSON.stringify(['Farmhouse']),
       odczytane_at: '2026-08-11T06:00:00.000Z',
     });
 
     const app = serwer();
     const r = await get(app, '/magazyn');
-    const pozycje = [...(/<select name="kategoria">[\s\S]*?<\/select>/.exec(r.body)[0])
-      .matchAll(/<option value="([^"]+)"/g)].map((m) => m[1]);
+    const pozycje = [
+      .../<select name="kategoria">[\s\S]*?<\/select>/.exec(r.body)[0].matchAll(/<option value="([^"]+)"/g),
+    ].map((m) => m[1]);
 
     // Lista pozycji ma byc DOKLADNIE zbiorem osiagalnym przez filtr — ani mniej, ani wiecej.
     // „Farmhouse" jest w lustrze, ale filtr chodzi po produktach POWIAZANYCH z kartą, wiec
     // pozycja bylaby nietrafialna.
     expect(pozycje).toEqual(['Aplikacje', 'Boho']);
     for (const k of pozycje) {
-      expect(nazwyWTabeli((await get(app, `/magazyn?kategoria=${encodeURIComponent(k)}`)).body), k)
-        .toHaveLength(1);
+      expect(nazwyWTabeli((await get(app, `/magazyn?kategoria=${encodeURIComponent(k)}`)).body), k).toHaveLength(1);
     }
     // Druga polowa pary: kategoria pominieta w liscie NAPRAWDE nic nie znajduje — czyli
     // zawezenie listy nie jest przesada, tylko odwzorowaniem tego, co filtr umie.
@@ -719,9 +775,14 @@ describe('GET /magazyn — wyszukiwarka i filtry', () => {
   it('popsuty JSON kategorii w lustrze nie kladzie ani listy, ani pola wyboru', async () => {
     // Lustro bierze sie z cudzego API — `json_each` na popsutym napisie RZUCA.
     kartaZProduktem({ nazwa: 'Zdrowy', kategoria_glowna: 'Boho' }, []);
-    kartaZProduktem({ nazwa: 'Popsuty' }, [{
-      kanal: 'pro', produkt_id: '9', cena_gr: 1000, kategorie_json: '{to nie jest JSON',
-    }]);
+    kartaZProduktem({ nazwa: 'Popsuty' }, [
+      {
+        kanal: 'pro',
+        produkt_id: '9',
+        cena_gr: 1000,
+        kategorie_json: '{to nie jest JSON',
+      },
+    ]);
     const r = await get(serwer(), '/magazyn?kategoria=Boho');
 
     expect(r.statusCode).toBe(200);
@@ -781,7 +842,17 @@ describe('pasek gorny', () => {
 
 describe('filtr braków zamiast kafli', () => {
   it('filtr braków zastępuje kafle i zachowuje wybór', async () => {
-    uzupelnijTresc(db, utworzKarte(db, { nazwa: 'Kompletny', sku: 'S1', szerokosc_mm: 1, wysokosc_mm: 1, kategoria_glowna: 'K', paczkomat: 'tak' }));
+    uzupelnijTresc(
+      db,
+      utworzKarte(db, {
+        nazwa: 'Kompletny',
+        sku: 'S1',
+        szerokosc_mm: 1,
+        wysokosc_mm: 1,
+        kategoria_glowna: 'K',
+        paczkomat: 'tak',
+      }),
+    );
     utworzKarte(db, { nazwa: 'Dziurawy' });
     const res = await get(serwer(), '/magazyn?brak=wymiary');
     expect(res.body).not.toContain('class="kafle"');
@@ -815,10 +886,17 @@ describe('filtr braków zamiast kafli', () => {
 describe('dwa tryby tabeli — porządki i katalog', () => {
   // Fikstura ze straznikiem: jedna karta kompletna i jedna bez wszystkiego.
   function dwaKarty() {
-    uzupelnijTresc(db, utworzKarte(db, {
-      nazwa: 'Kompletny', sku: 'S1', szerokosc_mm: 1, wysokosc_mm: 1,
-      kategoria_glowna: 'K', paczkomat: 'tak',
-    }));
+    uzupelnijTresc(
+      db,
+      utworzKarte(db, {
+        nazwa: 'Kompletny',
+        sku: 'S1',
+        szerokosc_mm: 1,
+        wysokosc_mm: 1,
+        kategoria_glowna: 'K',
+        paczkomat: 'tak',
+      }),
+    );
     utworzKarte(db, { nazwa: 'Dziurawy' });
   }
 
@@ -874,9 +952,10 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
   // Identyfikatory wierszy, ktore ekran oznaczyl jako `checked` — czyli to, co wyslalaby
   // przegladarka. ⚠️ Wylacznie pola `name="zaznaczone"`: uklad strony i paski filtrow niosa
   // wlasne pola wyboru, wiec liczenie „wszystkich checkboxow" mierzyloby co innego.
-  const zaznaczoneWierszeIdy = (body) => [
-    ...body.matchAll(/<input\b([^>]*\bname="zaznaczone"[^>]*)>/g),
-  ].filter((m) => /\bchecked\b/.test(m[1])).map((m) => /\bvalue="([^"]*)"/.exec(m[1])[1]);
+  const zaznaczoneWierszeIdy = (body) =>
+    [...body.matchAll(/<input\b([^>]*\bname="zaznaczone"[^>]*)>/g)]
+      .filter((m) => /\bchecked\b/.test(m[1]))
+      .map((m) => /\bvalue="([^"]*)"/.exec(m[1])[1]);
 
   it('domyślnie porządki: bez kolumn Stan i kanałów', async () => {
     dwaKarty();
@@ -901,7 +980,10 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
     // Kolejnosc kolumn cen kanalow pozostaje bez zmian.
     const naglowki = [...r.body.matchAll(/<th class="magazyn-kanal">([^<]*)<\/th>/g)].map((m) => m[1].trim());
     expect(naglowki).toEqual([
-      'pro.swietlik.example.test', 'swietlik.example.test', 'Allegro swietlik_pl', 'Allegro Półcień Druga',
+      'pro.swietlik.example.test',
+      'swietlik.example.test',
+      'Allegro swietlik_pl',
+      'Allegro Półcień Druga',
     ]);
   });
 
@@ -938,7 +1020,10 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
     const doKatalogu = przelacznik(wPorzadkach.body);
     expect(doKatalogu.napis).toMatch(/kanał/);
     expect(pola(doKatalogu.adres)).toEqual({
-      brak: 'sku', sort: 'nazwa', kier: 'desc', widok: 'katalog',
+      brak: 'sku',
+      sort: 'nazwa',
+      kier: 'desc',
+      widok: 'katalog',
     });
   });
 
@@ -986,8 +1071,7 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
     // wpadl tu jako falszywa czerwien.
     const bezPrzelacznika = r.body.replace(/<span class="przelacznik">[\s\S]*?<\/span>/, '');
     expect(bezPrzelacznika.length).toBeLessThan(r.body.length);
-    const adresy = [...bezPrzelacznika.matchAll(/href="(\/magazyn\?[^"]+)"/g)]
-      .map((m) => m[1].replace(/&amp;/g, '&'));
+    const adresy = [...bezPrzelacznika.matchAll(/href="(\/magazyn\?[^"]+)"/g)].map((m) => m[1].replace(/&amp;/g, '&'));
 
     // Naglowki sortujace, „zaznacz” i „Wyczyść zawężenie” — zero albo
     // garstka znaczylyby, ze petla nizej nie sprawdzila niczego.
@@ -1014,7 +1098,10 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
   // ZLA wartosc, bo pilnowalaby literalu, a nie tabeli. Tutaj porownujemy jedno z drugim.
   it('⚠️ colspan pustej tabeli ZGADZA SIĘ z liczbą nagłówków — w obu trybach', async () => {
     const app = serwer(); // pusta baza: komunikat pustej listy sie renderuje
-    for (const [url, tryb] of [['/magazyn', 'porzadki'], ['/magazyn?widok=katalog', 'katalog']]) {
+    for (const [url, tryb] of [
+      ['/magazyn', 'porzadki'],
+      ['/magazyn?widok=katalog', 'katalog'],
+    ]) {
       const { body } = await get(app, url);
       // Zero naglowkow znaczyloby, ze porownujemy dwie dziury — a nie tabele z komunikatem.
       expect(ileKolumn(body), tryb).toBeGreaterThan(0);
@@ -1028,7 +1115,10 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
   it('⚠️ każdy wiersz ma tyle komórek, ile tabela ma nagłówków — w obu trybach', async () => {
     dwaKarty();
     const app = serwer();
-    for (const [url, tryb] of [['/magazyn', 'porzadki'], ['/magazyn?widok=katalog', 'katalog']]) {
+    for (const [url, tryb] of [
+      ['/magazyn', 'porzadki'],
+      ['/magazyn?widok=katalog', 'katalog'],
+    ]) {
       const { body } = await get(app, url);
       const tabela = /<table class="tresc-lista magazyn-tabela">([\s\S]*?)<\/table>/.exec(body)[1];
       const wiersze = tabela.split('<tr>').filter((w) => w.includes('<td'));
@@ -1038,9 +1128,16 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
   });
 
   it('liczba braków nie wraca w komórkach tabeli', async () => {
-    uzupelnijTresc(db, utworzKarte(db, {
-      nazwa: 'JedenBrak', sku: 'S1', szerokosc_mm: 1, wysokosc_mm: 1, kategoria_glowna: 'K',
-    }));
+    uzupelnijTresc(
+      db,
+      utworzKarte(db, {
+        nazwa: 'JedenBrak',
+        sku: 'S1',
+        szerokosc_mm: 1,
+        wysokosc_mm: 1,
+        kategoria_glowna: 'K',
+      }),
+    );
     uzupelnijTresc(db, utworzKarte(db, { nazwa: 'DwaBraki', szerokosc_mm: 1, wysokosc_mm: 1, kategoria_glowna: 'K' }));
     const r = await get(serwer(), '/magazyn');
     expect(wierszKarty(r.body, 'JedenBrak')).not.toContain('class="stan-braki"');

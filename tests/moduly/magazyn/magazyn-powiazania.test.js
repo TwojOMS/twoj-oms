@@ -2,7 +2,10 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import {
-  zapiszProduktSklepowy, utworzKarte, powiazProdukt, niepowiazaneOfertyAllegro,
+  zapiszProduktSklepowy,
+  utworzKarte,
+  powiazProdukt,
+  niepowiazaneOfertyAllegro,
 } from '../../../src/oms/db/magazyn.js';
 
 // EKRAN POWIAZAN OFERT ALLEGRO Z KARTAMI PRODUKTOW.
@@ -25,7 +28,12 @@ const auth = {
 };
 
 const STAN_PUSTY = {
-  trwa: false, zaczety_at: null, skonczony_at: null, postep: null, kanaly: [], blad: null,
+  trwa: false,
+  zaczety_at: null,
+  skonczony_at: null,
+  postep: null,
+  kanaly: [],
+  blad: null,
 };
 const atrapaMagazynu = () => ({ start: vi.fn(), stan: () => STAN_PUSTY });
 
@@ -44,16 +52,24 @@ beforeEach(() => {
 function oferta(nazwa, nadpisania = {}) {
   numerKolejny += 1;
   return zapiszProduktSklepowy(db, {
-    kanal: 'allegro_swietlik', produkt_id: `oferta-${numerKolejny}`, wariant_id: '',
-    nazwa, odczytane_at: '2026-08-11T06:00:00.000Z', ...nadpisania,
+    kanal: 'allegro_swietlik',
+    produkt_id: `oferta-${numerKolejny}`,
+    wariant_id: '',
+    nazwa,
+    odczytane_at: '2026-08-11T06:00:00.000Z',
+    ...nadpisania,
   });
 }
 const kartaO = (nazwa, reszta = {}) => utworzKarte(db, { nazwa, ...reszta });
 
 const get = (app, url) => app.inject({ method: 'GET', url, headers: auth });
-const post = (app, url, payload, naglowki = auth) => app.inject({
-  method: 'POST', url, headers: naglowki, payload,
-});
+const post = (app, url, payload, naglowki = auth) =>
+  app.inject({
+    method: 'POST',
+    url,
+    headers: naglowki,
+    payload,
+  });
 
 /**
  * WIERSZ TEJ OFERTY — sam wiersz, bez reszty strony.
@@ -76,18 +92,15 @@ function wierszOferty(body, nazwa) {
 }
 
 // Nazwy kandydatow TEGO wiersza, w kolejnosci renderowania.
-const kandydaci = (wiersz) => [...wiersz.matchAll(/<span class="kandydat-nazwa">([^<]*)<\/span>/g)]
-  .map((m) => m[1]);
+const kandydaci = (wiersz) => [...wiersz.matchAll(/<span class="kandydat-nazwa">([^<]*)<\/span>/g)].map((m) => m[1]);
 
 // Wartosci przyciskow wyboru TEGO wiersza (puste = „nie wiążę").
-const wybory = (wiersz) => [...wiersz.matchAll(/<input type="radio" name="karta_\d+" value="([^"]*)"/g)]
-  .map((m) => m[1]);
+const wybory = (wiersz) =>
+  [...wiersz.matchAll(/<input type="radio" name="karta_\d+" value="([^"]*)"/g)].map((m) => m[1]);
 
-const nazwyOfert = (body) => [...body.matchAll(/<div class="nazwa-oferty">([^<]*)<\/div>/g)]
-  .map((m) => m[1]);
+const nazwyOfert = (body) => [...body.matchAll(/<div class="nazwa-oferty">([^<]*)<\/div>/g)].map((m) => m[1]);
 
-const kartaOferty = (id) => db.prepare('SELECT karta_id FROM produkty_sklepowe WHERE id = ?')
-  .get(id).karta_id;
+const kartaOferty = (id) => db.prepare('SELECT karta_id FROM produkty_sklepowe WHERE id = ?').get(id).karta_id;
 
 /**
  * PANEL WYNIKU zatwierdzenia — sam panel, bez reszty strony.
@@ -263,7 +276,8 @@ describe('POST /magazyn/powiazania — zatwierdzenie hurtem', () => {
     const b = oferta('LAMPION ozdobny');
 
     const r = await post(serwer(), '/magazyn/powiazania', {
-      [`karta_${a}`]: String(kandelabr), [`karta_${b}`]: String(lampion),
+      [`karta_${a}`]: String(kandelabr),
+      [`karta_${b}`]: String(lampion),
     });
 
     expect(r.statusCode).toBe(200);
@@ -279,7 +293,9 @@ describe('POST /magazyn/powiazania — zatwierdzenie hurtem', () => {
     const b = oferta('LAMPION ozdobny');
 
     const r = await post(serwer(), '/magazyn/powiazania', {
-      [`karta_${a}`]: String(kandelabr), [`karta_${b}`]: '', [`reczny_${b}`]: '',
+      [`karta_${a}`]: String(kandelabr),
+      [`karta_${b}`]: '',
+      [`reczny_${b}`]: '',
     });
 
     // Druga polowa pary: straznik ma MILCZEC przy pustym wyborze, a nie wiazac „czegokolwiek".
@@ -299,7 +315,8 @@ describe('POST /magazyn/powiazania — zatwierdzenie hurtem', () => {
 
     // Czlowiek zaznaczyl podpowiedz, a potem wpisal wlasny wybor — wygrywa to, co wpisal.
     const r = await post(serwer(), '/magazyn/powiazania', {
-      [`karta_${a}`]: String(kandelabr), [`reczny_${a}`]: `Lampion srebrny [#${lampion}]`,
+      [`karta_${a}`]: String(kandelabr),
+      [`reczny_${a}`]: `Lampion srebrny [#${lampion}]`,
     });
 
     expect(r.statusCode).toBe(200);
@@ -323,7 +340,8 @@ describe('POST /magazyn/powiazania — zatwierdzenie hurtem', () => {
     const b = oferta('LAMPION ozdobny');
 
     const r = await post(serwer(), '/magazyn/powiazania', {
-      [`karta_${a}`]: String(kandelabr), [`reczny_${b}`]: 'Karty o takiej nazwie nie ma',
+      [`karta_${a}`]: String(kandelabr),
+      [`reczny_${b}`]: 'Karty o takiej nazwie nie ma',
     });
 
     // Reszta hurtu przechodzi — jeden zly wiersz nie blokuje trzydziestu dziewieciu dobrych.
@@ -342,7 +360,8 @@ describe('POST /magazyn/powiazania — zatwierdzenie hurtem', () => {
     const b = oferta('LAMPION ozdobny');
 
     const r = await post(serwer(), '/magazyn/powiazania', {
-      [`karta_${a}`]: String(kandelabr), [`karta_${b}`]: '999999',
+      [`karta_${a}`]: String(kandelabr),
+      [`karta_${b}`]: '999999',
     });
 
     expect(r.statusCode).toBe(200);
@@ -371,8 +390,12 @@ describe('POST /magazyn/powiazania — zatwierdzenie hurtem', () => {
     const kandelabr = kartaO('Kandelabr srebrny');
     const a = oferta('KANDELABR ozdobny');
 
-    const r = await post(serwer(), '/magazyn/powiazania', { [`karta_${a}`]: String(kandelabr) },
-      { authorization: auth.authorization });
+    const r = await post(
+      serwer(),
+      '/magazyn/powiazania',
+      { [`karta_${a}`]: String(kandelabr) },
+      { authorization: auth.authorization },
+    );
 
     expect(r.statusCode).toBeGreaterThanOrEqual(400);
     expect(kartaOferty(a)).toBe(null);
@@ -425,8 +448,12 @@ describe('POST /magazyn/powiazania/odepnij — wiazanie jest ODWRACALNE', () => 
     const a = oferta('KANDELABR ozdobny');
     powiazProdukt(db, a, kandelabr);
 
-    const r = await post(serwer(), '/magazyn/powiazania/odepnij', { id: String(a) },
-      { authorization: auth.authorization });
+    const r = await post(
+      serwer(),
+      '/magazyn/powiazania/odepnij',
+      { id: String(a) },
+      { authorization: auth.authorization },
+    );
 
     expect(r.statusCode).toBeGreaterThanOrEqual(400);
     expect(kartaOferty(a)).toBe(kandelabr);
@@ -444,14 +471,14 @@ describe('GET /magazyn/powiazania — szukanie i kolejnosc z adresu', () => {
 
   it('fraza zaweza liste ofert', async () => {
     katalog();
-    expect(nazwyOfert((await get(serwer(), '/magazyn/powiazania?fraza=lampion')).body))
-      .toEqual(['LAMPION ozdobny']);
+    expect(nazwyOfert((await get(serwer(), '/magazyn/powiazania?fraza=lampion')).body)).toEqual(['LAMPION ozdobny']);
   });
 
   it('filtr konta Allegro zaweza liste ofert', async () => {
     katalog();
-    expect(nazwyOfert((await get(serwer(), '/magazyn/powiazania?kanal=allegro_polcien2')).body))
-      .toEqual(['LAMPION ozdobny']);
+    expect(nazwyOfert((await get(serwer(), '/magazyn/powiazania?kanal=allegro_polcien2')).body)).toEqual([
+      'LAMPION ozdobny',
+    ]);
   });
 
   it('nierozpoznana wartosc filtru NIE zaweza listy do pustej', async () => {
@@ -472,8 +499,10 @@ describe('GET /magazyn/powiazania — szukanie i kolejnosc z adresu', () => {
     oferta('KANDELABR duży dekoracyjny do salonu w domu jednorodzinnym');
     const app = serwer();
 
-    expect(nazwyOfert((await get(app, '/magazyn/powiazania?sort=ocena&kier=desc')).body))
-      .toEqual(['Kandelabr srebrny', 'KANDELABR duży dekoracyjny do salonu w domu jednorodzinnym']);
+    expect(nazwyOfert((await get(app, '/magazyn/powiazania?sort=ocena&kier=desc')).body)).toEqual([
+      'Kandelabr srebrny',
+      'KANDELABR duży dekoracyjny do salonu w domu jednorodzinnym',
+    ]);
 
     // ⚠️ `SORTOWANIE[x] ?? domyslne` oddaje TU funkcje z Object.prototype — realna
     // pieciusetka zlapana na ekranie magazynu. Nierozpoznana nazwa WRACA
@@ -485,7 +514,8 @@ describe('GET /magazyn/powiazania — szukanie i kolejnosc z adresu', () => {
       // asercji test przechodzilby takze wtedy, gdyby nierozpoznana nazwa zostawiala
       // kolejnosc losowa albo ostatnia uzyta.
       expect(nazwyOfert(r.body), zly).toEqual([
-        'KANDELABR duży dekoracyjny do salonu w domu jednorodzinnym', 'Kandelabr srebrny',
+        'KANDELABR duży dekoracyjny do salonu w domu jednorodzinnym',
+        'Kandelabr srebrny',
       ]);
     }
   });
@@ -561,8 +591,9 @@ describe('wejscie na ekran powiazan', () => {
       for (const klasa of ['filtry', 'szukajka']) {
         const start = r.body.indexOf(`<form class="${klasa}"`);
         expect(start).toBeGreaterThan(-1);
-        expect(r.body.slice(start, r.body.indexOf('</form>', start)))
-          .toContain(`<input type="hidden" name="wroc" value="${ESC}">`);
+        expect(r.body.slice(start, r.body.indexOf('</form>', start))).toContain(
+          `<input type="hidden" name="wroc" value="${ESC}">`,
+        );
       }
       // ⚠️⚠️ FORMULARZ WIAZANIA HURTEM TEZ — i to jest osobna asercja, nie powtorka.
       // Test niżej POST-uje `wroc` wprost do trasy, czyli sprawdza SAMA TRASE: skasowanie
@@ -570,8 +601,9 @@ describe('wejscie na ekran powiazan', () => {
       // a przeglądarka nie miałaby czego wysłać i adres ginąłby po pierwszym powiązaniu.
       const startHurtu = r.body.indexOf('<form class="powiazania"');
       expect(startHurtu).toBeGreaterThan(-1);
-      expect(r.body.slice(startHurtu, r.body.indexOf('</form>', startHurtu)))
-        .toContain(`<input type="hidden" name="wroc" value="${ESC}">`);
+      expect(r.body.slice(startHurtu, r.body.indexOf('</form>', startHurtu))).toContain(
+        `<input type="hidden" name="wroc" value="${ESC}">`,
+      );
     });
 
     // Obie trasy POST renderują TEN SAM ekran (`ekranPowiazan`), więc adres ma przeżyć
@@ -586,8 +618,9 @@ describe('wejscie na ekran powiazan', () => {
       // powiązaniu — i on też musi oddać adres, inaczej odpięcie odsyła na goły magazyn.
       const startOdepnij = powiazane.body.indexOf('<form method="post" action="/magazyn/powiazania/odepnij">');
       expect(startOdepnij).toBeGreaterThan(-1);
-      expect(powiazane.body.slice(startOdepnij, powiazane.body.indexOf('</form>', startOdepnij)))
-        .toContain(`<input type="hidden" name="wroc" value="${ESC}">`);
+      expect(powiazane.body.slice(startOdepnij, powiazane.body.indexOf('</form>', startOdepnij))).toContain(
+        `<input type="hidden" name="wroc" value="${ESC}">`,
+      );
       const odpiete = await post(app, '/magazyn/powiazania/odepnij', { id: String(o), wroc: ZAWEZENIE });
       expect(odnosnikPowrotu(odpiete.body)).toContain(`href="${ESC}"`);
     });
@@ -607,9 +640,7 @@ describe('wejscie na ekran powiazan', () => {
     // Paleta ma wariant jasny i ciemny; wartosc wpisana w widoku zadziala w jasnym
     // i po cichu zniknie w ciemnym, bo nikt nie oglada obu naraz.
     const { readFileSync } = await import('./pliki-historyczne.js');
-    const tresc = readFileSync(
-      new URL('../../src/oms/web/views/magazyn-powiazania.ejs', import.meta.url), 'utf8',
-    );
+    const tresc = readFileSync(new URL('../../src/oms/web/views/magazyn-powiazania.ejs', import.meta.url), 'utf8');
     expect(tresc).not.toMatch(/#[0-9a-f]{3,8}\b/i);
     expect(tresc).not.toMatch(/rgba?\(/i);
   });

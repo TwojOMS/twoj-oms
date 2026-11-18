@@ -6,22 +6,37 @@ import { plikiPaczki } from '../../scripts/paczka-klienta.mjs';
 
 describe('paczka wydania: dokumenty kurierów', () => {
   it('docs/kurier-dpd.md jest w paczce, a kolejne docs/kurier-*.md wchodzą wzorcem', () => {
-    const w = plikiPaczki(['docs/kurier-dpd.md', 'docs/kurier-inpost.md', 'docs/kurier-inny-1.md', 'docs/kurier.md', 'docs/kurier-dpd.txt', 'docs/prz-kurier-dpd.md', 'docs/podkatalog/kurier-dpd.md', 'src/oms.js']);
+    const w = plikiPaczki([
+      'docs/kurier-dpd.md',
+      'docs/kurier-inpost.md',
+      'docs/kurier-inny-1.md',
+      'docs/kurier.md',
+      'docs/kurier-dpd.txt',
+      'docs/prz-kurier-dpd.md',
+      'docs/podkatalog/kurier-dpd.md',
+      'src/oms.js',
+    ]);
     expect(w).toEqual(['docs/kurier-dpd.md', 'docs/kurier-inny-1.md', 'docs/kurier-inpost.md', 'src/oms.js']);
   });
 
   it('docs/poczta-smtp.md (instrukcja poczty wychodzącej) jest w paczce i istnieje w repo', () => {
-    expect(plikiPaczki(['docs/poczta-smtp.md', 'docs/poczta-smtp.txt', 'docs/poczta.md'])).toEqual(['docs/poczta-smtp.md']);
+    expect(plikiPaczki(['docs/poczta-smtp.md', 'docs/poczta-smtp.txt', 'docs/poczta.md'])).toEqual([
+      'docs/poczta-smtp.md',
+    ]);
     expect(fs.existsSync(new URL('../../docs/poczta-smtp.md', import.meta.url))).toBe(true);
   });
 
   it('docs/allegro-podlaczenie.md (podłączenie Allegro w panelu) jest w paczce i istnieje w repo', () => {
-    expect(plikiPaczki(['docs/allegro-podlaczenie.md', 'docs/allegro-podlaczenie.txt'])).toEqual(['docs/allegro-podlaczenie.md']);
+    expect(plikiPaczki(['docs/allegro-podlaczenie.md', 'docs/allegro-podlaczenie.txt'])).toEqual([
+      'docs/allegro-podlaczenie.md',
+    ]);
     expect(fs.existsSync(new URL('../../docs/allegro-podlaczenie.md', import.meta.url))).toBe(true);
   });
 
   it('docs/kanal-allegro-oferty.md jest w paczce i istnieje w repo', () => {
-    expect(plikiPaczki(['docs/kanal-allegro-oferty.md', 'docs/kanal-allegro-oferty.txt'])).toEqual(['docs/kanal-allegro-oferty.md']);
+    expect(plikiPaczki(['docs/kanal-allegro-oferty.md', 'docs/kanal-allegro-oferty.txt'])).toEqual([
+      'docs/kanal-allegro-oferty.md',
+    ]);
     expect(fs.existsSync(new URL('../../docs/kanal-allegro-oferty.md', import.meta.url))).toBe(true);
   });
 
@@ -31,16 +46,21 @@ describe('paczka wydania: dokumenty kurierów', () => {
   });
 
   it('instrukcja Fakturowni jest w paczce i istnieje w repo', () => {
-    expect(plikiPaczki(['docs/fakturownia.md', 'docs/fakturownia.txt', 'docs/fakturownia-inna.md']))
-      .toEqual(['docs/fakturownia.md']);
+    expect(plikiPaczki(['docs/fakturownia.md', 'docs/fakturownia.txt', 'docs/fakturownia-inna.md'])).toEqual([
+      'docs/fakturownia.md',
+    ]);
     expect(fs.existsSync(new URL('../../docs/fakturownia.md', import.meta.url))).toBe(true);
   });
 
   it('dokumenty TwojeFaktury obecne w tym drzewie są w paczce', () => {
-    expect(plikiPaczki(['docs/twojefaktury-ksef.md', 'docs/twojefaktury-ksef.txt'])).toEqual(['docs/twojefaktury-ksef.md']);
+    expect(plikiPaczki(['docs/twojefaktury-ksef.md', 'docs/twojefaktury-ksef.txt'])).toEqual([
+      'docs/twojefaktury-ksef.md',
+    ]);
     // W kopii publicznej dokumenty modułu wycina ta sama lista co kod.
-    const dokumenty = fs.readdirSync(new URL('../../docs/', import.meta.url))
-      .filter(p => /^twojefaktury.*\.md$/.test(p)).map(p => `docs/${p}`);
+    const dokumenty = fs
+      .readdirSync(new URL('../../docs/', import.meta.url))
+      .filter((p) => /^twojefaktury.*\.md$/.test(p))
+      .map((p) => `docs/${p}`);
     expect(plikiPaczki(dokumenty)).toEqual([...dokumenty].sort());
   });
 
@@ -48,8 +68,9 @@ describe('paczka wydania: dokumenty kurierów', () => {
     const tresc = fs.readFileSync(new URL('../../docs/instalacja-docker.md', import.meta.url), 'utf8');
     // Bez przypinania konkretnej nazwy: kopia open source ma własną (autorską) instrukcję, która odsyła do innych
     // dokumentów (18.10: tylko aktualizacja-klienta-v0.md). Że docs/kurier-dpd.md wchodzi do paczki, pilnuje test wyżej.
-    const wskazane = [...new Set([...tresc.matchAll(/docs\/[A-Za-z0-9_-]+\.md/g)].map(m => m[0]))]
-      .filter(p => fs.existsSync(new URL(`../../${p}`, import.meta.url)));
+    const wskazane = [...new Set([...tresc.matchAll(/docs\/[A-Za-z0-9_-]+\.md/g)].map((m) => m[0]))].filter((p) =>
+      fs.existsSync(new URL(`../../${p}`, import.meta.url)),
+    );
     expect(wskazane.length).toBeGreaterThan(0);
     const wPaczce = plikiPaczki(wskazane);
     expect(wPaczce).toEqual([...wskazane].sort());

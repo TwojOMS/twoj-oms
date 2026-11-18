@@ -26,7 +26,13 @@
 //     `awaria('po-przyjeciu')` — wyslanie faktury PRZETWORZONE, ale odpowiedz zerwana; `awaria(null)` wylacza.
 // Pierwsze `krokiPrzetwarzania` odczytow stanu faktury pokazuje 100 (przyjeta), potem stan koncowy.
 import {
-  createDecipheriv, createHash, generateKeyPairSync, privateDecrypt, constants, randomBytes, sign,
+  createDecipheriv,
+  createHash,
+  generateKeyPairSync,
+  privateDecrypt,
+  constants,
+  randomBytes,
+  sign,
 } from 'node:crypto';
 import { wymagajTrybuProby } from './tryb.mjs';
 
@@ -70,8 +76,11 @@ const nazwa = (cn) => seq(der(0x31, seq(oid('550403'), der(0x0c, Buffer.from(cn)
 function paraZCertyfikatem(cn) {
   const { publicKey, privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
   const tbs = seq(
-    der(0x02, Buffer.from([1])), SHA256_RSA, nazwa(cn),
-    seq(czasUtc('200101000000Z'), czasUtc('491231235959Z')), nazwa(cn),
+    der(0x02, Buffer.from([1])),
+    SHA256_RSA,
+    nazwa(cn),
+    seq(czasUtc('200101000000Z'), czasUtc('491231235959Z')),
+    nazwa(cn),
     publicKey.export({ type: 'spki', format: 'der' }),
   );
   const cert = seq(tbs, SHA256_RSA, der(0x03, Buffer.from([0]), sign('sha256', tbs, privateKey)));
@@ -84,17 +93,24 @@ export function crc8Ksef(napis) {
   let crc = 0;
   for (const b of Buffer.from(napis, 'utf8')) {
     crc ^= b;
-    for (let i = 0; i < 8; i += 1) crc = (crc & 0x80) ? ((crc << 1) ^ 0x07) & 0xff : (crc << 1) & 0xff;
+    for (let i = 0; i < 8; i += 1) crc = crc & 0x80 ? ((crc << 1) ^ 0x07) & 0xff : (crc << 1) & 0xff;
   }
   return crc.toString(16).toUpperCase().padStart(2, '0');
 }
 
-const hex = (n) => randomBytes(Math.ceil(n / 2)).toString('hex').slice(0, n).toUpperCase();
+const hex = (n) =>
+  randomBytes(Math.ceil(n / 2))
+    .toString('hex')
+    .slice(0, n)
+    .toUpperCase();
 
 /** Data RRRRMMDD w strefie Europe/Warsaw. */
 function dzien(data) {
   const czesci = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Warsaw', year: 'numeric', month: '2-digit', day: '2-digit',
+    timeZone: 'Europe/Warsaw',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
   }).formatToParts(data);
   const p = (t) => czesci.find((c) => c.type === t).value;
   return `${p('year')}${p('month')}${p('day')}`;
@@ -161,12 +177,22 @@ function upoXml({ sesja, faktura }) {
 }
 
 // ── Odpowiedzi ──────────────────────────────────────────────────────────────────────────────────────────
-const json = (status, dane, naglowki = {}) => new Response(dane === undefined ? null : JSON.stringify(dane), {
-  status, headers: { 'Content-Type': 'application/json', ...naglowki },
-});
-const odmowa = (status, title, detail) => json(status, {
-  title, status, detail, traceId: `atrapa-${hex(8).toLowerCase()}`,
-}, { 'Content-Type': 'application/problem+json' });
+const json = (status, dane, naglowki = {}) =>
+  new Response(dane === undefined ? null : JSON.stringify(dane), {
+    status,
+    headers: { 'Content-Type': 'application/json', ...naglowki },
+  });
+const odmowa = (status, title, detail) =>
+  json(
+    status,
+    {
+      title,
+      status,
+      detail,
+      traceId: `atrapa-${hex(8).toLowerCase()}`,
+    },
+    { 'Content-Type': 'application/problem+json' },
+  );
 
 function zerwanie() {
   const e = new TypeError('fetch failed');
@@ -190,8 +216,18 @@ export function createAtrapaKsefWysylki({ env = process.env, teraz = () => new D
   const tokenowy = paraZCertyfikatem('Atrapa KSeF — KsefTokenEncryption');
   const symetryczny = paraZCertyfikatem('Atrapa KSeF — SymmetricKeyEncryption');
   const certy = Object.freeze([
-    { certificate: tokenowy.certyfikat, usage: ['KsefTokenEncryption'], validFrom: '2020-01-01T00:00:00Z', validTo: '2049-12-31T23:59:59Z' },
-    { certificate: symetryczny.certyfikat, usage: ['SymmetricKeyEncryption'], validFrom: '2020-01-01T00:00:00Z', validTo: '2049-12-31T23:59:59Z' },
+    {
+      certificate: tokenowy.certyfikat,
+      usage: ['KsefTokenEncryption'],
+      validFrom: '2020-01-01T00:00:00Z',
+      validTo: '2049-12-31T23:59:59Z',
+    },
+    {
+      certificate: symetryczny.certyfikat,
+      usage: ['SymmetricKeyEncryption'],
+      validFrom: '2020-01-01T00:00:00Z',
+      validTo: '2049-12-31T23:59:59Z',
+    },
   ]);
 
   /** @type {Map<string, any>} */
@@ -243,7 +279,11 @@ export function createAtrapaKsefWysylki({ env = process.env, teraz = () => new D
     const sesja = {
       referenceNumber: numerReferencyjny(teraz0, 'SO'),
       validUntil: new Date(teraz0.getTime() + WAZNOSC_SESJI_MS).toISOString(),
-      klucz, iv, zamknieta: false, odczytyPoZamknieciu: 0, faktury: [],
+      klucz,
+      iv,
+      zamknieta: false,
+      odczytyPoZamknieciu: 0,
+      faktury: [],
     };
     sesje.set(sesja.referenceNumber, sesja);
     return json(201, { referenceNumber: sesja.referenceNumber, validUntil: sesja.validUntil });
@@ -302,7 +342,13 @@ export function createAtrapaKsefWysylki({ env = process.env, teraz = () => new D
   function wyslij(sesja, cialo) {
     if (sesja.zamknieta) return odmowa(400, 'Bad Request', 'Sesja jest zamknięta.');
     if (teraz().getTime() > Date.parse(sesja.validUntil)) return odmowa(400, 'Bad Request', 'Sesja wygasła.');
-    const wymagane = ['invoiceHash', 'invoiceSize', 'encryptedInvoiceHash', 'encryptedInvoiceSize', 'encryptedInvoiceContent'];
+    const wymagane = [
+      'invoiceHash',
+      'invoiceSize',
+      'encryptedInvoiceHash',
+      'encryptedInvoiceSize',
+      'encryptedInvoiceContent',
+    ];
     const brak = wymagane.filter((k) => cialo?.[k] === undefined || cialo?.[k] === null || cialo?.[k] === '');
     if (brak.length) return odmowa(400, 'Bad Request', `Brak pól: ${brak.join(', ')}.`);
     const faktura = przetworz(sesja, cialo);
@@ -327,7 +373,11 @@ export function createAtrapaKsefWysylki({ env = process.env, teraz = () => new D
         ...(koncowy && faktura.szczegoly.length ? { details: faktura.szczegoly } : {}),
         ...(koncowy && faktura.extensions ? { extensions: faktura.extensions } : {}),
       },
-      ...(koncowy && kod === 200 ? { upoDownloadUrl: `${ADRES_ATRAPY_KSEF_WYSYLKI}/sessions/${sesja.referenceNumber}/invoices/${faktura.referenceNumber}/upo` } : {}),
+      ...(koncowy && kod === 200
+        ? {
+            upoDownloadUrl: `${ADRES_ATRAPY_KSEF_WYSYLKI}/sessions/${sesja.referenceNumber}/invoices/${faktura.referenceNumber}/upo`,
+          }
+        : {}),
     };
   }
 
@@ -344,8 +394,11 @@ export function createAtrapaKsefWysylki({ env = process.env, teraz = () => new D
     const od = Number(naglowek(init, 'x-continuation-token') ?? 0) || 0;
     const strona = sesja.faktury.slice(od, od + rozmiar).map((f) => stan(sesja, f));
     const dalej = od + rozmiar < sesja.faktury.length ? String(od + rozmiar) : null;
-    return json(200, { invoices: strona, ...(dalej ? { continuationToken: dalej } : {}) },
-      dalej ? { 'x-continuation-token': dalej } : {});
+    return json(
+      200,
+      { invoices: strona, ...(dalej ? { continuationToken: dalej } : {}) },
+      dalej ? { 'x-continuation-token': dalej } : {},
+    );
   }
 
   async function obsluz(url, init) {
@@ -357,7 +410,11 @@ export function createAtrapaKsefWysylki({ env = process.env, teraz = () => new D
     if (!autoryzacja || !/^Bearer \S+/.test(autoryzacja)) return odmowa(401, 'Unauthorized', 'Brak tokenu dostępu.');
     let cialo = null;
     if (init?.body) {
-      try { cialo = JSON.parse(String(init.body)); } catch { return odmowa(400, 'Bad Request', 'Treść nie jest JSON-em.'); }
+      try {
+        cialo = JSON.parse(String(init.body));
+      } catch {
+        return odmowa(400, 'Bad Request', 'Treść nie jest JSON-em.');
+      }
     }
 
     if (metoda === 'POST' && sciezka === '/sessions/online') return otworz(cialo);
@@ -388,7 +445,10 @@ export function createAtrapaKsefWysylki({ env = process.env, teraz = () => new D
       if (faktura.kod !== 200 || faktura.odczyty < krokiPrzetwarzania) {
         return odmowa(404, 'Not Found', 'UPO tej faktury nie jest dostępne.');
       }
-      return new Response(upoXml({ sesja, faktura }), { status: 200, headers: { 'Content-Type': 'application/xml; charset=utf-8' } });
+      return new Response(upoXml({ sesja, faktura }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/xml; charset=utf-8' },
+      });
     }
     m = /^\/invoices\/ksef\/([^/]+)$/.exec(sciezka);
     if (metoda === 'GET' && m) {

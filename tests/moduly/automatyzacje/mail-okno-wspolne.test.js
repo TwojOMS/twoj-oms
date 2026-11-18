@@ -32,11 +32,22 @@ const ODSTEP_MIN = 15;
 
 const otwarte = [];
 beforeEach(() => {
-  vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('Sieć zabroniona w teście MAIL-OKNO'); }));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => {
+      throw new Error('Sieć zabroniona w teście MAIL-OKNO');
+    }),
+  );
 });
 afterEach(() => {
   vi.unstubAllGlobals();
-  for (const db of otwarte.splice(0)) { try { db.close(); } catch { /* już zamknięta */ } }
+  for (const db of otwarte.splice(0)) {
+    try {
+      db.close();
+    } catch {
+      /* już zamknięta */
+    }
+  }
 });
 
 /** Atrapa programu z oknem poprawek: wersja dokumentu przesuwana przez test, `pobierzPdf` to szpieg. */
@@ -45,7 +56,9 @@ function programZOknem() {
   const stan = { wersjaAt: o('10:00') };
   return Object.assign(p, {
     stan,
-    gotowyDoWydania: vi.fn(async (_id, chwila) => new Date(chwila).getTime() >= stan.wersjaAt.getTime() + ODSTEP_MIN * MIN),
+    gotowyDoWydania: vi.fn(
+      async (_id, chwila) => new Date(chwila).getTime() >= stan.wersjaAt.getTime() + ODSTEP_MIN * MIN,
+    ),
     zdanieCzekaniaNaKsef: vi.fn(async () => null),
   });
 }
@@ -54,14 +67,34 @@ let nr = 0;
 function zamowienieZFaktura(db, program, { uuid = 'dok-t1', numer = 'FV 1/10/2026' } = {}) {
   nr += 1;
   const id = zapiszZamowienie(db, 'sklep', {
-    zrodlo_id: 8100 + nr, numer: `PP-${nr}`,
+    zrodlo_id: 8100 + nr,
+    numer: `PP-${nr}`,
     klient: { first_name: 'Ida', last_name: 'Półcień', email: 'ida@polcien.invalid', phone: '' },
     dostawa: { first_name: 'Ida', last_name: 'Półcień', address_1: 'Lampowa 7', postcode: '00-950', city: 'Warszawa' },
-    metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: null,
-    kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00', koszt_dostawy_netto: '0.00', status_woo: 'processing',
-    oplacone_at: null, anulowane: 0, utworzone_at: '2026-10-27T09:00:00',
-    pozycje: [{ zrodlo_id: 9100 + nr, nazwa: 'Klosz lniany Półcień', sku: 'KL-PC', ilosc: 1, cena_brutto: '123.00',
-      cena_netto: '100.00', brutto_linii: '123.00', netto_linii: '100.00', vat: null }],
+    metoda_wysylki: 'dpd',
+    kwota_pobrania: null,
+    chce_fakture: 1,
+    nip: null,
+    kwota_brutto: '123.00',
+    koszt_dostawy_brutto: '0.00',
+    koszt_dostawy_netto: '0.00',
+    status_woo: 'processing',
+    oplacone_at: null,
+    anulowane: 0,
+    utworzone_at: '2026-10-27T09:00:00',
+    pozycje: [
+      {
+        zrodlo_id: 9100 + nr,
+        nazwa: 'Klosz lniany Półcień',
+        sku: 'KL-PC',
+        ilosc: 1,
+        cena_brutto: '123.00',
+        cena_netto: '100.00',
+        brutto_linii: '123.00',
+        netto_linii: '100.00',
+        vat: null,
+      },
+    ],
   });
   const f = rozpocznijFakture(db, id);
   zakonczFakture(db, f.id, { uuid, numer, ksefStatus: null }, { program: program.opis.id });
@@ -74,32 +107,75 @@ function srodowisko({ program = null, db = null, zgoda = null } = {}) {
   if (!db) otwarte.push(baza);
   const z = { chwila: o('10:00') };
   const listy = [];
-  const mailer = { sendMail: vi.fn(async (m) => { listy.push(m); return {}; }) };
+  const mailer = {
+    sendMail: vi.fn(async (m) => {
+      listy.push(m);
+      return {};
+    }),
+  };
   const prog = typeof program === 'function' ? program(baza) : program;
-  const wiadomosci = createWiadomosci({ db: baza, mailer, program: prog, teraz: () => z.chwila.toISOString(),
-    config: { klienciZbiorczy: [], oprawaPoczty: { podpis: 'Pracownia Półcień', footer: 'Stopka przykładowa' } } });
+  const wiadomosci = createWiadomosci({
+    db: baza,
+    mailer,
+    program: prog,
+    teraz: () => z.chwila.toISOString(),
+    config: { klienciZbiorczy: [], oprawaPoczty: { podpis: 'Pracownia Półcień', footer: 'Stopka przykładowa' } },
+  });
   const oryginalneAkcje = utworzAkcje({ wiadomosci: () => wiadomosci });
   const akcje = zgoda ? oryginalneAkcje.map((a) => ({ ...a, zgoda })) : oryginalneAkcje;
   const teraz = () => new Date(z.chwila);
-  const silnik = createSilnikAutomatyzacji({ db: baza, zdarzenia: [], akcje, sprawdzWarunki: sprawdzanieWarunkow,
-    pocztaGotowa: () => true, teraz });
-  const regulaId = utworzRegule(baza, { nazwa: 'Faktura do klienta', zdarzenie: 'status_zmieniony', zdarzenie_json: { status: 'wyslane' },
-    warunki: { kanaly: ['sklep'], kanalyZnane: ['sklep'], statusy: [], maNumerListu: false, metody: [], pobranie: 'dowolne' },
-    akcja: 'mail_kupujacy', akcja_json: { szablon: 'faktura' }, opoznienie_min: 5, limit_na_godzine: 20 }, { login: 'adam' });
+  const silnik = createSilnikAutomatyzacji({
+    db: baza,
+    zdarzenia: [],
+    akcje,
+    sprawdzWarunki: sprawdzanieWarunkow,
+    pocztaGotowa: () => true,
+    teraz,
+  });
+  const regulaId = utworzRegule(
+    baza,
+    {
+      nazwa: 'Faktura do klienta',
+      zdarzenie: 'status_zmieniony',
+      zdarzenie_json: { status: 'wyslane' },
+      warunki: {
+        kanaly: ['sklep'],
+        kanalyZnane: ['sklep'],
+        statusy: [],
+        maNumerListu: false,
+        metody: [],
+        pobranie: 'dowolne',
+      },
+      akcja: 'mail_kupujacy',
+      akcja_json: { szablon: 'faktura' },
+      opoznienie_min: 5,
+      limit_na_godzine: 20,
+    },
+    { login: 'adam' },
+  );
   // Granica reguły na zegarze testu, nie systemowym — z prawdziwą datą zamówienie sprzed ponad 14 dni
   // wypadało „ponad 14 dni przed włączeniem” (przed_granica) i testy padały.
   wlaczRegule(baza, regulaId, { login: 'adam', teraz: () => o('09:00') });
-  const zaplanujMail = (zamowienieId, terminAt = o('10:05')) => zaplanuj(baza, {
-    regula_id: regulaId, przedmiot: `zamowienie:${zamowienieId}`, zamowienie_id: zamowienieId,
-    zdarzenie_at: new Date(terminAt.getTime() - 5 * MIN).toISOString(), termin_at: terminAt.toISOString(), szablon: 'faktura',
-    teraz: terminAt.toISOString(),
-  });
-  const przebieg = async (chwila) => { z.chwila = chwila; return silnik.przebieg(); };
+  const zaplanujMail = (zamowienieId, terminAt = o('10:05')) =>
+    zaplanuj(baza, {
+      regula_id: regulaId,
+      przedmiot: `zamowienie:${zamowienieId}`,
+      zamowienie_id: zamowienieId,
+      zdarzenie_at: new Date(terminAt.getTime() - 5 * MIN).toISOString(),
+      termin_at: terminAt.toISOString(),
+      szablon: 'faktura',
+      teraz: terminAt.toISOString(),
+    });
+  const przebieg = async (chwila) => {
+    z.chwila = chwila;
+    return silnik.przebieg();
+  };
   return { db: baza, z, listy, mailer, wiadomosci, akcje, silnik, regulaId, zaplanujMail, przebieg, program: prog };
 }
 
 const wiersz = (db) => db.prepare('SELECT * FROM automatyzacje_wykonania ORDER BY id DESC LIMIT 1').get();
-const logAutomatu = (db, id) => db.prepare("SELECT akcja, wynik FROM log WHERE zamowienie_id = ? AND akcja LIKE 'automatyzacja.%'").all(id);
+const logAutomatu = (db, id) =>
+  db.prepare("SELECT akcja, wynik FROM log WHERE zamowienie_id = ? AND akcja LIKE 'automatyzacja.%'").all(id);
 
 describe('MAIL-OKNO — atrapa programu z oknem poprawek (odstęp 15 min)', () => {
   it('10:05 w oknie wersji z 10:00 → odłożone do 10:20: zaplanowane, proby 0, powód „okno poprawek”, bez pobierzPdf i bez wpisu', async () => {
@@ -109,7 +185,12 @@ describe('MAIL-OKNO — atrapa programu z oknem poprawek (odstęp 15 min)', () =
     const wynik = await e.przebieg(o('10:05'));
     expect(wynik.wyniki).toEqual({ odlozone: 1 });
     const w = wiersz(e.db);
-    expect(w).toMatchObject({ stan: 'zaplanowane', proby: 0, powod_kod: 'okno_poprawek', nastepna_proba_at: o('10:20').toISOString() });
+    expect(w).toMatchObject({
+      stan: 'zaplanowane',
+      proby: 0,
+      powod_kod: 'okno_poprawek',
+      nastepna_proba_at: o('10:20').toISOString(),
+    });
     expect(w.powod).toMatch(/okno poprawek/i);
     expect(e.program.pobierzPdf).not.toHaveBeenCalled();
     expect(e.listy).toEqual([]);
@@ -147,7 +228,10 @@ describe('MAIL-OKNO — atrapa programu z oknem poprawek (odstęp 15 min)', () =
   it('wcześniejsza odmowa wygrywa: faktura już wysłana do zamówienia + okno → pominięte „juz_wyslany”', async () => {
     const e = srodowisko({ program: programZOknem() });
     const id = zamowienieZFaktura(e.db, e.program);
-    e.db.prepare(`INSERT INTO wiadomosci (zamowienie_id, temat_id, adresat, temat, wyslana_at, kto) VALUES (?, 'faktura', ?, ?, ?, 'adam')`)
+    e.db
+      .prepare(
+        `INSERT INTO wiadomosci (zamowienie_id, temat_id, adresat, temat, wyslana_at, kto) VALUES (?, 'faktura', ?, ?, ?, 'adam')`,
+      )
       .run(id, 'ida@polcien.invalid', 'Faktura', o('09:00').toISOString());
     e.zaplanujMail(id);
     expect((await e.przebieg(o('10:05'))).wyniki).toEqual({ pominiete: 1 });
@@ -178,7 +262,9 @@ describe('MAIL-OKNO — atrapa programu z oknem poprawek (odstęp 15 min)', () =
     expect((await e.przebieg(o('10:05'))).wyniki).toEqual({ odlozone: 1 });
     expect((await e.przebieg(new Date(o('10:05').getTime() + (48 * 60 - 1) * MIN))).wyniki).toEqual({ odlozone: 1 });
     const odlozenie = wiersz(e.db);
-    expect((await e.przebieg(new Date(new Date(odlozenie.nastepna_proba_at).getTime() + 60 * MIN))).wyniki).toEqual({ pominiete: 1 });
+    expect((await e.przebieg(new Date(new Date(odlozenie.nastepna_proba_at).getTime() + 60 * MIN))).wyniki).toEqual({
+      pominiete: 1,
+    });
     expect(wiersz(e.db)).toMatchObject({ stan: 'pominiete', powod_kod: 'przeterminowane', proby: 0 });
     expect(wiersz(e.db).powod).toMatch(/^Faktura przez 48 godzin/);
     expect(wiersz(e.db).powod).toContain(`Ostatnio: ${odlozenie.powod}`);
@@ -194,8 +280,13 @@ describe('MAIL-OKNO — atrapa programu z oknem poprawek (odstęp 15 min)', () =
     expect((await e.przebieg(new Date(o('10:05').getTime() + (48 * 60 - 1) * MIN))).wyniki).toEqual({ odlozone: 1 });
     const nastepna = new Date(wiersz(e.db).nastepna_proba_at);
     expect((await e.przebieg(new Date(nastepna.getTime() + 61 * MIN))).wyniki).toEqual({ pominiete: 1 });
-    expect(wiersz(e.db)).toMatchObject({ stan: 'pominiete', powod_kod: 'przeterminowane', proby: 0,
-      powod: 'Minęło ponad 48 godzin od planowanej chwili wysyłki (OMS był wyłączony?). Mail po takim czasie bardziej myli, niż pomaga.' });
+    expect(wiersz(e.db)).toMatchObject({
+      stan: 'pominiete',
+      powod_kod: 'przeterminowane',
+      proby: 0,
+      powod:
+        'Minęło ponad 48 godzin od planowanej chwili wysyłki (OMS był wyłączony?). Mail po takim czasie bardziej myli, niż pomaga.',
+    });
     expect(e.program.pobierzPdf).not.toHaveBeenCalled();
   });
 
@@ -205,13 +296,20 @@ describe('MAIL-OKNO — atrapa programu z oknem poprawek (odstęp 15 min)', () =
     e.zaplanujMail(id);
     expect((await e.przebieg(o('10:05'))).wyniki).toEqual({ odlozone: 1 });
     expect((await e.przebieg(new Date(o('10:05').getTime() + 49 * 60 * MIN))).wyniki).toEqual({ pominiete: 1 });
-    expect(wiersz(e.db)).toMatchObject({ stan: 'pominiete', powod_kod: 'przeterminowane',
-      powod: 'Minęło ponad 48 godzin od planowanej chwili wysyłki (OMS był wyłączony?). Mail po takim czasie bardziej myli, niż pomaga.' });
+    expect(wiersz(e.db)).toMatchObject({
+      stan: 'pominiete',
+      powod_kod: 'przeterminowane',
+      powod:
+        'Minęło ponad 48 godzin od planowanej chwili wysyłki (OMS był wyłączony?). Mail po takim czasie bardziej myli, niż pomaga.',
+    });
     expect(e.program.pobierzPdf).not.toHaveBeenCalled();
   });
 
   it('kod odłożenia pochodzi z akcji, a bez kodu domyślnie oznacza okno poprawek', async () => {
-    const e = srodowisko({ program: programZOknem(), zgoda: async () => ({ odloz: true, kod: 'inny', powod: 'Inny powód' }) });
+    const e = srodowisko({
+      program: programZOknem(),
+      zgoda: async () => ({ odloz: true, kod: 'inny', powod: 'Inny powód' }),
+    });
     const id = zamowienieZFaktura(e.db, e.program);
     e.zaplanujMail(id);
     expect((await e.przebieg(o('10:05'))).wyniki).toEqual({ odlozone: 1 });
@@ -225,8 +323,12 @@ describe('MAIL-OKNO — atrapa programu z oknem poprawek (odstęp 15 min)', () =
     const id = zamowienieZFaktura(e.db, e.program);
     e.zaplanujMail(id);
     await e.przebieg(new Date(o('10:05').getTime() + 49 * 60 * MIN));
-    expect(wiersz(e.db)).toMatchObject({ stan: 'pominiete', powod_kod: 'przeterminowane',
-      powod: 'Minęło ponad 48 godzin od planowanej chwili wysyłki (OMS był wyłączony?). Mail po takim czasie bardziej myli, niż pomaga.' });
+    expect(wiersz(e.db)).toMatchObject({
+      stan: 'pominiete',
+      powod_kod: 'przeterminowane',
+      powod:
+        'Minęło ponad 48 godzin od planowanej chwili wysyłki (OMS był wyłączony?). Mail po takim czasie bardziej myli, niż pomaga.',
+    });
   });
 
   it('dziennik pokazuje powód odłożenia, a po błędzie poczty dotychczasową próbę', async () => {
@@ -246,15 +348,25 @@ describe('MAIL-OKNO — atrapa programu z oknem poprawek (odstęp 15 min)', () =
       const ponowiony = await ekran();
       expect(ponowiony.body).toMatch(/wyjdzie [^<]+ \(próba 2\)/);
       expect(ponowiony.body).not.toContain('Błąd poczty');
-    } finally { await p.app.close(); }
+    } finally {
+      await p.app.close();
+    }
   });
 
   it('podgląd „Sprawdź na 30 dniach” z fakturą w oknie → liczy się do „wykonałoby”', async () => {
     const e = srodowisko({ program: programZOknem() });
     const id = zamowienieZFaktura(e.db, e.program);
-    const zdarzenie = { symulacja: () => [{ zamowienie_id: id, sklep: 'sklep', zdarzenie_at: o('10:00').toISOString() }] };
-    const wynik = await symulujRegule({ db: e.db, regula: regulaRozpakowana(e.db, e.regulaId), zdarzenie, akcja: e.akcje[0],
-      sprawdzWarunki: sprawdzanieWarunkow, teraz: () => o('10:05') });
+    const zdarzenie = {
+      symulacja: () => [{ zamowienie_id: id, sklep: 'sklep', zdarzenie_at: o('10:00').toISOString() }],
+    };
+    const wynik = await symulujRegule({
+      db: e.db,
+      regula: regulaRozpakowana(e.db, e.regulaId),
+      zdarzenie,
+      akcja: e.akcje[0],
+      sprawdzWarunki: sprawdzanieWarunkow,
+      teraz: () => o('10:05'),
+    });
     expect(wynik).toMatchObject({ razem: 1, wykonaloby: 1, pominieteRazem: 0 });
     expect(e.program.gotowyDoWydania).toHaveBeenCalled();
     expect(e.program.pobierzPdf).not.toHaveBeenCalled();
@@ -265,7 +377,10 @@ describe('MAIL-OKNO — atrapa programu z oknem poprawek (odstęp 15 min)', () =
     const id = zamowienieZFaktura(e.db, e.program);
     e.zaplanujMail(id);
     e.program.gotowyDoWydania.mockImplementation(async () => {
-      e.db.prepare("UPDATE automatyzacje_wykonania SET stan = 'pominiete', powod = 'Pominięte ręcznie', zakonczone_at = ?")
+      e.db
+        .prepare(
+          "UPDATE automatyzacje_wykonania SET stan = 'pominiete', powod = 'Pominięte ręcznie', zakonczone_at = ?",
+        )
         .run(o('10:05').toISOString());
       return false;
     });
@@ -273,4 +388,3 @@ describe('MAIL-OKNO — atrapa programu z oknem poprawek (odstęp 15 min)', () =
     expect(wiersz(e.db)).toMatchObject({ stan: 'pominiete', powod: 'Pominięte ręcznie', nastepna_proba_at: null });
   });
 });
-

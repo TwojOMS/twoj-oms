@@ -13,9 +13,15 @@ function panel() {
   otwarte.push(w);
   return w;
 }
-afterEach(async () => { for (const p of otwarte.splice(0)) { await p.app.close(); p.db.close(); } });
+afterEach(async () => {
+  for (const p of otwarte.splice(0)) {
+    await p.app.close();
+    p.db.close();
+  }
+});
 
-const sekcja = (html, id) => new RegExp(`<section class="ust-sekcja[^"]*" id="${id}">[\\s\\S]*?<\\/section>`, 'u').exec(html)?.[0] ?? '';
+const sekcja = (html, id) =>
+  new RegExp(`<section class="ust-sekcja[^"]*" id="${id}">[\\s\\S]*?<\\/section>`, 'u').exec(html)?.[0] ?? '';
 
 describe('Szablony wiadomości — „Szablony własne” pierwsze', () => {
   it('kafel „Szablony własne” stoi przed mailami z karty zamówienia, zdaniami o płatności i mailami do zespołu', async () => {

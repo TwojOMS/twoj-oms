@@ -7,19 +7,42 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszKonsumenckie } from '../../../src/moduly/faktury/db/ksef-konsumenckie.js';
 import { modelAutomatuKsef } from '../../../src/moduly/faktury/trasy/automat-ksef-ekran.js';
 const otwarte = [];
-afterEach(() => { while (otwarte.length) otwarte.pop().close(); });
+afterEach(() => {
+  while (otwarte.length) otwarte.pop().close();
+});
 
 describe('ostrzeżenie B2C-QR na ekranie automatu KSeF', () => {
-  const PARTIAL = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../src/moduly/faktury/widoki/_automat-ksef.ejs');
-  const TF = { opis: { wbudowany: true }, nazwa: { mianownik: 'TwojeFaktury', dopelniacz: 'TwojeFaktury', miejscownik: 'TwojeFaktury', narzednik: 'TwojeFaktury' } };
-  const INFAKT = { opis: { wbudowany: false }, nazwa: { mianownik: 'inFakt', dopelniacz: 'inFaktu', miejscownik: 'inFakcie', narzednik: 'inFaktem' } };
+  const PARTIAL = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '../../../src/moduly/faktury/widoki/_automat-ksef.ejs',
+  );
+  const TF = {
+    opis: { wbudowany: true },
+    nazwa: {
+      mianownik: 'TwojeFaktury',
+      dopelniacz: 'TwojeFaktury',
+      miejscownik: 'TwojeFaktury',
+      narzednik: 'TwojeFaktury',
+    },
+  };
+  const INFAKT = {
+    opis: { wbudowany: false },
+    nazwa: { mianownik: 'inFakt', dopelniacz: 'inFaktu', miejscownik: 'inFakcie', narzednik: 'inFaktem' },
+  };
   const konfiguracja = { odlaczonyDoRestartu: () => false, wymagaRestartu: () => false };
-  const ZDANIE = 'Faktury konsumenckie (nabywca bez NIP-u) nie idą teraz do KSeF — PDF dla nabywcy będzie gotowy po włączeniu';
+  const ZDANIE =
+    'Faktury konsumenckie (nabywca bez NIP-u) nie idą teraz do KSeF — PDF dla nabywcy będzie gotowy po włączeniu';
   function ekran(program, wlaczone) {
     const db = openOmsDb(':memory:');
     otwarte.push(db);
     if (wlaczone) zapiszKonsumenckie(db, true);
-    const automat = modelAutomatuKsef({ db, konfiguracjaInfaktu: konfiguracja, automatKsef: {}, teraz: () => new Date('2026-10-28T09:00:00.000Z'), infakt: program });
+    const automat = modelAutomatuKsef({
+      db,
+      konfiguracjaInfaktu: konfiguracja,
+      automatKsef: {},
+      teraz: () => new Date('2026-10-28T09:00:00.000Z'),
+      infakt: program,
+    });
     return ejs.renderFile(PARTIAL, { automat, konsumenckie: wlaczone, fmtDataCzas: (s) => String(s) });
   }
 

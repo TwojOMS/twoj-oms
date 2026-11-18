@@ -15,9 +15,7 @@ const zl = (gr) => (gr / 100).toFixed(2);
  * `zamowienia_numer_reczny` (moduly/rdzen/migracje/0001-baseline.sql) — dokladnie tak, jak numer kolejnej paczki.
  */
 export function nastepnyNumerReczny(db, rok) {
-  const wiersze = db.prepare(
-    "SELECT numer FROM zamowienia WHERE sklep = 'reczne' AND numer LIKE ?",
-  ).all(`R/${rok}/%`);
+  const wiersze = db.prepare("SELECT numer FROM zamowienia WHERE sklep = 'reczne' AND numer LIKE ?").all(`R/${rok}/%`);
   const najwyzszy = wiersze.reduce((max, w) => Math.max(max, kolejnyZNumeru(w.numer) ?? 0), 0);
   return formatujNumer(rok, najwyzszy + 1);
 }
@@ -62,7 +60,9 @@ export function utworzZamowienieReczne(db, dane = {}, okresRozliczeniowyId = nul
   try {
     const numer = nastepnyNumerReczny(db, rok);
     const kolejny = kolejnyZNumeru(numer);
-    const info = db.prepare(`
+    const info = db
+      .prepare(
+        `
       INSERT INTO zamowienia (sklep, zrodlo_id, numer, klient_json, dostawa_json, metoda_wysylki,
         pobranie, kwota_pobrania, punkt_odbioru, chce_fakture, nip, kwota_brutto,
         koszt_dostawy_brutto, status_woo,
@@ -70,60 +70,71 @@ export function utworzZamowienieReczne(db, dane = {}, okresRozliczeniowyId = nul
         utworzone_at, zmienione_at, okres_rozliczeniowy_id, do_siedziby_klienta,
         karta_id, indywidualne, b2b, termin_platnosci, rabat_procent, termin_wysylki_reczny)
       VALUES ('reczne',?,?,?,?,?,?,?,?,?,?,'0.00',?,NULL,?,NULL,0,?,NULL,?,?,?,?,?,?,?,?,?,?,?)
-    `).run(
-      zrodloIdReczne(rok, kolejny), numer,
-      JSON.stringify(dane.klient ?? null), JSON.stringify(dane.dostawa ?? null),
-      // ⚠️ Pobranie jedzie WLASNA kolumna — bez tego zamowienie telefoniczne
-      // przyjete „za pobraniem" wpadaloby do bazy jako przedplacone i kurier nie mialby
-      // czego zainkasowac. Kwote przeliczy zaraz przeliczKwoteRecznego (pozycji jeszcze nie ma).
-      dane.metoda_wysylki ?? METODA_DOMYSLNA, dane.pobranie ? 1 : 0, dane.kwota_pobrania ?? null,
-      // ⚠️ KOD PACZKOMATU idzie do KOLUMNY, nie do nadpisania. Przy zamówieniu
-      // ręcznym nie ma sklepu, który mógłby ją przepisać — to MY jesteśmy tu źródłem — więc
-      // kolumna jest właściwym miejscem, dokładnie jak `metoda_wysylki` obok. Ręczna korekta
-      // kodu z karty i tak wygra przy odczycie (domena/wysylka.js: punktOdbioru).
-      dane.punkt_odbioru ?? null,
-      dane.chce_fakture ? 1 : 0, dane.nip ?? null,
-      dane.koszt_dostawy_brutto ?? '0.00', dane.metoda_platnosci ?? null,
-      dane.uwagi ?? null, dane.zamowienie_zrodlowe_id ?? null,
-      // `utworzone_at` i `zmienione_at` z JEDNEJ wartosci, nie z dwoch odczytow zegara —
-      // swiezo zalozone zamowienie ma byc „zmienione" dokladnie wtedy, kiedy powstalo.
-      stworzone, stworzone,
-      // `?? null` mimo domyslnej wartosci parametru: domyslna lapie tylko BRAK argumentu,
-      // a wolajacy potrafi podac jawne `undefined` (np. z pola obiektu, ktorego nie ma) —
-      // node:sqlite odmowilby wtedy wiazania i cale zalozenie zamowienia by padlo.
-      okresRozliczeniowyId ?? null,
-      // ⚠️ FLAGA MUSI ZOSTAWIC SLAD W BAZIE, nie tylko przelecec przez `przypiszDoOkresu`.
-      // Zamowienie do siedziby klienta ma `okres_rozliczeniowy_id = NULL` — dokladnie tak
-      // samo, jak zamowienie, ktore z okresu wypadlo przez pomylke. Bez tej kolumny jedno
-      // od drugiego nie da sie odroznic, a to sa pieniadze: do siedziby fakturujemy OD RAZU,
-      // z terminem platnosci, i nic w panelu nie mialoby o tym pojecia.
-      //
-      // Idzie z `dane`, a nie osobnym argumentem jak `okresRozliczeniowyId`: to zwykle pole
-      // formularza (jak `pobranie` czy `chce_fakture`), do ktorego odczytania nie trzeba
-      // konfiguracji — a warstwa `db/` konfiguracji nie zna i ma nie znac.
-      dane.hurt ? 1 : 0,
-      // ⚠️ ZNACZNIK MUSI ISC TUTAJ, nie byc dopisany pozniej. `uzupelnijIndywidualne`
-      // (oms/db/uzupelnienia-zamowien.js) przy KAZDYM otwarciu bazy robi
-      // `UPDATE ... SET indywidualne = 0 WHERE indywidualne IS NULL AND surowe_json IS NULL`,
-      // a zamowienie reczne surowe_json nie ma — wiec znacznik dopisany „za chwile"
-      // wyzerowalby sie przy najblizszym restarcie kontenera. Cicho, bez bledu.
-      //
-      // Domyslnie 0: zwykle zamowienie telefoniczne indywidualnym nie jest.
-      dane.karta_id ?? null, dane.indywidualne ? 1 : 0,
-      // ⚠️ KANAL RAPORTOWY ZAPISUJE SIE RAZEM Z ZAMOWIENIEM, a nie „za chwile" — to jest
-      // migawka decyzji podjetej w chwili zakladania (patrz `kanalOms` w domena/kanaly-raportowe.js).
-      // Dopisany pozniej osobnym UPDATE-em zostawialby okno, w ktorym zamowienie hurtowe
-      // liczy sie jako reczne, a raport odswiezony w tym oknie mowilby nieprawde.
-      dane.b2b ? 1 : 0,
-      // Brak ustalen to NULL, a nie '' — patrz `terminFaktury`: pusty napis i NULL czytaja
-      // sie tam tak samo, ale w bazie tylko jedna z tych postaci jest zdaniem „nie wiadomo".
-      dane.termin_platnosci ?? null,
-      // Rabat jest juz WLICZONY w ceny pozycji; ta kolumna niesie wylacznie wiedze, ile go
-      // bylo — do pokazania na karcie i do przeliczenia po zmianie (domena/rabat.js).
-      Number(dane.rabat_procent) || 0,
-      // Ręczna data wysyłki („najpóźniej do”) albo NULL = standardowy termin.
-      dane.termin_wysylki_reczny ?? null,
-    );
+    `,
+      )
+      .run(
+        zrodloIdReczne(rok, kolejny),
+        numer,
+        JSON.stringify(dane.klient ?? null),
+        JSON.stringify(dane.dostawa ?? null),
+        // ⚠️ Pobranie jedzie WLASNA kolumna — bez tego zamowienie telefoniczne
+        // przyjete „za pobraniem" wpadaloby do bazy jako przedplacone i kurier nie mialby
+        // czego zainkasowac. Kwote przeliczy zaraz przeliczKwoteRecznego (pozycji jeszcze nie ma).
+        dane.metoda_wysylki ?? METODA_DOMYSLNA,
+        dane.pobranie ? 1 : 0,
+        dane.kwota_pobrania ?? null,
+        // ⚠️ KOD PACZKOMATU idzie do KOLUMNY, nie do nadpisania. Przy zamówieniu
+        // ręcznym nie ma sklepu, który mógłby ją przepisać — to MY jesteśmy tu źródłem — więc
+        // kolumna jest właściwym miejscem, dokładnie jak `metoda_wysylki` obok. Ręczna korekta
+        // kodu z karty i tak wygra przy odczycie (domena/wysylka.js: punktOdbioru).
+        dane.punkt_odbioru ?? null,
+        dane.chce_fakture ? 1 : 0,
+        dane.nip ?? null,
+        dane.koszt_dostawy_brutto ?? '0.00',
+        dane.metoda_platnosci ?? null,
+        dane.uwagi ?? null,
+        dane.zamowienie_zrodlowe_id ?? null,
+        // `utworzone_at` i `zmienione_at` z JEDNEJ wartosci, nie z dwoch odczytow zegara —
+        // swiezo zalozone zamowienie ma byc „zmienione" dokladnie wtedy, kiedy powstalo.
+        stworzone,
+        stworzone,
+        // `?? null` mimo domyslnej wartosci parametru: domyslna lapie tylko BRAK argumentu,
+        // a wolajacy potrafi podac jawne `undefined` (np. z pola obiektu, ktorego nie ma) —
+        // node:sqlite odmowilby wtedy wiazania i cale zalozenie zamowienia by padlo.
+        okresRozliczeniowyId ?? null,
+        // ⚠️ FLAGA MUSI ZOSTAWIC SLAD W BAZIE, nie tylko przelecec przez `przypiszDoOkresu`.
+        // Zamowienie do siedziby klienta ma `okres_rozliczeniowy_id = NULL` — dokladnie tak
+        // samo, jak zamowienie, ktore z okresu wypadlo przez pomylke. Bez tej kolumny jedno
+        // od drugiego nie da sie odroznic, a to sa pieniadze: do siedziby fakturujemy OD RAZU,
+        // z terminem platnosci, i nic w panelu nie mialoby o tym pojecia.
+        //
+        // Idzie z `dane`, a nie osobnym argumentem jak `okresRozliczeniowyId`: to zwykle pole
+        // formularza (jak `pobranie` czy `chce_fakture`), do ktorego odczytania nie trzeba
+        // konfiguracji — a warstwa `db/` konfiguracji nie zna i ma nie znac.
+        dane.hurt ? 1 : 0,
+        // ⚠️ ZNACZNIK MUSI ISC TUTAJ, nie byc dopisany pozniej. `uzupelnijIndywidualne`
+        // (oms/db/uzupelnienia-zamowien.js) przy KAZDYM otwarciu bazy robi
+        // `UPDATE ... SET indywidualne = 0 WHERE indywidualne IS NULL AND surowe_json IS NULL`,
+        // a zamowienie reczne surowe_json nie ma — wiec znacznik dopisany „za chwile"
+        // wyzerowalby sie przy najblizszym restarcie kontenera. Cicho, bez bledu.
+        //
+        // Domyslnie 0: zwykle zamowienie telefoniczne indywidualnym nie jest.
+        dane.karta_id ?? null,
+        dane.indywidualne ? 1 : 0,
+        // ⚠️ KANAL RAPORTOWY ZAPISUJE SIE RAZEM Z ZAMOWIENIEM, a nie „za chwile" — to jest
+        // migawka decyzji podjetej w chwili zakladania (patrz `kanalOms` w domena/kanaly-raportowe.js).
+        // Dopisany pozniej osobnym UPDATE-em zostawialby okno, w ktorym zamowienie hurtowe
+        // liczy sie jako reczne, a raport odswiezony w tym oknie mowilby nieprawde.
+        dane.b2b ? 1 : 0,
+        // Brak ustalen to NULL, a nie '' — patrz `terminFaktury`: pusty napis i NULL czytaja
+        // sie tam tak samo, ale w bazie tylko jedna z tych postaci jest zdaniem „nie wiadomo".
+        dane.termin_platnosci ?? null,
+        // Rabat jest juz WLICZONY w ceny pozycji; ta kolumna niesie wylacznie wiedze, ile go
+        // bylo — do pokazania na karcie i do przeliczenia po zmianie (domena/rabat.js).
+        Number(dane.rabat_procent) || 0,
+        // Ręczna data wysyłki („najpóźniej do”) albo NULL = standardowy termin.
+        dane.termin_wysylki_reczny ?? null,
+      );
     db.exec('COMMIT');
     return Number(info.lastInsertRowid);
   } catch (e) {
@@ -134,8 +145,7 @@ export function utworzZamowienieReczne(db, dane = {}, okresRozliczeniowyId = nul
 
 /** Bazowy koszt ręcznego zamówienia po zastosowaniu warunków dostawy klienta. */
 export function zapiszKosztDostawyRecznego(db, id, koszt) {
-  db.prepare("UPDATE zamowienia SET koszt_dostawy_brutto = ? WHERE id = ? AND sklep = 'reczne'")
-    .run(koszt, id);
+  db.prepare("UPDATE zamowienia SET koszt_dostawy_brutto = ? WHERE id = ? AND sklep = 'reczne'").run(koszt, id);
 }
 
 /**
@@ -179,8 +189,12 @@ export function przeliczKwoteRecznego(db, id) {
   const kwota = zl(grosze);
   const doPobrania = grosze > 0 ? kwota : null;
 
-  db.prepare('UPDATE zamowienia SET kwota_brutto = ?, kwota_pobrania = ?, zmienione_at = ? WHERE id = ?')
-    .run(kwota, pobranieZeSklepu(z) ? doPobrania : null, teraz(), id);
+  db.prepare('UPDATE zamowienia SET kwota_brutto = ?, kwota_pobrania = ?, zmienione_at = ? WHERE id = ?').run(
+    kwota,
+    pobranieZeSklepu(z) ? doPobrania : null,
+    teraz(),
+    id,
+  );
 
   const nadpisanie = nadpisanieWysylki(z);
   if (nadpisanie?.pobranie && nadpisanie.kwota_pobrania !== doPobrania) {

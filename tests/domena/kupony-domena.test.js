@@ -76,8 +76,7 @@ describe('kuponyZeSurowych', () => {
 
 describe('kuponyZWiersza', () => {
   it('parsuje kolumnę kupony_json', () => {
-    expect(kuponyZWiersza('[{"kod":"wrzesien30","rabat":"58.17"}]'))
-      .toEqual([{ kod: 'wrzesien30', rabat: '58.17' }]);
+    expect(kuponyZWiersza('[{"kod":"wrzesien30","rabat":"58.17"}]')).toEqual([{ kod: 'wrzesien30', rabat: '58.17' }]);
   });
 
   it('NULL (zamówienie bez kuponów) → pusta lista', () => {

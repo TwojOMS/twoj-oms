@@ -9,7 +9,10 @@ import { createProforma } from '../../../src/moduly/faktury/services/proforma.js
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { dodajFaktureDoKolejki } from '../../../src/moduly/faktury/db/kolejka-druku-faktur.js';
 import {
-  dodajProformeDoKolejki, proformyDoWziecia, ostatniaPozycjaDlaProformy, ostatniePozycjeDlaProform,
+  dodajProformeDoKolejki,
+  proformyDoWziecia,
+  ostatniaPozycjaDlaProformy,
+  ostatniePozycjeDlaProform,
 } from '../../../src/moduly/faktury/db/kolejka-druku-proform.js';
 import { odroczenieMs } from '../../../src/domena/kolejka-druku-stan.js';
 import { ekranDlaAdresu } from '../../../src/domena/ekrany.js';
@@ -38,13 +41,30 @@ beforeEach(async () => {
   const proforma = createProforma({ db, config: { proforma: { katalog } } });
   app = buildOmsServer({ db, config, poller, faktura, proforma });
   await app.ready();
-  id = zapiszZamowienie(db, 'pro', {
-    zrodlo_id: 101, numer: 'PC-101', klient: { first_name: 'Anna', company: 'Pracownia Półcień' }, dostawa: { city: 'Warszawa' },
-    metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: null,
-    kwota_brutto: '249.00', koszt_dostawy_brutto: '0.00', status_woo: 'processing',
-    oplacone_at: null, anulowane: 0, utworzone_at: '2026-11-03T09:00:00',
-    pozycje: [{ nazwa: 'Lampa Półcień', sku: 'PC-1', ilosc: 1, cena_brutto: '249.00', brutto_linii: '249.00', vat: null }],
-  }, {});
+  id = zapiszZamowienie(
+    db,
+    'pro',
+    {
+      zrodlo_id: 101,
+      numer: 'PC-101',
+      klient: { first_name: 'Anna', company: 'Pracownia Półcień' },
+      dostawa: { city: 'Warszawa' },
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: 1,
+      nip: null,
+      kwota_brutto: '249.00',
+      koszt_dostawy_brutto: '0.00',
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane: 0,
+      utworzone_at: '2026-11-03T09:00:00',
+      pozycje: [
+        { nazwa: 'Lampa Półcień', sku: 'PC-1', ilosc: 1, cena_brutto: '249.00', brutto_linii: '249.00', vat: null },
+      ],
+    },
+    {},
+  );
 });
 
 afterEach(async () => {
@@ -61,8 +81,12 @@ function zProforma(utworzonaAt = '2026-11-03T10:00:00.000Z') {
   return p;
 }
 const zFaktura = () => {
-  db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?, ?, ?, ?)')
-    .run(id, 'u-1', 'FV/3/11/2026', '2026-11-03T10:00:00');
+  db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?, ?, ?, ?)').run(
+    id,
+    'u-1',
+    'FV/3/11/2026',
+    '2026-11-03T10:00:00',
+  );
   return db.prepare('SELECT * FROM faktury WHERE zamowienie_id = ?').get(id);
 };
 const wyslij = (url, payload, headers = naglowek) => app.inject({ method: 'POST', url, headers, payload });
@@ -78,7 +102,8 @@ describe('POST /proformy/:id/drukuj', () => {
     expect(r.headers.location).toBe(`/zamowienia/${id}#faktura`);
     expect(wierszeKolejki()).toMatchObject([{ proforma_id: p.id, status: 'oczekuje', proby: 0 }]);
     expect(ostatniLog()).toMatchObject({
-      akcja: 'proforma.druk', wynik: 'Ręcznie (adam): proforma PF/1/11/2026 dodana do kolejki druku.',
+      akcja: 'proforma.druk',
+      wynik: 'Ręcznie (adam): proforma PF/1/11/2026 dodana do kolejki druku.',
     });
   });
 
@@ -95,15 +120,24 @@ describe('POST /proformy/:id/drukuj', () => {
     uniewaznijPoprzednie(db, id);
     const r = await wyslij(`/proformy/${p.id}/drukuj`);
     expect(r.statusCode).toBe(400);
-    expect(r.body).toContain('<p class="pasek-uwaga" role="alert">Proforma PF/1/11/2026 jest unieważniona — nie drukujemy dokumentu, który nie obowiązuje.</p>'); // G13f2: strona OMS
+    expect(r.body).toContain(
+      '<p class="pasek-uwaga" role="alert">Proforma PF/1/11/2026 jest unieważniona — nie drukujemy dokumentu, który nie obowiązuje.</p>',
+    ); // G13f2: strona OMS
     expect(wierszeKolejki()).toEqual([]);
   });
 
   it('proforma bez zapisanego pliku → 400 od razu, bez wiersza w kolejce', async () => {
-    const p = zapiszProforme(db, id, { kwotaBrutto: '249.00', rok: 2026, miesiac: 11, utworzonaAt: '2026-11-03T10:00:00.000Z' });
+    const p = zapiszProforme(db, id, {
+      kwotaBrutto: '249.00',
+      rok: 2026,
+      miesiac: 11,
+      utworzonaAt: '2026-11-03T10:00:00.000Z',
+    });
     const r = await wyslij(`/proformy/${p.id}/drukuj`);
     expect(r.statusCode).toBe(400);
-    expect(r.body).toContain('<p class="pasek-uwaga" role="alert">Proforma PF/1/11/2026 nie ma zapisanego pliku PDF — nie ma czego drukować.</p>'); // G13f2: strona OMS
+    expect(r.body).toContain(
+      '<p class="pasek-uwaga" role="alert">Proforma PF/1/11/2026 nie ma zapisanego pliku PDF — nie ma czego drukować.</p>',
+    ); // G13f2: strona OMS
     expect(wierszeKolejki()).toEqual([]);
   });
 
@@ -149,8 +183,14 @@ describe('czuwacz: lista, PDF, potwierdzenie — kontrakt bez zmian', () => {
     const pozF = dodajFaktureDoKolejki(db, f.id);
     const pozP = dodajProformeDoKolejki(db, p.id);
     // Proforma trafiła do kolejki WCZEŚNIEJ niż faktura — ma stać pierwsza.
-    db.prepare('UPDATE kolejka_druku_faktur SET utworzone_at = ? WHERE id = ?').run('2026-11-03T12:00:00.000Z', pozF.id);
-    db.prepare('UPDATE kolejka_druku_proform SET utworzone_at = ? WHERE id = ?').run('2026-11-03T11:00:00.000Z', pozP.id);
+    db.prepare('UPDATE kolejka_druku_faktur SET utworzone_at = ? WHERE id = ?').run(
+      '2026-11-03T12:00:00.000Z',
+      pozF.id,
+    );
+    db.prepare('UPDATE kolejka_druku_proform SET utworzone_at = ? WHERE id = ?').run(
+      '2026-11-03T11:00:00.000Z',
+      pozP.id,
+    );
     const r = await pobierz('/kolejka-druku-faktur?stanowisko=biuro');
     expect(r.statusCode).toBe(200);
     expect(r.json()).toEqual([
@@ -162,8 +202,9 @@ describe('czuwacz: lista, PDF, potwierdzenie — kontrakt bez zmian', () => {
   it('pozycja z przykładu planu: { id: "p1", numer: "PF/1/11/2026", zamowienie: "PC-101", zamowienieId: 1 }', async () => {
     const p = zProforma();
     await wyslij(`/proformy/${p.id}/drukuj`);
-    expect((await pobierz('/kolejka-druku-faktur?stanowisko=biuro')).json())
-      .toEqual([{ id: 'p1', numer: 'PF/1/11/2026', zamowienie: 'PC-101', zamowienieId: 1 }]);
+    expect((await pobierz('/kolejka-druku-faktur?stanowisko=biuro')).json()).toEqual([
+      { id: 'p1', numer: 'PF/1/11/2026', zamowienie: 'PC-101', zamowienieId: 1 },
+    ]);
   });
 
   it('PDF pozycji p1 to zapisany plik proformy — bajty równe /proformy/1/pdf, nazwa proforma-…', async () => {
@@ -212,7 +253,13 @@ describe('czuwacz: lista, PDF, potwierdzenie — kontrakt bez zmian', () => {
     const r = await wyslij('/kolejka-druku-faktur/p1/blad', { powod: 'brak papieru' });
     expect(r.statusCode).toBe(200);
     const w = ostatniaPozycjaDlaProformy(db, p.id);
-    expect(w).toMatchObject({ status: 'oczekuje', proby: 1, ostatni_blad: 'brak papieru', zajete_przez: null, zajete_at: null });
+    expect(w).toMatchObject({
+      status: 'oczekuje',
+      proby: 1,
+      ostatni_blad: 'brak papieru',
+      zajete_przez: null,
+      zajete_at: null,
+    });
     const odroczenie = new Date(w.nastepna_proba_at).getTime() - przed;
     expect(odroczenie).toBeGreaterThanOrEqual(odroczenieMs(1) - 50);
     expect(odroczenie).toBeLessThanOrEqual(odroczenieMs(1) + 5000);
@@ -226,7 +273,8 @@ describe('czuwacz: lista, PDF, potwierdzenie — kontrakt bez zmian', () => {
     uniewaznijPoprzednie(db, id);
     expect((await pobierz('/kolejka-druku-faktur?stanowisko=biuro')).json()).toEqual([]);
     expect(ostatniaPozycjaDlaProformy(db, p.id)).toMatchObject({
-      status: 'porzucone', ostatni_blad: 'proforma unieważniona przed wydrukiem',
+      status: 'porzucone',
+      ostatni_blad: 'proforma unieważniona przed wydrukiem',
     });
   });
 
@@ -242,7 +290,10 @@ describe('czuwacz: lista, PDF, potwierdzenie — kontrakt bez zmian', () => {
     expect(r.headers['content-type']).not.toMatch(/pdf/);
     expect(r.body).toBe('Proforma PF/1/11/2026 jest unieważniona — nie drukujemy dokumentu, który nie obowiązuje.');
     expect(ostatniaPozycjaDlaProformy(db, p.id)).toMatchObject({
-      status: 'porzucone', ostatni_blad: 'proforma unieważniona przed wydrukiem', zajete_przez: null, zajete_at: null,
+      status: 'porzucone',
+      ostatni_blad: 'proforma unieważniona przed wydrukiem',
+      zajete_przez: null,
+      zajete_at: null,
     });
   });
 
@@ -291,10 +342,15 @@ describe('czuwacz: lista, PDF, potwierdzenie — kontrakt bez zmian', () => {
     await pobierz('/kolejka-druku-faktur?stanowisko=biuro');
     uniewaznijPoprzednie(db, id);
     expect((await pobierz('/kolejka-druku-faktur/p1/pdf?stanowisko=biuro')).statusCode).toBe(409);
-    const r = await wyslij('/kolejka-druku-faktur/p1/blad', { powod: 'The remote server returned an error: (409) Conflict.' });
+    const r = await wyslij('/kolejka-druku-faktur/p1/blad', {
+      powod: 'The remote server returned an error: (409) Conflict.',
+    });
     expect(r.statusCode).toBe(200);
     expect(ostatniaPozycjaDlaProformy(db, p.id)).toMatchObject({
-      status: 'porzucone', ostatni_blad: 'proforma unieważniona przed wydrukiem', proby: 0, nastepna_proba_at: null,
+      status: 'porzucone',
+      ostatni_blad: 'proforma unieważniona przed wydrukiem',
+      proby: 0,
+      nastepna_proba_at: null,
     });
   });
 
@@ -361,19 +417,52 @@ describe('migracja rdzen/0009 — kolejka_druku_proform', () => {
 
     const nowa = openOmsDb(plik);
     expect(nowa.prepare("SELECT numer FROM migracje WHERE modul = 'rdzen' AND numer = 9").get()).toEqual({ numer: 9 });
-    const kolumny = nowa.prepare('PRAGMA table_info(kolejka_druku_proform)').all().map((k) => k.name);
-    expect(kolumny).toEqual(['id', 'proforma_id', 'status', 'proby', 'ostatni_blad', 'nastepna_proba_at',
-      'utworzone_at', 'wydrukowane_at', 'zajete_przez', 'zajete_at']);
+    const kolumny = nowa
+      .prepare('PRAGMA table_info(kolejka_druku_proform)')
+      .all()
+      .map((k) => k.name);
+    expect(kolumny).toEqual([
+      'id',
+      'proforma_id',
+      'status',
+      'proby',
+      'ostatni_blad',
+      'nastepna_proba_at',
+      'utworzone_at',
+      'wydrukowane_at',
+      'zajete_przez',
+      'zajete_at',
+    ]);
     const fk = nowa.prepare('PRAGMA foreign_key_list(kolejka_druku_proform)').all();
     expect(fk).toMatchObject([{ table: 'proformy', from: 'proforma_id', to: 'id', on_delete: 'CASCADE' }]);
-    const indeksy = nowa.prepare('PRAGMA index_list(kolejka_druku_proform)').all().map((i) => i.name);
+    const indeksy = nowa
+      .prepare('PRAGMA index_list(kolejka_druku_proform)')
+      .all()
+      .map((i) => i.name);
     expect(indeksy).toContain('kolejka_druku_proform_status_proba');
 
-    const z = zapiszZamowienie(nowa, 'pro', {
-      zrodlo_id: 7, numer: 'PC-7', klient: {}, dostawa: {}, metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0,
-      nip: null, kwota_brutto: '10.00', koszt_dostawy_brutto: '0.00', status_woo: 'processing', oplacone_at: null,
-      anulowane: 0, utworzone_at: '2026-11-03T09:00:00', pozycje: [],
-    }, {});
+    const z = zapiszZamowienie(
+      nowa,
+      'pro',
+      {
+        zrodlo_id: 7,
+        numer: 'PC-7',
+        klient: {},
+        dostawa: {},
+        metoda_wysylki: 'dpd',
+        kwota_pobrania: null,
+        chce_fakture: 0,
+        nip: null,
+        kwota_brutto: '10.00',
+        koszt_dostawy_brutto: '0.00',
+        status_woo: 'processing',
+        oplacone_at: null,
+        anulowane: 0,
+        utworzone_at: '2026-11-03T09:00:00',
+        pozycje: [],
+      },
+      {},
+    );
     const p = zapiszProforme(nowa, z, { kwotaBrutto: '10.00', rok: 2026, miesiac: 11 });
     dodajProformeDoKolejki(nowa, p.id);
     migracjaKolejkiDrukuProform.wykonaj(nowa);
@@ -405,7 +494,12 @@ describe('karta zamówienia: przycisk „Drukuj” proformy (G16b)', () => {
 
   it('proforma bez pliku — bez przycisku', async () => {
     await pobierz('/kolejka-druku-faktur?stanowisko=biuro');
-    const p = zapiszProforme(db, id, { kwotaBrutto: '249.00', rok: 2026, miesiac: 11, utworzonaAt: '2026-11-03T10:00:00.000Z' });
+    const p = zapiszProforme(db, id, {
+      kwotaBrutto: '249.00',
+      rok: 2026,
+      miesiac: 11,
+      utworzonaAt: '2026-11-03T10:00:00.000Z',
+    });
     const r = await pobierz(`/zamowienia/${id}`);
     expect(r.body).not.toContain(`action="/proformy/${p.id}/drukuj"`);
   });

@@ -179,9 +179,7 @@ describe('kwotaSlownie — tysiące', () => {
   });
 
   it('123 456,78 zł — pełne złożenie tysięcy, setek i groszy', () => {
-    expect(kwotaSlownie(12345678)).toBe(
-      'sto dwadzieścia trzy tysiące czterysta pięćdziesiąt sześć złotych 78/100',
-    );
+    expect(kwotaSlownie(12345678)).toBe('sto dwadzieścia trzy tysiące czterysta pięćdziesiąt sześć złotych 78/100');
   });
 
   it('1 001 zł → "jeden tysiąc jeden złotych" (1001 kończy się na 1, ale to nie liczba 1 — dopełniacz)', () => {

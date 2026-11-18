@@ -10,8 +10,26 @@ const zamowienie = (nad = {}) => ({
   kwota_brutto: '256.00',
   koszt_dostawy_brutto: '25.00',
   pozycje: [
-    { klucz: 's1', nazwa: 'Lampa', ilosc: 1, cena_brutto: '123.00', brutto_linii: '123.00', cena_netto: '100.00', zrodlo: 'sklep', vat: '8' },
-    { klucz: 'r2', nazwa: 'Album', ilosc: 1, cena_brutto: '108.00', brutto_linii: '108.00', zrodlo: 'reczna', reczna: true, vat: '8' },
+    {
+      klucz: 's1',
+      nazwa: 'Lampa',
+      ilosc: 1,
+      cena_brutto: '123.00',
+      brutto_linii: '123.00',
+      cena_netto: '100.00',
+      zrodlo: 'sklep',
+      vat: '8',
+    },
+    {
+      klucz: 'r2',
+      nazwa: 'Album',
+      ilosc: 1,
+      cena_brutto: '108.00',
+      brutto_linii: '108.00',
+      zrodlo: 'reczna',
+      reczna: true,
+      vat: '8',
+    },
   ],
   ...nad,
 });
@@ -34,7 +52,9 @@ describe('wierszePozycji — stawka w wierszu', () => {
   });
 
   it('zamówienie ręczne: netto wysyłki liczone stawką domyślną (nie „—”), 19,00 przy 23% → 15,45', () => {
-    const w = wierszePozycji(zamowienie({ sklep: 'reczne', koszt_dostawy_brutto: '19.00', kwota_brutto: '250.00' }), { stawkaDomyslna: '23' });
+    const w = wierszePozycji(zamowienie({ sklep: 'reczne', koszt_dostawy_brutto: '19.00', kwota_brutto: '250.00' }), {
+      stawkaDomyslna: '23',
+    });
     expect(w.find((x) => x.wysylka).cenaNetto).toBe('15.45');
   });
 
@@ -47,15 +67,19 @@ describe('podsumowanieVatKarty', () => {
   it('równa się podsumowaniu linii faktury: 123/23 + 108/8 + 25/23 dostawy', () => {
     const z = zamowienie();
     const s = podsumowanieVatKarty(z, { stawkaDomyslna: '23' });
-    const f = podsumowanieWierszami(pozycjeDokumentu(z, { stawkaDomyslna: '23' })
-      .map((l) => ({ bruttoGr: l.gross_price, stawka: l.tax_symbol })));
+    const f = podsumowanieWierszami(
+      pozycjeDokumentu(z, { stawkaDomyslna: '23' }).map((l) => ({ bruttoGr: l.gross_price, stawka: l.tax_symbol })),
+    );
     expect(s).toMatchObject({ nettoZl: '220.33', vatZl: '35.67', bruttoZl: '256.00', wdt: false, zeroKrajowe: false });
     expect([s.nettoZl, s.vatZl, s.bruttoZl]).toEqual([f.nettoGr, f.vatGr, f.bruttoGr].map((g) => (g / 100).toFixed(2)));
   });
 
   it('NIP z UE → VAT 0,00, netto = brutto, wdt: true', () => {
-    expect(podsumowanieVatKarty(zamowienie({ nip: 'DE123456789' }), { stawkaDomyslna: '23' }))
-      .toMatchObject({ nettoZl: '256.00', vatZl: '0.00', wdt: true });
+    expect(podsumowanieVatKarty(zamowienie({ nip: 'DE123456789' }), { stawkaDomyslna: '23' })).toMatchObject({
+      nettoZl: '256.00',
+      vatZl: '0.00',
+      wdt: true,
+    });
   });
 
   it('pozycja 0% u nabywcy krajowego → zeroKrajowe: true (ostrzeżenie na ekranie)', () => {

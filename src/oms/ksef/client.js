@@ -43,15 +43,18 @@ export const NAJWIECEJ_PYTAN = 30;
 // (moduly/koszty/services/czuwacz-kosztow.js: NAJDLUZSZY_PRZEBIEG_KOSZTOW_MS). Przepisana kopia tej
 // arytmetyki rozjechalaby sie z oryginalem przy pierwszej zmianie ktorejkolwiek ze stalych,
 // i to po cichu — a od tej liczby zalezy, czy panel w ogole wstanie.
-export const NAJDLUZSZE_ODPYTYWANIE_MS = NAJWIECEJ_PYTAN * LIMIT_ZADANIA_MS
-  + (NAJWIECEJ_PYTAN - 1) * ODSTEP_PYTANIA_MS;
+export const NAJDLUZSZE_ODPYTYWANIE_MS = NAJWIECEJ_PYTAN * LIMIT_ZADANIA_MS + (NAJWIECEJ_PYTAN - 1) * ODSTEP_PYTANIA_MS;
 
 export function createKsefClient({
   token,
   nip,
-  fetchImpl, http = transport({ fetchImpl, limitCzasuMs: LIMIT_ZADANIA_MS }),
+  fetchImpl,
+  http = transport({ fetchImpl, limitCzasuMs: LIMIT_ZADANIA_MS }),
   baseUrl = BAZA_DOMYSLNA,
-  spij = (ms) => new Promise((r) => { setTimeout(r, ms); }),
+  spij = (ms) =>
+    new Promise((r) => {
+      setTimeout(r, ms);
+    }),
 }) {
   // ⚠️ `token` TO POSWIADCZENIE. Nie trafia do komunikatu bledu, do logu ani na ekran
   // (reguła: sekrety nie wychodzą) — dlatego `blad()` sklada tresc WYLACZNIE z odpowiedzi serwera.
@@ -68,10 +71,10 @@ export function createKsefClient({
     const status = res?.status;
     const szczegol = dane?.detail || dane?.title || '';
     const trace = dane?.traceId ? ` (traceId ${dane.traceId})` : '';
-    return bladOperatora(
-      `KSeF odmówił przy ${gdzie}: HTTP ${status}${szczegol ? ` — ${szczegol}` : ''}${trace}`,
-      { status, ...(status === 429 ? { retryAfterS: czasPonowienia(res, szczegol) } : {}) },
-    );
+    return bladOperatora(`KSeF odmówił przy ${gdzie}: HTTP ${status}${szczegol ? ` — ${szczegol}` : ''}${trace}`, {
+      status,
+      ...(status === 429 ? { retryAfterS: czasPonowienia(res, szczegol) } : {}),
+    });
   }
 
   /**
@@ -108,9 +111,7 @@ export function createKsefClient({
    * pierwsze dwa zadania nie maja zadnego, stan i redeem jada TOKENEM OPERACJI, a odswiezanie
    * refresh tokenem. Podstawienie tu tokena KSeF byloby cicha awaria uwierzytelnienia.
    */
-  async function zapytaj(sciezka, {
-    metoda = 'GET', bearer = null, cialo = null, gdzie,
-  }) {
+  async function zapytaj(sciezka, { metoda = 'GET', bearer = null, cialo = null, gdzie }) {
     let res;
     try {
       res = await http(`${baseUrl}${sciezka}`, {
@@ -134,7 +135,11 @@ export function createKsefClient({
       throw bladOperatora(`KSeF nieosiągalny przy ${gdzie}: ${e.message}`);
     }
     let dane = null;
-    try { dane = await res.json(); } catch { dane = null; }
+    try {
+      dane = await res.json();
+    } catch {
+      dane = null;
+    }
     if (!res.ok) throw blad(gdzie, res, dane);
     return dane;
   }
@@ -161,8 +166,8 @@ export function createKsefClient({
     // pozostalych odczytach nizej.
     if (!Array.isArray(certy) || !certy[0]?.certificate) {
       throw bladOperatora(
-        'KSeF nie oddał certyfikatu klucza publicznego — bez niego nie ma czym zaszyfrować '
-        + 'tokena i uwierzytelnienia nie rozpoczęto. Spróbuj ponownie za chwilę.',
+        'KSeF nie oddał certyfikatu klucza publicznego — bez niego nie ma czym zaszyfrować ' +
+          'tokena i uwierzytelnienia nie rozpoczęto. Spróbuj ponownie za chwilę.',
       );
     }
     const klucz = kluczZCertyfikatu(kluczMf(certy, 'KsefTokenEncryption'));
@@ -177,8 +182,8 @@ export function createKsefClient({
     // `TOKEN|undefined` zamiast prawdziwego czasu challenge'a.
     if (!ch?.challenge || typeof ch?.timestampMs !== 'number') {
       throw bladOperatora(
-        'KSeF nie oddał poprawnego wyzwania (challenge lub znacznika czasu) — bez nich nie da się '
-        + 'zaszyfrować tokena i uwierzytelnienia nie rozpoczęto. Spróbuj ponownie za chwilę.',
+        'KSeF nie oddał poprawnego wyzwania (challenge lub znacznika czasu) — bez nich nie da się ' +
+          'zaszyfrować tokena i uwierzytelnienia nie rozpoczęto. Spróbuj ponownie za chwilę.',
       );
     }
 
@@ -201,8 +206,8 @@ export function createKsefClient({
     // niczego nie znaczy.
     if (!init?.authenticationToken?.token || !init?.referenceNumber) {
       throw bladOperatora(
-        'KSeF nie oddał kompletu danych uwierzytelnienia (numeru referencyjnego lub tokena '
-        + 'operacji) — sekwencji nie da się dokończyć. Tokenów nie odbierano. Spróbuj ponownie.',
+        'KSeF nie oddał kompletu danych uwierzytelnienia (numeru referencyjnego lub tokena ' +
+          'operacji) — sekwencji nie da się dokończyć. Tokenów nie odbierano. Spróbuj ponownie.',
       );
     }
 
@@ -246,13 +251,14 @@ export function createKsefClient({
       // ⚠️ Komunikat NIE MA KLAMAC O CZASIE. Stalo tu „w wyznaczonym czasie (60 s)", a realne
       // czekanie to 30 pytan po 60 s limitu plus przerwy — nawet ponad pol godziny. Operator,
       // ktory czyta „60 s", szuka awarii sieci zamiast czekac na MF.
-      const powodStanu = kodStanu === STATUS_W_TOKU
-        ? `KSeF nie potwierdził uwierzytelnienia — ${NAJWIECEJ_PYTAN} pytań o stan i wciąż `
-          + `„w toku" (odpytywanie trwa nawet ~${Math.round(NAJDLUZSZE_ODPYTYWANIE_MS / 60000)} min)`
-        : 'KSeF nie podał stanu uwierzytelnienia (odpowiedź bez pola status.code)';
+      const powodStanu =
+        kodStanu === STATUS_W_TOKU
+          ? `KSeF nie potwierdził uwierzytelnienia — ${NAJWIECEJ_PYTAN} pytań o stan i wciąż ` +
+            `„w toku" (odpytywanie trwa nawet ~${Math.round(NAJDLUZSZE_ODPYTYWANIE_MS / 60000)} min)`
+          : 'KSeF nie podał stanu uwierzytelnienia (odpowiedź bez pola status.code)';
       throw bladOperatora(
-        `${powodStanu}${opis}. Odbioru tokenów nie próbowano — ta operacja działa tylko raz. `
-        + 'Spróbuj ponownie za chwilę.',
+        `${powodStanu}${opis}. Odbioru tokenów nie próbowano — ta operacja działa tylko raz. ` +
+          'Spróbuj ponownie za chwilę.',
       );
     }
 
@@ -260,7 +266,9 @@ export function createKsefClient({
     // Zerwane polaczenie tutaj znaczy „nie wiadomo, czy para zostala wydana", a nie
     // „nie wyszlo": ponowienie mogloby trafic na juz zuzyty zasob.
     const para = await zapytaj('/auth/token/redeem', {
-      metoda: 'POST', bearer: operacyjny, gdzie: 'odbieraniu tokenów',
+      metoda: 'POST',
+      bearer: operacyjny,
+      gdzie: 'odbieraniu tokenów',
     });
 
     // ⚠️⚠️ NAJDROZSZY STRAZNIK W TYM PLIKU. Tu HTTP jest 200, wiec `zapytaj` przepuszcza
@@ -270,8 +278,8 @@ export function createKsefClient({
     // siegac. Komunikat ma powiedziec OBIE te rzeczy — dlatego mowi wprost o zaczynaniu od nowa.
     if (!para?.accessToken?.token || !para?.refreshToken?.token) {
       throw bladOperatora(
-        'KSeF oddał niekompletną parę tokenów przy odbiorze. Jednorazowy odbiór został już '
-        + 'zużyty, więc całą sekwencję uwierzytelnienia trzeba przeprowadzić od nowa.',
+        'KSeF oddał niekompletną parę tokenów przy odbiorze. Jednorazowy odbiór został już ' +
+          'zużyty, więc całą sekwencję uwierzytelnienia trzeba przeprowadzić od nowa.',
       );
     }
 
@@ -291,14 +299,16 @@ export function createKsefClient({
    */
   async function odswiez(refreshToken) {
     const dane = await zapytaj('/auth/token/refresh', {
-      metoda: 'POST', bearer: refreshToken, gdzie: 'odświeżaniu tokena',
+      metoda: 'POST',
+      bearer: refreshToken,
+      gdzie: 'odświeżaniu tokena',
     });
     // Ten sam straznik ksztaltu, co przy odbiorze pary: HTTP 200 z odpowiedzia bez
     // `accessToken` dalby TypeError zamiast zdania, z ktorego cokolwiek wynika.
     if (!dane?.accessToken?.token) {
       throw bladOperatora(
-        'KSeF nie oddał nowego access tokena przy odświeżaniu — dostęp trzeba uzyskać pełną '
-        + 'sekwencją uwierzytelnienia tokenem KSeF.',
+        'KSeF nie oddał nowego access tokena przy odświeżaniu — dostęp trzeba uzyskać pełną ' +
+          'sekwencją uwierzytelnienia tokenem KSeF.',
       );
     }
     return { accessToken: dane.accessToken.token, accessDo: dane.accessToken.validUntil };
@@ -324,9 +334,7 @@ export function createKsefClient({
    * przyrostowy „od ostatnio widzianej daty w gore", a malejace sortowanie zmuszaloby ja
    * do przewijania calej historii przy kazdym odswiezeniu.
    */
-  async function pobierzMetadane({
-    accessToken, from, to, pageOffset = 0,
-  }) {
+  async function pobierzMetadane({ accessToken, from, to, pageOffset = 0 }) {
     const dane = await zapytaj(
       `/invoices/query/metadata?pageSize=${ROZMIAR_STRONY}&pageOffset=${pageOffset}&sortOrder=Asc`,
       {
@@ -350,7 +358,7 @@ export function createKsefClient({
     // ⚠️ ASYMETRIA JEST CELOWA. `hasMore: false` to NORMALNY stan koncowy KAZDEGO nocnego
     // przebiegu (ostatnia strona, brak nowych faktur) — a wiele API pomija w JSON-ie pole,
     // ktore w danym kontekscie nie ma zastosowania (`isTruncated` ma sens tylko przy
-        // `hasMore: true`). Gdyby KSeF tak robil, twardy wymog obu znacznikow kazalby
+    // `hasMore: true`). Gdyby KSeF tak robil, twardy wymog obu znacznikow kazalby
     // odmawiac na OSTATNIEJ stronie kazdego przebiegu — czyli kazdej nocy bez nowych faktur.
     // Tego zachowania NIE ZMIERZONO na zywym API, wiec dzis nie
     // wolno zakladac ostrzejszego kontraktu, niz naprawde wiemy. Dlatego brakujace albo
@@ -359,8 +367,8 @@ export function createKsefClient({
     // zaostrzyc z powrotem do wymogu jawnej wartosci bulowskiej.
     if (!Array.isArray(dane?.invoices)) {
       throw bladOperatora(
-        'KSeF nie oddał poprawnej listy faktur (brak tablicy faktur) — panel nie pokaże '
-        + 'listy, której nie umie policzyć. Spróbuj ponownie.',
+        'KSeF nie oddał poprawnej listy faktur (brak tablicy faktur) — panel nie pokaże ' +
+          'listy, której nie umie policzyć. Spróbuj ponownie.',
       );
     }
     // ⚠️⚠️ KSZTALT KAZDEJ POZYCJI, A NIE TYLKO SAMEJ TABLICY. Element, ktory nie
@@ -380,10 +388,10 @@ export function createKsefClient({
     const zla = dane.invoices.findIndex((f) => f === null || typeof f !== 'object' || Array.isArray(f));
     if (zla !== -1) {
       throw bladOperatora(
-        `KSeF oddał listę faktur, w której pozycja nr ${zla + 1} nie jest dokumentem `
-        + `(${Array.isArray(dane.invoices[zla]) ? 'tablica' : typeof dane.invoices[zla]}). `
-        + 'Panel nie zgadnie, czego brakuje na tej pozycji, więc nie zapisze CAŁEJ strony — '
-        + `kursor stoi, a strona (${from} → ${to}, offset ${pageOffset}) pojedzie ponownie.`,
+        `KSeF oddał listę faktur, w której pozycja nr ${zla + 1} nie jest dokumentem ` +
+          `(${Array.isArray(dane.invoices[zla]) ? 'tablica' : typeof dane.invoices[zla]}). ` +
+          'Panel nie zgadnie, czego brakuje na tej pozycji, więc nie zapisze CAŁEJ strony — ' +
+          `kursor stoi, a strona (${from} → ${to}, offset ${pageOffset}) pojedzie ponownie.`,
       );
     }
     // ⚠️⚠️ ZEJSCIE DO `false` ZOSTAJE, ALE PRZESTAJE BYC NIEWIDOCZNE. Brakujace
@@ -416,7 +424,10 @@ export function createKsefClient({
     const isTruncated = typeof dane.isTruncated === 'boolean' ? dane.isTruncated : false;
     const koniecNiepewny = !hasMorePodany && dane.invoices.length >= ROZMIAR_STRONY;
     return {
-      faktury: dane.invoices, hasMore, isTruncated, koniecNiepewny,
+      faktury: dane.invoices,
+      hasMore,
+      isTruncated,
+      koniecNiepewny,
     };
   }
 
@@ -443,7 +454,11 @@ export function createKsefClient({
       // Blad na tej sciezce wciaz przychodzi jako problem-details JSON (naglowek zadania go
       // wymusza) — sam DOKUMENT jest tym, co idzie surowym tekstem, wylacznie przy sukcesie.
       let dane = null;
-      try { dane = JSON.parse(tresc); } catch { dane = null; }
+      try {
+        dane = JSON.parse(tresc);
+      } catch {
+        dane = null;
+      }
       throw blad(`pobieraniu dokumentu ${ksefNumber}`, res, dane);
     }
     // ⚠️ TEN SAM STRAZNIK KSZTALTU, CO PRZY CERTYFIKACIE I CHALLENGE'U WYZEJ. HTTP 200 z pusta
@@ -451,14 +466,17 @@ export function createKsefClient({
     // dokumentu, dopoki ktos go ręcznie nie otworzy w archiwum.
     if (!tresc) {
       throw bladOperatora(
-        `KSeF oddał pustą odpowiedź przy pobieraniu dokumentu ${ksefNumber} — nie ma czego `
-        + 'zapisać w archiwum. Spróbuj ponownie.',
+        `KSeF oddał pustą odpowiedź przy pobieraniu dokumentu ${ksefNumber} — nie ma czego ` +
+          'zapisać w archiwum. Spróbuj ponownie.',
       );
     }
     return tresc;
   }
 
   return {
-    zaloguj, odswiez, pobierzMetadane, pobierzXml,
+    zaloguj,
+    odswiez,
+    pobierzMetadane,
+    pobierzXml,
   };
 }

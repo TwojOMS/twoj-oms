@@ -1,6 +1,4 @@
-import {
-  describe, it, expect, beforeEach, vi,
-} from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { rozpocznijPrzesylke, zakonczPrzesylke, zapiszStatusDpd } from '../../../src/moduly/wysylka/db/przesylki.js';
@@ -48,7 +46,8 @@ function nadana(db, zamowienieId, kurier, numer, { status = null, statusAt = nul
 }
 
 // Numery listow sa mowiace, zeby asercje czytalo sie bez zagladania do beforeEach.
-let db; let app;
+let db;
+let app;
 beforeEach(() => {
   // ⚠️ Fejkujemy WYLACZNIE `Date` — pelne useFakeTimers() wiesza POST-y w Fastify
   // (ta sama forma i ten sam powod, co w web-przesylki.test.js).
@@ -184,7 +183,10 @@ describe('filtry przezywaja nawigacje', () => {
       url: `/przesylki/${id}/ukryj`,
       headers: { ...AUTH, origin: 'http://localhost' },
       payload: {
-        pokaz: 'wszystkie', kurier: 'dpd', od: '2026-08-21', do: '2026-08-22',
+        pokaz: 'wszystkie',
+        kurier: 'dpd',
+        od: '2026-08-21',
+        do: '2026-08-22',
       },
     });
     expect(r.headers.location).toContain('pokaz=wszystkie');

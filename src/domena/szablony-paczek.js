@@ -8,9 +8,9 @@ const KLUCZ = 'paczka.szablony';
 const LIMIT = 30;
 
 function legacyPaczka(zapis) {
-  return Object.fromEntries(POLA.map((pole) => [
-    pole, liczbaDodatnia(zapis[`paczka.${pole}`]) ?? PACZKA_DOMYSLNA[pole],
-  ]));
+  return Object.fromEntries(
+    POLA.map((pole) => [pole, liczbaDodatnia(zapis[`paczka.${pole}`]) ?? PACZKA_DOMYSLNA[pole]]),
+  );
 }
 
 function stanLegacy(zapis) {
@@ -21,15 +21,26 @@ function stanLegacy(zapis) {
 }
 
 function poprawnyStan(stan) {
-  if (stan?.version !== 1 || !Array.isArray(stan.szablony)
-    || !stan.szablony.length || stan.szablony.length > LIMIT) return false;
+  if (stan?.version !== 1 || !Array.isArray(stan.szablony) || !stan.szablony.length || stan.szablony.length > LIMIT)
+    return false;
   const ids = new Set();
   const nazwy = new Set();
   for (const s of stan.szablony) {
-    if (typeof s?.id !== 'string' || !s.id || ids.has(s.id)
-      || typeof s.nazwa !== 'string' || !s.nazwa.trim() || s.nazwa.length > 60) return false;
+    if (
+      typeof s?.id !== 'string' ||
+      !s.id ||
+      ids.has(s.id) ||
+      typeof s.nazwa !== 'string' ||
+      !s.nazwa.trim() ||
+      s.nazwa.length > 60
+    )
+      return false;
     const nazwa = s.nazwa.trim().toLocaleLowerCase('pl');
-    if (nazwy.has(nazwa) || POLA.some((pole) => typeof s[pole] !== 'number' || !Number.isFinite(s[pole]) || s[pole] <= 0)) return false;
+    if (
+      nazwy.has(nazwa) ||
+      POLA.some((pole) => typeof s[pole] !== 'number' || !Number.isFinite(s[pole]) || s[pole] <= 0)
+    )
+      return false;
     ids.add(s.id);
     nazwy.add(nazwa);
   }
@@ -41,7 +52,9 @@ export function odczytajSzablony(zapis = {}) {
   try {
     const stan = JSON.parse(zapis[KLUCZ]);
     if (poprawnyStan(stan)) return { domyslnyId: stan.domyslnyId, szablony: stan.szablony };
-  } catch { /* stary zapis albo uszkodzony wiersz — wróć do czterech pól */ }
+  } catch {
+    /* stary zapis albo uszkodzony wiersz — wróć do czterech pól */
+  }
   return stanLegacy(zapis);
 }
 
@@ -55,7 +68,9 @@ export function zapiszSzablony(stan) {
   };
 }
 
-function odmowa(tekst) { return { bledy: [tekst] }; }
+function odmowa(tekst) {
+  return { bledy: [tekst] };
+}
 
 /** Dodanie (`noweId`) albo edycja (`dane.id`) bez zmiany pozostałych szablonów. */
 export function zmienSzablon(stan, dane = {}, noweId = null) {
@@ -69,7 +84,9 @@ export function zmienSzablon(stan, dane = {}, noweId = null) {
   const nazwa = String(dane.nazwa ?? '').trim();
   const bledy = [];
   if (!nazwa || nazwa.length > 60) bledy.push('Nazwa szablonu musi mieć od 1 do 60 znaków.');
-  if (stan.szablony.some((s) => s.id !== id && s.nazwa.trim().toLocaleLowerCase('pl') === nazwa.toLocaleLowerCase('pl'))) {
+  if (
+    stan.szablony.some((s) => s.id !== id && s.nazwa.trim().toLocaleLowerCase('pl') === nazwa.toLocaleLowerCase('pl'))
+  ) {
     bledy.push('Szablon o tej nazwie już istnieje.');
   }
   const paczka = {};

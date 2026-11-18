@@ -22,11 +22,20 @@
 import { coWolnoWyslac, doZaznaczeniaWszystkich } from '../../../domena/wysylka-ksef.js';
 import { czyWysylacKonsumenckie } from '../db/ksef-konsumenckie.js';
 import {
-  chwilaWarszawy, czyPoraPrzebiegu, miesiaceAutomatu, KTO_AUTOMAT, POLE_DATY_AUTOMATU,
+  chwilaWarszawy,
+  czyPoraPrzebiegu,
+  miesiaceAutomatu,
+  KTO_AUTOMAT,
+  POLE_DATY_AUTOMATU,
 } from '../../../domena/ksef-automat.js';
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
 import {
-  wczytajAutomatKsef, zajmijPrzebieg, zapiszWynikAutomatu, oznaczPrzerwanyPrzebieg, wstrzymajFakture, zwolnijWstrzymane,
+  wczytajAutomatKsef,
+  zajmijPrzebieg,
+  zapiszWynikAutomatu,
+  oznaczPrzerwanyPrzebieg,
+  wstrzymajFakture,
+  zwolnijWstrzymane,
 } from '../db/ksef-automat.js';
 
 /** Odstęp zegara: przebieg rusza najpóźniej minutę po ustawionej godzinie (i minutę po starcie panelu). */
@@ -35,7 +44,13 @@ export const ODSTEP_AUTOMATU_KSEF_MS = 60 * 1000;
 export const WYLACZONY_PIASKOWNICA = 'wyłączony — piaskownica';
 
 export function createAutomatKsef({
-  db, fakturyWidok, wysylkaKsef, teraz = () => new Date(), log = console.error, dostepny = () => true, piaskownica = false,
+  db,
+  fakturyWidok,
+  wysylkaKsef,
+  teraz = () => new Date(),
+  log = console.error,
+  dostepny = () => true,
+  piaskownica = false,
 }) {
   // Proces właśnie wstał — wynik „trwa” w bazie to przebieg, który padł razem z poprzednim procesem.
   // Korekty jako kandydaci tylko, gdy usługa wysyłki je dopuszcza (program, który wysyła do KSeF).
@@ -53,7 +68,8 @@ export function createAutomatKsef({
     // Przed wszystkim innym — bez odczytu ustawień, bez zajęcia dnia, bez wpisu wyniku co przebieg.
     if (piaskownica) return { pominiety: true, powod: WYLACZONY_PIASKOWNICA };
     // Nazwa i zdolność programu z usługi wysyłki — tej samej, którą automat wysyła (jedno źródło programu).
-    if (!dostepny()) return { pominiety: true, powod: `${wysylkaKsef.nazwaProgramu?.mianownik ?? 'program fakturowy'} odłączony` };
+    if (!dostepny())
+      return { pominiety: true, powod: `${wysylkaKsef.nazwaProgramu?.mianownik ?? 'program fakturowy'} odłączony` };
     // Program bez zdolności `wyslijDoKsef`: automat nie ma czym wysłać — pominięty tym samym zdaniem co przycisk.
     if (wysylkaKsef.niedostepna) return { pominiety: true, powod: wysylkaKsef.niedostepna };
     const stan = wczytajAutomatKsef(db);
@@ -62,15 +78,28 @@ export function createAutomatKsef({
     if (!czyPoraPrzebiegu(stan, chwila)) return { pominiety: true, powod: 'nie ta pora' };
 
     const wynik = {
-      dzien: chwila.dzien, startAt: start.toISOString(), koniecAt: null, stan: 'trwa',
-      wyslane: [], niepewne: [], pominiete: [], poZasadzie: [], wstrzymane: [], wTrakcie: null, blad: null,
+      dzien: chwila.dzien,
+      startAt: start.toISOString(),
+      koniecAt: null,
+      stan: 'trwa',
+      wyslane: [],
+      niepewne: [],
+      pominiete: [],
+      poZasadzie: [],
+      wstrzymane: [],
+      wTrakcie: null,
+      blad: null,
     };
-    if (!zajmijPrzebieg(db, chwila.dzien, wynik, start.toISOString())) return { pominiety: true, powod: 'dziś już był przebieg' };
+    if (!zajmijPrzebieg(db, chwila.dzien, wynik, start.toISOString()))
+      return { pominiety: true, powod: 'dziś już był przebieg' };
 
     // Jeden dokument: zapis „w locie”, wysyłka, wynik. Zwraca true, gdy przebieg ma stanąć (wyłączenie albo błąd).
     async function wyslijJeden(d, miesiac) {
       // Wyłączenie w Ustawieniach działa od razu — także między dokumentami jednego przebiegu.
-      if (!wczytajAutomatKsef(db).wlaczony) { wynik.stan = 'wylaczony'; return true; }
+      if (!wczytajAutomatKsef(db).wlaczony) {
+        wynik.stan = 'wylaczony';
+        return true;
+      }
       // Dokument „w locie” zapisany PRZED wysyłką: po restarcie w trakcie ekran i ostrzeżenie wskażą, który
       // sprawdzić w inFakcie.
       wynik.wTrakcie = { uuid: d.uuid, numer: d.number };
@@ -79,11 +108,16 @@ export function createAutomatKsef({
       wynik.wTrakcie = null;
       dopiszWynik(wynik, w);
       if (w.blad) {
-        wynik.blad = w.blad; wynik.stan = 'blad';
+        wynik.blad = w.blad;
+        wynik.stan = 'blad';
         // Jednoznaczna odmowa inFaktu: nic nie poszło i nic nie jest „nie wiadomo” — usługa zdjęła rezerwację,
         // więc bez wstrzymania ta faktura stawałaby jutro pierwsza i znowu zatrzymywała automat.
         if (!w.wyslane?.length && !w.niepewne?.length) {
-          wstrzymajFakture(db, { uuid: d.uuid, numer: d.number, dzien: chwila.dzien, powod: w.blad }, teraz().toISOString());
+          wstrzymajFakture(
+            db,
+            { uuid: d.uuid, numer: d.number, dzien: chwila.dzien, powod: w.blad },
+            teraz().toISOString(),
+          );
         }
       }
       zapiszWynikAutomatu(db, wynik, teraz().toISOString());
@@ -107,14 +141,26 @@ export function createAutomatKsef({
           for (const u of zalatwione) wstrzymane.delete(u);
         }
         const kandydaci = dokumenty.filter((d) => doZaznaczenia(d) && !wstrzymane.has(d.uuid));
-        wynik.wstrzymane.push(...dokumenty.filter((d) => doZaznaczenia(d) && wstrzymane.has(d.uuid))
-          .map((d) => ({ uuid: d.uuid, numer: d.number })));
+        wynik.wstrzymane.push(
+          ...dokumenty
+            .filter((d) => doZaznaczenia(d) && wstrzymane.has(d.uuid))
+            .map((d) => ({ uuid: d.uuid, numer: d.number })),
+        );
         // Bez numeru KSeF, a poza „zaznacz wszystkie” (korekty, konsumenckie) — do wyniku, z powodem z bariery.
         const zZasady = dokumenty.filter((d) => d?.stanKsef === 'brak' && !doZaznaczenia(d)).map((d) => d.uuid);
-        wynik.poZasadzie.push(...coWolnoWyslac(zZasady, dokumenty, czyWysylacKonsumenckie(db), wysylkaKsef.nazwaProgramu, undefined, opcje).pominiete);
+        wynik.poZasadzie.push(
+          ...coWolnoWyslac(zZasady, dokumenty, czyWysylacKonsumenckie(db), wysylkaKsef.nazwaProgramu, undefined, opcje)
+            .pominiete,
+        );
         for (const d of kandydaci) {
-          if (d.rodzaj === 'korekta') { korektyNaPotem.push({ d, miesiac }); continue; }
-          if (await wyslijJeden(d, miesiac)) { stop = true; break petla; }
+          if (d.rodzaj === 'korekta') {
+            korektyNaPotem.push({ d, miesiac });
+            continue;
+          }
+          if (await wyslijJeden(d, miesiac)) {
+            stop = true;
+            break petla;
+          }
         }
       }
       if (!stop) {
@@ -132,12 +178,18 @@ export function createAutomatKsef({
     if (wynik.stan === 'trwa') wynik.stan = 'ok';
     wynik.koniecAt = teraz().toISOString();
     zapiszWynikAutomatu(db, wynik, wynik.koniecAt);
-    log(`automat KSeF (${wynik.dzien}): wysłano ${wynik.wyslane.length}, nie wiadomo ${wynik.niepewne.length}, `
-      + `pominięto ${wynik.pominiete.length}${wynik.blad ? `, zatrzymany: ${wynik.blad}` : ''}`);
+    log(
+      `automat KSeF (${wynik.dzien}): wysłano ${wynik.wyslane.length}, nie wiadomo ${wynik.niepewne.length}, ` +
+        `pominięto ${wynik.pominiete.length}${wynik.blad ? `, zatrzymany: ${wynik.blad}` : ''}`,
+    );
     return wynik;
   }
 
-  return { przebieg, stan: () => (piaskownica
-    ? { ...wczytajAutomatKsef(db), wlaczony: false, wylaczony: WYLACZONY_PIASKOWNICA }
-    : wczytajAutomatKsef(db)) };
+  return {
+    przebieg,
+    stan: () =>
+      piaskownica
+        ? { ...wczytajAutomatKsef(db), wlaczony: false, wylaczony: WYLACZONY_PIASKOWNICA }
+        : wczytajAutomatKsef(db),
+  };
 }

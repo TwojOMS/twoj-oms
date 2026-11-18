@@ -51,7 +51,9 @@ export function polaczenieBezpieczne(req) {
   // `x-forwarded-proto` stawia reverse proxy. Podrobienie go nikomu niczego nie otwiera: zmienia tylko
   // odpowiedź na to samo żądanie — flagę `Secure` jej ciasteczka i nagłówek HSTS (core/aplikacja.ts),
   // który przeglądarka i tak pomija na połączeniu bez HTTPS.
-  const naglowek = String(req.headers['x-forwarded-proto'] ?? '').split(',')[0].trim();
+  const naglowek = String(req.headers['x-forwarded-proto'] ?? '')
+    .split(',')[0]
+    .trim();
   if (naglowek) return naglowek === 'https';
   return req.protocol === 'https';
 }

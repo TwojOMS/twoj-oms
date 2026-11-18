@@ -6,7 +6,13 @@ import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { definicjeKanalowHistoryczne } from '../../pomoc/przykladowe-definicje-kanalow.js';
 import { szyfrTestowy } from '../../pomoc/sejf-testowy.ts';
 import { utworzKarte, zapiszProduktSklepowy, powiazProdukt } from '../../../src/oms/db/magazyn.js';
-import { ofertyKarty, wstawOferte, zmienOferte, ofertaPoId, zapiszUstawieniaOfertKonta } from '../../../src/oms/db/oferty-kanalow.ts';
+import {
+  ofertyKarty,
+  wstawOferte,
+  zmienOferte,
+  ofertaPoId,
+  zapiszUstawieniaOfertKonta,
+} from '../../../src/oms/db/oferty-kanalow.ts';
 import { opisKategorii } from '../../../src/domena/tresc-oferty-allegro.js';
 import { kategoriaAllegroDemo, parametryKategoriiAllegroDemo } from '../../../scripts/demo-dane-katalog.mjs';
 import { BRAK_ZGODY_OFERT } from '../../../src/moduly/kanaly/services/oferty-allegro-ustawienia.ts';
@@ -16,38 +22,76 @@ import { podpisz, NAZWA_CIASTECZKA_OMS } from '../../../src/core/bezpieczenstwo/
 import { wczytajSekret } from '../../../src/core/bezpieczenstwo/sekret-sesji.js';
 import slowniki from '../../fixtures/allegro/e3-dok-slowniki.json' with { type: 'json' };
 
-const KONTO = 'allegro_swietlik';      // zgoda na oferty
-const BEZ_ZGODY = 'allegro_polcien2';  // token bez zakresów ofert
+const KONTO = 'allegro_swietlik'; // zgoda na oferty
+const BEZ_ZGODY = 'allegro_polcien2'; // token bez zakresów ofert
 const ERLI = 'erli-polcien';
 const T0 = '2026-11-14T08:00:00.000Z';
 const OFERTY = ['allegro:api:sale:offers:write', 'allegro:api:sale:settings:read'];
-const jwt = scope => ['e30', Buffer.from(JSON.stringify({ scope })).toString('base64url'), 'podpis'].join('.');
-const auth = { authorization: `Basic ${Buffer.from('operator:atrapa').toString('base64')}`, origin: 'http://localhost' };
+const jwt = (scope) => ['e30', Buffer.from(JSON.stringify({ scope })).toString('base64url'), 'podpis'].join('.');
+const auth = {
+  authorization: `Basic ${Buffer.from('operator:atrapa').toString('base64')}`,
+  origin: 'http://localhost',
+};
 
 let db, app, klienci, kontaAllegro;
 const post = (url, payload, headers = auth) => app.inject({ method: 'POST', url, payload, headers });
 const get = (url, headers = auth) => app.inject({ method: 'GET', url, headers });
 const podglad = (zaznaczone, konto = KONTO) => post('/magazyn/oferty/podglad', { konto, zaznaczone });
-const decyzja = (r, zaznaczone, konto = KONTO) => ({ konto, zaznaczone, podglad: /name="podglad" value="([^"]+)"/.exec(r.body)?.[1] });
-const wywolania = k => Object.entries(k).filter(([, f]) => f.mock.calls.length).map(([n]) => n);
+const decyzja = (r, zaznaczone, konto = KONTO) => ({
+  konto,
+  zaznaczone,
+  podglad: /name="podglad" value="([^"]+)"/.exec(r.body)?.[1],
+});
+const wywolania = (k) =>
+  Object.entries(k)
+    .filter(([, f]) => f.mock.calls.length)
+    .map(([n]) => n);
 const atrapa = () => ({
   podgladOplat: vi.fn(async () => structuredClone(slowniki.podgladOplat)),
-  utworzOferte: vi.fn(), zmienOferte: vi.fn(), zmienStatusOferty: vi.fn(), komendaIlosci: vi.fn(), komendaCeny: vi.fn(),
-  pobierzOferte: vi.fn(), wgrajZdjecie: vi.fn(),
+  utworzOferte: vi.fn(),
+  zmienOferte: vi.fn(),
+  zmienStatusOferty: vi.fn(),
+  komendaIlosci: vi.fn(),
+  komendaCeny: vi.fn(),
+  pobierzOferte: vi.fn(),
+  wgrajZdjecie: vi.fn(),
 });
-const tokeny = (kanal, scope) => db.prepare(`INSERT OR REPLACE INTO tokeny_kanalu (kanal, access_token, refresh_token, wygasa_at, refresh_wygasa_at, zaktualizowane_at)
-  VALUES (?, ?, ?, '2026-11-14T11:00:00Z', '2027-01-01T00:00:00Z', '2026-11-14T10:00:00Z')`).run(kanal,
-  szyfrTestowy(db, 'tokeny_kanalu', 'access_token', kanal, jwt(scope)), szyfrTestowy(db, 'tokeny_kanalu', 'refresh_token', kanal, 'REFRESH-ATRAPA'));
+const tokeny = (kanal, scope) =>
+  db
+    .prepare(
+      `INSERT OR REPLACE INTO tokeny_kanalu (kanal, access_token, refresh_token, wygasa_at, refresh_wygasa_at, zaktualizowane_at)
+  VALUES (?, ?, ?, '2026-11-14T11:00:00Z', '2027-01-01T00:00:00Z', '2026-11-14T10:00:00Z')`,
+    )
+    .run(
+      kanal,
+      szyfrTestowy(db, 'tokeny_kanalu', 'access_token', kanal, jwt(scope)),
+      szyfrTestowy(db, 'tokeny_kanalu', 'refresh_token', kanal, 'REFRESH-ATRAPA'),
+    );
 
 /** Karta gotowa do wystawienia na Allegro (kategoria z mapy, reguły, marka, GPSR konta, 3 zdjęcia). */
 function karta(n, { cena_gr = 5900 } = {}) {
-  const id = utworzKarte(db, { nazwa: `Lampa stołowa Gliwka ${n}`, sku: `GLW-${n}`, cena_gr, stawka_vat: '23',
-    marka: 'Pracownia Półcień', kategoria_glowna: 'Lampy stołowe', szerokosc_mm: 255,
-    opis_sekcje_json: JSON.stringify({ sekcje: [{ elementy: [{ typ: 'tekst', html: '<p>Lampa z mlecznym kloszem.</p>' }] }] }) },
-  { at: T0 });
-  db.prepare('UPDATE karty_produktow SET informacja_bezpieczenstwa = ? WHERE id = ?')
-    .run(JSON.stringify({ typ: 'TEXT', tekst: 'Nie zostawiaj włączonej lampy bez nadzoru.' }), id);
-  const zdj = db.prepare(`INSERT INTO zdjecia_kart (karta_id, kolejnosc, zrodlo, adres_zrodlowy, sha256, typ, ai, ai_reczne, utworzono_at)
+  const id = utworzKarte(
+    db,
+    {
+      nazwa: `Lampa stołowa Gliwka ${n}`,
+      sku: `GLW-${n}`,
+      cena_gr,
+      stawka_vat: '23',
+      marka: 'Pracownia Półcień',
+      kategoria_glowna: 'Lampy stołowe',
+      szerokosc_mm: 255,
+      opis_sekcje_json: JSON.stringify({
+        sekcje: [{ elementy: [{ typ: 'tekst', html: '<p>Lampa z mlecznym kloszem.</p>' }] }],
+      }),
+    },
+    { at: T0 },
+  );
+  db.prepare('UPDATE karty_produktow SET informacja_bezpieczenstwa = ? WHERE id = ?').run(
+    JSON.stringify({ typ: 'TEXT', tekst: 'Nie zostawiaj włączonej lampy bez nadzoru.' }),
+    id,
+  );
+  const zdj =
+    db.prepare(`INSERT INTO zdjecia_kart (karta_id, kolejnosc, zrodlo, adres_zrodlowy, sha256, typ, ai, ai_reczne, utworzono_at)
     VALUES (?, ?, 'reczne', ?, NULL, 'image/jpeg', 0, 1, ?)`);
   for (let i = 0; i < 3; i++) zdj.run(id, i, `https://polcien.example.invalid/gliwka-${id}-${i + 1}.jpg`, T0);
   return id;
@@ -60,34 +104,81 @@ beforeEach(async () => {
     { klucz: KONTO, nazwa: 'Świetlik', autoryzacja: 'polaczone', srodowisko: 'produkcja' },
     { klucz: BEZ_ZGODY, nazwa: 'Półcień Druga', autoryzacja: 'polaczone', srodowisko: 'produkcja' },
   ];
-  app = buildOmsServer({ db, config: { auth: { user: 'operator', pass: 'atrapa' },
-    definicje: [...definicjeKanalowHistoryczne, { klucz: ERLI, typ: 'erli', prefiks: 'ERLI_POLCIEN', etykieta: 'ERLI Półcień' }] },
+  app = buildOmsServer({
+    db,
+    config: {
+      auth: { user: 'operator', pass: 'atrapa' },
+      definicje: [
+        ...definicjeKanalowHistoryczne,
+        { klucz: ERLI, typ: 'erli', prefiks: 'ERLI_POLCIEN', etykieta: 'ERLI Półcień' },
+      ],
+    },
     magazyn: { stan: () => ({ trwa: false, kanaly: [] }) },
-    nadpisania: { 'kanaly.klienciKanalow': klienci, 'kanaly.repozytoriumKanalow': {
-      listaTypu: typ => (typ === 'allegro' ? kontaAllegro : typ === 'erli' ? [{ klucz: ERLI, nazwa: 'Półcień' }] : []),
-      zapisyZablokowane: () => false, konfliktKlucza: () => false,
-    } },
+    nadpisania: {
+      'kanaly.klienciKanalow': klienci,
+      'kanaly.repozytoriumKanalow': {
+        listaTypu: (typ) =>
+          typ === 'allegro' ? kontaAllegro : typ === 'erli' ? [{ klucz: ERLI, nazwa: 'Półcień' }] : [],
+        zapisyZablokowane: () => false,
+        konfliktKlucza: () => false,
+      },
+    },
   });
   await app.ready();
   tokeny(KONTO, ['allegro:api:orders:read', ...OFERTY]);
   tokeny(BEZ_ZGODY, ['allegro:api:orders:read']);
-  db.prepare(`INSERT INTO allegro_mapa_kategorii (kategoria_karty, srodowisko, kategoria_allegro_id) VALUES ('Lampy stołowe', 'produkcja', '257')`).run();
-  const regula = db.prepare(`INSERT INTO allegro_reguly_parametrow (srodowisko, kategoria_allegro_id, parametr_id, rodzaj,
+  db.prepare(
+    `INSERT INTO allegro_mapa_kategorii (kategoria_karty, srodowisko, kategoria_allegro_id) VALUES ('Lampy stołowe', 'produkcja', '257')`,
+  ).run();
+  const regula =
+    db.prepare(`INSERT INTO allegro_reguly_parametrow (srodowisko, kategoria_allegro_id, parametr_id, rodzaj,
     wartosc_json, pole, zmieniono_at) VALUES ('produkcja', '257', ?, ?, ?, ?, ?)`);
   regula.run('11323', 'stala', JSON.stringify({ valuesIds: ['11323_1'] }), null, T0);
   regula.run('248811', 'pole', null, 'marka', T0);
-  db.prepare(`INSERT INTO allegro_marki (marka, srodowisko, parametr_id, wartosc_id, kategorie_sprawdzone_json, zmieniono_at)
-    VALUES ('Pracownia Półcień', 'produkcja', '248811', '248811_9001', '["257"]', ?)`).run(T0);
+  db.prepare(
+    `INSERT INTO allegro_marki (marka, srodowisko, parametr_id, wartosc_id, kategorie_sprawdzone_json, zmieniono_at)
+    VALUES ('Pracownia Półcień', 'produkcja', '248811', '248811_9001', '["257"]', ?)`,
+  ).run(T0);
   const opis = opisKategorii(['5', '256', '257'].map(kategoriaAllegroDemo), parametryKategoriiAllegroDemo('257'));
   for (const k of [KONTO, BEZ_ZGODY]) {
-    db.prepare(`INSERT INTO allegro_marki_gpsr (marka, konto, zrodlo, zmieniono_at) VALUES ('Pracownia Półcień', ?, 'konto', ?)`).run(k, T0);
-    db.prepare(`INSERT INTO kanaly_kategorie (polaczenie, kategoria_id, sciezka_json, parametry_json, pobrano_at) VALUES (?, '257', ?, ?, ?)`)
-      .run(k, JSON.stringify(opis.sciezka), JSON.stringify({ wersja: opis.wersja, lisc: opis.lisc, tworzenieProduktu: opis.tworzenieProduktu, parametry: opis.parametry }), T0);
-    zapiszUstawieniaOfertKonta(db, k, { narzutProcent: 0, stalaIlosc: 5, czasWysylkiDni: 2, cennikDostaw: 'cennik-1',
-      stawkaVat: '23', zwrotyId: 'zwrot-1', reklamacjeId: 'rekl-1', producentId: 'prod-konta' }, { teraz: T0 });
+    db.prepare(
+      `INSERT INTO allegro_marki_gpsr (marka, konto, zrodlo, zmieniono_at) VALUES ('Pracownia Półcień', ?, 'konto', ?)`,
+    ).run(k, T0);
+    db.prepare(
+      `INSERT INTO kanaly_kategorie (polaczenie, kategoria_id, sciezka_json, parametry_json, pobrano_at) VALUES (?, '257', ?, ?, ?)`,
+    ).run(
+      k,
+      JSON.stringify(opis.sciezka),
+      JSON.stringify({
+        wersja: opis.wersja,
+        lisc: opis.lisc,
+        tworzenieProduktu: opis.tworzenieProduktu,
+        parametry: opis.parametry,
+      }),
+      T0,
+    );
+    zapiszUstawieniaOfertKonta(
+      db,
+      k,
+      {
+        narzutProcent: 0,
+        stalaIlosc: 5,
+        czasWysylkiDni: 2,
+        cennikDostaw: 'cennik-1',
+        stawkaVat: '23',
+        zwrotyId: 'zwrot-1',
+        reklamacjeId: 'rekl-1',
+        producentId: 'prod-konta',
+      },
+      { teraz: T0 },
+    );
   }
 });
-afterEach(async () => { await app.close(); db.close(); vi.useRealTimers(); });
+afterEach(async () => {
+  await app.close();
+  db.close();
+  vi.useRealTimers();
+});
 
 it('„Wystaw na…” pokazuje konta obu typów; konto bez zgody jest wyszarzone z komunikatem o braku zgody; jest „Aktywuj w Allegro”', async () => {
   karta(1);
@@ -95,7 +186,9 @@ it('„Wystaw na…” pokazuje konta obu typów; konto bez zgody jest wyszarzon
   expect(r.statusCode).toBe(200);
   expect(r.body).toContain(`>ERLI · ${ERLI}</option>`);
   expect(r.body).toContain(`<option value="${KONTO}">Allegro · ${KONTO}</option>`);
-  expect(r.body).toMatch(new RegExp(`<option value="${BEZ_ZGODY}" disabled>Allegro · ${BEZ_ZGODY} — ${BRAK_ZGODY_OFERT}</option>`));
+  expect(r.body).toMatch(
+    new RegExp(`<option value="${BEZ_ZGODY}" disabled>Allegro · ${BEZ_ZGODY} — ${BRAK_ZGODY_OFERT}</option>`),
+  );
   expect(r.body).toContain('formaction="/magazyn/oferty/aktywuj"');
   expect(r.body).toContain('Aktywuj w Allegro');
 });
@@ -105,11 +198,23 @@ it('podgląd Allegro: droga, kategoria, cena i prowizja; zatwierdzenie kładzie 
   const r = await podglad([id]);
   expect(r.statusCode).toBe(200);
   // Nagłówek używa nazwy z konfiguracji, zamiast technicznego klucza konta.
-  for (const tekst of ['Oferty Allegro', 'Allegro swietlik_pl', 'nowy produkt', 'Kategoria Allegro: 257', '59,00 zł', 'Prowizja: 19,00 zł', 'Ilość: 5']) expect(r.body).toContain(tekst);
+  for (const tekst of [
+    'Oferty Allegro',
+    'Allegro swietlik_pl',
+    'nowy produkt',
+    'Kategoria Allegro: 257',
+    '59,00 zł',
+    'Prowizja: 19,00 zł',
+    'Ilość: 5',
+  ])
+    expect(r.body).toContain(tekst);
   expect(r.body).not.toContain('Odmowa:');
   expect(ofertyKarty(db, id)).toHaveLength(0);
   expect(klienci[KONTO].podgladOplat).toHaveBeenCalledTimes(1);
-  expect(klienci[KONTO].podgladOplat.mock.calls[0][0]).toEqual({ category: { id: '257' }, sellingMode: { format: 'BUY_NOW', price: { amount: '59.00', currency: 'PLN' } } });
+  expect(klienci[KONTO].podgladOplat.mock.calls[0][0]).toEqual({
+    category: { id: '257' },
+    sellingMode: { format: 'BUY_NOW', price: { amount: '59.00', currency: 'PLN' } },
+  });
   const w = await post('/magazyn/oferty/zatwierdz', decyzja(r, [id]));
   expect(w.statusCode).toBe(200);
   expect(w.body).toContain('W kolejce: 1. Odmówiono: 0.');
@@ -131,8 +236,14 @@ it('bez podglądu nie ma zatwierdzenia', async () => {
 it('karta z ofertą Allegro w lustrze na tym koncie → odmowa liczona osobno', async () => {
   const a = karta(1);
   const b = karta(2);
-  const pid = zapiszProduktSklepowy(db, { kanal: KONTO, produkt_id: '17000000000777', wariant_id: '', nazwa: 'Gliwka (poza OMS)',
-    status_publikacji: 'ACTIVE', odczytane_at: T0 });
+  const pid = zapiszProduktSklepowy(db, {
+    kanal: KONTO,
+    produkt_id: '17000000000777',
+    wariant_id: '',
+    nazwa: 'Gliwka (poza OMS)',
+    status_publikacji: 'ACTIVE',
+    odczytane_at: T0,
+  });
   powiazProdukt(db, pid, a);
   const r = await podglad([a, b]);
   expect(r.statusCode).toBe(200);
@@ -145,9 +256,22 @@ it('karta z ofertą Allegro w lustrze na tym koncie → odmowa liczona osobno', 
 
 it('karta z 2 ofertami na innych kontach → ostrzeżenie, nie odmowa', async () => {
   const id = karta(1);
-  wstawOferte(db, { kartaId: id, kanal: BEZ_ZGODY, idZewnetrzne: '17000000000101', stan: 'aktywna', pochodzenie: 'oms', tryb: 'zarzadzana' });
-  const pid = zapiszProduktSklepowy(db, { kanal: BEZ_ZGODY, produkt_id: '17000000000102', wariant_id: '', nazwa: 'Gliwka bis',
-    status_publikacji: 'ACTIVE', odczytane_at: T0 });
+  wstawOferte(db, {
+    kartaId: id,
+    kanal: BEZ_ZGODY,
+    idZewnetrzne: '17000000000101',
+    stan: 'aktywna',
+    pochodzenie: 'oms',
+    tryb: 'zarzadzana',
+  });
+  const pid = zapiszProduktSklepowy(db, {
+    kanal: BEZ_ZGODY,
+    produkt_id: '17000000000102',
+    wariant_id: '',
+    nazwa: 'Gliwka bis',
+    status_publikacji: 'ACTIVE',
+    odczytane_at: T0,
+  });
   powiazProdukt(db, pid, id);
   const r = await podglad([id]);
   expect(r.body).toContain('Allegro nie pozwala na więcej niż dwie oferty');
@@ -171,7 +295,9 @@ it('prowizja dla 21. karty → „nie policzono”; jedno zapytanie na (kategori
   expect(r.statusCode).toBe(200);
   expect(r.body.split('Prowizja: 19,00 zł').length - 1).toBe(20);
   expect(r.body.split(`Prowizja: ${PROWIZJA_NIE_POLICZONO}`).length - 1).toBe(1);
-  expect(r.body.indexOf(`Prowizja: ${PROWIZJA_NIE_POLICZONO}`)).toBeGreaterThan(r.body.indexOf(`Lampa stołowa Gliwka 21<`));
+  expect(r.body.indexOf(`Prowizja: ${PROWIZJA_NIE_POLICZONO}`)).toBeGreaterThan(
+    r.body.indexOf(`Lampa stołowa Gliwka 21<`),
+  );
   expect(klienci[KONTO].podgladOplat).toHaveBeenCalledTimes(1);
   // Pamięć 10 min: drugi podgląd nie pyta ponownie.
   await podglad(ids.slice(0, 2));
@@ -192,7 +318,14 @@ it('„Aktywuj” na szkicu zapisuje aktywuj = true i niczego nie wysyła; przyc
   const id = karta(1);
   const drugi = karta(2);
   const szkic = (kartaId) => {
-    const o = wstawOferte(db, { kartaId, kanal: KONTO, idZewnetrzne: `ext:TEST-K${kartaId}`, stan: 'nieaktywna', pochodzenie: 'oms', tryb: 'zarzadzana' });
+    const o = wstawOferte(db, {
+      kartaId,
+      kanal: KONTO,
+      idZewnetrzne: `ext:TEST-K${kartaId}`,
+      stan: 'nieaktywna',
+      pochodzenie: 'oms',
+      tryb: 'zarzadzana',
+    });
     zmienOferte(db, o.id, { wyslanePola: { externalId: `TEST-K${kartaId}`, szkic: true, skrot: 'abc' } });
     return o;
   };
@@ -203,7 +336,10 @@ it('„Aktywuj” na szkicu zapisuje aktywuj = true i niczego nie wysyła; przyc
   expect(k.body).toContain(`Allegro · ${KONTO}`);
   const r = await post(`/magazyn/${id}/oferty/${o.id}/aktywuj`, {});
   expect(r.statusCode).toBe(303);
-  expect(ofertaPoId(db, o.id)).toMatchObject({ stan: 'nieaktywna', wyslanePola: { externalId: `TEST-K${id}`, szkic: true, skrot: 'abc', aktywuj: true } });
+  expect(ofertaPoId(db, o.id)).toMatchObject({
+    stan: 'nieaktywna',
+    wyslanePola: { externalId: `TEST-K${id}`, szkic: true, skrot: 'abc', aktywuj: true },
+  });
   const o2 = szkic(drugi);
   const h = await post('/magazyn/oferty/aktywuj', { konto: KONTO, zakres: 'zaznaczone', zaznaczone: [id, drugi] });
   expect(h.statusCode).toBe(200);
@@ -214,7 +350,14 @@ it('„Aktywuj” na szkicu zapisuje aktywuj = true i niczego nie wysyła; przyc
 
 it('„Aktywuj” na ofercie zdjętej (albo bez szkicu) → 409', async () => {
   const id = karta(1);
-  const zakonczona = wstawOferte(db, { kartaId: id, kanal: KONTO, idZewnetrzne: `ext:TEST-K${id}`, stan: 'nieaktywna', pochodzenie: 'oms', tryb: 'zarzadzana' });
+  const zakonczona = wstawOferte(db, {
+    kartaId: id,
+    kanal: KONTO,
+    idZewnetrzne: `ext:TEST-K${id}`,
+    stan: 'nieaktywna',
+    pochodzenie: 'oms',
+    tryb: 'zarzadzana',
+  });
   zmienOferte(db, zakonczona.id, { wyslanePola: { externalId: `TEST-K${id}` } });
   const r = await post(`/magazyn/${id}/oferty/${zakonczona.id}/aktywuj`, {});
   expect(r.statusCode).toBe(409);
@@ -229,7 +372,14 @@ it('„Aktywuj” na ofercie zdjętej (albo bez szkicu) → 409', async () => {
 it('„Aktywuj” bez zgody konta → 400 w obu trasach; hurt na jednym koncie nie rusza szkicu na drugim', async () => {
   const id = karta(1);
   const szkic = (kanal, ext) => {
-    const o = wstawOferte(db, { kartaId: id, kanal, idZewnetrzne: ext, stan: 'nieaktywna', pochodzenie: 'oms', tryb: 'zarzadzana' });
+    const o = wstawOferte(db, {
+      kartaId: id,
+      kanal,
+      idZewnetrzne: ext,
+      stan: 'nieaktywna',
+      pochodzenie: 'oms',
+      tryb: 'zarzadzana',
+    });
     zmienOferte(db, o.id, { wyslanePola: { externalId: ext, szkic: true } });
     return o;
   };
@@ -263,7 +413,7 @@ it('konto sandbox ma dopisek „(sandbox)” na liście „Wystaw na…” i w n
 
 it('aktywacja pokazuje nazwę konta zamiast klucza', async () => {
   const id = karta(1);
-  const r = await post('/magazyn/oferty/aktywuj', {konto:KONTO, zaznaczone:[id]});
+  const r = await post('/magazyn/oferty/aktywuj', { konto: KONTO, zaznaczone: [id] });
   expect(r.statusCode).toBe(200);
   expect(r.body).toContain('Allegro swietlik_pl');
   expect(r.body).not.toContain('Allegro · Allegro');
@@ -272,7 +422,14 @@ it('aktywacja pokazuje nazwę konta zamiast klucza', async () => {
 
 it('„Zdejmij” na Allegro zapisuje tylko zamiar ENDED i zeruje liczniki zdejmowania; „Wyślij ponownie” działa dla Allegro', async () => {
   const id = karta(1);
-  const o = wstawOferte(db, { kartaId: id, kanal: KONTO, idZewnetrzne: `ext:TEST-K${id}`, stan: 'aktywna', pochodzenie: 'oms', tryb: 'zarzadzana' });
+  const o = wstawOferte(db, {
+    kartaId: id,
+    kanal: KONTO,
+    idZewnetrzne: `ext:TEST-K${id}`,
+    stan: 'aktywna',
+    pochodzenie: 'oms',
+    tryb: 'zarzadzana',
+  });
   zmienOferte(db, o.id, { wyslanePola: { externalId: `TEST-K${id}`, skrot: 'abc', probyZdjecia: 5, bledyZdjecia: 2 } });
   const przed = ofertaPoId(db, o.id);
   const r = await post(`/magazyn/${id}/oferty/${o.id}/zdejmij`, {});
@@ -281,18 +438,41 @@ it('„Zdejmij” na Allegro zapisuje tylko zamiar ENDED i zeruje liczniki zdejm
   expect(po.wyslanePola).toEqual({ externalId: `TEST-K${id}`, skrot: 'abc', zdejmij: true });
   expect(po.stan).toBe(przed.stan);
   expect(wywolania(klienci[KONTO])).toEqual([]);
-  const p = wstawOferte(db, { kartaId: karta(2), kanal: KONTO, idZewnetrzne: 'ext:TEST-K99', stan: 'problem', pochodzenie: 'oms', tryb: 'zarzadzana' });
+  const p = wstawOferte(db, {
+    kartaId: karta(2),
+    kanal: KONTO,
+    idZewnetrzne: 'ext:TEST-K99',
+    stan: 'problem',
+    pochodzenie: 'oms',
+    tryb: 'zarzadzana',
+  });
   expect((await post(`/magazyn/${p.kartaId}/oferty/${p.id}/ponow`, {})).statusCode).toBe(303);
   expect(ofertaPoId(db, p.id).stan).toBe('do_wyslania');
 });
 
 it('„Ponów” na ofercie z numerem Allegro wraca do synchronizacji, nie do wysłania (bez drugiego POST)', async () => {
   const id = karta(3);
-  const o = wstawOferte(db, { kartaId: id, kanal: KONTO, idZewnetrzne: '7712001', stan: 'problem', pochodzenie: 'oms', tryb: 'zarzadzana' });
-  zmienOferte(db, o.id, { odczytStatus: 'ACTIVE', liczbaProb: 5, problemy: [{ kod: 'komenda', rodzaj: 'ilosc', tekst: 'Odrzucona' }],
-    wyslanePola: { komendaIlosci: { id: 'k-1', wartosc: 4 }, produktId: '42' } });
+  const o = wstawOferte(db, {
+    kartaId: id,
+    kanal: KONTO,
+    idZewnetrzne: '7712001',
+    stan: 'problem',
+    pochodzenie: 'oms',
+    tryb: 'zarzadzana',
+  });
+  zmienOferte(db, o.id, {
+    odczytStatus: 'ACTIVE',
+    liczbaProb: 5,
+    problemy: [{ kod: 'komenda', rodzaj: 'ilosc', tekst: 'Odrzucona' }],
+    wyslanePola: { komendaIlosci: { id: 'k-1', wartosc: 4 }, produktId: '42' },
+  });
   expect((await post(`/magazyn/${id}/oferty/${o.id}/ponow`, {})).statusCode).toBe(303);
-  expect(ofertaPoId(db, o.id)).toMatchObject({ stan: 'aktywna', liczbaProb: 0, problemy: [], wyslanePola: { produktId: '42' } });
+  expect(ofertaPoId(db, o.id)).toMatchObject({
+    stan: 'aktywna',
+    liczbaProb: 0,
+    problemy: [],
+    wyslanePola: { produktId: '42' },
+  });
   expect(ofertaPoId(db, o.id).wyslanePola.komendaIlosci).toBeUndefined();
   expect(wywolania(klienci[KONTO])).toEqual([]);
 });
@@ -301,15 +481,36 @@ it('lista: oferta Allegro z rejestru ma plakietkę ze stanem; liczba zapytań ni
   const policz = async () => {
     const oryginal = db.prepare;
     let n = 0;
-    db.prepare = function (...args) { n++; return oryginal.apply(this, args); };
-    try { expect((await get('/magazyn')).statusCode).toBe(200); } finally { db.prepare = oryginal; }
+    db.prepare = function (...args) {
+      n++;
+      return oryginal.apply(this, args);
+    };
+    try {
+      expect((await get('/magazyn')).statusCode).toBe(200);
+    } finally {
+      db.prepare = oryginal;
+    }
     return n;
   };
   const dodaj = (ile, start) => {
     for (let i = 0; i < ile; i++) {
       const id = karta(start + i);
-      wstawOferte(db, { kartaId: id, kanal: KONTO, idZewnetrzne: `ext:TEST-K${id}`, stan: 'do_wyslania', pochodzenie: 'oms', tryb: 'zarzadzana' });
-      wstawOferte(db, { kartaId: id, kanal: ERLI, idZewnetrzne: `GLW-${id}`, stan: 'aktywna', pochodzenie: 'oms', tryb: 'zarzadzana' });
+      wstawOferte(db, {
+        kartaId: id,
+        kanal: KONTO,
+        idZewnetrzne: `ext:TEST-K${id}`,
+        stan: 'do_wyslania',
+        pochodzenie: 'oms',
+        tryb: 'zarzadzana',
+      });
+      wstawOferte(db, {
+        kartaId: id,
+        kanal: ERLI,
+        idZewnetrzne: `GLW-${id}`,
+        stan: 'aktywna',
+        pochodzenie: 'oms',
+        tryb: 'zarzadzana',
+      });
     }
   };
   dodaj(3, 1);
@@ -323,14 +524,33 @@ it('lista: oferta Allegro z rejestru ma plakietkę ze stanem; liczba zapytań ni
 
 it('odrzuca obcy CSRF oraz nie-admina na trasach ofert Allegro', async () => {
   const id = karta(1);
-  const o = wstawOferte(db, { kartaId: id, kanal: KONTO, idZewnetrzne: `ext:TEST-K${id}`, stan: 'nieaktywna', pochodzenie: 'oms', tryb: 'zarzadzana' });
+  const o = wstawOferte(db, {
+    kartaId: id,
+    kanal: KONTO,
+    idZewnetrzne: `ext:TEST-K${id}`,
+    stan: 'nieaktywna',
+    pochodzenie: 'oms',
+    tryb: 'zarzadzana',
+  });
   zmienOferte(db, o.id, { wyslanePola: { szkic: true } });
-  const trasy = ['/magazyn/oferty/podglad', '/magazyn/oferty/zatwierdz', '/magazyn/oferty/aktywuj', `/magazyn/${id}/oferty/${o.id}/aktywuj`, `/magazyn/${id}/oferty/${o.id}/zdejmij`];
-  for (const url of trasy) expect((await post(url, { konto: KONTO, zaznaczone: [id] }, { ...auth, origin: 'https://obcy.example' })).statusCode).toBe(403);
+  const trasy = [
+    '/magazyn/oferty/podglad',
+    '/magazyn/oferty/zatwierdz',
+    '/magazyn/oferty/aktywuj',
+    `/magazyn/${id}/oferty/${o.id}/aktywuj`,
+    `/magazyn/${id}/oferty/${o.id}/zdejmij`,
+  ];
+  for (const url of trasy)
+    expect(
+      (await post(url, { konto: KONTO, zaznaczone: [id] }, { ...auth, origin: 'https://obcy.example' })).statusCode,
+    ).toBe(403);
   zalozKonto(db, { login: 'admin', imie: 'Admin', haslo: 'test', rola: 'admin', admin: true });
   const user = zalozKonto(db, { login: 'czytelnik', imie: 'Czytelnik', haslo: 'test', rola: 'operator' });
   ustawUprawnienia(db, user, ['magazyn']);
-  const headers = { origin: 'http://localhost', cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz('czytelnik', wczytajSekret(db), Date.now(), 0)}` };
+  const headers = {
+    origin: 'http://localhost',
+    cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz('czytelnik', wczytajSekret(db), Date.now(), 0)}`,
+  };
   for (const url of trasy) expect((await post(url, { konto: KONTO, zaznaczone: [id] }, headers)).statusCode).toBe(403);
   expect(ofertaPoId(db, o.id).wyslanePola.aktywuj).toBeUndefined();
   expect(wywolania(klienci[KONTO])).toEqual([]);
@@ -340,9 +560,20 @@ describe('Aktywuj z kontem ERLI w polu', () => {
   function szkice() {
     const id = karta(1);
     const drugaKarta = karta(2);
-    const oferty = [[id, KONTO], [id, BEZ_ZGODY], [id, ERLI], [drugaKarta, KONTO]].map(([kartaId, kanal]) => {
-      const o = wstawOferte(db, { kartaId, kanal, idZewnetrzne: `ext:TEST-K${kartaId}-${kanal}`,
-        stan: 'nieaktywna', pochodzenie: 'oms', tryb: 'zarzadzana' });
+    const oferty = [
+      [id, KONTO],
+      [id, BEZ_ZGODY],
+      [id, ERLI],
+      [drugaKarta, KONTO],
+    ].map(([kartaId, kanal]) => {
+      const o = wstawOferte(db, {
+        kartaId,
+        kanal,
+        idZewnetrzne: `ext:TEST-K${kartaId}-${kanal}`,
+        stan: 'nieaktywna',
+        pochodzenie: 'oms',
+        tryb: 'zarzadzana',
+      });
       zmienOferte(db, o.id, { wyslanePola: { szkic: true } });
       return o;
     });

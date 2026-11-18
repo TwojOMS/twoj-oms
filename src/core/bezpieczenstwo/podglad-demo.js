@@ -21,8 +21,11 @@ export function podgladUstawienDemo({ loginGoscia }) {
     if (!req.konto || req.konto.login !== loginGoscia) return;
     req.konto = { ...req.konto, podgladDemo: true };
     if (wUstawieniach(req.url) && req.method !== 'GET' && req.method !== 'HEAD') {
-      return odmowaRdzenia(req, reply, 403, KOMUNIKAT_PODGLADU,
-        { tytul: 'Tylko do obejrzenia', wroc: '/ustawienia', napisWroc: 'Wróć do ustawień' });
+      return odmowaRdzenia(req, reply, 403, KOMUNIKAT_PODGLADU, {
+        tytul: 'Tylko do obejrzenia',
+        wroc: '/ustawienia',
+        napisWroc: 'Wróć do ustawień',
+      });
     }
   };
 }
@@ -43,7 +46,13 @@ export function kontoWPodgladzieDemo(konto, czyAdmin) {
  */
 export function logowaniaDemo(teraz = new Date()) {
   const t = teraz.getTime();
-  const wpis = (minutWstecz, login, wynik, ip) => ({ at: new Date(t - minutWstecz * 60_000).toISOString(), login, usluga: 'oms', ip, wynik });
+  const wpis = (minutWstecz, login, wynik, ip) => ({
+    at: new Date(t - minutWstecz * 60_000).toISOString(),
+    login,
+    usluga: 'oms',
+    ip,
+    wynik,
+  });
   return [
     wpis(12, 'anna', 'udane', '203.0.113.24'),
     wpis(95, WLASCICIEL_DEMO.login, 'udane', '203.0.113.7'),

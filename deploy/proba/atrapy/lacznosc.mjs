@@ -15,7 +15,8 @@ const INTEGRACJE_DEMO = {
 };
 
 function adresNaEkran(cel) {
-  if (cel.klucz.startsWith('sklep:')) return { url: 'https://sklep.pracownia-polcien.example', host: 'sklep.pracownia-polcien.example' };
+  if (cel.klucz.startsWith('sklep:'))
+    return { url: 'https://sklep.pracownia-polcien.example', host: 'sklep.pracownia-polcien.example' };
   if (cel.klucz.startsWith('allegro:')) return { url: 'https://api.allegro.pl', host: 'api.allegro.pl' };
   return { url: cel.url, host: cel.host };
 }
@@ -26,9 +27,16 @@ export function createAtrapaLacznosci({ config = {}, env = process.env } = {}) {
     async sprawdz() {
       return celeLacznosci({ ...config, ...INTEGRACJE_DEMO }).map((cel, i) => ({
         // Sklepy i kanały atrap mają w konfiguracji adres „atrapa.example.invalid” — na ekranie stoi adres jak w firmie.
-        klucz: cel.klucz, nazwa: cel.nazwa, ...adresNaEkran(cel),
-        ok: true, warstwa: null, adresIp: `203.0.113.${10 + i}`, status: 200,
-        msDns: 4 + (i % 5), msHttp: 70 + ((i * 37) % 120), komunikat: '',
+        klucz: cel.klucz,
+        nazwa: cel.nazwa,
+        ...adresNaEkran(cel),
+        ok: true,
+        warstwa: null,
+        adresIp: `203.0.113.${10 + i}`,
+        status: 200,
+        msDns: 4 + (i % 5),
+        msHttp: 70 + ((i * 37) % 120),
+        komunikat: '',
       }));
     },
     atrapa: true,

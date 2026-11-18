@@ -16,7 +16,13 @@ import { DatabaseSync } from 'node:sqlite';
 import { BladKonfiguracji } from '../blad-konfiguracji.ts';
 import { nowySekret } from './sesja.js';
 import {
-  BladSekretow, FORMAT_SEKRETOW, KLUCZ_FORMATU, KLUCZ_SPRZATANIA, ZMIENNA_KLUCZA, idKluczaZapisu, klasyfikuj,
+  BladSekretow,
+  FORMAT_SEKRETOW,
+  KLUCZ_FORMATU,
+  KLUCZ_SPRZATANIA,
+  ZMIENNA_KLUCZA,
+  idKluczaZapisu,
+  klasyfikuj,
 } from './sejf-sekretow.js';
 
 /** Cztery miejsca z poświadczeniami. `id` — kolumna klucza głównego (przypięcie szyfrogramu do wiersza). */
@@ -29,9 +35,17 @@ export const MIEJSCA_SEKRETOW = Object.freeze([
   { tabela: 'sekret_sesji', kolumna: 'sekret', id: 'id' },
 ]);
 
-const maTabele = (db, nazwa) => Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(nazwa));
-const maKolumne = (db, tabela, kolumna) => db.prepare(`PRAGMA table_info(${tabela})`).all().some((k) => k.name === kolumna);
-const ustawienie = (db, klucz) => (maTabele(db, 'ustawienia') ? db.prepare('SELECT wartosc FROM ustawienia WHERE klucz = ?').get(klucz)?.wartosc ?? null : null);
+const maTabele = (db, nazwa) =>
+  Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(nazwa));
+const maKolumne = (db, tabela, kolumna) =>
+  db
+    .prepare(`PRAGMA table_info(${tabela})`)
+    .all()
+    .some((k) => k.name === kolumna);
+const ustawienie = (db, klucz) =>
+  maTabele(db, 'ustawienia')
+    ? (db.prepare('SELECT wartosc FROM ustawienia WHERE klucz = ?').get(klucz)?.wartosc ?? null)
+    : null;
 
 /** Format zapisany w bazie: null = brak znacznika (stara baza albo po `odszyfruj`), liczba, albo NaN dla wartości nieczytelnej. */
 export function formatBazy(db) {
@@ -54,8 +68,20 @@ export function przegladSekretow(db, sejf = null) {
   const wymaganeId = new Set();
   const problemy = [];
   for (const m of MIEJSCA_SEKRETOW) {
-    const wynik = { tabela: m.tabela, kolumna: m.kolumna, pusty: 0, jawny: 0, uszkodzony: 0, 'nieznana-wersja': 0,
-      szyfrogram: 0, poKluczach: {}, biezacy: 0, poprzedni: 0, nieczytelny: 0, wiersze: [] };
+    const wynik = {
+      tabela: m.tabela,
+      kolumna: m.kolumna,
+      pusty: 0,
+      jawny: 0,
+      uszkodzony: 0,
+      'nieznana-wersja': 0,
+      szyfrogram: 0,
+      poKluczach: {},
+      biezacy: 0,
+      poprzedni: 0,
+      nieczytelny: 0,
+      wiersze: [],
+    };
     miejsca.push(wynik);
     if (!maTabele(db, m.tabela) || !maKolumne(db, m.tabela, m.kolumna)) continue;
     for (const r of db.prepare(`SELECT ${m.id} AS id, ${m.kolumna} AS w FROM ${m.tabela}`).all()) {
@@ -64,7 +90,12 @@ export function przegladSekretow(db, sejf = null) {
       const wiersz = { id: String(r.id), kluczGlowny: r.id, klasa, klucz: null };
       wynik.wiersze.push(wiersz);
       if (klasa === 'uszkodzony' || klasa === 'nieznana-wersja') {
-        problemy.push({ kod: klasa === 'uszkodzony' ? 'USZKODZONY' : 'NIEZNANA_WERSJA', tabela: m.tabela, kolumna: m.kolumna, wiersz: String(r.id) });
+        problemy.push({
+          kod: klasa === 'uszkodzony' ? 'USZKODZONY' : 'NIEZNANA_WERSJA',
+          tabela: m.tabela,
+          kolumna: m.kolumna,
+          wiersz: String(r.id),
+        });
       }
       if (klasa !== 'szyfrogram') continue;
       const id = idKluczaZapisu(r.w);
@@ -83,32 +114,52 @@ export function przegladSekretow(db, sejf = null) {
       }
     }
   }
-  return { format: formatBazy(db), sprzatanie: sprzatanieCzeka(db), miejsca, wymaganeId: [...wymaganeId].sort(), problemy };
+  return {
+    format: formatBazy(db),
+    sprzatanie: sprzatanieCzeka(db),
+    miejsca,
+    wymaganeId: [...wymaganeId].sort(),
+    problemy,
+  };
 }
 
-const bladStartu = (opis) => new BladKonfiguracji(ZMIENNA_KLUCZA, opis,
-  'na klucz zapisany przy instalacji (plik klucz.env, kopia w menedżerze haseł). Stan bazy pokaże `sekrety.mjs stan`; opis: docs/instalacja-docker.md, rozdział „Klucz poświadczeń”.');
+const bladStartu = (opis) =>
+  new BladKonfiguracji(
+    ZMIENNA_KLUCZA,
+    opis,
+    'na klucz zapisany przy instalacji (plik klucz.env, kopia w menedżerze haseł). Stan bazy pokaże `sekrety.mjs stan`; opis: docs/instalacja-docker.md, rozdział „Klucz poświadczeń”.',
+  );
 
 /** Rozstrzygnięcie z tabeli na górze pliku. Odmowa = BladKonfiguracji (z id kluczy, nigdy z wartościami). */
 export function ocenPrzeglad(przeglad, sejf) {
   const { format, problemy, miejsca } = przeglad;
-  if (Number.isNaN(format)) throw bladStartu(`Znacznik formatu poświadczeń w bazie (${KLUCZ_FORMATU}) jest nieczytelny.`);
+  if (Number.isNaN(format))
+    throw bladStartu(`Znacznik formatu poświadczeń w bazie (${KLUCZ_FORMATU}) jest nieczytelny.`);
   if (format !== null && format > FORMAT_SEKRETOW) {
-    throw bladStartu(`Baza z nowszego wydania: format poświadczeń ${format}, to wydanie zna format ${FORMAT_SEKRETOW}. Uruchom wydanie, które zapisało tę bazę.`);
+    throw bladStartu(
+      `Baza z nowszego wydania: format poświadczeń ${format}, to wydanie zna format ${FORMAT_SEKRETOW}. Uruchom wydanie, które zapisało tę bazę.`,
+    );
   }
   const p = problemy[0];
   if (p) {
     const gdzie = `${p.tabela}.${p.kolumna}, wiersz ${JSON.stringify(p.wiersz)}`;
     if (p.kod === 'INNY_KLUCZ') {
-      throw bladStartu(`Baza jest zaszyfrowana kluczem o id ${przeglad.wymaganeId.join(', ')}, w konfiguracji jest klucz o id ${sejf.idKlucza}${sejf.idPoprzedniego ? ` (poprzedni: ${sejf.idPoprzedniego})` : ''} — wstaw klucz zapisany przy instalacji (${gdzie}).`);
+      throw bladStartu(
+        `Baza jest zaszyfrowana kluczem o id ${przeglad.wymaganeId.join(', ')}, w konfiguracji jest klucz o id ${sejf.idKlucza}${sejf.idPoprzedniego ? ` (poprzedni: ${sejf.idPoprzedniego})` : ''} — wstaw klucz zapisany przy instalacji (${gdzie}).`,
+      );
     }
-    if (p.kod === 'NIEZNANA_WERSJA') throw bladStartu(`Poświadczenie w ${gdzie} ma nieznaną wersję formatu — baza z nowszego wydania.`);
-    throw bladStartu(`Poświadczenie w ${gdzie} jest uszkodzone albo zaszyfrowane innym kluczem o tym samym id — nie da się go odczytać.`);
+    if (p.kod === 'NIEZNANA_WERSJA')
+      throw bladStartu(`Poświadczenie w ${gdzie} ma nieznaną wersję formatu — baza z nowszego wydania.`);
+    throw bladStartu(
+      `Poświadczenie w ${gdzie} jest uszkodzone albo zaszyfrowane innym kluczem o tym samym id — nie da się go odczytać.`,
+    );
   }
   if (format !== null && format >= 1) {
     const jawne = miejsca.filter((m) => m.jawny > 0);
     if (jawne.length) {
-      throw bladStartu(`Baza w formacie ${format} ma niezaszyfrowane poświadczenia (${jawne.map((m) => `${m.tabela}.${m.kolumna}: ${m.jawny}`).join(', ')}) — to błąd zapisu, nie stara baza; OMS nie zaszyfruje ich po cichu.`);
+      throw bladStartu(
+        `Baza w formacie ${format} ma niezaszyfrowane poświadczenia (${jawne.map((m) => `${m.tabela}.${m.kolumna}: ${m.jawny}`).join(', ')}) — to błąd zapisu, nie stara baza; OMS nie zaszyfruje ich po cichu.`,
+      );
     }
   }
 }
@@ -124,16 +175,25 @@ export function kontrolaPrzedOtwarciem(sciezka, sejf) {
     const przeglad = przegladSekretow(db, sejf);
     ocenPrzeglad(przeglad, sejf);
     return przeglad;
-  } finally { db.close(); }
+  } finally {
+    db.close();
+  }
 }
 
-const zapiszUstawienie = (db, klucz, wartosc, teraz) => db.prepare(`INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
-  ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc, zmienione_at = excluded.zmienione_at`).run(klucz, String(wartosc), teraz().toISOString());
+const zapiszUstawienie = (db, klucz, wartosc, teraz) =>
+  db
+    .prepare(
+      `INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
+  ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc, zmienione_at = excluded.zmienione_at`,
+    )
+    .run(klucz, String(wartosc), teraz().toISOString());
 
 /** Czy przegląd wymaga jakiegokolwiek zapisu. */
 function doZrobienia(przeglad) {
   if (przeglad.format !== FORMAT_SEKRETOW) return true;
-  return przeglad.miejsca.some((m) => m.poprzedni > 0 || ((przeglad.format === null || przeglad.format === 0) && m.jawny > 0));
+  return przeglad.miejsca.some(
+    (m) => m.poprzedni > 0 || ((przeglad.format === null || przeglad.format === 0) && m.jawny > 0),
+  );
 }
 
 /**
@@ -153,7 +213,8 @@ export function konwertujSekrety(db, sejf, { log = () => {}, teraz = () => new D
     // Znacznik „0” (nigdy niezapisywany przez program, ale możliwy ręcznie) znaczy to samo co brak znacznika.
     const bezZnacznika = przeglad.format === null || przeglad.format === 0;
     const liczby = {};
-    let jawne = 0, poprzednie = 0;
+    let jawne = 0,
+      poprzednie = 0;
     for (const [i, m] of przeglad.miejsca.entries()) {
       if (!m.wiersze.length) continue;
       const kolumnaId = MIEJSCA_SEKRETOW[i].id;
@@ -177,8 +238,12 @@ export function konwertujSekrety(db, sejf, { log = () => {}, teraz = () => new D
     if (przeglad.format !== FORMAT_SEKRETOW) zapiszUstawienie(db, KLUCZ_FORMATU, FORMAT_SEKRETOW, teraz);
     db.exec('COMMIT');
     if (jawne + poprzednie > 0) {
-      log(`poświadczenia: zaszyfrowano kluczem ${sejf.idKlucza} — ${Object.entries(liczby).map(([k, n]) => `${k}: ${n}`).join(', ')}`
-        + `${jawne && liczby['sekret_sesji.sekret'] ? ' (sekret sesji wymieniony — wszyscy logują się od nowa)' : ''}`);
+      log(
+        `poświadczenia: zaszyfrowano kluczem ${sejf.idKlucza} — ${Object.entries(liczby)
+          .map(([k, n]) => `${k}: ${n}`)
+          .join(', ')}` +
+          `${jawne && liczby['sekret_sesji.sekret'] ? ' (sekret sesji wymieniony — wszyscy logują się od nowa)' : ''}`,
+      );
     }
     return { zmieniono: jawne + poprzednie, jawne, poprzednie, liczby };
   } catch (e) {
@@ -189,11 +254,15 @@ export function konwertujSekrety(db, sejf, { log = () => {}, teraz = () => new D
 
 /** Ścieżka pliku głównej bazy uchwytu albo null (baza w pamięci). */
 export function plikBazy(db) {
-  const p = db.prepare('PRAGMA database_list').all().find((d) => d.name === 'main')?.file;
+  const p = db
+    .prepare('PRAGMA database_list')
+    .all()
+    .find((d) => d.name === 'main')?.file;
   return p ? p : null;
 }
 
-export const UWAGA_SPRZATANIA = 'Sprzątanie pliku bazy po zaszyfrowaniu poświadczeń nie jest zakończone — stare wartości mogą jeszcze leżeć w wolnych miejscach pliku bazy. OMS ponowi je przy następnym starcie; od razu: `aktualizuj.sh sekrety sprzataj` (opis: docs/instalacja-docker.md, rozdział „Klucz poświadczeń”).';
+export const UWAGA_SPRZATANIA =
+  'Sprzątanie pliku bazy po zaszyfrowaniu poświadczeń nie jest zakończone — stare wartości mogą jeszcze leżeć w wolnych miejscach pliku bazy. OMS ponowi je przy następnym starcie; od razu: `aktualizuj.sh sekrety sprzataj` (opis: docs/instalacja-docker.md, rozdział „Klucz poświadczeń”).';
 
 /**
  * Sprzątanie pliku po konwersji: VACUUM poza transakcją, potem `wal_checkpoint(TRUNCATE)` z odczytem wyniku (busy = 0);
@@ -210,27 +279,38 @@ export function sprzatnijPlikBazy(db, { log = () => {}, wolneMiejsce = wolneMiej
       const rozmiar = [plik, `${plik}-wal`].reduce((s, p) => s + (fs.existsSync(p) ? fs.statSync(p).size : 0), 0);
       const wolne = wolneMiejsce(path.dirname(plik));
       if (wolne !== null && wolne < 2 * rozmiar) {
-        log(`Ostrzeżenie: sprzątanie pliku bazy po zaszyfrowaniu poświadczeń odłożone — wolne ${wolne} B, potrzeba do ${2 * rozmiar} B.`);
+        log(
+          `Ostrzeżenie: sprzątanie pliku bazy po zaszyfrowaniu poświadczeń odłożone — wolne ${wolne} B, potrzeba do ${2 * rozmiar} B.`,
+        );
         return { stan: 'odlozone', powod: 'brak miejsca' };
       }
     }
     db.exec('VACUUM');
     const cp = db.prepare('PRAGMA wal_checkpoint(TRUNCATE)').get();
     if (cp && Number(cp.busy) !== 0) {
-      log('Ostrzeżenie: sprzątanie pliku bazy po zaszyfrowaniu poświadczeń odłożone — dziennik WAL zajęty przez inne połączenie.');
+      log(
+        'Ostrzeżenie: sprzątanie pliku bazy po zaszyfrowaniu poświadczeń odłożone — dziennik WAL zajęty przez inne połączenie.',
+      );
       return { stan: 'odlozone', powod: 'WAL zajęty' };
     }
     db.prepare('DELETE FROM ustawienia WHERE klucz = ?').run(KLUCZ_SPRZATANIA);
     log(`poświadczenia: plik bazy przepakowany po konwersji (${powod})`);
     return { stan: 'zrobione' };
   } catch (e) {
-    log(`Ostrzeżenie: sprzątanie pliku bazy po zaszyfrowaniu poświadczeń nie powiodło się (${e?.code ?? e?.name ?? 'błąd'}) — ponowienie przy następnym starcie.`);
+    log(
+      `Ostrzeżenie: sprzątanie pliku bazy po zaszyfrowaniu poświadczeń nie powiodło się (${e?.code ?? e?.name ?? 'błąd'}) — ponowienie przy następnym starcie.`,
+    );
     return { stan: 'odlozone', powod: 'błąd' };
   }
 }
 
 export function wolneMiejsceDysku(katalog) {
-  try { const s = fs.statfsSync(katalog); return Number(s.bavail) * Number(s.bsize); } catch { return null; }
+  try {
+    const s = fs.statfsSync(katalog);
+    return Number(s.bavail) * Number(s.bsize);
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -243,7 +323,11 @@ export function odszyfrujDoFormatu0(db, sejf, { teraz = () => new Date() } = {})
   if (wstepny.format === null && szyfrogramy === 0) return { zmieniono: 0 };
   if (wstepny.problemy.length) {
     const p = wstepny.problemy[0];
-    throw new BladSekretow(p.kod, `Odszyfrowanie przerwane przed zapisem: ${p.tabela}.${p.kolumna}, wiersz ${JSON.stringify(p.wiersz)} (${p.kod}).`, { tabela: p.tabela, wiersz: p.wiersz });
+    throw new BladSekretow(
+      p.kod,
+      `Odszyfrowanie przerwane przed zapisem: ${p.tabela}.${p.kolumna}, wiersz ${JSON.stringify(p.wiersz)} (${p.kod}).`,
+      { tabela: p.tabela, wiersz: p.wiersz },
+    );
   }
   db.exec('BEGIN IMMEDIATE');
   try {

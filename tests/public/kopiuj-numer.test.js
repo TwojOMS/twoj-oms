@@ -9,8 +9,12 @@ function przycisk(numer) {
     hidden: true,
     textContent: 'kopiuj numer',
     dataset: { kopiujNumer: numer },
-    addEventListener(typ, fn) { listenery.set(typ, fn); },
-    klik() { return listenery.get('click')?.({ preventDefault() {} }); },
+    addEventListener(typ, fn) {
+      listenery.set(typ, fn);
+    },
+    klik() {
+      return listenery.get('click')?.({ preventDefault() {} });
+    },
   };
 }
 
@@ -18,7 +22,10 @@ const korzen = (przyciski) => ({
   querySelectorAll: (selektor) => (selektor === '[data-kopiuj-numer]' ? przyciski : []),
 });
 
-afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
 
 describe('podlaczKopiowanie', () => {
   it('odsłania przycisk i kopiuje numer do schowka, z krótkim „Skopiowano"', async () => {

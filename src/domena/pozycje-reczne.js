@@ -75,12 +75,16 @@ export function kluczPozycji(p, index) {
 // TYMI SAMYMI regułami — łącznie z odmową ułamka. Druga kopia oznaczałaby, że „1,5 paczki"
 // przechodzi tam, gdzie „1,5 szt." się odbija.
 export function parsujIlosc(surowa) {
-  const t = String(surowa ?? '').trim().replace(',', '.');
+  const t = String(surowa ?? '')
+    .trim()
+    .replace(',', '.');
   if (!t) throw bladOperatora('Podaj ilość — bez niej nie wiadomo, za ile sztuk klient ma zapłacić.');
   const n = Number(t);
   if (!Number.isFinite(n)) throw bladOperatora(`Ilość nie jest liczbą: "${surowa}".`);
   if (!Number.isInteger(n)) {
-    throw bladOperatora(`Ilość musi być liczbą całkowitą: "${surowa}". Ułamek sztuki panel policzyłby z zaokrągleniem.`);
+    throw bladOperatora(
+      `Ilość musi być liczbą całkowitą: "${surowa}". Ułamek sztuki panel policzyłby z zaokrągleniem.`,
+    );
   }
   if (n <= 0) throw bladOperatora('Ilość musi być większa od zera.');
   return n;
@@ -108,7 +112,9 @@ const sklepMaZero = (cena) => cena != null && String(cena).trim() !== '' && Numb
 // poprawić. `parsujNowaPozycje` woła tę funkcję BEZ ceny sklepowej i tam zero pozostaje
 // odmową: nowa pozycja za 0 zł nie wymaga dopłaty, więc nie jest tym, o co chodzi.
 export function parsujCeneBrutto(surowa, { cenaSklepu } = {}) {
-  const t = String(surowa ?? '').trim().replace(',', '.');
+  const t = String(surowa ?? '')
+    .trim()
+    .replace(',', '.');
   if (!t) throw bladOperatora('Podaj cenę brutto za sztukę — bez niej nie ma czego doliczyć.');
   if (!Number.isFinite(Number(t))) throw bladOperatora(`Cena brutto nie jest liczbą: "${surowa}".`);
   const gr = grosze(t, 'cena pozycji');
@@ -173,9 +179,13 @@ export function wybierzZrodloCeny(wiersz, { bruttoTeraz, nettoTeraz }) {
   const pola = { cena_brutto: wiersz.cena_brutto, cena_netto: wiersz.cena_netto };
   const niepuste = (v) => v != null && String(v).trim() !== '';
   const cenaGrosze = (v) => grosze(String(v).trim().replace(',', '.'));
-  if (niepuste(pola.cena_netto) && niepuste(pola.cena_brutto) && niepuste(bruttoTeraz)
-      && cenaGrosze(pola.cena_brutto) === cenaGrosze(bruttoTeraz)
-      && (!niepuste(nettoTeraz) || cenaGrosze(pola.cena_netto) !== cenaGrosze(nettoTeraz))) {
+  if (
+    niepuste(pola.cena_netto) &&
+    niepuste(pola.cena_brutto) &&
+    niepuste(bruttoTeraz) &&
+    cenaGrosze(pola.cena_brutto) === cenaGrosze(bruttoTeraz) &&
+    (!niepuste(nettoTeraz) || cenaGrosze(pola.cena_netto) !== cenaGrosze(nettoTeraz))
+  ) {
     pola.cena_brutto = '';
   }
   return pola;
@@ -189,7 +199,9 @@ export function parsujStawke(surowa, stawkaDomyslna = STAWKA_VAT, { zw = false }
   const s = String(surowa ?? '').trim();
   if (s === '') return String(stawkaDomyslna);
   if (!czyStawkaVat(s, { zw })) {
-    throw bladOperatora(`Nieznana stawka VAT „${s}” — wybierz ${STAWKI_VAT.join(', ')}%${zw === true ? ' albo zw' : ''}.`);
+    throw bladOperatora(
+      `Nieznana stawka VAT „${s}” — wybierz ${STAWKI_VAT.join(', ')}%${zw === true ? ' albo zw' : ''}.`,
+    );
   }
   return s;
 }
@@ -284,7 +296,7 @@ const POLA_HURTU = ['klucz', ...POLA_POZYCJI];
 // Przegladarka przysyla powtorzone pole jako tablice, a JEDNO wystapienie jako sam napis.
 // Eksportowane, bo formularz zakladania zamowienia (domena/nowe-zamowienie.js) zszywa
 // swoje wiersze dokladnie tak samo — jedna regula czytania rownoleglych tablic, nie dwie.
-export const jakoTablica = (v) => (v === undefined ? [] : (Array.isArray(v) ? v : [v]));
+export const jakoTablica = (v) => (v === undefined ? [] : Array.isArray(v) ? v : [v]);
 
 /**
  * Wiersze z formularza „Edytuj pozycje" (cały panel naraz). Formularz niesie RÓWNOLEGŁE
@@ -347,8 +359,8 @@ export function parsujHurtPozycji(body) {
 // Pozycja ręczna nigdy nie jest „usunięta znacznikiem" — ją kasuje się wprost z tabeli.
 export const ZNACZNIK_USUNIECIA = 'usunieta';
 
-const usunietaZnacznikiem = (p, mapa, klucz) => p?.zrodlo !== 'reczna'
-  && obiektAlboPusty(mapa[klucz])[ZNACZNIK_USUNIECIA] === true;
+const usunietaZnacznikiem = (p, mapa, klucz) =>
+  p?.zrodlo !== 'reczna' && obiektAlboPusty(mapa[klucz])[ZNACZNIK_USUNIECIA] === true;
 
 /**
  * Sklepowe kopie pozycji usuniętych znacznikiem, każda z `klucz`. Wartość SKLEPOWA, bo to ją
@@ -379,40 +391,44 @@ export function nalozNadpisaniaPozycji(pozycje, surowyJson) {
   const mapa = odczytajNadpisania(surowyJson);
   // ⚠️ Klucz liczony PRZED filtrem, z indeksu listy surowej: klucz zapasowy `p<indeks>` liczony
   // po odfiltrowaniu przesunąłby poprawki kolejnych wierszy na sąsiada.
-  return (pozycje ?? []).map((p, i) => {
-    const klucz = kluczPozycji(p, i);
-    if (usunietaZnacznikiem(p, mapa, klucz)) return null;
-    const reczna = p.zrodlo === 'reczna';
-    // Pozycja ręczna jest NASZA w całości — edytuje się ją wprost w wierszu (poller jej nie
-    // tknie), więc nadpisania jej nie dotyczą i nie ma dla niej „wartości ze sklepu".
-    const nadpisania = reczna ? {} : obiektAlboPusty(mapa[klucz]);
-    const efektywna = { ...p, klucz, reczna, sklep: reczna ? null : { ...p } };
+  return (pozycje ?? [])
+    .map((p, i) => {
+      const klucz = kluczPozycji(p, i);
+      if (usunietaZnacznikiem(p, mapa, klucz)) return null;
+      const reczna = p.zrodlo === 'reczna';
+      // Pozycja ręczna jest NASZA w całości — edytuje się ją wprost w wierszu (poller jej nie
+      // tknie), więc nadpisania jej nie dotyczą i nie ma dla niej „wartości ze sklepu".
+      const nadpisania = reczna ? {} : obiektAlboPusty(mapa[klucz]);
+      const efektywna = { ...p, klucz, reczna, sklep: reczna ? null : { ...p } };
 
-    for (const pole of POLA_POZYCJI) {
-      if (Object.hasOwn(nadpisania, pole)) efektywna[pole] = nadpisania[pole];
-    }
-    const sklepNorm = sklepowoZnormalizowane(p);
-    const efektNorm = sklepowoZnormalizowane(efektywna);
-    // Liczone z PORÓWNANIA WARTOŚCI, nie z obecności klucza: gdy sklep dogoni ręczną
-    // poprawkę, nie ma już czego oznaczać (ta sama zasada, co polaZmienione przy danych
-    // klienta).
-    efektywna.polaZmienione = POLA_POZYCJI.filter(
-      (pole) => String(sklepNorm[pole] ?? '') !== String(efektNorm[pole] ?? ''),
-    );
+      for (const pole of POLA_POZYCJI) {
+        if (Object.hasOwn(nadpisania, pole)) efektywna[pole] = nadpisania[pole];
+      }
+      const sklepNorm = sklepowoZnormalizowane(p);
+      const efektNorm = sklepowoZnormalizowane(efektywna);
+      // Liczone z PORÓWNANIA WARTOŚCI, nie z obecności klucza: gdy sklep dogoni ręczną
+      // poprawkę, nie ma już czego oznaczać (ta sama zasada, co polaZmienione przy danych
+      // klienta).
+      efektywna.polaZmienione = POLA_POZYCJI.filter(
+        (pole) => String(sklepNorm[pole] ?? '') !== String(efektNorm[pole] ?? ''),
+      );
 
-    // Kwota linii ze sklepu przestaje opisywać tę linię z chwilą, gdy człowiek zmienił ilość
-    // albo cenę — trzymanie jej dalej znaczyłoby, że suma liczy się z wartości, których karta
-    // już nie pokazuje. Przeliczamy w groszach: cena efektywna × ilość efektywna.
-    //
-    // Netto ze sklepu zeruje się razem z nią i to jest świadome: `netto_linii` jest wartością
-    // ŹRÓDŁOWĄ z Woo (reguła: netto ze źródła) i po przecenieniu linii po prostu do niej nie pasuje.
-    // Kolumnę netto liczy wtedy widok, ze stawki VAT (domena/vat.js) — jawnie i tylko do
-    // pokazania. Zmiana samej NAZWY kwot nie dotyka, więc rabat linii ze sklepu się nie gubi.
-    if (efektywna.polaZmienione.some((pole) => POLA_KWOTOWE.includes(pole))) {
-      efektywna.brutto_linii = zl(grosze(efektywna.cena_brutto, `pozycja "${efektywna.nazwa}"`) * Number(efektywna.ilosc));
-      efektywna.cena_netto = null;
-      efektywna.netto_linii = null;
-    }
-    return efektywna;
-  }).filter((p) => p !== null);
+      // Kwota linii ze sklepu przestaje opisywać tę linię z chwilą, gdy człowiek zmienił ilość
+      // albo cenę — trzymanie jej dalej znaczyłoby, że suma liczy się z wartości, których karta
+      // już nie pokazuje. Przeliczamy w groszach: cena efektywna × ilość efektywna.
+      //
+      // Netto ze sklepu zeruje się razem z nią i to jest świadome: `netto_linii` jest wartością
+      // ŹRÓDŁOWĄ z Woo (reguła: netto ze źródła) i po przecenieniu linii po prostu do niej nie pasuje.
+      // Kolumnę netto liczy wtedy widok, ze stawki VAT (domena/vat.js) — jawnie i tylko do
+      // pokazania. Zmiana samej NAZWY kwot nie dotyka, więc rabat linii ze sklepu się nie gubi.
+      if (efektywna.polaZmienione.some((pole) => POLA_KWOTOWE.includes(pole))) {
+        efektywna.brutto_linii = zl(
+          grosze(efektywna.cena_brutto, `pozycja "${efektywna.nazwa}"`) * Number(efektywna.ilosc),
+        );
+        efektywna.cena_netto = null;
+        efektywna.netto_linii = null;
+      }
+      return efektywna;
+    })
+    .filter((p) => p !== null);
 }

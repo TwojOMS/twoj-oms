@@ -9,25 +9,27 @@ const odp = (cialo, naglowki = {}) => ({
   text: async () => JSON.stringify(cialo),
 });
 
-const klient = (fetchImpl) =>
-  createWooClient({ baseUrl: 'https://pro.test', ck: 'ck_a', cs: 'cs_b', fetchImpl });
+const klient = (fetchImpl) => createWooClient({ baseUrl: 'https://pro.test', ck: 'ck_a', cs: 'cs_b', fetchImpl });
 
 // Atrapa sklepu o wielu stronach: cialo zalezy od numeru strony z zadania, wiec test
 // widzi rowniez to, czego klient NIE dopisal do zadania o strone 5.
 const sklepNaStron = (stron, cialo = (nr) => [{ id: nr }], naglowki = {}) =>
-  vi.fn().mockImplementation((url) => Promise.resolve(
-    odp(cialo(Number(new URL(url).searchParams.get('page'))),
-      { 'x-wp-totalpages': String(stron), ...naglowki }),
-  ));
+  vi
+    .fn()
+    .mockImplementation((url) =>
+      Promise.resolve(
+        odp(cialo(Number(new URL(url).searchParams.get('page'))), { 'x-wp-totalpages': String(stron), ...naglowki }),
+      ),
+    );
 
 // Parametry KAZDEGO zadania. Asercja po `calls[0]` przepuszcza klienta, ktory dokleja
 // filtry tylko do pierwszej strony — a wtedy strony 2-7 leca z domyslnym status=any.
-const parametryWywolan = (fetchImpl) =>
-  fetchImpl.mock.calls.map(([url]) => new URL(url).searchParams);
+const parametryWywolan = (fetchImpl) => fetchImpl.mock.calls.map(([url]) => new URL(url).searchParams);
 
 describe('pobierzWszystkieProdukty', () => {
   it('idzie po stronach do końca, wg X-WP-TotalPages', async () => {
-    const fetchImpl = vi.fn()
+    const fetchImpl = vi
+      .fn()
       .mockResolvedValueOnce(odp([{ id: 1 }], { 'x-wp-totalpages': '2' }))
       .mockResolvedValueOnce(odp([{ id: 2 }], { 'x-wp-totalpages': '2' }));
     const wszystkie = await klient(fetchImpl).pobierzWszystkieProdukty();
@@ -38,7 +40,8 @@ describe('pobierzWszystkieProdukty', () => {
   // Sama liczba wywolan nie wystarcza: klient, ktory dwa razy pobralby strone 1,
   // przeszedlby tamten test i po cichu zgubil polowe katalogu.
   it('kolejne żądania niosą kolejne numery stron', async () => {
-    const fetchImpl = vi.fn()
+    const fetchImpl = vi
+      .fn()
       .mockResolvedValueOnce(odp([{ id: 1 }], { 'x-wp-totalpages': '3' }))
       .mockResolvedValueOnce(odp([{ id: 2 }], { 'x-wp-totalpages': '3' }))
       .mockResolvedValueOnce(odp([{ id: 3 }], { 'x-wp-totalpages': '3' }));
@@ -102,15 +105,20 @@ describe('pobierzWszystkieProdukty', () => {
 
   it('komunikat granicy mówi, ile stron zgłosił sklep', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(odp([{ id: 1 }], { 'x-wp-totalpages': '9999' }));
-    const err = await klient(fetchImpl).pobierzWszystkieProdukty().catch((e) => e);
+    const err = await klient(fetchImpl)
+      .pobierzWszystkieProdukty()
+      .catch((e) => e);
     expect(err.message).toContain('9999');
   });
 
   // Granica ma chronic przed absurdem, a nie ucinac prawdziwy sklep: 7 stron sklepu A
   // ma przejsc w calosci.
   it('sklep o rozsądnej liczbie stron przechodzi w całości', async () => {
-    const fetchImpl = vi.fn().mockImplementation((url) =>
-      Promise.resolve(odp([{ id: Number(new URL(url).searchParams.get('page')) }], { 'x-wp-totalpages': '7' })));
+    const fetchImpl = vi
+      .fn()
+      .mockImplementation((url) =>
+        Promise.resolve(odp([{ id: Number(new URL(url).searchParams.get('page')) }], { 'x-wp-totalpages': '7' })),
+      );
     const wszystkie = await klient(fetchImpl).pobierzWszystkieProdukty();
     expect(wszystkie.map((p) => p.id)).toEqual([1, 2, 3, 4, 5, 6, 7]);
   });
@@ -130,16 +138,15 @@ describe('pobierzWszystkieProdukty', () => {
 
 describe('pobierzWarianty', () => {
   it('pyta o warianty konkretnego produktu', async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(
-      odp([{ id: 1091, sku: 'LMP-PLA-118' }], { 'x-wp-totalpages': '1' }),
-    );
+    const fetchImpl = vi.fn().mockResolvedValue(odp([{ id: 1091, sku: 'LMP-PLA-118' }], { 'x-wp-totalpages': '1' }));
     const w = await klient(fetchImpl).pobierzWarianty('944');
     expect(fetchImpl.mock.calls[0][0]).toContain('/products/944/variations');
     expect(w[0].sku).toBe('LMP-PLA-118');
   });
 
   it('chodzi po stronach wariantów tak samo jak po produktach', async () => {
-    const fetchImpl = vi.fn()
+    const fetchImpl = vi
+      .fn()
       .mockResolvedValueOnce(odp([{ id: 1 }], { 'x-wp-totalpages': '2' }))
       .mockResolvedValueOnce(odp([{ id: 2 }], { 'x-wp-totalpages': '2' }));
     const w = await klient(fetchImpl).pobierzWarianty('944');
@@ -168,9 +175,7 @@ describe('pobierzWarianty', () => {
 
   // Wspolna petla znaczy wspolna kontrola kompletnosci — takze dla wariantow.
   it('ucięty odczyt wariantów też jest wykrywany', async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(
-      odp([{ id: 1 }], { 'x-wp-totalpages': '1', 'x-wp-total': '40' }),
-    );
+    const fetchImpl = vi.fn().mockResolvedValue(odp([{ id: 1 }], { 'x-wp-totalpages': '1', 'x-wp-total': '40' }));
     await expect(klient(fetchImpl).pobierzWarianty('944')).rejects.toThrow(/40/);
   });
 });
@@ -181,34 +186,36 @@ describe('pobierzWarianty', () => {
 // odczyt jest nieodrozninalny od "sklep stracil polowe katalogu".
 describe('kontrola kompletności odczytu (X-WP-Total)', () => {
   it('zebranie mniej pozycji, niż zapowiedział sklep, to błąd', async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(
-      odp([{ id: 1 }, { id: 2 }], { 'x-wp-totalpages': '1', 'x-wp-total': '668' }),
-    );
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(odp([{ id: 1 }, { id: 2 }], { 'x-wp-totalpages': '1', 'x-wp-total': '668' }));
     await expect(klient(fetchImpl).pobierzWszystkieProdukty()).rejects.toThrow(/668/);
   });
 
   it('komunikat podaje obie liczby: ile zapowiedziano i ile zebrano', async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(
-      odp([{ id: 1 }, { id: 2 }], { 'x-wp-totalpages': '1', 'x-wp-total': '668' }),
-    );
-    const err = await klient(fetchImpl).pobierzWszystkieProdukty().catch((e) => e);
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(odp([{ id: 1 }, { id: 2 }], { 'x-wp-totalpages': '1', 'x-wp-total': '668' }));
+    const err = await klient(fetchImpl)
+      .pobierzWszystkieProdukty()
+      .catch((e) => e);
     expect(err.message).toContain('668');
     expect(err.message).toContain('2');
   });
 
   it('tyle samo, ile zapowiedziano → przechodzi', async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(
-      odp([{ id: 1 }, { id: 2 }], { 'x-wp-totalpages': '1', 'x-wp-total': '2' }),
-    );
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(odp([{ id: 1 }, { id: 2 }], { 'x-wp-totalpages': '1', 'x-wp-total': '2' }));
     await expect(klient(fetchImpl).pobierzWszystkieProdukty()).resolves.toHaveLength(2);
   });
 
   // Produkt dodany w trakcie odczytu dokłada się na końcu (orderby=id&order=asc)
   // i zwiększa liczbę. To normalne, nie awaria.
   it('więcej niż zapowiedziano → przechodzi bez słowa', async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(
-      odp([{ id: 1 }, { id: 2 }, { id: 3 }], { 'x-wp-totalpages': '1', 'x-wp-total': '2' }),
-    );
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(odp([{ id: 1 }, { id: 2 }, { id: 3 }], { 'x-wp-totalpages': '1', 'x-wp-total': '2' }));
     await expect(klient(fetchImpl).pobierzWszystkieProdukty()).resolves.toHaveLength(3);
   });
 
@@ -240,7 +247,8 @@ describe('kontrola kompletności odczytu (X-WP-Total)', () => {
   // straciłby ja dokladnie w tym scenariuszu, przed ktorym kontrola ma bronic:
   // gdy naglowki przestaja przychodzic w trakcie odczytu.
   it('oczekiwaną liczbę bierze z pierwszej strony, nie z ostatniej', async () => {
-    const fetchImpl = vi.fn()
+    const fetchImpl = vi
+      .fn()
       .mockResolvedValueOnce(odp([{ id: 1 }], { 'x-wp-totalpages': '2', 'x-wp-total': '250' }))
       .mockResolvedValueOnce(odp([{ id: 2 }], { 'x-wp-totalpages': '2' }));
     await expect(klient(fetchImpl).pobierzWszystkieProdukty()).rejects.toThrow(/250/);
@@ -269,7 +277,9 @@ describe('ustawienieSklepu', () => {
 
   it('value, które nie jest napisem → błąd mówiący czego oczekiwano i co przyszło', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(odp({ id: 'woocommerce_dimension_unit', value: ['cm'] }));
-    const err = await klient(fetchImpl).ustawienieSklepu('woocommerce_dimension_unit').catch((e) => e);
+    const err = await klient(fetchImpl)
+      .ustawienieSklepu('woocommerce_dimension_unit')
+      .catch((e) => e);
     expect(err.message).toContain('woocommerce_dimension_unit');
     expect(err.message).toMatch(/napis/i);
     expect(err.message).toContain('cm');

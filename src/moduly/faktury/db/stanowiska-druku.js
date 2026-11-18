@@ -19,8 +19,9 @@ export function zgloszenia(db) {
 export function zapiszZgloszenie(db, stanowisko, teraz) {
   const mapa = zgloszenia(db);
   if (!czyZapisac(mapa, stanowisko, teraz)) return false;
-  db.prepare(`INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
-    ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc, zmienione_at = excluded.zmienione_at`)
-    .run(KLUCZ, JSON.stringify(dopisz(mapa, stanowisko, teraz)), teraz.toISOString());
+  db.prepare(
+    `INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
+    ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc, zmienione_at = excluded.zmienione_at`,
+  ).run(KLUCZ, JSON.stringify(dopisz(mapa, stanowisko, teraz)), teraz.toISOString());
   return true;
 }

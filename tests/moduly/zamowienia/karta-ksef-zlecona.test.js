@@ -23,38 +23,76 @@ const ODMOWA = 'Ten dokument już wysłano do KSeF 5.11 08:22 — sprawdź go w 
 const DLUGI = 'Panel już zlecił';
 
 const dok = (uuid, nadpisz = {}) => ({
-  uuid, number: `${uuid}/10/2026`, rodzaj: 'vat', invoice_date: '2026-10-20', sale_date: '2026-10-20', ksef_number: null,
-  client_company_name: 'Pracownia Przykładowa', client_tax_code: NIP, gross_price: 12300, left_to_pay: 0, ...nadpisz,
+  uuid,
+  number: `${uuid}/10/2026`,
+  rodzaj: 'vat',
+  invoice_date: '2026-10-20',
+  sale_date: '2026-10-20',
+  ksef_number: null,
+  client_company_name: 'Pracownia Przykładowa',
+  client_tax_code: NIP,
+  gross_price: 12300,
+  left_to_pay: 0,
+  ...nadpisz,
 });
 
 // Fałszywy inFakt: listy filtrowane po polu daty, wysyłka tylko liczy wywołania.
 function falszywyInfakt(dokumenty) {
   const wyslane = [];
-  const zakres = (rodzaj) => async ({ od, do: koniec, pole = 'invoice_date' }) => dokumenty
-    .filter((d) => d.rodzaj === rodzaj && String(d[pole]) >= od && String(d[pole]) <= koniec).map((d) => ({ ...d }));
+  const zakres =
+    (rodzaj) =>
+    async ({ od, do: koniec, pole = 'invoice_date' }) =>
+      dokumenty
+        .filter((d) => d.rodzaj === rodzaj && String(d[pole]) >= od && String(d[pole]) <= koniec)
+        .map((d) => ({ ...d }));
   return {
     wyslane,
     listaFaktur: zakres('vat'),
     listaKorekt: zakres('korekta'),
-    wyslijDokumentDoKsef: async (uuid) => { wyslane.push(uuid); return { invoice_task_reference_number: `ref-${uuid}` }; },
+    wyslijDokumentDoKsef: async (uuid) => {
+      wyslane.push(uuid);
+      return { invoice_task_reference_number: `ref-${uuid}` };
+    },
   };
 }
 
 function zamowienieZFaktura(db, { uuid = 'u1', ksefNumer = null } = {}) {
-  const id = zapiszZamowienie(db, 'pro', {
-    zrodlo_id: `w-${uuid}`, numer: `Z-${uuid}`, klient: { first_name: 'Jan', last_name: 'Przykładowy', company: 'Pracownia Przykładowa' },
-    dostawa: {}, metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: NIP, kwota_brutto: '123.00',
-    koszt_dostawy_brutto: '0.00', status_woo: 'processing', oplacone_at: null, anulowane: 0, pozycje: [],
-    utworzone_at: '2026-10-20T09:00:00',
-  }, {});
+  const id = zapiszZamowienie(
+    db,
+    'pro',
+    {
+      zrodlo_id: `w-${uuid}`,
+      numer: `Z-${uuid}`,
+      klient: { first_name: 'Jan', last_name: 'Przykładowy', company: 'Pracownia Przykładowa' },
+      dostawa: {},
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: 1,
+      nip: NIP,
+      kwota_brutto: '123.00',
+      koszt_dostawy_brutto: '0.00',
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane: 0,
+      pozycje: [],
+      utworzone_at: '2026-10-20T09:00:00',
+    },
+    {},
+  );
   const f = rozpocznijFakture(db, id);
   zakonczFakture(db, f.id, { uuid, numer: `${uuid}/10/2026`, ksefStatus: null });
-  db.prepare('UPDATE faktury SET utworzona_at = ?, ksef_numer = ? WHERE id = ?').run('2026-10-20T10:00:00.000Z', ksefNumer, f.id);
+  db.prepare('UPDATE faktury SET utworzona_at = ?, ksef_numer = ? WHERE id = ?').run(
+    '2026-10-20T10:00:00.000Z',
+    ksefNumer,
+    f.id,
+  );
   return id;
 }
 
 const apki = [];
-afterEach(async () => { for (const a of apki.splice(0)) await a.close(); });
+afterEach(async () => {
+  for (const a of apki.splice(0)) await a.close();
+});
 
 function panel(dokumenty = [dok('u1')]) {
   const db = openOmsDb(':memory:');
@@ -71,9 +109,11 @@ const post = (app, url, payload) => app.inject({ method: 'POST', url, headers: A
 const LISTA = '/faktury?miesiac=2026-10&pole=invoice_date';
 const PRZYCISK = /<form[^>]*action="\/faktury\/ksef\/podglad"[\s\S]*?Wyślij do KSeF<\/button>\s*<\/form>/;
 // Wiersz listy FAKTURY z danym dokumentem (po odnośniku PDF).
-const wiersz = (html, uuid) => [...html.matchAll(/<tr>[\s\S]*?<\/tr>/g)].map((m) => m[0]).find((t) => t.includes(`/faktury/${uuid}/pdf`));
+const wiersz = (html, uuid) =>
+  [...html.matchAll(/<tr>[\s\S]*?<\/tr>/g)].map((m) => m[0]).find((t) => t.includes(`/faktury/${uuid}/pdf`));
 // Pasek uwagi z tekstem odmowy (klasa jak inne paski uwagi na karcie i liście).
-const pasekOdmowy = (html) => html.match(/<p class="pasek-uwaga"[^>]*id="ksef-odmowa"[^>]*>([\s\S]*?)<\/p>/)?.[1]?.trim();
+const pasekOdmowy = (html) =>
+  html.match(/<p class="pasek-uwaga"[^>]*id="ksef-odmowa"[^>]*>([\s\S]*?)<\/p>/)?.[1]?.trim();
 
 describe('po zleceniu wysyłki — karta i lista', () => {
   it('karta: bez „Wyślij do KSeF” (tabela i menu „⋯”), plakietka „Zlecono do KSeF D.M GG:MM”, bez długiego zdania', async () => {
@@ -105,7 +145,8 @@ describe('po zleceniu wysyłki — karta i lista', () => {
   // text-transform: uppercase (layout), więc daje „ZLECONO DO KSEF”. Karta i lista mają klasę
   // plakietki stanu z tabeli FAKTURY (`znacznik znacznik--cichy`), bez wersalików.
   it('plakietka „Zlecono do KSeF” w klasie `znacznik znacznik--cichy` (bez `waga` z wersalikami) — karta i lista', async () => {
-    const klasaPlakietki = (html) => html.match(/<span class="([^"]*)"[^>]*>\s*Zlecono do KSeF 5\.11 08:22\s*<\/span>/)?.[1];
+    const klasaPlakietki = (html) =>
+      html.match(/<span class="([^"]*)"[^>]*>\s*Zlecono do KSeF 5\.11 08:22\s*<\/span>/)?.[1];
     const { db, app } = panel([dok('u1')]);
     const id = zamowienieZFaktura(db);
     zajmijWysylkeKsef(db, 'u1', { numer: 'u1/10/2026', kiedy: ZLECONO });
@@ -151,7 +192,10 @@ describe('drugie zgłoszenie — 303 z paskiem, bez wywołania klienta', () => {
     const id = zamowienieZFaktura(db);
     zajmijWysylkeKsef(db, 'u1', { numer: 'u1/10/2026', kiedy: ZLECONO });
     const payload = { uuid: 'u1', miesiac: '2026-10', pole: 'invoice_date', powrot: `/zamowienia/${id}` };
-    for (const [url, dodatek] of [['/faktury/ksef/podglad', {}], ['/faktury/ksef/wyslij', { potwierdzam: 'wyslij' }]]) {
+    for (const [url, dodatek] of [
+      ['/faktury/ksef/podglad', {}],
+      ['/faktury/ksef/wyslij', { potwierdzam: 'wyslij' }],
+    ]) {
       const r = await post(app, url, { ...payload, ...dodatek });
       expect(r.statusCode, url).toBe(303);
       expect(r.headers.location, url).toBe(`/zamowienia/${id}?juz_w_ksef=u1#faktura`);
@@ -168,7 +212,10 @@ describe('drugie zgłoszenie — 303 z paskiem, bez wywołania klienta', () => {
     const { db, app, infakt } = panel();
     zajmijWysylkeKsef(db, 'u1', { numer: 'u1/10/2026', kiedy: ZLECONO });
     const payload = { uuid: 'u1', miesiac: '2026-10', pole: 'invoice_date' };
-    for (const [url, dodatek] of [['/faktury/ksef/podglad', {}], ['/faktury/ksef/wyslij', { potwierdzam: 'wyslij' }]]) {
+    for (const [url, dodatek] of [
+      ['/faktury/ksef/podglad', {}],
+      ['/faktury/ksef/wyslij', { potwierdzam: 'wyslij' }],
+    ]) {
       const r = await post(app, url, { ...payload, ...dodatek });
       expect(r.statusCode, url).toBe(303);
       expect(r.headers.location, url).toBe(`${LISTA}&juz_w_ksef=u1`);
@@ -183,7 +230,13 @@ describe('drugie zgłoszenie — 303 z paskiem, bez wywołania klienta', () => {
   it('pełna droga: pierwsza wysyłka idzie, druga z tej samej (starej) karty nie woła klienta', async () => {
     const { db, app, infakt } = panel();
     const id = zamowienieZFaktura(db);
-    const payload = { uuid: 'u1', miesiac: '2026-10', pole: 'invoice_date', powrot: `/zamowienia/${id}`, potwierdzam: 'wyslij' };
+    const payload = {
+      uuid: 'u1',
+      miesiac: '2026-10',
+      pole: 'invoice_date',
+      powrot: `/zamowienia/${id}`,
+      potwierdzam: 'wyslij',
+    };
     const pierwsza = await post(app, '/faktury/ksef/wyslij', payload);
     expect(pierwsza.statusCode).toBe(200);
     expect(infakt.wyslane).toEqual(['u1']);
@@ -191,14 +244,20 @@ describe('drugie zgłoszenie — 303 z paskiem, bez wywołania klienta', () => {
     expect(druga.statusCode).toBe(303);
     expect(infakt.wyslane).toEqual(['u1']);
     const k = await get(app, `/zamowienia/${id}?juz_w_ksef=u1`);
-    expect(pasekOdmowy(k.body)).toMatch(/^Ten dokument już wysłano do KSeF \d{1,2}\.\d{1,2} \d\d:\d\d — sprawdź go w inFakcie\.$/);
+    expect(pasekOdmowy(k.body)).toMatch(
+      /^Ten dokument już wysłano do KSeF \d{1,2}\.\d{1,2} \d\d:\d\d — sprawdź go w inFakcie\.$/,
+    );
     expect(k.body).toMatch(/Zlecono do KSeF \d{1,2}\.\d{1,2} \d\d:\d\d/);
   });
 
   it('zaznaczenie z innym dokumentem: podgląd zostaje, przy zleconym krótkie zdanie zamiast długiego', async () => {
     const { db, app, infakt } = panel([dok('u1'), dok('u2')]);
     zajmijWysylkeKsef(db, 'u1', { numer: 'u1/10/2026', kiedy: ZLECONO });
-    const r = await post(app, '/faktury/ksef/podglad', { uuid: ['u1', 'u2'], miesiac: '2026-10', pole: 'invoice_date' });
+    const r = await post(app, '/faktury/ksef/podglad', {
+      uuid: ['u1', 'u2'],
+      miesiac: '2026-10',
+      pole: 'invoice_date',
+    });
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('u2/10/2026');
     expect(r.body).toContain(ODMOWA);

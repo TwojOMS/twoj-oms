@@ -4,16 +4,20 @@
 // Daty: moduly/raporty/{pokrycie.js,trasy/pokrycie.js}; logo: moduly/ustawienia/trasy/logo.js i core/web/logo-instalacji.js.
 // Ścieżki są względem Ustawień, poza pełną ścieżką „Analizy i finanse”.
 export const ZMIENNE_PANEL = Object.freeze({
-  OMS_RAPORTY_PODLOGA_KOSZTOW: 'Analizy i finanse → Finanse → Kompletność danych (tylko administrator; plik wygrywa; bez restartu)',
-  OMS_RAPORTY_PODLOGA_ZWROTOW: 'Analizy i finanse → Finanse → Kompletność danych (tylko administrator; plik wygrywa; bez restartu)',
-  OMS_STATYSTYKI_PIERWSZY_DZIEN: 'Analizy i finanse → Finanse → Kompletność danych (tylko administrator; plik wygrywa; bez restartu)',
+  OMS_RAPORTY_PODLOGA_KOSZTOW:
+    'Analizy i finanse → Finanse → Kompletność danych (tylko administrator; plik wygrywa; bez restartu)',
+  OMS_RAPORTY_PODLOGA_ZWROTOW:
+    'Analizy i finanse → Finanse → Kompletność danych (tylko administrator; plik wygrywa; bez restartu)',
+  OMS_STATYSTYKI_PIERWSZY_DZIEN:
+    'Analizy i finanse → Finanse → Kompletność danych (tylko administrator; plik wygrywa; bez restartu)',
   OMS_LOGO_PLIK: 'Firma → Dane i logo (tylko administrator; plik wygrywa; bez restartu)',
   OMS_LOGO_ALT: 'Firma → Dane i logo (tylko administrator; plik wygrywa, gdy ustawia też OMS_LOGO_PLIK; bez restartu)',
   INFAKT_API_KEY: 'Integracje → inFakt',
   FAKTUROWNIA_API_TOKEN: 'Integracje → Fakturownia',
   FAKTUROWNIA_DOMENA: 'Integracje → Fakturownia',
   // Wybór modułu faktur — zapisuje tylko administrator; plik wygrywa; zmiana po ponownym uruchomieniu.
-  OMS_PROGRAM_FAKTUROWY: 'Faktury i podatki → Program do faktur (tylko administrator; plik wygrywa; po ponownym uruchomieniu)',
+  OMS_PROGRAM_FAKTUROWY:
+    'Faktury i podatki → Program do faktur (tylko administrator; plik wygrywa; po ponownym uruchomieniu)',
   GUS_KLUCZ: 'Integracje → GUS',
   KSEF_TOKEN: 'Integracje → KSeF',
   KSEF_NIP: 'Integracje → KSeF',

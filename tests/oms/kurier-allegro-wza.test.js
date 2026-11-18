@@ -11,7 +11,13 @@ const propozycja = () => ({
   suggestedInput: {
     deliveryMethodId: null, // ⚠️ Allegro ZAWSZE oddaje tu null.
     sender: { company: 'Pracownia Świetlik', street: 'ul. Przykładowa 1', postalCode: '00-950', city: 'Warszawa' },
-    receiver: { name: 'Kupujący', street: 'Polna 1', postalCode: '00-001', city: 'Warszawa', email: 'abc+1@allegromail.pl' },
+    receiver: {
+      name: 'Kupujący',
+      street: 'Polna 1',
+      postalCode: '00-001',
+      city: 'Warszawa',
+      email: 'abc+1@allegromail.pl',
+    },
     packages: [{ type: 'PACKAGE', length: 120, width: 80, height: 55, weight: 0.5 }],
     insurance: { amount: '79.00', currency: 'PLN' },
     cashOnDelivery: null,
@@ -21,39 +27,76 @@ const propozycja = () => ({
 
 const propozycjaGabarytowa = (dlugosc) => ({
   ...propozycja(),
-  deliveryOptions: [{ packageType: 'PACKAGE', limits: {
-    dimensions: {
-      length: { value: dlugosc, unit: 'CENTIMETER' },
-      width: { value: 38, unit: 'CENTIMETER' },
-      height: { value: 41, unit: 'CENTIMETER' },
+  deliveryOptions: [
+    {
+      packageType: 'PACKAGE',
+      limits: {
+        dimensions: {
+          length: { value: dlugosc, unit: 'CENTIMETER' },
+          width: { value: 38, unit: 'CENTIMETER' },
+          height: { value: 41, unit: 'CENTIMETER' },
+        },
+        weight: { value: 20, unit: 'KILOGRAMS' },
+      },
     },
-    weight: { value: 20, unit: 'KILOGRAMS' },
-  } }],
+  ],
 });
 
 function klientAllegro(n = {}) {
   const wolania = [];
-  const zapis = (nazwa) => (...a) => { wolania.push({ nazwa, a }); };
+  const zapis =
+    (nazwa) =>
+    (...a) => {
+      wolania.push({ nazwa, a });
+    };
   return {
     wolania,
     api: {
-      pobierzPrzesylki: async (id) => { wolania.push({ nazwa: 'juzNadane', a: [id] }); return n.juzNadane ?? []; },
-      pobierzPropozycjeWysylki: async (id) => { wolania.push({ nazwa: 'propozycja', a: [id] }); return n.propozycja ?? propozycja(); },
-      utworzPrzesylke: async (arg) => { wolania.push({ nazwa: 'utworz', a: [arg] }); return n.utworz ?? {}; },
+      pobierzPrzesylki: async (id) => {
+        wolania.push({ nazwa: 'juzNadane', a: [id] });
+        return n.juzNadane ?? [];
+      },
+      pobierzPropozycjeWysylki: async (id) => {
+        wolania.push({ nazwa: 'propozycja', a: [id] });
+        return n.propozycja ?? propozycja();
+      },
+      utworzPrzesylke: async (arg) => {
+        wolania.push({ nazwa: 'utworz', a: [arg] });
+        return n.utworz ?? {};
+      },
       stanTworzeniaPrzesylki: async (cmd) => {
         wolania.push({ nazwa: 'stan', a: [cmd] });
         if (n.stan) return n.stan(wolania.filter((w) => w.nazwa === 'stan').length);
         return { status: 'SUCCESS', shipmentId: 'ship-1' };
       },
-      pobierzPrzesylkeWza: async (id) => { wolania.push({ nazwa: 'przesylka', a: [id] }); return n.przesylka ?? { labelFormat: 'PDF', packages: [{ waybill: 'AD0TEST123', transportingInfo: [{ carrierId: 'DPD', carrierWaybill: '1048798161135U' }] }] }; },
-      pobierzEtykieteWza: async (ids) => { wolania.push({ nazwa: 'etykieta', a: [ids] }); return n.etykieta ?? PDF; },
+      pobierzPrzesylkeWza: async (id) => {
+        wolania.push({ nazwa: 'przesylka', a: [id] });
+        return (
+          n.przesylka ?? {
+            labelFormat: 'PDF',
+            packages: [
+              { waybill: 'AD0TEST123', transportingInfo: [{ carrierId: 'DPD', carrierWaybill: '1048798161135U' }] },
+            ],
+          }
+        );
+      },
+      pobierzEtykieteWza: async (ids) => {
+        wolania.push({ nazwa: 'etykieta', a: [ids] });
+        return n.etykieta ?? PDF;
+      },
       ...(n.api ?? {}),
       _zapis: zapis,
     },
   };
 }
 
-const zamowienie = { id: 1125, sklep: 'allegro_swietlik', metoda_wysylki: 'allegro_dpd', zrodlo_id: 'ord-abc', anulowane: 0 };
+const zamowienie = {
+  id: 1125,
+  sklep: 'allegro_swietlik',
+  metoda_wysylki: 'allegro_dpd',
+  zrodlo_id: 'ord-abc',
+  anulowane: 0,
+};
 const paczka = { waga: 1, dlugosc: 110, szerokosc: 75, wysokosc: 1 };
 
 const zbuduj = (n = {}) => {
@@ -81,14 +124,21 @@ describe('commandId — klucz idempotencji z rezerwacji', () => {
   });
 
   it('ma kształt UUID — Allegro innego nie przyjmie', () => {
-    expect(commandIdDlaPaczki(1125, 1)).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(commandIdDlaPaczki(1125, 1)).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
   });
 });
 
 describe('kurier allegro_wza — nadanie', () => {
   it('odczytuje bieżącą metodę do formularza bez tworzenia przesyłki', async () => {
     const odczytane = [];
-    const { k, wolania } = zbuduj({ metodaZywa: async (z) => { odczytane.push(z); return ONE_BOX; } });
+    const { k, wolania } = zbuduj({
+      metodaZywa: async (z) => {
+        odczytane.push(z);
+        return ONE_BOX;
+      },
+    });
     expect(await k.pobierzMetodeDostawy(zamowienie)).toBe(ONE_BOX);
     expect(odczytane).toEqual([zamowienie]);
     expect(wolania).toEqual([]);
@@ -97,8 +147,12 @@ describe('kurier allegro_wza — nadanie', () => {
   it('nie kupuje One Box M, gdy spreparowany formularz podmienił wymiary', async () => {
     const { k, wolania } = zbuduj({ metodaZywa: async () => ONE_BOX });
     const zafalszowana = {
-      waga: 0.5, dlugosc: 110, szerokosc: 38, wysokosc: 19,
-      gabaryt: 'M', oczekiwanyDeliveryMethodId: ONE_BOX,
+      waga: 0.5,
+      dlugosc: 110,
+      szerokosc: 38,
+      wysokosc: 19,
+      gabaryt: 'M',
+      oczekiwanyDeliveryMethodId: ONE_BOX,
     };
     await expect(k.nadaj({ zamowienie, paczka: zafalszowana })).rejects.toThrow(/gabaryt|wymiar/i);
     expect(wolania.filter((x) => x.nazwa === 'utworz')).toEqual([]);
@@ -107,68 +161,117 @@ describe('kurier allegro_wza — nadanie', () => {
   it('nie kupuje One Box M, gdy Allegro nie podało limitów dla tej paczki', async () => {
     const { k, wolania } = zbuduj({ metodaZywa: async () => ONE_BOX });
     const oneM = {
-      waga: 0.5, dlugosc: 64, szerokosc: 38, wysokosc: 19,
-      gabaryt: 'M', oczekiwanyDeliveryMethodId: ONE_BOX,
+      waga: 0.5,
+      dlugosc: 64,
+      szerokosc: 38,
+      wysokosc: 19,
+      gabaryt: 'M',
+      oczekiwanyDeliveryMethodId: ONE_BOX,
     };
     await expect(k.nadaj({ zamowienie, paczka: oneM })).rejects.toThrow(/limit/i);
     expect(wolania.filter((x) => x.nazwa === 'utworz')).toEqual([]);
   });
 
   it.each([
-    [ONE_BOX, 64, 'S', 8], [ONE_BOX, 64, 'M', 19], [ONE_BOX, 64, 'L', 41],
+    [ONE_BOX, 64, 'S', 8],
+    [ONE_BOX, 64, 'M', 19],
+    [ONE_BOX, 64, 'L', 41],
     [ORLEN, 60, 'M', 19],
   ])('wysyła do WzA liczby dla %s, długość %i, gabaryt %s, wysokość %i', async (id, dlugosc, gabaryt, wysokosc) => {
     const { k, wolania } = zbuduj({ metodaZywa: async () => id, propozycja: propozycjaGabarytowa(dlugosc) });
-    await k.nadaj({ zamowienie, paczka: {
-      waga: 0.5, dlugosc, szerokosc: 38, wysokosc,
-      gabaryt, oczekiwanyDeliveryMethodId: id,
-    } });
+    await k.nadaj({
+      zamowienie,
+      paczka: {
+        waga: 0.5,
+        dlugosc,
+        szerokosc: 38,
+        wysokosc,
+        gabaryt,
+        oczekiwanyDeliveryMethodId: id,
+      },
+    });
     const { input } = wolania.find((x) => x.nazwa === 'utworz').a[0];
-    expect(input.packages).toEqual([{
-      type: 'PACKAGE',
-      length: { value: dlugosc, unit: 'CENTIMETER' },
-      width: { value: 38, unit: 'CENTIMETER' },
-      height: { value: wysokosc, unit: 'CENTIMETER' },
-      weight: { value: 0.5, unit: 'KILOGRAMS' },
-    }]);
+    expect(input.packages).toEqual([
+      {
+        type: 'PACKAGE',
+        length: { value: dlugosc, unit: 'CENTIMETER' },
+        width: { value: 38, unit: 'CENTIMETER' },
+        height: { value: wysokosc, unit: 'CENTIMETER' },
+        weight: { value: 0.5, unit: 'KILOGRAMS' },
+      },
+    ]);
     expect(input.packages[0]).not.toHaveProperty('gabaryt');
   });
 
   it('odmawia, gdy One Box na ekranie zmienił się na kuriera przed zakupem', async () => {
     const { k, wolania } = zbuduj({ metodaZywa: async () => DPD });
-    await expect(k.nadaj({ zamowienie, paczka: {
-      waga: 0.5, dlugosc: 64, szerokosc: 38, wysokosc: 8,
-      gabaryt: 'S', oczekiwanyDeliveryMethodId: ONE_BOX,
-    } })).rejects.toThrow(/metoda|zmieniła/i);
+    await expect(
+      k.nadaj({
+        zamowienie,
+        paczka: {
+          waga: 0.5,
+          dlugosc: 64,
+          szerokosc: 38,
+          wysokosc: 8,
+          gabaryt: 'S',
+          oczekiwanyDeliveryMethodId: ONE_BOX,
+        },
+      }),
+    ).rejects.toThrow(/metoda|zmieniła/i);
     expect(wolania.filter((x) => x.nazwa === 'utworz')).toEqual([]);
   });
 
   it('odmawia, gdy kurier na ekranie zmienił się na inną usługę WzA', async () => {
     const { k, wolania } = zbuduj({ metodaZywa: async () => DPD });
-    await expect(k.nadaj({ zamowienie, paczka: {
-      ...paczka, oczekiwanyDeliveryMethodId: '0960fef9-cc88-4558-b2b2-62331a20b5b2',
-    } })).rejects.toThrow(/metoda|zmieniła/i);
+    await expect(
+      k.nadaj({
+        zamowienie,
+        paczka: {
+          ...paczka,
+          oczekiwanyDeliveryMethodId: '0960fef9-cc88-4558-b2b2-62331a20b5b2',
+        },
+      }),
+    ).rejects.toThrow(/metoda|zmieniła/i);
     expect(wolania.filter((x) => x.nazwa === 'utworz')).toEqual([]);
   });
 
   it('nie przyjmuje gabarytu skrytki jako paczki kurierskiej', async () => {
     const { k, wolania } = zbuduj();
-    await expect(k.nadaj({ zamowienie, paczka: {
-      ...paczka, gabaryt: 'S', oczekiwanyDeliveryMethodId: DPD,
-    } })).rejects.toThrow(/gabaryt|kurier/i);
+    await expect(
+      k.nadaj({
+        zamowienie,
+        paczka: {
+          ...paczka,
+          gabaryt: 'S',
+          oczekiwanyDeliveryMethodId: DPD,
+        },
+      }),
+    ).rejects.toThrow(/gabaryt|kurier/i);
     expect(wolania.filter((x) => x.nazwa === 'utworz')).toEqual([]);
   });
 
   it('odmawia, gdy metoda Allegro zmienia się podczas przygotowania komendy', async () => {
     let odczyty = 0;
     const { k, wolania } = zbuduj({
-      metodaZywa: async () => { odczyty += 1; return odczyty === 1 ? ONE_BOX : DPD; },
+      metodaZywa: async () => {
+        odczyty += 1;
+        return odczyty === 1 ? ONE_BOX : DPD;
+      },
       propozycja: propozycjaGabarytowa(64),
     });
-    await expect(k.nadaj({ zamowienie, paczka: {
-      waga: 0.5, dlugosc: 64, szerokosc: 38, wysokosc: 8,
-      gabaryt: 'S', oczekiwanyDeliveryMethodId: ONE_BOX,
-    } })).rejects.toThrow(/metoda|zmieniła/i);
+    await expect(
+      k.nadaj({
+        zamowienie,
+        paczka: {
+          waga: 0.5,
+          dlugosc: 64,
+          szerokosc: 38,
+          wysokosc: 8,
+          gabaryt: 'S',
+          oczekiwanyDeliveryMethodId: ONE_BOX,
+        },
+      }),
+    ).rejects.toThrow(/metoda|zmieniła/i);
     expect(odczyty).toBe(2);
     expect(wolania.filter((x) => x.nazwa === 'utworz')).toEqual([]);
   });
@@ -186,7 +289,10 @@ describe('kurier allegro_wza — nadanie', () => {
 
   it('po „Nadaj i drukuj” zamawia ZPL i zwraca tylko etykietę dla Zebry', async () => {
     const { k, wolania } = zbuduj({
-      przesylka: { labelFormat: 'ZPL', packages: [{ waybill: 'AD0ZPL', transportingInfo: [{ carrierId: 'DPD', carrierWaybill: '104ZPL' }] }] },
+      przesylka: {
+        labelFormat: 'ZPL',
+        packages: [{ waybill: 'AD0ZPL', transportingInfo: [{ carrierId: 'DPD', carrierWaybill: '104ZPL' }] }],
+      },
       etykieta: ZPL,
     });
     const wynik = await k.nadaj({ zamowienie, paczka, kolejnosc: 1, drukowac: true });
@@ -198,10 +304,12 @@ describe('kurier allegro_wza — nadanie', () => {
 
   it('nie przepuszcza PDF-u jako surowego ZPL do drukarki i zachowuje numer listu', async () => {
     const { k } = zbuduj({
-      przesylka: { labelFormat: 'ZPL', packages: [{ waybill: 'AD0ZPL' }] }, etykieta: PDF,
+      przesylka: { labelFormat: 'ZPL', packages: [{ waybill: 'AD0ZPL' }] },
+      etykieta: PDF,
     });
     await expect(k.nadaj({ zamowienie, paczka, drukowac: true })).rejects.toMatchObject({
-      shipmentId: 'ship-1', numerListu: 'AD0ZPL',
+      shipmentId: 'ship-1',
+      numerListu: 'AD0ZPL',
     });
   });
 
@@ -211,7 +319,8 @@ describe('kurier allegro_wza — nadanie', () => {
       etykieta: Buffer.from('^XA^FO20,20^FDURWANE'),
     });
     await expect(k.nadaj({ zamowienie, paczka, drukowac: true })).rejects.toMatchObject({
-      shipmentId: 'ship-1', numerListu: 'AD0CUT',
+      shipmentId: 'ship-1',
+      numerListu: 'AD0CUT',
     });
   });
 
@@ -220,7 +329,8 @@ describe('kurier allegro_wza — nadanie', () => {
       przesylka: { labelFormat: 'EPL', packages: [{ waybill: 'AD0EPL' }] },
     });
     await expect(k.nadaj({ zamowienie, paczka })).rejects.toMatchObject({
-      shipmentId: 'ship-1', numerListu: 'AD0EPL',
+      shipmentId: 'ship-1',
+      numerListu: 'AD0EPL',
     });
   });
 
@@ -234,7 +344,13 @@ describe('kurier allegro_wza — nadanie', () => {
 
   // „Nie wiem, czy paczka juz jest" MUSI znaczyc odmowe — cicha zgoda kosztuje pieniadze.
   it('ODMAWIA, gdy nie udało się sprawdzić istniejących przesyłek', async () => {
-    const { k, wolania } = zbuduj({ api: { pobierzPrzesylki: async () => { throw new Error('Allegro: HTTP 503'); } } });
+    const { k, wolania } = zbuduj({
+      api: {
+        pobierzPrzesylki: async () => {
+          throw new Error('Allegro: HTTP 503');
+        },
+      },
+    });
     await expect(k.nadaj({ zamowienie, paczka, kolejnosc: 1 })).rejects.toThrow();
     expect(wolania.some((x) => x.nazwa === 'utworz')).toBe(false);
   });
@@ -311,7 +427,12 @@ describe('kurier allegro_wza — tworzenie asynchroniczne', () => {
   // ⚠️ NAJWAZNIEJSZY TEST TEGO PLIKU. Przewoz JUZ KOSZTOWAL. Wyjatek bez identyfikatora
   // znaczy zaplacona paczke, o ktora panel nie umie zapytac — stan bez wyjscia (4.9).
   it('wyjątek po udanym zakupie NIESIE commandId, żeby dało się zapytać ponownie', async () => {
-    const { k } = zbuduj({ opcje: { maksProb: 3 }, stan: () => { throw new Error('sieć padła'); } });
+    const { k } = zbuduj({
+      opcje: { maksProb: 3 },
+      stan: () => {
+        throw new Error('sieć padła');
+      },
+    });
     await expect(k.nadaj({ zamowienie, paczka, kolejnosc: 1 })).rejects.toMatchObject({
       shipmentId: commandIdDlaPaczki(1125, 1),
     });
@@ -331,7 +452,10 @@ describe('kurier allegro_wza — konto per kanał', () => {
     const podane = [];
     const { api } = klientAllegro();
     const k = createAllegroWzaClient({
-      allegroDla: (z) => { podane.push(z.sklep); return api; },
+      allegroDla: (z) => {
+        podane.push(z.sklep);
+        return api;
+      },
       metodaZywa: async () => DPD,
       odstepMs: 0,
     });
@@ -370,11 +494,13 @@ describe('kształt odpowiedzi Allegro — przepisany z pomiaru, nie założony',
     deliveryMethodId: DPD,
     carrier: 'ALLEGRO',
     labelFormat: 'PDF',
-    packages: [{
-      waybill: 'AD0LHNWJ8L661FQRL',
-      type: 'PACKAGE',
-      transportingInfo: [{ carrierId: 'DPD', carrierWaybill: '1048798161135U' }],
-    }],
+    packages: [
+      {
+        waybill: 'AD0LHNWJ8L661FQRL',
+        type: 'PACKAGE',
+        transportingInfo: [{ carrierId: 'DPD', carrierWaybill: '1048798161135U' }],
+      },
+    ],
   };
 
   it('odpowiedź komendy NIE NIESIE numeru listu — sam shipmentId', () => {
@@ -431,9 +557,7 @@ describe('wynik nadania nadaje się do zapisania w bazie', () => {
     const { k } = zbuduj();
     const w = await k.nadaj({ zamowienie, paczka, kolejnosc: 1 });
     for (const pole of POLA_TEKSTOWE) {
-      expect(
-        `${pole}: ${w[pole] === null || typeof w[pole] === 'string' ? 'ok' : typeof w[pole]}`,
-      ).toBe(`${pole}: ok`);
+      expect(`${pole}: ${w[pole] === null || typeof w[pole] === 'string' ? 'ok' : typeof w[pole]}`).toBe(`${pole}: ok`);
     }
   });
 
@@ -461,11 +585,15 @@ describe('wynik nadania nadaje się do zapisania w bazie', () => {
 describe('„Sprawdź ponownie" przyjmuje OBA identyfikatory', () => {
   const SHIP = '5350e75b-0f7a-4149-bc39-9b9f53fa1b60';
   const CMD = '7af0b507-8870-500b-828b-741af1bcba27';
-  const PACZKI = { labelFormat: 'PDF', packages: [{ waybill: 'AD0REAL', transportingInfo: [{ carrierWaybill: '104REAL' }] }] };
+  const PACZKI = {
+    labelFormat: 'PDF',
+    packages: [{ waybill: 'AD0REAL', transportingInfo: [{ carrierWaybill: '104REAL' }] }],
+  };
 
   it('po opóźnionym utworzeniu bierze ZPL z formatu przesyłki, bez ponownego zakupu', async () => {
     const { k, wolania } = zbuduj({
-      przesylka: { ...PACZKI, labelFormat: 'ZPL' }, etykieta: ZPL,
+      przesylka: { ...PACZKI, labelFormat: 'ZPL' },
+      etykieta: ZPL,
     });
     const wynik = await k.sprawdzPrzesylke(SHIP, zamowienie);
     expect(wynik.etykietaZpl).toEqual(ZPL);
@@ -477,12 +605,18 @@ describe('„Sprawdź ponownie" przyjmuje OBA identyfikatory', () => {
     const { k, wolania } = zbuduj({
       przesylka: { ...PACZKI, labelFormat: 'ZPL' },
       api: {
-        pobierzEtykieteWza: async () => { throw new Error('etykieta chwilowo niedostępna'); },
-        stanTworzeniaPrzesylki: async () => { throw new Error('błędny fallback do commandId'); },
+        pobierzEtykieteWza: async () => {
+          throw new Error('etykieta chwilowo niedostępna');
+        },
+        stanTworzeniaPrzesylki: async () => {
+          throw new Error('błędny fallback do commandId');
+        },
       },
     });
     await expect(k.sprawdzPrzesylke(SHIP, zamowienie)).rejects.toMatchObject({
-      message: 'etykieta chwilowo niedostępna', numerListu: 'AD0REAL', shipmentId: SHIP,
+      message: 'etykieta chwilowo niedostępna',
+      numerListu: 'AD0REAL',
+      shipmentId: SHIP,
     });
     expect(wolania.some((x) => x.nazwa === 'stan')).toBe(false);
   });
@@ -495,7 +629,9 @@ describe('„Sprawdź ponownie" przyjmuje OBA identyfikatory', () => {
           if (id !== SHIP) throw new Error('Allegro: HTTP 404');
           return PACZKI;
         },
-        stanTworzeniaPrzesylki: async () => { throw new Error('Allegro: HTTP 404 — to NIE jest commandId'); },
+        stanTworzeniaPrzesylki: async () => {
+          throw new Error('Allegro: HTTP 404 — to NIE jest commandId');
+        },
       },
     });
     const w = await k.sprawdzPrzesylke(SHIP, zamowienie);
@@ -528,7 +664,12 @@ describe('„Sprawdź ponownie" przyjmuje OBA identyfikatory', () => {
     const { k } = zbuduj();
     const poKomendzie = await k.sprawdzPrzesylke(commandIdDlaPaczki(1125, 1), zamowienie);
     expect(Object.keys(poKomendzie).sort()).toEqual([
-      'etykietaPdf', 'etykietaZpl', 'numerListu', 'numerPrzewoznika', 'shipmentId', 'surowa',
+      'etykietaPdf',
+      'etykietaZpl',
+      'numerListu',
+      'numerPrzewoznika',
+      'shipmentId',
+      'surowa',
       'wTrakcieTworzenia',
     ]);
   });
@@ -551,7 +692,13 @@ describe('kurier allegro_wza — pobranie', () => {
               // `in`, nie `??` — atrapa musi umieć oddać JAWNE `null`, a nie tylko „brak".
               cashOnDelivery: 'cod' in n ? n.cod : { amount: '83.99', currency: 'PLN', ownerName: null, iban: null },
             },
-            deliveryOptions: [{ deliveryType: 'DOOR', paymentType: 'POSTPAID', limits: { cashOnDelivery: { amount: '6000', currency: 'PLN' } } }],
+            deliveryOptions: [
+              {
+                deliveryType: 'DOOR',
+                paymentType: 'POSTPAID',
+                limits: { cashOnDelivery: { amount: '6000', currency: 'PLN' } },
+              },
+            ],
           };
         },
         ...(n.api ?? {}),
@@ -559,7 +706,7 @@ describe('kurier allegro_wza — pobranie', () => {
     });
     const k = createAllegroWzaClient({
       allegroDla: () => api,
-      metodaZywa: async () => (n.metoda ?? DPD_POBRANIE),
+      metodaZywa: async () => n.metoda ?? DPD_POBRANIE,
       pobranieNadawca: n.konto ?? KONTO,
       odstepMs: 0,
     });
@@ -588,8 +735,7 @@ describe('kurier allegro_wza — pobranie', () => {
 
   it('ODMAWIA, gdy operator wpisał inną kwotę — nic nie kupuje', async () => {
     const { k, wolania } = zPobraniem();
-    await expect(k.nadaj({ zamowienie, paczka, kolejnosc: 1, kwotaPobrania: '8399' }))
-      .rejects.toThrow(/8399/);
+    await expect(k.nadaj({ zamowienie, paczka, kolejnosc: 1, kwotaPobrania: '8399' })).rejects.toThrow(/8399/);
     expect(wolania.some((x) => x.nazwa === 'utworz')).toBe(false);
   });
 
@@ -616,7 +762,13 @@ describe('kurier allegro_wza — pobranie', () => {
   describe('dosyłka (paczka nr 2) — pobranie tylko z jawnej decyzji', () => {
     const KONTO_ZMYSLONE = { nazwa: 'Pracownia Półcień', rachunek: '00000000000000000000000000' };
     const kod = { amount: '212.90', currency: 'PLN', ownerName: null, iban: null };
-    const zamowienieZmyslone = { id: 9142, sklep: 'allegro_polcien', metoda_wysylki: 'allegro_dpd', zrodlo_id: 'ord-polcien-1', anulowane: 0 };
+    const zamowienieZmyslone = {
+      id: 9142,
+      sklep: 'allegro_polcien',
+      metoda_wysylki: 'allegro_dpd',
+      zrodlo_id: 'ord-polcien-1',
+      anulowane: 0,
+    };
     const wyslane = (wolania) => wolania.find((x) => x.nazwa === 'utworz').a[0].input;
 
     it('paczka nr 1 za pobraniem — jedzie złota kwota 212.90', async () => {
@@ -633,8 +785,9 @@ describe('kurier allegro_wza — pobranie', () => {
 
     it('paczka nr 1 z jawnym false na usłudze PRZEDPŁACONEJ z kwotą — dalej ODMAWIA', async () => {
       const { k, wolania } = zPobraniem({ metoda: DPD, cod: kod, konto: KONTO_ZMYSLONE });
-      await expect(k.nadaj({ zamowienie: zamowienieZmyslone, paczka, kolejnosc: 1, pobranieNaTejPaczce: false }))
-        .rejects.toThrow(/przedpłacona/i);
+      await expect(
+        k.nadaj({ zamowienie: zamowienieZmyslone, paczka, kolejnosc: 1, pobranieNaTejPaczce: false }),
+      ).rejects.toThrow(/przedpłacona/i);
       expect(wolania.some((x) => x.nazwa === 'utworz')).toBe(false);
     });
 

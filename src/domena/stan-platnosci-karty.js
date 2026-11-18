@@ -65,19 +65,29 @@ const kluczMetody = (p) => normalizujMetode(p?.metoda).klucz;
  * Ta sama granica, co w `przedplatyPrzedPobraniem` (platnosci.js): wpłata `sklep` przy pobraniu
  * sprzedanym przez sklep albo wpłata `sklep` z metodą „Za pobraniem”.
  */
-const wplataNieliczona = (z, p) => czyPobranie(z) && p?.zrodlo === 'sklep'
-  && (pobranieZeSklepu(z) || kluczMetody(p) === 'pobranie');
+const wplataNieliczona = (z, p) =>
+  czyPobranie(z) && p?.zrodlo === 'sklep' && (pobranieZeSklepu(z) || kluczMetody(p) === 'pobranie');
 
 /** Rozliczenie kuriera = wpłata z metodą „Za pobraniem”, której nie dopisał sklep. */
 const rozliczeniePobrania = (p) => kluczMetody(p) === 'pobranie' && p?.zrodlo !== 'sklep';
 
-function wynik(stan, { opis = null, kwotaGr = null, wplaconoGr = null, zwroconoGr = null, doPobraniaGr = null, pominieteWplaty = [] } = {}) {
+function wynik(
+  stan,
+  { opis = null, kwotaGr = null, wplaconoGr = null, zwroconoGr = null, doPobraniaGr = null, pominieteWplaty = [] } = {},
+) {
   const ton = TON_STANU[stan];
   return {
-    stan, etykieta: ETYKIETA_STANU[stan], ton, klasa: KLASA_TONU[ton], opis,
-    kwotaGr, wplaconoGr, zwroconoGr,
+    stan,
+    etykieta: ETYKIETA_STANU[stan],
+    ton,
+    klasa: KLASA_TONU[ton],
+    opis,
+    kwotaGr,
+    wplaconoGr,
+    zwroconoGr,
     saldoGr: kwotaGr === null || wplaconoGr === null ? null : wplaconoGr - kwotaGr,
-    doPobraniaGr, pominieteWplaty,
+    doPobraniaGr,
+    pominieteWplaty,
   };
 }
 
@@ -91,21 +101,25 @@ function wynik(stan, { opis = null, kwotaGr = null, wplaconoGr = null, zwroconoG
 export function stanPlatnosciKarty(z, { zwroty = [], wOkresie = false } = {}) {
   try {
     const saldo = saldoWplat(z);
-    if (saldo.stan === 'blad') return wynik(STAN_KARTY.BLAD, { opis: saldo.blad || 'Nie da się policzyć kwoty zamówienia' });
+    if (saldo.stan === 'blad')
+      return wynik(STAN_KARTY.BLAD, { opis: saldo.blad || 'Nie da się policzyć kwoty zamówienia' });
 
     const wplaty = z?.platnosci ?? [];
     const pominiete = wplaty.filter((p) => wplataNieliczona(z, p));
     const K = kwotaOczekiwanaGrosze(z);
     const W = sumaWplatGrosze(wplaty.filter((p) => !pominiete.includes(p)));
     // Zwrot liczy się dopiero, gdy pieniądze naprawdę oddano (wzór z twojefaktury/saldo.js).
-    const O = (zwroty ?? []).filter((w) => w?.pieniadze_oddane_at)
-      .reduce((s, w) => s + kwotaZwrotuGrosze(w), 0);
+    const O = (zwroty ?? []).filter((w) => w?.pieniadze_oddane_at).reduce((s, w) => s + kwotaZwrotuGrosze(w), 0);
     const liczby = { kwotaGr: K, wplaconoGr: W, zwroconoGr: O, pominieteWplaty: pominiete.map((p) => p.id) };
 
     if (O > 0 && O >= W) return wynik(STAN_KARTY.ZWROCONE_CALOSC, liczby);
     if (czyPobranie(z) && !wplaty.some(rozliczeniePobrania)) {
       let doPobraniaGr = null;
-      try { doPobraniaGr = resztaDoPobrania(z); } catch { doPobraniaGr = null; }
+      try {
+        doPobraniaGr = resztaDoPobrania(z);
+      } catch {
+        doPobraniaGr = null;
+      }
       return wynik(STAN_KARTY.POBRANIE, { ...liczby, doPobraniaGr });
     }
     if (wOkresie && W < K) return wynik(STAN_KARTY.ZBIORCZE, liczby);
@@ -137,13 +151,20 @@ export function kiedyRuchu(data, teraz = new Date()) {
   return SAMA_DATA.test(String(data).trim()) ? dzienMiesiac : `${dzienMiesiac} ${pelna.slice(11, 16)}`;
 }
 
-const grosze = (f) => { try { return f(); } catch { return null; } };
+const grosze = (f) => {
+  try {
+    return f();
+  } catch {
+    return null;
+  }
+};
 
 function opisWplaty(p, liczona) {
   if (!liczona) return 'Data zapłaty ze sklepu przy pobraniu — nie jest wpłatą';
   const metoda = normalizujMetode(p?.metoda);
   // Dopisek w nawiasie (np. „Allegro (płatność online)”) jest dla statystyk; w ruchu łamał opis na 2 linie.
-  const nazwa = metoda.klucz === 'nieokreslona' && p?.metoda ? String(p.metoda) : metoda.etykieta.replace(/\s*\(.*\)$/, '');
+  const nazwa =
+    metoda.klucz === 'nieokreslona' && p?.metoda ? String(p.metoda) : metoda.etykieta.replace(/\s*\(.*\)$/, '');
   return `Wpłata · ${nazwa}${p?.zrodlo === 'sklep' ? ' · ze sklepu' : ''}`;
 }
 
@@ -161,19 +182,33 @@ export function ruchyPlatnosci({ wplaty = [], zwroty = [], pominieteWplaty = [],
   for (const p of wplaty ?? []) {
     const liczona = !pominiete.has(p?.id);
     lista.push({
-      rodzaj: 'wplata', znak: '+', kwotaGr: grosze(() => sumaWplatGrosze([p])),
-      data: p?.data, kiedy: kiedyRuchu(p?.data, teraz), opis: opisWplaty(p, liczona),
-      zrodlo: p?.zrodlo ?? null, zZamowienia: p?.zZamowienia ?? null, zamowienieId: p?.zamowienie_id ?? null,
-      uwaga: p?.uwaga ?? null, id: p?.id, usuwalna: p?.zrodlo === 'reczna', liczona,
+      rodzaj: 'wplata',
+      znak: '+',
+      kwotaGr: grosze(() => sumaWplatGrosze([p])),
+      data: p?.data,
+      kiedy: kiedyRuchu(p?.data, teraz),
+      opis: opisWplaty(p, liczona),
+      zrodlo: p?.zrodlo ?? null,
+      zZamowienia: p?.zZamowienia ?? null,
+      zamowienieId: p?.zamowienie_id ?? null,
+      uwaga: p?.uwaga ?? null,
+      id: p?.id,
+      usuwalna: p?.zrodlo === 'reczna',
+      liczona,
     });
   }
   for (const w of zwroty ?? []) {
     const oddany = Boolean(w?.pieniadze_oddane_at);
     const data = w?.pieniadze_oddane_at ?? w?.data;
     lista.push({
-      rodzaj: 'zwrot', znak: '−', kwotaGr: grosze(() => kwotaZwrotuGrosze(w)),
-      data, kiedy: kiedyRuchu(data, teraz), opis: oddany ? 'Zwrot' : 'Zwrot · pieniądze do oddania',
-      id: w?.id, oddany,
+      rodzaj: 'zwrot',
+      znak: '−',
+      kwotaGr: grosze(() => kwotaZwrotuGrosze(w)),
+      data,
+      kiedy: kiedyRuchu(data, teraz),
+      opis: oddany ? 'Zwrot' : 'Zwrot · pieniądze do oddania',
+      id: w?.id,
+      oddany,
     });
   }
   const klucz = (r) => fmtDataCzasKrotko(r.data) || '';

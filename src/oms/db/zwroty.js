@@ -12,15 +12,16 @@ const teraz = () => new Date().toISOString();
 const PORZADEK = ' ORDER BY data, id';
 
 function pozycjeZwrotu(db, zwrotId) {
-  return db.prepare(
-    'SELECT klucz_pozycji, nazwa, ilosc, kwota FROM zwroty_pozycje WHERE zwrot_id = ? ORDER BY id',
-  ).all(zwrotId);
+  return db
+    .prepare('SELECT klucz_pozycji, nazwa, ilosc, kwota FROM zwroty_pozycje WHERE zwrot_id = ? ORDER BY id')
+    .all(zwrotId);
 }
 
 const zPozycjami = (db, w) => (w ? { ...w, pozycje: pozycjeZwrotu(db, w.id) } : null);
 
 export function zwrotyZamowienia(db, zamowienieId) {
-  return db.prepare(`SELECT * FROM zwroty WHERE zamowienie_id = ?${PORZADEK}`)
+  return db
+    .prepare(`SELECT * FROM zwroty WHERE zamowienie_id = ?${PORZADEK}`)
     .all(zamowienieId)
     .map((w) => zPozycjami(db, w));
 }
@@ -29,8 +30,10 @@ export function zwrotyZamowienia(db, zamowienieId) {
 // tabel zbiegaja sie, wiec sam `id` przepuscilby pomylke argumentu
 // w trasie. Ta sama zasada, co w `usunWplateReczna`.
 export function zwrot(db, zamowienieId, zwrotId) {
-  return zPozycjami(db, db.prepare('SELECT * FROM zwroty WHERE id = ? AND zamowienie_id = ?')
-    .get(zwrotId, zamowienieId));
+  return zPozycjami(
+    db,
+    db.prepare('SELECT * FROM zwroty WHERE id = ? AND zamowienie_id = ?').get(zwrotId, zamowienieId),
+  );
 }
 
 /**
@@ -59,8 +62,7 @@ export function dodajZwrot(db, zamowienieId, { data, kwota, kwotaDostawy = null,
   let nowyId = null;
   const kandydat = { data, kwota, kwotaDostawy, pozycje };
   const zapisz = db.prepare(
-    'INSERT INTO zwroty (zamowienie_id, data, kwota, kwota_dostawy, powod, utworzony_at)'
-    + ' VALUES (?,?,?,?,?,?)',
+    'INSERT INTO zwroty (zamowienie_id, data, kwota, kwota_dostawy, powod, utworzony_at)' + ' VALUES (?,?,?,?,?,?)',
   );
   const zapiszPozycje = db.prepare(
     'INSERT INTO zwroty_pozycje (zwrot_id, klucz_pozycji, nazwa, ilosc, kwota) VALUES (?,?,?,?,?)',
@@ -75,16 +77,16 @@ export function dodajZwrot(db, zamowienieId, { data, kwota, kwotaDostawy = null,
       // raportu. Dwa prawdziwe zwroty tego samego dnia, za te sama kwote i te same pozycje sa
       // nieodroznialne od powtorki, wiec jedyna uczciwa rada to POLACZYC je w jeden wpis.
       throw bladOperatora(
-        `Taki sam zwrot jest już zapisany przy tym zamówieniu (${blizniak.data}, ${blizniak.kwota} zł) `
-        + '— panel niczego nie dopisał. Jeśli klient naprawdę dostał te pieniądze dwa razy tego '
-        + 'samego dnia, wpisz to jako jeden zwrot na łączną kwotę: data i kwota zwrotu rządzą '
-        + 'miesiącem podatkowym i muszą zostać prawdziwe.',
+        `Taki sam zwrot jest już zapisany przy tym zamówieniu (${blizniak.data}, ${blizniak.kwota} zł) ` +
+          '— panel niczego nie dopisał. Jeśli klient naprawdę dostał te pieniądze dwa razy tego ' +
+          'samego dnia, wpisz to jako jeden zwrot na łączną kwotę: data i kwota zwrotu rządzą ' +
+          'miesiącem podatkowym i muszą zostać prawdziwe.',
       );
     }
-    nowyId = Number(zapisz.run(
-      zamowienieId, data, String(kwota), kwotaDostawy == null ? null : String(kwotaDostawy),
-      powod, teraz(),
-    ).lastInsertRowid);
+    nowyId = Number(
+      zapisz.run(zamowienieId, data, String(kwota), kwotaDostawy == null ? null : String(kwotaDostawy), powod, teraz())
+        .lastInsertRowid,
+    );
     for (const p of pozycje) {
       zapiszPozycje.run(nowyId, p.klucz_pozycji, p.nazwa, Number(p.ilosc), String(p.kwota));
     }
@@ -112,23 +114,25 @@ export function dodajZwrot(db, zamowienieId, { data, kwota, kwotaDostawy = null,
 export function usunZwrot(db, zamowienieId, zwrotId) {
   const w = zwrot(db, zamowienieId, zwrotId);
   if (!w) throw bladOperatora('Nie ma takiego zwrotu przy tym zamówieniu.');
-  const wynik = db.prepare(
-    'DELETE FROM zwroty WHERE id = ? AND zamowienie_id = ? AND pieniadze_oddane_at IS NULL'
-    + ' AND korekta_zlecona_at IS NULL AND korekta_numer IS NULL',
-  ).run(zwrotId, zamowienieId);
+  const wynik = db
+    .prepare(
+      'DELETE FROM zwroty WHERE id = ? AND zamowienie_id = ? AND pieniadze_oddane_at IS NULL' +
+        ' AND korekta_zlecona_at IS NULL AND korekta_numer IS NULL',
+    )
+    .run(zwrotId, zamowienieId);
   if (!wynik.changes) {
     throw bladOperatora(
-      'Ten zwrot ma już oddane pieniądze albo korektę — panel go nie skasował. Odśwież ekran: '
-      + 'ktoś (albo Ty w drugiej karcie) zdążył to zrobić między sprawdzeniem a skasowaniem.',
+      'Ten zwrot ma już oddane pieniądze albo korektę — panel go nie skasował. Odśwież ekran: ' +
+        'ktoś (albo Ty w drugiej karcie) zdążył to zrobić między sprawdzeniem a skasowaniem.',
     );
   }
   return w;
 }
 
 export function oznaczPieniadzeOddane(db, zamowienieId, zwrotId, kiedy = teraz()) {
-  const wynik = db.prepare(
-    'UPDATE zwroty SET pieniadze_oddane_at = ? WHERE id = ? AND zamowienie_id = ?',
-  ).run(kiedy, zwrotId, zamowienieId);
+  const wynik = db
+    .prepare('UPDATE zwroty SET pieniadze_oddane_at = ? WHERE id = ? AND zamowienie_id = ?')
+    .run(kiedy, zwrotId, zamowienieId);
   if (!wynik.changes) throw bladOperatora('Nie ma takiego zwrotu przy tym zamówieniu.');
 }
 
@@ -163,13 +167,15 @@ export function zarezerwujKorekte(db, zamowienieId, zwrotId, kiedy = teraz()) {
     const wszystkie = zwrotyZamowienia(db, zamowienieId);
     const powod = powodOdmowyKorektyDlaFaktury({ id: zwrotId }, wszystkie);
     if (powod) throw bladOperatora(powod);
-    const wynik = db.prepare(
-      // `korekta_referencja = NULL` — referencja starego, odrzuconego zlecenia nie może przeżyć
-      // nowej rezerwacji. Inaczej zerwane połączenie przy nowym zleceniu zostawia starą referencję, a odczyt
-      // jej statusu (422) zwolniłby NOWĄ rezerwację, choć dokument mógł powstać.
-      'UPDATE zwroty SET korekta_zlecona_at = ?, korekta_blad = NULL, korekta_referencja = NULL'
-      + ' WHERE id = ? AND zamowienie_id = ? AND korekta_zlecona_at IS NULL AND korekta_numer IS NULL',
-    ).run(kiedy, zwrotId, zamowienieId);
+    const wynik = db
+      .prepare(
+        // `korekta_referencja = NULL` — referencja starego, odrzuconego zlecenia nie może przeżyć
+        // nowej rezerwacji. Inaczej zerwane połączenie przy nowym zleceniu zostawia starą referencję, a odczyt
+        // jej statusu (422) zwolniłby NOWĄ rezerwację, choć dokument mógł powstać.
+        'UPDATE zwroty SET korekta_zlecona_at = ?, korekta_blad = NULL, korekta_referencja = NULL' +
+          ' WHERE id = ? AND zamowienie_id = ? AND korekta_zlecona_at IS NULL AND korekta_numer IS NULL',
+      )
+      .run(kiedy, zwrotId, zamowienieId);
     db.exec('COMMIT');
     return wynik.changes === 1;
   } catch (e) {
@@ -183,9 +189,9 @@ export function zarezerwujKorekte(db, zamowienieId, zwrotId, kiedy = teraz()) {
 // wyzerowac tego, co juz wiadomo.
 export function zapiszKorekte(db, zamowienieId, zwrotId, { referencja = null, uuid = null, numer = null }) {
   db.prepare(
-    'UPDATE zwroty SET korekta_referencja = COALESCE(?, korekta_referencja),'
-    + ' korekta_uuid = COALESCE(?, korekta_uuid), korekta_numer = COALESCE(?, korekta_numer)'
-    + ' WHERE id = ? AND zamowienie_id = ?',
+    'UPDATE zwroty SET korekta_referencja = COALESCE(?, korekta_referencja),' +
+      ' korekta_uuid = COALESCE(?, korekta_uuid), korekta_numer = COALESCE(?, korekta_numer)' +
+      ' WHERE id = ? AND zamowienie_id = ?',
   ).run(referencja, uuid, numer, zwrotId, zamowienieId);
 }
 
@@ -196,9 +202,11 @@ export function zapiszKorekte(db, zamowienieId, zwrotId, { referencja = null, uu
  * korekty NA ZAWSZE, a jedynym wyjsciem bylby ręczny UPDATE na bazie.
  */
 export function zapiszBladKorekty(db, zamowienieId, zwrotId, opis) {
-  db.prepare(
-    'UPDATE zwroty SET korekta_zlecona_at = NULL, korekta_blad = ? WHERE id = ? AND zamowienie_id = ?',
-  ).run(String(opis).slice(0, 500), zwrotId, zamowienieId);
+  db.prepare('UPDATE zwroty SET korekta_zlecona_at = NULL, korekta_blad = ? WHERE id = ? AND zamowienie_id = ?').run(
+    String(opis).slice(0, 500),
+    zwrotId,
+    zamowienieId,
+  );
 }
 
 /**
@@ -210,11 +218,13 @@ export function zapiszBladKorekty(db, zamowienieId, zwrotId, opis) {
  * Wynik: true, gdy zwolniono dokładnie jeden wiersz.
  */
 export function odrzucZlecenieKorekty(db, zamowienieId, zwrotId, referencja, opis) {
-  const wynik = db.prepare(
-    'UPDATE zwroty SET korekta_zlecona_at = NULL, korekta_blad = ?'
-    + ' WHERE id = ? AND zamowienie_id = ? AND korekta_referencja = ?'
-    + ' AND korekta_numer IS NULL AND korekta_zlecona_at IS NOT NULL',
-  ).run(String(opis).slice(0, 500), zwrotId, zamowienieId, referencja);
+  const wynik = db
+    .prepare(
+      'UPDATE zwroty SET korekta_zlecona_at = NULL, korekta_blad = ?' +
+        ' WHERE id = ? AND zamowienie_id = ? AND korekta_referencja = ?' +
+        ' AND korekta_numer IS NULL AND korekta_zlecona_at IS NOT NULL',
+    )
+    .run(String(opis).slice(0, 500), zwrotId, zamowienieId, referencja);
   return wynik.changes === 1;
 }
 
@@ -241,14 +251,16 @@ export function odrzucZlecenieKorekty(db, zamowienieId, zwrotId, referencja, opi
 export function odblokujKorekte(db, zamowienieId, zwrotId) {
   const w = zwrot(db, zamowienieId, zwrotId);
   if (!w) throw bladOperatora('Nie ma takiego zwrotu przy tym zamówieniu.');
-  const wynik = db.prepare(
-    'UPDATE zwroty SET korekta_zlecona_at = NULL, korekta_referencja = NULL, korekta_blad = NULL'
-    + ' WHERE id = ? AND zamowienie_id = ? AND korekta_numer IS NULL',
-  ).run(zwrotId, zamowienieId);
+  const wynik = db
+    .prepare(
+      'UPDATE zwroty SET korekta_zlecona_at = NULL, korekta_referencja = NULL, korekta_blad = NULL' +
+        ' WHERE id = ? AND zamowienie_id = ? AND korekta_numer IS NULL',
+    )
+    .run(zwrotId, zamowienieId);
   if (!wynik.changes) {
     throw bladOperatora(
-      `Korekta ${w.korekta_numer} do tego zwrotu istnieje — panel nie zwolni rezerwacji dokumentu, `
-      + 'który na pewno powstał. Odblokowanie otworzyłoby drogę do drugiej korekty do tej samej faktury.',
+      `Korekta ${w.korekta_numer} do tego zwrotu istnieje — panel nie zwolni rezerwacji dokumentu, ` +
+        'który na pewno powstał. Odblokowanie otworzyłoby drogę do drugiej korekty do tej samej faktury.',
     );
   }
   return w;
@@ -278,21 +290,20 @@ export function zapiszRecznyNumerKorekty(db, zamowienieId, zwrotId, numer) {
   const nowy = String(numer);
   db.exec('BEGIN IMMEDIATE');
   try {
-    const zajety = zwrotyZamowienia(db, zamowienieId)
-      .find((x) => x.id !== zwrotId && x.korekta_numer === nowy);
+    const zajety = zwrotyZamowienia(db, zamowienieId).find((x) => x.id !== zwrotId && x.korekta_numer === nowy);
     if (zajety) {
       throw bladOperatora(
-        `Korekta ${nowy} jest już zapisana przy zwrocie z ${zajety.data} — jeden dokument nie `
-        + 'rozlicza dwóch zwrotów. Sprawdź w inFakcie, który numer należy do tego zwrotu.',
+        `Korekta ${nowy} jest już zapisana przy zwrocie z ${zajety.data} — jeden dokument nie ` +
+          'rozlicza dwóch zwrotów. Sprawdź w inFakcie, który numer należy do tego zwrotu.',
       );
     }
-    const wynik = db.prepare(
-      'UPDATE zwroty SET korekta_numer = ? WHERE id = ? AND zamowienie_id = ? AND korekta_numer IS NULL',
-    ).run(nowy, zwrotId, zamowienieId);
+    const wynik = db
+      .prepare('UPDATE zwroty SET korekta_numer = ? WHERE id = ? AND zamowienie_id = ? AND korekta_numer IS NULL')
+      .run(nowy, zwrotId, zamowienieId);
     if (!wynik.changes) {
       throw bladOperatora(
-        'Nie udało się zapisać numeru korekty — albo nie ma takiego zwrotu przy tym zamówieniu, '
-        + 'albo numer został już zapisany.',
+        'Nie udało się zapisać numeru korekty — albo nie ma takiego zwrotu przy tym zamówieniu, ' +
+          'albo numer został już zapisany.',
       );
     }
     db.exec('COMMIT');
@@ -310,7 +321,12 @@ export function zapiszRecznyNumerKorekty(db, zamowienieId, zwrotId, numer) {
  * najczesciej.
  */
 export function zamowieniaZeZwrotem(db) {
-  return new Set(db.prepare('SELECT DISTINCT zamowienie_id AS id FROM zwroty').all().map((w) => w.id));
+  return new Set(
+    db
+      .prepare('SELECT DISTINCT zamowienie_id AS id FROM zwroty')
+      .all()
+      .map((w) => w.id),
+  );
 }
 
 /**
@@ -334,9 +350,9 @@ export function zwrotyDlaZamowien(db, zamowienieIds) {
   const mapa = new Map();
   if (zamowienieIds.length === 0) return mapa;
   const placeholdery = zamowienieIds.map(() => '?').join(',');
-  const wiersze = db.prepare(
-    `SELECT * FROM zwroty WHERE zamowienie_id IN (${placeholdery})${PORZADEK}`,
-  ).all(...zamowienieIds);
+  const wiersze = db
+    .prepare(`SELECT * FROM zwroty WHERE zamowienie_id IN (${placeholdery})${PORZADEK}`)
+    .all(...zamowienieIds);
   for (const w of wiersze) {
     if (!mapa.has(w.zamowienie_id)) mapa.set(w.zamowienie_id, []);
     mapa.get(w.zamowienie_id).push(w);
@@ -352,10 +368,12 @@ export function zwrotyDlaZamowien(db, zamowienieIds) {
  * Tylko odczyt. `faktury` ma UNIQUE (zamowienie_id), więc najwyżej jeden wiersz na korektę ze zwrotu.
  */
 export function korektyZwrotowZFakturaZamowienia(db) {
-  return db.prepare(
-    'SELECT zw.korekta_uuid AS uuid, z.id AS zamowienie_id, z.numer AS zamowienie_numer, f.numer, f.ksef_numer'
-    + ' FROM zwroty zw JOIN zamowienia z ON z.id = zw.zamowienie_id'
-    + ' LEFT JOIN faktury f ON f.zamowienie_id = zw.zamowienie_id'
-    + ' WHERE zw.korekta_uuid IS NOT NULL',
-  ).all();
+  return db
+    .prepare(
+      'SELECT zw.korekta_uuid AS uuid, z.id AS zamowienie_id, z.numer AS zamowienie_numer, f.numer, f.ksef_numer' +
+        ' FROM zwroty zw JOIN zamowienia z ON z.id = zw.zamowienie_id' +
+        ' LEFT JOIN faktury f ON f.zamowienie_id = zw.zamowienie_id' +
+        ' WHERE zw.korekta_uuid IS NOT NULL',
+    )
+    .all();
 }

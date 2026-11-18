@@ -16,7 +16,11 @@ import { join } from 'node:path';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zbudujOms } from '../../pomoc/budowa-oms-testowa.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
-import { rozpocznijPrzesylke, zakonczPrzesylke, zapiszProbeStatusuDpd } from '../../../src/moduly/wysylka/db/przesylki.js';
+import {
+  rozpocznijPrzesylke,
+  zakonczPrzesylke,
+  zapiszProbeStatusuDpd,
+} from '../../../src/moduly/wysylka/db/przesylki.js';
 import { wyczyscBladStatusuBezSledzenia } from '../../../src/moduly/wysylka/db/przesylki.js';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { sprawyPrzesylki } from '../../../src/domena/przesylka-stan.js';
@@ -26,9 +30,19 @@ const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('bas
 const poller = { stan: () => ({ ostatni_przebieg_at: '2026-08-12T06:00:00', ostatni_blad: null }) };
 
 const zmapowane = (id, nad = {}) => ({
-  zrodlo_id: id, numer: String(id), klient: { first_name: 'Jan', email: 'j@k.pl' }, dostawa: { city: 'Warszawa' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '100.00',
-  status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-08-11T06:00:00',
+  zrodlo_id: id,
+  numer: String(id),
+  klient: { first_name: 'Jan', email: 'j@k.pl' },
+  dostawa: { city: 'Warszawa' },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '100.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-08-11T06:00:00',
   pozycje: [{ nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 1, cena_brutto: '100.00', vat: null }],
   ...nad,
 });
@@ -47,7 +61,9 @@ function nadanaZBledem(db, zamowienieId, kurier, blad = 'BŁĄD TECHNICZNY: klie
 const wiersz = (db, id) => db.prepare('SELECT * FROM przesylki WHERE id = ?').get(id);
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 
 describe('osad po kurierze bez śledzenia', () => {
   it('kurier bez śledzenia zostawia zamówienie na liście roboczej — dopóki osad nie zniknie', () => {
@@ -81,8 +97,16 @@ describe('osad po kurierze bez śledzenia', () => {
     const id = zapiszZamowienie(db, 'pro', zmapowane(9003), {});
     const pid = nadanaZBledem(db, id, 'dpd', 'INCORRECT_LOGIN_OR_PASSWORD');
     const app = buildOmsServer({
-      db, config, poller,
-      kurierzy: { dpd: { statusPrzesylki: async () => { throw new Error('sieć padła'); } } },
+      db,
+      config,
+      poller,
+      kurierzy: {
+        dpd: {
+          statusPrzesylki: async () => {
+            throw new Error('sieć padła');
+          },
+        },
+      },
     });
     await app.ready();
 
@@ -136,8 +160,10 @@ describe('wyczyscBladStatusuBezSledzenia', () => {
 // jednego wywołania") ma w tym projekcie własny komentarz w bootstrap.js i już się zdarzyła.
 describe('bootstrap sprząta osad przy starcie', () => {
   const KANAL = {
-    ALLEGRO_SWIETLIK_CLIENT_ID: 'id', ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
-    ALLEGRO_SWIETLIK_OD: '2026-07-01', ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
+    ALLEGRO_SWIETLIK_CLIENT_ID: 'id',
+    ALLEGRO_SWIETLIK_CLIENT_SECRET: 'sekret',
+    ALLEGRO_SWIETLIK_OD: '2026-07-01',
+    ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
     ALLEGRO_USER_AGENT: 'PrzykladowyPanel/0.0.0 (+https://przyklad.invalid/panel)',
   };
 
@@ -154,17 +180,27 @@ describe('bootstrap sprząta osad przy starcie', () => {
 
     const { db: dbUslugi } = zbudujOms({
       env: {
-        OMS_AUTH_USER: 'adam', OMS_AUTH_PASS: 'x', OMS_DB_PATH: plik,
+        OMS_AUTH_USER: 'adam',
+        OMS_AUTH_PASS: 'x',
+        OMS_DB_PATH: plik,
         OMS_ETYKIETY_DIR: mkdtempSync(join(tmpdir(), 'oms-etyk-')),
-        SHOP_PRO_URL: 'https://pro.swietlik.test', SHOP_PRO_CK: 'ck', SHOP_PRO_CS: 'cs',
+        SHOP_PRO_URL: 'https://pro.swietlik.test',
+        SHOP_PRO_CK: 'ck',
+        SHOP_PRO_CS: 'cs',
         // ⚠️ DPD MUSI BYĆ SKONFIGUROWANY, inaczej ten test niczego nie pilnuje: bez niego
         // mapa kurierów ma JEDNEGO kuriera i „sprzątaj u wszystkich" znaczy dokładnie to
         // samo, co „sprzątaj u bezSledzenia". Wyszło z mutacji — filtr podmieniony na
         // `() => true` przechodził, dopóki w mapie nie było kuriera ze śledzeniem.
-        DPD_URL: 'https://dpd/api', DPD_LOGIN: '99999999', DPD_PASSWORD: 'tajne', DPD_FID: '876543',
-        DPD_NADAWCA_NAZWA: 'Pracownia Półcień', DPD_NADAWCA_ULICA: 'Fabryczna 7',
-        DPD_NADAWCA_KOD: '00-950', DPD_NADAWCA_MIASTO: 'Warszawa',
-        DPD_INFO_URL: 'https://dpd/info', DPD_INFO_CHANNEL: '876543',
+        DPD_URL: 'https://dpd/api',
+        DPD_LOGIN: '99999999',
+        DPD_PASSWORD: 'tajne',
+        DPD_FID: '876543',
+        DPD_NADAWCA_NAZWA: 'Pracownia Półcień',
+        DPD_NADAWCA_ULICA: 'Fabryczna 7',
+        DPD_NADAWCA_KOD: '00-950',
+        DPD_NADAWCA_MIASTO: 'Warszawa',
+        DPD_INFO_URL: 'https://dpd/info',
+        DPD_INFO_CHANNEL: '876543',
         ...KANAL,
       },
       createDpd: () => ({ nadaj: () => {}, statusPrzesylki: async () => null }),
@@ -196,13 +232,23 @@ describe('bootstrap sprząta osad przy starcie', () => {
 
     const { db: dbUslugi } = zbudujOms({
       env: {
-        OMS_AUTH_USER: 'adam', OMS_AUTH_PASS: 'x', OMS_DB_PATH: plik,
+        OMS_AUTH_USER: 'adam',
+        OMS_AUTH_PASS: 'x',
+        OMS_DB_PATH: plik,
         OMS_ETYKIETY_DIR: mkdtempSync(join(tmpdir(), 'oms-etyk2-')),
-        SHOP_PRO_URL: 'https://pro.swietlik.test', SHOP_PRO_CK: 'ck', SHOP_PRO_CS: 'cs',
-        DPD_URL: 'https://dpd/api', DPD_LOGIN: '99999999', DPD_PASSWORD: 'tajne', DPD_FID: '876543',
-        DPD_NADAWCA_NAZWA: 'Pracownia Półcień', DPD_NADAWCA_ULICA: 'Fabryczna 7',
-        DPD_NADAWCA_KOD: '00-950', DPD_NADAWCA_MIASTO: 'Warszawa',
-        DPD_INFO_URL: 'https://dpd/info', DPD_INFO_CHANNEL: '876543',
+        SHOP_PRO_URL: 'https://pro.swietlik.test',
+        SHOP_PRO_CK: 'ck',
+        SHOP_PRO_CS: 'cs',
+        DPD_URL: 'https://dpd/api',
+        DPD_LOGIN: '99999999',
+        DPD_PASSWORD: 'tajne',
+        DPD_FID: '876543',
+        DPD_NADAWCA_NAZWA: 'Pracownia Półcień',
+        DPD_NADAWCA_ULICA: 'Fabryczna 7',
+        DPD_NADAWCA_KOD: '00-950',
+        DPD_NADAWCA_MIASTO: 'Warszawa',
+        DPD_INFO_URL: 'https://dpd/info',
+        DPD_INFO_CHANNEL: '876543',
         ...KANAL,
       },
       createDpd: () => ({ nadaj: () => {}, statusPrzesylki: async () => null }),
@@ -231,9 +277,13 @@ describe('bootstrap sprząta osad przy starcie', () => {
 
     const { db: dbUslugi } = zbudujOms({
       env: {
-        OMS_AUTH_USER: 'adam', OMS_AUTH_PASS: 'x', OMS_DB_PATH: plik,
+        OMS_AUTH_USER: 'adam',
+        OMS_AUTH_PASS: 'x',
+        OMS_DB_PATH: plik,
         OMS_ETYKIETY_DIR: mkdtempSync(join(tmpdir(), 'oms-one-etyk-')),
-        SHOP_PRO_URL: 'https://pro.swietlik.test', SHOP_PRO_CK: 'ck', SHOP_PRO_CS: 'cs',
+        SHOP_PRO_URL: 'https://pro.swietlik.test',
+        SHOP_PRO_CK: 'ck',
+        SHOP_PRO_CS: 'cs',
         ...KANAL,
       },
       createAllegroWza: () => ({ nadaj: () => {}, bezSledzenia: true }),

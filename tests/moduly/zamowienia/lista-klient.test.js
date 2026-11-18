@@ -16,10 +16,26 @@ const definicje = [
 ];
 
 const zam = (id, klient, nad = {}) => ({
-  zrodlo_id: id, numer: String(id), klient: { email: 'j@k.pl', ...klient },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '100.00',
-  koszt_dostawy_brutto: '0.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
+  zrodlo_id: id,
+  numer: String(id),
+  klient: { email: 'j@k.pl', ...klient },
+  dostawa: {
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    address_1: 'Polna 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
+  },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '100.00',
+  koszt_dostawy_brutto: '0.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
   utworzone_at: '2026-10-17T13:19:52',
   pozycje: [{ nazwa: 'STOP', sku: 'S-1', ilosc: 1, cena_brutto: '100.00', brutto_linii: '100.00', vat: null }],
   ...nad,
@@ -67,14 +83,28 @@ describe('login kupującego z Allegro', () => {
 
 describe('nazwa firmy', () => {
   it('zamówienie firmowe: imię i nazwisko, pod nim firma, a dla Allegro na końcu login', async () => {
-    zapiszZamowienie(db, 'konto_b', zam(8011, { first_name: 'Anna', last_name: 'Nowak', company: 'Hotel Zaciszny Brzeg sp. z o.o.', login: 'hotel_zaciszny' }), {});
+    zapiszZamowienie(
+      db,
+      'konto_b',
+      zam(8011, {
+        first_name: 'Anna',
+        last_name: 'Nowak',
+        company: 'Hotel Zaciszny Brzeg sp. z o.o.',
+        login: 'hotel_zaciszny',
+      }),
+      {},
+    );
     const k = klient(await lista(), 8011);
     const kolejnosc = ['Anna Nowak', 'Hotel Zaciszny Brzeg sp. z o.o.', 'hotel_zaciszny'].map((t) => k.indexOf(t));
-    expect(kolejnosc.every((i) => i > -1), k).toBe(true);
+    expect(
+      kolejnosc.every((i) => i > -1),
+      k,
+    ).toBe(true);
     expect([...kolejnosc].sort((a, b) => a - b)).toEqual(kolejnosc);
   });
   it('pełna nazwa firmy także w title (przycięcie do dwóch linii jest tylko wizualne)', async () => {
-    const dluga = 'Przedsiębiorstwo Handlowo-Usługowe Bardzo Długa Nazwa Spółka z ograniczoną odpowiedzialnością w likwidacji';
+    const dluga =
+      'Przedsiębiorstwo Handlowo-Usługowe Bardzo Długa Nazwa Spółka z ograniczoną odpowiedzialnością w likwidacji';
     zapiszZamowienie(db, 'sklep_a', zam(8012, { first_name: 'Anna', last_name: 'Nowak', company: dluga }), {});
     expect(klient(await lista(), 8012)).toContain(`title="${dluga}"`);
   });
@@ -86,20 +116,40 @@ describe('nazwa firmy', () => {
     expect(k).not.toContain('klient-login');
   });
   it('sama firma bez osoby — firma w pierwszej linii, bez drugiej', async () => {
-    zapiszZamowienie(db, 'sklep_a', zam(8014, { first_name: '', last_name: '', company: 'Studio Wnętrz Pokoik Bis' }), {});
+    zapiszZamowienie(
+      db,
+      'sklep_a',
+      zam(8014, { first_name: '', last_name: '', company: 'Studio Wnętrz Pokoik Bis' }),
+      {},
+    );
     const k = klient(await lista(), 8014);
     expect(k.match(/Studio Wnętrz Pokoik Bis/g).length).toBe(2); // tekst + title
     expect(k).not.toContain('klient-firma');
   });
   it('firma równa imieniu i nazwisku (jednoosobowa, wpisana tak samo) nie powtarza się', async () => {
-    zapiszZamowienie(db, 'sklep_a', zam(8015, { first_name: 'Jan', last_name: 'Kowalski', company: ' jan  KOWALSKI ' }), {});
+    zapiszZamowienie(
+      db,
+      'sklep_a',
+      zam(8015, { first_name: 'Jan', last_name: 'Kowalski', company: ' jan  KOWALSKI ' }),
+      {},
+    );
     expect(klient(await lista(), 8015)).not.toContain('klient-firma');
   });
 });
 
 describe('escapowanie', () => {
   it('firma i login z kodem HTML są wypisane jako tekst', async () => {
-    zapiszZamowienie(db, 'konto_b', zam(8021, { first_name: 'Jan', last_name: 'Kowalski', company: '<b>Zły</b> "sp." & s.c.', login: '<script>alert(1)</script>' }), {});
+    zapiszZamowienie(
+      db,
+      'konto_b',
+      zam(8021, {
+        first_name: 'Jan',
+        last_name: 'Kowalski',
+        company: '<b>Zły</b> "sp." & s.c.',
+        login: '<script>alert(1)</script>',
+      }),
+      {},
+    );
     const k = klient(await lista(), 8021);
     expect(k).not.toContain('<script>');
     expect(k).not.toContain('<b>Zły</b>');
@@ -110,18 +160,28 @@ describe('escapowanie', () => {
 
 describe('mapowanie Allegro niesie login kupującego do bloku klienta', () => {
   const surowe = (buyer) => ({
-    id: 'abc-1', status: 'READY_FOR_PROCESSING', lineItems: [{ boughtAt: '2026-10-17T10:00:00Z', quantity: 1, price: { amount: '10.00' } }],
-    summary: { totalToPay: { amount: '10.00', currency: 'PLN' } }, payment: { type: 'ONLINE' }, delivery: { cost: { amount: '0.00' } },
+    id: 'abc-1',
+    status: 'READY_FOR_PROCESSING',
+    lineItems: [{ boughtAt: '2026-10-17T10:00:00Z', quantity: 1, price: { amount: '10.00' } }],
+    summary: { totalToPay: { amount: '10.00', currency: 'PLN' } },
+    payment: { type: 'ONLINE' },
+    delivery: { cost: { amount: '0.00' } },
     buyer: { email: 'x@allegromail.pl', firstName: 'Jan', lastName: 'Kowalski', ...buyer },
   });
   it('login z buyer.login trafia do klient.login, z obciętymi spacjami', () => {
     const adres = { street: 'Polna 1', city: 'Warszawa', postCode: '00-950', countryCode: 'PL' };
-    expect(mapujZamowienieAllegro(surowe({ login: '  lampy_jan77 ', address: adres }), { metodaZId }).klient.login).toBe('lampy_jan77');
+    expect(
+      mapujZamowienieAllegro(surowe({ login: '  lampy_jan77 ', address: adres }), { metodaZId }).klient.login,
+    ).toBe('lampy_jan77');
   });
   it('brak loginu u Allegro to null, a anonimizowany adres dalej oddaje cały blok null (login go nie ratuje)', () => {
     const adres = { street: 'Polna 1', city: 'Warszawa', postCode: '00-950', countryCode: 'PL' };
     expect(mapujZamowienieAllegro(surowe({ address: adres }), { metodaZId }).klient.login).toBeNull();
     const pusty = { street: null, city: null, postCode: null, countryCode: null };
-    expect(mapujZamowienieAllegro(surowe({ login: 'lampy_jan77', firstName: null, lastName: null, address: pusty }), { metodaZId }).klient).toBeNull();
+    expect(
+      mapujZamowienieAllegro(surowe({ login: 'lampy_jan77', firstName: null, lastName: null, address: pusty }), {
+        metodaZId,
+      }).klient,
+    ).toBeNull();
   });
 });

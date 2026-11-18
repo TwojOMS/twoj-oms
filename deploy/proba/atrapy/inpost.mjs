@@ -27,27 +27,47 @@ const PRZEBIEG_INPOST = Object.freeze([
 /** Wpisy `tracking_details` ShipX paczki utworzonej `utworzonaAt`, które nastąpiły do `terazMs` (najnowszy pierwszy). */
 export function zdarzeniaAtrapyInpost(utworzonaAt, terazMs) {
   return zdarzeniaDo(PRZEBIEG_INPOST, Date.parse(utworzonaAt), terazMs)
-    .map((z) => ({ status: z.stan, origin_status: z.stan, agency: null, datetime: new Date(z.ms).toISOString() })).reverse();
+    .map((z) => ({ status: z.stan, origin_status: z.stan, agency: null, datetime: new Date(z.ms).toISOString() }))
+    .reverse();
 }
 
 /** Surowa odpowiedź `GET /v1/tracking/{numer}` — do testu kontraktu z prawdziwym klientem. */
 export function surowaOdpowiedzInpost(numer, szczegoly) {
-  return { tracking_number: String(numer), service: 'inpost_locker_standard', type: 'inpost_locker_standard',
-    status: szczegoly[0]?.status ?? 'created', custom_attributes: {}, tracking_details: szczegoly,
-    expected_flow: [], created_at: szczegoly[szczegoly.length - 1]?.datetime ?? null, updated_at: szczegoly[0]?.datetime ?? null };
+  return {
+    tracking_number: String(numer),
+    service: 'inpost_locker_standard',
+    type: 'inpost_locker_standard',
+    status: szczegoly[0]?.status ?? 'created',
+    custom_attributes: {},
+    tracking_details: szczegoly,
+    expected_flow: [],
+    created_at: szczegoly[szczegoly.length - 1]?.datetime ?? null,
+    updated_at: szczegoly[0]?.datetime ?? null,
+  };
 }
 
 const odmowa = async () => {
-  throw Object.assign(new Error('Piaskownica: atrapa InPost nie nadaje paczek — nic nie poszło do InPostu.'), { dlaOperatora: true, status: 400 });
+  throw Object.assign(new Error('Piaskownica: atrapa InPost nie nadaje paczek — nic nie poszło do InPostu.'), {
+    dlaOperatora: true,
+    status: 400,
+  });
 };
 
-export function createAtrapaInpost({ env = process.env, log = () => {}, baza = () => null, teraz = () => new Date() } = {}) {
+export function createAtrapaInpost({
+  env = process.env,
+  log = () => {},
+  baza = () => null,
+  teraz = () => new Date(),
+} = {}) {
   wymagajTrybuProby(env, 'atrapa InPost');
   return (opcje) => ({
     async sprawdzPolaczenie() {
       log('atrapa InPost: sprawdzenie połączenia (piaskownica — nic nie poszło do InPostu)');
       if (String(opcje?.token ?? '').includes('zle')) {
-        throw Object.assign(new Error('InPost odrzucił żądanie (HTTP 401): Token is missing or invalid (atrapa piaskownicy)'), { dlaOperatora: true });
+        throw Object.assign(
+          new Error('InPost odrzucił żądanie (HTTP 401): Token is missing or invalid (atrapa piaskownicy)'),
+          { dlaOperatora: true },
+        );
       }
       return { ok: true };
     },
@@ -62,7 +82,10 @@ export function createAtrapaInpost({ env = process.env, log = () => {}, baza = (
       if (!szczegoly.length) return null;
       let najnowsze = szczegoly[0];
       for (const z of szczegoly) if (Date.parse(z.datetime) > Date.parse(najnowsze.datetime)) najnowsze = z;
-      return { opis: OPISY_STANOW[najnowsze.status] ?? `InPost: nieznany stan „${najnowsze.status}”`, at: najnowsze.datetime };
+      return {
+        opis: OPISY_STANOW[najnowsze.status] ?? `InPost: nieznany stan „${najnowsze.status}”`,
+        at: najnowsze.datetime,
+      };
     },
     atrapa: true,
   });

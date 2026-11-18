@@ -21,15 +21,11 @@
 // OMS woła go z `konta` i dopiero wtedy strażnik sprawdza ptaszki konta z tabeli oraz degraduje konto
 // serwisowe z `.env` w zależności od tego, czy w bazie jest już czynny administrator.
 
-import {
-  sprawdz, zNaglowka, wartoOdswiezyc, podpisz, ciasteczkoSesji, ciasteczkoWyczyszczenia,
-} from './sesja.js';
+import { sprawdz, zNaglowka, wartoOdswiezyc, podpisz, ciasteczkoSesji, ciasteczkoWyczyszczenia } from './sesja.js';
 import { odczytajSekret } from './sekret-sesji.js';
 import { czyTrasaOtwarta, polaczenieBezpieczne } from './logowanie-wspolne.js';
 import { bezpiecznyPowrot } from './powrot.js';
-import {
-  ekranDlaAdresu, czyTrasaMaszynowa, maDostepDoEkranu, EKRANY,
-} from '../../domena/ekrany.js';
+import { ekranDlaAdresu, czyTrasaMaszynowa, maDostepDoEkranu, EKRANY } from '../../domena/ekrany.js';
 import { motywZNaglowka } from '../../domena/motyw.js';
 import { hamulecLogowaniaDla } from './hamulec.js';
 import { dopiszLogowanie } from './konta.js';
@@ -51,15 +47,22 @@ const METODY_NAWIGACJI = ['GET', 'HEAD'];
  *   Basic, i w `logowanie.js`). `usluga` podawane w `konta` przez core/web/pipeline.js nic nie konfiguruje.
  */
 export function zbudujStraznika({
-  basicAuth, db, nazwaCiasteczka, konta = null, klucze = null, odlozoneEkrany = () => [],
+  basicAuth,
+  db,
+  nazwaCiasteczka,
+  konta = null,
+  klucze = null,
+  odlozoneEkrany = () => [],
 }) {
   // Panel indywidualny nie wstrzykuje tego odczytu; blokada dotyczy tylko OMS.
   const sprawdzModul = (req, reply) => {
     const ekran = ekranDlaAdresu(sciezkaZdekodowana(req.url) ?? req.url);
     if (!odlozoneEkrany().includes(ekran)) return false;
     reply.code(404).view(sciezkaWidoku('modul-wylaczony.ejs'), {
-      title: 'Moduł wyłączony', wlasnyUklad: true,
-      motyw: motywZNaglowka(req.headers.cookie), admin: req.konto?.admin === true,
+      title: 'Moduł wyłączony',
+      wlasnyUklad: true,
+      motyw: motywZNaglowka(req.headers.cookie),
+      admin: req.konto?.admin === true,
     });
     return true;
   };
@@ -102,10 +105,10 @@ export function zbudujStraznika({
       return dopuscZalogowanego(req, reply, konta, sesja, sekret, nazwaCiasteczka);
     }
 
-    const maNaglowek = typeof req.headers.authorization === 'string'
-      && req.headers.authorization !== '';
-    const toNawigacja = METODY_NAWIGACJI.includes(String(req.method).toUpperCase())
-      && String(req.headers.accept ?? '').includes('text/html');
+    const maNaglowek = typeof req.headers.authorization === 'string' && req.headers.authorization !== '';
+    const toNawigacja =
+      METODY_NAWIGACJI.includes(String(req.method).toUpperCase()) &&
+      String(req.headers.accept ?? '').includes('text/html');
 
     // ⚠️ Przekierowanie WYŁĄCZNIE dla wejścia przeglądarki na stronę. Żądanie z nagłówkiem
     // `Authorization` (panel indywidualny, skrypt, curl) ma dalej dostać 401 albo przejść —
@@ -127,16 +130,24 @@ export function zbudujStraznika({
     const dwukropek = dane.indexOf(':');
     const login = dwukropek >= 0 ? dane.slice(0, dwukropek) : '';
     const zwolnij = await hamulec.zajmij(req, login);
-    if (!zwolnij) return reply.code(429).header('Retry-After', 2).send('Za dużo prób logowania, spróbuj ponownie później');
+    if (!zwolnij)
+      return reply.code(429).header('Retry-After', 2).send('Za dużo prób logowania, spróbuj ponownie później');
     try {
       const zapiszBlokade = () => {
         // Panel bez tabeli kont nie ma dziennika OMS.
-        if (konta && hamulec.zapiszBlokadeRaz(req.ip, login)) dopiszLogowanie(db, {
-          login, usluga: 'oms', ip: req.ip, wynik: 'zablokowane',
-        });
+        if (konta && hamulec.zapiszBlokadeRaz(req.ip, login))
+          dopiszLogowanie(db, {
+            login,
+            usluga: 'oms',
+            ip: req.ip,
+            wynik: 'zablokowane',
+          });
       };
-      const odmowLimit = (limit) => reply.code(429).header('Retry-After', Math.ceil(limit.zostaloMs / 1000))
-        .send('Za dużo prób logowania, spróbuj ponownie później');
+      const odmowLimit = (limit) =>
+        reply
+          .code(429)
+          .header('Retry-After', Math.ceil(limit.zostaloMs / 1000))
+          .send('Za dużo prób logowania, spróbuj ponownie później');
       const limit = hamulec.sprawdzPrzedProba(req, login);
       if (!limit.wolno) {
         zapiszBlokade();
@@ -208,7 +219,9 @@ const ODMOWA_KLUCZA = { kod: 'klucz', powod: 'Brak, zły albo odwołany klucz AP
 const ODSTEP_UZYCIA_MS = 60_000;
 
 function odmowaLimitu(reply, zostaloMs, powod) {
-  return reply.code(429).header('Retry-After', String(Math.max(1, Math.ceil(zostaloMs / 1000))))
+  return reply
+    .code(429)
+    .header('Retry-After', String(Math.max(1, Math.ceil(zostaloMs / 1000))))
     .send({ kod: 'limit', powod });
 }
 
@@ -250,16 +263,24 @@ function dopuscKluczem(req, reply, { db, limit }, uzycia, zapisaneBlokady, zakre
   }
   // Ustawiane przed limitem, żeby wpis 429 w dzienniku miał klucz_id.
   req.kluczApi = {
-    id: wiersz.id, nazwa: wiersz.nazwa, prefiks: wiersz.prefiks,
+    id: wiersz.id,
+    nazwa: wiersz.nazwa,
+    prefiks: wiersz.prefiks,
     zakresy: new Set(ZAKRESY_API.filter((z) => wiersz.zakresy.includes(z))),
   };
   const wywolania = limit.sprawdz(wiersz.id, teraz);
-  if (!wywolania.wolno) return odmowaLimitu(reply, wywolania.zostaloMs, 'Za dużo wywołań tym kluczem, spróbuj za chwilę.');
+  if (!wywolania.wolno)
+    return odmowaLimitu(reply, wywolania.zostaloMs, 'Za dużo wywołań tym kluczem, spróbuj za chwilę.');
   // Opakowanie tras (pipeline.js) wpisuje `req.konto.imie` do dziennika zmian. Pusty zbiór uprawnień i admin
   // false = klucz nie otwiera żadnego ekranu, nawet gdyby kiedyś trafił poza /api/v1.
   req.konto = {
-    imie: `klucz: ${wiersz.nazwa}`, login: `klucz:${wiersz.prefiks}`, rola: 'klucz-api', admin: false,
-    serwisowe: false, kluczApi: true, uprawnienia: new Set(),
+    imie: `klucz: ${wiersz.nazwa}`,
+    login: `klucz:${wiersz.prefiks}`,
+    rola: 'klucz-api',
+    admin: false,
+    serwisowe: false,
+    kluczApi: true,
+    uprawnienia: new Set(),
   };
   const ostatnio = uzycia.get(wiersz.id);
   if (ostatnio === undefined || teraz - ostatnio >= ODSTEP_UZYCIA_MS) {
@@ -285,11 +306,12 @@ function czyWygasl(wygasaAt, teraz) {
 
 function odnowSesje(req, reply, sesja, sekret, nazwaCiasteczka) {
   if (!wartoOdswiezyc(sesja)) return;
-  reply.header('Set-Cookie', ciasteczkoSesji(
-    nazwaCiasteczka,
-    podpisz(sesja.uzytkownik, sekret, Date.now(), sesja.wersja_hasla ?? 0),
-    { bezpieczne: polaczenieBezpieczne(req) },
-  ));
+  reply.header(
+    'Set-Cookie',
+    ciasteczkoSesji(nazwaCiasteczka, podpisz(sesja.uzytkownik, sekret, Date.now(), sesja.wersja_hasla ?? 0), {
+      bezpieczne: polaczenieBezpieczne(req),
+    }),
+  );
 }
 
 /**
@@ -372,8 +394,13 @@ function dopuscZalogowanego(req, reply, konta, sesja, sekret, nazwaCiasteczka) {
 
   odnowSesje(req, reply, sesja, sekret, nazwaCiasteczka);
   req.konto = {
-    id: konto.id, login: konto.login, imie: konto.imie, rola: konto.rola, admin: konto.admin,
-    uprawnienia: konto.uprawnienia, serwisowe: false,
+    id: konto.id,
+    login: konto.login,
+    imie: konto.imie,
+    rola: konto.rola,
+    admin: konto.admin,
+    uprawnienia: konto.uprawnienia,
+    serwisowe: false,
   };
 
   // Osobiste ustawienie, tak jak /konto — niezależne od prawa „ustawienia”.
@@ -402,7 +429,10 @@ function dopuscSerwisowe(req, reply, konta) {
   // `czyIstniejeCzynnyAdmin` (tests/core/bezpieczenstwo-luki.test.ts).
   const pelnia = !konta.czyIstniejeCzynnyAdmin();
   req.konto = {
-    login: konta.loginSerwisowy, imie: 'konto serwisowe', rola: 'serwisowe', admin: pelnia,
+    login: konta.loginSerwisowy,
+    imie: 'konto serwisowe',
+    rola: 'serwisowe',
+    admin: pelnia,
     // ⚠️ PEŁNIA ma też PEŁNY zbiór ptaszków, nie sam `admin: true`.
     // Ekran kont i boczne menu rysują pozycje z `uprawnienia`, nie z
     // `admin` — pusty zbiór znaczyłby, że właśnie ten, kto zakłada system, widziałby całkowicie

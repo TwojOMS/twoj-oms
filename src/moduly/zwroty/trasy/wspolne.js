@@ -1,12 +1,25 @@
 import { stronaOdmowy } from '../../../core/web/odmowa.js';
 import { pobierzZamowienie, dopiszLog } from '../../../oms/db/zamowienia.js';
 import {
-  dodajZwrot, usunZwrot, oznaczPieniadzeOddane, zwrot, odblokujKorekte, zapiszRecznyNumerKorekty,
+  dodajZwrot,
+  usunZwrot,
+  oznaczPieniadzeOddane,
+  zwrot,
+  odblokujKorekte,
+  zapiszRecznyNumerKorekty,
 } from '../../../oms/db/zwroty.js';
 import {
-  parsujZwrot, powodOdmowyUsunieciaZwrotu, korektaPrzepadla, powodOdmowyOdblokowaniaKorekty,
-  parsujNumerKorekty, korektaNieSprawdzona, powodOdmowyKorektyDlaFaktury,
-  powodOdmowyRejestracjiZwrotu, wierszeFormularzaZwrotu, powodOdmowyKorektyBezDostawy, zwrotWymagaPozycjiDostawy,
+  parsujZwrot,
+  powodOdmowyUsunieciaZwrotu,
+  korektaPrzepadla,
+  powodOdmowyOdblokowaniaKorekty,
+  parsujNumerKorekty,
+  korektaNieSprawdzona,
+  powodOdmowyKorektyDlaFaktury,
+  powodOdmowyRejestracjiZwrotu,
+  wierszeFormularzaZwrotu,
+  powodOdmowyKorektyBezDostawy,
+  zwrotWymagaPozycjiDostawy,
 } from '../../../domena/zwrot.js';
 import { idDokumentu, czyDokumentProgramu, podgladFakturyZTerminem } from '../../../domena/dokument-programu.js';
 import { formularzZwrotu, przygotujKrok2, razemZwrotuZl } from '../../../domena/zwrot-formularz.js';
@@ -28,7 +41,14 @@ export function createWspolne({ db, korekta = null, definicje, infakt: programFa
   const zamowienieAlbo404 = (req, reply) => {
     const id = Number(req.params.id);
     const z = pobierzZamowienie(db, id);
-    if (!z) { stronaOdmowy(reply, 404, 'Nie ma takiego zamówienia', { tytul: 'Nie udało się obsłużyć zwrotu', wroc: '/', napisWroc: 'Wróć do listy zamówień' }); return null; }
+    if (!z) {
+      stronaOdmowy(reply, 404, 'Nie ma takiego zamówienia', {
+        tytul: 'Nie udało się obsłużyć zwrotu',
+        wroc: '/',
+        napisWroc: 'Wróć do listy zamówień',
+      });
+      return null;
+    }
     return z;
   };
 
@@ -65,17 +85,13 @@ export function createWspolne({ db, korekta = null, definicje, infakt: programFa
     // `services/korekta.js`). Bez tego rozróżnienia ekran po progu (`przepadle`) mówiłby „inFakt
     // nie wystawił dokumentu — zlecenie zostało odrzucone" NAWET WTEDY, gdy nikt nigdy nie
     // zapytał — zdanie o fakcie, którego panel nie zna. Widok CZYTA te mape, nie liczy jej sam.
-    niePytano: Object.fromEntries(
-      (z.zwroty ?? []).map((w) => [w.id, korektaNieSprawdzona(w, z.zwroty)]),
-    ),
+    niePytano: Object.fromEntries((z.zwroty ?? []).map((w) => [w.id, korektaNieSprawdzona(w, z.zwroty)])),
     // Mapa `id zwrotu -> dlaczego trasa POST /korekta
     // ZAWSZE by odmowila` (domena/zwrot.js: powodOdmowyKorektyDlaFaktury — ta sama regula,
     // ktora liczy `services/korekta.js` PRZED wywolaniem inFaktu). `null`, gdy przycisk
     // moze sie udac. Widok ma NIE RYSOWAC przycisku, ktory i tak dostalby 400 — zamiast tego
     // pokazuje to samo zdanie, ktore trasa by oddala.
-    korektaBlokada: Object.fromEntries(
-      (z.zwroty ?? []).map((w) => [w.id, powodOdmowyKorektyDlaFaktury(w, z.zwroty)]),
-    ),
+    korektaBlokada: Object.fromEntries((z.zwroty ?? []).map((w) => [w.id, powodOdmowyKorektyDlaFaktury(w, z.zwroty)])),
   });
 
   /**
@@ -87,8 +103,12 @@ export function createWspolne({ db, korekta = null, definicje, infakt: programFa
   // Dostawa” (domena/zwrot.js) zanim operator kliknie. Mapa `id zwrotu -> zdanie`; błąd odczytu → pusta mapa
   // (przycisk zostaje, odmowę da jak dotąd usługa korekty).
   const korektaBezDostawy = async (z) => {
-    if (!korektaDostepna || typeof programFaktur?.pobierzFakture !== 'function'
-      || !czyDokumentProgramu(z.faktura, programFaktur)) return {};
+    if (
+      !korektaDostepna ||
+      typeof programFaktur?.pobierzFakture !== 'function' ||
+      !czyDokumentProgramu(z.faktura, programFaktur)
+    )
+      return {};
     const zDostawa = (z.zwroty ?? []).filter(zwrotWymagaPozycjiDostawy);
     if (!zDostawa.length) return {};
     const faktura = await podgladFakturyZTerminem(programFaktur, idDokumentu(z.faktura));

@@ -9,7 +9,8 @@ const KONTO = 'act_10200536090637189';
 const DRUGIE = 'act_1513037475565017';
 
 const odpowiedz = (data, { ok = true, status = 200, blad = null } = {}) => ({
-  ok, status,
+  ok,
+  status,
   json: async () => (blad ? { error: blad } : { data }),
 });
 
@@ -25,8 +26,14 @@ function atrapa(mapa) {
 }
 
 const dzien = (data, nad = {}) => ({
-  date_start: data, date_stop: data,
-  spend: '30.00', impressions: '1000', reach: '800', clicks: '40', inline_link_clicks: '12', ...nad,
+  date_start: data,
+  date_stop: data,
+  spend: '30.00',
+  impressions: '1000',
+  reach: '800',
+  clicks: '40',
+  inline_link_clicks: '12',
+  ...nad,
 });
 
 describe('createMetaClient — bariery', () => {
@@ -48,11 +55,16 @@ describe('createMetaClient — bariery', () => {
 
   it('komunikat odmowy NIE niesie tokenu', async () => {
     const { fetchImpl } = atrapa({
-      insights: odpowiedz(null, { ok: false, status: 400, blad: { message: 'Invalid OAuth token', type: 'OAuthException' } }),
+      insights: odpowiedz(null, {
+        ok: false,
+        status: 400,
+        blad: { message: 'Invalid OAuth token', type: 'OAuthException' },
+      }),
     });
     const klient = createMetaClient({ token: 'SEKRET-XYZ', konta: [KONTO], fetchImpl });
-    await expect(klient.dzienneStatystyki({ od: '2026-08-24', do: '2026-08-25' }))
-      .rejects.toThrow(/OAuthException.*Invalid OAuth token/);
+    await expect(klient.dzienneStatystyki({ od: '2026-08-24', do: '2026-08-25' })).rejects.toThrow(
+      /OAuthException.*Invalid OAuth token/,
+    );
     await klient.dzienneStatystyki({ od: '2026-08-24', do: '2026-08-25' }).catch((e) => {
       expect(e.message).not.toContain('SEKRET-XYZ');
       expect(e.status).toBe(400);
@@ -64,8 +76,7 @@ describe('createMetaClient — bariery', () => {
   it('odpowiedź 200 bez listy „data" jest błędem, nie zerem', async () => {
     const { fetchImpl } = atrapa({ insights: { ok: true, status: 200, json: async () => ({ cokolwiek: 1 }) } });
     const klient = createMetaClient({ token: 'x', konta: [KONTO], fetchImpl });
-    await expect(klient.dzienneStatystyki({ od: '2026-08-24', do: '2026-08-25' }))
-      .rejects.toThrow(/bez listy/);
+    await expect(klient.dzienneStatystyki({ od: '2026-08-24', do: '2026-08-25' })).rejects.toThrow(/bez listy/);
   });
 });
 
@@ -75,10 +86,16 @@ describe('createMetaClient — dzienne statystyki', () => {
     const klient = createMetaClient({ token: 'x', konta: [KONTO], fetchImpl });
     const wynik = await klient.dzienneStatystyki({ od: '2026-08-24', do: '2026-08-25' });
 
-    expect(wynik).toEqual([{
-      dzien: '2026-08-24', wydatek: '88.19', wyswietlenia: 1000, zasieg: 800,
-      klikniecia: 40, kliknieciaLinku: 12,
-    }]);
+    expect(wynik).toEqual([
+      {
+        dzien: '2026-08-24',
+        wydatek: '88.19',
+        wyswietlenia: 1000,
+        zasieg: 800,
+        klikniecia: 40,
+        kliknieciaLinku: 12,
+      },
+    ]);
   });
 
   // ⚠️ SUMOWANIE W GROSZACH: 0.1 + 0.2 na liczbach zmiennoprzecinkowych daje 0.30000000000000004,
@@ -101,9 +118,10 @@ describe('createMetaClient — dzienne statystyki', () => {
   // Zaokraglenie KAZDEGO konta osobno robi z dwoch takich wierszy 0,00 zl zamiast 0,01 zl —
   // czyli gubi wydatek, ktory naprawde byl. Zaokraglamy RAZ, po zsumowaniu.
   it('dwa mikrowydatki poniżej grosza sumują się do grosza, nie do zera', async () => {
-    const fetchImpl = async (url) => (String(url).includes(KONTO)
-      ? odpowiedz([dzien('2026-08-24', { spend: '0.004' })])
-      : odpowiedz([dzien('2026-08-24', { spend: '0.004' })]));
+    const fetchImpl = async (url) =>
+      String(url).includes(KONTO)
+        ? odpowiedz([dzien('2026-08-24', { spend: '0.004' })])
+        : odpowiedz([dzien('2026-08-24', { spend: '0.004' })]);
     const klient = createMetaClient({ token: 'x', konta: [KONTO, DRUGIE], fetchImpl });
     expect((await klient.dzienneStatystyki({ od: '2026-08-24', do: '2026-08-24' }))[0].wydatek).toBe('0.01');
   });
@@ -174,41 +192,106 @@ describe('createMetaClient — raport reklam', () => {
     const fetchImpl = async (url, opcje) => {
       const u = new URL(url);
       wywolania.push({ url: u, opcje });
-      if (u.pathname.endsWith('/campaigns')) return {
-        ok: true, status: 200, json: async () => ({ data: [
-          { id: 'c1', name: 'Ruch', status: 'ACTIVE', effective_status: 'ACTIVE' },
-          { id: 'c2', name: 'Dawna', status: 'ACTIVE', effective_status: 'ACTIVE' },
-        ] }),
-      };
-      if (u.pathname.endsWith('/adsets')) return {
-        ok: true, status: 200, json: async () => ({ data: [
-          { id: 's1', campaign_id: 'c1', daily_budget: '1200' },
-          { id: 's2', campaign_id: 'c1', daily_budget: '800' },
-          { id: 's3', campaign_id: 'c2', lifetime_budget: '10000', start_time: '2026-09-01', end_time: '2026-09-10' },
-          { id: 's4', campaign_id: 'c2', lifetime_budget: '20000', start_time: '2026-09-11', end_time: '2026-09-20' },
-        ] }),
-      };
-      if (u.pathname.endsWith('/insights') && !u.searchParams.has('after')) return {
-        ok: true, status: 200, json: async () => ({
-          data: [{ campaign_id: 'c1', date_start: '2026-09-22', spend: '1.25', impressions: '100', clicks: '8', inline_link_clicks: '3' }],
-          paging: { next: `https://evil.example/steal?access_token=SEKRET-XYZ&after=CURSOR1` },
-        }),
-      };
-      if (u.pathname.endsWith('/insights') && u.searchParams.get('after') === 'CURSOR1') return {
-        ok: true, status: 200, json: async () => ({
-          data: [{ campaign_id: 'c1', date_start: '2026-09-23', spend: '0.004', impressions: '2', clicks: '1', inline_link_clicks: '1' }],
-        }),
-      };
+      if (u.pathname.endsWith('/campaigns'))
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            data: [
+              { id: 'c1', name: 'Ruch', status: 'ACTIVE', effective_status: 'ACTIVE' },
+              { id: 'c2', name: 'Dawna', status: 'ACTIVE', effective_status: 'ACTIVE' },
+            ],
+          }),
+        };
+      if (u.pathname.endsWith('/adsets'))
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            data: [
+              { id: 's1', campaign_id: 'c1', daily_budget: '1200' },
+              { id: 's2', campaign_id: 'c1', daily_budget: '800' },
+              {
+                id: 's3',
+                campaign_id: 'c2',
+                lifetime_budget: '10000',
+                start_time: '2026-09-01',
+                end_time: '2026-09-10',
+              },
+              {
+                id: 's4',
+                campaign_id: 'c2',
+                lifetime_budget: '20000',
+                start_time: '2026-09-11',
+                end_time: '2026-09-20',
+              },
+            ],
+          }),
+        };
+      if (u.pathname.endsWith('/insights') && !u.searchParams.has('after'))
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            data: [
+              {
+                campaign_id: 'c1',
+                date_start: '2026-09-22',
+                spend: '1.25',
+                impressions: '100',
+                clicks: '8',
+                inline_link_clicks: '3',
+              },
+            ],
+            paging: { next: `https://evil.example/steal?access_token=SEKRET-XYZ&after=CURSOR1` },
+          }),
+        };
+      if (u.pathname.endsWith('/insights') && u.searchParams.get('after') === 'CURSOR1')
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            data: [
+              {
+                campaign_id: 'c1',
+                date_start: '2026-09-23',
+                spend: '0.004',
+                impressions: '2',
+                clicks: '1',
+                inline_link_clicks: '1',
+              },
+            ],
+          }),
+        };
       return { ok: true, status: 200, json: async () => ({ currency: 'PLN', timezone_name: 'Europe/Warsaw' }) };
     };
-    const raport = await createMetaClient({ token: 'SEKRET-XYZ', konta: [KONTO], fetchImpl })
-      .raportReklam({ konto: KONTO, od: '2026-09-22', do: '2026-09-23' });
+    const raport = await createMetaClient({ token: 'SEKRET-XYZ', konta: [KONTO], fetchImpl }).raportReklam({
+      konto: KONTO,
+      od: '2026-09-22',
+      do: '2026-09-23',
+    });
 
     expect(raport.waluta).toBe('PLN');
     expect(raport.strefa).toBe('Europe/Warsaw');
     expect(raport.dni).toEqual([
-      { kontoId: KONTO, kampaniaId: 'c1', dzien: '2026-09-22', wydatek: '1.25', wyswietlenia: 100, klikniecia: 8, kliknieciaLinku: 3 },
-      { kontoId: KONTO, kampaniaId: 'c1', dzien: '2026-09-23', wydatek: '0.004', wyswietlenia: 2, klikniecia: 1, kliknieciaLinku: 1 },
+      {
+        kontoId: KONTO,
+        kampaniaId: 'c1',
+        dzien: '2026-09-22',
+        wydatek: '1.25',
+        wyswietlenia: 100,
+        klikniecia: 8,
+        kliknieciaLinku: 3,
+      },
+      {
+        kontoId: KONTO,
+        kampaniaId: 'c1',
+        dzien: '2026-09-23',
+        wydatek: '0.004',
+        wyswietlenia: 2,
+        klikniecia: 1,
+        kliknieciaLinku: 1,
+      },
     ]);
     expect(raport.kampanie.find((k) => k.id === 'c2')).toMatchObject({ status: 'ACTIVE', effectiveStatus: 'ACTIVE' });
     expect(raport.kampanie.find((k) => k.id === 'c2').emituje).toBe(false);
@@ -226,18 +309,27 @@ describe('createMetaClient — raport reklam', () => {
   });
 
   it('nie ujawnia tokenu z błędu Graph ani z błędu sieci', async () => {
-    const fetchImpl = async () => ({ ok: false, status: 400, json: async () => ({
-      error: { type: 'OAuthException', message: 'Token SEKRET-XYZ invalid' },
-    }) });
+    const fetchImpl = async () => ({
+      ok: false,
+      status: 400,
+      json: async () => ({
+        error: { type: 'OAuthException', message: 'Token SEKRET-XYZ invalid' },
+      }),
+    });
     const klient = createMetaClient({ token: 'SEKRET-XYZ', konta: [KONTO], fetchImpl });
-    await expect(klient.raportReklam({ konto: KONTO, od: '2026-09-22', do: '2026-09-23' }))
-      .rejects.toThrow(/OAuthException/);
+    await expect(klient.raportReklam({ konto: KONTO, od: '2026-09-22', do: '2026-09-23' })).rejects.toThrow(
+      /OAuthException/,
+    );
     await klient.raportReklam({ konto: KONTO, od: '2026-09-22', do: '2026-09-23' }).catch((e) => {
       expect(e.message).not.toContain('SEKRET-XYZ');
     });
-    const siec = createMetaClient({ token: 'SEKRET-XYZ', konta: [KONTO], fetchImpl: async () => {
-      throw new Error('Request SEKRET-XYZ failed');
-    } });
+    const siec = createMetaClient({
+      token: 'SEKRET-XYZ',
+      konta: [KONTO],
+      fetchImpl: async () => {
+        throw new Error('Request SEKRET-XYZ failed');
+      },
+    });
     await siec.raportReklam({ konto: KONTO, od: '2026-09-22', do: '2026-09-23' }).catch((e) => {
       expect(e.message).not.toContain('SEKRET-XYZ');
     });

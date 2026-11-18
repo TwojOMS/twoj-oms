@@ -53,9 +53,11 @@ export function powodBrakuGotowosciNadania(z, metoda = metodaWysylki(z)) {
   // wybrac paczkomat w checkoucie — wtedy w kolumnie nie ma nic, a nadac trzeba. Dlatego
   // komunikat mowi, GDZIE ten kod wpisac, zamiast samego „nie da sie".
   if (metoda === 'inpost_paczkomat' && !String(punktOdbioru(z) ?? '').trim()) {
-    return 'To zamówienie ma jechać do paczkomatu, ale nie ma kodu paczkomatu — bez niego nie wiadomo, '
-      + 'dokąd nadać paczkę. Uzupełnij kod przy metodzie wysyłki (Szczegóły → Edytuj); klient bywa, '
-      + 'że podaje go w uwagach zamiast wybierać paczkomat w sklepie.';
+    return (
+      'To zamówienie ma jechać do paczkomatu, ale nie ma kodu paczkomatu — bez niego nie wiadomo, ' +
+      'dokąd nadać paczkę. Uzupełnij kod przy metodzie wysyłki (Szczegóły → Edytuj); klient bywa, ' +
+      'że podaje go w uwagach zamiast wybierać paczkomat w sklepie.'
+    );
   }
   return null;
 }

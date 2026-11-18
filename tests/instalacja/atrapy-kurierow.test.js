@@ -23,7 +23,9 @@ describe('atrapy kurierów z rejestru', () => {
       const klucz = `create${opis.klucz[0].toUpperCase()}${opis.klucz.slice(1)}`;
       expect(fabryki[klucz]).toEqual(expect.any(Function));
       expect(fabryki[klucz]({}).atrapa).toBe(true);
-      expect(Object.keys(fabryki[klucz]({})).sort()).toEqual(Object.keys(modul.createAtrapa({ env: { OMS_TRYB: 'proba' } })({})).sort());
+      expect(Object.keys(fabryki[klucz]({})).sort()).toEqual(
+        Object.keys(modul.createAtrapa({ env: { OMS_TRYB: 'proba' } })({})).sort(),
+      );
     }
   });
 
@@ -32,19 +34,40 @@ describe('atrapy kurierów z rejestru', () => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
     try {
-      zapiszKonfiguracjeIntegracji(db, 'dpd', { ustawienia: { nazwa: 'DPD', login: 'test', fid: '1', typEtykiety: 'A4' },
-        sekrety: { haslo: 'test', kanal: '' } });
-      zapiszKonfiguracjeIntegracji(db, 'inpost', { ustawienia: { nazwa: 'InPost', organizacja: '1', paczkomatNadawczy: '' },
-        sekrety: { token: 'test' } });
+      zapiszKonfiguracjeIntegracji(db, 'dpd', {
+        ustawienia: { nazwa: 'DPD', login: 'test', fid: '1', typEtykiety: 'A4' },
+        sekrety: { haslo: 'test', kanal: '' },
+      });
+      zapiszKonfiguracjeIntegracji(db, 'inpost', {
+        ustawienia: { nazwa: 'InPost', organizacja: '1', paczkomatNadawczy: '' },
+        sekrety: { token: 'test' },
+      });
       const modul = createModulWysylka();
-      const uslugi = { 'kanaly.klienciSklepow': {}, 'kanaly.klienciKanalow': {}, 'rdzen.sprzedawca': { rachunek: '' },
-        'kanaly.config': { definicje: [], sklepy: {} }, 'faktury.infakt': null, 'faktury.puls': createPuls({ teraz: () => new Date() }) };
-      const wynik = modul.zbuduj({ db, konfiguracja: modul.konfiguracja({ OMS_TRYB: 'proba',
-        DPD_NADAWCA_NAZWA: 'Test', DPD_NADAWCA_ULICA: 'Testowa 1', DPD_NADAWCA_KOD: '00-001', DPD_NADAWCA_MIASTO: 'Testowo' }),
-        teraz: () => new Date(), log: () => {}, usluga: (m, n) => uslugi[`${m}.${n}`] });
+      const uslugi = {
+        'kanaly.klienciSklepow': {},
+        'kanaly.klienciKanalow': {},
+        'rdzen.sprzedawca': { rachunek: '' },
+        'kanaly.config': { definicje: [], sklepy: {} },
+        'faktury.infakt': null,
+        'faktury.puls': createPuls({ teraz: () => new Date() }),
+      };
+      const wynik = modul.zbuduj({
+        db,
+        konfiguracja: modul.konfiguracja({
+          OMS_TRYB: 'proba',
+          DPD_NADAWCA_NAZWA: 'Test',
+          DPD_NADAWCA_ULICA: 'Testowa 1',
+          DPD_NADAWCA_KOD: '00-001',
+          DPD_NADAWCA_MIASTO: 'Testowo',
+        }),
+        teraz: () => new Date(),
+        log: () => {},
+        usluga: (m, n) => uslugi[`${m}.${n}`],
+      });
       for (const klucz of ['dpd', 'inpost']) {
         await expect(wynik.uslugi.kurierzy[klucz].sprawdzPolaczenie()).rejects.toMatchObject({
-          message: MODULY_KURIEROW[klucz].piaskownica.komunikat, status: 400,
+          message: MODULY_KURIEROW[klucz].piaskownica.komunikat,
+          status: 400,
         });
       }
       expect(fetch).not.toHaveBeenCalled();

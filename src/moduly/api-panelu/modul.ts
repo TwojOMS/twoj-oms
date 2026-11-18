@@ -4,14 +4,17 @@ import { kanalIndywidualnyWlaczony } from '../kanaly/klasyfikacja.ts';
 
 /** API panelu indywidualnego (zamówienia z karty); te same usługi co interfejs OMS. */
 export const modulApiPanelu: ModulOms<{ kanalIndywidualny: boolean }> = {
-  nazwa: 'api-panelu', wersja: '1.0.0',
+  nazwa: 'api-panelu',
+  wersja: '1.0.0',
   wymaga: ['rdzen', 'web', 'kanaly', 'faktury', 'zamowienia'],
   // Bez panelu zamówień indywidualnych trasa z karty odmawia (OMS_KANAL_INDYWIDUALNY).
-  konfiguracja: env => ({ kanalIndywidualny: kanalIndywidualnyWlaczony(env) }),
-  migracje: [], uprawnienia: [], menu: [],
-  zbuduj: ctx => ({
+  konfiguracja: (env) => ({ kanalIndywidualny: kanalIndywidualnyWlaczony(env) }),
+  migracje: [],
+  uprawnienia: [],
+  menu: [],
+  zbuduj: (ctx) => ({
     zegary: [],
-    trasy: app => {
+    trasy: (app) => {
       trasaApiZamowieniaZKarty(app, {
         db: ctx.db,
         config: ctx.usluga<any>('kanaly', 'config'),

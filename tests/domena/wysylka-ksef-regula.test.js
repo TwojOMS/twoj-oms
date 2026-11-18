@@ -7,7 +7,10 @@ import { coWolnoWyslac, czyKonsumencka } from '../../src/domena/wysylka-ksef.js'
 // bariera go nie przepuszcza. Fikstura bez tego pola testowałaby ścieżkę odmowy przy każdym
 // teście, który sprawdza coś zupełnie innego.
 const dok = (n) => ({
-  uuid: `u${n}`, number: `${n}/08/2026`, rodzaj: 'vat', ksef_number: null,
+  uuid: `u${n}`,
+  number: `${n}/08/2026`,
+  rodzaj: 'vat',
+  ksef_number: null,
   client_tax_code: '1234563218',
 });
 
@@ -21,7 +24,13 @@ describe('co wolno wysłać do KSeF', () => {
     expect(przyjeta.pominiete[0].powod).toContain('jest już w KSeF');
     expect(przyjeta.pominiete[0].powod).not.toContain('zlecił');
     expect(przyjeta.pominiete[0].powod).toContain(numer);
-    const w = coWolnoWyslac(['u1'], [{ ...dok(1), ksefZleconaAt: '2026-08-06T14:00:00.000Z' }], false, undefined, program);
+    const w = coWolnoWyslac(
+      ['u1'],
+      [{ ...dok(1), ksefZleconaAt: '2026-08-06T14:00:00.000Z' }],
+      false,
+      undefined,
+      program,
+    );
     expect(w.pominiete[0].powod).toContain('zlecił');
     expect(w.pominiete[0].powod).toContain('06.08.2026, 16:00');
   });
@@ -180,7 +189,10 @@ describe('co wolno wysłać do KSeF', () => {
   // przypina kolejność na przyszłość, zanim ta droga się pojawi.
   it('korekta zgłoszona jako już zlecona dostaje powód o korektach, nie „panel już zlecił"', () => {
     const zleconaKorekta = {
-      uuid: 'k1', number: '1/KOR/08/2026', rodzaj: 'korekta', ksef_number: null,
+      uuid: 'k1',
+      number: '1/KOR/08/2026',
+      rodzaj: 'korekta',
+      ksef_number: null,
       ksefZleconaAt: '2026-08-06T14:00:00.000Z',
     };
     const w = coWolnoWyslac(['k1'], [zleconaKorekta]);
@@ -265,9 +277,15 @@ describe('faktura konsumencka (nabywca bez NIP-u) nie jedzie do KSeF', () => {
   // ⚠️ KOLEJNOŚĆ POWODÓW, CZĘŚĆ 1. „Jest już w KSeF" jest trwałe ORAZ niesie numer, po którym
   // człowiek odnajdzie dokument u organu — wygrywa z „konsumencka", która niczego nie doda.
   it('dokument konsumencki, który JUŻ jest w KSeF, dostaje powód o KSeF-ie (z numerem)', () => {
-    const w = coWolnoWyslac(['u30'], [bezNipu({
-      client_tax_code: null, ksef_number: '1234563218-20260630-5EB04B000005-18',
-    })]);
+    const w = coWolnoWyslac(
+      ['u30'],
+      [
+        bezNipu({
+          client_tax_code: null,
+          ksef_number: '1234563218-20260630-5EB04B000005-18',
+        }),
+      ],
+    );
     expect(w.doWyslania).toEqual([]);
     expect(w.pominiete[0].powod).toMatch(/jest już w KSeF/i);
     expect(w.pominiete[0].powod).toMatch(/1234563218-20260630/);
@@ -279,9 +297,15 @@ describe('faktura konsumencka (nabywca bez NIP-u) nie jedzie do KSeF', () => {
   // odpowiedzi inFaktu), a „panel już zlecił" PRZEJŚCIOWE — pokazane tutaj kłamałoby, że
   // wystarczy poczekać.
   it('dokument konsumencki ze stemplem rezerwacji dostaje powód o konsumenckim, nie o zleconej wysyłce', () => {
-    const w = coWolnoWyslac(['u30'], [bezNipu({
-      client_tax_code: '', ksefZleconaAt: '2026-06-30T14:00:00.000Z',
-    })]);
+    const w = coWolnoWyslac(
+      ['u30'],
+      [
+        bezNipu({
+          client_tax_code: '',
+          ksefZleconaAt: '2026-06-30T14:00:00.000Z',
+        }),
+      ],
+    );
     expect(w.doWyslania).toEqual([]);
     expect(w.pominiete[0].powod).toMatch(/konsumenck/i);
     expect(w.pominiete[0].powod).not.toMatch(/już zlecił|juz zlecil/i);

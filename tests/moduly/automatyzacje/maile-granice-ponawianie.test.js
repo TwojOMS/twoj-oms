@@ -25,10 +25,18 @@ import { ZAMOWIENIE_STARSZE_NIZ_DNI } from '../../../src/domena/warunki-automaty
 const MIN = 60_000;
 const DZIEN = 24 * 60 * MIN;
 const otwarte = [];
-beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); });
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+});
 afterEach(() => {
   vi.useRealTimers();
-  for (const db of otwarte.splice(0)) { try { db.close(); } catch { /* już zamknięta */ } }
+  for (const db of otwarte.splice(0)) {
+    try {
+      db.close();
+    } catch {
+      /* już zamknięta */
+    }
+  }
 });
 const ustaw = (iso) => vi.setSystemTime(Date.parse(iso));
 const przesun = (ms) => vi.setSystemTime(Date.now() + ms);
@@ -38,40 +46,118 @@ function srodowisko({ mailer = null } = {}) {
   const db = openOmsDb(':memory:', { moduly: kolejnoscBudowy(MODULY) });
   otwarte.push(db);
   const listy = [];
-  const wiadomosci = createWiadomosci({ db, mailer: mailer ?? { sendMail: async (m) => { listy.push(m); } },
-    config: { klienciZbiorczy: [], oprawaPoczty: { podpis: 'Pracownia Przykładowa', footer: 'Stopka' } } });
-  const silnik = createSilnikAutomatyzacji({ db, zdarzenia: ZDARZENIA, akcje: utworzAkcje({ wiadomosci: () => wiadomosci }),
-    sprawdzWarunki: sprawdzanieWarunkow, pocztaGotowa: () => true });
-  return { db, listy, przebiegi: async (n) => { for (let i = 0; i < n; i += 1) { przesun(MIN); await silnik.przebieg(); } } };
+  const wiadomosci = createWiadomosci({
+    db,
+    mailer: mailer ?? {
+      sendMail: async (m) => {
+        listy.push(m);
+      },
+    },
+    config: { klienciZbiorczy: [], oprawaPoczty: { podpis: 'Pracownia Przykładowa', footer: 'Stopka' } },
+  });
+  const silnik = createSilnikAutomatyzacji({
+    db,
+    zdarzenia: ZDARZENIA,
+    akcje: utworzAkcje({ wiadomosci: () => wiadomosci }),
+    sprawdzWarunki: sprawdzanieWarunkow,
+    pocztaGotowa: () => true,
+  });
+  return {
+    db,
+    listy,
+    przebiegi: async (n) => {
+      for (let i = 0; i < n; i += 1) {
+        przesun(MIN);
+        await silnik.przebieg();
+      }
+    },
+  };
 }
 let nr = 0;
 function zamowienie(db, { sklep = 'sklep', utworzone }) {
   nr += 1;
   return zapiszZamowienie(db, sklep, {
-    zrodlo_id: 6000 + nr, numer: `R-${nr}`,
+    zrodlo_id: 6000 + nr,
+    numer: `R-${nr}`,
     klient: { first_name: 'Anna', last_name: 'Nowak', email: 'kupujacy@example.invalid', phone: '' },
     dostawa: { first_name: 'Anna', last_name: 'Nowak', address_1: 'Lipowa 7', postcode: '00-950', city: 'Warszawa' },
-    metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '189.00',
-    koszt_dostawy_brutto: '19.00', koszt_dostawy_netto: '15.45', status_woo: 'processing', oplacone_at: null, anulowane: 0,
-    utworzone_at: utworzone, pozycje: [{ zrodlo_id: 9900 + nr, nazwa: 'Lampa', sku: 'LMP', ilosc: 1, cena_brutto: '189.00',
-      cena_netto: '153.66', brutto_linii: '189.00', netto_linii: '153.66', vat: null }],
+    metoda_wysylki: 'dpd',
+    kwota_pobrania: null,
+    chce_fakture: 0,
+    nip: null,
+    kwota_brutto: '189.00',
+    koszt_dostawy_brutto: '19.00',
+    koszt_dostawy_netto: '15.45',
+    status_woo: 'processing',
+    oplacone_at: null,
+    anulowane: 0,
+    utworzone_at: utworzone,
+    pozycje: [
+      {
+        zrodlo_id: 9900 + nr,
+        nazwa: 'Lampa',
+        sku: 'LMP',
+        ilosc: 1,
+        cena_brutto: '189.00',
+        cena_netto: '153.66',
+        brutto_linii: '189.00',
+        netto_linii: '153.66',
+        vat: null,
+      },
+    ],
   });
 }
-const status = (db, id, s) => zapiszFaktyStatusu(db, id, { ...faktyDlaStatusu(pobierzZamowienie(db, id), s), kto: 'operator' });
+const status = (db, id, s) =>
+  zapiszFaktyStatusu(db, id, { ...faktyDlaStatusu(pobierzZamowienie(db, id), s), kto: 'operator' });
 let numer = 500;
-const paczka = (db, id) => zarejestrujPrzesylkeReczna(db, id, { kurier: 'dpd',
-  kolejnosc: Number(db.prepare('SELECT COUNT(*) AS n FROM przesylki WHERE zamowienie_id = ?').get(id).n) + 1,
-  numerListu: `0000000${(numer += 1)}U` });
+const paczka = (db, id) =>
+  zarejestrujPrzesylkeReczna(db, id, {
+    kurier: 'dpd',
+    kolejnosc: Number(db.prepare('SELECT COUNT(*) AS n FROM przesylki WHERE zamowienie_id = ?').get(id).n) + 1,
+    numerListu: `0000000${(numer += 1)}U`,
+  });
 function regula(db, o = {}) {
-  const id = utworzRegule(db, { nazwa: 'Wysłane — sklep', zdarzenie: 'status_zmieniony', zdarzenie_json: { status: 'wyslane' },
-    warunki: { kanaly: ['sklep'], kanalyZnane: KANALY, statusy: ['wyslane'], maNumerListu: true, metody: [], pobranie: 'dowolne' },
-    akcja: 'mail_kupujacy', akcja_json: { szablon: 'wyslane' }, opoznienie_min: 30, limit_na_godzine: 20, ...o }, { login: 'adam' });
+  const id = utworzRegule(
+    db,
+    {
+      nazwa: 'Wysłane — sklep',
+      zdarzenie: 'status_zmieniony',
+      zdarzenie_json: { status: 'wyslane' },
+      warunki: {
+        kanaly: ['sklep'],
+        kanalyZnane: KANALY,
+        statusy: ['wyslane'],
+        maNumerListu: true,
+        metody: [],
+        pobranie: 'dowolne',
+      },
+      akcja: 'mail_kupujacy',
+      akcja_json: { szablon: 'wyslane' },
+      opoznienie_min: 30,
+      limit_na_godzine: 20,
+      ...o,
+    },
+    { login: 'adam' },
+  );
   wlaczRegule(db, id, { login: 'adam' });
   return id;
 }
-const nadanaAllegro = (db) => regula(db, { nazwa: 'Nadana — Allegro', zdarzenie: 'paczka_nadana', zdarzenie_json: {},
-  warunki: { kanaly: ['allegro_glowne'], kanalyZnane: KANALY, statusy: [], maNumerListu: true, metody: [], pobranie: 'dowolne' } });
-const wykonania = (db) => db.prepare('SELECT regula_id, zamowienie_id, stan, powod_kod, powod FROM automatyzacje_wykonania ORDER BY id').all();
+const nadanaAllegro = (db) =>
+  regula(db, {
+    nazwa: 'Nadana — Allegro',
+    zdarzenie: 'paczka_nadana',
+    zdarzenie_json: {},
+    warunki: {
+      kanaly: ['allegro_glowne'],
+      kanalyZnane: KANALY,
+      statusy: [],
+      maNumerListu: true,
+      metody: [],
+      pobranie: 'dowolne',
+    },
+  });
+const wykonania = (db) =>
+  db.prepare('SELECT regula_id, zamowienie_id, stan, powod_kod, powod FROM automatyzacje_wykonania ORDER BY id').all();
 const klientAllegro = (waybill) => ({ pobierzPrzesylki: async () => [{ waybill, carrierId: 'ALLEGRO' }] });
 
 describe('1. stare zamówienie Allegro — otwarcie karty dociąga numer (r08-d2)', () => {
@@ -109,8 +195,19 @@ describe('1. stare zamówienie Allegro — otwarcie karty dociąga numer (r08-d2
     const id = zamowienie(e.db, { utworzone: new Date().toISOString() });
     paczka(e.db, id);
     przesun(DZIEN);
-    regula(e.db, { nazwa: 'Nadana', zdarzenie: 'paczka_nadana', zdarzenie_json: {},
-      warunki: { kanaly: ['sklep'], kanalyZnane: KANALY, statusy: [], maNumerListu: true, metody: [], pobranie: 'dowolne' } });
+    regula(e.db, {
+      nazwa: 'Nadana',
+      zdarzenie: 'paczka_nadana',
+      zdarzenie_json: {},
+      warunki: {
+        kanaly: ['sklep'],
+        kanalyZnane: KANALY,
+        statusy: [],
+        maNumerListu: true,
+        metody: [],
+        pobranie: 'dowolne',
+      },
+    });
     przesun(MIN);
     paczka(e.db, id);
     await e.przebiegi(35);
@@ -124,12 +221,27 @@ describe('4. okno paczek 14 dni (wydajność; znana cena)', () => {
   it('paczka „do wyjaśnienia” domknięta 15 dni po utworzeniu → 0 maili; domknięta po 13 dniach → mail', async () => {
     ustaw('2026-10-21T10:00:00.000Z');
     const e = srodowisko();
-    regula(e.db, { nazwa: 'Nadana', zdarzenie: 'paczka_nadana', zdarzenie_json: {},
-      warunki: { kanaly: ['sklep'], kanalyZnane: KANALY, statusy: [], maNumerListu: true, metody: [], pobranie: 'dowolne' } });
+    regula(e.db, {
+      nazwa: 'Nadana',
+      zdarzenie: 'paczka_nadana',
+      zdarzenie_json: {},
+      warunki: {
+        kanaly: ['sklep'],
+        kanalyZnane: KANALY,
+        statusy: [],
+        maNumerListu: true,
+        metody: [],
+        pobranie: 'dowolne',
+      },
+    });
     przesun(MIN);
     const wstaw = (id) => {
-      e.db.prepare(`INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at)
-        VALUES (?, 'dpd', 'do_wyjasnienia', ?, 1, ?)`).run(id, `0000000${(numer += 1)}U`, new Date().toISOString());
+      e.db
+        .prepare(
+          `INSERT INTO przesylki (zamowienie_id, kurier, status, numer_listu, kolejnosc, utworzona_at)
+        VALUES (?, 'dpd', 'do_wyjasnienia', ?, 1, ?)`,
+        )
+        .run(id, `0000000${(numer += 1)}U`, new Date().toISOString());
       return e.db.prepare('SELECT id FROM przesylki WHERE id = last_insert_rowid()').get().id;
     };
     const pozno = zamowienie(e.db, { utworzone: new Date().toISOString() });
@@ -137,10 +249,16 @@ describe('4. okno paczek 14 dni (wydajność; znana cena)', () => {
     const p1 = wstaw(pozno);
     przesun(2 * DZIEN);
     const p2 = wstaw(wczas);
-    for (let d = 0; d < 13; d += 1) { przesun(DZIEN); await e.przebiegi(1); } // zegar chodzi (kursor idzie z czasem)
+    for (let d = 0; d < 13; d += 1) {
+      przesun(DZIEN);
+      await e.przebiegi(1);
+    } // zegar chodzi (kursor idzie z czasem)
     e.db.prepare("UPDATE przesylki SET status = 'nadana' WHERE id IN (?, ?)").run(p1, p2); // domknięcie po 15 i po 13 dniach
     await e.przebiegi(35);
-    expect(wykonania(e.db).map((w) => w.zamowienie_id), JSON.stringify(wykonania(e.db))).toEqual([wczas]);
+    expect(
+      wykonania(e.db).map((w) => w.zamowienie_id),
+      JSON.stringify(wykonania(e.db)),
+    ).toEqual([wczas]);
     expect(e.listy, JSON.stringify(wykonania(e.db))).toHaveLength(1);
   });
 });
@@ -149,23 +267,42 @@ describe('2. wysyłka niepewna w regule A → reguła B z tym samym szablonem ni
   it('serwer przyjął treść, połączenie padło (ESOCKET) → do serwera SMTP dotarł 1 list, B pominięta z powodem', async () => {
     const dotarlo = [];
     let pierwszy = true;
-    const mailer = { sendMail: async (m) => {
-      dotarlo.push(m.subject);
-      if (pierwszy) { pierwszy = false; throw Object.assign(new Error('Connection closed unexpectedly'), { code: 'ESOCKET' }); }
-    } };
+    const mailer = {
+      sendMail: async (m) => {
+        dotarlo.push(m.subject);
+        if (pierwszy) {
+          pierwszy = false;
+          throw Object.assign(new Error('Connection closed unexpectedly'), { code: 'ESOCKET' });
+        }
+      },
+    };
     ustaw('2026-10-21T10:00:00.000Z');
     const e = srodowisko({ mailer });
     regula(e.db, { nazwa: 'A: Wysłane' });
-    regula(e.db, { nazwa: 'B: Nadana', zdarzenie: 'paczka_nadana', zdarzenie_json: {}, opoznienie_min: 40,
-      warunki: { kanaly: ['sklep'], kanalyZnane: KANALY, statusy: [], maNumerListu: true, metody: [], pobranie: 'dowolne' } });
+    regula(e.db, {
+      nazwa: 'B: Nadana',
+      zdarzenie: 'paczka_nadana',
+      zdarzenie_json: {},
+      opoznienie_min: 40,
+      warunki: {
+        kanaly: ['sklep'],
+        kanalyZnane: KANALY,
+        statusy: [],
+        maNumerListu: true,
+        metody: [],
+        pobranie: 'dowolne',
+      },
+    });
     przesun(MIN);
     const id = zamowienie(e.db, { utworzone: new Date().toISOString() });
     paczka(e.db, id);
     status(e.db, id, 'wyslane');
     await e.przebiegi(45);
     expect(dotarlo).toHaveLength(1);
-    expect(wykonania(e.db).map((w) => [w.regula_id, w.stan, w.powod_kod]))
-      .toEqual([[1, 'niepewne', 'niepewne'], [2, 'pominiete', 'niepewne_wczesniej']]);
+    expect(wykonania(e.db).map((w) => [w.regula_id, w.stan, w.powod_kod])).toEqual([
+      [1, 'niepewne', 'niepewne'],
+      [2, 'pominiete', 'niepewne_wczesniej'],
+    ]);
     expect(wykonania(e.db)[1].powod).toContain('„A: Wysłane”');
   });
 });
@@ -209,28 +346,44 @@ describe('3. cofnięcie i ponowne „Wysłane” (r08-d1; decyzja kierownika: wa
 });
 
 describe('4./5. indeksy: detektor statusu i ostrzeżenia bez skanu tabeli', () => {
-  const plan = (db, sql, args) => db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...args).map((w) => w.detail).join(' | ');
+  const plan = (db, sql, args) =>
+    db
+      .prepare(`EXPLAIN QUERY PLAN ${sql}`)
+      .all(...args)
+      .map((w) => w.detail)
+      .join(' | ');
   it.each([
     ['wyslane', 'zamowienia_wyslane_at'],
     ['w_realizacji', 'zamowienia_w_realizacji_at'],
   ])('status → %s czyta przez indeks %s (także z filtrem kanału)', (klucz, indeks) => {
     const db = openOmsDb(':memory:', { moduly: kolejnoscBudowy(MODULY) });
     otwarte.push(db);
-    const { sql, args } = sqlKandydatow(db, klucz, '2026-10-21T10:00:00.000Z', { kanaly: ['sklep', 'allegro_glowne'], limit: 1000 });
+    const { sql, args } = sqlKandydatow(db, klucz, '2026-10-21T10:00:00.000Z', {
+      kanaly: ['sklep', 'allegro_glowne'],
+      limit: 1000,
+    });
     expect(plan(db, sql, args)).toMatch(new RegExp(`USING (COVERING )?INDEX ${indeks} `, 'u'));
   });
   it('status własny czyta przez indeks (klucz, ustawione_at)', () => {
     const db = openOmsDb(':memory:', { moduly: kolejnoscBudowy(MODULY) });
     otwarte.push(db);
-    zapiszStatusy(db, [...domyslneStatusy(), { klucz: 'w_klosz', etykieta: 'Czeka na klosz', kolor: domyslneStatusy()[0].kolor, jak: 'w_realizacji' }]);
+    zapiszStatusy(db, [
+      ...domyslneStatusy(),
+      { klucz: 'w_klosz', etykieta: 'Czeka na klosz', kolor: domyslneStatusy()[0].kolor, jak: 'w_realizacji' },
+    ]);
     const { sql, args } = sqlKandydatow(db, 'w_klosz', '2026-10-21T10:00:00.000Z', { kanaly: ['sklep'], limit: 1000 });
     expect(plan(db, sql, args)).toMatch(/USING (COVERING )?INDEX zamowienia_status_wlasny_klucz_ustawione/u);
   });
   it('paczka nadana czyta przez indeks przesylki_utworzona_at (okno 14 dni), nie całą tabelę paczek od włączenia', () => {
     const db = openOmsDb(':memory:', { moduly: kolejnoscBudowy(MODULY) });
     otwarte.push(db);
-    const { sql, args } = sqlKandydatowPaczki({ granica: { at: '2025-10-21T10:00:00.000Z', przesylki: 0 }, od: '2026-10-21T09:54:00.000Z',
-      kanaly: ['sklep'], regula_id: 1, limit: 1000 });
+    const { sql, args } = sqlKandydatowPaczki({
+      granica: { at: '2025-10-21T10:00:00.000Z', przesylki: 0 },
+      od: '2026-10-21T09:54:00.000Z',
+      kanaly: ['sklep'],
+      regula_id: 1,
+      limit: 1000,
+    });
     expect(plan(db, sql, args)).toMatch(/SEARCH p USING INDEX przesylki_utworzona_at /u);
     expect(OKNO_PACZEK_DNI).toBe(14);
   });
@@ -260,7 +413,9 @@ describe('R2-1. numer z Allegro dociągnięty długo po złożeniu zamówienia',
     expect((await karta.odswiez(id)).dopisane).toBe(1);
     await e.przebiegi(35);
     expect(e.listy).toEqual([]);
-    expect(wykonania(e.db)).toEqual([expect.objectContaining({ zamowienie_id: id, stan: 'pominiete', powod_kod: 'numer_allegro_pozno' })]);
+    expect(wykonania(e.db)).toEqual([
+      expect.objectContaining({ zamowienie_id: id, stan: 'pominiete', powod_kod: 'numer_allegro_pozno' }),
+    ]);
     expect(wykonania(e.db)[0].powod).toContain('Numer listu dociągnięty z Allegro');
     expect(wykonania(e.db)[0].powod).toContain('przesyłka mogła dawno dojść');
   });

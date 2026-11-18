@@ -4,25 +4,44 @@ import { it, expect, vi, afterEach } from 'vitest';
 import { tmpdir } from 'node:os';
 import { zbudujOms } from '../../../src/oms/bootstrap.ts';
 import * as diagnostyka from '../../../src/oms/services/lacznosc.js';
-import { zapiszKonfiguracjeIntegracji, usunKonfiguracjeIntegracji } from '../../../src/oms/db/konfiguracja-integracji.js';
+import {
+  zapiszKonfiguracjeIntegracji,
+  usunKonfiguracjeIntegracji,
+} from '../../../src/oms/db/konfiguracja-integracji.js';
 import { ADRES_GUS } from '../../../src/domena/konfiguracja-gus.js';
 
 const KLUCZ_PANELU = 'zmyslony0panel0gus0a1';
 const KLUCZ_PLIKU = 'zmyslony0plik0gus0b2';
-const env: Record<string, string> = { OMS_TRYB: 'produkcja', OMS_DB_PATH: ':memory:', OMS_USER: 'operator', OMS_PASS: 'atrapa',
-  OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000',
-  OMS_PROFORMY_KATALOG: tmpdir(), OMS_ETYKIETY_KATALOG: tmpdir(),
+const env: Record<string, string> = {
+  OMS_TRYB: 'produkcja',
+  OMS_DB_PATH: ':memory:',
+  OMS_USER: 'operator',
+  OMS_PASS: 'atrapa',
+  OMS_SPRZEDAWCA_NIP: '1234563218',
+  OMS_RACHUNEK: '34109010140000000000000000',
+  OMS_PROFORMY_KATALOG: tmpdir(),
+  OMS_ETYKIETY_KATALOG: tmpdir(),
   OMS_KANALY: '[{"klucz":"sklep","typ":"woo","prefiks":"SKLEP"}]',
-  SKLEP_URL: 'https://sklep.invalid', SKLEP_CK: 'atrapa', SKLEP_CS: 'atrapa', SKLEP_OD: '2026-01-01',
-  SKLEP_MAPOWANIE: '{"instancje":{},"poPozycji":[]}' };
+  SKLEP_URL: 'https://sklep.invalid',
+  SKLEP_CK: 'atrapa',
+  SKLEP_CS: 'atrapa',
+  SKLEP_OD: '2026-01-01',
+  SKLEP_MAPOWANIE: '{"instancje":{},"poPozycji":[]}',
+};
 
 const otwarte: Array<() => Promise<void>> = [];
-afterEach(async () => { vi.restoreAllMocks(); while (otwarte.length) await otwarte.pop()!(); });
+afterEach(async () => {
+  vi.restoreAllMocks();
+  while (otwarte.length) await otwarte.pop()!();
+});
 
 async function diagnostyka_(dodatkowe: Record<string, string> = {}) {
   const pomiar = vi.spyOn(diagnostyka, 'sprawdzLacznosc').mockResolvedValue([]);
   const a = await zbudujOms({ env: { ...env, ...dodatkowe } as any });
-  otwarte.push(async () => { await a.app.close(); a.db.close(); });
+  otwarte.push(async () => {
+    await a.app.close();
+    a.db.close();
+  });
   /** Cele, które Diagnostyka dostałaby przy tym wejściu na ekran. */
   const cele = async () => {
     pomiar.mockClear();
@@ -55,12 +74,16 @@ it('klucz zapisany w panelu po starcie dodaje cel GUS przy następnym wejściu �
 it('klucz z panelu + GUS_URL w pliku: cel pod adresem z pliku', async () => {
   const { a, gus } = await diagnostyka_({ GUS_URL: 'https://gus.invalid/ws' });
   zapiszKonfiguracjeIntegracji(a.db, 'gus', { ustawienia: {}, sekrety: { klucz: KLUCZ_PANELU } });
-  expect(await gus()).toEqual([{ klucz: 'gus', nazwa: 'GUS (REGON)', url: 'https://gus.invalid/ws', host: 'gus.invalid' }]);
+  expect(await gus()).toEqual([
+    { klucz: 'gus', nazwa: 'GUS (REGON)', url: 'https://gus.invalid/ws', host: 'gus.invalid' },
+  ]);
 });
 
 it('klucz w pliku działa jak dotąd (także z innym kluczem w panelu); sekret nie w celach', async () => {
   const { a, gus, cele } = await diagnostyka_({ GUS_KLUCZ: KLUCZ_PLIKU, GUS_URL: 'https://gus.invalid/ws' });
-  expect(await gus()).toEqual([{ klucz: 'gus', nazwa: 'GUS (REGON)', url: 'https://gus.invalid/ws', host: 'gus.invalid' }]);
+  expect(await gus()).toEqual([
+    { klucz: 'gus', nazwa: 'GUS (REGON)', url: 'https://gus.invalid/ws', host: 'gus.invalid' },
+  ]);
   zapiszKonfiguracjeIntegracji(a.db, 'gus', { ustawienia: {}, sekrety: { klucz: KLUCZ_PANELU } });
   expect(await gus()).toHaveLength(1);
   const wszystko = JSON.stringify(await cele());

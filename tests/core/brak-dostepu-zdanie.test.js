@@ -15,8 +15,10 @@ describe('ekran odmowy — gdzie administrator nadaje dostęp', () => {
     expect(r.statusCode).toBe(403);
     const t = tekst(r.body);
     expect(t).toContain('Brak dostępu');
-    expect(t).toContain('poproś administratora o zaznaczenie go w roli Twojego konta: '
-      + 'Ustawienia → Zespół i dostęp → Role i uprawnienia .');
+    expect(t).toContain(
+      'poproś administratora o zaznaczenie go w roli Twojego konta: ' +
+        'Ustawienia → Zespół i dostęp → Role i uprawnienia .',
+    );
     expect(t).not.toContain('Zespół i dostęp → Użytkownicy');
   });
 });

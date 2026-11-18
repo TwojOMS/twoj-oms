@@ -41,20 +41,23 @@ export const PONOWIENIE_PO_MS = 24 * 60 * 60 * 1000;
  */
 export function ofertyDoSprawdzenia(db, kanal, { limit, ponowieniePoMs = PONOWIENIE_PO_MS, at = teraz() } = {}) {
   const granica = new Date(new Date(at).getTime() - ponowieniePoMs).toISOString();
-  return db.prepare(
-    'SELECT DISTINCT p.oferta_id AS oferta_id FROM pozycje p'
-    + ' JOIN zamowienia z ON z.id = p.zamowienie_id'
-    + ' LEFT JOIN zdjecia_ofert o ON o.oferta_id = p.oferta_id'
-    + " WHERE z.sklep = ? AND p.oferta_id IS NOT NULL AND p.oferta_id <> ''"
-    // Brak wiersza = jeszcze nie pytaliśmy. Wiersz z błędem wraca dopiero po odczekaniu.
-    // Wiersz z adresem ORAZ wiersz „oferta zdjęcia nie ma" (oba pola puste, `blad` NULL)
-    // nie wracają NIGDY — i to jest cała różnica między „nie próbowaliśmy" a „próbowaliśmy".
-    + '   AND (o.oferta_id IS NULL OR (o.blad IS NOT NULL AND o.sprawdzone_at < ?))'
-    // Porządek deterministyczny: przy limicie musi być wiadomo, które oferty wchodzą do tego
-    // przebiegu, a które do następnego — inaczej zestaw potrafiłby się zapętlić na tych
-    // samych kilku, a reszta nie doczekałaby się nigdy.
-    + ' ORDER BY p.oferta_id LIMIT ?',
-  ).all(kanal, granica, limit).map((w) => w.oferta_id);
+  return db
+    .prepare(
+      'SELECT DISTINCT p.oferta_id AS oferta_id FROM pozycje p' +
+        ' JOIN zamowienia z ON z.id = p.zamowienie_id' +
+        ' LEFT JOIN zdjecia_ofert o ON o.oferta_id = p.oferta_id' +
+        " WHERE z.sklep = ? AND p.oferta_id IS NOT NULL AND p.oferta_id <> ''" +
+        // Brak wiersza = jeszcze nie pytaliśmy. Wiersz z błędem wraca dopiero po odczekaniu.
+        // Wiersz z adresem ORAZ wiersz „oferta zdjęcia nie ma" (oba pola puste, `blad` NULL)
+        // nie wracają NIGDY — i to jest cała różnica między „nie próbowaliśmy" a „próbowaliśmy".
+        '   AND (o.oferta_id IS NULL OR (o.blad IS NOT NULL AND o.sprawdzone_at < ?))' +
+        // Porządek deterministyczny: przy limicie musi być wiadomo, które oferty wchodzą do tego
+        // przebiegu, a które do następnego — inaczej zestaw potrafiłby się zapętlić na tych
+        // samych kilku, a reszta nie doczekałaby się nigdy.
+        ' ORDER BY p.oferta_id LIMIT ?',
+    )
+    .all(kanal, granica, limit)
+    .map((w) => w.oferta_id);
 }
 
 /**
@@ -66,9 +69,9 @@ export function ofertyDoSprawdzenia(db, kanal, { limit, ponowieniePoMs = PONOWIE
  */
 export function zapiszProbeZdjecia(db, ofertaId, { zdjecieUrl = null, blad = null, at = teraz() } = {}) {
   db.prepare(
-    'INSERT INTO zdjecia_ofert (oferta_id, zdjecie_url, sprawdzone_at, blad) VALUES (?,?,?,?)'
-    + ' ON CONFLICT(oferta_id) DO UPDATE SET zdjecie_url = excluded.zdjecie_url,'
-    + ' sprawdzone_at = excluded.sprawdzone_at, blad = excluded.blad',
+    'INSERT INTO zdjecia_ofert (oferta_id, zdjecie_url, sprawdzone_at, blad) VALUES (?,?,?,?)' +
+      ' ON CONFLICT(oferta_id) DO UPDATE SET zdjecie_url = excluded.zdjecie_url,' +
+      ' sprawdzone_at = excluded.sprawdzone_at, blad = excluded.blad',
   ).run(String(ofertaId), zdjecieUrl, at, blad);
 }
 

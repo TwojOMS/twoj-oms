@@ -148,8 +148,13 @@ function ocenaZegaraZPulsu({ nazwa, wlaczony, puls, progS, procesWiekS, teraz, a
   // renderer, ktory zacytuje `blad` bez tego pola, opowie o usterce JUZ NIEAKTUALNEJ
   // (domena/ostrzezenia.js, zdanieZegara).
   const wynik = {
-    wlaczony: Boolean(wlaczony), zdrowy: true, okAt: null, wiekS: null,
-    blad: null, bladAt: null, bladSwiezszy: false,
+    wlaczony: Boolean(wlaczony),
+    zdrowy: true,
+    okAt: null,
+    wiekS: null,
+    blad: null,
+    bladAt: null,
+    bladSwiezszy: false,
   };
   if (!wlaczony) return wynik;
   const okAt = puls?.okAt ?? null;
@@ -181,12 +186,20 @@ function ocenaZegaraZPulsu({ nazwa, wlaczony, puls, progS, procesWiekS, teraz, a
 }
 
 export function ocenZdrowie({
-  teraz, startAt,
-  zrodla = [], stanyPollera = [],
-  ksefWlaczony = false, pulsKsef = null,
-  przesylkiWlaczone = false, pulsPrzesylek = null,
-  ostrzezeniaWlaczone = false, pulsOstrzezen = null,
-  kosztyWlaczone = false, kosztyModulWylaczony = false, kosztyWlaczoneOd = /** @type {string | null} */ (null), stanKosztow = null,
+  teraz,
+  startAt,
+  zrodla = [],
+  stanyPollera = [],
+  ksefWlaczony = false,
+  pulsKsef = null,
+  przesylkiWlaczone = false,
+  pulsPrzesylek = null,
+  ostrzezeniaWlaczone = false,
+  pulsOstrzezen = null,
+  kosztyWlaczone = false,
+  kosztyModulWylaczony = false,
+  kosztyWlaczoneOd = /** @type {string | null} */ (null),
+  stanKosztow = null,
   kanaly = [],
 }) {
   const alarmy = [];
@@ -210,7 +223,11 @@ export function ocenZdrowie({
       const mlody = procesWiekS < PROG_POLLERA_S;
       if (!mlody) alarmy.push(`poller ${zrodlo}: panel nie zna stanu — ani jednego przebiegu w bazie`);
       return {
-        zrodlo, ostatniPrzebiegAt: null, wiekS: null, blad: null, zdrowy: mlody,
+        zrodlo,
+        ostatniPrzebiegAt: null,
+        wiekS: null,
+        blad: null,
+        zdrowy: mlody,
       };
     }
     const wiek = wiekS(teraz, w.ostatni_przebieg_at);
@@ -257,7 +274,9 @@ export function ocenZdrowie({
       // poller, ktory chodzi i dostaje bledy. Gdyby swiezy blad wyciszal takze te regule,
       // zawieszony poller z jednym bledem w bazie stalby sie niewidzialny.
       zdrowy = false;
-      alarmy.push(`poller ${zrodlo}: ostatni przebieg ${wiek == null ? 'nieznany' : `${fmtWiek(wiek)} temu`} (próg ${fmtWiek(PROG_POLLERA_S)})`);
+      alarmy.push(
+        `poller ${zrodlo}: ostatni przebieg ${wiek == null ? 'nieznany' : `${fmtWiek(wiek)} temu`} (próg ${fmtWiek(PROG_POLLERA_S)})`,
+      );
     }
     return {
       zrodlo,
@@ -276,23 +295,43 @@ export function ocenZdrowie({
   // przy starym — czuwacz nie przebiegł ani razu, czyli jest wyłączony w kodzie albo
   // zawieszony.
   const czuwaczKsef = ocenaZegaraZPulsu({
-    nazwa: 'czuwacz KSeF', wlaczony: ksefWlaczony, puls: pulsKsef,
-    progS: PROG_CZUWACZA_KSEF_S, procesWiekS, teraz, alarmy,
+    nazwa: 'czuwacz KSeF',
+    wlaczony: ksefWlaczony,
+    puls: pulsKsef,
+    progS: PROG_CZUWACZA_KSEF_S,
+    procesWiekS,
+    teraz,
+    alarmy,
   });
   const czuwaczPrzesylek = ocenaZegaraZPulsu({
-    nazwa: 'czuwacz przesyłek', wlaczony: przesylkiWlaczone, puls: pulsPrzesylek,
-    progS: PROG_PRZESYLEK_S, procesWiekS, teraz, alarmy,
+    nazwa: 'czuwacz przesyłek',
+    wlaczony: przesylkiWlaczone,
+    puls: pulsPrzesylek,
+    progS: PROG_PRZESYLEK_S,
+    procesWiekS,
+    teraz,
+    alarmy,
   });
   const czuwaczOstrzezen = ocenaZegaraZPulsu({
-    nazwa: 'czuwacz ostrzeżeń', wlaczony: ostrzezeniaWlaczone, puls: pulsOstrzezen,
-    progS: PROG_OSTRZEZEN_S, procesWiekS, teraz, alarmy,
+    nazwa: 'czuwacz ostrzeżeń',
+    wlaczony: ostrzezeniaWlaczone,
+    puls: pulsOstrzezen,
+    progS: PROG_OSTRZEZEN_S,
+    procesWiekS,
+    teraz,
+    alarmy,
   });
 
   // CZUWACZ KOSZTOW — stan_kosztow. Obecnosc bledu WYSTARCZA za alarm: baza gasi go przy
   // najblizszym udanym przebiegu (zapiszKursor / odnotujUdanyPrzebieg), wiec blad w wierszu
   // to z definicji stan biezacy, a nie pamiatka.
   const czuwaczKosztow = {
-    wlaczony: Boolean(kosztyWlaczone), zdrowy: true, ostatnieUdaneAt: null, wiekS: null, blad: null, bladAt: null,
+    wlaczony: Boolean(kosztyWlaczone),
+    zdrowy: true,
+    ostatnieUdaneAt: null,
+    wiekS: null,
+    blad: null,
+    bladAt: null,
     // Dlaczego czuwacz stoi — moduł wyłączony w Ustawienia → Moduły to stan zamierzony, nie awaria
     // (bez alarmu i bez uwagi, żeby czujka nie budziła co dobę o decyzji operatora).
     stan: kosztyModulWylaczony ? 'koszty wyłączone' : kosztyWlaczone ? 'pobiera z KSeF' : 'brak tokenu KSeF',
@@ -321,7 +360,9 @@ export function ocenZdrowie({
       const wiekProgu = mlodszy(czuwaczKosztow.wiekS, odWlaczeniaS);
       if (wiekProgu == null || wiekProgu > PROG_KOSZTOW_S) {
         czuwaczKosztow.zdrowy = false;
-        alarmy.push(`czuwacz kosztów: ostatnie udane pobranie ${czuwaczKosztow.wiekS == null ? 'nieznane' : `${fmtWiek(czuwaczKosztow.wiekS)} temu`} (próg ${fmtWiek(PROG_KOSZTOW_S)})`);
+        alarmy.push(
+          `czuwacz kosztów: ostatnie udane pobranie ${czuwaczKosztow.wiekS == null ? 'nieznane' : `${fmtWiek(czuwaczKosztow.wiekS)} temu`} (próg ${fmtWiek(PROG_KOSZTOW_S)})`,
+        );
       }
     }
   }

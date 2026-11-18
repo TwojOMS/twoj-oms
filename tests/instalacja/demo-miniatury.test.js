@@ -87,12 +87,17 @@ describe('baza demo: pozycje zamówień niosą zdjęcie', () => {
     await utworzBazeDemo({ baza: path.join(katalog, 'oms.sqlite'), dzis: '2026-10-14', env });
     db = new DatabaseSync(path.join(katalog, 'oms.sqlite'));
   }, 180_000);
-  afterAll(() => { db?.close(); fs.rmSync(katalog, { recursive: true, force: true }); });
+  afterAll(() => {
+    db?.close();
+    fs.rmSync(katalog, { recursive: true, force: true });
+  });
 
   it('każda pozycja z kanału ma zdjęcie demo, także w rozmiarze, który pokazuje lista', () => {
     const pozycje = db.prepare("SELECT nazwa, zdjecie_url FROM pozycje WHERE zrodlo = 'sklep'").all();
     expect(pozycje.length).toBeGreaterThan(100);
-    const bez = pozycje.filter((p) => !zdjecieIstnieje(p.zdjecie_url) || !zdjecieIstnieje(miniaturaZLustra(null, p.zdjecie_url)));
+    const bez = pozycje.filter(
+      (p) => !zdjecieIstnieje(p.zdjecie_url) || !zdjecieIstnieje(miniaturaZLustra(null, p.zdjecie_url)),
+    );
     expect(bez.slice(0, 3)).toEqual([]);
   });
 
@@ -100,7 +105,7 @@ describe('baza demo: pozycje zamówień niosą zdjęcie', () => {
     const wiersze = db.prepare('SELECT kanal, sku_sklepu, miniatura FROM produkty_sklepowe').all();
     expect(wiersze.length).toBeGreaterThan(30);
     const bez = wiersze.filter((w) => !zdjecieIstnieje(w.miniatura));
-    expect(bez.map(w => w.sku_sklepu).sort()).toEqual([...BEZ_GALERII].sort());
-    expect(bez.every(w => w.kanal === 'polcien')).toBe(true);
+    expect(bez.map((w) => w.sku_sklepu).sort()).toEqual([...BEZ_GALERII].sort());
+    expect(bez.every((w) => w.kanal === 'polcien')).toBe(true);
   });
 });

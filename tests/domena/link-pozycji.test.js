@@ -14,13 +14,15 @@ const adres = (...a) => odnosnikPozycji(...a)?.adres ?? null;
 
 describe('odnosnikPozycji — sklep (WooCommerce)', () => {
   it('sklada adres po identyfikatorze produktu', () => {
-    expect(adres(zeSklepu, wiersz({ produktId: 31337 }), { baseUrl: SKLEP }))
-      .toBe('https://swietlik.example.test/?post_type=product&p=31337');
+    expect(adres(zeSklepu, wiersz({ produktId: 31337 }), { baseUrl: SKLEP })).toBe(
+      'https://swietlik.example.test/?post_type=product&p=31337',
+    );
   });
 
   it('ucina koncowy ukosnik adresu sklepu', () => {
-    expect(adres(zeSklepu, wiersz({ produktId: 5 }), { baseUrl: 'https://swietlik.example.test/' }))
-      .toBe('https://swietlik.example.test/?post_type=product&p=5');
+    expect(adres(zeSklepu, wiersz({ produktId: 5 }), { baseUrl: 'https://swietlik.example.test/' })).toBe(
+      'https://swietlik.example.test/?post_type=product&p=5',
+    );
   });
 
   it('podpis odnosnika mowi o sklepie', () => {
@@ -51,8 +53,9 @@ describe('odnosnikPozycji — sklep (WooCommerce)', () => {
   });
 
   it('wiersz wysylki i „Razem" nie dostaja odnosnika', () => {
-    expect(adres(zeSklepu, { produktId: null, ofertaId: null, sku: null, reczna: false }, { baseUrl: SKLEP }))
-      .toBe(null);
+    expect(adres(zeSklepu, { produktId: null, ofertaId: null, sku: null, reczna: false }, { baseUrl: SKLEP })).toBe(
+      null,
+    );
   });
 
   // ⚠️ Granica w druga strone: identyfikator OFERTY nie ma prawa udawac produktu w sklepie.
@@ -68,18 +71,21 @@ describe('odnosnikPozycji — Allegro', () => {
   // w prawdziwej przegladarce (WAF Allegro oddaje 403 na `fetch`, wiec kod odpowiedzi
   // niczego by nie dowodzil — patrz komentarz w domain/link-pozycji.js).
   it('pozycja prowadzi do swojej oferty', () => {
-    expect(adres(zAllegro, wiersz({ produktId: null, ofertaId: '1234567890' })))
-      .toBe('https://allegro.pl/oferta/1234567890');
+    expect(adres(zAllegro, wiersz({ produktId: null, ofertaId: '1234567890' }))).toBe(
+      'https://allegro.pl/oferta/1234567890',
+    );
   });
 
   it('podpis odnosnika mowi o ofercie na Allegro', () => {
-    expect(odnosnikPozycji(zAllegro, wiersz({ produktId: null, ofertaId: '1234567890' })).tytul)
-      .toBe('Otwórz ofertę na Allegro');
+    expect(odnosnikPozycji(zAllegro, wiersz({ produktId: null, ofertaId: '1234567890' })).tytul).toBe(
+      'Otwórz ofertę na Allegro',
+    );
   });
 
   it('oba kanaly Allegro dzialaja tak samo', () => {
-    expect(adres({ sklep: 'allegro_polcien2' }, wiersz({ ofertaId: '1234567890' })))
-      .toBe('https://allegro.pl/oferta/1234567890');
+    expect(adres({ sklep: 'allegro_polcien2' }, wiersz({ ofertaId: '1234567890' }))).toBe(
+      'https://allegro.pl/oferta/1234567890',
+    );
   });
 
   // ⚠️ REGULA REPO: brak linku jest lepszy niz link otwierajacy pustke (domain/tracking.js).
@@ -105,8 +111,9 @@ describe('odnosnikPozycji — Allegro', () => {
   // ⚠️ Kanal Allegro NIE MA `baseUrl` w konfiguracji (`config.kanaly`, nie `config.sklepy`),
   // wiec trasa poda tu `null` — i to nie ma prawa zabrac odnosnika do oferty.
   it('brak adresu sklepu nie dotyczy Allegro', () => {
-    expect(adres(zAllegro, wiersz({ ofertaId: '1234567890' }), { baseUrl: null }))
-      .toBe('https://allegro.pl/oferta/1234567890');
+    expect(adres(zAllegro, wiersz({ ofertaId: '1234567890' }), { baseUrl: null })).toBe(
+      'https://allegro.pl/oferta/1234567890',
+    );
   });
 
   // ⚠️ Granica w druga strone: identyfikator PRODUKTU nie ma prawa zrobic adresu oferty.
@@ -122,7 +129,8 @@ describe('odnosnikPozycji — kanal nieznany', () => {
 
   it('brak zamowienia nie wywala odnosnika', () => {
     expect(odnosnikPozycji(null, wiersz())).toBe(null);
-    expect(odnosnikPozycji(undefined, wiersz(), { baseUrl: SKLEP })?.adres)
-      .toBe('https://swietlik.example.test/?post_type=product&p=28040');
+    expect(odnosnikPozycji(undefined, wiersz(), { baseUrl: SKLEP })?.adres).toBe(
+      'https://swietlik.example.test/?post_type=product&p=28040',
+    );
   });
 });

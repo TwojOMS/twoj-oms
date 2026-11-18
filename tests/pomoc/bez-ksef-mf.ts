@@ -36,7 +36,7 @@ function hostZArgumentow(args: unknown[]): string | null {
   // net.connect przekazuje znormalizowane argumenty jako tablicę `[opcje, cb]`.
   const pierwszy = Array.isArray(args[0]) ? args[0][0] : args[0];
   if (typeof pierwszy === 'object' && pierwszy !== null) {
-    const opcje = pierwszy as { host?: unknown, hostname?: unknown };
+    const opcje = pierwszy as { host?: unknown; hostname?: unknown };
     const host = opcje.host ?? opcje.hostname;
     return typeof host === 'string' ? host : null;
   }
@@ -45,8 +45,10 @@ function hostZArgumentow(args: unknown[]): string | null {
 }
 
 function zabronione(co: string, host: string): Error {
-  return new Error(`ZABRONIONE: KSeF w teście — ${co} na ${host}. Testy i atrapy nie łączą się z MF; `
-    + 'KSeF wyłącznie przez atrapę (tests/pomoc/atrapa-ksef-wysylki.js).');
+  return new Error(
+    `ZABRONIONE: KSeF w teście — ${co} na ${host}. Testy i atrapy nie łączą się z MF; ` +
+      'KSeF wyłącznie przez atrapę (tests/pomoc/atrapa-ksef-wysylki.js).',
+  );
 }
 
 const globalny = globalThis as typeof globalThis & { [ZNACZNIK]?: true };

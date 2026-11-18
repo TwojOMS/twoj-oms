@@ -38,7 +38,8 @@ export function sprawdzFormularzDpd(body = {}, zapisane = null) {
   if (!nazwa) bledy.push('Podaj nazwę — dowolną, np. „DPD”.');
   else if (nazwa.length > 60) bledy.push('Nazwa może mieć najwyżej 60 znaków.');
   if (!login) bledy.push('Podaj login od DPD.');
-  else if (login.length > 64 || /\s/.test(login)) bledy.push('Login od DPD nie może zawierać spacji (najwyżej 64 znaki).');
+  else if (login.length > 64 || /\s/.test(login))
+    bledy.push('Login od DPD nie może zawierać spacji (najwyżej 64 znaki).');
   if (!fid) bledy.push('Podaj główny numer klienta DPD (Master FID).');
   else if (!/^\d{1,12}$/.test(fid)) bledy.push('Główny numer klienta DPD (Master FID) to same cyfry.');
   if (!TYPY_ETYKIET_DPD.some((t) => t.klucz === typEtykiety)) bledy.push('Wybierz typ etykiety.');
@@ -59,8 +60,13 @@ export function sprawdzFormularzDpd(body = {}, zapisane = null) {
 export function opcjeKlientaDpd(zapis, nadawca) {
   const kanal = tekst(zapis.sekrety.kanal);
   return {
-    url: ADRESY_DPD.url, login: zapis.ustawienia.login, haslo: zapis.sekrety.haslo, fid: zapis.ustawienia.fid,
-    infoUrl: kanal ? ADRESY_DPD.infoUrl : '', channel: kanal,
-    formatEtykiety: zapis.ustawienia.typEtykiety, nadawca,
+    url: ADRESY_DPD.url,
+    login: zapis.ustawienia.login,
+    haslo: zapis.sekrety.haslo,
+    fid: zapis.ustawienia.fid,
+    infoUrl: kanal ? ADRESY_DPD.infoUrl : '',
+    channel: kanal,
+    formatEtykiety: zapis.ustawienia.typEtykiety,
+    nadawca,
   };
 }

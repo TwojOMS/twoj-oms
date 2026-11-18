@@ -10,10 +10,14 @@ const BAZA = 'https://sklep.polcien.example';
 /** Odmowa przed fetch; komunikat celowo nie zawiera URL ani nagłówków. */
 export function strzezErliProby({ fetchImpl = (...args) => globalThis.fetch(...args) } = {}) {
   return async (adres, init) => {
-    const host = new URL(adres instanceof Request ? adres.url : String(adres)).hostname.toLowerCase().replace(/\.$/, '');
-    if (['erli.pl', 'erli.dev'].some(d => host === d || host.endsWith(`.${d}`))) {
-      throw Object.assign(new Error('Tryb próby: połączenie z API ERLI zablokowane — użyj atrapy Półcień.'),
-        { name: 'OdmowaHosta', code: 'OMS_PROBA_ERLI' });
+    const host = new URL(adres instanceof Request ? adres.url : String(adres)).hostname
+      .toLowerCase()
+      .replace(/\.$/, '');
+    if (['erli.pl', 'erli.dev'].some((d) => host === d || host.endsWith(`.${d}`))) {
+      throw Object.assign(new Error('Tryb próby: połączenie z API ERLI zablokowane — użyj atrapy Półcień.'), {
+        name: 'OdmowaHosta',
+        code: 'OMS_PROBA_ERLI',
+      });
     }
     return fetchImpl(adres, init);
   };
@@ -27,7 +31,9 @@ export function transportErliPiaskownicy({ baza, env, log, fetchImpl = (...args)
   // Klucz atrapy zachowuje demo bez sieci także na oficjalnych adresach.
   const konfigurator = async (adres, init = {}) => {
     const url = new URL(String(adres));
-    const bazaApi = ['https://erli.pl/svc/shop-api', 'https://sandbox.erli.dev/svc/shop-api'].find(b => url.href.startsWith(b + '/'));
+    const bazaApi = ['https://erli.pl/svc/shop-api', 'https://sandbox.erli.dev/svc/shop-api'].find((b) =>
+      url.href.startsWith(b + '/'),
+    );
     if (!bazaApi) return null;
     const authorization = new Headers(init.headers).get('Authorization');
     if (authorization && authorization !== 'Bearer atrapa-polcien') {
@@ -37,142 +43,307 @@ export function transportErliPiaskownicy({ baza, env, log, fetchImpl = (...args)
     const db = baza();
     // Klucz API przez warstwę dostępu (sekrety zaszyfrowane w bazie). Nieczytelny wiersz = BladSekretow na wierzch,
     // nie cicha odmowa 401.
-    const zapis = db.prepare("SELECT integracja FROM konfiguracja_integracji WHERE integracja LIKE 'erli:%'").all().find(w => {
-      const k = wczytajKonfiguracjeIntegracji(db, w.integracja);
-      return k?.ustawienia.adresApi === bazaApi && authorization === 'Bearer ' + k.sekrety.kluczApi;
-    });
+    const zapis = db
+      .prepare("SELECT integracja FROM konfiguracja_integracji WHERE integracja LIKE 'erli:%'")
+      .all()
+      .find((w) => {
+        const k = wczytajKonfiguracjeIntegracji(db, w.integracja);
+        return k?.ustawienia.adresApi === bazaApi && authorization === 'Bearer ' + k.sekrety.kluczApi;
+      });
     if (!zapis || authorization !== 'Bearer atrapa-polcien') return surowaOdpowiedzErli({}, 401);
     const kanal = zapis.integracja.slice(5);
     const id = 'konfigurator:' + kanal;
-    if (!atrapy.has(id)) atrapy.set(id, createAtrapaErli({ db, kanal, env, log, tryb: bazaApi.includes('sandbox') ? 'sandbox' : 'produkcja' }));
+    if (!atrapy.has(id))
+      atrapy.set(
+        id,
+        createAtrapaErli({ db, kanal, env, log, tryb: bazaApi.includes('sandbox') ? 'sandbox' : 'produkcja' }),
+      );
     return atrapy.get(id).fetchImpl(BAZA + url.href.slice(bazaApi.length), init);
   };
-  const pozostale =
-  strzezErliProby({ fetchImpl: async (adres, init) => {
-    const url = new URL(adres instanceof Request ? adres.url : String(adres));
-    if (url.hostname.endsWith('.polcien.example')) {
-      const db = baza();
-      const konfiguracje = db.prepare("SELECT integracja, ustawienia_json FROM konfiguracja_integracji WHERE integracja LIKE 'erli:%'").all();
-      const zapis = konfiguracje.find(w => {
-        try { return new URL(JSON.parse(w.ustawienia_json).adresApi).origin === url.origin; } catch { return false; }
-      });
-      if (!zapis) throw new Error('Atrapa ERLI: brak konfiguracji kanału dla tego adresu.');
-      const kanal = zapis.integracja.slice(5);
-      if (!atrapy.has(kanal)) atrapy.set(kanal, createAtrapaErli({ db, kanal, env, log, demoZmiany: true }));
-      return atrapy.get(kanal).fetchImpl(new URL(url.pathname + url.search, BAZA).href, init);
-    }
-    return globalThis.fetch(adres, init);
-  } });
-  return async (adres, init) => await konfigurator(adres, init) ?? pozostale(adres, init);
+  const pozostale = strzezErliProby({
+    fetchImpl: async (adres, init) => {
+      const url = new URL(adres instanceof Request ? adres.url : String(adres));
+      if (url.hostname.endsWith('.polcien.example')) {
+        const db = baza();
+        const konfiguracje = db
+          .prepare("SELECT integracja, ustawienia_json FROM konfiguracja_integracji WHERE integracja LIKE 'erli:%'")
+          .all();
+        const zapis = konfiguracje.find((w) => {
+          try {
+            return new URL(JSON.parse(w.ustawienia_json).adresApi).origin === url.origin;
+          } catch {
+            return false;
+          }
+        });
+        if (!zapis) throw new Error('Atrapa ERLI: brak konfiguracji kanału dla tego adresu.');
+        const kanal = zapis.integracja.slice(5);
+        if (!atrapy.has(kanal)) atrapy.set(kanal, createAtrapaErli({ db, kanal, env, log, demoZmiany: true }));
+        return atrapy.get(kanal).fetchImpl(new URL(url.pathname + url.search, BAZA).href, init);
+      }
+      return globalThis.fetch(adres, init);
+    },
+  });
+  return async (adres, init) => (await konfigurator(adres, init)) ?? pozostale(adres, init);
 }
 // Jawna lista: nowa metoda klienta wymaga świadomego dodania obsługi i testu kontraktu.
-const METODY = ['mojSklep', 'zmianyZamowien', 'oznaczPrzeczytane', 'inboxSzukaj', 'inboxOznacz',
-  'pobierzProdukt', 'szukajZamowien', 'pobierzZamowienie', 'ustawStatusSprzedawcy',
-  'utworzPaczkiZewnetrzne', 'edytujPaczkeZewnetrzna', 'usunPaczkeZewnetrzna', 'metodyDostawy',
-  'metodyErli', 'cennikiDostaw', 'cennikiDostawSzczegoly', 'punktyNadania', 'utworzPaczki',
-  'szukajPaczek', 'anulujPaczke', 'protokolyOdbioru', 'pobierzEtykiete',
-  'utworzProdukt', 'zmienProdukt', 'szukajProduktow', 'zmienProdukty'];
+const METODY = [
+  'mojSklep',
+  'zmianyZamowien',
+  'oznaczPrzeczytane',
+  'inboxSzukaj',
+  'inboxOznacz',
+  'pobierzProdukt',
+  'szukajZamowien',
+  'pobierzZamowienie',
+  'ustawStatusSprzedawcy',
+  'utworzPaczkiZewnetrzne',
+  'edytujPaczkeZewnetrzna',
+  'usunPaczkeZewnetrzna',
+  'metodyDostawy',
+  'metodyErli',
+  'cennikiDostaw',
+  'cennikiDostawSzczegoly',
+  'punktyNadania',
+  'utworzPaczki',
+  'szukajPaczek',
+  'anulujPaczke',
+  'protokolyOdbioru',
+  'pobierzEtykiete',
+  'utworzProdukt',
+  'zmienProdukt',
+  'szukajProduktow',
+  'zmienProdukty',
+];
 
 const METODY_ERLI = [
   { id: 'erliPaczkomat', groupId: 'erliPaczkomat', name: 'Paczkomat ERLI', operator: 'INPOST', cod: false },
   { id: 'erliKurier24InPost10kg', groupId: 'erliKurier24InPost', name: 'Kurier ERLI', operator: 'INPOST', cod: true },
-].map(m => ({ ...m, minDimensions: { width: 1, height: 1, length: 1, weight: 10 },
-  maxDimensions: { width: 400, height: 400, length: 600, weight: 10000 } }));
+].map((m) => ({
+  ...m,
+  minDimensions: { width: 1, height: 1, length: 1, weight: 10 },
+  maxDimensions: { width: 400, height: 400, length: 600, weight: 10000 },
+}));
 const DOSTAWY = [
-  ...METODY_ERLI.map(m => ({ id: m.id, name: m.name, cod: m.cod, vendor: 'inpost', targetMarket: 'pl' })),
-  ...[['dpd', 'dpd', 'Kurier DPD'], ['paczkomat', 'inpost', 'Paczkomat InPost'], ['odbiorOsobisty', 'selfPickup', 'Odbiór osobisty'],
-    ['dostawaPrzezSprzedajacego', 'ownTransport', 'Dostawa przez sprzedającego']]
-    .map(([id, vendor, name]) => ({ id, name, cod: false, vendor, targetMarket: 'pl' })),
+  ...METODY_ERLI.map((m) => ({ id: m.id, name: m.name, cod: m.cod, vendor: 'inpost', targetMarket: 'pl' })),
+  ...[
+    ['dpd', 'dpd', 'Kurier DPD'],
+    ['paczkomat', 'inpost', 'Paczkomat InPost'],
+    ['odbiorOsobisty', 'selfPickup', 'Odbiór osobisty'],
+    ['dostawaPrzezSprzedajacego', 'ownTransport', 'Dostawa przez sprzedającego'],
+  ].map(([id, vendor, name]) => ({ id, name, cod: false, vendor, targetMarket: 'pl' })),
 ];
 
 /** Surowy JSON API (bez normalizacji), do karmienia fetchImpl w testach kontraktu. */
 export function surowaOdpowiedzErli(dane, status = 200, headers = {}) {
-  return new Response(status === 204 ? null : JSON.stringify(dane), { status,
-    headers: { 'Content-Type': 'application/json', ...headers } });
+  return new Response(status === 204 ? null : JSON.stringify(dane), {
+    status,
+    headers: { 'Content-Type': 'application/json', ...headers },
+  });
 }
 
 function pasuje(dane, filtr) {
   if (!filtr) return true;
   const { field, operator, value } = filtr;
-  if (operator === 'and') return value.every(f => pasuje(dane, f));
-  if (operator === 'or') return value.some(f => pasuje(dane, f));
+  if (operator === 'and') return value.every((f) => pasuje(dane, f));
+  if (operator === 'or') return value.some((f) => pasuje(dane, f));
   const x = dane[field];
   switch (operator) {
-    case '=': return x === value;
-    case '!=': return x !== value;
-    case '>': return x > value;
-    case '>=': return x >= value;
-    case '<': return x < value;
-    case '<=': return x <= value;
-    case 'in': return value.includes(x);
-    case 'nin': return !value.includes(x);
-    default: throw new Error('Atrapa ERLI: nieobsługiwany filtr.');
+    case '=':
+      return x === value;
+    case '!=':
+      return x !== value;
+    case '>':
+      return x > value;
+    case '>=':
+      return x >= value;
+    case '<':
+      return x < value;
+    case '<=':
+      return x <= value;
+    case 'in':
+      return value.includes(x);
+    case 'nin':
+      return !value.includes(x);
+    default:
+      throw new Error('Atrapa ERLI: nieobsługiwany filtr.');
   }
 }
 
 function pdf(tytul) {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ compress: false }); const czesci = [];
-    doc.on('data', b => czesci.push(b)); doc.on('end', () => resolve(Buffer.concat(czesci))); doc.on('error', reject);
-    doc.fillColor('red').fontSize(36).text('ATRAPA'); doc.fillColor('black').fontSize(14).text(tytul); doc.end();
+    const doc = new PDFDocument({ compress: false });
+    const czesci = [];
+    doc.on('data', (b) => czesci.push(b));
+    doc.on('end', () => resolve(Buffer.concat(czesci)));
+    doc.on('error', reject);
+    doc.fillColor('red').fontSize(36).text('ATRAPA');
+    doc.fillColor('black').fontSize(14).text(tytul);
+    doc.end();
   });
 }
 
 // `demo` = kanał demo (piaskownica i demo publiczne): bez nieznanej metody dostawy — właściciel 12.11: „w demo nie może
 // takiego być” (czerwone „Nadanie zablokowane” wygląda gościowi na usterkę). Blokadę sprawdzają testy na kanale własnym.
 function zamowieniaStartowe(data, { demo = false } = {}) {
-  const adres = { firstName: 'Ada', lastName: 'Przykladowa', address: 'Zmyslona 1', street: 'Zmyslona',
-    buildingNumber: '1', city: 'Warszawa', country: 'pl', zip: '00-001', phone: '500100200' };
+  const adres = {
+    firstName: 'Ada',
+    lastName: 'Przykladowa',
+    address: 'Zmyslona 1',
+    street: 'Zmyslona',
+    buildingNumber: '1',
+    city: 'Warszawa',
+    country: 'pl',
+    zip: '00-001',
+    phone: '500100200',
+  };
   // Godziny względem chwili zasiewu: świeże przeplatają się z innymi kanałami,
   // pozostałe pokazują ostatnie dni i tygodnie, także po kolejnym resecie demo.
   // PRZ-160.demo (właściciel 14.11: „zwiększ Erli do 30 zamówień, czyli ok. połowę Allegro”): 16 scenariuszy (0–15) bez zmian,
   // 16 (PC-ERLI-0017) świeży duży koszyk z 5 różnymi produktami u góry listy (właściciel 14.11), od 17 starsze wysłane
   // zamówienia z 31–56 dni — 30 importowanych (pending 0006 poller pomija), jak 60 dni innych kanałów.
-  const wiekGodziny = [0, 10, 27, 50, 77, 100, 130, 155, 185, 240, 310, 380, 450, 530, 620, 720,
-    5, 760, 805, 850, 895, 940, 985, 1030, 1075, 1120, 1165, 1210, 1255, 1300, 1345];
+  const wiekGodziny = [
+    0, 10, 27, 50, 77, 100, 130, 155, 185, 240, 310, 380, 450, 530, 620, 720, 5, 760, 805, 850, 895, 940, 985, 1030,
+    1075, 1120, 1165, 1210, 1255, 1300, 1345,
+  ];
   const DUZY_KOSZYK = 16;
   const dostawyStarsze = ['dpd', 'erliPaczkomat', 'paczkomat', 'erliKurier24InPost10kg', 'dpd'];
   return Array.from({ length: wiekGodziny.length }, (_, i) => {
     const zakup = new Date(Date.parse(data) - wiekGodziny[i] * 3600000).toISOString();
-    const pozycja = (n, quantity = 1) => ({ id: n + 1, externalId: `PC-OF-${n + 1}`, sku: PRODUKTY[n].sku,
-      quantity, unitPrice: PRODUKTY[n].cena_gr, name: PRODUKTY[n].nazwa,
-      slug: 'dekoracja-polcien', taxRate: 'TAX_23', ...(n < 4 ? { dispatchTime: { period: 2, unit: 'day' } } : {}) });
-    const items = i === DUZY_KOSZYK ? [pozycja(16, 2), pozycja(17), pozycja(18), pozycja(19), pozycja(20)]
-      : [pozycja(i, i % 4 === 0 ? 2 : 1), ...(i % 4 === 0 ? [pozycja((i + 1) % 16)] : [])];
-    const typeId = ['dpd', 'dpd', 'erliPaczkomat', 'dpd', 'paczkomat', 'odbiorOsobisty',
-      'erliPaczkomat', 'erliKurier24InPost10kg', 'erliPaczkomat', 'dpd', demo ? 'erliKurier24InPost10kg' : 'nieznanaMetoda',
-      'paczkomat', 'dpd', 'paczkomat', 'erliKurier24InPost10kg', 'odbiorOsobisty'][i] ?? dostawyStarsze[i % dostawyStarsze.length];
-    const nazwaDostawy = { dpd: 'Kurier DPD', paczkomat: 'Paczkomat InPost',
-      erliPaczkomat: 'Paczkomat ERLI', erliKurier24InPost10kg: 'Kurier ERLI',
-      nieznanaMetoda: 'Dostawa nieznana', odbiorOsobisty: 'Odbiór osobisty' };
+    const pozycja = (n, quantity = 1) => ({
+      id: n + 1,
+      externalId: `PC-OF-${n + 1}`,
+      sku: PRODUKTY[n].sku,
+      quantity,
+      unitPrice: PRODUKTY[n].cena_gr,
+      name: PRODUKTY[n].nazwa,
+      slug: 'dekoracja-polcien',
+      taxRate: 'TAX_23',
+      ...(n < 4 ? { dispatchTime: { period: 2, unit: 'day' } } : {}),
+    });
+    const items =
+      i === DUZY_KOSZYK
+        ? [pozycja(16, 2), pozycja(17), pozycja(18), pozycja(19), pozycja(20)]
+        : [pozycja(i, i % 4 === 0 ? 2 : 1), ...(i % 4 === 0 ? [pozycja((i + 1) % 16)] : [])];
+    const typeId =
+      [
+        'dpd',
+        'dpd',
+        'erliPaczkomat',
+        'dpd',
+        'paczkomat',
+        'odbiorOsobisty',
+        'erliPaczkomat',
+        'erliKurier24InPost10kg',
+        'erliPaczkomat',
+        'dpd',
+        demo ? 'erliKurier24InPost10kg' : 'nieznanaMetoda',
+        'paczkomat',
+        'dpd',
+        'paczkomat',
+        'erliKurier24InPost10kg',
+        'odbiorOsobisty',
+      ][i] ?? dostawyStarsze[i % dostawyStarsze.length];
+    const nazwaDostawy = {
+      dpd: 'Kurier DPD',
+      paczkomat: 'Paczkomat InPost',
+      erliPaczkomat: 'Paczkomat ERLI',
+      erliKurier24InPost10kg: 'Kurier ERLI',
+      nieznanaMetoda: 'Dostawa nieznana',
+      odbiorOsobisty: 'Odbiór osobisty',
+    };
     return {
-    id: `PC-ERLI-${String(i + 1).padStart(4, '0')}`, status: i === 5 ? 'pending' : 'purchased',
-    user: { ...(i !== 8 ? { email: `kupujacy${i + 1}@polcien.example` } : {}), deliveryAddress: { ...adres, ...(i === 9 ? { country: 'de', city: 'Berlin', zip: '10000' } : {}) },
-      ...(i === 4 ? { invoiceAddress: { type: 'company', address: 'Zmyslona 1', street: 'Zmyslona', buildingNumber: '1',
-        city: 'Warszawa', country: 'pl', zip: '00-001', companyName: FIRMY_B2B[0].nazwa, nip: FIRMY_B2B[0].nip } } : {}) },
-    items,
-    delivery: { name: nazwaDostawy[typeId], typeId, price: 1000, cod: i === 1,
-      ...(['erliPaczkomat', 'paczkomat'].includes(typeId) ? { pickupPlace: { externalId: 'PC001', provider: 'inpost', name: 'Punkt Półcień' } } : {}) },
-    totalPrice: items.reduce((s, p) => s + p.unitPrice * p.quantity, 0) + 1000,
-    currency: i === 9 ? 'EUR' : 'PLN', market: i === 9 ? 'de' : 'pl',
-    sellerStatus: i === 15 ? 'canceled' : i === DUZY_KOSZYK ? 'created' : i >= 12 ? 'sent' : i === 3 || i === 4 ? 'inProgress' : 'created',
-    created: zakup, updated: zakup,
-    ...(i === 15 ? { status: 'cancelled' } : {}),
-    ...(i >= 12 && i !== 15 && i !== DUZY_KOSZYK ? { deliveryTracking: { trackingNumber: typeId === 'dpd'
-      ? '0000' + String(i + 1).padStart(9, '0') + 'U' : '0000' + String(i + 1).padStart(20, '0') } } : {}),
-    ...(i !== 1 ? { payment: { id: 1000001 + i, status: i === 5 ? 'PENDING' : 'COMPLETED' } } : {}),
-    ...(i !== 5 ? { purchasedAt: zakup } : {}), cursor: `${Math.floor(Date.parse(zakup) / 1000)};${i + 1}x1000`,
-    ...(i === 7 ? { returns: [{ items: [{ index: 0, quantity: 1 }], reason: 'resign',
-      comment: 'Wybieram inny wzór', created: zakup,
-      bankAccount: { number: '00000000000000000000000000', name: 'Kupujący testowy' } }] } : {}),
-  }; });
+      id: `PC-ERLI-${String(i + 1).padStart(4, '0')}`,
+      status: i === 5 ? 'pending' : 'purchased',
+      user: {
+        ...(i !== 8 ? { email: `kupujacy${i + 1}@polcien.example` } : {}),
+        deliveryAddress: { ...adres, ...(i === 9 ? { country: 'de', city: 'Berlin', zip: '10000' } : {}) },
+        ...(i === 4
+          ? {
+              invoiceAddress: {
+                type: 'company',
+                address: 'Zmyslona 1',
+                street: 'Zmyslona',
+                buildingNumber: '1',
+                city: 'Warszawa',
+                country: 'pl',
+                zip: '00-001',
+                companyName: FIRMY_B2B[0].nazwa,
+                nip: FIRMY_B2B[0].nip,
+              },
+            }
+          : {}),
+      },
+      items,
+      delivery: {
+        name: nazwaDostawy[typeId],
+        typeId,
+        price: 1000,
+        cod: i === 1,
+        ...(['erliPaczkomat', 'paczkomat'].includes(typeId)
+          ? { pickupPlace: { externalId: 'PC001', provider: 'inpost', name: 'Punkt Półcień' } }
+          : {}),
+      },
+      totalPrice: items.reduce((s, p) => s + p.unitPrice * p.quantity, 0) + 1000,
+      currency: i === 9 ? 'EUR' : 'PLN',
+      market: i === 9 ? 'de' : 'pl',
+      sellerStatus:
+        i === 15
+          ? 'canceled'
+          : i === DUZY_KOSZYK
+            ? 'created'
+            : i >= 12
+              ? 'sent'
+              : i === 3 || i === 4
+                ? 'inProgress'
+                : 'created',
+      created: zakup,
+      updated: zakup,
+      ...(i === 15 ? { status: 'cancelled' } : {}),
+      ...(i >= 12 && i !== 15 && i !== DUZY_KOSZYK
+        ? {
+            deliveryTracking: {
+              trackingNumber:
+                typeId === 'dpd'
+                  ? '0000' + String(i + 1).padStart(9, '0') + 'U'
+                  : '0000' + String(i + 1).padStart(20, '0'),
+            },
+          }
+        : {}),
+      ...(i !== 1 ? { payment: { id: 1000001 + i, status: i === 5 ? 'PENDING' : 'COMPLETED' } } : {}),
+      ...(i !== 5 ? { purchasedAt: zakup } : {}),
+      cursor: `${Math.floor(Date.parse(zakup) / 1000)};${i + 1}x1000`,
+      ...(i === 7
+        ? {
+            returns: [
+              {
+                items: [{ index: 0, quantity: 1 }],
+                reason: 'resign',
+                comment: 'Wybieram inny wzór',
+                created: zakup,
+                bankAccount: { number: '00000000000000000000000000', name: 'Kupujący testowy' },
+              },
+            ],
+          }
+        : {}),
+    };
+  });
 }
 
 /** Stan wyłącznie w atrapa_erli_*; transport nigdy nie wychodzi z procesu. */
-export function createAtrapaErli({ db, kanal, env = process.env, log = () => {}, teraz = () => new Date(), tryb = 'produkcja', demoZmiany = false,
-  opoznienieProduktuOdczyty = 2, frozenProduktow = {} }) {
+export function createAtrapaErli({
+  db,
+  kanal,
+  env = process.env,
+  log = () => {},
+  teraz = () => new Date(),
+  tryb = 'produkcja',
+  demoZmiany = false,
+  opoznienieProduktuOdczyty = 2,
+  frozenProduktow = {},
+}) {
   wymagajTrybuProby(env, 'atrapa ERLI');
-  if (!Number.isInteger(opoznienieProduktuOdczyty) || opoznienieProduktuOdczyty < 0) throw new Error('Atrapa ERLI: niepoprawne opóźnienie produktu.');
+  if (!Number.isInteger(opoznienieProduktuOdczyty) || opoznienieProduktuOdczyty < 0)
+    throw new Error('Atrapa ERLI: niepoprawne opóźnienie produktu.');
   if (!['produkcja', 'sandbox'].includes(tryb)) throw new Error('Atrapa ERLI: nieznany tryb.');
   db.exec(`CREATE TABLE IF NOT EXISTS atrapa_erli_stan (
     kanal TEXT NOT NULL, rodzaj TEXT NOT NULL, id TEXT NOT NULL, dane_json TEXT NOT NULL,
@@ -180,54 +351,89 @@ export function createAtrapaErli({ db, kanal, env = process.env, log = () => {},
     CREATE TABLE IF NOT EXISTS atrapa_erli_statusy (
     kanal TEXT NOT NULL, order_id TEXT NOT NULL, status TEXT NOT NULL, PRIMARY KEY (kanal, order_id));`);
   const data = () => new Date(teraz()).toISOString();
-  const zapisz = (rodzaj, id, dane) => db.prepare(`INSERT INTO atrapa_erli_stan VALUES (?,?,?,?)
-    ON CONFLICT(kanal,rodzaj,id) DO UPDATE SET dane_json=excluded.dane_json`).run(kanal, rodzaj, String(id), JSON.stringify(dane));
-  const lista = rodzaj => db.prepare('SELECT dane_json FROM atrapa_erli_stan WHERE kanal=? AND rodzaj=? ORDER BY rowid').all(kanal, rodzaj).map(w => JSON.parse(w.dane_json));
+  const zapisz = (rodzaj, id, dane) =>
+    db
+      .prepare(
+        `INSERT INTO atrapa_erli_stan VALUES (?,?,?,?)
+    ON CONFLICT(kanal,rodzaj,id) DO UPDATE SET dane_json=excluded.dane_json`,
+      )
+      .run(kanal, rodzaj, String(id), JSON.stringify(dane));
+  const lista = (rodzaj) =>
+    db
+      .prepare('SELECT dane_json FROM atrapa_erli_stan WHERE kanal=? AND rodzaj=? ORDER BY rowid')
+      .all(kanal, rodzaj)
+      .map((w) => JSON.parse(w.dane_json));
   const jeden = (rodzaj, id) => {
-    const w = db.prepare('SELECT dane_json FROM atrapa_erli_stan WHERE kanal=? AND rodzaj=? AND id=?').get(kanal, rodzaj, String(id));
+    const w = db
+      .prepare('SELECT dane_json FROM atrapa_erli_stan WHERE kanal=? AND rodzaj=? AND id=?')
+      .get(kanal, rodzaj, String(id));
     return w ? JSON.parse(w.dane_json) : null;
   };
-  const usun = (rodzaj, id) => db.prepare('DELETE FROM atrapa_erli_stan WHERE kanal=? AND rodzaj=? AND id=?').run(kanal, rodzaj, String(id));
+  const usun = (rodzaj, id) =>
+    db.prepare('DELETE FROM atrapa_erli_stan WHERE kanal=? AND rodzaj=? AND id=?').run(kanal, rodzaj, String(id));
   function zapiszProdukt(id, pr, zmiany) {
     const frozen = frozenProduktow[id] ?? pr?.frozen ?? {};
-    const blokuje = pole => frozen === true || (Array.isArray(frozen) ? frozen.includes(pole) : Boolean(frozen[pole]));
+    const blokuje = (pole) =>
+      frozen === true || (Array.isArray(frozen) ? frozen.includes(pole) : Boolean(frozen[pole]));
     // P6: stock i name zamrożone przez API są pomijane; price nie jest blokowane.
-    const dozwolone = Object.fromEntries(Object.entries(zmiany).filter(([pole]) => !pr || pole === 'price' || !blokuje(pole)));
+    const dozwolone = Object.fromEntries(
+      Object.entries(zmiany).filter(([pole]) => !pr || pole === 'price' || !blokuje(pole)),
+    );
     const produkt = { ...pr, ...dozwolone, externalId: id, frozen };
     zapisz('produkt', id, produkt);
     zapisz('wynik-produktu', id, { pozostalo: opoznienieProduktuOdczyty });
-    return Object.keys(dozwolone).filter(p => p !== 'externalId');
+    return Object.keys(dozwolone).filter((p) => p !== 'externalId');
   }
   function odczytajProdukt(pr) {
     const wynik = jeden('wynik-produktu', pr.externalId) ?? { pozostalo: 0 };
     const wToku = wynik.pozostalo > 0;
     if (wToku) zapisz('wynik-produktu', pr.externalId, { pozostalo: wynik.pozostalo - 1 });
-    const kategorie = (pr.externalCategories ?? []).flatMap(k => k.breadcrumb ?? []);
-    const nieznana = !kategorie.length || kategorie.some(k => String(k.id).startsWith('999'));
+    const kategorie = (pr.externalCategories ?? []).flatMap((k) => k.breadcrumb ?? []);
+    const nieznana = !kategorie.length || kategorie.some((k) => String(k.id).startsWith('999'));
     // P1/P2: produkt istnieje od razu, ale pusta lista problemów nie potwierdza zakończenia przetwarzania.
     // Kod category jest scenariuszem atrapy D12; P2 na sandboxie pozostał nierozstrzygnięty.
-    return { ...pr, buyableProblems: wToku || !nieznana ? [] : ['category'],
+    return {
+      ...pr,
+      buyableProblems: wToku || !nieznana ? [] : ['category'],
       categories: wToku || nieznana ? [] : kategorie,
-      images: wToku ? [] : (pr.images ?? []).map(i => ({ ...(typeof i === 'string' ? { url: i } : i), internalUrl: typeof i === 'string' ? i : i.url })) };
+      images: wToku
+        ? []
+        : (pr.images ?? []).map((i) => ({
+            ...(typeof i === 'string' ? { url: i } : i),
+            internalUrl: typeof i === 'string' ? i : i.url,
+          })),
+    };
   }
   if (!jeden('meta', 'start')) transakcja(zasiej);
   function transakcja(fn) {
     db.exec('SAVEPOINT atrapa_erli_seed');
-    try { fn(); db.exec('RELEASE atrapa_erli_seed'); }
-    catch (e) { db.exec('ROLLBACK TO atrapa_erli_seed'); db.exec('RELEASE atrapa_erli_seed'); throw e; }
+    try {
+      fn();
+      db.exec('RELEASE atrapa_erli_seed');
+    } catch (e) {
+      db.exec('ROLLBACK TO atrapa_erli_seed');
+      db.exec('RELEASE atrapa_erli_seed');
+      throw e;
+    }
   }
   function zasiej() {
     const czas = new Date(new Date(teraz()).getTime() - 2 * 3600000).toISOString();
     for (const [i, z] of zamowieniaStartowe(czas, { demo: demoZmiany }).entries()) {
       zapisz('zamowienie', z.id, z);
       const id = String(i + 1).padStart(24, '0');
-      zapisz('zdarzenie', id, { id, shopId: 1000001, created: czas, read: false,
-        type: i === 5 ? 'orderStatusChanged' : 'orderCreated', payload: z });
+      zapisz('zdarzenie', id, {
+        id,
+        shopId: 1000001,
+        created: czas,
+        read: false,
+        type: i === 5 ? 'orderStatusChanged' : 'orderCreated',
+        payload: z,
+      });
     }
     zapisz('meta', 'start', true);
   }
   function kolejneZmiany() {
-    if (!demoZmiany || jeden('meta', 'zmiany') || lista('zdarzenie').some(z => !z.read)) return;
+    if (!demoZmiany || jeden('meta', 'zmiany') || lista('zdarzenie').some((z) => !z.read)) return;
     const czas = data();
     for (const [i, numer] of [7, 8, 9].entries()) {
       const z = jeden('zamowienie', `PC-ERLI-${String(numer).padStart(4, '0')}`);
@@ -238,31 +444,62 @@ export function createAtrapaErli({ db, kanal, env = process.env, log = () => {},
       zapisz('zamowienie', z.id, z);
       // Po zdarzeniach zasiewu (1…liczba zamówień startowych) — przy 31 zamówieniach stałe 17–19 nadpisałyby zasiew.
       const id = String(1001 + i).padStart(24, '0');
-      zapisz('zdarzenie', id, { id, shopId: 1000001, created: czas, read: false,
-        type: 'orderStatusChanged', payload: z });
+      zapisz('zdarzenie', id, {
+        id,
+        shopId: 1000001,
+        created: czas,
+        read: false,
+        type: 'orderStatusChanged',
+        payload: z,
+      });
     }
     zapisz('meta', 'zmiany', true);
   }
-  const widok = z => {
+  const widok = (z) => {
     const wynik = structuredClone(z);
-    if (tryb === 'sandbox') { delete wynik.market; wynik.items.forEach(p => { delete p.dispatchTime; }); }
+    if (tryb === 'sandbox') {
+      delete wynik.market;
+      wynik.items.forEach((p) => {
+        delete p.dispatchTime;
+      });
+    }
     return wynik;
   };
-  const urlPdf = id => `${BAZA}/etykiety/${id}.pdf`;
+  const urlPdf = (id) => `${BAZA}/etykiety/${id}.pdf`;
   let ile429 = 0;
   const ok = surowaOdpowiedzErli;
   const brak = () => ok({}, 404);
   async function fetchImpl(url, init = {}) {
-    if (ile429 > 0) { ile429--; return ok({}, 429, { 'Retry-After': '5' }); }
-    const u = new URL(url); const p = decodeURIComponent(u.pathname); const metoda = init.method ?? 'GET';
+    if (ile429 > 0) {
+      ile429--;
+      return ok({}, 429, { 'Retry-After': '5' });
+    }
+    const u = new URL(url);
+    const p = decodeURIComponent(u.pathname);
+    const metoda = init.method ?? 'GET';
     const body = init.body === undefined ? {} : JSON.parse(init.body);
-    const slownik = (lista, pola) => lista.filter(w => pola.every(pole => !u.searchParams.has(pole) || String(w[pole]) === u.searchParams.get(pole)));
+    const slownik = (lista, pola) =>
+      lista.filter((w) =>
+        pola.every((pole) => !u.searchParams.has(pole) || String(w[pole]) === u.searchParams.get(pole)),
+      );
     if (u.origin !== BAZA) return brak();
-    if (p === '/me') return ok({ id: 1000001, name: 'pracownia-polcien', active: true, externalMatchingPolicy: 'enabled', scopes: ['order', 'product:read'], markets: ['pl'] });
+    if (p === '/me')
+      return ok({
+        id: 1000001,
+        name: 'pracownia-polcien',
+        active: true,
+        externalMatchingPolicy: 'enabled',
+        scopes: ['order', 'product:read'],
+        markets: ['pl'],
+      });
     if (p.startsWith('/orders/changes/') && tryb === 'sandbox') return brak();
-    if (['/orders/changes/_search', '/inbox/_search'].includes(p)) return ok(lista('zdarzenie')
-      .filter(z => !z.read && (!body.types || body.types.includes(z.type)) && pasuje(z, body.filter)).slice(0, 500)
-      .map(z => ({ ...z, payload: widok(z.payload) })));
+    if (['/orders/changes/_search', '/inbox/_search'].includes(p))
+      return ok(
+        lista('zdarzenie')
+          .filter((z) => !z.read && (!body.types || body.types.includes(z.type)) && pasuje(z, body.filter))
+          .slice(0, 500)
+          .map((z) => ({ ...z, payload: widok(z.payload) })),
+      );
     if (['/orders/changes/mark-read', '/inbox/mark-read'].includes(p)) {
       // Poller potwierdza dopiero po zapisie zamówień i pozycji. Tylko demo,
       // nigdy konfigurator kanału ani prawdziwe konto ERLI.
@@ -271,87 +508,171 @@ export function createAtrapaErli({ db, kanal, env = process.env, log = () => {},
         zapisz('meta', 'uzupelnioneDemo', true);
       }
       let oznaczone = 0;
-      for (const z of lista('zdarzenie')) if (!z.read && (body.ids?.includes(z.id) || (body.lastMessageId && z.id <= body.lastMessageId))) { zapisz('zdarzenie', z.id, { ...z, read: true }); oznaczone++; }
+      for (const z of lista('zdarzenie'))
+        if (!z.read && (body.ids?.includes(z.id) || (body.lastMessageId && z.id <= body.lastMessageId))) {
+          zapisz('zdarzenie', z.id, { ...z, read: true });
+          oznaczone++;
+        }
       transakcja(kolejneZmiany);
       return ok(oznaczone); // specyfikacja: 200 z liczbą oznaczonych wiadomości
     }
     if (p === '/orders/_search') {
       const { sortField = 'updated', after, limit = 50, order = 'ASC' } = body.pagination ?? {};
       const kierunek = order === 'DESC' ? -1 : 1;
-      let z = lista('zamowienie').filter(z => pasuje(z, body.filter)).sort((a, b) => kierunek * (a[sortField].localeCompare(b[sortField]) || a.id.localeCompare(b.id)));
-      if (after) { const i = z.findIndex(w => w.cursor === after); z = i >= 0 ? z.slice(i + 1) : z.filter(w => kierunek * w[sortField].localeCompare(after) > 0); }
+      let z = lista('zamowienie')
+        .filter((z) => pasuje(z, body.filter))
+        .sort((a, b) => kierunek * (a[sortField].localeCompare(b[sortField]) || a.id.localeCompare(b.id)));
+      if (after) {
+        const i = z.findIndex((w) => w.cursor === after);
+        z = i >= 0 ? z.slice(i + 1) : z.filter((w) => kierunek * w[sortField].localeCompare(after) > 0);
+      }
       return ok(z.slice(0, Math.min(limit, 200)).map(widok));
     }
     const status = /^\/orders\/(.+)\/status$/.exec(p);
     if (status) {
       if (!jeden('zamowienie', status[1])) return brak();
-      db.prepare(`INSERT INTO atrapa_erli_statusy VALUES (?,?,?) ON CONFLICT(kanal,order_id) DO UPDATE SET status=excluded.status`).run(kanal, status[1], body.status);
-      log('Atrapa ERLI: zapisano status sprzedawcy.'); return ok(undefined, 204);
+      db.prepare(
+        `INSERT INTO atrapa_erli_statusy VALUES (?,?,?) ON CONFLICT(kanal,order_id) DO UPDATE SET status=excluded.status`,
+      ).run(kanal, status[1], body.status);
+      log('Atrapa ERLI: zapisano status sprzedawcy.');
+      return ok(undefined, 204);
     }
-    if (p.startsWith('/orders/')) { const z = jeden('zamowienie', p.slice(8)); return z ? ok(widok(z)) : brak(); }
+    if (p.startsWith('/orders/')) {
+      const z = jeden('zamowienie', p.slice(8));
+      return z ? ok(widok(z)) : brak();
+    }
     // PRZ-160.E2.03: produkty z OMS-u; powtórny POST = 409, batch zwraca pozycje w innej kolejności, nieznany = 400 (pomiary).
     if (p === '/products/_search' && metoda === 'POST') {
       const { sortField = 'externalId', order = 'ASC', limit = 100, after } = body.pagination ?? {};
       const kierunek = order === 'DESC' ? -1 : 1;
-      const porownaj = (a, b) => typeof a === 'number' && typeof b === 'number' ? a - b : String(a).localeCompare(String(b));
-      const produkty = lista('produkt').filter(pr => pasuje(pr, body.filter))
+      const porownaj = (a, b) =>
+        typeof a === 'number' && typeof b === 'number' ? a - b : String(a).localeCompare(String(b));
+      const produkty = lista('produkt')
+        .filter((pr) => pasuje(pr, body.filter))
         .sort((a, b) => kierunek * (porownaj(a[sortField], b[sortField]) || porownaj(a.externalId, b.externalId)));
-      const indeks = after === undefined ? -1 : produkty.findIndex(pr => pr.externalId === after);
-      const strona = after === undefined ? produkty : indeks >= 0 ? produkty.slice(indeks + 1)
-        : produkty.filter(pr => kierunek * porownaj(pr[sortField], after) > 0);
+      const indeks = after === undefined ? -1 : produkty.findIndex((pr) => pr.externalId === after);
+      const strona =
+        after === undefined
+          ? produkty
+          : indeks >= 0
+            ? produkty.slice(indeks + 1)
+            : produkty.filter((pr) => kierunek * porownaj(pr[sortField], after) > 0);
       return ok(strona.slice(0, Math.min(limit, 200)).map(odczytajProdukt));
     }
-    if (p === '/products/batch-update' && metoda === 'PATCH') return ok(body.map(z => {
-      const pr = jeden('produkt', z.externalId);
-      if (!pr) return { externalId: z.externalId, status: 400, message: 'Product not found' };
-      if (z.externalId.endsWith('-BLAD')) return { externalId: z.externalId, status: 400, polishMessage: 'Nie można zapisać produktu w ERLI.' };
-      return { externalId: z.externalId, status: 202, updatedFields: zapiszProdukt(z.externalId, pr, z) };
-    }).reverse());
+    if (p === '/products/batch-update' && metoda === 'PATCH')
+      return ok(
+        body
+          .map((z) => {
+            const pr = jeden('produkt', z.externalId);
+            if (!pr) return { externalId: z.externalId, status: 400, message: 'Product not found' };
+            if (z.externalId.endsWith('-BLAD'))
+              return { externalId: z.externalId, status: 400, polishMessage: 'Nie można zapisać produktu w ERLI.' };
+            return { externalId: z.externalId, status: 202, updatedFields: zapiszProdukt(z.externalId, pr, z) };
+          })
+          .reverse(),
+      );
     if (p.startsWith('/products/') && ['POST', 'PATCH'].includes(metoda)) {
-      const id = decodeURIComponent(p.slice(10)); const pr = jeden('produkt', id);
+      const id = decodeURIComponent(p.slice(10));
+      const pr = jeden('produkt', id);
       if (metoda === 'POST' && pr) return ok([{ errorCode: '409', errorMessage: 'Product already exists' }], 409);
       if (metoda === 'PATCH' && !pr) return brak();
       if (id.endsWith('-BLAD')) return ok({ polishMessage: 'Nie można zapisać produktu w ERLI.' }, 400);
       return ok({ externalId: id, updatedFields: zapiszProdukt(id, pr, body) }, 202);
     }
-    if (p.startsWith('/products/') && jeden('produkt', decodeURIComponent(p.slice(10)))) return ok(odczytajProdukt(jeden('produkt', decodeURIComponent(p.slice(10)))));
+    if (p.startsWith('/products/') && jeden('produkt', decodeURIComponent(p.slice(10))))
+      return ok(odczytajProdukt(jeden('produkt', decodeURIComponent(p.slice(10)))));
     if (p.startsWith('/products/')) {
-      const item = lista('zamowienie').flatMap(z => z.items).find(i => i.externalId === p.slice(10));
+      const item = lista('zamowienie')
+        .flatMap((z) => z.items)
+        .find((i) => i.externalId === p.slice(10));
       if (!item) return brak();
-      return ok({ externalId: item.externalId, name: item.name, externalAttributes: [], externalCategories: [], images: [], files: [],
-        price: 2500, stock: 10, status: 'active', ...(item.externalId !== 'PC-OF-6' ? { dispatchTime: { period: 2, unit: 'day' } } : {}),
-        attributes: [], categories: [], marketplaceId: item.id, slug: item.slug, buyableProblems: [], frozen: {}, created: data(), currency: 'PLN' });
+      return ok({
+        externalId: item.externalId,
+        name: item.name,
+        externalAttributes: [],
+        externalCategories: [],
+        images: [],
+        files: [],
+        price: 2500,
+        stock: 10,
+        status: 'active',
+        ...(item.externalId !== 'PC-OF-6' ? { dispatchTime: { period: 2, unit: 'day' } } : {}),
+        attributes: [],
+        categories: [],
+        marketplaceId: item.id,
+        slug: item.slug,
+        buyableProblems: [],
+        frozen: {},
+        created: data(),
+        currency: 'PLN',
+      });
     }
     if (p === '/shipping/external' || p === '/shipping/parcels/') {
       const external = p === '/shipping/external';
-      return ok(body.map(d => {
-        const id = (jeden('meta', 'licznik') ?? 0) + 1; zapisz('meta', 'licznik', id);
-        const czas = data(); const paczka = { id, orderId: d.orderId, type: external ? 'external' : 'internal',
-          status: external ? (d.status ?? 'preparing') : 'preparing', createdAt: czas, updatedAt: czas,
-          ...(external ? { shipping: { vendor: d.vendor }, ...(d.trackingNumber ? { trackingNumber: d.trackingNumber } : {}) }
-            : { dimensions: d.dimensions, shipping: { ...d.shipping, registeredAt: czas } }) };
-        zapisz('paczka', id, { paczka, odczyty: 0 }); return paczka;
-      }));
+      return ok(
+        body.map((d) => {
+          const id = (jeden('meta', 'licznik') ?? 0) + 1;
+          zapisz('meta', 'licznik', id);
+          const czas = data();
+          const paczka = {
+            id,
+            orderId: d.orderId,
+            type: external ? 'external' : 'internal',
+            status: external ? (d.status ?? 'preparing') : 'preparing',
+            createdAt: czas,
+            updatedAt: czas,
+            ...(external
+              ? { shipping: { vendor: d.vendor }, ...(d.trackingNumber ? { trackingNumber: d.trackingNumber } : {}) }
+              : { dimensions: d.dimensions, shipping: { ...d.shipping, registeredAt: czas } }),
+          };
+          zapisz('paczka', id, { paczka, odczyty: 0 });
+          return paczka;
+        }),
+      );
     }
-    if (p === '/shipping/parcels/_search') return ok(lista('paczka').filter(w => w.paczka.type === 'internal' && pasuje(w.paczka, body.filter)).map(w => {
-      w.odczyty++;
-      if (w.odczyty >= 2 && w.paczka.status !== 'canceled') { w.paczka.shipping.waybills = [urlPdf(w.paczka.id)]; w.paczka.trackingNumber = `PC${String(w.paczka.id).padStart(22, '0')}`; w.paczka.status = 'readyToSend'; }
-      zapisz('paczka', w.paczka.id, w); return w.paczka;
-    }));
+    if (p === '/shipping/parcels/_search')
+      return ok(
+        lista('paczka')
+          .filter((w) => w.paczka.type === 'internal' && pasuje(w.paczka, body.filter))
+          .map((w) => {
+            w.odczyty++;
+            if (w.odczyty >= 2 && w.paczka.status !== 'canceled') {
+              w.paczka.shipping.waybills = [urlPdf(w.paczka.id)];
+              w.paczka.trackingNumber = `PC${String(w.paczka.id).padStart(22, '0')}`;
+              w.paczka.status = 'readyToSend';
+            }
+            zapisz('paczka', w.paczka.id, w);
+            return w.paczka;
+          }),
+      );
     const paczkaId = /^\/shipping\/(external|parcels)\/(\d+)$/.exec(p);
     if (paczkaId) {
-      const w = jeden('paczka', paczkaId[2]); if (!w || w.paczka.type !== (paczkaId[1] === 'external' ? 'external' : 'internal')) return brak();
+      const w = jeden('paczka', paczkaId[2]);
+      if (!w || w.paczka.type !== (paczkaId[1] === 'external' ? 'external' : 'internal')) return brak();
       if (metoda === 'DELETE') {
         if (paczkaId[1] === 'external') usun('paczka', paczkaId[2]);
-        else { w.paczka.status = 'canceled'; delete w.paczka.shipping.waybills; w.paczka.updatedAt = data(); zapisz('paczka', paczkaId[2], w); return ok(w.paczka); } // 200 z Parcel
+        else {
+          w.paczka.status = 'canceled';
+          delete w.paczka.shipping.waybills;
+          w.paczka.updatedAt = data();
+          zapisz('paczka', paczkaId[2], w);
+          return ok(w.paczka);
+        } // 200 z Parcel
         return ok(undefined, 204);
       }
-      w.paczka = { ...w.paczka, shipping: { vendor: body.vendor }, trackingNumber: body.trackingNumber, status: body.status ?? w.paczka.status, updatedAt: data() };
-      zapisz('paczka', paczkaId[2], w); return ok(w.paczka);
+      w.paczka = {
+        ...w.paczka,
+        shipping: { vendor: body.vendor },
+        trackingNumber: body.trackingNumber,
+        status: body.status ?? w.paczka.status,
+        updatedAt: data(),
+      };
+      zapisz('paczka', paczkaId[2], w);
+      return ok(w.paczka);
     }
     if (p === '/shipping/pickupProtocols') {
       const ids = (u.searchParams.get('parcelIds') ?? '').split(',');
-      if (!ids.length || ids.some(id => !jeden('paczka', id))) return brak();
+      if (!ids.length || ids.some((id) => !jeden('paczka', id))) return brak();
       return ok({ url: `${BAZA}/protokoly/${ids.join(',')}.pdf` });
     }
     const etykieta = /^\/etykiety\/(\d+)\.pdf$/.exec(p);
@@ -360,16 +681,48 @@ export function createAtrapaErli({ db, kanal, env = process.env, log = () => {},
       if (w?.paczka.status === 'canceled' || !w?.paczka.shipping.waybills?.includes(url)) return brak();
       return new Response(await pdf('Etykieta paczki testowej'), { headers: { 'Content-Type': 'application/pdf' } });
     }
-    if (p.startsWith('/protokoly/')) return new Response(await pdf('Protokol testowy'), { headers: { 'Content-Type': 'application/pdf' } });
+    if (p.startsWith('/protokoly/'))
+      return new Response(await pdf('Protokol testowy'), { headers: { 'Content-Type': 'application/pdf' } });
     if (p === '/dictionaries/shippingMethods') return ok(slownik(METODY_ERLI, ['id', 'groupId', 'operator', 'cod']));
     if (p === '/dictionaries/deliveryMethods') return ok(slownik(DOSTAWY, ['id', 'vendor', 'cod']));
     const cennik = { id: 1, name: 'Dostawy Półcień' };
     if (p === '/delivery/priceLists') return ok([cennik]);
-    if (p === '/delivery/priceListsDetails') return ok([{ ...cennik, createdAt: data(), prices: DOSTAWY.map(m => ({ deliveryMethod: { id: m.id }, basePrice: 1000, nextItemPrice: 0,
-      limit: m.id === 'erliPaczkomat' ? ['A', 'B', 'C'].map(dimension => ({ dimension, limit: 1 })) : 1 })) }]);
-    if (p === '/shipping/postingPoints') return ok(u.searchParams.has('groupId') && !METODY_ERLI.some(m => m.groupId === u.searchParams.get('groupId')) ? []
-      : slownik([{ id: 1, name: 'Pracownia Półcień', companyName: 'Pracownia Półcień', phone: '500100200', email: 'nadania@polcien.example',
-        street: 'Zmyslona', buildingNumber: '1', zip: '00-001', city: 'Warszawa', isDefault: true, type: 'address' }], ['id', 'isDefault']));
+    if (p === '/delivery/priceListsDetails')
+      return ok([
+        {
+          ...cennik,
+          createdAt: data(),
+          prices: DOSTAWY.map((m) => ({
+            deliveryMethod: { id: m.id },
+            basePrice: 1000,
+            nextItemPrice: 0,
+            limit: m.id === 'erliPaczkomat' ? ['A', 'B', 'C'].map((dimension) => ({ dimension, limit: 1 })) : 1,
+          })),
+        },
+      ]);
+    if (p === '/shipping/postingPoints')
+      return ok(
+        u.searchParams.has('groupId') && !METODY_ERLI.some((m) => m.groupId === u.searchParams.get('groupId'))
+          ? []
+          : slownik(
+              [
+                {
+                  id: 1,
+                  name: 'Pracownia Półcień',
+                  companyName: 'Pracownia Półcień',
+                  phone: '500100200',
+                  email: 'nadania@polcien.example',
+                  street: 'Zmyslona',
+                  buildingNumber: '1',
+                  zip: '00-001',
+                  city: 'Warszawa',
+                  isDefault: true,
+                  type: 'address',
+                },
+              ],
+              ['id', 'isDefault'],
+            ),
+      );
     return brak();
   }
   const klient = createErliClient({ adresApi: BAZA, kluczApi: 'atrapa-polcien', fetchImpl });
@@ -389,7 +742,15 @@ export function createAtrapaErli({ db, kanal, env = process.env, log = () => {},
     if (!pr) throw new Error(`Atrapa ERLI: nie ma produktu ${id}.`);
     return structuredClone(pr);
   }
-  return { ...Object.fromEntries(METODY.map(m => [m, klient[m]])), atrapa: true,
-    fetchImpl, kup, oddaj,
-    wymus429(n = 1) { if (!Number.isInteger(n) || n < 0) throw new Error('Podaj liczbę odpowiedzi 429.'); ile429 = n; } };
+  return {
+    ...Object.fromEntries(METODY.map((m) => [m, klient[m]])),
+    atrapa: true,
+    fetchImpl,
+    kup,
+    oddaj,
+    wymus429(n = 1) {
+      if (!Number.isInteger(n) || n < 0) throw new Error('Podaj liczbę odpowiedzi 429.');
+      ile429 = n;
+    },
+  };
 }

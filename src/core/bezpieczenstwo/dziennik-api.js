@@ -52,4 +52,3 @@ export function wpisDoDziennika(ctx, { najwiecejWpisow = 5000 } = {}) {
     }
   };
 }
-

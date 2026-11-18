@@ -3,15 +3,24 @@ import fs from 'node:fs';
 import { ZMIENNE_PANEL } from '../scripts/zmienne-panel.mjs';
 import { generujTabele } from '../scripts/zmienne-tabela.mjs';
 
-const czytaj = plik => fs.readFileSync(new URL(`../${plik}`, import.meta.url), 'utf8');
+const czytaj = (plik) => fs.readFileSync(new URL(`../${plik}`, import.meta.url), 'utf8');
 const manifest = JSON.parse(czytaj('docs/konfiguracja.json'));
 // Świadectwa zapisu: trasa POST i pliki wiążące pola formularza z konfiguracją.
 // Część tras używa nazw env dopiero w importowanym źródle konfiguracji.
 const ekrany = {
   'Integracje → inFakt': ['src/moduly/faktury/trasy/ustawienia-infakt.js', 'src/domena/konfiguracja-infakt.js'],
-  'Integracje → Fakturownia': ['src/moduly/faktury/trasy/ustawienia-fakturownia.js', 'src/domena/konfiguracja-fakturownia.js'],
-  'Faktury i podatki → Program do faktur': ['src/moduly/faktury/trasy/ustawienia-programu.js', 'src/domena/wybor-programu.js'],
-  'Faktury i podatki → Numeracja': ['src/moduly/faktury/trasy/ustawienia-serii.js', 'src/domena/twojefaktury/numeracja.js'],
+  'Integracje → Fakturownia': [
+    'src/moduly/faktury/trasy/ustawienia-fakturownia.js',
+    'src/domena/konfiguracja-fakturownia.js',
+  ],
+  'Faktury i podatki → Program do faktur': [
+    'src/moduly/faktury/trasy/ustawienia-programu.js',
+    'src/domena/wybor-programu.js',
+  ],
+  'Faktury i podatki → Numeracja': [
+    'src/moduly/faktury/trasy/ustawienia-serii.js',
+    'src/domena/twojefaktury/numeracja.js',
+  ],
   'Integracje → GUS': ['src/moduly/zamowienia/ustawienia-gus.js', 'src/domena/konfiguracja-gus.js'],
   'Integracje → KSeF': ['src/moduly/koszty/trasy/ustawienia-ksef.js', 'src/domena/konfiguracja-ksef-kosztow.js'],
   'Integracje → DPD': ['src/moduly/wysylka/trasy/ustawienia-dpd.js', 'src/moduly/wysylka/kurierzy.ts'],
@@ -21,7 +30,10 @@ const ekrany = {
   'Integracje → Poczta wychodząca': ['src/moduly/ustawienia/trasy/poczta.js', 'src/moduly/wiadomosci/konfiguracja.ts'],
   'Integracje → Poczta wychodząca → Adres panelu': ['src/moduly/ustawienia/trasy/poczta.js'],
   'Komunikacja → Podpis i stopka': ['src/moduly/ustawienia/trasy/poczta.js'],
-  'Analizy i finanse → Finanse → Kompletność danych': ['src/moduly/raporty/trasy/pokrycie.js', 'src/moduly/raporty/pokrycie.js'],
+  'Analizy i finanse → Finanse → Kompletność danych': [
+    'src/moduly/raporty/trasy/pokrycie.js',
+    'src/moduly/raporty/pokrycie.js',
+  ],
 };
 
 describe('odpowiedniki zmiennych w panelu', () => {
@@ -37,17 +49,28 @@ describe('odpowiedniki zmiennych w panelu', () => {
     ['OMS_RAPORTY_PODLOGA_ZWROTOW', 'Analizy i finanse → Finanse → Kompletność danych'],
     ['OMS_STATYSTYKI_PIERWSZY_DZIEN', 'Analizy i finanse → Finanse → Kompletność danych'],
     ['OMS_LOGO_PLIK', 'Ustawienia → Firma → Dane i logo'],
-    ['OMS_LOGO_ALT', 'Ustawienia → Firma → Dane i logo', 'tylko administrator; plik wygrywa, gdy ustawia też OMS_LOGO_PLIK; bez restartu'],
-  ])('%s wskazuje prawdziwą ścieżkę menu i ograniczenia zapisu', (nazwa, ekran, uwagi = 'tylko administrator; plik wygrywa; bez restartu') => {
-    const wiersz = generujTabele(manifest).split('\n').find(w => w.startsWith(`| <code>${nazwa}</code> |`));
-    expect(wiersz).toContain(`| Tak — ${ekran} (${uwagi}) |`);
-  });
+    [
+      'OMS_LOGO_ALT',
+      'Ustawienia → Firma → Dane i logo',
+      'tylko administrator; plik wygrywa, gdy ustawia też OMS_LOGO_PLIK; bez restartu',
+    ],
+  ])(
+    '%s wskazuje prawdziwą ścieżkę menu i ograniczenia zapisu',
+    (nazwa, ekran, uwagi = 'tylko administrator; plik wygrywa; bez restartu') => {
+      const wiersz = generujTabele(manifest)
+        .split('\n')
+        .find((w) => w.startsWith(`| <code>${nazwa}</code> |`));
+      expect(wiersz).toContain(`| Tak — ${ekran} (${uwagi}) |`);
+    },
+  );
 
-  it.each(['META_TOKEN', 'META_KONTA', 'GA4_KLUCZ'])('%s pozostaje plikową konfiguracją kart kampanii', nazwa => {
+  it.each(['META_TOKEN', 'META_KONTA', 'GA4_KLUCZ'])('%s pozostaje plikową konfiguracją kart kampanii', (nazwa) => {
     expect(ZMIENNE_PANEL).not.toHaveProperty(nazwa);
     expect(czytaj('src/moduly/marketing/konfiguracja.ts')).toContain(nazwa);
     expect(czytaj('src/moduly/marketing/widoki/kampania.ejs')).toContain(nazwa);
-    const wiersz = generujTabele(manifest).split('\n').find(w => w.startsWith(`| <code>${nazwa}</code> |`));
+    const wiersz = generujTabele(manifest)
+      .split('\n')
+      .find((w) => w.startsWith(`| <code>${nazwa}</code> |`));
     expect(wiersz).toMatch(/\| Nie \|$/);
   });
 });

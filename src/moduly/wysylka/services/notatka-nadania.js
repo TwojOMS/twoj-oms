@@ -26,7 +26,10 @@ export const tekstNotatkiNadania = (kurier, numerListu) =>
 // (401, 4xx, 5xx) brzmi inaczej. Powtarzamy wyłącznie tę pierwszą.
 const bladSieci = (e) => /^Sklep nieosiągalny:/.test(String(e?.message ?? ''));
 
-const spij = (ms) => new Promise((r) => { setTimeout(r, ms); });
+const spij = (ms) =>
+  new Promise((r) => {
+    setTimeout(r, ms);
+  });
 
 /** Notatka z jedną powtórką po błędzie sieci. Rzuca, gdy obie próby padły albo sklep odmówił. */
 export async function dodajNotatkeZPowtorka(klient, zrodloId, tekst, { czekaj = spij } = {}) {
@@ -50,9 +53,14 @@ export async function ponowNotatkeNadania({ db, klienci, klienciKanalow = {} }, 
   }
   const z = pobierzZamowienie(db, p.zamowienie_id);
   const klient = z ? klienci[z.sklep] : null;
-  const numerKanalu = await przekazNumerKanalu({ db, klienci, klienciKanalow }, p.id, p.sync_woo_blad === 'notatka: numer kanału: usuwanie');
+  const numerKanalu = await przekazNumerKanalu(
+    { db, klienci, klienciKanalow },
+    p.id,
+    p.sync_woo_blad === 'notatka: numer kanału: usuwanie',
+  );
   if (numerKanalu) return numerKanalu;
-  if (!klient) throw bladOperatora(`Panel nie ma połączenia ze sklepem „${z?.sklep ?? '?'}” — notatki nie ma dokąd wysłać.`);
+  if (!klient)
+    throw bladOperatora(`Panel nie ma połączenia ze sklepem „${z?.sklep ?? '?'}” — notatki nie ma dokąd wysłać.`);
   // Sklep „Odczyt” — nie wołamy go wcale; ślad sprzed zmiany uprawnień w kreatorze zdejmujemy,
   // żeby zegar ponowień nie liczył go przez 48 h jako błędu.
   if (czyTylkoOdczyt(klient)) {
@@ -77,17 +85,21 @@ export async function ponowNotatkeNadania({ db, klienci, klienciKanalow = {} }, 
  */
 export async function ponowZalegleNotatki({ db, klienci, klienciKanalow, teraz = new Date() }) {
   const odIso = new Date(teraz.getTime() - OKNO_PONAWIANIA_NOTATKI_H * 3600e3).toISOString();
-  const ids = db.prepare(
-    "SELECT id FROM przesylki WHERE status = 'nadana' AND numer_listu IS NOT NULL"
-    + ' AND sync_woo_blad LIKE ? AND utworzona_at >= ? ORDER BY id',
-  ).all(`${PREFIKS_NOTATKI}%`, odIso).map((/** @type {any} */ w) => Number(w.id));
+  const ids = db
+    .prepare(
+      "SELECT id FROM przesylki WHERE status = 'nadana' AND numer_listu IS NOT NULL" +
+        ' AND sync_woo_blad LIKE ? AND utworzona_at >= ? ORDER BY id',
+    )
+    .all(`${PREFIKS_NOTATKI}%`, odIso)
+    .map((/** @type {any} */ w) => Number(w.id));
   let wyslane = 0;
   let bledy = 0;
   for (const id of ids) {
     try {
       // eslint-disable-next-line no-await-in-loop -- po kolei, jeden sklep nie dostaje serii naraz
       const w = await ponowNotatkeNadania({ db, klienci, klienciKanalow }, id);
-      if (w.ok) wyslane += 1; else bledy += 1;
+      if (w.ok) wyslane += 1;
+      else bledy += 1;
     } catch {
       bledy += 1;
     }

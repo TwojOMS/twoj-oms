@@ -5,34 +5,60 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import {
-  zapiszZamowienie, pobierzZamowienie,
-  zapiszNadpisaniaWysylki, zapiszNadpisaniaFaktury, przywrocDaneZeSklepu,
+  zapiszZamowienie,
+  pobierzZamowienie,
+  zapiszNadpisaniaWysylki,
+  zapiszNadpisaniaFaktury,
+  przywrocDaneZeSklepu,
 } from '../../../src/oms/db/zamowienia.js';
 import { createWooAdapter } from '../../../src/oms/woo/adapter.js';
 import { createPoller } from '../../../src/moduly/kanaly/services/poller.js';
 import { createFaktura } from '../../../src/moduly/faktury/services/faktura.js';
 import { adresOdbiorcy, adresZeSklepu, polaReczneAdresu } from '../../../src/domena/adres-odbiorcy.js';
-import {
-  daneFaktury, daneFakturyZeSklepu, polaReczneFaktury, chceFakture,
-} from '../../../src/domena/dane-faktury.js';
+import { daneFaktury, daneFakturyZeSklepu, polaReczneFaktury, chceFakture } from '../../../src/domena/dane-faktury.js';
 import { roznice, sklejUlice } from '../../../src/domena/dane-reczne.js';
 
 const zmapowane = (nad = {}) => ({
-  zrodlo_id: 1501, numer: '1501',
+  zrodlo_id: 1501,
+  numer: '1501',
   klient: {
-    first_name: 'Jan', last_name: 'Kowalski', company: 'ACME sp. z o.o.', email: 'j@k.pl',
-    phone: '+48500600700', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL',
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    company: 'ACME sp. z o.o.',
+    email: 'j@k.pl',
+    phone: '+48500600700',
+    address_1: 'Polna 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
   },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', company: '', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: '1200001200',
-  kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00', status_woo: 'processing',
-  oplacone_at: null, anulowane: 0, utworzone_at: '2026-07-29T13:19:52',
+  dostawa: {
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    company: '',
+    address_1: 'Polna 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
+  },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 1,
+  nip: '1200001200',
+  kwota_brutto: '123.00',
+  koszt_dostawy_brutto: '0.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-07-29T13:19:52',
   pozycje: [{ nazwa: 'STOP', sku: 'PRO-STOP-001', ilosc: 1, cena_brutto: '123.00', brutto_linii: '123.00', vat: null }],
   ...nad,
 });
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 
 // ---------------------------------------------------------------------------------
 // Migracja. Na produkcji lezy ZYWA baza z prawdziwym zamowieniem i prawdziwa przesylka —
@@ -45,7 +71,14 @@ describe('migracja kolumn z ręcznymi poprawkami', () => {
 
   it('dokłada trzy kolumny do bazy założonej wcześniej, nie ruszając danych', () => {
     // Wyjątek zatwierdzony przez właściciela 2026-09-30: odmowa niezgodnego baseline + prawidłowe reopen.
-    potwierdzOdmoweHistorycznegoSchema(["ALTER TABLE zamowienia DROP COLUMN dostawa_reczna_json","ALTER TABLE zamowienia DROP COLUMN klient_reczny_json","ALTER TABLE zamowienia DROP COLUMN chce_fakture_reczne"], ['dostawa_reczna_json', 'klient_reczny_json', 'chce_fakture_reczne']);
+    potwierdzOdmoweHistorycznegoSchema(
+      [
+        'ALTER TABLE zamowienia DROP COLUMN dostawa_reczna_json',
+        'ALTER TABLE zamowienia DROP COLUMN klient_reczny_json',
+        'ALTER TABLE zamowienia DROP COLUMN chce_fakture_reczne',
+      ],
+      ['dostawa_reczna_json', 'klient_reczny_json', 'chce_fakture_reczne'],
+    );
     const plik = plikBazy();
     const pierwsza = openOmsDb(plik);
     const id = zapiszZamowienie(pierwsza, 'pro', zmapowane(), {});
@@ -53,7 +86,10 @@ describe('migracja kolumn z ręcznymi poprawkami', () => {
     pierwsza.close();
 
     const druga = openOmsDb(plik);
-    const kolumny = druga.prepare('PRAGMA table_info(zamowienia)').all().map((k) => k.name);
+    const kolumny = druga
+      .prepare('PRAGMA table_info(zamowienia)')
+      .all()
+      .map((k) => k.name);
     expect(kolumny).toContain('dostawa_reczna_json');
     expect(kolumny).toContain('klient_reczny_json');
     expect(kolumny).toContain('chce_fakture_reczne');
@@ -264,11 +300,23 @@ describe('roznice', () => {
   const POLA = ['ulica', 'kod', 'miasto'];
 
   it('formularz identyczny ze sklepem → żadnego nadpisania', () => {
-    expect(roznice({ ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa' }, { ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa' }, POLA)).toEqual({});
+    expect(
+      roznice(
+        { ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa' },
+        { ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa' },
+        POLA,
+      ),
+    ).toEqual({});
   });
 
   it('zmienione jedno pole → nadpisanie tylko tego jednego', () => {
-    expect(roznice({ ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa' }, { ulica: 'Polna 1', kod: '00-951', miasto: 'Warszawa' }, POLA)).toEqual({ kod: '00-951' });
+    expect(
+      roznice(
+        { ulica: 'Polna 1', kod: '00-950', miasto: 'Warszawa' },
+        { ulica: 'Polna 1', kod: '00-951', miasto: 'Warszawa' },
+        POLA,
+      ),
+    ).toEqual({ kod: '00-951' });
   });
 
   it('puste pole ze sklepu i puste w formularzu to ta sama wartość', () => {
@@ -288,18 +336,44 @@ describe('roznice', () => {
 
 describe('ręczne poprawki a synchronizacja ze sklepem', () => {
   const surowe = (nad = {}) => ({
-    id: 1501, number: '1501', status: 'processing', total: '123.00',
-    date_created: '2026-07-29T10:00:00', date_modified: '2026-07-29T11:00:00', date_modified_gmt: '2026-07-29T09:00:00',
-    billing: { first_name: 'Jan', last_name: 'Kowalski', company: 'ACME sp. z o.o.', email: 'j@k.pl', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
-    shipping: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
+    id: 1501,
+    number: '1501',
+    status: 'processing',
+    total: '123.00',
+    date_created: '2026-07-29T10:00:00',
+    date_modified: '2026-07-29T11:00:00',
+    date_modified_gmt: '2026-07-29T09:00:00',
+    billing: {
+      first_name: 'Jan',
+      last_name: 'Kowalski',
+      company: 'ACME sp. z o.o.',
+      email: 'j@k.pl',
+      address_1: 'Polna 1',
+      postcode: '00-950',
+      city: 'Warszawa',
+      country: 'PL',
+    },
+    shipping: {
+      first_name: 'Jan',
+      last_name: 'Kowalski',
+      address_1: 'Polna 1',
+      postcode: '00-950',
+      city: 'Warszawa',
+      country: 'PL',
+    },
     shipping_lines: [{ method_id: 'flat_rate', instance_id: '1' }],
-    line_items: [], meta_data: [{ key: '_billing_nip', value: '1200001200' }],
+    line_items: [],
+    meta_data: [{ key: '_billing_nip', value: '1200001200' }],
     ...nad,
   });
 
   it('pełny przebieg pollera NIE kasuje ręcznych poprawek', async () => {
     const woo = { pobierzZamowienia: vi.fn().mockResolvedValue({ zamowienia: [surowe()], stron: 1 }) };
-    const poller = createPoller({ db, kanal: createWooAdapter({ woo, mapowanie: { instancje: { 1: { metoda: 'dpd' } }, poPozycji: [] } }), sklep: 'pro' });
+    const poller = createPoller({
+      db,
+      kanal: createWooAdapter({ woo, mapowanie: { instancje: { 1: { metoda: 'dpd' } }, poPozycji: [] } }),
+      sklep: 'pro',
+    });
     await poller.przebieg();
 
     const id = db.prepare('SELECT id FROM zamowienia').get().id;
@@ -372,13 +446,28 @@ describe('faktura czyta poprawione dane klienta', () => {
 
   it('zakłada nabywcę z POPRAWIONĄ nazwą, adresem i NIP-em', async () => {
     const { infakt, faktura, id } = zestaw();
-    zapiszNadpisaniaFaktury(db, id, {
-      firma: 'BETA sp. z o.o.', nip: '5252445556', ulica: 'Papierowa 7', kod: '00-951', miasto: 'Oświęcim',
-    }, null);
+    zapiszNadpisaniaFaktury(
+      db,
+      id,
+      {
+        firma: 'BETA sp. z o.o.',
+        nip: '5252445556',
+        ulica: 'Papierowa 7',
+        kod: '00-951',
+        miasto: 'Oświęcim',
+      },
+      null,
+    );
     await faktura.wystaw(id);
-    expect(infakt.zalozKlienta).toHaveBeenCalledWith(expect.objectContaining({
-      company_name: 'BETA sp. z o.o.', nip: '5252445556', street: 'Papierowa 7', postal_code: '00-951', city: 'Oświęcim',
-    }));
+    expect(infakt.zalozKlienta).toHaveBeenCalledWith(
+      expect.objectContaining({
+        company_name: 'BETA sp. z o.o.',
+        nip: '5252445556',
+        street: 'Papierowa 7',
+        postal_code: '00-951',
+        city: 'Oświęcim',
+      }),
+    );
   });
 
   // Wlasnie po to jest przelacznik: klient nie zaznaczyl opcji w sklepie, a potem

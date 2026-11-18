@@ -47,17 +47,23 @@ describe('model maila bierze zdania z panelu', () => {
   for (const [klucz, nowe] of Object.entries(NOWE)) {
     it(`${klucz}: nowe brzmienie w tekście i w HTML-u, domyślnego nie ma`, () => {
       const { tekst, html } = zlozone(GDZIE[klucz], zdaniaDoMaila({ [klucz]: nowe }));
-      const oczekiwane = klucz.startsWith('naglowek_') ? nowe.toLocaleUpperCase('pl-PL') : nowe.replace('{numer_proformy}', 'PF 7/10/2026');
+      const oczekiwane = klucz.startsWith('naglowek_')
+        ? nowe.toLocaleUpperCase('pl-PL')
+        : nowe.replace('{numer_proformy}', 'PF 7/10/2026');
       expect(tekst).toContain(oczekiwane);
       expect(html).toContain(klucz.startsWith('naglowek_') ? `>${nowe}</p>` : oczekiwane);
-      const domyslne = klucz.startsWith('naglowek_') ? DOMYSLNE_ZDANIA[klucz].toLocaleUpperCase('pl-PL') : DOMYSLNE_ZDANIA[klucz].replace('{numer_proformy}', 'PF 7/10/2026');
+      const domyslne = klucz.startsWith('naglowek_')
+        ? DOMYSLNE_ZDANIA[klucz].toLocaleUpperCase('pl-PL')
+        : DOMYSLNE_ZDANIA[klucz].replace('{numer_proformy}', 'PF 7/10/2026');
       expect(tekst).not.toContain(domyslne);
     });
   }
 
   it('dane w bloku zostają liczone przez kod: kwota, odbiorca, rachunek, tytuł, termin', () => {
     const { tekst } = zlozone('faktura do zapłaty', zdaniaDoMaila(NOWE));
-    expect(tekst).toContain('\nKWOTA\n  476,00 zł brutto\n\nDANE DO WPŁATY\n  Odbiorca: Pracownia Półcień\n  Rachunek: 00 1111 2222 3333 4444 5555 6666\n  Tytuł przelewu: FV 12/10/2026\n  Termin:');
+    expect(tekst).toContain(
+      '\nKWOTA\n  476,00 zł brutto\n\nDANE DO WPŁATY\n  Odbiorca: Pracownia Półcień\n  Rachunek: 00 1111 2222 3333 4444 5555 6666\n  Tytuł przelewu: FV 12/10/2026\n  Termin:',
+    );
   });
 
   it('zdanie częściowe albo zepsute w zapisie nie psuje maila (brakujące = domyślne)', () => {
@@ -70,7 +76,12 @@ describe('model maila bierze zdania z panelu', () => {
 
 describe('reguły treści', () => {
   it('pobranie: „kurier" albo „doręczeni…" bez względu na wielkość liter i polskie znaki', () => {
-    for (const ok of ['Kurier pobierze należność.', 'ZAPŁACISZ KURIEROWI.', 'Płatność przy Doręczeniu.', 'Platnosc przy DORECZENIU.']) {
+    for (const ok of [
+      'Kurier pobierze należność.',
+      'ZAPŁACISZ KURIEROWI.',
+      'Płatność przy Doręczeniu.',
+      'Platnosc przy DORECZENIU.',
+    ]) {
       expect(regulaTresci('pobranie', ok), ok).toBeNull();
     }
     for (const zle of ['Prosimy o przelew.', 'Płatność przy odbiorze.', 'Dziękujemy.']) {
@@ -79,11 +90,27 @@ describe('reguły treści', () => {
   });
 
   it('opłacone: prośba o zapłatę odrzucona, opis zapłaty przyjęty', () => {
-    for (const zle of ['Prosimy przelać resztę.', 'PRZELEJ do piątku.', 'Zapłać szybko.', 'Prosimy zapłacić.', 'Wpłać 10 zł.',
-      'Prosimy o dopłatę.', 'Kwota do zapłaty: 0 zł.', 'Termin minął.', 'Numer rachunku w stopce.', 'Prosimy uregulować.', 'Zaplac.']) {
+    for (const zle of [
+      'Prosimy przelać resztę.',
+      'PRZELEJ do piątku.',
+      'Zapłać szybko.',
+      'Prosimy zapłacić.',
+      'Wpłać 10 zł.',
+      'Prosimy o dopłatę.',
+      'Kwota do zapłaty: 0 zł.',
+      'Termin minął.',
+      'Numer rachunku w stopce.',
+      'Prosimy uregulować.',
+      'Zaplac.',
+    ]) {
       expect(regulaTresci('oplacone', zle), zle).toMatch(/nie może prosić o zapłatę/);
     }
-    for (const ok of ['Zamówienie jest opłacone — dziękujemy.', 'Zapłacone, dziękujemy za przelew.', 'Wpłata dotarła.', 'Dziękujemy za wpłatę.']) {
+    for (const ok of [
+      'Zamówienie jest opłacone — dziękujemy.',
+      'Zapłacone, dziękujemy za przelew.',
+      'Wpłata dotarła.',
+      'Dziękujemy za wpłatę.',
+    ]) {
       expect(regulaTresci('oplacone', ok), ok).toBeNull();
     }
   });

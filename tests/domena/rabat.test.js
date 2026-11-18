@@ -1,12 +1,22 @@
 import { describe, it, expect } from 'vitest';
 import {
-  parsujRabat, cenaPoRabacie, cenaPoRabacieGrosze, czyPozycjaPanelu, przeliczenieRabatu, RABAT_MAX,
+  parsujRabat,
+  cenaPoRabacie,
+  cenaPoRabacieGrosze,
+  czyPozycjaPanelu,
+  przeliczenieRabatu,
+  RABAT_MAX,
 } from '../../src/domena/rabat.js';
 import { pozycjaZProduktu } from '../pomoc/przykladowe-cenniki-sklepow.js';
 
 const poz = (nad = {}) => ({
-  id: 1, nazwa: 'Szablon inwalida 30x30', zrodlo: 'reczna', ilosc: 10,
-  cena_brutto: '74.90', cena_katalogowa: '74.90', ...nad,
+  id: 1,
+  nazwa: 'Szablon inwalida 30x30',
+  zrodlo: 'reczna',
+  ilosc: 10,
+  cena_brutto: '74.90',
+  cena_katalogowa: '74.90',
+  ...nad,
 });
 
 describe('procent rabatu', () => {
@@ -61,8 +71,13 @@ describe('cena po rabacie', () => {
 
 describe('pozycja z magazynu bierze rabat', () => {
   const produkt = {
-    kanal: 'pro', nazwa: 'Szablon inwalida', rozmiar_tekst: '30x30', cena_gr: 7490,
-    produkt_id: '101', wariant_id: '102', sku_sklepu: 'SZ-INW-30',
+    kanal: 'pro',
+    nazwa: 'Szablon inwalida',
+    rozmiar_tekst: '30x30',
+    cena_gr: 7490,
+    produkt_id: '101',
+    wariant_id: '102',
+    sku_sklepu: 'SZ-INW-30',
   };
 
   it('cena płacona jest po rabacie, a katalogowa leży obok', () => {
@@ -119,10 +134,7 @@ describe('przeliczenie zamówienia', () => {
   // ⚠️ TO JEST DROGA POWROTU PO POMYLCE i musi oddawac cene katalogowa CO DO GROSZA.
   // Istnieje wylacznie dlatego, ze cena sprzed rabatu jest zapisana.
   it('rabat 0 po rabacie 30 przywraca cenę katalogową', () => {
-    const { doZmiany } = przeliczenieRabatu(
-      [poz({ cena_brutto: '52.43' })],
-      { rabatPoprzedni: 30, rabatNowy: 0 },
-    );
+    const { doZmiany } = przeliczenieRabatu([poz({ cena_brutto: '52.43' })], { rabatPoprzedni: 30, rabatNowy: 0 });
     expect(doZmiany[0].cena_brutto).toBe('74.90');
     expect(doZmiany[0].brutto_linii).toBe('749.00');
   });
@@ -139,10 +151,10 @@ describe('przeliczenie zamówienia', () => {
   // Pozycja wpisana z reki nie jest „pominieta" — jest POZA ZAKRESEM tej operacji. Wymieniona
   // na ekranie razem z recznie poprawionymi zamienilaby prawdziwa informacje w szum.
   it('pozycja bez ceny katalogowej nie trafia do żadnego worka', () => {
-    const { doZmiany, pominiete } = przeliczenieRabatu(
-      [poz({ cena_katalogowa: null })],
-      { rabatPoprzedni: 0, rabatNowy: 30 },
-    );
+    const { doZmiany, pominiete } = przeliczenieRabatu([poz({ cena_katalogowa: null })], {
+      rabatPoprzedni: 0,
+      rabatNowy: 30,
+    });
     expect(doZmiany).toEqual([]);
     expect(pominiete).toEqual([]);
   });

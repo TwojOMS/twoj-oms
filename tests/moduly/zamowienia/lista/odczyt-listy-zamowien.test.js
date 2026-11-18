@@ -6,15 +6,24 @@ import { zwrotyDlaZamowien } from '../../../../src/oms/db/zwroty.js';
 import { wstawGole, wstawMieszane } from './testowe-dane-listy.js';
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 
 // Licznik kompilacji SQL na czas jednego wywołania — N+1 widać jako liczbę `prepare`
 // rosnącą razem z liczbą zamówień.
 function policzPrepare(fn) {
   const oryginal = db.prepare;
   const sql = [];
-  db.prepare = function (tekst) { sql.push(tekst); return oryginal.call(this, tekst); };
-  try { return { wynik: fn(), sql }; } finally { db.prepare = oryginal; }
+  db.prepare = function (tekst) {
+    sql.push(tekst);
+    return oryginal.call(this, tekst);
+  };
+  try {
+    return { wynik: fn(), sql };
+  } finally {
+    db.prepare = oryginal;
+  }
 }
 
 describe('odczyt listy', () => {
@@ -32,7 +41,8 @@ describe('odczyt listy', () => {
     const zapytan = (n) => policzPrepare(() => zamowieniaPoId(db, ids.slice(0, n))).sql.length;
     // 6 zapytań na porcję (zamówienia, pozycje, wpłaty, przesyłki, faktura, zwroty), niezależnie
     // od tego, ile w porcji zamówień i ile każde ma dzieci.
-    for (const n of [1, 40, 499, 500, 501, 1000, ids.length]) expect(zapytan(n), String(n)).toBe(6 * Math.ceil(n / 500));
+    for (const n of [1, 40, 499, 500, 501, 1000, ids.length])
+      expect(zapytan(n), String(n)).toBe(6 * Math.ceil(n / 500));
   });
 
   it('równe daty: kolejność stabilna, nowszy identyfikator pierwszy', () => {
@@ -43,7 +53,10 @@ describe('odczyt listy', () => {
   it('każdy wiersz listy = odczyt karty (te same fakty, po nadpisaniach), zwroty jako nagłówki', () => {
     const wstawione = wstawMieszane(db, { powtorzen: 2 });
     const lista = new Map(listaZamowien(db).map((z) => [z.id, z]));
-    const zwroty = zwrotyDlaZamowien(db, wstawione.map((w) => w.id));
+    const zwroty = zwrotyDlaZamowien(
+      db,
+      wstawione.map((w) => w.id),
+    );
     for (const { id } of wstawione) {
       const { zwroty: _k, ...karta } = pobierzZamowienie(db, id);
       const { zwroty: zl, ...wiersz } = lista.get(id);
@@ -63,7 +76,7 @@ describe('odczyt listy', () => {
 
   it('chudy odczyt listy nie czyta surowe_json, pełny czyta', () => {
     const [id] = wstawGole(db, 1);
-    db.prepare("UPDATE zamowienia SET surowe_json = '{\"x\":1}' WHERE id = ?").run(id);
+    db.prepare('UPDATE zamowienia SET surowe_json = \'{"x":1}\' WHERE id = ?').run(id);
     const chudy = policzPrepare(() => zamowieniaPoId(db, [id], { bezSurowych: true }));
     expect(chudy.wynik[0]).not.toHaveProperty('surowe_json');
     expect(chudy.sql.join('\n')).not.toMatch(/SELECT \*\s+FROM zamowienia/i);

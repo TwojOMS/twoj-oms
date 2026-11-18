@@ -4,8 +4,14 @@ import { podzielDoNadania, rodzajFormularzaNadania } from '../../src/domena/maso
 // Hurt nadaje to, co umie karta — tymi samymi funkcjami
 // (`metodaNadania`, `powodBrakuGotowosciNadania`).
 const zam = (nad = {}) => ({
-  id: 1, numer: '1589', sklep: 'pro', metoda_wysylki: 'dpd', anulowane: 0,
-  oplacone_at: '2026-10-13T10:00:00', przesylki: [], ...nad,
+  id: 1,
+  numer: '1589',
+  sklep: 'pro',
+  metoda_wysylki: 'dpd',
+  anulowane: 0,
+  oplacone_at: '2026-10-13T10:00:00',
+  przesylki: [],
+  ...nad,
 });
 
 describe('podział do nadania hurtem', () => {
@@ -48,7 +54,11 @@ describe('podział do nadania hurtem', () => {
   it('Allegro DPD za pobraniem idzie — kwotę poda Allegro', () => {
     const { doNadania, uwagi } = podzielDoNadania([
       zam({
-        sklep: 'allegro_swietlik', metoda_wysylki: 'allegro_dpd', pobranie: 1, kwota_pobrania: '176.89', oplacone_at: null,
+        sklep: 'allegro_swietlik',
+        metoda_wysylki: 'allegro_dpd',
+        pobranie: 1,
+        kwota_pobrania: '176.89',
+        oplacone_at: null,
       }),
     ]);
     expect(doNadania).toHaveLength(1);
@@ -57,11 +67,18 @@ describe('podział do nadania hurtem', () => {
 
   it('paczkomat z Allegro i ze sklepu idzie naszym InPostem', () => {
     const { doNadania } = podzielDoNadania([
-      zam({ id: 1, numer: 'A', sklep: 'allegro_swietlik', metoda_wysylki: 'allegro_paczkomat', punkt_odbioru: 'KRA01M' }),
+      zam({
+        id: 1,
+        numer: 'A',
+        sklep: 'allegro_swietlik',
+        metoda_wysylki: 'allegro_paczkomat',
+        punkt_odbioru: 'KRA01M',
+      }),
       zam({ id: 2, numer: 'S', metoda_wysylki: 'inpost_paczkomat', punkt_odbioru: 'WRO10B' }),
     ]);
     expect(doNadania.map((z) => [z.numer, z.metodaUzyta, z.rodzajFormularza])).toEqual([
-      ['A', 'inpost_paczkomat', 'paczkomat'], ['S', 'inpost_paczkomat', 'paczkomat'],
+      ['A', 'inpost_paczkomat', 'paczkomat'],
+      ['S', 'inpost_paczkomat', 'paczkomat'],
     ]);
   });
 
@@ -74,10 +91,18 @@ describe('podział do nadania hurtem', () => {
   // pobranie sprzedane przez sklep idzie do nadania (tests/domena/pobranie-sklepowe.test.ts).
   it('ręczne pobranie do paczkomatu bez umowy firmy odpada', () => {
     const { doNadania, pominiete } = podzielDoNadania([
-      zam({ sklep: 'reczne', metoda_wysylki: 'inpost_paczkomat', punkt_odbioru: 'WRO10B', pobranie: 1, kwota_pobrania: '50.00' }),
+      zam({
+        sklep: 'reczne',
+        metoda_wysylki: 'inpost_paczkomat',
+        punkt_odbioru: 'WRO10B',
+        pobranie: 1,
+        kwota_pobrania: '50.00',
+      }),
     ]);
     expect(doNadania).toEqual([]);
-    expect(pominiete[0].powod).toBe('pobranie przez InPost wymaga umowy — włącz ją w Ustawieniach → Integracje albo zmień kuriera na karcie zamówienia');
+    expect(pominiete[0].powod).toBe(
+      'pobranie przez InPost wymaga umowy — włącz ją w Ustawieniach → Integracje albo zmień kuriera na karcie zamówienia',
+    );
   });
 
   it('sklepowe pobranie do paczkomatu idzie do nadania mimo wyłączonej umowy', () => {
@@ -96,19 +121,25 @@ describe('podział do nadania hurtem', () => {
         zam({ sklep: 'allegro_polcien2', metoda_wysylki: metoda, punkt_odbioru: 'WRO10B' }),
       ]);
       expect(doNadania).toEqual([]);
-      expect(pominiete[0].powod).toBe('zamówienie z Allegro ma ręcznie ustawioną metodę sklepową — nadaj je z karty zamówienia');
+      expect(pominiete[0].powod).toBe(
+        'zamówienie z Allegro ma ręcznie ustawioną metodę sklepową — nadaj je z karty zamówienia',
+      );
     },
   );
 
   it('metoda allegrowa przy zamówieniu ze sklepu odpada', () => {
     const { pominiete } = podzielDoNadania([zam({ sklep: 'pro', metoda_wysylki: 'allegro_dpd' })]);
-    expect(pominiete[0].powod).toBe('metoda allegrowa przy zamówieniu spoza Allegro — popraw metodę na karcie zamówienia');
+    expect(pominiete[0].powod).toBe(
+      'metoda allegrowa przy zamówieniu spoza Allegro — popraw metodę na karcie zamówienia',
+    );
   });
 
   it('wartość EFEKTYWNA: nadpisanie z karty na pobranie wchodzi do uwagi', () => {
-    const { uwagi } = podzielDoNadania([zam({
-      wysylka_reczna_json: JSON.stringify({ metoda: 'dpd', pobranie: 1, kwota_pobrania: '99.00' }),
-    })]);
+    const { uwagi } = podzielDoNadania([
+      zam({
+        wysylka_reczna_json: JSON.stringify({ metoda: 'dpd', pobranie: 1, kwota_pobrania: '99.00' }),
+      }),
+    ]);
     expect(uwagi[0].tresc).toBe('za pobraniem — kurier zainkasuje 99.00 zł');
   });
 

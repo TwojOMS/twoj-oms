@@ -28,16 +28,27 @@ export function czyNawigacjaPrzegladarki(req) {
 
 export function odmowaRdzenia(req, reply, status, komunikat, { tytul, wroc, napisWroc }) {
   if (!czyNawigacjaPrzegladarki(req)) return reply.code(status).type('text/plain; charset=utf-8').send(komunikat);
-  return reply.code(status).type('text/html; charset=utf-8').view(sciezkaWidoku('odmowa-rdzenia.ejs'), {
-    wlasnyUklad: true, motyw: motywZNaglowka(req.headers.cookie), tytul, komunikat, wroc, napisWroc,
-  });
+  return reply
+    .code(status)
+    .type('text/html; charset=utf-8')
+    .view(sciezkaWidoku('odmowa-rdzenia.ejs'), {
+      wlasnyUklad: true,
+      motyw: motywZNaglowka(req.headers.cookie),
+      tytul,
+      komunikat,
+      wroc,
+      napisWroc,
+    });
 }
 
 // Port domyslny bywa w jednym miejscu zapisany, a w drugim pominiety: naglowek Host
 // niesie "panel.local:80", a URL w Origin normalizuje sie do "panel.local". To ten sam
 // adres i musi sie porownac jako rowny.
 function normalizuj(host) {
-  return String(host ?? '').trim().toLowerCase().replace(/:(80|443)$/, '');
+  return String(host ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/:(80|443)$/, '');
 }
 
 function hostZUrl(url) {
@@ -130,7 +141,13 @@ function maCiasteczko(cookie, nazwa) {
  */
 export function zarejestrujOchroneCsrf(app, { nazwaCiasteczka } = {}) {
   app.addHook('onRequest', async (req, reply) => {
-    if (czyZadanieKluczem({ url: req.url, authorization: req.headers.authorization, cookie: req.headers.cookie }, nazwaCiasteczka)) return;
+    if (
+      czyZadanieKluczem(
+        { url: req.url, authorization: req.headers.authorization, cookie: req.headers.cookie },
+        nazwaCiasteczka,
+      )
+    )
+      return;
     const powod = sprawdzZrodlo({
       method: req.method,
       host: req.headers.host,
@@ -139,8 +156,12 @@ export function zarejestrujOchroneCsrf(app, { nazwaCiasteczka } = {}) {
     });
     if (!powod) return;
     req.log?.warn?.({ url: req.url, powod }, 'CSRF: odmowa');
-    return odmowaRdzenia(req, reply, 403,
+    return odmowaRdzenia(
+      req,
+      reply,
+      403,
       `Odmowa: ${powod}.\n\nJeśli to Twoje własne działanie w panelu, otwórz panel pod jego zwykłym adresem i spróbuj ponownie.`,
-      { tytul: 'Nie wykonano polecenia', wroc: '/', napisWroc: 'Przejdź do panelu' });
+      { tytul: 'Nie wykonano polecenia', wroc: '/', napisWroc: 'Przejdź do panelu' },
+    );
   });
 }

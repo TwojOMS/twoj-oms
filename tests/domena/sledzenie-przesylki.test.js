@@ -41,11 +41,16 @@ describe('sledzeniePrzesylki', () => {
 
   it('One Box 1336 pyta Allegro numerem z packages.waybill, nie numerem podwykonawcy', () => {
     const surowa = JSON.stringify({
-      id: 'shipment-one', deliveryMethodId: 'metoda-one', carrier: 'ALLEGRO',
-      packages: [{
-        waybill: 'AD0ONEBOX', type: 'PACKAGE',
-        transportingInfo: [{ carrierId: 'ALLEGRO_ONE_KURIER', carrierWaybill: 'SUBCONTRACT' }],
-      }],
+      id: 'shipment-one',
+      deliveryMethodId: 'metoda-one',
+      carrier: 'ALLEGRO',
+      packages: [
+        {
+          waybill: 'AD0ONEBOX',
+          type: 'PACKAGE',
+          transportingInfo: [{ carrierId: 'ALLEGRO_ONE_KURIER', carrierWaybill: 'SUBCONTRACT' }],
+        },
+      ],
       labelFormat: 'PDF',
     });
     const wynik = sledzeniePrzesylki(
@@ -53,7 +58,9 @@ describe('sledzeniePrzesylki', () => {
       { ...KURIERZY, allegro: allegroSledzenie },
     );
     expect(wynik).toEqual({
-      klient: allegroSledzenie, numer: 'AD0ONEBOX', podwykonawca: null,
+      klient: allegroSledzenie,
+      numer: 'AD0ONEBOX',
+      podwykonawca: null,
       kontekst: { carrier: 'ALLEGRO' },
     });
   });
@@ -71,7 +78,9 @@ describe('sledzeniePrzesylki', () => {
       { ...KURIERZY, allegro: allegroSledzenie },
     );
     expect(wynik).toEqual({
-      klient: allegroSledzenie, numer: 'AD0PUNKT', podwykonawca: null,
+      klient: allegroSledzenie,
+      numer: 'AD0PUNKT',
+      podwykonawca: null,
       kontekst: { carrier },
     });
   });
@@ -81,10 +90,12 @@ describe('sledzeniePrzesylki', () => {
       carrier: 'ALLEGRO',
       packages: [{ waybill: 'AD0DPD', transportingInfo: [{ carrierId: 'DPD', carrierWaybill: '1049000000000U' }] }],
     });
-    expect(sledzeniePrzesylki(
-      { kurier: 'allegro_wza', numer_listu: 'AD0DPD', odpowiedz_surowa: surowa },
-      { ...KURIERZY, allegro: allegroSledzenie },
-    )).toEqual({ klient: dpd, numer: '1049000000000U', podwykonawca: 'DPD' });
+    expect(
+      sledzeniePrzesylki(
+        { kurier: 'allegro_wza', numer_listu: 'AD0DPD', odpowiedz_surowa: surowa },
+        { ...KURIERZY, allegro: allegroSledzenie },
+      ),
+    ).toEqual({ klient: dpd, numer: '1049000000000U', podwykonawca: 'DPD' });
   });
 
   it('DPD bez własnego klienta może użyć potwierdzonej pary carrier/waybill Allegro', () => {
@@ -92,11 +103,15 @@ describe('sledzeniePrzesylki', () => {
       carrier: 'ALLEGRO',
       packages: [{ waybill: 'AD0DPD', transportingInfo: [{ carrierId: 'DPD', carrierWaybill: '1049000000000U' }] }],
     });
-    expect(sledzeniePrzesylki(
-      { kurier: 'allegro_wza', numer_listu: 'AD0DPD', odpowiedz_surowa: surowa },
-      { allegro_wza: wza, allegro: allegroSledzenie },
-    )).toEqual({
-      klient: allegroSledzenie, numer: 'AD0DPD', podwykonawca: null,
+    expect(
+      sledzeniePrzesylki(
+        { kurier: 'allegro_wza', numer_listu: 'AD0DPD', odpowiedz_surowa: surowa },
+        { allegro_wza: wza, allegro: allegroSledzenie },
+      ),
+    ).toEqual({
+      klient: allegroSledzenie,
+      numer: 'AD0DPD',
+      podwykonawca: null,
       kontekst: { carrier: 'ALLEGRO' },
     });
   });
@@ -108,11 +123,15 @@ describe('sledzeniePrzesylki', () => {
       carrier: 'ALLEGRO',
       packages: [{ waybill: 'AD0IW', transportingInfo: [{ carrierId: 'INPOST', carrierWaybill: 'IW9' }] }],
     });
-    expect(sledzeniePrzesylki(
-      { kurier: 'allegro_wza', numer_listu: 'AD0IW', odpowiedz_surowa: surowa },
-      { ...KURIERZY, allegro: allegroSledzenie },
-    )).toEqual({
-      klient: allegroSledzenie, numer: 'AD0IW', podwykonawca: null,
+    expect(
+      sledzeniePrzesylki(
+        { kurier: 'allegro_wza', numer_listu: 'AD0IW', odpowiedz_surowa: surowa },
+        { ...KURIERZY, allegro: allegroSledzenie },
+      ),
+    ).toEqual({
+      klient: allegroSledzenie,
+      numer: 'AD0IW',
+      podwykonawca: null,
       kontekst: { carrier: 'ALLEGRO' },
     });
   });
@@ -120,37 +139,64 @@ describe('sledzeniePrzesylki', () => {
   it('Allegro nie jest pytane, gdy brakuje carrier lub numer nie zgadza się z pakietem', () => {
     const paczka = { kurier: 'allegro_wza', numer_listu: 'AD0PRAWIDLOWY' };
     const klienci = { ...KURIERZY, allegro: allegroSledzenie };
-    expect(sledzeniePrzesylki({
-      ...paczka, odpowiedz_surowa: JSON.stringify({ packages: [{ waybill: 'AD0PRAWIDLOWY' }] }),
-    }, klienci)).toBe(null);
-    expect(sledzeniePrzesylki({
-      ...paczka, odpowiedz_surowa: JSON.stringify({ carrier: 'ALLEGRO', packages: [{ waybill: 'AD0INNY' }] }),
-    }, klienci)).toBe(null);
-    expect(sledzeniePrzesylki({
-      ...paczka, odpowiedz_surowa: JSON.stringify({ carrier: 'ALLEGRO', packages: [{ waybill: 'AD0PRAWIDLOWY' }] }),
-    }, KURIERZY)).toBe(null);
+    expect(
+      sledzeniePrzesylki(
+        {
+          ...paczka,
+          odpowiedz_surowa: JSON.stringify({ packages: [{ waybill: 'AD0PRAWIDLOWY' }] }),
+        },
+        klienci,
+      ),
+    ).toBe(null);
+    expect(
+      sledzeniePrzesylki(
+        {
+          ...paczka,
+          odpowiedz_surowa: JSON.stringify({ carrier: 'ALLEGRO', packages: [{ waybill: 'AD0INNY' }] }),
+        },
+        klienci,
+      ),
+    ).toBe(null);
+    expect(
+      sledzeniePrzesylki(
+        {
+          ...paczka,
+          odpowiedz_surowa: JSON.stringify({ carrier: 'ALLEGRO', packages: [{ waybill: 'AD0PRAWIDLOWY' }] }),
+        },
+        KURIERZY,
+      ),
+    ).toBe(null);
   });
 
   it('WzA bez klienta DPD w mapie, bez carrierWaybill albo z obcym carrierem = null', () => {
-    expect(sledzeniePrzesylki(
-      { kurier: 'allegro_wza', numer_listu: 'AD0X', odpowiedz_surowa: surowaWza },
-      { allegro_wza: wza },
-    )).toBe(null);
-    expect(sledzeniePrzesylki(
-      { kurier: 'allegro_wza', numer_listu: 'AD0X', odpowiedz_surowa: JSON.stringify({ carrierId: 'UPS', carrierWaybill: '1Z999' }) },
-      KURIERZY,
-    )).toBe(null);
-    expect(sledzeniePrzesylki(
-      { kurier: 'allegro_wza', numer_listu: 'AD0X', odpowiedz_surowa: JSON.stringify({ id: 'bez-carriera' }) },
-      KURIERZY,
-    )).toBe(null);
+    expect(
+      sledzeniePrzesylki(
+        { kurier: 'allegro_wza', numer_listu: 'AD0X', odpowiedz_surowa: surowaWza },
+        { allegro_wza: wza },
+      ),
+    ).toBe(null);
+    expect(
+      sledzeniePrzesylki(
+        {
+          kurier: 'allegro_wza',
+          numer_listu: 'AD0X',
+          odpowiedz_surowa: JSON.stringify({ carrierId: 'UPS', carrierWaybill: '1Z999' }),
+        },
+        KURIERZY,
+      ),
+    ).toBe(null);
+    expect(
+      sledzeniePrzesylki(
+        { kurier: 'allegro_wza', numer_listu: 'AD0X', odpowiedz_surowa: JSON.stringify({ id: 'bez-carriera' }) },
+        KURIERZY,
+      ),
+    ).toBe(null);
   });
 
   it('zepsuty JSON surowej odpowiedzi nie wybucha — po prostu null', () => {
-    expect(sledzeniePrzesylki(
-      { kurier: 'allegro_wza', numer_listu: 'AD0X', odpowiedz_surowa: '{nie-json' },
-      KURIERZY,
-    )).toBe(null);
+    expect(
+      sledzeniePrzesylki({ kurier: 'allegro_wza', numer_listu: 'AD0X', odpowiedz_surowa: '{nie-json' }, KURIERZY),
+    ).toBe(null);
   });
 
   // ⚠️ Regresja programistyczna (klient BEZ metody statusPrzesylki, bez flagi) ma przejsc
@@ -181,24 +227,31 @@ describe('sledzeniePrzesylki', () => {
       a: { carrierId: 'DPD' },
       b: { carrierWaybill: '1049000000000U' },
     });
-    expect(sledzeniePrzesylki(
-      { kurier: 'allegro_wza', numer_listu: 'AD0X', odpowiedz_surowa: rozjechane },
-      KURIERZY,
-    )).toBe(null);
+    expect(
+      sledzeniePrzesylki({ kurier: 'allegro_wza', numer_listu: 'AD0X', odpowiedz_surowa: rozjechane }, KURIERZY),
+    ).toBe(null);
   });
 
   // Luke pokazala mutacja (`&&` → `||` z domyslnym 'DPD'): sam numer bez identyfikatora
   // przewoznika dostawalby ZMYSLONE DPD — i numer nieznanego kuriera pojechalby do naszego
   // kanalu zdarzen. Polowa pary to nie para.
   it('sam carrierWaybill bez carrierId to NIE para — zadnego zgadywania przewoznika', () => {
-    expect(sledzeniePrzesylki(
-      { kurier: 'allegro_wza', numer_listu: 'AD0X', odpowiedz_surowa: JSON.stringify({ carrierWaybill: '1049000000000U' }) },
-      KURIERZY,
-    )).toBe(null);
-    expect(sledzeniePrzesylki(
-      { kurier: 'allegro_wza', numer_listu: 'AD0X', odpowiedz_surowa: JSON.stringify({ carrierId: 'DPD' }) },
-      KURIERZY,
-    )).toBe(null);
+    expect(
+      sledzeniePrzesylki(
+        {
+          kurier: 'allegro_wza',
+          numer_listu: 'AD0X',
+          odpowiedz_surowa: JSON.stringify({ carrierWaybill: '1049000000000U' }),
+        },
+        KURIERZY,
+      ),
+    ).toBe(null);
+    expect(
+      sledzeniePrzesylki(
+        { kurier: 'allegro_wza', numer_listu: 'AD0X', odpowiedz_surowa: JSON.stringify({ carrierId: 'DPD' }) },
+        KURIERZY,
+      ),
+    ).toBe(null);
   });
 });
 
@@ -220,7 +273,10 @@ describe('sledzeniePrzesylki — kanal Allegro', () => {
       Z_ALLEGRO,
     );
     expect(w).toEqual({
-      klient: allegro, numer: 'A005DUH6H5', podwykonawca: null, kontekst: { carrier: 'ALLEGRO' },
+      klient: allegro,
+      numer: 'A005DUH6H5',
+      podwykonawca: null,
+      kontekst: { carrier: 'ALLEGRO' },
     });
   });
 
@@ -231,8 +287,12 @@ describe('sledzeniePrzesylki — kanal Allegro', () => {
   // pary" przy WzA wyzej.
   it('brak carrier_allegro to null — bez podstawiania stalej', () => {
     expect(sledzeniePrzesylki({ kurier: 'allegro', numer_listu: 'A005DUH6H5' }, Z_ALLEGRO)).toBe(null);
-    expect(sledzeniePrzesylki({ kurier: 'allegro', numer_listu: 'A005DUH6H5', carrier_allegro: '' }, Z_ALLEGRO)).toBe(null);
-    expect(sledzeniePrzesylki({ kurier: 'allegro', numer_listu: 'A005DUH6H5', carrier_allegro: null }, Z_ALLEGRO)).toBe(null);
+    expect(sledzeniePrzesylki({ kurier: 'allegro', numer_listu: 'A005DUH6H5', carrier_allegro: '' }, Z_ALLEGRO)).toBe(
+      null,
+    );
+    expect(sledzeniePrzesylki({ kurier: 'allegro', numer_listu: 'A005DUH6H5', carrier_allegro: null }, Z_ALLEGRO)).toBe(
+      null,
+    );
   });
 
   it('brak numeru listu to null, tak samo jak u pozostalych kurierow', () => {
@@ -243,9 +303,8 @@ describe('sledzeniePrzesylki — kanal Allegro', () => {
   // braku sekcji INPOST_*. Wtedy `KURIERZY` nie ma klucza `allegro` i paczka jest po prostu
   // nieodpytywana, zamiast wywalac karte na `undefined.statusPrzesylki`.
   it('brak klienta Allegro w mapie to null, nie awaria', () => {
-    expect(sledzeniePrzesylki(
-      { kurier: 'allegro', numer_listu: 'A005DUH6H5', carrier_allegro: 'ALLEGRO' },
-      KURIERZY,
-    )).toBe(null);
+    expect(
+      sledzeniePrzesylki({ kurier: 'allegro', numer_listu: 'A005DUH6H5', carrier_allegro: 'ALLEGRO' }, KURIERZY),
+    ).toBe(null);
   });
 });

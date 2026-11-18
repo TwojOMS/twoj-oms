@@ -15,8 +15,17 @@ let karta;
 beforeEach(() => {
   db = openOmsDb(':memory:');
   karta = utworzKarte(db, { nazwa: 'Lampa stołowa Grzybek', sku: 'LMP-GRZ-30' });
-  powiazProdukt(db, zapiszProduktSklepowy(db, { kanal: 'allegro_a', produkt_id: '9000000001', wariant_id: '',
-    nazwa: 'Grzybek', odczytane_at: '2026-10-17T06:00:00.000Z' }), karta);
+  powiazProdukt(
+    db,
+    zapiszProduktSklepowy(db, {
+      kanal: 'allegro_a',
+      produkt_id: '9000000001',
+      wariant_id: '',
+      nazwa: 'Grzybek',
+      odczytane_at: '2026-10-17T06:00:00.000Z',
+    }),
+    karta,
+  );
 });
 const serwer = () => buildOmsServer({ db, config, magazyn: { start: vi.fn(), stan: () => STAN } });
 const get = (url) => serwer().inject({ method: 'GET', url, headers: auth });
@@ -25,13 +34,40 @@ const wlacz = () => przelaczStany(db, { wlacz: true, konto: { id: 1, login: 'ada
 const naglowekTabeli = (html) => /<table class="tresc-lista magazyn-tabela">[\s\S]*?<\/thead>/u.exec(html)?.[0] ?? '';
 const sekcjaStanu = (html) => /<section class="panel" id="stan-karty">[\s\S]*?<\/section>/u.exec(html)?.[0] ?? '';
 const kluczFormularza = (html) => /name="klucz" value="([0-9a-f]+)"/u.exec(sekcjaStanu(html))?.[1];
-const zamowienieAllegro = (ilosc, at = '2026-10-17T09:00:00.000Z') => zapiszZamowienie(db, 'allegro_a', {
-  zrodlo_id: `z-${ilosc}-${at}`, numer: `A-${ilosc}`, klient: { first_name: 'Anna' }, dostawa: { city: 'Pęki' },
-  metoda_wysylki: 'allegro_dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '50.00', status_woo: null,
-  oplacone_at: null, anulowane: 0, utworzone_at: at,
-  pozycje: [{ nazwa: 'Grzybek', sku: null, ilosc, cena_brutto: '50.00', vat: '23', zdjecie_url: null, zrodlo_id: 1,
-    produkt_id: null, oferta_id: '9000000001' }],
-}, {});
+const zamowienieAllegro = (ilosc, at = '2026-10-17T09:00:00.000Z') =>
+  zapiszZamowienie(
+    db,
+    'allegro_a',
+    {
+      zrodlo_id: `z-${ilosc}-${at}`,
+      numer: `A-${ilosc}`,
+      klient: { first_name: 'Anna' },
+      dostawa: { city: 'Pęki' },
+      metoda_wysylki: 'allegro_dpd',
+      kwota_pobrania: null,
+      chce_fakture: 0,
+      nip: null,
+      kwota_brutto: '50.00',
+      status_woo: null,
+      oplacone_at: null,
+      anulowane: 0,
+      utworzone_at: at,
+      pozycje: [
+        {
+          nazwa: 'Grzybek',
+          sku: null,
+          ilosc,
+          cena_brutto: '50.00',
+          vat: '23',
+          zdjecie_url: null,
+          zrodlo_id: 1,
+          produkt_id: null,
+          oferta_id: '9000000001',
+        },
+      ],
+    },
+    {},
+  );
 
 describe('stany wyłączone (domyślnie) — ekrany bez zmian względem wersji bez stanów', () => {
   it('lista bez kolumny „Na stanie” i bez paska stanów, karta bez sekcji stanu', async () => {
@@ -48,7 +84,9 @@ describe('stany wyłączone (domyślnie) — ekrany bez zmian względem wersji b
   it('import i pozycje bez karty odmawiają 409, ruch na karcie 409', async () => {
     expect((await get('/magazyn/stany/import')).statusCode).toBe(409);
     expect((await get('/magazyn/stany/bez-karty')).statusCode).toBe(409);
-    expect((await post(`/magazyn/${karta}/ruch`, { rodzaj: 'przyjecie', ilosc: '5', klucz: 'abcdefgh12' })).statusCode).toBe(409);
+    expect(
+      (await post(`/magazyn/${karta}/ruch`, { rodzaj: 'przyjecie', ilosc: '5', klucz: 'abcdefgh12' })).statusCode,
+    ).toBe(409);
   });
 });
 
@@ -120,14 +158,43 @@ describe('stany włączone', () => {
   });
 
   it('pozycje bez karty: oferta niepowiązana na liście z powodem', async () => {
-    zapiszZamowienie(db, 'allegro_a', {
-      zrodlo_id: 'x1', numer: 'A-X', klient: { first_name: 'Anna' }, dostawa: { city: 'Pęki' }, metoda_wysylki: 'allegro_dpd',
-      kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '50.00', status_woo: null, oplacone_at: null, anulowane: 0,
-      utworzone_at: '2026-10-17T09:00:00.000Z',
-      pozycje: [{ nazwa: 'Klosz nieznany', sku: null, ilosc: 1, cena_brutto: '50.00', vat: '23', zdjecie_url: null, zrodlo_id: 1,
-        produkt_id: null, oferta_id: '1111111111' }],
-    }, {});
-    const tabela = /<table class="tresc-lista" id="pozycje-bez-karty">[\s\S]*?<\/table>/u.exec((await get('/magazyn/stany/bez-karty')).body)?.[0] ?? '';
+    zapiszZamowienie(
+      db,
+      'allegro_a',
+      {
+        zrodlo_id: 'x1',
+        numer: 'A-X',
+        klient: { first_name: 'Anna' },
+        dostawa: { city: 'Pęki' },
+        metoda_wysylki: 'allegro_dpd',
+        kwota_pobrania: null,
+        chce_fakture: 0,
+        nip: null,
+        kwota_brutto: '50.00',
+        status_woo: null,
+        oplacone_at: null,
+        anulowane: 0,
+        utworzone_at: '2026-10-17T09:00:00.000Z',
+        pozycje: [
+          {
+            nazwa: 'Klosz nieznany',
+            sku: null,
+            ilosc: 1,
+            cena_brutto: '50.00',
+            vat: '23',
+            zdjecie_url: null,
+            zrodlo_id: 1,
+            produkt_id: null,
+            oferta_id: '1111111111',
+          },
+        ],
+      },
+      {},
+    );
+    const tabela =
+      /<table class="tresc-lista" id="pozycje-bez-karty">[\s\S]*?<\/table>/u.exec(
+        (await get('/magazyn/stany/bez-karty')).body,
+      )?.[0] ?? '';
     expect(tabela).toContain('Klosz nieznany');
     expect(tabela).toContain('nie jest powiązana z żadną kartą');
   });

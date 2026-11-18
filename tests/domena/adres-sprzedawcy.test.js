@@ -15,19 +15,28 @@ import { adresSprzedawcy } from '../../src/domena/adres-sprzedawcy.js';
 //
 // Treść zmieniona ŚWIADOMIE — adres firmy da się teraz wpisać w panelu, więc odmowa
 // wskazuje ekran (Ustawienia → Firma, /ustawienia/firma), a plik konfiguracji podaje jako drugą drogę.
-const KOMUNIKAT = 'Panel nie zna adresu sprzedawcy, więc dokument wyszedłby bez nazwy i adresu wystawcy — '
-  + 'takiego dokumentu nie da się wysłać klientowi. Wpisz adres firmy w Ustawienia → Firma '
-  + '(/ustawienia/firma) albo w pliku konfiguracji (DPD_NADAWCA_*).';
+const KOMUNIKAT =
+  'Panel nie zna adresu sprzedawcy, więc dokument wyszedłby bez nazwy i adresu wystawcy — ' +
+  'takiego dokumentu nie da się wysłać klientowi. Wpisz adres firmy w Ustawienia → Firma ' +
+  '(/ustawienia/firma) albo w pliku konfiguracji (DPD_NADAWCA_*).';
 
 describe('adresSprzedawcy', () => {
   it('sklada nazwe, ulice, kod, miasto i kraj z config.nadawca', () => {
     const config = {
       nadawca: {
-        nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL',
+        nazwa: 'Pracownia Półcień Anna Wzorcowa',
+        ulica: 'ul. Przykładowa 1',
+        kod: '00-950',
+        miasto: 'Warszawa',
+        kraj: 'PL',
       },
     };
     expect(adresSprzedawcy(config)).toEqual({
-      nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'ul. Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL',
+      nazwa: 'Pracownia Półcień Anna Wzorcowa',
+      ulica: 'ul. Przykładowa 1',
+      kod: '00-950',
+      miasto: 'Warszawa',
+      kraj: 'PL',
     });
   });
 

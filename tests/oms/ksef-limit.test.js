@@ -9,7 +9,11 @@ describe('zCzekaniemNa429', () => {
   it('bez 429 oddaje wynik od razu, bez spania', async () => {
     let spal = 0;
     const wynik = await zCzekaniemNa429(async () => 'ok', {
-      spij: async () => { spal += 1; }, teraz: () => new Date(0), doKiedy: 1e9,
+      spij: async () => {
+        spal += 1;
+      },
+      teraz: () => new Date(0),
+      doKiedy: 1e9,
     });
     expect(wynik).toBe('ok');
     expect(spal).toBe(0);
@@ -18,13 +22,18 @@ describe('zCzekaniemNa429', () => {
   it('na 429 czeka retryAfterS (+1 s zapasu) i ponawia', async () => {
     const spania = [];
     let n = 0;
-    const w = await zCzekaniemNa429(async () => {
-      n += 1;
-      if (n === 1) throw b429(54);
-      return 'ok';
-    }, {
-      spij: async (ms) => spania.push(ms), teraz: () => new Date(0), doKiedy: 10 * 60 * 1000,
-    });
+    const w = await zCzekaniemNa429(
+      async () => {
+        n += 1;
+        if (n === 1) throw b429(54);
+        return 'ok';
+      },
+      {
+        spij: async (ms) => spania.push(ms),
+        teraz: () => new Date(0),
+        doKiedy: 10 * 60 * 1000,
+      },
+    );
 
     expect(w).toBe('ok');
     expect(spania).toEqual([55000]);
@@ -33,13 +42,18 @@ describe('zCzekaniemNa429', () => {
   it('bez retryAfterS czeka 60 s', async () => {
     const spania = [];
     let n = 0;
-    await zCzekaniemNa429(async () => {
-      n += 1;
-      if (n === 1) throw Object.assign(new Error('x'), { status: 429 });
-      return 1;
-    }, {
-      spij: async (ms) => spania.push(ms), teraz: () => new Date(0), doKiedy: 10 * 60 * 1000,
-    });
+    await zCzekaniemNa429(
+      async () => {
+        n += 1;
+        if (n === 1) throw Object.assign(new Error('x'), { status: 429 });
+        return 1;
+      },
+      {
+        spij: async (ms) => spania.push(ms),
+        teraz: () => new Date(0),
+        doKiedy: 10 * 60 * 1000,
+      },
+    );
 
     expect(spania).toEqual([61000]);
   });
@@ -50,36 +64,77 @@ describe('zCzekaniemNa429', () => {
   // jest sygnalem „wroc nastepnym przebiegiem", a nie awaria zrodla.
   it('gdy czekanie nie miesci sie w budzecie, rzuca z powod=limit BEZ spania', async () => {
     let spal = 0;
-    await expect(zCzekaniemNa429(async () => { throw b429(54); }, {
-      spij: async () => { spal += 1; }, teraz: () => new Date(0), doKiedy: 30 * 1000,
-    })).rejects.toMatchObject({ powod: 'limit', status: 429 });
+    await expect(
+      zCzekaniemNa429(
+        async () => {
+          throw b429(54);
+        },
+        {
+          spij: async () => {
+            spal += 1;
+          },
+          teraz: () => new Date(0),
+          doKiedy: 30 * 1000,
+        },
+      ),
+    ).rejects.toMatchObject({ powod: 'limit', status: 429 });
     expect(spal).toBe(0);
   });
 
   it('po 3 nieudanych ponowieniach oddaje blad', async () => {
     let n = 0;
-    await expect(zCzekaniemNa429(async () => { n += 1; throw b429(1); }, {
-      spij: async () => {}, teraz: () => new Date(0), doKiedy: 1e9,
-    })).rejects.toMatchObject({ status: 429 });
+    await expect(
+      zCzekaniemNa429(
+        async () => {
+          n += 1;
+          throw b429(1);
+        },
+        {
+          spij: async () => {},
+          teraz: () => new Date(0),
+          doKiedy: 1e9,
+        },
+      ),
+    ).rejects.toMatchObject({ status: 429 });
     // Pierwsze wywolanie plus trzy ponowienia — czwarta odmowa leci do wolajacego.
     expect(n).toBe(4);
   });
 
   it('inny blad leci od razu', async () => {
-    await expect(zCzekaniemNa429(async () => { throw new Error('500'); }, {
-      spij: async () => {}, teraz: () => new Date(0), doKiedy: 1e9,
-    })).rejects.toThrow('500');
+    await expect(
+      zCzekaniemNa429(
+        async () => {
+          throw new Error('500');
+        },
+        {
+          spij: async () => {},
+          teraz: () => new Date(0),
+          doKiedy: 1e9,
+        },
+      ),
+    ).rejects.toThrow('500');
   });
 
   // Odmowa z limitu NIE jest wina jednego dokumentu — wolajacy (czuwacz kosztow) rozpoznaje
   // ja po `powod`, a nie po tresci zdania, wiec znacznik musi przetrwac ponowienia.
   it('blad z limitu zachowuje oryginalna tresc i znacznik dlaOperatora', async () => {
     const e = Object.assign(new Error('KSeF odmówił: HTTP 429'), {
-      status: 429, retryAfterS: 54, dlaOperatora: true,
+      status: 429,
+      retryAfterS: 54,
+      dlaOperatora: true,
     });
-    await expect(zCzekaniemNa429(async () => { throw e; }, {
-      spij: async () => {}, teraz: () => new Date(0), doKiedy: 1000,
-    })).rejects.toMatchObject({ powod: 'limit', dlaOperatora: true, message: 'KSeF odmówił: HTTP 429' });
+    await expect(
+      zCzekaniemNa429(
+        async () => {
+          throw e;
+        },
+        {
+          spij: async () => {},
+          teraz: () => new Date(0),
+          doKiedy: 1000,
+        },
+      ),
+    ).rejects.toMatchObject({ powod: 'limit', dlaOperatora: true, message: 'KSeF odmówił: HTTP 429' });
   });
 
   // ⚠️⚠️ CZEKANIE MA SUFIT. `Retry-After` (albo liczba w tresci odmowy) przychodzi Z ZEWNATRZ
@@ -90,13 +145,18 @@ describe('zCzekaniemNa429', () => {
   it('czekanie ma sufit 5 minut — bogus Retry-After nie parkuje zadania na godzine', async () => {
     const spania = [];
     let n = 0;
-    const w = await zCzekaniemNa429(async () => {
-      n += 1;
-      if (n === 1) throw b429(3600);
-      return 'ok';
-    }, {
-      spij: async (ms) => spania.push(ms), teraz: () => new Date(0), doKiedy: Infinity,
-    });
+    const w = await zCzekaniemNa429(
+      async () => {
+        n += 1;
+        if (n === 1) throw b429(3600);
+        return 'ok';
+      },
+      {
+        spij: async (ms) => spania.push(ms),
+        teraz: () => new Date(0),
+        doKiedy: Infinity,
+      },
+    );
 
     expect(w).toBe('ok');
     expect(spania).toEqual([301000]);

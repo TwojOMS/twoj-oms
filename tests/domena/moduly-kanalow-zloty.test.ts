@@ -61,8 +61,14 @@ const tabelaRejestru = [
 
 async function zRejestrem() {
   const m = await import('../../src/domena/moduly-kanalow.ts');
-  const MODUL_POLCIEN = { ...m.MODULY_KANALOW.woo, typ: 'polcien', nazwa: 'Pracownia Półcień', litera: 'P', idKatalogu: 'polcien',
-    umiejetnosci: { ...m.MODULY_KANALOW.woo.umiejetnosci, statusZwrotny: 'mapa', scalanie: false } } as const;
+  const MODUL_POLCIEN = {
+    ...m.MODULY_KANALOW.woo,
+    typ: 'polcien',
+    nazwa: 'Pracownia Półcień',
+    litera: 'P',
+    idKatalogu: 'polcien',
+    umiejetnosci: { ...m.MODULY_KANALOW.woo.umiejetnosci, statusZwrotny: 'mapa', scalanie: false },
+  } as const;
   m.ustawRejestrKanalow((k) => REJESTR_PRZ157[k] ?? null, { ...m.MODULY_KANALOW, polcien: MODUL_POLCIEN });
   return { ...m, MODUL_POLCIEN };
 }
@@ -89,7 +95,9 @@ it('kanał typu polcien dostaje opis i umiejętności swojego modułu, nie sklep
 
 it('typ allegro/woo z rejestru nie zmienia dawnego wyboru (zgodność z SQL KSeF)', async () => {
   const m = await import('../../src/domena/moduly-kanalow.ts');
-  m.ustawRejestrKanalow((k) => ({ allegro_jak_sklep: 'woo', sklep_jak_allegro: 'allegro' } as Record<string, string>)[k] ?? null);
+  m.ustawRejestrKanalow(
+    (k) => (({ allegro_jak_sklep: 'woo', sklep_jak_allegro: 'allegro' }) as Record<string, string>)[k] ?? null,
+  );
   expect(m.modulZamowienia({ sklep: 'allegro_jak_sklep' }).typ).toBe('allegro');
   expect(m.modulZamowienia({ sklep: 'sklep_jak_allegro' }).typ).toBe('woo');
   expect(m.nieznaneKanalyZamowien()).toEqual([]);

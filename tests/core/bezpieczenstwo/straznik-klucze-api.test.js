@@ -19,9 +19,14 @@ let db;
 let app;
 let adminId;
 const teraz = () => new Date().toISOString();
-const klucz = (dane = {}) => zalozKluczApi(db, {
-  nazwa: 'integracja testowa', zakresy: ['druk', 'zamowienia:odczyt'], kontoId: adminId, teraz: teraz(), ...dane,
-});
+const klucz = (dane = {}) =>
+  zalozKluczApi(db, {
+    nazwa: 'integracja testowa',
+    zakresy: ['druk', 'zamowienia:odczyt'],
+    kontoId: adminId,
+    teraz: teraz(),
+    ...dane,
+  });
 const bearer = (k) => ({ authorization: `Bearer ${k}` });
 const ja = (headers = {}) => app.inject({ url: '/api/v1/ja', headers });
 
@@ -110,7 +115,9 @@ describe('strażnik: klucz API na /api/v1', () => {
   it('POST /api/v1/ja z niepoprawnym JSON → odpowiedź w kształcie {kod, powod}', async () => {
     const { klucz: k } = klucz();
     const r = await app.inject({
-      method: 'POST', url: '/api/v1/ja', payload: '{',
+      method: 'POST',
+      url: '/api/v1/ja',
+      payload: '{',
       // Origin: ten test dotyczy strażnika i pluginu; wyjątek CSRF dla klucza ma własny test (E1.3).
       headers: { ...bearer(k), 'content-type': 'application/json', origin: 'http://localhost' },
     });
@@ -122,14 +129,37 @@ describe('strażnik: klucz API na /api/v1', () => {
   it('ważny klucz nie otwiera ekranów OMS ani starego /api bez v1', async () => {
     const { klucz: k } = klucz({ zakresy: ['zamowienia:odczyt', 'zamowienia:zapis', 'druk', 'produkty:odczyt'] });
     // Istniejące zamówienie: stary adres panelu odpowiedziałby 200, gdyby strażnik wpuścił klucz poza /api/v1.
-    const id = zapiszZamowienie(db, 'sklep-testowy', {
-    zrodlo_id: 7101, numer: '7101', kwota_brutto: '123.00', kwota_pobrania: null, pozycje: [],
-    klient: {}, dostawa: {}, metoda_wysylki: 'dpd', chce_fakture: 0, nip: null,
-    status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-11-01T10:00:00.000Z',
-  }, {});
-    for (const url of ['/zamowienia', '/ustawienia', '/ustawienia/klucze-api', `/api/zamowienia/${id}/stan-wysylki`,
+    const id = zapiszZamowienie(
+      db,
+      'sklep-testowy',
+      {
+        zrodlo_id: 7101,
+        numer: '7101',
+        kwota_brutto: '123.00',
+        kwota_pobrania: null,
+        pozycje: [],
+        klient: {},
+        dostawa: {},
+        metoda_wysylki: 'dpd',
+        chce_fakture: 0,
+        nip: null,
+        status_woo: 'processing',
+        oplacone_at: null,
+        anulowane: 0,
+        utworzone_at: '2026-11-01T10:00:00.000Z',
+      },
+      {},
+    );
+    for (const url of [
+      '/zamowienia',
+      '/ustawienia',
+      '/ustawienia/klucze-api',
+      `/api/zamowienia/${id}/stan-wysylki`,
       `/api/zamowienia/${id}/dostawa`,
-      '/api/v1x', '/api/v1/../zamowienia', '/api/v1%2fja']) {
+      '/api/v1x',
+      '/api/v1/../zamowienia',
+      '/api/v1%2fja',
+    ]) {
       for (const accept of ['application/json', 'text/html']) {
         const r = await app.inject({ url, headers: { ...bearer(k), accept } });
         expect(r.statusCode, `${url} ${accept}`).not.toBe(200);
@@ -141,13 +171,18 @@ describe('strażnik: klucz API na /api/v1', () => {
   it('surowe HTTP: /api/v1/../zamowienia z kluczem nie dochodzi do ekranu zamówień', async () => {
     const { klucz: k } = klucz();
     const adres = new URL(await app.listen({ port: 0, host: '127.0.0.1' }));
-    const pobierz = (path) => new Promise((ok, zle) => {
-      const r = http.request({ host: adres.hostname, port: adres.port, path, headers: bearer(k) }, (res) => {
-        let tresc = ''; res.on('data', (c) => { tresc += c; }); res.on('end', () => ok({ status: res.statusCode, tresc }));
+    const pobierz = (path) =>
+      new Promise((ok, zle) => {
+        const r = http.request({ host: adres.hostname, port: adres.port, path, headers: bearer(k) }, (res) => {
+          let tresc = '';
+          res.on('data', (c) => {
+            tresc += c;
+          });
+          res.on('end', () => ok({ status: res.statusCode, tresc }));
+        });
+        r.on('error', zle);
+        r.end();
       });
-      r.on('error', zle);
-      r.end();
-    });
     for (const path of ['/api/v1/../zamowienia', '/api/v1/%2e%2e/zamowienia', '/api/v1/./ja', '/api/v1//ja']) {
       const r = await pobierz(path);
       expect(r.status, path).toBe(404);
@@ -158,30 +193,59 @@ describe('strażnik: klucz API na /api/v1', () => {
 
   it('klucz ustawia req.kluczApi i req.konto bez uprawnień (moduł testowy w pełnym składzie)', async () => {
     const testowy = {
-      nazwa: 'api-test', wersja: '1.0.0', wymaga: ['api'], migracje: [], menu: [], uprawnienia: [],
+      nazwa: 'api-test',
+      wersja: '1.0.0',
+      wymaga: ['api'],
+      migracje: [],
+      menu: [],
+      uprawnienia: [],
       konfiguracja: () => null,
-      zbuduj: () => ({ trasy: (a) => { a.register(async (api) => {
-        api.get('/test-konto', async (req) => ({
-          konto: { ...req.konto, uprawnienia: [...req.konto.uprawnienia] },
-          kluczApi: { ...req.kluczApi, zakresy: [...req.kluczApi.zakresy] },
-        }));
-      }, { prefix: '/api/v1' }); } }),
+      zbuduj: () => ({
+        trasy: (a) => {
+          a.register(
+            async (api) => {
+              api.get('/test-konto', async (req) => ({
+                konto: { ...req.konto, uprawnienia: [...req.konto.uprawnienia] },
+                kluczApi: { ...req.kluczApi, zakresy: [...req.kluczApi.zakresy] },
+              }));
+            },
+            { prefix: '/api/v1' },
+          );
+        },
+      }),
     };
     const db2 = openOmsDb(':memory:');
     const app2 = buildOmsServer({ db: db2, config: CONFIG, moduly: [...MODULY, testowy] });
     try {
       await app2.ready();
-      const { klucz: k, id, prefiks } = zalozKluczApi(db2, {
-        nazwa: 'integracja testowa', zakresy: ['druk'], kontoId: null, teraz: teraz(),
+      const {
+        klucz: k,
+        id,
+        prefiks,
+      } = zalozKluczApi(db2, {
+        nazwa: 'integracja testowa',
+        zakresy: ['druk'],
+        kontoId: null,
+        teraz: teraz(),
       });
       const r = await app2.inject({ url: '/api/v1/test-konto', headers: bearer(k) });
       expect(r.statusCode).toBe(200);
       expect(r.json()).toEqual({
-        konto: { imie: 'klucz: integracja testowa', login: `klucz:${prefiks}`, rola: 'klucz-api', admin: false,
-          serwisowe: false, kluczApi: true, uprawnienia: [] },
+        konto: {
+          imie: 'klucz: integracja testowa',
+          login: `klucz:${prefiks}`,
+          rola: 'klucz-api',
+          admin: false,
+          serwisowe: false,
+          kluczApi: true,
+          uprawnienia: [],
+        },
         kluczApi: { id, nazwa: 'integracja testowa', prefiks, zakresy: ['druk'] },
       });
-    } finally { await app2.close(); db2.close(); }
+    } finally {
+      await app2.close();
+      db2.close();
+    }
   });
 
   it('klucz odnotowuje użycie najwyżej raz na 60 s', async () => {
@@ -204,20 +268,33 @@ describe('strażnik: klucz API na /api/v1', () => {
 // więc `/api/v%31/ja` trafia do trasy /api/v1/ja. Strażnik musi uznać taki adres za API (tylko klucz).
 describe('strażnik: zakodowana ścieżka /api/v1 (surowe HTTP)', () => {
   let adres;
-  const surowe = (path, { method = 'GET', headers = {} } = {}) => new Promise((ok, zle) => {
-    const r = http.request({ host: adres.hostname, port: adres.port, path, method, headers }, (res) => {
-      let tresc = ''; res.on('data', (c) => { tresc += c; }); res.on('end', () => ok({ status: res.statusCode, tresc }));
+  const surowe = (path, { method = 'GET', headers = {} } = {}) =>
+    new Promise((ok, zle) => {
+      const r = http.request({ host: adres.hostname, port: adres.port, path, method, headers }, (res) => {
+        let tresc = '';
+        res.on('data', (c) => {
+          tresc += c;
+        });
+        res.on('end', () => ok({ status: res.statusCode, tresc }));
+      });
+      r.on('error', zle);
+      r.end();
     });
-    r.on('error', zle);
-    r.end();
-  });
-  const json = (r) => { try { return JSON.parse(r.tresc); } catch { return null; } };
+  const json = (r) => {
+    try {
+      return JSON.parse(r.tresc);
+    } catch {
+      return null;
+    }
+  };
   const ciasteczko = () => ({ cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz('ala', odczytajSekret(db))}` });
   const ZAKODOWANE = ['/api/v%31/ja', '/api/%761/ja'];
   // /ja sama odmawia bez req.kluczApi, a 404 pluginu nie — dlatego obie trasy.
   const ZAKODOWANE_PANEL = [...ZAKODOWANE, '/api/v%31/nie-ma', '/api/%761/nie-ma'];
 
-  beforeEach(async () => { adres = new URL(await app.listen({ port: 0, host: '127.0.0.1' })); });
+  beforeEach(async () => {
+    adres = new URL(await app.listen({ port: 0, host: '127.0.0.1' }));
+  });
 
   it('ciasteczko admina na zakodowanej ścieżce → 401 kod klucz', async () => {
     for (const path of ZAKODOWANE_PANEL) {
@@ -237,7 +314,10 @@ describe('strażnik: zakodowana ścieżka /api/v1 (surowe HTTP)', () => {
 
   it('POST na zakodowaną ścieżkę z ciasteczkiem → 401 (nie 403 CSRF ani 200)', async () => {
     for (const path of ZAKODOWANE_PANEL) {
-      const r = await surowe(path, { method: 'POST', headers: { ...ciasteczko(), 'content-type': 'application/json' } });
+      const r = await surowe(path, {
+        method: 'POST',
+        headers: { ...ciasteczko(), 'content-type': 'application/json' },
+      });
       expect(r.status, path).toBe(401);
       expect(json(r), path).toEqual(ODMOWA);
     }
@@ -265,10 +345,28 @@ describe('strażnik: zakodowana ścieżka /api/v1 (surowe HTTP)', () => {
 
 describe('czyAdresApiV1: ścieżka zdekodowana jak w routerze', () => {
   it('rozpoznaje zakodowane /api/v1, odróżnia wielkość liter i sąsiednie adresy, złe kodowanie = API', () => {
-    for (const url of ['/api/v1', '/api/v1/ja', '/api/v1?x=1', '/api/v%31/ja', '/api/%761/ja', '/%61pi/v1/ja', '/api/v1%2Fja', '/api/v1/ja%zz', '/inne%E0%A4%A']) {
+    for (const url of [
+      '/api/v1',
+      '/api/v1/ja',
+      '/api/v1?x=1',
+      '/api/v%31/ja',
+      '/api/%761/ja',
+      '/%61pi/v1/ja',
+      '/api/v1%2Fja',
+      '/api/v1/ja%zz',
+      '/inne%E0%A4%A',
+    ]) {
       expect(czyAdresApiV1(url), url).toBe(true);
     }
-    for (const url of ['/api/v1x', '/api/v10/ja', '/API/v1/ja', '/api/V1/ja', '/api', '/zamowienia?u=/api/v1/', '/api/v%2531/ja']) {
+    for (const url of [
+      '/api/v1x',
+      '/api/v10/ja',
+      '/API/v1/ja',
+      '/api/V1/ja',
+      '/api',
+      '/zamowienia?u=/api/v1/',
+      '/api/v%2531/ja',
+    ]) {
       expect(czyAdresApiV1(url), url).toBe(false);
     }
   });

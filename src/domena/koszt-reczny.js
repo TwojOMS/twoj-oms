@@ -85,9 +85,9 @@ export function naWierszReczny(dane = {}, firma = null) {
   // sprzedawcy, ani kategorii — wiersz wszedlby do sumy miesiaca jako koszt niczyj.
   if (!firma?.sprzedawca) {
     throw bladOperatora(
-      `Panel nie zna firmy „${napis(dane.firma)}" — wybierz ją z listy albo dopisz do niej `
-      + 'nową. Za pozycją listy stoi nazwa sprzedawcy i kategoria kosztu, więc bez niej '
-      + 'panel nie wie, czyj to koszt ani na co poszedł.',
+      `Panel nie zna firmy „${napis(dane.firma)}" — wybierz ją z listy albo dopisz do niej ` +
+        'nową. Za pozycją listy stoi nazwa sprzedawcy i kategoria kosztu, więc bez niej ' +
+        'panel nie wie, czyj to koszt ani na co poszedł.',
     );
   }
 
@@ -98,8 +98,8 @@ export function naWierszReczny(dane = {}, firma = null) {
   const dataWystawienia = napis(dane.dataWystawienia);
   if (!DATA_DNIA.test(dataWystawienia)) {
     throw bladOperatora(
-      `„${dataWystawienia}" to nie jest data wystawienia w formacie RRRR-MM-DD. `
-      + 'Po tej dacie liczy się miesiąc kosztów, więc panel nie zapisze jej „jakkolwiek".',
+      `„${dataWystawienia}" to nie jest data wystawienia w formacie RRRR-MM-DD. ` +
+        'Po tej dacie liczy się miesiąc kosztów, więc panel nie zapisze jej „jakkolwiek".',
     );
   }
 

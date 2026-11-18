@@ -17,45 +17,97 @@ import { zapiszUstawieniaAutomatu } from '../../../src/moduly/faktury/db/ksef-au
 
 const KLUCZ = 'zmyslony-klucz-karty-prz121-0000000001';
 const ZDANIE_PLIKU = 'Faktury w OMS-ie są wyłączone — w pliku konfiguracji jest OMS_PROGRAM_FAKTUROWY=brak.';
-const ZDANIE_USTAWIEN = 'Faktury w OMS-ie są wyłączone — w Ustawienia → Faktury i podatki → Program do faktur wybrano „Brak”.';
+const ZDANIE_USTAWIEN =
+  'Faktury w OMS-ie są wyłączone — w Ustawienia → Faktury i podatki → Program do faktur wybrano „Brak”.';
 const STARA_FAKTURA = 'inFakt nie jest skonfigurowany — faktury z panelu nie wystawisz. Klucz API wpiszesz w';
-const STARE_ALLEGRO = 'Kanał Allegro albo inFakt nie jest skonfigurowany — faktury stąd nie wyślesz. Klucz API inFaktu wpiszesz w';
-const STARA_KOREKTA = 'Wystawianie korekt nie jest skonfigurowane (brak inFaktu). Klucz API inFaktu wpiszesz w Ustawienia → Integracje → inFakt (/ustawienia/integracje/infakt).';
+const STARE_ALLEGRO =
+  'Kanał Allegro albo inFakt nie jest skonfigurowany — faktury stąd nie wyślesz. Klucz API inFaktu wpiszesz w';
+const STARA_KOREKTA =
+  'Wystawianie korekt nie jest skonfigurowane (brak inFaktu). Klucz API inFaktu wpiszesz w Ustawienia → Integracje → inFakt (/ustawienia/integracje/infakt).';
 
 const katalogi = [];
 const aplikacje = [];
 afterAll(async () => {
   vi.unstubAllGlobals();
-  for (const a of aplikacje.splice(0)) { await a.app.close(); a.db.close(); }
+  for (const a of aplikacje.splice(0)) {
+    await a.app.close();
+    a.db.close();
+  }
   for (const p of katalogi.splice(0)) rmSync(p, { recursive: true, force: true });
 });
 
-const headers = { authorization: 'Basic ' + Buffer.from('operator:fixture').toString('base64'), origin: 'http://localhost' };
-const odescape = (s) => String(s).replace(/&#34;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+const headers = {
+  authorization: 'Basic ' + Buffer.from('operator:fixture').toString('base64'),
+  origin: 'http://localhost',
+};
+const odescape = (s) =>
+  String(s)
+    .replace(/&#34;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
 
-const zamowienie = (nr, sklep) => ({ zrodlo_id: nr, numer: `PZ-${nr}`, klient: { first_name: 'Anna', last_name: 'Półcień', company: 'Pracownia Półcień',
-  address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa', email: 'biuro@polcien.invalid' },
-dostawa: {}, metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: '5250000009',
-kwota_brutto: '258.00', koszt_dostawy_brutto: '0.00', anulowane: 0, status_woo: 'processing', oplacone_at: null,
-utworzone_at: '2026-10-01T10:00:00Z', sklep,
-pozycje: [{ nazwa: 'Lampa wisząca Półcień', sku: 'LAMPA-W1', ilosc: 2, cena_brutto: '129.00', vat: null }] });
+const zamowienie = (nr, sklep) => ({
+  zrodlo_id: nr,
+  numer: `PZ-${nr}`,
+  klient: {
+    first_name: 'Anna',
+    last_name: 'Półcień',
+    company: 'Pracownia Półcień',
+    address_1: 'Lampowa 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    email: 'biuro@polcien.invalid',
+  },
+  dostawa: {},
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 1,
+  nip: '5250000009',
+  kwota_brutto: '258.00',
+  koszt_dostawy_brutto: '0.00',
+  anulowane: 0,
+  status_woo: 'processing',
+  oplacone_at: null,
+  utworzone_at: '2026-10-01T10:00:00Z',
+  sklep,
+  pozycje: [{ nazwa: 'Lampa wisząca Półcień', sku: 'LAMPA-W1', ilosc: 2, cena_brutto: '129.00', vat: null }],
+});
 
 /** Trzy zamówienia: bez faktury (sekcja faktury), z fakturą z Allegro (sekcja Allegro), z fakturą i zwrotem (korekta). */
 async function uruchom({ klucz = false, plik = null, zapis = null, automat = false }) {
-  const katalog = mkdtempSync(join(tmpdir(), 'karta-brak-prz121-')); katalogi.push(katalog);
+  const katalog = mkdtempSync(join(tmpdir(), 'karta-brak-prz121-'));
+  katalogi.push(katalog);
   const sciezka = join(katalog, 'oms.db');
   const przed = openOmsDb(sciezka);
   if (zapis) zapiszWyborProgramu(przed, zapis);
-  if (automat) zapiszUstawieniaAutomatu(przed, { wlaczony: true, godzina: '20:00', ostatniPrzebieg: null, login: 'admin' });
+  if (automat)
+    zapiszUstawieniaAutomatu(przed, { wlaczony: true, godzina: '20:00', ostatniPrzebieg: null, login: 'admin' });
   przed.close();
-  const fetchPuste = vi.fn(async () => { throw new Error('Sieć zabroniona'); });
+  const fetchPuste = vi.fn(async () => {
+    throw new Error('Sieć zabroniona');
+  });
   vi.stubGlobal('fetch', fetchPuste);
-  const env = { OMS_DB_PATH: sciezka, OMS_PROFORMY_KATALOG: katalog, OMS_ETYKIETY_KATALOG: katalog,
-    OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000', OMS_USER: 'operator', OMS_PASS: 'fixture',
-    ...(klucz ? { INFAKT_API_KEY: KLUCZ } : {}), ...(plik ? { OMS_PROGRAM_FAKTUROWY: plik } : {}) };
-  const a = await zbudujOms({ env, teraz: () => new Date('2026-10-27T10:00:00Z') }); aplikacje.push(a);
-  const faktura = (id, uuid, numer) => a.db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, program, dokument_id, numer, utworzona_at) VALUES (?,?,?,?,?,?)')
-    .run(id, uuid, 'infakt', uuid, numer, '2026-10-02T10:00:00Z');
+  const env = {
+    OMS_DB_PATH: sciezka,
+    OMS_PROFORMY_KATALOG: katalog,
+    OMS_ETYKIETY_KATALOG: katalog,
+    OMS_SPRZEDAWCA_NIP: '1234563218',
+    OMS_RACHUNEK: '34109010140000000000000000',
+    OMS_USER: 'operator',
+    OMS_PASS: 'fixture',
+    ...(klucz ? { INFAKT_API_KEY: KLUCZ } : {}),
+    ...(plik ? { OMS_PROGRAM_FAKTUROWY: plik } : {}),
+  };
+  const a = await zbudujOms({ env, teraz: () => new Date('2026-10-27T10:00:00Z') });
+  aplikacje.push(a);
+  const faktura = (id, uuid, numer) =>
+    a.db
+      .prepare(
+        'INSERT INTO faktury (zamowienie_id, infakt_uuid, program, dokument_id, numer, utworzona_at) VALUES (?,?,?,?,?,?)',
+      )
+      .run(id, uuid, 'infakt', uuid, numer, '2026-10-02T10:00:00Z');
   const bez = zapiszZamowienie(a.db, 'reczne', zamowienie(5101, 'reczne'), {});
   const allegro = zapiszZamowienie(a.db, 'allegro_polcien', zamowienie(5102, 'allegro_polcien'), {});
   faktura(allegro, 'dok-allegro-prz121', 'FV/7/10/2026');
@@ -65,8 +117,15 @@ async function uruchom({ klucz = false, plik = null, zapis = null, automat = fal
   return { a, bez, allegro, zFaktura, zwrotId, fetchPuste };
 }
 
-const karta = async (c, id) => odescape((await c.a.app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers })).body);
-const korekta = (c) => c.a.app.inject({ method: 'POST', url: `/zamowienia/${c.zFaktura}/zwroty/${c.zwrotId}/korekta`, headers, payload: {} });
+const karta = async (c, id) =>
+  odescape((await c.a.app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers })).body);
+const korekta = (c) =>
+  c.a.app.inject({
+    method: 'POST',
+    url: `/zamowienia/${c.zFaktura}/zwroty/${c.zwrotId}/korekta`,
+    headers,
+    payload: {},
+  });
 
 describe.each([
   ['plik', { klucz: true, plik: 'brak' }, ZDANIE_PLIKU],
@@ -78,7 +137,9 @@ describe.each([
   it('karta bez faktury: zdanie zamiast „nie jest skonfigurowany”, bez linku do ekranu inFaktu', async () => {
     const c = await zbuduj();
     const html = await karta(c, c.bez);
-    const powod = ustawienie.plik ? zdanie : `${zdanie} Administrator może włączyć program w Ustawienia → Faktury i podatki → Program do faktur.`;
+    const powod = ustawienie.plik
+      ? zdanie
+      : `${zdanie} Administrator może włączyć program w Ustawienia → Faktury i podatki → Program do faktur.`;
     expect(html).toContain(`<p class="wyjasnienie" id="powod-wystawienia-faktury">${powod}</p>`);
     if (ustawienie.plik) expect(html).not.toContain('Administrator może włączyć program');
     expect(html).not.toContain(STARA_FAKTURA);
@@ -114,14 +175,18 @@ describe.each([
   it('karta bez faktury: powód konfiguracji pod przyciskiem', async () => {
     const c = await zbuduj();
     const html = await karta(c, c.bez);
-    expect(html).toContain('<p class="wyjasnienie" id="powod-wystawienia-faktury">inFakt nie jest skonfigurowany — administrator może skonfigurować program w <a href="/ustawienia/integracje/infakt">Ustawienia → Integracje → inFakt</a>.</p>');
+    expect(html).toContain(
+      '<p class="wyjasnienie" id="powod-wystawienia-faktury">inFakt nie jest skonfigurowany — administrator może skonfigurować program w <a href="/ustawienia/integracje/infakt">Ustawienia → Integracje → inFakt</a>.</p>',
+    );
     expect(html).not.toContain('Faktury w OMS-ie są wyłączone');
   });
 
   it('karta z fakturą z Allegro: stary akapit', async () => {
     const c = await zbuduj();
     const html = await karta(c, c.allegro);
-    expect(html).toContain(`<p class="pasek-uwaga">${STARE_ALLEGRO} <a href="/ustawienia/integracje/infakt">Ustawienia → Integracje → inFakt</a>.</p>`);
+    expect(html).toContain(
+      `<p class="pasek-uwaga">${STARE_ALLEGRO} <a href="/ustawienia/integracje/infakt">Ustawienia → Integracje → inFakt</a>.</p>`,
+    );
     expect(html).not.toContain('Faktury w OMS-ie są wyłączone');
   });
 
@@ -134,7 +199,8 @@ describe.each([
 });
 
 describe('linia stanu automatu KSeF przy „brak”', () => {
-  const ekran = async (c) => odescape((await c.a.app.inject({ method: 'GET', url: '/ustawienia/automatyzacje/systemowe', headers })).body);
+  const ekran = async (c) =>
+    odescape((await c.a.app.inject({ method: 'GET', url: '/ustawienia/automatyzacje/systemowe', headers })).body);
   const LINIA_WLACZONY = '<strong>Włączony</strong> — najbliższy przebieg:';
 
   it('automat włączony, działa (klucz, nic nie wybrano) → „Włączony — najbliższy przebieg”; po zapisie „brak” → „Stoi — faktury wyłączone.”', async () => {
@@ -147,7 +213,9 @@ describe('linia stanu automatu KSeF przy „brak”', () => {
     const po = await ekran(c);
     expect(po).toContain('<strong>Stoi — faktury wyłączone.</strong>');
     expect(po).not.toContain(LINIA_WLACZONY);
-    expect(po).toContain(`id="ksef-automat-bezczynny">${ZDANIE_USTAWIEN} Automatyczna wysyłka do KSeF nic nie wyśle.</p>`);
+    expect(po).toContain(
+      `id="ksef-automat-bezczynny">${ZDANIE_USTAWIEN} Automatyczna wysyłka do KSeF nic nie wyśle.</p>`,
+    );
     expect(c.fetchPuste).not.toHaveBeenCalled();
   });
 

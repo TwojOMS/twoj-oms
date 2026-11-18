@@ -136,13 +136,7 @@ export function wartoOdswiezyc(sesja, teraz = Date.now()) {
  * za faktycznym połączeniem, a nie być wpisana na sztywno w jedną albo w drugą stronę.
  */
 export function ciasteczkoSesji(nazwa, wartosc, { bezpieczne, maxWiek = Math.floor(WAZNOSC_MS / 1000) } = {}) {
-  const czesci = [
-    `${nazwa}=${wartosc}`,
-    'Path=/',
-    'HttpOnly',
-    'SameSite=Lax',
-    `Max-Age=${maxWiek}`,
-  ];
+  const czesci = [`${nazwa}=${wartosc}`, 'Path=/', 'HttpOnly', 'SameSite=Lax', `Max-Age=${maxWiek}`];
   if (bezpieczne) czesci.push('Secure');
   return czesci.join('; ');
 }

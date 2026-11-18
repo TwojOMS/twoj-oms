@@ -5,10 +5,20 @@ import { podzielDoFaktury, wariantFakturyHurtem, ETYKIETA_WARIANTU } from '../..
 // z tej samej reguły, co formularz karty (terminFaktury + proponowanaDataSprzedazy).
 const POZYCJA = { nazwa: 'STOP 70x100', sku: 'STOP-70', ilosc: 1, cena_brutto: '104.00', brutto_linii: '104.00' };
 const zam = (n) => ({
-  id: 1, numer: '1589', utworzone_at: '2026-10-13T13:13:48Z', okres_rozliczeniowy_id: null, anulowane: 0,
+  id: 1,
+  numer: '1589',
+  utworzone_at: '2026-10-13T13:13:48Z',
+  okres_rozliczeniowy_id: null,
+  anulowane: 0,
   klient: { address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa' },
-  chce_fakture: 1, nip: '1200001045', kwota_brutto: '104.00', pozycje: [POZYCJA], platnosci: [], faktura: null,
-  wyslane_at: null, ...n,
+  chce_fakture: 1,
+  nip: '1200001045',
+  kwota_brutto: '104.00',
+  pozycje: [POZYCJA],
+  platnosci: [],
+  faktura: null,
+  wyslane_at: null,
+  ...n,
 });
 
 describe('faktura hurtem dla pobrania', () => {
@@ -22,7 +32,9 @@ describe('faktura hurtem dla pobrania', () => {
   // 31.08, zamówienie 1259) — suma wpłat kłamie, że zapłacono. Karta to odsiewa, hurt też.
   it('inkaso kuriera zapisane jako wpłata NIE robi z pobrania „zapłacone”', () => {
     const z = zam({
-      pobranie: 1, kwota_pobrania: '104.00', wyslane_at: '2026-10-13T15:00:00Z',
+      pobranie: 1,
+      kwota_pobrania: '104.00',
+      wyslane_at: '2026-10-13T15:00:00Z',
       platnosci: [{ kwota: '104.00', data: '2026-10-13T15:00:02Z', metoda: 'Za pobraniem' }],
     });
     expect(wariantFakturyHurtem(z)).toEqual({ termin: 'przy_odbiorze', dataSprzedazy: '2026-10-13' });
@@ -30,7 +42,8 @@ describe('faktura hurtem dla pobrania', () => {
 
   it('pobranie przedpłacone przelewem przed wysyłką → „zapłacone” z datą przelewu', () => {
     const z = zam({
-      pobranie: 1, kwota_pobrania: '104.00',
+      pobranie: 1,
+      kwota_pobrania: '104.00',
       platnosci: [{ kwota: '104.00', data: '2026-10-12T09:00:00Z', metoda: 'Przelew' }],
     });
     expect(wariantFakturyHurtem(z)).toEqual({ termin: 'zaplacone', dataSprzedazy: '2026-10-12' });

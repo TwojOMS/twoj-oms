@@ -76,8 +76,8 @@ export function daneKarty(z) {
     //
     // ⚠️ Powodem ukrycia przycisku NIE jest brak adresu ani NIP-u w formularzu zakladania
     // (formularz zbiera jedno i drugie) — tylko brak sklepu, do ktorego mozna wrocic.
-    saNadpisania: z.sklep !== 'reczne'
-      && (Boolean(z.dostawa_reczna_json || z.klient_reczny_json) || z.chce_fakture_reczne != null),
+    saNadpisania:
+      z.sklep !== 'reczne' && (Boolean(z.dostawa_reczna_json || z.klient_reczny_json) || z.chce_fakture_reczne != null),
     // Kupony sklepu — gotowa lista dla widoku, parsowanie kolumny
     // robi domena (kuponyZWiersza), nie szablon. Informacja OPISOWA pod tabela pozycji:
     // ceny pozycji sa juz PO rabacie, wiec karta niczego z tego nie liczy.
@@ -101,8 +101,13 @@ export function daneKarty(z) {
     // To samo dla zdań o paczkach JUŻ NADANYCH ogółem: panele wszystkich kurierów, którzy je nadali
     // („panelu DPD / InPost"); bez nadanej albo przy nieznanym kurierze — „panelu kuriera".
     panelNadanych: (() => {
-      const nazwy = [...new Set((z.przesylki ?? []).filter((p) => p.status === 'nadana')
-        .map((p) => panelKuriera(p.kurier).replace(/^panelu /, '')))];
+      const nazwy = [
+        ...new Set(
+          (z.przesylki ?? [])
+            .filter((p) => p.status === 'nadana')
+            .map((p) => panelKuriera(p.kurier).replace(/^panelu /, '')),
+        ),
+      ];
       const znane = nazwy.filter((n) => n !== 'kuriera');
       return znane.length === 0 || znane.length < nazwy.length ? 'panelu kuriera' : `panelu ${znane.join(' / ')}`;
     })(),

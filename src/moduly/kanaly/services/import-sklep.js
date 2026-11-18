@@ -1,7 +1,5 @@
 import { wierszHistorii, decyzja } from '../../../domena/historia-sklepu.js';
-import {
-  zapiszHistorie, sufitZApilo, kursorSklepu, zapiszKursorSklepu,
-} from '../../../oms/db/historia-sprzedazy.js';
+import { zapiszHistorie, sufitZApilo, kursorSklepu, zapiszKursorSklepu } from '../../../oms/db/historia-sprzedazy.js';
 
 // Jednorazowy import historii sprzedazy ze sklepu WooCommerce.
 //
@@ -21,8 +19,16 @@ export function createImportSklepu({ db, sklep, klient, konfiguracja, log = () =
   if (!konfiguracja?.konta?.has(sklep)) throw new Error(`Brak jawnej konfiguracji historii sklepu "${sklep}".`);
   async function przebieg({ od, doDnia, sonda = false }) {
     const licznik = {
-      pobranych: 0, pominietych: 0, testowych: 0, stron: 0, razem: 0,
-      zatrzymany: false, powod: null, statusy: {}, lata: {}, waluty: {},
+      pobranych: 0,
+      pominietych: 0,
+      testowych: 0,
+      stron: 0,
+      razem: 0,
+      zatrzymany: false,
+      powod: null,
+      statusy: {},
+      lata: {},
+      waluty: {},
     };
 
     // ⚠️ SUFIT SPRAWDZAMY PRZED PIERWSZYM ZAPYTANIEM DO SKLEPU, nie przy zapisie: przebieg,
@@ -31,14 +37,14 @@ export function createImportSklepu({ db, sklep, klient, konfiguracja, log = () =
     if (!sonda) {
       if (!sufit) {
         throw new Error(
-          'Era Apilo jest pusta (brak wierszy skonfigurowanego konta w `sprzedaz_historyczna`), wiec nie ma'
-          + ' czym zmierzyc sufitu importu. Zaimportuj najpierw historie z Apilo.',
+          'Era Apilo jest pusta (brak wierszy skonfigurowanego konta w `sprzedaz_historyczna`), wiec nie ma' +
+            ' czym zmierzyc sufitu importu. Zaimportuj najpierw historie z Apilo.',
         );
       }
       if (doDnia >= sufit) {
         throw new Error(
-          `Sufit importu to ${przesunDzien(sufit, -1)} — od ${sufit} sprzedaz sklepowa jest`
-          + ' juz w historii z Apilo i wciagnieta drugi raz policzylaby sie PODWOJNIE.',
+          `Sufit importu to ${przesunDzien(sufit, -1)} — od ${sufit} sprzedaz sklepowa jest` +
+            ' juz w historii z Apilo i wciagnieta drugi raz policzylaby sie PODWOJNIE.',
         );
       }
     }
@@ -67,7 +73,10 @@ export function createImportSklepu({ db, sklep, klient, konfiguracja, log = () =
         const w = wierszHistorii(sklep, z, konfiguracja);
         licznik.lata[w.dzien.slice(0, 4)] = (licznik.lata[w.dzien.slice(0, 4)] ?? 0) + 1;
 
-        if (w.dzien < od || w.dzien > doDnia) { licznik.pominietych += 1; continue; }
+        if (w.dzien < od || w.dzien > doDnia) {
+          licznik.pominietych += 1;
+          continue;
+        }
 
         const d = decyzja(z, konfiguracja);
         if (d.akcja === 'stop') {
@@ -82,7 +91,10 @@ export function createImportSklepu({ db, sklep, klient, konfiguracja, log = () =
           else licznik.pominietych += 1;
           continue;
         }
-        if (sonda) { licznik.pobranych += 1; continue; }
+        if (sonda) {
+          licznik.pobranych += 1;
+          continue;
+        }
         zapiszHistorie(db, w);
         licznik.pobranych += 1;
       }
@@ -98,7 +110,10 @@ export function createImportSklepu({ db, sklep, klient, konfiguracja, log = () =
 
     if (!sonda && !licznik.zatrzymany) {
       zapiszKursorSklepu(db, {
-        sklep, odDnia: od, doDnia, ostatniaStrona: licznik.stron,
+        sklep,
+        odDnia: od,
+        doDnia,
+        ostatniaStrona: licznik.stron,
         zakonczonyAt: new Date().toISOString(),
       });
     }
@@ -108,7 +123,11 @@ export function createImportSklepu({ db, sklep, klient, konfiguracja, log = () =
       // przebieg zatrzymalo. Powtorzenie strony jest darmowe (zapis jest idempotentny),
       // przeskoczenie jej kosztuje ciche braki w sprzedazy.
       zapiszKursorSklepu(db, {
-        sklep, odDnia: od, doDnia, ostatniaStrona: Math.max(0, licznik.stron - 1), blad: licznik.powod,
+        sklep,
+        odDnia: od,
+        doDnia,
+        ostatniaStrona: Math.max(0, licznik.stron - 1),
+        blad: licznik.powod,
       });
     }
     return licznik;

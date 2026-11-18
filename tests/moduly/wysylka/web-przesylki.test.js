@@ -12,13 +12,29 @@ const AUTH = { authorization: `Basic ${Buffer.from('adam:x').toString('base64')}
 const CONFIG = { auth: { user: 'adam', pass: 'x' }, klienciZbiorczy: [] };
 
 const zmapowane = (nr) => ({
-  zrodlo_id: nr, numer: `Z-${nr}`, klient: { first_name: 'Jan', last_name: 'Testowy', email: 'j@k.pl' }, dostawa: {},
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null,
-  kwota_brutto: '50.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
-  utworzone_at: '2026-08-20T10:00:00Z', pozycje: [],
+  zrodlo_id: nr,
+  numer: `Z-${nr}`,
+  klient: { first_name: 'Jan', last_name: 'Testowy', email: 'j@k.pl' },
+  dostawa: {},
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '50.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-08-20T10:00:00Z',
+  pozycje: [],
 });
 
-function nadana(db, zamowienieId, kurier, numer, { status = null, statusAt = null, utworzona = '2026-08-21T10:00:00.000Z' } = {}) {
+function nadana(
+  db,
+  zamowienieId,
+  kurier,
+  numer,
+  { status = null, statusAt = null, utworzona = '2026-08-21T10:00:00.000Z' } = {},
+) {
   const p = rozpocznijPrzesylke(db, zamowienieId, kurier);
   zakonczPrzesylke(db, p.id, { numerListu: numer, etykietaSciezka: '/tmp/e.pdf', surowa: '<x/>' });
   db.prepare('UPDATE przesylki SET utworzona_at = ? WHERE id = ?').run(utworzona, p.id);
@@ -26,7 +42,8 @@ function nadana(db, zamowienieId, kurier, numer, { status = null, statusAt = nul
   return p.id;
 }
 
-let db; let app;
+let db;
+let app;
 beforeEach(() => {
   // ⚠️ FEJKUJEMY WYLACZNIE `Date`, nie caly zegar. Pelne `useFakeTimers()` zatrzymuje tez
   // `setTimeout`/`setImmediate`, na ktorych stoi czytanie CIALA zadania w Fastify — GET-y
@@ -36,22 +53,35 @@ beforeEach(() => {
   vi.setSystemTime(new Date('2026-08-27T10:00:00Z')); // czwartek
   db = openOmsDb(':memory:');
   const id1 = zapiszZamowienie(db, 'pro', zmapowane(1), {});
-  nadana(db, id1, 'dpd', 'WDRODZE1', { status: 'Przesyłka odebrana przez Kuriera', statusAt: '2026-08-26T09:00:00.000', utworzona: '2026-08-21T10:00:00.000Z' });
+  nadana(db, id1, 'dpd', 'WDRODZE1', {
+    status: 'Przesyłka odebrana przez Kuriera',
+    statusAt: '2026-08-26T09:00:00.000',
+    utworzona: '2026-08-21T10:00:00.000Z',
+  });
   const id2 = zapiszZamowienie(db, 'pro', zmapowane(2), {});
-  nadana(db, id2, 'dpd', 'DORECZONA1', { status: 'Przesyłka doręczona', statusAt: '2026-08-22T12:00:00.000', utworzona: '2026-08-22T08:00:00.000Z' });
+  nadana(db, id2, 'dpd', 'DORECZONA1', {
+    status: 'Przesyłka doręczona',
+    statusAt: '2026-08-22T12:00:00.000',
+    utworzona: '2026-08-22T08:00:00.000Z',
+  });
   const id3 = zapiszZamowienie(db, 'allegro_swietlik', zmapowane(3), {});
-  nadana(db, id3, 'allegro_wza', 'BEZRUCHU1', { status: 'Przesyłka odebrana przez Kuriera', statusAt: '2026-08-21T11:00:00.000', utworzona: '2026-08-25T12:00:00.000Z' });
+  nadana(db, id3, 'allegro_wza', 'BEZRUCHU1', {
+    status: 'Przesyłka odebrana przez Kuriera',
+    statusAt: '2026-08-21T11:00:00.000',
+    utworzona: '2026-08-25T12:00:00.000Z',
+  });
   app = buildOmsServer({ db, config: CONFIG });
 });
 
 describe('GET /przesylki', () => {
   it('w kolumnie Kurier pokazuje dla WzA pelna nazwe metody z karty zamowienia', async () => {
     for (const nazwa of ['Allegro Kurier DPD pobranie', 'Allegro Kurier DHL']) {
-      db.prepare("UPDATE zamowienia SET metoda_wysylki_nazwa = ? WHERE numer = 'Z-3'")
-        .run(nazwa);
+      db.prepare("UPDATE zamowienia SET metoda_wysylki_nazwa = ? WHERE numer = 'Z-3'").run(nazwa);
 
       const r = await app.inject({ method: 'GET', url: '/przesylki?pokaz=wszystkie', headers: AUTH });
-      const wiersz = r.body.split('<tr>').find((fragment) => fragment.includes('BEZRUCHU1'))
+      const wiersz = r.body
+        .split('<tr>')
+        .find((fragment) => fragment.includes('BEZRUCHU1'))
         ?.split('</tr>')[0];
       expect(wiersz).toContain(`<span class="prz067-usluga drobne">${nazwa}</span>`);
       expect(wiersz).not.toContain('allegro_wza');
@@ -61,20 +91,26 @@ describe('GET /przesylki', () => {
   it('gdy WzA nie ma nazwy z Allegro, pokazuje ten sam slownikowy opis co karta', async () => {
     db.prepare("UPDATE zamowienia SET metoda_wysylki = 'allegro_dpd' WHERE numer = 'Z-3'").run();
     const r = await app.inject({ method: 'GET', url: '/przesylki?pokaz=wszystkie', headers: AUTH });
-    const wiersz = r.body.split('<tr>').find((fragment) => fragment.includes('BEZRUCHU1'))
+    const wiersz = r.body
+      .split('<tr>')
+      .find((fragment) => fragment.includes('BEZRUCHU1'))
       ?.split('</tr>')[0];
     expect(wiersz).toContain('<span class="prz067-usluga drobne">Allegro Kurier DPD</span>');
   });
 
   it('reczna zmiana metody lub pobrania uniewaznia stara nazwe Allegro tak jak na karcie', async () => {
-    const zmiana = db.prepare("UPDATE zamowienia SET metoda_wysylki = 'allegro_dpd', metoda_wysylki_nazwa = 'Allegro Kurier DPD', wysylka_reczna_json = ? WHERE numer = 'Z-3'");
+    const zmiana = db.prepare(
+      "UPDATE zamowienia SET metoda_wysylki = 'allegro_dpd', metoda_wysylki_nazwa = 'Allegro Kurier DPD', wysylka_reczna_json = ? WHERE numer = 'Z-3'",
+    );
     for (const [nadpisanie, oczekiwana] of [
       [{ metoda: 'inpost_paczkomat', pobranie: 0 }, 'InPost Paczkomat'],
       [{ metoda: 'allegro_dpd', pobranie: 1 }, 'Allegro Kurier DPD (pobranie)'],
     ]) {
       zmiana.run(JSON.stringify(nadpisanie));
       const r = await app.inject({ method: 'GET', url: '/przesylki?pokaz=wszystkie', headers: AUTH });
-      const wiersz = r.body.split('<tr>').find((fragment) => fragment.includes('BEZRUCHU1'))
+      const wiersz = r.body
+        .split('<tr>')
+        .find((fragment) => fragment.includes('BEZRUCHU1'))
         ?.split('</tr>')[0];
       expect(wiersz).toContain(`<span class="prz067-usluga drobne">${oczekiwana}</span>`);
       expect(wiersz).not.toContain('<span class="prz067-usluga drobne">Allegro Kurier DPD</span>');
@@ -82,11 +118,12 @@ describe('GET /przesylki', () => {
   });
 
   it('nazwa metody zamowienia nie podmienia kuriera przesylki spoza WzA', async () => {
-    db.prepare("UPDATE zamowienia SET metoda_wysylki_nazwa = ? WHERE numer = 'Z-1'")
-      .run('Allegro Kurier DHL');
+    db.prepare("UPDATE zamowienia SET metoda_wysylki_nazwa = ? WHERE numer = 'Z-1'").run('Allegro Kurier DHL');
 
     const r = await app.inject({ method: 'GET', url: '/przesylki?pokaz=wszystkie', headers: AUTH });
-    const wiersz = r.body.split('<tr>').find((fragment) => fragment.includes('WDRODZE1'))
+    const wiersz = r.body
+      .split('<tr>')
+      .find((fragment) => fragment.includes('WDRODZE1'))
       ?.split('</tr>')[0];
     expect(wiersz).toMatch(/<img class="prz067-logo" src="\/public\/przewoznicy\/dpd\.svg" alt="DPD"/);
     expect(wiersz).not.toContain('Allegro Kurier DHL');
@@ -135,9 +172,13 @@ describe('GET /przesylki', () => {
 // i zeszlo z listy samo, gdy panel zaczal pytac Allegro o statusy.
 describe('ukrywanie paczek z zakladki', () => {
   const POST = { ...AUTH, origin: 'http://localhost' };
-  const ukryj = (id, pokaz = 'bez_ruchu') => app.inject({
-    method: 'POST', url: `/przesylki/${id}/ukryj`, headers: POST, payload: { pokaz },
-  });
+  const ukryj = (id, pokaz = 'bez_ruchu') =>
+    app.inject({
+      method: 'POST',
+      url: `/przesylki/${id}/ukryj`,
+      headers: POST,
+      payload: { pokaz },
+    });
 
   const idBezRuchu = () => db.prepare("SELECT id FROM przesylki WHERE numer_listu = 'BEZRUCHU1'").get().id;
 
@@ -161,7 +202,10 @@ describe('ukrywanie paczek z zakladki', () => {
     expect(ukryte.body).toContain('Przywróć');
 
     await app.inject({
-      method: 'POST', url: `/przesylki/${id}/przywroc`, headers: POST, payload: { pokaz: 'ukryte' },
+      method: 'POST',
+      url: `/przesylki/${id}/przywroc`,
+      headers: POST,
+      payload: { pokaz: 'ukryte' },
     });
     const wrocila = await app.inject({ method: 'GET', url: '/przesylki?pokaz=bez_ruchu', headers: AUTH });
     expect(wrocila.body).toContain('BEZRUCHU1');

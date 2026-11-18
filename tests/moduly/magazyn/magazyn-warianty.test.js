@@ -5,7 +5,11 @@ import { powodPominiecia, kartaZProduktu, czyPominietyCelowo } from '../../../sr
 import { grupujPominiete } from '../../../src/domena/magazyn-pominiete.js';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import {
-  zapiszProduktSklepowy, utworzKarte, powiazProdukt, utworzKartyZNiepowiazanych, produktyPominiete,
+  zapiszProduktSklepowy,
+  utworzKarte,
+  powiazProdukt,
+  utworzKartyZNiepowiazanych,
+  produktyPominiete,
 } from '../../../src/oms/db/magazyn.js';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -15,8 +19,12 @@ import { join } from 'node:path';
 // tescie, ktory o nim mowi — brak klucza znaczy „lustro jeszcze nie wie" i to tez jest
 // przypadek do sprawdzenia, a nie niedopatrzenie.
 const W = (nad = {}) => ({
-  kanal: 'swietlik', produkt_id: '7179', wariant_id: '7180', nazwa: 'Kolekcja Las',
-  rozmiar_tekst: null, ...nad,
+  kanal: 'swietlik',
+  produkt_id: '7179',
+  wariant_id: '7180',
+  nazwa: 'Kolekcja Las',
+  rozmiar_tekst: null,
+  ...nad,
 });
 const atrybuty = (...pary) => JSON.stringify(pary.map(([nazwa, wartosc]) => ({ nazwa, wartosc })));
 
@@ -42,10 +50,12 @@ describe('atrybutyWariantu — trzy stany lustra', () => {
   });
 
   it('oddaje pary nazwa/wartosc tak, jak zapisal je odczyt', () => {
-    expect(atrybutyWariantu({
-      wariant_id: '7180',
-      atrybuty_json: '[{"nazwa":"motyw","wartosc":"Szyszka"}]',
-    })).toEqual([{ nazwa: 'motyw', wartosc: 'Szyszka' }]);
+    expect(
+      atrybutyWariantu({
+        wariant_id: '7180',
+        atrybuty_json: '[{"nazwa":"motyw","wartosc":"Szyszka"}]',
+      }),
+    ).toEqual([{ nazwa: 'motyw', wartosc: 'Szyszka' }]);
   });
 });
 
@@ -59,8 +69,9 @@ describe('atrybutyWariantu — trzy stany lustra', () => {
 //   „Szpulka — 70 x 100 cm" zamiast „Szpulka", czyli regresja na glownej sciezce modulu.
 describe('osiePodzialu — co robi z wariantu osobną kartę', () => {
   it('zwykly atrybut JEST osia podzialu', () => {
-    expect(osiePodzialu([{ nazwa: 'uklad', wartosc: 'NAPRZEMIENNIE' }]))
-      .toEqual([{ nazwa: 'uklad', wartosc: 'NAPRZEMIENNIE' }]);
+    expect(osiePodzialu([{ nazwa: 'uklad', wartosc: 'NAPRZEMIENNIE' }])).toEqual([
+      { nazwa: 'uklad', wartosc: 'NAPRZEMIENNIE' },
+    ]);
   });
 
   it('sama cena NIE jest osia podzialu', () => {
@@ -72,11 +83,13 @@ describe('osiePodzialu — co robi z wariantu osobną kartę', () => {
   });
 
   it('atrybut obok ceny i rozmiaru zostaje osia', () => {
-    expect(osiePodzialu([
-      { nazwa: 'Cena', wartosc: '79' },
-      { nazwa: 'cyfra', wartosc: '7' },
-      { nazwa: 'rozmiar', wartosc: '70 x 100 cm' },
-    ])).toEqual([{ nazwa: 'cyfra', wartosc: '7' }]);
+    expect(
+      osiePodzialu([
+        { nazwa: 'Cena', wartosc: '79' },
+        { nazwa: 'cyfra', wartosc: '7' },
+        { nazwa: 'rozmiar', wartosc: '70 x 100 cm' },
+      ]),
+    ).toEqual([{ nazwa: 'cyfra', wartosc: '7' }]);
   });
 });
 
@@ -106,8 +119,12 @@ describe('powodPominiecia — wariant bez rozmiaru rozpada sie na cztery sprawy'
   // bez SKU. To nie sa karty i nigdy nie beda — powod ma to mowic wprost, zeby ekran
   // „pominiete" mogl je odlozyc do „tak ma byc" razem z ofertami Allegro.
   it('wariant, ktorego jedynym atrybutem jest cena, nie jest kartą', () => {
-    expect(powodPominiecia(W({ nazwa: 'Projekt indywidualny', atrybuty_json: atrybuty(['cena', '69']) }), ['pro', 'swietlik']))
-      .toMatch(/cen/i);
+    expect(
+      powodPominiecia(W({ nazwa: 'Projekt indywidualny', atrybuty_json: atrybuty(['cena', '69']) }), [
+        'pro',
+        'swietlik',
+      ]),
+    ).toMatch(/cen/i);
   });
 
   // ⚠️ TRZECI STAN. 1459 wierszy zapisanych przed ta zmiana ma `atrybuty_json` NULL — i to
@@ -132,28 +149,34 @@ describe('powodPominiecia — wariant bez rozmiaru rozpada sie na cztery sprawy'
 // broni sie caly ten modul, tylko przesunieta o jeden krok.
 describe('kartaZProduktu — nazwa niesie wartosc osi podzialu', () => {
   it('doklada wartosc atrybutu do nazwy rodzica', () => {
-    expect(kartaZProduktu(W({ atrybuty_json: atrybuty(['motyw', 'Szyszka']) })).nazwa)
-      .toBe('Kolekcja Las — Szyszka');
+    expect(kartaZProduktu(W({ atrybuty_json: atrybuty(['motyw', 'Szyszka']) })).nazwa).toBe('Kolekcja Las — Szyszka');
   });
 
   // ⚠️ WARTOSCI NIE KALECZYMY. Sklep zapisal „Szyszka" i „NAPRZEMIENNIE" — polskie znaki
   // i wielkie litery sa TRESCIA, a nie stylem do znormalizowania. Po tej nazwie wlasciciel
   // rozpoznaje karte na liscie i w wyszukiwarce.
   it('nie kaleczy polskich znakow ani wielkich liter', () => {
-    expect(kartaZProduktu(W({ nazwa: 'Księżyc Senny', atrybuty_json: atrybuty(['uklad', 'NAPRZEMIENNIE']) })).nazwa)
-      .toBe('Księżyc Senny — NAPRZEMIENNIE');
+    expect(
+      kartaZProduktu(W({ nazwa: 'Księżyc Senny', atrybuty_json: atrybuty(['uklad', 'NAPRZEMIENNIE']) })).nazwa,
+    ).toBe('Księżyc Senny — NAPRZEMIENNIE');
   });
 
   it('przy kilku osiach niesie wszystkie, w kolejnosci ze sklepu', () => {
-    expect(kartaZProduktu({
-      kanal: 'pro', wariant_id: '1074', nazwa: 'KLOSZE wys. 90cm (Mleczne)', rozmiar_tekst: null,
-      atrybuty_json: atrybuty(['szklo', 'Mleczne'], ['cyfra', '7']),
-    }).nazwa).toBe('KLOSZE wys. 90cm (Mleczne) — Mleczne, 7');
+    expect(
+      kartaZProduktu({
+        kanal: 'pro',
+        wariant_id: '1074',
+        nazwa: 'KLOSZE wys. 90cm (Mleczne)',
+        rozmiar_tekst: null,
+        atrybuty_json: atrybuty(['szklo', 'Mleczne'], ['cyfra', '7']),
+      }).nazwa,
+    ).toBe('KLOSZE wys. 90cm (Mleczne) — Mleczne, 7');
   });
 
   it('trzy warianty tego samego rodzica daja TRZY ROZNE nazwy', () => {
-    const nazwy = ['Szyszka', 'Żołądź', 'Liść']
-      .map((w) => kartaZProduktu(W({ atrybuty_json: atrybuty(['motyw', w]) })).nazwa);
+    const nazwy = ['Szyszka', 'Żołądź', 'Liść'].map(
+      (w) => kartaZProduktu(W({ atrybuty_json: atrybuty(['motyw', w]) })).nazwa,
+    );
     expect(new Set(nazwy).size).toBe(3);
   });
 
@@ -161,10 +184,15 @@ describe('kartaZProduktu — nazwa niesie wartosc osi podzialu', () => {
   // wlasne kolumny. Dopisanie go do nazwy zamienialoby „Szpulka" w „Szpulka — 70 x 100 cm"
   // na calej glownej sciezce modulu.
   it('sam rozmiar do nazwy NIE wchodzi', () => {
-    expect(kartaZProduktu({
-      kanal: 'pro', wariant_id: '1091', nazwa: 'Plafon', rozmiar_tekst: '70 x 100 cm',
-      atrybuty_json: atrybuty(['rozmiar', '70 x 100 cm']),
-    }).nazwa).toBe('Plafon');
+    expect(
+      kartaZProduktu({
+        kanal: 'pro',
+        wariant_id: '1091',
+        nazwa: 'Plafon',
+        rozmiar_tekst: '70 x 100 cm',
+        atrybuty_json: atrybuty(['rozmiar', '70 x 100 cm']),
+      }).nazwa,
+    ).toBe('Plafon');
   });
 
   // ⚠️ PARA MILCZENIA #2: produkt prosty i wiersz, ktorego atrybutow lustro nie zna, maja
@@ -183,8 +211,7 @@ describe('kartaZProduktu — nazwa niesie wartosc osi podzialu', () => {
 describe('lustro trzyma atrybuty wariantu we WLASNEJ kolumnie', () => {
   it('istniejaca baza dostaje kolumne migracja, a nie dopiero przy zakladaniu od zera', () => {
     // PRZ026-13: odmowa niezgodnej nieoznaczonej bazy i zachowanie danych przy poprawnym reopen.
-    potwierdzOdmoweHistorycznegoSchema(
-      ['ALTER TABLE produkty_sklepowe DROP COLUMN atrybuty_json'], ['atrybuty_json']);
+    potwierdzOdmoweHistorycznegoSchema(['ALTER TABLE produkty_sklepowe DROP COLUMN atrybuty_json'], ['atrybuty_json']);
     const katalog = mkdtempSync(join(tmpdir(), 'oms-warianty-reopen-'));
     const plik = join(katalog, 'oms.sqlite');
     const zapisaneAtrybuty = atrybuty(['motyw', 'Szyszka']);
@@ -195,41 +222,76 @@ describe('lustro trzyma atrybuty wariantu we WLASNEJ kolumnie', () => {
       try {
         kartaId = utworzKarte(pierwsza, { nazwa: 'Kandelabr wariantu', sku: 'TEST-13' });
         produktId = zapiszProduktSklepowy(pierwsza, {
-          kanal: 'kanal-testowy', produkt_id: '7179', wariant_id: '7180',
-          nazwa: 'Kandelabr produktu', sku_sklepu: 'TEST-13', cena_gr: 9900,
-          odczytane_at: '2026-10-01T10:00:00Z', atrybuty_json: zapisaneAtrybuty,
+          kanal: 'kanal-testowy',
+          produkt_id: '7179',
+          wariant_id: '7180',
+          nazwa: 'Kandelabr produktu',
+          sku_sklepu: 'TEST-13',
+          cena_gr: 9900,
+          odczytane_at: '2026-10-01T10:00:00Z',
+          atrybuty_json: zapisaneAtrybuty,
         });
         powiazProdukt(pierwsza, produktId, kartaId);
-      } finally { pierwsza.close(); }
+      } finally {
+        pierwsza.close();
+      }
       const druga = openOmsDb(plik);
       try {
-        expect(druga.prepare('PRAGMA table_info(produkty_sklepowe)').all().map(k => k.name))
-          .toContain('atrybuty_json');
-        expect(druga.prepare('SELECT kanal,produkt_id,wariant_id,nazwa,sku_sklepu,cena_gr,atrybuty_json,karta_id FROM produkty_sklepowe WHERE id=?').get(produktId))
-          .toEqual({ kanal: 'kanal-testowy', produkt_id: '7179', wariant_id: '7180',
-            nazwa: 'Kandelabr produktu', sku_sklepu: 'TEST-13', cena_gr: 9900,
-            atrybuty_json: zapisaneAtrybuty, karta_id: kartaId });
-        expect(druga.prepare('SELECT nazwa,sku FROM karty_produktow WHERE id=?').get(kartaId))
-          .toEqual({ nazwa: 'Kandelabr wariantu', sku: 'TEST-13' });
-      } finally { druga.close(); }
-    } finally { rmSync(katalog, { recursive: true, force: true }); }
+        expect(
+          druga
+            .prepare('PRAGMA table_info(produkty_sklepowe)')
+            .all()
+            .map((k) => k.name),
+        ).toContain('atrybuty_json');
+        expect(
+          druga
+            .prepare(
+              'SELECT kanal,produkt_id,wariant_id,nazwa,sku_sklepu,cena_gr,atrybuty_json,karta_id FROM produkty_sklepowe WHERE id=?',
+            )
+            .get(produktId),
+        ).toEqual({
+          kanal: 'kanal-testowy',
+          produkt_id: '7179',
+          wariant_id: '7180',
+          nazwa: 'Kandelabr produktu',
+          sku_sklepu: 'TEST-13',
+          cena_gr: 9900,
+          atrybuty_json: zapisaneAtrybuty,
+          karta_id: kartaId,
+        });
+        expect(druga.prepare('SELECT nazwa,sku FROM karty_produktow WHERE id=?').get(kartaId)).toEqual({
+          nazwa: 'Kandelabr wariantu',
+          sku: 'TEST-13',
+        });
+      } finally {
+        druga.close();
+      }
+    } finally {
+      rmSync(katalog, { recursive: true, force: true });
+    }
   });
 
   it('odczyt katalogu zapisuje atrybuty i odswieza je przy kolejnym przebiegu', () => {
     const db = openOmsDb(':memory:');
     const wiersz = {
-      kanal: 'swietlik', produkt_id: '7179', wariant_id: '7180', nazwa: 'Kolekcja Las',
-      odczytane_at: '2026-08-11T06:00:00.000Z', atrybuty_json: atrybuty(['motyw', 'Szyszka']),
+      kanal: 'swietlik',
+      produkt_id: '7179',
+      wariant_id: '7180',
+      nazwa: 'Kolekcja Las',
+      odczytane_at: '2026-08-11T06:00:00.000Z',
+      atrybuty_json: atrybuty(['motyw', 'Szyszka']),
     };
     const id = zapiszProduktSklepowy(db, wiersz);
-    expect(db.prepare('SELECT atrybuty_json FROM produkty_sklepowe WHERE id = ?').get(id).atrybuty_json)
-      .toBe(atrybuty(['motyw', 'Szyszka']));
+    expect(db.prepare('SELECT atrybuty_json FROM produkty_sklepowe WHERE id = ?').get(id).atrybuty_json).toBe(
+      atrybuty(['motyw', 'Szyszka']),
+    );
 
     // Wlasciciel przemianowal wartosc w sklepie — lustro ma za nia POJSC, a nie zostac
     // przy starej. Kolumna lustra, wiec `DO UPDATE SET`, tak jak nazwa i cena.
     zapiszProduktSklepowy(db, { ...wiersz, atrybuty_json: atrybuty(['motyw', 'Żołądź']) });
-    expect(db.prepare('SELECT atrybuty_json FROM produkty_sklepowe WHERE id = ?').get(id).atrybuty_json)
-      .toBe(atrybuty(['motyw', 'Żołądź']));
+    expect(db.prepare('SELECT atrybuty_json FROM produkty_sklepowe WHERE id = ?').get(id).atrybuty_json).toBe(
+      atrybuty(['motyw', 'Żołądź']),
+    );
   });
 
   // ⚠️ PARA: kolumna lustra przepisuje sie przy kazdym odczycie, ale POWIAZANIE Z KARTĄ ma
@@ -238,8 +300,12 @@ describe('lustro trzyma atrybuty wariantu we WLASNEJ kolumnie', () => {
   it('zapis atrybutow nie zrywa powiazania z kartą', () => {
     const db = openOmsDb(':memory:');
     const wiersz = {
-      kanal: 'swietlik', produkt_id: '7179', wariant_id: '7180', nazwa: 'Kolekcja Las',
-      odczytane_at: '2026-08-11T06:00:00.000Z', atrybuty_json: '[]',
+      kanal: 'swietlik',
+      produkt_id: '7179',
+      wariant_id: '7180',
+      nazwa: 'Kolekcja Las',
+      odczytane_at: '2026-08-11T06:00:00.000Z',
+      atrybuty_json: '[]',
     };
     const id = zapiszProduktSklepowy(db, wiersz);
     const kartaId = utworzKarte(db, { nazwa: 'Kolekcja Las' });
@@ -265,14 +331,26 @@ describe('czyPominietyCelowo — co odklada sie do „tak ma byc"', () => {
   });
 
   it('zaslepka panelu ofert — tak ma byc, choc siedzi w kanale sklepowym', () => {
-    expect(czyPominietyCelowo({
-      kanal: 'swietlik', wariant_id: '', nazwa: 'Pozycja indywidualna', sku_sklepu: 'psm-zam-placeholder',
-    }, ['pro', 'swietlik'])).toBe(true);
+    expect(
+      czyPominietyCelowo(
+        {
+          kanal: 'swietlik',
+          wariant_id: '',
+          nazwa: 'Pozycja indywidualna',
+          sku_sklepu: 'psm-zam-placeholder',
+        },
+        ['pro', 'swietlik'],
+      ),
+    ).toBe(true);
   });
 
   it('wariant rozniacy sie sama cena — tak ma byc', () => {
-    expect(czyPominietyCelowo(W({ nazwa: 'Projekt indywidualny', atrybuty_json: atrybuty(['cena', '69']) }), ['pro', 'swietlik']))
-      .toBe(true);
+    expect(
+      czyPominietyCelowo(W({ nazwa: 'Projekt indywidualny', atrybuty_json: atrybuty(['cena', '69']) }), [
+        'pro',
+        'swietlik',
+      ]),
+    ).toBe(true);
   });
 
   // ⚠️ PARY MILCZENIA. Wszystko ponizej to ROBOTA i ma zostac na gorze ekranu — inaczej
@@ -292,19 +370,36 @@ describe('czyPominietyCelowo — co odklada sie do „tak ma byc"', () => {
 
 describe('grupujPominiete — grupa celowa po TRESCI pozycji', () => {
   it('zaslepki i pozycje cennikowe ze sklepu ida do „tak ma byc"', () => {
-    const [grupa] = grupujPominiete([{
-      id: 1, kanal: 'swietlik', nazwa: 'Pozycja indywidualna',
-      sku_sklepu: 'psm-zam-placeholder', powod: 'zaślepka',
-    }], ['pro', 'swietlik']);
+    const [grupa] = grupujPominiete(
+      [
+        {
+          id: 1,
+          kanal: 'swietlik',
+          nazwa: 'Pozycja indywidualna',
+          sku_sklepu: 'psm-zam-placeholder',
+          powod: 'zaślepka',
+        },
+      ],
+      ['pro', 'swietlik'],
+    );
     expect(grupa.celowo).toBe(true);
   });
 
   // Para: ten sam kanal, ta sama grupa — ale pozycja, ktora DA SIE naprawic, robi z grupy robote.
   it('wariant do naprawy w sklepie zostaje ROBOTA', () => {
-    const [grupa] = grupujPominiete([{
-      id: 2, kanal: 'swietlik', wariant_id: '26954', nazwa: 'Koła duże',
-      atrybuty_json: '[]', powod: 'bez atrybutu',
-    }], ['pro', 'swietlik']);
+    const [grupa] = grupujPominiete(
+      [
+        {
+          id: 2,
+          kanal: 'swietlik',
+          wariant_id: '26954',
+          nazwa: 'Koła duże',
+          atrybuty_json: '[]',
+          powod: 'bez atrybutu',
+        },
+      ],
+      ['pro', 'swietlik'],
+    );
     expect(grupa.celowo).toBe(false);
   });
 });
@@ -334,12 +429,19 @@ function pierwszyOdczyt(baza) {
   const wpisz = (p) => zapiszProduktSklepowy(baza, { odczytane_at: LUSTRO, ...p });
 
   // GRUPA 1 — rozmiar stoi w nazwie RODZICA, os podzialu to cyfra.
-  for (const [produktId, nazwa] of [['1074', 'KLOSZE wys. 90cm (Mleczne)'], ['1075', 'KLOSZE wys. 50cm (Mleczne)']]) {
+  for (const [produktId, nazwa] of [
+    ['1074', 'KLOSZE wys. 90cm (Mleczne)'],
+    ['1075', 'KLOSZE wys. 50cm (Mleczne)'],
+  ]) {
     for (let cyfra = 0; cyfra <= 9; cyfra += 1) {
       wpisz({
-        kanal: 'pro', produkt_id: produktId, wariant_id: `${produktId}${cyfra}`, nazwa,
+        kanal: 'pro',
+        produkt_id: produktId,
+        wariant_id: `${produktId}${cyfra}`,
+        nazwa,
         sku_sklepu: `LMP-KLOSZE${produktId === '1074' ? '90' : '50'}-07${cyfra}`,
-        cena_gr: 8900, rozmiar_tekst: null,
+        cena_gr: 8900,
+        rozmiar_tekst: null,
         atrybuty_json: atrybuty(['szklo', 'Mleczne'], ['cyfra', String(cyfra)]),
       });
     }
@@ -353,30 +455,60 @@ function pierwszyOdczyt(baza) {
     ['10269', 'Gliwka', 'uklad', ['RÓWNOLEGLE', 'NAPRZEMIENNIE']],
   ];
   for (const [produktId, nazwa, atrybut, wartosci] of grupa2) {
-    wartosci.forEach((wartosc, i) => wpisz({
-      kanal: 'swietlik', produkt_id: produktId, wariant_id: `${produktId}${i}`, nazwa,
-      sku_sklepu: null, cena_gr: 7900, rozmiar_tekst: null,
-      atrybuty_json: atrybuty([atrybut, wartosc]),
-    }));
+    wartosci.forEach((wartosc, i) =>
+      wpisz({
+        kanal: 'swietlik',
+        produkt_id: produktId,
+        wariant_id: `${produktId}${i}`,
+        nazwa,
+        sku_sklepu: null,
+        cena_gr: 7900,
+        rozmiar_tekst: null,
+        atrybuty_json: atrybuty([atrybut, wartosc]),
+      }),
+    );
   }
 
   // GRUPA 3 — ZADNYCH atrybutow. Ceny sa rozmiarami, ale panel nie ma czego przeczytac.
-  for (const [produktId, nazwa] of [['26953', 'Koła duże'], ['26998', 'X']]) {
-    [7900, 9900, 11900].forEach((cena, i) => wpisz({
-      kanal: 'swietlik', produkt_id: produktId, wariant_id: `${produktId}${i}`, nazwa,
-      sku_sklepu: null, cena_gr: cena, rozmiar_tekst: null, atrybuty_json: '[]',
-    }));
+  for (const [produktId, nazwa] of [
+    ['26953', 'Koła duże'],
+    ['26998', 'X'],
+  ]) {
+    [7900, 9900, 11900].forEach((cena, i) =>
+      wpisz({
+        kanal: 'swietlik',
+        produkt_id: produktId,
+        wariant_id: `${produktId}${i}`,
+        nazwa,
+        sku_sklepu: null,
+        cena_gr: cena,
+        rozmiar_tekst: null,
+        atrybuty_json: '[]',
+      }),
+    );
   }
 
   // GRUPA 4 — to nie sa karty.
-  [69, 79, 89, 99, 109, 119, 129, 139, 149, 159, 169, 179].forEach((cena, i) => wpisz({
-    kanal: 'swietlik', produkt_id: '4464', wariant_id: `4464${i}`, nazwa: 'Projekt indywidualny',
-    sku_sklepu: null, cena_gr: cena * 100, rozmiar_tekst: null,
-    atrybuty_json: atrybuty(['cena', String(cena)]),
-  }));
+  [69, 79, 89, 99, 109, 119, 129, 139, 149, 159, 169, 179].forEach((cena, i) =>
+    wpisz({
+      kanal: 'swietlik',
+      produkt_id: '4464',
+      wariant_id: `4464${i}`,
+      nazwa: 'Projekt indywidualny',
+      sku_sklepu: null,
+      cena_gr: cena * 100,
+      rozmiar_tekst: null,
+      atrybuty_json: atrybuty(['cena', String(cena)]),
+    }),
+  );
   wpisz({
-    kanal: 'swietlik', produkt_id: '9001', wariant_id: '', nazwa: 'Pozycja indywidualna',
-    sku_sklepu: 'psm-zam-placeholder', cena_gr: 100, rozmiar_tekst: null,
+    kanal: 'swietlik',
+    produkt_id: '9001',
+    wariant_id: '',
+    nazwa: 'Pozycja indywidualna',
+    sku_sklepu: 'psm-zam-placeholder',
+    cena_gr: 100,
+    rozmiar_tekst: null,
   });
 }
 
@@ -386,7 +518,7 @@ describe('cztery grupy z pierwszego odczytu — ile kart powstaje z kazdej', () 
     pierwszyOdczyt(db);
     expect(db.prepare('SELECT COUNT(*) c FROM produkty_sklepowe').get().c).toBe(47);
 
-    const wynik = utworzKartyZNiepowiazanych(db, { kanalySklepow: ['pro', 'swietlik'],  teraz: '2026-08-11T09:00:00Z' });
+    const wynik = utworzKartyZNiepowiazanych(db, { kanalySklepow: ['pro', 'swietlik'], teraz: '2026-08-11T09:00:00Z' });
 
     // 20 (KLOSZE) + 8 (Kolekcja Las/Księżyc Senny/Gliwka) — dokladnie te, ktorym sklep wskazal os podzialu.
     expect(wynik.utworzone).toBe(28);
@@ -405,9 +537,12 @@ describe('cztery grupy z pierwszego odczytu — ile kart powstaje z kazdej', () 
   it('kazdy z 28 kart ma INNA nazwe — po to os podzialu wchodzi do nazwy', () => {
     const db = openOmsDb(':memory:');
     pierwszyOdczyt(db);
-    utworzKartyZNiepowiazanych(db, { kanalySklepow: ['pro', 'swietlik'],  teraz: '2026-08-11T09:00:00Z' });
+    utworzKartyZNiepowiazanych(db, { kanalySklepow: ['pro', 'swietlik'], teraz: '2026-08-11T09:00:00Z' });
 
-    const nazwy = db.prepare('SELECT nazwa FROM karty_produktow').all().map((w) => w.nazwa);
+    const nazwy = db
+      .prepare('SELECT nazwa FROM karty_produktow')
+      .all()
+      .map((w) => w.nazwa);
     expect(nazwy).toHaveLength(28);
     expect(new Set(nazwy).size).toBe(28);
     expect(nazwy).toContain('Kolekcja Las — Szyszka');
@@ -422,11 +557,13 @@ describe('cztery grupy z pierwszego odczytu — ile kart powstaje z kazdej', () 
   it('zaden z 28 kart nie dostaje zgadnietego wymiaru', () => {
     const db = openOmsDb(':memory:');
     pierwszyOdczyt(db);
-    utworzKartyZNiepowiazanych(db, { kanalySklepow: ['pro', 'swietlik'],  teraz: '2026-08-11T09:00:00Z' });
+    utworzKartyZNiepowiazanych(db, { kanalySklepow: ['pro', 'swietlik'], teraz: '2026-08-11T09:00:00Z' });
 
-    expect(db.prepare(
-      'SELECT COUNT(*) c FROM karty_produktow WHERE szerokosc_mm IS NOT NULL OR wysokosc_mm IS NOT NULL',
-    ).get().c).toBe(0);
+    expect(
+      db
+        .prepare('SELECT COUNT(*) c FROM karty_produktow WHERE szerokosc_mm IS NOT NULL OR wysokosc_mm IS NOT NULL')
+        .get().c,
+    ).toBe(0);
   });
 
   // ⚠️ DRUGIE KLIKNIECIE NIE MNOZY. Te 28 kart powstaje z pozycji, ktore do 2026-08-11
@@ -434,8 +571,11 @@ describe('cztery grupy z pierwszego odczytu — ile kart powstaje z kazdej', () 
   it('drugie klikniecie nie dokłada ani jednej karty', () => {
     const db = openOmsDb(':memory:');
     pierwszyOdczyt(db);
-    utworzKartyZNiepowiazanych(db, { kanalySklepow: ['pro', 'swietlik'],  teraz: '2026-08-11T09:00:00Z' });
-    const drugie = utworzKartyZNiepowiazanych(db, { kanalySklepow: ['pro', 'swietlik'],  teraz: '2026-08-11T10:00:00Z' });
+    utworzKartyZNiepowiazanych(db, { kanalySklepow: ['pro', 'swietlik'], teraz: '2026-08-11T09:00:00Z' });
+    const drugie = utworzKartyZNiepowiazanych(db, {
+      kanalySklepow: ['pro', 'swietlik'],
+      teraz: '2026-08-11T10:00:00Z',
+    });
 
     expect(drugie.utworzone).toBe(0);
     expect(db.prepare('SELECT COUNT(*) c FROM karty_produktow').get().c).toBe(28);

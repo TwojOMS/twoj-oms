@@ -2,7 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { zapiszUstawienia } from '../../../src/oms/db/ustawienia.js';
-import { odczytajSzablony, zmienSzablon, ustawDomyslnySzablon, zapiszSzablony } from '../../../src/domena/szablony-paczek.js';
+import {
+  odczytajSzablony,
+  zmienSzablon,
+  ustawDomyslnySzablon,
+  zapiszSzablony,
+} from '../../../src/domena/szablony-paczek.js';
 import { odczytajAutomaty, zmienAutomat, zapiszAutomaty } from '../../../src/domena/gabaryty-automatow.js';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
@@ -14,18 +19,39 @@ const ORLEN = '09164667-daa5-42dc-8087-33d7485790ac';
 const DHL_BOX = '0fe5b4af-9f09-443d-9d49-62331a20b5b2';
 
 const zamowienie = (n, nad = {}) => ({
-  zrodlo_id: n, numer: String(n),
+  zrodlo_id: n,
+  numer: String(n),
   klient: { email: 'j@example.test', phone: '+48500600700' },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
-  metoda_wysylki: 'dpd', punkt_odbioru: null, kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '99.00',
-  status_woo: 'processing', oplacone_at: '2026-10-13T13:00:00', anulowane: 0,
-  utworzone_at: '2026-10-13T13:13:48Z', pozycje: [], ...nad,
+  dostawa: {
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    address_1: 'Polna 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
+  },
+  metoda_wysylki: 'dpd',
+  punkt_odbioru: null,
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '99.00',
+  status_woo: 'processing',
+  oplacone_at: '2026-10-13T13:00:00',
+  anulowane: 0,
+  utworzone_at: '2026-10-13T13:13:48Z',
+  pozycje: [],
+  ...nad,
 });
 
 function zestaw({ automaty = null } = {}) {
   const db = openOmsDb(':memory:');
   let szablony = odczytajSzablony({});
-  szablony = zmienSzablon(szablony, { nazwa: 'Duża', waga: '3', dlugosc: '110', szerokosc: '75', wysokosc: '1' }, 'duza').stan;
+  szablony = zmienSzablon(
+    szablony,
+    { nazwa: 'Duża', waga: '3', dlugosc: '110', szerokosc: '75', wysokosc: '1' },
+    'duza',
+  ).stan;
   szablony = ustawDomyslnySzablon(szablony, 'duza').stan;
   zapiszUstawienia(db, zapiszSzablony(szablony));
   if (automaty) {
@@ -38,12 +64,21 @@ function zestaw({ automaty = null } = {}) {
     zapiszUstawienia(db, zapiszAutomaty(stan));
   }
   const uslugi = {};
-  const nadanie = { nadaj: vi.fn().mockResolvedValue({ numerListu: 'TEST-1' }), paczkaDomyslna: { waga: 1, dlugosc: 110, szerokosc: 75, wysokosc: 1 } };
+  const nadanie = {
+    nadaj: vi.fn().mockResolvedValue({ numerListu: 'TEST-1' }),
+    paczkaDomyslna: { waga: 1, dlugosc: 110, szerokosc: 75, wysokosc: 1 },
+  };
   const kurierzy = { allegro_wza: { pobierzMetodeDostawy: vi.fn(async (z) => uslugi[z.id]) } };
   const app = buildOmsServer({ db, config, nadanie, kurierzy });
-  const paczkomat = () => zapiszZamowienie(db, 'pro', zamowienie(1590, { metoda_wysylki: 'inpost_paczkomat', punkt_odbioru: 'KRA01M' }), {});
+  const paczkomat = () =>
+    zapiszZamowienie(db, 'pro', zamowienie(1590, { metoda_wysylki: 'inpost_paczkomat', punkt_odbioru: 'KRA01M' }), {});
   const automat = (numer, usluga) => {
-    const id = zapiszZamowienie(db, 'allegro_swietlik', zamowienie(numer, { metoda_wysylki: 'allegro_punkt', punkt_odbioru: 'P1' }), {});
+    const id = zapiszZamowienie(
+      db,
+      'allegro_swietlik',
+      zamowienie(numer, { metoda_wysylki: 'allegro_punkt', punkt_odbioru: 'P1' }),
+      {},
+    );
     uslugi[id] = usluga;
     return id;
   };
@@ -69,15 +104,24 @@ async function karta(app, id) {
 
 async function hurt(app, ids) {
   await app.ready();
-  const r = await app.inject({ method: 'POST', url: '/zamowienia/masowe/nadaj-podglad', headers, payload: { id: ids.map(String) } });
+  const r = await app.inject({
+    method: 'POST',
+    url: '/zamowienia/masowe/nadaj-podglad',
+    headers,
+    payload: { id: ids.map(String) },
+  });
   expect(r.statusCode).toBe(200);
-  const t = r.body.slice(r.body.indexOf('<table class="nadanie-hurtem"'), r.body.indexOf('</table>', r.body.indexOf('<table class="nadanie-hurtem"')));
+  const t = r.body.slice(
+    r.body.indexOf('<table class="nadanie-hurtem"'),
+    r.body.indexOf('</table>', r.body.indexOf('<table class="nadanie-hurtem"')),
+  );
   const wiersz = (id) => {
     const od = t.indexOf(`<select name="gabaryt_${id}"`);
     const kawalek = t.slice(od, t.indexOf('</td>', od));
     return {
       gabaryt: kawalek.match(/<option value="([A-Z])" selected>/)?.[1],
-      waga: kawalek.match(new RegExp(`name="waga_${id}" value="([^"]*)"`))?.[1] ?? kawalek.match(/waga ([\d.]+) kg/)?.[1],
+      waga:
+        kawalek.match(new RegExp(`name="waga_${id}" value="([^"]*)"`))?.[1] ?? kawalek.match(/waga ([\d.]+) kg/)?.[1],
     };
   };
   return wiersz;

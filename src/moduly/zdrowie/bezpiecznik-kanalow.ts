@@ -9,21 +9,38 @@ const PRZED_PIERWSZYM = 'zmień klucz w OMS_KANALY przed pierwszym zamówieniem'
  */
 export function alarmyNazwKanalow(definicje: readonly { klucz: string; typ: string }[]): string[] {
   return definicje.flatMap(({ klucz, typ }) => {
-    if (typ !== 'allegro' && klucz.toLowerCase().startsWith('allegro')) return [`kanał ${klucz} (typ ${typ}): klucz sklepu nie może zaczynać się od „allegro” — terminy wysyłki liczyłyby się jak dla Allegro (a z „allegro_” cały panel wziąłby zamówienia za Allegro); ${PRZED_PIERWSZYM}`];
+    if (typ !== 'allegro' && klucz.toLowerCase().startsWith('allegro'))
+      return [
+        `kanał ${klucz} (typ ${typ}): klucz sklepu nie może zaczynać się od „allegro” — terminy wysyłki liczyłyby się jak dla Allegro (a z „allegro_” cały panel wziąłby zamówienia za Allegro); ${PRZED_PIERWSZYM}`,
+      ];
     return [];
   });
 }
 
-type Konfiguracja = { sklepy: Record<string, unknown>; kanaly: Record<string, unknown>; braki?: Record<string, string[]>;wstrzymaneKanaly?:()=>readonly string[] };
+type Konfiguracja = {
+  sklepy: Record<string, unknown>;
+  kanaly: Record<string, unknown>;
+  braki?: Record<string, string[]>;
+  wstrzymaneKanaly?: () => readonly string[];
+};
 
 /** Odczyt lokalnego stanu przy każdym /health, bez kontaktu z integracjami. */
-export function alarmyKonfiguracjiKanalow(db: DatabaseSync, config: Konfiguracja, teraz: Date, proba: boolean): string[] {
+export function alarmyKonfiguracjiKanalow(
+  db: DatabaseSync,
+  config: Konfiguracja,
+  teraz: Date,
+  proba: boolean,
+): string[] {
   if (proba) return [];
-  const kanaly = db.prepare(`SELECT DISTINCT sklep FROM zamowienia
+  const kanaly = db
+    .prepare(
+      `SELECT DISTINCT sklep FROM zamowienia
     WHERE sklep <> 'reczne' AND julianday(utworzone_at) >= julianday(?, '-30 days')
-      AND julianday(utworzone_at) <= julianday(?) ORDER BY sklep`).all(teraz.toISOString(), teraz.toISOString()) as { sklep: string }[];
+      AND julianday(utworzone_at) <= julianday(?) ORDER BY sklep`,
+    )
+    .all(teraz.toISOString(), teraz.toISOString()) as { sklep: string }[];
   return kanaly.flatMap(({ sklep }) => {
-    if(config.wstrzymaneKanaly?.().includes(sklep))return [];
+    if (config.wstrzymaneKanaly?.().includes(sklep)) return [];
     if (Object.hasOwn(config.sklepy, sklep) || Object.hasOwn(config.kanaly, sklep)) return [];
     const nazwy = config.braki?.[sklep];
     const braki = nazwy?.length ? nazwy : ['OMS_KANALY'];

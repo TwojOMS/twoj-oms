@@ -7,25 +7,53 @@ import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 const AUTH = { authorization: `Basic ${Buffer.from('adam:x').toString('base64')}` };
 const CONFIG = { auth: { user: 'adam', pass: 'x' }, klienciZbiorczy: [] };
 const zmapowane = (nr) => ({
-  zrodlo_id: nr, numer: `Z-${nr}`,
+  zrodlo_id: nr,
+  numer: `Z-${nr}`,
   klient: { first_name: 'Jan', last_name: 'Testowy', email: 'j@k.pl' },
-  dostawa: {}, metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null,
-  kwota_brutto: '50.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
-  utworzone_at: '2026-09-14T10:00:00Z', pozycje: [],
+  dostawa: {},
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '50.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-09-14T10:00:00Z',
+  pozycje: [],
 });
 
-let db; let app; let ids; let nr = 0;
-function paczka(numer, {
-  sklep = 'pro', kurier = 'dpd', pdf = null, zpl = null, reczna = false,
-  etap = null, kod = null, at = '2026-09-18T10:00:00.000Z',
-} = {}) {
+let db;
+let app;
+let ids;
+let nr = 0;
+function paczka(
+  numer,
+  {
+    sklep = 'pro',
+    kurier = 'dpd',
+    pdf = null,
+    zpl = null,
+    reczna = false,
+    etap = null,
+    kod = null,
+    at = '2026-09-18T10:00:00.000Z',
+  } = {},
+) {
   const zamowienieId = zapiszZamowienie(db, sklep, zmapowane(++nr), {});
   const p = rozpocznijPrzesylke(db, zamowienieId, kurier);
   zakonczPrzesylke(db, p.id, {
-    numerListu: numer, etykietaSciezka: pdf, etykietaZplSciezka: zpl, surowa: '<x/>',
+    numerListu: numer,
+    etykietaSciezka: pdf,
+    etykietaZplSciezka: zpl,
+    surowa: '<x/>',
   });
-  db.prepare('UPDATE przesylki SET utworzona_at = ?, etykieta_reczna = ?, status_kuriera_kod = ? WHERE id = ?')
-    .run(at, reczna ? 1 : null, kod, p.id);
+  db.prepare('UPDATE przesylki SET utworzona_at = ?, etykieta_reczna = ?, status_kuriera_kod = ? WHERE id = ?').run(
+    at,
+    reczna ? 1 : null,
+    kod,
+    p.id,
+  );
   if (etap) zapiszStatusDpd(db, p.id, { opis: etap, at: '2026-09-18T11:00:00.000Z' });
   ids[numer] = p.id;
 }
@@ -50,8 +78,11 @@ beforeEach(() => {
   paczka('MOVED', { pdf: '/tmp/e.pdf', etap: 'Przesyłka odebrana przez Kuriera' });
   paczka('DELIVERED', { pdf: '/tmp/e.pdf', etap: 'Przesyłka doręczona' });
   paczka('HIDDEN', { pdf: '/tmp/e.pdf' });
-  db.prepare('UPDATE przesylki SET ukryta_at = ?, ukryta_przez = ? WHERE id = ?')
-    .run('2026-09-19T10:00:00Z', 'adam', ids.HIDDEN);
+  db.prepare('UPDATE przesylki SET ukryta_at = ?, ukryta_przez = ? WHERE id = ?').run(
+    '2026-09-19T10:00:00Z',
+    'adam',
+    ids.HIDDEN,
+  );
   paczka('OLD', { pdf: '/tmp/e.pdf', at: '2026-07-01T10:00:00.000Z' });
   app = buildOmsServer({ db, config: CONFIG });
 });
@@ -83,7 +114,8 @@ describe('Przesyłki → Utworzone', () => {
 
   it('pierwszy skan przenosi paczkę z Utworzonych do W drodze', async () => {
     zapiszStatusDpd(db, ids['U-PDF'], {
-      opis: 'Przesyłka odebrana przez Kuriera', at: '2026-09-21T11:00:00.000Z',
+      opis: 'Przesyłka odebrana przez Kuriera',
+      at: '2026-09-21T11:00:00.000Z',
     });
     const utworzone = await pobierz('/przesylki?pokaz=utworzone');
     const wDrodze = await pobierz('/przesylki?pokaz=w_drodze');
@@ -113,7 +145,8 @@ describe('Przesyłki → Utworzone', () => {
 
   it('ukrycie i przywrócenie wracają na Utworzone oraz aktualizują liczniki', async () => {
     const hide = await app.inject({
-      method: 'POST', url: `/przesylki/${ids['U-PDF']}/ukryj`,
+      method: 'POST',
+      url: `/przesylki/${ids['U-PDF']}/ukryj`,
       headers: { ...AUTH, origin: 'http://localhost' },
       payload: { pokaz: 'utworzone', kurier: 'dpd' },
     });
@@ -125,7 +158,8 @@ describe('Przesyłki → Utworzone', () => {
     expect(chipy(hidden.body)).toMatch(/Ukryte \(2\)/);
 
     const restore = await app.inject({
-      method: 'POST', url: `/przesylki/${ids['U-PDF']}/przywroc`,
+      method: 'POST',
+      url: `/przesylki/${ids['U-PDF']}/przywroc`,
       headers: { ...AUTH, origin: 'http://localhost' },
       payload: { pokaz: 'utworzone', kurier: 'dpd' },
     });

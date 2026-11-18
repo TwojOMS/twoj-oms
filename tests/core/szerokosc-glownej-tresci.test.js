@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 function pliki(katalog) {
-  return readdirSync(katalog, { withFileTypes: true }).flatMap(wpis => {
+  return readdirSync(katalog, { withFileTypes: true }).flatMap((wpis) => {
     const sciezka = join(katalog, wpis.name);
     return wpis.isDirectory() ? pliki(sciezka) : [sciezka];
   });
@@ -11,20 +11,31 @@ function pliki(katalog) {
 
 function naruszenia(plik, css) {
   // Zachowanie nowych linii pozwala podać rzeczywiste położenie naruszenia.
-  const bezKomentarzy = css.replace(/\/\*[\s\S]*?\*\//g, komentarz => komentarz.replace(/[^\n]/g, ' '));
+  const bezKomentarzy = css.replace(/\/\*[\s\S]*?\*\//g, (komentarz) => komentarz.replace(/[^\n]/g, ' '));
   const wynik = [];
   for (const dopasowanie of bezKomentarzy.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-    const selektory = dopasowanie[1].trim().split(',').map(s => s.trim());
+    const selektory = dopasowanie[1]
+      .trim()
+      .split(',')
+      .map((s) => s.trim());
     const deklaracje = new Map();
     for (const deklaracja of dopasowanie[2].split(';')) {
       const para = deklaracja.match(/^\s*([\w-]+)\s*:\s*([^;]+?)\s*$/);
-      if (para) deklaracje.set(para[1].toLowerCase(), para[2].replace(/\s*!important\s*$/i, '').trim().toLowerCase());
+      if (para)
+        deklaracje.set(
+          para[1].toLowerCase(),
+          para[2]
+            .replace(/\s*!important\s*$/i, '')
+            .trim()
+            .toLowerCase(),
+        );
     }
     const wartosci = (nazwa) => (deklaracje.get(nazwa) ?? '').split(/\s+/);
     const margin = wartosci('margin');
     const inline = wartosci('margin-inline');
-    const auto = wartosc => wartosc === 'auto';
-    const wycentrowany = (margin.length === 1 && auto(margin[0])) ||
+    const auto = (wartosc) => wartosc === 'auto';
+    const wycentrowany =
+      (margin.length === 1 && auto(margin[0])) ||
       (margin.length >= 2 && auto(margin[1]) && (margin.length < 4 || auto(margin[3]))) ||
       (auto(inline[0]) && (inline.length === 1 || auto(inline[1]))) ||
       (auto(deklaracje.get('margin-left')) && auto(deklaracje.get('margin-right')));
@@ -54,8 +65,8 @@ describe('szerokości treści', () => {
 
   it('pilnuje arkuszy OMS i stylów widoków', () => {
     // Layout ładuje oms-design i oms-ustawienia; widoki dołączają dwa pozostałe arkusze.
-    const arkusze = pliki('src/public').filter(p => /^src\/public\/[^/]+\.css$/.test(p));
-    const widoki = pliki('src').filter(p => /\/widoki\/[^/]+\.ejs$/.test(p));
+    const arkusze = pliki('src/public').filter((p) => /^src\/public\/[^/]+\.css$/.test(p));
+    const widoki = pliki('src').filter((p) => /\/widoki\/[^/]+\.ejs$/.test(p));
     const bledy = [];
     for (const plik of [...arkusze, ...widoki]) {
       const tekst = readFileSync(plik, 'utf8');

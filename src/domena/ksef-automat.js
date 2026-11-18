@@ -66,9 +66,12 @@ export function sprawdzFormularzAutomatu(body = {}) {
   const poprawnyPrzelacznik = wartosci.every((w) => w === '0' || w === '1') && (ostatnia === '0' || ostatnia === '1');
   if (!poprawnyPrzelacznik) bledy.push('Przełącznik „Wysyłaj automatycznie” musi mieć wartość 1 albo 0.');
   const godzina = typeof body?.godzina === 'string' ? body.godzina : '';
-  if (!WZOR_GODZINY.test(godzina)) bledy.push(`„${godzina}” to nie jest godzina w formacie GG:MM (00:00–${NAJPOZNIEJSZA_GODZINA}).`);
+  if (!WZOR_GODZINY.test(godzina))
+    bledy.push(`„${godzina}” to nie jest godzina w formacie GG:MM (00:00–${NAJPOZNIEJSZA_GODZINA}).`);
   else if (godzina > NAJPOZNIEJSZA_GODZINA) {
-    bledy.push(`Najpóźniejsza godzina wysyłki to ${NAJPOZNIEJSZA_GODZINA} — zegar sprawdza porę co minutę, a przebieg musi zmieścić się przed północą.`);
+    bledy.push(
+      `Najpóźniejsza godzina wysyłki to ${NAJPOZNIEJSZA_GODZINA} — zegar sprawdza porę co minutę, a przebieg musi zmieścić się przed północą.`,
+    );
   }
   return { wlaczony: ostatnia === '1', godzina, bledy };
 }
@@ -137,9 +140,12 @@ export function sprawdzFormularzTrybu(body = {}) {
   const odstep = surowy === '' ? ODSTEP_EDYCJI_DOMYSLNY : odstepEdycji(surowy);
   if (odstep === null) bledy.push(`Odstęp na poprawki to liczba pełnych minut od 0 do ${ODSTEP_EDYCJI_MAKS}.`);
   const godzina = typeof body?.godzina === 'string' ? body.godzina : '';
-  if (!WZOR_GODZINY.test(godzina)) bledy.push(`„${godzina}” to nie jest godzina w formacie GG:MM (00:00–${NAJPOZNIEJSZA_GODZINA}).`);
+  if (!WZOR_GODZINY.test(godzina))
+    bledy.push(`„${godzina}” to nie jest godzina w formacie GG:MM (00:00–${NAJPOZNIEJSZA_GODZINA}).`);
   else if (godzina > NAJPOZNIEJSZA_GODZINA) {
-    bledy.push(`Najpóźniejsza godzina wysyłki to ${NAJPOZNIEJSZA_GODZINA} — zegar sprawdza porę co minutę, a przebieg musi zmieścić się przed północą.`);
+    bledy.push(
+      `Najpóźniejsza godzina wysyłki to ${NAJPOZNIEJSZA_GODZINA} — zegar sprawdza porę co minutę, a przebieg musi zmieścić się przed północą.`,
+    );
   }
   return { tryb, odstepEdycji: odstep ?? ODSTEP_EDYCJI_DOMYSLNY, godzina, bledy };
 }

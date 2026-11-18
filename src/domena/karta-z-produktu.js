@@ -62,7 +62,12 @@ function kategoriaGlowna(produkt) {
 // Nazwane encje, ktore realnie wychodza z `short_description` WooCommerce. Reszte lapie
 // postac liczbowa nizej — polskie cudzyslowy i poltapzy Woo oddaje wlasnie tak (&#8222;).
 const ENCJE = new Map([
-  ['amp', '&'], ['lt', '<'], ['gt', '>'], ['quot', '"'], ['apos', "'"], ['nbsp', ' '],
+  ['amp', '&'],
+  ['lt', '<'],
+  ['gt', '>'],
+  ['quot', '"'],
+  ['apos', "'"],
+  ['nbsp', ' '],
 ]);
 
 /**
@@ -78,12 +83,11 @@ const ENCJE = new Map([
 function rozwinEncje(tekst) {
   return tekst.replace(/&(#\d+|#[xX][0-9a-fA-F]+|[a-zA-Z]+);/gu, (calosc, tresc) => {
     if (tresc[0] !== '#') return ENCJE.get(tresc.toLowerCase()) ?? calosc;
-    const kod = tresc[1] === 'x' || tresc[1] === 'X'
-      ? Number.parseInt(tresc.slice(2), 16)
-      : Number.parseInt(tresc.slice(1), 10);
+    const kod =
+      tresc[1] === 'x' || tresc[1] === 'X' ? Number.parseInt(tresc.slice(2), 16) : Number.parseInt(tresc.slice(1), 10);
     // Zero, polowka pary zastepczej i kod ponad zakresem Unicode nie sa znakiem, ktory da sie
     // wpisac do kolumny TEXT — zostaja tekstem, bo tak przynajmniej widac, co przyszlo.
-    if (!(kod >= 1 && kod <= 0x10FFFF) || (kod >= 0xD800 && kod <= 0xDFFF)) return calosc;
+    if (!(kod >= 1 && kod <= 0x10ffff) || (kod >= 0xd800 && kod <= 0xdfff)) return calosc;
     return String.fromCodePoint(kod);
   });
 }
@@ -103,7 +107,9 @@ function rozwinEncje(tekst) {
  */
 function opisZeSklepu(surowy) {
   if (typeof surowy !== 'string') return null;
-  const tekst = rozwinEncje(surowy.replace(/<[^>]*>/gu, ' ')).replace(/\s+/gu, ' ').trim();
+  const tekst = rozwinEncje(surowy.replace(/<[^>]*>/gu, ' '))
+    .replace(/\s+/gu, ' ')
+    .trim();
   // Pusty opis to `null`, nie pusty napis — kolumna ma mowic „nie wiem", a nie „wiem, ze nic".
   return tekst || null;
 }
@@ -235,8 +241,10 @@ export function powodPominiecia(produkt, kanalySklepow) {
   // Nierozpoznany kanal ma sie POKAZAC na liscie pominietych, a nie po cichu dosypac rejestrowi
   // wielu wierszy — ta sama zasada, co „filtr, ktorego nie rozumiemy, NIE POSZERZA zbioru".
   if (!kanalySklepow.includes(kanal)) {
-    return `kanał „${kanal || '(brak)'}" nie zakłada kart — karta powstaje z katalogu sklepu`
-      + ` (${kanalySklepow.join(', ')}), a ofertę wiąże się z nim ręcznie`;
+    return (
+      `kanał „${kanal || '(brak)'}" nie zakłada kart — karta powstaje z katalogu sklepu` +
+      ` (${kanalySklepow.join(', ')}), a ofertę wiąże się z nim ręcznie`
+    );
   }
 
   // Ukryty produkt, ktorym wtyczka panelu ofert wstawia pozycje indywidualna, wysylke
@@ -275,8 +283,10 @@ export function powodPominiecia(produkt, kanalySklepow) {
     // nierozroznialnych i nieodwracalnie ponumerowanych; odeslanie sprzedawcy do sklepu
     // kazaloby mu poprawiac katalog, ktory jest w porzadku. Panel mowi wiec, co ma zrobic SAM.
     if (atrybuty === null) {
-      return 'lustro nie zna jeszcze atrybutów tego wariantu — kliknij „Odczytaj katalogi",'
-        + ' żeby panel mógł rozstrzygnąć, czy to osobna karta';
+      return (
+        'lustro nie zna jeszcze atrybutów tego wariantu — kliknij „Odczytaj katalogi",' +
+        ' żeby panel mógł rozstrzygnąć, czy to osobna karta'
+      );
     }
 
     // Os podzialu INNA NIZ rozmiar i cena znaczy, ze sklep sam
@@ -288,14 +298,18 @@ export function powodPominiecia(produkt, kanalySklepow) {
       // To nie jest karta i nie bedzie — powod ma to mowic wprost, zeby ekran „pominiete"
       // odlozyl te pozycje do „tak ma byc", a nie trzymal jako robote do konca swiata.
       if (atrybuty.length) {
-        return 'warianty różnią się wyłącznie ceną — to nie jest karta w różnych rozmiarach,'
-          + ' tylko pozycja cennikowa; karty z niej nie zakładamy';
+        return (
+          'warianty różnią się wyłącznie ceną — to nie jest karta w różnych rozmiarach,' +
+          ' tylko pozycja cennikowa; karty z niej nie zakładamy'
+        );
       }
       // ZERO atrybutow: `Abażur lniany` i `X` (6 wariantow, ceny 79/99/119). Ceny SA tam
       // rozmiarami, ale panel nie ma czego przeczytac — a drabinka cenowa to dokladnie to
       // zgadywanie, ktorego zabrania zasada (1) tego pliku. Powod nazywa CZYNNOSC.
-      return 'wariant bez atrybutu wariacyjnego — panel nie ma czego przeczytać; nazwij'
-        + ' w sklepie atrybut („Rozmiar") i podaj w nim wartości rozmiarów zamiast samych cen';
+      return (
+        'wariant bez atrybutu wariacyjnego — panel nie ma czego przeczytać; nazwij' +
+        ' w sklepie atrybut („Rozmiar") i podaj w nim wartości rozmiarów zamiast samych cen'
+      );
     }
   }
 

@@ -10,7 +10,12 @@
 //   accept pola → dozwolone typy, `multiple` pola → wiele plików, data-maks-bajtow, data-maks-plikow (wolne miejsce),
 //   data-opis-typow (np. „JPEG, PNG lub WebP”). Przycisk wysyłki w tym samym formularzu: `data-strefa-przycisk`.
 
-const ROZSZERZENIA = { 'image/jpeg': ['jpg', 'jpeg'], 'image/png': ['png'], 'image/webp': ['webp'], 'image/gif': ['gif'] };
+const ROZSZERZENIA = {
+  'image/jpeg': ['jpg', 'jpeg'],
+  'image/png': ['png'],
+  'image/webp': ['webp'],
+  'image/gif': ['gif'],
+};
 
 export function rozmiarTekstem(bajty) {
   if (bajty < 1024) return `${bajty} B`;
@@ -20,7 +25,8 @@ export function rozmiarTekstem(bajty) {
 }
 const odmiana = (n, jeden, kilka, wiele) => {
   if (n === 1) return jeden;
-  const j = n % 10; const d = n % 100;
+  const j = n % 10;
+  const d = n % 100;
   return j >= 2 && j <= 4 && (d < 12 || d > 14) ? kilka : wiele;
 };
 const zPlikami = (zdarzenie) => [...(zdarzenie.dataTransfer?.types ?? [])].includes('Files');
@@ -28,7 +34,10 @@ const zPlikami = (zdarzenie) => [...(zdarzenie.dataTransfer?.types ?? [])].inclu
 /** Opcje strefy z atrybutów HTML (pole pliku i `data-*` strefy). */
 export function opcjeZAtrybutow(strefa) {
   const pole = strefa.querySelector('input[type="file"]');
-  const typy = String(pole?.getAttribute('accept') ?? '').split(',').map((t) => t.trim()).filter(Boolean);
+  const typy = String(pole?.getAttribute('accept') ?? '')
+    .split(',')
+    .map((t) => t.trim())
+    .filter(Boolean);
   const maksBajtow = Number(strefa.dataset.maksBajtow) || Infinity;
   const maksPlikow = strefa.dataset.maksPlikow === undefined ? Infinity : Number(strefa.dataset.maksPlikow);
   const opisTypow = strefa.dataset.opisTypow || typy.join(', ');
@@ -42,8 +51,10 @@ export function opcjeZAtrybutow(strefa) {
     komunikaty: {
       brak: 'Wybierz plik.',
       zlyTyp: (p) => `Plik „${p.name}” nie jest w formacie ${opisTypow}. Nic nie zostało dodane.`,
-      zaDuzy: (p) => `Plik „${p.name}” ma ${rozmiarTekstem(p.size)} — limit to ${rozmiarTekstem(maksBajtow)} na plik. Nic nie zostało dodane.`,
-      zaDuzo: (n, maks) => `Wybrano ${n} ${odmiana(n, 'plik', 'pliki', 'plików')}, a zostało miejsca na ${maks}. Nic nie zostało dodane.`,
+      zaDuzy: (p) =>
+        `Plik „${p.name}” ma ${rozmiarTekstem(p.size)} — limit to ${rozmiarTekstem(maksBajtow)} na plik. Nic nie zostało dodane.`,
+      zaDuzo: (n, maks) =>
+        `Wybrano ${n} ${odmiana(n, 'plik', 'pliki', 'plików')}, a zostało miejsca na ${maks}. Nic nie zostało dodane.`,
       kilka: 'Upuszczono kilka plików. Wybierz jeden plik.',
       pelna: 'Nie ma już miejsca na kolejne pliki. Usuń któryś z zapisanych, żeby dodać nowy.',
       wybrane: (pliki) => {
@@ -57,7 +68,8 @@ export function opcjeZAtrybutow(strefa) {
 /** Komunikat po polsku albo `null`, gdy plik wygląda na dobry. */
 export function sprawdzPlik(plik, opcje) {
   if (!plik) return opcje.komunikaty.brak;
-  const typ = opcje.typy.includes(plik.type) || (plik.type === '' && Boolean(opcje.rozszerzenia?.test(plik.name ?? '')));
+  const typ =
+    opcje.typy.includes(plik.type) || (plik.type === '' && Boolean(opcje.rozszerzenia?.test(plik.name ?? '')));
   if (!typ) return opcje.komunikaty.zlyTyp(plik);
   if (plik.size > opcje.maksBajtow) return opcje.komunikaty.zaDuzy(plik);
   return null;
@@ -79,7 +91,11 @@ export function sprawdzPliki(pliki, opcje) {
  * (jeden obraz podglądu — tryb jednego pliku), `klasaNad` (podświetlenie), `komunikaty.nieObraz`, `komunikaty.wybrany`.
  * W trybie wielu plików: lista `[data-strefa-lista]` z miniaturami i przycisk `[data-strefa-przycisk]` z liczbą.
  */
-export function podlaczStrefePliku(strefa, opcje, srodowisko = { DataTransfer: globalThis.DataTransfer, URL: globalThis.URL }) {
+export function podlaczStrefePliku(
+  strefa,
+  opcje,
+  srodowisko = { DataTransfer: globalThis.DataTransfer, URL: globalThis.URL },
+) {
   const pole = strefa.querySelector('input[type="file"]');
   const stan = strefa.querySelector(opcje.selStan ?? '[data-strefa-stan]');
   const podglad = opcje.selPodglad ? strefa.querySelector(opcje.selPodglad) : null;
@@ -97,13 +113,19 @@ export function podlaczStrefePliku(strefa, opcje, srodowisko = { DataTransfer: g
     for (const adres of adresy) srodowisko.URL.revokeObjectURL(adres);
     adresy = [];
     if (podglad) podglad.hidden = true;
-    if (lista) { lista.replaceChildren(); lista.hidden = true; }
+    if (lista) {
+      lista.replaceChildren();
+      lista.hidden = true;
+    }
     ustawPrzycisk(0);
   };
   // `wyczysc` = pole trzyma złe pliki (wybór z dysku) albo tryb jednego pliku: czyścimy, żeby nie poszły formularzem.
   // Złe upuszczenie przy wielu plikach nie rusza pola: wcześniejszy dobry wybór zostaje.
   const blad = (tresc, wyczysc = true) => {
-    if (wyczysc) { zwolnij(); pole.value = ''; }
+    if (wyczysc) {
+      zwolnij();
+      pole.value = '';
+    }
     stan.textContent = tresc;
     strefa.dataset.stan = 'blad';
   };
@@ -143,7 +165,8 @@ export function podlaczStrefePliku(strefa, opcje, srodowisko = { DataTransfer: g
         podglad.src = adres;
         podglad.hidden = false;
       }
-      stan.textContent = opcje.komunikaty.wybrany?.(plik) ?? `Wybrany plik: ${plik.name} (${rozmiarTekstem(plik.size)})`;
+      stan.textContent =
+        opcje.komunikaty.wybrany?.(plik) ?? `Wybrany plik: ${plik.name} (${rozmiarTekstem(plik.size)})`;
     }
     ustawPrzycisk(pliki.length);
     strefa.dataset.stan = 'wybrany';
@@ -177,12 +200,21 @@ export function podlaczStrefePliku(strefa, opcje, srodowisko = { DataTransfer: g
     wybrano(pliki);
   });
   pole.addEventListener('change', () => {
-    if (!pole.files || pole.files.length === 0) { zwolnij(); stan.textContent = ''; strefa.dataset.stan = ''; return; }
+    if (!pole.files || pole.files.length === 0) {
+      zwolnij();
+      stan.textContent = '';
+      strefa.dataset.stan = '';
+      return;
+    }
     wybrano([...pole.files]);
   });
-  if (podglad) podglad.addEventListener('error', () => blad(opcje.komunikaty.nieObraz ?? 'Tego pliku nie da się wyświetlić. Wybierz inny.'));
+  if (podglad)
+    podglad.addEventListener('error', () =>
+      blad(opcje.komunikaty.nieObraz ?? 'Tego pliku nie da się wyświetlić. Wybierz inny.'),
+    );
 }
 
 if (typeof document !== 'undefined') {
-  for (const strefa of document.querySelectorAll('[data-strefa-pliku]')) podlaczStrefePliku(strefa, opcjeZAtrybutow(strefa));
+  for (const strefa of document.querySelectorAll('[data-strefa-pliku]'))
+    podlaczStrefePliku(strefa, opcjeZAtrybutow(strefa));
 }

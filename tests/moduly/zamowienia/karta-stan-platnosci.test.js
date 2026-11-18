@@ -16,11 +16,24 @@ let nr = 15200;
 const zmapowane = (nad = {}) => {
   nr += 1;
   return {
-    zrodlo_id: nr, numer: String(nr), klient: { first_name: 'Pracownia', last_name: 'Półcień', email: 'biuro@example.test' },
-    dostawa: { city: 'Lublin' }, metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null,
-    kwota_brutto: '100.00', koszt_dostawy_brutto: '0.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
-    metoda_platnosci: 'Przelew tradycyjny', utworzone_at: '2026-11-03T10:15:00',
-    pozycje: [{ nazwa: 'Szablon liść', sku: 'PC-LISC-01', ilosc: 1, cena_brutto: '100.00', brutto_linii: '100.00', vat: null }],
+    zrodlo_id: nr,
+    numer: String(nr),
+    klient: { first_name: 'Pracownia', last_name: 'Półcień', email: 'biuro@example.test' },
+    dostawa: { city: 'Lublin' },
+    metoda_wysylki: 'dpd',
+    kwota_pobrania: null,
+    chce_fakture: 0,
+    nip: null,
+    kwota_brutto: '100.00',
+    koszt_dostawy_brutto: '0.00',
+    status_woo: 'processing',
+    oplacone_at: null,
+    anulowane: 0,
+    metoda_platnosci: 'Przelew tradycyjny',
+    utworzone_at: '2026-11-03T10:15:00',
+    pozycje: [
+      { nazwa: 'Szablon liść', sku: 'PC-LISC-01', ilosc: 1, cena_brutto: '100.00', brutto_linii: '100.00', vat: null },
+    ],
     ...nad,
   };
 };

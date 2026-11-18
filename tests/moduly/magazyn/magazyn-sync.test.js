@@ -16,7 +16,10 @@ import { zapiszProduktSklepowy, powiazProdukt } from '../../../src/oms/db/magazy
 import { przelaczStany, stanKarty, pozycjeBezKarty } from '../../../src/oms/db/stany-magazynowe.js';
 
 const TERAZ = '2026-08-06T10:00:00Z';
-const teraz = (wartosc = TERAZ) => () => wartosc;
+const teraz =
+  (wartosc = TERAZ) =>
+  () =>
+    wartosc;
 
 const sklepAtrapa = (produkty, warianty = {}) => ({
   pobierzWszystkieProdukty: vi.fn(async () => produkty),
@@ -26,17 +29,25 @@ const sklepAtrapa = (produkty, warianty = {}) => ({
 const allegroAtrapa = (oferty) => ({ pobierzOferty: vi.fn(async () => oferty) });
 
 const oferta = (id, nazwa = `Oferta ${id}`) => ({
-  id, name: nazwa,
+  id,
+  name: nazwa,
   sellingMode: { price: { amount: '89.00', currency: 'PLN' } },
   publication: { status: 'ACTIVE' },
 });
 
 const prosty = (nadpisz = {}) => ({
-  id: 900, type: 'simple', name: 'Kropla 70x100 cm', sku: 'LMP-KRO-1', price: '74.90',
+  id: 900,
+  type: 'simple',
+  name: 'Kropla 70x100 cm',
+  sku: 'LMP-KRO-1',
+  price: '74.90',
   permalink: 'https://pro.sklep-polcien.example.invalid/produkt/kropla/',
   short_description: '<p>Lampa</p>',
   categories: [{ id: 12, name: 'Oświetlenie' }],
-  images: [{ src: 'https://pro.sklep-polcien.example.invalid/a.jpg' }, { src: 'https://pro.sklep-polcien.example.invalid/b.jpg' }],
+  images: [
+    { src: 'https://pro.sklep-polcien.example.invalid/a.jpg' },
+    { src: 'https://pro.sklep-polcien.example.invalid/b.jpg' },
+  ],
   ...nadpisz,
 });
 
@@ -57,13 +68,24 @@ describe('odswiezMagazyn — kształt lustra', () => {
           { id: 944, type: 'variable', name: 'Plafon', price: '49' },
           { id: 900, type: 'simple', name: 'Kropla 70x100 cm', sku: 'LMP-KRO-1', price: '74.90' },
         ],
-        { 944: [{ id: 1090, sku: 'LMP-PLA-117', price: '49', attributes: [{ name: 'Rozmiar', option: '45 x 65 cm' }] }] },
+        {
+          944: [{ id: 1090, sku: 'LMP-PLA-117', price: '49', attributes: [{ name: 'Rozmiar', option: '45 x 65 cm' }] }],
+        },
       ),
     };
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: teraz() });
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: teraz(),
+    });
     expect(kanal(w, 'pro').zapisane).toBe(2);
-    expect(db.prepare('SELECT produkt_id, wariant_id FROM produkty_sklepowe ORDER BY produkt_id').all())
-      .toEqual([{ produkt_id: '900', wariant_id: '' }, { produkt_id: '944', wariant_id: '1090' }]);
+    expect(db.prepare('SELECT produkt_id, wariant_id FROM produkty_sklepowe ORDER BY produkt_id').all()).toEqual([
+      { produkt_id: '900', wariant_id: '' },
+      { produkt_id: '944', wariant_id: '1090' },
+    ]);
   });
 
   // ⚠️ Rodzic produktu wariantowego NIE jest osobnym wierszem — jego SKU jest puste,
@@ -71,10 +93,21 @@ describe('odswiezMagazyn — kształt lustra', () => {
   it('rodzic produktu wariantowego nie wchodzi do lustra', async () => {
     const db = openOmsDb(':memory:');
     const sklepy = {
-      pro: sklepAtrapa([{ id: 944, type: 'variable', name: 'Plafon' }],
-        { 944: [{ id: 1090, sku: 'A', price: '49' }, { id: 1091, sku: 'B', price: '74.90' }] }),
+      pro: sklepAtrapa([{ id: 944, type: 'variable', name: 'Plafon' }], {
+        944: [
+          { id: 1090, sku: 'A', price: '49' },
+          { id: 1091, sku: 'B', price: '74.90' },
+        ],
+      }),
     };
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: teraz() });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: teraz(),
+    });
     expect(db.prepare("SELECT COUNT(*) c FROM produkty_sklepowe WHERE wariant_id = ''").get().c).toBe(0);
     expect(wiersze(db).length).toBe(2);
   });
@@ -93,14 +126,28 @@ describe('odswiezMagazyn — kształt lustra', () => {
       ],
       { 944: [{ id: 1090, sku: 'A', price: '49' }] },
     );
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy: { pro: sklep }, allegro: null, teraz: teraz() });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { pro: sklep },
+      allegro: null,
+      teraz: teraz(),
+    });
     expect(sklep.pobierzWarianty.mock.calls).toEqual([[944]]);
   });
 
   it('produkt wariantowy bez ani jednego wariantu nie zostawia po sobie wiersza', async () => {
     const db = openOmsDb(':memory:');
     const sklepy = { pro: sklepAtrapa([{ id: 944, type: 'variable', name: 'Plafon' }], { 944: [] }) };
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: teraz() });
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: teraz(),
+    });
     expect(wiersze(db)).toEqual([]);
     expect(kanal(w, 'pro').zapisane).toBe(0);
     expect(kanal(w, 'pro').blad).toBe(null);
@@ -112,10 +159,16 @@ describe('odswiezMagazyn — kształt lustra', () => {
   it('identyfikatory z Woo lądują w bazie jako TEKST, nie liczba', async () => {
     const db = openOmsDb(':memory:');
     const sklepy = {
-      pro: sklepAtrapa([{ id: 944, type: 'variable', name: 'Plafon' }],
-        { 944: [{ id: 1090, sku: 'A', price: '49' }] }),
+      pro: sklepAtrapa([{ id: 944, type: 'variable', name: 'Plafon' }], { 944: [{ id: 1090, sku: 'A', price: '49' }] }),
     };
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: teraz() });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: teraz(),
+    });
     const r = jeden(db);
     expect(typeof r.produkt_id).toBe('string');
     expect(typeof r.wariant_id).toBe('string');
@@ -124,7 +177,14 @@ describe('odswiezMagazyn — kształt lustra', () => {
 
   it('produkt prosty przepisuje wszystkie kolumny lustra', async () => {
     const db = openOmsDb(':memory:');
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy: { pro: sklepAtrapa([prosty()]) }, allegro: null, teraz: teraz() });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { pro: sklepAtrapa([prosty()]) },
+      allegro: null,
+      teraz: teraz(),
+    });
     expect(jeden(db)).toMatchObject({
       kanal: 'pro',
       produkt_id: '900',
@@ -133,7 +193,8 @@ describe('odswiezMagazyn — kształt lustra', () => {
       sku_sklepu: 'LMP-KRO-1',
       cena_gr: 7490,
       kategorie_json: '["Oświetlenie"]',
-      zdjecia_json: '["https://pro.sklep-polcien.example.invalid/a.jpg","https://pro.sklep-polcien.example.invalid/b.jpg"]',
+      zdjecia_json:
+        '["https://pro.sklep-polcien.example.invalid/a.jpg","https://pro.sklep-polcien.example.invalid/b.jpg"]',
       adres: 'https://pro.sklep-polcien.example.invalid/produkt/kropla/',
       opis_zrodlowy: '<p>Lampa</p>',
       // Sklepy pobieramy WYLACZNIE ze `status=publish`, wiec stanu publikacji nie ma
@@ -149,19 +210,37 @@ describe('odswiezMagazyn — kształt lustra', () => {
   it('wariant bierze SKU, cenę i adres z SIEBIE, a nazwę i kategorie z rodzica', async () => {
     const db = openOmsDb(':memory:');
     const rodzic = prosty({
-      id: 944, type: 'variable', name: 'Plafon', sku: '', price: '49',
-      categories: [{ id: 12, name: 'Oświetlenie' }, { id: 13, name: 'Na ściany' }],
+      id: 944,
+      type: 'variable',
+      name: 'Plafon',
+      sku: '',
+      price: '49',
+      categories: [
+        { id: 12, name: 'Oświetlenie' },
+        { id: 13, name: 'Na ściany' },
+      ],
     });
     const sklepy = {
       pro: sklepAtrapa([rodzic], {
-        944: [{
-          id: 1090, sku: 'LMP-PLA-117', price: '49.00',
-          permalink: 'https://pro.sklep-polcien.example.invalid/produkt/plafon/?attribute_rozmiar=45',
-          attributes: [{ name: 'Rozmiar', option: '45 x 65 cm' }],
-        }],
+        944: [
+          {
+            id: 1090,
+            sku: 'LMP-PLA-117',
+            price: '49.00',
+            permalink: 'https://pro.sklep-polcien.example.invalid/produkt/plafon/?attribute_rozmiar=45',
+            attributes: [{ name: 'Rozmiar', option: '45 x 65 cm' }],
+          },
+        ],
       }),
     };
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: teraz() });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: teraz(),
+    });
     expect(jeden(db)).toMatchObject({
       nazwa: 'Plafon',
       sku_sklepu: 'LMP-PLA-117',
@@ -177,7 +256,14 @@ describe('odswiezMagazyn — kształt lustra', () => {
     const sklepy = {
       pro: sklepAtrapa([prosty({ id: 944, type: 'variable' })], { 944: [{ id: 1090, sku: 'A', price: '1' }] }),
     };
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: teraz() });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: teraz(),
+    });
     expect(jeden(db).adres).toBe('https://pro.sklep-polcien.example.invalid/produkt/kropla/');
   });
 
@@ -191,14 +277,30 @@ describe('odswiezMagazyn — kształt lustra', () => {
         944: [{ id: 1090, sku: 'A', price: '1', image: { src: 'https://pro.sklep-polcien.example.invalid/b.jpg' } }],
       }),
     };
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: teraz() });
-    expect(JSON.parse(jeden(db).zdjecia_json))
-      .toEqual(['https://pro.sklep-polcien.example.invalid/b.jpg', 'https://pro.sklep-polcien.example.invalid/a.jpg']);
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: teraz(),
+    });
+    expect(JSON.parse(jeden(db).zdjecia_json)).toEqual([
+      'https://pro.sklep-polcien.example.invalid/b.jpg',
+      'https://pro.sklep-polcien.example.invalid/a.jpg',
+    ]);
   });
 
   it('produkt bez zdjęć daje null, a nie pustą tablicę', async () => {
     const db = openOmsDb(':memory:');
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy: { pro: sklepAtrapa([prosty({ images: [] })]) }, allegro: null, teraz: teraz() });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { pro: sklepAtrapa([prosty({ images: [] })]) },
+      allegro: null,
+      teraz: teraz(),
+    });
     expect(jeden(db).zdjecia_json).toBe(null);
   });
 
@@ -209,10 +311,20 @@ describe('odswiezMagazyn — kształt lustra', () => {
     const db = openOmsDb(':memory:');
     const sklepy = {
       pro: sklepAtrapa([prosty({ id: 944, type: 'variable' })], {
-        944: [{ sku: 'A', price: '1' }, { sku: 'B', price: '2' }],
+        944: [
+          { sku: 'A', price: '1' },
+          { sku: 'B', price: '2' },
+        ],
       }),
     };
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: teraz() });
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: teraz(),
+    });
     expect(kanal(w, 'pro').blad).toMatch(/identyfikator/i);
     expect(kanal(w, 'pro').blad).toMatch(/944/);
     expect(wiersze(db)).toEqual([]);
@@ -223,7 +335,14 @@ describe('odswiezMagazyn — kształt lustra', () => {
   it('produkt bez nazwy wywala kanał z komunikatem, który go nazywa', async () => {
     const db = openOmsDb(':memory:');
     const sklepy = { pro: sklepAtrapa([{ id: 900, type: 'simple', price: '10' }]) };
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: teraz() });
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: teraz(),
+    });
     expect(kanal(w, 'pro').blad).toMatch(/nazw/i);
     expect(kanal(w, 'pro').blad).toMatch(/900/);
     expect(wiersze(db)).toEqual([]);
@@ -238,7 +357,14 @@ describe('odswiezMagazyn — rozmiar', () => {
   it('rozmiar produktu prostego bierze się z nazwy', async () => {
     const db = openOmsDb(':memory:');
     const sklepy = { pro: sklepAtrapa([{ id: 900, type: 'simple', name: 'Kropla – 60x62cm', price: '10' }]) };
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: teraz() });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: teraz(),
+    });
     expect(jeden(db).rozmiar_tekst).toBe('Kropla – 60x62cm');
   });
 
@@ -249,7 +375,14 @@ describe('odswiezMagazyn — rozmiar', () => {
         944: [{ id: 1090, sku: 'A', price: '1', attributes: [{ name: 'Rozmiar', option: '45 x 65 cm' }] }],
       }),
     };
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: teraz() });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: teraz(),
+    });
     expect(jeden(db).rozmiar_tekst).toBe('45 x 65 cm');
   });
 
@@ -264,7 +397,14 @@ describe('odswiezMagazyn — rozmiar', () => {
         944: [{ id: 1090, sku: 'A', price: '1', attributes: [{ name: 'Rozmiar', option: '70 x 100 cm' }] }],
       }),
     };
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: teraz() });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: teraz(),
+    });
     expect(jeden(db).rozmiar_tekst).toBe('70 x 100 cm');
   });
 
@@ -283,16 +423,32 @@ describe('odswiezMagazyn — rozmiar', () => {
         ],
       }),
     };
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: teraz() });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: teraz(),
+    });
     expect(wiersze(db).map((r) => r.rozmiar_tekst)).toEqual([null, null]);
   });
 
   it('produkt prosty z atrybutem „Rozmiar" bierze atrybut, nie nazwę', async () => {
     const db = openOmsDb(':memory:');
     const sklepy = {
-      pro: sklepAtrapa([prosty({ name: 'Kropla – 60x62cm', attributes: [{ name: 'Rozmiar', options: ['70 x 100 cm'] }] })]),
+      pro: sklepAtrapa([
+        prosty({ name: 'Kropla – 60x62cm', attributes: [{ name: 'Rozmiar', options: ['70 x 100 cm'] }] }),
+      ]),
     };
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: teraz() });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: teraz(),
+    });
     expect(jeden(db).rozmiar_tekst).toBe('70 x 100 cm');
   });
 
@@ -302,7 +458,14 @@ describe('odswiezMagazyn — rozmiar', () => {
     const sklepy = {
       pro: sklepAtrapa([prosty({ name: 'Kropla – 60x62cm', attributes: [{ name: 'Kolor', options: ['czarny'] }] })]),
     };
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: teraz() });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: teraz(),
+    });
     expect(jeden(db).rozmiar_tekst).toBe('Kropla – 60x62cm');
   });
 });
@@ -317,10 +480,20 @@ describe('odswiezMagazyn — kategoria główna ze sklepu', () => {
   it('mapuje identyfikator z Yoasta na nazwę kategorii produktu', async () => {
     const db = openOmsDb(':memory:');
     const p = prosty({
-      categories: [{ id: 12, name: 'Boho' }, { id: 64, name: 'Modern Organic' }],
+      categories: [
+        { id: 12, name: 'Boho' },
+        { id: 64, name: 'Modern Organic' },
+      ],
       meta_data: [{ key: '_yoast_wpseo_primary_product_cat', value: '64' }],
     });
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy: { pro: sklepAtrapa([p]) }, allegro: null, teraz: teraz() });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { pro: sklepAtrapa([p]) },
+      allegro: null,
+      teraz: teraz(),
+    });
     expect(jeden(db).kategoria_glowna_zrodla).toBe('Modern Organic');
   });
 
@@ -332,26 +505,54 @@ describe('odswiezMagazyn — kategoria główna ze sklepu', () => {
       categories: [{ id: 12, name: 'Boho' }],
       meta_data: [{ key: '_yoast_wpseo_primary_product_cat', value: '64' }],
     });
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy: { pro: sklepAtrapa([p]) }, allegro: null, teraz: teraz() });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { pro: sklepAtrapa([p]) },
+      allegro: null,
+      teraz: teraz(),
+    });
     expect(jeden(db).kategoria_glowna_zrodla).toBe(null);
   });
 
   it('brak metadanej Yoasta daje brak, a nie pierwszą kategorię z brzegu', async () => {
     const db = openOmsDb(':memory:');
-    const p = prosty({ categories: [{ id: 12, name: 'Boho' }, { id: 13, name: 'Farmhouse' }], meta_data: [] });
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy: { pro: sklepAtrapa([p]) }, allegro: null, teraz: teraz() });
+    const p = prosty({
+      categories: [
+        { id: 12, name: 'Boho' },
+        { id: 13, name: 'Farmhouse' },
+      ],
+      meta_data: [],
+    });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { pro: sklepAtrapa([p]) },
+      allegro: null,
+      teraz: teraz(),
+    });
     expect(jeden(db).kategoria_glowna_zrodla).toBe(null);
   });
 
   it('wariant dziedziczy kategorię główną rodzica', async () => {
     const db = openOmsDb(':memory:');
     const rodzic = prosty({
-      id: 944, type: 'variable',
+      id: 944,
+      type: 'variable',
       categories: [{ id: 64, name: 'Modern Organic' }],
       meta_data: [{ key: '_yoast_wpseo_primary_product_cat', value: '64' }],
     });
     const sklepy = { pro: sklepAtrapa([rodzic], { 944: [{ id: 1090, sku: 'A', price: '1' }] }) };
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: teraz() });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: teraz(),
+    });
     expect(jeden(db).kategoria_glowna_zrodla).toBe('Modern Organic');
   });
 });
@@ -367,10 +568,19 @@ describe('odswiezMagazyn — cena ze sklepu', () => {
     const db = openOmsDb(':memory:');
     const sklepy = {
       pro: sklepAtrapa([
-        prosty({ id: 1, price: '74.90' }), prosty({ id: 2, price: '49' }), prosty({ id: 3, price: '28.9' }),
+        prosty({ id: 1, price: '74.90' }),
+        prosty({ id: 2, price: '49' }),
+        prosty({ id: 3, price: '28.9' }),
       ]),
     };
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: teraz() });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: teraz(),
+    });
     const ceny = wiersze(db).map((r) => r.cena_gr);
     expect(ceny).toEqual([7490, 4900, 2890]);
     expect(ceny.every((c) => Number.isInteger(c))).toBe(true);
@@ -381,7 +591,14 @@ describe('odswiezMagazyn — cena ze sklepu', () => {
     const sklepy = {
       pro: sklepAtrapa([prosty({ id: 1, price: '' }), prosty({ id: 2, price: null }), prosty({ id: 3, price: '  ' })]),
     };
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: teraz() });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: teraz(),
+    });
     expect(wiersze(db).map((r) => r.cena_gr)).toEqual([null, null, null]);
   });
 
@@ -392,7 +609,14 @@ describe('odswiezMagazyn — cena ze sklepu', () => {
   it('kwota poza zakresem dokładnych liczb całkowitych wywala kanał', async () => {
     const db = openOmsDb(':memory:');
     const sklepy = { pro: sklepAtrapa([prosty({ id: 900, price: '99999999999999999999.99' })]) };
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: teraz() });
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: teraz(),
+    });
     expect(kanal(w, 'pro').blad).toMatch(/kwot/i);
     expect(wiersze(db)).toEqual([]);
   });
@@ -402,7 +626,14 @@ describe('odswiezMagazyn — cena ze sklepu', () => {
   it('cena nie do przeliczenia wywala kanał i nie zapisuje niczego', async () => {
     const db = openOmsDb(':memory:');
     const sklepy = { pro: sklepAtrapa([prosty({ id: 900, price: '74,90' })]) };
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: teraz() });
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: teraz(),
+    });
     expect(kanal(w, 'pro').blad).toMatch(/74,90/);
     expect(kanal(w, 'pro').blad).toMatch(/900/);
     expect(wiersze(db)).toEqual([]);
@@ -419,7 +650,14 @@ describe('odswiezMagazyn — kanały Allegro', () => {
   it('woła pobierzOferty BEZ argumentu i dokleja kanał z klucza mapy', async () => {
     const db = openOmsDb(':memory:');
     const klient = allegroAtrapa([oferta('1234567890', 'Trójnóg podłogowy')]);
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy: null, allegro: { allegro_polcien2: klient }, teraz: teraz() });
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: null,
+      allegro: { allegro_polcien2: klient },
+      teraz: teraz(),
+    });
     expect(klient.pobierzOferty.mock.calls.length).toBe(1);
     // Asercja po WSZYSTKICH wywolaniach, nie po [0].
     expect(klient.pobierzOferty.mock.calls.every((a) => a.length === 0)).toBe(true);
@@ -442,21 +680,37 @@ describe('odswiezMagazyn — kanały Allegro', () => {
     const db = openOmsDb(':memory:');
     const a = allegroAtrapa([oferta('1')]);
     const b = allegroAtrapa([oferta('2')]);
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
-      db, sklepy: null, allegro: { allegro_swietlik: a, allegro_polcien2: b }, teraz: teraz(),
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: null,
+      allegro: { allegro_swietlik: a, allegro_polcien2: b },
+      teraz: teraz(),
     });
     expect(a.pobierzOferty.mock.calls.length).toBe(1);
     expect(b.pobierzOferty.mock.calls.length).toBe(1);
-    expect(w.kanaly.map((k) => [k.kanal, k.zapisane]))
-      .toEqual([['allegro_swietlik', 1], ['allegro_polcien2', 1]]);
-    expect(wiersze(db).map((r) => [r.kanal, r.produkt_id]))
-      .toEqual([['allegro_polcien2', '2'], ['allegro_swietlik', '1']]);
+    expect(w.kanaly.map((k) => [k.kanal, k.zapisane])).toEqual([
+      ['allegro_swietlik', 1],
+      ['allegro_polcien2', 1],
+    ]);
+    expect(wiersze(db).map((r) => [r.kanal, r.produkt_id])).toEqual([
+      ['allegro_polcien2', '2'],
+      ['allegro_swietlik', '1'],
+    ]);
   });
 
   it('brak kanałów Allegro nie przeszkadza sklepom', async () => {
     for (const allegro of [null, undefined, {}]) {
       const db = openOmsDb(':memory:');
-      const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy: { pro: sklepAtrapa([prosty()]) }, allegro, teraz: teraz() });
+      const w = await odswiezMagazyn({
+        kanalySklepow: ['pro', 'swietlik'],
+        kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+        db,
+        sklepy: { pro: sklepAtrapa([prosty()]) },
+        allegro,
+        teraz: teraz(),
+      });
       expect(w.kanaly.map((k) => k.kanal)).toEqual(['pro']);
       expect(kanal(w, 'pro').zapisane).toBe(1);
     }
@@ -464,8 +718,13 @@ describe('odswiezMagazyn — kanały Allegro', () => {
 
   it('brak sklepów nie przeszkadza kanałom Allegro', async () => {
     const db = openOmsDb(':memory:');
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
-      db, sklepy: undefined, allegro: { allegro_swietlik: allegroAtrapa([oferta('1')]) }, teraz: teraz(),
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: undefined,
+      allegro: { allegro_swietlik: allegroAtrapa([oferta('1')]) },
+      teraz: teraz(),
     });
     expect(w.kanaly.map((k) => k.kanal)).toEqual(['allegro_swietlik']);
   });
@@ -475,7 +734,9 @@ describe('odswiezMagazyn — kanały Allegro', () => {
   it('oferta odrzucona przez regułę wywala swój kanał, a nie cały przebieg', async () => {
     const db = openOmsDb(':memory:');
     const zly = allegroAtrapa([{ id: '1', name: 'X', sellingMode: { price: { amount: '89.00', currency: 'EUR' } } }]);
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
       db,
       sklepy: { pro: sklepAtrapa([prosty()]) },
       allegro: { allegro_swietlik: zly },
@@ -498,8 +759,13 @@ describe('odswiezMagazyn — biała lista kanałów', () => {
   it('sklep pod nieznanym kluczem daje błąd i ani jednego wiersza', async () => {
     const db = openOmsDb(':memory:');
     const zly = sklepAtrapa([prosty()]);
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
-      db, sklepy: { prod: zly, swietlik: sklepAtrapa([prosty({ id: 5 })]) }, allegro: null, teraz: teraz(),
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { prod: zly, swietlik: sklepAtrapa([prosty({ id: 5 })]) },
+      allegro: null,
+      teraz: teraz(),
     });
     expect(kanal(w, 'prod').blad).toMatch(/prod/);
     expect(kanal(w, 'swietlik').zapisane).toBe(1);
@@ -512,8 +778,13 @@ describe('odswiezMagazyn — biała lista kanałów', () => {
   // najblizszym przebiegu kanalu Allegro caly ten katalog zostalby oznaczony jako znikniety.
   it('sklep pod kluczem kanału Allegro jest odrzucany', async () => {
     const db = openOmsDb(':memory:');
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
-      db, sklepy: { allegro_swietlik: sklepAtrapa([prosty()]) }, allegro: null, teraz: teraz(),
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { allegro_swietlik: sklepAtrapa([prosty()]) },
+      allegro: null,
+      teraz: teraz(),
     });
     expect(kanal(w, 'allegro_swietlik').blad).toMatch(/allegro_swietlik/);
     expect(wiersze(db)).toEqual([]);
@@ -522,7 +793,14 @@ describe('odswiezMagazyn — biała lista kanałów', () => {
   it('kanał Allegro pod kluczem spoza białej listy jest odrzucany', async () => {
     const db = openOmsDb(':memory:');
     const klient = allegroAtrapa([oferta('1')]);
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy: null, allegro: { allegro_swietli: klient, pro: klient }, teraz: teraz() });
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: null,
+      allegro: { allegro_swietli: klient, pro: klient },
+      teraz: teraz(),
+    });
     expect(kanal(w, 'allegro_swietli').blad).toMatch(/allegro_swietli/);
     expect(kanal(w, 'pro').blad).toMatch(/pro/);
     expect(klient.pobierzOferty.mock.calls.length).toBe(0);
@@ -534,14 +812,15 @@ describe('odswiezMagazyn — biała lista kanałów', () => {
   // a odczyt magazynu nie zapisywalby NICZEGO.
   it('cztery prawdziwe kanały przechodzą bez jednego błędu', async () => {
     const db = openOmsDb(':memory:');
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
       db,
       sklepy: { pro: sklepAtrapa([prosty({ id: 1 })]), swietlik: sklepAtrapa([prosty({ id: 2 })]) },
       allegro: { allegro_swietlik: allegroAtrapa([oferta('3')]), allegro_polcien2: allegroAtrapa([oferta('4')]) },
       teraz: teraz(),
     });
-    expect(w.kanaly.map((k) => k.kanal))
-      .toEqual(['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']);
+    expect(w.kanaly.map((k) => k.kanal)).toEqual(['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']);
     expect(w.kanaly.filter((k) => k.blad)).toEqual([]);
     expect(w.kanaly.map((k) => k.zapisane)).toEqual([1, 1, 1, 1]);
     expect(wiersze(db).length).toBe(4);
@@ -556,11 +835,20 @@ describe('odswiezMagazyn — awaria kanału', () => {
   it('awaria jednego kanału nie przerywa pozostałych', async () => {
     const db = openOmsDb(':memory:');
     const sklepy = {
-      pro: { pobierzWszystkieProdukty: async () => { throw new Error('sklep leży'); } },
+      pro: {
+        pobierzWszystkieProdukty: async () => {
+          throw new Error('sklep leży');
+        },
+      },
       swietlik: sklepAtrapa([{ id: 5, type: 'simple', name: 'Plecionka', price: '99' }]),
     };
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
-      db, sklepy, allegro: { allegro_swietlik: allegroAtrapa([oferta('7')]) }, teraz: teraz(),
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: { allegro_swietlik: allegroAtrapa([oferta('7')]) },
+      teraz: teraz(),
     });
     expect(kanal(w, 'pro').blad).toMatch(/sklep leży/);
     expect(kanal(w, 'swietlik').zapisane).toBe(1);
@@ -569,11 +857,17 @@ describe('odswiezMagazyn — awaria kanału', () => {
 
   it('awaria kanału Allegro nie przerywa sklepów ani drugiego konta', async () => {
     const db = openOmsDb(':memory:');
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
       db,
       sklepy: { pro: sklepAtrapa([prosty()]) },
       allegro: {
-        allegro_swietlik: { pobierzOferty: async () => { throw new Error('Allegro: HTTP 401 przy /sale/offers'); } },
+        allegro_swietlik: {
+          pobierzOferty: async () => {
+            throw new Error('Allegro: HTTP 401 przy /sale/offers');
+          },
+        },
         allegro_polcien2: allegroAtrapa([oferta('9')]),
       },
       teraz: teraz(),
@@ -588,9 +882,29 @@ describe('odswiezMagazyn — awaria kanału', () => {
   it('kanał, który padł, NIE dostaje oznaczenia zniknięcia', async () => {
     const db = openOmsDb(':memory:');
     const dobry = { pro: sklepAtrapa([{ id: 1, type: 'simple', name: 'A', price: '10' }]) };
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy: dobry, allegro: null, teraz: teraz('2026-08-06T10:00:00Z') });
-    const zly = { pro: { pobierzWszystkieProdukty: async () => { throw new Error('padło'); } } };
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy: zly, allegro: null, teraz: teraz('2026-08-07T10:00:00Z') });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: dobry,
+      allegro: null,
+      teraz: teraz('2026-08-06T10:00:00Z'),
+    });
+    const zly = {
+      pro: {
+        pobierzWszystkieProdukty: async () => {
+          throw new Error('padło');
+        },
+      },
+    };
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: zly,
+      allegro: null,
+      teraz: teraz('2026-08-07T10:00:00Z'),
+    });
     expect(db.prepare('SELECT zniknal_at FROM produkty_sklepowe').get().zniknal_at).toBe(null);
     expect(kanal(w, 'pro').znikniete).toBe(0);
   });
@@ -602,13 +916,22 @@ describe('odswiezMagazyn — awaria kanału', () => {
   it('kanał, który padł w połowie, nie zostawia w bazie ani połowy katalogu', async () => {
     const db = openOmsDb(':memory:');
     const sklep = {
-      pobierzWszystkieProdukty: async () => ([
+      pobierzWszystkieProdukty: async () => [
         { id: 1, type: 'simple', name: 'A', price: '10' },
         { id: 2, type: 'variable', name: 'B' },
-      ]),
-      pobierzWarianty: async () => { throw new Error('Odczyt wariantów urwał się'); },
+      ],
+      pobierzWarianty: async () => {
+        throw new Error('Odczyt wariantów urwał się');
+      },
     };
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy: { pro: sklep }, allegro: null, teraz: teraz() });
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { pro: sklep },
+      allegro: null,
+      teraz: teraz(),
+    });
     expect(kanal(w, 'pro').blad).toMatch(/urwał/);
     expect(kanal(w, 'pro').zapisane).toBe(0);
     expect(wiersze(db)).toEqual([]);
@@ -626,7 +949,14 @@ describe('odswiezMagazyn — awaria kanału', () => {
         { type: 'simple', name: 'B bez identyfikatora', price: '10' },
       ]),
     };
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: teraz() });
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: teraz(),
+    });
     expect(kanal(w, 'pro').blad).toMatch(/produkt_id/);
     expect(wiersze(db)).toEqual([]);
   });
@@ -636,7 +966,9 @@ describe('odswiezMagazyn — awaria kanału', () => {
   // Taki kanal ma zostac zamrozony w ostatnim znanym stanie, a nie wygaszony.
   it('kanał odrzucony przez kontrolę kompletności zostawia lustro nietknięte', async () => {
     const db = openOmsDb(':memory:');
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
       db,
       sklepy: { swietlik: sklepAtrapa([prosty({ id: 5 }), prosty({ id: 6 })]) },
       allegro: null,
@@ -647,23 +979,46 @@ describe('odswiezMagazyn — awaria kanału', () => {
         throw new Error('Odczyt produktów urwał się: sklep zapowiedział 668 pozycji, a zebraliśmy 640.');
       },
     };
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy: { swietlik: sklep }, allegro: null, teraz: teraz('2026-08-07T10:00:00Z') });
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { swietlik: sklep },
+      allegro: null,
+      teraz: teraz('2026-08-07T10:00:00Z'),
+    });
     expect(kanal(w, 'swietlik').blad).toMatch(/668/);
     expect(db.prepare('SELECT COUNT(*) c FROM produkty_sklepowe WHERE zniknal_at IS NOT NULL').get().c).toBe(0);
-    expect(db.prepare("SELECT COUNT(*) c FROM produkty_sklepowe WHERE odczytane_at LIKE '2026-08-06%'").get().c).toBe(2);
+    expect(db.prepare("SELECT COUNT(*) c FROM produkty_sklepowe WHERE odczytane_at LIKE '2026-08-06%'").get().c).toBe(
+      2,
+    );
   });
 
   // Awaria kanalu nie ma prawa przerwac PETLI — kanaly stojace ZA nim w kolejnosci musza
   // sie odczytac. Mutacja „rzuc dalej po pierwszym bledzie" zabija dokladnie to.
   it('nawet gdy padają trzy kanały, czwarty zapisuje się normalnie', async () => {
     const db = openOmsDb(':memory:');
-    const pada = (co) => ({ pobierzWszystkieProdukty: async () => { throw new Error(co); } });
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+    const pada = (co) => ({
+      pobierzWszystkieProdukty: async () => {
+        throw new Error(co);
+      },
+    });
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
       db,
       sklepy: { pro: pada('raz'), swietlik: sklepAtrapa([prosty({ id: 5 })]) },
       allegro: {
-        allegro_swietlik: { pobierzOferty: async () => { throw new Error('dwa'); } },
-        allegro_polcien2: { pobierzOferty: async () => { throw new Error('trzy'); } },
+        allegro_swietlik: {
+          pobierzOferty: async () => {
+            throw new Error('dwa');
+          },
+        },
+        allegro_polcien2: {
+          pobierzOferty: async () => {
+            throw new Error('trzy');
+          },
+        },
       },
       teraz: teraz(),
     });
@@ -676,8 +1031,21 @@ describe('odswiezMagazyn — awaria kanału', () => {
   // w kolumnie bledu na ekranie.
   it('kanał, który rzucił czymś, co nie jest błędem, i tak opisuje się czytelnie', async () => {
     const db = openOmsDb(':memory:');
-    const sklepy = { pro: { pobierzWszystkieProdukty: async () => { throw 'padło'; } } };
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: teraz() });
+    const sklepy = {
+      pro: {
+        pobierzWszystkieProdukty: async () => {
+          throw 'padło';
+        },
+      },
+    };
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: teraz(),
+    });
     expect(kanal(w, 'pro').blad).toMatch(/padło/);
   });
 });
@@ -690,13 +1058,26 @@ describe('odswiezMagazyn — zniknięcia', () => {
   it('produkt, którego sklep już nie pokazuje, dostaje zniknal_at i wraca w liczniku', async () => {
     const db = openOmsDb(':memory:');
     const sklepy = { pro: sklepAtrapa([prosty({ id: 1 }), prosty({ id: 2 })]) };
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: teraz('2026-08-06T10:00:00Z') });
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
-      db, sklepy: { pro: sklepAtrapa([prosty({ id: 1 })]) }, allegro: null, teraz: teraz('2026-08-07T10:00:00Z'),
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: teraz('2026-08-06T10:00:00Z'),
+    });
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { pro: sklepAtrapa([prosty({ id: 1 })]) },
+      allegro: null,
+      teraz: teraz('2026-08-07T10:00:00Z'),
     });
     expect(kanal(w, 'pro').znikniete).toBe(1);
-    expect(db.prepare('SELECT produkt_id FROM produkty_sklepowe WHERE zniknal_at IS NOT NULL').all())
-      .toEqual([{ produkt_id: '2' }]);
+    expect(db.prepare('SELECT produkt_id FROM produkty_sklepowe WHERE zniknal_at IS NOT NULL').all()).toEqual([
+      { produkt_id: '2' },
+    ]);
   });
 
   // ⚠️ `oznaczZnikniete` MUSI stac PO wszystkich zapisach kanalu. Przeniesione PRZED nie
@@ -706,9 +1087,21 @@ describe('odswiezMagazyn — zniknięcia', () => {
   it('licznik zniknięć liczy WYŁĄCZNIE to, czego w tym przebiegu nie było', async () => {
     const db = openOmsDb(':memory:');
     const trzy = [prosty({ id: 1 }), prosty({ id: 2 }), prosty({ id: 3 })];
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy: { pro: sklepAtrapa(trzy) }, allegro: null, teraz: teraz('2026-08-06T10:00:00Z') });
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
-      db, sklepy: { pro: sklepAtrapa(trzy) }, allegro: null, teraz: teraz('2026-08-07T10:00:00Z'),
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { pro: sklepAtrapa(trzy) },
+      allegro: null,
+      teraz: teraz('2026-08-06T10:00:00Z'),
+    });
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { pro: sklepAtrapa(trzy) },
+      allegro: null,
+      teraz: teraz('2026-08-07T10:00:00Z'),
     });
     expect(kanal(w, 'pro').znikniete).toBe(0);
     expect(db.prepare('SELECT COUNT(*) c FROM produkty_sklepowe WHERE zniknal_at IS NOT NULL').get().c).toBe(0);
@@ -717,8 +1110,17 @@ describe('odswiezMagazyn — zniknięcia', () => {
   it('zniknięcie w jednym kanale nie dotyka katalogu drugiego', async () => {
     const db = openOmsDb(':memory:');
     const sklepy = { pro: sklepAtrapa([prosty({ id: 1 })]), swietlik: sklepAtrapa([prosty({ id: 2 })]) };
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: teraz('2026-08-06T10:00:00Z') });
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: teraz('2026-08-06T10:00:00Z'),
+    });
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
       db,
       // ⚠️ Na PRO przychodzi INNY produkt, a nie pusta lista: od hamulca pustego odczytu
       // (niżej) zerowy odczyt przy żywym lustrze jest awarią kanału, więc nie da się już
@@ -729,25 +1131,42 @@ describe('odswiezMagazyn — zniknięcia', () => {
     });
     expect(kanal(w, 'pro').znikniete).toBe(1);
     expect(kanal(w, 'swietlik').znikniete).toBe(0);
-    expect(db.prepare('SELECT kanal FROM produkty_sklepowe WHERE zniknal_at IS NOT NULL').all())
-      .toEqual([{ kanal: 'pro' }]);
+    expect(db.prepare('SELECT kanal FROM produkty_sklepowe WHERE zniknal_at IS NOT NULL').all()).toEqual([
+      { kanal: 'pro' },
+    ]);
   });
 
   it('produkt, który wrócił do sklepu, przestaje być zniknięty', async () => {
     const db = openOmsDb(':memory:');
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
-      db, sklepy: { pro: sklepAtrapa([prosty({ id: 1 })]) }, allegro: null, teraz: teraz('2026-08-06T10:00:00Z'),
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { pro: sklepAtrapa([prosty({ id: 1 })]) },
+      allegro: null,
+      teraz: teraz('2026-08-06T10:00:00Z'),
     });
     // ⚠️ Środkowy przebieg MUSI coś oddać (inny produkt), bo od hamulca pustego odczytu
     // zerowa lista przy żywym lustrze jest awarią kanału i NIE oznaczyłaby niczego — a wtedy
     // ten test sprawdzałby zerowanie znacznika, którego nigdy nie postawiono.
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
-      db, sklepy: { pro: sklepAtrapa([prosty({ id: 2 })]) }, allegro: null, teraz: teraz('2026-08-07T10:00:00Z'),
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { pro: sklepAtrapa([prosty({ id: 2 })]) },
+      allegro: null,
+      teraz: teraz('2026-08-07T10:00:00Z'),
     });
-    expect(db.prepare('SELECT zniknal_at FROM produkty_sklepowe WHERE produkt_id = 1').get().zniknal_at)
-      .toBe('2026-08-07T10:00:00.000Z');
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
-      db, sklepy: { pro: sklepAtrapa([prosty({ id: 1 })]) }, allegro: null, teraz: teraz('2026-08-08T10:00:00Z'),
+    expect(db.prepare('SELECT zniknal_at FROM produkty_sklepowe WHERE produkt_id = 1').get().zniknal_at).toBe(
+      '2026-08-07T10:00:00.000Z',
+    );
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { pro: sklepAtrapa([prosty({ id: 1 })]) },
+      allegro: null,
+      teraz: teraz('2026-08-08T10:00:00Z'),
     });
     expect(db.prepare('SELECT zniknal_at FROM produkty_sklepowe WHERE produkt_id = 1').get().zniknal_at).toBe(null);
   });
@@ -756,13 +1175,23 @@ describe('odswiezMagazyn — zniknięcia', () => {
   // takze ten, w ktorym produkt zniknal ze sklepu.
   it('odczyt nie zrywa powiązania karty z produktem', async () => {
     const db = openOmsDb(':memory:');
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
-      db, sklepy: { pro: sklepAtrapa([prosty({ id: 1 })]) }, allegro: null, teraz: teraz('2026-08-06T10:00:00Z'),
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { pro: sklepAtrapa([prosty({ id: 1 })]) },
+      allegro: null,
+      teraz: teraz('2026-08-06T10:00:00Z'),
     });
     db.prepare("INSERT INTO karty_produktow (nazwa, utworzony_at, zmieniony_at) VALUES ('W', 'x', 'x')").run();
     db.prepare('UPDATE produkty_sklepowe SET karta_id = 1').run();
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
-      db, sklepy: { pro: sklepAtrapa([prosty({ id: 1, name: 'Nowa nazwa' })]) }, allegro: null, teraz: teraz('2026-08-07T10:00:00Z'),
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { pro: sklepAtrapa([prosty({ id: 1, name: 'Nowa nazwa' })]) },
+      allegro: null,
+      teraz: teraz('2026-08-07T10:00:00Z'),
     });
     expect(jeden(db)).toMatchObject({ karta_id: 1, nazwa: 'Nowa nazwa' });
   });
@@ -779,7 +1208,9 @@ describe('odswiezMagazyn — znacznik czasu', () => {
   // na PÓŹNIEJSZE niz „11:00Z", mimo ze jest o godzine wczesniejsze.
   it('znacznik jest wymuszany na UTC, więc porównanie tekstowe nie kłamie', async () => {
     const db = openOmsDb(':memory:');
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
       db,
       sklepy: { pro: sklepAtrapa([prosty({ id: 1 })]) },
       allegro: null,
@@ -789,18 +1220,31 @@ describe('odswiezMagazyn — znacznik czasu', () => {
 
     // Godzinę później (UTC) sklep pokazuje już INNY produkt — pierwszy ma zniknąć. Zerową
     // listą nie da się tego wymusić od czasu hamulca pustego odczytu (niżej).
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
-      db, sklepy: { pro: sklepAtrapa([prosty({ id: 2 })]) }, allegro: null, teraz: teraz('2026-08-06T11:00:00Z'),
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { pro: sklepAtrapa([prosty({ id: 2 })]) },
+      allegro: null,
+      teraz: teraz('2026-08-06T11:00:00Z'),
     });
     expect(kanal(w, 'pro').znikniete).toBe(1);
-    expect(db.prepare('SELECT produkt_id FROM produkty_sklepowe WHERE zniknal_at IS NOT NULL').all())
-      .toEqual([{ produkt_id: '1' }]);
+    expect(db.prepare('SELECT produkt_id FROM produkty_sklepowe WHERE zniknal_at IS NOT NULL').all()).toEqual([
+      { produkt_id: '1' },
+    ]);
   });
 
   it('znacznik zawsze ma kształt ISO z Z na końcu', async () => {
     const db = openOmsDb(':memory:');
     for (const wartosc of ['2026-08-06T10:00:00Z', '2026-08-06T12:00:00+02:00', new Date('2026-08-06T10:00:00Z')]) {
-      await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy: { pro: sklepAtrapa([prosty({ id: 1 })]) }, allegro: null, teraz: () => wartosc });
+      await odswiezMagazyn({
+        kanalySklepow: ['pro', 'swietlik'],
+        kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+        db,
+        sklepy: { pro: sklepAtrapa([prosty({ id: 1 })]) },
+        allegro: null,
+        teraz: () => wartosc,
+      });
       expect(jeden(db).odczytane_at).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     }
   });
@@ -813,7 +1257,9 @@ describe('odswiezMagazyn — znacznik czasu', () => {
     const db = openOmsDb(':memory:');
     let i = 0;
     const zegarRuchomy = () => `2026-08-06T10:0${i++}:00Z`;
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
       db,
       sklepy: { pro: sklepAtrapa([prosty({ id: 1 }), prosty({ id: 2 }), prosty({ id: 3 })]) },
       allegro: { allegro_swietlik: allegroAtrapa([oferta('4'), oferta('5')]) },
@@ -829,8 +1275,16 @@ describe('odswiezMagazyn — znacznik czasu', () => {
   it('zegar oddający śmieć wywala przebieg, zanim cokolwiek trafi do bazy', async () => {
     const db = openOmsDb(':memory:');
     const sklep = sklepAtrapa([prosty()]);
-    await expect(odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy: { pro: sklep }, allegro: null, teraz: () => 'wczoraj' }))
-      .rejects.toThrow(/wczoraj/);
+    await expect(
+      odswiezMagazyn({
+        kanalySklepow: ['pro', 'swietlik'],
+        kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+        db,
+        sklepy: { pro: sklep },
+        allegro: null,
+        teraz: () => 'wczoraj',
+      }),
+    ).rejects.toThrow(/wczoraj/);
     expect(wiersze(db)).toEqual([]);
     expect(sklep.pobierzWszystkieProdukty.mock.calls.length).toBe(0);
   });
@@ -844,7 +1298,9 @@ describe('odswiezMagazyn — postęp', () => {
   it('melduje postęp z nazwą kanału i licznikami', async () => {
     const db = openOmsDb(':memory:');
     const postep = vi.fn();
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
       db,
       sklepy: { pro: sklepAtrapa([prosty({ id: 1 }), prosty({ id: 2 })]) },
       allegro: { allegro_swietlik: allegroAtrapa([oferta('3')]) },
@@ -852,7 +1308,9 @@ describe('odswiezMagazyn — postęp', () => {
       postep,
     });
     expect(postep.mock.calls.map(([i]) => [i.kanal, i.zrobione, i.zTego])).toEqual([
-      ['pro', 1, 2], ['pro', 2, 2], ['allegro_swietlik', 1, 1],
+      ['pro', 1, 2],
+      ['pro', 2, 2],
+      ['allegro_swietlik', 1, 1],
     ]);
   });
 
@@ -861,12 +1319,16 @@ describe('odswiezMagazyn — postęp', () => {
   // paska postepu zamrazalaby lustro.
   it('postęp, który rzuca, nie psuje przebiegu', async () => {
     const db = openOmsDb(':memory:');
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
       db,
       sklepy: { pro: sklepAtrapa([prosty()]) },
       allegro: null,
       teraz: teraz(),
-      postep: () => { throw new Error('pasek padł'); },
+      postep: () => {
+        throw new Error('pasek padł');
+      },
     });
     expect(kanal(w, 'pro').blad).toBe(null);
     expect(kanal(w, 'pro').zapisane).toBe(1);
@@ -874,7 +1336,14 @@ describe('odswiezMagazyn — postęp', () => {
 
   it('brak funkcji postępu jest stanem normalnym', async () => {
     const db = openOmsDb(':memory:');
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy: { pro: sklepAtrapa([prosty()]) }, allegro: null, teraz: teraz() });
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { pro: sklepAtrapa([prosty()]) },
+      allegro: null,
+      teraz: teraz(),
+    });
     expect(kanal(w, 'pro').zapisane).toBe(1);
   });
 });
@@ -893,27 +1362,49 @@ describe('odswiezMagazyn — pusty odczyt przy żywym lustrze', () => {
 
   it('zero pozycji przy niepustym lustrze to AWARIA kanału, nie pustka', async () => {
     const db = openOmsDb(':memory:');
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
-      db, sklepy: { swietlik: sklepAtrapa(dwaWiersze()) }, allegro: null, teraz: teraz('2026-08-06T10:00:00Z'),
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { swietlik: sklepAtrapa(dwaWiersze()) },
+      allegro: null,
+      teraz: teraz('2026-08-06T10:00:00Z'),
     });
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
-      db, sklepy: { swietlik: sklepAtrapa([]) }, allegro: null, teraz: teraz('2026-08-07T10:00:00Z'),
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { swietlik: sklepAtrapa([]) },
+      allegro: null,
+      teraz: teraz('2026-08-07T10:00:00Z'),
     });
     expect(kanal(w, 'swietlik').blad).toBeTruthy();
     expect(kanal(w, 'swietlik').znikniete).toBe(0);
     expect(db.prepare('SELECT COUNT(*) c FROM produkty_sklepowe WHERE zniknal_at IS NOT NULL').get().c).toBe(0);
     // Lustro ma zostac DOKLADNIE takie, jakie bylo — razem ze znacznikiem odczytu.
-    expect(db.prepare("SELECT COUNT(*) c FROM produkty_sklepowe WHERE odczytane_at LIKE '2026-08-06%'").get().c).toBe(2);
+    expect(db.prepare("SELECT COUNT(*) c FROM produkty_sklepowe WHERE odczytane_at LIKE '2026-08-06%'").get().c).toBe(
+      2,
+    );
   });
 
   // Ten tekst czlowiek zobaczy o 7 rano i ma od razu wiedziec, gdzie szukac.
   it('komunikat nazywa kanał, obie liczby i mówi wprost o awarii sklepu', async () => {
     const db = openOmsDb(':memory:');
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
-      db, sklepy: { swietlik: sklepAtrapa(dwaWiersze()) }, allegro: null, teraz: teraz('2026-08-06T10:00:00Z'),
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { swietlik: sklepAtrapa(dwaWiersze()) },
+      allegro: null,
+      teraz: teraz('2026-08-06T10:00:00Z'),
     });
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
-      db, sklepy: { swietlik: sklepAtrapa([]) }, allegro: null, teraz: teraz('2026-08-07T10:00:00Z'),
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { swietlik: sklepAtrapa([]) },
+      allegro: null,
+      teraz: teraz('2026-08-07T10:00:00Z'),
     });
     const blad = kanal(w, 'swietlik').blad;
     expect(blad).toMatch(/swietlik/);
@@ -926,11 +1417,18 @@ describe('odswiezMagazyn — pusty odczyt przy żywym lustrze', () => {
   // przechodzilby na zielono i wywalalby PIERWSZY przebieg kazdego nowego kanalu.
   it('zero pozycji przy PUSTYM lustrze przechodzi normalnie', async () => {
     const db = openOmsDb(':memory:');
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
-      db, sklepy: { pro: sklepAtrapa([]) }, allegro: { allegro_polcien2: allegroAtrapa([]) }, teraz: teraz(),
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { pro: sklepAtrapa([]) },
+      allegro: { allegro_polcien2: allegroAtrapa([]) },
+      teraz: teraz(),
     });
-    expect(w.kanaly.map((k) => [k.kanal, k.zapisane, k.znikniete, k.blad]))
-      .toEqual([['pro', 0, 0, null], ['allegro_polcien2', 0, 0, null]]);
+    expect(w.kanaly.map((k) => [k.kanal, k.zapisane, k.znikniete, k.blad])).toEqual([
+      ['pro', 0, 0, null],
+      ['allegro_polcien2', 0, 0, null],
+    ]);
   });
 
   // Druga polowa pary: kanal, ktorego caly katalog jest JUZ oznaczony jako znikniety, nie ma
@@ -939,12 +1437,22 @@ describe('odswiezMagazyn — pusty odczyt przy żywym lustrze', () => {
   // i zamrazalby na zawsze kanal wygaszony przed miesiacem.
   it('zero pozycji przy lustrze z samymi zniknięciami przechodzi', async () => {
     const db = openOmsDb(':memory:');
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
-      db, sklepy: { pro: sklepAtrapa([prosty()]) }, allegro: null, teraz: teraz('2026-08-06T10:00:00Z'),
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { pro: sklepAtrapa([prosty()]) },
+      allegro: null,
+      teraz: teraz('2026-08-06T10:00:00Z'),
     });
     db.prepare("UPDATE produkty_sklepowe SET zniknal_at = '2026-08-06T12:00:00.000Z'").run();
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
-      db, sklepy: { pro: sklepAtrapa([]) }, allegro: null, teraz: teraz('2026-08-07T10:00:00Z'),
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { pro: sklepAtrapa([]) },
+      allegro: null,
+      teraz: teraz('2026-08-07T10:00:00Z'),
     });
     expect(kanal(w, 'pro').blad).toBe(null);
   });
@@ -954,10 +1462,17 @@ describe('odswiezMagazyn — pusty odczyt przy żywym lustrze', () => {
   // nie dalby sie odczytac NIGDY.
   it('hamulec patrzy tylko na własny kanał', async () => {
     const db = openOmsDb(':memory:');
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
-      db, sklepy: { swietlik: sklepAtrapa(dwaWiersze()) }, allegro: null, teraz: teraz('2026-08-06T10:00:00Z'),
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { swietlik: sklepAtrapa(dwaWiersze()) },
+      allegro: null,
+      teraz: teraz('2026-08-06T10:00:00Z'),
     });
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
       db,
       sklepy: { pro: sklepAtrapa([]), swietlik: sklepAtrapa(dwaWiersze()) },
       allegro: null,
@@ -973,11 +1488,21 @@ describe('odswiezMagazyn — pusty odczyt przy żywym lustrze', () => {
   // uniemozliwilby wycofanie czegokolwiek ze sprzedazy.
   it('jedna pozycja przy dwóch w lustrze to normalne zniknięcie, nie awaria', async () => {
     const db = openOmsDb(':memory:');
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
-      db, sklepy: { pro: sklepAtrapa(dwaWiersze()) }, allegro: null, teraz: teraz('2026-08-06T10:00:00Z'),
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { pro: sklepAtrapa(dwaWiersze()) },
+      allegro: null,
+      teraz: teraz('2026-08-06T10:00:00Z'),
     });
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
-      db, sklepy: { pro: sklepAtrapa([prosty({ id: 1 })]) }, allegro: null, teraz: teraz('2026-08-07T10:00:00Z'),
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { pro: sklepAtrapa([prosty({ id: 1 })]) },
+      allegro: null,
+      teraz: teraz('2026-08-07T10:00:00Z'),
     });
     expect(kanal(w, 'pro').blad).toBe(null);
     expect(kanal(w, 'pro').znikniete).toBe(1);
@@ -987,11 +1512,21 @@ describe('odswiezMagazyn — pusty odczyt przy żywym lustrze', () => {
   // kompletnosci klienta bez slowa.
   it('konto Allegro, które nagle nie ma ofert, też jest zatrzymane', async () => {
     const db = openOmsDb(':memory:');
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
-      db, sklepy: null, allegro: { allegro_swietlik: allegroAtrapa([oferta('1')]) }, teraz: teraz('2026-08-06T10:00:00Z'),
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: null,
+      allegro: { allegro_swietlik: allegroAtrapa([oferta('1')]) },
+      teraz: teraz('2026-08-06T10:00:00Z'),
     });
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
-      db, sklepy: null, allegro: { allegro_swietlik: allegroAtrapa([]) }, teraz: teraz('2026-08-07T10:00:00Z'),
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: null,
+      allegro: { allegro_swietlik: allegroAtrapa([]) },
+      teraz: teraz('2026-08-07T10:00:00Z'),
     });
     expect(kanal(w, 'allegro_swietlik').blad).toMatch(/allegro_swietlik/);
     expect(db.prepare('SELECT zniknal_at FROM produkty_sklepowe').get().zniknal_at).toBe(null);
@@ -999,10 +1534,17 @@ describe('odswiezMagazyn — pusty odczyt przy żywym lustrze', () => {
 
   it('kanał zatrzymany hamulcem nie przerywa pozostałych', async () => {
     const db = openOmsDb(':memory:');
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
-      db, sklepy: { pro: sklepAtrapa([prosty({ id: 1 })]) }, allegro: null, teraz: teraz('2026-08-06T10:00:00Z'),
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy: { pro: sklepAtrapa([prosty({ id: 1 })]) },
+      allegro: null,
+      teraz: teraz('2026-08-06T10:00:00Z'),
     });
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
       db,
       sklepy: { pro: sklepAtrapa([]), swietlik: sklepAtrapa([prosty({ id: 5 })]) },
       allegro: null,
@@ -1021,10 +1563,16 @@ describe('odswiezMagazyn — ślad w logu', () => {
   it('błąd kanału trafia do logu razem z nazwą kanału', async () => {
     const db = openOmsDb(':memory:');
     const wpisy = [];
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
       db,
       sklepy: {
-        pro: { pobierzWszystkieProdukty: async () => { throw new Error('Sklep odrzucił klucz REST'); } },
+        pro: {
+          pobierzWszystkieProdukty: async () => {
+            throw new Error('Sklep odrzucił klucz REST');
+          },
+        },
         swietlik: sklepAtrapa([prosty({ id: 5 })]),
       },
       allegro: null,
@@ -1042,7 +1590,9 @@ describe('odswiezMagazyn — ślad w logu', () => {
   it('przebieg bez błędów nie pisze do logu ani słowa', async () => {
     const db = openOmsDb(':memory:');
     const wpisy = [];
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
       db,
       sklepy: { pro: sklepAtrapa([prosty()]) },
       allegro: { allegro_swietlik: allegroAtrapa([oferta('1')]) },
@@ -1057,15 +1607,23 @@ describe('odswiezMagazyn — ślad w logu', () => {
   // zabilaby izolacje awarii i zatrzymala pozostale kanaly.
   it('log, który rzuca, nie przewraca przebiegu ani nie gubi błędu', async () => {
     const db = openOmsDb(':memory:');
-    const w = await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+    const w = await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
       db,
       sklepy: {
-        pro: { pobierzWszystkieProdukty: async () => { throw new Error('leży'); } },
+        pro: {
+          pobierzWszystkieProdukty: async () => {
+            throw new Error('leży');
+          },
+        },
         swietlik: sklepAtrapa([prosty({ id: 5 })]),
       },
       allegro: null,
       teraz: teraz(),
-      log: () => { throw new Error('log padł'); },
+      log: () => {
+        throw new Error('log padł');
+      },
     });
     expect(kanal(w, 'pro').blad).toMatch(/leży/);
     expect(kanal(w, 'swietlik').zapisane).toBe(1);
@@ -1078,9 +1636,17 @@ describe('odswiezMagazyn — ślad w logu', () => {
     const szpieg = vi.spyOn(console, 'error').mockImplementation(() => {});
     let wypisane = '';
     try {
-      await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      await odswiezMagazyn({
+        kanalySklepow: ['pro', 'swietlik'],
+        kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
         db,
-        sklepy: { pro: { pobierzWszystkieProdukty: async () => { throw new Error('leży'); } } },
+        sklepy: {
+          pro: {
+            pobierzWszystkieProdukty: async () => {
+              throw new Error('leży');
+            },
+          },
+        },
         allegro: null,
         teraz: teraz(),
       });
@@ -1106,22 +1672,29 @@ describe('odswiezMagazyn — atrybuty wariantu', () => {
   it('zapisuje osie podzialu wariantu z odpowiedzi sklepu', async () => {
     const db = openOmsDb(':memory:');
     const sklepy = {
-      swietlik: sklepAtrapa(
-        [{ id: 7179, type: 'variable', name: 'Kolekcja Las' }],
-        {
-          7179: [{
+      swietlik: sklepAtrapa([{ id: 7179, type: 'variable', name: 'Kolekcja Las' }], {
+        7179: [
+          {
             id: 7180,
             price: '79',
             // Adres NIESIE te sama informacje — i celowo mowi co innego niz atrybut.
             // Gdyby wygral permalink, w kolumnie stanelaby „Żołądź".
-            permalink: 'https://sklep-polcien.example.invalid/produkt/kolekcja-las/?attribute_motyw=%C5%BBo%C5%82%C4%85d%C5%BA',
+            permalink:
+              'https://sklep-polcien.example.invalid/produkt/kolekcja-las/?attribute_motyw=%C5%BBo%C5%82%C4%85d%C5%BA',
             attributes: [{ id: 5, name: 'motyw', option: 'Szyszka' }],
-          }],
-        },
-      ),
+          },
+        ],
+      }),
     };
 
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: teraz() });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: teraz(),
+    });
 
     expect(JSON.parse(jeden(db).atrybuty_json)).toEqual([{ nazwa: 'motyw', wartosc: 'Szyszka' }]);
   });
@@ -1133,13 +1706,19 @@ describe('odswiezMagazyn — atrybuty wariantu', () => {
   it('wariant bez atrybutow dostaje PUSTA TABLICE, nie NULL', async () => {
     const db = openOmsDb(':memory:');
     const sklepy = {
-      swietlik: sklepAtrapa(
-        [{ id: 26953, type: 'variable', name: 'Koła duże' }],
-        { 26953: [{ id: 26954, price: '79', attributes: [] }] },
-      ),
+      swietlik: sklepAtrapa([{ id: 26953, type: 'variable', name: 'Koła duże' }], {
+        26953: [{ id: 26954, price: '79', attributes: [] }],
+      }),
     };
 
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: teraz() });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: teraz(),
+    });
 
     expect(jeden(db).atrybuty_json).toBe('[]');
   });
@@ -1153,7 +1732,14 @@ describe('odswiezMagazyn — atrybuty wariantu', () => {
       pro: sklepAtrapa([prosty({ attributes: [{ name: 'Kolor', options: ['czarny'] }] })]),
     };
 
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],  db, sklepy, allegro: null, teraz: teraz() });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', 'allegro_polcien2'],
+      db,
+      sklepy,
+      allegro: null,
+      teraz: teraz(),
+    });
 
     expect(jeden(db).atrybuty_json).toBe(null);
   });
@@ -1169,22 +1755,57 @@ describe('odswiezMagazyn — oferta Allegro z rejestru OMS (E3.10)', () => {
   function bazaZRejestrem() {
     const db = openOmsDb(':memory:');
     migracjaOfertKanalow.wykonaj(db);
-    for (const id of [17, 18]) db.prepare(`INSERT INTO karty_produktow
-      (id, sku, nazwa, utworzony_at, zmieniony_at) VALUES (?, ?, ?, ?, ?)`)
-      .run(id, `LMP-${id}`, `Lampa Półcień ${id}`, T0, T0);
+    for (const id of [17, 18])
+      db.prepare(
+        `INSERT INTO karty_produktow
+      (id, sku, nazwa, utworzony_at, zmieniony_at) VALUES (?, ?, ?, ?, ?)`,
+      ).run(id, `LMP-${id}`, `Lampa Półcień ${id}`, T0, T0);
     return db;
   }
-  const odczyt = (db, oferty = [oferta(NUMER, 'Lampa Półcień Kropla')]) => odswiezMagazyn({
-    kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', KANAL_A],
-    db, sklepy: null, allegro: { [KANAL_A]: allegroAtrapa(oferty) }, teraz: teraz(),
-  });
-  const zamowienie = (db, sklep = KANAL_A) => zapiszZamowienie(db, sklep, {
-    zrodlo_id: 'z-1', numer: 'A-1', klient: {}, dostawa: {},
-    utworzone_at: '2026-08-06T11:00:00.000Z', kwota_brutto: '178.00', metoda_wysylki: 'dpd',
-    kwota_pobrania: null, chce_fakture: 0, nip: null, status_woo: null, oplacone_at: null, anulowane: 0,
-    pozycje: [{ zrodlo_id: 'p1', oferta_id: NUMER, produkt_id: null, wariant_id: null,
-      nazwa: 'Lampa Półcień Kropla', sku: null, zdjecie_url: null, ilosc: 2, cena_brutto: '89.00', vat: '23' }],
-  }, {});
+  const odczyt = (db, oferty = [oferta(NUMER, 'Lampa Półcień Kropla')]) =>
+    odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', KANAL_A],
+      db,
+      sklepy: null,
+      allegro: { [KANAL_A]: allegroAtrapa(oferty) },
+      teraz: teraz(),
+    });
+  const zamowienie = (db, sklep = KANAL_A) =>
+    zapiszZamowienie(
+      db,
+      sklep,
+      {
+        zrodlo_id: 'z-1',
+        numer: 'A-1',
+        klient: {},
+        dostawa: {},
+        utworzone_at: '2026-08-06T11:00:00.000Z',
+        kwota_brutto: '178.00',
+        metoda_wysylki: 'dpd',
+        kwota_pobrania: null,
+        chce_fakture: 0,
+        nip: null,
+        status_woo: null,
+        oplacone_at: null,
+        anulowane: 0,
+        pozycje: [
+          {
+            zrodlo_id: 'p1',
+            oferta_id: NUMER,
+            produkt_id: null,
+            wariant_id: null,
+            nazwa: 'Lampa Półcień Kropla',
+            sku: null,
+            zdjecie_url: null,
+            ilosc: 2,
+            cena_brutto: '89.00',
+            vat: '23',
+          },
+        ],
+      },
+      {},
+    );
 
   it('oferta OMS na karcie 17, odczyt lustra, zamówienie z tej oferty → karta 17', async () => {
     const db = bazaZRejestrem();
@@ -1203,7 +1824,13 @@ describe('odswiezMagazyn — oferta Allegro z rejestru OMS (E3.10)', () => {
 
   it('wiersz lustra z ręcznie przypiętą inną kartą nie jest nadpisywany', async () => {
     const db = bazaZRejestrem();
-    const id = zapiszProduktSklepowy(db, { kanal: KANAL_A, produkt_id: NUMER, wariant_id: '', nazwa: 'Lampa', odczytane_at: T0 });
+    const id = zapiszProduktSklepowy(db, {
+      kanal: KANAL_A,
+      produkt_id: NUMER,
+      wariant_id: '',
+      nazwa: 'Lampa',
+      odczytane_at: T0,
+    });
     powiazProdukt(db, id, 18);
     wstawOferte(db, { kanal: KANAL_A, kartaId: 17, idZewnetrzne: NUMER, pochodzenie: 'oms' }, { teraz: T0 });
     await odczyt(db);
@@ -1220,8 +1847,14 @@ describe('odswiezMagazyn — oferta Allegro z rejestru OMS (E3.10)', () => {
   it('sklep Woo nie bierze karty z rejestru, nawet przy tym samym kluczu (tylko lustro Allegro)', async () => {
     const db = bazaZRejestrem();
     wstawOferte(db, { kanal: 'pro', kartaId: 17, idZewnetrzne: '900', pochodzenie: 'oms' }, { teraz: T0 });
-    await odswiezMagazyn({ kanalySklepow: ['pro', 'swietlik'], kanalyAllegro: ['allegro_swietlik', KANAL_A],
-      db, sklepy: { pro: sklepAtrapa([prosty()]) }, allegro: null, teraz: teraz() });
+    await odswiezMagazyn({
+      kanalySklepow: ['pro', 'swietlik'],
+      kanalyAllegro: ['allegro_swietlik', KANAL_A],
+      db,
+      sklepy: { pro: sklepAtrapa([prosty()]) },
+      allegro: null,
+      teraz: teraz(),
+    });
     expect(jeden(db)).toMatchObject({ kanal: 'pro', produkt_id: '900', karta_id: null });
   });
 

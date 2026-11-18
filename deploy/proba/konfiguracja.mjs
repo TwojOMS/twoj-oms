@@ -18,7 +18,11 @@ const plikHasla = path.join(os.homedir(), '.oms', 'proba.json');
 let dane;
 if (fs.existsSync(plikHasla)) dane = JSON.parse(fs.readFileSync(plikHasla, 'utf8'));
 else {
-  dane = { adres: process.argv[3] || 'http://localhost:3005', login: 'adam', haslo: randomBytes(18).toString('base64url') };
+  dane = {
+    adres: process.argv[3] || 'http://localhost:3005',
+    login: 'adam',
+    haslo: randomBytes(18).toString('base64url'),
+  };
   fs.mkdirSync(path.dirname(plikHasla), { recursive: true });
   fs.writeFileSync(plikHasla, JSON.stringify(dane, null, 2) + '\n', { mode: 0o600, flag: 'wx' });
 }
@@ -26,13 +30,26 @@ fs.mkdirSync(wyjscie, { recursive: true });
 // Kanały i dane sprzedawcy NIE tutaj — start.mjs bierze je z ENV_DEMO generatora (jedno źródło).
 // PRZ-182: klucz poświadczeń w bazie piaskownicy — nowy przy każdym nowym proba.env (nowa piaskownica = nowa baza);
 // istniejącemu proba.env dopisuje go `proba.ps1` (krok „klucz”). Wartość tylko w pliku, nigdy na ekranie.
-const env = { OMS_TRYB: ENV_DEMO.OMS_TRYB, OMS_USER: 'serwis-proby', OMS_PASS: randomBytes(24).toString('base64url'),
-  [ZMIENNA_KLUCZA]: nowyKlucz() };
-fs.writeFileSync(path.join(wyjscie, 'proba.env'),
-  '# Piaskownica oms-proba — bez kluczy integracji (OMS_TRYB=proba odmawia startu z kluczem).\n'
-  + '# Kanały, sprzedawca i podłoga raportu: ENV_DEMO w scripts/demo-dane.mjs (start.mjs je nakłada).\n'
-  + '# OMS_KLUCZ_SEKRETOW szyfruje poświadczenia w bazie piaskownicy (to nie klucz integracji); bez niego piaskownica nie wstaje.\n'
-  + Object.entries(env).map(([k, v]) => `${k}=${v}`).join('\n') + '\n', { mode: 0o600 });
-fs.writeFileSync(path.join(wyjscie, 'konto.json'),
-  JSON.stringify({ login: dane.login, imie: 'Adam (piaskownica)', hash: zahaszuj(dane.haslo) }) + '\n', { mode: 0o600 });
+const env = {
+  OMS_TRYB: ENV_DEMO.OMS_TRYB,
+  OMS_USER: 'serwis-proby',
+  OMS_PASS: randomBytes(24).toString('base64url'),
+  [ZMIENNA_KLUCZA]: nowyKlucz(),
+};
+fs.writeFileSync(
+  path.join(wyjscie, 'proba.env'),
+  '# Piaskownica oms-proba — bez kluczy integracji (OMS_TRYB=proba odmawia startu z kluczem).\n' +
+    '# Kanały, sprzedawca i podłoga raportu: ENV_DEMO w scripts/demo-dane.mjs (start.mjs je nakłada).\n' +
+    '# OMS_KLUCZ_SEKRETOW szyfruje poświadczenia w bazie piaskownicy (to nie klucz integracji); bez niego piaskownica nie wstaje.\n' +
+    Object.entries(env)
+      .map(([k, v]) => `${k}=${v}`)
+      .join('\n') +
+    '\n',
+  { mode: 0o600 },
+);
+fs.writeFileSync(
+  path.join(wyjscie, 'konto.json'),
+  JSON.stringify({ login: dane.login, imie: 'Adam (piaskownica)', hash: zahaszuj(dane.haslo) }) + '\n',
+  { mode: 0o600 },
+);
 console.log(`konfiguracja gotowa; hasło w ${plikHasla}`);

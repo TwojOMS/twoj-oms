@@ -74,9 +74,7 @@ function znacznik(teraz) {
   const surowy = typeof teraz === 'function' ? teraz() : teraz;
   const chwila = new Date(surowy);
   if (Number.isNaN(chwila.getTime())) {
-    throw new Error(
-      `odswiezMagazyn: „${String(surowy)}" nie jest chwilą, z której da się zrobić znacznik odczytu`,
-    );
+    throw new Error(`odswiezMagazyn: „${String(surowy)}" nie jest chwilą, z której da się zrobić znacznik odczytu`);
   }
   return chwila.toISOString();
 }
@@ -112,9 +110,12 @@ const kategorieProduktu = (p) => (Array.isArray(p?.categories) ? p.categories : 
 
 // Kategorie jako tablica NAZW — z niej korzysta filtr kategorii listy (json_each po tej
 // kolumnie) i tworzenie kart.
-const kategorieJson = (p) => JSON.stringify(
-  kategorieProduktu(p).map((k) => k?.name).filter((n) => typeof n === 'string' && n.trim()),
-);
+const kategorieJson = (p) =>
+  JSON.stringify(
+    kategorieProduktu(p)
+      .map((k) => k?.name)
+      .filter((n) => typeof n === 'string' && n.trim()),
+  );
 
 /**
  * Kategoria glowna TAK, JAK ZNA JA SKLEP (Yoast).
@@ -168,7 +169,12 @@ const zdjeciaProduktu = (p) => (Array.isArray(p?.images) ? p.images : []).map((z
 function rozmiarZAtrybutow(atrybuty) {
   if (!Array.isArray(atrybuty)) return null;
   for (const a of atrybuty) {
-    if (String(a?.name ?? '').trim().toLowerCase() !== ATRYBUT_ROZMIARU) continue;
+    if (
+      String(a?.name ?? '')
+        .trim()
+        .toLowerCase() !== ATRYBUT_ROZMIARU
+    )
+      continue;
     const wartosc = a?.option ?? (Array.isArray(a?.options) ? a.options.join(', ') : null);
     if (typeof wartosc === 'string' && wartosc.trim()) return wartosc.trim();
   }
@@ -202,8 +208,8 @@ function wymiaryLustra(zrodlo, jednostki) {
   const d = zrodlo?.dimensions ?? {};
   const wartosc = (k) => pusteNaNull(d?.[k]);
   const w = { length: wartosc('length'), width: wartosc('width'), height: wartosc('height') };
-  const wymiary = jednostki?.wymiary && (w.length || w.width || w.height)
-    ? JSON.stringify({ ...w, unit: jednostki.wymiary }) : null;
+  const wymiary =
+    jednostki?.wymiary && (w.length || w.width || w.height) ? JSON.stringify({ ...w, unit: jednostki.wymiary }) : null;
   const waga = pusteNaNull(zrodlo?.weight);
   return { wymiary_json: wymiary, waga_tekst: waga && jednostki?.waga ? `${waga} ${jednostki.waga}` : null };
 }
@@ -219,7 +225,10 @@ async function jednostkiKanalu({ kanal, klient, zapisz }) {
       const j = await klient.ustawienieSklepu(id);
       return typeof j === 'string' && j.trim() ? j.trim() : null;
     } catch (e) {
-      zapisz(`magazyn: kanał ${kanal} — nie udało się odczytać ustawienia ${id} (wymiary i waga bez niego):`, opisBledu(e));
+      zapisz(
+        `magazyn: kanał ${kanal} — nie udało się odczytać ustawienia ${id} (wymiary i waga bez niego):`,
+        opisBledu(e),
+      );
       return null;
     }
   };
@@ -227,7 +236,11 @@ async function jednostkiKanalu({ kanal, klient, zapisz }) {
 }
 
 // Lustro ilosci kanalu — tylko informacja, stan karty liczy wylacznie `stanyKart`.
-const STAN_PROWADZONY_WOO = new Map([[true, 'tak'], [false, 'nie'], ['parent', 'rodzic']]);
+const STAN_PROWADZONY_WOO = new Map([
+  [true, 'tak'],
+  [false, 'nie'],
+  ['parent', 'rodzic'],
+]);
 function iloscKanaluWoo(p) {
   return {
     ilosc_kanalu: Number.isInteger(p?.stock_quantity) ? p.stock_quantity : null,
@@ -339,8 +352,10 @@ async function miniaturyKanalu({ kanal, klient, zapisz }) {
     const mapa = await klient?.pobierzMiniatury?.();
     return mapa instanceof Map ? mapa : new Map();
   } catch (e) {
-    zapisz(`magazyn: kanał ${kanal} — nie udało się odczytać miniatur ze Store API `
-      + '(katalog wchodzi bez nich):', opisBledu(e));
+    zapisz(
+      `magazyn: kanał ${kanal} — nie udało się odczytać miniatur ze Store API ` + '(katalog wchodzi bez nich):',
+      opisBledu(e),
+    );
     return new Map();
   }
 }
@@ -369,24 +384,30 @@ async function wierszeSklepu({ kanal, klient, odczytaneAt, zglos, zapisz }) {
     const brutto = liczyPodatki === 'no' || ['yes', true].includes(cenyBrutto);
     // Ostrzeżenie dotyczy pominiętej ceny regularnej, nie pustego cennika.
     if (!brutto && pusteNaNull(p?.regular_price) !== null && !ostrzezonoOCenie) {
-      zapisz(`magazyn: kanał ${kanal} — cena karty pusta: sklep liczy VAT z cenami netto albo brak potwierdzenia cen brutto.`);
+      zapisz(
+        `magazyn: kanał ${kanal} — cena karty pusta: sklep liczy VAT z cenami netto albo brak potwierdzenia cen brutto.`,
+      );
       ostrzezonoOCenie = true;
     }
-    const sekcje = [p?.description, rodzic?.description, rodzic?.short_description]
-      .map(opis => opisDoSekcji(opis)).find(opis => opis.sekcje.length) ?? opisDoSekcji('');
+    const sekcje =
+      [p?.description, rodzic?.description, rodzic?.short_description]
+        .map((opis) => opisDoSekcji(opis))
+        .find((opis) => opis.sekcje.length) ?? opisDoSekcji('');
     const kategorie = kategorieProduktu(rodzic);
     const glowna = kategoriaGlownaZrodla(rodzic);
-    return { ...wiersz, tresc_woo: {
-      pola: {
-        opis_sekcje_json: sekcje.sekcje.length ? JSON.stringify(sekcje) : null,
-        ean: pusteNaNull(p?.global_unique_id),
-        cena_gr: brutto
-          ? cenaGr(p?.regular_price, `kanał ${kanal}, produkt ${p?.id}, cena regularna`) : null,
-        grupa_wariantow: wiersz.wariant_id ? `woo:${kanal}:${p?.parent_id || rodzic.id}` : null,
+    return {
+      ...wiersz,
+      tresc_woo: {
+        pola: {
+          opis_sekcje_json: sekcje.sekcje.length ? JSON.stringify(sekcje) : null,
+          ean: pusteNaNull(p?.global_unique_id),
+          cena_gr: brutto ? cenaGr(p?.regular_price, `kanał ${kanal}, produkt ${p?.id}, cena regularna`) : null,
+          grupa_wariantow: wiersz.wariant_id ? `woo:${kanal}:${p?.parent_id || rodzic.id}` : null,
+        },
+        zdjecia: JSON.parse(wiersz.zdjecia_json ?? '[]').slice(0, 20),
+        kategoria: kategorie.find((k) => k.name === glowna) ?? (kategorie.length === 1 ? kategorie[0] : null),
       },
-      zdjecia: JSON.parse(wiersz.zdjecia_json ?? '[]').slice(0, 20),
-      kategoria: kategorie.find(k => k.name === glowna) ?? (kategorie.length === 1 ? kategorie[0] : null),
-    } };
+    };
   };
   const wiersze = [];
   let zrobione = 0;
@@ -423,8 +444,11 @@ async function wierszeAllegro({ kanal, klient, odczytaneAt, zglos, kanalyAllegro
     // robi to jednak PODMIANA SEGMENTU SCIEZKI, zmierzona na zywych zdjeciach, a nie
     // doklejanie rozmiaru do nazwy pliku, ktore wlasnie wyrzucamy ze sklepow.
     // `updatedAt` z listy (gdy jest) wraca zmieniona oferte do kolejki „Pobierz tresc i zdjecia ofert".
-    wiersze.push({ ...ofertaNaProdukt(o, kanal, kanalyAllegro), odczytane_at: odczytaneAt,
-      tresc_lista_zmieniona_at: typeof o?.updatedAt === 'string' && o.updatedAt ? o.updatedAt : null });
+    wiersze.push({
+      ...ofertaNaProdukt(o, kanal, kanalyAllegro),
+      odczytane_at: odczytaneAt,
+      tresc_lista_zmieniona_at: typeof o?.updatedAt === 'string' && o.updatedAt ? o.updatedAt : null,
+    });
     zrobione += 1;
     zglos({ kanal, zrobione, zTego: oferty.length });
   }
@@ -452,15 +476,21 @@ function zapiszKanal(db, kanal, wiersze, odczytaneAt, trescKart = true, zRejestr
   // `kartyLustraZ` daje pierwszenstwo wierszowi lustra, takze BEZ karty — wiec po „Odczytaj katalogi" zamowienie
   // z takiej oferty wypadaloby „bez karty". Wiersz lustra bierze karte z rejestru, ale TYLKO gdy nie ma wlasnej:
   // reczne przypiecie wlasciciela wygrywa (ta sama zasada, co `karta_id` poza KOLUMNY_LUSTRA w db/magazyn.js).
-  const kartaZRejestru = zRejestru && db.prepare(
-    "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'oferty_kanalow'",
-  ).get() ? db.prepare(`UPDATE produkty_sklepowe SET karta_id = (
+  const kartaZRejestru =
+    zRejestru && db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'oferty_kanalow'").get()
+      ? db.prepare(`UPDATE produkty_sklepowe SET karta_id = (
       SELECT o.karta_id FROM oferty_kanalow o WHERE o.kanal = produkty_sklepowe.kanal AND o.id_zewnetrzne = produkty_sklepowe.produkt_id)
     WHERE id = ? AND karta_id IS NULL AND wariant_id = '' AND EXISTS (
-      SELECT 1 FROM oferty_kanalow o WHERE o.kanal = produkty_sklepowe.kanal AND o.id_zewnetrzne = produkty_sklepowe.produkt_id)`) : null;
+      SELECT 1 FROM oferty_kanalow o WHERE o.kanal = produkty_sklepowe.kanal AND o.id_zewnetrzne = produkty_sklepowe.produkt_id)`)
+      : null;
   // Baza sprzed migracji rdzen/0017 nie ma kolumn lustra ilosci — wtedy ich nie piszemy.
-  const lustroIlosci = db.prepare("SELECT 1 FROM pragma_table_info('produkty_sklepowe') WHERE name = 'ilosc_odczytana_at'").get() !== undefined
-    ? db.prepare('UPDATE produkty_sklepowe SET ilosc_kanalu = ?, stan_prowadzony = ?, ilosc_odczytana_at = ? WHERE id = ?') : null;
+  const lustroIlosci =
+    db.prepare("SELECT 1 FROM pragma_table_info('produkty_sklepowe') WHERE name = 'ilosc_odczytana_at'").get() !==
+    undefined
+      ? db.prepare(
+          'UPDATE produkty_sklepowe SET ilosc_kanalu = ?, stan_prowadzony = ?, ilosc_odczytana_at = ? WHERE id = ?',
+        )
+      : null;
   db.exec('BEGIN IMMEDIATE');
   try {
     for (const w of wiersze) {
@@ -473,8 +503,10 @@ function zapiszKanal(db, kanal, wiersze, odczytaneAt, trescKart = true, zRejestr
         tresc.push({ id, kanal: w.kanal, produkt_id: w.produkt_id, wariant_id: w.wariant_id, tresc_woo: w.tresc_woo });
       }
       if (w.tresc_lista_zmieniona_at) {
-        db.prepare(`UPDATE produkty_sklepowe SET tresc_pobrana_at = NULL WHERE id = ? AND tresc_pobrana_at IS NOT NULL
-          AND (tresc_zmieniona_at IS NULL OR tresc_zmieniona_at <> ?)`).run(id, w.tresc_lista_zmieniona_at);
+        db.prepare(
+          `UPDATE produkty_sklepowe SET tresc_pobrana_at = NULL WHERE id = ? AND tresc_pobrana_at IS NOT NULL
+          AND (tresc_zmieniona_at IS NULL OR tresc_zmieniona_at <> ?)`,
+        ).run(id, w.tresc_lista_zmieniona_at);
       }
     }
     const znikniete = oznaczZnikniete(db, kanal, odczytaneAt);
@@ -521,10 +553,10 @@ function sprawdzPustyOdczyt(db, kanal, ilePozycji) {
   const zywe = liczZyweProdukty(db, kanal);
   if (!zywe) return;
   throw new Error(
-    `Kanał ${kanal}: odczyt oddał 0 pozycji, a lustro trzyma ${zywe} żywych. To wygląda na awarię `
-    + 'sklepu (odmowa kodem 200: konflikt wtyczki, tryb konserwacji, przerwany import), a nie na '
-    + 'pusty katalog — więc NIE oznaczam niczego jako zniknięte i zostawiam lustro bez zmian. '
-    + 'Jeśli kanał naprawdę został wygaszony, oznacz jego wiersze ręcznie.',
+    `Kanał ${kanal}: odczyt oddał 0 pozycji, a lustro trzyma ${zywe} żywych. To wygląda na awarię ` +
+      'sklepu (odmowa kodem 200: konflikt wtyczki, tryb konserwacji, przerwany import), a nie na ' +
+      'pusty katalog — więc NIE oznaczam niczego jako zniknięte i zostawiam lustro bez zmian. ' +
+      'Jeśli kanał naprawdę został wygaszony, oznacz jego wiersze ręcznie.',
   );
 }
 
@@ -532,7 +564,17 @@ function sprawdzPustyOdczyt(db, kanal, ilePozycji) {
  * Jeden kanal: biala lista → odczyt → zapis. Wyjatek NIE WYCHODZI na zewnatrz — wraca jako
  * `blad` w wyniku tego kanalu, zeby pozostale dokonczyly przebieg.
  */
-async function przebiegKanalu({ db, kanal, dozwolone, czym, odczytaneAt, zbierz, zapisz, trescKart = true, zRejestru = false }) {
+async function przebiegKanalu({
+  db,
+  kanal,
+  dozwolone,
+  czym,
+  odczytaneAt,
+  zbierz,
+  zapisz,
+  trescKart = true,
+  zRejestru = false,
+}) {
   try {
     if (!dozwolone.includes(kanal)) {
       throw new Error(`„${kanal}" nie jest ${czym} (są: ${dozwolone.join(', ')})`);
@@ -575,7 +617,17 @@ async function przebiegKanalu({ db, kanal, dozwolone, czym, odczytaneAt, zbierz,
  * wie nic o trasie ani o odpowiedzi: zwykla obietnica plus `postep`, ktory pod pasek postepu
  * podpina `magazyn-przebieg.js`, uruchamiajac ja w tle.
  */
-export async function odswiezMagazyn({ db, sklepy, allegro, teraz, postep, log = console.error, kanalySklepow, kanalyAllegro, trescKart = true } = {}) {
+export async function odswiezMagazyn({
+  db,
+  sklepy,
+  allegro,
+  teraz,
+  postep,
+  log = console.error,
+  kanalySklepow,
+  kanalyAllegro,
+  trescKart = true,
+} = {}) {
   wymagajListyKanalow(kanalySklepow);
   wymagajListyKanalow(kanalyAllegro);
   // Zegar pytany RAZ NA PRZEBIEG, przed pierwszym zapytaniem do sklepu. Pytanie o niego przy
@@ -587,7 +639,11 @@ export async function odswiezMagazyn({ db, sklepy, allegro, teraz, postep, log =
   // kanalu, bo kanal wywalony nie dochodzi do `oznaczZnikniete` — usterka paska postepu
   // zamrazalaby lustro.
   const zglos = (info) => {
-    try { postep?.(info); } catch { /* postęp nie jest wynikiem odczytu */ }
+    try {
+      postep?.(info);
+    } catch {
+      /* postęp nie jest wynikiem odczytu */
+    }
   };
 
   // Ta sama technika i ten sam powod, co przy `postep`: log rzucajacy W BLOKU OBSLUGI BLEDU
@@ -596,7 +652,11 @@ export async function odswiezMagazyn({ db, sklepy, allegro, teraz, postep, log =
   // (np. `moduly/faktury/services/wysylka-ksef.js`): domyslnie do wyjscia kontenera, wstrzykiwalny
   // wylacznie po to, zeby dalo sie go sprawdzic testem.
   const zapisz = (...czesci) => {
-    try { log?.(...czesci); } catch { /* ślad nie jest wynikiem odczytu */ }
+    try {
+      log?.(...czesci);
+    } catch {
+      /* ślad nie jest wynikiem odczytu */
+    }
   };
 
   const kanaly = [];
@@ -604,18 +664,33 @@ export async function odswiezMagazyn({ db, sklepy, allegro, teraz, postep, log =
   // i tak idzie po jednym polaczeniu do bazy. Przebieg jest z przycisku, wiec czas nie jest
   // tu waluta.
   for (const [kanal, klient] of Object.entries(sklepy ?? {})) {
-    kanaly.push(await przebiegKanalu({
-      db, kanal, dozwolone: kanalySklepow, czym: 'kanałem sklepu', odczytaneAt,
-      zapisz, trescKart,
-      zbierz: () => wierszeSklepu({ kanal, klient, odczytaneAt, zglos, zapisz }),
-    }));
+    kanaly.push(
+      await przebiegKanalu({
+        db,
+        kanal,
+        dozwolone: kanalySklepow,
+        czym: 'kanałem sklepu',
+        odczytaneAt,
+        zapisz,
+        trescKart,
+        zbierz: () => wierszeSklepu({ kanal, klient, odczytaneAt, zglos, zapisz }),
+      }),
+    );
   }
   for (const [kanal, klient] of Object.entries(allegro ?? {})) {
-    kanaly.push(await przebiegKanalu({
-      db, kanal, dozwolone: kanalyAllegro, czym: 'kanałem Allegro', odczytaneAt,
-      zapisz, trescKart, zRejestru: true,
-      zbierz: () => wierszeAllegro({ kanal, klient, odczytaneAt, zglos, kanalyAllegro }),
-    }));
+    kanaly.push(
+      await przebiegKanalu({
+        db,
+        kanal,
+        dozwolone: kanalyAllegro,
+        czym: 'kanałem Allegro',
+        odczytaneAt,
+        zapisz,
+        trescKart,
+        zRejestru: true,
+        zbierz: () => wierszeAllegro({ kanal, klient, odczytaneAt, zglos, kanalyAllegro }),
+      }),
+    );
   }
   return { kanaly };
 }

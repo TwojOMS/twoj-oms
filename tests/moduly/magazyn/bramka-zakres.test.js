@@ -11,15 +11,31 @@ it.each([
   ['wstrzymane', 'ilosc', 'obserwowana', 1, 0, false],
   ['inny tryb', 'ilosc', 'do_wyslania', 1, 1, false],
 ])('%s', (_, zakres, tryb, ilosc_z_oms, czynne, wolno) => {
-  const wynik = bramkaZapisu({ konto: { klucz: 'polcien' }, klucze: ['polcien'], ustawienia: { czynne },
-    oferta: { kanal: 'polcien', tryb, ilosc_z_oms }, zakres });
+  const wynik = bramkaZapisu({
+    konto: { klucz: 'polcien' },
+    klucze: ['polcien'],
+    ustawienia: { czynne },
+    oferta: { kanal: 'polcien', tryb, ilosc_z_oms },
+    zakres,
+  });
   expect(wynik.wolno).toBe(wolno);
   if (!czynne) expect(wynik.powod).toBe('oferty wstrzymane');
 });
 
-it.each(['obce-konto', 'tylko-odczyt', 'obca-oferta', 'brak-oferty'])('zakres ilości zachowuje blokadę %s', blokada => {
-  expect(bramkaZapisu({ konto: { klucz: 'polcien', tylkoOdczyt: () => blokada === 'tylko-odczyt' },
-    klucze: blokada === 'obce-konto' ? [] : ['polcien'], ustawienia: { czynne: 1 }, zakres: 'ilosc',
-    oferta: blokada === 'brak-oferty' ? null : { kanal: blokada === 'obca-oferta' ? 'inne' : 'polcien',
-      tryb: 'obserwowana', ilosc_z_oms: 1 } }).wolno).toBe(false);
-});
+it.each(['obce-konto', 'tylko-odczyt', 'obca-oferta', 'brak-oferty'])(
+  'zakres ilości zachowuje blokadę %s',
+  (blokada) => {
+    expect(
+      bramkaZapisu({
+        konto: { klucz: 'polcien', tylkoOdczyt: () => blokada === 'tylko-odczyt' },
+        klucze: blokada === 'obce-konto' ? [] : ['polcien'],
+        ustawienia: { czynne: 1 },
+        zakres: 'ilosc',
+        oferta:
+          blokada === 'brak-oferty'
+            ? null
+            : { kanal: blokada === 'obca-oferta' ? 'inne' : 'polcien', tryb: 'obserwowana', ilosc_z_oms: 1 },
+      }).wolno,
+    ).toBe(false);
+  },
+);

@@ -35,7 +35,11 @@ function uruchom() {
 
   const odswiez = () => {
     const stan = stanPaska(termin - teraz());
-    if (stan.restart) { clearInterval(zegar); pokazNakladke(); return; }
+    if (stan.restart) {
+      clearInterval(zegar);
+      pokazNakladke();
+      return;
+    }
     pasek.classList.toggle('pasek-demo--blisko', stan.blisko);
     if (stan.blisko) {
       tekst.innerHTML = `Restart danych za <strong>${stan.licznik}</strong> — Twoje zmiany znikną.`;
@@ -43,7 +47,8 @@ function uruchom() {
     } else {
       tekst.innerHTML = `Wersja DEMO — restart danych za <strong>${stan.licznik}</strong>`;
       // Dopisek zawiera też informację o generatorze (tak jak wersja bez JS w layout-oms.ejs).
-      dopisek.textContent = 'Dane z generatora, połączenia ze sklepami, Allegro i kurierami są wyłączone. Zmiany gości znikają przy każdym restarcie.';
+      dopisek.textContent =
+        'Dane z generatora, połączenia ze sklepami, Allegro i kurierami są wyłączone. Zmiany gości znikają przy każdym restarcie.';
     }
   };
 
@@ -62,8 +67,13 @@ function uruchom() {
       try {
         const html = await (await fetch('/login', { cache: 'no-store', credentials: 'same-origin' })).text();
         const nowy = html.match(/data-demo-reset="([^"]+)"/)?.[1];
-        if (nowy && nowy !== pasek.dataset.demoReset) { location.assign('/login'); return; }
-      } catch { /* panel w trakcie podmiany — pytamy dalej */ }
+        if (nowy && nowy !== pasek.dataset.demoReset) {
+          location.assign('/login');
+          return;
+        }
+      } catch {
+        /* panel w trakcie podmiany — pytamy dalej */
+      }
       if (Date.now() - start > DLUGO_MS) nakladka.querySelector('.nakladka-demo-dlugo').hidden = false;
       setTimeout(czekaj, ODPYTUJ_CO_MS);
     };
@@ -73,7 +83,9 @@ function uruchom() {
   odswiez();
   zegar = setInterval(odswiez, 1000);
   // Karta w tle: przeglądarka spowalnia setInterval — po powrocie liczymy od razu.
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && !document.querySelector('.nakladka-demo')) odswiez(); });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && !document.querySelector('.nakladka-demo')) odswiez();
+  });
 }
 
 if (typeof document !== 'undefined') uruchom();

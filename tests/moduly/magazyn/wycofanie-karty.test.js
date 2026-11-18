@@ -19,14 +19,20 @@ beforeEach(async () => {
   const konto = (login, czyAdmin, prawa) => {
     const kontoId = zalozKonto(db, { login, imie: login, haslo: 'atrapa-testowa', rola: 'operator', admin: czyAdmin });
     ustawUprawnienia(db, kontoId, prawa);
-    return { origin: 'http://localhost', cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz(login, wczytajSekret(db), Date.now(), 0)}` };
+    return {
+      origin: 'http://localhost',
+      cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz(login, wczytajSekret(db), Date.now(), 0)}`,
+    };
   };
   admin = konto('administrator-testowy', true, []);
   operator = konto('operator-testowy', false, ['magazyn']);
   bezPraw = konto('czytelnik-testowy', false, []);
   id = utworzKarte(db, { nazwa: 'Lampa testowa' });
 });
-afterEach(async () => { await app?.close(); db?.close(); });
+afterEach(async () => {
+  await app?.close();
+  db?.close();
+});
 
 it('admin widzi wejście do potwierdzenia; GET potwierdzenia nie wycofuje karty', async () => {
   const r = await get();
@@ -35,7 +41,9 @@ it('admin widzi wejście do potwierdzenia; GET potwierdzenia nie wycofuje karty'
   expect(r.body).toContain(`href="/magazyn/${id}?wycofaj=tak#sprzedaz-karty"`);
   const potwierdzenie = await get(admin, '?wycofaj=tak');
   expect(potwierdzenie.statusCode).toBe(200);
-  expect(potwierdzenie.body).toContain('Oferty tej karty w kanałach zostaną zakończone przy najbliższym przebiegu. Wycofać?');
+  expect(potwierdzenie.body).toContain(
+    'Oferty tej karty w kanałach zostaną zakończone przy najbliższym przebiegu. Wycofać?',
+  );
   expect(potwierdzenie.body).toContain(`action="/magazyn/${id}/wycofaj"`);
   expect(potwierdzenie.body).toContain('name="potwierdz" value="tak"');
   expect(stan()).toBe(0);

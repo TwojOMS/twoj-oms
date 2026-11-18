@@ -9,12 +9,22 @@ import { zlozWidok } from '../../src/domena/lista-kosztow.js';
 // ('150.00'), bo tak zlozWidok oddaje kazda kwote pieniezna: gotowa do wstawienia na ekran
 // bez dalszej arytmetyki po stronie widoku.
 const w = (n = {}) => ({
-  ksef_number: 'K', numer_dokumentu: 'FV/1', sprzedawca_nip: '5252674798',
-  sprzedawca_nazwa: 'Allegro', data_wystawienia: '2026-06-05',
-  netto: '100.00', vat: '23.00', brutto: '123.00', waluta: 'PLN', rodzaj: 'Vat', ...n,
+  ksef_number: 'K',
+  numer_dokumentu: 'FV/1',
+  sprzedawca_nip: '5252674798',
+  sprzedawca_nazwa: 'Allegro',
+  data_wystawienia: '2026-06-05',
+  netto: '100.00',
+  vat: '23.00',
+  brutto: '123.00',
+  waluta: 'PLN',
+  rodzaj: 'Vat',
+  ...n,
 });
-const mapa = { 5252674798: { kategoria: 'Prowizje sprzedażowe', typ: 'zmienny' },
-  1200001051: { kategoria: 'Kurierzy', typ: 'zmienny' } };
+const mapa = {
+  5252674798: { kategoria: 'Prowizje sprzedażowe', typ: 'zmienny' },
+  1200001051: { kategoria: 'Kurierzy', typ: 'zmienny' },
+};
 const kategoria = (nip) => mapa[nip] ?? null;
 
 describe('widok miesiaca kosztow', () => {
@@ -31,8 +41,11 @@ describe('widok miesiaca kosztow', () => {
       wiersze: [
         w(),
         w({
-          ksef_number: 'K2', sprzedawca_nip: '1200001051',
-          netto: '300.00', vat: '69.00', brutto: '369.00',
+          ksef_number: 'K2',
+          sprzedawca_nip: '1200001051',
+          netto: '300.00',
+          vat: '69.00',
+          brutto: '369.00',
         }),
       ],
       kategoria,
@@ -60,7 +73,11 @@ describe('widok miesiaca kosztow', () => {
       wiersze: [
         w(),
         w({
-          ksef_number: 'K2', waluta: 'EUR', netto: '90.00', vat: '20.70', brutto: '110.70',
+          ksef_number: 'K2',
+          waluta: 'EUR',
+          netto: '90.00',
+          vat: '20.70',
+          brutto: '110.70',
           numer_dokumentu: 'INV-9',
         }),
       ],
@@ -69,9 +86,15 @@ describe('widok miesiaca kosztow', () => {
     expect(wynik.suma.netto).toBe('100.00');
     // ⚠️ Z KLUCZEM I ZRODLEM: faktury zagraniczne wpisuje sie RECZNIE i wychodzą właśnie tutaj,
     // więc bez klucza ekran nie miałby czym zaadresować poprawki kwoty ani usunięcia.
-    expect(wynik.obcaWaluta).toEqual([{
-      klucz: 'K2', zrodlo: undefined, numerDokumentu: 'INV-9', waluta: 'EUR', netto: '90.00',
-    }]);
+    expect(wynik.obcaWaluta).toEqual([
+      {
+        klucz: 'K2',
+        zrodlo: undefined,
+        numerDokumentu: 'INV-9',
+        waluta: 'EUR',
+        netto: '90.00',
+      },
+    ]);
   });
 
   // ⚠️ ZALOZENIE DO POTWIERDZENIA POMIAREM (Zadanie 0, docs/superpowers/specs/

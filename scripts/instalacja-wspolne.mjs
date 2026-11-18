@@ -14,10 +14,12 @@ export function sprawdzWersjeNode(obecna = process.versions.node) {
   const wersja = String(obecna).replace(/^v/, '');
   const glowna = Number.parseInt(wersja.split('.')[0], 10);
   if (Number.isInteger(glowna) && glowna >= WYMAGANY_NODE) return null;
-  return `INSTALACJA_NODE_ZA_STARY: Wymagany Node.js ${WYMAGANY_NODE} lub nowszy, masz ${wersja}. `
-    + `Zainstaluj Node.js ${WYMAGANY_NODE} LTS z https://nodejs.org/ (pakiet nodejs z apt w Debianie 13 i Ubuntu 24.04 to 20.x — za stary), `
-    + 'sprawdź „node --version”, wykonaj ponownie npm ci i powtórz polecenie. '
-    + 'Szczegóły: docs/instalacja-klienta.md, sekcja „Próba lokalna”.';
+  return (
+    `INSTALACJA_NODE_ZA_STARY: Wymagany Node.js ${WYMAGANY_NODE} lub nowszy, masz ${wersja}. ` +
+    `Zainstaluj Node.js ${WYMAGANY_NODE} LTS z https://nodejs.org/ (pakiet nodejs z apt w Debianie 13 i Ubuntu 24.04 to 20.x — za stary), ` +
+    'sprawdź „node --version”, wykonaj ponownie npm ci i powtórz polecenie. ' +
+    'Szczegóły: docs/instalacja-klienta.md, sekcja „Próba lokalna”.'
+  );
 }
 
 function wymagajNode() {
@@ -52,8 +54,10 @@ export function sciezkaKlucza(katalog, env = process.env) {
 }
 
 function bladDostepu(plik, e) {
-  return new Error(`INSTALACJA_KLUCZ_ODMOWA: brak dostępu do pliku klucza ${plik} (${e.code}). `
-    + 'W Dockerze właścicielem musi być UID 10001: sudo chown 10001:10001 PLIK; sudo chmod 600 PLIK.');
+  return new Error(
+    `INSTALACJA_KLUCZ_ODMOWA: brak dostępu do pliku klucza ${plik} (${e.code}). ` +
+      'W Dockerze właścicielem musi być UID 10001: sudo chown 10001:10001 PLIK; sudo chmod 600 PLIK.',
+  );
 }
 
 /** Klucz z pliku klucz.env: { tekst, id }. Brak pliku = INSTALACJA_BRAK_KLUCZA; pusty, ucięty, zły = odmowa. */
@@ -62,17 +66,23 @@ export async function kluczZPlikuInstalacji(plik) {
   const { kluczZPliku } = await import('./sekrety.mjs');
   const { idKlucza } = await import('../src/core/bezpieczenstwo/sejf-sekretow.js');
   let bajty;
-  try { bajty = kluczZPliku(plik); } catch (e) {
+  try {
+    bajty = kluczZPliku(plik);
+  } catch (e) {
     if (e?.code === 'ENOENT') {
-      throw new Error(`INSTALACJA_BRAK_KLUCZA: brak pliku klucza poświadczeń ${plik}. Powstaje przy przygotowaniu instalacji; `
-        + 'gdy masz klucz w menedżerze haseł, wpisz go do tego pliku (linia OMS_KLUCZ_SEKRETOW=…).');
+      throw new Error(
+        `INSTALACJA_BRAK_KLUCZA: brak pliku klucza poświadczeń ${plik}. Powstaje przy przygotowaniu instalacji; ` +
+          'gdy masz klucz w menedżerze haseł, wpisz go do tego pliku (linia OMS_KLUCZ_SEKRETOW=…).',
+      );
     }
     if (e?.code === 'EACCES' || e?.code === 'EPERM') throw bladDostepu(plik, e);
     throw e;
   }
   if (!bajty) {
-    throw new Error(`INSTALACJA_KLUCZ_ODMOWA: plik klucza ${plik} nie ma poprawnej linii OMS_KLUCZ_SEKRETOW= (pusty, ucięty albo zły). `
-      + 'Nie nadpisuję go: wstaw klucz z menedżera haseł. Szczegóły: docs/instalacja-docker.md, rozdział „Klucz poświadczeń”.');
+    throw new Error(
+      `INSTALACJA_KLUCZ_ODMOWA: plik klucza ${plik} nie ma poprawnej linii OMS_KLUCZ_SEKRETOW= (pusty, ucięty albo zły). ` +
+        'Nie nadpisuję go: wstaw klucz z menedżera haseł. Szczegóły: docs/instalacja-docker.md, rozdział „Klucz poświadczeń”.',
+    );
   }
   return { tekst: bajty.toString('base64url'), id: idKlucza(bajty) };
 }
@@ -83,7 +93,9 @@ export async function zapewnijKlucz(plik, baza) {
   const linie = [];
   let kod;
   try {
-    kod = uruchom(['klucz-zapewnij', '--plik', plik, ...(baza ? ['--baza', baza] : [])], {}, linia => linie.push(String(linia)));
+    kod = uruchom(['klucz-zapewnij', '--plik', plik, ...(baza ? ['--baza', baza] : [])], {}, (linia) =>
+      linie.push(String(linia)),
+    );
   } catch (e) {
     if (e?.code === 'EACCES' || e?.code === 'EPERM') throw bladDostepu(plik, e);
     throw e;
@@ -111,7 +123,10 @@ export async function wymagajPustegoKatalogu(katalog, plikKlucza = sciezkaKlucza
   const jedyny = wpisy.length === 1 ? path.join(katalog, wpisy[0]) : null;
   if (jedyny && path.resolve(jedyny) === path.resolve(plikKlucza)) {
     const stat = fs.lstatSync(jedyny);
-    if (stat.isFile() && !stat.isSymbolicLink()) { await kluczZPlikuInstalacji(jedyny); return; }
+    if (stat.isFile() && !stat.isSymbolicLink()) {
+      await kluczZPlikuInstalacji(jedyny);
+      return;
+    }
   }
   throw new Error('INSTALACJA_ODMOWA_NADPISANIA');
 }
@@ -128,12 +143,16 @@ export function opcje(argv) {
   }
   // Prefiks INSTALACJA_ przepuszcza powód przez catch każdego instalatora (przy względnej ścieżce
   // człowiek widział samo INSTALACJA_DEMO_ODMOWA). Treść bez sekretów — tylko to, co człowiek sam wpisał.
-  if (!wynik['--katalog'] || !wynik['--port']) throw new Error('INSTALACJA_OPCJE_ODMOWA: Użycie: --katalog ABS --port PORT');
+  if (!wynik['--katalog'] || !wynik['--port'])
+    throw new Error('INSTALACJA_OPCJE_ODMOWA: Użycie: --katalog ABS --port PORT');
   if (!path.isAbsolute(wynik['--katalog'])) {
-    throw new Error(`INSTALACJA_OPCJE_ODMOWA: Katalog musi być ścieżką bezwzględną (podano: ${wynik['--katalog']}, np. ${path.resolve(wynik['--katalog'])})`);
+    throw new Error(
+      `INSTALACJA_OPCJE_ODMOWA: Katalog musi być ścieżką bezwzględną (podano: ${wynik['--katalog']}, np. ${path.resolve(wynik['--katalog'])})`,
+    );
   }
   const port = Number(wynik['--port']);
-  if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('INSTALACJA_OPCJE_ODMOWA: Port musi być liczbą 1024–65535');
+  if (!Number.isInteger(port) || port < 1024 || port > 65535)
+    throw new Error('INSTALACJA_OPCJE_ODMOWA: Port musi być liczbą 1024–65535');
   return { katalog: path.resolve(wynik['--katalog']), port };
 }
 
@@ -170,9 +189,11 @@ export function oczyscPowod(tekst, sekrety = []) {
 export function powodPotomka(wynik, { limitMs, sekrety = [] } = {}) {
   if (wynik.error?.code === 'ETIMEDOUT') return `przekroczono ${Math.round(limitMs / 1000)} s — etap przerwany`;
   if (wynik.error) return oczyscPowod(`nie uruchomiono etapu: ${wynik.error.message}`, sekrety);
-  const linie = String(wynik.stderr ?? '').split(/\r?\n/).map(linia => linia.trim())
-    .filter(linia => linia && !/^at\s/.test(linia) && !/ExperimentalWarning|--trace-warnings/.test(linia))
-    .filter(linia => !LINIA_Z_HASLEM.test(linia) && !sekrety.some(sekret => sekret && linia.includes(sekret)));
+  const linie = String(wynik.stderr ?? '')
+    .split(/\r?\n/)
+    .map((linia) => linia.trim())
+    .filter((linia) => linia && !/^at\s/.test(linia) && !/ExperimentalWarning|--trace-warnings/.test(linia))
+    .filter((linia) => !LINIA_Z_HASLEM.test(linia) && !sekrety.some((sekret) => sekret && linia.includes(sekret)));
   const ostatnie = linie.slice(-3).join(' | ');
   if (ostatnie) return oczyscPowod(ostatnie, sekrety);
   return wynik.signal ? `etap przerwany sygnałem ${wynik.signal}` : `kod wyjścia ${wynik.status}, bez komunikatu`;
@@ -182,18 +203,31 @@ export function powodPotomka(wynik, { limitMs, sekrety = [] } = {}) {
 // co trafia na ekran. Klucz czytany bez walidacji: wycinamy każdą wartość, jaka stoi w pliku.
 export function sekretyKatalogu(katalog, plikKlucza = sciezkaKlucza(katalog)) {
   const sekrety = [];
-  for (const [plik, klucz] of [[path.join(katalog, PLIKI_INSTALACJI.proba), 'OMS_PASS'], [path.join(katalog, PLIKI_INSTALACJI.daneAdmina), 'haslo'], [plikKlucza, ZMIENNA_KLUCZA]]) {
-    try { const wartosc = odczytajEnv(plik)[klucz]?.trim(); if (wartosc) sekrety.push(wartosc); } catch { /* brak pliku albo nieczytelny */ }
+  for (const [plik, klucz] of [
+    [path.join(katalog, PLIKI_INSTALACJI.proba), 'OMS_PASS'],
+    [path.join(katalog, PLIKI_INSTALACJI.daneAdmina), 'haslo'],
+    [plikKlucza, ZMIENNA_KLUCZA],
+  ]) {
+    try {
+      const wartosc = odczytajEnv(plik)[klucz]?.trim();
+      if (wartosc) sekrety.push(wartosc);
+    } catch {
+      /* brak pliku albo nieczytelny */
+    }
   }
   return sekrety;
 }
 
 // „Co dalej” po sukcesie: ścieżka pliku z hasłem, nigdy samo hasło. Linie idą PRZED wierszem JSON —
 // ten zostaje ostatni (instrukcja Dockera: „Kończy się wierszem z "status":…”).
-export const ZAPISZ_KLUCZ = 'Zapisz zawartość tego pliku w menedżerze haseł. Bez niego kopia bazy nie odda podłączonych integracji.';
+export const ZAPISZ_KLUCZ =
+  'Zapisz zawartość tego pliku w menedżerze haseł. Bez niego kopia bazy nie odda podłączonych integracji.';
 
 export function coDalejLokalnie({ katalog, port, klucz = sciezkaKlucza(katalog) }) {
-  const otworz = path.relative(process.cwd(), fileURLToPath(new URL('./instalacja-otworz.mjs', import.meta.url))).split(path.sep).join('/');
+  const otworz = path
+    .relative(process.cwd(), fileURLToPath(new URL('./instalacja-otworz.mjs', import.meta.url)))
+    .split(path.sep)
+    .join('/');
   return [
     'Instalacja gotowa. Co dalej:',
     `  1. Uruchom panel:  node ${otworz} --katalog "${katalog}" --port ${port}`,
@@ -205,7 +239,12 @@ export function coDalejLokalnie({ katalog, port, klucz = sciezkaKlucza(katalog) 
   ];
 }
 
-export function coDalejKontener({ konfiguracja, port, klucz = path.join(konfiguracja, PLIKI_INSTALACJI.klucz), idKlucza = null }) {
+export function coDalejKontener({
+  konfiguracja,
+  port,
+  klucz = path.join(konfiguracja, PLIKI_INSTALACJI.klucz),
+  idKlucza = null,
+}) {
   return [
     'Instalacja gotowa. Co dalej (w katalogu deploy/klient paczki):',
     '  1. Uruchom panel:  sudo docker compose up -d   (po minucie „sudo docker compose ps” pokaże healthy)',

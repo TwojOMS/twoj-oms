@@ -10,11 +10,16 @@ import { konwertujSekrety } from '../../src/core/bezpieczenstwo/konwersja-sekret
 
 const [baza, plikKlucza] = process.argv.slice(2);
 const bajty = fs.existsSync(plikKlucza) ? kluczZPliku(plikKlucza) : null;
-if (!bajty) { console.error('atrapa kandydata: brak klucza poświadczeń'); process.exit(1); }
+if (!bajty) {
+  console.error('atrapa kandydata: brak klucza poświadczeń');
+  process.exit(1);
+}
 const db = new DatabaseSync(baza);
 try {
   konwertujSekrety(db, utworzSejf(bajty));
 } catch (e) {
   console.error(`atrapa kandydata: ${e.message}`);
   process.exitCode = 1;
-} finally { db.close(); }
+} finally {
+  db.close();
+}

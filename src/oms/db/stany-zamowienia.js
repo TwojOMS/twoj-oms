@@ -14,17 +14,24 @@ import { nalozNadpisaniaPozycji } from '../../domena/pozycje-reczne.js';
 export function brakiNaStanieZamowienia(db, zamowienieId) {
   const stany = stanyKart(db);
   if (!stany.wlaczone) return [];
-  const z = db.prepare(`SELECT id, numer, sklep, anulowane, anulowane_recznie, status_woo, utworzone_at, pozycje_reczne_json
-    FROM zamowienia WHERE id = ? AND julianday(utworzone_at) >= julianday(?)`).get(Number(zamowienieId), stany.granica);
+  const z = db
+    .prepare(
+      `SELECT id, numer, sklep, anulowane, anulowane_recznie, status_woo, utworzone_at, pozycje_reczne_json
+    FROM zamowienia WHERE id = ? AND julianday(utworzone_at) >= julianday(?)`,
+    )
+    .get(Number(zamowienieId), stany.granica);
   if (!z) return [];
   const pozycje = nalozNadpisaniaPozycji(
-    db.prepare('SELECT * FROM pozycje WHERE zamowienie_id = ? ORDER BY id').all(z.id), z.pozycje_reczne_json);
+    db.prepare('SELECT * FROM pozycje WHERE zamowienie_id = ? ORDER BY id').all(z.id),
+    z.pozycje_reczne_json,
+  );
   const { zuzycie } = zuzycieZZamowien([{ zamowienie: z, pozycje }], kartyLustraZ(db));
   const nazwa = db.prepare('SELECT nazwa FROM karty_produktow WHERE id = ?');
   const braki = [];
   for (const [kartaId, ilosc] of zuzycie) {
     const stan = stany.stany.get(kartaId)?.stan ?? 0;
-    if (stan < 0) braki.push({ karta_id: kartaId, nazwa: nazwa.get(kartaId)?.nazwa ?? `karta ${kartaId}`, stan, ilosc });
+    if (stan < 0)
+      braki.push({ karta_id: kartaId, nazwa: nazwa.get(kartaId)?.nazwa ?? `karta ${kartaId}`, stan, ilosc });
   }
   return braki.sort((a, b) => a.stan - b.stan || a.karta_id - b.karta_id);
 }

@@ -7,37 +7,59 @@ import { tytulEkranuDlaAdresu } from '../../../domena/ekrany.js';
 import { komunikatDlaOperatora } from '../../../domena/bledy.js';
 import { stronaOdmowy } from '../../../core/web/odmowa.js';
 import { sprawdzFormularzDpd, TYPY_ETYKIET_DPD } from '../../../domena/konfiguracja-dpd.js';
-import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji, usunKonfiguracjeIntegracji, stanDlaEkranu }
-  from '../../../oms/db/konfiguracja-integracji.js';
+import {
+  wczytajKonfiguracjeIntegracji,
+  zapiszKonfiguracjeIntegracji,
+  usunKonfiguracjeIntegracji,
+  stanDlaEkranu,
+} from '../../../oms/db/konfiguracja-integracji.js';
 import { nawigacjaUstawien } from '../../ustawienia/nawigacja.js';
 import { EKRAN_ADRESU_FIRMY } from '../../../domena/adres-firmy.js';
 
 const ADRES = '/ustawienia/integracje/dpd';
-const KOMUNIKATY = { zapisano: 'Zapisano dane kuriera DPD.', odlaczono: 'Kurier DPD został odłączony. Dane logowania usunięte z OMS-u.' };
+const KOMUNIKATY = {
+  zapisano: 'Zapisano dane kuriera DPD.',
+  odlaczono: 'Kurier DPD został odłączony. Dane logowania usunięte z OMS-u.',
+};
 const PUSTY = { nazwa: 'DPD', login: '', fid: '', typEtykiety: 'LBL_PRINTER' };
 
 export function registerUstawieniaDpdRoutes(app, { db, kurierDpd }) {
   function widok(req, reply, { wpisane = null, bledy = [], test = null } = {}) {
     const stan = stanDlaEkranu(wczytajKonfiguracjeIntegracji(db, 'dpd'));
-    return reply.view('ustawienia-dpd.ejs', { szerokosc: 'formularz',
-      nawigacja: nawigacjaUstawien(req, reply), title: tytulEkranuDlaAdresu(req.url),
+    return reply.view('ustawienia-dpd.ejs', {
+      szerokosc: 'formularz',
+      nawigacja: nawigacjaUstawien(req, reply),
+      title: tytulEkranuDlaAdresu(req.url),
       // Adres nadawcy = adres firmy (plik albo Ustawienia → Firma), czytany przy każdym widoku.
-      zEnv: kurierDpd.zEnv, adresFirmy: kurierDpd.adresFirmy(), ekranAdresu: EKRAN_ADRESU_FIRMY, stan,
+      zEnv: kurierDpd.zEnv,
+      adresFirmy: kurierDpd.adresFirmy(),
+      ekranAdresu: EKRAN_ADRESU_FIRMY,
+      stan,
       pola: { ...PUSTY, ...(stan?.ustawienia ?? {}), ...(wpisane ?? {}) },
-      typy: TYPY_ETYKIET_DPD, bledy, test,
+      typy: TYPY_ETYKIET_DPD,
+      bledy,
+      test,
       zapisano: KOMUNIKATY[req.query?.zapisano] ?? null,
       wymagaRestartu: kurierDpd.wymagaRestartu(),
     });
   }
   // Strona OMS z powrotem na ekran DPD; tekst stały — nic z pliku konfiguracji nie trafia na stronę.
-  const zEnv = (reply) => stronaOdmowy(reply, 409, 'Kurier DPD jest ustawiony w pliku konfiguracji (oms.env) — tam go zmień. Formularz niczego nie zapisał.',
-    { tytul: 'Kurier DPD jest ustawiony w pliku konfiguracji', wroc: ADRES, napisWroc: 'Wróć do ustawień DPD' });
+  const zEnv = (reply) =>
+    stronaOdmowy(
+      reply,
+      409,
+      'Kurier DPD jest ustawiony w pliku konfiguracji (oms.env) — tam go zmień. Formularz niczego nie zapisał.',
+      { tytul: 'Kurier DPD jest ustawiony w pliku konfiguracji', wroc: ADRES, napisWroc: 'Wróć do ustawień DPD' },
+    );
 
   app.get(ADRES, async (req, reply) => widok(req, reply));
 
   app.post(ADRES, async (req, reply) => {
     if (kurierDpd.zEnv) return zEnv(reply);
-    const { ustawienia, sekrety, bledy } = sprawdzFormularzDpd(req.body ?? {}, wczytajKonfiguracjeIntegracji(db, 'dpd'));
+    const { ustawienia, sekrety, bledy } = sprawdzFormularzDpd(
+      req.body ?? {},
+      wczytajKonfiguracjeIntegracji(db, 'dpd'),
+    );
     if (bledy.length) {
       reply.code(400);
       return widok(req, reply, { wpisane: ustawienia, bledy });
@@ -51,13 +73,23 @@ export function registerUstawieniaDpdRoutes(app, { db, kurierDpd }) {
   app.post(`${ADRES}/sprawdz`, async (req, reply) => {
     if (kurierDpd.zEnv) return widok(req, reply);
     if (!wczytajKonfiguracjeIntegracji(db, 'dpd')) {
-      return widok(req, reply, { test: { ok: false, tekst: 'Najpierw zapisz dane od DPD, potem sprawdź połączenie.' } });
+      return widok(req, reply, {
+        test: { ok: false, tekst: 'Najpierw zapisz dane od DPD, potem sprawdź połączenie.' },
+      });
     }
     try {
       await kurierDpd.sprawdzPolaczenie();
-      return widok(req, reply, { test: { ok: true, tekst: 'Połączenie z DPD działa — DPD przyjęło login, hasło i numer klienta. Nic nie zostało nadane.' } });
+      return widok(req, reply, {
+        test: {
+          ok: true,
+          tekst: 'Połączenie z DPD działa — DPD przyjęło login, hasło i numer klienta. Nic nie zostało nadane.',
+        },
+      });
     } catch (e) {
-      req.log?.warn?.({ dpd: 'sprawdzenie połączenia', dlaOperatora: Boolean(e?.dlaOperatora) }, 'DPD: sprawdzenie połączenia nieudane');
+      req.log?.warn?.(
+        { dpd: 'sprawdzenie połączenia', dlaOperatora: Boolean(e?.dlaOperatora) },
+        'DPD: sprawdzenie połączenia nieudane',
+      );
       return widok(req, reply, { test: { ok: false, tekst: komunikatDlaOperatora(e) } });
     }
   });

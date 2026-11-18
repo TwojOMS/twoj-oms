@@ -6,11 +6,16 @@ export function ustawZnacznikAi(db, { kartaId, zdjecieId, ai, at = new Date().to
     const zdjecie = db.prepare('SELECT * FROM zdjecia_kart WHERE id = ? AND karta_id = ?').get(zdjecieId, kartaId);
     if (!zdjecie) throw new Error('Zdjęcie na tej karcie nie istnieje.');
     if (zdjecie.wyslane_at) throw new Error('Nie można zmienić znacznika AI zdjęcia wysłanego do kanału.');
-    db.prepare('UPDATE zdjecia_kart SET ai = ?, ai_reczne = 1 WHERE id = ? AND karta_id = ?').run(ai, zdjecieId, kartaId);
-    db.prepare(`INSERT INTO karty_zrodla_pol (karta_id, pole, zrodlo, reczne, zmieniono_at)
+    db.prepare('UPDATE zdjecia_kart SET ai = ?, ai_reczne = 1 WHERE id = ? AND karta_id = ?').run(
+      ai,
+      zdjecieId,
+      kartaId,
+    );
+    db.prepare(
+      `INSERT INTO karty_zrodla_pol (karta_id, pole, zrodlo, reczne, zmieniono_at)
       VALUES (?, ?, 'reczne', 1, ?) ON CONFLICT (karta_id, pole) DO UPDATE SET
-      zrodlo = 'reczne', reczne = 1, zmieniono_at = excluded.zmieniono_at`)
-      .run(kartaId, `zdjecie:${zdjecie.sha256 ?? zdjecie.adres_zrodlowy ?? zdjecie.id}:ai`, at);
+      zrodlo = 'reczne', reczne = 1, zmieniono_at = excluded.zmieniono_at`,
+    ).run(kartaId, `zdjecie:${zdjecie.sha256 ?? zdjecie.adres_zrodlowy ?? zdjecie.id}:ai`, at);
     db.prepare('UPDATE karty_produktow SET zmieniony_at = ? WHERE id = ?').run(at, kartaId);
     db.exec('RELEASE znacznik_ai_zdjecia');
   } catch (e) {

@@ -12,8 +12,12 @@ export function utworzeniePaczki(baza, { numer, kurier }) {
   const db = typeof baza === 'function' ? baza() : null;
   if (!db || !numer) return null;
   try {
-    const w = db.prepare(`SELECT utworzona_at FROM przesylki WHERE numer_listu = ? AND kurier = ? AND status = 'nadana'
-      ORDER BY id DESC LIMIT 1`).get(String(numer), kurier);
+    const w = db
+      .prepare(
+        `SELECT utworzona_at FROM przesylki WHERE numer_listu = ? AND kurier = ? AND status = 'nadana'
+      ORDER BY id DESC LIMIT 1`,
+      )
+      .get(String(numer), kurier);
     const ms = Date.parse(w?.utworzona_at ?? '');
     return Number.isFinite(ms) ? ms : null;
   } catch {

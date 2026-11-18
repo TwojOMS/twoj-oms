@@ -3,12 +3,24 @@ import { zbudujOms } from '../../src/oms/bootstrap.ts';
 
 let a: Awaited<ReturnType<typeof zbudujOms>>;
 beforeAll(async () => {
-  a = await zbudujOms({ env: {
-    OMS_SPRZEDAWCA_NIP: '1234563218', OMS_USER: 'fixture', OMS_PASS: 'fixture', OMS_KANALY: '[]',
-    OMS_PROFORMY_KATALOG: 'tests/fixture-proformy', OMS_ETYKIETY_KATALOG: 'tests/fixture-etykiety',
-  }, log: () => {} });
+  a = await zbudujOms({
+    env: {
+      OMS_SPRZEDAWCA_NIP: '1234563218',
+      OMS_USER: 'fixture',
+      OMS_PASS: 'fixture',
+      OMS_KANALY: '[]',
+      OMS_PROFORMY_KATALOG: 'tests/fixture-proformy',
+      OMS_ETYKIETY_KATALOG: 'tests/fixture-etykiety',
+    },
+    log: () => {},
+  });
 });
-afterAll(async () => { if (a) { await a.app.close(); a.db.close(); } });
+afterAll(async () => {
+  if (a) {
+    await a.app.close();
+    a.db.close();
+  }
+});
 
 // Inwentaryzacja czytelników. Bez zmiany /health: czujka monitoring
 // jest poza repo, a modul.ts dokumentuje zależność od pełnej treści i kolejności pól.
@@ -41,7 +53,11 @@ describe('otwarty /health — kontrakty narzędzi bez poświadczeń', () => {
         // Trasa nie może odciąć stanu integracji ani zmienić kolejności kluczy.
         const pelna = a.usluga<() => object>('zdrowie', 'zdrowie')();
         expect(Object.keys(j)).toEqual(Object.keys(pelna));
-        expect(j).toMatchObject({ poller: expect.any(Object), kanaly: expect.any(Array), czuwaczKosztow: expect.any(Object) });
+        expect(j).toMatchObject({
+          poller: expect.any(Object),
+          kanaly: expect.any(Array),
+          czuwaczKosztow: expect.any(Object),
+        });
       }
     }
     // Aktualizator toleruje brak wersji (stare obrazy), a jeśli jest — wymaga tekstu.

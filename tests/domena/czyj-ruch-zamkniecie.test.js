@@ -39,14 +39,12 @@ describe('czyj ruch — ręczne „Załatwione"', () => {
 
   it('zamknięcie NIE dotyczy wątku, w którym i tak my pisaliśmy ostatni', () => {
     // Nic sie nie psuje: stan bez zamkniecia i tak byl „zalatwione".
-    expect(czyjRuch(w({ ostatnia_od_kupujacego: 0, zamkniete_do: '2026-07-21T12:31:46.767Z' })))
-      .toBe('zalatwione');
+    expect(czyjRuch(w({ ostatnia_od_kupujacego: 0, zamkniete_do: '2026-07-21T12:31:46.767Z' }))).toBe('zalatwione');
   });
 
   it('nie wywraca się na dacie nie do odczytania — zamknięcie po prostu nie obejmuje', () => {
     expect(czyjRuch(w({ zamkniete_do: 'kiedys' }))).toBe('czeka');
-    expect(czyjRuch(w({ last_message_date_time: 'kiedys', zamkniete_do: '2026-07-21T12:31:46.767Z' })))
-      .toBe('czeka');
+    expect(czyjRuch(w({ last_message_date_time: 'kiedys', zamkniete_do: '2026-07-21T12:31:46.767Z' }))).toBe('czeka');
   });
 
   it('brak zamknięcia niczego nie zmienia — stare wywołania działają jak dotąd', () => {

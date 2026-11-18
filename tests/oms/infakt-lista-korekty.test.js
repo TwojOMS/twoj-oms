@@ -12,7 +12,9 @@ function fake(odpowiedzi) {
   return { impl, wolania };
 }
 const strona = (entities, total = entities.length) => ({
-  ok: true, status: 200, json: async () => ({ metainfo: { count: entities.length, total_count: total }, entities }),
+  ok: true,
+  status: 200,
+  json: async () => ({ metainfo: { count: entities.length, total_count: total }, entities }),
 });
 
 // Fałszywy inFakt STRONICUJĄCY po `offset` — bo lista nieopłaconych to CAŁA historia, a nie
@@ -25,7 +27,11 @@ function fakeStrony({ total, wolania = [] }) {
     for (let i = offset; i < Math.min(offset + STRONA_INFAKTU, total); i += 1) {
       entities.push({ uuid: `f${i}`, number: `${i}/06/2026`, left_to_pay: 12300 });
     }
-    return { ok: true, status: 200, json: async () => ({ metainfo: { count: entities.length, total_count: total }, entities }) };
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ metainfo: { count: entities.length, total_count: total }, entities }),
+    };
   };
 }
 
@@ -104,9 +110,16 @@ describe('korekty i nieopłacone', () => {
   // ⚠️ INNY ZASÓB. Ten sam uuid pod /invoices/ oddaje 404 — sprawdzone.
   it('PDF korekty idzie pod /corrective_invoices/, nie pod /invoices/', async () => {
     const pdf = Buffer.from('%PDF-1.4 korekta');
-    const { impl, wolania } = fake([['corrective_invoices', {
-      ok: true, status: 200, arrayBuffer: async () => pdf.buffer.slice(pdf.byteOffset, pdf.byteOffset + pdf.length),
-    }]]);
+    const { impl, wolania } = fake([
+      [
+        'corrective_invoices',
+        {
+          ok: true,
+          status: 200,
+          arrayBuffer: async () => pdf.buffer.slice(pdf.byteOffset, pdf.byteOffset + pdf.length),
+        },
+      ],
+    ]);
     const c = createInfaktClient({ apiKey: 'x', fetchImpl: impl });
     const bajty = await c.pobierzPdfKorekty('k1');
     expect(bajty.subarray(0, 4).toString()).toBe('%PDF');

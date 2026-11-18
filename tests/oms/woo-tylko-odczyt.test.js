@@ -2,19 +2,28 @@ import { describe, it, expect, vi } from 'vitest';
 import { createWooClient } from '../../src/oms/woo/client.js';
 import { dodajNotatkeZPowtorka } from '../../src/moduly/wysylka/services/notatka-nadania.js';
 import {
-  czyOdmowaZapisu, TYLKO_ODCZYT, KLUCZ_TYLKO_ODCZYT, uprawnieniaSklepu, czyTylkoOdczyt,
+  czyOdmowaZapisu,
+  TYLKO_ODCZYT,
+  KLUCZ_TYLKO_ODCZYT,
+  uprawnieniaSklepu,
+  czyTylkoOdczyt,
 } from '../../src/domena/woo-uprawnienia.js';
 
 // Sklep podłączony kluczem „Odczyt” — klient NIE wysyła żadnego zapisu,
 // a klucz bez zapisu przy trybie „Zapis/odczyt” daje jeden zrozumiały komunikat bez ponawiania.
 
 const odp = (status, body) => ({
-  status, ok: status >= 200 && status < 300, json: async () => body,
+  status,
+  ok: status >= 200 && status < 300,
+  json: async () => body,
   headers: { get: () => null },
 });
 const klient = (res, nad = {}) => {
   const fetchImpl = vi.fn().mockResolvedValue(res);
-  return { c: createWooClient({ baseUrl: 'https://sklep.polcien.example', ck: 'ck', cs: 'cs', fetchImpl, ...nad }), fetchImpl };
+  return {
+    c: createWooClient({ baseUrl: 'https://sklep.polcien.example', ck: 'ck', cs: 'cs', fetchImpl, ...nad }),
+    fetchImpl,
+  };
 };
 
 describe('uprawnieniaSklepu', () => {
@@ -68,12 +77,19 @@ describe('klient Woo w trybie Zapis/odczyt z kluczem tylko do odczytu', () => {
   // Prawdziwy WooCommerce przy kluczu „Odczyt” i zapisie odpowiada 401 woocommerce_rest_authentication_error
   // „…does not have write permissions.” — rozpoznajemy po treści, bo ten sam kod ma zły/odwołany klucz.
   it('401 authentication_error „does not have write permissions” przy zapisie — ten sam komunikat', async () => {
-    const { c } = klient(odp(401, { code: 'woocommerce_rest_authentication_error', message: 'The API key provided does not have write permissions.' }));
+    const { c } = klient(
+      odp(401, {
+        code: 'woocommerce_rest_authentication_error',
+        message: 'The API key provided does not have write permissions.',
+      }),
+    );
     await expect(c.zapiszProdukt('products/900', { sku: 'A-1' })).rejects.toThrow(KLUCZ_TYLKO_ODCZYT);
   });
 
   it('401 authentication_error o złym kluczu przy zapisie zostaje „Sklep odrzucił klucz REST”', async () => {
-    const { c } = klient(odp(401, { code: 'woocommerce_rest_authentication_error', message: 'Consumer key is invalid.' }));
+    const { c } = klient(
+      odp(401, { code: 'woocommerce_rest_authentication_error', message: 'Consumer key is invalid.' }),
+    );
     await expect(c.ustawStatus(4501, 'completed')).rejects.toThrow('Sklep odrzucił klucz REST');
   });
 

@@ -21,29 +21,42 @@ let licznik = 0;
 const DZIEN = 24 * 60 * 60 * 1000;
 const przedDniami = (dni) => new Date(Date.now() - dni * DZIEN).toISOString();
 
-function zFaktura(db, {
-  sklep = 'allegro_swietlik', chceFakture = 1, uuid = null, numer = 'FV/12/2026', ksefNumer = null,
-  anulowane = 0, utworzonaAt = przedDniami(1),
-} = {}) {
+function zFaktura(
+  db,
+  {
+    sklep = 'allegro_swietlik',
+    chceFakture = 1,
+    uuid = null,
+    numer = 'FV/12/2026',
+    ksefNumer = null,
+    anulowane = 0,
+    utworzonaAt = przedDniami(1),
+  } = {},
+) {
   licznik += 1;
   const klucz = uuid ?? `u${licznik}`;
-  const id = zapiszZamowienie(db, sklep, {
-    zrodlo_id: `${sklep}-${klucz}`,
-    numer: String(1300 + licznik),
-    klient: { first_name: 'Jan', last_name: 'Kowalski' },
-    dostawa: {},
-    metoda_wysylki: 'dpd',
-    kwota_pobrania: null,
-    chce_fakture: chceFakture,
-    nip: null,
-    kwota_brutto: '100.00',
-    koszt_dostawy_brutto: '0.00',
-    status_woo: 'processing',
-    oplacone_at: null,
-    anulowane,
-    utworzone_at: '2026-08-05T09:00:00',
-    pozycje: [],
-  }, {});
+  const id = zapiszZamowienie(
+    db,
+    sklep,
+    {
+      zrodlo_id: `${sklep}-${klucz}`,
+      numer: String(1300 + licznik),
+      klient: { first_name: 'Jan', last_name: 'Kowalski' },
+      dostawa: {},
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: chceFakture,
+      nip: null,
+      kwota_brutto: '100.00',
+      koszt_dostawy_brutto: '0.00',
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane,
+      utworzone_at: '2026-08-05T09:00:00',
+      pozycje: [],
+    },
+    {},
+  );
   db.prepare(
     'INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, ksef_numer, utworzona_at) VALUES (?,?,?,?,?)',
   ).run(id, klucz, numer, ksefNumer, utworzonaAt);
@@ -57,7 +70,13 @@ const logZ = (db, id) => db.prepare('SELECT * FROM log WHERE zamowienie_id = ?')
 // nie poszlo ANI JEDNO wywolanie, a nie to, co wrocilo.
 function liczacaAtrapa(odpowiedz = { numer: null, ksefNumer: null }) {
   const pytania = [];
-  return { pytania, pobierzFakture: async (uuid) => { pytania.push(uuid); return odpowiedz; } };
+  return {
+    pytania,
+    pobierzFakture: async (uuid) => {
+      pytania.push(uuid);
+      return odpowiedz;
+    },
+  };
 }
 
 describe('czuwacz KSeF — odczyt numeru', () => {
@@ -275,7 +294,11 @@ describe('czuwacz KSeF — odporność', () => {
 
     await createCzuwaczKsef({
       db,
-      infakt: { pobierzFakture: async () => { throw new Error('inFakt nieosiągalny: ECONNRESET'); } },
+      infakt: {
+        pobierzFakture: async () => {
+          throw new Error('inFakt nieosiągalny: ECONNRESET');
+        },
+      },
     }).przebieg();
 
     const f = fakturaZ(db, id);
@@ -364,7 +387,11 @@ describe('czuwacz KSeF — odporność', () => {
 
     await createCzuwaczKsef({
       db,
-      infakt: { pobierzFakture: async () => { throw new Error('inFakt nieosiągalny: ECONNRESET'); } },
+      infakt: {
+        pobierzFakture: async () => {
+          throw new Error('inFakt nieosiągalny: ECONNRESET');
+        },
+      },
     }).przebieg();
 
     const wpisy = logZ(db, id);
@@ -382,7 +409,11 @@ describe('czuwacz KSeF — odporność', () => {
     const id = zFaktura(db);
     const czuwacz = createCzuwaczKsef({
       db,
-      infakt: { pobierzFakture: async () => { throw new Error('inFakt odrzucił odczyt faktury (404): nie znaleziono'); } },
+      infakt: {
+        pobierzFakture: async () => {
+          throw new Error('inFakt odrzucił odczyt faktury (404): nie znaleziono');
+        },
+      },
     });
 
     await czuwacz.przebieg();
@@ -399,7 +430,11 @@ describe('czuwacz KSeF — odporność', () => {
     let komunikat = 'inFakt nieosiągalny: ECONNRESET';
     const czuwacz = createCzuwaczKsef({
       db,
-      infakt: { pobierzFakture: async () => { throw new Error(komunikat); } },
+      infakt: {
+        pobierzFakture: async () => {
+          throw new Error(komunikat);
+        },
+      },
     });
 
     await czuwacz.przebieg();
@@ -414,8 +449,7 @@ describe('czuwacz KSeF — odporność', () => {
     const db = openOmsDb(':memory:');
     const infakt = liczacaAtrapa();
 
-    await expect(createCzuwaczKsef({ db, infakt }).przebieg())
-      .resolves.toEqual({ sprawdzone: 0, znalezione: 0 });
+    await expect(createCzuwaczKsef({ db, infakt }).przebieg()).resolves.toEqual({ sprawdzone: 0, znalezione: 0 });
     expect(infakt.pytania).toEqual([]);
     db.close();
   });
@@ -489,7 +523,9 @@ describe('czuwacz KSeF — jeden przebieg naraz', () => {
     zFaktura(db, { uuid: 'a' });
     zFaktura(db, { uuid: 'b' });
     let zwolnij;
-    const brama = new Promise((r) => { zwolnij = r; });
+    const brama = new Promise((r) => {
+      zwolnij = r;
+    });
     const pytania = [];
     const czuwacz = createCzuwaczKsef({
       db,
@@ -522,7 +558,10 @@ describe('czuwacz KSeF — jeden przebieg naraz', () => {
     let padnij = true;
     const kruchaBaza = {
       prepare: (sql) => {
-        if (padnij) { padnij = false; throw new Error('baza padła'); }
+        if (padnij) {
+          padnij = false;
+          throw new Error('baza padła');
+        }
         return db.prepare(sql);
       },
     };
@@ -582,11 +621,12 @@ describe('automat: faktura do Allegro po pojawieniu się numeru KSeF', () => {
     };
   };
 
-  const czuwaczZ = (db, { fakturaAllegro, ksefNumer = 'KS-1' }) => createCzuwaczKsef({
-    db,
-    infakt: { pobierzFakture: async () => ({ numer: 'FV/12/2026', ksefNumer }) },
-    fakturaAllegro,
-  });
+  const czuwaczZ = (db, { fakturaAllegro, ksefNumer = 'KS-1' }) =>
+    createCzuwaczKsef({
+      db,
+      infakt: { pobierzFakture: async () => ({ numer: 'FV/12/2026', ksefNumer }) },
+      fakturaAllegro,
+    });
 
   it('numer KSeF się pojawił → panel sam wysyła fakturę do Allegro', async () => {
     const db = openOmsDb(':memory:');
@@ -653,7 +693,9 @@ describe('automat: faktura do Allegro po pojawieniu się numeru KSeF', () => {
     // Odczyt z inFaktu SIE UDAL — kolumna nie ma prawa mowic inaczej.
     expect(fakturaZ(db, id).ksef_odczyt).not.toBe('blad');
     const wpisy = logZ(db, id);
-    expect(wpisy.some((w) => w.akcja === 'faktura-allegro' && /AUTOMAT.*Allegro nie odpowiedziało/s.test(w.wynik))).toBe(true);
+    expect(
+      wpisy.some((w) => w.akcja === 'faktura-allegro' && /AUTOMAT.*Allegro nie odpowiedziało/s.test(w.wynik)),
+    ).toBe(true);
     expect(wpisy.some((w) => /BŁĄD odczytu/.test(w.wynik))).toBe(false);
   });
 
@@ -679,8 +721,9 @@ describe('automat: faktura do Allegro po pojawieniu się numeru KSeF', () => {
   it('dokument wysłany wcześniej BEZ numeru KSeF nie jedzie do kupującego drugi raz', async () => {
     const db = openOmsDb(':memory:');
     const id = zFaktura(db, { sklep: 'allegro_swietlik', chceFakture: 1 });
-    db.prepare("UPDATE faktury SET allegro_wyslana_at = '2026-08-06T20:00:00', allegro_invoice_id = 'inv-9' WHERE zamowienie_id = ?")
-      .run(id);
+    db.prepare(
+      "UPDATE faktury SET allegro_wyslana_at = '2026-08-06T20:00:00', allegro_invoice_id = 'inv-9' WHERE zamowienie_id = ?",
+    ).run(id);
     const { wolania, usluga } = atrapaWysylki();
     await czuwaczZ(db, { fakturaAllegro: usluga }).przebieg();
     expect(wolania).toEqual([]);
@@ -704,7 +747,8 @@ describe('automat: faktura do Allegro po pojawieniu się numeru KSeF', () => {
     const db = openOmsDb(':memory:');
     const id = zFaktura(db, { sklep: 'allegro_swietlik', chceFakture: 1 });
     const wynik = await createCzuwaczKsef({
-      db, infakt: { pobierzFakture: async () => ({ numer: 'FV/12/2026', ksefNumer: 'KS-1' }) },
+      db,
+      infakt: { pobierzFakture: async () => ({ numer: 'FV/12/2026', ksefNumer: 'KS-1' }) },
     }).przebieg();
     expect(wynik.znalezione).toBe(1);
     expect(fakturaZ(db, id).ksef_numer).toBe('KS-1');

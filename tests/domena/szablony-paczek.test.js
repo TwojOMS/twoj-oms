@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
-  odczytajSzablony, zmienSzablon, ustawDomyslnySzablon, usunSzablon, zapiszSzablony,
+  odczytajSzablony,
+  zmienSzablon,
+  ustawDomyslnySzablon,
+  usunSzablon,
+  zapiszSzablony,
 } from '../../src/domena/szablony-paczek.js';
 import { domyslnaPaczka } from '../../src/domena/ustawienia-panelu.js';
 
@@ -11,9 +15,16 @@ describe('szablony paczek', () => {
     const stan = odczytajSzablony({ 'paczka.waga': '2,5', 'paczka.dlugosc': '0', 'paczka.szerokosc': '60' });
 
     expect(stan.domyslnyId).toBe('domyslna');
-    expect(stan.szablony).toEqual([{
-      id: 'domyslna', nazwa: 'Paczka domyślna', waga: 2.5, dlugosc: 110, szerokosc: 60, wysokosc: 1,
-    }]);
+    expect(stan.szablony).toEqual([
+      {
+        id: 'domyslna',
+        nazwa: 'Paczka domyślna',
+        waga: 2.5,
+        dlugosc: 110,
+        szerokosc: 60,
+        wysokosc: 1,
+      },
+    ]);
   });
 
   it('dodaje zestaw bez zmiany paczki masowej, a wybór domyślnego synchronizuje stare klucze', () => {
@@ -26,7 +37,10 @@ describe('szablony paczek', () => {
     expect(wybrany.bledy).toEqual([]);
     const zapis = zapiszSzablony(wybrany.stan);
     expect(zapis).toMatchObject({
-      'paczka.waga': '0.5', 'paczka.dlugosc': '30', 'paczka.szerokosc': '20', 'paczka.wysokosc': '10',
+      'paczka.waga': '0.5',
+      'paczka.dlugosc': '30',
+      'paczka.szerokosc': '20',
+      'paczka.wysokosc': '10',
     });
     expect(domyslnaPaczka(zapis)).toEqual({ waga: 0.5, dlugosc: 30, szerokosc: 20, wysokosc: 10 });
   });
@@ -69,10 +83,24 @@ describe('szablony paczek', () => {
 
   it('ręcznie uszkodzony JSON z tekstem zamiast liczby wraca do bezpiecznych pól legacy', () => {
     const zapis = {
-      'paczka.szablony': JSON.stringify({ version: 1, domyslnyId: 'domyslna', szablony: [{
-        id: 'domyslna', nazwa: 'Paczka domyślna', waga: '2', dlugosc: 30, szerokosc: 20, wysokosc: 10,
-      }] }),
-      'paczka.waga': '3', 'paczka.dlugosc': '90', 'paczka.szerokosc': '60', 'paczka.wysokosc': '4',
+      'paczka.szablony': JSON.stringify({
+        version: 1,
+        domyslnyId: 'domyslna',
+        szablony: [
+          {
+            id: 'domyslna',
+            nazwa: 'Paczka domyślna',
+            waga: '2',
+            dlugosc: 30,
+            szerokosc: 20,
+            wysokosc: 10,
+          },
+        ],
+      }),
+      'paczka.waga': '3',
+      'paczka.dlugosc': '90',
+      'paczka.szerokosc': '60',
+      'paczka.wysokosc': '4',
     };
 
     expect(domyslnaPaczka(zapis)).toEqual({ waga: 3, dlugosc: 90, szerokosc: 60, wysokosc: 4 });

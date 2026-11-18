@@ -5,9 +5,14 @@ import { BAZA_DOMYSLNA } from '../../oms/ksef/client.js';
 /** Odczyt po zbudowaniu modułów; diagnostyka otrzymuje wyłącznie adresy i nazwy. */
 export function celeDiagnostyki(usluga: <T>(modul: string, nazwa: string) => T) {
   const opcjonalna = (modul: string): any => {
-    try { return usluga(modul, 'config'); }
-    catch (e) {
-      if (e instanceof Error && e.message === `Usługa „${modul}.config" nie istnieje albo moduł „${modul}" nie jest zbudowany przed wołającym`) return null;
+    try {
+      return usluga(modul, 'config');
+    } catch (e) {
+      if (
+        e instanceof Error &&
+        e.message === `Usługa „${modul}.config" nie istnieje albo moduł „${modul}" nie jest zbudowany przed wołającym`
+      )
+        return null;
       throw e;
     }
   };
@@ -26,29 +31,43 @@ export function celeDiagnostyki(usluga: <T>(modul: string, nazwa: string) => T) 
   // zapisany w Ustawieniach po starcie) zostaje stary kształt `infakt`.
   const program = faktury ? zProgramu({ infakt: usluga<unknown>('faktury', 'infakt') }) : null;
   const zModulu = program && Object.hasOwn(dokumenty, program.opis.id) ? dokumenty[program.opis.id] : undefined;
-  const celProgramu = !program ? null
-    : zModulu === undefined ? { opis: program.opis, url: program.opis.adres }
-    : zModulu ? { opis: program.opis, url: zModulu.baseUrl ?? ADRES_DIAGNOSTYKI_INFAKTU }
-    : null;
+  const celProgramu = !program
+    ? null
+    : zModulu === undefined
+      ? { opis: program.opis, url: program.opis.adres }
+      : zModulu
+        ? { opis: program.opis, url: zModulu.baseUrl ?? ADRES_DIAGNOSTYKI_INFAKTU }
+        : null;
   // Kanały z konfiguratora (każdy typ) i sklepy ERLI z pliku podaje moduł kanałów jako gotowe cele, bez kluczy.
   // Z konfiguracji modułu (`sklepy`, `kanaly`, mapy liczone na żywo) bierzemy WYŁĄCZNIE kanały z pliku: odczyt
   // kanału z panelu sięga po klucze, a jeden kanał bez kluczy rzucałby wyjątek i zabierał cały ekran.
   const zKanalow = usluga<() => { cele: unknown[]; zPliku: string[] }>('kanaly', 'celeLacznosci')();
   const zPliku = new Set(zKanalow.zPliku);
   const tylkoZPliku = (mapa: Record<string, unknown> | undefined) =>
-    Object.fromEntries(Object.keys(mapa ?? {}).filter((k) => zPliku.has(k)).map((k) => [k, mapa![k]]));
-  return celeLacznosci({ ...kanaly,
+    Object.fromEntries(
+      Object.keys(mapa ?? {})
+        .filter((k) => zPliku.has(k))
+        .map((k) => [k, mapa![k]]),
+    );
+  return celeLacznosci({
+    ...kanaly,
     sklepy: tylkoZPliku(kanaly.sklepy),
     kanaly: tylkoZPliku(kanaly.kanaly),
     celeKanalow: zKanalow.cele,
     program: celProgramu,
     infakt: program ? null : dokumenty.infakt,
     // Token KSeF z pliku albo z Ustawień → Integracje → KSeF (pytane przy każdym wejściu); adres tylko z pliku.
-    ksef: koszty && usluga<{ dostepny: () => boolean }>('koszty', 'zrodloKsef').dostepny() ? { api: koszty.adresKsef ?? BAZA_DOMYSLNA } : null,
+    ksef:
+      koszty && usluga<{ dostepny: () => boolean }>('koszty', 'zrodloKsef').dostepny()
+        ? { api: koszty.adresKsef ?? BAZA_DOMYSLNA }
+        : null,
     dpd: kurierzy.dpd,
     inpost: kurierzy.inpost,
     // Ta sama reguła co przycisk „Pobierz z GUS” (plik → atrapa → klucz z Ustawień), pytana przy każdym wejściu
     // na ekran — klucz zapisany w panelu działa bez restartu. Adres: GUS_URL albo domyślny; klucza tu nie ma.
-    gus: zamowienia && usluga<{ dostepny: () => boolean }>('zamowienia', 'gus').dostepny() ? { url: zamowienia.gusAdres } : null,
+    gus:
+      zamowienia && usluga<{ dostepny: () => boolean }>('zamowienia', 'gus').dostepny()
+        ? { url: zamowienia.gusAdres }
+        : null,
   } as any);
 }

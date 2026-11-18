@@ -34,8 +34,8 @@ export const NAJDLUZSZA_LISTA_MS = (SUFIT_STRON + 1) * LIMIT_ZADANIA_MS;
 
 if (LIMIT_ZADANIA_MS >= PROG_ZAWIESZONEJ_FAKTURY_MS) {
   throw new Error(
-    'Limit żądania do Fakturowni musi być krótszy od progu zawieszonej faktury — inaczej '
-    + '„zawieszona” może oznaczać żywe wywołanie, a odblokowanie da drugą fakturę w Fakturowni.',
+    'Limit żądania do Fakturowni musi być krótszy od progu zawieszonej faktury — inaczej ' +
+      '„zawieszona” może oznaczać żywe wywołanie, a odblokowanie da drugą fakturę w Fakturowni.',
   );
 }
 
@@ -48,8 +48,16 @@ const ID_DOKUMENTU = /^[1-9]\d{0,17}$/;
 // przemilcza nieznany filtr i oddaje listę bez niego — literówka w nazwie filtra rozszerzyłaby
 // zapytanie po cichu, więc nieznany klucz to odmowa przed siecią. `page` i `per_page` ustawia klient.
 const PARAMETRY_LISTY = new Set([
-  'period', 'date_from', 'date_to', 'search_date_type', 'kind', 'kinds[]', 'number', 'oid',
-  'include_positions', 'fields[invoice]',
+  'period',
+  'date_from',
+  'date_to',
+  'search_date_type',
+  'kind',
+  'kinds[]',
+  'number',
+  'oid',
+  'include_positions',
+  'fields[invoice]',
 ]);
 const PARAMETRY_DOKUMENTU = new Set(['fields[invoice]', 'correction_positions']);
 
@@ -72,7 +80,12 @@ function zakazanyKlucz(wartosc, glebokosc = 0) {
 function powod(dane, status) {
   const m = dane?.message;
   if (m && typeof m === 'object') {
-    const tresci = Object.entries(m).flatMap(([pole, w]) => [].concat(w).filter(Boolean).map((t) => `${pole} ${t}`));
+    const tresci = Object.entries(m).flatMap(([pole, w]) =>
+      []
+        .concat(w)
+        .filter(Boolean)
+        .map((t) => `${pole} ${t}`),
+    );
     if (tresci.length) return tresci.join('; ');
   }
   if (typeof m === 'string' && m) return m;
@@ -94,7 +107,9 @@ function zapytanie(parametry, dozwolone) {
   const p = new URLSearchParams();
   for (const [klucz, wartosc] of Object.entries(parametry ?? {})) {
     if (!dozwolone.has(klucz)) {
-      throw odmowaPrzedSiecia(`Panel nie wysyła do Fakturowni parametru „${klucz}” — nieznany filtr Fakturownia przemilcza.`);
+      throw odmowaPrzedSiecia(
+        `Panel nie wysyła do Fakturowni parametru „${klucz}” — nieznany filtr Fakturownia przemilcza.`,
+      );
     }
     if (wartosc == null) continue;
     for (const w of [].concat(wartosc)) p.append(klucz, String(w));
@@ -124,11 +139,15 @@ function poprawnaData(wartosc) {
  */
 export function createFakturowniaClient({ token, domena, fetchImpl, http }) {
   if (http !== undefined) {
-    throw new Error('Klient Fakturowni nie przyjmuje własnego `http` (ponowienie powtórzyłoby wysyłkę do KSeF) — podaj `fetchImpl`.');
+    throw new Error(
+      'Klient Fakturowni nie przyjmuje własnego `http` (ponowienie powtórzyłoby wysyłkę do KSeF) — podaj `fetchImpl`.',
+    );
   }
   const wyslijHttp = transport({ fetchImpl, limitCzasuMs: LIMIT_ZADANIA_MS });
   if (!DOMENA_KONTA.test(String(domena ?? ''))) {
-    throw new Error('Nieprawidłowa domena konta Fakturowni — tylko małe litery, cyfry i myślnik (część przed .fakturownia.pl).');
+    throw new Error(
+      'Nieprawidłowa domena konta Fakturowni — tylko małe litery, cyfry i myślnik (część przed .fakturownia.pl).',
+    );
   }
   const tokenApi = String(token ?? '');
   if (!tokenApi.trim()) throw new Error('Brak tokenu API Fakturowni.');
@@ -138,10 +157,16 @@ export function createFakturowniaClient({ token, domena, fetchImpl, http }) {
   // Token w każdej postaci, w jakiej serwer albo pośrednik mógłby go odbić: surowej, zakodowanej
   // w adresie (token Fakturowni ma `/` → `%2F`) i zakodowanej małymi literami. Krótki token nie
   // może zamazać zwykłych słów (jak w inFakcie). Potem adres konta: 401 Fakturowni go niesie (F02).
-  const formyTokenu = tokenApi.length >= 8
-    ? [...new Set([tokenApi, encodeURIComponent(tokenApi),
-      encodeURIComponent(tokenApi).replace(/%[0-9A-F]{2}/g, (m) => m.toLowerCase())])]
-    : [];
+  const formyTokenu =
+    tokenApi.length >= 8
+      ? [
+          ...new Set([
+            tokenApi,
+            encodeURIComponent(tokenApi),
+            encodeURIComponent(tokenApi).replace(/%[0-9A-F]{2}/g, (m) => m.toLowerCase()),
+          ]),
+        ]
+      : [];
   const hostWzor = new RegExp(host.replace(/[.-]/g, '\\$&'), 'gi');
   const bezSekretow = (tekst) => {
     let wynik = String(tekst);
@@ -156,10 +181,13 @@ export function createFakturowniaClient({ token, domena, fetchImpl, http }) {
     if (!blad || typeof blad !== 'object') return blad;
     if (odwiedzone.has(blad)) return odwiedzone.get(blad);
     if (glebokosc >= 8) return '[pominięto dalsze szczegóły błędu]';
-    const wymagaZwyklegoBledu = blad instanceof DOMException
-      || (!Object.hasOwn(blad, 'message') && typeof blad.message === 'string');
-    const kopia = wymagaZwyklegoBledu ? new Error(bezSekretow(blad.message))
-      : Array.isArray(blad) ? [] : Object.create(Object.getPrototypeOf(blad));
+    const wymagaZwyklegoBledu =
+      blad instanceof DOMException || (!Object.hasOwn(blad, 'message') && typeof blad.message === 'string');
+    const kopia = wymagaZwyklegoBledu
+      ? new Error(bezSekretow(blad.message))
+      : Array.isArray(blad)
+        ? []
+        : Object.create(Object.getPrototypeOf(blad));
     odwiedzone.set(blad, kopia);
     const nazwy = Reflect.ownKeys(blad);
     if (wymagaZwyklegoBledu) {
@@ -171,10 +199,15 @@ export function createFakturowniaClient({ token, domena, fetchImpl, http }) {
       if (nazwa === 'cause') continue;
       const opis = Object.getOwnPropertyDescriptor(blad, nazwa);
       let wartosc;
-      try { wartosc = blad[nazwa]; }
-      catch { wartosc = '[pominięto nieczytelne szczegóły błędu]'; }
+      try {
+        wartosc = blad[nazwa];
+      } catch {
+        wartosc = '[pominięto nieczytelne szczegóły błędu]';
+      }
       Object.defineProperty(kopia, nazwa, {
-        enumerable: opis?.enumerable ?? false, configurable: opis?.configurable ?? true, writable: true,
+        enumerable: opis?.enumerable ?? false,
+        configurable: opis?.configurable ?? true,
+        writable: true,
         value: bezpiecznyBlad(wartosc, glebokosc + 1, odwiedzone),
       });
     }
@@ -187,14 +220,20 @@ export function createFakturowniaClient({ token, domena, fetchImpl, http }) {
    * połączenie albo limit czasu — żądanie mogło dojść). `tresc` = odpowiedź Fakturowni (maskowana
    * na wyjściu z klienta), żeby adapter rozpoznał np. duplikat `oid` bez parsowania komunikatu.
    */
-  async function zapytaj(sciezka, { method, body, accept = 'application/json', bajty = false, doKsef = false }, coRobimy) {
+  async function zapytaj(
+    sciezka,
+    { method, body, accept = 'application/json', bajty = false, doKsef = false },
+    coRobimy,
+  ) {
     // ⚠️ STRAŻNIK ADRESÓW — patrz komentarz na górze pliku.
     if (!doKsef && ZAKAZANE_W_ADRESIE.test(sciezka)) {
       throw odmowaPrzedSiecia('Ten adres Fakturowni wolno wywołać tylko przy wysyłce do KSeF.');
     }
     const klucz = zakazanyKlucz(body);
     if (klucz) {
-      throw odmowaPrzedSiecia(`Treść żądania do Fakturowni niesie pole „${klucz}” — wystawienie nie wysyła do KSeF i nie zmienia pól KSeF.`);
+      throw odmowaPrzedSiecia(
+        `Treść żądania do Fakturowni niesie pole „${klucz}” — wystawienie nie wysyła do KSeF i nie zmienia pól KSeF.`,
+      );
     }
     const headers = { Accept: accept, Authorization: `Bearer ${tokenApi}` };
     if (body !== undefined) headers['Content-Type'] = 'application/json';
@@ -210,35 +249,48 @@ export function createFakturowniaClient({ token, domena, fetchImpl, http }) {
     } catch (e) {
       const czas = e?.name === 'TimeoutError' || e?.name === 'AbortError';
       throw bladOperatora(
-        `Fakturownia ${czas ? `nie odpowiedziała w ${LIMIT_ZADANIA_MS / 1000} s` : `nieosiągalna (${e?.message ?? 'błąd sieci'})`}`
-        + ` przy żądaniu: ${coRobimy} — nie wiadomo, czy żądanie doszło. Sprawdź w Fakturowni, zanim spróbujesz ponownie.`,
+        `Fakturownia ${czas ? `nie odpowiedziała w ${LIMIT_ZADANIA_MS / 1000} s` : `nieosiągalna (${e?.message ?? 'błąd sieci'})`}` +
+          ` przy żądaniu: ${coRobimy} — nie wiadomo, czy żądanie doszło. Sprawdź w Fakturowni, zanim spróbujesz ponownie.`,
       );
     }
     if (res.ok && bajty) return Buffer.from(await res.arrayBuffer());
     let dane = null;
-    try { dane = JSON.parse(await res.text()); } catch { dane = null; }
+    try {
+      dane = JSON.parse(await res.text());
+    } catch {
+      dane = null;
+    }
     if (res.ok) return dane;
     const { status } = res;
     // 401 przy złym tokenie i bez tokenu (F02) — rozpoznanie po kodzie. Treść 401 niesie adres
     // konta, więc nie trafia ani do komunikatu, ani do `tresc`.
     if (status === 401 || status === 403) {
-      throw bladOperatora(`Fakturownia nie przyjęła tokenu (HTTP ${status}) — sprawdź, czy token jest skopiowany `
-        + 'w całości i należy do użytkownika z dostępem do faktur.', { status });
+      throw bladOperatora(
+        `Fakturownia nie przyjęła tokenu (HTTP ${status}) — sprawdź, czy token jest skopiowany ` +
+          'w całości i należy do użytkownika z dostępem do faktur.',
+        { status },
+      );
     }
     if (status === 429) {
       const naglowek = res.headers.get('Retry-After')?.trim() ?? '';
       const sekundy = /^\d+$/.test(naglowek) ? Number(naglowek) : undefined;
-      throw bladOperatora(`Fakturownia ogranicza liczbę zapytań (HTTP 429) przy żądaniu: ${coRobimy}`
-        + `${sekundy !== undefined ? ` — spróbuj ponownie za ${sekundy} s.` : ' — spróbuj ponownie za chwilę.'}`,
-      { status, tresc: dane, ...(sekundy !== undefined ? { ponowZaS: sekundy } : {}) });
+      throw bladOperatora(
+        `Fakturownia ogranicza liczbę zapytań (HTTP 429) przy żądaniu: ${coRobimy}` +
+          `${sekundy !== undefined ? ` — spróbuj ponownie za ${sekundy} s.` : ' — spróbuj ponownie za chwilę.'}`,
+        { status, tresc: dane, ...(sekundy !== undefined ? { ponowZaS: sekundy } : {}) },
+      );
     }
-    throw bladOperatora(`Fakturownia odrzuciła ${coRobimy} (HTTP ${status}): ${powod(dane, status)}`, { status, tresc: dane });
+    throw bladOperatora(`Fakturownia odrzuciła ${coRobimy} (HTTP ${status}): ${powod(dane, status)}`, {
+      status,
+      tresc: dane,
+    });
   }
 
-  const odmowaListy = () => bladOperatora(
-    'Fakturownia oddała odpowiedź, w której nie rozpoznaję strony listy — panel nie pokaże listy, '
-    + 'której nie umie domknąć. Spróbuj ponownie za chwilę.',
-  );
+  const odmowaListy = () =>
+    bladOperatora(
+      'Fakturownia oddała odpowiedź, w której nie rozpoznaję strony listy — panel nie pokaże listy, ' +
+        'której nie umie domknąć. Spróbuj ponownie za chwilę.',
+    );
 
   /**
    * Wszystkie strony listy faktur. `parametry` — wyłącznie z PARAMETRY_LISTY (np. `period: 'more'`,
@@ -266,8 +318,8 @@ export function createFakturowniaClient({ token, domena, fetchImpl, http }) {
       if (strona > sufit) {
         if (dane.length) {
           throw bladOperatora(
-            `Ten zakres obejmuje więcej dokumentów, niż panel pobiera (najwyżej ${sufit * STRONA_FAKTUROWNI}). `
-            + 'Zawęź zakres — niepełna lista wyglądałaby tak samo jak pełna.',
+            `Ten zakres obejmuje więcej dokumentów, niż panel pobiera (najwyżej ${sufit * STRONA_FAKTUROWNI}). ` +
+              'Zawęź zakres — niepełna lista wyglądałaby tak samo jak pełna.',
           );
         }
         return wiersze;
@@ -287,7 +339,11 @@ export function createFakturowniaClient({ token, domena, fetchImpl, http }) {
   /** PDF dokumentu jako Buffer; odpowiedź bez sygnatury `%PDF-` (np. strona logowania) → odmowa. */
   async function pobierzPdf(id) {
     const czysty = idDokumentu(id);
-    const pdf = await zapytaj(`/invoices/${czysty}.pdf`, { method: 'GET', accept: 'application/pdf', bajty: true }, 'pobranie PDF');
+    const pdf = await zapytaj(
+      `/invoices/${czysty}.pdf`,
+      { method: 'GET', accept: 'application/pdf', bajty: true },
+      'pobranie PDF',
+    );
     if (pdf.subarray(0, 5).toString('latin1') !== '%PDF-') {
       throw bladOperatora('Fakturownia oddała plik, który nie jest PDF-em — spróbuj ponownie za chwilę.');
     }
@@ -304,7 +360,9 @@ export function createFakturowniaClient({ token, domena, fetchImpl, http }) {
     if (!Array.isArray(dane) || dane.length > STRONA_FAKTUROWNI) throw odmowaListy();
     // Pełna strona = mogą być następne; liczba z jednej strony byłaby zaniżona.
     if (dane.length === STRONA_FAKTUROWNI) {
-      throw bladOperatora(`Fakturownia oddała pełną stronę dokumentów pasujących do numeru „${n}” — nie wiadomo, ile ich jest naprawdę.`);
+      throw bladOperatora(
+        `Fakturownia oddała pełną stronę dokumentów pasujących do numeru „${n}” — nie wiadomo, ile ich jest naprawdę.`,
+      );
     }
     return dane.filter((w) => w?.number === n).length;
   }
@@ -313,7 +371,11 @@ export function createFakturowniaClient({ token, domena, fetchImpl, http }) {
   async function znajdzKlientowPoNip(nip) {
     const n = String(nip ?? '').trim();
     if (!n) return [];
-    const dane = await zapytaj(`/clients.json?${new URLSearchParams({ tax_no: n })}`, { method: 'GET' }, 'wyszukanie klienta');
+    const dane = await zapytaj(
+      `/clients.json?${new URLSearchParams({ tax_no: n })}`,
+      { method: 'GET' },
+      'wyszukanie klienta',
+    );
     if (!Array.isArray(dane)) throw odmowaListy();
     return dane;
   }
@@ -349,14 +411,24 @@ export function createFakturowniaClient({ token, domena, fetchImpl, http }) {
     if (paidDate !== undefined && paidDate !== null && !poprawnaData(paidDate)) {
       throw odmowaPrzedSiecia('Data zapłaty dla Fakturowni musi mieć postać RRRR-MM-DD.');
     }
-    const oznaczenie = await zapytaj(`/invoices/${czysty}/change_status.json?status=paid`, { method: 'POST' }, 'oznaczenie zapłaty');
+    const oznaczenie = await zapytaj(
+      `/invoices/${czysty}/change_status.json?status=paid`,
+      { method: 'POST' },
+      'oznaczenie zapłaty',
+    );
     if (paidDate === undefined || paidDate === null) return oznaczenie;
     try {
-      return await zapytaj(`/invoices/${czysty}.json`, { method: 'PUT', body: { invoice: { paid_date: paidDate } } }, 'zapis daty zapłaty');
+      return await zapytaj(
+        `/invoices/${czysty}.json`,
+        { method: 'PUT', body: { invoice: { paid_date: paidDate } } },
+        'zapis daty zapłaty',
+      );
     } catch (e) {
-      throw bladOperatora(`Faktura ${czysty} jest już oznaczona jako opłacona w Fakturowni, ale Fakturownia nie przyjęła `
-        + `daty zapłaty ${paidDate} (${e?.message ?? 'błąd'}) — popraw datę ręcznie w Fakturowni; nie oznaczaj zapłaty ponownie.`,
-      { status: e?.status, tresc: e?.tresc, zaplataOznaczona: true });
+      throw bladOperatora(
+        `Faktura ${czysty} jest już oznaczona jako opłacona w Fakturowni, ale Fakturownia nie przyjęła ` +
+          `daty zapłaty ${paidDate} (${e?.message ?? 'błąd'}) — popraw datę ręcznie w Fakturowni; nie oznaczaj zapłaty ponownie.`,
+        { status: e?.status, tresc: e?.tresc, zaplataOznaczona: true },
+      );
     }
   }
 
@@ -367,7 +439,9 @@ export function createFakturowniaClient({ token, domena, fetchImpl, http }) {
   async function sprawdzPolaczenie() {
     const dane = await zapytaj('/invoices.json?page=1&per_page=1', { method: 'GET' }, 'sprawdzenie połączenia');
     if (!Array.isArray(dane)) {
-      throw bladOperatora('Fakturownia odpowiedziała, ale nie rozpoznaję odpowiedzi — to nie wygląda na API Fakturowni.');
+      throw bladOperatora(
+        'Fakturownia odpowiedziała, ale nie rozpoznaję odpowiedzi — to nie wygląda na API Fakturowni.',
+      );
     }
     return { ok: true };
   }
@@ -391,17 +465,41 @@ export function createFakturowniaClient({ token, domena, fetchImpl, http }) {
   }
 
   // Jedno wyjście: każda metoda dostaje maskowanie tokenu i adresu konta w błędzie.
-  return Object.fromEntries(Object.entries({
-    sprawdzPolaczenie, listaFaktur, pobierzFakture, pobierzPdf, iluMaNumer, znajdzKlientowPoNip,
-    wystaw, wystawKorekte, oznaczZaplacona, wyslijDokumentDoKsef,
-  }).map(([nazwa, metoda]) => [nazwa, async (...args) => {
-    try { return await metoda(...args); }
-    catch (e) { throw bezpiecznyBlad(e); }
-  }]));
+  return Object.fromEntries(
+    Object.entries({
+      sprawdzPolaczenie,
+      listaFaktur,
+      pobierzFakture,
+      pobierzPdf,
+      iluMaNumer,
+      znajdzKlientowPoNip,
+      wystaw,
+      wystawKorekte,
+      oznaczZaplacona,
+      wyslijDokumentDoKsef,
+    }).map(([nazwa, metoda]) => [
+      nazwa,
+      async (...args) => {
+        try {
+          return await metoda(...args);
+        } catch (e) {
+          throw bezpiecznyBlad(e);
+        }
+      },
+    ]),
+  );
 }
 
 /** Nazwy metod klienta Fakturowni (atrapa deploy/proba/atrapy/fakturownia.mjs wystawia te same). */
 export const METODY_FAKTUROWNI = Object.freeze([
-  'sprawdzPolaczenie', 'listaFaktur', 'pobierzFakture', 'pobierzPdf', 'iluMaNumer', 'znajdzKlientowPoNip',
-  'wystaw', 'wystawKorekte', 'oznaczZaplacona', 'wyslijDokumentDoKsef',
+  'sprawdzPolaczenie',
+  'listaFaktur',
+  'pobierzFakture',
+  'pobierzPdf',
+  'iluMaNumer',
+  'znajdzKlientowPoNip',
+  'wystaw',
+  'wystawKorekte',
+  'oznaczZaplacona',
+  'wyslijDokumentDoKsef',
 ]);

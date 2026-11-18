@@ -11,14 +11,19 @@ const surowe = {
   id: '6a1b2c3d',
   updatedAt: '2026-08-04T07:17:35.018Z',
   status: 'READY_FOR_PROCESSING',
-  lineItems: [{
-    id: 'li-1',
-    offer: { name: 'Szablon' },
-    quantity: 1,
-    price: { amount: '129.00', currency: 'PLN' },
-    boughtAt: '2026-08-03T09:13:41.325Z',
-  }],
-  delivery: { method: { id: '03f26351-f683-4db2-8895-f2c599280e3c', name: 'Allegro Kurier DPD (AD)' }, cost: { amount: '0.00' } },
+  lineItems: [
+    {
+      id: 'li-1',
+      offer: { name: 'Szablon' },
+      quantity: 1,
+      price: { amount: '129.00', currency: 'PLN' },
+      boughtAt: '2026-08-03T09:13:41.325Z',
+    },
+  ],
+  delivery: {
+    method: { id: '03f26351-f683-4db2-8895-f2c599280e3c', name: 'Allegro Kurier DPD (AD)' },
+    cost: { amount: '0.00' },
+  },
   payment: { type: 'ONLINE', finishedAt: '2026-08-03T09:14:00.000Z' },
   summary: { totalToPay: { amount: '129.00', currency: 'PLN' } },
 };
@@ -48,7 +53,9 @@ describe('adapter kanału Allegro', () => {
 
     expect(klient.pobierzZamowienia).toHaveBeenCalledTimes(1);
     expect(klient.pobierzZamowienia.mock.calls[0][0]).toEqual({
-      od: '2026-07-01T00:00:00', kursor: null, strona: 1,
+      od: '2026-07-01T00:00:00',
+      kursor: null,
+      strona: 1,
     });
   });
 
@@ -59,7 +66,9 @@ describe('adapter kanału Allegro', () => {
     await a.pobierzStrone({ od: '2026-07-01T00:00:00', kursor: '2026-08-01T10:00:00Z', strona: 3 });
 
     expect(klient.pobierzZamowienia.mock.calls[0][0]).toEqual({
-      od: '2026-07-01T00:00:00', kursor: '2026-08-01T10:00:00Z', strona: 3,
+      od: '2026-07-01T00:00:00',
+      kursor: '2026-08-01T10:00:00Z',
+      strona: 3,
     });
   });
 

@@ -29,7 +29,10 @@ import { METODY_WYSYLKI } from './wysylka.js';
 // Dawna mapa wbudowana w kod (z pułapką instancji pobrania o `method_id` odbioru
 // osobistego) żyje już tylko jako fixture zamrożonych testów: tests/pomoc/przykladowe-mapowanie-wysylki.js.
 
-const TEKST = (v) => String(v ?? '').trim().toLowerCase();
+const TEKST = (v) =>
+  String(v ?? '')
+    .trim()
+    .toLowerCase();
 
 /**
  * Metoda wysyłki z linii wysyłki zamówienia — droga główna.
@@ -83,12 +86,11 @@ export function metodaWysylkiZamowienia(surowe, mapowanie) {
   // glosno przy pierwszym zamowieniu niz cicho przy wszystkich.
   if (mapowanie && !('instancje' in mapowanie) && Object.keys(mapowanie).some((k) => /^\d+$/.test(k))) {
     throw new Error(
-      'mapowanie wysyłki: podano samą mapę instancji zamiast tablicy dostaw '
-      + '({ instancje, poPozycji }) — patrz src/domena/mapowanie-wysylki.js',
+      'mapowanie wysyłki: podano samą mapę instancji zamiast tablicy dostaw ' +
+        '({ instancje, poPozycji }) — patrz src/domena/mapowanie-wysylki.js',
     );
   }
-  const wpis = metodaZLinii(surowe, mapowanie?.instancje)
-    ?? metodaZPozycji(surowe, mapowanie?.poPozycji);
+  const wpis = metodaZLinii(surowe, mapowanie?.instancje) ?? metodaZPozycji(surowe, mapowanie?.poPozycji);
   // Literówka w tablicy wyżej nie ma prawa wpuścić do bazy wartości, której nie zna
   // `wybierzKuriera`, `wyliczStatus` ani karta — a pierwszy raz zobaczylibyśmy ją dopiero
   // przy nadaniu prawdziwej paczki.

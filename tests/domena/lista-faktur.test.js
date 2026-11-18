@@ -1,28 +1,52 @@
 import { describe, it, expect } from 'vitest';
 import {
-  dniDoTerminu, stanTerminu, opisTerminu, zakresMiesiaca, stanKsef, scalDokumenty, PROG_WKROTCE_DNI,
-  czekaNaPrzelew, stanZaplaty, doZestawienia, doZaznaczenia, wKsef, liniaRazem,
+  dniDoTerminu,
+  stanTerminu,
+  opisTerminu,
+  zakresMiesiaca,
+  stanKsef,
+  scalDokumenty,
+  PROG_WKROTCE_DNI,
+  czekaNaPrzelew,
+  stanZaplaty,
+  doZestawienia,
+  doZaznaczenia,
+  wKsef,
+  liniaRazem,
 } from '../../src/domena/lista-faktur.js';
 
 // Dokument taki, jaki oddaje lista inFaktu — nadpisywane pole po polu w każdym teście niżej.
 const dok = (nadpisz) => ({
-  number: '64/07/2026', status: 'sent', left_to_pay: 88842, payment_method: 'transfer', ...nadpisz,
+  number: '64/07/2026',
+  status: 'sent',
+  left_to_pay: 88842,
+  payment_method: 'transfer',
+  ...nadpisz,
 });
 
 describe('wKsef', () => {
   it.each([
     [{ ksef_number: '1111111111-20261015-0A1B2C3D4E5F-AB' }, true],
-    [{ ksef_number: '' }, false], [{ ksef_number: '   ' }, false],
-    [{ ksef_number: null }, false], [{}, false],
+    [{ ksef_number: '' }, false],
+    [{ ksef_number: '   ' }, false],
+    [{ ksef_number: null }, false],
+    [{}, false],
     [{ ksef_number: 123 }, true],
   ])('%j → %s', (d, wynik) => expect(wKsef(d)).toBe(wynik));
 });
 
 describe('liniaRazem', () => {
   it('porządkuje PLN przed pozostałymi walutami alfabetycznie', () => {
-    expect(liniaRazem({ EUR: { nettoGr: 10000, bruttoGr: 12300 },
-      USD: { nettoGr: 200, bruttoGr: 246 }, PLN: { nettoGr: 24935, bruttoGr: 30670 },
-      AUD: { nettoGr: 100, bruttoGr: 123 }, ile: 5, niepelne: false })).toEqual([
+    expect(
+      liniaRazem({
+        EUR: { nettoGr: 10000, bruttoGr: 12300 },
+        USD: { nettoGr: 200, bruttoGr: 246 },
+        PLN: { nettoGr: 24935, bruttoGr: 30670 },
+        AUD: { nettoGr: 100, bruttoGr: 123 },
+        ile: 5,
+        niepelne: false,
+      }),
+    ).toEqual([
       { waluta: 'PLN', tekst: 'Razem: netto 249,35 zł · brutto 306,70 zł' },
       { waluta: 'AUD', tekst: 'Razem: netto 1,00 AUD · brutto 1,23 AUD' },
       { waluta: 'EUR', tekst: 'Razem: netto 100,00 EUR · brutto 123,00 EUR' },
@@ -31,8 +55,9 @@ describe('liniaRazem', () => {
   });
   it('zachowuje ostrzeżenie o niepełnych kwotach, a dla pustej listy nie ma linii', () => {
     expect(liniaRazem({ ile: 0, niepelne: false })).toEqual([]);
-    expect(liniaRazem({ ile: 2, niepelne: true, PLN: { nettoGr: 100, bruttoGr: 123 } })[0].tekst)
-      .toBe('Razem: netto 1,00 zł · brutto 1,23 zł · niepełne — pominięto dokumenty bez kwoty');
+    expect(liniaRazem({ ile: 2, niepelne: true, PLN: { nettoGr: 100, bruttoGr: 123 } })[0].tekst).toBe(
+      'Razem: netto 1,00 zł · brutto 1,23 zł · niepełne — pominięto dokumenty bez kwoty',
+    );
   });
   it('same dokumenty bez kwoty — zostaje linia z ostrzeżeniem, nie znika', () => {
     expect(liniaRazem({ ile: 2, niepelne: true })).toEqual([
@@ -303,8 +328,12 @@ describe('C07a: zaznaczanie dokumentów na liście', () => {
     expect(doZaznaczenia(d)).toBe(false);
   });
   it.each([
-    { uuid: 'a', ksef_number: 'KS' }, { uuid: 'b', rodzaj: 'korekta' },
-    { uuid: 'c', client_tax_code: null }, { uuid: 'd', stanKsef: 'wyslana_czeka' },
+    { uuid: 'a', ksef_number: 'KS' },
+    { uuid: 'b', rodzaj: 'korekta' },
+    { uuid: 'c', client_tax_code: null },
+    { uuid: 'd', stanKsef: 'wyslana_czeka' },
     { uuid: 'e' },
-  ])('każdy uuid ma pole: %j', (d) => { expect(doZaznaczenia(d)).toBe(true); });
+  ])('każdy uuid ma pole: %j', (d) => {
+    expect(doZaznaczenia(d)).toBe(true);
+  });
 });

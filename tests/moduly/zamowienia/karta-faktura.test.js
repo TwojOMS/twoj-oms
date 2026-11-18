@@ -14,41 +14,92 @@ const NAGLOWEK = { authorization: 'Basic ' + Buffer.from('operator:test').toStri
 
 /** Dokument w kształcie inFaktu (kwoty w groszach), jak oddaje go atrapa deploy/proba/atrapy/infakt.mjs. */
 const dokumentInfaktu = (o = {}) => ({
-  uuid: 'dok-pc-1', number: 'FV/12/10/2026', currency: 'PLN',
-  gross_price: 44900, net_price: 36504, tax_price: 8396, ...o,
+  uuid: 'dok-pc-1',
+  number: 'FV/12/10/2026',
+  currency: 'PLN',
+  gross_price: 44900,
+  net_price: 36504,
+  tax_price: 8396,
+  ...o,
 });
 
-async function karta({ program, faktura = {}, proformy = [], zwroty = [], drukarka = false, kolejka = false, pobranie = false }) {
+async function karta({
+  program,
+  faktura = {},
+  proformy = [],
+  zwroty = [],
+  drukarka = false,
+  kolejka = false,
+  pobranie = false,
+}) {
   const db = openOmsDb(':memory:');
   // Kwota zamówienia celowo INNA niż kwota dokumentu: karta ma pokazać kwotę z programu.
-  const id = zapiszZamowienie(db, 'pro', {
-    zrodlo_id: 'PC-152', numer: 'PC-152', kwota_brutto: '100.00', chce_fakture: 1,
-    pozycje: [{ nazwa: 'Przykładowa lampa', sku: 'LAMPA-TEST', ilosc: 1, cena_brutto: '100.00', vat: 23 }],
-    klient: { first_name: 'Jan', company: 'Pracownia Półcień', email: 'jan@example.test' },
-    dostawa: {}, metoda_wysylki: 'dpd', kwota_pobrania: pobranie ? '100.00' : null, nip: '1234563218',
-    status_woo: null, oplacone_at: null, anulowane: 0, utworzone_at: '2026-10-20T08:00:00',
-  }, {});
+  const id = zapiszZamowienie(
+    db,
+    'pro',
+    {
+      zrodlo_id: 'PC-152',
+      numer: 'PC-152',
+      kwota_brutto: '100.00',
+      chce_fakture: 1,
+      pozycje: [{ nazwa: 'Przykładowa lampa', sku: 'LAMPA-TEST', ilosc: 1, cena_brutto: '100.00', vat: 23 }],
+      klient: { first_name: 'Jan', company: 'Pracownia Półcień', email: 'jan@example.test' },
+      dostawa: {},
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: pobranie ? '100.00' : null,
+      nip: '1234563218',
+      status_woo: null,
+      oplacone_at: null,
+      anulowane: 0,
+      utworzone_at: '2026-10-20T08:00:00',
+    },
+    {},
+  );
   if (pobranie) db.prepare('UPDATE zamowienia SET pobranie = 1 WHERE id = ?').run(id);
-  const f = { program: 'infakt', dokument_id: 'dok-pc-1', numer: 'FV/12/10/2026', utworzona_at: '2026-10-21T10:00:00Z', ...faktura };
-  db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, program, dokument_id, numer, utworzona_at) VALUES (?,?,?,?,?,?)')
-    .run(id, f.dokument_id, f.program, f.dokument_id, f.numer, f.utworzona_at);
+  const f = {
+    program: 'infakt',
+    dokument_id: 'dok-pc-1',
+    numer: 'FV/12/10/2026',
+    utworzona_at: '2026-10-21T10:00:00Z',
+    ...faktura,
+  };
+  db.prepare(
+    'INSERT INTO faktury (zamowienie_id, infakt_uuid, program, dokument_id, numer, utworzona_at) VALUES (?,?,?,?,?,?)',
+  ).run(id, f.dokument_id, f.program, f.dokument_id, f.numer, f.utworzona_at);
   db.prepare('UPDATE faktury SET ksef_numer = ? WHERE zamowienie_id = ?').run(f.ksef_numer ?? null, id);
-  if (drukarka) db.prepare("INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('druk.faktury.stanowiska', ?, ?)")
-    .run(JSON.stringify({ 'TEST-152': new Date().toISOString() }), new Date().toISOString());
+  if (drukarka)
+    db.prepare("INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('druk.faktury.stanowiska', ?, ?)").run(
+      JSON.stringify({ 'TEST-152': new Date().toISOString() }),
+      new Date().toISOString(),
+    );
   if (kolejka) dodajFaktureDoKolejki(db, db.prepare('SELECT id FROM faktury WHERE zamowienie_id = ?').get(id).id);
-  const idProform = proformy.map((p) => db.prepare(
-    'INSERT INTO proformy (zamowienie_id, numer, rok, miesiac, kolejny, kwota_brutto, utworzona_at) VALUES (?,?,?,?,?,?,?)')
-    .run(id, p.numer, 2026, 10, p.kolejny, '449.00', p.utworzona_at).lastInsertRowid);
+  const idProform = proformy.map(
+    (p) =>
+      db
+        .prepare(
+          'INSERT INTO proformy (zamowienie_id, numer, rok, miesiac, kolejny, kwota_brutto, utworzona_at) VALUES (?,?,?,?,?,?,?)',
+        )
+        .run(id, p.numer, 2026, 10, p.kolejny, '449.00', p.utworzona_at).lastInsertRowid,
+  );
   proformy.forEach((p, i) => {
-    if (p.uniewazniona) db.prepare('UPDATE proformy SET uniewazniona_at = ? WHERE id = ?').run('2026-10-30T10:00:00Z', idProform[i]);
+    if (p.uniewazniona)
+      db.prepare('UPDATE proformy SET uniewazniona_at = ? WHERE id = ?').run('2026-10-30T10:00:00Z', idProform[i]);
   });
   for (const w of zwroty) {
     const zlecona = w.uuid ? '2026-10-25T08:00:00Z' : null;
-    db.prepare(`INSERT INTO zwroty (zamowienie_id, data, kwota, kwota_dostawy, korekta_uuid, korekta_numer, korekta_zlecona_at, utworzony_at)
-      VALUES (?, '2026-10-25', '50.00', ?, ?, ?, ?, '2026-10-25T08:00:00Z')`).run(id, w.dostawa ?? null, w.uuid ?? null, w.numer ?? null, zlecona);
+    db.prepare(
+      `INSERT INTO zwroty (zamowienie_id, data, kwota, kwota_dostawy, korekta_uuid, korekta_numer, korekta_zlecona_at, utworzony_at)
+      VALUES (?, '2026-10-25', '50.00', ?, ?, ?, ?, '2026-10-25T08:00:00Z')`,
+    ).run(id, w.dostawa ?? null, w.uuid ?? null, w.numer ?? null, zlecona);
   }
   if (faktura === null) db.prepare('DELETE FROM faktury WHERE zamowienie_id = ?').run(id);
-  const app = buildOmsServer({ db, infakt: program, proforma: {}, wysylkaKsef: { korekty: true }, config: { auth: { user: 'operator', pass: 'test' } } });
+  const app = buildOmsServer({
+    db,
+    infakt: program,
+    proforma: {},
+    wysylkaKsef: { korekty: true },
+    config: { auth: { user: 'operator', pass: 'test' } },
+  });
   let kontekst = null;
   // Adapter HTTP jest już złożony (bez addHook), więc łapiemy dane strony w chwili renderu EJS: `@fastify/view`
   // kompiluje szablon przez `ejs.compile` i woła wynik z kontekstem karty (rozpoznanym po `proformaAktualnaId`).
@@ -64,13 +115,24 @@ async function karta({ program, faktura = {}, proformy = [], zwroty = [], drukar
     const r = await app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: NAGLOWEK });
     const zwrotyId = db.prepare('SELECT id, korekta_uuid FROM zwroty WHERE zamowienie_id = ?').all(id);
     return { r, kontekst, idProform, zwrotyId };
-  } finally { szpieg.mockRestore(); await app.close(); db.close(); }
+  } finally {
+    szpieg.mockRestore();
+    await app.close();
+    db.close();
+  }
 }
 
 const programTwojeFaktury = (bruttoGr) => ({
   opis: { ...programInfakt({}).opis, id: 'twojefaktury', wbudowany: true, zdolnosci: [] },
   przygotujNabywce: vi.fn(),
-  stanDokumentu: vi.fn(async (dokumentId) => ({ dokumentId, otwarty: false, zamknieta: 'ksef', czekaNaKsef: false, ksef: 'jest', bruttoGr })),
+  stanDokumentu: vi.fn(async (dokumentId) => ({
+    dokumentId,
+    otwarty: false,
+    zamknieta: 'ksef',
+    czekaNaKsef: false,
+    ksef: 'jest',
+    bruttoGr,
+  })),
   pobierzFakture: vi.fn(async () => null),
 });
 
@@ -79,27 +141,39 @@ const sekcjaFaktury = (r) => {
   return r.body.match(/<section class="panel" id="faktura">[\s\S]*?<\/section>/u)[0];
 };
 const proforma = (o = {}) => ({ numer: 'PF/1/10/2026', kolejny: 1, utworzona_at: '2026-10-29T08:00:00Z', ...o });
-const infaktKarty = () => programInfakt({ pobierzFakture: vi.fn(async () => dokumentInfaktu()), przygotujNabywce: vi.fn() });
+const infaktKarty = () =>
+  programInfakt({ pobierzFakture: vi.fn(async () => dokumentInfaktu()), przygotujNabywce: vi.fn() });
 
 // Tabela → wiersz akcji → podpowiedzi.
 const bezSpacji = (s) => s.replace(/\s+/gu, ' ');
-const OPIS_PROFORMY = 'Proforma: data dzisiejsza, bez terminu płatności. Numer z serii PF/ trafia klientowi do tytułu przelewu, a poprzednia proforma zostanie unieważniona.';
-const DRUK_WYLACZONY = 'Drukowanie wyłączone — brak komputera z drukarką. <a href="/ustawienia/druk#faktury">Ustawienia → Wysyłka i druk → Etykiety i druk</a>';
+const OPIS_PROFORMY =
+  'Proforma: data dzisiejsza, bez terminu płatności. Numer z serii PF/ trafia klientowi do tytułu przelewu, a poprzednia proforma zostanie unieważniona.';
+const DRUK_WYLACZONY =
+  'Drukowanie wyłączone — brak komputera z drukarką. <a href="/ustawienia/druk#faktury">Ustawienia → Wysyłka i druk → Etykiety i druk</a>';
 const wierszAkcji = (html) => html.match(/<div class="stopka-edycji[^"]*">[\s\S]*?<\/div>/u)?.[0];
 
 describe('układ sekcji Faktura', () => {
   it('sama ważna proforma: bez kolumny Stan (nagłówek i komórki), PDF w kolumnie akcji', async () => {
     const html = sekcjaFaktury((await karta({ program: infaktKarty(), faktura: null, proformy: [proforma()] })).r);
     expect(html).not.toContain('<th>Stan</th>');
-    expect(html).toContain('<thead><tr><th>Dokument</th><th>Numer</th><th>Data</th><th>Kwota</th><th class="kol-akcje"></th></tr></thead>');
+    expect(html).toContain(
+      '<thead><tr><th>Dokument</th><th>Numer</th><th>Data</th><th>Kwota</th><th class="kol-akcje"></th></tr></thead>',
+    );
     const [wiersz] = wierszeProform(html);
     expect(wiersz.match(/<td\b/gu)).toHaveLength(5);
     expect(wiersz).toMatch(/<td class="kol-akcje"><a class="btn btn--maly" href="\/proformy\/\d+\/pdf"/u);
   });
 
   it('kolumna Stan wraca przy unieważnionej proformie i przy fakturze', async () => {
-    const uniewazniona = sekcjaFaktury((await karta({ program: infaktKarty(), faktura: null,
-      proformy: [proforma({ uniewazniona: true }), proforma({ kolejny: 2, numer: 'PF/2/10/2026' })] })).r);
+    const uniewazniona = sekcjaFaktury(
+      (
+        await karta({
+          program: infaktKarty(),
+          faktura: null,
+          proformy: [proforma({ uniewazniona: true }), proforma({ kolejny: 2, numer: 'PF/2/10/2026' })],
+        })
+      ).r,
+    );
     expect(uniewazniona).toContain('<th>Stan</th>');
     for (const w of wierszeProform(uniewazniona)) expect(w.match(/<td\b/gu)).toHaveLength(6);
     const zFaktura = sekcjaFaktury((await karta({ program: infaktKarty(), proformy: [proforma()] })).r);
@@ -110,15 +184,23 @@ describe('układ sekcji Faktura', () => {
   it('kolejność: tabela → jeden wiersz akcji (faktura i proforma obok siebie) → podpowiedzi; napisy bez zmian', async () => {
     const html = sekcjaFaktury((await karta({ program: infaktKarty(), faktura: null, proformy: [proforma()] })).r);
     const akcje = wierszAkcji(html);
-    expect(akcje).toMatch(/<button class="btn btn--glowny" form="wystaw-fakture"[^>]*>Wystaw fakturę<\/button>\s*<form method="post" action="\/zamowienia\/1\/proforma" class="w-linii">/u);
+    expect(akcje).toMatch(
+      /<button class="btn btn--glowny" form="wystaw-fakture"[^>]*>Wystaw fakturę<\/button>\s*<form method="post" action="\/zamowienia\/1\/proforma" class="w-linii">/u,
+    );
     expect(akcje).toContain('<button class="btn">Wystaw proformę</button>');
     expect(akcje).not.toContain('<p');
     expect(akcje).not.toContain('wyjasnienie');
     const tekst = bezSpacji(html);
     expect(tekst).toContain(`<p class="wyjasnienie">${OPIS_PROFORMY}</p>`);
     expect(html).toContain(`<p class="wyjasnienie">${DRUK_WYLACZONY}</p>`);
-    const kolejnosc = ['</table>', 'Wystaw fakturę</button>', 'Wystaw proformę</button>', 'id="powod-wystawienia-faktury"',
-      'Proforma: data dzisiejsza', 'Drukowanie wyłączone'].map((s) => html.indexOf(s));
+    const kolejnosc = [
+      '</table>',
+      'Wystaw fakturę</button>',
+      'Wystaw proformę</button>',
+      'id="powod-wystawienia-faktury"',
+      'Proforma: data dzisiejsza',
+      'Drukowanie wyłączone',
+    ].map((s) => html.indexOf(s));
     expect(kolejnosc.every((i) => i >= 0)).toBe(true);
     expect([...kolejnosc].sort((a, b) => a - b)).toEqual(kolejnosc);
   });
@@ -139,8 +221,12 @@ describe('stopka i pobranie', () => {
     const glowa = html.match(/<div class="panel-glowa">[\s\S]*?<\/details>/u)[0];
     expect(glowa).toContain('<details class="wydruki">');
     expect(glowa).toContain('<summary class="btn btn--maly">⋯ Więcej</summary>');
-    expect(glowa).toMatch(/<\/summary>\s*<div class="wydruki-menu">\s*<form method="post" action="\/zamowienia\/1\/proforma">/u);
-    expect(glowa).toMatch(/<form method="post" action="\/zamowienia\/1\/proforma">[\s\S]*?<button class="btn">Wystaw proformę<\/button>[\s\S]*?<\/form>/u);
+    expect(glowa).toMatch(
+      /<\/summary>\s*<div class="wydruki-menu">\s*<form method="post" action="\/zamowienia\/1\/proforma">/u,
+    );
+    expect(glowa).toMatch(
+      /<form method="post" action="\/zamowienia\/1\/proforma">[\s\S]*?<button class="btn">Wystaw proformę<\/button>[\s\S]*?<\/form>/u,
+    );
     expect(html.slice(html.indexOf('class="stopka-edycji"'))).not.toContain('Wystaw proformę');
   });
 
@@ -152,7 +238,9 @@ describe('stopka i pobranie', () => {
   });
 
   it.each([false, true])('pobranie: faktura=%s — jedna szara linia tylko bez faktury', async (jestFaktura) => {
-    const html = sekcjaFaktury((await karta({ program: infaktKarty(), faktura: jestFaktura ? {} : null, pobranie: true })).r);
+    const html = sekcjaFaktury(
+      (await karta({ program: infaktKarty(), faktura: jestFaktura ? {} : null, pobranie: true })).r,
+    );
     const zdanie = 'Zamówienie za pobraniem — proforma zwykle niepotrzebna.';
     if (jestFaktura) expect(html).not.toContain(zdanie);
     else {
@@ -189,11 +277,20 @@ describe('tabela dokumentów — HTML karty', () => {
     bezStanowProformy(wierszeProform(html));
   });
   it('TwojeFaktury po proformie: bez rozliczenia, kwoty dokumentów, krótka data i KSeF do skopiowania', async () => {
-    const html = sekcjaFaktury((await karta({
-      program: programTwojeFaktury(44900),
-      faktura: { program: 'twojefaktury', dokument_id: 'tf-1', utworzona_at: '2026-10-29T10:00:00Z', ksef_numer: 'KSEF-TEST-152' },
-      proformy: [proforma()],
-    })).r);
+    const html = sekcjaFaktury(
+      (
+        await karta({
+          program: programTwojeFaktury(44900),
+          faktura: {
+            program: 'twojefaktury',
+            dokument_id: 'tf-1',
+            utworzona_at: '2026-10-29T10:00:00Z',
+            ksef_numer: 'KSEF-TEST-152',
+          },
+          proformy: [proforma()],
+        })
+      ).r,
+    );
     expect(html).toContain('<th>Kwota</th>');
     expect(html.match(/449,00 zł/gu)).toHaveLength(2);
     expect(html).toMatch(/<td title="[^"]+">29\.10<\/td>/u);
@@ -206,8 +303,15 @@ describe('tabela dokumentów — HTML karty', () => {
   });
 
   it('bez drukarki: brak formularza druku, jedna informacja także przy kolejce i kilku dokumentach', async () => {
-    const html = sekcjaFaktury((await karta({ program: infaktKarty(), kolejka: true,
-      proformy: [proforma(), proforma({ kolejny: 2, numer: 'PF/2/10/2026' })] })).r);
+    const html = sekcjaFaktury(
+      (
+        await karta({
+          program: infaktKarty(),
+          kolejka: true,
+          proformy: [proforma(), proforma({ kolejny: 2, numer: 'PF/2/10/2026' })],
+        })
+      ).r,
+    );
     expect(html).not.toContain('/faktura/drukuj');
     expect(html).not.toMatch(/\/proformy\/\d+\/drukuj/u);
     expect(html.match(/Drukowanie wyłączone — brak komputera z drukarką\./gu)).toHaveLength(1);
@@ -225,9 +329,19 @@ describe('tabela dokumentów — HTML karty', () => {
   });
 
   it('proforma unieważniona nie ma druku nawet z drukarką; ważne proformy bez stanu', async () => {
-    const html = sekcjaFaktury((await karta({ program: infaktKarty(), drukarka: true,
-      proformy: [proforma({ uniewazniona: true }), proforma({ kolejny: 2, numer: 'PF/2/10/2026' }),
-        proforma({ kolejny: 3, numer: 'PF/3/10/2026', utworzona_at: '2026-10-30T08:00:00Z' })] })).r);
+    const html = sekcjaFaktury(
+      (
+        await karta({
+          program: infaktKarty(),
+          drukarka: true,
+          proformy: [
+            proforma({ uniewazniona: true }),
+            proforma({ kolejny: 2, numer: 'PF/2/10/2026' }),
+            proforma({ kolejny: 3, numer: 'PF/3/10/2026', utworzona_at: '2026-10-30T08:00:00Z' }),
+          ],
+        })
+      ).r,
+    );
     const wiersz = html.match(/<tr[^>]*>\s*<td>Proforma<\/td>[\s\S]*?unieważniona[\s\S]*?<\/tr>/u)[0];
     expect(wiersz).not.toContain('aria-label="Drukuj"');
     expect(wiersz).not.toContain('/drukuj');
@@ -239,19 +353,29 @@ describe('tabela dokumentów — HTML karty', () => {
   });
 
   it('brak kwoty dokumentu daje kreskę w kolumnie Kwota', async () => {
-    const html = sekcjaFaktury((await karta({ program: programTwojeFaktury(null),
-      faktura: { program: 'twojefaktury', dokument_id: 'tf-1' } })).r);
+    const html = sekcjaFaktury(
+      (await karta({ program: programTwojeFaktury(null), faktura: { program: 'twojefaktury', dokument_id: 'tf-1' } }))
+        .r,
+    );
     expect(html).toMatch(/<th>Kwota<\/th>/u);
     expect(html).toMatch(/<td>—<\/td>/u);
   });
 
   it.each(['KSEF-KOR-152', ''])('korekta inFaktu: kwota z dokumentu i stan KSeF %s', async (numerKsef) => {
     const program = programInfakt({
-      pobierzFakture: vi.fn(async () => dokumentInfaktu()), przygotujNabywce: vi.fn(),
+      pobierzFakture: vi.fn(async () => dokumentInfaktu()),
+      przygotujNabywce: vi.fn(),
       pobierzKorekte: vi.fn(async () => ({ invoice_date: '2026-10-25', ksef_number: numerKsef, gross_price: -5000 })),
     });
-    const html = sekcjaFaktury((await karta({ program, faktura: { ksef_numer: 'KSEF-FV-152' },
-      zwroty: [{ uuid: 'kor-1', numer: '1/KOR/10/2026' }] })).r);
+    const html = sekcjaFaktury(
+      (
+        await karta({
+          program,
+          faktura: { ksef_numer: 'KSEF-FV-152' },
+          zwroty: [{ uuid: 'kor-1', numer: '1/KOR/10/2026' }],
+        })
+      ).r,
+    );
     const wiersz = html.match(/<tr>\s*<td>Korekta<\/td>[\s\S]*?<\/tr>/u)[0];
     expect(wiersz).toContain('<td>-50,00 zł</td>');
     expect(wiersz).toContain('>25.10</td>');
@@ -284,7 +408,10 @@ describe('kontekst sekcji „Faktura”', () => {
   });
 
   it('TwojeFaktury bez kwoty w dokumencie → null', async () => {
-    const { kontekst } = await karta({ program: programTwojeFaktury(null), faktura: { program: 'twojefaktury', dokument_id: 'tf-1' } });
+    const { kontekst } = await karta({
+      program: programTwojeFaktury(null),
+      faktura: { program: 'twojefaktury', dokument_id: 'tf-1' },
+    });
     expect(kontekst.kwotaFaktury).toBeNull();
   });
 
@@ -301,7 +428,9 @@ describe('kontekst sekcji „Faktura”', () => {
   });
 
   it('inFakt: błąd odczytu → kwotaFaktury null, karta 200', async () => {
-    const pobierzFakture = vi.fn(async () => { throw new Error('Awaria atrapy'); });
+    const pobierzFakture = vi.fn(async () => {
+      throw new Error('Awaria atrapy');
+    });
     const { r, kontekst } = await karta({ program: programInfakt({ pobierzFakture, przygotujNabywce: vi.fn() }) });
     expect(r.statusCode).toBe(200);
     expect(kontekst.kwotaFaktury).toBeNull();
@@ -309,7 +438,12 @@ describe('kontekst sekcji „Faktura”', () => {
   });
 
   it('inFakt: odczyt dłuższy niż termin podglądu (2,5 s) nie trzyma karty — kwota null, karta 200', async () => {
-    const pobierzFakture = vi.fn(() => new Promise((ok) => { setTimeout(() => ok(dokumentInfaktu()), 8000).unref(); }));
+    const pobierzFakture = vi.fn(
+      () =>
+        new Promise((ok) => {
+          setTimeout(() => ok(dokumentInfaktu()), 8000).unref();
+        }),
+    );
     const start = Date.now();
     const { r, kontekst } = await karta({ program: programInfakt({ pobierzFakture, przygotujNabywce: vi.fn() }) });
     expect(r.statusCode).toBe(200);
@@ -321,7 +455,8 @@ describe('kontekst sekcji „Faktura”', () => {
   it('inFakt: zwrot z dostawą bez korekty — dokument czytany raz (podgląd korekty), kwota z niego', async () => {
     const pobierzFakture = vi.fn(async () => dokumentInfaktu());
     const { r, kontekst } = await karta({
-      program: programInfakt({ pobierzFakture, przygotujNabywce: vi.fn() }), zwroty: [{ dostawa: '15.00' }],
+      program: programInfakt({ pobierzFakture, przygotujNabywce: vi.fn() }),
+      zwroty: [{ dostawa: '15.00' }],
     });
     expect(r.statusCode).toBe(200);
     expect(kontekst.kwotaFaktury).toBe('449,00 zł');
@@ -331,7 +466,8 @@ describe('kontekst sekcji „Faktura”', () => {
   it('dokument innego programu niż bieżący → bez odczytu, kwota null', async () => {
     const pobierzFakture = vi.fn(async () => dokumentInfaktu());
     const { r, kontekst } = await karta({
-      program: programInfakt({ pobierzFakture, przygotujNabywce: vi.fn() }), faktura: { program: 'twojefaktury', dokument_id: 'tf-9' },
+      program: programInfakt({ pobierzFakture, przygotujNabywce: vi.fn() }),
+      faktura: { program: 'twojefaktury', dokument_id: 'tf-9' },
     });
     expect(r.statusCode).toBe(200);
     expect(kontekst.kwotaFaktury).toBeNull();

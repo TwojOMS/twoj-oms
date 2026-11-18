@@ -1,5 +1,5 @@
 import multipart from '@fastify/multipart';
-import {odczytajOdpowiedz,MAKS_PLIK,MAKS_PLIKOW} from '../zalaczniki.js';
+import { odczytajOdpowiedz, MAKS_PLIK, MAKS_PLIKOW } from '../zalaczniki.js';
 import { stronaOdmowy } from '../../../core/web/odmowa.js';
 // Powrót z odmowy: do wątku, z którego przyszedł człowiek (adres w obrębie panelu).
 const adresWatku = (kanal, threadId) => `/wiadomosci/${encodeURIComponent(kanal)}/${encodeURIComponent(threadId)}`;
@@ -10,7 +10,13 @@ const adresWatku = (kanal, threadId) => `/wiadomosci/${encodeURIComponent(kanal)
 // zewnatrz jest POST odpowiedzi, i tylko za swiadomym potwierdzeniem czlowieka.
 
 import {
-  listaWatkow, watek, dowody, zapiszDowod, oznaczWyslane, oznaczBlad, wiadomosciWatku,
+  listaWatkow,
+  watek,
+  dowody,
+  zapiszDowod,
+  oznaczWyslane,
+  oznaczBlad,
+  wiadomosciWatku,
   zamknijWatek,
 } from '../../../oms/db/allegro-watki.js';
 import { czyjRuch } from '../../../domena/czyj-ruch-watku.js';
@@ -24,9 +30,12 @@ import { zdaniaPlatnosciTeraz } from '../zdania-platnosci.js';
 import { PODPIS } from '../../../domena/potwierdzenie-zamowienia.js';
 
 export function registerWiadomosciRoutes(app, options) {
-  app.register(async scoped => {
-    await scoped.register(multipart, {limits:{files:MAKS_PLIKOW,fileSize:MAKS_PLIK,fields:2,fieldSize:8192,parts:7},preservePath:true});
-    registerRoutes(scoped,options);
+  app.register(async (scoped) => {
+    await scoped.register(multipart, {
+      limits: { files: MAKS_PLIKOW, fileSize: MAKS_PLIK, fields: 2, fieldSize: 8192, parts: 7 },
+      preservePath: true,
+    });
+    registerRoutes(scoped, options);
   });
 }
 function registerRoutes(app, { db, klienci = {}, podpis = PODPIS }) {
@@ -46,22 +55,50 @@ function registerRoutes(app, { db, klienci = {}, podpis = PODPIS }) {
     // „Pozdrawiamy," i stałe teksty bloków z Ustawień → Szablony wiadomości, przy każdym otwarciu wątku.
     const zdania = zdaniaPlatnosciTeraz(db);
     return {
-      szablony: wlasne.map((s) => ({ id: s.id, nazwa: s.nazwa, tekst: tekstDoWatku(z, s, { podpis: podpisTeraz(), zdania }) })),
+      szablony: wlasne.map((s) => ({
+        id: s.id,
+        nazwa: s.nazwa,
+        tekst: tekstDoWatku(z, s, { podpis: podpisTeraz(), zdania }),
+      })),
       zamowienieSzablonow: z ? { id: z.id, numer: z.numer } : null,
     };
   }
   // UI context reads only the existing SQLite mirror. No external request on GET.
   function kontekst(wybrany = undefined, czytanie = false, blad = null, szkic = '') {
-    const watki = listaWatkow(db).map((w) => ({
-      ...w, stan: czyjRuch(w, dowody(db, w.kanal, w.thread_id)),
-    })).sort((a, b) => Number(b.typ === 'POST_PURCHASE_ISSUE') - Number(a.typ === 'POST_PURCHASE_ISSUE'));
-    const w = wybrany === undefined ? (watki.find(t => t.typ !== 'POST_PURCHASE_ISSUE' && t.stan === 'czeka') || watki[0] || null) : wybrany;
-    const lista = w ? dowody(db, w.kanal, w.thread_id).map(d=>({...d,zalaczniki:db.prepare('SELECT nazwa,mime,rozmiar,stan,blad FROM allegro_odpowiedzi_zalaczniki WHERE odpowiedz_id=? ORDER BY id').all(d.id)})) : [];
+    const watki = listaWatkow(db)
+      .map((w) => ({
+        ...w,
+        stan: czyjRuch(w, dowody(db, w.kanal, w.thread_id)),
+      }))
+      .sort((a, b) => Number(b.typ === 'POST_PURCHASE_ISSUE') - Number(a.typ === 'POST_PURCHASE_ISSUE'));
+    const w =
+      wybrany === undefined
+        ? watki.find((t) => t.typ !== 'POST_PURCHASE_ISSUE' && t.stan === 'czeka') || watki[0] || null
+        : wybrany;
+    const lista = w
+      ? dowody(db, w.kanal, w.thread_id).map((d) => ({
+          ...d,
+          zalaczniki: db
+            .prepare(
+              'SELECT nazwa,mime,rozmiar,stan,blad FROM allegro_odpowiedzi_zalaczniki WHERE odpowiedz_id=? ORDER BY id',
+            )
+            .all(d.id),
+        }))
+      : [];
     return {
-      szerokosc: 'tabela', title: 'Wiadomości', watki, sprawy: sprawyOtwarte(db), w, lista,
+      szerokosc: 'tabela',
+      title: 'Wiadomości',
+      watki,
+      sprawy: sprawyOtwarte(db),
+      w,
+      lista,
       korespondencja: w ? wiadomosciWatku(db, w.kanal, w.thread_id) : [],
       stan: w ? czyjRuch(w, lista) : null,
-      maks: MAKS_ZNAKOW_WIADOMOSCI, blad, szkic, czytanie, brak: czytanie && !w,
+      maks: MAKS_ZNAKOW_WIADOMOSCI,
+      blad,
+      szkic,
+      czytanie,
+      brak: czytanie && !w,
       ...szablonyWatku(w),
     };
   }
@@ -72,32 +109,71 @@ function registerRoutes(app, { db, klienci = {}, podpis = PODPIS }) {
     // Bez JavaScriptu „Wstaw" to GET z `?szablon=` — pole odpowiedzi przychodzi wypełnione.
     const wstawiony = ctx.szablony.find((s) => s.id === String(req.query?.szablon ?? ''));
     if (wstawiony) ctx.szkic = wstawiony.tekst;
-    return reply.code(w ? 200 : 404).view('wiadomosci.ejs', {...ctx,potwierdzonyDowod:String(req.query?.wyslano??'')} );
+    return reply
+      .code(w ? 200 : 404)
+      .view('wiadomosci.ejs', { ...ctx, potwierdzonyDowod: String(req.query?.wyslano ?? '') });
   });
 
   app.post('/wiadomosci/:kanal/:threadId/odpowiedz', async (req, reply) => {
     const { kanal, threadId } = req.params;
     const w = watek(db, kanal, threadId);
-    if (!w) return stronaOdmowy(reply, 404, 'Nie ma takiego wątku.', { tytul: 'Nie ma takiego wątku', napisWroc: 'Wróć do wiadomości', wroc: '/wiadomosci' });
+    if (!w)
+      return stronaOdmowy(reply, 404, 'Nie ma takiego wątku.', {
+        tytul: 'Nie ma takiego wątku',
+        napisWroc: 'Wróć do wiadomości',
+        wroc: '/wiadomosci',
+      });
 
     // ⚠️ TA SAMA BARIERA, CO W CZUWACZU, i celowo powtorzona: adres da sie wpisac z palca,
     // a odpowiedz w sporze wyslana stad omijalaby komplet narzedzi i dowodow w Allegro.
     if (w.typ === 'POST_PURCHASE_ISSUE') {
-      return stronaOdmowy(reply, 400, 'To problem z zakupem — odpowiedz w Allegro, nie stąd.', { tytul: 'Odpowiedz w Allegro', napisWroc: 'Wróć do wątku', wroc: adresWatku(kanal, threadId) });
+      return stronaOdmowy(reply, 400, 'To problem z zakupem — odpowiedz w Allegro, nie stąd.', {
+        tytul: 'Odpowiedz w Allegro',
+        napisWroc: 'Wróć do wątku',
+        wroc: adresWatku(kanal, threadId),
+      });
     }
     // ⚠️ WYSYLKA JEST NIEODWRACALNA — krok potwierdzenia, jak przy nadaniu paczki.
     // Sprawdzamy PRZED zapisem dowodu, zeby kliknieciе bez ptaszka nie zostawialo sladu.
     let odpowiedz;
-    try { odpowiedz=await odczytajOdpowiedz(req); }
-    catch (error) { return reply.code(400).view('wiadomosci.ejs',kontekst(w,true,'Nie odczytano załączników. Sprawdź formaty, limit 5 plików / 5 MiB każdy / 20 MiB łącznie i wybierz pliki ponownie.',String(error.szkic??req.body?.tresc??''))); }
+    try {
+      odpowiedz = await odczytajOdpowiedz(req);
+    } catch (error) {
+      return reply
+        .code(400)
+        .view(
+          'wiadomosci.ejs',
+          kontekst(
+            w,
+            true,
+            'Nie odczytano załączników. Sprawdź formaty, limit 5 plików / 5 MiB każdy / 20 MiB łącznie i wybierz pliki ponownie.',
+            String(error.szkic ?? req.body?.tresc ?? ''),
+          ),
+        );
+    }
     if (odpowiedz.potwierdzam !== 'tak') {
-      return stronaOdmowy(reply, 400, 'Brak potwierdzenia — nic nie wysłano.', { tytul: 'Odpowiedź nie została wysłana', napisWroc: 'Wróć do wątku', wroc: adresWatku(kanal, threadId) });
+      return stronaOdmowy(reply, 400, 'Brak potwierdzenia — nic nie wysłano.', {
+        tytul: 'Odpowiedź nie została wysłana',
+        napisWroc: 'Wróć do wątku',
+        wroc: adresWatku(kanal, threadId),
+      });
     }
 
-    const {tresc,pliki}=odpowiedz;
-    if(!tresc.trim()||tresc.length>MAKS_ZNAKOW_WIADOMOSCI)return reply.code(400).view('wiadomosci.ejs',kontekst(w,true,'Wpisz treść odpowiedzi, najwyżej '+MAKS_ZNAKOW_WIADOMOSCI+' znaków.',tresc));
+    const { tresc, pliki } = odpowiedz;
+    if (!tresc.trim() || tresc.length > MAKS_ZNAKOW_WIADOMOSCI)
+      return reply
+        .code(400)
+        .view(
+          'wiadomosci.ejs',
+          kontekst(w, true, 'Wpisz treść odpowiedzi, najwyżej ' + MAKS_ZNAKOW_WIADOMOSCI + ' znaków.', tresc),
+        );
     const klient = klienci[kanal];
-    if (!klient) return stronaOdmowy(reply, 503, 'Kanał Allegro nie jest skonfigurowany.', { tytul: 'Kanał Allegro nie jest skonfigurowany', napisWroc: 'Wróć do wątku', wroc: adresWatku(kanal, threadId) });
+    if (!klient)
+      return stronaOdmowy(reply, 503, 'Kanał Allegro nie jest skonfigurowany.', {
+        tytul: 'Kanał Allegro nie jest skonfigurowany',
+        napisWroc: 'Wróć do wątku',
+        wroc: adresWatku(kanal, threadId),
+      });
 
     // ⚠️ DOWOD PRZED STRZALEM — ta sama zasada, co w czuwaczu formulki. Gdy polaczenie padnie
     // PO wyslaniu, wpis zostaje i widac, ze cos poszlo.
@@ -106,29 +182,61 @@ function registerRoutes(app, { db, klienci = {}, podpis = PODPIS }) {
       db.exec('BEGIN IMMEDIATE');
       try {
         dowod = zapiszDowod(db, { kanal, threadId, rodzaj: 'reczna', tresc });
-        for(const p of pliki){const row=db.prepare('INSERT INTO allegro_odpowiedzi_zalaczniki(odpowiedz_id,nazwa,mime,rozmiar,sha256) VALUES(?,?,?,?,?)').run(dowod.id,p.nazwa,p.mime,p.rozmiar,p.sha256);p.dowodId=Number(row.lastInsertRowid);}
+        for (const p of pliki) {
+          const row = db
+            .prepare(
+              'INSERT INTO allegro_odpowiedzi_zalaczniki(odpowiedz_id,nazwa,mime,rozmiar,sha256) VALUES(?,?,?,?,?)',
+            )
+            .run(dowod.id, p.nazwa, p.mime, p.rozmiar, p.sha256);
+          p.dowodId = Number(row.lastInsertRowid);
+        }
         db.exec('COMMIT');
-      } catch(error) { db.exec('ROLLBACK');throw error; }
+      } catch (error) {
+        db.exec('ROLLBACK');
+        throw error;
+      }
     } catch (e) {
-      return stronaOdmowy(reply, 409, `Nie zapisano dowodu wysyłki, więc nic nie wysłano: ${e.message}`, { tytul: 'Odpowiedź nie została wysłana', napisWroc: 'Wróć do wątku', wroc: adresWatku(kanal, threadId) });
+      return stronaOdmowy(reply, 409, `Nie zapisano dowodu wysyłki, więc nic nie wysłano: ${e.message}`, {
+        tytul: 'Odpowiedź nie została wysłana',
+        napisWroc: 'Wróć do wątku',
+        wroc: adresWatku(kanal, threadId),
+      });
     }
 
-    let wysylkaRozpoczeta=false;
+    let wysylkaRozpoczeta = false;
     try {
-      const ids=[];
-      for(const p of pliki){try {
-        const d=await klient.deklarujZalacznikWiadomosci(p.nazwa,p.rozmiar);
-        db.prepare("UPDATE allegro_odpowiedzi_zalaczniki SET allegro_id=?,stan='zadeklarowany' WHERE id=?").run(d.id,p.dowodId);
-        await klient.wgrajZalacznikWiadomosci(d.id,p.bajty,p.mime);
-        db.prepare("UPDATE allegro_odpowiedzi_zalaczniki SET stan='wgrany' WHERE id=?").run(p.dowodId);
-        ids.push(d.id);
-      } catch(error){db.prepare("UPDATE allegro_odpowiedzi_zalaczniki SET stan='blad',blad=? WHERE id=?").run(String(error.message),p.dowodId);throw error;}}
-      if(ids.length){wysylkaRozpoczeta=true;const result=await klient.wyslijWiadomosc(threadId, tresc, ids);if(!result?.id)throw Error('Brak potwierdzenia wysłania. Sprawdź wątek w Allegro przed ponownym wysłaniem.');}
-      else await klient.wyslijWiadomosc(threadId, tresc);
+      const ids = [];
+      for (const p of pliki) {
+        try {
+          const d = await klient.deklarujZalacznikWiadomosci(p.nazwa, p.rozmiar);
+          db.prepare("UPDATE allegro_odpowiedzi_zalaczniki SET allegro_id=?,stan='zadeklarowany' WHERE id=?").run(
+            d.id,
+            p.dowodId,
+          );
+          await klient.wgrajZalacznikWiadomosci(d.id, p.bajty, p.mime);
+          db.prepare("UPDATE allegro_odpowiedzi_zalaczniki SET stan='wgrany' WHERE id=?").run(p.dowodId);
+          ids.push(d.id);
+        } catch (error) {
+          db.prepare("UPDATE allegro_odpowiedzi_zalaczniki SET stan='blad',blad=? WHERE id=?").run(
+            String(error.message),
+            p.dowodId,
+          );
+          throw error;
+        }
+      }
+      if (ids.length) {
+        wysylkaRozpoczeta = true;
+        const result = await klient.wyslijWiadomosc(threadId, tresc, ids);
+        if (!result?.id) throw Error('Brak potwierdzenia wysłania. Sprawdź wątek w Allegro przed ponownym wysłaniem.');
+      } else await klient.wyslijWiadomosc(threadId, tresc);
       oznaczWyslane(db, dowod.id);
-      return reply.redirect(`/wiadomosci/${encodeURIComponent(kanal)}/${encodeURIComponent(threadId)}`+(req.query?.receipt==='1'?'?wyslano='+dowod.id:''));
+      return reply.redirect(
+        `/wiadomosci/${encodeURIComponent(kanal)}/${encodeURIComponent(threadId)}` +
+          (req.query?.receipt === '1' ? '?wyslano=' + dowod.id : ''),
+      );
     } catch (e) {
-      if(wysylkaRozpoczeta)e.message='Brak potwierdzenia wysłania. Sprawdź wątek w Allegro przed ponownym wysłaniem.';
+      if (wysylkaRozpoczeta)
+        e.message = 'Brak potwierdzenia wysłania. Sprawdź wątek w Allegro przed ponownym wysłaniem.';
       oznaczBlad(db, dowod.id, e.message);
       // ⚠️ NIE UDAJEMY SUKCESU. Czlowiek ma zobaczyc, ze nie poszlo — inaczej uzna sprawe za
       // zalatwiona, a kupujacy czeka.
@@ -146,12 +254,21 @@ function registerRoutes(app, { db, klienci = {}, podpis = PODPIS }) {
   app.post('/wiadomosci/:kanal/:threadId/zalatwione', async (req, reply) => {
     const { kanal, threadId } = req.params;
     const w = watek(db, kanal, threadId);
-    if (!w) return stronaOdmowy(reply, 404, 'Panel nie zna tego wątku.', { tytul: 'Nie ma takiego wątku', napisWroc: 'Wróć do wiadomości', wroc: '/wiadomosci' });
+    if (!w)
+      return stronaOdmowy(reply, 404, 'Panel nie zna tego wątku.', {
+        tytul: 'Nie ma takiego wątku',
+        napisWroc: 'Wróć do wiadomości',
+        wroc: '/wiadomosci',
+      });
     // ⚠️ BEZ DATY NIE MA CZEGO ZAKOTWICZYC. Zamkniecie obejmuje stan NA CHWILE klikniecia,
     // wiec bez daty albo uciszyloby watek na zawsze, albo nie zrobilo nic. Odmowa jest
     // uczciwsza niz jedno i drugie.
     if (!w.last_message_date_time) {
-      return stronaOdmowy(reply, 409, 'Wątek nie ma daty ostatniej wiadomości — nie ma czego zamknąć.', { tytul: 'Nie można oznaczyć jako załatwione', napisWroc: 'Wróć do wątku', wroc: adresWatku(kanal, threadId) });
+      return stronaOdmowy(reply, 409, 'Wątek nie ma daty ostatniej wiadomości — nie ma czego zamknąć.', {
+        tytul: 'Nie można oznaczyć jako załatwione',
+        napisWroc: 'Wróć do wątku',
+        wroc: adresWatku(kanal, threadId),
+      });
     }
     zamknijWatek(db, kanal, threadId, w.last_message_date_time, new Date().toISOString());
     // Wracamy do kolejki: „zalatwione" klika sie po to, zeby przejsc do nastepnego.

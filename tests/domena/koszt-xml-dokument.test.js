@@ -179,11 +179,11 @@ describe('dokumentZXml — komplet elementów art. 106e z XML-a FA(3)', () => {
 
   it('rozpisuje adnotacje na „Tak"/„Nie" — także te zapisane wariantem „N"', () => {
     const mapa = new Map(dokumentZXml(XML_PELNY).adnotacje.map((a) => [a.kod, a]));
-    expect(mapa.get('P_16').wartosc).toBe('Nie');       // metoda kasowa
-    expect(mapa.get('P_18A').wartosc).toBe('Tak');      // mechanizm podzielonej płatności
-    expect(mapa.get('P_19').wartosc).toBe('Nie');       // P_19N = 1 znaczy „nie dotyczy"
-    expect(mapa.get('P_22').wartosc).toBe('Nie');       // P_22N = 1
-    expect(mapa.get('P_PMarzy').wartosc).toBe('Nie');   // P_PMarzyN = 1
+    expect(mapa.get('P_16').wartosc).toBe('Nie'); // metoda kasowa
+    expect(mapa.get('P_18A').wartosc).toBe('Tak'); // mechanizm podzielonej płatności
+    expect(mapa.get('P_19').wartosc).toBe('Nie'); // P_19N = 1 znaczy „nie dotyczy"
+    expect(mapa.get('P_22').wartosc).toBe('Nie'); // P_22N = 1
+    expect(mapa.get('P_PMarzy').wartosc).toBe('Nie'); // P_PMarzyN = 1
     expect(mapa.get('P_16').etykieta).toContain('Metoda kasowa');
   });
 
@@ -223,16 +223,12 @@ describe('dokumentZXml — komplet elementów art. 106e z XML-a FA(3)', () => {
   });
 
   it('⚠️ `Zaplacono` = 2 daje false — to zdanie wystawcy, nie brak zdania', () => {
-    const d = dokumentZXml(
-      '<Faktura><Fa><Platnosc><Zaplacono>2</Zaplacono></Platnosc></Fa></Faktura>',
-    );
+    const d = dokumentZXml('<Faktura><Fa><Platnosc><Zaplacono>2</Zaplacono></Platnosc></Fa></Faktura>');
     expect(d.platnosc.zaplacono).toBe(false);
   });
 
   it('`Zaplacono` = 1 daje true', () => {
-    const d = dokumentZXml(
-      '<Faktura><Fa><Platnosc><Zaplacono>1</Zaplacono></Platnosc></Fa></Faktura>',
-    );
+    const d = dokumentZXml('<Faktura><Fa><Platnosc><Zaplacono>1</Zaplacono></Platnosc></Fa></Faktura>');
     expect(d.platnosc.zaplacono).toBe(true);
   });
 
@@ -240,13 +236,14 @@ describe('dokumentZXml — komplet elementów art. 106e z XML-a FA(3)', () => {
   // ile wpłat. Odczyt pierwszego z brzegu gubiłby resztę, a księgowa dostawałaby kartkę
   // mówiącą o jednej racie z kilku.
   it('⚠️ czyta WSZYSTKIE zapłaty częściowe, nie pierwszą z brzegu', () => {
-    const xml = '<Faktura><Fa><Platnosc>'
-      + '<ZnacznikZaplatyCzesciowej>1</ZnacznikZaplatyCzesciowej>'
-      + '<ZaplataCzesciowa><KwotaZaplatyCzesciowej>100.00</KwotaZaplatyCzesciowej>'
-      + '<DataZaplatyCzesciowej>2026-08-01</DataZaplatyCzesciowej></ZaplataCzesciowa>'
-      + '<ZaplataCzesciowa><KwotaZaplatyCzesciowej>250.50</KwotaZaplatyCzesciowej>'
-      + '<DataZaplatyCzesciowej>2026-08-14</DataZaplatyCzesciowej></ZaplataCzesciowa>'
-      + '</Platnosc></Fa></Faktura>';
+    const xml =
+      '<Faktura><Fa><Platnosc>' +
+      '<ZnacznikZaplatyCzesciowej>1</ZnacznikZaplatyCzesciowej>' +
+      '<ZaplataCzesciowa><KwotaZaplatyCzesciowej>100.00</KwotaZaplatyCzesciowej>' +
+      '<DataZaplatyCzesciowej>2026-08-01</DataZaplatyCzesciowej></ZaplataCzesciowa>' +
+      '<ZaplataCzesciowa><KwotaZaplatyCzesciowej>250.50</KwotaZaplatyCzesciowej>' +
+      '<DataZaplatyCzesciowej>2026-08-14</DataZaplatyCzesciowej></ZaplataCzesciowa>' +
+      '</Platnosc></Fa></Faktura>';
     const { platnosc } = dokumentZXml(xml);
     expect(platnosc.czesciowa).toBe(true);
     expect(platnosc.zaplatyCzesciowe).toEqual([
@@ -293,9 +290,10 @@ describe('dokumentZXml — komplet elementów art. 106e z XML-a FA(3)', () => {
   });
 
   it('⚠️ pozycja BEZ netto (sam P_9B/P_11A) nie gubi kwoty — tak wystawia Comarch ERP Optima', () => {
-    const xml = '<Faktura><Fa><FaWiersz><NrWierszaFa>1</NrWierszaFa>'
-      + '<P_7>Piana niskoprężna</P_7><P_8A>szt</P_8A><P_8B>5.0000</P_8B>'
-      + '<P_9B>19.99</P_9B><P_11A>99.95</P_11A><P_12>23</P_12></FaWiersz></Fa></Faktura>';
+    const xml =
+      '<Faktura><Fa><FaWiersz><NrWierszaFa>1</NrWierszaFa>' +
+      '<P_7>Piana niskoprężna</P_7><P_8A>szt</P_8A><P_8B>5.0000</P_8B>' +
+      '<P_9B>19.99</P_9B><P_11A>99.95</P_11A><P_12>23</P_12></FaWiersz></Fa></Faktura>';
     const [p] = dokumentZXml(xml).pozycje;
     expect(p.wartoscNetto).toBe('');
     expect(p.cenaBrutto).toBe('19.99');
@@ -305,8 +303,9 @@ describe('dokumentZXml — komplet elementów art. 106e z XML-a FA(3)', () => {
   });
 
   it('data sprzedaży bierze się z okresu (OkresFa), gdy P_6 nie ma — tak wystawia OVH i P4', () => {
-    const xml = '<Faktura><Fa><P_1>2026-08-01</P_1><P_2>PL7142428</P_2>'
-      + '<OkresFa><P_6_Od>2026-08-01</P_6_Od><P_6_Do>2026-08-31</P_6_Do></OkresFa></Fa></Faktura>';
+    const xml =
+      '<Faktura><Fa><P_1>2026-08-01</P_1><P_2>PL7142428</P_2>' +
+      '<OkresFa><P_6_Od>2026-08-01</P_6_Od><P_6_Do>2026-08-31</P_6_Do></OkresFa></Fa></Faktura>';
     const d = dokumentZXml(xml);
     expect(d.dataSprzedazy).toBe('');
     expect(d.okresOd).toBe('2026-08-01');
@@ -314,16 +313,16 @@ describe('dokumentZXml — komplet elementów art. 106e z XML-a FA(3)', () => {
   });
 
   it('czyta VAT przeliczony na złote (P_14_1W) z faktury w obcej walucie', () => {
-    const xml = '<Faktura><Fa><KodWaluty>EUR</KodWaluty><P_13_1>2.24</P_13_1>'
-      + '<P_14_1>0.51</P_14_1><P_14_1W>2.21</P_14_1W><P_15>2.75</P_15></Fa></Faktura>';
+    const xml =
+      '<Faktura><Fa><KodWaluty>EUR</KodWaluty><P_13_1>2.24</P_13_1>' +
+      '<P_14_1>0.51</P_14_1><P_14_1W>2.21</P_14_1W><P_15>2.75</P_15></Fa></Faktura>';
     const [s] = dokumentZXml(xml).stawki;
     expect(s.vatPln).toBe('2.21');
   });
 
   it('radzi sobie z przedrostkiem przestrzeni nazw (`tns:` w Subiekcie, `ns1:` w TERG-u)', () => {
     for (const przedrostek of ['tns', 'ns1']) {
-      const zPrzedrostkiem = XML_PELNY
-        .replace(/<(\/?)([A-Z][A-Za-z_0-9]*)([ >])/g, `<$1${przedrostek}:$2$3`);
+      const zPrzedrostkiem = XML_PELNY.replace(/<(\/?)([A-Z][A-Za-z_0-9]*)([ >])/g, `<$1${przedrostek}:$2$3`);
       const d = dokumentZXml(zPrzedrostkiem);
       expect(d.numer).toBe('BC44539948');
       expect(d.nabywca.nazwa).toBe('Pracownia Półcień Anna Wzorcowa');
@@ -334,13 +333,14 @@ describe('dokumentZXml — komplet elementów art. 106e z XML-a FA(3)', () => {
   });
 
   it('faktura korygująca niesie dane dokumentu korygowanego i przyczynę', () => {
-    const xml = '<Faktura><Fa><P_1>2026-08-20</P_1><P_2>KOR/1</P_2>'
-      + '<RodzajFaktury>KOR</RodzajFaktury><PrzyczynaKorekty>Zwrot towaru</PrzyczynaKorekty>'
-      + '<TypKorekty>2</TypKorekty><DaneFaKorygowanej>'
-      + '<DataWystFaKorygowanej>2026-07-02</DataWystFaKorygowanej>'
-      + '<NrFaKorygowanej>FS 1/2026</NrFaKorygowanej>'
-      + '<NrKSeFFaKorygowanej>1111111111-20260702-AAAAAA-BB</NrKSeFFaKorygowanej>'
-      + '</DaneFaKorygowanej></Fa></Faktura>';
+    const xml =
+      '<Faktura><Fa><P_1>2026-08-20</P_1><P_2>KOR/1</P_2>' +
+      '<RodzajFaktury>KOR</RodzajFaktury><PrzyczynaKorekty>Zwrot towaru</PrzyczynaKorekty>' +
+      '<TypKorekty>2</TypKorekty><DaneFaKorygowanej>' +
+      '<DataWystFaKorygowanej>2026-07-02</DataWystFaKorygowanej>' +
+      '<NrFaKorygowanej>FS 1/2026</NrFaKorygowanej>' +
+      '<NrKSeFFaKorygowanej>1111111111-20260702-AAAAAA-BB</NrKSeFFaKorygowanej>' +
+      '</DaneFaKorygowanej></Fa></Faktura>';
     const d = dokumentZXml(xml);
     expect(d.rodzajFaktury).toBe('KOR');
     expect(d.korekta).toEqual({
@@ -356,10 +356,11 @@ describe('dokumentZXml — komplet elementów art. 106e z XML-a FA(3)', () => {
   // ⚠️ `TypKorekty` ROZSTRZYGA MIESIĄC UJĘCIA korekty w księgach — to nie jest ozdobnik.
   // Sam kod („2") nic księgowej nie mówi, a wizualizacja go do 03.09.2026 w ogóle nie drukowała.
   it('⚠️ TypKorekty dostaje opis po ludzku — sam kod nie mówi, w jakiej dacie ująć korektę', () => {
-    const zTypem = (typ) => dokumentZXml(
-      `<Faktura><Fa><RodzajFaktury>KOR</RodzajFaktury><TypKorekty>${typ}</TypKorekty>`
-      + '<PrzyczynaKorekty>X</PrzyczynaKorekty></Fa></Faktura>',
-    ).korekta.typOpis;
+    const zTypem = (typ) =>
+      dokumentZXml(
+        `<Faktura><Fa><RodzajFaktury>KOR</RodzajFaktury><TypKorekty>${typ}</TypKorekty>` +
+          '<PrzyczynaKorekty>X</PrzyczynaKorekty></Fa></Faktura>',
+      ).korekta.typOpis;
     expect(zTypem('1')).toBe('korekta skutkująca w dacie ujęcia faktury pierwotnej');
     expect(zTypem('2')).toBe('korekta skutkująca w dacie wystawienia faktury korygującej');
     // ⚠️ BEZ DOPISKU „(np. uzgodnienia)". FA(3) nie mówi, JAKA to inna data ani skąd się
@@ -376,9 +377,11 @@ describe('dokumentZXml — komplet elementów art. 106e z XML-a FA(3)', () => {
   // `function Object() { [native code] }` w miejscu formy zapłaty — bo `??` nie łapie
   // wartości odziedziczonej, tylko `undefined`.
   it('⚠️ wartość spoza słownika NIE bierze się z prototypu — „constructor" to nie forma płatności', () => {
-    const d = dokumentZXml('<Faktura><Fa><RodzajFaktury>constructor</RodzajFaktury>'
-      + '<TypKorekty>toString</TypKorekty><PrzyczynaKorekty>X</PrzyczynaKorekty>'
-      + '<Platnosc><FormaPlatnosci>constructor</FormaPlatnosci></Platnosc></Fa></Faktura>');
+    const d = dokumentZXml(
+      '<Faktura><Fa><RodzajFaktury>constructor</RodzajFaktury>' +
+        '<TypKorekty>toString</TypKorekty><PrzyczynaKorekty>X</PrzyczynaKorekty>' +
+        '<Platnosc><FormaPlatnosci>constructor</FormaPlatnosci></Platnosc></Fa></Faktura>',
+    );
     expect(d.platnosc.forma).toBe('kod constructor');
     expect(d.korekta.typOpis).toBe('kod toString');
     expect(d.rodzajOpis).toBe('Faktura (constructor)');
@@ -391,10 +394,23 @@ describe('dokumentZXml — komplet elementów art. 106e z XML-a FA(3)', () => {
   it('⚠️ brakujący węzeł daje PUSTY NAPIS, nigdy „undefined" na papierze', () => {
     const d = dokumentZXml('<Faktura><Fa><P_2>X</P_2></Fa></Faktura>');
     const napisy = [
-      d.dataWytworzenia, d.dataWystawienia, d.miejsceWystawienia, d.dataSprzedazy,
-      d.okresOd, d.okresDo, d.waluta, d.rodzajFaktury, d.naleznoscOgolem,
-      d.sprzedawca.nazwa, d.sprzedawca.identyfikator, d.nabywca.nazwa, d.nabywca.identyfikator,
-      d.platnosc.dataZaplaty, d.platnosc.termin, d.platnosc.forma, d.platnosc.opis,
+      d.dataWytworzenia,
+      d.dataWystawienia,
+      d.miejsceWystawienia,
+      d.dataSprzedazy,
+      d.okresOd,
+      d.okresDo,
+      d.waluta,
+      d.rodzajFaktury,
+      d.naleznoscOgolem,
+      d.sprzedawca.nazwa,
+      d.sprzedawca.identyfikator,
+      d.nabywca.nazwa,
+      d.nabywca.identyfikator,
+      d.platnosc.dataZaplaty,
+      d.platnosc.termin,
+      d.platnosc.forma,
+      d.platnosc.opis,
       d.platnosc.rachunek,
     ];
     expect(napisy.every((s) => s === '')).toBe(true);
@@ -415,24 +431,28 @@ describe('dokumentZXml — komplet elementów art. 106e z XML-a FA(3)', () => {
   });
 
   it('podmiot bez NIP-u pokazuje identyfikator, który MA — albo mówi, że go nie ma', () => {
-    const zIdWew = '<Faktura><Podmiot1><DaneIdentyfikacyjne><IDWew>ABC-1</IDWew>'
-      + '<Nazwa>Firma bez NIP</Nazwa></DaneIdentyfikacyjne></Podmiot1></Faktura>';
+    const zIdWew =
+      '<Faktura><Podmiot1><DaneIdentyfikacyjne><IDWew>ABC-1</IDWew>' +
+      '<Nazwa>Firma bez NIP</Nazwa></DaneIdentyfikacyjne></Podmiot1></Faktura>';
     expect(dokumentZXml(zIdWew).sprzedawca.identyfikator).toBe('ID wewnętrzny: ABC-1');
 
-    const zNrId = '<Faktura><Podmiot1><DaneIdentyfikacyjne><NrID>DE123456789</NrID>'
-      + '<Nazwa>Auslandsfirma</Nazwa></DaneIdentyfikacyjne></Podmiot1></Faktura>';
+    const zNrId =
+      '<Faktura><Podmiot1><DaneIdentyfikacyjne><NrID>DE123456789</NrID>' +
+      '<Nazwa>Auslandsfirma</Nazwa></DaneIdentyfikacyjne></Podmiot1></Faktura>';
     expect(dokumentZXml(zNrId).sprzedawca.identyfikator).toBe('Nr identyfikacyjny: DE123456789');
 
-    const brak = '<Faktura><Podmiot1><DaneIdentyfikacyjne><BrakID>1</BrakID>'
-      + '<Nazwa>Osoba prywatna</Nazwa></DaneIdentyfikacyjne></Podmiot1></Faktura>';
+    const brak =
+      '<Faktura><Podmiot1><DaneIdentyfikacyjne><BrakID>1</BrakID>' +
+      '<Nazwa>Osoba prywatna</Nazwa></DaneIdentyfikacyjne></Podmiot1></Faktura>';
     expect(dokumentZXml(brak).sprzedawca.identyfikator).toBe('Brak identyfikatora podatkowego');
   });
 
   it('⚠️ kraj inny niż PL trafia na dokument — bez niego nie widać, że to zagranica', () => {
-    const xml = '<Faktura><Podmiot1><DaneIdentyfikacyjne><NrID>DE123456789</NrID>'
-      + '<Nazwa>Beispiel GmbH</Nazwa></DaneIdentyfikacyjne>'
-      + '<Adres><KodKraju>DE</KodKraju><AdresL1>Hauptstr. 1</AdresL1>'
-      + '<AdresL2>10115 Berlin</AdresL2></Adres></Podmiot1></Faktura>';
+    const xml =
+      '<Faktura><Podmiot1><DaneIdentyfikacyjne><NrID>DE123456789</NrID>' +
+      '<Nazwa>Beispiel GmbH</Nazwa></DaneIdentyfikacyjne>' +
+      '<Adres><KodKraju>DE</KodKraju><AdresL1>Hauptstr. 1</AdresL1>' +
+      '<AdresL2>10115 Berlin</AdresL2></Adres></Podmiot1></Faktura>';
     expect(dokumentZXml(xml).sprzedawca.adres).toEqual(['Hauptstr. 1', '10115 Berlin', 'DE']);
   });
 });

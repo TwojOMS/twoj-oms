@@ -8,11 +8,17 @@ import { podpisz, NAZWA_CIASTECZKA_OMS } from '../../../src/core/bezpieczenstwo/
 import { wczytajSekret } from '../../../src/core/bezpieczenstwo/sekret-sesji.js';
 
 let db, app, prepare;
-const karta = n => utworzKarte(db, { nazwa: `Lampa Półcień ${n}`, sku: `POL-${n}`, marka: 'Pracownia Półcień' });
-const zapytaniaLicznika = () => prepare.mock.calls.filter(([sql]) => /SELECT COUNT\(\*\) AS n FROM oferty_kanalow o/.test(sql));
-const get = (login = 'admin') => app.inject({ method: 'GET', url: '/magazyn', headers: {
-  cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz(login, wczytajSekret(db), Date.now(), 0)}`,
-} });
+const karta = (n) => utworzKarte(db, { nazwa: `Lampa Półcień ${n}`, sku: `POL-${n}`, marka: 'Pracownia Półcień' });
+const zapytaniaLicznika = () =>
+  prepare.mock.calls.filter(([sql]) => /SELECT COUNT\(\*\) AS n FROM oferty_kanalow o/.test(sql));
+const get = (login = 'admin') =>
+  app.inject({
+    method: 'GET',
+    url: '/magazyn',
+    headers: {
+      cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz(login, wczytajSekret(db), Date.now(), 0)}`,
+    },
+  });
 function dwieOfertyDoDecyzji() {
   const id = karta(1);
   wstawOferte(db, { kartaId: id, kanal: 'allegro_polcien', idZewnetrzne: 'pol-problem', stan: 'problem' });
@@ -26,12 +32,19 @@ beforeEach(async () => {
   zalozKonto(db, { login: 'admin', imie: 'Administrator', haslo: 'test', rola: 'admin', admin: true });
   const user = zalozKonto(db, { login: 'czytelnik', imie: 'Czytelnik', haslo: 'test', rola: 'operator' });
   ustawUprawnienia(db, user, ['magazyn']);
-  app = buildOmsServer({ db, config: { auth: { user: 'operator', pass: 'atrapa' }, definicje: [] },
-    magazyn: { stan: () => ({ trwa: false, kanaly: [] }) } });
+  app = buildOmsServer({
+    db,
+    config: { auth: { user: 'operator', pass: 'atrapa' }, definicje: [] },
+    magazyn: { stan: () => ({ trwa: false, kanaly: [] }) },
+  });
   await app.ready();
   prepare = vi.spyOn(db, 'prepare');
 });
-afterEach(async () => { vi.restoreAllMocks(); await app.close(); db.close(); });
+afterEach(async () => {
+  vi.restoreAllMocks();
+  await app.close();
+  db.close();
+});
 
 it('admin widzi link Problemy ofert (2), liczony po ofertach, także wymagających potwierdzenia ceny', async () => {
   dwieOfertyDoDecyzji();
@@ -57,7 +70,7 @@ it('admin przy N=0 nie widzi linku', async () => {
   expect(zapytaniaLicznika()).toHaveLength(1);
 });
 
-it.each([3, 30])('licznik wykonuje jedno zapytanie na żądanie przy %i kartach', async liczbaKart => {
+it.each([3, 30])('licznik wykonuje jedno zapytanie na żądanie przy %i kartach', async (liczbaKart) => {
   for (let n = 1; n <= liczbaKart; n++) karta(n);
   for (let zadanie = 0; zadanie < 2; zadanie++) {
     prepare.mockClear();

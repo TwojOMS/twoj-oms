@@ -33,9 +33,11 @@ function paraPrzewoznika(obiekt) {
 // Mapa podwykonawcow WzA: identyfikator przewoznika z zasobu Allegro → klucz naszego
 // klienta w mapie kurierow. Tylko zmierzony DPD idzie WLASNYM kanalem;
 // pozostale WzA przechodza nizej do odczytu Allegro z identyfikatorami jego zasobu.
-const PODWYKONAWCY_WZA = Object.fromEntries(Object.values(OPISY_PRZEWOZNIKOW)
-  .filter(opis => opis.sledzenieWza)
-  .map(opis => [opis.sledzenieWza.carrier, opis.sledzenieWza.kurier]));
+const PODWYKONAWCY_WZA = Object.fromEntries(
+  Object.values(OPISY_PRZEWOZNIKOW)
+    .filter((opis) => opis.sledzenieWza)
+    .map((opis) => [opis.sledzenieWza.carrier, opis.sledzenieWza.kurier]),
+);
 
 // ⚠️⚠️ DECYDUJE ZADEKLAROWANA FLAGA `bezSledzenia`, NIGDY OBECNOSC METODY. Wnioskowanie
 // z braku `statusPrzesylki` uciszyloby regresje u kuriera, ktory sledzenie MIEC POWINIEN
@@ -48,10 +50,14 @@ export function sledzeniePrzesylki(p, kurierzy = {}) {
 
   if (kurier === 'allegro_wza') {
     let surowa = null;
-    try { surowa = JSON.parse(p?.odpowiedz_surowa); } catch { surowa = null; }
+    try {
+      surowa = JSON.parse(p?.odpowiedz_surowa);
+    } catch {
+      surowa = null;
+    }
     const para = paraPrzewoznika(surowa);
     const kluczPodwykonawcy = para ? PODWYKONAWCY_WZA[para.carrierId] : null;
-    const podwykonawca = kluczPodwykonawcy ? kurierzy?.[kluczPodwykonawcy] ?? null : null;
+    const podwykonawca = kluczPodwykonawcy ? (kurierzy?.[kluczPodwykonawcy] ?? null) : null;
     // DPD z Ustawień bez kanału DPD Info deklaruje `bezSledzenia` — wtedy paczkę śledzi Allegro (niżej).
     if (podwykonawca && !podwykonawca.bezSledzenia && para?.carrierWaybill) {
       return { klient: podwykonawca, numer: para.carrierWaybill, podwykonawca: para.carrierId };
@@ -95,8 +101,8 @@ export function sledzeniePrzesylki(p, kurierzy = {}) {
   // nie jest odpytywana; ta sama zasada, co przy skladaniu mapy w `zbudujKurierow` (moduly/wysylka/kurierzy.ts).
   if (!klient || klient.bezSledzenia) return null;
   // Adapter platformy może odczytywać paczkę po ID zasobu zamiast numeru przewoźnika.
-  if (klient.sledzeniePoId) return p?.id_przesylki_kuriera
-    ? { klient, numer: p.id_przesylki_kuriera, podwykonawca: null } : null;
+  if (klient.sledzeniePoId)
+    return p?.id_przesylki_kuriera ? { klient, numer: p.id_przesylki_kuriera, podwykonawca: null } : null;
   if (!p?.numer_listu) return null;
   return { klient, numer: p.numer_listu, podwykonawca: null };
 }

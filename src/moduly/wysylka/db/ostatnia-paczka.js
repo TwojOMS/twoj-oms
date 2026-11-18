@@ -44,4 +44,3 @@ export const OSTATNIA_ZYWA_PACZKA = `
      WHERE p2.zamowienie_id = z.id AND p2.status <> 'blad'
      ORDER BY COALESCE(p2.status_kuriera_at, '') DESC, p2.kolejnosc DESC LIMIT 1)
 `;
-

@@ -71,18 +71,20 @@ export function miniaturyLustra(db, pary) {
 
   const kanalyLista = [...kanaly];
   const produktyLista = [...produkty];
-  const wiersze = db.prepare(
-    'SELECT kanal, produkt_id, miniatura FROM produkty_sklepowe'
-    + ` WHERE kanal IN (${kanalyLista.map(() => '?').join(',')})`
-    + ` AND produkt_id IN (${produktyLista.map(() => '?').join(',')})`
-    // Wiersz bez miniatury nie niesie odpowiedzi — odsiewamy go już w SQL-u, żeby nie
-    // przesłonił wariantu tego samego produktu, który miniaturę MA (patrz niżej).
-    + " AND miniatura IS NOT NULL AND TRIM(miniatura) <> ''"
-    // ⚠️ KOLEJNOŚĆ MUSI BYĆ STAŁA. Produkt wariantowy ma w lustrze WIELE wierszy o tym samym
-    // `produkt_id` (po jednym na wariant), a każdy niesie miniaturę RODZICA. Bez `ORDER BY`
-    // ta sama pozycja pokazywałaby raz jedno, raz drugie zdjęcie — przy każdym odświeżeniu.
-    + ' ORDER BY id ASC',
-  ).all(...kanalyLista, ...produktyLista);
+  const wiersze = db
+    .prepare(
+      'SELECT kanal, produkt_id, miniatura FROM produkty_sklepowe' +
+        ` WHERE kanal IN (${kanalyLista.map(() => '?').join(',')})` +
+        ` AND produkt_id IN (${produktyLista.map(() => '?').join(',')})` +
+        // Wiersz bez miniatury nie niesie odpowiedzi — odsiewamy go już w SQL-u, żeby nie
+        // przesłonił wariantu tego samego produktu, który miniaturę MA (patrz niżej).
+        " AND miniatura IS NOT NULL AND TRIM(miniatura) <> ''" +
+        // ⚠️ KOLEJNOŚĆ MUSI BYĆ STAŁA. Produkt wariantowy ma w lustrze WIELE wierszy o tym samym
+        // `produkt_id` (po jednym na wariant), a każdy niesie miniaturę RODZICA. Bez `ORDER BY`
+        // ta sama pozycja pokazywałaby raz jedno, raz drugie zdjęcie — przy każdym odświeżeniu.
+        ' ORDER BY id ASC',
+    )
+    .all(...kanalyLista, ...produktyLista);
 
   for (const w of wiersze) {
     const klucz = kluczLustra(w.kanal, w.produkt_id);
@@ -105,12 +107,14 @@ export function miniaturySku(db, skus) {
   const mapa = new Map();
   const lista = [...new Set((skus ?? []).filter((s) => typeof s === 'string' && s.trim()).map((s) => s.trim()))];
   if (lista.length === 0) return mapa;
-  const wiersze = db.prepare(
-    'SELECT sku_sklepu, miniatura FROM produkty_sklepowe'
-    + ` WHERE sku_sklepu IN (${lista.map(() => '?').join(',')})`
-    + " AND miniatura IS NOT NULL AND TRIM(miniatura) <> ''"
-    + ' ORDER BY (zniknal_at IS NOT NULL) ASC, id ASC',
-  ).all(...lista);
+  const wiersze = db
+    .prepare(
+      'SELECT sku_sklepu, miniatura FROM produkty_sklepowe' +
+        ` WHERE sku_sklepu IN (${lista.map(() => '?').join(',')})` +
+        " AND miniatura IS NOT NULL AND TRIM(miniatura) <> ''" +
+        ' ORDER BY (zniknal_at IS NOT NULL) ASC, id ASC',
+    )
+    .all(...lista);
   for (const w of wiersze) {
     const adres = String(w.miniatura).trim();
     if (mapa.has(w.sku_sklepu) || !/^https?:\/\//i.test(adres)) continue;

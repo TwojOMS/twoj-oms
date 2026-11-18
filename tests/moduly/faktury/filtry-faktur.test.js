@@ -18,9 +18,17 @@ it('zbudujZestawieniePrzychodow i lista mają tę samą sumę brutto miesiąca b
   pdf.addPage();
   const bajty = await pdf.save();
   const sumy = [];
-  const usluga = createPaczkaDlaBiura({ db: null, infakt: {
-    listaFaktur: async () => dokumenty.slice(0, 2), listaKorekt: async () => dokumenty.slice(2),
-  }, zbudujZestawienie: ({ paczka }) => { sumy.push(paczka.sumy.sprzedaz.PLN.bruttoGr); return bajty; } });
+  const usluga = createPaczkaDlaBiura({
+    db: null,
+    infakt: {
+      listaFaktur: async () => dokumenty.slice(0, 2),
+      listaKorekt: async () => dokumenty.slice(2),
+    },
+    zbudujZestawienie: ({ paczka }) => {
+      sumy.push(paczka.sumy.sprzedaz.PLN.bruttoGr);
+      return bajty;
+    },
+  });
   await usluga.zbudujZestawieniePrzychodow('2026-10');
   expect(sumy).toEqual([22700, 22700]);
   expect(sumaListy(dokumenty).PLN.bruttoGr).toBe(sumy[0]);
@@ -29,18 +37,33 @@ it('zbudujZestawieniePrzychodow i lista mają tę samą sumę brutto miesiąca b
 it('GET filtruje widoczne dokumenty i sumę, zachowuje filtry w zaznaczeniu i POST', async () => {
   const db = openOmsDb(':memory:');
   const dokument = (uuid, rodzaj, gross_price, net_price, reszta = {}) => ({
-    uuid, number: uuid, rodzaj, gross_price, net_price, tax_price: gross_price - net_price,
-    invoice_date: '2026-10-12', ...reszta,
+    uuid,
+    number: uuid,
+    rodzaj,
+    gross_price,
+    net_price,
+    tax_price: gross_price - net_price,
+    invoice_date: '2026-10-12',
+    ...reszta,
   });
-  const fakturyWidok = createFakturyWidok({ db, infakt: {
-    listaFaktur: async () => [dokument('VAT-DLUG', 'vat', 13400, 10895, { left_to_pay: 100 }),
-      dokument('VAT-PAID', 'vat', 17700, 14391, { status: 'paid' }),
-      dokument('VAT-STARA', 'vat', 10000, 8130, { zastapiona_przez: 'nowa' })],
-    listaKorekt: async () => [dokument('KOR-MINUS', 'korekta', -8400, -6830)],
-    listaNieoplaconych: async () => [],
-  } });
-  const app = buildOmsServer({ db, config: { auth: { user: 'test', pass: 'fikcyjne' } },
-    fakturyWidok, czuwaczArchiwumSprzedazy: { przebieg: async () => ({ pominiety: true, powod: 'test' }) } });
+  const fakturyWidok = createFakturyWidok({
+    db,
+    infakt: {
+      listaFaktur: async () => [
+        dokument('VAT-DLUG', 'vat', 13400, 10895, { left_to_pay: 100 }),
+        dokument('VAT-PAID', 'vat', 17700, 14391, { status: 'paid' }),
+        dokument('VAT-STARA', 'vat', 10000, 8130, { zastapiona_przez: 'nowa' }),
+      ],
+      listaKorekt: async () => [dokument('KOR-MINUS', 'korekta', -8400, -6830)],
+      listaNieoplaconych: async () => [],
+    },
+  });
+  const app = buildOmsServer({
+    db,
+    config: { auth: { user: 'test', pass: 'fikcyjne' } },
+    fakturyWidok,
+    czuwaczArchiwumSprzedazy: { przebieg: async () => ({ pominiety: true, powod: 'test' }) },
+  });
   try {
     await app.ready();
     zalozKonto(db, { login: 'test', imie: 'Test', haslo: 'fikcyjne', rola: 'sprzedaz', admin: true });
@@ -66,7 +89,8 @@ it('GET filtruje widoczne dokumenty i sumę, zachowuje filtry w zaznaczeniu i PO
     expect(html).toContain('typ=korekta&amp;platnosc=niezaplacona&amp;zaznacz=1');
     expect(html).toContain('name="typ" value="korekta"');
     expect(html).toContain('name="platnosc" value="niezaplacona"');
-    const tabelaDokumentow = html.match(/<table[^>]*>[\s\S]*?<\/table>/gu)
+    const tabelaDokumentow = html
+      .match(/<table[^>]*>[\s\S]*?<\/table>/gu)
       .find((t) => t.includes('prz065-tabela--dokumenty'));
     expect(tabelaDokumentow).not.toContain('wiersz-razem');
     expect(html).toContain('Żaden dokument z tego miesiąca nie pasuje do wybranych filtrów.');
@@ -77,12 +101,22 @@ it('GET filtruje widoczne dokumenty i sumę, zachowuje filtry w zaznaczeniu i PO
     const wszystkie = await get('typ=xyz&platnosc=xyz');
     expect(wszystkie).toContain('VAT-DLUG');
     expect(wszystkie).toContain('KOR-MINUS');
-    const post = await app.inject({ method: 'POST', url: '/faktury/archiwum/uruchom', headers,
-      payload: { miesiac: '2026-10', pole: 'invoice_date', typ: 'korekta', platnosc: 'niezaplacona' } });
+    const post = await app.inject({
+      method: 'POST',
+      url: '/faktury/archiwum/uruchom',
+      headers,
+      payload: { miesiac: '2026-10', pole: 'invoice_date', typ: 'korekta', platnosc: 'niezaplacona' },
+    });
     expect(post.statusCode).toBe(303);
     expect(post.headers.location).toContain('typ=korekta&platnosc=niezaplacona');
-    console.info('Dowód /faktury?typ=korekta&platnosc=niezaplacona:\n'
-      + [...html.matchAll(/<select name="(?:typ|platnosc)">[\s\S]*?<\/select>|<tfoot>[\s\S]*?<\/tfoot>/g)]
-        .map(([fragment]) => fragment).join('\n'));
-  } finally { await app.close(); db.close(); }
+    console.info(
+      'Dowód /faktury?typ=korekta&platnosc=niezaplacona:\n' +
+        [...html.matchAll(/<select name="(?:typ|platnosc)">[\s\S]*?<\/select>|<tfoot>[\s\S]*?<\/tfoot>/g)]
+          .map(([fragment]) => fragment)
+          .join('\n'),
+    );
+  } finally {
+    await app.close();
+    db.close();
+  }
 });

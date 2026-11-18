@@ -20,18 +20,29 @@ const MF = ['mf', 'gov', 'pl'].join('.');
 const HOST_MF = `api.ksef.${MF}`;
 const ZABRONIONE = /ZABRONIONE: KSeF w teście/;
 
-const bezDns = (_host, _opcje, cb) => { process.nextTick(() => cb(new Error('BEZ DNS (test strażnika)'))); };
+const bezDns = (_host, _opcje, cb) => {
+  process.nextTick(() => cb(new Error('BEZ DNS (test strażnika)')));
+};
 
 /** Pierwszy blad z proby polaczenia — synchroniczny wyjatek albo zdarzenie 'error'. */
 function bladPolaczenia(otworz) {
   return new Promise((resolve) => {
     const limit = setTimeout(() => resolve(new Error('BRAK BLEDU w 5 s')), 5000);
-    const koniec = (e) => { clearTimeout(limit); resolve(e); };
+    const koniec = (e) => {
+      clearTimeout(limit);
+      resolve(e);
+    };
     try {
       const gniazdo = otworz();
       gniazdo.on('error', koniec);
-      gniazdo.on('connect', () => { gniazdo.destroy(); koniec(new Error('POLACZONO')); });
-      gniazdo.on('secureConnect', () => { gniazdo.destroy(); koniec(new Error('POLACZONO')); });
+      gniazdo.on('connect', () => {
+        gniazdo.destroy();
+        koniec(new Error('POLACZONO'));
+      });
+      gniazdo.on('secureConnect', () => {
+        gniazdo.destroy();
+        koniec(new Error('POLACZONO'));
+      });
     } catch (e) {
       koniec(e);
     }
@@ -58,7 +69,11 @@ describe('strażnik bez-ksef-mf (setupFiles)', () => {
   });
 
   it('fetch na inny adres przechodzi przez strażnika (tu: przerwany sygnal, nie strażnik)', async () => {
-    for (const cel of ['https://ksef.atrapa.invalid/v2', `https://nie${MF}.invalid/`, `https://${MF}.atrapa.invalid/`]) {
+    for (const cel of [
+      'https://ksef.atrapa.invalid/v2',
+      `https://nie${MF}.invalid/`,
+      `https://${MF}.atrapa.invalid/`,
+    ]) {
       const e = await bladFetch(cel);
       expect(String(e?.message), cel).not.toMatch(ZABRONIONE);
       expect(e?.name, cel).toBe('AbortError');
@@ -76,7 +91,9 @@ describe('strażnik bez-ksef-mf (setupFiles)', () => {
   });
 
   it('tls.connect na adres MF → wyjatek strażnika', async () => {
-    const e = await bladPolaczenia(() => tls.connect({ host: HOST_MF, port: 443, servername: HOST_MF, lookup: bezDns }));
+    const e = await bladPolaczenia(() =>
+      tls.connect({ host: HOST_MF, port: 443, servername: HOST_MF, lookup: bezDns }),
+    );
     expect(String(e?.message)).toMatch(ZABRONIONE);
   });
 
@@ -100,23 +117,31 @@ describe('strażnik bez-ksef-mf (setupFiles)', () => {
 const ESC_MF = MF.replace(/\./g, '\\.');
 const ADRES_MF = new RegExp(`(?:^|[^a-z0-9.-])(?:[a-z0-9-]+\\.)*${ESC_MF}(?![a-z0-9-]|\\.[a-z0-9])`, 'i');
 const XMLNS_UPO = new RegExp(`\\bxmlns(?::[\\w.-]+)?=(["'])http://upo\\.schematy\\.${ESC_MF}/[^"'\\s]*\\1`, 'g');
-const WYWOLANIE = /(?:\b(?:fetch|fetchImpl|transport|request|get|post|connect|createConnection|axios|got|undici|spawn|exec|execFile|fork)\s*\(|\b(?:curl|wget)\s)/;
+const WYWOLANIE =
+  /(?:\b(?:fetch|fetchImpl|transport|request|get|post|connect|createConnection|axios|got|undici|spawn|exec|execFile|fork)\s*\(|\b(?:curl|wget)\s)/;
 const WYJATKI = {
   'tests/pomoc/bez-ksef-mf.ts': 'strażnik rozpoznaje host MF, żeby zablokować połączenie',
-  'tests/pomoc/bootstrap-synchroniczny.ts': 'domyślne KSEF_API, na którym polega tests/oms/bootstrap.test.js („klient KSeF powstaje RAZ…”)',
+  'tests/pomoc/bootstrap-synchroniczny.ts':
+    'domyślne KSEF_API, na którym polega tests/oms/bootstrap.test.js („klient KSeF powstaje RAZ…”)',
   'tests/oms/bootstrap.test.js': 'sprawdza domyślny adres KSeF przekazany fabryce klienta, która jest szpiegiem',
   'tests/oms/lacznosc.test.js': 'sprawdza wyliczenie hosta KSeF do Diagnostyki z konfiguracji, bez połączenia',
-  'tests/moduly/ustawienia/lacznosc-produkcja.test.ts': 'sprawdza domyślne adresy API produkcji; test sam szpieguje gniazda, fetch i DNS',
+  'tests/moduly/ustawienia/lacznosc-produkcja.test.ts':
+    'sprawdza domyślne adresy API produkcji; test sam szpieguje gniazda, fetch i DNS',
   'tests/moduly/koszty/ksef-ustawienia.test.js': 'sprawdza, że ekran NIE pokazuje adresu MF',
   'tests/moduly/koszty/konfiguracja.test.ts': 'sprawdza odczyt KSEF_API z env (ucinanie ukośników), bez połączenia',
   'tests/core/url-puste-po-zgodzie.test.ts': 'sprawdza domyślne prefiksy adresów zebrane przez szpiega transportu',
   'deploy/proba/atrapy/lacznosc.mjs': 'adres tylko wyświetlany na ekranie Diagnostyki atrapy, bez połączenia',
   // Te testy wycina lista TF; w pełnym drzewie nadal wymagamy każdego wyjątku i jego uzasadnienia.
-  ...(szewTwojeFaktury ? {
-  'tests/moduly/faktury/ksef-sprzedazy-prz123.test.ts': 'C04b: sprawdza, że adresMf rozpoznaje MF i że próba odmawia atrapie pod adresem MF, bez wołania fabryki',
-  'tests/domena/twojefaktury/kod-qr-prz122.test.js': 'B09: rozpoznanie środowiska z adresu KSEF_API i przykład adresu KOD I MF — same napisy, bez połączenia',
-  'tests/moduly/faktury/faktura-pdf-qr-prz122.test.js': 'B09: adres KOD I odczytany z kodu QR na PDF — porównanie napisu, bez połączenia',
-  } : {}),
+  ...(szewTwojeFaktury
+    ? {
+        'tests/moduly/faktury/ksef-sprzedazy-prz123.test.ts':
+          'C04b: sprawdza, że adresMf rozpoznaje MF i że próba odmawia atrapie pod adresem MF, bez wołania fabryki',
+        'tests/domena/twojefaktury/kod-qr-prz122.test.js':
+          'B09: rozpoznanie środowiska z adresu KSEF_API i przykład adresu KOD I MF — same napisy, bez połączenia',
+        'tests/moduly/faktury/faktura-pdf-qr-prz122.test.js':
+          'B09: adres KOD I odczytany z kodu QR na PDF — porównanie napisu, bez połączenia',
+      }
+    : {}),
 };
 
 /** Naruszenia w jednym pliku: `{ plik, linia, tekst }` — kazda linia z adresem MF poza atrybutem xmlns UPO. */
@@ -196,7 +221,10 @@ describe('skan tests/ i deploy/proba/ — zadnych adresow MF', () => {
       const znalezione = naruszenia(plik, readFileSync(join(KORZEN, plik), 'utf8'));
       // Plik bez adresu MF nie potrzebuje wyjatku — wtedy usun go z listy.
       expect(znalezione.length, `${plik}: brak adresu MF, usuń z WYJATKI`).toBeGreaterThan(0);
-      expect(znalezione.filter((n) => WYWOLANIE.test(n.tekst)), plik).toEqual([]);
+      expect(
+        znalezione.filter((n) => WYWOLANIE.test(n.tekst)),
+        plik,
+      ).toEqual([]);
     }
   });
 });

@@ -25,4 +25,5 @@ function odmowyKompozycji() {
   void poprawny;
 }
 void odmowyKompozycji;
-it('utrzymuje negatywne sprawdzenia całej drogi produkcyjnej w kompilacji', () => expect(typeof odmowyKompozycji).toBe('function'));
+it('utrzymuje negatywne sprawdzenia całej drogi produkcyjnej w kompilacji', () =>
+  expect(typeof odmowyKompozycji).toBe('function'));

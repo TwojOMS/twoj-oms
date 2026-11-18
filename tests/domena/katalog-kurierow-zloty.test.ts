@@ -4,25 +4,82 @@ import { describe, expect, it } from 'vitest';
 import { KATALOG_INTEGRACJI } from '../../src/domena/katalog-integracji.ts';
 import { zbudujOms } from '../../src/oms/bootstrap.ts';
 
-const env = { OMS_SPRZEDAWCA_NIP: '1234563218', OMS_RACHUNEK: '34109010140000000000000000',
-  OMS_USER: 'operator', OMS_PASS: 'test', OMS_PROFORMY_KATALOG: tmpdir(), OMS_ETYKIETY_KATALOG: tmpdir() };
-const headers = { authorization: 'Basic ' + Buffer.from('operator:test').toString('base64'), origin: 'http://localhost' };
+const env = {
+  OMS_SPRZEDAWCA_NIP: '1234563218',
+  OMS_RACHUNEK: '34109010140000000000000000',
+  OMS_USER: 'operator',
+  OMS_PASS: 'test',
+  OMS_PROFORMY_KATALOG: tmpdir(),
+  OMS_ETYKIETY_KATALOG: tmpdir(),
+};
+const headers = {
+  authorization: 'Basic ' + Buffer.from('operator:test').toString('base64'),
+  origin: 'http://localhost',
+};
 
 describe('katalog integracji — wpisy kategorii wysylka', () => {
   it('6 wpisów (DHL i Apaczka — T3, decyzja właściciela 03.11), całe obiekty, w tej kolejności', () => {
     expect(KATALOG_INTEGRACJI.filter((u) => u.kategoria === 'wysylka')).toEqual([
-      { id: 'dpd', nazwa: 'DPD', kategoria: 'wysylka', opis: 'Nadaj przesyłki przez DPD.', logo: '/integracje/dpd.svg',
-        dostepnosc: 'dostepna', href: '/ustawienia/integracje/dpd', konfigurator: null },
-      { id: 'inpost', nazwa: 'InPost', kategoria: 'wysylka', opis: 'Nadaj przesyłki przez InPost.', logo: '/integracje/inpost.svg',
-        dostepnosc: 'dostepna', href: '/ustawienia/integracje/inpost', konfigurator: null },
-      { id: 'wza', nazwa: 'Wysyłam z Allegro', kategoria: 'wysylka', opis: 'Nadaj przesyłki z wykorzystaniem powiązanego konta Allegro.',
-        logo: '/integracje/allegro.svg', dostepnosc: 'dostepna', href: '/ustawienia/integracje#grupa-sprzedaz', konfigurator: null },
-      { id: 'gls', nazwa: 'GLS', kategoria: 'wysylka', opis: 'Połączenie z kurierem GLS.', logo: '/integracje/gls.png',
-        dostepnosc: 'planowana', href: null, konfigurator: null },
-      { id: 'dhl', nazwa: 'DHL', kategoria: 'wysylka', opis: 'Połączenie z kurierem DHL.', logo: '/integracje/dhl.svg',
-        dostepnosc: 'planowana', href: null, konfigurator: null },
-      { id: 'apaczka', nazwa: 'Apaczka', kategoria: 'wysylka', opis: 'Broker — wiele firm kurierskich w jednej umowie.',
-        logo: '/integracje/paczka.svg', dostepnosc: 'planowana', href: null, konfigurator: null },
+      {
+        id: 'dpd',
+        nazwa: 'DPD',
+        kategoria: 'wysylka',
+        opis: 'Nadaj przesyłki przez DPD.',
+        logo: '/integracje/dpd.svg',
+        dostepnosc: 'dostepna',
+        href: '/ustawienia/integracje/dpd',
+        konfigurator: null,
+      },
+      {
+        id: 'inpost',
+        nazwa: 'InPost',
+        kategoria: 'wysylka',
+        opis: 'Nadaj przesyłki przez InPost.',
+        logo: '/integracje/inpost.svg',
+        dostepnosc: 'dostepna',
+        href: '/ustawienia/integracje/inpost',
+        konfigurator: null,
+      },
+      {
+        id: 'wza',
+        nazwa: 'Wysyłam z Allegro',
+        kategoria: 'wysylka',
+        opis: 'Nadaj przesyłki z wykorzystaniem powiązanego konta Allegro.',
+        logo: '/integracje/allegro.svg',
+        dostepnosc: 'dostepna',
+        href: '/ustawienia/integracje#grupa-sprzedaz',
+        konfigurator: null,
+      },
+      {
+        id: 'gls',
+        nazwa: 'GLS',
+        kategoria: 'wysylka',
+        opis: 'Połączenie z kurierem GLS.',
+        logo: '/integracje/gls.png',
+        dostepnosc: 'planowana',
+        href: null,
+        konfigurator: null,
+      },
+      {
+        id: 'dhl',
+        nazwa: 'DHL',
+        kategoria: 'wysylka',
+        opis: 'Połączenie z kurierem DHL.',
+        logo: '/integracje/dhl.svg',
+        dostepnosc: 'planowana',
+        href: null,
+        konfigurator: null,
+      },
+      {
+        id: 'apaczka',
+        nazwa: 'Apaczka',
+        kategoria: 'wysylka',
+        opis: 'Broker — wiele firm kurierskich w jednej umowie.',
+        logo: '/integracje/paczka.svg',
+        dostepnosc: 'planowana',
+        href: null,
+        konfigurator: null,
+      },
     ]);
   });
 });
@@ -40,7 +97,10 @@ describe('Ustawienia → Integracje — sekcja Wysyłka i brak sekcji Kurierzy',
       const od = r.body.indexOf('<section class="ust-kategoria"><h2>Wysyłka</h2>');
       expect(od).toBeGreaterThan(-1);
       expect(r.body.slice(od, r.body.indexOf('</section>', od) + 10)).toBe(WYCIAG_WYSYLKA);
-    } finally { await a.app.close(); a.db.close(); }
+    } finally {
+      await a.app.close();
+      a.db.close();
+    }
   });
 
   it('/ustawienia/integracje dziś nie pokazuje sekcji „Kurierzy” (martwa gałąź szablonu)', async () => {
@@ -49,6 +109,9 @@ describe('Ustawienia → Integracje — sekcja Wysyłka i brak sekcji Kurierzy',
       const r = await a.app.inject({ method: 'GET', url: '/ustawienia/integracje', headers });
       expect(r.statusCode).toBe(200);
       expect(r.body.includes('<h2>Kurierzy</h2>')).toBe(false);
-    } finally { await a.app.close(); a.db.close(); }
+    } finally {
+      await a.app.close();
+      a.db.close();
+    }
   });
 });

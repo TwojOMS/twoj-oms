@@ -13,14 +13,38 @@
 //     każdy inny → `niepewne`, bez ponowienia.
 // Rejestry zdarzeń i akcji są parametrem — moduł podaje prawdziwe, testy sztuczne.
 import {
-  czyPasujeKanalom, odczytKursora, nowyKursor, terminWykonania, czyPrzeterminowane, klasyfikujBladPoczty, godzineWczesniej,
-  ponowienieOd, maWarunkiWykonania, BEZPIECZNIK_NARAZ, LIMIT_OMS_NA_GODZINE, LIMIT_KANDYDATOW, MAKS_PROB,
+  czyPasujeKanalom,
+  odczytKursora,
+  nowyKursor,
+  terminWykonania,
+  czyPrzeterminowane,
+  klasyfikujBladPoczty,
+  godzineWczesniej,
+  ponowienieOd,
+  maWarunkiWykonania,
+  BEZPIECZNIK_NARAZ,
+  LIMIT_OMS_NA_GODZINE,
+  LIMIT_KANDYDATOW,
+  MAKS_PROB,
 } from '../../../domena/automatyzacje.js';
 import {
-  czySaWlaczone, wlaczoneReguly, regulaRozpakowana, wstrzymajRegule, zapiszKursor, POWOD_KANAL_ODZNACZONY,
+  czySaWlaczone,
+  wlaczoneReguly,
+  regulaRozpakowana,
+  wstrzymajRegule,
+  zapiszKursor,
+  POWOD_KANAL_ODZNACZONY,
 } from '../db/reguly.js';
 import {
-  wTransakcji, zaplanuj, doWykonania, zarezerwuj, zakoncz, ponow, odloz, oznaczPrzerwane, licznikGodziny,
+  wTransakcji,
+  zaplanuj,
+  doWykonania,
+  zarezerwuj,
+  zakoncz,
+  ponow,
+  odloz,
+  oznaczPrzerwane,
+  licznikGodziny,
 } from '../db/wykonania.js';
 import { opisBleduPocztyDoLogu } from '../../wiadomosci/poczta-ustawien.ts';
 
@@ -47,8 +71,13 @@ export async function warunkiBezSprawdzacza({ regula }) {
  *   pocztaGotowa?: () => boolean, teraz?: () => Date, log?: (...t: string[]) => void }} opcje
  */
 export function createSilnikAutomatyzacji({
-  db, zdarzenia = [], akcje = [], sprawdzWarunki = warunkiBezSprawdzacza, pocztaGotowa = () => false,
-  teraz = () => new Date(), log = () => {},
+  db,
+  zdarzenia = [],
+  akcje = [],
+  sprawdzWarunki = warunkiBezSprawdzacza,
+  pocztaGotowa = () => false,
+  teraz = () => new Date(),
+  log = () => {},
 }) {
   const rejestrZdarzen = new Map(zdarzenia.map((z) => [z.klucz, z]));
   const rejestrAkcji = new Map(akcje.map((a) => [a.klucz, a]));
@@ -62,17 +91,29 @@ export function createSilnikAutomatyzacji({
     const { od, po } = odczytKursora(regula);
     // Detektor dostaje białą listę kanałów (obce kanały nie zajmują limitu kandydatów) i id reguły
     // (paczki nie mają znacznika chwili przejścia w „nadana” — detektor pomija te, które reguła już ma).
-    const kandydaci = zdarzenie.kandydaci(db, { granica: regula.granica, od, po, parametr: regula.zdarzenie_param,
-      limit: LIMIT_KANDYDATOW, kanaly: Array.isArray(regula.warunki?.kanaly) ? regula.warunki.kanaly : [], regula_id: regula.id });
+    const kandydaci = zdarzenie.kandydaci(db, {
+      granica: regula.granica,
+      od,
+      po,
+      parametr: regula.zdarzenie_param,
+      limit: LIMIT_KANDYDATOW,
+      kanaly: Array.isArray(regula.warunki?.kanaly) ? regula.warunki.kanaly : [],
+      regula_id: regula.id,
+    });
     const pasujace = kandydaci.filter((k) => czyPasujeKanalom(k.sklep, regula.warunki));
     const wykryte = chwila.toISOString();
     return wTransakcji(db, () => {
-      let nowe = 0, otwarte = 0;
+      let nowe = 0,
+        otwarte = 0;
       for (const k of pasujace) {
         const wynik = zaplanuj(db, {
-          regula_id: regula.id, przedmiot: k.przedmiot ?? `zamowienie:${k.zamowienie_id}`, zamowienie_id: k.zamowienie_id,
-          przesylka_id: k.przesylka_id ?? null, zdarzenie_at: k.zdarzenie_at,
-          termin_at: terminWykonania(k.zdarzenie_at, regula.opoznienie_min), szablon: regula.akcja_param?.szablon ?? null,
+          regula_id: regula.id,
+          przedmiot: k.przedmiot ?? `zamowienie:${k.zamowienie_id}`,
+          zamowienie_id: k.zamowienie_id,
+          przesylka_id: k.przesylka_id ?? null,
+          zdarzenie_at: k.zdarzenie_at,
+          termin_at: terminWykonania(k.zdarzenie_at, regula.opoznienie_min),
+          szablon: regula.akcja_param?.szablon ?? null,
           teraz: wykryte,
         });
         if (wynik === 'nowe') nowe += 1;
@@ -101,7 +142,14 @@ export function createSilnikAutomatyzacji({
   function przedRezerwacja(w) {
     const regula = regulaRozpakowana(db, w.regula_id);
     if (!regula || regula.wlaczona !== 1 || regula.usunieta_at) {
-      return { koniec: pominiete(w, regula ?? { nazwa: '?' }, 'regula_wylaczona', 'Reguła została wyłączona, zanim nadszedł termin.') };
+      return {
+        koniec: pominiete(
+          w,
+          regula ?? { nazwa: '?' },
+          'regula_wylaczona',
+          'Reguła została wyłączona, zanim nadszedł termin.',
+        ),
+      };
     }
     if (regula.wstrzymana_powod) return { koniec: 'czeka' };
     // Kanał drugi raz, tuż przed rezerwacją: admin mógł odznaczyć kanał w regule po wykryciu.
@@ -111,10 +159,12 @@ export function createSilnikAutomatyzacji({
     }
     const chwila = teraz();
     if (czyPrzeterminowane(w.termin_at, chwila)) {
-      const powod = w.powod_kod === 'okno_poprawek' && w.nastepna_proba_at
-        && chwila.getTime() - new Date(w.nastepna_proba_at).getTime() <= MAKS_CISZA_ODLOZENIA_MS
-        ? `Faktura przez 48 godzin nie wyszła z okna poprawek ani nie dostała numeru KSeF — mail nie został wysłany. Ostatnio: ${w.powod}`
-        : 'Minęło ponad 48 godzin od planowanej chwili wysyłki (OMS był wyłączony?). Mail po takim czasie bardziej myli, niż pomaga.';
+      const powod =
+        w.powod_kod === 'okno_poprawek' &&
+        w.nastepna_proba_at &&
+        chwila.getTime() - new Date(w.nastepna_proba_at).getTime() <= MAKS_CISZA_ODLOZENIA_MS
+          ? `Faktura przez 48 godzin nie wyszła z okna poprawek ani nie dostała numeru KSeF — mail nie został wysłany. Ostatnio: ${w.powod}`
+          : 'Minęło ponad 48 godzin od planowanej chwili wysyłki (OMS był wyłączony?). Mail po takim czasie bardziej myli, niż pomaga.';
       return { koniec: pominiete(w, regula, 'przeterminowane', powod) };
     }
     const od = godzineWczesniej(chwila);
@@ -127,22 +177,38 @@ export function createSilnikAutomatyzacji({
     let { regula, koniec } = przedRezerwacja(w);
     if (koniec) return koniec;
     const akcja = rejestrAkcji.get(regula.akcja);
-    if (!akcja) return pominiete(w, regula, 'akcja_niedostepna', 'Akcja tej reguły jest niedostępna w tej wersji OMS-u.');
+    if (!akcja)
+      return pominiete(w, regula, 'akcja_niedostepna', 'Akcja tej reguły jest niedostępna w tej wersji OMS-u.');
     const zam = db.prepare('SELECT id, scalone_do FROM zamowienia WHERE id = ?').get(w.zamowienie_id);
     if (zam?.scalone_do) {
-      return pominiete(w, regula, 'dolaczone', `Zamówienie dołączone do zamówienia ${zam.scalone_do} — wiadomość idzie z głównego.`);
+      return pominiete(
+        w,
+        regula,
+        'dolaczone',
+        `Zamówienie dołączone do zamówienia ${zam.scalone_do} — wiadomość idzie z głównego.`,
+      );
     }
     // Warunki W CHWILI WYKONANIA (po opóźnieniu), nie przy wykryciu: cofnięty status pomija maila z powodem.
     const warunek = await warunki({ db, regula, wykonanie: w });
-    if (!warunek?.ok) return pominiete(w, regula, warunek?.kod ?? 'warunek', warunek?.powod ?? 'Warunek reguły nie jest spełniony.');
+    if (!warunek?.ok)
+      return pominiete(w, regula, warunek?.kod ?? 'warunek', warunek?.powod ?? 'Warunek reguły nie jest spełniony.');
     if (akcja.wymagaPoczty && !pocztaGotowa()) {
-      return pominiete(w, regula, 'brak_poczty', 'brak poczty wychodzącej — podłącz ją w Ustawienia → Integracje → Poczta wychodząca.');
+      return pominiete(
+        w,
+        regula,
+        'brak_poczty',
+        'brak poczty wychodzącej — podłącz ją w Ustawienia → Integracje → Poczta wychodząca.',
+      );
     }
     if (akcja.zgoda) {
       const zgoda = await akcja.zgoda({ db, regula, wykonanie: w, teraz });
       // „Jeszcze nie teraz” (faktura w oknie poprawek) — wiersz czeka, próby nie maleją.
       if (zgoda?.odloz) {
-        odloz(db, w, { nastepna: ponowienieOd(teraz()), powod: zgoda.powod ?? 'Akcja poprosiła o odłożenie.', kod: zgoda.kod });
+        odloz(db, w, {
+          nastepna: ponowienieOd(teraz()),
+          powod: zgoda.powod ?? 'Akcja poprosiła o odłożenie.',
+          kod: zgoda.kod,
+        });
         return 'odlozone';
       }
       if (!zgoda?.ok) return pominiete(w, regula, zgoda?.kod ?? 'odmowa', zgoda?.powod ?? 'Akcja odmówiła wykonania.');
@@ -152,14 +218,24 @@ export function createSilnikAutomatyzacji({
     if (!zarezerwuj(db, w.id)) return 'zajete';
     try {
       const wynik = await akcja.wykonaj({ db, regula, wykonanie: w });
-      zakoncz(db, w, { stan: 'wyslane', adresat: wynik?.adresat ?? null, teraz: teraz().toISOString(), nazwa: regula.nazwa });
+      zakoncz(db, w, {
+        stan: 'wyslane',
+        adresat: wynik?.adresat ?? null,
+        teraz: teraz().toISOString(),
+        nazwa: regula.nazwa,
+      });
       return 'wyslane';
     } catch (e) {
       // Akcja odmówiła, ZANIM cokolwiek wyszło (np. treść nie dała się złożyć — szablon zmieniony
       // w międzyczasie). To pewny brak maila, nie „niepewne”: błąd z powodem, bez ponowienia.
       if (e?.przedWysylka) {
-        zakoncz(db, w, { stan: 'blad', powod: `Nie udało się przygotować wiadomości: ${komunikat(e)} — nic nie poszło do klienta.`,
-          powod_kod: 'zlozenie', teraz: teraz().toISOString(), nazwa: regula.nazwa });
+        zakoncz(db, w, {
+          stan: 'blad',
+          powod: `Nie udało się przygotować wiadomości: ${komunikat(e)} — nic nie poszło do klienta.`,
+          powod_kod: 'zlozenie',
+          teraz: teraz().toISOString(),
+          nazwa: regula.nazwa,
+        });
         return 'blad';
       }
       const proby = w.proby + 1;
@@ -168,12 +244,23 @@ export function createSilnikAutomatyzacji({
           ponow(db, w, { nastepna: ponowienieOd(teraz()), powod: `Próba ${proby} nieudana: ${opisBleduWysylki(e)}` });
           return 'ponowione';
         }
-        zakoncz(db, w, { stan: 'blad', proby, powod: `${MAKS_PROB} próby nieudane — serwer poczty nie przyjął wiadomości (${opisBleduWysylki(e)}).`,
-          powod_kod: 'poczta', teraz: teraz().toISOString(), nazwa: regula.nazwa });
+        zakoncz(db, w, {
+          stan: 'blad',
+          proby,
+          powod: `${MAKS_PROB} próby nieudane — serwer poczty nie przyjął wiadomości (${opisBleduWysylki(e)}).`,
+          powod_kod: 'poczta',
+          teraz: teraz().toISOString(),
+          nazwa: regula.nazwa,
+        });
         return 'blad';
       }
-      zakoncz(db, w, { stan: 'niepewne', powod: `Błąd w trakcie wysyłki (${opisBleduWysylki(e)}). Nie ponawiamy — sprawdź, czy klient dostał wiadomość.`,
-        powod_kod: 'niepewne', teraz: teraz().toISOString(), nazwa: regula.nazwa });
+      zakoncz(db, w, {
+        stan: 'niepewne',
+        powod: `Błąd w trakcie wysyłki (${opisBleduWysylki(e)}). Nie ponawiamy — sprawdź, czy klient dostał wiadomość.`,
+        powod_kod: 'niepewne',
+        teraz: teraz().toISOString(),
+        nazwa: regula.nazwa,
+      });
       return 'niepewne';
     }
   }
@@ -184,12 +271,19 @@ export function createSilnikAutomatyzacji({
    * wiersz zostaje `w_toku` — przy następnym starcie przejdzie w `niepewne` (akcja mogła wyjść).
    */
   async function wykonajBezpiecznie(w) {
-    try { return await wykonaj(w); }
-    catch (e) {
+    try {
+      return await wykonaj(w);
+    } catch (e) {
       log(`automatyzacje: wykonanie ${w.id} (zamówienie ${w.zamowienie_id}): ${komunikat(e)}`);
       const nazwa = regulaRozpakowana(db, w.regula_id)?.nazwa ?? '?';
-      const zmienione = zakoncz(db, w, { stan: 'pominiete', powod_kod: 'blad_wewnetrzny', zeStanow: ['zaplanowane'],
-        powod: `Błąd wewnętrzny OMS-u przy sprawdzaniu (${komunikat(e)}) — nic nie wysłano.`, teraz: teraz().toISOString(), nazwa });
+      const zmienione = zakoncz(db, w, {
+        stan: 'pominiete',
+        powod_kod: 'blad_wewnetrzny',
+        zeStanow: ['zaplanowane'],
+        powod: `Błąd wewnętrzny OMS-u przy sprawdzaniu (${komunikat(e)}) — nic nie wysłano.`,
+        teraz: teraz().toISOString(),
+        nazwa,
+      });
       return zmienione ? 'blad_wewnetrzny' : 'wyjatek';
     }
   }
@@ -211,16 +305,23 @@ export function createSilnikAutomatyzacji({
           const w = wykryj(regula, chwila);
           wynik.nowe += w.nowe;
           wynik.otwarte += w.otwarte;
-        } catch (e) { log(`automatyzacje: wykrycie reguły „${regula.nazwa}”: ${komunikat(e)}`); }
+        } catch (e) {
+          log(`automatyzacje: wykrycie reguły „${regula.nazwa}”: ${komunikat(e)}`);
+        }
       }
       const chwilaWysylki = teraz();
-      for (const w of doWykonania(db, { teraz: chwilaWysylki.toISOString(), godzineWczesniej: godzineWczesniej(chwilaWysylki) })) {
+      for (const w of doWykonania(db, {
+        teraz: chwilaWysylki.toISOString(),
+        godzineWczesniej: godzineWczesniej(chwilaWysylki),
+      })) {
         const stan = await wykonajBezpiecznie(w);
         wynik.wyniki[stan] = (wynik.wyniki[stan] ?? 0) + 1;
         if (stan === 'limit_oms') break;
       }
       return wynik;
-    } finally { trwa = false; }
+    } finally {
+      trwa = false;
+    }
   }
 
   /** Start procesu: wiszące `w_toku` → `niepewne` (bez wiszących — zero zapisów). Woła go pierwszy przebieg. */
@@ -239,8 +340,15 @@ export function createSilnikAutomatyzacji({
  * Podgląd „Sprawdź na ostatnich 30 dniach”: `zdarzenie.symulacja(db, od)` → kanał → warunki → zgoda akcji. ZERO zapisów
  * (test: total_changes()). Warunki i zgodę liczy według stanu z dziś — ekran to mówi.
  */
-export async function symulujRegule({ db, regula, zdarzenie, akcja = null, sprawdzWarunki = warunkiBezSprawdzacza,
-  teraz = () => new Date(), dni = 30 }) {
+export async function symulujRegule({
+  db,
+  regula,
+  zdarzenie,
+  akcja = null,
+  sprawdzWarunki = warunkiBezSprawdzacza,
+  teraz = () => new Date(),
+  dni = 30,
+}) {
   const od = new Date(teraz().getTime() - dni * 24 * 3600 * 1000).toISOString();
   const warunki = sprawdzWarunki ?? warunkiBezSprawdzacza;
   const wynik = { od, razem: 0, wykonaloby: 0, pominieteRazem: 0, pominiete: {}, odrzuconeKanalem: {}, przyklady: [] };
@@ -250,10 +358,17 @@ export async function symulujRegule({ db, regula, zdarzenie, akcja = null, spraw
       continue;
     }
     wynik.razem += 1;
-    const wykonanie = { id: null, regula_id: regula.id ?? null, zamowienie_id: k.zamowienie_id, przesylka_id: k.przesylka_id ?? null,
-      zdarzenie_at: k.zdarzenie_at, proby: 0 };
+    const wykonanie = {
+      id: null,
+      regula_id: regula.id ?? null,
+      zamowienie_id: k.zamowienie_id,
+      przesylka_id: k.przesylka_id ?? null,
+      zdarzenie_at: k.zdarzenie_at,
+      proby: 0,
+    };
     const glowne = db.prepare('SELECT scalone_do FROM zamowienia WHERE id = ?').get(k.zamowienie_id)?.scalone_do;
-    let odmowa = glowne ? { ok: false, kod: 'dolaczone', powod: `dołączone do zamówienia ${glowne} — mail idzie z głównego` }
+    let odmowa = glowne
+      ? { ok: false, kod: 'dolaczone', powod: `dołączone do zamówienia ${glowne} — mail idzie z głównego` }
       : await warunki({ db, regula, wykonanie });
     if (odmowa?.ok && akcja?.zgoda) odmowa = await akcja.zgoda({ db, regula, wykonanie, teraz });
     // Odłożenie = mail pójdzie, tylko później → „wykonałoby”, nie „pominięte”.
@@ -265,8 +380,13 @@ export async function symulujRegule({ db, regula, zdarzenie, akcja = null, spraw
       wynik.pominiete[kod] = (wynik.pominiete[kod] ?? 0) + 1;
     }
     if (wynik.przyklady.length < 5) {
-      wynik.przyklady.push({ zamowienie_id: k.zamowienie_id, zdarzenie_at: k.zdarzenie_at, ok: Boolean(odmowa?.ok),
-        powod: odmowa?.ok ? null : odmowa?.powod ?? null, adresat: odmowa?.ok ? odmowa.adresat ?? null : null });
+      wynik.przyklady.push({
+        zamowienie_id: k.zamowienie_id,
+        zdarzenie_at: k.zdarzenie_at,
+        ok: Boolean(odmowa?.ok),
+        powod: odmowa?.ok ? null : (odmowa?.powod ?? null),
+        adresat: odmowa?.ok ? (odmowa.adresat ?? null) : null,
+      });
     }
   }
   return wynik;

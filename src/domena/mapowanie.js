@@ -161,9 +161,10 @@ export function mapujZamowienie(surowe, mapowanie) {
     // ⚠️ Także przy bramce pobrania, gdy dostawa nie jest jeszcze w mapowaniu („nieznana",
     // `pobranie:false`): operator ustawi pobranie na karcie, a wpłata `sklep` odżywałaby przy
     // każdej synchronizacji. Odbiór osobisty z bramką pobrania — bez zmian.
-    oplacone_at: (pobranie || (metoda !== 'odbior_osobisty' && bramkaPobrania(surowe, mapowanie) === true))
-      ? null
-      : utcSklepu(surowe.date_paid_gmt, surowe.date_paid),
+    oplacone_at:
+      pobranie || (metoda !== 'odbior_osobisty' && bramkaPobrania(surowe, mapowanie) === true)
+        ? null
+        : utcSklepu(surowe.date_paid_gmt, surowe.date_paid),
     // Metoda platnosci ze sklepu — CZYTELNA nazwa (`payment_method_title`: „Przelewy24",
     // „Przelew tradycyjny"), nie identyfikator (`payment_method`: 'p24', 'bacs'). To pole
     // ogląda wyłącznie człowiek w tabeli wpłat na karcie, więc ma być tym, co widział
@@ -217,15 +218,12 @@ export function mapujZamowienie(surowe, mapowanie) {
       // gorszy niz jego brak. Brak wartosci ma dac NULL, a nie zero — „produkt numer 0"
       // nie istnieje, a odnoszacy sie do niego adres prowadzi donikad.
       // Ta sama regula stoi w przeliczeniu wstecz (produktLinii w oms/db/uzupelnienia-zamowien.js).
-      produkt_id: Number.isInteger(Number(p.product_id)) && Number(p.product_id) > 0
-        ? Number(p.product_id)
-        : null,
+      produkt_id: Number.isInteger(Number(p.product_id)) && Number(p.product_id) > 0 ? Number(p.product_id) : null,
       // Identyfikator WARIANTU — wylacznie do powiazania pozycji z karta produktu przy stanach
       // magazynowych (karta jest per wariant). Odnosnik dalej idzie po `produkt_id` rodzica (wyzej).
       // Produkt prosty ma `variation_id = 0` — to nie wariant, wiec `null`.
-      wariant_id: Number.isInteger(Number(p.variation_id)) && Number(p.variation_id) > 0
-        ? String(Number(p.variation_id))
-        : null,
+      wariant_id:
+        Number.isInteger(Number(p.variation_id)) && Number(p.variation_id) > 0 ? String(Number(p.variation_id)) : null,
     })),
   };
 }

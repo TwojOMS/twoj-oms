@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest';
+import { generateKeyPairSync, privateDecrypt, createDecipheriv, constants } from 'node:crypto';
 import {
-  generateKeyPairSync, privateDecrypt, createDecipheriv, constants,
-} from 'node:crypto';
-import {
-  kluczMf, nowyKluczSesji, zaszyfrujKluczSesji, zaszyfrujAes,
-  skrotSha256Base64, skrotSha256Base64Url,
+  kluczMf,
+  nowyKluczSesji,
+  zaszyfrujKluczSesji,
+  zaszyfrujAes,
+  skrotSha256Base64,
+  skrotSha256Base64Url,
 } from '../../src/oms/ksef/szyfrowanie.js';
 import { createKsefClient } from '../../src/oms/ksef/client.js';
 import { certyfikatTestowy } from './_ksef-pomocniki.js';
@@ -66,7 +68,8 @@ describe('tresc faktury AES-256-CBC z PKCS#7', () => {
 
 // Wektor wyliczony raz `node:crypto` (aes-256-cbc, PKCS#7) dla klucza 00..1f, IV f0..00
 // i tekstu UTF-8 `<Faktura>Pracownia Półcień</Faktura>` (39 bajtow → 48 bajtow szyfrogramu).
-const WEKTOR_AES_HEX = '309cbaa5169e5f2165fe8629e45ea8e11f6769742289b43fae2366b04837b72fd70460fd28c76efc58e94770ef90608e';
+const WEKTOR_AES_HEX =
+  '309cbaa5169e5f2165fe8629e45ea8e11f6769742289b43fae2366b04837b72fd70460fd28c76efc58e94770ef90608e';
 
 describe('skroty SHA-256', () => {
   // Wektor NIST FIPS 180-2 dla "abc": ba7816bf...15ad. Base64 ma '+', '/' i '=' —
@@ -94,7 +97,15 @@ describe('kluczMf(certy, usage)', () => {
   });
 
   it('usage jako pojedynczy napis tez dziala', () => {
-    expect(kluczMf([{ certificate: 'A', usage: 'X' }, { certificate: 'B', usage: 'KsefTokenEncryption' }], 'KsefTokenEncryption')).toBe('B');
+    expect(
+      kluczMf(
+        [
+          { certificate: 'A', usage: 'X' },
+          { certificate: 'B', usage: 'KsefTokenEncryption' },
+        ],
+        'KsefTokenEncryption',
+      ),
+    ).toBe('B');
   });
 
   it('zaden certyfikat nie ma pola usage → pierwszy (jak dzis)', () => {
@@ -141,9 +152,7 @@ describe('logowanie KSeF bierze certyfikat KsefTokenEncryption', () => {
   });
 
   it('zaden certyfikat nie pasuje → czytelna odmowa przed challenge', async () => {
-    const { fetchImpl, wywolania } = atrapa([
-      { certificate: certyfikatTestowy(), usage: ['SymmetricKeyEncryption'] },
-    ]);
+    const { fetchImpl, wywolania } = atrapa([{ certificate: certyfikatTestowy(), usage: ['SymmetricKeyEncryption'] }]);
     const klient = createKsefClient({ token: 'SEKRET-TOKEN-9', nip: '1234563218', fetchImpl });
     let blad = null;
     try {
@@ -181,28 +190,37 @@ describe('kluczMf: pusta lista i waznosc certyfikatu', () => {
 
   const TERAZ = new Date('2026-10-27T12:00:00Z');
   const wygasly = {
-    certificate: 'CERT-STARY', usage: ['SymmetricKeyEncryption'],
-    validFrom: '2024-01-01T00:00:00Z', validTo: '2026-06-30T23:59:59Z',
+    certificate: 'CERT-STARY',
+    usage: ['SymmetricKeyEncryption'],
+    validFrom: '2024-01-01T00:00:00Z',
+    validTo: '2026-06-30T23:59:59Z',
   };
   const wazny = {
-    certificate: 'CERT-WAZNY', usage: ['SymmetricKeyEncryption'],
-    validFrom: '2026-07-01T00:00:00Z', validTo: '2028-06-30T23:59:59Z',
+    certificate: 'CERT-WAZNY',
+    usage: ['SymmetricKeyEncryption'],
+    validFrom: '2026-07-01T00:00:00Z',
+    validTo: '2028-06-30T23:59:59Z',
   };
   const przyszly = {
-    certificate: 'CERT-PRZYSZLY', usage: ['SymmetricKeyEncryption'],
-    validFrom: '2027-01-01T00:00:00Z', validTo: '2029-06-30T23:59:59Z',
+    certificate: 'CERT-PRZYSZLY',
+    usage: ['SymmetricKeyEncryption'],
+    validFrom: '2027-01-01T00:00:00Z',
+    validTo: '2029-06-30T23:59:59Z',
   };
   const tokenowy = {
-    certificate: 'CERT-TOKEN', usage: ['KsefTokenEncryption'],
-    validFrom: '2024-01-01T00:00:00Z', validTo: '2029-01-01T00:00:00Z',
+    certificate: 'CERT-TOKEN',
+    usage: ['KsefTokenEncryption'],
+    validFrom: '2024-01-01T00:00:00Z',
+    validTo: '2029-01-01T00:00:00Z',
   };
 
   it('z polami waznosci → certyfikat wazny na „teraz”, niezaleznie od kolejnosci', () => {
     expect(kluczMf([wygasly, przyszly, tokenowy, wazny], 'SymmetricKeyEncryption', TERAZ)).toBe('CERT-WAZNY');
     expect(kluczMf([przyszly, wazny, wygasly], 'SymmetricKeyEncryption', TERAZ)).toBe('CERT-WAZNY');
     // ten sam zestaw, inny zegar → inny certyfikat
-    expect(kluczMf([wygasly, wazny, przyszly], 'SymmetricKeyEncryption', new Date('2028-08-01T00:00:00Z')))
-      .toBe('CERT-PRZYSZLY');
+    expect(kluczMf([wygasly, wazny, przyszly], 'SymmetricKeyEncryption', new Date('2028-08-01T00:00:00Z'))).toBe(
+      'CERT-PRZYSZLY',
+    );
   });
 
   it('bez pola usage, z polami waznosci → pierwszy wazny', () => {
@@ -219,12 +237,16 @@ describe('kluczMf: pusta lista i waznosc certyfikatu', () => {
   it('domyslny zegar to biezaca chwila (bez trzeciego parametru)', () => {
     const teraz = Date.now();
     const dzis = {
-      certificate: 'CERT-DZIS', usage: ['SymmetricKeyEncryption'],
-      validFrom: new Date(teraz - 86400000).toISOString(), validTo: new Date(teraz + 86400000).toISOString(),
+      certificate: 'CERT-DZIS',
+      usage: ['SymmetricKeyEncryption'],
+      validFrom: new Date(teraz - 86400000).toISOString(),
+      validTo: new Date(teraz + 86400000).toISOString(),
     };
     const wczoraj = {
-      certificate: 'CERT-WCZORAJ', usage: ['SymmetricKeyEncryption'],
-      validFrom: new Date(teraz - 3 * 86400000).toISOString(), validTo: new Date(teraz - 86400000 - 1).toISOString(),
+      certificate: 'CERT-WCZORAJ',
+      usage: ['SymmetricKeyEncryption'],
+      validFrom: new Date(teraz - 3 * 86400000).toISOString(),
+      validTo: new Date(teraz - 86400000 - 1).toISOString(),
     };
     expect(kluczMf([wczoraj, dzis], 'SymmetricKeyEncryption')).toBe('CERT-DZIS');
   });

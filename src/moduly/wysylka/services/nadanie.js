@@ -3,8 +3,14 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pobierzZamowienie, dopiszLog } from '../../../oms/db/zamowienia.js';
 import {
-  rozpocznijPrzesylke, zakonczPrzesylke, oznaczBlad, oznaczDoWyjasnienia, zapiszBladSync,
-  oznaczTworzonaUKuriera, pobierzPrzesylke, zapiszIdPrzesylkiKuriera,
+  rozpocznijPrzesylke,
+  zakonczPrzesylke,
+  oznaczBlad,
+  oznaczDoWyjasnienia,
+  zapiszBladSync,
+  oznaczTworzonaUKuriera,
+  pobierzPrzesylke,
+  zapiszIdPrzesylkiKuriera,
 } from '../db/przesylki.js';
 import { wybierzKuriera } from '../../../oms/kurierzy/index.js';
 import { metodaNadaniaErli } from './droga-nadania-erli.js';
@@ -16,9 +22,18 @@ import { adresOdbiorcy } from '../../../domena/adres-odbiorcy.js';
 import { powodBrakuGotowosciNadania } from '../../../domena/gotowosc-nadania.js';
 // Kurier WSKAZANY przez czlowieka — potrzebny wylacznie zamowieniom z Allegro, ktorych
 // metody panel nie umie nadac sam. Patrz domena/kurier-nadania.js.
-import { metodaNadania, wymagaUmowyPobrania, powodUmowyPobrania, powodOdmowyZamiennika } from '../../../domena/kurier-nadania.js';
+import {
+  metodaNadania,
+  wymagaUmowyPobrania,
+  powodUmowyPobrania,
+  powodOdmowyZamiennika,
+} from '../../../domena/kurier-nadania.js';
 import { czyPobranie, kwotaPobrania as kwotaPobraniaZamowienia } from '../../../domena/wysylka.js';
-import { przedplatyPrzedPobraniem, niedoplataPobrania, bladKwotyPobraniaZamowienia } from '../../../domena/platnosci.js';
+import {
+  przedplatyPrzedPobraniem,
+  niedoplataPobrania,
+  bladKwotyPobraniaZamowienia,
+} from '../../../domena/platnosci.js';
 import { zl } from '../../../domena/kwoty.js';
 import { odczytajKwotePobrania } from '../../../domena/pobranie-nadania.js';
 import { umowyPobraniaFirmy } from '../db/umowy-pobrania.js';
@@ -29,9 +44,7 @@ import { stanPrzesylki } from '../../../domena/przesylka-stan.js';
 // domyslnej parametru — bez tej linii plik wywalilby sie na `PACZKA_DOMYSLNA is not defined`
 // dopiero przy wywolaniu, czyli przy pierwszym nadaniu.
 import { PACZKA_DOMYSLNA } from '../../../domena/ustawienia-panelu.js';
-import {
-  dodajNotatkeZPowtorka, tekstNotatkiNadania, ponowNotatkeNadania, PREFIKS_NOTATKI,
-} from './notatka-nadania.js';
+import { dodajNotatkeZPowtorka, tekstNotatkiNadania, ponowNotatkeNadania, PREFIKS_NOTATKI } from './notatka-nadania.js';
 
 // ⚠️ STAŁA MIESZKA W DOMENIE (domena/szablony-paczek.js; ustawienia-panelu.js ją re-eksportuje), bo jest FALLBACKIEM ustawienia,
 // a nie jedynym źródłem wartości. Re-eksport zostaje, bo stąd czytają ją testy usługi nadania.
@@ -44,11 +57,21 @@ export { PACZKA_DOMYSLNA } from '../../../domena/ustawienia-panelu.js';
 // Czy brak ZPL po nadaniu to fakt do logu — z opisu kuriera (WzA: etykieta PDF z wyboru, świadomy brak).
 // Kurier spoza rejestru: jak dotąd (zapis „BRAK”). Bez rzucania — tu numer listu jest już przydzielony.
 /** @param {unknown} kurier */
-export const zplPrzyNadaniu = (kurier) => typeof kurier !== 'string' || !Object.hasOwn(MODULY_KURIEROW, kurier)
-  || modulKuriera(kurier).umiejetnosci.etykieta.zplPrzyNadaniu;
+export const zplPrzyNadaniu = (kurier) =>
+  typeof kurier !== 'string' ||
+  !Object.hasOwn(MODULY_KURIEROW, kurier) ||
+  modulKuriera(kurier).umiejetnosci.etykieta.zplPrzyNadaniu;
 
 /** @param {import('../nadanie-typy.ts').OpcjeNadania} opcje */
-export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {}, katalogEtykiet, paczkaDomyslna = PACZKA_DOMYSLNA, czekaj = undefined }) {
+export function createNadanie({
+  db,
+  kurierzy,
+  klienci = {},
+  klienciKanalow = {},
+  katalogEtykiet,
+  paczkaDomyslna = PACZKA_DOMYSLNA,
+  czekaj = undefined,
+}) {
   // Katalog zakladamy przy BUDOWIE uslugi, czyli zanim ktokolwiek dotknie DPD.
   // Przy pierwszym uruchomieniu panelu tego katalogu po prostu nie ma, a odkrycie tego
   // dopiero po nadaniu paczki oznaczaloby przydzielony numer listu bez miejsca na etykiete.
@@ -100,11 +123,17 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
       // w kurierzy/dpd.js). To FAKT do zapisania, nie awaria nadania: operator ma PDF
       // i widzi na karcie, ze druku na Zebrze nie bedzie, zamiast po cichu czekac
       // na przycisk „Drukuj", ktory nigdy sie nie pojawi.
-      dopiszLog(db, z.id, { akcja: 'etykieta-zpl', wynik: `BRAK: ${wynik.zplBladOpis ?? 'DPD nie oddało etykiety ZPL.'}` });
+      dopiszLog(db, z.id, {
+        akcja: 'etykieta-zpl',
+        wynik: `BRAK: ${wynik.zplBladOpis ?? 'DPD nie oddało etykiety ZPL.'}`,
+      });
     }
 
     zakonczPrzesylke(db, przesylkaId, {
-      numerListu: wynik.numerListu, etykietaSciezka: sciezka, etykietaZplSciezka: sciezkaZpl, surowa: wynik.surowa,
+      numerListu: wynik.numerListu,
+      etykietaSciezka: sciezka,
+      etykietaZplSciezka: sciezkaZpl,
+      surowa: wynik.surowa,
       // Adres FAKTYCZNIE użyty przy tym nadaniu — nie ten z zamówienia w sklepie, który
       // od tej chwili może być już nieaktualny (operator go poprawił). Bez tego panel
       // przestałby wiedzieć, dokąd paczka NAPRAWDĘ pojechała.
@@ -149,7 +178,9 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
       // numer listu i etykieta zostaja, notatke odsylamy „best effort".
       try {
         // Jedna powtórka po chwilowym błędzie sieci (services/notatka-nadania.js).
-        await dodajNotatkeZPowtorka(klienci[z.sklep], z.zrodlo_id, tekstNotatkiNadania(kurier, wynik.numerListu), { czekaj });
+        await dodajNotatkeZPowtorka(klienci[z.sklep], z.zrodlo_id, tekstNotatkiNadania(kurier, wynik.numerListu), {
+          czekaj,
+        });
         dopiszLog(db, z.id, { akcja: 'sync-woo', wynik: 'OK' });
       } catch (przyczyna) {
         const e = /** @type {import('../nadanie-typy.ts').BladNadania} */ (przyczyna);
@@ -160,7 +191,6 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
         dopiszLog(db, z.id, { akcja: 'sync-woo', wynik: `BŁĄD: notatka: ${e.message}` });
       }
     }
-
   }
 
   // `kolejnosc` to numer paczki, ktora wlasnie nadajemy — patrz rozpocznijPrzesylke.
@@ -197,10 +227,21 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
    * @param {import('../../../core/kontrakty.ts').PaczkaKuriera} [paczka]
    * @param {import('../nadanie-typy.ts').OpcjePaczkiNadania} [opcje]
    */
-  async function nadaj(zamowienieId, paczka = paczkaDomyslna, {
-    kolejnosc = 1, komentarz = null, adres, punktOdbioru, kwotaPobrania, kurierWybrany,
-    pobranieNaTejPaczce = kolejnosc === 1, drukowac = false, potwierdzonaNiedoplata,
-  } = {}) {
+  async function nadaj(
+    zamowienieId,
+    paczka = paczkaDomyslna,
+    {
+      kolejnosc = 1,
+      komentarz = null,
+      adres,
+      punktOdbioru,
+      kwotaPobrania,
+      kurierWybrany,
+      pobranieNaTejPaczce = kolejnosc === 1,
+      drukowac = false,
+      potwierdzonaNiedoplata,
+    } = {},
+  ) {
     /** @type {import('../nadanie-typy.ts').ZamowienieNadania | null} */
     const z = pobierzZamowienie(db, zamowienieId);
     if (!z) throw bladOperatora('Nie ma takiego zamówienia.');
@@ -247,8 +288,12 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
     // ODMOWE — i to jest ta sama bariera, co dotad („metoda nie jest obslugiwana"), tylko
     // wreszcie mowiaca czlowiekowi, co ma zrobic, zamiast odsylac go z zapakowana paczka.
     const umowyPobrania = umowyPobraniaFirmy(db);
-    const { metoda: metodaUzyta, blad: bladKuriera, wskazanyRecznie } = metodaNadaniaErli(db, z, kurierWybrany, { kolejnosc, umowyPobrania })
-      ?? metodaNadania(z, kurierWybrany, { kolejnosc, umowyPobrania });
+    const {
+      metoda: metodaUzyta,
+      blad: bladKuriera,
+      wskazanyRecznie,
+    } = metodaNadaniaErli(db, z, kurierWybrany, { kolejnosc, umowyPobrania }) ??
+    metodaNadania(z, kurierWybrany, { kolejnosc, umowyPobrania });
     if (bladKuriera) throw bladOperatora(bladKuriera);
 
     const braki = powodBrakuGotowosciNadania(z, metodaUzyta);
@@ -304,7 +349,9 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
         const wza = metodaKuriera(metodaUzyta)?.formularz === 'wza';
         if (!wza || jawna) {
           if (odczyt.rodzaj === 'pusta' || odczyt.rodzaj === 'zero') {
-            throw bladOperatora('Brak kwoty pobrania (0.00 zł) — zamówienie jest za pobraniem, a kurier niczego by nie zainkasował. Uzupełnij kwotę pobrania na karcie zamówienia albo wyłącz pobranie. Panel niczego nie nadał.');
+            throw bladOperatora(
+              'Brak kwoty pobrania (0.00 zł) — zamówienie jest za pobraniem, a kurier niczego by nie zainkasował. Uzupełnij kwotę pobrania na karcie zamówienia albo wyłącz pobranie. Panel niczego nie nadał.',
+            );
           }
           if (odczyt.blad) throw bladOperatora(nieczytelna);
           kwotaDoKuriera = odczyt.kwota;
@@ -312,7 +359,9 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
       } else {
         const nd = niedoplataPobrania(z);
         if (!nd) {
-          throw bladOperatora('Brak kwoty pobrania i kwoty zamówienia — uzupełnij kwotę pobrania na karcie zamówienia. Panel niczego nie nadał.');
+          throw bladOperatora(
+            'Brak kwoty pobrania i kwoty zamówienia — uzupełnij kwotę pobrania na karcie zamówienia. Panel niczego nie nadał.',
+          );
         }
         if (nd.blad !== undefined) throw bladOperatora(`${nd.blad} Panel niczego nie nadał.`);
         const N = nd.niedoplataGr;
@@ -329,7 +378,9 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
             // Potwierdzenie ważne tylko dla BIEŻĄCEJ niedopłaty — stara liczba z ekranu
             // (wpłata dopisana w międzyczasie) albo „tak” nie wystarcza.
             if (odczytajKwotePobrania(potwierdzonaNiedoplata).groszeKwoty !== N) {
-              throw bladOperatora(`Kwota pobrania ${zl(odczyt.groszeKwoty)} zł różni się od niedopłaty ${zl(N)} zł (kwota zamówienia ${zl(nd.podstawaGr)} zł minus wpłaty ${zl(przedplaty)} zł) — pobierz ${zl(N)} zł albo potwierdź inną kwotę na ekranie nadania. Panel niczego nie nadał.`);
+              throw bladOperatora(
+                `Kwota pobrania ${zl(odczyt.groszeKwoty)} zł różni się od niedopłaty ${zl(N)} zł (kwota zamówienia ${zl(nd.podstawaGr)} zł minus wpłaty ${zl(przedplaty)} zł) — pobierz ${zl(N)} zł albo potwierdź inną kwotę na ekranie nadania. Panel niczego nie nadał.`,
+              );
             }
             potwierdzonaNd = N;
           }
@@ -369,7 +420,10 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
     // znajdzie go i to nie jest usterka.
     const tresc = String(komentarz ?? '').trim();
     if (kolejnosc > 1) {
-      dopiszLog(db, zamowienieId, { akcja: 'nadanie.kolejna', wynik: `paczka nr ${kolejnosc}: ${tresc || 'nie podano powodu'}` });
+      dopiszLog(db, zamowienieId, {
+        akcja: 'nadanie.kolejna',
+        wynik: `paczka nr ${kolejnosc}: ${tresc || 'nie podano powodu'}`,
+      });
     } else if (tresc) {
       // Komentarz idzie WYLACZNIE do logu — to notatka dla ludzi w panelu, NIGDY do DPD
       // (patrz wywolanie klient.nadaj() nizej: nie jest czescia przekazywanego obiektu).
@@ -390,8 +444,9 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
     if (kwotaPobrania != null || potwierdzonaNd != null) {
       dopiszLog(db, zamowienieId, {
         akcja: 'nadanie.pobranie',
-        wynik: `kwota do zainkasowania przez kuriera: ${kwotaDoKuriera} zł`
-          + (potwierdzonaNd != null ? `; potwierdzona niedopłata: ${zl(potwierdzonaNd)} zł` : ''),
+        wynik:
+          `kwota do zainkasowania przez kuriera: ${kwotaDoKuriera} zł` +
+          (potwierdzonaNd != null ? `; potwierdzona niedopłata: ${zl(potwierdzonaNd)} zł` : ''),
       });
     }
 
@@ -406,17 +461,24 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
     if (pobranieNaTejPaczce && kolejnosc > 1) {
       dopiszLog(db, zamowienieId, {
         akcja: 'nadanie.pobranie',
-        wynik: `Ręcznie: pobranie jedzie na paczce nr ${kolejnosc}, a nie na pierwszej `
-          + '(paczka nr 1 jest zamiennikiem wyrzuconej etykiety, nie dosyłką obok niej). '
-          + `Kurier zainkasuje ${kwotaDoKuriera ?? z.kwota_pobrania} zł.`,
+        wynik:
+          `Ręcznie: pobranie jedzie na paczce nr ${kolejnosc}, a nie na pierwszej ` +
+          '(paczka nr 1 jest zamiennikiem wyrzuconej etykiety, nie dosyłką obok niej). ' +
+          `Kurier zainkasuje ${kwotaDoKuriera ?? z.kwota_pobrania} zł.`,
       });
     }
 
     let wynik;
     try {
       wynik = await klient.nadaj({
-        zamowienie: z, paczka, kolejnosc, adres: adresUzyty, punktOdbioru, kwotaPobrania: kwotaDoKuriera,
-        pobranieNaTejPaczce, drukowac,
+        zamowienie: z,
+        paczka,
+        kolejnosc,
+        adres: adresUzyty,
+        punktOdbioru,
+        kwotaPobrania: kwotaDoKuriera,
+        pobranieNaTejPaczce,
+        drukowac,
       });
     } catch (przyczyna) {
       const e = /** @type {import('../nadanie-typy.ts').BladNadania} */ (przyczyna);
@@ -510,14 +572,19 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
       });
       dopiszLog(db, zamowienieId, {
         akcja: 'nadanie',
-        wynik: `TWORZONA U KURIERA (${wynik.shipmentId}) — numeru listu jeszcze nie ma, `
-          + 'dokończ przyciskiem „Sprawdź ponownie" na karcie.',
+        wynik:
+          `TWORZONA U KURIERA (${wynik.shipmentId}) — numeru listu jeszcze nie ma, ` +
+          'dokończ przyciskiem „Sprawdź ponownie" na karcie.',
       });
       return { numerListu: null, wTrakcieTworzenia: true, idPrzesylkiKuriera: wynik.shipmentId };
     }
 
     await dokonczNadanie({
-      z, przesylkaId: przesylka.id, kurier: nazwa, wynik, adresUzytyJson: JSON.stringify(adresUzyty),
+      z,
+      przesylkaId: przesylka.id,
+      kurier: nazwa,
+      wynik,
+      adresUzytyJson: JSON.stringify(adresUzyty),
     });
     return { numerListu: wynik.numerListu };
   }
@@ -543,9 +610,9 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
     // paczce bez identyfikatora nie ma nawet o co zapytać kuriera.
     if (stanPrzesylki(p) !== 'tworzona_u_kuriera') {
       throw bladOperatora(
-        'Ta przesyłka nie czeka na numer u kuriera — nie ma czego sprawdzać. '
-        + 'Przycisk „Sprawdź ponownie" dotyczy wyłącznie przesyłki, która u kuriera już powstała, '
-        + 'ale nie dostała jeszcze numeru listu.',
+        'Ta przesyłka nie czeka na numer u kuriera — nie ma czego sprawdzać. ' +
+          'Przycisk „Sprawdź ponownie" dotyczy wyłącznie przesyłki, która u kuriera już powstała, ' +
+          'ale nie dostała jeszcze numeru listu.',
       );
     }
 
@@ -579,7 +646,8 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
           idPrzesylkiKuriera: p.id_przesylki_kuriera,
         });
         dopiszLog(db, p.zamowienie_id, {
-          akcja: 'nadanie.sprawdzenie', wynik: `DO WYJAŚNIENIA (list ${e.numerListu}): ${e.message}`,
+          akcja: 'nadanie.sprawdzenie',
+          wynik: `DO WYJAŚNIENIA (list ${e.numerListu}): ${e.message}`,
         });
         throw e;
       }
@@ -587,7 +655,9 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
       // istnieje u kuriera, wiersz nadal trzyma indeks, a przycisk zostaje na karcie.
       // ⚠️ Zwłaszcza NIE oznaczamy 'blad' — to zwolniłoby miejsce pod drugą paczkę.
       oznaczTworzonaUKuriera(db, p.id, {
-        idPrzesylkiKuriera: p.id_przesylki_kuriera, opis: e.message, surowa: e.surowa ?? null,
+        idPrzesylkiKuriera: p.id_przesylki_kuriera,
+        opis: e.message,
+        surowa: e.surowa ?? null,
       });
       dopiszLog(db, p.zamowienie_id, { akcja: 'nadanie.sprawdzenie', wynik: `BŁĄD: ${e.message}` });
       throw e;
@@ -598,7 +668,8 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
     // awarią, której już nie ma.
     if (wynik.wTrakcieTworzenia) {
       oznaczTworzonaUKuriera(db, p.id, {
-        idPrzesylkiKuriera: p.id_przesylki_kuriera, surowa: wynik.surowa ?? null,
+        idPrzesylkiKuriera: p.id_przesylki_kuriera,
+        surowa: wynik.surowa ?? null,
       });
       dopiszLog(db, p.zamowienie_id, {
         akcja: 'nadanie.sprawdzenie',
@@ -611,7 +682,11 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
     // w chwili nadania i żadna późniejsza poprawka w sklepie tego nie zmienia. Ponowne
     // liczenie go tutaj podmieniłoby historię paczki, która już istnieje.
     await dokonczNadanie({
-      z, przesylkaId: p.id, kurier: p.kurier, wynik, adresUzytyJson: p.adres_uzyty ?? null,
+      z,
+      przesylkaId: p.id,
+      kurier: p.kurier,
+      wynik,
+      adresUzytyJson: p.adres_uzyty ?? null,
     });
     return { numerListu: wynik.numerListu };
   }
@@ -619,7 +694,8 @@ export function createNadanie({ db, kurierzy, klienci = {}, klienciKanalow = {},
   // paczkaDomyslna wystawiona na zewnatrz, zeby ekran nadania (GET /zamowienia/:id/nadaj)
   // mogl nia wypelnic formularz — TA SAMA stala, nie druga kopia w widoku.
   // Przycisk „Spróbuj ponownie” przy nieudanej notatce — tu, bo tylko nadanie ma klientów sklepów.
-  const ponowNotatke = (/** @type {number} */ przesylkaId) => ponowNotatkeNadania({ db, klienci, klienciKanalow }, przesylkaId);
+  const ponowNotatke = (/** @type {number} */ przesylkaId) =>
+    ponowNotatkeNadania({ db, klienci, klienciKanalow }, przesylkaId);
 
   const anulujNumerKanalu = (/** @type {number} */ id) => przekazNumerKanalu({ db, klienci, klienciKanalow }, id, true);
   return { nadaj, sprawdzPonownie, ponowNotatke, anulujNumerKanalu, paczkaDomyslna, gotowe: () => true };

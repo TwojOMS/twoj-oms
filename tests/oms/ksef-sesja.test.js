@@ -4,15 +4,28 @@ import { createSesjaKsef } from '../../src/oms/ksef/sesja.js';
 import { jawnyTestowy } from '../pomoc/sejf-testowy.ts';
 
 const klientAtrapa = (slad) => ({
-  zaloguj: async () => { slad.push('zaloguj'); return { accessToken: 'A1', accessDo: '2026-08-12T21:00:00Z', refreshToken: 'R1', refreshDo: '2026-09-12T21:00:00Z' }; },
-  odswiez: async () => { slad.push('odswiez'); return { accessToken: 'A2', accessDo: '2026-08-12T23:00:00Z' }; },
+  zaloguj: async () => {
+    slad.push('zaloguj');
+    return {
+      accessToken: 'A1',
+      accessDo: '2026-08-12T21:00:00Z',
+      refreshToken: 'R1',
+      refreshDo: '2026-09-12T21:00:00Z',
+    };
+  },
+  odswiez: async () => {
+    slad.push('odswiez');
+    return { accessToken: 'A2', accessDo: '2026-08-12T23:00:00Z' };
+  },
 });
 
 describe('sesja KSeF', () => {
   // Para tokenów należy do tokenu KSeF, którym ją wydano. Para innego tokenu
   // (albo z czasu przed odciskiem) = brak pary; odświeżenie nie dopisuje access tokena do cudzej pary.
   it('para o innym odcisku tokenu (albo bez odcisku) to brak pary — pełne logowanie; ten sam odcisk ją używa', async () => {
-    const db = openOmsDb(); const slad = []; const teraz = () => new Date('2026-08-12T18:00:00Z');
+    const db = openOmsDb();
+    const slad = [];
+    const teraz = () => new Date('2026-08-12T18:00:00Z');
     await createSesjaKsef({ db, klient: klientAtrapa(slad), teraz }).accessToken();
     slad.length = 0;
     await createSesjaKsef({ db, klient: klientAtrapa(slad), teraz, odcisk: 'A' }).accessToken();
@@ -25,7 +38,8 @@ describe('sesja KSeF', () => {
   });
 
   it('bez zapisanej pary loguje sie od nowa i zapisuje OBA tokeny', async () => {
-    const db = openOmsDb(); const slad = [];
+    const db = openOmsDb();
+    const slad = [];
     const sesja = createSesjaKsef({ db, klient: klientAtrapa(slad), teraz: () => new Date('2026-08-12T18:00:00Z') });
     expect(await sesja.accessToken()).toBe('A1');
     expect(slad).toEqual(['zaloguj']);
@@ -34,22 +48,50 @@ describe('sesja KSeF', () => {
   });
 
   it('odswiezenie starego tokenu nie wpisuje access tokena do pary nowego, zapisanej w trakcie odswiezania', async () => {
-    const db = openOmsDb(); const teraz = () => new Date('2026-08-12T20:58:00Z'); // A1 wygasa za 2 min: odswiezenie
-    await createSesjaKsef({ db, klient: klientAtrapa([]), teraz: () => new Date('2026-08-12T18:00:00Z'), odcisk: 'A' }).accessToken();
-    let zwolnij; const brama = new Promise((r) => { zwolnij = r; });
-    const staryKlient = { ...klientAtrapa([]), odswiez: async () => { await brama; return { accessToken: 'A-ODSWIEZONY', accessDo: '2026-08-12T23:00:00Z' }; } };
+    const db = openOmsDb();
+    const teraz = () => new Date('2026-08-12T20:58:00Z'); // A1 wygasa za 2 min: odswiezenie
+    await createSesjaKsef({
+      db,
+      klient: klientAtrapa([]),
+      teraz: () => new Date('2026-08-12T18:00:00Z'),
+      odcisk: 'A',
+    }).accessToken();
+    let zwolnij;
+    const brama = new Promise((r) => {
+      zwolnij = r;
+    });
+    const staryKlient = {
+      ...klientAtrapa([]),
+      odswiez: async () => {
+        await brama;
+        return { accessToken: 'A-ODSWIEZONY', accessDo: '2026-08-12T23:00:00Z' };
+      },
+    };
     const odswiezanie = createSesjaKsef({ db, klient: staryKlient, teraz, odcisk: 'A' }).accessToken();
-    const nowyKlient = { zaloguj: async () => ({ accessToken: 'B1', accessDo: '2026-08-12T23:00:00Z', refreshToken: 'RB', refreshDo: '2026-09-12T21:00:00Z' }), odswiez: async () => { throw new Error('nie'); } };
+    const nowyKlient = {
+      zaloguj: async () => ({
+        accessToken: 'B1',
+        accessDo: '2026-08-12T23:00:00Z',
+        refreshToken: 'RB',
+        refreshDo: '2026-09-12T21:00:00Z',
+      }),
+      odswiez: async () => {
+        throw new Error('nie');
+      },
+    };
     expect(await createSesjaKsef({ db, klient: nowyKlient, teraz, odcisk: 'B' }).accessToken()).toBe('B1');
     zwolnij();
     expect(await odswiezanie).toBe('A-ODSWIEZONY');
     const w = db.prepare('SELECT access_token, refresh_token FROM tokeny_ksef WHERE id = 1').get();
-    expect({ access_token: jawnyTestowy(db, 'tokeny_ksef', 'access_token', 1, w.access_token),
-      refresh_token: jawnyTestowy(db, 'tokeny_ksef', 'refresh_token', 1, w.refresh_token) }).toEqual({ access_token: 'B1', refresh_token: 'RB' });
+    expect({
+      access_token: jawnyTestowy(db, 'tokeny_ksef', 'access_token', 1, w.access_token),
+      refresh_token: jawnyTestowy(db, 'tokeny_ksef', 'refresh_token', 1, w.refresh_token),
+    }).toEqual({ access_token: 'B1', refresh_token: 'RB' });
   });
 
   it('wazny access token uzywa sie ponownie, bez ani jednego wywolania sieci', async () => {
-    const db = openOmsDb(); const slad = [];
+    const db = openOmsDb();
+    const slad = [];
     const sesja = createSesjaKsef({ db, klient: klientAtrapa(slad), teraz: () => new Date('2026-08-12T18:00:00Z') });
     await sesja.accessToken();
     slad.length = 0;
@@ -58,7 +100,8 @@ describe('sesja KSeF', () => {
   });
 
   it('access token blisko wygasniecia ODSWIEZA sie, nie loguje od nowa', async () => {
-    const db = openOmsDb(); const slad = [];
+    const db = openOmsDb();
+    const slad = [];
     let chwila = new Date('2026-08-12T18:00:00Z');
     const sesja = createSesjaKsef({ db, klient: klientAtrapa(slad), teraz: () => chwila });
     await sesja.accessToken();
@@ -70,7 +113,8 @@ describe('sesja KSeF', () => {
   });
 
   it('wygasly REFRESH oznacza pelne logowanie, nie proba odswiezenia', async () => {
-    const db = openOmsDb(); const slad = [];
+    const db = openOmsDb();
+    const slad = [];
     let chwila = new Date('2026-08-12T18:00:00Z');
     const sesja = createSesjaKsef({ db, klient: klientAtrapa(slad), teraz: () => chwila });
     await sesja.accessToken();
@@ -81,11 +125,23 @@ describe('sesja KSeF', () => {
   });
 
   it('W1: nieudane odswiezenie prowadzi do JEDNEJ proby pelnego logowania, nie do martwej sesji', async () => {
-    const db = openOmsDb(); const slad = [];
+    const db = openOmsDb();
+    const slad = [];
     let chwila = new Date('2026-08-12T18:00:00Z');
     const klient = {
-      zaloguj: async () => { slad.push('zaloguj'); return { accessToken: 'A1', accessDo: '2026-08-12T21:00:00Z', refreshToken: 'R1', refreshDo: '2026-09-12T21:00:00Z' }; },
-      odswiez: async () => { slad.push('odswiez'); throw new Error('KSeF odmawia odswiezenia'); },
+      zaloguj: async () => {
+        slad.push('zaloguj');
+        return {
+          accessToken: 'A1',
+          accessDo: '2026-08-12T21:00:00Z',
+          refreshToken: 'R1',
+          refreshDo: '2026-09-12T21:00:00Z',
+        };
+      },
+      odswiez: async () => {
+        slad.push('odswiez');
+        throw new Error('KSeF odmawia odswiezenia');
+      },
     };
     const sesja = createSesjaKsef({ db, klient, teraz: () => chwila });
     await sesja.accessToken();
@@ -97,11 +153,23 @@ describe('sesja KSeF', () => {
   });
 
   it('W1: gdy padnie i odswiezenie, i pelne logowanie, blad wychodzi na zewnatrz bez trzeciej proby', async () => {
-    const db = openOmsDb(); const slad = [];
+    const db = openOmsDb();
+    const slad = [];
     let chwila = new Date('2026-08-12T18:00:00Z');
     const klientDobry = {
-      zaloguj: async () => { slad.push('zaloguj'); return { accessToken: 'A1', accessDo: '2026-08-12T21:00:00Z', refreshToken: 'R1', refreshDo: '2026-09-12T21:00:00Z' }; },
-      odswiez: async () => { slad.push('odswiez'); throw new Error('KSeF odmawia odswiezenia'); },
+      zaloguj: async () => {
+        slad.push('zaloguj');
+        return {
+          accessToken: 'A1',
+          accessDo: '2026-08-12T21:00:00Z',
+          refreshToken: 'R1',
+          refreshDo: '2026-09-12T21:00:00Z',
+        };
+      },
+      odswiez: async () => {
+        slad.push('odswiez');
+        throw new Error('KSeF odmawia odswiezenia');
+      },
     };
     const sesja = createSesjaKsef({ db, klient: klientDobry, teraz: () => chwila });
     await sesja.accessToken();
@@ -110,8 +178,14 @@ describe('sesja KSeF', () => {
     const sesjaZObomaBledami = createSesjaKsef({
       db,
       klient: {
-        zaloguj: async () => { slad.push('zaloguj'); throw new Error('redeem juz zuzyty'); },
-        odswiez: async () => { slad.push('odswiez'); throw new Error('KSeF odmawia odswiezenia'); },
+        zaloguj: async () => {
+          slad.push('zaloguj');
+          throw new Error('redeem juz zuzyty');
+        },
+        odswiez: async () => {
+          slad.push('odswiez');
+          throw new Error('KSeF odmawia odswiezenia');
+        },
       },
       teraz: () => chwila,
     });
@@ -121,7 +195,8 @@ describe('sesja KSeF', () => {
   });
 
   it('W2: dwa rownolegle accessToken() na pustej bazie daja JEDNO zaloguj() i ten sam token', async () => {
-    const db = openOmsDb(); const slad = [];
+    const db = openOmsDb();
+    const slad = [];
     const sesja = createSesjaKsef({ db, klient: klientAtrapa(slad), teraz: () => new Date('2026-08-12T18:00:00Z') });
     const [a, b] = await Promise.all([sesja.accessToken(), sesja.accessToken()]);
     expect(a).toBe('A1');
@@ -130,7 +205,8 @@ describe('sesja KSeF', () => {
   });
 
   it('nieudane logowanie zapisuje tresc bledu w ostatni_blad', async () => {
-    const db = openOmsDb(); const slad = [];
+    const db = openOmsDb();
+    const slad = [];
     let chwila = new Date('2026-08-12T18:00:00Z');
     const klientDobry = klientAtrapa(slad);
     const sesja = createSesjaKsef({ db, klient: klientDobry, teraz: () => chwila });
@@ -140,8 +216,12 @@ describe('sesja KSeF', () => {
     const sesjaZBledem = createSesjaKsef({
       db,
       klient: {
-        zaloguj: async () => { throw new Error('redeem juz zuzyty'); },
-        odswiez: async () => { throw new Error('KSeF odmawia odswiezenia'); },
+        zaloguj: async () => {
+          throw new Error('redeem juz zuzyty');
+        },
+        odswiez: async () => {
+          throw new Error('KSeF odmawia odswiezenia');
+        },
       },
       teraz: () => chwila,
     });

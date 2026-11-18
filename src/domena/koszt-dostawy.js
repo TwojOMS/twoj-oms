@@ -15,7 +15,9 @@ import { bladOperatora } from './bledy.js';
 // podstawienie zera zgubiloby literowke operatora, a ujemny koszt pomniejszylby sume
 // pozycji ponizej tego, co naprawde nalezy sie od klienta.
 export function parsujKosztDostawy(surowa) {
-  const znormalizowana = String(surowa ?? '').trim().replace(',', '.');
+  const znormalizowana = String(surowa ?? '')
+    .trim()
+    .replace(',', '.');
   if (!znormalizowana) return '0.00';
 
   const liczba = Number(znormalizowana);

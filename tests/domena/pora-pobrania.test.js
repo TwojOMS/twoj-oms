@@ -27,7 +27,7 @@ describe('pora nocnego pobrania', () => {
   });
 
   it('godzina jest parametrem — 4:00 dla archiwum sprzedazy, a 3:00 wtedy nie jest pora', () => {
-    expect(czyPoraPobrania(new Date('2026-08-12T02:30:00Z'), 4)).toBe(true);  // 04:30 CEST
+    expect(czyPoraPobrania(new Date('2026-08-12T02:30:00Z'), 4)).toBe(true); // 04:30 CEST
     expect(czyPoraPobrania(new Date('2026-08-12T01:30:00Z'), 4)).toBe(false); // 03:30 CEST
   });
 });

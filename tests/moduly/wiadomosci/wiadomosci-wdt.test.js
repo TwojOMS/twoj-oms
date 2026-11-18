@@ -10,20 +10,37 @@ import { createWiadomosci } from '../../../src/moduly/wiadomosci/services/wiadom
 
 const CONFIG = {
   nadawca: {
-    nazwa: 'Pracownia Półcień Anna Wzorcowa', ulica: 'Przykładowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL',
+    nazwa: 'Pracownia Półcień Anna Wzorcowa',
+    ulica: 'Przykładowa 1',
+    kod: '00-950',
+    miasto: 'Warszawa',
+    kraj: 'PL',
   },
   proforma: { nip: '1234563218', rachunek: '34109010140000000000000000' },
 };
 
 const zmapowane = (id, nad = {}) => ({
-  zrodlo_id: id, numer: String(id),
+  zrodlo_id: id,
+  numer: String(id),
   klient: {
-    first_name: 'Peter', last_name: 'Novak', company: 'Alfatrend s.r.o.',
-    email: 'peter@alfatrend.sk', address_1: '1. mája 1', postcode: '01001', city: 'Žilina',
+    first_name: 'Peter',
+    last_name: 'Novak',
+    company: 'Alfatrend s.r.o.',
+    email: 'peter@alfatrend.sk',
+    address_1: '1. mája 1',
+    postcode: '01001',
+    city: 'Žilina',
   },
-  dostawa: {}, metoda_wysylki: 'dpd', kwota_pobrania: null,
-  chce_fakture: 1, nip: 'SK1000000001', kwota_brutto: '96.48',
-  status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-08-26T10:00:00',
+  dostawa: {},
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 1,
+  nip: 'SK1000000001',
+  kwota_brutto: '96.48',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-08-26T10:00:00',
   pozycje: [{ nazwa: 'Lampa stołowa Kałamarz 30x45cm', sku: null, ilosc: 2, cena_brutto: '40.24', vat: null }],
   ...nad,
 });
@@ -36,7 +53,11 @@ function zestaw(nad = {}, { config = CONFIG } = {}) {
   const mailer = { sendMail: vi.fn().mockResolvedValue({}) };
   const infakt = { pobierzPdf: vi.fn().mockResolvedValue(Buffer.from('%PDF-atrapa-faktury')) };
   const wiadomosci = createWiadomosci({
-    db, mailer, infakt, config, teraz: () => '2026-08-26T12:00:00.000Z',
+    db,
+    mailer,
+    infakt,
+    config,
+    teraz: () => '2026-08-26T12:00:00.000Z',
   });
   return { db, id, mailer, wiadomosci };
 }
@@ -72,9 +93,12 @@ describe('mail „Faktura" przy zamówieniu WDT', () => {
   });
 
   it('brak adresu sprzedawcy w konfiguracji: odmowa Z POWODEM, mail nie wychodzi wcale', async () => {
-    const { mailer, wiadomosci, id, db } = zestaw({}, {
-      config: { proforma: CONFIG.proforma },
-    });
+    const { mailer, wiadomosci, id, db } = zestaw(
+      {},
+      {
+        config: { proforma: CONFIG.proforma },
+      },
+    );
     await expect(wiadomosci.wyslij(id, 'faktura')).rejects.toThrow(/sprzedawcy|adres/i);
     expect(mailer.sendMail).not.toHaveBeenCalled();
     const wpisy = db.prepare('SELECT * FROM log WHERE zamowienie_id = ?').all(id);

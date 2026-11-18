@@ -41,14 +41,16 @@ export function sprawdzFormularzInpost(body = {}, zapisane = null) {
   else if (nazwa.length > 60) bledy.push('Nazwa może mieć najwyżej 60 znaków.');
   if (!organizacja) bledy.push('Podaj numer organizacji InPost (ID organizacji w ShipX).');
   // Ta sama reguła co INPOST_ORGANIZACJA w pliku (kurierzy.ts): dodatnia liczba całkowita.
-  else if (!/^\d{1,12}$/u.test(organizacja) || Number(organizacja) <= 0) bledy.push('Numer organizacji to same cyfry, większy od zera.');
+  else if (!/^\d{1,12}$/u.test(organizacja) || Number(organizacja) <= 0)
+    bledy.push('Numer organizacji to same cyfry, większy od zera.');
 
   const staryToken = String(zapisane?.sekrety?.token ?? '');
   if (!token && !staryToken) bledy.push('Podaj token API ShipX.');
   else if (/\s/u.test(token)) bledy.push('Token nie może zawierać spacji — skopiuj go w całości, bez dopisków.');
   else if (token.length > 4000) bledy.push('Token może mieć najwyżej 4000 znaków.');
 
-  if (paczkomatNadawczy && !KOD_PUNKTU_NADAWCZEGO.test(paczkomatNadawczy)) bledy.push('Kod punktu nadawczego to litery i cyfry, z myślnikami między członami, np. ABC01M albo POP-WAW206.');
+  if (paczkomatNadawczy && !KOD_PUNKTU_NADAWCZEGO.test(paczkomatNadawczy))
+    bledy.push('Kod punktu nadawczego to litery i cyfry, z myślnikami między członami, np. ABC01M albo POP-WAW206.');
 
   return {
     ustawienia: { nazwa, organizacja, paczkomatNadawczy },
@@ -60,7 +62,10 @@ export function sprawdzFormularzInpost(body = {}, zapisane = null) {
 /** Opcje createInpostClient z zapisu formularza i wspólnego adresu nadawcy — kształt jak z pliku (kurierzy.ts). */
 export function opcjeKlientaInpost(zapis, nadawca) {
   return {
-    url: ADRES_INPOST, token: zapis.sekrety.token, organizacja: Number(zapis.ustawienia.organizacja), nadawca,
+    url: ADRES_INPOST,
+    token: zapis.sekrety.token,
+    organizacja: Number(zapis.ustawienia.organizacja),
+    nadawca,
     paczkomatNadawczy: tekst(zapis.ustawienia.paczkomatNadawczy).toUpperCase() || null,
   };
 }

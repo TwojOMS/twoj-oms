@@ -20,7 +20,11 @@ import { ekranyRoli } from '../../../src/domena/ekrany.js';
 const bezPtaszkow = (db, { login, rola, brakEkranow = ['statystyki'] }) => {
   const id = zalozKonto(db, { login, imie: login, haslo: 'x', rola, admin: false });
   const brak = new Set(brakEkranow);
-  ustawUprawnienia(db, id, ekranyRoli(rola).filter((k) => !brak.has(k)));
+  ustawUprawnienia(
+    db,
+    id,
+    ekranyRoli(rola).filter((k) => !brak.has(k)),
+  );
   db.prepare('DELETE FROM migracje_jednorazowe WHERE nazwa = ?').run(MIGRACJA_PTASZEK_STATYSTYKI);
   db.prepare('DELETE FROM uprawnienia_rozdane WHERE klucz = ?').run('statystyki');
   return id;
@@ -69,7 +73,9 @@ describe('dosypPtaszekStatystyk', () => {
   it('przywraca WYŁĄCZNIE ptaszek statystyki — inny świadomie odebrany zostaje odebrany', () => {
     const db = openOmsDb(':memory:');
     const id = bezPtaszkow(db, {
-      login: 'ewa', rola: 'sprzedaz', brakEkranow: ['statystyki', 'kampania'],
+      login: 'ewa',
+      rola: 'sprzedaz',
+      brakEkranow: ['statystyki', 'kampania'],
     });
     dosypPtaszekStatystyk(db);
     const po = uprawnieniaKonta(db, id);
@@ -93,8 +99,7 @@ describe('dosypPtaszekStatystyk', () => {
     // brak szkody dziś, ale też brak dowodu, że migracja rzeczywiście przestaje pracować.
     // Znacznik ma zostać DOKŁADNIE RAZ, nie przy każdym wywołaniu.
     expect(
-      db.prepare('SELECT COUNT(*) c FROM migracje_jednorazowe WHERE nazwa = ?')
-        .get(MIGRACJA_PTASZEK_STATYSTYKI).c,
+      db.prepare('SELECT COUNT(*) c FROM migracje_jednorazowe WHERE nazwa = ?').get(MIGRACJA_PTASZEK_STATYSTYKI).c,
     ).toBe(1);
   });
 
@@ -139,11 +144,19 @@ describe('dosypPtaszekStatystyk', () => {
       // pustej tabeli) i zostawia znacznik w `migracje_jednorazowe`.
       const db1 = openOmsDb(sciezka);
       const id = zalozKonto(db1, {
-        login: 'ewa', imie: 'ewa', haslo: 'x', rola: 'sprzedaz', admin: false,
+        login: 'ewa',
+        imie: 'ewa',
+        haslo: 'x',
+        rola: 'sprzedaz',
+        admin: false,
       });
       expect(uprawnieniaKonta(db1, id)).toContain('statystyki');
       // Operator ŚWIADOMIE odbiera ptaszek — decyzja człowieka, nie stan „sprzed migracji".
-      ustawUprawnienia(db1, id, ekranyRoli('sprzedaz').filter((k) => k !== 'statystyki'));
+      ustawUprawnienia(
+        db1,
+        id,
+        ekranyRoli('sprzedaz').filter((k) => k !== 'statystyki'),
+      );
       db1.close();
 
       // Drugie otwarcie: ten sam plik, znacznik migracji JUŻ stoi w bazie.

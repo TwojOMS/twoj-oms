@@ -15,9 +15,7 @@ import { daneFaktury } from './dane-faktury.js';
 import { normalizujNip } from './klient-zbiorczy.js';
 import { normalizuj } from './szukanie.js';
 import { odczytajNadpisania } from './dane-reczne.js';
-import {
-  zl, wartoscPozycjiGrosze, wysylkaBruttoGrosze, kwotaOczekiwanaGrosze,
-} from './suma-pozycji.js';
+import { zl, wartoscPozycjiGrosze, wysylkaBruttoGrosze, kwotaOczekiwanaGrosze } from './suma-pozycji.js';
 import { pozycjeDokumentu, sprawdzSumeDokumentu } from './pozycje-faktury.js';
 import { STAWKA_VAT } from './vat.js';
 import { brakujacaKwotaGrosze } from './platnosci.js';
@@ -55,20 +53,25 @@ export const PREFIKS_BLEDU_DOLACZONYCH = 'dołączone ';
  */
 export function powodOdmowyPobraniaGrupy(z) {
   if (z?.scalone_do) {
-    return `Zamówienie jest scalone z zamówieniem ${z.scalone_do_numer ?? `#${z.scalone_do}`} — zamówień scalonych `
-      + 'nie wysyłamy za pobraniem. Najpierw rozdziel zamówienia.';
+    return (
+      `Zamówienie jest scalone z zamówieniem ${z.scalone_do_numer ?? `#${z.scalone_do}`} — zamówień scalonych ` +
+      'nie wysyłamy za pobraniem. Najpierw rozdziel zamówienia.'
+    );
   }
   if (idsDolaczonych(z).length) {
-    return 'To zamówienie jest scalone z innymi — zamówień scalonych nie wysyłamy za pobraniem (kwota pobrania '
-      + 'obejmowałaby tylko jedno zamówienie, a paczka jedzie za całą grupę). Najpierw rozdziel zamówienia.';
+    return (
+      'To zamówienie jest scalone z innymi — zamówień scalonych nie wysyłamy za pobraniem (kwota pobrania ' +
+      'obejmowałaby tylko jedno zamówienie, a paczka jedzie za całą grupę). Najpierw rozdziel zamówienia.'
+    );
   }
   return null;
 }
 
 /** Domyślne główne: NAJSTARSZE (data złożenia, przy remisie mniejsze id). */
 export function domyslneGlowne(zamowienia) {
-  const posortowane = [...(zamowienia ?? [])].sort((a, b) => String(a.utworzone_at ?? '').localeCompare(String(b.utworzone_at ?? ''))
-    || Number(a.id) - Number(b.id));
+  const posortowane = [...(zamowienia ?? [])].sort(
+    (a, b) => String(a.utworzone_at ?? '').localeCompare(String(b.utworzone_at ?? '')) || Number(a.id) - Number(b.id),
+  );
   return posortowane[0]?.id ?? null;
 }
 
@@ -89,16 +92,20 @@ export function powodyOdmowyScalenia(zamowienia, { glowneId } = {}) {
     // ⚠️ Zamówień z Allegro nie scalamy. Allegro ma własną fakturę
     // do checkout-formu i status SENT na każdym zamówieniu — jedna faktura grupy tego nie obsłuży.
     // Możliwość scalenia określa opis modułu kanału.
-    if (!umiejetnosciZamowienia(z).scalanie) powody.push(`${n} jest z Allegro — zamówień z Allegro nie scalamy (tylko sklep i ręczne).`);
+    if (!umiejetnosciZamowienia(z).scalanie)
+      powody.push(`${n} jest z Allegro — zamówień z Allegro nie scalamy (tylko sklep i ręczne).`);
     if (z.anulowane) powody.push(`${n} jest anulowane.`);
     if (z.ma_zwrot || z.zwrot_at) powody.push(`${n} ma zwrot.`);
     if (z.wyslane_at) powody.push(`${n} jest już wysłane.`);
-    if ((z.przesylki ?? []).length) powody.push(`${n} ma już nadaną przesyłkę — paczka nie obejmie pozycji pozostałych zamówień.`);
+    if ((z.przesylki ?? []).length)
+      powody.push(`${n} ma już nadaną przesyłkę — paczka nie obejmie pozycji pozostałych zamówień.`);
     // Status, który nie dojechał do sklepu, trzyma zamówienie na „Do zrobienia” (doZrobienia).
     // Dołączone zniknęłoby z listy razem z tą sprawą — najpierw ją zamknąć.
     if (z.sync_woo_blad) {
-      powody.push(`${n} ma status nieodesłany do sklepu („${String(z.sync_woo_blad).slice(0, 120)}”) — `
-        + 'najpierw „Wyślij ponownie” na jego karcie, potem scal.');
+      powody.push(
+        `${n} ma status nieodesłany do sklepu („${String(z.sync_woo_blad).slice(0, 120)}”) — ` +
+          'najpierw „Wyślij ponownie” na jego karcie, potem scal.',
+      );
     }
     if (z.scalone_do) powody.push(`${n} jest już dołączone do innego zamówienia.`);
     if (idsDolaczonych(z).length) powody.push(`${n} jest już zamówieniem głównym innej grupy.`);
@@ -113,12 +120,16 @@ export function powodyOdmowyScalenia(zamowienia, { glowneId } = {}) {
     // ⚠️ Dołączane z fakturą = dwie faktury na jedno zamówienie, czyli dokładnie to, czego scalenie
     // ma uniknąć. Główne z fakturą — tylko ostrzeżenie.
     if (!glowne && z.faktura) {
-      powody.push(`${n} ma już fakturę${z.faktura.numer ? ` ${z.faktura.numer}` : ''} — po scaleniu byłyby dwie faktury. Dołączać można tylko zamówienia bez faktury.`);
+      powody.push(
+        `${n} ma już fakturę${z.faktura.numer ? ` ${z.faktura.numer}` : ''} — po scaleniu byłyby dwie faktury. Dołączać można tylko zamówienia bez faktury.`,
+      );
     }
   }
   const nipy = [...new Set(lista.map(nipEfektywny))];
   if (nipy.length > 1) {
-    powody.push(`Zamówienia mają różne NIP-y nabywcy (${nipy.map((x) => x || 'bez NIP-u').join(', ')}) — faktura jest jedna, więc nabywca musi być jeden.`);
+    powody.push(
+      `Zamówienia mają różne NIP-y nabywcy (${nipy.map((x) => x || 'bez NIP-u').join(', ')}) — faktura jest jedna, więc nabywca musi być jeden.`,
+    );
   }
   return powody;
 }
@@ -131,12 +142,16 @@ export function ostrzezeniaScalenia(zamowienia, { glowneId, proformy = new Set()
   const glowne = (zamowienia ?? []).find((z) => z.id === Number(glowneId));
   const wynik = [];
   if (glowne?.faktura) {
-    wynik.push(`Zamówienie główne ${glowne.numer} ma już fakturę${glowne.faktura.numer ? ` ${glowne.faktura.numer}` : ''} — `
-      + 'faktura NIE obejmuje dołączonych pozycji. Wystaw korektę albo nową fakturę po jej anulowaniu w inFakcie.');
+    wynik.push(
+      `Zamówienie główne ${glowne.numer} ma już fakturę${glowne.faktura.numer ? ` ${glowne.faktura.numer}` : ''} — ` +
+        'faktura NIE obejmuje dołączonych pozycji. Wystaw korektę albo nową fakturę po jej anulowaniu w inFakcie.',
+    );
   }
   for (const z of zamowienia ?? []) {
     if (proformy.has(z.id)) {
-      wynik.push(`Zamówienie ${z.numer} ma proformę — jej kwota nie odpowiada scalonemu zamówieniu. Wystaw nową proformę z zamówienia głównego.`);
+      wynik.push(
+        `Zamówienie ${z.numer} ma proformę — jej kwota nie odpowiada scalonemu zamówieniu. Wystaw nową proformę z zamówienia głównego.`,
+      );
     }
   }
   return wynik;
@@ -155,11 +170,22 @@ const POLA_KUPUJACEGO = [
   {
     pole: 'adres',
     etykieta: 'Adres',
-    wartosc: (z) => { const a = adresOdbiorcy(z); return [a.ulica, [a.kod, a.miasto].filter(Boolean).join(' ')].filter(Boolean).join(', '); },
+    wartosc: (z) => {
+      const a = adresOdbiorcy(z);
+      return [a.ulica, [a.kod, a.miasto].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+    },
     porownaj: normalizuj,
   },
   { pole: 'telefon', etykieta: 'Telefon', wartosc: (z) => adresOdbiorcy(z).phone, porownaj: telefon },
-  { pole: 'email', etykieta: 'E-mail', wartosc: (z) => adresOdbiorcy(z).email || daneFaktury(z).email, porownaj: (v) => String(v ?? '').trim().toLowerCase() },
+  {
+    pole: 'email',
+    etykieta: 'E-mail',
+    wartosc: (z) => adresOdbiorcy(z).email || daneFaktury(z).email,
+    porownaj: (v) =>
+      String(v ?? '')
+        .trim()
+        .toLowerCase(),
+  },
   { pole: 'nip', etykieta: 'NIP', wartosc: (z) => daneFaktury(z).nip, porownaj: (v) => normalizujNip(v) },
 ];
 
@@ -171,7 +197,8 @@ export function roznicaKupujacego(zamowienia) {
   const wynik = [];
   for (const p of POLA_KUPUJACEGO) {
     const wartosci = (zamowienia ?? []).map((z) => ({ id: z.id, numer: z.numer, wartosc: p.wartosc(z) ?? '' }));
-    if (new Set(wartosci.map((w) => p.porownaj(w.wartosc) ?? '')).size > 1) wynik.push({ pole: p.pole, etykieta: p.etykieta, wartosci });
+    if (new Set(wartosci.map((w) => p.porownaj(w.wartosc) ?? '')).size > 1)
+      wynik.push({ pole: p.pole, etykieta: p.etykieta, wartosci });
   }
   return wynik;
 }
@@ -197,7 +224,11 @@ export function wysylkiGrupy(glowne, dolaczone, decyzja) {
     .map((z, i) => ({ z, czyGlowne: i === 0 }))
     .filter(({ z, czyGlowne }) => wchodzi(z, czyGlowne))
     .map(({ z, czyGlowne }) => ({
-      id: z.id, numer: z.numer, glowne: czyGlowne, grosze: wysylkaBruttoGrosze(z), ilosc: wysylkaEfektywna(z).ilosc,
+      id: z.id,
+      numer: z.numer,
+      glowne: czyGlowne,
+      grosze: wysylkaBruttoGrosze(z),
+      ilosc: wysylkaEfektywna(z).ilosc,
     }))
     .filter((w) => w.grosze !== 0);
 }
@@ -211,11 +242,15 @@ export function opisWysylekGrupy(glowne, dolaczone, decyzja) {
   const ids = new Set(wchodza.map((w) => w.id));
   const wypadaja = (dolaczone ?? []).filter((d) => !ids.has(d.id) && wysylkaBruttoGrosze(d) !== 0);
   const kwota = (numer, gr) => `${numer} ${zl(gr)} zł`;
-  const czesci = [wchodza.length
-    ? `Na fakturę wejdzie wysyłka ${wchodza.map((w) => kwota(w.numer, w.grosze)).join(', ')}${wchodza.length > 1 ? ' — każda osobną pozycją' : ''}`
-    : 'Na fakturze nie będzie wysyłki'];
+  const czesci = [
+    wchodza.length
+      ? `Na fakturę wejdzie wysyłka ${wchodza.map((w) => kwota(w.numer, w.grosze)).join(', ')}${wchodza.length > 1 ? ' — każda osobną pozycją' : ''}`
+      : 'Na fakturze nie będzie wysyłki',
+  ];
   if (wypadaja.length) {
-    czesci.push(`wysyłka nieopłaconego ${wypadaja.map((d) => kwota(d.numer, wysylkaBruttoGrosze(d))).join(', ')} wypada`);
+    czesci.push(
+      `wysyłka nieopłaconego ${wypadaja.map((d) => kwota(d.numer, wysylkaBruttoGrosze(d))).join(', ')} wypada`,
+    );
   }
   return `${czesci.join('; ')}; faktura ${zl(kwotaGrupyGrosze(glowne, dolaczone, decyzja))} zł.`;
 }
@@ -260,15 +295,17 @@ export function zamowienieGrupy(glowne, dolaczone) {
   // `sklep` (wartości sprzed nakładki) celowo zdjęte — patrz nagłówek; reszta pól pozycji (produkt,
   // oferta, zdjęcie) zostaje dla wydruków i karty. `klucz` (adres edycji pozycji) tylko z głównego:
   // karta głównego nie edytuje pozycji dołączonego.
-  const pozycje = czlonkowie.flatMap((c) => (c.pozycje ?? []).map(({ sklep: _sklep, ...p }) => ({
-    ...p,
-    brutto_linii: zl(wartoscPozycjiGrosze(p)),
-    zrodlo: 'grupa',
-    reczna: p.zrodlo === 'reczna',
-    klucz: c === glowne ? (p.klucz ?? null) : null,
-    z_zamowienia: c.numer,
-    z_zamowienia_id: c.id,
-  })));
+  const pozycje = czlonkowie.flatMap((c) =>
+    (c.pozycje ?? []).map(({ sklep: _sklep, ...p }) => ({
+      ...p,
+      brutto_linii: zl(wartoscPozycjiGrosze(p)),
+      zrodlo: 'grupa',
+      reczna: p.zrodlo === 'reczna',
+      klucz: c === glowne ? (p.klucz ?? null) : null,
+      z_zamowienia: c.numer,
+      z_zamowienia_id: c.id,
+    })),
+  );
   const wysylki = wysylkiGrupy(glowne, dolaczone, decyzja);
   const wysylkaGr = wysylki.reduce((s, w) => s + w.grosze, 0);
   const kwotaGr = kwotaGrupyGrosze(glowne, dolaczone, decyzja);
@@ -297,8 +334,10 @@ export function zamowienieGrupy(glowne, dolaczone) {
 export function sprawdzCzlonkowGrupy(glowne, dolaczone) {
   for (const d of dolaczone) {
     if (d.anulowane) {
-      throw bladOperatora(`Dołączone zamówienie ${d.numer} zostało anulowane — faktura grupy objęłaby anulowane pozycje. `
-        + 'Rozdziel zamówienia albo wyjaśnij anulowanie.');
+      throw bladOperatora(
+        `Dołączone zamówienie ${d.numer} zostało anulowane — faktura grupy objęłaby anulowane pozycje. ` +
+          'Rozdziel zamówienia albo wyjaśnij anulowanie.',
+      );
     }
   }
   for (const c of [glowne, ...dolaczone]) {

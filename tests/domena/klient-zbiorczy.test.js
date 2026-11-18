@@ -3,18 +3,27 @@ import { umowaZbiorcza, parsujKlientowZbiorczych } from '../../src/domena/klient
 import { RABAT_MAX } from '../../src/domena/rabat.js';
 
 const KLIENT = {
-  klucz: 'przykladowa', nazwa: 'Pracownia Przykładowa sp. z o.o.', nip: '1234500011',
-  rabatProcent: 30, progDarmowejDostawyGr: 50000,
-  oplataObslugiGr: 400, oplataKurierskaGr: 1900,
+  klucz: 'przykladowa',
+  nazwa: 'Pracownia Przykładowa sp. z o.o.',
+  nip: '1234500011',
+  rabatProcent: 30,
+  progDarmowejDostawyGr: 50000,
+  oplataObslugiGr: 400,
+  oplataKurierskaGr: 1900,
 };
 
 const OKRES = { klucz: KLIENT.klucz, nazwa: KLIENT.nazwa, nip: KLIENT.nip };
 
 describe('umowaZbiorcza', () => {
   const WIERSZ = {
-    klucz: 'przykladowa', nazwa: 'Pracownia Przykładowa sp. z o.o.', nip: '1234500011', rabat_procent: 30,
-    rozliczenie_zbiorcze: 1, prog_darmowej_dostawy_gr: 50000,
-    oplata_obslugi_gr: 400, oplata_kurierska_gr: 1900,
+    klucz: 'przykladowa',
+    nazwa: 'Pracownia Przykładowa sp. z o.o.',
+    nip: '1234500011',
+    rabat_procent: 30,
+    rozliczenie_zbiorcze: 1,
+    prog_darmowej_dostawy_gr: 50000,
+    oplata_obslugi_gr: 400,
+    oplata_kurierska_gr: 1900,
   };
 
   it('sklada warunki umowy z wiersza karty klienta', () => {
@@ -36,7 +45,8 @@ describe('umowaZbiorcza', () => {
   });
 
   it.each(['prog_darmowej_dostawy_gr', 'oplata_obslugi_gr', 'oplata_kurierska_gr'])(
-    'brak %s nie blokuje okresu miesięcznego', (kolumna) => {
+    'brak %s nie blokuje okresu miesięcznego',
+    (kolumna) => {
       expect(umowaZbiorcza({ ...WIERSZ, [kolumna]: null })).toEqual(OKRES);
     },
   );
@@ -44,8 +54,9 @@ describe('umowaZbiorcza', () => {
     expect(umowaZbiorcza({ ...WIERSZ, prog_darmowej_dostawy_gr: 0 })).toEqual(OKRES);
   });
   it('brak wszystkich kwot nie wymaga poprawiania karty klienta dla okresu', () => {
-    expect(() => umowaZbiorcza({ ...WIERSZ, prog_darmowej_dostawy_gr: null,
-      oplata_obslugi_gr: null, oplata_kurierska_gr: null })).not.toThrow();
+    expect(() =>
+      umowaZbiorcza({ ...WIERSZ, prog_darmowej_dostawy_gr: null, oplata_obslugi_gr: null, oplata_kurierska_gr: null }),
+    ).not.toThrow();
   });
 
   // ⚠️ umowa okresu NIE NIESIE rabatu — nie było czytelnika, a pole przepuszczało 300%.
@@ -55,20 +66,24 @@ describe('umowaZbiorcza', () => {
     expect(umowa).not.toHaveProperty('rabatProcent');
     expect(umowa.klucz).toBe(WIERSZ.klucz);
   });
-
 });
 
 describe('parsujKlientowZbiorczych — granica rabatu', () => {
-  const wpis = (rabat) => ({ OMS_KLIENCI_ZBIORCZY: `przykladowa:Pracownia Przykładowa sp. z o.o.:1234500011:${rabat}:500:4:19` });
+  const wpis = (rabat) => ({
+    OMS_KLIENCI_ZBIORCZY: `przykladowa:Pracownia Przykładowa sp. z o.o.:1234500011:${rabat}:500:4:19`,
+  });
 
   it('przyjmuje rabat równy RABAT_MAX', () => {
     expect(parsujKlientowZbiorczych(wpis(RABAT_MAX))[0].rabatProcent).toBe(RABAT_MAX);
   });
   // Parser woła dziś tylko migracja jednorazowa, której nic w `src` nie uruchamia —
   // stąd „odmawia wpisu”, nie „wywraca start”.
-  it.each([[RABAT_MAX + 1], [300], ['7.5']])('odmawia wpisu z rabatem %s procent zamiast przyjąć cenę ujemną', (rabat) => {
-    expect(() => parsujKlientowZbiorczych(wpis(rabat))).toThrow(/rabat/i);
-  });
+  it.each([[RABAT_MAX + 1], [300], ['7.5']])(
+    'odmawia wpisu z rabatem %s procent zamiast przyjąć cenę ujemną',
+    (rabat) => {
+      expect(() => parsujKlientowZbiorczych(wpis(rabat))).toThrow(/rabat/i);
+    },
+  );
   it('komunikat wskazuje wpis, nie dane klienta', () => {
     expect(() => parsujKlientowZbiorczych(wpis(300))).toThrow(/wpis nr 1/);
     expect(() => parsujKlientowZbiorczych(wpis(300))).not.toThrow(/1234500011|Przykładowa/);
@@ -86,7 +101,9 @@ describe('parsujKlientowZbiorczych', () => {
   });
 
   it('literowka w liczbie ma wywalic start, a nie zamienic sie w zero', () => {
-    const env = { OMS_KLIENCI_ZBIORCZY: 'przykladowa:Pracownia Przykładowa sp. z o.o.:1234500011:trzydziesci:500:4:19' };
+    const env = {
+      OMS_KLIENCI_ZBIORCZY: 'przykladowa:Pracownia Przykładowa sp. z o.o.:1234500011:trzydziesci:500:4:19',
+    };
     expect(() => parsujKlientowZbiorczych(env)).toThrow(/rabat/i);
   });
 

@@ -21,10 +21,17 @@ beforeEach(async () => {
     db,
     config: CONFIG,
     lacznosc: { sprawdz: async () => [] },
-    stanyKanalow: () => [{
-      kanal: 'allegro_swietlik', pilne: false, uprzedzenie: false, zostaloDni: 21,
-      kontoAllegro: 'swietlik-pl', powod: null, wolnoWiazac: false,
-    }],
+    stanyKanalow: () => [
+      {
+        kanal: 'allegro_swietlik',
+        pilne: false,
+        uprzedzenie: false,
+        zostaloDni: 21,
+        kontoAllegro: 'swietlik-pl',
+        powod: null,
+        wolnoWiazac: false,
+      },
+    ],
   });
   await app.ready();
 });
@@ -39,7 +46,9 @@ describe('działy i zakładki Ustawień', () => {
 
   it('nie wyświetla dowolnej treści z parametru potwierdzenia', async () => {
     const r = await app.inject({
-      method: 'GET', url: '/ustawienia/zamowienia-i-wysylka?zapisano=%3Cscript%3Eobcy%3C%2Fscript%3E', headers: BASIC,
+      method: 'GET',
+      url: '/ustawienia/zamowienia-i-wysylka?zapisano=%3Cscript%3Eobcy%3C%2Fscript%3E',
+      headers: BASIC,
     });
 
     expect(r.statusCode).toBe(200);
@@ -54,12 +63,16 @@ describe('działy i zakładki Ustawień', () => {
     expect(r.body).toContain('<title>Szablony paczek</title>');
     expect(tresc).not.toContain('<h2 class="naglowek-formularza">Szablony paczek</h2>');
     // Pola szablonu są w wierszu w trybie edycji (bez JS: ?edytuj=<id>).
-    const edycja = fragmentGlownejKolumny((await app.inject({ method: 'GET', url: '/ustawienia/zamowienia-i-wysylka?edytuj=domyslna', headers: BASIC })).body);
+    const edycja = fragmentGlownejKolumny(
+      (await app.inject({ method: 'GET', url: '/ustawienia/zamowienia-i-wysylka?edytuj=domyslna', headers: BASIC }))
+        .body,
+    );
     for (const pole of ['waga', 'dlugosc', 'szerokosc', 'wysokosc']) {
       expect(edycja).toContain(`name="${pole}"`);
     }
     const dostawa = await app.inject({ method: 'GET', url: '/ustawienia/wysylka/dostawa', headers: BASIC });
-    for (const pole of ['dpd', 'inpost_paczkomat', 'odbior_osobisty']) expect(fragmentGlownejKolumny(dostawa.body)).toContain(`name="${pole}"`);
+    for (const pole of ['dpd', 'inpost_paczkomat', 'odbior_osobisty'])
+      expect(fragmentGlownejKolumny(dostawa.body)).toContain(`name="${pole}"`);
     expect(tresc).not.toContain('name="dpd"');
     expect(tresc).not.toContain('name="tresc"');
     expect(tresc).not.toContain('Konto Allegro:');
@@ -72,7 +85,7 @@ describe('działy i zakładki Ustawień', () => {
 
     expect(r.statusCode).toBe(200);
     // Jeden h1 działu, nazwę formularza pokazuje aktywna zakładka.
-    expect((tresc.match(/<h1[\s>]/g) ?? [])).toHaveLength(1);
+    expect(tresc.match(/<h1[\s>]/g) ?? []).toHaveLength(1);
     expect(tresc).not.toContain('<h2 class="naglowek-formularza">Moje połączenia</h2>');
     expect(tresc).toContain('Moje połączenia');
     expect(tresc).toContain('konto swietlik-pl');
@@ -90,7 +103,7 @@ describe('działy i zakładki Ustawień', () => {
     for (const pole of ['wlaczona', 'tresc', 'od', 'do', 'dni', 'karencja']) {
       expect(tresc).toContain(`name="${pole}"`);
     }
-    expect((tresc.match(/name="dni"/g) ?? [])).toHaveLength(7);
+    expect(tresc.match(/name="dni"/g) ?? []).toHaveLength(7);
     expect(tresc).not.toContain('name="waga"');
   });
 
@@ -100,16 +113,24 @@ describe('działy i zakładki Ustawień', () => {
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('<title>Stan systemu</title>');
     expect(fragmentGlownejKolumny(r.body)).not.toContain('<h2 class="naglowek-formularza">Stan systemu</h2>');
-    const aktywne = r.body.match(/<li class="aktywna">\s*<a href="\/ustawienia\/moduly" aria-current="(?:page|true)">/g) ?? [];
+    const aktywne =
+      r.body.match(/<li class="aktywna">\s*<a href="\/ustawienia\/moduly" aria-current="(?:page|true)">/g) ?? [];
     // Ten sam model jest renderowany raz w menu desktopowym i raz w zwijanym menu telefonu.
     expect(aktywne).toHaveLength(2);
   });
 
   it('błąd autorespondera renderuje tę samą sekcję i zachowuje wszystkie wpisane wartości', async () => {
     const r = await app.inject({
-      method: 'POST', url: '/ustawienia/formulka', headers: { ...BASIC, ...ORIGIN },
+      method: 'POST',
+      url: '/ustawienia/formulka',
+      headers: { ...BASIC, ...ORIGIN },
       payload: {
-        wlaczona: 'on', tresc: 'x'.repeat(2001), od: '19', do: '7', dni: ['2', '6'], karencja: '17',
+        wlaczona: 'on',
+        tresc: 'x'.repeat(2001),
+        od: '19',
+        do: '7',
+        dni: ['2', '6'],
+        karencja: '17',
       },
     });
     const tresc = fragmentGlownejKolumny(r.body);
@@ -126,9 +147,24 @@ describe('działy i zakładki Ustawień', () => {
   });
 
   it.each([
-    ['/ustawienia/paczka', { waga: '2', dlugosc: '100', szerokosc: '70', wysokosc: '5' }, '/ustawienia/zamowienia-i-wysylka?zapisano=paczka', 'Zapisano domyślną paczkę.'],
-    ['/ustawienia/dostawa', { dpd: '19', inpost_paczkomat: '13', odbior_osobisty: '0' }, '/ustawienia/wysylka/dostawa?zapisano=dostawa', 'Zapisano koszty dostawy.'],
-    ['/ustawienia/formulka', { tresc: '', od: '18', do: '8', karencja: '10' }, '/ustawienia/wiadomosci-i-automatyzacje?zapisano=formulka', 'Zapisano ustawienia autorespondera.'],
+    [
+      '/ustawienia/paczka',
+      { waga: '2', dlugosc: '100', szerokosc: '70', wysokosc: '5' },
+      '/ustawienia/zamowienia-i-wysylka?zapisano=paczka',
+      'Zapisano domyślną paczkę.',
+    ],
+    [
+      '/ustawienia/dostawa',
+      { dpd: '19', inpost_paczkomat: '13', odbior_osobisty: '0' },
+      '/ustawienia/wysylka/dostawa?zapisano=dostawa',
+      'Zapisano koszty dostawy.',
+    ],
+    [
+      '/ustawienia/formulka',
+      { tresc: '', od: '18', do: '8', karencja: '10' },
+      '/ustawienia/wiadomosci-i-automatyzacje?zapisano=formulka',
+      'Zapisano ustawienia autorespondera.',
+    ],
   ])('%s po zapisie wraca do własnej sekcji i pokazuje komunikat', async (url, payload, location, komunikat) => {
     const r = await app.inject({ method: 'POST', url, headers: { ...BASIC, ...ORIGIN }, payload });
 

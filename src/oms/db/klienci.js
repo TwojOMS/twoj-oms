@@ -38,9 +38,8 @@ export function wszyscyKlienci(db, { tylkoAktywni = true } = {}) {
   return db.prepare(`SELECT * FROM klienci ${gdzie} ORDER BY aktywny DESC, nazwa`).all().map(zWiersza);
 }
 
-export const klientPoKluczu = (db, klucz) => zWiersza(
-  db.prepare('SELECT * FROM klienci WHERE klucz = ?').get(String(klucz ?? '').trim()),
-);
+export const klientPoKluczu = (db, klucz) =>
+  zWiersza(db.prepare('SELECT * FROM klienci WHERE klucz = ?').get(String(klucz ?? '').trim()));
 
 export const klientPoId = (db, id) => zWiersza(db.prepare('SELECT * FROM klienci WHERE id = ?').get(Number(id)));
 
@@ -59,12 +58,25 @@ export function klientPoNip(db, nip) {
 }
 
 const POLA = [
-  'klucz', 'nazwa', 'nip', 'b2b', 'rabat_procent', 'chce_fakture', 'metoda_wysylki',
-  'koszt_dostawy_brutto', 'platnosc', 'termin_platnosci', 'komentarz', 'aktywny',
+  'klucz',
+  'nazwa',
+  'nip',
+  'b2b',
+  'rabat_procent',
+  'chce_fakture',
+  'metoda_wysylki',
+  'koszt_dostawy_brutto',
+  'platnosc',
+  'termin_platnosci',
+  'komentarz',
+  'aktywny',
   // Warunki umowy zbiorczej. ⚠️ `?? null` w `wartosci` nizej jest tu ISTOTNE:
   // niewypelniona kwota ma trafic do bazy jako NULL, czyli „nikt tego nie ustawil", a nie
   // jako 0 („wysylka za darmo od zera zlotych").
-  'rozliczenie_zbiorcze', 'prog_darmowej_dostawy_gr', 'oplata_obslugi_gr', 'oplata_kurierska_gr',
+  'rozliczenie_zbiorcze',
+  'prog_darmowej_dostawy_gr',
+  'oplata_obslugi_gr',
+  'oplata_kurierska_gr',
 ];
 
 // ⚠️ FLAGI `NOT NULL` MUSZA MIEC TU WARTOSC ZASTEPCZA, bo `?? null` ponizej trafialby
@@ -105,12 +117,12 @@ export function dopiszKlienta(db, dane, kiedy = teraz()) {
 
 /** Poprawka po `id`. Klucz z bazy jest niezmienny: wiąże klienta z okresami zbiorczymi. */
 export function zapiszKlienta(db, id, dane, kiedy = teraz()) {
-  const pola = POLA.filter(p => p !== 'klucz');
+  const pola = POLA.filter((p) => p !== 'klucz');
   const kolumny = [...pola, 'faktura_json', 'wysylka_json'];
   try {
-    const info = db.prepare(
-      `UPDATE klienci SET ${kolumny.map((k) => `${k} = ?`).join(', ')}, zmienione_at = ? WHERE id = ?`,
-    ).run(...wartosci(dane, pola), kiedy, Number(id));
+    const info = db
+      .prepare(`UPDATE klienci SET ${kolumny.map((k) => `${k} = ?`).join(', ')}, zmienione_at = ? WHERE id = ?`)
+      .run(...wartosci(dane, pola), kiedy, Number(id));
     if (info.changes === 0) throw bladOperatora('Nie ma takiego klienta w bazie.');
     return Number(id);
   } catch (e) {
@@ -161,21 +173,35 @@ export function wgrajUmowyZbiorczeZKonfiguracji(db, env = process.env, log = () 
   let wgranych = 0;
   for (const wpis of wpisy) {
     const klient = klientPoNip(db, wpis.nip);
-    if (!klient) { bezKlienta.push(`${wpis.klucz} (NIP ${wpis.nip})`); continue; }
+    if (!klient) {
+      bezKlienta.push(`${wpis.klucz} (NIP ${wpis.nip})`);
+      continue;
+    }
     // ⚠️ STRAZ NA WIERSZU, NIEZALEZNA OD ZNACZNIKA: karta, ktora KTOKOLWIEK juz ustawil,
     // jest nietykalna. Sam znacznik by nie wystarczyl — przebieg bez znacznika (bo w tej
     // samej rundzie brakowalo innego klienta, patrz nizej) inaczej cofalby poprawke
     // czlowieka przy nastepnym starcie kontenera.
-    if (Number(klient.rozliczenie_zbiorcze) === 1) { nietkniete.push(wpis.klucz); continue; }
+    if (Number(klient.rozliczenie_zbiorcze) === 1) {
+      nietkniete.push(wpis.klucz);
+      continue;
+    }
     db.prepare(
-      'UPDATE klienci SET rozliczenie_zbiorcze = 1, prog_darmowej_dostawy_gr = ?,'
-      + ' oplata_obslugi_gr = ?, koszt_dostawy_brutto = ?, zmienione_at = ? WHERE id = ?',
-    ).run(wpis.progDarmowejDostawyGr, wpis.oplataObslugiGr, (wpis.oplataKurierskaGr / 100).toFixed(2), teraz(), klient.id);
+      'UPDATE klienci SET rozliczenie_zbiorcze = 1, prog_darmowej_dostawy_gr = ?,' +
+        ' oplata_obslugi_gr = ?, koszt_dostawy_brutto = ?, zmienione_at = ? WHERE id = ?',
+    ).run(
+      wpis.progDarmowejDostawyGr,
+      wpis.oplataObslugiGr,
+      (wpis.oplataKurierskaGr / 100).toFixed(2),
+      teraz(),
+      klient.id,
+    );
     wgranych += 1;
   }
   if (bezKlienta.length) {
-    log(`OMS_KLIENCI_ZBIORCZY: brak w bazie stałych klientów — ${bezKlienta.join(', ')}.`
-      + ' Ci klienci NIE mają dziś warunków umowy; załóż ich na ekranie Klienci.');
+    log(
+      `OMS_KLIENCI_ZBIORCZY: brak w bazie stałych klientów — ${bezKlienta.join(', ')}.` +
+        ' Ci klienci NIE mają dziś warunków umowy; załóż ich na ekranie Klienci.',
+    );
   }
 
   // ⚠️⚠️ ZNACZNIK STAWIAMY DOPIERO WTEDY, GDY NIE ZOSTALO NIC DO PRZENIESIENIA — czyli gdy
@@ -190,11 +216,16 @@ export function wgrajUmowyZbiorczeZKonfiguracji(db, env = process.env, log = () 
   // czego przeniesc, niczego nie przeniosl. Usluga podniesiona raz bez `OMS_KLIENCI_ZBIORCZY`
   // (albo z literowka w nazwie zmiennej) zamknelaby wtedy migracje na zawsze.
   if (wpisy.length && !bezKlienta.length) {
-    db.prepare('INSERT OR IGNORE INTO migracje_jednorazowe (nazwa, wykonana_at) VALUES (?,?)')
-      .run(MIGRACJA_UMOWY, teraz());
+    db.prepare('INSERT OR IGNORE INTO migracje_jednorazowe (nazwa, wykonana_at) VALUES (?,?)').run(
+      MIGRACJA_UMOWY,
+      teraz(),
+    );
   }
   return {
-    pominieta: false, wgranych, nietkniete, bezKlienta,
+    pominieta: false,
+    wgranych,
+    nietkniete,
+    bezKlienta,
   };
 }
 
@@ -203,10 +234,12 @@ function wstawKlientaZKluczem(db, dane, kiedy) {
   const kolumny = [...POLA, 'faktura_json', 'wysylka_json'];
   const zNazwy = kluczZNazwy(null, dane.nazwa);
   const klucz = wolnyKlucz(db, zNazwy || 'klient');
-  const info = db.prepare(
-    `INSERT INTO klienci (${kolumny.join(', ')}, utworzone_at, zmienione_at)`
-    + ` VALUES (${kolumny.map(() => '?').join(',')},?,?)`,
-  ).run(...wartosci({ ...dane, klucz }), kiedy, kiedy);
+  const info = db
+    .prepare(
+      `INSERT INTO klienci (${kolumny.join(', ')}, utworzone_at, zmienione_at)` +
+        ` VALUES (${kolumny.map(() => '?').join(',')},?,?)`,
+    )
+    .run(...wartosci({ ...dane, klucz }), kiedy, kiedy);
   const id = Number(info.lastInsertRowid);
   if (!zNazwy) {
     const docelowy = wolnyKlucz(db, `klient-${id}`);
@@ -227,16 +260,17 @@ function wolnyKlucz(db, baza) {
 
 function kolizja(db, e, dane, pomijajacId) {
   if (!String(e?.message ?? '').includes('UNIQUE')) return e;
-  const inny = (kolumna, wartosc) => (wartosc == null || wartosc === ''
-    ? null
-    : db.prepare(`SELECT nazwa FROM klienci WHERE ${kolumna} = ? AND id IS NOT ?`).get(wartosc, pomijajacId));
+  const inny = (kolumna, wartosc) =>
+    wartosc == null || wartosc === ''
+      ? null
+      : db.prepare(`SELECT nazwa FROM klienci WHERE ${kolumna} = ? AND id IS NOT ?`).get(wartosc, pomijajacId);
 
   const poNip = inny('nip', dane.nip);
   if (poNip) {
     return bladOperatora(
-      `NIP ${dane.nip} ma już w bazie innego klienta („${poNip.nazwa}"). Dwa wpisy na jeden `
-      + 'podmiot znaczyłyby, że panel musi wybrać jeden z nich przy podpowiadaniu danych — '
-      + 'i zrobiłby to po cichu. Popraw tamten wpis zamiast zakładać drugi.',
+      `NIP ${dane.nip} ma już w bazie innego klienta („${poNip.nazwa}"). Dwa wpisy na jeden ` +
+        'podmiot znaczyłyby, że panel musi wybrać jeden z nich przy podpowiadaniu danych — ' +
+        'i zrobiłby to po cichu. Popraw tamten wpis zamiast zakładać drugi.',
     );
   }
   if (inny('klucz', dane.klucz)) {

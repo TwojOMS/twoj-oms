@@ -1,16 +1,18 @@
 import { describe, it, expect } from 'vitest';
-import {
-  wolnoPytac, poOdpowiedzi, PROG_PUSTYCH, ODSTEP_SONDY_MS,
-} from '../../src/domena/bezpiecznik-weryfikacji.js';
+import { wolnoPytac, poOdpowiedzi, PROG_PUSTYCH, ODSTEP_SONDY_MS } from '../../src/domena/bezpiecznik-weryfikacji.js';
 
 const T = (iso) => new Date(iso);
 const TERAZ = T('2026-08-28T12:00:00Z');
 
 const zamkniety = (kolejnePuste = 0) => ({
-  kolejne_puste: kolejnePuste, ostatnia_proba_at: null, bezpiecznik_od: null,
+  kolejne_puste: kolejnePuste,
+  ostatnia_proba_at: null,
+  bezpiecznik_od: null,
 });
 const otwarty = (ostatniaProba) => ({
-  kolejne_puste: PROG_PUSTYCH, ostatnia_proba_at: ostatniaProba, bezpiecznik_od: '2026-08-20T10:00:00Z',
+  kolejne_puste: PROG_PUSTYCH,
+  ostatnia_proba_at: ostatniaProba,
+  bezpiecznik_od: '2026-08-20T10:00:00Z',
 });
 
 describe('bezpiecznik odpytywania zasobu faktur Allegro', () => {

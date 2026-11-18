@@ -1,12 +1,23 @@
 import { stronaOdmowy } from '../../../core/web/odmowa.js';
 import { pobierzZamowienie, dopiszLog } from '../../../oms/db/zamowienia.js';
 import {
-  dodajZwrot, usunZwrot, oznaczPieniadzeOddane, zwrot, odblokujKorekte, zapiszRecznyNumerKorekty,
+  dodajZwrot,
+  usunZwrot,
+  oznaczPieniadzeOddane,
+  zwrot,
+  odblokujKorekte,
+  zapiszRecznyNumerKorekty,
 } from '../../../oms/db/zwroty.js';
 import {
-  parsujZwrot, powodOdmowyUsunieciaZwrotu, korektaPrzepadla, powodOdmowyOdblokowaniaKorekty,
-  parsujNumerKorekty, korektaNieSprawdzona, powodOdmowyKorektyDlaFaktury,
-  powodOdmowyRejestracjiZwrotu, wierszeFormularzaZwrotu,
+  parsujZwrot,
+  powodOdmowyUsunieciaZwrotu,
+  korektaPrzepadla,
+  powodOdmowyOdblokowaniaKorekty,
+  parsujNumerKorekty,
+  korektaNieSprawdzona,
+  powodOdmowyKorektyDlaFaktury,
+  powodOdmowyRejestracjiZwrotu,
+  wierszeFormularzaZwrotu,
 } from '../../../domena/zwrot.js';
 import { formularzZwrotu, przygotujKrok2, razemZwrotuZl } from '../../../domena/zwrot-formularz.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
@@ -17,7 +28,12 @@ import { ktoKlikal } from '../../zamowienia/wspolne.js';
 
 import { createWspolne } from './wspolne.js';
 export function registerAkcjeRoutes(app, { db, korekta = null, definicje, infakt = null }) {
-  const { powrotKarty, adresKarty, zamowienieAlbo404, slad, decyzja, pokazKrok1 } = createWspolne({ db, korekta, definicje, infakt });
+  const { powrotKarty, adresKarty, zamowienieAlbo404, slad, decyzja, pokazKrok1 } = createWspolne({
+    db,
+    korekta,
+    definicje,
+    infakt,
+  });
   app.post('/zamowienia/:id/zwroty/:zwrotId/pieniadze', async (req, reply) => {
     const z = zamowienieAlbo404(req, reply);
     if (!z) return reply;
@@ -29,12 +45,17 @@ export function registerAkcjeRoutes(app, { db, korekta = null, definicje, infakt
       oznaczPieniadzeOddane(db, z.id, zwrotId);
     } catch (e) {
       slad(z.id, 'zwrot.pieniadze', `BŁĄD: ${e.message}`);
-      return stronaOdmowy(reply, 400, komunikatDlaOperatora(e), { tytul: 'Nie udało się obsłużyć zwrotu', wroc: `/zamowienia/${z.id}/zwrot`, napisWroc: 'Wróć do ekranu zwrotu' });
+      return stronaOdmowy(reply, 400, komunikatDlaOperatora(e), {
+        tytul: 'Nie udało się obsłużyć zwrotu',
+        wroc: `/zamowienia/${z.id}/zwrot`,
+        napisWroc: 'Wróć do ekranu zwrotu',
+      });
     }
-    slad(z.id, 'zwrot.pieniadze', decyzja(
-      req,
-      `pieniądze za zwrot z ${w.data} (${w.kwota} zł) oznaczone jako oddane kupującemu.`,
-    ));
+    slad(
+      z.id,
+      'zwrot.pieniadze',
+      decyzja(req, `pieniądze za zwrot z ${w.data} (${w.kwota} zł) oznaczone jako oddane kupującemu.`),
+    );
     return reply.redirect(adresKarty(req, z.id));
   });
 
@@ -42,11 +63,20 @@ export function registerAkcjeRoutes(app, { db, korekta = null, definicje, infakt
     const z = zamowienieAlbo404(req, reply);
     if (!z) return reply;
     const w = zwrot(db, z.id, Number(req.params.zwrotId));
-    if (!w) return stronaOdmowy(reply, 404, 'Nie ma takiego zwrotu przy tym zamówieniu.', { tytul: 'Nie udało się obsłużyć zwrotu', wroc: `/zamowienia/${z.id}/zwrot`, napisWroc: 'Wróć do ekranu zwrotu' });
+    if (!w)
+      return stronaOdmowy(reply, 404, 'Nie ma takiego zwrotu przy tym zamówieniu.', {
+        tytul: 'Nie udało się obsłużyć zwrotu',
+        wroc: `/zamowienia/${z.id}/zwrot`,
+        napisWroc: 'Wróć do ekranu zwrotu',
+      });
     const powod = powodOdmowyUsunieciaZwrotu(w);
     if (powod) {
       slad(z.id, 'zwrot.usuniecie', `BŁĄD: ${powod}`);
-      return stronaOdmowy(reply, 400, powod, { tytul: 'Nie udało się obsłużyć zwrotu', wroc: `/zamowienia/${z.id}/zwrot`, napisWroc: 'Wróć do ekranu zwrotu' });
+      return stronaOdmowy(reply, 400, powod, {
+        tytul: 'Nie udało się obsłużyć zwrotu',
+        wroc: `/zamowienia/${z.id}/zwrot`,
+        napisWroc: 'Wróć do ekranu zwrotu',
+      });
     }
     // ⚠️ `powodOdmowyUsunieciaZwrotu` wyzej liczy sie POZA transakcja, wiec `usunZwrot` ma
     // WLASNY warunek w SQL-u (db/zwroty.js) i potrafi odmowic mimo zielonego sprawdzenia:
@@ -56,17 +86,24 @@ export function registerAkcjeRoutes(app, { db, korekta = null, definicje, infakt
       usunZwrot(db, z.id, w.id);
     } catch (e) {
       slad(z.id, 'zwrot.usuniecie', `BŁĄD: ${e.message}`);
-      return stronaOdmowy(reply, 400, komunikatDlaOperatora(e), { tytul: 'Nie udało się obsłużyć zwrotu', wroc: `/zamowienia/${z.id}/zwrot`, napisWroc: 'Wróć do ekranu zwrotu' });
+      return stronaOdmowy(reply, 400, komunikatDlaOperatora(e), {
+        tytul: 'Nie udało się obsłużyć zwrotu',
+        wroc: `/zamowienia/${z.id}/zwrot`,
+        napisWroc: 'Wróć do ekranu zwrotu',
+      });
     }
     // ⚠️ SKASOWANY ZWROT ZNIKA Z BAZY BEZ RESZTY (razem z pozycjami — kaskada). Log jest
     // wtedy JEDYNYM miejscem, z ktorego da sie odtworzyc, ze w ogole istnial i za ile byl.
-    slad(z.id, 'zwrot.usuniecie', decyzja(
-      req,
-      `skasowany zwrot z ${w.data} na ${w.kwota} zł`
-      + `${w.kwota_dostawy ? ` + dostawa ${w.kwota_dostawy} zł` : ''}`
-      + `, pozycji: ${w.pozycje.length}${w.powod ? `; powód: ${w.powod}` : ''}.`,
-    ));
+    slad(
+      z.id,
+      'zwrot.usuniecie',
+      decyzja(
+        req,
+        `skasowany zwrot z ${w.data} na ${w.kwota} zł` +
+          `${w.kwota_dostawy ? ` + dostawa ${w.kwota_dostawy} zł` : ''}` +
+          `, pozycji: ${w.pozycje.length}${w.powod ? `; powód: ${w.powod}` : ''}.`,
+      ),
+    );
     return reply.redirect(adresKarty(req, z.id));
   });
-
 }

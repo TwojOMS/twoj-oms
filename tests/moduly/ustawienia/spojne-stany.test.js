@@ -6,18 +6,37 @@ import { polaczeniaIntegracji } from '../../../src/moduly/ustawienia/services/po
 import { zapiszPolaczenie, zapiszStan } from '../../../src/oms/db/reklamy.js';
 
 const { renderFile } = createRequire(import.meta.url)('ejs');
-const integracje = ['dpd', 'inpost', 'infakt', 'ksef', 'gus', 'smtp'].map(id =>
-  ({ id, skonfigurowana: false, atrapa: true, zrodlo: 'panel' }));
+const integracje = ['dpd', 'inpost', 'infakt', 'ksef', 'gus', 'smtp'].map((id) => ({
+  id,
+  skonfigurowana: false,
+  atrapa: true,
+  zrodlo: 'panel',
+}));
 async function lista(url) {
   const { app, db } = nowyPanel();
   try {
     let model;
-    createWidokIntegracji({ db, proba: true, integracje: () => [...integracje,
-      { id: 'ga4', skonfigurowana: true, zrodlo: 'serwer' }] })(
-      { url, query: {} }, { view: (_n, dane) => { model = dane; } });
-    return await renderFile('src/moduly/ustawienia/widoki/ustawienia-polaczenia.ejs',
-      { ...model, fmtKiedy: () => '', fmtDataCzas: d => d });
-  } finally { await app.close(); db.close(); }
+    createWidokIntegracji({
+      db,
+      proba: true,
+      integracje: () => [...integracje, { id: 'ga4', skonfigurowana: true, zrodlo: 'serwer' }],
+    })(
+      { url, query: {} },
+      {
+        view: (_n, dane) => {
+          model = dane;
+        },
+      },
+    );
+    return await renderFile('src/moduly/ustawienia/widoki/ustawienia-polaczenia.ejs', {
+      ...model,
+      fmtKiedy: () => '',
+      fmtDataCzas: (d) => d,
+    });
+  } finally {
+    await app.close();
+    db.close();
+  }
 }
 
 it('N1: licznik listy liczy tylko podłączone połączenia i ich dane przykładowe', async () => {
@@ -39,12 +58,16 @@ it('N2: katalog nie liczy niepodłączonych usług, zachowuje liczbę podłączo
   }
 });
 
-it.each(['ga4', 'meta'])('N3: %s na Reklamach ma neutralną etykietę z usługi listy', async typ => {
+it.each(['ga4', 'meta'])('N3: %s na Reklamach ma neutralną etykietę z usługi listy', async (typ) => {
   const { app, db } = nowyPanel({ env: { OMS_TRYB: 'proba' } });
   try {
     const p = zapiszPolaczenie(db, { typ, kontoId: `konto-test-${typ}` });
-    zapiszStan(db, { polaczenieId: p.id, ostatniaProbaAt: '2026-11-04T10:00:00Z', ostatniSukcesAt: '2026-11-04T10:00:00Z' });
-    const stan = polaczeniaIntegracji({ db, proba: true }).find(w => w.id === `reklamy:${p.id}`);
+    zapiszStan(db, {
+      polaczenieId: p.id,
+      ostatniaProbaAt: '2026-11-04T10:00:00Z',
+      ostatniSukcesAt: '2026-11-04T10:00:00Z',
+    });
+    const stan = polaczeniaIntegracji({ db, proba: true }).find((w) => w.id === `reklamy:${p.id}`);
     expect(stan.etykietaStanu).toBe('Dane przykładowe');
     const r = await get(app, `/kampania?widok=${typ === 'ga4' ? 'google' : 'meta'}`, BASIC);
     expect(r.statusCode).toBe(200);
@@ -52,7 +75,10 @@ it.each(['ga4', 'meta'])('N3: %s na Reklamach ma neutralną etykietę z usługi 
     expect(r.body).not.toContain('<span class="reklamy-stan">Działa</span>');
     const podsumowanie = await get(app, '/kampania', BASIC);
     expect(podsumowanie.body).toContain(`<strong>${stan.etykietaStanu}</strong>`);
-  } finally { await app.close(); db.close(); }
+  } finally {
+    await app.close();
+    db.close();
+  }
 });
 
 it.each([
@@ -67,5 +93,8 @@ it.each([
     const sekcja = r.body.match(/id="modul-faktur-stan"[\s\S]*?<\/section>/)?.[0];
     expect(sekcja).toContain(`inFakt — ${etykieta}`);
     if (etykieta === 'Niepodłączony') expect(sekcja).not.toContain('bo jest podłączony');
-  } finally { await app.close(); db.close(); }
+  } finally {
+    await app.close();
+    db.close();
+  }
 });

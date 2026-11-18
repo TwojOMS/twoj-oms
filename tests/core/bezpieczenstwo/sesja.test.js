@@ -1,8 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import {
-  NAZWA_CIASTECZKA_PANEL, NAZWA_CIASTECZKA_OMS, WAZNOSC_MS,
-  nowySekret, podpisz, sprawdz, wartoOdswiezyc,
-  ciasteczkoSesji, ciasteczkoWyczyszczenia, zNaglowka,
+  NAZWA_CIASTECZKA_PANEL,
+  NAZWA_CIASTECZKA_OMS,
+  WAZNOSC_MS,
+  nowySekret,
+  podpisz,
+  sprawdz,
+  wartoOdswiezyc,
+  ciasteczkoSesji,
+  ciasteczkoWyczyszczenia,
+  zNaglowka,
 } from '../../../src/core/bezpieczenstwo/sesja.js';
 
 const SEKRET = 'a'.repeat(64);
@@ -23,7 +30,10 @@ describe('podpisz / sprawdz', () => {
     const c = podpisz('adam', SEKRET, TERAZ);
     const [, podpis] = c.split('.');
     const obca = Buffer.from(JSON.stringify({ u: 'ktos', do: TERAZ + WAZNOSC_MS }))
-      .toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
     expect(sprawdz(`${obca}.${podpis}`, SEKRET, TERAZ)).toBeNull();
   });
 
@@ -31,7 +41,10 @@ describe('podpisz / sprawdz', () => {
     const c = podpisz('adam', SEKRET, TERAZ);
     const [, podpis] = c.split('.');
     const dluzej = Buffer.from(JSON.stringify({ u: 'adam', do: TERAZ + WAZNOSC_MS * 100 }))
-      .toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
     expect(sprawdz(`${dluzej}.${podpis}`, SEKRET, TERAZ)).toBeNull();
   });
 
@@ -122,8 +135,9 @@ describe('naglowek Set-Cookie', () => {
   });
 
   it('domyslny czas zycia zgadza sie z waznoscia podpisu', () => {
-    expect(ciasteczkoSesji(NAZWA_CIASTECZKA_PANEL, 'abc', { bezpieczne: false }))
-      .toContain(`Max-Age=${Math.floor(WAZNOSC_MS / 1000)}`);
+    expect(ciasteczkoSesji(NAZWA_CIASTECZKA_PANEL, 'abc', { bezpieczne: false })).toContain(
+      `Max-Age=${Math.floor(WAZNOSC_MS / 1000)}`,
+    );
   });
 
   it('ciasteczko kasujace ma zerowy czas zycia i te same flagi', () => {
@@ -137,8 +151,12 @@ describe('naglowek Set-Cookie', () => {
 
 describe('zNaglowka', () => {
   it('znajduje sesje obok ciasteczka motywu', () => {
-    expect(zNaglowka(NAZWA_CIASTECZKA_PANEL, `motyw=ciemny; ${NAZWA_CIASTECZKA_PANEL}=wartosc.podpis`)).toBe('wartosc.podpis');
-    expect(zNaglowka(NAZWA_CIASTECZKA_PANEL, `${NAZWA_CIASTECZKA_PANEL}=wartosc.podpis; motyw=jasny`)).toBe('wartosc.podpis');
+    expect(zNaglowka(NAZWA_CIASTECZKA_PANEL, `motyw=ciemny; ${NAZWA_CIASTECZKA_PANEL}=wartosc.podpis`)).toBe(
+      'wartosc.podpis',
+    );
+    expect(zNaglowka(NAZWA_CIASTECZKA_PANEL, `${NAZWA_CIASTECZKA_PANEL}=wartosc.podpis; motyw=jasny`)).toBe(
+      'wartosc.podpis',
+    );
   });
 
   it('nie myli sie z ciasteczkiem o nazwie zawierajacej nasza', () => {

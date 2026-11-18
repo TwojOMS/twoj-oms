@@ -29,7 +29,11 @@ import { modulMarketing } from '../../../src/moduly/marketing/modul.ts';
 import { modulZdrowie } from '../../../src/moduly/zdrowie/modul.ts';
 
 const naglowek = { authorization: `Basic ${Buffer.from('adam:x').toString('base64')}`, origin: 'http://localhost' };
-const config = { auth: { user: 'adam', pass: 'x' }, klienciZbiorczy: [], proforma: { rachunek: '00 1111 2222 3333 4444 5555 6666' } };
+const config = {
+  auth: { user: 'adam', pass: 'x' },
+  klienciZbiorczy: [],
+  proforma: { rachunek: '00 1111 2222 3333 4444 5555 6666' },
+};
 const ADRES = '/ustawienia/szablony-wiadomosci';
 const ZAPIS = `${ADRES}/zdania-platnosci`;
 const przywroc = (klucz) => `${ZAPIS}/${klucz}/przywroc`;
@@ -37,30 +41,67 @@ const przywroc = (klucz) => `${ZAPIS}/${klucz}/przywroc`;
 const NOWE_OPLACONE = 'Wpłata dotarła — dziękujemy i bierzemy się do pracy.';
 
 const zamowienie = (nad = {}) => ({
-  zrodlo_id: 6017, numer: '1717',
+  zrodlo_id: 6017,
+  numer: '1717',
   klient: { first_name: 'Anna', last_name: 'Testowa', email: 'anna@pracownia.example.test' },
   dostawa: { first_name: 'Anna', last_name: 'Testowa', address_1: 'Fikcyjna 1', postcode: '00-001', city: 'Testowo' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null,
-  kwota_brutto: '476.00', koszt_dostawy_brutto: '0.00', koszt_dostawy_netto: '0.00',
-  status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-10-14T09:15:00', termin_platnosci: '14',
-  pozycje: [{ zrodlo_id: 7017, nazwa: 'Lampa stołowa Grzybek', sku: 'LMP-1', ilosc: 2, cena_brutto: '238.00',
-    cena_netto: '193.50', brutto_linii: '476.00', netto_linii: '387.00', vat: null }],
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '476.00',
+  koszt_dostawy_brutto: '0.00',
+  koszt_dostawy_netto: '0.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-10-14T09:15:00',
+  termin_platnosci: '14',
+  pozycje: [
+    {
+      zrodlo_id: 7017,
+      nazwa: 'Lampa stołowa Grzybek',
+      sku: 'LMP-1',
+      ilosc: 2,
+      cena_brutto: '238.00',
+      cena_netto: '193.50',
+      brutto_linii: '476.00',
+      netto_linii: '387.00',
+      vat: null,
+    },
+  ],
   ...nad,
 });
 
-let db; let app; let wyslane;
+let db;
+let app;
+let wyslane;
 const get = (url) => app.inject({ method: 'GET', url, headers: naglowek });
 const post = (url, payload = {}) => app.inject({ method: 'POST', url, headers: naglowek, payload });
-const wierszZdan = () => db.prepare("SELECT wartosc FROM ustawienia WHERE klucz = 'wiadomosci.zdania_platnosci'").get()?.wartosc ?? null;
-const sekcja = (html) => /<section class="ust-sekcja szw-sekcja" id="zdania-platnosci">[\s\S]*?<\/section>/u.exec(html)?.[0] ?? '';
+const wierszZdan = () =>
+  db.prepare("SELECT wartosc FROM ustawienia WHERE klucz = 'wiadomosci.zdania_platnosci'").get()?.wartosc ?? null;
+const sekcja = (html) =>
+  /<section class="ust-sekcja szw-sekcja" id="zdania-platnosci">[\s\S]*?<\/section>/u.exec(html)?.[0] ?? '';
 // Formularz z kompletem pól w bieżącym brzmieniu — tak wysyła go przeglądarka (wszystkie pola naraz).
 const formularz = (zmiany = {}) => ({ ...DOMYSLNE_ZDANIA, ...zmiany });
 
 /** Zamówienie z wystawioną fakturą (PDF z atrapy) — opcjonalnie opłacone wpłatą ręczną albo za pobraniem. */
 function zamowienieZFaktura({ oplacone = false, pobranie = false, zrodlo = 6017 } = {}) {
-  const id = zapiszZamowienie(db, 'pro', zamowienie({ zrodlo_id: zrodlo, numer: String(zrodlo), ...(pobranie ? { pobranie: 1, kwota_pobrania: '476.00', metoda_platnosci: 'Za pobraniem' } : {}) }));
-  db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)')
-    .run(id, `uuid-${zrodlo}`, `FV ${zrodlo}/10/2026`, '2026-10-15T09:00:00.000Z');
+  const id = zapiszZamowienie(
+    db,
+    'pro',
+    zamowienie({
+      zrodlo_id: zrodlo,
+      numer: String(zrodlo),
+      ...(pobranie ? { pobranie: 1, kwota_pobrania: '476.00', metoda_platnosci: 'Za pobraniem' } : {}),
+    }),
+  );
+  db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)').run(
+    id,
+    `uuid-${zrodlo}`,
+    `FV ${zrodlo}/10/2026`,
+    '2026-10-15T09:00:00.000Z',
+  );
   if (oplacone) dodajWplateReczna(db, id, { kwota: '476.00', data: '2026-10-15' });
   return id;
 }
@@ -75,12 +116,23 @@ async function wyslijFakture(id) {
 beforeEach(async () => {
   db = openOmsDb(':memory:');
   wyslane = [];
-  const mailer = { sendMail: async (m) => { wyslane.push(m); return { messageId: 't' }; } };
+  const mailer = {
+    sendMail: async (m) => {
+      wyslane.push(m);
+      return { messageId: 't' };
+    },
+  };
   const teraz = () => '2026-10-20T10:00:00.000Z';
   app = buildOmsServer({
-    db, config, poller: { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) },
+    db,
+    config,
+    poller: { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) },
     wiadomosci: createWiadomosci({
-      db, mailer, config, teraz, potwierdzenie: createPotwierdzenie({ db, mailer, teraz }),
+      db,
+      mailer,
+      config,
+      teraz,
+      potwierdzenie: createPotwierdzenie({ db, mailer, teraz }),
       infakt: { pobierzPdf: async () => Buffer.from('%PDF-atrapa') },
     }),
   });
@@ -140,7 +192,18 @@ describe('zapis zdania działa od następnego maila (ta sama instancja, bez rest
   it('zapisany szablon (nie domyślna droga) też bierze zdania z panelu: {zamkniecie} i nagłówki {dane_platnosci}', async () => {
     const tresc = DOMYSLNE.faktura.tresc.replace('w załączeniu przesyłamy', 'przesyłamy w załączniku');
     expect((await post(`${ADRES}/faktura`, { temat: DOMYSLNE.faktura.temat, tresc })).statusCode).toBe(303);
-    expect((await post(ZAPIS, formularz({ pozostale: 'Dziękujemy za zamówienie.', naglowek_do_zaplaty: 'Kwota', naglowek_przelew: 'Dane do przelewu' }))).statusCode).toBe(303);
+    expect(
+      (
+        await post(
+          ZAPIS,
+          formularz({
+            pozostale: 'Dziękujemy za zamówienie.',
+            naglowek_do_zaplaty: 'Kwota',
+            naglowek_przelew: 'Dane do przelewu',
+          }),
+        )
+      ).statusCode,
+    ).toBe(303);
     const mail = await wyslijFakture(zamowienieZFaktura());
     expect(mail.text).toContain('przesyłamy w załączniku');
     // Bez nazwy firmy wiersz „Odbiorca:” w ogóle nie pada (wcześniej był pusty) — następny jest rachunek.
@@ -151,7 +214,10 @@ describe('zapis zdania działa od następnego maila (ta sama instancja, bez rest
   });
 
   it('podgląd szablonu w Ustawieniach pokazuje zdania z panelu', async () => {
-    expect((await post(ZAPIS, formularz({ pozostale: 'Zdanie z panelu do podglądu.', naglowek_przelew: 'Konto do wpłaty' }))).statusCode).toBe(303);
+    expect(
+      (await post(ZAPIS, formularz({ pozostale: 'Zdanie z panelu do podglądu.', naglowek_przelew: 'Konto do wpłaty' })))
+        .statusCode,
+    ).toBe(303);
     const q = new URLSearchParams({ podglad: '1', temat: DOMYSLNE.faktura.temat, tresc: DOMYSLNE.faktura.tresc });
     const r = await get(`${ADRES}/faktura?${q}`);
     expect(r.statusCode).toBe(200);
@@ -161,8 +227,14 @@ describe('zapis zdania działa od następnego maila (ta sama instancja, bez rest
   });
 
   it('zdanie o załączonej proformie z {numer_proformy} dostaje numer z koperty', async () => {
-    expect((await post(ZAPIS, formularz({ zalacznik_proformy: 'Proforma {numer_proformy} jest w załączniku.' }))).statusCode).toBe(303);
-    const q = new URLSearchParams({ podglad: '1', temat: DOMYSLNE.przypomnienie.temat, tresc: DOMYSLNE.przypomnienie.tresc });
+    expect(
+      (await post(ZAPIS, formularz({ zalacznik_proformy: 'Proforma {numer_proformy} jest w załączniku.' }))).statusCode,
+    ).toBe(303);
+    const q = new URLSearchParams({
+      podglad: '1',
+      temat: DOMYSLNE.przypomnienie.temat,
+      tresc: DOMYSLNE.przypomnienie.tresc,
+    });
     const r = await get(`${ADRES}/przypomnienie?${q}`);
     expect(r.body).toContain('Proforma PF 7/10/2026 jest w załączniku.');
   });
@@ -181,7 +253,11 @@ describe('bezpiecznik pobrania i reguły treści', () => {
   });
 
   it('„pobranie": słowo rozpoznane bez względu na wielkość liter i bez polskich znaków', async () => {
-    for (const tekst of ['Zapłacisz KURIEROWI.', 'Płatność przy DORĘCZENIU paczki.', 'Platnosc przy doreczeniu paczki.']) {
+    for (const tekst of [
+      'Zapłacisz KURIEROWI.',
+      'Płatność przy DORĘCZENIU paczki.',
+      'Platnosc przy doreczeniu paczki.',
+    ]) {
       const r = await post(ZAPIS, formularz({ pobranie: tekst }));
       expect(r.statusCode, tekst).toBe(303);
       expect(JSON.parse(wierszZdan()).pobranie).toBe(tekst);
@@ -191,13 +267,20 @@ describe('bezpiecznik pobrania i reguły treści', () => {
   });
 
   it('„opłacone" nie może prosić o zapłatę → 400; opis tego, co już się stało, przechodzi', async () => {
-    for (const tekst of ['Prosimy przelać resztę.', 'Kwota do zapłaty jest w załączniku.', 'Zaplac do piatku.', 'Termin mija jutro.']) {
+    for (const tekst of [
+      'Prosimy przelać resztę.',
+      'Kwota do zapłaty jest w załączniku.',
+      'Zaplac do piatku.',
+      'Termin mija jutro.',
+    ]) {
       const r = await post(ZAPIS, formularz({ oplacone: tekst }));
       expect(r.statusCode, tekst).toBe(400);
       expect(r.body).toContain('Zdanie przy opłaconym zamówieniu nie może prosić o zapłatę');
     }
     expect(wierszZdan()).toBeNull();
-    expect((await post(ZAPIS, formularz({ oplacone: 'Zamówienie zapłacone, dziękujemy za przelew.' }))).statusCode).toBe(303);
+    expect(
+      (await post(ZAPIS, formularz({ oplacone: 'Zamówienie zapłacone, dziękujemy za przelew.' }))).statusCode,
+    ).toBe(303);
   });
 
   it('znaki sterujące, za długi tekst, zbłąkane klamry, proforma bez numeru → 400, nic nie zapisane', async () => {
@@ -238,7 +321,9 @@ describe('„Przywróć domyślne"', () => {
 
     const po = await wyslijFakture(id);
     expect(po.text).toContain(`\n\n${DOMYSLNE_ZDANIA.oplacone}\n\nPozdrawiamy,`);
-    expect(sekcja((await get(`${ADRES}?zapisano=zdanie-przywrocone`)).body)).toContain(`>${DOMYSLNE_ZDANIA.oplacone}</textarea>`);
+    expect(sekcja((await get(`${ADRES}?zapisano=zdanie-przywrocone`)).body)).toContain(
+      `>${DOMYSLNE_ZDANIA.oplacone}</textarea>`,
+    );
 
     expect((await post(przywroc('naglowek_przelew'))).statusCode).toBe(303);
     expect(wierszZdan()).toBeNull();
@@ -252,13 +337,17 @@ describe('„Przywróć domyślne"', () => {
 describe('HTML wpisany w pole jest escapowany', () => {
   const ZLY = 'Uwaga <b>pogrubienie</b> & <img src=x onerror=alert(1)> — dziękujemy.';
   it('w mailu (HTML i tekst), w podglądzie szablonu i w polu na ekranie', async () => {
-    expect((await post(ZAPIS, formularz({ pozostale: ZLY, naglowek_do_zaplaty: '<i>Kwota</i>' }))).statusCode).toBe(303);
+    expect((await post(ZAPIS, formularz({ pozostale: ZLY, naglowek_do_zaplaty: '<i>Kwota</i>' }))).statusCode).toBe(
+      303,
+    );
 
     const mail = await wyslijFakture(zamowienieZFaktura());
     expect(mail.text).toContain(ZLY);
     expect(mail.html).not.toContain('<b>pogrubienie</b>');
     expect(mail.html).not.toContain('<img src=x');
-    expect(mail.html).toContain('Uwaga &lt;b&gt;pogrubienie&lt;/b&gt; &amp; &lt;img src=x onerror=alert(1)&gt; — dziękujemy.');
+    expect(mail.html).toContain(
+      'Uwaga &lt;b&gt;pogrubienie&lt;/b&gt; &amp; &lt;img src=x onerror=alert(1)&gt; — dziękujemy.',
+    );
     expect(mail.html).toContain('&lt;i&gt;Kwota&lt;/i&gt;');
 
     const q = new URLSearchParams({ podglad: '1', temat: DOMYSLNE.faktura.temat, tresc: DOMYSLNE.faktura.tresc });
@@ -274,12 +363,27 @@ describe('HTML wpisany w pole jest escapowany', () => {
 });
 
 describe('bez uprawnienia „ustawienia"', () => {
-  beforeEach(() => { for (const m of ['log', 'error', 'warn', 'info']) vi.spyOn(console, m).mockImplementation(() => {}); });
-  afterEach(() => { vi.restoreAllMocks(); });
+  beforeEach(() => {
+    for (const m of ['log', 'error', 'warn', 'info']) vi.spyOn(console, m).mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
   it('ekran, zapis i „Przywróć domyślne" = 403, nic nie zapisane', async () => {
-    const moduly = [modulRdzen, modulWeb, modulKanaly, createModulFaktury(), createModulWiadomosci(),
-      createModulZamowienia({ zWiadomosciami: true }), createModulWysylka(), modulMagazyn, modulUstawienia, modulMarketing, modulZdrowie];
+    const moduly = [
+      modulRdzen,
+      modulWeb,
+      modulKanaly,
+      createModulFaktury(),
+      createModulWiadomosci(),
+      createModulZamowienia({ zWiadomosciami: true }),
+      createModulWysylka(),
+      modulMagazyn,
+      modulUstawienia,
+      modulMarketing,
+      modulZdrowie,
+    ];
     const p = nowyPanel({ moduly });
     await p.app.ready();
     zalozKonto(p.db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
@@ -287,7 +391,8 @@ describe('bez uprawnienia „ustawienia"', () => {
     ustawUprawnienia(p.db, kontoPoLoginie(p.db, 'ewa').id, ['zamowienia', 'wiadomosci']);
     const ewa = jako(p.db, 'ewa');
     const admin = jako(p.db, 'adam');
-    const wiersz = () => p.db.prepare("SELECT wartosc FROM ustawienia WHERE klucz = 'wiadomosci.zdania_platnosci'").get()?.wartosc ?? null;
+    const wiersz = () =>
+      p.db.prepare("SELECT wartosc FROM ustawienia WHERE klucz = 'wiadomosci.zdania_platnosci'").get()?.wartosc ?? null;
 
     expect((await getJako(p.app, ADRES, ewa)).statusCode).toBe(403);
     expect((await postJako(p.app, ZAPIS, ewa, formularz({ oplacone: NOWE_OPLACONE }))).statusCode).toBe(403);
@@ -304,13 +409,18 @@ describe('bez uprawnienia „ustawienia"', () => {
 // wpisane do bazy z pominięciem formularza nie wychodzi do klienta — mail dostaje tekst domyślny, log jedną linię bez
 // treści zdania, a ekran mówi to przy polu.
 describe('zapisane zdanie, które nie przechodzi reguł', () => {
-  beforeEach(() => { vi.spyOn(console, 'error').mockImplementation(() => {}); });
-  afterEach(() => { vi.restoreAllMocks(); });
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
   it('„Prosimy o zapłatę" wpisane wprost do bazy dla „opłacone" → mail ma zdanie domyślne, log bez treści, ekran ostrzega', async () => {
     const ZLE = 'Prosimy o zapłatę 476 zł.';
-    db.prepare("INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('wiadomosci.zdania_platnosci', ?, '2026-10-20T09:00:00Z')")
-      .run(JSON.stringify({ oplacone: ZLE, naglowek_przelew: 'Konto do wpłaty' }));
+    db.prepare(
+      "INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('wiadomosci.zdania_platnosci', ?, '2026-10-20T09:00:00Z')",
+    ).run(JSON.stringify({ oplacone: ZLE, naglowek_przelew: 'Konto do wpłaty' }));
     const id = zamowienieZFaktura({ oplacone: true });
 
     const mail = await wyslijFakture(id);
@@ -331,14 +441,22 @@ describe('zapisane zdanie, które nie przechodzi reguł', () => {
     expect(ekran).toContain('Zapisane zdanie nie przechodzi reguł — w mailu idzie domyślne.');
     expect(ekran).toContain(`formaction="${przywroc('oplacone')}"`);
     // Zdanie poprawne z tego samego wiersza dalej działa.
-    expect((await get(`${ADRES}/faktura?${new URLSearchParams({ podglad: '1', temat: DOMYSLNE.faktura.temat, tresc: DOMYSLNE.faktura.tresc })}`)).body)
-      .toContain('KONTO DO WPŁATY');
+    expect(
+      (
+        await get(
+          `${ADRES}/faktura?${new URLSearchParams({ podglad: '1', temat: DOMYSLNE.faktura.temat, tresc: DOMYSLNE.faktura.tresc })}`,
+        )
+      ).body,
+    ).toContain('KONTO DO WPŁATY');
   });
 
   it('formularz odrzuca prośby o zapłatę przy „opłacone" i przelew przy „pobranie" (400, nic nie zapisane)', async () => {
     for (const pole of [
-      { oplacone: 'Prosimy o zapłatę 476 zł.' }, { oplacone: 'Czekamy na wpłatę.' }, { oplacone: 'Prosimy o płatność.' },
-      { pobranie: 'Należność pobierze kurier, ale prosimy też o przelew.' }, { pobranie: 'Nie płać kurierowi, zapłać przelewem.' },
+      { oplacone: 'Prosimy o zapłatę 476 zł.' },
+      { oplacone: 'Czekamy na wpłatę.' },
+      { oplacone: 'Prosimy o płatność.' },
+      { pobranie: 'Należność pobierze kurier, ale prosimy też o przelew.' },
+      { pobranie: 'Nie płać kurierowi, zapłać przelewem.' },
     ]) {
       expect((await post(ZAPIS, formularz(pole))).statusCode, JSON.stringify(pole)).toBe(400);
     }

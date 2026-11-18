@@ -54,28 +54,32 @@ export function zakresSkrotu(skrot, dzisiaj, { doKonca = false } = {}) {
   }
   if (skrot === 'ten-miesiac') {
     return {
-      od: poczatekMiesiaca(rok, m), do: przytnij(koniecMiesiaca(rok, m)),
+      od: poczatekMiesiaca(rok, m),
+      do: przytnij(koniecMiesiaca(rok, m)),
       etykieta: 'Ten miesiąc',
     };
   }
   if (skrot === 'poprzedni-miesiac') {
     // ⚠️ `Date.UTC(rok, -1, 1)` sam cofa rok — recznego warunku na styczen NIE piszemy.
     return {
-      od: poczatekMiesiaca(rok, m - 1), do: koniecMiesiaca(rok, m - 1),
+      od: poczatekMiesiaca(rok, m - 1),
+      do: koniecMiesiaca(rok, m - 1),
       etykieta: 'Poprzedni miesiąc',
     };
   }
   if (skrot === 'ten-kwartal') {
     const k = Math.floor(m / 3) * 3;
     return {
-      od: poczatekMiesiaca(rok, k), do: przytnij(koniecMiesiaca(rok, k + 2)),
+      od: poczatekMiesiaca(rok, k),
+      do: przytnij(koniecMiesiaca(rok, k + 2)),
       etykieta: 'Ten kwartał',
     };
   }
   if (skrot === 'poprzedni-kwartal') {
     const k = Math.floor(m / 3) * 3 - 3;
     return {
-      od: poczatekMiesiaca(rok, k), do: koniecMiesiaca(rok, k + 2),
+      od: poczatekMiesiaca(rok, k),
+      do: koniecMiesiaca(rok, k + 2),
       etykieta: 'Poprzedni kwartał',
     };
   }
@@ -106,7 +110,8 @@ export function zakresSkrotu(skrot, dzisiaj, { doKonca = false } = {}) {
     return { od: `${rok - 1}-01-01`, do: `${rok - 1}-12-31`, etykieta: 'Poprzedni rok' };
   }
   if (skrot === 'ostatnie-30') {
-    const od = new Date(d); od.setUTCDate(od.getUTCDate() - 29);
+    const od = new Date(d);
+    od.setUTCDate(od.getUTCDate() - 29);
     return { od: iso(od), do: dzisiaj, etykieta: 'Ostatnie 30 dni' };
   }
   const e = new Error(`Nieznany skrót okresu: ${skrot}.`);
@@ -137,8 +142,10 @@ export function poprzedniOkres({ od, do: doDnia }) {
   const kalendarzowy = poprzedniKalendarzowy({ od, do: doDnia });
   if (kalendarzowy) return kalendarzowy;
   const dni = Math.round((zDnia(doDnia) - zDnia(od)) / 86_400_000) + 1;
-  const koniec = zDnia(od); koniec.setUTCDate(koniec.getUTCDate() - 1);
-  const poczatek = new Date(koniec); poczatek.setUTCDate(poczatek.getUTCDate() - dni + 1);
+  const koniec = zDnia(od);
+  koniec.setUTCDate(koniec.getUTCDate() - 1);
+  const poczatek = new Date(koniec);
+  poczatek.setUTCDate(poczatek.getUTCDate() - dni + 1);
   return { od: iso(poczatek), do: iso(koniec) };
 }
 
@@ -226,7 +233,10 @@ export function dniOkresu({ od, do: doDnia }) {
   const wynik = [];
   const d = zDnia(od);
   const koniec = zDnia(doDnia);
-  while (d <= koniec) { wynik.push(iso(d)); d.setUTCDate(d.getUTCDate() + 1); }
+  while (d <= koniec) {
+    wynik.push(iso(d));
+    d.setUTCDate(d.getUTCDate() + 1);
+  }
   return wynik;
 }
 
@@ -243,7 +253,8 @@ export function tygodnieOkresu({ od, do: doDnia }) {
   d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
   const koniec = zDnia(doDnia);
   while (d <= koniec) {
-    const k = new Date(d); k.setUTCDate(k.getUTCDate() + 6);
+    const k = new Date(d);
+    k.setUTCDate(k.getUTCDate() + 6);
     wynik.push({ od: iso(d) < od ? od : iso(d), do: iso(k) > doDnia ? doDnia : iso(k) });
     d.setUTCDate(d.getUTCDate() + 7);
   }
@@ -286,15 +297,21 @@ export function nazwaOkresu({ od, do: doDnia }) {
   // szerokiej na 6,5 rem.
   if (od === doDnia) return od;
   const rok = od.slice(0, 4);
-  if (od.slice(0, 7) === doDnia.slice(0, 7)
-    && od.endsWith('-01') && doDnia === koniecMiesiaca(Number(rok), Number(od.slice(5, 7)) - 1)) {
+  if (
+    od.slice(0, 7) === doDnia.slice(0, 7) &&
+    od.endsWith('-01') &&
+    doDnia === koniecMiesiaca(Number(rok), Number(od.slice(5, 7)) - 1)
+  ) {
     return od.slice(0, 7);
   }
   if (rok === doDnia.slice(0, 4)) {
     const pary = [
-      [`${rok}-01-01`, `${rok}-03-31`, `${rok}-Q1`], [`${rok}-04-01`, `${rok}-06-30`, `${rok}-Q2`],
-      [`${rok}-07-01`, `${rok}-09-30`, `${rok}-Q3`], [`${rok}-10-01`, `${rok}-12-31`, `${rok}-Q4`],
-      [`${rok}-01-01`, `${rok}-06-30`, `${rok}-H1`], [`${rok}-07-01`, `${rok}-12-31`, `${rok}-H2`],
+      [`${rok}-01-01`, `${rok}-03-31`, `${rok}-Q1`],
+      [`${rok}-04-01`, `${rok}-06-30`, `${rok}-Q2`],
+      [`${rok}-07-01`, `${rok}-09-30`, `${rok}-Q3`],
+      [`${rok}-10-01`, `${rok}-12-31`, `${rok}-Q4`],
+      [`${rok}-01-01`, `${rok}-06-30`, `${rok}-H1`],
+      [`${rok}-07-01`, `${rok}-12-31`, `${rok}-H2`],
       [`${rok}-01-01`, `${rok}-12-31`, rok],
     ];
     // ⚠️ Rok sprawdzamy OSTATNI, inaczej 1.01–31.12 wyszloby jako „Q1" (pierwsze trafienie).
@@ -313,7 +330,11 @@ const WZORZEC_DNIA = /^\d{4}-\d{2}-\d{2}$/;
  */
 function dzienZParametru(surowa) {
   if (typeof surowa !== 'string' || !WZORZEC_DNIA.test(surowa.trim())) return null;
-  try { kluczOkresu(surowa.trim()); } catch { return null; }
+  try {
+    kluczOkresu(surowa.trim());
+  } catch {
+    return null;
+  }
   return surowa.trim();
 }
 
@@ -332,8 +353,7 @@ export function zakresZZapytania(query, dzien) {
     const doDnia = dzienZParametru(query.do);
     if (!od || !doDnia) {
       return {
-        blad: 'Niepoprawna data: parametry od i do muszą być istniejącymi dniami'
-          + ' w formacie RRRR-MM-DD.',
+        blad: 'Niepoprawna data: parametry od i do muszą być istniejącymi dniami' + ' w formacie RRRR-MM-DD.',
       };
     }
     if (od > doDnia) {

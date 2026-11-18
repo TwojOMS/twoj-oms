@@ -44,12 +44,15 @@ import { sposobPlatnosciFaktury } from '../../../domena/sposob-platnosci.js';
 // liczy sie juz w pozycjeDokumentu.
 // WDT = numer UE nabywcy I sprzedawca niezwolniony (`czyWdt` + `sprzedawcaZwolniony`, tylko program
 // wbudowany). Firma zwolniona z VAT dla nabywcy z UE wystawia zwykłą fakturę „zw”: bez VIES, serii i pól WDT.
-import {
-  czyNipUe, czyWdt, polaWdtInfakt, nipSprzedawcyDoWdt, LOG_NIE_WDT_ZWOLNIONA,
-} from '../../../domena/wdt.js';
+import { czyNipUe, czyWdt, polaWdtInfakt, nipSprzedawcyDoWdt, LOG_NIE_WDT_ZWOLNIONA } from '../../../domena/wdt.js';
 import { sprzedawcaZwolniony } from '../db/zwolnienie-vat.js';
 import {
-  sprawdzWdtWVies, przygotujSerieWdt, seriaWdtPoAwarii, seriaWdtPoSukcesie, sprawdzNumeracjeWlasna, nazwaProgramu,
+  sprawdzWdtWVies,
+  przygotujSerieWdt,
+  seriaWdtPoAwarii,
+  seriaWdtPoSukcesie,
+  sprawdzNumeracjeWlasna,
+  nazwaProgramu,
 } from './wdt-faktury.js';
 // Program fakturowy (kontrakt) zamiast klienta inFaktu. Usluga przyjmuje `{ program }` albo stary
 // `{ infakt }` (owija go adapter inFaktu) — oba naraz to blad programisty, rzucany przy tworzeniu uslugi.
@@ -109,7 +112,12 @@ function dataZaplatyFaktury(z, daty, opis) {
  *   daty wystawienia. Wstrzykiwany jak w services/wiadomosci.js.
  */
 export function createFaktura({
-  db, program: programFakturowy = null, infakt = null, vies = null, nipSprzedawcy, teraz = () => new Date().toISOString(),
+  db,
+  program: programFakturowy = null,
+  infakt = null,
+  vies = null,
+  nipSprzedawcy,
+  teraz = () => new Date().toISOString(),
 }) {
   const program = zProgramu({ program: programFakturowy, infakt });
   // Odmiana nazwy programu do komunikatow (inFakt / inFaktu / inFakcie / inFaktem).
@@ -155,7 +163,8 @@ export function createFaktura({
     // WYLACZNIE moment, w ktorym o nia pytamy.
     // Opcja „faktura także bez prośby klienta” czytana z bazy przy KAŻDYM wystawieniu.
     const odmowa = powodOdmowyFaktury(z, {
-      okresyWlaczone: !wylaczoneModuly(db).includes('okresy'), dlaKazdego: czyFakturaDlaKazdego(db),
+      okresyWlaczone: !wylaczoneModuly(db).includes('okresy'),
+      dlaKazdego: czyFakturaDlaKazdego(db),
     });
     if (odmowa) throw bladOperatora(odmowa);
 
@@ -276,21 +285,33 @@ export function createFaktura({
       // klientowi „zaplac przelewem" za cos, co zaplaci kurierowi. Powod, dla ktorego to NIE jest czesc `datyFaktury`:
       // sposob zaplaty nie jest data i nie wynika z wyboru operatora w formularzu, tylko
       // z FAKTU o zamowieniu — patrz domena/sposob-platnosci.js.
-      w = await program.wystaw({
-        client_id: nabywca.client_id, services, ...daty, ...sposobPlatnosciFaktury(z, { przyjmuje: program.opis?.sposobyPlatnosci }),
-        // Pola WYLACZNIE dokumentu WDT (domena/wdt.js) — dla nabywcy krajowego oba
-        // rozsypania sa puste i payload zostaje bajt w bajt taki, jaki byl.
-        ...(wdt ? polaWdtInfakt(d.nip, { nipSprzedawcy: nipWlasny }) : {}),
-        ...(seriaWdt ? { number: seriaWdt.numer } : {}),
-        // Fakturownia bez `paid_date` przy `status: paid` wpisuje DZIŚ. inFakt i TwojeFaktury — bez pola, jak dotąd.
-        ...(paidDate && program.opis.dowolnaDataZaplaty ? { paid_date: paidDate } : {}),
-      // Identyfikator zamówienia dla programu (Fakturownia: `oid` + `oid_unique` — drugi dokument
-      // dla tego samego zamówienia zostaje odrzucony). Programy, które go nie znają, ignorują drugi argument.
-      }, { oid: `${z.sklep}-${z.numer}` });
+      w = await program.wystaw(
+        {
+          client_id: nabywca.client_id,
+          services,
+          ...daty,
+          ...sposobPlatnosciFaktury(z, { przyjmuje: program.opis?.sposobyPlatnosci }),
+          // Pola WYLACZNIE dokumentu WDT (domena/wdt.js) — dla nabywcy krajowego oba
+          // rozsypania sa puste i payload zostaje bajt w bajt taki, jaki byl.
+          ...(wdt ? polaWdtInfakt(d.nip, { nipSprzedawcy: nipWlasny }) : {}),
+          ...(seriaWdt ? { number: seriaWdt.numer } : {}),
+          // Fakturownia bez `paid_date` przy `status: paid` wpisuje DZIŚ. inFakt i TwojeFaktury — bez pola, jak dotąd.
+          ...(paidDate && program.opis.dowolnaDataZaplaty ? { paid_date: paidDate } : {}),
+          // Identyfikator zamówienia dla programu (Fakturownia: `oid` + `oid_unique` — drugi dokument
+          // dla tego samego zamówienia zostaje odrzucony). Programy, które go nie znają, ignorują drugi argument.
+        },
+        { oid: `${z.sklep}-${z.numer}` },
+      );
     } catch (e) {
       // Los numeru serii rozstrzyga wspolna galaz: 4xx zwalnia, niejednoznaczna zostawia
       // zajety z gloszym sladem w logu (dziura w serii to fakt do wyjasnienia).
-      seriaWdtPoAwarii({ db, seria: seriaWdt, jednoznaczna: jednoznacznaOdmowa(e), dopisz: dopiszWdt(zamowienieId), nazwa });
+      seriaWdtPoAwarii({
+        db,
+        seria: seriaWdt,
+        jednoznaczna: jednoznacznaOdmowa(e),
+        dopisz: dopiszWdt(zamowienieId),
+        nazwa,
+      });
       if (jednoznacznaOdmowa(e)) {
         zwolnij(f, zamowienieId, e);
       } else {
@@ -358,25 +379,28 @@ export function createFaktura({
         throw new Error(`${nazwa.mianownik} nie umie oznaczyć zapłaty — ten program nie ma takiej operacji.`);
       }
       await program.oznaczZaplacona(w.uuid, { paidDate });
-      wynik = `Zlecono w ${nazwa.miejscownik} oznaczenie faktury ${w.numer ?? '(bez numeru)'} jako opłaconej `
-        + `(data zapłaty ${paidDate}). ${nazwa.mianownik} przetwarza to zadanie w tle.`;
+      wynik =
+        `Zlecono w ${nazwa.miejscownik} oznaczenie faktury ${w.numer ?? '(bez numeru)'} jako opłaconej ` +
+        `(data zapłaty ${paidDate}). ${nazwa.mianownik} przetwarza to zadanie w tle.`;
     } catch (e) {
       // Status „opłacona” przyjęty, padł sam zapis daty zapłaty — faktura JEST opłacona, nie oznaczać drugi raz.
       wynik = e?.zaplataOznaczona
-        ? `UWAGA: faktura ${w.numer ?? '(bez numeru)'} jest już oznaczona jako opłacona w ${nazwa.miejscownik} — popraw tylko `
-          + `datę zapłaty. Powód: ${e.message}`
-        : `UWAGA: faktura ${w.numer ?? '(bez numeru)'} została WYSTAWIONA i dokument dla klienta `
-        + 'jest poprawny („Zapłacono", pozostało 0,00), ale nie udało się zlecić oznaczenia jej '
-        + (program.opis?.wbudowany
-          ? `jako opłaconej — ${gdzieDokument(program)} będzie widoczna jako NIEOPŁACONA. Zapłaty nie da się w OMS-ie zapisać ręcznie — przekaż ten wpis osobie, która utrzymuje OMS.`
-          : `jako opłaconej — w ${nazwa.miejscownik} zostanie na liście jako NIEOPŁACONA. Przestaw jej status ręcznie ${gdzieDokument(program)}.`)
-        + ` Faktura jest w porządku, poprawy wymaga tylko status. Powód: ${e.message}`;
+        ? `UWAGA: faktura ${w.numer ?? '(bez numeru)'} jest już oznaczona jako opłacona w ${nazwa.miejscownik} — popraw tylko ` +
+          `datę zapłaty. Powód: ${e.message}`
+        : `UWAGA: faktura ${w.numer ?? '(bez numeru)'} została WYSTAWIONA i dokument dla klienta ` +
+          'jest poprawny („Zapłacono", pozostało 0,00), ale nie udało się zlecić oznaczenia jej ' +
+          (program.opis?.wbudowany
+            ? `jako opłaconej — ${gdzieDokument(program)} będzie widoczna jako NIEOPŁACONA. Zapłaty nie da się w OMS-ie zapisać ręcznie — przekaż ten wpis osobie, która utrzymuje OMS.`
+            : `jako opłaconej — w ${nazwa.miejscownik} zostanie na liście jako NIEOPŁACONA. Przestaw jej status ręcznie ${gdzieDokument(program)}.`) +
+          ` Faktura jest w porządku, poprawy wymaga tylko status. Powód: ${e.message}`;
     }
     // Nawet zapis do logu nie ma prawa wywalić kroku po nieodwracalnym: gdyby padł (dysk,
     // blokada WAL), faktura i tak jest wystawiona i zapisana, a operator ma zobaczyć sukces.
     try {
       dopiszLog(db, zamowienieId, { akcja: 'faktura', wynik });
-    } catch { /* celowo puste — patrz wyżej */ }
+    } catch {
+      /* celowo puste — patrz wyżej */
+    }
   }
 
   /**

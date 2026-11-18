@@ -8,12 +8,18 @@ const blok = (tekst, selektor) => {
   expect(znaleziony, selektor).toBeTruthy();
   return znaleziony[2];
 };
-const POLA = '.oms-shell main :is(input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="file"]), select, .oms-pole)';
+const POLA =
+  '.oms-shell main :is(input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="file"]), select, .oms-pole)';
 
 describe('wspólne klocki', () => {
   it('definiuje tokeny i stosuje je w polach, kartach, tabelach i nagłówkach sekcji', () => {
     const tekst = css();
-    for (const [token, wartosc] of Object.entries({ 'pole-h': '36px', 'pole-h-maly': '28px', 'r-el': '6px', 'r-karta': '8px' })) {
+    for (const [token, wartosc] of Object.entries({
+      'pole-h': '36px',
+      'pole-h-maly': '28px',
+      'r-el': '6px',
+      'r-karta': '8px',
+    })) {
       expect(blok(tekst, ':root')).toContain(`--${token}: ${wartosc}`);
     }
     expect(blok(tekst, POLA)).toContain('height: var(--pole-h)');
@@ -36,7 +42,7 @@ describe('wspólne klocki', () => {
     expect(blok(layout, '.ust-pola .pole-przelacznik input')).toContain('width: auto');
   });
 
-  it.each(['/ustawienia/konta'])('%s renderuje pola ze wspólnymi klasami', async url => {
+  it.each(['/ustawienia/konta'])('%s renderuje pola ze wspólnymi klasami', async (url) => {
     const { app, db } = nowyPanel();
     try {
       const r = await get(app, url, BASIC);
@@ -45,10 +51,13 @@ describe('wspólne klocki', () => {
       const role = main.match(/<select\b[^>]*name="rola"[^>]*>/g) ?? [];
       expect(role.length).toBeGreaterThan(0);
       for (const pole of role) expect(pole).toMatch(/class="oms-pole"/);
-    } finally { await app.close(); db.close(); }
+    } finally {
+      await app.close();
+      db.close();
+    }
   });
 
-  it.each(['/koszty'])('%s ma nagłówki tabel objęte wspólną regułą', async url => {
+  it.each(['/koszty'])('%s ma nagłówki tabel objęte wspólną regułą', async (url) => {
     const { app, db } = nowyPanel();
     try {
       const r = await get(app, url, BASIC);
@@ -57,6 +66,9 @@ describe('wspólne klocki', () => {
       expect(main).toMatch(/<table\b[^>]*>[\s\S]*?<th\b/);
       expect(main.match(/<th\b[^>]*style=/g) ?? []).toEqual([]);
       expect(blok(css(), '.oms-shell main table th')).toContain('font-size: var(--tabela-font)');
-    } finally { await app.close(); db.close(); }
+    } finally {
+      await app.close();
+      db.close();
+    }
   });
 });

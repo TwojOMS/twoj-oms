@@ -16,7 +16,9 @@ import { uzgodnijWstrzymane } from '../db/ksef-automat.js';
 // tego okresu (`zapiszSlad` dokleja tę samą treść do każdego z nich).
 const LIMIT_ZAPISU_ODPOWIEDZI = 2000;
 const BEZ_NAZWY = Object.freeze({
-  mianownik: 'program fakturowy', dopelniacz: 'programu fakturowego', miejscownik: 'programie fakturowym',
+  mianownik: 'program fakturowy',
+  dopelniacz: 'programu fakturowego',
+  miejscownik: 'programie fakturowym',
   narzednik: 'programem fakturowym',
 });
 
@@ -63,17 +65,23 @@ export function programWysylaDoKsef(program) {
 }
 
 export function createWysylkaKsef({
-  db, program: programPodany = null, infakt = null, fakturyWidok, log = console.error, wpisTf = null,
+  db,
+  program: programPodany = null,
+  infakt = null,
+  fakturyWidok,
+  log = console.error,
+  wpisTf = null,
 }) {
   const program = zProgramu({ program: programPodany, infakt });
   // Bez programu (usługa złożona w teście bez `infakt`) zdania mówią ogólnie — nazwy nie ma skąd wziąć.
   const nazwa = program?.opis?.nazwa ?? BEZ_NAZWY;
   // Jedna odpowiedź „czy program wysyła do KSeF z OMS-u” dla `niedostepna` i flagi `korekty`.
   const wysyla = programWysylaDoKsef(program);
-  const niedostepna = program && !wysyla
-    ? `${nazwa.mianownik} nie wysyła do KSeF z OMS-u — panel nie ma jak zlecić mu wysyłki, `
-      + `więc dokumenty wyślesz do KSeF bezpośrednio w ${nazwa.miejscownik}.`
-    : null;
+  const niedostepna =
+    program && !wysyla
+      ? `${nazwa.mianownik} nie wysyła do KSeF z OMS-u — panel nie ma jak zlecić mu wysyłki, ` +
+        `więc dokumenty wyślesz do KSeF bezpośrednio w ${nazwa.miejscownik}.`
+      : null;
   // Korekty (z pierwotną już w KSeF) wysyła każdy program, który wysyła do KSeF z OMS-u —
   // wbudowany i zewnętrzny; program bez tej zdolności — POWOD_KOREKTA.
   const korekty = wysyla;
@@ -89,7 +97,9 @@ export function createWysylkaKsef({
   // oddać inną listę i operator zatwierdzałby kwoty innego dokumentu, niż widzi.
   async function przelicz({ uuids, miesiac, pole }) {
     const dokumenty = await fakturyWidok.dokumenty({ miesiac, pole });
-    const { doWyslania, pominiete } = coWolnoWyslac(uuids, dokumenty, czyWysylacKonsumenckie(db), nazwa, program, { korekty });
+    const { doWyslania, pominiete } = coWolnoWyslac(uuids, dokumenty, czyWysylacKonsumenckie(db), nazwa, program, {
+      korekty,
+    });
     return { ...odsiejInnyProgram(doWyslania, pominiete), dokumenty };
   }
 
@@ -99,7 +109,10 @@ export function createWysylkaKsef({
   // wiersza w bazie (dokument wystawiony poza OMS-em) przechodzi jak dawniej. Ten sam identyfikator w kilku wierszach
   // (dwa programy nadały np. „123”): rozstrzyga wiersz modułu faktur, jeśli jest — lista pochodzi z TEGO programu.
   function odsiejInnyProgram(doWyslania, pominiete) {
-    const znane = dokumentyPoIdentyfikatorach(db, doWyslania.map((d) => d.uuid));
+    const znane = dokumentyPoIdentyfikatorach(
+      db,
+      doWyslania.map((d) => d.uuid),
+    );
     const zostaja = [];
     const odmowione = [];
     for (const d of doWyslania) {
@@ -160,7 +173,10 @@ export function createWysylkaKsef({
       akcja: 'ksef',
       wynik: `(${kto}) ${nazwa.mianownik} odpowiedział na zgłoszenie (${d.numer}). Treść odpowiedzi: ${tresc}`,
     };
-    if (dokument?.zamowienie) { dopiszLog(db, dokument.zamowienie.id, wpis); return; }
+    if (dokument?.zamowienie) {
+      dopiszLog(db, dokument.zamowienie.id, wpis);
+      return;
+    }
     if (dokument?.okres) {
       for (const id of zamowieniaOkresu(db, dokument.okres.id)) dopiszLog(db, id, wpis);
       return;
@@ -199,7 +215,12 @@ export function createWysylkaKsef({
         // kliknięcia. Przy okazji znika stempel-doklejka: wariant bez `zlecona_at` (baza oddała
         // odmowę, ale wiersza nie umiała już pokazać) dokładał drugi odstęp przed myślnikiem.
         // Znacznik dla ekranu (krótkie `zdanieJuzWyslano`); długi `powod` zostaje dla logu i automatu.
-        odbite.push({ numer: d.numer, powod: powodJuzZlecona(wiersz?.zlecona_at, program), juzZlecona: true, zleconaAt: wiersz?.zlecona_at ?? null });
+        odbite.push({
+          numer: d.numer,
+          powod: powodJuzZlecona(wiersz?.zlecona_at, program),
+          juzZlecona: true,
+          zleconaAt: wiersz?.zlecona_at ?? null,
+        });
       }
     } catch (e) {
       // ⚠️ TU DO inFAKTU TEZ NIE POSZLO JESZCZE NIC — zajmowanie jest krokiem PRZED
@@ -257,7 +278,11 @@ export function createWysylkaKsef({
     // kilka osób, więc wpis bez nazwy zostawiałby to pytanie bez odpowiedzi (ta sama zasada, co
     // w trasy/okresy.js przy fakturze zbiorczej).
     try {
-      zapiszSlad(zlecone, dokumenty, (d) => `(${kto}) zlecono wysyłkę do KSeF z panelu (${d.numer}) — czeka na numer KSeF`);
+      zapiszSlad(
+        zlecone,
+        dokumenty,
+        (d) => `(${kto}) zlecono wysyłkę do KSeF z panelu (${d.numer}) — czeka na numer KSeF`,
+      );
     } catch (e) {
       // ⚠️⚠️ TU DO inFAKTU NIE POSZŁO JESZCZE NIC — i to jest cała różnica wobec awarii niżej.
       // Wywołania nawet nie zaczęliśmy, więc rezerwacja nie chroni przed niczym, a zostawiona
@@ -320,25 +345,29 @@ export function createWysylkaKsef({
           try {
             zwolnij([d]);
           } catch (eZwolnienia) {
-            opis += ` ⚠️ Nie udało się zdjąć rezerwacji tego dokumentu (${komunikatDlaOperatora(eZwolnienia)}) `
-              + `— panel odmówi kolejnej wysyłki, mimo że ${nazwa.mianownik} tego zgłoszenia nie przyjął.`;
+            opis +=
+              ` ⚠️ Nie udało się zdjąć rezerwacji tego dokumentu (${komunikatDlaOperatora(eZwolnienia)}) ` +
+              `— panel odmówi kolejnej wysyłki, mimo że ${nazwa.mianownik} tego zgłoszenia nie przyjął.`;
           }
         }
         // ⚠️ PADAJACY ZAPIS SLADU NIE MA PRAWA ZABRAC WYNIKU CALEJ PARTII. Wyjatek z `dopiszLog`
         // wychodzil stad do trasy, a ta renderowala „Nic nie poszlo do KSeF" — zdanie STANOWCZE
         // o wywolaniu, ktore moglo juz wyladowac u organu.
         try {
-          zapiszSlad([d], dokumenty, () => (nieWyslano
-            ? `(${kto}) wysyłka do KSeF (${d.numer}) NIE DOSZŁA — dokument NIE poszedł do organu: `
-              + `${opis} Zatwierdź wysyłkę jeszcze raz bez zmian — panel sam NIE ponawia.`
-            : odmowa
-            ? `(${kto}) ${nazwa.mianownik} ODRZUCIŁ wysyłkę do KSeF (${d.numer}) — dokument NIE poszedł do organu: `
-              + `${opis} Popraw dane i zatwierdź wysyłkę jeszcze raz — panel sam NIE ponawia.`
-            : `(${kto}) wysyłka do KSeF (${d.numer}) — NIE WIADOMO, czy dokument poszedł: `
-              + `${opis} Sprawdź ${gdzieDokument(program)}, zanim wyślesz ponownie — panel sam NIE ponawia.`));
+          zapiszSlad([d], dokumenty, () =>
+            nieWyslano
+              ? `(${kto}) wysyłka do KSeF (${d.numer}) NIE DOSZŁA — dokument NIE poszedł do organu: ` +
+                `${opis} Zatwierdź wysyłkę jeszcze raz bez zmian — panel sam NIE ponawia.`
+              : odmowa
+                ? `(${kto}) ${nazwa.mianownik} ODRZUCIŁ wysyłkę do KSeF (${d.numer}) — dokument NIE poszedł do organu: ` +
+                  `${opis} Popraw dane i zatwierdź wysyłkę jeszcze raz — panel sam NIE ponawia.`
+                : `(${kto}) wysyłka do KSeF (${d.numer}) — NIE WIADOMO, czy dokument poszedł: ` +
+                  `${opis} Sprawdź ${gdzieDokument(program)}, zanim wyślesz ponownie — panel sam NIE ponawia.`,
+          );
         } catch (eLogu) {
-          opis += ` ⚠️ Nie udało się dopisać śladu tej próby do logu zamówienia (${komunikatDlaOperatora(eLogu)}) `
-            + `— w panelu nie ma po niej historii, więc sprawdź ${gdzieDokument(program)} tym pilniej.`;
+          opis +=
+            ` ⚠️ Nie udało się dopisać śladu tej próby do logu zamówienia (${komunikatDlaOperatora(eLogu)}) ` +
+            `— w panelu nie ma po niej historii, więc sprawdź ${gdzieDokument(program)} tym pilniej.`;
         }
         // ⚠️ ODRZUCONY DOKUMENT NIE JEST „NIEPEWNY". `niepewne` to kategoria, ktora ekran
         // opisuje zdaniem „mogly juz trafic do KSeF nieodwracalnie" — po odmowie inFaktu
@@ -349,15 +378,17 @@ export function createWysylkaKsef({
           odrzucone.push({
             ...kodBledu,
             numer: d.numer,
-            powod: `Ten dokument NIE poszedł do KSeF. ${opis} Zatwierdź wysyłkę jeszcze raz — bez zmian w danych; `
-              + 'panel sam nie ponawia.',
+            powod:
+              `Ten dokument NIE poszedł do KSeF. ${opis} Zatwierdź wysyłkę jeszcze raz — bez zmian w danych; ` +
+              'panel sam nie ponawia.',
           });
         } else if (odmowa) {
           odrzucone.push({
             ...kodBledu,
             numer: d.numer,
-            powod: `${nazwa.mianownik} odrzucił to zgłoszenie — ten dokument NIE poszedł do KSeF. ${opis} `
-              + `Popraw dane ${gdzieDokument(program)} i zatwierdź wysyłkę jeszcze raz; panel sam nie ponawia.`,
+            powod:
+              `${nazwa.mianownik} odrzucił to zgłoszenie — ten dokument NIE poszedł do KSeF. ${opis} ` +
+              `Popraw dane ${gdzieDokument(program)} i zatwierdź wysyłkę jeszcze raz; panel sam nie ponawia.`,
           });
         } else {
           niepewne.push(d);
@@ -382,7 +413,10 @@ export function createWysylkaKsef({
         // Tamte gubia ZDANIE, ktore da sie odtworzyc; ten gubilby JEDYNA obserwacje ksztaltu
         // odpowiedzi inFaktu, a tej nie da sie powtorzyc inaczej niz wysylajac organowi
         // kolejny prawdziwy dokument.
-        log(`ksef: nie udało się zapisać odpowiedzi ${nazwa.dopelniacz} w logu —`, bezpiecznaTrescOdpowiedzi(odpowiedz));
+        log(
+          `ksef: nie udało się zapisać odpowiedzi ${nazwa.dopelniacz} w logu —`,
+          bezpiecznaTrescOdpowiedzi(odpowiedz),
+        );
       }
     }
 
@@ -392,7 +426,12 @@ export function createWysylkaKsef({
     // flaga `korekty` — ta obejmuje też programy zewnętrzne, a uzgodnienie dotyczy tylko wpisów TwojeFaktury.
     if (program?.opis?.wbudowany === true) {
       try {
-        uzgodnijWstrzymane(db, zlecone.map((d) => d.uuid), undefined, wpisTf);
+        uzgodnijWstrzymane(
+          db,
+          zlecone.map((d) => d.uuid),
+          undefined,
+          wpisTf,
+        );
       } catch (e) {
         log('ksef: nie udało się uzgodnić wstrzymanych automatu —', komunikatDlaOperatora(e));
       }
@@ -412,6 +451,7 @@ export function createWysylkaKsef({
 
   // `nazwaProgramu` — dla automatu KSeF (zdanie „… odłączony”) bez drugiego źródła programu.
   // `wSesji` — praca (przebieg automatu) w jednej sesji KSeF, gdy program to umie (TwojeFaktury); inaczej wprost.
-  const wSesji = (praca) => (typeof program?.wspolnaSesjaKsef === 'function' ? program.wspolnaSesjaKsef(praca) : praca());
+  const wSesji = (praca) =>
+    typeof program?.wspolnaSesjaKsef === 'function' ? program.wspolnaSesjaKsef(praca) : praca();
   return { podglad, wyslij, niedostepna, nazwaProgramu: nazwa, korekty, wSesji };
 }

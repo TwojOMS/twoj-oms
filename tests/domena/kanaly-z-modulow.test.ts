@@ -28,7 +28,9 @@ describe('nazwy i komunikaty kanałów', () => {
   });
 
   it('zachowuje dosłowne komunikaty synchronizacji', () => {
-    expect(odznakaSyncStatusu({ sklep: 'allegro_polcien', sync_woo_blad: 'błąd' })).toBe('status nie dojechał do Allegro');
+    expect(odznakaSyncStatusu({ sklep: 'allegro_polcien', sync_woo_blad: 'błąd' })).toBe(
+      'status nie dojechał do Allegro',
+    );
     expect(odznakaSyncStatusu({ sklep: 'polcien_test', sync_woo_blad: 'błąd' })).toBe('status nie dojechał do sklepu');
     expect(odznakaSyncStatusu({ sklep: 'polcien_test' })).toBeNull();
   });

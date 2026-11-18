@@ -9,7 +9,9 @@ const auth = { authorization: `Basic ${Buffer.from('adam:x').toString('base64')}
 const STAN = { trwa: false, zaczety_at: null, skonczony_at: null, postep: null, kanaly: [], blad: null };
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
+beforeEach(() => {
+  db = openOmsDb(':memory:');
+});
 const serwer = () => buildOmsServer({ db, config, magazyn: { start: vi.fn(), stan: () => STAN } });
 const post = (url, payload) => serwer().inject({ method: 'POST', url, headers: auth, payload });
 const get = (url) => serwer().inject({ method: 'GET', url, headers: auth });
@@ -28,7 +30,10 @@ describe('karta produktu — EAN, cena katalogowa, stawka VAT', () => {
   it('zapis z formularza: cena „12,34" → 1234 gr, EAN i stawka trafiają do bazy', async () => {
     const id = utworzKarte(db, { nazwa: 'Świecznik Półcień' });
     const r = await post(`/magazyn/${id}`, {
-      nazwa: 'Świecznik Półcień', ean: ' 5901234123457 ', cena_zl: '12,34', stawka_vat: '8',
+      nazwa: 'Świecznik Półcień',
+      ean: ' 5901234123457 ',
+      cena_zl: '12,34',
+      stawka_vat: '8',
     });
     expect(r.statusCode).toBe(303);
     expect(wiersz(id)).toMatchObject({ ean: '5901234123457', cena_gr: 1234, stawka_vat: '8' });

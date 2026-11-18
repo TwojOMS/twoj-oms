@@ -32,30 +32,51 @@ export function zdarzeniaAtrapyDpd(utworzonaAt, terazMs) {
   return zdarzeniaDo(PRZEBIEG_DPD, Date.parse(utworzonaAt), terazMs).map((z) => ({ opis: z.stan, at: czasDpd(z.ms) }));
 }
 
-const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const esc = (s) =>
+  String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 
 /** Surowa odpowiedź getEventsForWaybillV1 (kształt fikstury z żywego DPD) — do testu kontraktu z prawdziwym klientem. */
 export function surowaOdpowiedzDpd(zdarzenia, numer = '') {
-  const lista = zdarzenia.map((z) => `<eventsList><businessCode>030103</businessCode><country></country><depot></depot>`
-    + `<depotName></depotName><description>${esc(z.opis)}</description><eventTime>${esc(z.at)}</eventTime>`
-    + `<objectId>0</objectId><packageReference></packageReference><parcelReference></parcelReference><waybill>${esc(numer)}</waybill></eventsList>`).join('');
-  return "<?xml version='1.0' encoding='UTF-8'?><S:Envelope xmlns:S=\"http://schemas.xmlsoap.org/soap/envelope/\"><S:Body>"
-    + '<ns2:getEventsForWaybillV1Response xmlns:ns2="http://events.dpdinfoservices.dpd.com.pl/"><return><confirmId>0</confirmId>'
-    + `${lista}</return></ns2:getEventsForWaybillV1Response></S:Body></S:Envelope>`;
+  const lista = zdarzenia
+    .map(
+      (z) =>
+        `<eventsList><businessCode>030103</businessCode><country></country><depot></depot>` +
+        `<depotName></depotName><description>${esc(z.opis)}</description><eventTime>${esc(z.at)}</eventTime>` +
+        `<objectId>0</objectId><packageReference></packageReference><parcelReference></parcelReference><waybill>${esc(numer)}</waybill></eventsList>`,
+    )
+    .join('');
+  return (
+    "<?xml version='1.0' encoding='UTF-8'?><S:Envelope xmlns:S=\"http://schemas.xmlsoap.org/soap/envelope/\"><S:Body>" +
+    '<ns2:getEventsForWaybillV1Response xmlns:ns2="http://events.dpdinfoservices.dpd.com.pl/"><return><confirmId>0</confirmId>' +
+    `${lista}</return></ns2:getEventsForWaybillV1Response></S:Body></S:Envelope>`
+  );
 }
 
-export function createAtrapaDpd({ env = process.env, log = () => {}, baza = () => null, teraz = () => new Date() } = {}) {
+export function createAtrapaDpd({
+  env = process.env,
+  log = () => {},
+  baza = () => null,
+  teraz = () => new Date(),
+} = {}) {
   wymagajTrybuProby(env, 'atrapa DPD');
   return (opcje) => ({
     async sprawdzPolaczenie() {
       log('atrapa DPD: sprawdzenie połączenia (piaskownica — nic nie poszło do DPD)');
       if (String(opcje?.haslo ?? '').includes('zle')) {
-        throw Object.assign(new Error('DPD odrzuciło żądanie: Login failed for login: *** (atrapa piaskownicy)'), { dlaOperatora: true });
+        throw Object.assign(new Error('DPD odrzuciło żądanie: Login failed for login: *** (atrapa piaskownicy)'), {
+          dlaOperatora: true,
+        });
       }
       return { ok: true };
     },
     async nadaj() {
-      throw Object.assign(new Error('Piaskownica: atrapa DPD nie nadaje paczek — nic nie poszło do DPD.'), { dlaOperatora: true, status: 400 });
+      throw Object.assign(new Error('Piaskownica: atrapa DPD nie nadaje paczek — nic nie poszło do DPD.'), {
+        dlaOperatora: true,
+        status: 400,
+      });
     },
     // Ten sam wybór co createDpdClient.statusPrzesylki: najnowsze po eventTime, z pominięciem powiadomień; historia = całość.
     async statusPrzesylki(numerListu) {

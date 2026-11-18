@@ -6,7 +6,10 @@
 // BIR — żadne żądanie nie wychodzi do GUS. Klucze i NIP-y zmyślone.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
-import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji } from '../../../src/oms/db/konfiguracja-integracji.js';
+import {
+  wczytajKonfiguracjeIntegracji,
+  zapiszKonfiguracjeIntegracji,
+} from '../../../src/oms/db/konfiguracja-integracji.js';
 import { nowyPanel, jako, get, post } from '../../pomoc/panel-konta-testowe.js';
 import { modulRdzen } from '../../../src/moduly/rdzen/modul.ts';
 import { modulWeb } from '../../../src/core/web/modul.ts';
@@ -30,11 +33,15 @@ const KOMUNIKAT = 'GUS nie jest skonfigurowany — dodaj klucz w Ustawienia → 
 const PRZYCISK = 'Pobierz z GUS';
 
 const xml = (t) => t.replace(/</gu, '&lt;').replace(/>/gu, '&gt;');
-const LOGOWANIE = (sid) => `<s:Envelope><s:Body><ZalogujResponse><ZalogujResult>${sid}</ZalogujResult></ZalogujResponse></s:Body></s:Envelope>`;
-const FIRMA = '<s:Envelope><s:Body><DaneSzukajPodmiotyResponse><DaneSzukajPodmiotyResult>'
-  + xml(`<root><dane><Nazwa>LAMPY PRZYKŁADOWE SP. Z O.O.</Nazwa><Nip>${NIP}</Nip><Ulica>ul. Zmyślona</Ulica>`
-    + '<NrNieruchomosci>7</NrNieruchomosci><KodPocztowy>00001</KodPocztowy><Miejscowosc>PRZYKŁADOWO</Miejscowosc></dane></root>')
-  + '</DaneSzukajPodmiotyResult></DaneSzukajPodmiotyResponse></s:Body></s:Envelope>';
+const LOGOWANIE = (sid) =>
+  `<s:Envelope><s:Body><ZalogujResponse><ZalogujResult>${sid}</ZalogujResult></ZalogujResponse></s:Body></s:Envelope>`;
+const FIRMA =
+  '<s:Envelope><s:Body><DaneSzukajPodmiotyResponse><DaneSzukajPodmiotyResult>' +
+  xml(
+    `<root><dane><Nazwa>LAMPY PRZYKŁADOWE SP. Z O.O.</Nazwa><Nip>${NIP}</Nip><Ulica>ul. Zmyślona</Ulica>` +
+      '<NrNieruchomosci>7</NrNieruchomosci><KodPocztowy>00001</KodPocztowy><Miejscowosc>PRZYKŁADOWO</Miejscowosc></dane></root>',
+  ) +
+  '</DaneSzukajPodmiotyResult></DaneSzukajPodmiotyResponse></s:Body></s:Envelope>';
 
 let siec;
 let odrzucaLogowanie;
@@ -43,19 +50,35 @@ beforeEach(() => {
   // Atrapa BIR: logowanie kluczem oddaje sid (albo pusty wynik = zły klucz), wyszukiwanie oddaje jedną firmę.
   siec = vi.fn(async (_url, init) => {
     const body = String(init?.body ?? '');
-    if (body.includes('pKluczUzytkownika')) return new Response(LOGOWANIE(odrzucaLogowanie ? '' : 'SID-ATRAPA'), { status: 200 });
+    if (body.includes('pKluczUzytkownika'))
+      return new Response(LOGOWANIE(odrzucaLogowanie ? '' : 'SID-ATRAPA'), { status: 200 });
     return new Response(FIRMA, { status: 200 });
   });
   vi.stubGlobal('fetch', siec);
 });
-afterEach(() => { vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 /** Klucze, którymi atrapa BIR była logowana (kolejno). */
-const kluczeLogowan = () => siec.mock.calls.map(([, init]) => /<ns:pKluczUzytkownika>([^<]*)</u.exec(String(init?.body ?? ''))?.[1])
-  .filter(Boolean);
+const kluczeLogowan = () =>
+  siec.mock.calls
+    .map(([, init]) => /<ns:pKluczUzytkownika>([^<]*)</u.exec(String(init?.body ?? ''))?.[1])
+    .filter(Boolean);
 
 function panel({ env = {}, zapisPrzedStartem = null } = {}) {
-  const moduly = [modulRdzen, modulWeb, modulKanaly, createModulFaktury(), modulWiadomosci, createModulZamowienia({ zWiadomosciami: true }),
-    createModulWysylka(), modulMagazyn, modulUstawienia, modulMarketing, modulZdrowie];
+  const moduly = [
+    modulRdzen,
+    modulWeb,
+    modulKanaly,
+    createModulFaktury(),
+    modulWiadomosci,
+    createModulZamowienia({ zWiadomosciami: true }),
+    createModulWysylka(),
+    modulMagazyn,
+    modulUstawienia,
+    modulMarketing,
+    modulZdrowie,
+  ];
   let db;
   if (zapisPrzedStartem) {
     // Zapis z ekranu leży w bazie przed startem modułów — tak wygląda instalacja po restarcie.
@@ -66,19 +89,39 @@ function panel({ env = {}, zapisPrzedStartem = null } = {}) {
   zalozKonto(p.db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
   zalozKonto(p.db, { login: 'ewa', imie: 'Ewa', haslo: 'h', rola: 'sprzedaz' });
   ustawUprawnienia(p.db, kontoPoLoginie(p.db, 'ewa').id, ['zamowienia', 'klienci']);
-  const id = zapiszZamowienie(p.db, 'demo', {
-    zrodlo_id: 'gus-10211', numer: 'DEMO-10211',
-    klient: { first_name: 'Adam', last_name: 'Przykładowy' }, dostawa: {},
-    metoda_wysylki: 'demo', kwota_pobrania: null, status_woo: 'processing', oplacone_at: null,
-    chce_fakture: 1, nip: null, kwota_brutto: '100.00', koszt_dostawy_brutto: '0.00',
-    anulowane: 0, utworzone_at: '2026-10-20T08:00:00',
-    pozycje: [{ nazwa: 'Lampa demo', sku: 'DEMO', ilosc: 1, cena_brutto: '100.00', vat: null }],
-  }, {});
+  const id = zapiszZamowienie(
+    p.db,
+    'demo',
+    {
+      zrodlo_id: 'gus-10211',
+      numer: 'DEMO-10211',
+      klient: { first_name: 'Adam', last_name: 'Przykładowy' },
+      dostawa: {},
+      metoda_wysylki: 'demo',
+      kwota_pobrania: null,
+      status_woo: 'processing',
+      oplacone_at: null,
+      chce_fakture: 1,
+      nip: null,
+      kwota_brutto: '100.00',
+      koszt_dostawy_brutto: '0.00',
+      anulowane: 0,
+      utworzone_at: '2026-10-20T08:00:00',
+      pozycje: [{ nazwa: 'Lampa demo', sku: 'DEMO', ilosc: 1, cena_brutto: '100.00', vat: null }],
+    },
+    {},
+  );
   return { ...p, id, admin: jako(p.db, 'adam'), ewa: jako(p.db, 'ewa') };
 }
 const formularz = (html) => /<form id="gus-formularz"[\s\S]*?<\/form>/u.exec(html)?.[0] ?? '';
 /** Wszystkie ekrany, na których klucz mógłby wyciec. */
-const ekrany = (id) => [ADRES, '/ustawienia/integracje', `/zamowienia/${id}?edytuj=faktura`, '/zamowienia/nowe', '/klienci/nowy'];
+const ekrany = (id) => [
+  ADRES,
+  '/ustawienia/integracje',
+  `/zamowienia/${id}?edytuj=faktura`,
+  '/zamowienia/nowe',
+  '/klienci/nowy',
+];
 
 describe('Ustawienia → Integracje → GUS', () => {
   it('bez pliku i bez zapisu: przycisk ukryty na karcie, nowym zamówieniu i Stałych klientach; trasy GUS odmawiają nowym komunikatem', async () => {
@@ -145,7 +188,9 @@ describe('Ustawienia → Integracje → GUS', () => {
     }
     const ekran = await get(app, ADRES, admin);
     expect(ekran.body).toContain('Podłączony');
-    expect(formularz(ekran.body)).toMatch(/<input id="gus-klucz"[^>]* value=""[^>]* placeholder="zapisany — wpisz nowy, żeby zmienić">/u);
+    expect(formularz(ekran.body)).toMatch(
+      /<input id="gus-klucz"[^>]* value=""[^>]* placeholder="zapisany — wpisz nowy, żeby zmienić">/u,
+    );
     // Log zdarzeń nie niesie klucza (zapytania GUS zapisują tylko NIP i wynik).
     expect(JSON.stringify(db.prepare('SELECT * FROM log').all()).includes(KLUCZ_2)).toBe(false);
   });

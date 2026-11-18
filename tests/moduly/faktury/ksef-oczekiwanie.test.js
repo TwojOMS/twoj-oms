@@ -2,7 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie, pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
 import {
-  czekaNaKsef, warunekCzekaNaKsefSql, KOLUMNA_ZLECONA_Z_PANELU_SQL, czyWierszWZakresieKsef,
+  czekaNaKsef,
+  warunekCzekaNaKsefSql,
+  KOLUMNA_ZLECONA_Z_PANELU_SQL,
+  czyWierszWZakresieKsef,
 } from '../../../src/domena/ksef-oczekiwanie.js';
 import { zajmijWysylkeKsef } from '../../../src/moduly/faktury/db/wysylki-ksef.js';
 
@@ -18,29 +21,32 @@ import { zajmijWysylkeKsef } from '../../../src/moduly/faktury/db/wysylki-ksef.j
 
 let licznik = 0;
 
-function zamowienieZFaktura(db, {
-  zamowienie = {}, faktura = {}, bezFaktury = false, wyslanaZPanelu = false,
-} = {}) {
+function zamowienieZFaktura(db, { zamowienie = {}, faktura = {}, bezFaktury = false, wyslanaZPanelu = false } = {}) {
   licznik += 1;
   const sklep = zamowienie.sklep ?? 'allegro_swietlik';
-  const id = zapiszZamowienie(db, sklep, {
-    zrodlo_id: `${sklep}-${licznik}`,
-    numer: String(2000 + licznik),
-    klient: { first_name: 'Jan' },
-    dostawa: {},
-    metoda_wysylki: 'dpd',
-    kwota_pobrania: null,
-    chce_fakture: 1,
-    nip: null,
-    kwota_brutto: '100.00',
-    koszt_dostawy_brutto: '0.00',
-    status_woo: 'processing',
-    oplacone_at: null,
-    anulowane: 0,
-    utworzone_at: '2026-08-05T09:00:00',
-    pozycje: [],
-    ...zamowienie,
-  }, {});
+  const id = zapiszZamowienie(
+    db,
+    sklep,
+    {
+      zrodlo_id: `${sklep}-${licznik}`,
+      numer: String(2000 + licznik),
+      klient: { first_name: 'Jan' },
+      dostawa: {},
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: 1,
+      nip: null,
+      kwota_brutto: '100.00',
+      koszt_dostawy_brutto: '0.00',
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane: 0,
+      utworzone_at: '2026-08-05T09:00:00',
+      pozycje: [],
+      ...zamowienie,
+    },
+    {},
+  );
   // `anulowane_recznie` nie ma na liście pól UPDATE-u (to cała jego ochrona przed pollerem),
   // więc ustawiamy je wprost — tak samo jak robi to trasa zmiany statusu.
   if (zamowienie.anulowane_recznie != null) {
@@ -56,8 +62,8 @@ function zamowienieZFaktura(db, {
       ...faktura,
     };
     db.prepare(
-      'INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, ksef_status, ksef_numer,'
-      + ' allegro_wyslana_at, utworzona_at) VALUES (?,?,?,?,?,?,?)',
+      'INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, ksef_status, ksef_numer,' +
+        ' allegro_wyslana_at, utworzona_at) VALUES (?,?,?,?,?,?,?)',
     ).run(id, f.infakt_uuid, f.numer, f.ksef_status, f.ksef_numer, f.allegro_wyslana_at, '2026-08-05T10:00:00Z');
     // Dokladnie to, co robi services/wysylka-ksef.js PRZED wywolaniem inFaktu: rezerwacja
     // dokumentu w `wysylki_ksef`. To jest FAKT drugiej galezi warunku.
@@ -115,8 +121,7 @@ describe('czekaNaKsef — jedna definicja dla czuwacza i dla paska spraw', () =>
   it('faktura z numerem KSeF i faktura wysłana już do Allegro nie czekają', () => {
     const db = openOmsDb(':memory:');
     expect(czeka(db, zamowienieZFaktura(db, { faktura: { ksef_numer: 'KS-1' } }))).toBe(false);
-    expect(czeka(db, zamowienieZFaktura(db, { faktura: { allegro_wyslana_at: '2026-08-06T09:00:00Z' } })))
-      .toBe(false);
+    expect(czeka(db, zamowienieZFaktura(db, { faktura: { allegro_wyslana_at: '2026-08-06T09:00:00Z' } }))).toBe(false);
     db.close();
   });
 
@@ -166,7 +171,9 @@ describe('czekaNaKsef — jedna definicja dla czuwacza i dla paska spraw', () =>
   it('wysłana z panelu, ale mająca już numer KSeF — nie czeka', () => {
     const db = openOmsDb(':memory:');
     const id = zamowienieZFaktura(db, {
-      zamowienie: { sklep: 'swietlik' }, faktura: { ksef_numer: 'KS-9' }, wyslanaZPanelu: true,
+      zamowienie: { sklep: 'swietlik' },
+      faktura: { ksef_numer: 'KS-9' },
+      wyslanaZPanelu: true,
     });
     expect(czeka(db, id)).toBe(false);
     db.close();
@@ -179,17 +186,25 @@ describe('czekaNaKsef — jedna definicja dla czuwacza i dla paska spraw', () =>
 // Allegro: tam numer służy do wysyłki na Allegro, która i tak jest tylko na żądanie kupującego.
 describe('gałąź „zlecił panel" nie pyta o żądanie faktury', () => {
   const czeka = (db, id) => czekaNaKsef(pobierzZamowienie(db, id));
-  const zSqla = (db) => db.prepare(`
+  const zSqla = (db) =>
+    db
+      .prepare(
+        `
     SELECT f.zamowienie_id, z.sklep, ${KOLUMNA_ZLECONA_Z_PANELU_SQL}
     FROM faktury f
     JOIN zamowienia z ON z.id = f.zamowienie_id
     WHERE ${warunekCzekaNaKsefSql()}
-  `).all().filter(czyWierszWZakresieKsef).map((w) => w.zamowienie_id);
+  `,
+      )
+      .all()
+      .filter(czyWierszWZakresieKsef)
+      .map((w) => w.zamowienie_id);
 
   it('zamówienie sklepowe BEZ żądania, faktura zlecona do KSeF przez panel — czeka i jest w wyniku SQL', () => {
     const db = openOmsDb(':memory:');
     const id = zamowienieZFaktura(db, {
-      zamowienie: { sklep: 'polcien', chce_fakture: 0 }, wyslanaZPanelu: true,
+      zamowienie: { sklep: 'polcien', chce_fakture: 0 },
+      wyslanaZPanelu: true,
     });
     expect(czeka(db, id)).toBe(true);
     expect(zSqla(db)).toEqual([id]);
@@ -199,7 +214,8 @@ describe('gałąź „zlecił panel" nie pyta o żądanie faktury', () => {
   it('zamówienie Allegro BEZ żądania, zlecone przez panel — czeka (gałąź panelu)', () => {
     const db = openOmsDb(':memory:');
     const id = zamowienieZFaktura(db, {
-      zamowienie: { sklep: 'allegro_polcien', chce_fakture: 0 }, wyslanaZPanelu: true,
+      zamowienie: { sklep: 'allegro_polcien', chce_fakture: 0 },
+      wyslanaZPanelu: true,
     });
     expect(czeka(db, id)).toBe(true);
     expect(zSqla(db)).toEqual([id]);
@@ -225,10 +241,13 @@ describe('gałąź „zlecił panel" nie pyta o żądanie faktury', () => {
   it('część wspólna obowiązuje dalej: bez żądania, zlecona, ale anulowana albo z numerem KSeF — nie czeka', () => {
     const db = openOmsDb(':memory:');
     const anulowane = zamowienieZFaktura(db, {
-      zamowienie: { sklep: 'polcien', chce_fakture: 0, anulowane: 1 }, wyslanaZPanelu: true,
+      zamowienie: { sklep: 'polcien', chce_fakture: 0, anulowane: 1 },
+      wyslanaZPanelu: true,
     });
     const zNumerem = zamowienieZFaktura(db, {
-      zamowienie: { sklep: 'polcien', chce_fakture: 0 }, faktura: { ksef_numer: 'KS-7' }, wyslanaZPanelu: true,
+      zamowienie: { sklep: 'polcien', chce_fakture: 0 },
+      faktura: { ksef_numer: 'KS-7' },
+      wyslanaZPanelu: true,
     });
     expect(czeka(db, anulowane)).toBe(false);
     expect(czeka(db, zNumerem)).toBe(false);
@@ -290,12 +309,20 @@ describe('warunek SQL i predykat domeny odpowiadają IDENTYCZNIE', () => {
     ];
     const idy = przypadki.map((p) => zamowienieZFaktura(db, p));
 
-    const zeSqla = new Set(db.prepare(`
+    const zeSqla = new Set(
+      db
+        .prepare(
+          `
       SELECT f.zamowienie_id, z.sklep, ${KOLUMNA_ZLECONA_Z_PANELU_SQL}
       FROM faktury f
       JOIN zamowienia z ON z.id = f.zamowienie_id
       WHERE ${warunekCzekaNaKsefSql()}
-    `).all().filter(czyWierszWZakresieKsef).map((w) => w.zamowienie_id));
+    `,
+        )
+        .all()
+        .filter(czyWierszWZakresieKsef)
+        .map((w) => w.zamowienie_id),
+    );
 
     const zPredykatu = new Set(idy.filter((id) => czekaNaKsef(pobierzZamowienie(db, id))));
 

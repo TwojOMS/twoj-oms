@@ -21,13 +21,18 @@ import { createModulFaktury } from '../../../src/moduly/faktury/modul.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { programInfakt } from '../../../src/integracje/programy/infakt.ts';
-import { METODY_OBOWIAZKOWE, METODA_ZDOLNOSCI, sprawdzProgramFakturowy } from '../../../src/integracje/program-fakturowy.ts';
+import {
+  METODY_OBOWIAZKOWE,
+  METODA_ZDOLNOSCI,
+  sprawdzProgramFakturowy,
+} from '../../../src/integracje/program-fakturowy.ts';
 import { createAtrapaInfaktu, createAtrapaVies } from '../../../deploy/proba/atrapy/infakt.mjs';
 import { createWysylkaKsef } from '../../../src/moduly/faktury/services/wysylka-ksef.js';
 import { createAutomatKsef } from '../../../src/moduly/faktury/services/ksef-automat.js';
 import { createCzuwaczKsef, najdluzszyPrzebiegMs } from '../../../src/moduly/faktury/services/czuwacz-ksef.js';
 import {
-  createCzuwaczArchiwumSprzedazy, najdluzszyPrzebiegArchiwumSprzedazyMs,
+  createCzuwaczArchiwumSprzedazy,
+  najdluzszyPrzebiegArchiwumSprzedazyMs,
 } from '../../../src/moduly/faktury/services/czuwacz-archiwum-sprzedazy.js';
 import { dopiszKlientaZbiorczego } from './_klient-zbiorczy-pomocniki.js';
 
@@ -38,7 +43,10 @@ const POST = { ...AUTH, origin: 'http://localhost', 'content-type': 'application
 const formularz = (pola) => new URLSearchParams(pola).toString();
 
 const NAZWA_TESTOWNIKA = Object.freeze({
-  mianownik: 'Testownik', dopelniacz: 'Testownika', miejscownik: 'Testowniku', narzednik: 'Testownikiem',
+  mianownik: 'Testownik',
+  dopelniacz: 'Testownika',
+  miejscownik: 'Testowniku',
+  narzednik: 'Testownikiem',
 });
 const ZDANIE_KSEF = 'Testownik nie wysyła do KSeF z OMS-u —';
 const ZDANIE_NIEOPLACONYCH = 'Testownik nie podaje listy nieopłaconych faktur';
@@ -53,20 +61,37 @@ const ZDANIE_NIEOPLACONYCH = 'Testownik nie podaje listy nieopłaconych faktur';
  */
 function programTestowy({ podklad = {}, surowy = {}, bez = [], limity = {} } = {}) {
   const liczniki = {};
-  const licz = (nazwa) => async (...a) => {
-    liczniki[nazwa] = (liczniki[nazwa] ?? 0) + 1;
-    return podklad[nazwa] ? podklad[nazwa](...a) : null;
-  };
+  const licz =
+    (nazwa) =>
+    async (...a) => {
+      liczniki[nazwa] = (liczniki[nazwa] ?? 0) + 1;
+      return podklad[nazwa] ? podklad[nazwa](...a) : null;
+    };
   const metody = {};
-  for (const m of [...METODY_OBOWIAZKOWE, ...Object.values(METODA_ZDOLNOSCI)]) if (!bez.includes(m)) metody[m] = licz(m);
+  for (const m of [...METODY_OBOWIAZKOWE, ...Object.values(METODA_ZDOLNOSCI)])
+    if (!bez.includes(m)) metody[m] = licz(m);
   for (const m of ['znajdzKlientaPoNip', 'zalozKlienta']) if (surowy[m]) metody[m] = (...a) => surowy[m](...a);
-  const zdolnosci = Object.entries(METODA_ZDOLNOSCI).filter(([, m]) => metody[m]).map(([z]) => z);
+  const zdolnosci = Object.entries(METODA_ZDOLNOSCI)
+    .filter(([, m]) => metody[m])
+    .map(([z]) => z);
   const program = {
     ...metody,
     opis: {
-      id: 'testowy', nazwa: NAZWA_TESTOWNIKA, regulaVat: 'wierszami', zdolnosci, wystawienieWysylaDoKsef: false,
-      limity: { zadanieMs: 30000, najdluzszaListaMs: 120000, stronaListy: 25, sufitStron: 40, rownolegleStron: 4, ...limity },
-      adres: 'https://testownik.invalid', ekran: '/ustawienia/integracje/testownik',
+      id: 'testowy',
+      nazwa: NAZWA_TESTOWNIKA,
+      regulaVat: 'wierszami',
+      zdolnosci,
+      wystawienieWysylaDoKsef: false,
+      limity: {
+        zadanieMs: 30000,
+        najdluzszaListaMs: 120000,
+        stronaListy: 25,
+        sufitStron: 40,
+        rownolegleStron: 4,
+        ...limity,
+      },
+      adres: 'https://testownik.invalid',
+      ekran: '/ustawienia/integracje/testownik',
     },
   };
   return { program: sprawdzProgramFakturowy(program), liczniki };
@@ -74,8 +99,13 @@ function programTestowy({ podklad = {}, surowy = {}, bez = [], limity = {} } = {
 
 function envTestu(katalog) {
   return {
-    OMS_TRYB: 'proba', OMS_USER: 'operator', OMS_PASS: 'fixture', OMS_SPRZEDAWCA_NIP: '1234563218',
-    OMS_RACHUNEK: '34109010140000000000000000', OMS_PROFORMY_KATALOG: katalog, OMS_ETYKIETY_KATALOG: katalog,
+    OMS_TRYB: 'proba',
+    OMS_USER: 'operator',
+    OMS_PASS: 'fixture',
+    OMS_SPRZEDAWCA_NIP: '1234563218',
+    OMS_RACHUNEK: '34109010140000000000000000',
+    OMS_PROFORMY_KATALOG: katalog,
+    OMS_ETYKIETY_KATALOG: katalog,
   };
 }
 
@@ -93,22 +123,66 @@ async function aplikacja(katalog, opcje = {}) {
   };
   const moduly = modulyDla(env).map((m) => (m.nazwa === 'faktury' ? createModulFaktury({ fabryki }) : m));
   const a = await zbudujOms({ env, moduly, teraz: () => new Date(), log: () => {} });
-  const http = (metoda, url, pola) => a.app.inject({ method: metoda, url, headers: metoda === 'GET' ? AUTH : POST,
-    ...(metoda === 'GET' ? {} : { payload: typeof pola === 'string' ? pola : formularz(pola ?? {}) }) });
+  const http = (metoda, url, pola) =>
+    a.app.inject({
+      method: metoda,
+      url,
+      headers: metoda === 'GET' ? AUTH : POST,
+      ...(metoda === 'GET' ? {} : { payload: typeof pola === 'string' ? pola : formularz(pola ?? {}) }),
+    });
   return { a, http, liczniki: wynik.liczniki, program: wynik.program };
 }
 
 const zamowienie = (numer, nad = {}) => ({
-  zrodlo_id: Number(numer.replace(/\D/g, '')), numer,
-  klient: { company: 'Pracownia Półcień sp. z o.o.', email: 'biuro@polcien.invalid', phone: '+48500100200',
-    address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
-  dostawa: { first_name: 'Anna', last_name: 'Półcień', address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, pobranie: 0, chce_fakture: 1, nip: NIP_PRACOWNI,
-  kwota_brutto: '357.00', koszt_dostawy_brutto: '15.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
+  zrodlo_id: Number(numer.replace(/\D/g, '')),
+  numer,
+  klient: {
+    company: 'Pracownia Półcień sp. z o.o.',
+    email: 'biuro@polcien.invalid',
+    phone: '+48500100200',
+    address_1: 'Lampowa 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
+  },
+  dostawa: {
+    first_name: 'Anna',
+    last_name: 'Półcień',
+    address_1: 'Lampowa 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
+  },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  pobranie: 0,
+  chce_fakture: 1,
+  nip: NIP_PRACOWNI,
+  kwota_brutto: '357.00',
+  koszt_dostawy_brutto: '15.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
   utworzone_at: '2026-10-10T09:00:00Z',
   pozycje: [
-    { zrodlo_id: 11, nazwa: 'Lampa wisząca Półcień', sku: 'LAMPA-W1', ilosc: 2, cena_brutto: '129.00', brutto_linii: '258.00', vat: null },
-    { zrodlo_id: 12, nazwa: 'Klosz lniany', sku: 'KLOSZ-L', ilosc: 1, cena_brutto: '84.00', brutto_linii: '84.00', vat: null },
+    {
+      zrodlo_id: 11,
+      nazwa: 'Lampa wisząca Półcień',
+      sku: 'LAMPA-W1',
+      ilosc: 2,
+      cena_brutto: '129.00',
+      brutto_linii: '258.00',
+      vat: null,
+    },
+    {
+      zrodlo_id: 12,
+      nazwa: 'Klosz lniany',
+      sku: 'KLOSZ-L',
+      ilosc: 1,
+      cena_brutto: '84.00',
+      brutto_linii: '84.00',
+      vat: null,
+    },
   ],
   ...nad,
 });
@@ -132,21 +206,45 @@ describe('wystawienie ≠ wysyłka do KSeF', () => {
       const db = a.db;
       // Faktura zamówienia, przedpłacona (oznaczenie zapłaty) i za pobraniem.
       const z1 = zapiszZamowienie(db, 'reczne', zamowienie('PC-701'), {});
-      oczekuj(await http('POST', `/zamowienia/${z1}/platnosci`, { kwota: '357,00', data: '2026-10-12', metoda: 'Przelew' }), 302, 'wpłata');
-      oczekuj(await http('POST', `/zamowienia/${z1}/faktura`, { termin: 'zaplacone', data_wystawienia: '', data_sprzedazy: '' }), 302, 'faktura 1');
+      oczekuj(
+        await http('POST', `/zamowienia/${z1}/platnosci`, { kwota: '357,00', data: '2026-10-12', metoda: 'Przelew' }),
+        302,
+        'wpłata',
+      );
+      oczekuj(
+        await http('POST', `/zamowienia/${z1}/faktura`, {
+          termin: 'zaplacone',
+          data_wystawienia: '',
+          data_sprzedazy: '',
+        }),
+        302,
+        'faktura 1',
+      );
       const z2 = zapiszZamowienie(db, 'reczne', zamowienie('PC-702', { pobranie: 1, kwota_pobrania: '357.00' }), {});
       oczekuj(await http('POST', `/zamowienia/${z2}/faktura`, {}), 302, 'faktura 2');
       // Faktura okresu klienta zbiorczego.
       dopiszKlientaZbiorczego(db, { klucz: 'polcien', nazwa: 'Pracownia Półcień sp. z o.o.', nip: NIP_PRACOWNI });
       const z3 = zapiszZamowienie(db, 'reczne', zamowienie('PC-703'), {});
       oczekuj(await http('POST', `/zamowienia/${z3}/okres`, {}), 302, 'okres');
-      const { okres_rozliczeniowy_id: okresId } = db.prepare('SELECT okres_rozliczeniowy_id FROM zamowienia WHERE id = ?').get(z3);
+      const { okres_rozliczeniowy_id: okresId } = db
+        .prepare('SELECT okres_rozliczeniowy_id FROM zamowienia WHERE id = ?')
+        .get(z3);
       oczekuj(await http('POST', `/okresy/${okresId}/wystaw-fakture`, {}), 302, 'faktura okresu');
       // Korekta zwrotu.
-      oczekuj(await http('POST', `/zamowienia/${z1}/zwrot`, {
-        data: '2026-10-14', kwota: '129.00', kwota_dostawy: '', powod: 'klosz pęknięty',
-        klucz: 's11', nazwa: 'Lampa wisząca Półcień', ilosc: '1', pozycja_kwota: '129.00',
-      }), 302, 'zwrot');
+      oczekuj(
+        await http('POST', `/zamowienia/${z1}/zwrot`, {
+          data: '2026-10-14',
+          kwota: '129.00',
+          kwota_dostawy: '',
+          powod: 'klosz pęknięty',
+          klucz: 's11',
+          nazwa: 'Lampa wisząca Półcień',
+          ilosc: '1',
+          pozycja_kwota: '129.00',
+        }),
+        302,
+        'zwrot',
+      );
       const { id: zwrotId } = db.prepare('SELECT id FROM zwroty WHERE zamowienie_id = ?').get(z1);
       oczekuj(await http('POST', `/zamowienia/${z1}/zwroty/${zwrotId}/korekta`, {}), 302, 'korekta');
 
@@ -161,13 +259,20 @@ describe('wystawienie ≠ wysyłka do KSeF', () => {
       expect(liczniki.listaFaktur).toBeGreaterThan(0);
       expect(liczniki.listaNieoplaconych).toBeGreaterThan(0);
       const faktury = await a.usluga('faktury', 'programFakturowy').listaFaktur({});
-      const doKsef = faktury.filter((f) => f.client_tax_code).slice(0, 2).map((f) => f.uuid);
+      const doKsef = faktury
+        .filter((f) => f.client_tax_code)
+        .slice(0, 2)
+        .map((f) => f.uuid);
       expect(doKsef).toHaveLength(2);
       oczekuj(await http('GET', `/faktury/${doKsef[0]}/pdf?rodzaj=vat&numer=x`), 200, 'PDF');
       expect(liczniki.pobierzPdf).toBe(1);
 
       // Podgląd niczego nie wysyła; zatwierdzenie wysyła dokładnie zaznaczone dokumenty, każdy raz.
-      const ksef = new URLSearchParams([['miesiac', '2026-10'], ['pole', 'invoice_date'], ...doKsef.map((u) => ['uuid', u])]).toString();
+      const ksef = new URLSearchParams([
+        ['miesiac', '2026-10'],
+        ['pole', 'invoice_date'],
+        ...doKsef.map((u) => ['uuid', u]),
+      ]).toString();
       const podglad = await http('POST', '/faktury/ksef/podglad', ksef);
       oczekuj(podglad, 200, 'podgląd');
       expect(liczniki.wyslijDokumentDoKsef ?? 0).toBe(0);
@@ -243,12 +348,15 @@ describe('budżet czuwaczy z program.opis.limity', () => {
     // 50 × 31 s + 50 × 5 s; 30 min + 90 s + 31 s — inne niż stałe inFaktu, więc liczone naprawdę z limitów programu.
     expect(najdluzszyPrzebiegMs(limity)).toBe(50 * 31000 + 50 * 5000);
     expect(najdluzszyPrzebiegMs(limity)).not.toBe(najdluzszyPrzebiegMs(programInfakt({}).opis.limity));
-    expect(najdluzszyPrzebiegArchiwumSprzedazyMs(limity)).not.toBe(najdluzszyPrzebiegArchiwumSprzedazyMs(programInfakt({}).opis.limity));
-    expect(najdluzszyPrzebiegArchiwumSprzedazyMs(limity) - najdluzszyPrzebiegArchiwumSprzedazyMs({ ...limity, najdluzszaListaMs: 0, zadanieMs: 0 }))
-      .toBe(90000 + 31000);
+    expect(najdluzszyPrzebiegArchiwumSprzedazyMs(limity)).not.toBe(
+      najdluzszyPrzebiegArchiwumSprzedazyMs(programInfakt({}).opis.limity),
+    );
+    expect(
+      najdluzszyPrzebiegArchiwumSprzedazyMs(limity) -
+        najdluzszyPrzebiegArchiwumSprzedazyMs({ ...limity, najdluzszaListaMs: 0, zadanieMs: 0 }),
+    ).toBe(90000 + 31000);
     expect(typeof createCzuwaczKsef({ db, program }).przebieg).toBe('function');
     expect(typeof createCzuwaczArchiwumSprzedazy({ db, program, katalogArchiwum: katalog }).przebieg).toBe('function');
     db.close();
   });
-
 });

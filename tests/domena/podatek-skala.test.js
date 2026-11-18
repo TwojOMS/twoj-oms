@@ -8,16 +8,13 @@ describe('podatek — skala 12/32%', () => {
   });
 
   it('podstawa zaokragla sie do pelnych zlotych, jak w zeznaniu', () => {
-    expect(podatekNarastajaco({ dochodGrosze: 100_049, spoleczneGrosze: 0 }).podstawaGrosze)
-      .toBe(100_000);
-    expect(podatekNarastajaco({ dochodGrosze: 100_050, spoleczneGrosze: 0 }).podstawaGrosze)
-      .toBe(100_100);
+    expect(podatekNarastajaco({ dochodGrosze: 100_049, spoleczneGrosze: 0 }).podstawaGrosze).toBe(100_000);
+    expect(podatekNarastajaco({ dochodGrosze: 100_050, spoleczneGrosze: 0 }).podstawaGrosze).toBe(100_100);
   });
 
   it('12% minus kwota zmniejszajaca 3600 zl', () => {
     // Podstawa 100 000 zl → 12 000 − 3 600 = 8 400 zl.
-    expect(podatekNarastajaco({ dochodGrosze: 10_000_000, spoleczneGrosze: 0 }).podatekGrosze)
-      .toBe(840_000);
+    expect(podatekNarastajaco({ dochodGrosze: 10_000_000, spoleczneGrosze: 0 }).podatekGrosze).toBe(840_000);
   });
 
   it('PODATEK NIE SCHODZI PONIZEJ ZERA przy niskiej podstawie', () => {
@@ -58,7 +55,7 @@ describe('prognoza przekroczenia progu 32%', () => {
   it('liczy DOPLATE: nadwyzka po 32% zamiast 12%, czyli roznica dwudziestu punktow', () => {
     const p = prognozaProgu(LIPIEC);
     expect(p.nadwyzkaGrosze).toBe(p.podstawaRokuGrosze - PROG_GROSZE);
-    expect(p.dodatkowyPodatekGrosze).toBe(Math.round(p.nadwyzkaGrosze * 0.20));
+    expect(p.dodatkowyPodatekGrosze).toBe(Math.round(p.nadwyzkaGrosze * 0.2));
   });
 
   it('MOWI WPROST, gdy przy dzisiejszym tempie progu NIE BEDZIE — zamiast milczec', () => {

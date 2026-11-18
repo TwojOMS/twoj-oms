@@ -35,13 +35,19 @@ describe('menuKontaDla', () => {
     expect(menuKontaDla(zmienione).opisRoli).toBe('Sprzedaż + zmiany');
   });
 
-  it.each([false, true])('konto serwisowe ma jawną etykietę i nie dostaje skrótu administracyjnego (admin=%s)', (admin) => {
-    const serwisowe = konto(undefined, {
-      imie: 'konto serwisowe', rola: 'serwisowe', serwisowe: true, admin,
-      uprawnienia: new Set(admin ? ekranyRoli('administrator') : ['api']),
-    });
+  it.each([false, true])(
+    'konto serwisowe ma jawną etykietę i nie dostaje skrótu administracyjnego (admin=%s)',
+    (admin) => {
+      const serwisowe = konto(undefined, {
+        imie: 'konto serwisowe',
+        rola: 'serwisowe',
+        serwisowe: true,
+        admin,
+        uprawnienia: new Set(admin ? ekranyRoli('administrator') : ['api']),
+      });
 
-    expect(menuKontaDla(serwisowe).opisRoli).toBe('Konto serwisowe');
-    expect(menuKontaDla(serwisowe).pokazAdministracje).toBe(false);
-  });
+      expect(menuKontaDla(serwisowe).opisRoli).toBe('Konto serwisowe');
+      expect(menuKontaDla(serwisowe).pokazAdministracje).toBe(false);
+    },
+  );
 });

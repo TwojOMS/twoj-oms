@@ -1,22 +1,56 @@
-import type {ModulOms,Zegar} from '../../core/kontrakty.ts';
-import {zarejestrujTrasyKampanii} from './trasy/kampania.js';
-import {konfiguracjaMarketingu} from './konfiguracja.ts';
-import {utworzUslugiMarketingu,type FabrykiMarketingu,type UslugiMarketingu} from './uslugi.ts';
-import {zegarKampanii,zegarReklam} from './zegary.ts';
-export {utworzUslugiMarketingu} from './uslugi.ts';
-export function createModulMarketing({fabryki={},uslugi}:{fabryki?:FabrykiMarketingu;uslugi?:UslugiMarketingu}={}):ModulOms<ReturnType<typeof konfiguracjaMarketingu>>{
- return {
- nazwa:'marketing',wersja:'1.2.0',wymaga:['rdzen','web'],migracje:[],konfiguracja:konfiguracjaMarketingu,
- kluczeIntegracji:['META_TOKEN','GA4_KLUCZ'],
- uprawnienia:[{klucz:'kampania',etykieta:'Kampania',role:['administrator','sprzedaz']}],
- menu:[{dzial:'analizy-cele',grupa:'analizy-cele',etykieta:'Reklamy',adres:'/kampania',uprawnienie:'kampania',kolejnosc:30}],
- zbuduj:ctx=>{
-  const u=uslugi??utworzUslugiMarketingu({db:ctx.db,config:ctx.konfiguracja,teraz:ctx.teraz,fabryki});
-  const zegary:Zegar[]=[];
-  if(!ctx.konfiguracja.proba){if(u.czuwaczKampanii)zegary.push(zegarKampanii({czuwaczKampanii:u.czuwaczKampanii,log:ctx.log}));zegary.push(zegarReklam({czuwaczReklam:u.czuwaczReklam,log:ctx.log}));}
-  return {uslugi:u,zegary,trasy:app=>{
-   zarejestrujTrasyKampanii(app,{db:ctx.db,config:ctx.usluga('marketing','config'),proba:ctx.konfiguracja.proba,definicje:ctx.usluga<{definicje:readonly {klucz:string;etykieta?:string}[]}>('web','config').definicje,czuwaczKampanii:ctx.usluga('marketing','czuwaczKampanii'),czuwaczReklam:ctx.usluga('marketing','czuwaczReklam')});
-  }};
- }};
+import type { ModulOms, Zegar } from '../../core/kontrakty.ts';
+import { zarejestrujTrasyKampanii } from './trasy/kampania.js';
+import { konfiguracjaMarketingu } from './konfiguracja.ts';
+import { utworzUslugiMarketingu, type FabrykiMarketingu, type UslugiMarketingu } from './uslugi.ts';
+import { zegarKampanii, zegarReklam } from './zegary.ts';
+export { utworzUslugiMarketingu } from './uslugi.ts';
+export function createModulMarketing({
+  fabryki = {},
+  uslugi,
+}: { fabryki?: FabrykiMarketingu; uslugi?: UslugiMarketingu } = {}): ModulOms<
+  ReturnType<typeof konfiguracjaMarketingu>
+> {
+  return {
+    nazwa: 'marketing',
+    wersja: '1.2.0',
+    wymaga: ['rdzen', 'web'],
+    migracje: [],
+    konfiguracja: konfiguracjaMarketingu,
+    kluczeIntegracji: ['META_TOKEN', 'GA4_KLUCZ'],
+    uprawnienia: [{ klucz: 'kampania', etykieta: 'Kampania', role: ['administrator', 'sprzedaz'] }],
+    menu: [
+      {
+        dzial: 'analizy-cele',
+        grupa: 'analizy-cele',
+        etykieta: 'Reklamy',
+        adres: '/kampania',
+        uprawnienie: 'kampania',
+        kolejnosc: 30,
+      },
+    ],
+    zbuduj: (ctx) => {
+      const u = uslugi ?? utworzUslugiMarketingu({ db: ctx.db, config: ctx.konfiguracja, teraz: ctx.teraz, fabryki });
+      const zegary: Zegar[] = [];
+      if (!ctx.konfiguracja.proba) {
+        if (u.czuwaczKampanii) zegary.push(zegarKampanii({ czuwaczKampanii: u.czuwaczKampanii, log: ctx.log }));
+        zegary.push(zegarReklam({ czuwaczReklam: u.czuwaczReklam, log: ctx.log }));
+      }
+      return {
+        uslugi: u,
+        zegary,
+        trasy: (app) => {
+          zarejestrujTrasyKampanii(app, {
+            db: ctx.db,
+            config: ctx.usluga('marketing', 'config'),
+            proba: ctx.konfiguracja.proba,
+            definicje: ctx.usluga<{ definicje: readonly { klucz: string; etykieta?: string }[] }>('web', 'config')
+              .definicje,
+            czuwaczKampanii: ctx.usluga('marketing', 'czuwaczKampanii'),
+            czuwaczReklam: ctx.usluga('marketing', 'czuwaczReklam'),
+          });
+        },
+      };
+    },
+  };
 }
-export const modulMarketing=createModulMarketing();
+export const modulMarketing = createModulMarketing();

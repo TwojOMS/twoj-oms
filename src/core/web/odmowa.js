@@ -4,11 +4,20 @@
 // swoim formacie. Wzór: bladNadania (src/moduly/wysylka/trasy/nadanie.js).
 
 // Powrót tylko na adres w obrębie panelu: „//host” i pełne adresy wypadają na listę zamówień.
-export const adresLokalny = (a) => (typeof a === 'string' && a.startsWith('/') && !a.startsWith('//') && !a.startsWith('/\\') ? a : '/');
+export const adresLokalny = (a) =>
+  typeof a === 'string' && a.startsWith('/') && !a.startsWith('//') && !a.startsWith('/\\') ? a : '/';
 
 // Panel bez modułu web (sama kompozycja API, bez renderera) nie ma `reply.view` — wtedy odmowa zostaje
 // gołym tekstem, zamiast wyjątku, który Fastify zamienia na JSON bez komunikatu.
-export const stronaOdmowy = (reply, status, komunikat, { tytul = 'Nie udało się wykonać polecenia', wroc = '/', napisWroc = 'Wróć' } = {}) =>
+export const stronaOdmowy = (
+  reply,
+  status,
+  komunikat,
+  { tytul = 'Nie udało się wykonać polecenia', wroc = '/', napisWroc = 'Wróć' } = {},
+) =>
   typeof reply.view !== 'function'
     ? reply.code(status).type('text/plain; charset=utf-8').send(komunikat)
-    : reply.code(status).type('text/html; charset=utf-8').view('odmowa.ejs', { tytul, komunikat, wroc: adresLokalny(wroc), napisWroc });
+    : reply
+        .code(status)
+        .type('text/html; charset=utf-8')
+        .view('odmowa.ejs', { tytul, komunikat, wroc: adresLokalny(wroc), napisWroc });

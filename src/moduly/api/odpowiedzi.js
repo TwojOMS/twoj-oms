@@ -10,12 +10,14 @@ export function czytajStronicowanie(query) {
   const ile = Number(tekstIle);
   if (typeof tekstPo !== 'string' || !/^\d+$/.test(tekstPo) || !Number.isSafeInteger(po) || po < 0) {
     throw Object.assign(new Error('Parametr po musi być nieujemną bezpieczną liczbą całkowitą zapisaną cyframi.'), {
-      statusCode: 400, kod: 'stronicowanie',
+      statusCode: 400,
+      kod: 'stronicowanie',
     });
   }
   if (typeof tekstIle !== 'string' || !/^\d+$/.test(tekstIle) || !Number.isInteger(ile) || ile < 1 || ile > 200) {
     throw Object.assign(new Error('Parametr ile musi być liczbą całkowitą od 1 do 200.'), {
-      statusCode: 400, kod: 'stronicowanie',
+      statusCode: 400,
+      kod: 'stronicowanie',
     });
   }
   return { po, ile };

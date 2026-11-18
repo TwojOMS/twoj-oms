@@ -44,8 +44,7 @@ describe('wymiaryZTekstu — kształty zmierzone na prawdziwych sklepach', () =>
   });
 
   it('rozmiar w nazwie produktu, po myślniku', () => {
-    expect(wymiaryZTekstu('Lampa wisząca Kopuła – 60x62cm'))
-      .toEqual({ szerokosc_mm: 600, wysokosc_mm: 620 });
+    expect(wymiaryZTekstu('Lampa wisząca Kopuła – 60x62cm')).toEqual({ szerokosc_mm: 600, wysokosc_mm: 620 });
   });
 
   it('znak razy (×) działa tak samo jak litera x', () => {

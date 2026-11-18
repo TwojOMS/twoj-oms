@@ -54,7 +54,9 @@ export function msCzasuKuriera(tekst) {
   if (/(?:Z|[+-]\d{2}:?\d{2})$/u.test(s)) return Date.parse(s);
   const jakoUtc = Date.parse(`${s}Z`);
   if (Number.isNaN(jakoUtc)) return NaN;
-  const warszawa = Date.parse(`${new Date(jakoUtc).toLocaleString('sv-SE', { timeZone: 'Europe/Warsaw' }).replace(' ', 'T')}Z`);
+  const warszawa = Date.parse(
+    `${new Date(jakoUtc).toLocaleString('sv-SE', { timeZone: 'Europe/Warsaw' }).replace(' ', 'T')}Z`,
+  );
   return jakoUtc - (warszawa - jakoUtc);
 }
 
@@ -67,7 +69,10 @@ const iso = (ms) => (Number.isNaN(ms) ? null : new Date(ms).toISOString());
 export function chwilaDowoduUKuriera(p, { historia = null } = {}) {
   if (!p) return null;
   if (Array.isArray(historia) && historia.length) {
-    const z = dowodPrzejecia({ zrodlo: historia.some((h) => h && 'code' in h) ? 'allegro' : 'dpd', zdarzenia: historia });
+    const z = dowodPrzejecia({
+      zrodlo: historia.some((h) => h && 'code' in h) ? 'allegro' : 'dpd',
+      zdarzenia: historia,
+    });
     const ms = msCzasuKuriera(z?.zdarzenieAt);
     if (!Number.isNaN(ms)) return iso(ms);
   }
@@ -85,8 +90,13 @@ export function odbiorSpozniony(z, wykonanie, { godzin = ODBIOR_SPOZNIONY_H } = 
   const zapis = Date.parse(p?.odebrana_at ?? '');
   if (Number.isNaN(kurier) || Number.isNaN(zapis) || zapis - kurier <= godzin * GODZINA_MS) return { ok: true };
   const h = Math.floor((zapis - kurier) / GODZINA_MS);
-  return { ok: false, kod: 'odbior_spozniony', powod: `Odbiór u kuriera ${h} godzin przed tym, jak OMS go zobaczył (próg ${godzin} h) — `
-    + 'mail „kurier odebrał paczkę” byłby spóźniony. W razie potrzeby wyślij go ręcznie z karty.' };
+  return {
+    ok: false,
+    kod: 'odbior_spozniony',
+    powod:
+      `Odbiór u kuriera ${h} godzin przed tym, jak OMS go zobaczył (próg ${godzin} h) — ` +
+      'mail „kurier odebrał paczkę” byłby spóźniony. W razie potrzeby wyślij go ręcznie z karty.',
+  };
 }
 
 /**
@@ -109,7 +119,10 @@ export function dowodOdbioru(p, { historia = null } = {}) {
     if (inpost) return `inpost:${inpost}`;
   }
   if (Array.isArray(historia) && historia.length) {
-    const zHistorii = dowodPrzejecia({ zrodlo: historia.some((z) => z && 'code' in z) ? 'allegro' : 'dpd', zdarzenia: historia });
+    const zHistorii = dowodPrzejecia({
+      zrodlo: historia.some((z) => z && 'code' in z) ? 'allegro' : 'dpd',
+      zdarzenia: historia,
+    });
     if (zHistorii) return `historia:${zHistorii.kod}`;
   }
   return null;

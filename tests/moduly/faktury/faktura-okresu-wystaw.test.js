@@ -4,17 +4,21 @@ import { zapewnijOkres, pobierzOkres } from '../../../src/oms/db/okresy.js';
 import { createFakturaOkresu } from '../../../src/moduly/faktury/services/faktura-okresu.js';
 import { STAN } from '../../../src/domena/okres-rozliczeniowy.js';
 
-function dodajZamowienie(db, okresId, { numer, kwota, pozycje, anulowane = 0, utworzone = '2026-07-10T10:00:00.000Z' }) {
+function dodajZamowienie(
+  db,
+  okresId,
+  { numer, kwota, pozycje, anulowane = 0, utworzone = '2026-07-10T10:00:00.000Z' },
+) {
   const zrodloId = Number(String(numer).replace(/\D/g, ''));
   db.prepare(
-    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, anulowane,'
-    + ' okres_rozliczeniowy_id, utworzone_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, anulowane,' +
+      ' okres_rozliczeniowy_id, utworzone_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
   ).run('reczne', zrodloId, numer, kwota, anulowane, okresId, utworzone);
   const id = db.prepare('SELECT id FROM zamowienia WHERE numer = ?').get(numer).id;
   for (const p of pozycje) {
     db.prepare(
-      'INSERT INTO pozycje (zamowienie_id, nazwa, ilosc, cena_brutto, brutto_linii, zrodlo)'
-      + " VALUES (?, ?, ?, ?, ?, 'reczna')",
+      'INSERT INTO pozycje (zamowienie_id, nazwa, ilosc, cena_brutto, brutto_linii, zrodlo)' +
+        " VALUES (?, ?, ?, ?, ?, 'reczna')",
     ).run(id, p.nazwa, p.ilosc, p.brutto, p.brutto);
   }
   return id;
@@ -24,14 +28,14 @@ function bazaZOkresem() {
   const db = openOmsDb();
   const okres = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
   db.prepare(
-    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, okres_rozliczeniowy_id, utworzone_at)'
-    + " VALUES ('reczne', 202600001, 'R/2026/001', '104.00', ?, '2026-07-10T10:00:00.000Z')",
+    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, okres_rozliczeniowy_id, utworzone_at)' +
+      " VALUES ('reczne', 202600001, 'R/2026/001', '104.00', ?, '2026-07-10T10:00:00.000Z')",
   ).run(okres.id);
   const zamId = db.prepare('SELECT id FROM zamowienia WHERE numer = ?').get('R/2026/001').id;
   db.prepare(
-    'INSERT INTO pozycje (zamowienie_id, nazwa, ilosc, cena_brutto, brutto_linii, zrodlo)'
-    + " VALUES (?, 'STOP 70x100', 1, '100.00', '100.00', 'reczna'),"
-    + " (?, 'Obsługa zamówienia', 1, '4.00', '4.00', 'reczna')",
+    'INSERT INTO pozycje (zamowienie_id, nazwa, ilosc, cena_brutto, brutto_linii, zrodlo)' +
+      " VALUES (?, 'STOP 70x100', 1, '100.00', '100.00', 'reczna')," +
+      " (?, 'Obsługa zamówienia', 1, '4.00', '4.00', 'reczna')",
   ).run(zamId, zamId);
   return { db, okres, zamId };
 }
@@ -207,8 +211,13 @@ describe('createFakturaOkresu', () => {
     const { db, okres } = bazaZOkresem();
     const infakt = infaktUdany();
     let otworzBrame;
-    const brama = new Promise((res) => { otworzBrame = res; });
-    infakt.znajdzKlientaPoNip = vi.fn(async () => { await brama; return 77; });
+    const brama = new Promise((res) => {
+      otworzBrame = res;
+    });
+    infakt.znajdzKlientaPoNip = vi.fn(async () => {
+      await brama;
+      return 77;
+    });
     const usluga = createFakturaOkresu({ db, infakt });
     const pierwsze = usluga.wystaw(okres.id, { nip: '1234500011' });
     const drugie = usluga.wystaw(okres.id, { nip: '1234500011' });
@@ -241,11 +250,14 @@ describe('createFakturaOkresu — bariera arytmetyczna', () => {
     const db = openOmsDb();
     const okres = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
     dodajZamowienie(db, okres.id, {
-      numer: 'R/2026/001', kwota: '104.00', pozycje: [{ nazwa: 'STOP', ilosc: 1, brutto: '90.00' }],
+      numer: 'R/2026/001',
+      kwota: '104.00',
+      pozycje: [{ nazwa: 'STOP', ilosc: 1, brutto: '90.00' }],
     });
     const infakt = infaktUdany();
-    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1234500011' }))
-      .rejects.toThrow(/R\/2026\/001/);
+    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1234500011' })).rejects.toThrow(
+      /R\/2026\/001/,
+    );
     const po = pobierzOkres(db, okres.id);
     expect(po.stan).toBe(STAN.OTWARTY);
     expect(po.ksef_status).toBeNull();
@@ -259,14 +271,19 @@ describe('createFakturaOkresu — bariera arytmetyczna', () => {
     const db = openOmsDb();
     const okres = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
     dodajZamowienie(db, okres.id, {
-      numer: 'R/2026/001', kwota: '100.00', pozycje: [{ nazwa: 'A', ilosc: 1, brutto: '110.00' }],
+      numer: 'R/2026/001',
+      kwota: '100.00',
+      pozycje: [{ nazwa: 'A', ilosc: 1, brutto: '110.00' }],
     });
     dodajZamowienie(db, okres.id, {
-      numer: 'R/2026/002', kwota: '100.00', pozycje: [{ nazwa: 'B', ilosc: 1, brutto: '90.00' }],
+      numer: 'R/2026/002',
+      kwota: '100.00',
+      pozycje: [{ nazwa: 'B', ilosc: 1, brutto: '90.00' }],
     });
     const infakt = infaktUdany();
-    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1234500011' }))
-      .rejects.toThrow(/nie zgadza/);
+    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1234500011' })).rejects.toThrow(
+      /nie zgadza/,
+    );
     expect(infakt.wystaw).not.toHaveBeenCalled();
   });
 
@@ -274,8 +291,9 @@ describe('createFakturaOkresu — bariera arytmetyczna', () => {
     const db = openOmsDb();
     const okres = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
     const infakt = infaktUdany();
-    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1234500011' }))
-      .rejects.toThrow(/pozycji/);
+    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1234500011' })).rejects.toThrow(
+      /pozycji/,
+    );
     expect(pobierzOkres(db, okres.id).stan).toBe(STAN.OTWARTY);
     expect(infakt.wystaw).not.toHaveBeenCalled();
   });
@@ -292,8 +310,9 @@ describe('createFakturaOkresu — nabywca', () => {
       zalozKlienta: vi.fn(),
       wystaw: vi.fn(),
     };
-    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1234500011' }))
-      .rejects.toThrow(/1234500011/);
+    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1234500011' })).rejects.toThrow(
+      /1234500011/,
+    );
     const po = pobierzOkres(db, okres.id);
     expect(po.stan).toBe(STAN.OTWARTY);
     expect(po.ksef_status).toBeNull();
@@ -338,10 +357,14 @@ describe('createFakturaOkresu — daty i termin platnosci', () => {
   it('wybor terminu jedzie do payloadu jako daty', async () => {
     const { db, okres } = bazaZOkresem();
     const infakt = infaktUdany();
-    await createFakturaOkresu({ db, infakt })
-      .wystaw(okres.id, { nip: '1234500011' }, { dataWystawienia: '2026-07-31', termin: 14 });
+    await createFakturaOkresu({ db, infakt }).wystaw(
+      okres.id,
+      { nip: '1234500011' },
+      { dataWystawienia: '2026-07-31', termin: 14 },
+    );
     expect(infakt.wystaw.mock.calls[0][0]).toMatchObject({
-      invoice_date: '2026-07-31', payment_date: '2026-08-14',
+      invoice_date: '2026-07-31',
+      payment_date: '2026-08-14',
     });
   });
 
@@ -350,8 +373,9 @@ describe('createFakturaOkresu — daty i termin platnosci', () => {
   it('bledny termin nie zostawia rezerwacji ani zamknietego okresu', async () => {
     const { db, okres } = bazaZOkresem();
     const infakt = infaktUdany();
-    await expect(createFakturaOkresu({ db, infakt })
-      .wystaw(okres.id, { nip: '1234500011' }, { termin: 'kiedyś' })).rejects.toThrow(/termin/i);
+    await expect(
+      createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1234500011' }, { termin: 'kiedyś' }),
+    ).rejects.toThrow(/termin/i);
     const po = pobierzOkres(db, okres.id);
     expect(po.stan).toBe(STAN.OTWARTY);
     expect(po.ksef_status).toBeNull();
@@ -369,7 +393,9 @@ describe('createFakturaOkresu — zamowienia anulowane', () => {
   function okresZAnulowanym(db, { anulowaneRecznie = false } = {}) {
     const okres = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
     dodajZamowienie(db, okres.id, {
-      numer: 'R/2026/001', kwota: '100.00', pozycje: [{ nazwa: 'ZYWE', ilosc: 1, brutto: '100.00' }],
+      numer: 'R/2026/001',
+      kwota: '100.00',
+      pozycje: [{ nazwa: 'ZYWE', ilosc: 1, brutto: '100.00' }],
     });
     const anulowanyId = dodajZamowienie(db, okres.id, {
       numer: 'R/2026/002',
@@ -412,10 +438,14 @@ describe('createFakturaOkresu — zamowienia anulowane', () => {
     const db = openOmsDb();
     const okres = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
     dodajZamowienie(db, okres.id, {
-      numer: 'R/2026/001', kwota: '100.00', pozycje: [{ nazwa: 'ZYWE', ilosc: 1, brutto: '100.00' }],
+      numer: 'R/2026/001',
+      kwota: '100.00',
+      pozycje: [{ nazwa: 'ZYWE', ilosc: 1, brutto: '100.00' }],
     });
     dodajZamowienie(db, okres.id, {
-      numer: 'R/2026/002', kwota: '200.00', anulowane: 1,
+      numer: 'R/2026/002',
+      kwota: '200.00',
+      anulowane: 1,
       pozycje: [{ nazwa: 'ANULOWANE', ilosc: 1, brutto: '5.00' }],
       utworzone: '2026-07-11T10:00:00.000Z',
     });
@@ -450,12 +480,15 @@ describe('createFakturaOkresu — zamowienia anulowane', () => {
     const db = openOmsDb();
     const okres = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 7 });
     dodajZamowienie(db, okres.id, {
-      numer: 'R/2026/001', kwota: '100.00', anulowane: 1,
+      numer: 'R/2026/001',
+      kwota: '100.00',
+      anulowane: 1,
       pozycje: [{ nazwa: 'ANULOWANE', ilosc: 1, brutto: '100.00' }],
     });
     const infakt = infaktUdany();
-    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1234500011' }))
-      .rejects.toThrow(/pozycji/);
+    await expect(createFakturaOkresu({ db, infakt }).wystaw(okres.id, { nip: '1234500011' })).rejects.toThrow(
+      /pozycji/,
+    );
     expect(pobierzOkres(db, okres.id).stan).toBe(STAN.OTWARTY);
     expect(infakt.wystaw).not.toHaveBeenCalled();
   });

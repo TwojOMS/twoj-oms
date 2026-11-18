@@ -39,9 +39,9 @@ export function wysylkaKsef(db, uuid) {
  * dokument do organu nie poszedł.
  */
 export function zajmijWysylkeKsef(db, uuid, { numer = null, kiedy = teraz() } = {}) {
-  const info = db.prepare(
-    'INSERT INTO wysylki_ksef (uuid, zlecona_at, numer) VALUES (?, ?, ?) ON CONFLICT(uuid) DO NOTHING',
-  ).run(uuid, kiedy, numer);
+  const info = db
+    .prepare('INSERT INTO wysylki_ksef (uuid, zlecona_at, numer) VALUES (?, ?, ?) ON CONFLICT(uuid) DO NOTHING')
+    .run(uuid, kiedy, numer);
   if (Number(info.changes) === 1) return { zajete: true, wiersz: null };
   return { zajete: false, wiersz: wysylkaKsef(db, uuid) ?? null };
 }

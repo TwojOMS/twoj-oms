@@ -9,17 +9,29 @@ import { modelPotwierdzenia } from '../../pomoc/testowe-potwierdzenie-zamowienia
 // (tekst szedł do renderera napisanego pod maile z wyceną i wychodził bez tabeli).
 
 const zam = (nad = {}) => ({
-  numer: 'R/2026/015', utworzone_at: '2026-08-21T09:00:00Z', sklep: 'reczne',
-  kwota_brutto: '990.00', koszt_dostawy_brutto: '0.00', metoda_wysylki: 'dpd',
-  metoda_platnosci: 'Przelew', termin_platnosci: '14', anulowane: 0, chce_fakture: 1,
+  numer: 'R/2026/015',
+  utworzone_at: '2026-08-21T09:00:00Z',
+  sklep: 'reczne',
+  kwota_brutto: '990.00',
+  koszt_dostawy_brutto: '0.00',
+  metoda_wysylki: 'dpd',
+  metoda_platnosci: 'Przelew',
+  termin_platnosci: '14',
+  anulowane: 0,
+  chce_fakture: 1,
   nip: '1234500028',
   klient: {
-    email: 'sklep@example.test', company: 'Wzorowy "Kontrahent" sp. z o.o.',
-    address_1: 'ul. Testowa 7', postcode: '00-950', city: 'Warszawa',
+    email: 'sklep@example.test',
+    company: 'Wzorowy "Kontrahent" sp. z o.o.',
+    address_1: 'ul. Testowa 7',
+    postcode: '00-950',
+    city: 'Warszawa',
   },
   dostawa: {
     company: 'Wzorowy "Kontrahent" sp. z o.o.',
-    address_1: 'ul. Testowa 7', postcode: '00-950', city: 'Warszawa',
+    address_1: 'ul. Testowa 7',
+    postcode: '00-950',
+    city: 'Warszawa',
   },
   pozycje: [{ nazwa: 'Szablon INWALIDA 70x100', ilosc: 10, cena_brutto: '99.00', brutto_linii: '990.00' }],
   ...nad,
@@ -92,8 +104,7 @@ describe('adres dostawy', () => {
 
   // Ta sama reguła, co w wersji tekstowej: sama nazwa (bywa nią e-mail) nie jest adresem.
   it('bez ulicy i miasta mówi „do uzgodnienia"', () => {
-    expect(html({ dostawa: { first_name: 'odbiorca@example.test' } }))
-      .toContain('adres do uzgodnienia');
+    expect(html({ dostawa: { first_name: 'odbiorca@example.test' } })).toContain('adres do uzgodnienia');
   });
 });
 

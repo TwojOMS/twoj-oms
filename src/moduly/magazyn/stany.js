@@ -1,7 +1,12 @@
 // Ekrany stanów magazynowych w zakładce Magazyn: import stanu otwarcia i pozycje zamówień bez karty.
 // Ruch ręczny z karty produktu obsługuje karta.js (potrzebuje jej ekranu do pokazania odmowy).
 // Wszystko tutaj działa WYŁĄCZNIE przy włączonych stanach (Ustawienia → Magazyn); wyłączone = 409 z wyjaśnieniem.
-import { przelacznikStanow, pozycjeBezKarty, podgladImportuOtwarcia, zapiszImportOtwarcia } from '../../oms/db/stany-magazynowe.js';
+import {
+  przelacznikStanow,
+  pozycjeBezKarty,
+  podgladImportuOtwarcia,
+  zapiszImportOtwarcia,
+} from '../../oms/db/stany-magazynowe.js';
 import { fmtDataCzas } from '../../domena/format-daty.js';
 import { registerStanyKanalow } from './stany-kanalow.js';
 
@@ -21,8 +26,14 @@ export function registerStanyMagazynu(app, opcje) {
   app.get('/magazyn/stany/import', async (_req, reply) => {
     const { wlaczone, granica } = przelacznikStanow(db);
     if (!wlaczone) return wylaczone(reply);
-    return reply.view('magazyn-stany-import.ejs', { szerokosc: 'formularz', title: 'Magazyn — import stanu otwarcia', od: fmtDataCzas(granica),
-      tekst: '', plan: null, wynik: null });
+    return reply.view('magazyn-stany-import.ejs', {
+      szerokosc: 'formularz',
+      title: 'Magazyn — import stanu otwarcia',
+      od: fmtDataCzas(granica),
+      tekst: '',
+      plan: null,
+      wynik: null,
+    });
   });
 
   // Podgląd: nic nie zapisuje. Ten sam tekst jedzie dalej ukrytym polem do „Zapisz”.
@@ -30,8 +41,14 @@ export function registerStanyMagazynu(app, opcje) {
     const { wlaczone, granica } = przelacznikStanow(db);
     if (!wlaczone) return wylaczone(reply);
     const tekst = tekstImportu(req.body);
-    return reply.view('magazyn-stany-import.ejs', { szerokosc: 'formularz', title: 'Magazyn — import stanu otwarcia', od: fmtDataCzas(granica),
-      tekst, plan: podgladImportuOtwarcia(db, tekst), wynik: null });
+    return reply.view('magazyn-stany-import.ejs', {
+      szerokosc: 'formularz',
+      title: 'Magazyn — import stanu otwarcia',
+      od: fmtDataCzas(granica),
+      tekst,
+      plan: podgladImportuOtwarcia(db, tekst),
+      wynik: null,
+    });
   });
 
   app.post('/magazyn/stany/import/zapisz', async (req, reply) => {
@@ -39,14 +56,24 @@ export function registerStanyMagazynu(app, opcje) {
     if (!wlaczone) return wylaczone(reply);
     const tekst = tekstImportu(req.body);
     const wynik = zapiszImportOtwarcia(db, tekst, { konto: req.konto ?? null });
-    return reply.view('magazyn-stany-import.ejs', { szerokosc: 'formularz', title: 'Magazyn — import stanu otwarcia', od: fmtDataCzas(granica),
-      tekst: '', plan: null, wynik });
+    return reply.view('magazyn-stany-import.ejs', {
+      szerokosc: 'formularz',
+      title: 'Magazyn — import stanu otwarcia',
+      od: fmtDataCzas(granica),
+      tekst: '',
+      plan: null,
+      wynik,
+    });
   });
 
   app.get('/magazyn/stany/bez-karty', async (_req, reply) => {
     const { wlaczone, granica } = przelacznikStanow(db);
     if (!wlaczone) return wylaczone(reply);
-    return reply.view('magazyn-stany-bez-karty.ejs', { szerokosc: 'tabela', title: 'Magazyn — pozycje bez karty', od: fmtDataCzas(granica),
-      pozycje: pozycjeBezKarty(db).map((p) => ({ ...p, adres: `/zamowienia/${p.zamowienie_id}` })) });
+    return reply.view('magazyn-stany-bez-karty.ejs', {
+      szerokosc: 'tabela',
+      title: 'Magazyn — pozycje bez karty',
+      od: fmtDataCzas(granica),
+      pozycje: pozycjeBezKarty(db).map((p) => ({ ...p, adres: `/zamowienia/${p.zamowienie_id}` })),
+    });
   });
 }

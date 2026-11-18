@@ -11,8 +11,15 @@ import { odmianaNazwyProgramu, ekranProgramu } from '../../../domena/nazwa-progr
 import { stronaOdmowy } from '../../../core/web/odmowa.js';
 import { EKRAN_FAKTUROWNI } from '../../../domena/konfiguracja-fakturownia.js';
 import { tytulEkranuDlaAdresu, EKRAN_KSEF_SPRZEDAZY } from '../../../domena/ekrany.js';
-import { MODULY_FAKTUR, modulDostepny, EKRAN_WYBORU_PROGRAMU, ZMIENNA_PROGRAMU, etykietaModulu, sprawdzFormularzWyboru,
-  zdanieCzekaniaNaRestart } from '../../../domena/wybor-programu.js';
+import {
+  MODULY_FAKTUR,
+  modulDostepny,
+  EKRAN_WYBORU_PROGRAMU,
+  ZMIENNA_PROGRAMU,
+  etykietaModulu,
+  sprawdzFormularzWyboru,
+  zdanieCzekaniaNaRestart,
+} from '../../../domena/wybor-programu.js';
 import { zapiszWyborProgramu, liczbaDokumentowWgProgramu } from '../../../oms/db/wybor-programu.js';
 import { nawigacjaUstawien } from '../../ustawienia/nawigacja.js';
 import { PROG_UWAGI_KOPII_H } from '../../../domena/ostrzezenia.js';
@@ -26,9 +33,13 @@ const UWAGI_NOSNIKA = {
   'stara-na-nosniku': 'Na nośniku kopii brak kopii z ostatnich 48 h — sprawdź Kopie zapasowe.',
 };
 
-const KOMUNIKATY = { zapisano: 'Zapisano wybór programu do faktur.', dlaKazdego: 'Zapisano ustawienie wystawiania faktur.' };
+const KOMUNIKATY = {
+  zapisano: 'Zapisano wybór programu do faktur.',
+  dlaKazdego: 'Zapisano ustawienie wystawiania faktur.',
+};
 const ADRES_DLA_KAZDEGO = `${EKRAN_WYBORU_PROGRAMU}/dla-kazdego`;
-export const BLAD_WLACZENIA_BEZ_KSEF = 'Nie można włączyć: przy TwojeFaktury faktury dla osób bez NIP-u idą do klienta dopiero z numerem KSeF. Najpierw włącz wysyłkę faktur konsumenckich do KSeF.';
+export const BLAD_WLACZENIA_BEZ_KSEF =
+  'Nie można włączyć: przy TwojeFaktury faktury dla osób bez NIP-u idą do klienta dopiero z numerem KSeF. Najpierw włącz wysyłkę faktur konsumenckich do KSeF.';
 
 // Zdanie pod polem, co moduł robi. Moduł bez wpisu (dziś inFakt) opisuje stan klucza.
 const OPISY = {
@@ -37,7 +48,8 @@ const OPISY = {
   twojefaktury: 'OMS sam wystawia faktury i wysyła je do KSeF, bez zewnętrznego programu.',
 };
 
-const jednostka = (n) => (n === 1 ? 'jedna' : n % 10 >= 2 && n % 10 <= 4 && !(n % 100 >= 12 && n % 100 <= 14) ? 'kilka' : 'wiele');
+const jednostka = (n) =>
+  n === 1 ? 'jedna' : n % 10 >= 2 && n % 10 <= 4 && !(n % 100 >= 12 && n % 100 <= 14) ? 'kilka' : 'wiele';
 
 /**
  * Ostrzeżenie przy przejściu z programu na „Brak”: ile dokumentów zostaje w programie. `gdzie` — miejscownik bez „w”
@@ -45,8 +57,12 @@ const jednostka = (n) => (n === 1 ? 'jedna' : n % 10 >= 2 && n % 10 <= 4 && !(n 
  */
 export function zdanieOPrzelaczeniu(ile, gdzie) {
   const j = jednostka(ile);
-  const poczatek = j === 'jedna' ? `W OMS-ie jest ${ile} faktura wystawiona`
-    : j === 'kilka' ? `W OMS-ie są ${ile} faktury wystawione` : `W OMS-ie jest ${ile} faktur wystawionych`;
+  const poczatek =
+    j === 'jedna'
+      ? `W OMS-ie jest ${ile} faktura wystawiona`
+      : j === 'kilka'
+        ? `W OMS-ie są ${ile} faktury wystawione`
+        : `W OMS-ie jest ${ile} faktur wystawionych`;
   const co = j === 'jedna' ? 'jej PDF-a' : 'ich PDF-ów';
   return `${poczatek} w ${gdzie}. Po przełączeniu OMS nie pobierze ${co} ani nie wyśle do KSeF — ${j === 'jedna' ? 'zostaje' : 'zostają'} w ${gdzie}.`;
 }
@@ -60,7 +76,9 @@ export const ZMIENNA_RESTARTU = 'OMS_RESTART_Z_PANELU';
 export const ADRES_RESTARTU = `${EKRAN_WYBORU_PROGRAMU}/restart`;
 const SEKUNDY_ODSWIEZENIA = 10;
 export function trybRestartu(wartosc) {
-  const w = String(wartosc ?? '').trim().toLowerCase();
+  const w = String(wartosc ?? '')
+    .trim()
+    .toLowerCase();
   return w === 'tak' || w === 'atrapa' ? w : null;
 }
 
@@ -68,7 +86,20 @@ export function trybRestartu(wartosc) {
  * `restart` — `{ tryb: 'tak' | 'atrapa' | null, zakoncz, log }`; `zakoncz` to szew ubicia procesu (w produkcji SIGTERM
  * do siebie: main.ts zamyka łagodnie, Docker podnosi kontener).
  */
-export function registerUstawieniaProgramuRoutes(app, { db, wyborProgramu, konfiguracjaInfaktu: k, konfiguracjaFakturowni: kf = /** @type {any} */ (null), program = null, proba = false, zgoda = false, restart = /** @type {any} */ (null), kopie = /** @type {any} */ (null) }) {
+export function registerUstawieniaProgramuRoutes(
+  app,
+  {
+    db,
+    wyborProgramu,
+    konfiguracjaInfaktu: k,
+    konfiguracjaFakturowni: kf = /** @type {any} */ (null),
+    program = null,
+    proba = false,
+    zgoda = false,
+    restart = /** @type {any} */ (null),
+    kopie = /** @type {any} */ (null),
+  },
+) {
   const programKlucza = program?.opis?.id === k.idModulu ? program : null;
   const nazwa = odmianaNazwyProgramu(programKlucza);
   const tryb = restart?.tryb ?? null;
@@ -78,66 +109,144 @@ export function registerUstawieniaProgramuRoutes(app, { db, wyborProgramu, konfi
     const zapisany = wyborProgramu.teraz();
     const zPliku = dziala.zrodlo === 'plik';
     const moznaZmieniac = req.konto?.admin === true && !zPliku;
-    const polaczenie = dziala.program === k.idModulu ? polaczeniaIntegracji({ db, proba,
-      integracje: [{ id: k.idModulu, ...stanIntegracji({ usluga: k, zapisany: !!k.kluczZapisany?.() }), atrapa: true }],
-    }).find(p => p.usluga === k.idModulu) : null;
+    const polaczenie =
+      dziala.program === k.idModulu
+        ? polaczeniaIntegracji({
+            db,
+            proba,
+            integracje: [
+              { id: k.idModulu, ...stanIntegracji({ usluga: k, zapisany: !!k.kluczZapisany?.() }), atrapa: true },
+            ],
+          }).find((p) => p.usluga === k.idModulu)
+        : null;
 
     let zrodlo;
     if (zPliku) zrodlo = `Ustawione w pliku konfiguracji (${ZMIENNA_PROGRAMU}) — tam to zmienisz.`;
     else if (dziala.zrodlo === 'ustawienia') zrodlo = 'Wybrane w tym ekranie.';
-    else zrodlo = dziala.program === 'brak' ? 'Nic nie wybrano i żaden program nie jest podłączony.'
-      : polaczenie?.podlaczone === false ? 'Nic nie wybrano. Domyślny moduł nie jest podłączony.'
-        : 'Nic nie wybrano. OMS używa tego modułu, bo jest podłączony.';
+    else
+      zrodlo =
+        dziala.program === 'brak'
+          ? 'Nic nie wybrano i żaden program nie jest podłączony.'
+          : polaczenie?.podlaczone === false
+            ? 'Nic nie wybrano. Domyślny moduł nie jest podłączony.'
+            : 'Nic nie wybrano. OMS używa tego modułu, bo jest podłączony.';
 
     // Zmiana czeka na restart tylko wtedy, gdy to wybór człowieka (jak w Zdrowiu).
-    const czeka = zapisany.zrodlo !== 'domyslny' && !zPliku
-      ? zdanieCzekaniaNaRestart(dziala, zapisany, { gotowy: wyborProgramu.gotowy?.() ?? true }) : null;
+    const czeka =
+      zapisany.zrodlo !== 'domyslny' && !zPliku
+        ? zdanieCzekaniaNaRestart(dziala, zapisany, { gotowy: wyborProgramu.gotowy?.() ?? true })
+        : null;
 
-    const stanKlucza = k.atrapa ? 'niepotrzebny — działa atrapa piaskownicy' : k.zEnv ? 'w pliku konfiguracji' : k.kluczZapisany?.() ? 'zapisany w Ustawieniach' : 'nie wpisany';
+    const stanKlucza = k.atrapa
+      ? 'niepotrzebny — działa atrapa piaskownicy'
+      : k.zEnv
+        ? 'w pliku konfiguracji'
+        : k.kluczZapisany?.()
+          ? 'zapisany w Ustawieniach'
+          : 'nie wpisany';
     // Fakturownia — stan tokenu jednym zdaniem (bez wartości tokenu), te same trzy warianty co klucz inFaktu.
-    const stanTokenu = !kf ? null : kf.atrapa ? 'niepotrzebny — działa atrapa piaskownicy' : kf.zEnv ? 'w pliku konfiguracji'
-      : kf.tokenZapisany?.() ? 'zapisany w Ustawieniach' : 'jeszcze nie podany';
+    const stanTokenu = !kf
+      ? null
+      : kf.atrapa
+        ? 'niepotrzebny — działa atrapa piaskownicy'
+        : kf.zEnv
+          ? 'w pliku konfiguracji'
+          : kf.tokenZapisany?.()
+            ? 'zapisany w Ustawieniach'
+            : 'jeszcze nie podany';
     const liczby = dziala.program === 'brak' ? {} : liczbaDokumentowWgProgramu(db);
     const ile = liczby[dziala.program] ?? 0;
     const gdzie = dziala.program === k.idModulu ? nazwa.miejscownik : `programie „${etykietaModulu(dziala.program)}”`;
 
     let stanKopii = null;
-    try { stanKopii = kopie?.() ?? null; } catch { /* ekran działa także bez usługi */ }
-    const ostrzezenieKopii = !stanKopii || proba ? null : stanKopii.brakNadzoru || !stanKopii.katalogDostepny
-      ? 'Ten OMS nie widzi kopii bazy — sprawdź Kopie zapasowe.'
-      : !stanKopii.ostatnia ? 'Brak kopii bazy w katalogu kopii.'
-        : stanKopii.ostatnia.wiekH >= PROG_UWAGI_KOPII_H ? `Ostatnia kopia ma ${stanKopii.ostatnia.wiekH} h — sprawdź Kopie zapasowe.`
-          : !stanKopii.zewnetrzna ? 'Kopia poza dyskiem nie jest ustawiona — sprawdź Kopie zapasowe.'
-            : UWAGI_NOSNIKA[stanKopii.zewnetrznaStan] ?? null;
+    try {
+      stanKopii = kopie?.() ?? null;
+    } catch {
+      /* ekran działa także bez usługi */
+    }
+    const ostrzezenieKopii =
+      !stanKopii || proba
+        ? null
+        : stanKopii.brakNadzoru || !stanKopii.katalogDostepny
+          ? 'Ten OMS nie widzi kopii bazy — sprawdź Kopie zapasowe.'
+          : !stanKopii.ostatnia
+            ? 'Brak kopii bazy w katalogu kopii.'
+            : stanKopii.ostatnia.wiekH >= PROG_UWAGI_KOPII_H
+              ? `Ostatnia kopia ma ${stanKopii.ostatnia.wiekH} h — sprawdź Kopie zapasowe.`
+              : !stanKopii.zewnetrzna
+                ? 'Kopia poza dyskiem nie jest ustawiona — sprawdź Kopie zapasowe.'
+                : (UWAGI_NOSNIKA[stanKopii.zewnetrznaStan] ?? null);
     const pola = MODULY_FAKTUR.map((m) => ({
-      id: m.id, etykieta: m.etykieta, wkrotce: !modulDostepny(m, { zgoda }), zaznaczone: m.id === zapisany.program,
+      id: m.id,
+      etykieta: m.etykieta,
+      wkrotce: !modulDostepny(m, { zgoda }),
+      zaznaczone: m.id === zapisany.program,
       nieaktywne: !modulDostepny(m, { zgoda }) || !moznaZmieniac,
-      opis: m.id === k.idModulu ? `Klucz API ${nazwa.dopelniacz}: ${stanKlucza}.`
-        : m.id === 'fakturownia' && kf ? `Token API ${kf.nazwa.dopelniacz}: ${stanTokenu}.`
-        : m.id === 'twojefaktury' && zgoda ? 'OMS sam wystawia faktury i wysyła je do KSeF — token KSeF wpiszesz w Ustawienia → Integracje → KSeF (ten sam co do kosztów).' : (OPISY[m.id] ?? null),
-      odnosnik: m.id === k.idModulu ? { adres: ekranProgramu(programKlucza), tekst: `Ustawienia ${nazwa.dopelniacz}` }
-        : m.id === 'fakturownia' && kf ? { adres: EKRAN_FAKTUROWNI, tekst: `Ustawienia ${kf.nazwa.dopelniacz}` }
-        // Zgoda na wysyłkę do KSeF faktur TwojeFaktury (bez zgody instalacji — „wkrótce”, bez odnośnika).
-        : m.id === 'twojefaktury' && zgoda ? { adres: EKRAN_KSEF_SPRZEDAZY, tekst: 'Wysyłka do KSeF' } : null,
-      kopia: m.id === 'twojefaktury' ? 'Faktury są tylko w bazie tego OMS-u. Kopia bazy musi trafiać poza ten dysk — instrukcja: Kopie zapasowe.' : null,
-      ostrzezenie: m.id === 'twojefaktury' ? ostrzezenieKopii : m.id === 'brak' && ile > 0 ? zdanieOPrzelaczeniu(ile, gdzie) : null,
+      opis:
+        m.id === k.idModulu
+          ? `Klucz API ${nazwa.dopelniacz}: ${stanKlucza}.`
+          : m.id === 'fakturownia' && kf
+            ? `Token API ${kf.nazwa.dopelniacz}: ${stanTokenu}.`
+            : m.id === 'twojefaktury' && zgoda
+              ? 'OMS sam wystawia faktury i wysyła je do KSeF — token KSeF wpiszesz w Ustawienia → Integracje → KSeF (ten sam co do kosztów).'
+              : (OPISY[m.id] ?? null),
+      odnosnik:
+        m.id === k.idModulu
+          ? { adres: ekranProgramu(programKlucza), tekst: `Ustawienia ${nazwa.dopelniacz}` }
+          : m.id === 'fakturownia' && kf
+            ? { adres: EKRAN_FAKTUROWNI, tekst: `Ustawienia ${kf.nazwa.dopelniacz}` }
+            : // Zgoda na wysyłkę do KSeF faktur TwojeFaktury (bez zgody instalacji — „wkrótce”, bez odnośnika).
+              m.id === 'twojefaktury' && zgoda
+              ? { adres: EKRAN_KSEF_SPRZEDAZY, tekst: 'Wysyłka do KSeF' }
+              : null,
+      kopia:
+        m.id === 'twojefaktury'
+          ? 'Faktury są tylko w bazie tego OMS-u. Kopia bazy musi trafiać poza ten dysk — instrukcja: Kopie zapasowe.'
+          : null,
+      ostrzezenie:
+        m.id === 'twojefaktury'
+          ? ostrzezenieKopii
+          : m.id === 'brak' && ile > 0
+            ? zdanieOPrzelaczeniu(ile, gdzie)
+            : null,
     }));
     // Przycisk tylko przy zdaniu o czekaniu na restart i tylko dla admina; bez nadzorcy — zdanie z poleceniem.
-    const ponowneUruchomienie = !czeka ? null
-      : tryb ? (req.konto?.admin === true ? { adres: ADRES_RESTARTU, nieaktywny: tryb !== 'tak' } : null)
+    const ponowneUruchomienie = !czeka
+      ? null
+      : tryb
+        ? req.konto?.admin === true
+          ? { adres: ADRES_RESTARTU, nieaktywny: tryb !== 'tak' }
+          : null
         : { recznie: true };
-    return { dziala: { etykieta: etykietaModulu(dziala.program), stanPolaczenia: polaczenie?.etykietaStanu, zrodlo }, czeka, ponowneUruchomienie,
+    return {
+      dziala: { etykieta: etykietaModulu(dziala.program), stanPolaczenia: polaczenie?.etykietaStanu, zrodlo },
+      czeka,
+      ponowneUruchomienie,
       serie: zgoda && dziala.program === 'twojefaktury',
-      dlaKazdego: { adres: ADRES_DLA_KAZDEGO, wlaczone: czyFakturaDlaKazdego(db),
-        moznaZmieniac: req.konto?.admin === true, zdanieKasa: ZDANIE_KASA, bladWlaczenia: BLAD_WLACZENIA_BEZ_KSEF,
-        ostrzezeniePdf: dziala.program === 'twojefaktury' && !czyWysylacKonsumenckie(db) },
-      uwaga: zapisany.uwaga ?? dziala.uwaga, pola, moznaZmieniac, zPliku, adres: EKRAN_WYBORU_PROGRAMU };
+      dlaKazdego: {
+        adres: ADRES_DLA_KAZDEGO,
+        wlaczone: czyFakturaDlaKazdego(db),
+        moznaZmieniac: req.konto?.admin === true,
+        zdanieKasa: ZDANIE_KASA,
+        bladWlaczenia: BLAD_WLACZENIA_BEZ_KSEF,
+        ostrzezeniePdf: dziala.program === 'twojefaktury' && !czyWysylacKonsumenckie(db),
+      },
+      uwaga: zapisany.uwaga ?? dziala.uwaga,
+      pola,
+      moznaZmieniac,
+      zPliku,
+      adres: EKRAN_WYBORU_PROGRAMU,
+    };
   }
 
   function widok(req, reply, { bledy = [] } = {}) {
-    return reply.view('ustawienia-programu.ejs', { szerokosc: 'formularz',
-      nawigacja: nawigacjaUstawien(req, reply), title: tytulEkranuDlaAdresu(req.url),
-      zapisano: KOMUNIKATY[req.query?.zapisano] ?? null, bledy, ekran: model(req),
+    return reply.view('ustawienia-programu.ejs', {
+      szerokosc: 'formularz',
+      nawigacja: nawigacjaUstawien(req, reply),
+      title: tytulEkranuDlaAdresu(req.url),
+      zapisano: KOMUNIKATY[req.query?.zapisano] ?? null,
+      bledy,
+      ekran: model(req),
     });
   }
 
@@ -145,27 +254,43 @@ export function registerUstawieniaProgramuRoutes(app, { db, wyborProgramu, konfi
   app.get('/ustawienia/faktury/zasady', async (req, reply) => widok(req, reply));
   app.get('/ustawienia/faktury/numeracja', async (req, reply) => {
     if (zgoda && wyborProgramu.program === 'twojefaktury') return reply.redirect(`${EKRAN_WYBORU_PROGRAMU}/serie`);
-    return reply.view('ustawienia-faktury-mozliwosci.ejs', { nawigacja: nawigacjaUstawien(req, reply), title: 'Numeracja',
-      rodzaj: 'numeracja', program: wyborProgramu.program });
+    return reply.view('ustawienia-faktury-mozliwosci.ejs', {
+      nawigacja: nawigacjaUstawien(req, reply),
+      title: 'Numeracja',
+      rodzaj: 'numeracja',
+      program: wyborProgramu.program,
+    });
   });
   app.get('/ustawienia/faktury/ksef', async (req, reply) => {
     if (zgoda && wyborProgramu.program === 'twojefaktury') return reply.redirect(EKRAN_KSEF_SPRZEDAZY);
-    return reply.view('ustawienia-faktury-mozliwosci.ejs', { nawigacja: nawigacjaUstawien(req, reply), title: 'KSeF',
-      rodzaj: 'ksef', program: wyborProgramu.program });
+    return reply.view('ustawienia-faktury-mozliwosci.ejs', {
+      nawigacja: nawigacjaUstawien(req, reply),
+      title: 'KSeF',
+      rodzaj: 'ksef',
+      program: wyborProgramu.program,
+    });
   });
 
   app.post(ADRES_DLA_KAZDEGO, async (req, reply) => {
     if (req.konto?.admin !== true) return odmowaAdmina(reply);
     const body = req.body ?? {};
     const wartosc = body.dlaKazdego;
-    if (typeof body !== 'object' || Array.isArray(body)
-      || Object.keys(body).some((klucz) => klucz !== 'dlaKazdego')
-      || (wartosc !== undefined && wartosc !== 'tak')) {
+    if (
+      typeof body !== 'object' ||
+      Array.isArray(body) ||
+      Object.keys(body).some((klucz) => klucz !== 'dlaKazdego') ||
+      (wartosc !== undefined && wartosc !== 'tak')
+    ) {
       reply.code(400);
       return widok(req, reply, { bledy: ['Nieprawidłowa wartość pola wystawiania faktur.'] });
     }
     // Odmowa tylko przy WŁĄCZANIU — „Zapisz” bez zmian przy opcji już włączonej nie daje 400.
-    if (wartosc === 'tak' && !czyFakturaDlaKazdego(db) && wyborProgramu.program === 'twojefaktury' && !czyWysylacKonsumenckie(db)) {
+    if (
+      wartosc === 'tak' &&
+      !czyFakturaDlaKazdego(db) &&
+      wyborProgramu.program === 'twojefaktury' &&
+      !czyWysylacKonsumenckie(db)
+    ) {
       reply.code(400);
       return widok(req, reply, { bledy: [BLAD_WLACZENIA_BEZ_KSEF] });
     }
@@ -176,9 +301,16 @@ export function registerUstawieniaProgramuRoutes(app, { db, wyborProgramu, konfi
   app.post(EKRAN_WYBORU_PROGRAMU, async (req, reply) => {
     if (req.konto?.admin !== true) return odmowaAdmina(reply);
     if (wyborProgramu.zrodlo === 'plik') {
-      return stronaOdmowy(reply, 409, `Program do faktur jest ustawiony w pliku konfiguracji (${ZMIENNA_PROGRAMU}) — tam go zmień. Formularz niczego nie zapisał.`, {
-        tytul: 'Nie zmieniono programu faktur', wroc: EKRAN_WYBORU_PROGRAMU, napisWroc: 'Wróć do ustawień programu faktur',
-      });
+      return stronaOdmowy(
+        reply,
+        409,
+        `Program do faktur jest ustawiony w pliku konfiguracji (${ZMIENNA_PROGRAMU}) — tam go zmień. Formularz niczego nie zapisał.`,
+        {
+          tytul: 'Nie zmieniono programu faktur',
+          wroc: EKRAN_WYBORU_PROGRAMU,
+          napisWroc: 'Wróć do ustawień programu faktur',
+        },
+      );
     }
     const { ustawienia, bledy } = sprawdzFormularzWyboru(req.body ?? {}, { zgoda });
     if (bledy.length) {
@@ -195,14 +327,27 @@ export function registerUstawieniaProgramuRoutes(app, { db, wyborProgramu, konfi
   app.post(ADRES_RESTARTU, async (req, reply) => {
     if (req.konto?.admin !== true) return odmowaAdmina(reply);
     if (tryb !== 'tak') {
-      return stronaOdmowy(reply, 404, `Ponowne uruchomienie z panelu jest wyłączone (${ZMIENNA_RESTARTU}) — uruchom ponownie OMS na serwerze.`, {
-        tytul: 'Nie uruchomiono OMS ponownie', wroc: EKRAN_WYBORU_PROGRAMU, napisWroc: 'Wróć do ustawień programu faktur',
-      });
+      return stronaOdmowy(
+        reply,
+        404,
+        `Ponowne uruchomienie z panelu jest wyłączone (${ZMIENNA_RESTARTU}) — uruchom ponownie OMS na serwerze.`,
+        {
+          tytul: 'Nie uruchomiono OMS ponownie',
+          wroc: EKRAN_WYBORU_PROGRAMU,
+          napisWroc: 'Wróć do ustawień programu faktur',
+        },
+      );
     }
-    restart.log(`PRZ-121.06: ponowne uruchomienie OMS-u z panelu (Moduł faktur) — zlecił ${req.konto.login ?? 'nieznane konto'}`);
+    restart.log(
+      `PRZ-121.06: ponowne uruchomienie OMS-u z panelu (Moduł faktur) — zlecił ${req.konto.login ?? 'nieznane konto'}`,
+    );
     // Sygnał dopiero po wysłaniu całej odpowiedzi (i w następnym obrocie pętli) — przeglądarka dostaje stronę z odświeżeniem.
     reply.raw.once('finish', () => setImmediate(() => restart.zakoncz()));
-    return reply.view('brak-dostepu.ejs', { title: 'OMS uruchamia się ponownie', wlasnyUklad: true, restart: true,
-      odswiez: { sekundy: SEKUNDY_ODSWIEZENIA, adres: EKRAN_WYBORU_PROGRAMU } });
+    return reply.view('brak-dostepu.ejs', {
+      title: 'OMS uruchamia się ponownie',
+      wlasnyUklad: true,
+      restart: true,
+      odswiez: { sekundy: SEKUNDY_ODSWIEZENIA, adres: EKRAN_WYBORU_PROGRAMU },
+    });
   });
 }

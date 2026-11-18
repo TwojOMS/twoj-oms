@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import {
-  stanWeryfikacji, zapiszStanWeryfikacji, kanalyZOtwartymBezpiecznikiem,
+  stanWeryfikacji,
+  zapiszStanWeryfikacji,
+  kanalyZOtwartymBezpiecznikiem,
 } from '../../../src/oms/db/stan-weryfikacji.js';
 
 const baza = () => openOmsDb(':memory:');
@@ -14,7 +16,9 @@ describe('stan bezpiecznika weryfikacji — zapis i odczyt', () => {
   it('zapisuje i oddaje stan kanału', () => {
     const db = baza();
     zapiszStanWeryfikacji(db, 'allegro_swietlik', {
-      kolejnePuste: 3, bezpiecznikOd: '2026-08-28T12:00:00Z', ostatniaProbaAt: '2026-08-28T12:00:00Z',
+      kolejnePuste: 3,
+      bezpiecznikOd: '2026-08-28T12:00:00Z',
+      ostatniaProbaAt: '2026-08-28T12:00:00Z',
     });
     const s = stanWeryfikacji(db, 'allegro_swietlik');
     expect(s.kolejne_puste).toBe(3);
@@ -45,7 +49,11 @@ describe('stan bezpiecznika weryfikacji — zapis i odczyt', () => {
 
   it('lista otwartych bezpieczników pomija kanały zamknięte', () => {
     const db = baza();
-    zapiszStanWeryfikacji(db, 'allegro_swietlik', { kolejnePuste: 3, bezpiecznikOd: '2026-08-20T10:00:00Z', ostatniaProbaAt: 'x' });
+    zapiszStanWeryfikacji(db, 'allegro_swietlik', {
+      kolejnePuste: 3,
+      bezpiecznikOd: '2026-08-20T10:00:00Z',
+      ostatniaProbaAt: 'x',
+    });
     zapiszStanWeryfikacji(db, 'allegro_polcien2', { kolejnePuste: 0, bezpiecznikOd: null, ostatniaProbaAt: 'y' });
     const otwarte = kanalyZOtwartymBezpiecznikiem(db);
     expect(otwarte).toHaveLength(1);

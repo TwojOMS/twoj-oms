@@ -14,8 +14,8 @@ const OPISY = Object.freeze({
   cena: 'Zmiana ceny przekracza próg — czeka na potwierdzenie.',
 });
 
-const kwota = gr => `${kwotaDziesietna(gr).replace('.', ',')} zł`;
-const dzis = o => o.odczytCenaGr ?? o.wyslanaCenaGr ?? null;
+const kwota = (gr) => `${kwotaDziesietna(gr).replace('.', ',')} zł`;
+const dzis = (o) => o.odczytCenaGr ?? o.wyslanaCenaGr ?? null;
 
 const AKCJE_KANALOW = Object.freeze({
   allegro: Object.freeze({ wznow: true, cena: true }),
@@ -24,7 +24,7 @@ const AKCJE_KANALOW = Object.freeze({
 
 /** Powody do wyświetlenia, w kolejności zapisanej przez pętlę. */
 export function powodyProblemu(o) {
-  const powody = (o.problemy ?? []).map(p => {
+  const powody = (o.problemy ?? []).map((p) => {
     if (p?.kod === 'cena' && o.cenaDoPotwierdzeniaGr != null) {
       const obecna = dzis(o);
       return `Nowa cena ${kwota(o.cenaDoPotwierdzeniaGr)}${obecna == null ? '' : ` (dziś ${kwota(obecna)})`} — zmiana ponad próg`;
@@ -38,12 +38,13 @@ export function powodyProblemu(o) {
 
 /** Dane akcji; rozłączone konto i już zapisany zamiar nie dostają kolejnego przycisku. */
 export function akcjeProblemu(o, typ) {
-  const zakonczona = (o.problemy ?? []).find(p => p?.kod === 'zakonczona');
+  const zakonczona = (o.problemy ?? []).find((p) => p?.kod === 'zakonczona');
   const akcje = Object.hasOwn(AKCJE_KANALOW, typ) ? AKCJE_KANALOW[typ] : null;
   return {
-    wznow: akcje?.wznow && zakonczona && !o.wyslanePola?.wznow
-      ? {} : null,
-    cena: akcje?.cena && o.cenaDoPotwierdzeniaGr != null && o.wyslanePola?.cenaPotwierdzonaGr !== o.cenaDoPotwierdzeniaGr
-      ? { nowaGr: o.cenaDoPotwierdzeniaGr, dzisGr: dzis(o) } : null,
+    wznow: akcje?.wznow && zakonczona && !o.wyslanePola?.wznow ? {} : null,
+    cena:
+      akcje?.cena && o.cenaDoPotwierdzeniaGr != null && o.wyslanePola?.cenaPotwierdzonaGr !== o.cenaDoPotwierdzeniaGr
+        ? { nowaGr: o.cenaDoPotwierdzeniaGr, dzisGr: dzis(o) }
+        : null,
   };
 }

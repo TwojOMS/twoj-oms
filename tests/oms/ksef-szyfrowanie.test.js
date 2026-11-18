@@ -15,10 +15,11 @@ describe('szyfrowanie tokena KSeF', () => {
 
   it('NIE oglada zegara — ten sam wsad daje sie odczytac niezaleznie od pory', () => {
     const { publicKey, privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
-    const jawny = (t) => privateDecrypt(
-      { key: privateKey, padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' },
-      Buffer.from(zaszyfrujToken({ klucz: publicKey, token: 'T', timestampMs: t }), 'base64'),
-    ).toString();
+    const jawny = (t) =>
+      privateDecrypt(
+        { key: privateKey, padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' },
+        Buffer.from(zaszyfrujToken({ klucz: publicKey, token: 'T', timestampMs: t }), 'base64'),
+      ).toString();
     expect(jawny(1)).toBe('T|1');
     expect(jawny(2)).toBe('T|2');
   });

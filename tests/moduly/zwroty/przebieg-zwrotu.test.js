@@ -11,41 +11,100 @@ import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
 import { odczytajSekret } from '../../../src/core/bezpieczenstwo/sekret-sesji.js';
 import { podpisz, NAZWA_CIASTECZKA_OMS } from '../../../src/core/bezpieczenstwo/sesja.js';
 
-const env = { OMS_DB_PATH: ':memory:', OMS_SPRZEDAWCA_NIP: '1234563218',
-  OMS_RACHUNEK: '34109010140000000000000000', OMS_USER: 'operator', OMS_PASS: 'test',
-  OMS_PROFORMY_KATALOG: '.', OMS_ETYKIETY_KATALOG: '.' };
-const headers = { authorization: 'Basic ' + Buffer.from('operator:test').toString('base64'),
-  origin: 'http://localhost', 'content-type': 'application/x-www-form-urlencoded' };
+const env = {
+  OMS_DB_PATH: ':memory:',
+  OMS_SPRZEDAWCA_NIP: '1234563218',
+  OMS_RACHUNEK: '34109010140000000000000000',
+  OMS_USER: 'operator',
+  OMS_PASS: 'test',
+  OMS_PROFORMY_KATALOG: '.',
+  OMS_ETYKIETY_KATALOG: '.',
+};
+const headers = {
+  authorization: 'Basic ' + Buffer.from('operator:test').toString('base64'),
+  origin: 'http://localhost',
+  'content-type': 'application/x-www-form-urlencoded',
+};
 const POWROT = '/?status=zwrot';
 const POWROT_W_ADRESIE = 'powrot=%2F%3Fstatus%3Dzwrot';
 
 const atrapaInfaktu = () => ({
-  pobierzFakture: vi.fn().mockResolvedValue({ uuid: 'polcien-fv', number: 'FV 7/10/2026', invoice_date: '2026-10-01',
-    services: [{ name: 'Lampa Półcień', quantity: 1, gross_price: 12900, tax_symbol: '23' }] }),
+  pobierzFakture: vi.fn().mockResolvedValue({
+    uuid: 'polcien-fv',
+    number: 'FV 7/10/2026',
+    invoice_date: '2026-10-01',
+    services: [{ name: 'Lampa Półcień', quantity: 1, gross_price: 12900, tax_symbol: '23' }],
+  }),
   wystawKorekte: vi.fn().mockResolvedValue({ referencja: 'REF-POLCIEN-1', uuid: null, numer: null }),
   listaKorekt: vi.fn().mockResolvedValue([]),
 });
 
 function zamowienie(db, { faktura = true, nr = 7001 } = {}) {
-  const id = zapiszZamowienie(db, 'reczne', { zrodlo_id: nr, numer: String(nr), klient: null,
-    dostawa: null, metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: Number(faktura),
-    nip: null, kwota_brutto: '258.00', koszt_dostawy_brutto: '0.00', status_woo: 'processing',
-    oplacone_at: null, anulowane: 0, utworzone_at: '2026-10-01T12:00:00',
-    pozycje: [{ zrodlo_id: 11, nazwa: 'Lampa Półcień', sku: 'LAMPA-P1', ilosc: 2,
-      cena_brutto: '129.00', brutto_linii: '258.00', vat: null }] }, {});
-  if (faktura) db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)')
-    .run(id, 'polcien-fv', 'FV 7/10/2026', '2026-10-01T12:00:00Z');
+  const id = zapiszZamowienie(
+    db,
+    'reczne',
+    {
+      zrodlo_id: nr,
+      numer: String(nr),
+      klient: null,
+      dostawa: null,
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: Number(faktura),
+      nip: null,
+      kwota_brutto: '258.00',
+      koszt_dostawy_brutto: '0.00',
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane: 0,
+      utworzone_at: '2026-10-01T12:00:00',
+      pozycje: [
+        {
+          zrodlo_id: 11,
+          nazwa: 'Lampa Półcień',
+          sku: 'LAMPA-P1',
+          ilosc: 2,
+          cena_brutto: '129.00',
+          brutto_linii: '258.00',
+          vat: null,
+        },
+      ],
+    },
+    {},
+  );
+  if (faktura)
+    db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)').run(
+      id,
+      'polcien-fv',
+      'FV 7/10/2026',
+      '2026-10-01T12:00:00Z',
+    );
   return id;
 }
-const zwrotNa = (db, id, data = '2026-10-14') => dodajZwrot(db, id, { data, kwota: '129.00',
-  pozycje: [{ klucz_pozycji: 's11', nazwa: 'Lampa Półcień', ilosc: 1, kwota: '129.00' }] }).id;
+const zwrotNa = (db, id, data = '2026-10-14') =>
+  dodajZwrot(db, id, {
+    data,
+    kwota: '129.00',
+    pozycje: [{ klucz_pozycji: 's11', nazwa: 'Lampa Półcień', ilosc: 1, kwota: '129.00' }],
+  }).id;
 
 async function zAplikacja(nadpisania, dzialanie) {
-  const siec = vi.fn(() => { throw new Error('Sieć zabroniona w PRZ-147.03'); });
+  const siec = vi.fn(() => {
+    throw new Error('Sieć zabroniona w PRZ-147.03');
+  });
   vi.stubGlobal('fetch', siec);
   let a;
-  try { a = await zbudujOms({ env, nadpisania }); await dzialanie(a); expect(siec).not.toHaveBeenCalled(); }
-  finally { if (a) { await a.app.close(); a.db.close(); } vi.unstubAllGlobals(); }
+  try {
+    a = await zbudujOms({ env, nadpisania });
+    await dzialanie(a);
+    expect(siec).not.toHaveBeenCalled();
+  } finally {
+    if (a) {
+      await a.app.close();
+      a.db.close();
+    }
+    vi.unstubAllGlobals();
+  }
 }
 const zInfaktem = (dzialanie) => zAplikacja({ 'faktury.infakt': atrapaInfaktu() }, dzialanie);
 const karta = async (a, id, h = headers) => {
@@ -59,14 +118,25 @@ describe('przekierowania na ekran zwrotu', () => {
   it('rejestracja zwrotu prowadzi na ekran zwrotu z zachowanym powrotem; obcy adres powrotu odpada', async () => {
     await zAplikacja(undefined, async (a) => {
       // Każde wysłanie na osobne zamówienie — bariery zapisu zwrotu (kwota, ten sam zwrot) nie mają tu nic do rzeczy.
-      const cialo = (powrot) => new URLSearchParams([
-        ...(powrot ? [['powrot', powrot]] : []),
-        ['data', '2026-10-14'], ['kwota', '129.00'], ['kwota_dostawy', ''],
-        ['klucz', 's11'], ['ilosc', '1'], ['nazwa', 'Lampa Półcień'], ['pozycja_kwota', '129.00'],
-      ]).toString();
+      const cialo = (powrot) =>
+        new URLSearchParams([
+          ...(powrot ? [['powrot', powrot]] : []),
+          ['data', '2026-10-14'],
+          ['kwota', '129.00'],
+          ['kwota_dostawy', ''],
+          ['klucz', 's11'],
+          ['ilosc', '1'],
+          ['nazwa', 'Lampa Półcień'],
+          ['pozycja_kwota', '129.00'],
+        ]).toString();
       const wyslij = async (powrot, nr) => {
         const id = zamowienie(a.db, { faktura: false, nr });
-        const r = await a.app.inject({ method: 'POST', url: `/zamowienia/${id}/zwrot`, headers, payload: cialo(powrot) });
+        const r = await a.app.inject({
+          method: 'POST',
+          url: `/zamowienia/${id}/zwrot`,
+          headers,
+          payload: cialo(powrot),
+        });
         expect(r.statusCode, r.body).toBe(302);
         return { id, location: r.headers.location };
       };
@@ -83,8 +153,12 @@ describe('przekierowania na ekran zwrotu', () => {
     await zInfaktem(async (a) => {
       const id = zamowienie(a.db);
       const zwrotId = zwrotNa(a.db, id);
-      const r = await a.app.inject({ method: 'POST', url: `/zamowienia/${id}/zwroty/${zwrotId}/korekta`, headers,
-        payload: new URLSearchParams({ powrot: POWROT }).toString() });
+      const r = await a.app.inject({
+        method: 'POST',
+        url: `/zamowienia/${id}/zwroty/${zwrotId}/korekta`,
+        headers,
+        payload: new URLSearchParams({ powrot: POWROT }).toString(),
+      });
       expect(r.statusCode).toBe(302);
       expect(r.headers.location).toBe(`/zamowienia/${id}/zwrot?${POWROT_W_ADRESIE}`);
     });
@@ -100,7 +174,11 @@ describe('karta zamówienia: „Wystaw korektę" w sekcji Faktura', () => {
       expect(html).toContain(formularzKorekty(id, zwrotId));
       const faktura = html.slice(html.indexOf('id="faktura"'));
       expect(faktura.indexOf(formularzKorekty(id, zwrotId))).toBeGreaterThan(0);
-      expect(html).toMatch(new RegExp(`${formularzKorekty(id, zwrotId)}[^>]*>\\s*<input type="hidden" name="powrot" value="/">\\s*<button[^>]*>Wystaw korektę</button>`));
+      expect(html).toMatch(
+        new RegExp(
+          `${formularzKorekty(id, zwrotId)}[^>]*>\\s*<input type="hidden" name="powrot" value="/">\\s*<button[^>]*>Wystaw korektę</button>`,
+        ),
+      );
     });
   });
 
@@ -155,7 +233,13 @@ describe('karta zamówienia: „Wystaw korektę" w sekcji Faktura', () => {
     await zInfaktem(async (a) => {
       const id = zamowienie(a.db);
       const zwrotId = zwrotNa(a.db, id);
-      zalozKonto(a.db, { login: 'magazyn', imie: 'Magazyn testowy', haslo: 'haslo-testowe', rola: 'produkcja', ekrany: ['zamowienia'] });
+      zalozKonto(a.db, {
+        login: 'magazyn',
+        imie: 'Magazyn testowy',
+        haslo: 'haslo-testowe',
+        rola: 'produkcja',
+        ekrany: ['zamowienia'],
+      });
       const cookie = `${NAZWA_CIASTECZKA_OMS}=${podpisz('magazyn', odczytajSekret(a.db), Date.now(), 0)}`;
       const html = await karta(a, id, { authorization: '', cookie });
       expect(html).not.toContain(formularzKorekty(id, zwrotId));
@@ -172,7 +256,11 @@ describe('ekran zwrotu: „Odśwież stan" przy zleceniu w toku', () => {
       const zwrotId = zwrotNa(a.db, id);
       zarezerwujKorekte(a.db, id, zwrotId);
       zapiszKorekte(a.db, id, zwrotId, { referencja: 'REF-POLCIEN-3' });
-      const r = await a.app.inject({ method: 'GET', url: `/zamowienia/${id}/zwrot?powrot=${encodeURIComponent(POWROT)}`, headers });
+      const r = await a.app.inject({
+        method: 'GET',
+        url: `/zamowienia/${id}/zwrot?powrot=${encodeURIComponent(POWROT)}`,
+        headers,
+      });
       expect(r.statusCode).toBe(200);
       expect(r.body).toContain('Korekta zlecona — numer pojawi się po przetworzeniu');
       expect(r.body).toContain(`href="/zamowienia/${id}/zwrot?${POWROT_W_ADRESIE}">Odśwież stan</a>`);

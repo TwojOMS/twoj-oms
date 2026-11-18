@@ -6,27 +6,45 @@ import { odswiezMagazyn } from '../../../src/moduly/magazyn/services/magazyn-syn
 const teraz = () => '2026-10-17T10:00:00Z';
 const USTAWIENIA = { woocommerce_dimension_unit: 'cm', woocommerce_weight_unit: 'kg' };
 
-const sklep = (produkty, { warianty = {}, ustawienia = USTAWIENIA, bezUstawien = false, ustawieniaRzucaja = false } = {}) => ({
+const sklep = (
+  produkty,
+  { warianty = {}, ustawienia = USTAWIENIA, bezUstawien = false, ustawieniaRzucaja = false } = {},
+) => ({
   pobierzWszystkieProdukty: vi.fn(async () => produkty),
   pobierzWarianty: vi.fn(async (id) => warianty[id] ?? []),
-  ...(bezUstawien ? {} : {
-    ustawienieSklepu: vi.fn(async (id) => {
-      if (ustawieniaRzucaja) throw new Error('HTTP 503');
-      return ustawienia[id] ?? '';
-    }),
-  }),
+  ...(bezUstawien
+    ? {}
+    : {
+        ustawienieSklepu: vi.fn(async (id) => {
+          if (ustawieniaRzucaja) throw new Error('HTTP 503');
+          return ustawienia[id] ?? '';
+        }),
+      }),
 });
 
 const lampa = (nad = {}) => ({
-  id: 10, type: 'simple', name: 'Lampa stołowa Grzybek', sku: 'LMP-GRZ-30', price: '249.00',
-  dimensions: { length: '45', width: '30', height: '30' }, weight: '1.8', ...nad,
+  id: 10,
+  type: 'simple',
+  name: 'Lampa stołowa Grzybek',
+  sku: 'LMP-GRZ-30',
+  price: '249.00',
+  dimensions: { length: '45', width: '30', height: '30' },
+  weight: '1.8',
+  ...nad,
 });
 
-const odswiez = (db, sklepy, log = () => {}) => odswiezMagazyn({
-  kanalySklepow: ['sklep'], kanalyAllegro: [], db, sklepy, allegro: null, teraz, log,
-});
-const wiersz = (db, wariant = '') => db.prepare(
-  'SELECT wymiary_json, waga_tekst FROM produkty_sklepowe WHERE wariant_id = ?').get(wariant);
+const odswiez = (db, sklepy, log = () => {}) =>
+  odswiezMagazyn({
+    kanalySklepow: ['sklep'],
+    kanalyAllegro: [],
+    db,
+    sklepy,
+    allegro: null,
+    teraz,
+    log,
+  });
+const wiersz = (db, wariant = '') =>
+  db.prepare('SELECT wymiary_json, waga_tekst FROM produkty_sklepowe WHERE wariant_id = ?').get(wariant);
 
 describe('odswiezMagazyn — wymiary i waga ze sklepu', () => {
   it('produkt prosty: wymiary z jednostką i waga z jednostką', async () => {
@@ -38,11 +56,36 @@ describe('odswiezMagazyn — wymiary i waga ze sklepu', () => {
 
   it('wariant nie dziedziczy wymiarów ani wagi po rodzicu — tylko własne', async () => {
     const db = openOmsDb(':memory:');
-    const rodzic = lampa({ id: 20, type: 'variable', dimensions: { length: '60', width: '40', height: '' }, weight: '2' });
-    await odswiez(db, { sklep: sklep([rodzic], { warianty: { 20: [
-      { id: 21, sku: 'A', price: '1', attributes: [{ name: 'Kolor', option: 'mosiądz' }], dimensions: { length: '', width: '', height: '' }, weight: '' },
-      { id: 22, sku: 'B', price: '1', attributes: [{ name: 'Kolor', option: 'czarny' }], dimensions: { length: '70', width: '', height: '' }, weight: '2.5' },
-    ] } }) });
+    const rodzic = lampa({
+      id: 20,
+      type: 'variable',
+      dimensions: { length: '60', width: '40', height: '' },
+      weight: '2',
+    });
+    await odswiez(db, {
+      sklep: sklep([rodzic], {
+        warianty: {
+          20: [
+            {
+              id: 21,
+              sku: 'A',
+              price: '1',
+              attributes: [{ name: 'Kolor', option: 'mosiądz' }],
+              dimensions: { length: '', width: '', height: '' },
+              weight: '',
+            },
+            {
+              id: 22,
+              sku: 'B',
+              price: '1',
+              attributes: [{ name: 'Kolor', option: 'czarny' }],
+              dimensions: { length: '70', width: '', height: '' },
+              weight: '2.5',
+            },
+          ],
+        },
+      }),
+    });
     expect(wiersz(db, '21')).toEqual({ wymiary_json: null, waga_tekst: null });
     expect(JSON.parse(wiersz(db, '22').wymiary_json)).toEqual({ length: '70', width: null, height: null, unit: 'cm' });
     expect(wiersz(db, '22').waga_tekst).toBe('2.5 kg');

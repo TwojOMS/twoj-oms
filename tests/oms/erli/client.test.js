@@ -4,40 +4,147 @@ import { createErliClient } from '../../../src/oms/erli/client.js';
 const adresApi = 'https://api.polcien.example/svc/shop-api/';
 const kluczApi = 'fikcyjny-klucz-testowy';
 const id = 'PC-ERLI-0001';
-const paczka = { orderId: id, dimensions: { width: 100, height: 200, length: 300, weight: 1000 }, shipping: { typeId: 'erliPaczkomat', postingPointId: 1 } };
+const paczka = {
+  orderId: id,
+  dimensions: { width: 100, height: 200, length: 300, weight: 1000 },
+  shipping: { typeId: 'erliPaczkomat', postingPointId: 1 },
+};
 const zewnetrzna = { orderId: id, vendor: 'dpd', trackingNumber: '12345678901234' };
-const sklep = { id: 1000001, name: 'Pracownia Półcień', active: true, externalMatchingPolicy: 'disabled', scopes: ['order'], markets: ['pl'] };
+const sklep = {
+  id: 1000001,
+  name: 'Pracownia Półcień',
+  active: true,
+  externalMatchingPolicy: 'disabled',
+  scopes: ['order'],
+  markets: ['pl'],
+};
 const data = '2026-11-11T08:00:00Z';
-const zamowienie = { id, status: 'purchased', sellerStatus: 'created', currency: 'PLN', market: 'pl', items: [], returns: [], delivery: { name: 'Paczkomat', typeId: 'erliPaczkomat', price: 1000, cod: false }, totalPrice: 1000, created: data, updated: data };
-const adres = { firstName: 'Ala', lastName: 'Zmyślonowicz', street: 'Fikcyjna', buildingNumber: '1', city: 'Testowo', zip: '00-000', pickupType: 'courier', phoneNumber: '000000000', email: 'ala@polcien.example' };
-const odpowiedzPaczki = { id: 1, ...paczka, type: 'internal', status: 'preparing', createdAt: data, updatedAt: data, shipping: { ...paczka.shipping, sender: adres, receiver: adres, registeredAt: data } };
+const zamowienie = {
+  id,
+  status: 'purchased',
+  sellerStatus: 'created',
+  currency: 'PLN',
+  market: 'pl',
+  items: [],
+  returns: [],
+  delivery: { name: 'Paczkomat', typeId: 'erliPaczkomat', price: 1000, cod: false },
+  totalPrice: 1000,
+  created: data,
+  updated: data,
+};
+const adres = {
+  firstName: 'Ala',
+  lastName: 'Zmyślonowicz',
+  street: 'Fikcyjna',
+  buildingNumber: '1',
+  city: 'Testowo',
+  zip: '00-000',
+  pickupType: 'courier',
+  phoneNumber: '000000000',
+  email: 'ala@polcien.example',
+};
+const odpowiedzPaczki = {
+  id: 1,
+  ...paczka,
+  type: 'internal',
+  status: 'preparing',
+  createdAt: data,
+  updatedAt: data,
+  shipping: { ...paczka.shipping, sender: adres, receiver: adres, registeredAt: data },
+};
 const filtr = { filter: { field: 'orderId', operator: '=', value: id } };
 function przygotuj(dane = [], status = 200, headers = {}) {
   const fetchImpl = vi.fn(async () => new Response(status === 204 ? null : JSON.stringify(dane), { status, headers }));
   const log = vi.fn();
   const czekaj = vi.fn();
-  return { klient: createErliClient({ adresApi, kluczApi, wersja: '1.2.3', fetchImpl, log, czekaj }), fetchImpl, log, czekaj };
+  return {
+    klient: createErliClient({ adresApi, kluczApi, wersja: '1.2.3', fetchImpl, log, czekaj }),
+    fetchImpl,
+    log,
+    czekaj,
+  };
 }
 
 describe('klient HTTP ERLI', () => {
   it.each([
     ['mojSklep', [], 'GET', '/me', undefined, sklep],
-    ['zmianyZamowien', [{ types: ['orderCreated'] }], 'POST', '/orders/changes/_search', { types: ['orderCreated'] }, [{ id: 'zmiana-1', shopId: 1000001, created: data, read: false, type: 'orderCreated', payload: zamowienie }]],
-    ['oznaczPrzeczytane', [{ lastMessageId: 'zmiana-1' }], 'POST', '/orders/changes/mark-read', { lastMessageId: 'zmiana-1' }, 1],
-    ['szukajZamowien', [{ pagination: { sortField: 'updated', after: '1794355200;1x1', order: 'ASC', limit: 200 } }], 'POST', '/orders/_search', { pagination: { sortField: 'updated', after: '1794355200;1x1', order: 'ASC', limit: 200 } }, [zamowienie]],
+    [
+      'zmianyZamowien',
+      [{ types: ['orderCreated'] }],
+      'POST',
+      '/orders/changes/_search',
+      { types: ['orderCreated'] },
+      [{ id: 'zmiana-1', shopId: 1000001, created: data, read: false, type: 'orderCreated', payload: zamowienie }],
+    ],
+    [
+      'oznaczPrzeczytane',
+      [{ lastMessageId: 'zmiana-1' }],
+      'POST',
+      '/orders/changes/mark-read',
+      { lastMessageId: 'zmiana-1' },
+      1,
+    ],
+    [
+      'szukajZamowien',
+      [{ pagination: { sortField: 'updated', after: '1794355200;1x1', order: 'ASC', limit: 200 } }],
+      'POST',
+      '/orders/_search',
+      { pagination: { sortField: 'updated', after: '1794355200;1x1', order: 'ASC', limit: 200 } },
+      [zamowienie],
+    ],
     ['pobierzZamowienie', [id], 'GET', `/orders/${id}`, undefined, zamowienie],
     ['ustawStatusSprzedawcy', [id, 'sent'], 'PATCH', `/orders/${id}/status`, { status: 'sent' }, undefined],
     ['utworzPaczkiZewnetrzne', [[zewnetrzna]], 'POST', '/shipping/external', [zewnetrzna], [{ id: 1, orderId: id }]],
-    ['edytujPaczkeZewnetrzna', [1, { vendor: 'dpd', trackingNumber: '12345678901234' }], 'PATCH', '/shipping/external/1', { vendor: 'dpd', trackingNumber: '12345678901234' }, { id: 1, ...zewnetrzna }],
+    [
+      'edytujPaczkeZewnetrzna',
+      [1, { vendor: 'dpd', trackingNumber: '12345678901234' }],
+      'PATCH',
+      '/shipping/external/1',
+      { vendor: 'dpd', trackingNumber: '12345678901234' },
+      { id: 1, ...zewnetrzna },
+    ],
     ['usunPaczkeZewnetrzna', [1], 'DELETE', '/shipping/external/1', undefined, undefined],
-    ['metodyDostawy', [], 'GET', '/dictionaries/deliveryMethods', undefined, [{ id: 'dpd', name: 'Kurier testowy', vendor: 'dpd', cod: false, targetMarket: 'pl' }]],
-    ['metodyErli', [], 'GET', '/dictionaries/shippingMethods', undefined, [{ id: 'erliPaczkomat', name: 'Paczkomat', groupId: 'erliPaczkomat', operator: 'INPOST', cod: false }]],
+    [
+      'metodyDostawy',
+      [],
+      'GET',
+      '/dictionaries/deliveryMethods',
+      undefined,
+      [{ id: 'dpd', name: 'Kurier testowy', vendor: 'dpd', cod: false, targetMarket: 'pl' }],
+    ],
+    [
+      'metodyErli',
+      [],
+      'GET',
+      '/dictionaries/shippingMethods',
+      undefined,
+      [{ id: 'erliPaczkomat', name: 'Paczkomat', groupId: 'erliPaczkomat', operator: 'INPOST', cod: false }],
+    ],
     ['cennikiDostaw', [], 'GET', '/delivery/priceLists', undefined, [{ id: 1, name: 'Cennik testowy' }]],
     ['punktyNadania', [], 'GET', '/shipping/postingPoints', undefined, [{ id: 1, name: 'Punkt testowy' }]],
     ['utworzPaczki', [[paczka]], 'POST', '/shipping/parcels/', [paczka], [odpowiedzPaczki]],
-    ['szukajPaczek', [filtr], 'POST', '/shipping/parcels/_search', filtr, [{ ...odpowiedzPaczki, shipping: { ...odpowiedzPaczki.shipping, waybills: ['https://pliki.polcien.example/1.pdf'] } }]],
+    [
+      'szukajPaczek',
+      [filtr],
+      'POST',
+      '/shipping/parcels/_search',
+      filtr,
+      [
+        {
+          ...odpowiedzPaczki,
+          shipping: { ...odpowiedzPaczki.shipping, waybills: ['https://pliki.polcien.example/1.pdf'] },
+        },
+      ],
+    ],
     ['anulujPaczke', [1], 'DELETE', '/shipping/parcels/1', undefined, { ...odpowiedzPaczki, status: 'canceled' }],
-    ['protokolyOdbioru', [[1, 2]], 'GET', '/shipping/pickupProtocols?parcelIds=1%2C2', undefined, { url: 'https://pliki.polcien.example/protokol.pdf' }],
+    [
+      'protokolyOdbioru',
+      [[1, 2]],
+      'GET',
+      '/shipping/pickupProtocols?parcelIds=1%2C2',
+      undefined,
+      { url: 'https://pliki.polcien.example/protokol.pdf' },
+    ],
   ])('%s: ścieżka, metoda, ciało i odpowiedź', async (metoda, args, http, sciezka, body, odpowiedz) => {
     const { klient, fetchImpl } = przygotuj(odpowiedz, odpowiedz === undefined ? 204 : 200);
     expect(await klient[metoda](...args)).toEqual(odpowiedz);
@@ -63,7 +170,7 @@ describe('klient HTTP ERLI', () => {
     expect(fetchImpl.mock.calls[0][0]).toContain(`?${suffix}`);
   });
 
-  it.each([true, false])('pobiera etykietę jako Buffer, autoryzacja=%s', async zAutoryzacja => {
+  it.each([true, false])('pobiera etykietę jako Buffer, autoryzacja=%s', async (zAutoryzacja) => {
     const fetchImpl = vi.fn(async () => new Response(new Uint8Array([37, 80, 68, 70, 0, 255])));
     const klient = createErliClient({ adresApi, kluczApi, fetchImpl });
     const url = 'https://api.polcien.example/etykieta.pdf';
@@ -113,10 +220,24 @@ describe('klient HTTP ERLI', () => {
   });
 
   it('błąd 404 niesie status (przełączenie na /inbox, D1)', async () => {
-    await expect(przygotuj({}, 404).klient.zmianyZamowien()).rejects.toMatchObject({ status: 404, message: 'ERLI: błąd HTTP 404.' });
+    await expect(przygotuj({}, 404).klient.zmianyZamowien()).rejects.toMatchObject({
+      status: 404,
+      message: 'ERLI: błąd HTTP 404.',
+    });
   });
 
-  it.each(['created', 'canceled', 'readyToProcess', 'inProgress', 'sent', 'readyToPickup', 'received', 'returned', 'returningToSender', 'unknown'])('przyjmuje sellerStatus %s', async status => {
+  it.each([
+    'created',
+    'canceled',
+    'readyToProcess',
+    'inProgress',
+    'sent',
+    'readyToPickup',
+    'received',
+    'returned',
+    'returningToSender',
+    'unknown',
+  ])('przyjmuje sellerStatus %s', async (status) => {
     const { klient } = przygotuj(null, 204);
     await expect(klient.ustawStatusSprzedawcy(id, status)).resolves.toBeUndefined();
   });
@@ -127,26 +248,62 @@ describe('klient HTTP ERLI', () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it.each(['utworzPaczkiZewnetrzne', 'edytujPaczkeZewnetrzna'])('%s odrzuca nieznanego vendora', async metoda => {
+  it.each(['utworzPaczkiZewnetrzne', 'edytujPaczkeZewnetrzna'])('%s odrzuca nieznanego vendora', async (metoda) => {
     const { klient, fetchImpl } = przygotuj();
     const dane = { ...zewnetrzna, vendor: 'literowka' };
-    await expect(metoda === 'utworzPaczkiZewnetrzne' ? klient[metoda]([dane]) : klient[metoda](1, dane)).rejects.toThrow(/przewoźnik/i);
+    await expect(
+      metoda === 'utworzPaczkiZewnetrzne' ? klient[metoda]([dane]) : klient[metoda](1, dane),
+    ).rejects.toThrow(/przewoźnik/i);
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it.each(['inpost', 'pocztaPolska', 'dhl', 'dpd', 'ups', 'gls', 'orlen', 'pocztex24', 'ambroExpress', 'pekaes', 'tntExpress', 'schenker', 'dsv', 'dts', 'geis', 'fedex', 'jasFBG', 'patronService', 'raben', 'rhenus', 'rohligSuus', 'hellmann'])('wymaga trackingNumber: %s', async vendor => {
+  it.each([
+    'inpost',
+    'pocztaPolska',
+    'dhl',
+    'dpd',
+    'ups',
+    'gls',
+    'orlen',
+    'pocztex24',
+    'ambroExpress',
+    'pekaes',
+    'tntExpress',
+    'schenker',
+    'dsv',
+    'dts',
+    'geis',
+    'fedex',
+    'jasFBG',
+    'patronService',
+    'raben',
+    'rhenus',
+    'rohligSuus',
+    'hellmann',
+  ])('wymaga trackingNumber: %s', async (vendor) => {
     const { klient, fetchImpl } = przygotuj();
-    await expect(klient.utworzPaczkiZewnetrzne([{ orderId: id, vendor, trackingNumber: ' ' }])).rejects.toThrow(/numer.*śledzenia/i);
+    await expect(klient.utworzPaczkiZewnetrzne([{ orderId: id, vendor, trackingNumber: ' ' }])).rejects.toThrow(
+      /numer.*śledzenia/i,
+    );
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it.each(['ownTransport', 'selfPickup'])('dopuszcza %s bez numeru', async vendor => {
+  it.each(['ownTransport', 'selfPickup'])('dopuszcza %s bez numeru', async (vendor) => {
     const { klient, fetchImpl } = przygotuj();
     await klient.utworzPaczkiZewnetrzne([{ orderId: id, vendor, status: 'sent' }]);
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
-  it.each([undefined, {}, { ...paczka.dimensions, width: undefined }, { ...paczka.dimensions, width: 2001 }, { ...paczka.dimensions, height: 2001 }, { ...paczka.dimensions, length: 2001 }, { ...paczka.dimensions, weight: 700001 }, { ...paczka.dimensions, weight: 0 }])('odrzuca niepoprawne wymiary lub wagę %j', async dimensions => {
+  it.each([
+    undefined,
+    {},
+    { ...paczka.dimensions, width: undefined },
+    { ...paczka.dimensions, width: 2001 },
+    { ...paczka.dimensions, height: 2001 },
+    { ...paczka.dimensions, length: 2001 },
+    { ...paczka.dimensions, weight: 700001 },
+    { ...paczka.dimensions, weight: 0 },
+  ])('odrzuca niepoprawne wymiary lub wagę %j', async (dimensions) => {
     const { klient, fetchImpl } = przygotuj();
     await expect(klient.utworzPaczki([{ ...paczka, dimensions }])).rejects.toThrow(/wymiary|waga/i);
     expect(fetchImpl).not.toHaveBeenCalled();
@@ -169,7 +326,7 @@ describe('klient HTTP ERLI', () => {
   it('400 pokazuje kod i opis bez klucza, ciała i danych osobowych', async () => {
     const { klient, log } = przygotuj([{ errorCode: 1102, errorMessage: 'Nie udało się stworzyć przesyłki' }], 400);
     const dane = [{ ...paczka, shipping: { ...paczka.shipping, receiver: { lastName: 'Zmyślonowicz' } } }];
-    const blad = await klient.utworzPaczki(dane).catch(e => e);
+    const blad = await klient.utworzPaczki(dane).catch((e) => e);
     expect(blad).toBeInstanceOf(Error);
     expect(blad.message).toBe('1102 — Nie udało się stworzyć przesyłki');
     expect(blad.message + JSON.stringify(log.mock.calls)).not.toContain(kluczApi);
@@ -178,20 +335,30 @@ describe('klient HTTP ERLI', () => {
 
   it('usuwa klucz i odbite nazwisko także z opisu błędu serwera', async () => {
     const { klient, log } = przygotuj([{ errorCode: 1102, errorMessage: `Błąd ${kluczApi} Zmyślonowicz` }], 400);
-    const blad = await klient.utworzPaczki([{ ...paczka, shipping: { ...paczka.shipping, receiver: adres } }]).catch(e => e);
+    const blad = await klient
+      .utworzPaczki([{ ...paczka, shipping: { ...paczka.shipping, receiver: adres } }])
+      .catch((e) => e);
     expect(blad.message).toBe('1102 — Błąd [ukryto] [ukryto]');
     expect(JSON.stringify(log.mock.calls)).not.toContain(kluczApi);
   });
 
   it('krótkie i słownikowe wartości ciała nie psują opisu błędu', async () => {
-    const { klient } = przygotuj([{ errorCode: 1213, errorMessage: 'Błąd walidacji: waga 1000 g, typ erliPaczkomat' }], 400);
-    const dane = [{ ...paczka, shipping: { ...paczka.shipping, receiver: { ...adres, buildingNumber: '1', flatNumber: 'a' } } }];
-    const blad = await klient.utworzPaczki(dane).catch(e => e);
+    const { klient } = przygotuj(
+      [{ errorCode: 1213, errorMessage: 'Błąd walidacji: waga 1000 g, typ erliPaczkomat' }],
+      400,
+    );
+    const dane = [
+      { ...paczka, shipping: { ...paczka.shipping, receiver: { ...adres, buildingNumber: '1', flatNumber: 'a' } } },
+    ];
+    const blad = await klient.utworzPaczki(dane).catch((e) => e);
     expect(blad.message).toBe('1213 — Błąd walidacji: waga 1000 g, typ erliPaczkomat');
   });
 
   it.each([
-    [{ polishMessage: 'Zamówienie nie istnieje', message: 'Order not found' }, 'ERLI: Zamówienie nie istnieje (HTTP 404)'],
+    [
+      { polishMessage: 'Zamówienie nie istnieje', message: 'Order not found' },
+      'ERLI: Zamówienie nie istnieje (HTTP 404)',
+    ],
     [{ error: { polishMessage: 'Stan zamrożony' } }, 'ERLI: Stan zamrożony (HTTP 404)'],
     [{ message: 'Order not found' }, 'ERLI: Order not found (HTTP 404)'],
     [{ polishMessage: `Klucz ${kluczApi}` }, 'ERLI: Klucz [ukryto] (HTTP 404)'],
@@ -213,15 +380,27 @@ describe('klient HTTP ERLI', () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it.each([[9, 100], [1000, 0]])('odrzuca granice paczki: waga %s, wymiar %s', async (weight, width) => {
+  it.each([
+    [9, 100],
+    [1000, 0],
+  ])('odrzuca granice paczki: waga %s, wymiar %s', async (weight, width) => {
     const { klient, fetchImpl } = przygotuj();
-    await expect(klient.utworzPaczki([{ ...paczka, dimensions: { ...paczka.dimensions, weight, width } }])).rejects.toThrow();
+    await expect(
+      klient.utworzPaczki([{ ...paczka, dimensions: { ...paczka.dimensions, weight, width } }]),
+    ).rejects.toThrow();
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it('błąd sieci nie ujawnia wiadomości ani cause z fetch', async () => {
     const log = vi.fn();
-    const klient = createErliClient({ adresApi, kluczApi, log, fetchImpl: async () => { throw new Error(kluczApi); } });
+    const klient = createErliClient({
+      adresApi,
+      kluczApi,
+      log,
+      fetchImpl: async () => {
+        throw new Error(kluczApi);
+      },
+    });
     await expect(klient.mojSklep()).rejects.toThrow('ERLI: błąd połączenia.');
     expect(JSON.stringify(log.mock.calls)).not.toContain(kluczApi);
   });
@@ -230,19 +409,30 @@ describe('klient HTTP ERLI', () => {
     const controller = new AbortController();
     const timeout = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(controller.signal);
     try {
-      const fetchImpl = vi.fn((_url, { signal }) => new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true })));
+      const fetchImpl = vi.fn(
+        (_url, { signal }) =>
+          new Promise((_resolve, reject) =>
+            signal.addEventListener('abort', () => reject(signal.reason), { once: true }),
+          ),
+      );
       const klient = createErliClient({ adresApi, kluczApi, fetchImpl });
       const wynik = expect(klient.mojSklep()).rejects.toThrow('ERLI: przekroczono limit czasu 30 s.');
       controller.abort(new DOMException('limit', 'TimeoutError'));
       await wynik;
       expect(fetchImpl).toHaveBeenCalledTimes(1);
-    } finally { timeout.mockRestore(); }
+    } finally {
+      timeout.mockRestore();
+    }
   });
 
   it('nie przenosi bankAccount z zamówień i payloadów zmian', async () => {
-    const dane = [{ payload: { ...zamowienie, returns: [{ reason: 'other', comment: 'Test', bankAccount: 'fikcyjne-konto' }] } }];
+    const dane = [
+      { payload: { ...zamowienie, returns: [{ reason: 'other', comment: 'Test', bankAccount: 'fikcyjne-konto' }] } },
+    ];
     const { klient } = przygotuj(dane);
-    expect(await klient.zmianyZamowien()).toEqual([{ payload: { ...zamowienie, returns: [{ reason: 'other', comment: 'Test' }] } }]);
+    expect(await klient.zmianyZamowien()).toEqual([
+      { payload: { ...zamowienie, returns: [{ reason: 'other', comment: 'Test' }] } },
+    ]);
     expect(dane[0].payload.returns[0]).toHaveProperty('bankAccount');
   });
 
@@ -251,6 +441,8 @@ describe('klient HTTP ERLI', () => {
     try {
       await przygotuj().klient.mojSklep();
       expect(timeout).toHaveBeenCalledWith(30000);
-    } finally { timeout.mockRestore(); }
+    } finally {
+      timeout.mockRestore();
+    }
   });
 });

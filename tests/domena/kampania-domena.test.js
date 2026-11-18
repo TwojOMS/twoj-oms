@@ -6,23 +6,31 @@ import { wybierzKampanie, stanKampanii, agregatKuponow } from '../../src/domena/
 // statusu ani platnosci drugi raz — sklada wylacznie kafle, dni i tabele.
 
 const KAMPANIA = {
-  id: 1, kod: 'wrzesien30', nazwa: 'Nowy początek. Bez remontu.',
-  od_dnia: '2026-08-24', do_dnia: '2026-09-07', sklep: 'swietlik', cel_uzyc: 10,
+  id: 1,
+  kod: 'wrzesien30',
+  nazwa: 'Nowy początek. Bez remontu.',
+  od_dnia: '2026-08-24',
+  do_dnia: '2026-09-07',
+  sklep: 'swietlik',
+  cel_uzyc: 10,
 };
 
 // Ksztalt zLinii: kupony_json prosto z kolumny, kwoty napisami, anulowane efektywne.
 const zam = (nad = {}) => ({
-  id: 1, numer: '28224', sklep: 'swietlik', kwota_brutto: '150.72',
-  utworzone_at: '2026-08-25T17:42:45Z', anulowane: 0, oplacone_at: '2026-08-25T17:43:27Z',
+  id: 1,
+  numer: '28224',
+  sklep: 'swietlik',
+  kwota_brutto: '150.72',
+  utworzone_at: '2026-08-25T17:42:45Z',
+  anulowane: 0,
+  oplacone_at: '2026-08-25T17:43:27Z',
   kupony_json: '[{"kod":"wrzesien30","rabat":"58.17"}]',
-  pozycje: [], ...nad,
+  pozycje: [],
+  ...nad,
 });
 
 describe('wybierzKampanie', () => {
-  const LISTA = [
-    { ...KAMPANIA, id: 2, kod: 'zima40', od_dnia: '2026-12-01', do_dnia: '2026-12-14' },
-    KAMPANIA,
-  ];
+  const LISTA = [{ ...KAMPANIA, id: 2, kod: 'zima40', od_dnia: '2026-12-01', do_dnia: '2026-12-14' }, KAMPANIA];
 
   it('wskazany kod wygrywa, niezależnie od okna (wielkość liter bez znaczenia)', () => {
     expect(wybierzKampanie(LISTA, '2026-08-25', 'ZIMA40')?.id).toBe(2);
@@ -51,7 +59,13 @@ describe('stanKampanii — kafle', () => {
       kampania: KAMPANIA,
       zamowienia: [
         zam(),
-        zam({ id: 2, numer: '28230', kwota_brutto: '100.00', kupony_json: '[{"kod":"wrzesien30","rabat":"42.86"}]', oplacone_at: null }),
+        zam({
+          id: 2,
+          numer: '28230',
+          kwota_brutto: '100.00',
+          kupony_json: '[{"kod":"wrzesien30","rabat":"42.86"}]',
+          oplacone_at: null,
+        }),
       ],
       dzis: '2026-08-25',
     });
@@ -79,9 +93,11 @@ describe('stanKampanii — kafle', () => {
   it('rabat liczy WYŁĄCZNIE kod kampanii, także przy zamówieniu z dwoma kodami', () => {
     const stan = stanKampanii({
       kampania: KAMPANIA,
-      zamowienia: [zam({
-        kupony_json: '[{"kod":"wrzesien30","rabat":"10.00"},{"kod":"inny","rabat":"99.00"}]',
-      })],
+      zamowienia: [
+        zam({
+          kupony_json: '[{"kod":"wrzesien30","rabat":"10.00"},{"kod":"inny","rabat":"99.00"}]',
+        }),
+      ],
       dzis: '2026-08-25',
     });
     expect(stan.rabatyZl).toBe('10.00');
@@ -176,7 +192,8 @@ describe('stanKampanii — dni i faza', () => {
   it('odwrócone okno → bladOkna i zero dni, bez wyjątku', () => {
     const stan = stanKampanii({
       kampania: { ...KAMPANIA, od_dnia: '2026-09-07', do_dnia: '2026-08-24' },
-      zamowienia: [], dzis: '2026-08-25',
+      zamowienia: [],
+      dzis: '2026-08-25',
     });
     expect(stan.bladOkna).toBeTruthy();
     expect(stan.dni).toHaveLength(0);
@@ -189,9 +206,13 @@ describe('stanKampanii — dni i faza', () => {
 // zamowienia bez atrybucji do „Bezpośrednich". Zestawienie mowilo wtedy nieprawde
 // o zachowaniu klientow, a strona wygladala poprawnie.
 describe('stanKampanii — rozbicie wg źródeł', () => {
-  const zAtrybucja = (id, atrybucja, nad = {}) => zam({
-    id, numer: String(id), atrybucja_json: atrybucja ? JSON.stringify(atrybucja) : null, ...nad,
-  });
+  const zAtrybucja = (id, atrybucja, nad = {}) =>
+    zam({
+      id,
+      numer: String(id),
+      atrybucja_json: atrybucja ? JSON.stringify(atrybucja) : null,
+      ...nad,
+    });
 
   it('grupuje użycia po źródle, z kwotami i rabatami', () => {
     const stan = stanKampanii({
@@ -257,7 +278,13 @@ describe('agregatKuponow', () => {
       zam(),
       zam({ id: 2, numer: '2', kupony_json: '[{"kod":"WRZESIEN30","rabat":"42.86"}]', kwota_brutto: '100.00' }),
       zam({ id: 3, numer: '3', anulowane: 1 }),
-      zam({ id: 4, numer: '4', kupony_json: '[{"kod":"free50","rabat":"12.15"}]', kwota_brutto: '14.95', sklep: 'pro' }),
+      zam({
+        id: 4,
+        numer: '4',
+        kupony_json: '[{"kod":"free50","rabat":"12.15"}]',
+        kwota_brutto: '14.95',
+        sklep: 'pro',
+      }),
     ]);
     const wrz = wynik.find((k) => k.kod === 'wrzesien30');
     expect(wrz.uzycia).toBe(2);

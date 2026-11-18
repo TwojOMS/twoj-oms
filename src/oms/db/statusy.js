@@ -24,8 +24,14 @@ function sledzHistorieIndywidualnych(db) {
     historieIndywidualne.set(db, sa);
     return;
   }
-  db.function(FUNKCJA_HISTORII, () => { historieIndywidualne.set(db, true); return null; });
-  for (const [nazwa, op] of [['insert', 'INSERT'], ['update', 'UPDATE OF indywidualne']]) {
+  db.function(FUNKCJA_HISTORII, () => {
+    historieIndywidualne.set(db, true);
+    return null;
+  });
+  for (const [nazwa, op] of [
+    ['insert', 'INSERT'],
+    ['update', 'UPDATE OF indywidualne'],
+  ]) {
     db.exec(`CREATE TEMP TRIGGER IF NOT EXISTS statusy_indywidualne_${nazwa} AFTER ${op} ON zamowienia
       WHEN NEW.indywidualne = 1 BEGIN SELECT ${FUNKCJA_HISTORII}(); END`);
   }
@@ -42,12 +48,21 @@ function konfiguracjaZJson(db, wartosc) {
   // Wartość zamiast samej daty: dwa zapisy w tej samej milisekundzie też unieważniają pamięć.
   const poprzedni = pamiec.get(db);
   if (poprzedni && poprzedni.wartosc === wartosc) return poprzedni;
-  const statusy = wartosc === undefined ? domyslneStatusy() : sprawdzStatusy(JSON.parse(wartosc).sort((a, b) => a.kolejnosc - b.kolejnosc));
-  const wynik = Object.freeze(statusy.map(s => Object.freeze(s)));
-  const konfiguracja = { wartosc, statusy: wynik,
-    etykiety: Object.freeze(Object.fromEntries(wynik.map(s => [s.klucz, s.etykieta]))),
-    wlasne: Object.freeze(wynik.filter(s => s.jak)),
-    opcje: Object.freeze(wynik.filter(s => s.jak || STATUSY_RECZNE.includes(s.klucz)).map(({ klucz, etykieta }) => Object.freeze({ klucz, etykieta }))),
+  const statusy =
+    wartosc === undefined
+      ? domyslneStatusy()
+      : sprawdzStatusy(JSON.parse(wartosc).sort((a, b) => a.kolejnosc - b.kolejnosc));
+  const wynik = Object.freeze(statusy.map((s) => Object.freeze(s)));
+  const konfiguracja = {
+    wartosc,
+    statusy: wynik,
+    etykiety: Object.freeze(Object.fromEntries(wynik.map((s) => [s.klucz, s.etykieta]))),
+    wlasne: Object.freeze(wynik.filter((s) => s.jak)),
+    opcje: Object.freeze(
+      wynik
+        .filter((s) => s.jak || STATUSY_RECZNE.includes(s.klucz))
+        .map(({ klucz, etykieta }) => Object.freeze({ klucz, etykieta })),
+    ),
   };
   pamiec.set(db, konfiguracja);
   return konfiguracja;
@@ -65,9 +80,14 @@ function konfiguracjaStatusow(db) {
   // Połączenie bez modułu zamówień (skrypt, wąski skład): ten sam odczyt raz, przy pierwszym użyciu.
   if (!kanal && !historieIndywidualne.has(db)) sledzHistorieIndywidualnych(db);
   const aktywny = statusIndywidualnyAktywny(kanal, !kanal && historieIndywidualne.get(db) === true);
-  const konfiguracja = aktywny ? pelna : { ...pelna,
-    etykiety: Object.freeze(Object.fromEntries(Object.entries(pelna.etykiety).filter(([k]) => k !== 'indywidualne'))),
-  };
+  const konfiguracja = aktywny
+    ? pelna
+    : {
+        ...pelna,
+        etykiety: Object.freeze(
+          Object.fromEntries(Object.entries(pelna.etykiety).filter(([k]) => k !== 'indywidualne')),
+        ),
+      };
   zadanie?.konfiguracje.set(db, konfiguracja);
   return konfiguracja;
 }
@@ -88,9 +108,10 @@ export function opcjeStatusow(db) {
 }
 export function zapiszStatusy(db, statusy) {
   const poprawne = sprawdzStatusy(statusy);
-  db.prepare(`INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
-    ON CONFLICT(klucz) DO UPDATE SET wartosc=excluded.wartosc, zmienione_at=excluded.zmienione_at`)
-    .run(KLUCZ, JSON.stringify(poprawne), new Date().toISOString());
+  db.prepare(
+    `INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
+    ON CONFLICT(klucz) DO UPDATE SET wartosc=excluded.wartosc, zmienione_at=excluded.zmienione_at`,
+  ).run(KLUCZ, JSON.stringify(poprawne), new Date().toISOString());
   pamiec.delete(db);
   pamiecZadania.getStore()?.konfiguracje.delete(db);
 }
@@ -116,7 +137,11 @@ export function kolumnyStatusow(db) {
 export function zStatusamiWlasnymi(db, w) {
   const { statusy_konfiguracja_json, status_wlasny_klucz, ...wiersz } = w;
   const konfiguracja = konfiguracjaZJson(db, statusy_konfiguracja_json ?? undefined);
-  return { ...wiersz, status_wlasny: status_wlasny_klucz ?? null,
-    statusy_wlasne: konfiguracja.wlasne, opcje_statusow: konfiguracja.opcje,
-    etykiety_statusow: konfiguracja.etykiety };
+  return {
+    ...wiersz,
+    status_wlasny: status_wlasny_klucz ?? null,
+    statusy_wlasne: konfiguracja.wlasne,
+    opcje_statusow: konfiguracja.opcje,
+    etykiety_statusow: konfiguracja.etykiety,
+  };
 }

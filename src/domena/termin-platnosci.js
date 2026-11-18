@@ -3,9 +3,7 @@ import { dzienWarszawa } from './format-daty.js';
 import { NAZWA_ZAPASOWA } from './nazwa-programu.js';
 // Arytmetyka dat mieszka w `domena/kalendarz.js` — TA SAMA, której używa lista faktur.
 // Nie kopiować jej z powrotem tutaj: dwie kopie rozjadą się przy pierwszej poprawce.
-import {
-  zNumeruDnia, sklejDate as sklej, numerDniaZNapisu,
-} from './kalendarz.js';
+import { zNumeruDnia, sklejDate as sklej, numerDniaZNapisu } from './kalendarz.js';
 
 // Termin płatności i daty na fakturze — wybór operatora zamieniony na POLA, których oczekuje
 // inFakt.
@@ -156,8 +154,8 @@ export function datyFaktury(
   const numer = numerDniaZNapisu(napisDaty);
   if (numer === null) {
     throw bladOperatora(
-      `Data wystawienia „${napisDaty}" nie jest poprawną datą w formacie RRRR-MM-DD — `
-      + 'popraw ją albo zostaw pole puste, żeby wystawić dzisiejszą datą.',
+      `Data wystawienia „${napisDaty}" nie jest poprawną datą w formacie RRRR-MM-DD — ` +
+        'popraw ją albo zostaw pole puste, żeby wystawić dzisiejszą datą.',
     );
   }
   const daty = { invoice_date: sklej(zNumeruDnia(numer)) };
@@ -170,8 +168,8 @@ export function datyFaktury(
     const numerSprzedazy = numerDniaZNapisu(napisSprzedazy);
     if (numerSprzedazy === null) {
       throw bladOperatora(
-        `Data sprzedaży „${napisSprzedazy}" nie jest poprawną datą w formacie RRRR-MM-DD — `
-        + `popraw ją albo zostaw pole puste, żeby ${nazwa.mianownik} przyjął datę wystawienia.`,
+        `Data sprzedaży „${napisSprzedazy}" nie jest poprawną datą w formacie RRRR-MM-DD — ` +
+          `popraw ją albo zostaw pole puste, żeby ${nazwa.mianownik} przyjął datę wystawienia.`,
       );
     }
     // Bez porównania z datą wystawienia: inFakt przyjmuje sprzedaż zarówno WCZEŚNIEJSZĄ
@@ -193,9 +191,9 @@ export function datyFaktury(
     // `paid_price: undefined` i milczeć.
     if (!Number.isInteger(kwotaGrosze) || kwotaGrosze <= 0) {
       throw bladOperatora(
-        'Faktura oznaczona jako zapłacona wymaga kwoty zapłaconej w groszach, a panel dostał '
-        + `„${kwotaGrosze ?? ''}". Nie wystawiono niczego — zgłoś to, bo bez kwoty dokument `
-        + 'powiedziałby klientowi, że wciąż jest coś winien.',
+        'Faktura oznaczona jako zapłacona wymaga kwoty zapłaconej w groszach, a panel dostał ' +
+          `„${kwotaGrosze ?? ''}". Nie wystawiono niczego — zgłoś to, bo bez kwoty dokument ` +
+          'powiedziałby klientowi, że wciąż jest coś winien.',
       );
     }
     return { ...daty, paid_price: kwotaGrosze };
@@ -208,8 +206,8 @@ export function datyFaktury(
   const dni = ODBIOR.has(wybor) ? 0 : dniZWyboru(wybor);
   if (dni === null) {
     throw bladOperatora(
-      `Termin płatności „${termin ?? ''}" nie jest liczbą dni — podaj całkowitą liczbę dni `
-      + '(np. 14) albo wybierz „przy odbiorze" lub „bez terminu".',
+      `Termin płatności „${termin ?? ''}" nie jest liczbą dni — podaj całkowitą liczbę dni ` +
+        '(np. 14) albo wybierz „przy odbiorze" lub „bez terminu".',
     );
   }
   return { ...daty, payment_date: sklej(zNumeruDnia(numer + dni)) };
@@ -254,14 +252,14 @@ export function parsujTerminZamowienia(surowy) {
   if (BRAK.has(wartosc)) return BEZ_TERMINU;
   if (OPLACONE.has(wartosc)) {
     throw bladOperatora(
-      '„Zapłacone" nie jest terminem płatności, tylko stanem wynikającym z wpłat — panel '
-      + 'rozstrzygnie go sam przy wystawianiu faktury. Wybierz termin albo zostaw pole puste.',
+      '„Zapłacone" nie jest terminem płatności, tylko stanem wynikającym z wpłat — panel ' +
+        'rozstrzygnie go sam przy wystawianiu faktury. Wybierz termin albo zostaw pole puste.',
     );
   }
   if (!/^\d+$/.test(wartosc)) {
     throw bladOperatora(
-      `Termin płatności „${surowy}" nie jest liczbą dni — podaj całkowitą liczbę dni (np. 14) `
-      + 'albo wybierz „przy odbiorze" lub „płatne od razu".',
+      `Termin płatności „${surowy}" nie jest liczbą dni — podaj całkowitą liczbę dni (np. 14) ` +
+        'albo wybierz „przy odbiorze" lub „płatne od razu".',
     );
   }
   return wartosc;

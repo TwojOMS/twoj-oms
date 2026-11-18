@@ -13,7 +13,8 @@ export function sprawdzModuly(moduly: readonly ModulOms[]): void {
     nazwy.add(m.nazwa);
     const numery = new Set<number>();
     for (const mig of m.migracje) {
-      if (!Number.isInteger(mig.numer) || mig.numer < 1) throw new Error(`Moduł „${m.nazwa}": numer migracji ${mig.numer} musi być dodatnią liczbą całkowitą`);
+      if (!Number.isInteger(mig.numer) || mig.numer < 1)
+        throw new Error(`Moduł „${m.nazwa}": numer migracji ${mig.numer} musi być dodatnią liczbą całkowitą`);
       if (numery.has(mig.numer)) throw new Error(`Moduł „${m.nazwa}": numer migracji ${mig.numer} powtórzony`);
       numery.add(mig.numer);
     }
@@ -25,7 +26,10 @@ export function sprawdzModuly(moduly: readonly ModulOms[]): void {
   }
   for (const m of moduly) {
     for (const p of m.menu) {
-      if (!klucze.has(p.uprawnienie)) throw new Error(`Moduł „${m.nazwa}": pozycja menu „${p.etykieta}" wskazuje nieznane uprawnienie „${p.uprawnienie}"`);
+      if (!klucze.has(p.uprawnienie))
+        throw new Error(
+          `Moduł „${m.nazwa}": pozycja menu „${p.etykieta}" wskazuje nieznane uprawnienie „${p.uprawnienie}"`,
+        );
     }
     for (const w of m.wymaga) {
       if (!nazwy.has(w)) throw new Error(`Moduł „${m.nazwa}" wymaga modułu „${w}", którego nie ma na liście`);

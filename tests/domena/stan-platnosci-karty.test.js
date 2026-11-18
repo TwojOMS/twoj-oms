@@ -3,17 +3,45 @@
 // nieopłacone na czerwono, pobranie na pomarańczowo.
 // Przypadki obejmują stany płatności i wyświetlanie kwot. Dane zmyślone.
 import { describe, expect, it } from 'vitest';
-import { stanPlatnosciKarty, ruchyPlatnosci, kiedyRuchu, KLASA_TONU, STAN_KARTY } from '../../src/domena/stan-platnosci-karty.js';
+import {
+  stanPlatnosciKarty,
+  ruchyPlatnosci,
+  kiedyRuchu,
+  KLASA_TONU,
+  STAN_KARTY,
+} from '../../src/domena/stan-platnosci-karty.js';
 
 // Zamówienie z WooCommerce „Pracowni Półcień”: 100,00 zł, kurier bez pobrania.
 const zam = (nad = {}) => ({
-  id: 152, numer: 'PC-152', sklep: 'polcien', kwota_brutto: '100.00', koszt_dostawy_brutto: '0.00',
-  metoda_wysylki: 'dpd', pobranie: 0, kwota_pobrania: null, wysylka_reczna_json: null,
-  pozycje: [], platnosci: [], ...nad,
+  id: 152,
+  numer: 'PC-152',
+  sklep: 'polcien',
+  kwota_brutto: '100.00',
+  koszt_dostawy_brutto: '0.00',
+  metoda_wysylki: 'dpd',
+  pobranie: 0,
+  kwota_pobrania: null,
+  wysylka_reczna_json: null,
+  pozycje: [],
+  platnosci: [],
+  ...nad,
 });
 const pobranie = (nad = {}) => zam({ pobranie: 1, kwota_pobrania: '100.00', metoda_platnosci: 'Za pobraniem', ...nad });
-const wplata = (nad = {}) => ({ id: 7, kwota: '100.00', data: '2026-10-30T10:18:27', metoda: 'Przelew', zrodlo: 'reczna', ...nad });
-const zwrot = (nad = {}) => ({ id: 3, kwota: '100.00', kwota_dostawy: null, pieniadze_oddane_at: '2026-11-03T09:00:00', ...nad });
+const wplata = (nad = {}) => ({
+  id: 7,
+  kwota: '100.00',
+  data: '2026-10-30T10:18:27',
+  metoda: 'Przelew',
+  zrodlo: 'reczna',
+  ...nad,
+});
+const zwrot = (nad = {}) => ({
+  id: 3,
+  kwota: '100.00',
+  kwota_dostawy: null,
+  pieniadze_oddane_at: '2026-11-03T09:00:00',
+  ...nad,
+});
 
 describe('stanPlatnosciKarty — tabela', () => {
   it('opłacone przelewem → Opłacone, zielony', () => {
@@ -24,7 +52,10 @@ describe('stanPlatnosciKarty — tabela', () => {
 
   it('brak wpłaty → Nieopłacone, czerwony', () => {
     expect(stanPlatnosciKarty(zam())).toMatchObject({
-      stan: STAN_KARTY.NIEOPLACONE, etykieta: 'Nieopłacone', klasa: 'znacznik--czerwony', saldoGr: -10000,
+      stan: STAN_KARTY.NIEOPLACONE,
+      etykieta: 'Nieopłacone',
+      klasa: 'znacznik--czerwony',
+      saldoGr: -10000,
     });
   });
 
@@ -35,7 +66,10 @@ describe('stanPlatnosciKarty — tabela', () => {
 
   it('pobranie bez wpłaty → Pobranie · czeka na kuriera, pomarańczowy, do pobrania = kwota', () => {
     expect(stanPlatnosciKarty(pobranie())).toMatchObject({
-      stan: 'pobranie', etykieta: 'Pobranie · czeka na kuriera', klasa: 'znacznik--pomaranczowy', doPobraniaGr: 10000,
+      stan: 'pobranie',
+      etykieta: 'Pobranie · czeka na kuriera',
+      klasa: 'znacznik--pomaranczowy',
+      doPobraniaGr: 10000,
     });
   });
 
@@ -57,7 +91,13 @@ describe('stanPlatnosciKarty — tabela', () => {
   });
 
   it('błąd (1): pobranie + wpłata „Za pobraniem · sklep” na całość (date_paid Woo) → pobranie, wpłata nieliczona', () => {
-    const s = stanPlatnosciKarty(pobranie({ platnosci: [wplata({ id: 41, kwota: '276.90', zrodlo: 'sklep', metoda: 'Za pobraniem' })], kwota_brutto: '276.90', kwota_pobrania: '276.90' }));
+    const s = stanPlatnosciKarty(
+      pobranie({
+        platnosci: [wplata({ id: 41, kwota: '276.90', zrodlo: 'sklep', metoda: 'Za pobraniem' })],
+        kwota_brutto: '276.90',
+        kwota_pobrania: '276.90',
+      }),
+    );
     expect(s).toMatchObject({ stan: 'pobranie', klasa: 'znacznik--pomaranczowy', wplaconoGr: 0, saldoGr: -27690 });
     expect(s.pominieteWplaty).toEqual([41]);
   });
@@ -76,19 +116,30 @@ describe('stanPlatnosciKarty — tabela', () => {
       { zwroty: [zwrot({ kwota: '51.80' })] },
     );
     expect(s).toMatchObject({
-      stan: 'zwrocone_calosc', etykieta: 'Zwrócone w całości', klasa: 'znacznik--szary',
-      wplaconoGr: 5180, zwroconoGr: 5180, saldoGr: 0,
+      stan: 'zwrocone_calosc',
+      etykieta: 'Zwrócone w całości',
+      klasa: 'znacznik--szary',
+      wplaconoGr: 5180,
+      zwroconoGr: 5180,
+      saldoGr: 0,
     });
   });
 
   it('zwrot z dostawą liczy kwotę razem z dostawą (kwotaZwrotuGrosze)', () => {
-    const s = stanPlatnosciKarty(zam({ platnosci: [wplata()] }), { zwroty: [zwrot({ kwota: '85.00', kwota_dostawy: '15.00' })] });
+    const s = stanPlatnosciKarty(zam({ platnosci: [wplata()] }), {
+      zwroty: [zwrot({ kwota: '85.00', kwota_dostawy: '15.00' })],
+    });
     expect(s).toMatchObject({ stan: 'zwrocone_calosc', zwroconoGr: 10000 });
   });
 
   it('zwrot 30,00 z 100,00 → Zwrócone częściowo', () => {
     const s = stanPlatnosciKarty(zam({ platnosci: [wplata()] }), { zwroty: [zwrot({ kwota: '30.00' })] });
-    expect(s).toMatchObject({ stan: 'zwrocone_czesciowo', etykieta: 'Zwrócone częściowo', klasa: 'znacznik--szary', zwroconoGr: 3000 });
+    expect(s).toMatchObject({
+      stan: 'zwrocone_czesciowo',
+      etykieta: 'Zwrócone częściowo',
+      klasa: 'znacznik--szary',
+      zwroconoGr: 3000,
+    });
   });
 
   it('zwrot bez oddanych pieniędzy nie zmienia stanu (Opłacone)', () => {
@@ -103,7 +154,9 @@ describe('stanPlatnosciKarty — tabela', () => {
 
   it('pusta kwota zamówienia → Błąd wyceny, szary, z opisem z domeny; nie rzuca', () => {
     let s;
-    expect(() => { s = stanPlatnosciKarty(zam({ kwota_brutto: '' })); }).not.toThrow();
+    expect(() => {
+      s = stanPlatnosciKarty(zam({ kwota_brutto: '' }));
+    }).not.toThrow();
     expect(s).toMatchObject({ stan: 'blad', etykieta: 'Błąd wyceny', klasa: 'znacznik--szary' });
     expect(String(s.opis ?? '').trim()).not.toBe('');
   });
@@ -115,7 +168,9 @@ describe('stanPlatnosciKarty — tabela', () => {
 
   it('w okresie rozliczeniowym bez wpłaty → Rozliczenie zbiorcze', () => {
     expect(stanPlatnosciKarty(zam(), { wOkresie: true })).toMatchObject({
-      stan: 'zbiorcze', etykieta: 'Rozliczenie zbiorcze', klasa: 'znacznik--szary',
+      stan: 'zbiorcze',
+      etykieta: 'Rozliczenie zbiorcze',
+      klasa: 'znacznik--szary',
     });
   });
 
@@ -136,8 +191,13 @@ describe('ruchyPlatnosci', () => {
 
   it('wpłata, zwrot, wpłata — rosnąco po dacie, zwrot po dacie oddania pieniędzy', () => {
     const lista = ruchy({
-      wplaty: [wplata({ id: 9, kwota: '30.00', data: '2026-11-02T08:00:00' }), wplata({ id: 7, kwota: '70.00', data: '2026-10-30T10:18:00' })],
-      zwroty: [zwrot({ id: 3, kwota: '20.00', data: '2026-10-01T00:00:00', pieniadze_oddane_at: '2026-11-03T09:00:00' })],
+      wplaty: [
+        wplata({ id: 9, kwota: '30.00', data: '2026-11-02T08:00:00' }),
+        wplata({ id: 7, kwota: '70.00', data: '2026-10-30T10:18:00' }),
+      ],
+      zwroty: [
+        zwrot({ id: 3, kwota: '20.00', data: '2026-10-01T00:00:00', pieniadze_oddane_at: '2026-11-03T09:00:00' }),
+      ],
     });
     expect(lista.map((r) => `${r.rodzaj}:${r.id}`)).toEqual(['wplata:7', 'wplata:9', 'zwrot:3']);
     const l2 = ruchy({
@@ -163,8 +223,15 @@ describe('ruchyPlatnosci', () => {
   it('wpłata: znak „+”, opis z metodą, ręczna usuwalna i liczona', () => {
     const [r] = ruchy({ wplaty: [wplata({ id: 7, kwota: '40.00', metoda: 'blik', uwaga: 'telefon' })] });
     expect(r).toMatchObject({
-      rodzaj: 'wplata', znak: '+', kwotaGr: 4000, opis: 'Wpłata · BLIK', zrodlo: 'reczna',
-      uwaga: 'telefon', id: 7, usuwalna: true, liczona: true,
+      rodzaj: 'wplata',
+      znak: '+',
+      kwotaGr: 4000,
+      opis: 'Wpłata · BLIK',
+      zrodlo: 'reczna',
+      uwaga: 'telefon',
+      id: 7,
+      usuwalna: true,
+      liczona: true,
     });
   });
 
@@ -186,7 +253,10 @@ describe('ruchyPlatnosci', () => {
   it('wpłata nieliczona (data zapłaty ze sklepu przy pobraniu) → liczona:false i opis wyjaśniający', () => {
     const [r] = ruchy({ wplaty: [wplata({ id: 5, zrodlo: 'sklep', metoda: 'Za pobraniem' })], pominieteWplaty: [5] });
     expect(r).toMatchObject({
-      id: 5, liczona: false, opis: 'Data zapłaty ze sklepu przy pobraniu — nie jest wpłatą', usuwalna: false,
+      id: 5,
+      liczona: false,
+      opis: 'Data zapłaty ze sklepu przy pobraniu — nie jest wpłatą',
+      usuwalna: false,
     });
   });
 

@@ -29,7 +29,9 @@ const KOLUMNY = ['nazwa', 'sku', 'ilosc', 'cena_netto', 'cena_brutto'];
 
 /** `domena/kwoty.js: grosze` — bez rzucania: podgląd oddaje `null`, nie wyjątek. */
 function grosze(kwota) {
-  const t = String(kwota ?? '').trim().replace(',', '.');
+  const t = String(kwota ?? '')
+    .trim()
+    .replace(',', '.');
   if (!t) return null;
   const n = Number(t);
   if (!Number.isFinite(n)) return null;
@@ -48,7 +50,9 @@ function bruttoZNetto(netto, procentVat) {
  * Ułamek jest ODMOWĄ, nie zaokrągleniem: cała warstwa liczy na całkowitych groszach.
  */
 function ilosc(surowa) {
-  const t = String(surowa ?? '').trim().replace(',', '.');
+  const t = String(surowa ?? '')
+    .trim()
+    .replace(',', '.');
   if (!t) return null;
   const n = Number(t);
   if (!Number.isFinite(n) || !Number.isInteger(n) || n <= 0) return null;
@@ -91,14 +95,42 @@ export function liniaGrosze(w, procentVat, wdt = false, { zw = true } = {}) {
 
 // `domena/klient-zbiorczy.js: KODY_KRAJOW_UE` — test porównuje odpowiedź z serwerem dla każdego prefiksu AA–ZZ.
 const KODY_KRAJOW_UE = new Set([
-  'AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'EL', 'ES', 'FI', 'FR', 'HR', 'HU',
-  'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PT', 'RO', 'SE', 'SI', 'SK', 'XI',
+  'AT',
+  'BE',
+  'BG',
+  'CY',
+  'CZ',
+  'DE',
+  'DK',
+  'EE',
+  'EL',
+  'ES',
+  'FI',
+  'FR',
+  'HR',
+  'HU',
+  'IE',
+  'IT',
+  'LT',
+  'LU',
+  'LV',
+  'MT',
+  'NL',
+  'PT',
+  'RO',
+  'SE',
+  'SI',
+  'SK',
+  'XI',
 ]);
 
 /** `domena/wdt.js: czyNipUe` (przez `normalizujNip`) — numer z prefiksem państwa UE innego niż PL. */
 export function czyNipUe(nip) {
   // `domena/dane-faktury.js: bezEtykietyNip` — „NIP: DE…” na dokumencie traci etykietę, więc tu też.
-  const bezEtykiety = String(nip ?? '').trim().replace(/^NIP(?![A-Z0-9])\s*[:.\-]?\s*/i, '').trim();
+  const bezEtykiety = String(nip ?? '')
+    .trim()
+    .replace(/^NIP(?![A-Z0-9])\s*[:.\-]?\s*/i, '')
+    .trim();
   const surowy = bezEtykiety.replace(/[\s.\-/]/g, '').toUpperCase();
   const m = surowy.match(/^([A-Z]{2})([0-9A-Z]{2,14})$/);
   return Boolean(m && m[1] !== 'PL' && KODY_KRAJOW_UE.has(m[1]));
@@ -134,7 +166,13 @@ const procentLiczbowy = (stawka) => (String(stawka).trim() === 'zw' ? 0 : Number
  * Podsumowanie netto / VAT / brutto formularza — regułą faktury, z dostawą jako osobną linią (stawka domyślna,
  * przy WDT 0). `null` tam, gdzie kwota też jest `null` (serwer by odmówił).
  */
-export function podsumowanieFormularza(wiersze, kosztDostawy, procentVat, nip = '', { zw = true, zwolniona = false } = {}) {
+export function podsumowanieFormularza(
+  wiersze,
+  kosztDostawy,
+  procentVat,
+  nip = '',
+  { zw = true, zwolniona = false } = {},
+) {
   const wdt = czyWdt(nip, { zwolniona });
   const linie = [];
   for (const w of wiersze ?? []) {
@@ -171,7 +209,13 @@ function dostawaGrosze(kosztDostawy) {
  * pokazuje wtedy myślnik zamiast liczby: kwota mniejsza o pominięty wiersz byłaby gorsza
  * niż jej brak, bo wygląda na prawdziwą.
  */
-export function kwotaFormularzaGrosze(wiersze, kosztDostawy, procentVat, nip = '', { zw = true, zwolniona = false } = {}) {
+export function kwotaFormularzaGrosze(
+  wiersze,
+  kosztDostawy,
+  procentVat,
+  nip = '',
+  { zw = true, zwolniona = false } = {},
+) {
   const wdt = czyWdt(nip, { zwolniona });
   let suma = 0;
   for (const w of wiersze ?? []) {
@@ -201,8 +245,11 @@ export function podepnij(dokument) {
   // atrybut — wcześniej `Number('zw')` wyłączał podgląd. „zw” dozwolone, gdy jest domyślną albo stoi na liście stawek
   // formularza (lista z programu: tylko wbudowany ją ma) — tak samo, jak serwer dostaje flagę `zw`.
   const zwDomyslna = surowyProcent !== undefined && String(surowyProcent).trim() === 'zw';
-  const procent = zwDomyslna ? 'zw'
-    : surowyProcent === undefined || String(surowyProcent).trim() === '' ? NaN : Number(surowyProcent);
+  const procent = zwDomyslna
+    ? 'zw'
+    : surowyProcent === undefined || String(surowyProcent).trim() === ''
+      ? NaN
+      : Number(surowyProcent);
   // Brak albo zepsuty atrybut wyłącza WYŁĄCZNIE podgląd — formularz działa dalej, bo kwotę
   // i tak liczy serwer przy zapisie (ta sama zasada, co w public/cena-netto.js). 0 to stawka.
   if (!zwDomyslna && (!Number.isFinite(procent) || procent < 0)) return null;
@@ -220,8 +267,14 @@ export function podepnij(dokument) {
 
   const poleNip = formularz ? formularz.querySelector('[name="f_nip"]') : null;
   const wez = (sel) => dokument.querySelector(sel);
-  const ustaw = (sel, tekst) => { const el = wez(sel); if (el) el.textContent = tekst; };
-  const pokaz = (sel, widoczny) => { const el = wez(sel); if (el) el.hidden = !widoczny; };
+  const ustaw = (sel, tekst) => {
+    const el = wez(sel);
+    if (el) el.textContent = tekst;
+  };
+  const pokaz = (sel, widoczny) => {
+    const el = wez(sel);
+    if (el) el.hidden = !widoczny;
+  };
 
   // Stawka z listy wiersza (`poz_vat`) czytana obok kolumn — do pustości wiersza się nie liczy.
   const odczytaj = (tr) => ({

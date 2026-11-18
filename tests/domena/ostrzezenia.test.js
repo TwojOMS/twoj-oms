@@ -1,9 +1,19 @@
 import { describe, it, expect } from 'vitest';
 import {
-  ostrzezeniaFaktur, ostrzezeniaPrzesylek, ostrzezeniaWiadomosci, ostrzezeniaIntegracji,
-  ostrzezeniaTerminow, ostrzezeniaZwrotow, ostrzezeniaPobran,
-  zlozOstrzezenia, kluczDozwolony, WYGASANIE_INTEGRACJI_MS,
-  ostrzezeniaKopii, ostrzezeniaDlaKonta, zdanieWstrzymanej, ostrzezeniaAutomatuKsef,
+  ostrzezeniaFaktur,
+  ostrzezeniaPrzesylek,
+  ostrzezeniaWiadomosci,
+  ostrzezeniaIntegracji,
+  ostrzezeniaTerminow,
+  ostrzezeniaZwrotow,
+  ostrzezeniaPobran,
+  zlozOstrzezenia,
+  kluczDozwolony,
+  WYGASANIE_INTEGRACJI_MS,
+  ostrzezeniaKopii,
+  ostrzezeniaDlaKonta,
+  zdanieWstrzymanej,
+  ostrzezeniaAutomatuKsef,
 } from '../../src/domena/ostrzezenia.js';
 import { ekranyRoli } from '../../src/domena/ekrany.js';
 import { ocenZdrowie } from '../../src/domena/zdrowie.js';
@@ -15,7 +25,10 @@ const DZIS = '2026-08-29';
 
 describe('ostrzezeniaFaktur — dokument do wysłania do KSeF', () => {
   const luka = (n) => ({
-    uuid: `u-${n}`, numer: `${n}/08/2026`, invoice_date: '2026-08-27', sprawdzona_at: '2026-08-29T07:00:00.000Z',
+    uuid: `u-${n}`,
+    numer: `${n}/08/2026`,
+    invoice_date: '2026-08-27',
+    sprawdzona_at: '2026-08-29T07:00:00.000Z',
   });
 
   it('faktura wystawiona przed dzisiejszym dniem alarmuje z numerem i datą', () => {
@@ -51,8 +64,10 @@ describe('ostrzezeniaFaktur — dokument do wysłania do KSeF', () => {
 
   it('title mówi, skąd i kiedy wiersz zniknie — odczyt z programu fakturowego, gdy jest podłączony', () => {
     const [w] = ostrzezeniaFaktur({ luki: [luka(51)], dzis: DZIS });
-    expect(w.title).toBe('Stan z odczytu 2026-08-29T07:00:00.000Z. Wysłana ręcznie w programie fakturowym zniknie stąd'
-      + ' przy następnym odczycie z programu fakturowego (co godzinę, gdy program jest podłączony).');
+    expect(w.title).toBe(
+      'Stan z odczytu 2026-08-29T07:00:00.000Z. Wysłana ręcznie w programie fakturowym zniknie stąd' +
+        ' przy następnym odczycie z programu fakturowego (co godzinę, gdy program jest podłączony).',
+    );
   });
 
   it('bez luk nie ma wierszy', () => {
@@ -75,7 +90,10 @@ describe('ostrzezeniaPrzesylek — paczka bez ruchu', () => {
     ukryta_at: null,
     ...reszta,
   });
-  const zamowienia = new Map([[101, { numer: 'MA260800101' }], [102, { numer: 'MA260800102' }]]);
+  const zamowienia = new Map([
+    [101, { numer: 'MA260800101' }],
+    [102, { numer: 'MA260800102' }],
+  ]);
 
   it('paczka bez ruchu ponad 3 dni robocze alarmuje z numerem listu i zamówienia', () => {
     const [w] = ostrzezeniaPrzesylek({ przesylki: [paczka(1)], zamowienia, teraz: TERAZ });
@@ -93,7 +111,10 @@ describe('ostrzezeniaPrzesylek — paczka bez ruchu', () => {
   });
 
   it('paczka DORĘCZONA nie stoi, choćby zdarzenie było stare', () => {
-    const doreczona = paczka(3, { status_kuriera: 'Przesyłka doręczona', status_kuriera_at: '2026-08-10T10:00:00.000Z' });
+    const doreczona = paczka(3, {
+      status_kuriera: 'Przesyłka doręczona',
+      status_kuriera_at: '2026-08-10T10:00:00.000Z',
+    });
     expect(ostrzezeniaPrzesylek({ przesylki: [doreczona], zamowienia, teraz: TERAZ })).toHaveLength(0);
   });
 
@@ -124,7 +145,7 @@ describe('ostrzezeniaWiadomosci — wątek czeka na odpowiedź', () => {
   // ⚠️ `teraz: TERAZ` NIE JEST OZDOBNIKIEM. Bez niego domyslny `new Date()` bierze
   // PRAWDZIWY dzien, a fikstura ma date 29.08.2026 — test przechodzil, dopoki kalendarz
   // nie wyszedl poza okno swiezosci wiadomosci, i od tej pory swiecil na czerwono bez
-// zadnej zmiany w kodzie. Pozostale przypadki w tym opisie robily
+  // zadnej zmiany w kodzie. Pozostale przypadki w tym opisie robily
   // to poprawnie od poczatku.
   it('ostatnia wiadomość od kupującego alarmuje z loginem', () => {
     const [w] = ostrzezeniaWiadomosci({ watki: [watek()], teraz: TERAZ });
@@ -168,7 +189,11 @@ describe('ostrzezeniaWiadomosci — wątek czeka na odpowiedź', () => {
 
 describe('ostrzezeniaTerminow — zbiorczy wiersz z pasa długów', () => {
   const wiersz = (uuid, gr, termin = '2026-08-10') => ({
-    uuid, numer: `${uuid}/07/2026`, payment_date: termin, pozostalo_gr: gr, sprawdzona_at: '2026-08-29T07:00:00.000Z',
+    uuid,
+    numer: `${uuid}/07/2026`,
+    payment_date: termin,
+    pozostalo_gr: gr,
+    sprawdzona_at: '2026-08-29T07:00:00.000Z',
   });
 
   it('dwie przeterminowane składają się w JEDEN wiersz z liczbą i sumą', () => {
@@ -235,19 +260,22 @@ describe('ostrzezeniaZwrotow — zwrot bez korekty w inFakcie', () => {
 });
 
 describe('ostrzezeniaIntegracji — z wyniku ocenZdrowie', () => {
-  const zdrowe = () => ocenZdrowie({
-    teraz: TERAZ,
-    startAt: '2026-08-20T00:00:00.000Z',
-    zrodla: ['woo_pro'],
-    stanyPollera: [{ sklep: 'woo_pro', ostatni_przebieg_at: '2026-08-29T09:59:00.000Z', ostatni_blad: null }],
-  });
+  const zdrowe = () =>
+    ocenZdrowie({
+      teraz: TERAZ,
+      startAt: '2026-08-20T00:00:00.000Z',
+      zrodla: ['woo_pro'],
+      stanyPollera: [{ sklep: 'woo_pro', ostatni_przebieg_at: '2026-08-29T09:59:00.000Z', ostatni_blad: null }],
+    });
 
   it('poller z błędem alarmuje treścią błędu PO POLSKU i kluczem źródła', () => {
     const zdrowie = ocenZdrowie({
       teraz: TERAZ,
       startAt: '2026-08-20T00:00:00.000Z',
       zrodla: ['woo_pro'],
-      stanyPollera: [{ sklep: 'woo_pro', ostatni_przebieg_at: '2026-08-29T09:59:00.000Z', ostatni_blad: 'fetch failed' }],
+      stanyPollera: [
+        { sklep: 'woo_pro', ostatni_przebieg_at: '2026-08-29T09:59:00.000Z', ostatni_blad: 'fetch failed' },
+      ],
     });
     const [w] = ostrzezeniaIntegracji({ zdrowie });
     expect(w.typ).toBe('integracja');
@@ -267,47 +295,54 @@ describe('ostrzezeniaIntegracji — z wyniku ocenZdrowie', () => {
       teraz: TERAZ,
       startAt: '2026-08-20T00:00:00.000Z',
       zrodla: ['allegro_polcien2'],
-      stanyPollera: [{
-        sklep: 'allegro_polcien2',
-        ostatni_przebieg_at: '2026-08-29T09:59:00.000Z',
-        ostatni_blad: 'The operation was aborted due to timeout',
-        ostatni_blad_od_at: '2026-08-29T09:40:00.000Z',
-        ostatni_blad_rodzaj: 'awaria',
-        // Trzy nieudane przebiegi z rzedu — czyli nie czknieccie, tylko sprawa dla czlowieka.
-        ostatni_blad_prob: 3,
-      }],
+      stanyPollera: [
+        {
+          sklep: 'allegro_polcien2',
+          ostatni_przebieg_at: '2026-08-29T09:59:00.000Z',
+          ostatni_blad: 'The operation was aborted due to timeout',
+          ostatni_blad_od_at: '2026-08-29T09:40:00.000Z',
+          ostatni_blad_rodzaj: 'awaria',
+          // Trzy nieudane przebiegi z rzedu — czyli nie czknieccie, tylko sprawa dla czlowieka.
+          ostatni_blad_prob: 3,
+        },
+      ],
     });
     const [w] = ostrzezeniaIntegracji({ zdrowie });
-    expect(w.tekst).toBe('Pobieranie zamówień z kanału allegro_polcien2 nie działa: przekroczony czas oczekiwania na odpowiedź');
+    expect(w.tekst).toBe(
+      'Pobieranie zamówień z kanału allegro_polcien2 nie działa: przekroczony czas oczekiwania na odpowiedź',
+    );
   });
 
   it('⚠️ CZKNIECIE SIECI NIE MALUJE WIERSZA — usterki, ktora juz przeszla, nie pokazujemy', () => {
     // Dokladnie przypadek ze zgloszenia: jeden przebieg padl na timeout, nastepny (dwie
-// minuty pozniej) zgasil blad. Tabelka zdazyla w tym oknie krzyknac,
+    // minuty pozniej) zgasil blad. Tabelka zdazyla w tym oknie krzyknac,
     // a Ustawienia → Łączność mowily „wszystko ok" — dwie odpowiedzi na jednym panelu.
-    const czknieccie = (proby) => ocenZdrowie({
-      teraz: TERAZ,
-      startAt: '2026-08-20T00:00:00.000Z',
-      zrodla: ['allegro_polcien2'],
-      stanyPollera: [{
-        sklep: 'allegro_polcien2',
-        ostatni_przebieg_at: '2026-08-29T09:59:00.000Z',
-        ostatni_blad: 'The operation was aborted due to timeout',
-        ostatni_blad_od_at: '2026-08-29T09:55:00.000Z',
-        ostatni_blad_rodzaj: 'awaria',
-        ostatni_blad_prob: proby,
-      }],
-    });
+    const czknieccie = (proby) =>
+      ocenZdrowie({
+        teraz: TERAZ,
+        startAt: '2026-08-20T00:00:00.000Z',
+        zrodla: ['allegro_polcien2'],
+        stanyPollera: [
+          {
+            sklep: 'allegro_polcien2',
+            ostatni_przebieg_at: '2026-08-29T09:59:00.000Z',
+            ostatni_blad: 'The operation was aborted due to timeout',
+            ostatni_blad_od_at: '2026-08-29T09:55:00.000Z',
+            ostatni_blad_rodzaj: 'awaria',
+            ostatni_blad_prob: proby,
+          },
+        ],
+      });
     expect(ostrzezeniaIntegracji({ zdrowie: czknieccie(1) })).toHaveLength(0);
     expect(ostrzezeniaIntegracji({ zdrowie: czknieccie(2) })).toHaveLength(0);
-// Trzeci nieudany przebieg z rzedu to juz nie czknieccie.
+    // Trzeci nieudany przebieg z rzedu to juz nie czknieccie.
     expect(ostrzezeniaIntegracji({ zdrowie: czknieccie(3) })).toHaveLength(1);
   });
 
   it('⚠️ zegar STOJACY ze starym bledem mowi „stoi", a nie cytuje usterki, ktorej juz nie ma', () => {
     // Puls trzyma ostatni slad bledu takze po pozniejszym UDANYM przebiegu. Zdanie
     // „Czuwacz ostrzeżeń nie działa: <blad sprzed doby>" wskazywalo przyczyne nieaktualna
-// i przemilczalo prawdziwa — ze zegar po prostu stoi.
+    // i przemilczalo prawdziwa — ze zegar po prostu stoi.
     const zdrowie = ocenZdrowie({
       teraz: TERAZ,
       startAt: '2026-08-20T00:00:00.000Z',
@@ -379,7 +414,11 @@ describe('ostrzezeniaIntegracji — z wyniku ocenZdrowie', () => {
       zrodla: [],
       stanyPollera: [],
       ostrzezeniaWlaczone: true,
-      pulsOstrzezen: { okAt: '2026-08-29T05:00:00.000Z', bladAt: '2026-08-29T09:00:00.000Z', blad: 'luki KSeF: inFakt 500' },
+      pulsOstrzezen: {
+        okAt: '2026-08-29T05:00:00.000Z',
+        bladAt: '2026-08-29T09:00:00.000Z',
+        blad: 'luki KSeF: inFakt 500',
+      },
     });
     const [w] = ostrzezeniaIntegracji({ zdrowie });
     expect(w.klucz).toBe('integracja:czuwacz-ostrzezen');
@@ -404,7 +443,11 @@ describe('ostrzezeniaIntegracji — z wyniku ocenZdrowie', () => {
 
 describe('zlozOstrzezenia — odrzucenia, wygasanie, kolejność', () => {
   const wiersz = (typ, klucz) => ({
-    typ, klucz, tekst: klucz, przycisk: { href: '/', etykieta: 'X' }, etykietaOdrzucenia: 'Ignoruj',
+    typ,
+    klucz,
+    tekst: klucz,
+    przycisk: { href: '/', etykieta: 'X' },
+    etykietaOdrzucenia: 'Ignoruj',
   });
 
   it('odrzucone ostrzeżenie trwałego typu znika na zawsze', () => {
@@ -419,7 +462,9 @@ describe('zlozOstrzezenia — odrzucenia, wygasanie, kolejność', () => {
 
   it('wyciszona integracja wraca po 24 godzinach', () => {
     const swiezo = new Map([['integracja:poller:woo_pro', '2026-08-29T09:59:00.000Z']]);
-    const dawno = new Map([['integracja:poller:woo_pro', new Date(TERAZ.getTime() - WYGASANIE_INTEGRACJI_MS - 1).toISOString()]]);
+    const dawno = new Map([
+      ['integracja:poller:woo_pro', new Date(TERAZ.getTime() - WYGASANIE_INTEGRACJI_MS - 1).toISOString()],
+    ]);
     const wiersze = [wiersz('integracja', 'integracja:poller:woo_pro')];
     expect(zlozOstrzezenia({ wiersze, odrzucone: swiezo, teraz: TERAZ })).toHaveLength(0);
     expect(zlozOstrzezenia({ wiersze, odrzucone: dawno, teraz: TERAZ })).toHaveLength(1);
@@ -439,7 +484,12 @@ describe('zlozOstrzezenia — odrzucenia, wygasanie, kolejność', () => {
       teraz: TERAZ,
     });
     expect(wynik.map((w) => w.typ)).toEqual([
-      'integracja', 'faktura-ksef', 'faktura-termin', 'zwrot-korekta', 'przesylka', 'wiadomosc-allegro',
+      'integracja',
+      'faktura-ksef',
+      'faktura-termin',
+      'zwrot-korekta',
+      'przesylka',
+      'wiadomosc-allegro',
     ]);
   });
 });
@@ -512,23 +562,29 @@ describe('ostrzezeniaPobran — paczka bez gotówki przy wystawionej fakturze', 
   });
 
   it('paczka doręczona MILCZY — pieniądze są u nas', () => {
-    expect(ostrzezeniaPobran({
-      pobrania: [kandydat({ status_kuriera: 'Przesyłka doręczona' })],
-    })).toEqual([]);
+    expect(
+      ostrzezeniaPobran({
+        pobrania: [kandydat({ status_kuriera: 'Przesyłka doręczona' })],
+      }),
+    ).toEqual([]);
   });
 
   it('paczka W DRODZE milczy — gotówki jeszcze nie ma, ale będzie', () => {
-    expect(ostrzezeniaPobran({
-      pobrania: [kandydat({ status_kuriera: 'Przesyłka w drodze' })],
-    })).toEqual([]);
+    expect(
+      ostrzezeniaPobran({
+        pobrania: [kandydat({ status_kuriera: 'Przesyłka w drodze' })],
+      }),
+    ).toEqual([]);
   });
 
   // Zamówienie bez pobrania: paczka wróciła, ale pieniądze przyszły przelewem przed
   // wysyłką — to sprawa zwrotu, nie tego ostrzeżenia.
   it('zamówienie BEZ pobrania milczy, choć paczka wróciła', () => {
-    expect(ostrzezeniaPobran({
-      pobrania: [kandydat({ pobranie: 0 })],
-    })).toEqual([]);
+    expect(
+      ostrzezeniaPobran({
+        pobrania: [kandydat({ pobranie: 0 })],
+      }),
+    ).toEqual([]);
   });
 
   // ⚠️ WARTOŚĆ EFEKTYWNA, NIE KOLUMNA — dokładnie jak w `czyPobranieRozliczone`.
@@ -574,22 +630,48 @@ describe('ostrzezeniaKopii — stan kopii bazy z usługi zdrowie.kopie', () => {
 
   it('stara kopia na nośniku ma wiersz także obok starej kopii lokalnej', () => {
     const ostatnia = { plik: 'oms-2026-10-27.sqlite', wiekH: 2 };
-    const nosnik = { klucz: 'integracja:kopia:nosnik', typ: 'integracja', przycisk: PRZYCISK, etykietaOdrzucenia: 'Wycisz na 24 h', tekst: 'Kopia poza dyskiem nie odświeża się — na nośniku brak kopii z ostatnich 48 h (sprawdź oms-kopia).' };
+    const nosnik = {
+      klucz: 'integracja:kopia:nosnik',
+      typ: 'integracja',
+      przycisk: PRZYCISK,
+      etykietaOdrzucenia: 'Wycisz na 24 h',
+      tekst: 'Kopia poza dyskiem nie odświeża się — na nośniku brak kopii z ostatnich 48 h (sprawdź oms-kopia).',
+    };
     expect(ostrzezeniaKopii({ kopie: stan({ ostatnia, zewnetrznaStan: 'stara-na-nosniku' }) })).toEqual([nosnik]);
-    const oba = ostrzezeniaKopii({ kopie: stan({ ostatnia: { ...ostatnia, wiekH: 50 }, zewnetrznaStan: 'stara-na-nosniku' }) });
-    expect(oba.map(w => w.klucz)).toEqual(['integracja:kopia:stara:2026-10-27', 'integracja:kopia:nosnik']);
+    const oba = ostrzezeniaKopii({
+      kopie: stan({ ostatnia: { ...ostatnia, wiekH: 50 }, zewnetrznaStan: 'stara-na-nosniku' }),
+    });
+    expect(oba.map((w) => w.klucz)).toEqual(['integracja:kopia:stara:2026-10-27', 'integracja:kopia:nosnik']);
     expect(oba[1]).toEqual(nosnik);
   });
 
   it('nośnik ma osobny wiersz obok ostrzeżenia o starej kopii', () => {
     const swieza = { plik: 'oms-2026-10-27.sqlite', wiekH: 5 };
     const brak = ostrzezeniaKopii({ kopie: stan({ ostatnia: swieza, zewnetrznaStan: 'brak-nosnika' }) });
-    expect(brak).toEqual([{ klucz: 'integracja:kopia:nosnik', typ: 'integracja', przycisk: PRZYCISK, etykietaOdrzucenia: 'Wycisz na 24 h', tekst: 'Kopia poza dyskiem nie trafia na nośnik — podłącz nośnik kopii (brak znacznika w katalogu).' }]);
-    expect(ostrzezeniaKopii({ kopie: stan({ ostatnia: swieza, zewnetrznaStan: 'ten-sam-dysk' }) })[0].tekst).toBe('Kopia poza dyskiem leży na dysku serwera — nośnik kopii nie jest zamontowany.');
-    expect(ostrzezeniaKopii({ kopie: stan({ ostatnia: { ...swieza, wiekH: 31 }, zewnetrznaStan: 'brak-nosnika' }) }).map(w => w.klucz)).toEqual(['integracja:kopia:stara:2026-10-27', 'integracja:kopia:nosnik']);
+    expect(brak).toEqual([
+      {
+        klucz: 'integracja:kopia:nosnik',
+        typ: 'integracja',
+        przycisk: PRZYCISK,
+        etykietaOdrzucenia: 'Wycisz na 24 h',
+        tekst: 'Kopia poza dyskiem nie trafia na nośnik — podłącz nośnik kopii (brak znacznika w katalogu).',
+      },
+    ]);
+    expect(ostrzezeniaKopii({ kopie: stan({ ostatnia: swieza, zewnetrznaStan: 'ten-sam-dysk' }) })[0].tekst).toBe(
+      'Kopia poza dyskiem leży na dysku serwera — nośnik kopii nie jest zamontowany.',
+    );
+    expect(
+      ostrzezeniaKopii({ kopie: stan({ ostatnia: { ...swieza, wiekH: 31 }, zewnetrznaStan: 'brak-nosnika' }) }).map(
+        (w) => w.klucz,
+      ),
+    ).toEqual(['integracja:kopia:stara:2026-10-27', 'integracja:kopia:nosnik']);
     expect(ostrzezeniaKopii({ kopie: stan({ ostatnia: swieza, zewnetrznaStan: 'ok' }) })).toEqual([]);
-    expect(ostrzezeniaKopii({ kopie: { brakNadzoru: true, wymagany: false, zewnetrznaStan: 'brak-nosnika' } })).toEqual([]);
-    expect(ostrzezeniaKopii({ kopie: stan({ katalogDostepny: false, zewnetrznaStan: 'brak-nosnika' }) })).toHaveLength(2);
+    expect(ostrzezeniaKopii({ kopie: { brakNadzoru: true, wymagany: false, zewnetrznaStan: 'brak-nosnika' } })).toEqual(
+      [],
+    );
+    expect(ostrzezeniaKopii({ kopie: stan({ katalogDostepny: false, zewnetrznaStan: 'brak-nosnika' }) })).toHaveLength(
+      2,
+    );
   });
 
   it('bez usługi albo ze świeżą kopią (25 h) — nic', () => {
@@ -599,11 +681,15 @@ describe('ostrzezeniaKopii — stan kopii bazy z usługi zdrowie.kopie', () => {
   });
 
   it('kopia 31 h — jeden wiersz integracji z datą kopii w kluczu, przycisk do Kopii zapasowych, wyciszenie 24 h', () => {
-    expect(ostrzezeniaKopii({ kopie: stan({ ostatnia: { plik: 'oms-2026-10-27.sqlite', wiekH: 31 } }) })).toEqual([{
-      klucz: 'integracja:kopia:stara:2026-10-27', typ: 'integracja',
-      tekst: 'Ostatnia kopia bazy ma 31 h — oms-kopia nie zrobił kopii w ostatniej dobie.',
-      przycisk: PRZYCISK, etykietaOdrzucenia: 'Wycisz na 24 h',
-    }]);
+    expect(ostrzezeniaKopii({ kopie: stan({ ostatnia: { plik: 'oms-2026-10-27.sqlite', wiekH: 31 } }) })).toEqual([
+      {
+        klucz: 'integracja:kopia:stara:2026-10-27',
+        typ: 'integracja',
+        tekst: 'Ostatnia kopia bazy ma 31 h — oms-kopia nie zrobił kopii w ostatniej dobie.',
+        przycisk: PRZYCISK,
+        etykietaOdrzucenia: 'Wycisz na 24 h',
+      },
+    ]);
     expect(kluczDozwolony('integracja:kopia:stara:2026-10-27')).toBe(true);
   });
 
@@ -616,19 +702,31 @@ describe('ostrzezeniaKopii — stan kopii bazy z usługi zdrowie.kopie', () => {
   });
 
   it('brak kopii i niewidoczny katalog — osobne zdania', () => {
-    expect(ostrzezeniaKopii({ kopie: stan({}) }).map((w) => [w.klucz, w.tekst]))
-      .toEqual([['integracja:kopia:brak', 'Brak kopii bazy w katalogu kopii.']]);
-    expect(ostrzezeniaKopii({ kopie: stan({ katalogDostepny: false }) }).map((w) => [w.klucz, w.tekst]))
-      .toEqual([['integracja:kopia:niedostepny', 'OMS nie widzi katalogu kopii.']]);
+    expect(ostrzezeniaKopii({ kopie: stan({}) }).map((w) => [w.klucz, w.tekst])).toEqual([
+      ['integracja:kopia:brak', 'Brak kopii bazy w katalogu kopii.'],
+    ]);
+    expect(ostrzezeniaKopii({ kopie: stan({ katalogDostepny: false }) }).map((w) => [w.klucz, w.tekst])).toEqual([
+      ['integracja:kopia:niedostepny', 'OMS nie widzi katalogu kopii.'],
+    ]);
   });
 
   it('brak nadzoru: wiersz tylko, gdy program wbudowany wymaga kopii; nazwa programu z usługi', () => {
-    expect(ostrzezeniaKopii({ kopie: { brakNadzoru: true, wbudowany: false, wymagany: false, nazwa: null } })).toEqual([]);
-    expect(ostrzezeniaKopii({ kopie: { brakNadzoru: true, wbudowany: true, wymagany: false, nazwa: 'Księgownik' } })).toEqual([]);
-    const [w, ...reszta] = ostrzezeniaKopii({ kopie: { brakNadzoru: true, wbudowany: true, wymagany: true, nazwa: 'Księgownik' } });
+    expect(ostrzezeniaKopii({ kopie: { brakNadzoru: true, wbudowany: false, wymagany: false, nazwa: null } })).toEqual(
+      [],
+    );
+    expect(
+      ostrzezeniaKopii({ kopie: { brakNadzoru: true, wbudowany: true, wymagany: false, nazwa: 'Księgownik' } }),
+    ).toEqual([]);
+    const [w, ...reszta] = ostrzezeniaKopii({
+      kopie: { brakNadzoru: true, wbudowany: true, wymagany: true, nazwa: 'Księgownik' },
+    });
     expect(reszta).toEqual([]);
-    expect(w).toMatchObject({ klucz: 'integracja:kopia:brak-nadzoru', typ: 'integracja', przycisk: PRZYCISK,
-      tekst: 'Faktury Księgownik są tylko w bazie, a ten OMS nie widzi katalogu kopii.' });
+    expect(w).toMatchObject({
+      klucz: 'integracja:kopia:brak-nadzoru',
+      typ: 'integracja',
+      przycisk: PRZYCISK,
+      tekst: 'Faktury Księgownik są tylko w bazie, a ten OMS nie widzi katalogu kopii.',
+    });
   });
 
   it('konto bez ekranu Ustawienia nie widzi wiersza kopii; administrator widzi', () => {
@@ -641,31 +739,46 @@ describe('ostrzezeniaKopii — stan kopii bazy z usługi zdrowie.kopie', () => {
 });
 
 describe('wpisy wstrzymane: zdanie „co dalej”', () => {
-  const POWOD = 'KSeF zgłosił, że faktura FV/9/10/2026 już tam jest (numer KSeF 1234563218-20261027-0B0B0B0B0B0B-0B), '
-    + 'ale nie oddał jej treści (kod 404), … Następny krok: znajdź fakturę … potem kliknij „Sprawdź ponownie” …';
-  const wpis = { uuid: 'u-9', numer: 'FV/9/10/2026', dzien: '2026-10-28', kod: 'duplikat-niesprawdzony', wersja: 1, powod: POWOD };
+  const POWOD =
+    'KSeF zgłosił, że faktura FV/9/10/2026 już tam jest (numer KSeF 1234563218-20261027-0B0B0B0B0B0B-0B), ' +
+    'ale nie oddał jej treści (kod 404), … Następny krok: znajdź fakturę … potem kliknij „Sprawdź ponownie” …';
+  const wpis = {
+    uuid: 'u-9',
+    numer: 'FV/9/10/2026',
+    dzien: '2026-10-28',
+    kod: 'duplikat-niesprawdzony',
+    wersja: 1,
+    powod: POWOD,
+  };
 
   it('zdanieWstrzymanej duplikat-niesprawdzony = powod', () => {
     expect(zdanieWstrzymanej(wpis)).toBe(POWOD);
   });
 
   it('duplikat-niesprawdzony bez powodu → zapas z numerem i krokiem „Sprawdź ponownie”', () => {
-    expect(zdanieWstrzymanej({ ...wpis, powod: null })).toBe('Faktura FV/9/10/2026: KSeF zgłosił duplikat, a panel nie '
-      + 'sprawdził oryginału. Następny krok: kliknij „Sprawdź ponownie” na ekranie wyniku automatu KSeF.');
+    expect(zdanieWstrzymanej({ ...wpis, powod: null })).toBe(
+      'Faktura FV/9/10/2026: KSeF zgłosił duplikat, a panel nie ' +
+        'sprawdził oryginału. Następny krok: kliknij „Sprawdź ponownie” na ekranie wyniku automatu KSeF.',
+    );
   });
 
   it('korekta-nieaktualna: „nie poszła do KSeF”, z „Następny krok:”, bez „wymaga”', () => {
     const z = zdanieWstrzymanej({ uuid: 'k-1', numer: 'KOR/1/10/2026', kod: 'korekta-nieaktualna', wersja: 1 });
-    expect(z).toBe('Korekta KOR/1/10/2026 nie poszła do KSeF — faktura pierwotna zmieniła się po wystawieniu korekty, '
-      + 'więc automat KSeF jej nie wyśle. Następny krok: wystaw nową korektę do aktualnej wersji faktury pierwotnej.');
+    expect(z).toBe(
+      'Korekta KOR/1/10/2026 nie poszła do KSeF — faktura pierwotna zmieniła się po wystawieniu korekty, ' +
+        'więc automat KSeF jej nie wyśle. Następny krok: wystaw nową korektę do aktualnej wersji faktury pierwotnej.',
+    );
     expect(z).not.toMatch(/wymaga/u);
   });
 
   it('Zdrowie: jeden wiersz wpisu z przyciskiem „Wynik automatu” → /faktury/ksef/automat', () => {
     const wiersze = ostrzezeniaAutomatuKsef({ wstrzymane: [wpis] });
-    expect(wiersze).toEqual([expect.objectContaining({
-      klucz: 'faktura-ksef:automat-wstrzymana:u-9', tekst: POWOD,
-      przycisk: { href: '/faktury/ksef/automat', etykieta: 'Wynik automatu' },
-    })]);
+    expect(wiersze).toEqual([
+      expect.objectContaining({
+        klucz: 'faktura-ksef:automat-wstrzymana:u-9',
+        tekst: POWOD,
+        przycisk: { href: '/faktury/ksef/automat', etykieta: 'Wynik automatu' },
+      }),
+    ]);
   });
 });

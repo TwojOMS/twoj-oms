@@ -5,7 +5,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const tymczasowe = [];
-afterEach(() => tymczasowe.splice(0).forEach(k => fs.rmSync(k, { recursive: true, force: true })));
+afterEach(() => tymczasowe.splice(0).forEach((k) => fs.rmSync(k, { recursive: true, force: true })));
 
 function uruchom(...argumenty) {
   return spawnSync(process.execPath, ['scripts/straznik-kurierow.mjs', ...argumenty], { encoding: 'utf8' });

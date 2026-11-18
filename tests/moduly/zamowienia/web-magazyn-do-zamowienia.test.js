@@ -9,17 +9,38 @@ const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('bas
 const poller = { stan: () => ({ ostatni_przebieg_at: '2026-08-21T09:00:00', ostatni_blad: null }) };
 
 const zmapowane = (nad = {}) => ({
-  zrodlo_id: 5001, numer: '5001', klient: { first_name: 'Jan' }, dostawa: { city: 'Warszawa' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '100.00',
-  koszt_dostawy_brutto: '0.00', koszt_dostawy_netto: '0.00', status_woo: 'processing',
-  oplacone_at: null, anulowane: 0, utworzone_at: '2026-08-21T09:00:00',
-  pozycje: [], ...nad,
+  zrodlo_id: 5001,
+  numer: '5001',
+  klient: { first_name: 'Jan' },
+  dostawa: { city: 'Warszawa' },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '100.00',
+  koszt_dostawy_brutto: '0.00',
+  koszt_dostawy_netto: '0.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-08-21T09:00:00',
+  pozycje: [],
+  ...nad,
 });
 
 const produkt = (nad = {}) => ({
-  kanal: 'swietlik', produkt_id: '28040', wariant_id: '', nazwa: 'Lampa stołowa Grzybek',
-  sku_sklepu: 'LMP-GRZ-30', cena_gr: 7490, rozmiar_tekst: '30x45', kategorie: [], zdjecia: [],
-  adres: 'https://swietlik.example.test/produkt/grzybek', odczytane_at: '2026-08-21T08:00:00', ...nad,
+  kanal: 'swietlik',
+  produkt_id: '28040',
+  wariant_id: '',
+  nazwa: 'Lampa stołowa Grzybek',
+  sku_sklepu: 'LMP-GRZ-30',
+  cena_gr: 7490,
+  rozmiar_tekst: '30x45',
+  kategorie: [],
+  zdjecia: [],
+  adres: 'https://swietlik.example.test/produkt/grzybek',
+  odczytane_at: '2026-08-21T08:00:00',
+  ...nad,
 });
 
 let db, app;
@@ -30,9 +51,13 @@ beforeEach(async () => {
 });
 
 const karta = (id, q = '') => app.inject({ method: 'GET', url: `/zamowienia/${id}${q}`, headers: naglowek });
-const dodaj = (id, payload) => app.inject({
-  method: 'POST', url: `/zamowienia/${id}/pozycje/z-magazynu`, headers: naglowek, payload,
-});
+const dodaj = (id, payload) =>
+  app.inject({
+    method: 'POST',
+    url: `/zamowienia/${id}/pozycje/z-magazynu`,
+    headers: naglowek,
+    payload,
+  });
 const pozycje = (id) => pobierzZamowienie(db, id).pozycje;
 
 describe('karta — dodaj z magazynu', () => {
@@ -40,10 +65,7 @@ describe('karta — dodaj z magazynu', () => {
     zapiszProduktSklepowy(db, produkt());
     const id = zapiszZamowienie(db, 'reczne', zmapowane(), {});
     const powrot = '/?status=nowe&kanal=pro';
-    const body = (await karta(
-      id,
-      `?edytuj=pozycje&magazyn=grzybek&powrot=${encodeURIComponent(powrot)}`,
-    )).body;
+    const body = (await karta(id, `?edytuj=pozycje&magazyn=grzybek&powrot=${encodeURIComponent(powrot)}`)).body;
     const formularz = body.match(/<form[^>]*id="magazyn-pasek"[^>]*>[\s\S]*?<\/form>/)?.[0];
     expect(formularz).toBeTruthy();
 
@@ -54,12 +76,13 @@ describe('karta — dodaj z magazynu', () => {
       return select?.match(/<option value="([^"]*)"[^>]*selected/)?.[1] ?? '';
     };
     const parametryHtmx = (nazwaKontrolki) => {
-      const kontrolka = formularz.match(new RegExp(
-        `<(?:input|select)[^>]*name="${nazwaKontrolki}"[^>]*hx-get="[^"]+"[^>]*>`,
-      ))?.[0];
+      const kontrolka = formularz.match(
+        new RegExp(`<(?:input|select)[^>]*name="${nazwaKontrolki}"[^>]*hx-get="[^"]+"[^>]*>`),
+      )?.[0];
       const selektor = kontrolka?.match(/hx-include="([^"]+)"/)?.[1] ?? '';
-      const nazwyDolaczone = [...selektor.matchAll(/#magazyn-pasek \[name='([^']+)'\]/g)]
-        .map((trafienie) => trafienie[1]);
+      const nazwyDolaczone = [...selektor.matchAll(/#magazyn-pasek \[name='([^']+)'\]/g)].map(
+        (trafienie) => trafienie[1],
+      );
       const wynik = new URLSearchParams({ [nazwaKontrolki]: wartosc(nazwaKontrolki) });
       for (const nazwa of nazwyDolaczone) wynik.set(nazwa, wartosc(nazwa));
       return wynik;
@@ -105,13 +128,23 @@ describe('karta — dodaj z magazynu', () => {
     zapiszProduktSklepowy(db, produkt({ wariant_id: '28041' }));
     const id = zapiszZamowienie(db, 'reczne', zmapowane(), {});
     const odp = await dodaj(id, {
-      kanal: 'swietlik', produkt_id: '28040', wariant_id: '28041', ilosc: '3', fraza: 'grzybek',
+      kanal: 'swietlik',
+      produkt_id: '28040',
+      wariant_id: '28041',
+      ilosc: '3',
+      fraza: 'grzybek',
     });
     expect(odp.statusCode).toBe(302);
     const [p] = pozycje(id);
     expect(p).toMatchObject({
-      nazwa: 'Lampa stołowa Grzybek 30x45', sku: 'LMP-GRZ-30', ilosc: 3,
-      cena_brutto: '74.90', brutto_linii: '224.70', zrodlo: 'reczna', produkt_id: 28040, wariant_id: '28041',
+      nazwa: 'Lampa stołowa Grzybek 30x45',
+      sku: 'LMP-GRZ-30',
+      ilosc: 3,
+      cena_brutto: '74.90',
+      brutto_linii: '224.70',
+      zrodlo: 'reczna',
+      produkt_id: 28040,
+      wariant_id: '28041',
     });
   });
 
@@ -121,8 +154,13 @@ describe('karta — dodaj z magazynu', () => {
     zapiszProduktSklepowy(db, produkt());
     const id = zapiszZamowienie(db, 'reczne', zmapowane(), {});
     await dodaj(id, {
-      kanal: 'swietlik', produkt_id: '28040', wariant_id: '', ilosc: '1',
-      cena_brutto: '1.00', cena_netto: '0.81', brutto_linii: '1.00',
+      kanal: 'swietlik',
+      produkt_id: '28040',
+      wariant_id: '',
+      ilosc: '1',
+      cena_brutto: '1.00',
+      cena_netto: '0.81',
+      brutto_linii: '1.00',
     });
     expect(pozycje(id)[0].cena_brutto).toBe('74.90');
   });
@@ -153,7 +191,9 @@ describe('karta — dodaj z magazynu', () => {
     db.prepare("UPDATE produkty_sklepowe SET zniknal_at = '2026-08-20T10:00:00'").run();
     const id = zapiszZamowienie(db, 'reczne', zmapowane(), {});
     expect((await karta(id, '?edytuj=pozycje&magazyn=grzybek')).body).toContain('Nic nie pasuje');
-    expect((await dodaj(id, { kanal: 'swietlik', produkt_id: '28040', wariant_id: '', ilosc: '1' })).statusCode).toBe(400);
+    expect((await dodaj(id, { kanal: 'swietlik', produkt_id: '28040', wariant_id: '', ilosc: '1' })).statusCode).toBe(
+      400,
+    );
   });
 
   it('kwota zamówienia ręcznego rośnie o dopisaną pozycję', async () => {
@@ -176,7 +216,13 @@ describe('karta — dodaj z magazynu', () => {
   it('po dodaniu wraca na kartę z tą samą frazą i cennikiem', async () => {
     zapiszProduktSklepowy(db, produkt());
     const id = zapiszZamowienie(db, 'reczne', zmapowane(), {});
-    const odp = await dodaj(id, { kanal: 'swietlik', produkt_id: '28040', wariant_id: '', ilosc: '1', fraza: 'grzybek' });
+    const odp = await dodaj(id, {
+      kanal: 'swietlik',
+      produkt_id: '28040',
+      wariant_id: '',
+      ilosc: '1',
+      fraza: 'grzybek',
+    });
     expect(odp.headers.location).toContain('magazyn=grzybek');
     expect(odp.headers.location).toContain('cennik=swietlik');
     expect(odp.headers.location).toContain('edytuj=pozycje');
@@ -211,7 +257,11 @@ describe('ekran zakładania — dodaj z magazynu', () => {
   // ⚠️ Operator trzyma sluchawke — szukanie nie ma prawa skasowac tego, co juz wpisal.
   it('szukanie nie gubi wpisanych danych klienta', async () => {
     zapiszProduktSklepowy(db, produkt());
-    const odp = await nowe('/zamowienia/nowe/magazyn', { magazyn: 'grzybek', w_firma: 'Grażyna Nowak', w_miasto: 'Warszawa' });
+    const odp = await nowe('/zamowienia/nowe/magazyn', {
+      magazyn: 'grzybek',
+      w_firma: 'Grażyna Nowak',
+      w_miasto: 'Warszawa',
+    });
     expect(odp.body).toContain('Grażyna Nowak');
     expect(odp.body).toContain('Warszawa');
   });
@@ -219,8 +269,13 @@ describe('ekran zakładania — dodaj z magazynu', () => {
   it('dodanie wstawia produkt do pierwszego wolnego wiersza tabeli pozycji', async () => {
     zapiszProduktSklepowy(db, produkt({ wariant_id: '28041' }));
     const odp = await nowe('/zamowienia/nowe/magazyn/dodaj', {
-      magazyn: 'grzybek', cennik: 'swietlik', wybrany: '0',
-      mag_kanal: 'swietlik', mag_produkt_id: '28040', mag_wariant_id: '28041', mag_ilosc: '2',
+      magazyn: 'grzybek',
+      cennik: 'swietlik',
+      wybrany: '0',
+      mag_kanal: 'swietlik',
+      mag_produkt_id: '28040',
+      mag_wariant_id: '28041',
+      mag_ilosc: '2',
     });
     expect(odp.statusCode).toBe(200);
     expect(odp.body).toContain('value="Lampa stołowa Grzybek 30x45"');
@@ -233,9 +288,13 @@ describe('ekran zakładania — dodaj z magazynu', () => {
   // produkt i inna cena.
   it('bierze ten wiersz wyników, który wskazał przycisk', async () => {
     zapiszProduktSklepowy(db, produkt());
-    zapiszProduktSklepowy(db, produkt({ produkt_id: '28050', nazwa: 'Lampa stołowa Dąbek', cena_gr: 5490, sku_sklepu: 'LMP-DAB' }));
+    zapiszProduktSklepowy(
+      db,
+      produkt({ produkt_id: '28050', nazwa: 'Lampa stołowa Dąbek', cena_gr: 5490, sku_sklepu: 'LMP-DAB' }),
+    );
     const odp = await nowe('/zamowienia/nowe/magazyn/dodaj', {
-      magazyn: 'lampa', wybrany: '1',
+      magazyn: 'lampa',
+      wybrany: '1',
       mag_kanal: ['swietlik', 'swietlik'],
       mag_produkt_id: ['28040', '28050'],
       mag_wariant_id: ['', ''],
@@ -249,9 +308,18 @@ describe('ekran zakładania — dodaj z magazynu', () => {
   it('dwie pozycje z magazynu wchodzą do dwóch osobnych wierszy', async () => {
     zapiszProduktSklepowy(db, produkt());
     const pierwsze = await nowe('/zamowienia/nowe/magazyn/dodaj', {
-      wybrany: '0', mag_kanal: 'swietlik', mag_produkt_id: '28040', mag_wariant_id: '', mag_ilosc: '1',
-      poz_nazwa: 'Wpisane ręcznie', poz_cena_brutto: '10.00', poz_ilosc: '1', poz_sku: '',
-      poz_cena_netto: '', poz_produkt_id: '', poz_wariant_id: '',
+      wybrany: '0',
+      mag_kanal: 'swietlik',
+      mag_produkt_id: '28040',
+      mag_wariant_id: '',
+      mag_ilosc: '1',
+      poz_nazwa: 'Wpisane ręcznie',
+      poz_cena_brutto: '10.00',
+      poz_ilosc: '1',
+      poz_sku: '',
+      poz_cena_netto: '',
+      poz_produkt_id: '',
+      poz_wariant_id: '',
     });
     expect(pierwsze.body).toContain('value="Wpisane ręcznie"');
     expect(pierwsze.body).toContain('value="Lampa stołowa Grzybek 30x45"');
@@ -260,7 +328,11 @@ describe('ekran zakładania — dodaj z magazynu', () => {
   it('produkt bez ceny → 400, formularz wraca z komunikatem i bez pozycji', async () => {
     zapiszProduktSklepowy(db, produkt({ cena_gr: null }));
     const odp = await nowe('/zamowienia/nowe/magazyn/dodaj', {
-      wybrany: '0', mag_kanal: 'swietlik', mag_produkt_id: '28040', mag_wariant_id: '', mag_ilosc: '1',
+      wybrany: '0',
+      mag_kanal: 'swietlik',
+      mag_produkt_id: '28040',
+      mag_wariant_id: '',
+      mag_ilosc: '1',
       w_firma: 'Jan Kowalski',
     });
     expect(odp.statusCode).toBe(400);

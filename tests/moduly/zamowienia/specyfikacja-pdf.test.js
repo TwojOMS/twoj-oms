@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import {
-  mkdtempSync, writeFileSync, rmSync, existsSync,
-} from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { zbudujSpecyfikacjePdf, zbudujSpecyfikacjeWieluPdf } from '../../../src/moduly/zamowienia/pdf/specyfikacja-pdf.js';
+import {
+  zbudujSpecyfikacjePdf,
+  zbudujSpecyfikacjeWieluPdf,
+} from '../../../src/moduly/zamowienia/pdf/specyfikacja-pdf.js';
 
 // Dokument "Specyfikacja zamowienia" - kartka wkladana do KAZDEJ paczki. Przy zamowieniach
 // firmowych zastepuje wydruk faktury (ta i tak dociera przez KSeF), przy indywidualnych idzie
@@ -39,9 +40,9 @@ const PDFTOTEXT = znajdzPdftotext();
 if (!PDFTOTEXT) {
   // eslint-disable-next-line no-console
   console.warn(
-    '[specyfikacja-pdf] pdftotext (poppler) nie znaleziony — testy odczytu tekstu z PDF-a POMINIETE. '
-    + 'Nie oznacza to, ze dokument jest poprawny: test polskich znakow, ktory jako jedyny lapie '
-    + 'brak osadzonego fontu, NIE zostal uruchomiony.',
+    '[specyfikacja-pdf] pdftotext (poppler) nie znaleziony — testy odczytu tekstu z PDF-a POMINIETE. ' +
+      'Nie oznacza to, ze dokument jest poprawny: test polskich znakow, ktory jako jedyny lapie ' +
+      'brak osadzonego fontu, NIE zostal uruchomiony.',
   );
 }
 
@@ -76,17 +77,30 @@ function pdfNaTekst(buf) {
   }
 }
 
-const SPRZEDAWCA = { nazwa: 'Pracownia Półcień Anna Wzorcowa', adres: 'ul. Przykładowa 1, 00-950 Warszawa', bdo: '000123456' };
+const SPRZEDAWCA = {
+  nazwa: 'Pracownia Półcień Anna Wzorcowa',
+  adres: 'ul. Przykładowa 1, 00-950 Warszawa',
+  bdo: '000123456',
+};
 const dane = (n = {}) => ({
   numer: '3001',
   dataZamowienia: '2026-08-05',
   sprzedawca: SPRZEDAWCA,
   nabywca: {
-    firma: 'Firma X', ulica: 'Długa 1', kod: '00-001', miasto: 'Warszawa',
+    firma: 'Firma X',
+    ulica: 'Długa 1',
+    kod: '00-001',
+    miasto: 'Warszawa',
   },
-  pozycje: [{
-    nazwa: 'STOP 70x100', symbol: 'STOP-70', ilosc: 2, cenaZl: '50.00', wartoscZl: '100.00',
-  }],
+  pozycje: [
+    {
+      nazwa: 'STOP 70x100',
+      symbol: 'STOP-70',
+      ilosc: 2,
+      cenaZl: '50.00',
+      wartoscZl: '100.00',
+    },
+  ],
   dostawaZl: '10.00',
   razemZl: '110.00',
   nettoZl: '89.43',
@@ -179,7 +193,9 @@ describe.skipIf(!PDFTOTEXT)('PDF specyfikacji — tresc odczytana z gotowego dok
 
   it('wielu zamowien daje tyle stron, ile zamowien', async () => {
     const buf = await zbudujSpecyfikacjeWieluPdf([
-      dane({ numer: '3001' }), dane({ numer: '3002' }), dane({ numer: '3003' }),
+      dane({ numer: '3001' }),
+      dane({ numer: '3002' }),
+      dane({ numer: '3003' }),
     ]);
     const tekst = pdfNaTekst(buf);
     expect(tekst).toContain('3001');
@@ -249,8 +265,10 @@ describe.skipIf(!PDFTOTEXT)('PDF specyfikacji — tresc odczytana z gotowego dok
     const d = dane({ numer: '3001', pozycje: duzoPozycji(), dostawaZl: '15.00', razemZl: '315.00' });
     const s = strony(pdfNaTekst(await zbudujSpecyfikacjePdf(d)));
     expect(s.length).toBeGreaterThan(1);
-    const bezNumeru = s.map((strona, i) => ({ nr: i + 1, ma: strona.includes('3001') }))
-      .filter((x) => !x.ma).map((x) => x.nr);
+    const bezNumeru = s
+      .map((strona, i) => ({ nr: i + 1, ma: strona.includes('3001') }))
+      .filter((x) => !x.ma)
+      .map((x) => x.nr);
     expect(bezNumeru, `strony bez numeru zamowienia: ${bezNumeru.join(', ')}`).toEqual([]);
     // Strony od drugiej w gore maja wiersz „… — str. n" z WLASCIWYM numerem strony.
     s.slice(1).forEach((strona, i) => {
@@ -268,8 +286,10 @@ describe.skipIf(!PDFTOTEXT)('PDF specyfikacji — tresc odczytana z gotowego dok
     ]);
     const s = strony(pdfNaTekst(buf));
     expect(s.length).toBeGreaterThan(3);
-    const bezStopki = s.map((strona, i) => ({ nr: i + 1, ma: /nie jest fakturą VAT/i.test(strona) }))
-      .filter((x) => !x.ma).map((x) => x.nr);
+    const bezStopki = s
+      .map((strona, i) => ({ nr: i + 1, ma: /nie jest fakturą VAT/i.test(strona) }))
+      .filter((x) => !x.ma)
+      .map((x) => x.nr);
     expect(bezStopki, `strony bez stopki: ${bezStopki.join(', ')}`).toEqual([]);
     // Drugie zamowienie ma WLASNA „str. 2", a nie ciag dalszy numeracji pliku.
     const drugie = s.filter((strona) => strona.includes('3002'));
@@ -297,10 +317,14 @@ describe.skipIf(!PDFTOTEXT)('PDF specyfikacji — paragon, data platnosci i uwag
   // ⚠️ Przy pobraniu daty platnosci NIE MA — pusty wiersz „Data płatności:" sugerowalby
   // klientowi, ze cos poszlo nie tak.
   it('nie drukuje pustego wiersza daty platnosci przy pobraniu', async () => {
-    const tekst = pdfNaTekst(await zbudujSpecyfikacjePdf(dane({
-      dataPlatnosci: null,
-      platnosc: 'Za pobraniem — do zapłaty kurierowi przy odbiorze',
-    })));
+    const tekst = pdfNaTekst(
+      await zbudujSpecyfikacjePdf(
+        dane({
+          dataPlatnosci: null,
+          platnosc: 'Za pobraniem — do zapłaty kurierowi przy odbiorze',
+        }),
+      ),
+    );
     expect(tekst).not.toMatch(/Data płatności/);
   });
 
@@ -310,18 +334,29 @@ describe.skipIf(!PDFTOTEXT)('PDF specyfikacji — paragon, data platnosci i uwag
   });
 
   it('wybrana faktura bez numeru jest widoczna na gotowym PDF', async () => {
-    const tekst = pdfNaTekst(await zbudujSpecyfikacjePdf(dane({
-      fakturaWybrana: true, paragon: false, faktura: null,
-    })));
+    const tekst = pdfNaTekst(
+      await zbudujSpecyfikacjePdf(
+        dane({
+          fakturaWybrana: true,
+          paragon: false,
+          faktura: null,
+        }),
+      ),
+    );
     expect(tekst).toMatch(/Wybrany dokument sprzedaży:\s*faktura VAT/);
     expect(tekst).not.toMatch(/Dokument sprzedaży:\s*paragon/);
     expect(tekst).not.toMatch(/doręczona przez KSeF/);
   });
 
   it('zamowienie z faktura NIE dostaje informacji o paragonie', async () => {
-    const tekst = pdfNaTekst(await zbudujSpecyfikacjePdf(dane({
-      paragon: false, faktura: { numer: 'FV/1/2026' },
-    })));
+    const tekst = pdfNaTekst(
+      await zbudujSpecyfikacjePdf(
+        dane({
+          paragon: false,
+          faktura: { numer: 'FV/1/2026' },
+        }),
+      ),
+    );
     expect(tekst).toContain('FV/1/2026');
     // ⚠️ ASERCJA NA CALA LINIE, nie na slowo „paragon" — STOPKA kazdej strony niesie
     // „nie jest fakturą VAT ani paragonem fiskalnym", wiec `not.toMatch(/paragon/i)`
@@ -333,9 +368,14 @@ describe.skipIf(!PDFTOTEXT)('PDF specyfikacji — paragon, data platnosci i uwag
   // ⚠️ NUMER DOKUMENTU, KTORY JUZ ISTNIEJE, JEST TWARDSZYM FAKTEM niz flaga „chce fakture".
   // Bez tej kolejnosci kartka potrafilaby obiecac paragon zamowieniu, na ktore poszla faktura.
   it('faktura wygrywa z paragonem, gdyby oba znaczniki stanely naraz', async () => {
-    const tekst = pdfNaTekst(await zbudujSpecyfikacjePdf(dane({
-      paragon: true, faktura: { numer: 'FV/2/2026' },
-    })));
+    const tekst = pdfNaTekst(
+      await zbudujSpecyfikacjePdf(
+        dane({
+          paragon: true,
+          faktura: { numer: 'FV/2/2026' },
+        }),
+      ),
+    );
     expect(tekst).toContain('FV/2/2026');
     expect(tekst).not.toMatch(/Dokument sprzedaży:\s*paragon/);
   });
@@ -348,9 +388,13 @@ describe.skipIf(!PDFTOTEXT)('PDF specyfikacji — paragon, data platnosci i uwag
   });
 
   it('drukuje uwagi klienta pod podsumowaniem', async () => {
-    const tekst = pdfNaTekst(await zbudujSpecyfikacjePdf(dane({
-      uwagiKlienta: 'Proszę zapakować na prezent, bez cennika w środku.',
-    })));
+    const tekst = pdfNaTekst(
+      await zbudujSpecyfikacjePdf(
+        dane({
+          uwagiKlienta: 'Proszę zapakować na prezent, bez cennika w środku.',
+        }),
+      ),
+    );
     expect(tekst).toContain('Uwagi klienta');
     expect(tekst).toContain('Proszę zapakować na prezent');
   });
@@ -364,7 +408,11 @@ describe.skipIf(!PDFTOTEXT)('PDF specyfikacji — paragon, data platnosci i uwag
   // uciąlby dlugi tekst albo nadpisal nim stopke, ktora odcina kartke od faktury. Test
   // sprawdza jedno i drugie: caly tekst jest w dokumencie ORAZ stopka przetrwala.
   it('dluga uwaga nie ucina sie i nie zjada stopki', async () => {
-    const dlugaUwaga = Array.from({ length: 40 }, (_, i) => `Zdanie numer ${i + 1} w bardzo długiej uwadze klienta, która na pewno nie zmieści się w jednym wierszu.`).join(' ');
+    const dlugaUwaga = Array.from(
+      { length: 40 },
+      (_, i) =>
+        `Zdanie numer ${i + 1} w bardzo długiej uwadze klienta, która na pewno nie zmieści się w jednym wierszu.`,
+    ).join(' ');
     const tekst = pdfNaTekst(await zbudujSpecyfikacjePdf(dane({ uwagiKlienta: dlugaUwaga })));
     expect(tekst).toContain('Zdanie numer 1 ');
     expect(tekst).toContain('Zdanie numer 40 ');

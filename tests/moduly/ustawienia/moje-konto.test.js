@@ -13,7 +13,12 @@ function panel() {
   przypiszRole(p.db, id, pusta);
   return { ...p, id, ewa: jako(p.db, 'ewa') };
 }
-const ciastko = (r) => [].concat(r.headers['set-cookie'] ?? []).filter((c) => c.startsWith(`${NAZWA_CIASTECZKA_OMS}=`)).at(-1)?.split(';')[0];
+const ciastko = (r) =>
+  []
+    .concat(r.headers['set-cookie'] ?? [])
+    .filter((c) => c.startsWith(`${NAZWA_CIASTECZKA_OMS}=`))
+    .at(-1)
+    ?.split(';')[0];
 
 describe('Moje konto', () => {
   it('każde konto z tabeli (także bez ani jednego ptaszka) widzi swoją stronę i link w menu', async () => {
@@ -34,7 +39,8 @@ describe('Moje konto', () => {
     expect(ok.statusCode).toBe(302);
     expect(ok.headers.location).toBe('/konto?zapisano=imie');
     expect(kontoPoLoginie(db, 'ewa').imie).toBe('Barbara K');
-    for (const imie of ['', '   ', 'x'.repeat(61)]) expect((await post(app, '/konto/imie', ewa, { imie })).statusCode, imie).toBe(400);
+    for (const imie of ['', '   ', 'x'.repeat(61)])
+      expect((await post(app, '/konto/imie', ewa, { imie })).statusCode, imie).toBe(400);
   });
 
   it('zmiana hasła: wymaga obecnego, ≥ 12 znaków, dwa razy to samo, inne niż obecne', async () => {
@@ -67,7 +73,10 @@ describe('Moje konto', () => {
     const zle = { obecne: 'zle-haslo-xyz', nowe: 'nowe-haslo-123', nowe2: 'nowe-haslo-123' };
     for (let i = 1; i <= 4; i++) expect((await post(app, '/konto/haslo', ewa, zle)).statusCode, `próba ${i}`).toBe(400);
     expect((await post(app, '/konto/haslo', ewa, zle)).statusCode).toBe(429);
-    expect((await post(app, '/konto/haslo', ewa, { obecne: HASLO, nowe: 'nowe-haslo-123', nowe2: 'nowe-haslo-123' })).statusCode).toBe(429);
+    expect(
+      (await post(app, '/konto/haslo', ewa, { obecne: HASLO, nowe: 'nowe-haslo-123', nowe2: 'nowe-haslo-123' }))
+        .statusCode,
+    ).toBe(429);
   });
 
   it('konto serwisowe .env: informacja zamiast strony, bez linku w menu, bez zapisu', async () => {
@@ -76,6 +85,9 @@ describe('Moje konto', () => {
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('Konto serwisowe nie ma własnej strony');
     expect(r.body).not.toContain('<a href="/konto">Moje konto</a>');
-    expect((await post(app, '/konto/haslo', BASIC, { obecne: 'x', nowe: 'nowe-haslo-123', nowe2: 'nowe-haslo-123' })).statusCode).toBe(403);
+    expect(
+      (await post(app, '/konto/haslo', BASIC, { obecne: 'x', nowe: 'nowe-haslo-123', nowe2: 'nowe-haslo-123' }))
+        .statusCode,
+    ).toBe(403);
   });
 });

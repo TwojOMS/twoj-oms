@@ -23,7 +23,12 @@ describe('klient KSeF — metadane faktur', () => {
       return { ok: true, status: 200, json: async () => ({ invoices: [], hasMore: false, isTruncated: false }) };
     };
     const klient = createKsefClient({ token: 'T', nip: '1200001192', fetchImpl });
-    await klient.pobierzMetadane({ accessToken: 'ACC', from: '2026-05-01T00:00:00Z', to: '2026-06-01T00:00:00Z', pageOffset: 2 });
+    await klient.pobierzMetadane({
+      accessToken: 'ACC',
+      from: '2026-05-01T00:00:00Z',
+      to: '2026-06-01T00:00:00Z',
+      pageOffset: 2,
+    });
 
     expect(zapisane.cialo.subjectType).toBe('Subject2');
     expect(zapisane.cialo.dateRange.dateType).toBe('PermanentStorage');
@@ -37,11 +42,22 @@ describe('klient KSeF — metadane faktur', () => {
   });
 
   it('oddaje faktury i oba znaczniki kontynuacji', async () => {
-    const fetchImpl = async () => ({ ok: true, status: 200, json: async () => ({ invoices: [{ ksefNumber: 'K1' }], hasMore: true, isTruncated: true }) });
-    const wynik = await createKsefClient({ token: 'T', nip: '1', fetchImpl })
-      .pobierzMetadane({ accessToken: 'ACC', from: 'a', to: 'b', pageOffset: 0 });
+    const fetchImpl = async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ invoices: [{ ksefNumber: 'K1' }], hasMore: true, isTruncated: true }),
+    });
+    const wynik = await createKsefClient({ token: 'T', nip: '1', fetchImpl }).pobierzMetadane({
+      accessToken: 'ACC',
+      from: 'a',
+      to: 'b',
+      pageOffset: 0,
+    });
     expect(wynik).toEqual({
-      faktury: [{ ksefNumber: 'K1' }], hasMore: true, isTruncated: true, koniecNiepewny: false,
+      faktury: [{ ksefNumber: 'K1' }],
+      hasMore: true,
+      isTruncated: true,
+      koniecNiepewny: false,
     });
   });
 
@@ -51,8 +67,11 @@ describe('klient KSeF — metadane faktur', () => {
       widziane = opcje.headers;
       return { ok: true, status: 200, json: async () => ({ invoices: [], hasMore: false, isTruncated: false }) };
     };
-    await createKsefClient({ token: 'T', nip: '1', fetchImpl })
-      .pobierzMetadane({ accessToken: 'ACC-XYZ', from: 'a', to: 'b' });
+    await createKsefClient({ token: 'T', nip: '1', fetchImpl }).pobierzMetadane({
+      accessToken: 'ACC-XYZ',
+      from: 'a',
+      to: 'b',
+    });
 
     expect(widziane.Authorization).toBe('Bearer ACC-XYZ');
     expect(widziane['X-Error-Format']).toBe('problem-details');
@@ -90,15 +109,21 @@ describe('klient KSeF — metadane faktur', () => {
     const wynik = await klient.pobierzMetadane({ accessToken: 'ACC', from: 'a', to: 'b' });
 
     expect(wynik).toEqual({
-      faktury: [], hasMore: false, isTruncated: false, koniecNiepewny: false,
+      faktury: [],
+      hasMore: false,
+      isTruncated: false,
+      koniecNiepewny: false,
     });
   });
 
   it('⚠️ PELNA strona BEZ hasMore to koniec NIEPEWNY — moze miec nastepnik, ktorego nikt nie zapowiedzial', async () => {
     const pelna = Array.from({ length: ROZMIAR_STRONY }, (_, i) => ({ ksefNumber: `K${i}` }));
     const fetchImpl = async () => ({ ok: true, status: 200, json: async () => ({ invoices: pelna }) });
-    const wynik = await createKsefClient({ token: 'T', nip: '1', fetchImpl })
-      .pobierzMetadane({ accessToken: 'ACC', from: 'a', to: 'b' });
+    const wynik = await createKsefClient({ token: 'T', nip: '1', fetchImpl }).pobierzMetadane({
+      accessToken: 'ACC',
+      from: 'a',
+      to: 'b',
+    });
 
     expect(wynik.koniecNiepewny).toBe(true);
   });
@@ -106,8 +131,11 @@ describe('klient KSeF — metadane faktur', () => {
   it('jawne hasMore: false konczy PEWNIE takze na pelnej stronie — to zdanie KSeF-u, nie nasz domysl', async () => {
     const pelna = Array.from({ length: ROZMIAR_STRONY }, (_, i) => ({ ksefNumber: `K${i}` }));
     const fetchImpl = async () => ({ ok: true, status: 200, json: async () => ({ invoices: pelna, hasMore: false }) });
-    const wynik = await createKsefClient({ token: 'T', nip: '1', fetchImpl })
-      .pobierzMetadane({ accessToken: 'ACC', from: 'a', to: 'b' });
+    const wynik = await createKsefClient({ token: 'T', nip: '1', fetchImpl }).pobierzMetadane({
+      accessToken: 'ACC',
+      from: 'a',
+      to: 'b',
+    });
 
     expect(wynik.koniecNiepewny).toBe(false);
   });
@@ -169,7 +197,10 @@ describe('klient KSeF — pobranie XML dokumentu (archiwum)', () => {
 
   it('koduje numer KSeF w adresie (ukosniki i inne znaki specjalne w URL)', async () => {
     let widzianyUrl = null;
-    const fetchImpl = async (url) => { widzianyUrl = url; return { ok: true, status: 200, text: async () => 'x' }; };
+    const fetchImpl = async (url) => {
+      widzianyUrl = url;
+      return { ok: true, status: 200, text: async () => 'x' };
+    };
     const klient = createKsefClient({ token: 'T', nip: '1', fetchImpl });
     await klient.pobierzXml({ accessToken: 'ACC', ksefNumber: 'A/B C' });
 
@@ -178,7 +209,11 @@ describe('klient KSeF — pobranie XML dokumentu (archiwum)', () => {
   });
 
   it('HTTP odmowa to czytelna odmowa z numerem dokumentu i statusem, nie goly wyjatek', async () => {
-    const fetchImpl = async () => ({ ok: false, status: 404, text: async () => JSON.stringify({ detail: 'Nie znaleziono' }) });
+    const fetchImpl = async () => ({
+      ok: false,
+      status: 404,
+      text: async () => JSON.stringify({ detail: 'Nie znaleziono' }),
+    });
     const klient = createKsefClient({ token: 'T', nip: '1', fetchImpl });
     const e = await zlapBlad(klient.pobierzXml({ accessToken: 'ACC', ksefNumber: 'K-1' }));
 
@@ -207,9 +242,10 @@ describe('klient KSeF — pobranie XML dokumentu (archiwum)', () => {
       ok: false,
       status: 429,
       // Atrapa BEZ naglowkow — dokladnie tak odpowiadal KSeF na produkcji.
-      text: async () => JSON.stringify({
-        detail: 'Przekroczono limit 16 żądań na minutę. Spróbuj ponownie po 54 sekundach.',
-      }),
+      text: async () =>
+        JSON.stringify({
+          detail: 'Przekroczono limit 16 żądań na minutę. Spróbuj ponownie po 54 sekundach.',
+        }),
     });
     const klient = createKsefClient({ token: 'T', nip: '1', fetchImpl });
     const e = await zlapBlad(klient.pobierzXml({ accessToken: 'ACC', ksefNumber: 'K-1' }));
@@ -236,7 +272,11 @@ describe('klient KSeF — pobranie XML dokumentu (archiwum)', () => {
   // Odmowa, ktora NIE jest limitem, nie ma prawa dostac czasu ponowienia — inaczej
   // `zCzekaniemNa429` czekaloby minute na kazdym 404, ktory nigdy sie nie naprawi.
   it('odmowa spoza limitu nie niesie czasu ponowienia', async () => {
-    const fetchImpl = async () => ({ ok: false, status: 404, text: async () => JSON.stringify({ detail: 'Nie znaleziono' }) });
+    const fetchImpl = async () => ({
+      ok: false,
+      status: 404,
+      text: async () => JSON.stringify({ detail: 'Nie znaleziono' }),
+    });
     const klient = createKsefClient({ token: 'T', nip: '1', fetchImpl });
     const e = await zlapBlad(klient.pobierzXml({ accessToken: 'ACC', ksefNumber: 'K-1' }));
 

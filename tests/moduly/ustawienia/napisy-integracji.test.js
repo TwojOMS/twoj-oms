@@ -20,20 +20,50 @@ import { modulZdrowie } from '../../../src/moduly/zdrowie/modul.ts';
 
 const WIDOK_KSEF = new URL('../../../src/moduly/koszty/widoki/ustawienia-ksef.ejs', import.meta.url);
 const { renderFile } = createRequire(import.meta.url)('ejs');
-const renderuj = (widok, dane = {}) => renderFile(`src/moduly/${widok}.ejs`, {
-  zapisano: null, test: null, bledy: [], zEnv: false, stan: null, pola: {},
-  adresFirmy: { zrodlo: 'plik', adres: null }, ekranAdresu: '/ustawienia/firma', typy: [],
-  pobranie: { wlaczone: false }, adresApi: 'https://example.test/api',
-  wybranyBrak: false, odlaczonyDoRestartu: false, adresWPliku: true, archiwumWPliku: true,
-  admin: true, konsumenckie: false, automatStan: { wlaczony: false }, ...dane,
-});
+const renderuj = (widok, dane = {}) =>
+  renderFile(`src/moduly/${widok}.ejs`, {
+    zapisano: null,
+    test: null,
+    bledy: [],
+    zEnv: false,
+    stan: null,
+    pola: {},
+    adresFirmy: { zrodlo: 'plik', adres: null },
+    ekranAdresu: '/ustawienia/firma',
+    typy: [],
+    pobranie: { wlaczone: false },
+    adresApi: 'https://example.test/api',
+    wybranyBrak: false,
+    odlaczonyDoRestartu: false,
+    adresWPliku: true,
+    archiwumWPliku: true,
+    admin: true,
+    konsumenckie: false,
+    automatStan: { wlaczony: false },
+    ...dane,
+  });
 // Adres firmy w pliku konfiguracji, bez telefonu i e-maila nadawcy — ekran InPost podpowiada, czego brakuje.
-const NADAWCA_BEZ_KONTAKTU = { DPD_NADAWCA_NAZWA: 'Pracownia Półcień', DPD_NADAWCA_ULICA: 'Zmyślona 1', DPD_NADAWCA_KOD: '00-950',
-  DPD_NADAWCA_MIASTO: 'Warszawa' };
+const NADAWCA_BEZ_KONTAKTU = {
+  DPD_NADAWCA_NAZWA: 'Pracownia Półcień',
+  DPD_NADAWCA_ULICA: 'Zmyślona 1',
+  DPD_NADAWCA_KOD: '00-950',
+  DPD_NADAWCA_MIASTO: 'Warszawa',
+};
 
 async function ekran(adres, env = {}) {
-  const moduly = [modulRdzen, modulWeb, modulKanaly, createModulFaktury(), modulWiadomosci, createModulZamowienia({ zWiadomosciami: true }),
-    createModulWysylka(), modulMagazyn, modulUstawienia, modulMarketing, modulZdrowie];
+  const moduly = [
+    modulRdzen,
+    modulWeb,
+    modulKanaly,
+    createModulFaktury(),
+    modulWiadomosci,
+    createModulZamowienia({ zWiadomosciami: true }),
+    createModulWysylka(),
+    modulMagazyn,
+    modulUstawienia,
+    modulMarketing,
+    modulZdrowie,
+  ];
   const p = nowyPanel({ moduly, env });
   zalozKonto(p.db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
   const r = await get(p.app, adres, jako(p.db, 'adam'));
@@ -82,7 +112,9 @@ describe('napisy integracji', () => {
     }
     expect(html).not.toMatch(/<label>[^<]*<\/label>/u); // żadna etykieta bez `for`
     // Checkbox B2C w kontenerze o klasie z oms-design.css (width:auto), nie style inline.
-    expect(html).toMatch(/<div class="aut-wybor"><input type="hidden" name="wlaczony" value="0"><input id="ksef-konsumenckie-wlaczone" type="checkbox"/u);
+    expect(html).toMatch(
+      /<div class="aut-wybor"><input type="hidden" name="wlaczony" value="0"><input id="ksef-konsumenckie-wlaczone" type="checkbox"/u,
+    );
   });
 });
 
@@ -95,8 +127,16 @@ describe('powroty, pomoc administratora i etykiety', () => {
 
   it('powrót z aplikacji Allegro prowadzi do Moich połączeń', async () => {
     const html = await renderuj('kanaly/widoki/allegro-aplikacja', {
-      krokiKreatora: [], blad: null, cel: '', srodowisko: 'sandbox', root: '/ustawienia/kanaly',
-      stan: 'env', uaBlad: null, uaZapisano: false, naglowekUserAgent: '', userAgentZEnv: true,
+      krokiKreatora: [],
+      blad: null,
+      cel: '',
+      srodowisko: 'sandbox',
+      root: '/ustawienia/kanaly',
+      stan: 'env',
+      uaBlad: null,
+      uaZapisano: false,
+      naglowekUserAgent: '',
+      userAgentZEnv: true,
     });
     expect(html).toContain('<a href="/ustawienia/integracje">← Moje połączenia</a>');
     expect(html).not.toContain('← Integracje');
@@ -131,7 +171,9 @@ describe('powroty, pomoc administratora i etykiety', () => {
 
   it('wstęp o uprawnieniu KSeF ma klasę ust-wstep, a styl zdejmuje pogrubienie', () => {
     expect(readFileSync(WIDOK_KSEF, 'utf8')).toContain('<p id="ksef-uprawnienie" class="ust-wstep"><strong>');
-    expect(readFileSync('src/public/oms-design.css', 'utf8')).toContain('.ust-sekcja .ust-wstep strong{font-weight:400}');
+    expect(readFileSync('src/public/oms-design.css', 'utf8')).toContain(
+      '.ust-sekcja .ust-wstep strong{font-weight:400}',
+    );
   });
 
   it('zdanie o uprawnieniu KSeF używa nazwy OMS', () => {

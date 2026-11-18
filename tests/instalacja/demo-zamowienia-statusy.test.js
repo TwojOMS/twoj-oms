@@ -15,10 +15,16 @@ const dzienPl = (iso) => new Date(iso).toLocaleDateString('sv-SE', { timeZone: '
 const WCZORAJ = dzienPl(Date.parse(`${DZIS}T12:00:00Z`) - 86400000);
 
 let katalog, db, liczniki;
-const wStatusie = (status) => db.prepare(`SELECT z.id, z.utworzone_at, z.metoda_wysylki, z.metoda_wysylki_nazwa, z.metoda_platnosci, z.sklep,
-    l.po_terminie_od FROM lista_stan l JOIN zamowienia z ON z.id = l.zamowienie_id WHERE l.status = ?`).all(status);
-const przewoznik = (z) => przewoznikPrzesylki({ nazwaUslugi: z.metoda_wysylki_nazwa, metoda: z.metoda_wysylki })?.klucz
-  ?? (z.metoda_wysylki === 'odbior_osobisty' ? 'odbior' : null);
+const wStatusie = (status) =>
+  db
+    .prepare(
+      `SELECT z.id, z.utworzone_at, z.metoda_wysylki, z.metoda_wysylki_nazwa, z.metoda_platnosci, z.sklep,
+    l.po_terminie_od FROM lista_stan l JOIN zamowienia z ON z.id = l.zamowienie_id WHERE l.status = ?`,
+    )
+    .all(status);
+const przewoznik = (z) =>
+  przewoznikPrzesylki({ nazwaUslugi: z.metoda_wysylki_nazwa, metoda: z.metoda_wysylki })?.klucz ??
+  (z.metoda_wysylki === 'odbior_osobisty' ? 'odbior' : null);
 
 beforeAll(async () => {
   katalog = fs.mkdtempSync(path.join(os.tmpdir(), 'oms-demo-prz087-'));
@@ -30,7 +36,10 @@ beforeAll(async () => {
   await indeks.odswiez(teraz);
   liczniki = indeks.liczniki(teraz);
 }, 180_000);
-afterAll(() => { db?.close(); fs.rmSync(katalog, { recursive: true, force: true }); });
+afterAll(() => {
+  db?.close();
+  fs.rmSync(katalog, { recursive: true, force: true });
+});
 
 describe('demo: NOWE', () => {
   it('dokładnie 14 (12 + 2 duże), wszystkie z dziś', () => {
@@ -48,8 +57,12 @@ describe('demo: NOWE', () => {
 describe('demo: personalizacja bez statusu „Indywidualne”', () => {
   it('zamówienia z grawerem i nadrukiem są zwykłymi „w realizacji”, status indywidualne nie istnieje', () => {
     expect(wStatusie('indywidualne')).toEqual([]);
-    const lista = db.prepare(`SELECT z.id FROM pozycje p JOIN zamowienia z ON z.id = p.zamowienie_id
-      JOIN lista_stan l ON l.zamowienie_id = z.id WHERE l.status = 'w_realizacji' AND (p.nazwa LIKE '%GRAWER%' OR p.nazwa LIKE '%NADRUK%')`).all();
+    const lista = db
+      .prepare(
+        `SELECT z.id FROM pozycje p JOIN zamowienia z ON z.id = p.zamowienie_id
+      JOIN lista_stan l ON l.zamowienie_id = z.id WHERE l.status = 'w_realizacji' AND (p.nazwa LIKE '%GRAWER%' OR p.nazwa LIKE '%NADRUK%')`,
+      )
+      .all();
     expect(lista.length).toBeGreaterThanOrEqual(4);
   });
 });
@@ -78,7 +91,12 @@ describe('demo: W REALIZACJI', () => {
 
 describe('demo: ciągłość sprzedaży', () => {
   it('każdy z ostatnich 7 dni ma zamówienia', () => {
-    const dni = new Set(db.prepare('SELECT utworzone_at FROM zamowienia').all().map((z) => dzienPl(z.utworzone_at)));
+    const dni = new Set(
+      db
+        .prepare('SELECT utworzone_at FROM zamowienia')
+        .all()
+        .map((z) => dzienPl(z.utworzone_at)),
+    );
     for (let d = 0; d < 7; d++) {
       const dzien = dzienPl(Date.parse(`${DZIS}T12:00:00Z`) - d * 86400000);
       expect(dni, dzien).toContain(dzien);

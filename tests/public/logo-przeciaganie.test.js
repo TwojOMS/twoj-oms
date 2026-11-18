@@ -10,25 +10,79 @@ const plik = (nazwa = 'znak.png', rozmiar = 1000, typ = 'image/png') => ({ name:
 
 function klasy() {
   const zbior = new Set();
-  return { add: (k) => zbior.add(k), remove: (k) => zbior.delete(k), contains: (k) => zbior.has(k), toggle: (k, on) => (on ? zbior.add(k) : zbior.delete(k)) };
+  return {
+    add: (k) => zbior.add(k),
+    remove: (k) => zbior.delete(k),
+    contains: (k) => zbior.has(k),
+    toggle: (k, on) => (on ? zbior.add(k) : zbior.delete(k)),
+  };
 }
 function strefa() {
   const sluchacze = {};
-  const wejscie = { files: [], value: 'x', _ustawione: null, dispatch: [], addEventListener(t, f) { (this.sl ??= {})[t] = f; } };
-  const stan = { textContent: '', dataset: {}, classList: klasy() };
-  const podglad = { hidden: true, src: '', alt: '', addEventListener(t, f) { (this.sl ??= {})[t] = f; } };
-  const el = {
-    dataset: {}, classList: klasy(),
-    addEventListener(t, f) { sluchacze[t] = f; },
-    contains: (cel) => cel?.wewnatrz === true,
-    querySelector: (s) => (s.includes('type="file"') || s.includes('input') ? wejscie : s.includes('stan') ? stan : s.includes('podglad') ? podglad : null),
+  const wejscie = {
+    files: [],
+    value: 'x',
+    _ustawione: null,
+    dispatch: [],
+    addEventListener(t, f) {
+      (this.sl ??= {})[t] = f;
+    },
   };
-  wejscie.setCustomValidity = (t) => { wejscie.walidacja = t; };
-  return { el, wejscie, stan, podglad, wyslij: (typ, zdarzenie = {}) => sluchacze[typ]?.({ preventDefault: vi.fn(), ...zdarzenie }) };
+  const stan = { textContent: '', dataset: {}, classList: klasy() };
+  const podglad = {
+    hidden: true,
+    src: '',
+    alt: '',
+    addEventListener(t, f) {
+      (this.sl ??= {})[t] = f;
+    },
+  };
+  const el = {
+    dataset: {},
+    classList: klasy(),
+    addEventListener(t, f) {
+      sluchacze[t] = f;
+    },
+    contains: (cel) => cel?.wewnatrz === true,
+    querySelector: (s) =>
+      s.includes('type="file"') || s.includes('input')
+        ? wejscie
+        : s.includes('stan')
+          ? stan
+          : s.includes('podglad')
+            ? podglad
+            : null,
+  };
+  wejscie.setCustomValidity = (t) => {
+    wejscie.walidacja = t;
+  };
+  return {
+    el,
+    wejscie,
+    stan,
+    podglad,
+    wyslij: (typ, zdarzenie = {}) => sluchacze[typ]?.({ preventDefault: vi.fn(), ...zdarzenie }),
+  };
 }
 function srodowisko() {
-  const dt = { items: { dodane: [], add(f) { this.dodane.push(f); } }, get files() { return [...this.items.dodane]; } };
-  return { DataTransfer: function DataTransfer() { return dt; }, URL: { createObjectURL: vi.fn(() => 'blob:podglad-1'), revokeObjectURL: vi.fn() }, dt };
+  const dt = {
+    items: {
+      dodane: [],
+      add(f) {
+        this.dodane.push(f);
+      },
+    },
+    get files() {
+      return [...this.items.dodane];
+    },
+  };
+  return {
+    DataTransfer: function DataTransfer() {
+      return dt;
+    },
+    URL: { createObjectURL: vi.fn(() => 'blob:podglad-1'), revokeObjectURL: vi.fn() },
+    dt,
+  };
 }
 const upuszczenie = (pliki, typy = ['Files']) => ({ dataTransfer: { files: pliki, types: typy, dropEffect: '' } });
 
@@ -47,12 +101,15 @@ describe('sprawdzPlik', () => {
     expect(sprawdzPlik(plik('ZNAK.PNG', 100, ''))).toBeNull();
     expect(sprawdzPlik(plik('znak.txt', 100, ''))).toMatch(/PNG/);
   });
-  it('brak pliku', () => { expect(sprawdzPlik(undefined)).toMatch(/Wybierz/); });
+  it('brak pliku', () => {
+    expect(sprawdzPlik(undefined)).toMatch(/Wybierz/);
+  });
 });
 
 describe('podlaczStrefe', () => {
   it('upuszczony PNG trafia do pola pliku przez DataTransfer, widać nazwę i podgląd', () => {
-    const s = strefa(); const env = srodowisko();
+    const s = strefa();
+    const env = srodowisko();
     podlaczStrefe(s.el, env);
     const f = plik('moje-logo.png', 2048);
     s.wyslij('drop', upuszczenie([f]));
@@ -65,7 +122,8 @@ describe('podlaczStrefe', () => {
     expect(s.el.dataset.stan).toBe('wybrany');
   });
   it('upuszczenie zatrzymuje domyślną akcję przeglądarki (inaczej otworzyłaby plik zamiast go wybrać)', () => {
-    const s = strefa(); podlaczStrefe(s.el, srodowisko());
+    const s = strefa();
+    podlaczStrefe(s.el, srodowisko());
     const preventDefault = vi.fn();
     s.wyslij('drop', { ...upuszczenie([plik()]), preventDefault });
     expect(preventDefault).toHaveBeenCalled();
@@ -74,7 +132,8 @@ describe('podlaczStrefe', () => {
     expect(nad).toHaveBeenCalled();
   });
   it('podświetla strefę przy przeciąganiu pliku nad nią i gasi po opuszczeniu i po upuszczeniu', () => {
-    const s = strefa(); podlaczStrefe(s.el, srodowisko());
+    const s = strefa();
+    podlaczStrefe(s.el, srodowisko());
     s.wyslij('dragenter', upuszczenie([], ['Files']));
     expect(s.el.classList.contains('logo-strefa--nad')).toBe(true);
     s.wyslij('dragleave', { relatedTarget: { wewnatrz: true } }); // przejście na element wewnątrz strefy nie gasi
@@ -86,7 +145,8 @@ describe('podlaczStrefe', () => {
     expect(s.el.classList.contains('logo-strefa--nad')).toBe(false);
   });
   it('przeciąganie tekstu (nie plików) nie podświetla strefy', () => {
-    const s = strefa(); podlaczStrefe(s.el, srodowisko());
+    const s = strefa();
+    podlaczStrefe(s.el, srodowisko());
     s.wyslij('dragenter', upuszczenie([], ['text/plain']));
     expect(s.el.classList.contains('logo-strefa--nad')).toBe(false);
   });
@@ -95,7 +155,8 @@ describe('podlaczStrefe', () => {
     ['plik większy niż 256 KB', [plik('a.png', MAKS_BAJTOW + 1)], /256 KB/],
     ['kilka plików naraz', [plik('a.png'), plik('b.png')], /jeden plik/i],
   ])('%s: komunikat od razu, pole zostaje puste, bez podglądu', (_n, pliki, wzor) => {
-    const s = strefa(); const env = srodowisko();
+    const s = strefa();
+    const env = srodowisko();
     podlaczStrefe(s.el, env);
     s.wyslij('drop', upuszczenie(pliki));
     expect(s.stan.textContent).toMatch(wzor);
@@ -106,7 +167,8 @@ describe('podlaczStrefe', () => {
     expect(env.URL.createObjectURL).not.toHaveBeenCalled();
   });
   it('plik wybrany z dysku (zdarzenie change) przechodzi tę samą kontrolę i ten sam podgląd', () => {
-    const s = strefa(); const env = srodowisko();
+    const s = strefa();
+    const env = srodowisko();
     podlaczStrefe(s.el, env);
     s.wejscie.files = [plik('z-dysku.png', 500)];
     s.wejscie.sl.change();
@@ -119,14 +181,16 @@ describe('podlaczStrefe', () => {
     expect(s.podglad.hidden).toBe(true);
   });
   it('kolejny wybór zwalnia poprzedni adres podglądu', () => {
-    const s = strefa(); const env = srodowisko();
+    const s = strefa();
+    const env = srodowisko();
     podlaczStrefe(s.el, env);
     s.wyslij('drop', upuszczenie([plik('a.png')]));
     s.wyslij('drop', upuszczenie([plik('b.png')]));
     expect(env.URL.revokeObjectURL).toHaveBeenCalledWith('blob:podglad-1');
   });
   it('plik, którego przeglądarka nie umie narysować, dostaje ostrzeżenie zamiast pustego podglądu', () => {
-    const s = strefa(); podlaczStrefe(s.el, srodowisko());
+    const s = strefa();
+    podlaczStrefe(s.el, srodowisko());
     s.wyslij('drop', upuszczenie([plik('uszkodzony.png')]));
     s.podglad.sl.error();
     expect(s.stan.textContent).toMatch(/nie wygląda na obraz/);

@@ -33,9 +33,9 @@ const PDFTOTEXT = znajdzPdftotext();
 if (!PDFTOTEXT) {
   // eslint-disable-next-line no-console
   console.warn(
-    '[proforma-pdf] pdftotext (poppler) nie znaleziony — testy odczytu tekstu z PDF-a POMINIĘTE. '
-    + 'Nie oznacza to, że dokument jest poprawny: test polskich znaków, który jako jedyny łapie '
-    + 'brak osadzonego fontu, NIE został uruchomiony.',
+    '[proforma-pdf] pdftotext (poppler) nie znaleziony — testy odczytu tekstu z PDF-a POMINIĘTE. ' +
+      'Nie oznacza to, że dokument jest poprawny: test polskich znaków, który jako jedyny łapie ' +
+      'brak osadzonego fontu, NIE został uruchomiony.',
   );
 }
 
@@ -58,8 +58,9 @@ function tekstZPdf(buf) {
 // `/Type /Pages` nieskompresowany, więc `/Count N` da się przeczytać wprost z bajtów.
 // Dzięki temu test łamania na strony działa też tam, gdzie poppera nie ma.
 function liczbaStron(buf) {
-  const m = /\/Type\s*\/Pages[^>]*?\/Count\s+(\d+)/.exec(buf.toString('latin1'))
-    ?? /\/Count\s+(\d+)/.exec(buf.toString('latin1'));
+  const m =
+    /\/Type\s*\/Pages[^>]*?\/Count\s+(\d+)/.exec(buf.toString('latin1')) ??
+    /\/Count\s+(\d+)/.exec(buf.toString('latin1'));
   return m ? Number(m[1]) : null;
 }
 
@@ -108,12 +109,13 @@ function daneWzoru(nadpisania = {}) {
   };
 }
 
-const duzoPozycji = (ile) => Array.from({ length: ile }, (_, i) => ({
-  name: `Pozycja numer ${i + 1} — lampa wisząca, stal malowana`,
-  quantity: 1,
-  gross_price: 1000 + i,
-  tax_symbol: '23',
-}));
+const duzoPozycji = (ile) =>
+  Array.from({ length: ile }, (_, i) => ({
+    name: `Pozycja numer ${i + 1} — lampa wisząca, stal malowana`,
+    quantity: 1,
+    gross_price: 1000 + i,
+    tax_symbol: '23',
+  }));
 
 describe('zbudujProformePdf — dokument', () => {
   it('zwraca Buffer z nagłówkiem PDF-a', () => {
@@ -159,9 +161,13 @@ describe.skipIf(!PDFTOTEXT)('zbudujProformePdf — treść odczytana z gotowego 
   // żeby awaria mówiła KTÓREJ brakuje, a nie tylko że „napis się nie zgadza".
   it('ma w foncie każdą polską literę, także rzadkie ź i wielkie Ą Ć Ź', () => {
     const ALFABET = 'ąćęłńóśźżĄĆĘŁŃÓŚŹŻ';
-    const tekst = tekstZPdf(zbudujProformePdf(daneWzoru({
-      pozycje: [{ name: `Zdźbło ${ALFABET}`, quantity: 1, gross_price: 12300, tax_symbol: '23' }],
-    })));
+    const tekst = tekstZPdf(
+      zbudujProformePdf(
+        daneWzoru({
+          pozycje: [{ name: `Zdźbło ${ALFABET}`, quantity: 1, gross_price: 12300, tax_symbol: '23' }],
+        }),
+      ),
+    );
     for (const znak of ALFABET) {
       expect(tekst.includes(znak), `brak polskiej litery „${znak}" w dokumencie`).toBe(true);
     }
@@ -205,8 +211,8 @@ describe.skipIf(!PDFTOTEXT)('zbudujProformePdf — treść odczytana z gotowego 
   it('wartość linii z rabatem bierze gross_price wprost, nie cenę × ilość', () => {
     const pozycje = [{ name: 'Lampa z rabatem', quantity: 3, gross_price: 10000, tax_symbol: '23' }];
     const tekst = tekstZPdf(zbudujProformePdf(daneWzoru({ pozycje })));
-    expect(tekst).toContain('100.00');   // wartość linii — prawda dokumentu
-    expect(tekst).toContain('33.33');    // cena jednostkowa — tylko wyświetlana
+    expect(tekst).toContain('100.00'); // wartość linii — prawda dokumentu
+    expect(tekst).toContain('33.33'); // cena jednostkowa — tylko wyświetlana
     expect(tekst).not.toContain('99.99'); // iloczyn, którego na dokumencie być NIE MOŻE
   });
 
@@ -217,7 +223,10 @@ describe.skipIf(!PDFTOTEXT)('zbudujProformePdf — treść odczytana z gotowego 
   // jako JEDNEGO ciągu jest tekstowym odpowiednikiem tego, co widać na obrazie.
   it('nie łamie pięciocyfrowych kwot w podsumowaniu VAT', () => {
     const pozycje = Array.from({ length: 40 }, (_, i) => ({
-      name: `Pozycja ${i + 1}`, quantity: 2, gross_price: 100000 + i, tax_symbol: '23',
+      name: `Pozycja ${i + 1}`,
+      quantity: 2,
+      gross_price: 100000 + i,
+      tax_symbol: '23',
     }));
     const tekst = tekstZPdf(zbudujProformePdf(daneWzoru({ pozycje })));
     expect(tekst).toContain('40007.80 PLN');

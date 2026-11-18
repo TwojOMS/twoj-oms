@@ -23,8 +23,12 @@ describe('stanFaktury', () => {
 
   // Granica pinowana OSOBNO: zamiana >= na > (albo progu na inna wartosc) ma psuc test.
   it('dokładnie na progu jest już zawieszona, sekundę wcześniej jeszcze trwa', () => {
-    expect(stanFaktury({ ksef_status: 'w_toku', utworzona_at: przed(PROG_ZAWIESZONEJ_FAKTURY_MS) }, TERAZ)).toBe('zawieszona');
-    expect(stanFaktury({ ksef_status: 'w_toku', utworzona_at: przed(PROG_ZAWIESZONEJ_FAKTURY_MS - 1000) }, TERAZ)).toBe('w_toku');
+    expect(stanFaktury({ ksef_status: 'w_toku', utworzona_at: przed(PROG_ZAWIESZONEJ_FAKTURY_MS) }, TERAZ)).toBe(
+      'zawieszona',
+    );
+    expect(stanFaktury({ ksef_status: 'w_toku', utworzona_at: przed(PROG_ZAWIESZONEJ_FAKTURY_MS - 1000) }, TERAZ)).toBe(
+      'w_toku',
+    );
   });
 
   // Nieczytelna data NIE jest dowodem, ze cokolwiek trwa. Uznanie jej za „trwa" dawaloby
@@ -39,19 +43,25 @@ describe('stanFaktury', () => {
   });
 
   it('wiersz z numerem → wystawiona', () => {
-    expect(stanFaktury({ ksef_status: 'sent', numer: 'FV/1/2026', utworzona_at: przed(1000) }, TERAZ)).toBe('wystawiona');
+    expect(stanFaktury({ ksef_status: 'sent', numer: 'FV/1/2026', utworzona_at: przed(1000) }, TERAZ)).toBe(
+      'wystawiona',
+    );
   });
 });
 
 describe('fakturaWymagaCzlowieka', () => {
   it('do_wyjasnienia i zawieszona wymagają decyzji człowieka', () => {
     expect(fakturaWymagaCzlowieka({ ksef_status: 'do_wyjasnienia', utworzona_at: przed(1000) }, TERAZ)).toBe(true);
-    expect(fakturaWymagaCzlowieka({ ksef_status: 'w_toku', utworzona_at: przed(PROG_ZAWIESZONEJ_FAKTURY_MS * 2) }, TERAZ)).toBe(true);
+    expect(
+      fakturaWymagaCzlowieka({ ksef_status: 'w_toku', utworzona_at: przed(PROG_ZAWIESZONEJ_FAKTURY_MS * 2) }, TERAZ),
+    ).toBe(true);
   });
 
   it('brak, trwające wystawianie i gotowa faktura NIE wymagają', () => {
     expect(fakturaWymagaCzlowieka(null, TERAZ)).toBe(false);
     expect(fakturaWymagaCzlowieka({ ksef_status: 'w_toku', utworzona_at: przed(1000) }, TERAZ)).toBe(false);
-    expect(fakturaWymagaCzlowieka({ ksef_status: 'sent', numer: 'FV/1/2026', utworzona_at: przed(1000) }, TERAZ)).toBe(false);
+    expect(fakturaWymagaCzlowieka({ ksef_status: 'sent', numer: 'FV/1/2026', utworzona_at: przed(1000) }, TERAZ)).toBe(
+      false,
+    );
   });
 });

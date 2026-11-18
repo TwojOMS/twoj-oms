@@ -3,32 +3,66 @@
 // klasyfikacja błędu poczty. Silnik i trasy: tests/moduly/automatyzacje/.
 import { describe, it, expect } from 'vitest';
 import {
-  sprawdzRegule, czyPasujeKanalom, zgodnoscSzablonu, nowaGranica, klasyfikujBladPoczty, noweKanalyOdZapisu,
-  odKursora, terminWykonania, czyPrzeterminowane, zmianaPrzesuwaGranice, KATALOG_ZDARZEN,
-  OPOZNIENIE_MAX_MIN, BEZPIECZNIK_NARAZ, LIMIT_OMS_NA_GODZINE, PRZETERMINOWANIE_H,
+  sprawdzRegule,
+  czyPasujeKanalom,
+  zgodnoscSzablonu,
+  nowaGranica,
+  klasyfikujBladPoczty,
+  noweKanalyOdZapisu,
+  odKursora,
+  terminWykonania,
+  czyPrzeterminowane,
+  zmianaPrzesuwaGranice,
+  KATALOG_ZDARZEN,
+  OPOZNIENIE_MAX_MIN,
+  BEZPIECZNIK_NARAZ,
+  LIMIT_OMS_NA_GODZINE,
+  PRZETERMINOWANIE_H,
 } from '../../src/domena/automatyzacje.js';
 
-const KANALY = [{ klucz: 'sklep', etykieta: 'Sklep' }, { klucz: 'allegro', etykieta: 'Allegro' },
-  { klucz: 'reczne', etykieta: 'ręczne' }, { klucz: 'indywidualne', etykieta: 'Indywidualne' }];
+const KANALY = [
+  { klucz: 'sklep', etykieta: 'Sklep' },
+  { klucz: 'allegro', etykieta: 'Allegro' },
+  { klucz: 'reczne', etykieta: 'ręczne' },
+  { klucz: 'indywidualne', etykieta: 'Indywidualne' },
+];
 const KONTEKST = {
   kanaly: KANALY,
   zdarzenia: [{ klucz: 'status_zmieniony' }, { klucz: 'test_zdarzenie' }],
   akcje: [{ klucz: 'mail_kupujacy', szablon: true }],
   szablony: ['potwierdzenie', 'proforma', 'faktura', 'przypomnienie', 'wyslane', 'wlasny-3'],
 };
-const DOBRY = { nazwa: 'Wysłane — sklep', zdarzenie: 'status_zmieniony', kanaly: ['sklep'], opoznienie: '30',
-  limit: '20', akcja: 'mail_kupujacy', szablon: 'wyslane' };
+const DOBRY = {
+  nazwa: 'Wysłane — sklep',
+  zdarzenie: 'status_zmieniony',
+  kanaly: ['sklep'],
+  opoznienie: '30',
+  limit: '20',
+  akcja: 'mail_kupujacy',
+  szablon: 'wyslane',
+};
 
 describe('sprawdzRegule', () => {
   it('poprawny formularz → reguła z białą listą kanałów i migawką kanałów znanych w chwili zapisu', () => {
     const w = sprawdzRegule(DOBRY, KONTEKST);
     expect(w.ok).toBe(true);
     expect(w.regula).toEqual({
-      nazwa: 'Wysłane — sklep', zdarzenie: 'status_zmieniony', zdarzenie_json: {},
+      nazwa: 'Wysłane — sklep',
+      zdarzenie: 'status_zmieniony',
+      zdarzenie_json: {},
       // Warunki w chwili wykonania; szablon „Zamówienie wysłane” wymusza „ma numer listu”.
-      warunki: { kanaly: ['sklep'], kanalyZnane: ['sklep', 'allegro', 'reczne', 'indywidualne'], statusy: [],
-        maNumerListu: true, metody: [], pobranie: 'dowolne' },
-      akcja: 'mail_kupujacy', akcja_json: { szablon: 'wyslane' }, opoznienie_min: 30, limit_na_godzine: 20,
+      warunki: {
+        kanaly: ['sklep'],
+        kanalyZnane: ['sklep', 'allegro', 'reczne', 'indywidualne'],
+        statusy: [],
+        maNumerListu: true,
+        metody: [],
+        pobranie: 'dowolne',
+      },
+      akcja: 'mail_kupujacy',
+      akcja_json: { szablon: 'wyslane' },
+      opoznienie_min: 30,
+      limit_na_godzine: 20,
     });
   });
   it('jeden kanał przychodzi z formularza jako tekst, nie tablica', () => {
@@ -111,8 +145,10 @@ describe('czyPasujeKanalom — biała lista', () => {
 describe('noweKanalyOdZapisu', () => {
   it('nowe = w konfiguracji, a nieznane przy zapisie; usunięte = zaznaczone, a nie ma w konfiguracji', () => {
     const warunki = { kanaly: ['a', 'stary'], kanalyZnane: ['a', 'b', 'stary'] };
-    expect(noweKanalyOdZapisu(warunki, [{ klucz: 'a' }, { klucz: 'b' }, { klucz: 'c' }]))
-      .toEqual({ nowe: ['c'], usuniete: ['stary'] });
+    expect(noweKanalyOdZapisu(warunki, [{ klucz: 'a' }, { klucz: 'b' }, { klucz: 'c' }])).toEqual({
+      nowe: ['c'],
+      usuniete: ['stary'],
+    });
   });
 });
 
@@ -123,10 +159,12 @@ describe('granica, kursor, termin', () => {
   });
   it('odKursora: bez kursora od granicy; z kursorem od kursora − 5 min, ale nigdy sprzed granicy', () => {
     expect(odKursora({ granica_at: '2026-10-21T10:00:00.000Z', kursor_json: null })).toBe('2026-10-21T10:00:00.000Z');
-    expect(odKursora({ granica_at: '2026-10-21T10:00:00.000Z', kursor_json: '{"at":"2026-10-21T12:00:00.000Z"}' }))
-      .toBe('2026-10-21T11:55:00.000Z');
-    expect(odKursora({ granica_at: '2026-10-21T10:00:00.000Z', kursor_json: '{"at":"2026-10-21T10:02:00.000Z"}' }))
-      .toBe('2026-10-21T10:00:00.000Z');
+    expect(
+      odKursora({ granica_at: '2026-10-21T10:00:00.000Z', kursor_json: '{"at":"2026-10-21T12:00:00.000Z"}' }),
+    ).toBe('2026-10-21T11:55:00.000Z');
+    expect(
+      odKursora({ granica_at: '2026-10-21T10:00:00.000Z', kursor_json: '{"at":"2026-10-21T10:02:00.000Z"}' }),
+    ).toBe('2026-10-21T10:00:00.000Z');
   });
   it('terminWykonania = zdarzenie + opóźnienie', () => {
     expect(terminWykonania('2026-10-21T10:00:00.000Z', 30)).toBe('2026-10-21T10:30:00.000Z');
@@ -138,13 +176,29 @@ describe('granica, kursor, termin', () => {
     expect(czyPrzeterminowane(termin, new Date('2026-10-23T10:00:01.000Z'))).toBe(true);
   });
   it('stałe bezpieczników', () => {
-    expect([BEZPIECZNIK_NARAZ, LIMIT_OMS_NA_GODZINE, PRZETERMINOWANIE_H, OPOZNIENIE_MAX_MIN]).toEqual([50, 100, 48, 10080]);
+    expect([BEZPIECZNIK_NARAZ, LIMIT_OMS_NA_GODZINE, PRZETERMINOWANIE_H, OPOZNIENIE_MAX_MIN]).toEqual([
+      50, 100, 48, 10080,
+    ]);
   });
   it('zmiana zdarzenia albo warunków przesuwa granicę; nazwy, szablonu, limitu i opóźnienia — nie', () => {
-    const r = { zdarzenie: 'a', zdarzenie_json: {}, warunki: { kanaly: ['x'], kanalyZnane: ['x', 'y'] }, nazwa: 'n',
-      akcja_json: { szablon: 'wyslane' }, limit_na_godzine: 20, opoznienie_min: 0 };
-    expect(zmianaPrzesuwaGranice(r, { ...r, nazwa: 'inna', limit_na_godzine: 5, opoznienie_min: 30,
-      akcja_json: { szablon: 'wlasny-1' } })).toBe(false);
+    const r = {
+      zdarzenie: 'a',
+      zdarzenie_json: {},
+      warunki: { kanaly: ['x'], kanalyZnane: ['x', 'y'] },
+      nazwa: 'n',
+      akcja_json: { szablon: 'wyslane' },
+      limit_na_godzine: 20,
+      opoznienie_min: 0,
+    };
+    expect(
+      zmianaPrzesuwaGranice(r, {
+        ...r,
+        nazwa: 'inna',
+        limit_na_godzine: 5,
+        opoznienie_min: 30,
+        akcja_json: { szablon: 'wlasny-1' },
+      }),
+    ).toBe(false);
     expect(zmianaPrzesuwaGranice(r, { ...r, warunki: { ...r.warunki, kanaly: ['x', 'y'] } })).toBe(true);
     expect(zmianaPrzesuwaGranice(r, { ...r, zdarzenie: 'b' })).toBe(true);
     expect(zmianaPrzesuwaGranice(r, { ...r, zdarzenie_json: { status: 'wyslane' } })).toBe(true);
@@ -156,24 +210,45 @@ describe('granica, kursor, termin', () => {
 describe('klasyfikujBladPoczty', () => {
   // ECONNECTION nodemailer daje też po DATA (serwer ma treść) → nie ponawiać.
   it('na pewno przed MAIL FROM (EDNS, ETLS, EAUTH) → ponow; reszta, także ECONNECTION → niepewne', () => {
-    for (const code of ['EDNS', 'ETLS', 'EAUTH']) expect(klasyfikujBladPoczty(Object.assign(new Error('x'), { code }))).toBe('ponow');
-    for (const code of ['ECONNECTION', 'ESOCKET', 'ETIMEDOUT', 'EMESSAGE', 'EENVELOPE', undefined]) expect(klasyfikujBladPoczty(Object.assign(new Error('x'), { code }))).toBe('niepewne');
+    for (const code of ['EDNS', 'ETLS', 'EAUTH'])
+      expect(klasyfikujBladPoczty(Object.assign(new Error('x'), { code }))).toBe('ponow');
+    for (const code of ['ECONNECTION', 'ESOCKET', 'ETIMEDOUT', 'EMESSAGE', 'EENVELOPE', undefined])
+      expect(klasyfikujBladPoczty(Object.assign(new Error('x'), { code }))).toBe('niepewne');
     expect(klasyfikujBladPoczty(null)).toBe('niepewne');
   });
 });
 
 // Parametr zdarzenia „status zmienił się na …” i warunki w chwili wykonania w formularzu reguły.
 describe('sprawdzRegule — status zdarzenia i warunki', () => {
-  const C1 = { ...KONTEKST, statusy: ['nowe', 'w_realizacji', 'wyslane', 'zwrot', 'anulowane', 'w_klosz'],
-    zdarzenia: [{ klucz: 'status_zmieniony', opcje: ['wyslane', 'w_realizacji', 'w_klosz'] }, { klucz: 'paczka_nadana' }] };
-  const FORM = { ...DOBRY, zdarzenie_status: 'wyslane', status_warunek: 'jeden_z', statusy: ['wyslane'], ma_numer_listu: ['0', '1'],
-    dostawa: '', pobranie: 'dowolne' };
+  const C1 = {
+    ...KONTEKST,
+    statusy: ['nowe', 'w_realizacji', 'wyslane', 'zwrot', 'anulowane', 'w_klosz'],
+    zdarzenia: [
+      { klucz: 'status_zmieniony', opcje: ['wyslane', 'w_realizacji', 'w_klosz'] },
+      { klucz: 'paczka_nadana' },
+    ],
+  };
+  const FORM = {
+    ...DOBRY,
+    zdarzenie_status: 'wyslane',
+    status_warunek: 'jeden_z',
+    statusy: ['wyslane'],
+    ma_numer_listu: ['0', '1'],
+    dostawa: '',
+    pobranie: 'dowolne',
+  };
   it('przypadek właściciela: status → Wysłane, warunki kanał + status Wysłane + numer listu, opóźnienie 30', () => {
     const w = sprawdzRegule(FORM, C1);
     expect(w.ok).toBe(true);
     expect(w.regula.zdarzenie_json).toEqual({ status: 'wyslane' });
-    expect(w.regula.warunki).toEqual({ kanaly: ['sklep'], kanalyZnane: ['sklep', 'allegro', 'reczne', 'indywidualne'],
-      statusy: ['wyslane'], maNumerListu: true, metody: [], pobranie: 'dowolne' });
+    expect(w.regula.warunki).toEqual({
+      kanaly: ['sklep'],
+      kanalyZnane: ['sklep', 'allegro', 'reczne', 'indywidualne'],
+      statusy: ['wyslane'],
+      maNumerListu: true,
+      metody: [],
+      pobranie: 'dowolne',
+    });
     expect(w.regula.opoznienie_min).toBe(30);
   });
   it('status zdarzenia: brak albo spoza listy (Nowe, Anulowane, usunięty własny) → błąd', () => {
@@ -182,7 +257,9 @@ describe('sprawdzRegule — status zdarzenia i warunki', () => {
       expect(w.ok, String(zdarzenie_status)).toBe(false);
       expect(w.bledy.join(' ')).toContain('status');
     }
-    expect(sprawdzRegule({ ...FORM, zdarzenie_status: 'w_klosz', statusy: ['w_klosz'] }, C1).regula.zdarzenie_json).toEqual({ status: 'w_klosz' });
+    expect(
+      sprawdzRegule({ ...FORM, zdarzenie_status: 'w_klosz', statusy: ['w_klosz'] }, C1).regula.zdarzenie_json,
+    ).toEqual({ status: 'w_klosz' });
   });
   it('zdarzenie bez parametru (paczka nadana) → zdarzenie_json pusty, status z formularza pomijany', () => {
     expect(sprawdzRegule({ ...FORM, zdarzenie: 'paczka_nadana' }, C1).regula.zdarzenie_json).toEqual({});
@@ -200,8 +277,12 @@ describe('sprawdzRegule — status zdarzenia i warunki', () => {
     expect(nie.ok).toBe(false);
     expect(nie.bledy.join(' ')).toContain('„Zamówienie wysłane” wymaga warunku');
     // szablon własny: warunek opcjonalny
-    expect(sprawdzRegule({ ...FORM, szablon: 'wlasny-3', ma_numer_listu: '0' }, C1).regula.warunki.maNumerListu).toBe(false);
-    expect(sprawdzRegule({ ...FORM, szablon: 'wlasny-3', ma_numer_listu: ['0', '1'] }, C1).regula.warunki.maNumerListu).toBe(true);
+    expect(sprawdzRegule({ ...FORM, szablon: 'wlasny-3', ma_numer_listu: '0' }, C1).regula.warunki.maNumerListu).toBe(
+      false,
+    );
+    expect(
+      sprawdzRegule({ ...FORM, szablon: 'wlasny-3', ma_numer_listu: ['0', '1'] }, C1).regula.warunki.maNumerListu,
+    ).toBe(true);
   });
   it('dostawa i pobranie: z listy albo błąd', () => {
     expect(sprawdzRegule({ ...FORM, dostawa: 'dpd' }, C1).regula.warunki.metody).toEqual(['dpd']);

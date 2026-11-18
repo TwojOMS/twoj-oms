@@ -9,7 +9,13 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { createWiadomosci } from '../../../src/moduly/wiadomosci/services/wiadomosci.js';
 import { createPotwierdzenie } from '../../../src/moduly/wiadomosci/services/potwierdzenie.js';
-import { mailWlasny, mailWyslane, tekstDoWatku, mailPotwierdzenia, mailPlatniczy } from '../../../src/moduly/wiadomosci/szablony.js';
+import {
+  mailWlasny,
+  mailWyslane,
+  tekstDoWatku,
+  mailPotwierdzenia,
+  mailPlatniczy,
+} from '../../../src/moduly/wiadomosci/szablony.js';
 import { modelWiadomosci } from '../../../src/domena/wiadomosc-platnicza.js';
 import { podgladPodpisu } from '../../../src/moduly/wiadomosci/podpis-maili.js';
 import { DOMYSLNE } from '../../../src/domena/szablony-wiadomosci.js';
@@ -33,28 +39,59 @@ import { SCENARIUSZE, SCENARIUSZE_ZAMOWIENIA, WLASNY, OPRAWA } from '../../pomoc
 const naglowek = { authorization: `Basic ${Buffer.from('adam:x').toString('base64')}`, origin: 'http://localhost' };
 const RACHUNEK = '00 1111 2222 3333 4444 5555 6666';
 // Odbiorca przelewu z Ustawień → Firma — bez nazwy firmy wiersz „Odbiorca” nie pada.
-const config = { auth: { user: 'adam', pass: 'x' }, klienciZbiorczy: [], proforma: { rachunek: RACHUNEK }, nadawca: { nazwa: 'Pracownia Przykładowa' } };
+const config = {
+  auth: { user: 'adam', pass: 'x' },
+  klienciZbiorczy: [],
+  proforma: { rachunek: RACHUNEK },
+  nadawca: { nazwa: 'Pracownia Przykładowa' },
+};
 const ADRES = '/ustawienia/szablony-wiadomosci';
 const ZAPIS = `${ADRES}/zdania-platnosci`;
 const przywroc = (klucz) => `${ZAPIS}/${klucz}/przywroc`;
 
 const zamowienie = (nad = {}) => ({
-  zrodlo_id: 6019, numer: '1919',
+  zrodlo_id: 6019,
+  numer: '1919',
   klient: { first_name: 'Anna', last_name: 'Testowa', email: 'anna@pracownia.example.test' },
   dostawa: { first_name: 'Anna', last_name: 'Testowa', address_1: 'Fikcyjna 1', postcode: '00-001', city: 'Testowo' },
-  metoda_wysylki: 'dpd', metoda_platnosci: 'Przelew', kwota_pobrania: null, chce_fakture: 0, nip: null,
-  kwota_brutto: '476.00', koszt_dostawy_brutto: '0.00', koszt_dostawy_netto: '0.00',
-  status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-10-14T09:15:00', termin_platnosci: '14',
-  pozycje: [{ zrodlo_id: 7019, nazwa: 'Lampa stołowa Grzybek', sku: 'LMP-1', ilosc: 2, cena_brutto: '238.00',
-    cena_netto: '193.50', brutto_linii: '476.00', netto_linii: '387.00', vat: null }],
+  metoda_wysylki: 'dpd',
+  metoda_platnosci: 'Przelew',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '476.00',
+  koszt_dostawy_brutto: '0.00',
+  koszt_dostawy_netto: '0.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-10-14T09:15:00',
+  termin_platnosci: '14',
+  pozycje: [
+    {
+      zrodlo_id: 7019,
+      nazwa: 'Lampa stołowa Grzybek',
+      sku: 'LMP-1',
+      ilosc: 2,
+      cena_brutto: '238.00',
+      cena_netto: '193.50',
+      brutto_linii: '476.00',
+      netto_linii: '387.00',
+      vat: null,
+    },
+  ],
   ...nad,
 });
 
-let db; let app; let wyslane;
+let db;
+let app;
+let wyslane;
 const get = (url) => app.inject({ method: 'GET', url, headers: naglowek });
 const post = (url, payload = {}) => app.inject({ method: 'POST', url, headers: naglowek, payload });
-const wierszZdan = () => db.prepare("SELECT wartosc FROM ustawienia WHERE klucz = 'wiadomosci.zdania_platnosci'").get()?.wartosc ?? null;
-const sekcja = (html) => /<section class="ust-sekcja szw-sekcja" id="zdania-platnosci">[\s\S]*?<\/section>/u.exec(html)?.[0] ?? '';
+const wierszZdan = () =>
+  db.prepare("SELECT wartosc FROM ustawienia WHERE klucz = 'wiadomosci.zdania_platnosci'").get()?.wartosc ?? null;
+const sekcja = (html) =>
+  /<section class="ust-sekcja szw-sekcja" id="zdania-platnosci">[\s\S]*?<\/section>/u.exec(html)?.[0] ?? '';
 const formularz = (zmiany = {}) => ({ ...DOMYSLNE_ZDANIA, ...zmiany });
 /** Tekst błędu przy jednym polu ekranu ('' = pole bez błędu). */
 const bladPola = (html, klucz) => {
@@ -72,8 +109,12 @@ function zamowienieZFaktura() {
   const id = zapiszZamowienie(db, 'pro', zamowienie({ zrodlo_id: zrodlo, numer: String(zrodlo) }));
   // Termin uzgodniony przy zamówieniu (ustalenia handlowe na karcie) — zapis sklepowy go nie niesie.
   db.prepare("UPDATE zamowienia SET termin_platnosci = '14' WHERE id = ?").run(id);
-  db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)')
-    .run(id, `uuid-${zrodlo}`, `FV ${zrodlo}/10/2026`, '2026-10-15T09:00:00.000Z');
+  db.prepare('INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?,?,?,?)').run(
+    id,
+    `uuid-${zrodlo}`,
+    `FV ${zrodlo}/10/2026`,
+    '2026-10-15T09:00:00.000Z',
+  );
   return id;
 }
 async function wyslij(id, temat) {
@@ -88,22 +129,52 @@ const wyslijFakture = (id) => wyslij(id, 'faktura');
 beforeEach(async () => {
   db = openOmsDb(':memory:');
   wyslane = [];
-  const mailer = { sendMail: async (m) => { wyslane.push(m); return { messageId: 't' }; } };
+  const mailer = {
+    sendMail: async (m) => {
+      wyslane.push(m);
+      return { messageId: 't' };
+    },
+  };
   const teraz = () => '2026-10-20T10:00:00.000Z';
   app = buildOmsServer({
-    db, config, poller: { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) },
+    db,
+    config,
+    poller: { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) },
     wiadomosci: createWiadomosci({
-      db, mailer, config, teraz, potwierdzenie: createPotwierdzenie({ db, mailer, teraz }),
+      db,
+      mailer,
+      config,
+      teraz,
+      potwierdzenie: createPotwierdzenie({ db, mailer, teraz }),
       infakt: { pobierzPdf: async () => Buffer.from('%PDF-atrapa') },
     }),
   });
   await app.ready();
 });
 
-const NOWE = ['etykieta_odbiorca', 'etykieta_rachunek', 'etykieta_tytul', 'etykieta_termin', 'dopisek_brutto',
-  'naglowek_zamowienie', 'naglowek_platnosc', 'naglowek_wysylka', 'naglowek_faktura',
-  'kolumna_pozycja', 'kolumna_ilosc', 'kolumna_cena', 'kolumna_wartosc', 'etykieta_razem', 'jednostka',
-  'faktura_tak', 'faktura_bez_danych', 'faktura_nie', 'adres_do_uzgodnienia', 'platnosc_do_uzgodnienia', 'pozdrowienie'];
+const NOWE = [
+  'etykieta_odbiorca',
+  'etykieta_rachunek',
+  'etykieta_tytul',
+  'etykieta_termin',
+  'dopisek_brutto',
+  'naglowek_zamowienie',
+  'naglowek_platnosc',
+  'naglowek_wysylka',
+  'naglowek_faktura',
+  'kolumna_pozycja',
+  'kolumna_ilosc',
+  'kolumna_cena',
+  'kolumna_wartosc',
+  'etykieta_razem',
+  'jednostka',
+  'faktura_tak',
+  'faktura_bez_danych',
+  'faktura_nie',
+  'adres_do_uzgodnienia',
+  'platnosc_do_uzgodnienia',
+  'pozdrowienie',
+];
 
 describe('część „Etykiety i stałe teksty" w sekcji Zdania o płatności', () => {
   it('każda etykieta: pole z tekstem domyślnym, opis, gdzie pada, znacznik „domyślne"', async () => {
@@ -141,9 +212,20 @@ describe('zmiana etykiety działa od następnego maila (ta sama instancja, bez r
   });
 
   it('pozostałe etykiety przelewu, dopisek przy kwocie i „Pozdrawiamy," w mailu z fakturą (tekst i HTML)', async () => {
-    expect((await post(ZAPIS, formularz({
-      etykieta_odbiorca: 'Na rzecz', etykieta_tytul: 'W tytule', etykieta_termin: 'Zapłać do', dopisek_brutto: 'z VAT', pozdrowienie: 'Z pozdrowieniami,',
-    }))).statusCode).toBe(303);
+    expect(
+      (
+        await post(
+          ZAPIS,
+          formularz({
+            etykieta_odbiorca: 'Na rzecz',
+            etykieta_tytul: 'W tytule',
+            etykieta_termin: 'Zapłać do',
+            dopisek_brutto: 'z VAT',
+            pozdrowienie: 'Z pozdrowieniami,',
+          }),
+        )
+      ).statusCode,
+    ).toBe(303);
     const m = await wyslijFakture(zamowienieZFaktura());
     expect(m.text).toContain('\n  476,00 zł z VAT\n');
     expect(m.text).toContain('\n  Na rzecz: Pracownia Przykładowa\n');
@@ -163,7 +245,9 @@ describe('zmiana etykiety działa od następnego maila (ta sama instancja, bez r
   it('zapisany szablon faktury (nie domyślna droga) też bierze etykiety i „Pozdrawiamy," z panelu', async () => {
     const tresc = DOMYSLNE.faktura.tresc.replace('w załączeniu przesyłamy', 'przesyłamy w załączniku');
     expect((await post(`${ADRES}/faktura`, { temat: DOMYSLNE.faktura.temat, tresc })).statusCode).toBe(303);
-    expect((await post(ZAPIS, formularz({ etykieta_rachunek: 'Konto', pozdrowienie: 'Do usłyszenia,' }))).statusCode).toBe(303);
+    expect(
+      (await post(ZAPIS, formularz({ etykieta_rachunek: 'Konto', pozdrowienie: 'Do usłyszenia,' }))).statusCode,
+    ).toBe(303);
     const m = await wyslijFakture(zamowienieZFaktura());
     expect(m.text).toContain('przesyłamy w załączniku');
     expect(m.text).toContain(`\n  Konto: ${RACHUNEK}`);
@@ -174,14 +258,34 @@ describe('zmiana etykiety działa od następnego maila (ta sama instancja, bez r
 
   it('potwierdzenie przyjęcia: nagłówki, kolumny, „Razem", jednostka, teksty faktury i podpis z panelu', async () => {
     // Najpierw mail z brzmieniem domyślnym — zapis niżej ma zadziałać na tej samej instancji, bez restartu.
-    const przed = await wyslij(zapiszZamowienie(db, 'pro', zamowienie({ zrodlo_id: 6099, numer: '6099' })), 'potwierdzenie');
+    const przed = await wyslij(
+      zapiszZamowienie(db, 'pro', zamowienie({ zrodlo_id: 6099, numer: '6099' })),
+      'potwierdzenie',
+    );
     expect(przed.text).toContain('\n\nZAMÓWIENIE\n');
     expect(przed.text).toContain('\n\nPozdrawiamy,\n');
-    expect((await post(ZAPIS, formularz({
-      naglowek_zamowienie: 'Twoje zamówienie', naglowek_platnosc: 'Zapłata', naglowek_wysylka: 'Dostawa', naglowek_faktura: 'Dokument',
-      kolumna_pozycja: 'Produkt', kolumna_ilosc: 'Szt.', kolumna_cena: 'Cena jedn.', kolumna_wartosc: 'Suma',
-      etykieta_razem: 'Łącznie', jednostka: 'kpl', dopisek_brutto: 'z VAT', faktura_nie: 'Bez faktury', pozdrowienie: 'Z pozdrowieniami,',
-    }))).statusCode).toBe(303);
+    expect(
+      (
+        await post(
+          ZAPIS,
+          formularz({
+            naglowek_zamowienie: 'Twoje zamówienie',
+            naglowek_platnosc: 'Zapłata',
+            naglowek_wysylka: 'Dostawa',
+            naglowek_faktura: 'Dokument',
+            kolumna_pozycja: 'Produkt',
+            kolumna_ilosc: 'Szt.',
+            kolumna_cena: 'Cena jedn.',
+            kolumna_wartosc: 'Suma',
+            etykieta_razem: 'Łącznie',
+            jednostka: 'kpl',
+            dopisek_brutto: 'z VAT',
+            faktura_nie: 'Bez faktury',
+            pozdrowienie: 'Z pozdrowieniami,',
+          }),
+        )
+      ).statusCode,
+    ).toBe(303);
     const id = zapiszZamowienie(db, 'pro', zamowienie({ zrodlo_id: 6100, numer: '6100' }));
     db.prepare("UPDATE zamowienia SET termin_platnosci = '14' WHERE id = ?").run(id);
     const m = await wyslij(id, 'potwierdzenie');
@@ -200,11 +304,32 @@ describe('zmiana etykiety działa od następnego maila (ta sama instancja, bez r
   });
 
   it('potwierdzenie: „Tak — wystawimy na:", „dane do uzgodnienia", „adres do uzgodnienia", płatność „do uzgodnienia"', async () => {
-    expect((await post(ZAPIS, formularz({
-      faktura_tak: 'Fakturę wystawimy na:', faktura_bez_danych: 'dane ustalimy mailem', adres_do_uzgodnienia: 'adres ustalimy', platnosc_do_uzgodnienia: 'ustalimy',
-    }))).statusCode).toBe(303);
-    const id = zapiszZamowienie(db, 'pro', zamowienie({ zrodlo_id: 6101, numer: '6101', chce_fakture: 1, metoda_platnosci: '', termin_platnosci: '',
-      klient: { email: 'anna@pracownia.example.test' }, dostawa: {} }));
+    expect(
+      (
+        await post(
+          ZAPIS,
+          formularz({
+            faktura_tak: 'Fakturę wystawimy na:',
+            faktura_bez_danych: 'dane ustalimy mailem',
+            adres_do_uzgodnienia: 'adres ustalimy',
+            platnosc_do_uzgodnienia: 'ustalimy',
+          }),
+        )
+      ).statusCode,
+    ).toBe(303);
+    const id = zapiszZamowienie(
+      db,
+      'pro',
+      zamowienie({
+        zrodlo_id: 6101,
+        numer: '6101',
+        chce_fakture: 1,
+        metoda_platnosci: '',
+        termin_platnosci: '',
+        klient: { email: 'anna@pracownia.example.test' },
+        dostawa: {},
+      }),
+    );
     const m = await wyslij(id, 'potwierdzenie');
     expect(m.text).toContain('\n  Fakturę wystawimy na:\n  dane ustalimy mailem\n');
     expect(m.text).toContain('\n  (adres ustalimy)\n');
@@ -228,13 +353,20 @@ describe('„Pozdrawiamy," z panelu w pozostałych mailach z blokiem {podpis}', 
   const zdania = { pozdrowienie: 'Do usłyszenia,' };
   const z = SCENARIUSZE_ZAMOWIENIA[0][1];
   it('szablon własny, „Zamówienie wysłane", wątek Allegro (z zamówieniem i bez), podgląd podpisu w Poczcie', () => {
-    for (const m of [mailWlasny(z, WLASNY, { oprawa: OPRAWA, zdania }), mailWyslane(z, DOMYSLNE.wyslane, { oprawa: OPRAWA, zdania })]) {
+    for (const m of [
+      mailWlasny(z, WLASNY, { oprawa: OPRAWA, zdania }),
+      mailWyslane(z, DOMYSLNE.wyslane, { oprawa: OPRAWA, zdania }),
+    ]) {
       expect(m.tekst).toContain('\n\nDo usłyszenia,\nPracownia Półcień');
       expect(m.html).toContain('>Do usłyszenia,</p>');
       expect(m.html).not.toContain('Pozdrawiamy');
     }
-    expect(tekstDoWatku(z, WLASNY, { podpis: OPRAWA.podpis, zdania })).toContain('\n\nDo usłyszenia,\nPracownia Półcień');
-    expect(tekstDoWatku(null, WLASNY, { podpis: OPRAWA.podpis, zdania })).toContain('\n\nDo usłyszenia,\nPracownia Półcień');
+    expect(tekstDoWatku(z, WLASNY, { podpis: OPRAWA.podpis, zdania })).toContain(
+      '\n\nDo usłyszenia,\nPracownia Półcień',
+    );
+    expect(tekstDoWatku(null, WLASNY, { podpis: OPRAWA.podpis, zdania })).toContain(
+      '\n\nDo usłyszenia,\nPracownia Półcień',
+    );
     const p = podgladPodpisu(OPRAWA, { zdania });
     expect(p.tekst).toContain('\nDo usłyszenia,\nPracownia Półcień');
     expect(p.html).toContain('>Do usłyszenia,</p>');
@@ -243,7 +375,9 @@ describe('„Pozdrawiamy," z panelu w pozostałych mailach z blokiem {podpis}', 
 
 describe('reguły etykiet', () => {
   it('pusta etykieta = domyślna (nic nie zapisane); także „brutto" — kwota zawsze ma dopisek', async () => {
-    expect((await post(ZAPIS, formularz({ etykieta_rachunek: '', dopisek_brutto: '   ', pozdrowienie: '' }))).statusCode).toBe(303);
+    expect(
+      (await post(ZAPIS, formularz({ etykieta_rachunek: '', dopisek_brutto: '   ', pozdrowienie: '' }))).statusCode,
+    ).toBe(303);
     expect(wierszZdan()).toBeNull();
     const m = await wyslijFakture(zamowienieZFaktura());
     expect(m.text).toContain(`\n  Rachunek: ${RACHUNEK}`);
@@ -307,15 +441,25 @@ describe('HTML w etykiecie', () => {
     const z = SCENARIUSZE_ZAMOWIENIA[2][1]; // faktura bez danych nabywcy — pada „Tak — wystawimy na:" i „dane do uzgodnienia"
     const bezAdresu = SCENARIUSZE_ZAMOWIENIA[4][1];
     for (const zam of [z, bezAdresu, SCENARIUSZE_ZAMOWIENIA[0][1], SCENARIUSZE_ZAMOWIENIA[5][1]]) {
-      for (const m of [mailPotwierdzenia(zam, { oprawa: OPRAWA, zdania }), mailPotwierdzenia(zam, { oprawa: OPRAWA, szablon: DOMYSLNE.potwierdzenie, zdania })]) {
+      for (const m of [
+        mailPotwierdzenia(zam, { oprawa: OPRAWA, zdania }),
+        mailPotwierdzenia(zam, { oprawa: OPRAWA, szablon: DOMYSLNE.potwierdzenie, zdania }),
+      ]) {
         expect(m.html).not.toContain('<b>');
         expect(m.html).toContain('&lt;b&gt;kolumna_cena&lt;/b&gt;');
       }
     }
     const [, { z: zp, dokument, opcje }] = SCENARIUSZE[0];
     const model = modelWiadomosci(zp, { ...opcje, zdania });
-    for (const m of [mailPlatniczy(zp, model, { temat_id: opcje.temat_id, dokument, oprawa: OPRAWA }),
-      mailPlatniczy(zp, model, { temat_id: opcje.temat_id, dokument, oprawa: OPRAWA, szablon: DOMYSLNE[opcje.temat_id] })]) {
+    for (const m of [
+      mailPlatniczy(zp, model, { temat_id: opcje.temat_id, dokument, oprawa: OPRAWA }),
+      mailPlatniczy(zp, model, {
+        temat_id: opcje.temat_id,
+        dokument,
+        oprawa: OPRAWA,
+        szablon: DOMYSLNE[opcje.temat_id],
+      }),
+    ]) {
       expect(m.html).not.toContain('<b>');
       expect(m.html).toContain('&lt;b&gt;etykieta_rachunek&lt;/b&gt;');
       expect(m.html).toContain('&lt;b&gt;dopisek_brutto&lt;/b&gt;');
@@ -326,7 +470,9 @@ describe('HTML w etykiecie', () => {
 describe('„Przywróć domyślne" etykiety', () => {
   it('kasuje tylko tę etykietę — następny mail ma „Rachunek:", inne zmiany zostają', async () => {
     const id = zamowienieZFaktura();
-    expect((await post(ZAPIS, formularz({ etykieta_rachunek: 'Konto', pozdrowienie: 'Z pozdrowieniami,' }))).statusCode).toBe(303);
+    expect(
+      (await post(ZAPIS, formularz({ etykieta_rachunek: 'Konto', pozdrowienie: 'Z pozdrowieniami,' }))).statusCode,
+    ).toBe(303);
     const ekran = sekcja((await get(ADRES)).body);
     expect(ekran).toContain(`formaction="${przywroc('etykieta_rachunek')}"`);
     expect(ekran).toContain('Domyślnie: „Rachunek”');
@@ -341,12 +487,24 @@ describe('„Przywróć domyślne" etykiety', () => {
 });
 
 describe('zapisana etykieta, która nie przechodzi reguł (wpisana do bazy z pominięciem formularza)', () => {
-  beforeEach(() => { vi.spyOn(console, 'error').mockImplementation(() => {}); });
-  afterEach(() => { vi.restoreAllMocks(); });
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
   it('za długa / z klamrą / zdublowana → w mailu domyślna, log bez treści, ekran ostrzega', async () => {
-    db.prepare("INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('wiadomosci.zdania_platnosci', ?, '2026-10-20T09:00:00Z')")
-      .run(JSON.stringify({ etykieta_rachunek: 'Konto {rachunek}', dopisek_brutto: 'x'.repeat(31), etykieta_tytul: 'Termin', pozdrowienie: 'Do usłyszenia,' }));
+    db.prepare(
+      "INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('wiadomosci.zdania_platnosci', ?, '2026-10-20T09:00:00Z')",
+    ).run(
+      JSON.stringify({
+        etykieta_rachunek: 'Konto {rachunek}',
+        dopisek_brutto: 'x'.repeat(31),
+        etykieta_tytul: 'Termin',
+        pozdrowienie: 'Do usłyszenia,',
+      }),
+    );
     const m = await wyslijFakture(zamowienieZFaktura());
     expect(m.text).toContain(`\n  Rachunek: ${RACHUNEK}`);
     expect(m.text).toContain('\n  476,00 zł brutto\n');
@@ -369,11 +527,20 @@ describe('zapisana etykieta, która nie przechodzi reguł (wpisana do bazy z pom
 // Każda reguła przy zapisie (400, nic nie zapisane) i przy odczycie
 // wiersza wpisanego wprost do bazy (w mailu tekst domyślny).
 describe('reguły przy zapisie i przy odczycie', () => {
-  beforeEach(() => { vi.spyOn(console, 'error').mockImplementation(() => {}); });
-  afterEach(() => { vi.restoreAllMocks(); });
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
-  const wpiszDoBazy = (stan) => db.prepare(`INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('wiadomosci.zdania_platnosci', ?, '2026-10-20T09:00:00Z')
-    ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc`).run(JSON.stringify(stan));
+  const wpiszDoBazy = (stan) =>
+    db
+      .prepare(
+        `INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('wiadomosci.zdania_platnosci', ?, '2026-10-20T09:00:00Z')
+    ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc`,
+      )
+      .run(JSON.stringify(stan));
   const odmowy = async (lista) => {
     for (const pole of lista) {
       const r = await post(ZAPIS, formularz(pole));
@@ -385,8 +552,12 @@ describe('reguły przy zapisie i przy odczycie', () => {
 
   it('niewidoczne znaki (\\p{Cf}) w zdaniach i etykietach → 400; z bazy → domyślne', async () => {
     await odmowy([
-      { etykieta_rachunek: 'Ko​nto' }, { etykieta_tytul: 'Tytu­ł' }, { pozdrowienie: 'Pozdrawiamy⁠,' },
-      { etykieta_termin: 'Termin؜' }, { pozostale: 'Jeśli coś‍ się nie zgadza, napisz.' }, { oplacone: 'Opłacone﻿ — dziękujemy.' },
+      { etykieta_rachunek: 'Ko​nto' },
+      { etykieta_tytul: 'Tytu­ł' },
+      { pozdrowienie: 'Pozdrawiamy⁠,' },
+      { etykieta_termin: 'Termin؜' },
+      { pozostale: 'Jeśli coś‍ się nie zgadza, napisz.' },
+      { oplacone: 'Opłacone﻿ — dziękujemy.' },
     ]);
     wpiszDoBazy({ etykieta_rachunek: 'Ko​nto', pozostale: 'Dzięki‎ za zamówienie.' });
     const m = await wyslijFakture(zamowienieZFaktura());
@@ -396,8 +567,23 @@ describe('reguły przy zapisie i przy odczycie', () => {
   });
 
   it('odstępy \\p{Zs} zwinięte do jednej spacji; końcowy dwukropek etykiety obcięty', async () => {
-    expect((await post(ZAPIS, formularz({ etykieta_rachunek: 'Numer   konta :', etykieta_razem: 'Łącznie:', pozostale: 'Dzięki  za zamówienie.' }))).statusCode).toBe(303);
-    expect(JSON.parse(wierszZdan())).toEqual({ etykieta_rachunek: 'Numer konta', etykieta_razem: 'Łącznie', pozostale: 'Dzięki za zamówienie.' });
+    expect(
+      (
+        await post(
+          ZAPIS,
+          formularz({
+            etykieta_rachunek: 'Numer   konta :',
+            etykieta_razem: 'Łącznie:',
+            pozostale: 'Dzięki  za zamówienie.',
+          }),
+        )
+      ).statusCode,
+    ).toBe(303);
+    expect(JSON.parse(wierszZdan())).toEqual({
+      etykieta_rachunek: 'Numer konta',
+      etykieta_razem: 'Łącznie',
+      pozostale: 'Dzięki za zamówienie.',
+    });
     const m = await wyslijFakture(zamowienieZFaktura());
     expect(m.text).toContain(`\n  Numer konta: ${RACHUNEK}\n`);
     expect(m.text).not.toContain('::');
@@ -408,8 +594,11 @@ describe('reguły przy zapisie i przy odczycie', () => {
 
   it('kolizja po normalizacji i z domyślną etykietą innego wiersza, także zamiana Rachunek↔Tytuł → 400; z bazy → domyślne', async () => {
     await odmowy([
-      { etykieta_rachunek: 'Tytuł-przelewu' }, { etykieta_odbiorca: 'TYTUŁ PRZELEWU!' }, { etykieta_termin: 'Rachunek' },
-      { etykieta_rachunek: 'Tytuł przelewu', etykieta_tytul: 'Rachunek' }, { etykieta_odbiorca: 'Konto', etykieta_termin: 'K o n t o' },
+      { etykieta_rachunek: 'Tytuł-przelewu' },
+      { etykieta_odbiorca: 'TYTUŁ PRZELEWU!' },
+      { etykieta_termin: 'Rachunek' },
+      { etykieta_rachunek: 'Tytuł przelewu', etykieta_tytul: 'Rachunek' },
+      { etykieta_odbiorca: 'Konto', etykieta_termin: 'K o n t o' },
     ]);
     wpiszDoBazy({ etykieta_rachunek: 'Tytuł przelewu', etykieta_tytul: 'Rachunek' });
     const m = await wyslijFakture(zamowienieZFaktura());
@@ -427,7 +616,10 @@ describe('reguły przy zapisie i przy odczycie', () => {
 
   it('ciąg 6+ cyfr w etykiecie (także ze spacjami i myślnikami) → 400; z bazy → domyślne', async () => {
     await odmowy([
-      { etykieta_tytul: 'Konto 12 3456 7890' }, { etykieta_odbiorca: 'Wpłać 123-456' }, { pozdrowienie: 'Tel. 600 100 200' }, { kolumna_pozycja: '123456' },
+      { etykieta_tytul: 'Konto 12 3456 7890' },
+      { etykieta_odbiorca: 'Wpłać 123-456' },
+      { pozdrowienie: 'Tel. 600 100 200' },
+      { kolumna_pozycja: '123456' },
     ]);
     expect((await post(ZAPIS, formularz({ etykieta_termin: 'Termin 14 dni' }))).statusCode).toBe(303);
     wpiszDoBazy({ etykieta_odbiorca: 'Konto 11 2222 3333' });
@@ -438,8 +630,12 @@ describe('reguły przy zapisie i przy odczycie', () => {
 
   it('„netto”, „bez VAT”, „net” przy kwocie, sumie, cenie i wartości → 400; z bazy → domyślne', async () => {
     await odmowy([
-      { dopisek_brutto: 'netto' }, { dopisek_brutto: 'bez VAT' }, { dopisek_brutto: 'NET' }, { etykieta_razem: 'Razem netto' },
-      { kolumna_cena: 'Cena bezVAT' }, { kolumna_wartosc: 'Wartość net' },
+      { dopisek_brutto: 'netto' },
+      { dopisek_brutto: 'bez VAT' },
+      { dopisek_brutto: 'NET' },
+      { etykieta_razem: 'Razem netto' },
+      { kolumna_cena: 'Cena bezVAT' },
+      { kolumna_wartosc: 'Wartość net' },
     ]);
     expect((await post(ZAPIS, formularz({ dopisek_brutto: 'z VAT', kolumna_cena: 'Cena' }))).statusCode).toBe(303);
     wpiszDoBazy({ dopisek_brutto: 'netto' });
@@ -447,7 +643,11 @@ describe('reguły przy zapisie i przy odczycie', () => {
   });
 
   it('„Tak — wystawimy na:” ≠ „Nie” po normalizacji, „Nie” nie zaczyna się od „tak” → 400; z bazy → domyślne', async () => {
-    await odmowy([{ faktura_tak: 'nie!' }, { faktura_nie: 'Tak, ale później' }, { faktura_tak: 'Bez faktury', faktura_nie: 'bez-faktury' }]);
+    await odmowy([
+      { faktura_tak: 'nie!' },
+      { faktura_nie: 'Tak, ale później' },
+      { faktura_tak: 'Bez faktury', faktura_nie: 'bez-faktury' },
+    ]);
     wpiszDoBazy({ faktura_nie: 'Tak' });
     const id = zapiszZamowienie(db, 'pro', zamowienie({ zrodlo_id: 6200, numer: '6200' }));
     const m = await wyslij(id, 'potwierdzenie');
@@ -455,7 +655,8 @@ describe('reguły przy zapisie i przy odczycie', () => {
   });
 
   it('odrzucone zdanie trafia do logu raz na zmianę zapisu, nie przy każdym mailu', async () => {
-    const linie = () => console.error.mock.calls.map((a) => a.join(' ')).filter((l) => l.includes('nie przechodzi reguł'));
+    const linie = () =>
+      console.error.mock.calls.map((a) => a.join(' ')).filter((l) => l.includes('nie przechodzi reguł'));
     wpiszDoBazy({ etykieta_rachunek: 'Konto {x}' });
     await wyslijFakture(zamowienieZFaktura());
     await wyslijFakture(zamowienieZFaktura());
@@ -480,12 +681,27 @@ describe('reguły przy zapisie i przy odczycie', () => {
 });
 
 describe('bez uprawnienia „ustawienia"', () => {
-  beforeEach(() => { for (const m of ['log', 'error', 'warn', 'info']) vi.spyOn(console, m).mockImplementation(() => {}); });
-  afterEach(() => { vi.restoreAllMocks(); });
+  beforeEach(() => {
+    for (const m of ['log', 'error', 'warn', 'info']) vi.spyOn(console, m).mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
   it('zapis etykiety i „Przywróć domyślne" = 403, nic nie zapisane; administrator może', async () => {
-    const moduly = [modulRdzen, modulWeb, modulKanaly, createModulFaktury(), createModulWiadomosci(),
-      createModulZamowienia({ zWiadomosciami: true }), createModulWysylka(), modulMagazyn, modulUstawienia, modulMarketing, modulZdrowie];
+    const moduly = [
+      modulRdzen,
+      modulWeb,
+      modulKanaly,
+      createModulFaktury(),
+      createModulWiadomosci(),
+      createModulZamowienia({ zWiadomosciami: true }),
+      createModulWysylka(),
+      modulMagazyn,
+      modulUstawienia,
+      modulMarketing,
+      modulZdrowie,
+    ];
     const p = nowyPanel({ moduly });
     await p.app.ready();
     zalozKonto(p.db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
@@ -493,7 +709,8 @@ describe('bez uprawnienia „ustawienia"', () => {
     ustawUprawnienia(p.db, kontoPoLoginie(p.db, 'ewa').id, ['zamowienia', 'wiadomosci']);
     const ewa = jako(p.db, 'ewa');
     const admin = jako(p.db, 'adam');
-    const wiersz = () => p.db.prepare("SELECT wartosc FROM ustawienia WHERE klucz = 'wiadomosci.zdania_platnosci'").get()?.wartosc ?? null;
+    const wiersz = () =>
+      p.db.prepare("SELECT wartosc FROM ustawienia WHERE klucz = 'wiadomosci.zdania_platnosci'").get()?.wartosc ?? null;
 
     expect((await postJako(p.app, ZAPIS, ewa, formularz({ etykieta_rachunek: 'Konto' }))).statusCode).toBe(403);
     expect(wiersz()).toBeNull();

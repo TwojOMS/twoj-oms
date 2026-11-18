@@ -36,7 +36,10 @@ const INPOST_CUDZA_UMOWA = [
 ];
 
 const zamowienie = (metoda) => ({
-  sklep: 'allegro_swietlik', anulowane: 0, metoda_wysylki: metoda, kwota_pobrania: null,
+  sklep: 'allegro_swietlik',
+  anulowane: 0,
+  metoda_wysylki: metoda,
+  kwota_pobrania: null,
 });
 
 describe('osiem usług punktowych i kurierskich w białej liście WzA', () => {

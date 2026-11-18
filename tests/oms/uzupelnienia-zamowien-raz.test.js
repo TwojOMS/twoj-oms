@@ -36,7 +36,8 @@ const BEZ_DANYCH = {
 };
 const Z_ALLEGRO = { lineItems: [{ offer: { id: 'A-1' }, quantity: 1 }] };
 
-const KOLUMNY = 'uwagi, metoda_platnosci, punkt_odbioru, punkt_odbioru_opis, koszt_dostawy_brutto, koszt_dostawy_netto, indywidualne';
+const KOLUMNY =
+  'uwagi, metoda_platnosci, punkt_odbioru, punkt_odbioru_opis, koszt_dostawy_brutto, koszt_dostawy_netto, indywidualne';
 
 const katalogi = [];
 afterEach(() => {
@@ -50,10 +51,12 @@ function nowyPlik() {
 }
 
 function wstaw(db, zrodloId, surowe) {
-  const info = db.prepare(
-    "INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at, surowe_json)"
-    + " VALUES ('sklep_x', ?, ?, '0.00', '2026-10-01T10:00:00Z', ?)",
-  ).run(zrodloId, `T-${zrodloId}`, JSON.stringify(surowe));
+  const info = db
+    .prepare(
+      'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at, surowe_json)' +
+        " VALUES ('sklep_x', ?, ?, '0.00', '2026-10-01T10:00:00Z', ?)",
+    )
+    .run(zrodloId, `T-${zrodloId}`, JSON.stringify(surowe));
   const id = Number(info.lastInsertRowid);
   const linie = surowe.line_items ?? surowe.lineItems ?? [];
   for (let i = 0; i < linie.length; i++) {
@@ -63,9 +66,12 @@ function wstaw(db, zrodloId, surowe) {
 }
 
 const kolumny = (db, id) => db.prepare(`SELECT ${KOLUMNY} FROM zamowienia WHERE id = ?`).get(id);
-const pozycja = (db, id) => db.prepare(
-  'SELECT brutto_linii, netto_linii, zrodlo_id, produkt_id, oferta_id FROM pozycje WHERE zamowienie_id = ? ORDER BY id',
-).all(id);
+const pozycja = (db, id) =>
+  db
+    .prepare(
+      'SELECT brutto_linii, netto_linii, zrodlo_id, produkt_id, oferta_id FROM pozycje WHERE zamowienie_id = ? ORDER BY id',
+    )
+    .all(id);
 
 /** Baza z zamowieniami wpisanymi „z zewnatrz" (jak po imporcie/starej wersji) — jeszcze bez uzupelnien. */
 function bazaZZamowieniami(wstawiaj) {
@@ -79,23 +85,28 @@ function bazaZZamowieniami(wstawiaj) {
 /** Licznik odczytow `surowe_json` — liczy WIERSZE zwrocone przez zapytania, ktore je czytaja, niezaleznie od raportu funkcji. */
 function zLicznikiem(db) {
   const licznik = { wiersze: 0, najwiekszaPorcja: 0 };
-  const obej = (st) => new Proxy(st, {
-    get(cel, nazwa) {
-      if (nazwa === 'all') {
-        return (...a) => {
-          const r = cel.all(...a);
-          licznik.wiersze += r.length;
-          licznik.najwiekszaPorcja = Math.max(licznik.najwiekszaPorcja, r.length);
-          return r;
-        };
-      }
-      if (nazwa === 'get') {
-        return (...a) => { const r = cel.get(...a); if (r) licznik.wiersze += 1; return r; };
-      }
-      const v = cel[nazwa];
-      return typeof v === 'function' ? v.bind(cel) : v;
-    },
-  });
+  const obej = (st) =>
+    new Proxy(st, {
+      get(cel, nazwa) {
+        if (nazwa === 'all') {
+          return (...a) => {
+            const r = cel.all(...a);
+            licznik.wiersze += r.length;
+            licznik.najwiekszaPorcja = Math.max(licznik.najwiekszaPorcja, r.length);
+            return r;
+          };
+        }
+        if (nazwa === 'get') {
+          return (...a) => {
+            const r = cel.get(...a);
+            if (r) licznik.wiersze += 1;
+            return r;
+          };
+        }
+        const v = cel[nazwa];
+        return typeof v === 'function' ? v.bind(cel) : v;
+      },
+    });
   const proxy = new Proxy(db, {
     get(cel, nazwa) {
       if (nazwa === 'prepare') {
@@ -117,8 +128,12 @@ describe('uzupelnienia danych zamowien — raz na zamowienie', () => {
     const db = openOmsDb(plik);
     try {
       expect(kolumny(db, ids[0])).toMatchObject({
-        uwagi: 'Prosze o dzwonek', metoda_platnosci: 'PayU', punkt_odbioru: 'KRA01M',
-        punkt_odbioru_opis: 'Krakow, Testowa 1', koszt_dostawy_brutto: '14.76', koszt_dostawy_netto: '12.00',
+        uwagi: 'Prosze o dzwonek',
+        metoda_platnosci: 'PayU',
+        punkt_odbioru: 'KRA01M',
+        punkt_odbioru_opis: 'Krakow, Testowa 1',
+        koszt_dostawy_brutto: '14.76',
+        koszt_dostawy_netto: '12.00',
       });
       expect(pozycja(db, ids[0])).toEqual([
         { brutto_linii: '123.00', netto_linii: '100.00', zrodlo_id: 9001, produkt_id: 77, oferta_id: null },
@@ -127,7 +142,9 @@ describe('uzupelnienia danych zamowien — raz na zamowienie', () => {
         { brutto_linii: null, netto_linii: null, zrodlo_id: null, produkt_id: null, oferta_id: 'A-1' },
       ]);
       expect(kolumny(db, ids[1]).indywidualne).toBe(0);
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 
   it('(a) KOLEJNE uzupelnienie nie czyta surowe_json zamowien, ktore pierwsze juz sprawdzilo', () => {
@@ -141,7 +158,9 @@ describe('uzupelnienia danych zamowien — raz na zamowienie', () => {
       const pierwsze = zLicznikiem(db);
       uzupelnijDaneZamowien(pierwsze.db);
       expect(pierwsze.licznik.wiersze).toBe(0);
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 
   it('(a) licznik nie jest slepy: nowe zamowienie po starcie JEST czytane i uzupelniane', () => {
@@ -156,7 +175,9 @@ describe('uzupelnienia danych zamowien — raz na zamowienie', () => {
       const znowu = zLicznikiem(db);
       uzupelnijDaneZamowien(znowu.db);
       expect(znowu.licznik.wiersze).toBe(0);
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 
   it('(a) zamowienie sprawdzone przy poprzednim starcie nie jest przeliczane po restarcie', () => {
@@ -168,7 +189,9 @@ describe('uzupelnienia danych zamowien — raz na zamowienie', () => {
     db = openOmsDb(plik); // dowod „nie sprawdza drugi raz": reczne wyzerowanie NIE jest odtwarzane
     try {
       expect(kolumny(db, ids[0]).uwagi).toBeNull();
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 
   it('(a) zamowienie dopisane miedzy startami jest uzupelnione przy nastepnym starcie', () => {
@@ -178,9 +201,15 @@ describe('uzupelnienia danych zamowien — raz na zamowienie', () => {
     db.close();
     db = openOmsDb(plik);
     try {
-      expect(kolumny(db, nowe)).toMatchObject({ uwagi: 'Prosze o dzwonek', metoda_platnosci: 'PayU', punkt_odbioru: 'KRA01M' });
+      expect(kolumny(db, nowe)).toMatchObject({
+        uwagi: 'Prosze o dzwonek',
+        metoda_platnosci: 'PayU',
+        punkt_odbioru: 'KRA01M',
+      });
       expect(pozycja(db, nowe)[0]).toMatchObject({ zrodlo_id: 9001, produkt_id: 77 });
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 
   it('skasowanie znacznika wymusza pelne sprawdzenie od poczatku (furtka dla operatora)', () => {
@@ -192,35 +221,49 @@ describe('uzupelnienia danych zamowien — raz na zamowienie', () => {
     db = openOmsDb(plik);
     try {
       expect(kolumny(db, ids[0]).uwagi).toBe('Prosze o dzwonek');
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 
   it('znacznik wiekszy niz numeracja zamowien (baza podmieniona) nie ukrywa zamowien', () => {
     const { plik, ids } = bazaZZamowieniami((db) => [wstaw(db, 1, ZDANYMI)]);
     let db = openOmsDb(plik);
     db.exec('UPDATE zamowienia SET uwagi = NULL');
-    const znacznik = db.prepare("SELECT nazwa FROM migracje_jednorazowe WHERE nazwa LIKE 'uzupelnienia-zamowien:%'").all();
+    const znacznik = db
+      .prepare("SELECT nazwa FROM migracje_jednorazowe WHERE nazwa LIKE 'uzupelnienia-zamowien:%'")
+      .all();
     expect(znacznik).toHaveLength(1); // jeden znacznik, nie jeden na kazdy start
-    db.prepare('UPDATE migracje_jednorazowe SET nazwa = ? WHERE nazwa = ?')
-      .run(znacznik[0].nazwa.replace(/do-id:\d+$/, 'do-id:999999'), znacznik[0].nazwa);
+    db.prepare('UPDATE migracje_jednorazowe SET nazwa = ? WHERE nazwa = ?').run(
+      znacznik[0].nazwa.replace(/do-id:\d+$/, 'do-id:999999'),
+      znacznik[0].nazwa,
+    );
     db.close();
     db = openOmsDb(plik);
     try {
       expect(kolumny(db, ids[0]).uwagi).toBe('Prosze o dzwonek');
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 
   it('znacznik z inna wersja krokow (np. dolozony krok) nie ukrywa zamowien — przechodzi cala baze', () => {
     const { plik, ids } = bazaZZamowieniami((db) => [wstaw(db, 1, ZDANYMI)]);
     let db = openOmsDb(plik);
     db.exec('UPDATE zamowienia SET uwagi = NULL');
-    db.exec("UPDATE migracje_jednorazowe SET nazwa = REPLACE(nazwa, 'uzupelnienia-zamowien:v', 'uzupelnienia-zamowien:v0-stara-') WHERE nazwa LIKE 'uzupelnienia-zamowien:%'");
+    db.exec(
+      "UPDATE migracje_jednorazowe SET nazwa = REPLACE(nazwa, 'uzupelnienia-zamowien:v', 'uzupelnienia-zamowien:v0-stara-') WHERE nazwa LIKE 'uzupelnienia-zamowien:%'",
+    );
     db.close();
     db = openOmsDb(plik);
     try {
       expect(kolumny(db, ids[0]).uwagi).toBe('Prosze o dzwonek');
-      expect(db.prepare("SELECT COUNT(*) AS c FROM migracje_jednorazowe WHERE nazwa LIKE 'uzupelnienia-zamowien:%'").get().c).toBe(1);
-    } finally { db.close(); }
+      expect(
+        db.prepare("SELECT COUNT(*) AS c FROM migracje_jednorazowe WHERE nazwa LIKE 'uzupelnienia-zamowien:%'").get().c,
+      ).toBe(1);
+    } finally {
+      db.close();
+    }
   });
 
   it('(d) surowe_json jest czytane porcjami po id — pamiec nie zalezy od liczby zamowien', () => {
@@ -237,7 +280,9 @@ describe('uzupelnienia danych zamowien — raz na zamowienie', () => {
       uzupelnijDaneZamowien(l.db);
       expect(l.licznik.wiersze).toBeGreaterThan(1300); // kilka kolumn, kazda czyta wszystkie
       expect(l.licznik.najwiekszaPorcja).toBeLessThanOrEqual(500);
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 
   it('(c) czytelnicy dla zamowien „bez danych” widza to samo po pierwszym i po drugim starcie', () => {
@@ -251,9 +296,16 @@ describe('uzupelnienia danych zamowien — raz na zamowienie', () => {
       // Zadnych znacznikow zastepczych w kolumnach: brak danych to dalej NULL, wiec karta/lista/eksport
       // czytaja te same wartosci co zawsze.
       expect(po).toEqual(przed);
-      expect(po[0].kol).toMatchObject({ uwagi: null, metoda_platnosci: null, punkt_odbioru: null, punkt_odbioru_opis: null });
+      expect(po[0].kol).toMatchObject({
+        uwagi: null,
+        metoda_platnosci: null,
+        punkt_odbioru: null,
+        punkt_odbioru_opis: null,
+      });
       expect(po[0].karta).toBeTruthy();
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 
   it('start zapisuje w logu liczbe zamowien do sprawdzenia i czas uzupelnien', () => {
@@ -272,9 +324,15 @@ describe('uzupelnienia danych zamowien — raz na zamowienie', () => {
 describe('linia logu startu produkcji', () => {
   it('uruchomOms podaje openOmsDb funkcje logu — linia z kosztem uzupelnien trafia do logu procesu', async () => {
     const env = {
-      OMS_TRYB: 'produkcja', OMS_USER: 'operator', OMS_PASS: 'fixture', OMS_SPRZEDAWCA_NIP: '1234563218',
-      OMS_RACHUNEK: '34109010140000000000000000', OMS_PROFORMY_KATALOG: 'C:/fixture/proformy',
-      OMS_ETYKIETY_KATALOG: 'C:/fixture/etykiety', OMS_DB_PATH: 'C:/fixture/oms.sqlite', OMS_PORT: '0',
+      OMS_TRYB: 'produkcja',
+      OMS_USER: 'operator',
+      OMS_PASS: 'fixture',
+      OMS_SPRZEDAWCA_NIP: '1234563218',
+      OMS_RACHUNEK: '34109010140000000000000000',
+      OMS_PROFORMY_KATALOG: 'C:/fixture/proformy',
+      OMS_ETYKIETY_KATALOG: 'C:/fixture/etykiety',
+      OMS_DB_PATH: 'C:/fixture/oms.sqlite',
+      OMS_PORT: '0',
     };
     const wypisane = vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(katalogBazy, 'sprawdzKatalogBazy').mockImplementation(() => {});

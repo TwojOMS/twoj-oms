@@ -18,7 +18,8 @@ beforeEach(async () => {
   await app.ready();
 });
 
-const get = (zapytanie = '') => app.inject({ method: 'GET', url: '/ustawienia/zamowienia-i-wysylka' + zapytanie, headers: naglowek });
+const get = (zapytanie = '') =>
+  app.inject({ method: 'GET', url: '/ustawienia/zamowienia-i-wysylka' + zapytanie, headers: naglowek });
 const getDostawa = () => app.inject({ method: 'GET', url: '/ustawienia/wysylka/dostawa', headers: naglowek });
 const post = (url, payload) => app.inject({ method: 'POST', url, headers: naglowekPost, payload });
 
@@ -47,7 +48,10 @@ describe('ekran ustawień — domyślna paczka', () => {
 
     expect(r.statusCode).toBe(302);
     expect(wczytajUstawienia(db)).toMatchObject({
-      'paczka.waga': '2.5', 'paczka.dlugosc': '100', 'paczka.szerokosc': '70', 'paczka.wysokosc': '5',
+      'paczka.waga': '2.5',
+      'paczka.dlugosc': '100',
+      'paczka.szerokosc': '70',
+      'paczka.wysokosc': '5',
     });
     expect(sekcja((await get('?edytuj=domyslna')).body, 'ust-paczka')).toContain('name="waga" value="2.5"');
     expect(sekcja((await get()).body, 'ust-paczka')).toContain('>2,5 kg<');
@@ -100,7 +104,9 @@ describe('ekran ustawień — koszty dostawy', () => {
 
     expect(r.statusCode).toBe(302);
     expect(wczytajUstawienia(db)).toMatchObject({
-      'dostawa.dpd': '1900', 'dostawa.inpost_paczkomat': '1300', 'dostawa.odbior_osobisty': '0',
+      'dostawa.dpd': '1900',
+      'dostawa.inpost_paczkomat': '1300',
+      'dostawa.odbior_osobisty': '0',
     });
   });
 
@@ -114,7 +120,9 @@ describe('ekran ustawień — koszty dostawy', () => {
 
   it('odmowa zostawia wpisane kwoty i nie zapisuje niczego', async () => {
     const klucze = Object.keys(DOSTAWY);
-    const wpisane = Object.fromEntries(klucze.map((klucz, indeks) => [klucz, indeks === 0 ? '' : `${indeks}3,7${indeks}`]));
+    const wpisane = Object.fromEntries(
+      klucze.map((klucz, indeks) => [klucz, indeks === 0 ? '' : `${indeks}3,7${indeks}`]),
+    );
     const przed = wczytajUstawienia(db);
     const r = await post('/ustawienia/dostawa', wpisane);
 

@@ -49,9 +49,11 @@ describe('widoki i serwer', () => {
         const p = path.join(k, w.name);
         if (w.isDirectory()) przejdz(p);
         else if (w.name.endsWith('.ejs')) {
-          fs.readFileSync(p, 'utf8').split('\n').forEach((linia, i) => {
-            if (/(href|src)="\/public\/[^"]+\.(css|js)"/.test(linia)) gole.push(`${path.relative(ROOT, p)}:${i + 1}`);
-          });
+          fs.readFileSync(p, 'utf8')
+            .split('\n')
+            .forEach((linia, i) => {
+              if (/(href|src)="\/public\/[^"]+\.(css|js)"/.test(linia)) gole.push(`${path.relative(ROOT, p)}:${i + 1}`);
+            });
         }
       }
     };

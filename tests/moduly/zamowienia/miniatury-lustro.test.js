@@ -84,8 +84,9 @@ describe('miniaturaZLustra — lustro wygrywa, zgadywanie zostaje siatka', () =>
   // Allegro nie ma Store API, wiec do lustra nic tam nie trafia — i wlasnie dlatego galaz
   // zapasowa musi zostac: dla Allegro to ONA jest droga poprawna (podmiana /original/ na /s150/).
   it('pozycja Allegro bez wpisu w lustrze dostaje wariant s150, tak jak dotad', () => {
-    expect(miniaturaZLustra(null, 'https://9.allegroimg.com/original/03e7d6/772bd1'))
-      .toBe('https://9.allegroimg.com/s150/03e7d6/772bd1');
+    expect(miniaturaZLustra(null, 'https://9.allegroimg.com/original/03e7d6/772bd1')).toBe(
+      'https://9.allegroimg.com/s150/03e7d6/772bd1',
+    );
   });
 
   // ⚠️ Produkt znany lustru, ale pozycja bez wlasnego zdjecia (stara pozycja, sklep dolozyl
@@ -111,26 +112,31 @@ describe('miniaturaPozycji — jedna droga dla wszystkich czterech ekranow', () 
   });
 
   it('pudlo w lustrze oddaje adres dotychczasowy', () => {
-    expect(miniaturaPozycji(lustro, 'swietlik', 999, ORYGINAL))
-      .toBe('https://swietlik.example.test/wp-content/uploads/2026/07/kot-150x150.jpg');
-    expect(miniaturaPozycji(lustro, 'pro', 944, ORYGINAL))
-      .toBe('https://swietlik.example.test/wp-content/uploads/2026/07/kot-150x150.jpg');
+    expect(miniaturaPozycji(lustro, 'swietlik', 999, ORYGINAL)).toBe(
+      'https://swietlik.example.test/wp-content/uploads/2026/07/kot-150x150.jpg',
+    );
+    expect(miniaturaPozycji(lustro, 'pro', 944, ORYGINAL)).toBe(
+      'https://swietlik.example.test/wp-content/uploads/2026/07/kot-150x150.jpg',
+    );
   });
 
   // Pozycja dopisana recznie nie ma produktu w sklepie — ma sie zachowac jak dotad,
   // a nie szukac w lustrze klucza zbudowanego z pustki.
   it('pozycja bez produktu zachowuje sie jak dotad', () => {
-    expect(miniaturaPozycji(lustro, 'reczne', null, ORYGINAL))
-      .toBe('https://swietlik.example.test/wp-content/uploads/2026/07/kot-150x150.jpg');
+    expect(miniaturaPozycji(lustro, 'reczne', null, ORYGINAL)).toBe(
+      'https://swietlik.example.test/wp-content/uploads/2026/07/kot-150x150.jpg',
+    );
   });
 
   // Brak lustra w ogole (ekran, ktory go jeszcze nie zbudowal) NIE MOZE rzucic — to byloby
   // 500 zamiast listy zamowien.
   it('brak mapy lustra nie rzuca, tylko wraca do zgadywania', () => {
-    expect(miniaturaPozycji(null, 'swietlik', 944, ORYGINAL))
-      .toBe('https://swietlik.example.test/wp-content/uploads/2026/07/kot-150x150.jpg');
-    expect(miniaturaPozycji(undefined, 'swietlik', 944, ORYGINAL))
-      .toBe('https://swietlik.example.test/wp-content/uploads/2026/07/kot-150x150.jpg');
+    expect(miniaturaPozycji(null, 'swietlik', 944, ORYGINAL)).toBe(
+      'https://swietlik.example.test/wp-content/uploads/2026/07/kot-150x150.jpg',
+    );
+    expect(miniaturaPozycji(undefined, 'swietlik', 944, ORYGINAL)).toBe(
+      'https://swietlik.example.test/wp-content/uploads/2026/07/kot-150x150.jpg',
+    );
   });
 });
 
@@ -138,10 +144,14 @@ describe('miniaturaPozycji — jedna droga dla wszystkich czterech ekranow', () 
 // ODCZYT LUSTRA — JEDNO ZAPYTANIE NA EKRAN
 
 const P = (nad = {}) => ({
-  kanal: 'swietlik', produkt_id: '944', wariant_id: '', nazwa: 'Kot 70x100',
+  kanal: 'swietlik',
+  produkt_id: '944',
+  wariant_id: '',
+  nazwa: 'Kot 70x100',
   zdjecia_json: '["https://swietlik.example.test/wp-content/uploads/2026/07/kot.jpg"]',
   miniatura: 'https://swietlik.example.test/wp-content/uploads/2026/07/kot-247x296.jpg',
-  odczytane_at: '2026-08-12T10:00:00Z', ...nad,
+  odczytane_at: '2026-08-12T10:00:00Z',
+  ...nad,
 });
 
 describe('miniaturyLustra — mapa (kanal, produkt) → adres miniatury', () => {
@@ -149,8 +159,9 @@ describe('miniaturyLustra — mapa (kanal, produkt) → adres miniatury', () => 
     const db = openOmsDb(':memory:');
     zapiszProduktSklepowy(db, P());
     const mapa = miniaturyLustra(db, [{ kanal: 'swietlik', produktId: 944 }]);
-    expect(mapa.get(kluczLustra('swietlik', '944')))
-      .toBe('https://swietlik.example.test/wp-content/uploads/2026/07/kot-247x296.jpg');
+    expect(mapa.get(kluczLustra('swietlik', '944'))).toBe(
+      'https://swietlik.example.test/wp-content/uploads/2026/07/kot-247x296.jpg',
+    );
   });
 
   // ⚠️ TEN SAM identyfikator produktu wystepuje w OBU sklepach niezaleznie (Woo numeruje
@@ -161,7 +172,8 @@ describe('miniaturyLustra — mapa (kanal, produkt) → adres miniatury', () => 
     zapiszProduktSklepowy(db, P({ kanal: 'swietlik', miniatura: 'https://swietlik.example.test/a.jpg' }));
     zapiszProduktSklepowy(db, P({ kanal: 'pro', miniatura: 'https://pro.swietlik.example.test/b.png' }));
     const mapa = miniaturyLustra(db, [
-      { kanal: 'swietlik', produktId: '944' }, { kanal: 'pro', produktId: '944' },
+      { kanal: 'swietlik', produktId: '944' },
+      { kanal: 'pro', produktId: '944' },
     ]);
     expect(mapa.get(kluczLustra('swietlik', '944'))).toBe('https://swietlik.example.test/a.jpg');
     expect(mapa.get(kluczLustra('pro', '944'))).toBe('https://pro.swietlik.example.test/b.png');
@@ -177,15 +189,28 @@ describe('miniaturyLustra — mapa (kanal, produkt) → adres miniatury', () => 
   // tak przepuszczala usuniecie `szukane.has(klucz)`.
   it('rog prostokata, o ktory nie pytano, nie wchodzi do mapy', () => {
     const db = openOmsDb(':memory:');
-    zapiszProduktSklepowy(db, P({ kanal: 'swietlik', produkt_id: '1', miniatura: 'https://swietlik.example.test/s1.jpg' }));
-    zapiszProduktSklepowy(db, P({ kanal: 'swietlik', produkt_id: '2', miniatura: 'https://swietlik.example.test/s2.jpg' }));
-    zapiszProduktSklepowy(db, P({ kanal: 'pro', produkt_id: '1', miniatura: 'https://pro.swietlik.example.test/p1.png' }));
-    zapiszProduktSklepowy(db, P({ kanal: 'pro', produkt_id: '2', miniatura: 'https://pro.swietlik.example.test/p2.png' }));
+    zapiszProduktSklepowy(
+      db,
+      P({ kanal: 'swietlik', produkt_id: '1', miniatura: 'https://swietlik.example.test/s1.jpg' }),
+    );
+    zapiszProduktSklepowy(
+      db,
+      P({ kanal: 'swietlik', produkt_id: '2', miniatura: 'https://swietlik.example.test/s2.jpg' }),
+    );
+    zapiszProduktSklepowy(
+      db,
+      P({ kanal: 'pro', produkt_id: '1', miniatura: 'https://pro.swietlik.example.test/p1.png' }),
+    );
+    zapiszProduktSklepowy(
+      db,
+      P({ kanal: 'pro', produkt_id: '2', miniatura: 'https://pro.swietlik.example.test/p2.png' }),
+    );
 
     // Pytamy o PRZEKATNA: swietlik/1 i pro/2. Rogi swietlik/2 i pro/1 ISTNIEJA w bazie
     // i wpadaja w prostokat `IN` — mapa nie ma prawa ich wpuscic.
     const mapa = miniaturyLustra(db, [
-      { kanal: 'swietlik', produktId: '1' }, { kanal: 'pro', produktId: '2' },
+      { kanal: 'swietlik', produktId: '1' },
+      { kanal: 'pro', produktId: '2' },
     ]);
     expect(mapa.get(kluczLustra('swietlik', '1'))).toBe('https://swietlik.example.test/s1.jpg');
     expect(mapa.get(kluczLustra('pro', '2'))).toBe('https://pro.swietlik.example.test/p2.png');
@@ -201,7 +226,8 @@ describe('miniaturyLustra — mapa (kanal, produkt) → adres miniatury', () => 
     zapiszProduktSklepowy(db, P({ miniatura: null }));
     zapiszProduktSklepowy(db, P({ produkt_id: '945', miniatura: '   ' }));
     const mapa = miniaturyLustra(db, [
-      { kanal: 'swietlik', produktId: '944' }, { kanal: 'swietlik', produktId: '945' },
+      { kanal: 'swietlik', produktId: '944' },
+      { kanal: 'swietlik', produktId: '945' },
     ]);
     expect(mapa.has(kluczLustra('swietlik', '944'))).toBe(false);
     expect(mapa.has(kluczLustra('swietlik', '945'))).toBe(false);
@@ -217,10 +243,12 @@ describe('miniaturyLustra — mapa (kanal, produkt) → adres miniatury', () => 
     zapiszProduktSklepowy(db, P({ wariant_id: '1091', miniatura: 'https://swietlik.example.test/pierwszy.jpg' }));
     zapiszProduktSklepowy(db, P({ wariant_id: '1092', miniatura: 'https://swietlik.example.test/drugi.jpg' }));
     const pytanie = [{ kanal: 'swietlik', produktId: '944' }];
-    expect(miniaturyLustra(db, pytanie).get(kluczLustra('swietlik', '944')))
-      .toBe('https://swietlik.example.test/pierwszy.jpg');
-    expect(miniaturyLustra(db, pytanie).get(kluczLustra('swietlik', '944')))
-      .toBe('https://swietlik.example.test/pierwszy.jpg');
+    expect(miniaturyLustra(db, pytanie).get(kluczLustra('swietlik', '944'))).toBe(
+      'https://swietlik.example.test/pierwszy.jpg',
+    );
+    expect(miniaturyLustra(db, pytanie).get(kluczLustra('swietlik', '944'))).toBe(
+      'https://swietlik.example.test/pierwszy.jpg',
+    );
   });
 
   // Wariant rodzica bez wlasnej miniatury nie ma prawa przeslonic wariantu, ktory ja ma —
@@ -229,8 +257,9 @@ describe('miniaturyLustra — mapa (kanal, produkt) → adres miniatury', () => 
     const db = openOmsDb(':memory:');
     zapiszProduktSklepowy(db, P({ wariant_id: '1091', miniatura: null }));
     zapiszProduktSklepowy(db, P({ wariant_id: '1092', miniatura: 'https://swietlik.example.test/drugi.jpg' }));
-    expect(miniaturyLustra(db, [{ kanal: 'swietlik', produktId: '944' }]).get(kluczLustra('swietlik', '944')))
-      .toBe('https://swietlik.example.test/drugi.jpg');
+    expect(miniaturyLustra(db, [{ kanal: 'swietlik', produktId: '944' }]).get(kluczLustra('swietlik', '944'))).toBe(
+      'https://swietlik.example.test/drugi.jpg',
+    );
   });
 
   // ⚠️ Produkt WYCOFANY ze sklepu zostaje w lustrze (`zniknal_at`) i jego miniatura NADAL
@@ -240,8 +269,9 @@ describe('miniaturyLustra — mapa (kanal, produkt) → adres miniatury', () => 
     const db = openOmsDb(':memory:');
     zapiszProduktSklepowy(db, P());
     db.prepare("UPDATE produkty_sklepowe SET zniknal_at = '2026-08-11T10:00:00Z'").run();
-    expect(miniaturyLustra(db, [{ kanal: 'swietlik', produktId: '944' }]).has(kluczLustra('swietlik', '944')))
-      .toBe(true);
+    expect(miniaturyLustra(db, [{ kanal: 'swietlik', produktId: '944' }]).has(kluczLustra('swietlik', '944'))).toBe(
+      true,
+    );
   });
 
   it('puste pytanie oddaje pusta mape', () => {
@@ -256,8 +286,12 @@ describe('miniaturyLustra — mapa (kanal, produkt) → adres miniatury', () => 
   it('pary bez kanalu albo bez produktu wypadaja z pytania', () => {
     const db = openOmsDb(':memory:');
     zapiszProduktSklepowy(db, P());
-    expect(miniaturyLustra(db, [{ kanal: 'reczne', produktId: null }, { kanal: null, produktId: '944' }]).size)
-      .toBe(0);
+    expect(
+      miniaturyLustra(db, [
+        { kanal: 'reczne', produktId: null },
+        { kanal: null, produktId: '944' },
+      ]).size,
+    ).toBe(0);
   });
 
   // ⚠️ MAPA, NIE LITERAL OBIEKTU. Klucz rowny nazwie odziedziczonej z `Object.prototype`
@@ -286,9 +320,18 @@ describe('miniaturyLustra — mapa (kanal, produkt) → adres miniatury', () => 
 function bazaZLicznikiem(db) {
   const licznik = { zapytania: 0 };
   const opakuj = (st) => ({
-    all: (...a) => { licznik.zapytania += 1; return st.all(...a); },
-    get: (...a) => { licznik.zapytania += 1; return st.get(...a); },
-    run: (...a) => { licznik.zapytania += 1; return st.run(...a); },
+    all: (...a) => {
+      licznik.zapytania += 1;
+      return st.all(...a);
+    },
+    get: (...a) => {
+      licznik.zapytania += 1;
+      return st.get(...a);
+    },
+    run: (...a) => {
+      licznik.zapytania += 1;
+      return st.run(...a);
+    },
   });
   return [{ prepare: (sql) => opakuj(db.prepare(sql)) }, licznik];
 }

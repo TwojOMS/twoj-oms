@@ -2,11 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { MODULY_OPCJONALNE } from '../../../src/domena/moduly-opcjonalne.js';
 
-const czytaj = sciezka => readFileSync(new URL(`../../../${sciezka}`, import.meta.url), 'utf8');
+const czytaj = (sciezka) => readFileSync(new URL(`../../../${sciezka}`, import.meta.url), 'utf8');
 
 describe('„Stali klienci” → „Klienci B2B” (napisy)', () => {
   it('moduł opcjonalny w Ustawieniach nazywa się „Klienci B2B”', () => {
-    const modul = MODULY_OPCJONALNE.find(m => m.klucz === 'klienci');
+    const modul = MODULY_OPCJONALNE.find((m) => m.klucz === 'klienci');
     expect(modul.nazwa).toBe('Klienci B2B');
     expect(modul.opis).toContain('klientów B2B');
     expect(modul.opis).not.toMatch(/stałych klient/i);

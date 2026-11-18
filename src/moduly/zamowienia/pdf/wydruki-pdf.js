@@ -53,7 +53,10 @@ function noweDoc(tytul) {
     // Strony w pamieci do `end()` — numer „str. X/Y" znamy dopiero po narysowaniu calosci.
     bufferPages: true,
     margins: {
-      top: MARGINES, bottom: MARGINES, left: MARGINES, right: MARGINES,
+      top: MARGINES,
+      bottom: MARGINES,
+      left: MARGINES,
+      right: MARGINES,
     },
     info: { Title: tytul, Author: 'Twój OMS' },
   });
@@ -73,7 +76,9 @@ function bajty(doc, tytul, wydrukowano) {
     doc.page.margins.bottom = 0;
     zwykly(doc, 7.5, SZARY_TEKST).text(
       `${tytul}${wydrukowano ? ` · wydrukowano ${wydrukowano}` : ''}`,
-      L, doc.page.height - 28, { lineBreak: false },
+      L,
+      doc.page.height - 28,
+      { lineBreak: false },
     );
     const strona = `str. ${i - start + 1}/${count}`;
     doc.text(strona, R - doc.widthOfString(strona), doc.page.height - 28, { lineBreak: false });
@@ -101,14 +106,22 @@ function wysokoscWiersza(doc, kolumny, wartosci, rozmiar) {
 
 function rysujWiersz(doc, y, kolumny, wartosci, { rozmiar = 9, tlo = null, naglowek = false } = {}) {
   const wys = wysokoscWiersza(doc, kolumny, wartosci, rozmiar);
-  if (tlo) doc.rect(L, y, R - L, wys).fillColor(tlo).fill();
+  if (tlo)
+    doc
+      .rect(L, y, R - L, wys)
+      .fillColor(tlo)
+      .fill();
   kolumny.forEach((k, i) => {
     (naglowek || k.gruby ? gruby : zwykly)(doc, rozmiar);
     doc.text(String(wartosci[i] ?? ''), k.x + 3, y + 3.5, { width: k.w - 6, align: k.align ?? 'left' });
   });
   doc.lineWidth(0.5).strokeColor(SZARY_LINIA);
   doc.rect(L, y, R - L, wys).stroke();
-  for (const k of kolumny.slice(1)) doc.moveTo(k.x, y).lineTo(k.x, y + wys).stroke();
+  for (const k of kolumny.slice(1))
+    doc
+      .moveTo(k.x, y)
+      .lineTo(k.x, y + wys)
+      .stroke();
   return y + wys;
 }
 
@@ -128,7 +141,11 @@ const KOL_LISTY_JEDNEGO = [
   { klucz: 'sku', x: L + 364, w: R - (L + 364) },
 ];
 const NAGLOWKI_LISTY = {
-  ptaszek: '✓', ilosc: 'Ilość', nazwa: 'Produkt', sku: 'SKU', zamowienia: 'W zamówieniach',
+  ptaszek: '✓',
+  ilosc: 'Ilość',
+  nazwa: 'Produkt',
+  sku: 'SKU',
+  zamowienia: 'W zamówieniach',
 };
 
 /** „WO261000002 ×2, WO261000004" — krotnosc tylko, gdy wieksza niz 1. */
@@ -137,7 +154,11 @@ export function opisZamowienWiersza(zamowienia = []) {
 }
 
 function pustePole(doc, x, y) {
-  doc.lineWidth(0.8).strokeColor(CZARNY).rect(x + 6, y + 4, 9, 9).stroke();
+  doc
+    .lineWidth(0.8)
+    .strokeColor(CZARNY)
+    .rect(x + 6, y + 4, 9, 9)
+    .stroke();
 }
 
 /**
@@ -161,21 +182,39 @@ export async function zbudujListeProduktowPdf(lista, { wydrukowano = '' } = {}) 
   doc.text(podtytul, L, y, { width: R - L });
   y = doc.y + 10;
 
-  const naglowek = (yy) => rysujWiersz(doc, yy, kolumny, kolumny.map((k) => NAGLOWKI_LISTY[k.klucz]), { tlo: SZARY_TLO, naglowek: true });
+  const naglowek = (yy) =>
+    rysujWiersz(
+      doc,
+      yy,
+      kolumny,
+      kolumny.map((k) => NAGLOWKI_LISTY[k.klucz]),
+      { tlo: SZARY_TLO, naglowek: true },
+    );
   const wiersze = lista?.wiersze ?? [];
   if (!wiersze.length) {
     zwykly(doc, 10).text(
-      jedno ? 'To zamówienie nie ma produktów do spakowania.' : 'Zaznaczone zamówienia nie mają produktów do spakowania.',
-      L, y, { width: R - L },
+      jedno
+        ? 'To zamówienie nie ma produktów do spakowania.'
+        : 'Zaznaczone zamówienia nie mają produktów do spakowania.',
+      L,
+      y,
+      { width: R - L },
     );
     return bajty(doc, tytul, wydrukowano);
   }
 
   y = naglowek(y);
   for (const w of wiersze) {
-    const wartosci = kolumny.map((k) => ({
-      ptaszek: '', ilosc: w.ilosc, nazwa: w.nazwa, sku: w.sku ?? '', zamowienia: opisZamowienWiersza(w.zamowienia),
-    })[k.klucz]);
+    const wartosci = kolumny.map(
+      (k) =>
+        ({
+          ptaszek: '',
+          ilosc: w.ilosc,
+          nazwa: w.nazwa,
+          sku: w.sku ?? '',
+          zamowienia: opisZamowienWiersza(w.zamowienia),
+        })[k.klucz],
+    );
     if (y + wysokoscWiersza(doc, kolumny, wartosci, 10) > dolnaGranica(doc)) {
       doc.addPage();
       y = naglowek(MARGINES);
@@ -185,8 +224,14 @@ export async function zbudujListeProduktowPdf(lista, { wydrukowano = '' } = {}) 
     pustePole(doc, L, yWiersza);
   }
 
-  if (y + 20 > dolnaGranica(doc)) { doc.addPage(); y = MARGINES; }
-  gruby(doc, 10).text(`Razem pozycji: ${lista.razemPozycji} · sztuk: ${lista.razemSztuk}`, L, y + 8, { width: R - L, align: 'right' });
+  if (y + 20 > dolnaGranica(doc)) {
+    doc.addPage();
+    y = MARGINES;
+  }
+  gruby(doc, 10).text(`Razem pozycji: ${lista.razemPozycji} · sztuk: ${lista.razemSztuk}`, L, y + 8, {
+    width: R - L,
+    align: 'right',
+  });
   return bajty(doc, tytul, wydrukowano);
 }
 
@@ -209,7 +254,9 @@ function naglowekZamowienia(z) {
     z.platnosc ? `Płatność: ${z.platnosc}` : '',
     z.dataZamowienia ? `Data zamówienia: ${z.dataZamowienia}` : '',
     `Faktura: ${z.fakturaWybrana ? 'Tak' : 'Nie'}`,
-  ].filter(Boolean).join(' | ');
+  ]
+    .filter(Boolean)
+    .join(' | ');
 }
 
 function rysujZamowienie(doc, z, lp, yStart) {
@@ -221,7 +268,10 @@ function rysujZamowienie(doc, z, lp, yStart) {
   zwykly(doc, 8.5);
   const wysOpisu = doc.heightOfString(opis, { width: R - L - 8 });
   const wysWysylki = doc.heightOfString(`Dane wysyłki: ${z.wysylka.join(' | ')}`, { width: R - L - 8 });
-  if (y + 20 + wysOpisu + wysWysylki + 50 > dolnaGranica(doc)) { doc.addPage(); y = MARGINES; }
+  if (y + 20 + wysOpisu + wysWysylki + 50 > dolnaGranica(doc)) {
+    doc.addPage();
+    y = MARGINES;
+  }
 
   const yBloku = y;
   gruby(doc, 12).text(glowa, L + 4, y + 4, { lineBreak: false });
@@ -231,9 +281,14 @@ function rysujZamowienie(doc, z, lp, yStart) {
   gruby(doc, 8.5).text('Dane wysyłki: ', L + 4, y, { continued: true });
   zwykly(doc, 8.5).text(z.wysylka.join(' | ') || '—', { width: R - L - 8 });
   y = doc.y + 4;
-  doc.lineWidth(0.8).strokeColor(SZARY_LINIA).rect(L, yBloku, R - L, y - yBloku).stroke();
+  doc
+    .lineWidth(0.8)
+    .strokeColor(SZARY_LINIA)
+    .rect(L, yBloku, R - L, y - yBloku)
+    .stroke();
 
-  const naglowek = (yy) => rysujWiersz(doc, yy, KOL_ZESTAWIENIA, NAGLOWKI_ZESTAWIENIA, { tlo: SZARY_TLO, naglowek: true, rozmiar: 8.5 });
+  const naglowek = (yy) =>
+    rysujWiersz(doc, yy, KOL_ZESTAWIENIA, NAGLOWKI_ZESTAWIENIA, { tlo: SZARY_TLO, naglowek: true, rozmiar: 8.5 });
   y = naglowek(y);
   z.pozycje.forEach((p, i) => {
     const wartosci = [`${i + 1}.`, p.nazwa, p.sku || '-', `${p.ilosc}`, kwota(p.cenaZl), kwota(p.wartoscZl)];
@@ -258,7 +313,11 @@ function rysujZamowienie(doc, z, lp, yStart) {
   if (uwagi) zwykly(doc, 8.5).text(uwagi, L + 4, y + 5, { width: 330 });
   const napisKwoty = `Kwota: ${kwota(z.razemZl)}`;
   gruby(doc, 9.5).text(napisKwoty, R - 4 - doc.widthOfString(napisKwoty), y + 5, { lineBreak: false });
-  doc.lineWidth(0.5).strokeColor(SZARY_LINIA).rect(L, y, R - L, wysStopki).stroke();
+  doc
+    .lineWidth(0.5)
+    .strokeColor(SZARY_LINIA)
+    .rect(L, y, R - L, wysStopki)
+    .stroke();
   return y + wysStopki + 16;
 }
 
@@ -270,11 +329,14 @@ export async function zbudujZestawieniePdf(listaDanych = [], { wydrukowano = '' 
   if (!Array.isArray(listaDanych) || !listaDanych.length) {
     throw bladOperatora('Brak zamówień do zestawienia.');
   }
-  const tytul = listaDanych.length === 1
-    ? `Zestawienie zamówień — ${listaDanych[0].numer}`
-    : `Zestawienie zamówień — ${ileZamowien(listaDanych.length)}`;
+  const tytul =
+    listaDanych.length === 1
+      ? `Zestawienie zamówień — ${listaDanych[0].numer}`
+      : `Zestawienie zamówień — ${ileZamowien(listaDanych.length)}`;
   const doc = noweDoc(tytul);
   let y = MARGINES;
-  listaDanych.forEach((z, i) => { y = rysujZamowienie(doc, z, i + 1, y); });
+  listaDanych.forEach((z, i) => {
+    y = rysujZamowienie(doc, z, i + 1, y);
+  });
   return bajty(doc, tytul, wydrukowano);
 }

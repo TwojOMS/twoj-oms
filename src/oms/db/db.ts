@@ -15,7 +15,10 @@ import { sprawdzKatalogBazy } from '../../core/katalog-bazy.ts';
 export const MIGRACJA_PTASZEK_STATYSTYKI = 'ptaszek-statystyki-2026-09-13';
 
 /** Uzgadnia frozen marker z D5; istniejący marker nigdy nie przywraca odebranych praw. */
-export function dosypPtaszekStatystyk(db: Parameters<typeof oznaczKluczeZamrozenia>[0], teraz = () => new Date()): void {
+export function dosypPtaszekStatystyk(
+  db: Parameters<typeof oznaczKluczeZamrozenia>[0],
+  teraz = () => new Date(),
+): void {
   const stary = db.prepare('SELECT 1 FROM migracje_jednorazowe WHERE nazwa = ?').get(MIGRACJA_PTASZEK_STATYSTYKI);
   const d5 = db.prepare('SELECT 1 FROM uprawnienia_rozdane WHERE klucz = ?').get('statystyki');
   if (stary) {
@@ -24,24 +27,41 @@ export function dosypPtaszekStatystyk(db: Parameters<typeof oznaczKluczeZamrozen
   }
   if (!d5) {
     // Ten sam dystrybutor co bootstrap; wyłącznie statystyki, preset jest źródłem ról.
-    rozdajNoweUprawnienia(db, [{
-      ...(modulRdzen as unknown as ModulOms),
-      uprawnienia: [{
-        klucz: 'statystyki', etykieta: 'Statystyki',
-        role: Object.keys(ROLE).filter(rola => ekranyRoli(rola).includes('statystyki')),
-      }],
-    }], teraz);
+    rozdajNoweUprawnienia(
+      db,
+      [
+        {
+          ...(modulRdzen as unknown as ModulOms),
+          uprawnienia: [
+            {
+              klucz: 'statystyki',
+              etykieta: 'Statystyki',
+              role: Object.keys(ROLE).filter((rola) => ekranyRoli(rola).includes('statystyki')),
+            },
+          ],
+        },
+      ],
+      teraz,
+    );
   }
   // Awaria tutaj pozostawia D5: ponowienie zapisze marker bez ponownego rozdania.
-  db.prepare('INSERT OR IGNORE INTO migracje_jednorazowe (nazwa, wykonana_at) VALUES (?, ?)')
-    .run(MIGRACJA_PTASZEK_STATYSTYKI, teraz().toISOString());
+  db.prepare('INSERT OR IGNORE INTO migracje_jednorazowe (nazwa, wykonana_at) VALUES (?, ?)').run(
+    MIGRACJA_PTASZEK_STATYSTYKI,
+    teraz().toISOString(),
+  );
 }
 
 /** Fabryka produkcyjna; schemat pochodzi z migracji modułów, bez firmowych seedów.
  * `sejf` przypina klucz poświadczeń do uchwytu zaraz po otwarciu — przed migracjami i uzupełnieniami. */
-export function openOmsDb(path = ':memory:', {
-  moduly = [modulRdzen as unknown as ModulOms], teraz = () => new Date(), log, sejf,
-}: { moduly?: readonly ModulOms[]; teraz?: () => Date; log?: (linia: string) => void; sejf?: Sejf } = {}) {
+export function openOmsDb(
+  path = ':memory:',
+  {
+    moduly = [modulRdzen as unknown as ModulOms],
+    teraz = () => new Date(),
+    log,
+    sejf,
+  }: { moduly?: readonly ModulOms[]; teraz?: () => Date; log?: (linia: string) => void; sejf?: Sejf } = {},
+) {
   const db = otworzBaze(path);
   try {
     if (sejf) przypnijSejf(db, sejf);
@@ -49,8 +69,11 @@ export function openOmsDb(path = ':memory:', {
     maTabeleStatusow(db); // przygotowanie zapytania schematu, współdzielone przez odczyty listy
     // Przed uzupełnieniami niżej — one też zmieniają zamówienia.
     sledzZmianyListy(db);
-    if (moduly.some(modul => modul.nazwa === 'rdzen')) { dosypPtaszekStatystyk(db, teraz); }
-    if (db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='kategorie_kosztow'").get()) przygotujKoszty(db);
+    if (moduly.some((modul) => modul.nazwa === 'rdzen')) {
+      dosypPtaszekStatystyk(db, teraz);
+    }
+    if (db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='kategorie_kosztow'").get())
+      przygotujKoszty(db);
     // Operacyjny singleton ze starego schema.sql; baseline przechowuje tylko DDL.
     if (db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='stan_importu'").get()) {
       db.prepare('INSERT OR IGNORE INTO stan_importu (id) VALUES (1)').run();
@@ -58,8 +81,10 @@ export function openOmsDb(path = ':memory:', {
       uzupelnijDaneZamowien(db, { teraz, log });
     }
     return db;
+  } catch (error) {
+    db.close();
+    throw error;
   }
-  catch (error) { db.close(); throw error; }
 }
 
 type Sejf = ReturnType<typeof sejfZEnv>;
@@ -69,9 +94,16 @@ type Sejf = ReturnType<typeof sejfZEnv>;
  * otworzył) → katalog bazy → kontrola poświadczeń połączeniem tylko do odczytu → `openOmsDb` z przypiętym sejfem.
  * Odmowa z powodu klucza albo formatu następuje przed jakąkolwiek migracją, uzupełnieniem danych, resetem i zapisem.
  */
-export function otworzBazeStartu(env: Record<string, string | undefined>, path: string, opcje: {
-  moduly?: readonly ModulOms[]; teraz?: () => Date; log?: (linia: string) => void; bezKataloguBazy?: boolean;
-} = {}) {
+export function otworzBazeStartu(
+  env: Record<string, string | undefined>,
+  path: string,
+  opcje: {
+    moduly?: readonly ModulOms[];
+    teraz?: () => Date;
+    log?: (linia: string) => void;
+    bezKataloguBazy?: boolean;
+  } = {},
+) {
   const sejf = sejfDlaStartu(env);
   if (!opcje.bezKataloguBazy && path !== ':memory:') sprawdzKatalogBazy(path);
   kontrolaPrzedOtwarciem(path, sejf);

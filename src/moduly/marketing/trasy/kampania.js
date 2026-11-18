@@ -1,23 +1,42 @@
 import { etykietyStatusow } from '../../../oms/db/statusy.js';
 import {
-  listaKampanii, zamowieniaZKuponami, zamowieniaZAtrybucjaKampanii, metaDni, ga4Dni, stanyZrodel,
+  listaKampanii,
+  zamowieniaZKuponami,
+  zamowieniaZAtrybucjaKampanii,
+  metaDni,
+  ga4Dni,
+  stanyZrodel,
 } from '../../../oms/db/kampanie.js';
 import {
-  wybierzKampanie, stanKampanii, agregatKuponow, dolaczZrodla,
-  dolaczZamowieniaZReklam, alertyKampanii, faleKampanii,
+  wybierzKampanie,
+  stanKampanii,
+  agregatKuponow,
+  dolaczZrodla,
+  dolaczZamowieniaZReklam,
+  alertyKampanii,
+  faleKampanii,
 } from '../../../domena/kampania.js';
 import { dzienWarszawa } from '../../../domena/format-daty.js';
 import { kluczOkresu } from '../../../domena/okres-rozliczeniowy.js';
 import { adresKanalu } from '../../../domena/kanaly.js';
 import {
-  polaczenia as polaczeniaReklam, dni as dniReklam, transakcje as transakcjeReklam,
-  stanPolaczenia, metaKampanie, potwierdzoneZamowienia,
+  polaczenia as polaczeniaReklam,
+  dni as dniReklam,
+  transakcje as transakcjeReklam,
+  stanPolaczenia,
+  metaKampanie,
+  potwierdzoneZamowienia,
 } from '../../../oms/db/reklamy.js';
 import { podsumujReklamy } from '../../../domena/reklamy.js';
 import { stronaOdmowy } from '../../../core/web/odmowa.js';
 
 // Odmowy „Odśwież” w układzie OMS (status 503 i tekst bez zmian); powrót na ekran reklam.
-const odmowaKampanii = (reply, tekst) => stronaOdmowy(reply, 503, tekst, { tytul: 'Nie udało się odświeżyć reklam', napisWroc: 'Wróć do reklam', wroc: '/kampania' });
+const odmowaKampanii = (reply, tekst) =>
+  stronaOdmowy(reply, 503, tekst, {
+    tytul: 'Nie udało się odświeżyć reklam',
+    napisWroc: 'Wróć do reklam',
+    wroc: '/kampania',
+  });
 import { polaczeniaIntegracji } from '../../ustawienia/services/polaczenia-integracji.ts';
 
 // Zakładka /kampania. Trasa jest CIENKA — wzorzec src/moduly/raporty/trasy/raporty.js:
@@ -37,7 +56,11 @@ const dzisiaj = () => dzienWarszawa(new Date().toISOString());
 // 2 marca (ta sama pulapka i to samo lekarstwo, co w src/moduly/raporty/trasy/finanse.js).
 function dzienOdniesienia(surowy) {
   if (typeof surowy !== 'string' || !WZORZEC_DNIA.test(surowy.trim())) return dzisiaj();
-  try { kluczOkresu(surowy.trim()); } catch { return dzisiaj(); }
+  try {
+    kluczOkresu(surowy.trim());
+  } catch {
+    return dzisiaj();
+  }
   return surowy.trim();
 }
 
@@ -62,44 +85,76 @@ function daneReklam(db, kampanie, dzis, widok, liczbaDni, proba) {
   const polaczenia = polaczeniaReklam(db);
   const dla = (typ) => polaczenia.filter((p) => p.typ === typ);
   const stany = new Map(polaczenia.map((p) => [p.id, stanPolaczenia(db, p.id)]));
-  const stanyListy = new Map(polaczeniaIntegracji({ db, proba }).map(p => [p.id, p]));
-  const odczyty = (typ) => dla(typ).map((p) => ({
-    typ, kontoId: p.kontoId, kanal: p.kanal, waluta: p.waluta, strefa: p.strefa,
-    stan: stanZPolaczen([p], [stany.get(p.id)]),
-    // Etykieta z listy „Moje połączenia” tylko dla atrapy („Dane przykładowe”); poza nią widok rozróżnia brak uprawnień, błąd i weryfikację.
-    etykietaStanu: stanyListy.get(`reklamy:${p.id}`)?.atrapa ? stanyListy.get(`reklamy:${p.id}`).etykietaStanu : null,
-    ostatniSukcesAt: stany.get(p.id)?.ostatniSukcesAt ?? null,
-    kodBledu: stany.get(p.id)?.kodBledu ?? null,
-  }));
+  const stanyListy = new Map(polaczeniaIntegracji({ db, proba }).map((p) => [p.id, p]));
+  const odczyty = (typ) =>
+    dla(typ).map((p) => ({
+      typ,
+      kontoId: p.kontoId,
+      kanal: p.kanal,
+      waluta: p.waluta,
+      strefa: p.strefa,
+      stan: stanZPolaczen([p], [stany.get(p.id)]),
+      // Etykieta z listy „Moje połączenia” tylko dla atrapy („Dane przykładowe”); poza nią widok rozróżnia brak uprawnień, błąd i weryfikację.
+      etykietaStanu: stanyListy.get(`reklamy:${p.id}`)?.atrapa ? stanyListy.get(`reklamy:${p.id}`).etykietaStanu : null,
+      ostatniSukcesAt: stany.get(p.id)?.ostatniSukcesAt ?? null,
+      kodBledu: stany.get(p.id)?.kodBledu ?? null,
+    }));
   const google = dniReklam(db, { typ: 'ga4', od, do: dzis });
   const meta = dniReklam(db, { typ: 'meta', od, do: dzis });
   const transakcje = transakcjeReklam(db, { od, do: dzis });
   const ga4 = dla('ga4');
   let zamowienia;
   if (ga4.length && ga4.every((p) => p.kanal)) {
-    const wyniki = ga4.map((p) => ({ p, wynik: potwierdzoneZamowienia(db, {
-      polaczenieId: p.id,
-      transactionIds: transakcje.filter((t) => t.polaczenieId === p.id).map((t) => t.transactionId),
-    }) }));
+    const wyniki = ga4.map((p) => ({
+      p,
+      wynik: potwierdzoneZamowienia(db, {
+        polaczenieId: p.id,
+        transactionIds: transakcje.filter((t) => t.polaczenieId === p.id).map((t) => t.transactionId),
+      }),
+    }));
     if (wyniki.every(({ wynik }) => wynik.przychod !== null || wynik.powod === 'BRAK_KWOTY_NETTO')) {
-      zamowienia = wyniki.flatMap(({ p, wynik }) => wynik.zamowienia
-        .map((z) => ({ ...z, polaczenieId: p.id, waluta: p.waluta })));
+      zamowienia = wyniki.flatMap(({ p, wynik }) =>
+        wynik.zamowienia.map((z) => ({ ...z, polaczenieId: p.id, waluta: p.waluta })),
+      );
     }
   }
-  const raport = podsumujReklamy({ google, meta, transakcje, zamowienia,
-    stany: { ga4: stanZPolaczen(ga4, ga4.map((p) => stany.get(p.id))),
-      meta: stanZPolaczen(dla('meta'), dla('meta').map((p) => stany.get(p.id))) },
-    od, do: dzis, dzis });
+  const raport = podsumujReklamy({
+    google,
+    meta,
+    transakcje,
+    zamowienia,
+    stany: {
+      ga4: stanZPolaczen(
+        ga4,
+        ga4.map((p) => stany.get(p.id)),
+      ),
+      meta: stanZPolaczen(
+        dla('meta'),
+        dla('meta').map((p) => stany.get(p.id)),
+      ),
+    },
+    od,
+    do: dzis,
+    dzis,
+  });
   const metaInfo = new Map(metaKampanie(db).map((k) => [`${k.polaczenieId}|${k.kampaniaId}`, k]));
-  raport.meta.kampanie = raport.meta.kampanie.map((k) => ({ ...k,
-    szczegoly: metaInfo.get(`${k.polaczenieId}|${k.kampaniaId}`) ?? null }));
+  raport.meta.kampanie = raport.meta.kampanie.map((k) => ({
+    ...k,
+    szczegoly: metaInfo.get(`${k.polaczenieId}|${k.kampaniaId}`) ?? null,
+  }));
   const obecneMeta = new Set(raport.meta.kampanie.map((k) => `${k.polaczenieId}|${k.kampaniaId}`));
   for (const [klucz, k] of metaInfo) {
     if (obecneMeta.has(klucz)) continue;
     raport.meta.kampanie.push({
-      polaczenieId: k.polaczenieId, kampaniaId: k.kampaniaId, nazwa: k.nazwa || k.kampaniaId,
-      waluta: k.waluta, koszt: null, klikniecia: null, wyswietlenia: null,
-      emituje: false, szczegoly: k,
+      polaczenieId: k.polaczenieId,
+      kampaniaId: k.kampaniaId,
+      nazwa: k.nazwa || k.kampaniaId,
+      waluta: k.waluta,
+      koszt: null,
+      klikniecia: null,
+      wyswietlenia: null,
+      emituje: false,
+      szczegoly: k,
     });
   }
   const promocyjne = {
@@ -107,12 +162,24 @@ function daneReklam(db, kampanie, dzis, widok, liczbaDni, proba) {
     archiwum: kampanie.filter((k) => k.do_dnia < dzis),
     nadchodzace: kampanie.filter((k) => k.od_dnia > dzis),
   };
-  return { raport, polaczenia: {
-    ga4: odczyty('ga4'), google_ads: odczyty('google_ads'), meta: odczyty('meta'),
-  }, promocyjne, widok, liczbaDni, dzis };
+  return {
+    raport,
+    polaczenia: {
+      ga4: odczyty('ga4'),
+      google_ads: odczyty('google_ads'),
+      meta: odczyty('meta'),
+    },
+    promocyjne,
+    widok,
+    liczbaDni,
+    dzis,
+  };
 }
 
-export function zarejestrujTrasyKampanii(app, { db, config = {}, proba = config.proba === true, definicje, czuwaczKampanii = null, czuwaczReklam = null }) {
+export function zarejestrujTrasyKampanii(
+  app,
+  { db, config = {}, proba = config.proba === true, definicje, czuwaczKampanii = null, czuwaczReklam = null },
+) {
   app.post('/kampania/odswiez-reklamy', async (_req, reply) => {
     if (!czuwaczReklam) return odmowaKampanii(reply, 'Odczyt reklam nie jest dostępny.');
     await czuwaczReklam.przebieg();
@@ -136,9 +203,10 @@ export function zarejestrujTrasyKampanii(app, { db, config = {}, proba = config.
     } catch {
       // Powód i tak wylądował w `kampania_zrodla` — ekran go pokaże przy właściwym źródle.
     }
-    const kod = typeof req.body?.kampania === 'string' && req.body.kampania
-      ? `?kampania=${encodeURIComponent(req.body.kampania)}`
-      : '';
+    const kod =
+      typeof req.body?.kampania === 'string' && req.body.kampania
+        ? `?kampania=${encodeURIComponent(req.body.kampania)}`
+        : '';
     // Fastify 5: `redirect(adres, kod)`. Stara kolejnosc `(303, adres)` konczy sie tu 500,
     // bo adres trafia do `code()` — pilnuja tego dwa testy w web-kampania.test.js.
     return reply.redirect(`/kampania${kod}`, 303);
@@ -151,8 +219,11 @@ export function zarejestrujTrasyKampanii(app, { db, config = {}, proba = config.
     if (!szukanyKod) {
       const widok = WIDOKI_REKLAM.has(req.query?.widok) ? req.query.widok : 'podsumowanie';
       const liczbaDni = String(req.query?.okres) === '30' ? 30 : 7;
-      return reply.view('reklamy.ejs', { title: 'Reklamy',
-        ...daneReklam(db, kampanie, dzis, widok, liczbaDni, proba), mozliweOdswiezenieReklam: Boolean(czuwaczReklam) });
+      return reply.view('reklamy.ejs', {
+        title: 'Reklamy',
+        ...daneReklam(db, kampanie, dzis, widok, liczbaDni, proba),
+        mozliweOdswiezenieReklam: Boolean(czuwaczReklam),
+      });
     }
     const kampania = wybierzKampanie(kampanie, dzis, szukanyKod);
     const zamowienia = zamowieniaZKuponami(db);
@@ -162,14 +233,14 @@ export function zarejestrujTrasyKampanii(app, { db, config = {}, proba = config.
     const meta = kampania ? metaDni(db, kampania.kod) : [];
     const stan = kampania
       ? dolaczZamowieniaZReklam(
-        dolaczZrodla(stanKampanii({ kampania, zamowienia, dzis }), {
-          meta,
-          ga4: ga4Dni(db, kampania.kod),
-          stany: stanyZrodel(db),
-        }),
-        // Drugi licznik kampanii: zamowienia z utm_campaign — takze bez kodu rabatowego.
-        { kampania, zamowieniaUtm: zamowieniaZAtrybucjaKampanii(db) },
-      )
+          dolaczZrodla(stanKampanii({ kampania, zamowienia, dzis }), {
+            meta,
+            ga4: ga4Dni(db, kampania.kod),
+            stany: stanyZrodel(db),
+          }),
+          // Drugi licznik kampanii: zamowienia z utm_campaign — takze bez kodu rabatowego.
+          { kampania, zamowieniaUtm: zamowieniaZAtrybucjaKampanii(db) },
+        )
       : null;
     // Ciemna wizualizacja kampanii jest zawartością wspólnej ramy OMS. Jej własne zmienne
     // i skrypt prezentacyjny są ograniczone do `.strona-kampania`; nagłówek, konto i

@@ -1,46 +1,105 @@
-import { describe,it,expect,vi,afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { tmpdir } from 'node:os';
 import { zbudujOms } from '../../../src/oms/bootstrap.ts';
-const env={OMS_SPRZEDAWCA_NIP:'1234563218',OMS_RACHUNEK:'34109010140000000000000000',
-  OMS_USER:'operator',OMS_PASS:'test',OMS_PROFORMY_KATALOG:tmpdir(),OMS_ETYKIETY_KATALOG:tmpdir()};
-const headers={authorization:'Basic '+Buffer.from('operator:test').toString('base64'),origin:'http://localhost'};
-afterEach(()=>vi.unstubAllGlobals());
-describe('renderer i istniejąca trasa',()=>{
-  it('rozpoczęcie Device Flow pokazuje zgodę, bez automatycznego zapisu pary',async()=>{
-    const api=vi.fn(async input=>{
-      const url=new URL(String(input));
+const env = {
+  OMS_SPRZEDAWCA_NIP: '1234563218',
+  OMS_RACHUNEK: '34109010140000000000000000',
+  OMS_USER: 'operator',
+  OMS_PASS: 'test',
+  OMS_PROFORMY_KATALOG: tmpdir(),
+  OMS_ETYKIETY_KATALOG: tmpdir(),
+};
+const headers = {
+  authorization: 'Basic ' + Buffer.from('operator:test').toString('base64'),
+  origin: 'http://localhost',
+};
+afterEach(() => vi.unstubAllGlobals());
+describe('renderer i istniejąca trasa', () => {
+  it('rozpoczęcie Device Flow pokazuje zgodę, bez automatycznego zapisu pary', async () => {
+    const api = vi.fn(async (input) => {
+      const url = new URL(String(input));
       expect(url.origin).toBe('https://allegro.pl');
-      if(url.pathname==='/auth/oauth/device')return new Response(JSON.stringify({device_code:'device-secret',
-        user_code:'TEST-CODE',verification_uri:'https://allegro.pl/skojarz',expires_in:600,interval:1}));
-      if(url.pathname==='/auth/oauth/token')return new Response(JSON.stringify({access_token:'fixture-access',refresh_token:'fixture-refresh',expires_in:3600}));
-      throw Error('Nieoczekiwany fixture URL: '+url.pathname);
+      if (url.pathname === '/auth/oauth/device')
+        return new Response(
+          JSON.stringify({
+            device_code: 'device-secret',
+            user_code: 'TEST-CODE',
+            verification_uri: 'https://allegro.pl/skojarz',
+            expires_in: 600,
+            interval: 1,
+          }),
+        );
+      if (url.pathname === '/auth/oauth/token')
+        return new Response(
+          JSON.stringify({ access_token: 'fixture-access', refresh_token: 'fixture-refresh', expires_in: 3600 }),
+        );
+      throw Error('Nieoczekiwany fixture URL: ' + url.pathname);
     });
-    vi.stubGlobal('fetch',api);
-    const a=await zbudujOms({env:{...env,OMS_KANALY:JSON.stringify([{klucz:'rynek',typ:'allegro',prefiks:'RYNEK'}]),
-      RYNEK_CLIENT_ID:'fikcyjny',RYNEK_CLIENT_SECRET:'fikcyjny',RYNEK_USER_AGENT:'Fixture/1.0 (+https://fixture.invalid)',RYNEK_OD:'2026-01-01',
-      RYNEK_AUTH:'https://allegro.pl/auth/oauth',RYNEK_API:'https://api.allegro.pl'}});
+    vi.stubGlobal('fetch', api);
+    const a = await zbudujOms({
+      env: {
+        ...env,
+        OMS_KANALY: JSON.stringify([{ klucz: 'rynek', typ: 'allegro', prefiks: 'RYNEK' }]),
+        RYNEK_CLIENT_ID: 'fikcyjny',
+        RYNEK_CLIENT_SECRET: 'fikcyjny',
+        RYNEK_USER_AGENT: 'Fixture/1.0 (+https://fixture.invalid)',
+        RYNEK_OD: '2026-01-01',
+        RYNEK_AUTH: 'https://allegro.pl/auth/oauth',
+        RYNEK_API: 'https://api.allegro.pl',
+      },
+    });
     try {
-      const r=await a.app.inject({method:'POST',url:'/ustawienia/kanaly/rynek/wiazanie',headers,payload:{}});
-      expect(r.statusCode,r.body).toBe(200);
+      const r = await a.app.inject({ method: 'POST', url: '/ustawienia/kanaly/rynek/wiazanie', headers, payload: {} });
+      expect(r.statusCode, r.body).toBe(200);
       expect(r.body).toContain('TEST-CODE');
       expect(r.body).toContain('rynek');
       expect(r.body).not.toContain('device-secret');
       expect(a.db.prepare('SELECT count(*) AS n FROM tokeny_kanalu').get().n).toBe(0);
-      expect(api.mock.calls.some(([u])=>String(u).endsWith('/token'))).toBe(false);
-      expect(api.mock.calls.filter(([u])=>String(u).endsWith('/device'))).toHaveLength(1);
-      expect(a.app.trasyOms.filter(t=>t.metoda==='POST'&&t.url==='/ustawienia/kanaly/:kanal/wiazanie')).toHaveLength(1);
-    }finally{await a.app.close();a.db.close();}
+      expect(api.mock.calls.some(([u]) => String(u).endsWith('/token'))).toBe(false);
+      expect(api.mock.calls.filter(([u]) => String(u).endsWith('/device'))).toHaveLength(1);
+      expect(
+        a.app.trasyOms.filter((t) => t.metoda === 'POST' && t.url === '/ustawienia/kanaly/:kanal/wiazanie'),
+      ).toHaveLength(1);
+    } finally {
+      await a.app.close();
+      a.db.close();
+    }
   });
-  it.each([false,true])('rzeczywisty HTML odmowy, skonfigurowane Allegro=%s',async(wlaczone)=>{
-    vi.stubGlobal('fetch',vi.fn(async()=>{throw Error('Sieć zabroniona');}));
-    const a=await zbudujOms({env:{...env,...(wlaczone?{OMS_KANALY:JSON.stringify([{klucz:'rynek',typ:'allegro',prefiks:'RYNEK'}]),
-      RYNEK_CLIENT_ID:'fikcyjny',RYNEK_CLIENT_SECRET:'fikcyjny',RYNEK_USER_AGENT:'Fixture/1.0 (+https://fixture.invalid)',RYNEK_OD:'2026-01-01'}:{})}});
+  it.each([false, true])('rzeczywisty HTML odmowy, skonfigurowane Allegro=%s', async (wlaczone) => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw Error('Sieć zabroniona');
+      }),
+    );
+    const a = await zbudujOms({
+      env: {
+        ...env,
+        ...(wlaczone
+          ? {
+              OMS_KANALY: JSON.stringify([{ klucz: 'rynek', typ: 'allegro', prefiks: 'RYNEK' }]),
+              RYNEK_CLIENT_ID: 'fikcyjny',
+              RYNEK_CLIENT_SECRET: 'fikcyjny',
+              RYNEK_USER_AGENT: 'Fixture/1.0 (+https://fixture.invalid)',
+              RYNEK_OD: '2026-01-01',
+            }
+          : {}),
+      },
+    });
     try {
-      const r=await a.app.inject({method:'POST',url:'/ustawienia/kanaly/nieznany/wiazanie',headers,payload:{}});
-      expect(r.statusCode,r.body).toBe(404);
+      const r = await a.app.inject({
+        method: 'POST',
+        url: '/ustawienia/kanaly/nieznany/wiazanie',
+        headers,
+        payload: {},
+      });
+      expect(r.statusCode, r.body).toBe(404);
       expect(r.body).toContain('Nie znaleziono połączenia Allegro.');
       expect(r.body).not.toContain('ustawienia.widokIntegracji');
       expect(fetch).not.toHaveBeenCalled();
-    }finally{await a.app.close();a.db.close();}
+    } finally {
+      await a.app.close();
+      a.db.close();
+    }
   });
 });

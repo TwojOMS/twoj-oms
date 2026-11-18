@@ -20,7 +20,12 @@ const chwila = () => new Date().toISOString();
 const opisBledu = (e) => (typeof e?.message === 'string' && e.message ? e.message : String(e));
 
 const STAN_POCZATKOWY = {
-  trwa: false, zaczety_at: null, skonczony_at: null, postep: null, kanaly: [], blad: null,
+  trwa: false,
+  zaczety_at: null,
+  skonczony_at: null,
+  postep: null,
+  kanaly: [],
+  blad: null,
   // Klucz kanalu, gdy przebieg czytal TYLKO jeden kanal (ekran importu); `null` = wszystkie.
   zakres: null,
 };
@@ -36,7 +41,15 @@ const STAN_POCZATKOWY = {
  *   sprawdzic testem, ze `start` wraca PRZED koncem odczytu
  * @param {(...czesci: unknown[]) => void} [p.log]
  */
-export function createMagazynPrzebieg({ db, sklepy = {}, allegro = {}, odswiez = odswiezMagazyn, log, kanalySklepow, kanalyAllegro } = {}) {
+export function createMagazynPrzebieg({
+  db,
+  sklepy = {},
+  allegro = {},
+  odswiez = odswiezMagazyn,
+  log,
+  kanalySklepow,
+  kanalyAllegro,
+} = {}) {
   let stan = { ...STAN_POCZATKOWY };
   const gotowy = () => Object.keys(sklepy).length + Object.keys(allegro).length > 0;
 
@@ -45,10 +58,11 @@ export function createMagazynPrzebieg({ db, sklepy = {}, allegro = {}, odswiez =
   // wszystkie kanaly, tresc do kart (`POST /magazyn/odswiez`).
   function start({ kanal, trescKart } = {}) {
     if (!gotowy()) return { wystartowal: false };
-    const zawez = (mapa) => (kanal && Object.keys(mapa).includes(kanal) ? { [kanal]: mapa[kanal] } : (kanal ? {} : mapa));
+    const zawez = (mapa) => (kanal && Object.keys(mapa).includes(kanal) ? { [kanal]: mapa[kanal] } : kanal ? {} : mapa);
     const sklepyPrzebiegu = zawez(sklepy);
     const allegroPrzebiegu = zawez(allegro);
-    if (kanal && !Object.keys(sklepyPrzebiegu).length && !Object.keys(allegroPrzebiegu).length) return { wystartowal: false };
+    if (kanal && !Object.keys(sklepyPrzebiegu).length && !Object.keys(allegroPrzebiegu).length)
+      return { wystartowal: false };
     // ⚠️ STRAZNIK PRZED ZMIANA STANU, nie po niej. Dwa rownolegle przebiegi to dwa razy
     // setki zadan do tego samego sklepu i DWA rozne znaczniki `odczytane_at` — a ten ze
     // starszym stemplem oznaczylby jako zniknięte dokladnie to, co drugi wlasnie zapisal.
@@ -76,15 +90,21 @@ export function createMagazynPrzebieg({ db, sklepy = {}, allegro = {}, odswiez =
       ...(trescKart === undefined ? {} : { trescKart }),
       // Postep jest OZDOBA i tak jest traktowany takze po tamtej stronie (magazyn-sync.js
       // lapie wyjatek z tej funkcji): usterka paska postepu nie ma prawa przerwac odczytu.
-      postep: (info) => { stan.postep = info; },
+      postep: (info) => {
+        stan.postep = info;
+      },
     })
-      .then((wynik) => { stan.kanaly = wynik?.kanaly ?? []; })
+      .then((wynik) => {
+        stan.kanaly = wynik?.kanaly ?? [];
+      })
       // ⚠️ TU LADUJA WYLACZNIE AWARIE CALEGO PRZEBIEGU (np. smiec zamiast chwili) — bledy
       // POJEDYNCZYCH kanalow wracaja w `kanaly[].blad`, bo kanal, ktory padl, nie ma prawa
       // zatrzymac pozostalych. Bez tego `catch` przebieg konczylby sie odrzucona
       // obietnica bez wlasciciela, czyli w najlepszym razie wpisem w logu, a w najgorszym
       // padnieciem procesu — i ekran nie mialby o czym powiedziec.
-      .catch((e) => { stan.blad = opisBledu(e); })
+      .catch((e) => {
+        stan.blad = opisBledu(e);
+      })
       .finally(() => {
         stan.trwa = false;
         stan.skonczony_at = chwila();

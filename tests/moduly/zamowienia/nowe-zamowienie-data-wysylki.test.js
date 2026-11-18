@@ -14,9 +14,18 @@ const dzis = dzienWarszawa(new Date().toISOString());
 const zaDni = (n) => new Date(Date.parse(`${dzis}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
 
 const formularz = (nad = {}) => ({
-  w_nazwa: 'Ala Lampowa', w_ulica: 'Świetlna 2', w_kod: '00-001', w_miasto: 'Lampowo',
-  dostawa: 'dpd', platnosc: 'przelew', koszt_dostawy_brutto: '19,00',
-  poz_nazwa: 'Lampa stołowa Półcień', poz_ilosc: '1', poz_cena_brutto: '189.00', poz_sku: '', poz_cena_netto: '',
+  w_nazwa: 'Ala Lampowa',
+  w_ulica: 'Świetlna 2',
+  w_kod: '00-001',
+  w_miasto: 'Lampowo',
+  dostawa: 'dpd',
+  platnosc: 'przelew',
+  koszt_dostawy_brutto: '19,00',
+  poz_nazwa: 'Lampa stołowa Półcień',
+  poz_ilosc: '1',
+  poz_cena_brutto: '189.00',
+  poz_sku: '',
+  poz_cena_netto: '',
   ...nad,
 });
 
@@ -57,7 +66,9 @@ describe('POST /zamowienia/nowe — data wysyłki', () => {
     expect(z.termin_wysylki_reczny).toBe(zaDni(6));
     // Przelew nieopłacony — ręczna data i tak prowadzi zegar.
     expect(wiekZamowienia(z, new Date()).opis).toContain('data ręczna');
-    const wpis = db.prepare("SELECT wynik FROM log WHERE zamowienie_id = ? AND akcja = 'zamowienie.reczne'").get(id).wynik;
+    const wpis = db
+      .prepare("SELECT wynik FROM log WHERE zamowienie_id = ? AND akcja = 'zamowienie.reczne'")
+      .get(id).wynik;
     expect(wpis).toContain(`Data wysyłki: ${zaDni(6).split('-').reverse().join('.')}.`);
   });
 
@@ -65,7 +76,9 @@ describe('POST /zamowienia/nowe — data wysyłki', () => {
     const r = await zaloz(formularz());
     const id = Number(r.headers.location.split('/').pop());
     expect(pobierzZamowienie(db, id).termin_wysylki_reczny).toBeNull();
-    const wpis = db.prepare("SELECT wynik FROM log WHERE zamowienie_id = ? AND akcja = 'zamowienie.reczne'").get(id).wynik;
+    const wpis = db
+      .prepare("SELECT wynik FROM log WHERE zamowienie_id = ? AND akcja = 'zamowienie.reczne'")
+      .get(id).wynik;
     expect(wpis).not.toContain('Data wysyłki');
   });
 

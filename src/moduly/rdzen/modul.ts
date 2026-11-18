@@ -20,11 +20,17 @@ import { migracjaKurierska } from './migracje/0015-kurierska.ts';
 import { migracjaSlownikowKart } from './migracje/0016-slowniki-kart.ts';
 import { migracjaStanowOtwarciaLustra } from './migracje/0017-stany-otwarcia-lustro.ts';
 export const modulRdzen: ModulOms<{ sprzedawca: DaneSprzedawcy }> = {
-  nazwa: 'rdzen', wersja: '1.0.0', wymaga: [],
+  nazwa: 'rdzen',
+  wersja: '1.0.0',
+  wymaga: [],
   konfiguracja: (env) => ({ sprzedawca: wczytajSprzedawce(env) }),
   migracje: [
     migracjaBaseline,
-    { numer: 2, nazwa: 'klucze uprawnień w dniu zamrożenia', wykonaj: (db) => oznaczKluczeZamrozenia(db, KLUCZE_UPRAWNIEN_W_DNIU_ZAMROZENIA, () => new Date()) },
+    {
+      numer: 2,
+      nazwa: 'klucze uprawnień w dniu zamrożenia',
+      wykonaj: (db) => oznaczKluczeZamrozenia(db, KLUCZE_UPRAWNIEN_W_DNIU_ZAMROZENIA, () => new Date()),
+    },
     migracjaWersjaHasla,
     migracjaKartProduktow,
     migracjaStanowMagazynowych,
@@ -41,12 +47,17 @@ export const modulRdzen: ModulOms<{ sprzedawca: DaneSprzedawcy }> = {
     migracjaSlownikowKart,
     migracjaStanowOtwarciaLustra,
   ],
-  uprawnienia: [], menu: [],
+  uprawnienia: [],
+  menu: [],
   // `rachunekFirmy` — JEDNO źródło rachunku i banku dla maili, proform i WzA: plik (OMS_RACHUNEK/OMS_BANK)
   // → Ustawienia → Firma → brak, czytane przy każdym użyciu. `sprzedawca.rachunek` to wyłącznie wartość z pliku.
   // `nipBdoFirmy` — to samo dla NIP-u i BDO (każde pole osobno: plik → Ustawienia → Firma → brak).
   // `sprzedawca.nip` / `.bdo` to wyłącznie wartości z pliku (null, gdy pusto).
-  zbuduj: (ctx) => ({ uslugi: { sprzedawca: ctx.konfiguracja.sprzedawca,
-    rachunekFirmy: zrodloRachunkuFirmy({ db: ctx.db, zPliku: ctx.konfiguracja.sprzedawca }),
-    nipBdoFirmy: zrodloNipuIBdoFirmy({ db: ctx.db, zPliku: ctx.konfiguracja.sprzedawca }) } }),
+  zbuduj: (ctx) => ({
+    uslugi: {
+      sprzedawca: ctx.konfiguracja.sprzedawca,
+      rachunekFirmy: zrodloRachunkuFirmy({ db: ctx.db, zPliku: ctx.konfiguracja.sprzedawca }),
+      nipBdoFirmy: zrodloNipuIBdoFirmy({ db: ctx.db, zPliku: ctx.konfiguracja.sprzedawca }),
+    },
+  }),
 };

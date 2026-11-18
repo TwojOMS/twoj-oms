@@ -1,13 +1,26 @@
 import { describe, it, expect } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import {
-  wierszArchiwum, wierszeMiesiaca, zapiszWiersz, oznaczSkasowana, stanArchiwumSprzedazy,
-  odnotujUdanyPrzebiegArchiwum, zapiszBladArchiwum, licznikiArchiwum,
+  wierszArchiwum,
+  wierszeMiesiaca,
+  zapiszWiersz,
+  oznaczSkasowana,
+  stanArchiwumSprzedazy,
+  odnotujUdanyPrzebiegArchiwum,
+  zapiszBladArchiwum,
+  licznikiArchiwum,
 } from '../../../src/moduly/faktury/db/archiwum-sprzedazy.js';
 
 const w = (n = {}) => ({
-  uuid: 'u1', rodzaj: 'vat', numer: '12/08/2026', invoiceDate: '2026-08-03', saleDate: '2026-08-01',
-  odcisk: '{"a":1}', sciezkaPdf: '2026/Sierpien/2026-08-03_12-08-2026.pdf', zapisanyAt: '2026-09-02T02:00:00Z', ...n,
+  uuid: 'u1',
+  rodzaj: 'vat',
+  numer: '12/08/2026',
+  invoiceDate: '2026-08-03',
+  saleDate: '2026-08-01',
+  odcisk: '{"a":1}',
+  sciezkaPdf: '2026/Sierpien/2026-08-03_12-08-2026.pdf',
+  zapisanyAt: '2026-09-02T02:00:00Z',
+  ...n,
 });
 
 describe('archiwum_sprzedazy', () => {

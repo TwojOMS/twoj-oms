@@ -40,10 +40,18 @@ export function modelWyslane(z) {
 
 /** Linie tekstowe bloku — nagłówek i wcięte linie, jak pozostałe sekcje maili (blokiTekstuPotwierdzenia). */
 export function blokiTekstuWyslane(m) {
-  const linie = m.przesylki.flatMap((p) => [`${p.przewoznik}, numer listu: ${p.numer}`, ...(p.link ? [`Śledzenie: ${p.link}`] : [])]);
+  const linie = m.przesylki.flatMap((p) => [
+    `${p.przewoznik}, numer listu: ${p.numer}`,
+    ...(p.link ? [`Śledzenie: ${p.link}`] : []),
+  ]);
   if (m.punkt) linie.push(`Punkt odbioru: ${m.punkt}`);
-  return { przesylki: linie.length ? [m.przesylki.length > 1 ? 'PRZESYŁKI' : 'PRZESYŁKA', ...linie.map((l) => `  ${l}`)] : [] };
+  return {
+    przesylki: linie.length ? [m.przesylki.length > 1 ? 'PRZESYŁKI' : 'PRZESYŁKA', ...linie.map((l) => `  ${l}`)] : [],
+  };
 }
 
 /** Stan tematu na ekranie wyboru: numery, które pojadą w mailu. */
-export const numeryPaczek = (z) => paczkiDoMaila(z).map((p) => `${p.przewoznik} ${p.numer}`).join(', ');
+export const numeryPaczek = (z) =>
+  paczkiDoMaila(z)
+    .map((p) => `${p.przewoznik} ${p.numer}`)
+    .join(', ');

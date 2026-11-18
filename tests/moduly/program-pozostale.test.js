@@ -22,7 +22,8 @@ import { createWiadomosci } from '../../src/moduly/wiadomosci/services/wiadomosc
 import { createCzuwaczPrzesylek } from '../../src/moduly/wysylka/services/czuwacz-przesylek.js';
 import { oznaczDoreczonePobrania } from '../../src/moduly/wysylka/services/oznaczanie-pobran.js';
 import {
-  createCzuwaczOstrzezen, najdluzszyPrzebiegOstrzezenMs,
+  createCzuwaczOstrzezen,
+  najdluzszyPrzebiegOstrzezenMs,
 } from '../../src/moduly/zdrowie/services/czuwacz-ostrzezen.js';
 import { celeLacznosci } from '../../src/domena/lacznosc.js';
 import { programInfakt } from '../../src/integracje/programy/infakt.ts';
@@ -34,21 +35,52 @@ import * as diagnostyka from '../../src/oms/services/lacznosc.js';
 import { programTestowy } from '../pomoc/program-testowy.js';
 
 const NIP = '5250000009'; // zmyślony, z poprawną sumą kontrolną
-const wpisyLogu = (db, id) => db.prepare('SELECT wynik FROM log WHERE zamowienie_id = ? ORDER BY id').all(id).map((w) => w.wynik);
+const wpisyLogu = (db, id) =>
+  db
+    .prepare('SELECT wynik FROM log WHERE zamowienie_id = ? ORDER BY id')
+    .all(id)
+    .map((w) => w.wynik);
 
 const zamowienie = (nr, nad = {}) => ({
-  zrodlo_id: nr, numer: String(nr),
-  klient: { first_name: 'Anna', last_name: 'Półcień', company: 'Pracownia Półcień', email: 'biuro@polcien.invalid',
-    address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa' },
-  dostawa: {}, metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: NIP,
-  kwota_brutto: '258.00', status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-10-01T10:00:00',
-  pozycje: [{ zrodlo_id: 11, nazwa: 'Lampa wisząca Półcień', sku: 'LAMPA-W1', ilosc: 2, cena_brutto: '129.00',
-    brutto_linii: '258.00', vat: null }],
+  zrodlo_id: nr,
+  numer: String(nr),
+  klient: {
+    first_name: 'Anna',
+    last_name: 'Półcień',
+    company: 'Pracownia Półcień',
+    email: 'biuro@polcien.invalid',
+    address_1: 'Lampowa 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+  },
+  dostawa: {},
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 1,
+  nip: NIP,
+  kwota_brutto: '258.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-10-01T10:00:00',
+  pozycje: [
+    {
+      zrodlo_id: 11,
+      nazwa: 'Lampa wisząca Półcień',
+      sku: 'LAMPA-W1',
+      ilosc: 2,
+      cena_brutto: '129.00',
+      brutto_linii: '258.00',
+      vat: null,
+    },
+  ],
   ...nad,
 });
 
 const FAKTURA = {
-  number: 'TST 1/10/2026', invoice_date: '2026-10-01', uuid: 'dok-t1',
+  number: 'TST 1/10/2026',
+  invoice_date: '2026-10-01',
+  uuid: 'dok-t1',
   services: [{ name: 'Lampa wisząca Półcień', quantity: 2, gross_price: 25800, tax_symbol: '23' }],
 };
 
@@ -56,15 +88,27 @@ describe('usługi pozostałych modułów wołają program testowy', () => {
   it('korekta zwrotu: „przed” i korekta z programu, odmowa i log jego nazwą', async () => {
     const db = openOmsDb(':memory:');
     const id = zapiszZamowienie(db, 'pro', zamowienie(4101), {});
-    db.prepare('INSERT INTO faktury (zamowienie_id, program, dokument_id, numer, utworzona_at) VALUES (?,?,?,?,?)')
-      .run(id, 'testowy', 'dok-t1', 'TST 1/10/2026', '2026-10-01T10:00:00Z');
-    const zwrotId = dodajZwrot(db, id, { data: '2026-10-14', kwota: '129.00',
-      pozycje: [{ klucz_pozycji: 's11', nazwa: 'Lampa wisząca Półcień', ilosc: 1, kwota: '129.00' }] }).id;
-    const program = programTestowy({ metody: {
-      pobierzFakture: async () => FAKTURA,
-      wystawKorekte: async () => ({ referencja: 'REF-T1', uuid: null, numer: null }),
-      listaKorekt: async () => [{ uuid: 'kor-t1', number: 'TST K 1/10/2026', corrected_invoice_number: 'TST 1/10/2026' }],
-    } });
+    db.prepare('INSERT INTO faktury (zamowienie_id, program, dokument_id, numer, utworzona_at) VALUES (?,?,?,?,?)').run(
+      id,
+      'testowy',
+      'dok-t1',
+      'TST 1/10/2026',
+      '2026-10-01T10:00:00Z',
+    );
+    const zwrotId = dodajZwrot(db, id, {
+      data: '2026-10-14',
+      kwota: '129.00',
+      pozycje: [{ klucz_pozycji: 's11', nazwa: 'Lampa wisząca Półcień', ilosc: 1, kwota: '129.00' }],
+    }).id;
+    const program = programTestowy({
+      metody: {
+        pobierzFakture: async () => FAKTURA,
+        wystawKorekte: async () => ({ referencja: 'REF-T1', uuid: null, numer: null }),
+        listaKorekt: async () => [
+          { uuid: 'kor-t1', number: 'TST K 1/10/2026', corrected_invoice_number: 'TST 1/10/2026' },
+        ],
+      },
+    });
     const korekta = createKorekta({ db, program });
     await korekta.wystaw(id, zwrotId);
     expect(program.ile('pobierzFakture')).toBe(1);
@@ -101,9 +145,14 @@ describe('usługi pozostałych modułów wołają program testowy', () => {
     zakonczFakture(db, f.id, { uuid: 'dok-t1', numer: 'TST 1/10/2026', ksefStatus: null }, { program: 'testowy' });
     const mailer = { sendMail: vi.fn().mockResolvedValue({}) };
     const program = programTestowy();
-    const config = { nadawca: { nazwa: 'Pracownia Półcień', ulica: 'Lampowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL' },
-      proforma: { nip: '1234563218', rachunek: '34109010140000000000000000' } };
-    await createWiadomosci({ db, mailer, program, config, teraz: () => '2026-10-15T10:00:00.000Z' }).wyslij(id, 'faktura');
+    const config = {
+      nadawca: { nazwa: 'Pracownia Półcień', ulica: 'Lampowa 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL' },
+      proforma: { nip: '1234563218', rachunek: '34109010140000000000000000' },
+    };
+    await createWiadomosci({ db, mailer, program, config, teraz: () => '2026-10-15T10:00:00.000Z' }).wyslij(
+      id,
+      'faktura',
+    );
     expect(program.ile('pobierzPdf')).toBe(1);
     expect(program.wywolania.find(([m]) => m === 'pobierzPdf')[1]).toBe('dok-t1');
     expect(mailer.sendMail.mock.calls[0][0].attachments[0].content.toString()).toBe('%PDF-testownik');
@@ -119,8 +168,9 @@ describe('usługi pozostałych modułów wołają program testowy', () => {
     expect(czuwacz.najdluzszyPrzebiegMs).toBe(22 * 30_000);
     expect(najdluzszyPrzebiegOstrzezenMs(programInfakt({}).opis.limity)).toBe(960000);
     const zly = programTestowy({ metody: { listaFaktur: async () => ({ blad: 'nie lista' }) } });
-    await expect(createCzuwaczOstrzezen({ db, program: zly }).przebieg())
-      .rejects.toThrow('Testownik oddał listę dokumentów w kształcie, którego panel nie rozumie');
+    await expect(createCzuwaczOstrzezen({ db, program: zly }).przebieg()).rejects.toThrow(
+      'Testownik oddał listę dokumentów w kształcie, którego panel nie rozumie',
+    );
   });
 
   it('diagnostyka łączności (domena): cel z opisu programu — klucz, nazwa i adres', () => {
@@ -134,8 +184,9 @@ describe('usługi pozostałych modułów wołają program testowy', () => {
 // ——— czuwacz pobrań ——————————————————————————————————————————————————————————————————————
 function doreczonePobranie(db, nr, uuid) {
   const id = zapiszZamowienie(db, 'pro', zamowienie(nr, { kwota_pobrania: '258.00', pobranie: 1 }), {});
-  db.prepare('INSERT INTO faktury (zamowienie_id, program, dokument_id, numer, utworzona_at) VALUES (?, ?, ?, ?, ?)')
-    .run(id, 'testowy', uuid, `TST ${nr}/10/2026`, '2026-10-01T08:00:00.000Z');
+  db.prepare(
+    'INSERT INTO faktury (zamowienie_id, program, dokument_id, numer, utworzona_at) VALUES (?, ?, ?, ?, ?)',
+  ).run(id, 'testowy', uuid, `TST ${nr}/10/2026`, '2026-10-01T08:00:00.000Z');
   const p = rozpocznijPrzesylke(db, id, 'dpd', 1);
   zakonczPrzesylke(db, p.id, { numerListu: `N${nr}`, etykietaSciezka: '/tmp/e.pdf', surowa: '<x/>' });
   zapiszStatusDpd(db, p.id, { opis: 'Przesyłka doręczona', at: '2026-10-05T14:00:00.000' });
@@ -146,10 +197,23 @@ describe('czuwacz pobrań na programie testowym', () => {
   it('czuwacz przesyłek oznacza doręczone pobranie w programie; log jego nazwą', async () => {
     const db = openOmsDb(':memory:');
     const id = doreczonePobranie(db, 5101, 'dok-p1');
-    const program = programTestowy({ metody: {
-      pobierzFakture: async (uuid) => ({ uuid, number: 'TST', invoice_date: '2026-10-01', status: 'sent', left_to_pay: 25800 }),
-    } });
-    const wynik = await createCzuwaczPrzesylek({ db, kurierzy: {}, program, teraz: () => new Date('2026-10-06T10:00:00Z') }).przebieg();
+    const program = programTestowy({
+      metody: {
+        pobierzFakture: async (uuid) => ({
+          uuid,
+          number: 'TST',
+          invoice_date: '2026-10-01',
+          status: 'sent',
+          left_to_pay: 25800,
+        }),
+      },
+    });
+    const wynik = await createCzuwaczPrzesylek({
+      db,
+      kurierzy: {},
+      program,
+      teraz: () => new Date('2026-10-06T10:00:00Z'),
+    }).przebieg();
     expect(wynik.pobrania).toMatchObject({ zlecone: 1, bledy: 0 });
     expect([program.ile('pobierzFakture'), program.ile('oznaczZaplacona')]).toEqual([1, 1]);
     expect(oznaczenieZaplaty(db, 'dok-p1')).toMatchObject({ powod: 'pobranie_doreczone' });
@@ -162,9 +226,13 @@ describe('czuwacz pobrań na programie testowym', () => {
   it('jednoznaczna odmowa programu: „NIE ZNA” jego nazwą, dokument zamknięty', async () => {
     const db = openOmsDb(':memory:');
     const id = doreczonePobranie(db, 5102, 'dok-p2');
-    const program = programTestowy({ metody: {
-      pobierzFakture: async () => { throw Object.assign(new Error('nie ma takiego dokumentu'), { status: 404, dlaOperatora: true }); },
-    } });
+    const program = programTestowy({
+      metody: {
+        pobierzFakture: async () => {
+          throw Object.assign(new Error('nie ma takiego dokumentu'), { status: 404, dlaOperatora: true });
+        },
+      },
+    });
     await oznaczDoreczonePobrania({ db, program });
     expect(oznaczenieZaplaty(db, 'dok-p2')).toMatchObject({ powod: 'nieznana_w_infakcie' });
     const log = wpisyLogu(db, id).join('\n');
@@ -178,11 +246,17 @@ describe('odmowa bez kontaktu z programem (`bezProgramu`) nie zamyka pobrania', 
   it('przebieg przerwany po pierwszej odmowie, bez rezerwacji i bez „NIE BĘDZIE PONAWIAŁ”', async () => {
     const db = openOmsDb(':memory:');
     const ids = [doreczonePobranie(db, 5201, 'dok-b1'), doreczonePobranie(db, 5202, 'dok-b2')];
-    const program = programTestowy({ metody: {
-      pobierzFakture: async () => {
-        throw Object.assign(new Error('Testownik nie jest skonfigurowany'), { status: 400, dlaOperatora: true, bezProgramu: true });
+    const program = programTestowy({
+      metody: {
+        pobierzFakture: async () => {
+          throw Object.assign(new Error('Testownik nie jest skonfigurowany'), {
+            status: 400,
+            dlaOperatora: true,
+            bezProgramu: true,
+          });
+        },
       },
-    } });
+    });
     const wynik = await oznaczDoreczonePobrania({ db, program });
     expect(wynik).toMatchObject({ zlecone: 0, bledy: 1 });
     expect(program.ile('pobierzFakture')).toBe(1);
@@ -195,14 +269,28 @@ describe('odmowa bez kontaktu z programem (`bezProgramu`) nie zamyka pobrania', 
 // ——— pełna aplikacja: szew `fabryki.programFakturowy` ————————————————————————————————————
 describe('pełna aplikacja z programem testowym w szwie modułu faktur', () => {
   let katalog;
-  afterEach(() => { if (katalog) rmSync(katalog, { recursive: true, force: true }); vi.restoreAllMocks(); });
+  afterEach(() => {
+    if (katalog) rmSync(katalog, { recursive: true, force: true });
+    vi.restoreAllMocks();
+  });
 
   async function aplikacja() {
     katalog = mkdtempSync(join(tmpdir(), 'prz118-08-'));
-    const env = { OMS_TRYB: 'proba', OMS_USER: 'operator', OMS_PASS: 'fixture', OMS_SPRZEDAWCA_NIP: '1234563218',
-      OMS_RACHUNEK: '34109010140000000000000000', OMS_PROFORMY_KATALOG: katalog, OMS_ETYKIETY_KATALOG: katalog };
-    const program = programTestowy({ metody: { pobierzFakture: async () => FAKTURA,
-      wystawKorekte: async () => ({ referencja: 'REF-T2', uuid: null, numer: null }) } });
+    const env = {
+      OMS_TRYB: 'proba',
+      OMS_USER: 'operator',
+      OMS_PASS: 'fixture',
+      OMS_SPRZEDAWCA_NIP: '1234563218',
+      OMS_RACHUNEK: '34109010140000000000000000',
+      OMS_PROFORMY_KATALOG: katalog,
+      OMS_ETYKIETY_KATALOG: katalog,
+    };
+    const program = programTestowy({
+      metody: {
+        pobierzFakture: async () => FAKTURA,
+        wystawKorekte: async () => ({ referencja: 'REF-T2', uuid: null, numer: null }),
+      },
+    });
     const fabryki = { programFakturowy: () => program, createVies: () => createAtrapaVies({ env }) };
     const moduly = modulyDla(env).map((m) => (m.nazwa === 'faktury' ? createModulFaktury({ fabryki }) : m));
     const a = await zbudujOms({ env, moduly, teraz: () => new Date(), log: () => {} });
@@ -218,26 +306,56 @@ describe('pełna aplikacja z programem testowym w szwie modułu faktur', () => {
       expect(cele.filter((c) => ['testowy', 'infakt'].includes(c.klucz))).toEqual([
         { klucz: 'testowy', nazwa: 'Testownik', url: 'https://testownik.invalid/api', host: 'testownik.invalid' },
       ]);
-    } finally { await a.app.close(); a.db.close(); }
+    } finally {
+      await a.app.close();
+      a.db.close();
+    }
   });
 
   // Strażnik startu modułu zdrowie liczy budżet czuwacza ostrzeżeń z limitów programu, nie ze stałej inFaktu.
   // Limity: luki 20 tur × 45 s + terminy 60 tur × 45 s = 3 600 000 ms ≥ odstęp 3 600 000 ms (KSeF i archiwum mieszczą się).
   it('program, którego budżet ostrzeżeń nie mieści się między tyknięciami: panel nie wstaje', async () => {
     katalog = mkdtempSync(join(tmpdir(), 'prz118-08-'));
-    const env = { OMS_TRYB: 'proba', OMS_USER: 'operator', OMS_PASS: 'fixture', OMS_SPRZEDAWCA_NIP: '1234563218',
-      OMS_RACHUNEK: '34109010140000000000000000', OMS_PROFORMY_KATALOG: katalog, OMS_ETYKIETY_KATALOG: katalog };
+    const env = {
+      OMS_TRYB: 'proba',
+      OMS_USER: 'operator',
+      OMS_PASS: 'fixture',
+      OMS_SPRZEDAWCA_NIP: '1234563218',
+      OMS_RACHUNEK: '34109010140000000000000000',
+      OMS_PROFORMY_KATALOG: katalog,
+      OMS_ETYKIETY_KATALOG: katalog,
+    };
     const baza = programTestowy();
-    const program = { ...baza, opis: Object.freeze({ ...baza.opis, limity: Object.freeze({
-      zadanieMs: 45_000, najdluzszaListaMs: 60_000, stronaListy: 10, sufitStron: 60, rownolegleStron: 1 }) }) };
+    const program = {
+      ...baza,
+      opis: Object.freeze({
+        ...baza.opis,
+        limity: Object.freeze({
+          zadanieMs: 45_000,
+          najdluzszaListaMs: 60_000,
+          stronaListy: 10,
+          sufitStron: 60,
+          rownolegleStron: 1,
+        }),
+      }),
+    };
     expect(najdluzszyPrzebiegOstrzezenMs(program.opis.limity)).toBe(3_600_000);
     const fabryki = { programFakturowy: () => program, createVies: () => createAtrapaVies({ env }) };
     const moduly = modulyDla(env).map((m) => (m.nazwa === 'faktury' ? createModulFaktury({ fabryki }) : m));
     let a = null;
     let blad = null;
-    try { a = await zbudujOms({ env, moduly, teraz: () => new Date(), log: () => {} }); } catch (e) { blad = e; }
-    if (a) { await a.app.close(); a.db.close(); }
-    expect(blad?.message ?? 'PANEL WSTAŁ').toMatch(/^Budżet czuwacza ostrzeżeń z limitów programu „Testownik” \(3600000 ms\)/);
+    try {
+      a = await zbudujOms({ env, moduly, teraz: () => new Date(), log: () => {} });
+    } catch (e) {
+      blad = e;
+    }
+    if (a) {
+      await a.app.close();
+      a.db.close();
+    }
+    expect(blad?.message ?? 'PANEL WSTAŁ').toMatch(
+      /^Budżet czuwacza ostrzeżeń z limitów programu „Testownik” \(3600000 ms\)/,
+    );
     // inFakt: 960 000 ms — strażnik ze stałej i z limitów mówi to samo, start jak dziś.
     expect(najdluzszyPrzebiegOstrzezenMs(programInfakt({}).opis.limity)).toBe(960_000);
   });
@@ -246,10 +364,14 @@ describe('pełna aplikacja z programem testowym w szwie modułu faktur', () => {
     const { a, program } = await aplikacja();
     try {
       const id = zapiszZamowienie(a.db, 'pro', zamowienie(4201), {});
-      a.db.prepare('INSERT INTO faktury (zamowienie_id, program, dokument_id, numer, utworzona_at) VALUES (?,?,?,?,?)')
+      a.db
+        .prepare('INSERT INTO faktury (zamowienie_id, program, dokument_id, numer, utworzona_at) VALUES (?,?,?,?,?)')
         .run(id, 'testowy', 'dok-t1', 'TST 1/10/2026', '2026-10-01T10:00:00Z');
-      const zwrotId = dodajZwrot(a.db, id, { data: '2026-10-14', kwota: '129.00',
-        pozycje: [{ klucz_pozycji: 's11', nazwa: 'Lampa wisząca Półcień', ilosc: 1, kwota: '129.00' }] }).id;
+      const zwrotId = dodajZwrot(a.db, id, {
+        data: '2026-10-14',
+        kwota: '129.00',
+        pozycje: [{ klucz_pozycji: 's11', nazwa: 'Lampa wisząca Półcień', ilosc: 1, kwota: '129.00' }],
+      }).id;
       await a.usluga('zwroty', 'korekta').wystaw(id, zwrotId);
       expect(program.ile('wystawKorekte')).toBe(1);
 
@@ -258,6 +380,9 @@ describe('pełna aplikacja z programem testowym w szwie modułu faktur', () => {
       await czuwacz.przebieg();
       expect(program.ile('listaFaktur')).toBe(2);
       expect(czuwacz.najdluzszyPrzebiegMs).toBe(22 * 30_000);
-    } finally { await a.app.close(); a.db.close(); }
+    } finally {
+      await a.app.close();
+      a.db.close();
+    }
   });
 });

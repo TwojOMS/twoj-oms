@@ -23,12 +23,26 @@ export function registerHasloLinkRoutes(app, { db, teraz }) {
   // hamulec tnie hałas — po karze licznik startuje od zera, a mapa w pamięci nie rośnie bez końca.
   const hamulec = utworzHamulec({ wygasanieMs: KARA_MS, maksKluczy: 10_000 });
   const chwila = () => teraz().getTime();
-  const naglowki = (reply) => reply.header('Cache-Control', 'no-store').header('Referrer-Policy', POLITYKA_REFERERA_LINKU);
-  const strona = (reply, kod, extra) => naglowki(reply).code(kod).view('haslo-link.ejs', {
-    title: 'Ustaw hasło', bezPaska: true, niewazny: false, blad: null, akcja: null, imie: '', cel: null, ...extra });
+  const naglowki = (reply) =>
+    reply.header('Cache-Control', 'no-store').header('Referrer-Policy', POLITYKA_REFERERA_LINKU);
+  const strona = (reply, kod, extra) =>
+    naglowki(reply)
+      .code(kod)
+      .view('haslo-link.ejs', {
+        title: 'Ustaw hasło',
+        bezPaska: true,
+        niewazny: false,
+        blad: null,
+        akcja: null,
+        imie: '',
+        cel: null,
+        ...extra,
+      });
   const zablokowane = (req, reply) => {
     const s = hamulec.sprawdz(req.ip, chwila());
-    return s.wolno ? null : strona(reply, 429, { niewazny: true, blad: `Za dużo prób — spróbuj za ${Math.ceil(s.zostaloMs / 1000)} s.` });
+    return s.wolno
+      ? null
+      : strona(reply, 429, { niewazny: true, blad: `Za dużo prób — spróbuj za ${Math.ceil(s.zostaloMs / 1000)} s.` });
   };
   const odmowa = (req, reply) => {
     const proby = hamulec.odnotujBlad(req.ip, chwila());
@@ -36,19 +50,25 @@ export function registerHasloLinkRoutes(app, { db, teraz }) {
   };
 
   app.get('/haslo/:token', async (req, reply) => {
-    const stop = zablokowane(req, reply); if (stop) return stop;
+    const stop = zablokowane(req, reply);
+    if (stop) return stop;
     const link = aktywnyLink(db, req.params.token, teraz);
     if (!link) return odmowa(req, reply);
     return strona(reply, 200, { akcja: `/haslo/${req.params.token}`, imie: link.imie, cel: link.cel });
   });
 
   app.post('/haslo/:token', async (req, reply) => {
-    const stop = zablokowane(req, reply); if (stop) return stop;
+    const stop = zablokowane(req, reply);
+    if (stop) return stop;
     const link = aktywnyLink(db, req.params.token, teraz);
     if (!link) return odmowa(req, reply);
     const nowe = String(req.body?.nowe ?? '');
-    const blad = nowe.length < MIN_DLUGOSC_HASLA ? `Hasło musi mieć co najmniej ${MIN_DLUGOSC_HASLA} znaków.`
-      : nowe !== String(req.body?.nowe2 ?? '') ? 'Hasło wpisane dwa razy różni się.' : null;
+    const blad =
+      nowe.length < MIN_DLUGOSC_HASLA
+        ? `Hasło musi mieć co najmniej ${MIN_DLUGOSC_HASLA} znaków.`
+        : nowe !== String(req.body?.nowe2 ?? '')
+          ? 'Hasło wpisane dwa razy różni się.'
+          : null;
     if (blad) return strona(reply, 400, { akcja: `/haslo/${req.params.token}`, imie: link.imie, cel: link.cel, blad });
     const wynik = uzyjLinku(db, { token: req.params.token, haslo: nowe, teraz });
     if (!wynik) return odmowa(req, reply);

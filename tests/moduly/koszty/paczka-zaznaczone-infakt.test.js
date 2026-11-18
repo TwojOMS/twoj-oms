@@ -18,18 +18,41 @@ async function pdfZ(stron, tekst = 'x') {
   return Buffer.from(await d.save());
 }
 const f = (n = {}) => ({
-  uuid: 'u1', id: 1, number: '1/08/2026', kind: 'vat', invoice_date: '2026-08-05', sale_date: '2026-08-05',
-  net_price: 10000, tax_price: 2300, gross_price: 12300, currency: 'PLN', client_company_name: 'Pracownia Półcień',
-  client_tax_code: '4534240685', ksef_number: 'KS', ...n,
+  uuid: 'u1',
+  id: 1,
+  number: '1/08/2026',
+  kind: 'vat',
+  invoice_date: '2026-08-05',
+  sale_date: '2026-08-05',
+  net_price: 10000,
+  tax_price: 2300,
+  gross_price: 12300,
+  currency: 'PLN',
+  client_company_name: 'Pracownia Półcień',
+  client_tax_code: '4534240685',
+  ksef_number: 'KS',
+  ...n,
 });
 const TRZY = [f(), f({ uuid: 'u2', id: 2, number: '2/08/2026' }), f({ uuid: 'u3', id: 3, number: '3/08/2026' })];
 const infaktAtrapa = (n = {}) => ({
   pobrane: [],
   zakresy: [],
-  async listaFaktur(z) { this.zakresy.push(['f', z]); return TRZY; },
-  async listaKorekt(z) { this.zakresy.push(['k', z]); return []; },
-  async pobierzPdf(uuid) { this.pobrane.push(uuid); return pdfZ(2, `faktura ${uuid}`); },
-  async pobierzPdfKorekty(uuid) { this.pobrane.push(uuid); return pdfZ(1, 'korekta'); },
+  async listaFaktur(z) {
+    this.zakresy.push(['f', z]);
+    return TRZY;
+  },
+  async listaKorekt(z) {
+    this.zakresy.push(['k', z]);
+    return [];
+  },
+  async pobierzPdf(uuid) {
+    this.pobrane.push(uuid);
+    return pdfZ(2, `faktura ${uuid}`);
+  },
+  async pobierzPdfKorekty(uuid) {
+    this.pobrane.push(uuid);
+    return pdfZ(1, 'korekta');
+  },
   ...n,
 });
 const teraz = () => new Date('2026-09-02T10:00:00Z');
@@ -38,14 +61,23 @@ describe('zestawienie zaznaczonych faktur — inFakt', () => {
   it('2 z 3 faktur miesiąca: zestawienie z 2 wierszami, potem 2 dokumenty, stopka = liczba stron pliku, tytuł', async () => {
     const inf = infaktAtrapa();
     const wolania = [];
-    const zbudujZestawienie = (a) => { wolania.push(a); return zbudujZestawieniePdf(a); };
+    const zbudujZestawienie = (a) => {
+      wolania.push(a);
+      return zbudujZestawieniePdf(a);
+    };
     const rysowanie = vi.spyOn(PDFKit.prototype, 'text');
-    let w; let napisy;
+    let w;
+    let napisy;
     try {
-      w = await createPaczkaDlaBiura({ db: openOmsDb(), infakt: inf, teraz, zbudujZestawienie })
-        .zbudujZaznaczone({ uuids: ['u3', 'u1'], miesiac: '2026-08', pole: 'sale_date' });
+      w = await createPaczkaDlaBiura({ db: openOmsDb(), infakt: inf, teraz, zbudujZestawienie }).zbudujZaznaczone({
+        uuids: ['u3', 'u1'],
+        miesiac: '2026-08',
+        pole: 'sale_date',
+      });
       napisy = rysowanie.mock.calls.map(([t]) => t).filter((t) => typeof t === 'string');
-    } finally { rysowanie.mockRestore(); }
+    } finally {
+      rysowanie.mockRestore();
+    }
 
     expect(w.nazwa).toBe('zestawienie-faktur-2026-08-zaznaczone.pdf');
     expect(w.dokumentow).toBe(2);
@@ -71,16 +103,22 @@ describe('zestawienie zaznaczonych faktur — inFakt', () => {
 
   it('uuid podany kilka razy (także z odstępami) = jeden dokument', async () => {
     const inf = infaktAtrapa();
-    const w = await createPaczkaDlaBiura({ db: openOmsDb(), infakt: inf, teraz })
-      .zbudujZaznaczone({ uuids: ['u2', 'u2', ' u2 '], miesiac: '2026-08', pole: 'invoice_date' });
+    const w = await createPaczkaDlaBiura({ db: openOmsDb(), infakt: inf, teraz }).zbudujZaznaczone({
+      uuids: ['u2', 'u2', ' u2 '],
+      miesiac: '2026-08',
+      pole: 'invoice_date',
+    });
     expect(w.dokumentow).toBe(1);
     expect(inf.pobrane).toEqual(['u2']);
   });
 
   it('pojedynczy uuid jako napis (jedno pole wyboru) działa jak lista', async () => {
     const inf = infaktAtrapa();
-    const w = await createPaczkaDlaBiura({ db: openOmsDb(), infakt: inf, teraz })
-      .zbudujZaznaczone({ uuids: 'u1', miesiac: '2026-08', pole: 'invoice_date' });
+    const w = await createPaczkaDlaBiura({ db: openOmsDb(), infakt: inf, teraz }).zbudujZaznaczone({
+      uuids: 'u1',
+      miesiac: '2026-08',
+      pole: 'invoice_date',
+    });
     expect(w.dokumentow).toBe(1);
   });
 
@@ -88,7 +126,10 @@ describe('zestawienie zaznaczonych faktur — inFakt', () => {
     const inf = infaktAtrapa();
     const e = await createPaczkaDlaBiura({ db: openOmsDb(), infakt: inf, teraz })
       .zbudujZaznaczone({ uuids: ['u1', 'obcy-7c1e'], miesiac: '2026-08', pole: 'invoice_date' })
-      .then(() => null, (b) => b);
+      .then(
+        () => null,
+        (b) => b,
+      );
     expect(e).toMatchObject({ dlaOperatora: true });
     expect(e.message).toContain('obcy-7c1e');
     expect(e.message).not.toContain('1/08/2026');
@@ -98,25 +139,35 @@ describe('zestawienie zaznaczonych faktur — inFakt', () => {
   it(`${MAX_ZAZNACZONYCH + 1} uuid = odmowa przed jakimkolwiek pytaniem do programu`, async () => {
     expect(MAX_ZAZNACZONYCH).toBe(100);
     const duzo = Array.from({ length: MAX_ZAZNACZONYCH + 1 }, (_, i) => `u${i + 1}`);
-    const inf = infaktAtrapa({ listaFaktur: async () => duzo.map((uuid, i) => f({ uuid, id: i + 1, number: `${i + 1}/08/2026` })) });
-    await expect(createPaczkaDlaBiura({ db: openOmsDb(), infakt: inf, teraz })
-      .zbudujZaznaczone({ uuids: duzo, miesiac: '2026-08', pole: 'invoice_date' }))
-      .rejects.toMatchObject({ dlaOperatora: true, message: expect.stringContaining(String(MAX_ZAZNACZONYCH)) });
+    const inf = infaktAtrapa({
+      listaFaktur: async () => duzo.map((uuid, i) => f({ uuid, id: i + 1, number: `${i + 1}/08/2026` })),
+    });
+    await expect(
+      createPaczkaDlaBiura({ db: openOmsDb(), infakt: inf, teraz }).zbudujZaznaczone({
+        uuids: duzo,
+        miesiac: '2026-08',
+        pole: 'invoice_date',
+      }),
+    ).rejects.toMatchObject({ dlaOperatora: true, message: expect.stringContaining(String(MAX_ZAZNACZONYCH)) });
     expect(inf.pobrane).toEqual([]);
   });
 
   it('nic nie zaznaczone, zły miesiąc, złe pole = odmowa bez pytania programu', async () => {
     const inf = infaktAtrapa();
     const p = createPaczkaDlaBiura({ db: openOmsDb(), infakt: inf, teraz });
-    await expect(p.zbudujZaznaczone({ uuids: [], miesiac: '2026-08', pole: 'invoice_date' }))
-      .rejects.toMatchObject({ dlaOperatora: true, message: 'Zaznacz co najmniej jedną fakturę.' });
-    await expect(p.zbudujZaznaczone({ uuids: ['  '], miesiac: '2026-08', pole: 'invoice_date' }))
-      .rejects.toMatchObject({ dlaOperatora: true });
-    await expect(p.zbudujZaznaczone({ uuids: ['u1'], miesiac: 'sierpien', pole: 'invoice_date' }))
-      .rejects.toMatchObject({ dlaOperatora: true });
-    await expect(p.zbudujZaznaczone({ uuids: ['u1'], miesiac: '2026-08', pole: 'payment_date' }))
-      .rejects.toMatchObject({ dlaOperatora: true });
+    await expect(p.zbudujZaznaczone({ uuids: [], miesiac: '2026-08', pole: 'invoice_date' })).rejects.toMatchObject({
+      dlaOperatora: true,
+      message: 'Zaznacz co najmniej jedną fakturę.',
+    });
+    await expect(p.zbudujZaznaczone({ uuids: ['  '], miesiac: '2026-08', pole: 'invoice_date' })).rejects.toMatchObject(
+      { dlaOperatora: true },
+    );
+    await expect(
+      p.zbudujZaznaczone({ uuids: ['u1'], miesiac: 'sierpien', pole: 'invoice_date' }),
+    ).rejects.toMatchObject({ dlaOperatora: true });
+    await expect(p.zbudujZaznaczone({ uuids: ['u1'], miesiac: '2026-08', pole: 'payment_date' })).rejects.toMatchObject(
+      { dlaOperatora: true },
+    );
     expect(inf.zakresy).toEqual([]);
   });
 });
-

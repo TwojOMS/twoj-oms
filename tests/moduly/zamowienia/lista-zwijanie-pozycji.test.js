@@ -10,15 +10,38 @@ const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('bas
 const poller = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null }) };
 const definicje = [{ klucz: 'sklep_a', typ: 'woo', prefiks: 'SKLEP_A', etykieta: 'Sklep Woo' }];
 
-const pozycje = (n) => Array.from({ length: n }, (_, i) => ({
-  nazwa: `Produkt numer ${i + 1} koniec`, sku: `P-${i + 1}`, ilosc: 1, cena_brutto: '10.00', brutto_linii: '10.00', vat: null,
-}));
+const pozycje = (n) =>
+  Array.from({ length: n }, (_, i) => ({
+    nazwa: `Produkt numer ${i + 1} koniec`,
+    sku: `P-${i + 1}`,
+    ilosc: 1,
+    cena_brutto: '10.00',
+    brutto_linii: '10.00',
+    vat: null,
+  }));
 const zam = (id, n) => ({
-  zrodlo_id: id, numer: String(id), klient: { email: 'j@k.pl', first_name: 'Jan', last_name: 'Kowalski' },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: `${n * 10}.00`,
-  koszt_dostawy_brutto: '0.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
-  utworzone_at: '2026-11-14T08:00:00', pozycje: pozycje(n),
+  zrodlo_id: id,
+  numer: String(id),
+  klient: { email: 'j@k.pl', first_name: 'Jan', last_name: 'Kowalski' },
+  dostawa: {
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    address_1: 'Polna 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
+  },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: `${n * 10}.00`,
+  koszt_dostawy_brutto: '0.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-11-14T08:00:00',
+  pozycje: pozycje(n),
 });
 
 let db, app;
@@ -37,7 +60,7 @@ async function komorka(n) {
   expect(m, 'brak komórki Produkty').toBeTruthy();
   return m[1];
 }
-const nazwy = (html) => [...html.matchAll(/Produkt numer (\d+) koniec/g)].map(m => Number(m[1]));
+const nazwy = (html) => [...html.matchAll(/Produkt numer (\d+) koniec/g)].map((m) => Number(m[1]));
 
 describe('zwijanie pozycji na liście zamówień', () => {
   it('5 pozycji — wszystkie widoczne, bez przycisku', async () => {

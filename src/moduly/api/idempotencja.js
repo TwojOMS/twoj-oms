@@ -2,8 +2,7 @@ import { blad } from './odpowiedzi.js';
 
 const NAJDLUZSZY_KLUCZ = 200;
 
-const wyslij = (reply, status, cialo) =>
-  reply.code(status).type('application/json; charset=utf-8').send(cialo);
+const wyslij = (reply, status, cialo) => reply.code(status).type('application/json; charset=utf-8').send(cialo);
 
 /**
  * Zapis `/api/v1` odporny na powtórkę po zerwanym połączeniu.
@@ -43,12 +42,12 @@ export function zIdempotencja(db, req, reply, trasa, wykonaj, { teraz = () => ne
   if (wlasna) db.exec('BEGIN IMMEDIATE');
   let wynik;
   try {
-    const zapisany = db.prepare('SELECT trasa, status, cialo FROM api_idempotencja WHERE klucz_id = ? AND klucz_zadania = ?')
+    const zapisany = db
+      .prepare('SELECT trasa, status, cialo FROM api_idempotencja WHERE klucz_id = ? AND klucz_zadania = ?')
       .get(kluczId, naglowek);
     if (zapisany) {
-      wynik = zapisany.trasa === trasa
-        ? { status: Number(zapisany.status), cialo: String(zapisany.cialo) }
-        : { inna: true };
+      wynik =
+        zapisany.trasa === trasa ? { status: Number(zapisany.status), cialo: String(zapisany.cialo) } : { inna: true };
     } else {
       const { status, cialo } = wykonaj();
       wynik = { status, cialo: cialo === undefined ? '' : JSON.stringify(cialo) };
@@ -56,8 +55,9 @@ export function zIdempotencja(db, req, reply, trasa, wykonaj, { teraz = () => ne
         if (wlasna) db.exec('ROLLBACK');
         return wyslij(reply, wynik.status, wynik.cialo);
       }
-      db.prepare('INSERT INTO api_idempotencja (klucz_id, klucz_zadania, trasa, status, cialo, at) VALUES (?, ?, ?, ?, ?, ?)')
-        .run(kluczId, naglowek, trasa, status, wynik.cialo, teraz().toISOString());
+      db.prepare(
+        'INSERT INTO api_idempotencja (klucz_id, klucz_zadania, trasa, status, cialo, at) VALUES (?, ?, ?, ?, ?, ?)',
+      ).run(kluczId, naglowek, trasa, status, wynik.cialo, teraz().toISOString());
     }
     if (wlasna) db.exec('COMMIT');
   } catch (err) {

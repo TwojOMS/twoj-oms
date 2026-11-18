@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  WYMAGANE_UPRAWNIENIA, uprawnieniaZTokenu, brakujaceUprawnienia,
-} from '../../src/domena/uprawnienia-kanalu.js';
+import { WYMAGANE_UPRAWNIENIA, uprawnieniaZTokenu, brakujaceUprawnienia } from '../../src/domena/uprawnienia-kanalu.js';
 
 // ⚠️⚠️ ODSWIEZENIE TOKENU ZACHOWUJE ZAKRESY Z PIERWOTNEJ AUTORYZACJI. Uprawnienie dodane
 // pozniej w aplikacji na apps.developer.allegro.pl NIE POJAWI SIE w tokenie samo — wchodzi
@@ -9,16 +7,15 @@ import {
 // dokladnie te same piec zakresow co 05.08, mimo ze `messaging` i `disputes` byly juz
 // nadane w aplikacji, a para tokenow odswiezala sie tego samego dnia rano.
 
-const jwt = (payload) => [
-  'naglowek',
-  Buffer.from(JSON.stringify(payload)).toString('base64url'),
-  'podpis',
-].join('.');
+const jwt = (payload) => ['naglowek', Buffer.from(JSON.stringify(payload)).toString('base64url'), 'podpis'].join('.');
 
 const PELNE = WYMAGANE_UPRAWNIENIA;
 const PIEC_STARYCH = [
-  'allegro:api:orders:read', 'allegro:api:sale:offers:read',
-  'allegro:api:shipments:read', 'allegro:api:shipments:write', 'allegro:api:orders:write',
+  'allegro:api:orders:read',
+  'allegro:api:sale:offers:read',
+  'allegro:api:shipments:read',
+  'allegro:api:shipments:write',
+  'allegro:api:orders:write',
 ];
 
 describe('uprawnienia kanału z tokenu', () => {
@@ -58,10 +55,13 @@ describe('uprawnienia kanału z tokenu', () => {
   // wiązania, a wiązanie NADPISUJE działającą parę tokenów nieodwracalnie. Otwieranie jej
   // na domyśle znaczyłoby, że token o nieznanym kształcie zaprasza do zabicia sprawnego
   // kanału. Kanał bez pary tokenów i tak ma `polaczony: false` i otwiera wiązanie inną drogą.
-  it.each([['brak tokenu', null], ['nie JWT', 'a'], ['pusty', '']])(
-    '%s NIE jest zgłaszany jako brak uprawnień',
-    (_opis, token) => { expect(brakujaceUprawnienia(token)).toEqual([]); },
-  );
+  it.each([
+    ['brak tokenu', null],
+    ['nie JWT', 'a'],
+    ['pusty', ''],
+  ])('%s NIE jest zgłaszany jako brak uprawnień', (_opis, token) => {
+    expect(brakujaceUprawnienia(token)).toEqual([]);
+  });
 
   it('lista wymaganych obejmuje Centrum wiadomości i dyskusje', () => {
     expect(WYMAGANE_UPRAWNIENIA).toContain('allegro:api:messaging');

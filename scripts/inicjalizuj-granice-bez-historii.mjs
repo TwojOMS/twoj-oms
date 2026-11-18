@@ -13,21 +13,31 @@ const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite');
  */
 export function wykonaj(argv, env) {
   if (argv.length !== 3) throw new Error('Użycie: BAZA RAPORT RRRR-MM-DD');
-  const [plik,kanal,dzien]=argv;
+  const [plik, kanal, dzien] = argv;
   if (!existsSync(plik)) throw new Error('Baza musi już istnieć');
-  const {regulySprzedazy}=wczytajRaporty(env);
+  const { regulySprzedazy } = wczytajRaporty(env);
   // Granica w dniu <P>_OD kanału albo później po cichu i bez odwrotu wycina
   // z raportu zamówienia pobrane od OD — przed pierwszym przebiegiem pollera nic innego tego nie złapie.
   for (const d of definicjeKanalow(env)) {
-    const od=String(env[`${d.prefiks}_OD`] ?? '').trim();
-    if (d.raport===kanal && /^\d{4}-\d{2}-\d{2}$/.test(od) && dzien>=od)
-      throw new Error(`Granica ${kanal} ${dzien} nie może być w dniu ${d.prefiks}_OD (${od}) ani później — zamówienia od OD zniknęłyby z raportu; użyj dnia przed OD`);
+    const od = String(env[`${d.prefiks}_OD`] ?? '').trim();
+    if (d.raport === kanal && /^\d{4}-\d{2}-\d{2}$/.test(od) && dzien >= od)
+      throw new Error(
+        `Granica ${kanal} ${dzien} nie może być w dniu ${d.prefiks}_OD (${od}) ani później — zamówienia od OD zniknęłyby z raportu; użyj dnia przed OD`,
+      );
   }
-  const db=new DatabaseSync(plik,{readOnly:false});
-  try {inicjalizujGraniceBezHistorii(db,kanal,dzien,regulySprzedazy.klasyfikacja);}
-  finally {db.close();}
+  const db = new DatabaseSync(plik, { readOnly: false });
+  try {
+    inicjalizujGraniceBezHistorii(db, kanal, dzien, regulySprzedazy.klasyfikacja);
+  } finally {
+    db.close();
+  }
 }
-if (process.argv[1] && import.meta.url===pathToFileURL(resolve(process.argv[1])).href) {
-  try {wykonaj(process.argv.slice(2),process.env);process.stdout.write('Zapisano jawną granicę kanału bez historii.\n');}
-  catch(e) {process.stderr.write(e.message+'\n');process.exitCode=1;}
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  try {
+    wykonaj(process.argv.slice(2), process.env);
+    process.stdout.write('Zapisano jawną granicę kanału bez historii.\n');
+  } catch (e) {
+    process.stderr.write(e.message + '\n');
+    process.exitCode = 1;
+  }
 }

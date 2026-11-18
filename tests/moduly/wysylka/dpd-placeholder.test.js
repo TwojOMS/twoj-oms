@@ -15,19 +15,45 @@ import { modulUstawienia } from '../../../src/moduly/ustawienia/modul.ts';
 import { modulMarketing } from '../../../src/moduly/marketing/modul.ts';
 import { modulZdrowie } from '../../../src/moduly/zdrowie/modul.ts';
 
-const NADAWCA = { DPD_NADAWCA_NAZWA: 'Pracownia Testowa', DPD_NADAWCA_ULICA: 'Zmyślona 1', DPD_NADAWCA_KOD: '00-950', DPD_NADAWCA_MIASTO: 'Warszawa' };
+const NADAWCA = {
+  DPD_NADAWCA_NAZWA: 'Pracownia Testowa',
+  DPD_NADAWCA_ULICA: 'Zmyślona 1',
+  DPD_NADAWCA_KOD: '00-950',
+  DPD_NADAWCA_MIASTO: 'Warszawa',
+};
 const formularz = (html) => /<form id="dpd-formularz"[\s\S]*?<\/form>/u.exec(html)?.[0] ?? '';
 
 describe('ekran DPD: placeholder pól sekretów', () => {
   it('po zapisie hasła i kanału: placeholder w prawdziwych cudzysłowach, bez &#34;, pola bez required', async () => {
-    const createDpd = vi.fn(() => ({ nadaj: vi.fn(), statusPrzesylki: vi.fn(), sprawdzPolaczenie: vi.fn(async () => ({ ok: true })) }));
-    const moduly = [modulRdzen, modulWeb, modulKanaly, modulFaktury, modulWiadomosci, createModulZamowienia({ zWiadomosciami: true }),
-      createModulWysylka({ fabryki: { createDpd } }), modulMagazyn, modulUstawienia, modulMarketing, modulZdrowie];
+    const createDpd = vi.fn(() => ({
+      nadaj: vi.fn(),
+      statusPrzesylki: vi.fn(),
+      sprawdzPolaczenie: vi.fn(async () => ({ ok: true })),
+    }));
+    const moduly = [
+      modulRdzen,
+      modulWeb,
+      modulKanaly,
+      modulFaktury,
+      modulWiadomosci,
+      createModulZamowienia({ zWiadomosciami: true }),
+      createModulWysylka({ fabryki: { createDpd } }),
+      modulMagazyn,
+      modulUstawienia,
+      modulMarketing,
+      modulZdrowie,
+    ];
     const { app, db } = nowyPanel({ moduly, env: NADAWCA });
     zalozKonto(db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
     const admin = jako(db, 'adam');
-    const zapis = await post(app, '/ustawienia/integracje/dpd', admin,
-      { nazwa: 'DPD', login: '11112222', fid: '333444', haslo: 'Zmyslone-Haslo-1', typEtykiety: 'A4', kanal: 'zmyslony-kanal' });
+    const zapis = await post(app, '/ustawienia/integracje/dpd', admin, {
+      nazwa: 'DPD',
+      login: '11112222',
+      fid: '333444',
+      haslo: 'Zmyslone-Haslo-1',
+      typEtykiety: 'A4',
+      kanal: 'zmyslony-kanal',
+    });
     expect(zapis.statusCode, zapis.body).toBe(303);
     const f = formularz((await get(app, '/ustawienia/integracje/dpd', admin)).body);
     expect(f).not.toContain('&#34;');
@@ -37,8 +63,19 @@ describe('ekran DPD: placeholder pól sekretów', () => {
   });
 
   it('pusty ekran: hasło wymagane, kanał bez placeholdera', async () => {
-    const moduly = [modulRdzen, modulWeb, modulKanaly, modulFaktury, modulWiadomosci, createModulZamowienia({ zWiadomosciami: true }),
-      createModulWysylka(), modulMagazyn, modulUstawienia, modulMarketing, modulZdrowie];
+    const moduly = [
+      modulRdzen,
+      modulWeb,
+      modulKanaly,
+      modulFaktury,
+      modulWiadomosci,
+      createModulZamowienia({ zWiadomosciami: true }),
+      createModulWysylka(),
+      modulMagazyn,
+      modulUstawienia,
+      modulMarketing,
+      modulZdrowie,
+    ];
     const { app, db } = nowyPanel({ moduly, env: NADAWCA });
     zalozKonto(db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
     const f = formularz((await get(app, '/ustawienia/integracje/dpd', jako(db, 'adam'))).body);

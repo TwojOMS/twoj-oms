@@ -180,7 +180,8 @@ export function sprawyPrzesylki(p, teraz = Date.now()) {
   // tylko stanem Z DEFINICJI — panel nigdy nie rozmawial o tej paczce z DPD i nigdy zadnego
   // pliku nie dostanie. Zamowienie wisialoby na liscie roboczej bez zadnego sensownego
   // wyjscia, a jedynym „rozwiazaniem" byloby klikniecie „zalatwione recznie" po nic.
-  if (stan === 'nadana' && !p.etykieta_sciezka && !p.etykieta_zpl_sciezka && !p.etykieta_reczna && !p.nadana_recznie) sprawy.push('brak etykiety');
+  if (stan === 'nadana' && !p.etykieta_sciezka && !p.etykieta_zpl_sciezka && !p.etykieta_reczna && !p.nadana_recznie)
+    sprawy.push('brak etykiety');
   // PACZKA BEZ RUCHU: ponad 3 dni ROBOCZE od ostatniego zdarzenia
   // kuriera (a bez zdarzen — od nadania: paczka potrafi zginac przed pierwszym skanem
   // i wlasnie wtedy nikt by jej nie szukal). Doreczona i zwrot nie stoja — regula w
@@ -191,12 +192,17 @@ export function sprawyPrzesylki(p, teraz = Date.now()) {
   // etykieta nigdy niepodjeta). Gdyby ukrycie dzialalo tylko na liscie, zamowienie zostaloby
   // na liscie roboczej z odznaka, ktorej juz nic nie zdejmie — czyli sprzatanie byloby
   // polsrodkiem. Pozostale sprawy zostaja: ukrycie nie jest wylacznikiem listy roboczej.
-  if (stan === 'nadana' && !przesylkaUkryta(p) && bezRuchu({
-    etap: etapPrzesylki(p.status_kuriera, p.status_kuriera_kod),
-    statusKurieraAt: p.status_kuriera_at,
-    nadanaAt: p.utworzona_at,
-    teraz: new Date(teraz),
-  })) sprawy.push('paczka bez ruchu');
+  if (
+    stan === 'nadana' &&
+    !przesylkaUkryta(p) &&
+    bezRuchu({
+      etap: etapPrzesylki(p.status_kuriera, p.status_kuriera_kod),
+      statusKurieraAt: p.status_kuriera_at,
+      nadanaAt: p.utworzona_at,
+      teraz: new Date(teraz),
+    })
+  )
+    sprawy.push('paczka bez ruchu');
   // Znacznik kasuje sie sam przy najblizszym udanym odswiezeniu (zapiszProbeStatusuDpd),
   // wiec chwilowa awaria sieci nie zostawia zamowienia na liscie na zawsze.
   //
@@ -227,8 +233,7 @@ export function przesylkaWymagaCzlowieka(p, teraz = Date.now()) {
 export function sprawyZamowienia(przesylki, teraz = Date.now()) {
   const lista = przesylki ?? [];
   const wiele = lista.length > 1;
-  return lista.flatMap((p) => sprawyPrzesylki(p, teraz)
-    .map((s) => (wiele ? `paczka ${p.kolejnosc}: ${s}` : s)));
+  return lista.flatMap((p) => sprawyPrzesylki(p, teraz).map((s) => (wiele ? `paczka ${p.kolejnosc}: ${s}` : s)));
 }
 
 export function zamowienieWymagaCzlowieka(przesylki, teraz = Date.now()) {
@@ -271,6 +276,7 @@ export function sprawyDoZalatwieniaRecznie(p, teraz = Date.now()) {
   // `nadana_recznie` wykluczone tu z tego samego powodu, co w sprawyPrzesylki wyzej —
   // i dodatkowo po to, zeby karta nie kusila przyciskiem „zalatwione recznie" przy paczce,
   // przy ktorej nie ma czego zalatwiac (klikniecie odbiloby sie od 400).
-  if (stan === 'nadana' && !p.etykieta_sciezka && !p.etykieta_zpl_sciezka && !p.etykieta_reczna && !p.nadana_recznie) sprawy.push('brak_etykiety');
+  if (stan === 'nadana' && !p.etykieta_sciezka && !p.etykieta_zpl_sciezka && !p.etykieta_reczna && !p.nadana_recznie)
+    sprawy.push('brak_etykiety');
   return sprawy;
 }

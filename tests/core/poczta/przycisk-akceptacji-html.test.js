@@ -10,7 +10,9 @@ describe('przycisk akceptacji w HTML', () => {
   it('para „etykieta: / adres" staje się przyciskiem', () => {
     const t = ['pozdrawiam', '', 'Akceptuję wycenę — przejdź do zamówienia:', LINK].join('\n');
     const h = renderMailHtml({ text: t });
-    expect(h).toMatch(/<a[^>]+href="https:\/\/pro\.swietlik\.example\.test\/\?oferta=1293&amp;t=abc"[^>]*>[\s\S]*?Akceptuję wycenę/);
+    expect(h).toMatch(
+      /<a[^>]+href="https:\/\/pro\.swietlik\.example\.test\/\?oferta=1293&amp;t=abc"[^>]*>[\s\S]*?Akceptuję wycenę/,
+    );
     // Etykieta NIE zostaje osobnym akapitem nad przyciskiem.
     expect(h).not.toMatch(/<p[^>]*>Akceptuję wycenę — przejdź do zamówienia:<\/p>/);
   });
@@ -42,11 +44,16 @@ describe('przycisk akceptacji w HTML', () => {
 
   it('pełny mail z wyceną: tabela ORAZ przycisk, każde na swoim miejscu', () => {
     const t = [
-      'Wycena:', '1x szablon - 100zł brutto/szt',
-      'przygotowanie projektu - w cenie', 'wysyłka kurierem DPD - gratis',
-      'Razem: 100zł (81,30zł netto)', '',
-      'pozdrawiam', '',
-      'Akceptuję wycenę — przejdź do zamówienia:', LINK,
+      'Wycena:',
+      '1x szablon - 100zł brutto/szt',
+      'przygotowanie projektu - w cenie',
+      'wysyłka kurierem DPD - gratis',
+      'Razem: 100zł (81,30zł netto)',
+      '',
+      'pozdrawiam',
+      '',
+      'Akceptuję wycenę — przejdź do zamówienia:',
+      LINK,
     ].join('\n');
     const h = renderMailHtml({ text: t });
     expect(h).toContain('<table');

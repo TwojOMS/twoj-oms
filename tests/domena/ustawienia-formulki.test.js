@@ -1,7 +1,10 @@
 // tests/oms/ustawienia-formulki.test.js
 import { describe, it, expect } from 'vitest';
 import {
-  ustawieniaFormulki, sprawdzFormularz, MAKS_ZNAKOW_WIADOMOSCI, KLUCZE,
+  ustawieniaFormulki,
+  sprawdzFormularz,
+  MAKS_ZNAKOW_WIADOMOSCI,
+  KLUCZE,
 } from '../../src/domena/ustawienia-formulki.js';
 
 describe('ustawienia autorespondera', () => {
@@ -11,12 +14,20 @@ describe('ustawienia autorespondera', () => {
 
   it('czyta zapisane wartosci', () => {
     const u = ustawieniaFormulki({
-      [KLUCZE.wlaczony]: '1', [KLUCZE.tresc]: 'Dzien dobry', [KLUCZE.od]: '18',
-      [KLUCZE.do]: '8', [KLUCZE.dni]: '1,2,3,4,5', [KLUCZE.karencja]: '15',
+      [KLUCZE.wlaczony]: '1',
+      [KLUCZE.tresc]: 'Dzien dobry',
+      [KLUCZE.od]: '18',
+      [KLUCZE.do]: '8',
+      [KLUCZE.dni]: '1,2,3,4,5',
+      [KLUCZE.karencja]: '15',
     });
     expect(u).toEqual({
-      wlaczona: true, tresc: 'Dzien dobry', odGodziny: 18, doGodziny: 8,
-      dni: [1, 2, 3, 4, 5], karencjaMin: 15,
+      wlaczona: true,
+      tresc: 'Dzien dobry',
+      odGodziny: 18,
+      doGodziny: 8,
+      dni: [1, 2, 3, 4, 5],
+      karencjaMin: 15,
     });
   });
 
@@ -26,8 +37,12 @@ describe('ustawienia autorespondera', () => {
 
   it('odrzuca tresc dluzsza niz limit Allegro', () => {
     const wynik = sprawdzFormularz({
-      wlaczona: 'on', tresc: 'x'.repeat(MAKS_ZNAKOW_WIADOMOSCI + 1),
-      od: '18', do: '8', dni: ['1'], karencja: '10',
+      wlaczona: 'on',
+      tresc: 'x'.repeat(MAKS_ZNAKOW_WIADOMOSCI + 1),
+      od: '18',
+      do: '8',
+      dni: ['1'],
+      karencja: '10',
     });
     expect(wynik.ok).toBe(false);
     expect(wynik.blad).toContain('2000');
@@ -35,8 +50,12 @@ describe('ustawienia autorespondera', () => {
 
   it('przyjmuje tresc dokladnie na limicie', () => {
     const wynik = sprawdzFormularz({
-      wlaczona: 'on', tresc: 'x'.repeat(MAKS_ZNAKOW_WIADOMOSCI),
-      od: '18', do: '8', dni: ['1'], karencja: '10',
+      wlaczona: 'on',
+      tresc: 'x'.repeat(MAKS_ZNAKOW_WIADOMOSCI),
+      od: '18',
+      do: '8',
+      dni: ['1'],
+      karencja: '10',
     });
     expect(wynik.ok).toBe(true);
   });
@@ -55,12 +74,18 @@ describe('ustawienia autorespondera', () => {
   });
 
   it('odrzuca godzine spoza 0-23', () => {
-    expect(sprawdzFormularz({ wlaczona: 'on', tresc: 'ok', od: '24', do: '8', dni: ['1'], karencja: '10' }).ok).toBe(false);
-    expect(sprawdzFormularz({ wlaczona: 'on', tresc: 'ok', od: '18', do: '-1', dni: ['1'], karencja: '10' }).ok).toBe(false);
+    expect(sprawdzFormularz({ wlaczona: 'on', tresc: 'ok', od: '24', do: '8', dni: ['1'], karencja: '10' }).ok).toBe(
+      false,
+    );
+    expect(sprawdzFormularz({ wlaczona: 'on', tresc: 'ok', od: '18', do: '-1', dni: ['1'], karencja: '10' }).ok).toBe(
+      false,
+    );
   });
 
   it('odrzuca ujemna karencje', () => {
-    expect(sprawdzFormularz({ wlaczona: 'on', tresc: 'ok', od: '18', do: '8', dni: ['1'], karencja: '-5' }).ok).toBe(false);
+    expect(sprawdzFormularz({ wlaczona: 'on', tresc: 'ok', od: '18', do: '8', dni: ['1'], karencja: '-5' }).ok).toBe(
+      false,
+    );
   });
 
   it('WYLACZENIE przechodzi nawet z pusta trescia — zapisujemy stan wylaczony', () => {

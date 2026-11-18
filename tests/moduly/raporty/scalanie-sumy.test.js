@@ -35,13 +35,20 @@ afterAll(() => db.close());
 
 describe('scalenie nie zmienia sum raportów, statystyk ani finansów', () => {
   it('przed i po dwóch scaleniach — te same liczby', async () => {
-    const kandydaci = db.prepare('SELECT id, sklep FROM zamowienia WHERE scalone_do IS NULL ORDER BY id').all()
+    const kandydaci = db
+      .prepare('SELECT id, sklep FROM zamowienia WHERE scalone_do IS NULL ORDER BY id')
+      .all()
       .filter((z) => !czyKanalAllegro(z));
     expect(kandydaci.length).toBeGreaterThanOrEqual(5);
     const przed = await sumy();
     // Sanity: sumy nie są puste (inaczej porównanie niczego by nie dowodziło).
     expect(przed.sprzedaz.length).toBeGreaterThan(0);
-    scalZamowienia(db, { glowneId: kandydaci[0].id, dolaczoneIds: [kandydaci[1].id, kandydaci[2].id], wysylka: 'suma', kto: 'test' });
+    scalZamowienia(db, {
+      glowneId: kandydaci[0].id,
+      dolaczoneIds: [kandydaci[1].id, kandydaci[2].id],
+      wysylka: 'suma',
+      kto: 'test',
+    });
     scalZamowienia(db, { glowneId: kandydaci[3].id, dolaczoneIds: [kandydaci[4].id], wysylka: 'glowne', kto: 'test' });
     expect(db.prepare('SELECT COUNT(*) AS n FROM zamowienia WHERE scalone_do IS NOT NULL').get().n).toBe(3);
     expect(await sumy()).toEqual(przed);

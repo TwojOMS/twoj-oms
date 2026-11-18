@@ -23,7 +23,13 @@ export const KARA_MS = 60_000;
  * `teraz` jest wszedzie parametrem, a nie odczytem zegara w srodku: inaczej test na
  * wygasniecie kary musialby naprawde spac minute.
  */
-export function utworzHamulec({ limit = LIMIT_PROB, karaMs = KARA_MS, wygasanieMs = null, maksKluczy = null, oknoMs = null } = {}) {
+export function utworzHamulec({
+  limit = LIMIT_PROB,
+  karaMs = KARA_MS,
+  wygasanieMs = null,
+  maksKluczy = null,
+  oknoMs = null,
+} = {}) {
   const liczniki = new Map();
 
   // OPCJONALNE wygasanie i limit kluczy — używa ich m.in. /haslo/:token oraz hamulec logowania.
@@ -33,12 +39,16 @@ export function utworzHamulec({ limit = LIMIT_PROB, karaMs = KARA_MS, wygasanieM
   // wpis bez kary po upływie okna liczonego od pierwszej próby. `maksKluczy` przycina mapę:
   // najpierw martwe wpisy, potem najdawniej używane (Map trzyma kolejność wstawienia, a każdy
   // błąd przesuwa wpis na koniec).
-  const martwy = (wpis, teraz) => wpis.doKiedy <= teraz && (
-    (wygasanieMs !== null && teraz - wpis.ostatnia >= wygasanieMs)
-    || (oknoMs !== null && teraz - wpis.poczatek >= oknoMs));
+  const martwy = (wpis, teraz) =>
+    wpis.doKiedy <= teraz &&
+    ((wygasanieMs !== null && teraz - wpis.ostatnia >= wygasanieMs) ||
+      (oknoMs !== null && teraz - wpis.poczatek >= oknoMs));
   const zywy = (klucz, teraz) => {
     const wpis = liczniki.get(klucz);
-    if (wpis && martwy(wpis, teraz)) { liczniki.delete(klucz); return undefined; }
+    if (wpis && martwy(wpis, teraz)) {
+      liczniki.delete(klucz);
+      return undefined;
+    }
     return wpis;
   };
   const przytnij = (teraz) => {
@@ -67,7 +77,10 @@ export function utworzHamulec({ limit = LIMIT_PROB, karaMs = KARA_MS, wygasanieM
      */
     odnotujBlad(klucz, teraz = Date.now()) {
       const wpis = zywy(klucz, teraz) ?? {
-        proby: 0, doKiedy: 0, zapisanoBlokade: false, poczatek: teraz,
+        proby: 0,
+        doKiedy: 0,
+        zapisanoBlokade: false,
+        poczatek: teraz,
       };
       wpis.proby += 1;
       wpis.ostatnia = teraz;
@@ -139,13 +152,25 @@ export function utworzHamulecLogowania({ maksKluczy = 10_000, czekaj = czekajDom
   const konta = utworzHamulec({ ...opcje, limit: 30, karaMs: 2_000 });
   // Hash ogranicza także bajty klucza: losowe wielkie loginy nie zajmą 10 000 × bodyLimit.
   // Normalizacja jest wyłącznie do liczników, nie zmienia zasad porównania poświadczeń.
-  const loginKlucza = (login) => createHash('sha256').update(String(login ?? '').trim().toLowerCase()).digest('hex');
+  const loginKlucza = (login) =>
+    createHash('sha256')
+      .update(
+        String(login ?? '')
+          .trim()
+          .toLowerCase(),
+      )
+      .digest('hex');
   const kluczPary = (ip, login) => JSON.stringify([ip, loginKlucza(login)]);
-  const liczniki = (ip, login) => [[pary, kluczPary(ip, login)], [adresy, ip], [konta, loginKlucza(login)]];
+  const liczniki = (ip, login) => [
+    [pary, kluczPary(ip, login)],
+    [adresy, ip],
+    [konta, loginKlucza(login)],
+  ];
   // Fastify udostępnia req.ips wyłącznie przy skonfigurowanym trustProxy, również gdy
   // bezpośredni nadawca nie jest na zaufanej liście. Nie odczytujemy samodzielnie IP z nagłówka.
-  const wiarygodnyAdres = (req) => req.ips !== undefined
-    || (req.headers['x-forwarded-for'] === undefined && req.headers['cf-connecting-ip'] === undefined);
+  const wiarygodnyAdres = (req) =>
+    req.ips !== undefined ||
+    (req.headers['x-forwarded-for'] === undefined && req.headers['cf-connecting-ip'] === undefined);
   const rozgrzany = (h, klucz, prog) => {
     h.sprawdz(klucz); // usuwa wygasły wpis przed odczytem liczby prób
     return h.proby(klucz) >= prog;
@@ -164,11 +189,16 @@ export function utworzHamulecLogowania({ maksKluczy = 10_000, czekaj = czekajDom
       const klucze = kluczeKolejki(req, login);
       // Rezerwacja wszystkich kluczy jest synchroniczna: brak zakleszczeń między
       // kolejką konta i adresu. Limit obejmuje także wpisy oczekujące na inny klucz.
-      if (klucze.some(k => (kolejki.get(k)?.liczba ?? 0) >= 21)
-        || kolejki.size + klucze.filter(k => !kolejki.has(k)).length > maksKluczy) return null;
-      const poprzednie = klucze.map(k => kolejki.get(k)?.ogon);
+      if (
+        klucze.some((k) => (kolejki.get(k)?.liczba ?? 0) >= 21) ||
+        kolejki.size + klucze.filter((k) => !kolejki.has(k)).length > maksKluczy
+      )
+        return null;
+      const poprzednie = klucze.map((k) => kolejki.get(k)?.ogon);
       let zakoncz;
-      const ogon = new Promise(resolve => { zakoncz = resolve; });
+      const ogon = new Promise((resolve) => {
+        zakoncz = resolve;
+      });
       for (const k of klucze) kolejki.set(k, { ogon, liczba: (kolejki.get(k)?.liczba ?? 0) + 1 });
       let zwolniono = false;
       const zwolnij = () => {
@@ -183,7 +213,7 @@ export function utworzHamulecLogowania({ maksKluczy = 10_000, czekaj = czekajDom
       await Promise.all(poprzednie);
       // Limit mógł zapalić się podczas czekania na parę/adres. Wejdź ponownie już
       // ze wspólnym kluczem konta, zanim dojdzie do walidacji hasła.
-      if (kluczeKolejki(req, login).every(k => klucze.includes(k))) return zwolnij;
+      if (kluczeKolejki(req, login).every((k) => klucze.includes(k))) return zwolnij;
       zwolnij();
     }
   }
@@ -196,8 +226,10 @@ export function utworzHamulecLogowania({ maksKluczy = 10_000, czekaj = czekajDom
     zajmij,
     wiarygodnyAdres,
     sprawdzPrzedProba(req, login) {
-      const zostaloMs = Math.max(pary.sprawdz(kluczPary(req.ip, login)).zostaloMs,
-        wiarygodnyAdres(req) ? adresy.sprawdz(req.ip).zostaloMs : 0);
+      const zostaloMs = Math.max(
+        pary.sprawdz(kluczPary(req.ip, login)).zostaloMs,
+        wiarygodnyAdres(req) ? adresy.sprawdz(req.ip).zostaloMs : 0,
+      );
       return { wolno: zostaloMs === 0, zostaloMs };
     },
     kluczPary,
@@ -212,10 +244,15 @@ export function utworzHamulecLogowania({ maksKluczy = 10_000, czekaj = czekajDom
     wyczysc: (ip, login) => pary.wyczysc(kluczPary(ip, login)),
     zapiszBlokadeRaz(ip, login, teraz = Date.now()) {
       // Bez short-circuit: oznaczamy wszystkie aktywne kary tym samym wpisem.
-      return liczniki(ip, login).map(([h, k]) => h.zapiszBlokadeRaz(k, teraz)).some(Boolean);
+      return liczniki(ip, login)
+        .map(([h, k]) => h.zapiszBlokadeRaz(k, teraz))
+        .some(Boolean);
     },
     async opoznij(ip, login, teraz = Date.now(), twardyAdres = false) {
-      const ms = Math.max(twardyAdres ? 0 : adresy.sprawdz(ip, teraz).zostaloMs, konta.sprawdz(loginKlucza(login), teraz).zostaloMs);
+      const ms = Math.max(
+        twardyAdres ? 0 : adresy.sprawdz(ip, teraz).zostaloMs,
+        konta.sprawdz(loginKlucza(login), teraz).zostaloMs,
+      );
       // Pełne 2 s odmowy POD blokadą kolejki: kolejna walidacja tego klucza dopiero
       // po zwolnieniu. Poprawne hasło omija miękką karę, ale nie kolejkę ani twarde IP.
       if (ms > 0) await czekaj(2_000);

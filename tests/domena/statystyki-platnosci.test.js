@@ -12,9 +12,7 @@ describe('rozkladMetod', () => {
   });
 
   it('trzy warianty przelewu to jeden kubełek, a Przelewy24 osobny', () => {
-    const { pozycje } = rozkladMetod([
-      z('Przelew'), z('Przelew tradycyjny'), z('Przelew bankowy'), z('Przelewy24'),
-    ]);
+    const { pozycje } = rozkladMetod([z('Przelew'), z('Przelew tradycyjny'), z('Przelew bankowy'), z('Przelewy24')]);
     const mapa = Object.fromEntries(pozycje.map((p) => [p.etykieta, p.ile]));
     expect(mapa).toEqual({ Przelew: 3, Przelewy24: 1 });
   });
@@ -33,7 +31,8 @@ describe('rozkladMetod', () => {
   // CASH_ON_DELIVERY) — nie mówi, czym kupujący zapłacił. Na produkcji to 92 z 226 zamówień.
   it('zamówienia Allegro stoją POZA procentami, z własnym licznikiem', () => {
     const w = rozkladMetod([
-      z('BLIK'), z('Przelew'),
+      z('BLIK'),
+      z('Przelew'),
       z('Allegro (płatność online)', 'allegro_swietlik'),
       z('Za pobraniem', 'allegro_polcien2'),
     ]);
@@ -75,7 +74,6 @@ describe('rozkladMetod', () => {
   });
 
   it('pusta lista nie wybucha', () => {
-    expect(rozkladMetod([]))
-      .toEqual({ pozycje: [], mianownik: 0, allegroBezInformacji: 0, wszystkie: 0 });
+    expect(rozkladMetod([])).toEqual({ pozycje: [], mianownik: 0, allegroBezInformacji: 0, wszystkie: 0 });
   });
 });

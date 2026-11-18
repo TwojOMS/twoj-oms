@@ -30,9 +30,9 @@ const PLIKI_FONTOW = {
 
 const A4_SZER = 595.28;
 const MARGINES = 40;
-const L = MARGINES;                 // lewa krawedz tresci
-const R = A4_SZER - MARGINES;       // prawa krawedz tresci (555.28)
-const PRAWA_KOLUMNA = 320;          // poczatek kolumny „NABYWCA"
+const L = MARGINES; // lewa krawedz tresci
+const R = A4_SZER - MARGINES; // prawa krawedz tresci (555.28)
+const PRAWA_KOLUMNA = 320; // poczatek kolumny „NABYWCA"
 
 const CZARNY = '#1a1a1a';
 const SZARY_TEKST = '#666666';
@@ -68,16 +68,16 @@ function linia(doc, y) {
 function naglowekSekcji(doc, x, y, tekst) {
   const DUZA = 12;
   const MALA = 9;
-  doc.rect(x, y + 4, 28, 6).fillColor(SZARY_PASEK).fill();
+  doc
+    .rect(x, y + 4, 28, 6)
+    .fillColor(SZARY_PASEK)
+    .fill();
   const napis = String(tekst);
   zwykly(doc, DUZA).text(napis.slice(0, 1).toUpperCase(), x + 34, y, { lineBreak: false });
   const szerPierwszej = doc.widthOfString(napis.slice(0, 1).toUpperCase());
-  zwykly(doc, MALA).text(
-    napis.slice(1).toUpperCase(),
-    x + 34 + szerPierwszej,
-    y + (DUZA - MALA) * 0.72,
-    { lineBreak: false },
-  );
+  zwykly(doc, MALA).text(napis.slice(1).toUpperCase(), x + 34 + szerPierwszej, y + (DUZA - MALA) * 0.72, {
+    lineBreak: false,
+  });
   return y + DUZA + 8;
 }
 
@@ -138,7 +138,10 @@ function wierszPozycji(doc, y, pozycja, lp) {
   const wys = Math.max(wysNazwy, 11) + 10;
 
   if (lp % 2 === 1) {
-    doc.rect(L, y - 4, R - L, wys).fillColor(SZARY_WIERSZ).fill();
+    doc
+      .rect(L, y - 4, R - L, wys)
+      .fillColor(SZARY_WIERSZ)
+      .fill();
   }
 
   zwykly(doc, 9);
@@ -225,7 +228,10 @@ function noweDoc(tytul, autor) {
     // sie dostawic niczego do strony, ktora juz odplynela do strumienia.
     bufferPages: true,
     margins: {
-      top: MARGINES, bottom: MARGINES, left: MARGINES, right: MARGINES,
+      top: MARGINES,
+      bottom: MARGINES,
+      left: MARGINES,
+      right: MARGINES,
     },
     info: { Title: tytul, Author: autor ?? 'Twój OMS' },
   });
@@ -246,12 +252,10 @@ function noweDoc(tytul, autor) {
  */
 function wierszKontynuacji(doc, dane, nrStrony) {
   const y = MARGINES;
-  gruby(doc, 9).text(
-    `Specyfikacja zamówienia nr ${dane?.numer ?? ''} — str. ${nrStrony}`,
-    L,
-    y,
-    { width: R - L, lineBreak: false },
-  );
+  gruby(doc, 9).text(`Specyfikacja zamówienia nr ${dane?.numer ?? ''} — str. ${nrStrony}`, L, y, {
+    width: R - L,
+    lineBreak: false,
+  });
   linia(doc, y + 13);
   return y + 20;
 }
@@ -282,7 +286,9 @@ function rysujStrone(doc, dane = {}) {
   // ktora to. Wartosc sie nie zmienila: to zawsze byl dzien ZLOZENIA zamowienia
   // (`utworzone_at` w czasie warszawskim, patrz domena/specyfikacja.js).
   zwykly(doc, 10).text(`Data zamówienia: ${dane.dataZamowienia ?? ''}`, 300, y, {
-    width: R - 300, align: 'right', lineBreak: false,
+    width: R - 300,
+    align: 'right',
+    lineBreak: false,
   });
   y += 22;
 
@@ -299,7 +305,9 @@ function rysujStrone(doc, dane = {}) {
     dane.sprzedawca?.adres,
     dane.sprzedawca?.nip ? `NIP: ${dane.sprzedawca.nip}` : '',
     dane.sprzedawca?.bdo ? `BDO: ${dane.sprzedawca.bdo}` : '',
-  ].map((s) => String(s ?? '').trim()).filter((s) => s !== '');
+  ]
+    .map((s) => String(s ?? '').trim())
+    .filter((s) => s !== '');
 
   const liniiNabywcy = [
     dane.nabywca?.firma,
@@ -307,7 +315,9 @@ function rysujStrone(doc, dane = {}) {
     [dane.nabywca?.kod, dane.nabywca?.miasto].filter(Boolean).join(' '),
     dane.nabywca?.kraj,
     dane.nabywca?.nip ? `NIP: ${dane.nabywca.nip}` : '',
-  ].map((s) => String(s ?? '').trim()).filter((s) => s !== '');
+  ]
+    .map((s) => String(s ?? '').trim())
+    .filter((s) => s !== '');
 
   const dolSprzedawcy = blokSekcja(doc, L, y, PRAWA_KOLUMNA - L - 20, 'Sprzedawca', liniiSprzedawcy);
   const dolNabywcy = blokSekcja(doc, PRAWA_KOLUMNA, y, R - PRAWA_KOLUMNA, 'Nabywca', liniiNabywcy);
@@ -344,9 +354,15 @@ function rysujStrone(doc, dane = {}) {
   // wiersza bez policzenia go tutaj daje blok podsumowania rozerwany miedzy strony —
   // czyli kwote „RAZEM" oderwana od pozycji, z ktorych wyszla. Uwagi klienta liczymy
   // OSOBNO (nizej), bo ich wysokosc zalezy od dlugosci tekstu.
-  const potrzeba = 14 + 18 + 16 + 24 + 15 + 15
-    + (dane.dataPlatnosci ? 15 : 0)
-    + (dane.faktura?.numer || dane.fakturaWybrana || dane.paragon ? 16 : 0);
+  const potrzeba =
+    14 +
+    18 +
+    16 +
+    24 +
+    15 +
+    15 +
+    (dane.dataPlatnosci ? 15 : 0) +
+    (dane.faktura?.numer || dane.fakturaWybrana || dane.paragon ? 16 : 0);
   if (y + potrzeba > dolnaGranica) {
     y = nowaStronaKontynuacji(doc, dane, stan);
   } else {
@@ -400,28 +416,15 @@ function rysujStrone(doc, dane = {}) {
   // razem ze stopka jak zaprzeczenie samej siebie. Z doprecyzowana etykieta obie mowia
   // spojnie: TA kartka jest informacyjna, a dokumentem sprzedazy jest to, co nazwane wyzej.
   if (dane.faktura?.numer) {
-    zwykly(doc, 9).text(
-      `Dokument sprzedaży: faktura VAT nr ${dane.faktura.numer} — doręczona przez KSeF`,
-      L,
-      y,
-      { width: R - L },
-    );
+    zwykly(doc, 9).text(`Dokument sprzedaży: faktura VAT nr ${dane.faktura.numer} — doręczona przez KSeF`, L, y, {
+      width: R - L,
+    });
     y += 16;
   } else if (dane.fakturaWybrana) {
-    zwykly(doc, 9).text(
-      'Wybrany dokument sprzedaży: faktura VAT',
-      L,
-      y,
-      { width: R - L },
-    );
+    zwykly(doc, 9).text('Wybrany dokument sprzedaży: faktura VAT', L, y, { width: R - L });
     y += 16;
   } else if (dane.paragon) {
-    zwykly(doc, 9).text(
-      'Dokument sprzedaży: paragon fiskalny — w przesyłce',
-      L,
-      y,
-      { width: R - L },
-    );
+    zwykly(doc, 9).text('Dokument sprzedaży: paragon fiskalny — w przesyłce', L, y, { width: R - L });
     y += 16;
   }
 

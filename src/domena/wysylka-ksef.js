@@ -19,9 +19,11 @@ const WOLNO_WYSLAC = new Set(['vat']);
  * Zdanie o korekcie — jedno dla podglądu (`coWolnoWyslac`) i wiersza korekty na karcie zamówienia.
  * Tylko dla programu, który nie wysyła do KSeF z OMS-u — bez nazwy programu.
  */
-export const POWOD_KOREKTA = 'Ten program faktur nie wysyła korekt do KSeF z OMS-u — wyślesz je bezpośrednio w programie faktur.';
+export const POWOD_KOREKTA =
+  'Ten program faktur nie wysyła korekt do KSeF z OMS-u — wyślesz je bezpośrednio w programie faktur.';
 /** To samo miejsce przy programie z własną wysyłką (TwojeFaktury) — korekta czeka na pierwotną w KSeF. */
-export const POWOD_KOREKTA_CZEKA = 'Korekta czeka na fakturę pierwotną — wyślesz ją do KSeF, gdy pierwotna dostanie numer KSeF.';
+export const POWOD_KOREKTA_CZEKA =
+  'Korekta czeka na fakturę pierwotną — wyślesz ją do KSeF, gdy pierwotna dostanie numer KSeF.';
 
 /**
  * Zdanie o dokumencie, którego wysyłkę panel JUŻ ZLECIŁ — JEDNO, bo pada w DWÓCH miejscach:
@@ -39,10 +41,12 @@ export function powodJuzZlecona(zleconaAt, program) {
   const stempel = czas ? czas.replace(/^(\d{4})-(\d{2})-(\d{2}) /, '$3.$2.$1, ') : '';
   const zdanie = `Panel już zlecił wysyłkę tego dokumentu do KSeF${stempel ? ` (${stempel})` : ''}`;
   if (program?.opis?.wbudowany === true) return `${zdanie}.`;
-  return zdanie
-    + ' — drugie zgłoszenie byłoby duplikatem u organu, a duplikatu nie da się skasować. '
-    + 'Następny krok: otwórz ten dokument w inFakcie — tam widać, czy zlecenie doszło i czy ma '
-    + 'już numer KSeF. Panel sam tego NIE ponowi.';
+  return (
+    zdanie +
+    ' — drugie zgłoszenie byłoby duplikatem u organu, a duplikatu nie da się skasować. ' +
+    'Następny krok: otwórz ten dokument w inFakcie — tam widać, czy zlecenie doszło i czy ma ' +
+    'już numer KSeF. Panel sam tego NIE ponowi.'
+  );
 }
 
 /**
@@ -101,15 +105,20 @@ export function czyKonsumencka(dok) {
 // odpowiedź API, nie zgoda na wysyłkę: wymagamy także numeru i kwoty (zero jest poprawną kwotą).
 // Ścieżka z NIP-em nie zależy od przełącznika; przełącznik rozszerza wyłącznie B2C.
 function maDaneKonsumenckiej(d) {
-  return Boolean(String(d?.number ?? '').trim())
-    && d?.gross_price != null && String(d.gross_price).trim() !== '' && Number.isFinite(Number(d.gross_price))
-    && ['client_company_name', 'client_first_name', 'client_last_name'].some((p) => String(d?.[p] ?? '').trim());
+  return (
+    Boolean(String(d?.number ?? '').trim()) &&
+    d?.gross_price != null &&
+    String(d.gross_price).trim() !== '' &&
+    Number.isFinite(Number(d.gross_price)) &&
+    ['client_company_name', 'client_first_name', 'client_last_name'].some((p) => String(d?.[p] ?? '').trim())
+  );
 }
 
 function powodBlokadyKonsumenckiej(d, konsumenckie, nazwa = NAZWA_ZAPASOWA) {
   if (!czyKonsumencka(d)) return null;
   if (konsumenckie !== true) return POWOD_KONSUMENCKA;
-  return maDaneKonsumenckiej(d) ? null
+  return maDaneKonsumenckiej(d)
+    ? null
     : `Brak danych faktury lub nabywcy — panel nie wysyła pustej odpowiedzi ${nazwa.dopelniacz} do KSeF.`;
 }
 
@@ -121,9 +130,10 @@ function powodBlokadyKonsumenckiej(d, konsumenckie, nazwa = NAZWA_ZAPASOWA) {
  * a nie usterka do naprawienia — powód ma nazwać stan, powiedzieć, że KSeF jest przy nim
  * DOBROWOLNY, i wskazać drogę, gdyby sprzedawca jednak chciał ten dokument wysłać.
  */
-export const POWOD_KONSUMENCKA = 'Faktura konsumencka — nabywca bez NIP-u. KSeF jest przy '
-  + 'takim dokumencie DOBROWOLNY (stanowisko Ministerstwa Finansów), więc panel go nie wysyła. '
-  + 'Jeśli ta jedna ma jednak pojechać do KSeF, wyślij ją w inFakcie.';
+export const POWOD_KONSUMENCKA =
+  'Faktura konsumencka — nabywca bez NIP-u. KSeF jest przy ' +
+  'takim dokumencie DOBROWOLNY (stanowisko Ministerstwa Finansów), więc panel go nie wysyła. ' +
+  'Jeśli ta jedna ma jednak pojechać do KSeF, wyślij ją w inFakcie.';
 
 /**
  * Czy dokument z listy (`moduly/faktury/services/faktury-widok.js`) jest kandydatem automatu KSeF
@@ -168,7 +178,16 @@ function rodzajDoWyslania(d, korekty) {
  * i rezerwacja (`powodJuzZlecona`).
  */
 // `rodzaj` ('vat' | 'korekta') zmienia wyłącznie zdanie o braku daty — reguła jest ta sama.
-export function wysylkaZKarty({ uuid, ksefNumer = null, nip = null, zleconaAt = null, dzienWystawienia = null, konsumenckie = false, program, rodzaj = 'vat' } = {}) {
+export function wysylkaZKarty({
+  uuid,
+  ksefNumer = null,
+  nip = null,
+  zleconaAt = null,
+  dzienWystawienia = null,
+  konsumenckie = false,
+  program,
+  rodzaj = 'vat',
+} = {}) {
   if (!uuid) return null;
   const stan = stanKsef({ ksef_number: ksefNumer || null }, Boolean(zleconaAt));
   if (stan === 'jest') return { wolno: false, powod: null, stan };
@@ -176,13 +195,16 @@ export function wysylkaZKarty({ uuid, ksefNumer = null, nip = null, zleconaAt = 
   // „Zlecono do KSeF D.M GG:MM” (`zlecono`), przycisku nie ma. Blokada w `coWolnoWyslac` i rezerwacji bez zmian.
   if (stan !== 'brak') return { wolno: false, powod: null, stan, zlecono: kiedyRuchu(zleconaAt) };
   // Nazwa programu z jego opisu (strażnik nazwy programu fakturowego: bez nowych napisów z inFaktem); przy wbudowanym bez „w …”.
-  const wProgramie = program?.opis?.wbudowany === true ? '' : ` w ${(program?.opis?.nazwa ?? NAZWA_ZAPASOWA).miejscownik}`;
+  const wProgramie =
+    program?.opis?.wbudowany === true ? '' : ` w ${(program?.opis?.nazwa ?? NAZWA_ZAPASOWA).miejscownik}`;
   const dopisek = konsumenckie
     ? `Na karcie nie ma NIP-u nabywcy — panel sprawdzi dane dokumentu${wProgramie} na ekranie podglądu.`
     : `Na karcie nie ma NIP-u nabywcy — panel sprawdzi dokument${wProgramie} na ekranie podglądu; faktury konsumenckiej do KSeF nie wyśle.`;
   const uwaga = czyKonsumencka({ client_tax_code: nip }) ? { uwaga: dopisek } : {};
   // Miesiąc listy Faktur, na której ten dokument leży (filtr po dacie wystawienia). Bez daty nie zgadujemy.
-  const miesiac = /^\d{4}-\d{2}-\d{2}/.test(String(dzienWystawienia ?? '')) ? String(dzienWystawienia).slice(0, 7) : null;
+  const miesiac = /^\d{4}-\d{2}-\d{2}/.test(String(dzienWystawienia ?? ''))
+    ? String(dzienWystawienia).slice(0, 7)
+    : null;
   if (!miesiac) {
     const czego = rodzaj === 'korekta' ? 'tej korekty' : 'tej faktury';
     return { wolno: false, powod: `Panel nie zna daty wystawienia ${czego} — wyślij ją z zakładki Faktury.`, stan };
@@ -191,8 +213,9 @@ export function wysylkaZKarty({ uuid, ksefNumer = null, nip = null, zleconaAt = 
 }
 
 /** Dopisek przy przycisku, gdy na karcie nie ma NIP-u nabywcy — o konsumenckiej rozstrzyga dokument w inFakcie. */
-export const UWAGA_BEZ_NIP_NA_KARCIE = 'Na karcie nie ma NIP-u nabywcy — panel sprawdzi dokument w inFakcie na ekranie '
-  + 'podglądu; faktury konsumenckiej do KSeF nie wyśle.';
+export const UWAGA_BEZ_NIP_NA_KARCIE =
+  'Na karcie nie ma NIP-u nabywcy — panel sprawdzi dokument w inFakcie na ekranie ' +
+  'podglądu; faktury konsumenckiej do KSeF nie wyśle.';
 
 /** Rozstrzygnięcie z numerem jest trwalsze niż rezerwacja wysyłki — dla listy i karty. */
 function powodStanuKsef(numer, zleconaAt, program) {
@@ -224,7 +247,14 @@ export function powrotWysylkiKsef(powrot, { miesiac, pole, typ, platnosc } = {})
 // `nazwa` = odmiana nazwy programu fakturowego w powodach pominięcia (domyślnie inFakt).
 // `korekty` — korekta faktury już w KSeF jest kandydatem (program, który wysyła do KSeF;
 // `rodzajDoWyslania`).
-export function coWolnoWyslac(zaznaczone, dokumenty, konsumenckie = false, nazwa = NAZWA_ZAPASOWA, program, { korekty = false } = {}) {
+export function coWolnoWyslac(
+  zaznaczone,
+  dokumenty,
+  konsumenckie = false,
+  nazwa = NAZWA_ZAPASOWA,
+  program,
+  { korekty = false } = {},
+) {
   const doWyslania = [];
   const pominiete = [];
   const widziane = new Set();
@@ -246,7 +276,10 @@ export function coWolnoWyslac(zaznaczone, dokumenty, konsumenckie = false, nazwa
     if (!d) {
       // ⚠️ POMINIĘTE MUSI WRÓCIĆ Z POWODEM — `continue`, nie `break`. Reszta zaznaczenia
       // ma zostać rozpatrzona; jedno złe id nie może uciszyć wszystkich pozostałych wierszy.
-      pominiete.push({ numer: `(id ${uuid})`, powod: 'Ten dokument jest spoza listy, z której wysyłasz — panel go nie zna.' });
+      pominiete.push({
+        numer: `(id ${uuid})`,
+        powod: 'Ten dokument jest spoza listy, z której wysyłasz — panel go nie zna.',
+      });
       continue;
     }
     // ⚠️⚠️ BIAŁA LISTA RODZAJU IDZIE PIERWSZA — PRZED KAŻDYM POWODEM WYLICZONYM ZE STANU.
@@ -263,7 +296,9 @@ export function coWolnoWyslac(zaznaczone, dokumenty, konsumenckie = false, nazwa
         numer: d.number,
         powod:
           d.rodzaj === 'korekta'
-            ? (korekty ? POWOD_KOREKTA_CZEKA : POWOD_KOREKTA)
+            ? korekty
+              ? POWOD_KOREKTA_CZEKA
+              : POWOD_KOREKTA
             : 'Nieznany rodzaj dokumentu — panel wysyła wyłącznie faktury VAT.',
       });
       continue;
@@ -303,7 +338,12 @@ export function coWolnoWyslac(zaznaczone, dokumenty, konsumenckie = false, nazwa
     // przeredagować, fakt z tabeli nie.
     if (d.ksefZleconaAt) {
       // Długi `powod` zostaje dla logu i automatu; ekran bierze znacznik i pokazuje `zdanieJuzWyslano`.
-      pominiete.push({ numer: d.number, powod: powodStanuKsef(d.ksef_number, d.ksefZleconaAt, program), juzZlecona: true, zleconaAt: d.ksefZleconaAt });
+      pominiete.push({
+        numer: d.number,
+        powod: powodStanuKsef(d.ksef_number, d.ksefZleconaAt, program),
+        juzZlecona: true,
+        zleconaAt: d.ksefZleconaAt,
+      });
       continue;
     }
     doWyslania.push({ uuid: d.uuid, numer: d.number });

@@ -11,14 +11,16 @@ export function zapiszStanWeryfikacji(db, kanal, { kolejnePuste, bezpiecznikOd, 
   // ⚠️ `null` jako null, nie `String(null)` === 'null'. Napis 'null' przeszedlby przez
   // kolumne TEXT i „zamkniety bezpiecznik" wygladalby na otwarty — czyli panel przestalby
   // pytac na zawsze, cicho.
-  db.prepare(`
+  db.prepare(
+    `
     INSERT INTO stan_weryfikacji_allegro (kanal, kolejne_puste, ostatnia_proba_at, bezpiecznik_od)
     VALUES (?, ?, ?, ?)
     ON CONFLICT(kanal) DO UPDATE SET
       kolejne_puste = excluded.kolejne_puste,
       bezpiecznik_od = excluded.bezpiecznik_od,
       ostatnia_proba_at = excluded.ostatnia_proba_at
-  `).run(kanal, Number(kolejnePuste) || 0, ostatniaProbaAt ?? null, bezpiecznikOd ?? null);
+  `,
+  ).run(kanal, Number(kolejnePuste) || 0, ostatniaProbaAt ?? null, bezpiecznikOd ?? null);
 }
 /** Kanaly z otwartym bezpiecznikiem — dla ekranu lacznosci. Nic po cichu. */
 export function kanalyZOtwartymBezpiecznikiem(db) {

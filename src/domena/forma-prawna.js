@@ -13,7 +13,9 @@ const FORMY = [
 
 /** @param {string | null | undefined} nazwa */
 export function skrocFormePrawna(nazwa) {
-  let wynik = String(nazwa ?? '').replace(/\s+/g, ' ').trim();
+  let wynik = String(nazwa ?? '')
+    .replace(/\s+/g, ' ')
+    .trim();
   for (const [wzor, skrot] of FORMY) wynik = wynik.replace(wzor, skrot);
   return wynik;
 }

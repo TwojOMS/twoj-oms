@@ -14,7 +14,9 @@ import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 const NIP = '5250000000';
 const AUTH = { authorization: `Basic ${Buffer.from('t:h').toString('base64')}`, origin: 'http://localhost' };
 const apki = [];
-afterEach(async () => { for (const a of apki.splice(0)) await a.close(); });
+afterEach(async () => {
+  for (const a of apki.splice(0)) await a.close();
+});
 
 const bezSieci = { listaFaktur: async () => [], listaKorekt: async () => [] };
 
@@ -28,11 +30,28 @@ function panel() {
 }
 
 function zamowienie(db, nr, utworzone = '2026-10-05T09:00:00') {
-  return zapiszZamowienie(db, 'pro', {
-    zrodlo_id: `w-${nr}`, numer: `Z-${nr}`, klient: { first_name: 'Ida', last_name: 'Lampowa', company: 'Pracownia Półcień' },
-    dostawa: {}, metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: NIP, kwota_brutto: '249.00',
-    koszt_dostawy_brutto: '0.00', status_woo: 'processing', oplacone_at: null, anulowane: 0, pozycje: [], utworzone_at: utworzone,
-  }, {});
+  return zapiszZamowienie(
+    db,
+    'pro',
+    {
+      zrodlo_id: `w-${nr}`,
+      numer: `Z-${nr}`,
+      klient: { first_name: 'Ida', last_name: 'Lampowa', company: 'Pracownia Półcień' },
+      dostawa: {},
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: 1,
+      nip: NIP,
+      kwota_brutto: '249.00',
+      koszt_dostawy_brutto: '0.00',
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane: 0,
+      pozycje: [],
+      utworzone_at: utworzone,
+    },
+    {},
+  );
 }
 
 const karta = (app, id) => app.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: AUTH });
@@ -42,8 +61,9 @@ describe('karta zamówienia — wiersze starego obrazu (sam infakt_uuid)', () =>
     const { db, app } = panel();
     const id = zamowienie(db, 1);
     // `ksef_odczyt = 'ok'`: czuwacz pytał, inFakt dokument zna, numeru KSeF brak — sprawa na pasku karty.
-    db.prepare("INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at, ksef_odczyt) VALUES (?, 'U-STARY', 'FV 7/10/2026', '2026-10-20T10:00:00.000Z', 'ok')")
-      .run(id);
+    db.prepare(
+      "INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at, ksef_odczyt) VALUES (?, 'U-STARY', 'FV 7/10/2026', '2026-10-20T10:00:00.000Z', 'ok')",
+    ).run(id);
     expect(db.prepare('SELECT program, dokument_id FROM faktury').get()).toEqual({ program: null, dokument_id: null });
     zajmijWysylkeKsef(db, 'U-STARY', { numer: 'FV 7/10/2026', kiedy: '2026-10-20T18:00:00.000Z' });
 
@@ -55,7 +75,9 @@ describe('karta zamówienia — wiersze starego obrazu (sam infakt_uuid)', () =>
     expect(r.body).toMatch(/Zlecono do KSeF 20\.10(\.2026)? 20:00/);
     expect(r.body).not.toContain('jeszcze nie wysłana do KSeF');
     // JOIN rezerwacji w oms/db/zamowienia.js (`ksef_zlecona_at`): sprawa „panel zlecił, numeru nie ma od …”.
-    expect(r.body).toContain('Panel zlecił wysyłkę faktury FV 7/10/2026 do KSeF, a numeru nie ma od 2026-10-20T18:00:00.000Z');
+    expect(r.body).toContain(
+      'Panel zlecił wysyłkę faktury FV 7/10/2026 do KSeF, a numeru nie ma od 2026-10-20T18:00:00.000Z',
+    );
   });
 
   it('zamówienie w okresie, którego faktura ma sam infakt_uuid: zdanie o fakturze okresu już w programie', async () => {
@@ -63,8 +85,9 @@ describe('karta zamówienia — wiersze starego obrazu (sam infakt_uuid)', () =>
     const id = zamowienie(db, 2);
     const okres = zapewnijOkres(db, { klientKlucz: NIP, rok: 2026, miesiac: 10 });
     db.prepare('UPDATE zamowienia SET okres_rozliczeniowy_id = ? WHERE id = ?').run(okres.id, id);
-    db.prepare("UPDATE okresy_rozliczeniowe SET infakt_uuid = 'U-OKRES-STARY', numer = 'FZ/1/10/2026', stan = 'zafakturowany' WHERE id = ?")
-      .run(okres.id);
+    db.prepare(
+      "UPDATE okresy_rozliczeniowe SET infakt_uuid = 'U-OKRES-STARY', numer = 'FZ/1/10/2026', stan = 'zafakturowany' WHERE id = ?",
+    ).run(okres.id);
 
     const r = await karta(app, id);
     expect(r.statusCode).toBe(200);

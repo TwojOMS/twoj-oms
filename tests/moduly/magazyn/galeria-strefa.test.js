@@ -6,10 +6,18 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
 // Formularz wgrywania zdjęć karty = strefa przeciągania wokół pola `multiple`.
-const auth = { authorization: `Basic ${Buffer.from('operator:atrapa').toString('base64')}`, origin: 'http://localhost' };
+const auth = {
+  authorization: `Basic ${Buffer.from('operator:atrapa').toString('base64')}`,
+  origin: 'http://localhost',
+};
 let db, app, katalog;
-const dodaj = (kolejnosc) => db.prepare(`INSERT INTO zdjecia_kart (karta_id, kolejnosc, zrodlo, adres_zrodlowy, utworzono_at)
-  VALUES (1000, ?, 'reczne', ?, '2026-11-13')`).run(kolejnosc, `https://obrazy.example/${kolejnosc}.png`);
+const dodaj = (kolejnosc) =>
+  db
+    .prepare(
+      `INSERT INTO zdjecia_kart (karta_id, kolejnosc, zrodlo, adres_zrodlowy, utworzono_at)
+  VALUES (1000, ?, 'reczne', ?, '2026-11-13')`,
+    )
+    .run(kolejnosc, `https://obrazy.example/${kolejnosc}.png`);
 const formularz = async () => {
   const r = await app.inject({ url: '/magazyn/1000', headers: auth });
   expect(r.statusCode).toBe(200);
@@ -19,10 +27,21 @@ const formularz = async () => {
 beforeEach(async () => {
   katalog = await mkdtemp(join(tmpdir(), 'galeria-strefa-'));
   db = openOmsDb(':memory:');
-  app = buildOmsServer({ db, config: { auth: { user: 'operator', pass: 'atrapa' } }, magazyn: {}, env: { OMS_KATALOG_ZDJEC: katalog } });
-  db.prepare(`INSERT INTO karty_produktow (id,nazwa,utworzony_at,zmieniony_at) VALUES (1000, 'Lampa testowa', '2026-11-13', '2026-11-13')`).run();
+  app = buildOmsServer({
+    db,
+    config: { auth: { user: 'operator', pass: 'atrapa' } },
+    magazyn: {},
+    env: { OMS_KATALOG_ZDJEC: katalog },
+  });
+  db.prepare(
+    `INSERT INTO karty_produktow (id,nazwa,utworzony_at,zmieniony_at) VALUES (1000, 'Lampa testowa', '2026-11-13', '2026-11-13')`,
+  ).run();
 });
-afterEach(async () => { await app?.close(); db?.close(); await rm(katalog, { recursive: true, force: true }); });
+afterEach(async () => {
+  await app?.close();
+  db?.close();
+  await rm(katalog, { recursive: true, force: true });
+});
 
 it('strefa wokół pola multiple, napis z wolnym miejscem, przycisk główny, skrypt z wersją', async () => {
   for (const k of [0, 1, 2]) dodaj(k);
@@ -32,7 +51,9 @@ it('strefa wokół pola multiple, napis z wolnym miejscem, przycisk główny, sk
   expect(form).toMatch(/accept="image\/jpeg,image\/png,image\/webp"/);
   expect(form).toContain('Przeciągnij zdjęcia tutaj albo wybierz z dysku');
   expect(form).toContain('JPEG, PNG lub WebP, do 10 MB każde. Zostało miejsca na 17 z 20.');
-  expect(form).toMatch(/<button class="btn btn--glowny" type="submit"[^>]*data-strefa-przycisk[^>]*>Wgraj zdjęcia<\/button>/);
+  expect(form).toMatch(
+    /<button class="btn btn--glowny" type="submit"[^>]*data-strefa-przycisk[^>]*>Wgraj zdjęcia<\/button>/,
+  );
   expect(form).toMatch(/aria-live="polite"/);
   // przełącznik AI bez zmian
   expect(form).toContain('<input type="checkbox" id="zdjecie-karty-ai" name="ai" value="1"');

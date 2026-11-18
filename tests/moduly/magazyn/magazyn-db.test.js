@@ -1,17 +1,33 @@
 import { describe, it, expect } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import {
-  zapiszProduktSklepowy, oznaczZnikniete, liczZyweProdukty, utworzKarte, zapiszKarte,
-  powiazProdukt, kartyZKanalami, niepowiazaneProdukty,
-  zliczeniaBrakow, zliczeniaNiepowiazanych, SORTOWANIE_KART,
+  zapiszProduktSklepowy,
+  oznaczZnikniete,
+  liczZyweProdukty,
+  utworzKarte,
+  zapiszKarte,
+  powiazProdukt,
+  kartyZKanalami,
+  niepowiazaneProdukty,
+  zliczeniaBrakow,
+  zliczeniaNiepowiazanych,
+  SORTOWANIE_KART,
 } from '../../../src/oms/db/magazyn.js';
 
 const P = (nad = {}) => ({
-  kanal: 'pro', produkt_id: '944', wariant_id: '1091', nazwa: 'Plafon 70x100',
-  sku_sklepu: 'LMP-PLA-118', cena_gr: 7490, kategorie_json: '["Oświetlenie"]',
-  zdjecia_json: '["https://pro.sklep-polcien.example.invalid/x.png","https://pro.sklep-polcien.example.invalid/x-2.png"]',
+  kanal: 'pro',
+  produkt_id: '944',
+  wariant_id: '1091',
+  nazwa: 'Plafon 70x100',
+  sku_sklepu: 'LMP-PLA-118',
+  cena_gr: 7490,
+  kategorie_json: '["Oświetlenie"]',
+  zdjecia_json:
+    '["https://pro.sklep-polcien.example.invalid/x.png","https://pro.sklep-polcien.example.invalid/x-2.png"]',
   adres: 'https://pro.sklep-polcien.example.invalid/p/plafon',
-  rozmiar_tekst: '70 x 100 cm', odczytane_at: '2026-08-06T10:00:00Z', ...nad,
+  rozmiar_tekst: '70 x 100 cm',
+  odczytane_at: '2026-08-06T10:00:00Z',
+  ...nad,
 });
 
 describe('zapiszProduktSklepowy — upsert, nie insert', () => {
@@ -63,13 +79,17 @@ describe('zapiszProduktSklepowy — upsert, nie insert', () => {
 
   it('zapisuje lustro kategorii głównej sklepu, opisu i stanu publikacji', () => {
     const db = openOmsDb(':memory:');
-    zapiszProduktSklepowy(db, P({
-      kategoria_glowna_zrodla: 'Modern Organic',
-      opis_zrodlowy: '<p>Lampa z lnianym abażurem</p>',
-      status_publikacji: 'ACTIVE',
-    }));
-    const w = db.prepare('SELECT kategoria_glowna_zrodla, opis_zrodlowy, status_publikacji'
-      + ' FROM produkty_sklepowe').get();
+    zapiszProduktSklepowy(
+      db,
+      P({
+        kategoria_glowna_zrodla: 'Modern Organic',
+        opis_zrodlowy: '<p>Lampa z lnianym abażurem</p>',
+        status_publikacji: 'ACTIVE',
+      }),
+    );
+    const w = db
+      .prepare('SELECT kategoria_glowna_zrodla, opis_zrodlowy, status_publikacji' + ' FROM produkty_sklepowe')
+      .get();
     expect(w).toEqual({
       kategoria_glowna_zrodla: 'Modern Organic',
       opis_zrodlowy: '<p>Lampa z lnianym abażurem</p>',
@@ -92,8 +112,7 @@ describe('oznaczZnikniete', () => {
     const ile = oznaczZnikniete(db, 'pro', '2026-08-07T10:00:00Z');
     expect(ile).toBe(1);
     expect(db.prepare('SELECT COUNT(*) c FROM produkty_sklepowe').get().c).toBe(2);
-    expect(db.prepare("SELECT zniknal_at FROM produkty_sklepowe WHERE produkt_id='1'").get().zniknal_at)
-      .toBeTruthy();
+    expect(db.prepare("SELECT zniknal_at FROM produkty_sklepowe WHERE produkt_id='1'").get().zniknal_at).toBeTruthy();
   });
 
   it('produkt zobaczony ponownie przestaje być zniknięty', () => {
@@ -101,8 +120,7 @@ describe('oznaczZnikniete', () => {
     zapiszProduktSklepowy(db, P({ produkt_id: '1', wariant_id: '' }));
     oznaczZnikniete(db, 'pro', '2026-08-07T10:00:00Z');
     zapiszProduktSklepowy(db, P({ produkt_id: '1', wariant_id: '', odczytane_at: '2026-08-08T10:00:00Z' }));
-    expect(db.prepare("SELECT zniknal_at FROM produkty_sklepowe WHERE produkt_id='1'").get().zniknal_at)
-      .toBe(null);
+    expect(db.prepare("SELECT zniknal_at FROM produkty_sklepowe WHERE produkt_id='1'").get().zniknal_at).toBe(null);
   });
 
   it('nie dotyka innego kanału', () => {
@@ -127,8 +145,9 @@ describe('oznaczZnikniete', () => {
     zapiszProduktSklepowy(db, P({ produkt_id: '1', wariant_id: '' }));
     oznaczZnikniete(db, 'pro', '2026-08-07T10:00:00Z');
     expect(oznaczZnikniete(db, 'pro', '2026-08-08T10:00:00Z')).toBe(0);
-    expect(db.prepare("SELECT zniknal_at FROM produkty_sklepowe WHERE produkt_id='1'").get().zniknal_at)
-      .toBe('2026-08-07T10:00:00Z');
+    expect(db.prepare("SELECT zniknal_at FROM produkty_sklepowe WHERE produkt_id='1'").get().zniknal_at).toBe(
+      '2026-08-07T10:00:00Z',
+    );
   });
 });
 
@@ -163,8 +182,13 @@ describe('utworzKarte / zapiszKarte', () => {
   it('zakłada karta i oddaje jego id', () => {
     const db = openOmsDb(':memory:');
     const id = utworzKarte(db, {
-      nazwa: 'Szpulka', sku: 'PLC-LAMPY-001', szerokosc_mm: 700, wysokosc_mm: 1000,
-      kategoria_glowna: 'Oświetlenie', paczkomat: 'nie', opis: 'Lampa',
+      nazwa: 'Szpulka',
+      sku: 'PLC-LAMPY-001',
+      szerokosc_mm: 700,
+      wysokosc_mm: 1000,
+      kategoria_glowna: 'Oświetlenie',
+      paczkomat: 'nie',
+      opis: 'Lampa',
     });
     const w = db.prepare('SELECT * FROM karty_produktow WHERE id=?').get(id);
     expect(w.nazwa).toBe('Szpulka');
@@ -218,8 +242,9 @@ describe('utworzKarte / zapiszKarte', () => {
     const db = openOmsDb(':memory:');
     const id = utworzKarte(db, { nazwa: 'Szpulka' }, { at: '2026-08-06T10:00:00Z' });
     zapiszKarte(db, id, {}, { at: '2026-08-09T10:00:00Z' });
-    expect(db.prepare('SELECT zmieniony_at FROM karty_produktow WHERE id=?').get(id).zmieniony_at)
-      .toBe('2026-08-06T10:00:00Z');
+    expect(db.prepare('SELECT zmieniony_at FROM karty_produktow WHERE id=?').get(id).zmieniony_at).toBe(
+      '2026-08-06T10:00:00Z',
+    );
   });
 });
 
@@ -248,8 +273,11 @@ describe('kartyZKanalami — jeden wiersz, ceny z kanałów', () => {
     const db = openOmsDb(':memory:');
     const w = utworzKarte(db, { nazwa: 'Szpulka 70x100', szerokosc_mm: 700, wysokosc_mm: 1000 });
     powiazProdukt(db, zapiszProduktSklepowy(db, P({ kanal: 'pro', cena_gr: 7490 })), w);
-    powiazProdukt(db, zapiszProduktSklepowy(db,
-      P({ kanal: 'allegro_swietlik', produkt_id: '76251', wariant_id: '', cena_gr: 8900 })), w);
+    powiazProdukt(
+      db,
+      zapiszProduktSklepowy(db, P({ kanal: 'allegro_swietlik', produkt_id: '76251', wariant_id: '', cena_gr: 8900 })),
+      w,
+    );
     const [wiersz] = kartyZKanalami(db, {});
     expect(wiersz.kanaly.pro.cena_gr).toBe(7490);
     expect(wiersz.kanaly.allegro_swietlik.cena_gr).toBe(8900);
@@ -291,8 +319,7 @@ describe('kartyZKanalami — jeden wiersz, ceny z kanałów', () => {
     const db = openOmsDb(':memory:');
     utworzKarte(db, { nazwa: 'A', wysokosc_mm: 1500 });
     utworzKarte(db, { nazwa: 'B', wysokosc_mm: 1000 });
-    expect(kartyZKanalami(db, { sort: 'wysokosc', kier: 'desc' }).map((x) => x.nazwa))
-      .toEqual(['A', 'B']);
+    expect(kartyZKanalami(db, { sort: 'wysokosc', kier: 'desc' }).map((x) => x.nazwa)).toEqual(['A', 'B']);
   });
 
   it('domyślnie sortuje po nazwie, bez względu na kolejność zakładania', () => {
@@ -312,8 +339,10 @@ describe('kartyZKanalami — jeden wiersz, ceny z kanałów', () => {
     expect(n).toEqual(['A', 'B']);
     expect(db.prepare('SELECT COUNT(*) c FROM karty_produktow').get().c).toBe(2);
     // ...i to samo dla kierunku, który też jest tekstem z adresu.
-    expect(kartyZKanalami(db, { sort: 'nazwa', kier: 'asc; DROP TABLE karty_produktow' }).map((x) => x.nazwa))
-      .toEqual(['A', 'B']);
+    expect(kartyZKanalami(db, { sort: 'nazwa', kier: 'asc; DROP TABLE karty_produktow' }).map((x) => x.nazwa)).toEqual([
+      'A',
+      'B',
+    ]);
     expect(db.prepare('SELECT COUNT(*) c FROM karty_produktow').get().c).toBe(2);
   });
 
@@ -328,8 +357,7 @@ describe('kartyZKanalami — jeden wiersz, ceny z kanałów', () => {
     utworzKarte(db, { nazwa: 'B' });
     utworzKarte(db, { nazwa: 'A' });
     for (const zla of ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueOf']) {
-      expect(kartyZKanalami(db, { sort: zla, kier: 'asc' }).map((x) => x.nazwa))
-        .toEqual(['A', 'B']);
+      expect(kartyZKanalami(db, { sort: zla, kier: 'asc' }).map((x) => x.nazwa)).toEqual(['A', 'B']);
     }
   });
 
@@ -339,10 +367,8 @@ describe('kartyZKanalami — jeden wiersz, ceny z kanałów', () => {
     const db = openOmsDb(':memory:');
     utworzKarte(db, { nazwa: 'ZeSku', sku: 'PLC-1' });
     utworzKarte(db, { nazwa: 'BezSku' });
-    expect(kartyZKanalami(db, { sort: 'sku', kier: 'asc' }).map((x) => x.nazwa))
-      .toEqual(['ZeSku', 'BezSku']);
-    expect(kartyZKanalami(db, { sort: 'sku', kier: 'desc' }).map((x) => x.nazwa))
-      .toEqual(['ZeSku', 'BezSku']);
+    expect(kartyZKanalami(db, { sort: 'sku', kier: 'asc' }).map((x) => x.nazwa)).toEqual(['ZeSku', 'BezSku']);
+    expect(kartyZKanalami(db, { sort: 'sku', kier: 'desc' }).map((x) => x.nazwa)).toEqual(['ZeSku', 'BezSku']);
   });
 
   it('fraza szuka po nazwie i po SKU', () => {
@@ -384,10 +410,8 @@ describe('kartyZKanalami — jeden wiersz, ceny z kanałów', () => {
     utworzKarte(db, { nazwa: 'Komplet', kategoria_glowna: 'Oświetlenie', paczkomat: 'nie' });
     utworzKarte(db, { nazwa: 'BezKategorii', paczkomat: 'tak' });
     utworzKarte(db, { nazwa: 'BezPaczkomatu', kategoria_glowna: 'Boho' });
-    expect(kartyZKanalami(db, { filtry: { brak: 'kategoria' } }).map((x) => x.nazwa))
-      .toEqual(['BezKategorii']);
-    expect(kartyZKanalami(db, { filtry: { brak: 'paczkomat' } }).map((x) => x.nazwa))
-      .toEqual(['BezPaczkomatu']);
+    expect(kartyZKanalami(db, { filtry: { brak: 'kategoria' } }).map((x) => x.nazwa)).toEqual(['BezKategorii']);
+    expect(kartyZKanalami(db, { filtry: { brak: 'paczkomat' } }).map((x) => x.nazwa)).toEqual(['BezPaczkomatu']);
   });
 
   it('połowiczne wymiary to nadal brak wymiarów', () => {
@@ -410,8 +434,7 @@ describe('kartyZKanalami — jeden wiersz, ceny z kanałów', () => {
     const a = utworzKarte(db, { nazwa: 'TylkoPro' });
     const b = utworzKarte(db, { nazwa: 'TylkoSwietlik' });
     powiazProdukt(db, zapiszProduktSklepowy(db, P({ kanal: 'pro' })), a);
-    powiazProdukt(db, zapiszProduktSklepowy(db,
-      P({ kanal: 'swietlik', produkt_id: '5', wariant_id: '' })), b);
+    powiazProdukt(db, zapiszProduktSklepowy(db, P({ kanal: 'swietlik', produkt_id: '5', wariant_id: '' })), b);
     expect(kartyZKanalami(db, { filtry: { kanal: 'pro' } }).map((x) => x.nazwa)).toEqual(['TylkoPro']);
   });
 
@@ -427,8 +450,11 @@ describe('kartyZKanalami — jeden wiersz, ceny z kanałów', () => {
     const db = openOmsDb(':memory:');
     const w = utworzKarte(db, { nazwa: 'Dwukanalowy' });
     powiazProdukt(db, zapiszProduktSklepowy(db, P({ kanal: 'pro', cena_gr: 7490 })), w);
-    powiazProdukt(db, zapiszProduktSklepowy(db,
-      P({ kanal: 'swietlik', produkt_id: '2', wariant_id: '', cena_gr: 5000 })), w);
+    powiazProdukt(
+      db,
+      zapiszProduktSklepowy(db, P({ kanal: 'swietlik', produkt_id: '2', wariant_id: '', cena_gr: 5000 })),
+      w,
+    );
     const wiersze = kartyZKanalami(db, { filtry: { kanal: 'pro' } });
     expect(wiersze.map((x) => x.nazwa)).toEqual(['Dwukanalowy']);
     expect(wiersze[0].kanaly.pro.cena_gr).toBe(7490);
@@ -441,14 +467,23 @@ describe('kartyZKanalami — jeden wiersz, ceny z kanałów', () => {
   it('filtr kategorii łapie kategorię czwartą z siedmiu, nie tylko główną', () => {
     const db = openOmsDb(':memory:');
     const w = utworzKarte(db, { nazwa: 'Hop', kategoria_glowna: 'Modern Organic' });
-    powiazProdukt(db, zapiszProduktSklepowy(db, P({
-      kategorie_json: '["Boho","Farmhouse","Minimalistyczne","Aplikacje","Na ściany","Modern Organic","Rośliny"]',
-    })), w);
+    powiazProdukt(
+      db,
+      zapiszProduktSklepowy(
+        db,
+        P({
+          kategorie_json: '["Boho","Farmhouse","Minimalistyczne","Aplikacje","Na ściany","Modern Organic","Rośliny"]',
+        }),
+      ),
+      w,
+    );
     const inny = utworzKarte(db, { nazwa: 'Inny' });
-    powiazProdukt(db, zapiszProduktSklepowy(db,
-      P({ produkt_id: '2', wariant_id: '', kategorie_json: '["Boho"]' })), inny);
-    expect(kartyZKanalami(db, { filtry: { kategoria: 'Aplikacje' } }).map((x) => x.nazwa))
-      .toEqual(['Hop']);
+    powiazProdukt(
+      db,
+      zapiszProduktSklepowy(db, P({ produkt_id: '2', wariant_id: '', kategorie_json: '["Boho"]' })),
+      inny,
+    );
+    expect(kartyZKanalami(db, { filtry: { kategoria: 'Aplikacje' } }).map((x) => x.nazwa)).toEqual(['Hop']);
   });
 
   it('kategoria dopasowuje się w całości, a nie kawałkiem nazwy', () => {
@@ -464,11 +499,17 @@ describe('kartyZKanalami — jeden wiersz, ceny z kanałów', () => {
     const db = openOmsDb(':memory:');
     const w = utworzKarte(db, { nazwa: 'Hop' });
     powiazProdukt(db, zapiszProduktSklepowy(db, P({ kategorie_json: null })), w);
-    powiazProdukt(db, zapiszProduktSklepowy(db,
-      P({ produkt_id: '2', wariant_id: '', kategorie_json: 'to nie jest JSON' })), w);
+    powiazProdukt(
+      db,
+      zapiszProduktSklepowy(db, P({ produkt_id: '2', wariant_id: '', kategorie_json: 'to nie jest JSON' })),
+      w,
+    );
     const dobry = utworzKarte(db, { nazwa: 'Dobry' });
-    powiazProdukt(db, zapiszProduktSklepowy(db,
-      P({ produkt_id: '3', wariant_id: '', kategorie_json: '["Boho"]' })), dobry);
+    powiazProdukt(
+      db,
+      zapiszProduktSklepowy(db, P({ produkt_id: '3', wariant_id: '', kategorie_json: '["Boho"]' })),
+      dobry,
+    );
     expect(kartyZKanalami(db, { filtry: { kategoria: 'Boho' } }).map((x) => x.nazwa)).toEqual(['Dobry']);
   });
 
@@ -483,8 +524,7 @@ describe('kartyZKanalami — jeden wiersz, ceny z kanałów', () => {
   it('karta z ustawioną kategorią główną, ale bez powiązanego produktu, znajduje się przy filtrze po tej kategorii', () => {
     const db = openOmsDb(':memory:');
     utworzKarte(db, { nazwa: 'BezProduktu', kategoria_glowna: 'Aplikacje' });
-    expect(kartyZKanalami(db, { filtry: { kategoria: 'Aplikacje' } }).map((x) => x.nazwa))
-      .toEqual(['BezProduktu']);
+    expect(kartyZKanalami(db, { filtry: { kategoria: 'Aplikacje' } }).map((x) => x.nazwa)).toEqual(['BezProduktu']);
   });
 
   it('karta, której ani kategoria główna, ani kategorie produktu nie zawierają frazy, nie wchodzi do wyniku', () => {
@@ -499,12 +539,16 @@ describe('kartyZKanalami — jeden wiersz, ceny z kanałów', () => {
   it('karta z kilkoma produktami mającymi tę samą kategorię wychodzi raz, nie dwa razy', () => {
     const db = openOmsDb(':memory:');
     const w = utworzKarte(db, { nazwa: 'Podwojny' });
-    powiazProdukt(db, zapiszProduktSklepowy(db,
-      P({ kanal: 'pro', kategorie_json: '["Aplikacje"]' })), w);
-    powiazProdukt(db, zapiszProduktSklepowy(db,
-      P({ kanal: 'swietlik', produkt_id: '2', wariant_id: '', kategorie_json: '["Aplikacje"]' })), w);
-    expect(kartyZKanalami(db, { filtry: { kategoria: 'Aplikacje' } }).map((x) => x.nazwa))
-      .toEqual(['Podwojny']);
+    powiazProdukt(db, zapiszProduktSklepowy(db, P({ kanal: 'pro', kategorie_json: '["Aplikacje"]' })), w);
+    powiazProdukt(
+      db,
+      zapiszProduktSklepowy(
+        db,
+        P({ kanal: 'swietlik', produkt_id: '2', wariant_id: '', kategorie_json: '["Aplikacje"]' }),
+      ),
+      w,
+    );
+    expect(kartyZKanalami(db, { filtry: { kategoria: 'Aplikacje' } }).map((x) => x.nazwa)).toEqual(['Podwojny']);
   });
 
   it('filtr paczkomatu ma trzy stany, a nieoznaczone to nie to samo co „nie"', () => {
@@ -514,8 +558,7 @@ describe('kartyZKanalami — jeden wiersz, ceny z kanałów', () => {
     utworzKarte(db, { nazwa: 'Nieoznaczony' });
     expect(kartyZKanalami(db, { filtry: { paczkomat: 'tak' } }).map((x) => x.nazwa)).toEqual(['Tak']);
     expect(kartyZKanalami(db, { filtry: { paczkomat: 'nie' } }).map((x) => x.nazwa)).toEqual(['Nie']);
-    expect(kartyZKanalami(db, { filtry: { paczkomat: 'nieoznaczone' } }).map((x) => x.nazwa))
-      .toEqual(['Nieoznaczony']);
+    expect(kartyZKanalami(db, { filtry: { paczkomat: 'nieoznaczone' } }).map((x) => x.nazwa)).toEqual(['Nieoznaczony']);
   });
 
   it('filtr ceny bierze zakres w groszach', () => {
@@ -541,14 +584,17 @@ describe('kartyZKanalami — jeden wiersz, ceny z kanałów', () => {
     const zCena = utworzKarte(db, { nazwa: 'Z ceną' });
     const bezCeny = utworzKarte(db, { nazwa: 'Bez ceny' });
     powiazProdukt(db, zapiszProduktSklepowy(db, P({ cena_gr: 5000 })), zCena);
-    powiazProdukt(db, zapiszProduktSklepowy(db,
-      P({ produkt_id: '2', wariant_id: '', cena_gr: null })), bezCeny);
+    powiazProdukt(db, zapiszProduktSklepowy(db, P({ produkt_id: '2', wariant_id: '', cena_gr: null })), bezCeny);
 
     expect(kartyZKanalami(db, { filtry: { cenaDo: 20000 } }).map((x) => x.nazwa)).toEqual(['Z ceną']);
     expect(kartyZKanalami(db, { filtry: { cenaOd: 1 } }).map((x) => x.nazwa)).toEqual(['Z ceną']);
     // ...ale bez filtru ceny karta jest widoczny normalnie: brak ceny nie wyklucza go
     // z magazynu, tylko z ZAWĘŻENIA po cenie.
-    expect(kartyZKanalami(db, {}).map((x) => x.nazwa).sort()).toEqual(['Bez ceny', 'Z ceną']);
+    expect(
+      kartyZKanalami(db, {})
+        .map((x) => x.nazwa)
+        .sort(),
+    ).toEqual(['Bez ceny', 'Z ceną']);
   });
 
   // Zakres ceny i kanał opisują TEN SAM produkt — inaczej „PRO od 100 zł" pokazywałoby karta,
@@ -557,11 +603,15 @@ describe('kartyZKanalami — jeden wiersz, ceny z kanałów', () => {
     const db = openOmsDb(':memory:');
     const w = utworzKarte(db, { nazwa: 'Mieszana' });
     powiazProdukt(db, zapiszProduktSklepowy(db, P({ kanal: 'pro', cena_gr: 2000 })), w);
-    powiazProdukt(db, zapiszProduktSklepowy(db,
-      P({ kanal: 'allegro_swietlik', produkt_id: '2', wariant_id: '', cena_gr: 20000 })), w);
+    powiazProdukt(
+      db,
+      zapiszProduktSklepowy(db, P({ kanal: 'allegro_swietlik', produkt_id: '2', wariant_id: '', cena_gr: 20000 })),
+      w,
+    );
     expect(kartyZKanalami(db, { filtry: { kanal: 'pro', cenaOd: 10000 } })).toEqual([]);
-    expect(kartyZKanalami(db, { filtry: { kanal: 'allegro_swietlik', cenaOd: 10000 } })
-      .map((x) => x.nazwa)).toEqual(['Mieszana']);
+    expect(kartyZKanalami(db, { filtry: { kanal: 'allegro_swietlik', cenaOd: 10000 } }).map((x) => x.nazwa)).toEqual([
+      'Mieszana',
+    ]);
   });
 
   it('filtry łączą się z frazą, a nie kasują jej', () => {
@@ -570,10 +620,8 @@ describe('kartyZKanalami — jeden wiersz, ceny z kanałów', () => {
     const b = utworzKarte(db, { nazwa: 'Szpulka inny' });
     utworzKarte(db, { nazwa: 'Plecionka' });
     powiazProdukt(db, zapiszProduktSklepowy(db, P({ kanal: 'pro' })), a);
-    powiazProdukt(db, zapiszProduktSklepowy(db,
-      P({ kanal: 'swietlik', produkt_id: '2', wariant_id: '' })), b);
-    expect(kartyZKanalami(db, { fraza: 'szpulka', filtry: { kanal: 'pro' } }).map((x) => x.nazwa))
-      .toEqual(['Szpulka']);
+    powiazProdukt(db, zapiszProduktSklepowy(db, P({ kanal: 'swietlik', produkt_id: '2', wariant_id: '' })), b);
+    expect(kartyZKanalami(db, { fraza: 'szpulka', filtry: { kanal: 'pro' } }).map((x) => x.nazwa)).toEqual(['Szpulka']);
   });
 
   // ⚠️ Cena zniknietego produktu twierdziłaby, że karta jest w tym kanale do kupienia.
@@ -634,9 +682,18 @@ describe('niepowiazaneProdukty', () => {
 function bazaZLicznikiem(db) {
   const licznik = { zapytania: 0 };
   const opakuj = (st) => ({
-    all: (...a) => { licznik.zapytania += 1; return st.all(...a); },
-    get: (...a) => { licznik.zapytania += 1; return st.get(...a); },
-    run: (...a) => { licznik.zapytania += 1; return st.run(...a); },
+    all: (...a) => {
+      licznik.zapytania += 1;
+      return st.all(...a);
+    },
+    get: (...a) => {
+      licznik.zapytania += 1;
+      return st.get(...a);
+    },
+    run: (...a) => {
+      licznik.zapytania += 1;
+      return st.run(...a);
+    },
   });
   return [{ prepare: (sql) => opakuj(db.prepare(sql)) }, licznik];
 }
@@ -647,10 +704,17 @@ describe('kartyZKanalami — koszt renderu listy', () => {
     const zbuduj = (ile) => {
       for (let i = 0; i < ile; i += 1) {
         const w = utworzKarte(db, { nazwa: `Karta ${i}` });
-        powiazProdukt(db, zapiszProduktSklepowy(db, P({
-          produkt_id: `${db.prepare('SELECT COUNT(*) c FROM produkty_sklepowe').get().c}`,
-          wariant_id: '',
-        })), w);
+        powiazProdukt(
+          db,
+          zapiszProduktSklepowy(
+            db,
+            P({
+              produkt_id: `${db.prepare('SELECT COUNT(*) c FROM produkty_sklepowe').get().c}`,
+              wariant_id: '',
+            }),
+          ),
+          w,
+        );
       }
     };
 
@@ -677,9 +741,18 @@ describe('kartyZKanalami — koszt renderu listy', () => {
         wysokosc_mm: 1000 + i,
         kategoria_glowna: 'Oświetlenie',
       });
-      powiazProdukt(db, zapiszProduktSklepowy(db, P({
-        produkt_id: String(i), wariant_id: '', cena_gr: 1000 + i,
-      })), w);
+      powiazProdukt(
+        db,
+        zapiszProduktSklepowy(
+          db,
+          P({
+            produkt_id: String(i),
+            wariant_id: '',
+            cena_gr: 1000 + i,
+          }),
+        ),
+        w,
+      );
     }
     db.exec('COMMIT');
 
@@ -706,9 +779,11 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
       db.prepare('UPDATE karty_produktow SET opis_sekcje_json = ? WHERE id = ?').run(opis, id);
     }
     if (brak !== 'zdjecie') {
-      db.prepare(`INSERT INTO zdjecia_kart
+      db.prepare(
+        `INSERT INTO zdjecia_kart
         (karta_id, kolejnosc, zrodlo, adres_zrodlowy, utworzono_at)
-        VALUES (?, 0, 'reczne', 'https://example.org/karta.png', '2026-11-13')`).run(id);
+        VALUES (?, 0, 'reczne', 'https://example.org/karta.png', '2026-11-13')`,
+      ).run(id);
     }
   }
 
@@ -719,17 +794,24 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
   // sześć rodzajów danych wypełnionych, dziurawy ani jednego.
   function paraKart(db) {
     const kompletny = utworzKarte(db, {
-      nazwa: 'Kompletny', sku: 'PLC-X-001', szerokosc_mm: 700, wysokosc_mm: 1000,
-      kategoria_glowna: 'Na ściany', paczkomat: 'nie',
+      nazwa: 'Kompletny',
+      sku: 'PLC-X-001',
+      szerokosc_mm: 700,
+      wysokosc_mm: 1000,
+      kategoria_glowna: 'Na ściany',
+      paczkomat: 'nie',
     });
     const dziurawy = utworzKarte(db, { nazwa: 'Dziurawy' });
     uzupelnijTresc(db, kompletny);
 
-    const stan = (id) => db.prepare(
-      `SELECT sku, szerokosc_mm, wysokosc_mm, kategoria_glowna, paczkomat, opis_sekcje_json,
+    const stan = (id) =>
+      db
+        .prepare(
+          `SELECT sku, szerokosc_mm, wysokosc_mm, kategoria_glowna, paczkomat, opis_sekcje_json,
         (SELECT COUNT(*) FROM zdjecia_kart z WHERE z.karta_id = k.id) AS zdjecia
         FROM karty_produktow k WHERE id = ?`,
-    ).get(id);
+        )
+        .get(id);
     expect(stan(kompletny), 'kompletny ma NAPRAWDĘ komplet pól').toEqual({
       sku: 'PLC-X-001',
       szerokosc_mm: 700,
@@ -740,8 +822,13 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
       zdjecia: 1,
     });
     expect(stan(dziurawy), 'dziurawy NAPRAWDĘ nie ma żadnego z sześciu').toEqual({
-      sku: null, szerokosc_mm: null, wysokosc_mm: null, kategoria_glowna: null, paczkomat: null,
-      opis_sekcje_json: null, zdjecia: 0,
+      sku: null,
+      szerokosc_mm: null,
+      wysokosc_mm: null,
+      kategoria_glowna: null,
+      paczkomat: null,
+      opis_sekcje_json: null,
+      zdjecia: 0,
     });
     return { kompletny, dziurawy };
   }
@@ -760,7 +847,11 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
   it('połowiczny wymiar to nadal brak wymiaru', () => {
     const db = openOmsDb(':memory:');
     const id = utworzKarte(db, {
-      nazwa: 'Połowa', sku: 'S', szerokosc_mm: 700, kategoria_glowna: 'X', paczkomat: 'tak',
+      nazwa: 'Połowa',
+      sku: 'S',
+      szerokosc_mm: 700,
+      kategoria_glowna: 'X',
+      paczkomat: 'tak',
     });
     uzupelnijTresc(db, id);
     expect(kartyZKanalami(db, {})[0].liczba_brakow).toBe(1);
@@ -773,14 +864,17 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
   it('SKU z samych spacji to nadal brak, nie komplet', () => {
     const db = openOmsDb(':memory:');
     const id = utworzKarte(db, {
-      nazwa: 'SamaSpacja', sku: '   ', szerokosc_mm: 700, wysokosc_mm: 1000,
-      kategoria_glowna: 'X', paczkomat: 'tak',
+      nazwa: 'SamaSpacja',
+      sku: '   ',
+      szerokosc_mm: 700,
+      wysokosc_mm: 1000,
+      kategoria_glowna: 'X',
+      paczkomat: 'tak',
     });
     uzupelnijTresc(db, id);
 
     expect(kartyZKanalami(db, {})[0].liczba_brakow).toBe(1);
-    expect(kartyZKanalami(db, { filtry: { brak: 'sku' } }).map((w) => w.nazwa))
-      .toEqual(['SamaSpacja']);
+    expect(kartyZKanalami(db, { filtry: { brak: 'sku' } }).map((w) => w.nazwa)).toEqual(['SamaSpacja']);
     expect(kartyZKanalami(db, { filtry: { brak: 'komplet' } })).toEqual([]);
     expect(zliczeniaBrakow(db)).toMatchObject({ bezSku: 1, komplet: 0 });
   });
@@ -795,10 +889,8 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
   it('sort=braki desc ustawia największe braki na czele (kolejka roboty)', () => {
     const db = openOmsDb(':memory:');
     paraKart(db);
-    expect(kartyZKanalami(db, { sort: 'braki', kier: 'desc' }).map((w) => w.nazwa))
-      .toEqual(['Dziurawy', 'Kompletny']);
-    expect(kartyZKanalami(db, { sort: 'braki', kier: 'asc' }).map((w) => w.nazwa))
-      .toEqual(['Kompletny', 'Dziurawy']);
+    expect(kartyZKanalami(db, { sort: 'braki', kier: 'desc' }).map((w) => w.nazwa)).toEqual(['Dziurawy', 'Kompletny']);
+    expect(kartyZKanalami(db, { sort: 'braki', kier: 'asc' }).map((w) => w.nazwa)).toEqual(['Kompletny', 'Dziurawy']);
     // ⚠️ Nagłówek tabeli buduje odnośniki sortujące z TEJ listy. Klucz nieznany zapytaniu
     // wracałby po cichu do sortowania domyślnego, a kolumna dalej świeciłaby jako aktywna.
     expect(SORTOWANIE_KART).toContain('braki');
@@ -815,8 +907,12 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
   function katalogZliczen(db) {
     // `karty.sku` ma UNIQUE, więc każdy pełny karta dostaje własny numer.
     const pelny = (nazwa) => ({
-      nazwa, sku: `PLC-${nazwa}`, szerokosc_mm: 700, wysokosc_mm: 1000,
-      kategoria_glowna: 'Boho', paczkomat: 'nie',
+      nazwa,
+      sku: `PLC-${nazwa}`,
+      szerokosc_mm: 700,
+      wysokosc_mm: 1000,
+      kategoria_glowna: 'Boho',
+      paczkomat: 'nie',
     });
     const dziura = {
       sku: { sku: null },
@@ -840,30 +936,47 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
     // Numeru nie wymyślamy — bierzemy go ze sklepu (domain/przejecie-sku.js). Dostają go
     // DWA z czterech kart bez SKU, żeby „do przejęcia" nie mogło być kopią „bez SKU".
     bezSku.slice(0, DO_PRZEJECIA).forEach((kartaId, i) => {
-      powiazProdukt(db, zapiszProduktSklepowy(db, {
-        kanal: 'swietlik', produkt_id: `90${i}`, nazwa: `Zrodlo ${i}`, sku_sklepu: `PD1${i}`,
-        cena_gr: 2900, odczytane_at: '2026-08-20T10:00:00Z',
-      }), kartaId);
+      powiazProdukt(
+        db,
+        zapiszProduktSklepowy(db, {
+          kanal: 'swietlik',
+          produkt_id: `90${i}`,
+          nazwa: `Zrodlo ${i}`,
+          sku_sklepu: `PD1${i}`,
+          cena_gr: 2900,
+          odczytane_at: '2026-08-20T10:00:00Z',
+        }),
+        kartaId,
+      );
     });
 
     // ⚠️ STRAŻNIK FIKSTURY, liczony WŁASNYM SQL-em — nie tym, o który pyta test. Gdyby
     // katalog nie zawierał tego, co test o nim mówi, wszystkie liczby niżej opisywałyby
     // co innego, niż głoszą ich nazwy.
     const licz = (warunek) => db.prepare(`SELECT COUNT(*) AS c FROM karty_produktow WHERE ${warunek}`).get().c;
-    expect({
-      razem: licz('1 = 1'),
-      bezSku: licz("sku IS NULL OR sku = ''"),
-      bezWymiarow: licz('szerokosc_mm IS NULL OR wysokosc_mm IS NULL'),
-      bezKategorii: licz("kategoria_glowna IS NULL OR kategoria_glowna = ''"),
-      bezPaczkomatu: licz('paczkomat IS NULL'),
-      bezZdjecia: licz('id NOT IN (SELECT karta_id FROM zdjecia_kart)'),
-      bezOpisu: licz('opis_sekcje_json IS NULL'),
-      zZrodlemNumeru: db.prepare(
-        "SELECT COUNT(*) AS c FROM produkty_sklepowe WHERE sku_sklepu != '' AND karta_id IS NOT NULL",
-      ).get().c,
-    }, 'katalog NAPRAWDĘ zawiera to, co test o nim mówi').toEqual({
-      razem: 34, bezSku: 4, bezWymiarow: 3, bezKategorii: 5, bezPaczkomatu: 6,
-      bezZdjecia: 7, bezOpisu: 8, zZrodlemNumeru: 2,
+    expect(
+      {
+        razem: licz('1 = 1'),
+        bezSku: licz("sku IS NULL OR sku = ''"),
+        bezWymiarow: licz('szerokosc_mm IS NULL OR wysokosc_mm IS NULL'),
+        bezKategorii: licz("kategoria_glowna IS NULL OR kategoria_glowna = ''"),
+        bezPaczkomatu: licz('paczkomat IS NULL'),
+        bezZdjecia: licz('id NOT IN (SELECT karta_id FROM zdjecia_kart)'),
+        bezOpisu: licz('opis_sekcje_json IS NULL'),
+        zZrodlemNumeru: db
+          .prepare("SELECT COUNT(*) AS c FROM produkty_sklepowe WHERE sku_sklepu != '' AND karta_id IS NOT NULL")
+          .get().c,
+      },
+      'katalog NAPRAWDĘ zawiera to, co test o nim mówi',
+    ).toEqual({
+      razem: 34,
+      bezSku: 4,
+      bezWymiarow: 3,
+      bezKategorii: 5,
+      bezPaczkomatu: 6,
+      bezZdjecia: 7,
+      bezOpisu: 8,
+      zZrodlemNumeru: 2,
     });
   }
 
@@ -874,8 +987,15 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
   it('zliczeniaBrakow na pustym katalogu oddaje ZERA, a nie null-e', () => {
     const db = openOmsDb(':memory:');
     expect(zliczeniaBrakow(db)).toEqual({
-      razem: 0, bezSku: 0, doPrzejecia: 0, bezWymiarow: 0, bezKategorii: 0, bezPaczkomatu: 0, komplet: 0,
-      bezZdjecia: 0, bezOpisu: 0,
+      razem: 0,
+      bezSku: 0,
+      doPrzejecia: 0,
+      bezWymiarow: 0,
+      bezKategorii: 0,
+      bezPaczkomatu: 0,
+      komplet: 0,
+      bezZdjecia: 0,
+      bezOpisu: 0,
     });
   });
 
@@ -901,23 +1021,36 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
   // niepowiązany z żadnym kartą. Bez nich kafel „do przejęcia" byłby kopią „bez SKU".
   it('do przejęcia liczy wyłącznie te, którym ŻYWY produkt ma co oddać', () => {
     const db = openOmsDb(':memory:');
-    const produkt = (nad) => zapiszProduktSklepowy(db, {
-      kanal: 'swietlik', cena_gr: 1000, odczytane_at: '2026-08-21T10:00:00Z', ...nad,
-    });
+    const produkt = (nad) =>
+      zapiszProduktSklepowy(db, {
+        kanal: 'swietlik',
+        cena_gr: 1000,
+        odczytane_at: '2026-08-21T10:00:00Z',
+        ...nad,
+      });
 
     // (1) produkt żywy i powiązany, ale sklep numeru nie ma — nie ma czego przejąć.
-    powiazProdukt(db, produkt({ produkt_id: '1', nazwa: 'Bez numeru', sku_sklepu: '' }),
-      utworzKarte(db, { nazwa: 'BezZrodla' }));
+    powiazProdukt(
+      db,
+      produkt({ produkt_id: '1', nazwa: 'Bez numeru', sku_sklepu: '' }),
+      utworzKarte(db, { nazwa: 'BezZrodla' }),
+    );
     // (2) numer jest i wisi na właściwym karcie, ale produkt WYPADŁ ze sklepu.
-    powiazProdukt(db, produkt({
-      produkt_id: '2', nazwa: 'Wycofany', sku_sklepu: 'PD20', odczytane_at: '2026-08-20T10:00:00Z',
-    }), utworzKarte(db, { nazwa: 'ZeZrodlemWycofanym' }));
+    powiazProdukt(
+      db,
+      produkt({
+        produkt_id: '2',
+        nazwa: 'Wycofany',
+        sku_sklepu: 'PD20',
+        odczytane_at: '2026-08-20T10:00:00Z',
+      }),
+      utworzKarte(db, { nazwa: 'ZeZrodlemWycofanym' }),
+    );
     // (3) numer jest i produkt żyje, ale nikt go z tą kartą nie powiązał.
     produkt({ produkt_id: '3', nazwa: 'Niczyj', sku_sklepu: 'PD30' });
     utworzKarte(db, { nazwa: 'BezProduktu' });
 
-    expect(oznaczZnikniete(db, 'swietlik', '2026-08-21T10:00:00Z'), 'DOKŁADNIE jeden wypadł ze sklepu')
-      .toBe(1);
+    expect(oznaczZnikniete(db, 'swietlik', '2026-08-21T10:00:00Z'), 'DOKŁADNIE jeden wypadł ze sklepu').toBe(1);
 
     expect(zliczeniaBrakow(db)).toMatchObject({ razem: 3, bezSku: 3, doPrzejecia: 0 });
   });
@@ -928,7 +1061,10 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
     zapiszProduktSklepowy(db, przy({ kanal: 'swietlik', produkt_id: '1', nazwa: 'A' }));
     zapiszProduktSklepowy(db, przy({ kanal: 'allegro_swietlik', produkt_id: '2', nazwa: 'B' }));
     zapiszProduktSklepowy(db, przy({ kanal: 'allegro_polcien2', produkt_id: '3', nazwa: 'C' }));
-    expect(zliczeniaNiepowiazanych(db, ['allegro_swietlik', 'allegro_polcien2'])).toEqual({ pominiete: 3, ofertyAllegro: 2 });
+    expect(zliczeniaNiepowiazanych(db, ['allegro_swietlik', 'allegro_polcien2'])).toEqual({
+      pominiete: 3,
+      ofertyAllegro: 2,
+    });
   });
 
   // ⚠️ Produkt POWIĄZANY nie jest pominięty, a produkt ZNIKNIĘTY ze sklepu nie jest robotą
@@ -937,18 +1073,32 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
   it('zliczeniaNiepowiazanych pomija powiązane i zniknięte', () => {
     const db = openOmsDb(':memory:');
     const powiazany = zapiszProduktSklepowy(db, {
-      kanal: 'swietlik', produkt_id: '1', nazwa: 'A', cena_gr: 100, odczytane_at: '2026-08-20T10:00:00Z',
+      kanal: 'swietlik',
+      produkt_id: '1',
+      nazwa: 'A',
+      cena_gr: 100,
+      odczytane_at: '2026-08-20T10:00:00Z',
     });
     powiazProdukt(db, powiazany, utworzKarte(db, { nazwa: 'W' }));
     zapiszProduktSklepowy(db, {
-      kanal: 'allegro_swietlik', produkt_id: '2', nazwa: 'B', cena_gr: 100, odczytane_at: '2026-08-20T10:00:00Z',
+      kanal: 'allegro_swietlik',
+      produkt_id: '2',
+      nazwa: 'B',
+      cena_gr: 100,
+      odczytane_at: '2026-08-20T10:00:00Z',
     });
     zapiszProduktSklepowy(db, {
-      kanal: 'allegro_swietlik', produkt_id: '3', nazwa: 'C', cena_gr: 100, odczytane_at: '2026-08-19T10:00:00Z',
+      kanal: 'allegro_swietlik',
+      produkt_id: '3',
+      nazwa: 'C',
+      cena_gr: 100,
+      odczytane_at: '2026-08-19T10:00:00Z',
     });
-    expect(oznaczZnikniete(db, 'allegro_swietlik', '2026-08-20T10:00:00Z'), 'jeden NAPRAWDĘ zniknął')
-      .toBe(1);
+    expect(oznaczZnikniete(db, 'allegro_swietlik', '2026-08-20T10:00:00Z'), 'jeden NAPRAWDĘ zniknął').toBe(1);
 
-    expect(zliczeniaNiepowiazanych(db, ['allegro_swietlik', 'allegro_polcien2'])).toEqual({ pominiete: 1, ofertyAllegro: 1 });
+    expect(zliczeniaNiepowiazanych(db, ['allegro_swietlik', 'allegro_polcien2'])).toEqual({
+      pominiete: 1,
+      ofertyAllegro: 1,
+    });
   });
 });

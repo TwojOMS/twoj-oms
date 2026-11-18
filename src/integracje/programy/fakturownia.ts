@@ -18,11 +18,15 @@
 //    null / not_connected / not_applicable) — dokument zostaje, a trwały alarm dostaje wpis (gasi go tylko operator).
 //
 // ⚠️ Import cykliczny z ../program-fakturowy.ts: listy metod czytamy WYŁĄCZNIE wewnątrz programFakturownia.
-import type { OdmianaNazwy, OpisProgramu, ProgramFakturowy, ZdolnoscProgramu, NabywcaDokumentu } from '../../core/kontrakty.ts';
+import type {
+  OdmianaNazwy,
+  OpisProgramu,
+  ProgramFakturowy,
+  ZdolnoscProgramu,
+  NabywcaDokumentu,
+} from '../../core/kontrakty.ts';
 import { METODA_ZDOLNOSCI } from '../program-fakturowy.ts';
-import {
-  LIMIT_ZADANIA_MS, NAJDLUZSZA_LISTA_MS, STRONA_FAKTUROWNI, SUFIT_STRON,
-} from '../../oms/fakturownia/client.js';
+import { LIMIT_ZADANIA_MS, NAJDLUZSZA_LISTA_MS, STRONA_FAKTUROWNI, SUFIT_STRON } from '../../oms/fakturownia/client.js';
 import { bladOperatora } from '../../domena/bledy.js';
 import { STAWKI_VAT } from '../../domena/vat.js';
 import { czyNipUe, rozbijNipUe } from '../../domena/wdt.js';
@@ -35,7 +39,10 @@ type Surowy = Record<string, unknown>;
 type AlarmAutoKsef = Readonly<{ dopisz: (wpis: Readonly<Record<string, unknown>>) => unknown }>;
 
 export const NAZWA_FAKTUROWNI: OdmianaNazwy = Object.freeze({
-  mianownik: 'Fakturownia', dopelniacz: 'Fakturowni', miejscownik: 'Fakturowni', narzednik: 'Fakturownią',
+  mianownik: 'Fakturownia',
+  dopelniacz: 'Fakturowni',
+  miejscownik: 'Fakturowni',
+  narzednik: 'Fakturownią',
 }) as OdmianaNazwy;
 export const ADRES_FAKTUROWNI = 'https://fakturownia.pl';
 export { EKRAN_FAKTUROWNI } from '../../domena/konfiguracja-fakturownia.js';
@@ -48,17 +55,41 @@ const BEZ_AUTOWYSYLKI = new Set<unknown>([null, undefined, 'not_connected', 'not
 /** `gov_status` dokumentu przyjętego przez KSeF — tylko wtedy `gov_id` jest numerem KSeF. */
 const PRZYJETY_W_KSEF = new Set<unknown>(['ok', 'demo_ok']);
 /** Sposób płatności v3 → `payment_type` Fakturowni. Brak = przelew (jak inFakt). */
-const PLATNOSC: Readonly<Record<string, string>> = Object.freeze({ transfer: 'transfer', delivery: 'cash_on_delivery' });
-const PLATNOSC_WSTECZ: Readonly<Record<string, string>> = Object.freeze({ transfer: 'transfer', cash_on_delivery: 'delivery' });
+const PLATNOSC: Readonly<Record<string, string>> = Object.freeze({
+  transfer: 'transfer',
+  delivery: 'cash_on_delivery',
+});
+const PLATNOSC_WSTECZ: Readonly<Record<string, string>> = Object.freeze({
+  transfer: 'transfer',
+  cash_on_delivery: 'delivery',
+});
 /** Pola nabywcy i sprzedawcy przepisywane z korygowanego dokumentu (F15 #2). */
-const POLA_NABYWCY = ['buyer_company', 'buyer_name', 'buyer_tax_no', 'buyer_tax_no_kind', 'buyer_street', 'buyer_post_code', 'buyer_city', 'buyer_country', 'buyer_email'] as const;
-const POLA_SPRZEDAWCY = ['seller_name', 'seller_tax_no', 'seller_street', 'seller_post_code', 'seller_city', 'seller_country'] as const;
+const POLA_NABYWCY = [
+  'buyer_company',
+  'buyer_name',
+  'buyer_tax_no',
+  'buyer_tax_no_kind',
+  'buyer_street',
+  'buyer_post_code',
+  'buyer_city',
+  'buyer_country',
+  'buyer_email',
+] as const;
+const POLA_SPRZEDAWCY = [
+  'seller_name',
+  'seller_tax_no',
+  'seller_street',
+  'seller_post_code',
+  'seller_city',
+  'seller_country',
+] as const;
 /** Zakres wystawienia przy szukaniu po dacie sprzedaży: faktura bywa do 30 dni przed sprzedażą i do 15. następnego miesiąca. */
 const DNI_PRZED_SPRZEDAZA = 30;
 
 const odmowa = (komunikat: string) => bladOperatora(komunikat, { status: 400 });
 // Profil próby Fakturowni (prywatna piaskownica) — KSeF tylko na atrapie, nigdy przez prawdziwe konto.
-export const ODMOWA_KSEF_PIASKOWNICY = 'Piaskownica: wysyłka do KSeF przez prawdziwą Fakturownię jest wyłączona — sprawdzisz ją na atrapie.';
+export const ODMOWA_KSEF_PIASKOWNICY =
+  'Piaskownica: wysyłka do KSeF przez prawdziwą Fakturownię jest wyłączona — sprawdzisz ją na atrapie.';
 
 /** Grosze (liczba całkowita) → „123.00”. Bez dzielenia zmiennoprzecinkowego. */
 export function napisZGroszy(grosze: unknown): string {
@@ -74,19 +105,23 @@ export function napisZGroszy(grosze: unknown): string {
 export function groszeZNapisu(napis: unknown): number {
   const s = typeof napis === 'number' && Number.isFinite(napis) ? String(napis) : napis;
   const m = typeof s === 'string' ? /^(-?)(\d+)(?:\.(\d{1,2}))?$/.exec(s.trim()) : null;
-  if (!m) throw bladOperatora(`Fakturownia oddała kwotę „${String(napis)}”, której panel nie umie odczytać co do grosza.`);
+  if (!m)
+    throw bladOperatora(`Fakturownia oddała kwotę „${String(napis)}”, której panel nie umie odczytać co do grosza.`);
   const grosze = Number(m[2]) * 100 + Number((m[3] ?? '').padEnd(2, '0'));
   if (!Number.isSafeInteger(grosze)) throw bladOperatora(`Kwota „${String(napis)}” jest poza zakresem panelu.`);
   return m[1] === '-' && grosze !== 0 ? -grosze : grosze;
 }
 
 const tekst = (v: unknown) => (v == null ? '' : String(v).trim());
-const bezPustych = (o: Surowy): Surowy => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== null && v !== ''));
+const bezPustych = (o: Surowy): Surowy =>
+  Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== null && v !== ''));
 
 function stawka(symbol: unknown, wdt: boolean): number | string {
   const s = tekst(symbol);
   if (!STAWKI_VAT.includes(s)) {
-    throw odmowa(`Stawka VAT „${s}” nie jest obsługiwana w Fakturowni (dozwolone: ${STAWKI_VAT.join(', ')}). Dokument NIE został wystawiony.`);
+    throw odmowa(
+      `Stawka VAT „${s}” nie jest obsługiwana w Fakturowni (dozwolone: ${STAWKI_VAT.join(', ')}). Dokument NIE został wystawiony.`,
+    );
   }
   if (wdt) {
     if (s !== '0') throw odmowa(`Dokument WDT ma stawkę 0%, a pozycja ma ${s}%. Dokument NIE został wystawiony.`);
@@ -111,8 +146,10 @@ function nazwaPozycji(v: unknown): string {
 /** Odpowiedź 4xx Fakturowni → odmowa zrozumiała dla operatora; inne błędy bez zmian. */
 function przetlumaczOdmowe(e: unknown, oid: string | null): unknown {
   const b = e as { status?: unknown; tresc?: { message?: unknown } } | null;
-  const pola = b?.status === 422 && b.tresc && typeof b.tresc.message === 'object' && b.tresc.message
-    ? Object.keys(b.tresc.message as object) : [];
+  const pola =
+    b?.status === 422 && b.tresc && typeof b.tresc.message === 'object' && b.tresc.message
+      ? Object.keys(b.tresc.message as object)
+      : [];
   if (oid && pola.includes('oid')) {
     return bladOperatora(
       `Już jest faktura dla zamówienia ${oid} w Fakturowni — drugi dokument NIE powstał. Sprawdź ją w Fakturowni.`,
@@ -132,28 +169,49 @@ function przetlumaczOdmowe(e: unknown, oid: string | null): unknown {
 function idDokumentu(odp: unknown): string {
   const id = (odp as Surowy | null)?.id;
   if (id === undefined || id === null || tekst(id) === '') {
-    throw bladOperatora('Fakturownia przyjęła dokument, ale nie oddała jego numeru wewnętrznego — sprawdź go w Fakturowni.');
+    throw bladOperatora(
+      'Fakturownia przyjęła dokument, ale nie oddała jego numeru wewnętrznego — sprawdź go w Fakturowni.',
+    );
   }
   return tekst(id);
 }
 
-type DaneNabywcy = Readonly<{ rodzaj: 'dane'; firma: string; nip: string; ulica: string; kod: string; miasto: string; kraj: string; email: string }>;
+type DaneNabywcy = Readonly<{
+  rodzaj: 'dane';
+  firma: string;
+  nip: string;
+  ulica: string;
+  kod: string;
+  miasto: string;
+  kraj: string;
+  email: string;
+}>;
 type WpisKartoteki = Readonly<{ rodzaj: 'kartoteka'; wpis: Readonly<Surowy> }>;
 
 export function programFakturownia(
   klient: KlientFakturowni,
   {
-    nazwa = NAZWA_FAKTUROWNI, adres = ADRES_FAKTUROWNI, ekran = EKRAN_FAKTUROWNI, alarmAutoKsef,
-    teraz = () => new Date(), piaskownica,
+    nazwa = NAZWA_FAKTUROWNI,
+    adres = ADRES_FAKTUROWNI,
+    ekran = EKRAN_FAKTUROWNI,
+    alarmAutoKsef,
+    teraz = () => new Date(),
+    piaskownica,
   }: {
-    nazwa?: OdmianaNazwy; adres?: string; ekran?: string; alarmAutoKsef?: AlarmAutoKsef; teraz?: () => Date;
+    nazwa?: OdmianaNazwy;
+    adres?: string;
+    ekran?: string;
+    alarmAutoKsef?: AlarmAutoKsef;
+    teraz?: () => Date;
     // Profil próby — `oid` z prefiksem `proba-<znacznik bazy>-` (reset bazy demo nie zderza numerów
     // z fakturami na koncie próbnym), wysyłka do KSeF odmawia przed klientem.
     piaskownica?: { znacznik: () => string };
   } = {},
 ): ProgramFakturowy {
   if (!alarmAutoKsef || typeof alarmAutoKsef.dopisz !== 'function') {
-    throw new Error('Adapter Fakturowni wymaga magazynu alarmu auto-KSeF (alarmAutoKsef) — bez niego samowolna wysyłka przeszłaby po cichu.');
+    throw new Error(
+      'Adapter Fakturowni wymaga magazynu alarmu auto-KSeF (alarmAutoKsef) — bez niego samowolna wysyłka przeszłaby po cichu.',
+    );
   }
   const ma = (m: string) => typeof klient[m] === 'function';
   const wolaj = (m: string, ...a: unknown[]) => (klient[m] as Metoda)(...a);
@@ -171,13 +229,20 @@ export function programFakturownia(
   }
 
   async function przygotujNabywce(
-    nabywca: NabywcaDokumentu, { zalozGdyBrak = false }: Readonly<{ zalozGdyBrak?: boolean }> = {},
+    nabywca: NabywcaDokumentu,
+    { zalozGdyBrak = false }: Readonly<{ zalozGdyBrak?: boolean }> = {},
   ): Promise<{ client_id: unknown } | null> {
     if (zalozGdyBrak) {
       // Fakturownia zakłada wpis kartoteki sama z pól buyer_* — bez osobnego żądania (F04).
       const dane: DaneNabywcy = Object.freeze({
-        rodzaj: 'dane', firma: tekst(nabywca.firma), nip: tekst(nabywca.nip), ulica: tekst(nabywca.ulica),
-        kod: tekst(nabywca.kod), miasto: tekst(nabywca.miasto), kraj: tekst(nabywca.kraj), email: tekst(nabywca.email),
+        rodzaj: 'dane',
+        firma: tekst(nabywca.firma),
+        nip: tekst(nabywca.nip),
+        ulica: tekst(nabywca.ulica),
+        kod: tekst(nabywca.kod),
+        miasto: tekst(nabywca.miasto),
+        kraj: tekst(nabywca.kraj),
+        email: tekst(nabywca.email),
       });
       return { client_id: dane };
     }
@@ -186,9 +251,13 @@ export function programFakturownia(
     const wpisy = (await wolaj('znajdzKlientowPoNip', tekst(nabywca.nip))) as Surowy[];
     const zgodne = (Array.isArray(wpisy) ? wpisy : []).filter((w) => normalizujNip(w?.tax_no) === nip);
     if (zgodne.length > 1) {
-      throw odmowa(`W kartotece Fakturowni jest ${zgodne.length} klientów z NIP-em ${tekst(nabywca.nip)} — zostaw jednego i spróbuj ponownie.`);
+      throw odmowa(
+        `W kartotece Fakturowni jest ${zgodne.length} klientów z NIP-em ${tekst(nabywca.nip)} — zostaw jednego i spróbuj ponownie.`,
+      );
     }
-    return zgodne.length ? { client_id: Object.freeze({ rodzaj: 'kartoteka', wpis: Object.freeze({ ...zgodne[0] }) }) } : null;
+    return zgodne.length
+      ? { client_id: Object.freeze({ rodzaj: 'kartoteka', wpis: Object.freeze({ ...zgodne[0] }) }) }
+      : null;
   }
 
   function polaNabywcy(clientId: unknown): { pola: Surowy; wdt: boolean } {
@@ -201,55 +270,79 @@ export function programFakturownia(
       return {
         wdt,
         pola: bezPustych({
-          client_id: w.id, buyer_company: Boolean(nip), buyer_name: tekst(w.name), buyer_tax_no: nip,
-          buyer_street: tekst(w.street), buyer_post_code: tekst(w.post_code), buyer_city: tekst(w.city),
-          buyer_country: wdt ? rozbijNipUe(nip)!.kraj : tekst(w.country) || 'PL', buyer_email: tekst(w.email),
+          client_id: w.id,
+          buyer_company: Boolean(nip),
+          buyer_name: tekst(w.name),
+          buyer_tax_no: nip,
+          buyer_street: tekst(w.street),
+          buyer_post_code: tekst(w.post_code),
+          buyer_city: tekst(w.city),
+          buyer_country: wdt ? rozbijNipUe(nip)!.kraj : tekst(w.country) || 'PL',
+          buyer_email: tekst(w.email),
         }),
       };
     }
     if (c?.rodzaj !== 'dane') throw odmowa('Brak danych nabywcy dla Fakturowni. Dokument NIE został wystawiony.');
-    if (!tekst(c.firma)) throw odmowa('Nabywca nie ma nazwy — Fakturownia wystawiłaby dokument bez nabywcy. Dokument NIE został wystawiony.');
+    if (!tekst(c.firma))
+      throw odmowa(
+        'Nabywca nie ma nazwy — Fakturownia wystawiłaby dokument bez nabywcy. Dokument NIE został wystawiony.',
+      );
     const wdt = czyNipUe(c.nip);
     return {
       wdt,
       pola: bezPustych({
-        buyer_company: Boolean(c.nip), buyer_name: c.firma, buyer_tax_no: c.nip, buyer_street: c.ulica,
-        buyer_post_code: c.kod, buyer_city: c.miasto,
+        buyer_company: Boolean(c.nip),
+        buyer_name: c.firma,
+        buyer_tax_no: c.nip,
+        buyer_street: c.ulica,
+        buyer_post_code: c.kod,
+        buyer_city: c.miasto,
         // Przy WDT kraj z prefiksu numeru (zamówienie ręczne oddaje domyślne 'PL').
-        buyer_country: wdt ? rozbijNipUe(c.nip)!.kraj : c.kraj || 'PL', buyer_email: c.email,
+        buyer_country: wdt ? rozbijNipUe(c.nip)!.kraj : c.kraj || 'PL',
+        buyer_email: c.email,
       }),
     };
   }
 
   async function wystaw(ladunek: Surowy, opcje: Readonly<{ oid?: unknown }> = {}) {
     const numer = tekst(opcje?.oid);
-    if (!numer) throw odmowa('Brak identyfikatora zamówienia (oid) — bez niego Fakturownia nie odróżni drugiego wystawienia. Dokument NIE został wystawiony.');
+    if (!numer)
+      throw odmowa(
+        'Brak identyfikatora zamówienia (oid) — bez niego Fakturownia nie odróżni drugiego wystawienia. Dokument NIE został wystawiony.',
+      );
     const oid = piaskownica ? `proba-${piaskownica.znacznik()}-${numer}` : numer;
     const { pola, wdt } = polaNabywcy(ladunek.client_id);
     const services = ladunek.services as Surowy[] | undefined;
-    if (!Array.isArray(services) || services.length === 0) throw odmowa('Dokument bez pozycji. Dokument NIE został wystawiony.');
+    if (!Array.isArray(services) || services.length === 0)
+      throw odmowa('Dokument bez pozycji. Dokument NIE został wystawiony.');
     let suma = 0;
     const positions = services.map((s) => {
       suma += typeof s.gross_price === 'number' ? s.gross_price : NaN;
       return {
-        name: nazwaPozycji(s.name), quantity: iloscPozycji(s.quantity), tax: stawka(s.tax_symbol, wdt),
+        name: nazwaPozycji(s.name),
+        quantity: iloscPozycji(s.quantity),
+        tax: stawka(s.tax_symbol, wdt),
         total_price_gross: napisZGroszy(s.gross_price),
       };
     });
     const sposob = ladunek.payment_method === undefined ? 'transfer' : tekst(ladunek.payment_method);
     const paymentType = PLATNOSC[sposob];
-    if (!paymentType) throw odmowa(`Sposób płatności „${sposob}” nie jest obsługiwany w Fakturowni. Dokument NIE został wystawiony.`);
+    if (!paymentType)
+      throw odmowa(`Sposób płatności „${sposob}” nie jest obsługiwany w Fakturowni. Dokument NIE został wystawiony.`);
     const kind = wdt ? 'wdt' : 'vat';
     const issueDate = tekst(ladunek.invoice_date) || dzis();
     const sellDate = tekst(ladunek.sale_date) || issueDate;
     const zaplacono = ladunek.paid_price === undefined || ladunek.paid_price === null ? 0 : ladunek.paid_price;
     // Pomiar F9B: `status: paid` bez `paid_date` → Fakturownia wpisuje DZIŚ. Dlatego data zapłaty
     // nigdy pusta: z ładunku (dzień opłacenia — services/faktura.js), a bez niej data sprzedaży (np. faktura okresu).
-    const zaplata = zaplacono === 0 ? {} : {
-      status: zaplacono === suma ? 'paid' : 'partial',
-      paid: napisZGroszy(zaplacono),
-      paid_date: tekst(ladunek.paid_date) || sellDate,
-    };
+    const zaplata =
+      zaplacono === 0
+        ? {}
+        : {
+            status: zaplacono === suma ? 'paid' : 'partial',
+            paid: napisZGroszy(zaplacono),
+            paid_date: tekst(ladunek.paid_date) || sellDate,
+          };
     const invoice = bezPustych({
       kind,
       issue_date: issueDate,
@@ -283,23 +376,27 @@ export function programFakturownia(
 
   async function wystawKorekte(ladunek: Surowy) {
     const idRodzica = tekst(ladunek.corrected_invoice_uuid);
-    if (!/^\d+$/.test(idRodzica)) throw odmowa('Korekta bez wskazania faktury korygowanej w Fakturowni. Korekta NIE została wystawiona.');
+    if (!/^\d+$/.test(idRodzica))
+      throw odmowa('Korekta bez wskazania faktury korygowanej w Fakturowni. Korekta NIE została wystawiona.');
     const services = ladunek.services as Surowy[] | undefined;
-    if (!Array.isArray(services) || services.length === 0) throw odmowa('Korekta bez pozycji. Korekta NIE została wystawiona.');
+    if (!Array.isArray(services) || services.length === 0)
+      throw odmowa('Korekta bez pozycji. Korekta NIE została wystawiona.');
     // Dane sprzedawcy i nabywcy z KORYGOWANEGO dokumentu (stan na fakturze, nie dzisiejsza kartoteka).
     const rodzic = (await wolaj('pobierzFakture', idRodzica)) as Surowy;
     const wdt = rodzic?.kind === 'wdt';
     const grupy = new Map<string, { przed?: Surowy; po?: Surowy }>();
     for (const s of services) {
       const g = grupy.get(tekst(s.group)) ?? {};
-      if (s.correction === true) g.po = s; else g.przed = s;
+      if (s.correction === true) g.po = s;
+      else g.przed = s;
       grupy.set(tekst(s.group), g);
     }
     const positions = [...grupy.values()].map(({ przed, po }) => {
       if (!przed || !po) throw odmowa('Pozycja korekty nie ma pary „przed” i „po”. Korekta NIE została wystawiona.');
       const name = nazwaPozycji(przed.name);
       const tax = stawka(przed.tax_symbol, wdt);
-      if (tekst(po.tax_symbol) !== tekst(przed.tax_symbol)) throw odmowa('Korekta zmienia stawkę VAT pozycji — wystaw ją ręcznie w Fakturowni.');
+      if (tekst(po.tax_symbol) !== tekst(przed.tax_symbol))
+        throw odmowa('Korekta zmienia stawkę VAT pozycji — wystaw ją ręcznie w Fakturowni.');
       const iloscPrzed = iloscPozycji(przed.quantity, { zero: true });
       const iloscPo = iloscPozycji(po.quantity, { zero: true });
       const bruttoPrzed = napisZGroszy(przed.gross_price);
@@ -310,8 +407,20 @@ export function programFakturownia(
         total_price_gross: napisZGroszy((po.gross_price as number) - (przed.gross_price as number)),
         tax,
         kind: 'correction',
-        correction_before_attributes: { name, quantity: iloscPrzed, total_price_gross: bruttoPrzed, tax, kind: 'correction_before' },
-        correction_after_attributes: { name: nazwaPozycji(po.name), quantity: iloscPo, total_price_gross: bruttoPo, tax, kind: 'correction_after' },
+        correction_before_attributes: {
+          name,
+          quantity: iloscPrzed,
+          total_price_gross: bruttoPrzed,
+          tax,
+          kind: 'correction_before',
+        },
+        correction_after_attributes: {
+          name: nazwaPozycji(po.name),
+          quantity: iloscPo,
+          total_price_gross: bruttoPo,
+          tax,
+          kind: 'correction_after',
+        },
       };
     });
     const invoice = bezPustych({
@@ -342,7 +451,12 @@ export function programFakturownia(
   function pozycja(p: Surowy) {
     const przed = p.correction_before as Surowy | undefined;
     const tax = tekst(p.tax) || tekst(przed?.tax);
-    return { name: p.name, quantity: Number(p.quantity), gross_price: groszeZNapisu(p.total_price_gross), tax_symbol: tax };
+    return {
+      name: p.name,
+      quantity: Number(p.quantity),
+      gross_price: groszeZNapisu(p.total_price_gross),
+      tax_symbol: tax,
+    };
   }
 
   function wiersz(d: Surowy) {
@@ -425,14 +539,19 @@ export function programFakturownia(
     const doDnia = tekst(zapytanie?.do);
     const pole = zapytanie?.pole === 'sale_date' ? 'sale_date' : 'invoice_date';
     // Bez `period` Fakturownia oddaje „ten miesiąc” — zawsze jawnie: zakres (`more`) albo wszystko (`all`).
-    const parametry: Surowy = od && doDnia
-      ? {
-        period: 'more',
-        date_from: pole === 'sale_date' ? wDniach(od, -DNI_PRZED_SPRZEDAZA) : od,
-        date_to: pole === 'sale_date' ? pietnastyNastepnego(doDnia) : doDnia,
-      }
-      : { period: 'all' };
-    const surowe = (await wolaj('listaFaktur', { ...parametry, include_positions: 'true', ...rodzaje }, ...(opcje ? [opcje] : []))) as Surowy[];
+    const parametry: Surowy =
+      od && doDnia
+        ? {
+            period: 'more',
+            date_from: pole === 'sale_date' ? wDniach(od, -DNI_PRZED_SPRZEDAZA) : od,
+            date_to: pole === 'sale_date' ? pietnastyNastepnego(doDnia) : doDnia,
+          }
+        : { period: 'all' };
+    const surowe = (await wolaj(
+      'listaFaktur',
+      { ...parametry, include_positions: 'true', ...rodzaje },
+      ...(opcje ? [opcje] : []),
+    )) as Surowy[];
     const wiersze = surowe.map(wiersz);
     if (!(od && doDnia)) return wiersze;
     return wiersze.filter((w) => {
@@ -441,7 +560,8 @@ export function programFakturownia(
     });
   }
 
-  const listaFaktur = (zapytanie: Surowy = {}, opcje?: unknown) => lista(zapytanie, opcje, { 'kinds[]': ['vat', 'wdt'] });
+  const listaFaktur = (zapytanie: Surowy = {}, opcje?: unknown) =>
+    lista(zapytanie, opcje, { 'kinds[]': ['vat', 'wdt'] });
   /**
    * Korekty z numerem korygowanej faktury (`corrected_invoice_number` — czytają go widok faktur i zwroty).
    * Korekta Fakturowni niesie tylko id rodzica: jedno pobranie na rodzica, po kolei; 404 → null, inny
@@ -451,9 +571,13 @@ export function programFakturownia(
     const wiersze = (await lista(zapytanie, opcje, { kind: 'correction' })) as Surowy[];
     const numery = new Map<string, string | null>();
     for (const w of wiersze) {
-      if (!w.parent_id) { w.corrected_invoice_number = null; continue; }
+      if (!w.parent_id) {
+        w.corrected_invoice_number = null;
+        continue;
+      }
       const rodzic = String(w.parent_id);
-      if (!numery.has(rodzic)) numery.set(rodzic, ((await pobierzSurowy(rodzic))?.number as string | undefined) ?? null);
+      if (!numery.has(rodzic))
+        numery.set(rodzic, ((await pobierzSurowy(rodzic))?.number as string | undefined) ?? null);
       w.corrected_invoice_number = numery.get(rodzic) ?? null;
     }
     return wiersze;
@@ -483,14 +607,17 @@ export function programFakturownia(
       if (piaskownica) throw bladOperatora(ODMOWA_KSEF_PIASKOWNICY, { status: 400, bezProgramu: true });
       return (klient.wyslijDokumentDoKsef as Metoda)(id);
     },
-    async iluMaNumer(numer: unknown) { return (klient.iluMaNumer as Metoda)(numer); },
+    async iluMaNumer(numer: unknown) {
+      return (klient.iluMaNumer as Metoda)(numer);
+    },
   };
   const METODY_OPCJONALNE = ['oznaczZaplacona', 'wyslijDokumentDoKsef', 'iluMaNumer'];
   const metody: Record<string, Metoda> = { ...obowiazkowe };
   for (const m of METODY_OPCJONALNE) if (ma(m)) metody[m] = opcjonalne[m];
 
   const zdolnosci = (Object.entries(METODA_ZDOLNOSCI) as [ZdolnoscProgramu, string][])
-    .filter(([, metoda]) => metoda in metody).map(([zdolnosc]) => zdolnosc);
+    .filter(([, metoda]) => metoda in metody)
+    .map(([zdolnosc]) => zdolnosc);
   const opis: OpisProgramu = Object.freeze({
     id: 'fakturownia',
     nazwa: Object.freeze({ ...nazwa }),
@@ -500,8 +627,11 @@ export function programFakturownia(
     // Pomiar F9B: `paid_date` przyjęta w utworzeniu i w PUT, także sprzed daty wystawienia i sprzedaży.
     dowolnaDataZaplaty: true,
     limity: Object.freeze({
-      zadanieMs: LIMIT_ZADANIA_MS, najdluzszaListaMs: NAJDLUZSZA_LISTA_MS, stronaListy: STRONA_FAKTUROWNI,
-      sufitStron: SUFIT_STRON, rownolegleStron: 1,
+      zadanieMs: LIMIT_ZADANIA_MS,
+      najdluzszaListaMs: NAJDLUZSZA_LISTA_MS,
+      stronaListy: STRONA_FAKTUROWNI,
+      sufitStron: SUFIT_STRON,
+      rownolegleStron: 1,
     }),
     adres,
     ekran,

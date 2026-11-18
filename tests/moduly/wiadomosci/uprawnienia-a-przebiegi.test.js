@@ -24,10 +24,19 @@ function klientSzpieg() {
   const wolania = [];
   return {
     wolania,
-    pobierzWatki: async () => { wolania.push('watki'); return { watki: [], razem: 0 }; },
+    pobierzWatki: async () => {
+      wolania.push('watki');
+      return { watki: [], razem: 0 };
+    },
     pobierzWiadomosci: async () => ({ wiadomosci: [] }),
-    pobierzSprawy: async () => { wolania.push('sprawy'); return { sprawy: [], razem: 0 }; },
-    wyslijWiadomosc: async () => { wolania.push('wyslij'); return { id: 'm1' }; },
+    pobierzSprawy: async () => {
+      wolania.push('sprawy');
+      return { sprawy: [], razem: 0 };
+    },
+    wyslijWiadomosc: async () => {
+      wolania.push('wyslij');
+      return { id: 'm1' };
+    },
   };
 }
 
@@ -38,7 +47,9 @@ describe('uprawnienia a przebiegi w tle', () => {
     const db = openOmsDb(':memory:');
     const k = klientSzpieg();
     await createPollerWiadomosci({
-      db, klienci: klienci(k), teraz,
+      db,
+      klienci: klienci(k),
+      teraz,
       brakiKanalu: () => ['allegro:api:messaging'],
     }).przebieg();
     expect(k.wolania).toEqual([]);
@@ -55,7 +66,10 @@ describe('uprawnienia a przebiegi w tle', () => {
     const db = openOmsDb(':memory:');
     const k = klientSzpieg();
     await createPollerWiadomosci({
-      db, klienci: klienci(k), teraz, brakiKanalu: () => ['allegro:api:disputes'],
+      db,
+      klienci: klienci(k),
+      teraz,
+      brakiKanalu: () => ['allegro:api:disputes'],
     }).przebieg();
     expect(k.wolania.filter((w) => w === 'watki')).toHaveLength(2);
   });
@@ -64,25 +78,45 @@ describe('uprawnienia a przebiegi w tle', () => {
     const db = openOmsDb(':memory:');
     const k = klientSzpieg();
     await createOdswiezanieSpraw({
-      db, klienci: klienci(k), teraz, brakiKanalu: () => ['allegro:api:disputes'],
+      db,
+      klienci: klienci(k),
+      teraz,
+      brakiKanalu: () => ['allegro:api:disputes'],
     }).przebieg();
     expect(k.wolania).toEqual([]);
   });
 
   it('czuwacz formułki NIE wysyła przez kanał bez uprawnienia messaging', async () => {
     const db = openOmsDb(':memory:');
-    zapiszUstawienia(db, {
-      [KLUCZE.wlaczony]: '1', [KLUCZE.tresc]: 'Odpiszemy rano.',
-      [KLUCZE.od]: '18', [KLUCZE.do]: '8', [KLUCZE.dni]: '0,1,2,3,4,5,6', [KLUCZE.karencja]: '0',
-    }, '2026-08-28T20:00:00Z');
+    zapiszUstawienia(
+      db,
+      {
+        [KLUCZE.wlaczony]: '1',
+        [KLUCZE.tresc]: 'Odpiszemy rano.',
+        [KLUCZE.od]: '18',
+        [KLUCZE.do]: '8',
+        [KLUCZE.dni]: '0,1,2,3,4,5,6',
+        [KLUCZE.karencja]: '0',
+      },
+      '2026-08-28T20:00:00Z',
+    );
     zapiszWatek(db, {
-      kanal: 'allegro_swietlik', threadId: 't1', interlocutorLogin: 'kup',
-      lastMessageDateTime: '2026-08-28T20:00:00Z', typ: 'COMMON', przeczytany: 0,
-      ostatniaOdKupujacego: 1, ostatniaTresc: 'pytanie', pobranyAt: '2026-08-28T20:00:00Z',
+      kanal: 'allegro_swietlik',
+      threadId: 't1',
+      interlocutorLogin: 'kup',
+      lastMessageDateTime: '2026-08-28T20:00:00Z',
+      typ: 'COMMON',
+      przeczytany: 0,
+      ostatniaOdKupujacego: 1,
+      ostatniaTresc: 'pytanie',
+      pobranyAt: '2026-08-28T20:00:00Z',
     });
     const k = klientSzpieg();
     const wynik = await createCzuwaczFormulki({
-      db, klienci: klienci(k), teraz, brakiKanalu: () => ['allegro:api:messaging'],
+      db,
+      klienci: klienci(k),
+      teraz,
+      brakiKanalu: () => ['allegro:api:messaging'],
     }).przebieg();
 
     expect(k.wolania).toEqual([]);

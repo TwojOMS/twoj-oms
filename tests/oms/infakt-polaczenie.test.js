@@ -25,15 +25,21 @@ describe('inFakt: sprawdzenie połączenia', () => {
 
   it('odpowiedź 200 bez metainfo.total_count (np. strona pośrednika) to nie „działa”', async () => {
     const fetchImpl = vi.fn(async () => odp(200, { komunikat: 'strona logowania sieci hotelowej' }));
-    const e = await createInfaktClient({ apiKey: KLUCZ, fetchImpl }).sprawdzPolaczenie().catch((x) => x);
+    const e = await createInfaktClient({ apiKey: KLUCZ, fetchImpl })
+      .sprawdzPolaczenie()
+      .catch((x) => x);
     expect(e.dlaOperatora).toBe(true);
     expect(e.message).toContain('nie rozpoznaję odpowiedzi');
   });
 
   for (const status of [401, 403]) {
     it(`HTTP ${status} z kluczem odbitym w treści: czytelny powód, klucza w komunikacie brak`, async () => {
-      const fetchImpl = vi.fn(async () => odp(status, { error: `Invalid API key ${KLUCZ}`, message: `klucz ${KLUCZ} odrzucony` }));
-      const e = await createInfaktClient({ apiKey: KLUCZ, fetchImpl }).sprawdzPolaczenie().catch((x) => x);
+      const fetchImpl = vi.fn(async () =>
+        odp(status, { error: `Invalid API key ${KLUCZ}`, message: `klucz ${KLUCZ} odrzucony` }),
+      );
+      const e = await createInfaktClient({ apiKey: KLUCZ, fetchImpl })
+        .sprawdzPolaczenie()
+        .catch((x) => x);
       expect(e.dlaOperatora).toBe(true);
       expect(e.status).toBe(status);
       expect(e.message).toContain('nie przyjął klucza API');
@@ -45,14 +51,25 @@ describe('inFakt: sprawdzenie połączenia', () => {
 
   it('inny błąd HTTP (500) też bez klucza w komunikacie', async () => {
     const fetchImpl = vi.fn(async () => odp(500, { error: `awaria przy ${KLUCZ}` }));
-    const e = await createInfaktClient({ apiKey: KLUCZ, fetchImpl }).sprawdzPolaczenie().catch((x) => x);
+    const e = await createInfaktClient({ apiKey: KLUCZ, fetchImpl })
+      .sprawdzPolaczenie()
+      .catch((x) => x);
     expect(e.dlaOperatora).toBe(true);
     expect(e.message).toContain('500');
     expect(e.message.includes(KLUCZ), 'klucz w komunikacie').toBe(false);
   });
 
   it('METODY_INFAKTU to dokładnie metody klienta (pośrednik z Ustawień ich używa)', () => {
-    const klient = createInfaktClient({ apiKey: 'x', fetchImpl: async () => { throw new Error('sieć'); } });
-    expect([...METODY_INFAKTU].sort()).toEqual(Object.keys(klient).filter((k) => typeof klient[k] === 'function').sort());
+    const klient = createInfaktClient({
+      apiKey: 'x',
+      fetchImpl: async () => {
+        throw new Error('sieć');
+      },
+    });
+    expect([...METODY_INFAKTU].sort()).toEqual(
+      Object.keys(klient)
+        .filter((k) => typeof klient[k] === 'function')
+        .sort(),
+    );
   });
 });

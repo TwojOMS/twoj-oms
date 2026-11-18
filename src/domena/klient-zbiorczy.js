@@ -44,7 +44,9 @@ function rabat(surowe, numerWpisu) {
   try {
     return parsujRabat(n);
   } catch {
-    throw new Error(`OMS_KLIENCI_ZBIORCZY: rabat musi być pełnym procentem od 0 do ${RABAT_MAX}, wpis nr ${numerWpisu}`);
+    throw new Error(
+      `OMS_KLIENCI_ZBIORCZY: rabat musi być pełnym procentem od 0 do ${RABAT_MAX}, wpis nr ${numerWpisu}`,
+    );
   }
 }
 
@@ -57,8 +59,33 @@ function rabat(surowe, numerWpisu) {
  * dwoch liter. Zamkniety slownik znaczy, ze prefiks jest KODEM KRAJU albo nie ma go wcale.
  */
 export const KODY_KRAJOW_UE = new Set([
-  'AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'EL', 'ES', 'FI', 'FR', 'HR', 'HU',
-  'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PT', 'RO', 'SE', 'SI', 'SK', 'XI',
+  'AT',
+  'BE',
+  'BG',
+  'CY',
+  'CZ',
+  'DE',
+  'DK',
+  'EE',
+  'EL',
+  'ES',
+  'FI',
+  'FR',
+  'HR',
+  'HU',
+  'IE',
+  'IT',
+  'LT',
+  'LU',
+  'LV',
+  'MT',
+  'NL',
+  'PT',
+  'RO',
+  'SE',
+  'SI',
+  'SK',
+  'XI',
 ]);
 
 /**
@@ -83,7 +110,9 @@ export const KODY_KRAJOW_UE = new Set([
  * tutaj numer nierozpoznany oddaje po prostu same cyfry, tak jak dotad.
  */
 export function normalizujNip(nip) {
-  const surowy = String(nip ?? '').replace(/[\s.\-/]/g, '').toUpperCase();
+  const surowy = String(nip ?? '')
+    .replace(/[\s.\-/]/g, '')
+    .toUpperCase();
   const dopasowanie = surowy.match(/^([A-Z]{2})([0-9A-Z]{2,14})$/);
   if (dopasowanie) {
     const [, kraj, reszta] = dopasowanie;
@@ -105,7 +134,9 @@ export function normalizujNip(nip) {
  * bronic. Litery trzeba zobaczyc, zanim znikna.
  */
 export function nipRozpoznany(surowy) {
-  const t = String(surowy ?? '').replace(/[\s.\-/]/g, '').toUpperCase();
+  const t = String(surowy ?? '')
+    .replace(/[\s.\-/]/g, '')
+    .toUpperCase();
   if (t === '') return false;
   if (/^\d+$/.test(t)) return true;
   const m = t.match(/^([A-Z]{2})([0-9A-Z]{2,14})$/);
@@ -125,9 +156,9 @@ export function parsujKlientowZbiorczych(env) {
     const czesci = wpis.split(':').map((s) => s.trim());
     if (czesci.length !== POLA) {
       throw new Error(
-        `OMS_KLIENCI_ZBIORCZY: wpis musi mieć ${POLA} pól `
-        + '(klucz:nazwa:nip:rabat%:próg zł:obsługa zł:kurier zł), '
-        + `wpis nr ${numerWpisu}`,
+        `OMS_KLIENCI_ZBIORCZY: wpis musi mieć ${POLA} pól ` +
+          '(klucz:nazwa:nip:rabat%:próg zł:obsługa zł:kurier zł), ' +
+          `wpis nr ${numerWpisu}`,
       );
     }
     const [klucz, nazwa, nip, rabatSurowy, prog, obsluga, kurier] = czesci;
@@ -167,7 +198,9 @@ export function warunkiDostawy(wiersz) {
   const kwota = (kolumna) => {
     const wartosc = wiersz[kolumna] ?? null;
     if (wartosc !== null && (!Number.isInteger(wartosc) || wartosc < 0)) {
-      throw bladOperatora(`Niepoprawne warunki dostawy klienta „${wiersz.nazwa}”: ${kolumna}. Uzupełnij je na karcie klienta.`);
+      throw bladOperatora(
+        `Niepoprawne warunki dostawy klienta „${wiersz.nazwa}”: ${kolumna}. Uzupełnij je na karcie klienta.`,
+      );
     }
     return wartosc;
   };

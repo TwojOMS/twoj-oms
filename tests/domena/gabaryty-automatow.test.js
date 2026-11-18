@@ -1,8 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
-  USLUGI_AUTOMATOW, odczytajAutomaty, propozycjaAutomatu, zmienAutomat, usunWyjatekAutomatu, zapiszAutomaty,
+  USLUGI_AUTOMATOW,
+  odczytajAutomaty,
+  propozycjaAutomatu,
+  zmienAutomat,
+  usunWyjatekAutomatu,
+  zapiszAutomaty,
 } from '../../src/domena/gabaryty-automatow.js';
-import { odczytajSzablony, zmienSzablon, ustawDomyslnySzablon, zapiszSzablony } from '../../src/domena/szablony-paczek.js';
+import {
+  odczytajSzablony,
+  zmienSzablon,
+  ustawDomyslnySzablon,
+  zapiszSzablony,
+} from '../../src/domena/szablony-paczek.js';
 import { profilGabarytuAllegro } from '../../src/domena/gabaryty-allegro.js';
 
 const ONE_BOX = '0b9bed2c-0bc1-4e1f-9694-29bb39ebb483';
@@ -35,7 +45,11 @@ describe('propozycja gabarytu i wagi — brak ustawienia = dzisiejsze zachowanie
     expect(propozycjaAutomatu({}, { rodzaj: 'paczkomat' })).toEqual({ gabaryt: 'A', waga: 1 });
 
     const szablony = ustawDomyslnySzablon(
-      zmienSzablon(odczytajSzablony({}), { nazwa: 'Tuba', waga: '3,5', dlugosc: '90', szerokosc: '10', wysokosc: '10' }, 'tuba').stan,
+      zmienSzablon(
+        odczytajSzablony({}),
+        { nazwa: 'Tuba', waga: '3,5', dlugosc: '90', szerokosc: '10', wysokosc: '10' },
+        'tuba',
+      ).stan,
       'tuba',
     ).stan;
     expect(propozycjaAutomatu(zapiszSzablony(szablony), { rodzaj: 'paczkomat' })).toEqual({ gabaryt: 'A', waga: 3.5 });
@@ -54,11 +68,21 @@ describe('propozycja gabarytu i wagi — brak ustawienia = dzisiejsze zachowanie
   });
 
   it('uszkodzony zapis nie zmienia propozycji', () => {
-    expect(propozycjaAutomatu({ 'paczka.automaty': '{zly' }, { rodzaj: 'paczkomat' })).toEqual({ gabaryt: 'A', waga: 1 });
-    const zly = JSON.stringify({ version: 1, inpost: { gabaryt: 'Z', waga: 2 }, allegro: { gabaryt: 'S', waga: 25 },
-      wyjatki: { [ORLEN]: { gabaryt: 'M', waga: 0 }, [KURIER_DPD]: { gabaryt: 'M', waga: 2 } } });
+    expect(propozycjaAutomatu({ 'paczka.automaty': '{zly' }, { rodzaj: 'paczkomat' })).toEqual({
+      gabaryt: 'A',
+      waga: 1,
+    });
+    const zly = JSON.stringify({
+      version: 1,
+      inpost: { gabaryt: 'Z', waga: 2 },
+      allegro: { gabaryt: 'S', waga: 25 },
+      wyjatki: { [ORLEN]: { gabaryt: 'M', waga: 0 }, [KURIER_DPD]: { gabaryt: 'M', waga: 2 } },
+    });
     expect(propozycjaAutomatu({ 'paczka.automaty': zly }, { rodzaj: 'paczkomat' })).toEqual({ gabaryt: 'A', waga: 1 });
-    expect(propozycjaAutomatu({ 'paczka.automaty': zly }, { rodzaj: 'wza', deliveryMethodId: ORLEN })).toEqual({ gabaryt: 'S', waga: 1 });
+    expect(propozycjaAutomatu({ 'paczka.automaty': zly }, { rodzaj: 'wza', deliveryMethodId: ORLEN })).toEqual({
+      gabaryt: 'S',
+      waga: 1,
+    });
     expect(odczytajAutomaty({ 'paczka.automaty': zly }).wyjatki).toEqual({});
   });
 });
@@ -66,10 +90,21 @@ describe('propozycja gabarytu i wagi — brak ustawienia = dzisiejsze zachowanie
 describe('propozycja z ustawienia', () => {
   it('paczkomat bierze gabaryt i wagę z ustawienia, już niezależnie od szablonu kuriera', () => {
     const stan = ustaw(odczytajAutomaty({}), { cel: 'paczkomat', gabaryt: 'b', waga: '2,5' });
-    const szablon = zapiszSzablony(zmienSzablon(odczytajSzablony({}),
-      { id: 'domyslna', nazwa: 'Paczka domyślna', waga: '9', dlugosc: '110', szerokosc: '75', wysokosc: '1' }).stan);
+    const szablon = zapiszSzablony(
+      zmienSzablon(odczytajSzablony({}), {
+        id: 'domyslna',
+        nazwa: 'Paczka domyślna',
+        waga: '9',
+        dlugosc: '110',
+        szerokosc: '75',
+        wysokosc: '1',
+      }).stan,
+    );
 
-    expect(propozycjaAutomatu(zapisZ(szablon, zapiszStan(stan)), { rodzaj: 'paczkomat' })).toEqual({ gabaryt: 'B', waga: 2.5 });
+    expect(propozycjaAutomatu(zapisZ(szablon, zapiszStan(stan)), { rodzaj: 'paczkomat' })).toEqual({
+      gabaryt: 'B',
+      waga: 2.5,
+    });
   });
 
   it('ustawienie „wszystkie” obowiązuje każdą usługę automatu, także One Box', () => {
@@ -100,7 +135,10 @@ describe('propozycja z ustawienia', () => {
     const wynik = usunWyjatekAutomatu(stan, ORLEN);
     expect(wynik.bledy).toEqual([]);
 
-    expect(propozycjaAutomatu(zapiszStan(wynik.stan), { rodzaj: 'wza', deliveryMethodId: ORLEN })).toEqual({ gabaryt: 'M', waga: 4 });
+    expect(propozycjaAutomatu(zapiszStan(wynik.stan), { rodzaj: 'wza', deliveryMethodId: ORLEN })).toEqual({
+      gabaryt: 'M',
+      waga: 4,
+    });
     expect(usunWyjatekAutomatu(wynik.stan, ORLEN).bledy).toHaveLength(1);
   });
 

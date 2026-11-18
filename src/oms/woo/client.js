@@ -7,16 +7,32 @@ import { bladTylkoOdczyt, bladKluczaTylkoOdczyt, czyOdmowaZapisu } from '../../d
 // https→http) przerywa żądanie PRZED wysłaniem kolejnego, więc ani odczyt nie bierze cudzej odpowiedzi,
 // ani zapis 307/308 nie idzie na obcy host. Sklepy z env (bez opcji) zachowują dawne zachowanie.
 export function bladInnegoOrigin(origin) {
-  return Object.assign(new Error(`Sklep WooCommerce przekierował na inny adres (${origin}). Popraw adres sklepu w Ustawieniach.`), { name: 'WooInnyOrigin' });
+  return Object.assign(
+    new Error(`Sklep WooCommerce przekierował na inny adres (${origin}). Popraw adres sklepu w Ustawieniach.`),
+    { name: 'WooInnyOrigin' },
+  );
 }
 
-export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({ fetchImpl }), tylkoTenSamOrigin = false, uprawnienia = 'zapis' }) {
+export function createWooClient({
+  baseUrl,
+  ck,
+  cs,
+  fetchImpl,
+  http = transport({ fetchImpl }),
+  tylkoTenSamOrigin = false,
+  uprawnienia = 'zapis',
+}) {
   const tylkoOdczyt = uprawnienia === 'odczyt';
   const auth = 'Basic ' + Buffer.from(`${ck}:${cs}`).toString('base64');
   let zapytanListy = 0;
 
   async function wyslij(sciezka, opcje = {}, informacje = {}) {
-    const naglowki = { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: auth, ...(opcje.headers || {}) };
+    const naglowki = {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: auth,
+      ...(opcje.headers || {}),
+    };
     return zaPrzekierowaniami(`${baseUrl}/wp-json/wc/v3${sciezka}`, opcje, naglowki, informacje);
   }
 
@@ -39,7 +55,8 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
         naglowki = Object.fromEntries(Object.entries(naglowki).filter(([k]) => k.toLowerCase() !== 'authorization'));
       }
       if (res.status === 303 || ([301, 302].includes(res.status) && metoda?.toUpperCase() === 'POST')) {
-        metoda = 'GET'; body = undefined;
+        metoda = 'GET';
+        body = undefined;
       }
       url = nastepny;
     }
@@ -56,7 +73,11 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
       throw new Error(`Sklep nieosiągalny: ${e.message}`);
     }
     let dane = null;
-    try { dane = await res.json(); } catch { dane = null; }
+    try {
+      dane = await res.json();
+    } catch {
+      dane = null;
+    }
     if (czyOdmowaZapisu(res.status, dane, opcje.method)) throw bladKluczaTylkoOdczyt();
     const powod = dane?.message || 'brak powodu';
     // Komunikat NIE zawiera ck/cs — sekret nie ma prawa trafic do logu.
@@ -72,7 +93,11 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
       if (informacje.innyOrigin) return { ok: false, powod: 'przekierowanie', status: res.status };
       if (res.ok) {
         let dane;
-        try { dane = await res.json(); } catch { dane = null; }
+        try {
+          dane = await res.json();
+        } catch {
+          dane = null;
+        }
         return Array.isArray(dane) ? { ok: true } : { ok: false, powod: 'brak_api', status: res.status };
       }
       const powod = res.status === 401 || res.status === 403 ? 'klucze' : res.status === 404 ? 'brak_api' : 'siec';
@@ -81,8 +106,12 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
       if (e?.name === 'WooInnyOrigin') return { ok: false, powod: 'przekierowanie', status: null };
       const kod = e?.code || e?.cause?.code || '';
       // WRONG_VERSION_NUMBER = https na porcie mówiącym czystym HTTP — błąd adresu, nie certyfikatu.
-      const powod = /CERT|TLS|SSL|VERIFY|SIGNATURE|ISSUER/i.test(kod) && !/WRONG_VERSION_NUMBER/i.test(kod) ? 'certyfikat'
-        : /ENOTFOUND|EAI_AGAIN|ERR_INVALID_URL|WRONG_VERSION_NUMBER/i.test(kod) || e instanceof TypeError && !kod ? 'adres' : 'siec';
+      const powod =
+        /CERT|TLS|SSL|VERIFY|SIGNATURE|ISSUER/i.test(kod) && !/WRONG_VERSION_NUMBER/i.test(kod)
+          ? 'certyfikat'
+          : /ENOTFOUND|EAI_AGAIN|ERR_INVALID_URL|WRONG_VERSION_NUMBER/i.test(kod) || (e instanceof TypeError && !kod)
+            ? 'adres'
+            : 'siec';
       return { ok: false, powod, status: null };
     }
   }
@@ -94,26 +123,44 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
     // Typy wymuszone: obiekt w `title` (np. z `settings`) nie przejdzie dalej, `enabled: 'yes'` to nie włączona.
     return dane
       .filter((b) => b && typeof b === 'object' && !Array.isArray(b))
-      .map((b) => ({ id: String(b.id ?? ''), tytul: tekst(b.title), nazwaWoo: tekst(b.method_title), wlaczona: b.enabled === true }));
+      .map((b) => ({
+        id: String(b.id ?? ''),
+        tytul: tekst(b.title),
+        nazwaWoo: tekst(b.method_title),
+        wlaczona: b.enabled === true,
+      }));
   }
 
   async function pobierzMetodyWysylki() {
     const { dane: strefy } = await strzal('/shipping/zones');
     if (!Array.isArray(strefy)) throw new Error('Sklep zwrócił nieprawidłową listę stref wysyłki');
-    const wszystkie = strefy.some((s) => Number(s.id) === 0) ? strefy : [...strefy, { id: 0, name: 'Pozostałe lokalizacje' }];
+    const wszystkie = strefy.some((s) => Number(s.id) === 0)
+      ? strefy
+      : [...strefy, { id: 0, name: 'Pozostałe lokalizacje' }];
     const wynik = [];
     for (const strefa of wszystkie) {
       const { dane: metody } = await strzal(`/shipping/zones/${encodeURIComponent(strefa.id)}/methods`);
       if (!Array.isArray(metody)) throw new Error('Sklep zwrócił nieprawidłową listę metod wysyłki');
-      wynik.push(...metody.map((m) => ({ strefa: strefa.name, instanceId: m.instance_id, tytul: m.title, metodaWoo: m.method_id, wlaczona: m.enabled })));
+      wynik.push(
+        ...metody.map((m) => ({
+          strefa: strefa.name,
+          instanceId: m.instance_id,
+          tytul: m.title,
+          metodaWoo: m.method_id,
+          wlaczona: m.enabled,
+        })),
+      );
     }
     return wynik;
   }
 
   async function pobierzZamowienia({ modifiedAfter = null, page = 1 } = {}) {
     const p = new URLSearchParams({
-      orderby: 'modified', order: 'asc', status: 'any',
-      per_page: '50', page: String(page),
+      orderby: 'modified',
+      order: 'asc',
+      status: 'any',
+      per_page: '50',
+      page: String(page),
     });
     // Anulowanie zamowienia tez jest zmiana — dlatego status=any, nie processing.
     // dates_are_gmt: bez tego Woo interpretuje modified_after w czasie LOKALNYM sklepu,
@@ -164,8 +211,14 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
    */
   async function pobierzZamowieniaZakresu({ after, before, page = 1, perPage = 100 } = {}) {
     const p = new URLSearchParams({
-      orderby: 'date', order: 'asc', status: 'any', dates_are_gmt: 'true',
-      per_page: String(perPage), page: String(page), after, before,
+      orderby: 'date',
+      order: 'asc',
+      status: 'any',
+      dates_are_gmt: 'true',
+      per_page: String(perPage),
+      page: String(page),
+      after,
+      before,
     });
     const { dane, res } = await strzal(`/orders?${p.toString()}`);
     if (!Array.isArray(dane)) {
@@ -211,7 +264,9 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
       }
       stron = Number(res.headers?.get?.('X-WP-TotalPages') || 1) || 1;
       if (stron > MAX_STRON) {
-        throw new Error(`Sklep zgłosił ${stron} stron ${coTo} (limit ${MAX_STRON}) — przerywam odczyt, żeby się nie zapętlić.`);
+        throw new Error(
+          `Sklep zgłosił ${stron} stron ${coTo} (limit ${MAX_STRON}) — przerywam odczyt, żeby się nie zapętlić.`,
+        );
       }
       strona += 1;
     } while (strona <= stron);
@@ -222,7 +277,9 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
     // w trakcie odczytu dokleja sie na koncu. Kosztem jest falszywy alarm, gdy cos w
     // trakcie odczytu zniknie — swiadomie wolimy glosny falszywy alarm od cichej straty.
     if (zapowiedziano !== null && wszystko.length < zapowiedziano) {
-      throw new Error(`Odczyt ${coTo} urwał się: sklep zapowiedział ${zapowiedziano} pozycji, a zebraliśmy ${wszystko.length}. Nie oddaję niepełnej listy, bo brakujące pozycje wyglądałyby jak usunięte ze sklepu.`);
+      throw new Error(
+        `Odczyt ${coTo} urwał się: sklep zapowiedział ${zapowiedziano} pozycji, a zebraliśmy ${wszystko.length}. Nie oddaję niepełnej listy, bo brakujące pozycje wyglądałyby jak usunięte ze sklepu.`,
+      );
     }
     return wszystko;
   }
@@ -272,7 +329,11 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
       throw new Error(`Sklep nieosiągalny: ${e.message}`);
     }
     let dane = null;
-    try { dane = await res.json(); } catch { dane = null; }
+    try {
+      dane = await res.json();
+    } catch {
+      dane = null;
+    }
     if (!res.ok) throw new Error(`Sklep odpowiedział ${res.status}: ${dane?.message || 'brak powodu'}`);
     return { dane, res };
   }
@@ -296,7 +357,10 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
       // `orderby=id&order=asc`: stabilna kolejność między stronami — bez niej zmiana
       // w sklepie w trakcie odczytu przesuwa okno i produkt wpada dwa razy albo znika.
       const { dane, res } = await strzalStore({
-        per_page: '100', page: String(strona), orderby: 'id', order: 'asc',
+        per_page: '100',
+        page: String(strona),
+        orderby: 'id',
+        order: 'asc',
       });
       // 200 z ciałem, które NIE jest tablicą (HTML WAF-a, strona trybu konserwacji,
       // `rest_no_route` na sklepie bez Store API) wygląda jak „sklep nie ma miniatur".
@@ -308,7 +372,9 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
       wszystkie.push(...dane);
       stron = Number(res.headers?.get?.('X-WP-TotalPages') || 1) || 1;
       if (stron > MAX_STRON) {
-        throw new Error(`Store API zgłosiło ${stron} stron (limit ${MAX_STRON}) — przerywam odczyt miniatur, żeby się nie zapętlić.`);
+        throw new Error(
+          `Store API zgłosiło ${stron} stron (limit ${MAX_STRON}) — przerywam odczyt miniatur, żeby się nie zapętlić.`,
+        );
       }
       strona += 1;
     } while (strona <= stron);
@@ -350,8 +416,10 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
   function sprawdzSciezke(sciezka) {
     const s = String(sciezka ?? '');
     if (!SCIEZKA_PRODUKTU.test(s)) {
-      throw new Error(`Ścieżka „${s}" nie jest adresem produktu ani wariantu `
-        + '(products/{id} albo products/{id}/variations/{id}) — nie wysyłam pod nią niczego.');
+      throw new Error(
+        `Ścieżka „${s}" nie jest adresem produktu ani wariantu ` +
+          '(products/{id} albo products/{id}/variations/{id}) — nie wysyłam pod nią niczego.',
+      );
     }
     return s;
   }
@@ -379,19 +447,23 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
    * to swoim `catch`-em w odmowe per produkt.
    */
   function rozpoznanyProdukt(dane, sciezka) {
-    const czym = (x) => (x === null ? 'null' : JSON.stringify(x)?.slice(0, 200) ?? typeof x);
+    const czym = (x) => (x === null ? 'null' : (JSON.stringify(x)?.slice(0, 200) ?? typeof x));
     // ⚠️ `Array.isArray` osobno: tablica jest obiektem, a `Object.hasOwn([], 'sku')` oddaje
     // po prostu `false` — bez tego warunku komunikat mowilby „brak pola sku" o czyms,
     // co produktem w ogole nie jest.
     if (dane === null || typeof dane !== 'object' || Array.isArray(dane)) {
-      throw new Error(`Sklep nie oddał produktu ${sciezka}: odpowiedź nie jest obiektem `
-        + `(${czym(dane)}). Kod 200 z ciałem, którego nie rozumiem — tryb konserwacji, WAF `
-        + 'albo strona logowania hostingu. NIE zapisuję, bo nie wiem, czy produkt ma numer.');
+      throw new Error(
+        `Sklep nie oddał produktu ${sciezka}: odpowiedź nie jest obiektem ` +
+          `(${czym(dane)}). Kod 200 z ciałem, którego nie rozumiem — tryb konserwacji, WAF ` +
+          'albo strona logowania hostingu. NIE zapisuję, bo nie wiem, czy produkt ma numer.',
+      );
     }
     if (!Object.hasOwn(dane, 'sku') || typeof dane.sku !== 'string') {
-      throw new Error(`Sklep nie oddał produktu ${sciezka}: w odpowiedzi nie ma pola „sku" `
-        + 'będącego napisem. Brak tego pola to NIE JEST „produkt bez numeru" — to odpowiedź, '
-        + 'której nie rozpoznaję, więc nie zapisuję.');
+      throw new Error(
+        `Sklep nie oddał produktu ${sciezka}: w odpowiedzi nie ma pola „sku" ` +
+          'będącego napisem. Brak tego pola to NIE JEST „produkt bez numeru" — to odpowiedź, ' +
+          'której nie rozpoznaję, więc nie zapisuję.',
+      );
     }
     // ⚠️ ZGODNOSC IDENTYFIKATORA: przekierowanie, cache albo wtyczka potrafia oddac INNY
     // produkt. Bariera sprawdzona na cudzym wierszu jest gorsza niz jej brak, bo wyglada
@@ -399,8 +471,10 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
     // — to on jest tym zasobem, pod ktory pojdzie PUT.
     const oczekiwany = sciezka.split('/').pop();
     if (String(dane.id ?? '') !== String(oczekiwany)) {
-      throw new Error(`Sklep oddał produkt o identyfikatorze „${dane.id}", a pytałem o `
-        + `„${oczekiwany}" (${sciezka}). Nie sprawdzam bariery na cudzym produkcie.`);
+      throw new Error(
+        `Sklep oddał produkt o identyfikatorze „${dane.id}", a pytałem o ` +
+          `„${oczekiwany}" (${sciezka}). Nie sprawdzam bariery na cudzym produkcie.`,
+      );
     }
     return dane;
   }
@@ -425,42 +499,50 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
    * ⚠️ PUT, nie POST: POST na `/products` ZALOZYLBY nowy produkt.
    */
   // Przy kluczu „Odczyt” trzy zapisy odmawiają tu, zanim cokolwiek wyjdzie do sklepu.
-  const zapiszProdukt = async (sciezka, pola) => tylkoOdczyt ? Promise.reject(bladTylkoOdczyt()) :
-    strzal(`/${sprawdzSciezke(sciezka)}`, { method: 'PUT', body: JSON.stringify(pola ?? {}) })
-      .then(({ dane }) => dane);
+  const zapiszProdukt = async (sciezka, pola) =>
+    tylkoOdczyt
+      ? Promise.reject(bladTylkoOdczyt())
+      : strzal(`/${sprawdzSciezke(sciezka)}`, { method: 'PUT', body: JSON.stringify(pola ?? {}) }).then(
+          ({ dane }) => dane,
+        );
 
   // Osobna, zawężona ścieżka stanów magazynowych. Świeży odczyt przed zapisem zapewnia pętla
   // stanów Woo (moduly/magazyn/services/petla-stanow-woo.js).
   const ROZMIAR_PACZKI_STANOW = 100;
-  const idStanu = id => {
+  const idStanu = (id) => {
     if (!/^\d+$/.test(String(id)) || !Number.isSafeInteger(Number(id)) || Number(id) <= 0) {
       throw new Error('Niepoprawny identyfikator stanu Woo');
     }
     return String(id);
   };
-  const sciezkaStanow = rodzicId => rodzicId === null ? '/products' : `/products/${idStanu(rodzicId)}/variations`;
+  const sciezkaStanow = (rodzicId) => (rodzicId === null ? '/products' : `/products/${idStanu(rodzicId)}/variations`);
   async function odczytajStany(rodzicId, ids) {
     const sciezka = sciezkaStanow(rodzicId);
     const identyfikatory = ids.map(idStanu);
     const wynik = [];
     for (let i = 0; i < identyfikatory.length; i += ROZMIAR_PACZKI_STANOW) {
-      const p = new URLSearchParams({ include: identyfikatory.slice(i, i + ROZMIAR_PACZKI_STANOW).join(','), per_page: '100' });
+      const p = new URLSearchParams({
+        include: identyfikatory.slice(i, i + ROZMIAR_PACZKI_STANOW).join(','),
+        per_page: '100',
+      });
       const { dane } = await strzal(`${sciezka}?${p}`);
       if (!Array.isArray(dane)) throw new Error('Sklep zwrócił nieprawidłową listę stanów');
       wynik.push(...dane);
     }
     return wynik;
   }
-  const pobierzStany = ids => odczytajStany(null, ids);
+  const pobierzStany = (ids) => odczytajStany(null, ids);
   const pobierzStanyWariantow = (rodzicId, ids) => odczytajStany(rodzicId, ids);
   async function zapiszStanyHurtem(rodzicId, pozycje) {
     if (tylkoOdczyt) throw bladTylkoOdczyt();
     const sciezka = sciezkaStanow(rodzicId);
     // Sprawdź CAŁĄ listę przed pierwszym żądaniem, także pola w dalszych paczkach.
-    const update = pozycje.map(p => {
-      if (!p || Object.keys(p).some(k => !['id', 'stock_quantity'].includes(k))) throw new Error('Niedozwolone pole zapisu stanu Woo');
+    const update = pozycje.map((p) => {
+      if (!p || Object.keys(p).some((k) => !['id', 'stock_quantity'].includes(k)))
+        throw new Error('Niedozwolone pole zapisu stanu Woo');
       idStanu(p.id);
-      if (!Number.isSafeInteger(p.stock_quantity) || p.stock_quantity < 0) throw new Error('Niepoprawna ilość stanu Woo');
+      if (!Number.isSafeInteger(p.stock_quantity) || p.stock_quantity < 0)
+        throw new Error('Niepoprawna ilość stanu Woo');
       return { id: p.id, stock_quantity: p.stock_quantity };
     });
     const wynik = [];
@@ -477,28 +559,48 @@ export function createWooClient({ baseUrl, ck, cs, fetchImpl, http = transport({
       }
       for (const p of paczka) {
         // Woo może umieścić id odrzuconej pozycji w error.data.id.
-        const odpowiedz = dane?.update?.find(w => String(w.id || w.error?.data?.id) === String(p.id));
-        wynik.push(odpowiedz && !odpowiedz.error ? { id: p.id, ok: true }
-          : { id: p.id, ok: false, blad: odpowiedz?.error?.message || 'Brak wyniku zapisu stanu Woo' });
+        const odpowiedz = dane?.update?.find((w) => String(w.id || w.error?.data?.id) === String(p.id));
+        wynik.push(
+          odpowiedz && !odpowiedz.error
+            ? { id: p.id, ok: true }
+            : { id: p.id, ok: false, blad: odpowiedz?.error?.message || 'Brak wyniku zapisu stanu Woo' },
+        );
       }
     }
     return wynik;
   }
 
-  const dodajNotatke = (id, tresc) => tylkoOdczyt ? Promise.reject(bladTylkoOdczyt()) :
-    strzal(`/orders/${id}/notes`, { method: 'POST', body: JSON.stringify({ note: tresc, customer_note: false }) })
-      .then(({ dane }) => dane);
+  const dodajNotatke = (id, tresc) =>
+    tylkoOdczyt
+      ? Promise.reject(bladTylkoOdczyt())
+      : strzal(`/orders/${id}/notes`, {
+          method: 'POST',
+          body: JSON.stringify({ note: tresc, customer_note: false }),
+        }).then(({ dane }) => dane);
 
-  const ustawStatus = (id, status) => tylkoOdczyt ? Promise.reject(bladTylkoOdczyt()) :
-    strzal(`/orders/${id}`, { method: 'PUT', body: JSON.stringify({ status }) })
-      .then(({ dane }) => dane);
+  const ustawStatus = (id, status) =>
+    tylkoOdczyt
+      ? Promise.reject(bladTylkoOdczyt())
+      : strzal(`/orders/${id}`, { method: 'PUT', body: JSON.stringify({ status }) }).then(({ dane }) => dane);
 
   return {
     tylkoOdczyt,
-    sprawdzPolaczenie, pobierzMetodyWysylki, pobierzBramkiPlatnosci,
-    pobierzZamowienia, pobierzZamowieniaZakresu,
-    pobierzWszystkieProdukty, pobierzWarianty, pobierzKategorieProduktow, pobierzMiniatury, ustawienieSklepu,
-    pobierzProdukt, zapiszProdukt, dodajNotatke, ustawStatus,
-    pobierzStany, pobierzStanyWariantow, zapiszStanyHurtem,
+    sprawdzPolaczenie,
+    pobierzMetodyWysylki,
+    pobierzBramkiPlatnosci,
+    pobierzZamowienia,
+    pobierzZamowieniaZakresu,
+    pobierzWszystkieProdukty,
+    pobierzWarianty,
+    pobierzKategorieProduktow,
+    pobierzMiniatury,
+    ustawienieSklepu,
+    pobierzProdukt,
+    zapiszProdukt,
+    dodajNotatke,
+    ustawStatus,
+    pobierzStany,
+    pobierzStanyWariantow,
+    zapiszStanyHurtem,
   };
 }

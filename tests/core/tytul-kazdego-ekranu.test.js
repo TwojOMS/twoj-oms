@@ -6,13 +6,18 @@ import { zapewnijOkres } from '../../src/oms/db/okresy.js';
 describe('tytuł na sześciu ekranach bez h1', () => {
   let app, db, klientId, okresId;
   beforeAll(() => {
-    ({ app, db } = nowyPanel({ podjazdy: {
-      sprawdz: async () => ({ id: 1, stan: 'oczekuje', command_id: 'podjazd-testowy' }),
-    } }));
+    ({ app, db } = nowyPanel({
+      podjazdy: {
+        sprawdz: async () => ({ id: 1, stan: 'oczekuje', command_id: 'podjazd-testowy' }),
+      },
+    }));
     klientId = dopiszKlientaZbiorczego(db);
-    okresId = zapewnijOkres(db, {klientKlucz: 'przykladowa', rok: 2026, miesiac: 11}).id;
+    okresId = zapewnijOkres(db, { klientKlucz: 'przykladowa', rok: 2026, miesiac: 11 }).id;
   });
-  afterAll(async () => { await app.close(); db.close(); });
+  afterAll(async () => {
+    await app.close();
+    db.close();
+  });
 
   it.each([
     ['nowe zamówienie', () => '/zamowienia/nowe'],

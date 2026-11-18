@@ -4,7 +4,7 @@ import { importMozeZapisac } from '../../src/domena/zrodla-pol.js';
 const lista = ['woo:sklep', 'woo:drugi', 'allegro:konto', 'allegro:drugie'];
 const z = (zrodlo, reczne = 0) => ({ zrodlo, reczne });
 
-it.each(['cena_gr', 'zdjecia', 'opis'])('%s: wyższe połączenie przejmuje pole, niższe nie', pole => {
+it.each(['cena_gr', 'zdjecia', 'opis'])('%s: wyższe połączenie przejmuje pole, niższe nie', (pole) => {
   const wartosc = pole === 'zdjecia' ? [{}] : 120;
   expect(importMozeZapisac(pole, wartosc, z('allegro:konto'), 'woo:sklep', lista)).toBe(true);
   expect(importMozeZapisac(pole, wartosc, z('woo:sklep'), 'allegro:konto', lista)).toBe(false);
@@ -24,7 +24,7 @@ it('chroni ręczne i zastane pola przy obu kolejnościach, także celowo puste',
   }
 });
 
-it.each(['cena_gr', 'zdjecia', 'opis'])('%s: znane połączenie przejmuje pole od właściciela spoza listy', pole => {
+it.each(['cena_gr', 'zdjecia', 'opis'])('%s: znane połączenie przejmuje pole od właściciela spoza listy', (pole) => {
   const wartosc = pole === 'zdjecia' ? [{}] : 120;
   expect(importMozeZapisac(pole, wartosc, z('allegro:odlaczone'), 'woo:sklep', lista)).toBe(true);
   expect(importMozeZapisac(pole, wartosc, z('allegro:odlaczone'), 'woo:obcy', lista)).toBe(false);

@@ -5,13 +5,23 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import {
-  zapiszKoszt, kosztyMiesiaca, wczytajKursor, zapiszKursor, zapiszBladPobrania, zapiszSciezki,
-  stanKosztow, zapiszOdrzuconyKoszt, odrzuconeKoszty, liczbaOdrzuconych, usunOdrzucony,
-  kosztyBezArchiwum, zapiszRecznyKoszt, kosztyOtrzymaneWMiesiacu, odrzuconeWMiesiacu,
+  zapiszKoszt,
+  kosztyMiesiaca,
+  wczytajKursor,
+  zapiszKursor,
+  zapiszBladPobrania,
+  zapiszSciezki,
+  stanKosztow,
+  zapiszOdrzuconyKoszt,
+  odrzuconeKoszty,
+  liczbaOdrzuconych,
+  usunOdrzucony,
+  kosztyBezArchiwum,
+  zapiszRecznyKoszt,
+  kosztyOtrzymaneWMiesiacu,
+  odrzuconeWMiesiacu,
 } from '../../../src/oms/db/koszty.js';
-import {
-  kategoriaDlaNip, przypnijKategorie, wszystkieKategorie,
-} from '../../../src/oms/db/kategorie-kosztow.js';
+import { kategoriaDlaNip, przypnijKategorie, wszystkieKategorie } from '../../../src/oms/db/kategorie-kosztow.js';
 import { grosze } from '../../../src/domena/kwoty.js';
 import { naWierszReczny } from '../../../src/domena/koszt-reczny.js';
 
@@ -23,21 +33,31 @@ const { DatabaseSync } = require('node:sqlite');
 // SQLite bez słowa (kolumna o powinowactwie tekstowym przyjmie 123 i odda '123'), więc
 // gdyby test podawał liczby, nie sprawdzałby niczego z tego, co robi prawdziwa ścieżka.
 const wiersz = (nadpisz = {}) => ({
-  ksefNumber: 'K-1', numerDokumentu: 'FV/1', sprzedawcaNip: '5252674798',
-  sprzedawcaNazwa: 'Allegro', dataWystawienia: '2026-06-05',
-  dataTrwalegoZapisu: '2026-06-05T14:00:00Z', netto: '100.00', vat: '23.00', brutto: '123.00',
-  waluta: 'PLN', rodzaj: 'Vat', maZalacznik: 0, ...nadpisz,
+  ksefNumber: 'K-1',
+  numerDokumentu: 'FV/1',
+  sprzedawcaNip: '5252674798',
+  sprzedawcaNazwa: 'Allegro',
+  dataWystawienia: '2026-06-05',
+  dataTrwalegoZapisu: '2026-06-05T14:00:00Z',
+  netto: '100.00',
+  vat: '23.00',
+  brutto: '123.00',
+  waluta: 'PLN',
+  rodzaj: 'Vat',
+  maZalacznik: 0,
+  ...nadpisz,
 });
 
 // Firma reczna testowa — sam ksztalt slownika firm (db/firmy-reczne.js), potrzebny
 // wylacznie do zlozenia poprawnego wiersza przez `naWierszReczny`.
 const FIRMA_RECZNA = {
-  nazwa: 'Google', sprzedawca: 'Google Ireland Limited', kategoria: 'Reklama', typ: 'zmienny',
+  nazwa: 'Google',
+  sprzedawca: 'Google Ireland Limited',
+  kategoria: 'Reklama',
+  typ: 'zmienny',
 };
-const wierszReczny = (nadpisz = {}) => naWierszReczny(
-  { dataWystawienia: '2026-08-06', kwota: '200.00', ...nadpisz },
-  FIRMA_RECZNA,
-);
+const wierszReczny = (nadpisz = {}) =>
+  naWierszReczny({ dataWystawienia: '2026-08-06', kwota: '200.00', ...nadpisz }, FIRMA_RECZNA);
 
 // Baza PLIKOWA (nie `:memory:`) — jedyny sposob, zeby zamknac ja i otworzyc PONOWNIE,
 // czyli zeby test w ogole zobaczyl zachowanie migracji. Katalog swiezy przy kazdym
@@ -68,7 +88,10 @@ describe('tabela kosztow', () => {
   it('kwoty leza w bazie jako TEXT i wracaja jako napisy', () => {
     const db = openOmsDb();
     const typy = Object.fromEntries(
-      db.prepare('PRAGMA table_info(koszty)').all().map((k) => [k.name, k.type]),
+      db
+        .prepare('PRAGMA table_info(koszty)')
+        .all()
+        .map((k) => [k.name, k.type]),
     );
     expect([typy.netto, typy.vat, typy.brutto]).toEqual(['TEXT', 'TEXT', 'TEXT']);
 
@@ -82,11 +105,24 @@ describe('tabela kosztow', () => {
   // zobaczy właściciel, i to ona ma się zgadzać co do grosza z zestawieniem z KSeF.
   it('suma miesiaca z bazy jest dokladna co do grosza', () => {
     const db = openOmsDb();
-    const kwoty = ['1067.00', '245.41', '36.90', '12.30', '199.99', '45.67', '88.88',
-      '7.77', '123.45', '64.20', '310.15', '15.99', '5.55', '46.29'];
+    const kwoty = [
+      '1067.00',
+      '245.41',
+      '36.90',
+      '12.30',
+      '199.99',
+      '45.67',
+      '88.88',
+      '7.77',
+      '123.45',
+      '64.20',
+      '310.15',
+      '15.99',
+      '5.55',
+      '46.29',
+    ];
     kwoty.forEach((brutto, i) => zapiszKoszt(db, wiersz({ ksefNumber: `K-${i}`, brutto })));
-    const suma = kosztyMiesiaca(db, '2026-06')
-      .reduce((acc, w) => acc + grosze(w.brutto, 'brutto'), 0);
+    const suma = kosztyMiesiaca(db, '2026-06').reduce((acc, w) => acc + grosze(w.brutto, 'brutto'), 0);
     expect(suma).toBe(226955);
   });
 
@@ -106,8 +142,7 @@ describe('tabela kosztow', () => {
     'wiersz odrzucony przez NOT NULL (%s) RZUCA, zamiast udawac „juz byl"',
     (pole) => {
       const db = openOmsDb();
-      expect(() => zapiszKoszt(db, wiersz({ ksefNumber: 'K-BRAK', [pole]: null })))
-        .toThrow(/K-BRAK/);
+      expect(() => zapiszKoszt(db, wiersz({ ksefNumber: 'K-BRAK', [pole]: null }))).toThrow(/K-BRAK/);
       expect(db.prepare('SELECT COUNT(*) c FROM koszty').get().c).toBe(0);
     },
   );
@@ -191,7 +226,10 @@ describe('tabela kosztow', () => {
     expect(stanKosztow(db)).toBeNull();
     zapiszKursor(db, '2026-06-06T09:00:00Z');
     expect(stanKosztow(db)).toMatchObject({
-      id: 1, kursor: '2026-06-06T09:00:00Z', ostatni_blad: null, ostatni_blad_at: null,
+      id: 1,
+      kursor: '2026-06-06T09:00:00Z',
+      ostatni_blad: null,
+      ostatni_blad_at: null,
     });
     expect(stanKosztow(db).ostatnie_udane_at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
@@ -242,14 +280,26 @@ describe('migracja kwot kosztow REAL → TEXT', () => {
     const sciezka = plikBazy();
     const stara = new DatabaseSync(sciezka);
     stara.exec(STARA_TABELA);
-    stara.prepare(
-      'INSERT INTO koszty (ksef_number, numer_dokumentu, sprzedawca_nip, data_wystawienia,'
-      + ' data_trwalego_zapisu, netto, vat, brutto, waluta, rodzaj, sciezka_xml, pobrany_at)'
-      + ' VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
-    ).run(
-      'K-STARY', 'FV/9', '5252674798', '2026-06-05', '2026-06-05T14:00:00Z',
-      1067.0, 245.41, 1312.41, 'PLN', 'Vat', '/x/stary.xml', '2026-06-05T15:00:00Z',
-    );
+    stara
+      .prepare(
+        'INSERT INTO koszty (ksef_number, numer_dokumentu, sprzedawca_nip, data_wystawienia,' +
+          ' data_trwalego_zapisu, netto, vat, brutto, waluta, rodzaj, sciezka_xml, pobrany_at)' +
+          ' VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+      )
+      .run(
+        'K-STARY',
+        'FV/9',
+        '5252674798',
+        '2026-06-05',
+        '2026-06-05T14:00:00Z',
+        1067.0,
+        245.41,
+        1312.41,
+        'PLN',
+        'Vat',
+        '/x/stary.xml',
+        '2026-06-05T15:00:00Z',
+      );
     // Dowód, że stara baza NAPRAWDĘ trzyma tu liczby, a nie napisy:
     expect(typeof stara.prepare('SELECT brutto b FROM koszty').get().b).toBe('number');
     const schematPrzed = stara.prepare("SELECT sql FROM sqlite_master WHERE name = 'koszty'").get();
@@ -259,7 +309,10 @@ describe('migracja kwot kosztow REAL → TEXT', () => {
     expect(() => openOmsDb(sciezka)).toThrow(/inny schemat niż baseline/);
     const db = new DatabaseSync(sciezka);
     const typy = Object.fromEntries(
-      db.prepare('PRAGMA table_info(koszty)').all().map((k) => [k.name, k.type]),
+      db
+        .prepare('PRAGMA table_info(koszty)')
+        .all()
+        .map((k) => [k.name, k.type]),
     );
     expect([typy.netto, typy.vat, typy.brutto]).toEqual(['REAL', 'REAL', 'REAL']);
     expect(db.prepare("SELECT sql FROM sqlite_master WHERE name = 'koszty'").get()).toEqual(schematPrzed);
@@ -297,10 +350,7 @@ describe('migracja kwot kosztow REAL → TEXT', () => {
   // Sprawdzamy DEKLAROWANA KLASE PAMIECI (`typeof(...)`), nie sama wartosc: NULL i tekst
   // 'NaN' to dwie ROZNE drogi do tego samego cichego zera.
   describe('przebudowa odmawia przy kwocie, ktora nie jest liczba (U1)', () => {
-    const STARA_TABELA_LUZNA = STARA_TABELA.replace(
-      /(netto|vat|brutto) REAL NOT NULL/g,
-      '$1 REAL',
-    );
+    const STARA_TABELA_LUZNA = STARA_TABELA.replace(/(netto|vat|brutto) REAL NOT NULL/g, '$1 REAL');
 
     it.each([
       ['NULL', null],
@@ -309,14 +359,25 @@ describe('migracja kwot kosztow REAL → TEXT', () => {
       const sciezka = plikBazy();
       const stara = new DatabaseSync(sciezka);
       stara.exec(STARA_TABELA_LUZNA);
-      stara.prepare(
-        'INSERT INTO koszty (ksef_number, numer_dokumentu, sprzedawca_nip, data_wystawienia,'
-        + ' data_trwalego_zapisu, netto, vat, brutto, waluta, rodzaj, pobrany_at)'
-        + ' VALUES (?,?,?,?,?,?,?,?,?,?,?)',
-      ).run(
-        'K-USZKODZONY', 'FV/9', '5252674798', '2026-06-05', '2026-06-05T14:00:00Z',
-        1067.0, 245.41, zlaWartosc, 'PLN', 'Vat', '2026-06-05T15:00:00Z',
-      );
+      stara
+        .prepare(
+          'INSERT INTO koszty (ksef_number, numer_dokumentu, sprzedawca_nip, data_wystawienia,' +
+            ' data_trwalego_zapisu, netto, vat, brutto, waluta, rodzaj, pobrany_at)' +
+            ' VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+        )
+        .run(
+          'K-USZKODZONY',
+          'FV/9',
+          '5252674798',
+          '2026-06-05',
+          '2026-06-05T14:00:00Z',
+          1067.0,
+          245.41,
+          zlaWartosc,
+          'PLN',
+          'Vat',
+          '2026-06-05T15:00:00Z',
+        );
       const schematPrzed = stara.prepare("SELECT sql FROM sqlite_master WHERE name = 'koszty'").get();
       const wartosciPrzed = stara.prepare('SELECT netto, vat, brutto, typeof(brutto) typ FROM koszty').get();
       stara.close();
@@ -344,7 +405,9 @@ describe('migracja kwot kosztow REAL → TEXT', () => {
     const stara = new DatabaseSync(sciezka);
     stara.exec(STARA_TABELA);
     stara.exec('CREATE TABLE koszty_przed_przebudowa (cokolwiek INTEGER)');
-    const schematPrzed = stara.prepare("SELECT name, sql FROM sqlite_master WHERE name IN ('koszty', 'koszty_przed_przebudowa') ORDER BY name").all();
+    const schematPrzed = stara
+      .prepare("SELECT name, sql FROM sqlite_master WHERE name IN ('koszty', 'koszty_przed_przebudowa') ORDER BY name")
+      .all();
     stara.close();
 
     // Nie wystarczy, ze komunikat WSPOMINA nazwe tabeli — surowy blad SQLite
@@ -362,7 +425,13 @@ describe('migracja kwot kosztow REAL → TEXT', () => {
     expect(zlapany.message).not.toMatch(/there is already another table or index/i);
     expect(zlapany.message).toMatch(/inny schemat niż baseline/);
     const po = new DatabaseSync(sciezka);
-    expect(po.prepare("SELECT name, sql FROM sqlite_master WHERE name IN ('koszty', 'koszty_przed_przebudowa') ORDER BY name").all()).toEqual(schematPrzed);
+    expect(
+      po
+        .prepare(
+          "SELECT name, sql FROM sqlite_master WHERE name IN ('koszty', 'koszty_przed_przebudowa') ORDER BY name",
+        )
+        .all(),
+    ).toEqual(schematPrzed);
     po.close();
   });
 });
@@ -415,8 +484,7 @@ describe('kategorie kosztow', () => {
     (jak) => {
       const db = openOmsDb();
       przypnijKategorie(db, '5252674798', 'Prowizje sprzedażowe', 'zmienny');
-      expect(kategoriaDlaNip(db, jak))
-        .toEqual({ kategoria: 'Prowizje sprzedażowe', typ: 'zmienny' });
+      expect(kategoriaDlaNip(db, jak)).toEqual({ kategoria: 'Prowizje sprzedażowe', typ: 'zmienny' });
     },
   );
 
@@ -494,7 +562,9 @@ describe('slownik kategorii kosztow', () => {
     expect(nazwy).toContain('Reklama');
     // ...i nie ma ich w tabeli PRZYPISAN, bo nie ma czego do nich przypiac.
     const db = openOmsDb();
-    expect(db.prepare("SELECT COUNT(*) c FROM kategorie_kosztow WHERE kategoria IN ('Sprzęt','Reklama')").get().c).toBe(0);
+    expect(db.prepare("SELECT COUNT(*) c FROM kategorie_kosztow WHERE kategoria IN ('Sprzęt','Reklama')").get().c).toBe(
+      0,
+    );
   });
 
   it('typy nowych kategorii sa takie, jak zdecydowal wlasciciel', () => {
@@ -627,8 +697,11 @@ describe('kwarantanna kosztow — wyjscie', () => {
     zapiszKoszt(db, wiersz());
 
     expect(kosztyBezArchiwum(db)[0]).toMatchObject({
-      ksef_number: 'K-1', numer_dokumentu: 'FV/1', data_wystawienia: '2026-06-05',
-      sprzedawca_nazwa: 'Allegro', sprzedawca_nip: '5252674798',
+      ksef_number: 'K-1',
+      numer_dokumentu: 'FV/1',
+      data_wystawienia: '2026-06-05',
+      sprzedawca_nazwa: 'Allegro',
+      sprzedawca_nip: '5252674798',
     });
   });
 
@@ -656,15 +729,30 @@ describe('kwarantanna kosztow — wyjscie', () => {
 describe('kosztyOtrzymaneWMiesiacu', () => {
   it('koszt z KSeF liczy sie po dacie TRWALEGO ZAPISU, nie wystawienia', () => {
     const db = openOmsDb();
-    zapiszKoszt(db, wiersz({
-      ksefNumber: 'A', dataWystawienia: '2026-07-30', dataTrwalegoZapisu: '2026-08-02T10:00:00Z',
-    }));
-    zapiszKoszt(db, wiersz({
-      ksefNumber: 'B', dataWystawienia: '2026-08-31', dataTrwalegoZapisu: '2026-09-01T00:30:00Z',
-    }));
-    zapiszKoszt(db, wiersz({
-      ksefNumber: 'C', dataWystawienia: '2026-08-10', dataTrwalegoZapisu: '2026-08-10T10:00:00Z',
-    }));
+    zapiszKoszt(
+      db,
+      wiersz({
+        ksefNumber: 'A',
+        dataWystawienia: '2026-07-30',
+        dataTrwalegoZapisu: '2026-08-02T10:00:00Z',
+      }),
+    );
+    zapiszKoszt(
+      db,
+      wiersz({
+        ksefNumber: 'B',
+        dataWystawienia: '2026-08-31',
+        dataTrwalegoZapisu: '2026-09-01T00:30:00Z',
+      }),
+    );
+    zapiszKoszt(
+      db,
+      wiersz({
+        ksefNumber: 'C',
+        dataWystawienia: '2026-08-10',
+        dataTrwalegoZapisu: '2026-08-10T10:00:00Z',
+      }),
+    );
     expect(kosztyOtrzymaneWMiesiacu(db, '2026-08').map((k) => k.ksef_number)).toEqual(['A', 'C']);
   });
 
@@ -689,15 +777,30 @@ describe('kosztyOtrzymaneWMiesiacu', () => {
   // sekunda kolejnego miesiaca (ma odpasc) i ostatnia sekunda miesiaca poprzedniego (ma odpasc).
   it('granica konca miesiaca: pozna godzina 31.08 wchodzi, 01.09 i 31.07 nie', () => {
     const db = openOmsDb();
-    zapiszKoszt(db, wiersz({
-      ksefNumber: 'GRANICA-W', dataWystawienia: '2026-08-31', dataTrwalegoZapisu: '2026-08-31T22:30:00Z',
-    }));
-    zapiszKoszt(db, wiersz({
-      ksefNumber: 'GRANICA-PO', dataWystawienia: '2026-09-01', dataTrwalegoZapisu: '2026-09-01T00:00:00Z',
-    }));
-    zapiszKoszt(db, wiersz({
-      ksefNumber: 'GRANICA-PRZED', dataWystawienia: '2026-07-31', dataTrwalegoZapisu: '2026-07-31T23:59:59Z',
-    }));
+    zapiszKoszt(
+      db,
+      wiersz({
+        ksefNumber: 'GRANICA-W',
+        dataWystawienia: '2026-08-31',
+        dataTrwalegoZapisu: '2026-08-31T22:30:00Z',
+      }),
+    );
+    zapiszKoszt(
+      db,
+      wiersz({
+        ksefNumber: 'GRANICA-PO',
+        dataWystawienia: '2026-09-01',
+        dataTrwalegoZapisu: '2026-09-01T00:00:00Z',
+      }),
+    );
+    zapiszKoszt(
+      db,
+      wiersz({
+        ksefNumber: 'GRANICA-PRZED',
+        dataWystawienia: '2026-07-31',
+        dataTrwalegoZapisu: '2026-07-31T23:59:59Z',
+      }),
+    );
     const wynik = kosztyOtrzymaneWMiesiacu(db, '2026-08');
     expect(wynik.map((k) => k.ksef_number)).toEqual(['GRANICA-W']);
     expect(wynik[0].dzien_otrzymania).toBe('2026-08-31');

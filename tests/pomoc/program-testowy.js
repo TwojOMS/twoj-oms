@@ -12,10 +12,17 @@
 //   program.ile(nazwa) — liczba wywołań metody
 //   Każda metoda to vi.fn — `program.wystaw.mock.calls` działa jak przy mockach inFaktu.
 import { vi } from 'vitest';
-import { METODY_OBOWIAZKOWE, METODA_ZDOLNOSCI, sprawdzProgramFakturowy } from '../../src/integracje/program-fakturowy.ts';
+import {
+  METODY_OBOWIAZKOWE,
+  METODA_ZDOLNOSCI,
+  sprawdzProgramFakturowy,
+} from '../../src/integracje/program-fakturowy.ts';
 
 export const NAZWA_TESTOWNIKA = Object.freeze({
-  mianownik: 'Testownik', dopelniacz: 'Testownika', miejscownik: 'Testowniku', narzednik: 'Testownikiem',
+  mianownik: 'Testownik',
+  dopelniacz: 'Testownika',
+  miejscownik: 'Testowniku',
+  narzednik: 'Testownikiem',
 });
 
 const domyslne = () => ({
@@ -37,7 +44,8 @@ const domyslne = () => ({
 export function programTestowy({ id = 'testowy', nazwa = NAZWA_TESTOWNIKA, pomin = [], metody = {} } = {}) {
   const opcjonalne = Object.values(METODA_ZDOLNOSCI);
   for (const m of pomin) {
-    if (!opcjonalne.includes(m)) throw new Error(`programTestowy: „${m}” nie jest metodą opcjonalną — obowiązkowej nie da się pominąć.`);
+    if (!opcjonalne.includes(m))
+      throw new Error(`programTestowy: „${m}” nie jest metodą opcjonalną — obowiązkowej nie da się pominąć.`);
   }
   const wywolania = [];
   const zrodla = { ...domyslne(), ...metody };
@@ -46,9 +54,19 @@ export function programTestowy({ id = 'testowy', nazwa = NAZWA_TESTOWNIKA, pomin
       id,
       nazwa: Object.freeze({ ...nazwa }),
       regulaVat: 'wierszami',
-      zdolnosci: Object.freeze(Object.entries(METODA_ZDOLNOSCI).filter(([, m]) => !pomin.includes(m)).map(([z]) => z)),
+      zdolnosci: Object.freeze(
+        Object.entries(METODA_ZDOLNOSCI)
+          .filter(([, m]) => !pomin.includes(m))
+          .map(([z]) => z),
+      ),
       wystawienieWysylaDoKsef: false,
-      limity: Object.freeze({ zadanieMs: 30_000, najdluzszaListaMs: 300_000, stronaListy: 25, sufitStron: 20, rownolegleStron: 2 }),
+      limity: Object.freeze({
+        zadanieMs: 30_000,
+        najdluzszaListaMs: 300_000,
+        stronaListy: 25,
+        sufitStron: 20,
+        rownolegleStron: 2,
+      }),
       adres: 'https://testownik.invalid/api',
       ekran: '/ustawienia/integracje/testownik',
     }),
@@ -59,7 +77,10 @@ export function programTestowy({ id = 'testowy', nazwa = NAZWA_TESTOWNIKA, pomin
     if (pomin.includes(m)) continue;
     const zrodlo = zrodla[m];
     // Metoda = vi.fn, który zapisuje kolejność i woła źródło; vi.fn podany w `metody` liczy swoje wywołania dalej.
-    program[m] = vi.fn((...a) => { wywolania.push([m, ...a]); return zrodlo(...a); });
+    program[m] = vi.fn((...a) => {
+      wywolania.push([m, ...a]);
+      return zrodlo(...a);
+    });
   }
   return sprawdzProgramFakturowy(program);
 }

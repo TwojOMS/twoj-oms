@@ -35,7 +35,7 @@ describe('Pełna ścieżka klucza API: ekran → /ja → odwołanie → 401', ()
     expect(Boolean(klucz)).toBe(true);
     const prefiks = klucz.slice(5, 13);
     const bearer = { authorization: `Bearer ${klucz}` };
-    const tozsamosc = { nazwa, prefiks, zakresy: ZAKRESY_API.filter(z => zakresy.includes(z)) };
+    const tozsamosc = { nazwa, prefiks, zakresy: ZAKRESY_API.filter((z) => zakresy.includes(z)) };
 
     // 2–3. Bez ciasteczka oraz z sesją admina odpowiedź opisuje ten sam klucz.
     for (const headers of [bearer, { ...admin, ...bearer }]) {

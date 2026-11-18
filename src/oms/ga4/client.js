@@ -22,8 +22,7 @@ const ZAKRES = 'https://www.googleapis.com/auth/analytics.readonly';
 // przed koncem waznosci nie dostal 401 w polowie.
 const ZAPAS_MS = 5 * 60 * 1000;
 
-const b64url = (buf) => Buffer.from(buf).toString('base64')
-  .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const b64url = (buf) => Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
 // ⚠️ ŹRÓDLA META WZORCEM, NIE LISTA: GA4 zapisuje je na kilka sposobow naraz
 // (`facebook.com`, `m.facebook.com`, `l.instagram.com`, samo `fb`, `ig`), a lista dokladnych
@@ -31,7 +30,14 @@ const b64url = (buf) => Buffer.from(buf).toString('base64')
 // po cichu. Wzorzec czastkowy lapie cala rodzine.
 const WZORZEC_META = 'facebook|instagram|^fb$|^ig$';
 
-export function createGa4Client({ sciezkaKlucza, fetchImpl, http = transport({ fetchImpl }), teraz = () => Date.now(), authUrl = OAUTH, baseUrl = API }) {
+export function createGa4Client({
+  sciezkaKlucza,
+  fetchImpl,
+  http = transport({ fetchImpl }),
+  teraz = () => Date.now(),
+  authUrl = OAUTH,
+  baseUrl = API,
+}) {
   if (!sciezkaKlucza) throw new Error('Klient GA4 bez ścieżki klucza — sekcja konfiguracji miała nie wstać.');
 
   let klucz = null;
@@ -49,7 +55,11 @@ export function createGa4Client({ sciezkaKlucza, fetchImpl, http = transport({ f
       throw new Error(`Nie mogę odczytać klucza konta usługowego (${sciezkaKlucza}): ${e.code ?? e.message}`);
     }
     let dane;
-    try { dane = JSON.parse(surowy); } catch { throw new Error(`Klucz ${sciezkaKlucza} nie jest poprawnym JSON-em.`); }
+    try {
+      dane = JSON.parse(surowy);
+    } catch {
+      throw new Error(`Klucz ${sciezkaKlucza} nie jest poprawnym JSON-em.`);
+    }
     if (!dane?.client_email || !dane?.private_key) {
       throw new Error(`Plik ${sciezkaKlucza} to nie jest klucz konta usługowego (brak client_email / private_key).`);
     }
@@ -63,9 +73,15 @@ export function createGa4Client({ sciezkaKlucza, fetchImpl, http = transport({ f
     const k = wczytajKlucz();
     const sekundy = Math.floor(chwila / 1000);
     const naglowek = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
-    const tresc = b64url(JSON.stringify({
-      iss: k.client_email, scope: ZAKRES, aud: authUrl, iat: sekundy, exp: sekundy + 3600,
-    }));
+    const tresc = b64url(
+      JSON.stringify({
+        iss: k.client_email,
+        scope: ZAKRES,
+        aud: authUrl,
+        iat: sekundy,
+        exp: sekundy + 3600,
+      }),
+    );
     const podpis = b64url(createSign('RSA-SHA256').update(`${naglowek}.${tresc}`).sign(k.private_key));
 
     let res;
@@ -109,7 +125,11 @@ export function createGa4Client({ sciezkaKlucza, fetchImpl, http = transport({ f
     // Raport BEZ wierszy jest poprawny (dzien bez ruchu), ale odpowiedz, ktora nie ma nawet
     // pola `rows` ani `metadata`, znaczy „nie rozumiem tej odpowiedzi" — a to nie to samo
     // co zero sesji i nie wolno tego zapisac jako zero.
-    if (dane === null || typeof dane !== 'object' || (!('rows' in dane) && !('metadata' in dane) && !('rowCount' in dane))) {
+    if (
+      dane === null ||
+      typeof dane !== 'object' ||
+      (!('rows' in dane) && !('metadata' in dane) && !('rowCount' in dane))
+    ) {
       throw new Error(`GA4 oddało odpowiedź, której nie rozpoznaję: ${JSON.stringify(dane).slice(0, 200)}`);
     }
     return dane.rows ?? [];
@@ -201,16 +221,26 @@ export function createGa4Client({ sciezkaKlucza, fetchImpl, http = transport({ f
         const res = await http(`${baseUrl}/properties/${encodeURIComponent(wlasciwosc)}:runReport`, {
           method: 'POST',
           headers: { authorization: `Bearer ${dostepny}`, 'content-type': 'application/json' },
-          body: JSON.stringify({ dateRanges, dimensions: dimensions.map((name) => ({ name })),
-            metrics: metrics.map((name) => ({ name })), limit: LIMIT, offset }),
+          body: JSON.stringify({
+            dateRanges,
+            dimensions: dimensions.map((name) => ({ name })),
+            metrics: metrics.map((name) => ({ name })),
+            limit: LIMIT,
+            offset,
+          }),
         });
         if (!res.ok) {
           statusBledu = res.status;
           throw new Error('GA4 odmówiło odczytu');
         }
         const dane = await res.json();
-        if (!dane || typeof dane !== 'object' || !Number.isInteger(dane.rowCount) || dane.rowCount < 0
-          || (dane.rows !== undefined && !Array.isArray(dane.rows))) {
+        if (
+          !dane ||
+          typeof dane !== 'object' ||
+          !Number.isInteger(dane.rowCount) ||
+          dane.rowCount < 0 ||
+          (dane.rows !== undefined && !Array.isArray(dane.rows))
+        ) {
           throw new Error('Niepoprawna odpowiedź GA4');
         }
         const kod = dane.metadata?.currencyCode ?? null;
@@ -236,8 +266,8 @@ export function createGa4Client({ sciezkaKlucza, fetchImpl, http = transport({ f
       const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(String(value ?? ''));
       if (!match) throw new Error('Niepoprawna kwota GA4');
       const [, znak, cale, ulamek = ''] = match;
-      const grosze = BigInt(cale) * 100n + BigInt((ulamek + '00').slice(0, 2))
-        + (Number(ulamek[2] ?? 0) >= 5 ? 1n : 0n);
+      const grosze =
+        BigInt(cale) * 100n + BigInt((ulamek + '00').slice(0, 2)) + (Number(ulamek[2] ?? 0) >= 5 ? 1n : 0n);
       const wynik = znak === '-' ? -grosze : grosze;
       return `${wynik < 0n ? '-' : ''}${String((wynik < 0n ? -wynik : wynik) / 100n)}.${String((wynik < 0n ? -wynik : wynik) % 100n).padStart(2, '0')}`;
     };
@@ -258,9 +288,16 @@ export function createGa4Client({ sciezkaKlucza, fetchImpl, http = transport({ f
         const dzien = dzienZGa4(row.dimensionValues?.[0]?.value);
         const id = kampaniaId(row.dimensionValues?.[1]?.value);
         if (!dzien || !id) return [];
-        return [{ dzien, kampaniaId: id, nazwa: row.dimensionValues?.[2]?.value ?? '',
-          koszt: kwota(wartosc(row, 0)), klikniecia: calkowita(wartosc(row, 1)),
-          wyswietlenia: calkowita(wartosc(row, 2)) }];
+        return [
+          {
+            dzien,
+            kampaniaId: id,
+            nazwa: row.dimensionValues?.[2]?.value ?? '',
+            koszt: kwota(wartosc(row, 0)),
+            klikniecia: calkowita(wartosc(row, 1)),
+            wyswietlenia: calkowita(wartosc(row, 2)),
+          },
+        ];
       });
       const transakcje = transakcjeRaport.rows.flatMap((row) => {
         const dzien = dzienZGa4(row.dimensionValues?.[0]?.value);

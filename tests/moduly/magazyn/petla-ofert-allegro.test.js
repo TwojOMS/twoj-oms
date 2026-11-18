@@ -10,7 +10,12 @@ import { ENV_DEMO } from '../../../scripts/demo-dane.mjs';
 import { eanDemo, kategoriaAllegroDemo, parametryKategoriiAllegroDemo } from '../../../scripts/demo-dane-katalog.mjs';
 import { opisKategorii } from '../../../src/domena/tresc-oferty-allegro.js';
 import { utworzKarte } from '../../../src/oms/db/magazyn.js';
-import { zapiszUstawieniaOfertKonta, wstawOferte, ofertaPoId, zmienOferte } from '../../../src/oms/db/oferty-kanalow.ts';
+import {
+  zapiszUstawieniaOfertKonta,
+  wstawOferte,
+  ofertaPoId,
+  zmienOferte,
+} from '../../../src/oms/db/oferty-kanalow.ts';
 import { ustawZnacznikAi } from '../../../src/moduly/magazyn/services/znacznik-ai.js';
 import { LIMIT_STRONY_OFERT } from '../../../src/oms/allegro/client.js';
 import { znakInstalacji } from '../../../src/moduly/magazyn/services/oferty-wspolne.js';
@@ -26,38 +31,87 @@ const BEZPIECZENSTWO = JSON.stringify({ typ: 'TEXT', tekst: 'Nie zostawiaj włą
 const MIN = 60_000;
 
 const sprzatanie = [];
-afterEach(() => { for (const f of sprzatanie.splice(0)) f(); });
-
-const zawies = (signal) => new Promise((_r, reject) => {
-  if (signal?.aborted) { reject(signal.reason); return; }
-  signal?.addEventListener('abort', () => reject(signal.reason), { once: true });
+afterEach(() => {
+  for (const f of sprzatanie.splice(0)) f();
 });
+
+const zawies = (signal) =>
+  new Promise((_r, reject) => {
+    if (signal?.aborted) {
+      reject(signal.reason);
+      return;
+    }
+    signal?.addEventListener('abort', () => reject(signal.reason), { once: true });
+  });
 
 /** Karta z kategorią z mapy, regułami, marką, GPSR konta, `n` zdjęciami i EAN demo (D34 → katalog-id). */
 function karta(db, konto, { nazwa = 'Lampa stołowa Gliwka z kloszem', n = 2 } = {}) {
-  const id = utworzKarte(db, { nazwa, cena_gr: 5900, stawka_vat: '23', marka: 'Pracownia Półcień',
-    kategoria_glowna: 'Lampy stołowe', szerokosc_mm: 255,
-    opis_sekcje_json: JSON.stringify({ sekcje: [{ elementy: [{ typ: 'tekst', html: '<p>Lampa z mlecznym kloszem.</p>' }] }] }) },
-  { at: new Date(T0).toISOString() });
-  db.prepare('UPDATE karty_produktow SET informacja_bezpieczenstwa = ?, ean = ? WHERE id = ?').run(BEZPIECZENSTWO, eanDemo(1), id);
-  const zdj = db.prepare(`INSERT INTO zdjecia_kart (karta_id, kolejnosc, zrodlo, adres_zrodlowy, sha256, typ, ai, ai_reczne, utworzono_at)
+  const id = utworzKarte(
+    db,
+    {
+      nazwa,
+      cena_gr: 5900,
+      stawka_vat: '23',
+      marka: 'Pracownia Półcień',
+      kategoria_glowna: 'Lampy stołowe',
+      szerokosc_mm: 255,
+      opis_sekcje_json: JSON.stringify({
+        sekcje: [{ elementy: [{ typ: 'tekst', html: '<p>Lampa z mlecznym kloszem.</p>' }] }],
+      }),
+    },
+    { at: new Date(T0).toISOString() },
+  );
+  db.prepare('UPDATE karty_produktow SET informacja_bezpieczenstwa = ?, ean = ? WHERE id = ?').run(
+    BEZPIECZENSTWO,
+    eanDemo(1),
+    id,
+  );
+  const zdj =
+    db.prepare(`INSERT INTO zdjecia_kart (karta_id, kolejnosc, zrodlo, adres_zrodlowy, sha256, typ, ai, ai_reczne, utworzono_at)
     VALUES (?, ?, 'reczne', ?, NULL, 'image/jpeg', 0, 1, ?)`);
-  for (let i = 0; i < n; i++) zdj.run(id, i, `https://polcien.example.invalid/gliwka-${id}-${i + 1}.jpg`, new Date(T0).toISOString());
+  for (let i = 0; i < n; i++)
+    zdj.run(id, i, `https://polcien.example.invalid/gliwka-${id}-${i + 1}.jpg`, new Date(T0).toISOString());
   // Opis kategorii 257 (wersja 2) w pamięci konta — ten sam zapis, co `opisKategoriiAllegro` po pobraniu.
   const opis = opisKategorii(['5', '256', '257'].map(kategoriaAllegroDemo), parametryKategoriiAllegroDemo('257'));
-  db.prepare(`INSERT OR IGNORE INTO kanaly_kategorie (polaczenie, kategoria_id, sciezka_json, parametry_json, pobrano_at) VALUES (?, '257', ?, ?, ?)`)
-    .run(konto, JSON.stringify(opis.sciezka), JSON.stringify({ wersja: opis.wersja, lisc: opis.lisc, tworzenieProduktu: opis.tworzenieProduktu, parametry: opis.parametry }), new Date(T0).toISOString());
-  db.prepare(`INSERT OR IGNORE INTO allegro_mapa_kategorii (kategoria_karty, srodowisko, kategoria_allegro_id) VALUES ('Lampy stołowe', 'produkcja', '257')`).run();
-  const regula = db.prepare(`INSERT OR IGNORE INTO allegro_reguly_parametrow (srodowisko, kategoria_allegro_id, parametr_id, rodzaj,
+  db.prepare(
+    `INSERT OR IGNORE INTO kanaly_kategorie (polaczenie, kategoria_id, sciezka_json, parametry_json, pobrano_at) VALUES (?, '257', ?, ?, ?)`,
+  ).run(
+    konto,
+    JSON.stringify(opis.sciezka),
+    JSON.stringify({
+      wersja: opis.wersja,
+      lisc: opis.lisc,
+      tworzenieProduktu: opis.tworzenieProduktu,
+      parametry: opis.parametry,
+    }),
+    new Date(T0).toISOString(),
+  );
+  db.prepare(
+    `INSERT OR IGNORE INTO allegro_mapa_kategorii (kategoria_karty, srodowisko, kategoria_allegro_id) VALUES ('Lampy stołowe', 'produkcja', '257')`,
+  ).run();
+  const regula =
+    db.prepare(`INSERT OR IGNORE INTO allegro_reguly_parametrow (srodowisko, kategoria_allegro_id, parametr_id, rodzaj,
     wartosc_json, pole, zmieniono_at) VALUES ('produkcja', '257', ?, ?, ?, ?, ?)`);
   regula.run('11323', 'stala', JSON.stringify({ valuesIds: ['11323_1'] }), null, new Date(T0).toISOString());
   regula.run('248811', 'pole', null, 'marka', new Date(T0).toISOString());
-  db.prepare(`INSERT OR IGNORE INTO allegro_marki (marka, srodowisko, parametr_id, wartosc_id, kategorie_sprawdzone_json, zmieniono_at)
-    VALUES ('Pracownia Półcień', 'produkcja', '248811', '248811_9001', '["257"]', ?)`).run(new Date(T0).toISOString());
-  db.prepare(`INSERT OR IGNORE INTO allegro_marki_gpsr (marka, konto, zrodlo, zmieniono_at) VALUES ('Pracownia Półcień', ?, 'konto', ?)`)
-    .run(konto, new Date(T0).toISOString());
-  const wiersz = wstawOferte(db, { kartaId: id, kanal: konto, idZewnetrzne: `ext:${znakInstalacji(db)}-K${id}`, tryb: 'zarzadzana', stan: 'do_wyslania' },
-    { teraz: new Date(T0).toISOString() });
+  db.prepare(
+    `INSERT OR IGNORE INTO allegro_marki (marka, srodowisko, parametr_id, wartosc_id, kategorie_sprawdzone_json, zmieniono_at)
+    VALUES ('Pracownia Półcień', 'produkcja', '248811', '248811_9001', '["257"]', ?)`,
+  ).run(new Date(T0).toISOString());
+  db.prepare(
+    `INSERT OR IGNORE INTO allegro_marki_gpsr (marka, konto, zrodlo, zmieniono_at) VALUES ('Pracownia Półcień', ?, 'konto', ?)`,
+  ).run(konto, new Date(T0).toISOString());
+  const wiersz = wstawOferte(
+    db,
+    {
+      kartaId: id,
+      kanal: konto,
+      idZewnetrzne: `ext:${znakInstalacji(db)}-K${id}`,
+      tryb: 'zarzadzana',
+      stan: 'do_wyslania',
+    },
+    { teraz: new Date(T0).toISOString() },
+  );
   return { kartaId: id, ofertaId: wiersz.id };
 }
 
@@ -67,7 +121,9 @@ function srodowisko({ ustawienia = {}, zgoda = true, tylkoOdczyt = () => false }
   const teraz = () => new Date(czas);
   const f = fixtureAllegro();
   const s = f.szkic();
-  const k = daneAllegro(f.repo.zapiszZmiane(s.klucz, s.wersja, { autoryzacja: 'polaczone', kontoId: '123' }, aktorAllegro));
+  const k = daneAllegro(
+    f.repo.zapiszZmiane(s.klucz, s.wersja, { autoryzacja: 'polaczone', kontoId: '123' }, aktorAllegro),
+  );
   const KONTO = k.klucz;
   const dbAtrapy = new DatabaseSync(':memory:');
   const serwer = createSerwerOfertAllegro({ db: dbAtrapy, kanal: KONTO, env: ENV_DEMO, teraz });
@@ -80,42 +136,118 @@ function srodowisko({ ustawienia = {}, zgoda = true, tylkoOdczyt = () => false }
     const sciezka = adres.pathname;
     zdarzenia.push(`${metoda} ${sciezka}`);
     if (typeof init.body === 'string') {
-      try { ciala.push({ zdarzenie: `${metoda} ${sciezka}`, cialo: JSON.parse(init.body) }); } catch { /* ciało nie-JSON */ }
+      try {
+        ciala.push({ zdarzenie: `${metoda} ${sciezka}`, cialo: JSON.parse(init.body) });
+      } catch {
+        /* ciało nie-JSON */
+      }
     }
     const a = st.awaria?.(metoda, sciezka, adres);
-    if (a === 'zgubiona-odpowiedz') { await serwer.fetchImpl(url, init); return zawies(init.signal); }
+    if (a === 'zgubiona-odpowiedz') {
+      await serwer.fetchImpl(url, init);
+      return zawies(init.signal);
+    }
     if (a === 'bez-dotarcia') return zawies(init.signal);
     if (a instanceof Response) return a;
     return serwer.fetchImpl(url, init);
   }
-  const rejestr = createRejestrKanalow({ repozytorium: f.repo, fetchImpl, limitCzasuMs: 200, teraz,
+  const rejestr = createRejestrKanalow({
+    repozytorium: f.repo,
+    fetchImpl,
+    limitCzasuMs: 200,
+    teraz,
     fabryki: ({ http }) => ({
-      klient: createAllegroClient({ ustawienia: { api: API_ATRAPY_ALLEGRO, userAgent: 'test/1 (+https://x.invalid)' },
-        tokeny: { waznyToken: async () => 'token-atrapy-e308a' }, http }),
+      klient: createAllegroClient({
+        ustawienia: { api: API_ATRAPY_ALLEGRO, userAgent: 'test/1 (+https://x.invalid)' },
+        tokeny: { waznyToken: async () => 'token-atrapy-e308a' },
+        http,
+      }),
       poller: { stan: () => null, przebieg: async () => {} },
-    }) });
+    }),
+  });
   const klient = rejestr.klient(KONTO);
   const db = openOmsDb(':memory:', { moduly: modulyDla(ENV_DEMO) });
-  sprzatanie.push(() => { db.close(); dbAtrapy.close(); f.db.close(); });
-  zapiszUstawieniaOfertKonta(db, KONTO, { czynne: true, aktywujPoSprawdzeniu: true, narzutProcent: 0, stalaIlosc: 5,
-    czasWysylkiDni: 2, cennikDostaw: 'cennik-1', stawkaVat: '23', zwrotyId: 'zwrot-1', reklamacjeId: 'rekl-1',
-    producentId: 'prod-konta', ...ustawienia }, { teraz: new Date(T0).toISOString() });
-  const konto = { klucz: KONTO, nazwa: 'Półcień Allegro', srodowisko: 'produkcja', zgoda, tylkoOdczyt,
-    katalog: katalogAllegro(klient), allegro: wezlyAllegro(klient) };
-  const petla = () => createPetlaOfertAllegro({ db, konta: () => [konto], teraz,
-    zwolnijOperacje: (klucz, metoda, zasob) => f.repo.zwolnijOperacje(klucz, metoda, zasob),
-    czytajZdjecie: async (z) => new Uint8Array([7, z.id, z.kolejnosc + 1]) });
-  const przesun = (ms) => { czas += ms; f.setCzas(new Date(czas).toISOString()); };
+  sprzatanie.push(() => {
+    db.close();
+    dbAtrapy.close();
+    f.db.close();
+  });
+  zapiszUstawieniaOfertKonta(
+    db,
+    KONTO,
+    {
+      czynne: true,
+      aktywujPoSprawdzeniu: true,
+      narzutProcent: 0,
+      stalaIlosc: 5,
+      czasWysylkiDni: 2,
+      cennikDostaw: 'cennik-1',
+      stawkaVat: '23',
+      zwrotyId: 'zwrot-1',
+      reklamacjeId: 'rekl-1',
+      producentId: 'prod-konta',
+      ...ustawienia,
+    },
+    { teraz: new Date(T0).toISOString() },
+  );
+  const konto = {
+    klucz: KONTO,
+    nazwa: 'Półcień Allegro',
+    srodowisko: 'produkcja',
+    zgoda,
+    tylkoOdczyt,
+    katalog: katalogAllegro(klient),
+    allegro: wezlyAllegro(klient),
+  };
+  const petla = () =>
+    createPetlaOfertAllegro({
+      db,
+      konta: () => [konto],
+      teraz,
+      zwolnijOperacje: (klucz, metoda, zasob) => f.repo.zwolnijOperacje(klucz, metoda, zasob),
+      czytajZdjecie: async (z) => new Uint8Array([7, z.id, z.kolejnosc + 1]),
+    });
+  const przesun = (ms) => {
+    czas += ms;
+    f.setCzas(new Date(czas).toISOString());
+  };
   const ile = (wzor) => zdarzenia.filter((z) => wzor.test(z)).length;
-  const ofertyAtrapy = (ext) => dbAtrapy.prepare('SELECT dane_json FROM atrapa_allegro_oferty WHERE kanal = ?').all(KONTO)
-    .map((w) => JSON.parse(w.dane_json)).filter((o) => o.external?.id === ext);
-  const wstawDoAtrapy = (o) => dbAtrapy.prepare('INSERT INTO atrapa_allegro_oferty (kanal, id, dane_json) VALUES (?, ?, ?)')
-    .run(KONTO, String(o.id), JSON.stringify(o));
-  const ofertaWAtrapie = (id) => JSON.parse(dbAtrapy.prepare('SELECT dane_json FROM atrapa_allegro_oferty WHERE kanal = ? AND id = ?')
-    .get(KONTO, String(id)).dane_json);
-  const zmienWAtrapie = (id, f) => dbAtrapy.prepare('UPDATE atrapa_allegro_oferty SET dane_json = ? WHERE kanal = ? AND id = ?')
-    .run(JSON.stringify(f(ofertaWAtrapie(id))), KONTO, String(id));
-  return { db, f, KONTO, st, zdarzenia, ciala, petla, przesun, ile, ofertyAtrapy, wstawDoAtrapy, ofertaWAtrapie, zmienWAtrapie, teraz, konto };
+  const ofertyAtrapy = (ext) =>
+    dbAtrapy
+      .prepare('SELECT dane_json FROM atrapa_allegro_oferty WHERE kanal = ?')
+      .all(KONTO)
+      .map((w) => JSON.parse(w.dane_json))
+      .filter((o) => o.external?.id === ext);
+  const wstawDoAtrapy = (o) =>
+    dbAtrapy
+      .prepare('INSERT INTO atrapa_allegro_oferty (kanal, id, dane_json) VALUES (?, ?, ?)')
+      .run(KONTO, String(o.id), JSON.stringify(o));
+  const ofertaWAtrapie = (id) =>
+    JSON.parse(
+      dbAtrapy.prepare('SELECT dane_json FROM atrapa_allegro_oferty WHERE kanal = ? AND id = ?').get(KONTO, String(id))
+        .dane_json,
+    );
+  const zmienWAtrapie = (id, f) =>
+    dbAtrapy
+      .prepare('UPDATE atrapa_allegro_oferty SET dane_json = ? WHERE kanal = ? AND id = ?')
+      .run(JSON.stringify(f(ofertaWAtrapie(id))), KONTO, String(id));
+  return {
+    db,
+    f,
+    KONTO,
+    st,
+    zdarzenia,
+    ciala,
+    petla,
+    przesun,
+    ile,
+    ofertyAtrapy,
+    wstawDoAtrapy,
+    ofertaWAtrapie,
+    zmienWAtrapie,
+    teraz,
+    konto,
+  };
 }
 
 const POST = /^POST \/sale\/product-offers$/;
@@ -164,7 +296,8 @@ describe('E3.08a — pętla wysyłki ofert Allegro', () => {
     const e = srodowisko();
     const { ofertaId } = karta(e.db, e.KONTO);
     let raz = true;
-    e.st.awaria = (m, s) => (m === 'POST' && s === '/sale/product-offers' && raz ? ((raz = false), 'zgubiona-odpowiedz') : null);
+    e.st.awaria = (m, s) =>
+      m === 'POST' && s === '/sale/product-offers' && raz ? ((raz = false), 'zgubiona-odpowiedz') : null;
     await e.petla().przebieg();
     let o = ofertaPoId(e.db, ofertaId);
     expect(o.stan).toBe('wyslana');
@@ -205,7 +338,12 @@ describe('E3.08a — pętla wysyłki ofert Allegro', () => {
     e.st.awaria = (m, s) => (m === 'POST' && s === '/sale/product-offers' ? 'bez-dotarcia' : null);
     await e.petla().przebieg();
     const o = ofertaPoId(e.db, ofertaId);
-    e.wstawDoAtrapy({ id: '18999000009', name: o.wyslanePola.nazwa, external: { id: ext(o) }, publication: { status: 'ENDED' } });
+    e.wstawDoAtrapy({
+      id: '18999000009',
+      name: o.wyslanePola.nazwa,
+      external: { id: ext(o) },
+      publication: { status: 'ENDED' },
+    });
     e.st.awaria = null;
     const p = e.petla();
     e.przesun(MIN);
@@ -245,7 +383,8 @@ describe('E3.08a — pętla wysyłki ofert Allegro', () => {
     const e = srodowisko();
     const { ofertaId } = karta(e.db, e.KONTO);
     let raz = true;
-    e.st.awaria = (m, s) => (m === 'POST' && s === '/sale/product-offers' && raz ? ((raz = false), 'zgubiona-odpowiedz') : null);
+    e.st.awaria = (m, s) =>
+      m === 'POST' && s === '/sale/product-offers' && raz ? ((raz = false), 'zgubiona-odpowiedz') : null;
     const p = e.petla();
     await p.przebieg();
     e.przesun(MIN);
@@ -253,7 +392,12 @@ describe('E3.08a — pętla wysyłki ofert Allegro', () => {
     expect(ofertaPoId(e.db, ofertaId).idZewnetrzne).toMatch(/^\d+$/);
     expect(e.f.repo.niejednoznaczne(e.KONTO)).toEqual([]);
     // Ktoś ustawia wiersz z numerem na do_wyslania (Ponów, D34).
-    zmienOferte(e.db, ofertaId, { stan: 'do_wyslania', nastepnaProbaAt: null, blad: null }, { teraz: e.teraz().toISOString() });
+    zmienOferte(
+      e.db,
+      ofertaId,
+      { stan: 'do_wyslania', nastepnaProbaAt: null, blad: null },
+      { teraz: e.teraz().toISOString() },
+    );
     e.przesun(MIN);
     await p.przebieg();
     const o = ofertaPoId(e.db, ofertaId);
@@ -286,16 +430,24 @@ describe('E3.08a — pętla wysyłki ofert Allegro', () => {
   it('galeria: po wgraniu i błędzie oferty znacznik AI jest zablokowany, ponowienie bierze adresy z mapy', async () => {
     const e = srodowisko();
     const { ofertaId, kartaId } = karta(e.db, e.KONTO);
-    e.st.awaria = (m, s) => (m === 'POST' && s === '/sale/product-offers'
-      ? new Response(JSON.stringify({ errors: [{ code: 'X', message: 'Zła kategoria' }] }), { status: 422, headers: { 'Content-Type': 'application/json' } })
-      : null);
+    e.st.awaria = (m, s) =>
+      m === 'POST' && s === '/sale/product-offers'
+        ? new Response(JSON.stringify({ errors: [{ code: 'X', message: 'Zła kategoria' }] }), {
+            status: 422,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        : null;
     await e.petla().przebieg();
     let o = ofertaPoId(e.db, ofertaId);
     expect(o.stan).toBe('blad');
     expect(o.blad).toMatch(/Zła kategoria/);
     expect(e.ile(/^POST \/sale\/images$/)).toBe(2);
-    const zdjecie = e.db.prepare('SELECT id FROM zdjecia_kart WHERE karta_id = ? ORDER BY kolejnosc LIMIT 1').get(kartaId);
-    expect(() => ustawZnacznikAi(e.db, { kartaId, zdjecieId: zdjecie.id, ai: 1, at: e.teraz().toISOString() })).toThrow();
+    const zdjecie = e.db
+      .prepare('SELECT id FROM zdjecia_kart WHERE karta_id = ? ORDER BY kolejnosc LIMIT 1')
+      .get(kartaId);
+    expect(() =>
+      ustawZnacznikAi(e.db, { kartaId, zdjecieId: zdjecie.id, ai: 1, at: e.teraz().toISOString() }),
+    ).toThrow();
     e.st.awaria = null;
     zmienOferte(e.db, ofertaId, { stan: 'do_wyslania', nastepnaProbaAt: null }, { teraz: e.teraz().toISOString() });
     e.przesun(MIN);
@@ -326,13 +478,15 @@ describe('E3.08a — pętla wysyłki ofert Allegro', () => {
   it('26 kart → 25 wysłanych w jednym przebiegu', async () => {
     const e = srodowisko({ ustawienia: { aktywujPoSprawdzeniu: false } });
     const id = [];
-    for (let i = 0; i < 26; i++) id.push(karta(e.db, e.KONTO, { nazwa: `Lampa stołowa Gliwka ${i + 1}`, n: 1 }).ofertaId);
+    for (let i = 0; i < 26; i++)
+      id.push(karta(e.db, e.KONTO, { nazwa: `Lampa stołowa Gliwka ${i + 1}`, n: 1 }).ofertaId);
     await e.petla().przebieg();
     expect(e.ile(POST)).toBe(25);
     expect(id.filter((x) => ofertaPoId(e.db, x).stan === 'do_wyslania')).toHaveLength(1);
   });
   const POST_OFERTY = (m, s) => m === 'POST' && s === '/sale/product-offers';
-  const jsonOdp = (status, cialo, naglowki = {}) => new Response(JSON.stringify(cialo), { status, headers: { 'Content-Type': 'application/json', ...naglowki } });
+  const jsonOdp = (status, cialo, naglowki = {}) =>
+    new Response(JSON.stringify(cialo), { status, headers: { 'Content-Type': 'application/json', ...naglowki } });
   /** Pierwszy POST oferty nie dociera (limit czasu), potem odzysk po sygnaturze. */
   function pierwszyPostGinie(e, dalej = () => null) {
     let raz = true;
@@ -352,7 +506,8 @@ describe('E3.08a — pętla wysyłki ofert Allegro', () => {
     const e = srodowisko();
     const { ofertaId } = karta(e.db, e.KONTO);
     let raz = true;
-    e.st.awaria = (m, s) => (POST_OFERTY(m, s) && raz ? ((raz = false), jsonOdp(429, {}, { 'Retry-After': '7' })) : null);
+    e.st.awaria = (m, s) =>
+      POST_OFERTY(m, s) && raz ? ((raz = false), jsonOdp(429, {}, { 'Retry-After': '7' })) : null;
     const p = e.petla();
     await p.przebieg();
     const o = ofertaPoId(e.db, ofertaId);
@@ -373,9 +528,16 @@ describe('E3.08a — pętla wysyłki ofert Allegro', () => {
     await p.przebieg();
     expect(ofertaPoId(e.db, ofertaId).stan).toBe('wyslana');
     const nazwa = ofertaPoId(e.db, ofertaId).wyslanePola.nazwa;
-    e.wstawDoAtrapy({ id: '18999000077', name: nazwa, external: { id: `${znakInstalacji(e.db)}-K${kartaId}` }, publication: { status: 'INACTIVE' } });
+    e.wstawDoAtrapy({
+      id: '18999000077',
+      name: nazwa,
+      external: { id: `${znakInstalacji(e.db)}-K${kartaId}` },
+      publication: { status: 'INACTIVE' },
+    });
     const inna = karta(e.db, e.KONTO, { nazwa: 'Lampa podłogowa Smuga', n: 1 });
-    e.db.prepare("UPDATE oferty_kanalow SET id_zewnetrzne = '18999000077', stan = 'aktywna' WHERE id = ?").run(inna.ofertaId);
+    e.db
+      .prepare("UPDATE oferty_kanalow SET id_zewnetrzne = '18999000077', stan = 'aktywna' WHERE id = ?")
+      .run(inna.ofertaId);
     e.przesun(60_000);
     await p.przebieg();
     e.przesun(15 * 60_000);
@@ -390,7 +552,12 @@ describe('E3.08a — pętla wysyłki ofert Allegro', () => {
     pierwszyPostGinie(e);
     const p = e.petla();
     await p.przebieg();
-    e.wstawDoAtrapy({ id: '18999000078', name: 'Zupełnie inna lampa', external: { id: `${znakInstalacji(e.db)}-K${kartaId}` }, publication: { status: 'INACTIVE' } });
+    e.wstawDoAtrapy({
+      id: '18999000078',
+      name: 'Zupełnie inna lampa',
+      external: { id: `${znakInstalacji(e.db)}-K${kartaId}` },
+      publication: { status: 'INACTIVE' },
+    });
     e.przesun(60_000);
     await p.przebieg();
     e.przesun(15 * 60_000);
@@ -402,12 +569,28 @@ describe('E3.08a — pętla wysyłki ofert Allegro', () => {
   it('lista po sygnaturze niefiltrowana → nie wiadomo: bez odzysku i bez ponownego POST', async () => {
     const e = srodowisko();
     const { ofertaId } = karta(e.db, e.KONTO);
-    pierwszyPostGinie(e, (m, s) => (m === 'GET' && s === '/sale/offers'
-      ? jsonOdp(200, { offers: [{ id: '17000000000999', name: 'Obca', external: { id: 'obca-sygnatura' }, publication: { status: 'ACTIVE' } }], count: 1, totalCount: 1 })
-      : null));
+    pierwszyPostGinie(e, (m, s) =>
+      m === 'GET' && s === '/sale/offers'
+        ? jsonOdp(200, {
+            offers: [
+              {
+                id: '17000000000999',
+                name: 'Obca',
+                external: { id: 'obca-sygnatura' },
+                publication: { status: 'ACTIVE' },
+              },
+            ],
+            count: 1,
+            totalCount: 1,
+          })
+        : null,
+    );
     const p = e.petla();
     await p.przebieg();
-    for (const ms of [60_000, 16 * 60_000, 16 * 60_000]) { e.przesun(ms); await p.przebieg(); }
+    for (const ms of [60_000, 16 * 60_000, 16 * 60_000]) {
+      e.przesun(ms);
+      await p.przebieg();
+    }
     const o = ofertaPoId(e.db, ofertaId);
     expect(e.ile(/^GET \/sale\/offers$/)).toBeGreaterThan(1);
     expect(e.ile(POST)).toBe(1);
@@ -418,7 +601,10 @@ describe('E3.08a — pętla wysyłki ofert Allegro', () => {
   it('operacja w toku dłużej niż 3 h → problem bez-potwierdzenia (po 2 h jeszcze czeka)', async () => {
     const e = srodowisko();
     const { ofertaId } = karta(e.db, e.KONTO);
-    e.st.awaria = (m, s) => (m === 'GET' && /\/operations\//.test(s) ? new Response(null, { status: 202, headers: { 'Retry-After': '1' } }) : null);
+    e.st.awaria = (m, s) =>
+      m === 'GET' && /\/operations\//.test(s)
+        ? new Response(null, { status: 202, headers: { 'Retry-After': '1' } })
+        : null;
     const p = e.petla();
     await p.przebieg();
     expect(ofertaPoId(e.db, ofertaId).stan).toBe('sprawdzana');
@@ -436,7 +622,10 @@ describe('E3.08a — pętla wysyłki ofert Allegro', () => {
     let zamknieta = false;
     const e = srodowisko({ tylkoOdczyt: () => zamknieta });
     const { ofertaId } = karta(e.db, e.KONTO);
-    e.st.awaria = (m, s) => { if (POST_OFERTY(m, s)) zamknieta = true; return null; };
+    e.st.awaria = (m, s) => {
+      if (POST_OFERTY(m, s)) zamknieta = true;
+      return null;
+    };
     await e.petla().przebieg();
     expect(e.ile(POST)).toBe(1);
     expect(e.ile(PATCH)).toBe(0);
@@ -446,8 +635,18 @@ describe('E3.08a — pętla wysyłki ofert Allegro', () => {
   it('422 PARAMETER_MISMATCH na POST → problem parameter-mismatch z productId i parameterId (D34 krok 4)', async () => {
     const e = srodowisko();
     const { ofertaId } = karta(e.db, e.KONTO);
-    e.st.awaria = (m, s) => (POST_OFERTY(m, s) ? jsonOdp(422, { errors: [{ code: 'PARAMETER_MISMATCH',
-      message: 'Wartość parametru różni się od produktu', metadata: { productId: 'prod-77', parameterId: '224017' } }] }) : null);
+    e.st.awaria = (m, s) =>
+      POST_OFERTY(m, s)
+        ? jsonOdp(422, {
+            errors: [
+              {
+                code: 'PARAMETER_MISMATCH',
+                message: 'Wartość parametru różni się od produktu',
+                metadata: { productId: 'prod-77', parameterId: '224017' },
+              },
+            ],
+          })
+        : null;
     await e.petla().przebieg();
     const o = ofertaPoId(e.db, ofertaId);
     expect(o.stan).toBe('problem');
@@ -457,13 +656,27 @@ describe('E3.08a — pętla wysyłki ofert Allegro', () => {
   it('kilka produktów z EAN karty → problem wiele-produktow z ean, bez POST', async () => {
     const e = srodowisko();
     const { ofertaId } = karta(e.db, e.KONTO);
-    e.st.awaria = (m, s) => (m === 'GET' && s === '/sale/products'
-      ? jsonOdp(200, { products: [{ id: 'p-1', name: 'Lampa A' }, { id: 'p-2', name: 'Lampa B' }] }) : null);
+    e.st.awaria = (m, s) =>
+      m === 'GET' && s === '/sale/products'
+        ? jsonOdp(200, {
+            products: [
+              { id: 'p-1', name: 'Lampa A' },
+              { id: 'p-2', name: 'Lampa B' },
+            ],
+          })
+        : null;
     await e.petla().przebieg();
     const o = ofertaPoId(e.db, ofertaId);
     expect(o.stan).toBe('problem');
-    expect(o.problemy).toEqual([{ kod: 'wiele-produktow', produkty: [
-      { id: 'p-1', nazwa: 'Lampa A', ean: String(eanDemo(1)) }, { id: 'p-2', nazwa: 'Lampa B', ean: String(eanDemo(1)) }] }]);
+    expect(o.problemy).toEqual([
+      {
+        kod: 'wiele-produktow',
+        produkty: [
+          { id: 'p-1', nazwa: 'Lampa A', ean: String(eanDemo(1)) },
+          { id: 'p-2', nazwa: 'Lampa B', ean: String(eanDemo(1)) },
+        ],
+      },
+    ]);
     expect(e.ile(POST)).toBe(0);
   });
 });
@@ -489,7 +702,10 @@ describe('E3.08b — synchronizacja i aktywacja', () => {
     const o = ofertaPoId(e.db, id);
     zmienOferte(e.db, id, { wyslanePola: { ...o.wyslanePola, ...zmiany } }, { teraz: e.teraz().toISOString() });
   };
-  const przebieg = async (e, p, ms = MIN) => { e.przesun(ms); await p.przebieg(); };
+  const przebieg = async (e, p, ms = MIN) => {
+    e.przesun(ms);
+    await p.przebieg();
+  };
 
   it('aktywacja szkicu → PATCH ACTIVE → aktywna, zdjęte szkic i aktywuj', async () => {
     const e = srodowisko({ ustawienia: { aktywujPoSprawdzeniu: false } });
@@ -552,7 +768,10 @@ describe('E3.08b — synchronizacja i aktywacja', () => {
     const { ofertaId, kartaId, p } = await wystawiona(e);
     e.db.prepare('UPDATE karty_produktow SET wycofana = 1 WHERE id = ?').run(kartaId);
     const przed = e.ciala.length;
-    const po = await (async () => { await przebieg(e, p, 1000); return doKonca(e, p, ofertaId); })();
+    const po = await (async () => {
+      await przebieg(e, p, 1000);
+      return doKonca(e, p, ofertaId);
+    })();
     expect(cialaPo(e, PATCH, przed).map((c) => c.cialo)).toEqual([{ publication: { status: 'ENDED' } }]);
     expect(po.stan).toBe('nieaktywna');
     const przed2 = e.ciala.length;
@@ -570,7 +789,13 @@ describe('E3.08b — synchronizacja i aktywacja', () => {
     expect(e.ile(/^(PUT|PATCH) /)).toBe(zapisy);
     expect(e.ile(LISTA)).toBeGreaterThanOrEqual(2);
     const po = ofertaPoId(e.db, ofertaId);
-    expect(po).toMatchObject({ stan: 'aktywna', odczytIlosc: 5, odczytCenaGr: 5900, odczytStatus: 'ACTIVE', problemy: [] });
+    expect(po).toMatchObject({
+      stan: 'aktywna',
+      odczytIlosc: 5,
+      odczytCenaGr: 5900,
+      odczytStatus: 'ACTIVE',
+      problemy: [],
+    });
     expect(po.odczytanoAt).toBe(e.teraz().toISOString());
   });
 
@@ -583,8 +808,10 @@ describe('E3.08b — synchronizacja i aktywacja', () => {
     await przebieg(e, p);
     const put = cialaPo(e, PUT_ILOSCI, przed);
     expect(put).toHaveLength(1);
-    expect(put[0].cialo).toEqual({ modification: { changeType: 'FIXED', value: 5 },
-      offerCriteria: [{ offers: [{ id: o.idZewnetrzne }], type: 'CONTAINS_OFFERS' }] });
+    expect(put[0].cialo).toEqual({
+      modification: { changeType: 'FIXED', value: 5 },
+      offerCriteria: [{ offers: [{ id: o.idZewnetrzne }], type: 'CONTAINS_OFFERS' }],
+    });
     expect(e.ofertaWAtrapie(o.idZewnetrzne).stock.available).toBe(5);
     const po = ofertaPoId(e.db, ofertaId);
     expect(po.odczytIlosc).toBe(5);
@@ -630,8 +857,12 @@ describe('E3.08b — synchronizacja i aktywacja', () => {
   it('zmiana opisu → PATCH z kompletem: parameters ze „Stanem”, images, responsibleProducer i safetyInformation', async () => {
     const e = srodowisko();
     const { ofertaId, kartaId, p, o } = await wystawiona(e);
-    e.db.prepare('UPDATE karty_produktow SET opis_sekcje_json = ? WHERE id = ?')
-      .run(JSON.stringify({ sekcje: [{ elementy: [{ typ: 'tekst', html: '<p>Nowy klosz z dmuchanego szkła.</p>' }] }] }), kartaId);
+    e.db
+      .prepare('UPDATE karty_produktow SET opis_sekcje_json = ? WHERE id = ?')
+      .run(
+        JSON.stringify({ sekcje: [{ elementy: [{ typ: 'tekst', html: '<p>Nowy klosz z dmuchanego szkła.</p>' }] }] }),
+        kartaId,
+      );
     const przed = e.ciala.length;
     await przebieg(e, p);
     const patch = cialaPo(e, PATCH, przed);
@@ -641,7 +872,10 @@ describe('E3.08b — synchronizacja i aktywacja', () => {
     expect(c.images).toHaveLength(2);
     expect(c.images.every((u) => typeof u === 'string' && !u.startsWith('oms-zdjecie:'))).toBe(true);
     expect(c.productSet[0].responsibleProducer).toEqual({ type: 'ID', id: 'prod-konta' });
-    expect(c.productSet[0].safetyInformation).toEqual({ type: 'TEXT', description: 'Nie zostawiaj włączonej lampy bez nadzoru.' });
+    expect(c.productSet[0].safetyInformation).toEqual({
+      type: 'TEXT',
+      description: 'Nie zostawiaj włączonej lampy bez nadzoru.',
+    });
     expect(JSON.stringify(c.description)).toContain('dmuchanego');
     expect(c.publication).toBeUndefined();
     expect(c.stock).toBeUndefined();
@@ -659,7 +893,9 @@ describe('E3.08b — synchronizacja i aktywacja', () => {
     const e = srodowisko();
     const { ofertaId, p } = await wystawiona(e);
     e.db.prepare('DELETE FROM allegro_marki_gpsr').run();
-    ustawPola(e, ofertaId, { gpsrZProduktu: { responsibleProducer: { type: 'ID', id: 'prod-z-katalogu' }, responsiblePerson: null } });
+    ustawPola(e, ofertaId, {
+      gpsrZProduktu: { responsibleProducer: { type: 'ID', id: 'prod-z-katalogu' }, responsiblePerson: null },
+    });
     const przed = e.ciala.length;
     await przebieg(e, p);
     const patch = cialaPo(e, PATCH, przed);
@@ -673,7 +909,11 @@ describe('E3.08b — synchronizacja i aktywacja', () => {
     it(`ENDED przy ${sztuk} sztukach (zakończona ręcznie) → problem zakonczona, bez wznawiania`, async () => {
       const e = srodowisko();
       const { ofertaId, p, o } = await wystawiona(e);
-      e.zmienWAtrapie(o.idZewnetrzne, (x) => ({ ...x, stock: { ...x.stock, available: sztuk }, publication: { ...x.publication, status: 'ENDED' } }));
+      e.zmienWAtrapie(o.idZewnetrzne, (x) => ({
+        ...x,
+        stock: { ...x.stock, available: sztuk },
+        publication: { ...x.publication, status: 'ENDED' },
+      }));
       const przed = e.ciala.length;
       await przebieg(e, p);
       await przebieg(e, p);
@@ -701,7 +941,9 @@ describe('E3.08b — synchronizacja i aktywacja', () => {
     const put = po.findIndex((z) => PUT_ILOSCI.test(z));
     expect(tasks).toBeGreaterThanOrEqual(0);
     expect(put).toBeGreaterThan(tasks);
-    expect(po.filter((z) => z.startsWith(`GET /sale/offer-quantity-change-commands/${pierwsza.id}/tasks`))).toHaveLength(1);
+    expect(
+      po.filter((z) => z.startsWith(`GET /sale/offer-quantity-change-commands/${pierwsza.id}/tasks`)),
+    ).toHaveLength(1);
     const puty = e.zdarzenia.filter((z) => PUT_ILOSCI.test(z));
     expect(puty).toHaveLength(2);
     expect(puty[1]).not.toBe(puty[0]);
@@ -713,10 +955,13 @@ describe('E3.08b — synchronizacja i aktywacja', () => {
     const e = srodowisko();
     const { ofertaId, p, o } = await wystawiona(e);
     e.zmienWAtrapie(o.idZewnetrzne, (x) => ({ ...x, stock: { ...x.stock, available: 3 } }));
-    e.st.awaria = (m, s) => (m === 'PUT' && /quantity/.test(s)
-      ? new Response(JSON.stringify({ errors: [{ code: 'VALIDATION_ERROR', message: 'Ilość poza zakresem konta' }] }),
-        { status: 422, headers: { 'Content-Type': 'application/json' } })
-      : null);
+    e.st.awaria = (m, s) =>
+      m === 'PUT' && /quantity/.test(s)
+        ? new Response(
+            JSON.stringify({ errors: [{ code: 'VALIDATION_ERROR', message: 'Ilość poza zakresem konta' }] }),
+            { status: 422, headers: { 'Content-Type': 'application/json' } },
+          )
+        : null;
     await przebieg(e, p);
     let po = ofertaPoId(e.db, ofertaId);
     expect(e.ile(PUT_ILOSCI)).toBe(1);
@@ -736,8 +981,16 @@ describe('E3.08b — synchronizacja i aktywacja', () => {
   it('problem komenda + wycofana karta → PATCH ENDED mimo problemu, oferta przestaje sprzedawać', async () => {
     const e = srodowisko();
     const { ofertaId, kartaId, p, o } = await wystawiona(e);
-    zmienOferte(e.db, ofertaId, { stan: 'problem', nastepnaProbaAt: null,
-      problemy: [{ kod: 'komenda', rodzaj: 'ilosc', tekst: 'Ilość poza zakresem konta' }] }, { teraz: e.teraz().toISOString() });
+    zmienOferte(
+      e.db,
+      ofertaId,
+      {
+        stan: 'problem',
+        nastepnaProbaAt: null,
+        problemy: [{ kod: 'komenda', rodzaj: 'ilosc', tekst: 'Ilość poza zakresem konta' }],
+      },
+      { teraz: e.teraz().toISOString() },
+    );
     e.db.prepare('UPDATE karty_produktow SET wycofana = 1 WHERE id = ?').run(kartaId);
     const przed = e.ciala.length;
     await przebieg(e, p, 1000);
@@ -750,18 +1003,29 @@ describe('E3.08b — synchronizacja i aktywacja', () => {
   it('komenda ilości z wynikiem FAIL w tasks → przerwy, po 5 próbach problem komenda i cisza', async () => {
     const e = srodowisko();
     const { ofertaId, p, o } = await wystawiona(e);
-    e.st.awaria = (m, s) => (m === 'GET' && TASKS_ILOSCI.test(`GET ${s}`)
-      ? new Response(JSON.stringify({ tasks: [{ offer: { id: o.idZewnetrzne }, status: 'FAIL', message: 'Oferta zablokowana do zmian' }] }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } })
-      : null);
+    e.st.awaria = (m, s) =>
+      m === 'GET' && TASKS_ILOSCI.test(`GET ${s}`)
+        ? new Response(
+            JSON.stringify({
+              tasks: [{ offer: { id: o.idZewnetrzne }, status: 'FAIL', message: 'Oferta zablokowana do zmian' }],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          )
+        : null;
     // Atrapa przyjmuje PUT, więc przed każdym przebiegiem „kupujący” znów zostawia 3 sztuki.
     const trzy = () => e.zmienWAtrapie(o.idZewnetrzne, (x) => ({ ...x, stock: { ...x.stock, available: 3 } }));
-    for (let i = 0; i < 12; i++) { trzy(); await przebieg(e, p); }
+    for (let i = 0; i < 12; i++) {
+      trzy();
+      await przebieg(e, p);
+    }
     expect(e.ile(PUT_ILOSCI)).toBe(5);
     const po = ofertaPoId(e.db, ofertaId);
     expect(po.stan).toBe('problem');
     expect(po.problemy).toEqual([{ kod: 'komenda', rodzaj: 'ilosc', tekst: expect.stringContaining('zablokowana') }]);
-    for (let i = 0; i < 3; i++) { trzy(); await przebieg(e, p, 10 * MIN); }
+    for (let i = 0; i < 3; i++) {
+      trzy();
+      await przebieg(e, p, 10 * MIN);
+    }
     expect(e.ile(PUT_ILOSCI)).toBe(5);
   });
 
@@ -774,10 +1038,13 @@ describe('E3.08b — synchronizacja i aktywacja', () => {
     expect(e.ile(PUT_ILOSCI)).toBe(1);
     expect(ofertaPoId(e.db, ofertaId).liczbaProb).toBe(0);
     e.zmienWAtrapie(o.idZewnetrzne, (x) => ({ ...x, stock: { ...x.stock, available: 2 } }));
-    e.st.awaria = (m, s) => (m === 'PUT' && /quantity/.test(s)
-      ? new Response(JSON.stringify({ errors: [{ code: 'VALIDATION_ERROR', message: 'Ilość poza zakresem konta' }] }),
-        { status: 422, headers: { 'Content-Type': 'application/json' } })
-      : null);
+    e.st.awaria = (m, s) =>
+      m === 'PUT' && /quantity/.test(s)
+        ? new Response(
+            JSON.stringify({ errors: [{ code: 'VALIDATION_ERROR', message: 'Ilość poza zakresem konta' }] }),
+            { status: 422, headers: { 'Content-Type': 'application/json' } },
+          )
+        : null;
     await przebieg(e, p);
     const po = ofertaPoId(e.db, ofertaId);
     expect(po.stan).toBe('aktywna');
@@ -789,9 +1056,13 @@ describe('E3.08b — synchronizacja i aktywacja', () => {
     const { ofertaId, kartaId, p } = await wystawiona(e);
     const oryg = e.konto.katalog.zmienOferte;
     let ended = 0;
-    e.konto.katalog = { ...e.konto.katalog, zmienOferte: async (id, z) => (z?.publication?.status === 'ENDED'
-      ? ((ended += 1), { ok: false, powod: 'kanał allegro: zmienOferte niezaimplementowane' })
-      : oryg(id, z)) };
+    e.konto.katalog = {
+      ...e.konto.katalog,
+      zmienOferte: async (id, z) =>
+        z?.publication?.status === 'ENDED'
+          ? ((ended += 1), { ok: false, powod: 'kanał allegro: zmienOferte niezaimplementowane' })
+          : oryg(id, z),
+    };
     e.db.prepare('UPDATE karty_produktow SET wycofana = 1 WHERE id = ?').run(kartaId);
     // Przerwy 30 s, 1, 2, 4 min — przebieg co minutę: 8 przebiegów to 4 próby, nie 8.
     for (let i = 0; i < 8; i++) await przebieg(e, p);
@@ -841,10 +1112,13 @@ describe('E3.08b — synchronizacja i aktywacja', () => {
     await przebieg(e, p);
     const pierwsza = ofertaPoId(e.db, ofertaId).wyslanePola.komendaIlosci;
     expect(pierwsza).toMatchObject({ id: expect.any(String) });
-    e.st.awaria = (m, s) => (m === 'GET' && TASKS_ILOSCI.test(`GET ${s}`)
-      ? new Response(JSON.stringify({ tasks: [{ offer: { id: o.idZewnetrzne }, status: 'NEW' }] }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } })
-      : null);
+    e.st.awaria = (m, s) =>
+      m === 'GET' && TASKS_ILOSCI.test(`GET ${s}`)
+        ? new Response(JSON.stringify({ tasks: [{ offer: { id: o.idZewnetrzne }, status: 'NEW' }] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        : null;
     await przebieg(e, p);
     await przebieg(e, p);
     expect(e.ile(PUT_ILOSCI)).toBe(1);
@@ -861,9 +1135,17 @@ describe('E3.08b — synchronizacja i aktywacja', () => {
       const offset = Number(adres.searchParams.get('offset') ?? 0);
       const limit = Number(adres.searchParams.get('limit') ?? 20);
       const offers = Array.from({ length: Math.max(0, Math.min(limit, RAZEM - offset)) }, (_x, i) => ({
-        id: String(18000000000000 + offset + i), name: `Lampa wisząca nr ${offset + i}`, external: null,
-        sellingMode: { price: { amount: '99.00', currency: 'PLN' } }, stock: { available: 1, unit: 'UNIT' }, publication: { status: 'ACTIVE' } }));
-      return new Response(JSON.stringify({ offers, count: offers.length, totalCount: RAZEM }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+        id: String(18000000000000 + offset + i),
+        name: `Lampa wisząca nr ${offset + i}`,
+        external: null,
+        sellingMode: { price: { amount: '99.00', currency: 'PLN' } },
+        stock: { available: 1, unit: 'UNIT' },
+        publication: { status: 'ACTIVE' },
+      }));
+      return new Response(JSON.stringify({ offers, count: offers.length, totalCount: RAZEM }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
     };
     const przed = e.zdarzenia.length;
     await przebieg(e, p);

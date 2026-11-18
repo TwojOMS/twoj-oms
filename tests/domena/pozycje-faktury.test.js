@@ -18,7 +18,9 @@ describe('pozycjeDokumentu', () => {
   });
 
   it('koszt dostawy dochodzi jako osobna pozycja "Dostawa"', () => {
-    const services = pozycjeDokumentu(zamowienie({ kwota_brutto: '141.45', koszt_dostawy_brutto: '18.45' }), { stawkaDomyslna: '23' });
+    const services = pozycjeDokumentu(zamowienie({ kwota_brutto: '141.45', koszt_dostawy_brutto: '18.45' }), {
+      stawkaDomyslna: '23',
+    });
     expect(services).toHaveLength(2);
     expect(services[1]).toEqual({ name: 'Dostawa', quantity: 1, gross_price: 1845, tax_symbol: '23' });
   });
@@ -71,15 +73,16 @@ describe('sprawdzSumeDokumentu', () => {
 // Stawka PER POZYCJA. Pozycja ręczna niesie
 // własną (`vat`), pozycja ze sklepu/Allegro i dostawa dostają domyślną z Ustawień, NIP z UE wymusza 0 na wszystkim.
 describe('pozycjeDokumentu — stawka per pozycja', () => {
-  const mieszane = (nad = {}) => zamowienie({
-    kwota_brutto: '231.00',
-    koszt_dostawy_brutto: '0.00',
-    pozycje: [
-      { nazwa: 'Lampa', ilosc: 1, cena_brutto: '123.00', zrodlo: 'sklep', vat: '8' },
-      { nazwa: 'Album o lampach', ilosc: 1, cena_brutto: '108.00', zrodlo: 'reczna', vat: '8' },
-    ],
-    ...nad,
-  });
+  const mieszane = (nad = {}) =>
+    zamowienie({
+      kwota_brutto: '231.00',
+      koszt_dostawy_brutto: '0.00',
+      pozycje: [
+        { nazwa: 'Lampa', ilosc: 1, cena_brutto: '123.00', zrodlo: 'sklep', vat: '8' },
+        { nazwa: 'Album o lampach', ilosc: 1, cena_brutto: '108.00', zrodlo: 'reczna', vat: '8' },
+      ],
+      ...nad,
+    });
 
   it('pozycja ręczna z 8% → tax_symbol 8; sklepowa (choć Allegro podało 8) → domyślna', () => {
     const s = pozycjeDokumentu(mieszane(), { stawkaDomyslna: '23' });
@@ -87,16 +90,25 @@ describe('pozycjeDokumentu — stawka per pozycja', () => {
   });
 
   it('domyślna 5: sklepowa, stara ręczna bez stawki i dostawa idą z 5', () => {
-    const s = pozycjeDokumentu(zamowienie({
-      kwota_brutto: '139.00', koszt_dostawy_brutto: '16.00',
-      pozycje: [{ nazwa: 'STOP', ilosc: 2, cena_brutto: '61.50', zrodlo: 'reczna', vat: null }],
-    }), { stawkaDomyslna: '5' });
-    expect(s.map((x) => [x.name, x.tax_symbol])).toEqual([['STOP', '5'], ['Dostawa', '5']]);
+    const s = pozycjeDokumentu(
+      zamowienie({
+        kwota_brutto: '139.00',
+        koszt_dostawy_brutto: '16.00',
+        pozycje: [{ nazwa: 'STOP', ilosc: 2, cena_brutto: '61.50', zrodlo: 'reczna', vat: null }],
+      }),
+      { stawkaDomyslna: '5' },
+    );
+    expect(s.map((x) => [x.name, x.tax_symbol])).toEqual([
+      ['STOP', '5'],
+      ['Dostawa', '5'],
+    ]);
   });
 
   it('NIP z UE: każda pozycja (także ręczna z 8%) i dostawa → 0', () => {
-    const s = pozycjeDokumentu(mieszane({ nip: 'DE123456789', koszt_dostawy_brutto: '10.00', kwota_brutto: '241.00' }),
-      { stawkaDomyslna: '23' });
+    const s = pozycjeDokumentu(
+      mieszane({ nip: 'DE123456789', koszt_dostawy_brutto: '10.00', kwota_brutto: '241.00' }),
+      { stawkaDomyslna: '23' },
+    );
     expect(s.map((x) => x.tax_symbol)).toEqual(['0', '0', '0']);
   });
 

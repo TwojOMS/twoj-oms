@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
-  naWierszReczny, nowyKluczReczny, czyKluczReczny, numerRecznego, PREFIKS_RECZNEGO,
+  naWierszReczny,
+  nowyKluczReczny,
+  czyKluczReczny,
+  numerRecznego,
+  PREFIKS_RECZNEGO,
 } from '../../src/domena/koszt-reczny.js';
 
 // ⚠️ TO JEST DRUGIE (i ostatnie) miejsce styku „to, co wpisał człowiek" z kształtem wiersza
@@ -92,8 +96,7 @@ describe('koszt reczny — kształt wiersza z trzech pól', () => {
   it('⚠️ firma spoza listy odmawia — bez niej nie ma sprzedawcy ani kategorii', () => {
     expect(() => naWierszReczny(dane({ firma: 'Wymyślona' }), undefined)).toThrow(/firm/i);
     expect(() => naWierszReczny(dane(), null)).toThrow(/firm/i);
-    expect(() => naWierszReczny(dane(), { nazwa: 'X', kategoria: 'Reklama', typ: 'zmienny' }))
-      .toThrow(/firm/i);
+    expect(() => naWierszReczny(dane(), { nazwa: 'X', kategoria: 'Reklama', typ: 'zmienny' })).toThrow(/firm/i);
   });
 
   // Kategoria idzie ze SŁOWNIKA, a nie z formularza — i to jest cała różnica wobec pierwszej
@@ -108,8 +111,7 @@ describe('koszt reczny — kształt wiersza z trzech pól', () => {
   // polskiego NIP-u, a to właśnie ich faktur nie ma w KSeF. Sprzedawca, który NIP ma, trafia
   // do panelu sam, przez czuwacza — nie ma powodu wpisywać go ręką.
   it('⚠️ NIP jest zawsze pusty — pola na niego nie ma i mieć nie ma', () => {
-    expect(naWierszReczny(dane({ sprzedawcaNip: '525-267-47-98' }), FIRMA).sprzedawcaNip)
-      .toBeNull();
+    expect(naWierszReczny(dane({ sprzedawcaNip: '525-267-47-98' }), FIRMA).sprzedawcaNip).toBeNull();
   });
 });
 

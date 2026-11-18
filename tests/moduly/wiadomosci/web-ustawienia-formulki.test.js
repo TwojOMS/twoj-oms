@@ -11,7 +11,8 @@ const AUTH = {
 };
 const CONFIG = { auth: { user: 'adam', pass: 'x' }, klienciZbiorczy: [] };
 
-let db; let app;
+let db;
+let app;
 const wejdz = (opcje) => app.inject({ ...opcje, headers: AUTH });
 
 beforeEach(() => {

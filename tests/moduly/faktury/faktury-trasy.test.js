@@ -38,9 +38,20 @@ describe('GET /faktury — nabywca ze skróconą formą prawną', () => {
   it('skraca w tabeli faktur i nieopłaconych, pełną nazwę zostawia w podpowiedzi', async () => {
     const pelna = 'PRZYKŁAD SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ';
     const dok = {
-      uuid: 'u1', number: '1/10/2026', rodzaj: 'vat', invoice_date: '2026-10-03', sale_date: '2026-10-03',
-      client_company_name: pelna, kwotaZl: '10.00', pozostaloZl: '10.00', stanKsef: 'jest',
-      ksef_number: 'X', zamowienie: null, stanTerminu: 'wkrotce', opisTerminu: 'za 3 dni', payment_date: '2026-10-17',
+      uuid: 'u1',
+      number: '1/10/2026',
+      rodzaj: 'vat',
+      invoice_date: '2026-10-03',
+      sale_date: '2026-10-03',
+      client_company_name: pelna,
+      kwotaZl: '10.00',
+      pozostaloZl: '10.00',
+      stanKsef: 'jest',
+      ksef_number: 'X',
+      zamowienie: null,
+      stanTerminu: 'wkrotce',
+      opisTerminu: 'za 3 dni',
+      payment_date: '2026-10-17',
     };
     const app = serwer({ dokumenty: [dok], nieoplacone: [dok] });
     const r = await app.inject({ method: 'GET', url: '/faktury', headers: AUTH });
@@ -52,16 +63,29 @@ describe('GET /faktury — nabywca ze skróconą formą prawną', () => {
 
 describe('GET /faktury', () => {
   it('C07a: jeden wybór do KSeF i PDF obejmuje każdy uuid i zachowuje filtry', async () => {
-    const baza = { client_company_name: 'Pracownia Półcień', kwotaZl: '1.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' };
-    const app = serwer({ dokumenty: [
-      { ...baza, uuid: 'ksef', number: '1', rodzaj: 'vat', stanKsef: 'jest', ksef_number: 'X' },
-      { ...baza, uuid: 'nowa', number: '2', rodzaj: 'vat', client_tax_code: '4534240685' },
-      { ...baza, uuid: 'korektaPdf', number: '3', rodzaj: 'korekta' },
-      { ...baza, uuid: 'b2c', number: '4', rodzaj: 'vat', client_tax_code: null },
-      { ...baza, uuid: 'oczekuje', number: '5', rodzaj: 'vat', stanDokumentu: { czekaNaKsef: true, dokumentId: 4 } },
-      { ...baza, number: 'bez-uuid', rodzaj: 'vat' },
-    ] });
-    const r = await app.inject({ method: 'GET', url: '/faktury?miesiac=2026-07&pole=sale_date&zaznacz=1', headers: AUTH });
+    const baza = {
+      client_company_name: 'Pracownia Półcień',
+      kwotaZl: '1.00',
+      pozostaloZl: '0.00',
+      zamowienie: null,
+      stanTerminu: 'brak',
+      opisTerminu: 'bez terminu',
+    };
+    const app = serwer({
+      dokumenty: [
+        { ...baza, uuid: 'ksef', number: '1', rodzaj: 'vat', stanKsef: 'jest', ksef_number: 'X' },
+        { ...baza, uuid: 'nowa', number: '2', rodzaj: 'vat', client_tax_code: '4534240685' },
+        { ...baza, uuid: 'korektaPdf', number: '3', rodzaj: 'korekta' },
+        { ...baza, uuid: 'b2c', number: '4', rodzaj: 'vat', client_tax_code: null },
+        { ...baza, uuid: 'oczekuje', number: '5', rodzaj: 'vat', stanDokumentu: { czekaNaKsef: true, dokumentId: 4 } },
+        { ...baza, number: 'bez-uuid', rodzaj: 'vat' },
+      ],
+    });
+    const r = await app.inject({
+      method: 'GET',
+      url: '/faktury?miesiac=2026-07&pole=sale_date&zaznacz=1',
+      headers: AUTH,
+    });
     expect(r.statusCode).toBe(200);
     for (const uuid of ['ksef', 'nowa', 'korektaPdf', 'b2c', 'oczekuje']) {
       expect(r.body).toMatch(new RegExp(`type="checkbox" name="uuid" value="${uuid}"\\s+checked`));
@@ -69,7 +93,9 @@ describe('GET /faktury', () => {
     expect(r.body.match(/type="checkbox" name="uuid"/g)).toHaveLength(5);
     expect(r.body).toContain('<form method="post" action="/faktury/ksef/podglad">');
     expect(r.body).toContain('formaction="/faktury/ksef/podglad">Wyślij do KSeF</button>');
-    expect(r.body).toMatch(/<details class="wydruki wydruki--masowe">\s*<summary class="btn btn--maly">Pobierz<\/summary>\s*<div class="wydruki-menu wydruki-menu--lewe">\s*<button type="submit" formaction="\/faktury\/zestawienie-zaznaczonych" formtarget="_blank">Zestawienie PDF \(XML i UPO w załącznikach\)<\/button>\s*<button type="submit" formaction="\/faktury\/lista-zaznaczonych\.csv">Lista zaznaczonych \(CSV, Excel\)<\/button>\s*<\/div>/);
+    expect(r.body).toMatch(
+      /<details class="wydruki wydruki--masowe">\s*<summary class="btn btn--maly">Pobierz<\/summary>\s*<div class="wydruki-menu wydruki-menu--lewe">\s*<button type="submit" formaction="\/faktury\/zestawienie-zaznaczonych" formtarget="_blank">Zestawienie PDF \(XML i UPO w załącznikach\)<\/button>\s*<button type="submit" formaction="\/faktury\/lista-zaznaczonych\.csv">Lista zaznaczonych \(CSV, Excel\)<\/button>\s*<\/div>/,
+    );
     expect(r.body).toContain('name="miesiac" value="2026-07"');
     expect(r.body).toContain('name="pole" value="sale_date"');
     expect(r.body).toContain('/faktury?miesiac=2026-07&amp;pole=sale_date');
@@ -78,14 +104,19 @@ describe('GET /faktury', () => {
     expect(r.body).not.toContain('name="wybor"');
     expect(r.body).not.toContain('Wybierz faktury do PDF');
     expect(r.body).not.toContain('>Anuluj</a>');
-    const niezaznaczone = await app.inject({ method: 'GET', url: '/faktury?miesiac=2026-07&pole=sale_date', headers: AUTH });
+    const niezaznaczone = await app.inject({
+      method: 'GET',
+      url: '/faktury?miesiac=2026-07&pole=sale_date',
+      headers: AUTH,
+    });
     expect(niezaznaczone.body).toContain('/faktury?miesiac=2026-07&amp;pole=sale_date&amp;zaznacz=1');
     expect(niezaznaczone.body).not.toMatch(/name="uuid"[^>]+checked/);
     await app.close();
   });
 
   it.each([
-    ['', 'invoice_date'], ['&pole=sale_date', 'sale_date'],
+    ['', 'invoice_date'],
+    ['&pole=sale_date', 'sale_date'],
   ])('C07a: dawny tryb PDF przekierowuje 302 z zachowaniem miesiąca i pola daty: %s', async (query, pole) => {
     const app = serwer();
     const r = await app.inject({ method: 'GET', url: `/faktury?wybor=pdf&miesiac=2026-10${query}`, headers: AUTH });
@@ -95,12 +126,25 @@ describe('GET /faktury', () => {
   });
 
   it('renderuje trzy pasy i domyślnie bieżący miesiąc po dacie wystawienia', async () => {
-    const app = serwer({ dokumenty: [{
-      uuid: 'u1', number: '1/08/2026', rodzaj: 'vat', invoice_date: '2026-08-03', sale_date: '2026-08-03',
-      client_company_name: 'Firma X', kwotaZl: '123.00', pozostaloZl: '0.00', stanKsef: 'jest',
-      ksef_number: '1234563218-20260806-5EB04B000005-18', zamowienie: { id: 7, numer: '3001' },
-      stanTerminu: 'brak', opisTerminu: 'bez terminu',
-    }] });
+    const app = serwer({
+      dokumenty: [
+        {
+          uuid: 'u1',
+          number: '1/08/2026',
+          rodzaj: 'vat',
+          invoice_date: '2026-08-03',
+          sale_date: '2026-08-03',
+          client_company_name: 'Firma X',
+          kwotaZl: '123.00',
+          pozostaloZl: '0.00',
+          stanKsef: 'jest',
+          ksef_number: '1234563218-20260806-5EB04B000005-18',
+          zamowienie: { id: 7, numer: '3001' },
+          stanTerminu: 'brak',
+          opisTerminu: 'bez terminu',
+        },
+      ],
+    });
     const r = await app.inject({ method: 'GET', url: '/faktury', headers: AUTH });
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('1/08/2026');
@@ -111,11 +155,21 @@ describe('GET /faktury', () => {
   });
 
   it('pokazuje dni do terminu w pasie nieopłaconych', async () => {
-    const app = serwer({ nieoplacone: [{
-      uuid: 'u9', number: '19/12/2025', payment_date: '2025-12-24', pozostaloZl: '1378.50',
-      client_company_name: 'Pracownia Przykładowa sp. z o.o.', stanTerminu: 'po_terminie',
-      opisTerminu: 'po terminie o 225 dni', zamowienie: null, stanKsef: 'jest',
-    }] });
+    const app = serwer({
+      nieoplacone: [
+        {
+          uuid: 'u9',
+          number: '19/12/2025',
+          payment_date: '2025-12-24',
+          pozostaloZl: '1378.50',
+          client_company_name: 'Pracownia Przykładowa sp. z o.o.',
+          stanTerminu: 'po_terminie',
+          opisTerminu: 'po terminie o 225 dni',
+          zamowienie: null,
+          stanKsef: 'jest',
+        },
+      ],
+    });
     const r = await app.inject({ method: 'GET', url: '/faktury', headers: AUTH });
     expect(r.body).toContain('po terminie o 225 dni');
     expect(r.body).toContain('1378.50');
@@ -123,10 +177,36 @@ describe('GET /faktury', () => {
 
   // Wybór do pobierania obejmuje też dokumenty pomijane przez podgląd KSeF.
   it('checkbox stoi przy dokumencie z numerem KSeF i bez numeru', async () => {
-    const app = serwer({ dokumenty: [
-      { uuid: 'zKsef', number: '1/08/2026', rodzaj: 'vat', stanKsef: 'jest', ksef_number: 'X', client_tax_code: '1234563218', kwotaZl: '1.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
-      { uuid: 'bezKsef', number: '2/08/2026', rodzaj: 'vat', stanKsef: 'brak', ksef_number: null, client_tax_code: '1234563218', kwotaZl: '1.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
-    ] });
+    const app = serwer({
+      dokumenty: [
+        {
+          uuid: 'zKsef',
+          number: '1/08/2026',
+          rodzaj: 'vat',
+          stanKsef: 'jest',
+          ksef_number: 'X',
+          client_tax_code: '1234563218',
+          kwotaZl: '1.00',
+          pozostaloZl: '0.00',
+          zamowienie: null,
+          stanTerminu: 'brak',
+          opisTerminu: 'bez terminu',
+        },
+        {
+          uuid: 'bezKsef',
+          number: '2/08/2026',
+          rodzaj: 'vat',
+          stanKsef: 'brak',
+          ksef_number: null,
+          client_tax_code: '1234563218',
+          kwotaZl: '1.00',
+          pozostaloZl: '0.00',
+          zamowienie: null,
+          stanTerminu: 'brak',
+          opisTerminu: 'bez terminu',
+        },
+      ],
+    });
     const r = await app.inject({ method: 'GET', url: '/faktury', headers: AUTH });
     expect(r.body).toContain('value="bezKsef"');
     expect(r.body).toContain('value="zKsef"');
@@ -134,9 +214,22 @@ describe('GET /faktury', () => {
 
   // Wybór do pobierania obejmuje też dokumenty pomijane przez podgląd KSeF.
   it('checkbox stoi także przy korekcie bez numeru KSeF', async () => {
-    const app = serwer({ dokumenty: [
-      { uuid: 'korekta', number: '1/KOR/07/2026', rodzaj: 'korekta', stanKsef: 'brak', ksef_number: null, kwotaZl: '-138.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
-    ] });
+    const app = serwer({
+      dokumenty: [
+        {
+          uuid: 'korekta',
+          number: '1/KOR/07/2026',
+          rodzaj: 'korekta',
+          stanKsef: 'brak',
+          ksef_number: null,
+          kwotaZl: '-138.00',
+          pozostaloZl: '0.00',
+          zamowienie: null,
+          stanTerminu: 'brak',
+          opisTerminu: 'bez terminu',
+        },
+      ],
+    });
     const r = await app.inject({ method: 'GET', url: '/faktury', headers: AUTH });
     expect(r.body).toContain('1/KOR/07/2026');
     expect(r.body).toContain('value="korekta"');
@@ -144,10 +237,39 @@ describe('GET /faktury', () => {
 
   // Wybór do pobierania obejmuje też dokumenty pomijane przez podgląd KSeF.
   it('checkbox stoi przy fakturze konsumenckiej i firmowej', async () => {
-    const app = serwer({ dokumenty: [
-      { uuid: 'konsument', number: '30/06/2026', rodzaj: 'vat', stanKsef: 'brak', ksef_number: null, client_tax_code: null, client_first_name: 'Jan', client_last_name: 'Kowalski', kwotaZl: '138.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
-      { uuid: 'firma', number: '31/06/2026', rodzaj: 'vat', stanKsef: 'brak', ksef_number: null, client_tax_code: '1234563218', client_company_name: 'Firma X', kwotaZl: '246.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
-    ] });
+    const app = serwer({
+      dokumenty: [
+        {
+          uuid: 'konsument',
+          number: '30/06/2026',
+          rodzaj: 'vat',
+          stanKsef: 'brak',
+          ksef_number: null,
+          client_tax_code: null,
+          client_first_name: 'Jan',
+          client_last_name: 'Kowalski',
+          kwotaZl: '138.00',
+          pozostaloZl: '0.00',
+          zamowienie: null,
+          stanTerminu: 'brak',
+          opisTerminu: 'bez terminu',
+        },
+        {
+          uuid: 'firma',
+          number: '31/06/2026',
+          rodzaj: 'vat',
+          stanKsef: 'brak',
+          ksef_number: null,
+          client_tax_code: '1234563218',
+          client_company_name: 'Firma X',
+          kwotaZl: '246.00',
+          pozostaloZl: '0.00',
+          zamowienie: null,
+          stanTerminu: 'brak',
+          opisTerminu: 'bez terminu',
+        },
+      ],
+    });
     const r = await app.inject({ method: 'GET', url: '/faktury', headers: AUTH });
     expect(r.statusCode).toBe(200);
     // Zaznaczenie nie usuwa informacji, że dokument jest konsumencki.
@@ -160,7 +282,21 @@ describe('GET /faktury', () => {
 
   // Podpowiedź przy znaczniku „konsumencka” mówi, czy panel wysyła taki dokument do KSeF.
   describe('podpowiedź przy znaczniku „konsumencka”', () => {
-    const konsument = { uuid: 'konsument', number: '30/06/2026', rodzaj: 'vat', stanKsef: 'brak', ksef_number: null, client_tax_code: null, client_first_name: 'Jan', client_last_name: 'Kowalski', kwotaZl: '138.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' };
+    const konsument = {
+      uuid: 'konsument',
+      number: '30/06/2026',
+      rodzaj: 'vat',
+      stanKsef: 'brak',
+      ksef_number: null,
+      client_tax_code: null,
+      client_first_name: 'Jan',
+      client_last_name: 'Kowalski',
+      kwotaZl: '138.00',
+      pozostaloZl: '0.00',
+      zamowienie: null,
+      stanTerminu: 'brak',
+      opisTerminu: 'bez terminu',
+    };
     const podpowiedz = async (wlaczone) => {
       const { app, db } = serwerZBaza({ dokumenty: [konsument] });
       zapiszKonsumenckie(db, wlaczone);
@@ -187,9 +323,24 @@ describe('GET /faktury', () => {
   // numer VAT UE z prefiksem literowym — to JEST podatnik, ktorego faktura idzie do KSeF
   // normalnie. Widok nie ma prawa wziac go za konsumenta.
   it('faktura WDT (zagraniczny numer VAT UE) MA pole wyboru — to podatnik, nie konsument', async () => {
-    const app = serwer({ dokumenty: [
-      { uuid: 'wdt', number: '12/08/2026', rodzaj: 'vat', stanKsef: 'brak', ksef_number: null, client_tax_code: 'SK1000000002', client_company_name: 'Slovak s.r.o.', kwotaZl: '900.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
-    ] });
+    const app = serwer({
+      dokumenty: [
+        {
+          uuid: 'wdt',
+          number: '12/08/2026',
+          rodzaj: 'vat',
+          stanKsef: 'brak',
+          ksef_number: null,
+          client_tax_code: 'SK1000000002',
+          client_company_name: 'Slovak s.r.o.',
+          kwotaZl: '900.00',
+          pozostaloZl: '0.00',
+          zamowienie: null,
+          stanTerminu: 'brak',
+          opisTerminu: 'bez terminu',
+        },
+      ],
+    });
     const r = await app.inject({ method: 'GET', url: '/faktury', headers: AUTH });
     expect(r.body).toContain('value="wdt"');
     expect(r.body).not.toContain('>konsumencka</span>');
@@ -197,10 +348,36 @@ describe('GET /faktury', () => {
 
   // Wybór do pobierania obejmuje też dokumenty pomijane przez podgląd KSeF.
   it('„zaznacz wszystkie" zaznacza także fakturę konsumencką', async () => {
-    const app = serwer({ dokumenty: [
-      { uuid: 'konsument', number: '30/06/2026', rodzaj: 'vat', stanKsef: 'brak', ksef_number: null, client_tax_code: '', kwotaZl: '138.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
-      { uuid: 'firma', number: '31/06/2026', rodzaj: 'vat', stanKsef: 'brak', ksef_number: null, client_tax_code: '1234563218', kwotaZl: '246.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
-    ] });
+    const app = serwer({
+      dokumenty: [
+        {
+          uuid: 'konsument',
+          number: '30/06/2026',
+          rodzaj: 'vat',
+          stanKsef: 'brak',
+          ksef_number: null,
+          client_tax_code: '',
+          kwotaZl: '138.00',
+          pozostaloZl: '0.00',
+          zamowienie: null,
+          stanTerminu: 'brak',
+          opisTerminu: 'bez terminu',
+        },
+        {
+          uuid: 'firma',
+          number: '31/06/2026',
+          rodzaj: 'vat',
+          stanKsef: 'brak',
+          ksef_number: null,
+          client_tax_code: '1234563218',
+          kwotaZl: '246.00',
+          pozostaloZl: '0.00',
+          zamowienie: null,
+          stanTerminu: 'brak',
+          opisTerminu: 'bez terminu',
+        },
+      ],
+    });
     const r = await app.inject({ method: 'GET', url: '/faktury?zaznacz=1', headers: AUTH });
     expect(r.body).toMatch(/value="firma"\s+checked/);
     expect(r.body).toMatch(/value="konsument"\s+checked/);
@@ -208,9 +385,25 @@ describe('GET /faktury', () => {
 
   // Wybór do pobierania obejmuje też dokumenty pomijane przez podgląd KSeF.
   it('dokument, którego wysyłkę panel już zlecił, ma pole wyboru i pustą komórkę KSeF', async () => {
-    const app = serwer({ dokumenty: [
-      { uuid: 'czeka', number: '3/08/2026', rodzaj: 'vat', stanKsef: 'wyslana_czeka', plakietka: 'czeka na numer', ksef_number: null, ksefZleconaAt: '2026-08-06T14:00:00.000Z', client_tax_code: '1234563218', kwotaZl: '1.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
-    ] });
+    const app = serwer({
+      dokumenty: [
+        {
+          uuid: 'czeka',
+          number: '3/08/2026',
+          rodzaj: 'vat',
+          stanKsef: 'wyslana_czeka',
+          plakietka: 'czeka na numer',
+          ksef_number: null,
+          ksefZleconaAt: '2026-08-06T14:00:00.000Z',
+          client_tax_code: '1234563218',
+          kwotaZl: '1.00',
+          pozostaloZl: '0.00',
+          zamowienie: null,
+          stanTerminu: 'brak',
+          opisTerminu: 'bez terminu',
+        },
+      ],
+    });
     const r = await app.inject({ method: 'GET', url: '/faktury', headers: AUTH });
     expect(r.body).toContain('3/08/2026');
     expect(r.body).toContain('value="czeka"');
@@ -221,10 +414,39 @@ describe('GET /faktury', () => {
 
   // Wybór do pobierania obejmuje też dokumenty pomijane przez podgląd KSeF.
   it('„zaznacz wszystkie" zaznacza także dokument czekający na numer KSeF', async () => {
-    const app = serwer({ dokumenty: [
-      { uuid: 'czeka', number: '3/08/2026', rodzaj: 'vat', stanKsef: 'wyslana_czeka', plakietka: 'czeka na numer', ksef_number: null, ksefZleconaAt: '2026-08-06T14:00:00.000Z', client_tax_code: '1234563218', kwotaZl: '1.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
-      { uuid: 'bezKsef', number: '2/08/2026', rodzaj: 'vat', stanKsef: 'brak', ksef_number: null, ksefZleconaAt: null, client_tax_code: '1234563218', kwotaZl: '1.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
-    ] });
+    const app = serwer({
+      dokumenty: [
+        {
+          uuid: 'czeka',
+          number: '3/08/2026',
+          rodzaj: 'vat',
+          stanKsef: 'wyslana_czeka',
+          plakietka: 'czeka na numer',
+          ksef_number: null,
+          ksefZleconaAt: '2026-08-06T14:00:00.000Z',
+          client_tax_code: '1234563218',
+          kwotaZl: '1.00',
+          pozostaloZl: '0.00',
+          zamowienie: null,
+          stanTerminu: 'brak',
+          opisTerminu: 'bez terminu',
+        },
+        {
+          uuid: 'bezKsef',
+          number: '2/08/2026',
+          rodzaj: 'vat',
+          stanKsef: 'brak',
+          ksef_number: null,
+          ksefZleconaAt: null,
+          client_tax_code: '1234563218',
+          kwotaZl: '1.00',
+          pozostaloZl: '0.00',
+          zamowienie: null,
+          stanTerminu: 'brak',
+          opisTerminu: 'bez terminu',
+        },
+      ],
+    });
     const r = await app.inject({ method: 'GET', url: '/faktury?zaznacz=1', headers: AUTH });
     expect(r.body).toMatch(/value="bezKsef"\s+checked/);
     expect(r.body).toMatch(/value="czeka"\s+checked/);
@@ -233,9 +455,23 @@ describe('GET /faktury', () => {
   // ⚠️ Ekran podgladu przelicza zbior PONOWNIE z na nowo pobranej listy, wiec
   // bez tych dwoch pol nie ma jak odtworzyc, na ktora liste operator patrzyl.
   it('formularz wysyłki niesie miesiąc i pole daty, z którego zaznaczano', async () => {
-    const app = serwer({ dokumenty: [
-      { uuid: 'bezKsef', number: '2/08/2026', rodzaj: 'vat', stanKsef: 'brak', ksef_number: null, client_tax_code: '1234563218', kwotaZl: '1.00', pozostaloZl: '0.00', zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu' },
-    ] });
+    const app = serwer({
+      dokumenty: [
+        {
+          uuid: 'bezKsef',
+          number: '2/08/2026',
+          rodzaj: 'vat',
+          stanKsef: 'brak',
+          ksef_number: null,
+          client_tax_code: '1234563218',
+          kwotaZl: '1.00',
+          pozostaloZl: '0.00',
+          zamowienie: null,
+          stanTerminu: 'brak',
+          opisTerminu: 'bez terminu',
+        },
+      ],
+    });
     const r = await app.inject({ method: 'GET', url: '/faktury?miesiac=2026-07&pole=sale_date', headers: AUTH });
     expect(r.body).toContain('action="/faktury/ksef/podglad"');
     expect(r.body).toContain('name="miesiac" value="2026-07"');
@@ -246,12 +482,23 @@ describe('GET /faktury', () => {
   // jest OKRES rozliczeniowy. Bez tej galezi caly pieniadz B2B wygladalby jak dokument
   // wystawiony poza panelem.
   it('dokument okresu rozliczeniowego prowadzi na kartę okresu, nie na zamówienie', async () => {
-    const app = serwer({ dokumenty: [{
-      uuid: 'uo', number: '5/08/2026', rodzaj: 'vat', stanKsef: 'brak', ksef_number: null,
-      kwotaZl: '100.00', pozostaloZl: '0.00', zamowienie: null,
-      okres: { id: 12, klient: 'przykladowa', rok: 2026, miesiac: 7 },
-      stanTerminu: 'brak', opisTerminu: 'bez terminu',
-    }] });
+    const app = serwer({
+      dokumenty: [
+        {
+          uuid: 'uo',
+          number: '5/08/2026',
+          rodzaj: 'vat',
+          stanKsef: 'brak',
+          ksef_number: null,
+          kwotaZl: '100.00',
+          pozostaloZl: '0.00',
+          zamowienie: null,
+          okres: { id: 12, klient: 'przykladowa', rok: 2026, miesiac: 7 },
+          stanTerminu: 'brak',
+          opisTerminu: 'bez terminu',
+        },
+      ],
+    });
     const r = await app.inject({ method: 'GET', url: '/faktury', headers: AUTH });
     expect(r.body).toContain('/okresy/12');
     expect(r.body).toContain('przykladowa');
@@ -265,10 +512,15 @@ describe('GET /faktury', () => {
   it('awaria inFaktu w obu zapytaniach daje czytelny komunikat, a nie 500', async () => {
     const db = openOmsDb(':memory:');
     const app = buildOmsServer({
-      db, config: { auth: { user: 't', pass: 'h' } },
+      db,
+      config: { auth: { user: 't', pass: 'h' } },
       fakturyWidok: {
-        dokumenty: async () => { throw new Error('inFakt nieosiągalny: fetch failed'); },
-        nieoplacone: async () => { throw new Error('inFakt nieosiągalny: fetch failed'); },
+        dokumenty: async () => {
+          throw new Error('inFakt nieosiągalny: fetch failed');
+        },
+        nieoplacone: async () => {
+          throw new Error('inFakt nieosiągalny: fetch failed');
+        },
         proformy: () => [],
       },
     });
@@ -288,16 +540,30 @@ describe('GET /faktury', () => {
   it('awaria proform (lokalna baza) nie kładzie reszty ekranu, a nie 500', async () => {
     const db = openOmsDb(':memory:');
     const app = buildOmsServer({
-      db, config: { auth: { user: 't', pass: 'h' } },
+      db,
+      config: { auth: { user: 't', pass: 'h' } },
       fakturyWidok: {
-        dokumenty: async () => [{
-          uuid: 'u1', number: '1/08/2026', rodzaj: 'vat', invoice_date: '2026-08-03', sale_date: '2026-08-03',
-          client_company_name: 'Firma X', kwotaZl: '123.00', pozostaloZl: '0.00', stanKsef: 'jest',
-          ksef_number: '1234563218-20260806-5EB04B000005-18', zamowienie: { id: 7, numer: '3001' },
-          stanTerminu: 'brak', opisTerminu: 'bez terminu',
-        }],
+        dokumenty: async () => [
+          {
+            uuid: 'u1',
+            number: '1/08/2026',
+            rodzaj: 'vat',
+            invoice_date: '2026-08-03',
+            sale_date: '2026-08-03',
+            client_company_name: 'Firma X',
+            kwotaZl: '123.00',
+            pozostaloZl: '0.00',
+            stanKsef: 'jest',
+            ksef_number: '1234563218-20260806-5EB04B000005-18',
+            zamowienie: { id: 7, numer: '3001' },
+            stanTerminu: 'brak',
+            opisTerminu: 'bez terminu',
+          },
+        ],
         nieoplacone: async () => [],
-        proformy: () => { throw new Error('database is locked'); },
+        proformy: () => {
+          throw new Error('database is locked');
+        },
       },
     });
     const r = await app.inject({ method: 'GET', url: '/faktury', headers: AUTH });
@@ -316,19 +582,40 @@ describe('GET /faktury', () => {
   it('awaria sekcji nieopłaconych nie gasi listy faktur miesiąca ani proform', async () => {
     const db = openOmsDb(':memory:');
     const app = buildOmsServer({
-      db, config: { auth: { user: 't', pass: 'h' } },
+      db,
+      config: { auth: { user: 't', pass: 'h' } },
       fakturyWidok: {
-        dokumenty: async () => [{
-          uuid: 'u1', number: '1/08/2026', rodzaj: 'vat', invoice_date: '2026-08-03', sale_date: '2026-08-03',
-          client_company_name: 'Firma X', kwotaZl: '123.00', pozostaloZl: '0.00', stanKsef: 'jest',
-          ksef_number: '1234563218-20260806-5EB04B000005-18', zamowienie: { id: 7, numer: '3001' },
-          stanTerminu: 'brak', opisTerminu: 'bez terminu',
-        }],
-        nieoplacone: async () => { throw new Error('inFakt nieosiągalny: fetch failed'); },
-        proformy: () => [{
-          id: 1, numer: 'PF/1/08/2026', utworzona_at: '2026-08-01T10:00:00.000Z',
-          zamowienie_id: 7, zamowienie_numer: '3001', kwota_brutto: '61.50', uniewazniona_at: null,
-        }],
+        dokumenty: async () => [
+          {
+            uuid: 'u1',
+            number: '1/08/2026',
+            rodzaj: 'vat',
+            invoice_date: '2026-08-03',
+            sale_date: '2026-08-03',
+            client_company_name: 'Firma X',
+            kwotaZl: '123.00',
+            pozostaloZl: '0.00',
+            stanKsef: 'jest',
+            ksef_number: '1234563218-20260806-5EB04B000005-18',
+            zamowienie: { id: 7, numer: '3001' },
+            stanTerminu: 'brak',
+            opisTerminu: 'bez terminu',
+          },
+        ],
+        nieoplacone: async () => {
+          throw new Error('inFakt nieosiągalny: fetch failed');
+        },
+        proformy: () => [
+          {
+            id: 1,
+            numer: 'PF/1/08/2026',
+            utworzona_at: '2026-08-01T10:00:00.000Z',
+            zamowienie_id: 7,
+            zamowienie_numer: '3001',
+            kwota_brutto: '61.50',
+            uniewazniona_at: null,
+          },
+        ],
       },
     });
     const r = await app.inject({ method: 'GET', url: '/faktury', headers: AUTH });
@@ -346,18 +633,36 @@ describe('GET /faktury', () => {
   it('awaria listy faktur miesiąca nie gasi sekcji nieopłaconych ani proform', async () => {
     const db = openOmsDb(':memory:');
     const app = buildOmsServer({
-      db, config: { auth: { user: 't', pass: 'h' } },
+      db,
+      config: { auth: { user: 't', pass: 'h' } },
       fakturyWidok: {
-        dokumenty: async () => { throw new Error('inFakt nieosiągalny: fetch failed'); },
-        nieoplacone: async () => [{
-          uuid: 'u9', number: '19/12/2025', payment_date: '2025-12-24', pozostaloZl: '1378.50',
-          client_company_name: 'Pracownia Przykładowa sp. z o.o.', stanTerminu: 'po_terminie',
-          opisTerminu: 'po terminie o 225 dni', zamowienie: null, stanKsef: 'jest',
-        }],
-        proformy: () => [{
-          id: 1, numer: 'PF/1/08/2026', utworzona_at: '2026-08-01T10:00:00.000Z',
-          zamowienie_id: 7, zamowienie_numer: '3001', kwota_brutto: '61.50', uniewazniona_at: null,
-        }],
+        dokumenty: async () => {
+          throw new Error('inFakt nieosiągalny: fetch failed');
+        },
+        nieoplacone: async () => [
+          {
+            uuid: 'u9',
+            number: '19/12/2025',
+            payment_date: '2025-12-24',
+            pozostaloZl: '1378.50',
+            client_company_name: 'Pracownia Przykładowa sp. z o.o.',
+            stanTerminu: 'po_terminie',
+            opisTerminu: 'po terminie o 225 dni',
+            zamowienie: null,
+            stanKsef: 'jest',
+          },
+        ],
+        proformy: () => [
+          {
+            id: 1,
+            numer: 'PF/1/08/2026',
+            utworzona_at: '2026-08-01T10:00:00.000Z',
+            zamowienie_id: 7,
+            zamowienie_numer: '3001',
+            kwota_brutto: '61.50',
+            uniewazniona_at: null,
+          },
+        ],
       },
     });
     const r = await app.inject({ method: 'GET', url: '/faktury', headers: AUTH });
@@ -376,10 +681,13 @@ describe('GET /faktury', () => {
   it('awaria sekcji nieopłaconych nie pokazuje fałszywej sumy 0,00 zł', async () => {
     const db = openOmsDb(':memory:');
     const app = buildOmsServer({
-      db, config: { auth: { user: 't', pass: 'h' } },
+      db,
+      config: { auth: { user: 't', pass: 'h' } },
       fakturyWidok: {
         dokumenty: async () => [],
-        nieoplacone: async () => { throw new Error('inFakt nieosiągalny: fetch failed'); },
+        nieoplacone: async () => {
+          throw new Error('inFakt nieosiągalny: fetch failed');
+        },
         proformy: () => [],
       },
     });
@@ -393,11 +701,25 @@ describe('GET /faktury', () => {
   // a lista wyboru oferuje wylacznie 13 ostatnich miesiecy — bez tej poprawki tabela
   // pokazywalaby 2020-01, a select dalej wskazywalby pierwszy z oferowanych miesiecy.
   it('miesiąc spoza 13 oferowanych i tak trafia do listy wyboru (ekran nie przeczy sam sobie)', async () => {
-    const app = serwer({ dokumenty: [{
-      uuid: 'stary', number: '1/01/2020', rodzaj: 'vat', invoice_date: '2020-01-15', sale_date: '2020-01-15',
-      client_company_name: 'Firma Stara', kwotaZl: '10.00', pozostaloZl: '0.00', stanKsef: 'brak',
-      ksef_number: null, zamowienie: null, stanTerminu: 'brak', opisTerminu: 'bez terminu',
-    }] });
+    const app = serwer({
+      dokumenty: [
+        {
+          uuid: 'stary',
+          number: '1/01/2020',
+          rodzaj: 'vat',
+          invoice_date: '2020-01-15',
+          sale_date: '2020-01-15',
+          client_company_name: 'Firma Stara',
+          kwotaZl: '10.00',
+          pozostaloZl: '0.00',
+          stanKsef: 'brak',
+          ksef_number: null,
+          zamowienie: null,
+          stanTerminu: 'brak',
+          opisTerminu: 'bez terminu',
+        },
+      ],
+    });
     const r = await app.inject({ method: 'GET', url: '/faktury?miesiac=2020-01', headers: AUTH });
     expect(r.statusCode).toBe(200);
     // Tabela pokazuje 2020-01…
@@ -442,12 +764,26 @@ describe('GET /faktury', () => {
     // Dokument z `status: paid` i `left_to_pay: 99000` naraz: stan zapłaty rozstrzyga status.
     // Gdyby widok wrócił do liczenia z kwoty zamiast z `stanZaplaty`,
     // ten dokument świeciłby na czerwono mimo że jest opłacony.
-    const app = serwer({ dokumenty: [{
-      uuid: 'u51', number: '51/08/2026', rodzaj: 'vat', invoice_date: '2026-08-26', sale_date: '2026-08-26',
-      client_company_name: 'Firma Opłacona', kwotaZl: '990.00', pozostaloZl: '990.00',
-      stanZaplaty: 'zaplacona', stanKsef: 'brak', ksef_number: null, zamowienie: null,
-      stanTerminu: 'brak', opisTerminu: 'bez terminu',
-    }] });
+    const app = serwer({
+      dokumenty: [
+        {
+          uuid: 'u51',
+          number: '51/08/2026',
+          rodzaj: 'vat',
+          invoice_date: '2026-08-26',
+          sale_date: '2026-08-26',
+          client_company_name: 'Firma Opłacona',
+          kwotaZl: '990.00',
+          pozostaloZl: '990.00',
+          stanZaplaty: 'zaplacona',
+          stanKsef: 'brak',
+          ksef_number: null,
+          zamowienie: null,
+          stanTerminu: 'brak',
+          opisTerminu: 'bez terminu',
+        },
+      ],
+    });
     const r = await app.inject({ method: 'GET', url: '/faktury', headers: AUTH });
     expect(r.statusCode).toBe(200);
     // Cały znacznik, nie gole słowo — „zapłacone" (inny przypadek) stoi też w akapicie
@@ -457,23 +793,51 @@ describe('GET /faktury', () => {
   });
 
   it('kolumna „Płatność": faktura realnie nieopłacona pokazuje „pozostało 54.89 zł"', async () => {
-    const app = serwer({ dokumenty: [{
-      uuid: 'u44', number: '44/08/2026', rodzaj: 'vat', invoice_date: '2026-08-20', sale_date: '2026-08-20',
-      client_company_name: 'Firma Winna', kwotaZl: '54.89', pozostaloZl: '54.89',
-      stanZaplaty: 'do_zaplaty', stanKsef: 'brak', ksef_number: null, zamowienie: null,
-      stanTerminu: 'brak', opisTerminu: 'bez terminu',
-    }] });
+    const app = serwer({
+      dokumenty: [
+        {
+          uuid: 'u44',
+          number: '44/08/2026',
+          rodzaj: 'vat',
+          invoice_date: '2026-08-20',
+          sale_date: '2026-08-20',
+          client_company_name: 'Firma Winna',
+          kwotaZl: '54.89',
+          pozostaloZl: '54.89',
+          stanZaplaty: 'do_zaplaty',
+          stanKsef: 'brak',
+          ksef_number: null,
+          zamowienie: null,
+          stanTerminu: 'brak',
+          opisTerminu: 'bez terminu',
+        },
+      ],
+    });
     const r = await app.inject({ method: 'GET', url: '/faktury', headers: AUTH });
     expect(r.body).toContain('<span class="znacznik znacznik--blad">pozostało 54.89 zł</span>');
   });
 
   it('kolumna „Płatność": bez statusu i kwoty z inFaktu pokazuje „nie wiadomo", nie zgaduje', async () => {
-    const app = serwer({ dokumenty: [{
-      uuid: 'uN', number: '7/08/2026', rodzaj: 'vat', invoice_date: '2026-08-10', sale_date: '2026-08-10',
-      client_company_name: 'Firma Niejasna', kwotaZl: '10.00', pozostaloZl: '0.00',
-      stanZaplaty: 'nieznany', stanKsef: 'brak', ksef_number: null, zamowienie: null,
-      stanTerminu: 'brak', opisTerminu: 'bez terminu',
-    }] });
+    const app = serwer({
+      dokumenty: [
+        {
+          uuid: 'uN',
+          number: '7/08/2026',
+          rodzaj: 'vat',
+          invoice_date: '2026-08-10',
+          sale_date: '2026-08-10',
+          client_company_name: 'Firma Niejasna',
+          kwotaZl: '10.00',
+          pozostaloZl: '0.00',
+          stanZaplaty: 'nieznany',
+          stanKsef: 'brak',
+          ksef_number: null,
+          zamowienie: null,
+          stanTerminu: 'brak',
+          opisTerminu: 'bez terminu',
+        },
+      ],
+    });
     const r = await app.inject({ method: 'GET', url: '/faktury', headers: AUTH });
     expect(r.body).toContain(
       '<span class="znacznik znacznik--cichy" title="inFakt nie podał ani statusu, ani kwoty">nie wiadomo</span>',
@@ -483,12 +847,26 @@ describe('GET /faktury', () => {
   });
 
   it('kolumna „Płatność": korekta pokazuje myślnik, niezależnie od stanZaplaty i kwoty', async () => {
-    const app = serwer({ dokumenty: [{
-      uuid: 'uK', number: '1/KOR/08/2026', rodzaj: 'korekta', invoice_date: '2026-08-15', sale_date: '2026-08-15',
-      client_company_name: 'Firma Korekta', kwotaZl: '-100.00', pozostaloZl: '100.00',
-      stanZaplaty: 'zaplacona', stanKsef: 'brak', ksef_number: null, zamowienie: null,
-      stanTerminu: 'brak', opisTerminu: 'bez terminu',
-    }] });
+    const app = serwer({
+      dokumenty: [
+        {
+          uuid: 'uK',
+          number: '1/KOR/08/2026',
+          rodzaj: 'korekta',
+          invoice_date: '2026-08-15',
+          sale_date: '2026-08-15',
+          client_company_name: 'Firma Korekta',
+          kwotaZl: '-100.00',
+          pozostaloZl: '100.00',
+          stanZaplaty: 'zaplacona',
+          stanKsef: 'brak',
+          ksef_number: null,
+          zamowienie: null,
+          stanTerminu: 'brak',
+          opisTerminu: 'bez terminu',
+        },
+      ],
+    });
     const r = await app.inject({ method: 'GET', url: '/faktury', headers: AUTH });
     expect(r.body).toContain('<span class="znacznik znacznik--cichy">—</span>');
   });
@@ -516,8 +894,13 @@ describe('archiwum sprzedazy na /faktury', () => {
   it('z czuwaczem pokazuje stan i liczniki oraz przycisk', async () => {
     const { app, db } = serwerZBaza({ czuwaczArchiwumSprzedazy: { przebieg: async () => ({}) } });
     zapiszWiersz(db, {
-      uuid: 'a', rodzaj: 'vat', numer: '1/08/2026', invoiceDate: '2026-08-01',
-      odcisk: '{}', sciezkaPdf: 'x', zapisanyAt: '2026-09-02T02:10:00.000Z',
+      uuid: 'a',
+      rodzaj: 'vat',
+      numer: '1/08/2026',
+      invoiceDate: '2026-08-01',
+      odcisk: '{}',
+      sciezkaPdf: 'x',
+      zapisanyAt: '2026-09-02T02:10:00.000Z',
     });
     odnotujUdanyPrzebiegArchiwum(db, { chwila: '2026-09-02T02:10:00Z', podlogaZrobiona: true });
     const r = await app.inject({ method: 'GET', url: '/faktury', headers: AUTH });
@@ -536,8 +919,13 @@ describe('archiwum sprzedazy na /faktury', () => {
     const jedenWiersz = () => {
       const { app, db } = serwerZBaza({ czuwaczArchiwumSprzedazy: { przebieg: async () => ({}) } });
       zapiszWiersz(db, {
-        uuid: 'j1', rodzaj: 'vat', numer: '1/08/2026', invoiceDate: '2026-08-01',
-        odcisk: '{}', sciezkaPdf: 'x', zapisanyAt: '2026-09-02T02:10:00.000Z',
+        uuid: 'j1',
+        rodzaj: 'vat',
+        numer: '1/08/2026',
+        invoiceDate: '2026-08-01',
+        odcisk: '{}',
+        sciezkaPdf: 'x',
+        zapisanyAt: '2026-09-02T02:10:00.000Z',
       });
       return { app };
     };
@@ -546,18 +934,32 @@ describe('archiwum sprzedazy na /faktury', () => {
     expect(r1.body).toMatch(/1 dokument(?![a-ząćęłńóśźż])/);
 
     const { app: app2, db: db2 } = serwerZBaza({ czuwaczArchiwumSprzedazy: { przebieg: async () => ({}) } });
-    ['d1', 'd2'].forEach((uuid, i) => zapiszWiersz(db2, {
-      uuid, rodzaj: 'vat', numer: `${i + 1}/08/2026`, invoiceDate: '2026-08-01',
-      odcisk: '{}', sciezkaPdf: 'x', zapisanyAt: '2026-09-02T02:10:00.000Z',
-    }));
+    ['d1', 'd2'].forEach((uuid, i) =>
+      zapiszWiersz(db2, {
+        uuid,
+        rodzaj: 'vat',
+        numer: `${i + 1}/08/2026`,
+        invoiceDate: '2026-08-01',
+        odcisk: '{}',
+        sciezkaPdf: 'x',
+        zapisanyAt: '2026-09-02T02:10:00.000Z',
+      }),
+    );
     const r2 = await app2.inject({ method: 'GET', url: '/faktury', headers: AUTH });
     expect(r2.body).toMatch(/2 dokumenty(?![a-ząćęłńóśźż])/);
 
     const { app: app5, db: db5 } = serwerZBaza({ czuwaczArchiwumSprzedazy: { przebieg: async () => ({}) } });
-    ['p1', 'p2', 'p3', 'p4', 'p5'].forEach((uuid, i) => zapiszWiersz(db5, {
-      uuid, rodzaj: 'vat', numer: `${i + 1}/08/2026`, invoiceDate: '2026-08-01',
-      odcisk: '{}', sciezkaPdf: 'x', zapisanyAt: '2026-09-02T02:10:00.000Z',
-    }));
+    ['p1', 'p2', 'p3', 'p4', 'p5'].forEach((uuid, i) =>
+      zapiszWiersz(db5, {
+        uuid,
+        rodzaj: 'vat',
+        numer: `${i + 1}/08/2026`,
+        invoiceDate: '2026-08-01',
+        odcisk: '{}',
+        sciezkaPdf: 'x',
+        zapisanyAt: '2026-09-02T02:10:00.000Z',
+      }),
+    );
     const r5 = await app5.inject({ method: 'GET', url: '/faktury', headers: AUTH });
     expect(r5.body).toMatch(/5 dokumentów/);
   });
@@ -567,8 +969,13 @@ describe('archiwum sprzedazy na /faktury', () => {
   it('licznik skasowanych milczy, gdy nikt nic nie skasował', async () => {
     const { app, db } = serwerZBaza({ czuwaczArchiwumSprzedazy: { przebieg: async () => ({}) } });
     zapiszWiersz(db, {
-      uuid: 'a', rodzaj: 'vat', numer: '1/08/2026', invoiceDate: '2026-08-01',
-      odcisk: '{}', sciezkaPdf: 'x', zapisanyAt: '2026-09-02T02:10:00.000Z',
+      uuid: 'a',
+      rodzaj: 'vat',
+      numer: '1/08/2026',
+      invoiceDate: '2026-08-01',
+      odcisk: '{}',
+      sciezkaPdf: 'x',
+      zapisanyAt: '2026-09-02T02:10:00.000Z',
     });
     const r = await app.inject({ method: 'GET', url: '/faktury', headers: AUTH });
     expect(r.body).not.toContain('skasowanych: 0');
@@ -592,14 +999,21 @@ describe('archiwum sprzedazy na /faktury', () => {
         przebieg: async (o) => {
           dostal = o;
           return {
-            pobranych: 2, adoptowanych: 0, nadpisanych: 0, bezZmian: 5,
-            skasowanych: 0, niedokonczone: false, miesiecy: 3,
+            pobranych: 2,
+            adoptowanych: 0,
+            nadpisanych: 0,
+            bezZmian: 5,
+            skasowanych: 0,
+            niedokonczone: false,
+            miesiecy: 3,
           };
         },
       },
     });
     const r = await app.inject({
-      method: 'POST', url: '/faktury/archiwum/uruchom', headers: AUTH_POST,
+      method: 'POST',
+      url: '/faktury/archiwum/uruchom',
+      headers: AUTH_POST,
       payload: 'miesiac=2026-08&pole=sale_date',
     });
     expect(dostal).toEqual({ wymuszony: true });
@@ -619,7 +1033,9 @@ describe('archiwum sprzedazy na /faktury', () => {
       },
     });
     const r = await app.inject({
-      method: 'POST', url: '/faktury/archiwum/uruchom', headers: AUTH_POST,
+      method: 'POST',
+      url: '/faktury/archiwum/uruchom',
+      headers: AUTH_POST,
       payload: 'miesiac=2026-08&pole=invoice_date',
     });
     expect(r.statusCode).toBe(303);
@@ -635,10 +1051,16 @@ describe('archiwum sprzedazy na /faktury', () => {
   // zapisze w `ostatni_blad`, a nie zmyslac wlasna tresc bledu.
   it('błąd techniczny (bez dlaOperatora) wraca zdaniem odsyłającym do linii stanu, a nie 500', async () => {
     const { app } = serwerZBaza({
-      czuwaczArchiwumSprzedazy: { przebieg: async () => { throw new Error('ENOSPC: brak miejsca na NAS-ie'); } },
+      czuwaczArchiwumSprzedazy: {
+        przebieg: async () => {
+          throw new Error('ENOSPC: brak miejsca na NAS-ie');
+        },
+      },
     });
     const r = await app.inject({
-      method: 'POST', url: '/faktury/archiwum/uruchom', headers: AUTH_POST,
+      method: 'POST',
+      url: '/faktury/archiwum/uruchom',
+      headers: AUTH_POST,
       payload: 'miesiac=2026-08',
     });
     expect(r.statusCode).toBe(303);
@@ -654,11 +1076,15 @@ describe('archiwum sprzedazy na /faktury', () => {
   it('błąd z dlaOperatora pokazuje właściwą treść komunikatu', async () => {
     const { app } = serwerZBaza({
       czuwaczArchiwumSprzedazy: {
-        przebieg: async () => { throw bladOperatora('inFakt odrzucił żądanie: limit zapytań.'); },
+        przebieg: async () => {
+          throw bladOperatora('inFakt odrzucił żądanie: limit zapytań.');
+        },
       },
     });
     const r = await app.inject({
-      method: 'POST', url: '/faktury/archiwum/uruchom', headers: AUTH_POST,
+      method: 'POST',
+      url: '/faktury/archiwum/uruchom',
+      headers: AUTH_POST,
       payload: 'miesiac=2026-08',
     });
     expect(r.statusCode).toBe(303);
@@ -711,7 +1137,9 @@ describe('archiwum sprzedazy na /faktury', () => {
   it('komunikat z adresu nie wstrzykuje znaczników na stronę', async () => {
     const { app } = serwerZBaza({ czuwaczArchiwumSprzedazy: { przebieg: async () => ({}) } });
     const r = await app.inject({
-      method: 'GET', url: `/faktury?komunikat=${encodeURIComponent('<script>alert(1)</script>')}`, headers: AUTH,
+      method: 'GET',
+      url: `/faktury?komunikat=${encodeURIComponent('<script>alert(1)</script>')}`,
+      headers: AUTH,
     });
     expect(r.body).not.toContain('<script>alert(1)</script>');
     expect(r.body).toContain('&lt;script&gt;');
@@ -722,7 +1150,9 @@ describe('archiwum sprzedazy na /faktury', () => {
   it('POST bez czuwacza = 503 zdaniem', async () => {
     const app = serwer();
     const r = await app.inject({
-      method: 'POST', url: '/faktury/archiwum/uruchom', headers: AUTH_POST,
+      method: 'POST',
+      url: '/faktury/archiwum/uruchom',
+      headers: AUTH_POST,
       payload: 'miesiac=2026-08',
     });
     expect(r.statusCode).toBe(503);
@@ -732,7 +1162,8 @@ describe('archiwum sprzedazy na /faktury', () => {
   it('POST bez hasła odmawia', async () => {
     const { app } = serwerZBaza({ czuwaczArchiwumSprzedazy: { przebieg: async () => ({}) } });
     const r = await app.inject({
-      method: 'POST', url: '/faktury/archiwum/uruchom',
+      method: 'POST',
+      url: '/faktury/archiwum/uruchom',
       headers: { origin: 'http://localhost', 'content-type': 'application/x-www-form-urlencoded' },
       payload: 'miesiac=2026-08',
     });
@@ -758,7 +1189,11 @@ describe('GET /faktury/paczka', () => {
         },
       },
     });
-    const r = await app.inject({ method: 'GET', url: '/faktury/zestawienie-przychodow?miesiac=2026-08', headers: AUTH });
+    const r = await app.inject({
+      method: 'GET',
+      url: '/faktury/zestawienie-przychodow?miesiac=2026-08',
+      headers: AUTH,
+    });
     expect(r.statusCode).toBe(200);
     expect(r.headers['content-type']).toContain('application/pdf');
     expect(r.headers['content-disposition']).toContain('zestawienie-przychodow-2026-08.pdf');
@@ -772,7 +1207,10 @@ describe('GET /faktury/paczka', () => {
         zbuduj: async (m, czesc) => {
           wolania.push([m, czesc]);
           return {
-            bajty: Buffer.from('%PDF-1.4 p'), nazwa: `zestawienie-faktur-${m}-${czesc}.pdf`, dokumentow: 3, stron: 9,
+            bajty: Buffer.from('%PDF-1.4 p'),
+            nazwa: `zestawienie-faktur-${m}-${czesc}.pdf`,
+            dokumentow: 3,
+            stron: 9,
           };
         },
       },
@@ -785,7 +1223,10 @@ describe('GET /faktury/paczka', () => {
     expect(k.headers['content-disposition']).toContain('zestawienie-faktur-2026-08-koszty.pdf');
     // ⚠️ CZESC JEDZIE DO USLUGI, a nie ginie po drodze — bez tego oba odnosniki oddawalyby
     // ten sam plik pod dwiema nazwami.
-    expect(wolania).toEqual([['2026-08', 'sprzedaz'], ['2026-08', 'koszty']]);
+    expect(wolania).toEqual([
+      ['2026-08', 'sprzedaz'],
+      ['2026-08', 'koszty'],
+    ]);
   });
 
   // ⚠️⚠️ BRAK CZESCI ODMAWIA, a nie wraca do domyslnej. Plik sprzedazowy i kosztowy wygladaja identycznie,
@@ -793,7 +1234,14 @@ describe('GET /faktury/paczka', () => {
   // nie ten rejestr, o ktory prosila. To ta sama zasada, co przy miesiacu.
   it('brak albo nieznana czesc = 400 zdaniem wymieniajacym oba pliki', async () => {
     let wolan = 0;
-    const { app } = serwerZBaza({ paczkaDlaBiura: { zbuduj: async () => { wolan += 1; return {}; } } });
+    const { app } = serwerZBaza({
+      paczkaDlaBiura: {
+        zbuduj: async () => {
+          wolan += 1;
+          return {};
+        },
+      },
+    });
     for (const url of ['/faktury/paczka?miesiac=2026-08', '/faktury/paczka?miesiac=2026-08&czesc=wszystko']) {
       // eslint-disable-next-line no-await-in-loop
       const r = await app.inject({ method: 'GET', url, headers: AUTH });
@@ -828,8 +1276,14 @@ describe('GET /faktury/paczka', () => {
   // o ktory ktos poprosil, wygladalaby dokladnie tak samo jak paczka poprawna.
   it('zly miesiac = 400; bez uslugi = 503', async () => {
     const { app } = serwerZBaza({ paczkaDlaBiura: { zbuduj: async () => ({}) } });
-    expect((await app.inject({ method: 'GET', url: '/faktury/paczka?miesiac=sierpien&czesc=sprzedaz', headers: AUTH })).statusCode).toBe(400);
-    expect((await serwer().inject({ method: 'GET', url: '/faktury/paczka?miesiac=2026-08&czesc=sprzedaz', headers: AUTH })).statusCode).toBe(503);
+    expect(
+      (await app.inject({ method: 'GET', url: '/faktury/paczka?miesiac=sierpien&czesc=sprzedaz', headers: AUTH }))
+        .statusCode,
+    ).toBe(400);
+    expect(
+      (await serwer().inject({ method: 'GET', url: '/faktury/paczka?miesiac=2026-08&czesc=sprzedaz', headers: AUTH }))
+        .statusCode,
+    ).toBe(503);
   });
 
   // Odnośnik niesie miesiąc, NA KTÓRY OPERATOR PATRZY — inaczej pobrałby zestawienie za
@@ -854,13 +1308,18 @@ describe('GET /faktury/paczka', () => {
   // Ta sama zasada, co straznik „jeden przebieg naraz" w czuwaczach; roznica jest taka, ze tam
   // pomijamy po cichu, a tutaj czlowiek CZEKA i musi zobaczyc, czemu nic nie przyszlo.
   it('⚠️ drugie klikniecie w trakcie skladania = 409, a nie druga paczka', async () => {
-    let odblokuj; let wystartowala;
-    const wTrakcie = new Promise((res) => { odblokuj = res; });
+    let odblokuj;
+    let wystartowala;
+    const wTrakcie = new Promise((res) => {
+      odblokuj = res;
+    });
     // ⚠️ SYNCHRONIZACJA PRZEZ WEJSCIE DO USLUGI, A NIE PRZEZ KOLEJNOSC WYWOLAN. `app.inject`
     // dopiero KOLEJKUJE zadanie (pierwsze wymusza jeszcze `ready()`), wiec bez tej obietnicy
     // drugie zadanie potrafi dojsc do trasy PRZED pierwszym — i test sprawdzalby wtedy zbieg
     // okolicznosci zamiast blokady.
-    const wStarcie = new Promise((res) => { wystartowala = res; });
+    const wStarcie = new Promise((res) => {
+      wystartowala = res;
+    });
     let wolan = 0;
     const { app } = serwerZBaza({
       paczkaDlaBiura: {
@@ -878,7 +1337,11 @@ describe('GET /faktury/paczka', () => {
     const pierwsze = app.inject({ method: 'GET', url, headers: AUTH });
     await wStarcie;
     // Drugie zadanie leci, gdy pierwsze WISI na `zbuduj` — dokladnie tak, jak drugie klikniecie.
-    const drugie = await app.inject({ method: 'GET', url: '/faktury/paczka?miesiac=2026-08&czesc=koszty', headers: AUTH });
+    const drugie = await app.inject({
+      method: 'GET',
+      url: '/faktury/paczka?miesiac=2026-08&czesc=koszty',
+      headers: AUTH,
+    });
     expect(drugie.statusCode).toBe(409);
     expect(drugie.body).toContain('Zestawienie faktur jest właśnie składane');
     odblokuj();
@@ -897,7 +1360,9 @@ describe('GET /faktury/paczka', () => {
   it('⚠️ blad skladania NIE zostawia zatrzasnietej blokady', async () => {
     const { app } = serwerZBaza({
       paczkaDlaBiura: {
-        zbuduj: async () => { throw new Error('inFakt 500'); },
+        zbuduj: async () => {
+          throw new Error('inFakt 500');
+        },
       },
     });
     const url = '/faktury/paczka?miesiac=2026-08&czesc=sprzedaz';

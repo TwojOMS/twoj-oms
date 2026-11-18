@@ -20,7 +20,12 @@ const strona = (html) => /<section class="ust-sekcja ust-wkrotce">[\s\S]*?<\/sec
 
 it('instrukcja faktur i brak usługi lub błąd nie psują strony', async () => {
   // null = modułu faktur bez usługi (wprost, bo po C05a prawdziwa usługa istnieje zawsze)
-  for (const usluga of [null, () => { throw new Error('brak'); }]) {
+  for (const usluga of [
+    null,
+    () => {
+      throw new Error('brak');
+    },
+  ]) {
     const { app, db, admin } = panel(undefined, usluga);
     try {
       const r = await get(app, '/ustawienia/druk', admin);
@@ -30,7 +35,10 @@ it('instrukcja faktur i brak usługi lub błąd nie psują strony', async () => 
       expect((lista.match(/<li>/gu) ?? []).length).toBeGreaterThanOrEqual(5);
       expect(r.body).not.toContain('deploy/drukarka/README.md');
       expect(r.body).toContain('Panel nie ma jeszcze danych o komputerach z drukarką');
-    } finally { await app.close(); db.close(); }
+    } finally {
+      await app.close();
+      db.close();
+    }
   }
 });
 
@@ -39,60 +47,85 @@ it('stan stanowisk jest odczytywany przy każdym żądaniu', async () => {
   const { app, db, admin } = panel(undefined, () => stan);
   try {
     expect((await get(app, '/ustawienia/druk', admin)).body).toContain('Żaden komputer z drukarką się nie zgłosił');
-    stan = { podlaczone: true, stanowiska: [
-      { nazwa: 'BIURO-1', at: '2026-10-29T10:00:00.000Z', minutTemu: 2, aktywne: true },
-      { nazwa: '<inne>', at: '2026-10-29T09:00:00.000Z', minutTemu: 63, aktywne: false },
-      { nazwa: 'BIURO-2', at: '2026-10-29T10:02:00.000Z', minutTemu: 0, aktywne: true },
-    ] };
+    stan = {
+      podlaczone: true,
+      stanowiska: [
+        { nazwa: 'BIURO-1', at: '2026-10-29T10:00:00.000Z', minutTemu: 2, aktywne: true },
+        { nazwa: '<inne>', at: '2026-10-29T09:00:00.000Z', minutTemu: 63, aktywne: false },
+        { nazwa: 'BIURO-2', at: '2026-10-29T10:02:00.000Z', minutTemu: 0, aktywne: true },
+      ],
+    };
     const r = await get(app, '/ustawienia/druk', admin);
     expect(r.body).toMatch(/BIURO-1 — zgłosił się 2 min temu — aktywny<\/li>/u);
     expect(r.body).toMatch(/&lt;inne&gt; — zgłosił się 63 min temu — nieaktywny<\/li>/u);
     expect(r.body).toMatch(/BIURO-2 — zgłosił się przed chwilą — aktywny<\/li>/u);
-  } finally { await app.close(); db.close(); }
+  } finally {
+    await app.close();
+    db.close();
+  }
 });
 
 it('brak rzeczywistego katalogu nie staje się zielonym statusem z podmienionej usługi zdrowia', async () => {
-  const { app, db, admin } = panel(() => ({katalogDostepny:true,zewnetrzna:true,zewnetrznaStan:'ok',ostatnia:{plik:'oms-2026-10-28.sqlite',wiekH:5}}));
+  const { app, db, admin } = panel(() => ({
+    katalogDostepny: true,
+    zewnetrzna: true,
+    zewnetrznaStan: 'ok',
+    ostatnia: { plik: 'oms-2026-10-28.sqlite', wiekH: 5 },
+  }));
   try {
-    const r=await get(app,'/ustawienia/kopie',admin);
+    const r = await get(app, '/ustawienia/kopie', admin);
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('Nie skonfigurowano');
     expect(r.body).not.toContain('oms-2026-10-28.sqlite');
     expect(r.body).not.toContain('Pełna ochrona');
-  } finally {await app.close();db.close();}
+  } finally {
+    await app.close();
+    db.close();
+  }
 });
 
 describe('Ustawienia — strony „wkrótce”', () => {
   it('każda pozycja „wkrótce” w menu ma stronę i każda strona ma pozycję w menu', () => {
-    const wMenu = podmenuUstawien('/ustawienia', { admin: true }).filter((p) => p.wkrotce).map((p) => p.href).sort();
-    expect(STRONY_WKROTCE.filter((s) => !s.dziala).map((s) => s.href).sort()).toEqual(wMenu);
+    const wMenu = podmenuUstawien('/ustawienia', { admin: true })
+      .filter((p) => p.wkrotce)
+      .map((p) => p.href)
+      .sort();
+    expect(
+      STRONY_WKROTCE.filter((s) => !s.dziala)
+        .map((s) => s.href)
+        .sort(),
+    ).toEqual(wMenu);
   });
 
-  it.each(STRONY_WKROTCE.map((s) => [s.href, s]))('%s: 200, tytuł, opis, punkty, podświetlona pozycja menu', async (href, s) => {
-    const { app, admin } = panel();
-    const r = await get(app, href, admin);
-    expect(r.statusCode, r.body).toBe(200);
-    expect(r.body).toContain(`<title>${s.tytul}</title>`);
-    const t = tresc(r.body);
-    // W działach h1 należy do powłoki; strony bez działu mają własny h1.
-    const dzial = modelNawigacjiUstawien(href, {admin: true}).dzialy?.find(d => d.aktywna);
-    const zakladka = modelNawigacjiUstawien(href, {admin: true}).zakladki.find(z => z.aktywna);
-    if (dzial && s.tytul === zakladka?.etykieta) expect(t).not.toContain(`<h2 class="naglowek-formularza">${s.tytul}</h2>`);
-    else expect(t).toContain(dzial ? `<h2 class="naglowek-formularza">${s.tytul}</h2>` : `<h1>${s.tytul}</h1>`);
-    const sekcja = strona(r.body);
-    expect(sekcja).toContain(s.opis);
-    for (const punkt of s.punkty) expect(sekcja).toContain(`<li>${punkt}</li>`);
-    if (s.dzis) expect(sekcja).toContain(s.dzis);
-    if (s.dziala) {
-      // Druk działa (drukowanie faktur) — bez ramki „nie działa” i bez plakietki „wkrótce” przy pozycji.
-      expect(sekcja).not.toContain('Ten ekran jeszcze nie działa');
-      expect(r.body).toContain(`href="${href}" aria-current="page"`);
-      return;
-    }
-    expect(sekcja).toContain('Ten ekran jeszcze nie działa');
-    expect(r.body).toContain('System'); // zapowiedzi poza kolumną działów
-    expect(sekcja).toContain('Ten ekran jeszcze nie działa');
-  });
+  it.each(STRONY_WKROTCE.map((s) => [s.href, s]))(
+    '%s: 200, tytuł, opis, punkty, podświetlona pozycja menu',
+    async (href, s) => {
+      const { app, admin } = panel();
+      const r = await get(app, href, admin);
+      expect(r.statusCode, r.body).toBe(200);
+      expect(r.body).toContain(`<title>${s.tytul}</title>`);
+      const t = tresc(r.body);
+      // W działach h1 należy do powłoki; strony bez działu mają własny h1.
+      const dzial = modelNawigacjiUstawien(href, { admin: true }).dzialy?.find((d) => d.aktywna);
+      const zakladka = modelNawigacjiUstawien(href, { admin: true }).zakladki.find((z) => z.aktywna);
+      if (dzial && s.tytul === zakladka?.etykieta)
+        expect(t).not.toContain(`<h2 class="naglowek-formularza">${s.tytul}</h2>`);
+      else expect(t).toContain(dzial ? `<h2 class="naglowek-formularza">${s.tytul}</h2>` : `<h1>${s.tytul}</h1>`);
+      const sekcja = strona(r.body);
+      expect(sekcja).toContain(s.opis);
+      for (const punkt of s.punkty) expect(sekcja).toContain(`<li>${punkt}</li>`);
+      if (s.dzis) expect(sekcja).toContain(s.dzis);
+      if (s.dziala) {
+        // Druk działa (drukowanie faktur) — bez ramki „nie działa” i bez plakietki „wkrótce” przy pozycji.
+        expect(sekcja).not.toContain('Ten ekran jeszcze nie działa');
+        expect(r.body).toContain(`href="${href}" aria-current="page"`);
+        return;
+      }
+      expect(sekcja).toContain('Ten ekran jeszcze nie działa');
+      expect(r.body).toContain('System'); // zapowiedzi poza kolumną działów
+      expect(sekcja).toContain('Ten ekran jeszcze nie działa');
+    },
+  );
 
   it('treść jest konkretna: 2–4 punkty, bez dat i obietnic', () => {
     // Powiadomienia zastąpione działającym formularzem osobistym.

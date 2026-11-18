@@ -22,16 +22,24 @@ export function wTransakcji(db, praca) {
  * `pominiete` i przyszło NOWSZE zdarzenie (`zdarzenie_at` większe niż zapisane) → `otwarte`. Każdy inny przypadek
  * (to samo zdarzenie w kolejnym przebiegu, wiersz wysłany / niepewny / błędny / zaplanowany) → `null`, bez zapisu.
  */
-export function zaplanuj(db, { regula_id, przedmiot, zamowienie_id, przesylka_id = null, zdarzenie_at, termin_at, szablon = null, teraz }) {
-  const bylo = db.prepare('SELECT 1 FROM automatyzacje_wykonania WHERE regula_id = ? AND przedmiot = ?').get(regula_id, przedmiot);
-  const r = db.prepare(`INSERT INTO automatyzacje_wykonania
+export function zaplanuj(
+  db,
+  { regula_id, przedmiot, zamowienie_id, przesylka_id = null, zdarzenie_at, termin_at, szablon = null, teraz },
+) {
+  const bylo = db
+    .prepare('SELECT 1 FROM automatyzacje_wykonania WHERE regula_id = ? AND przedmiot = ?')
+    .get(regula_id, przedmiot);
+  const r = db
+    .prepare(
+      `INSERT INTO automatyzacje_wykonania
       (regula_id, przedmiot, zamowienie_id, przesylka_id, stan, zdarzenie_at, szablon, wykryte_at, termin_at)
     VALUES (?, ?, ?, ?, 'zaplanowane', ?, ?, ?, ?)
     ON CONFLICT (regula_id, przedmiot) DO UPDATE SET
       stan = 'zaplanowane', zdarzenie_at = excluded.zdarzenie_at, termin_at = excluded.termin_at,
       wykryte_at = excluded.wykryte_at, przesylka_id = excluded.przesylka_id, szablon = excluded.szablon,
       powod = NULL, powod_kod = NULL, adresat = NULL, proby = 0, nastepna_proba_at = NULL, zakonczone_at = NULL
-    WHERE automatyzacje_wykonania.stan = 'pominiete' AND excluded.zdarzenie_at > automatyzacje_wykonania.zdarzenie_at`)
+    WHERE automatyzacje_wykonania.stan = 'pominiete' AND excluded.zdarzenie_at > automatyzacje_wykonania.zdarzenie_at`,
+    )
     .run(regula_id, przedmiot, zamowienie_id, przesylka_id, zdarzenie_at, szablon, teraz, termin_at);
   if (!r.changes) return null;
   return bylo ? 'otwarte' : 'nowe';
@@ -44,7 +52,9 @@ export function zaplanuj(db, { regula_id, przedmiot, zamowienie_id, przesylka_id
  * Wiersze reguły wyłączonej przechodzą w „pominięte” przy wyłączeniu (db/reguly.js), więc tu nie giną.
  */
 export function doWykonania(db, { teraz, godzineWczesniej, limit = 500 }) {
-  return db.prepare(`WITH uzyte AS (
+  return db
+    .prepare(
+      `WITH uzyte AS (
       SELECT regula_id, COUNT(*) AS n FROM automatyzacje_wykonania
       WHERE stan = 'w_toku' OR (stan IN ('wyslane', 'niepewne', 'blad') AND zakonczone_at > ?)
       GROUP BY regula_id
@@ -57,8 +67,10 @@ export function doWykonania(db, { teraz, godzineWczesniej, limit = 500 }) {
       WHERE w.stan = 'zaplanowane' AND w.termin_at <= ? AND (w.nastepna_proba_at IS NULL OR w.nastepna_proba_at <= ?)
         AND r.wlaczona = 1 AND r.usunieta_at IS NULL AND r.wstrzymana_powod IS NULL
     )
-    SELECT * FROM kolejka WHERE nr <= wolne ORDER BY termin_at, id LIMIT ?`)
-    .all(godzineWczesniej, teraz, teraz, limit).map(({ wolne: _w, nr: _n, ...w }) => w);
+    SELECT * FROM kolejka WHERE nr <= wolne ORDER BY termin_at, id LIMIT ?`,
+    )
+    .all(godzineWczesniej, teraz, teraz, limit)
+    .map(({ wolne: _w, nr: _n, ...w }) => w);
 }
 
 /**
@@ -66,17 +78,28 @@ export function doWykonania(db, { teraz, godzineWczesniej, limit = 500 }) {
  * ktoś (drugi przebieg, druga instancja) był pierwszy. Dopiero po rezerwacji wolno wołać akcję.
  */
 export function zarezerwuj(db, id) {
-  return wTransakcji(db, () => db.prepare(
-    "UPDATE automatyzacje_wykonania SET stan = 'w_toku' WHERE id = ? AND stan = 'zaplanowane'").run(id).changes === 1);
+  return wTransakcji(
+    db,
+    () =>
+      db.prepare("UPDATE automatyzacje_wykonania SET stan = 'w_toku' WHERE id = ? AND stan = 'zaplanowane'").run(id)
+        .changes === 1,
+  );
 }
 
-const AKCJA_LOGU = { pominiete: 'automatyzacja.pominieta', blad: 'automatyzacja.blad', niepewne: 'automatyzacja.niepewna' };
+const AKCJA_LOGU = {
+  pominiete: 'automatyzacja.pominieta',
+  blad: 'automatyzacja.blad',
+  niepewne: 'automatyzacja.niepewna',
+};
 const PRZEDROSTEK = { pominiete: 'pominięto', blad: 'błąd', niepewne: 'nie wiadomo, czy wyszło' };
 
 /** Wpis w historii zamówienia: każde pominięcie, błąd i niepewność reguły jest widoczne na karcie zamówienia. */
 export function wpisDoHistorii(db, { zamowienie_id, stan, nazwa, powod }) {
   if (!AKCJA_LOGU[stan]) return;
-  dopiszLog(db, zamowienie_id, { akcja: AKCJA_LOGU[stan], wynik: `Automatyzacja „${nazwa}”: ${PRZEDROSTEK[stan]} — ${powod}` });
+  dopiszLog(db, zamowienie_id, {
+    akcja: AKCJA_LOGU[stan],
+    wynik: `Automatyzacja „${nazwa}”: ${PRZEDROSTEK[stan]} — ${powod}`,
+  });
 }
 
 /**
@@ -84,13 +107,20 @@ export function wpisDoHistorii(db, { zamowienie_id, stan, nazwa, powod }) {
  * w stanie z `zeStanow` (domyślnie zaplanowane / w_toku) — wiersz pominięty w międzyczasie (np. wyłączenie reguły
  * w trakcie przebiegu) zostaje, jak był, i NIE dostaje drugiego wpisu. Oddaje: czy zmienił.
  */
-export function zakoncz(db, wykonanie, { stan, powod = null, powod_kod = null, adresat = null, proby, teraz, nazwa,
-  zeStanow = ['zaplanowane', 'w_toku'] }) {
+export function zakoncz(
+  db,
+  wykonanie,
+  { stan, powod = null, powod_kod = null, adresat = null, proby, teraz, nazwa, zeStanow = ['zaplanowane', 'w_toku'] },
+) {
   return wTransakcji(db, () => {
-    const zmienione = db.prepare(`UPDATE automatyzacje_wykonania SET stan = ?, powod = ?, powod_kod = ?, adresat = COALESCE(?, adresat),
+    const zmienione =
+      db
+        .prepare(
+          `UPDATE automatyzacje_wykonania SET stan = ?, powod = ?, powod_kod = ?, adresat = COALESCE(?, adresat),
       proby = COALESCE(?, proby), nastepna_proba_at = NULL, zakonczone_at = ?
-      WHERE id = ? AND stan IN (${zeStanow.map(() => '?').join(',')})`)
-      .run(stan, powod, powod_kod, adresat, proby ?? null, teraz, wykonanie.id, ...zeStanow).changes === 1;
+      WHERE id = ? AND stan IN (${zeStanow.map(() => '?').join(',')})`,
+        )
+        .run(stan, powod, powod_kod, adresat, proby ?? null, teraz, wykonanie.id, ...zeStanow).changes === 1;
     if (zmienione) wpisDoHistorii(db, { zamowienie_id: wykonanie.zamowienie_id, stan, nazwa, powod });
     return zmienione;
   });
@@ -98,8 +128,10 @@ export function zakoncz(db, wykonanie, { stan, powod = null, powod_kod = null, a
 
 /** Chwilowy błąd poczty przed przyjęciem listu: z powrotem do kolejki, próba + 1, następna za 15 min; kasuje kod odłożenia. */
 export function ponow(db, wykonanie, { nastepna, powod }) {
-  db.prepare(`UPDATE automatyzacje_wykonania SET stan = 'zaplanowane', proby = proby + 1, nastepna_proba_at = ?, powod = ?, powod_kod = NULL
-    WHERE id = ? AND stan = 'w_toku'`).run(nastepna, powod, wykonanie.id);
+  db.prepare(
+    `UPDATE automatyzacje_wykonania SET stan = 'zaplanowane', proby = proby + 1, nastepna_proba_at = ?, powod = ?, powod_kod = NULL
+    WHERE id = ? AND stan = 'w_toku'`,
+  ).run(nastepna, powod, wykonanie.id);
 }
 
 /**
@@ -108,8 +140,10 @@ export function ponow(db, wykonanie, { nastepna, powod }) {
  * przeterminowanie 48 h) i bez wpisu w historii zamówienia (to nie pominięcie). Tylko przed rezerwacją.
  */
 export function odloz(db, wykonanie, { nastepna, powod, kod }) {
-  db.prepare(`UPDATE automatyzacje_wykonania SET nastepna_proba_at = ?, powod = ?, powod_kod = ?
-    WHERE id = ? AND stan = 'zaplanowane'`).run(nastepna, powod, kod ?? 'okno_poprawek', wykonanie.id);
+  db.prepare(
+    `UPDATE automatyzacje_wykonania SET nastepna_proba_at = ?, powod = ?, powod_kod = ?
+    WHERE id = ? AND stan = 'zaplanowane'`,
+  ).run(nastepna, powod, kod ?? 'okno_poprawek', wykonanie.id);
 }
 
 /**
@@ -117,14 +151,21 @@ export function odloz(db, wykonanie, { nastepna, powod, kod }) {
  * (wzór: oznaczPrzerwanyPrzebieg automatu KSeF). Bez wiszących wykonań nic nie zapisuje.
  */
 export function oznaczPrzerwane(db, teraz) {
-  const wiszace = db.prepare(`SELECT w.id, w.zamowienie_id, r.nazwa FROM automatyzacje_wykonania w
-    JOIN automatyzacje_reguly r ON r.id = w.regula_id WHERE w.stan = 'w_toku'`).all();
+  const wiszace = db
+    .prepare(
+      `SELECT w.id, w.zamowienie_id, r.nazwa FROM automatyzacje_wykonania w
+    JOIN automatyzacje_reguly r ON r.id = w.regula_id WHERE w.stan = 'w_toku'`,
+    )
+    .all();
   if (!wiszace.length) return 0;
-  const powod = 'OMS został uruchomiony ponownie w trakcie wysyłki. Nie ponawiamy — sprawdź, czy klient dostał wiadomość.';
+  const powod =
+    'OMS został uruchomiony ponownie w trakcie wysyłki. Nie ponawiamy — sprawdź, czy klient dostał wiadomość.';
   wTransakcji(db, () => {
     for (const w of wiszace) {
-      db.prepare(`UPDATE automatyzacje_wykonania SET stan = 'niepewne', powod = ?, powod_kod = 'przerwane', zakonczone_at = ?
-        WHERE id = ? AND stan = 'w_toku'`).run(powod, teraz, w.id);
+      db.prepare(
+        `UPDATE automatyzacje_wykonania SET stan = 'niepewne', powod = ?, powod_kod = 'przerwane', zakonczone_at = ?
+        WHERE id = ? AND stan = 'w_toku'`,
+      ).run(powod, teraz, w.id);
       wpisDoHistorii(db, { zamowienie_id: w.zamowienie_id, stan: 'niepewne', nazwa: w.nazwa, powod });
     }
   });
@@ -138,7 +179,10 @@ export function oznaczPrzerwane(db, teraz) {
 export function licznikGodziny(db, { od, regula_id = null }) {
   const warunek = regula_id === null ? '' : ' AND regula_id = ?';
   const arg = regula_id === null ? [] : [regula_id];
-  return db.prepare(`SELECT COUNT(*) AS n FROM automatyzacje_wykonania
-    WHERE (stan = 'w_toku' OR (stan IN ('wyslane', 'niepewne', 'blad') AND zakonczone_at > ?))${warunek}`)
+  return db
+    .prepare(
+      `SELECT COUNT(*) AS n FROM automatyzacje_wykonania
+    WHERE (stan = 'w_toku' OR (stan IN ('wyslane', 'niepewne', 'blad') AND zakonczone_at > ?))${warunek}`,
+    )
     .get(od, ...arg).n;
 }

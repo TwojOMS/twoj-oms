@@ -7,8 +7,8 @@ const root = resolve(import.meta.dirname, '../..');
 const czytaj = (p) => readFileSync(resolve(root, p), 'utf8').replaceAll('\r\n', '\n');
 const reguła = (css, selektor) => {
   // Reguła z początku wiersza: ten sam selektor stoi też na końcu reguł menu zwiniętego.
-  const kandydaci = [`\n${selektor}{`, `\n${selektor} {`, `${selektor}{`, `${selektor} {`].map(w => css.indexOf(w));
-  const trafiony = kandydaci.find(x => x >= 0) ?? -1;
+  const kandydaci = [`\n${selektor}{`, `\n${selektor} {`, `${selektor}{`, `${selektor} {`].map((w) => css.indexOf(w));
+  const trafiony = kandydaci.find((x) => x >= 0) ?? -1;
   const i = trafiony >= 0 && css[trafiony] === '\n' ? trafiony + 1 : trafiony;
   expect(i, `brak reguły ${selektor}`).toBeGreaterThanOrEqual(0);
   return css.slice(i, css.indexOf('}', i));
@@ -27,7 +27,9 @@ describe('czcionki', () => {
   it('tabele Faktur i Przesyłek mają tekst 16 px, nagłówki i drobny tekst co najmniej 13 px', () => {
     expect(rem(reguła(tabele, '.prz065-tabela'))).toBe(1);
     expect(rem(reguła(tabele, '.prz065-tabela th'))).toBeGreaterThanOrEqual(0.8);
-    expect(rem(reguła(tabele, '.prz065-tabela .drobne, .prz065-tabela .wiersz-szczegoly, .prz065-tabela .ksef-numer'))).toBeGreaterThanOrEqual(0.85);
+    expect(
+      rem(reguła(tabele, '.prz065-tabela .drobne, .prz065-tabela .wiersz-szczegoly, .prz065-tabela .ksef-numer')),
+    ).toBeGreaterThanOrEqual(0.85);
     expect(rem(reguła(tabele, '.prz065-status'))).toBe(1);
   });
 
@@ -51,14 +53,23 @@ describe('kolory', () => {
     const jasny = blokMotywu(layout, 'jasny');
     expect(zmienna(jasny, '--marka')).toBe('#3e5566');
     expect(zmienna(jasny, '--link')).toBe('#3e5566');
-    for (const p of ['src/public/oms-uklad.css', 'src/public/oms-design.css', 'src/public/tabele-prz065.css', 'src/public/messages-prz065.css'])
+    for (const p of [
+      'src/public/oms-uklad.css',
+      'src/public/oms-design.css',
+      'src/public/tabele-prz065.css',
+      'src/public/messages-prz065.css',
+    ])
       expect(czytaj(p)).not.toMatch(/#1f6b45|#19583a|#78c99e/i);
   });
 
   it('ciemny motyw ma paletę sprzed zmiany akcentu', () => {
     const ciemny = blokMotywu(layout, 'ciemny');
-    expect([zmienna(ciemny, '--tlo'), zmienna(ciemny, '--powierzchnia'), zmienna(ciemny, '--marka'), zmienna(ciemny, '--link')])
-      .toEqual(['#191c1f', '#23272b', '#3d5a6e', '#8fb6d0']);
+    expect([
+      zmienna(ciemny, '--tlo'),
+      zmienna(ciemny, '--powierzchnia'),
+      zmienna(ciemny, '--marka'),
+      zmienna(ciemny, '--link'),
+    ]).toEqual(['#191c1f', '#23272b', '#3d5a6e', '#8fb6d0']);
   });
 });
 

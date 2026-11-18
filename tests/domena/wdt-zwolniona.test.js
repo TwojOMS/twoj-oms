@@ -45,10 +45,13 @@ describe('pozycjeDokumentu — opcja `zwolniona`', () => {
   });
 
   it('numer UE + zwolniona: pozycja ręczna ze stawką bierze swoją stawkę, nie 0', () => {
-    const services = pozycjeDokumentu(zamowienie({
-      kwota_brutto: '139.00',
-      pozycje: [{ nazwa: 'Lampa stołowa Kałamarz', ilosc: 2, cena_brutto: '61.50', zrodlo: 'reczna', vat: 'zw' }],
-    }), { stawkaDomyslna: 'zw', zw: true, zwolniona: true });
+    const services = pozycjeDokumentu(
+      zamowienie({
+        kwota_brutto: '139.00',
+        pozycje: [{ nazwa: 'Lampa stołowa Kałamarz', ilosc: 2, cena_brutto: '61.50', zrodlo: 'reczna', vat: 'zw' }],
+      }),
+      { stawkaDomyslna: 'zw', zw: true, zwolniona: true },
+    );
     expect(services.map((s) => s.tax_symbol)).toEqual(['zw', 'zw']);
   });
 

@@ -39,7 +39,11 @@ const UWAGA = 'uwaga';
  * NIGDY nie rzuca: uszkodzone dane mają pokazać kartę bez paska, a nie zamiast karty
  * pokazać 500 — dokładnie ta sama zasada, co przy `podsumowaniePozycji` (domena/tabela-pozycji.js).
  */
-export function sprawyKarty(zamowienie, teraz = Date.now(), { nazwa = NAZWA_ZAPASOWA, gdzie = `w ${nazwa.miejscownik}` } = {}) {
+export function sprawyKarty(
+  zamowienie,
+  teraz = Date.now(),
+  { nazwa = NAZWA_ZAPASOWA, gdzie = `w ${nazwa.miejscownik}` } = {},
+) {
   // `nazwa` = odmiana nazwy programu fakturowego (domyślnie inFakt — domena/nazwa-programu.js).
   if (!zamowienie) return [];
   const sprawy = [];
@@ -54,7 +58,9 @@ export function sprawyKarty(zamowienie, teraz = Date.now(), { nazwa = NAZWA_ZAPA
     for (const opis of sprawyZamowienia(zamowienie.przesylki, teraz)) {
       sprawy.push({ klucz: 'przesylka', waga: BLOKADA, tekst: opis, kotwica: '#przesylka' });
     }
-  } catch { /* uszkodzony wiersz przesylki nie ma prawa zabrac calego paska */ }
+  } catch {
+    /* uszkodzony wiersz przesylki nie ma prawa zabrac calego paska */
+  }
 
   try {
     // 2. FAKTURA. Wylacznie stany, z ktorych panel sam nie wyjdzie — faktura wystawiona
@@ -122,17 +128,21 @@ export function sprawyKarty(zamowienie, teraz = Date.now(), { nazwa = NAZWA_ZAPA
       sprawy.push({
         klucz: 'ksef',
         waga: BLOKADA,
-        tekst: `Faktury ${numerFaktury} NIE MA JUŻ w ${nazwa.miejscownik} — dokument został tam skasowany, `
-          + 'więc numeru KSeF nikt już nie przyniesie, a panel nie wystawi drugiej. '
+        tekst:
+          `Faktury ${numerFaktury} NIE MA JUŻ w ${nazwa.miejscownik} — dokument został tam skasowany, ` +
+          'więc numeru KSeF nikt już nie przyniesie, a panel nie wystawi drugiej. ' +
           // ⚠️ ODNOTOWANIE STOI NA ZAKŁADCE FAKTURY. Zdanie musi kierować TAM, gdzie ta akcja
           // jest — sprawa odsyłająca do przycisku, którego na karcie nie ma, jest gorsza niż
           // brak sprawy.
-          + 'Jeśli to ty ją skasowałeś, odnotuj to w zakładce Faktury („Faktura skasowana '
-          + `w ${nazwa.miejscownik}”) — zamówienie zwolni się do ponownego wystawienia.`,
+          'Jeśli to ty ją skasowałeś, odnotuj to w zakładce Faktury („Faktura skasowana ' +
+          `w ${nazwa.miejscownik}”) — zamówienie zwolni się do ponownego wystawienia.`,
         kotwica: '#faktura',
       });
-    } else if (odczyt === 'ok' && czekaNaKsefDluzejNizDobe(zamowienie, teraz)
-      && !(umiejetnosciZamowienia(zamowienie).plikFaktury && zamowienie.chce_fakture)) {
+    } else if (
+      odczyt === 'ok' &&
+      czekaNaKsefDluzejNizDobe(zamowienie, teraz) &&
+      !(umiejetnosciZamowienia(zamowienie).plikFaktury && zamowienie.chce_fakture)
+    ) {
       // ⚠️ Allegro BEZ żądania faktury, zlecone przez panel, też idzie tutaj — kupujący na nią
       // nie czeka, a wysyłkę takiej faktury do Allegro `wolnoWyslacDoAllegro` i tak zatrzymuje.
       // ⚠️⚠️ DOKUMENT, KTÓREGO WYSYŁKĘ DO KSeF ZLECIŁ PANEL, A NUMERU NIE MA OD DOBY. `czekaNaKsef`
@@ -162,11 +172,12 @@ export function sprawyKarty(zamowienie, teraz = Date.now(), { nazwa = NAZWA_ZAPA
       sprawy.push({
         klucz: 'ksef',
         waga: BLOKADA,
-        tekst: `Panel zlecił wysyłkę faktury ${numerFaktury} do KSeF, a numeru nie ma od `
-          + `${zamowienie.faktura?.ksef_zlecona_at} — ${nazwa.mianownik} odpowiada, że dokumentu tam jeszcze `
-          + `nie ma. Sprawdź ten dokument ${gdzie}: albo zgłoszenie utknęło, albo organ je `
-          + 'odrzucił. Panel sam wysyłki NIE ponowi — drugie zgłoszenie byłoby duplikatem, '
-          + 'którego nie da się skasować.',
+        tekst:
+          `Panel zlecił wysyłkę faktury ${numerFaktury} do KSeF, a numeru nie ma od ` +
+          `${zamowienie.faktura?.ksef_zlecona_at} — ${nazwa.mianownik} odpowiada, że dokumentu tam jeszcze ` +
+          `nie ma. Sprawdź ten dokument ${gdzie}: albo zgłoszenie utknęło, albo organ je ` +
+          'odrzucił. Panel sam wysyłki NIE ponowi — drugie zgłoszenie byłoby duplikatem, ' +
+          'którego nie da się skasować.',
         kotwica: '#faktura',
       });
     } else if (odczyt === 'ok' && czekaNaKsefDluzejNizDobe(zamowienie, teraz)) {
@@ -186,10 +197,11 @@ export function sprawyKarty(zamowienie, teraz = Date.now(), { nazwa = NAZWA_ZAPA
       sprawy.push({
         klucz: 'ksef',
         waga: BLOKADA,
-        tekst: `Faktura ${numerFaktury} czeka na KSeF od ${zamowienie.faktura?.utworzona_at} `
-          + `— kupujący jej jeszcze nie ma. Wyślij ten dokument do KSeF w ${nazwa.miejscownik} albo, `
-          + 'jeśli świadomie godzisz się na dokument bez tego numeru, wyślij go kupującemu '
-          + 'przyciskiem „Wyślij do Allegro BEZ numeru KSeF” na tej karcie.',
+        tekst:
+          `Faktura ${numerFaktury} czeka na KSeF od ${zamowienie.faktura?.utworzona_at} ` +
+          `— kupujący jej jeszcze nie ma. Wyślij ten dokument do KSeF w ${nazwa.miejscownik} albo, ` +
+          'jeśli świadomie godzisz się na dokument bez tego numeru, wyślij go kupującemu ' +
+          'przyciskiem „Wyślij do Allegro BEZ numeru KSeF” na tej karcie.',
         kotwica: '#faktura',
       });
     }
@@ -209,10 +221,11 @@ export function sprawyKarty(zamowienie, teraz = Date.now(), { nazwa = NAZWA_ZAPA
         waga: BLOKADA,
         // ⚠️ SPRAWA WSKAZUJE WYJŚCIE, KTÓRE NAPRAWDĘ ISTNIEJE: przy REJECTED `wolnoWyslacDoAllegro`
         // nie odmawia ponowienia, więc sprawa może NAZWAĆ przycisk, który na tej karcie jest.
-        tekst: `Allegro ODRZUCIŁO plik faktury ${fa.numer ?? ''} — kupujący jej NIE MA, `
-          + `mimo że panel plik wysłał. Sprawdź dokument ${gdzie} i wyślij go jeszcze raz `
-          + 'przyciskiem „Wyślij plik faktury do Allegro jeszcze raz” na tej karcie — '
-          + 'ponowienie PODMIENIA plik przy tym samym zgłoszeniu, drugiego dokumentu nie zrobi.',
+        tekst:
+          `Allegro ODRZUCIŁO plik faktury ${fa.numer ?? ''} — kupujący jej NIE MA, ` +
+          `mimo że panel plik wysłał. Sprawdź dokument ${gdzie} i wyślij go jeszcze raz ` +
+          'przyciskiem „Wyślij plik faktury do Allegro jeszcze raz” na tej karcie — ' +
+          'ponowienie PODMIENIA plik przy tym samym zgłoszeniu, drugiego dokumentu nie zrobi.',
         kotwica: '#faktura',
       });
     }
@@ -235,14 +248,21 @@ export function sprawyKarty(zamowienie, teraz = Date.now(), { nazwa = NAZWA_ZAPA
     //
     // ⚠️ `REJECTED` WYŻEJ ZOSTAJE BLOKADĄ i wyciszenie go NIE DOTYCZY: przychodzi z odpowiedzi
     // na `PUT .../file`, a nie z zepsutego odczytu, i znaczy, że kupujący faktury NIE MA.
-  } catch { /* jw. */ }
+  } catch {
+    /* jw. */
+  }
 
   try {
     // 3. ANULOWANIE PO NADANIU ALBO PO WYSTAWIENIU FAKTURY. Sam status „Anulowane" wygląda
     //    jak sprawa zamknięta, a paczka może być w drodze, a dokument czekać w inFakcie na
     //    wysyłkę do KSeF.
     if (zamowienie.anulowane && zamowienie.status_woo !== 'cancelled' && modulZamowienia(zamowienie).typ === 'erli') {
-      sprawy.push({ klucz: 'anulowanie-kanalu', waga: UWAGA, tekst: 'Zamówienie anulowane w OMS — anuluj w panelu ERLI.', kotwica: '#status' });
+      sprawy.push({
+        klucz: 'anulowanie-kanalu',
+        waga: UWAGA,
+        tekst: 'Zamówienie anulowane w OMS — anuluj w panelu ERLI.',
+        kotwica: '#status',
+      });
     }
     if (anulowaneWymagaUwagi(zamowienie)) {
       // ⚠️⚠️ TYM SAMYM PREDYKATEM, CO `anulowaneWymagaUwagi`. Tamta funkcja liczy wyłącznie
@@ -269,7 +289,9 @@ export function sprawyKarty(zamowienie, teraz = Date.now(), { nazwa = NAZWA_ZAPA
         kotwica: poPaczce ? '#przesylka' : '#faktura',
       });
     }
-  } catch { /* jw. */ }
+  } catch {
+    /* jw. */
+  }
 
   try {
     // 4. SALDO WPLAT. Niedoplata i nadplata sa OBIE jawne: pierwsza to pieniadze, ktorych
@@ -312,7 +334,9 @@ export function sprawyKarty(zamowienie, teraz = Date.now(), { nazwa = NAZWA_ZAPA
         kotwica: '#platnosci',
       });
     }
-  } catch { /* jw. */ }
+  } catch {
+    /* jw. */
+  }
 
   try {
     // 5. SUMA POZYCJI vs KWOTA OCZEKIWANA. Bariera arytmetyczna faktury odmowi z dokladnie
@@ -322,12 +346,15 @@ export function sprawyKarty(zamowienie, teraz = Date.now(), { nazwa = NAZWA_ZAPA
       sprawy.push({
         klucz: 'pozycje',
         waga: BLOKADA,
-        tekst: `Suma pozycji (${suma.sumaZl ?? '—'} zł) NIE ZGADZA SIĘ z kwotą oczekiwaną od klienta `
-          + `(${suma.oczekiwanaZl ?? zamowienie.kwota_brutto} zł) — faktura zostanie odrzucona.`,
+        tekst:
+          `Suma pozycji (${suma.sumaZl ?? '—'} zł) NIE ZGADZA SIĘ z kwotą oczekiwaną od klienta ` +
+          `(${suma.oczekiwanaZl ?? zamowienie.kwota_brutto} zł) — faktura zostanie odrzucona.`,
         kotwica: '#pozycje',
       });
     }
-  } catch { /* jw. */ }
+  } catch {
+    /* jw. */
+  }
 
   try {
     // 6. ROZJAZD ZE SKLEPEM. Panel mówi „Wysłane", sklep dalej „W trakcie realizacji" —
@@ -346,7 +373,9 @@ export function sprawyKarty(zamowienie, teraz = Date.now(), { nazwa = NAZWA_ZAPA
         kotwica: '#status',
       });
     }
-  } catch { /* jw. */ }
+  } catch {
+    /* jw. */
+  }
 
   // Blokady przed uwagami — i to NIE jest kosmetyka: pasek czyta sie od gory, wiec to, co
   // zatrzymuje robote, ma stac pierwsze. Sprawy dokladamy w kolejnosci SEKCJI na karcie

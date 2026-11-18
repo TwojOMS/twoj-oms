@@ -7,7 +7,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
 import { createMailer } from '../../../src/core/poczta/smtp.js';
 import { ustawEmail } from '../../../src/moduly/ustawienia/konta-dostep.js';
-import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji } from '../../../src/oms/db/konfiguracja-integracji.js';
+import {
+  wczytajKonfiguracjeIntegracji,
+  zapiszKonfiguracjeIntegracji,
+} from '../../../src/oms/db/konfiguracja-integracji.js';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { nowyPanel, jako, get, post } from '../../pomoc/panel-konta-testowe.js';
 import { modulRdzen } from '../../../src/moduly/rdzen/modul.ts';
@@ -27,32 +30,75 @@ const ADRES = '/ustawienia/integracje/poczta';
 const HASLO = 'Zmyslone-Haslo-Smtp-094-A1';
 const HASLO_2 = 'Zmyslone-Haslo-Smtp-094-B2';
 const HASLO_PLIKU = 'Zmyslone-Haslo-Z-Pliku-094-C3';
-const SMTP_A = { host: 'smtp.pracownia-a.example.test', port: '465', user: 'sklep@pracownia-a.example.test', nadawca: '' };
-const SMTP_B = { host: 'poczta.pracownia-b.example.test', port: '587', user: 'biuro@pracownia-b.example.test',
-  nadawca: 'Pracownia B <biuro@pracownia-b.example.test>' };
-const ENV_SMTP = { SMTP_HOST: 'smtp.z-pliku.example.test', SMTP_PORT: '465', SMTP_USER: 'plik@z-pliku.example.test', SMTP_PASS: HASLO_PLIKU };
+const SMTP_A = {
+  host: 'smtp.pracownia-a.example.test',
+  port: '465',
+  user: 'sklep@pracownia-a.example.test',
+  nadawca: '',
+};
+const SMTP_B = {
+  host: 'poczta.pracownia-b.example.test',
+  port: '587',
+  user: 'biuro@pracownia-b.example.test',
+  nadawca: 'Pracownia B <biuro@pracownia-b.example.test>',
+};
+const ENV_SMTP = {
+  SMTP_HOST: 'smtp.z-pliku.example.test',
+  SMTP_PORT: '465',
+  SMTP_USER: 'plik@z-pliku.example.test',
+  SMTP_PASS: HASLO_PLIKU,
+};
 const PANEL = 'https://panel.pracownia.example.test';
 
-let wyslane; let bladTransportu; let logi;
+let wyslane;
+let bladTransportu;
+let logi;
 beforeEach(() => {
-  wyslane = []; bladTransportu = null; logi = [];
-  for (const m of ['log', 'error', 'warn', 'info']) vi.spyOn(console, m).mockImplementation((...t) => { logi.push(t.map(String).join(' ')); });
+  wyslane = [];
+  bladTransportu = null;
+  logi = [];
+  for (const m of ['log', 'error', 'warn', 'info'])
+    vi.spyOn(console, m).mockImplementation((...t) => {
+      logi.push(t.map(String).join(' '));
+    });
 });
-afterEach(() => { vi.restoreAllMocks(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 // Fabryka mailera = prawdziwy createMailer z transportem, który tylko notuje (host, port, login, hasło, list).
-const fabrykaMailera = (poczta) => createMailer({ ...poczta, transportFactory: () => ({
-  async sendMail(list) {
-    wyslane.push({ host: poczta.smtp.host, port: poczta.smtp.port, user: poczta.smtp.user, pass: poczta.smtp.pass, ...list });
-    if (bladTransportu) throw bladTransportu;
-    return { messageId: `<test-${wyslane.length}@example.test>` };
-  },
-}) });
+const fabrykaMailera = (poczta) =>
+  createMailer({
+    ...poczta,
+    transportFactory: () => ({
+      async sendMail(list) {
+        wyslane.push({
+          host: poczta.smtp.host,
+          port: poczta.smtp.port,
+          user: poczta.smtp.user,
+          pass: poczta.smtp.pass,
+          ...list,
+        });
+        if (bladTransportu) throw bladTransportu;
+        return { messageId: `<test-${wyslane.length}@example.test>` };
+      },
+    }),
+  });
 
 async function panel({ env = {}, zapisPrzedStartem = null, wiadomosci = null } = {}) {
-  const moduly = [modulRdzen, modulWeb, modulKanaly, createModulFaktury(),
+  const moduly = [
+    modulRdzen,
+    modulWeb,
+    modulKanaly,
+    createModulFaktury(),
     wiadomosci ?? createModulWiadomosci({ fabryki: { createMailer: fabrykaMailera } }),
-    createModulZamowienia({ zWiadomosciami: true }), createModulWysylka(), modulMagazyn, modulUstawienia, modulMarketing, modulZdrowie];
+    createModulZamowienia({ zWiadomosciami: true }),
+    createModulWysylka(),
+    modulMagazyn,
+    modulUstawienia,
+    modulMarketing,
+    modulZdrowie,
+  ];
   let db;
   if (zapisPrzedStartem) {
     const pierwszy = nowyPanel({ moduly, env });
@@ -76,14 +122,35 @@ const NOWA = { imie: 'Nowa Osoba', login: 'nowa', email: 'nowa@pracownia.example
 const KLIENT = 'klient@kupujacy.example.test';
 // Zamówienie do wysłania przypomnienia o płatności — dane zmyślone.
 const zamowienieKlienta = () => ({
-  zrodlo_id: 108201, numer: 'T-108-02',
+  zrodlo_id: 108201,
+  numer: 'T-108-02',
   klient: { first_name: 'Ewa', last_name: 'Testowa', email: KLIENT },
   dostawa: { first_name: 'Ewa', last_name: 'Testowa', address_1: 'Zmyślona 1', postcode: '00-001', city: 'Testowo' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null,
-  kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00', koszt_dostawy_netto: '0.00',
-  status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-10-20T09:00:00', termin_platnosci: '14',
-  pozycje: [{ zrodlo_id: 108202, nazwa: 'Produkt testowy', sku: 'T-1', ilosc: 1,
-    cena_brutto: '123.00', cena_netto: '100.00', brutto_linii: '123.00', netto_linii: '100.00', vat: null }],
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '123.00',
+  koszt_dostawy_brutto: '0.00',
+  koszt_dostawy_netto: '0.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-10-20T09:00:00',
+  termin_platnosci: '14',
+  pozycje: [
+    {
+      zrodlo_id: 108202,
+      nazwa: 'Produkt testowy',
+      sku: 'T-1',
+      ilosc: 1,
+      cena_brutto: '123.00',
+      cena_netto: '100.00',
+      brutto_linii: '123.00',
+      netto_linii: '100.00',
+      vat: null,
+    },
+  ],
 });
 
 describe('Ustawienia → Integracje → Poczta wychodząca', () => {
@@ -112,7 +179,9 @@ describe('Ustawienia → Integracje → Poczta wychodząca', () => {
     expect(ekran.statusCode).toBe(200);
     expect(bezHasel(ekran.body, HASLO, 'Zmyslone-Haslo'), 'hasło na ekranie').toBe(true);
     expect(ekran.body).toContain('Ustawiona');
-    expect(smtpForm(ekran.body)).toMatch(/<input id="poczta-haslo" type="password" name="haslo" value=""[^>]* placeholder="zapisane — zostaw puste, żeby nie zmieniać">/u);
+    expect(smtpForm(ekran.body)).toMatch(
+      /<input id="poczta-haslo" type="password" name="haslo" value=""[^>]* placeholder="zapisane — zostaw puste, żeby nie zmieniać">/u,
+    );
     expect(smtpForm(ekran.body)).toContain(`value="${SMTP_A.host}"`);
 
     // Zmiana innego pola z pustym hasłem: hasło zostaje.
@@ -125,8 +194,14 @@ describe('Ustawienia → Integracje → Poczta wychodząca', () => {
 
   it('błędny formularz: 400, nic nie zapisane, wpisane hasło nie wraca w odpowiedzi', async () => {
     const { app, admin, db } = await panel();
-    for (const zle of [{ ...SMTP_A, host: 'smtp z spacja.example.test' }, { ...SMTP_A, port: '70000' }, { ...SMTP_A, port: 'abc' },
-      { ...SMTP_A, user: '' }, { ...SMTP_A, nadawca: 'Sklep <bez-malpy>' }, { ...SMTP_A, host: 'smtp://smtp.example.test' }]) {
+    for (const zle of [
+      { ...SMTP_A, host: 'smtp z spacja.example.test' },
+      { ...SMTP_A, port: '70000' },
+      { ...SMTP_A, port: 'abc' },
+      { ...SMTP_A, user: '' },
+      { ...SMTP_A, nadawca: 'Sklep <bez-malpy>' },
+      { ...SMTP_A, host: 'smtp://smtp.example.test' },
+    ]) {
       const r = await post(app, ADRES, admin, { ...zle, haslo: HASLO });
       expect(r.statusCode, JSON.stringify(zle)).toBe(400);
       expect(r.body).toContain('Nie zapisano');
@@ -138,8 +213,15 @@ describe('Ustawienia → Integracje → Poczta wychodząca', () => {
 
   it('adres panelu: ta sama walidacja co OMS_ADRES_PANELU — złe wartości 400, dobra zapisana jako origin i użyta w linku zaproszenia', async () => {
     const { app, admin, db } = await panel();
-    for (const zly of ['ftp://panel.example.test', 'panel.example.test', `${PANEL}/panel`, `${PANEL}/?a=1`, `${PANEL}/#x`,
-      'https://ktos:haslo@panel.example.test', ' https://panel.example.test']) {
+    for (const zly of [
+      'ftp://panel.example.test',
+      'panel.example.test',
+      `${PANEL}/panel`,
+      `${PANEL}/?a=1`,
+      `${PANEL}/#x`,
+      'https://ktos:haslo@panel.example.test',
+      ' https://panel.example.test',
+    ]) {
       const r = await post(app, `${ADRES}/adres`, admin, { adres: zly });
       expect(r.statusCode, zly).toBe(400);
       expect(r.body).toContain('Nie zapisano');
@@ -165,28 +247,48 @@ describe('Ustawienia → Integracje → Poczta wychodząca', () => {
     const zaproszenie = await post(app, '/ustawienia/konta/nowe', admin, { ...NOWA, sposob: 'mail' });
     expect(zaproszenie.statusCode, zaproszenie.body).toBe(302);
     expect(wyslane).toHaveLength(1);
-    expect(wyslane[0]).toMatchObject({ host: SMTP_A.host, port: 465, user: SMTP_A.user, pass: HASLO, from: SMTP_A.user,
-      to: NOWA.email, subject: 'Zaproszenie do panelu' });
+    expect(wyslane[0]).toMatchObject({
+      host: SMTP_A.host,
+      port: 465,
+      user: SMTP_A.user,
+      pass: HASLO,
+      from: SMTP_A.user,
+      to: NOWA.email,
+      subject: 'Zaproszenie do panelu',
+    });
     expect(wyslane[0].text).toContain(`${PANEL}/haslo/`);
 
     await post(app, ADRES, admin, { ...SMTP_B, haslo: HASLO_2 });
     const proba = await post(app, `${ADRES}/proba`, admin, { adres: 'odbiorca@pracownia.example.test' });
     expect(proba.statusCode, proba.body).toBe(200);
     expect(wyslane).toHaveLength(2);
-    expect(wyslane[1]).toMatchObject({ host: SMTP_B.host, port: 587, user: SMTP_B.user, pass: HASLO_2, from: SMTP_B.nadawca,
-      to: 'odbiorca@pracownia.example.test' });
+    expect(wyslane[1]).toMatchObject({
+      host: SMTP_B.host,
+      port: 587,
+      user: SMTP_B.user,
+      pass: HASLO_2,
+      from: SMTP_B.nadawca,
+      to: 'odbiorca@pracownia.example.test',
+    });
     expect(bezHasel(proba.body, HASLO, HASLO_2), 'hasło w odpowiedzi').toBe(true);
   });
 
   it('zapis sprzed startu: mailer klientów (sekcja wiadomości) też czyta bieżący zapis — zmiana bez restartu', async () => {
-    const { app, admin } = await panel({ zapisPrzedStartem: { ustawienia: { host: SMTP_A.host, port: 465, user: SMTP_A.user, nadawca: '' },
-      sekrety: { haslo: HASLO } } });
+    const { app, admin } = await panel({
+      zapisPrzedStartem: {
+        ustawienia: { host: SMTP_A.host, port: 465, user: SMTP_A.user, nadawca: '' },
+        sekrety: { haslo: HASLO },
+      },
+    });
     const ekran = await get(app, ADRES, admin);
     expect(ekran.body.includes('po ponownym uruchomieniu')).toBe(false);
     await post(app, `${ADRES}/proba`, admin, { adres: 'a@pracownia.example.test' });
     await post(app, ADRES, admin, { ...SMTP_B, haslo: HASLO_2 });
     await post(app, `${ADRES}/proba`, admin, { adres: 'b@pracownia.example.test' });
-    expect(wyslane.map((w) => [w.host, w.pass === HASLO, w.pass === HASLO_2])).toEqual([[SMTP_A.host, true, false], [SMTP_B.host, false, true]]);
+    expect(wyslane.map((w) => [w.host, w.pass === HASLO, w.pass === HASLO_2])).toEqual([
+      [SMTP_A.host, true, false],
+      [SMTP_B.host, false, true],
+    ]);
   });
 
   // Do tej pory wiadomości do klientów (karta zamówienia) powstawały przy starcie tylko wtedy, gdy poczta
@@ -210,7 +312,13 @@ describe('Ustawienia → Integracje → Poczta wychodząca', () => {
     const po = await wyslijKlientowi();
     expect(po.statusCode, po.body).toBe(302);
     expect(wyslane).toHaveLength(1);
-    expect(wyslane[0]).toMatchObject({ host: SMTP_A.host, port: 465, user: SMTP_A.user, from: SMTP_A.user, to: KLIENT });
+    expect(wyslane[0]).toMatchObject({
+      host: SMTP_A.host,
+      port: 465,
+      user: SMTP_A.user,
+      from: SMTP_A.user,
+      to: KLIENT,
+    });
     expect(wyslane[0].pass === HASLO).toBe(true);
     expect(wyslane[0].subject).toContain('Przypomnienie o płatności');
 
@@ -223,7 +331,13 @@ describe('Ustawienia → Integracje → Poczta wychodząca', () => {
   });
 
   it('SMTP w .env i zapis w bazie: wiadomość do klienta z karty idzie pocztą z pliku', async () => {
-    const { app, ewa, db } = await panel({ env: ENV_SMTP, zapisPrzedStartem: { ustawienia: { host: SMTP_A.host, port: 465, user: SMTP_A.user, nadawca: '' }, sekrety: { haslo: HASLO } } });
+    const { app, ewa, db } = await panel({
+      env: ENV_SMTP,
+      zapisPrzedStartem: {
+        ustawienia: { host: SMTP_A.host, port: 465, user: SMTP_A.user, nadawca: '' },
+        sekrety: { haslo: HASLO },
+      },
+    });
     const id = zapiszZamowienie(db, 'pro', zamowienieKlienta());
     const r = await post(app, `/zamowienia/${id}/wiadomosc/przypomnienie`, ewa, {});
     expect(r.statusCode, r.body).toBe(302);
@@ -253,7 +367,9 @@ describe('Ustawienia → Integracje → Poczta wychodząca', () => {
     expect(bezHasel(logi.join('\n'), HASLO, 'Invalid login'), 'hasło albo surowy błąd w logu').toBe(true);
 
     bladTransportu = Object.assign(new Error('connect ECONNREFUSED'), { code: 'ESOCKET' });
-    expect((await post(app, `${ADRES}/proba`, admin, { adres: 'wlasciciel@pracownia.example.test' })).body).toContain('Nie udało się połączyć z serwerem poczty');
+    expect((await post(app, `${ADRES}/proba`, admin, { adres: 'wlasciciel@pracownia.example.test' })).body).toContain(
+      'Nie udało się połączyć z serwerem poczty',
+    );
 
     const zlyAdres = await post(app, `${ADRES}/proba`, admin, { adres: 'ktos@example.test\r\nBcc: obcy@example.test' });
     expect(zlyAdres.statusCode).toBe(400);
@@ -278,7 +394,13 @@ describe('Ustawienia → Integracje → Poczta wychodząca', () => {
   });
 
   it('SMTP w .env, a w bazie stary zapis z ekranu: plik wygrywa przy wysyłce, przycisk usunięcia działa', async () => {
-    const { app, admin, db } = await panel({ env: ENV_SMTP, zapisPrzedStartem: { ustawienia: { host: SMTP_A.host, port: 465, user: SMTP_A.user, nadawca: '' }, sekrety: { haslo: HASLO } } });
+    const { app, admin, db } = await panel({
+      env: ENV_SMTP,
+      zapisPrzedStartem: {
+        ustawienia: { host: SMTP_A.host, port: 465, user: SMTP_A.user, nadawca: '' },
+        sekrety: { haslo: HASLO },
+      },
+    });
     const ekran = await get(app, ADRES, admin);
     expect(ekran.body).toContain('Usuń zapisane ustawienia poczty');
     expect(bezHasel(ekran.body, HASLO)).toBe(true);
@@ -317,7 +439,12 @@ describe('Ustawienia → Integracje → Poczta wychodząca', () => {
 
   it('POST bez nagłówka Origin (CSRF) — odmowa, nic nie zapisane', async () => {
     const { app, admin, db } = await panel();
-    const r = await app.inject({ method: 'POST', url: ADRES, headers: { accept: 'text/html', ...admin }, payload: { ...SMTP_A, haslo: HASLO } });
+    const r = await app.inject({
+      method: 'POST',
+      url: ADRES,
+      headers: { accept: 'text/html', ...admin },
+      payload: { ...SMTP_A, haslo: HASLO },
+    });
     expect(r.statusCode).toBe(403);
     expect(wczytajKonfiguracjeIntegracji(db, 'poczta')).toBeNull();
   });
@@ -331,7 +458,11 @@ describe('Ustawienia → Integracje → Poczta wychodząca', () => {
     const r = await post(app, `${ADRES}/proba`, admin, { adres: 'wlasciciel@pracownia.example.test' });
     expect(r.body).toContain('Wysłano wiadomość próbną');
     expect(wyslane).toHaveLength(0); // fabryka prawdziwego SMTP (z zapisu) nie została użyta
-    expect(logi.some((l) => l.includes('atrapa poczty') && l.includes('Wiadomość próbna z panelu') && l.includes('nic nie poszło'))).toBe(true);
+    expect(
+      logi.some(
+        (l) => l.includes('atrapa poczty') && l.includes('Wiadomość próbna z panelu') && l.includes('nic nie poszło'),
+      ),
+    ).toBe(true);
   });
 
   it('piaskownica: wiadomość do klienta z karty idzie przez atrapę, nawet z zapisanym SMTP — nic nie wychodzi', async () => {
@@ -341,6 +472,8 @@ describe('Ustawienia → Integracje → Poczta wychodząca', () => {
     const r = await post(app, `/zamowienia/${id}/wiadomosc/przypomnienie`, ewa, {});
     expect(r.statusCode, r.body).toBe(302);
     expect(wyslane).toHaveLength(0);
-    expect(logi.some((l) => l.includes('atrapa poczty') && l.includes(KLIENT) && l.includes('nic nie poszło'))).toBe(true);
+    expect(logi.some((l) => l.includes('atrapa poczty') && l.includes(KLIENT) && l.includes('nic nie poszło'))).toBe(
+      true,
+    );
   });
 });

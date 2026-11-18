@@ -10,15 +10,39 @@ import { zalozKonto, dopiszLogowanie, kontoPoLoginie } from '../../src/core/bezp
 // zachowania. TS zawęża opcjonalne pola starego JS do ich domyślnego null/undefined.
 // Rzutowanie ModulOms odpowiada temu w istniejących aplikacja.test.ts i uruchomienie.test.ts.
 export const rdzen = modulRdzen as ModulOms;
-export const podpiszWersje = podpisz as unknown as (login: string, sekret: string, teraz?: number, wersja?: number) => string;
-export const zalozKontoZPtaszkami = zalozKonto as unknown as (db: DatabaseSync, dane: {
-  login: string; imie: string; haslo: string; rola: string; admin?: boolean; ekrany?: string[] | null;
-}) => number;
-export const dopiszLogowanieZIp = dopiszLogowanie as unknown as (db: DatabaseSync, dane: {
-  login: string; usluga: string; ip?: string | null; wynik: string;
-}) => void;
+export const podpiszWersje = podpisz as unknown as (
+  login: string,
+  sekret: string,
+  teraz?: number,
+  wersja?: number,
+) => string;
+export const zalozKontoZPtaszkami = zalozKonto as unknown as (
+  db: DatabaseSync,
+  dane: {
+    login: string;
+    imie: string;
+    haslo: string;
+    rola: string;
+    admin?: boolean;
+    ekrany?: string[] | null;
+  },
+) => number;
+export const dopiszLogowanieZIp = dopiszLogowanie as unknown as (
+  db: DatabaseSync,
+  dane: {
+    login: string;
+    usluga: string;
+    ip?: string | null;
+    wynik: string;
+  },
+) => void;
 export const straznikZKontami = zbudujStraznika as unknown as (opcje: {
-  basicAuth: FastifyInstance['basicAuth']; db: DatabaseSync; nazwaCiasteczka: string;
-  konta: { kontoPoLoginie: (login: string) => ReturnType<typeof kontoPoLoginie>;
-    czyIstniejeCzynnyAdmin: () => boolean; loginSerwisowy: string };
+  basicAuth: FastifyInstance['basicAuth'];
+  db: DatabaseSync;
+  nazwaCiasteczka: string;
+  konta: {
+    kontoPoLoginie: (login: string) => ReturnType<typeof kontoPoLoginie>;
+    czyIstniejeCzynnyAdmin: () => boolean;
+    loginSerwisowy: string;
+  };
 }) => ReturnType<typeof zbudujStraznika>;

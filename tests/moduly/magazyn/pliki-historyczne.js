@@ -12,13 +12,16 @@ export function readFileSync(path, ...args) {
   const stara = s.slice(i + prefix.length);
   if (stara === 'web/routes/magazyn.js') {
     // Kontrolery są rozdzielone; dowód braku klientów obejmuje każdy z nich.
-    return ['karta.js','pomocniki.js','lista.js','akcje.js','synchronizacja.js','zapis.js']
-      .map(p => odczytaj(new URL(`src/moduly/magazyn/${p}`, root), ...args)).join('\n');
+    return ['karta.js', 'pomocniki.js', 'lista.js', 'akcje.js', 'synchronizacja.js', 'zapis.js']
+      .map((p) => odczytaj(new URL(`src/moduly/magazyn/${p}`, root), ...args))
+      .join('\n');
   }
   const cel = stara.startsWith('web/views/')
-    ? (stara === 'web/views/layout-oms.ejs'
+    ? stara === 'web/views/layout-oms.ejs'
       ? 'src/core/web/widoki/layout-oms.ejs'
-      : `src/moduly/magazyn/widoki/${stara.slice('web/views/'.length)}`)
-    : stara.startsWith('domain/') ? `src/domena/${stara.slice('domain/'.length)}` : `${prefix}${stara}`;
+      : `src/moduly/magazyn/widoki/${stara.slice('web/views/'.length)}`
+    : stara.startsWith('domain/')
+      ? `src/domena/${stara.slice('domain/'.length)}`
+      : `${prefix}${stara}`;
   return odczytaj(new URL(cel, root), ...args);
 }

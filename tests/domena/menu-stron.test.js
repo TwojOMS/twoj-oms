@@ -15,12 +15,27 @@ describe('menuStron', () => {
     // ⚠️ „Statystyki" dolaczyla 13.09.2026 —
     // zaraz po „Raporty", tak samo jak w EKRANY.
     expect(menuStron('/koszty').map((p) => p.etykieta)).toEqual([
-      'Zamówienia', 'Przesyłki', 'Okresy rozliczeniowe', 'Faktury', 'Koszty', 'Raporty', 'Statystyki', 'Reklamy', 'Finanse', 'Magazyn', 'Klienci B2B', 'Wiadomości', 'Ustawienia',
+      'Zamówienia',
+      'Przesyłki',
+      'Okresy rozliczeniowe',
+      'Faktury',
+      'Koszty',
+      'Raporty',
+      'Statystyki',
+      'Reklamy',
+      'Finanse',
+      'Magazyn',
+      'Klienci B2B',
+      'Wiadomości',
+      'Ustawienia',
     ]);
   });
 
   it('zaznacza strone, na ktorej stoimy', () => {
-    const aktywne = (s) => menuStron(s).filter((p) => p.aktywna).map((p) => p.etykieta);
+    const aktywne = (s) =>
+      menuStron(s)
+        .filter((p) => p.aktywna)
+        .map((p) => p.etykieta);
     expect(aktywne('/koszty')).toEqual(['Koszty']);
     expect(aktywne('/przesylki')).toEqual(['Przesyłki']);
     expect(aktywne('/raporty')).toEqual(['Raporty']);
@@ -35,7 +50,10 @@ describe('menuStron', () => {
   // sie tak samo jak ekran nadrzedny — inaczej menu gasnie dokladnie wtedy, gdy operator
   // wszedl glebiej i najbardziej potrzebuje wiedziec, gdzie jest.
   it('podstrona zaznacza swoja sekcje', () => {
-    const aktywne = (s) => menuStron(s).filter((p) => p.aktywna).map((p) => p.etykieta);
+    const aktywne = (s) =>
+      menuStron(s)
+        .filter((p) => p.aktywna)
+        .map((p) => p.etykieta);
     // ⚠️ Od 17.08.2026 rachunek zarzadczy i dane miesiaca mieszkaja pod /finanse
     // — podstrona danych swieci „Finanse".
     expect(aktywne('/finanse/dane')).toEqual(['Finanse']);
@@ -47,7 +65,10 @@ describe('menuStron', () => {
   // ⚠️⚠️ „ZAMOWIENIA" TO `/`, WIEC DOPASOWANIE PO PREFIKSIE ZAZNACZALOBY JE ZAWSZE.
   // Ta pozycja ma wlasna regule: sama „/" albo cokolwiek pod „/zamowienia".
   it('„Zamówienia" swieci sie na liscie i na karcie, ale NIE na innych ekranach', () => {
-    const aktywne = (s) => menuStron(s).filter((p) => p.aktywna).map((p) => p.etykieta);
+    const aktywne = (s) =>
+      menuStron(s)
+        .filter((p) => p.aktywna)
+        .map((p) => p.etykieta);
     expect(aktywne('/')).toEqual(['Zamówienia']);
     expect(aktywne('/zamowienia/1171')).toEqual(['Zamówienia']);
     expect(aktywne('/koszty')).not.toContain('Zamówienia');
@@ -57,8 +78,20 @@ describe('menuStron', () => {
   // ⚠️ ZAWSZE DOKLADNIE JEDNA POZYCJA — zero znaczy „menu nie mowi, gdzie jestes",
   // a dwie znacza, ze mowi nieprawde.
   it('na kazdym znanym ekranie swieci sie dokladnie jedna pozycja', () => {
-    for (const s of ['/', '/zamowienia/5', '/okresy', '/okresy/2', '/faktury', '/koszty',
-      '/raporty', '/finanse', '/finanse/dane', '/finanse/dane/2026-07', '/magazyn', '/ustawienia']) {
+    for (const s of [
+      '/',
+      '/zamowienia/5',
+      '/okresy',
+      '/okresy/2',
+      '/faktury',
+      '/koszty',
+      '/raporty',
+      '/finanse',
+      '/finanse/dane',
+      '/finanse/dane/2026-07',
+      '/magazyn',
+      '/ustawienia',
+    ]) {
       expect(menuStron(s).filter((p) => p.aktywna)).toHaveLength(1);
     }
   });
@@ -85,8 +118,11 @@ describe('menuStron', () => {
 
 describe('nawigacjaDla', () => {
   const konto = (uprawnienia, nad = {}) => ({
-    admin: false, imie: 'Ania', rola: 'niestandardowa',
-    uprawnienia: new Set(uprawnienia), ...nad,
+    admin: false,
+    imie: 'Ania',
+    rola: 'niestandardowa',
+    uprawnienia: new Set(uprawnienia),
+    ...nad,
   });
 
   it('grupuje pełny panel w trzy nazwane działy', () => {
@@ -121,10 +157,16 @@ describe('nawigacjaDla', () => {
   it('statusy mają zamknięty zestaw i poprzedzają operacyjne pozycje Sprzedaży w modelu', () => {
     const model = nawigacjaDla({ sciezka: '/faktury', konto: konto(['zamowienia', 'przesylki', 'faktury']) });
     expect(model.kontekst.statusy.map((p) => p.etykieta)).toEqual([
-      'Do zrobienia', 'Wszystkie', 'Po terminie', 'Nowe', 'Indywidualne',
-      'W realizacji', 'Wysłane', 'Zwrot', 'Anulowane',
+      'Do zrobienia',
+      'Wszystkie',
+      'Po terminie',
+      'Nowe',
+      'Indywidualne',
+      'W realizacji',
+      'Wysłane',
+      'Zwrot',
+      'Anulowane',
     ]);
-    expect(model.kontekst.grupy.flatMap((g) => g.pozycje).map((p) => p.etykieta))
-      .toEqual(['Przesyłki', 'Faktury']);
+    expect(model.kontekst.grupy.flatMap((g) => g.pozycje).map((p) => p.etykieta)).toEqual(['Przesyłki', 'Faktury']);
   });
 });

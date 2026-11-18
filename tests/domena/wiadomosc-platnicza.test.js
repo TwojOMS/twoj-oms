@@ -4,14 +4,20 @@ import { renderWiadomoscHtml } from '../pomoc/testowy-html-wiadomosci.js';
 import { stanPlatnosci, STAN_PLATNOSCI } from '../../src/domena/blok-platnosci.js';
 
 const zam = (nad = {}) => ({
-  numer: 'R/2026/015', utworzone_at: '2026-08-21T09:15:00', kwota_brutto: '990.00',
-  metoda_wysylki: 'dpd', pobranie: 0, platnosci: [], termin_platnosci: '14',
+  numer: 'R/2026/015',
+  utworzone_at: '2026-08-21T09:15:00',
+  kwota_brutto: '990.00',
+  metoda_wysylki: 'dpd',
+  pobranie: 0,
+  platnosci: [],
+  termin_platnosci: '14',
   // ⚠️ E-MAIL SIEDZI W `klient`, nie w `dostawa` — `adresOdbiorcy` i `daneFaktury` czytają
   // OBA `klient.email` (różnią się dopiero ręcznymi nadpisaniami). Fikstura z `dostawa.email`
   // dawałaby zamówienie BEZ adresata i milczącą odmowę.
   klient: { email: 'sklep@example.test' },
   pozycje: [{ zrodlo_id: 1, nazwa: 'Szablon', ilosc: 10, cena_brutto: '99.00', brutto_linii: '990.00' }],
-  koszt_dostawy_brutto: '0.00', ...nad,
+  koszt_dostawy_brutto: '0.00',
+  ...nad,
 });
 
 const opcje = {
@@ -22,15 +28,14 @@ const opcje = {
 
 describe('temat maila', () => {
   it('proforma i faktura niosą numer dokumentu', () => {
-    expect(TEMAT_MAILA.proforma(zam(), { numer: 'PF/3/08/2026' }))
-      .toBe('Proforma PF/3/08/2026 — zamówienie nr R/2026/015');
-    expect(TEMAT_MAILA.faktura(zam(), { numer: '42/08/2026' }))
-      .toBe('Faktura 42/08/2026 — zamówienie nr R/2026/015');
+    expect(TEMAT_MAILA.proforma(zam(), { numer: 'PF/3/08/2026' })).toBe(
+      'Proforma PF/3/08/2026 — zamówienie nr R/2026/015',
+    );
+    expect(TEMAT_MAILA.faktura(zam(), { numer: '42/08/2026' })).toBe('Faktura 42/08/2026 — zamówienie nr R/2026/015');
   });
 
   it('przypomnienie niesie sam numer zamówienia', () => {
-    expect(TEMAT_MAILA.przypomnienie(zam(), null))
-      .toBe('Przypomnienie o płatności — zamówienie nr R/2026/015');
+    expect(TEMAT_MAILA.przypomnienie(zam(), null)).toBe('Przypomnienie o płatności — zamówienie nr R/2026/015');
   });
 
   // ⚠️ ŁATKA `.replace('  ', ' ')` ZASTĄPIONA NORMALIZACJĄ. Stara wersja stała w DWÓCH kopiach i była wadliwa tak samo w obu:
@@ -39,8 +44,11 @@ describe('temat maila', () => {
   // na końcu nie obcinała nigdy.
   it('brak numeru dokumentu nie zostawia podwójnego odstępu ani ogona', () => {
     expect(TEMAT_MAILA.proforma(zam(), null)).toBe('Proforma — zamówienie nr R/2026/015');
-    for (const temat of [TEMAT_MAILA.proforma({}, null), TEMAT_MAILA.faktura({}, null),
-      TEMAT_MAILA.przypomnienie({})]) {
+    for (const temat of [
+      TEMAT_MAILA.proforma({}, null),
+      TEMAT_MAILA.faktura({}, null),
+      TEMAT_MAILA.przypomnienie({}),
+    ]) {
       expect(temat).not.toMatch(/ {2}/);
       expect(temat).not.toMatch(/\s$/);
     }
@@ -50,10 +58,17 @@ describe('temat maila', () => {
 describe('model wiadomości', () => {
   it('przypomnienie: kwota, przelew i zdanie o załączonej proformie', () => {
     const m = modelWiadomosci(zam(), {
-      temat_id: 'przypomnienie', dokument: { numer: 'PF/3/08/2026' }, zalacznikProformy: 'PF/3/08/2026', ...opcje,
+      temat_id: 'przypomnienie',
+      dokument: { numer: 'PF/3/08/2026' },
+      zalacznikProformy: 'PF/3/08/2026',
+      ...opcje,
     });
     expect(m.wiodace).toBe('przypominamy o płatności za zamówienie nr R/2026/015 z dnia 2026-08-21.');
-    expect(m.platnosc).toMatchObject({ doZaplaty: '990,00 zł', tytul: 'PF/3/08/2026', termin: 'termin 14 dni — do 2026-09-04' });
+    expect(m.platnosc).toMatchObject({
+      doZaplaty: '990,00 zł',
+      tytul: 'PF/3/08/2026',
+      termin: 'termin 14 dni — do 2026-09-04',
+    });
     expect(m.zdanieDokumentu).toBe('W załączeniu proforma PF/3/08/2026.');
     expect(m.zamkniecie).toContain('Jeśli płatność już wyszła');
     expect(m.sprzedawca).toBe('Swietlik.example.test');
@@ -115,7 +130,11 @@ describe('model wiadomości', () => {
   // proformy, czyli mail bez ani jednego załącznika — ma własny test niżej.
   it('faktura bez rachunku NIE mówi "opłacone" — odsyła do dokumentu', () => {
     const m = modelWiadomosci(zam(), {
-      temat_id: 'faktura', dokument: { numer: '42/08/2026' }, zalaczonyDokument: true, ...opcje, rachunek: null,
+      temat_id: 'faktura',
+      dokument: { numer: '42/08/2026' },
+      zalaczonyDokument: true,
+      ...opcje,
+      rachunek: null,
     });
     expect(m.platnosc).toBeNull();
     expect(m.zamkniecie).not.toContain('opłacone');
@@ -129,7 +148,10 @@ describe('model wiadomości', () => {
   // bez dokumentu: klient szuka załącznika, nie znajduje i dzwoni.
   it('przypomnienie BEZ załącznika nie odsyła do dokumentu, którego nie ma', () => {
     const m = modelWiadomosci(zam(), {
-      temat_id: 'przypomnienie', dokument: null, ...opcje, rachunek: null,
+      temat_id: 'przypomnienie',
+      dokument: null,
+      ...opcje,
+      rachunek: null,
     });
     expect(m.platnosc).toBeNull();
     expect(m.zamkniecie).not.toContain('załączniku');
@@ -157,7 +179,10 @@ describe('model wiadomości', () => {
     });
     expect(stanPlatnosci(z, opcje)).toBe(STAN_PLATNOSCI.BLAD);
     const m = modelWiadomosci(z, {
-      temat_id: 'faktura', dokument: { numer: '42/08/2026' }, zalaczonyDokument: true, ...opcje,
+      temat_id: 'faktura',
+      dokument: { numer: '42/08/2026' },
+      zalaczonyDokument: true,
+      ...opcje,
     });
     expect(m.platnosc).toBeNull();
     expect(m.zamkniecie).not.toContain('opłacone');
@@ -197,9 +222,12 @@ describe('wersja tekstowa', () => {
 });
 
 describe('renderer HTML', () => {
-  const model = (nad = {}) => modelWiadomosci(zam(nad), {
-    temat_id: 'przypomnienie', dokument: { numer: 'PF/3/08/2026' }, ...opcje,
-  });
+  const model = (nad = {}) =>
+    modelWiadomosci(zam(nad), {
+      temat_id: 'przypomnienie',
+      dokument: { numer: 'PF/3/08/2026' },
+      ...opcje,
+    });
 
   it('jest kompletnym dokumentem z kopertą', () => {
     const html = renderWiadomoscHtml(model());
@@ -221,20 +249,18 @@ describe('renderer HTML', () => {
   it('bez bloku płatności nie ma sekcji przelewu', () => {
     const z = zam({ platnosci: [{ data: '2026-08-22', kwota: '990.00' }] });
     expect(stanPlatnosci(z, opcje)).toBe(STAN_PLATNOSCI.POKRYTE);
-    const html = renderWiadomoscHtml(modelWiadomosci(
-      z,
-      { temat_id: 'faktura', dokument: { numer: '42/08/2026' }, ...opcje },
-    ));
+    const html = renderWiadomoscHtml(
+      modelWiadomosci(z, { temat_id: 'faktura', dokument: { numer: '42/08/2026' }, ...opcje }),
+    );
     expect(html).not.toContain('Tytuł przelewu');
     expect(html).toContain('Zamówienie jest opłacone');
   });
 
   // ⚠️ Escapowanie należy do renderera treści — koperta wpuszcza `body` bez zmian.
   it('escapuje dane z zamówienia', () => {
-    const html = renderWiadomoscHtml(modelWiadomosci(
-      zam({ numer: 'R<script>/1' }),
-      { temat_id: 'przypomnienie', dokument: null, ...opcje },
-    ));
+    const html = renderWiadomoscHtml(
+      modelWiadomosci(zam({ numer: 'R<script>/1' }), { temat_id: 'przypomnienie', dokument: null, ...opcje }),
+    );
     expect(html).not.toContain('<script>');
     expect(html).toContain('&lt;script&gt;');
   });

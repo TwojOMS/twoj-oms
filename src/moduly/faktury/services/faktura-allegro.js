@@ -1,8 +1,10 @@
 import { pobierzZamowienie, dopiszLog } from '../../../oms/db/zamowienia.js';
 import { idDokumentuDla } from '../../../domena/dokument-programu.js';
 import {
-  zapiszZgloszenieAllegro, zapiszWysylkeDoAllegro,
-  zajmijWysylkeDoAllegro, zwolnijWysylkeDoAllegro,
+  zapiszZgloszenieAllegro,
+  zapiszWysylkeDoAllegro,
+  zajmijWysylkeDoAllegro,
+  zwolnijWysylkeDoAllegro,
 } from '../db/faktury.js';
 import { bladOperatora } from '../../../domena/bledy.js';
 import { wolnoWyslacDoAllegro, nazwaPlikuFaktury, statusWeryfikacji } from '../../../domena/allegro-faktura.js';
@@ -22,13 +24,17 @@ import { zProgramu } from '../../../integracje/program-fakturowy.ts';
 // dlugosci. Ta sama kontrola, co przy pobraniu z inFaktu (infakt/client.js).
 function zlyPdf(bajty, nazwa) {
   if (!Buffer.isBuffer(bajty) || bajty.subarray(0, 4).toString() !== '%PDF') {
-    return `${nazwa.mianownik} nie oddał PDF-u tej faktury (dostaliśmy coś innego — najpewniej komunikat `
-      + 'błędu). Panel NIE zgłosił faktury w Allegro i nic kupującemu nie wysłał. Sprawdź '
-      + `dokument w ${nazwa.miejscownik} i spróbuj ponownie.`;
+    return (
+      `${nazwa.mianownik} nie oddał PDF-u tej faktury (dostaliśmy coś innego — najpewniej komunikat ` +
+      'błędu). Panel NIE zgłosił faktury w Allegro i nic kupującemu nie wysłał. Sprawdź ' +
+      `dokument w ${nazwa.miejscownik} i spróbuj ponownie.`
+    );
   }
   if (bajty.length > MAKS_ROZMIAR_FAKTURY_B) {
-    return `Plik faktury ma ${(bajty.length / 1024 / 1024).toFixed(2)} MB, a limit Allegro to 2 MB. `
-      + 'Panel NIE zgłosił faktury w Allegro i nic kupującemu nie wysłał.';
+    return (
+      `Plik faktury ma ${(bajty.length / 1024 / 1024).toFixed(2)} MB, a limit Allegro to 2 MB. ` +
+      'Panel NIE zgłosił faktury w Allegro i nic kupującemu nie wysłał.'
+    );
   }
   return null;
 }
@@ -77,15 +83,20 @@ export function createFakturaAllegro({ db, program: programPodany = null, infakt
     // po numerze KSeF) muszą się wykluczyć niezależnie od tego, ile wejść prowadzi do usługi.
     if (!zajmijWysylkeDoAllegro(db, f.id)) {
       throw bladOperatora(
-        `Wysyłka faktury ${f.numer} do Allegro WŁAŚNIE TRWA — drugie żądanie nic nie wysłało. `
-        + 'Odśwież kartę za chwilę i sprawdź, czy dokument poszedł; jeśli nie, kliknij jeszcze raz. '
-        + 'Panel odmawia tutaj celowo: dwa równoległe kliknięcia dałyby kupującemu DWA dokumenty, '
-        + 'a Allegro przyjmuje do dziesięciu faktur na zamówienie i samo tego nie zatrzyma.',
+        `Wysyłka faktury ${f.numer} do Allegro WŁAŚNIE TRWA — drugie żądanie nic nie wysłało. ` +
+          'Odśwież kartę za chwilę i sprawdź, czy dokument poszedł; jeśli nie, kliknij jeszcze raz. ' +
+          'Panel odmawia tutaj celowo: dwa równoległe kliknięcia dałyby kupującemu DWA dokumenty, ' +
+          'a Allegro przyjmuje do dziesięciu faktur na zamówienie i samo tego nie zatrzyma.',
       );
     }
     try {
       return await wyslijZajete({
-        z, f, idDok, nazwa, klient, zamowienieId,
+        z,
+        f,
+        idDok,
+        nazwa,
+        klient,
+        zamowienieId,
       });
     } finally {
       // ⚠️ ZAWSZE, TAKZE PO BLEDZIE. Dzierzawa zostawiona po zerwanej sieci blokowalaby
@@ -96,9 +107,7 @@ export function createFakturaAllegro({ db, program: programPodany = null, infakt
   }
 
   // Wlasciwa wysylka — wolana WYLACZNIE z zajeta dzierzawa (patrz `wyslij` wyzej).
-  async function wyslijZajete({
-    z, f, idDok, nazwa, klient, zamowienieId,
-  }) {
+  async function wyslijZajete({ z, f, idDok, nazwa, klient, zamowienieId }) {
     // PDF POBIERAMY NA SWIEZO z inFaktu — panel nie trzyma kopii dokumentu (services/faktura.js).
     // Numer KSeF jest W PIERWSZEJ LINII tego pliku, więc kupujący dostaje dokument z numerem
     // KSeF. Kopia trzymana u nas kłamałaby po korekcie.
@@ -138,8 +147,9 @@ export function createFakturaAllegro({ db, program: programPodany = null, infakt
     // padl miedzy POST-em a zapisem" domyka sie bez zmiany w kodzie.
     const bezpiecznikOtwarty = Boolean(stanWeryfikacji(db, z.sklep)?.bezpiecznik_od);
     const istniejace = bezpiecznikOtwarty ? [] : await klient.pobierzFakturyZamowienia(z.zrodlo_id);
-    const juzZgloszona = istniejace.find((w) => w.id === f.allegro_invoice_id)
-      ?? istniejace.find((w) => w.invoiceNumber && w.invoiceNumber === f.numer);
+    const juzZgloszona =
+      istniejace.find((w) => w.id === f.allegro_invoice_id) ??
+      istniejace.find((w) => w.invoiceNumber && w.invoiceNumber === f.numer);
 
     let invoiceId = juzZgloszona?.id ?? f.allegro_invoice_id ?? null;
     if (!invoiceId) {

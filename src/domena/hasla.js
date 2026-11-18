@@ -10,7 +10,7 @@ import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 
 // Parametry zapisujemy W SAMYM ZAPISIE, a nie tylko tutaj — inaczej podniesienie kosztu
 // w przyszlosci uniewaznialoby WSZYSTKIE istniejace hasla naraz, bez ani jednego ostrzezenia.
-const N = 16384;   // 128 * N * r = 16 MB, miesci sie w domyslnym `maxmem` Node (32 MB)
+const N = 16384; // 128 * N * r = 16 MB, miesci sie w domyslnym `maxmem` Node (32 MB)
 const R = 8;
 const P = 1;
 const DLUGOSC = 32;
@@ -40,10 +40,11 @@ export function zgodneHaslo(haslo, zapis) {
     // szansy dac dlugosci zgodnej z samym soba. Gdy `DLUGOSC` kiedys urosnie, stare zapisy
     // PRZESTANA pasowac — i ma to byc GLOSNE (migracja hasel), nie ciche przepuszczenie.
     if (oczekiwany.length !== DLUGOSC) return false;
-    const policzony = scryptSync(
-      String(haslo), Buffer.from(sol64, 'base64'), oczekiwany.length,
-      { N: Number(n), r: Number(r), p: Number(p) },
-    );
+    const policzony = scryptSync(String(haslo), Buffer.from(sol64, 'base64'), oczekiwany.length, {
+      N: Number(n),
+      r: Number(r),
+      p: Number(p),
+    });
     return timingSafeEqual(policzony, oczekiwany);
   } catch {
     return false;

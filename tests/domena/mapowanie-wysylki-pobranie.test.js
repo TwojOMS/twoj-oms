@@ -23,8 +23,12 @@ const SKLEP = {
 
 const zam = (instancja, bramka, reszta = {}) => {
   const z = {
-    id: 41, number: '4101', total: '238.40', status: 'processing',
-    shipping_lines: instancja === null ? [] : [{ instance_id: instancja, method_id: 'flat_rate', method_title: 'Kurier' }],
+    id: 41,
+    number: '4101',
+    total: '238.40',
+    status: 'processing',
+    shipping_lines:
+      instancja === null ? [] : [{ instance_id: instancja, method_id: 'flat_rate', method_title: 'Kurier' }],
     line_items: [{ name: 'Kinkiet Półcień', sku: 'pc-7', quantity: 1, total: '238.40' }],
     ...reszta,
   };
@@ -84,8 +88,10 @@ describe('sprzeczność flagi instancji i bramki', () => {
   });
 
   it('pusta lista bramek + flaga instancji + cod → też sprzeczność', () => {
-    expect(metodaWysylkiZamowienia(zam(2, 'cod'), { ...SKLEP, bramkiPobrania: [] }))
-      .toEqual({ metoda: 'nieznana', pobranie: false });
+    expect(metodaWysylkiZamowienia(zam(2, 'cod'), { ...SKLEP, bramkiPobrania: [] })).toEqual({
+      metoda: 'nieznana',
+      pobranie: false,
+    });
   });
 });
 
@@ -116,8 +122,10 @@ describe('bez bramki w zamówieniu decyduje flaga instancji (jak dziś)', () => 
 
 describe('granice reguły', () => {
   it('pusta lista bramek + cod → bez pobrania', () => {
-    expect(metodaWysylkiZamowienia(zam(1, 'cod'), { ...SKLEP, bramkiPobrania: [] }))
-      .toEqual({ metoda: 'dpd', pobranie: false });
+    expect(metodaWysylkiZamowienia(zam(1, 'cod'), { ...SKLEP, bramkiPobrania: [] })).toEqual({
+      metoda: 'dpd',
+      pobranie: false,
+    });
   });
 
   it('metoda nieznana (spoza mapy albo literówka) + cod → nieznana, bez pobrania', () => {

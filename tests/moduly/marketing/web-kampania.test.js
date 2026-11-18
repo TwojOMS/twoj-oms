@@ -3,7 +3,13 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
-import { zapiszPolaczenie, zapiszDni, zapiszTransakcje, zapiszStan, zapiszMetaKampanie } from '../../../src/oms/db/reklamy.js';
+import {
+  zapiszPolaczenie,
+  zapiszDni,
+  zapiszTransakcje,
+  zapiszStan,
+  zapiszMetaKampanie,
+} from '../../../src/oms/db/reklamy.js';
 
 // Zakladka /kampania. Jawna neutralna fixture testowa tworzy kampanię promo-test.
 //
@@ -15,19 +21,43 @@ const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('bas
 const poller = { stan: () => ({ ostatni_przebieg_at: '2026-08-25T12:00:00', ostatni_blad: null }) };
 
 const zmapowane = (id, nad = {}) => ({
-  zrodlo_id: id, numer: String(id), klient: { first_name: 'Jan', email: 'j@k.pl' }, dostawa: { city: 'Warszawa' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '150.72',
-  status_woo: 'processing', oplacone_at: '2026-08-25T17:43:27Z', anulowane: 0,
+  zrodlo_id: id,
+  numer: String(id),
+  klient: { first_name: 'Jan', email: 'j@k.pl' },
+  dostawa: { city: 'Warszawa' },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '150.72',
+  status_woo: 'processing',
+  oplacone_at: '2026-08-25T17:43:27Z',
+  anulowane: 0,
   utworzone_at: '2026-08-25T17:42:45Z',
-  pozycje: [], kupony: [{ kod: 'promo-test', rabat: '58.17' }], ...nad,
+  pozycje: [],
+  kupony: [{ kod: 'promo-test', rabat: '58.17' }],
+  ...nad,
 });
 
 function wstawKampanieTestowa(db) {
-  db.prepare(`INSERT INTO kampanie (kod,nazwa,od_dnia,do_dnia,sklep,cel_uzyc,ga4_wlasciwosc,ga4_sciezka,fale_json)
-    VALUES (?,?,?,?,?,?,?,?,?)`).run('promo-test','Kampania testowa','2026-08-24','2026-09-07','sklep-test',10,
-    '123456789','/promocja-test',JSON.stringify([
-      {od:'2026-08-26',napis:'start reklam'}, {od:'2026-08-30',napis:'fala 2'}, {od:'2026-09-04',napis:'fala 3'}
-    ]));
+  db.prepare(
+    `INSERT INTO kampanie (kod,nazwa,od_dnia,do_dnia,sklep,cel_uzyc,ga4_wlasciwosc,ga4_sciezka,fale_json)
+    VALUES (?,?,?,?,?,?,?,?,?)`,
+  ).run(
+    'promo-test',
+    'Kampania testowa',
+    '2026-08-24',
+    '2026-09-07',
+    'sklep-test',
+    10,
+    '123456789',
+    '/promocja-test',
+    JSON.stringify([
+      { od: '2026-08-26', napis: 'start reklam' },
+      { od: '2026-08-30', napis: 'fala 2' },
+      { od: '2026-09-04', napis: 'fala 3' },
+    ]),
+  );
 }
 
 let db, app;
@@ -40,8 +70,10 @@ beforeEach(async () => {
 
 const pobierzReklamy = (url) => app.inject({ method: 'GET', url, headers: naglowek });
 // Historyczne asercje poniżej dotyczą szczegółu konkretnej promocji.
-const pobierz = (url) => pobierzReklamy(url.startsWith('/kampania?dzien=')
-  ? url.replace('/kampania?', '/kampania?kampania=promo-test&') : url);
+const pobierz = (url) =>
+  pobierzReklamy(
+    url.startsWith('/kampania?dzien=') ? url.replace('/kampania?', '/kampania?kampania=promo-test&') : url,
+  );
 
 describe('trasa /kampania', () => {
   it('bez uwierzytelnienia oddaje 401', async () => {
@@ -87,9 +119,15 @@ describe('trasa /kampania', () => {
   });
 
   it('sekcja „Wszystkie kupony" pokazuje też kody spoza kampanii (free50 na PRO)', async () => {
-    zapiszZamowienie(db, 'pro', zmapowane(1275, {
-      kupony: [{ kod: 'free50', rabat: '14.95' }], kwota_brutto: '14.95',
-    }), {});
+    zapiszZamowienie(
+      db,
+      'pro',
+      zmapowane(1275, {
+        kupony: [{ kod: 'free50', rabat: '14.95' }],
+        kwota_brutto: '14.95',
+      }),
+      {},
+    );
     const r = await pobierz('/kampania?dzien=2026-08-25');
     expect(r.body).toContain('free50');
     expect(r.body).toContain('-14.95 zł');
@@ -110,16 +148,29 @@ describe('trasa /kampania', () => {
 describe('bieżący ekran Reklamy', () => {
   it('porównuje GA4 z netto produktów OMS i oddzielnie podpisuje brutto z dostawą', async () => {
     const p = zapiszPolaczenie(db, { typ: 'ga4', kontoId: 'property-pro', kanal: 'pro', waluta: 'PLN' });
-    zapiszDni(db, { typ: 'ga4', polaczenieId: p.id, pobranoAt: '2026-09-23T09:00:00Z', wiersze: [
-      { dzien: '2026-09-22', kampaniaId: 'produktowa', koszt: '10.00', waluta: 'PLN' },
-    ] });
-    zapiszTransakcje(db, { polaczenieId: p.id, pobranoAt: '2026-09-23T09:00:00Z', wiersze: [
-      { dzien: '2026-09-22', kampaniaId: 'produktowa', transactionId: '1451', przychod: '97.40', waluta: 'PLN' },
-    ] });
-    const order = db.prepare(`INSERT INTO zamowienia (sklep,zrodlo_id,numer,kwota_brutto,koszt_dostawy_brutto,
-      utworzone_at) VALUES ('pro',1451,'1451','144.80','25.00','2026-09-22T12:00:00Z') RETURNING id`).get();
-    db.prepare(`INSERT INTO pozycje (zamowienie_id,nazwa,ilosc,cena_brutto,netto_linii,zrodlo)
-      VALUES (?,?,1,'119.80','97.40','sklep')`).run(order.id, 'Produkt');
+    zapiszDni(db, {
+      typ: 'ga4',
+      polaczenieId: p.id,
+      pobranoAt: '2026-09-23T09:00:00Z',
+      wiersze: [{ dzien: '2026-09-22', kampaniaId: 'produktowa', koszt: '10.00', waluta: 'PLN' }],
+    });
+    zapiszTransakcje(db, {
+      polaczenieId: p.id,
+      pobranoAt: '2026-09-23T09:00:00Z',
+      wiersze: [
+        { dzien: '2026-09-22', kampaniaId: 'produktowa', transactionId: '1451', przychod: '97.40', waluta: 'PLN' },
+      ],
+    });
+    const order = db
+      .prepare(
+        `INSERT INTO zamowienia (sklep,zrodlo_id,numer,kwota_brutto,koszt_dostawy_brutto,
+      utworzone_at) VALUES ('pro',1451,'1451','144.80','25.00','2026-09-22T12:00:00Z') RETURNING id`,
+      )
+      .get();
+    db.prepare(
+      `INSERT INTO pozycje (zamowienie_id,nazwa,ilosc,cena_brutto,netto_linii,zrodlo)
+      VALUES (?,?,1,'119.80','97.40','sklep')`,
+    ).run(order.id, 'Produkt');
     const r = await pobierzReklamy('/kampania?widok=google&dzien=2026-09-23');
     expect(r.body).toContain('Potwierdzone w OMS · produkty netto bez dostawy</small><strong>97.40 PLN');
     expect(r.body).toContain('Całe zamówienia brutto z dostawą: 144.80 PLN');
@@ -128,16 +179,29 @@ describe('bieżący ekran Reklamy', () => {
 
   it('brak netto pozycji zostawia konwersję OMS, ale ukrywa niepełny przychód i ROAS', async () => {
     const p = zapiszPolaczenie(db, { typ: 'ga4', kontoId: 'property-pro', kanal: 'pro', waluta: 'PLN' });
-    zapiszDni(db, { typ: 'ga4', polaczenieId: p.id, pobranoAt: '2026-09-23T09:00:00Z', wiersze: [
-      { dzien: '2026-09-22', kampaniaId: 'produktowa', koszt: '10.00', waluta: 'PLN' },
-    ] });
-    zapiszTransakcje(db, { polaczenieId: p.id, pobranoAt: '2026-09-23T09:00:00Z', wiersze: [
-      { dzien: '2026-09-22', kampaniaId: 'produktowa', transactionId: '1451', przychod: '97.40', waluta: 'PLN' },
-    ] });
-    const order = db.prepare(`INSERT INTO zamowienia (sklep,zrodlo_id,numer,kwota_brutto,utworzone_at)
-      VALUES ('pro',1451,'1451','144.80','2026-09-22T12:00:00Z') RETURNING id`).get();
-    db.prepare(`INSERT INTO pozycje (zamowienie_id,nazwa,ilosc,cena_brutto,netto_linii,zrodlo)
-      VALUES (?,?,1,'119.80',NULL,'sklep')`).run(order.id, 'Produkt');
+    zapiszDni(db, {
+      typ: 'ga4',
+      polaczenieId: p.id,
+      pobranoAt: '2026-09-23T09:00:00Z',
+      wiersze: [{ dzien: '2026-09-22', kampaniaId: 'produktowa', koszt: '10.00', waluta: 'PLN' }],
+    });
+    zapiszTransakcje(db, {
+      polaczenieId: p.id,
+      pobranoAt: '2026-09-23T09:00:00Z',
+      wiersze: [
+        { dzien: '2026-09-22', kampaniaId: 'produktowa', transactionId: '1451', przychod: '97.40', waluta: 'PLN' },
+      ],
+    });
+    const order = db
+      .prepare(
+        `INSERT INTO zamowienia (sklep,zrodlo_id,numer,kwota_brutto,utworzone_at)
+      VALUES ('pro',1451,'1451','144.80','2026-09-22T12:00:00Z') RETURNING id`,
+      )
+      .get();
+    db.prepare(
+      `INSERT INTO pozycje (zamowienie_id,nazwa,ilosc,cena_brutto,netto_linii,zrodlo)
+      VALUES (?,?,1,'119.80',NULL,'sklep')`,
+    ).run(order.id, 'Produkt');
     const r = await pobierzReklamy('/kampania?widok=google&dzien=2026-09-23');
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('Całe zamówienia brutto z dostawą: 144.80 PLN');
@@ -169,14 +233,35 @@ describe('bieżący ekran Reklamy', () => {
   });
 
   it('Google pokazuje prawdziwy koszt, walutę i ostatni sukces bez referencji do sekretu', async () => {
-    const p = zapiszPolaczenie(db, { typ: 'ga4', kontoId: 'moja-wlasciwosc', kanal: 'pro',
-      waluta: 'PLN', strefa: 'Europe/Warsaw', sekretRef: 'ukryta-referencja' });
-    zapiszDni(db, { typ: 'ga4', polaczenieId: p.id, pobranoAt: '2026-09-23T09:00:00Z', wiersze: [{
-      dzien: '2026-09-22', kampaniaId: 'moj-test', nazwa: 'Moja kampania',
-      koszt: '12.34', klikniecia: 7, wyswietlenia: 100, waluta: 'PLN',
-    }] });
-    zapiszStan(db, { polaczenieId: p.id, ostatniaProbaAt: '2026-09-23T09:00:00Z',
-      ostatniSukcesAt: '2026-09-23T09:00:00Z' });
+    const p = zapiszPolaczenie(db, {
+      typ: 'ga4',
+      kontoId: 'moja-wlasciwosc',
+      kanal: 'pro',
+      waluta: 'PLN',
+      strefa: 'Europe/Warsaw',
+      sekretRef: 'ukryta-referencja',
+    });
+    zapiszDni(db, {
+      typ: 'ga4',
+      polaczenieId: p.id,
+      pobranoAt: '2026-09-23T09:00:00Z',
+      wiersze: [
+        {
+          dzien: '2026-09-22',
+          kampaniaId: 'moj-test',
+          nazwa: 'Moja kampania',
+          koszt: '12.34',
+          klikniecia: 7,
+          wyswietlenia: 100,
+          waluta: 'PLN',
+        },
+      ],
+    });
+    zapiszStan(db, {
+      polaczenieId: p.id,
+      ostatniaProbaAt: '2026-09-23T09:00:00Z',
+      ostatniSukcesAt: '2026-09-23T09:00:00Z',
+    });
     const r = await pobierzReklamy('/kampania?widok=google&dzien=2026-09-23');
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('12.34 PLN');
@@ -207,9 +292,20 @@ describe('bieżący ekran Reklamy', () => {
 
   it('błąd Meta nie zasłania poprawnego Google i nie udaje zerowego wyniku Meta', async () => {
     const g = zapiszPolaczenie(db, { typ: 'ga4', kontoId: 'moja-wlasciwosc', kanal: 'pro', waluta: 'PLN' });
-    zapiszDni(db, { typ: 'ga4', polaczenieId: g.id, pobranoAt: '2026-09-23T09:00:00Z', wiersze: [{
-      dzien: '2026-09-22', kampaniaId: 'moj-test', koszt: '12.34', klikniecia: 7, wyswietlenia: 100,
-    }] });
+    zapiszDni(db, {
+      typ: 'ga4',
+      polaczenieId: g.id,
+      pobranoAt: '2026-09-23T09:00:00Z',
+      wiersze: [
+        {
+          dzien: '2026-09-22',
+          kampaniaId: 'moj-test',
+          koszt: '12.34',
+          klikniecia: 7,
+          wyswietlenia: 100,
+        },
+      ],
+    });
     const m = zapiszPolaczenie(db, { typ: 'meta', kontoId: 'act_moje', kanal: 'pro', waluta: 'PLN' });
     zapiszStan(db, { polaczenieId: m.id, ostatniaProbaAt: '2026-09-23T09:00:00Z', kodBledu: 'BRAK_UPRAWNIEN' });
     const google = await pobierzReklamy('/kampania?widok=google&dzien=2026-09-23');
@@ -222,9 +318,19 @@ describe('bieżący ekran Reklamy', () => {
 
   it('bez potwierdzonej waluty OMS nie pokazuje zerowych konwersji OMS', async () => {
     const p = zapiszPolaczenie(db, { typ: 'ga4', kontoId: 'property-eur', kanal: 'pro', waluta: 'EUR' });
-    zapiszDni(db, { typ: 'ga4', polaczenieId: p.id, pobranoAt: '2026-09-23T09:00:00Z', wiersze: [{
-      dzien: '2026-09-22', kampaniaId: 'eur', koszt: '10.00', waluta: 'EUR',
-    }] });
+    zapiszDni(db, {
+      typ: 'ga4',
+      polaczenieId: p.id,
+      pobranoAt: '2026-09-23T09:00:00Z',
+      wiersze: [
+        {
+          dzien: '2026-09-22',
+          kampaniaId: 'eur',
+          koszt: '10.00',
+          waluta: 'EUR',
+        },
+      ],
+    });
     const r = await pobierzReklamy('/kampania?widok=google&dzien=2026-09-23');
     expect(r.body).toContain('10.00 EUR');
     expect(r.body).toContain('Potwierdzone w OMS · produkty netto bez dostawy</small><strong>—');
@@ -232,12 +338,24 @@ describe('bieżący ekran Reklamy', () => {
 
   it('ACTIVE Meta bez insights jest widoczna bez fałszywej emisji i zerowego kosztu', async () => {
     const m = zapiszPolaczenie(db, { typ: 'meta', kontoId: 'act_moje', kanal: 'pro', waluta: 'PLN' });
-    zapiszMetaKampanie(db, { polaczenieId: m.id, pobranoAt: '2026-09-23T09:00:00Z', kampanie: [{
-      id: 'moja-aktywna', nazwa: 'Aktywna w panelu Meta', effectiveStatus: 'ACTIVE',
-      budzety: [{ poziom: 'zestawy', typ: 'dzienny', kwotaMinor: '2000' }], waluta: 'PLN',
-    }] });
-    zapiszStan(db, { polaczenieId: m.id, ostatniaProbaAt: '2026-09-23T09:00:00Z',
-      ostatniSukcesAt: '2026-09-23T09:00:00Z' });
+    zapiszMetaKampanie(db, {
+      polaczenieId: m.id,
+      pobranoAt: '2026-09-23T09:00:00Z',
+      kampanie: [
+        {
+          id: 'moja-aktywna',
+          nazwa: 'Aktywna w panelu Meta',
+          effectiveStatus: 'ACTIVE',
+          budzety: [{ poziom: 'zestawy', typ: 'dzienny', kwotaMinor: '2000' }],
+          waluta: 'PLN',
+        },
+      ],
+    });
+    zapiszStan(db, {
+      polaczenieId: m.id,
+      ostatniaProbaAt: '2026-09-23T09:00:00Z',
+      ostatniSukcesAt: '2026-09-23T09:00:00Z',
+    });
     const r = await pobierzReklamy('/kampania?widok=meta&dzien=2026-09-23');
     expect(r.body).toContain('Brak kampanii z emisją w wybranym okresie.');
     expect(r.body).toContain('Kampanie bez emisji w wybranym okresie (1)');
@@ -267,23 +385,36 @@ describe('wejście do zakładki', () => {
 const zKonfiguracja = async (zrodla) => {
   const serwer = buildOmsServer({ db, config: { ...config, ...zrodla }, poller });
   await serwer.ready();
-  return (await serwer.inject({ method: 'GET', url: '/kampania?kampania=promo-test&dzien=2026-08-25', headers: naglowek })).body;
+  return (
+    await serwer.inject({ method: 'GET', url: '/kampania?kampania=promo-test&dzien=2026-08-25', headers: naglowek })
+  ).body;
 };
 
 const metaWiersz = (nad = {}) => ({
-  dzien: '2026-08-24', wydatek: '50.00', wyswietlenia: 1600, zasieg: 800,
-  klikniecia: 60, klikniecia_linku: 20, ...nad,
+  dzien: '2026-08-24',
+  wydatek: '50.00',
+  wyswietlenia: 1600,
+  zasieg: 800,
+  klikniecia: 60,
+  klikniecia_linku: 20,
+  ...nad,
 });
 
-const wstawMete = (w) => db.prepare(
-  `INSERT INTO kampania_meta_dni (kod, dzien, wydatek, wyswietlenia, zasieg, klikniecia, klikniecia_linku, pobrane_at)
+const wstawMete = (w) =>
+  db
+    .prepare(
+      `INSERT INTO kampania_meta_dni (kod, dzien, wydatek, wyswietlenia, zasieg, klikniecia, klikniecia_linku, pobrane_at)
    VALUES ('promo-test',?,?,?,?,?,?,'2026-08-25T08:00:00Z')`,
-).run(w.dzien, w.wydatek, w.wyswietlenia, w.zasieg, w.klikniecia, w.klikniecia_linku);
+    )
+    .run(w.dzien, w.wydatek, w.wyswietlenia, w.zasieg, w.klikniecia, w.klikniecia_linku);
 
-const wstawGa4 = (dzien, sesje, sesjeMeta, odslony) => db.prepare(
-  `INSERT INTO kampania_ga4_dni (kod, dzien, sesje, uzytkownicy, sesje_meta, odslony_promo, pobrane_at)
+const wstawGa4 = (dzien, sesje, sesjeMeta, odslony) =>
+  db
+    .prepare(
+      `INSERT INTO kampania_ga4_dni (kod, dzien, sesje, uzytkownicy, sesje_meta, odslony_promo, pobrane_at)
    VALUES ('promo-test',?,?,?,?,?,'2026-08-25T08:00:00Z')`,
-).run(dzien, sesje, sesje, sesjeMeta, odslony);
+    )
+    .run(dzien, sesje, sesje, sesjeMeta, odslony);
 
 describe('sekcja Reklama (Meta)', () => {
   it('bez konfiguracji mówi, czego brakuje — a nie pokazuje zer', async () => {
@@ -303,10 +434,10 @@ describe('sekcja Reklama (Meta)', () => {
     wstawMete(metaWiersz());
     const body = await zKonfiguracja({ meta: { token: 'x', konta: ['act_1'] } });
 
-    expect(body).toContain('50.00 zł');       // wydatek
-    expect(body).toContain('0.83 zł');        // CPC = 50 zl / 60 klikniec
+    expect(body).toContain('50.00 zł'); // wydatek
+    expect(body).toContain('0.83 zł'); // CPC = 50 zl / 60 klikniec
     expect(body).toContain('dotąd 0,125 zł'); // punkt odniesienia z kampanii ruchowej
-    expect(body).toContain('3.0×');           // ROAS = 150,72 / 50,00
+    expect(body).toContain('3.0×'); // ROAS = 150,72 / 50,00
   });
 
   // ⚠️⚠️ Zera przy padnietym kluczu wygladaja jak zera przy reklamie, ktora nie chodzi.
@@ -391,10 +522,16 @@ describe('lejek reklamy: od wyświetlenia do zamówienia', () => {
   // Tor zamowien liczy UNIE w kolorach serii wykresu pieniedzy — zamowienie z utm bez
   // kodu dostaje wlasny (pomaranczowy) kawalek slupka.
   it('zamówienie z reklam bez kodu wchodzi do toru zamówień własnym kolorem', async () => {
-    zapiszZamowienie(db, 'sklep-test', zmapowane(28226, {
-      kupony: [], kwota_brutto: '64.79',
-      atrybucja: { typ: 'utm', zrodlo: 'facebook', medium: 'cpc', kampania: 'promo-test' },
-    }), {});
+    zapiszZamowienie(
+      db,
+      'sklep-test',
+      zmapowane(28226, {
+        kupony: [],
+        kwota_brutto: '64.79',
+        atrybucja: { typ: 'utm', zrodlo: 'facebook', medium: 'cpc', kampania: 'promo-test' },
+      }),
+      {},
+    );
     const body = await zKonfiguracja({});
     expect(body).toContain('class="dzien-slupek dzien-slupek--utm"');
     expect(body).toContain('w tym 1 z reklam bez kodu');
@@ -410,7 +547,9 @@ describe('Odśwież teraz', () => {
 
     const serwer = buildOmsServer({ db, config, poller, czuwaczKampanii: { przebieg: async () => ({}) } });
     await serwer.ready();
-    const body = (await serwer.inject({ method: 'GET', url: '/kampania?kampania=promo-test&dzien=2026-08-25', headers: naglowek })).body;
+    const body = (
+      await serwer.inject({ method: 'GET', url: '/kampania?kampania=promo-test&dzien=2026-08-25', headers: naglowek })
+    ).body;
     expect(body).toContain('action="/kampania/odswiez"');
   });
 
@@ -419,7 +558,10 @@ describe('Odśwież teraz', () => {
     const serwer = buildOmsServer({ db, config, poller, czuwaczKampanii: { przebieg } });
     await serwer.ready();
     const r = await serwer.inject({
-      method: 'POST', url: '/kampania/odswiez', headers: naglowek, payload: { kampania: 'promo-test' },
+      method: 'POST',
+      url: '/kampania/odswiez',
+      headers: naglowek,
+      payload: { kampania: 'promo-test' },
     });
 
     expect(przebieg).toHaveBeenCalledTimes(1);
@@ -431,7 +573,14 @@ describe('Odśwież teraz', () => {
   // wiec sekcja go pokaze — a klikniecie ma wrocic na ekran, nie oddac 500.
   it('awaria przebiegu nie wywala trasy — wraca na ekran', async () => {
     const serwer = buildOmsServer({
-      db, config, poller, czuwaczKampanii: { przebieg: async () => { throw new Error('Meta padła'); } },
+      db,
+      config,
+      poller,
+      czuwaczKampanii: {
+        przebieg: async () => {
+          throw new Error('Meta padła');
+        },
+      },
     });
     await serwer.ready();
     const r = await serwer.inject({ method: 'POST', url: '/kampania/odswiez', headers: naglowek, payload: {} });
@@ -452,10 +601,16 @@ describe('Odśwież teraz', () => {
 
 describe('sekcja Zamówienia z reklam', () => {
   it('zamówienie z utm kampanii BEZ kodu stoi w sekcji z liczbami i linkiem do karty', async () => {
-    const id = zapiszZamowienie(db, 'sklep-test', zmapowane(28226, {
-      kupony: [], kwota_brutto: '64.79',
-      atrybucja: { typ: 'utm', zrodlo: 'facebook', medium: 'cpc', kampania: 'promo-test', urzadzenie: 'Mobile' },
-    }), {});
+    const id = zapiszZamowienie(
+      db,
+      'sklep-test',
+      zmapowane(28226, {
+        kupony: [],
+        kwota_brutto: '64.79',
+        atrybucja: { typ: 'utm', zrodlo: 'facebook', medium: 'cpc', kampania: 'promo-test', urzadzenie: 'Mobile' },
+      }),
+      {},
+    );
     const r = await pobierz('/kampania?dzien=2026-08-25');
 
     expect(r.body).toContain('Zamówienia z reklam');
@@ -473,9 +628,14 @@ describe('sekcja Zamówienia z reklam', () => {
   // ⚠️ Zamowienie z reklam I z kodem NIE moze stac w dwoch tabelach — w tabeli utm stoja
   // wylacznie te bez kodu, reszte niesie rozbicie kafla.
   it('zamówienie z utm I kodem liczy się w rozbiciu, ale tabela utm go nie dubluje', async () => {
-    zapiszZamowienie(db, 'sklep-test', zmapowane(28224, {
-      atrybucja: { typ: 'utm', zrodlo: 'facebook', medium: 'cpc', kampania: 'promo-test' },
-    }), {});
+    zapiszZamowienie(
+      db,
+      'sklep-test',
+      zmapowane(28224, {
+        atrybucja: { typ: 'utm', zrodlo: 'facebook', medium: 'cpc', kampania: 'promo-test' },
+      }),
+      {},
+    );
     const r = await pobierz('/kampania?dzien=2026-08-25');
     expect(r.body).toContain('z kodem 1 · bez kodu 0');
   });
@@ -560,16 +720,22 @@ describe('wykres Pieniądze dzień po dniu', () => {
     expect(r.body).toContain('class="p-slupek p-slupek--wydatek"');
     expect(r.body).toContain('title="2026-08-25: 150.72 zł z kodem · 0.00 zł z reklam bez kodu · 0.00 zł wydatku"');
     expect(r.body).toContain('>150.72<'); // etykieta maksimum gory
-    expect(r.body).toContain('>50.00<');  // etykieta maksimum dolu
+    expect(r.body).toContain('>50.00<'); // etykieta maksimum dolu
     expect(r.body).toContain('start reklam'); // prowadnica wyliczona z pierwszego dnia z wydatkiem
     expect(r.body).toContain('zwrot dotąd');
   });
 
   it('zamówienie z utm bez kodu dostaje własny kawałek słupka', async () => {
-    zapiszZamowienie(db, 'sklep-test', zmapowane(28226, {
-      kupony: [], kwota_brutto: '64.79',
-      atrybucja: { typ: 'utm', zrodlo: 'facebook', medium: 'cpc', kampania: 'promo-test' },
-    }), {});
+    zapiszZamowienie(
+      db,
+      'sklep-test',
+      zmapowane(28226, {
+        kupony: [],
+        kwota_brutto: '64.79',
+        atrybucja: { typ: 'utm', zrodlo: 'facebook', medium: 'cpc', kampania: 'promo-test' },
+      }),
+      {},
+    );
     const r = await pobierz('/kampania?dzien=2026-08-25');
     expect(r.body).toContain('class="p-slupek p-slupek--utm"');
     expect(r.body).toContain('title="2026-08-25: 0.00 zł z kodem · 64.79 zł z reklam bez kodu · 0.00 zł wydatku"');

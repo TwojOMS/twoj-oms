@@ -42,7 +42,9 @@ export function wyliczStatus(z) {
   // (jest na liscie w domena/status-reczny.js). Panel nie zgaduje momentu wyjazdu paczki,
   // bo go nie zna — zna tylko moment wydruku etykiety, a to nie to samo.
   if (z.wyslane_at) return 'wyslane';
-  const wlasny = (z.statusy_wlasne ?? []).find(s => s.klucz === z.status_wlasny && ['nowe', 'w_realizacji'].includes(s.jak));
+  const wlasny = (z.statusy_wlasne ?? []).find(
+    (s) => s.klucz === z.status_wlasny && ['nowe', 'w_realizacji'].includes(s.jak),
+  );
   if (wlasny) return wlasny.klucz;
   if (z.w_realizacji_at) return 'w_realizacji';
   // ⚠️ „INDYWIDUALNE" STOI NA SAMYM DOLE DRABINKI, TUZ NAD „NOWE" — i to jest cala regula:
@@ -101,8 +103,10 @@ export function anulowaneWymagaUwagi(z) {
 export function uwagaDolaczonychAnulowanych(z) {
   const numery = z?.dolaczone_anulowane ?? [];
   if (!numery.length) return null;
-  return `${numery.length > 1 ? 'dołączone zamówienia' : 'dołączone zamówienie'} ${numery.join(', ')} `
-    + 'anulowane w sklepie — rozdziel albo skoryguj';
+  return (
+    `${numery.length > 1 ? 'dołączone zamówienia' : 'dołączone zamówienie'} ${numery.join(', ')} ` +
+    'anulowane w sklepie — rozdziel albo skoryguj'
+  );
 }
 
 // Lista robocza = to, co zostalo do zrobienia. "Oplacone" celowo nie ma tu wplywu:
@@ -163,5 +167,5 @@ export function doZrobienia(z, teraz = Date.now()) {
 // Klucz własny nigdy nie wychodzi do integracji; fakty końcowe mają ten sam priorytet.
 export function statusBazowy(z) {
   const status = wyliczStatus(z);
-  return (z.statusy_wlasne ?? []).find(s => s.klucz === status)?.jak ?? status;
+  return (z.statusy_wlasne ?? []).find((s) => s.klucz === status)?.jak ?? status;
 }

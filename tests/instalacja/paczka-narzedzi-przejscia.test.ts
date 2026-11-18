@@ -16,12 +16,20 @@ describe('paczka i obraz klienta: narzędzia przejścia na pracę', () => {
     expect(w).not.toContain('scripts/mutacje-prz062.mjs');
   });
   it('oba skrypty są kopiowane do obrazu (katalog roboczy /app/scripts)', () => {
-    const kopie = dockerfile.split(/\r?\n/).filter(l => l.startsWith('COPY ') && l.endsWith(' ./scripts/')).join(' ');
+    const kopie = dockerfile
+      .split(/\r?\n/)
+      .filter((l) => l.startsWith('COPY ') && l.endsWith(' ./scripts/'))
+      .join(' ');
     for (const n of NARZEDZIA) expect(kopie).toContain(n);
   });
   it('ścieżki danych i port ustawia compose (environment wygrywa z env_file) — szablon pracy ich nie potrzebuje', () => {
     const oms = compose.slice(compose.indexOf('\n  oms:'), compose.indexOf('\n  kopia:'));
-    for (const n of ['OMS_PORT: "3001"', 'OMS_DB_PATH: /opt/oms/data/oms.sqlite', 'OMS_PROFORMY_KATALOG: /opt/oms/data/proformy', 'OMS_ETYKIETY_KATALOG: /opt/oms/data/etykiety'])
+    for (const n of [
+      'OMS_PORT: "3001"',
+      'OMS_DB_PATH: /opt/oms/data/oms.sqlite',
+      'OMS_PROFORMY_KATALOG: /opt/oms/data/proformy',
+      'OMS_ETYKIETY_KATALOG: /opt/oms/data/etykiety',
+    ])
       expect(oms).toContain(n);
   });
 });

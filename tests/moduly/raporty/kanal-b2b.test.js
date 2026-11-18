@@ -22,13 +22,12 @@ beforeEach(() => {
 const zamowienie = ({ b2b = 0, sklep = 'reczne', okres = null, kwota = '1000.00' } = {}) => {
   licznik += 1;
   db.prepare(
-    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at, indywidualne,'
-    + ' b2b, okres_rozliczeniowy_id) VALUES (?,?,?,?,?,0,?,?)',
+    'INSERT INTO zamowienia (sklep, zrodlo_id, numer, kwota_brutto, utworzone_at, indywidualne,' +
+      ' b2b, okres_rozliczeniowy_id) VALUES (?,?,?,?,?,0,?,?)',
   ).run(sklep, licznik, `B${licznik}`, kwota, '2026-08-21T09:00:00.000Z', b2b, okres);
 };
 
-const kanaly = () => sprzedazWOkresie(db, { od: '2026-08-01', do: '2026-08-31' })
-  .map((w) => w.kanal);
+const kanaly = () => sprzedazWOkresie(db, { od: '2026-08-01', do: '2026-08-31' }).map((w) => w.kanal);
 
 describe('reguła kanału', () => {
   it('zamówienie ręczne z B2B liczy się jako B2B', () => {
@@ -44,7 +43,9 @@ describe('reguła kanału', () => {
   // klienta koncowego i hurtowo do wlasnej siedziby. Gdyby B2B wygrywalo, zamowienia zbiorcze
   // wypadlyby z DROPSHIPPINGU i saldo okresu przestaloby sie zgadzac z raportem.
   it('okres rozliczeniowy WYGRYWA z B2B', () => {
-    expect(kanalOms({ sklep: 'reczne', b2b: 1, okres_rozliczeniowy_id: 7 }, klasyfikacjaHistorycznaFixture)).toBe('DROPSHIPPING');
+    expect(kanalOms({ sklep: 'reczne', b2b: 1, okres_rozliczeniowy_id: 7 }, klasyfikacjaHistorycznaFixture)).toBe(
+      'DROPSHIPPING',
+    );
   });
 
   // ⚠️ Sprzedaz przez pro.swietlik.example.test ma WLASNY kanal i to on mowi, SKAD przyszly pieniadze.

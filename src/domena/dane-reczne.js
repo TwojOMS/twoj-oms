@@ -110,9 +110,7 @@ export function polaZmienione(zeSklepu, efektywne, pola) {
  */
 export function nadpisaniaPoZapisie(stare, zeSklepu, zFormularza, pola) {
   const obecne = pola.filter((p) => zFormularza?.[p] !== undefined);
-  const zachowane = Object.fromEntries(
-    Object.entries(odczytajNadpisania(stare)).filter(([k]) => !obecne.includes(k)),
-  );
+  const zachowane = Object.fromEntries(Object.entries(odczytajNadpisania(stare)).filter(([k]) => !obecne.includes(k)));
   return { ...zachowane, ...roznice(zeSklepu, zFormularza, pola) };
 }
 

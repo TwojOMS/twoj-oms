@@ -4,7 +4,10 @@
 // podmieniony — żadne żądanie nie wychodzi do inFaktu. Klucze zmyślone.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
-import { wczytajKonfiguracjeIntegracji, zapiszKonfiguracjeIntegracji } from '../../../src/oms/db/konfiguracja-integracji.js';
+import {
+  wczytajKonfiguracjeIntegracji,
+  zapiszKonfiguracjeIntegracji,
+} from '../../../src/oms/db/konfiguracja-integracji.js';
 import { nowyPanel, jako, get, post } from '../../pomoc/panel-konta-testowe.js';
 import { modulRdzen } from '../../../src/moduly/rdzen/modul.ts';
 import { modulWeb } from '../../../src/core/web/modul.ts';
@@ -28,22 +31,45 @@ const STRONA = { metainfo: { count: 0, total_count: 0 }, entities: [] };
 let siec;
 let odpowiedz;
 beforeEach(() => {
-  odpowiedz = () => new Response(JSON.stringify(STRONA), { status: 200, headers: { 'content-type': 'application/json' } });
+  odpowiedz = () =>
+    new Response(JSON.stringify(STRONA), { status: 200, headers: { 'content-type': 'application/json' } });
   siec = vi.fn(async () => odpowiedz());
   vi.stubGlobal('fetch', siec);
 });
-afterEach(() => { vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 const kluczZadania = (i) => new Headers(siec.mock.calls[i][1].headers).get('x-infakt-apikey');
 
 function panel({ env = {}, zapisPrzedStartem = null } = {}) {
   const podglad = {};
-  const podgladacz = { nazwa: 'test-podgladacz', wersja: '1.0.0', wymaga: ['faktury'], migracje: [], menu: [], uprawnienia: [],
-    konfiguracja: () => null, zbuduj: (ctx) => {
+  const podgladacz = {
+    nazwa: 'test-podgladacz',
+    wersja: '1.0.0',
+    wymaga: ['faktury'],
+    migracje: [],
+    menu: [],
+    uprawnienia: [],
+    konfiguracja: () => null,
+    zbuduj: (ctx) => {
       for (const n of ['infakt', 'faktura', 'fakturyWidok']) podglad[n] = ctx.usluga('faktury', n);
       return {};
-    } };
-  const moduly = [modulRdzen, modulWeb, modulKanaly, createModulFaktury(), modulWiadomosci, createModulZamowienia({ zWiadomosciami: true }),
-    createModulWysylka(), modulMagazyn, modulUstawienia, modulMarketing, modulZdrowie, podgladacz];
+    },
+  };
+  const moduly = [
+    modulRdzen,
+    modulWeb,
+    modulKanaly,
+    createModulFaktury(),
+    modulWiadomosci,
+    createModulZamowienia({ zWiadomosciami: true }),
+    createModulWysylka(),
+    modulMagazyn,
+    modulUstawienia,
+    modulMarketing,
+    modulZdrowie,
+    podgladacz,
+  ];
   let db;
   if (zapisPrzedStartem) {
     // Zapis z ekranu MUSI leżeć w bazie przed startem modułów — tak wygląda instalacja po restarcie.
@@ -66,18 +92,39 @@ describe('Ustawienia → inFakt', () => {
         const kodowany = encodeURIComponent(klucz);
         const p = panel(zrodlo === 'plik' ? { env: { INFAKT_API_KEY: klucz } } : { zapisPrzedStartem: klucz });
         try {
-          const id = zapiszZamowienie(p.db, 'demo', {
-            zrodlo_id: 'maskowanie-09403', numer: 'DEMO-09403',
-            klient: { first_name: 'Adam', last_name: 'Przykładowy', address_1: 'Lampowa 1', postcode: '00-950', city: 'Warszawa' }, dostawa: {},
-            metoda_wysylki: 'demo', kwota_pobrania: null,
-            status_woo: 'processing', oplacone_at: null,
-            chce_fakture: 1, nip: null, kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00',
-            anulowane: 0, utworzone_at: '2026-10-18T08:00:00',
-            pozycje: [{ nazwa: 'Lampa demo', sku: 'DEMO', ilosc: 1, cena_brutto: '123.00', vat: null }],
-          }, {});
-          siec.mockImplementation(async (url) => String(url).includes('/clients.json')
-            ? new Response(JSON.stringify({ id: 7 }), { status: 201 })
-            : new Response(JSON.stringify({ error: `invalid api key ${klucz}; ${kodowany}` }), { status }));
+          const id = zapiszZamowienie(
+            p.db,
+            'demo',
+            {
+              zrodlo_id: 'maskowanie-09403',
+              numer: 'DEMO-09403',
+              klient: {
+                first_name: 'Adam',
+                last_name: 'Przykładowy',
+                address_1: 'Lampowa 1',
+                postcode: '00-950',
+                city: 'Warszawa',
+              },
+              dostawa: {},
+              metoda_wysylki: 'demo',
+              kwota_pobrania: null,
+              status_woo: 'processing',
+              oplacone_at: null,
+              chce_fakture: 1,
+              nip: null,
+              kwota_brutto: '123.00',
+              koszt_dostawy_brutto: '0.00',
+              anulowane: 0,
+              utworzone_at: '2026-10-18T08:00:00',
+              pozycje: [{ nazwa: 'Lampa demo', sku: 'DEMO', ilosc: 1, cena_brutto: '123.00', vat: null }],
+            },
+            {},
+          );
+          siec.mockImplementation(async (url) =>
+            String(url).includes('/clients.json')
+              ? new Response(JSON.stringify({ id: 7 }), { status: 201 })
+              : new Response(JSON.stringify({ error: `invalid api key ${klucz}; ${kodowany}` }), { status }),
+          );
           const e = await p.podglad.faktura.wystaw(id).catch((blad) => blad);
           expect(e.status).toBe(status);
           expect(kluczZadania(0) === klucz).toBe(true);
@@ -93,7 +140,9 @@ describe('Ustawienia → inFakt', () => {
             expect(tekst.includes(klucz), 'jawny klucz w bazie/karcie/błędzie').toBe(false);
             expect(tekst.includes(kodowany), 'kodowany klucz w bazie/karcie/błędzie').toBe(false);
           }
-        } finally { await p.app.close(); }
+        } finally {
+          await p.app.close();
+        }
       });
     }
   }
@@ -107,7 +156,9 @@ describe('Ustawienia → inFakt', () => {
     expect(r.body).toContain('Niepodłączony');
     expect(r.body).toContain('https://api.infakt.pl/api');
     expect(r.body).toContain('INFAKT_ARCHIWUM');
-    expect(r.body).toContain('Godzinę i przełącznik ustawisz w <a href="/ustawienia/automatyzacje/systemowe#ksef-automat">Ustawienia → Automatyzacje → Automaty systemowe</a>.');
+    expect(r.body).toContain(
+      'Godzinę i przełącznik ustawisz w <a href="/ustawienia/automatyzacje/systemowe#ksef-automat">Ustawienia → Automatyzacje → Automaty systemowe</a>.',
+    );
     expect(podglad.infakt).toBeNull();
     expect((await get(app, '/ustawienia/integracje/katalog', admin)).body).toContain(`href="${ADRES}"`);
   });
@@ -170,7 +221,11 @@ describe('Ustawienia → inFakt', () => {
 
   for (const status of [401, 403]) {
     it(`„Sprawdź połączenie” przy ${status} z kluczem odbitym w treści: powód na ekranie, klucza brak`, async () => {
-      odpowiedz = () => new Response(JSON.stringify({ error: `Nieprawidłowy klucz ${KLUCZ}` }), { status, headers: { 'content-type': 'application/json' } });
+      odpowiedz = () =>
+        new Response(JSON.stringify({ error: `Nieprawidłowy klucz ${KLUCZ}` }), {
+          status,
+          headers: { 'content-type': 'application/json' },
+        });
       const { app, admin } = panel();
       await post(app, ADRES, admin, { apiKey: KLUCZ });
       const r = await post(app, `${ADRES}/sprawdz`, admin, {});
@@ -247,9 +302,17 @@ describe('Ustawienia → inFakt', () => {
 
   it('przełącznik konsumenckich z wartością spoza 0/1 — 400 z ekranem inFaktu i błędem (HTML), nic nie zapisane', async () => {
     const { app, admin, db } = panel();
-    const r = await app.inject({ method: 'POST', url: `${ADRES}/ksef-konsumenckie`,
-      headers: { ...admin, accept: 'text/html', origin: 'http://localhost', 'content-type': 'application/x-www-form-urlencoded' },
-      payload: 'wlaczony=0&wlaczony=tak' });
+    const r = await app.inject({
+      method: 'POST',
+      url: `${ADRES}/ksef-konsumenckie`,
+      headers: {
+        ...admin,
+        accept: 'text/html',
+        origin: 'http://localhost',
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      payload: 'wlaczony=0&wlaczony=tak',
+    });
     expect(r.statusCode).toBe(400);
     expect(r.headers['content-type']).toMatch(/text\/html/u);
     expect(r.body).toContain('<h2 class="naglowek-formularza">inFakt</h2>');
@@ -264,7 +327,8 @@ describe('Ustawienia → inFakt', () => {
     zalozKonto(p.db, { login: 'ola', imie: 'Ola', haslo: 'h', rola: 'biuro' });
     ustawUprawnienia(p.db, kontoPoLoginie(p.db, 'ola').id, ['ustawienia']);
     const ola = jako(p.db, 'ola');
-    const wartosc = () => p.db.prepare("SELECT wartosc FROM ustawienia WHERE klucz = 'ksef.konsumenckie'").get()?.wartosc;
+    const wartosc = () =>
+      p.db.prepare("SELECT wartosc FROM ustawienia WHERE klucz = 'ksef.konsumenckie'").get()?.wartosc;
     const url = `${ADRES}/ksef-konsumenckie`;
     expect((await post(p.app, url, ola, { wlaczony: ['0', '1'] })).statusCode).toBe(403);
     expect(wartosc()).toBeUndefined();

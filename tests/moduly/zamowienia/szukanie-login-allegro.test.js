@@ -20,9 +20,12 @@ const definicje = [
 
 const adres = { street: 'Polna 1', city: 'Warszawa', postCode: '00-950', countryCode: 'PL' };
 const surowe = (id, buyer) => ({
-  id, status: 'READY_FOR_PROCESSING',
+  id,
+  status: 'READY_FOR_PROCESSING',
   lineItems: [{ boughtAt: '2026-11-16T10:00:00Z', quantity: 1, price: { amount: '10.00' }, offer: { name: 'Lampa' } }],
-  summary: { totalToPay: { amount: '10.00', currency: 'PLN' } }, payment: { type: 'ONLINE' }, delivery: { cost: { amount: '0.00' } },
+  summary: { totalToPay: { amount: '10.00', currency: 'PLN' } },
+  payment: { type: 'ONLINE' },
+  delivery: { cost: { amount: '0.00' } },
   buyer: { email: `${id}@allegromail.pl`, address: adres, ...buyer },
 });
 
@@ -46,8 +49,14 @@ const numeryZnalezione = async (fraza) => {
 
 describe('szukanie po loginie kupującego Allegro', () => {
   beforeEach(() => {
-    zapiszAllegro({ ...surowe('chk-9001', { login: 'lampy_jan77', firstName: 'Anna', lastName: 'Nowak' }), numer: 'A-9001' });
-    zapiszAllegro({ ...surowe('chk-9002', { login: 'kinkiet_ewa', firstName: 'Ewa', lastName: 'Lis' }), numer: 'A-9002' });
+    zapiszAllegro({
+      ...surowe('chk-9001', { login: 'lampy_jan77', firstName: 'Anna', lastName: 'Nowak' }),
+      numer: 'A-9001',
+    });
+    zapiszAllegro({
+      ...surowe('chk-9002', { login: 'kinkiet_ewa', firstName: 'Ewa', lastName: 'Lis' }),
+      numer: 'A-9002',
+    });
   });
 
   it('pełny login znajduje zamówienie tego kupującego i tylko jego', async () => {
@@ -67,7 +76,13 @@ describe('szukanie po loginie kupującego Allegro', () => {
 
 describe('reguła domeny', () => {
   it('login z bloku klienta jest polem wyszukiwania', () => {
-    const z = { numer: '1', sklep: 'konto_b', klient: { first_name: 'Anna', last_name: 'Nowak', login: 'lampy_jan77' }, pozycje: [], przesylki: [] };
+    const z = {
+      numer: '1',
+      sklep: 'konto_b',
+      klient: { first_name: 'Anna', last_name: 'Nowak', login: 'lampy_jan77' },
+      pozycje: [],
+      przesylki: [],
+    };
     expect(polaSzukania(z)).toContain('lampy_jan77');
     expect(pasujeDoSzukania(z, 'lampy_jan77')).toBe(true);
     expect(pasujeDoSzukania({ ...z, klient: { first_name: 'Anna', last_name: 'Nowak' } }, 'lampy_jan77')).toBe(false);

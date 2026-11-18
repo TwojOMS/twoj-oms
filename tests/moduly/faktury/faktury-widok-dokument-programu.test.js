@@ -12,11 +12,25 @@ import { createFakturyWidok } from '../../../src/moduly/faktury/services/faktury
 // „okres po samym `dokument_id`” przechodziła je wszystkie.
 
 function zamowienie(db, nr) {
-  return zapiszZamowienie(db, 'pro', {
-    zrodlo_id: `w-${nr}`, numer: String(nr), klient: { first_name: 'Ida' }, dostawa: {},
-    metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 1, nip: null,
-    kwota_brutto: '249.00', status_woo: 'processing', oplacone_at: null, anulowane: 0,
-  }, {});
+  return zapiszZamowienie(
+    db,
+    'pro',
+    {
+      zrodlo_id: `w-${nr}`,
+      numer: String(nr),
+      klient: { first_name: 'Ida' },
+      dostawa: {},
+      metoda_wysylki: 'dpd',
+      kwota_pobrania: null,
+      chce_fakture: 1,
+      nip: null,
+      kwota_brutto: '249.00',
+      status_woo: 'processing',
+      oplacone_at: null,
+      anulowane: 0,
+    },
+    {},
+  );
 }
 
 const infaktZ = (faktury) => ({
@@ -25,20 +39,32 @@ const infaktZ = (faktury) => ({
   listaNieoplaconych: async () => [],
 });
 
-const dok = (uuid, number) => ({ uuid, number, invoice_date: '2026-10-05', gross_price: 24900, left_to_pay: 0, rodzaj: 'vat' });
+const dok = (uuid, number) => ({
+  uuid,
+  number,
+  invoice_date: '2026-10-05',
+  gross_price: 24900,
+  left_to_pay: 0,
+  rodzaj: 'vat',
+});
 
 describe('zakładka FAKTURY — powiązania po identyfikatorze dokumentu', () => {
   it('wiersze starego obrazu (sam infakt_uuid) — faktura zamówienia i faktura okresu powiązane', async () => {
     const db = openOmsDb(':memory:');
     const id = zamowienie(db, 4101);
-    db.prepare("INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?, 'U-STARY', 'FV 1/10/2026', '2026-10-05T09:00:00Z')")
-      .run(id);
+    db.prepare(
+      "INSERT INTO faktury (zamowienie_id, infakt_uuid, numer, utworzona_at) VALUES (?, 'U-STARY', 'FV 1/10/2026', '2026-10-05T09:00:00Z')",
+    ).run(id);
     const okres = zapewnijOkres(db, { klientKlucz: 'nip:5250000000', rok: 2026, miesiac: 9 });
-    db.prepare("UPDATE okresy_rozliczeniowe SET infakt_uuid = 'U-OKRES-STARY', numer = 'FV 2/10/2026', stan = 'zafakturowany' WHERE id = ?")
-      .run(okres.id);
+    db.prepare(
+      "UPDATE okresy_rozliczeniowe SET infakt_uuid = 'U-OKRES-STARY', numer = 'FV 2/10/2026', stan = 'zafakturowany' WHERE id = ?",
+    ).run(okres.id);
     expect(db.prepare('SELECT program, dokument_id FROM faktury').get()).toEqual({ program: null, dokument_id: null });
 
-    const w = createFakturyWidok({ db, infakt: infaktZ([dok('U-STARY', 'FV 1/10/2026'), dok('U-OKRES-STARY', 'FV 2/10/2026')]) });
+    const w = createFakturyWidok({
+      db,
+      infakt: infaktZ([dok('U-STARY', 'FV 1/10/2026'), dok('U-OKRES-STARY', 'FV 2/10/2026')]),
+    });
     const lista = await w.dokumenty({ miesiac: '2026-10', pole: 'invoice_date' });
     const faktura = lista.find((d) => d.uuid === 'U-STARY');
     const zbiorcza = lista.find((d) => d.uuid === 'U-OKRES-STARY');
@@ -49,11 +75,13 @@ describe('zakładka FAKTURY — powiązania po identyfikatorze dokumentu', () =>
   it('wiersze innego programu (dokument_id bez infakt_uuid) — też powiązane', async () => {
     const db = openOmsDb(':memory:');
     const id = zamowienie(db, 4102);
-    db.prepare("INSERT INTO faktury (zamowienie_id, program, dokument_id, numer, utworzona_at) VALUES (?, 'fakturownia', '4401', 'FV 3/10/2026', '2026-10-05T09:00:00Z')")
-      .run(id);
+    db.prepare(
+      "INSERT INTO faktury (zamowienie_id, program, dokument_id, numer, utworzona_at) VALUES (?, 'fakturownia', '4401', 'FV 3/10/2026', '2026-10-05T09:00:00Z')",
+    ).run(id);
     const okres = zapewnijOkres(db, { klientKlucz: 'nip:5250000000', rok: 2026, miesiac: 10 });
-    db.prepare("UPDATE okresy_rozliczeniowe SET program = 'fakturownia', dokument_id = '4402', numer = 'FV 4/10/2026', stan = 'zafakturowany' WHERE id = ?")
-      .run(okres.id);
+    db.prepare(
+      "UPDATE okresy_rozliczeniowe SET program = 'fakturownia', dokument_id = '4402', numer = 'FV 4/10/2026', stan = 'zafakturowany' WHERE id = ?",
+    ).run(okres.id);
 
     const w = createFakturyWidok({ db, infakt: infaktZ([dok('4401', 'FV 3/10/2026'), dok('4402', 'FV 4/10/2026')]) });
     const lista = await w.dokumenty({ miesiac: '2026-10', pole: 'invoice_date' });

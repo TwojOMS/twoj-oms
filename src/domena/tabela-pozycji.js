@@ -1,5 +1,9 @@
 import {
-  sumaPozycjiZWysylkaGrosze, kwotaOczekiwanaGrosze, wartoscPozycjiGrosze, wysylkaBruttoGrosze, zl,
+  sumaPozycjiZWysylkaGrosze,
+  kwotaOczekiwanaGrosze,
+  wartoscPozycjiGrosze,
+  wysylkaBruttoGrosze,
+  zl,
 } from './suma-pozycji.js';
 import { KLUCZ_WYSYLKI, wysylkaEfektywna } from './wysylka-kwota.js';
 import { nettoZBruttoDoPokazania, stawkaPozycji, czyStawkaVat, STAWKA_VAT } from './vat.js';
@@ -56,8 +60,10 @@ const opisStawki = (stawka, wdt, zw = false) => {
 // Czy kwota tej linii pochodzi OD NAS, a nie ze sklepu. `zrodlo` sprawdzamy obok `reczna`
 // celowo: `reczna` zaklada warstwa odczytu, a wiersz, ktory ja ominal, ma dalej wygladac na
 // to, czym jest — inaczej pozycja dopisana recznie renderowalaby sie jako sklepowa.
-const naszaCena = (p) => Boolean(p.reczna) || p.zrodlo === 'reczna'
-  || (p.polaZmienione ?? []).some((pole) => pole === 'ilosc' || pole === 'cena_brutto');
+const naszaCena = (p) =>
+  Boolean(p.reczna) ||
+  p.zrodlo === 'reczna' ||
+  (p.polaZmienione ?? []).some((pole) => pole === 'ilosc' || pole === 'cena_brutto');
 
 // Wiersz wysylki, na rowni z pozycjami — patrz wierszePozycji nizej. Ceny ida WPROST
 // z wartosci EFEKTYWNEJ (domena/wysylka-kwota.js), nigdy dzieleniem brutto przez 1,23:
@@ -91,8 +97,11 @@ function wierszWysylki(zamowienie, lp, { stawka, wdt, zw = false }) {
     // i netto liczy sie ze stawki VAT — WYLACZNIE do pokazania, dokladnie jak przy
     // przecenionej pozycji wyzej. Do inFaktu i tak jedzie brutto.
     // Przy zamówieniu RĘCZNYM netto ze sklepu nie istnieje nigdy — liczymy je tak samo, do pokazania.
-    cenaNetto: w.cena_netto ?? ((w.polaZmienione.length || zamowienie?.sklep === 'reczne')
-      ? nettoZBruttoDoPokazania(w.cena_brutto, stawka, { zw }) : null),
+    cenaNetto:
+      w.cena_netto ??
+      (w.polaZmienione.length || zamowienie?.sklep === 'reczne'
+        ? nettoZBruttoDoPokazania(w.cena_brutto, stawka, { zw })
+        : null),
     // Dostawa ma stawkę domyślną (przy WDT 0) — tak jak linia „Dostawa” na fakturze.
     stawka,
     stawkaOpis: opisStawki(stawka, wdt, zw),
@@ -243,7 +252,7 @@ export function wierszePozycji(zamowienie, { stawkaDomyslna = STAWKA_VAT, zw = f
     // Sam napis: SKU zaślepki to identyfikator ukrytego produktu technicznego, którym wtyczka
     // panelu indywidualnego wstawia do koszyka każdą pozycję z oferty (szablon, wysyłkę,
     // ekspres). Dla czytającego kartę nie znaczy nic, a stał pod nazwą KAŻDEJ pozycji.
-    skuDoPokazania: czyPozycjaPlaceholdera(p.sku) ? null : (p.sku || null),
+    skuDoPokazania: czyPozycjaPlaceholdera(p.sku) ? null : p.sku || null,
     // Zdjecie produktu ze sklepu. Wiersz niesie ADRES ORYGINALU, a nie miniatury — wariant
     // 150x150 wylicza `domena/miniatury.js` dopiero w widoku, dokladnie tak jak na liscie
     // zamowien. Gdyby tabela liczyla go u siebie, istnialyby dwie reguly na to samo i przy
@@ -272,9 +281,7 @@ export function wierszePozycji(zamowienie, { stawkaDomyslna = STAWKA_VAT, zw = f
     // ⚠️ TO NIE JEST DRUGA CENA DO ZAPLATY. Zadna suma, zadna faktura i zaden mail jej nie
     // czytaja — jedynym jej czytelnikiem jest karta, a jedynym uzytkownikiem operator, ktory
     // musi umiec odpowiedziec klientowi na pytanie „skad ta kwota".
-    cenaKatalogowa: p.cena_katalogowa && String(p.cena_katalogowa) !== String(p.cena_brutto)
-      ? p.cena_katalogowa
-      : null,
+    cenaKatalogowa: p.cena_katalogowa && String(p.cena_katalogowa) !== String(p.cena_brutto) ? p.cena_katalogowa : null,
     suma: sumaLiniiBrutto(p),
     // Numer zamówienia, z którego pozycja przyszła — tylko w wierszach grupy scalonej
     // (`zamowienieGrupy`); przy zwykłym zamówieniu `null`, więc widok nic nie dopisuje.
@@ -297,7 +304,9 @@ export function wierszePozycji(zamowienie, { stawkaDomyslna = STAWKA_VAT, zw = f
     podsumowanie: false,
   }));
   if (!wysylkaJestJuzPozycja(zamowienie, wiersze)) {
-    wiersze.push(wierszWysylki(zamowienie, wiersze.length + 1, { stawka: wdt ? '0' : String(stawkaDomyslna), wdt, zw }));
+    wiersze.push(
+      wierszWysylki(zamowienie, wiersze.length + 1, { stawka: wdt ? '0' : String(stawkaDomyslna), wdt, zw }),
+    );
   }
   wiersze.push(wierszPodsumowania(podsumowaniePozycji(zamowienie)));
   return wiersze;
@@ -337,20 +346,31 @@ export function podsumowaniePozycji(zamowienie) {
  * `zeroKrajowe` — któraś linia ma 0% u nabywcy krajowego (dozwolone, ale z ostrzeżeniem).
  * `zw: true` (program wbudowany) — linie „zw” liczone netto = brutto, VAT 0 (nie „0% krajowe”).
  */
-export function podsumowanieVatKarty(zamowienie, { stawkaDomyslna = STAWKA_VAT, regula = 'wierszami', zw = false, zwolniona = false } = {}) {
+export function podsumowanieVatKarty(
+  zamowienie,
+  { stawkaDomyslna = STAWKA_VAT, regula = 'wierszami', zw = false, zwolniona = false } = {},
+) {
   const wdt = wdtZamowienia(zamowienie, zwolniona);
   try {
     // Reguła VAT programu fakturowego (`opis.regulaVat`). Zaimplementowana jest tylko „wierszami”
     // (inFakt); inna reguła to błąd podsumowania na karcie — jak każdy błąd ceny — a nie cicho inna liczba.
     if (regula !== 'wierszami') {
-      throw new Error(`Program fakturowy liczy VAT regułą „${regula}”, której panel nie zna — podsumowanie VAT nie powstało.`);
+      throw new Error(
+        `Program fakturowy liczy VAT regułą „${regula}”, której panel nie zna — podsumowanie VAT nie powstało.`,
+      );
     }
-    const linie = pozycjeDokumentu(zamowienie, { stawkaDomyslna, zw, zwolniona })
-      .map((l) => ({ bruttoGr: l.gross_price, stawka: l.tax_symbol }));
+    const linie = pozycjeDokumentu(zamowienie, { stawkaDomyslna, zw, zwolniona }).map((l) => ({
+      bruttoGr: l.gross_price,
+      stawka: l.tax_symbol,
+    }));
     const s = podsumowanieWierszami(linie, { zw });
     return {
-      nettoZl: zl(s.nettoGr), vatZl: zl(s.vatGr), bruttoZl: zl(s.bruttoGr), wdt,
-      zeroKrajowe: !wdt && linie.some((l) => String(l.stawka) === '0'), blad: null,
+      nettoZl: zl(s.nettoGr),
+      vatZl: zl(s.vatGr),
+      bruttoZl: zl(s.bruttoGr),
+      wdt,
+      zeroKrajowe: !wdt && linie.some((l) => String(l.stawka) === '0'),
+      blad: null,
     };
   } catch (e) {
     return { nettoZl: null, vatZl: null, bruttoZl: null, wdt, zeroKrajowe: false, blad: e.message };

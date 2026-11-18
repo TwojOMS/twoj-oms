@@ -1,12 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { adresatKlienta } from '../../src/domena/adresat-klienta.js';
 import { adresatPotwierdzenia } from '../../src/domena/potwierdzenie-zamowienia.js';
-import {
-  terminZamowienia, blokPlatnosci, stanPlatnosci, STAN_PLATNOSCI,
-} from '../../src/domena/blok-platnosci.js';
-import {
-  TEMATY, NAZWA_TEMATU, czyWolnoWyslac, stanTematu, ostatnieWgTematow,
-} from '../../src/domena/wiadomosci.js';
+import { terminZamowienia, blokPlatnosci, stanPlatnosci, STAN_PLATNOSCI } from '../../src/domena/blok-platnosci.js';
+import { TEMATY, NAZWA_TEMATU, czyWolnoWyslac, stanTematu, ostatnieWgTematow } from '../../src/domena/wiadomosci.js';
 
 describe('adresat klienta', () => {
   // ⚠️ Adres zamawiającego to pole `klient.email` (Woo `billing`), NIE `dostawa.email` —
@@ -46,25 +42,33 @@ describe('adresat klienta', () => {
 });
 
 const zam = (nad = {}) => ({
-  numer: 'R/2026/015', utworzone_at: '2026-08-21T09:15:00', kwota_brutto: '990.00',
-  metoda_wysylki: 'dpd', pobranie: 0, platnosci: [], pozycje: [
-    { zrodlo_id: 1, nazwa: 'Szablon', ilosc: 10, cena_brutto: '99.00', brutto_linii: '990.00' },
-  ],
-  koszt_dostawy_brutto: '0.00', termin_platnosci: '14', ...nad,
+  numer: 'R/2026/015',
+  utworzone_at: '2026-08-21T09:15:00',
+  kwota_brutto: '990.00',
+  metoda_wysylki: 'dpd',
+  pobranie: 0,
+  platnosci: [],
+  pozycje: [{ zrodlo_id: 1, nazwa: 'Szablon', ilosc: 10, cena_brutto: '99.00', brutto_linii: '990.00' }],
+  koszt_dostawy_brutto: '0.00',
+  termin_platnosci: '14',
+  ...nad,
 });
 
 describe('termin zamówienia', () => {
   it('liczba dni daje datę liczoną od złożenia', () => {
     expect(terminZamowienia(zam(), '2026-08-22')).toEqual({
-      etykieta: 'termin 14 dni', data: '2026-09-04', minal: false,
+      etykieta: 'termin 14 dni',
+      data: '2026-09-04',
+      minal: false,
     });
   });
 
   // ⚠️ Arytmetyka na NUMERZE DNIA (kalendarz.js), nigdy przez dodawanie milisekund —
   // ostatnia niedziela października ma w Warszawie 25 godzin.
   it('przechodzi przez koniec miesiąca', () => {
-    expect(terminZamowienia(zam({ utworzone_at: '2026-10-25T10:00:00', termin_platnosci: '7' }), '2026-10-26').data)
-      .toBe('2026-11-01');
+    expect(
+      terminZamowienia(zam({ utworzone_at: '2026-10-25T10:00:00', termin_platnosci: '7' }), '2026-10-26').data,
+    ).toBe('2026-11-01');
   });
 
   it('rozpoznaje termin, który minął', () => {
@@ -73,8 +77,11 @@ describe('termin zamówienia', () => {
   });
 
   it('warianty słowne nie mają daty', () => {
-    expect(terminZamowienia(zam({ termin_platnosci: 'przy_odbiorze' }), '2026-08-22'))
-      .toEqual({ etykieta: 'płatne przy odbiorze', data: null, minal: false });
+    expect(terminZamowienia(zam({ termin_platnosci: 'przy_odbiorze' }), '2026-08-22')).toEqual({
+      etykieta: 'płatne przy odbiorze',
+      data: null,
+      minal: false,
+    });
     expect(terminZamowienia(zam({ termin_platnosci: 'bez_terminu' }), '2026-08-22').data).toBeNull();
   });
 
@@ -94,7 +101,12 @@ describe('termin zamówienia', () => {
 });
 
 describe('blok płatności', () => {
-  const opcje = { rachunek: '07 1090 1014 0000 0000 0000 0001', odbiorca: 'Pracownia Półcień Anna Wzorcowa', tytul: 'PF/3/08/2026', dzis: '2026-08-22' };
+  const opcje = {
+    rachunek: '07 1090 1014 0000 0000 0000 0001',
+    odbiorca: 'Pracownia Półcień Anna Wzorcowa',
+    tytul: 'PF/3/08/2026',
+    dzis: '2026-08-22',
+  };
 
   it('składa komplet danych do przelewu', () => {
     expect(blokPlatnosci(zam(), opcje)).toEqual({
@@ -191,7 +203,8 @@ const pelne = (nad = {}) => zam({ klient: { email: 'sklep@example.test' }, ...na
 const kontekst = (nad = {}) => ({
   proforma: { id: 7, numer: 'PF/3/08/2026', kwota_brutto: '990.00', plik_sciezka: '/dane/pf.pdf' },
   faktura: { numer: '42/08/2026', infakt_uuid: 'abc-123' },
-  dzis: '2026-08-22', ...nad,
+  dzis: '2026-08-22',
+  ...nad,
 });
 
 describe('tematy wiadomości', () => {
@@ -234,33 +247,40 @@ describe('tematy wiadomości', () => {
 
   it('proforma wymaga wystawionej proformy z plikiem', () => {
     expect(czyWolnoWyslac(pelne(), 'proforma', kontekst()).wolno).toBe(true);
-    expect(czyWolnoWyslac(pelne(), 'proforma', kontekst({ proforma: null })).powod)
-      .toContain('Najpierw wystaw proformę');
-    expect(czyWolnoWyslac(pelne(), 'proforma', kontekst({ proforma: { numer: 'PF/1', plik_sciezka: null } })).powod)
-      .toContain('pliku');
+    expect(czyWolnoWyslac(pelne(), 'proforma', kontekst({ proforma: null })).powod).toContain(
+      'Najpierw wystaw proformę',
+    );
+    expect(
+      czyWolnoWyslac(pelne(), 'proforma', kontekst({ proforma: { numer: 'PF/1', plik_sciezka: null } })).powod,
+    ).toContain('pliku');
   });
 
   // ⚠️ PROFORMA UNIEWAŻNIONA NIE MA PRAWA WYJŚĆ:
   // klient dostałby dokument na STARĄ kwotę i przelałby według niej. `plik_sciezka` zostaje
   // ustawiona celowo — dowodzi, że blokuje WŁAŚNIE `uniewazniona_at`, nie brak pliku.
   it('proforma unieważniona nie idzie, mimo zapisanego pliku', () => {
-    const wynik = czyWolnoWyslac(pelne(), 'proforma', kontekst({
-      proforma: { numer: 'PF/1', plik_sciezka: '/dane/pf.pdf', uniewazniona_at: '2026-08-22T09:00:00Z' },
-    }));
+    const wynik = czyWolnoWyslac(
+      pelne(),
+      'proforma',
+      kontekst({
+        proforma: { numer: 'PF/1', plik_sciezka: '/dane/pf.pdf', uniewazniona_at: '2026-08-22T09:00:00Z' },
+      }),
+    );
     expect(wynik.wolno).toBe(false);
     expect(wynik.powod).toContain('unieważniona');
   });
 
   it('faktura wymaga dokumentu w inFakcie', () => {
     expect(czyWolnoWyslac(pelne(), 'faktura', kontekst()).wolno).toBe(true);
-    expect(czyWolnoWyslac(pelne(), 'faktura', kontekst({ faktura: null })).powod)
-      .toContain('Najpierw wystaw fakturę');
-    expect(czyWolnoWyslac(pelne(), 'faktura', kontekst({ faktura: { numer: '42/08/2026', infakt_uuid: null } })).powod)
-      .toContain('do końca wystawiona');
+    expect(czyWolnoWyslac(pelne(), 'faktura', kontekst({ faktura: null })).powod).toContain('Najpierw wystaw fakturę');
+    expect(
+      czyWolnoWyslac(pelne(), 'faktura', kontekst({ faktura: { numer: '42/08/2026', infakt_uuid: null } })).powod,
+    ).toContain('do końca wystawiona');
     // ⚠️ NUMER WYMAGANY OBOK infakt_uuid
     // samą regułę): bez niego `stanTematu` napisałby „bez numeru · PDF z inFaktu".
-    expect(czyWolnoWyslac(pelne(), 'faktura', kontekst({ faktura: { numer: null, infakt_uuid: 'abc-123' } })).powod)
-      .toContain('do końca wystawiona');
+    expect(
+      czyWolnoWyslac(pelne(), 'faktura', kontekst({ faktura: { numer: null, infakt_uuid: 'abc-123' } })).powod,
+    ).toContain('do końca wystawiona');
   });
 
   // ⚠️ Opłacone i pobranie gaszą PRZYPOMNIENIE, ale nie fakturę: fakturę do opłaconego
@@ -365,8 +385,9 @@ describe('ostatnie wiadomości według tematu', () => {
   it('wiersz bez id przegrywa z rejestrem, ale wygrywa z pustką', () => {
     const rezerwa = { temat_id: 'potwierdzenie', wyslana_at: '2026-08-21T12:40:00.000Z' };
     expect(ostatnieWgTematow([rezerwa]).get('potwierdzenie')).toBe(rezerwa);
-    expect(ostatnieWgTematow([rezerwa, w(7, 'potwierdzenie', '2026-08-22T08:00:00.000Z')])
-      .get('potwierdzenie').id).toBe(7);
+    expect(
+      ostatnieWgTematow([rezerwa, w(7, 'potwierdzenie', '2026-08-22T08:00:00.000Z')]).get('potwierdzenie').id,
+    ).toBe(7);
   });
 
   it('pusta lista i brak listy nie wywracają karty', () => {

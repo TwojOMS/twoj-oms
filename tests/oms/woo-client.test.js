@@ -73,7 +73,13 @@ describe('pobierzZamowienia', () => {
   // 5xx z HTML-em (np. blad PHP) zamiast JSON-a nie moze wywalic wywolujacego —
   // res.json() rzuca, klient musi to zlapac i oddac czytelny blad ze statusem.
   it('5xx z HTML-em zamiast JSON-a nie wywala klienta', async () => {
-    const { c } = klient({ status: 500, ok: false, json: async () => { throw new Error('not json'); } });
+    const { c } = klient({
+      status: 500,
+      ok: false,
+      json: async () => {
+        throw new Error('not json');
+      },
+    });
     await expect(c.pobierzZamowienia({ page: 1 })).rejects.toThrow(/500/);
   });
 
@@ -85,7 +91,14 @@ describe('pobierzZamowienia', () => {
   });
 
   it('200 z pustym/nie-JSON ciałem → czytelny błąd', async () => {
-    const { c } = klient({ status: 200, ok: true, json: async () => { throw new Error('not json'); }, headers: { get: () => null } });
+    const { c } = klient({
+      status: 200,
+      ok: true,
+      json: async () => {
+        throw new Error('not json');
+      },
+      headers: { get: () => null },
+    });
     await expect(c.pobierzZamowienia({ page: 1 })).rejects.toThrow(/niespodziewaną odpowiedź/i);
   });
 });

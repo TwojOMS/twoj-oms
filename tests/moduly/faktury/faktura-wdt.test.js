@@ -7,22 +7,38 @@ import { createFaktura } from '../../pomoc/fabryka-faktury-testowej.js';
 // GAŁĄŹ WDT USŁUGI FAKTURY. Fixture i atrapy — wzorem tests/oms/faktura.test.js;
 // nabywca unijny = Alfatrend (prawdziwy klient, dane z kartoteki inFaktu id 10000001).
 const zmapowaneWdt = (nad = {}) => ({
-  zrodlo_id: 2601, numer: 'R/2026/031',
+  zrodlo_id: 2601,
+  numer: 'R/2026/031',
   klient: {
-    first_name: 'Peter', last_name: 'Novak', company: 'Alfatrend s.r.o.',
-    email: 'peter@alfatrend.sk', address_1: '1. mája 1', postcode: '01001', city: 'Žilina',
+    first_name: 'Peter',
+    last_name: 'Novak',
+    company: 'Alfatrend s.r.o.',
+    email: 'peter@alfatrend.sk',
+    address_1: '1. mája 1',
+    postcode: '01001',
+    city: 'Žilina',
   },
-  dostawa: {}, metoda_wysylki: 'dpd', kwota_pobrania: null,
-  chce_fakture: 1, nip: 'SK1000000001', kwota_brutto: '139.00', koszt_dostawy_brutto: '16.00',
+  dostawa: {},
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 1,
+  nip: 'SK1000000001',
+  kwota_brutto: '139.00',
+  koszt_dostawy_brutto: '16.00',
   status_woo: 'processing',
-  oplacone_at: null, anulowane: 0, utworzone_at: '2026-08-26T10:00:00',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-08-26T10:00:00',
   pozycje: [{ nazwa: 'Lampa stołowa Kałamarz 30x45cm', sku: null, ilosc: 2, cena_brutto: '61.50', vat: null }],
   ...nad,
 });
 
 const VIES_WAZNY = {
-  wynik: 'wazny', nazwa: 'ALFATREND s.r.o.', adres: '1. mája 1…',
-  dataZapytania: '2026-08-26T12:00:00.000Z', numerKonsultacji: 'WAPIAAAAY123456',
+  wynik: 'wazny',
+  nazwa: 'ALFATREND s.r.o.',
+  adres: '1. mája 1…',
+  dataZapytania: '2026-08-26T12:00:00.000Z',
+  numerKonsultacji: 'WAPIAAAAY123456',
 };
 
 function zestawWdt(nad = {}, atrapy = {}) {
@@ -37,7 +53,10 @@ function zestawWdt(nad = {}, atrapy = {}) {
   const vies = 'vies' in atrapy ? atrapy.vies : { sprawdz: vi.fn().mockResolvedValue(VIES_WAZNY) };
   const id = zapiszZamowienie(db, 'pro', zmapowaneWdt(nad), {});
   const faktura = createFaktura({
-    db, infakt, vies, teraz: () => '2026-08-26T12:00:00.000Z',
+    db,
+    infakt,
+    vies,
+    teraz: () => '2026-08-26T12:00:00.000Z',
   });
   return { db, infakt, vies, id, faktura };
 }
@@ -105,7 +124,15 @@ describe('faktura WDT — VIES', () => {
   });
 
   it('VIES niedostępny: wystawia, ale zapisuje OSTRZEŻENIE do logu', async () => {
-    const vies = { sprawdz: vi.fn().mockResolvedValue({ wynik: 'niedostepny', nazwa: null, adres: null, dataZapytania: null, numerKonsultacji: null }) };
+    const vies = {
+      sprawdz: vi.fn().mockResolvedValue({
+        wynik: 'niedostepny',
+        nazwa: null,
+        adres: null,
+        dataZapytania: null,
+        numerKonsultacji: null,
+      }),
+    };
     const { db, infakt, faktura, id } = zestawWdt({}, { vies });
     await faktura.wystaw(id);
     expect(infakt.wystaw).toHaveBeenCalledTimes(1);
@@ -133,7 +160,8 @@ describe('faktura WDT — numeracja', () => {
   });
 
   it('jednoznaczna odmowa inFaktu (4xx) zwalnia numer — kolejna próba dostaje ten sam', async () => {
-    const wystaw = vi.fn()
+    const wystaw = vi
+      .fn()
       .mockRejectedValueOnce(Object.assign(new Error('Wadliwy zasób'), { dlaOperatora: true, status: 422 }))
       .mockResolvedValueOnce({ uuid: 'u2', numer: 'WDT/1/08/2026', ksefStatus: null });
     const { infakt, faktura, id } = zestawWdt({}, { wystaw });
@@ -166,11 +194,15 @@ describe('faktura WDT — numeracja', () => {
   });
 
   it('drugie zamówienie WDT w tym samym miesiącu dostaje numer 2', async () => {
-    const { db, infakt, faktura, id } = zestawWdt({}, {
-      wystaw: vi.fn()
-        .mockResolvedValueOnce({ uuid: 'u1', numer: 'WDT/1/08/2026', ksefStatus: null })
-        .mockResolvedValueOnce({ uuid: 'u2', numer: 'WDT/2/08/2026', ksefStatus: null }),
-    });
+    const { db, infakt, faktura, id } = zestawWdt(
+      {},
+      {
+        wystaw: vi
+          .fn()
+          .mockResolvedValueOnce({ uuid: 'u1', numer: 'WDT/1/08/2026', ksefStatus: null })
+          .mockResolvedValueOnce({ uuid: 'u2', numer: 'WDT/2/08/2026', ksefStatus: null }),
+      },
+    );
     await faktura.wystaw(id);
     const id2 = zapiszZamowienie(db, 'pro', zmapowaneWdt({ zrodlo_id: 2602, numer: 'R/2026/032' }), {});
     await faktura.wystaw(id2);

@@ -37,8 +37,8 @@ describe('createVies().sprawdz', () => {
     const fetchImpl = fakeFetch(ODPOWIEDZ_WAZNA);
     await createVies({ fetchImpl, nipSprzedawcy: '1234563218' }).sprawdz('SK1000000001');
     expect(fetchImpl.wywolania[0]).toBe(
-      'https://ec.europa.eu/taxation_customs/vies/rest-api/ms/SK/vat/1000000001'
-      + '?requesterMemberStateCode=PL&requesterNumber=1234563218',
+      'https://ec.europa.eu/taxation_customs/vies/rest-api/ms/SK/vat/1000000001' +
+        '?requesterMemberStateCode=PL&requesterNumber=1234563218',
     );
   });
 

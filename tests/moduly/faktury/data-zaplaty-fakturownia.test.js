@@ -19,19 +19,41 @@ import { createFakturowniaClient } from '../../../src/oms/fakturownia/client.js'
 import { programFakturownia } from '../../../src/integracje/programy/fakturownia.ts';
 
 const FIX = fileURLToPath(new URL('../../fixtures/fakturownia/', import.meta.url));
-const pomiar = (nr) => JSON.parse(fs.readFileSync(path.join(FIX, fs.readdirSync(FIX).find((n) => n.startsWith(`${nr}-`))), 'utf8'));
+const pomiar = (nr) =>
+  JSON.parse(
+    fs.readFileSync(
+      path.join(
+        FIX,
+        fs.readdirSync(FIX).find((n) => n.startsWith(`${nr}-`)),
+      ),
+      'utf8',
+    ),
+  );
 const ODPOWIEDZ_F04 = pomiar('F04').wymiany[1].odpowiedz.cialo;
 
 const zamowienie = (nad = {}) => ({
-  zrodlo_id: 4121, numer: 'R/2026/121',
+  zrodlo_id: 4121,
+  numer: 'R/2026/121',
   klient: {
-    first_name: 'Ewa', last_name: 'Półcień', company: 'Pracownia Półcień', email: 'biuro@polcien.invalid',
-    address_1: 'Lampowa 7', postcode: '00-950', city: 'Warszawa',
+    first_name: 'Ewa',
+    last_name: 'Półcień',
+    company: 'Pracownia Półcień',
+    email: 'biuro@polcien.invalid',
+    address_1: 'Lampowa 7',
+    postcode: '00-950',
+    city: 'Warszawa',
   },
-  dostawa: {}, metoda_wysylki: 'dpd', kwota_pobrania: null,
-  chce_fakture: 1, nip: '5250000009', kwota_brutto: '123.00', koszt_dostawy_brutto: '0.00',
+  dostawa: {},
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 1,
+  nip: '5250000009',
+  kwota_brutto: '123.00',
+  koszt_dostawy_brutto: '0.00',
   status_woo: 'processing',
-  oplacone_at: '2026-11-03T10:00:00', anulowane: 0, utworzone_at: '2026-11-03T09:00:00',
+  oplacone_at: '2026-11-03T10:00:00',
+  anulowane: 0,
+  utworzone_at: '2026-11-03T09:00:00',
   pozycje: [{ nazwa: 'Lampa stołowa Kałamarz', sku: 'LMP-KAL-01', ilosc: 2, cena_brutto: '61.50', vat: null }],
   ...nad,
 });
@@ -39,7 +61,8 @@ const zamowienie = (nad = {}) => ({
 /** Udawana Fakturownia: POST /invoices.json, change_status, PUT /invoices/{id}.json. */
 function fakturownia() {
   const zadania = [];
-  const json = (cialo, status = 200) => new Response(JSON.stringify(cialo), { status, headers: { 'content-type': 'application/json' } });
+  const json = (cialo, status = 200) =>
+    new Response(JSON.stringify(cialo), { status, headers: { 'content-type': 'application/json' } });
   const fetchImpl = async (url, opcje = {}) => {
     const z = { url: String(url), metoda: opcje.method ?? 'GET', cialo: opcje.body ? JSON.parse(opcje.body) : null };
     zadania.push(z);
@@ -50,12 +73,19 @@ function fakturownia() {
     if (z.metoda === 'PUT' && m) return json({ id: Number(m[1]), status: 'paid', ...z.cialo.invoice });
     throw new Error(`żądanie spoza testu: ${z.metoda} ${z.url}`);
   };
-  const klient = createFakturowniaClient({ token: 'ZmyslonyTokenPolcien123/firma-testowa', domena: 'firma-testowa', fetchImpl });
+  const klient = createFakturowniaClient({
+    token: 'ZmyslonyTokenPolcien123/firma-testowa',
+    domena: 'firma-testowa',
+    fetchImpl,
+  });
   const alarm = { dopisz: () => {}, wczytaj: () => [], zgas: () => {} };
   const program = programFakturownia(klient, { alarmAutoKsef: alarm, teraz: () => new Date('2026-11-12T10:00:00Z') });
   return {
     program,
-    wystawienie: () => zadania.filter((z) => z.metoda === 'POST' && new URL(z.url).pathname === '/invoices.json').map((z) => z.cialo.invoice),
+    wystawienie: () =>
+      zadania
+        .filter((z) => z.metoda === 'POST' && new URL(z.url).pathname === '/invoices.json')
+        .map((z) => z.cialo.invoice),
     zapisDaty: () => zadania.filter((z) => z.metoda === 'PUT').map((z) => z.cialo.invoice.paid_date),
   };
 }
@@ -92,7 +122,13 @@ describe('Fakturownia — paid_date = dzień opłacenia, inaczej data sprzedaży
     const { id, faktura, wystawienie, zapisDaty } = zFakturownia();
     await faktura.wystaw(id, ZAPLACONE);
     expect(wystawienie()).toHaveLength(1);
-    expect(wystawienie()[0]).toMatchObject({ status: 'paid', paid: '123.00', paid_date: '2026-11-03', issue_date: '2026-11-07', sell_date: '2026-11-03' });
+    expect(wystawienie()[0]).toMatchObject({
+      status: 'paid',
+      paid: '123.00',
+      paid_date: '2026-11-03',
+      issue_date: '2026-11-07',
+      sell_date: '2026-11-03',
+    });
     expect(zapisDaty()).toEqual(['2026-11-03']);
   });
 
@@ -100,7 +136,12 @@ describe('Fakturownia — paid_date = dzień opłacenia, inaczej data sprzedaży
   it('opłacone 05.11, sprzedaż 03.11, wystawienie 07.11 → 2026-11-05 (dzień opłacenia, nie data sprzedaży)', async () => {
     const { id, faktura, wystawienie, zapisDaty } = zFakturownia({ oplacone_at: '2026-11-05T10:00:00' });
     await faktura.wystaw(id, ZAPLACONE);
-    expect(wystawienie()[0]).toMatchObject({ status: 'paid', paid_date: '2026-11-05', issue_date: '2026-11-07', sell_date: '2026-11-03' });
+    expect(wystawienie()[0]).toMatchObject({
+      status: 'paid',
+      paid_date: '2026-11-05',
+      issue_date: '2026-11-07',
+      sell_date: '2026-11-03',
+    });
     expect(zapisDaty()).toEqual(['2026-11-05']);
   });
   it('brak dnia opłacenia (uszkodzona data wpłaty) → data sprzedaży, nie data wystawienia ani dziś', async () => {
@@ -128,11 +169,27 @@ describe('Fakturownia — paid_date = dzień opłacenia, inaczej data sprzedaży
 
   it('adapter: ładunek zapłacony BEZ paid_date (np. faktura okresu) → data sprzedaży, nigdy pusta', async () => {
     const { program, wystawienie } = fakturownia();
-    const { client_id } = await program.przygotujNabywce({ firma: 'Pracownia Półcień', nip: '5250000009', ulica: 'Lampowa 7', kod: '00-950', miasto: 'Warszawa', kraj: 'PL' }, { zalozGdyBrak: true });
-    await program.wystaw({
-      client_id, invoice_date: '2026-11-07', sale_date: '2026-11-02', paid_price: 12300,
-      services: [{ name: 'Lampa stołowa Kałamarz', quantity: 1, gross_price: 12300, tax_symbol: '23' }],
-    }, { oid: 'pro-R/2026/121' });
+    const { client_id } = await program.przygotujNabywce(
+      {
+        firma: 'Pracownia Półcień',
+        nip: '5250000009',
+        ulica: 'Lampowa 7',
+        kod: '00-950',
+        miasto: 'Warszawa',
+        kraj: 'PL',
+      },
+      { zalozGdyBrak: true },
+    );
+    await program.wystaw(
+      {
+        client_id,
+        invoice_date: '2026-11-07',
+        sale_date: '2026-11-02',
+        paid_price: 12300,
+        services: [{ name: 'Lampa stołowa Kałamarz', quantity: 1, gross_price: 12300, tax_symbol: '23' }],
+      },
+      { oid: 'pro-R/2026/121' },
+    );
     expect(wystawienie()[0]).toMatchObject({ status: 'paid', paid_date: '2026-11-02' });
   });
 });

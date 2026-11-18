@@ -19,24 +19,47 @@ import { zapiszKonfiguracjeIntegracji } from '../../../src/oms/db/konfiguracja-i
 const NIP = '1234563218';
 const PASEK = 'Moduł Koszty jest wyłączony — rachunek pokazuje sprzedaż bez kosztów';
 const PACZKA = 'Moduł Koszty jest wyłączony — zestawienie faktur kosztowych niedostępne';
-const wylacz = (db, lista) => db.prepare("INSERT OR REPLACE INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('moduly.wylaczone', ?, '2026-10-20')")
-  .run(JSON.stringify(lista));
+const wylacz = (db, lista) =>
+  db
+    .prepare(
+      "INSERT OR REPLACE INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('moduly.wylaczone', ?, '2026-10-20')",
+    )
+    .run(JSON.stringify(lista));
 const dzienTemu = (dni) => new Date(Date.now() - dni * 86400000).toISOString().slice(0, 10);
-const koszt = (db, numer, dzien, netto = '100.00') => zapiszKoszt(db, {
-  ksefNumber: numer, numerDokumentu: numer, sprzedawcaNip: '1111111111', sprzedawcaNazwa: 'Hurtownia Przykładowa',
-  dataWystawienia: dzien, dataTrwalegoZapisu: `${dzien}T12:00:00Z`,
-  netto, vat: '0.00', brutto: netto, waluta: 'PLN', rodzaj: 'VAT', maZalacznik: 0,
-});
+const koszt = (db, numer, dzien, netto = '100.00') =>
+  zapiszKoszt(db, {
+    ksefNumber: numer,
+    numerDokumentu: numer,
+    sprzedawcaNip: '1111111111',
+    sprzedawcaNazwa: 'Hurtownia Przykładowa',
+    dataWystawienia: dzien,
+    dataTrwalegoZapisu: `${dzien}T12:00:00Z`,
+    netto,
+    vat: '0.00',
+    brutto: netto,
+    waluta: 'PLN',
+    rodzaj: 'VAT',
+    maZalacznik: 0,
+  });
 
 let siec;
 beforeEach(() => {
-  siec = vi.fn(async () => { throw new Error('Sieć zabroniona'); });
+  siec = vi.fn(async () => {
+    throw new Error('Sieć zabroniona');
+  });
   vi.stubGlobal('fetch', siec);
 });
-afterEach(() => { vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 const panele = [];
-afterEach(async () => { for (const p of panele.splice(0)) { await p.app.close(); p.db.close(); } });
+afterEach(async () => {
+  for (const p of panele.splice(0)) {
+    await p.app.close();
+    p.db.close();
+  }
+});
 function panel(o = {}) {
   const p = nowyPanel(o);
   panele.push(p);
@@ -70,7 +93,11 @@ describe('moduł Koszty do wyłączenia', () => {
     koszt(p.db, 'K-2', dzienTemu(40));
     koszt(p.db, 'K-STARY', dzienTemu(90));
     // Klient rozliczany zbiorczo blokuje wyłączenie Rozliczeń i Stałych klientów — Kosztów nie.
-    p.db.prepare("INSERT INTO klienci (klucz,nazwa,nip,rozliczenie_zbiorcze,rabat_procent,utworzone_at,zmienione_at) VALUES ('przyklad','Pracownia Przykładowa','1111111111',1,0,'2026-10-01','2026-10-01')").run();
+    p.db
+      .prepare(
+        "INSERT INTO klienci (klucz,nazwa,nip,rozliczenie_zbiorcze,rabat_procent,utworzone_at,zmienione_at) VALUES ('przyklad','Pracownia Przykładowa','1111111111',1,0,'2026-10-01','2026-10-01')",
+      )
+      .run();
     const ekran = await get(p.app, '/ustawienia/moduly', p.admin);
     expect(ekran.body).toContain('2 kosztów w bazie — zostaną, Finanse dalej je liczą; nowych panel nie pobierze');
     const sekcja = /<section class="ust-sekcja">\s*<h2>Koszty<\/h2>[\s\S]*?<\/section>/u.exec(ekran.body)?.[0] ?? '';
@@ -84,9 +111,15 @@ describe('moduł Koszty do wyłączenia', () => {
   it('/health: włączenie modułu albo zapis tokenu po przegapionym oknie nie robi alarmu; stary zapis bez włączenia — robi', async () => {
     const p = panel();
     const godzinTemu = (h) => new Date(Date.now() - h * 3600000);
-    p.db.prepare("INSERT INTO stan_kosztow (id, ostatnie_udane_at) VALUES (1, ?)").run(godzinTemu(27).toISOString());
-    zapiszKonfiguracjeIntegracji(p.db, 'ksef', { ustawienia: {}, sekrety: { token: 'zmyslony-token-ksef-z-panelu-0001' } }, { teraz: godzinTemu(100) });
-    const alarm = async () => (await p.app.inject('/health')).json().alarmy.filter((a) => a.includes('czuwacz kosztów'));
+    p.db.prepare('INSERT INTO stan_kosztow (id, ostatnie_udane_at) VALUES (1, ?)').run(godzinTemu(27).toISOString());
+    zapiszKonfiguracjeIntegracji(
+      p.db,
+      'ksef',
+      { ustawienia: {}, sekrety: { token: 'zmyslony-token-ksef-z-panelu-0001' } },
+      { teraz: godzinTemu(100) },
+    );
+    const alarm = async () =>
+      (await p.app.inject('/health')).json().alarmy.filter((a) => a.includes('czuwacz kosztów'));
     expect(await alarm(), 'token zapisany 100 h temu, pobranie 27 h temu').toHaveLength(1);
     await post(p.app, '/ustawienia/moduly', p.admin, { modul: 'koszty', wlacz: '0' });
     await post(p.app, '/ustawienia/moduly', p.admin, { modul: 'koszty', wlacz: '1' });
@@ -94,12 +127,18 @@ describe('moduł Koszty do wyłączenia', () => {
     // Ten sam stan bez świeżego włączenia modułu, ale z tokenem zapisanym przed chwilą.
     p.db.prepare("DELETE FROM ustawienia WHERE klucz LIKE 'moduly.%'").run();
     expect(await alarm()).toHaveLength(1);
-    zapiszKonfiguracjeIntegracji(p.db, 'ksef', { ustawienia: {}, sekrety: { token: 'zmyslony-token-ksef-z-panelu-0002' } });
+    zapiszKonfiguracjeIntegracji(p.db, 'ksef', {
+      ustawienia: {},
+      sekrety: { token: 'zmyslony-token-ksef-z-panelu-0002' },
+    });
     expect(await alarm(), 'token zapisany przed chwilą').toEqual([]);
   });
 
   it('paczka dla biura przy wyłączonych kosztach: część kosztów odmawia zdaniem bez KSeF, część sprzedaży działa', async () => {
-    const zbuduj = vi.fn(async (miesiac, czesc) => ({ nazwa: `paczka-${czesc}-${miesiac}.pdf`, bajty: Buffer.from('%PDF-1.4') }));
+    const zbuduj = vi.fn(async (miesiac, czesc) => ({
+      nazwa: `paczka-${czesc}-${miesiac}.pdf`,
+      bajty: Buffer.from('%PDF-1.4'),
+    }));
     const p = panel({ paczkaDlaBiura: { zbuduj, zbudujZestawieniePrzychodow: vi.fn() } });
     wylacz(p.db, ['koszty']);
     const koszty = await get(p.app, '/faktury/paczka?miesiac=2026-09&czesc=koszty', p.admin);
@@ -117,12 +156,26 @@ describe('moduł Koszty do wyłączenia', () => {
   it('Finanse przy wyłączonych kosztach: 200, pasek u góry, koszty z bazy dalej w rachunku; bez kosztów też 200', async () => {
     const db = openOmsDb(':memory:');
     for (const k of KANALY) ustawGranice(db, k, '2026-07-02', 'test', null);
-    zapiszHistorie(db, { apiloId: 'S1', platformAccountId: 9, dzien: '2026-06-10', utworzoneAt: '2026-06-10T10:00:00.000Z',
-      brutto: '12300.00', tagi: [], status: 15, paymentStatus: 2, klientEmail: 'k@klient.invalid', pozycje: [] });
+    zapiszHistorie(db, {
+      apiloId: 'S1',
+      platformAccountId: 9,
+      dzien: '2026-06-10',
+      utworzoneAt: '2026-06-10T10:00:00.000Z',
+      brutto: '12300.00',
+      tagi: [],
+      status: 15,
+      paymentStatus: 2,
+      klientEmail: 'k@klient.invalid',
+      pozycje: [],
+    });
     const naglowek = { authorization: 'Basic ' + Buffer.from('adam:x').toString('base64') };
     const wejdz = async (url) => {
       const app = buildOmsServer({ db, config: { auth: { user: 'adam', pass: 'x' }, klienciZbiorczy: [] } });
-      try { return await app.inject({ method: 'GET', url, headers: naglowek }); } finally { await app.close(); }
+      try {
+        return await app.inject({ method: 'GET', url, headers: naglowek });
+      } finally {
+        await app.close();
+      }
     };
     const URL = '/finanse?od=2026-06-01&do=2026-06-30';
     const bezKosztow = await wejdz(URL);
@@ -142,11 +195,30 @@ describe('moduł Koszty do wyłączenia', () => {
   });
 
   it('czuwacz kosztów przy wyłączonym module nie woła KSeF (sprawdzane przy każdym tyknięciu), /health: „koszty wyłączone”, nie alarm', async () => {
-    const zaloguj = vi.fn(async () => ({ accessToken: 'a', accessDo: '2027-01-01T00:00:00Z', refreshToken: 'r', refreshDo: '2027-02-01T00:00:00Z' }));
-    const klient = { zaloguj, odswiez: vi.fn(), pobierzMetadane: vi.fn(async () => ({ faktury: [], hasMore: false, isTruncated: false })), pobierzXml: vi.fn() };
-    const env = { OMS_USER: 'operator', OMS_PASS: 'fixture', OMS_SPRZEDAWCA_NIP: NIP, OMS_RACHUNEK: '34109010140000000000000000',
-      OMS_PROFORMY_KATALOG: tmpdir(), OMS_ETYKIETY_KATALOG: tmpdir(), KSEF_TOKEN: 'zmyslony-token-ksef-z-pliku-0001' };
-    const moduly = modulyDla(env).map((m) => (m.nazwa === 'koszty' ? createModulKoszty({ createKlient: () => klient }) : m));
+    const zaloguj = vi.fn(async () => ({
+      accessToken: 'a',
+      accessDo: '2027-01-01T00:00:00Z',
+      refreshToken: 'r',
+      refreshDo: '2027-02-01T00:00:00Z',
+    }));
+    const klient = {
+      zaloguj,
+      odswiez: vi.fn(),
+      pobierzMetadane: vi.fn(async () => ({ faktury: [], hasMore: false, isTruncated: false })),
+      pobierzXml: vi.fn(),
+    };
+    const env = {
+      OMS_USER: 'operator',
+      OMS_PASS: 'fixture',
+      OMS_SPRZEDAWCA_NIP: NIP,
+      OMS_RACHUNEK: '34109010140000000000000000',
+      OMS_PROFORMY_KATALOG: tmpdir(),
+      OMS_ETYKIETY_KATALOG: tmpdir(),
+      KSEF_TOKEN: 'zmyslony-token-ksef-z-pliku-0001',
+    };
+    const moduly = modulyDla(env).map((m) =>
+      m.nazwa === 'koszty' ? createModulKoszty({ createKlient: () => klient }) : m,
+    );
     // 03:30 czasu Warszawy — pora nocnego pobrania.
     const z = await zbudujOms({ env, moduly, teraz: () => new Date('2026-10-20T01:30:00Z'), log: () => {} });
     try {
@@ -165,6 +237,9 @@ describe('moduł Koszty do wyłączenia', () => {
       expect(klient.pobierzMetadane).toHaveBeenCalled();
       expect((await z.app.inject('/health')).json().czuwaczKosztow).toMatchObject({ wlaczony: true });
       expect(siec).not.toHaveBeenCalled();
-    } finally { await z.app.close(); z.db.close(); }
+    } finally {
+      await z.app.close();
+      z.db.close();
+    }
   });
 });

@@ -3,9 +3,7 @@ import { bezpiecznyPowrotNaListe } from './filtry-listy.js';
 
 const PREFIKS_KLUCZA_POZYCJI = 'oms:pozycja-listy:v1:';
 
-const STANY_KARTY = new Set([
-  'wysylka', 'faktura', 'pozycje', 'szczegoly', 'wplata',
-]);
+const STANY_KARTY = new Set(['wysylka', 'faktura', 'pozycje', 'szczegoly', 'wplata']);
 
 function bezpiecznyStan(stan) {
   if (typeof stan !== 'string') return null;

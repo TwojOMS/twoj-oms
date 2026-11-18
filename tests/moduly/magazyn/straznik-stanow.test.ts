@@ -13,14 +13,28 @@ import { createPetlaStanowWoo } from '../../../src/moduly/magazyn/services/petla
 import { createStraznikStanow, ODSTEP_STRAZNIKA_MS } from '../../../src/moduly/magazyn/services/straznik-stanow.js';
 import { createPetlaOfertAllegro } from '../../../src/moduly/magazyn/services/petla-ofert-allegro.js';
 import { ponowOferte } from '../../../src/moduly/magazyn/oferty.js';
-import { wstawOferte, zmienOferte, ofertaPoId, zapiszUstawieniaOfertKonta } from '../../../src/oms/db/oferty-kanalow.ts';
+import {
+  wstawOferte,
+  zmienOferte,
+  ofertaPoId,
+  zapiszUstawieniaOfertKonta,
+} from '../../../src/oms/db/oferty-kanalow.ts';
 
 const GRANICA = '2026-11-14T08:00:00.000Z';
 const T1 = '2026-11-14T09:00:00.000Z';
-let db: any, numer = 0, ruchNr = 0;
+let db: any,
+  numer = 0,
+  ruchNr = 0;
 
-beforeEach(() => { db = openOmsDb(':memory:', { moduly: modulyDla(ENV_DEMO) } as any); numer = 0; ruchNr = 0; });
-afterEach(() => { vi.useRealTimers(); db.close(); });
+beforeEach(() => {
+  db = openOmsDb(':memory:', { moduly: modulyDla(ENV_DEMO) } as any);
+  numer = 0;
+  ruchNr = 0;
+});
+afterEach(() => {
+  vi.useRealTimers();
+  db.close();
+});
 
 const atrapa = () => ({ przebieg: vi.fn(async () => {}), przyspiesz: vi.fn() });
 function straznik() {
@@ -31,14 +45,53 @@ function straznik() {
   return { s, petle, log, przyspieszenia };
 }
 const wlacz = () => przelaczStany(db, { wlacz: true, at: GRANICA });
-const karta = () => utworzKarte(db, { nazwa: 'Lampa Półcień', sku: `LMP-${++numer}`, cena_gr: 10000, stawka_vat: '23' });
-const ruch = (kartaId: number, ilosc: number) => dodajRuch(db, { kartaId, rodzaj: 'przyjecie', ilosc, klucz: `t-${++ruchNr}`, at: T1 });
+const karta = () =>
+  utworzKarte(db, { nazwa: 'Lampa Półcień', sku: `LMP-${++numer}`, cena_gr: 10000, stawka_vat: '23' });
+const ruch = (kartaId: number, ilosc: number) =>
+  dodajRuch(db, { kartaId, rodzaj: 'przyjecie', ilosc, klucz: `t-${++ruchNr}`, at: T1 });
 /** `n` podane = ten sam numer w sklepie, czyli ponowny zapis zamówienia przez poller (pozycje sklepowe od nowa). */
-function zamowienie({ status = 'processing', utworzone = T1, ilosc = 1, produkt = '501', wariant = null as string | null, n = ++numer } = {}) {
-  return zapiszZamowienie(db, 'woo_polcien', { zrodlo_id: `z${n}`, numer: `W-${n}`, klient: {}, dostawa: {},
-    utworzone_at: utworzone, kwota_brutto: '20.00', metoda_wysylki: 'odbior', chce_fakture: 0, kwota_pobrania: null,
-    nip: null, oplacone_at: null, status_woo: status, anulowane: 0, pozycje: [{ zrodlo_id: 'p1', produkt_id: produkt,
-      wariant_id: wariant, oferta_id: null, sku: null, zdjecie_url: null, nazwa: 'Lampa Półcień', ilosc, cena_brutto: '10.00', vat: '23' }] }, {});
+function zamowienie({
+  status = 'processing',
+  utworzone = T1,
+  ilosc = 1,
+  produkt = '501',
+  wariant = null as string | null,
+  n = ++numer,
+} = {}) {
+  return zapiszZamowienie(
+    db,
+    'woo_polcien',
+    {
+      zrodlo_id: `z${n}`,
+      numer: `W-${n}`,
+      klient: {},
+      dostawa: {},
+      utworzone_at: utworzone,
+      kwota_brutto: '20.00',
+      metoda_wysylki: 'odbior',
+      chce_fakture: 0,
+      kwota_pobrania: null,
+      nip: null,
+      oplacone_at: null,
+      status_woo: status,
+      anulowane: 0,
+      pozycje: [
+        {
+          zrodlo_id: 'p1',
+          produkt_id: produkt,
+          wariant_id: wariant,
+          oferta_id: null,
+          sku: null,
+          zdjecie_url: null,
+          nazwa: 'Lampa Półcień',
+          ilosc,
+          cena_brutto: '10.00',
+          vat: '23',
+        },
+      ],
+    },
+    {},
+  );
 }
 
 describe('odcisk strażnika', () => {
@@ -47,18 +100,25 @@ describe('odcisk strażnika', () => {
   });
 
   it('odcisk bez zmian → 0 przyspieszeń (pierwszy przebieg tylko zapamiętuje odcisk)', () => {
-    wlacz(); zamowienie();
+    wlacz();
+    zamowienie();
     const { s, przyspieszenia } = straznik();
-    s.przebieg(); s.przebieg(); s.przebieg();
+    s.przebieg();
+    s.przebieg();
+    s.przebieg();
     expect(przyspieszenia()).toBe(0);
   });
 
   it('przebieg pollera bez nowych zamówień (tylko zmienione_at i puls pollera) → 0 przyspieszeń', () => {
-    wlacz(); const id = zamowienie();
+    wlacz();
+    const id = zamowienie();
     const { s, przyspieszenia } = straznik();
     s.przebieg();
     db.prepare('UPDATE zamowienia SET zmienione_at = ? WHERE id = ?').run('2026-11-14T12:00:00.000Z', id);
-    db.prepare('INSERT OR REPLACE INTO stan_pollera (sklep, ostatni_przebieg_at) VALUES (?, ?)').run('woo_polcien', '2026-11-14T12:00:00.000Z');
+    db.prepare('INSERT OR REPLACE INTO stan_pollera (sklep, ostatni_przebieg_at) VALUES (?, ?)').run(
+      'woo_polcien',
+      '2026-11-14T12:00:00.000Z',
+    );
     s.przebieg();
     expect(przyspieszenia()).toBe(0);
   });
@@ -77,22 +137,57 @@ describe('odcisk strażnika', () => {
   it.each([
     ['ruch magazynowy', () => ruch(karta(), 5)],
     ['stan otwarcia', () => zapiszOtwarcie(db, { kartaId: karta(), ilosc: 4, zrodlo: 'reczne', at: T1 })],
-    ['zatwierdzenie stanów', () => zapiszZatwierdzenieStanow(db, { przelaczenieId: przelacznikStanow(db).przelaczenieId as number,
-      zatwierdzil: 'operator', ofert: 1, skrot: 'skrot-polcien' }, { teraz: T1 })],
-    ['anulowanie zamówienia od granicy', (id: number) => db.prepare('UPDATE zamowienia SET anulowane = 1 WHERE id = ?').run(id)],
-    ['ręczne anulowanie', (id: number) => db.prepare('UPDATE zamowienia SET anulowane_recznie = 1 WHERE id = ?').run(id)],
-    ['poprawka pozycji', (id: number) => db.prepare('UPDATE zamowienia SET pozycje_reczne_json = ? WHERE id = ?').run('{"p1":{"ilosc":2}}', id)],
+    [
+      'zatwierdzenie stanów',
+      () =>
+        zapiszZatwierdzenieStanow(
+          db,
+          {
+            przelaczenieId: przelacznikStanow(db).przelaczenieId as number,
+            zatwierdzil: 'operator',
+            ofert: 1,
+            skrot: 'skrot-polcien',
+          },
+          { teraz: T1 },
+        ),
+    ],
+    [
+      'anulowanie zamówienia od granicy',
+      (id: number) => db.prepare('UPDATE zamowienia SET anulowane = 1 WHERE id = ?').run(id),
+    ],
+    [
+      'ręczne anulowanie',
+      (id: number) => db.prepare('UPDATE zamowienia SET anulowane_recznie = 1 WHERE id = ?').run(id),
+    ],
+    [
+      'poprawka pozycji',
+      (id: number) =>
+        db.prepare('UPDATE zamowienia SET pozycje_reczne_json = ? WHERE id = ?').run('{"p1":{"ilosc":2}}', id),
+    ],
     // Liczy się tylko wejście w status bez rozchodu (STATUSY_WOO_BEZ_ROZCHODU), nie każda zmiana statusu.
-    ['status Woo failed', (id: number) => db.prepare("UPDATE zamowienia SET status_woo = 'failed' WHERE id = ?").run(id)],
+    [
+      'status Woo failed',
+      (id: number) => db.prepare("UPDATE zamowienia SET status_woo = 'failed' WHERE id = ?").run(id),
+    ],
     ['status Woo trash', (id: number) => db.prepare("UPDATE zamowienia SET status_woo = 'trash' WHERE id = ?").run(id)],
     // „dodaj z magazynu” i edycja pozycji przez poller.
     // dodajPozycjeReczna (JS bez JSDoc) ma produkt_id wywnioskowany z domyślnego null — luźny typ wywołania.
-    ['dodaj z magazynu (pozycja ręczna z produktem)', (id: number) => (dodajPozycjeReczna as (...a: unknown[]) => unknown)(db, id,
-      { nazwa: 'Lampa Półcień', ilosc: 2, cena_brutto: '10.00', brutto_linii: '20.00', produkt_id: '501' })],
+    [
+      'dodaj z magazynu (pozycja ręczna z produktem)',
+      (id: number) =>
+        (dodajPozycjeReczna as (...a: unknown[]) => unknown)(db, id, {
+          nazwa: 'Lampa Półcień',
+          ilosc: 2,
+          cena_brutto: '10.00',
+          brutto_linii: '20.00',
+          produkt_id: '501',
+        }),
+    ],
     ['poller: ilość pozycji 1 → 2', () => zamowienie({ n: 1, ilosc: 2 })],
     ['poller: inny produkt, ta sama ilość', () => zamowienie({ n: 1, produkt: '502' })],
   ] as [string, (id: number) => unknown][])('zmiana „%s” → przyspieszenie wszystkich trzech pętli', (_nazwa, zmien) => {
-    wlacz(); const id = zamowienie();
+    wlacz();
+    const id = zamowienie();
     const { s, przyspieszenia } = straznik();
     s.przebieg();
     zmien(Number(id));
@@ -101,7 +196,8 @@ describe('odcisk strażnika', () => {
   });
 
   it('poprawka pozycji 2 → 3 szt. (ta sama długość JSON) → przyspieszenie', () => {
-    wlacz(); const id = Number(zamowienie());
+    wlacz();
+    const id = Number(zamowienie());
     const { s, przyspieszenia } = straznik();
     zapiszNadpisaniaPozycji(db, id, { sp1: { ilosc: 2 } });
     s.przebieg();
@@ -111,7 +207,8 @@ describe('odcisk strażnika', () => {
   });
 
   it('poller zapisuje zamówienie z innym wariantem tego samego produktu → przyspieszenie', () => {
-    wlacz(); expect(zamowienie({ wariant: '601' })).toBe(1);
+    wlacz();
+    expect(zamowienie({ wariant: '601' })).toBe(1);
     const { s, przyspieszenia } = straznik();
     s.przebieg();
     zamowienie({ n: 1, wariant: '602' });
@@ -120,10 +217,14 @@ describe('odcisk strażnika', () => {
   });
 
   it.each([
-    ['status Woo processing → completed (rozchód bez zmian)', () => db.prepare("UPDATE zamowienia SET status_woo = 'completed' WHERE id = 1").run()],
+    [
+      'status Woo processing → completed (rozchód bez zmian)',
+      () => db.prepare("UPDATE zamowienia SET status_woo = 'completed' WHERE id = 1").run(),
+    ],
     ['poller zapisuje to samo zamówienie jeszcze raz (pozycje sklepowe od nowa, nowe id)', () => zamowienie({ n: 1 })],
   ] as [string, () => unknown][])('„%s” → 0 przyspieszeń (bez szumu)', (_nazwa, zmien) => {
-    wlacz(); expect(zamowienie()).toBe(1);
+    wlacz();
+    expect(zamowienie()).toBe(1);
     const { s, przyspieszenia } = straznik();
     s.przebieg();
     zmien();
@@ -132,7 +233,8 @@ describe('odcisk strażnika', () => {
   });
 
   it('zamówienie sprzed granicy: zmiana anulowania i statusu nie liczy się do odcisku', () => {
-    wlacz(); const id = zamowienie({ utworzone: '2026-11-01T08:00:00.000Z' });
+    wlacz();
+    const id = zamowienie({ utworzone: '2026-11-01T08:00:00.000Z' });
     const { s, przyspieszenia } = straznik();
     s.przebieg();
     db.prepare("UPDATE zamowienia SET anulowane = 1, status_woo = 'cancelled' WHERE id = ?").run(id);
@@ -144,7 +246,9 @@ describe('odcisk strażnika', () => {
     wlacz();
     const { s, petle, log } = straznik();
     s.przebieg();
-    petle.woo.przyspiesz.mockImplementationOnce(() => { throw new Error('Woo nie odpowiada'); });
+    petle.woo.przyspiesz.mockImplementationOnce(() => {
+      throw new Error('Woo nie odpowiada');
+    });
     zamowienie();
     expect(() => s.przebieg()).not.toThrow();
     expect(petle.erli.przyspiesz).toHaveBeenCalledTimes(1);
@@ -186,7 +290,10 @@ describe('odcisk strażnika', () => {
 describe('przyspieszenie pętli (prawdziwa pętla Woo, sztuczny zegar)', () => {
   /** Pętla Woo bez kont: każdy przebieg przy włączonych stanach woła `konta()` raz — to licznik przebiegów. */
   function petlaWoo(wTrakcie: () => void = () => {}) {
-    const konta = vi.fn(() => { wTrakcie(); return []; });
+    const konta = vi.fn(() => {
+      wTrakcie();
+      return [];
+    });
     const petla = createPetlaStanowWoo({ db, konta, log: () => {}, pollerMs: 120_000, czekaj: async () => {} });
     return { petla, przebiegi: () => konta.mock.calls.length };
   }
@@ -226,7 +333,9 @@ describe('przyspieszenie pętli (prawdziwa pętla Woo, sztuczny zegar)', () => {
     let raz = true;
     const { petla, przebiegi } = petlaWoo(() => {
       if (!raz) return;
-      raz = false; zamowienie(); s!.przebieg();
+      raz = false;
+      zamowienie();
+      s!.przebieg();
     });
     s = createStraznikStanow({ db, petle: { erli: atrapa(), allegro: atrapa(), woo: petla }, log: () => {} });
     s.przebieg();
@@ -243,20 +352,59 @@ describe('integracja: Ponów + strażnik + przebieg pętli Allegro → nowy cel'
   /** Oferta obserwowana z flagą „ilość z OMS”, Allegro pokazuje 9, w wierszu wisi komenda ilości 9 bez znanego wyniku. */
   function srodowiskoAllegro() {
     przelaczStany(db, { wlacz: true, at: GRANICA });
-    db.prepare(`INSERT INTO stany_zatwierdzenia (przelaczenie_id, zatwierdzono_at, ofert, skrot)
-      VALUES (?, '2026-11-14T08:01:00.000Z', 1, 'polcien-allegro')`).run(przelacznikStanow(db).przelaczenieId);
+    db.prepare(
+      `INSERT INTO stany_zatwierdzenia (przelaczenie_id, zatwierdzono_at, ofert, skrot)
+      VALUES (?, '2026-11-14T08:01:00.000Z', 1, 'polcien-allegro')`,
+    ).run(przelacznikStanow(db).przelaczenieId);
     const kartaId = karta();
     dodajRuch(db, { kartaId, rodzaj: 'przyjecie', ilosc: 9, klucz: 'polcien-przyjecie', at: T1 });
-    const o = wstawOferte(db, { kartaId, kanal: 'allegro-polcien', idZewnetrzne: '7700000015', tryb: 'obserwowana', stan: 'aktywna' });
-    zmienOferte(db, o.id, { iloscZOms: true, odczytStatus: 'ACTIVE', odczytIlosc: 9, wyslanaIlosc: 9, odczytanoAt: T1,
-      wyslanePola: { komendaIlosci: { id: 'k-1', wartosc: 9, at: T1 } } });
+    const o = wstawOferte(db, {
+      kartaId,
+      kanal: 'allegro-polcien',
+      idZewnetrzne: '7700000015',
+      tryb: 'obserwowana',
+      stan: 'aktywna',
+    });
+    zmienOferte(db, o.id, {
+      iloscZOms: true,
+      odczytStatus: 'ACTIVE',
+      odczytIlosc: 9,
+      wyslanaIlosc: 9,
+      odczytanoAt: T1,
+      wyslanePola: { komendaIlosci: { id: 'k-1', wartosc: 9, at: T1 } },
+    });
     zapiszUstawieniaOfertKonta(db, 'allegro-polcien', { czynne: true });
-    const allegro = { komendaIlosci: vi.fn(async () => {}), komendaCeny: vi.fn(async () => {}), komendaPublikacji: vi.fn(async () => {}),
-      wynikKomendy: vi.fn(async () => []), podgladOplat: vi.fn() };
-    const katalog = { odczytOfert: vi.fn(async () => ({ ok: true, dane: { oferty: [{ id: '7700000015', publication: { status: 'ACTIVE' },
-      stock: { available: 9 }, sellingMode: { price: { amount: '100.00' } } }] } })), zmienOferte: vi.fn(async () => ({ ok: true, dane: {} })) };
-    const petla = createPetlaOfertAllegro({ db, konta: () => [{ klucz: 'allegro-polcien', zgoda: true, allegro, katalog }],
-      pollerMs: 120_000, zwolnijOperacje: vi.fn(), czytajZdjecie: vi.fn(), log: () => {} });
+    const allegro = {
+      komendaIlosci: vi.fn(async () => {}),
+      komendaCeny: vi.fn(async () => {}),
+      komendaPublikacji: vi.fn(async () => {}),
+      wynikKomendy: vi.fn(async () => []),
+      podgladOplat: vi.fn(),
+    };
+    const katalog = {
+      odczytOfert: vi.fn(async () => ({
+        ok: true,
+        dane: {
+          oferty: [
+            {
+              id: '7700000015',
+              publication: { status: 'ACTIVE' },
+              stock: { available: 9 },
+              sellingMode: { price: { amount: '100.00' } },
+            },
+          ],
+        },
+      })),
+      zmienOferte: vi.fn(async () => ({ ok: true, dane: {} })),
+    };
+    const petla = createPetlaOfertAllegro({
+      db,
+      konta: () => [{ klucz: 'allegro-polcien', zgoda: true, allegro, katalog }],
+      pollerMs: 120_000,
+      zwolnijOperacje: vi.fn(),
+      czytajZdjecie: vi.fn(),
+      log: () => {},
+    });
     const s = createStraznikStanow({ db, petle: { erli: atrapa(), allegro: petla, woo: atrapa() }, log: () => {} });
     return { kartaId, oferta: () => ofertaPoId(db, o.id), allegro, s };
   }

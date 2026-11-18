@@ -44,8 +44,8 @@ const tekst = (s) => {
 // odwrotnie.
 export const normalizujKwote = (surowa) => (typeof surowa === 'string' ? surowa.trim().replace(',', '.') : surowa);
 
-const kwotaPusta = (surowa) => surowa === null || surowa === undefined
-  || (typeof surowa === 'string' && surowa.trim() === '');
+const kwotaPusta = (surowa) =>
+  surowa === null || surowa === undefined || (typeof surowa === 'string' && surowa.trim() === '');
 
 // `parsujHurtPozycji` (domena/pozycje-reczne.js) zszywa rownolegle tablice i odmawia CALEGO
 // zapisu, gdy ktoras jest krotsza. Tutaj jest tak samo i z tego samego powodu: przesuniecie
@@ -62,9 +62,8 @@ const kwotaPusta = (surowa) => surowa === null || surowa === undefined
  * rownolegla tablice — `pozycja_kwota_propozycja` (domena/zwrot-formularz.js). Druga kopia tego
  * jednego wyrazenia rozjechalaby sie przy pierwszej zmianie ksztaltu ciala.
  */
-export const listaPolaFormularza = (body, pole) => (Array.isArray(body?.[pole])
-  ? body[pole]
-  : [body?.[pole]].filter((x) => x !== undefined));
+export const listaPolaFormularza = (body, pole) =>
+  Array.isArray(body?.[pole]) ? body[pole] : [body?.[pole]].filter((x) => x !== undefined);
 
 export function wierszeFormularzaZwrotu(body) {
   const lista = (p) => listaPolaFormularza(body, p);
@@ -101,8 +100,8 @@ export function juzZwrocone(zwroty) {
       const dotad = mapa.get(p.klucz_pozycji) ?? { ilosc: 0, kwotaGr: 0 };
       mapa.set(p.klucz_pozycji, {
         ilosc: dotad.ilosc + Number(p.ilosc ?? 0),
-        kwotaGr: dotad.kwotaGr + (kwotaPusta(p.kwota)
-          ? 0 : grosze(normalizujKwote(p.kwota), 'kwota zwróconej pozycji')),
+        kwotaGr:
+          dotad.kwotaGr + (kwotaPusta(p.kwota) ? 0 : grosze(normalizujKwote(p.kwota), 'kwota zwróconej pozycji')),
       });
     }
   }
@@ -119,10 +118,7 @@ export function kwotaZwrotuGrosze(w) {
 }
 
 export function sumaZwrotowGrosze(zwroty) {
-  return (zwroty ?? []).reduce(
-    (s, w) => s + kwotaZwrotuGrosze(w),
-    0,
-  );
+  return (zwroty ?? []).reduce((s, w) => s + kwotaZwrotuGrosze(w), 0);
 }
 
 /**
@@ -134,8 +130,7 @@ export function sumaZwrotowGrosze(zwroty) {
  */
 export function sumaZwroconejDostawyGrosze(zwroty) {
   return (zwroty ?? []).reduce(
-    (s, w) => s + (kwotaPusta(w?.kwota_dostawy)
-      ? 0 : grosze(normalizujKwote(w.kwota_dostawy), 'zwrot dostawy')),
+    (s, w) => s + (kwotaPusta(w?.kwota_dostawy) ? 0 : grosze(normalizujKwote(w.kwota_dostawy), 'zwrot dostawy')),
     0,
   );
 }
@@ -182,8 +177,7 @@ export function parsujZwrot(z, body, { dzis }) {
   let dostawaGr;
   try {
     kwotaGr = kwotaPusta(body?.kwota) ? 0 : grosze(normalizujKwote(body.kwota), 'kwota zwrotu');
-    dostawaGr = kwotaPusta(body?.kwota_dostawy)
-      ? 0 : grosze(normalizujKwote(body.kwota_dostawy), 'zwrot dostawy');
+    dostawaGr = kwotaPusta(body?.kwota_dostawy) ? 0 : grosze(normalizujKwote(body.kwota_dostawy), 'zwrot dostawy');
   } catch (e) {
     return odmowa(e.message);
   }
@@ -207,18 +201,15 @@ export function parsujZwrot(z, body, { dzis }) {
   // proponowania dostawy oddanej wczesniej z tego samego powodu, ale przegladarke da sie obejsc.
   let dostawaZostalaGr;
   try {
-    dostawaZostalaGr = Math.max(
-      wysylkaBruttoGrosze(z) - sumaZwroconejDostawyGrosze(z?.zwroty),
-      0,
-    );
+    dostawaZostalaGr = Math.max(wysylkaBruttoGrosze(z) - sumaZwroconejDostawyGrosze(z?.zwroty), 0);
   } catch (e) {
     return odmowa(e.message);
   }
   if (dostawaGr > dostawaZostalaGr) {
     return odmowa(
-      `Zwrot dostawy (${zl(dostawaGr)} zł) przekracza koszt dostawy tego zamówienia`
-      + ` — do oddania zostało ${zl(dostawaZostalaGr)} zł.`
-      + ' Korekta i tak odmówiłaby dokumentu na kwotę, której w tym zamówieniu nie ma.',
+      `Zwrot dostawy (${zl(dostawaGr)} zł) przekracza koszt dostawy tego zamówienia` +
+        ` — do oddania zostało ${zl(dostawaZostalaGr)} zł.` +
+        ' Korekta i tak odmówiłaby dokumentu na kwotę, której w tym zamówieniu nie ma.',
     );
   }
 
@@ -242,14 +233,18 @@ export function parsujZwrot(z, body, { dzis }) {
     let pozycjaGr;
     try {
       pozycjaGr = grosze(normalizujKwote(w.kwota), `kwota przy „${w.nazwa}"`);
-    } catch (e) { return odmowa(e.message); }
+    } catch (e) {
+      return odmowa(e.message);
+    }
     sumaPozycjiGr += pozycjaGr;
     pozycje.push({ klucz_pozycji: w.klucz_pozycji, nazwa: w.nazwa, ilosc: w.ilosc, kwota: zl(pozycjaGr) });
   }
 
   if (!pozycje.length && dostawaGr === 0) {
     // To JEDYNY komunikat, jaki operator dostanie w tej sytuacji — ma byc zdaniem po polsku.
-    return odmowa('Zwrot musi obejmować co najmniej jedną pozycję albo zwrot kosztu dostawy — wpisz ilość przy pozycji lub kwotę dostawy.');
+    return odmowa(
+      'Zwrot musi obejmować co najmniej jedną pozycję albo zwrot kosztu dostawy — wpisz ilość przy pozycji lub kwotę dostawy.',
+    );
   }
   if (kwotaGr === 0 && dostawaGr === 0) return odmowa('Kwota zwrotu musi być większa od zera.');
 
@@ -280,9 +275,9 @@ export function parsujZwrot(z, body, { dzis }) {
   // 0,10 zł + 0,20 zł na floatach w JS to 0.30000000000000004, nie 0.30.
   if (kwotaGr !== sumaPozycjiGr) {
     return odmowa(
-      `Kwota zwrotu (${zl(kwotaGr)} zł) nie zgadza się z sumą kwot przy pozycjach (${zl(sumaPozycjiGr)} zł)`
-      + ` — różnica ${zl(Math.abs(kwotaGr - sumaPozycjiGr))} zł. Kwotę przepisujesz z Allegro — to ona`
-      + ' jest prawdą; popraw kwoty przy poszczególnych pozycjach tak, żeby ich suma się zgadzała.',
+      `Kwota zwrotu (${zl(kwotaGr)} zł) nie zgadza się z sumą kwot przy pozycjach (${zl(sumaPozycjiGr)} zł)` +
+        ` — różnica ${zl(Math.abs(kwotaGr - sumaPozycjiGr))} zł. Kwotę przepisujesz z Allegro — to ona` +
+        ' jest prawdą; popraw kwoty przy poszczególnych pozycjach tak, żeby ich suma się zgadzała.',
     );
   }
 
@@ -310,9 +305,7 @@ export function parsujZwrot(z, body, { dzis }) {
   }
   const razem = sumaZwrotowGrosze(z?.zwroty) + kwotaGr + dostawaGr;
   if (razem > zamowienieGr) {
-    return odmowa(
-      `Suma zwrotów (${zl(razem)} zł) przekracza kwotę zamówienia (${zl(zamowienieGr)} zł).`,
-    );
+    return odmowa(`Suma zwrotów (${zl(razem)} zł) przekracza kwotę zamówienia (${zl(zamowienieGr)} zł).`);
   }
 
   return {
@@ -472,15 +465,19 @@ export function powodOdmowyUsunieciaZwrotu(w) {
  */
 function powodOdmowyPrzyZleceniuWToku(w, { teraz, nazwa = NAZWA_ZAPASOWA }) {
   if (!w?.korekta_zlecona_at || korektaPrzepadla(w, { teraz })) return null;
-  return `Od zlecenia korekty nie minęło jeszcze ${PROG_PRZEPADNIECIA_KOREKTY_MIN} minut — `
-    + `${nazwa.mianownik} może ją właśnie przetwarzać. Odśwież ten ekran za chwilę; numer pojawi się sam. `
-    + 'Rozstrzyganie o tej korekcie teraz dałoby drugi dokument do tej samej faktury.';
+  return (
+    `Od zlecenia korekty nie minęło jeszcze ${PROG_PRZEPADNIECIA_KOREKTY_MIN} minut — ` +
+    `${nazwa.mianownik} może ją właśnie przetwarzać. Odśwież ten ekran za chwilę; numer pojawi się sam. ` +
+    'Rozstrzyganie o tej korekcie teraz dałoby drugi dokument do tej samej faktury.'
+  );
 }
 
 export function powodOdmowyOdblokowaniaKorekty(w, { teraz = new Date().toISOString(), nazwa = NAZWA_ZAPASOWA } = {}) {
   if (w?.korekta_numer) {
-    return `Korekta ${w.korekta_numer} do tego zwrotu istnieje — nie ma czego odblokowywać. `
-      + 'Odblokowanie otworzyłoby drogę do drugiej korekty do tej samej faktury.';
+    return (
+      `Korekta ${w.korekta_numer} do tego zwrotu istnieje — nie ma czego odblokowywać. ` +
+      'Odblokowanie otworzyłoby drogę do drugiej korekty do tej samej faktury.'
+    );
   }
   if (!w?.korekta_zlecona_at) {
     return 'Do tego zwrotu nie ma zleconej korekty — nie ma czego odblokowywać.';
@@ -513,9 +510,11 @@ export function powodOdmowyKorektyDlaFaktury(w, zwroty) {
   const inny = (zwroty ?? []).find((x) => x.id !== w?.id && (x.korekta_numer || x.korekta_zlecona_at));
   if (!inny) return null;
   const czym = inny.korekta_numer ? `korektę ${inny.korekta_numer}` : 'korektę zleconą';
-  return `Faktura tego zamówienia ma już ${czym} (zwrot z ${inny.data})`
-    + ' — drugą wystaw ręcznie w inFakcie. Panel nie umie odtworzyć stanu „przed"'
-    + ' po pierwszej korekcie, a błędna korekta liczy się u organu jak prawdziwa.';
+  return (
+    `Faktura tego zamówienia ma już ${czym} (zwrot z ${inny.data})` +
+    ' — drugą wystaw ręcznie w inFakcie. Panel nie umie odtworzyć stanu „przed"' +
+    ' po pierwszej korekcie, a błędna korekta liczy się u organu jak prawdziwa.'
+  );
 }
 
 /**
@@ -534,9 +533,11 @@ export function powodOdmowyKorektyDlaFaktury(w, zwroty) {
  */
 export function powodOdmowyWystawieniaKorekty(w) {
   if (w?.korekta_numer) {
-    return `Do tego zwrotu jest już korekta ${w.korekta_numer} — panel drugiej nie wystawi. `
-      + 'Drugą korektę do tej samej faktury wystaw ręcznie w inFakcie: panel nie umie odtworzyć '
-      + 'stanu „przed" po pierwszej korekcie, a błędna korekta liczy się u organu jak prawdziwa.';
+    return (
+      `Do tego zwrotu jest już korekta ${w.korekta_numer} — panel drugiej nie wystawi. ` +
+      'Drugą korektę do tej samej faktury wystaw ręcznie w inFakcie: panel nie umie odtworzyć ' +
+      'stanu „przed" po pierwszej korekcie, a błędna korekta liczy się u organu jak prawdziwa.'
+    );
   }
   return null;
 }
@@ -555,8 +556,10 @@ export function powodOdmowyKorektyBezDostawy(w, faktura, { nazwa = NAZWA_ZAPASOW
   const dostawaGr = w?.kwota_dostawy ? grosze(w.kwota_dostawy, 'zwrot dostawy') : 0;
   if (!dostawaGr) return null;
   if (faktura.services.some((s) => s?.name === NAZWA_DOSTAWY)) return null;
-  return `Zwrot obejmuje ${zl(dostawaGr)} zł dostawy, a faktura ${faktura?.number ?? ''} nie ma pozycji`
-    + ` „${NAZWA_DOSTAWY}" — korekty nie da się złożyć. Wystaw ją ręcznie w ${nazwa.miejscownik}.`;
+  return (
+    `Zwrot obejmuje ${zl(dostawaGr)} zł dostawy, a faktura ${faktura?.number ?? ''} nie ma pozycji` +
+    ` „${NAZWA_DOSTAWY}" — korekty nie da się złożyć. Wystaw ją ręcznie w ${nazwa.miejscownik}.`
+  );
 }
 
 /** Czy dla tego zwrotu karta/ekran muszą znać pozycje faktury (zwrot z dostawą, jeszcze bez korekty). */
@@ -583,13 +586,18 @@ export function zwrotWymagaPozycjiDostawy(w) {
  * `powodOdmowyPrzyZleceniuWToku` wyzej: jedno zdanie, jedno miejsce). Po progu droga zostaje
  * otwarta, bo przy zleceniu, ktore przepadlo, jest to JEDYNE wyjscie.
  */
-export function parsujNumerKorekty(w, surowy, { teraz = new Date().toISOString(), nazwa = NAZWA_ZAPASOWA, gdzie = `w ${nazwa.miejscownik}` } = {}) {
+export function parsujNumerKorekty(
+  w,
+  surowy,
+  { teraz = new Date().toISOString(), nazwa = NAZWA_ZAPASOWA, gdzie = `w ${nazwa.miejscownik}` } = {},
+) {
   const numer = tekst(surowy);
   if (w?.korekta_numer) {
     return {
       numer: null,
-      blad: `Ten zwrot ma już zapisaną korektę ${w.korekta_numer} — drugi numer znaczyłby drugi dokument. `
-        + `Jeśli pierwszy numer jest błędny, popraw go ${gdzie} i zgłoś to.`,
+      blad:
+        `Ten zwrot ma już zapisaną korektę ${w.korekta_numer} — drugi numer znaczyłby drugi dokument. ` +
+        `Jeśli pierwszy numer jest błędny, popraw go ${gdzie} i zgłoś to.`,
     };
   }
   const wToku = powodOdmowyPrzyZleceniuWToku(w, { teraz, nazwa });

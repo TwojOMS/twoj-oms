@@ -1,9 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { openOmsDb } from '../../src/oms/db/db.ts';
 import { utworzKarte, zastosujHurtem, nadajSku } from '../../src/oms/db/magazyn.js';
-import {
-  polePuste, importMozeZapisac, POLA_ZASTANE, POLA_DODATNIE,
-} from '../../src/domena/zrodla-pol.js';
+import { polePuste, importMozeZapisac, POLA_ZASTANE, POLA_DODATNIE } from '../../src/domena/zrodla-pol.js';
 
 // Reguła ochrony pól karty przed importem treści z kanału.
 // Import pisze pole TYLKO, gdy kolumna jest pusta albo pole ma wiersz źródła z reczne = 0.
@@ -33,8 +31,19 @@ describe('polePuste — ta sama definicja co SQL migracji 0012', () => {
   });
 
   it('lista pól zastanych to kolumny treści karty, bez paczkomatu i wycofania', () => {
-    expect(POLA_ZASTANE).toEqual(['nazwa', 'sku', 'opis', 'kategoria_glowna', 'stawka_vat', 'ean', 'cena_gr',
-      'szerokosc_mm', 'wysokosc_mm', 'glebokosc_mm', 'waga_g']);
+    expect(POLA_ZASTANE).toEqual([
+      'nazwa',
+      'sku',
+      'opis',
+      'kategoria_glowna',
+      'stawka_vat',
+      'ean',
+      'cena_gr',
+      'szerokosc_mm',
+      'wysokosc_mm',
+      'glebokosc_mm',
+      'waga_g',
+    ]);
   });
 });
 
@@ -56,7 +65,9 @@ describe('importMozeZapisac', () => {
     expect(importMozeZapisac('nazwa', 'Lampa', { zrodlo: 'reczne', reczne: 1 }, 'reczne')).toBe(false);
     expect(importMozeZapisac('nazwa', 'Lampa', { zrodlo: 'zastane', reczne: 1 }, 'allegro:allegro_glowne')).toBe(false);
     expect(importMozeZapisac('nazwa', 'Lampa', { zrodlo: 'api', reczne: 1 }, 'api')).toBe(false);
-    expect(importMozeZapisac('nazwa', 'Lampa', { zrodlo: 'allegro:allegro_glowne', reczne: 0 }, 'allegro:allegro_glowne')).toBe(true);
+    expect(
+      importMozeZapisac('nazwa', 'Lampa', { zrodlo: 'allegro:allegro_glowne', reczne: 0 }, 'allegro:allegro_glowne'),
+    ).toBe(true);
     expect(importMozeZapisac('waga_g', 1200, { zrodlo: 'woo:woo_sklep', reczne: 0 }, 'woo:woo_sklep')).toBe(true);
   });
 
@@ -64,12 +75,20 @@ describe('importMozeZapisac', () => {
     const zWoo = { zrodlo: 'woo:woo_sklep', reczne: 0 };
     expect(importMozeZapisac('cena_gr', 4990, zWoo, 'allegro:allegro_glowne')).toBe(false);
     expect(importMozeZapisac('cena_gr', 4990, zWoo, 'woo:woo_drugi')).toBe(false);
-    expect(importMozeZapisac('nazwa', 'Lampa', { zrodlo: 'allegro:allegro_glowne', reczne: 0 }, 'allegro:allegro_drugie')).toBe(false);
+    expect(
+      importMozeZapisac('nazwa', 'Lampa', { zrodlo: 'allegro:allegro_glowne', reczne: 0 }, 'allegro:allegro_drugie'),
+    ).toBe(false);
     expect(importMozeZapisac('cena_gr', 4990, zWoo)).toBe(false);
   });
 
   it('pusta kolumna z wierszem reczne = 1 (celowo wyczyszczona) — nie; bez wiersza — tak', () => {
-    for (const [pole, w] of [['opis', ''], ['opis', null], ['ean', ' \n\t'], ['waga_g', 0], ['cena_gr', undefined]]) {
+    for (const [pole, w] of [
+      ['opis', ''],
+      ['opis', null],
+      ['ean', ' \n\t'],
+      ['waga_g', 0],
+      ['cena_gr', undefined],
+    ]) {
       expect(importMozeZapisac(pole, w, { zrodlo: 'reczne', reczne: 1 }), `${pole}=${String(w)}`).toBe(false);
       expect(importMozeZapisac(pole, w, undefined), `${pole}=${String(w)} bez wiersza`).toBe(true);
       expect(importMozeZapisac(pole, w, { zrodlo: 'allegro:allegro_glowne', reczne: 0 })).toBe(true);
@@ -78,7 +97,8 @@ describe('importMozeZapisac', () => {
 });
 
 describe('karty zapisane dzisiejszym kodem bez wiersza źródła są chronione', () => {
-  const zrodlo = (db, id, pole) => db.prepare('SELECT zrodlo, reczne FROM karty_zrodla_pol WHERE karta_id = ? AND pole = ?').get(id, pole);
+  const zrodlo = (db, id, pole) =>
+    db.prepare('SELECT zrodlo, reczne FROM karty_zrodla_pol WHERE karta_id = ? AND pole = ?').get(id, pole);
   const kolumna = (db, id, pole) => db.prepare(`SELECT ${pole} AS w FROM karty_produktow WHERE id = ?`).get(id).w;
   const mozna = (db, id, pole) => importMozeZapisac(pole, kolumna(db, id, pole), zrodlo(db, id, pole));
 
@@ -87,7 +107,9 @@ describe('karty zapisane dzisiejszym kodem bez wiersza źródła są chronione',
     try {
       const at = '2026-11-12T10:00:00.000Z';
       const id = utworzKarte(db, { nazwa: 'Lampa Półcień', opis: 'Opis z formularza' }, { at });
-      zastosujHurtem(db, [{ id, zmiany: { kategoria_glowna: 'Kinkiety', szerokosc_mm: 300, wysokosc_mm: 400 } }], { at });
+      zastosujHurtem(db, [{ id, zmiany: { kategoria_glowna: 'Kinkiety', szerokosc_mm: 300, wysokosc_mm: 400 } }], {
+        at,
+      });
       nadajSku(db, [{ id, sku: 'PP-0001' }], { at });
       // Edycja hurtem od E1.05 zapisuje wiersz `reczne`; nowa karta i nadanie SKU nadal bez wiersza.
       for (const pole of ['kategoria_glowna', 'szerokosc_mm', 'wysokosc_mm']) {
@@ -99,6 +121,8 @@ describe('karty zapisane dzisiejszym kodem bez wiersza źródła są chronione',
       }
       // Pola, których nikt nie wypełnił, import uzupełni.
       for (const pole of ['glebokosc_mm', 'waga_g', 'ean', 'cena_gr']) expect(mozna(db, id, pole), pole).toBe(true);
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 });

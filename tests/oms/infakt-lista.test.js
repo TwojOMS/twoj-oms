@@ -1,8 +1,6 @@
 // tests/oms/infakt-lista.test.js
 import { describe, it, expect } from 'vitest';
-import {
-  createInfaktClient, STRONA_INFAKTU, SUFIT_STRON, ROWNOLEGLE_STRON,
-} from '../../src/oms/infakt/client.js';
+import { createInfaktClient, STRONA_INFAKTU, SUFIT_STRON, ROWNOLEGLE_STRON } from '../../src/oms/infakt/client.js';
 
 // ⚠️⚠️ NAJWAŻNIEJSZY TEST TEJ GAŁĘZI. inFakt IGNORUJE parametr `limit` — zmierzone 06.08.2026
 // dla limit=10/25/50/100/200: za każdym razem `count: 10` przy `total_count: 64`. Klient, który
@@ -16,7 +14,11 @@ function fakeInfakt({ total, wolania = [] }) {
     for (let i = offset; i < Math.min(offset + STRONA_INFAKTU, total); i += 1) {
       entities.push({ uuid: `u${i}`, number: `${i}/06/2026`, gross_price: 100, ksef_number: null });
     }
-    return { ok: true, status: 200, json: async () => ({ metainfo: { count: entities.length, total_count: total }, entities }) };
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ metainfo: { count: entities.length, total_count: total }, entities }),
+    };
   };
 }
 
@@ -45,8 +47,7 @@ describe('listaFaktur', () => {
 
   it('ODMAWIA zamiast oddać cichą część, gdy wynik przekracza sufit stron', async () => {
     const c = createInfaktClient({ apiKey: 'x', fetchImpl: fakeInfakt({ total: (SUFIT_STRON + 1) * STRONA_INFAKTU }) });
-    await expect(c.listaFaktur({ od: '2020-01-01', do: '2026-12-31' }))
-      .rejects.toThrow(/zaw[eę]ź|za du[żz]o|sufit/i);
+    await expect(c.listaFaktur({ od: '2020-01-01', do: '2026-12-31' })).rejects.toThrow(/zaw[eę]ź|za du[żz]o|sufit/i);
   });
 
   it('pusty wynik to pusta tablica, nigdy wyjątek', async () => {
@@ -59,8 +60,9 @@ describe('listaFaktur', () => {
   // Ta sama zasada, co przy sufcie globalnym: cicha część wyniku wygląda jak komplet.
   it('sufit stron per wywołanie zawęża odmowę, nie luzuje jej', async () => {
     const c = createInfaktClient({ apiKey: 'x', fetchImpl: fakeInfakt({ total: 3 * STRONA_INFAKTU }) });
-    await expect(c.listaFaktur({ od: '2026-06-01', do: '2026-08-31' }, { sufitStron: 2 }))
-      .rejects.toThrow(/zaw[eę]ź|za du[żz]o|sufit/i);
+    await expect(c.listaFaktur({ od: '2026-06-01', do: '2026-08-31' }, { sufitStron: 2 })).rejects.toThrow(
+      /zaw[eę]ź|za du[żz]o|sufit/i,
+    );
     // Ten sam zakres bez własnego sufitu przechodzi — trzy strony to daleko od globalnych 60.
     expect(await c.listaFaktur({ od: '2026-06-01', do: '2026-08-31' })).toHaveLength(3 * STRONA_INFAKTU);
   });
@@ -80,8 +82,9 @@ describe('listaFaktur', () => {
       }),
     });
     const cBrak = createInfaktClient({ apiKey: 'x', fetchImpl: bezTotalCount });
-    await expect(cBrak.listaFaktur({ od: '2026-06-01', do: '2026-06-30' }))
-      .rejects.toThrow(/nie poda[łl]|policzy[ćc]/i);
+    await expect(cBrak.listaFaktur({ od: '2026-06-01', do: '2026-06-30' })).rejects.toThrow(
+      /nie poda[łl]|policzy[ćc]/i,
+    );
 
     const zTekstowymTotalCount = async () => ({
       ok: true,
@@ -92,8 +95,9 @@ describe('listaFaktur', () => {
       }),
     });
     const cTekst = createInfaktClient({ apiKey: 'x', fetchImpl: zTekstowymTotalCount });
-    await expect(cTekst.listaFaktur({ od: '2026-06-01', do: '2026-06-30' }))
-      .rejects.toThrow(/nie poda[łl]|policzy[ćc]/i);
+    await expect(cTekst.listaFaktur({ od: '2026-06-01', do: '2026-06-30' })).rejects.toThrow(
+      /nie poda[łl]|policzy[ćc]/i,
+    );
   });
 
   // Sufit rownoleglosci jest zmierzonym kompromisem (patrz komentarz przy ROWNOLEGLE_STRON
@@ -115,7 +119,11 @@ describe('listaFaktur', () => {
         entities.push({ uuid: `u${i}`, number: `${i}/06/2026` });
       }
       wLocie -= 1;
-      return { ok: true, status: 200, json: async () => ({ metainfo: { count: entities.length, total_count: total }, entities }) };
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ metainfo: { count: entities.length, total_count: total }, entities }),
+      };
     };
     const c = createInfaktClient({ apiKey: 'x', fetchImpl });
     const wynik = await c.listaFaktur({ od: '2026-06-01', do: '2026-06-30' });

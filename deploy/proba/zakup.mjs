@@ -28,7 +28,7 @@ export function createZakup({ db, env = process.env, log = (...t) => console.log
   const cicho = () => {};
 
   function typKanalu(kanal) {
-    const demo = KANALY.find(k => k.klucz === kanal);
+    const demo = KANALY.find((k) => k.klucz === kanal);
     if (demo) return demo.typ;
     if (db.prepare('SELECT 1 FROM konfiguracja_integracji WHERE integracja = ?').get(`erli:${kanal}`)) return 'erli';
     throw new Error(`Symulator zakupu: nieznany kanał „${kanal}”.`);
@@ -40,29 +40,53 @@ export function createZakup({ db, env = process.env, log = (...t) => console.log
   }
   // Oferta karty w kanale: lustro kanału (Woo, Allegro), potem oferty wystawione z OMS (ERLI, Allegro).
   function cel(typ, kanal, kartaId) {
-    const lustro = produktyKarty(db, kartaId).find(p => p.kanal === kanal && !p.zniknal_at);
+    const lustro = produktyKarty(db, kartaId).find((p) => p.kanal === kanal && !p.zniknal_at);
     if (lustro && typ === 'woo') {
       const wariant = lustro.wariant_id ? String(lustro.wariant_id) : null;
-      return { id: wariant ?? String(lustro.produkt_id), pozycja: { produkt_id: String(lustro.produkt_id), oferta_id: null, wariant_id: wariant } };
+      return {
+        id: wariant ?? String(lustro.produkt_id),
+        pozycja: { produkt_id: String(lustro.produkt_id), oferta_id: null, wariant_id: wariant },
+      };
     }
-    if (lustro) return { id: String(lustro.produkt_id), pozycja: { produkt_id: null, oferta_id: String(lustro.produkt_id), wariant_id: null } };
-    const oferta = typ === 'woo' ? null : db.prepare(`SELECT id_zewnetrzne FROM oferty_kanalow WHERE karta_id = ? AND kanal = ?
-      ORDER BY id LIMIT 1`).get(kartaId, kanal);
-    if (oferta) return { id: String(oferta.id_zewnetrzne), pozycja: { produkt_id: null, oferta_id: String(oferta.id_zewnetrzne), wariant_id: null } };
+    if (lustro)
+      return {
+        id: String(lustro.produkt_id),
+        pozycja: { produkt_id: null, oferta_id: String(lustro.produkt_id), wariant_id: null },
+      };
+    const oferta =
+      typ === 'woo'
+        ? null
+        : db
+            .prepare(
+              `SELECT id_zewnetrzne FROM oferty_kanalow WHERE karta_id = ? AND kanal = ?
+      ORDER BY id LIMIT 1`,
+            )
+            .get(kartaId, kanal);
+    if (oferta)
+      return {
+        id: String(oferta.id_zewnetrzne),
+        pozycja: { produkt_id: null, oferta_id: String(oferta.id_zewnetrzne), wariant_id: null },
+      };
     throw new Error(`Symulator zakupu: karta ${kartaId} nie ma oferty w kanale „${kanal}”.`);
   }
   function zSymulatora(zamowienieId) {
     const w = db.prepare('SELECT sklep, anulowane, surowe_json FROM zamowienia WHERE id = ?').get(Number(zamowienieId));
     if (!w) throw new Error(`Symulator zakupu: nie ma zamówienia ${zamowienieId}.`);
     let surowe = null;
-    try { surowe = JSON.parse(w.surowe_json); } catch { /* odmowa niżej */ }
-    if (surowe?.zrodlo !== ZNACZNIK) throw new Error(`Symulator zakupu: zamówienie ${zamowienieId} nie pochodzi z symulatora.`);
+    try {
+      surowe = JSON.parse(w.surowe_json);
+    } catch {
+      /* odmowa niżej */
+    }
+    if (surowe?.zrodlo !== ZNACZNIK)
+      throw new Error(`Symulator zakupu: zamówienie ${zamowienieId} nie pochodzi z symulatora.`);
     return { sklep: w.sklep, anulowane: Number(w.anulowane) === 1, surowe };
   }
 
   async function kup({ kanal, karta, ilosc, status }) {
     const n = Number(ilosc);
-    if (!Number.isSafeInteger(n) || n <= 0) throw new Error('Symulator zakupu: ilość musi być dodatnią liczbą całkowitą.');
+    if (!Number.isSafeInteger(n) || n <= 0)
+      throw new Error('Symulator zakupu: ilość musi być dodatnią liczbą całkowitą.');
     const typ = typKanalu(kanal);
     const naStatus = status ?? STATUS_ZAKUPU[typ];
     if (naStatus !== STATUS_ZAKUPU[typ] && !(typ === 'woo' && naStatus === 'pending'))
@@ -78,15 +102,50 @@ export function createZakup({ db, env = process.env, log = (...t) => console.log
     const cenaGr = Number(k.cena_gr ?? 0);
     const kod = randomUUID().slice(0, 8);
     const model = {
-      zrodlo_id: `sym-${kod}`, numer: `SYM-${kod.toUpperCase()}`,
-      klient: { first_name: 'Kupujący', last_name: 'Testowy', email: 'kupujacy.testowy@polcien.example', phone: '',
-        address_1: 'Ulica Przykładowa 5', postcode: '00-001', city: 'Warszawa', country: 'PL' },
-      dostawa: { first_name: 'Kupujący', last_name: 'Testowy', address_1: 'Ulica Przykładowa 5', postcode: '00-001', city: 'Warszawa', country: 'PL' },
-      metoda_wysylki: 'kurier', pobranie: false, kwota_pobrania: null, chce_fakture: 0, nip: null,
-      kwota_brutto: (cenaGr * n) / 100, status_woo: naStatus, oplacone_at: naStatus === 'pending' ? null : at, anulowane: 0,
-      utworzone_at: at, kupony: [], atrybucja: null,
-      pozycje: [{ zrodlo_id: '1', nazwa: k.nazwa, sku: k.sku ?? null, ilosc: n, cena_brutto: cenaGr / 100,
-        brutto_linii: (cenaGr * n) / 100, vat: 23, ...c.pozycja }],
+      zrodlo_id: `sym-${kod}`,
+      numer: `SYM-${kod.toUpperCase()}`,
+      klient: {
+        first_name: 'Kupujący',
+        last_name: 'Testowy',
+        email: 'kupujacy.testowy@polcien.example',
+        phone: '',
+        address_1: 'Ulica Przykładowa 5',
+        postcode: '00-001',
+        city: 'Warszawa',
+        country: 'PL',
+      },
+      dostawa: {
+        first_name: 'Kupujący',
+        last_name: 'Testowy',
+        address_1: 'Ulica Przykładowa 5',
+        postcode: '00-001',
+        city: 'Warszawa',
+        country: 'PL',
+      },
+      metoda_wysylki: 'kurier',
+      pobranie: false,
+      kwota_pobrania: null,
+      chce_fakture: 0,
+      nip: null,
+      kwota_brutto: (cenaGr * n) / 100,
+      status_woo: naStatus,
+      oplacone_at: naStatus === 'pending' ? null : at,
+      anulowane: 0,
+      utworzone_at: at,
+      kupony: [],
+      atrybucja: null,
+      pozycje: [
+        {
+          zrodlo_id: '1',
+          nazwa: k.nazwa,
+          sku: k.sku ?? null,
+          ilosc: n,
+          cena_brutto: cenaGr / 100,
+          brutto_linii: (cenaGr * n) / 100,
+          vat: 23,
+          ...c.pozycja,
+        },
+      ],
     };
     const surowe = { zrodlo: ZNACZNIK, typ, cel: c.id, model };
     const zamowienieId = zapiszZamowienie(db, kanal, model, surowe);
@@ -125,7 +184,8 @@ export function createZakup({ db, env = process.env, log = (...t) => console.log
 function argumenty(lista) {
   const wynik = {};
   for (let i = 0; i < lista.length; i += 2) {
-    if (!lista[i].startsWith('--') || lista[i + 1] === undefined) throw new Error(`Symulator zakupu: niepoprawny argument „${lista[i]}”.`);
+    if (!lista[i].startsWith('--') || lista[i + 1] === undefined)
+      throw new Error(`Symulator zakupu: niepoprawny argument „${lista[i]}”.`);
     wynik[lista[i].slice(2)] = lista[i + 1];
   }
   return wynik;
@@ -136,7 +196,9 @@ export async function main(argv, env = process.env) {
   wymagajTrybuProby(env, 'symulator zakupu (CLI)');
   const [komenda, ...reszta] = argv;
   if (!['kup', 'anuluj', 'oplac'].includes(komenda))
-    throw new Error('Użycie: zakup.mjs kup --kanal <klucz> --karta <id> --ilosc <n> [--status pending|processing] | anuluj --zamowienie <id> | oplac --zamowienie <id>');
+    throw new Error(
+      'Użycie: zakup.mjs kup --kanal <klucz> --karta <id> --ilosc <n> [--status pending|processing] | anuluj --zamowienie <id> | oplac --zamowienie <id>',
+    );
   const a = argumenty(reszta);
   const sciezka = env.OMS_DB_PATH;
   if (!sciezka || !fs.existsSync(sciezka)) throw new Error('Symulator zakupu: brak bazy piaskownicy (OMS_DB_PATH).');
@@ -145,9 +207,17 @@ export async function main(argv, env = process.env) {
     const zakup = createZakup({ db, env });
     if (komenda === 'kup') return await zakup.kup({ kanal: a.kanal, karta: a.karta, ilosc: a.ilosc, status: a.status });
     return await zakup[komenda]({ zamowienie: a.zamowienie });
-  } finally { db.close(); }
+  } finally {
+    db.close();
+  }
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === fs.realpathSync(process.argv[1])) {
-  main(process.argv.slice(2)).then((w) => console.log(JSON.stringify(w)), (e) => { console.error(e.message); process.exitCode = 1; });
+  main(process.argv.slice(2)).then(
+    (w) => console.log(JSON.stringify(w)),
+    (e) => {
+      console.error(e.message);
+      process.exitCode = 1;
+    },
+  );
 }

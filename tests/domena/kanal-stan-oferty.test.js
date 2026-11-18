@@ -44,9 +44,14 @@ describe('ponowna zgoda na oferty (D42)', () => {
   });
 
   it('termin i braki wymaganych mają pierwszeństwo w powodzie', () => {
-    const s = stanKanalu(zdrowy({
-      zostaloDni: 3, brakOfert: true, aplikacjaMaOferty: true, chceOfert: true,
-    }));
+    const s = stanKanalu(
+      zdrowy({
+        zostaloDni: 3,
+        brakOfert: true,
+        aplikacjaMaOferty: true,
+        chceOfert: true,
+      }),
+    );
     expect(s.powod).toMatch(/wygasa/);
   });
 

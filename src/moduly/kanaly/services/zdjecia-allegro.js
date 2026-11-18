@@ -78,7 +78,8 @@ export function createZdjeciaAllegro({ db, klienci = {}, limitNaPrzebieg = LIMIT
             // jako odpowiedź (pusty adres, pusty błąd), żeby nie pytać o nią drugi raz.
             const adres = zdjecieOferty(oferta);
             zapiszProbeZdjecia(db, ofertaId, { zdjecieUrl: adres });
-            if (adres) pobrane += 1; else bezZdjecia += 1;
+            if (adres) pobrane += 1;
+            else bezZdjecia += 1;
           } catch (e) {
             // ⚠️ Do komunikatu idzie WYŁĄCZNIE `message` klienta (kod HTTP i ścieżka —
             // nigdy token ani ciało odpowiedzi), tak samo jak przy błędach pollera.

@@ -17,11 +17,16 @@ export function sumaListy(dokumenty) {
       suma.niepelne = true;
       continue;
     }
-    const waluta = String(d?.currency ?? '').trim().toUpperCase() || 'PLN';
+    const waluta =
+      String(d?.currency ?? '')
+        .trim()
+        .toUpperCase() || 'PLN';
     // Własna właściwość także dla nietypowej nazwy waluty z danych dostawcy.
-    if (!Object.hasOwn(suma, waluta)) Object.defineProperty(suma, waluta, {
-      value: { nettoGr: 0, bruttoGr: 0 }, enumerable: true,
-    });
+    if (!Object.hasOwn(suma, waluta))
+      Object.defineProperty(suma, waluta, {
+        value: { nettoGr: 0, bruttoGr: 0 },
+        enumerable: true,
+      });
     suma[waluta].nettoGr += nettoGr;
     suma[waluta].bruttoGr += bruttoGr;
   }
@@ -131,8 +136,9 @@ export function wKsef(dok) {
 /** Linie stopki w kolumnach (netto, brutto) — kwoty z sumaListy, tu tylko zapis tekstem. */
 export function stopkaRazem(suma) {
   if (!suma.ile) return [];
-  const waluty = Object.keys(suma).filter((w) => w !== 'ile' && w !== 'niepelne')
-    .sort((a, b) => a === b ? 0 : a === 'PLN' ? -1 : b === 'PLN' ? 1 : a.localeCompare(b));
+  const waluty = Object.keys(suma)
+    .filter((w) => w !== 'ile' && w !== 'niepelne')
+    .sort((a, b) => (a === b ? 0 : a === 'PLN' ? -1 : b === 'PLN' ? 1 : a.localeCompare(b)));
   const niepelne = Boolean(suma.niepelne);
   // Same dokumenty bez kwoty: bez tej linii ostrzeżenie „niepełne” znikało razem ze stopką.
   if (!waluty.length) return niepelne ? [{ waluta: '', netto: '', brutto: '', niepelne, ile: suma.ile }] : [];
@@ -147,9 +153,14 @@ export function stopkaRazem(suma) {
 /** Gotowe linie stopki; liczenie kwot pozostaje w sumaListy. */
 export function liniaRazem(suma) {
   const ostrzezenie = 'niepełne — pominięto dokumenty bez kwoty';
-  return stopkaRazem(suma).map((l) => (l.waluta === ''
-    ? { waluta: '', tekst: `Razem: ${ostrzezenie}` }
-    : { waluta: l.waluta, tekst: `Razem: netto ${l.netto} · brutto ${l.brutto}` + (l.niepelne ? ` · ${ostrzezenie}` : '') }));
+  return stopkaRazem(suma).map((l) =>
+    l.waluta === ''
+      ? { waluta: '', tekst: `Razem: ${ostrzezenie}` }
+      : {
+          waluta: l.waluta,
+          tekst: `Razem: netto ${l.netto} · brutto ${l.brutto}` + (l.niepelne ? ` · ${ostrzezenie}` : ''),
+        },
+  );
 }
 
 /** Status inFaktu znaczący „zapłacone". Jedyny, jaki wolno tu rozpoznać — patrz niżej. */
@@ -187,8 +198,7 @@ export function stanZaplaty(dok) {
   // ⚠️ `Number(null)` TO `0`, a `Number('')` też — samo `Number.isFinite(Number(x))` uznałoby
   // więc BRAK POLA za dowód zapłaty. Stąd sprawdzenie typu PRZED przeliczeniem.
   const surowe = dok?.left_to_pay;
-  const podane = typeof surowe === 'number'
-    || (typeof surowe === 'string' && surowe.trim() !== '');
+  const podane = typeof surowe === 'number' || (typeof surowe === 'string' && surowe.trim() !== '');
   if (podane && Number.isFinite(Number(surowe)) && Number(surowe) <= 0) return 'zaplacona';
   if (podane || typeof dok?.status === 'string') return 'do_zaplaty';
   return 'nieznany';

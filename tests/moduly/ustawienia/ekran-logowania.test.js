@@ -10,7 +10,12 @@ import { ENV_DEMO } from '../../../scripts/demo-dane.mjs';
 
 const LOGIN = 'gosc';
 const HASLO = 'pokaz-demo-2026';
-const wspolne = { OMS_USER: 'serwis', OMS_PASS: 'serwis-haslo', OMS_PROFORMY_KATALOG: tmpdir(), OMS_ETYKIETY_KATALOG: tmpdir() };
+const wspolne = {
+  OMS_USER: 'serwis',
+  OMS_PASS: 'serwis-haslo',
+  OMS_PROFORMY_KATALOG: tmpdir(),
+  OMS_ETYKIETY_KATALOG: tmpdir(),
+};
 const envDemo = { ...ENV_DEMO, ...wspolne, OMS_DEMO_LOGIN: LOGIN, OMS_DEMO_HASLO: HASLO };
 const envProdukcja = { ...ENV_DEMO, ...wspolne, OMS_TRYB: 'produkcja', DPD_NADAWCA_NAZWA: 'Lampy Zenit sp. z o.o.' };
 const bezAdresu = { DPD_NADAWCA_NAZWA: '', DPD_NADAWCA_ULICA: '', DPD_NADAWCA_KOD: '', DPD_NADAWCA_MIASTO: '' };
@@ -19,20 +24,37 @@ const origin = { origin: 'http://localhost' };
 afterEach(() => vi.unstubAllGlobals());
 
 async function panel(env) {
-  vi.stubGlobal('fetch', vi.fn(async () => { throw Error('Sieć zabroniona'); }));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => {
+      throw Error('Sieć zabroniona');
+    }),
+  );
   const a = await zbudujOms({ env });
   zalozKonto(a.db, { login: 'adam', imie: 'Adam', haslo: 'admin-haslo-123', rola: 'administrator', admin: true });
   zalozKonto(a.db, { login: LOGIN, imie: 'Gość demo', haslo: HASLO, rola: 'sprzedaz' });
   return a;
 }
-const strona = async (a, url) => { const r = await a.app.inject(url); expect(r.statusCode, r.body).toBe(200); return r.body; };
-const ciasteczko = (r) => [].concat(r.headers['set-cookie'] ?? [])
-  .find((c) => [NAZWA_CIASTECZKA_OMS, NAZWA_CIASTECZKA_OMS_PROBA].some((n) => c.startsWith(`${n}=`)));
+const strona = async (a, url) => {
+  const r = await a.app.inject(url);
+  expect(r.statusCode, r.body).toBe(200);
+  return r.body;
+};
+const ciasteczko = (r) =>
+  []
+    .concat(r.headers['set-cookie'] ?? [])
+    .find((c) => [NAZWA_CIASTECZKA_OMS, NAZWA_CIASTECZKA_OMS_PROBA].some((n) => c.startsWith(`${n}=`)));
 // Pola formularza tak, jak wysłałaby je przeglądarka: wartości ukryte i wpisane z HTML-a jednego <form>.
 function polaFormularza(html, znacznik) {
-  const form = html.split('<form').slice(1).map((f) => f.split('</form>')[0]).find((f) => f.includes(znacznik));
+  const form = html
+    .split('<form')
+    .slice(1)
+    .map((f) => f.split('</form>')[0])
+    .find((f) => f.includes(znacznik));
   expect(form, `brak formularza z „${znacznik}”`).toBeTruthy();
-  return Object.fromEntries([...form.matchAll(/<input[^>]*name="([^"]+)"[^>]*value="([^"]*)"/g)].map((m) => [m[1], m[2]]));
+  return Object.fromEntries(
+    [...form.matchAll(/<input[^>]*name="([^"]+)"[^>]*value="([^"]*)"/g)].map((m) => [m[1], m[2]]),
+  );
 }
 
 describe('ekran logowania — produkcja', () => {
@@ -59,7 +81,12 @@ describe('ekran logowania — produkcja', () => {
 
   it('złe hasło: ten sam ekran z komunikatem, bez wskazania pola', async () => {
     const a = await panel(envProdukcja);
-    const r = await a.app.inject({ method: 'POST', url: '/login', headers: origin, payload: { uzytkownik: 'adam', haslo: 'zle', powrot: '/' } });
+    const r = await a.app.inject({
+      method: 'POST',
+      url: '/login',
+      headers: origin,
+      payload: { uzytkownik: 'adam', haslo: 'zle', powrot: '/' },
+    });
     expect(r.statusCode).toBe(401);
     expect(r.body).toContain('Nieprawidłowy login lub hasło.');
     expect(r.body).toContain('type="password"');
@@ -124,7 +151,11 @@ describe('ekran logowania — demo publiczne', () => {
 
   it('złe hasło w formularzu konta wraca do formularza, nie do przycisku gościa', async () => {
     const a = await panel(envDemo);
-    const pola = { ...polaFormularza(await strona(a, '/login?konto'), 'type="password"'), uzytkownik: 'adam', haslo: 'zle' };
+    const pola = {
+      ...polaFormularza(await strona(a, '/login?konto'), 'type="password"'),
+      uzytkownik: 'adam',
+      haslo: 'zle',
+    };
     const r = await a.app.inject({ method: 'POST', url: '/login', headers: origin, payload: pola });
     expect(r.statusCode).toBe(401);
     expect(r.body).toContain('Nieprawidłowy login lub hasło.');

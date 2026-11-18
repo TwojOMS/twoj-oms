@@ -30,9 +30,7 @@ export const MAPOWANIE_SKLEPOW = {
     // Dopasowanie po SKU, nie po nazwie — identycznie jak na swietlik.example.test (patrz nizej). PRO
     // nie sprzedaje dzis paczkomatu, wiec jedynym transportem, ktory moze stac za oferta,
     // jest kurier; gdyby to sie zmienilo, ta tablica jest jedynym miejscem do poprawienia.
-    poPozycji: [
-      { sku: 'psm-zam-placeholder', metoda: 'dpd' },
-    ],
+    poPozycji: [{ sku: 'psm-zam-placeholder', metoda: 'dpd' }],
   },
   swietlik: {
     instancje: {

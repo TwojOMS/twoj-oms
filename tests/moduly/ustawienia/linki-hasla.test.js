@@ -4,15 +4,38 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { wykonajMigracje } from '../../../src/core/baza.ts';
 import { modulRdzen } from '../../../src/moduly/rdzen/modul.ts';
 import { modulUstawienia } from '../../../src/moduly/ustawienia/modul.ts';
-import { zalozKonto, kontoPoLoginie, czyIstniejeCzynnyAdmin, listaKont } from '../../../src/core/bezpieczenstwo/konta.js';
+import {
+  zalozKonto,
+  kontoPoLoginie,
+  czyIstniejeCzynnyAdmin,
+  listaKont,
+} from '../../../src/core/bezpieczenstwo/konta.js';
 import { zgodneHaslo } from '../../../src/domena/hasla.js';
 import { synchronizujRole } from '../../../src/moduly/ustawienia/role.js';
-import { wydajLink, aktywnyLink, uzyjLinku, uniewaznijLinkiKonta, WAZNOSC_LINKU_MS } from '../../../src/moduly/ustawienia/linki-hasla.js';
-import { zalozKontoZaproszone, ustawEmail, emailKonta, czyZaproszone } from '../../../src/moduly/ustawienia/konta-dostep.js';
+import {
+  wydajLink,
+  aktywnyLink,
+  uzyjLinku,
+  uniewaznijLinkiKonta,
+  WAZNOSC_LINKU_MS,
+} from '../../../src/moduly/ustawienia/linki-hasla.js';
+import {
+  zalozKontoZaproszone,
+  ustawEmail,
+  emailKonta,
+  czyZaproszone,
+} from '../../../src/moduly/ustawienia/konta-dostep.js';
 
 const T0 = new Date('2026-10-14T02:00:00Z');
 const o = (ms) => () => new Date(T0.getTime() + ms);
-const kodBledu = (fn) => { try { fn(); } catch (e) { return e.kod ?? e.message; } return null; };
+const kodBledu = (fn) => {
+  try {
+    fn();
+  } catch (e) {
+    return e.kod ?? e.message;
+  }
+  return null;
+};
 function baza() {
   const db = openOmsDb(':memory:');
   wykonajMigracje(db, [modulRdzen, modulUstawienia]);
@@ -30,7 +53,11 @@ describe('linki do hasła', () => {
     expect(w.hash_tokenu).toBe(createHash('sha256').update(token).digest('hex'));
     expect(JSON.stringify(db.prepare('SELECT * FROM linki_hasla').all())).not.toContain(token);
     expect(wygasaAt).toBe(new Date(T0.getTime() + WAZNOSC_LINKU_MS).toISOString());
-    expect(aktywnyLink(db, token, o(WAZNOSC_LINKU_MS - 1))).toMatchObject({ kontoId: id, cel: 'zaproszenie', login: 'nowa' });
+    expect(aktywnyLink(db, token, o(WAZNOSC_LINKU_MS - 1))).toMatchObject({
+      kontoId: id,
+      cel: 'zaproszenie',
+      login: 'nowa',
+    });
     expect(aktywnyLink(db, token, o(WAZNOSC_LINKU_MS))).toBeNull();
   });
 
@@ -54,9 +81,13 @@ describe('linki do hasła', () => {
     expect(uzyjLinku(db, { token: drugi.token, haslo: 'nowe-haslo-12345', teraz: o(3000) })).toEqual({ login: 'ewa' });
     const konto = kontoPoLoginie(db, 'ewa');
     expect(konto.wersja_hasla).toBe(1);
-    expect(zgodneHaslo('nowe-haslo-12345', db.prepare('SELECT hash_hasla FROM konta WHERE id = ?').get(id).hash_hasla)).toBe(true);
+    expect(
+      zgodneHaslo('nowe-haslo-12345', db.prepare('SELECT hash_hasla FROM konta WHERE id = ?').get(id).hash_hasla),
+    ).toBe(true);
     expect(uzyjLinku(db, { token: drugi.token, haslo: 'inne-haslo-12345', teraz: o(4000) })).toBeNull();
-    expect(db.prepare('SELECT count(*) AS n FROM linki_hasla WHERE uzyte_at IS NULL AND uniewaznione_at IS NULL').get().n).toBe(0);
+    expect(
+      db.prepare('SELECT count(*) AS n FROM linki_hasla WHERE uzyte_at IS NULL AND uniewaznione_at IS NULL').get().n,
+    ).toBe(0);
   });
 
   it('wyłączenie konta unieważnia jego linki; link wyłączonego konta nie działa', () => {
@@ -74,7 +105,11 @@ describe('linki do hasła', () => {
     ustawEmail(db, a, '  Ewa@Example.TEST ', o(0));
     expect(emailKonta(db, a)).toBe('Ewa@Example.TEST');
     expect(kodBledu(() => ustawEmail(db, b, 'ewa@example.test', o(0)))).toBe('email-zajety');
-    for (const zly of ['', 'bez-malpy', 'a@b', 'a b@c.test', `${'x'.repeat(250)}@e.test`]) expect(kodBledu(() => ustawEmail(db, b, zly, o(0))), zly).toBe('email-format');
+    for (const zly of ['', 'bez-malpy', 'a@b', 'a b@c.test', `${'x'.repeat(250)}@e.test`])
+      expect(
+        kodBledu(() => ustawEmail(db, b, zly, o(0))),
+        zly,
+      ).toBe('email-format');
     ustawEmail(db, a, 'nowy@example.test', o(0));
     expect(db.prepare('SELECT count(*) AS n FROM konta_email').get().n).toBe(1);
   });

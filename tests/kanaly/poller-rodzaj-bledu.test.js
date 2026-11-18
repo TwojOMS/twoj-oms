@@ -12,18 +12,31 @@ import { createPoller } from '../../src/moduly/kanaly/services/poller.js';
 
 const mapa = { instancje: { 1: { metoda: 'dpd' } }, poPozycji: [] };
 const zam = (id, modifiedGmt) => ({
-  id, number: String(id), status: 'processing', total: '10.00',
-  date_created: '2026-09-09T10:00:00', date_modified: modifiedGmt, date_modified_gmt: modifiedGmt,
-  billing: {}, shipping: {}, shipping_lines: [{ method_id: 'flat_rate', instance_id: '1' }],
-  line_items: [], meta_data: [],
+  id,
+  number: String(id),
+  status: 'processing',
+  total: '10.00',
+  date_created: '2026-09-09T10:00:00',
+  date_modified: modifiedGmt,
+  date_modified_gmt: modifiedGmt,
+  billing: {},
+  shipping: {},
+  shipping_lines: [{ method_id: 'flat_rate', instance_id: '1' }],
+  line_items: [],
+  meta_data: [],
 });
 
 let db;
-beforeEach(() => { db = openOmsDb(':memory:'); });
-
-const pollerZ = (pobierzZamowienia) => createPoller({
-  db, kanal: createWooAdapter({ woo: { pobierzZamowienia }, mapowanie: mapa }), sklep: 'pro',
+beforeEach(() => {
+  db = openOmsDb(':memory:');
 });
+
+const pollerZ = (pobierzZamowienia) =>
+  createPoller({
+    db,
+    kanal: createWooAdapter({ woo: { pobierzZamowienia }, mapowanie: mapa }),
+    sklep: 'pro',
+  });
 
 describe('poller — rodzaj bledu i poczatek serii', () => {
   it('rzut przebiegu zapisuje rodzaj „awaria" i znaczy poczatek serii', async () => {
@@ -49,7 +62,8 @@ describe('poller — rodzaj bledu i poczatek serii', () => {
   });
 
   it('udany przebieg gasi blad, rodzaj I poczatek serii naraz', async () => {
-    const pobierz = vi.fn()
+    const pobierz = vi
+      .fn()
       .mockRejectedValueOnce(new Error('fetch failed'))
       .mockResolvedValue({ zamowienia: [zam(1, '2026-09-09T10:00:00')], stron: 1 });
     const p = pollerZ(pobierz);
@@ -62,7 +76,8 @@ describe('poller — rodzaj bledu i poczatek serii', () => {
   });
 
   it('po przerwie seria liczy sie OD NOWA — czknieccie co godzine to nie awaria trwajaca godzine', async () => {
-    const pobierz = vi.fn()
+    const pobierz = vi
+      .fn()
       .mockRejectedValueOnce(new Error('fetch failed'))
       .mockResolvedValueOnce({ zamowienia: [], stron: 1 })
       .mockRejectedValueOnce(new Error('fetch failed'));
@@ -90,7 +105,8 @@ describe('poller — rodzaj bledu i poczatek serii', () => {
   it('⚠️ UDANY PRZEBIEG ZERUJE LICZNIK — „z rzedu" znaczy nieprzerwanie', async () => {
     // Bez tego czknieccie co godzine sumowaloby sie przez dobe i o polnocy panel oglaszalby
     // awarie sklepu, ktory przez caly dzien dzialal.
-    const pobierz = vi.fn()
+    const pobierz = vi
+      .fn()
       .mockRejectedValueOnce(new Error('fetch failed'))
       .mockRejectedValueOnce(new Error('fetch failed'))
       .mockResolvedValueOnce({ zamowienia: [], stron: 1 })
@@ -109,8 +125,12 @@ describe('poller — rodzaj bledu i poczatek serii', () => {
     // Licznik jest FAKTEM o przebiegach, a nie decyzja o krzyku. Decyduje `ostatni_blad_rodzaj`
     // w domain/zdrowie.js: „pominiecie" nie podlega dlawieniu niezaleznie od licznika.
     const kanal = {
-      pobierzStrone: vi.fn().mockResolvedValue({ zamowienia: [{ id: 'ALG-ZLE', mod: '2026-09-09T10:00:00' }], stron: 1 }),
-      mapuj: () => { throw new Error('ALG-ZLE: nieparsowalna kwota'); },
+      pobierzStrone: vi
+        .fn()
+        .mockResolvedValue({ zamowienia: [{ id: 'ALG-ZLE', mod: '2026-09-09T10:00:00' }], stron: 1 }),
+      mapuj: () => {
+        throw new Error('ALG-ZLE: nieparsowalna kwota');
+      },
       kursorZ: (s) => s.mod,
       zlozoneZ: () => null,
     };
@@ -122,8 +142,12 @@ describe('poller — rodzaj bledu i poczatek serii', () => {
   it('pominiete zamowienie ma rodzaj „pominiecie", nie „awaria"', async () => {
     // Kanal, ktorego mapowanie odmawia — jak Allegro przy nieparsowalnej kwocie.
     const kanal = {
-      pobierzStrone: vi.fn().mockResolvedValue({ zamowienia: [{ id: 'ALG-ZLE', mod: '2026-09-09T10:00:00' }], stron: 1 }),
-      mapuj: () => { throw new Error('ALG-ZLE: nieparsowalna kwota'); },
+      pobierzStrone: vi
+        .fn()
+        .mockResolvedValue({ zamowienia: [{ id: 'ALG-ZLE', mod: '2026-09-09T10:00:00' }], stron: 1 }),
+      mapuj: () => {
+        throw new Error('ALG-ZLE: nieparsowalna kwota');
+      },
       kursorZ: (s) => s.mod,
       zlozoneZ: () => null,
     };

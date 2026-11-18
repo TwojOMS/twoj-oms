@@ -60,8 +60,6 @@ export function poOdpowiedzi(stan, { pusta }, teraz) {
   // ⚠️ `?? teraz` — data otwarcia zapisuje sie RAZ. Przesuwanie jej przy kazdej kolejnej
   // pustce znaczyloby, ze ekran lacznosci zawsze pokazuje „niedostepny od dzisiaj", czyli
   // gubi jedyna informacje, po ktorej widac, ze zasob lezy od tygodni.
-  const bezpiecznikOd = kolejnePuste >= PROG_PUSTYCH
-    ? (stan?.bezpiecznik_od ?? ostatniaProbaAt)
-    : null;
+  const bezpiecznikOd = kolejnePuste >= PROG_PUSTYCH ? (stan?.bezpiecznik_od ?? ostatniaProbaAt) : null;
   return { kolejnePuste, bezpiecznikOd, ostatniaProbaAt };
 }

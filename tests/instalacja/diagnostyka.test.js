@@ -17,18 +17,21 @@ const SH = process.platform === 'win32' ? 'C:/Program Files/Git/bin/bash.exe' : 
 const REWIZJA = 'a'.repeat(39) + 'b';
 const DRZEWO = 'c'.repeat(39) + 'd';
 const katalogi = [];
-afterEach(() => { for (const k of katalogi.splice(0)) fs.rmSync(k, { recursive: true, force: true }); });
+afterEach(() => {
+  for (const k of katalogi.splice(0)) fs.rmSync(k, { recursive: true, force: true });
+});
 
-const ukosniki = p => p.replaceAll('\\', '/');
+const ukosniki = (p) => p.replaceAll('\\', '/');
 
 function przygotuj({ bezKopii = false } = {}) {
   const baza = fs.mkdtempSync(path.join(os.tmpdir(), 'oms-diag-'));
   katalogi.push(baza);
   const znacznik = 'ZNACZNIK' + randomBytes(6).toString('hex');
   const oms = path.join(baza, 'opt-oms');
-  for (const k of ['config', 'data/etykiety', 'data/proformy', 'backups', 'releases']) fs.mkdirSync(path.join(oms, k), { recursive: true });
+  for (const k of ['config', 'data/etykiety', 'data/proformy', 'backups', 'releases'])
+    fs.mkdirSync(path.join(oms, k), { recursive: true });
   // Znacznik na początku I na końcu: maskowanie samej końcówki albo samego początku też wychodzi.
-  const z = rdzen => `${znacznik}${rdzen}${znacznik}`;
+  const z = (rdzen) => `${znacznik}${rdzen}${znacznik}`;
   const wartosci = {
     OMS_TRYB: z('proba'),
     OMS_DB_PATH: z('/opt/oms/data/oms.sqlite'),
@@ -42,16 +45,27 @@ function przygotuj({ bezKopii = false } = {}) {
     INFAKT_API_KEY: z('ab$c&d|e*f'),
   };
   // CRLF, cudzysłowy i komentarz — tak wyglądają pliki edytowane ręcznie (także z Windowsa).
-  const env = Object.entries(wartosci).map(([k, v], i) => {
-    if (k === 'ALLEGRO_CLIENT_SECRET') return `${k}="${v}"`;
-    if (k === 'INFAKT_API_KEY') return `${k}='${v}'`;
-    return i % 2 ? `${k}=${v}\r` : `${k}=${v}`;
-  }).join('\n');
+  const env = Object.entries(wartosci)
+    .map(([k, v], i) => {
+      if (k === 'ALLEGRO_CLIENT_SECRET') return `${k}="${v}"`;
+      if (k === 'INFAKT_API_KEY') return `${k}='${v}'`;
+      return i % 2 ? `${k}=${v}\r` : `${k}=${v}`;
+    })
+    .join('\n');
   fs.writeFileSync(path.join(oms, 'config/oms.env'), `# konfiguracja próby\n${env}\n`);
-  fs.writeFileSync(path.join(oms, 'config/administrator-proby.env'), `login=${z('administrator-proby')}\nhaslo=${z('Adm1n')}\n`);
-  fs.writeFileSync(path.join(oms, 'config/produkcja.env.example'), `OMS_TRYB=produkcja\nOMS_PASS=\nSMTP_PASS=${z('szablon')}\n`);
+  fs.writeFileSync(
+    path.join(oms, 'config/administrator-proby.env'),
+    `login=${z('administrator-proby')}\nhaslo=${z('Adm1n')}\n`,
+  );
+  fs.writeFileSync(
+    path.join(oms, 'config/produkcja.env.example'),
+    `OMS_TRYB=produkcja\nOMS_PASS=\nSMTP_PASS=${z('szablon')}\n`,
+  );
   // Plik niebędący env (klucz PEM): wiersz z „=” nie może wyjść w sekcji konfiguracji jako „nazwa”.
-  fs.writeFileSync(path.join(oms, 'config/klucz.pem'), `-----BEGIN PRIVATE KEY-----\nMIIE+${znacznik}/Qx==\n-----END PRIVATE KEY-----\n`);
+  fs.writeFileSync(
+    path.join(oms, 'config/klucz.pem'),
+    `-----BEGIN PRIVATE KEY-----\nMIIE+${znacznik}/Qx==\n-----END PRIVATE KEY-----\n`,
+  );
   if (!bezKopii) {
     const kopia = path.join(oms, 'backups/oms-2026-10-09.sqlite');
     fs.writeFileSync(kopia, Buffer.alloc(4096, 1));
@@ -111,8 +125,17 @@ function uruchom(k, extra = {}) {
   const mountpoint = path.join(k.baza, 'mountpoint-atrapa');
   if (!fs.existsSync(mountpoint)) fs.writeFileSync(mountpoint, ATRAPA_MOUNTPOINT, { mode: 0o755 });
   return spawnSync(SH, [ukosniki(SKRYPT)], {
-    encoding: 'utf8', timeout: 60_000,
-    env: { ...process.env, OMS_KATALOG: ukosniki(k.oms), OMS_DOCKER_BIN: ukosniki(k.docker), OMS_MOUNTPOINT_BIN: ukosniki(mountpoint), OMS_DIAG_WYJSCIE: ukosniki(k.wynik), TEST_BAZA: ukosniki(k.baza), ...extra },
+    encoding: 'utf8',
+    timeout: 60_000,
+    env: {
+      ...process.env,
+      OMS_KATALOG: ukosniki(k.oms),
+      OMS_DOCKER_BIN: ukosniki(k.docker),
+      OMS_MOUNTPOINT_BIN: ukosniki(mountpoint),
+      OMS_DIAG_WYJSCIE: ukosniki(k.wynik),
+      TEST_BAZA: ukosniki(k.baza),
+      ...extra,
+    },
   });
 }
 
@@ -126,11 +149,36 @@ describe('diagnostyka klienta', () => {
     expect(tekst).not.toContain(k.znacznik);
     expect(`${r.stdout}${r.stderr}`).not.toContain(k.znacznik);
     // Dane osobowe i tokeny z dziennika.
-    for (const zakazane of ['Q9x_-haslo', 'tajny ze spacja', 'ab$c&d|e*f', 'Adm1n', 'MIIE+', 'jan.kowalski@example.com', '500 600 700', '5252525252', 'eyJhbGciOiJIUzI1NiJ9', 'plain-secret-xyz', 'cs-123456', 'rt-9988776655', 'tK7aQ2mZ9xR4vB8nL3pW6yH1cJ5dF0gSqE']) {
+    for (const zakazane of [
+      'Q9x_-haslo',
+      'tajny ze spacja',
+      'ab$c&d|e*f',
+      'Adm1n',
+      'MIIE+',
+      'jan.kowalski@example.com',
+      '500 600 700',
+      '5252525252',
+      'eyJhbGciOiJIUzI1NiJ9',
+      'plain-secret-xyz',
+      'cs-123456',
+      'rt-9988776655',
+      'tK7aQ2mZ9xR4vB8nL3pW6yH1cJ5dF0gSqE',
+    ]) {
       expect(tekst).not.toContain(zakazane);
     }
     // Treść użyteczna — pusty plik też byłby „bez sekretów”.
-    for (const sekcja of ['== System ==', '== Docker ==', '== Wersja OMS ==', '== Kontenery ==', '== Health ==', '== Dysk ==', '== Kopie ==', '== Konfiguracja ==', '== Dziennik oms ==', '== Dziennik oms-kopia ==']) {
+    for (const sekcja of [
+      '== System ==',
+      '== Docker ==',
+      '== Wersja OMS ==',
+      '== Kontenery ==',
+      '== Health ==',
+      '== Dysk ==',
+      '== Kopie ==',
+      '== Konfiguracja ==',
+      '== Dziennik oms ==',
+      '== Dziennik oms-kopia ==',
+    ]) {
       expect(tekst).toContain(sekcja);
     }
     expect(tekst).toContain(`commit: ${REWIZJA}`);
@@ -175,14 +223,19 @@ describe('diagnostyka klienta', () => {
   it('alarm kopii starszej niż 48 h (lokalnej i na nośniku), brak nośnika, cel nieustawiony, $ w konfiguracji, aktualizacja w toku', () => {
     const k = przygotuj();
     const stara = path.join(k.oms, 'backups/oms-2026-10-09.sqlite');
-    const t49 = new Date(Date.now() - 49 * 3600 * 1000); fs.utimesSync(stara, t49, t49);
+    const t49 = new Date(Date.now() - 49 * 3600 * 1000);
+    fs.utimesSync(stara, t49, t49);
     const bez = fs.readFileSync((uruchom(k), k.wynik), 'utf8');
     expect(bez).toContain('ALARM: ostatnia kopia ma 49 h (próg 48 h)');
     expect(bez).toContain('kopia poza dyskiem: NIEUSTAWIONA');
     // Cel ustawiony, nośnik niepodłączony (pusty katalog montowania).
     fs.writeFileSync(path.join(k.oms, 'config/kopia.env'), 'OMS_KOPIA_ZEWNETRZNA=/opt/oms/kopia-zewnetrzna/nosnik\r\n');
-    const nosnik = path.join(k.oms, 'kopia-zewnetrzna/nosnik'); fs.mkdirSync(nosnik, { recursive: true });
-    const odNowa = (extra) => { fs.rmSync(k.wynik, { force: true }); return fs.readFileSync((uruchom(k, extra), k.wynik), 'utf8'); };
+    const nosnik = path.join(k.oms, 'kopia-zewnetrzna/nosnik');
+    fs.mkdirSync(nosnik, { recursive: true });
+    const odNowa = (extra) => {
+      fs.rmSync(k.wynik, { force: true });
+      return fs.readFileSync((uruchom(k, extra), k.wynik), 'utf8');
+    };
     const niezamontowany = `ALARM: kopia poza dyskiem — ${ukosniki(nosnik)} nie jest punktem montowania (nośnik niezamontowany)`;
     const brak = odNowa();
     expect(brak).toContain('kopia poza dyskiem: /opt/oms/kopia-zewnetrzna/nosnik');
@@ -193,7 +246,9 @@ describe('diagnostyka klienta', () => {
     expect(odNowa()).toContain(niezamontowany);
     // Host bez `mountpoint`: zostaje sam znacznik.
     fs.rmSync(path.join(nosnik, '.oms-cel-kopii'));
-    expect(odNowa({ OMS_MOUNTPOINT_BIN: ukosniki(path.join(k.baza, 'nie-ma-takiego')) })).toContain('ALARM: kopia poza dyskiem — brak nośnika');
+    expect(odNowa({ OMS_MOUNTPOINT_BIN: ukosniki(path.join(k.baza, 'nie-ma-takiego')) })).toContain(
+      'ALARM: kopia poza dyskiem — brak nośnika',
+    );
     // Zamontowany, ale bez znacznika (podłączono inny dysk).
     fs.writeFileSync(path.join(k.baza, 'zamontowane'), `${ukosniki(nosnik)}\n`);
     const obcy = odNowa();
@@ -201,12 +256,17 @@ describe('diagnostyka klienta', () => {
     expect(obcy).not.toContain('nie jest punktem montowania');
     // Nośnik z kopią sprzed 50 h; świeża kopia lokalna.
     fs.writeFileSync(path.join(nosnik, '.oms-cel-kopii'), '');
-    const naNosniku = path.join(nosnik, 'oms-2026-10-08.sqlite'); fs.writeFileSync(naNosniku, Buffer.alloc(2048, 1));
-    const t50 = new Date(Date.now() - 50 * 3600 * 1000); fs.utimesSync(naNosniku, t50, t50);
+    const naNosniku = path.join(nosnik, 'oms-2026-10-08.sqlite');
+    fs.writeFileSync(naNosniku, Buffer.alloc(2048, 1));
+    const t50 = new Date(Date.now() - 50 * 3600 * 1000);
+    fs.utimesSync(naNosniku, t50, t50);
     fs.utimesSync(stara, new Date(), new Date());
     fs.appendFileSync(path.join(k.oms, 'config/oms.env'), 'SMTP_PASS=ab$cd\n');
     fs.mkdirSync(path.join(k.oms, 'update-state/blokada'), { recursive: true });
-    fs.writeFileSync(path.join(k.oms, 'update-state/blokada/stan'), 'operacja=20261010-120000-ab12\netap=zatrzymane\npid=1\n');
+    fs.writeFileSync(
+      path.join(k.oms, 'update-state/blokada/stan'),
+      'operacja=20261010-120000-ab12\netap=zatrzymane\npid=1\n',
+    );
     fs.writeFileSync(path.join(k.oms, 'update-state/biezace'), 'oms-aaaaaaaaaaaa\n');
     fs.rmSync(k.wynik);
     const t = fs.readFileSync((uruchom(k), k.wynik), 'utf8');
@@ -228,14 +288,23 @@ describe('diagnostyka klienta', () => {
     fs.writeFileSync(plikKlucza, `# Klucz poświadczeń\nOMS_KLUCZ_SEKRETOW=${klucz}\n`, { mode: 0o600 });
     fs.chmodSync(plikKlucza, 0o600);
     fs.appendFileSync(path.join(k.baza, 'wartosci.txt'), `${klucz}\n`); // atrapa wypisze go w środowisku kontenera i w dzienniku
-    const odNowa = () => { fs.rmSync(k.wynik, { force: true }); const r = uruchom(k); expect(r.status, r.stderr).toBe(0); return fs.readFileSync(k.wynik, 'utf8'); };
+    const odNowa = () => {
+      fs.rmSync(k.wynik, { force: true });
+      const r = uruchom(k);
+      expect(r.status, r.stderr).toBe(0);
+      return fs.readFileSync(k.wynik, 'utf8');
+    };
     const t = odNowa();
     expect(t).not.toContain(k.znacznik);
     expect(t).not.toContain(klucz.slice(-16));
     expect(t).toMatch(/^klucz\.env \(600 uid=\d+\): OMS_KLUCZ_SEKRETOW $/m);
     if (process.platform !== 'win32') {
       const uid = process.getuid();
-      expect(t).toContain(uid === 10001 ? 'klucz.env: jest, właściciel 10001, tryb 600' : `UWAGA: klucz.env: właściciel uid=${uid}, tryb 600 — ma być uid=10001, tryb 600`);
+      expect(t).toContain(
+        uid === 10001
+          ? 'klucz.env: jest, właściciel 10001, tryb 600'
+          : `UWAGA: klucz.env: właściciel uid=${uid}, tryb 600 — ma być uid=10001, tryb 600`,
+      );
       fs.chmodSync(plikKlucza, 0o644);
       expect(odNowa()).toMatch(/UWAGA: klucz\.env: właściciel uid=\d+, tryb 644 — ma być uid=10001, tryb 600/);
     }

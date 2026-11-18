@@ -15,7 +15,8 @@ export function czytajStawkeDomyslna(db, opcje) {
 
 export function zapiszStawkeDomyslna(db, stawka, opcje) {
   if (!czyStawkaVat(stawka, opcje)) throw new Error(`Stawka VAT spoza listy: „${stawka}”.`);
-  db.prepare(`INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
-    ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc, zmienione_at = excluded.zmienione_at`)
-    .run(KLUCZ, String(stawka).trim(), new Date().toISOString());
+  db.prepare(
+    `INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
+    ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc, zmienione_at = excluded.zmienione_at`,
+  ).run(KLUCZ, String(stawka).trim(), new Date().toISOString());
 }

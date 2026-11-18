@@ -18,10 +18,16 @@ const surowe = (fulfillment) => ({
   payment: { type: 'ONLINE', finishedAt: '2026-08-05T09:00:00Z' },
   delivery: { method: { id: 'x', name: 'Allegro Kurier DPD (AD)' }, cost: { amount: '0.00', currency: 'PLN' } },
   invoice: { required: false },
-  lineItems: [{
-    id: 'li1', offer: { id: '111', name: 'Szablon' }, quantity: 1,
-    price: { amount: '100.00', currency: 'PLN' }, boughtAt: '2026-08-05T08:00:00Z', tax: { rate: '23' },
-  }],
+  lineItems: [
+    {
+      id: 'li1',
+      offer: { id: '111', name: 'Szablon' },
+      quantity: 1,
+      price: { amount: '100.00', currency: 'PLN' },
+      boughtAt: '2026-08-05T08:00:00Z',
+      tax: { rate: '23' },
+    },
+  ],
   summary: { totalToPay: { amount: '100.00', currency: 'PLN' } },
   surcharges: [],
 });
@@ -51,7 +57,8 @@ describe('status realizacji z Allegro trafia do KOLUMNY, nie tylko do surowe_jso
 
   it('brak fulfillment w ogóle daje NULL, a nie wyjątek', () => {
     const db = openOmsDb(':memory:');
-    const bez = { ...surowe('PROCESSING') }; delete bez.fulfillment;
+    const bez = { ...surowe('PROCESSING') };
+    delete bez.fulfillment;
     const id = zapiszZamowienie(db, 'allegro_swietlik', mapujAllegro(bez), bez);
     expect(pobierzZamowienie(db, id).status_realizacji).toBeNull();
   });

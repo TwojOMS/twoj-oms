@@ -9,27 +9,55 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { zapiszZamowienie, pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { createNadanie } from '../../../src/moduly/wysylka/services/nadanie.js';
 import {
-  ponowNotatkeNadania, ponowZalegleNotatki, OKNO_PONAWIANIA_NOTATKI_H,
+  ponowNotatkeNadania,
+  ponowZalegleNotatki,
+  OKNO_PONAWIANIA_NOTATKI_H,
 } from '../../../src/moduly/wysylka/services/notatka-nadania.js';
 
 const NUMER = '1000000000001U';
 const zmapowane = () => ({
-  zrodlo_id: 1301, numer: '1301', klient: { email: 'j@k.pl', phone: '+48500600700' },
-  dostawa: { first_name: 'Jan', last_name: 'Kowalski', address_1: 'Polna 1', postcode: '00-950', city: 'Warszawa', country: 'PL' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null, kwota_brutto: '212.90',
-  status_woo: 'processing', oplacone_at: '2026-07-29T13:00:00', anulowane: 0,
-  utworzone_at: '2026-07-29T13:19:52', pozycje: [],
+  zrodlo_id: 1301,
+  numer: '1301',
+  klient: { email: 'j@k.pl', phone: '+48500600700' },
+  dostawa: {
+    first_name: 'Jan',
+    last_name: 'Kowalski',
+    address_1: 'Polna 1',
+    postcode: '00-950',
+    city: 'Warszawa',
+    country: 'PL',
+  },
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '212.90',
+  status_woo: 'processing',
+  oplacone_at: '2026-07-29T13:00:00',
+  anulowane: 0,
+  utworzone_at: '2026-07-29T13:19:52',
+  pozycje: [],
 });
 const sieci = () => new Error('Sklep nieosiągalny: sklep.invalid: błąd sieci');
-const logi = (db) => db.prepare("SELECT wynik FROM log WHERE akcja = 'sync-woo' ORDER BY id").all().map((w) => w.wynik);
+const logi = (db) =>
+  db
+    .prepare("SELECT wynik FROM log WHERE akcja = 'sync-woo' ORDER BY id")
+    .all()
+    .map((w) => w.wynik);
 
 async function nadana({ dodajNotatke }) {
   const db = openOmsDb(':memory:');
-  const dpd = { nadaj: vi.fn().mockResolvedValue({ numerListu: NUMER, etykietaPdf: Buffer.from('%PDF-x'), surowa: '<xml/>' }) };
+  const dpd = {
+    nadaj: vi.fn().mockResolvedValue({ numerListu: NUMER, etykietaPdf: Buffer.from('%PDF-x'), surowa: '<xml/>' }),
+  };
   const woo = { dodajNotatke, ustawStatus: vi.fn() };
   const czekaj = vi.fn().mockResolvedValue(undefined);
   const nadanie = createNadanie({
-    db, kurierzy: { dpd }, klienci: { pro: woo }, katalogEtykiet: mkdtempSync(join(tmpdir(), 'oms-')), czekaj,
+    db,
+    kurierzy: { dpd },
+    klienci: { pro: woo },
+    katalogEtykiet: mkdtempSync(join(tmpdir(), 'oms-')),
+    czekaj,
   });
   const id = zapiszZamowienie(db, 'pro', zmapowane(), {});
   await nadanie.nadaj(id);
@@ -85,7 +113,8 @@ describe('InPost 404 tuż po nadaniu to brak zdarzeń, nie błąd (zamówienie 1
   const NR = '520000123456789012345678'; // zmyślony, w formacie ShipX
   async function paczkaInpost(godzinPoNadaniu) {
     const { createInpostClient } = await import('../../../src/oms/kurierzy/inpost.js');
-    const { rozpocznijPrzesylke, zakonczPrzesylke, pobierzPrzesylke } = await import('../../../src/moduly/wysylka/db/przesylki.js');
+    const { rozpocznijPrzesylke, zakonczPrzesylke, pobierzPrzesylke } =
+      await import('../../../src/moduly/wysylka/db/przesylki.js');
     const { odswiezStatusKuriera } = await import('../../../src/moduly/wysylka/services/status-kuriera.js');
     const db = openOmsDb(':memory:');
     const id = zapiszZamowienie(db, 'pro', { ...zmapowane(), metoda_wysylki: 'inpost_paczkomat' }, {});
@@ -94,11 +123,22 @@ describe('InPost 404 tuż po nadaniu to brak zdarzeń, nie błąd (zamówienie 1
     const p = pobierzPrzesylke(db, start.id);
     // Odpowiedź ShipX z produkcji 26.10.2026 (kształt odpowiedzi z paczki 1493, sekunda po nadaniu; numer zmyślony).
     const fetchImpl = vi.fn().mockResolvedValue({
-      status: 404, ok: false,
-      text: async () => JSON.stringify({ status: 404, error: 'resource_not_found',
-        message: `Tracking information about ${NR} shipment has not been found.` }),
+      status: 404,
+      ok: false,
+      text: async () =>
+        JSON.stringify({
+          status: 404,
+          error: 'resource_not_found',
+          message: `Tracking information about ${NR} shipment has not been found.`,
+        }),
     });
-    const inpost = createInpostClient({ url: 'https://shipx.test/v1', token: 't', organizacja: 1, nadawca: { nazwa: 'Pracownia', ulica: 'Polna 1', kod: '00-001', miasto: 'Gdzieś', kraj: 'PL' }, fetchImpl });
+    const inpost = createInpostClient({
+      url: 'https://shipx.test/v1',
+      token: 't',
+      organizacja: 1,
+      nadawca: { nazwa: 'Pracownia', ulica: 'Polna 1', kod: '00-001', miasto: 'Gdzieś', kraj: 'PL' },
+      fetchImpl,
+    });
     const terazMs = Date.parse(p.utworzona_at) + godzinPoNadaniu * 3600e3;
     const w = await odswiezStatusKuriera(db, { inpost }, { id, sklep: 'pro' }, p, { terazMs });
     return { w, p: pobierzPrzesylke(db, p.id) };
@@ -125,12 +165,21 @@ describe('przycisk „Spróbuj ponownie” na karcie', () => {
     const { buildOmsServer } = await import('../../pomoc/serwer-testowy-oms.ts');
     const dodajNotatke = vi.fn().mockRejectedValueOnce(sieci()).mockRejectedValueOnce(sieci()).mockResolvedValue({});
     const { db, nadanie, id, p } = await nadana({ dodajNotatke });
-    const serwer = buildOmsServer({ db, config: { auth: { user: 'adam', pass: 'x' } }, poller: { stan: () => ({}) }, nadanie });
+    const serwer = buildOmsServer({
+      db,
+      config: { auth: { user: 'adam', pass: 'x' } },
+      poller: { stan: () => ({}) },
+      nadanie,
+    });
     await serwer.ready();
     const karta = await serwer.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
     expect(karta.body).toContain(`/zamowienia/${id}/przesylki/${p.id}/notatka`);
     expect(karta.body).toContain('Spróbuj ponownie');
-    const r = await serwer.inject({ method: 'POST', url: `/zamowienia/${id}/przesylki/${p.id}/notatka`, headers: naglowek });
+    const r = await serwer.inject({
+      method: 'POST',
+      url: `/zamowienia/${id}/przesylki/${p.id}/notatka`,
+      headers: naglowek,
+    });
     expect(r.statusCode).toBe(302);
     expect(pobierzZamowienie(db, id).przesylki[0].sync_woo_blad).toBeNull();
     const poNaprawie = await serwer.inject({ method: 'GET', url: `/zamowienia/${id}`, headers: naglowek });
@@ -144,13 +193,21 @@ describe('zegar ponawia zaległe notatki tylko w oknie', () => {
     const dodajNotatke = vi.fn().mockRejectedValueOnce(sieci()).mockRejectedValueOnce(sieci()).mockResolvedValue({});
     const { db, woo, id, p } = await nadana({ dodajNotatke });
     const teraz = new Date(Date.parse(p.utworzona_at) + 3600e3);
-    expect(await ponowZalegleNotatki({ db, klienci: { pro: woo }, teraz })).toEqual({ kandydatow: 1, wyslane: 1, bledy: 0 });
+    expect(await ponowZalegleNotatki({ db, klienci: { pro: woo }, teraz })).toEqual({
+      kandydatow: 1,
+      wyslane: 1,
+      bledy: 0,
+    });
     expect(pobierzZamowienie(db, id).przesylki[0].sync_woo_blad).toBeNull();
 
     db.prepare("UPDATE przesylki SET sync_woo_blad = 'notatka: stara' WHERE id = ?").run(p.id);
     const poOknie = new Date(Date.parse(p.utworzona_at) + (OKNO_PONAWIANIA_NOTATKI_H + 1) * 3600e3);
     const wywolan = woo.dodajNotatke.mock.calls.length;
-    expect(await ponowZalegleNotatki({ db, klienci: { pro: woo }, teraz: poOknie })).toEqual({ kandydatow: 0, wyslane: 0, bledy: 0 });
+    expect(await ponowZalegleNotatki({ db, klienci: { pro: woo }, teraz: poOknie })).toEqual({
+      kandydatow: 0,
+      wyslane: 0,
+      bledy: 0,
+    });
     expect(woo.dodajNotatke.mock.calls.length).toBe(wywolan);
   });
 
@@ -169,6 +226,10 @@ describe('zegar ponawia zaległe notatki tylko w oknie', () => {
     const { db, woo, p } = await nadana({ dodajNotatke });
     db.prepare("UPDATE przesylki SET sync_woo_blad = 'status: coś' WHERE id = ?").run(p.id);
     const teraz = new Date(Date.parse(p.utworzona_at) + 3600e3);
-    expect(await ponowZalegleNotatki({ db, klienci: { pro: woo }, teraz })).toEqual({ kandydatow: 0, wyslane: 0, bledy: 0 });
+    expect(await ponowZalegleNotatki({ db, klienci: { pro: woo }, teraz })).toEqual({
+      kandydatow: 0,
+      wyslane: 0,
+      bledy: 0,
+    });
   });
 });

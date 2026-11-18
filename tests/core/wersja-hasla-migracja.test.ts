@@ -9,9 +9,16 @@ describe('rdzen/3 — wersja hasła', () => {
   it.each([false, true])('zachowuje konta i uprawnienia starej bazy=%s i wykonuje się raz', (stara) => {
     const db = otworzBaze(':memory:');
     try {
-      if (stara) db.exec(readFileSync(new URL('../../src/moduly/rdzen/migracje/0001-baseline.sql', import.meta.url), 'utf8'));
+      if (stara)
+        db.exec(readFileSync(new URL('../../src/moduly/rdzen/migracje/0001-baseline.sql', import.meta.url), 'utf8'));
       else wykonajMigracje(db, [{ ...modulRdzen, migracje: modulRdzen.migracje.filter((m) => m.numer < 3) }]);
-      const id = zalozKonto(db, { login: 'syntetyczne', imie: 'Test', haslo: 'testowe-haslo', rola: 'sprzedaz', ekrany: ['zamowienia'] });
+      const id = zalozKonto(db, {
+        login: 'syntetyczne',
+        imie: 'Test',
+        haslo: 'testowe-haslo',
+        rola: 'sprzedaz',
+        ekrany: ['zamowienia'],
+      });
       const przed = db.prepare('SELECT * FROM konta WHERE id = ?').get(id)!;
       const wynik = wykonajMigracje(db, [modulRdzen]);
       expect(wynik.some((m) => m.modul === 'rdzen' && m.numer === 3)).toBe(true);
@@ -22,7 +29,9 @@ describe('rdzen/3 — wersja hasła', () => {
       expect(() => db.prepare('UPDATE konta SET wersja_hasla = NULL WHERE id = ?').run(id)).toThrow();
       const nowe = zalozKonto(db, { login: 'nowe', imie: 'Nowe', haslo: 'inne-haslo', rola: 'sprzedaz' });
       expect(db.prepare('SELECT wersja_hasla FROM konta WHERE id = ?').get(nowe)).toEqual({ wersja_hasla: 0 });
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 
   it('zmiana hasła zwiększa wersję tego konta i utrzymuje prawdziwy scrypt', () => {
@@ -39,6 +48,8 @@ describe('rdzen/3 — wersja hasła', () => {
       expect(zgodneHaslo('pierwsze', w.hash_hasla)).toBe(false);
       expect(zgodneHaslo('nowe', w.hash_hasla)).toBe(false);
       expect(zgodneHaslo('najnowsze', w.hash_hasla)).toBe(true);
-    } finally { db.close(); }
+    } finally {
+      db.close();
+    }
   });
 });

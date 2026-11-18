@@ -13,16 +13,24 @@ export const KLUCZ_SPRAWDZENIA_FAKTUROWNI = 'faktury.fakturownia.sprawdzenie';
 export const STANY_SPRAWDZENIA = Object.freeze(['ok', 'odrzucony', 'niesprawdzony']);
 
 export function odciskDanychFakturowni({ domena, token } = {}) {
-  return createHash('sha256').update(`${String(domena ?? '')}\n${String(token ?? '')}`).digest('hex').slice(0, 32);
+  return createHash('sha256')
+    .update(`${String(domena ?? '')}\n${String(token ?? '')}`)
+    .digest('hex')
+    .slice(0, 32);
 }
 
 /** Zapis wyniku: `{ stan, tekst }` dla danych `{ domena, token }`. Tekst już bez tokenu i domeny (maskuje moduł). */
 export function zapiszSprawdzenieFakturowni(db, { stan, tekst = null }, dane, { teraz = new Date() } = {}) {
   if (!STANY_SPRAWDZENIA.includes(stan)) throw new Error(`zapiszSprawdzenieFakturowni: nieznany stan ${stan}`);
   const kiedy = teraz.toISOString();
-  db.prepare(`INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
-    ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc, zmienione_at = excluded.zmienione_at`)
-    .run(KLUCZ_SPRAWDZENIA_FAKTUROWNI, JSON.stringify({ stan, tekst, kiedy, odcisk: odciskDanychFakturowni(dane) }), kiedy);
+  db.prepare(
+    `INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
+    ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc, zmienione_at = excluded.zmienione_at`,
+  ).run(
+    KLUCZ_SPRAWDZENIA_FAKTUROWNI,
+    JSON.stringify({ stan, tekst, kiedy, odcisk: odciskDanychFakturowni(dane) }),
+    kiedy,
+  );
 }
 
 /** Wynik dla OBECNYCH danych albo null (brak wyniku, zepsuty zapis, inne dane niż przy sprawdzeniu). */
@@ -30,7 +38,11 @@ export function wczytajSprawdzenieFakturowni(db, dane) {
   const w = db.prepare('SELECT wartosc FROM ustawienia WHERE klucz = ?').get(KLUCZ_SPRAWDZENIA_FAKTUROWNI);
   if (!w?.wartosc || !dane) return null;
   let v;
-  try { v = JSON.parse(w.wartosc); } catch { return null; }
+  try {
+    v = JSON.parse(w.wartosc);
+  } catch {
+    return null;
+  }
   if (!v || !STANY_SPRAWDZENIA.includes(v.stan) || v.odcisk !== odciskDanychFakturowni(dane)) return null;
   return { stan: v.stan, tekst: v.tekst ?? null, kiedy: v.kiedy ?? null };
 }

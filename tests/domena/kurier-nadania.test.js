@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  wymagaWyboruKuriera, kurierzyDoWyboru, metodaNadania, nadanieDaZpl,
-} from '../../src/domena/kurier-nadania.js';
+import { wymagaWyboruKuriera, kurierzyDoWyboru, metodaNadania, nadanieDaZpl } from '../../src/domena/kurier-nadania.js';
 
 // ZGŁOSZENIE (zam. 1120 i 1126): do zamówienia z Allegro trzeba
 // dosłać paczkę WŁASNYM kurierem — DPD albo paczkomatem. Panel tego nie potrafił, a karta
@@ -36,8 +34,10 @@ describe('kogo wolno wskazać', () => {
   });
 
   it('przy metodzie bez drogi domyślnej: sami nasi kurierzy, jak dotąd', () => {
-    expect(kurierzyDoWyboru(zam({ metoda_wysylki: 'allegro_metoda_z_przyszlosci' })).map((k) => k.klucz))
-      .toEqual(['dpd', 'inpost_paczkomat']);
+    expect(kurierzyDoWyboru(zam({ metoda_wysylki: 'allegro_metoda_z_przyszlosci' })).map((k) => k.klucz)).toEqual([
+      'dpd',
+      'inpost_paczkomat',
+    ]);
   });
 
   // ⚠️ PIENIĄDZE. Pobranie paczkomatowe jest zbudowane, ale UMOWA Z INPOSTEM NA NIE NIE
@@ -57,8 +57,7 @@ describe('kogo wolno wskazać', () => {
   // byłoby blokadą bez powodu — a dosyłka do zamówienia pobraniowego to najzwyklejszy
   // przypadek użycia tego ekranu.
   it('przy dosyłce do zamówienia pobraniowego wybór jest pełny', () => {
-    expect(kurierzyDoWyboru(zam({ pobranie: 1 }), 2).map((k) => k.klucz))
-      .toEqual(['wza', 'dpd', 'inpost_paczkomat']);
+    expect(kurierzyDoWyboru(zam({ pobranie: 1 }), 2).map((k) => k.klucz)).toEqual(['wza', 'dpd', 'inpost_paczkomat']);
   });
 
   // ⚠️⚠️ PIENIĄDZE, I TO JEST NAJWAŻNIEJSZY TEST TEJ ZMIANY. Od chwili, gdy
@@ -75,16 +74,22 @@ describe('kogo wolno wskazać', () => {
     const lista = kurierzyDoWyboru(zam({ pobranie: 1 }), 2, { pobranieNaTejPaczce: true }).map((k) => k.klucz);
     expect(lista).toEqual(['dpd']);
     expect(lista).not.toContain('inpost_paczkomat');
-    expect(kurierzyDoWyboru(zam({ pobranie: 1 }), 2, { pobranieNaTejPaczce: true, umowyPobrania: ['inpost'] })
-      .map((k) => k.klucz)).toEqual(['dpd', 'inpost_paczkomat']);
+    expect(
+      kurierzyDoWyboru(zam({ pobranie: 1 }), 2, { pobranieNaTejPaczce: true, umowyPobrania: ['inpost'] }).map(
+        (k) => k.klucz,
+      ),
+    ).toEqual(['dpd', 'inpost_paczkomat']);
   });
 
   // Zamówienie przedpłacone nie ma czego inkasować — jawna decyzja niczego tu nie zmienia
   // i wybór zostaje pełny. Inaczej zaznaczenie pola w formularzu odcinałoby paczkomat
   // zamówieniu, które pobrania w ogóle nie ma.
   it('przedpłata: decyzja o pobraniu na tej paczce nie zawęża wyboru', () => {
-    expect(kurierzyDoWyboru(zam({ pobranie: 0 }), 2, { pobranieNaTejPaczce: true }).map((k) => k.klucz))
-      .toEqual(['wza', 'dpd', 'inpost_paczkomat']);
+    expect(kurierzyDoWyboru(zam({ pobranie: 0 }), 2, { pobranieNaTejPaczce: true }).map((k) => k.klucz)).toEqual([
+      'wza',
+      'dpd',
+      'inpost_paczkomat',
+    ]);
   });
 });
 
@@ -94,8 +99,9 @@ describe('metoda, którą panel naprawdę nada', () => {
   });
 
   it('wskazanie paczkomatu daje metodę inpost_paczkomat', () => {
-    expect(metodaNadania(zam({ metoda_wysylki: 'allegro_paczkomat' }), 'inpost_paczkomat'))
-      .toMatchObject({ metoda: 'inpost_paczkomat' });
+    expect(metodaNadania(zam({ metoda_wysylki: 'allegro_paczkomat' }), 'inpost_paczkomat')).toMatchObject({
+      metoda: 'inpost_paczkomat',
+    });
   });
 
   // ⚠️ BARIERA. Bez wskazania panel nadal odmawia — zmiana polega na tym, ŻE DA SIĘ
@@ -139,8 +145,9 @@ describe('metoda, którą panel naprawdę nada', () => {
   });
 
   it('odbiór osobisty zostaje odbiorem osobistym — dalej nie ma go czym nadać', () => {
-    expect(metodaNadania({ sklep: 'reczne', metoda_wysylki: 'odbior_osobisty' }, 'dpd'))
-      .toEqual({ metoda: 'odbior_osobisty' });
+    expect(metodaNadania({ sklep: 'reczne', metoda_wysylki: 'odbior_osobisty' }, 'dpd')).toEqual({
+      metoda: 'odbior_osobisty',
+    });
   });
 
   // Paczkomat przy pobraniu na paczce nr 1 odbija się od listy dozwolonych, a nie
@@ -182,8 +189,7 @@ describe('paczkomat z Allegro idzie naszym InPostem, bez pytania', () => {
   // `false`, ekran nadania przestałby w ogóle pokazywać wybór — i furtka zniknęłaby po cichu.
   it('allegro_dpd dalej POZWALA wskazać kuriera, choć już go nie wymaga', () => {
     expect(wymagaWyboruKuriera({ sklep: 'allegro_swietlik', metoda_wysylki: 'allegro_dpd' })).toBe(true);
-    expect(metodaNadania({ sklep: 'allegro_swietlik', metoda_wysylki: 'allegro_dpd' }, undefined).blad)
-      .toBeUndefined();
+    expect(metodaNadania({ sklep: 'allegro_swietlik', metoda_wysylki: 'allegro_dpd' }, undefined).blad).toBeUndefined();
   });
 
   // ⚠️ 18.09.2026: „panel nie umie ich nadać" PRZESTAŁO być prawdą — `allegro_punkt`,

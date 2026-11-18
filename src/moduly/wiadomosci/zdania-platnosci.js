@@ -6,8 +6,16 @@
 // następnego maila, bez restartu. Reguły treści w domena/zdania-platnosci.js; znaki sterujące odrzuca to samo
 // wyrażenie, co podpis maili.
 import {
-  KLUCZ_ZDAN, ZDANIA, DOMYSLNE_ZDANIA, czyZnaneZdanie, odczytajZdania, zdaniaDoMaila, regulaTresci,
-  maksZdania, kolizjeEtykiet, ETYKIETY_Z_DWUKROPKIEM,
+  KLUCZ_ZDAN,
+  ZDANIA,
+  DOMYSLNE_ZDANIA,
+  czyZnaneZdanie,
+  odczytajZdania,
+  zdaniaDoMaila,
+  regulaTresci,
+  maksZdania,
+  kolizjeEtykiet,
+  ETYKIETY_Z_DWUKROPKIEM,
 } from '../../domena/zdania-platnosci.js';
 import { ZAKAZANE } from './podpis-maili.js';
 
@@ -28,7 +36,8 @@ export function wczytajZapisaneZdania(db) {
  * formularza nie może wyjść do klienta — odczyt sprawdza je tym samym `sprawdzZdanie`, co zapis.
  */
 export function zdaniaZReguly(zapisane) {
-  const dobre = {}; const odrzucone = {};
+  const dobre = {};
+  const odrzucone = {};
   for (const [klucz, tekst] of Object.entries(zapisane)) {
     const { wartosc, blad } = sprawdzZdanie(klucz, tekst);
     if (blad) odrzucone[klucz] = blad;
@@ -39,7 +48,10 @@ export function zdaniaZReguly(zapisane) {
   for (;;) {
     const zderzone = Object.entries(kolizjeEtykiet(zdaniaDoMaila(dobre))).filter(([k]) => Object.hasOwn(dobre, k));
     if (!zderzone.length) break;
-    for (const [k, powod] of zderzone) { delete dobre[k]; odrzucone[k] = powod; }
+    for (const [k, powod] of zderzone) {
+      delete dobre[k];
+      odrzucone[k] = powod;
+    }
   }
   return { dobre, odrzucone };
 }
@@ -58,7 +70,9 @@ export function wczytajZdaniaPlatnosci(db, { log = (t) => console.error(t) } = {
   const nowy = ZALOGOWANE.get(db) !== surowy;
   ZALOGOWANE.set(db, surowy);
   for (const klucz of nowy ? Object.keys(odrzucone) : []) {
-    log(`wiadomości: zapisane zdanie o płatności „${klucz}” nie przechodzi reguł — w mailu idzie tekst domyślny (popraw w Ustawienia → Komunikacja → Szablony wiadomości)`);
+    log(
+      `wiadomości: zapisane zdanie o płatności „${klucz}” nie przechodzi reguł — w mailu idzie tekst domyślny (popraw w Ustawienia → Komunikacja → Szablony wiadomości)`,
+    );
   }
   return dobre;
 }
@@ -75,9 +89,15 @@ export function sprawdzZdanie(klucz, surowa) {
   if (!czyZnaneZdanie(klucz)) return { wartosc: '', blad: 'Nieznane zdanie.' };
   // Każdy odstęp z \p{Zs} (twarda spacja, spacja firetowa…) to jedna zwykła spacja, a znak
   // niewidoczny (\p{Cf}: spacja zerowej szerokości, miękki dywiz, znaczniki kierunku) = odmowa — przy zapisie i odczycie.
-  let tekst = String(surowa ?? '').replace(/\r\n?|\n/gu, ' ').replace(/\p{Zs}+/gu, ' ').trim();
+  let tekst = String(surowa ?? '')
+    .replace(/\r\n?|\n/gu, ' ')
+    .replace(/\p{Zs}+/gu, ' ')
+    .trim();
   if (ZAKAZANE.test(tekst) || NIEWIDOCZNE.test(tekst)) {
-    return { wartosc: tekst, blad: 'Zdanie to zwykły tekst — bez tabulatorów, znaków sterujących i znaków niewidocznych (np. spacji zerowej szerokości).' };
+    return {
+      wartosc: tekst,
+      blad: 'Zdanie to zwykły tekst — bez tabulatorów, znaków sterujących i znaków niewidocznych (np. spacji zerowej szerokości).',
+    };
   }
   // Po tych etykietach dwukropek stawia kod — wpisany obcinamy (ze spacjami przed nim), żeby nie wyszło „Rachunek:: …".
   if (ETYKIETY_Z_DWUKROPKIEM.includes(klucz)) tekst = tekst.replace(/\s*:+$/u, '');
@@ -91,9 +111,10 @@ function zapiszStan(db, stan, teraz) {
     db.prepare('DELETE FROM ustawienia WHERE klucz = ?').run(KLUCZ_ZDAN);
     return;
   }
-  db.prepare(`INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
-    ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc, zmienione_at = excluded.zmienione_at`)
-    .run(KLUCZ_ZDAN, JSON.stringify(stan), teraz);
+  db.prepare(
+    `INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)
+    ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc, zmienione_at = excluded.zmienione_at`,
+  ).run(KLUCZ_ZDAN, JSON.stringify(stan), teraz);
 }
 
 /**
@@ -111,7 +132,8 @@ export function zapiszZdaniaPlatnosci(db, pola, teraz = new Date().toISOString()
   try {
     const stan = { ...wczytajZapisaneZdania(db) };
     for (const s of sprawdzone) {
-      if (s.wartosc) stan[s.klucz] = s.wartosc; else delete stan[s.klucz];
+      if (s.wartosc) stan[s.klucz] = s.wartosc;
+      else delete stan[s.klucz];
     }
     // Kolizje sprawdzone na KOMPLECIE po zapisie (pola spoza formularza też się liczą). Błąd
     // przy polach ZMIENIONYCH tym formularzem (obie strony zmienione — przy obu); gdy żadna nie jest zmieniona
@@ -126,7 +148,10 @@ export function zapiszZdaniaPlatnosci(db, pola, teraz = new Date().toISOString()
     }
     zapiszStan(db, stan, teraz);
     db.exec('COMMIT');
-  } catch (e) { db.exec('ROLLBACK'); throw e; }
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
   return { kod: 303 };
 }
 
@@ -138,7 +163,10 @@ export function przywrocZdanie(db, klucz, teraz = new Date().toISOString()) {
     const { [klucz]: _usuniete, ...reszta } = wczytajZapisaneZdania(db);
     zapiszStan(db, reszta, teraz);
     db.exec('COMMIT');
-  } catch (e) { db.exec('ROLLBACK'); throw e; }
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
   return true;
 }
 
@@ -150,7 +178,8 @@ export function zdaniaDoEkranu(zapisane, { wpisane = null, bledy = {} } = {}) {
   const { odrzucone } = zdaniaZReguly(zapisane);
   return ZDANIA.map((z) => ({
     ...z,
-    wartosc: wpisane && Object.hasOwn(wpisane, z.klucz) ? String(wpisane[z.klucz] ?? '') : (zapisane[z.klucz] ?? z.domyslne),
+    wartosc:
+      wpisane && Object.hasOwn(wpisane, z.klucz) ? String(wpisane[z.klucz] ?? '') : (zapisane[z.klucz] ?? z.domyslne),
     zmienione: Object.hasOwn(zapisane, z.klucz),
     maks: maksZdania(z),
     blad: bledy[z.klucz] ?? null,

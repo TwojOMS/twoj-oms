@@ -12,16 +12,23 @@ import { zapiszKonfiguracjeIntegracji } from '../../src/oms/db/konfiguracja-inte
 import { modulyPiaskownicy } from '../../deploy/proba/atrapy/index.mjs';
 import { ENV_DEMO } from '../../scripts/demo-dane.mjs';
 import {
-  wczytajProfilFakturowni, transportFakturowniProby, SCIEZKA_PROFILU_FAKTUROWNI,
+  wczytajProfilFakturowni,
+  transportFakturowniProby,
+  SCIEZKA_PROFILU_FAKTUROWNI,
 } from '../../deploy/proba/atrapy/fakturownia-proba.ts';
 import { ODMOWA_KSEF_PIASKOWNICY } from '../../src/integracje/programy/fakturownia.ts';
 import { porownajIpFakturowni } from '../../deploy/proba/fakturownia-ip.mjs';
 
 const DOMENA = 'pracownia-polcien';
 const TOKEN = 'zmyslony-token-polcien-proba-0001';
-const ZDANIE_KSEF = 'Piaskownica: wysyłka do KSeF przez prawdziwą Fakturownię jest wyłączona — sprawdzisz ją na atrapie.';
+const ZDANIE_KSEF =
+  'Piaskownica: wysyłka do KSeF przez prawdziwą Fakturownię jest wyłączona — sprawdzisz ją na atrapie.';
 const katalogi = [];
-const katalog = () => { const k = fs.mkdtempSync(path.join(os.tmpdir(), 'prz-119-11a-')); katalogi.push(k); return k; };
+const katalog = () => {
+  const k = fs.mkdtempSync(path.join(os.tmpdir(), 'prz-119-11a-'));
+  katalogi.push(k);
+  return k;
+};
 afterEach(() => {
   vi.unstubAllGlobals();
   for (const k of katalogi.splice(0)) fs.rmSync(k, { recursive: true, force: true });
@@ -32,7 +39,8 @@ function profil(tresc = { srodowisko: 'proba', domena: DOMENA }) {
   fs.writeFileSync(plik, typeof tresc === 'string' ? tresc : JSON.stringify(tresc));
   return plik;
 }
-const json = (cialo, status = 200) => new Response(JSON.stringify(cialo), { status, headers: { 'content-type': 'application/json' } });
+const json = (cialo, status = 200) =>
+  new Response(JSON.stringify(cialo), { status, headers: { 'content-type': 'application/json' } });
 const FIX = new URL('../fixtures/fakturownia/F04-faktura-minimalna.json', import.meta.url);
 const odpowiedzF04 = () => JSON.parse(fs.readFileSync(FIX, 'utf8')).wymiany[1].odpowiedz.cialo;
 
@@ -41,7 +49,12 @@ function udawanaSiec() {
   const zadania = [];
   const siec = vi.fn(async (url, opcje = {}) => {
     const u = new URL(String(url));
-    zadania.push({ url: String(url), metoda: opcje.method ?? 'GET', cialo: opcje.body ?? null, redirect: opcje.redirect });
+    zadania.push({
+      url: String(url),
+      metoda: opcje.method ?? 'GET',
+      cialo: opcje.body ?? null,
+      redirect: opcje.redirect,
+    });
     if (opcje.method === 'POST' && u.pathname === '/invoices.json') return json(odpowiedzF04(), 201);
     if (u.pathname === '/clients.json') return json([]);
     if (u.pathname === '/invoices.json') return json([]);
@@ -55,10 +68,22 @@ function udawanaSiec() {
 function zbuduj({ env = ENV(), sciezka, db = openOmsDb() } = {}) {
   zapiszKonfiguracjeIntegracji(db, 'program_fakturowy', { ustawienia: { program: 'fakturownia' }, sekrety: {} });
   zapiszKonfiguracjeIntegracji(db, 'fakturownia', { ustawienia: { domena: DOMENA }, sekrety: { token: TOKEN } });
-  const faktury = modulyPiaskownicy(env, { baza: () => db, profilFakturowni: sciezka }).find((m) => m.nazwa === 'faktury');
+  const faktury = modulyPiaskownicy(env, { baza: () => db, profilFakturowni: sciezka }).find(
+    (m) => m.nazwa === 'faktury',
+  );
   const obce = { 'kanaly.klienciKanalow': { lampy: {} }, 'kanaly.config': { definicje: [], sklepy: {} } };
-  const usluga = (m, n) => { const k = `${m}.${n}`; if (!Object.hasOwn(obce, k)) throw new Error(k); return obce[k]; };
-  const z = faktury.zbuduj({ db, konfiguracja: faktury.konfiguracja(env), teraz: () => new Date('2026-11-12T10:00:00Z'), log: () => {}, usluga });
+  const usluga = (m, n) => {
+    const k = `${m}.${n}`;
+    if (!Object.hasOwn(obce, k)) throw new Error(k);
+    return obce[k];
+  };
+  const z = faktury.zbuduj({
+    db,
+    konfiguracja: faktury.konfiguracja(env),
+    teraz: () => new Date('2026-11-12T10:00:00Z'),
+    log: () => {},
+    usluga,
+  });
   return { db, uslugi: z.uslugi };
 }
 
@@ -69,7 +94,10 @@ describe('profil próby Fakturowni — plik', () => {
 
   it('brak pliku = null (atrapa); poprawny plik = { srodowisko, domena }', () => {
     expect(wczytajProfilFakturowni({ OMS_TRYB: 'proba' }, { sciezka: path.join(katalog(), 'brak.json') })).toBeNull();
-    expect(wczytajProfilFakturowni({ OMS_TRYB: 'proba' }, { sciezka: profil() })).toEqual({ srodowisko: 'proba', domena: DOMENA });
+    expect(wczytajProfilFakturowni({ OMS_TRYB: 'proba' }, { sciezka: profil() })).toEqual({
+      srodowisko: 'proba',
+      domena: DOMENA,
+    });
   });
 
   it('plik z domeną spoza wzoru, z tokenem, z innym środowiskiem albo nie-JSON = odmowa bez wypisywania pliku', () => {
@@ -83,20 +111,34 @@ describe('profil próby Fakturowni — plik', () => {
     for (const t of zle) {
       const f = () => wczytajProfilFakturowni({ OMS_TRYB: 'proba' }, { sciezka: profil(t) });
       expect(f, JSON.stringify(t)).toThrow(/profil/i);
-      try { f(); } catch (e) { expect(String(e.message)).not.toContain(TOKEN); }
+      try {
+        f();
+      } catch (e) {
+        expect(String(e.message)).not.toContain(TOKEN);
+      }
     }
   });
 
   it('demo publiczne z plikiem profilu = odmowa startu (login i hasło demo osobno), także przez moduły piaskownicy', () => {
     const plik = profil();
     const ZDANIE = /Prawdziwa Fakturownia jest dostępna tylko w prywatnej piaskownicy/;
-    expect(() => wczytajProfilFakturowni({ OMS_TRYB: 'proba', OMS_DEMO_LOGIN: 'gosc' }, { sciezka: plik })).toThrow(ZDANIE);
-    expect(() => wczytajProfilFakturowni({ OMS_TRYB: 'proba', OMS_DEMO_HASLO: 'gosc' }, { sciezka: plik })).toThrow(ZDANIE);
+    expect(() => wczytajProfilFakturowni({ OMS_TRYB: 'proba', OMS_DEMO_LOGIN: 'gosc' }, { sciezka: plik })).toThrow(
+      ZDANIE,
+    );
+    expect(() => wczytajProfilFakturowni({ OMS_TRYB: 'proba', OMS_DEMO_HASLO: 'gosc' }, { sciezka: plik })).toThrow(
+      ZDANIE,
+    );
     expect(() => wczytajProfilFakturowni({ OMS_TRYB: 'produkcja' }, { sciezka: plik })).toThrow(ZDANIE);
-    expect(() => modulyPiaskownicy({ ...ENV(), OMS_DEMO_LOGIN: 'gosc', OMS_DEMO_HASLO: 'gosc' }, { profilFakturowni: plik })).toThrow(ZDANIE);
+    expect(() =>
+      modulyPiaskownicy({ ...ENV(), OMS_DEMO_LOGIN: 'gosc', OMS_DEMO_HASLO: 'gosc' }, { profilFakturowni: plik }),
+    ).toThrow(ZDANIE);
     // Bez pliku demo startuje jak dotąd.
-    expect(() => modulyPiaskownicy({ ...ENV(), OMS_DEMO_LOGIN: 'gosc', OMS_DEMO_HASLO: 'gosc' },
-      { profilFakturowni: path.join(katalog(), 'brak.json') })).not.toThrow();
+    expect(() =>
+      modulyPiaskownicy(
+        { ...ENV(), OMS_DEMO_LOGIN: 'gosc', OMS_DEMO_HASLO: 'gosc' },
+        { profilFakturowni: path.join(katalog(), 'brak.json') },
+      ),
+    ).not.toThrow();
   });
 });
 
@@ -124,10 +166,15 @@ describe('transport próby — tylko https://<domena>.fakturownia.pl', () => {
     const baza = `https://${DOMENA}.fakturownia.pl`;
     await expect(t(`${baza}/invoices/1.json?send_to_ksef=yes`)).rejects.toThrow(/KSeF/);
     await expect(t(`${baza}/invoices/1.json?send%5Fto%5Fksef=yes`)).rejects.toThrow(/KSeF/);
-    await expect(t(`${baza}/invoices.json`, { method: 'POST', body: JSON.stringify({ invoice: { gov_save_and_send: true } }) }))
-      .rejects.toThrow(/KSeF/);
+    await expect(
+      t(`${baza}/invoices.json`, { method: 'POST', body: JSON.stringify({ invoice: { gov_save_and_send: true } }) }),
+    ).rejects.toThrow(/KSeF/);
     const ksef = JSON.stringify({ invoice: { gov_save_and_send: true } });
-    for (const body of [new TextEncoder().encode(ksef), new Blob([ksef]), new URLSearchParams({ gov_save_and_send: '1' })]) {
+    for (const body of [
+      new TextEncoder().encode(ksef),
+      new Blob([ksef]),
+      new URLSearchParams({ gov_save_and_send: '1' }),
+    ]) {
       await expect(t(`${baza}/invoices.json`, { method: 'POST', body })).rejects.toThrow();
     }
     expect(szpieg).not.toHaveBeenCalled();
@@ -135,12 +182,19 @@ describe('transport próby — tylko https://<domena>.fakturownia.pl', () => {
 
   it('dozwolony adres: jedno żądanie, redirect „error”, bez ponowień po błędzie sieci', async () => {
     const ok = vi.fn(async () => json({ ok: 1 }));
-    const r = await transportFakturowniProby({ domena: DOMENA, fetchImpl: ok })(`https://${DOMENA}.fakturownia.pl/invoices.json?page=1`, { method: 'GET' });
+    const r = await transportFakturowniProby({ domena: DOMENA, fetchImpl: ok })(
+      `https://${DOMENA}.fakturownia.pl/invoices.json?page=1`,
+      { method: 'GET' },
+    );
     expect(r.status).toBe(200);
     expect(ok).toHaveBeenCalledTimes(1);
     expect(ok.mock.calls[0][1].redirect).toBe('error');
-    const pada = vi.fn(async () => { throw new TypeError('fetch failed'); });
-    await expect(transportFakturowniProby({ domena: DOMENA, fetchImpl: pada })(`https://${DOMENA}.fakturownia.pl/invoices.json`)).rejects.toThrow();
+    const pada = vi.fn(async () => {
+      throw new TypeError('fetch failed');
+    });
+    await expect(
+      transportFakturowniProby({ domena: DOMENA, fetchImpl: pada })(`https://${DOMENA}.fakturownia.pl/invoices.json`),
+    ).rejects.toThrow();
     expect(pada).toHaveBeenCalledTimes(1);
   });
 });
@@ -173,7 +227,10 @@ describe('moduł faktur piaskownicy z profilem i bez', () => {
     const { siec } = udawanaSiec();
     const db = openOmsDb();
     const { uslugi } = zbuduj({ sciezka: profil(), db });
-    zapiszKonfiguracjeIntegracji(db, 'fakturownia', { ustawienia: { domena: 'inna-firma' }, sekrety: { token: TOKEN } });
+    zapiszKonfiguracjeIntegracji(db, 'fakturownia', {
+      ustawienia: { domena: 'inna-firma' },
+      sekrety: { token: TOKEN },
+    });
     await expect(uslugi.programFakturowy.sprawdzPolaczenie()).rejects.toMatchObject({ status: 400 });
     expect(siec).not.toHaveBeenCalled();
     db.close();
@@ -183,7 +240,10 @@ describe('moduł faktur piaskownicy z profilem i bez', () => {
     expect(ODMOWA_KSEF_PIASKOWNICY).toBe(ZDANIE_KSEF);
     const { siec } = udawanaSiec();
     const { db, uslugi } = zbuduj({ sciezka: profil() });
-    const blad = await uslugi.programFakturowy.wyslijDokumentDoKsef('595670707').then(() => null, (e) => e);
+    const blad = await uslugi.programFakturowy.wyslijDokumentDoKsef('595670707').then(
+      () => null,
+      (e) => e,
+    );
     expect(blad?.message).toBe(ZDANIE_KSEF);
     expect(blad.status).toBeGreaterThanOrEqual(400);
     expect(blad.status).toBeLessThan(500);
@@ -205,15 +265,31 @@ describe('moduł faktur piaskownicy z profilem i bez', () => {
     expect(wysylka).not.toHaveBeenCalled();
     expect(siec).not.toHaveBeenCalled();
     // Żadnego zapisu wyniku ani dnia przebiegu co przebieg.
-    expect(db.prepare("SELECT klucz FROM ustawienia WHERE klucz IN ('ksef.automat.wynik', 'ksef.automat.ostatni_przebieg')").all()).toEqual([]);
+    expect(
+      db
+        .prepare("SELECT klucz FROM ustawienia WHERE klucz IN ('ksef.automat.wynik', 'ksef.automat.ostatni_przebieg')")
+        .all(),
+    ).toEqual([]);
     db.close();
   });
 
   it('oid w profilu = proba-<znacznik bazy>-<numer>; dwie bazy (reset) → dwa różne oid; bez profilu oid bez zmian', async () => {
     const { zadania } = udawanaSiec();
-    const NABYWCA = { firma: 'Pracownia Półcień sp. z o.o.', nip: '1234563218', ulica: 'Zmyślona 1', kod: '00-001', miasto: 'Warszawa', kraj: 'PL', email: 'biuro@polcien.example' };
-    const ladunek = { invoice_date: '2026-11-12', sale_date: '2026-11-12', payment_date: '2026-11-19',
-      services: [{ name: 'Lampa (zmyślona)', quantity: 1, gross_price: 12300, tax_symbol: '23' }] };
+    const NABYWCA = {
+      firma: 'Pracownia Półcień sp. z o.o.',
+      nip: '1234563218',
+      ulica: 'Zmyślona 1',
+      kod: '00-001',
+      miasto: 'Warszawa',
+      kraj: 'PL',
+      email: 'biuro@polcien.example',
+    };
+    const ladunek = {
+      invoice_date: '2026-11-12',
+      sale_date: '2026-11-12',
+      payment_date: '2026-11-19',
+      services: [{ name: 'Lampa (zmyślona)', quantity: 1, gross_price: 12300, tax_symbol: '23' }],
+    };
     const wystaw = async (uslugi) => {
       const { client_id } = await uslugi.programFakturowy.przygotujNabywce(NABYWCA, { zalozGdyBrak: true });
       await uslugi.programFakturowy.wystaw({ client_id, ...ladunek }, { oid: 'ZAM-41' });
@@ -230,27 +306,49 @@ describe('moduł faktur piaskownicy z profilem i bez', () => {
     expect(oidA2).toBe(oidA);
     expect(oidB).toMatch(/^proba-[a-z0-9]{8}-ZAM-41$/);
     expect(oidB).not.toBe(oidA);
-    a.db.close(); b.db.close();
+    a.db.close();
+    b.db.close();
   });
 });
 
 describe('porównanie IP zapory z DNS (stan)', () => {
-  const zPliku = (tresc) => () => { if (tresc === null) { const e = new Error('brak'); e.code = 'ENOENT'; throw e; } return tresc; };
+  const zPliku = (tresc) => () => {
+    if (tresc === null) {
+      const e = new Error('brak');
+      e.code = 'ENOENT';
+      throw e;
+    }
+    return tresc;
+  };
   it('brak pliku → zdanie o T7', async () => {
-    const z = await porownajIpFakturowni({ domena: DOMENA, czytaj: zPliku(null), resolve4: async () => ['203.0.113.10'] });
+    const z = await porownajIpFakturowni({
+      domena: DOMENA,
+      czytaj: zPliku(null),
+      resolve4: async () => ['203.0.113.10'],
+    });
     expect(z).toMatch(/brak pliku/i);
     expect(z.split('\n')).toHaveLength(1);
   });
   it('DNS w pliku → zgodne; DNS spoza pliku → odśwież poleceniem z T7', async () => {
-    const zgodne = await porownajIpFakturowni({ domena: DOMENA, czytaj: zPliku('203.0.113.10\n203.0.113.11\n'), resolve4: async () => ['203.0.113.11', '203.0.113.10'] });
+    const zgodne = await porownajIpFakturowni({
+      domena: DOMENA,
+      czytaj: zPliku('203.0.113.10\n203.0.113.11\n'),
+      resolve4: async () => ['203.0.113.11', '203.0.113.10'],
+    });
     expect(zgodne).toMatch(/zgodne/);
-    const rozne = await porownajIpFakturowni({ domena: DOMENA, czytaj: zPliku('203.0.113.10\n'), resolve4: async () => ['198.51.100.7'] });
+    const rozne = await porownajIpFakturowni({
+      domena: DOMENA,
+      czytaj: zPliku('203.0.113.10\n'),
+      resolve4: async () => ['198.51.100.7'],
+    });
     expect(rozne).toMatch(/198\.51\.100\.7/);
     expect(rozne).toMatch(/T7/);
     expect(rozne.split('\n')).toHaveLength(1);
   });
   it('błąd DNS → jedno zdanie, bez wyjątku; pyta o <domena>.fakturownia.pl', async () => {
-    const resolve4 = vi.fn(async () => { throw Object.assign(new Error('x'), { code: 'ENOTFOUND' }); });
+    const resolve4 = vi.fn(async () => {
+      throw Object.assign(new Error('x'), { code: 'ENOTFOUND' });
+    });
     const z = await porownajIpFakturowni({ domena: DOMENA, czytaj: zPliku('203.0.113.10\n'), resolve4 });
     expect(resolve4).toHaveBeenCalledWith(`${DOMENA}.fakturownia.pl`);
     expect(z).toMatch(/DNS/);
@@ -261,9 +359,12 @@ describe('profil „dowolna domena” ("domena":"*") — próba jak inny sklep',
   const GWIAZDKA = { srodowisko: 'proba', domena: '*' };
   it('plik z "*" jest poprawny; inne znaki spoza wzoru nadal odmowa', () => {
     expect(wczytajProfilFakturowni({ OMS_TRYB: 'proba' }, { sciezka: profil(GWIAZDKA) })).toEqual(GWIAZDKA);
-    expect(() => wczytajProfilFakturowni({ OMS_TRYB: 'proba' }, { sciezka: profil({ srodowisko: 'proba', domena: '**' }) })).toThrow(/profil/i);
-    expect(() => wczytajProfilFakturowni({ OMS_TRYB: 'proba', OMS_DEMO_LOGIN: 'gosc' }, { sciezka: profil(GWIAZDKA) }))
-      .toThrow(/Prawdziwa Fakturownia jest dostępna tylko w prywatnej piaskownicy/);
+    expect(() =>
+      wczytajProfilFakturowni({ OMS_TRYB: 'proba' }, { sciezka: profil({ srodowisko: 'proba', domena: '**' }) }),
+    ).toThrow(/profil/i);
+    expect(() =>
+      wczytajProfilFakturowni({ OMS_TRYB: 'proba', OMS_DEMO_LOGIN: 'gosc' }, { sciezka: profil(GWIAZDKA) }),
+    ).toThrow(/Prawdziwa Fakturownia jest dostępna tylko w prywatnej piaskownicy/);
   });
   it.each([
     'https://evil.pl/invoices.json',
@@ -277,7 +378,9 @@ describe('profil „dowolna domena” ("domena":"*") — próba jak inny sklep',
     `https://u:p@${DOMENA}.fakturownia.pl/invoices.json`,
   ])('transport „*”: %s → wyjątek przed siecią', async (adres) => {
     const szpieg = vi.fn(async () => json({}));
-    await expect(transportFakturowniProby({ domena: '*', fetchImpl: szpieg })(adres, { method: 'GET' })).rejects.toThrow();
+    await expect(
+      transportFakturowniProby({ domena: '*', fetchImpl: szpieg })(adres, { method: 'GET' }),
+    ).rejects.toThrow();
     expect(szpieg).not.toHaveBeenCalled();
   });
   it('transport „*”: każde konto <wzór>.fakturownia.pl przechodzi, KSeF nadal zablokowany', async () => {
@@ -287,15 +390,22 @@ describe('profil „dowolna domena” ("domena":"*") — próba jak inny sklep',
     await t(`https://${DOMENA}.fakturownia.pl/invoices.json`, { method: 'GET' });
     expect(szpieg).toHaveBeenCalledTimes(2);
     await expect(t('https://inna-firma.fakturownia.pl/invoices/1.json?send_to_ksef=yes')).rejects.toThrow(/KSeF/);
-    await expect(t('https://inna-firma.fakturownia.pl/invoices.json', { method: 'POST', body: JSON.stringify({ invoice: { gov_save_and_send: true } }) }))
-      .rejects.toThrow(/KSeF/);
+    await expect(
+      t('https://inna-firma.fakturownia.pl/invoices.json', {
+        method: 'POST',
+        body: JSON.stringify({ invoice: { gov_save_and_send: true } }),
+      }),
+    ).rejects.toThrow(/KSeF/);
     expect(szpieg).toHaveBeenCalledTimes(2);
   });
   it('moduł: domena z ekranu (nie z pliku), ekran bez blokady domeny', async () => {
     const { zadania } = udawanaSiec();
     const db = openOmsDb();
     const { uslugi } = zbuduj({ sciezka: profil(GWIAZDKA), db });
-    zapiszKonfiguracjeIntegracji(db, 'fakturownia', { ustawienia: { domena: 'inna-firma' }, sekrety: { token: TOKEN } });
+    zapiszKonfiguracjeIntegracji(db, 'fakturownia', {
+      ustawienia: { domena: 'inna-firma' },
+      sekrety: { token: TOKEN },
+    });
     expect(uslugi.konfiguracjaFakturowni.domenaProby).toBeNull();
     await uslugi.programFakturowy.sprawdzPolaczenie().catch(() => {});
     await uslugi.konfiguracjaFakturowni.sprawdzPolaczenie().catch(() => {});

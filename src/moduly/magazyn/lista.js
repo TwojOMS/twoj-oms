@@ -21,7 +21,8 @@ function plakietkiKanalow(obecne, oferty, definicje) {
   const wynik = [];
   for (const kanal of obecne) {
     const rodzaj = rodzajKanalu(kanal, definicje);
-    if (rodzaj && rodzaj.klucz !== 'erli') wynik.push({ rodzaj, nazwa: nazwa(kanal), opis: nazwa(kanal), aktywna: true });
+    if (rodzaj && rodzaj.klucz !== 'erli')
+      wynik.push({ rodzaj, nazwa: nazwa(kanal), opis: nazwa(kanal), aktywna: true });
   }
   const zRejestru = new Map();
   for (const o of oferty) {
@@ -33,22 +34,66 @@ function plakietkiKanalow(obecne, oferty, definicje) {
   for (const [kanal, o] of zRejestru) {
     const aktywna = o.stan === 'aktywna';
     const stan = `${STANY_PO_POLSKU[o.stan] ?? o.stan}${o.blad ? `: ${o.blad}` : ''}`;
-    wynik.push({ rodzaj: rodzajKanalu(kanal, definicje), nazwa: nazwa(kanal), opis: aktywna ? nazwa(kanal) : `${nazwa(kanal)} — ${stan}`, aktywna });
+    wynik.push({
+      rodzaj: rodzajKanalu(kanal, definicje),
+      nazwa: nazwa(kanal),
+      opis: aktywna ? nazwa(kanal) : `${nazwa(kanal)} — ${stan}`,
+      aktywna,
+    });
   }
-  return wynik.sort((a, b) => (a.rodzaj.klucz < b.rodzaj.klucz ? -1 : a.rodzaj.klucz > b.rodzaj.klucz ? 1 : a.nazwa.localeCompare(b.nazwa, 'pl')))
+  return wynik
+    .sort((a, b) =>
+      a.rodzaj.klucz < b.rodzaj.klucz ? -1 : a.rodzaj.klucz > b.rodzaj.klucz ? 1 : a.nazwa.localeCompare(b.nazwa, 'pl'),
+    )
     .map(({ rodzaj, opis, aktywna }) => ({ klucz: rodzaj.klucz, znak: rodzaj.znak, opis, aktywna }));
 }
 
-export function registerListaMagazynu(app, { db, magazyn, sklepy, definicje = /** @type {ReadonlyArray<{ klucz: string, typ?: string, etykieta?: string }>} */ ([]), pomoc, karta, trescAllegro, kontaErli = /** @returns {{ klucz: string }[]} */ () => [], kontaAllegro = /** @returns {{ klucz: string, zgoda?: boolean }[]} */ () => [] }) {
-  const { kartyZKanalami, kategorieDoFiltra, markiDoFiltra, SORTOWANIE_KART, BRAKI_ETYKIETY, filtryZZapytania, saJakiesFiltry, parametryUkryte, wartosciPol, adresMagazynu, PACZKOMAT_DO_FILTRA, PACZKOMAT_ETYKIETY, POLA_FORMULARZA_FILTROW, NAGLOWKI_KANALOW, BEZ_SKLEPOW, opisPrzebiegu, opisPrzebieguTresci, linkiSortowania, wierszKarty, ileKart, opisZawezenia } = pomoc;
+export function registerListaMagazynu(
+  app,
+  {
+    db,
+    magazyn,
+    sklepy,
+    definicje = /** @type {ReadonlyArray<{ klucz: string, typ?: string, etykieta?: string }>} */ ([]),
+    pomoc,
+    karta,
+    trescAllegro,
+    kontaErli = /** @returns {{ klucz: string }[]} */ () => [],
+    kontaAllegro = /** @returns {{ klucz: string, zgoda?: boolean }[]} */ () => [],
+  },
+) {
+  const {
+    kartyZKanalami,
+    kategorieDoFiltra,
+    markiDoFiltra,
+    SORTOWANIE_KART,
+    BRAKI_ETYKIETY,
+    filtryZZapytania,
+    saJakiesFiltry,
+    parametryUkryte,
+    wartosciPol,
+    adresMagazynu,
+    PACZKOMAT_DO_FILTRA,
+    PACZKOMAT_ETYKIETY,
+    POLA_FORMULARZA_FILTROW,
+    NAGLOWKI_KANALOW,
+    BEZ_SKLEPOW,
+    opisPrzebiegu,
+    opisPrzebieguTresci,
+    linkiSortowania,
+    wierszKarty,
+    ileKart,
+    opisZawezenia,
+  } = pomoc;
   app.get('/magazyn', async (req, reply) => {
-    if (!magazyn || magazyn.gotowy?.() === false) return reply.view('pusta-strona.ejs', { ...BEZ_SKLEPOW, szerokosc: 'tabela' });
+    if (!magazyn || magazyn.gotowy?.() === false)
+      return reply.view('pusta-strona.ejs', { ...BEZ_SKLEPOW, szerokosc: 'tabela' });
 
     // ⚠️ BIALA LISTA, nie `SORTOWANIE[x] ?? domyslne`. Ta druga postac oddaje funkcje
     // z `Object.prototype` przy `?sort=constructor` i konczy sie pieciusetka na glownym
     // ekranie. Klucze zapytania pomijają usunięte kolumny,
     // a `Set.has` nie zaglada do prototypu.
-    const dozwolone = new Set(SORTOWANIE_KART.filter(klucz => !['paczkomat', 'braki'].includes(klucz)));
+    const dozwolone = new Set(SORTOWANIE_KART.filter((klucz) => !['paczkomat', 'braki'].includes(klucz)));
     const sort = dozwolone.has(req.query.sort) ? req.query.sort : 'nazwa';
     // Nierozpoznany kierunek WRACA DO ROSNACEGO, a nie odmawia: kolejnosc nie zawęża
     // zbioru, wiec literowka w adresie ma pokazac liste, a nie pusty ekran.
@@ -86,7 +131,8 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, definicje = /*
     // ⚠️ Tryb domyslny NIE jedzie ukrytym polem, tak samo jak nie wchodzi do adresu:
     // „/magazyn" i „/magazyn?widok=porzadki" maja zostac jednym adresem jednej rzeczy.
     const stanUkryty = [
-      { name: 'sort', value: sort }, { name: 'kier', value: kier },
+      { name: 'sort', value: sort },
+      { name: 'kier', value: kier },
       ...(widok === 'katalog' ? [{ name: 'widok', value: 'katalog' }] : []),
     ];
 
@@ -96,8 +142,13 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, definicje = /*
     const znalezione = kartyZKanalami(db, { fraza: filtry.fraza, filtry, sort, kier });
     // „Wystaw na…” — konta obu typów; konto Allegro bez zgody na oferty zostaje na liście, wyszarzone.
     const kontaOfert = [
-      ...kontaErli().map(k => ({ klucz: k.klucz, etykieta: `ERLI · ${k.klucz}`, allegro: false, zgoda: true })),
-      ...kontaAllegro().map(k => ({ klucz: k.klucz, etykieta: `Allegro · ${k.klucz}${k.srodowisko === 'sandbox' ? ' (sandbox)' : ''}`, allegro: true, zgoda: k.zgoda !== false })),
+      ...kontaErli().map((k) => ({ klucz: k.klucz, etykieta: `ERLI · ${k.klucz}`, allegro: false, zgoda: true })),
+      ...kontaAllegro().map((k) => ({
+        klucz: k.klucz,
+        etykieta: `Allegro · ${k.klucz}${k.srodowisko === 'sandbox' ? ' (sandbox)' : ''}`,
+        allegro: true,
+        zgoda: k.zgoda !== false,
+      })),
     ];
     // Kolumna „Kanały” — zawsze, gdy firma ma choc jeden kanal.
     const pokazOferty = definicje.length > 0;
@@ -105,8 +156,14 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, definicje = /*
     if (pokazOferty) {
       // Status publikacji liczy sie dla kazdego konta Allegro z definicji (te same, co plakietka) —
       // takze konta bez kompletnej konfiguracji, bo jego ENDED/INACTIVE nie moze wygladac na dostepne.
-      const kanalyZeStatusem = definicje.filter((d) => rodzajKanalu(d.klucz, definicje)?.klucz === 'allegro').map((d) => d.klucz);
-      for (const { karta_id, kanal } of kanalyDostepnosciKart(db, znalezione.map((w) => w.id), { kanalyZeStatusem })) {
+      const kanalyZeStatusem = definicje
+        .filter((d) => rodzajKanalu(d.klucz, definicje)?.klucz === 'allegro')
+        .map((d) => d.klucz);
+      for (const { karta_id, kanal } of kanalyDostepnosciKart(
+        db,
+        znalezione.map((w) => w.id),
+        { kanalyZeStatusem },
+      )) {
         (obecnosc.get(Number(karta_id)) ?? obecnosc.set(Number(karta_id), []).get(Number(karta_id))).push(kanal);
       }
     }
@@ -123,7 +180,8 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, definicje = /*
     const naStanie = (id) => (stany.wlaczone ? (stany.stany.get(Number(id))?.stan ?? 0) : null);
     const naMinusie = stany.wlaczone ? [...stany.stany.values()].filter((s) => s.stan < 0).length : 0;
 
-    return reply.view('magazyn-lista.ejs', { szerokosc: 'tabela',
+    return reply.view('magazyn-lista.ejs', {
+      szerokosc: 'tabela',
       title: 'Magazyn',
       // Ekrany stanów w kanałach tylko dla admina — link też.
       adminStanowKanalow: req.konto?.admin === true,
@@ -132,12 +190,22 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, definicje = /*
       brakZgodyOfert: BRAK_ZGODY_OFERT,
       pokazOferty,
       adresPowrotuListy,
-      wiersze: znalezione.map((w) => ({ ...wierszKarty(w, adresPowrotuListy), naStanie: naStanie(w.id),
-        plakietkiKanalow: pokazOferty ? plakietkiKanalow(obecnosc.get(Number(w.id)) ?? [], w.oferty ?? [], definicje) : [] })),
-      stany: stany.wlaczone ? {
-        od: fmtDataCzas(stany.granica), naMinusie, bezKarty: stany.bezKarty,
-        adresImportu: '/magazyn/stany/import', adresBezKarty: '/magazyn/stany/bez-karty',
-      } : null,
+      wiersze: znalezione.map((w) => ({
+        ...wierszKarty(w, adresPowrotuListy),
+        naStanie: naStanie(w.id),
+        plakietkiKanalow: pokazOferty
+          ? plakietkiKanalow(obecnosc.get(Number(w.id)) ?? [], w.oferty ?? [], definicje)
+          : [],
+      })),
+      stany: stany.wlaczone
+        ? {
+            od: fmtDataCzas(stany.granica),
+            naMinusie,
+            bezKarty: stany.bezKarty,
+            adresImportu: '/magazyn/stany/import',
+            adresBezKarty: '/magazyn/stany/bez-karty',
+          }
+        : null,
       naglowkiKanalow: NAGLOWKI_KANALOW,
       // Adres, stan aktywnosci i strzalka KAZDEGO naglowka sortujacego — policzone tutaj,
       // bo widok w tym module niczego nie rozstrzyga.
@@ -157,14 +225,18 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, definicje = /*
       // `zaznacz` odhaczaloby cala liste w polowie roboty — a droga typowa wyglada tak:
       // zawez do kart do przejecia, zaznacz wszystkie, zajrzyj w ceny kanalow „na kontrole".
       adresPrzelacznika: adresMagazynu(filtry, {
-        sort, kier, zaznacz: zaznaczWszystkie, widok: widok === 'katalog' ? 'porzadki' : 'katalog',
+        sort,
+        kier,
+        zaznacz: zaznaczWszystkie,
+        widok: widok === 'katalog' ? 'porzadki' : 'katalog',
       }),
       etykietaPrzelacznika: widok === 'katalog' ? '← wróć do porządków' : 'pokaż ceny kanałów →',
       // ⚠️ SZEROKOSC KOMUNIKATU PUSTEJ TABELI liczy sie z ZESTAWU KOLUMN, wiec zalezy od
       // trybu — policzona w widoku rozjechalaby sie po cichu przy pierwszej zmianie kolumn,
       // a komunikat przestalby siegac konca tabeli i wygladalby jak polamany render.
       // + kolumna Marka
-      kolumnPustej: (widok === 'katalog' ? 6 + NAGLOWKI_KANALOW.length : 6) + (stany.wlaczone ? 1 : 0) + (pokazOferty ? 1 : 0),
+      kolumnPustej:
+        (widok === 'katalog' ? 6 + NAGLOWKI_KANALOW.length : 6) + (stany.wlaczone ? 1 : 0) + (pokazOferty ? 1 : 0),
       // Co dzis zawęża liste — zdanie nad tabela, POLICZONE (widok niczego nie liczy).
       opisZawezenia: opisZawezenia(filtry, znalezione.length),
       // Liczba wynikow PRZY zawezeniu (pasek chipow) — TA SAMA odmiana trojformowa co
@@ -196,9 +268,7 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, definicje = /*
       filtrowane: saJakiesFiltry(filtry),
       // Oba formularze GET niosa nawzajem swoje wartosci ukrytymi polami — inaczej klikniecie
       // „Filtruj" gubiloby fraze, a wpisanie frazy gubiloby filtry (reguła: filtry nie kasują frazy).
-      ukryteWFiltrach: [
-        ...parametryUkryte(filtry, { pomin: POLA_FORMULARZA_FILTROW }), ...stanUkryty,
-      ],
+      ukryteWFiltrach: [...parametryUkryte(filtry, { pomin: POLA_FORMULARZA_FILTROW }), ...stanUkryty],
       ukryteWSzukajce: [...parametryUkryte(filtry, { pomin: ['fraza'] }), ...stanUkryty],
       // „Wyczysc filtry" zdejmuje zawezenie, ale NIE kolejnosc ani NIE tryb kolumn —
       // ani jedno, ani drugie nie jest filtrem.
@@ -206,11 +276,11 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, definicje = /*
       // Pozycje pol wyboru. Etykiety kanalow z `adresKanalu` (ta sama funkcja, co w naglowku
       // kolumny), reszta ze slownikow domeny — druga mapa nazw rozjechalaby sie z pierwsza.
       kanalyDoFiltra: NAGLOWKI_KANALOW,
-      paczkomatDoFiltra: PACZKOMAT_DO_FILTRA.map(
-        (klucz) => ({ klucz, etykieta: PACZKOMAT_ETYKIETY[klucz] }),
-      ),
-      brakiDoFiltra: ['sku', 'wymiary', 'paczkomat', 'kategoria', 'zdjecie', 'opis', 'komplet']
-        .map(klucz => ({ klucz, etykieta: BRAKI_ETYKIETY[klucz] })),
+      paczkomatDoFiltra: PACZKOMAT_DO_FILTRA.map((klucz) => ({ klucz, etykieta: PACZKOMAT_ETYKIETY[klucz] })),
+      brakiDoFiltra: ['sku', 'wymiary', 'paczkomat', 'kategoria', 'zdjecie', 'opis', 'komplet'].map((klucz) => ({
+        klucz,
+        etykieta: BRAKI_ETYKIETY[klucz],
+      })),
       kategorieDoFiltra: kategorieDoFiltra(db),
       markiDoFiltra: markiDoFiltra(db),
 
@@ -233,9 +303,7 @@ export function registerListaMagazynu(app, { db, magazyn, sklepy, definicje = /*
       // Pozycje pola wyboru kategorii w pasku hurtu — ta sama lista, co w filtrze.
       // ⚠️ POLE WYBORU, NIE TEKSTOWE: wpisana z pamieci literowka ustawilaby hurtem
       // kategorie, ktorej nie ma w zadnym sklepie, i to od razu setkom kart.
-      paczkomatDoHurtu: PACZKOMAT_DO_FILTRA.map(
-        (klucz) => ({ klucz, etykieta: PACZKOMAT_ETYKIETY[klucz] }),
-      ),
+      paczkomatDoHurtu: PACZKOMAT_DO_FILTRA.map((klucz) => ({ klucz, etykieta: PACZKOMAT_ETYKIETY[klucz] })),
     });
   });
 }

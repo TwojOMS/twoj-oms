@@ -14,14 +14,26 @@ const ORGANIZACJA_JSON = readFileSync(join(__dir, 'fixtures', 'inpost', 'organiz
 const TOKEN = 'eyJZMYSLONY.TOKEN-PRZ093.NIE-MA-PRAWA-WYCIEC';
 const ORGANIZACJA = 4242;
 const URL_API = 'https://shipx.test/v1/';
-const nadawca = { nazwa: 'Pracownia Testowa', ulica: 'Zmyślona 1', kod: '00-950', miasto: 'Warszawa', kraj: 'PL',
-  phone: '000000000', email: 'nadawca@example.invalid' };
+const nadawca = {
+  nazwa: 'Pracownia Testowa',
+  ulica: 'Zmyślona 1',
+  kod: '00-950',
+  miasto: 'Warszawa',
+  kraj: 'PL',
+  phone: '000000000',
+  email: 'nadawca@example.invalid',
+};
 const odp = (status, tekst) => ({ status, ok: status >= 200 && status < 300, text: async () => tekst });
 
 function klient(odpowiedzi, override = {}) {
   const fetchImpl = vi.fn();
-  odpowiedzi.forEach((o) => (o instanceof Error ? fetchImpl.mockRejectedValueOnce(o) : fetchImpl.mockResolvedValueOnce(o)));
-  return { c: createInpostClient({ url: URL_API, token: TOKEN, organizacja: ORGANIZACJA, nadawca, fetchImpl, ...override }), fetchImpl };
+  odpowiedzi.forEach((o) =>
+    o instanceof Error ? fetchImpl.mockRejectedValueOnce(o) : fetchImpl.mockResolvedValueOnce(o),
+  );
+  return {
+    c: createInpostClient({ url: URL_API, token: TOKEN, organizacja: ORGANIZACJA, nadawca, fetchImpl, ...override }),
+    fetchImpl,
+  };
 }
 
 describe('createInpostClient.sprawdzPolaczenie', () => {
@@ -38,7 +50,12 @@ describe('createInpostClient.sprawdzPolaczenie', () => {
   });
 
   it('odrzucony token (401): czytelny błąd dla operatora, bez tokenu nawet w echu serwera', async () => {
-    const { c } = klient([odp(401, JSON.stringify({ status: 401, error: 'unauthorized', message: `Token is missing or invalid: ${TOKEN}` }))]);
+    const { c } = klient([
+      odp(
+        401,
+        JSON.stringify({ status: 401, error: 'unauthorized', message: `Token is missing or invalid: ${TOKEN}` }),
+      ),
+    ]);
     const e = await c.sprawdzPolaczenie().catch((x) => x);
     expect(e.dlaOperatora).toBe(true);
     expect(e.message).toContain('InPost odrzucił');
@@ -48,7 +65,9 @@ describe('createInpostClient.sprawdzPolaczenie', () => {
 
   it('obca organizacja (403/404): komunikat nazywa numer organizacji', async () => {
     for (const status of [403, 404]) {
-      const { c } = klient([odp(status, JSON.stringify({ status, error: 'access_forbidden', message: 'Access forbidden' }))]);
+      const { c } = klient([
+        odp(status, JSON.stringify({ status, error: 'access_forbidden', message: 'Access forbidden' })),
+      ]);
       const e = await c.sprawdzPolaczenie().catch((x) => x);
       expect(e.dlaOperatora, String(status)).toBe(true);
       expect(e.message, String(status)).toContain('4242');
@@ -58,7 +77,11 @@ describe('createInpostClient.sprawdzPolaczenie', () => {
   // Gałąź 403/404 też maskuje token, gdy serwer go odbija w treści.
   it('403/404 z tokenem w treści odpowiedzi: komunikat bez tokenu', async () => {
     for (const status of [403, 404]) {
-      const echo = JSON.stringify({ status, error: 'access_forbidden', message: `Organization not available for token ${TOKEN}` });
+      const echo = JSON.stringify({
+        status,
+        error: 'access_forbidden',
+        message: `Organization not available for token ${TOKEN}`,
+      });
       const { c } = klient([odp(status, echo)]);
       const e = await c.sprawdzPolaczenie().catch((x) => x);
       expect(e.dlaOperatora, String(status)).toBe(true);

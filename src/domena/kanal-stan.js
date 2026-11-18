@@ -26,8 +26,14 @@ export function stanKanalu(wejscie) {
   // glowna z powodu kanalu, ktorego nikt jeszcze nie podlaczyl.
   if (!wejscie) {
     return {
-      kanal: null, zyje: false, pilne: true, uprzedzenie: false, wolnoWiazac: true,
-      zostaloDni: null, refreshWygasaAt: null, kontoAllegro: null,
+      kanal: null,
+      zyje: false,
+      pilne: true,
+      uprzedzenie: false,
+      wolnoWiazac: true,
+      zostaloDni: null,
+      refreshWygasaAt: null,
+      kontoAllegro: null,
       powod: 'Panel nie zna stanu tego kanału — połącz go z Allegro.',
     };
   }
@@ -36,7 +42,11 @@ export function stanKanalu(wejscie) {
   // nic nie broni komus podac jej surowego wiersza z `tokeny_kanalu` — a tam siedza TOKENY.
   // Przepisanie wejscia w calosci wypchneloby je na ekran (reguła: sekrety nie wychodzą).
   const {
-    kanal = null, polaczony = false, zostaloDni = null, refreshWygasaAt = null, ostatniBlad = null,
+    kanal = null,
+    polaczony = false,
+    zostaloDni = null,
+    refreshWygasaAt = null,
+    ostatniBlad = null,
     // ⚠️ Nazwy zakresow NIE SA poswiadczeniem — wolno je pokazac, i trzeba, bo bez nazwy
     // czlowiek nie wie, co dodac w aplikacji Allegro (domena/uprawnienia-kanalu.js).
     brakujaceUprawnienia = [],
@@ -48,7 +58,9 @@ export function stanKanalu(wejscie) {
     kolizjaKonta = false,
     // Token bez zakresów ofert, aplikacja je ma, ktoś kliknął
     // „Chcę wystawiać oferty". Same flagi, żadnych poświadczeń.
-    brakOfert = false, aplikacjaMaOferty = false, chceOfert = false,
+    brakOfert = false,
+    aplikacjaMaOferty = false,
+    chceOfert = false,
   } = wejscie;
 
   const nazwa = kanal ? `Kanał ${kanal}` : 'Kanał Allegro';
@@ -102,12 +114,13 @@ export function stanKanalu(wejscie) {
       // ⚠️ „WYLOGUJ SIE" TO NIE UPRZEJMOSC, TYLKO KROK NAPRAWY. Device flow wiaze kanal
       // z kontem ZALOGOWANYM W PRZEGLADARCE; klikniecie bez wylogowania powtarza dokladnie
       // ten sam blad, i tak wlasnie ta pomylka powstala.
-      powod: `${nazwa} jest powiązany z kontem Allegro ${kontoAllegro ?? '(nieznanym)'}, `
-        + 'a na tym samym koncie wisi już inny kanał — dwa kanały to mają być dwa konta. '
-        + 'Dopóki tak jest, panel ściąga CUDZE zamówienia pod tą nazwą: dubluje je razem '
-        + 'z płatnościami i przesuwa kursor, przez co prawdziwe zamówienia zostają pominięte. '
-        + 'Zanim przewiążesz: wyloguj się z Allegro w przeglądarce, bo inaczej powiążesz go '
-        + 'z tym samym kontem jeszcze raz.',
+      powod:
+        `${nazwa} jest powiązany z kontem Allegro ${kontoAllegro ?? '(nieznanym)'}, ` +
+        'a na tym samym koncie wisi już inny kanał — dwa kanały to mają być dwa konta. ' +
+        'Dopóki tak jest, panel ściąga CUDZE zamówienia pod tą nazwą: dubluje je razem ' +
+        'z płatnościami i przesuwa kursor, przez co prawdziwe zamówienia zostają pominięte. ' +
+        'Zanim przewiążesz: wyloguj się z Allegro w przeglądarce, bo inaczej powiążesz go ' +
+        'z tym samym kontem jeszcze raz.',
     };
   }
 
@@ -147,13 +160,15 @@ export function stanKanalu(wejscie) {
     // przed dodaniem uprawnienia NICZEGO nie naprawi, za to zużyje działającą parę tokenów.
     // Kolejność: termin ma pierwszeństwo, bo to on kończy się nieodwracalnie.
     powod: uprzedzenie
-      ? `${nazwa}: połączenie z Allegro wygasa ${String(refreshWygasaAt ?? '').slice(0, 10)}`
-        + `${zostaloDni != null ? ` (za ${zostaloDni} dni)` : ''} — po tym terminie przestanie działać.`
-      : (niekompletny
-        ? `${nazwa} działa, ale token nie ma uprawnień: ${brakujaceUprawnienia.join(', ')}. `
-          + 'Odświeżenie tokenu ich NIE doda — najpierw nadaj je w aplikacji na '
-          + 'apps.developer.allegro.pl, potem przewiąż kanał.'
-        : (zgodaOfertOtwarta ? `${nazwa}: konto działa — ponowna zgoda doda wystawianie ofert.` : null)),
+      ? `${nazwa}: połączenie z Allegro wygasa ${String(refreshWygasaAt ?? '').slice(0, 10)}` +
+        `${zostaloDni != null ? ` (za ${zostaloDni} dni)` : ''} — po tym terminie przestanie działać.`
+      : niekompletny
+        ? `${nazwa} działa, ale token nie ma uprawnień: ${brakujaceUprawnienia.join(', ')}. ` +
+          'Odświeżenie tokenu ich NIE doda — najpierw nadaj je w aplikacji na ' +
+          'apps.developer.allegro.pl, potem przewiąż kanał.'
+        : zgodaOfertOtwarta
+          ? `${nazwa}: konto działa — ponowna zgoda doda wystawianie ofert.`
+          : null,
   };
 }
 
@@ -186,7 +201,5 @@ export function stanyKanalowZKolizjami(stanyDlaEkranu) {
  * pilnosci; kolejnosc na ekranie jest tu trescia, nie estetyka.
  */
 export function kanalyWymagajaceUwagi(stany) {
-  return (stany ?? [])
-    .filter((s) => s?.pilne || s?.uprzedzenie)
-    .sort((a, b) => Number(b.pilne) - Number(a.pilne));
+  return (stany ?? []).filter((s) => s?.pilne || s?.uprzedzenie).sort((a, b) => Number(b.pilne) - Number(a.pilne));
 }

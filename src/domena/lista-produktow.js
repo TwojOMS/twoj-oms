@@ -27,7 +27,7 @@ export function listaProduktow(z) {
       nazwa: String(p?.nazwa ?? ''),
       // SKU zaslepki wtyczki to identyfikator ukrytego produktu technicznego, nie symbol
       // karty — ta sama zasada, co na karcie i na specyfikacji.
-      sku: czyPozycjaPlaceholdera(p?.sku) ? null : (p?.sku || null),
+      sku: czyPozycjaPlaceholdera(p?.sku) ? null : p?.sku || null,
     }));
   return { numer: String(z?.numer ?? ''), pozycje };
 }
@@ -72,8 +72,9 @@ export function listaProduktowZbiorcza(zamowienia) {
       else w.zamowienia.push({ numer, ilosc: p.ilosc });
     }
   }
-  const posortowane = [...wiersze.values()].sort((a, b) => a.nazwa.localeCompare(b.nazwa, 'pl')
-    || String(a.sku ?? '').localeCompare(String(b.sku ?? ''), 'pl'));
+  const posortowane = [...wiersze.values()].sort(
+    (a, b) => a.nazwa.localeCompare(b.nazwa, 'pl') || String(a.sku ?? '').localeCompare(String(b.sku ?? ''), 'pl'),
+  );
   return {
     numery: lista.map((z) => String(z?.numer ?? '')),
     wiersze: posortowane,

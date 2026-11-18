@@ -60,7 +60,9 @@ const GALAZ_PREFIKSU_ALLEGRO_SQL = `z.sklep LIKE 'allegro\\_%' ESCAPE '\\'`;
 const literal = (s) => `'${String(s).replaceAll("'", "''")}'`;
 function galazAllegroSql(klucze) {
   const bezPrefiksu = klucze.filter((k) => !String(k).startsWith('allegro_'));
-  return bezPrefiksu.length ? `(${GALAZ_PREFIKSU_ALLEGRO_SQL} OR z.sklep IN (${bezPrefiksu.map(literal).join(', ')}))` : GALAZ_PREFIKSU_ALLEGRO_SQL;
+  return bezPrefiksu.length
+    ? `(${GALAZ_PREFIKSU_ALLEGRO_SQL} OR z.sklep IN (${bezPrefiksu.map(literal).join(', ')}))`
+    : GALAZ_PREFIKSU_ALLEGRO_SQL;
 }
 
 /**
@@ -156,13 +158,15 @@ export function czyWierszWZakresieKsef(wiersz) {
 export function czekaNaKsef(zamowienie) {
   const f = zamowienie?.faktura;
   if (!f) return false;
-  return stanFaktury(f) === 'wystawiona'
-    && Boolean(f.numer)
-    && Boolean(idDokumentu(f))
-    && !f.ksef_numer
-    && !f.allegro_wyslana_at
-    && !anulowaneEfektywnie(zamowienie)
-    && ((umiejetnosciZamowienia(zamowienie).plikFaktury && Boolean(zamowienie.chce_fakture)) || Boolean(f.ksef_zlecona_at));
+  return (
+    stanFaktury(f) === 'wystawiona' &&
+    Boolean(f.numer) &&
+    Boolean(idDokumentu(f)) &&
+    !f.ksef_numer &&
+    !f.allegro_wyslana_at &&
+    !anulowaneEfektywnie(zamowienie) &&
+    ((umiejetnosciZamowienia(zamowienie).plikFaktury && Boolean(zamowienie.chce_fakture)) || Boolean(f.ksef_zlecona_at))
+  );
 }
 
 /**

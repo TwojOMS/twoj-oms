@@ -15,7 +15,12 @@ import { tokenZZapisu, nipZapisuZgodny, ODMOWA_KSEF_BRAK_NIP } from '../../domen
 import { POWOD_TRWA } from './services/czuwacz-kosztow.js';
 
 export type KlientKsef = Record<string, (...a: any[]) => Promise<any>>;
-export type ZestawKsef = { klient: KlientKsef; sesja: { accessToken: () => Promise<string> }; czuwacz: { przebieg: (o?: { wymuszony?: boolean }) => Promise<any> }; wizualizacja: { pdf: (n: string) => Promise<any> } };
+export type ZestawKsef = {
+  klient: KlientKsef;
+  sesja: { accessToken: () => Promise<string> };
+  czuwacz: { przebieg: (o?: { wymuszony?: boolean }) => Promise<any> };
+  wizualizacja: { pdf: (n: string) => Promise<any> };
+};
 type Zapis = { ustawienia: Record<string, unknown>; sekrety: Record<string, unknown> } | null;
 export type ZrodloKsef = ReturnType<typeof zrodloKsefKosztow>;
 
@@ -26,12 +31,26 @@ export const POWOD_BRAK_TOKENU = 'brak tokenu KSeF';
 export const POWOD_BRAK_NIP = 'brak NIP-u firmy — wpisz go w Ustawienia → Firma';
 const BRAK_KSEF = 'Panel nie ma podpiętego KSeF — dodaj token w Ustawienia → Integracje → KSeF.';
 
-export function zrodloKsefKosztow({ zPliku = null, wczytaj, nipSprzedawcy, baseUrl, fabryka, zestaw, wylaczony = () => false, teraz = () => new Date() }: {
+export function zrodloKsefKosztow({
+  zPliku = null,
+  wczytaj,
+  nipSprzedawcy,
+  baseUrl,
+  fabryka,
+  zestaw,
+  wylaczony = () => false,
+  teraz = () => new Date(),
+}: {
   // NIP tekstem (stary kształt) albo funkcją — NIP z Ustawień → Firma czytany przy KAŻDYM użyciu; zmiana NIP-u
   // daje nowy zestaw (odcisk niżej), bo kontekst logowania tokenem to inna firma.
-  zPliku?: ZestawKsef | null; wczytaj: () => Zapis; nipSprzedawcy: string | null | (() => string | null); baseUrl?: string;
-  fabryka: (o: { token: string; nip: string; baseUrl?: string }) => KlientKsef; zestaw: (klient: KlientKsef, o: { token: string; nip: string }) => ZestawKsef;
-  wylaczony?: () => boolean; teraz?: () => Date;
+  zPliku?: ZestawKsef | null;
+  wczytaj: () => Zapis;
+  nipSprzedawcy: string | null | (() => string | null);
+  baseUrl?: string;
+  fabryka: (o: { token: string; nip: string; baseUrl?: string }) => KlientKsef;
+  zestaw: (klient: KlientKsef, o: { token: string; nip: string }) => ZestawKsef;
+  wylaczony?: () => boolean;
+  teraz?: () => Date;
 }) {
   const nipTeraz = (): string | null => (typeof nipSprzedawcy === 'function' ? nipSprzedawcy() : nipSprzedawcy) || null;
   let odcisk: string | null = null;
@@ -40,9 +59,16 @@ export function zrodloKsefKosztow({ zPliku = null, wczytaj, nipSprzedawcy, baseU
     const zapis = wczytaj();
     const token = tokenZZapisu(zapis);
     const nip = nipTeraz();
-    if (!token || !nip || !nipZapisuZgodny(zapis, nip)) { odcisk = null; zPaneluZestaw = null; return null; }
+    if (!token || !nip || !nipZapisuZgodny(zapis, nip)) {
+      odcisk = null;
+      zPaneluZestaw = null;
+      return null;
+    }
     const nowy = JSON.stringify([token, nip, baseUrl ?? null]);
-    if (nowy !== odcisk || !zPaneluZestaw) { zPaneluZestaw = zestaw(fabryka({ token, nip, baseUrl }), { token, nip }); odcisk = nowy; }
+    if (nowy !== odcisk || !zPaneluZestaw) {
+      zPaneluZestaw = zestaw(fabryka({ token, nip, baseUrl }), { token, nip });
+      odcisk = nowy;
+    }
     return zPaneluZestaw;
   };
   // Kolejność rozstrzyga regułę „plik wygrywa”: stary zapis z ekranu nie przesłoni tokenu z pliku.
@@ -56,7 +82,10 @@ export function zrodloKsefKosztow({ zPliku = null, wczytaj, nipSprzedawcy, baseU
     dostepny: () => Boolean(biezacy()),
     zapisany: () => Boolean(tokenZZapisu(wczytaj())),
     /** Zapis z ekranu jest, ale jego NIP nie zgadza się już z NIP-em firmy (plik albo Ustawienia → Firma) — token nieużywany. */
-    nipNiezgodny: () => { const z = wczytaj(); return Boolean(tokenZZapisu(z)) && !nipZapisuZgodny(z, nipTeraz()); },
+    nipNiezgodny: () => {
+      const z = wczytaj();
+      return Boolean(tokenZZapisu(z)) && !nipZapisuZgodny(z, nipTeraz());
+    },
     /** Bieżący NIP firmy — kontekst tokenu z ekranu (null = brak, token nieużywalny). */
     nipFirmy: nipTeraz,
     /** Token z ekranu zapisany, NIP-u firmy brak — przyczyna, którą trzeba nazwać wprost. */
@@ -72,7 +101,12 @@ export function zrodloKsefKosztow({ zPliku = null, wczytaj, nipSprzedawcy, baseU
       if (!z) throw bladOperatora('Najpierw zapisz token, potem sprawdź połączenie.', { status: 400 });
       const accessToken = await z.sesja.accessToken();
       const koniec = teraz();
-      await z.klient.pobierzMetadane({ accessToken, from: new Date(koniec.getTime() - 86400000).toISOString(), to: koniec.toISOString(), pageOffset: 0 });
+      await z.klient.pobierzMetadane({
+        accessToken,
+        from: new Date(koniec.getTime() - 86400000).toISOString(),
+        to: koniec.toISOString(),
+        pageOffset: 0,
+      });
       return { ok: true };
     },
   };
@@ -93,7 +127,11 @@ export function czuwaczZeZrodla(zrodlo: ZrodloKsef) {
       if (!z) return { pominiety: true, powod: zrodlo.brakNipu() ? POWOD_BRAK_NIP : POWOD_BRAK_TOKENU };
       if (trwa) return { pominiety: true, powod: POWOD_TRWA };
       trwa = true;
-      try { return await z.czuwacz.przebieg(o); } finally { trwa = false; }
+      try {
+        return await z.czuwacz.przebieg(o);
+      } finally {
+        trwa = false;
+      }
     },
   };
 }
@@ -105,7 +143,8 @@ export function wizualizacjaZeZrodla(zrodlo: ZrodloKsef) {
     powodNiedostepnosci: () => (zrodlo.wylaczony() ? null : zrodlo.powodNiedostepnosci()),
     pdf: async (ksefNumber: string) => {
       const z = zrodlo.wylaczony() ? null : zrodlo.biezacy();
-      if (!z) throw bladOperatora((zrodlo.wylaczony() ? null : zrodlo.powodNiedostepnosci()) ?? BRAK_KSEF, { status: 503 });
+      if (!z)
+        throw bladOperatora((zrodlo.wylaczony() ? null : zrodlo.powodNiedostepnosci()) ?? BRAK_KSEF, { status: 503 });
       return z.wizualizacja.pdf(ksefNumber);
     },
   };

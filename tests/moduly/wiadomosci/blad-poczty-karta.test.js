@@ -26,25 +26,48 @@ const POLLER = { stan: () => ({ ostatni_przebieg_at: null, ostatni_blad: null })
 const TERAZ = () => '2026-10-22T10:00:00.000Z';
 
 const zamowienie = () => ({
-  zrodlo_id: 9101, numer: 'LP-000101',
+  zrodlo_id: 9101,
+  numer: 'LP-000101',
   klient: { first_name: 'Ewa', last_name: 'Testowa', email: 'klient@przyklad.invalid', company: '' },
   dostawa: { first_name: 'Ewa', last_name: 'Testowa', address_1: 'Lampowa 1', postcode: '00-001', city: 'Przykładowo' },
-  metoda_wysylki: 'dpd', kwota_pobrania: null, chce_fakture: 0, nip: null,
-  kwota_brutto: '250.00', koszt_dostawy_brutto: '0.00', koszt_dostawy_netto: '0.00',
-  status_woo: 'processing', oplacone_at: null, anulowane: 0, utworzone_at: '2026-10-20T09:15:00',
+  metoda_wysylki: 'dpd',
+  kwota_pobrania: null,
+  chce_fakture: 0,
+  nip: null,
+  kwota_brutto: '250.00',
+  koszt_dostawy_brutto: '0.00',
+  koszt_dostawy_netto: '0.00',
+  status_woo: 'processing',
+  oplacone_at: null,
+  anulowane: 0,
+  utworzone_at: '2026-10-20T09:15:00',
   termin_platnosci: '14',
-  pozycje: [{
-    zrodlo_id: 9201, nazwa: 'Lampa biurkowa', sku: 'LB-1', ilosc: 1,
-    cena_brutto: '250.00', cena_netto: '203.25', brutto_linii: '250.00', netto_linii: '203.25', vat: null,
-  }],
+  pozycje: [
+    {
+      zrodlo_id: 9201,
+      nazwa: 'Lampa biurkowa',
+      sku: 'LB-1',
+      ilosc: 1,
+      cena_brutto: '250.00',
+      cena_netto: '203.25',
+      brutto_linii: '250.00',
+      netto_linii: '203.25',
+      vat: null,
+    },
+  ],
 });
 
 // Błąd o kształcie błędu nodemailera: `code` + treść z odpowiedzią serwera, w której stoi login skrzynki.
 const LOGIN = 'sklep-login@przyklad.invalid';
-const bladNodemailera = (code, message) => Object.assign(new Error(message), { code, response: message, command: 'AUTH PLAIN' });
+const bladNodemailera = (code, message) =>
+  Object.assign(new Error(message), { code, response: message, command: 'AUTH PLAIN' });
 const EAUTH = () => bladNodemailera('EAUTH', `Invalid login: 535 5.7.8 Authentication failed for ${LOGIN}`);
 const ECONNECTION = () => bladNodemailera('ECONNECTION', 'getaddrinfo ENOTFOUND smtp.przyklad.invalid');
-const rzucajacy = (fabrykaBledu) => ({ sendMail: vi.fn(async () => { throw fabrykaBledu(); }) });
+const rzucajacy = (fabrykaBledu) => ({
+  sendMail: vi.fn(async () => {
+    throw fabrykaBledu();
+  }),
+});
 
 const ZDANIE_EAUTH = 'Serwer poczty odrzucił login albo hasło. Sprawdź je w ustawieniach skrzynki u dostawcy poczty.';
 const ZDANIE_POLACZENIA = 'Nie udało się połączyć z serwerem poczty. Sprawdź adres serwera i port';
@@ -54,7 +77,11 @@ const WSKAZOWKA = 'Ustawienia → Integracje → Poczta wychodząca';
 function panelKarty({ mailer, proforma = null, db = openOmsDb(':memory:'), zbuduj = (o) => buildOmsServer(o) } = {}) {
   const idZ = zapiszZamowienie(db, 'pro', zamowienie());
   const wiadomosci = createWiadomosci({
-    db, mailer, proforma, config, teraz: TERAZ,
+    db,
+    mailer,
+    proforma,
+    config,
+    teraz: TERAZ,
     potwierdzenie: createPotwierdzenie({ db, mailer, sprzedawca: config.sprzedawca, teraz: TERAZ }),
   });
   const app = zbuduj({ db, config, poller: POLLER, wiadomosci });
@@ -94,8 +121,13 @@ describe('karta zamówienia: odmowa serwera poczty po polsku, bez treści błęd
 
   it('prawdziwy createMailer (kod przeniesiony z transportu): ta sama droga daje zdanie o haśle', async () => {
     const mailer = createMailer({
-      smtp: { host: 'smtp.przyklad.invalid', port: 465, user: LOGIN, pass: 'zmyslone' }, mailFrom: LOGIN,
-      transportFactory: () => ({ sendMail: async () => { throw EAUTH(); } }),
+      smtp: { host: 'smtp.przyklad.invalid', port: 465, user: LOGIN, pass: 'zmyslone' },
+      mailFrom: LOGIN,
+      transportFactory: () => ({
+        sendMail: async () => {
+          throw EAUTH();
+        },
+      }),
     });
     const { app, idZ } = panelKarty({ mailer });
     const res = await wyslij(app, idZ, 'przypomnienie');
@@ -118,7 +150,13 @@ describe('karta zamówienia: odmowa serwera poczty po polsku, bez treści błęd
   });
 
   it('błąd przy wysyłce BEZ kodu nodemailera (TypeError) — dalej ogólne zdanie', async () => {
-    const { app, idZ, log } = panelKarty({ mailer: { sendMail: async () => { throw new TypeError('x is not a function'); } } });
+    const { app, idZ, log } = panelKarty({
+      mailer: {
+        sendMail: async () => {
+          throw new TypeError('x is not a function');
+        },
+      },
+    });
     const res = await wyslij(app, idZ, 'przypomnienie');
     expect(res.statusCode).toBe(400);
     expect(res.body).toContain(OGOLNE);
@@ -128,11 +166,19 @@ describe('karta zamówienia: odmowa serwera poczty po polsku, bez treści błęd
   });
 
   it('błąd z kodem, ale ZE ZŁOŻENIA (brak pliku proformy, ENOENT) — ogólne zdanie, nie „serwer poczty”', async () => {
-    const proforma = { pdf: () => { throw Object.assign(new Error("ENOENT: no such file, open '/dane/proformy/x.pdf'"), { code: 'ENOENT' }); } };
+    const proforma = {
+      pdf: () => {
+        throw Object.assign(new Error("ENOENT: no such file, open '/dane/proformy/x.pdf'"), { code: 'ENOENT' });
+      },
+    };
     const mailer = rzucajacy(EAUTH);
     const db = openOmsDb(':memory:');
     const { app, idZ, log } = panelKarty({ mailer, proforma, db });
-    zapiszProforme(db, idZ, { kwotaBrutto: '250.00', plikSciezka: '/dane/proformy/x.pdf', utworzonaAt: '2026-10-21T10:00:00.000Z' });
+    zapiszProforme(db, idZ, {
+      kwotaBrutto: '250.00',
+      plikSciezka: '/dane/proformy/x.pdf',
+      utworzonaAt: '2026-10-21T10:00:00.000Z',
+    });
     const res = await wyslij(app, idZ, 'proforma');
     expect(res.statusCode).toBe(400);
     expect(res.body).toContain(OGOLNE);
@@ -176,10 +222,16 @@ describe('konta: zaproszenie mailem przy odmowie serwera poczty', () => {
   });
 
   it('błąd bez kodu: dawne zdanie, bez „serwer poczty”', async () => {
-    const { app, admin } = panel({ sendMail: async () => { throw new TypeError('x is not a function'); } });
+    const { app, admin } = panel({
+      sendMail: async () => {
+        throw new TypeError('x is not a function');
+      },
+    });
     const r = await post(app, '/ustawienia/konta/nowe', admin, NOWA);
     expect(r.statusCode).toBe(502);
-    expect(r.body).toContain('Nie udało się wysłać maila — użyj „Pokaż link”. Poprzedni link, jeśli był, nadal działa.');
+    expect(r.body).toContain(
+      'Nie udało się wysłać maila — użyj „Pokaż link”. Poprzedni link, jeśli był, nadal działa.',
+    );
     expect(r.body).not.toContain('Serwer poczty');
   });
 });
