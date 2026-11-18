@@ -1,0 +1,3 @@
+# Commity samego formatowania — git blame je pomija (git config blame.ignoreRevsFile .git-blame-ignore-revs).
+# Formatowanie kodu Prettierem 3.9.10 (szerokość 120)
+7a8a7f26c0e627175255d3a517aea24053eb3478
