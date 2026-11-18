@@ -1,0 +1,6 @@
+# Historia schematu: odcisk schematu liczy się z bajtów migracji.
+**/migracje/**
+# Dostarczona biblioteka, zminifikowana.
+src/public/htmx.min.js
+# Kopie zamrożone: test porównuje ich bajty ze skrótem.
+tests/pomoc/klient-oms-frozen.js

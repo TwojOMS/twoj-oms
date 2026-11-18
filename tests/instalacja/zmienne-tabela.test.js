@@ -140,7 +140,7 @@ const SKROTY_NAZW = [
 ];
 const zawieraNazwe = (tresc, wzorce = SKROTY_NAZW) => porownajNazwe(tresc, wzorce);
   const WLASCICIEL = [
-        /\bAga\b/, /\bAgi\b/, /\bTomk\w*/,
+        /\bAga\b/, /\bAgi\b/,
     /\bNAS\b/, /synology/i, /monitoring/i, /192\.168\./,
     /c:[\\/]+users[\\/]+adam/i, /produkcj\w*\s+(?:właściciela|właściciela|firmy)/i,
   ];

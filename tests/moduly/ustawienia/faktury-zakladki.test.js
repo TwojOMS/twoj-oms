@@ -3,18 +3,31 @@ import { describe, it, expect } from 'vitest';
 import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
 import { nowyPanel, jako, get, post } from '../../pomoc/panel-konta-testowe.js';
 const PROGRAM = '/ustawienia/integracje/program-fakturowy';
-const URLS = ['/ustawienia/firma/rejestrowe', '/ustawienia/firma/rachunek', '/ustawienia/faktury/zasady',
-  '/ustawienia/faktury/vat', '/ustawienia/faktury/numeracja', '/ustawienia/faktury/ksef',
-  '/ustawienia/wysylka/dostawa', '/ustawienia/komunikacja/podpis', '/ustawienia/automatyzacje/systemowe', '/ustawienia/zespol/logowania'];
+const URLS = [
+  '/ustawienia/firma/rejestrowe',
+  '/ustawienia/firma/rachunek',
+  '/ustawienia/faktury/zasady',
+  '/ustawienia/faktury/vat',
+  '/ustawienia/faktury/numeracja',
+  '/ustawienia/faktury/ksef',
+  '/ustawienia/wysylka/dostawa',
+  '/ustawienia/komunikacja/podpis',
+  '/ustawienia/automatyzacje/systemowe',
+  '/ustawienia/zespol/logowania',
+];
 async function wPanelu(program, test) {
   const p = nowyPanel({ env: { OMS_PROGRAM_FAKTUROWY: program } });
   zalozKonto(p.db, { login: 'wlasciciel', haslo: 'h', rola: 'administrator', admin: true });
   zalozKonto(p.db, { login: 'sprzedawca', haslo: 'h', rola: 'sprzedaz' });
-  try { await test({ ...p, admin: jako(p.db, 'wlasciciel'), sprzedaz: jako(p.db, 'sprzedawca') }); }
-  finally { await p.app.close(); p.db.close(); }
+  try {
+    await test({ ...p, admin: jako(p.db, 'wlasciciel'), sprzedaz: jako(p.db, 'sprzedawca') });
+  } finally {
+    await p.app.close();
+    p.db.close();
+  }
 }
 describe('publiczne zakładki faktur bez opcjonalnego modułu', () => {
-  it.each(['brak', 'infakt'])('nowe adresy GET przy %s i odmowa dla Sprzedaży', async program => {
+  it.each(['brak', 'infakt'])('nowe adresy GET przy %s i odmowa dla Sprzedaży', async (program) => {
     await wPanelu(program, async ({ app, admin, sprzedaz }) => {
       for (const url of URLS) {
         const r = await get(app, url, admin);

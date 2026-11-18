@@ -11,6 +11,8 @@
     "test": "vitest run",
     "test:zwiazane": "vitest related --run",
     "typy": "tsc -p tsconfig.json",
+    "format": "prettier --write \"src/**/*.{js,ts,mjs}\" \"tests/**/*.{js,ts,mjs}\" \"scripts/**/*.{js,ts,mjs}\" \"deploy/**/*.{js,ts,mjs}\" vitest.config.ts",
+    "format:sprawdz": "prettier --check \"src/**/*.{js,ts,mjs}\" \"tests/**/*.{js,ts,mjs}\" \"scripts/**/*.{js,ts,mjs}\" \"deploy/**/*.{js,ts,mjs}\" vitest.config.ts",
     "sprawdz": "npm run typy && node scripts/straznik-migracji.mjs && node scripts/straznik-konfiguracji.mjs && node scripts/straznik-kanalow.mjs && node scripts/straznik-kurierow.mjs && node scripts/straznik-sekretow.mjs && npm test"
   },
   "dependencies": {
@@ -29,6 +31,7 @@
     "@types/node": "24.19.0",
     "ajv": "8.20.0",
     "ajv-formats": "3.0.1",
+    "prettier": "3.9.10",
     "typescript": "5.9.3",
     "vitest": "5.0.5"
   }

@@ -58,6 +58,8 @@ zamierzona sieć bezpieczeństwa. Nie obchodź jej; zmień tryb dopiero na polec
 | `tests/` | Vitest; głównie `tests/moduly/<moduł>`, `tests/domena`, `tests/core`; resztę znajdzie `rg -l nazwaFunkcji tests` |
 | `docs/` | instalacja, konfiguracja, aktualizacje; `docs/konfiguracja.json` to maszynowy rejestr zmiennych env |
 
+Warstwy `src/`, budowa modułu i droga zamówienia od kanału do listy (z plikami): `docs/architektura.md`.
+
 Kontrakt modułu (`ModulOms`) jest w `src/core/kontrakty.ts`. Moduł deklaruje `wymaga` (kolejność
 budowania), `konfiguracja(env)` (rzuca błąd przy złej wartości — **nie podstawia po cichu domyślnej**),
 `migracje`, `uprawnienia`, `menu`, `zbuduj(ctx)` (trasy, zegary, usługi, zdrowie).
@@ -77,6 +79,14 @@ budowania), `konfiguracja(env)` (rzuca błąd przy złej wartości — **nie pod
 - **Nowa albo zmieniona zmienna środowiskowa** → wpis w `docs/konfiguracja.json`; `scripts/straznik-konfiguracji.mjs`
   skanuje kod i musi zgłosić 0 błędów. Hashe plików w tym rejestrze trzeba odświeżyć po zmianie
   wskazanego pliku (komunikat strażnika wskazuje plik).
+- **Formater:** Prettier (`.prettierrc.json`, `.prettierignore`, `npm run format`); `npm run sprawdz` odrzuca
+  niesformatowany kod (`npm run format:sprawdz`). Gałąź sprzed formatera (nie ma jeszcze `npm run format`; `C` = commit
+  formatowania): `git merge C^` (zwykłe konflikty), `git merge -s ours --no-commit C`, `npm ci`, `npm run format` dwa
+  razy (Prettier nie zawsze kończy za pierwszym razem), `git add -A && git commit`, potem `git merge main`. Kontrola:
+  `git diff main...HEAD` pokazuje tylko pliki gałęzi.
+- **Granice modułów:** import z innego modułu tylko w stronę modułu z `wymaga`; stan zastany jest zamrożony w
+  `tests/core/granice-modulow-wyjatki.json` (limity par, pod prąd warstw, cykle). Nowy import w poprzek modułów
+  zatrzyma `tests/core/granice-modulow.test.ts`; listy nie podnosi się, żeby test przeszedł.
 - **Test najpierw, potem kod.** Zmiana zachowania zmienia też jego test — w tym samym commicie. Zielone
   testy nie dowodzą, że test cokolwiek chroni: po poprawce złam kod celowo (mutacja) i sprawdź, że test pada.
 - **Pieniądze** (faktury, VAT, płatności, KSeF), nadania i migracje tych danych: poproś o niezależny

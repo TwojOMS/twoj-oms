@@ -13,8 +13,7 @@ const KORZEN = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const ROZSZERZENIE_TESTU = /\.test\.(?:js|mjs|cjs|ts|mts|cts)$/;
 
 // Wpis kończący się na `/` obejmuje cały katalog; pozostałe są dokładnymi ścieżkami plików.
-const WYJATKI = {
-};
+const WYJATKI = {};
 
 export function plikiTestowe() {
   return execFileSync('git', ['ls-files'], { cwd: KORZEN, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })

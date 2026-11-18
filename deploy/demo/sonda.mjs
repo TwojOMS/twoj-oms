@@ -11,21 +11,25 @@
 import { pathToFileURL } from 'node:url';
 
 export async function zbadaj(cele, limitMs = 4000) {
-  return Promise.all(cele.map(async (cel) => {
-    const t0 = Date.now();
-    try {
-      const r = await fetch(cel, { signal: AbortSignal.timeout(limitMs), redirect: 'manual' });
-      return { cel, przeciek: true, opis: `HTTP ${r.status} po ${Date.now() - t0} ms` };
-    } catch (e) {
-      return { cel, przeciek: false, opis: `${e.cause?.code ?? e.name} po ${Date.now() - t0} ms` };
-    }
-  }));
+  return Promise.all(
+    cele.map(async (cel) => {
+      const t0 = Date.now();
+      try {
+        const r = await fetch(cel, { signal: AbortSignal.timeout(limitMs), redirect: 'manual' });
+        return { cel, przeciek: true, opis: `HTTP ${r.status} po ${Date.now() - t0} ms` };
+      } catch (e) {
+        return { cel, przeciek: false, opis: `${e.cause?.code ?? e.name} po ${Date.now() - t0} ms` };
+      }
+    }),
+  );
 }
 
 // Bezpiecznik start.mjs: jakakolwiek odpowiedź = wyjątek (odmowa startu panelu). Zwraca liczbę sprawdzonych celów.
 export async function wymagajIzolacji(cele, badaj = zbadaj) {
   if (!cele.length) {
-    console.warn('demo: DEMO_SONDA_CELE puste — izolacji sieci nie sprawdzam (demo publiczne: wpisz adresy, które mają być nieosiągalne)');
+    console.warn(
+      'demo: DEMO_SONDA_CELE puste — izolacji sieci nie sprawdzam (demo publiczne: wpisz adresy, które mają być nieosiągalne)',
+    );
     return 0;
   }
   const przecieki = (await badaj(cele, 2500)).filter((w) => w.przeciek);

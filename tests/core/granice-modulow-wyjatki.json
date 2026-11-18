@@ -1,0 +1,102 @@
+{
+  "pozaWymaga": {
+    "api -> api-panelu": 4,
+    "api -> magazyn": 1,
+    "automatyzacje -> ustawienia": 1,
+    "faktury -> koszty": 2,
+    "faktury -> ustawienia": 7,
+    "faktury -> wysylka": 2,
+    "faktury -> zamowienia": 5,
+    "kanaly -> automatyzacje": 1,
+    "kanaly -> ustawienia": 6,
+    "koszty -> ustawienia": 1,
+    "marketing -> ustawienia": 2,
+    "ustawienia -> magazyn": 1,
+    "ustawienia -> wiadomosci": 3,
+    "ustawienia -> zdrowie": 1,
+    "wiadomosci -> automatyzacje": 1,
+    "wiadomosci -> ustawienia": 3,
+    "wysylka -> ustawienia": 3,
+    "zamowienia -> automatyzacje": 1,
+    "zamowienia -> ustawienia": 1,
+    "zamowienia -> wysylka": 7,
+    "zwroty -> zamowienia": 5
+  },
+  "wzajemne": [
+    "automatyzacje <-> wiadomosci",
+    "faktury <-> koszty",
+    "faktury <-> wysylka",
+    "faktury <-> zamowienia",
+    "kanaly <-> ustawienia",
+    "marketing <-> ustawienia",
+    "ustawienia <-> wiadomosci",
+    "wysylka <-> zamowienia"
+  ],
+  "podPradWarstw": {
+    "core -> moduly|oms|integracje": {
+      "core/tryb.ts -> integracje/klucze.js": 1,
+      "core/web/logo-instalacji.js -> oms/db/konfiguracja-integracji.js": 1,
+      "core/web/modul.ts -> moduly/kanaly/konfiguracja.ts": 1,
+      "core/web/modul.ts -> oms/db/moduly-opcjonalne.js": 1,
+      "core/web/pipeline.js -> oms/db/indeks-listy.js": 1,
+      "core/web/pipeline.js -> oms/db/moduly-opcjonalne.js": 1,
+      "core/web/pipeline.js -> oms/db/statusy.js": 1
+    },
+    "oms -> moduly": {
+      "oms/allegro/client.js -> moduly/wiadomosci/zalaczniki.js": 1,
+      "oms/allegro/dcr.ts -> moduly/kanaly/kontrakty-allegro.ts": 2,
+      "oms/allegro/oauth-code.ts -> moduly/kanaly/kontrakty-allegro.ts": 2,
+      "oms/bootstrap.ts -> moduly/lista.ts": 1,
+      "oms/db/db.ts -> moduly/rdzen/modul.ts": 1,
+      "oms/db/moduly-opcjonalne.js -> moduly/faktury/services/faktura-okresu.js": 1,
+      "oms/db/ostrzezenia.js -> moduly/wysylka/db/ostatnia-paczka.js": 1,
+      "oms/erli/numer.js -> moduly/kanaly/services/kanal-erli.ts": 1,
+      "oms/kurierzy/index.js -> moduly/wysylka/kurierzy.ts": 1
+    },
+    "domena -> poza domena": {
+      "domena/adres-firmy.js -> core/adres-firmy.ts": 3,
+      "domena/ekrany.js -> core/bezpieczenstwo/logowanie-wspolne.js": 1,
+      "domena/gus.js -> core/walidatory.ts": 1,
+      "domena/katalog-integracji.ts -> core/kontrakty.ts": 1,
+      "domena/menu-stron.js -> core/kontrakty.ts": 1,
+      "domena/modul-allegro.ts -> core/kontrakty.ts": 1,
+      "domena/modul-erli.ts -> core/kontrakty.ts": 1,
+      "domena/modul-woo.ts -> core/kontrakty.ts": 1,
+      "domena/moduly-kanalow.ts -> core/kontrakty.ts": 1,
+      "domena/moduly-kurierow.ts -> core/kontrakty.ts": 1,
+      "domena/motyw.js -> core/bezpieczenstwo/powrot.js": 1,
+      "domena/nip-bdo-firmy.js -> core/sprzedawca.ts": 1,
+      "domena/nip-bdo-firmy.js -> core/walidatory.ts": 1,
+      "domena/przewoznicy.ts -> core/kontrakty.ts": 1,
+      "domena/rachunek-firmy.js -> core/sprzedawca.ts": 1,
+      "domena/rachunek-firmy.js -> core/walidatory.ts": 1,
+      "domena/rachunek-zarzadczy.js -> oms/db/dane-miesieczne.js": 1,
+      "domena/rachunek-zarzadczy.js -> oms/db/kategorie-kosztow.js": 1,
+      "domena/rachunek-zarzadczy.js -> oms/db/koszty.js": 1,
+      "domena/sprzedaz-okresu.js -> oms/db/historia-sprzedazy.js": 1,
+      "domena/sprzedaz-okresu.js -> oms/db/okno-zamowien.js": 1,
+      "domena/statystyki-okresu.js -> oms/db/okno-zamowien.js": 1,
+      "domena/statystyki-okresu.js -> oms/db/zamowienia.js": 1,
+      "domena/wskazniki-zarzadcze.js -> oms/db/koszty.js": 1
+    }
+  },
+  "cykle": [
+    [
+      "domena/klient-zbiorczy.js",
+      "domena/rabat.js",
+      "domena/wdt.js"
+    ],
+    [
+      "domena/termin-wysylki.js",
+      "domena/wiek-zamowienia.js"
+    ],
+    [
+      "integracje/program-fakturowy.ts",
+      "integracje/programy/infakt.ts"
+    ],
+    [
+      "moduly/wiadomosci/podpis-maili.js",
+      "moduly/wiadomosci/zdania-platnosci.js"
+    ]
+  ]
+}

@@ -14,8 +14,9 @@ function odmowyKompozycji() {
     // @ts-expect-error waga z formularza musi być sparsowana przed mapą kurierów
     void mapa.dpd.nadaj({} as Omit<ZlecenieKuriera, 'paczka'> & { paczka: { waga: string } });
   }
+  const zleKurierzy = { dpd: { nadaj: async (_z: string) => ({ numerListu: null }) } };
   // @ts-expect-error rzeczywisty konsument nie może dostać fabryki z błędnym zleceniem
-  createNadanie({ db, katalogEtykiet: '/nie-wywolujemy', kurierzy: { dpd: { nadaj: async (_z: string) => ({ numerListu: null }) } } });
+  createNadanie({ db, katalogEtykiet: '/nie-wywolujemy', kurierzy: zleKurierzy });
   // @ts-expect-error konsument przyjmuje liczbę id, nie wartość formularza
   void usluga.nadaj('1');
   // @ts-expect-error paczka rzeczywistego konsumenta musi mieć pełny wynik parsera

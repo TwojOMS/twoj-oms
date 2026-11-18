@@ -61,7 +61,8 @@ describe('faktury: konfiguracja rzeczywistego manifestu i HTTP', () => {
     expect(r.statusCode, r.body).toBe(302);
     expect(payloady).toHaveLength(1);
     expect(payloady[0].notes).toContain('PL1234563218');
-    expect(payloady[0].notes.match(/\d{10}/g)).toEqual(['1234563218']); // zaden inny numer NIP (np. zaszyty domyslny)
+    // zaden inny numer NIP (np. zaszyty domyslny)
+    expect(payloady[0].notes.match(/\d{10}/g)).toEqual(['1234563218']);
     expect(vies).toHaveLength(1);
     expect(new URL(vies[0]).searchParams.get('requesterNumber')).toBe('1234563218');
   });

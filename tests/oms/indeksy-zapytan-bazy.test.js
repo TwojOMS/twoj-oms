@@ -32,7 +32,7 @@ describe('indeksy', () => {
   it('bezpiecznik kanałów (każde /health i każda lista) czyta okno 30 dni indeksem wyrażeniowym', () => {
     // Przy dziesiątkach tysięcy zamówień indeks skraca zapytanie z setek do kilku milisekund.
     // Dosłownie zapytanie z modułu zdrowia, z parametrami (plan dla literałów może być inny).
-    const sql = fs.readFileSync('src/moduly/zdrowie/bezpiecznik-kanalow.ts', 'utf8').match(/db\.prepare\(`([\s\S]*?)`\)/)[1];
+    const sql = fs.readFileSync('src/moduly/zdrowie/bezpiecznik-kanalow.ts', 'utf8').match(/db\s*\.prepare\(\s*`([\s\S]*?)`,?\s*\)/)[1];
     const iso = '2026-10-09T10:00:00.000Z';
     expect(db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(iso, iso).map((w) => w.detail).join(' | ')).toMatch(/INDEX zamowienia_julianday_utworzenia/);
   });
