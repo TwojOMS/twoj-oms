@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  TEKST_BRAK_CENNIKA,
+  TEKST_BRAK_DOMYSLNEGO,
   TEKST_BRAK_WYMIAROW,
   dobierzCennik,
   regulyKonta,
@@ -47,7 +49,7 @@ describe('E3d.02 dobierzCennik — reguły rozmiaru konta', () => {
     expect(dobierzCennik({ karta: k, reguly: REGULY }).cennik).toBe('Mała paczka');
   });
 
-  it('1 mm ponad limit przechodzi do następnej reguły, 1 g ponad wszystkie — do „dla większych”', () => {
+  it('1 mm ponad limit przechodzi do następnej reguły, 1 g ponad wszystkie — do cennika domyślnego', () => {
     const k = karta({ szerokosc_mm: 640, wysokosc_mm: 380, glebokosc_mm: 81 });
     expect(dobierzCennik({ karta: k, reguly: REGULY })).toEqual({
       cennik: 'Średnia paczka',
@@ -55,7 +57,7 @@ describe('E3d.02 dobierzCennik — reguły rozmiaru konta', () => {
     });
     expect(dobierzCennik({ karta: karta({ waga_g: 25001 }), reguly: REGULY })).toEqual({
       cennik: 'Kurier gabaryt',
-      powod: { rodzaj: 'wieksze', tekst: 'dla większych' },
+      powod: { rodzaj: 'wieksze', tekst: 'cennik domyślny — produkt większy od wierszy rozmiaru' },
     });
   });
 
@@ -76,7 +78,7 @@ describe('E3d.02 dobierzCennik — reguły rozmiaru konta', () => {
     );
   });
 
-  it('brak wagi → odmowa, a nie „dla większych”', () => {
+  it('brak wagi → odmowa, a nie cennik domyślny', () => {
     for (const waga of [null, undefined, 0, -1]) {
       expect(dobierzCennik({ karta: karta({ waga_g: waga }), reguly: REGULY })).toEqual(ODMOWA_WYMIARY);
     }
@@ -99,13 +101,65 @@ describe('E3d.02 dobierzCennik — reguły rozmiaru konta', () => {
   it('jedna reguła „wszystko” działa bez wymiarów i wagi — jak dziś', () => {
     expect(dobierzCennik({ karta: { id: 9 }, reguly: [{ cennik: 'Lampy' }] })).toEqual({
       cennik: 'Lampy',
-      powod: { rodzaj: 'wszystko', tekst: 'jeden cennik konta' },
+      powod: { rodzaj: 'wszystko', tekst: 'cennik domyślny konta' },
     });
   });
 
   it('pusta lista → brak-cennika', () => {
     expect(dobierzCennik({ karta: karta(), reguly: [] })).toMatchObject({ odmowa: { kod: 'brak-cennika' } });
     expect(dobierzCennik({ karta: karta(), reguly: undefined })).toMatchObject({ odmowa: { kod: 'brak-cennika' } });
+  });
+});
+
+describe('dobierzCennik — cenniki OMS z nazwą', () => {
+  const MALA = { doMm: [640, 380, 80], doG: 25000, cennik: 'a-mala', nazwaOms: 'Mała paczka' };
+  const DOMYSLNY = { cennik: 'a-duza', nazwaOms: 'Domyślny' };
+  const duza = () => karta({ szerokosc_mm: 700 });
+
+  it('powód podaje nazwę cennika OMS i jego limity; rodzaj i numer bez zmian', () => {
+    expect(dobierzCennik({ karta: karta(), reguly: [MALA, DOMYSLNY] })).toEqual({
+      cennik: 'a-mala',
+      powod: regula(1, 'cennik OMS „Mała paczka” (do 64×38×8 cm, 25 kg)'),
+    });
+    expect(dobierzCennik({ karta: duza(), reguly: [MALA, DOMYSLNY] })).toEqual({
+      cennik: 'a-duza',
+      powod: { rodzaj: 'wieksze', tekst: 'cennik OMS „Domyślny”' },
+    });
+    expect(dobierzCennik({ karta: { id: 9 }, reguly: [DOMYSLNY] })).toEqual({
+      cennik: 'a-duza',
+      powod: { rodzaj: 'wszystko', tekst: 'cennik OMS „Domyślny”' },
+    });
+  });
+
+  it('wyjątek z nazwą cennika OMS karty; bez nazwy — dawny napis', () => {
+    expect(
+      dobierzCennik({ karta: karta(), reguly: [MALA, DOMYSLNY], wyjatek: 'a-wyj', nazwaWyjatku: 'Wyjątek 1' }),
+    ).toEqual({ cennik: 'a-wyj', powod: { rodzaj: 'wyjatek', tekst: 'wyjątek na karcie: cennik OMS „Wyjątek 1”' } });
+    expect(dobierzCennik({ karta: karta(), reguly: [MALA, DOMYSLNY], wyjatek: 'a-wyj' }).powod.tekst).toBe(
+      'wyjątek na karcie',
+    );
+  });
+
+  it('lista bez domyślnego: pasujący wygrywa, za duży → brak-domyslnego, bez wymiarów → brak-wymiarow', () => {
+    expect(regulyKonta({ cenniki: [MALA] })).toEqual([MALA]);
+    expect(dobierzCennik({ karta: karta(), reguly: [MALA] })).toEqual({
+      cennik: 'a-mala',
+      powod: regula(1, 'cennik OMS „Mała paczka” (do 64×38×8 cm, 25 kg)'),
+    });
+    expect(dobierzCennik({ karta: duza(), reguly: [MALA] })).toEqual({
+      odmowa: { kod: 'brak-domyslnego', tekst: TEKST_BRAK_DOMYSLNEGO },
+    });
+    expect(TEKST_BRAK_DOMYSLNEGO).toBe(
+      'Produkt jest większy od cenników rozmiaru, a cennik domyślny nie ma powiązania z tym kontem — ustaw je w Magazyn → Cenniki.',
+    );
+    expect(dobierzCennik({ karta: karta({ waga_g: null }), reguly: [MALA] })).toEqual(ODMOWA_WYMIARY);
+  });
+
+  it('konto bez powiązanego cennika: odmowa wskazuje Magazyn → Cenniki', () => {
+    expect(dobierzCennik({ karta: karta(), reguly: [] })).toEqual({
+      odmowa: { kod: 'brak-cennika', tekst: TEKST_BRAK_CENNIKA },
+    });
+    expect(TEKST_BRAK_CENNIKA).toBe('Konto nie ma powiązanego cennika dostaw — ustaw powiązanie w Magazyn → Cenniki.');
   });
 });
 
@@ -133,8 +187,10 @@ describe('E3d.02 sprawdzReguly', () => {
     expect(sprawdzReguly([])).toEqual({ reguly: [], bledy: [] });
   });
 
-  it('wymaga „dla większych” na końcu i pełnych limitów w środku', () => {
-    expect(sprawdzReguly([{ doMm: [1, 2, 3], doG: 10, cennik: 'A' }]).bledy.length).toBeGreaterThan(0);
+  it('wymaga cennika domyślnego na końcu i pełnych limitów w środku', () => {
+    expect(sprawdzReguly([{ doMm: [1, 2, 3], doG: 10, cennik: 'A' }]).bledy).toContain(
+      'Ostatnia reguła to cennik domyślny — bez limitów wymiarów i wagi.',
+    );
     expect(sprawdzReguly([{ doMm: [1, 2], doG: 10, cennik: 'A' }, { cennik: 'B' }]).bledy.length).toBeGreaterThan(0);
     expect(sprawdzReguly([{ doMm: [1, 2, 0], doG: 10, cennik: 'A' }, { cennik: 'B' }]).bledy.length).toBeGreaterThan(0);
     expect(sprawdzReguly([{ doMm: [1, 2, 3], doG: null, cennik: 'A' }, { cennik: 'B' }]).bledy.length).toBeGreaterThan(
@@ -147,7 +203,7 @@ describe('E3d.02 sprawdzReguly', () => {
 });
 
 describe('E3d.02 regulyZFormularza — cm i kg z pól tekstowych', () => {
-  it('przelicza cm/kg na mm/g, pomija puste wiersze i dokleja „dla większych”', () => {
+  it('przelicza cm/kg na mm/g, pomija puste wiersze i dokleja cennik domyślnego', () => {
     const wiersze = [
       { a: '8', b: '38', c: '64', waga: '25', cennik: 'Mała paczka' },
       { a: '', b: '', c: '', waga: '', cennik: '' },
@@ -163,9 +219,10 @@ describe('E3d.02 regulyZFormularza — cm i kg z pól tekstowych', () => {
     });
   });
 
-  it('błędy wskazują wiersz; brak „dla większych” przy regułach to błąd', () => {
+  it('błędy wskazują wiersz; brak cennika domyślnego przy regułach to błąd', () => {
     const { bledy } = regulyZFormularza([{ a: 'x', b: '38', c: '64', waga: '25', cennik: 'A' }], '');
     expect(bledy.map((b) => b.wiersz)).toEqual([0, null]);
+    expect(bledy[1].tekst).toBe('Wybierz cennik domyślny — obowiązkowy, gdy są wiersze rozmiaru.');
     expect(regulyZFormularza([], ' Lampy ')).toEqual({ reguly: [{ cennik: 'Lampy' }], bledy: [] });
     expect(regulyZFormularza([], '')).toEqual({ reguly: [], bledy: [] });
   });

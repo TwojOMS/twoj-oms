@@ -3,6 +3,7 @@ import { znacznikStatusuOferty, liczbaZPrzymiotnikiem } from '../../domena/alleg
 import { wpisZbedny, wpisZFormularza } from '../../domena/cena-zakupu.js';
 import { dzienWarszawa } from '../../domena/format-daty.js';
 import { cenyZakupuNa, historiaCenZakupu, usunWpisCenyZakupu, zapiszCeneZakupu } from '../../oms/db/ceny-zakupu.js';
+import { listaParametrow, wartosciKart } from '../../oms/db/parametry-kart.js';
 
 const opisZakonczonych = (n) => liczbaZPrzymiotnikiem(n, ['zakończona', 'zakończone', 'zakończonych']);
 import { dodajDoSlownika, dopiszDoSlownikow, wTransakcji } from './services/slowniki-kart.js';
@@ -135,7 +136,7 @@ export function registerAkcjeMagazynu(
     // ⚠️ ODMOWA JEST CALOSCIOWA: jedno pole, ktorego nie rozumiemy, wstrzymuje CALY zapis,
     // a nie „to, co dalo sie odczytac". Przy setkach kart nikt by juz nie odtworzyl, ktora
     // polowa weszla.
-    const { polecenie, blad } = polecenieZFormularza(req.body);
+    const { polecenie, blad } = polecenieZFormularza(req.body, { parametry: listaParametrow(db) });
     if (blad) return odmowa(blad);
     // Puste polecenie to NIE jest „skasuj wszystko" — to jest brak decyzji.
     if (!Object.keys(polecenie).length) return odmowa(HURT_BEZ_ZMIANY);
@@ -166,7 +167,18 @@ export function registerAkcjeMagazynu(
     }
 
     const cenyNaDzien = polecenie.cenaZakupu ? cenyZakupuNa(db, polecenie.cenaZakupu.od) : undefined;
-    const { plan, pominieteBezCeny, straciZalaczniki, blad: bladPlanu } = planHurtu(karty, polecenie, { cenyNaDzien });
+    const wartosciParametrow = polecenie.parametry
+      ? wartosciKart(
+          db,
+          karty.map((k) => k.id),
+        )
+      : undefined;
+    const {
+      plan,
+      pominieteBezCeny,
+      straciZalaczniki,
+      blad: bladPlanu,
+    } = planHurtu(karty, polecenie, { cenyNaDzien, wartosciParametrow });
     if (bladPlanu) return odmowa(bladPlanu);
     if (!zapisz) {
       // „Dziś” ceny zakupu liczy TYLKO podgląd i oddaje je zatwierdzeniu ukrytym polem. Zatwierdzenie

@@ -21,6 +21,9 @@ function wTransakcji(db, praca) {
   }
 }
 
+// Adres w polach obok złożonego `adres`. Starzy producenci mają w polach NULL — ekran pokazuje wtedy `adres`.
+const KOLUMNY = 'id, nazwa, adres, ulica, kod_pocztowy, miasto, kraj, email, www, domyslny, utworzono_at, zmieniono_at';
+
 const wiersz = (w) => (w ? { ...w, domyslny: w.domyslny === 1 } : null);
 
 const markiProducenta = (db, id) =>
@@ -31,11 +34,7 @@ const markiProducenta = (db, id) =>
 
 /** Producent po id albo `null`. */
 export function producentPoId(db, id) {
-  return wiersz(
-    db
-      .prepare('SELECT id, nazwa, adres, email, www, domyslny, utworzono_at, zmieniono_at FROM producenci WHERE id = ?')
-      .get(Number(id)),
-  );
+  return wiersz(db.prepare(`SELECT ${KOLUMNY} FROM producenci WHERE id = ?`).get(Number(id)));
 }
 
 /** Wszyscy producenci alfabetycznie, każdy z listą przypisanych marek i liczbą kart tych marek. */
@@ -52,7 +51,7 @@ export function listaProducentow(db) {
   );
   return db
     .prepare(
-      `SELECT id, nazwa, adres, email, www, domyslny, utworzono_at, zmieniono_at FROM producenci
+      `SELECT ${KOLUMNY} FROM producenci
        ORDER BY nazwa COLLATE NOCASE, nazwa, id`,
     )
     .all()
@@ -63,13 +62,13 @@ export function listaProducentow(db) {
 export function dodajProducenta(db, dane, { at = teraz() } = {}) {
   const w = walidujProducenta(dane);
   if (!w.ok) return { ok: false, bledy: w.bledy, wartosci: w.wartosci };
-  const { nazwa, adres, email, www } = w.wartosci;
+  const { nazwa, adres, ulica, kod, miasto, kraj, email, www } = w.wartosci;
   const r = db
     .prepare(
-      `INSERT INTO producenci (nazwa, adres, email, www, utworzono_at, zmieniono_at)
-       VALUES (?, ?, ?, ?, ?, ?) RETURNING id`,
+      `INSERT INTO producenci (nazwa, adres, ulica, kod_pocztowy, miasto, kraj, email, www, utworzono_at, zmieniono_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
     )
-    .get(nazwa, adres, email, www, at, at);
+    .get(nazwa, adres, ulica, kod, miasto, kraj, email, www, at, at);
   return { ok: true, id: Number(r.id) };
 }
 
@@ -77,10 +76,13 @@ export function dodajProducenta(db, dane, { at = teraz() } = {}) {
 export function zmienProducenta(db, id, dane, { at = teraz() } = {}) {
   const w = walidujProducenta(dane);
   if (!w.ok) return { ok: false, bledy: w.bledy, wartosci: w.wartosci };
-  const { nazwa, adres, email, www } = w.wartosci;
+  const { nazwa, adres, ulica, kod, miasto, kraj, email, www } = w.wartosci;
   const zmiana = db
-    .prepare('UPDATE producenci SET nazwa = ?, adres = ?, email = ?, www = ?, zmieniono_at = ? WHERE id = ?')
-    .run(nazwa, adres, email, www, at, Number(id));
+    .prepare(
+      `UPDATE producenci SET nazwa = ?, adres = ?, ulica = ?, kod_pocztowy = ?, miasto = ?, kraj = ?, email = ?,
+       www = ?, zmieniono_at = ? WHERE id = ?`,
+    )
+    .run(nazwa, adres, ulica, kod, miasto, kraj, email, www, at, Number(id));
   return zmiana.changes === 1 ? { ok: true } : { blad: NIE_MA };
 }
 

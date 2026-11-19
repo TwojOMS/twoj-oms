@@ -41,9 +41,9 @@ describe('karta produktu — głębokość i waga', () => {
     expect(wiersz(id)).toMatchObject({ nazwa: 'Kinkiet', waga_g: 700 });
   });
 
-  it('formularz edycji pokazuje oba pola z wartościami w cm i kg', async () => {
+  it('formularz edycji okna Parametry pokazuje oba pola z wartościami w cm i kg', async () => {
     const id = utworzKarte(db, { nazwa: 'Kinkiet', glebokosc_mm: 125, waga_g: 1800 });
-    const html = (await get(`/magazyn/${id}?edytuj=dane`)).body;
+    const html = (await get(`/magazyn/${id}?edytuj=parametry`)).body;
     const pole = (n) => new RegExp(`<input[^>]*name="${n}"[^>]*>`).exec(html)?.[0] ?? '';
     expect(pole('glebokosc_cm')).toContain('value="12.5"');
     expect(pole('waga_kg')).toContain('value="1.8"');

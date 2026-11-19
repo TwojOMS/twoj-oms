@@ -28,7 +28,7 @@ export function createOplatyAllegro({ teraz = () => Date.now(), limitMs = LIMIT_
   /**
    * Dopisuje `allegro.prowizja` wierszom podglądu. Wiersz z błędami (bez zadania) nie dostaje prowizji.
    * @param {{klucz: string, klient?: {podgladOplat?: (oferta: object) => Promise<any>}}} konto
-   * @param {Array<{bledy: string[], zadanie?: any, allegro?: {prowizja?: string|null}}>} wiersze
+   * @param {Array<{bledy: unknown[], zadanie?: any, allegro?: {prowizja?: string|null}}>} wiersze
    */
   async function prowizje(konto, wiersze) {
     // Wpisy po terminie wypadają przy każdym podglądzie — pamięć nie rośnie z każdą nową ceną.

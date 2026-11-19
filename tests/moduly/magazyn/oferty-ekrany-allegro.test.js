@@ -12,6 +12,7 @@ import {
   zmienOferte,
   ofertaPoId,
   zapiszUstawieniaOfertKonta,
+  przypiszIdZewnetrzne,
 } from '../../../src/oms/db/oferty-kanalow.ts';
 import { opisKategorii } from '../../../src/domena/tresc-oferty-allegro.js';
 import { kategoriaAllegroDemo, parametryKategoriiAllegroDemo } from '../../../scripts/demo-dane-katalog.mjs';
@@ -42,6 +43,12 @@ const decyzja = (r, zaznaczone, konto = KONTO) => ({
   zaznaczone,
   podglad: /name="podglad" value="([^"]+)"/.exec(r.body)?.[1],
 });
+/** Zatwierdza podgląd jak przeglądarka: POST → 303 → GET ekranu wyniku. */
+const zatwierdz = async (r, zaznaczone, konto = KONTO) => {
+  const w = await post('/magazyn/oferty/zatwierdz', decyzja(r, zaznaczone, konto));
+  expect(w.statusCode).toBe(303);
+  return get(w.headers.location);
+};
 const wywolania = (k) =>
   Object.entries(k)
     .filter(([, f]) => f.mock.calls.length)
@@ -97,17 +104,13 @@ function karta(n, { cena_gr = 5900 } = {}) {
   return id;
 }
 
-beforeEach(async () => {
-  db = openOmsDb(':memory:');
-  klienci = { [KONTO]: atrapa(), [BEZ_ZGODY]: atrapa(), [ERLI]: { utworzProdukt: vi.fn(), zmienProdukt: vi.fn() } };
-  kontaAllegro = [
-    { klucz: KONTO, nazwa: 'Świetlik', autoryzacja: 'polaczone', srodowisko: 'produkcja' },
-    { klucz: BEZ_ZGODY, nazwa: 'Półcień Druga', autoryzacja: 'polaczone', srodowisko: 'produkcja' },
-  ];
-  app = buildOmsServer({
+/** Serwer testu; `dodatki` rozszerzają config (np. konto gościa demo). */
+const serwer = (dodatki = {}) =>
+  buildOmsServer({
     db,
     config: {
       auth: { user: 'operator', pass: 'atrapa' },
+      ...dodatki,
       definicje: [
         ...definicjeKanalowHistoryczne,
         { klucz: ERLI, typ: 'erli', prefiks: 'ERLI_POLCIEN', etykieta: 'ERLI Półcień' },
@@ -124,6 +127,15 @@ beforeEach(async () => {
       },
     },
   });
+
+beforeEach(async () => {
+  db = openOmsDb(':memory:');
+  klienci = { [KONTO]: atrapa(), [BEZ_ZGODY]: atrapa(), [ERLI]: { utworzProdukt: vi.fn(), zmienProdukt: vi.fn() } };
+  kontaAllegro = [
+    { klucz: KONTO, nazwa: 'Świetlik', autoryzacja: 'polaczone', srodowisko: 'produkcja' },
+    { klucz: BEZ_ZGODY, nazwa: 'Półcień Druga', autoryzacja: 'polaczone', srodowisko: 'produkcja' },
+  ];
+  app = serwer();
   await app.ready();
   tokeny(KONTO, ['allegro:api:orders:read', ...OFERTY]);
   tokeny(BEZ_ZGODY, ['allegro:api:orders:read']);
@@ -184,11 +196,30 @@ it('„Wystaw oferty” pokazuje konta obu typów; konto bez zgody jest wyszarzo
   karta(1);
   const r = await get('/magazyn');
   expect(r.statusCode).toBe(200);
-  expect(r.body).toContain(`>ERLI · ${ERLI}</option>`);
-  expect(r.body).toContain(`<option value="${KONTO}">Allegro · ${KONTO}</option>`);
-  expect(r.body).toMatch(
-    new RegExp(`<option value="${BEZ_ZGODY}" disabled>Allegro · ${BEZ_ZGODY} — ${BRAK_ZGODY_OFERT}</option>`),
-  );
+  // Kafelki z nazwą konta zamiast listy z kluczem.
+  const kafel = (klucz) =>
+    r.body.match(
+      new RegExp(`<label class="konto-kafel">(?:(?!</label>)[\\s\\S])*?value="${klucz}"[\\s\\S]*?</label>`),
+    )?.[0] ?? '';
+  const erli = kafel(ERLI);
+  const zgodne = kafel(KONTO);
+  const bez = kafel(BEZ_ZGODY);
+  expect(erli).toContain(`<input type="radio" name="konto" value="${ERLI}"`);
+  expect(erli).toContain('src="/public/integracje/erli.svg"');
+  expect(erli).toContain('<span class="konto-kafel-nazwa">Półcień</span>');
+  expect(zgodne).toContain('src="/public/integracje/allegro.svg"');
+  expect(zgodne).toContain('<span class="konto-kafel-nazwa">Świetlik</span>');
+  expect(zgodne).toContain('<span class="konto-kafel-kanal">Allegro</span>');
+  expect(bez).toContain('<span class="konto-kafel-nazwa">Półcień Druga</span>');
+  expect(bez).toContain(' disabled');
+  expect(bez).toContain('<small>Brak zgody na zapis ofert — połącz ponownie w Ustawieniach → Integracje</small>');
+  expect(bez).not.toContain('checked');
+  expect(erli).toContain('checked');
+  expect(zgodne).not.toContain('checked');
+  expect(r.body).not.toContain(`>ERLI · ${ERLI}<`);
+  expect(r.body).not.toContain(`>${ERLI}<`);
+  expect(r.body).not.toContain('<select id="konto-ofert"');
+  expect(r.body).not.toContain('id="konto-ofert-zgoda"');
   expect(r.body).toContain('formaction="/magazyn/oferty/aktywuj"');
   expect(r.body).toContain('Aktywuj w Allegro');
 });
@@ -215,9 +246,11 @@ it('podgląd Allegro: droga, kategoria, cena i prowizja; zatwierdzenie kładzie 
     category: { id: '257' },
     sellingMode: { format: 'BUY_NOW', price: { amount: '59.00', currency: 'PLN' } },
   });
+  // Wynik ma własny ekran: POST kończy się przekierowaniem, F5 na wyniku nie wysyła formularza drugi raz.
   const w = await post('/magazyn/oferty/zatwierdz', decyzja(r, [id]));
-  expect(w.statusCode).toBe(200);
-  expect(w.body).toContain('W kolejce: 1. Odmówiono: 0.');
+  expect(w.statusCode).toBe(303);
+  expect(w.headers.location).toBe(`/magazyn/oferty/wynik?konto=${KONTO}&karty=${id}`);
+  expect((await get(w.headers.location)).body).toContain('W kolejce do wysłania: 1.');
   const [o] = ofertyKarty(db, id);
   expect(o).toMatchObject({ kanal: KONTO, stan: 'do_wyslania', tryb: 'zarzadzana', pochodzenie: 'oms' });
   expect(o.idZewnetrzne).toMatch(new RegExp(`^ext:\\S+-K${id}$`));
@@ -230,6 +263,18 @@ it('bez podglądu nie ma zatwierdzenia', async () => {
   const id = karta(1);
   const w = await post('/magazyn/oferty/zatwierdz', { konto: KONTO, zaznaczone: [id] });
   expect(w.statusCode).toBe(409);
+  expect(ofertyKarty(db, id)).toHaveLength(0);
+});
+
+it('token podglądu innych kart albo spreparowany → 409 bez przekierowania na wynik i bez wiersza', async () => {
+  const id = karta(1);
+  const inna = karta(2);
+  const cudzy = await podglad([inna]);
+  for (const podglad of [decyzja(cudzy, [inna]).podglad, `${Date.now()}.${'0'.repeat(64)}`, 'brak']) {
+    const w = await post('/magazyn/oferty/zatwierdz', { konto: KONTO, zaznaczone: [id], podglad });
+    expect(w.statusCode).toBe(409);
+    expect(w.headers.location).toBeUndefined();
+  }
   expect(ofertyKarty(db, id)).toHaveLength(0);
 });
 
@@ -248,8 +293,9 @@ it('karta z ofertą Allegro w lustrze na tym koncie → odmowa liczona osobno', 
   const r = await podglad([a, b]);
   expect(r.statusCode).toBe(200);
   expect(r.body).toContain('Odmowa: Karta ma już ofertę na tym koncie.');
-  const w = await post('/magazyn/oferty/zatwierdz', decyzja(r, [a, b]));
-  expect(w.body).toContain('W kolejce: 1. Odmówiono: 1.');
+  const w = await zatwierdz(r, [a, b]);
+  expect(w.body).toContain('W kolejce do wysłania: 1.');
+  expect(w.body).toContain('nie wysłano — popraw błędy z podglądu');
   expect(ofertyKarty(db, a)).toHaveLength(0);
   expect(ofertyKarty(db, b)).toHaveLength(1);
 });
@@ -276,8 +322,7 @@ it('karta z 2 ofertami na innych kontach → ostrzeżenie, nie odmowa', async ()
   const r = await podglad([id]);
   expect(r.body).toContain('Allegro nie pozwala na więcej niż dwie oferty');
   expect(r.body).not.toContain('Odmowa:');
-  const w = await post('/magazyn/oferty/zatwierdz', decyzja(r, [id]));
-  expect(w.body).toContain('W kolejce: 1. Odmówiono: 0.');
+  expect((await zatwierdz(r, [id])).body).toContain('W kolejce do wysłania: 1.');
 });
 
 it('konto bez zgody na oferty → 400 z komunikatem o braku zgody; konto spoza list → 400', async () => {
@@ -310,8 +355,7 @@ it('prowizja z odmową → „niedostępna”, podgląd i zatwierdzenie działaj
   const r = await podglad([id]);
   expect(r.statusCode).toBe(200);
   expect(r.body).toContain(`Prowizja: ${PROWIZJA_NIEDOSTEPNA}`);
-  const w = await post('/magazyn/oferty/zatwierdz', decyzja(r, [id]));
-  expect(w.body).toContain('W kolejce: 1. Odmówiono: 0.');
+  expect((await zatwierdz(r, [id])).body).toContain('W kolejce do wysłania: 1.');
 });
 
 it('„Aktywuj” na szkicu zapisuje aktywuj = true i niczego nie wysyła; przycisk na karcie i hurtem', async () => {
@@ -333,7 +377,7 @@ it('„Aktywuj” na szkicu zapisuje aktywuj = true i niczego nie wysyła; przyc
   const k = await get(`/magazyn/${id}`);
   expect(k.body).toContain(`/magazyn/${id}/oferty/${o.id}/aktywuj`);
   expect(k.body).toContain('Aktywuj w Allegro');
-  expect(k.body).toContain(`Allegro · ${KONTO}`);
+  expect(k.body).toContain(`Allegro · Świetlik`);
   const r = await post(`/magazyn/${id}/oferty/${o.id}/aktywuj`, {});
   expect(r.statusCode).toBe(303);
   expect(ofertaPoId(db, o.id)).toMatchObject({
@@ -400,12 +444,16 @@ it('„Aktywuj” bez zgody konta → 400 w obu trasach; hurt na jednym koncie n
   expect(ofertaPoId(db, obcy.id).wyslanePola.aktywuj).toBeUndefined();
 });
 
-it('konto sandbox ma dopisek „(sandbox)” na liście „Wystaw oferty” i w nagłówku podglądu', async () => {
+it('konto sandbox ma dopisek „sandbox” na kafelku „Wystaw oferty” i w nagłówku podglądu', async () => {
   kontaAllegro[0] = { ...kontaAllegro[0], srodowisko: 'sandbox' };
   const id = karta(1);
   const l = await get('/magazyn');
-  expect(l.body).toContain(`<option value="${KONTO}">Allegro · ${KONTO} (sandbox)</option>`);
-  expect(l.body).toContain(`<option value="${BEZ_ZGODY}" disabled>Allegro · ${BEZ_ZGODY} — `);
+  const kafel = (klucz) =>
+    l.body.match(
+      new RegExp(`<label class="konto-kafel">(?:(?!</label>)[\\s\\S])*?value="${klucz}"[\\s\\S]*?</label>`),
+    )?.[0] ?? '';
+  expect(kafel(KONTO)).toContain('<span class="konto-kafel-kanal">Allegro · sandbox</span>');
+  expect(kafel(BEZ_ZGODY)).toContain(' disabled');
   const r = await podglad([id]);
   expect(r.statusCode).toBe(200);
   expect(r.body).toContain('Allegro swietlik_pl (sandbox)');
@@ -617,5 +665,199 @@ describe('Aktywuj z kontem ERLI w polu', () => {
     expect(r.statusCode).toBe(400);
     expect(r.body).toContain('Wybierz bieżące konto Allegro.');
     for (const o of oferty) expect(ofertaPoId(db, o.id).wyslanePola.aktywuj).toBeUndefined();
+  });
+});
+
+describe('odmowa o informacji o bezpieczeństwie mówi, gdzie ją uzupełnić', () => {
+  const USTAWIENIA = `/ustawienia/integracje/allegro/${KONTO}/oferty#allegro-oferty-bezpieczenstwo`;
+  const NA_KARCIE = (id) => `<a href="/magazyn/${id}#gpsr-informacja-tytul">Uzupełnij na karcie</a>`;
+  const informacja = (id, wartosc) =>
+    db
+      .prepare('UPDATE karty_produktow SET informacja_bezpieczenstwa = ? WHERE id = ?')
+      .run(wartosc === null ? null : JSON.stringify(wartosc), id);
+  const linia = (body, poczatek) =>
+    body.match(new RegExp(`<p class="pasek-blokada">Odmowa: ${poczatek}[\\s\\S]*?</p>`))?.[0] ?? '';
+
+  it('admin: brak tekstu i obce załączniki → odnośnik do karty i do tekstu domyślnego konta, nazwa konta zamiast klucza', async () => {
+    const bez = karta(1);
+    const obce = karta(2);
+    informacja(bez, null);
+    informacja(obce, { typ: 'ATTACHMENTS', konto: 'allegro_inne', zalaczniki: [{ id: 'zal-1' }] });
+    const r = await podglad([bez, obce]);
+    expect(r.statusCode).toBe(200);
+    const brak = linia(r.body, 'Wpisz informację');
+    expect(brak).toBe(
+      `<p class="pasek-blokada">Odmowa: Wpisz informację o bezpieczeństwie na karcie albo tekst domyślny konta Świetlik. ${NA_KARCIE(bez)} · <a href="${USTAWIENIA}">Ustaw tekst domyślny konta Świetlik</a></p>`,
+    );
+    const zal = linia(r.body, 'Załączniki');
+    expect(zal).toContain('na koncie Świetlik wpisz informację tekstem.');
+    expect(zal).toContain(NA_KARCIE(obce));
+    expect(zal).toContain(`<a href="${USTAWIENIA}">Ustaw tekst domyślny konta Świetlik</a>`);
+    expect(r.body).not.toContain(`konta ${KONTO}`);
+    expect(r.body).not.toContain('[object Object]');
+    expect(r.body).not.toContain('ustawia administrator');
+  });
+
+  it('za długi tekst → tylko odnośnik do karty', async () => {
+    const id = karta(1);
+    informacja(id, { typ: 'TEXT', tekst: 'x'.repeat(5001) });
+    const r = await podglad([id]);
+    expect(linia(r.body, 'Informacja o bezpieczeństwie ma 5001')).toBe(
+      `<p class="pasek-blokada">Odmowa: Informacja o bezpieczeństwie ma 5001 znaków — Allegro przyjmie najwyżej 5000. ${NA_KARCIE(id)}</p>`,
+    );
+    expect(r.body).not.toContain('/ustawienia/integracje/allegro/');
+  });
+
+  it('dopiski podglądu (karta z ofertą na koncie) zostają czystym tekstem bez odnośników', async () => {
+    const id = karta(1);
+    wstawOferte(db, { kartaId: id, kanal: KONTO, idZewnetrzne: `ext:TEST-K${id}`, stan: 'aktywna' });
+    const r = await podglad([id]);
+    expect(r.body).toContain('<p class="pasek-blokada">Odmowa: Karta ma już ofertę na tym koncie.</p>');
+  });
+
+  it('gość demo (bez Ustawień): odnośnik do karty, zamiast odnośnika do Ustawień zdanie, kto ustawia tekst konta', async () => {
+    await app.close();
+    app = serwer({ demo: { login: 'gosc' } });
+    await app.ready();
+    const gosc = zalozKonto(db, { login: 'gosc', imie: 'Gość', haslo: 'test', rola: 'sprzedaz' });
+    ustawUprawnienia(db, gosc, ['magazyn']);
+    const headers = {
+      origin: 'http://localhost',
+      cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz('gosc', wczytajSekret(db), Date.now(), 0)}`,
+    };
+    const id = karta(1);
+    informacja(id, null);
+    const r = await post('/magazyn/oferty/podglad', { konto: KONTO, zaznaczone: [id] }, headers);
+    expect(r.statusCode).toBe(200);
+    expect(linia(r.body, 'Wpisz informację')).toBe(
+      `<p class="pasek-blokada">Odmowa: Wpisz informację o bezpieczeństwie na karcie albo tekst domyślny konta Świetlik. ${NA_KARCIE(id)} · (tekst domyślny konta ustawia administrator: Ustawienia → Integracje → Allegro → konto Świetlik → krok Oferty)</p>`,
+    );
+    expect(r.body).not.toContain('/ustawienia/integracje/allegro/');
+  });
+});
+
+describe('ekran wyniku po zatwierdzeniu', () => {
+  const SZKICE =
+    'Na koncie Świetlik oferty powstają jako nieaktywne szkice — włączysz je przyciskiem „Aktywuj w Allegro — szkice zaznaczonych” w Magazynie albo na karcie.';
+  const AKTYWNE = 'Oferty staną się aktywne, gdy Allegro je sprawdzi.';
+  const wynikUrl = (karty, konto = KONTO) => `/magazyn/oferty/wynik?konto=${konto}&karty=${karty.join(',')}`;
+  const wiersz = (body, id) =>
+    body.match(new RegExp(`<tr>(?:(?!</tr>)[\\s\\S])*?href="/magazyn/${id}#produkty-karty"[\\s\\S]*?</tr>`))?.[0] ?? '';
+
+  it('do wysłania → aktywna → problem: stan, numer oferty z odnośnikiem do Allegro i tekst problemu', async () => {
+    const id = karta(1);
+    const w = await zatwierdz(await podglad([id]), [id]);
+    expect(w.statusCode).toBe(200);
+    for (const tekst of [
+      '<h1>Oferty — Świetlik</h1>',
+      '<p class="pasek-info" role="status">W kolejce do wysłania: 1. OMS wysyła oferty w tle co 5 minut — ta strona pokazuje ich stan.',
+      SZKICE,
+      `<a href="/magazyn/${id}#produkty-karty">Lampa stołowa Gliwka 1</a>`,
+      `<a class="btn" href="${wynikUrl([id]).replace(`&`, `&amp;`)}">Odśwież stan</a>`,
+      '<a class="btn" href="/magazyn">← Magazyn</a>',
+    ])
+      expect(w.body).toContain(tekst);
+    expect(wiersz(w.body, id)).toContain(
+      '<td>do wysłania<p class="pasek-uwaga">Czeka: konto Świetlik ma oferty wstrzymane',
+    );
+    expect(wiersz(w.body, id)).toContain('<td>—</td>');
+    expect(w.body).not.toContain(KONTO + '<');
+    expect(w.body).not.toContain('Odmówiono');
+
+    const [o] = ofertyKarty(db, id);
+    przypiszIdZewnetrzne(db, o.id, '17000000000555');
+    zmienOferte(db, o.id, { stan: 'aktywna' });
+    const a = await get(wynikUrl([id]));
+    expect(a.body).toContain('Wszystkie oferty z tej partii zostały już wysłane.');
+    expect(a.body).not.toContain('W kolejce do wysłania');
+    expect(wiersz(a.body, id)).toContain('<td>aktywna</td>');
+    expect(wiersz(a.body, id)).toContain(
+      '<a href="https://allegro.pl/oferta/17000000000555" target="_blank" rel="noopener">17000000000555</a>',
+    );
+
+    zmienOferte(db, o.id, { stan: 'problem', problemy: [{ kod: 'kategoria', tekst: 'Allegro odrzuciło kategorię.' }] });
+    const p = await get(wynikUrl([id]));
+    expect(wiersz(p.body, id)).toContain('problem');
+    expect(wiersz(p.body, id)).toContain('<p class="pasek-uwaga">Allegro odrzuciło kategorię.</p>');
+  });
+
+  it('konto z „Aktywuj po sprawdzeniu” → zdanie o aktywacji zamiast szkiców', async () => {
+    zapiszUstawieniaOfertKonta(db, KONTO, { aktywujPoSprawdzeniu: true }, { teraz: T0 });
+    const id = karta(1);
+    const w = await zatwierdz(await podglad([id]), [id]);
+    expect(w.body).toContain(AKTYWNE);
+    expect(w.body).not.toContain('nieaktywne szkice');
+  });
+
+  it('karta bez oferty na tym koncie i oferta tej karty na innym koncie → „nie wysłano”, cudza oferta niewidoczna; same odmowy nie są „wysłane”', async () => {
+    const id = karta(1);
+    wstawOferte(db, {
+      kartaId: id,
+      kanal: BEZ_ZGODY,
+      idZewnetrzne: '17000000000999',
+      stan: 'do_wyslania',
+      pochodzenie: 'oms',
+      tryb: 'zarzadzana',
+    });
+    const w = await get(wynikUrl([id, 999999]));
+    expect(w.statusCode).toBe(200);
+    expect(w.body).toContain('W kolejce do wysłania: 0.');
+    expect(w.body).not.toContain('już wysłane');
+    expect(w.body).not.toContain('17000000000999');
+    expect(wiersz(w.body, id)).toContain('nie wysłano — popraw błędy z podglądu');
+    expect(wiersz(w.body, 999999)).toContain('nie wysłano — popraw błędy z podglądu');
+  });
+
+  it('GET wyniku tylko czyta: liczba wierszy i prób bez zmian, kanał nie wołany', async () => {
+    const id = karta(1);
+    const r = await podglad([id]);
+    await post('/magazyn/oferty/zatwierdz', decyzja(r, [id]));
+    const stan = () =>
+      db.prepare('SELECT COUNT(*) AS n, SUM(liczba_prob) AS p, MAX(zmieniono_at) AS z FROM oferty_kanalow').get();
+    const przed = stan();
+    for (let i = 0; i < 3; i++) expect((await get(wynikUrl([id]))).statusCode).toBe(200);
+    expect(stan()).toEqual(przed);
+    expect(wywolania(klienci[KONTO])).toEqual(['podgladOplat']);
+  });
+
+  it('przekierowanie niesie wszystkie karty z formularza, posortowane', async () => {
+    const a = karta(1);
+    const b = karta(2);
+    const r = await podglad([b, a]);
+    const w = await post('/magazyn/oferty/zatwierdz', decyzja(r, [b, a]));
+    expect(w.statusCode).toBe(303);
+    expect(w.headers.location).toBe(wynikUrl([a, b]));
+    expect((await get(w.headers.location)).body).toContain('W kolejce do wysłania: 2.');
+  });
+
+  it('błędne parametry → 400; nie-admin → 403', async () => {
+    const id = karta(1);
+    const zbyt = Array.from({ length: 201 }, (_, i) => i + 1);
+    for (const url of [
+      `/magazyn/oferty/wynik?konto=${KONTO}&karty=abc`,
+      `/magazyn/oferty/wynik?konto=${KONTO}&karty=1,,2`,
+      `/magazyn/oferty/wynik?konto=${KONTO}`,
+      wynikUrl(zbyt),
+      wynikUrl([id], 'allegro_obce'),
+      `/magazyn/oferty/wynik?karty=${id}`,
+    ])
+      expect((await get(url)).statusCode, url).toBe(400);
+    expect((await get(wynikUrl(zbyt.slice(0, 200)))).statusCode).toBe(200);
+    zalozKonto(db, { login: 'admin', imie: 'Admin', haslo: 'test', rola: 'admin', admin: true });
+    const user = zalozKonto(db, { login: 'czytelnik', imie: 'Czytelnik', haslo: 'test', rola: 'operator' });
+    ustawUprawnienia(db, user, ['magazyn']);
+    const ciastko = (login) => ({
+      origin: 'http://localhost',
+      cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz(login, wczytajSekret(db), Date.now(), 0)}`,
+    });
+    expect((await get(wynikUrl([id]), ciastko('czytelnik'))).statusCode).toBe(403);
+    expect((await get(wynikUrl([id]), ciastko('admin'))).statusCode).toBe(200);
+  });
+
+  it('podgląd nie mówi już o ilości z ustawień konta ani o etapie 4', async () => {
+    const r = await podglad([karta(1)]);
+    expect(r.body).not.toContain('Ilość w ofertach: stała');
+    expect(r.body).not.toContain('etapie 4');
+    expect(r.body).not.toContain('W kolejce:');
   });
 });

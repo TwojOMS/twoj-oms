@@ -550,11 +550,11 @@ describe('komplet metod', () => {
             { id: 999999, regular_price: '5.00' },
           ]),
         ).toEqual([
-          { id: prosty.id, ok: true },
+          { id: prosty.id, ok: true, cena: '110.00' },
           { id: 999999, ok: false, blad: expect.any(String) },
         ]);
         expect(await atrapa.zapiszCenyHurtem(rodzic.id, [{ id: wariant.id, regular_price: '45.50' }])).toEqual([
-          { id: wariant.id, ok: true },
+          { id: wariant.id, ok: true, cena: '45.50' },
         ]);
         const drugi = nowaAtrapa(baza);
         expect((await drugi.pobierzStany([prosty.id]))[0]).toEqual({

@@ -278,6 +278,12 @@ export function registerKategorieAllegro(app, { db, kontaAllegro = () => [] }) {
         }
       }
     }
+    // Komunikat liczy się z zapisanego wiersza, nie z zapytania — `ok` tylko wybiera, który zapis potwierdzić.
+    const sciezka = mapa ? sciezkaTekst(mapa.sciezka_json) : '';
+    let komunikat = null;
+    if (q.ok === 'regula') komunikat = 'Zapisano regułę parametru.';
+    else if (q.ok === 'kategoria' && mapa)
+      komunikat = `Zapisano. Kategoria „${nazwa}” w Allegro (${srodowisko}) to ${sciezka || `kategoria ${mapa.kategoria_allegro_id}`} (nr ${mapa.kategoria_allegro_id}).`;
     return reply.code(kod).view('magazyn-kategoria-allegro.ejs', {
       title: `Magazyn — kategoria „${nazwa}” w Allegro`,
       nazwa,
@@ -287,7 +293,8 @@ export function registerKategorieAllegro(app, { db, kontaAllegro = () => [] }) {
       adres: `/magazyn/kategorie/${encodeURIComponent(nazwa)}/allegro`,
       mozeZatwierdzic: req.konto?.admin === true,
       mapa,
-      sciezka: mapa ? sciezkaTekst(mapa.sciezka_json) : '',
+      komunikat,
+      sciezka,
       pola: POLA_KARTY,
       przeliczniki: PRZELICZNIKI,
       ...stan,
@@ -395,7 +402,9 @@ export function registerKategorieAllegro(app, { db, kontaAllegro = () => [] }) {
         ).run(JSON.stringify(lista), teraz, m.marka, srodowisko);
       }
     });
-    return reply.code(303).redirect(`/magazyn/kategorie/${encodeURIComponent(nazwa)}/allegro?srodowisko=${srodowisko}`);
+    return reply
+      .code(303)
+      .redirect(`/magazyn/kategorie/${encodeURIComponent(nazwa)}/allegro?srodowisko=${srodowisko}&ok=kategoria`);
   });
 
   app.post('/magazyn/kategorie/:nazwa/allegro/regula', async (req, reply) => {
@@ -482,7 +491,7 @@ export function registerKategorieAllegro(app, { db, kontaAllegro = () => [] }) {
     return reply
       .code(303)
       .redirect(
-        `/magazyn/kategorie/${encodeURIComponent(nazwa)}/allegro?srodowisko=${srodowisko}#parametr-${encodeURIComponent(parametrId)}`,
+        `/magazyn/kategorie/${encodeURIComponent(nazwa)}/allegro?srodowisko=${srodowisko}&ok=regula#parametr-${encodeURIComponent(parametrId)}`,
       );
   });
 
@@ -561,12 +570,17 @@ export function registerKategorieAllegro(app, { db, kontaAllegro = () => [] }) {
           'Nie udało się pobrać słownika marek z Allegro (brak dostępu albo błąd połączenia). Spróbuj później.';
       }
     }
+    const komunikat =
+      q.ok === 'marka' && wiersz?.wartosc_id
+        ? `Zapisano. Marka „${marka}” w Allegro (${srodowisko}) to „${wiersz.wartosc_tekst || wiersz.wartosc_id}” (nr ${wiersz.wartosc_id}).`
+        : null;
     return reply.code(kod).view('magazyn-marka-allegro.ejs', {
       title: `Magazyn — marka „${marka}” w Allegro`,
       marka,
       srodowisko,
       srodowiska: srodowiskaKont(),
       blad,
+      komunikat,
       wiersz,
       kategorie,
       adres: `/magazyn/marki/${encodeURIComponent(marka)}/allegro`,
@@ -579,7 +593,10 @@ export function registerKategorieAllegro(app, { db, kontaAllegro = () => [] }) {
   app.get('/magazyn/marki/:marka/allegro', async (req, reply) => {
     const marka = czystaNazwa(req.params.marka);
     if (!marka || !istnieje('marki', marka))
-      return stronaOdmowy(reply, 404, 'Nie ma takiej marki.', { wroc: '/magazyn/marki', napisWroc: 'Marki' });
+      return stronaOdmowy(reply, 404, 'Nie ma takiej marki.', {
+        wroc: '/magazyn/producenci#marki',
+        napisWroc: 'Producenci',
+      });
     return ekranMarki(req, reply, marka);
   });
 
@@ -587,13 +604,16 @@ export function registerKategorieAllegro(app, { db, kontaAllegro = () => [] }) {
     // Marka trafia do treści żywych ofert — tylko administrator.
     if (req.konto?.admin !== true) {
       return stronaOdmowy(reply, 403, 'Tylko administrator może zatwierdzić markę Allegro.', {
-        wroc: '/magazyn/marki',
-        napisWroc: 'Marki',
+        wroc: '/magazyn/producenci#marki',
+        napisWroc: 'Producenci',
       });
     }
     const marka = czystaNazwa(req.params.marka);
     if (!marka || !istnieje('marki', marka))
-      return stronaOdmowy(reply, 404, 'Nie ma takiej marki.', { wroc: '/magazyn/marki', napisWroc: 'Marki' });
+      return stronaOdmowy(reply, 404, 'Nie ma takiej marki.', {
+        wroc: '/magazyn/producenci#marki',
+        napisWroc: 'Producenci',
+      });
     const b = req.body ?? {};
     const srodowisko = napis(b.srodowisko);
     const odmowa = (kod, blad) =>
@@ -640,6 +660,8 @@ export function registerKategorieAllegro(app, { db, kontaAllegro = () => [] }) {
       login(req),
       new Date().toISOString(),
     );
-    return reply.code(303).redirect(`/magazyn/marki/${encodeURIComponent(marka)}/allegro?srodowisko=${srodowisko}`);
+    return reply
+      .code(303)
+      .redirect(`/magazyn/marki/${encodeURIComponent(marka)}/allegro?srodowisko=${srodowisko}&ok=marka`);
   });
 }

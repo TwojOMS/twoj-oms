@@ -278,6 +278,7 @@ export function ofertaAllegroKarty(db, kartaId, konto, opcje = {}) {
       zadanie: null,
       droga: wynik.droga,
       doWgrania: [],
+      parametryWyliczone: wynik.parametryWyliczone,
       bezKonta: true,
     };
   }

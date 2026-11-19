@@ -1,5 +1,5 @@
-import { milimetryZCentymetrow, centymetryZMilimetrow, nazwaBezRozmiaru } from './rozmiar.js';
-import { PACZKOMAT_WARTOSCI } from './paczkomat.js';
+import { milimetryZCentymetrow, centymetryZMilimetrow, gramyZKilogramow, kilogramyZGramow } from './rozmiar.js';
+import { normalizujWartosc } from './parametry-kart.js';
 import { czyStawkaVat } from './vat.js';
 import { kwotaZakupuZNapisu, dzienZNapisu, dzienPolski } from './cena-zakupu.js';
 import { dzienWarszawa } from './format-daty.js';
@@ -13,19 +13,18 @@ import { parsujProg } from './prog-stanu.js';
 // EDYCJA HURTEM W MAGAZYNIE — reguly czyste. Zadnej bazy, zadnego HTTP: tutaj rozstrzyga
 // sie WYLACZNIE, co formularz znaczy i ktore karty ta tresc faktycznie zmieni.
 //
-// PO CO TEN EKRAN ISTNIEJE: w katalogu bywa kilkaset kart bez wymiaru, kilkaset bez
-// oznaczenia paczkomatu i sporo bez kategorii glownej. Bez niego trzeba by otworzyc te
-// karty po kolei.
+// PO CO TEN EKRAN ISTNIEJE: w katalogu bywa kilkaset kart bez wymiaru, wagi albo parametru
+// i sporo bez kategorii glownej. Bez niego trzeba by otworzyc te karty po kolei.
 //
 // ⚠️⚠️ PUSTE POLE ZNACZY „NIE RUSZAJ" — I JEST TO ODWROTNIE NIZ NA KARCIE PRODUKTU. Tam puste
 // pole KASUJE wartosc i jest to bezpieczne, bo czlowiek patrzy na jedna karte i widzi, co robi.
-// Tutaj formularz ma kilka pol naraz: gdyby puste kasowalo, ustawienie samego paczkomatu
+// Tutaj formularz ma kilka pol naraz: gdyby puste kasowalo, ustawienie samej wagi
 // WYCZYSCILOBY WYMIARY I KATEGORIE 600 KARTOM jednym kliknieciem, bez sladu i bez mozliwosci
 // cofniecia. To jest warunek bezpieczenstwa, a nie preferencja.
 //
-// ⚠️ KASOWANIE HURTEM MUSI BYC OSOBNYM, JAWNYM WYBOREM — nigdy skutkiem pustego pola.
-// Jedyne takie miejsce nizej to paczkomat 'nieoznaczone': to on jest droga powrotu po
-// hurtowej pomylce na sześciuset kartach, wiec musi istniec i musi byc nazwany.
+// ⚠️ KASOWANIE HURTEM MUSI BYC OSOBNYM, JAWNYM WYBOREM — nigdy skutkiem pustego pola. Stad
+// pola `*_wyczysc` przy wymiarach, wadze i parametrach: droga powrotu po hurtowej pomylce
+// musi istniec i musi byc nazwana.
 
 /**
  * Pola, ktore FORMULARZ HURTOWY wysyla — i JEDYNE, ktorych ten ekran dotyka.
@@ -40,12 +39,16 @@ import { parsujProg } from './prog-stanu.js';
  */
 export const POLA_HURTU = Object.freeze([
   'szerokosc_cm',
+  'szerokosc_cm_wyczysc',
   'wysokosc_cm',
+  'wysokosc_cm_wyczysc',
+  'glebokosc_cm',
+  'glebokosc_cm_wyczysc',
+  'waga_kg',
+  'waga_kg_wyczysc',
   'kategoria_glowna',
   'marka',
   'marka_nowa',
-  'paczkomat',
-  'nazwa_bez_rozmiaru',
   'stawka_vat',
   // Wyjątek od zasady „hurt zmienia tylko kolumny karty”: cena zakupu ma własną tabelę z historią
   // „obowiązuje od”, więc nie trafia do `zmiany`, tylko do osobnego pola planu `cenaZakupu`.
@@ -62,9 +65,9 @@ export const POLA_HURTU = Object.freeze([
   'prog_niskiego_stanu_bez',
 ]);
 
-// Wartosc pola wyboru paczkomatu, ktora JAWNIE kasuje decyzje i wraca do stanu „jeszcze
-// nieoznaczone". ⚠️ To jest CO INNEGO niz pole puste: puste znaczy „nie ruszaj".
-const PACZKOMAT_KASUJACY = 'nieoznaczone';
+// Parametry wlasne kart: pola `parametr_<id>` i `parametr_<id>_wyczysc`. Zbior zalezy od
+// definicji w Ustawieniach, wiec nie miesci sie w stalej liscie — ten wzor jest jej odpowiednikiem.
+const POLE_PARAMETRU = /^parametr_(\d{1,9})(_wyczysc)?$/;
 
 /**
  * Pole nieprzyslane odrozniamy od przyslanego, ale niebedacego napisem.
@@ -87,6 +90,64 @@ const NIE_ROZUMIEM_WYMIARU = (surowe) =>
   `„${surowe}" to nie jest wymiar w centymetrach. ` +
   'Wpisz samą liczbę (np. 70 albo 10,5) albo zostaw pole puste — puste pole hurtem ' +
   'znaczy „nie ruszaj tej kolumny", a nie „skasuj ją".';
+
+const NIE_ROZUMIEM_WAGI = (surowe) =>
+  `„${surowe}” to nie jest waga w kilogramach. ` +
+  'Wpisz liczbę większą od zera (np. 1,25) albo zostaw pole puste — puste pole hurtem ' +
+  'znaczy „nie ruszaj”, a nie „skasuj”.';
+
+// Przeliczenia z `domena/rozmiar.js` oddaja tez „puste = skasuj"; tutaj puste odsiano wczesniej,
+// wiec kazdy wynik inny niz liczba to tekst, ktorego nie rozumiemy.
+const milimetrySame = (s) => milimetryZCentymetrow(s)?.mm ?? null;
+const gramySame = (s) => gramyZKilogramow(s)?.g ?? null;
+
+/**
+ * Parametry wlasne z formularza hurtu → `{ lista: [{ id, nazwa, typ, jednostka, wartosc }] }`
+ * (`wartosc: null` = wyczysc) albo `{ blad }`.
+ *
+ * ⚠️ WARTOSC SPRAWDZA `normalizujWartosc` — TA SAMA funkcja co karta produktu. Bez niej hurt
+ * wpisalby szesciuset kartom „zielony" do parametru, ktorego lista zna tylko „czarny" i „bialy",
+ * a filtr po wartosci listy przestalby te karty widziec.
+ *
+ * Parametr, ktorego definicji juz nie ma (usuniety w Ustawieniach miedzy otwarciem formularza
+ * a zapisem), z wypelniona decyzja to odmowa — po cichu pominiety wygladalby jak zapisany.
+ */
+function parametryZFormularza(body, definicje) {
+  const lista = [];
+  const znane = new Set();
+  for (const p of definicje) {
+    znane.add(String(p.id));
+    const surowe = poleHurtu(body, `parametr_${p.id}`);
+    const wyczysc = poleHurtu(body, `parametr_${p.id}_wyczysc`);
+    if (surowe === null || wyczysc === null) {
+      return { blad: `${p.nazwa}: wartość przyszła dwa razy — nie wiem, którą wybrać.` };
+    }
+    if (wyczysc !== BRAK_POLA && wyczysc !== '' && wyczysc !== 'tak') {
+      return { blad: `${p.nazwa}: nieprawidłowy wybór „wyczyść wartość”.` };
+    }
+    const wpisane = surowe !== BRAK_POLA && surowe.trim() !== '';
+    if (wyczysc === 'tak') {
+      if (wpisane) return { blad: `${p.nazwa}: wybierz wartość albo „wyczyść wartość”.` };
+      lista.push({ id: p.id, nazwa: p.nazwa, typ: p.typ, jednostka: p.jednostka ?? null, wartosc: null });
+      continue;
+    }
+    if (!wpisane) continue;
+    const wynik = normalizujWartosc(p, surowe);
+    if (wynik.blad) return { blad: wynik.blad };
+    if (wynik.wartosc === null) continue;
+    lista.push({ id: p.id, nazwa: p.nazwa, typ: p.typ, jednostka: p.jednostka ?? null, wartosc: wynik.wartosc });
+  }
+  for (const klucz of Object.keys(body ?? {})) {
+    const dopasowanie = POLE_PARAMETRU.exec(klucz);
+    if (!dopasowanie || znane.has(dopasowanie[1])) continue;
+    const w = body[klucz];
+    if (typeof w === 'string' && !w.trim()) continue;
+    return {
+      blad: `Parametru nr ${dopasowanie[1]} nie ma — mógł zostać usunięty w Ustawieniach. Otwórz edycję od nowa.`,
+    };
+  }
+  return { lista };
+}
 
 const TRYBY_CENY = new Set(['o_procent', 'na_kwote', 'o_kwote']);
 const ZAOKRAGLENIA_CENY = new Set(['grosz', '99', 'zloty']);
@@ -179,59 +240,59 @@ function cenaKatalogowaZFormularza(body) {
  * o ktorym ekran mowi „nie zapisalem", i przy sześciuset kartach nikt by juz nie odtworzyl,
  * ktora polowa weszla.
  */
-export function polecenieZFormularza(body, { dzis = dzienWarszawa(new Date().toISOString()) } = {}) {
+export function polecenieZFormularza(
+  body,
+  { dzis = dzienWarszawa(new Date().toISOString()), parametry: definicjeParametrow = [] } = {},
+) {
   const polecenie = {};
 
   // ⚠️ CENTYMETRY WCHODZA, MILIMETRY LADUJA W BAZIE — przelicza `domena/rozmiar.js`, TA SAMA
   // funkcja, ktorej uzywa karta produktu. Druga kopia arytmetyki znaczylaby, ze „10,5 cm"
   // wpisane hurtem to co innego niz „10,5 cm" wpisane na karcie.
-  for (const [pole, kolumna] of [
-    ['szerokosc_cm', 'szerokosc_mm'],
-    ['wysokosc_cm', 'wysokosc_mm'],
+  for (const [pole, kolumna, etykieta, przelicz, nieRozumiem] of [
+    ['szerokosc_cm', 'szerokosc_mm', 'Szerokość', milimetrySame, NIE_ROZUMIEM_WYMIARU],
+    ['wysokosc_cm', 'wysokosc_mm', 'Wysokość', milimetrySame, NIE_ROZUMIEM_WYMIARU],
+    ['glebokosc_cm', 'glebokosc_mm', 'Głębokość', milimetrySame, NIE_ROZUMIEM_WYMIARU],
+    ['waga_kg', 'waga_g', 'Waga', gramySame, NIE_ROZUMIEM_WAGI],
   ]) {
     const surowe = poleHurtu(body, pole);
-    if (surowe === BRAK_POLA) continue;
-    if (surowe === null) return { polecenie: null, blad: NIE_ROZUMIEM_WYMIARU('(pole wysłane dwa razy)') };
+    const wyczysc = poleHurtu(body, `${pole}_wyczysc`);
+    if (surowe === null) return { polecenie: null, blad: nieRozumiem('(pole wysłane dwa razy)') };
+    if (wyczysc !== BRAK_POLA && wyczysc !== '' && wyczysc !== 'tak') {
+      return { polecenie: null, blad: `${etykieta}: nieprawidłowy wybór „wyczyść wartość”.` };
+    }
     // ⚠️ PUSTE ZNACZY „NIE RUSZAJ" — i tu, i nigdzie indziej. `milimetryZCentymetrow('')`
     // oddaje `{ mm: null }`, czyli „skasuj wymiar"; hurtem tej odpowiedzi NIE WOLNO uzyc,
-    // wiec puste pole odsiewamy ZANIM do niej dojdzie.
-    if (!surowe.trim()) continue;
-    const wynik = milimetryZCentymetrow(surowe);
-    if (!wynik || wynik.mm === null) return { polecenie: null, blad: NIE_ROZUMIEM_WYMIARU(surowe) };
-    polecenie[kolumna] = wynik.mm;
+    // wiec puste pole odsiewamy ZANIM do niej dojdzie. Kasowanie to wylacznie `_wyczysc`.
+    const wpisane = surowe !== BRAK_POLA && surowe.trim() !== '';
+    if (wyczysc === 'tak') {
+      if (wpisane) {
+        return { polecenie: null, blad: `${etykieta}: wpisz wartość albo wybierz „wyczyść wartość”.` };
+      }
+      polecenie[kolumna] = null;
+      continue;
+    }
+    if (!wpisane) continue;
+    const wartosc = przelicz(surowe);
+    if (wartosc === null) return { polecenie: null, blad: nieRozumiem(surowe) };
+    polecenie[kolumna] = wartosc;
   }
+
+  const parametry = parametryZFormularza(body, definicjeParametrow);
+  if (parametry.blad) return { polecenie: null, blad: parametry.blad };
+  if (parametry.lista.length) polecenie.parametry = parametry.lista;
 
   const kategoria = poleHurtu(body, 'kategoria_glowna');
   if (kategoria === null) {
     return { polecenie: null, blad: 'Kategoria główna przyszła dwa razy — nie wiem, którą wybrać.' };
   }
   // Kategorii hurtem NIE DA SIE wyczyscic i to jest decyzja: puste pole znaczy „nie ruszaj",
-  // a czyszczenie musialoby byc osobnym, nazwanym wyborem (jak przy paczkomacie nizej).
+  // a czyszczenie musialoby byc osobnym, nazwanym wyborem (jak `_wyczysc` przy wymiarach wyzej).
   if (kategoria !== BRAK_POLA && kategoria.trim()) polecenie.kategoria_glowna = kategoria.trim();
 
   const { marka, blad: bladMarki } = markaZFormularza(body, { hurt: true });
   if (bladMarki) return { polecenie: null, blad: bladMarki };
   if (marka !== undefined) polecenie.marka = marka;
-
-  // ⚠️ PACZKOMAT WYLACZNIE RECZNIE, TRZY STANY, ZERO WYLICZANIA Z WYMIAROW.
-  // Droga typowa to zaznaczyc duza grupe i ustawic „nie", a wyjatki poprawic
-  // pojedynczo. Czwarta wartosc w kolumnie zepsulaby filtr „bez oznaczenia paczkomatu" —
-  // karta z napisem „moze" nie bylaby ani oznaczona, ani nieoznaczona.
-  const paczkomat = poleHurtu(body, 'paczkomat');
-  if (paczkomat !== BRAK_POLA) {
-    if (typeof paczkomat !== 'string') {
-      return { polecenie: null, blad: 'Paczkomat przyszedł dwa razy — nie wiem, którą wartość wybrać.' };
-    }
-    const p = paczkomat.trim();
-    if (p === PACZKOMAT_KASUJACY) polecenie.paczkomat = null;
-    else if (PACZKOMAT_WARTOSCI.has(p)) polecenie.paczkomat = p;
-    else if (p) {
-      return {
-        polecenie: null,
-        blad: `„${p}" nie jest oznaczeniem paczkomatu. Wybierz „tak", „nie" albo ` + `„${PACZKOMAT_KASUJACY}".`,
-      };
-    }
-  }
 
   // Stawka VAT — WYLACZNIE z listy panelu (`czyStawkaVat`, domena/vat.js), ta sama regula co
   // formularz karty, bez „zw". Hurt stawki NIE KASUJE: karta umie, ale tutaj puste znaczy
@@ -274,14 +335,6 @@ export function polecenieZFormularza(body, { dzis = dzienWarszawa(new Date().toI
   const { cena: cenaKatalogowa, blad: bladCeny } = cenaKatalogowaZFormularza(body);
   if (bladCeny) return { polecenie: null, blad: bladCeny };
   if (cenaKatalogowa) polecenie.cenaKatalogowa = cenaKatalogowa;
-
-  // Skrocenie nazwy o rozmiar. ⚠️ WYLACZNIE W REJESTRZE MAGAZYNU — nazwa NIE JEDZIE do
-  // sklepu: jest zaindeksowanym tytulem strony, a jego zmiana w sklepie wplywa na pozycje
-  // w wyszukiwarce.
-  const skroc = poleHurtu(body, 'nazwa_bez_rozmiaru');
-  if (skroc !== BRAK_POLA && typeof skroc === 'string' && skroc.trim()) {
-    polecenie.nazwaBezRozmiaru = true;
-  }
 
   const { informacja, blad: bladInformacji } = informacjaBezpieczenstwaZFormularza(body);
   if (bladInformacji) return { polecenie: null, blad: bladInformacji };
@@ -352,27 +405,31 @@ function informacjaBezpieczenstwaZFormularza(body) {
  *
  * ⚠️ WYLACZNIE PO BIALEJ LISCIE (`POLA_HURTU`), a nie po kluczach ciala zadania: pole
  * dopisane recznie do formularza nie ma prawa przejechac przez ekran podgladu do zapisu.
- * Puste pomijamy — puste znaczy „nie ruszaj", wiec nie ma czego przenosic.
+ * Puste pomijamy — puste znaczy „nie ruszaj", wiec nie ma czego przenosic. Parametry wlasne
+ * przechodza po wzorze `POLE_PARAMETRU` (ich zbior zalezy od Ustawien); czy parametr o tym
+ * numerze istnieje, sprawdza ponownie zatwierdzenie.
  */
 export function polaDoPrzeniesienia(body) {
   const pary = [];
-  for (const klucz of POLA_HURTU) {
+  const dodaj = (klucz) => {
     const wartosc = poleHurtu(body, klucz);
-    if (wartosc === BRAK_POLA || typeof wartosc !== 'string' || !wartosc.trim()) continue;
+    if (wartosc === BRAK_POLA || typeof wartosc !== 'string' || !wartosc.trim()) return;
     pary.push({ name: klucz, value: wartosc });
-  }
+  };
+  for (const klucz of POLA_HURTU) dodaj(klucz);
+  for (const klucz of Object.keys(body ?? {})) if (POLE_PARAMETRU.test(klucz)) dodaj(klucz);
   return pary;
 }
 
 // Kolejnosc kolumn na ekranie podgladu. Stala i JEDNA — dwie listy rozjechalyby sie o jedna
 // pozycje, czyli „z czego na co" opisywaloby inna kolumne, niz nazywa.
 const KOLUMNY = Object.freeze([
-  'nazwa',
   'szerokosc_mm',
   'wysokosc_mm',
+  'glebokosc_mm',
+  'waga_g',
   'kategoria_glowna',
   'marka',
-  'paczkomat',
   'stawka_vat',
   'informacja_bezpieczenstwa',
   'prog_niskiego_stanu',
@@ -384,15 +441,25 @@ const wCentymetrach = (mm) => {
   const cm = centymetryZMilimetrow(mm);
   return cm === null ? null : `${cm} cm`;
 };
+const wKilogramach = (g) => {
+  const kg = kilogramyZGramow(g);
+  return kg === null ? null : `${kg.replace('.', ',')} kg`;
+};
+// Liczba parametru jest w bazie z kropka (zapis kanoniczny, po nim filtruje lista), a czlowiek
+// czyta ja z przecinkiem i jednostka — tak jak na karcie.
+function parametrCzytelnie(p, w) {
+  if (w === null || w === undefined) return null;
+  if (p.typ !== 'liczba') return w;
+  const liczba = String(w).replace('.', ',');
+  return p.jednostka ? `${liczba} ${p.jednostka}` : liczba;
+}
 const OPIS_KOLUMNY = Object.freeze({
-  nazwa: { etykieta: 'Nazwa', czytelnie: (w) => w || null },
   szerokosc_mm: { etykieta: 'Szerokość', czytelnie: wCentymetrach },
   wysokosc_mm: { etykieta: 'Wysokość', czytelnie: wCentymetrach },
+  glebokosc_mm: { etykieta: 'Głębokość', czytelnie: wCentymetrach },
+  waga_g: { etykieta: 'Waga', czytelnie: wKilogramach },
   kategoria_glowna: { etykieta: 'Kategoria główna', czytelnie: (w) => w || null },
   marka: { etykieta: 'Marka', czytelnie: (w) => w || null },
-  // ⚠️ Brak oznaczenia to STAN, a nie brak danych — i musi byc nazwany po imieniu, bo
-  // wlasnie miedzy nim a „nie" przebiega cala roznica tej kolumny.
-  paczkomat: { etykieta: 'Paczkomat', czytelnie: (w) => w || 'nieoznaczone' },
   // Kolumna jest tekstowa, wiec stawka „0" to napis (prawdziwy), a nie brak — wychodzi „0%".
   stawka_vat: { etykieta: 'Stawka VAT', czytelnie: (w) => (w ? `${w}%` : null) },
   // JSON w kolumnie porównujemy po treści, nie po napisie: ten sam tekst zapisany przez kartę
@@ -444,14 +511,8 @@ const maZalacznikiAllegro = (w) => informacjaZJsona(w)?.typ === 'ATTACHMENTS';
 /**
  * Wartosc docelowa JEDNEJ kolumny dla JEDNEJ karty — albo `BRAK_POLA`, gdy polecenie
  * tej kolumny w ogole nie dotyczy.
- *
- * `nazwa` jest jedyna kolumna liczona Z KARTY, a nie ze stalej: skrocenie o rozmiar daje
- * kazdej karcie INNA nowa nazwe (i wielu z nich — te sama, co dotad).
  */
-function wartoscDocelowa(karta, polecenie, kolumna) {
-  if (kolumna === 'nazwa') {
-    return polecenie.nazwaBezRozmiaru ? nazwaBezRozmiaru(karta.nazwa) : BRAK_POLA;
-  }
+function wartoscDocelowa(polecenie, kolumna) {
   return Object.hasOwn(polecenie, kolumna) ? polecenie[kolumna] : BRAK_POLA;
 }
 
@@ -469,8 +530,8 @@ function wartoscDocelowa(karta, polecenie, kolumna) {
  * albo przepisywalo gotowy zestaw z ukrytego pola, odczyt katalogow miedzy jednym a drugim
  * zmienilby zbior po cichu — to jest ta sama zasada, ktora obowiazuje zapis do sklepow.
  */
-export function zmianyHurtem(karty, polecenie, { cenyNaDzien } = {}) {
-  const { plan, blad } = planHurtu(karty, polecenie, { cenyNaDzien });
+export function zmianyHurtem(karty, polecenie, { cenyNaDzien, wartosciParametrow } = {}) {
+  const { plan, blad } = planHurtu(karty, polecenie, { cenyNaDzien, wartosciParametrow });
   if (blad) throw new Error(`zmianyHurtem: ${blad}`);
   return plan;
 }
@@ -520,7 +581,13 @@ const ODMOWA_CENY = {
  * „reszty” zostawiłby katalog w połowie przeceniony, a człowiek nie wiedziałby, które karty weszły.
  * Karty bez ceny przy zmianie „o %” i „o kwotę” są pominięte i policzone — nie ma od czego liczyć.
  */
-export function planHurtu(karty, polecenie, { cenyNaDzien } = {}) {
+export function planHurtu(karty, polecenie, { cenyNaDzien, wartosciParametrow } = {}) {
+  // Parametry: obecne wartości kart z bazy (id karty → id parametru → wartość). Bez mapy każda
+  // karta wyglądałaby na pustą i podgląd obiecywałby zmianę kartom, które już ją mają.
+  const parametry = polecenie?.parametry ?? null;
+  if (parametry && !(wartosciParametrow instanceof Map)) {
+    throw new Error('zmianyHurtem: polecenie ma parametry, a brak mapy wartosciParametrow');
+  }
   // Cena zakupu: „stara” to ta obowiązująca w dniu `od` (mapa id karty → grosze, liczona przez
   // wołającego na ten dzień). Bez mapy każda karta wyglądałaby na „bez ceny” i podgląd obiecywałby
   // zmianę kartom, które już ją mają — dlatego brak mapy przy cenie w poleceniu to błąd wołającego.
@@ -539,7 +606,7 @@ export function planHurtu(karty, polecenie, { cenyNaDzien } = {}) {
     const opisy = [];
 
     for (const kolumna of KOLUMNY) {
-      const docelowa = wartoscDocelowa(karta, polecenie ?? {}, kolumna);
+      const docelowa = wartoscDocelowa(polecenie ?? {}, kolumna);
       if (docelowa === BRAK_POLA) continue;
       // `?? null` po obu stronach: kolumna nullowalna oddaje `null`, a `undefined` (kolumna
       // nieodczytana z bazy) nie ma prawa udawac zmiany.
@@ -571,6 +638,17 @@ export function planHurtu(karty, polecenie, { cenyNaDzien } = {}) {
       if (stara !== cenaZakupu.gr) {
         wpis.cenaZakupu = { gr: cenaZakupu.gr, od: cenaZakupu.od };
         opisy.push({ pole: 'Cena zakupu netto', z: stara === null ? null : cenaPolska(zl(stara)), na: naCeny });
+      }
+    }
+
+    if (parametry) {
+      const obecne = wartosciParametrow.get(karta.id);
+      for (const p of parametry) {
+        const stara = obecne?.get(p.id) ?? null;
+        if (stara === p.wartosc) continue;
+        wpis.parametry ??= {};
+        wpis.parametry[p.id] = p.wartosc;
+        opisy.push({ pole: p.nazwa, z: parametrCzytelnie(p, stara), na: parametrCzytelnie(p, p.wartosc) });
       }
     }
 

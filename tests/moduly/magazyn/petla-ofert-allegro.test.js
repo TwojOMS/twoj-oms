@@ -468,6 +468,21 @@ describe('E3.08a — pętla wysyłki ofert Allegro', () => {
     }
   });
 
+  it('konto z wstrzymanymi ofertami pętla pomija w całości — bez odczytu i bez zapisu (ten sam powód co na karcie)', async () => {
+    // Oferta już wysłana i w sprawdzaniu: odczyt operacji nie jest zapisem, więc pomija go tylko warunek konta.
+    const e = srodowisko();
+    const { ofertaId } = karta(e.db, e.KONTO);
+    const p = e.petla();
+    await p.przebieg();
+    expect(ofertaPoId(e.db, ofertaId).stan).toBe('sprawdzana');
+    zapiszUstawieniaOfertKonta(e.db, e.KONTO, { czynne: false }, { teraz: e.teraz().toISOString() });
+    const przed = e.zdarzenia.length;
+    e.przesun(6000);
+    await p.przebieg();
+    expect(e.zdarzenia.slice(przed)).toEqual([]);
+    expect(ofertaPoId(e.db, ofertaId).stan).toBe('sprawdzana');
+  });
+
   it('brak zgody → 0 wywołań', async () => {
     const e = srodowisko({ zgoda: false });
     const { ofertaId } = karta(e.db, e.KONTO);

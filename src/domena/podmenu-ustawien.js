@@ -22,7 +22,6 @@ export const POZYCJE_USTAWIEN = [
     href: '/ustawienia/zamowienia-i-wysylka',
     grupa: 'sprzedaz',
   },
-  { klucz: 'magazyn', etykieta: 'Magazyn', href: '/ustawienia/magazyn', grupa: 'sprzedaz' },
   { klucz: 'druk', etykieta: 'Druk i etykiety', href: '/ustawienia/druk', grupa: 'sprzedaz' },
   // Ekran ma jedną sekcję: „Autoresponder Allegro”.
   {

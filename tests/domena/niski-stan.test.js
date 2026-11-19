@@ -1,10 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { czyPonizejProgu, klasaStanu } from '../../src/domena/niski-stan.js';
+import { czyPonizejProgu, klasaStanu, pasujeDoStanu } from '../../src/domena/niski-stan.js';
 import { ostrzezeniaNiskiegoStanu } from '../../src/domena/ostrzezenia.js';
 import { openOmsDb } from '../../src/oms/db/db.ts';
 import { powiazProdukt, utworzKarte, zapiszProduktSklepowy } from '../../src/oms/db/magazyn.js';
 import { zapiszZamowienie } from '../../src/oms/db/zamowienia.js';
 import { kartyNiskiegoStanu } from '../../src/oms/db/niski-stan.js';
+
+it.each([
+  ['jest', [false, false, true]],
+  ['niski', [true, true, false]],
+  ['brak', [true, true, false]],
+  ['minus', [true, false, false]],
+])('sprawdza granicę zera dla filtra %s', (rodzaj, oczekiwane) => {
+  expect([-1, 0, 1].map((stan) => pasujeDoStanu(rodzaj, stan, 0))).toEqual(oczekiwane);
+  expect(pasujeDoStanu('niski', 0, null)).toBe(false);
+});
 import { dodajRuch, przelaczStany, stanKarty } from '../../src/oms/db/stany-magazynowe.js';
 
 it.each([

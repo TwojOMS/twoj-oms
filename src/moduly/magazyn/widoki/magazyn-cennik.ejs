@@ -1,0 +1,59 @@
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: 'Cenniki'}) %>
+
+<% if (blad) { %><div class="pas-uprzedzenie" role="alert" id="cennik-blad"><p><%= blad %></p></div><% } %>
+
+<section class="ust-sekcja">
+  <h2><%= cennik ? 'Zmień cennik „' + cennik.nazwa + '”' : 'Nowy cennik OMS' %></h2>
+  <form class="ust-formularz" method="post" action="<%= adres %><%= cennik ? '/' + cennik.id : '' %>">
+    <label for="cennik-nazwa">Nazwa</label>
+    <div><input id="cennik-nazwa" name="nazwa" value="<%= pola.nazwa %>" required maxlength="60" autocomplete="off"<% if (blad) { %> aria-describedby="cennik-blad"<% } %>></div>
+
+    <fieldset class="ust-pelna ust-wybor-radio" aria-describedby="cennik-rodzaj-pomoc">
+      <legend>Kiedy OMS bierze ten cennik</legend>
+      <% [['rozmiar', 'Z rozmiarem — produkt mieści się w wymiarach i wadze'], ['domyslny', 'Domyślny — produkty większe od cenników z rozmiarem'], ['karta', 'Tylko na karcie — gdy karta wybierze go ręcznie']].forEach(function ([r, etykieta]) { %>
+        <label><input type="radio" name="rodzaj" value="<%= r %>" required<%= pola.rodzaj === r ? ' checked' : '' %>> <%= etykieta %></label>
+      <% }); %>
+      <p id="cennik-rodzaj-pomoc" class="ust-pomoc">Domyślny może być tylko jeden.</p>
+    </fieldset>
+
+    <fieldset class="ust-pelna ust-formularz" aria-describedby="cennik-rozmiar-pomoc">
+      <legend>Rozmiar (tylko przy „Z rozmiarem”)</legend>
+      <% [['a_cm', 'Długość do (cm)'], ['b_cm', 'Szerokość do (cm)'], ['c_cm', 'Wysokość do (cm)'], ['waga_kg', 'Waga do (kg)']].forEach(function ([pole, etykieta]) { %>
+        <label for="cennik-<%= pole %>"><%= etykieta %></label>
+        <input id="cennik-<%= pole %>" name="<%= pole %>" value="<%= pola[pole] %>" inputmode="decimal" autocomplete="off" size="8">
+      <% }); %>
+      <p id="cennik-rozmiar-pomoc" class="ust-pomoc ust-pelna">Kolejność wymiarów nie ma znaczenia — OMS obraca produkt.</p>
+    </fieldset>
+
+    <% if (konta.length) { %>
+      <fieldset class="ust-pelna ust-formularz">
+        <legend>Cennik dostaw na kontach</legend>
+        <% konta.forEach(function (k) { const pole = 'cennik-pow-' + k.klucz; const wartosc = pola.powiazania[k.klucz] ?? ''; %>
+          <label for="<%= pole %>"><%= k.etykieta %></label>
+          <% if (k.lista) { const spoza = wartosc && !k.lista.some(function (p) { return p.wartosc === wartosc; }); %>
+            <select id="<%= pole %>" name="powiazanie:<%= k.klucz %>">
+              <option value="">— brak powiązania —</option>
+              <% k.lista.forEach(function (p) { %><option value="<%= p.wartosc %>"<%= p.wartosc === wartosc ? ' selected' : '' %>><%= p.nazwa %></option><% }); %>
+              <% if (spoza) { %><option value="<%= wartosc %>" selected><%= wartosc %> (spoza listy konta)</option><% } %>
+            </select>
+          <% } else if (k.rodzaj === 'allegro') { %>
+            <div>
+              <input type="hidden" name="powiazanie:<%= k.klucz %>" value="<%= wartosc %>">
+              <p class="ust-pomoc" id="<%= pole %>"><% if (wartosc) { %>Zapisany cennik: <%= wartosc %>. <% } %>Allegro przyjmuje tylko cennik z listy konta — pobierz ją w sekcji <a href="<%= adres %>#kanal-<%= k.klucz %>">Cenniki w kanałach</a>.</p>
+            </div>
+          <% } else { %>
+            <div>
+              <input id="<%= pole %>" name="powiazanie:<%= k.klucz %>" value="<%= wartosc %>" maxlength="200" autocomplete="off" aria-describedby="<%= pole %>-pomoc">
+              <p class="ust-pomoc" id="<%= pole %>-pomoc">Lista cenników tego konta nie jest pobrana — pobierz ją w sekcji <a href="<%= adres %>#kanal-<%= k.klucz %>">Cenniki w kanałach</a> albo wpisz nazwę cennika z panelu kanału.</p>
+            </div>
+          <% } %>
+        <% }); %>
+      </fieldset>
+    <% } %>
+
+    <div class="ust-pelna ust-akcje">
+      <button class="btn btn--glowny" type="submit"><%= cennik ? 'Zapisz' : 'Dodaj cennik' %></button>
+      <a class="btn" href="<%= adres %>">Anuluj</a>
+    </div>
+  </form>
+</section>

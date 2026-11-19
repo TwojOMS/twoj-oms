@@ -2,25 +2,30 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { utworzKarte } from '../../../src/oms/db/magazyn.js';
 import { przelaczStany } from '../../../src/oms/db/stany-magazynowe.js';
+import { dodajParametr, ustawWartoscKarty } from '../../../src/oms/db/parametry-kart.js';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 
 const config = { auth: { user: 'tester', pass: 'x' } };
 const headers = { authorization: `Basic ${Buffer.from('tester:x').toString('base64')}` };
-let db, app;
+let db, app, paczkomat;
 const get = (url = '/magazyn') => app.inject({ method: 'GET', url, headers });
 const tabela = (html) => html.match(/<table class="tresc-lista magazyn-tabela">[\s\S]*?<\/table>/)[0];
 
 beforeEach(() => {
   db = openOmsDb(':memory:');
-  utworzKarte(db, {
+  // Paczkomat jest wymaganym parametrem listy (tak po migracji z dawnej kolumny), wiec
+  // stary adres `?paczkomat=` ma sie czym przetlumaczyc.
+  paczkomat = dodajParametr(db, { nazwa: 'Paczkomat', typ: 'lista', wartosci: ['tak', 'nie'], wymagany: true }).id;
+  const zeta = utworzKarte(db, {
     nazwa: 'Zeta',
-    paczkomat: 'tak',
     sku: 'Z',
     szerokosc_mm: 1,
     wysokosc_mm: 1,
     kategoria_glowna: 'K',
   });
-  const alfa = utworzKarte(db, { nazwa: 'Alfa', paczkomat: 'nie' });
+  ustawWartoscKarty(db, zeta, paczkomat, 'tak');
+  const alfa = utworzKarte(db, { nazwa: 'Alfa' });
+  ustawWartoscKarty(db, alfa, paczkomat, 'nie');
   db.prepare('UPDATE karty_produktow SET opis_sekcje_json = ? WHERE id = ?').run(
     JSON.stringify({ sekcje: [{ elementy: [{ typ: 'tekst', html: '<p>Opis</p>' }] }] }),
     alfa,
@@ -58,7 +63,7 @@ describe('lista Magazynu', () => {
       const wiersze = [...html.matchAll(/<tr>([\s\S]*?)<\/tr>/g)].slice(1);
       expect(wiersze).toHaveLength(3);
       for (const w of wiersze) expect(w[1].match(/<td[\s>]/g)).toHaveLength(naglowki);
-      expect(naglowki).toBe(widok === 'porzadki' ? 7 : 4 + (html.match(/<th class="magazyn-kanal"/g)?.length ?? 0));
+      expect(naglowki).toBe(widok === 'porzadki' ? 7 : 6 + (html.match(/<th class="magazyn-kanal"/g)?.length ?? 0));
     }
   });
 
@@ -73,7 +78,7 @@ describe('lista Magazynu', () => {
     expect(r.body).toContain('name="sort" value="nazwa"');
   });
 
-  it('zachowuje filtr paczkomatu i łączy go z brakami opisu', async () => {
+  it('stary adres paczkomatu staje się filtrem parametru i łączy się z brakami opisu', async () => {
     const r = await get('/magazyn?paczkomat=tak&brak=opis');
     expect(r.statusCode).toBe(200);
     expect(tabela(r.body)).toContain('>Zeta</a>');
@@ -98,14 +103,16 @@ describe('lista Magazynu', () => {
       '',
       'sku',
       'wymiary',
-      'paczkomat',
       'kategoria',
       'zdjecie',
       'opis',
+      `parametr-${paczkomat}`,
       'cena_zakupu',
       'komplet',
     ]);
-    expect(select).not.toMatch(/\d/);
+    // Bez liczników w opcjach; cyfra wolno tylko w wartości (id parametru).
+    expect(select.replace(/value="[^"]*"/g, '')).not.toMatch(/\d/);
+    expect(select).toContain(`<option value="parametr-${paczkomat}">bez: Paczkomat</option>`);
     const formularz = r.body.match(/<form[^>]*class="filtry[^\"]*"[\s\S]*?<\/form>/)?.[0];
     expect(formularz).toBeDefined();
     expect(formularz).not.toMatch(/<input[^>]*name="brak"/);

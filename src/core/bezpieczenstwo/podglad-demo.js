@@ -12,8 +12,21 @@ import { odmowaRdzenia } from './csrf.js';
 export const KOMUNIKAT_PODGLADU = 'W wersji demonstracyjnej ustawienia można tylko obejrzeć — zmiany są wyłączone.';
 
 export function wUstawieniach(url) {
-  const sciezka = String(url ?? '').split('?')[0];
-  return sciezka === '/ustawienia' || sciezka.startsWith('/ustawienia/');
+  // Dekodowanie jak w routerze (`/magazyn/%75stawienia` to ta sama trasa); złe kodowanie liczy się do ustawień.
+  let sciezka;
+  try {
+    sciezka = decodeURIComponent(String(url ?? '').split(/[?#]/)[0]);
+  } catch {
+    return true;
+  }
+  return (
+    sciezka === '/ustawienia' ||
+    sciezka.startsWith('/ustawienia/') ||
+    sciezka === '/magazyn/ustawienia' ||
+    sciezka.startsWith('/magazyn/ustawienia/') ||
+    sciezka === '/magazyn/cenniki' ||
+    sciezka.startsWith('/magazyn/cenniki/')
+  );
 }
 
 export function podgladUstawienDemo({ loginGoscia }) {

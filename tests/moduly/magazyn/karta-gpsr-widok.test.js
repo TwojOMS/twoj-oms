@@ -117,10 +117,9 @@ describe('sekcja GPSR na karcie', () => {
     const gpsr = html.indexOf('id="gpsr-karty"');
     expect(dane).toBeGreaterThan(-1);
     expect(gpsr).toBeGreaterThan(dane);
-    // Pierwsza sekcja po danych karty to GPSR — nic nie wcisnęło się pomiędzy.
-    const nastepna = html.slice(dane).search(/<section[^>]*id="(?!dane-karty)/);
-    expect(html.slice(dane + nastepna).startsWith('<section')).toBe(true);
-    expect(html.slice(dane + nastepna, dane + nastepna + 200)).toContain('id="gpsr-karty"');
+    // Po danych karty idzie okno Parametry (to samo kolumna układu), zaraz za nim GPSR — nic innego pomiędzy.
+    const sekcje = [...html.slice(dane).matchAll(/<section[^>]*id="([^"]+)"/g)].map((m) => m[1]);
+    expect(sekcje.slice(0, 2)).toEqual(['parametry-karty', 'gpsr-karty']);
     expect(sekcja(html)).toContain('Bezpieczeństwo produktu (GPSR)');
   });
 
@@ -133,7 +132,10 @@ describe('sekcja GPSR na karcie', () => {
   it('producent z marki: nazwa, źródło i odnośnik do słownika', async () => {
     const p = dodajProducenta(db, {
       nazwa: 'Pracownia Półcień',
-      adres: 'ul. Cienista 2, 00-002 Miasto',
+      ulica: 'ul. Cienista 2',
+      kod: '00-002',
+      miasto: 'Miasto',
+      kraj: 'PL',
       email: 'kontakt@polcien.example.invalid',
     }).id;
     przypiszMarki(db, [{ marka: MARKA, producentId: p }]);
@@ -149,7 +151,7 @@ describe('sekcja GPSR na karcie', () => {
     przypiszAllegro('konto');
     const id = karta();
     let s = sekcja(await ekran(`/magazyn/${id}`));
-    expect(s).toMatch(/Allegro allegro_polcien:\s*producent <strong>Pracownia Półcień sp\. z o\.o\.<\/strong>/);
+    expect(s).toMatch(/Allegro Półcień:\s*producent <strong>Pracownia Półcień sp\. z o\.o\.<\/strong>/);
 
     db.prepare('DELETE FROM allegro_marki_gpsr').run();
     s = sekcja(await ekran(`/magazyn/${id}`));
@@ -171,7 +173,7 @@ describe('sekcja GPSR na karcie', () => {
 
   it('pusty tekst: zwinięty tekst domyślny konta', async () => {
     const s = sekcja(await ekran(`/magazyn/${karta()}`));
-    expect(s).toMatch(/<details[^>]*>\s*<summary>Używany tekst domyślny konta Allegro allegro_polcien<\/summary>/);
+    expect(s).toMatch(/<details[^>]*>\s*<summary>Używany tekst domyślny konta Allegro Półcień<\/summary>/);
     expect(s).toContain('Tekst domyślny konta Półcień.');
     expect(s).not.toMatch(/<details[^>]* open/);
     expect(s).toContain('pusty = tekst domyślny konta');
@@ -179,7 +181,7 @@ describe('sekcja GPSR na karcie', () => {
 
   it('załączniki z Allegro: liczba i „Zamień na tekst” w zwiniętym formularzu', async () => {
     const s = sekcja(await ekran(`/magazyn/${karta(ZALACZNIKI)}`));
-    expect(s).toContain('Załączniki z Allegro allegro_polcien (2)');
+    expect(s).toContain('Załączniki z Allegro Półcień (2)');
     expect(s).toMatch(/<button[^>]*name="zastap"[^>]*value="zalaczniki"[^>]*>Zamień na tekst<\/button>/);
     // Pole tekstu dopiero po rozwinięciu — w środku <details>, nie obok.
     const zwiniete = s.match(/<details[^>]*>[\s\S]*?<\/details>/)[0];

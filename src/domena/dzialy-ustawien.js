@@ -20,11 +20,8 @@ export const DZIALY_USTAWIEN = [
   },
   {
     klucz: 'zamowienia',
-    etykieta: 'Zamówienia i magazyn',
-    zakladki: [
-      z('statusy', 'Statusy zamówień', '/ustawienia/statusy'),
-      z('magazyn', 'Stany magazynowe', '/ustawienia/magazyn'),
-    ],
+    etykieta: 'Zamówienia',
+    zakladki: [z('statusy', 'Statusy zamówień', '/ustawienia/statusy')],
   },
   {
     klucz: 'wysylka',

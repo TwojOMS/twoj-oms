@@ -20,14 +20,11 @@ import {
   parametryUkryte,
   wartosciPol,
   adresMagazynu,
-  PACZKOMAT_DO_FILTRA,
   BRAKI_ETYKIETY,
-  PACZKOMAT_ETYKIETY,
 } from '../../domena/magazyn-filtry.js';
 import { adresKanalu as opisKanalu } from '../../domena/kanaly.js';
 import { miniaturaZLustra } from '../../domena/miniatura-pozycji.js';
 import { opisWymiarow, centymetryZMilimetrow, milimetryZCentymetrow, gramyZKilogramow } from '../../domena/rozmiar.js';
-import { czyPaczkomat } from '../../domena/paczkomat.js';
 import { zl } from '../../domena/kwoty.js';
 import { groszeCenyKatalogowej } from '../../domena/kwota.js';
 import { czyStawkaVat } from '../../domena/vat.js';
@@ -41,7 +38,9 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
   const KANALY_MAGAZYNU = listaNaZadanie(() => [...kanalySklepow, ...kanalyAllegro]);
   // Bez sklepu Woo karty powstają z ofert Allegro — ta sama lista dla zakładania, „pominiętych” i grup.
   const KANALY_ZRODLOWE = listaNaZadanie(() => kanalyZrodloweKart(kanalySklepow, kanalyAllegro));
-  const filtryZZapytania = (q) => filtryDomeny(q, KANALY_MAGAZYNU);
+  // `parametry` (definicje z Ustawień) podaje lista: sprawdza filtr parametru i tłumaczy stare adresy.
+  // Bez nich (zawężenie hurtu) filtr idzie surowo, a bazie zostaje oddać pusto zamiast szerzej.
+  const filtryZZapytania = (q, parametry) => filtryDomeny(q, KANALY_MAGAZYNU, parametry);
   const ocenZapis = (w, p, j) => ocenZapisDomeny(w, p, j, kanalySklepow);
   const grupujPominiete = (p) => grupujDomeny(p, KANALY_ZRODLOWE);
   const {
@@ -113,7 +112,11 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
     'kanal',
     'kategoria',
     'marka',
-    'paczkomat',
+    'parametr',
+    'pw',
+    'pod',
+    'pdo',
+    'pbez',
     'brak',
     'cenaOd',
     'cenaDo',
@@ -292,7 +295,7 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
   function linkiSortowania(sort, kier, filtry, zaznacz = false, widok = 'porzadki', wszystkie = false) {
     const przeciwny = kier === 'desc' ? 'asc' : 'desc';
     const linki = Object.create(null);
-    for (const klucz of SORTOWANIE_KART.filter((klucz) => !['paczkomat', 'braki'].includes(klucz))) {
+    for (const klucz of SORTOWANIE_KART.filter((klucz) => klucz !== 'braki')) {
       const aktywna = klucz === sort;
       linki[klucz] = {
         // Klikniecie w AKTYWNA kolumne obraca kolejnosc; w kazda inna — ustawia rosnaca.
@@ -334,8 +337,6 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
       wymiary: opisWymiarow(w),
       kategoria: w.kategoria_glowna || null,
       marka: w.marka || null,
-      // Trzy stany paczkomatu; `null` znaczy „jeszcze nieoznaczone" i to CO INNEGO niz 'nie'.
-      paczkomat: czyPaczkomat(w),
       miniatura: zapisanaMiniatura(w.kanaly, kolumny),
       kanaly: kolumny.map((klucz) => komorkaKanalu(w.kanaly?.[klucz])),
       // ⚠️ KOLUMNA „STAN" TRYBU PORZADKOW — ile brakuje przy tym karcie. Liczbe przynosi
@@ -651,7 +652,7 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
   //
   // ⚠️ CZYTAMY WYLACZNIE PO TEJ LISCIE, a nie po kluczach ciala zadania — inaczej `?constructor`
   // albo pole dopisane recznie do formularza siegaloby dalej, niz ekran pozwala.
-  const POLA_KARTY = Object.freeze(['nazwa', 'sku', 'kategoria_glowna', 'paczkomat', 'opis']);
+  const POLA_KARTY = Object.freeze(['nazwa', 'sku', 'kategoria_glowna', 'opis']);
   const POLA_WYMIAROW = Object.freeze(['szerokosc_cm', 'wysokosc_cm', 'glebokosc_cm']);
   const KOLUMNA_WYMIARU = Object.freeze({
     szerokosc_cm: 'szerokosc_mm',
@@ -680,10 +681,6 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
    * ⚠️⚠️ ODMOWA JEST CALOSCIOWA. Jedno pole, ktorego nie rozumiemy, wstrzymuje CALY zapis —
    * a nie „to, co dalo sie odczytac". Polowiczny zapis zostawialby w bazie stan, o ktorym
    * ekran mowi „nie zapisalem", i nikt by juz nie wiedzial, ktora polowa weszla.
-   *
-   * ⚠️ PACZKOMAT JEDZIE SUROWY — normalizuje go `zapiszKarte` (`domena/paczkomat.js`, trzy stany).
-   * Druga normalizacja tutaj rozjechalaby sie z tamta przy pierwszej zmianie, a to ona
-   * rozstrzyga o filtrze „bez oznaczenia paczkomatu".
    */
   function zmianyZFormularza(db, karta, body) {
     const zmiany = {};
@@ -693,7 +690,7 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
       // Pole, ktorego formularz nie przyslal, ZOSTAJE NIETKNIETE — brak pola to nie to samo,
       // co pole puste.
       if (surowe === null) continue;
-      zmiany[klucz] = klucz === 'paczkomat' ? surowe : doKolumny(surowe);
+      zmiany[klucz] = doKolumny(surowe);
     }
 
     // ⚠️ CENTYMETRY WCHODZA, MILIMETRY LADUJA W BAZIE — przelicza domena (`domena/rozmiar.js`),
@@ -868,9 +865,9 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
   const zWroc = (sciezka, wroc) => (wroc ? `${sciezka}?wroc=${encodeURIComponent(wroc)}` : sciezka);
 
   // ================================================================================
-  // EDYCJA HURTEM — WYMIARY, KATEGORIA GLOWNA, PACZKOMAT, SKROCENIE NAZWY
+  // EDYCJA HURTEM — WYMIARY, WAGA, KATEGORIA GLOWNA, PARAMETRY WLASNE I RESZTA POL HURTU
   //
-  // PO CO TO JEST: gdy wiele kart nie ma wymiaru, oznaczenia paczkomatu albo kategorii glownej — a czesc z nich ma ten sam wymiar — bez tego ekranu trzeba by otwierac je po kolei.
+  // PO CO TO JEST: gdy wiele kart nie ma wymiaru, wagi, parametru albo kategorii glownej — a czesc z nich ma te sama wartosc — bez tego ekranu trzeba by otwierac je po kolei.
   //
   // ⚠️⚠️ PUSTE POLE ZNACZY „NIE RUSZAJ", ODWROTNIE NIZ NA KARCIE — cale rozstrzygniecie stoi
   // w `domena/magazyn-hurt.js`, razem z powodem. Tutaj zostaje wylacznie droga.
@@ -910,11 +907,11 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
   /**
    * Zawezenie listy przeniesione przez formularz hurtowy — JEDNYM polem, nie siedmioma.
    *
-   * ⚠️⚠️ I TO JEST POWOD, DLA KTOREGO POLE JEST JEDNO. Formularz hurtowy ma WLASNE pole
-   * `paczkomat` (wartosc DO USTAWIENIA), a filtr ma pole `paczkomat` (czym ZAWEZIC). Te same
-   * nazwy w jednym formularzu wracaja z Fastify jako TABLICA — parser slusznie ja odrzuca,
-   * wiec zawezenie i ustawiana wartosc kasowalyby sie nawzajem, i to akurat na drodze
-   * TYPOWEJ („zawez do nieoznaczonych, ustaw «nie»"). Jedno pole zbiorcze rozdziela oba
+   * ⚠️⚠️ I TO JEST POWOD, DLA KTOREGO POLE JEST JEDNO. Formularz hurtowy ma WLASNE pola
+   * (np. `marka` — wartosc DO USTAWIENIA), a filtr ma pola o tych samych nazwach (czym ZAWEZIC).
+   * Te same nazwy w jednym formularzu wracaja z Fastify jako TABLICA — parser slusznie ja
+   * odrzuca, wiec zawezenie i ustawiana wartosc kasowalyby sie nawzajem, i to akurat na drodze
+   * TYPOWEJ („zawez do marki A, ustaw marke B"). Jedno pole zbiorcze rozdziela oba
    * slowniki RAZ, a nie do nastepnego dopisanego filtru.
    *
    * ⚠️ `Object.create(null)`, bo klucze pochodza z adresu HTTP: na literale obiektu zapytanie
@@ -989,16 +986,13 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
     wartosciPol,
     adresMagazynu,
     KANALY_MAGAZYNU,
-    PACZKOMAT_DO_FILTRA,
     BRAKI_ETYKIETY,
-    PACZKOMAT_ETYKIETY,
     adresKanalu,
     KANALY_SKLEPOW,
     miniaturaZLustra,
     opisWymiarow,
     centymetryZMilimetrow,
     milimetryZCentymetrow,
-    czyPaczkomat,
     zl,
     fmtDataCzas,
     KOLUMNY_KANALOW,

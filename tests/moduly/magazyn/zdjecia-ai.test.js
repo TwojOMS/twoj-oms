@@ -79,11 +79,11 @@ it.each([adresy[1], { url: adresy[1] }])(
     expect(wlaczone.bledy).toEqual([]);
     expect(wlaczone.zadanie.images).toEqual(adresy.map((url, i) => (i === 1 ? { url, aiGenerated: true } : { url })));
     expect(produktErliZKarty(wejscie).zadanie.images).toEqual(adresy.map((url) => ({ url })));
-    b.db.prepare('UPDATE zdjecia_kart SET ai = NULL WHERE id = ?').run(zdjecia[2].id);
+    b.db.prepare('UPDATE zdjecia_kart SET ai = NULL WHERE id = ?').run(zdjecia[0].id);
     const podglad = trescOferty(b.db, b.id, ustawienia);
-    expect(podglad.ostrzezenia.join(' ')).toContain('Zdjęcia wygenerowane przez AI: tak — zdjęcia: 2');
-    expect(podglad.ostrzezenia.join(' ')).toContain('nieznane: 3');
-    expect(podglad.ostrzezenia.join(' ')).toContain('ustaw go w panelu ERLI');
+    expect(podglad.ostrzezenia.filter((tekst) => tekst.startsWith('Zdjęcia '))).toEqual([
+      'Zdjęcia 2, 1 mogą być wygenerowane przez AI. OMS nie oznacza tego w ERLI — jeśli tak jest, zaznacz to w panelu ERLI (tego znacznika nie da się potem wyłączyć).',
+    ]);
   },
 );
 
@@ -126,13 +126,21 @@ it.each([false, true])(
   },
 );
 
-it('podgląd bez zdjęć AI, ale z nieznanymi, nie deklaruje braku AI', async () => {
+it('podgląd ERLI pomija ostrzeżenie AI, gdy wszystkie zdjęcia mają znacznik 0', async () => {
+  const b = baza();
+  await importuj(b, []);
+  const { ostrzezenia } = trescOferty(b.db, b.id, ustawienia);
+  expect(ostrzezenia.filter((tekst) => tekst.startsWith('Zdjęcia '))).toEqual([]);
+});
+
+it('podgląd ERLI ostrzega o zdjęciu z nieznanym znacznikiem AI', async () => {
   const b = baza();
   await importuj(b, []);
   b.db.prepare('UPDATE zdjecia_kart SET ai = NULL WHERE id = ?').run(galeria(b.db, b.id)[1].id);
-  const tekst = trescOferty(b.db, b.id, ustawienia).ostrzezenia.join(' ');
-  expect(tekst).toContain('Zdjęcia wygenerowane przez AI: nieznane — zdjęcia: brak; nieznane: 2');
-  expect(tekst).not.toContain('Zdjęcia wygenerowane przez AI: nie —');
+  const { ostrzezenia } = trescOferty(b.db, b.id, ustawienia);
+  expect(ostrzezenia.filter((tekst) => tekst.startsWith('Zdjęcia '))).toEqual([
+    'Zdjęcia 2 mogą być wygenerowane przez AI. OMS nie oznacza tego w ERLI — jeśli tak jest, zaznacz to w panelu ERLI (tego znacznika nie da się potem wyłączyć).',
+  ]);
 });
 
 it('usługa zmienia jedno zdjęcie, zapisuje źródło ręczne i datę karty; po wysłaniu odmawia', async () => {

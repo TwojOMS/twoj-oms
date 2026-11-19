@@ -1,6 +1,6 @@
 <% const naAllegro = typeof rodzaj !== 'undefined' && rodzaj === 'allegro'; %>
 <p class="wroc"><a href="/magazyn">← Magazyn</a></p>
-<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: naAllegro ? 'Oferty Allegro' : 'Oferty ERLI', podtytul: aktywacja ? 'Aktywacja szkiców' : wynik ? 'Wynik zatwierdzenia' : 'Podgląd przed zatwierdzeniem'}) %>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: naAllegro ? 'Oferty Allegro' : 'Oferty ERLI', podtytul: aktywacja ? 'Aktywacja szkiców' : 'Podgląd przed zatwierdzeniem'}) %>
 <section class="panel">
   <div class="panel-glowa"><h2><%= typeof etykieta !== 'undefined' ? etykieta : konto %></h2></div>
   <div class="panel-cialo">
@@ -9,39 +9,77 @@
       <p>Aktywację wyśle pętla ofert przy najbliższym przebiegu; stan zobaczysz na karcie produktu.</p>
     <% } else { %>
     <% if (!ustawienia.czynne) { %><p class="pasek-uwaga"><strong>Oferty: wstrzymane.</strong> Nic nie wyjdzie do kanału, dopóki konto jest wstrzymane. Zatwierdzone oferty pozostaną w kolejce do wysłania.</p><% } %>
-    <% if (braki.length) { %>
-      <p class="pasek-blokada">Uzupełnij ustawienia: <%= braki.join(', ') %>. <a href="<%= konfigurator %>">Konfigurator — Oferty</a></p>
+    <%# Braki konta ERLI: administrator uzupełnia je tu (tylko brakujące pola), inni widzą pasek z prośbą. %>
+    <% const uz = typeof uzupelnianie !== 'undefined' ? uzupelnianie : null; %>
+    <% if (braki.length && uz && uz.mozeZapisac && uz.pola.length) { %>
+      <p class="pasek-blokada">Uzupełnij ustawienia: <%= braki.join(', ') %>.</p>
+      <form method="post" action="/magazyn/oferty/ustawienia-konta" aria-label="Ustawienia ofert konta" aria-describedby="uzupelnij-pomoc">
+        <input type="hidden" name="konto" value="<%= konto %>">
+        <% ids.forEach(id => { %><input type="hidden" name="zaznaczone" value="<%= id %>"><% }); %>
+        <p class="podpowiedz" id="uzupelnij-pomoc">Zapiszemy to w ustawieniach konta — dotyczy wszystkich ofert ERLI tego konta. Zmienisz to później w ustawieniach konta, krok „Oferty”.</p>
+        <div class="pola pola--siatka">
+          <% uz.pola.forEach(p => { const blad = uz.bledyPol[p.pole]; const wpis = uz.wpisane[p.pole] ?? ''; const bladAttr = blad ? ` aria-invalid="true" aria-describedby="blad-uzupelnij-${p.pole}"` : ''; %>
+            <div>
+              <label for="uzupelnij-<%= p.pole %>"><%= p.etykieta %></label>
+              <% if (p.pole === 'stawkaVat') { %>
+                <select id="uzupelnij-<%= p.pole %>" name="<%= p.pole %>"<%- bladAttr %>>
+                  <% ['', ...uz.stawki].forEach(v => { %><option value="<%= v %>"<%= v === wpis ? ' selected' : '' %>><%= v === '' ? 'Wybierz stawkę' : v === 'zw' ? 'zw' : v + '%' %></option><% }); %>
+                </select>
+              <% } else { %>
+                <input id="uzupelnij-<%= p.pole %>" name="<%= p.pole %>" value="<%= wpis %>" type="text" inputmode="numeric" autocomplete="off"<%- bladAttr %>>
+              <% } %>
+              <% if (blad) { %><p class="blad-pola pasek-blokada" id="blad-uzupelnij-<%= p.pole %>"><%= blad %></p><% } %>
+            </div>
+          <% }); %>
+        </div>
+        <div class="przyciski"><button class="btn btn--glowny" type="submit">Zapisz i odśwież podgląd</button> <a href="<%= konfigurator %>">Konfigurator — Oferty</a></div>
+      </form>
+    <% } else if (braki.length) { %>
+      <p class="pasek-blokada">Uzupełnij ustawienia: <%= braki.join(', ') %>. <a href="<%= konfigurator %>">Konfigurator — Oferty</a><% if (uz && !uz.mozeZapisac) { %> Poproś administratora o uzupełnienie.<% } %></p>
     <% } else { %>
-      <% if (typeof zrodloIlosci !== 'undefined' && zrodloIlosci) { %><p>Ilość w ofertach: <%= zrodloIlosci %></p><% } else { %><p>Wysyłamy stałą liczbę sztuk; synchronizacja ze stanem magazynu wejdzie w etapie 4.</p><% } %>
+      <% if (typeof zrodloIlosci !== 'undefined' && zrodloIlosci) { %><p>Ilość w ofertach: <%= zrodloIlosci %></p><% } %>
       <% if (naAllegro) { %><p>Prowizja to wycena Allegro dla kategorii i ceny — informacja, nie warunek zatwierdzenia.</p><% } %>
-      <% if (wynik) { %><p role="status">W kolejce: <%= wynik.poszlo %>. Odmówiono: <%= wynik.odmowiono %>.</p><% } %>
+      <%# Pola cenników ERLI są w formularzu zatwierdzenia: „Wystaw oferty” i „Zapisz cenniki…” wysyłają te same wybory. %>
+      <% const bledyCen = typeof bledyCennikow !== 'undefined' ? bledyCennikow : {}; %>
+      <% const wpisaneCen = typeof wpisaneCenniki !== 'undefined' ? wpisaneCenniki : {}; %>
+      <% const zPolamiCennika = !naAllegro && wiersze.some(w => w.cennikWiersza); %>
+      <% if (zPolamiCennika) { %><p>Cennik wybrany przy karcie zmienia cennik tej karty na wszystkich kontach.</p><% } %>
+      <form method="post" action="/magazyn/oferty/zatwierdz" aria-label="Zatwierdzenie ofert <%= naAllegro ? 'Allegro' : 'ERLI' %>">
       <% wiersze.forEach(w => { %>
         <section class="panel">
           <div class="panel-glowa"><h3><a href="/magazyn/<%= w.id %>"><%= w.nazwa %></a></h3></div>
           <div class="panel-cialo">
-            <% w.bledy.forEach(b => { %><p class="pasek-blokada">Odmowa: <%= b %></p><% }); %>
+            <% w.bledy.forEach(b => { %><p class="pasek-blokada">Odmowa: <%= b.tekst %><% b.odnosniki.forEach((o, i) => { %><%= i ? ' · ' : ' ' %><% if (o.adres) { %><a href="<%= o.adres %>"><%= o.napis %></a><% } else { %><%= o.napis %><% } %><% }); %></p><% }); %>
             <% w.ostrzezenia.forEach(b => { %><p class="pasek-uwaga"><%= b %></p><% }); %>
-            <% if (w.dostawa) { %><p>Cennik: <%= w.dostawa.nazwa %> — <%= w.dostawa.powod %></p><% } %>
+            <% const cw = zPolamiCennika ? w.cennikWiersza : null; %>
+            <% if (cw) {
+                 const idPola = 'cennik-' + w.id;
+                 const wybor = wpisaneCen[w.id] ?? cw.wybor;
+                 const blad = bledyCen[w.id];
+                 const opisy = [blad ? 'blad-' + idPola : null, w.dostawa ? idPola + '-pomoc' : null].filter(Boolean).join(' ');
+                 const atrybuty = (blad ? ' aria-invalid="true"' : '') + (opisy ? ' aria-describedby="' + opisy + '"' : ''); %>
+              <label for="<%= idPola %>">Cennik dostaw</label>
+              <select id="<%= idPola %>" name="cennik_<%= w.id %>" class="oferta-cennik"<%- atrybuty %>>
+                <option value=""<%= wybor === '' ? ' selected' : '' %>>— według rozmiaru (teraz: <%= cw.zKonta %>) —</option>
+                <% cw.opcje.forEach(o => { %><option value="<%= o.id %>"<%= o.id === wybor ? ' selected' : '' %>><%= o.etykieta %></option><% }); %>
+              </select>
+              <% if (blad) { %><p class="blad-pola pasek-blokada" id="blad-<%= idPola %>"><%= blad %></p><% } %>
+              <% if (w.dostawa) { %><p class="podpowiedz" id="<%= idPola %>-pomoc"><%= w.dostawa.powod %></p><% } %>
+            <% } else if (w.dostawa) { %><p>Cennik: <%= w.dostawa.nazwa %> — <%= w.dostawa.powod %></p><% } %>
             <% if (naAllegro && w.zadanie) { %>
               <p>Droga: <%= w.allegro.droga %> · Kategoria Allegro: <%= w.allegro.kategoria %> · Cena: <%= zlotowki(w.allegro.cena) %> · Ilość: <%= w.allegro.ilosc %></p>
               <% if (w.allegro.prowizja) { %><p>Prowizja: <%= w.allegro.prowizja %></p><% } %>
-              <details><summary>Dokładna treść wysyłki</summary><pre class="przewijak-tabeli" tabindex="0" role="region" aria-label="Treść wysyłki"><code><%= JSON.stringify(w.zadanie, null, 2) %></code></pre></details>
-            <% } else if (w.cialo) { %>
-              <p>Nazwa: <%= w.cialo.name %> · Cena z narzutem: <%= (w.cialo.price / 100).toFixed(2).replace('.', ',') %> zł · Ilość: <%= w.iloscNapis ?? w.cialo.stock %></p>
-              <p>Czas wysyłki: <%= w.cialo.dispatchTime.period %> dni · VAT: <%= w.cialo.taxRate %> · Zdjęcia: <%= w.cialo.images.length %></p>
-              <details><summary>Dokładna treść wysyłki</summary><pre class="przewijak-tabeli" tabindex="0" role="region" aria-label="Treść wysyłki"><code><%= JSON.stringify(w.cialo, null, 2) %></code></pre></details>
+            <% } else if (w.liniaDanych) { %>
+              <p><%= w.liniaDanych %></p>
             <% } %>
           </div>
         </section>
       <% }); %>
-      <% if (!wynik) { %>
-        <form method="post" action="/magazyn/oferty/zatwierdz" aria-label="Zatwierdzenie ofert <%= naAllegro ? 'Allegro' : 'ERLI' %>">
           <input type="hidden" name="konto" value="<%= konto %>">
           <input type="hidden" name="podglad" value="<%= token %>">
           <% ids.forEach(id => { %><input type="hidden" name="zaznaczone" value="<%= id %>"><% }); %>
-          <button class="btn btn--glowny" type="submit">Zatwierdź karty bez błędów</button>
+          <div class="przyciski"><button class="btn btn--glowny" type="submit">Wystaw oferty (<%= wiersze.filter(w => !w.bledy.length).length %>)</button><% if (zPolamiCennika) { %> <button class="btn" type="submit" formaction="/magazyn/oferty/podglad">Zapisz cenniki i odśwież podgląd</button><% } %></div>
         </form>
-      <% } %>
     <% } %>
     <% } %>
   </div>

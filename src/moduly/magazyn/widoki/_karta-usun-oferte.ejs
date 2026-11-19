@@ -1,0 +1,10 @@
+<section class="pasek-blokada karta-wycofanie" id="potwierdz-usuniecie-oferty" tabindex="-1" aria-labelledby="usuniecie-oferty-tytul">
+  <h2 id="usuniecie-oferty-tytul">Usunąć ofertę z OMS?</h2>
+  <p id="usuniecie-oferty-opis">Usunąć z OMS zapis oferty <%= usuniecieOferty.numer %> na koncie <%= usuniecieOferty.konto %>? W Allegro tej oferty już nie ma. Karta, jej produkty w sklepach i inne oferty zostają. Po usunięciu możesz wystawić kartę na tym koncie od nowa.</p>
+  <form method="post" action="/magazyn/<%= karta.id %>/oferty/<%= usuniecieOferty.id %>/usun" aria-labelledby="usuniecie-oferty-tytul" aria-describedby="usuniecie-oferty-opis">
+    <div class="stopka-edycji">
+      <button type="submit" class="btn btn--groza">Usuń z OMS</button>
+      <a class="btn btn--cichy" href="<%= adresKarty %>#produkty-karty">Anuluj</a>
+    </div>
+  </form>
+</section>

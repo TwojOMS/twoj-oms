@@ -4,15 +4,22 @@
 //     w bazie demo powstaje tą samą drogą co u klienta po kliknięciu „Synchronizuj”;
 //   • atrapy piaskownicy (deploy/proba/atrapy) — oddają ten sam katalog, więc synchronizacja w piaskownicy
 //     niczego nie rozjeżdża („zniknęło 40 produktów” po pierwszym kliknięciu).
-// Dane z PRODUKTY w demo-dane-firma.mjs; warianty to pary, które w katalogu są już osobnymi SKU (zamówienia
+// Warianty to pary, które w katalogu są już osobnymi SKU (zamówienia
 // demo nadal trafiają w te same SKU). Adresy w domenie .invalid — żaden link nie prowadzi do prawdziwego sklepu.
-import { KANALY, PRODUKTY } from './demo-dane-firma.mjs';
+import { KANALY, PRODUKTY, PRODUKTY_KATALOGU, USTAWIENIA_WOO_DEMO } from './demo-dane-firma.mjs';
 import { wstawOferte, zmienOferte, zapiszUstawieniaOfertKonta } from '../src/oms/db/oferty-kanalow.ts';
 import { dodajProducenta, przypiszMarki, ustawDomyslnego } from '../src/oms/db/producenci.js';
 import { utworzKarte, powiazProdukt, zapiszKarte } from '../src/oms/db/magazyn.js';
+import { dodajCennikOms, ustawCennikKarty, ustawPowiazanieCennika } from '../src/oms/db/cenniki-oms.ts';
 
 const ADRES_SKLEPU = 'https://sklep-polcien.example.invalid';
 const YOAST_KATEGORIA = '_yoast_wpseo_primary_product_cat';
+const produktyDemo = [...PRODUKTY, ...PRODUKTY_KATALOGU];
+const produktyPoSku = new Map(produktyDemo.map((p) => [p.sku, p]));
+
+function produktDemo(sku) {
+  return produktyPoSku.get(sku);
+}
 
 // Produkt wariantowy Woo = rodzic + warianty o SKU z katalogu. Atrybut „Rozmiar” magazyn czyta jako rozmiar.
 const WARIANTY = [
@@ -53,7 +60,7 @@ const cena = (gr) => (gr / 100).toFixed(2);
 
 // Ceny w kanałach: produkt w trwającej promocji i powiązany szkic (karta zostaje, sklep ukrył ofertę).
 const SKU_PROMOCJI_DEMO = 'LMP-STO-003';
-const SZKIC_DEMO = { sku: 'LMP-SZK-001', nazwa: 'Lampa Półcień 40 — szkic', cena_gr: 18900 };
+const SZKIC_DEMO = { sku: 'LMP-SZK-001', nazwa: 'Lampa Półcień 40 — szkic', cena_gr: 18900, skuZdjec: 'LMP-WIS-001' };
 const KONTO_CEN_DEMO = 'polcien';
 const NARZUT_CEN_DEMO_PROCENT = 10;
 /** Koniec promocji: północ dnia uruchomienia + 30 dni (czas sklepu bez strefy, jak `date_on_sale_to` w Woo). */
@@ -82,10 +89,10 @@ const ZDJECIA = {
 
 /** Adres zdjęcia produktu o danym SKU (deterministyczny) albo null dla SKU spoza katalogu. */
 export function zdjecieProduktu(sku) {
-  const p = PRODUKTY.find((x) => x.sku === sku);
+  const p = produktDemo(sku);
   const pula = p && ZDJECIA[p.kategoria];
   if (!pula) return null;
-  const nr = PRODUKTY.filter((x) => x.kategoria === p.kategoria).indexOf(p);
+  const nr = produktyDemo.filter((x) => x.kategoria === p.kategoria).indexOf(p);
   return `${ADRES_ZDJEC_DEMO}/${pula[nr % pula.length]}.jpg`;
 }
 
@@ -93,19 +100,22 @@ export function zdjecieProduktu(sku) {
 // w sklepie i na Allegro oraz dwie pierwsze karty outletu. Miniatury zamówień zostają, więc oferta
 // Allegro z tej listy ma `primaryImage` przy pustym `images` celowo: treść oferty bez galerii.
 const BEZ_TRESCI = new Set(['LMP-KIN-001', 'LMP-KIN-002', 'LMP-STO-002-OUT', 'LMP-STO-005-OUT']);
-function zdjeciaKarty(sku) {
-  if (BEZ_TRESCI.has(sku)) return [];
-  const pierwsze = zdjecieProduktu(sku);
+export function zdjeciaKarty(sku) {
+  const skuZdjec = sku === SZKIC_DEMO.sku ? SZKIC_DEMO.skuZdjec : sku;
+  if (BEZ_TRESCI.has(skuZdjec)) return [];
+  const pierwsze = zdjecieProduktu(skuZdjec);
   if (!pierwsze) return [];
-  const ile = (PRODUKTY.findIndex((p) => p.sku === sku) % 2) + 1;
+  const nr = PRODUKTY.indexOf(produktDemo(skuZdjec));
+  if (nr === -1) return [pierwsze];
+  const ile = (nr % 2) + 1;
   return [
     pierwsze,
-    ...Array.from({ length: ile }, (_, i) => `${ADRES_ZDJEC_DEMO}/rys-${sku.toLowerCase()}-${i + 1}.png`),
+    ...Array.from({ length: ile }, (_, i) => `${ADRES_ZDJEC_DEMO}/rys-${skuZdjec.toLowerCase()}-${i + 1}.png`),
   ];
 }
 function opisKarty(sku, nazwa) {
   if (BEZ_TRESCI.has(sku)) return { sections: [] };
-  const p = PRODUKTY.find((p) => p.sku === sku);
+  const p = produktDemo(sku);
   const zdjecia = zdjeciaKarty(sku);
   const w = WYMIARY_KATEGORII[p.kategoria];
   const szczegoly = BEZ_WYMIAROW.has(sku)
@@ -126,13 +136,13 @@ function opisKarty(sku, nazwa) {
         items: [
           {
             type: 'TEXT',
-            content: `<h2>Wymiary i wykonanie</h2>${szczegoly}<p>Materiał i wykończenie: zgodnie z nazwą modelu. Rysunki pokazują przykładowe sylwetki lamp.</p>`,
+            content: `<h2>Wymiary i wykonanie</h2>${szczegoly}<p>Materiał i wykończenie: zgodnie z nazwą modelu.${zdjecia[1] ? ' Rysunki pokazują przykładowe sylwetki lamp.' : ''}</p>`,
           },
         ],
       },
       {
         items: [
-          { type: 'IMAGE', url: zdjecia[1] },
+          ...(zdjecia[1] ? [{ type: 'IMAGE', url: zdjecia[1] }] : []),
           {
             type: 'TEXT',
             content: '<h2>Pielęgnacja</h2><p>Czyść miękką, suchą ściereczką. Przed czyszczeniem odłącz zasilanie.</p>',
@@ -198,14 +208,13 @@ export function katalogWoo(kanal = kanalyTypu('woo')[0]) {
       meta_data: [{ id: 1, key: YOAST_KATEGORIA, value: String(k.id) }],
     };
   };
-  const zgrupowane = new Set(WARIANTY.flatMap((w) => Object.keys(w.opcje)));
-  for (const p of wSklepie) {
-    if (zgrupowane.has(p.sku)) continue;
+  const dodajProsty = (p, ean) => {
     id += 1;
     produkty.push({
       id,
       type: 'simple',
       sku: p.sku,
+      ...(ean ? { global_unique_id: ean } : {}),
       price: cena(p.cena_gr),
       regular_price: cena(p.cena_gr),
       manage_stock: id !== 1101,
@@ -224,6 +233,10 @@ export function katalogWoo(kanal = kanalyTypu('woo')[0]) {
           }
         : {}),
     });
+  };
+  const zgrupowane = new Set(WARIANTY.flatMap((w) => Object.keys(w.opcje)));
+  for (const p of wSklepie) {
+    if (!zgrupowane.has(p.sku)) dodajProsty(p);
   }
   if (kanal === KONTO_CEN_DEMO) {
     id += 1;
@@ -238,7 +251,7 @@ export function katalogWoo(kanal = kanalyTypu('woo')[0]) {
       stock_status: 'instock',
       stock_quantity: 5,
       attributes: [],
-      ...wspolne(SZKIC_DEMO.nazwa, 'Lampy wiszące', 'LMP-WIS-001'),
+      ...wspolne(SZKIC_DEMO.nazwa, 'Lampy wiszące', SZKIC_DEMO.skuZdjec),
       status: 'draft',
     });
   }
@@ -265,6 +278,7 @@ export function katalogWoo(kanal = kanalyTypu('woo')[0]) {
       String(rodzicId),
       skusy.map((sku, i) => {
         const p = PRODUKTY.find((x) => x.sku === sku);
+        const [zdjecie] = zdjeciaKarty(sku);
         return {
           id: rodzicId * 10 + i + 1,
           sku,
@@ -276,12 +290,18 @@ export function katalogWoo(kanal = kanalyTypu('woo')[0]) {
           stock_status: 'instock',
           stock_quantity: 3 + i,
           permalink: `${ADRES_SKLEPU}/produkt/${slug(w.nazwa)}/?wariant=${i + 1}`,
-          image: null,
+          image: zdjecie ? { src: zdjecie } : null,
           attributes: [{ id: 0, name: w.atrybut, option: w.opcje[sku] }],
           ...wymiaryWoo(sku, p.kategoria, i),
         };
       }),
     );
+  }
+  // Dodatki idą za wariantami, żeby dotychczasowe identyfikatory Woo pozostały stałe.
+  for (const [i, p] of PRODUKTY_KATALOGU.entries()) {
+    if (!p.kanaly.includes(kanal)) continue;
+    const nr = PRODUKTY.length + i + 1;
+    dodajProsty(p, nr % 5 !== 0 ? eanDemo(nr) : null);
   }
   // Jeden wariant dziedziczy stan rodzica (przypadek syntetyczny, niepotwierdzony w P22).
   const wariantRodzica = warianty.values().next().value?.[0];
@@ -404,8 +424,8 @@ export function produktyAllegroDemoPoEan(ean) {
   });
   if (String(ean).startsWith('2009'))
     return [1, 2].map((i) => produkt(`00000000-0000-4000-9000-00000000000${i}`, `Produkt wspólny ${i}`, String(ean)));
-  const nr = PRODUKTY.findIndex((_, i) => eanDemo(i + 1) === String(ean)) + 1;
-  return nr ? [produkt(idProduktuDemo(nr), PRODUKTY[nr - 1].nazwa, String(ean))] : [];
+  const nr = produktyDemo.findIndex((_, i) => eanDemo(i + 1) === String(ean)) + 1;
+  return nr ? [produkt(idProduktuDemo(nr), produktyDemo[nr - 1].nazwa, String(ean))] : [];
 }
 
 /** Pełna oferta konta `kanal` (`GET /sale/product-offers/{id}`) albo null, gdy konto nie ma takiej oferty. */
@@ -473,8 +493,7 @@ export function klienciKataloguDemo() {
           pobierzWszystkieProdukty: async () => structuredClone(k.produkty),
           pobierzWarianty: async (id) => structuredClone(k.warianty.get(String(id)) ?? []),
           pobierzMiniatury: async () => new Map(k.miniatury),
-          ustawienieSklepu: async (id) =>
-            ({ woocommerce_dimension_unit: 'cm', woocommerce_weight_unit: 'kg' })[id] ?? '',
+          ustawienieSklepu: async (id) => USTAWIENIA_WOO_DEMO[id] ?? '',
         },
       ];
     }),
@@ -556,35 +575,66 @@ export function zasiejCenyKanalowDemo(db, { teraz }) {
   if (!produkt) throw new Error('DEMO_CENY: brak szkicu w lustrze sklepu');
   const kartaId = utworzKarte(
     db,
-    { nazwa: SZKIC_DEMO.nazwa, sku: SZKIC_DEMO.sku, cena_gr: SZKIC_DEMO.cena_gr, kategoria_glowna: 'Lampy wiszące' },
+    { nazwa: SZKIC_DEMO.nazwa, sku: SZKIC_DEMO.sku, kategoria_glowna: 'Lampy wiszące' },
     { at },
   );
   powiazProdukt(db, produkt.id, kartaId);
+}
+
+/**
+ * Cenniki dostaw OMS w demo: lista po rozmiarze, domyślna i „tylko na karcie” (lampy podłogowe nie mieszczą się
+ * w małej paczce). Każda wskazuje cennik atrapy Allegro i ERLI, więc krok „Oferty” i karta mają co pokazać.
+ */
+export function zasiejCennikiOmsDemo(db, { teraz }) {
+  const opcje = { teraz: teraz(), aktor: 'demo' };
+  const listy = [
+    dodajCennikOms(db, { nazwa: 'Mała paczka', doMm: [380, 640, 80], doG: 5000 }, opcje),
+    dodajCennikOms(db, { nazwa: 'Domyślny', domyslny: true }, opcje),
+    dodajCennikOms(db, { nazwa: 'Gabaryt' }, opcje),
+  ];
+  for (const cennikId of listy) {
+    ustawPowiazanieCennika(db, { cennikId, konto: 'allegro', cennikKanalu: 'atrapa-cennik-standard' }, opcje);
+    ustawPowiazanieCennika(db, { cennikId, konto: 'erli_polcien', cennikKanalu: 'Dostawy Półcień' }, opcje);
+  }
+  const karta = db.prepare('SELECT id FROM karty_produktow WHERE sku = ?');
+  for (const sku of ['LMP-POD-001', 'LMP-POD-002']) {
+    const kartaId = karta.get(sku)?.id;
+    if (!kartaId) throw new Error(`DEMO_CENNIKI: brak karty ${sku}`);
+    ustawCennikKarty(db, { kartaId: Number(kartaId), cennikId: listy[2] }, opcje);
+  }
 }
 
 const MARKA_POLCIEN = 'Pracownia Półcień';
 const MARKA_SZKLO = 'Zakład Szkła Przykładowego';
 // Marka z kartami, której nikt nie przypisał producentowi — ekran Producenci i karta pokazują wtedy brak.
 const MARKA_BEZ_PRODUCENTA = 'Marka przykładowa 001';
+const MARKA_OPRAWY = 'Oprawy Przykładowe';
+const MARKI_DEMO = [MARKA_POLCIEN, MARKA_SZKLO, MARKA_BEZ_PRODUCENTA, MARKA_OPRAWY];
 
 const PRODUCENCI_DEMO = [
   {
     nazwa: MARKA_POLCIEN,
-    adres: 'ul. Przykładowa 1, 00-001 Miasto Przykładowe',
+    ulica: 'ul. Przykładowa 1',
+    kod: '00-001',
+    miasto: 'Miasto Przykładowe',
+    kraj: 'PL',
     email: 'kontakt@example.invalid',
     www: null,
     domyslny: true,
   },
   {
     nazwa: MARKA_SZKLO,
-    adres: 'ul. Hutnicza 2, 00-002 Miasto Przykładowe',
+    ulica: 'ul. Hutnicza 2',
+    kod: '00-002',
+    miasto: 'Miasto Przykładowe',
+    kraj: 'PL',
     email: null,
     www: 'https://szklo.example',
     domyslny: false,
   },
 ];
 
-// SKU kart na markę; reszta kart zostaje bez marki, jak w firmie, która dopiero porządkuje katalog.
+// Te karty mają stałe marki na potrzeby scenariuszy ofert.
 const MARKI_KART_DEMO = {
   [MARKA_POLCIEN]: ['LMP-STO-001', 'LMP-STO-002', 'LMP-STO-003', 'LMP-WIS-003', 'LMP-POD-001', 'LMP-POD-002'],
   [MARKA_SZKLO]: ['LMP-STO-006', 'LMP-KIN-003', 'LMP-NOC-001', 'LMP-ABA-003'],
@@ -607,15 +657,18 @@ const TEKSTY_BEZPIECZENSTWA_DEMO = {
 export function zasiejProducentowDemo(db, { teraz }) {
   const at = teraz();
   const dopiszMarke = db.prepare('INSERT OR IGNORE INTO marki (nazwa, utworzona_at) VALUES (?, ?)');
+  for (const marka of MARKI_DEMO) dopiszMarke.run(marka, at);
   const kartaPoSku = db.prepare('SELECT id FROM karty_produktow WHERE sku = ?');
   for (const [marka, skus] of Object.entries(MARKI_KART_DEMO)) {
-    dopiszMarke.run(marka, at);
     for (const sku of skus) {
       const kartaId = kartaPoSku.get(sku)?.id;
       if (!kartaId) throw new Error(`DEMO_PRODUCENCI: brak karty ${sku}`);
       zapiszKarte(db, kartaId, { marka }, { at });
     }
   }
+  const bezMarki = db.prepare('SELECT id FROM karty_produktow WHERE marka IS NULL ORDER BY id').all();
+  for (const [i, { id }] of bezMarki.entries())
+    zapiszKarte(db, id, { marka: MARKI_DEMO[i % MARKI_DEMO.length] }, { at });
   const idPoNazwie = db.prepare('SELECT id FROM producenci WHERE nazwa = ?');
   const zmiany = [];
   for (const { domyslny, ...dane } of PRODUCENCI_DEMO) {
@@ -625,7 +678,10 @@ export function zasiejProducentowDemo(db, { teraz }) {
       if (!wynik.ok) throw new Error(`DEMO_PRODUCENCI: ${JSON.stringify(wynik.bledy)}`);
       id = wynik.id;
     }
-    if (domyslny) ustawDomyslnego(db, id, { at });
+    if (domyslny) {
+      ustawDomyslnego(db, id, { at });
+      zmiany.push({ marka: MARKA_OPRAWY, producentId: id });
+    }
     if (dane.nazwa !== MARKA_BEZ_PRODUCENTA) zmiany.push({ marka: dane.nazwa, producentId: id });
   }
   const przypisanie = przypiszMarki(db, zmiany, { at });

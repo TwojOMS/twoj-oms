@@ -64,7 +64,7 @@ describe('widoki i serwer', () => {
   it('strona panelu linkuje CSS i skrypty z wersją bieżących plików, a serwer podaje plik pod adresem z ?v=', async () => {
     const { db, app } = nowyPanel();
     zalozKonto(db, { login: 'adam', imie: 'Adam', haslo: 'h', rola: 'administrator', admin: true });
-    const r = await get(app, '/ustawienia/magazyn', jako(db, 'adam'));
+    const r = await get(app, '/magazyn/ustawienia', jako(db, 'adam'));
     expect(r.statusCode, r.body).toBe(200);
     const v = wersjaZasobow(PUBLIC);
     expect(r.body).toContain(`<link rel="stylesheet" href="/public/oms-design.css?v=${v}">`);

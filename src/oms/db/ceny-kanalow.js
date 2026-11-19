@@ -1,5 +1,5 @@
 // Zapytania ręcznych cen kart w kanałach, dziennika zmian wysłanych do kanałów, ochrony ceny karty przed
-// importem i statusu publikacji w lustrze sklepu. Tu tylko baza — reguła „jaka cena idzie do kanału” jest
+// importem oraz ceny i statusu publikacji w lustrze kanału. Tu tylko baza — reguła „jaka cena idzie do kanału” jest
 // w domenie.
 //
 // Funkcje nie otwierają własnej transakcji: zapis ręcznej ceny idzie razem z wpisem dziennika i ochroną
@@ -104,5 +104,15 @@ export function ustawStatusPublikacji(db, kanal, produktId, status) {
     db
       .prepare('UPDATE produkty_sklepowe SET status_publikacji = ? WHERE kanal = ? AND produkt_id = ?')
       .run(status, kanal, String(produktId)).changes,
+  );
+}
+
+/** Cena odczytana dla jednej pozycji lustra. Produkt bez wariantów i oferta mają pusty identyfikator wariantu. */
+export function ustawCeneWLustrze(db, kanal, produktId, wariantId, cenaGr) {
+  db.prepare('UPDATE produkty_sklepowe SET cena_gr = ? WHERE kanal = ? AND produkt_id = ? AND wariant_id = ?').run(
+    cenaGr,
+    kanal,
+    produktId,
+    wariantId,
   );
 }

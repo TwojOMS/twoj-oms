@@ -59,7 +59,7 @@ const ALLEGROIMG = /^https:\/\/(?:[a-z0-9-]+\.)*allegroimg\.com\//i;
 const CZEKAJACE_REJESTR = new Set(['szkic', 'do_wyslania', 'wyslana', 'sprawdzana', 'aktywna']);
 const CZEKAJACE_LUSTRO = new Set(['ACTIVE', 'ACTIVATING']);
 const ADRES_KATEGORII = '/magazyn/kategorie';
-const ADRES_MAREK = '/magazyn/marki';
+const ADRES_MAREK = '/magazyn/producenci#marki';
 
 const napis = (w) => (typeof w === 'string' ? w.trim() : w == null ? '' : String(w).trim());
 const lista = (w) => (Array.isArray(w) ? w : []);
@@ -101,7 +101,8 @@ function maWartosc(p) {
 /**
  * @param {object} wejscie kształty wejścia — opis pól w teście `tests/domena/allegro-oferta-z-karty.test.js`
  * @returns {{bledy: {kod: string, tekst: string, adres?: string}[], ostrzezenia: {kod: string, tekst: string}[],
- *   zadanie: object | null, droga: 'katalog-id'|'ean'|'nowy'|null, doWgrania: object[]}}
+ *   zadanie: object | null, droga: 'katalog-id'|'ean'|'nowy'|null, doWgrania: object[],
+ *   parametryWyliczone: Map<string, {wartosc: object | null, zKatalogu: boolean}>}}
  */
 export function ofertaAllegroZKarty(wejscie) {
   const {
@@ -212,11 +213,19 @@ export function ofertaAllegroZKarty(wejscie) {
       if (!marka) return null;
       const m = marki.find((x) => napis(x.marka) === marka);
       if (!m) {
-        blad('marka', `Marka „${marka}” nie ma odpowiednika w Allegro — przypisz ją w Magazyn → Marki.`, ADRES_MAREK);
+        blad(
+          'marka',
+          `Marka „${marka}” nie ma odpowiednika w Allegro — przypisz ją w Magazyn → Producenci → Marki.`,
+          ADRES_MAREK,
+        );
         return null;
       }
       if (!lista(m.kategorieSprawdzone).map(String).includes(kategoria)) {
-        blad('marka-kategoria', `Sprawdź markę ${marka} w kategorii ${nazwaKategorii} (Magazyn → Marki).`, ADRES_MAREK);
+        blad(
+          'marka-kategoria',
+          `Sprawdź markę ${marka} w kategorii ${nazwaKategorii} (Magazyn → Producenci → Marki).`,
+          ADRES_MAREK,
+        );
         return null;
       }
       return napis(m.wartoscId)
@@ -244,11 +253,15 @@ export function ofertaAllegroZKarty(wejscie) {
 
   const parametryProduktu = [];
   const parametryOferty = [];
+  const zKatalogu = [];
   for (const p of lista(opis?.parametry)) {
     const id = napis(p.id);
     const doProduktu = p.opisujeProdukt === true;
     // Produkt z Katalogu ma własne parametry produktu — wysyłamy tylko parametry oferty.
-    if (doProduktu && droga !== 'nowy') continue;
+    if (doProduktu && droga !== 'nowy') {
+      zKatalogu.push(id);
+      continue;
+    }
     // Nowy produkt może użyć pól karty także przed przypisaniem reguł kategorii.
     const poleDomyslne =
       doProduktu && droga === 'nowy'
@@ -284,7 +297,7 @@ export function ofertaAllegroZKarty(wejscie) {
       if (!bledy.some((b) => b.kod === 'marka' || b.kod === 'marka-kategoria')) {
         blad(
           'marka',
-          `Marka „${marka}” jest przypisana w Allegro jako „bez marki”, a kategoria ${nazwaKategorii} wymaga parametru „${p.nazwa}” — wybierz wartość w Magazyn → Marki.`,
+          `Marka „${marka}” jest przypisana w Allegro jako „bez marki”, a kategoria ${nazwaKategorii} wymaga parametru „${p.nazwa}” — wybierz wartość w Magazyn → Producenci → Marki.`,
           ADRES_MAREK,
         );
       }
@@ -309,6 +322,10 @@ export function ofertaAllegroZKarty(wejscie) {
   if (stanWProdukcie >= 0) parametryOferty.push(...parametryProduktu.splice(stanWProdukcie, 1));
   if (!parametryOferty.some((p) => napis(p.id) === PARAMETR_STAN))
     parametryOferty.unshift({ id: PARAMETR_STAN, valuesIds: [STAN_NOWY] });
+  // Karta pokazuje te wartości w tabeli parametrów — także przy błędach, gdy żądania nie ma.
+  const parametryWyliczone = new Map(zKatalogu.map((id) => [id, { wartosc: null, zKatalogu: true }]));
+  for (const p of [...parametryProduktu, ...parametryOferty])
+    parametryWyliczone.set(napis(p.id), { wartosc: p, zKatalogu: false });
 
   // Zdjęcia: kolejność galerii, najwyżej 16.
   const wgrane = new Map(lista(wgraneZdjecia).map((w) => [w.zdjecie_id, w]));
@@ -486,7 +503,7 @@ export function ofertaAllegroZKarty(wejscie) {
       `Karta ma już ${czynne} aktywne albo czekające oferty na kontach Allegro — Allegro nie pozwala na więcej niż dwie oferty tego samego przedmiotu w stanie Nowy w podkategorii, niezależnie od liczby kont.`,
     );
 
-  if (bledy.length) return { bledy, ostrzezenia, zadanie: null, droga, doWgrania, dostawa };
+  if (bledy.length) return { bledy, ostrzezenia, zadanie: null, droga, doWgrania, dostawa, parametryWyliczone };
 
   const product =
     droga === 'katalog-id'
@@ -517,7 +534,7 @@ export function ofertaAllegroZKarty(wejscie) {
     publication: { status: 'INACTIVE' },
     language: 'pl-PL',
   };
-  return { bledy, ostrzezenia, zadanie, droga, doWgrania, dostawa };
+  return { bledy, ostrzezenia, zadanie, droga, doWgrania, dostawa, parametryWyliczone };
 }
 
 /** Po wgraniu zdjęć pętla wstawia adresy Allegro w miejsce `ZNACZNIK_WGRANIA<id>` (images, produkt, opis). */

@@ -7,16 +7,18 @@
 //   (2) nazwa kolumny sortowania i nazwa kolumny zapisu nie moga trafic do SQL-a
 //       z zapytania HTTP (biale listy nizej — parametru w `ORDER BY` zwiazac sie nie da);
 //   (3) filtr, ktorego nie rozumiemy, NIE POSZERZA zbioru (patrz `warunkiKart`).
-import { PACZKOMAT_WARTOSCI, czyPaczkomat } from '../../domena/paczkomat.js';
+import { idBrakuParametru } from '../../domena/magazyn-filtry.js';
 import { wymagajListyKanalow } from '../../domena/lista-kanalow.js';
 import { kartaZProduktu, powodPominiecia } from '../../domena/karta-z-produktu.js';
 import { POLA_ZASTANE } from '../../domena/zrodla-pol.js';
 import { dekodujEncje } from '../../domena/slowniki-kart.js';
 import { PROBLEMY_ILOSCI } from '../../domena/ilosc-kanalu.js';
 import { przelacznikStanow, stanyKart, zuzycieProduktuOdGranicy } from './stany-magazynowe.js';
-import { kartyNiskiegoStanu } from './niski-stan.js';
+import { kartyWgStanu } from './niski-stan.js';
+import { czyFiltrStanu } from '../../domena/niski-stan.js';
 import { zapiszPrzepiecie } from './oferty-kanalow.ts';
 import { zapiszCeneZakupu } from './ceny-zakupu.js';
+import { ustawWartoscKarty, wyczyscWartoscKarty } from './parametry-kart.js';
 import { dzienWarszawa } from '../../domena/format-daty.js';
 
 const teraz = () => new Date().toISOString();
@@ -188,7 +190,6 @@ const POLA_KARTY = [
   'szerokosc_mm',
   'wysokosc_mm',
   'kategoria_glowna',
-  'paczkomat',
   'opis',
   'glebokosc_mm',
   'waga_g',
@@ -207,10 +208,6 @@ const POLA_KARTY = [
   'prog_niskiego_stanu',
 ];
 
-// Paczkomat ma TRZY stany i pilnuje ich domena/paczkomat.js. Czwarta wartosc w kolumnie
-// zepsulaby filtr „bez oznaczenia paczkomatu" — karta z napisem 'moze' nie bylaby ani
-// oznaczona, ani nieoznaczona.
-//
 // Próg niskiego stanu pilnujemy tutaj, a nie CHECK-iem w bazie: strażnik migracji nie pozwala dokładać ograniczeń
 // do istniejącej tabeli. Wszystkie zapisy kart (karta, hurt, tworzenie) idą przez tę funkcję, więc ujemny próg albo
 // napis z formularza, który ominął parser, kończy się wyjątkiem zamiast wartością, której ostrzeżenie nie zrozumie.
@@ -219,12 +216,7 @@ const progDoZapisu = (wartosc) => {
   if (Number.isSafeInteger(wartosc) && wartosc >= 0) return wartosc;
   throw new Error(`zapis karty: próg niskiego stanu „${wartosc}" nie jest liczbą całkowitą od 0 w górę`);
 };
-const wartoscPola = (pole, wartosc) =>
-  pole === 'paczkomat'
-    ? czyPaczkomat({ paczkomat: wartosc })
-    : pole === 'prog_niskiego_stanu'
-      ? progDoZapisu(wartosc)
-      : (wartosc ?? null);
+const wartoscPola = (pole, wartosc) => (pole === 'prog_niskiego_stanu' ? progDoZapisu(wartosc) : (wartosc ?? null));
 
 // Porównanie zgodne z typem kolumny SQLite, bez parsowania tekstowych JSON-ów.
 const POLA_LICZBOWE = [
@@ -364,7 +356,9 @@ export function kartyPoIdach(db, ids) {
  * pomylke masowa.
  */
 export function zastosujHurtem(db, plan, { at = teraz(), zrodlo = 'reczne', kto = null } = {}) {
-  const kroki = (plan ?? []).filter((k) => k && (Object.keys(k.zmiany ?? {}).length || k.cenaZakupu));
+  const kroki = (plan ?? []).filter(
+    (k) => k && (Object.keys(k.zmiany ?? {}).length || k.cenaZakupu || Object.keys(k.parametry ?? {}).length),
+  );
   for (const { zmiany = {} } of kroki) {
     for (const pole of Object.keys(zmiany)) {
       if (!POLA_KARTY.includes(pole)) throw new Error(`zastosujHurtem: nieznane pole „${pole}"`);
@@ -394,7 +388,7 @@ export function zastosujHurtem(db, plan, { at = teraz(), zrodlo = 'reczne', kto 
   if (wlasnaTransakcja) db.exec('BEGIN IMMEDIATE');
   try {
     let zmienione = 0;
-    for (const { id, zmiany = {}, cenaZakupu } of kroki) {
+    for (const { id, zmiany = {}, cenaZakupu, parametry = {} } of kroki) {
       // Wyjątek od „hurt zmienia tylko kolumny karty”: cena zakupu ma własną tabelę z historią.
       // Zapis w tej samej transakcji (odmowa cofa oba) i bez `zmieniony_at` karty — cena zakupu
       // nie wychodzi do API, więc jej zmiana nie może kazać klientom API pobierać kart od nowa.
@@ -408,6 +402,17 @@ export function zastosujHurtem(db, plan, { at = teraz(), zrodlo = 'reczne', kto 
         const r = zapytanie(pola).run(...pola.map((k) => wartoscPola(k, zmiany[k])), at, id);
         oznaczReczne(db, id, pola, zrodlo, at);
         if (liczba(r.changes)) ruszona = true;
+      }
+      // Parametry własne mają własną tabelę (autor i data przy każdej wartości), więc — jak cena
+      // zakupu — nie przestawiają `zmieniony_at` karty. Wartość sprawdza ponownie warstwa
+      // parametrów; odmowa przerywa CAŁY przebieg, bo podgląd obiecał zapis wszystkich kart.
+      for (const [parametrId, wartosc] of Object.entries(parametry)) {
+        const r =
+          wartosc === null
+            ? wyczyscWartoscKarty(db, id, parametrId)
+            : ustawWartoscKarty(db, id, parametrId, wartosc, { at, kto });
+        if (r.blad) throw new Error(`zastosujHurtem: ${r.blad}`);
+        if (r.zmieniono) ruszona = true;
       }
       // Liczymy KARTY, nie zapisy: cena i stawka na jednej karcie to jedna zmieniona karta.
       if (ruszona) zmienione += 1;
@@ -761,18 +766,21 @@ const BRAK_ZDJECIA_SQL = 'NOT EXISTS (SELECT 1 FROM zdjecia_kart z WHERE z.karta
 // (jak przy filtrze kategorii niżej).
 const BRAK_OPISU_SQL =
   "(w.opis_sekcje_json IS NULL OR COALESCE(CASE WHEN json_valid(w.opis_sekcje_json) THEN json_array_length(w.opis_sekcje_json, '$.sekcje') END, 0) = 0)";
-// ⚠️ Wartosci stanow z domena/paczkomat.js interpolowane RAZ przy starcie procesu. To stale
-// APLIKACJI, a nie dane z zadania HTTP — i inaczej niz przy dawnym `nieoznaczony()` to
-// wyrazenie idzie takze do SELECT-a i do ORDER BY, gdzie parametry zapytania nie siegaja.
-// Czwarty stan nadal wymaga zmiany wylacznie w domenie.
-const BRAK_PACZKOMATU_SQL = `(w.paczkomat IS NULL OR w.paczkomat NOT IN (${[...PACZKOMAT_WARTOSCI]
-  .map((v) => `'${v}'`)
-  .join(', ')}))`;
+// Brak wartości parametru na karcie = brak wiersza w `karty_parametry` (pusty zapis kasuje wiersz).
+// Aliasy `kpar`/`ppar` są własne tych wyrażeń, żeby nie zasłaniać `pk`/`pf` z filtrów niżej.
+const BEZ_WARTOSCI_SQL =
+  'NOT EXISTS (SELECT 1 FROM karty_parametry kpar WHERE kpar.karta_id = w.id AND kpar.parametr_id = ?)';
+// Każdy WYMAGANY parametr własny bez wartości to osobny brak. Korelowane podzapytanie na karcie
+// trafia w klucz główny `karty_parametry (karta_id, parametr_id)`, a parametrów firma ma najwyżej
+// kilkadziesiąt — tysiąc kart liczy się bez skanu wartości.
+const BRAKI_PARAMETROW_SQL =
+  '(SELECT COUNT(*) FROM parametry_kart ppar WHERE ppar.wymagany = 1 AND NOT EXISTS' +
+  ' (SELECT 1 FROM karty_parametry kpar WHERE kpar.karta_id = w.id AND kpar.parametr_id = ppar.id))';
 const LICZBA_BRAKOW_SQL =
   `((CASE WHEN ${BRAK_SKU_SQL} THEN 1 ELSE 0 END)` +
   ` + (CASE WHEN ${BRAK_WYMIAROW_SQL} THEN 1 ELSE 0 END)` +
   ` + (CASE WHEN ${BRAK_KATEGORII_SQL} THEN 1 ELSE 0 END)` +
-  ` + (CASE WHEN ${BRAK_PACZKOMATU_SQL} THEN 1 ELSE 0 END)` +
+  ` + ${BRAKI_PARAMETROW_SQL}` +
   ` + (CASE WHEN ${BRAK_ZDJECIA_SQL} THEN 1 ELSE 0 END)` +
   ` + (CASE WHEN ${BRAK_OPISU_SQL} THEN 1 ELSE 0 END))`;
 
@@ -793,7 +801,6 @@ const SORTOWANIE = {
   kategoria_glowna: "NULLIF(w.kategoria_glowna, '') COLLATE NOCASE",
   marka: "NULLIF(w.marka, '') COLLATE NOCASE",
   cena: 'w.cena_gr',
-  paczkomat: 'w.paczkomat',
   // KOLEJKA ROBOTY: malejaco daje na czele karty, przy ktorych jest najwiecej do zrobienia.
   // Wyrazenie NIGDY nie jest NULL-em (suma CASE-ow), wiec `NULLS LAST` nizej jest
   // przy nim martwe, a nie szkodliwe.
@@ -811,6 +818,44 @@ export const SORTOWANIE_KART = Object.freeze(Object.keys(SORTOWANIE));
 // ⚠️ Znaki wieloznaczne LIKE. Bez ucieczki fraza „%" oddawalaby CALY katalog, a wlasciciel
 // czytalby to jako wynik wyszukiwania. `\` jako znak ucieczki deklarujemy w SQL-u (ESCAPE).
 const uciekniecieLike = (s) => s.replace(/[\\%_]/gu, (z) => `\\${z}`);
+
+/**
+ * Filtr parametru własnego. Typ czytamy z bazy, a nie z adresu: zawężenie hurtu przychodzi bez
+ * listy definicji, a lista na ekranie i hurt muszą trafić w TE SAME karty.
+ * „Bez wartości” = brak wiersza w `karty_parametry`. Liczba porównywana przez CAST, bo wartość
+ * leży jako napis kanoniczny (`7.5`) — porównanie napisów dałoby „60” > „100”.
+ */
+function warunekParametru({ parametr, pw, pod, pdo, pbez }, czesci, params) {
+  if (parametr == null) return;
+  const id = Number(parametr);
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    czesci.push('1 = 0');
+    return;
+  }
+  if (pbez) {
+    czesci.push(`EXISTS (SELECT 1 FROM parametry_kart WHERE id = ?) AND ${BEZ_WARTOSCI_SQL}`);
+    params.push(id, id);
+    return;
+  }
+  let warunek =
+    'EXISTS (SELECT 1 FROM karty_parametry kpar JOIN parametry_kart ppar ON ppar.id = kpar.parametr_id' +
+    ' WHERE kpar.karta_id = w.id AND kpar.parametr_id = ?';
+  params.push(id);
+  if (pw != null) {
+    // Tekst: „zawiera”; lista i liczba: dokładna wartość kanoniczna.
+    warunek += " AND (CASE ppar.typ WHEN 'tekst' THEN kpar.wartosc LIKE ? ESCAPE '\\' ELSE kpar.wartosc = ? END)";
+    params.push(`%${uciekniecieLike(String(pw))}%`, String(pw));
+  }
+  if (pod != null) {
+    warunek += " AND ppar.typ = 'liczba' AND CAST(kpar.wartosc AS REAL) >= ?";
+    params.push(Number(pod));
+  }
+  if (pdo != null) {
+    warunek += " AND ppar.typ = 'liczba' AND CAST(kpar.wartosc AS REAL) <= ?";
+    params.push(Number(pdo));
+  }
+  czesci.push(`${warunek})`);
+}
 
 /**
  * Warunki listy kart — budowane RAZ i uzyte w OBU zapytaniach (karty i ich produkty),
@@ -864,7 +909,7 @@ function warunkiKart({ fraza, filtry = {} }) {
   // (najglebszy zakres wygrywa), wiec dzis dziala — ale to mina: kolejny warunek dopisany
   // tutaj z mysla o „zewnetrznym" `p`, albo usuniety alias z podzapytania, zaczalby po cichu
   // znaczyc co innego, bez bledu skladni i bez czerwonego testu na malych danych.
-  const { kanal, cenaOd, cenaDo, kategoria, marka, paczkomat, brak } = filtry;
+  const { kanal, cenaOd, cenaDo, kategoria, marka, brak } = filtry;
   if (marka) {
     czesci.push('w.marka = ?');
     params.push(marka);
@@ -919,23 +964,19 @@ function warunkiKart({ fraza, filtry = {} }) {
     params.push(szukana, szukana);
   }
 
-  // Trzy stany paczkomatu. Lista wartosci idzie z domena/paczkomat.js — dodanie czwartego
-  // stanu nie wymaga poprawki tutaj. „Nieoznaczony" to DOKLADNIE to samo wyrazenie, ktorego
-  // uzywa kolumna `liczba_brakow`, kafel i sortowanie (patrz `BRAK_PACZKOMATU_SQL`).
-  if (paczkomat) {
-    if (PACZKOMAT_WARTOSCI.has(paczkomat)) {
-      czesci.push('w.paczkomat = ?');
-      params.push(paczkomat);
-    } else if (paczkomat === 'nieoznaczone') czesci.push(BRAK_PACZKOMATU_SQL);
-    else czesci.push('1 = 0');
-  }
+  warunekParametru(filtry, czesci, params);
 
   if (brak) {
+    const brakParametru = idBrakuParametru(brak);
     if (brak === 'sku') czesci.push(BRAK_SKU_SQL);
     else if (brak === 'wymiary') czesci.push(BRAK_WYMIAROW_SQL);
     else if (brak === 'kategoria') czesci.push(BRAK_KATEGORII_SQL);
-    else if (brak === 'paczkomat') czesci.push(BRAK_PACZKOMATU_SQL);
-    else if (brak === 'zdjecie') czesci.push(BRAK_ZDJECIA_SQL);
+    // „bez: <parametr>” tylko dla WYMAGANEGO — to ta sama definicja braku, co w `LICZBA_BRAKOW_SQL`.
+    // Nieobowiązkowy albo nieistniejący daje pusto (zawężenie hurtu przychodzi bez sprawdzenia listy).
+    else if (brakParametru !== null) {
+      czesci.push(`EXISTS (SELECT 1 FROM parametry_kart WHERE id = ? AND wymagany = 1) AND ${BEZ_WARTOSCI_SQL}`);
+      params.push(brakParametru, brakParametru);
+    } else if (brak === 'zdjecie') czesci.push(BRAK_ZDJECIA_SQL);
     else if (brak === 'opis') czesci.push(BRAK_OPISU_SQL);
     // Bez ceny zakupu OBOWIĄZUJĄCEJ DZIŚ (ta sama reguła „od <= dzień” co w ceny-zakupu.js):
     // karta tylko z przyszłą ceną też jest „bez ceny” — dziś nie da się z niej policzyć marży.
@@ -987,11 +1028,11 @@ function kolumnyBez(db, tabela, alias, pomin) {
 export function kartyZKanalami(db, { fraza, filtry, sort, kier, kolumny, limit = null } = {}) {
   if (filtry?.kategoria) zarejestrujDekodowanie(db);
   const warunki = warunkiKart({ fraza, filtry });
-  const niskiStan = filtry?.stan === 'niski';
-  const zrodlo = niskiStan ? 'karty_produktow w JOIN json_each(?) niski ON w.id = niski.value' : 'karty_produktow w';
-  const gdzie = filtry?.stan && !niskiStan ? '1 = 0' : warunki.gdzie;
-  const params = niskiStan
-    ? [JSON.stringify(kartyNiskiegoStanu(db).map((karta) => karta.id)), ...warunki.params]
+  const wgStanu = czyFiltrStanu(filtry?.stan);
+  const zrodlo = wgStanu ? 'karty_produktow w JOIN json_each(?) stan ON w.id = stan.value' : 'karty_produktow w';
+  const gdzie = filtry?.stan && !wgStanu ? '1 = 0' : warunki.gdzie;
+  const params = wgStanu
+    ? [JSON.stringify(kartyWgStanu(db, filtry.stan)), ...warunki.params]
     : filtry?.stan
       ? []
       : warunki.params;
@@ -1013,7 +1054,7 @@ export function kartyZKanalami(db, { fraza, filtry, sort, kier, kolumny, limit =
   const kierunek = String(kier).toLowerCase() === 'desc' ? 'DESC' : 'ASC';
   // Klucz elementu JSON odpowiada pozycji karty na liście ułożonej rosnąco po stanie.
   const kolejnosc =
-    niskiStan && !Object.hasOwn(SORTOWANIE, sort) ? 'niski.key ASC' : `${wyrazenie} ${kierunek} NULLS LAST`;
+    wgStanu && !Object.hasOwn(SORTOWANIE, sort) ? 'stan.key ASC' : `${wyrazenie} ${kierunek} NULLS LAST`;
 
   const karty = db
     .prepare(
@@ -1114,7 +1155,7 @@ export function kanalyDostepnosciKart(db, kartaIds, { kanalyZeStatusem = [] } = 
  * puste miejsce w kaflu — czyli jak awaria odczytu, a nie jak „nic nie zostalo".
  *
  * @returns {{razem: number, bezSku: number, doPrzejecia: number, bezWymiarow: number,
- *            bezKategorii: number, bezPaczkomatu: number, komplet: number}}
+ *            bezKategorii: number, komplet: number}}
  */
 export function zliczeniaBrakow(db) {
   return db
@@ -1126,7 +1167,6 @@ export function zliczeniaBrakow(db) {
         ' THEN 1 ELSE 0 END), 0) AS doPrzejecia' +
         `, COALESCE(SUM(CASE WHEN ${BRAK_WYMIAROW_SQL} THEN 1 ELSE 0 END), 0) AS bezWymiarow` +
         `, COALESCE(SUM(CASE WHEN ${BRAK_KATEGORII_SQL} THEN 1 ELSE 0 END), 0) AS bezKategorii` +
-        `, COALESCE(SUM(CASE WHEN ${BRAK_PACZKOMATU_SQL} THEN 1 ELSE 0 END), 0) AS bezPaczkomatu` +
         `, COALESCE(SUM(CASE WHEN ${BRAK_ZDJECIA_SQL} THEN 1 ELSE 0 END), 0) AS bezZdjecia` +
         `, COALESCE(SUM(CASE WHEN ${BRAK_OPISU_SQL} THEN 1 ELSE 0 END), 0) AS bezOpisu` +
         `, COALESCE(SUM(CASE WHEN ${LICZBA_BRAKOW_SQL} = 0 THEN 1 ELSE 0 END), 0) AS komplet` +

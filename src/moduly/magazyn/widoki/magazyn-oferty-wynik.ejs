@@ -1,0 +1,23 @@
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: `Oferty — ${nazwa}`, podtytul: 'Wynik zatwierdzenia'}) %>
+<section class="panel">
+  <div class="panel-cialo">
+    <%# „Wszystkie wysłane” tylko, gdy coś z tej partii jest w rejestrze — przy samych odmowach byłoby nieprawdą. %>
+    <p class="pasek-info" role="status"><% if (wKolejce || !wiersze.some(w => w.stan)) { %>W kolejce do wysłania: <%= wKolejce %>. OMS wysyła oferty w tle co 5 minut — ta strona pokazuje ich stan.<% } else { %>Wszystkie oferty z tej partii zostały już wysłane.<% } %><% if (allegro && aktywujPoSprawdzeniu) { %> Oferty staną się aktywne, gdy Allegro je sprawdzi.<% } else if (allegro) { %> Na koncie <%= nazwa %> oferty powstają jako nieaktywne szkice — włączysz je przyciskiem „Aktywuj w Allegro — szkice zaznaczonych” w Magazynie albo na karcie.<% } %></p>
+    <div class="przewijak-tabeli" tabindex="0" role="region" aria-labelledby="wynik-ofert-tytul">
+      <table class="tresc-lista">
+        <caption id="wynik-ofert-tytul" class="poza-okiem">Oferty z tej partii na koncie <%= nazwa %></caption>
+        <thead><tr><th scope="col">Karta</th><th scope="col">Stan</th><th scope="col">Oferta</th></tr></thead>
+        <tbody>
+        <% wiersze.forEach(w => { %>
+          <tr>
+            <td><a href="/magazyn/<%= w.id %>#produkty-karty"><%= w.nazwa %></a></td>
+            <% if (!w.stan) { %><td>nie wysłano — popraw błędy z podglądu</td><% } else { %><td><%= w.stan %><% if (w.czeka) { %><p class="pasek-uwaga"><%= w.czeka.tekst %><% if (w.czeka.krok && admin) { %> <a href="<%= w.czeka.krok %>">Włącz oferty konta w kroku Oferty</a><% } %></p><% } %><% if (w.problem) { %><p class="pasek-uwaga"><%= w.problem %></p><% } %></td><% } %>
+            <% if (w.adres) { %><td><a href="<%= w.adres %>" target="_blank" rel="noopener"><%= w.numer %></a></td><% } else if (w.numer) { %><td><%= w.numer %></td><% } else { %><td>—</td><% } %>
+          </tr>
+        <% }); %>
+        </tbody>
+      </table>
+    </div>
+    <div class="przyciski"><a class="btn" href="<%= adres %>">Odśwież stan</a> <a class="btn" href="/magazyn">← Magazyn</a></div>
+  </div>
+</section>

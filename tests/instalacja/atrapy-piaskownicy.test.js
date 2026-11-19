@@ -211,7 +211,10 @@ describe('piaskownica z atrapami — Faktury i Magazyn na danych demo', () => {
     const { status, html } = await strona('/magazyn');
     expect(status).toBe(200);
     expect(html).not.toContain('nie ma podpiętego żadnego sklepu');
-    for (const t of ['Lampa stołowa Gliwka', 'LMP-STO-001', 'Kopuła']) expect.soft(html, t).toContain(t);
+    for (const t of ['Lampa stołowa Gliwka', 'LMP-STO-001']) expect.soft(html, t).toContain(t);
+    const kopula = await strona('/magazyn?fraza=' + encodeURIComponent('Kopuła'));
+    expect(kopula.status).toBe(200);
+    expect(kopula.html).toMatch(/<a href="\/magazyn\/\d+[^"]*">[^<]*Kopuła[^<]*<\/a>/);
     const przed = (() => {
       const db = baza();
       try {

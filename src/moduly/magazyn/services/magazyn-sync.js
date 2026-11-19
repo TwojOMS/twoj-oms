@@ -175,7 +175,7 @@ const zdjeciaProduktu = (p) => (Array.isArray(p?.images) ? p.images : []).map((z
  * ⚠️ ATRYBUT WYGRYWA NAD NAZWA I TO JEST REGULA NOSNA, NIE PORZADKOWA. W sklepie oba niosa ROZNE,
  * PRAWDZIWE liczby: „Lampa wisząca Przykładowa – 30x45cm" ma atrybut „40 x 60 cm", bo 30×45 to sam KLOSZ,
  * a 40×60 to caly produkt z oprawa. Magazyn trzyma wymiar z ATRYBUTU — to on decyduje
- * o pakowaniu, paczkomacie i cenie. Odwrocenie kolejnosci zepsuloby kolumne paczkomatu w calym sklepie.
+ * o pakowaniu, gabarycie paczki i cenie. Odwrocenie kolejnosci zepsuloby wymiary w calym sklepie.
  *
  * Kilka wartosci w `options` sklejamy przecinkiem zamiast wybierac jedna: `wymiaryZTekstu` odda
  * wtedy `null` (dwa trafienia = niejednoznacznosc), czyli brak — a nie zgadniety rozmiar.

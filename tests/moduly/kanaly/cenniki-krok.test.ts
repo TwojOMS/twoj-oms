@@ -13,11 +13,11 @@ import type { ModulOms } from '../../../src/core/kontrakty.ts';
 import { zapiszTokeny } from '../../../src/oms/db/tokeny.js';
 import { UPRAWNIENIA_OFERT } from '../../../src/domena/uprawnienia-kanalu.js';
 import { ustawieniaOfertKonta, zapiszUstawieniaOfertKonta } from '../../../src/oms/db/oferty-kanalow.ts';
-import { migracjaCennikowDostaw } from '../../../src/moduly/magazyn/migracje/0003-cenniki-dostaw.ts';
+import { dodajCennikOms, ustawPowiazanieCennika } from '../../../src/oms/db/cenniki-oms.ts';
 
-// Krok „Oferty” Allegro i ERLI — tabela reguł
-// „cennik według rozmiaru” zamiast jednego pola cennikDostaw. Bez sieci: listy Allegro zapisane wprost w bazie,
-// transport ERLI rzuca przy każdym wywołaniu. Dane zmyślone („Pracownia Półcień”).
+// Krok „Oferty” Allegro i ERLI — cenniki dostaw ustawia się w Magazyn → Cenniki; krok pokazuje tylko podsumowanie
+// powiązań konta i nie czyta dawnych pól reguł. Bez sieci: listy Allegro zapisane wprost w bazie, transport ERLI
+// rzuca przy każdym wywołaniu. Dane zmyślone („Pracownia Półcień”).
 
 let a: Aplikacja | undefined, db: ReturnType<typeof openOmsDb> | undefined;
 afterEach(async () => {
@@ -27,18 +27,6 @@ afterEach(async () => {
   db = undefined;
   vi.restoreAllMocks();
 });
-
-const ileRazy = (s: string, re: RegExp) => (s.match(re) ?? []).length;
-/** Wiersze tabeli jak z formularza: [a, b, c, waga, cennik] — każde pole to lista wartości w kolejności wierszy. */
-const tabela = (w: string[][], cennikWiekszych: string) => ({
-  regulaA: w.map((x) => x[0]),
-  regulaB: w.map((x) => x[1]),
-  regulaC: w.map((x) => x[2]),
-  regulaWaga: w.map((x) => x[3]),
-  regulaCennik: w.map((x) => x[4]),
-  cennikWiekszych,
-});
-const PUSTY = ['', '', '', '', ''];
 
 // ——— Allegro ———
 const rootA = '/ustawienia/integracje/allegro';
@@ -85,7 +73,7 @@ async function allegro() {
     OMS_PROFORMY_KATALOG: path.join(os.tmpdir(), 'cenniki-krok-prz160e3d02', 'proformy'),
     OMS_ETYKIETY_KATALOG: path.join(os.tmpdir(), 'cenniki-krok-prz160e3d02', 'etykiety'),
   };
-  const def = ['legacy', 'allegro_polcien'].map((klucz) => ({
+  const def = ['legacy', 'allegro_lampy'].map((klucz) => ({
     klucz,
     typ: 'allegro' as const,
     prefiks: klucz.toUpperCase(),
@@ -136,7 +124,7 @@ async function allegro() {
     log: () => {},
   });
   zalozKonto(db, { login: 'admin', imie: 'Administrator', haslo: 'fixture', rola: 'administrator', admin: true });
-  // Listy „Pobierz z Allegro” tylko dla konta legacy; allegro_polcien list nie ma.
+  // Listy „Pobierz z Allegro” tylko dla konta legacy; allegro_lampy list nie ma.
   zapiszUstawieniaOfertKonta(
     db,
     'legacy',
@@ -168,170 +156,6 @@ async function allegro() {
   return { req, calls, ustawienia: (k: string) => ustawieniaOfertKonta(db!, k) };
 }
 
-const REGULY_A = [
-  { doMm: [80, 380, 640], doG: 25000, cennik: 'cennik-a' },
-  { doMm: [410, 380, 645], doG: 2500, cennik: 'cennik-c' },
-  { cennik: 'cennik-gabaryt' },
-];
-const FORMULARZ_A = tabela(
-  [['8', '38', '64', '25', 'cennik-a'], ['41', '38', '64,5', '2,5', 'cennik-c'], PUSTY, PUSTY],
-  'cennik-gabaryt',
-);
-
-it('Allegro: krok bez reguł — dwa puste wiersze, wymagany cennik „dla większych” z listy konta, podpowiedź InPost, bez pola cennikDostaw', async () => {
-  const f = await allegro();
-  const r = await f.req('GET', rootA + '/legacy/oferty');
-  expect(r.statusCode).toBe(200);
-  expect(r.body).not.toMatch(/name="cennikDostaw"/);
-  expect(ileRazy(r.body, /name="regulaCennik"/g)).toBe(2);
-  for (const pole of ['regulaA', 'regulaB', 'regulaC', 'regulaWaga'])
-    expect(ileRazy(r.body, new RegExp(`name="${pole}"[^>]*value=""`, 'g')), pole).toBe(2);
-  expect(r.body).toMatch(/<select[^>]*name="cennikWiekszych"[^>]*required/);
-  expect(r.body).toMatch(/<option value="cennik-gabaryt">Pracownia Półcień — kurier gabaryt<\/option>/);
-  expect(r.body).toMatch(/<p[^>]*class="ust-pomoc"[^>]*>[^<]*A 8×38×64, B 19×38×64, C 41×38×64 cm, do 25 kg/);
-  // Każde pole tabeli ma własną etykietę <label for>.
-  for (const id of [
-    'allegro-oferty-cenniki-0-a',
-    'allegro-oferty-cenniki-1-waga',
-    'allegro-oferty-cenniki-1-cennik',
-    'allegro-oferty-cenniki-wieksze',
-  ])
-    expect(r.body).toContain(`<label for="${id}"`);
-  expect(f.calls).toEqual([]);
-});
-
-it('Allegro: zapis i odczyt — cm z przecinkiem → mm, kg → g, kolejność wierszy od góry; dawne pole cennik_dostaw nietknięte', async () => {
-  const f = await allegro();
-  const r = await f.req('POST', rootA + '/legacy/oferty', { ...poprawneA, ...FORMULARZ_A });
-  expect(r.statusCode).toBe(303);
-  const u = f.ustawienia('legacy');
-  expect(u.cenniki).toEqual(REGULY_A);
-  expect(u.cennikDostaw).toBeNull();
-  expect(u).toMatchObject({ stalaIlosc: 3, aktorLogin: 'admin' });
-  const e = await f.req('GET', rootA + '/legacy/oferty?wynik=zapisano');
-  // Dwa zapisane wiersze w kolejności zapisu, potem dwa puste.
-  expect(ileRazy(e.body, /name="regulaCennik"/g)).toBe(4);
-  expect(e.body).toMatch(
-    /name="regulaA"[^>]*value="8"[\s\S]*name="regulaA"[^>]*value="41"[\s\S]*name="regulaA"[^>]*value=""[\s\S]*name="regulaA"[^>]*value=""/,
-  );
-  expect(e.body).toMatch(/id="allegro-oferty-cenniki-1-c"[^>]*value="64,5"/);
-  expect(e.body).toMatch(/id="allegro-oferty-cenniki-1-waga"[^>]*value="2,5"/);
-  expect(e.body).toMatch(/id="allegro-oferty-cenniki-0-waga"[^>]*value="25"/);
-  expect(e.body).toMatch(/id="allegro-oferty-cenniki-0-cennik"[\s\S]*?<option value="cennik-a" selected>/);
-  expect(e.body).toMatch(/id="allegro-oferty-cenniki-1-cennik"[\s\S]*?<option value="cennik-c" selected>/);
-  expect(e.body).toMatch(/id="allegro-oferty-cenniki-wieksze"[\s\S]*?<option value="cennik-gabaryt" selected>/);
-});
-
-it('Allegro: wiersz bez wagi → 400 z błędem przy tym wierszu, wpisane wartości wracają, nic nie zapisane', async () => {
-  const f = await allegro();
-  const przed = f.ustawienia('legacy');
-  const r = await f.req('POST', rootA + '/legacy/oferty', {
-    ...poprawneA,
-    ...tabela([['8', '38', '64', '25', 'cennik-a'], ['41', '38', '64', '', 'cennik-c'], PUSTY], 'cennik-gabaryt'),
-  });
-  expect(r.statusCode).toBe(400);
-  expect(r.body).toContain('Podaj trzy wymiary w cm i wagę w kg');
-  expect(r.body).toMatch(/<input[^>]*id="allegro-oferty-cenniki-1-waga"[^>]*aria-invalid="true"/);
-  expect(r.body).not.toMatch(/<input[^>]*id="allegro-oferty-cenniki-0-waga"[^>]*aria-invalid/);
-  expect(r.body).toMatch(/id="allegro-oferty-cenniki-1-a"[^>]*value="41"/);
-  expect(f.ustawienia('legacy')).toEqual(przed);
-});
-
-it('Allegro: wiersze rozmiaru bez cennika „dla większych” → 400 przy tym polu, nic nie zapisane', async () => {
-  const f = await allegro();
-  const przed = f.ustawienia('legacy');
-  const r = await f.req('POST', rootA + '/legacy/oferty', {
-    ...poprawneA,
-    ...tabela([['8', '38', '64', '25', 'cennik-a'], PUSTY, PUSTY], ''),
-  });
-  expect(r.statusCode).toBe(400);
-  expect(r.body).toContain('Podaj cennik dla większych');
-  expect(r.body).toMatch(/<select[^>]*name="cennikWiekszych"[^>]*aria-invalid="true"/);
-  expect(f.ustawienia('legacy')).toEqual(przed);
-});
-
-it('Allegro: cennik spoza listy „Pobierz z Allegro” (w wierszu, „dla większych”, konto bez list) → odmowa, nic nie zapisane', async () => {
-  const f = await allegro();
-  const przed = f.ustawienia('legacy');
-  const wWierszu = await f.req('POST', rootA + '/legacy/oferty', {
-    ...poprawneA,
-    ...tabela([['8', '38', '64', '25', 'cennik-obcy'], PUSTY, PUSTY], 'cennik-gabaryt'),
-  });
-  expect(wWierszu.statusCode).toBe(400);
-  expect(wWierszu.body).toContain('Wybierz z listy pobranej z Allegro (cennik dostaw)');
-  expect(wWierszu.body).toMatch(/<select[^>]*id="allegro-oferty-cenniki-0-cennik"[^>]*aria-invalid="true"/);
-  const wieksze = await f.req('POST', rootA + '/legacy/oferty', {
-    ...poprawneA,
-    ...tabela([PUSTY, PUSTY], 'cennik-obcy'),
-  });
-  expect(wieksze.statusCode).toBe(400);
-  expect(wieksze.body).toMatch(/<select[^>]*name="cennikWiekszych"[^>]*aria-invalid="true"/);
-  expect(f.ustawienia('legacy')).toEqual(przed);
-  const bezList = await f.req('POST', rootA + '/allegro_polcien/oferty', {
-    ...poprawneA,
-    ...tabela([PUSTY, PUSTY], 'cennik-a'),
-  });
-  expect(bezList.statusCode).toBe(400);
-  expect(f.ustawienia('allegro_polcien').zapisane).toBe(false);
-});
-
-it('Allegro: konto po migracji magazyn/0003 pokazuje jedną regułę „wszystko” — sam cennik „dla większych”, puste wiersze; ponowny zapis jej nie zmienia', async () => {
-  const f = await allegro();
-  // Stan sprzed E3d.02: jedno pole cennik_dostaw, lista reguł pusta; migracja przepisuje je do jednej reguły.
-  db!
-    .prepare(
-      "UPDATE oferty_ustawienia_kont SET cennik_dostaw = 'cennik-gabaryt', cenniki_json = NULL WHERE klucz = 'legacy'",
-    )
-    .run();
-  migracjaCennikowDostaw.wykonaj(db!);
-  expect(f.ustawienia('legacy').cenniki).toEqual([{ cennik: 'cennik-gabaryt' }]);
-  const r = await f.req('GET', rootA + '/legacy/oferty');
-  expect(r.body).toMatch(/id="allegro-oferty-cenniki-wieksze"[\s\S]*?<option value="cennik-gabaryt" selected>/);
-  expect(ileRazy(r.body, /name="regulaCennik"/g)).toBe(2);
-  expect(r.body).not.toMatch(/name="regula(A|B|C|Waga)"[^>]*value="[^"]/);
-  expect(r.body).not.toMatch(/name="cennikDostaw"/);
-  expect(
-    (await f.req('POST', rootA + '/legacy/oferty', { ...poprawneA, ...tabela([PUSTY, PUSTY], 'cennik-gabaryt') }))
-      .statusCode,
-  ).toBe(303);
-  expect(f.ustawienia('legacy').cenniki).toEqual([{ cennik: 'cennik-gabaryt' }]);
-  expect(f.ustawienia('legacy').cennikDostaw).toBe('cennik-gabaryt'); // zapis reguł nie rusza kolumny cennik_dostaw
-});
-
-it('Allegro: pusta tabela i puste „dla większych” → 400 „Ustaw cennik dla większych”, reguły konta nietknięte', async () => {
-  const f = await allegro();
-  expect((await f.req('POST', rootA + '/legacy/oferty', { ...poprawneA, ...FORMULARZ_A })).statusCode).toBe(303);
-  const r = await f.req('POST', rootA + '/legacy/oferty', {
-    ...poprawneA,
-    stalaIlosc: '9',
-    ...tabela([PUSTY, PUSTY], ''),
-  });
-  expect(r.statusCode).toBe(400);
-  expect(r.body).toContain('Ustaw cennik dla większych');
-  expect(f.ustawienia('legacy')).toMatchObject({ cenniki: REGULY_A, stalaIlosc: 3 });
-});
-
-it('Allegro: formularz z regułami nie wysyła cennikDostaw; zbłąkane cennikDostaw ani stary formularz bez tabeli nie nadpisują reguł (alias D4)', async () => {
-  const f = await allegro();
-  expect((await f.req('POST', rootA + '/legacy/oferty', { ...poprawneA, ...FORMULARZ_A })).statusCode).toBe(303);
-  const r = await f.req('GET', rootA + '/legacy/oferty');
-  expect(r.body).not.toMatch(/name="cennikDostaw"/);
-  expect(
-    (await f.req('POST', rootA + '/legacy/oferty', { ...poprawneA, ...FORMULARZ_A, cennikDostaw: 'cennik-a' }))
-      .statusCode,
-  ).toBe(303);
-  expect(f.ustawienia('legacy')).toMatchObject({ cenniki: REGULY_A, cennikDostaw: null });
-  // Stary formularz (bez tabeli) przy koncie z regułami: strona otwarta przed zmianą — 409, nic nie zapisane.
-  const stary = await f.req('POST', rootA + '/legacy/oferty', {
-    ...poprawneA,
-    stalaIlosc: '5',
-    cennikDostaw: 'cennik-a',
-  });
-  expect(stary.statusCode).toBe(409);
-  expect(stary.body).toContain('Strona była otwarta przed zmianą — odśwież');
-  expect(f.ustawienia('legacy')).toMatchObject({ cenniki: REGULY_A, cennikDostaw: null, stalaIlosc: 3 });
-});
-
 // ——— ERLI ———
 const rootE = '/ustawienia/integracje/erli';
 const poprawneE = {
@@ -342,7 +166,7 @@ const poprawneE = {
   stawkaVat: '23',
 };
 
-async function erli() {
+async function erli(cennikiDostaw?: string[]) {
   db = openOmsDb();
   const env = {
     OMS_TRYB: 'proba',
@@ -377,6 +201,10 @@ async function erli() {
     { id: 0, login: 'operator' },
   );
   const klucz = wynik.klucz;
+  if (cennikiDostaw)
+    db.prepare(
+      "UPDATE konfiguracja_integracji SET ustawienia_json = json_set(ustawienia_json, '$.cennikiDostaw', json(?)) WHERE integracja = ?",
+    ).run(JSON.stringify(cennikiDostaw), 'erli:' + klucz);
   db.prepare("UPDATE kanaly_sprzedazy SET autoryzacja='polaczone' WHERE klucz=?").run(klucz);
   const req = (method: 'GET' | 'POST', payload?: Record<string, unknown>) =>
     a!.app.inject({
@@ -388,101 +216,96 @@ async function erli() {
   return { klucz, req, transport, ustawienia: () => ustawieniaOfertKonta(db!, klucz) };
 }
 
-it('ERLI: krok „Oferty” ma tabelę reguł z cennikiem jako tekstem dowolnym, wymagane „dla większych”, podpowiedź InPost, bez pola cennikDostaw', async () => {
-  const f = await erli();
-  const r = await f.req('GET');
-  expect(r.statusCode).toBe(200);
-  expect(r.body).not.toMatch(/name="cennikDostaw"/);
-  expect(ileRazy(r.body, /<input[^>]*name="regulaCennik"/g)).toBe(2);
-  expect(r.body).toMatch(/<input[^>]*name="cennikWiekszych"[^>]*required/);
-  expect(r.body).toMatch(/<p[^>]*class="ust-pomoc"[^>]*>[^<]*A 8×38×64, B 19×38×64, C 41×38×64 cm, do 25 kg/);
-  expect(f.transport).not.toHaveBeenCalled();
+const powiazania = () =>
+  db!.prepare('SELECT cennik_id, konto, cennik_kanalu FROM cenniki_dostaw_powiazania ORDER BY cennik_id, konto').all();
+const ODNOSNIK = /<a href="\/magazyn\/cenniki">Ustaw w Magazyn → Cenniki<\/a>/;
+const POLA_REGUL = /name="(regula|cennikWiekszych|cennikDostaw)/;
+// Pola dawnej tabeli reguł, które może jeszcze wysłać strona otwarta przed zmianą.
+const DAWNE_POLA = {
+  regulaA: ['8', ''],
+  regulaB: ['38', ''],
+  regulaC: ['64', ''],
+  regulaWaga: ['25', ''],
+  regulaCennik: ['cennik-c', ''],
+  'regula-0-cennik': 'cennik-c',
+  cennikWiekszych: 'cennik-a',
+  cennikDostaw: 'cennik-a',
+};
+
+it('Allegro: krok „Oferty” zamiast tabeli reguł pokazuje podsumowanie cenników OMS konta i odnośnik do Magazynu', async () => {
+  const f = await allegro();
+  const pusty = await f.req('GET', rootA + '/allegro_lampy/oferty');
+  expect(pusty.statusCode).toBe(200);
+  expect(pusty.body).toContain('Konto nie ma powiązanego cennika dostaw.');
+  expect(pusty.body).toMatch(ODNOSNIK);
+  expect(pusty.body).not.toMatch(POLA_REGUL);
+  zapiszUstawieniaOfertKonta(db!, 'legacy', {
+    cenniki: [{ doMm: [640, 380, 80], doG: 25000, cennik: 'cennik-a' }, { cennik: 'cennik-gabaryt' }],
+  });
+  zapiszUstawieniaOfertKonta(db!, 'allegro_lampy', { cenniki: [{ cennik: 'lampy-kurier' }] });
+  const r = await f.req('GET', rootA + '/legacy/oferty');
+  expect(r.body).toContain(
+    'Cennik dostaw: 2 cenniki OMS mają powiązanie z tym kontem (domyślny: „Domyślny” → Pracownia Półcień — kurier gabaryt).',
+  );
+  expect(r.body).toMatch(ODNOSNIK);
+  expect(r.body).not.toMatch(POLA_REGUL);
+  // Konto bez list „Pobierz z Allegro” pokazuje identyfikator cennika kanału.
+  expect((await f.req('GET', rootA + '/allegro_lampy/oferty')).body).toContain(
+    'Cennik dostaw: 1 cennik OMS ma powiązanie z tym kontem (domyślny: „Domyślny” → lampy-kurier).',
+  );
+  expect(f.calls.filter((u) => !u.includes('/order/checkout-forms?'))).toEqual([]);
 });
 
-it('ERLI: zapis i odczyt reguł (cm z przecinkiem → mm, kg → g, cennik jako wpisany tekst)', async () => {
-  const f = await erli();
-  const r = await f.req('POST', {
-    ...poprawneE,
-    ...tabela(
-      [
-        ['8', '38', '64', '25', 'Pracownia Półcień — paczkomat A'],
-        ['41,5', '38', '64', '2,5', 'paczkomat-c'],
-        PUSTY,
-        PUSTY,
-      ],
-      'kurier-gabaryt',
-    ),
+it('Allegro: zapis kroku z dawnymi polami reguł zapisuje resztę i nie rusza żadnego powiązania cennika', async () => {
+  const f = await allegro();
+  zapiszUstawieniaOfertKonta(db!, 'legacy', {
+    cenniki: [{ doMm: [640, 380, 80], doG: 25000, cennik: 'cennik-a' }, { cennik: 'cennik-gabaryt' }],
   });
+  const przed = powiazania();
+  expect(przed).toHaveLength(2);
+  const r = await f.req('POST', rootA + '/legacy/oferty', { ...poprawneA, ...DAWNE_POLA });
   expect(r.statusCode).toBe(303);
-  expect(f.ustawienia()).toMatchObject({
-    stalaIlosc: 7,
-    cennikDostaw: null,
-    cenniki: [
-      { doMm: [80, 380, 640], doG: 25000, cennik: 'Pracownia Półcień — paczkomat A' },
-      { doMm: [415, 380, 640], doG: 2500, cennik: 'paczkomat-c' },
-      { cennik: 'kurier-gabaryt' },
-    ],
+  expect(powiazania()).toEqual(przed);
+  expect(f.ustawienia('legacy')).toMatchObject({ stalaIlosc: 3, czasWysylkiDni: 2 });
+  // Konto bez powiązań: dawne pola też niczego nie zakładają.
+  expect((await f.req('POST', rootA + '/allegro_lampy/oferty', { ...poprawneA, ...DAWNE_POLA })).statusCode).toBe(303);
+  expect(powiazania()).toEqual(przed);
+});
+
+it('ERLI: krok „Oferty” pokazuje podsumowanie cenników OMS konta, bez pól reguł i bez napisów o kroku 3', async () => {
+  const f = await erli(['Lampy — paczkomat', 'Lampy — kurier']);
+  const pusty = await f.req('GET');
+  expect(pusty.statusCode).toBe(200);
+  expect(pusty.body).toContain('Konto nie ma powiązanego cennika dostaw.');
+  expect(pusty.body).toMatch(ODNOSNIK);
+  expect(pusty.body).not.toMatch(POLA_REGUL);
+  expect(pusty.body).not.toMatch(/pobierz metody ponownie|Listę cenników OMS pobiera/i);
+  // Powiązany sam cennik rozmiaru — domyślny nie ma powiązania z tym kontem.
+  const mala = dodajCennikOms(db!, { nazwa: 'Mała paczka', doMm: [640, 380, 80], doG: 25000 });
+  ustawPowiazanieCennika(db!, { cennikId: mala, konto: f.klucz, cennikKanalu: 'Lampy — paczkomat' });
+  expect((await f.req('GET')).body).toContain(
+    'Cennik dostaw: 1 cennik OMS ma powiązanie z tym kontem (cennik domyślny nie ma powiązania z tym kontem).',
+  );
+  zapiszUstawieniaOfertKonta(db!, f.klucz, {
+    cenniki: [{ doMm: [640, 380, 80], doG: 25000, cennik: 'Lampy — paczkomat' }, { cennik: 'Lampy — kurier' }],
   });
-  const e = await f.req('GET');
-  expect(e.body).toMatch(/id="erli-oferty-cenniki-1-a"[^>]*value="41,5"/);
-  expect(e.body).toMatch(/id="erli-oferty-cenniki-1-waga"[^>]*value="2,5"/);
-  expect(e.body).toMatch(/name="cennikWiekszych"[^>]*value="kurier-gabaryt"/);
-  expect(ileRazy(e.body, /name="regulaCennik"/g)).toBe(4);
+  const r = await f.req('GET');
+  expect(r.body).toContain(
+    'Cennik dostaw: 2 cenniki OMS mają powiązanie z tym kontem (domyślny: „Domyślny” → Lampy — kurier).',
+  );
   expect(f.transport).not.toHaveBeenCalled();
 });
 
-it('ERLI: wiersz bez wagi albo brak „dla większych” → 400 przy polu, nic nie zapisane', async () => {
-  const f = await erli();
-  const bezWagi = await f.req('POST', {
-    ...poprawneE,
-    ...tabela(
-      [
-        ['8', '38', '64', '25', 'paczkomat-a'],
-        ['41', '38', '64', '', 'paczkomat-c'],
-      ],
-      'kurier-gabaryt',
-    ),
+it('ERLI: zapis kroku z dawnymi polami reguł zapisuje resztę i nie rusza żadnego powiązania cennika', async () => {
+  const f = await erli(['Lampy — paczkomat', 'Lampy — kurier']);
+  zapiszUstawieniaOfertKonta(db!, f.klucz, {
+    cenniki: [{ doMm: [640, 380, 80], doG: 25000, cennik: 'Lampy — paczkomat' }, { cennik: 'Lampy — kurier' }],
   });
-  expect(bezWagi.statusCode).toBe(400);
-  expect(bezWagi.body).toMatch(/<input[^>]*id="erli-oferty-cenniki-1-waga"[^>]*aria-invalid="true"/);
-  expect(bezWagi.body).toMatch(/id="erli-oferty-cenniki-1-a"[^>]*value="41"/);
-  expect(f.ustawienia().zapisane).toBe(false);
-  const bezWiekszych = await f.req('POST', { ...poprawneE, ...tabela([['8', '38', '64', '25', 'paczkomat-a']], '') });
-  expect(bezWiekszych.statusCode).toBe(400);
-  expect(bezWiekszych.body).toMatch(/<input[^>]*name="cennikWiekszych"[^>]*aria-invalid="true"/);
-  expect(f.ustawienia().zapisane).toBe(false);
-});
-
-it('ERLI: pusta tabela i puste „dla większych” → 400; stary formularz z cennikDostaw bez tabeli → 409, reguły nietknięte (alias D4)', async () => {
-  const f = await erli();
-  // Konto bez reguł: formularz bez tabeli zapisuje pozostałe pola i niczego nie odmawia.
-  expect((await f.req('POST', { ...poprawneE, stalaIlosc: '4' })).statusCode).toBe(303);
-  expect(f.ustawienia()).toMatchObject({ cenniki: [], stalaIlosc: 4 });
-  expect(
-    (
-      await f.req('POST', {
-        ...poprawneE,
-        ...tabela([['8', '38', '64', '25', 'paczkomat-a'], PUSTY], 'kurier-gabaryt'),
-      })
-    ).statusCode,
-  ).toBe(303);
-  const REGULY_E = [{ doMm: [80, 380, 640], doG: 25000, cennik: 'paczkomat-a' }, { cennik: 'kurier-gabaryt' }];
-  expect(
-    (
-      await f.req('POST', {
-        ...poprawneE,
-        ...tabela([['8', '38', '64', '25', 'paczkomat-a'], PUSTY], 'kurier-gabaryt'),
-        cennikDostaw: 'paczkomat-x',
-      })
-    ).statusCode,
-  ).toBe(303);
-  expect(f.ustawienia()).toMatchObject({ cenniki: REGULY_E, cennikDostaw: null });
-  const pusta = await f.req('POST', { ...poprawneE, stalaIlosc: '9', ...tabela([PUSTY, PUSTY], '') });
-  expect(pusta.statusCode).toBe(400);
-  expect(pusta.body).toContain('Ustaw cennik dla większych');
-  const stary = await f.req('POST', { ...poprawneE, stalaIlosc: '5', cennikDostaw: 'paczkomat-x' });
-  expect(stary.statusCode).toBe(409);
-  expect(stary.body).toContain('Strona była otwarta przed zmianą — odśwież');
-  expect(f.ustawienia()).toMatchObject({ cenniki: REGULY_E, cennikDostaw: null, stalaIlosc: 7 });
+  const przed = powiazania();
+  expect(przed).toHaveLength(2);
+  const r = await f.req('POST', { ...poprawneE, ...DAWNE_POLA, cennikWiekszych: 'Lampy — paczkomat' });
+  expect(r.statusCode).toBe(303);
+  expect(powiazania()).toEqual(przed);
+  expect(f.ustawienia()).toMatchObject({ stalaIlosc: 7, czasWysylkiDni: 2 });
   expect(f.transport).not.toHaveBeenCalled();
 });

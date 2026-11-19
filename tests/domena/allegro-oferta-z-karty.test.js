@@ -385,7 +385,7 @@ describe('E3.06 — marka (D36) i GPSR (D35)', () => {
     const w = ofertaAllegroZKarty(wejscie({ marki: [] }));
     const blad = w.bledy.find((b) => b.kod === 'marka');
     expect(blad.tekst).toMatch(/Pracownia Półcień/);
-    expect(blad.adres).toBe('/magazyn/marki');
+    expect(blad.adres).toBe('/magazyn/producenci#marki');
   });
 
   it('marka zmapowana, kategoria spoza listy sprawdzonych → błąd', () => {
@@ -410,7 +410,7 @@ describe('E3.06 — marka (D36) i GPSR (D35)', () => {
     ];
     const w = ofertaAllegroZKarty(wejscie({ marki }));
     const blad = w.bledy.find((b) => b.kod === 'marka');
-    expect(blad?.adres).toBe('/magazyn/marki');
+    expect(blad?.adres).toBe('/magazyn/producenci#marki');
     expect(blad.tekst).toMatch(/Pracownia Półcień/);
     expect(w.zadanie).toBeNull();
     const opis = opisKategorii();

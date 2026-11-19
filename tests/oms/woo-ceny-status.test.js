@@ -62,6 +62,15 @@ describe('zapiszCenyHurtem — biała lista id + regular_price', () => {
     expect(zadania[0].cialo).toStrictEqual({ update: [{ id: 70001, regular_price: '39.90' }] });
   });
 
+  it('udana odpowiedź zwraca aktualną cenę produktu, także gdy trwa promocja', async () => {
+    const { woo } = klient(() =>
+      odpowiedz(200, { update: [{ id: 1101, regular_price: '110.00', sale_price: '79.50', price: '79.50' }] }),
+    );
+    expect(await woo.zapiszCenyHurtem(null, [{ id: 1101, regular_price: '110.00' }])).toEqual([
+      { id: 1101, ok: true, cena: '79.50' },
+    ]);
+  });
+
   it('230 pozycji = 3 żądania po 100/100/30', async () => {
     const { woo, zadania } = klient(echoBatch);
     const lista = pozycje(230);

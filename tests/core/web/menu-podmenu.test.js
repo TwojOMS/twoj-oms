@@ -19,7 +19,7 @@ it('statusy i liczniki pozostają pod Zamówieniami także w Magazynie', async (
   }
 });
 
-it('osobne przyciski kontrolują unikalne podmenu, a Magazyn prowadzi do Produktów, Kategorii i Marek', async () => {
+it('osobne przyciski kontrolują unikalne podmenu, a Magazyn prowadzi do Produktów, Kategorii i Producentów', async () => {
   const { db, app } = nowyPanel();
   try {
     for (const url of ['/', '/magazyn', '/magazyn/nowa']) {
@@ -40,13 +40,15 @@ it('osobne przyciski kontrolują unikalne podmenu, a Magazyn prowadzi do Produkt
           expect(produkty).not.toBeNull();
           expect(produkty[1].includes('aria-current="page"')).toBe(url === '/magazyn');
           expect(produkty[1].includes('aria-current="true"')).toBe(url === '/magazyn/nowa');
-          // „Kategorie”/„Marki wkrótce” stały się działającymi odnośnikami.
+          // Słowniki to działające odnośniki; marki mieszkają w sekcji ekranu Producenci, nie w osobnej pozycji.
           expect(lista).toContain('<a href="/magazyn/kategorie">Kategorie</a>');
-          expect(lista).toContain('<a href="/magazyn/marki">Marki</a>');
+          expect(lista).not.toContain('/magazyn/marki');
           expect(lista).toContain('<a href="/magazyn/producenci">Producenci</a>');
+          expect(lista).toContain('<a href="/magazyn/cenniki">Cenniki</a>');
           expect(lista).not.toContain('aria-disabled');
           expect(lista).not.toContain('menu-ustawien-wkrotce');
-          expect(lista.match(/href=/g)).toHaveLength(4);
+          expect(lista).toContain('<a href="/magazyn/ustawienia">Ustawienia</a>');
+          expect(lista.match(/href=/g)).toHaveLength(5);
         }
       }
       expect(ids.size).toBe(4);

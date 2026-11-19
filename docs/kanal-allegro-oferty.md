@@ -26,7 +26,7 @@ i nadaje przesyłki jak dotąd.
 2. **Ustawienia konta, krok 6 „Oferty”.** Najpierw „Pobierz z Allegro” (cenniki dostaw, warunki zwrotów
    i reklamacji, gwarancje, producenci, osoby odpowiedzialne — tylko odczyt), potem „Zapisz ustawienia ofert”.
 3. **Mapa kategorii.** Magazyn → Kategorie → wybierz kategorię (np. „Lampy stołowe”) → Allegro.
-4. **Mapa marek.** Magazyn → Marki → marka → Allegro.
+4. **Mapa marek.** Magazyn → Producenci → sekcja Marki → marka → Allegro.
 5. **Karta.** Sekcja „Allegro” na karcie mówi, czego brakuje („Przed wystawieniem uzupełnij”) albo pokazuje
    „Gotowa do wystawienia”.
 
@@ -51,29 +51,29 @@ Dla lamp i oświetlenia informacja „brak informacji o bezpieczeństwie” jest
 
 ### Cennik dostaw według rozmiaru
 
-Duży produkt nie wejdzie do paczkomatu, więc konto może mieć kilka cenników dostaw. W kroku 6, w sekcji
-„Cennik dostaw według rozmiaru”, wpisujesz reguły od góry. Każda ma trzy wymiary w cm („Do wymiarów (cm)”),
+W kroku 6, w sekcji „Cennik dostaw według rozmiaru”, pierwszy wiersz to „Cennik domyślny”.
+Poniżej możesz dodać reguły dla mniejszych produktów. Każda ma trzy wymiary w cm („Do wymiarów (cm)”),
 „Do wagi (kg)” i „Cennik” wybrany z listy pobranej z Allegro („Pobierz z Allegro”). Przecinek jest dozwolony.
 Przykład dla „Pracowni Półcień”:
 
 | # | do wymiarów (cm) | do wagi (kg) | cennik |
 |---|---|---|---|
+| — | Cennik domyślny | | Pracownia Półcień — kurier gabaryt |
 | 1 | 8 × 38 × 64 | 25 | Pracownia Półcień — paczkomat A |
 | 2 | 41 × 38 × 64 | 25 | Pracownia Półcień — paczkomat C |
-| — | dla większych | | Pracownia Półcień — kurier gabaryt |
 
-OMS sprawdza wiersze od góry i bierze pierwszy, w którym produkt się mieści (wymiary w dowolnym ułożeniu; wartość
+OMS sprawdza wiersze rozmiaru od góry i bierze pierwszy, w którym produkt się mieści (wymiary w dowolnym ułożeniu; wartość
 równa granicy też się mieści). Dlatego wpisuj od najmniejszej reguły do największej: lampa 30 × 30 × 6 cm
 zmieści się już w regule 1 i wiersz 2 jej nie obejmie. Produkt większy od wszystkich reguł dostaje cennik
-z wiersza „dla większych”. To pole jest wymagane, gdy są reguły rozmiaru. Pusty wiersz jest pomijany; kolejne
-puste wiersze pojawią się po zapisie. Konto z samym wierszem „dla większych” ma jeden cennik dla wszystkich ofert
-(tak działa każde konto po aktualizacji: dawny cennik staje się właśnie taką regułą). Pod tabelą jest podpowiedź
+z wiersza „Cennik domyślny”. To pole jest wymagane, gdy są reguły rozmiaru. Pusty wiersz jest pomijany; kolejne
+puste wiersze pojawią się po zapisie. Konto z samym wierszem „Cennik domyślny” ma jeden cennik dla wszystkich ofert
+(tak działa każde konto po aktualizacji: dawny cennik staje się właśnie taką regułą). Nad tabelą jest podpowiedź
 z gabarytami paczkomatu InPost (A 8×38×64, B 19×38×64, C 41×38×64 cm, do 25 kg); OMS ich nie pilnuje, limity
 wpisujesz sam, tak jak ma je Twój cennik.
 
 Wiersz z brakującym wymiarem albo wagą lub bez cennika jest odrzucany z komunikatem przy tym wierszu
 („Podaj trzy wymiary w cm i wagę w kg (liczby większe od zera).”, „Podaj cennik dla tego wiersza.”), a brak
-cennika „dla większych” — „Podaj cennik dla większych — obowiązkowy, gdy są reguły rozmiaru.” Przy błędzie nic
+cennika domyślnego — „Wybierz cennik domyślny — obowiązkowy, gdy są wiersze rozmiaru.” Przy błędzie nic
 się nie zapisuje.
 
 ## Mapa kategorii i marek
@@ -106,8 +106,8 @@ Odmowy i uwagi:
   która go wymaga, albo zdjęć.
 
 Cennik dostaw dobiera OMS z reguł konta według wymiarów i wagi karty. Podgląd pokazuje przy karcie linię
-„Cennik: <nazwa> — <powód>”, na przykład „reguła 2: do 41×38×64 cm, 25 kg”, „dla większych” albo
-„jeden cennik konta”.
+„Cennik: <nazwa> — <powód>”, na przykład „reguła 2: do 41×38×64 cm, 25 kg”,
+„cennik domyślny — produkt większy od wierszy rozmiaru” albo „cennik domyślny konta”.
 
 Wyjątek dla jednej karty ustawiasz na karcie w Magazynie, w sekcji „Cennik dostaw”: dla każdego konta jest pole
 „Cennik dostaw — wyjątek” (puste = reguły konta) i przycisk „Zapisz cennik dostaw”. Wyjątek wygrywa z regułami
@@ -124,7 +124,7 @@ Trzy odmowy dotyczą cennika:
   liście konta. Wybierz na karcie inny cennik albo wyczyść pole wyjątku (wtedy działają reguły konta). Jeśli lista
   jest przestarzała, pobierz ją ponownie w kroku 6 („Pobierz z Allegro”).
 - Gdy konto nie ma żadnej reguły, odmowa brzmi „Konto nie ma ustawionego cennika dostaw.” — wpisz w kroku 6
-  przynajmniej cennik „dla większych”.
+  przynajmniej cennik domyślny.
 
 Jeśli kategoria ma produkt w Katalogu Allegro, OMS szuka go po EAN. Gdy jest kilka trafień, na karcie pojawia się
 „Produkt z katalogu Allegro” z wyborem i przyciskiem „Użyj tego produktu”. Gdy parametry różnią się od produktu

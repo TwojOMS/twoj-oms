@@ -710,7 +710,9 @@
       padding: .7rem .8rem; margin: 0 0 .7rem;
     }
     .filtry-rzad { display: flex; flex-wrap: wrap; gap: .6rem .9rem; align-items: flex-end; }
-    .pole-filtra { display: flex; flex-direction: column; gap: .2rem; }
+    /* `max-inline-size` tu i przy `select` nizej: lista wyboru jest szeroka jak najdluzsza */
+    /* opcja, wiec dluga nazwa kategorii albo marki rozpychala pasek poza ekran telefonu.   */
+    .pole-filtra { display: flex; flex-direction: column; gap: .2rem; max-inline-size: 100%; }
     /* Dopisek pod polem łamie się w wąskiej kolumnie: w kolumnie flex najszerszy element ustala
        szerokość, więc długie zdanie rozciągałoby krótkie pole kwoty na pół paska. */
     .pole-filtra > small { max-inline-size: 30ch; color: var(--tekst-przygaszony); }
@@ -730,7 +732,7 @@
       font: inherit; font-size: .88rem; padding: .34rem .45rem;
       border: 1px solid var(--ramka-pola); border-radius: .3rem; background: var(--powierzchnia); color: inherit;
     }
-    .filtry select { min-width: 11rem; }
+    .filtry select { min-width: 11rem; max-inline-size: 100%; }
     /* Lista wielokrotnego wyboru (wysylka, platnosc, kanal, faktura): `details` z polami */
     /* wyboru, bez JavaScriptu. Zwinieta wyglada jak pole wyboru obok i ma jego szerokosc, */
     /* lista opcji wisi POD nia nad tabela, zeby otwarcie nie przesuwalo paska filtrow. */
@@ -1529,6 +1531,28 @@
     .ikona--pomaranczowa { background: var(--uwaga-tlo); color: var(--reczny-tekst); }
     .ikona--szara { background: var(--powierzchnia-2); color: var(--ikona-szara-tekst); }
 
+    .wir {
+      display: inline-block;
+      box-sizing: border-box;
+      width: 1em;
+      height: 1em;
+      border: 2px solid var(--ramka);
+      border-top-color: var(--link);
+      border-radius: 50%;
+      vertical-align: -0.15em;
+      margin-right: .4em;
+      animation: wir-obrot .8s linear infinite;
+    }
+    @keyframes wir-obrot {
+      to { transform: rotate(1turn); }
+    }
+    @keyframes wir-puls {
+      50% { opacity: .5; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .wir { animation: wir-puls 1.6s ease-in-out infinite; }
+    }
+
     /* ——— GŁÓWNA NAWIGACJA I MENU KONTA ——————————————————————————————————————— */
     .menu-uzytkownika { position: relative; margin-left: .25rem; }
     .menu-uzytkownika summary {
@@ -1622,6 +1646,15 @@
     /* Brak wartosci: kreska w kolumnie kanalu i trzeci stan przy paczkomacie. Ma byc       */
     /* czytelne, ale ciszej niz wartosc — bo brak to nie jest liczba.                       */
     .magazyn-brak { color: var(--tekst-przygaszony); }
+    .magazyn-strony { justify-content: flex-start; flex-wrap: wrap; gap: .4rem; }
+    .magazyn-strony .btn {
+      display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
+      min-inline-size: 1.5rem;
+    }
+    .magazyn-strony a.btn { color: inherit; }
+    .magazyn-strony [aria-current="page"] { background: var(--marka); cursor: default; }
+    .magazyn-strony [aria-disabled="true"] { background: var(--powierzchnia-2); color: var(--tekst-przygaszony); cursor: default; }
+    .magazyn-strony .magazyn-strony-licznik { margin-inline-start: auto; }
     /* Szybka zmiana ceny w kolumnie „Cena” (public/szybka-cena.js). Ołówek cichy obok kwoty, z polem dotyku   */
     /* co najmniej 24 px; edytor w miejscu kwoty. Komunikaty łamią się mimo `nowrap` z `.liczba`.              */
     [data-szybka-cena-olowek]:not([hidden]) { display: inline-block; min-inline-size: 1.5rem; min-block-size: 1.5rem; text-align: center; color: var(--tekst-przygaszony); text-decoration: none; }
@@ -1750,6 +1783,11 @@
     /* `display: contents` — chip i cialo maja byc DZIECMI belki (jednym wierszem flexa),     */
     /* a nie lezec w osobnym pudelku `<details>` obok siebie.                                  */
     .belka-akcji details.akcja { display: contents; }
+    /* Chrome i Firefox owijaja tresc `<details>` w `::details-content`; bez tego to pudelko,  */
+    /* a nie `.akcja-cialo`, jest elementem flexa belki — krotkie cialo bierze szerokosc     */
+    /* tresci i chipy dalszych akcji wskakuja obok niego. Tylko `[open]`: zamknieta akcja    */
+    /* chowa cialo wlasnie przez `::details-content`, `contents` wypuscilby je na ekran.     */
+    .belka-akcji details.akcja[open]::details-content { display: contents; }
     .belka-akcji summary { list-style: none; cursor: pointer; white-space: nowrap;
       padding: .28rem .6rem; border-radius: .3rem; font-size: .85rem; font-weight: 500;
       border: 1px solid var(--marka-ramka); background: var(--marka-ciemniej); color: var(--na-marce); }
@@ -1769,9 +1807,68 @@
       border-radius: .35rem; padding: .6rem .75rem; }
     /* Opcja konta bez zgody niesie powod — dluga; na telefonie lista nie moze rozpychac belki. */
     .akcja-cialo select { width: min(100%, 36rem); }
+    /* Konto do wystawiania ofert: kafelki z logo i nazwą konta; radio zostaje w drzewie dostępności,   */
+    /* więc strzałki dalej przełączają konta, a konto bez zgody niesie powód w samym kafelku.          */
+    .konta-ofert { border: 0; padding: 0; margin: 0; flex-basis: 100%; display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr)); gap: .6rem; }
+    .konta-ofert legend { padding: 0; margin-bottom: .35rem; font-size: .85rem; font-weight: 600; }
+    .konto-kafel { position: relative; display: grid; grid-template-columns: 40px 1fr; column-gap: .65rem;
+      align-items: center; padding: .6rem .75rem; border: 1px solid var(--ramka); border-radius: .45rem;
+      background: var(--powierzchnia); cursor: pointer; }
+    .konto-kafel input { position: absolute; width: 1px; height: 1px; overflow: hidden;
+      clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+    .konto-kafel img { grid-row: 1 / span 2; }
+    .konto-kafel-nazwa { font-weight: 600; overflow-wrap: anywhere; }
+    .konto-kafel-kanal { font-size: .78rem; color: var(--tekst-przygaszony); }
+    .konto-kafel small { grid-column: 1 / -1; margin-top: .4rem; font-size: .78rem; color: var(--tekst-przygaszony); }
+    .konto-kafel:has(input:checked) { border: 2px solid var(--link); background: var(--powierzchnia-2);
+      padding: calc(.6rem - 1px) calc(.75rem - 1px); }
+    .konto-kafel:has(input:focus-visible) { outline: 2px solid var(--link); outline-offset: 2px; }
+    .konto-kafel:has(input:disabled) { opacity: .55; cursor: not-allowed; }
     .akcja-przyciski { display: flex; gap: .5rem; flex-wrap: wrap; margin-left: auto; }
     /* Jedno zdanie zasady akcji — wlasny wiersz pod przyciskami, ciszej niz one.              */
     .akcja-zasada { flex-basis: 100%; margin: 0; font-size: .8rem; color: var(--tekst-przygaszony); }
+
+    /* Panel „Edytuj”: lista zmian (wiersze z szablonów) i lista pozycji do dodania.          */
+    /* Przyciski niosą wspólną klasę .btn, więc reguły niżej są o stopień mocniejsze od niej — */
+    /* pozycja listy ma wyglądać jak wpis menu, nie jak przycisk z ramką.                      */
+    .akcja-cialo.hz { display: block; }
+    /* Pola i przyciski chowane skryptem atrybutem hidden — .btn i .pole-filtra mają własne display. */
+    .hz [hidden] { display: none !important; }
+    .hz-lista:not(:empty) ~ .hz-menu { margin-top: .45rem; }
+    .hz-tytul { margin: 0; font-weight: 600; }
+    .hz-menu { border: 1px solid var(--marka-ramka); border-radius: .45rem; padding: .7rem .8rem .8rem; background: var(--powierzchnia); }
+    .hz-menu-glowa { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: .55rem; }
+    .hz-menu-glowa > .btn.hz-menu-zamknij { border: 0; background: none; padding: .2rem .3rem; color: var(--link); font-size: .85rem; text-decoration: underline; }
+    .hz-grupy { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: .6rem 1.2rem; }
+    .hz-grupa { display: flex; flex-direction: column; align-items: flex-start; gap: .1rem; }
+    .hz-grupa > p { margin: 0 0 .2rem; font-size: .7rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--tekst-przygaszony); }
+    .hz-grupa > .btn.hz-opcja { border: 0; background: none; font-size: .92rem; color: var(--tekst); text-align: left; padding: .3rem .45rem; margin-left: -.45rem; border-radius: .3rem; }
+    .hz-grupa > .btn.hz-opcja:is(:hover, :focus-visible) { background: var(--powierzchnia-2); color: var(--link); }
+    .hz-grupa > .btn.hz-opcja:disabled { color: var(--tekst-przygaszony); background: none; cursor: default; }
+    .hz-grupa > .btn.hz-opcja:disabled::after { content: " ✓"; }
+    .hz-ustawienia { margin-top: .3rem; font-size: .78rem; color: var(--link); }
+    .akcja-cialo > .btn.hz-kolejna { margin-top: .45rem; border: 1px dashed var(--marka-ramka); background: none; color: var(--link); font-weight: 600; padding: .45rem .8rem; border-radius: .4rem; }
+    .akcja-cialo > .btn.hz-kolejna:is(:hover, :focus-visible) { background: var(--powierzchnia-2); }
+    .hz-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .45rem; }
+    .hz-lista > li { display: grid; grid-template-columns: 12rem 1fr auto; align-items: center; gap: .4rem 1rem;
+      padding: .55rem .7rem; border: 1px solid var(--ramka); border-radius: .4rem; background: var(--powierzchnia-2); }
+    .hz-nazwa { font-weight: 600; display: flex; flex-direction: column; gap: .1rem; }
+    .hz-pola { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .4rem .9rem; }
+    .hz-pola--szerokie { align-items: flex-start; }
+    .hz-pola--szerokie > .hz-tekst { flex: 1 1 100%; }
+    .hz-tekst textarea { box-sizing: border-box; inline-size: 100%; max-inline-size: 60rem; }
+    .hz-podpowiedz { font-size: .78rem; color: var(--tekst-przygaszony); max-inline-size: 34ch; align-self: center; }
+    .hz-wyczysc { display: inline-flex; gap: .35rem; align-items: center; font-size: .85rem; align-self: center; }
+    .hz-lista > li > .btn.hz-usun { border: 0; background: none; color: var(--tekst-przygaszony); font-size: 1.1rem; line-height: 1; padding: .35rem .5rem; border-radius: .3rem; align-self: center; }
+    .hz-lista > li > .btn.hz-usun:is(:hover, :focus-visible) { background: var(--powierzchnia); color: var(--tekst); }
+    .hz-stopka { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; margin-top: .8rem; padding-top: .7rem; border-top: 1px solid var(--ramka); justify-content: flex-end; }
+    .hz-wlasny { font-size: .68rem; font-weight: 600; letter-spacing: .03em; color: var(--tekst-przygaszony); }
+    @media (max-width: 700px) {
+      .hz-lista > li { grid-template-columns: 1fr auto; }
+      .hz-pola { grid-column: 1 / -1; }
+      .hz-lista > li > .btn.hz-usun { grid-row: 1; grid-column: 2; }
+    }
 
     .sprzedaz-kanalow-siatka { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr)); gap: .75rem; }
     .sprzedaz-kanalow-link { display: block; color: inherit; text-decoration: none; border-radius: .45rem; }
@@ -2046,6 +2143,11 @@
     .ust-formularz > label { padding-top: .4rem; text-align: right; font-size: .88rem; color: var(--tekst); }
     .ust-formularz > h3 { grid-column: 1 / -1; margin: .6rem 0 0; padding-bottom: .35rem; font-size: .95rem; border-bottom: 1px solid var(--ramka); }
     .ust-formularz > .ust-pelna { grid-column: 1 / -1; }
+    .ust-formularz .ust-wybor-radio label { display: flex; align-items: center; gap: .5rem; padding: .25rem 0; font-size: .92rem; }
+    .ust-formularz .ust-wybor-radio input { width: auto; min-height: 0; margin: 0; flex-shrink: 0; }
+    .ust-formularz fieldset.ust-formularz { margin: 0; padding: .6rem .9rem .9rem; }
+    /* Opcja „według rozmiaru” niesie nazwę cennika, więc bez limitu rozpycha pole poza wąską kartę. */
+    select.oferta-cennik { max-width: 100%; }
     .ust-formularz input, .ust-formularz select { box-sizing: border-box; width: 100%; padding: .4rem .55rem; font: inherit; font-size: .92rem;
       color: var(--tekst); background: var(--tlo); border: 1px solid var(--ramka-pola); border-radius: 4px; }
     .ust-formularz .ust-pomoc { margin: .25rem 0 0; font-size: .78rem; color: var(--tekst-przygaszony); }
@@ -2423,13 +2525,15 @@
 #opis-karty .opis-sekcja { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); gap: 1rem; margin-block: 1rem; }
 #opis-karty .opis-element { min-inline-size: 0; overflow-wrap: anywhere; }
 #opis-karty .opis-element img { max-inline-size: 100%; block-size: auto; }
-/* Dane karty i galeria: na szerokim ekranie dane po lewej (~60%), zdjęcia po prawej (~40%), także w trybie edycji;
-   na wąskim galeria stoi nad danymi (kolejność w HTML). */
+/* Dane karty, okno Parametry i galeria: na szerokim ekranie dane i parametry jedno pod drugim w lewej kolumnie
+   (~60%), zdjęcia po prawej (~40%) na obu wierszach, także w trybie edycji; na wąskim kolejność z HTML: galeria,
+   dane, parametry. */
 .karta-dane-uklad { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; margin-block: 1rem; }
 .karta-dane-uklad > .panel { margin: 0; min-width: 0; }
 @media (min-width: 68.75rem) {
-  .karta-dane-uklad { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); grid-template-areas: "dane zdjecia"; align-items: start; }
+  .karta-dane-uklad { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); grid-template-areas: "dane zdjecia" "parametry zdjecia"; grid-template-rows: auto 1fr; align-items: start; }
   .karta-dane-uklad > #dane-karty { grid-area: dane; }
+  .karta-dane-uklad > #parametry-karty { grid-area: parametry; }
   .karta-dane-uklad > #zdjecia-karty { grid-area: zdjecia; }
 }
 /* Menu „⋯” wychodzi poza panel, więc panel galerii nie przycina zawartości. */
@@ -2554,3 +2658,9 @@ div.karta-galeria-glowne { display: grid; place-items: center; aspect-ratio: 1; 
 .analityka-podstrona__tekst span { font-size: .82rem; line-height: 1.35; color: var(--tekst-przygaszony); }
 .analityka-podstrona__strzalka { margin-inline-start: auto; color: var(--tekst-przygaszony); transition: transform .15s; }
 .analityka-podstrona:hover .analityka-podstrona__strzalka { transform: translateX(3px); color: var(--link); }
+/* Adres producenta (/magazyn/producenci): cztery pola w ramce z legendą, jak wybór na ekranie importu — grupa ma
+   nazwę dla czytnika i widać, że to jeden adres. `min-inline-size: 0`, bo fieldset domyślnie nie zwęża się poniżej
+   treści i na telefonie wypychałby siatkę poza ekran. */
+#producent-formularz fieldset { min-inline-size: 0; margin: 0; padding: .6rem .9rem .8rem; border: 1px solid var(--ramka); border-radius: .4rem; }
+#producent-formularz legend { font-weight: 600; padding: 0 .3rem; }
+#producent-formularz fieldset > .podpowiedz { margin: 0 0 .55rem; }

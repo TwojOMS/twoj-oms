@@ -159,6 +159,13 @@ async function klikniecie(app, adresListy, idPanelu, wartoscZakresu, dodatkowe =
   });
 }
 
+/** Hurt z zakresem „pasujace" wysłany wprost, z zawężeniem odczytanym z ekranu listy. */
+async function pasujaceWprost(app, adresListy, dodatkowe = {}) {
+  const strona = await get(app, adresListy);
+  const { zawezenie } = formularzAkcji(strona.body);
+  return post(app, '/magazyn/hurt', { zakres: 'pasujace', zawezenie, ...dodatkowe });
+}
+
 /** Nazwy kart z tabeli podgladu (hurt i SKU mają ten sam kształt wiersza). */
 function nazwyWPodgladzie(body, idSekcji) {
   const s = new RegExp(`<section[^>]*id="${idSekcji}"[\\s\\S]*?</section>`).exec(body);
@@ -169,9 +176,9 @@ function nazwyWPodgladzie(body, idSekcji) {
 /** Ile wierszy ma TABELA KART — liczone z jej wlasnej kolumny, nie z jakiejkolwiek cyfry. */
 const ileWierszyTabeli = (body) => (body.match(/<td class="komorka-karta">/g) ?? []).length;
 
-// Każdy testowany panel ma własną parę przycisków.
+// Każdy testowany panel ma własną parę przycisków. Panel „Edytuj" (hurt-pasek) ma tylko
+// przycisk dla zaznaczonych — sprawdza go osobny opis niżej.
 const AKCJE = [
-  { panel: 'hurt-pasek', cel: '/magazyn/hurt', slowo: 'zmieni' },
   { panel: 'sku-pasek', cel: '/magazyn/sku-podglad', slowo: 'numery' },
   { panel: 'zapis-pasek', cel: '/magazyn/podglad-zapisu', slowo: 'sklep' },
 ];
@@ -218,6 +225,22 @@ describe('każda akcja niesie swój zakres w przyciskach, a nie w polu trzy sekc
     for (const p of przyciski) {
       expect(p.formaction ?? action).toBe(cel);
     }
+  });
+});
+
+describe('panel Edytuj: jeden przycisk — dla zaznaczonych', () => {
+  // Edycja wielu pól naraz na całym zawężeniu była zbyt łatwa do kliknięcia przez pomyłkę;
+  // panel działa tylko na kartach zaznaczonych ręcznie.
+  it('hurt-pasek ma wyłącznie przycisk „zaznaczone", prowadzący na /magazyn/hurt', async () => {
+    kartaO('Kandelabr');
+    const r = await get(serwer(), '/magazyn');
+    const { action } = formularzAkcji(r.body);
+    const przyciski = przyciskiZakresu(panel(r.body, 'hurt-pasek'));
+
+    expect(przyciski.map((p) => p.wartosc)).toEqual(['zaznaczone']);
+    expect(przyciski[0].napis.toLowerCase()).toContain('zmieni');
+    expect(przyciski[0].napis).toMatch(/zaznaczon/i);
+    expect(przyciski[0].formaction ?? action).toBe('/magazyn/hurt');
   });
 });
 
@@ -314,10 +337,12 @@ describe('edycja hurtem: kliknięty przycisk rozstrzyga zbiór', () => {
     expect(nazwyWPodgladzie(r.body, 'zmiany-hurtem')).toEqual(['Kandelabr']);
   });
 
-  it('„dla wszystkich pasujących" bierze CAŁE zawężenie, także karty nigdy nieklikane', async () => {
+  // Ekran nie ma już przycisku „wszystkich pasujących" w panelu Edytuj, ale trasa nadal
+  // przyjmuje ten zakres — zawężenie bierzemy z ekranu, zakres wpisujemy wprost.
+  it('zakres „pasujace" bierze CAŁE zawężenie, także karty nigdy nieklikane', async () => {
     const { kandelabr } = trzyBezWymiaru();
 
-    const r = await klikniecie(serwer(), '/magazyn?brak=wymiary', 'hurt-pasek', 'pasujace', {
+    const r = await pasujaceWprost(serwer(), '/magazyn?brak=wymiary', {
       zaznaczone: String(kandelabr),
       szerokosc_cm: '70',
       wysokosc_cm: '100',
@@ -328,11 +353,11 @@ describe('edycja hurtem: kliknięty przycisk rozstrzyga zbiór', () => {
   });
 
   // ⚠️ ZAWEZENIE MA BYC ZAWEZENIEM: „wszystkie pasujace" to nie „wszystko".
-  it('„dla wszystkich pasujących" nie wychodzi poza zawężenie', async () => {
+  it('zakres „pasujace" nie wychodzi poza zawężenie', async () => {
     trzyBezWymiaru();
     kartaO('Zmierzona', { szerokosc_mm: 300, wysokosc_mm: 400 });
 
-    const r = await klikniecie(serwer(), '/magazyn?brak=wymiary', 'hurt-pasek', 'pasujace', {
+    const r = await pasujaceWprost(serwer(), '/magazyn?brak=wymiary', {
       szerokosc_cm: '70',
       wysokosc_cm: '100',
     });

@@ -120,7 +120,7 @@ describe('Ustawienia → Aktualizacje', () => {
     expect((await post(p.app, '/ustawienia/aktualizacje/sprawdz', p.ewa)).statusCode).toBe(403);
     expect(p.atrapa.sprawdzen).toBe(0);
     // Pozycji nie ma też w podmenu nie-admina.
-    const r = await get(p.app, '/ustawienia/magazyn', p.ewa);
+    const r = await get(p.app, '/magazyn/ustawienia', p.ewa);
     expect(r.body).not.toContain('href="/ustawienia/aktualizacje"');
   });
 });

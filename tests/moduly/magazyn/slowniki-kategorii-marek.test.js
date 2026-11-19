@@ -8,7 +8,14 @@ import { wczytajSekret } from '../../../src/core/bezpieczenstwo/sekret-sesji.js'
 import { dodajDoSlownika, usunZeSlownika, zmienNazwe } from '../../../src/moduly/magazyn/services/slowniki-kart.js';
 import { dodajProducenta, przypiszMarki, przypisaniaMarek, usunProducenta } from '../../../src/oms/db/producenci.js';
 
-const PRODUCENT = (nazwa) => ({ nazwa, adres: 'ul. Przykładowa 1, 00-001 Miasto', email: 'kontakt@polcien.invalid' });
+const PRODUCENT = (nazwa) => ({
+  nazwa,
+  ulica: 'ul. Przykładowa 1',
+  kod: '00-001',
+  miasto: 'Miasto',
+  kraj: 'PL',
+  email: 'kontakt@polcien.invalid',
+});
 
 const auth = {
   authorization: `Basic ${Buffer.from('operator:atrapa').toString('base64')}`,
@@ -108,24 +115,6 @@ it('Kategorie: usunięcie odmawia przy kartach, a bez kart usuwa', async () => {
   expect(kolumna('SELECT nazwa FROM kategorie_kart')).toEqual(['Lampy']);
 });
 
-it('Marki: lista z odnośnikiem marka=, dodanie, zmiana nazwy przepisuje karty, usunięcie z kartami odmawia', async () => {
-  panel();
-  const a = karta('A1', { marka: 'Pracownia Półcień' });
-  karta('A2');
-  let r = await get('/magazyn/marki');
-  expect(r.statusCode).toBe(200);
-  expect(r.body).toContain('href="/magazyn?marka=Pracownia%20P%C3%B3%C5%82cie%C5%84">1<');
-  expect(r.body).toMatch(/Bez marki[\s\S]*?href="\/magazyn\?brak=marka">1</);
-  expect(r.body).not.toContain('Pobierz z WooCommerce');
-  expect((await post('/magazyn/marki/dodaj', { nazwa: 'Cienie' })).statusCode).toBe(303);
-  expect((await post('/magazyn/marki/usun', { nazwa: 'Pracownia Półcień' })).statusCode).toBe(409);
-  expect((await post('/magazyn/marki/zmien', { stara: 'Pracownia Półcień', nowa: 'Półcień' })).statusCode).toBe(303);
-  expect(kolumna('SELECT marka FROM karty_produktow WHERE id = ?', a)).toEqual(['Półcień']);
-  expect(kolumna('SELECT nazwa FROM marki ORDER BY nazwa')).toEqual(['Cienie', 'Półcień']);
-  expect((await post('/magazyn/marki/usun', { nazwa: 'Cienie' })).statusCode).toBe(303);
-  expect(kolumna('SELECT nazwa FROM marki')).toEqual(['Półcień']);
-});
-
 const kategoriaWoo = (id, name, count, parent = 0) => ({ id, name, slug: `k-${id}`, parent, count });
 const klientWoo = (lista) => ({
   wywolania: 0,
@@ -220,18 +209,18 @@ it('uprawnienia jak edycja karty: konto bez Magazynu dostaje 403 na stronach i a
   expect(kolumna('SELECT COUNT(*) FROM kategorie_kart UNION ALL SELECT COUNT(*) FROM marki')).toEqual([0, 0]);
 });
 
-it('menu Magazynu: Kategorie i Marki są odnośnikami z aria-current na swojej stronie', async () => {
+it('menu Magazynu: Kategorie i Producenci są odnośnikami z aria-current na swojej stronie', async () => {
   panel();
   for (const [url, biezacy] of [
     ['/magazyn/kategorie', 'Kategorie'],
-    ['/magazyn/marki', 'Marki'],
+    ['/magazyn/producenci', 'Producenci'],
   ]) {
     const { body } = await get(url);
     const lista = body.slice(body.indexOf('data-podmenu-lista="magazyn"')).split('</ul>')[0];
     for (const [href, etykieta] of [
       ['/magazyn', 'Produkty'],
       ['/magazyn/kategorie', 'Kategorie'],
-      ['/magazyn/marki', 'Marki'],
+      ['/magazyn/producenci', 'Producenci'],
     ]) {
       const a = lista.match(new RegExp(`<a href="${href}"([^>]*)>${etykieta}</a>`));
       expect(a, `${url} ${etykieta}`).not.toBeNull();

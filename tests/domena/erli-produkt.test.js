@@ -89,7 +89,7 @@ describe('produkt ERLI z karty', () => {
   it('zwraca dokładne ciało żądania bez EAN i archived', () => {
     expect(produktErliZKarty(wejscie())).toEqual({
       // E3d.02 D6: wynik niesie dobrany cennik do podglądu (tu dawne pole = jedna reguła „wszystko”).
-      dostawa: { cennik: 'Lampy', powod: { rodzaj: 'wszystko', tekst: 'jeden cennik konta' } },
+      dostawa: { cennik: 'Lampy', powod: { rodzaj: 'wszystko', tekst: 'cennik domyślny konta' } },
       bledy: [],
       ostrzezenia: [],
       zadanie: {

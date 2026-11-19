@@ -67,7 +67,7 @@ describe('polecenieZFormularza — cena zakupu', () => {
     ['cena przysłana dwa razy', { cena_zakupu_netto: ['13,10', '14,00'] }],
     ['data przysłana dwa razy', { cena_zakupu_netto: '13,10', cena_zakupu_od: ['2026-12-01', '2026-12-02'] }],
   ])('%s → odmowa całego polecenia, także pól obok', (_, pola) => {
-    const { polecenie, blad } = polecenieZFormularza({ ...pola, paczkomat: 'tak', stawka_vat: '23' }, { dzis: DZIS });
+    const { polecenie, blad } = polecenieZFormularza({ ...pola, glebokosc_cm: '20', stawka_vat: '23' }, { dzis: DZIS });
     expect(polecenie).toBeNull();
     expect(blad).toMatch(/Cena zakupu|Obowiązuje od/);
   });
@@ -137,13 +137,13 @@ describe('zmianyHurtem — cena zakupu', () => {
   });
 
   it('polecenie bez ceny działa jak dotąd z dwoma argumentami', () => {
-    const plan = zmianyHurtem([karta(1, { paczkomat: 'nie' })], { paczkomat: 'tak' });
+    const plan = zmianyHurtem([karta(1, { glebokosc_mm: 100 })], { glebokosc_mm: 200 });
     expect(plan).toEqual([
       {
         id: 1,
         nazwa: 'Lampa Kopuła 1',
-        zmiany: { paczkomat: 'tak' },
-        opisy: [{ pole: 'Paczkomat', z: 'nie', na: 'tak' }],
+        zmiany: { glebokosc_mm: 200 },
+        opisy: [{ pole: 'Głębokość', z: '10 cm', na: '20 cm' }],
       },
     ]);
   });

@@ -1,0 +1,34 @@
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Parametry kart"}) %>
+
+<% if (zapisano) { %><div class="pas-potwierdzenie" role="status"><p><%= zapisano %></p></div><% } %>
+
+<section class="ust-sekcja" id="ust-parametry">
+  <h2 id="ust-parametry-tytul">Parametry kart</h2>
+  <p>Własne pola kart produktów — np. kolor, materiał, moc. Uzupełniasz je na karcie albo hurtem na liście Magazynu.</p>
+  <% if (!parametry.length) { %>
+    <p>Firma nie ma jeszcze własnych parametrów. Dodaj pierwszy — np. kolor, materiał, moc.</p>
+  <% } else { %>
+    <div class="przewijak-tabeli">
+    <table class="tab-pozycje" id="parametry-kart" aria-labelledby="ust-parametry-tytul">
+      <thead><tr><th>Nazwa</th><th>Typ</th><th>Wymagany</th><th>Karty z wartością</th><th>Kolejność</th><th>Akcje</th></tr></thead>
+      <tbody>
+        <% parametry.forEach(function (p, i) { %>
+          <tr id="parametr-<%= p.id %>">
+            <td><%= p.nazwa %></td>
+            <td><%= p.opisTypu %></td>
+            <td><%= p.wymagany ? 'tak' : '—' %></td>
+            <td><a href="/magazyn?parametr=<%= p.id %>" aria-label="<%= p.karty %> — pokaż karty z wartością „<%= p.nazwa %>”"><%= p.karty %></a></td>
+            <td><form class="ust-parametr-kolejnosc" method="post" action="<%= adres %>/<%= p.id %>/przesun">
+              <button class="btn btn--maly" type="submit" name="kierunek" value="gora" aria-label="Wyżej: <%= p.nazwa %>" <%= i === 0 ? 'disabled' : '' %>>↑</button>
+              <button class="btn btn--maly" type="submit" name="kierunek" value="dol" aria-label="Niżej: <%= p.nazwa %>" <%= i === parametry.length - 1 ? 'disabled' : '' %>>↓</button>
+            </form></td>
+            <td class="ust-parametr-akcje"><a href="<%= adres %>/<%= p.id %>" aria-label="Zmień: <%= p.nazwa %>">Zmień</a> <a href="<%= adres %>/<%= p.id %>/usun" aria-label="Usuń: <%= p.nazwa %>">Usuń</a></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+    </div>
+  <% } %>
+  <div class="ust-akcje"><a class="btn btn--glowny" href="<%= adres %>/nowy">Dodaj parametr</a></div>
+</section>
+<p><a href="/magazyn/ustawienia">Wróć do ustawień magazynu</a></p>

@@ -43,6 +43,7 @@
         <td><% if (w.ponow) { %><form class="w-linii" method="post" action="<%= adres %>/<%= w.id %>/ponow"><button class="btn btn--maly" type="submit" aria-label="Ponów ofertę <%= w.nazwa %>">Ponów</button></form><% } %>
           <% if (w.duplikat) { %>Wybierz jedną z ofert w Allegro albo w „Przeglądzie zapisów do Allegro” (Ustawienia → Integracje) — ponowienie założyłoby kolejną.<% } %>
           <% if (w.brakWAllegro) { %><%= w.brakWAllegro %><% } %>
+          <% if (w.brakWAllegro) { %><a class="btn btn--maly" href="/magazyn/<%= w.kartaId %>?usun-oferte=<%= w.id %>#potwierdz-usuniecie-oferty" aria-label="Usuń z OMS ofertę <%= w.nazwa %>">Usuń z OMS</a><% } %>
           <% if (w.wznow) { %><form class="w-linii" method="post" action="<%= adres %>/<%= w.id %>/wznow"><button class="btn btn--maly" type="submit" aria-label="Wznów ofertę <%= w.nazwa %>">Wznów</button></form><% } %>
           <% if (w.ilosc) { %><% w.ilosc.akcje.forEach(function (a) { %><form class="w-linii" method="post" action="<%= adres %>/<%= w.id %>/ilosc/<%= a.akcja %>"><button class="btn btn--maly" type="submit" aria-label="<%= a.napis %> — <%= w.nazwa %>"><%= a.napis %></button></form><% }); %>
             <% if (w.ilosc.tez.length) { %><small>Przyjęcie stanu kanału zmieni się też w: <%= w.ilosc.tez.join(', ') %></small><% } %>

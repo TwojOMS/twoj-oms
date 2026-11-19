@@ -1,0 +1,20 @@
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: 'Cenniki'}) %>
+
+<section class="ust-sekcja">
+  <h2>Usunąć cennik „<%= cennik.nazwa %>”?</h2>
+  <% if (odmowa) { %>
+    <div class="pas-uprzedzenie" role="alert"><p><%= odmowa %></p></div>
+    <ul>
+      <% karty.forEach(function (k) { %><li><a href="/magazyn/<%= k.id %>"><%= k.nazwa %></a></li><% }); %>
+    </ul>
+    <p class="ust-akcje"><a class="btn" href="<%= adres %>">Wróć do cenników</a></p>
+  <% } else { %>
+    <p><strong>Usunąć cennik „<%= cennik.nazwa %>”?</strong> Powiązania z kontami znikną razem z nim.</p>
+    <% if (ostrzezenie) { %><div class="pas-uprzedzenie" role="note"><p><%= ostrzezenie %></p></div><% } %>
+    <p>Tego nie da się cofnąć.</p>
+    <form method="post" action="<%= adres %>/<%= cennik.id %>/usun" class="ust-akcje">
+      <button class="btn btn--groza" type="submit">Usuń cennik</button>
+      <a class="btn" href="<%= adres %>">Anuluj</a>
+    </form>
+  <% } %>
+</section>

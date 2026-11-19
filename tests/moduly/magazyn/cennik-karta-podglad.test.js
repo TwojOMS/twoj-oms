@@ -1,6 +1,6 @@
-// Wyjątek cennika dostaw na karcie (per konto Allegro i ERLI), podgląd „Wystaw oferty” z linią
-// „Cennik: <nazwa> — <powód>”, odmowa karty bez wymiarów/wagi przy regułach rozmiaru, zapis wyjątku Allegro tylko
-// z listy cenników konta. Wyjątek z karty wystarcza także na koncie bez reguł (Allegro jak ERLI).
+// Cennik dostaw karty: jeden cennik OMS wybrany na karcie (albo w podglądzie ERLI) działa na każdym koncie,
+// z którym ma powiązanie; na pozostałych karta dostaje cennik według rozmiaru. Podgląd „Wystaw oferty” pokazuje
+// „Cennik: <nazwa> — <powód>”, karta bez wymiarów/wagi przy regułach rozmiaru dostaje odmowę.
 // Klienci Allegro i ERLI to atrapy; dane zmyślone („Pracownia Półcień”, lampy).
 import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
@@ -16,6 +16,12 @@ import {
   ustawieniaOfertKonta,
 } from '../../../src/oms/db/oferty-kanalow.ts';
 import { wyjatekCennika, zapiszWyjatekCennika, usunWyjatekCennika } from '../../../src/oms/db/cenniki-kart.ts';
+import {
+  cennikOmsKarty,
+  dodajCennikOms,
+  ustawPowiazanieCennika,
+  ustawCennikKarty,
+} from '../../../src/oms/db/cenniki-oms.ts';
 import { migracjaCennikowDostaw } from '../../../src/moduly/magazyn/migracje/0003-cenniki-dostaw.ts';
 import { ofertaAllegroKarty } from '../../../src/moduly/magazyn/services/tresc-oferty-allegro.js';
 import { trescOferty } from '../../../src/moduly/magazyn/services/tresc-oferty.js';
@@ -26,8 +32,8 @@ import { podpisz, NAZWA_CIASTECZKA_OMS } from '../../../src/core/bezpieczenstwo/
 import { wczytajSekret } from '../../../src/core/bezpieczenstwo/sekret-sesji.js';
 import slowniki from '../../fixtures/allegro/e3-dok-slowniki.json' with { type: 'json' };
 
-const KONTO = 'allegro_polcien';
-const ERLI = 'erli-polcien';
+const KONTO = 'allegro_lampy';
+const ERLI = 'erli_lampy';
 const T0 = '2026-11-14T08:00:00.000Z';
 const OFERTY = ['allegro:api:sale:offers:write', 'allegro:api:sale:settings:read'];
 const ODMOWA_WYMIAROW =
@@ -39,7 +45,7 @@ const auth = {
   origin: 'http://localhost',
 };
 
-// Reguły rozmiaru: paczkomat A, paczkomat C, dla większych. Allegro: identyfikatory z listy konta; ERLI: nazwy.
+// Reguły rozmiaru: paczkomat A, paczkomat C, cennik domyślny. Allegro: identyfikatory z listy konta; ERLI: nazwy.
 const REGULY_ALLEGRO = [
   { doMm: [80, 380, 640], doG: 25000, cennik: 'cen-a' },
   { doMm: [410, 380, 640], doG: 25000, cennik: 'cen-c' },
@@ -66,12 +72,25 @@ let db, app, klienci;
 const post = (url, payload, headers = auth) => app.inject({ method: 'POST', url, payload, headers });
 const get = (url, headers = auth) => app.inject({ method: 'GET', url, headers });
 const podglad = (zaznaczone, konto = KONTO) => post('/magazyn/oferty/podglad', { konto, zaznaczone });
-const zatwierdz = (r, zaznaczone, konto = KONTO) =>
-  post('/magazyn/oferty/zatwierdz', { konto, zaznaczone, podglad: /name="podglad" value="([^"]+)"/.exec(r.body)?.[1] });
+/** Zatwierdza podgląd jak przeglądarka: POST → 303 → GET ekranu wyniku. */
+const zatwierdz = async (r, zaznaczone, konto = KONTO) => {
+  const w = await post('/magazyn/oferty/zatwierdz', {
+    konto,
+    zaznaczone,
+    podglad: /name="podglad" value="([^"]+)"/.exec(r.body)?.[1],
+  });
+  expect(w.statusCode).toBe(303);
+  return get(w.headers.location);
+};
+/** Karty z partii, które nie trafiły do kolejki (wiersze „nie wysłano” na ekranie wyniku). */
+const nieWyslano = (body) => body.split('nie wysłano — popraw błędy z podglądu').length - 1;
 const zapiszCennik = (id, pola, headers) => post(`/magazyn/${id}/cenniki`, pola, headers);
 const sekcja = (body) => body.match(/<section[^>]*id="cenniki-karty"[\s\S]*?<\/section>/)?.[0] ?? '';
 /** Sekcja podglądu jednej karty (nagłówek z odnośnikiem do karty). */
 const wierszPodgladu = (body, id) => body.match(new RegExp(`<a href="/magazyn/${id}">[\\s\\S]*?</section>`))?.[0] ?? '';
+/** Pole cennika karty w podglądzie ERLI: `<select …>…</select>` albo `<input …>`. */
+const poleCennika = (body, id) =>
+  body.match(new RegExp(`<select id="cennik-${id}"[\\s\\S]*?</select>|<input id="cennik-${id}"[^>]*>`))?.[0] ?? '';
 const atrapa = () => ({
   podgladOplat: vi.fn(async () => structuredClone(slowniki.podgladOplat)),
   utworzOferte: vi.fn(),
@@ -121,7 +140,7 @@ beforeEach(async () => {
       auth: { user: 'operator', pass: 'atrapa' },
       definicje: [
         ...definicjeKanalowHistoryczne,
-        { klucz: ERLI, typ: 'erli', prefiks: 'ERLI_POLCIEN', etykieta: 'ERLI Półcień' },
+        { klucz: ERLI, typ: 'erli', prefiks: 'ERLI_LAMPY', etykieta: 'ERLI Półcień' },
       ],
     },
     magazyn: { stan: () => ({ trwa: false, kanaly: [] }) },
@@ -213,82 +232,259 @@ afterEach(async () => {
   db.close();
 });
 
+/** Cennik OMS „tylko na karcie” z powiązaniami `{ konto: cennikKanalu }`; zwraca jego id. */
+const cennikNaKarcie = (nazwa, powiazania) => {
+  const id = dodajCennikOms(db, { nazwa });
+  for (const [konto, cennikKanalu] of Object.entries(powiazania))
+    ustawPowiazanieCennika(db, { cennikId: id, konto, cennikKanalu });
+  return id;
+};
+
 const regulyRozmiaru = () => {
   zapiszUstawieniaOfertKonta(db, KONTO, { cenniki: REGULY_ALLEGRO }, { teraz: T0 });
   zapiszUstawieniaOfertKonta(db, ERLI, { cenniki: REGULY_ERLI }, { teraz: T0 });
 };
 
 describe('podgląd Allegro — cennik i powód', () => {
-  it('reguła 1, reguła 2 i „dla większych” z nazwą ze słownika konta; karta bez wagi → odmowa, Zatwierdź ją pomija', async () => {
+  it('reguła 1, reguła 2 i „cennik domyślny” z nazwą ze słownika konta; karta bez wagi → odmowa, Zatwierdź ją pomija', async () => {
     regulyRozmiaru();
     const [a, b, c, d] = [karta(1, MALA), karta(2, SREDNIA), karta(3, DUZA), karta(4, BEZ_WAGI)];
     const r = await podglad([a, b, c, d]);
     expect(r.statusCode).toBe(200);
     expect(wierszPodgladu(r.body, a)).toContain(
-      'Cennik: Pracownia Półcień — paczkomat A — reguła 1: do 8×38×64 cm, 25 kg',
+      'Cennik: Pracownia Półcień — paczkomat A — cennik OMS „Do 64×38×8 cm, 25 kg” (do 64×38×8 cm, 25 kg)',
     );
     expect(wierszPodgladu(r.body, b)).toContain(
-      'Cennik: Pracownia Półcień — paczkomat C — reguła 2: do 41×38×64 cm, 25 kg',
+      'Cennik: Pracownia Półcień — paczkomat C — cennik OMS „Do 64×41×38 cm, 25 kg” (do 64×41×38 cm, 25 kg)',
     );
-    expect(wierszPodgladu(r.body, c)).toContain('Cennik: Pracownia Półcień — kurier gabaryt — dla większych');
+    expect(wierszPodgladu(r.body, c)).toContain('Cennik: Pracownia Półcień — kurier gabaryt — cennik OMS „Domyślny”');
     expect(wierszPodgladu(r.body, d)).toContain(ODMOWA_WYMIAROW);
     expect(wierszPodgladu(r.body, d)).not.toContain('Cennik:');
     for (const id of [a, b, c]) expect(wierszPodgladu(r.body, id)).not.toContain('Odmowa:');
     const w = await zatwierdz(r, [a, b, c, d]);
-    expect(w.body).toContain('W kolejce: 3. Odmówiono: 1.');
+    expect(w.body).toContain('W kolejce do wysłania: 3.');
+    expect(nieWyslano(w.body)).toBe(1);
     expect(ofertyKarty(db, d)).toHaveLength(0);
     expect(ofertyKarty(db, a)).toHaveLength(1);
   });
 
-  it('jedno pole konta (po migracji) → „jeden cennik konta”, karta bez wagi przechodzi', async () => {
+  it('jedno pole konta (po migracji) → „cennik domyślny konta”, karta bez wagi przechodzi', async () => {
     const d = karta(4, BEZ_WAGI);
     const r = await podglad([d]);
-    expect(wierszPodgladu(r.body, d)).toContain('Cennik: Pracownia Półcień — standard — jeden cennik konta');
+    expect(wierszPodgladu(r.body, d)).toContain('Cennik: Pracownia Półcień — standard — cennik OMS „Domyślny”');
     expect(r.body).not.toContain('Odmowa:');
   });
 
-  it('wyjątek zapisany na karcie usuwa odmowę: „wyjątek na karcie”, treść wysyłki ma ten cennik', async () => {
+  it('cennik OMS wybrany na karcie usuwa odmowę: powód z nazwą cennika OMS, obaj budowniczowie biorą powiązany cennik kanału', async () => {
     regulyRozmiaru();
+    const gabaryt = cennikNaKarcie('Gabaryt', { [KONTO]: 'cen-gabaryt', [ERLI]: 'Kurier gabaryt' });
     const d = karta(4, BEZ_WAGI);
-    const z = await zapiszCennik(d, { [`cennik:${KONTO}`]: 'cen-gabaryt' });
+    const z = await zapiszCennik(d, { cennik_oms: String(gabaryt) });
     expect(z.statusCode).toBe(303);
     expect(z.headers.location).toBe(`/magazyn/${d}#cenniki-karty`);
+    expect(cennikOmsKarty(db, d)?.cennikId).toBe(gabaryt);
     expect(wyjatekCennika(db, { kartaId: d, konto: KONTO })).toBe('cen-gabaryt');
     const r = await podglad([d]);
     expect(r.body).not.toContain('Odmowa:');
-    expect(wierszPodgladu(r.body, d)).toContain('Cennik: Pracownia Półcień — kurier gabaryt — wyjątek na karcie');
-    // Ten sam wyjątek czyta budowniczy dla pętli (odczyt z bazy, nie z formularza).
+    expect(wierszPodgladu(r.body, d)).toContain(
+      'Cennik: Pracownia Półcień — kurier gabaryt — wyjątek na karcie: cennik OMS „Gabaryt”',
+    );
+    // Ten sam wybór czytają budowniczowie dla pętli (odczyt z bazy, nie z formularza).
     const w = ofertaAllegroKarty(db, d, { klucz: KONTO, srodowisko: 'produkcja' });
     expect(w.bledy).toEqual([]);
     expect(w.zadanie.delivery.shippingRates).toEqual({ id: 'cen-gabaryt' });
-    expect((await zatwierdz(r, [d])).body).toContain('W kolejce: 1. Odmówiono: 0.');
+    expect(trescOferty(db, d, ustawieniaOfertKonta(db, ERLI)).cialo.deliveryPriceList).toBe('Kurier gabaryt');
+    const wd = (await zatwierdz(r, [d])).body;
+    expect(wd).toContain('W kolejce do wysłania: 1.');
+    expect(nieWyslano(wd)).toBe(0);
+  });
+
+  it('cennik OMS karty bez powiązania z kontem Allegro: konto dobiera po rozmiarze, ERLI bierze powiązanie', async () => {
+    regulyRozmiaru();
+    const tylkoErli = cennikNaKarcie('Kurier ERLI', { [ERLI]: 'Kurier gabaryt' });
+    const a = karta(1, MALA);
+    ustawCennikKarty(db, { kartaId: a, cennikId: tylkoErli });
+    expect(wyjatekCennika(db, { kartaId: a, konto: KONTO })).toBeNull();
+    expect(wyjatekCennika(db, { kartaId: a, konto: ERLI })).toBe('Kurier gabaryt');
+    const r = await podglad([a]);
+    expect(wierszPodgladu(r.body, a)).toContain(
+      'Cennik: Pracownia Półcień — paczkomat A — cennik OMS „Do 64×38×8 cm, 25 kg”',
+    );
+    expect(wierszPodgladu(r.body, a)).not.toContain('wyjątek na karcie');
+    expect(ofertaAllegroKarty(db, a, { klucz: KONTO, srodowisko: 'produkcja' }).zadanie.delivery.shippingRates).toEqual(
+      { id: 'cen-a' },
+    );
+    expect(trescOferty(db, a, ustawieniaOfertKonta(db, ERLI)).cialo.deliveryPriceList).toBe('Kurier gabaryt');
   });
 });
 
 describe('podgląd ERLI — cennik i powód', () => {
-  it('reguły, „dla większych”, odmowa bez wagi, wyjątek z karty i „jeden cennik konta”', async () => {
+  it('reguły, „cennik domyślny”, odmowa bez wagi, cennik OMS karty i „cennik domyślny konta”', async () => {
     regulyRozmiaru();
+    const gabaryt = cennikNaKarcie('Gabaryt', { [ERLI]: 'Kurier gabaryt' });
     const [a, b, c, d] = [karta(1, MALA), karta(2, SREDNIA), karta(3, DUZA), karta(4, BEZ_WAGI)];
     let r = await podglad([a, b, c, d], ERLI);
     expect(r.statusCode).toBe(200);
-    expect(wierszPodgladu(r.body, a)).toContain('Cennik: Paczkomat A — reguła 1: do 8×38×64 cm, 25 kg');
-    expect(wierszPodgladu(r.body, b)).toContain('Cennik: Paczkomat C — reguła 2: do 41×38×64 cm, 25 kg');
-    expect(wierszPodgladu(r.body, c)).toContain('Cennik: Kurier gabaryt — dla większych');
+    // Pierwsza opcja pola mówi, co karta dostaje bez własnego cennika; powód pod polem.
+    expect(poleCennika(r.body, a)).toContain(
+      '<option value="" selected>— według rozmiaru (teraz: Paczkomat A) —</option>',
+    );
+    expect(wierszPodgladu(r.body, a)).toContain('cennik OMS „Do 64×38×8 cm, 25 kg” (do 64×38×8 cm, 25 kg)');
+    expect(poleCennika(r.body, b)).toContain('— według rozmiaru (teraz: Paczkomat C) —');
+    expect(wierszPodgladu(r.body, b)).toContain('cennik OMS „Do 64×41×38 cm, 25 kg” (do 64×41×38 cm, 25 kg)');
+    expect(poleCennika(r.body, c)).toContain('— według rozmiaru (teraz: Kurier gabaryt) —');
+    expect(wierszPodgladu(r.body, c)).toContain('cennik OMS „Domyślny”');
+    for (const k of [a, b, c]) expect(wierszPodgladu(r.body, k)).not.toContain('Cennik: ');
     expect(wierszPodgladu(r.body, d)).toContain(ODMOWA_WYMIAROW);
+    // Karta z odmową też ma pole — to tu operator wybiera cennik, który odmowę usuwa.
+    expect(poleCennika(r.body, d)).toContain('— według rozmiaru (teraz: brak) —');
+    expect(r.body).toContain('Wystaw oferty (3)');
     const w = await zatwierdz(r, [a, b, c, d], ERLI);
-    expect(w.body).toContain('Odmówiono: 1');
+    expect(nieWyslano(w.body)).toBe(1);
     expect(ofertyKarty(db, d)).toHaveLength(0);
 
-    expect((await zapiszCennik(d, { [`cennik:${ERLI}`]: '  Kurier gabaryt  ' })).statusCode).toBe(303);
+    expect((await zapiszCennik(d, { cennik_oms: ` ${gabaryt} ` })).statusCode).toBe(303);
     expect(wyjatekCennika(db, { kartaId: d, konto: ERLI })).toBe('Kurier gabaryt');
     r = await podglad([d], ERLI);
     expect(r.body).not.toContain('Odmowa:');
-    expect(wierszPodgladu(r.body, d)).toContain('Cennik: Kurier gabaryt — wyjątek na karcie');
+    expect(poleCennika(r.body, d)).toContain(`<option value="${gabaryt}" selected>Gabaryt (tylko na karcie)</option>`);
+    expect(wierszPodgladu(r.body, d)).toContain('wyjątek na karcie: cennik OMS „Gabaryt”');
     expect(trescOferty(db, d, ustawieniaOfertKonta(db, ERLI)).cialo.deliveryPriceList).toBe('Kurier gabaryt');
 
     zapiszUstawieniaOfertKonta(db, ERLI, { cennikDostaw: 'Lampy' }, { teraz: T0 });
     r = await podglad([a], ERLI);
-    expect(wierszPodgladu(r.body, a)).toContain('Cennik: Lampy — jeden cennik konta');
+    expect(poleCennika(r.body, a)).toContain('— według rozmiaru (teraz: Lampy) —');
+    expect(wierszPodgladu(r.body, a)).toContain('cennik OMS „Domyślny”');
+  });
+});
+
+describe('podgląd ERLI — cennik OMS przy karcie', () => {
+  const ZDANIE = 'Cennik wybrany przy karcie zmienia cennik tej karty na wszystkich kontach.';
+  /** Podgląd albo zatwierdzenie z polami cenników z wiersza karty (`cennik_<id>`), jak wysyła formularz podglądu. */
+  const zCennikami = (akcja, ids, cenniki, token) =>
+    post(`/magazyn/oferty/${akcja}`, {
+      konto: ERLI,
+      zaznaczone: ids,
+      ...(token ? { podglad: token } : {}),
+      ...Object.fromEntries(Object.entries(cenniki).map(([id, v]) => [`cennik_${id}`, v])),
+    });
+  const tokenZ = (r) => /name="podglad" value="([^"]+)"/.exec(r.body)?.[1];
+
+  it('pole z wszystkimi cennikami OMS i zdaniem nad tabelą; zapis i odświeżenie zapisuje cennik karty, pusta wartość go usuwa', async () => {
+    const gabaryt = cennikNaKarcie('Gabaryt', { [ERLI]: 'Kurier gabaryt' });
+    const mala = dodajCennikOms(db, { nazwa: 'Mała paczka', doMm: [640, 380, 80], doG: 25000 });
+    const a = karta(1, MALA);
+    let r = await podglad([a], ERLI);
+    expect(r.statusCode).toBe(200);
+    expect(r.body).toContain(ZDANIE);
+    const wiersz = wierszPodgladu(r.body, a);
+    expect(wiersz).toContain(`<label for="cennik-${a}">Cennik dostaw</label>`);
+    const pole = poleCennika(r.body, a);
+    expect(pole).toContain(`<select id="cennik-${a}" name="cennik_${a}"`);
+    expect(pole).toContain('<option value="" selected>— według rozmiaru (teraz: Lampy) —</option>');
+    expect(pole).toContain(`<option value="${gabaryt}">Gabaryt (tylko na karcie)</option>`);
+    expect(pole).toContain(`<option value="${mala}">Mała paczka (do 64×38×8 cm, 25 kg)</option>`);
+    expect(pole).toMatch(/<option value="\d+">Domyślny<\/option>/);
+    expect(wiersz).toContain('cennik OMS „Domyślny”');
+    expect(r.body).not.toMatch(/pobierz metody ponownie|lista pobrana z ERLI/i);
+    expect(r.body).toContain('<button class="btn btn--glowny" type="submit">Wystaw oferty (1)</button>');
+    expect(r.body).toMatch(
+      /<button class="btn" type="submit" formaction="\/magazyn\/oferty\/podglad">Zapisz cenniki i odśwież podgląd<\/button>/,
+    );
+
+    r = await zCennikami('podglad', [a], { [a]: String(gabaryt) });
+    expect(r.statusCode).toBe(200);
+    expect(cennikOmsKarty(db, a)?.cennikId).toBe(gabaryt);
+    expect(poleCennika(r.body, a)).toContain(`<option value="${gabaryt}" selected>Gabaryt (tylko na karcie)</option>`);
+    expect(wierszPodgladu(r.body, a)).toContain('wyjątek na karcie: cennik OMS „Gabaryt”');
+    expect(tokenZ(r)).toMatch(/^\d+\.[a-f0-9]{64}$/);
+
+    r = await zCennikami('podglad', [a], { [a]: '' });
+    expect(r.statusCode).toBe(200);
+    expect(cennikOmsKarty(db, a)).toBeNull();
+    expect(poleCennika(r.body, a)).toContain('<option value="" selected>— według rozmiaru (teraz: Lampy) —</option>');
+    expect(wierszPodgladu(r.body, a)).toContain('cennik OMS „Domyślny”');
+  });
+
+  it('cennik OMS karty bez powiązania z kontem ERLI: wybór widać w polu, dobór idzie po rozmiarze', async () => {
+    const tylkoAllegro = cennikNaKarcie('Kurier Allegro', { [KONTO]: 'cen-gabaryt' });
+    const a = karta(1, MALA);
+    const r = await zCennikami('podglad', [a], { [a]: String(tylkoAllegro) });
+    expect(r.statusCode).toBe(200);
+    expect(cennikOmsKarty(db, a)?.cennikId).toBe(tylkoAllegro);
+    expect(poleCennika(r.body, a)).toContain(`<option value="${tylkoAllegro}" selected>`);
+    expect(wierszPodgladu(r.body, a)).not.toContain('wyjątek na karcie');
+    expect(wierszPodgladu(r.body, a)).toContain('cennik OMS „Domyślny”');
+  });
+
+  it('cennik spoza listy OMS → 400 z błędem przy polu, nic nie zapisane (także zmiana poprawnej karty obok)', async () => {
+    const gabaryt = cennikNaKarcie('Gabaryt', { [ERLI]: 'Kurier gabaryt' });
+    const [a, b] = [karta(1, MALA), karta(2, MALA)];
+    for (const [akcja, zly] of [
+      ['podglad', '999999'],
+      ['zatwierdz', 'Paczkomat Z'],
+    ]) {
+      const token = akcja === 'zatwierdz' ? tokenZ(await podglad([a, b], ERLI)) : undefined;
+      const r = await zCennikami(akcja, [a, b], { [a]: String(gabaryt), [b]: zly }, token);
+      expect(r.statusCode).toBe(400);
+      expect(cennikOmsKarty(db, a)).toBeNull();
+      expect(cennikOmsKarty(db, b)).toBeNull();
+      expect(ofertyKarty(db, a)).toHaveLength(0);
+      const pole = poleCennika(r.body, b);
+      expect(pole).toContain('aria-invalid="true"');
+      expect(pole).toContain(`aria-describedby="blad-cennik-${b}`);
+      expect(wierszPodgladu(r.body, b)).toContain(
+        `<p class="blad-pola pasek-blokada" id="blad-cennik-${b}">Wybierz cennik OMS z listy.</p>`,
+      );
+      // Wpisany wybór zostaje w formularzu, żeby poprawić tylko błędne pole.
+      expect(poleCennika(r.body, a)).toContain(`<option value="${gabaryt}" selected>`);
+      expect(poleCennika(r.body, a)).not.toContain('aria-invalid');
+      expect(tokenZ(r)).toMatch(/^\d+\.[a-f0-9]{64}$/);
+    }
+  });
+
+  it('Wystaw oferty z innym cennikiem: cennik karty zapisany przed wstawieniem oferty, treść z pętli ma ten cennik', async () => {
+    zapiszUstawieniaOfertKonta(db, ERLI, { cennikDostaw: null }, { teraz: T0 });
+    const gabaryt = cennikNaKarcie('Gabaryt', { [ERLI]: 'Kurier gabaryt' });
+    const a = karta(1, MALA);
+    const r = await podglad([a], ERLI);
+    expect(wierszPodgladu(r.body, a)).toContain('Odmowa: Ustaw cennik dostaw w konfiguratorze konta ERLI.');
+    expect(r.body).toContain('Wystaw oferty (0)');
+    const w = await zCennikami('zatwierdz', [a], { [a]: String(gabaryt) }, tokenZ(r));
+    expect(w.statusCode).toBe(303);
+    const wynik = (await get(w.headers.location)).body;
+    expect(wynik).toContain('W kolejce do wysłania: 1.');
+    expect(nieWyslano(wynik)).toBe(0);
+    expect(cennikOmsKarty(db, a)?.cennikId).toBe(gabaryt);
+    const oferty = ofertyKarty(db, a);
+    expect(oferty).toHaveLength(1);
+    expect(oferty[0]).toMatchObject({ kanal: ERLI, stan: 'do_wyslania' });
+    expect(trescOferty(db, a, ustawieniaOfertKonta(db, ERLI)).cialo.deliveryPriceList).toBe('Kurier gabaryt');
+  });
+
+  it('Wystaw oferty z podrobionym tokenem → 409, cennik karty nie zapisany', async () => {
+    zapiszUstawieniaOfertKonta(db, ERLI, { cennikDostaw: null }, { teraz: T0 });
+    const gabaryt = cennikNaKarcie('Gabaryt', { [ERLI]: 'Kurier gabaryt' });
+    const a = karta(1, MALA);
+    const w = await zCennikami('zatwierdz', [a], { [a]: String(gabaryt) }, `1.${'0'.repeat(64)}`);
+    expect(w.statusCode).toBe(409);
+    expect(cennikOmsKarty(db, a)).toBeNull();
+    expect(ofertyKarty(db, a)).toHaveLength(0);
+  });
+
+  it('Allegro ignoruje pola cennik_<id> — wybór cennika z podglądu tylko dla ERLI', async () => {
+    const gabaryt = cennikNaKarcie('Gabaryt', { [KONTO]: 'cen-gabaryt' });
+    const a = karta(1, MALA);
+    const r = await post('/magazyn/oferty/podglad', {
+      konto: KONTO,
+      zaznaczone: [a],
+      [`cennik_${a}`]: String(gabaryt),
+    });
+    expect(r.statusCode).toBe(200);
+    expect(cennikOmsKarty(db, a)).toBeNull();
+    expect(r.body).not.toContain(`name="cennik_${a}"`);
+    expect(r.body).not.toContain(ZDANIE);
+    expect(r.body).toContain('Wystaw oferty (');
   });
 });
 
@@ -308,71 +504,120 @@ describe('decyzja kierownika: wyjątek z karty wystarcza na koncie bez reguł (A
     expect(wierszPodgladu(r.body, a)).not.toContain('Odmowa:');
     expect(wierszPodgladu(r.body, b)).toContain('Odmowa:');
     expect(wierszPodgladu(r.body, b)).toContain('cennik dostaw');
-    expect((await zatwierdz(r, [a, b])).body).toContain('W kolejce: 1. Odmówiono: 1.');
+    const wab = (await zatwierdz(r, [a, b])).body;
+    expect(wab).toContain('W kolejce do wysłania: 1.');
+    expect(nieWyslano(wab)).toBe(1);
     expect(ofertyKarty(db, b)).toHaveLength(0);
   });
 
-  it('ERLI: to samo — konto bez cennika, karta z wyjątkiem przechodzi, karta bez wyjątku odmowa', async () => {
+  it('Allegro: cennik OMS karty powiązany tylko z innym kontem nie zastępuje cennika konta', async () => {
+    zapiszUstawieniaOfertKonta(db, KONTO, { cenniki: [] }, { teraz: T0 });
+    const tylkoErli = cennikNaKarcie('Kurier ERLI', { [ERLI]: 'Kurier gabaryt' });
+    const a = karta(1, MALA);
+    ustawCennikKarty(db, { kartaId: a, cennikId: tylkoErli });
+    const r = await podglad([a]);
+    expect(r.body).toContain('Uzupełnij ustawienia: cennik dostaw');
+  });
+
+  it('ERLI: konto bez cennika nie blokuje podglądu — karta z wyjątkiem przechodzi, karta bez wyjątku odmowa', async () => {
     zapiszUstawieniaOfertKonta(db, ERLI, { cennikDostaw: null }, { teraz: T0 });
     const [a, b] = [karta(1, MALA), karta(2, MALA)];
     let r = await podglad([a, b], ERLI);
-    expect(r.body).toContain('Uzupełnij ustawienia: cennik dostaw');
+    expect(r.body).not.toContain('Uzupełnij ustawienia');
+    for (const k of [a, b])
+      expect(wierszPodgladu(r.body, k)).toContain('Odmowa: Ustaw cennik dostaw w konfiguratorze konta ERLI.');
     zapiszWyjatekCennika(db, { kartaId: a, konto: ERLI, cennik: 'Paczkomat A' }, { teraz: T0 });
     r = await podglad([a, b], ERLI);
     expect(r.body).not.toContain('Uzupełnij ustawienia: cennik dostaw');
-    expect(wierszPodgladu(r.body, a)).toContain('Cennik: Paczkomat A — wyjątek na karcie');
+    expect(poleCennika(r.body, a)).toContain(`<option value="${cennikOmsKarty(db, a)?.cennikId}" selected>`);
+    expect(wierszPodgladu(r.body, a)).toContain('wyjątek na karcie');
     expect(wierszPodgladu(r.body, b)).toContain('Odmowa: Ustaw cennik dostaw w konfiguratorze konta ERLI.');
-    expect((await zatwierdz(r, [a, b], ERLI)).body).toContain('Odmówiono: 1');
+    expect(nieWyslano((await zatwierdz(r, [a, b], ERLI)).body)).toBe(1);
     expect(ofertyKarty(db, a)).toHaveLength(1);
   });
 });
 
-describe('karta — sekcja „Cennik dostaw” i zapis wyjątku', () => {
-  it('wiersz na każde konto: lista cenników Allegro, pole tekstowe ERLI, cennik teraz albo odmowa; etykiety powiązane z polami', async () => {
+describe('karta — sekcja „Cennik dostaw”: cennik OMS karty', () => {
+  const NAPIS =
+    'Wybrany cennik OMS działa na wszystkich kontach, z którymi ma powiązanie; na pozostałych karta dostaje cennik według rozmiaru. Zmiana dotyczy też już wystawionej oferty.';
+  /** Wiersz tabeli „Teraz” dla konta (nagłówek wiersza zaczyna się od „Allegro ·” albo „ERLI ·”). */
+  const wierszKonta = (s, rodzaj) => s.match(new RegExp(`<tr><th scope="row">${rodzaj} ·[\\s\\S]*?</tr>`))?.[0] ?? '';
+  const wierszeKarty = (id) => db.prepare('SELECT cennik_id FROM karty_cennik_oms WHERE karta_id = ?').all(id);
+
+  it('jedno pole „Cennik dostaw tej karty” ze wszystkimi cennikami OMS, napis pod polem i tabela „Teraz” na każde konto', async () => {
     regulyRozmiaru();
+    const gabaryt = cennikNaKarcie('Gabaryt', { [ERLI]: 'Kurier gabaryt' });
     const d = karta(4, BEZ_WAGI);
-    zapiszWyjatekCennika(db, { kartaId: d, konto: ERLI, cennik: 'Kurier gabaryt' }, { teraz: T0 });
-    const r = await get(`/magazyn/${d}`);
-    expect(r.statusCode).toBe(200);
-    const s = sekcja(r.body);
-    expect(s).toContain('Cennik dostaw');
+    let s = sekcja((await get(`/magazyn/${d}`)).body);
     expect(s).toContain(`action="/magazyn/${d}/cenniki"`);
-    expect(s).toContain(`name="cennik:${KONTO}"`);
-    expect(s).toContain(`name="cennik:${ERLI}"`);
-    expect(s).toContain('<option value="cen-gabaryt">Pracownia Półcień — kurier gabaryt</option>');
-    expect(s).toContain('<option value="">— reguły konta —</option>');
-    expect(s).toMatch(new RegExp(`<input[^>]*name="cennik:${ERLI}"[^>]*value="Kurier gabaryt"`));
-    // Allegro: bez wyjątku i bez wagi → odmowa; ERLI: wyjątek wygrywa.
-    expect(s).toContain(ODMOWA_WYMIAROW);
-    expect(s).toContain('Teraz: Kurier gabaryt — wyjątek na karcie');
-    expect(s.match(/Cennik dostaw — wyjątek/g)).toHaveLength(2);
+    expect(s).toContain('<label for="cennik-oms-karty">Cennik dostaw tej karty</label>');
+    expect(s).toContain('<select id="cennik-oms-karty" name="cennik_oms" aria-describedby="cennik-oms-karty-napis">');
+    expect(s).toContain('<option value="" selected>— według rozmiaru —</option>');
+    expect(s).toContain(`<option value="${gabaryt}">Gabaryt (tylko na karcie)</option>`);
+    expect(s).toMatch(/<option value="\d+">Do 64×38×8 cm, 25 kg<\/option>/);
+    expect(s).toMatch(/<option value="\d+">Domyślny<\/option>/);
+    expect(s).toContain(`<p class="podpowiedz" id="cennik-oms-karty-napis">${NAPIS}</p>`);
+    expect(s).not.toMatch(/name="cennik:/);
+    expect(s).not.toMatch(/pobierz metody ponownie|Pobierz z Allegro/);
+    // Karta bez wagi i bez cennika: odmowa na obu kontach.
+    expect(wierszKonta(s, 'Allegro')).toContain(ODMOWA_WYMIAROW);
+    expect(wierszKonta(s, 'ERLI')).toContain(ODMOWA_WYMIAROW);
     for (const [, dla] of s.matchAll(/<label for="([^"]+)"/g)) expect(s).toContain(`id="${dla}"`);
+
+    expect((await zapiszCennik(d, { cennik_oms: String(gabaryt) })).statusCode).toBe(303);
+    expect(wierszeKarty(d)).toEqual([{ cennik_id: gabaryt }]);
+    s = sekcja((await get(`/magazyn/${d}`)).body);
+    expect(s).toContain(`<option value="${gabaryt}" selected>Gabaryt (tylko na karcie)</option>`);
+    // ERLI ma powiązanie — bierze je; Allegro nie ma — zostaje przy doborze po rozmiarze (tu odmowa).
+    expect(wierszKonta(s, 'ERLI')).toContain('Teraz: Kurier gabaryt — wyjątek na karcie: cennik OMS „Gabaryt”');
+    expect(wierszKonta(s, 'Allegro')).toContain(ODMOWA_WYMIAROW);
   });
 
-  it('zapis wyjątku Allegro spoza listy cenników konta → odmowa, nic nie zapisane (także ERLI w tym samym formularzu)', async () => {
+  it('„Teraz” na obu kontach z powiązań cennika karty; pusty wybór usuwa wiersz, pole nieprzysłane niczego nie zmienia', async () => {
+    regulyRozmiaru();
+    const kurier = cennikNaKarcie('Kurier na karcie', { [KONTO]: 'cen-gabaryt', [ERLI]: 'Kurier gabaryt' });
     const id = karta(1, MALA);
-    const r = await zapiszCennik(id, {
-      [`cennik:${KONTO}`]: 'cennik-z-innego-konta',
-      [`cennik:${ERLI}`]: 'Paczkomat A',
-    });
-    expect(r.statusCode).toBe(400);
-    expect(r.body).toContain('nie jest na liście cenników konta');
-    expect(wyjatekCennika(db, { kartaId: id, konto: KONTO })).toBeNull();
-    expect(wyjatekCennika(db, { kartaId: id, konto: ERLI })).toBeNull();
+    let s = sekcja((await get(`/magazyn/${id}`)).body);
+    expect(wierszKonta(s, 'Allegro')).toContain(
+      'Teraz: Pracownia Półcień — paczkomat A — cennik OMS „Do 64×38×8 cm, 25 kg”',
+    );
+    expect(wierszKonta(s, 'ERLI')).toContain('Teraz: Paczkomat A — cennik OMS „Do 64×38×8 cm, 25 kg”');
+
+    expect((await zapiszCennik(id, { cennik_oms: String(kurier) })).statusCode).toBe(303);
+    s = sekcja((await get(`/magazyn/${id}`)).body);
+    expect(wierszKonta(s, 'Allegro')).toContain(
+      'Teraz: Pracownia Półcień — kurier gabaryt — wyjątek na karcie: cennik OMS „Kurier na karcie”',
+    );
+    expect(wierszKonta(s, 'ERLI')).toContain(
+      'Teraz: Kurier gabaryt — wyjątek na karcie: cennik OMS „Kurier na karcie”',
+    );
+
+    expect((await zapiszCennik(id, {})).statusCode).toBe(303);
+    expect(wierszeKarty(id)).toEqual([{ cennik_id: kurier }]);
+
+    expect((await zapiszCennik(id, { cennik_oms: '  ' })).statusCode).toBe(303);
+    expect(wierszeKarty(id)).toEqual([]);
+    s = sekcja((await get(`/magazyn/${id}`)).body);
+    expect(s).toContain('<option value="" selected>— według rozmiaru —</option>');
+    expect(wierszKonta(s, 'ERLI')).toContain('Teraz: Paczkomat A — cennik OMS „Do 64×38×8 cm, 25 kg”');
   });
 
-  it('puste pole usuwa wyjątek; pole nieprzysłane zostawia go bez zmian', async () => {
+  it('cennik spoza listy OMS → 400 i wybór sprzed zostaje', async () => {
+    const gabaryt = cennikNaKarcie('Gabaryt', { [ERLI]: 'Kurier gabaryt' });
     const id = karta(1, MALA);
-    zapiszWyjatekCennika(db, { kartaId: id, konto: KONTO, cennik: 'cen-a' }, { teraz: T0 });
-    zapiszWyjatekCennika(db, { kartaId: id, konto: ERLI, cennik: 'Paczkomat A' }, { teraz: T0 });
-    expect((await zapiszCennik(id, { [`cennik:${ERLI}`]: '   ' })).statusCode).toBe(303);
-    expect(wyjatekCennika(db, { kartaId: id, konto: ERLI })).toBeNull();
-    expect(wyjatekCennika(db, { kartaId: id, konto: KONTO })).toBe('cen-a');
+    ustawCennikKarty(db, { kartaId: id, cennikId: gabaryt });
+    for (const zly of ['999999', 'Paczkomat Z', '1.5']) {
+      const r = await zapiszCennik(id, { cennik_oms: zly });
+      expect(r.statusCode).toBe(400);
+      expect(r.body).toContain('Wybierz cennik OMS z listy.');
+      expect(wierszeKarty(id)).toEqual([{ cennik_id: gabaryt }]);
+    }
   });
 
-  it('nie-administrator i obcy CSRF → 403, wyjątek niezapisany; nie-administrator widzi sekcję bez formularza', async () => {
+  it('nie-administrator i obcy CSRF → 403, nic nie zapisane; nie-administrator widzi sekcję tylko do odczytu', async () => {
+    const gabaryt = cennikNaKarcie('Gabaryt', { [ERLI]: 'Kurier gabaryt' });
     const id = karta(1, MALA);
-    const pola = { [`cennik:${KONTO}`]: 'cen-a' };
+    const pola = { cennik_oms: String(gabaryt) };
     expect((await zapiszCennik(id, pola, { ...auth, origin: 'https://obcy.example' })).statusCode).toBe(403);
     zalozKonto(db, { login: 'admin', imie: 'Admin', haslo: 'test', rola: 'admin', admin: true });
     const user = zalozKonto(db, { login: 'czytelnik', imie: 'Czytelnik', haslo: 'test', rola: 'operator' });
@@ -382,18 +627,22 @@ describe('karta — sekcja „Cennik dostaw” i zapis wyjątku', () => {
       cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz('czytelnik', wczytajSekret(db), Date.now(), 0)}`,
     };
     expect((await zapiszCennik(id, pola, headers)).statusCode).toBe(403);
-    expect(wyjatekCennika(db, { kartaId: id, konto: KONTO })).toBeNull();
+    expect(wierszeKarty(id)).toEqual([]);
+    ustawCennikKarty(db, { kartaId: id, cennikId: gabaryt });
     const s = sekcja((await get(`/magazyn/${id}`, headers)).body);
-    expect(s).toContain('Cennik dostaw');
+    expect(s).toContain('Cennik dostaw tej karty: Gabaryt (tylko na karcie)');
+    expect(s).toContain(NAPIS);
+    expect(s).toContain('Teraz: Kurier gabaryt — wyjątek na karcie: cennik OMS „Gabaryt”');
     expect(s).not.toContain('<form');
+    expect(s).not.toContain('<select');
   });
 
   it('nieistniejąca karta → 404', async () => {
-    expect((await zapiszCennik(999999, { [`cennik:${ERLI}`]: 'Paczkomat A' })).statusCode).toBe(404);
+    expect((await zapiszCennik(999999, { cennik_oms: '' })).statusCode).toBe(404);
   });
 });
 
-describe('wyjątek cennika z karty — objęcie ERLI, zapis, odmowy i dopisek reguł (Allegro i ERLI)', () => {
+describe('cennik OMS karty — objęcie ERLI, odmowy i dopisek reguł (Allegro i ERLI)', () => {
   it('objęcie ERLI bez reguł wymaga wyjątku; po jego zapisaniu przechodzi', async () => {
     zapiszUstawieniaOfertKonta(db, ERLI, { cenniki: [] }, { teraz: T0 });
     const id = karta(1, MALA);
@@ -429,26 +678,12 @@ describe('wyjątek cennika z karty — objęcie ERLI, zapis, odmowy i dopisek re
     expect(klienci[ERLI].zmienProdukt).not.toHaveBeenCalled();
   });
 
-  it('wszystko albo nic: poprawne Allegro i za długie ERLI jako drugie konto nie zapisują żadnego wyjątku', async () => {
+  it('cennik OMS karty powiązany z cennikiem spoza listy Allegro → „Odmowa” w tabeli karty', async () => {
+    const stary = cennikNaKarcie('Stary kurier', { [KONTO]: 'cen-old' });
     const id = karta(1, MALA);
-    const r = await zapiszCennik(id, { [`cennik:${KONTO}`]: 'cen-a', [`cennik:${ERLI}`]: 'a'.repeat(201) });
-    expect(r.statusCode).toBe(400);
-    expect(r.body).toContain('najwyżej 200 znaków');
-    expect(wyjatekCennika(db, { kartaId: id, konto: KONTO })).toBeNull();
-    expect(wyjatekCennika(db, { kartaId: id, konto: ERLI })).toBeNull();
-  });
-
-  it('zapisany wyjątek Allegro spoza listy jest zaznaczony i nie blokuje zmiany ERLI', async () => {
-    const id = karta(1, MALA);
-    zapiszWyjatekCennika(db, { kartaId: id, konto: KONTO, cennik: 'cen-old' }, { teraz: T0 });
-    const sekcjaKarty = sekcja((await get(`/magazyn/${id}`)).body);
-    expect(sekcjaKarty).toContain('<option value="cen-old" selected>cen-old (spoza listy konta)</option>');
-    expect(sekcjaKarty).toContain('Odmowa: Cennik z karty nie istnieje już na koncie Allegro — wybierz inny');
-    expect(
-      (await zapiszCennik(id, { [`cennik:${KONTO}`]: 'cen-old', [`cennik:${ERLI}`]: 'Nowy kurier' })).statusCode,
-    ).toBe(303);
-    expect(wyjatekCennika(db, { kartaId: id, konto: KONTO })).toBe('cen-old');
-    expect(wyjatekCennika(db, { kartaId: id, konto: ERLI })).toBe('Nowy kurier');
+    ustawCennikKarty(db, { kartaId: id, cennikId: stary });
+    const s = sekcja((await get(`/magazyn/${id}`)).body);
+    expect(s).toContain('Odmowa: Cennik z karty nie istnieje już na koncie Allegro — wybierz inny');
   });
 
   it('wyjątek Allegro spoza bieżącej listy daje odmowę przed kolejką', async () => {
@@ -465,7 +700,9 @@ describe('wyjątek cennika z karty — objęcie ERLI, zapis, odmowy i dopisek re
     expect(w.zadanie).toBeNull();
     const wPetli = ofertaAllegroKarty(db, id, { klucz: KONTO, srodowisko: 'produkcja' });
     expect(wPetli.bledy.map((x) => x.kod)).not.toContain('cennik');
-    expect((await zatwierdz(r, [id])).body).toContain('W kolejce: 0. Odmówiono: 1.');
+    const wid = (await zatwierdz(r, [id])).body;
+    expect(wid).toContain('W kolejce do wysłania: 0.');
+    expect(nieWyslano(wid)).toBe(1);
     expect(ofertyKarty(db, id)).toHaveLength(0);
     expect(klienci[KONTO].utworzOferte).not.toHaveBeenCalled();
   });
@@ -475,15 +712,15 @@ describe('wyjątek cennika z karty — objęcie ERLI, zapis, odmowy i dopisek re
       MALA,
       'cen-gabaryt',
       'Kurier gabaryt',
-      'Pracownia Półcień — paczkomat A — reguła 1: do 8×38×64 cm, 25 kg',
-      'Paczkomat A — reguła 1: do 8×38×64 cm, 25 kg',
+      'Pracownia Półcień — paczkomat A — cennik OMS „Do 64×38×8 cm, 25 kg” (do 64×38×8 cm, 25 kg)',
+      'Paczkomat A — cennik OMS „Do 64×38×8 cm, 25 kg” (do 64×38×8 cm, 25 kg)',
     ],
     [
       DUZA,
       'cen-a',
       'Paczkomat A',
-      'Pracownia Półcień — kurier gabaryt — dla większych',
-      'Kurier gabaryt — dla większych',
+      'Pracownia Półcień — kurier gabaryt — cennik OMS „Domyślny”',
+      'Kurier gabaryt — cennik OMS „Domyślny”',
     ],
     [
       BEZ_WAGI,
@@ -497,14 +734,16 @@ describe('wyjątek cennika z karty — objęcie ERLI, zapis, odmowy i dopisek re
     async (rozmiar, allegro, erli, opisAllegro, opisErli) => {
       regulyRozmiaru();
       const id = karta(1, rozmiar);
-      for (const [konto, cennik, opis] of [
-        [KONTO, allegro, opisAllegro],
-        [ERLI, erli, opisErli],
+      const wybor = cennikNaKarcie('Wybór', { [KONTO]: allegro, [ERLI]: erli });
+      ustawCennikKarty(db, { kartaId: id, cennikId: wybor });
+      const sekcjaKarty = sekcja((await get(`/magazyn/${id}`)).body);
+      for (const [konto, opis] of [
+        [KONTO, opisAllegro],
+        [ERLI, opisErli],
       ]) {
-        zapiszWyjatekCennika(db, { kartaId: id, konto, cennik }, { teraz: T0 });
-        const dopisek = `(reguły dałyby: ${opis})`;
-        expect(wierszPodgladu((await podglad([id], konto)).body, id)).toContain(`wyjątek na karcie ${dopisek}`);
-        expect(sekcja((await get(`/magazyn/${id}`)).body)).toContain(`wyjątek na karcie ${dopisek}`);
+        const powod = `wyjątek na karcie: cennik OMS „Wybór” (reguły dałyby: ${opis})`;
+        expect(wierszPodgladu((await podglad([id], konto)).body, id)).toContain(powod);
+        expect(sekcjaKarty).toContain(powod);
       }
     },
   );
@@ -512,18 +751,16 @@ describe('wyjątek cennika z karty — objęcie ERLI, zapis, odmowy i dopisek re
   it.each([true, false])('bez dopisku, gdy reguły dają to samo lub ich brak (reguły: %s)', async (saReguly) => {
     regulyRozmiaru();
     const id = karta(1, MALA);
-    for (const [konto, cennik] of [
-      [KONTO, 'cen-a'],
-      [ERLI, 'Paczkomat A'],
-    ]) {
+    const wybor = cennikNaKarcie('Wybór', { [KONTO]: 'cen-a', [ERLI]: 'Paczkomat A' });
+    ustawCennikKarty(db, { kartaId: id, cennikId: wybor });
+    for (const konto of [KONTO, ERLI]) {
       if (!saReguly) zapiszUstawieniaOfertKonta(db, konto, { cenniki: [] }, { teraz: T0 });
-      zapiszWyjatekCennika(db, { kartaId: id, konto, cennik }, { teraz: T0 });
       const wiersz = wierszPodgladu((await podglad([id], konto)).body, id);
-      expect(wiersz).toContain('wyjątek na karcie');
+      expect(wiersz).toContain('wyjątek na karcie: cennik OMS „Wybór”');
       expect(wiersz).not.toContain('reguły dałyby:');
     }
     const kartaHtml = sekcja((await get(`/magazyn/${id}`)).body);
-    expect(kartaHtml).toContain('wyjątek na karcie');
+    expect(kartaHtml).toContain('wyjątek na karcie: cennik OMS „Wybór”');
     expect(kartaHtml).not.toContain('reguły dałyby:');
   });
 });

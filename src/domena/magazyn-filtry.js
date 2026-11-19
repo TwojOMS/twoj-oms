@@ -1,7 +1,7 @@
 import { wymagajListyKanalow } from './lista-kanalow.js';
-import { PACZKOMAT_WARTOSCI } from './paczkomat.js';
 import { groszeZKwoty } from './kwota.js';
 import { zl } from './kwoty.js';
+import { kluczNazwy, normalizujWartosc } from './parametry-kart.js';
 
 // WYSZUKIWARKA I FILTRY MAGAZYNU — warstwa czysta między adresem HTTP a `oms/db/magazyn.js`.
 //
@@ -39,20 +39,29 @@ import { zl } from './kwoty.js';
 // ⚠️ `cena_zakupu` jest filtrem, ale NIE brakiem kompletu: nie wchodzi do `LICZBA_BRAKOW_SQL`,
 // więc karta bez ceny zakupu może być kompletna. Inaczej kafel postępu spadłby do zera w dniu,
 // w którym panel zaczął znać ceny zakupu. „Bez ceny” = brak ceny obowiązującej DZIŚ.
+//
+// Poza tą listą brakiem jest każdy WYMAGANY parametr własny karty bez wartości: klucz
+// `parametr-<id>` (patrz `kluczBrakuParametru`), bo parametry definiuje firma, a nie kod.
 export const BRAKI_MAGAZYNU = Object.freeze([
   'sku',
   'wymiary',
   'kategoria',
-  'paczkomat',
   'zdjecie',
   'opis',
   'cena_zakupu',
   'komplet',
 ]);
 
-// Trzy stany paczkomatu (domena/paczkomat.js) plus nazwa trzeciego, jakiej uzywa zapytanie.
-// ⚠️ Nie `brak`: baza zna `nieoznaczone`, a `brak` leci u niej w `1 = 0`.
-export const PACZKOMAT_DO_FILTRA = Object.freeze([...PACZKOMAT_WARTOSCI, 'nieoznaczone']);
+const BRAK_PARAMETRU = /^parametr-([1-9]\d{0,15})$/;
+
+/** Klucz pozycji „bez: <parametr>” w filtrze braków (`?brak=parametr-<id>`). */
+export const kluczBrakuParametru = (id) => `parametr-${id}`;
+
+/** Id parametru z klucza braku albo `null`, gdy klucz nie dotyczy parametru. */
+export function idBrakuParametru(klucz) {
+  const m = typeof klucz === 'string' ? BRAK_PARAMETRU.exec(klucz) : null;
+  return m && Number.isSafeInteger(Number(m[1])) ? Number(m[1]) : null;
+}
 
 // Etykiety pol wyboru. Stoja TUTAJ, a nie w widoku, z tego samego powodu, co nazwy kanalow
 // w domena/kanaly.js: druga mapa rozjechalaby sie z pierwsza przy pierwszej zmianie.
@@ -60,19 +69,12 @@ export const BRAKI_ETYKIETY = Object.freeze({
   sku: 'bez SKU',
   wymiary: 'bez wymiarów',
   kategoria: 'bez kategorii głównej',
-  paczkomat: 'bez oznaczenia paczkomatu',
   zdjecie: 'bez zdjęcia',
   opis: 'bez opisu',
   cena_zakupu: 'bez ceny zakupu',
   // Nie „kompletne" — pole wyboru czyta sie jako „pokaz karty: …", a ta pozycja jako jedyna
   // nie opisuje braku. Dopowiedzenie odroznia ja od brakow powyzej jednym spojrzeniem.
   komplet: 'komplet — nic nie brakuje',
-});
-
-export const PACZKOMAT_ETYKIETY = Object.freeze({
-  tak: 'tak',
-  nie: 'nie',
-  nieoznaczone: 'nieoznaczone',
 });
 
 // KOLEJNOSC PARAMETROW W ADRESIE. Stala, zeby ten sam widok mial zawsze ten sam adres
@@ -85,7 +87,11 @@ const POLA = Object.freeze([
   'marka',
   'brak',
   'stan',
-  'paczkomat',
+  'parametr',
+  'pw',
+  'pod',
+  'pdo',
+  'pbez',
   'cenaOd',
   'cenaDo',
   'oferty',
@@ -136,13 +142,117 @@ function cena(surowa) {
   }
 }
 
+const idParametru = (surowy) => {
+  const s = napis(surowy);
+  return s !== null && /^[1-9]\d{0,15}$/.test(s) && Number.isSafeInteger(Number(s)) ? Number(s) : null;
+};
+
+/**
+ * Granica „od–do” parametru liczbowego w postaci kanonicznej (`7.5`, `40`) — ta sama normalizacja,
+ * co przy zapisie wartości na karcie. Nieczytelna liczba z adresu nie zawęża, jak cena.
+ */
+function granica(surowa) {
+  const s = napis(surowa);
+  if (s === null) return null;
+  const v = normalizujWartosc({ nazwa: '', typ: 'liczba' }, s);
+  return v.ok ? v.wartosc : null;
+}
+
+// Pole adresu, którym chodził dawny filtr pola stałego. Jego wartości tłumaczymy na parametr
+// własny o tej samej nazwie, żeby zakładki i odnośniki sprzed zmiany dalej coś znaczyły.
+const DAWNE_POLE = 'paczkomat';
+
+/**
+ * Dawne `?paczkomat=tak|nie|brak` i `?brak=paczkomat` jako surowy filtr parametru o tej nazwie.
+ * Bez takiego parametru — `null`: lista bez zawężenia, a nie pusta, bo pustą czytałoby się
+ * jako „nie ma takich kart”.
+ */
+function dawnyAdres(query, parametry) {
+  const p = parametry.find((x) => kluczNazwy(x.nazwa) === DAWNE_POLE);
+  if (!p) return null;
+  const s = napis(query?.[DAWNE_POLE]);
+  if (s === 'tak' || s === 'nie') return { id: p.id, surowe: { pw: s } };
+  if (s === 'brak' || s === 'nieoznaczone' || napis(query?.brak) === DAWNE_POLE)
+    return { id: p.id, surowe: { pbez: '1' } };
+  return null;
+}
+
+/**
+ * Filtr „Parametr”: `parametr=<id>` z jednym z `pw` (lista: wartość, tekst: „zawiera”), `pod`/`pdo`
+ * (liczba) albo `pbez=1` (bez wartości). Sam parametr = karty, które mają jakąkolwiek wartość.
+ *
+ * Z listą definicji (ekran listy) parametr spoza niej daje pustą listę, a pola nie pasujące do typu
+ * są zrzucane. Bez listy (zawężenie przekazywane do akcji hurtowych) idzie surowo — baza sama
+ * rozstrzyga typ i nieznany parametr oddaje pusto, więc zbiór nie może się poszerzyć.
+ */
+function filtrParametru(query, parametry) {
+  const pusty = { parametr: null, pw: null, pod: null, pdo: null, pbez: null };
+  const lista = Array.isArray(parametry) ? parametry : null;
+  let id = idParametru(query?.parametr);
+  let surowe = query ?? {};
+  if (id === null && napis(query?.parametr) === null && lista) {
+    const dawny = dawnyAdres(query, lista);
+    if (dawny) ({ id, surowe } = dawny);
+  }
+  // Dawne pole bez listy definicji nie ma czym się przetłumaczyć. Zawężenie hurtu z formularza
+  // sprzed zmiany ma trafić w nic, a nie w cały katalog — nieliczbowy parametr baza zamienia w pusto.
+  if (id === null && !lista && napis(query?.parametr) === null && napis(query?.[DAWNE_POLE]) !== null)
+    return { ...pusty, parametr: DAWNE_POLE };
+  // Bez listy definicji (zawężenie hurtu) nieczytelny numer idzie dalej surowo: baza odda pusto,
+  // zamiast cicho zdjąć zawężenie z całego katalogu.
+  if (id === null)
+    return !lista && napis(query?.parametr) !== null ? { ...pusty, parametr: napis(query?.parametr) } : pusty;
+  const def = lista ? lista.find((p) => p.id === id) : null;
+  // Parametr spoza listy definicji (usunięty, z cudzego adresu) idzie dalej numerem: baza nie
+  // znajdzie wartości i odda pusto, zamiast zdjąć zawężenie i pokazać cały katalog.
+  if (lista && !def) return { ...pusty, parametr: String(id) };
+  // `pz` niesie formularz: parametr, dla którego narysował pola wartości. Bez JS zmiana parametru
+  // idzie przyciskiem „Filtruj” razem ze starą wartością — „czarny” z Koloru szukany w Materiale
+  // dałby pustą listę bez powodu. Inny `pz` = sam parametr, wartość do wybrania od nowa.
+  const pz = napis(surowe.pz);
+  if (pz !== null && idParametru(pz) !== id) return { ...pusty, parametr: id };
+  if (napis(surowe.pbez) === '1') return { ...pusty, parametr: id, pbez: '1' };
+  const typ = def?.typ ?? null;
+  let pw = typ === 'liczba' ? null : napis(surowe.pw);
+  if (pw !== null && typ === 'lista') {
+    // Wartość z listy w jej zapisie z Ustawień („CZARNY” → „czarny”); spoza listy zostaje i nie trafi w nic.
+    const v = normalizujWartosc(def, pw);
+    if (v.ok && v.wartosc !== null) pw = v.wartosc;
+  }
+  const liczbowy = typ === null || typ === 'liczba';
+  return {
+    ...pusty,
+    parametr: id,
+    pw,
+    pod: liczbowy ? granica(surowe.pod) : null,
+    pdo: liczbowy ? granica(surowe.pdo) : null,
+  };
+}
+
+/** Brak z adresu: stały z `BRAKI_MAGAZYNU` albo `parametr-<id>` (z listą definicji — tylko wymagany). */
+function brakZAdresu(surowy, parametry) {
+  const s = napis(surowy);
+  if (s === null) return null;
+  if (BRAKI_MAGAZYNU.includes(s)) return s;
+  const id = idBrakuParametru(s);
+  // Dawne `brak=paczkomat` bez listy definicji (zawężenie hurtu) idzie surowo i baza odda pusto.
+  if (id === null) return s === DAWNE_POLE && !Array.isArray(parametry) ? s : null;
+  if (!Array.isArray(parametry)) return s;
+  return parametry.some((p) => p.id === id && p.wymagany) ? s : null;
+}
+
 /**
  * Filtry z adresu. Nieznany filtr stanu zawęża do pustego zbioru, więc musi dotrzeć do zapytania.
  *
+ * @param {object} [query]
+ * @param {string[]} kanaly
+ * @param {{ id: number, nazwa: string, typ: string, wartosci?: string[]|null, wymagany?: boolean }[]} [parametry]
+ *   definicje parametrów własnych kart (ekran listy); bez nich filtr parametru idzie surowo
  * @returns {{fraza: string|null, kanal: string|null, kategoria: string|null, marka: string|null,
- *            brak: string|null, stan?: string|null, paczkomat: string|null, cenaOd: number|null, cenaDo: number|null}}
+ *            brak: string|null, stan?: string|null, parametr: number|null, pw: string|null, pod: string|null,
+ *            pdo: string|null, pbez: string|null, cenaOd: number|null, cenaDo: number|null}}
  */
-export function filtryZZapytania(query = {}, kanaly) {
+export function filtryZZapytania(query = {}, kanaly, parametry) {
   wymagajListyKanalow(kanaly);
   return {
     fraza: napis(query?.fraza),
@@ -154,9 +264,9 @@ export function filtryZZapytania(query = {}, kanaly) {
     kategoria: napis(query?.kategoria),
     // Marka jak kategoria — lista otwarta, nazwa nietrafiona nie trafi w kartę.
     marka: napis(query?.marka),
-    brak: zeSlownika(query?.brak, BRAKI_MAGAZYNU),
+    brak: brakZAdresu(query?.brak, parametry),
     ...(query?.stan ? { stan: Array.isArray(query.stan) ? 'nieznany' : napis(query.stan) } : {}),
-    paczkomat: zeSlownika(query?.paczkomat, PACZKOMAT_DO_FILTRA),
+    ...filtrParametru(query, parametry),
     cenaOd: cena(query?.cenaOd),
     cenaDo: cena(query?.cenaDo),
     ...(query?.oferty ? { oferty: zeSlownika(query.oferty, ['bez', 'z', 'problem']) } : {}),

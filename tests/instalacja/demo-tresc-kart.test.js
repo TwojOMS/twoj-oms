@@ -5,7 +5,7 @@ import os from 'node:os';
 import { createHash } from 'node:crypto';
 import { inflateSync } from 'node:zlib';
 import { spawnSync } from 'node:child_process';
-import { KANALY, PRODUKTY } from '../../scripts/demo-dane-firma.mjs';
+import { KANALY, PRODUKTY, PRODUKTY_KATALOGU } from '../../scripts/demo-dane-firma.mjs';
 import {
   ADRES_ZDJEC_DEMO,
   zdjecieProduktu,
@@ -18,6 +18,7 @@ import { opisDoSekcji, sekcjeAllegroDoSekcji } from '../../src/domena/opis-sekcj
 
 const katalog = path.resolve('src/public/demo-produkty');
 const bezTresci = new Set(['LMP-KIN-001', 'LMP-KIN-002', 'LMP-STO-002-OUT', 'LMP-STO-005-OUT']);
+const skuKatalogu = new Set(PRODUKTY_KATALOGU.map(({ sku }) => sku));
 const sha = (b) => createHash('sha256').update(b).digest('hex');
 const plik = (adres) => {
   expect(adres.startsWith(`${ADRES_ZDJEC_DEMO}/`)).toBe(true);
@@ -28,8 +29,12 @@ function sprawdzZdjecia(sku, adresy) {
     expect(adresy).toEqual([]);
     return;
   }
-  expect(adresy.length).toBeGreaterThanOrEqual(2);
-  expect(adresy.length).toBeLessThanOrEqual(3);
+  if (skuKatalogu.has(sku)) {
+    expect(adresy).toHaveLength(1);
+  } else {
+    expect(adresy.length).toBeGreaterThanOrEqual(2);
+    expect(adresy.length).toBeLessThanOrEqual(3);
+  }
   expect(adresy[0]).toBe(zdjecieProduktu(sku));
   for (const adres of adresy) {
     const b = fs.readFileSync(plik(adres));

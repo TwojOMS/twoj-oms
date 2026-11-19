@@ -4,9 +4,9 @@ import { polecenieZFormularza, zmianyHurtem } from '../../src/domena/magazyn-hur
 const karta = { id: 1, nazwa: 'Lampa Półcień', prog_niskiego_stanu: 4 };
 
 it('pusty próg hurtem zachowuje poprzedni próg przy zmianie innego pola', () => {
-  const { polecenie, blad } = polecenieZFormularza({ prog_niskiego_stanu: '  ', paczkomat: 'tak' });
+  const { polecenie, blad } = polecenieZFormularza({ prog_niskiego_stanu: '  ', glebokosc_cm: '20' });
   expect(blad).toBeNull();
-  expect(zmianyHurtem([karta], polecenie)[0].zmiany).toEqual({ paczkomat: 'tak' });
+  expect(zmianyHurtem([karta], polecenie)[0].zmiany).toEqual({ glebokosc_mm: 200 });
 });
 
 it.each([
@@ -36,7 +36,7 @@ it.each([
   { prog_niskiego_stanu_bez: ['tak', 'tak'] },
   { prog_niskiego_stanu: '0', prog_niskiego_stanu_bez: 'tak' },
 ])('nie planuje żadnej zmiany, gdy ustawienie progu jest błędne: %j', (body) => {
-  const { polecenie, blad } = polecenieZFormularza({ ...body, paczkomat: 'tak' });
+  const { polecenie, blad } = polecenieZFormularza({ ...body, glebokosc_cm: '20' });
   expect(blad).toMatch(/próg niskiego stanu/i);
   expect(polecenie).toBeNull();
 });

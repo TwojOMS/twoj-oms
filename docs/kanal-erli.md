@@ -253,20 +253,22 @@ Objęcie zarządzaniem wymaga podglądu zmian, w tym obecnej i docelowej ceny i 
 
 ### Cennik dostaw według rozmiaru
 
-W kroku „Oferty” ustawień konta ERLI jest sekcja „Cennik dostaw według rozmiaru”. Wpisujesz reguły od góry:
-„Do wymiarów (cm)”, „Do wagi (kg)” i „Cennik” (identyfikator cennika z panelu ERLI wpisany tekstem; OMS nie
-pobiera listy). Przykład dla „Pracowni Półcień”:
+W kroku „Oferty” ustawień konta ERLI jest sekcja „Cennik dostaw według rozmiaru”. Pierwszy wiersz to
+„Cennik domyślny”. Poniżej możesz dodać wiersze dla mniejszych produktów: „Do wymiarów (cm)”,
+„Do wagi (kg)” i „Cennik”. Nazwę cennika wybierasz z listy, którą OMS pobiera razem z
+metodami dostawy w kroku 3. Bez pobrania metod w kroku 3 pozostaje pole tekstowe do wpisania nazwy.
+Przykład dla „Pracowni Półcień”:
 
 | # | do wymiarów (cm) | do wagi (kg) | cennik |
 |---|---|---|---|
+| — | Cennik domyślny | | kurier-gabaryt |
 | 1 | 8 × 38 × 64 | 25 | paczkomat-a |
 | 2 | 41 × 38 × 64 | 25 | paczkomat-c |
-| — | dla większych | | kurier-gabaryt |
 
-OMS sprawdza wiersze od góry i bierze pierwszy, w którym produkt się mieści (wymiary w dowolnym ułożeniu,
+OMS sprawdza wiersze rozmiaru od góry i bierze pierwszy, w którym produkt się mieści (wymiary w dowolnym ułożeniu,
 wartość równa granicy też się mieści), więc wpisuj od najmniejszej reguły. Produkt większy od wszystkich dostaje
-cennik „dla większych”; to pole jest wymagane, gdy są reguły rozmiaru. Samo „dla większych” oznacza jeden cennik
-dla wszystkich ofert. Pod tabelą jest podpowiedź z gabarytami paczkomatu InPost; OMS ich nie pilnuje.
+cennik domyślny; to pole jest wymagane, gdy są reguły rozmiaru. Sam „Cennik domyślny” oznacza jeden cennik
+dla wszystkich ofert. Nad tabelą jest podpowiedź z gabarytami paczkomatu InPost; OMS ich nie pilnuje.
 
 Wyjątek dla jednej karty ustawiasz na karcie w Magazynie, w sekcji „Cennik dostaw”: pole „Cennik dostaw —
 wyjątek” przy koncie ERLI (puste = reguły konta), potem „Zapisz cennik dostaw”. Podgląd pokazuje linię

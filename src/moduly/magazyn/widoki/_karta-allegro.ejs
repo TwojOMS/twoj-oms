@@ -49,7 +49,7 @@
           <thead><tr><th scope="col">Parametr</th><th scope="col">Wartość</th><th scope="col">Skąd</th></tr></thead>
           <tbody>
             <% al.parametry.forEach(pr => { %>
-              <tr><th scope="row"><%= pr.nazwa %><%= pr.wymagany ? ' *' : '' %></th><td><%= !pr.wartosc ? '—' : (pr.slownik?.find(o => String(o.id) === pr.wartosc)?.wartosc ?? pr.wartosc) %></td><td><%= pr.skad %></td></tr>
+              <tr><th scope="row"><%= pr.nazwa %><%= pr.wymagany ? ' *' : '' %></th><td><%= pr.wartosc || '—' %></td><td id="allegro-skad-<%= pr.id %>"><%= pr.skad %></td></tr>
             <% }); %>
           </tbody>
         </table>
@@ -72,20 +72,23 @@
           <input name="kategoria" value="<%= al.wyjatek || '' %>" inputmode="numeric" autocomplete="off">
         </label>
         <% al.parametry.filter(pr => pr.edytowalny).forEach(pr => { %>
-          <label><%= pr.nazwa %>
+          <label><%= pr.nazwa %><%= pr.wymagany ? ' *' : '' %>
           <% if (pr.slownik) { %>
-            <select name="parametr:<%= pr.id %>">
-              <option value="">— bez nadpisania —</option>
-              <% pr.slownik.forEach(o => { %><option value="<%= o.id %>"<%= pr.wartosc === String(o.id) ? ' selected' : '' %>><%= o.wartosc %></option><% }); %>
+            <select name="parametr:<%= pr.id %>" aria-describedby="allegro-skad-<%= pr.id %>">
+              <option value="">— bez nadpisania<%= pr.teraz ? ` (teraz: ${pr.teraz})` : '' %> —</option>
+              <% pr.slownik.forEach(o => { %><option value="<%= o.id %>"<%= pr.nadpisanie === String(o.id) ? ' selected' : '' %>><%= o.wartosc %></option><% }); %>
             </select>
           <% } else { %>
-            <input name="parametr:<%= pr.id %>" value="<%= pr.skad === 'nadpisane na karcie' ? (pr.wartosc ?? '') : '' %>">
+            <input name="parametr:<%= pr.id %>" value="<%= pr.nadpisanie %>" placeholder="<%= pr.teraz %>" aria-describedby="allegro-skad-<%= pr.id %>">
           <% } %>
           </label>
         <% }); %>
       </div>
       <div class="przyciski"><button class="btn btn--glowny" type="submit">Zapisz dane Allegro</button></div>
     </form>
+    <% if (al.parametry.some(pr => pr.edytowalny)) { %>
+      <p class="podpowiedz">Wartość wpisana tutaj wygrywa z regułą kategorii i z importem. Przy regule „pole karty” nadpisanie nie zmienia się razem z polem karty — zostaw puste, jeśli wartość ma iść za kartą.</p>
+    <% } %>
     <% } %>
   </div>
 </section>

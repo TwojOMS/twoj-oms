@@ -22,7 +22,7 @@
   <% if (przelacznik.wlaczone) { %>
     <p><a href="/magazyn/stany/otwarcie">Stan otwarcia z kanałów</a> · <a href="/magazyn/stany/kanaly/podglad">Podgląd stanów w kanałach</a></p>
   <% } %>
-  <form id="ust-stany-przelacz" method="post" action="/ustawienia/magazyn/stany" aria-labelledby="ust-stany-tytul">
+  <form id="ust-stany-przelacz" method="post" action="/magazyn/ustawienia/stany" aria-labelledby="ust-stany-tytul">
     <% if (przelacznik.wlaczone) { %>
       <input type="hidden" name="wlacz" value="0">
       <p class="pas-uprzedzenie">Wyłączenie niczego nie kasuje. Ponowne włączenie liczy od nowa — od nowej granicy. Stan otwarcia można wpisać albo kontynuować od stanu z wyłączenia, pomniejszonego o zamówienia z przerwy.</p>
@@ -59,7 +59,7 @@
 
 <section class="ust-sekcja" id="ust-zrodla">
   <h2 id="ust-zrodla-tytul">Kolejność źródeł treści karty</h2>
-  <form method="post" action="/ustawienia/magazyn/zrodla" aria-labelledby="ust-zrodla-tytul" aria-describedby="ust-zrodla-pomoc">
+  <form method="post" action="/magazyn/ustawienia/zrodla" aria-labelledby="ust-zrodla-tytul" aria-describedby="ust-zrodla-pomoc">
     <ol>
       <% zrodla.forEach(function (z, i) { %>
         <li>
@@ -74,6 +74,12 @@
   </form>
   <p id="ust-zrodla-pomoc">Przy pustym polu karty wygrywa źródło wyżej. Pola poprawione ręcznie nie są nadpisywane.</p>
   <% if (zrodla.length) { %><p>Przyciski „Wyżej” i „Niżej” zapisują kolejność.</p><% } %>
+</section>
+
+<section class="ust-sekcja" id="ust-parametry">
+  <h2 id="ust-parametry-tytul">Parametry kart</h2>
+  <p>Własne pola kart produktów — np. kolor, materiał, moc — z filtrem na liście Magazynu.</p>
+  <p><a href="/magazyn/ustawienia/parametry">Parametry kart</a></p>
 </section>
 
 <section class="ust-sekcja" id="ust-producenci">

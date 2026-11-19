@@ -51,10 +51,11 @@
     </form>
   </section>
 <% } else if (krok === 'trwa') { %>
-  <section class="panel import-ekran" data-krok="trwa"
+  <section class="panel import-ekran" data-krok="trwa" aria-busy="true"
     hx-get="<%= odswiez %>" hx-trigger="every 2.5s" hx-select=".import-ekran" hx-swap="outerHTML">
     <p><%- plakietka(wybrany) %><strong><%= wybrany.etykieta %></strong> · <%= typ.nazwa %></p>
     <p class="wyjasnienie" role="status">
+      <span class="wir" id="import-wir" hx-preserve="true" aria-hidden="true"></span>
       <% if (locals.postep && FAZY[postep.faza]) { %>
         <%= FAZY[postep.faza] %><% if (postep.strona) { %> — strona <%= postep.strona %><% if (postep.stron) { %> z <%= postep.stron %><% } %><% } else { %>…<% } %>
       <% } else if (locals.postep && postep.zTego) { %>

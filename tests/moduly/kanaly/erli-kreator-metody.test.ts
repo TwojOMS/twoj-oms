@@ -27,8 +27,14 @@ afterEach(async () => {
   db?.close();
 });
 // klienciKanalow: dziś mapa klientów kanałów (kompozycja) daje tylko Allegro — klienta ERLI podaje test.
-type Opcje = { zPliku?: boolean; bezMetodErli?: boolean; idMetody?: string; klienciKanalow?: Record<string, unknown> };
-async function setup({ zPliku = false, bezMetodErli = false, idMetody, klienciKanalow }: Opcje = {}) {
+type Opcje = {
+  zPliku?: boolean;
+  bezMetodErli?: boolean;
+  idMetody?: string;
+  nazwyCennikow?: unknown[];
+  klienciKanalow?: Record<string, unknown>;
+};
+async function setup({ zPliku = false, bezMetodErli = false, idMetody, nazwyCennikow, klienciKanalow }: Opcje = {}) {
   const env = {
     OMS_TRYB: 'proba',
     OMS_KANALY: '[]',
@@ -48,6 +54,8 @@ async function setup({ zPliku = false, bezMetodErli = false, idMetody, klienciKa
     const url = String(u),
       p = new URL(url).pathname;
     zapytania.push({ url, metoda: i?.method ?? 'GET', body: typeof i?.body === 'string' ? i.body : '' });
+    if (nazwyCennikow && p.endsWith('/delivery/priceListsDetails'))
+      return Response.json(nazwyCennikow.map((name) => ({ name, prices: [] })));
     if (idMetody && p.endsWith('/delivery/priceListsDetails'))
       return Response.json([{ prices: [{ deliveryMethod: { id: idMetody } }] }]);
     if (idMetody && p.endsWith('/dictionaries/deliveryMethods'))
@@ -190,6 +198,30 @@ it('krok 3: metody z cennika sklepu, metoda bez kuriera ostrzega, HTML bez klucz
         .ustawienia_json,
     ),
   ).not.toContain(klucz);
+});
+
+it('„Pobierz metody” czyta cenniki ERLI raz, ale nie zapisuje ich listy — zapisana wcześniej zostaje', async () => {
+  const f = await setup({ nazwyCennikow: ['Lampy — paczkomat', 'Lampy — kurier', 'Cennik nowy'] });
+  const p = await f.polaczony();
+  const ustawienia = () =>
+    JSON.parse(
+      String(
+        db
+          .prepare('SELECT ustawienia_json FROM konfiguracja_integracji WHERE integracja=?')
+          .get('erli:' + f.row().klucz)!.ustawienia_json,
+      ),
+    );
+  expect((await f.post(p, 'pobierz-metody')).statusCode).toBe(303);
+  expect(ustawienia()).not.toHaveProperty('cennikiDostaw');
+  db.prepare(
+    "UPDATE konfiguracja_integracji SET ustawienia_json = json_set(ustawienia_json, '$.cennikiDostaw', json(?)) WHERE integracja = ?",
+  ).run(JSON.stringify(['Lampy — paczkomat']), 'erli:' + f.row().klucz);
+  f.zapytania.length = 0;
+  expect((await f.post(p, 'pobierz-metody')).statusCode).toBe(303);
+  expect(ustawienia().cennikiDostaw).toEqual(['Lampy — paczkomat']);
+  const sciezki = f.zapytania.map(({ url }) => new URL(url).pathname);
+  expect(sciezki.filter((p) => p.endsWith('/delivery/priceListsDetails'))).toHaveLength(1);
+  expect(sciezki.some((p) => p.endsWith('/delivery/priceLists'))).toBe(false);
 });
 
 it('zapis kroku 3 zmienia drogę nadania zamówienia z tą metodą od razu, bez restartu', async () => {

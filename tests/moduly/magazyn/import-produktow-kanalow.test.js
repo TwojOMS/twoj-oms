@@ -204,6 +204,10 @@ describe('Sprawdź — podgląd', () => {
     const trwa = await app.inject({ url, headers: auth });
     katalog.resolve(KATALOG_PRO);
     expect(trwa.body).toContain('data-krok="trwa"');
+    expect(trwa.body).toMatch(/<section class="panel import-ekran" data-krok="trwa"[^>]*\baria-busy="true"/);
+    expect(trwa.body).toMatch(
+      /<p class="wyjasnienie" role="status">\s*<span class="wir" id="import-wir" hx-preserve="true" aria-hidden="true"><\/span>/,
+    );
     expect(trwa.body).toContain('Pobieram listę produktów — strona 3 z 7');
     expect(trwa.body).toContain('htmx.min.js');
     expect(trwa.body).toContain('hx-get="/magazyn/import?kanal=pro&amp;typ=pelny"');
@@ -220,6 +224,7 @@ describe('Sprawdź — podgląd', () => {
     });
     expect(podglad.body).toContain('data-krok="podglad"');
     expect(podglad.body).not.toContain('hx-trigger="every 2.5s"');
+    expect(podglad.body).not.toContain('class="wir"');
   });
 
   it('pokazuje zieloną plakietkę ukończenia z rolą status także gdy import coś pominął', async () => {

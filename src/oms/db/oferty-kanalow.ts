@@ -1,6 +1,7 @@
 import type { DatabaseSync, SQLInputValue } from 'node:sqlite';
 import { STAWKI_Z_ZW } from '../../domena/vat.js';
 import { regulyKonta, sprawdzReguly } from '../../domena/cennik-dostaw.js';
+import { maCennikiOms, regulyCennikowKonta, wCalosci, zapiszRegulyKonta } from './cenniki-oms.ts';
 
 // Dostęp do rejestru ofert kanałów (`oferty_kanalow`) i ustawień ofert konta kanału
 // (`oferty_ustawienia_kont`), tabele z migracji magazyn/0001. Bez logiki pętli synchronizacji i bez wyliczenia ceny.
@@ -103,7 +104,7 @@ export type UstawieniaOfertKonta = {
 };
 
 /** Reguła cennika konta — wymiary w mm i waga w g (liczby całkowite); bez limitów = „dla większych”. */
-export type RegulaCennika = { doMm?: number[]; doG?: number; cennik: string };
+export type RegulaCennika = { doMm?: number[]; doG?: number; cennik: string; nazwaOms?: string };
 
 /** Zatwierdzenie stanów przed pierwszą wysyłką ilości — związane z przełączeniem magazynu, nie z datą. */
 export type ZatwierdzenieStanow = {
@@ -397,6 +398,11 @@ export function ofertyZProblememIlosci(db: DatabaseSync, kanal: string, kod: str
   ).map((w) => oferta(w) as OfertaKanalu);
 }
 
+/** Kasuje wiersz rejestru (np. oferta usunięta w Allegro). Nic w kanale się nie zmienia; zwraca liczbę usuniętych. */
+export function usunOferte(db: DatabaseSync, id: number): number {
+  return Number(db.prepare('DELETE FROM oferty_kanalow WHERE id = ?').run(id).changes);
+}
+
 /** Nowy wiersz rejestru. Z OMS-u → tryb `zarzadzana`, przejęta → `obserwowana`. Druga oferta OMS tej samej
  * karty na tym samym koncie albo powtórzone (konto, id zewnętrzne) kończy się błędem bazy. */
 export function wstawOferte(db: DatabaseSync, nowa: NowaOferta, opcje?: Opcje): OfertaKanalu {
@@ -569,8 +575,10 @@ const POLA_USTAWIEN: Record<string, readonly [string, (v: unknown) => SQLInputVa
   ],
 };
 
-/** Reguły z wiersza — `cenniki_json`, a gdy pusta albo kolumny brak (baza bez magazyn/0003) — dawne pole. */
-function cennikiZWiersza(w: Wiersz | undefined): readonly RegulaCennika[] {
+/** Reguły konta z cenników OMS (magazyn/0006); baza bez nich — z wiersza: `cenniki_json`, a gdy pusta albo kolumny
+ * brak (baza bez magazyn/0003) — dawne pole. */
+function cennikiKonta(db: DatabaseSync, klucz: string, w: Wiersz | undefined): readonly RegulaCennika[] {
+  if (maCennikiOms(db)) return regulyCennikowKonta(db, klucz);
   if (!w) return DOMYSLNE_USTAWIENIA_OFERT.cenniki;
   const lista = json(w.cenniki_json);
   return Array.isArray(lista) ? lista : regulyKonta({ cennikDostaw: w.cennik_dostaw });
@@ -613,7 +621,7 @@ export function ustawieniaOfertKonta(db: DatabaseSync, klucz: string): Ustawieni
     // Kolumny z magazyn/0004 — baza bez tej migracji daje wartości domyślne.
     buforSzt: (w?.bufor_szt as number | undefined) ?? d.buforSzt,
     progSkokuSzt: (w?.prog_skoku_szt as number | undefined) ?? d.progSkokuSzt,
-    cenniki: cennikiZWiersza(w),
+    cenniki: cennikiKonta(db, klucz, w),
     zmienionoAt: w ? String(w.zmieniono_at) : null,
     aktorLogin: w ? (w.aktor_login as string | null) : null,
   };
@@ -650,10 +658,23 @@ export function zapiszUstawieniaOfertKonta(
     }
   }
   const wszystkie = [...kolumny, 'zmieniono_at', 'aktor_login'];
-  db.prepare(
-    `INSERT INTO oferty_ustawienia_kont (klucz, ${wszystkie.join(', ')}) VALUES (?, ${wszystkie.map(() => '?').join(', ')})
+  const zapisz = () =>
+    db
+      .prepare(
+        `INSERT INTO oferty_ustawienia_kont (klucz, ${wszystkie.join(', ')}) VALUES (?, ${wszystkie.map(() => '?').join(', ')})
     ON CONFLICT (klucz) DO UPDATE SET ${wszystkie.map((k) => `${k} = excluded.${k}`).join(', ')}`,
-  ).run(klucz, ...wartosci, teraz(opcje), opcje?.aktor ?? null);
+      )
+      .run(klucz, ...wartosci, teraz(opcje), opcje?.aktor ?? null);
+  // Dobór czyta już cenniki OMS: dawny zapis reguł konta przekładamy na powiązania tego konta, żeby nie przepadł.
+  if (('cenniki' in zmiany || 'cennikDostaw' in zmiany) && maCennikiOms(db)) {
+    const stary = 'cennikDostaw' in zmiany ? (zmiany.cennikDostaw as string | null)?.trim() : null;
+    const reguly =
+      'cenniki' in zmiany ? ((zmiany.cenniki as RegulaCennika[] | null) ?? []) : stary ? [{ cennik: stary }] : [];
+    wCalosci(db, () => {
+      zapisz();
+      zapiszRegulyKonta(db, klucz, reguly, { teraz: teraz(opcje), aktor: opcje?.aktor ?? null });
+    });
+  } else zapisz();
   return ustawieniaOfertKonta(db, klucz);
 }
 

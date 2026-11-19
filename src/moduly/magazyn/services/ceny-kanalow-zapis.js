@@ -1,10 +1,11 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { kwotaDziesietna } from '../../../domena/cena-kanalu.js';
+import { groszeZKwoty } from '../../../domena/kwota.js';
 import { MODUL_ALLEGRO } from '../../../domena/modul-allegro.ts';
 import { MODUL_ERLI } from '../../../domena/modul-erli.ts';
 import { MODUL_WOO } from '../../../domena/modul-woo.ts';
 import { katalogErli } from '../../../integracje/kanal-modul.ts';
-import { chronCeneKarty, zapiszZmianeWKanale } from '../../../oms/db/ceny-kanalow.js';
+import { chronCeneKarty, ustawCeneWLustrze, zapiszZmianeWKanale } from '../../../oms/db/ceny-kanalow.js';
 import { ofertaPoIdZewnetrznym, ustawieniaOfertKonta, zmienOferte } from '../../../oms/db/oferty-kanalow.ts';
 import { podgladCen } from './ceny-kanalow-podglad.js';
 import { bramkaZapisu } from './oferty-wspolne.js';
@@ -73,6 +74,15 @@ function paczki(lista, rozmiar) {
   return wynik;
 }
 
+function groszeZZapisuWoo(cena) {
+  try {
+    return groszeZKwoty(cena === '' ? null : cena, 'cena z odpowiedzi Woo');
+  } catch {
+    // Sklep potwierdził zapis, ale odczytaną cenę może uzupełnić dopiero synchronizacja.
+    return null;
+  }
+}
+
 async function zapiszWoo(klient, wiersze, oznacz) {
   const grupy = Map.groupBy(wiersze, (w) => celWoo(w.cel)?.rodzic ?? null);
   for (const [rodzic, grupa] of grupy) {
@@ -93,7 +103,8 @@ async function zapiszWoo(klient, wiersze, oznacz) {
       const w = poId.get(String(r.id));
       if (!w) continue;
       poId.delete(String(r.id));
-      oznacz(w, r.ok ? 'ok' : 'blad', r.ok ? null : r.blad || 'sklep odrzucił cenę');
+      if (r.ok) oznacz(w, 'ok', null, groszeZZapisuWoo(r.cena));
+      else oznacz(w, 'blad', r.blad || 'sklep odrzucił cenę');
     }
     for (const w of poId.values()) oznacz(w, 'blad', 'Brak wyniku zapisu ceny Woo');
   }
@@ -140,11 +151,12 @@ async function zapiszAllegro(klient, kanal, wiersze, podgladId, czekaj, oznacz) 
           w,
           t.status === 'SUCCESS' ? 'ok' : 'blad',
           t.status === 'SUCCESS' ? null : t.message || 'Allegro odrzuciło cenę',
+          w.nowaGr,
         );
       }
     }
   }
-  for (const k of czekajace) for (const w of k.oferty.values()) oznacz(w, 'w_toku', null);
+  for (const k of czekajace) for (const w of k.oferty.values()) oznacz(w, 'w_toku', null, w.nowaGr);
 }
 
 // ERLI dostaje cenę tą samą drogą co pętla ofert zarządzanych (batch-update) i przez tę samą bramkę zapisu:
@@ -332,7 +344,7 @@ export function createZapisCenKanalow({
     }
 
     // Każdy wiersz zapisuje się osobno: błąd jednego kanału ani jednej oferty nie cofa reszty.
-    const oznacz = (w, stan, blad) => {
+    const oznacz = (w, stan, blad, cenaGr = null) => {
       db.exec('BEGIN IMMEDIATE');
       try {
         zapiszZmianeWKanale(db, {
@@ -347,6 +359,10 @@ export function createZapisCenKanalow({
           wynik: stan,
           blad,
         });
+        if (stan === 'ok' && cenaGr !== null) {
+          const pozycja = pozycjaLustra(w.cel);
+          if (pozycja) ustawCeneWLustrze(db, w.kanal, ...pozycja, cenaGr);
+        }
         // Cena wysłana z narzutem wróci przy imporcie z kanału — karta musi ją wtedy zignorować.
         if (stan !== 'blad') chronCeneKarty(db, w.kartaId, at);
         db.exec('COMMIT');

@@ -4,7 +4,7 @@ import {
   zapiszProduktSklepowy,
   oznaczZnikniete,
   liczZyweProdukty,
-  utworzKarte,
+  utworzKarte as utworzKarteBazy,
   zapiszKarte,
   powiazProdukt,
   kartyZKanalami,
@@ -13,6 +13,15 @@ import {
   zliczeniaNiepowiazanych,
   SORTOWANIE_KART,
 } from '../../../src/oms/db/magazyn.js';
+import { dodajParametr, ustawWartoscKarty } from '../../../src/oms/db/parametry-kart.js';
+
+// Kolumna `paczkomat` została w bazie, ale zapis karty już jej nie pisze (paczkomat to dziś parametr karty).
+// Testy filtrów i braków listy nadal czytają tę kolumnę, więc fikstura wpisuje ją wprost, obok zapisu karty.
+function utworzKarte(db, { paczkomat, ...dane } = {}, opcje) {
+  const id = utworzKarteBazy(db, dane, opcje);
+  if (paczkomat !== undefined) db.prepare('UPDATE karty_produktow SET paczkomat = ? WHERE id = ?').run(paczkomat, id);
+  return id;
+}
 
 const P = (nad = {}) => ({
   kanal: 'pro',
@@ -187,13 +196,11 @@ describe('utworzKarte / zapiszKarte', () => {
       szerokosc_mm: 700,
       wysokosc_mm: 1000,
       kategoria_glowna: 'Oświetlenie',
-      paczkomat: 'nie',
       opis: 'Lampa',
     });
     const w = db.prepare('SELECT * FROM karty_produktow WHERE id=?').get(id);
     expect(w.nazwa).toBe('Szpulka');
     expect(w.szerokosc_mm).toBe(700);
-    expect(w.paczkomat).toBe('nie');
     expect(w.utworzony_at).toBeTruthy();
     expect(w.zmieniony_at).toBe(w.utworzony_at);
   });
@@ -226,15 +233,13 @@ describe('utworzKarte / zapiszKarte', () => {
     expect(() => zapiszKarte(db, id, { id: 999 })).toThrow();
   });
 
-  // Trzy stany paczkomatu pilnuje domain/paczkomat.js — baza nie ma prawa przyjąć
-  // czwartego, bo filtr „bez oznaczenia paczkomatu" liczy właśnie nieoznaczone.
-  it('nieznana wartość paczkomatu ląduje jako nieoznaczone', () => {
+  // Paczkomat jest dziś parametrem karty (`karty_parametry`); stara kolumna została w bazie tylko do odczytu
+  // starych danych, więc zapis karty ani jej nie pisze, ani nie udaje, że pisze.
+  it('zapis karty nie pisze już kolumny paczkomat', () => {
     const db = openOmsDb(':memory:');
-    const id = utworzKarte(db, { nazwa: 'Szpulka', paczkomat: 'moze' });
+    const id = utworzKarteBazy(db, { nazwa: 'Szpulka', paczkomat: 'tak' });
     expect(db.prepare('SELECT paczkomat FROM karty_produktow WHERE id=?').get(id).paczkomat).toBe(null);
-    zapiszKarte(db, id, { paczkomat: 'tak' });
-    expect(db.prepare('SELECT paczkomat FROM karty_produktow WHERE id=?').get(id).paczkomat).toBe('tak');
-    zapiszKarte(db, id, { paczkomat: 'byle co' });
+    expect(() => zapiszKarte(db, id, { paczkomat: 'tak' })).toThrow();
     expect(db.prepare('SELECT paczkomat FROM karty_produktow WHERE id=?').get(id).paczkomat).toBe(null);
   });
 
@@ -405,13 +410,19 @@ describe('kartyZKanalami — jeden wiersz, ceny z kanałów', () => {
     expect(kartyZKanalami(db, { filtry: { brak: 'wymiary' } }).map((x) => x.nazwa)).toEqual(['BezWymiaru']);
   });
 
-  it('filtr braków zna też brak kategorii głównej i brak oznaczenia paczkomatu', () => {
+  // Paczkomat jest teraz parametrem karty, więc „bez oznaczenia paczkomatu" to brak
+  // wymaganego parametru (`parametr-<id>`), a dawny klucz `paczkomat` nie poszerza listy.
+  it('filtr braków zna też brak kategorii głównej i brak wymaganego parametru', () => {
     const db = openOmsDb(':memory:');
-    utworzKarte(db, { nazwa: 'Komplet', kategoria_glowna: 'Oświetlenie', paczkomat: 'nie' });
-    utworzKarte(db, { nazwa: 'BezKategorii', paczkomat: 'tak' });
+    const p = dodajParametr(db, { nazwa: 'Paczkomat', typ: 'lista', wartosci: ['tak', 'nie'], wymagany: true }).id;
+    const komplet = utworzKarte(db, { nazwa: 'Komplet', kategoria_glowna: 'Oświetlenie' });
+    const bezKategorii = utworzKarte(db, { nazwa: 'BezKategorii' });
     utworzKarte(db, { nazwa: 'BezPaczkomatu', kategoria_glowna: 'Boho' });
+    ustawWartoscKarty(db, komplet, p, 'nie');
+    ustawWartoscKarty(db, bezKategorii, p, 'tak');
     expect(kartyZKanalami(db, { filtry: { brak: 'kategoria' } }).map((x) => x.nazwa)).toEqual(['BezKategorii']);
-    expect(kartyZKanalami(db, { filtry: { brak: 'paczkomat' } }).map((x) => x.nazwa)).toEqual(['BezPaczkomatu']);
+    expect(kartyZKanalami(db, { filtry: { brak: `parametr-${p}` } }).map((x) => x.nazwa)).toEqual(['BezPaczkomatu']);
+    expect(kartyZKanalami(db, { filtry: { brak: 'paczkomat' } })).toEqual([]);
   });
 
   it('połowiczne wymiary to nadal brak wymiarów', () => {
@@ -551,14 +562,17 @@ describe('kartyZKanalami — jeden wiersz, ceny z kanałów', () => {
     expect(kartyZKanalami(db, { filtry: { kategoria: 'Aplikacje' } }).map((x) => x.nazwa)).toEqual(['Podwojny']);
   });
 
-  it('filtr paczkomatu ma trzy stany, a nieoznaczone to nie to samo co „nie"', () => {
+  // Trzy stany dawnego filtra paczkomatu mieszkają teraz w filtrze parametru: wartość
+  // listy i „bez wartości" — nieoznaczone nadal nie jest tym samym co „nie".
+  it('filtr parametru listy ma trzy stany, a bez wartości to nie to samo co „nie"', () => {
     const db = openOmsDb(':memory:');
-    utworzKarte(db, { nazwa: 'Tak', paczkomat: 'tak' });
-    utworzKarte(db, { nazwa: 'Nie', paczkomat: 'nie' });
+    const p = dodajParametr(db, { nazwa: 'Paczkomat', typ: 'lista', wartosci: ['tak', 'nie'], wymagany: true }).id;
+    ustawWartoscKarty(db, utworzKarte(db, { nazwa: 'Tak' }), p, 'tak');
+    ustawWartoscKarty(db, utworzKarte(db, { nazwa: 'Nie' }), p, 'nie');
     utworzKarte(db, { nazwa: 'Nieoznaczony' });
-    expect(kartyZKanalami(db, { filtry: { paczkomat: 'tak' } }).map((x) => x.nazwa)).toEqual(['Tak']);
-    expect(kartyZKanalami(db, { filtry: { paczkomat: 'nie' } }).map((x) => x.nazwa)).toEqual(['Nie']);
-    expect(kartyZKanalami(db, { filtry: { paczkomat: 'nieoznaczone' } }).map((x) => x.nazwa)).toEqual(['Nieoznaczony']);
+    expect(kartyZKanalami(db, { filtry: { parametr: p, pw: 'tak' } }).map((x) => x.nazwa)).toEqual(['Tak']);
+    expect(kartyZKanalami(db, { filtry: { parametr: p, pw: 'nie' } }).map((x) => x.nazwa)).toEqual(['Nie']);
+    expect(kartyZKanalami(db, { filtry: { parametr: p, pbez: true } }).map((x) => x.nazwa)).toEqual(['Nieoznaczony']);
   });
 
   it('filtr ceny bierze zakres w groszach', () => {
@@ -774,6 +788,8 @@ describe('kartyZKanalami — koszt renderu listy', () => {
 // o TĘ SAMĄ fiksturę, a nie każde o swoją.
 describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
   const opis = JSON.stringify({ sekcje: [{ elementy: [{ typ: 'tekst', html: '<p>Opis karty</p>' }] }] });
+  const wymaganyParametr = (db) =>
+    dodajParametr(db, { nazwa: 'Paczkomat', typ: 'lista', wartosci: ['tak', 'nie'], wymagany: true }).id;
   function uzupelnijTresc(db, id, brak = null) {
     if (brak !== 'opis') {
       db.prepare('UPDATE karty_produktow SET opis_sekcje_json = ? WHERE id = ?').run(opis, id);
@@ -787,11 +803,9 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
     }
   }
 
-  // ⚠️ FIKSTURA Z WŁASNYM STRAŻNIKIEM. „Kompletny ma 0 braków" jest zdaniem o karcie, który
-  // NAPRAWDĘ ma komplet — a `utworzKarte` przepuszcza `paczkomat` przez `czyPaczkomat`, więc
-  // literówka w wartości zostawiłaby po cichu NULL i test mierzyłby co innego, niż mówi jego
-  // nazwa. Odczyt wiersza po utworzeniu zamyka tę drogę z obu stron: kompletny ma wszystkie
-  // sześć rodzajów danych wypełnionych, dziurawy ani jednego.
+  // ⚠️ FIKSTURA Z WŁASNYM STRAŻNIKIEM. „Kompletny ma 0 braków" jest zdaniem o karcie, która
+  // NAPRAWDĘ ma komplet. Odczyt wiersza po utworzeniu zamyka drogę do cichego NULL-a z obu
+  // stron: kompletny ma wszystkie sześć rodzajów danych (z wymaganym parametrem), dziurawy ani jednego.
   function paraKart(db) {
     const kompletny = utworzKarte(db, {
       nazwa: 'Kompletny',
@@ -799,15 +813,17 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
       szerokosc_mm: 700,
       wysokosc_mm: 1000,
       kategoria_glowna: 'Na ściany',
-      paczkomat: 'nie',
     });
     const dziurawy = utworzKarte(db, { nazwa: 'Dziurawy' });
     uzupelnijTresc(db, kompletny);
+    // Szósty rodzaj danych to wymagany parametr karty.
+    ustawWartoscKarty(db, kompletny, wymaganyParametr(db), 'nie');
 
     const stan = (id) =>
       db
         .prepare(
-          `SELECT sku, szerokosc_mm, wysokosc_mm, kategoria_glowna, paczkomat, opis_sekcje_json,
+          `SELECT sku, szerokosc_mm, wysokosc_mm, kategoria_glowna, opis_sekcje_json,
+        (SELECT COUNT(*) FROM karty_parametry kp WHERE kp.karta_id = k.id) AS parametry,
         (SELECT COUNT(*) FROM zdjecia_kart z WHERE z.karta_id = k.id) AS zdjecia
         FROM karty_produktow k WHERE id = ?`,
         )
@@ -817,7 +833,7 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
       szerokosc_mm: 700,
       wysokosc_mm: 1000,
       kategoria_glowna: 'Na ściany',
-      paczkomat: 'nie',
+      parametry: 1,
       opis_sekcje_json: opis,
       zdjecia: 1,
     });
@@ -826,7 +842,7 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
       szerokosc_mm: null,
       wysokosc_mm: null,
       kategoria_glowna: null,
-      paczkomat: null,
+      parametry: 0,
       opis_sekcje_json: null,
       zdjecia: 0,
     });
@@ -912,23 +928,28 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
       szerokosc_mm: 700,
       wysokosc_mm: 1000,
       kategoria_glowna: 'Boho',
-      paczkomat: 'nie',
     });
     const dziura = {
       sku: { sku: null },
       wymiary: { wysokosc_mm: null },
       kategoria: { kategoria_glowna: null },
-      paczkomat: { paczkomat: null },
+      paczkomat: {},
       zdjecie: {},
       opis: {},
     };
 
-    uzupelnijTresc(db, utworzKarte(db, pelny('Komplet')));
+    // „Paczkomat" w tej fiksturze to wymagany parametr karty — tylko karty z dziurą
+    // `paczkomat` nie mają jego wartości.
+    const paczkomat = wymaganyParametr(db);
+    const komplet = utworzKarte(db, pelny('Komplet'));
+    uzupelnijTresc(db, komplet);
+    ustawWartoscKarty(db, komplet, paczkomat, 'nie');
     const bezSku = [];
     for (const [czego, ile] of Object.entries(ILE)) {
       for (let i = 0; i < ile; i += 1) {
         const id = utworzKarte(db, { ...pelny(`${czego}-${i}`), ...dziura[czego] });
         uzupelnijTresc(db, id, czego);
+        if (czego !== 'paczkomat') ustawWartoscKarty(db, id, paczkomat, 'nie');
         if (czego === 'sku') bezSku.push(id);
       }
     }
@@ -960,7 +981,7 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
         bezSku: licz("sku IS NULL OR sku = ''"),
         bezWymiarow: licz('szerokosc_mm IS NULL OR wysokosc_mm IS NULL'),
         bezKategorii: licz("kategoria_glowna IS NULL OR kategoria_glowna = ''"),
-        bezPaczkomatu: licz('paczkomat IS NULL'),
+        bezPaczkomatu: licz('id NOT IN (SELECT karta_id FROM karty_parametry)'),
         bezZdjecia: licz('id NOT IN (SELECT karta_id FROM zdjecia_kart)'),
         bezOpisu: licz('opis_sekcje_json IS NULL'),
         zZrodlemNumeru: db
@@ -992,7 +1013,6 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
       doPrzejecia: 0,
       bezWymiarow: 0,
       bezKategorii: 0,
-      bezPaczkomatu: 0,
       komplet: 0,
       bezZdjecia: 0,
       bezOpisu: 0,
@@ -1008,7 +1028,6 @@ describe('braki karty — jedna definicja dla filtra, listy i zliczeń', () => {
       doPrzejecia: 2,
       bezWymiarow: 3,
       bezKategorii: 5,
-      bezPaczkomatu: 6,
       bezZdjecia: 7,
       bezOpisu: 8,
       komplet: 1,

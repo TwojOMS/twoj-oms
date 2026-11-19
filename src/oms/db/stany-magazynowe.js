@@ -297,9 +297,7 @@ export function zuzycieProduktuOdGranicy(db, produktId, przelacznik = przelaczni
 export function dodajRuch(db, { kartaId, rodzaj, ilosc, powod = null, klucz, konto = null, at = teraz() }) {
   if (!RODZAJE_RUCHU.includes(rodzaj)) throw new Error(`dodajRuch: nieznany rodzaj „${rodzaj}”`);
   if (!przelacznikStanow(db).wlaczone)
-    throw new Error(
-      'Stany magazynowe są wyłączone — włącz je w Ustawieniach → Zamówienia i magazyn → Stany magazynowe.',
-    );
+    throw new Error('Stany magazynowe są wyłączone — włącz je w Magazyn → Ustawienia → Stany magazynowe.');
   if (!db.prepare('SELECT 1 FROM karty_produktow WHERE id = ?').get(kartaId))
     throw new Error(`Nie ma karty produktu ${kartaId}.`);
   const r = db
@@ -314,10 +312,7 @@ export function dodajRuch(db, { kartaId, rodzaj, ilosc, powod = null, klucz, kon
 /** Podgląd importu stanu otwarcia (bez zapisu). */
 export function podgladImportuOtwarcia(db, tekst) {
   const { wlaczone, granica } = przelacznikStanow(db);
-  if (!wlaczone)
-    throw new Error(
-      'Stany magazynowe są wyłączone — włącz je w Ustawieniach → Zamówienia i magazyn → Stany magazynowe.',
-    );
+  if (!wlaczone) throw new Error('Stany magazynowe są wyłączone — włącz je w Magazyn → Ustawienia → Stany magazynowe.');
   const poSku = db.prepare(
     "SELECT id, nazwa FROM karty_produktow WHERE UPPER(TRIM(sku)) = UPPER(TRIM(?)) AND TRIM(COALESCE(sku, '')) <> ''",
   );

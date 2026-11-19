@@ -7,6 +7,7 @@ import { podpisz, NAZWA_CIASTECZKA_OMS } from '../../../src/core/bezpieczenstwo/
 import { wczytajSekret } from '../../../src/core/bezpieczenstwo/sekret-sesji.js';
 import { przelaczStany, stanKarty } from '../../../src/oms/db/stany-magazynowe.js';
 import { dzienWarszawa } from '../../../src/domena/format-daty.js';
+import { dodajParametr } from '../../../src/oms/db/parametry-kart.js';
 import { readFileSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -222,7 +223,10 @@ it('na pustej liście oba kafle i filtry są puste', () => {
   expect(zliczeniaBrakow(db)).toMatchObject({ bezZdjecia: 0, bezOpisu: 0 });
   for (const brak of ['zdjecie', 'opis']) expect(kartyZKanalami(db, { filtry: { brak } })).toEqual([]);
 });
+// Pięć pól karty plus jeden wymagany parametr; parametr niewymagany braku nie robi.
 it('pusta karta zachowuje sześć braków w danych, bez kolumny Stan na liście', async () => {
+  dodajParametr(db, { nazwa: 'Paczkomat', typ: 'lista', wartosci: ['tak', 'nie'], wymagany: true });
+  dodajParametr(db, { nazwa: 'Kolor', typ: 'tekst' });
   utworzKarte(db, { nazwa: 'Lampa bez danych' });
   const r = await app.inject({ url: '/magazyn', headers: auth });
   expect(r.statusCode).toBe(200);

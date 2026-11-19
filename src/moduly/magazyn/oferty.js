@@ -5,15 +5,27 @@ import {
   ofertaPoIdZewnetrznym,
   wstawOferte,
   zmienOferte,
+  usunOferte,
   ustawieniaOfertKonta,
+  zapiszUstawieniaOfertKonta,
 } from '../../oms/db/oferty-kanalow.ts';
+import { STAWKI_Z_ZW } from '../../domena/vat.js';
 import { wyjatekCennika } from '../../oms/db/cenniki-kart.ts';
+import {
+  cennikiOms,
+  cennikOmsKarty,
+  maCennikiOms,
+  ustawCennikKarty,
+  wyjatekKartyOms,
+} from '../../oms/db/cenniki-oms.ts';
+import { liniaDanychKartyErli } from '../../domena/erli-linia-karty.js';
 import { brakiUstawienOfert } from '../../domena/erli-oferty-ustawienia.js';
-import { dobierzCennik, regulyKonta } from '../../domena/cennik-dostaw.js';
+import { dobierzCennik, opisRozmiaruCennika, regulyKonta } from '../../domena/cennik-dostaw.js';
 import { trescOferty } from './services/tresc-oferty.js';
 import { idProduktuErli } from './services/petla-ofert.js';
 import { stronaOdmowy } from '../../core/web/odmowa.js';
 import { fmtDataCzas } from '../../domena/format-daty.js';
+import { zdanieCzekaniaOferty } from '../../domena/czekanie-oferty.js';
 import { pobierzOfertyReczne, propozycjePrzejecia, transakcjaOfert } from './services/przejecie-ofert-erli.js';
 import { ofertaAllegroKarty } from './services/tresc-oferty-allegro.js';
 import { bramkaZapisu, znakInstalacji } from './services/oferty-wspolne.js';
@@ -25,6 +37,47 @@ import { BRAK_ZGODY_OFERT, gotowoscOfertAllegro } from '../kanaly/services/ofert
 import { migawkaStanow, przelacznikStanow } from '../../oms/db/stany-magazynowe.js';
 
 const LIMIT_KART_PODGLADU = 200;
+
+/**
+ * Kto wystawia oferty hurtem z listy Magazynu (pasek, podgląd, zatwierdzenie, aktywacja szkiców): administrator
+ * oraz gość demo publicznego. Znacznik `podgladDemo` powstaje tylko na instancji z kontem gościa (tryb próby,
+ * wszystkie kanały to atrapy) i tylko dla loginu gościa — na zwykłej instancji zostaje sam admin.
+ * Pozostałe operacje na ofertach (objęcie, wznowienia, sterowanie ceną) dalej wyłącznie dla admina.
+ */
+export function mozeWystawiacHurtem(konto) {
+  return konto?.admin === true || konto?.podgladDemo === true;
+}
+
+// Brak tekstu i załączniki z innego konta naprawia też tekst domyślny konta; tekst za długi albo uszkodzony —
+// tylko karta. Domena nie rozróżnia tych przypadków kodem, więc rozpoznajemy je po początku zdania.
+const NAPRAWI_TEKST_KONTA = /^(?:Wpisz informację o bezpieczeństwie|Załączniki bezpieczeństwa należą)/u;
+
+/**
+ * Odnośniki przy odmowie podglądu Allegro: gdzie uzupełnić informację o bezpieczeństwie. Ustawienia konta widzi
+ * tylko admin — gość demo i inni dostają zdanie, kto to ustawia, zamiast odnośnika, który i tak by ich odbił.
+ * @param {{kod: string, tekst: string}} blad
+ * @param {number} kartaId
+ * @param {{klucz: string, nazwa?: string}} konto
+ * @param {boolean} admin
+ * @returns {Array<{adres?: string, napis: string}>}
+ */
+export function odnosnikiBledu(blad, kartaId, konto, admin) {
+  if (blad.kod !== 'bezpieczenstwo') return [];
+  const odnosniki = [{ adres: `/magazyn/${kartaId}#gpsr-informacja-tytul`, napis: 'Uzupełnij na karcie' }];
+  if (!NAPRAWI_TEKST_KONTA.test(blad.tekst)) return odnosniki;
+  const nazwa = konto.nazwa || konto.klucz;
+  odnosniki.push(
+    admin
+      ? {
+          adres: `/ustawienia/integracje/allegro/${encodeURIComponent(konto.klucz)}/oferty#allegro-oferty-bezpieczenstwo`,
+          napis: `Ustaw tekst domyślny konta ${nazwa}`,
+        }
+      : {
+          napis: `(tekst domyślny konta ustawia administrator: Ustawienia → Integracje → Allegro → konto ${nazwa} → krok Oferty)`,
+        },
+  );
+  return odnosniki;
+}
 
 /** E4.06 (D47): napis nagłówka podglądu o ilości; null = stany nigdy niewłączone (dzisiejszy tekst, D14). */
 export function zrodloIlosci(migawka, ustawienia) {
@@ -110,7 +163,11 @@ export function mozePonowic(o) {
  */
 export const ODMOWA_BRAK_W_ALLEGRO =
   'Oferty nie ma już w Allegro — Ponów jej nie odtworzy (nowa oferta to opłata i ryzyko ' +
-  'duplikatu). Sprawdź ją w panelu Allegro albo wycofaj kartę ze sprzedaży („Wycofaj ze sprzedaży” na karcie).';
+  'duplikatu). Sprawdź ją w panelu Allegro. Jeśli usunąłeś ją celowo, użyj „Usuń z OMS” — karta zostaje, ' +
+  'a ofertę możesz wystawić od nowa.';
+// Dziennik zmian w kanałach ma w bazie CHECK na `pole` (cena, status, steruj_cena), więc usunięcie zapisu oferty
+// trafia tam jako zmiana statusu na ten napis — czytelny wprost w historii karty.
+export const STATUS_USUNIETEJ_Z_OMS = 'usunięta z OMS';
 export function brakWAllegro(o) {
   return (
     o.tryb === 'zarzadzana' &&
@@ -181,16 +238,40 @@ export function ofertyDoWidoku(db, kartaId) {
   }));
 }
 
-/** E3d.02: lista cenników konta Allegro z „Pobierz z Allegro” (krok 6) — `[{ id, nazwa }]`, bez listy pusta. */
+/** Lista cenników konta Allegro z „Pobierz z Allegro” (krok 6) — `[{ id, nazwa }]`, bez listy pusta. */
 export function cennikiAllegro(ustawienia) {
   const lista = ustawienia?.slowniki?.cenniki;
   return Array.isArray(lista) ? lista.filter((p) => p && typeof p.id === 'string' && p.id.trim()) : [];
 }
 /**
- * E3d.02-03: wybrany cennik do podglądu i karty — nazwa ze słownika konta Allegro albo identyfikator (ERLI: nazwa
- * z panelu ERLI) i powód doboru. Odmowa doboru → null (odmowę pokazują błędy karty).
+ * Cenniki OMS do pola wyboru na karcie i w podglądzie ERLI — `[{ id, etykieta }]`. Etykieta mówi, czym cennik jest
+ * (rozmiar, domyślny, tylko na karcie), chyba że mówi to już sama nazwa.
  */
-export function opisDostawy(ustawienia, rodzaj, dostawa, karta = null) {
+export function opcjeCennikowOms(db) {
+  if (!maCennikiOms(db)) return [];
+  return cennikiOms(db).map((c) => {
+    const opis =
+      c.rodzaj === 'rozmiar'
+        ? opisRozmiaruCennika({ doMm: c.doMm, doG: c.doG })
+        : c.rodzaj === 'domyslny'
+          ? 'domyślny'
+          : 'tylko na karcie';
+    const samaNazwa = c.nazwa.trim().toLowerCase() === opis.toLowerCase();
+    return { id: String(c.id), etykieta: samaNazwa ? c.nazwa : `${c.nazwa} (${opis})` };
+  });
+}
+
+/** Nazwa cennika OMS karty, gdy ma on powiązanie z kontem (to on daje wtedy wyjątek) — do powodu doboru. */
+export function nazwaCennikaKarty(db, kartaId, konto) {
+  return maCennikiOms(db) ? (wyjatekKartyOms(db, { kartaId, konto })?.nazwaOms ?? null) : null;
+}
+
+/**
+ * Wybrany cennik do podglądu i karty — nazwa ze słownika konta Allegro albo identyfikator (ERLI: nazwa z panelu
+ * ERLI) i powód doboru. `nazwaWyjatku` — nazwa cennika OMS karty do powodu wyjątku. Odmowa doboru → null (odmowę
+ * pokazują błędy karty).
+ */
+export function opisDostawy(ustawienia, rodzaj, dostawa, karta = null, nazwaWyjatku = null) {
   if (!dostawa?.cennik) return null;
   const nazwa = rodzaj === 'allegro' ? cennikiAllegro(ustawienia).find((p) => p.id === dostawa.cennik)?.nazwa : null;
   const wyjatek = dostawa.powod?.rodzaj === 'wyjatek';
@@ -207,11 +288,16 @@ export function opisDostawy(ustawienia, rodzaj, dostawa, karta = null) {
     const opis = bezWyjatku.odmowa?.tekst ?? `${nazwaZRegul || bezWyjatku.cennik} — ${bezWyjatku.powod.tekst}`;
     dopisek = ` (reguły dałyby: ${opis})`;
   }
+  // Budowniczowie oferty nie znają nazwy cennika OMS karty — powód wyjątku dostaje ją tutaj.
+  const powod =
+    wyjatek && nazwaWyjatku
+      ? dobierzCennik({ wyjatek: dostawa.cennik, nazwaWyjatku }).powod.tekst
+      : dostawa.powod?.tekst;
   return {
     cennik: dostawa.cennik,
     nazwa: typeof nazwa === 'string' && nazwa.trim() ? nazwa : dostawa.cennik,
     rodzaj: dostawa.powod?.rodzaj ?? null,
-    powod: (dostawa.powod?.tekst ?? '') + dopisek,
+    powod: (powod ?? '') + dopisek,
     odmowa,
   };
 }
@@ -236,10 +322,17 @@ export function registerOfertyMagazynu(
   const oplaty = createOplatyAllegro();
   // Podpis procesu: restart wymaga ponownego podglądu. Bez magazynowania list kart w pamięci.
   const sekret = randomBytes(32);
-  const podpis = (req, konto, ids, czas) =>
+  const podpis = (req, konto, ids, czas, odcisk = '') =>
     createHmac('sha256', sekret)
-      .update(JSON.stringify([req.konto?.login, konto, ids, czas]))
+      .update(JSON.stringify([req.konto?.login, konto, ids, czas, odcisk]))
       .digest('hex');
+  // Ślad podglądu ERLI obejmuje ustawienia ofert konta: po ich zmianie (uzupełnienie braków w podglądzie albo
+  // konfigurator) stary ślad nie zatwierdzi ofert policzonych przy innych ustawieniach — potrzebny nowy podgląd.
+  const odciskUstawien = (konto) =>
+    JSON.stringify(ustawieniaOfertKonta(db, konto), (k, v) =>
+      k === 'zmienionoAt' || k === 'aktorLogin' ? undefined : v,
+    );
+  const maVat = (karta) => String(karta?.stawka_vat ?? '').trim() !== '';
   const odmowa = (reply, kod, tekst) =>
     stronaOdmowy(reply, kod, tekst, { tytul: 'Oferty', wroc: '/magazyn', napisWroc: 'Wróć do magazynu' });
   const uprawniony = (req) => req.konto?.admin === true;
@@ -339,6 +432,7 @@ export function registerOfertyMagazynu(
       dane.bledy.push(
         ...brakiUstawienOfert(ustawienia)
           .filter((b) => !(b === 'cennik dostaw' && dane.dostawa?.cennik))
+          .filter((b) => !(b === 'stawka VAT' && maVat(dane.karta)))
           .map((b) => `Uzupełnij ustawienia: ${b}`),
       );
       if (dane.karta?.wycofana) dane.bledy.push('Karta jest wycofana.');
@@ -372,17 +466,38 @@ export function registerOfertyMagazynu(
       (Array.isArray(surowe) ? surowe : [surowe]).map((v) => (Number.isSafeInteger(v) && v > 0 ? String(v) : v)),
     );
   };
-  // E3d.02-03 (decyzja kierownika): wyjątek cennika z karty wystarcza — konto bez reguł nie blokuje podglądu, gdy choć
-  // jedna wybrana karta ma wyjątek na tym koncie; karty bez wyjątku dostają wtedy odmowę osobno (błąd budowniczego).
+  // Wyjątek cennika z karty wystarcza — konto bez reguł nie blokuje podglądu, gdy choć jedna wybrana karta ma cennik
+  // OMS powiązany z tym kontem; karty bez wyjątku dostają wtedy odmowę osobno (błąd budowniczego).
   const bezBrakuCennika = (braki, konto, ids) =>
     braki.includes('cennik dostaw') && ids.some((id) => wyjatekCennika(db, { kartaId: id, konto }))
       ? braki.filter((b) => b !== 'cennik dostaw')
       : braki;
+  // Stawka VAT konta jest tylko zapasem dla kart bez własnej — brak na koncie blokuje podgląd jedynie wtedy,
+  // gdy choć jedna wybrana karta nie ma stawki.
+  const vatNaKazdejKarcie = (ids) => {
+    if (!ids.length) return false;
+    const { n } = db
+      .prepare(
+        `SELECT COUNT(*) AS n FROM karty_produktow
+      WHERE id IN (${ids.map(() => '?').join(',')}) AND length(trim(coalesce(stawka_vat, ''))) > 0`,
+      )
+      .get(...ids);
+    return Number(n) === ids.length;
+  };
   function zestaw(konto, ids) {
     const ustawienia = ustawieniaOfertKonta(db, konto);
-    const braki = bezBrakuCennika(brakiUstawienOfert(ustawienia), konto, ids);
-    // E4.06: jedna migawka stanów na żądanie, nie na kartę.
+    const reguly = regulyKonta(ustawienia);
+    // Jedna migawka stanów na żądanie, nie na kartę. Liczona przed brakami: przy włączonych stanach ilość idzie
+    // z magazynu, więc brak stałej liczby sztuk nie blokuje podglądu.
     const migawka = migawkaStanow(db);
+    const vatKart = vatNaKazdejKarcie(ids);
+    // Cennik dostaw nie blokuje podglądu ERLI: karta bez cennika (ani z konta, ani z wyjątku) dostaje własną
+    // odmowę budowniczego, reszta kart idzie dalej.
+    const braki = brakiUstawienOfert(ustawienia).filter(
+      (b) =>
+        b !== 'cennik dostaw' && !(b === 'stawka VAT' && vatKart) && !(b === 'stała liczba sztuk' && migawka.wlaczone),
+    );
+    const opcjeOms = opcjeCennikowOms(db);
     const wiersze = braki.length
       ? []
       : ids.map((id) => {
@@ -391,10 +506,29 @@ export function registerOfertyMagazynu(
           if (ofertyKarty(db, id).some((o) => o.kanal === konto)) w.bledy.push('Karta ma już ofertę na tym koncie.');
           return {
             ...w,
+            // Ten sam kształt odmowy co w Allegro — widok podglądu jest wspólny.
+            bledy: w.bledy.map((tekst) => ({ tekst, odnosniki: [] })),
             id,
             nazwa: w.karta?.nazwa ?? `Karta ${id}`,
             iloscNapis: napisIlosci(w.ilosc, w.cialo?.stock),
-            dostawa: opisDostawy(ustawienia, 'erli', w.dostawa, w.karta),
+            dostawa: opisDostawy(ustawienia, 'erli', w.dostawa, w.karta, nazwaCennikaKarty(db, id, konto)),
+            liniaDanych: w.cialo
+              ? liniaDanychKartyErli({
+                  cena: w.cialo.price,
+                  ilosc: napisIlosci(w.ilosc, w.cialo.stock),
+                  czasWysylkiDni: w.cialo.dispatchTime?.period,
+                  vat: w.cialo.taxRate,
+                  zdjecia: w.cialo.images?.length,
+                })
+              : null,
+            // Pole wyboru cennika OMS karty w wierszu: pierwsza opcja mówi, co da dobór po rozmiarze.
+            cennikWiersza: w.karta
+              ? {
+                  wybor: String(cennikOmsKarty(db, id)?.cennikId ?? ''),
+                  zKonta: dobierzCennik({ karta: w.karta, reguly }).cennik ?? 'brak',
+                  opcje: opcjeOms,
+                }
+              : null,
           };
         });
     return { ustawienia, braki, wiersze, zrodloIlosci: zrodloIlosci(migawka, ustawienia) };
@@ -408,7 +542,7 @@ export function registerOfertyMagazynu(
   };
   // D43: odmowa = karta ma już ofertę na TYM koncie (rejestr OMS albo lustro sklepu); oferty na innych kontach
   // dają tylko ostrzeżenie domeny „dwie oferty”. Lustro czytamy raz na podgląd, nie raz na kartę.
-  function zestawAllegro(konto, ids) {
+  function zestawAllegro(konto, ids, admin) {
     const ustawienia = ustawieniaOfertKonta(db, konto.klucz);
     const { braki: brakiKonta, krok } = gotowoscOfertAllegro(db, konto.klucz);
     const braki = bezBrakuCennika(brakiKonta, konto.klucz, ids);
@@ -431,14 +565,21 @@ export function registerOfertyMagazynu(
           const w = ofertaAllegroKarty(
             db,
             id,
-            { klucz: konto.klucz, srodowisko: konto.srodowisko },
+            // Nazwa konta trafia do treści odmów domeny — człowiek zna konto po nazwie, nie po kluczu.
+            { klucz: konto.klucz, nazwa: konto.nazwa, srodowisko: konto.srodowisko },
             { kontaSrodowiska, migawka, tworzenie: true },
           );
-          const bledy = w.bledy.map((b) => b.tekst);
-          const dostawa = opisDostawy(ustawienia, 'allegro', w.dostawa, w.karta);
-          if (w.karta?.wycofana) bledy.push('Karta jest wycofana.');
+          const bledy = w.bledy.map((b) => ({ tekst: b.tekst, odnosniki: odnosnikiBledu(b, id, konto, admin) }));
+          const dostawa = opisDostawy(
+            ustawienia,
+            'allegro',
+            w.dostawa,
+            w.karta,
+            nazwaCennikaKarty(db, id, konto.klucz),
+          );
+          if (w.karta?.wycofana) bledy.push({ tekst: 'Karta jest wycofana.', odnosniki: [] });
           const maOferte = ofertyKarty(db, id).some((o) => o.kanal === konto.klucz) || wLustrze.has(id);
-          if (maOferte) bledy.push('Karta ma już ofertę na tym koncie.');
+          if (maOferte) bledy.push({ tekst: 'Karta ma już ofertę na tym koncie.', odnosniki: [] });
           const zadanie = bledy.length ? null : w.zadanie;
           return {
             id,
@@ -459,9 +600,86 @@ export function registerOfertyMagazynu(
     return { ustawienia, braki, wiersze, konfigurator: krok, zrodloIlosci: zrodloIlosci(migawka, ustawienia) };
   }
   const zlotowki = (kwota) => `${String(kwota).replace('.', ',')} zł`;
+  // Braki konta ERLI, które da się uzupełnić z podglądu; cennik dostaw zostaje w konfiguratorze.
+  const POLA_BRAKOW = [
+    { brak: 'stała liczba sztuk', pole: 'stalaIlosc', etykieta: 'Ilość w ofertach (szt.)' },
+    { brak: 'czas wysyłki', pole: 'czasWysylkiDni', etykieta: 'Czas wysyłki (dni robocze)' },
+    { brak: 'stawka VAT', pole: 'stawkaVat', etykieta: 'Stawka VAT' },
+  ];
+  const odciskKonta = (wybrane, konto) => (wybrane.rodzaj === 'erli' ? odciskUstawien(konto) : '');
+  const tokenPodgladu = (req, wybrane, konto, ids) => {
+    const czas = String(Date.now());
+    return `${czas}.${podpis(req, konto, ids, czas, odciskKonta(wybrane, konto))}`;
+  };
+  const danePodgladu = (req, wybrane, konto, ids) =>
+    wybrane.rodzaj === 'allegro'
+      ? zestawAllegro(wybrane.konto, ids, uprawniony(req))
+      : {
+          ...zestaw(konto, ids),
+          konfigurator: `/ustawienia/integracje/erli/${encodeURIComponent(konto)}?krok=oferty#erli-krok-oferty`,
+        };
+  // Cennik wybrany przy karcie w podglądzie ERLI to ten sam cennik OMS co w sekcji „Cennik dostaw” karty — działa na
+  // wszystkich kontach, z którymi ma powiązanie. Wszystkie karty w jednej transakcji — błędne pole nie zapisuje
+  // żadnego. Pole nieobecne w ciele (formularz bez pól cenników) zostawia wybór karty bez zmian.
+  function zapiszCennikiZPodgladu(req, wybrane, konto, ids) {
+    const wpisane = {};
+    for (const id of ids) {
+      const v = pomoc.pole(req.body, `cennik_${id}`);
+      if (v !== null) wpisane[id] = v.trim();
+    }
+    const bledy = {};
+    if (wybrane.rodzaj !== 'erli' || !Object.keys(wpisane).length) return { bledy, wpisane: {} };
+    const znane = new Set(opcjeCennikowOms(db).map((o) => o.id));
+    const opcje = { aktor: req.konto?.login ?? null };
+    const karta = db.prepare('SELECT 1 FROM karty_produktow WHERE id = ?');
+    try {
+      transakcjaOfert(db, () => {
+        for (const [klucz, cennik] of Object.entries(wpisane)) {
+          const kartaId = Number(klucz);
+          if (cennik === String(cennikOmsKarty(db, kartaId)?.cennikId ?? '') || !karta.get(kartaId)) continue;
+          if (cennik && !znane.has(cennik)) bledy[kartaId] = 'Wybierz cennik OMS z listy.';
+          else ustawCennikKarty(db, { kartaId, cennikId: cennik ? Number(cennik) : null }, opcje);
+        }
+        if (Object.keys(bledy).length) throw new Error('odrzucone cenniki kart');
+      });
+    } catch (e) {
+      if (!Object.keys(bledy).length) throw e;
+    }
+    return { bledy, wpisane };
+  }
+  function widokPodgladu(
+    req,
+    reply,
+    { wybrane, konto, ids, dane, token, bledyPol = {}, wpisane = {}, bledyCennikow = {}, wpisaneCenniki = {} },
+  ) {
+    const allegro = wybrane.rodzaj === 'allegro';
+    return reply.view('magazyn-oferty-podglad.ejs', {
+      title: allegro ? 'Oferty Allegro — podgląd' : 'Oferty ERLI — podgląd',
+      ...dane,
+      rodzaj: wybrane.rodzaj,
+      etykieta: `${allegro ? pomoc.adresKanalu(konto) : `ERLI · ${wybrane.konto.nazwa || konto}`}${allegro && wybrane.konto.srodowisko === 'sandbox' ? ' (sandbox)' : ''}`,
+      zlotowki,
+      konto,
+      ids,
+      token,
+      bledyCennikow,
+      // Po odrzuceniu formularz pokazuje wybory operatora, żeby poprawił tylko błędne pole.
+      wpisaneCenniki: Object.keys(bledyCennikow).length ? wpisaneCenniki : {},
+      aktywacja: null,
+      uzupelnianie: allegro
+        ? null
+        : {
+            mozeZapisac: uprawniony(req),
+            stawki: STAWKI_Z_ZW,
+            pola: POLA_BRAKOW.filter((p) => dane.braki.includes(p.brak)),
+            bledyPol,
+            wpisane,
+          },
+    });
+  }
   for (const akcja of ['podglad', 'zatwierdz'])
     app.post(`/magazyn/oferty/${akcja}`, async (req, reply) => {
-      if (!uprawniony(req)) return odmowa(reply, 403, 'Brak prawa edycji magazynu.');
+      if (!mozeWystawiacHurtem(req.konto)) return odmowa(reply, 403, 'Brak prawa edycji magazynu.');
       const konto = pomoc.pole(req.body, 'konto');
       const wybrane = kontoOfert(konto);
       if (!wybrane) return odmowa(reply, 400, 'Wybierz bieżące konto ERLI albo Allegro.');
@@ -475,7 +693,7 @@ export function registerOfertyMagazynu(
       if (akcja === 'zatwierdz') {
         token = pomoc.pole(req.body, 'podglad') ?? '';
         const [czas, mac] = token.split('.');
-        const wzor = podpis(req, konto, ids, czas);
+        const wzor = podpis(req, konto, ids, czas, odciskKonta(wybrane, konto));
         if (
           !/^\d+$/.test(czas ?? '') ||
           Date.now() - Number(czas) > 30 * 60_000 ||
@@ -486,20 +704,24 @@ export function registerOfertyMagazynu(
           return odmowa(reply, 409, 'Otwórz podgląd ponownie przed zatwierdzeniem.');
         }
       } else {
-        const czas = String(Date.now());
-        token = `${czas}.${podpis(req, konto, ids, czas)}`;
+        token = tokenPodgladu(req, wybrane, konto, ids);
       }
+      // Cenniki z wierszy zapisujemy przed budową treści, żeby „Wystaw oferty” wstawił oferty już z nowym cennikiem.
+      const cenniki = zapiszCennikiZPodgladu(req, wybrane, konto, ids);
+      if (Object.keys(cenniki.bledy).length)
+        return widokPodgladu(req, reply.code(400), {
+          wybrane,
+          konto,
+          ids,
+          dane: danePodgladu(req, wybrane, konto, ids),
+          token: tokenPodgladu(req, wybrane, konto, ids),
+          bledyCennikow: cenniki.bledy,
+          wpisaneCenniki: cenniki.wpisane,
+        });
       // E2.06: zawsze odczyt i walidacja na nowo, także przy zatwierdzeniu.
       const allegro = wybrane.rodzaj === 'allegro';
-      const dane = allegro
-        ? zestawAllegro(wybrane.konto, ids)
-        : {
-            ...zestaw(konto, ids),
-            konfigurator: `/ustawienia/integracje/erli/${encodeURIComponent(konto)}?krok=oferty#erli-krok-oferty`,
-          };
-      let wynik = null;
+      const dane = danePodgladu(req, wybrane, konto, ids);
       if (akcja === 'zatwierdz' && !dane.braki.length) {
-        let poszlo = 0;
         transakcjaOfert(db, () => {
           for (const w of dane.wiersze) {
             if (w.bledy.length) continue;
@@ -512,26 +734,113 @@ export function registerOfertyMagazynu(
               pochodzenie: 'oms',
               tryb: 'zarzadzana',
             });
-            poszlo++;
           }
         });
-        wynik = { poszlo, odmowiono: dane.wiersze.length - poszlo };
+        // Wynik na osobnym adresie: F5 odświeża stan ofert zamiast ponownie wysyłać formularz.
+        return reply
+          .code(303)
+          .redirect(`/magazyn/oferty/wynik?konto=${encodeURIComponent(konto)}&karty=${ids.join(',')}`);
       }
       // D40: prowizja tylko w podglądzie — informacja, nie bramka zatwierdzenia.
       if (allegro && akcja === 'podglad') await oplaty.prowizje(wybrane.konto, dane.wiersze);
-      return reply.view('magazyn-oferty-podglad.ejs', {
-        title: allegro ? 'Oferty Allegro — podgląd' : 'Oferty ERLI — podgląd',
-        ...dane,
-        rodzaj: wybrane.rodzaj,
-        etykieta: `${allegro ? pomoc.adresKanalu(konto) : `ERLI · ${konto}`}${allegro && wybrane.konto.srodowisko === 'sandbox' ? ' (sandbox)' : ''}`,
-        zlotowki,
-        konto,
-        ids,
-        token,
-        wynik,
-        aktywacja: null,
-      });
+      return widokPodgladu(req, reply, { wybrane, konto, ids, dane, token });
     });
+  // Ekran po zatwierdzeniu: tylko odczyt kolejki ofert tego konta dla tych kart — nic nie zapisuje ani nie wysyła.
+  app.get('/magazyn/oferty/wynik', async (req, reply) => {
+    if (!mozeWystawiacHurtem(req.konto)) return odmowa(reply, 403, 'Brak prawa edycji magazynu.');
+    const konto = String(req.query?.konto ?? '');
+    const wybrane = kontoOfert(konto);
+    if (!wybrane) return odmowa(reply, 400, 'Wybierz bieżące konto ERLI albo Allegro.');
+    const karty = String(req.query?.karty ?? '');
+    if (!/^\d+(?:,\d+)*$/.test(karty)) return odmowa(reply, 400, 'Brak listy kart.');
+    const ids = [...new Set(karty.split(',').map(Number))];
+    if (ids.length > LIMIT_KART_PODGLADU)
+      return odmowa(reply, 400, `Za dużo kart naraz (${ids.length}) — zawęź filtr do 200`);
+    const allegro = wybrane.rodzaj === 'allegro';
+    const nazwaKarty = db.prepare('SELECT nazwa FROM karty_produktow WHERE id = ?');
+    const ustawieniaKonta = ustawieniaOfertKonta(db, konto);
+    const wiersze = ids.map((id) => {
+      const oferta = ofertyKarty(db, id).find((o) => o.kanal === konto) ?? null;
+      const numer = String(oferta?.idZewnetrzne ?? '');
+      // Allegro nadaje numer dopiero po wysłaniu (do tego czasu `ext:`); numer ERLI zna OMS, ale przed wysłaniem
+      // oferty jeszcze nie ma w sklepie.
+      const wyslana = allegro ? numer !== '' && !numer.startsWith('ext:') : oferta?.stan !== 'do_wyslania';
+      return {
+        id,
+        nazwa: nazwaKarty.get(id)?.nazwa || `Karta ${id}`,
+        stan: oferta ? STANY_PO_POLSKU[oferta.stan] : null,
+        problem: oferta && ['problem', 'blad'].includes(oferta.stan) ? (oferta.problemy?.[0]?.tekst ?? null) : null,
+        numer: oferta && wyslana ? numer : null,
+        adres: allegro && oferta && wyslana && /^\d+$/.test(numer) ? `https://allegro.pl/oferta/${numer}` : null,
+        doWyslania: oferta?.stan === 'do_wyslania',
+        czeka: oferta
+          ? zdanieCzekaniaOferty({
+              rodzaj: wybrane.rodzaj,
+              konto: wybrane.konto,
+              ustawienia: ustawieniaKonta,
+              oferta,
+              teraz: Date.now(),
+            })
+          : null,
+      };
+    });
+    const nazwa = wybrane.konto.nazwa || konto;
+    return reply.view('magazyn-oferty-wynik.ejs', {
+      title: `Oferty — ${nazwa}`,
+      nazwa,
+      allegro,
+      aktywujPoSprawdzeniu: allegro ? ustawieniaOfertKonta(db, konto).aktywujPoSprawdzeniu === true : null,
+      wiersze,
+      wKolejce: wiersze.filter((w) => w.doWyslania).length,
+      admin: req.konto?.admin === true,
+      adres: `/magazyn/oferty/wynik?konto=${encodeURIComponent(konto)}&karty=${ids.join(',')}`,
+    });
+  });
+  // Braki ustawień konta ERLI uzupełniane wprost z podglądu: te same walidatory co krok „Oferty” konfiguratora,
+  // wszystkie pola w jednej transakcji — błąd jednego pola nie zapisuje żadnego.
+  app.post('/magazyn/oferty/ustawienia-konta', async (req, reply) => {
+    if (!uprawniony(req)) return odmowa(reply, 403, 'Brak prawa edycji magazynu.');
+    const konto = pomoc.pole(req.body, 'konto');
+    const wybrane = kontoOfert(konto);
+    if (wybrane?.rodzaj !== 'erli') return odmowa(reply, 400, 'Wybierz bieżące konto ERLI.');
+    const ids = [...new Set(idsZadania(req))].sort((a, b) => a - b);
+    if (ids.length > LIMIT_KART_PODGLADU)
+      return odmowa(reply, 400, `Za dużo kart naraz (${ids.length}) — zawęź filtr do 200`);
+    if (!ids.length) return odmowa(reply, 400, 'Zaznacz co najmniej jedną kartę.');
+    const wpisane = {};
+    for (const { pole } of POLA_BRAKOW) {
+      const v = String(pomoc.pole(req.body, pole) ?? '').trim();
+      if (v !== '') wpisane[pole] = v;
+    }
+    const bledyPol = {};
+    const aktor = { aktor: req.konto?.login ?? null };
+    try {
+      transakcjaOfert(db, () => {
+        for (const [pole, v] of Object.entries(wpisane)) {
+          const wartosc = pole === 'stawkaVat' || !/^\d+$/.test(v) ? v : Number(v);
+          try {
+            zapiszUstawieniaOfertKonta(db, konto, { [pole]: wartosc }, aktor);
+          } catch (e) {
+            bledyPol[pole] = e instanceof Error ? e.message : String(e);
+          }
+        }
+        if (Object.keys(bledyPol).length) throw new Error('odrzucone pola ustawień');
+      });
+    } catch (e) {
+      if (!Object.keys(bledyPol).length) throw e;
+    }
+    const zle = Object.keys(bledyPol).length > 0;
+    const dane = danePodgladu(req, wybrane, konto, ids);
+    return widokPodgladu(req, reply.code(zle ? 400 : 200), {
+      wybrane,
+      konto,
+      ids,
+      dane,
+      token: tokenPodgladu(req, wybrane, konto, ids),
+      bledyPol,
+      wpisane: zle ? wpisane : {},
+    });
+  });
   // D30: „Aktywuj w Allegro” tylko zapisuje zamiar; wysyła pętla ofert (E3.08b).
   const aktywuj = (o) =>
     zmienOferte(db, o.id, {
@@ -540,7 +849,7 @@ export function registerOfertyMagazynu(
       nastepnaProbaAt: null,
     });
   app.post('/magazyn/oferty/aktywuj', async (req, reply) => {
-    if (!uprawniony(req)) return odmowa(reply, 403, 'Brak prawa edycji magazynu.');
+    if (!mozeWystawiacHurtem(req.konto)) return odmowa(reply, 403, 'Brak prawa edycji magazynu.');
     let konto = pomoc.pole(req.body, 'konto');
     let wybrane = kontoOfert(konto);
     // Aktywacja przy wybranym koncie ERLI używa jedynego konta Allegro ze zgodą; nieznany klucz
@@ -581,7 +890,6 @@ export function registerOfertyMagazynu(
       ustawienia: ustawieniaOfertKonta(db, konto),
       ids,
       token: '',
-      wynik: null,
       konfigurator: '',
       zlotowki,
     });
@@ -620,6 +928,39 @@ export function registerOfertyMagazynu(
       else zmienOferte(db, o.id, zmianyZdjecia(o));
       return reply.code(303).redirect(`/magazyn/${o.kartaId}#produkty-karty`);
     });
+
+  // Oferta usunięta w Allegro zostawia w OMS-ie martwy wiersz, który blokuje wystawienie karty od nowa na tym
+  // koncie. Kasujemy tylko ten wiersz — Allegro niczego nie dostaje. Stan sprawdzamy jeszcze raz w transakcji,
+  // bo między potwierdzeniem a kliknięciem pętla mogła znaleźć ofertę z powrotem.
+  app.post('/magazyn/:id/oferty/:ofertaId/usun', async (req, reply) => {
+    if (!uprawniony(req)) return odmowa(reply, 403, 'Brak prawa edycji magazynu.');
+    const kartaId = Number(req.params.id);
+    const ofertaId = Number(req.params.ofertaId);
+    const wynik = transakcjaOfert(db, () => {
+      const o = ofertaPoId(db, ofertaId);
+      if (!o || o.kartaId !== kartaId) return { kod: 404 };
+      if (!brakWAllegro(o)) return { kod: 409 };
+      usunOferte(db, o.id);
+      zapiszZmianeWKanale(db, {
+        kanal: o.kanal,
+        kartaId: o.kartaId,
+        cel: `oferta:${o.idZewnetrzne}`,
+        pole: 'status',
+        stara: o.stan,
+        nowa: STATUS_USUNIETEJ_Z_OMS,
+        kto: String(req.konto?.login ?? 'panel'),
+        at: new Date().toISOString(),
+        wynik: 'ok',
+      });
+      return { kod: 303, numer: o.idZewnetrzne };
+    });
+    if (wynik.kod === 404) return odmowa(reply, 404, 'Nie ma takiej oferty na karcie.');
+    if (wynik.kod === 409)
+      return odmowa(reply, 409, 'Oferta jest w Allegro albo pętla jeszcze tego nie potwierdziła — nic nie usunięto.');
+    return reply
+      .code(303)
+      .redirect(`/magazyn/${kartaId}?ok=oferta-usunieta&oferta=${encodeURIComponent(wynik.numer)}#produkty-karty`);
+  });
 
   // Sterowanie ceną oferty Allegro, której OMS nie zarządza. Włączenie i oddanie zmieniają tylko rejestr i dziennik
   // zmian; cenę wysyła dopiero osobny przycisk, więc żadna z tych tras nie zapisuje niczego w Allegro.

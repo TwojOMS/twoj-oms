@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
+import { dzienWarszawa } from '../../../src/domena/format-daty.js';
+import { zapiszCeneZakupu } from '../../../src/oms/db/ceny-zakupu.js';
 import { kartyZKanalami, powiazProdukt, utworzKarte, zapiszProduktSklepowy } from '../../../src/oms/db/magazyn.js';
 import { przelaczStany } from '../../../src/oms/db/stany-magazynowe.js';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
@@ -36,6 +38,8 @@ const tekst = (html) =>
 const naglowki = (html) => [...html.matchAll(/<th\b[^>]*>([\s\S]*?)<\/th>/g)].map((m) => tekst(m[1]));
 const wiersze = (html) => [...html.matchAll(/<div><a href="[^"]*">([^<]+)<\/a><\/div>/g)].map((m) => m[1]);
 const komorki = (html) => [...html.matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1]);
+const wierszKarty = (html, nazwa) => html.split('<tr>').find((r) => r.includes(`>${nazwa}</a>`));
+const komorkiKarty = (html, nazwa) => komorki(wierszKarty(html, nazwa));
 
 it('pokazuje EAN obok SKU tylko wtedy, gdy karta ma EAN', async () => {
   utworzKarte(db, { nazwa: 'Alfa', sku: 'DEMO-ALFA', ean: '2000000000015' });
@@ -77,14 +81,86 @@ it.each([false, true])('układa nagłówki w obu widokach i dopasowuje pustą ko
   const wspolne = ['zaznacz', '', 'Karta / SKU', 'Marka'];
   const stan = stany ? ['Na stanie (szt.)'] : [];
   for (const [url, oczekiwane] of [
-    ['/magazyn', [...wspolne, 'Kategoria', 'Cena', 'Kanały', ...stan]],
-    ['/magazyn?widok=katalog', [...wspolne, ...definicjeKanalowHistoryczne.map((k) => k.etykieta), ...stan]],
+    ['/magazyn', [...wspolne, 'Kategoria', ...stan, 'Cena', 'Kanały']],
+    [
+      '/magazyn?widok=katalog',
+      [...wspolne, 'Cena zakupu netto', 'VAT', ...stan, ...definicjeKanalowHistoryczne.map((k) => k.etykieta)],
+    ],
   ]) {
     const html = await get(url);
     expect(naglowki(html)).toEqual(oczekiwane);
     expect(html).toContain(`colspan="${oczekiwane.length}" class="pusto"`);
     expect(html).not.toMatch(/porządk|pokaż ceny kanałów/i);
   }
+});
+
+it('stawia komórkę stanu bezpośrednio przed ceną produktu', async () => {
+  przelaczStany(db, { wlacz: true });
+  utworzKarte(db, { nazwa: 'Alfa', cena_gr: 12000 });
+  const wiersz = wierszKarty(await get(), 'Alfa');
+  expect(wiersz).toMatch(/<td class="liczba kol-na-stanie[^>]*>0<\/td>\s*<td\b[^>]*data-szybka-cena\b/);
+});
+
+it('pokazuje obowiązującą cenę zakupu i pomija przyszłe wpisy', async () => {
+  const historia = utworzKarte(db, { nazwa: 'Alfa' });
+  const tylkoPrzyszla = utworzKarte(db, { nazwa: 'Beta' });
+  utworzKarte(db, { nazwa: 'Gamma' });
+  const teraz = Date.now();
+  const zapisz = (id, gr, przesuniecie) => {
+    const od = dzienWarszawa(new Date(teraz + przesuniecie * 86_400_000).toISOString());
+    zapiszCeneZakupu(db, id, { gr, od }, { zrodlo: 'karta' });
+  };
+  zapisz(historia, 3500, -90);
+  zapisz(historia, 4500, -30);
+  zapisz(historia, 5500, 30);
+  zapisz(tylkoPrzyszla, 6500, 30);
+
+  const html = await get('/magazyn?widok=katalog');
+  const indeks = naglowki(html).indexOf('Cena zakupu netto');
+  expect(indeks).toBeGreaterThan(0);
+  expect(['Alfa', 'Beta', 'Gamma'].map((nazwa) => komorkiKarty(html, nazwa)[indeks].trim())).toEqual([
+    '45,00 zł',
+    '<span class="magazyn-brak">—</span>',
+    '<span class="magazyn-brak">—</span>',
+  ]);
+});
+
+it('pokazuje stawkę VAT karty albo kreskę przy jej braku', async () => {
+  utworzKarte(db, { nazwa: 'Alfa', stawka_vat: '23' });
+  utworzKarte(db, { nazwa: 'Beta', stawka_vat: '8' });
+  utworzKarte(db, { nazwa: 'Gamma', stawka_vat: null });
+
+  const html = await get('/magazyn?widok=katalog');
+  const indeks = naglowki(html).indexOf('VAT');
+  expect(indeks).toBeGreaterThan(0);
+  expect(['Alfa', 'Beta', 'Gamma'].map((nazwa) => tekst(komorkiKarty(html, nazwa)[indeks]))).toEqual([
+    '23%',
+    '8%',
+    '—',
+  ]);
+});
+
+it.each([false, true])('układa komórki cen i VAT przed kanałami (stany: %s)', async (stany) => {
+  if (stany) przelaczStany(db, { wlacz: true });
+  const id = utworzKarte(db, { nazwa: 'Alfa', marka: 'Półcień', stawka_vat: '23' });
+  zapiszCeneZakupu(db, id, { gr: 4500, od: dzienWarszawa(new Date().toISOString()) }, { zrodlo: 'karta' });
+  const produkt = zapiszProduktSklepowy(db, {
+    kanal: definicjeKanalowHistoryczne[0].klucz,
+    produkt_id: 'alfa',
+    nazwa: 'Alfa',
+    cena_gr: 12000,
+    odczytane_at: '2026-01-01T00:00:00Z',
+  });
+  powiazProdukt(db, produkt, id);
+
+  const komorki = komorkiKarty(await get('/magazyn?widok=katalog'), 'Alfa');
+  expect(komorki.slice(3, stany ? 8 : 7).map(tekst)).toEqual([
+    'Półcień',
+    '45,00 zł',
+    '23%',
+    ...(stany ? ['0'] : []),
+    '120,00 zł',
+  ]);
 });
 
 it('formatuje cenę karty, osobne ceny kanałów, zero i brak ceny', async () => {
@@ -106,7 +182,6 @@ it('formatuje cenę karty, osobne ceny kanałów, zero i brak ceny', async () =>
     });
     powiazProdukt(db, produkt, id);
   }
-  const komorkiKarty = (html, nazwa) => komorki(html.split('<tr>').find((r) => r.includes(`>${nazwa}</a>`)));
   const produkty = await get();
   const indeksCeny = naglowki(produkty).indexOf('Cena');
   expect(indeksCeny).toBeGreaterThan(0);
@@ -116,7 +191,7 @@ it('formatuje cenę karty, osobne ceny kanałów, zero i brak ceny', async () =>
     '— ✎',
     '0,00 zł ✎',
   ]);
-  const ceny = komorkiKarty(await get('/magazyn?widok=katalog'), 'Alfa').slice(4);
+  const ceny = komorkiKarty(await get('/magazyn?widok=katalog'), 'Alfa').slice(6);
   expect(ceny.map(tekst)).toEqual(['2 345,60 zł', 'bez ceny', '—', '—']);
   expect(ceny[0]).toContain(`href="${adres}"`);
 });

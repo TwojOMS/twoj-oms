@@ -8,6 +8,7 @@ import { podpisz, NAZWA_CIASTECZKA_OMS } from '../../../src/core/bezpieczenstwo/
 import { wczytajSekret } from '../../../src/core/bezpieczenstwo/sekret-sesji.js';
 import { wstawOferte, ofertaPoId } from '../../../src/oms/db/oferty-kanalow.ts';
 import { srodowiskoAllegro } from '../../../src/moduly/magazyn/karta.js';
+import { ofertaAllegroKarty } from '../../../src/moduly/magazyn/services/tresc-oferty-allegro.js';
 
 const auth = {
   authorization: `Basic ${Buffer.from('operator:atrapa').toString('base64')}`,
@@ -271,4 +272,167 @@ it('odmawia bez CSRF i bez uprawnienia magazyn (zapis i wybór produktu)', async
   expect((await wybor({ ofertaId: String(o.id), produktId: 'prod-9' }, bezRoli)).statusCode).toBe(403);
   expect(kartaAllegro()).toBeUndefined();
   expect(ofertaPoId(db, o.id)?.stan).toBe('problem');
+});
+
+// Kategoria „Lampy nocne” (259): wartości parametrów z reguł, importu i nadpisań oraz edycja każdej z nich.
+const KARTA_N = KARTA + 2;
+const PARAMETRY_259 = [
+  {
+    id: '11323',
+    nazwa: 'Stan',
+    typ: 'dictionary',
+    slownik: [
+      { id: '11323_1', wartosc: 'Nowy' },
+      { id: '11323_2', wartosc: 'Używany' },
+    ],
+    wymagany: true,
+    opisujeProdukt: false,
+  },
+  {
+    id: '224017',
+    nazwa: 'Kod producenta',
+    typ: 'string',
+    slownik: null,
+    wymagany: false,
+    wymaganyDlaProduktu: true,
+    opisujeProdukt: true,
+  },
+  {
+    id: '248811',
+    nazwa: 'Marka',
+    typ: 'dictionary',
+    slownik: [{ id: '248811_9001', wartosc: 'Pracownia Półcień' }],
+    wymagany: false,
+    wymaganyDlaProduktu: true,
+    opisujeProdukt: true,
+  },
+  { id: '5100', nazwa: 'Kolor', typ: 'string', slownik: null, wymagany: false, opisujeProdukt: true },
+];
+const zapisN = (payload) => post(`/magazyn/${KARTA_N}/allegro`, payload);
+const sekcjaN = async () => sekcja((await app.inject({ url: `/magazyn/${KARTA_N}`, headers: auth })).body);
+/** Komórki „Wartość” i „Skąd” wiersza tabeli parametrów. */
+const wiersz = (s, nazwa) => {
+  const m = s.match(new RegExp(`<tr><th scope="row">${nazwa}(?: \\*)?</th><td>([^<]*)</td><td[^>]*>([^<]*)</td></tr>`));
+  return m ? { wartosc: m[1], skad: m[2] } : null;
+};
+
+function lampaNocna({ ean = null, markaBezSlownika = false } = {}) {
+  db.prepare(
+    `INSERT INTO karty_produktow (id, nazwa, sku, ean, marka, kategoria_glowna, utworzony_at, zmieniony_at)
+    VALUES (?, 'Lampka nocna Sowa', 'LMP-NOC-001', ?, 'Pracownia Półcień', 'Lampy nocne', ?, ?)`,
+  ).run(KARTA_N, ean, T0, T0);
+  db.prepare(
+    `INSERT INTO allegro_mapa_kategorii (kategoria_karty, srodowisko, kategoria_allegro_id) VALUES ('Lampy nocne', 'produkcja', '259')`,
+  ).run();
+  const regula = db.prepare(
+    `INSERT INTO allegro_reguly_parametrow (srodowisko, kategoria_allegro_id, parametr_id, rodzaj, wartosc_json, pole, zmieniono_at)
+    VALUES ('produkcja', '259', ?, ?, ?, ?, ?)`,
+  );
+  regula.run('11323', 'stala', '{"valuesIds":["11323_1"]}', null, T0);
+  regula.run('224017', 'pole', null, 'sku', T0);
+  regula.run('248811', 'pole', null, 'marka', T0);
+  regula.run('5100', 'stala', '{"values":["mleczny"]}', null, T0);
+  db.prepare(
+    `INSERT INTO allegro_marki (marka, srodowisko, parametr_id, wartosc_id, kategorie_sprawdzone_json, zmieniono_at)
+    VALUES ('Pracownia Półcień', 'produkcja', '248811', '248811_9001', '["259"]', ?)`,
+  ).run(T0);
+  db.prepare(
+    `INSERT INTO kanaly_kategorie (polaczenie, kategoria_id, sciezka_json, parametry_json, pobrano_at) VALUES (?, ?, ?, ?, ?)`,
+  ).run(
+    'allegro-demo',
+    '259',
+    JSON.stringify([{ id: '259', nazwa: 'Lampy nocne' }]),
+    opisKategorii(
+      markaBezSlownika ? PARAMETRY_259.map((p) => (p.id === '248811' ? { ...p, slownik: null } : p)) : PARAMETRY_259,
+    ),
+    T0,
+  );
+}
+
+it('parametry kategorii pokazują wartość, którą dostanie oferta: reguła stała, pole karty i marka ze słownika — także przy brakach', async () => {
+  lampaNocna();
+  const s = await sekcjaN();
+  // Karta bez zdjęcia ma braki, a wartości i tak są widoczne.
+  expect(s).toContain('Dodaj co najmniej jedno zdjęcie');
+  expect(wiersz(s, 'Stan')).toEqual({ wartosc: 'Nowy', skad: 'reguła kategorii: stała wartość' });
+  expect(wiersz(s, 'Kod producenta')).toEqual({ wartosc: 'LMP-NOC-001', skad: 'reguła kategorii: pole karty „sku”' });
+  expect(wiersz(s, 'Marka')).toEqual({ wartosc: 'Pracownia Półcień', skad: 'reguła kategorii: pole karty „marka”' });
+  expect(wiersz(s, 'Kolor')).toEqual({ wartosc: 'mleczny', skad: 'reguła kategorii: stała wartość' });
+});
+
+it('marka bez słownika w opisie kategorii (setki wartości) → nazwa z mapy marek, nie samo id', async () => {
+  lampaNocna({ markaBezSlownika: true });
+  let s = await sekcjaN();
+  expect(wiersz(s, 'Marka')).toEqual({ wartosc: 'Pracownia Półcień', skad: 'reguła kategorii: pole karty „marka”' });
+  expect(s).not.toContain('<select name="parametr:248811"');
+  db.prepare(`UPDATE allegro_marki SET wartosc_tekst = 'Półcień' WHERE marka = 'Pracownia Półcień'`).run();
+  s = await sekcjaN();
+  expect(wiersz(s, 'Marka')?.wartosc).toBe('Półcień');
+});
+
+it('nadpisanie na karcie wygrywa z regułą; import oferty w tej samej kategorii daje wartość z importu', async () => {
+  lampaNocna();
+  db.prepare(
+    `INSERT INTO karty_dane_kanalu (karta_id, typ_kanalu, polaczenie, oferta_id, produkt_id, kategoria_id, parametry_json, pobrano_at)
+    VALUES (?, 'allegro', 'allegro-demo', 'ext:n1', NULL, '259', ?, ?)`,
+  ).run(
+    KARTA_N,
+    JSON.stringify({
+      produkt: [{ id: '5100', nazwa: 'Kolor', wartosci: ['bursztynowy'], wartosciId: null, zakres: null }],
+      oferta: [],
+    }),
+    T0,
+  );
+  expect((await zapisN({ 'parametr:224017': 'SOWA-30' })).statusCode).toBe(303);
+  const s = await sekcjaN();
+  expect(wiersz(s, 'Kod producenta')).toEqual({ wartosc: 'SOWA-30', skad: 'nadpisane na karcie' });
+  expect(wiersz(s, 'Kolor')).toEqual({ wartosc: 'bursztynowy', skad: 'z importu oferty Allegro' });
+});
+
+it('karta z EAN (droga „ean”): parametry produktu z Katalogu Allegro, bez pola w formularzu', async () => {
+  lampaNocna({ ean: '5900000000017' });
+  const s = await sekcjaN();
+  expect(wiersz(s, 'Kolor')).toEqual({
+    wartosc: 'z produktu w Katalogu Allegro',
+    skad: 'reguła kategorii: stała wartość',
+  });
+  expect(wiersz(s, 'Kod producenta')?.wartosc).toBe('z produktu w Katalogu Allegro');
+  expect(s).not.toContain('name="parametr:5100"');
+  expect(s).not.toContain('name="parametr:224017"');
+  expect(s).toContain('name="parametr:11323"');
+});
+
+it('każdą wartość z tabeli da się nadpisać: pole przy regule stałej i regule „pole karty” z wartością wyliczoną', async () => {
+  lampaNocna();
+  const s = await sekcjaN();
+  expect(s).toMatch(
+    /<label>Stan \*\s*<select name="parametr:11323" aria-describedby="allegro-skad-11323">\s*<option value="">— bez nadpisania \(teraz: Nowy\) —<\/option>/,
+  );
+  expect(s).toMatch(/<td id="allegro-skad-11323">reguła kategorii: stała wartość<\/td>/);
+  const kod = s.match(/<input[^>]*name="parametr:224017"[^>]*>/)?.[0] ?? '';
+  expect(kod).toContain('placeholder="LMP-NOC-001"');
+  expect(kod).toContain('value=""');
+  expect(kod).toContain('aria-describedby="allegro-skad-224017"');
+  expect(s).toContain('Wartość wpisana tutaj wygrywa z regułą kategorii i z importem.');
+});
+
+it('zapis „Używany” w Stanie → tabela i oferta z kontem mają „Używany”; pusty wybór wraca do „Nowy” z reguły', async () => {
+  lampaNocna();
+  expect((await zapisN({ 'parametr:11323': '11323_2' })).statusCode).toBe(303);
+  let s = await sekcjaN();
+  expect(wiersz(s, 'Stan')).toEqual({ wartosc: 'Używany', skad: 'nadpisane na karcie' });
+  expect(s).toMatch(/<option value="11323_2" selected>Używany<\/option>/);
+  const konto = { klucz: 'allegro-demo', nazwa: 'Demo', srodowisko: 'produkcja' };
+  const zKontem = ofertaAllegroKarty(db, KARTA_N, konto);
+  expect(zKontem.parametryWyliczone.get('11323')).toEqual({
+    wartosc: { id: '11323', valuesIds: ['11323_2'] },
+    zKatalogu: false,
+  });
+  expect((await zapisN({ 'parametr:11323': '' })).statusCode).toBe(303);
+  s = await sekcjaN();
+  expect(wiersz(s, 'Stan')).toEqual({ wartosc: 'Nowy', skad: 'reguła kategorii: stała wartość' });
+  expect(ofertaAllegroKarty(db, KARTA_N, konto).parametryWyliczone.get('11323')?.wartosc).toEqual({
+    id: '11323',
+    valuesIds: ['11323_1'],
+  });
 });

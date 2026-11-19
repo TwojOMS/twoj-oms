@@ -1,10 +1,11 @@
 <%# Marka karty → wartość słownika marek Allegro, osobno na środowisko (D33, D36).
     Podpowiedź: dokładne trafienie nazwy; „Zatwierdź” sprawdza wartość w słowniku każdej przypisanej kategorii środowiska.
     Producent (GPSR) — nie tutaj (E3.13). %>
-<p class="wroc"><a href="/magazyn/marki">← Marki</a></p>
+<p class="wroc"><a href="/magazyn/producenci#marki">← Producenci</a></p>
 
 <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: 'Marka „' + marka + '” w Allegro', podtytul: 'Środowisko: ' + srodowisko}) %>
 
+<% if (komunikat) { %><p class="pasek-info" role="status"><%= komunikat %></p><% } %>
 <% if (blad) { %><p class="pasek-uwaga" role="alert"><%= blad %></p><% } %>
 <% if (brakKonta) { %><p class="pasek-uwaga"><%= brakKonta %></p><% } %>
 

@@ -13,6 +13,7 @@ import { zapiszTokeny } from '../../../src/oms/db/tokeny.js';
 import { UPRAWNIENIA_OFERT } from '../../../src/domena/uprawnienia-kanalu.js';
 import { ustawieniaOfertKonta } from '../../../src/oms/db/oferty-kanalow.ts';
 import { gotowoscOfertAllegro } from '../../../src/moduly/kanaly/services/oferty-allegro-ustawienia.ts';
+import { dodajCennikOms, ustawPowiazanieCennika } from '../../../src/oms/db/cenniki-oms.ts';
 
 // Krok 6 „Oferty” konfiguratora Allegro — dane konta, których karta nie zna,
 // listy „Pobierz z Allegro” i producent każdej marki na koncie. Wyłącznie atrapa HTTP i fixture; dane zmyślone.
@@ -234,7 +235,8 @@ it('„Pobierz z Allegro” zapisuje sześć list konta (identyfikator i nazwa) 
   expect(s.producenci).toEqual([{ id: 'producent-przyklad-1', nazwa: 'Pracownia Półcień' }]);
   expect(f.ustawienia('allegro_polcien').slowniki).toBeNull();
   const r = await f.req('GET', root + '/legacy/oferty?wynik=pobrano');
-  expect(r.body).toContain('Lampy — kurier');
+  // Lista cenników konta służy powiązaniom w Magazyn → Cenniki; krok „Oferty” jej już nie pokazuje.
+  expect(r.body).not.toContain('Lampy — kurier');
   expect(r.body).toMatch(/<option value="producent-przyklad-1">Pracownia Półcień<\/option>/);
   expect(r.body).toContain('Listy konta pobrane z Allegro.');
 });
@@ -242,7 +244,6 @@ it('„Pobierz z Allegro” zapisuje sześć list konta (identyfikator i nazwa) 
 it('odmowa Allegro przy pobieraniu → komunikat po polsku, zapisane wartości i listy nietknięte', async () => {
   const f = await setup();
   await f.req('POST', root + '/legacy/oferty/pobierz');
-  // E3d.02-02: cennik dostaw w tabeli reguł (pole „dla większych”), nie w polu cennikDostaw.
   expect(
     (await f.req('POST', root + '/legacy/oferty', { ...poprawne, cennikWiekszych: 'cennik-przyklad-1' })).statusCode,
   ).toBe(303);
@@ -256,13 +257,12 @@ it('odmowa Allegro przy pobieraniu → komunikat po polsku, zapisane wartości i
 
 it('identyfikator spoza pobranej listy → odmowa 400, nic nie zapisane; z listy → zapis z aktorem', async () => {
   const f = await setup();
-  const bezList = await f.req('POST', root + '/legacy/oferty', { ...poprawne, cennikWiekszych: 'cennik-obcy' });
+  const bezList = await f.req('POST', root + '/legacy/oferty', { ...poprawne, zwrotyId: 'zwrot-obcy' });
   expect(bezList.statusCode).toBe(400);
   expect(f.ustawienia('legacy').zapisane).toBe(false);
   await f.req('POST', root + '/legacy/oferty/pobierz');
   const poPobraniu = f.ustawienia('legacy');
   for (const [pole, obcy] of [
-    ['cennikWiekszych', 'cennik-obcy'],
     ['zwrotyId', 'zwrot-obcy'],
     ['reklamacjeId', 'x'],
     ['gwarancjaId', 'x'],
@@ -280,6 +280,7 @@ it('identyfikator spoza pobranej listy → odmowa 400, nic nie zapisane; z listy
     czynne: 'czynne',
     aktywujPoSprawdzeniu: 'tak',
     bezpieczenstwoDomyslne: 'Nie zostawiać włączonej lampy bez nadzoru.',
+    // Dawne pole reguł z formularza nie zmienia już cenników konta.
     cennikWiekszych: 'cennik-przyklad-1',
     zwrotyId: 'zwrot-przyklad-1',
     reklamacjeId: 'reklamacja-przyklad-1',
@@ -298,7 +299,7 @@ it('identyfikator spoza pobranej listy → odmowa 400, nic nie zapisane; z listy
     stawkaVat: '23',
     aktywujPoSprawdzeniu: true,
     bezpieczenstwoDomyslne: 'Nie zostawiać włączonej lampy bez nadzoru.',
-    cenniki: [{ cennik: 'cennik-przyklad-1' }],
+    cenniki: [],
     zwrotyId: 'zwrot-przyklad-1',
     reklamacjeId: 'reklamacja-przyklad-1',
     gwarancjaId: null,
@@ -308,10 +309,14 @@ it('identyfikator spoza pobranej listy → odmowa 400, nic nie zapisane; z listy
     zmienionoAt: '2026-11-14T12:00:00.000Z',
   });
   expect(ok.headers.location).toBe(root + '/legacy/oferty?wynik=zapisano');
+  // Cennik dostaw konto dostaje z powiązania cennika OMS (Magazyn → Cenniki), nie z kroku „Oferty”.
+  expect(gotowoscOfertAllegro(db!, 'legacy').braki).toEqual(['cennik dostaw']);
+  const domyslny = dodajCennikOms(db!, { nazwa: 'Domyślny', domyslny: true });
+  ustawPowiazanieCennika(db!, { cennikId: domyslny, konto: 'legacy', cennikKanalu: 'cennik-przyklad-1' });
   expect(gotowoscOfertAllegro(db!, 'legacy')).toMatchObject({ gotowe: true, braki: [] });
   const r = await f.req('GET', root + '/legacy/oferty?wynik=zapisano');
   expect(r.body).toContain('Ustawienia ofert zapisane.');
-  expect(r.body).toMatch(/<option value="cennik-przyklad-1" selected>Lampy — kurier<\/option>/);
+  expect(r.body).not.toMatch(/name="cennikWiekszych"/);
 });
 
 it('informacja o bezpieczeństwie ponad 5000 znaków → 400, nic nie zapisane', async () => {

@@ -188,8 +188,9 @@ describe('cena katalogowa hurtem — podgląd i zatwierdzenie', () => {
   it('pasek „Edytuj” ma tryb, wartość ze znakiem i zaokrąglenie', async () => {
     const r = await app.inject({ method: 'GET', url: '/magazyn', headers });
     const pasek = /<details[^>]*id="hurt-pasek"[\s\S]*?<\/details>/.exec(r.body)[0];
+    // Wiersz ceny pojawia się dopiero po wybraniu pozycji, więc tryb nie potrzebuje pustej opcji.
     expect(pasek).toMatch(
-      /<select name="cena_tryb"[^>]*>\s*<option value="">— nie zmieniaj —<\/option>\s*<option value="o_procent">zmień o %<\/option>\s*<option value="na_kwote">zmień na kwotę \(zł\)<\/option>\s*<option value="o_kwote">zmień o kwotę \(zł\)<\/option>/,
+      /<select name="cena_tryb"[^>]*>\s*<option value="o_procent">zmień o %<\/option>\s*<option value="o_kwote">zmień o kwotę \(zł\)<\/option>\s*<option value="na_kwote">ustaw kwotę \(zł\)<\/option>/,
     );
     expect(pasek).toMatch(/<input type="text" name="cena_wartosc"/);
     // Klawiatura „decimal” na iOS nie ma minusa, a pole przyjmuje obniżkę („-5,50”).

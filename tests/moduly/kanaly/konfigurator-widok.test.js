@@ -100,6 +100,7 @@ it('trasy przekazują zakres z własnego zegara aż do HTML Allegro i Woo', asyn
         sprawdzono_at: '2026-11-03',
         ustawienia_json: JSON.stringify({ mapowanie }),
       }),
+      all: () => [],
     }),
   };
   for (const typ of ['woo', 'allegro']) {

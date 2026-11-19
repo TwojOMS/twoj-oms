@@ -38,6 +38,9 @@
 <% if (wycofanieSprzedazy) { %>
   <%- include('_karta-wiecej.ejs', { pasek: true }) %>
 <% } %>
+<% if (usuniecieOferty) { %>
+  <%- include('_karta-usun-oferte.ejs') %>
+<% } %>
 <%- include('_karta-sprzedaz-kanalow.ejs') %>
 
 <%# ——— DANE KARTY ————————————————————————————————————————————————————————————————— %>
@@ -63,17 +66,6 @@
       <form method="post" action="<%= adresKarty %>" class="pola pola--siatka">
         <label>Nazwa<%- include('_zrodlo-pola.ejs', { pole: 'nazwa' }) %><input name="nazwa" value="<%= wartosci.nazwa %>"></label>
         <label>SKU<input name="sku" value="<%= wartosci.sku %>"></label>
-        <%# ⚠️ POLA SA W CENTYMETRACH, BAZA TRZYMA MILIMETRY. Czlowiek mysli o produkcie
-            w centymetrach; przeliczenie stoi na granicy zapisu (domena/rozmiar.js).
-            Puste pole KASUJE wymiar, napis niezrozumialy ODMAWIA — nigdy zgadywanie. %>
-        <label>Szerokość (cm)<input name="szerokosc_cm" value="<%= wartosci.szerokosc_cm %>"
-          inputmode="decimal" placeholder="np. 70"></label>
-        <label>Wysokość (cm)<input name="wysokosc_cm" value="<%= wartosci.wysokosc_cm %>"
-          inputmode="decimal" placeholder="np. 100"></label>
-        <label>Głębokość (cm)<input name="glebokosc_cm" value="<%= wartosci.glebokosc_cm %>"
-          inputmode="decimal" placeholder="opcjonalnie"></label>
-        <label>Waga (kg)<input name="waga_kg" value="<%= wartosci.waga_kg %>"
-          inputmode="decimal" placeholder="opcjonalnie"></label>
         <%# EAN (8 albo 13 cyfr z cyfra kontrolna), cena w zl (baza trzyma grosze),
             stawka VAT z listy domena/vat.js. Puste pole kasuje wartosc, napis niezrozumialy ODMAWIA. %>
         <label>EAN<%- include('_zrodlo-pola.ejs', { pole: 'ean' }) %><input name="ean" value="<%= wartosci.ean %>"
@@ -105,7 +97,7 @@
         <%# Pozycje z kategorii POWIAZANYCH produktow (plus ta juz ustawiona) — nie z palca:
             filtr kategorii dopasowuje CALA nazwe, a nazw jest kilkaset i nikt ich nie pamieta. %>
         <%# Plus słownik kategorii (Magazyn → Kategorie). „Albo dodaj nową” wygrywa z wyborem
-            i trafia do słownika przy zapisie; tak samo Marka (słownik Magazyn → Marki). %>
+            i trafia do słownika przy zapisie; tak samo Marka (słownik Magazyn → Producenci → Marki). %>
         <label>Kategoria główna<%- include('_zrodlo-pola.ejs', { pole: 'kategoria_glowna' }) %>
           <select name="kategoria_glowna">
             <option value="">— niewybrana —</option>
@@ -130,16 +122,6 @@
           <input name="marka_nowa" value="<%= wartosci.marka_nowa %>" maxlength="200"
             autocomplete="off" placeholder="nowa nazwa — trafi do słownika">
         </label>
-        <%# ⚠️ TRZY STANY, NIE DWA, i pole jest WYLACZNIE RECZNE:
-            zadnego wyliczania z wymiarow. „Nieoznaczone" to robota do wykonania,
-            „nie" to decyzja czlowieka. %>
-        <label>Paczkomat
-          <select name="paczkomat">
-            <option value=""<%- wartosci.paczkomat === '' ? ' selected' : '' %>>— nieoznaczone —</option>
-            <option value="tak"<%- wartosci.paczkomat === 'tak' ? ' selected' : '' %>>tak</option>
-            <option value="nie"<%- wartosci.paczkomat === 'nie' ? ' selected' : '' %>>nie</option>
-          </select>
-        </label>
         <label class="pole-szerokie">Opis
           <%- include('_zrodlo-pola.ejs', { pole: zrodlaPol.opis_sekcje_json ? 'opis_sekcje_json' : 'opis' }) %>
           <textarea name="opis" rows="4"><%= wartosci.opis %></textarea>
@@ -154,10 +136,6 @@
         <dt>Nazwa</dt><dd><%= karta.nazwa %> <%- include('_zrodlo-pola.ejs', { pole: 'nazwa' }) %></dd>
         <dt>SKU</dt>
         <dd><% if (karta.sku) { %><%= karta.sku %><% } else { %><span class="magazyn-brak">bez SKU</span><% } %></dd>
-        <dt>Wymiary</dt>
-        <dd><% if (karta.wymiary) { %><%= polskieWymiary(karta.wymiary) %><% } else { %><span class="magazyn-brak">bez wymiarów</span><% } %></dd>
-        <dt>Waga</dt>
-        <dd><% if (karta.waga) { %><%= liczbaPolska(karta.waga) %> kg<% } else { %><span class="magazyn-brak">—</span><% } %></dd>
         <dt>EAN</dt>
         <dd><% if (karta.ean) { %><%= karta.ean %><% } else { %><span class="magazyn-brak">—</span><% } %><%- include('_zrodlo-pola.ejs', { pole: 'ean' }) %></dd>
         <dt>Cena katalogowa</dt>
@@ -169,12 +147,6 @@
         <dd><% if (karta.kategoria) { %><%= karta.kategoria %><% } else { %><span class="magazyn-brak">niewybrana</span><% } %><%- include('_zrodlo-pola.ejs', { pole: 'kategoria_glowna' }) %></dd>
         <dt>Marka</dt>
         <dd><% if (karta.marka) { %><%= karta.marka %><% } else { %><span class="magazyn-brak">niewybrana</span><% } %><%- include('_zrodlo-pola.ejs', { pole: 'marka' }) %></dd>
-        <dt>Paczkomat</dt>
-        <dd>
-          <% if (karta.paczkomat === 'tak') { %><span class="znacznik znacznik--ok">tak</span>
-          <% } else if (karta.paczkomat === 'nie') { %><span class="znacznik znacznik--cichy">nie</span>
-          <% } else { %><span class="magazyn-brak">nieoznaczone</span><% } %>
-        </dd>
         <dt>Opis</dt>
         <dd><% if (karta.opis) { %><%= karta.opis %><% } else { %><span class="magazyn-brak">bez opisu</span><% } %><%- include('_zrodlo-pola.ejs', { pole: zrodlaPol.opis_sekcje_json ? 'opis_sekcje_json' : 'opis' }) %></dd>
       </dl>
@@ -183,6 +155,8 @@
     <% if (zrodlaPol.zdjecia) { %><p class="podpowiedz">Zdjęcia <%- include('_zrodlo-pola.ejs', { pole: 'zdjecia' }) %></p><% } %>
   </div>
 </section>
+<%# Okno Parametry stoi w tym samym układzie, pod danymi: CSS daje mu szerokość kolumny danych. %>
+<%- include('_karta-parametry.ejs') %>
 </div>
 <%- include('_karta-gpsr.ejs') %>
 <%- include('_karta-opis.ejs') %>
@@ -254,11 +228,15 @@
     <span class="dopisek">to one niosą ceny, zdjęcia i kategorie tej karty</span>
   </div>
   <div class="panel-cialo">
+    <% if (usunietoOferte) { %>
+      <p class="pasek-info" role="status">Usunięto z OMS zapis oferty <%= usunietoOferte %>.</p>
+    <% } %>
     <% ofertyKanalu.forEach(o => { %>
       <section class="panel">
-        <div class="panel-glowa"><h3><%= o.kontoAllegro ? 'Allegro · ' : o.kontoErli ? 'ERLI · ' : '' %><%= o.kanal %> · <%= o.idZewnetrzne %></h3></div>
+        <div class="panel-glowa"><h3><%= o.naglowek %></h3></div>
         <div class="panel-cialo">
           <p>Stan: <%= o.stanTekst %><%= o.wyslanePola?.szkic && o.stan === 'nieaktywna' ? ' (szkic)' : '' %> · Tryb: <%= o.trybTekst %> · Ostatni odczyt: <%= o.odczytTekst %></p>
+          <% if (o.czeka) { %><p class="pasek-uwaga"><%= o.czeka.tekst %><% if (o.czeka.krok && mozeEdytowacOferty) { %> <a href="<%= o.czeka.krok %>">Włącz oferty konta w kroku Oferty</a><% } %></p><% } %>
           <% if (o.wyslanePola?.zdejmij) { %><p class="pasek-uwaga">Zlecono zdjęcie oferty. OMS nie będzie przywracać ilości.</p><% } %>
           <% if (o.aktywacjaZlecona) { %><p class="pasek-uwaga">Zlecono aktywację szkicu — wyśle ją pętla ofert.</p><% } %>
           <% o.problemy.forEach(p => { %><p class="pasek-uwaga"><%= p.tekst ?? (Array.isArray(p.bledy) ? p.bledy.map(b => b.tekst ?? b).join(' ') : p.kod ?? p) %></p><% }); %>
@@ -267,31 +245,34 @@
           <% } else if (o.tryb === 'obserwowana') { %><p>Oferta obserwowana — OMS tylko ją odczytuje.</p><% } %>
           <% if (mozeEdytowacOferty && o.tryb === 'obserwowana' && o.kontoAllegro) { %>
             <% if (o.cenaZOms) { %>
-            <form class="w-linii" method="post" action="/magazyn/<%= karta.id %>/oferty/<%= o.id %>/oddaj-cene" aria-label="Oddanie ceny Allegro dla oferty <%= o.idZewnetrzne %>"><button class="btn" type="submit">Oddaj cenę Allegro</button></form>
+            <form class="w-linii" method="post" action="/magazyn/<%= karta.id %>/oferty/<%= o.id %>/oddaj-cene" aria-label="Oddanie ceny Allegro dla oferty <%= o.naglowek %>"><button class="btn" type="submit">Oddaj cenę Allegro</button></form>
             <% } else { %>
-            <form class="w-linii" method="post" action="/magazyn/<%= karta.id %>/oferty/<%= o.id %>/steruj-cena/podglad" aria-label="Sterowanie ceną oferty <%= o.idZewnetrzne %>"><button class="btn" type="submit">Steruj ceną</button></form>
+            <form class="w-linii" method="post" action="/magazyn/<%= karta.id %>/oferty/<%= o.id %>/steruj-cena/podglad" aria-label="Sterowanie ceną oferty <%= o.naglowek %>"><button class="btn" type="submit">Steruj ceną</button></form>
             <% } %>
           <% } %>
           <% if (mozeEdytowacOferty && o.tryb === 'obserwowana' && o.kontoErli) { %>
-            <form class="w-linii" method="post" action="/magazyn/<%= karta.id %>/oferty/<%= o.id %>/objecie/podglad" aria-label="Objęcie zarządzaniem oferty <%= o.idZewnetrzne %>"><button class="btn" type="submit">Obejmij zarządzaniem</button></form>
+            <form class="w-linii" method="post" action="/magazyn/<%= karta.id %>/oferty/<%= o.id %>/objecie/podglad" aria-label="Objęcie zarządzaniem oferty <%= o.naglowek %>"><button class="btn" type="submit">Obejmij zarządzaniem</button></form>
           <% } %>
           <% if (mozeEdytowacOferty && o.aktywuj && o.kontoAllegro) { %>
-            <form class="w-linii" method="post" action="/magazyn/<%= karta.id %>/oferty/<%= o.id %>/aktywuj" aria-label="Aktywacja szkicu oferty <%= o.idZewnetrzne %>"><button class="btn btn--glowny" type="submit">Aktywuj w Allegro</button></form>
+            <form class="w-linii" method="post" action="/magazyn/<%= karta.id %>/oferty/<%= o.id %>/aktywuj" aria-label="Aktywacja szkicu oferty <%= o.naglowek %>"><button class="btn btn--glowny" type="submit">Aktywuj w Allegro</button></form>
           <% } %>
           <% if (mozeEdytowacOferty && o.zdejmij) { %>
-            <form class="w-linii" method="post" action="/magazyn/<%= karta.id %>/oferty/<%= o.id %>/zdejmij" aria-label="Zdjęcie oferty <%= o.idZewnetrzne %>"><button class="btn" type="submit">Zdejmij ofertę</button></form>
+            <form class="w-linii" method="post" action="/magazyn/<%= karta.id %>/oferty/<%= o.id %>/zdejmij" aria-label="Zdjęcie oferty <%= o.naglowek %>"><button class="btn" type="submit">Zdejmij ofertę</button></form>
           <% } %>
           <% if (mozeEdytowacOferty && o.wznow) { %>
-            <form class="w-linii" method="post" action="/magazyn/problemy-ofert/<%= o.id %>/wznow" aria-label="Wznów ofertę <%= o.idZewnetrzne %>"><button class="btn btn--glowny" type="submit">Wznów</button></form>
+            <form class="w-linii" method="post" action="/magazyn/problemy-ofert/<%= o.id %>/wznow" aria-label="Wznów ofertę <%= o.naglowek %>"><button class="btn btn--glowny" type="submit">Wznów</button></form>
           <% } %>
           <% if (mozeEdytowacOferty && o.ponow) { %>
-            <form class="w-linii" method="post" action="/magazyn/<%= karta.id %>/oferty/<%= o.id %>/ponow" aria-label="Ponowienie oferty <%= o.idZewnetrzne %>"><button class="btn" type="submit">Wyślij ponownie</button></form>
+            <form class="w-linii" method="post" action="/magazyn/<%= karta.id %>/oferty/<%= o.id %>/ponow" aria-label="Ponowienie oferty <%= o.naglowek %>"><button class="btn" type="submit">Wyślij ponownie</button></form>
           <% } %>
           <% if (mozeEdytowacOferty && o.duplikat) { %>
             <p class="pasek-uwaga">Allegro ma kilka ofert tej karty. Wybierz jedną z ofert w Allegro albo w „Przeglądzie zapisów do Allegro” (Ustawienia → Integracje) — ponowienie założyłoby kolejną.</p>
           <% } %>
           <% if (mozeEdytowacOferty && o.brakWAllegro) { %>
             <p class="pasek-uwaga"><%= o.brakWAllegro %></p>
+          <% } %>
+          <% if (mozeZmieniacSprzedaz && o.brakWAllegro) { %>
+            <p><a class="btn btn--groza" href="/magazyn/<%= karta.id %>?usun-oferte=<%= o.id %>#potwierdz-usuniecie-oferty">Usuń z OMS</a></p>
           <% } %>
         </div>
       </section>

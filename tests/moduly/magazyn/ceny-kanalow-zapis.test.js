@@ -4,10 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import ejs from 'ejs';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { modulyDla } from '../../../src/moduly/lista.ts';
 import { ENV_DEMO } from '../../../scripts/demo-dane.mjs';
-import { powiazProdukt, utworzKarte, zapiszProduktSklepowy } from '../../../src/oms/db/magazyn.js';
+import { powiazProdukt, produktyKarty, utworzKarte, zapiszProduktSklepowy } from '../../../src/oms/db/magazyn.js';
 import { wstawOferte, zapiszUstawieniaOfertKonta, zmienOferte } from '../../../src/oms/db/oferty-kanalow.ts';
 import { createWooClient } from '../../../src/oms/woo/client.js';
 import { createAllegroClient } from '../../../src/oms/allegro/client.js';
@@ -20,6 +21,8 @@ import {
   parametryKategoriiAllegroDemo,
 } from '../../../scripts/demo-dane-katalog.mjs';
 import { createZapisCenKanalow } from '../../../src/moduly/magazyn/services/ceny-kanalow-zapis.js';
+import { ustawCeneWLustrze } from '../../../src/oms/db/ceny-kanalow.js';
+import { daneSprzedazyKarty } from '../../../src/moduly/magazyn/karta-sprzedaz-kanalow.js';
 
 const START = new Date('2026-11-18T10:00:00.000Z');
 const AT = START.toISOString();
@@ -41,6 +44,7 @@ afterEach(() => {
 
 const karta = (cena_gr = 10000) => utworzKarte(db, { nazwa: 'Lampa Półcień', cena_gr });
 const kartaZBazy = (id) => db.prepare('SELECT cena_gr FROM karty_produktow WHERE id = ?').get(id);
+const cenaLustra = (id) => db.prepare('SELECT cena_gr FROM produkty_sklepowe WHERE id = ?').get(id).cena_gr;
 const zrodloCeny = (id) =>
   db.prepare("SELECT zrodlo, reczne FROM karty_zrodla_pol WHERE karta_id = ? AND pole = 'cena_gr'").get(id);
 const dziennik = () =>
@@ -62,10 +66,10 @@ function lustro(kartaId, kanal, produkt_id, pola = {}) {
 }
 
 // Oferta w rejestrze z ceną z OMS-u; domyślnie także powiązana z tą kartą w lustrze, jak po imporcie.
-function rejestr(kartaId, idZewnetrzne, kanal = 'aukcje', { wLustrze = true } = {}) {
+function rejestr(kartaId, idZewnetrzne, kanal = 'aukcje', { wLustrze = true, cena_gr = 9500 } = {}) {
   const oferta = wstawOferte(db, { kartaId, kanal, idZewnetrzne, pochodzenie: 'przejeta', stan: 'aktywna' });
   zmienOferte(db, oferta.id, { cenaZOms: true, odczytCenaGr: 10000 });
-  return wLustrze ? lustro(kartaId, kanal, idZewnetrzne) : null;
+  return wLustrze ? lustro(kartaId, kanal, idZewnetrzne, { cena_gr }) : null;
 }
 
 const produkt = (id, pola = {}) => ({
@@ -80,7 +84,7 @@ const produkt = (id, pola = {}) => ({
 });
 
 // Sklep Woo ze stanem: odczyt cen przez `include`, zapis przez `…/batch`; `odrzuc` = id → komunikat sklepu.
-function sklepWoo(produkty, { warianty = {}, odrzuc = {} } = {}) {
+function sklepWoo(produkty, { warianty = {}, odrzuc = {}, cenyBatch = {} } = {}) {
   const stan = new Map();
   for (const p of produkty) stan.set(String(p.id), p);
   for (const [rodzic, lista] of Object.entries(warianty))
@@ -107,8 +111,11 @@ function sklepWoo(produkty, { warianty = {}, odrzuc = {} } = {}) {
           update: update.map((p) => {
             if (odrzuc[p.id]) return { id: 0, error: { code: 'odrzucone', message: odrzuc[p.id], data: { id: p.id } } };
             const klucz = batch[1] ? `${batch[1]}/${p.id}` : String(p.id);
-            stan.set(klucz, { ...stan.get(klucz), regular_price: p.regular_price });
-            return { id: Number(p.id), regular_price: p.regular_price };
+            const obecny = stan.get(klucz);
+            const price = Object.hasOwn(cenyBatch, klucz) ? cenyBatch[klucz] : obecny.sale_price || p.regular_price;
+            const zapisany = { ...obecny, regular_price: p.regular_price, price };
+            stan.set(klucz, zapisany);
+            return zapisany;
           }),
         });
       }
@@ -271,8 +278,9 @@ describe('T-D2 — zatwierdzenie podglądu i zapis cen w kanałach', () => {
     const [prosty, zmieniony, wariant, odrzucony] = [karta(), karta(), karta(), karta()];
     lustro(prosty, 'sklep', 1);
     lustro(zmieniony, 'sklep', 2);
-    lustro(wariant, 'sklep', 3, { wariant_id: '31' });
-    lustro(odrzucony, 'sklep', 3, { wariant_id: '32' });
+    const lustroWariantu = lustro(wariant, 'sklep', 3, { wariant_id: '31', cena_gr: 9500 });
+    const lustroOdrzuconego = lustro(odrzucony, 'sklep', 3, { wariant_id: '32', cena_gr: 9500 });
+    const lustroInnego = lustro(karta(), 'sklep', 3, { wariant_id: '33', cena_gr: 8700 });
     zapiszUstawieniaOfertKonta(db, 'sklep', { narzutProcent: 10, progPotwierdzeniaProcent: 50 });
     const sklep = sklepWoo(
       [produkt(1, { sale_price: '79.00' }), produkt(2), produkt(3, { type: 'variable', regular_price: '' })],
@@ -306,6 +314,9 @@ describe('T-D2 — zatwierdzenie podglądu i zapis cen w kanałach', () => {
     ]);
     expect(sklep.cena('1')).toBe('110.00');
     expect(sklep.cena('2')).toBe('97.00');
+    expect(cenaLustra(lustroWariantu)).toBe(11000);
+    expect(cenaLustra(lustroOdrzuconego)).toBe(9500);
+    expect(cenaLustra(lustroInnego)).toBe(8700);
     const wpis = { kanal: 'sklep', pole: 'cena', stara: '9500', nowa: '11000', kto: 'anna', at: AT };
     expect(dziennik()).toEqual([
       { ...wpis, karta_id: prosty, cel: 'produkt:1', wynik: 'ok', blad: null },
@@ -318,11 +329,52 @@ describe('T-D2 — zatwierdzenie podglądu i zapis cen w kanałach', () => {
     expect(zrodloCeny(zmieniony)).toBeUndefined();
   });
 
+  it('Woo: po zapisie ceny regularnej okienko pokazuje odczytaną cenę promocyjną z odpowiedzi', async () => {
+    const k = karta();
+    const produktId = lustro(k, 'sklep', 1, { cena_gr: 9500 });
+    const definicje = [definicja('sklep')];
+    // Promocja startuje po ostatnim odczycie, tuż przed obsługą zapisu przez sklep.
+    const sklep = sklepWoo([produkt(1)], { cenyBatch: { 1: '79.50' } });
+    const { zapis } = usluga(definicje, { sklep: sklep.klient }, { blokujPromocjeWoo: true });
+    const p = await zapis.podglad('anna', [k]);
+
+    const wynik = await zapis.zatwierdz('anna', p.podpis, klucze(p));
+
+    expect(wynik.zapisane).toMatchObject([{ wynik: 'ok' }]);
+    expect(sklep.cena('1')).toBe('100.00');
+    const sprzedazKanalow = daneSprzedazyKarty(db, k, produktyKarty(db, k), [], definicje, () => null);
+    const html = await ejs.renderFile('src/moduly/magazyn/widoki/_karta-sprzedaz-kanalow.ejs', {
+      sprzedazKanalow,
+      karta: { id: k },
+      mozeEdytowacOferty: true,
+    });
+    expect(html.match(/Odczytana: [^<]+/u)?.[0]).toBe('Odczytana: 79,50 zł');
+    expect(cenaLustra(produktId)).toBe(7950);
+  });
+
+  it.each([
+    ['brak price', undefined],
+    ['pusta price', ''],
+    ['niepoprawna price', '99 zł'],
+  ])('Woo: %s w udanej odpowiedzi zachowuje poprzednią cenę lustra i zapisuje historię', async (_, price) => {
+    const k = karta();
+    const produktId = lustro(k, 'sklep', 1, { cena_gr: 9500 });
+    const sklep = sklepWoo([produkt(1)], { cenyBatch: { 1: price } });
+    const { zapis } = usluga([definicja('sklep')], { sklep: sklep.klient });
+    const p = await zapis.podglad('anna', [k]);
+
+    const wynik = await zapis.zatwierdz('anna', p.podpis, klucze(p));
+
+    expect(wynik.zapisane).toMatchObject([{ wynik: 'ok' }]);
+    expect(cenaLustra(produktId)).toBe(9500);
+    expect(dziennik()).toMatchObject([{ cel: 'produkt:1', wynik: 'ok', nowa: '10000' }]);
+  });
+
   it('Allegro: jedna komenda na cenę docelową, wynik zadań po ofercie, błąd jednej oferty nie cofa reszty', async () => {
     const [a, b, c] = [karta(), karta(), karta(20000)];
-    rejestr(a, '501');
-    rejestr(b, '502');
-    rejestr(c, '503');
+    const lustroA = rejestr(a, '501');
+    const lustroB = rejestr(b, '502');
+    const lustroC = rejestr(c, '503', 'aukcje', { cena_gr: 20000 });
     zapiszUstawieniaOfertKonta(db, 'aukcje', { czynne: true, narzutProcent: 10 });
     const aukcje = kontoAllegro(
       { 501: '95.00', 502: '95.00', 503: '200.00' },
@@ -344,6 +396,7 @@ describe('T-D2 — zatwierdzenie podglądu i zapis cen w kanałach', () => {
     ]);
     expect(wynik.bledy).toMatchObject([{ kartaId: b, cel: 'oferta:502', blad: 'Cena poza dozwolonym zakresem' }]);
     expect(wynik.pominiete).toEqual([]);
+    expect([cenaLustra(lustroA), cenaLustra(lustroB), cenaLustra(lustroC)]).toEqual([11000, 9500, 22000]);
     expect(czekaj).toHaveBeenCalledWith(1000);
     expect(dziennik().map((w) => [w.cel, w.stara, w.nowa, w.wynik, w.blad])).toEqual([
       ['oferta:501', '9500', '11000', 'ok', null],
@@ -356,7 +409,7 @@ describe('T-D2 — zatwierdzenie podglądu i zapis cen w kanałach', () => {
 
   it('Allegro: niezakończona po 15 s komenda to „w toku”; powtórka wysyła ten sam commandId', async () => {
     const k = karta();
-    rejestr(k, '501');
+    const ofertaWLustrze = rejestr(k, '501');
     zapiszUstawieniaOfertKonta(db, 'aukcje', { czynne: true, narzutProcent: 10 });
     const aukcje = kontoAllegro({ 501: '95.00' }, { przetwarza: true });
     const { zapis, czekaj } = usluga([definicja('aukcje', 'allegro')], { aukcje: aukcje.klient });
@@ -369,6 +422,7 @@ describe('T-D2 — zatwierdzenie podglądu i zapis cen w kanałach', () => {
     expect(czekaj).toHaveBeenCalledTimes(15);
     expect(czekaj.mock.calls.every(([ms]) => ms === 1000)).toBe(true);
     expect(dziennik()).toMatchObject([{ cel: 'oferta:501', wynik: 'w_toku', blad: null }]);
+    expect(cenaLustra(ofertaWLustrze)).toBe(9500);
     expect(zrodloCeny(k)).toEqual({ zrodlo: 'oms', reczne: 1 });
 
     const powtorka = await zapis.zatwierdz('anna', p.podpis, klucze(p));
@@ -537,5 +591,16 @@ describe('T-D3 — zapadka: cena wysłana z narzutem nie wraca na kartę przy im
     await trescOferty(konto.cena(O));
     expect(kartaZBazy(k).cena_gr).toBe(10000);
     expect(zrodloCeny(k)).toEqual({ zrodlo: 'oms', reczne: 1 });
+  });
+});
+
+describe('lustro kanału po udanym zapisie ceny', () => {
+  it('nowa cena trafia tylko do sklepu, który ją przyjął — drugi sklep z tym samym id produktu zostaje bez zmian', () => {
+    const k = karta();
+    const tenSklep = lustro(k, 'sklep', 7, { cena_gr: 9500 });
+    const drugiSklep = lustro(k, 'sklep-drugi', 7, { cena_gr: 8800 });
+    ustawCeneWLustrze(db, 'sklep', '7', '', 11000);
+    expect(cenaLustra(tenSklep)).toBe(11000);
+    expect(cenaLustra(drugiSklep)).toBe(8800);
   });
 });

@@ -29,7 +29,7 @@
 <input id="erli-klucz" name="kluczApi" type="password" autocomplete="new-password" autocorrect="off" autocapitalize="none" spellcheck="false" aria-describedby="erli-klucz-pomoc"<% if(!k?.kluczZapisany){ %> required<% } %>>
 <% if(k?.kluczZapisany){ %><span>klucz zapisany</span><% } %>
 <br><span id="erli-klucz-pomoc">Klucz skopiuj z ustawień integracji API w panelu sprzedawcy ERLI. Puste pole zachowuje zapisany klucz. Zapis sam sprawdza połączenie.</span></p>
-<p><label for="erli-czas">Domyślny czas wysyłki w dniach roboczych</label><br><input id="erli-czas" type="number" name="domyslnyCzasWysylki" min="0" max="365" step="1" value="<%= u.domyslnyCzasWysylki??'' %>" aria-describedby="erli-czas-pomoc"><br><span id="erli-czas-pomoc">Używany, gdy ERLI nie poda czasu w pozycji ani produkcie. Puste pole pozostawia termin nieustalony.</span></p>
+<p><label for="erli-czas">Domyślny czas wysyłki w dniach roboczych</label><br><input id="erli-czas" type="number" name="domyslnyCzasWysylki" min="0" max="365" step="1" value="<%= u.domyslnyCzasWysylki??'' %>" aria-describedby="erli-czas-pomoc"><br><span id="erli-czas-pomoc">Nie trafia do ofert — czas w ofertach ustawiasz w kroku „Oferty”. Ten służy tylko zamówieniom z ofert założonych ręcznie w ERLI bez czasu wysyłki: OMS policzy z niego termin. Puste pole zostawia wtedy termin nieustalony.</span></p>
 <button type="submit" class="btn btn--glowny">Zapisz dane sklepu</button></fieldset>
 </form>
 <% if(!kreator||u.sprawdzono){ %><form method="post" action="<%= adres %>/sprawdz" aria-label="Sprawdź połączenie ERLI"><%- ukryty %><button type="submit" class="btn"<% if(env){ %> disabled<% } %>><%= kreator ? 'Sprawdź ponownie' : 'Sprawdź połączenie' %></button></form><% } %>
@@ -128,9 +128,14 @@
 <form method="post" action="<%= adres %>/oferty" aria-labelledby="erli-oferty">
 <%- ukryty %>
 <fieldset<% if(env){ %> disabled<% } %>><legend>Domyślne dane ofert konta</legend>
-<% const pola=[['narzutProcent','Narzut %','text','decimal'],['progPotwierdzeniaProcent','Próg potwierdzenia zmiany ceny %','text','decimal'],['stalaIlosc','Stała liczba sztuk (wymagana)','number','numeric'],['czasWysylkiDni','Czas wysyłki w dniach','number','numeric'],['stawkaVat','Stawka VAT','select','']];
-// Po pierwszym włączeniu stanów magazynowych dochodzą bufor, próg skoku i inna etykieta stałej liczby sztuk; wcześniej formularz jest bez zmian.
-const pomocStanow={buforSzt:'Tyle sztuk OMS zostawi poza kanałem: wyśle stan karty pomniejszony o bufor.',progSkokuSzt:'Niewyjaśniona zmiana stanu karty większa niż próg wstrzymuje ofertę do sprawdzenia.'};
+<% const pola=[['narzutProcent','Narzut %','text','decimal'],['progPotwierdzeniaProcent','Próg potwierdzenia zmiany ceny %','text','decimal'],['stalaIlosc','Stała liczba sztuk','number','numeric'],['czasWysylkiDni','Czas wysyłki w dniach roboczych','number','numeric'],['stawkaVat','Stawka VAT','select','']];
+// Po pierwszym włączeniu stanów magazynowych dochodzą bufor, próg skoku oraz zmienia się opis stałej liczby sztuk.
+const pomocPol={
+  czasWysylkiDni: 'Obietnica dla kupującego: w ciągu tylu dni roboczych od zakupu wyślesz paczkę. OMS wpisuje ją w każdą ofertę ERLI i od niej liczy termin wysyłki zamówienia. Przy towarze robionym na zamówienie wpisz realny czas produkcji z zapasem. Możesz zostawić puste i uzupełnić przy wystawianiu oferty.',
+  stalaIlosc: locals.stanyKiedys
+    ? "Używana tylko wtedy, gdy stany magazynowe są wyłączone. Przy włączonych OMS wysyła stan karty pomniejszony o bufor."
+    : "Tyle sztuk OMS wpisze w każdej ofercie ERLI. Po sprzedaży przywraca tę liczbę, więc oferta się nie wyprzedaje. Przy towarze robionym na zamówienie wpisz zapas, np. 50 — to też najwięcej, ile klient kupi w jednym zamówieniu. Możesz zostawić puste i uzupełnić przy wystawianiu oferty.",
+  buforSzt:'Tyle sztuk OMS zostawi poza kanałem: wyśle stan karty pomniejszony o bufor.',progSkokuSzt:'Niewyjaśniona zmiana stanu karty większa niż próg wstrzymuje ofertę do sprawdzenia.'};
 if(locals.stanyKiedys){pola[2]=['stalaIlosc','Stała liczba sztuk (gdy stany magazynowe są wyłączone)','number','numeric'];pola.splice(3,0,['buforSzt','Bufor (szt.)','number','numeric'],['progSkokuSzt','Próg skoku stanu (szt.)','number','numeric']);}
 for(const [pole,etykieta,typ,tryb] of pola){ const id='erli-oferty-'+pole,bladPola=bledyOfert[pole]; %>
 <p><label for="<%= id %>"><%= etykieta %></label><br>
@@ -139,11 +144,11 @@ for(const [pole,etykieta,typ,tryb] of pola){ const id='erli-oferty-'+pole,bladPo
 <% const wartosc=wartosciOfert[pole]??''; const opcje=['',...stawkiVat]; if(!opcje.includes(wartosc))opcje.push(wartosc); for(const v of opcje){ %><option value="<%= v %>"<% if(v===wartosc){ %> selected<% } %>><%= v===''?'Wybierz stawkę':v==='zw'?'zw':v+'%' %></option><% } %>
 </select>
 <% }else{ %>
-<input id="<%= id %>" type="<%= typ %>" name="<%= pole %>" inputmode="<%= tryb %>" value="<%= wartosciOfert[pole]??'' %>"<% if(pole==='stalaIlosc'){ %> required min="1" max="1000000" step="1"<% } if(pole==='czasWysylkiDni'){ %> min="0" max="365" step="1"<% } if(pomocStanow[pole]){ %> min="<%= pole==='buforSzt'?0:1 %>" max="1000000" step="1" aria-describedby="<%= id %>-pomoc<%= bladPola?' '+id+'-blad':'' %>"<% } if(bladPola){ %> aria-invalid="true"<% if(!pomocStanow[pole]){ %> aria-describedby="<%= id %>-blad"<% } %> autofocus<% } %>><% if(pomocStanow[pole]){ %><br><span id="<%= id %>-pomoc" class="ust-pomoc"><%= pomocStanow[pole] %></span><% } %>
+<input id="<%= id %>" type="<%= typ %>" name="<%= pole %>" inputmode="<%= tryb %>" value="<%= wartosciOfert[pole]??'' %>"<% if(pole==='stalaIlosc'){ %> min="1" max="1000000" step="1"<% } if(pole==='czasWysylkiDni'){ %> min="0" max="365" step="1"<% } if(pole==='buforSzt'||pole==='progSkokuSzt'){ %> min="<%= pole==='buforSzt'?0:1 %>" max="1000000" step="1"<% } if(pomocPol[pole]){ %> aria-describedby="<%= id %>-pomoc<%= bladPola?' '+id+'-blad':'' %>"<% } if(bladPola){ %> aria-invalid="true"<% if(!pomocPol[pole]){ %> aria-describedby="<%= id %>-blad"<% } %> autofocus<% } %>><% if(pomocPol[pole]){ %><br><span id="<%= id %>-pomoc" class="ust-pomoc"><%= pomocPol[pole] %></span><% } %>
 <% } if(bladPola){ %><br><span id="<%= id %>-blad"><%= bladPola %></span><% } %></p>
 <% } %>
-<%# Cennik dostaw jako reguły rozmiaru (identyfikator cennika ERLI wpisany tekstem); bez pola cennikDostaw. %>
-<%- include('_cenniki-reguly.ejs', {prefiks: 'erli-oferty-cenniki', zapisane: wartosciOfert?.cenniki, wyslane: Object.keys(bledyOfert).length ? wartosciOfert : null, bledy: bledyOfert, opcje: null}) %>
+<%# Cennik dostaw nie jest polem kroku: cenniki OMS i ich powiązania z kontami ustawia się w Magazynie. %>
+<% if(cenniki){ %><p id="erli-oferty-cenniki"><%= cenniki %> <a href="/magazyn/cenniki">Ustaw w Magazyn → Cenniki</a></p><% } %>
 <fieldset><legend>Oferty: wstrzymane / czynne</legend>
 <p id="erli-oferty-tryb-pomoc">Przy wstrzymanych ofertach działa podgląd i odczyt, ale OMS nie wysyła zmian ofert do ERLI.</p>
 <% for(const v of ['wstrzymane','czynne']){ %><p><input id="erli-oferty-<%= v %>" type="radio" name="czynne" value="<%= v %>"<% if((wartosciOfert.czynne??'wstrzymane')===v){ %> checked<% } %> aria-describedby="erli-oferty-tryb-pomoc"><label for="erli-oferty-<%= v %>"><%= v %></label></p><% } %>

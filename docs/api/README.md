@@ -226,7 +226,7 @@ curl -s -X PATCH "$OMS/api/v1/produkty/43" \
 
 ## Stany magazynowe
 
-Działają tylko, gdy stany są włączone w Ustawienia → Zamówienia i magazyn → Stany magazynowe. Przy wyłączonych obie trasy odpowiadają
+Działają tylko, gdy stany są włączone w Magazyn → Ustawienia → Stany magazynowe. Przy wyłączonych obie trasy odpowiadają
 `409 stany_wylaczone`.
 
 **Odczyt** — zakres `stany:odczyt`. Stan liczony jak w OMS-ie, z uwzględnieniem zamówień. Pole `od` to chwila

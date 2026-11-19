@@ -92,7 +92,18 @@ export function podlaczKopiowanie(root = document) {
   }
 }
 
+// Kółko pracy w tle (`#import-wir`) przeżywa podmianę sekcji dzięki `hx-preserve`, ale htmx przenosi
+// je przez odłączony fragment, a to zeruje animację CSS — co kilka sekund kółko cofałoby się o kawałek
+// obrotu. Wyrównanie animacji do osi czasu dokumentu (`startTime = 0`) przywraca płynny ruch.
+export function podlaczWirPracy(root = document) {
+  root.addEventListener('htmx:afterSwap', () => {
+    const wir = root.getElementById?.('import-wir');
+    for (const animacja of wir?.getAnimations?.() ?? []) animacja.startTime = 0;
+  });
+}
+
 if (typeof document !== 'undefined') {
   podlaczMenu(document);
   podlaczKopiowanie(document);
+  podlaczWirPracy(document);
 }

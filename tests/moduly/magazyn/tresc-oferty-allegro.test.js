@@ -344,8 +344,9 @@ describe('E3.06b — wejście E3.06 z bazy', () => {
     const nc = zapytania(db, () => ofertaAllegroKarty(db, c, KONTO, { teraz: TERAZ }));
     expect(nb).toBe(na);
     expect(nc).toBe(na);
-    // 16 odczytów treści + 2 odczyty ręcznej ceny konta (sprawdzenie tabeli na starej bazie i sam wiersz).
-    expect(na).toBeLessThanOrEqual(18);
+    // 17 odczytów treści (reguły konta z cenników OMS to osobne zapytanie obok wiersza ustawień konta)
+    // + 2 odczyty ręcznej ceny konta (sprawdzenie tabeli na starej bazie i sam wiersz).
+    expect(na).toBeLessThanOrEqual(19);
   });
 
   it('mapa wgranych zdjęć tylko tego konta: zdjęcie wgrane na inne konto idzie do wgrania', async () => {

@@ -203,6 +203,17 @@ function sciezkaZdekodowana(url) {
 }
 
 /**
+ * Ekran z adresu zdekodowanego jak w routerze; `null` (= odmowa) przy złym kodowaniu i przy `?` po dekodowaniu —
+ * `ekranDlaAdresu` ucina na `?`, a router zostawia `%3F` w segmencie, więc `/zamowienia/1%3F/dane/faktura` trafiłby
+ * na łagodniejszy ekran zamówień zamiast dokumentów.
+ */
+export function ekranZdekodowany(url) {
+  const sciezka = sciezkaZdekodowana(url);
+  if (sciezka === null || sciezka.includes('?')) return null;
+  return ekranDlaAdresu(sciezka);
+}
+
+/**
  * Czy adres to kolejka druku (`czyTrasaMaszynowa`) po zdekodowaniu — `/kolejka%2Ddruku` = `/kolejka-druku`.
  * Złe kodowanie = nie kolejka: żądanie idzie ścieżką Basic, czyli klucz go nie otwiera.
  * ⚠️ Zdekodowany `?` (%3F) nie może skrócić ścieżki do prefiksu kolejki — sprawdzamy całą zdekodowaną ścieżkę.
@@ -406,7 +417,8 @@ function dopuscZalogowanego(req, reply, konta, sesja, sekret, nazwaCiasteczka) {
   // Osobiste ustawienie, tak jak /konto — niezależne od prawa „ustawienia”.
   // Dokładna ścieżka: pozostałe ekrany Ustawień zachowują własną bramkę.
   if (req.url.split('?')[0] === '/ustawienia/powiadomienia') return;
-  const ekran = ekranDlaAdresu(req.url);
+  // Z surowego adresu `/magazyn/%75stawienia` liczyłby się jako Magazyn, a router wpuściłby go na trasę ustawień.
+  const ekran = ekranZdekodowany(req.url);
   if (konta.sprawdzModul(req, reply)) return reply;
   if (ekran === 'kazdy' || ekran === 'otwarte') return;
   if (ekran === null) return odmow(req, reply);
@@ -451,7 +463,7 @@ function dopuscSerwisowe(req, reply, konta) {
   // stoi przy `PREFIKSY_MASZYNOWE` w domena/ekrany.js.
   if (czyTrasaMaszynowa(req.url)) return;
 
-  const ekran = ekranDlaAdresu(req.url);
+  const ekran = ekranZdekodowany(req.url);
   if (ekran === 'api' || ekran === 'kazdy' || ekran === 'otwarte') return;
   return odmow(req, reply);
 }

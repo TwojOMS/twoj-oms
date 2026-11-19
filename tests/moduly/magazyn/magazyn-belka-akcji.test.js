@@ -69,7 +69,7 @@ describe('belka akcji magazynu', () => {
     // hurt bez formaction — trafia w action formularza:
     expect(widok).toContain('action="/magazyn/hurt"');
     expect((widok.match(/name="zakres" value="zaznaczone"/g) ?? []).length).toBe(4);
-    expect((widok.match(/name="zakres" value="pasujace"/g) ?? []).length).toBe(4);
+    expect((widok.match(/name="zakres" value="pasujace"/g) ?? []).length).toBe(3);
     // ⚠️ LICZBA, NIE OBECNOSC: duplikat ukrytego `zawezenie` (pole powtorzone przy kolejnej
     // akcji) wraca z Fastify TABLICA, `pole()` scina ja do null i caly hurtowy zakres znika
     // po cichu w formularzu, ktory go ustawia — `toContain` by tego nie zlapal, bo string

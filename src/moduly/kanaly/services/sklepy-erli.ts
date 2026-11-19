@@ -17,7 +17,7 @@ import {
   zapiszUstawieniaOfertKonta,
 } from '../../../oms/db/oferty-kanalow.ts';
 import { stanyKiedysWlaczone } from '../stany-kont.ts';
-import { regulyZKroku, formularzNieaktualny, FORMULARZ_NIEAKTUALNY } from './oferty-allegro-ustawienia.ts';
+import { podsumowanieCennikowKonta } from './oferty-allegro-ustawienia.ts';
 
 export const SRODOWISKA_ERLI = [
   { adres: 'https://erli.pl/svc/shop-api', nazwa: 'ERLI — sklep' },
@@ -35,10 +35,11 @@ const blad = (status: number, komunikat: string): Wynik => ({ ok: false, status,
 export type MetodaSklepu = { id: string; nazwa: string; erli: boolean; vendor: string | null };
 export type PunktNadania = { id: string; nazwa: string; adres: string; domyslny: boolean };
 const tekst = (v: unknown, max = 160) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+const ZNAKI_STERUJACE = /[\u0000-\u001f\u007f]/;
 /** Kroki 3–4 kreatora: metody z cenników sklepu i punkty nadania (te ostatnie tylko, gdy sklep ma Przesyłki Erli). */
 async function pobierzSlownikiNadania(
   klient: any,
-): Promise<{ metodySklepu: MetodaSklepu[]; punktyNadania: PunktNadania[] }> {
+): Promise<{ metodySklepu: MetodaSklepu[]; punktyNadania: PunktNadania[]; cennikiDostaw: string[] }> {
   const [cenniki, metodyErli, metodyDostawy] = await Promise.all([
     klient.cennikiDostawSzczegoly(),
     klient.metodyErli(),
@@ -46,6 +47,8 @@ async function pobierzSlownikiNadania(
   ]);
   if (!Array.isArray(cenniki) || !Array.isArray(metodyErli) || !Array.isArray(metodyDostawy))
     throw new Error('Niepoprawne słowniki');
+  const nazwyCennikow = cenniki.map((c) => tekst(c?.name)).filter((n) => n && !ZNAKI_STERUJACE.test(n));
+  const cennikiDostaw = [...new Set(nazwyCennikow)].slice(0, 200);
   const ids = [
     ...new Set(
       cenniki.flatMap((c: any) => (Array.isArray(c?.prices) ? c.prices.map((x: any) => x?.deliveryMethod?.id) : [])),
@@ -53,11 +56,7 @@ async function pobierzSlownikiNadania(
   ]
     .filter(
       (id): id is string =>
-        typeof id === 'string' &&
-        id.length > 0 &&
-        id.length <= 100 &&
-        id !== '__proto__' &&
-        !/[\u0000-\u001f\u007f]/.test(id),
+        typeof id === 'string' && id.length > 0 && id.length <= 100 && id !== '__proto__' && !ZNAKI_STERUJACE.test(id),
     )
     .slice(0, 200);
   const metodySklepu = ids.map((id) => {
@@ -70,7 +69,7 @@ async function pobierzSlownikiNadania(
       vendor: typeof d?.vendor === 'string' ? d.vendor : null,
     };
   });
-  if (!metodySklepu.some((m) => m.erli)) return { metodySklepu, punktyNadania: [] };
+  if (!metodySklepu.some((m) => m.erli)) return { metodySklepu, punktyNadania: [], cennikiDostaw };
   const punkty = await klient.punktyNadania();
   if (!Array.isArray(punkty)) throw new Error('Niepoprawne punkty nadania');
   const punktyNadania = punkty
@@ -87,7 +86,7 @@ async function pobierzSlownikiNadania(
         .join(', '),
       domyslny: x.isDefault === true,
     }));
-  return { metodySklepu, punktyNadania };
+  return { metodySklepu, punktyNadania, cennikiDostaw };
 }
 export const KOMUNIKAT_KOLIZJI_ERLI =
   'Ten sklep ERLI jest już zapisany w innym kanale. Oba kanały wstrzymano — odłącz albo usuń duplikat i ponownie sprawdź połączenie.';
@@ -287,10 +286,12 @@ export function createSklepyErli(o: {
     if (op === 'oferty') {
       const liczba = (v: unknown) =>
         typeof v === 'string' && /^-?\d+([.,]\d+)?$/.test(v.trim()) ? Number(v.trim().replace(',', '.')) : NaN;
+      const procent = (v: unknown, domyslnaBp: number) =>
+        typeof v === 'string' && !v.trim() ? domyslnaBp / 100 : liczba(v);
       const zmiany: Record<string, unknown> = {
-        narzutProcent: liczba(b.narzutProcent),
-        progPotwierdzeniaProcent: liczba(b.progPotwierdzeniaProcent),
-        stalaIlosc: liczba(b.stalaIlosc),
+        narzutProcent: procent(b.narzutProcent, DOMYSLNE_USTAWIENIA_OFERT.narzutBp),
+        progPotwierdzeniaProcent: procent(b.progPotwierdzeniaProcent, DOMYSLNE_USTAWIENIA_OFERT.progPotwierdzeniaBp),
+        stalaIlosc: b.stalaIlosc === '' || b.stalaIlosc == null ? null : liczba(b.stalaIlosc),
         czasWysylkiDni: b.czasWysylkiDni === '' ? null : liczba(b.czasWysylkiDni),
         stawkaVat: b.stawkaVat === '' ? null : b.stawkaVat,
         czynne: b.czynne === 'czynne',
@@ -300,16 +301,6 @@ export function createSklepyErli(o: {
         for (const p of ['buforSzt', 'progSkokuSzt']) if (b[p] !== undefined) zmiany[p] = liczba(b[p]);
       let pole = 'stalaIlosc';
       try {
-        if (b.stalaIlosc === '' || b.stalaIlosc == null) throw new Error('Podaj stałą liczbę sztuk');
-        // Tabela reguł zamiast pola cennikDostaw (cennik ERLI to tekst dowolny); błąd przy wierszu = nic
-        // nie zapisane. Ciało bez tabeli (stary formularz) zostawia reguły konta bez zmian.
-        if (formularzNieaktualny(b, ustawieniaOfertKonta(db, k).cenniki))
-          return { ok: false, status: 409, komunikat: FORMULARZ_NIEAKTUALNY };
-        const tabela = regulyZKroku(b);
-        const bledyTabeli = tabela ? Object.values(tabela.bledyPol) : [];
-        if (bledyTabeli.length)
-          return { ok: false, status: 400, komunikat: bledyTabeli[0], bledyPol: tabela!.bledyPol };
-        if (tabela) zmiany.cenniki = tabela.reguly;
         return transakcja(() => {
           // Walidacja przy każdym polu; błąd cofa całość, także przy pierwszym zapisie.
           for (const [nazwa, wartosc] of Object.entries(zmiany)) {
@@ -403,6 +394,8 @@ export function createSklepyErli(o: {
       }
       if (pobierz(k)?.wersja !== r.wersja) return blad(409, 'Połączenie zmieniono podczas pobierania. Odśwież ekran.');
       return transakcja(() => {
+        // Nazwy cenników ERLI przychodzą razem z metodami, ale nie są już zapisywane: powiązania cenników
+        // OMS z kontem ustawia się w Magazyn → Cenniki. Zapisana wcześniej lista zostaje bez zmian.
         const { metodySklepu, punktyNadania } = slowniki,
           ids = new Set(metodySklepu.map((m) => m.id));
         const mapaMetod = Object.fromEntries(Object.entries(u.mapaMetod ?? {}).filter(([id]) => ids.has(id)));
@@ -410,6 +403,37 @@ export function createSklepyErli(o: {
           ? u.punktNadania
           : (punktyNadania.find((x) => x.domyslny)?.id ?? null);
         zapisz(k, { ...u, metodySklepu, punktyNadania, mapaMetod, punktNadania }, s, a);
+        zmienWersje(k, a, op);
+        return { ok: true, klucz: k };
+      });
+    }
+    // Magazyn → Cenniki: odświeża tylko nazwy cenników dostaw (do powiązań z cennikami OMS) i datę pobrania;
+    // metody dostawy, ich mapę i punkty nadania zostawia, bo te ustawia krok 3 konfiguratora.
+    if (op === 'pobierz-cenniki') {
+      if (!u.sprawdzono || u.kolizja || !s.kluczApi)
+        return blad(409, 'Najpierw sprawdź połączenie i rozwiąż kolizję sklepu.');
+      let cenniki: unknown;
+      try {
+        cenniki = await (createErliClient as any)({
+          adresApi: u.adresApi,
+          kluczApi: s.kluczApi,
+          fetchImpl: o.fetchImpl,
+        }).cennikiDostawSzczegoly();
+        if (!Array.isArray(cenniki)) throw new Error('Niepoprawna lista cenników');
+      } catch (e) {
+        return blad(
+          400,
+          odmowaProby(e) ??
+            ((e as any).status === 401
+              ? 'Nieprawidłowy klucz API. Sprawdź klucz w panelu ERLI.'
+              : 'Nie udało się pobrać cenników z ERLI. Spróbuj ponownie.'),
+        );
+      }
+      if (pobierz(k)?.wersja !== r.wersja) return blad(409, 'Połączenie zmieniono podczas pobierania. Odśwież ekran.');
+      const nazwy = (cenniki as any[]).map((c) => tekst(c?.name)).filter((n) => n && !ZNAKI_STERUJACE.test(n));
+      const cennikiDostaw = [...new Set(nazwy)].slice(0, 200);
+      return transakcja(() => {
+        zapisz(k, { ...u, cennikiDostaw, cennikiPobranoAt: o.teraz().toISOString() }, s, a);
         zmienWersje(k, a, op);
         return { ok: true, klucz: k };
       });
@@ -535,6 +559,7 @@ export function createSklepyErli(o: {
     blokadaUsuniecia,
     usun,
     ustawieniaOfert,
+    podsumowanieCennikow: (k: string) => podsumowanieCennikowKonta(db, k),
     stanyKiedys: () => stanyKiedysWlaczone(db),
   };
 }

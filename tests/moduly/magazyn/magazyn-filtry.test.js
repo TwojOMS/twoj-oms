@@ -6,9 +6,10 @@ import {
   saJakiesFiltry,
   adresMagazynu,
   BRAKI_MAGAZYNU,
-  PACZKOMAT_DO_FILTRA,
   BRAKI_ETYKIETY,
+  kluczBrakuParametru,
 } from '../../../src/domena/magazyn-filtry.js';
+import { dodajParametr, ustawWartoscKarty, listaParametrow } from '../../../src/oms/db/parametry-kart.js';
 // Jawne wejście historycznych testów; pętle sprawdzają filtr i zachowanie bazy.
 const KANALY_MAGAZYNU = ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2'];
 import { openOmsDb } from '../../../src/oms/db/db.ts';
@@ -42,7 +43,8 @@ describe('filtryZZapytania — czytanie adresu', () => {
           kategoria: 'Aplikacje',
           marka: 'Półcień',
           brak: 'sku',
-          paczkomat: 'nieoznaczone',
+          parametr: '3',
+          pbez: '1',
           cenaOd: '10',
           cenaDo: '99',
         },
@@ -54,7 +56,11 @@ describe('filtryZZapytania — czytanie adresu', () => {
       kategoria: 'Aplikacje',
       marka: 'Półcień',
       brak: 'sku',
-      paczkomat: 'nieoznaczone',
+      parametr: 3,
+      pw: null,
+      pod: null,
+      pdo: null,
+      pbez: '1',
       // Ceny w GROSZACH — kolumna `produkty_sklepowe.cena_gr` jest INTEGER-em w groszach,
       // a porownanie zlotowek z groszami przesunie granice filtru o dwa rzedy wielkosci.
       cenaOd: 1000,
@@ -108,9 +114,8 @@ describe('filtryZZapytania — czytanie adresu', () => {
     expect(
       filtryZZapytania({ brak: 'cokolwiek' }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).brak,
     ).toBe(null);
-    expect(
-      filtryZZapytania({ paczkomat: 'moze' }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).paczkomat,
-    ).toBe(null);
+    // Z listą definicji (ekran) parametr spoza niej zostaje numerem — baza odda pusto, nie cały katalog.
+    expect(filtryZZapytania({ parametr: '99' }, KANALY_MAGAZYNU, []).parametr).toBe('99');
   });
 
   it('nazwa z lancucha prototypow nie przechodzi przez zadna z bialych list', () => {
@@ -123,9 +128,7 @@ describe('filtryZZapytania — czytanie adresu', () => {
       expect(filtryZZapytania({ brak: zly }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).brak).toBe(
         null,
       );
-      expect(
-        filtryZZapytania({ paczkomat: zly }, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']).paczkomat,
-      ).toBe(null);
+      expect(filtryZZapytania({ parametr: zly }, KANALY_MAGAZYNU, []).parametr).toBe(null);
     }
   });
 
@@ -183,8 +186,8 @@ describe('filtryZZapytania — czytanie adresu', () => {
   });
 });
 
-// ⚠️⚠️ FILTR BRAKÓW. Warstwa zapytan zna sześć braków: sku, wymiary,
-// kategoria, paczkomat, zdjecie, opis. Nieobsługiwana wartość `brak ∈ sku|wymiary|allegro` — wartosci
+// ⚠️⚠️ FILTR BRAKÓW. Warstwa zapytan zna piec stalych brakow: sku, wymiary,
+// kategoria, zdjecie, opis — i `parametr-<id>` dla kazdego wymaganego parametru karty. Nieobsługiwana wartość `brak ∈ sku|wymiary|allegro` — wartosci
 // `allegro` w `db/magazyn.js` NIE MA i nieznana wartosc leci tam w `1 = 0`. Pozycja
 // „bez oferty na Allegro" wystawiona w interfejsie oddawalaby wiec PUSTA LISTE przy kazdym
 // klknieciu, co wyglada jak „nie ma takich kart", a nie jak funkcja, ktorej nie napisano.
@@ -229,14 +232,20 @@ describe('slowniki filtrow zgadzaja sie z warstwa zapytan', () => {
       szerokosc_mm: 700,
       wysokosc_mm: 1000,
       kategoria_glowna: 'Boho',
-      paczkomat: 'tak',
     });
+    // „Paczkomat" to tu wymagany parametr karty: jego brak liczy sie tak samo jak brak pola stalego.
+    const paczkomat = dodajParametr(db, {
+      nazwa: 'Paczkomat',
+      typ: 'lista',
+      wartosci: ['tak', 'nie'],
+      wymagany: true,
+    }).id;
     const bez = {
       sku: { sku: null },
       // Polowiczny wymiar to nadal brak wymiarow — do wysylki i gabarytu potrzebne sa oba.
       wymiary: { wysokosc_mm: null },
       kategoria: { kategoria_glowna: null },
-      paczkomat: { paczkomat: null },
+      paczkomat: {},
       zdjecie: {},
       opis: {},
       cena_zakupu: {},
@@ -259,10 +268,12 @@ describe('slowniki filtrow zgadzaja sie z warstwa zapytan', () => {
     uzupelnijTresc(komplet);
     const cena = (id) => zapiszCeneZakupu(db, id, { gr: 1000, od: '2020-01-01' }, { zrodlo: 'karta' });
     cena(komplet);
+    ustawWartoscKarty(db, komplet, paczkomat, 'tak');
     for (const [brak, dziura] of Object.entries(bez)) {
       const id = utworzKarte(db, { ...pelny(KARTA_POZYCJI[brak]), ...dziura });
       uzupelnijTresc(id, brak);
       if (brak !== 'cena_zakupu') cena(id);
+      if (brak !== 'paczkomat') ustawWartoscKarty(db, id, paczkomat, 'tak');
     }
     // Dwa produkty w lustrze, w roznych kanalach — zeby „filtr zawezil" znaczylo cos wiecej
     // niz „filtr czegos nie wywalil".
@@ -277,19 +288,24 @@ describe('slowniki filtrow zgadzaja sie z warstwa zapytan', () => {
       });
       powiazProdukt(db, p, kartaId);
     }
+    return { paczkomat };
   }
 
   it('KAZDA pozycja z BRAKI_MAGAZYNU zaweza do SWOJEJ karty, a nie do „byle niepelnej"', () => {
-    katalog();
+    const { paczkomat } = katalog();
     expect(kartyZKanalami(db, {})).toHaveLength(8);
 
-    for (const brak of BRAKI_MAGAZYNU) {
+    // Brak wymaganego parametru stoi obok stalych pozycji slownika i tez trafia w swoja karte.
+    const oczekiwane = (brak) => {
+      if (brak === 'komplet') return KOMPLETNE;
+      if (brak === kluczBrakuParametru(paczkomat)) return [KARTA_POZYCJI.paczkomat];
+      return [KARTA_POZYCJI[brak]];
+    };
+    for (const brak of [...BRAKI_MAGAZYNU, kluczBrakuParametru(paczkomat)]) {
       const wynik = kartyZKanalami(db, { filtry: { brak } });
       // Pozycja nieznana bazie oddalaby ZERO na kazdym katalogu. A ze kazdej karcie
       // brakuje CZEGOS INNEGO, przestawienie dwoch galezi miedzy soba tez tu pada.
-      expect(wynik.map((w) => w.nazwa).sort(), `brak=${brak}`).toEqual(
-        brak === 'komplet' ? KOMPLETNE : [KARTA_POZYCJI[brak]],
-      );
+      expect(wynik.map((w) => w.nazwa).sort(), `brak=${brak}`).toEqual(oczekiwane(brak));
     }
   });
 
@@ -389,22 +405,24 @@ describe('slowniki filtrow zgadzaja sie z warstwa zapytan', () => {
     }
   });
 
-  it('KAZDY stan paczkomatu ze slownika zawęża liste do swojej karty', () => {
-    utworzKarte(db, { nazwa: 'Atak', paczkomat: 'tak' });
-    utworzKarte(db, { nazwa: 'Bnie', paczkomat: 'nie' });
+  // Wartości parametru listy przechodzą przez parser ekranu (z listą definicji) i trafiają
+  // w swoją kartę; „bez wartości" to trzeci, osobny stan, a nie „nie".
+  it('KAZDA wartosc parametru listy i „bez wartosci" zaweza liste do swojej karty', () => {
+    const p = dodajParametr(db, { nazwa: 'Paczkomat', typ: 'lista', wartosci: ['tak', 'nie'], wymagany: true }).id;
+    ustawWartoscKarty(db, utworzKarte(db, { nazwa: 'Atak' }), p, 'tak');
+    ustawWartoscKarty(db, utworzKarte(db, { nazwa: 'Bnie' }), p, 'nie');
     utworzKarte(db, { nazwa: 'Cbrak' });
+    const parametry = listaParametrow(db);
+    const nazwy = (q) =>
+      kartyZKanalami(db, { filtry: filtryZZapytania({ parametr: String(p), ...q }, KANALY_MAGAZYNU, parametry) }).map(
+        (w) => w.nazwa,
+      );
 
-    const oczekiwane = { tak: ['Atak'], nie: ['Bnie'], nieoznaczone: ['Cbrak'] };
-    for (const stan of PACZKOMAT_DO_FILTRA) {
-      expect(
-        kartyZKanalami(db, { filtry: { paczkomat: stan } }).map((w) => w.nazwa),
-        stan,
-      ).toEqual(oczekiwane[stan]);
-    }
-    // ⚠️ Nieobsługiwana wartość `paczkomat ∈ tak|nie|brak`. Baza zna `nieoznaczone`,
-    // a `brak` leci u niej w `1 = 0` — pusty ekran zamiast trzeciego stanu.
-    expect(PACZKOMAT_DO_FILTRA).not.toContain('brak');
-    expect(kartyZKanalami(db, { filtry: { paczkomat: 'brak' } })).toEqual([]);
+    expect(nazwy({ pw: 'tak' })).toEqual(['Atak']);
+    expect(nazwy({ pw: 'nie' })).toEqual(['Bnie']);
+    expect(nazwy({ pbez: '1' })).toEqual(['Cbrak']);
+    // Wartość spoza listy nie trafia w nic — pusty ekran, nie cały katalog.
+    expect(nazwy({ pw: 'moze' })).toEqual([]);
   });
 
   it('wartosc przepuszczona przez parser jest wartoscia, ktora baza rozumie', () => {
@@ -414,7 +432,6 @@ describe('slowniki filtrow zgadzaja sie z warstwa zapytan', () => {
     for (const [pole, wartosci] of [
       ['kanal', KANALY_MAGAZYNU],
       ['brak', BRAKI_MAGAZYNU],
-      ['paczkomat', PACZKOMAT_DO_FILTRA],
     ]) {
       for (const w of wartosci) {
         expect(
@@ -443,7 +460,7 @@ describe('saJakiesFiltry', () => {
       { kanal: 'pro' },
       { kategoria: 'Boho' },
       { brak: 'sku' },
-      { paczkomat: 'tak' },
+      { parametr: '3' },
       { cenaOd: '10' },
       { cenaDo: '10' },
     ]) {
@@ -499,7 +516,8 @@ describe('parametryUkryte — formularze niosa nawzajem swoje wartosci', () => {
         kanal: 'pro',
         kategoria: 'Boho',
         brak: 'sku',
-        paczkomat: 'nieoznaczone',
+        parametr: '3',
+        pbez: '1',
         cenaOd: '10',
         cenaDo: '74,90',
       },
@@ -534,7 +552,9 @@ describe('parametryUkryte — formularze niosa nawzajem swoje wartosci', () => {
       'allegro_swietlik',
       'allegro_polcien2',
     ]);
-    const u = parametryUkryte(filtry, { pomin: ['kanal', 'kategoria', 'brak', 'paczkomat', 'cenaOd', 'cenaDo'] });
+    const u = parametryUkryte(filtry, {
+      pomin: ['kanal', 'kategoria', 'brak', 'parametr', 'pw', 'pod', 'pdo', 'pbez', 'cenaOd', 'cenaDo'],
+    });
 
     expect(u).toEqual([{ name: 'fraza', value: 'szpulka' }]);
     expect(parametryUkryte(filtry, { pomin: ['fraza'] }).map((p) => p.name)).not.toContain('fraza');
@@ -554,7 +574,19 @@ describe('wartosciPol — to, co stoi w polach formularza', () => {
 
   it('brak wartosci to PUSTY NAPIS, a nie „null" do skasowania recznie', () => {
     const w = wartosciPol(filtryZZapytania({}, ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2']));
-    for (const klucz of ['fraza', 'kanal', 'kategoria', 'brak', 'paczkomat', 'cenaOd', 'cenaDo']) {
+    for (const klucz of [
+      'fraza',
+      'kanal',
+      'kategoria',
+      'brak',
+      'parametr',
+      'pw',
+      'pod',
+      'pdo',
+      'pbez',
+      'cenaOd',
+      'cenaDo',
+    ]) {
       expect(w[klucz], klucz).toBe('');
     }
   });
@@ -567,7 +599,8 @@ describe('wartosciPol — to, co stoi w polach formularza', () => {
           kanal: 'pro',
           kategoria: 'Boho',
           brak: 'sku',
-          paczkomat: 'nieoznaczone',
+          parametr: '3',
+          pbez: '1',
         },
         ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2'],
       ),
@@ -577,7 +610,8 @@ describe('wartosciPol — to, co stoi w polach formularza', () => {
       kanal: 'pro',
       kategoria: 'Boho',
       brak: 'sku',
-      paczkomat: 'nieoznaczone',
+      parametr: '3',
+      pbez: '1',
     });
   });
 });
@@ -590,7 +624,8 @@ describe('adresMagazynu — filtry przezywaja klikniecie w naglowek sortujacy', 
         kanal: 'pro',
         kategoria: 'Boho',
         brak: 'sku',
-        paczkomat: 'nieoznaczone',
+        parametr: '3',
+        pbez: '1',
         cenaOd: '10',
         cenaDo: '99',
       },
@@ -605,7 +640,8 @@ describe('adresMagazynu — filtry przezywaja klikniecie w naglowek sortujacy', 
       kanal: 'pro',
       kategoria: 'Boho',
       brak: 'sku',
-      paczkomat: 'nieoznaczone',
+      parametr: '3',
+      pbez: '1',
       cenaOd: '10.00',
       cenaDo: '99.00',
       sort: 'sku',

@@ -70,10 +70,10 @@ async function panelPoczty(env = {}, { wiadomosci = true } = {}) {
 describe('magazyn', () => {
   it('zła wartość przełącznika: 400 w układzie OMS, powrót na ekran magazynu', async () => {
     await panelPoczty();
-    const r = await post(p.app, '/ustawienia/magazyn/stany', p.admin, { wlacz: 'tak' });
+    const r = await post(p.app, '/magazyn/ustawienia/stany', p.admin, { wlacz: 'tak' });
     sprawdz(r, 400, 'Pole „wlacz” musi mieć wartość 1 albo 0.', {
       tytul: 'Nie udało się zmienić stanów magazynowych',
-      wroc: '/ustawienia/magazyn',
+      wroc: '/magazyn/ustawienia',
       napis: 'Wróć do ustawień magazynu',
     });
   });

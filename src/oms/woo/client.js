@@ -590,7 +590,7 @@ export function createWooClient({
   }
 
   // `POST …/batch {update}` po ≤ 100 pozycji; wynik dla każdej pozycji osobno.
-  async function zapiszPaczkami(sciezka, update, brakWyniku) {
+  async function zapiszPaczkami(sciezka, update, brakWyniku, dolaczCene = false) {
     const wynik = [];
     for (let i = 0; i < update.length; i += ROZMIAR_PACZKI_STANOW) {
       const paczka = update.slice(i, i + ROZMIAR_PACZKI_STANOW);
@@ -608,7 +608,7 @@ export function createWooClient({
         const odpowiedz = dane?.update?.find((w) => String(w.id || w.error?.data?.id) === String(p.id));
         wynik.push(
           odpowiedz && !odpowiedz.error
-            ? { id: p.id, ok: true }
+            ? { id: p.id, ok: true, ...(dolaczCene ? { cena: odpowiedz.price } : {}) }
             : { id: p.id, ok: false, blad: odpowiedz?.error?.message || brakWyniku },
         );
       }
@@ -621,7 +621,7 @@ export function createWooClient({
   async function zapiszCenyHurtem(rodzicId, pozycje) {
     if (tylkoOdczyt) throw bladTylkoOdczyt();
     const sciezka = rodzicId === null ? '/products' : `/products/${idProduktuWoo(rodzicId)}/variations`;
-    return zapiszPaczkami(sciezka, pozycjeCenWoo(pozycje), 'Brak wyniku zapisu ceny Woo');
+    return zapiszPaczkami(sciezka, pozycjeCenWoo(pozycje), 'Brak wyniku zapisu ceny Woo', true);
   }
 
   // Status zawsze na produkcie nadrzędnym: wariant nie ma w Woo osobnej widoczności w sklepie.

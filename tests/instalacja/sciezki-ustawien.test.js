@@ -41,6 +41,10 @@ const WYJATKI = [
   ['Drukarki i skanery', 'Windows: lista drukarek w ustawieniach systemu (deploy/drukarka)'],
 ];
 
+// Ustawienia magazynu mają własne miejsce w podmenu Magazynu, poza dziale Ustawień (Magazyn → Ustawienia → …).
+const ZAKLADKI_USTAWIEN_MAGAZYNU = ['Stany magazynowe', 'Parametry kart', 'Producenci'];
+const PO_MAGAZYNIE = /Magazyn\s*(?:→|->|»|>)\s*$/u;
+
 const zamaz = (s) => s.replace(/[^\n]/g, ' ');
 const bezWierszyGwiazdki = (t) =>
   t
@@ -174,7 +178,6 @@ export const ELEMENTY_EKRANU = {
     ...naglowkiH2(fs.readFileSync(path.join(KORZEN, EKRAN_POCZTY), 'utf8')),
     'Usuń ustawienia poczty',
   ],
-  'Stany magazynowe': ['Wyłącz stany'],
   'Automaty systemowe': ['Automatyczna wysyłka do KSeF'],
 };
 // Pliki, w których dany ekran ma te napisy (konfigurator integracji z kroków modułu, reszta z widoku).
@@ -186,7 +189,6 @@ export const EKRANY_ELEMENTOW = {
   InPost: ['src/moduly/wysylka/widoki/ustawienia-inpost.ejs'],
   'Pobranie przy paczkomatach': ['src/moduly/wysylka/widoki/ustawienia-inpost.ejs'],
   'Poczta wychodząca': [EKRAN_POCZTY],
-  'Stany magazynowe': ['src/moduly/ustawienia/widoki/ustawienia-magazyn.ejs'],
   'Automaty systemowe': ['src/moduly/faktury/widoki/_automat-ksef.ejs'],
 };
 const WSZYSTKIE_ELEMENTY = Object.values(ELEMENTY_EKRANU).flat();
@@ -291,6 +293,12 @@ export function sprawdzSciezki(tekst) {
     if (WYJATKI.some(([poczatek]) => dalej.startsWith(poczatek))) {
       wynik.wyjatki += 1;
       continue;
+    }
+    if (PO_MAGAZYNIE.test(tekst.slice(Math.max(0, m.index - 20), m.index))) {
+      if (ZAKLADKI_USTAWIEN_MAGAZYNU.some((z) => dalej.startsWith(z))) {
+        wynik.wyjatki += 1;
+        continue;
+      }
     }
     wynik.sprawdzone += 1;
     if (!sciezkaDobra(tekst, od, 1, null)) wynik.naruszenia.push({ linia, sciezka: sciezkaDoRaportu(tekst, od) });
@@ -398,12 +406,13 @@ describe('ścieżki „Ustawienia → …” w src/ i docs/ wskazują pozycje z 
   it('sprawdzanie: dobre ścieżki przechodzą, złe są łapane', () => {
     const dobre = [
       'Uzupełnij NIP w Ustawienia → Firma.',
+      'Stany włączysz w Magazyn → Ustawienia → Stany magazynowe.',
       'Połącz konto w Ustawienia → Integracje → inFakt (klucz API).',
       'Wybierz program w Ustawienia → Faktury i podatki → Program do faktur.',
       'Włącz w <a href="/ustawienia/moduly">Ustawienia → System → Włączone funkcje</a>.',
       'Statystyki w Ustawienia → Integracje → Meta Ads, Google Analytics 4 albo Google Ads.',
       'Działa w Ustawieniach → Zespół i dostęp → Użytkownicy.',
-      'Zobacz **Ustawienia → Zamówienia\ni magazyn → Stany magazynowe**.',
+      'Zobacz **Ustawienia → Zamówienia → Statusy\nzamówień**.',
       'Konto w Ustawienia → Integracje → Moje połączenia → ERLI.',
       'Klucz z Ustawienia → API w panelu inFaktu.',
       'Wróć do Ustawienia → Integracje → ${nazwa} i popraw.',
@@ -430,7 +439,7 @@ describe('ścieżki „Ustawienia → …” w src/ i docs/ wskazują pozycje z 
       'W Ustawieniach → System → Włączone funkcje włączysz moduł kosztów.', // więcej niż jedno słowo po etykiecie
       'Otwórz **Ustawienia → Integracje → Fakturownia** i kliknij **Sprawdziłem**.', // „**” + zdanie dalej
       '**Ustawienia → Firma** — dane i logo.', // „**” + myślnik
-      'Wróć do Ustawienia → ${dzial} → Stany magazynowe.', // po wstawce dobra zakładka
+      'Wróć do Ustawienia → ${dzial} → Statusy zamówień.', // po wstawce dobra zakładka
       'Wróć do Ustawienia → <%= dzial %> → Klucze API.', // po wstawce EJS dobra zakładka
       'Wróć do Ustawienia → Integracje → ${zakladka} → ERLI.', // po wstawce dobra integracja z katalogu
       'Wróć do Ustawienia → Integracje → ${zakladka} → KSeF.', // po wstawce dobra integracja z katalogu
@@ -446,7 +455,7 @@ describe('ścieżki „Ustawienia → …” w src/ i docs/ wskazują pozycje z 
       'Ustawienia → Integracje → Poczta wychodząca → Usuń ustawienia poczty.', // element ekranu zakładki
       'Ustawienia → Integracje → Poczta wychodząca → Podpis maili.', // sekcja z nagłówka <h2> widoku
       'Ustawienia → Integracje → Allegro → połącz kanał z kontem.', // mała litera na poziomie ≥ 3 = polecenie
-      'Wróć do Ustawienia → ${dzial} → ${zakladka} → Wyłącz stany.', // po wstawce znany element
+      'Wróć do Ustawienia → ${dzial} → ${zakladka} → Odłącz InPost.', // po wstawce znany element
     ];
     const zle = [
       'Włącz w Ustawienia → Moduły.',
@@ -480,14 +489,16 @@ describe('ścieżki „Ustawienia → …” w src/ i docs/ wskazują pozycje z 
       'Ustawienia → Firma oraz Rachunek → Rachunek bankowy.',
       // Odmienione formy, po jednym złym przypadku na każdą
       'włącz je z Ustawień → Magazyn.', // M05a
+      'Stany włączysz w Ustawienia → Stany magazynowe.', // bez „Magazyn →” przed „Ustawienia”
+      'Stany włączysz w Magazyn → Ustawienia → Kolor.', // nieistniejąca zakładka ustawień magazynu
       'Zarządzasz Ustawieniami → Konta.', // „Ustawieniami →”
       'włącz je w Ustawieniach -> Magazyn.', // M05b
       'włącz je w Ustawieniach > Magazyn.', // M05e
       'włącz je w Ustawieniach » Magazyn.', // „»”
-      'w Ustawieniach → Zamówienia i magazyn → Stany magazynowe → Progi alarmowe.', // M05c — trzeci poziom spoza menu
+      'w Ustawieniach → Zamówienia → Statusy zamówień → Progi alarmowe.', // M05c — trzeci poziom spoza menu
       'Ustawienia → Integracje → Moje połączenia → Sklep.', // trzeci poziom: nie nazwa integracji
       'Ustawienia → Integracje → Moje połączenia → ERLI → Klucz.', // czwarty poziom
-      'z Ustawień → Zamówienia i magazyn → Magazyn.', // M05d — dobry dział, zła zakładka
+      'z Ustawień → Zamówienia → Magazyn.', // M05d — dobry dział, zła zakładka
       'Otwórz Integracje -> Reklamy.', // goły dział ze strzałką ASCII
       'włączysz go w Ustawieniach → System → Włączone funkcje sklepu.', // M14
       '<a href="/ustawienia/moduly">Ustawienia → System → Włączone funkcje sklepu</a>', // M14 przed znacznikiem

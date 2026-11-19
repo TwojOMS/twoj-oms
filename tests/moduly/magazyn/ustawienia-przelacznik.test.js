@@ -24,15 +24,15 @@ const formularz = (html) => /<form id="ust-stany-przelacz"[\s\S]*?<\/form>/u.exe
 describe('Ustawienia → Magazyn', () => {
   it('podmenu ma „Magazyn”, a ekran domyślnie mówi „Wyłączone” i daje przycisk „Włącz”', async () => {
     const { app, admin } = panel();
-    const r = await get(app, '/ustawienia/magazyn', admin);
+    const r = await get(app, '/magazyn/ustawienia', admin);
     expect(r.statusCode, r.body).toBe(200);
-    expect(r.body).toContain('href="/ustawienia/magazyn" aria-current="page"');
+    expect(r.body).toContain('href="/magazyn/ustawienia" aria-current="page"');
     const s = sekcja(r.body);
     expect(s).toContain('<strong>Wyłączone.</strong>');
     expect(s).not.toContain('Włączone</strong> od');
     expect(s).toContain('nie są wysyłane do sklepów ani na Allegro');
     const f = formularz(r.body);
-    expect(f).toContain('action="/ustawienia/magazyn/stany"');
+    expect(f).toContain('action="/magazyn/ustawienia/stany"');
     expect(f).toContain('name="wlacz" value="1"');
     expect(f).toContain('Włącz stany magazynowe');
     expect(f).not.toContain('Wyłącz stany magazynowe');
@@ -42,9 +42,9 @@ describe('Ustawienia → Magazyn', () => {
 
   it('POST wlacz=1 włącza (303 na ekran), ekran pokazuje „Włączone od” i historię z loginem; drugi POST wyłącza', async () => {
     const { db, app, admin } = panel();
-    const r = await post(app, '/ustawienia/magazyn/stany', admin, { wlacz: '1' });
+    const r = await post(app, '/magazyn/ustawienia/stany', admin, { wlacz: '1' });
     expect(r.statusCode, r.body).toBe(303);
-    expect(r.headers.location).toMatch(/^\/ustawienia\/magazyn(\?|$)/u);
+    expect(r.headers.location).toMatch(/^\/magazyn\/ustawienia(\?|$)/u);
     const p = przelacznikStanow(db);
     expect(p.wlaczone).toBe(true);
     expect(p.historia[0]).toMatchObject({ wlaczone: true, konto_login: 'adam' });
@@ -58,10 +58,10 @@ describe('Ustawienia → Magazyn', () => {
     const historia = /<table class="tab-pozycje" id="ust-stany-historia">[\s\S]*?<\/table>/u.exec(s)?.[0] ?? '';
     expect(historia).toMatch(/<td>adam<\/td>\s*<td>włączenie<\/td>/u);
 
-    const w = await post(app, '/ustawienia/magazyn/stany', admin, { wlacz: '0' });
+    const w = await post(app, '/magazyn/ustawienia/stany', admin, { wlacz: '0' });
     expect(w.statusCode, w.body).toBe(303);
     expect(przelacznikStanow(db)).toMatchObject({ wlaczone: false, granica: null });
-    const wylaczony = await get(app, '/ustawienia/magazyn', admin);
+    const wylaczony = await get(app, '/magazyn/ustawienia', admin);
     expect(sekcja(wylaczony.body)).toContain('<strong>Wyłączone.</strong>');
     const f = formularz(wylaczony.body);
     expect(f).toContain('Włącz stany magazynowe');
@@ -73,16 +73,16 @@ describe('Ustawienia → Magazyn', () => {
 
   it('wartość inna niż 1/0 → 400 i nic się nie zapisuje', async () => {
     const { db, app, admin } = panel();
-    const r = await post(app, '/ustawienia/magazyn/stany', admin, { wlacz: 'tak' });
+    const r = await post(app, '/magazyn/ustawienia/stany', admin, { wlacz: 'tak' });
     expect(r.statusCode).toBe(400);
     expect(przelacznikStanow(db).historia).toHaveLength(0);
   });
 
   it('konto bez uprawnienia „ustawienia” nie wejdzie ani nie przełączy', async () => {
     const { db, app, ewa } = panel();
-    const g = await get(app, '/ustawienia/magazyn', ewa);
+    const g = await get(app, '/magazyn/ustawienia', ewa);
     expect(g.statusCode).toBe(403);
-    const r = await post(app, '/ustawienia/magazyn/stany', ewa, { wlacz: '1' });
+    const r = await post(app, '/magazyn/ustawienia/stany', ewa, { wlacz: '1' });
     expect(r.statusCode).toBe(403);
     expect(przelacznikStanow(db)).toMatchObject({ wlaczone: false });
     expect(przelacznikStanow(db).historia).toHaveLength(0);
@@ -90,11 +90,18 @@ describe('Ustawienia → Magazyn', () => {
 
   describe('blok „Producenci (GPSR)”', () => {
     const blok = (html) => /<section class="ust-sekcja" id="ust-producenci">[\s\S]*?<\/section>/u.exec(html)?.[0] ?? '';
-    const dane = (nazwa) => ({ nazwa, adres: 'ul. Przykładowa 1, 00-001 Miasto', email: 'kontakt@polcien.invalid' });
+    const dane = (nazwa) => ({
+      nazwa,
+      ulica: 'ul. Przykładowa 1',
+      kod: '00-001',
+      miasto: 'Miasto',
+      kraj: 'PL',
+      email: 'kontakt@polcien.invalid',
+    });
 
     it('bez producentów: zachęta i odnośnik do /magazyn/producenci', async () => {
       const { app, admin } = panel();
-      const b = blok((await get(app, '/ustawienia/magazyn', admin)).body);
+      const b = blok((await get(app, '/magazyn/ustawienia', admin)).body);
       expect(b).toContain('Nie masz jeszcze producentów — oferty Allegro i przepisy GPSR ich wymagają');
       expect(b).toContain('<a href="/magazyn/producenci">Producenci</a>');
     });
@@ -104,7 +111,7 @@ describe('Ustawienia → Magazyn', () => {
       dodajProducenta(db, dane('Warsztat Przykładowy'));
       const id = dodajProducenta(db, dane('Pracownia Półcień')).id;
       ustawDomyslnego(db, id);
-      const b = blok((await get(app, '/ustawienia/magazyn', admin)).body);
+      const b = blok((await get(app, '/magazyn/ustawienia', admin)).body);
       expect(b).toContain('Producentów: <strong>2</strong>');
       expect(b).toContain('Domyślny: <strong>Pracownia Półcień</strong>');
       expect(b).not.toContain('Nie masz jeszcze producentów');
@@ -114,10 +121,10 @@ describe('Ustawienia → Magazyn', () => {
     it('bez domyślnego: „brak domyślnego”; nazwa z <script> jest escapowana', async () => {
       const { db, app, admin } = panel();
       dodajProducenta(db, dane('Bez domyślnego'));
-      expect(blok((await get(app, '/ustawienia/magazyn', admin)).body)).toContain('brak domyślnego');
+      expect(blok((await get(app, '/magazyn/ustawienia', admin)).body)).toContain('brak domyślnego');
       const zly = dodajProducenta(db, dane('<script>alert(1)</script>')).id;
       ustawDomyslnego(db, zly);
-      const b = blok((await get(app, '/ustawienia/magazyn', admin)).body);
+      const b = blok((await get(app, '/magazyn/ustawienia', admin)).body);
       expect(b).not.toContain('<script>alert(1)');
       expect(b).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
     });

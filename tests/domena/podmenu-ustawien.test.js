@@ -15,7 +15,7 @@ describe('podmenu Ustawień', () => {
   it('administrator dostaje pięć grup w kolejności planu, pozycje w kolejności planu', () => {
     expect(uklad(grupyUstawien('/ustawienia/integracje', { admin: true }))).toEqual([
       ['Firma', ['Dane firmy', 'Użytkownicy', 'Role i uprawnienia']],
-      ['Sprzedaż', ['Statusy zamówień', 'Automatyzacje', 'Paczki i koszty dostawy', 'Magazyn', 'Druk i etykiety']],
+      ['Sprzedaż', ['Statusy zamówień', 'Automatyzacje', 'Paczki i koszty dostawy', 'Druk i etykiety']],
       ['Komunikacja', ['Szablony wiadomości', 'Autoodpowiedź Allegro', 'Powiadomienia']],
       ['Integracje', ['Sklepy i usługi']],
       ['System', ['Moduły', 'Diagnostyka', 'Aktualizacje', 'Kopie zapasowe', 'Import i eksport', 'API i webhooki']],
@@ -31,7 +31,6 @@ describe('podmenu Ustawień', () => {
       statusy: '/ustawienia/statusy',
       automatyzacje: '/ustawienia/automatyzacje',
       'zamowienia-i-wysylka': '/ustawienia/zamowienia-i-wysylka',
-      magazyn: '/ustawienia/magazyn',
       druk: '/ustawienia/druk',
       'szablony-wiadomosci': '/ustawienia/szablony-wiadomosci',
       'wiadomosci-i-automatyzacje': '/ustawienia/wiadomosci-i-automatyzacje',
@@ -57,7 +56,7 @@ describe('podmenu Ustawień', () => {
   it('konto bez admina nie widzi Użytkowników, Ról, Automatyzacji, Modułów ani Aktualizacji — reszta jak u admina', () => {
     expect(uklad(grupyUstawien('/ustawienia/zamowienia-i-wysylka?zapisano=paczka', { admin: false }))).toEqual([
       ['Firma', ['Dane firmy']],
-      ['Sprzedaż', ['Statusy zamówień', 'Paczki i koszty dostawy', 'Magazyn', 'Druk i etykiety']],
+      ['Sprzedaż', ['Statusy zamówień', 'Paczki i koszty dostawy', 'Druk i etykiety']],
       ['Komunikacja', ['Szablony wiadomości', 'Autoodpowiedź Allegro', 'Powiadomienia']],
       ['Integracje', ['Sklepy i usługi']],
       ['System', ['Diagnostyka', 'Kopie zapasowe', 'Import i eksport', 'API i webhooki']],
@@ -96,7 +95,6 @@ describe('podmenu Ustawień', () => {
     ['/ustawienia/konta/3/uprawnienia', 'konta'],
     ['/ustawienia/role', 'role'],
     ['/ustawienia/role/sprzedaz', 'role'],
-    ['/ustawienia/magazyn', 'magazyn'],
     ['/ustawienia/moduly', 'moduly'],
     ['/ustawienia/lacznosc', 'diagnostyka'],
     ['/ustawienia/aktualizacje/sprawdz', 'aktualizacje'],
@@ -132,7 +130,7 @@ describe('podmenu Ustawień', () => {
     ];
     const grupy = grupyUstawien('/ustawienia/statusy/7', { admin: true, pozycje });
     expect(uklad(grupy).slice(1, 3)).toEqual([
-      ['Sprzedaż', ['Statusy zamówień', 'Automatyzacje', 'Paczki i koszty dostawy', 'Magazyn', 'Druk i etykiety']],
+      ['Sprzedaż', ['Statusy zamówień', 'Automatyzacje', 'Paczki i koszty dostawy', 'Druk i etykiety']],
       ['Komunikacja', ['Szablony wiadomości', 'Autoodpowiedź Allegro', 'Powiadomienia']],
     ]);
     expect(uklad(grupy)[4][1].at(-1)).toBe('Nowa');

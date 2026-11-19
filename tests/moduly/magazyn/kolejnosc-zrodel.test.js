@@ -219,10 +219,10 @@ function panel() {
   ustawUprawnienia(p.db, kontoPoLoginie(p.db, 'osoba').id, ['magazyn']);
   return { ...p, admin: jako(p.db, 'admin'), osoba: jako(p.db, 'osoba') };
 }
-const URL = '/ustawienia/magazyn/zrodla';
+const URL = '/magazyn/ustawienia/zrodla';
 it('ustawienia pokazują nazwy połączeń i zapisują kolejność formularzem', async () => {
   const p = panel();
-  const r = await get(p.app, '/ustawienia/magazyn', p.admin);
+  const r = await get(p.app, '/magazyn/ustawienia', p.admin);
   expect(r.statusCode, r.body).toBe(200);
   expect(r.body).toContain('Kolejność źródeł treści karty');
   expect(r.body).toContain('Sklep Lampy');

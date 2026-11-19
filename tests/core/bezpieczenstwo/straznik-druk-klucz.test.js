@@ -240,14 +240,13 @@ describe('strażnik: klucz `druk` na kolejkach druku', () => {
     }
   });
 
-  it('zakodowana ścieżka z ciasteczkiem admina (bez klucza) → jak dziś, nie odmowa klucza', async () => {
+  it('zakodowana ścieżka z ciasteczkiem admina (bez klucza) → ekran jak po zdekodowaniu, nie odmowa klucza', async () => {
     const cookie = `${NAZWA_CIASTECZKA_OMS}=${podpisz('ala', odczytajSekret(db))}`;
     const zwykla = await pobierz('/kolejka-druku', { cookie });
     expect(zwykla.statusCode).toBe(200);
-    // Dziś: ekranDlaAdresu nie zna zakodowanej ścieżki → „Brak uprawnień” (403), także dla admina. Bez zmian.
+    // Strażnik czyta ekran z adresu zdekodowanego, tak jak router — admin z prawem do ekranu wchodzi.
     const zakodowana = await pobierz('/kolejka%2Ddruku', { cookie });
-    expect(zakodowana.statusCode).toBe(403);
-    expect(zakodowana.body).toBe('Brak uprawnień do tego ekranu');
+    expect(zakodowana.statusCode).toBe(200);
   });
 
   it('odwołany klucz `druk` → 401 kod klucz', async () => {

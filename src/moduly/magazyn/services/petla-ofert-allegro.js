@@ -18,6 +18,7 @@ import {
   cenaWymagaPotwierdzenia,
 } from './oferty-wspolne.js';
 import { ofertaAllegroKarty } from './tresc-oferty-allegro.js';
+import { powodCzekaniaOferty } from '../../../domena/czekanie-oferty.js';
 import {
   podstawWgraneZdjecia,
   PROBLEMY_ALLEGRO,
@@ -1850,9 +1851,9 @@ export function createPetlaOfertAllegro({
   }
 
   async function konto1(konto) {
-    if (!konto.zgoda) return;
     const ustawienia = ustawieniaOfertKonta(db, konto.klucz);
-    if (!ustawienia.czynne || konto.tylkoOdczyt?.()) return;
+    // Ten sam warunek karta produktu pokazuje jako powód, na który czeka oferta.
+    if (powodCzekaniaOferty(konto, ustawienia)) return;
     zapisy = 0;
     potwierdzoneIlosci.clear();
     const doAktywacji = db

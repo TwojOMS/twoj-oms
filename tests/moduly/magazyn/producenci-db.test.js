@@ -18,13 +18,19 @@ import { utworzKarte } from '../../../src/oms/db/magazyn.js';
 const AT = '2026-11-19T10:00:00.000Z';
 const POLCIEN = {
   nazwa: 'Pracownia Półcień',
-  adres: 'ul. Przykładowa 1, 00-001 Miasto',
+  ulica: 'ul. Przykładowa 1',
+  kod: '00-001',
+  miasto: 'Miasto',
+  kraj: 'PL',
   email: 'kontakt@polcien.invalid',
   www: '',
 };
 const WARSZTAT = {
   nazwa: 'Warsztat Przykładowy',
-  adres: 'ul. Zmyślona 2, 00-002 Miasto',
+  ulica: 'ul. Zmyślona 2',
+  kod: '00002',
+  miasto: 'Miasto',
+  kraj: '',
   email: '',
   www: 'warsztat.example',
 };
@@ -105,10 +111,10 @@ describe('migracja 0020 producenci', () => {
 describe('warstwa bazy producentów', () => {
   it('dodaj i zmień: walidacja domeny przed zapisem, wartości po normalizacji', () => {
     baza();
-    const bez = dodajProducenta(db, { ...POLCIEN, adres: ' ' }, { at: AT });
+    const bez = dodajProducenta(db, { ...POLCIEN, ulica: ' ' }, { at: AT });
     expect(bez).toEqual({
       ok: false,
-      bledy: { adres: 'Podaj adres pocztowy producenta' },
+      bledy: { ulica: 'Podaj ulicę i numer' },
       wartosci: expect.any(Object),
     });
     expect(listaProducentow(db)).toEqual([]);
@@ -118,7 +124,11 @@ describe('warstwa bazy producentów', () => {
     expect(producentPoId(db, id)).toEqual({
       id,
       nazwa: 'Warsztat Przykładowy',
-      adres: 'ul. Zmyślona 2, 00-002 Miasto',
+      adres: 'ul. Zmyślona 2\n00-002 Miasto\nPolska',
+      ulica: 'ul. Zmyślona 2',
+      kod_pocztowy: '00-002',
+      miasto: 'Miasto',
+      kraj: 'PL',
       email: null,
       www: 'https://warsztat.example',
       domyslny: false,
@@ -128,14 +138,39 @@ describe('warstwa bazy producentów', () => {
 
     expect(zmienProducenta(db, id, { ...WARSZTAT, www: '' }, { at: AT }).bledy).toHaveProperty('email');
     expect(
-      zmienProducenta(db, id, { ...WARSZTAT, email: 'biuro@warsztat.invalid' }, { at: '2026-11-20T08:00:00.000Z' }),
+      zmienProducenta(
+        db,
+        id,
+        { ...WARSZTAT, kraj: 'de', kod: '10115', miasto: 'Berlin', email: 'biuro@warsztat.invalid' },
+        { at: '2026-11-20T08:00:00.000Z' },
+      ),
     ).toEqual({ ok: true });
     expect(producentPoId(db, id)).toMatchObject({
+      adres: 'ul. Zmyślona 2\n10115 Berlin\nNiemcy',
+      ulica: 'ul. Zmyślona 2',
+      kod_pocztowy: '10115',
+      miasto: 'Berlin',
+      kraj: 'DE',
       email: 'biuro@warsztat.invalid',
       zmieniono_at: '2026-11-20T08:00:00.000Z',
     });
     expect(zmienProducenta(db, 999, WARSZTAT).blad).toBe('Nie ma takiego producenta.');
     expect(producentPoId(db, 999)).toBeNull();
+  });
+
+  it('stary producent bez pól adresu: lista i odczyt dają adres jedną linią i puste pola', () => {
+    baza();
+    wstawSurowo('Pracownia Półcień', { domyslny: 1 });
+    const [stary] = listaProducentow(db);
+    expect(stary).toMatchObject({
+      adres: 'ul. Przykładowa 1',
+      ulica: null,
+      kod_pocztowy: null,
+      miasto: null,
+      kraj: null,
+      domyslny: true,
+    });
+    expect(producentPoId(db, stary.id)).toMatchObject({ adres: 'ul. Przykładowa 1', ulica: null, kraj: null });
   });
 
   it('lista: alfabetycznie, z markami i liczbą kart tych marek', () => {

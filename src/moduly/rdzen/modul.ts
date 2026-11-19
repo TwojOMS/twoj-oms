@@ -23,6 +23,8 @@ import { migracjaCenZakupu } from './migracje/0018-ceny-zakupu.ts';
 import { migracjaCenKanalowKart } from './migracje/0019-ceny-kanalow-kart.ts';
 import { migracjaProducentow } from './migracje/0020-producenci.ts';
 import { migracjaProguNiskiegoStanu } from './migracje/0021-prog-niskiego-stanu.ts';
+import { migracjaParametrowKart } from './migracje/0022-parametry-kart.ts';
+import { migracjaAdresuProducenta } from './migracje/0023-adres-producenta.ts';
 export const modulRdzen: ModulOms<{ sprzedawca: DaneSprzedawcy }> = {
   nazwa: 'rdzen',
   wersja: '1.0.0',
@@ -54,6 +56,8 @@ export const modulRdzen: ModulOms<{ sprzedawca: DaneSprzedawcy }> = {
     migracjaCenKanalowKart,
     migracjaProducentow,
     migracjaProguNiskiegoStanu,
+    migracjaParametrowKart,
+    migracjaAdresuProducenta,
   ],
   uprawnienia: [],
   menu: [],

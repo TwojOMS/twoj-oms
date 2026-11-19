@@ -1,14 +1,14 @@
-// Ustawienia → Magazyn — przełącznik „Włącz stany magazynowe”.
+// Magazyn → Ustawienia — przełącznik „Włącz stany magazynowe”, kolejność źródeł treści i odnośnik do parametrów kart.
 // Reguły i zapis przełącznika siedzą w rdzeniu (oms/db/stany-magazynowe.js); ta trasa tylko pokazuje i przełącza.
 //
-// Kto może przełączyć: strażnik po prefiksie `/ustawienia` wpuszcza wyłącznie konto z uprawnieniem „ustawienia”,
+// Kto może przełączyć: strażnik (`ekranDlaAdresu` mapuje `/magazyn/ustawienia` na uprawnienie „ustawienia”) wpuszcza wyłącznie konto z uprawnieniem „ustawienia”,
 // a gościa demo w podglądzie zatrzymuje na każdym POST-cie (core/bezpieczenstwo/podglad-demo.js) — tu nie
 // powtarzamy żadnej z tych blokad.
-import { przelacznikStanow, przelaczStany } from '../../../oms/db/stany-magazynowe.js';
-import { listaProducentow } from '../../../oms/db/producenci.js';
-import { nawigacjaUstawien } from '../nawigacja.js';
-import { stronaOdmowy } from '../../../core/web/odmowa.js';
-import { kolejnoscZrodel, polaczeniaZrodel, zapiszKolejnoscZrodel } from '../../magazyn/services/kolejnosc-zrodel.js';
+import { przelacznikStanow, przelaczStany } from '../../oms/db/stany-magazynowe.js';
+import { listaProducentow } from '../../oms/db/producenci.js';
+import { stronaOdmowy } from '../../core/web/odmowa.js';
+import { registerParametrowKartRoutes } from './parametry-kart-ustawienia.js';
+import { kolejnoscZrodel, polaczeniaZrodel, zapiszKolejnoscZrodel } from './services/kolejnosc-zrodel.js';
 
 const KOMUNIKATY = {
   wlaczono: 'Stany magazynowe są włączone. Ustal stan otwarcia i zatwierdź podgląd ilości w kanałach.',
@@ -23,6 +23,17 @@ function podsumowanieProducentow(db) {
 }
 
 export function registerUstawieniaMagazynuRoutes(app, { db }) {
+  // Dawne adresy w Ustawieniach: GET przenosi na nowy adres (z resztą ścieżki i zapytaniem), a POST zostaje bez trasy
+  // (404) — formularz z otwartej starej karty nie ma się po cichu wykonać pod innym adresem.
+  const przekieruj = async (req, reply) => {
+    // Z parametru trasy, nie z surowego adresu: `/ustawienia/%6Dagazyn/…` inaczej przekierowałby sam na siebie.
+    const reszta = req.params['*'] ? `/${req.params['*'].split('/').map(encodeURIComponent).join('/')}` : '';
+    const zapytanie = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+    return reply.code(301).redirect(`/magazyn/ustawienia${reszta}${zapytanie}`);
+  };
+  app.get('/ustawienia/magazyn', przekieruj);
+  app.get('/ustawienia/magazyn/*', przekieruj);
+  registerParametrowKartRoutes(app, { db });
   const liczniki = () => {
     const maRejestr = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'oferty_kanalow'").get();
     if (!maRejestr) return { zarzadzane: 0, przejete: 0 };
@@ -33,10 +44,9 @@ export function registerUstawieniaMagazynuRoutes(app, { db }) {
       )
       .get();
   };
-  app.get('/ustawienia/magazyn', async (req, reply) => {
+  app.get('/magazyn/ustawienia', async (req, reply) => {
     const przelacznik = przelacznikStanow(db);
-    return reply.view('ustawienia-magazyn.ejs', {
-      nawigacja: nawigacjaUstawien(req, reply),
+    return reply.view('magazyn-ustawienia.ejs', {
       title: 'Stany magazynowe',
       przelacznik,
       liczniki: przelacznik.wlaczone ? liczniki() : { zarzadzane: 0, przejete: 0 },
@@ -51,8 +61,8 @@ export function registerUstawieniaMagazynuRoutes(app, { db }) {
     });
   });
 
-  // Wspólne haki /ustawienia: uprawnienie, podgląd demo i CSRF tak samo jak przy stanach.
-  app.post('/ustawienia/magazyn/zrodla', async (req, reply) => {
+  // Uprawnienie, podgląd demo i CSRF jak przy stanach (patrz nagłówek pliku).
+  app.post('/magazyn/ustawienia/zrodla', async (req, reply) => {
     const lista = req.body?.kolejnosc;
     const kolejnosc = typeof lista === 'string' ? [lista] : lista;
     try {
@@ -73,25 +83,25 @@ export function registerUstawieniaMagazynuRoutes(app, { db }) {
       if (!(e instanceof Error) || !e.message.startsWith('Kolejność musi')) throw e;
       return stronaOdmowy(reply, 400, e.message, {
         tytul: 'Nie udało się zapisać kolejności źródeł',
-        wroc: '/ustawienia/magazyn',
+        wroc: '/magazyn/ustawienia',
         napisWroc: 'Wróć do ustawień magazynu',
       });
     }
-    return reply.code(303).redirect('/ustawienia/magazyn?zapisano=zrodla#ust-zrodla');
+    return reply.code(303).redirect('/magazyn/ustawienia?zapisano=zrodla#ust-zrodla');
   });
 
-  app.post('/ustawienia/magazyn/stany', async (req, reply) => {
+  app.post('/magazyn/ustawienia/stany', async (req, reply) => {
     if (req.konto?.admin !== true)
       return stronaOdmowy(reply, 403, 'Tylko administrator może przełączać stany.', {
         tytul: 'Stany magazynowe',
-        wroc: '/ustawienia/magazyn',
+        wroc: '/magazyn/ustawienia',
         napisWroc: 'Wróć do ustawień magazynu',
       });
     const wartosc = String(req.body?.wlacz ?? '');
     if (wartosc !== '1' && wartosc !== '0') {
       return stronaOdmowy(reply, 400, 'Pole „wlacz” musi mieć wartość 1 albo 0.', {
         tytul: 'Nie udało się zmienić stanów magazynowych',
-        wroc: '/ustawienia/magazyn',
+        wroc: '/magazyn/ustawienia',
         napisWroc: 'Wróć do ustawień magazynu',
       });
     }
@@ -102,12 +112,12 @@ export function registerUstawieniaMagazynuRoutes(app, { db }) {
         reply,
         400,
         `${zarzadzane} ofert wróci do stałej ilości, ${przejete} przejętych przestanie być synchronizowanych. Zaznacz „Rozumiem”.`,
-        { tytul: 'Potwierdź wyłączenie stanów', wroc: '/ustawienia/magazyn', napisWroc: 'Wróć do ustawień magazynu' },
+        { tytul: 'Potwierdź wyłączenie stanów', wroc: '/magazyn/ustawienia', napisWroc: 'Wróć do ustawień magazynu' },
       );
     }
     const konto = req.konto ? { id: req.konto.id ?? null, login: req.konto.login ?? null } : null;
     const { zmieniono } = przelaczStany(db, { wlacz, konto });
     const zapisano = !zmieniono ? 'bez_zmian' : wlacz ? 'wlaczono' : 'wylaczono';
-    return reply.code(303).redirect(`/ustawienia/magazyn?zapisano=${zapisano}`);
+    return reply.code(303).redirect(`/magazyn/ustawienia?zapisano=${zapisano}`);
   });
 }

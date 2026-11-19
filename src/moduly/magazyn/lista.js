@@ -1,15 +1,20 @@
 import { stanyKart } from '../../oms/db/stany-magazynowe.js';
-import { klasaStanu } from '../../domena/niski-stan.js';
-import { fmtDataCzas } from '../../domena/format-daty.js';
-import { STANY_PO_POLSKU } from './oferty.js';
+import { czyFiltrStanu, klasaStanu, pasujeDoStanu } from '../../domena/niski-stan.js';
+import { dzienWarszawa, fmtDataCzas } from '../../domena/format-daty.js';
+import { STANY_PO_POLSKU, mozeWystawiacHurtem } from './oferty.js';
 import { rodzajKanalu } from '../../domena/kanaly.js';
 import { kanalyDostepnosciKart } from '../../oms/db/magazyn.js';
+import { listaParametrow } from '../../oms/db/parametry-kart.js';
+import { kluczBrakuParametru } from '../../domena/magazyn-filtry.js';
+import { cenyZakupuNa } from '../../oms/db/ceny-zakupu.js';
 import { BRAK_ZGODY_OFERT } from '../kanaly/services/oferty-allegro-ustawienia.ts';
 import { liczbaZPrzymiotnikiem } from '../../domena/allegro-oferta.js';
 import { liczbaOfertDoDecyzji } from '../../oms/db/oferty-kanalow.ts';
 import { STAWKI_VAT } from '../../domena/vat.js';
 import { LIMIT_INFORMACJI_BEZPIECZENSTWA } from '../../domena/allegro-oferta-z-karty.js';
 import { nazwySlownika } from './services/slowniki-kart.js';
+import { maDostepDoAdresu } from '../../domena/ekrany.js';
+import { KATALOG_INTEGRACJI } from '../../domena/katalog-integracji.ts';
 
 /**
  * Plakietki kolumny „Kanały” jednej karty — po jednej na polaczenie, w ktorym
@@ -57,6 +62,20 @@ function plakietkiKanalow(obecne, oferty, definicje) {
 // (dziesiątki tysięcy węzłów DOM), nawet gdy serwer odpowiada szybko.
 const NA_STRONE = 100;
 
+export function numeryStron(strona, stron) {
+  if (stron <= 7) return Array.from({ length: stron }, (_, i) => i + 1);
+
+  const promien = 2;
+  const od = Math.max(2, strona - promien);
+  const doNumeru = Math.min(stron - 1, strona + promien);
+  const numery = [1];
+  if (od > 2) numery.push(od === 3 ? 2 : null);
+  for (let numer = od; numer <= doNumeru; numer++) numery.push(numer);
+  if (doNumeru < stron - 1) numery.push(doNumeru === stron - 2 ? stron - 1 : null);
+  numery.push(stron);
+  return numery;
+}
+
 // Jak `cenaPolska`, ale z odstępem tysięcy także przy czterech cyfrach: polski Intl grupuje
 // domyślnie dopiero od pięciu, a w kolumnie „1234,50” i „12 345,67” wyglądałyby na dwa formaty.
 // Jeden formater na moduł: strona z tysiącem kart formatuje kilka tysięcy cen, a budowa
@@ -93,8 +112,6 @@ export function registerListaMagazynu(
     parametryUkryte,
     wartosciPol,
     adresMagazynu,
-    PACZKOMAT_DO_FILTRA,
-    PACZKOMAT_ETYKIETY,
     POLA_FORMULARZA_FILTROW,
     NAGLOWKI_KANALOW,
     KOLUMNY_KANALOW,
@@ -116,15 +133,17 @@ export function registerListaMagazynu(
     // z `Object.prototype` przy `?sort=constructor` i konczy sie pieciusetka na glownym
     // ekranie. Klucze zapytania pomijają usunięte kolumny,
     // a `Set.has` nie zaglada do prototypu.
-    const dozwolone = new Set(SORTOWANIE_KART.filter((klucz) => !['paczkomat', 'braki'].includes(klucz)));
+    const dozwolone = new Set(SORTOWANIE_KART.filter((klucz) => klucz !== 'braki'));
     const jawnySort = dozwolone.has(req.query.sort) ? req.query.sort : undefined;
     // Nierozpoznany kierunek WRACA DO ROSNACEGO, a nie odmawia: kolejnosc nie zawęża
     // zbioru, wiec literowka w adresie ma pokazac liste, a nie pusty ekran.
     const kier = String(req.query.kier ?? '').toLowerCase() === 'desc' ? 'desc' : 'asc';
 
-    const filtry = filtryZZapytania(req.query);
-    // Filtr niskiego stanu bez wybranej kolumny korzysta z kolejności stanów z bazy.
-    const sort = jawnySort ?? (filtry.stan === 'niski' ? undefined : 'nazwa');
+    // Definicje parametrów raz na żądanie: sprawdzają filtr, rysują jego pola i pozycje „bez: …”.
+    const parametry = listaParametrow(db);
+    const filtry = filtryZZapytania(req.query, parametry);
+    // Filtr stanu bez wybranej kolumny korzysta z kolejności stanów z bazy.
+    const sort = jawnySort ?? (czyFiltrStanu(filtry.stan) ? undefined : 'nazwa');
 
     // ——— „ZAZNACZ WSZYSTKIE" BEZ JAVASCRIPTU ———
     // Stan pol wyboru chodzi ADRESEM, dokladnie tak samo, jak na liscie zamowien. Adres
@@ -191,14 +210,29 @@ export function registerListaMagazynu(
               napis: `Karty ${(strona - 1) * NA_STRONE + 1}–${(strona - 1) * NA_STRONE + naEkranie.length} z ${znalezione.length}`,
               poprzednia: strona > 1 ? adresStrony(strona - 1) : null,
               nastepna: strona < stron ? adresStrony(strona + 1) : null,
+              numery: numeryStron(strona, stron).map((numer) =>
+                numer === null ? { luka: true } : { numer, adres: adresStrony(numer), biezaca: numer === strona },
+              ),
               adresWszystkich: zDopiskiem('wszystkie=1'),
             };
     // „Wystaw na…” — konta obu typów; konto Allegro bez zgody na oferty zostaje na liście, wyszarzone.
+    const logoUslugi = (id) => KATALOG_INTEGRACJI.find((u) => u.id === id)?.logo ?? '';
     const kontaOfert = [
-      ...kontaErli().map((k) => ({ klucz: k.klucz, etykieta: `ERLI · ${k.klucz}`, allegro: false, zgoda: true })),
+      ...kontaErli().map((k) => ({
+        klucz: k.klucz,
+        nazwa: k.nazwa || k.klucz,
+        kanal: 'ERLI',
+        logo: logoUslugi('erli'),
+        sandbox: false,
+        allegro: false,
+        zgoda: true,
+      })),
       ...kontaAllegro().map((k) => ({
         klucz: k.klucz,
-        etykieta: `Allegro · ${k.klucz}${k.srodowisko === 'sandbox' ? ' (sandbox)' : ''}`,
+        nazwa: k.nazwa || k.klucz,
+        kanal: 'Allegro',
+        logo: logoUslugi('allegro'),
+        sandbox: k.srodowisko === 'sandbox',
         allegro: true,
         zgoda: k.zgoda !== false,
       })),
@@ -237,7 +271,7 @@ export function registerListaMagazynu(
     // `stany.wlaczone === false`, kolumny i paska nie ma, ekran wygląda jak bez tej funkcji.
     const stany = stanyKart(db);
     const naStanie = (id) => (stany.wlaczone ? (stany.stany.get(Number(id))?.stan ?? 0) : null);
-    const naMinusie = stany.wlaczone ? [...stany.stany.values()].filter((s) => s.stan < 0).length : 0;
+    const naMinusie = [...stany.stany.values()].filter(({ stan }) => pasujeDoStanu('minus', stan)).length;
     // Odnośnik w podsumowaniu prowadzi do całego aktywnego asortymentu z progiem.
     const zNiskimStanem = stany.wlaczone
       ? db
@@ -262,12 +296,14 @@ export function registerListaMagazynu(
       };
     });
 
+    const cenyZakupu = widok === 'katalog' ? cenyZakupuNa(db, dzienWarszawa(new Date().toISOString())) : null;
+
     return reply.view('magazyn-lista.ejs', {
       szerokosc: 'tabela',
       title: 'Magazyn',
       // Ekrany stanów w kanałach tylko dla admina — link też.
       adminStanowKanalow: req.konto?.admin === true,
-      kontaOfert: req.konto?.admin ? kontaOfert : [],
+      kontaOfert: mozeWystawiacHurtem(req.konto) ? kontaOfert : [],
       liczbaProblemowOfert: req.konto?.admin ? liczbaOfertDoDecyzji(db) : 0,
       // Jedno zapytanie z licznikiem; zakonczone sa poza liczba, tak jak na ekranie powiazan.
       powiazania: (() => {
@@ -287,7 +323,10 @@ export function registerListaMagazynu(
         const stan = naStanie(w.id);
         // Wycofana karta nie wchodzi do licznika ani filtra niskiego stanu, więc nie dostaje też jego znacznika.
         const klasa = stan === null ? 'zwykly' : klasaStanu(stan, w.wycofana === 1 ? null : w.prog_niskiego_stanu);
-        if (widok === 'katalog') {
+        if (cenyZakupu) {
+          const nettoGr = cenyZakupu.get(w.id);
+          wiersz.cenaZakupuNetto = nettoGr == null ? null : cenaListy(nettoGr / 100);
+          wiersz.stawkaVat = w.stawka_vat;
           wiersz.kanaly = wiersz.kanaly.map((k) => (k?.cena != null ? { ...k, cena: cenaListy(k.cena) } : k));
         }
         return {
@@ -311,6 +350,7 @@ export function registerListaMagazynu(
             od: fmtDataCzas(stany.granica),
             naMinusie,
             zNiskimStanem,
+            adresMinusa: adresMagazynu({ stan: 'minus' }, { widok }),
             adresNiskiegoStanu: adresMagazynu({ stan: 'niski' }, { widok }),
             bezKarty: stany.bezKarty,
             adresImportu: '/magazyn/stany/import',
@@ -330,7 +370,7 @@ export function registerListaMagazynu(
       // Firma bez kanałów nie ma czego pokazać w kolumnie „Kanały” — wtedy jej nie ma.
       kolumnaKanalow: pokazPlakietki,
       kolumnPustej:
-        (widok === 'katalog' ? 4 + naglowkiKanalow.length : 6 + (pokazPlakietki ? 1 : 0)) + (stany.wlaczone ? 1 : 0),
+        6 + (widok === 'katalog' ? naglowkiKanalow.length : Number(pokazPlakietki)) + Number(stany.wlaczone),
       // Co dzis zawęża liste — zdanie nad tabela, POLICZONE (widok niczego nie liczy).
       opisZawezenia: opisZawezenia(filtry, znalezione.length),
       // Liczba wynikow PRZY zawezeniu (pasek chipow) — TA SAMA odmiana trojformowa co
@@ -373,13 +413,20 @@ export function registerListaMagazynu(
       // Pozycje pol wyboru. Etykiety kanalow z `adresKanalu` (ta sama funkcja, co w naglowku
       // kolumny), reszta ze slownikow domeny — druga mapa nazw rozjechalaby sie z pierwsza.
       kanalyDoFiltra: naglowkiKanalow,
-      paczkomatDoFiltra: PACZKOMAT_DO_FILTRA.map((klucz) => ({ klucz, etykieta: PACZKOMAT_ETYKIETY[klucz] })),
-      brakiDoFiltra: ['sku', 'wymiary', 'paczkomat', 'kategoria', 'zdjecie', 'opis', 'cena_zakupu', 'komplet'].map(
-        (klucz) => ({
+      // Kolejność z Ustawień. Wybrany niesie typ, wartości i jednostkę — od nich zależy pole obok.
+      parametryDoFiltra: parametry.map(({ id, nazwa }) => ({ id, nazwa })),
+      parametrFiltra: parametry.find((p) => p.id === filtry.parametr) ?? null,
+      // Każdy wymagany parametr to osobna pozycja braku — ta sama definicja, co `liczba_brakow`.
+      brakiDoFiltra: [
+        ...['sku', 'wymiary', 'kategoria', 'zdjecie', 'opis'].map((klucz) => ({
           klucz,
           etykieta: BRAKI_ETYKIETY[klucz],
-        }),
-      ),
+        })),
+        ...parametry
+          .filter((p) => p.wymagany)
+          .map((p) => ({ klucz: kluczBrakuParametru(p.id), etykieta: `bez: ${p.nazwa}` })),
+        ...['cena_zakupu', 'komplet'].map((klucz) => ({ klucz, etykieta: BRAKI_ETYKIETY[klucz] })),
+      ],
       kategorieDoFiltra: kategorieDoFiltra(db),
       markiDoHurtu: nazwySlownika(db, 'marki'),
       markiDoFiltra: markiDoFiltra(db),
@@ -389,9 +436,9 @@ export function registerListaMagazynu(
       // ma wiedziec, ze dotyka setek kart, a nie 20, ktore widzi na ekranie — i musi to
       // byc TA SAMA liczba, co dlugosc listy nizej, bo obie biora sie z jednego odczytu.
       ilePasujacych: znalezione.length,
-      // ⚠️ ZAWEZENIE JEDNYM POLEM, nie siedmioma osobnymi: formularz hurtowy ma WLASNE pole
-      // `paczkomat`, a filtr ma pole `paczkomat` — te same nazwy w jednym formularzu wracaja
-      // z Fastify jako TABLICA i kasuja sie nawzajem (patrz `filtryZawezenia`). Skladane
+      // ⚠️ ZAWEZENIE JEDNYM POLEM, nie siedmioma osobnymi: formularz hurtowy ma WLASNE pola
+      // (np. `marka`, `stawka_vat`), a nazwy filtrow i pol hurtu w jednym formularzu wracalyby
+      // z Fastify jako TABLICA i kasowaly sie nawzajem (patrz `filtryZawezenia`). Skladane
       // z `adresMagazynu`, czyli z TEGO SAMEGO miejsca, co kazdy odnosnik ekranu.
       // ⚠️⚠️ JEDYNE MIEJSCE EKRANU BEZ TRYBU KOLUMN — i to nie jest przeoczenie. To pole
       // opisuje ZBIOR, ktorego dotknie akcja hurtowa, a tryb kolumn jest UKLADEM EKRANU:
@@ -400,10 +447,18 @@ export function registerListaMagazynu(
       // (patrz `adresMagazynu` w domenie) — a `sort`/`kier` nie ma, bo kolejnosc nie
       // zmienia zbioru.
       zawezenieHurtu: adresMagazynu(filtry).split('?')[1] ?? '',
-      // Pozycje pola wyboru kategorii w pasku hurtu — ta sama lista, co w filtrze.
-      // ⚠️ POLE WYBORU, NIE TEKSTOWE: wpisana z pamieci literowka ustawilaby hurtem
-      // kategorie, ktorej nie ma w zadnym sklepie, i to od razu setkom kart.
-      paczkomatDoHurtu: PACZKOMAT_DO_FILTRA.map((klucz) => ({ klucz, etykieta: PACZKOMAT_ETYKIETY[klucz] })),
+      // Parametry własne do panelu edycji hurtem: lista ma pole wyboru z wartościami z definicji —
+      // wpisany z pamięci tekst trasa i tak odrzuci, ale człowiek nie powinien musieć zgadywać.
+      parametryKart: listaParametrow(db).map(({ id, nazwa, typ, jednostka, wartosci, wymagany }) => ({
+        id,
+        nazwa,
+        typ,
+        jednostka,
+        wartosci,
+        wymagany,
+      })),
+      // Odnośnik „dodaj parametr” w panelu prowadzi do Ustawień — tylko dla konta, które je otworzy.
+      mozeUstawieniaMagazynu: maDostepDoAdresu(req.konto, '/magazyn/ustawienia'),
       // Ta sama lista stawek, co na karcie i w walidacji hurtu — druga kopia pozwoliłaby wybrać
       // stawkę, której trasa potem odmówi, albo schowałaby stawkę, którą trasa przyjmuje.
       stawkiDoHurtu: STAWKI_VAT.map((s) => ({ klucz: s, etykieta: `${s}%` })),

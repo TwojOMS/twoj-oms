@@ -10,11 +10,20 @@ import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { uruchomPiaskownice } from '../../deploy/proba/atrapy/index.mjs';
+import { createAtrapaWoo } from '../../deploy/proba/atrapy/kanaly.mjs';
+import { createAtrapaErli } from '../../deploy/proba/atrapy/erli.mjs';
+import { idProduktuErli } from '../../src/moduly/magazyn/services/petla-ofert.js';
 import { zalozKonto } from '../../src/core/bezpieczenstwo/konta.js';
 import { utworzBazeDemo, wygenerujDaneDemo, ENV_DEMO, nipFikcyjny } from '../../scripts/demo-dane.mjs';
-import { FIRMY_B2B, KOSZTY, PRODUKTY } from '../../scripts/demo-dane-firma.mjs';
-import { eanDemo, produktyAllegroDemoPoEan } from '../../scripts/demo-dane-katalog.mjs';
+import { FIRMY_B2B, KOSZTY, PRODUKTY, PRODUKTY_KATALOGU } from '../../scripts/demo-dane-firma.mjs';
+import {
+  eanDemo,
+  klienciKataloguDemo,
+  produktyAllegroDemoPoEan,
+  zdjeciaKarty,
+} from '../../scripts/demo-dane-katalog.mjs';
 import { poprawnyEan } from '../../src/domena/ean.js';
+import { cenyZakupuNa, historiaCenZakupu } from '../../src/oms/db/ceny-zakupu.js';
 import { etapPrzesylki, kategoriaPrzesylki, bezRuchu } from '../../src/domena/etap-przesylki.js';
 import { przewoznikWiersza } from '../../src/domena/przewoznik-przesylki.js';
 import { pobierzZamowienie } from '../../src/oms/db/zamowienia.js';
@@ -55,7 +64,7 @@ const ZNACZNIKI = {
   '/okresy': ['Kawiarnie Dzbanuszek'],
   '/klienci': ['Hotel Zaciszny Brzeg', 'Wohnlicht Nordstrand GmbH (demo)'],
   '/wiadomosci': ['demo-watek-1', 'oprawka jest E27'],
-  '/magazyn': ['Lampa stołowa Gliwka', 'LMP-STO-001', 'Lampa wisząca Kopuła'],
+  '/magazyn': ['Lampa stołowa Gliwka', 'LMP-STO-001', 'LMP-KAT-001'],
   '/analityka': ['Nowe zamówienia', 'W realizacji'],
   '/raporty': ['Sprzedaż brutto', 'Lampa'],
   '/statystyki': ['Paczkomat'],
@@ -73,6 +82,24 @@ const PUSTE = [
   'Brak faktur kosztowych w tym miesiącu',
   'Nie da się policzyć',
 ];
+
+it.each(['woocommerce_calc_taxes', 'woocommerce_prices_include_tax'])(
+  'klient katalogu i atrapa Woo mają to samo ustawienie %s',
+  async (klucz) => {
+    const db = new DatabaseSync(':memory:');
+    try {
+      const { sklepy, kanalySklepow } = klienciKataloguDemo();
+      for (const kanal of kanalySklepow) {
+        const atrapa = createAtrapaWoo({ db, kanal, env: ENV_DEMO });
+        const ustawienie = await atrapa.ustawienieSklepu(klucz);
+        expect(ustawienie, kanal).toBe('no');
+        expect(await sklepy[kanal].ustawienieSklepu(klucz), kanal).toBe(ustawienie);
+      }
+    } finally {
+      db.close();
+    }
+  },
+);
 
 describe('generator danych demo na świeżej bazie', () => {
   let env, wynik, live, url, cookie;
@@ -112,6 +139,145 @@ describe('generator danych demo na świeżej bazie', () => {
     return { status: r.status, html: await r.text() };
   };
 
+  it('ma 150 kart z ceną, VAT 23%, marką i obowiązującą ceną zakupu', () => {
+    const db = new DatabaseSync(env.OMS_DB_PATH, { readOnly: true });
+    try {
+      const karty = db.prepare('SELECT id, sku, cena_gr, stawka_vat, marka FROM karty_produktow ORDER BY id').all();
+      const cenyZakupu = cenyZakupuNa(db, DZIS_TERAZ);
+      expect(karty).toHaveLength(150);
+      expect(cenyZakupu.size).toBe(150);
+      const marki = ['Pracownia Półcień', 'Zakład Szkła Przykładowego', 'Marka przykładowa 001', 'Oprawy Przykładowe'];
+      const skuHistorii = ['LMP-STO-001', 'LMP-STO-002', 'LMP-STO-003'];
+      const dataWzgledna = (dni) => new Date(Date.parse(DZIS_TERAZ) + dni * 86400000).toISOString().slice(0, 10);
+      for (const { id, sku, cena_gr, stawka_vat, marka } of karty) {
+        expect(cena_gr, sku).toBeGreaterThan(0);
+        expect(stawka_vat, sku).toBe('23');
+        expect(marki, sku).toContain(marka);
+        expect(cenyZakupu.get(id), sku).toBeGreaterThan(0);
+        const historia = historiaCenZakupu(db, id);
+        const i = skuHistorii.indexOf(sku);
+        if (i !== -1) {
+          expect(historia, sku).toMatchObject([
+            { cena_netto_gr: 4500 + i * 1000, obowiazuje_od: dataWzgledna(-90) },
+            { cena_netto_gr: 5000 + i * 1000, obowiazuje_od: dataWzgledna(-30) },
+            ...(i === 0 ? [{ cena_netto_gr: 5500, obowiazuje_od: dataWzgledna(30) }] : []),
+          ]);
+          expect(cenyZakupu.get(id), sku).toBe(5000 + i * 1000);
+        } else {
+          const gr = cenyZakupu.get(id);
+          expect(historia, sku).toMatchObject([{ cena_netto_gr: gr, obowiazuje_od: dataWzgledna(-60) }]);
+          expect(gr % 10, sku).toBe(0);
+          expect(gr, sku).toBeGreaterThanOrEqual(cena_gr * 0.45 - 5);
+          expect(gr, sku).toBeLessThanOrEqual(cena_gr * 0.6 + 5);
+        }
+      }
+    } finally {
+      db.close();
+    }
+  });
+
+  it('karty demo mają cztery parametry w stałej kolejności, wartości na lampach i kilka lamp bez wymaganego Gwintu', () => {
+    const db = new DatabaseSync(env.OMS_DB_PATH, { readOnly: true });
+    try {
+      const parametry = db
+        .prepare('SELECT id, nazwa, typ, jednostka, wymagany FROM parametry_kart ORDER BY kolejnosc, id')
+        .all();
+      expect(parametry.map((p) => [p.nazwa, p.typ, p.jednostka, p.wymagany])).toEqual([
+        ['Moc żarówki', 'liczba', 'W', 0],
+        ['Kolor', 'lista', null, 0],
+        ['Gwint', 'lista', null, 1],
+        ['Materiał', 'tekst', null, 0],
+      ]);
+      const ile = db.prepare('SELECT COUNT(*) n FROM karty_parametry WHERE parametr_id = ?');
+      for (const p of parametry) expect(ile.get(p.id).n, p.nazwa).toBeGreaterThan(0);
+      const gwint = parametry[2].id;
+      const moc = parametry[0].id;
+      // Szkic produktu powstaje później i celowo jest niedokończony — nie liczy się do lamp bez Gwintu.
+      const lampyBezGwintu = db
+        .prepare(
+          `SELECT COUNT(*) n FROM karty_produktow k
+          WHERE k.kategoria_glowna NOT IN ('Abażury i klosze', 'Akcesoria') AND k.sku NOT LIKE 'LMP-SZK-%'
+            AND NOT EXISTS (SELECT 1 FROM karty_parametry v WHERE v.karta_id = k.id AND v.parametr_id = ?)`,
+        )
+        .get(gwint).n;
+      expect(lampyBezGwintu).toBeGreaterThanOrEqual(2);
+      expect(lampyBezGwintu).toBeLessThanOrEqual(3);
+      const akcesoriaZMoca = db
+        .prepare(
+          `SELECT COUNT(*) n FROM karty_parametry v JOIN karty_produktow k ON k.id = v.karta_id
+          WHERE v.parametr_id IN (?, ?) AND k.kategoria_glowna IN ('Abażury i klosze', 'Akcesoria')`,
+        )
+        .get(moc, gwint).n;
+      expect(akcesoriaZMoca).toBe(0);
+      expect(db.prepare('SELECT COUNT(*) n FROM karty_produktow WHERE paczkomat IS NOT NULL').get().n).toBe(0);
+    } finally {
+      db.close();
+    }
+  });
+
+  it('pokazuje nowe SKU w lustrze Woo Półcień i poza Allegro oraz zamówieniami', () => {
+    const db = new DatabaseSync(env.OMS_DB_PATH, { readOnly: true });
+    try {
+      const lustro = db
+        .prepare(
+          "SELECT sku_sklepu, kanal FROM produkty_sklepowe WHERE sku_sklepu LIKE 'LMP-KAT-%' ORDER BY sku_sklepu, kanal",
+        )
+        .all();
+      expect(lustro).toEqual(
+        Array.from({ length: 119 }, (_, i) => ({
+          sku_sklepu: `LMP-KAT-${String(i + 1).padStart(3, '0')}`,
+          kanal: 'polcien',
+        })),
+      );
+      const karty = db
+        .prepare(
+          "SELECT id, sku, nazwa, kategoria_glowna, cena_gr FROM karty_produktow WHERE sku LIKE 'LMP-KAT-%' ORDER BY sku",
+        )
+        .all();
+      expect(karty).toHaveLength(119);
+      const nazwy = [
+        'Lampa stołowa',
+        'Lampa wisząca',
+        'Lampa podłogowa',
+        'Kinkiet',
+        'Lampka nocna',
+        'Abażur',
+        'Żarówka LED',
+      ];
+      const kategorie = [
+        'Lampy stołowe',
+        'Lampy wiszące',
+        'Lampy podłogowe',
+        'Kinkiety',
+        'Lampki nocne',
+        'Abażury i klosze',
+        'Akcesoria',
+      ];
+      const zdjecia = db.prepare('SELECT adres_zrodlowy FROM zdjecia_kart WHERE karta_id = ?');
+      for (const [i, { id, sku, nazwa, kategoria_glowna, cena_gr }] of karty.entries()) {
+        expect(nazwa).toBe(`${nazwy[i % 7]} ${i + 22}`);
+        expect(kategoria_glowna).toBe(kategorie[i % 7]);
+        expect(cena_gr % 100).toBe([0, 90, 99][i % 3]);
+        expect(cena_gr).toBeGreaterThanOrEqual(3900);
+        expect(cena_gr).toBeLessThanOrEqual(i % 7 >= 5 ? 14900 : 89900);
+        expect(zdjecia.all(id), sku).toEqual([
+          { adres_zrodlowy: expect.stringMatching(/\/demo-produkty\/(?!rys-)[^/]+\.jpg$/) },
+        ]);
+      }
+      expect(
+        db
+          .prepare(
+            `SELECT COUNT(*) n FROM oferty_kanalow o JOIN karty_produktow k ON k.id = o.karta_id
+            WHERE k.sku LIKE 'LMP-KAT-%' AND o.kanal <> 'erli_polcien'`,
+          )
+          .get().n,
+      ).toBe(0);
+      expect(db.prepare("SELECT COUNT(*) n FROM pozycje WHERE sku LIKE 'LMP-KAT-%'").get().n).toBe(0);
+    } finally {
+      db.close();
+    }
+  });
+
   it('magazyn demo ma karty bez EAN-u i karty z poprawnym EAN-em z katalogu Allegro', () => {
     const db = new DatabaseSync(env.OMS_DB_PATH, { readOnly: true });
     try {
@@ -121,18 +287,85 @@ describe('generator danych demo na świeżej bazie', () => {
       expect(udzialBezEan).toBeGreaterThanOrEqual(0.15);
       expect(udzialBezEan).toBeLessThanOrEqual(0.25);
       expect(zEan).toContainEqual({ sku: PRODUKTY[0].sku, ean: eanDemo(1) });
+      const produkty = [...PRODUKTY, ...PRODUKTY_KATALOGU];
       for (const { sku, ean } of zEan) {
-        const nr = PRODUKTY.findIndex((p) => p.sku === sku) + 1;
+        const nr = produkty.findIndex((p) => p.sku === sku) + 1;
         expect(ean, sku).toBe(eanDemo(nr));
         expect(poprawnyEan(ean), sku).toBe(true);
-        expect(produktyAllegroDemoPoEan(ean)).toEqual([expect.objectContaining({ name: PRODUKTY[nr - 1].nazwa })]);
+        expect(produktyAllegroDemoPoEan(ean)).toEqual([expect.objectContaining({ name: produkty[nr - 1].nazwa })]);
       }
     } finally {
       db.close();
     }
   });
 
-  it('magazyn demo ma historię ceny zakupu z przyszłą podwyżką oraz karty bez ceny', () => {
+  it('każda karta demo ma regularną cenę katalogową, a karty powiązane z Woo mają źródło ceny', () => {
+    const db = new DatabaseSync(env.OMS_DB_PATH, { readOnly: true });
+    try {
+      const ceny = new Map([...PRODUKTY, ...PRODUKTY_KATALOGU].map(({ sku, cena_gr }) => [sku, cena_gr]));
+      ceny.set('LMP-SZK-001', 18900);
+      const karty = db.prepare('SELECT id, sku, cena_gr FROM karty_produktow').all();
+      const zrodloCeny = db.prepare(
+        "SELECT zrodlo, reczne FROM karty_zrodla_pol WHERE karta_id = ? AND pole = 'cena_gr'",
+      );
+      const { kanalySklepow } = klienciKataloguDemo();
+      const lustroWoo = db.prepare(
+        `SELECT kanal FROM produkty_sklepowe WHERE karta_id = ? AND kanal IN (${kanalySklepow.map(() => '?').join(',')})`,
+      );
+      expect(karty.map(({ sku }) => sku)).toContain('LMP-SZK-001');
+      for (const { id, sku, cena_gr } of karty) {
+        expect(cena_gr, sku).toBe(ceny.get(sku));
+        const powiazania = lustroWoo.all(id, ...kanalySklepow);
+        if (powiazania.length) {
+          const zrodlo = zrodloCeny.get(id);
+          expect(
+            powiazania.map(({ kanal }) => `woo:${kanal}`),
+            sku,
+          ).toContain(zrodlo?.zrodlo);
+          expect(zrodlo.reczne, sku).toBe(0);
+        }
+      }
+    } finally {
+      db.close();
+    }
+  });
+
+  it('galerie kart demo zaczynają się od zdjęcia SKU, z zachowaniem celowych braków', () => {
+    const db = new DatabaseSync(env.OMS_DB_PATH, { readOnly: true });
+    try {
+      const karty = db.prepare('SELECT id, sku FROM karty_produktow').all();
+      const zdjecia = db.prepare(
+        'SELECT kolejnosc, adres_zrodlowy FROM zdjecia_kart WHERE karta_id = ? ORDER BY kolejnosc',
+      );
+      const bezZdjec = [];
+      for (const { id, sku } of karty) {
+        const galeria = zdjecia.all(id);
+        const [pierwsze] = zdjeciaKarty(sku);
+        if (pierwsze) {
+          expect(galeria[0], sku).toEqual({ kolejnosc: 0, adres_zrodlowy: pierwsze });
+        } else {
+          expect(galeria, sku).toHaveLength(0);
+          bezZdjec.push(sku);
+        }
+      }
+      expect(bezZdjec.sort()).toEqual(['LMP-KIN-001', 'LMP-KIN-002']);
+    } finally {
+      db.close();
+    }
+  });
+
+  it('każda karta demo ma stawkę VAT 23%', () => {
+    const db = new DatabaseSync(env.OMS_DB_PATH, { readOnly: true });
+    try {
+      const karty = db.prepare('SELECT sku, stawka_vat FROM karty_produktow').all();
+      expect(karty.map(({ sku }) => sku)).toContain('LMP-SZK-001');
+      for (const { sku, stawka_vat } of karty) expect(stawka_vat, sku).toBe('23');
+    } finally {
+      db.close();
+    }
+  });
+
+  it('magazyn demo ma historię ceny zakupu z przyszłą podwyżką', () => {
     const db = new DatabaseSync(env.OMS_DB_PATH, { readOnly: true });
     try {
       const historia = db
@@ -150,13 +383,6 @@ describe('generator danych demo na świeżej bazie', () => {
         ),
       ).toBe(true);
       expect(historia.every((w) => w.kto === null && w.zrodlo === 'karta')).toBe(true);
-      const bez = db
-        .prepare(
-          `SELECT COUNT(*) n FROM karty_produktow k WHERE NOT EXISTS
-        (SELECT 1 FROM ceny_zakupu_kart c WHERE c.karta_id = k.id AND c.obowiazuje_od <= ?)`,
-        )
-        .get(DZIS_TERAZ);
-      expect(bez.n).toBeGreaterThan(0);
     } finally {
       db.close();
     }
@@ -311,11 +537,38 @@ describe('generator danych demo na świeżej bazie', () => {
       const producenci = db.prepare('SELECT id, nazwa, domyslny FROM producenci ORDER BY nazwa').all();
       expect(producenci.map((p) => p.nazwa)).toEqual(['Pracownia Półcień', 'Zakład Szkła Przykładowego']);
       expect(producenci.filter((p) => p.domyslny === 1).map((p) => p.nazwa)).toEqual(['Pracownia Półcień']);
+      // Adres w polach — jak po dodaniu w formularzu, z krajem, którego wymaga GPSR.
+      expect(
+        db
+          .prepare('SELECT nazwa, kod_pocztowy, kraj, adres FROM producenci ORDER BY nazwa')
+          .all()
+          .map((p) => ({ ...p })),
+      ).toEqual([
+        {
+          nazwa: 'Pracownia Półcień',
+          kod_pocztowy: '00-001',
+          kraj: 'PL',
+          adres: 'ul. Przykładowa 1\n00-001 Miasto Przykładowe\nPolska',
+        },
+        {
+          nazwa: 'Zakład Szkła Przykładowego',
+          kod_pocztowy: '00-002',
+          kraj: 'PL',
+          adres: 'ul. Hutnicza 2\n00-002 Miasto Przykładowe\nPolska',
+        },
+      ]);
       const przypisane = db
         .prepare('SELECT marka FROM marki_producenci')
         .all()
         .map((r) => r.marka);
       expect(przypisane.length).toBeGreaterThanOrEqual(2);
+      expect(
+        db
+          .prepare(
+            "SELECT p.domyslny FROM producenci p JOIN marki_producenci m ON m.producent_id = p.id WHERE m.marka = 'Oprawy Przykładowe'",
+          )
+          .get()?.domyslny,
+      ).toBe(1);
       const bezProducenta = db
         .prepare(
           `SELECT k.marka, COUNT(*) n FROM karty_produktow k
@@ -412,9 +665,95 @@ describe('generator danych demo na świeżej bazie', () => {
       db.close();
     }
   });
+
+  it('uzupełnia oferty ERLI według id i pokazuje odpowiadające im plakietki Magazynu', async () => {
+    const kanal = 'erli_polcien';
+    const scenariusze = new Map([
+      ['LMP-STO-001', ['aktywna', 'oms']],
+      ['LMP-STO-002', ['do_wyslania', 'oms']],
+      ['LMP-STO-003', ['problem', 'oms']],
+      ['LMP-STO-004', ['blad', 'oms']],
+      ['LMP-STO-005', ['aktywna', 'oms']],
+      ['LMP-STO-006', ['aktywna', 'przejeta']],
+    ]);
+    const bezTresci = ['LMP-KIN-001', 'LMP-KIN-002'];
+    await live.aplikacja.zegary.find((z) => z.nazwa === 'poller').przebieg();
+    const db = new DatabaseSync(env.OMS_DB_PATH);
+    try {
+      const erli = createAtrapaErli({ db, kanal, env, demoZmiany: true });
+      const karty = db
+        .prepare(
+          `SELECT k.id, k.sku, k.cena_gr, o.stan, o.pochodzenie, o.id_zewnetrzne, o.odczyt_cena_gr, o.odczyt_ilosc
+          FROM karty_produktow k LEFT JOIN oferty_kanalow o ON o.karta_id = k.id AND o.kanal = ? ORDER BY k.id`,
+        )
+        .all(kanal);
+      expect(karty).toHaveLength(150);
+      expect(karty.filter((k) => bezTresci.includes(k.sku)).map((k) => k.sku)).toEqual(bezTresci);
+      expect.soft(karty.filter((k) => k.stan === 'aktywna')).toHaveLength(117);
+      expect.soft(karty.filter((k) => k.sku.startsWith('LMP-KAT-') && k.stan === 'aktywna')).toHaveLength(96);
+      const { status, html } = await strona('/magazyn?wszystkie=1');
+      expect(status).toBe(200);
+      const wiersze = new Map(
+        [...html.matchAll(/<tr>[\s\S]*?<\/tr>/g)]
+          .map(([wiersz]) => [wiersz.match(/<div class="sku">([\w-]+)/)?.[1], wiersz])
+          .filter(([sku]) => sku),
+      );
+      expect(wiersze.size).toBe(150);
+      for (const karta of karty) {
+        const { id, sku, stan, pochodzenie, id_zewnetrzne } = karta;
+        const oczekiwana =
+          scenariusze.get(sku) ?? (id % 5 !== 0 && !bezTresci.includes(sku) ? ['aktywna', 'oms'] : [null, null]);
+        expect.soft([stan, pochodzenie], sku).toEqual(oczekiwana);
+        if (oczekiwana[0] === 'aktywna' && !scenariusze.has(sku)) {
+          expect.soft(id_zewnetrzne, sku).toBe(idProduktuErli(db, id));
+        }
+        const klasa = wiersze.get(sku)?.match(/class="plakietka plakietka--kanal (plakietka--erli[^"]*)"/)?.[1];
+        expect
+          .soft(klasa, sku)
+          .toBe(
+            oczekiwana[0] === null
+              ? undefined
+              : oczekiwana[0] === 'aktywna'
+                ? 'plakietka--erli'
+                : 'plakietka--erli plakietka--nieaktywna',
+          );
+      }
+      const produkty = await erli.szukajProduktow({ pagination: { limit: 200 } });
+      expect(produkty).toHaveLength(118);
+      const znaneAtrapom = karty.filter((k) => ['aktywna', 'problem'].includes(k.stan));
+      expect(produkty.map((p) => p.externalId).sort()).toEqual(znaneAtrapom.map((k) => k.id_zewnetrzne).sort());
+      const poId = new Map(produkty.map((p) => [p.externalId, p]));
+      for (const karta of znaneAtrapom) {
+        expect(poId.get(karta.id_zewnetrzne), karta.sku).toMatchObject({
+          sku: karta.sku,
+          price: scenariusze.has(karta.sku) ? karta.odczyt_cena_gr : karta.cena_gr,
+          stock: karta.odczyt_ilosc,
+          status: 'active',
+        });
+      }
+    } finally {
+      db.close();
+    }
+  });
 });
 
 describe('generator danych demo — determinizm i odmowy', () => {
+  it('zamówienia demo bez zmian', async () => {
+    const env = envDla(katalog());
+    await utworzBazeDemo({ baza: env.OMS_DB_PATH, dzis: '2026-11-19', env });
+    const db = new DatabaseSync(env.OMS_DB_PATH, { readOnly: true });
+    try {
+      expect(
+        db.prepare('SELECT COUNT(*) AS liczba, SUM(ROUND(kwota_brutto * 100)) AS suma_gr FROM zamowienia').get(),
+      ).toEqual({ liczba: 212, suma_gr: 10065284 });
+      expect(
+        db.prepare('SELECT COUNT(*) AS liczba, SUM(ROUND(cena_brutto * ilosc * 100)) AS suma_gr FROM pozycje').get(),
+      ).toEqual({ liczba: 384, suma_gr: 9755864 });
+    } finally {
+      db.close();
+    }
+  }, 60000);
+
   const migawka = async (ziarno) => {
     const k = katalog();
     const env = envDla(k);

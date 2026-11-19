@@ -3,11 +3,10 @@ import {
   ustawieniaOfertKonta,
   zapiszUstawieniaOfertKonta,
   BEZPIECZENSTWO_MAKS_ZNAKOW,
-  type RegulaCennika,
 } from '../../../oms/db/oferty-kanalow.ts';
+import { cennikiOms, maCennikiOms } from '../../../oms/db/cenniki-oms.ts';
 import { brakiUstawienOfert } from '../../../domena/erli-oferty-ustawienia.js';
 import { stanyKiedysWlaczone } from '../stany-kont.ts';
-import { regulyZFormularza } from '../../../domena/cennik-dostaw.js';
 
 // Krok 6 „Oferty” konfiguratora Allegro — dane konta, których karta nie zna.
 // Listy konta (cenniki, warunki, producenci, osoby) przychodzą wyłącznie z „Pobierz z Allegro”; formularz
@@ -29,9 +28,9 @@ export type SlownikiAllegro = {
 };
 type Lista = Exclude<keyof SlownikiAllegro, 'pobranoAt'>;
 
-/** Pole ustawień → lista konta, metoda klienta Allegro i etykieta na ekranie. Cennik dostaw nie jest
- * już jednym polem — wybiera się go w tabeli reguł (`_cenniki-reguly.ejs`, `regulyZKroku`); listę cenników
- * pobiera nadal „Pobierz z Allegro” (`LISTY_KONTA`). */
+/** Pole ustawień → lista konta, metoda klienta Allegro i etykieta na ekranie. Cennik dostaw nie jest polem
+ * kroku — powiązania cenników OMS z kontem ustawia się w Magazyn → Cenniki; listę cenników konta pobiera nadal
+ * „Pobierz z Allegro” (`LISTY_KONTA`), bo z niej wybiera się powiązanie. */
 export const POLA_LIST: readonly { pole: string; lista: Lista; metoda: string; etykieta: string; wymagane: boolean }[] =
   [
     { pole: 'zwrotyId', lista: 'zwroty', metoda: 'pobierzZwroty', etykieta: 'Warunki zwrotów', wymagane: true },
@@ -64,68 +63,39 @@ export const POLA_LIST: readonly { pole: string; lista: Lista; metoda: string; e
       wymagane: false,
     },
   ];
-/** Wszystkie listy „Pobierz z Allegro”: cenniki (tabela reguł) i listy pól wyboru. */
+/** Wszystkie listy „Pobierz z Allegro”: cenniki (do powiązań w Magazyn → Cenniki) i listy pól wyboru. */
 const LISTY_KONTA: readonly { lista: Lista; metoda: string }[] = [
   { lista: 'cenniki', metoda: 'pobierzCenniki' },
   ...POLA_LIST,
 ];
 
-/** Pola tabeli reguł w formularzu kroku „Oferty” (Allegro i ERLI) — po jednej wartości na wiersz. */
-export const POLA_TABELI_CENNIKOW = ['regulaA', 'regulaB', 'regulaC', 'regulaWaga', 'regulaCennik'] as const;
-export type RegulyZKroku = {
-  reguly: RegulaCennika[];
-  wiersze: { a: string; b: string; c: string; waga: string; cennik: string }[];
-  wieksze: string;
-  bledyPol: Record<string, string>;
-};
+const odmianaCennikow = (n: number) =>
+  n === 1
+    ? 'cennik OMS ma'
+    : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)
+      ? 'cenniki OMS mają'
+      : 'cenników OMS ma';
 
 /**
- * Tabela reguł z formularza kroku „Oferty”: wiersze (cm, kg, cennik) od góry plus cennik „dla większych”.
- * `null` — w ciele nie ma tabeli (stary formularz, inny zapis): reguły konta zostają bez zmian.
- * Pola `cennikDostaw` z formularza nie czytamy: ten alias jednej reguły „wszystko” zamieniłby całą listę reguł na jeden cennik.
- * Błędy przy polach: `regula-<indeks wiersza>` i `cennikWiekszych`.
+ * Jedno zdanie o cennikach dostaw konta w kroku „Oferty” (Allegro i ERLI): ile cenników OMS ma powiązanie
+ * z kontem i dokąd prowadzi cennik domyślny. `nazwaKanalu` zamienia identyfikator cennika kanału na nazwę
+ * z listy konta (Allegro); bez listy zostaje identyfikator.
  */
-export function regulyZKroku(b: Record<string, unknown>): RegulyZKroku | null {
-  if (!('cennikWiekszych' in b)) return null;
-  const [pa, pb, pc, pw, pk] = POLA_TABELI_CENNIKOW.map((p) => lista(b[p]));
-  const n = Math.max(pa.length, pb.length, pc.length, pw.length, pk.length);
-  const wiersze = Array.from({ length: n }, (_, i) => ({
-    a: pa[i] ?? '',
-    b: pb[i] ?? '',
-    c: pc[i] ?? '',
-    waga: pw[i] ?? '',
-    cennik: pk[i] ?? '',
-  }));
-  const wieksze = tekst(b.cennikWiekszych);
-  const { reguly, bledy } = regulyZFormularza(wiersze, wieksze) as unknown as {
-    reguly: RegulaCennika[];
-    bledy: { wiersz: number | null; tekst: string }[];
-  };
-  const bledyPol: Record<string, string> = {};
-  for (const x of bledy) {
-    const klucz = x.wiersz === null ? 'cennikWiekszych' : 'regula-' + x.wiersz;
-    if (!bledyPol[klucz]) bledyPol[klucz] = x.tekst;
-  }
-  // Puste „dla większych” zawsze odmowa — pusta tabela nie kasuje po cichu reguł konta.
-  if (!wieksze.trim() && !bledyPol.cennikWiekszych) bledyPol.cennikWiekszych = 'Ustaw cennik dla większych';
-  return { reguly: Object.keys(bledyPol).length ? [] : reguly, wiersze, wieksze, bledyPol };
-}
-
-/** Formularz bez tabeli reguł przy koncie z regułami to strona otwarta przed zmianą — 409, nic nie zapisane. */
-export const FORMULARZ_NIEAKTUALNY = 'Strona była otwarta przed zmianą — odśwież';
-export const formularzNieaktualny = (b: Record<string, unknown>, cenniki: readonly unknown[]) =>
-  !('cennikWiekszych' in b) && cenniki.length > 0;
-
-/** Cenniki wpisane w tabeli, których nie ma na liście konta (Allegro przyjmuje tylko identyfikator ze swojej listy). */
-function cennikiSpozaListy(t: RegulyZKroku, znane: ReadonlySet<string>): Record<string, string> {
-  const komunikat = 'Wybierz z listy pobranej z Allegro (cennik dostaw)';
-  const bledy: Record<string, string> = {};
-  t.wiersze.forEach((w, i) => {
-    const id = w.cennik.trim();
-    if (id && !znane.has(id)) bledy['regula-' + i] = komunikat;
-  });
-  if (t.wieksze.trim() && !znane.has(t.wieksze.trim())) bledy.cennikWiekszych = komunikat;
-  return bledy;
+export function podsumowanieCennikowKonta(
+  db: DatabaseSync,
+  konto: string,
+  nazwaKanalu: (cennik: string) => string = (c) => c,
+): string {
+  const z = maCennikiOms(db) ? cennikiOms(db) : [];
+  const powiazane = z.filter((c) => c.powiazania.some((p) => p.konto === konto));
+  if (!powiazane.length) return 'Konto nie ma powiązanego cennika dostaw.';
+  const domyslny = z.find((c) => c.rodzaj === 'domyslny');
+  const pd = domyslny?.powiazania.find((p) => p.konto === konto);
+  const opis =
+    domyslny && pd
+      ? `domyślny: „${domyslny.nazwa}” → ${nazwaKanalu(pd.cennikKanalu)}`
+      : 'cennik domyślny nie ma powiązania z tym kontem';
+  return `Cennik dostaw: ${powiazane.length} ${odmianaCennikow(powiazane.length)} powiązanie z tym kontem (${opis}).`;
 }
 
 export type WynikKroku =
@@ -221,7 +191,6 @@ export function createOfertyAllegroUstawienia(o: {
   /** Zapis formularza kroku: wszystko albo nic. Błąd → 400 z błędem przy polu. */
   function zapisz(klucz: string, b: Record<string, unknown>, aktor: { login: string }): WynikKroku {
     const u = ustawieniaOfertKonta(db, klucz);
-    if (formularzNieaktualny(b, u.cenniki)) return { ok: false, status: 409, komunikat: FORMULARZ_NIEAKTUALNY };
     const slowniki = (u.slowniki ?? null) as Partial<SlownikiAllegro> | null;
     const bledy: Record<string, string> = {};
     const ilosc = tekst(b.stalaIlosc).trim();
@@ -249,13 +218,6 @@ export function createOfertyAllegroUstawienia(o: {
         bledy[p.pole] =
           `Wybierz z listy pobranej z Allegro (${p.etykieta.replace(/ \(opcjonalna\)$/, '').toLowerCase()})`;
       zmiany[p.pole] = id || null;
-    }
-    // Reguły cenników z tabeli; cennik w każdym wierszu i „dla większych” tylko z listy konta.
-    const tabela = regulyZKroku(b);
-    if (tabela) {
-      const obce = cennikiSpozaListy(tabela, new Set((slowniki?.cenniki ?? []).map((x) => x.id)));
-      for (const [pole, komunikat] of Object.entries({ ...obce, ...tabela.bledyPol })) bledy[pole] = komunikat;
-      zmiany.cenniki = tabela.reguly;
     }
     // Producent marki — '' zostawia markę nieprzypisaną (nie dostaje producenta konta).
     const marki = lista(b.marka),
@@ -301,8 +263,12 @@ export function createOfertyAllegroUstawienia(o: {
 
   function widok(klucz: string) {
     const ustawienia = ustawieniaOfertKonta(db, klucz);
+    const cennikiKonta = new Map(
+      ((ustawienia.slowniki as Partial<SlownikiAllegro> | null)?.cenniki ?? []).map((x) => [x.id, x.nazwa]),
+    );
     return {
       ustawienia,
+      cenniki: podsumowanieCennikowKonta(db, klucz, (id) => cennikiKonta.get(id) || id),
       slowniki: (ustawienia.slowniki ?? null) as SlownikiAllegro | null,
       marki: markiKonta(db, klucz),
       braki: brakiUstawienOfert(ustawienia, 'allegro') as string[],

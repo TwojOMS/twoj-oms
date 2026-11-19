@@ -1,0 +1,49 @@
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: 'Parametry kart'}) %>
+
+<% if (blad) { %><div class="pas-uprzedzenie" role="alert"><p><%= blad %></p></div><% } %>
+
+<section class="ust-sekcja">
+  <h2><%= parametr ? 'Zmień parametr „' + parametr.nazwa + '”' : 'Nowy parametr' %></h2>
+  <form class="ust-formularz ust-parametr-formularz" method="post" action="<%= adres %><%= parametr ? '/' + parametr.id : '' %>">
+    <label for="parametr-nazwa">Nazwa</label>
+    <div><input id="parametr-nazwa" name="nazwa" value="<%= pola.nazwa %>" required maxlength="60" autocomplete="off"></div>
+
+    <fieldset class="ust-pelna ust-parametr-typ" aria-describedby="parametr-typ-pomoc">
+      <legend>Typ</legend>
+      <% [['liczba', 'Liczba'], ['tekst', 'Tekst'], ['lista', 'Lista wyboru']].forEach(function ([typ, etykieta]) { %>
+        <label><input type="radio" name="typ" value="<%= typ %>" required<%= pola.typ === typ ? ' checked' : '' %>> <%= etykieta %></label>
+      <% }); %>
+      <p id="parametr-typ-pomoc" class="ust-pomoc"><% if (parametr && parametr.karty > 0) { %>Parametr ma wartości <%= parametr.karty === 1 ? 'na 1 karcie' : 'na ' + parametr.karty + ' kartach' %> — typu nie da się zmienić.<% } else { %>Liczbę można filtrować zakresem (od–do), listę — wyborem jednej z wartości.<% } %></p>
+    </fieldset>
+
+    <label for="parametr-jednostka" class="ust-tylko-liczba">Jednostka</label>
+    <div class="ust-tylko-liczba"><input id="parametr-jednostka" name="jednostka" value="<%= pola.jednostka %>" maxlength="12" autocomplete="off" aria-describedby="parametr-jednostka-pomoc">
+      <p id="parametr-jednostka-pomoc" class="ust-pomoc">Tylko przy liczbie, np. W, cm, kg.</p></div>
+
+    <label for="parametr-wartosci" class="ust-tylko-lista">Wartości listy</label>
+    <div class="ust-tylko-lista"><textarea id="parametr-wartosci" name="wartosci" rows="6" aria-describedby="parametr-wartosci-pomoc"><%= pola.wartosci %></textarea>
+      <p id="parametr-wartosci-pomoc" class="ust-pomoc">Tylko przy liście wyboru. Jedna wartość na linię, kolejność zostaje.</p></div>
+
+    <% if (parametr && parametr.typ === 'lista' && (parametr.wartosci ?? []).length) { %>
+      <fieldset class="ust-pelna ust-tylko-lista ust-parametr-zmiana-wartosci">
+        <legend>Zmień nazwę wartości</legend>
+        <label for="parametr-wartosc-z">Stara</label>
+        <select id="parametr-wartosc-z" name="wartosc_z">
+          <option value="">—</option>
+          <% parametr.wartosci.forEach(function (w) { %><option value="<%= w %>"<%= pola.wartosc_z === w ? ' selected' : '' %>><%= w %></option><% }); %>
+        </select>
+        <span aria-hidden="true">→</span>
+        <label for="parametr-wartosc-na">Nowa</label>
+        <input id="parametr-wartosc-na" name="wartosc_na" value="<%= pola.wartosc_na %>" maxlength="100" autocomplete="off">
+        <p class="ust-pomoc">Karty z tą wartością dostaną nową nazwę w tym samym zapisie.</p>
+      </fieldset>
+    <% } %>
+
+    <div class="ust-pelna"><label><input type="checkbox" name="wymagany" value="1"<%= pola.wymagany ? ' checked' : '' %>> Wymagany — brak wartości liczy się do braków karty</label></div>
+
+    <div class="ust-pelna ust-akcje">
+      <button class="btn btn--glowny" type="submit"><%= parametr ? 'Zapisz' : 'Dodaj parametr' %></button>
+      <a class="btn" href="<%= adres %>">Anuluj</a>
+    </div>
+  </form>
+</section>

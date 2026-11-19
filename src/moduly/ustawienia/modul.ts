@@ -4,7 +4,6 @@ import { nazwaCiasteczkaOms } from '../../core/bezpieczenstwo/sesja.js';
 import { registerKontaRoutes } from './trasy/konta.js';
 import { registerKluczeApiRoutes } from './trasy/klucze-api.js';
 import { registerUstawieniaWysylkiRoutes } from './trasy/wysylka.js';
-import { registerUstawieniaMagazynuRoutes } from './trasy/magazyn.js';
 import { registerUstawieniaModulowRoutes } from './trasy/moduly.js';
 import { registerPowiadomieniaRoutes } from './trasy/powiadomienia.js';
 import { registerUstawieniaStatusowRoutes } from './trasy/statusy.js';
@@ -180,7 +179,6 @@ export const modulUstawienia: ModulOms<{ adresPanelu: string | null; nadawca: Ad
         });
         registerHasloLinkRoutes(app, { db: ctx.db, teraz: ctx.teraz });
         registerUstawieniaWysylkiRoutes(app, { db: ctx.db });
-        registerUstawieniaMagazynuRoutes(app, { db: ctx.db });
         registerUstawieniaModulowRoutes(app, { db: ctx.db });
         registerPowiadomieniaRoutes(app, {
           db: ctx.db,

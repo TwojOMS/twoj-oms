@@ -268,30 +268,21 @@ a.pol-licznik:hover { color: var(--tekst); text-decoration: underline; }
   .ust-automat-akcje { grid-column: 1 / -1; justify-content: flex-start; }
 }
 
-/* Tabela reguł „cennik według rozmiaru” w kroku „Oferty” Allegro i ERLI (_cenniki-reguly.ejs).
-   Bez JS. Na wąskim ekranie wiersz staje się kartą, a etykiety pól (dla czytnika zawsze) wychodzą na wierzch. */
-.ust-cenniki { margin-block: 1rem; }
-.ust-cenniki .ust-cenniki-tabela { width: auto; max-width: 100%; }
-.ust-cenniki .ust-cenniki-tabela :is(th, td) { vertical-align: middle; }
-.ust-cenniki .ust-cenniki-tabela th[scope="row"] { font-variant-numeric: tabular-nums; color: var(--tekst-przygaszony); }
-.ust-cenniki .ust-cenniki-tabela input:not([type=hidden]):not([type=checkbox]) { width: 4.6rem; margin-top: 0; }
-.ust-cenniki .ust-cenniki-tabela td:last-child :is(input, select):not([type=hidden]):not([type=checkbox]) { width: 18rem; max-width: 100%; margin-top: 0; }
-.ust-cenniki-wymiary { display: inline-flex; align-items: center; gap: .3rem; white-space: nowrap; }
-.ust-cenniki-pole { display: inline-flex; flex-direction: column; }
-.ust-cenniki-etykieta, .ust-cenniki-nr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.ust-cenniki-blad { display: block; margin-top: .3rem; font-size: .85rem; color: var(--blad-tekst); }
-.ust-cenniki-zly { background: var(--blad-tlo); }
-@media (max-width: 700px) {
-  .ust-cenniki .ust-cenniki-tabela thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-  .ust-cenniki .ust-cenniki-tabela, .ust-cenniki .ust-cenniki-tabela :is(tbody, tr, th, td) { display: block; width: 100%; box-sizing: border-box; }
-  .ust-cenniki .ust-cenniki-tabela tr { padding: .5rem 0; border-bottom: 1px solid var(--ramka); }
-  .ust-cenniki .ust-cenniki-tabela :is(th, td) { padding: .2rem 0; border-bottom: 0; }
-  .ust-cenniki .ust-cenniki-tabela tr:not(.ust-cenniki-wieksze) > th[scope="row"]::before { content: "Reguła "; }
-  .ust-cenniki .ust-cenniki-tabela .ust-cenniki-wieksze > th[scope="row"] { display: none; }
-  .ust-cenniki .ust-cenniki-tabela .ust-cenniki-wieksze > td:first-of-type { font-weight: 600; color: var(--tekst); }
-  .ust-cenniki-wymiary { display: flex; flex-wrap: wrap; align-items: flex-end; white-space: normal; }
-  .ust-cenniki-wymiary > .ust-cenniki-pole { flex: 1 1 5rem; }
-  .ust-cenniki-etykieta { position: static; width: auto; height: auto; overflow: visible; clip-path: none; white-space: normal; font-size: .82rem; color: var(--tekst-przygaszony); }
-  .ust-cenniki .ust-cenniki-tabela .ust-cenniki-pole :is(input, select):not([type=hidden]):not([type=checkbox]) { width: 100%; }
-  .ust-cenniki .ust-cenniki-tabela td > .ust-cenniki-pole { display: flex; }
-}
+/* Parametry kart: jednostka tylko przy liczbie, wartości tylko przy liście. Bez obsługi :has() widać wszystkie pola,
+   a serwer i tak pomija te, które do typu nie pasują. */
+.ust-parametr-formularz:has([name=typ][value=liczba]:not(:checked)) .ust-tylko-liczba,
+.ust-parametr-formularz:has([name=typ][value=lista]:not(:checked)) .ust-tylko-lista{display:none}
+.ust-parametr-formularz fieldset{margin:0;padding:.6rem .8rem .7rem;border:1px solid var(--ramka);border-radius:4px}
+.ust-parametr-formularz legend{padding:0 .3rem;font-size:.88rem}
+.ust-parametr-formularz :is(input[type=radio],input[type=checkbox]){width:auto;min-height:0;margin:0 .35rem 0 0;padding:0}
+.ust-parametr-typ{display:flex;flex-wrap:wrap;gap:.4rem 1.4rem;align-items:center}
+.ust-parametr-typ>label{display:inline-flex;align-items:center;min-height:44px;font-size:.92rem}
+.ust-parametr-typ>.ust-pomoc{flex-basis:100%}
+.ust-parametr-zmiana-wartosci{display:flex;flex-wrap:wrap;gap:.5rem .7rem;align-items:center}
+.ust-parametr-zmiana-wartosci :is(select,input){width:auto;min-width:10rem;flex:1 1 10rem}
+.ust-parametr-zmiana-wartosci>.ust-pomoc{flex-basis:100%}
+.ust-parametr-formularz .ust-pelna>label{display:inline-flex;align-items:center;min-height:44px;font-size:.92rem}
+.ust-parametr-kolejnosc{display:flex;gap:.3rem;margin:0}
+.ust-parametr-akcje{white-space:nowrap}
+.ust-parametr-akcje a+a{margin-left:.8rem}
+#ust-parametry>.ust-akcje{margin-top:1rem}

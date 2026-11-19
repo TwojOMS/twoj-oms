@@ -1,0 +1,68 @@
+<%# Parametry własne karty (zdefiniowane w Ustawieniach → Magazyn → Parametry kart). Dane liczy karta-parametry.js;
+    widok tylko wypisuje. Wymiary i waga są stałymi parametrami karty, więc okno jest zawsze; parametry własne dochodzą pod nimi.
+    Formularz jak „Dane karty”: otwiera się po „Zmień” albo po odmowie, z tym, co człowiek wpisał. %>
+<% const pk = typeof parametryKarty !== 'undefined' ? parametryKarty : null; %>
+<% if (pk && pk.lista) { %>
+<section class="panel<%= pk.edytuj ? ' panel--edycja' : '' %>" id="parametry-karty" aria-labelledby="parametry-tytul">
+  <div class="panel-glowa">
+    <h2 id="parametry-tytul">Parametry</h2>
+    <% if (!pk.edytuj) { %><a class="link-edytuj" href="<%= pk.adresEdycji %>">Zmień</a><% } %>
+  </div>
+  <div class="panel-cialo">
+    <% if (pk.blad) { %><p class="pasek-uwaga" id="parametry-blad" role="alert"><%= pk.blad %></p><% } %>
+    <% if (pk.edytuj) { %>
+      <form method="post" action="<%= pk.adresZapisu %>" class="pola pola--siatka" aria-labelledby="parametry-tytul">
+        <%# ⚠️ POLA SA W CENTYMETRACH, BAZA TRZYMA MILIMETRY. Czlowiek mysli o produkcie
+            w centymetrach; przeliczenie stoi na granicy zapisu (domena/rozmiar.js).
+            Puste pole KASUJE wymiar, napis niezrozumialy ODMAWIA — nigdy zgadywanie. %>
+        <label>Szerokość (cm)<input name="szerokosc_cm" value="<%= pk.polaStale.szerokosc_cm %>"
+          inputmode="decimal" placeholder="np. 70"></label>
+        <label>Wysokość (cm)<input name="wysokosc_cm" value="<%= pk.polaStale.wysokosc_cm %>"
+          inputmode="decimal" placeholder="np. 100"></label>
+        <label>Głębokość (cm)<input name="glebokosc_cm" value="<%= pk.polaStale.glebokosc_cm %>"
+          inputmode="decimal" placeholder="opcjonalnie"></label>
+        <label>Waga (kg)<input name="waga_kg" value="<%= pk.polaStale.waga_kg %>"
+          inputmode="decimal" placeholder="opcjonalnie"></label>
+        <% pk.lista.forEach(function (p) { %>
+          <% const idPola = 'parametr-' + p.id; %>
+          <%# Etykieta jest kolumną flex — nazwa, jednostka i dopisek w jednym elemencie, żeby nie rozpadły się na trzy wiersze. %>
+          <label for="<%= idPola %>"><span><%= p.nazwa %><% if (p.jednostka) { %> (<%= p.jednostka %>)<% } %><% if (p.wymagany) { %> · wymagany<% } %></span>
+            <% if (p.typ === 'lista') { %>
+              <select id="<%= idPola %>" name="<%= p.pole %>"<% if (pk.blad) { %> aria-describedby="parametry-blad"<% } %>>
+                <option value="">— brak —</option>
+                <% p.wartosci.forEach(function (w) { %>
+                  <option value="<%= w %>"<%- p.wPolu === w ? ' selected' : '' %>><%= w %></option>
+                <% }); %>
+              </select>
+            <% } else if (p.typ === 'liczba') { %>
+              <input id="<%= idPola %>" name="<%= p.pole %>" value="<%= p.wPolu %>"
+                inputmode="decimal" autocomplete="off"<% if (pk.blad) { %> aria-describedby="parametry-blad"<% } %>>
+            <% } else { %>
+              <input id="<%= idPola %>" name="<%= p.pole %>" value="<%= p.wPolu %>" maxlength="200"
+                autocomplete="off"<% if (pk.blad) { %> aria-describedby="parametry-blad"<% } %>>
+            <% } %>
+          </label>
+        <% }); %>
+        <div class="stopka-edycji pole-szerokie">
+          <small>Puste pole usuwa wartość parametru z karty.</small>
+          <button class="btn btn--glowny" type="submit">Zapisz</button>
+          <a class="btn" href="<%= pk.adresAnuluj %>#parametry-karty">Anuluj</a>
+        </div>
+      </form>
+    <% } else { %>
+      <dl class="dane">
+        <dt>Wymiary</dt>
+        <dd><% if (pk.wymiary) { %><%= polskieWymiary(pk.wymiary) %><% } else { %><span class="magazyn-brak">bez wymiarów</span><% } %></dd>
+        <dt>Waga</dt>
+        <dd><% if (pk.waga) { %><%= liczbaPolska(pk.waga) %> kg<% } else { %><span class="magazyn-brak">—</span><% } %></dd>
+        <% pk.lista.forEach(function (p) { %>
+          <dt><%= p.nazwa %></dt>
+          <dd><% if (p.pokaz !== null) { %><%= p.pokaz %><% if (p.jednostka) { %> <%= p.jednostka %><% } %><% } else { %><span class="magazyn-brak">—</span><% } %><% if (p.brakWymaganego) { %> <span class="znacznik znacznik--uwaga">brak wartości</span><% } %></dd>
+        <% }); %>
+      </dl>
+      <% if (pk.linkUstawien && pk.lista.length) { %><p class="podpowiedz"><a href="<%= pk.linkUstawien %>">Parametry kart w ustawieniach magazynu</a></p>
+      <% } else if (pk.linkUstawien) { %><p class="podpowiedz" id="parametry-karty-brak"><a href="<%= pk.linkUstawien %>">Dodaj parametry kart w Ustawieniach</a></p><% } %>
+    <% } %>
+  </div>
+</section>
+<% } %>

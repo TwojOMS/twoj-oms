@@ -305,12 +305,12 @@ async function serwer() {
 }
 
 describe('podgląd „Wystaw oferty”', () => {
-  it('stany nigdy niewłączone → dzisiejszy napis i stała ilość', async () => {
+  it('stany nigdy niewłączone → bez zdania o ilości z ustawień konta, ilość stała przy karcie', async () => {
     const { db, app, podglad } = await serwer();
     try {
       const r = await podglad([lampaErli(db)]);
       expect(r.statusCode).toBe(200);
-      expect(r.body).toContain('Wysyłamy stałą liczbę sztuk; synchronizacja ze stanem magazynu wejdzie w etapie 4.');
+      expect(r.body).not.toContain('Ilość w ofertach');
       expect(r.body).toContain('Ilość: 9');
     } finally {
       await app.close();
@@ -327,7 +327,7 @@ describe('podgląd „Wystaw oferty”', () => {
       const r = await podglad([znana, nieznana]);
       expect(r.statusCode).toBe(200);
       expect(r.body).not.toContain('Odmowa:');
-      expect(r.body).not.toContain('wejdzie w etapie 4');
+      expect(r.body).not.toContain('z ustawień konta.');
       expect(r.body).toContain('stan magazynu − bufor 2');
       expect(r.body).toContain('Ilość: 5');
       expect(r.body).toContain('Ilość: czeka na stan magazynu');

@@ -46,6 +46,9 @@ function nowyPlik() {
 }
 const bez0003 = (moduly) =>
   moduly.map((m) => (m.nazwa === 'magazyn' ? { ...m, migracje: m.migracje.filter((x) => x.numer !== 3) } : m));
+// Te testy opisują dawny zapis reguł i wyjątków (przed cennikami OMS z magazyn/0006), więc baza bez 0006.
+const bez0006 = (moduly) =>
+  moduly.map((m) => (m.nazwa === 'magazyn' ? { ...m, migracje: m.migracje.filter((x) => x.numer !== 6) } : m));
 const kolumny = (db, t) =>
   db
     .prepare(`PRAGMA table_info(${t})`)
@@ -72,7 +75,7 @@ function odcisk(db, lista) {
   return wynik;
 }
 
-function bazaPamieci(moduly = modulyDla(ENV_DEMO)) {
+function bazaPamieci(moduly = bez0006(modulyDla(ENV_DEMO))) {
   const db = openOmsDb(':memory:', { moduly, teraz: TERAZ });
   bazy.push(db);
   const karta = db.prepare(
@@ -99,7 +102,7 @@ describe('migracja magazyn/0003 — cenniki dostaw', () => {
 
   it('baza demo: dane i schemat bez zmian, stary cennik staje się jedną regułą „wszystko”', async () => {
     const plik = nowyPlik();
-    const stare = bez0003(modulyDla(ENV_DEMO));
+    const stare = bez0003(bez0006(modulyDla(ENV_DEMO)));
     let db = openOmsDb(plik, { moduly: stare, teraz: TERAZ });
     wygenerujDaneDemo(db, { dzis: '2026-11-13', env: ENV_DEMO });
     const { sklepy, allegro, kanalySklepow, kanalyAllegro } = klienciKataloguDemo();
@@ -190,7 +193,7 @@ describe('ustawienia konta — cenniki i alias cennikDostaw (D4)', () => {
         { cenniki: [{ doMm: [1, 2, 3], doG: 5, cennik: 'A' }] },
         { teraz: T0 },
       ),
-    ).toThrow(/większych/);
+    ).toThrow(/cennik domyślny/);
     expect(ustawieniaOfertKonta(db, 'erli_polcien').cenniki).toEqual([]);
     zapiszUstawieniaOfertKonta(db, 'erli_polcien', { cenniki: REGULY }, { teraz: T0 });
     expect(ustawieniaOfertKonta(db, 'erli_polcien')).toMatchObject({ cenniki: REGULY, cennikDostaw: null });

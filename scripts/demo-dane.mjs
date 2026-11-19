@@ -1969,16 +1969,41 @@ function opcjeCli(argv) {
 }
 
 /** Tworzy NOWY plik bazy z demo. Istniejący plik (albo jego -wal/-shm) = odmowa, bajty nietknięte. */
-// Czy produkt kategorii mieści się w paczkomacie (wymiary i wagę karty biorą ze sklepu — scripts/demo-dane-katalog.mjs).
-const PACZKOMAT_KATEGORII = {
-  'Lampy stołowe': 'tak',
-  'Lampy wiszące': 'nie',
-  'Lampy podłogowe': 'nie',
-  Kinkiety: 'tak',
-  'Lampki nocne': 'tak',
-  'Abażury i klosze': 'tak',
-  Akcesoria: 'tak',
-};
+// Parametry kart jak u firmy po porządkach: akcesoria i abażury nie mają mocy ani gwintu, a kilka lamp nie ma
+// wymaganego Gwintu — ekran braków ma co pokazać. Wartości wynikają z numeru karty, więc demo jest deterministyczne.
+const KATEGORIE_BEZ_MOCY = new Set(['Abażury i klosze', 'Akcesoria']);
+const MOCE_DEMO = [4, 6, 9, 12, 40];
+const KOLORY_DEMO = ['czarny', 'biały', 'mosiądz', 'chrom'];
+const GWINTY_DEMO = ['E27', 'E14', 'GU10'];
+const MATERIALY_DEMO = ['metal', 'szkło', 'drewno', 'tkanina', 'ceramika'];
+
+async function zasiejParametryKartDemo(db, karty, { at }) {
+  const { dodajParametr, ustawWartoscKarty } = await import('../src/oms/db/parametry-kart.js');
+  const definicje = [
+    { nazwa: 'Moc żarówki', typ: 'liczba', jednostka: 'W' },
+    { nazwa: 'Kolor', typ: 'lista', wartosci: KOLORY_DEMO },
+    { nazwa: 'Gwint', typ: 'lista', wartosci: GWINTY_DEMO, wymagany: true },
+    { nazwa: 'Materiał', typ: 'tekst' },
+  ];
+  const [moc, kolor, gwint, material] = definicje.map((d) => {
+    const w = dodajParametr(db, d, { at });
+    if (!w.ok) throw new Error(`DEMO_PARAMETRY: ${d.nazwa}: ${w.blad}`);
+    return w.id;
+  });
+  const lampy = karty.filter((k) => !KATEGORIE_BEZ_MOCY.has(k.kategoria_glowna));
+  const bezGwintu = new Set([2, lampy.length - 3].map((i) => lampy[i]?.id));
+  const zapisz = (karta, parametr, wartosc) => {
+    const w = ustawWartoscKarty(db, karta, parametr, wartosc, { at });
+    if (!w.ok) throw new Error(`DEMO_PARAMETRY: karta ${karta}: ${w.blad}`);
+  };
+  for (const [i, k] of karty.entries()) {
+    zapisz(k.id, kolor, KOLORY_DEMO[i % KOLORY_DEMO.length]);
+    zapisz(k.id, material, MATERIALY_DEMO[i % MATERIALY_DEMO.length]);
+    if (KATEGORIE_BEZ_MOCY.has(k.kategoria_glowna)) continue;
+    zapisz(k.id, moc, String(MOCE_DEMO[i % MOCE_DEMO.length]));
+    if (!bezGwintu.has(k.id)) zapisz(k.id, gwint, GWINTY_DEMO[i % GWINTY_DEMO.length]);
+  }
+}
 
 // Oferty outletu bez karty — żeby ekran „Do powiązania” w Magazynie też miał treść.
 const OUTLET_NIEPOWIAZANY = new Set(['LMP-NOC-002-OUT', 'LMP-ABA-004-OUT']);
@@ -2067,9 +2092,13 @@ async function wypelnijMagazyn(db, { dzis, koniecDnia }) {
   // Synchronizacja o 04:00 UTC, chyba że „teraz” demo jest wcześniej (reset tuż po północy).
   const synchronizacja = new Date(Math.min(Date.parse(`${dzis}T04:00:00.000Z`), koniecDnia - 30 * 60000)).toISOString();
   const teraz = () => synchronizacja;
-  const przebieg = await odswiezMagazyn({ db, sklepy, allegro, teraz, kanalySklepow, kanalyAllegro, log: () => {} });
-  const bledy = przebieg.kanaly.filter((k) => k.blad);
-  if (bledy.length) throw new Error(`DEMO_MAGAZYN: ${bledy.map((k) => `${k.kanal}: ${k.blad}`).join('; ')}`);
+  const synchronizuj = async () => {
+    const przebieg = await odswiezMagazyn({ db, sklepy, allegro, teraz, kanalySklepow, kanalyAllegro, log: () => {} });
+    const bledy = przebieg.kanaly.filter((k) => k.blad);
+    if (bledy.length) throw new Error(`DEMO_MAGAZYN: ${bledy.map((k) => `${k.kanal}: ${k.blad}`).join('; ')}`);
+    return przebieg;
+  };
+  const przebieg = await synchronizuj();
   const karty = utworzKartyZNiepowiazanych(db, { teraz, kanalySklepow });
   // Karta powstaje bez SKU (nadanie SKU to w Magazynie osobny krok) — demo dostaje SKU katalogu, jak firma po nadaniu.
   const poSku = new Map(
@@ -2082,20 +2111,18 @@ async function wypelnijMagazyn(db, { dzis, koniecDnia }) {
       .map((p) => [p.sku_sklepu, p.karta_id]),
   );
   for (const [sku, kartaId] of poSku) zapiszKarte(db, kartaId, { sku }, { at: teraz() });
-  // Firma po porządkach: paczkomat oznaczony poza dwiema kartami, wymiary ze sklepu poza trzema produktami —
+  // Firma po porządkach: ceny zakupu z historią na trzech kartach, wymiary ze sklepu poza trzema produktami —
   // ekran braków ma co pokazać (0/30 kompletnych wyglądałoby na magazyn, którym nikt się nie zajmuje).
   const kartyDemo = db.prepare('SELECT id, kategoria_glowna FROM karty_produktow ORDER BY id').all();
   const dzien = (przesuniecie) => iso(poczatekDnia(dzis) + przesuniecie * DOBA).slice(0, 10);
-  for (const [i, karta] of kartyDemo.slice(0, 3).entries()) {
+  const kartyZHistoria = kartyDemo.slice(0, 3);
+  for (const [i, karta] of kartyZHistoria.entries()) {
     const opcje = { kto: null, zrodlo: 'karta', at: teraz() };
     zapiszCeneZakupu(db, karta.id, { gr: 4500 + i * 1000, od: dzien(-90) }, opcje);
     zapiszCeneZakupu(db, karta.id, { gr: 5000 + i * 1000, od: dzien(-30) }, opcje);
     if (i === 0) zapiszCeneZakupu(db, karta.id, { gr: 5500, od: dzien(30) }, opcje);
   }
-  for (const [i, w] of kartyDemo.entries()) {
-    if (i < 2) continue;
-    zapiszKarte(db, w.id, { paczkomat: PACZKOMAT_KATEGORII[w.kategoria_glowna] ?? 'tak' }, { at: teraz() });
-  }
+  await zasiejParametryKartDemo(db, kartyDemo, { at: teraz() });
   const pary = niepowiazaneOfertyAllegro(db, kanalyAllegro)
     .filter((o) => !OUTLET_NIEPOWIAZANY.has(o.sku_sklepu))
     .map((o) => ({ produktId: o.id, kartaId: poSku.get(String(o.sku_sklepu).replace(/-OUT$/, '')) }))
@@ -2103,6 +2130,19 @@ async function wypelnijMagazyn(db, { dzis, koniecDnia }) {
   const oferty = powiazOfertyHurtem(db, pary, kanalyAllegro);
   (await import('./demo-dane-katalog.mjs')).zasiejOfertyAllegroDemo(db, { teraz });
   (await import('./demo-dane-katalog.mjs')).zasiejCenyKanalowDemo(db, { teraz });
+  (await import('./demo-dane-katalog.mjs')).zasiejCennikiOmsDemo(db, { teraz });
+  // Woo ma już do czego zapisać cenę i galerię, również dla powiązanego szkicu.
+  await synchronizuj();
+  const od = dzien(-60);
+  const opcjeCenyZakupu = { kto: null, zrodlo: 'karta', at: teraz() };
+  const kartyZCena = db.prepare('SELECT id, cena_gr FROM karty_produktow ORDER BY id').all();
+  for (const [i, { id, cena_gr }] of kartyZCena.entries()) {
+    zapiszKarte(db, id, { stawka_vat: '23' }, { at: teraz() });
+    if (kartyZHistoria.some((karta) => karta.id === id)) continue;
+    const procent = 45 + ((i * 7) % 16);
+    const gr = Math.round((cena_gr * procent) / 1000) * 10;
+    zapiszCeneZakupu(db, id, { gr, od }, opcjeCenyZakupu);
+  }
   (await import('./demo-dane-katalog.mjs')).zasiejProducentowDemo(db, { teraz });
   // Pozycje zamówień demo powstały przed lustrem i niosą samo SKU — prawdziwe zamówienia z Woo mają
   // produkt_id/variation_id, z Allegro oferta_id. Uzupełniamy je z lustra po SKU w kanale zamówienia (tylko demo).

@@ -121,12 +121,14 @@ describe('formularz hurtu na liście magazynu — pola stawki VAT i ceny zakupu'
 });
 
 describe('formularz hurtu — jedno określenie pustej pozycji i dopisek przy cenie zakupu', () => {
-  it('kategoria, paczkomat i stawka: pusta pozycja to wszędzie „— nie zmieniaj —"', async () => {
+  // Paczkomatu nie ma w panelu Edytuj — ustawia go karta albo import.
+  it('kategoria i stawka: pusta pozycja to wszędzie „— nie zmieniaj —"; paczkomatu w panelu nie ma', async () => {
     utworzKarte(db, { nazwa: 'Lampa Kopuła' });
     const html = formularz((await get('/magazyn')).body, '/magazyn/hurt');
-    for (const pole of ['kategoria_glowna', 'paczkomat', 'stawka_vat']) {
+    for (const pole of ['kategoria_glowna', 'stawka_vat']) {
       expect(select(html, pole)[0], pole).toEqual({ value: '', selected: false, tekst: '— nie zmieniaj —' });
     }
+    expect(html).not.toMatch(/<select[^>]*name="paczkomat"/);
     expect(html).not.toContain('nie ruszaj');
   });
 
@@ -135,10 +137,9 @@ describe('formularz hurtu — jedno określenie pustej pozycji i dopisek przy ce
     const html = formularz((await get('/magazyn')).body, '/magazyn/hurt');
     const opis = /aria-describedby="([^"]+)"/.exec(input(html, 'cena_zakupu_netto'))?.[1];
     expect(opis).toBeDefined();
-    const dopisek = new RegExp(`<small id="${opis}"([^>]*)>([^<]*)</small>`).exec(html);
+    const dopisek = new RegExp(`<small[^>]*\\bid="${opis}"([^>]*)>([^<]*)</small>`).exec(html);
     expect(dopisek).not.toBeNull();
-    expect(dopisek[1]).toContain('aria-hidden="true"');
-    expect(dopisek[2]).toContain('Puste = bez zmian');
+    expect(dopisek[2]).toContain('Puste „od” = dziś');
     expect(dopisek[2]).toContain('historii');
   });
 });

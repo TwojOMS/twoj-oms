@@ -1,39 +1,38 @@
-<%# Cennik dostaw karty: wiersz na każde bieżące konto Allegro i ERLI. Puste pole = reguły konta
-    (krok „Oferty” w ustawieniach konta); wyjątek wygrywa z regułami tego konta. „Teraz” liczy ten sam dobór co
-    podgląd „Wystaw na…”. Bez JS: jeden formularz, jedno „Zapisz”. %>
-<% const ck = typeof cennikiKarty !== 'undefined' ? cennikiKarty : []; %>
-<% if (ck.length) { %>
+<%# Cennik dostaw karty: jeden cennik OMS dla całej karty (puste = dobór po rozmiarze). Działa na kontach, z którymi
+    cennik ma powiązanie (Magazyn → Cenniki); tabela pod polem pokazuje, co karta dostaje teraz na każdym bieżącym
+    koncie Allegro i ERLI — ten sam dobór co podgląd „Wystaw na…”. Bez JS: jeden formularz, jedno „Zapisz”. %>
+<% const ck = typeof cennikiKarty !== 'undefined' ? cennikiKarty : null; %>
+<% if (ck && ck.konta.length) { %>
+<% const NAPIS_CENNIKA = 'Wybrany cennik OMS działa na wszystkich kontach, z którymi ma powiązanie; na pozostałych karta dostaje cennik według rozmiaru. Zmiana dotyczy też już wystawionej oferty.'; %>
 <section class="panel" id="cenniki-karty" aria-labelledby="cenniki-tytul">
   <div class="panel-glowa"><h2 id="cenniki-tytul">Cennik dostaw</h2></div>
   <div class="panel-cialo">
-    <p class="podpowiedz">OMS dobiera cennik z reguł konta według wymiarów i wagi karty. Wyjątek dla konta wygrywa z jego regułami — np. dla produktu zwiniętego w rulon. Puste pole oznacza reguły konta.</p>
-    <% if (mozeEdytowacOferty) { %><form method="post" action="/magazyn/<%= karta.id %>/cenniki" aria-labelledby="cenniki-tytul"><% } %>
-    <div class="pola pola--siatka">
-      <% ck.forEach(w => { %>
-        <fieldset>
-          <legend><%= w.etykieta %></legend>
-          <p class="podpowiedz" id="<%= w.id %>-teraz">Teraz: <% if (w.teraz) { %><%= w.teraz.nazwa %> — <%= w.teraz.powod %><% if (w.teraz.odmowa) { %> <span class="magazyn-brak">Odmowa: <%= w.teraz.odmowa %></span><% } %><% } else { %><span class="magazyn-brak">Odmowa: <%= w.odmowa %></span><% } %></p>
-          <% if (!mozeEdytowacOferty) { %>
-            <p>Cennik dostaw — wyjątek: <%= w.wyjatek || 'brak (reguły konta)' %></p>
-          <% } else if (w.rodzaj === 'allegro') { %>
-            <label for="<%= w.id %>">Cennik dostaw — wyjątek</label>
-            <select id="<%= w.id %>" name="<%= w.pole %>" aria-describedby="<%= w.id %>-teraz">
-              <option value="">— reguły konta —</option>
-              <% w.lista.forEach(p => { %><option value="<%= p.id %>"<%= p.id === w.wyjatek ? ' selected' : '' %>><%= p.nazwa || p.id %></option><% }); %>
-              <% if (w.wyjatekSpozaListy) { %><option value="<%= w.wyjatek %>" selected><%= w.wyjatek %> (spoza listy konta)</option><% } %>
-            </select>
-            <% if (!w.lista.length) { %><p class="podpowiedz">Konto nie ma pobranej listy cenników — pobierz ją w ustawieniach konta (krok „Oferty”, „Pobierz z Allegro”).</p><% } %>
-          <% } else { %>
-            <label for="<%= w.id %>">Cennik dostaw — wyjątek</label>
-            <input id="<%= w.id %>" name="<%= w.pole %>" value="<%= w.wyjatek %>" maxlength="200" autocomplete="off" aria-describedby="<%= w.id %>-teraz">
-          <% } %>
-        </fieldset>
-      <% }); %>
-    </div>
     <% if (mozeEdytowacOferty) { %>
-      <div class="przyciski"><button class="btn btn--glowny" type="submit">Zapisz cennik dostaw</button></div>
-    </form>
+      <form method="post" action="/magazyn/<%= karta.id %>/cenniki" aria-labelledby="cenniki-tytul">
+        <div class="pola">
+          <div>
+            <label for="cennik-oms-karty">Cennik dostaw tej karty</label>
+            <select id="cennik-oms-karty" name="cennik_oms" aria-describedby="cennik-oms-karty-napis">
+              <option value=""<%= ck.wybor === '' ? ' selected' : '' %>>— według rozmiaru —</option>
+              <% ck.opcje.forEach(o => { %><option value="<%= o.id %>"<%= o.id === ck.wybor ? ' selected' : '' %>><%= o.etykieta %></option><% }); %>
+            </select>
+            <p class="podpowiedz" id="cennik-oms-karty-napis"><%= NAPIS_CENNIKA %></p>
+          </div>
+        </div>
+        <div class="przyciski"><button class="btn btn--glowny" type="submit">Zapisz cennik dostaw</button></div>
+      </form>
+    <% } else { %>
+      <p>Cennik dostaw tej karty: <%= ck.nazwaWyboru || 'według rozmiaru' %></p>
+      <p class="podpowiedz"><%= NAPIS_CENNIKA %></p>
     <% } %>
+    <div class="przewijak-tabeli">
+      <table class="tab-pozycje">
+        <caption>Cennik w ofercie na każdym koncie</caption>
+        <tbody>
+          <% ck.konta.forEach(w => { %><tr><th scope="row"><%= w.etykieta %></th><td><% if (w.teraz) { %>Teraz: <%= w.teraz.nazwa %> — <%= w.teraz.powod %><% if (w.teraz.odmowa) { %> <span class="magazyn-brak">Odmowa: <%= w.teraz.odmowa %></span><% } %><% } else { %><span class="magazyn-brak">Odmowa: <%= w.odmowa %></span><% } %></td></tr><% }); %>
+        </tbody>
+      </table>
+    </div>
   </div>
 </section>
 <% } %>

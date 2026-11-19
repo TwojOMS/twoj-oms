@@ -1,4 +1,4 @@
-<p class="wroc"><a href="/ustawienia/magazyn">← Ustawienia magazynu</a> · <a href="/magazyn">Magazyn</a></p>
+<p class="wroc"><a href="/magazyn/ustawienia">← Ustawienia magazynu</a> · <a href="/magazyn">Magazyn</a></p>
 <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: 'Stan otwarcia z kanałów'}) %>
 <% if (wynik && zapisano > 0) { %><p class="pas-potwierdzenie">Zapisano stan otwarcia (karty: <%= zapisano %><%= pominieto ? ', pominięte, bo już mają otwarcie: ' + pominieto : '' %>). <a href="/magazyn/stany/kanaly/podglad">Przejdź do podglądu i zatwierdzenia</a>.</p>
 <% } else if (wynik) { %><p class="pas-uprzedzenie">Nic nie zapisano — wszystkie wybrane karty mają już otwarcie (<%= pominieto %>). Popraw je korektą na karcie.</p><% } %>

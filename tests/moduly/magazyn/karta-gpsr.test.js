@@ -272,7 +272,10 @@ describe('model sekcji GPSR', () => {
 
     const dom = dodajProducenta(db, {
       nazwa: 'Zakład Domyślny',
-      adres: 'ul. Przykładowa 1, 00-001 Wieś',
+      ulica: 'ul. Przykładowa 1',
+      kod: '00-001',
+      miasto: 'Wieś',
+      kraj: 'PL',
       email: 'kontakt@domyslny.example.invalid',
     }).id;
     ustawDomyslnego(db, dom);
@@ -280,7 +283,10 @@ describe('model sekcji GPSR', () => {
 
     const zMarki = dodajProducenta(db, {
       nazwa: 'Pracownia Półcień',
-      adres: 'ul. Cienista 2, 00-002 Miasto',
+      ulica: 'ul. Cienista 2',
+      kod: '00-002',
+      miasto: 'Miasto',
+      kraj: 'PL',
       email: 'kontakt@polcien.example.invalid',
     }).id;
     expect(przypiszMarki(db, [{ marka: MARKA, producentId: zMarki }])).toEqual({ ok: true });

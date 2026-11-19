@@ -322,29 +322,31 @@ it('brak zakresu odczytu, brak konta w środowisku albo odmowa Allegro → komun
   expect(marka.body).toContain('Połącz konto Allegro w środowisku sandbox');
 });
 
-it('listy Kategorie i Marki mają kolumnę Allegro', async () => {
+it('lista Kategorie i tabela marek na ekranie Producenci mają kolumnę Allegro', async () => {
   await post(ADRES_A, { srodowisko: 'produkcja', kategoria_id: '257' });
   const k = await get('/magazyn/kategorie');
   expect(k.body).toContain('Allegro');
   expect(k.body).toContain('Dom i Ogród › Oświetlenie › Lampy stołowe');
   expect(k.body).toContain('nieprzypisana');
   expect(k.body).toContain(ADRES_B);
-  const m = await get('/magazyn/marki');
+  const m = await get('/magazyn/producenci');
   expect(m.body).toContain('nieprzypisana');
   expect(m.body).toContain(ADRES_MARKI);
 });
 
-it('menu Magazynu: na ekranie Allegro kategorii i marki bieżące są Kategorie albo Marki, nie Produkty', async () => {
+it('menu Magazynu: na ekranie Allegro kategorii i marki bieżące są Kategorie albo Producenci, nie Produkty', async () => {
   for (const [url, biezacy] of [
     [ADRES_A, 'Kategorie'],
-    [ADRES_MARKI, 'Marki'],
+    [ADRES_MARKI, 'Producenci'],
   ]) {
     const { body } = await get(url);
+    // Marki mieszkają w sekcji ekranu Producenci, więc tam prowadzi powrót z ekranu Allegro marki.
+    if (url === ADRES_MARKI) expect(body).toContain('<a href="/magazyn/producenci#marki">← Producenci</a>');
     const lista = body.slice(body.indexOf('data-podmenu-lista="magazyn"')).split('</ul>')[0];
     for (const [href, etykieta] of [
       ['/magazyn', 'Produkty'],
       ['/magazyn/kategorie', 'Kategorie'],
-      ['/magazyn/marki', 'Marki'],
+      ['/magazyn/producenci', 'Producenci'],
     ]) {
       const a = lista.match(new RegExp(`<a href="${href}"([^>]*)>${etykieta}</a>`));
       expect(a, `${url} ${etykieta}`).not.toBeNull();
@@ -396,4 +398,36 @@ it('odrzuca obcy CSRF i konto bez uprawnienia magazyn', async () => {
   ).toBe(403);
   expect(mapa()).toEqual([]);
   expect(db.prepare('SELECT COUNT(*) AS n FROM allegro_marki').get().n).toBe(0);
+});
+
+it('po zapisie marki, kategorii i reguły ekran pokazuje „Zapisano” z wiersza bazy, nie z zapytania', async () => {
+  const adres = (r) => r.headers.location;
+  const kat = await post(ADRES_A, { srodowisko: 'produkcja', kategoria_id: '257' });
+  expect(adres(kat)).toContain('srodowisko=produkcja&ok=kategoria');
+  const ekranKat = await get(adres(kat));
+  expect(ekranKat.body).toMatch(
+    /role="status">Zapisano\. Kategoria „Lampy stołowe” w Allegro \(produkcja\) to .*\(nr 257\)/,
+  );
+  expect((await get(`${ADRES_A}?srodowisko=produkcja`)).body).not.toContain('Zapisano.');
+
+  const reg = await post(`${ADRES_A}/regula`, {
+    srodowisko: 'produkcja',
+    parametr_id: '224017',
+    rodzaj: 'pole',
+    pole: 'sku',
+  });
+  expect(adres(reg)).toMatch(/ok=regula#parametr-224017$/);
+  expect((await get(adres(reg).replace(/#.*/, ''))).body).toContain('role="status">Zapisano regułę parametru.</p>');
+
+  const mar = await post(ADRES_MARKI, { srodowisko: 'produkcja', parametr_id: MARKA, wartosc_id: WARTOSC });
+  expect(adres(mar)).toContain('ok=marka');
+  const ekranMarki = await get(adres(mar));
+  expect(ekranMarki.body).toContain(
+    'role="status">Zapisano. Marka „Pracownia Półcień” w Allegro (produkcja) to „Pracownia 001” (nr 248811_100001).</p>',
+  );
+
+  // Nieznany klucz i klucz bez zapisu w środowisku nie dają komunikatu; nic z zapytania nie trafia na ekran.
+  expect((await get(`${ADRES_MARKI}?srodowisko=produkcja&ok=%3Cb%3Ecokolwiek`)).body).not.toContain('Zapisano.');
+  expect((await get(`${ADRES_MARKI}?srodowisko=sandbox&ok=marka`)).body).not.toContain('Zapisano.');
+  expect((await get(`${ADRES_B}?srodowisko=produkcja&ok=kategoria`)).body).not.toContain('Zapisano.');
 });

@@ -1,0 +1,11 @@
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: 'Parametry kart'}) %>
+
+<section class="ust-sekcja">
+  <h2>Usunąć parametr?</h2>
+  <p><strong><%= pytanie %></strong></p>
+  <p>Tego nie da się cofnąć.</p>
+  <form method="post" action="<%= adres %>/<%= parametr.id %>/usun" class="ust-akcje">
+    <button class="btn btn--groza" type="submit">Usuń parametr</button>
+    <a class="btn" href="<%= adres %>">Anuluj</a>
+  </form>
+</section>

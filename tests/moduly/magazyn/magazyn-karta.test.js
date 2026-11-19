@@ -11,7 +11,7 @@ import { zapiszProduktSklepowy, utworzKarte, powiazProdukt } from '../../../src/
 //   (1) KARTA JEST DOMYSLNIE DO ODCZYTU — formularz otwiera dopiero „Edytuj" (`?edytuj=dane`),
 //       tak samo jak trzy panele karty zamowienia;
 //   (2) wymiary wpisuje sie w CENTYMETRACH, a baza trzyma MILIMETRY jako INTEGER;
-//   (3) paczkomat ma TRZY stany i jest WYLACZNIE reczny — zadnego wyliczania z wymiarow;
+//   (3) zapis danych karty nie dotyka starej kolumny paczkomatu (to dzis parametr karty) — zadnego wyliczania z wymiarow;
 //   (4) odpiac wolno WYLACZNIE oferte Allegro; produkt sklepowy ZBUDOWAL te karte;
 //   (5) podpowiedzi PROPONUJA, nic nie wiaza bez klikniecia;
 //   (6) karta nie wysyla do sklepu ani do Allegro ANI JEDNEGO zadania modyfikujacego.
@@ -144,7 +144,7 @@ describe('GET /magazyn/:id — karta jest DOMYSLNIE DO ODCZYTU', () => {
 
     const dane = sekcja(r.body, 'dane-karty');
     expect(dane).toContain('LMP-PLA-118');
-    expect(dane).toContain('70 × 100 cm');
+    expect(sekcja(r.body, 'parametry-karty')).toContain('70 × 100 cm');
     expect(dane).toContain('Opis kandelabru');
     // ⚠️ TO JEST CALA TRESC ROZSTRZYGNIECIA (2): ani jednego `<input>`, ani jednego
     // `<textarea>` z danymi karty, dopoki nikt nie kliknal „Edytuj".
@@ -176,9 +176,11 @@ describe('GET /magazyn/:id — karta jest DOMYSLNIE DO ODCZYTU', () => {
     expect(dane).toContain('panel--edycja');
     expect(dane).toMatch(/<input[^>]*name="nazwa"/);
     expect(dane).toMatch(/<input[^>]*name="sku"/);
-    // ⚠️ POLA SA W CENTYMETRACH — tak czlowiek mysli o produkcie. Baza trzyma milimetry.
-    expect(dane).toMatch(/<input[^>]*name="szerokosc_cm"[^>]*value="70"/);
-    expect(dane).toMatch(/<input[^>]*name="wysokosc_cm"[^>]*value="100"/);
+    // Wymiary i waga mają własne pola w oknie Parametry (w centymetrach, baza trzyma milimetry).
+    expect(dane).not.toContain('name="szerokosc_cm"');
+    const okno = sekcja((await get(serwer(), `/magazyn/${id}?edytuj=parametry`)).body, 'parametry-karty');
+    expect(okno).toMatch(/<input[^>]*name="szerokosc_cm"[^>]*value="70"/);
+    expect(okno).toMatch(/<input[^>]*name="wysokosc_cm"[^>]*value="100"/);
     // Druga polowa pary: „Edytuj" ma ZNIKNAC, gdy panel juz jest w edycji.
     expect(dane).not.toContain('href="?edytuj=dane"');
   });
@@ -201,8 +203,6 @@ describe('GET /magazyn/:id — karta jest DOMYSLNIE DO ODCZYTU', () => {
     const id = kartaO('Kandelabr srebrny');
     const dane = sekcja((await get(serwer(), `/magazyn/${id}`)).body, 'dane-karty');
     expect(dane).toContain('bez SKU');
-    // Trzy stany paczkomatu: „nieoznaczone" to robota do wykonania, nie decyzja „nie".
-    expect(dane).toContain('nieoznaczone');
   });
 });
 
@@ -399,7 +399,9 @@ describe('POST /magazyn/:id — wymiary wpisywane w CENTYMETRACH', () => {
 
       const dane = sekcja(r.body, 'dane-karty');
       expect(dane).toContain('panel--edycja');
-      expect(dane).toMatch(/name="szerokosc_cm"[^>]*value="45"/);
+      // Pól wymiarów w „Dane karty” już nie ma: człowiek widzi odmowę nad formularzem, resztę pól ma nietkniętą.
+      expect(dane).toMatch(/<input[^>]*name="nazwa"[^>]*value="Kandelabr srebrny"/);
+      expect(dane).toContain('pasek-uwaga');
     });
 
     // ⚠️ OBA PUSTE TO NADAL KASOWANIE OBU i tak ma zostac — to jest zachowanie karty,
@@ -468,13 +470,13 @@ describe('POST /magazyn/:id — wymiary wpisywane w CENTYMETRACH', () => {
 
     const dane = sekcja(r.body, 'dane-karty');
     expect(dane).toContain('panel--edycja');
-    // Bez tego czlowiek traci wszystko, co wpisal w pozostalych polach, i wpisuje od nowa.
-    expect(dane).toMatch(/name="szerokosc_cm"[^>]*value="siedemdziesiąt"/);
-    expect(dane).toMatch(/name="wysokosc_cm"[^>]*value="100"/);
+    // Odmowa nazywa to, czego nie zrozumiała; pozostałe pola formularza zostają z wpisaną wartością.
+    expect(dane).toContain('siedemdziesiąt');
+    expect(dane).toMatch(/<input[^>]*name="nazwa"[^>]*value="Kandelabr srebrny"/);
   });
 });
 
-describe('POST /magazyn/:id — SKU, nazwa i paczkomat', () => {
+describe('POST /magazyn/:id — SKU i nazwa', () => {
   it('SKU zajete przez INNA karte odmawia i mowi, kto go uzywa', async () => {
     const id = kartaO('Kandelabr srebrny', { sku: 'LMP-PLA-100' });
     kartaO('Lampion srebrny', { sku: 'LMP-PLA-118' });
@@ -522,31 +524,14 @@ describe('POST /magazyn/:id — SKU, nazwa i paczkomat', () => {
     expect(wiersz(id).sku).toBe(null);
   });
 
-  it('paczkomat ma trzy stany i ustawia sie WYLACZNIE recznie', async () => {
-    const id = kartaO('Kandelabr srebrny');
-    const app = serwer();
-
-    await post(app, `/magazyn/${id}`, { nazwa: 'Kandelabr srebrny', paczkomat: 'tak' });
-    expect(wiersz(id).paczkomat).toBe('tak');
-
-    await post(app, `/magazyn/${id}`, { nazwa: 'Kandelabr srebrny', paczkomat: 'nie' });
-    expect(wiersz(id).paczkomat).toBe('nie');
-
-    // Trzeci stan — „jeszcze nieoznaczone". To CO INNEGO niz „nie".
-    await post(app, `/magazyn/${id}`, { nazwa: 'Kandelabr srebrny', paczkomat: '' });
-    expect(wiersz(id).paczkomat).toBe(null);
-
-    // Czwarta wartosc zepsulaby filtr „bez oznaczenia paczkomatu" — wpada w brak.
-    await post(app, `/magazyn/${id}`, { nazwa: 'Kandelabr srebrny', paczkomat: 'może' });
-    expect(wiersz(id).paczkomat).toBe(null);
-  });
-
   // ⚠️⚠️ REGULA PROGU 640 mm WYPADLA DECYZJA WLASCICIELA. Karta nie ma prawa jej wskrzesic
   // tylnymi drzwiami: zapis wymiarow nie dotyka oznaczenia paczkomatu ANI W JEDNA, ANI
   // W DRUGA strone.
   it('zapis wymiarow NIE wylicza paczkomatu', async () => {
-    const maly = kartaO('Mały kandelabr', { paczkomat: null });
-    const duzy = kartaO('Duży kandelabr', { paczkomat: 'tak' });
+    // Zapis karty juz nie pisze tej kolumny, wiec stary stan wpisujemy wprost — test pilnuje, ze go nie rusza.
+    const maly = kartaO('Mały kandelabr');
+    const duzy = kartaO('Duży kandelabr');
+    db.prepare("UPDATE karty_produktow SET paczkomat = 'tak' WHERE id = ?").run(duzy);
     const app = serwer();
 
     await post(app, `/magazyn/${maly}`, { nazwa: 'Mały kandelabr', szerokosc_cm: '10', wysokosc_cm: '15' });

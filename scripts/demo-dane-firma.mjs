@@ -17,6 +17,13 @@ export const KANALY = [
   { klucz: 'allegro-outlet', typ: 'allegro', prefiks: 'ALO', etykieta: 'Allegro Półcień Outlet', raport: 'PLC_OUTLET' },
 ];
 
+export const USTAWIENIA_WOO_DEMO = Object.freeze({
+  woocommerce_dimension_unit: 'cm',
+  woocommerce_weight_unit: 'kg',
+  woocommerce_calc_taxes: 'no',
+  woocommerce_prices_include_tax: 'no',
+});
+
 // Produkty z sufiksem -OUT to egzemplarze outletowe (ekspozycja, końcówki serii, drobne wady) — tylko na koncie Outlet.
 export const PRODUKTY = [
   {
@@ -286,6 +293,31 @@ export const PRODUKTY = [
     kanaly: ['allegro-outlet'],
   },
 ];
+
+const TYPY_KATALOGU = [
+  ['Lampa stołowa', 'Lampy stołowe'],
+  ['Lampa wisząca', 'Lampy wiszące'],
+  ['Lampa podłogowa', 'Lampy podłogowe'],
+  ['Kinkiet', 'Kinkiety'],
+  ['Lampka nocna', 'Lampki nocne'],
+  ['Abażur', 'Abażury i klosze'],
+  ['Żarówka LED', 'Akcesoria'],
+];
+
+// Dodatkowe karty sklepu, poza pulą produktów generatora zamówień.
+export const PRODUKTY_KATALOGU = Array.from({ length: 119 }, (_, i) => {
+  const typ = i % TYPY_KATALOGU.length;
+  const [nazwa, kategoria] = TYPY_KATALOGU[typ];
+  const numer = i + 1;
+  const rozstepCeny = typ >= 5 ? 110 : 860;
+  return {
+    sku: `LMP-KAT-${String(numer).padStart(3, '0')}`,
+    nazwa: `${nazwa} ${numer + 21}`,
+    kategoria,
+    cena_gr: (39 + ((numer * 47) % rozstepCeny)) * 100 + [0, 90, 99][i % 3],
+    kanaly: ['polcien'],
+  };
+});
 
 export const KLIENCI = [
   {

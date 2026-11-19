@@ -1,7 +1,9 @@
 import type { DatabaseSync } from 'node:sqlite';
+import { maCennikiOms, paryCennikaKarty, ustawParyCennikaKarty, wCalosci, wyjatekKartyOms } from './cenniki-oms.ts';
 
-// Wyjątek cennika dostaw na karcie, osobno dla każdego konta (tabela z magazyn/0003).
-// Baza bez tej migracji (moduł w starszej wersji) nie ma wyjątków: odczyt daje null / [].
+// Wyjątek cennika dostaw na karcie, osobno dla każdego konta. Z cennikami OMS (magazyn/0006) wyjątek to cennik OMS
+// wybrany na karcie: dla konta liczy się jego powiązanie z tym kontem, konta bez powiązania dobierają po rozmiarze.
+// Bez magazyn/0006 — dawna tabela z magazyn/0003; bez niej wyjątków nie ma: odczyt daje null / [].
 
 type Klucz = { kartaId: number; konto: string };
 type Opcje = { teraz?: string; aktor?: string | null };
@@ -20,6 +22,7 @@ const maTabele = (db: DatabaseSync) => {
 
 /** Wyjątek cennika karty na koncie albo null. */
 export function wyjatekCennika(db: DatabaseSync, { kartaId, konto }: Klucz): string | null {
+  if (maCennikiOms(db)) return wyjatekKartyOms(db, { kartaId, konto })?.cennik ?? null;
   if (!maTabele(db)) return null;
   const w = db.prepare('SELECT cennik FROM karty_cenniki_kont WHERE karta_id = ? AND konto = ?').get(kartaId, konto);
   return w ? String(w.cennik) : null;
@@ -27,12 +30,16 @@ export function wyjatekCennika(db: DatabaseSync, { kartaId, konto }: Klucz): str
 
 /** Wszystkie wyjątki karty, po kluczu konta. */
 export function wyjatkiCennikowKarty(db: DatabaseSync, kartaId: number): WyjatekCennika[] {
-  if (!maTabele(db)) return [];
+  const sql = maCennikiOms(db)
+    ? `SELECT p.konto, p.cennik_kanalu AS cennik, k.zmieniono_at, k.aktor_login FROM karty_cennik_oms k
+    JOIN cenniki_dostaw_powiazania p ON p.cennik_id = k.cennik_id WHERE k.karta_id = ? ORDER BY p.konto`
+    : maTabele(db)
+      ? `SELECT konto, cennik, zmieniono_at, aktor_login FROM karty_cenniki_kont
+    WHERE karta_id = ? ORDER BY konto`
+      : null;
+  if (!sql) return [];
   return db
-    .prepare(
-      `SELECT konto, cennik, zmieniono_at, aktor_login FROM karty_cenniki_kont
-    WHERE karta_id = ? ORDER BY konto`,
-    )
+    .prepare(sql)
     .all(kartaId)
     .map((w) => ({
       konto: String(w.konto),
@@ -51,6 +58,14 @@ export function zapiszWyjatekCennika(
   const wartosc = typeof cennik === 'string' ? cennik.trim() : '';
   if (!wartosc) throw new Error('Wyjątek cennika: podaj nazwę albo ID cennika');
   if (typeof konto !== 'string' || !konto.trim()) throw new Error('Wyjątek cennika: brak konta');
+  if (maCennikiOms(db)) {
+    wCalosci(db, () => {
+      const pary = paryCennikaKarty(db, kartaId);
+      pary.set(konto, wartosc);
+      ustawParyCennikaKarty(db, kartaId, pary, opcje);
+    });
+    return;
+  }
   db.prepare(
     `INSERT INTO karty_cenniki_kont (karta_id, konto, cennik, zmieniono_at, aktor_login) VALUES (?, ?, ?, ?, ?)
     ON CONFLICT (karta_id, konto) DO UPDATE SET cennik = excluded.cennik, zmieniono_at = excluded.zmieniono_at,
@@ -58,8 +73,16 @@ export function zapiszWyjatekCennika(
   ).run(kartaId, konto, wartosc, opcje?.teraz ?? new Date().toISOString(), opcje?.aktor ?? null);
 }
 
-/** Usuwa wyjątek; zwraca liczbę usuniętych wierszy (0 albo 1). */
-export function usunWyjatekCennika(db: DatabaseSync, { kartaId, konto }: Klucz): number {
+/** Usuwa wyjątek; zwraca liczbę usuniętych wpisów (0 albo 1). */
+export function usunWyjatekCennika(db: DatabaseSync, { kartaId, konto }: Klucz, opcje?: Opcje): number {
+  if (maCennikiOms(db)) {
+    return wCalosci(db, () => {
+      const pary = paryCennikaKarty(db, kartaId);
+      if (!pary.delete(konto)) return 0;
+      ustawParyCennikaKarty(db, kartaId, pary, opcje);
+      return 1;
+    });
+  }
   if (!maTabele(db)) return 0;
   return Number(
     db.prepare('DELETE FROM karty_cenniki_kont WHERE karta_id = ? AND konto = ?').run(kartaId, konto).changes,

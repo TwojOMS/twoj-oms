@@ -10,7 +10,10 @@ import {
   zmienOferte,
   ofertaPoId,
   zapiszUstawieniaOfertKonta,
+  ustawieniaOfertKonta,
+  STALA_ILOSC_ZERO,
 } from '../../../src/oms/db/oferty-kanalow.ts';
+import { przelaczStany } from '../../../src/oms/db/stany-magazynowe.js';
 import { createPetlaOfert } from '../../../src/moduly/magazyn/services/petla-ofert.js';
 import { zalozKonto, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
 import { podpisz, NAZWA_CIASTECZKA_OMS } from '../../../src/core/bezpieczenstwo/sesja.js';
@@ -23,6 +26,13 @@ const auth = {
 };
 let db, app, id, klient;
 const post = (url, payload, headers = auth) => app.inject({ method: 'POST', url, payload, headers });
+const get = (url, headers = auth) => app.inject({ method: 'GET', url, headers });
+/** Zatwierdza podgląd jak przeglądarka: POST → 303 → GET ekranu wyniku. */
+const zatwierdz = async (payload) => {
+  const w = await post('/magazyn/oferty/zatwierdz', payload);
+  expect(w.statusCode).toBe(303);
+  return get(w.headers.location);
+};
 const podglad = (zaznaczone = [id]) => post('/magazyn/oferty/podglad', { konto: kanal, zaznaczone });
 const decyzja = (r) => ({
   konto: kanal,
@@ -78,25 +88,44 @@ afterEach(async () => {
   db.close();
 });
 
-it('podgląd pokazuje dokładne ciało, ostrzeżenia i wstrzymanie; trasa nie woła kanału', async () => {
+it('podgląd pokazuje nazwę sklepu, jedną linię danych, ostrzeżenia i wstrzymanie; trasa nie woła kanału', async () => {
   const r = await podglad();
   expect(r.statusCode).toBe(200);
   for (const tekst of [
     'Oferty: wstrzymane',
-    '110,00',
-    'Ilość: 5',
-    'Czas wysyłki: 2',
-    'TAX_23',
-    'Zdjęcia: 1',
+    '<h2>ERLI · Półcień</h2>',
+    'Cena: 110,00 zł · Ilość: 5 · Czas wysyłki: 2 dni robocze · VAT 23% · Zdjęcia: 1',
     'kategorii',
-    'aiGenerated',
-    '11000',
+    '<button class="btn btn--glowny" type="submit">Wystaw oferty (1)</button>',
   ])
     expect(r.body).toContain(tekst);
+  for (const tekst of [
+    'Dokładna treść wysyłki',
+    'aiGenerated',
+    'TAX_23',
+    'Nazwa: ',
+    'etapie 4',
+    'Ilość w ofertach: stała',
+    'W kolejce:',
+    'Zatwierdź karty bez błędów',
+    `ERLI · ${kanal}`,
+  ])
+    expect(r.body).not.toContain(tekst);
   expect(ofertyKarty(db, id)).toHaveLength(0);
-  const w = await post('/magazyn/oferty/zatwierdz', decyzja(r));
+  const w = await zatwierdz(decyzja(r));
   expect(w.statusCode).toBe(200);
-  expect(w.body).toContain('W kolejce: 1');
+  for (const tekst of [
+    '<h1>Oferty — Półcień</h1>',
+    'W kolejce do wysłania: 1. OMS wysyła oferty w tle co 5 minut — ta strona pokazuje ich stan.</p>',
+    `<a href="/magazyn/${id}#produkty-karty">`,
+    // ERLI nie ma warunków konta, więc w kolumnie Stan stoi zdanie domyślne.
+    '<td>do wysłania<p class="pasek-uwaga">Czeka na wysłanie — OMS wysyła oferty co 5 minut.</p></td>',
+    '<td>—</td>',
+  ])
+    expect(w.body).toContain(tekst);
+  // Zdania o szkicach i aktywacji dotyczą tylko Allegro.
+  expect(w.body).not.toContain('szkice');
+  expect(w.body).not.toContain('staną się aktywne');
   expect(ofertyKarty(db, id)).toEqual([
     expect.objectContaining({ stan: 'do_wyslania', tryb: 'zarzadzana', pochodzenie: 'oms' }),
   ]);
@@ -113,17 +142,22 @@ it('liczy ponownie po podglądzie i odmawia per karta, także usunięta', async 
   expect(r.body).toContain('Dodaj co najmniej jedno zdjęcie');
   db.prepare('UPDATE karty_produktow SET cena_gr = NULL WHERE id = ?').run(id);
   db.prepare('DELETE FROM karty_produktow WHERE id = ?').run(trzeci);
-  const w = await post('/magazyn/oferty/zatwierdz', { ...decyzja(r), zaznaczone: [id, drugi, trzeci], price: 1 });
-  expect(w.body).toContain('Odmówiono: 3');
-  expect(w.body).toContain('Karta produktu nie istnieje');
+  const w = await zatwierdz({ ...decyzja(r), zaznaczone: [id, drugi, trzeci], price: 1 });
+  expect(w.body.split('nie wysłano — popraw błędy z podglądu')).toHaveLength(4);
+  expect(w.body).toContain(`<a href="/magazyn/${trzeci}#produkty-karty">Karta ${trzeci}</a>`);
+  expect(w.body).toContain('W kolejce do wysłania: 0.');
   expect(ofertyKarty(db, id)).toHaveLength(0);
 });
 it('istniejąca oferta jest osobną odmową; powtórne zatwierdzenie nie dubluje', async () => {
   nowa({ pochodzenie: 'przejeta', tryb: 'obserwowana' });
   const r = await podglad();
   expect(r.body).toContain('ma już ofertę');
-  const w = await post('/magazyn/oferty/zatwierdz', decyzja(r));
-  expect(w.body).toContain('Odmówiono: 1');
+  const w = await zatwierdz(decyzja(r));
+  // Wcześniejsza oferta jest już w sklepie: ekran wyniku pokazuje jej stan i numer zamiast „odmowy”.
+  expect(w.body).toContain('Wszystkie oferty z tej partii zostały już wysłane.');
+  expect(w.body).toContain('<td>aktywna</td>');
+  expect(w.body).toContain('<td>LMP-01</td>');
+  expect(w.body).not.toContain('Odmówiono');
   expect(ofertyKarty(db, id)).toHaveLength(1);
 });
 it('braki ustawień odsyłają do kroku Oferty bez listy kart', async () => {
@@ -136,11 +170,18 @@ it('stara trasa znacznika karty usunięta; podgląd pokazuje decyzję pojedyncze
   const r = await post(`/magazyn/${id}/oferty-ai`, { ai: 'tak' });
   expect(r.statusCode).toBe(404);
   const zdjecie = db.prepare('SELECT id FROM zdjecia_kart WHERE karta_id = ?').get(id);
+  const OSTRZEZENIE_AI =
+    'Zdjęcia 1 mogą być wygenerowane przez AI. OMS nie oznacza tego w ERLI — jeśli tak jest, zaznacz to w panelu ERLI (tego znacznika nie da się potem wyłączyć).';
   ustawZnacznikAi(db, { kartaId: id, zdjecieId: zdjecie.id, ai: 1 });
-  const p = await podglad();
-  expect(p.body).toContain('Zdjęcia wygenerowane przez AI: tak — zdjęcia: 1');
-  expect(p.body).toContain('tego znacznika nie można później wyłączyć');
-  expect(p.body).not.toContain('&#34;aiGenerated&#34;');
+  let p = await podglad();
+  expect(p.body).toContain(OSTRZEZENIE_AI);
+  expect(p.body).not.toContain('aiGenerated');
+  ustawZnacznikAi(db, { kartaId: id, zdjecieId: zdjecie.id, ai: 0 });
+  p = await podglad();
+  expect(p.body).not.toContain('mogą być wygenerowane przez AI');
+  db.prepare('UPDATE zdjecia_kart SET ai = NULL WHERE id = ?').run(zdjecie.id);
+  p = await podglad();
+  expect(p.body).toContain(OSTRZEZENIE_AI);
   const karta = await app.inject({ url: `/magazyn/${id}`, headers: auth });
   expect(karta.statusCode).toBe(200);
   expect(karta.body).not.toContain('oferty-ai');
@@ -257,4 +298,143 @@ it('zdejmij odmawia oferty z konfliktem — pętla jej nie dotyka, więc nic by 
   });
   expect((await post(`/magazyn/${id}/oferty/${o.id}/zdejmij`, {})).statusCode).toBe(409);
   expect(ofertaPoId(db, o.id).wyslanePola?.zdejmij).toBeFalsy();
+});
+
+const POMOC_BRAKOW =
+  'Zapiszemy to w ustawieniach konta — dotyczy wszystkich ofert ERLI tego konta. Zmienisz to później w ustawieniach konta, krok „Oferty”.';
+const uzupelnij = (pola, zaznaczone = [id], headers = auth) =>
+  post('/magazyn/oferty/ustawienia-konta', { konto: kanal, zaznaczone, ...pola }, headers);
+const wierszKarty = (body, kartaId) => body.includes(`<a href="/magazyn/${kartaId}">`);
+const bezVatNaKarcie = (kartaId) =>
+  db.prepare('UPDATE karty_produktow SET stawka_vat = NULL WHERE id = ?').run(kartaId);
+
+it('konto bez ilości, czasu, VAT i cennika: podgląd ma formularz tylko z brakującymi polami i zero wierszy kart', async () => {
+  zapiszUstawieniaOfertKonta(db, kanal, {
+    stalaIlosc: null,
+    czasWysylkiDni: null,
+    stawkaVat: null,
+    cennikDostaw: null,
+  });
+  bezVatNaKarcie(id);
+  let r = await podglad();
+  expect(r.statusCode).toBe(200);
+  for (const tekst of [
+    '<label for="uzupelnij-stalaIlosc">Ilość w ofertach (szt.)</label>',
+    '<label for="uzupelnij-czasWysylkiDni">Czas wysyłki (dni robocze)</label>',
+    '<label for="uzupelnij-stawkaVat">Stawka VAT</label>',
+    '<option value="zw">zw</option>',
+    POMOC_BRAKOW,
+    '<button class="btn btn--glowny" type="submit">Zapisz i odśwież podgląd</button>',
+    `/ustawienia/integracje/erli/${kanal}?krok=oferty#erli-krok-oferty">Konfigurator — Oferty</a>`,
+  ])
+    expect(r.body).toContain(tekst);
+  // Cennik nie jest brakiem konta w podglądzie ERLI — wybiera się go przy karcie.
+  expect(r.body).not.toContain('cennik dostaw');
+  expect(wierszKarty(r.body, id)).toBe(false);
+  expect(r.body).not.toContain('Wystaw oferty (');
+  // Tylko brakujące: konto z samym brakiem czasu nie pokazuje pól ilości i VAT.
+  zapiszUstawieniaOfertKonta(db, kanal, { stalaIlosc: 5, stawkaVat: '23' });
+  r = await podglad();
+  expect(r.body).toContain('name="czasWysylkiDni"');
+  expect(r.body).not.toContain('name="stalaIlosc"');
+  expect(r.body).not.toContain('name="stawkaVat"');
+});
+
+it('zapis ilości i czasu odświeża ten sam podgląd z wierszami kart; wartości trafiają do ustawień konta', async () => {
+  zapiszUstawieniaOfertKonta(db, kanal, { stalaIlosc: null, czasWysylkiDni: null });
+  const r = await uzupelnij({ stalaIlosc: ' 7 ', czasWysylkiDni: '3' });
+  expect(r.statusCode).toBe(200);
+  expect(r.body).not.toContain('Zapisz i odśwież podgląd');
+  expect(wierszKarty(r.body, id)).toBe(true);
+  expect(r.body).toContain('Ilość: 7');
+  expect(r.body).toContain('Czas wysyłki: 3 dni robocze');
+  expect(ustawieniaOfertKonta(db, kanal)).toMatchObject({ stalaIlosc: 7, czasWysylkiDni: 3, stawkaVat: '23' });
+  const w = await zatwierdz(decyzja(r));
+  expect(w.body).toContain('W kolejce do wysłania: 1.');
+});
+
+it('0 sztuk → 400 z komunikatem przy polu; nic nie zapisane, także poprawny czas z tego samego formularza', async () => {
+  zapiszUstawieniaOfertKonta(db, kanal, { stalaIlosc: null, czasWysylkiDni: null });
+  const r = await uzupelnij({ stalaIlosc: '0', czasWysylkiDni: '3' });
+  expect(r.statusCode).toBe(400);
+  expect(r.body).toContain('aria-invalid="true" aria-describedby="blad-uzupelnij-stalaIlosc"');
+  expect(r.body).toContain(`<p class="blad-pola pasek-blokada" id="blad-uzupelnij-stalaIlosc">${STALA_ILOSC_ZERO}</p>`);
+  expect(r.body).toContain('name="stalaIlosc" value="0"');
+  expect(r.body).toContain('name="czasWysylkiDni" value="3"');
+  expect(wierszKarty(r.body, id)).toBe(false);
+  expect(ustawieniaOfertKonta(db, kanal)).toMatchObject({ stalaIlosc: null, czasWysylkiDni: null });
+  expect((await uzupelnij({ czasWysylkiDni: '366' })).statusCode).toBe(400);
+  expect((await uzupelnij({ stawkaVat: '99' })).statusCode).toBe(400);
+  expect(ustawieniaOfertKonta(db, kanal)).toMatchObject({ czasWysylkiDni: null, stawkaVat: '23' });
+});
+
+it('nie-admin dostaje 403 na zapisie i nic się nie zmienia; konto spoza ERLI → 400', async () => {
+  zapiszUstawieniaOfertKonta(db, kanal, { czasWysylkiDni: null });
+  // Przed założeniem kont: logowanie podstawowe z `auth` działa jako administrator tylko bez kont w bazie.
+  const obce = await post('/magazyn/oferty/ustawienia-konta', {
+    konto: 'nieznane',
+    zaznaczone: [id],
+    czasWysylkiDni: '3',
+  });
+  expect(obce.statusCode).toBe(400);
+  expect(ustawieniaOfertKonta(db, 'nieznane').zapisane).toBe(false);
+  zalozKonto(db, { login: 'admin', imie: 'Admin', haslo: 'test', rola: 'admin', admin: true });
+  const user = zalozKonto(db, { login: 'czytelnik', imie: 'Czytelnik', haslo: 'test', rola: 'operator' });
+  ustawUprawnienia(db, user, ['magazyn']);
+  const headers = {
+    origin: 'http://localhost',
+    cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz('czytelnik', wczytajSekret(db), Date.now(), 0)}`,
+  };
+  expect((await uzupelnij({ czasWysylkiDni: '3' }, [id], headers)).statusCode).toBe(403);
+  expect(ustawieniaOfertKonta(db, kanal).czasWysylkiDni).toBeNull();
+});
+
+it('VAT konta nie blokuje, gdy każda wybrana karta ma VAT; karta bez VAT przywraca pole „Stawka VAT”', async () => {
+  zapiszUstawieniaOfertKonta(db, kanal, { stawkaVat: null });
+  let r = await podglad();
+  expect(r.body).not.toContain('Uzupełnij ustawienia');
+  expect(r.body).not.toContain('name="stawkaVat"');
+  expect(wierszKarty(r.body, id)).toBe(true);
+  expect(r.body).toContain('VAT 23%');
+  const drugi = utworzKarte(db, { nazwa: 'Lampa bez VAT', sku: 'LMP-04', cena_gr: 9000 });
+  bezVatNaKarcie(drugi);
+  r = await podglad([id, drugi]);
+  expect(r.body).toContain('<label for="uzupelnij-stawkaVat">Stawka VAT</label>');
+  expect(wierszKarty(r.body, id)).toBe(false);
+  expect(wierszKarty(r.body, drugi)).toBe(false);
+});
+
+it('objęcie zarządzaniem: karta z VAT przechodzi bez VAT konta; karta bez VAT dostaje brak', async () => {
+  zapiszUstawieniaOfertKonta(db, kanal, { stawkaVat: null });
+  const o = nowa({ pochodzenie: 'przejeta', tryb: 'obserwowana' });
+  zmienOferte(db, o.id, { odczytCenaGr: 9000, odczytIlosc: 2 });
+  const url = `/magazyn/${id}/oferty/${o.id}/objecie`;
+  let r = await post(`${url}/podglad`, {});
+  expect(r.statusCode).toBe(200);
+  expect(r.body).not.toContain('stawka VAT');
+  bezVatNaKarcie(id);
+  r = await post(`${url}/podglad`, {});
+  expect(r.body).toContain('Uzupełnij ustawienia: stawka VAT');
+});
+
+it('po zapisie ustawień stary token podglądu nie zatwierdza; nowy z odświeżonego podglądu tak', async () => {
+  const stary = await podglad();
+  expect(decyzja(stary).podglad).toBeTruthy();
+  const r = await uzupelnij({ stalaIlosc: '9' });
+  expect(r.statusCode).toBe(200);
+  expect(decyzja(r).podglad).toBeTruthy();
+  expect(decyzja(r).podglad).not.toBe(decyzja(stary).podglad);
+  const odmowa = await post('/magazyn/oferty/zatwierdz', decyzja(stary));
+  expect(odmowa.statusCode).toBe(409);
+  expect(ofertyKarty(db, id)).toHaveLength(0);
+  expect((await zatwierdz(decyzja(r))).body).toContain('W kolejce do wysłania: 1.');
+});
+
+it('przy włączonych stanach magazynowych brak stałej ilości nie blokuje i nie dostaje pola', async () => {
+  zapiszUstawieniaOfertKonta(db, kanal, { stalaIlosc: null });
+  przelaczStany(db, { wlacz: true, konto: { id: 1, login: 'tester' }, at: '2025-01-01T00:00:00Z' });
+  const r = await podglad();
+  expect(r.body).not.toContain('Uzupełnij ustawienia');
+  expect(r.body).not.toContain('name="stalaIlosc"');
+  expect(wierszKarty(r.body, id)).toBe(true);
 });

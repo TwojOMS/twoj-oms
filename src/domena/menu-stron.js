@@ -87,17 +87,35 @@ export function nawigacjaDla({
       .map((p) => ({ ...p, etykieta: klucz === 'faktury' ? 'Wystawione' : p.etykieta, biezaca: biezaca(p) })),
   );
   const maFaktury = pozycje.some((p) => p.klucz === 'faktury');
-  // Podmenu Magazynu — Produkty, Kategorie, Marki, Producenci. Strona słownika jest „page” tylko pod własnym
-  // adresem; Produkty zostają bieżące na liście i kartach, ale nie na stronach słowników.
+  // Podmenu Magazynu — Produkty, Kategorie, Producenci (marki mieszkają w sekcji ekranu Producenci). Strona
+  // słownika jest „page” tylko pod własnym adresem; Produkty zostają bieżące na liście i kartach, ale nie na
+  // stronach słowników.
   const adres = sciezka.split('?')[0];
+  // `/magazyn/ustawienia…` i `/magazyn/cenniki…` mają klucz ekranu „ustawienia”, ale w menu należą do Magazynu.
+  const wUstawieniachMagazynu = wSekcji(adres, '/magazyn/ustawienia') || wSekcji(adres, '/magazyn/cenniki');
   const podstronyMagazynu = (p) => {
     const slowniki = [
       { href: '/magazyn/kategorie', etykieta: 'Kategorie' },
-      { href: '/magazyn/marki', etykieta: 'Marki' },
-      { href: '/magazyn/producenci', etykieta: 'Producenci' },
+      // Mapowanie marki na Allegro (…/marki/<marka>/allegro) to podstrona sekcji Marki, więc należy do Producentów.
+      { href: '/magazyn/producenci', etykieta: 'Producenci', podstrony: ['/magazyn/marki/'] },
+      // Cenniki i ustawienia magazynu otwiera to samo uprawnienie co Ustawienia ogólne.
+      ...(maPrawoNawigacji(konto, 'ustawienia')
+        ? [
+            { href: '/magazyn/cenniki', etykieta: 'Cenniki' },
+            { href: '/magazyn/ustawienia', etykieta: 'Ustawienia' },
+          ]
+        : []),
     ]
       // Podstrona słownika (np. …/kategorie/<nazwa>/allegro) — słownik bieżący jako „true”.
-      .map((s) => ({ ...s, biezaca: adres === s.href ? 'page' : adres.startsWith(`${s.href}/`) ? 'true' : null }));
+      .map(({ podstrony = [], ...s }) => ({
+        ...s,
+        biezaca:
+          adres === s.href
+            ? 'page'
+            : [`${s.href}/`, ...podstrony].some((poczatek) => adres.startsWith(poczatek))
+              ? 'true'
+              : null,
+      }));
     return [
       { href: '/magazyn', etykieta: 'Produkty', biezaca: slowniki.some((s) => s.biezaca) ? null : biezaca(p) },
       ...slowniki,
@@ -105,6 +123,7 @@ export function nawigacjaDla({
   };
   // Dokumenty zamówienia nie mają własnego linku, ale nadal należą do Sprzedaży.
   const aktywnyDzial =
+    (wUstawieniachMagazynu ? 'magazyn' : null) ??
     kandydaci.find((p) => p.klucz === ekranKlucz && p.dzial !== 'ustawienia')?.dzial ??
     (ekran?.href === null ? ekran.nawigacja?.dzial : null) ??
     null;
@@ -172,7 +191,10 @@ export function nawigacjaDla({
                 pozycje: lista.map((p) => ({
                   ...p,
                   biezaca: biezaca(p) || (p.klucz === 'faktury' && dzieciFaktur.some((d) => d.biezaca) ? 'true' : null),
-                  aktywna: p.klucz === ekranKlucz || (p.klucz === 'faktury' && dzieciFaktur.some((d) => d.biezaca)),
+                  aktywna:
+                    p.klucz === ekranKlucz ||
+                    (p.klucz === 'magazyn' && wUstawieniachMagazynu) ||
+                    (p.klucz === 'faktury' && dzieciFaktur.some((d) => d.biezaca)),
                   ...(p.klucz === 'faktury' && dzieciFaktur.length > 1 ? { podmenu: dzieciFaktur } : {}),
                   ...(p.klucz === 'magazyn' ? { podstrony: podstronyMagazynu(p) } : {}),
                 })),
@@ -206,7 +228,7 @@ export function nawigacjaDla({
       ? {
           href: ustawienia.href,
           etykieta: ustawienia.etykieta,
-          aktywna: ekranKlucz === 'ustawienia',
+          aktywna: ekranKlucz === 'ustawienia' && !wUstawieniachMagazynu,
         }
       : null,
   };

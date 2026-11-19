@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
+import { dodajParametr, ustawWartoscKarty } from '../../../src/oms/db/parametry-kart.js';
 import { zapiszProduktSklepowy, utworzKarte, powiazProdukt, SORTOWANIE_KART } from '../../../src/oms/db/magazyn.js';
 
 // EKRAN MAGAZYNU — pierwsza rzecz widoczna pozycja modułu.
@@ -216,9 +217,12 @@ describe('GET /magazyn — tabela kart', () => {
     expect(braki.body).not.toContain('>Kandelabr</a>');
   });
 
-  it('filtr paczkomatu zachowuje trzy odróżnialne stany po usunięciu kolumny', async () => {
-    kartaZProduktem({ nazwa: 'Akarta', paczkomat: 'tak' }, []);
-    kartaZProduktem({ nazwa: 'Bkarta', paczkomat: 'nie' }, []);
+  // Stary adres zostaje w zakladkach przegladarki — po zmianie na parametr ma dalej dawac
+  // trzy odroznialne stany, o ile parametr „Paczkomat" istnieje.
+  it('stary filtr paczkomatu zachowuje trzy odróżnialne stany jako filtr parametru', async () => {
+    const p = dodajParametr(db, { nazwa: 'Paczkomat', typ: 'lista', wartosci: ['tak', 'nie'], wymagany: true }).id;
+    ustawWartoscKarty(db, kartaZProduktem({ nazwa: 'Akarta' }, []), p, 'tak');
+    ustawWartoscKarty(db, kartaZProduktem({ nazwa: 'Bkarta' }, []), p, 'nie');
     kartaZProduktem({ nazwa: 'Ckarta' }, []);
     const app = serwer();
     for (const [stan, nazwa] of [
@@ -320,8 +324,8 @@ describe('GET /magazyn — tabela kart', () => {
     // ⚠️ CALE ZDANIE, nie „pusto": nazwa klasy `.pusto` stoi w arkuszu ukladu, ktory jedzie
     // w kazdej stronie panelu — alternatywa `|pusto` przepuszczala ten test zawsze.
     expect(r.body).toContain('Nie ma tu jeszcze ani jednej karty produktu.');
-    // Cztery wspólne nagłówki i cztery kolumny cen kanałów.
-    expect(r.body).toContain('colspan="8"');
+    // Sześć wspólnych nagłówków i cztery kolumny cen kanałów.
+    expect(r.body).toContain('colspan="10"');
   });
 });
 
@@ -1086,10 +1090,10 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
   it('pusta tabela sięga końca w OBU trybach', async () => {
     // ⚠️ `colspan` liczy sie z zestawu kolumn, wiec rozjezdza sie CICHO przy zmianie trybu:
     // komunikat pustej listy przestaje wtedy siegac konca tabeli i wyglada jak polamany
-    // render. W Produktach jest siedem kolumn, w Cenach cztery wspólne i cztery kanały.
+    // render. W Produktach jest siedem kolumn, w Cenach sześć wspólnych i cztery kanały.
     const app = serwer();
     expect((await get(app, '/magazyn')).body).toContain('colspan="7"');
-    expect((await get(app, '/magazyn?widok=katalog')).body).toContain('colspan="8"');
+    expect((await get(app, '/magazyn?widok=katalog')).body).toContain('colspan="10"');
   });
 
   // ⚠️⚠️ STRAZNIK DRYFU: `colspan` jest LITERALEM w trasie (`kolumnPustej`), a liczba kolumn

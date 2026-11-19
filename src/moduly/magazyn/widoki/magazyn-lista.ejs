@@ -138,17 +138,52 @@
         <% }); %>
       </select>
     </label>
-    <label class="pole-filtra">
-      <span>Paczkomat</span>
-      <%# TRZY STANY, NIE DWA: „nieoznaczone" to robota do wykonania, „nie" to decyzja
-          czlowieka — i po tym pierwszym filtruje sie wlasnie po to, zeby ja odrobic. %>
-      <select name="paczkomat">
-        <option value="">Bez znaczenia</option>
-        <% paczkomatDoFiltra.forEach(function (p) { %>
-          <option value="<%= p.klucz %>"<%- filtry.paczkomat === p.klucz ? ' selected' : '' %>><%= p.etykieta %></option>
+    <% if (parametryDoFiltra.length) { %>
+    <label class="pole-filtra" for="filtr-parametr">
+      <span>Parametr</span>
+      <%# Pole wartosci zalezy od typu parametru, a ekran nie ma skryptu: po zmianie parametru
+          „Filtruj” przerysowuje formularz z wlasciwym polem. Ukryte `pz` mowi serwerowi, dla
+          ktorego parametru byly pola ponizej — stara wartosc nie przechodzi na nowy parametr. %>
+      <select id="filtr-parametr" name="parametr">
+        <option value="">—</option>
+        <% parametryDoFiltra.forEach(function (p) { %>
+          <option value="<%= p.id %>"<%- filtry.parametr === p.id ? ' selected' : '' %>><%= p.nazwa %></option>
         <% }); %>
       </select>
     </label>
+    <% } %>
+    <% if (parametrFiltra) { const pf = parametrFiltra; %>
+    <input type="hidden" name="pz" value="<%= pf.id %>">
+    <% if (pf.typ === 'lista') { %>
+    <label class="pole-filtra" for="filtr-pw">
+      <span>Wartość</span>
+      <select name="pw" id="filtr-pw">
+        <option value="">dowolna</option>
+        <% (pf.wartosci ?? []).forEach(function (v) { %>
+          <option value="<%= v %>"<%- filtry.pw === v ? ' selected' : '' %>><%= v %></option>
+        <% }); %>
+      </select>
+    </label>
+    <% } else if (pf.typ === 'liczba') { %>
+    <label class="pole-filtra">
+      <span>Wartość<%= pf.jednostka ? ` (${pf.jednostka})` : '' %></span>
+      <span class="zakres">
+        <input type="text" name="pod" value="<%= wartosci.pod %>" inputmode="decimal" size="5" aria-label="<%= pf.nazwa %> od">
+        <span class="myslnik">–</span>
+        <input type="text" name="pdo" value="<%= wartosci.pdo %>" inputmode="decimal" size="5" aria-label="<%= pf.nazwa %> do">
+      </span>
+    </label>
+    <% } else { %>
+    <label class="pole-filtra" for="filtr-pw">
+      <span>Zawiera</span>
+      <input type="text" name="pw" id="filtr-pw" value="<%= wartosci.pw %>" size="12" autocomplete="off">
+    </label>
+    <% } %>
+    <label class="pole-filtra" for="filtr-pbez">
+      <span>Bez wartości</span>
+      <input type="checkbox" name="pbez" id="filtr-pbez" value="1"<%- filtry.pbez ? ' checked' : '' %>>
+    </label>
+    <% } %>
     <label class="pole-filtra" for="filtr-brak">
       <span>Braki danych</span>
       <select id="filtr-brak" name="brak">
@@ -163,7 +198,10 @@
       <span>Stan magazynowy</span>
       <select id="filtr-stan" name="stan">
         <option value="">wszystkie</option>
+        <option value="jest"<%- filtry.stan === 'jest' ? ' selected' : '' %>>Na stanie (więcej niż 0)</option>
         <option value="niski"<%- filtry.stan === 'niski' ? ' selected' : '' %>>Niski stan</option>
+        <option value="brak"<%- filtry.stan === 'brak' ? ' selected' : '' %>>Brak (0 i mniej)</option>
+        <option value="minus"<%- filtry.stan === 'minus' ? ' selected' : '' %>>Na minusie</option>
       </select>
     </label>
     <% } %>
@@ -241,7 +279,7 @@
 
     ⚠️⚠️ PUSTE POLE ZNACZY „NIE RUSZAJ", ODWROTNIE NIZ NA KARCIE PRODUKTU. Tam puste pole KASUJE
     wartosc i jest to bezpieczne, bo czlowiek patrzy na jedna karte. Tutaj pol jest kilka
-    naraz: gdyby puste kasowalo, ustawienie samego paczkomatu wyczyscilo by wymiary
+    naraz: gdyby puste kasowalo, ustawienie samej wagi wyczyscilo by wymiary
     i kategorie setkom kart jednym kliknieciem. Regula stoi w domena/magazyn-hurt.js.
 
     ⚠️⚠️ ZAKRES JEDZIE Z KLIKNIETYM PRZYCISKIEM, A NIE Z POLA STOJACEGO WYZEJ.
@@ -254,8 +292,8 @@
 
     ⚠️⚠️ DLATEGO KAZDA AKCJA MA PARE PRZYCISKOW `name="zakres"`, a pola wyboru zakresu NIE MA
     JUZ WCALE. Przycisk niesie wlasne `name`/`value`, wiec zakres jedzie z klikaniem — bez
-    ani jednej linijki JavaScriptu (ten ekran nie ma wlasnego skryptu, a „zaznacz wszystkie"
-    na setkach pol wyboru bez JS nie istnieje).
+    ani jednej linijki JavaScriptu (skrypt edycja-hurtowa.js obsluguje panel „Edytuj" i licznik
+    zaznaczonych, a zakresu nie dotyka; „zaznacz wszystkie" na setkach pol wyboru bez JS nie istnieje).
 
     ⚠️⚠️ POLA `<select name="zakres">` NIE WOLNO TU PRZYWROCIC OBOK PRZYCISKOW. Ta pulapka
     wystapila w tym module juz raz i jest udokumentowana przy `filtryZawezenia`: parametr
@@ -277,12 +315,19 @@
         <summary>Wystaw oferty</summary>
         <div class="akcja-cialo">
           <%# Konta ERLI i Allegro; konto Allegro bez zgody na oferty wyszarzone z powodem. %>
-          <label for="konto-ofert">Konto</label>
-          <% const bezZgody = kontaOfert.some(k => !k.zgoda); %>
-          <select id="konto-ofert" name="konto"<% if (bezZgody) { %> aria-describedby="konto-ofert-zgoda"<% } %>>
-            <% kontaOfert.forEach(k => { %><% if (k.zgoda) { %><option value="<%= k.klucz %>"><%= k.etykieta %></option><% } else { %><option value="<%= k.klucz %>" disabled><%= k.etykieta %> — <%= brakZgodyOfert %></option><% } %><% }); %>
-          </select>
-          <% if (bezZgody) { %><p class="akcja-zasada" id="konto-ofert-zgoda">Konto wyszarzone nie ma zgody na zapis ofert — połącz je ponownie w Ustawieniach → Integracje.</p><% } %>
+          <% const pierwszeZeZgoda = kontaOfert.find((x) => x.zgoda); %>
+          <fieldset class="konta-ofert">
+            <legend>Konto</legend>
+            <% kontaOfert.forEach(k => { %>
+              <label class="konto-kafel">
+                <input type="radio" name="konto" value="<%= k.klucz %>"<% if (k === pierwszeZeZgoda) { %> checked<% } %><% if (!k.zgoda) { %> disabled<% } %>>
+                <img src="/public<%= k.logo %>" alt="" width="40" height="40">
+                <span class="konto-kafel-nazwa"><%= k.nazwa %></span>
+                <span class="konto-kafel-kanal"><%= k.kanal %><% if (k.sandbox) { %> · sandbox<% } %></span>
+                <% if (!k.zgoda) { %><small>Brak zgody na zapis ofert — połącz ponownie w Ustawieniach → Integracje</small><% } %>
+              </label>
+            <% }); %>
+          </fieldset>
           <button class="btn btn--drugi" type="submit" formaction="/magazyn/oferty/podglad" name="zakres" value="zaznaczone">Pokaż podgląd — dla zaznaczonych</button>
           <button class="btn btn--drugi" type="submit" formaction="/magazyn/oferty/podglad" name="zakres" value="pasujace">Pokaż podgląd — dla wszystkich pasujących (<%= ilePasujacych %>)</button>
           <% if (kontaOfert.some(k => k.allegro && k.zgoda)) { %><button class="btn btn--drugi" type="submit" formaction="/magazyn/oferty/aktywuj">Aktywuj w Allegro — szkice zaznaczonych</button><% } %>
@@ -290,169 +335,240 @@
       </details>
     <% } %>
 
-<%# ——— USTAW POLA (edycja hurtem) —————————————————————————————————————————————— %>
+<%# ——— EDYTUJ (edycja hurtem) — lista zmian ———————————————————————————————————————— %>
     <details class="akcja" name="akcja" id="hurt-pasek">
       <summary>Edytuj</summary>
-      <div class="akcja-cialo">
-        <%# ⚠️ ZAWEZENIE JEDNYM POLEM, nie siedmioma osobnymi. Ten formularz ma WLASNE pole
-            `paczkomat` (wartosc do ustawienia), a filtr ma pole `paczkomat` (czym zawezic) —
-            te same nazwy w jednym formularzu wracaja z Fastify jako TABLICA i kasuja sie
-            nawzajem, i to akurat na drodze typowej („zawez do nieoznaczonych, ustaw «nie»").
-            Skladane przez `adresMagazynu`, czyli tam, gdzie kazdy inny odnosnik ekranu.
+      <div class="akcja-cialo hz">
+        <%# ⚠️ ZAWEZENIE JEDNYM POLEM, nie siedmioma osobnymi. Filtr ma własne pola o nazwach,
+            które mogłyby się powtórzyć w akcjach — te same nazwy w jednym formularzu wracają
+            z Fastify jako TABLICA i kasują się nawzajem. Składane przez `adresMagazynu`.
 
-            ⚠️ POLE ZOSTAJE W CIELE TEJ AKCJI i jest JEDNO NA CALY FORMULARZ. Wyniesione do
-            belki albo powtorzone przy kazdej akcji wracaloby z Fastify jako TABLICA — czyli
-            dokladnie ta sama pulapka, ktora opisuje uwaga wyzej. %>
+            ⚠️ POLE ZOSTAJE W CIELE TEJ AKCJI i jest JEDNO NA CAŁY FORMULARZ. Wyniesione do
+            belki albo powtórzone przy każdej akcji wracałoby z Fastify jako TABLICA. %>
         <input type="hidden" name="zawezenie" value="<%= zawezenieHurtu %>">
-
-        <%# ⚠️ POLA SA W CENTYMETRACH, BAZA TRZYMA MILIMETRY — przelicza domena/rozmiar.js,
-            TA SAMA funkcja, ktorej uzywa ekran karty. Napis niezrozumialy ODMAWIA CALEGO
-            zapisu, nigdy nie jest zgadywany ani cicho pomijany. %>
-        <label class="pole-filtra">
-          <span>Szerokość (cm)</span>
-          <input type="text" name="szerokosc_cm" inputmode="decimal" size="6" placeholder="np. 70">
-        </label>
-        <label class="pole-filtra">
-          <span>Wysokość (cm)</span>
-          <input type="text" name="wysokosc_cm" inputmode="decimal" size="6" placeholder="np. 100">
-        </label>
-        <label class="pole-filtra">
-          <span>Kategoria główna</span>
-          <%# POLE WYBORU, NIE TEKSTOWE, i lista idzie Z BAZY — literowka wpisana z pamieci
-              ustawilaby kategorie, ktorej nie ma w zadnym sklepie, i to od razu setkom kart. %>
-          <select name="kategoria_glowna">
-            <option value="">— nie zmieniaj —</option>
-            <% kategorieDoFiltra.forEach(function (k) { %>
-              <option value="<%= k %>"><%= k %></option>
-            <% }); %>
-          </select>
-        </label>
-        <label class="pole-filtra">
-          <span>Marka</span>
-          <select name="marka">
-            <option value="">— nie zmieniaj —</option>
-            <% markiDoHurtu.forEach(function (marka) { %>
-              <option value="<%= marka %>"><%= marka %></option>
-            <% }); %>
-          </select>
-        </label>
-        <label class="pole-filtra">
-          <span>albo nowa marka</span>
-          <input type="text" name="marka_nowa" maxlength="200">
-        </label>
-        <label class="pole-filtra">
-          <span>Paczkomat</span>
-          <%# ⚠️ TRZY STANY i WYLACZNIE RECZNIE: zero wyliczania
-              z wymiarow. „Nieoznaczone" jest tu OSOBNYM, JAWNYM wyborem kasujacym decyzje —
-              i jest to jedyna droga powrotu po hurtowej pomylce na setkach kart. Pusta
-              pozycja („nie zmieniaj") znaczy CO INNEGO i musi byc od niej odrozialna. %>
-          <select name="paczkomat">
-            <option value="">— nie zmieniaj —</option>
-            <% paczkomatDoHurtu.forEach(function (p) { %>
-              <option value="<%= p.klucz %>"><%= p.etykieta %></option>
-            <% }); %>
-          </select>
-        </label>
-        <label class="pole-filtra">
-          <span>Stawka VAT</span>
-          <%# Pusta pozycja znaczy „nie zmieniaj”, a NIE „skasuj stawkę” — hurt stawki nie kasuje. %>
-          <select name="stawka_vat">
-            <option value="">— nie zmieniaj —</option>
-            <% stawkiDoHurtu.forEach(function (s) { %>
-              <option value="<%= s.klucz %>"><%= s.etykieta %></option>
-            <% }); %>
-          </select>
-        </label>
-        <%# Cena katalogowa: tryb, wartość i zaokrąglenie. „o %” i „o kwotę” liczą od ceny każdej karty,
-            więc karty bez ceny pominą; „na kwotę” ustawia jedną cenę wszystkim, także bez ceny. %>
-        <label class="pole-filtra">
-          <span>Cena katalogowa</span>
-          <select name="cena_tryb">
-            <option value="">— nie zmieniaj —</option>
-            <option value="o_procent">zmień o %</option>
-            <option value="na_kwote">zmień na kwotę (zł)</option>
-            <option value="o_kwote">zmień o kwotę (zł)</option>
-          </select>
-        </label>
-        <label class="pole-filtra">
-          <span>Wartość</span>
-          <input type="text" name="cena_wartosc" size="8" autocomplete="off" placeholder="np. +10 albo -5,50"
-                 aria-describedby="hurt-cena-katalogowa-podpowiedz">
-          <small id="hurt-cena-katalogowa-podpowiedz" aria-hidden="true">Bez znaku = w górę, „-” = w dół.</small>
-        </label>
-        <%# Przy „na kwotę” wpisaną cenę zapisuje się dokładnie, więc zaokrąglenie znika (CSS :has).
-            Przeglądarka bez :has pokaże pole dalej — serwer i tak je wtedy pomija. %>
-        <label class="pole-filtra hurt-zaokraglenie">
-          <span>Zaokrąglenie</span>
-          <select name="cena_zaokraglenie">
-            <option value="grosz" selected>do grosza</option>
-            <option value="99">końcówka ,99</option>
-            <option value="zloty">do pełnej złotówki</option>
-          </select>
-        </label>
-        <%# Cena zakupu ma własną tabelę z historią: hurt DOPISUJE cenę od dnia „od”, starych nie
-            nadpisuje. Kwota netto w złotych, ten sam zapis co na karcie („13,10”). %>
-        <label class="pole-filtra">
-          <span>Cena zakupu netto (zł)</span>
-          <input type="text" name="cena_zakupu_netto" inputmode="decimal" size="8" autocomplete="off" placeholder="np. 13,10"
-                 aria-describedby="hurt-cena-zakupu-podpowiedz">
-          <%# Dopisek wisi w etykiecie dla oka, ale czytnik dostaje go raz — jako opis pola, nie drugi raz w nazwie. %>
-          <small id="hurt-cena-zakupu-podpowiedz" aria-hidden="true">Puste = bez zmian. Nowa cena dochodzi do historii od podanego dnia, wcześniejsze zostają.</small>
-        </label>
-        <label class="pole-filtra">
-          <span>Obowiązuje od (puste = dziś)</span>
-          <input type="date" name="cena_zakupu_od">
-        </label>
-        <label class="pole-filtra">
-          <span>Nazwa</span>
-          <%# „Lampa wisząca Kopuła – 30x45cm" → „Lampa wisząca Kopuła". ⚠️ WYLACZNIE W REJESTRZE
-              MAGAZYNU — nazwa NIE JEDZIE do sklepu: jest zaindeksowanym
-              tytulem strony, a zmiana tytulu bez przekierowania gubi pozycje w wyszukiwarce. %>
-          <span class="w-linii">
-            <input type="checkbox" name="nazwa_bez_rozmiaru" value="tak" id="hurt-nazwa">
-            <label for="hurt-nazwa">skróć o rozmiar</label>
-          </span>
-        </label>
-        <%# Informacja o bezpieczeństwie (GPSR). Puste pole = bez zmian; powrót do tekstu domyślnego
-            konta to osobne pole wyboru, bo hurtem puste pole niczego nie kasuje. Oba naraz = odmowa. %>
-        <label class="pole-filtra hurt-informacja">
-          <span>Informacja o bezpieczeństwie</span>
-          <textarea name="informacja_bezpieczenstwa" rows="3" maxlength="<%= limitInformacjiBezpieczenstwa %>"
-                    aria-describedby="hurt-informacja-podpowiedz"></textarea>
-          <small id="hurt-informacja-podpowiedz" aria-hidden="true">Puste = bez zmian. Najwyżej <%= limitInformacjiBezpieczenstwa %> znaków. Zastępuje też załączniki z Allegro.</small>
-        </label>
-        <div class="pole-filtra">
-          <span>Tekst domyślny konta</span>
-          <span class="w-linii">
-            <input type="checkbox" name="informacja_bezpieczenstwa_domyslna" value="tak" id="hurt-informacja-domyslna">
-            <label for="hurt-informacja-domyslna">wróć do tekstu domyślnego konta</label>
-          </span>
-        </div>
-        <div class="pole-filtra">
-          <label for="hurt-prog-niskiego-stanu">Próg niskiego stanu (szt.)</label>
-          <input type="text" inputmode="numeric" name="prog_niskiego_stanu" id="hurt-prog-niskiego-stanu"
-                 size="8" aria-describedby="hurt-prog-podpowiedz">
-          <small id="hurt-prog-podpowiedz">Liczba całkowita od 0. Puste = bez zmian.</small>
-          <span class="w-linii">
-            <input type="checkbox" name="prog_niskiego_stanu_bez" value="tak" id="hurt-prog-bez">
-            <label for="hurt-prog-bez">bez progu</label>
-          </span>
+        <%# Wiersze zmian powstają w przeglądarce z szablonów niżej. Bez skryptu lista nie ma jak
+            ożyć, więc mówimy to wprost zamiast pokazywać martwe przyciski. %>
+        <noscript><p class="akcja-zasada">Edycja hurtowa wymaga włączonego JavaScriptu.</p></noscript>
+        <ol class="hz-lista" id="hz-lista" aria-label="Zmiany do wprowadzenia"></ol>
+        <button type="button" class="btn hz-kolejna" id="hz-kolejna" hidden>+ Dodaj kolejną zmianę</button>
+        <div class="hz-menu" id="hz-menu" role="group" aria-labelledby="hz-menu-tytul" hidden>
+          <div class="hz-menu-glowa">
+            <p class="hz-tytul" id="hz-menu-tytul">Co zmieniasz w zaznaczonych kartach?</p>
+            <button type="button" class="btn hz-menu-zamknij" id="hz-menu-zamknij" hidden>Anuluj</button>
+          </div>
+          <div class="hz-grupy">
+            <div class="hz-grupa">
+              <p>Ceny</p>
+              <button type="button" class="btn hz-opcja" data-z="cena">Cena katalogowa</button>
+              <button type="button" class="btn hz-opcja" data-z="stawka">Stawka VAT</button>
+              <button type="button" class="btn hz-opcja" data-z="zakup">Cena zakupu netto</button>
+            </div>
+            <div class="hz-grupa">
+              <p>Dane karty</p>
+              <button type="button" class="btn hz-opcja" data-z="marka">Marka</button>
+              <button type="button" class="btn hz-opcja" data-z="kategoria">Kategoria główna</button>
+            </div>
+            <div class="hz-grupa">
+              <p>Parametry</p>
+              <button type="button" class="btn hz-opcja" data-z="szerokosc">Szerokość (cm)</button>
+              <button type="button" class="btn hz-opcja" data-z="wysokosc">Wysokość (cm)</button>
+              <button type="button" class="btn hz-opcja" data-z="glebokosc">Głębokość (cm)</button>
+              <button type="button" class="btn hz-opcja" data-z="waga">Waga (kg)</button>
+            </div>
+            <% const parametryHurtu = locals.parametryKart || []; %>
+            <% const nazwaParametru = (p) => p.typ === 'liczba' && p.jednostka ? `${p.nazwa} (${p.jednostka})` : p.nazwa; %>
+            <% if (parametryHurtu.length) { %>
+            <div class="hz-grupa">
+              <p>Parametry własne</p>
+              <% parametryHurtu.forEach(function (p) { %>
+              <button type="button" class="btn hz-opcja" data-z="parametr-<%= p.id %>"><%= nazwaParametru(p) %></button>
+              <% }); %>
+              <% if (locals.mozeUstawieniaMagazynu) { %><a class="hz-ustawienia" href="/magazyn/ustawienia/parametry">Magazyn → Ustawienia → Parametry kart</a><% } %>
+            </div>
+            <% } %>
+            <div class="hz-grupa">
+              <p>Inne</p>
+              <button type="button" class="btn hz-opcja" data-z="bezpieczenstwo">Informacja o bezpieczeństwie</button>
+              <% if (stany) { %><button type="button" class="btn hz-opcja" data-z="prog">Próg niskiego stanu</button><% } %>
+            </div>
+          </div>
         </div>
 
-        <%# ⚠️⚠️ ZAKRES JEDZIE Z KLIKNIETYM PRZYCISKIEM — patrz uwaga nad formularzem. %>
-        <div class="akcja-przyciski">
-          <button class="btn btn--glowny" type="submit" name="zakres" value="zaznaczone">
-            Pokaż, co się zmieni — dla zaznaczonych
-          </button>
-          <button class="btn" type="submit" name="zakres" value="pasujace">
-            Pokaż, co się zmieni — dla wszystkich pasujących
-            (<strong class="hurt-pasujace"><%= ilePasujacych %></strong>)
-          </button>
+        <%# ⚠️⚠️ ZAKRES JEDZIE Z KLIKNIĘTYM PRZYCISKIEM — patrz uwaga nad formularzem. Ten panel
+            działa wyłącznie na zaznaczonych: zmiana „wszystkich pasujących” byłaby zbyt łatwa
+            do kliknięcia przy liście zmian zbudowanej z kilku wierszy. %>
+        <div class="hz-stopka" id="hz-stopka" hidden>
+          <div class="akcja-przyciski">
+            <button class="btn btn--glowny" type="submit" name="zakres" value="zaznaczone">Pokaż, co się zmieni — <span data-hz-ile>zaznaczone</span></button>
+          </div>
         </div>
-        <p class="akcja-zasada">
-          Puste pole = bez zmian. Nic nie zapisuje się wprost — przycisk
-          prowadzi na podgląd zmian.
-        </p>
+
+        <%# Szablony wierszy. Zawartość <template> nie jedzie z formularzem — pole istnieje
+            dopiero po wybraniu pozycji z listy, więc niewybrane zmiany nie mogą się wysłać.
+            Puste pole w dodanym wierszu dalej znaczy „bez zmian” (tak czyta je serwer). %>
+        <template id="hz-szablony">
+          <%# Cena: „o %” i „o kwotę” liczą od ceny każdej karty (karty bez ceny pominą); „ustaw
+              kwotę” zapisuje jedną cenę dokładnie, więc zaokrąglenie znika (skrypt i CSS :has). %>
+          <li data-zmiana="cena">
+            <span class="hz-nazwa">Cena katalogowa</span>
+            <div class="hz-pola">
+              <label class="pole-filtra"><span>Jak</span>
+                <select name="cena_tryb">
+                  <option value="o_procent">zmień o %</option>
+                  <option value="o_kwote">zmień o kwotę (zł)</option>
+                  <option value="na_kwote">ustaw kwotę (zł)</option>
+                </select>
+              </label>
+              <%# Bez inputmode: klawiatura „decimal” na iOS nie ma minusa, a pole przyjmuje obniżkę. %>
+              <label class="pole-filtra"><span>Wartość</span>
+                <input type="text" name="cena_wartosc" size="14" autocomplete="off" placeholder="np. +10 albo -5,50"
+                       aria-describedby="hz-cena-podpowiedz">
+              </label>
+              <label class="pole-filtra hurt-zaokraglenie"><span>Zaokrąglenie</span>
+                <select name="cena_zaokraglenie">
+                  <option value="grosz" selected>do grosza</option>
+                  <option value="99">końcówka ,99</option>
+                  <option value="zloty">do pełnej złotówki</option>
+                </select>
+              </label>
+              <small class="hz-podpowiedz" id="hz-cena-podpowiedz">Bez znaku = w górę, „-” = w dół.</small>
+            </div>
+            <button type="button" class="btn hz-usun" aria-label="Usuń zmianę: Cena katalogowa">✕</button>
+          </li>
+          <%# Pusta pozycja selectów znaczy „nie zmieniaj”, a NIE „skasuj” — wiersz dodany przez
+              pomyłkę nie ustawi pierwszej wartości z listy wszystkim zaznaczonym kartom. %>
+          <li data-zmiana="stawka">
+            <span class="hz-nazwa">Stawka VAT</span>
+            <div class="hz-pola">
+              <label class="pole-filtra"><span>Nowa stawka</span>
+                <select name="stawka_vat">
+                  <option value="">— nie zmieniaj —</option>
+                  <% stawkiDoHurtu.forEach(function (s) { %>
+                  <option value="<%= s.klucz %>"><%= s.etykieta %></option>
+                  <% }); %>
+                </select>
+              </label>
+            </div>
+            <button type="button" class="btn hz-usun" aria-label="Usuń zmianę: Stawka VAT">✕</button>
+          </li>
+          <%# Cena zakupu ma własną tabelę z historią: hurt DOPISUJE cenę od dnia „od”, starych nie
+              nadpisuje. Kwota netto w złotych, ten sam zapis co na karcie („13,10”). %>
+          <li data-zmiana="zakup">
+            <span class="hz-nazwa">Cena zakupu netto</span>
+            <div class="hz-pola">
+              <label class="pole-filtra"><span>Kwota (zł)</span>
+                <input type="text" name="cena_zakupu_netto" inputmode="decimal" size="8" autocomplete="off" placeholder="np. 13,10"
+                       aria-describedby="hz-zakup-podpowiedz">
+              </label>
+              <label class="pole-filtra"><span>Obowiązuje od</span>
+                <input type="date" name="cena_zakupu_od" aria-describedby="hz-zakup-podpowiedz">
+              </label>
+              <small class="hz-podpowiedz" id="hz-zakup-podpowiedz">Puste „od” = dziś. Nowa cena dochodzi do historii; wcześniejsze zostają.</small>
+            </div>
+            <button type="button" class="btn hz-usun" aria-label="Usuń zmianę: Cena zakupu netto">✕</button>
+          </li>
+          <%# Słownik albo nowa marka — nie obie naraz (serwer odmawia), stąd pusta pozycja słownika. %>
+          <li data-zmiana="marka">
+            <span class="hz-nazwa">Marka</span>
+            <div class="hz-pola">
+              <label class="pole-filtra"><span>Ze słownika</span>
+                <select name="marka">
+                  <option value="">— nie zmieniaj —</option>
+                  <% markiDoHurtu.forEach(function (m) { %>
+                  <option value="<%= m %>"><%= m %></option>
+                  <% }); %>
+                </select>
+              </label>
+              <label class="pole-filtra"><span>albo nowa</span>
+                <input type="text" name="marka_nowa" maxlength="200" size="16" autocomplete="off" placeholder="nazwa nowej marki">
+              </label>
+            </div>
+            <button type="button" class="btn hz-usun" aria-label="Usuń zmianę: Marka">✕</button>
+          </li>
+          <li data-zmiana="kategoria">
+            <span class="hz-nazwa">Kategoria główna</span>
+            <div class="hz-pola">
+              <label class="pole-filtra"><span>Nowa kategoria</span>
+                <select name="kategoria_glowna">
+                  <option value="">— nie zmieniaj —</option>
+                  <% kategorieDoFiltra.forEach(function (k) { %>
+                  <option value="<%= k %>"><%= k %></option>
+                  <% }); %>
+                </select>
+              </label>
+            </div>
+            <button type="button" class="btn hz-usun" aria-label="Usuń zmianę: Kategoria główna">✕</button>
+          </li>
+          <%# Wymiary w centymetrach, waga w kilogramach — przelicza domena, ta sama funkcja co na
+              karcie. Napis niezrozumiały ODMAWIA CAŁEGO zapisu. Puste pole nie kasuje, dlatego
+              kasowanie to osobne pole wyboru „wyczyść wartość”. %>
+          <% [['szerokosc', 'szerokosc_cm', 'Szerokość (cm)', 'cm'], ['wysokosc', 'wysokosc_cm', 'Wysokość (cm)', 'cm'],
+              ['glebokosc', 'glebokosc_cm', 'Głębokość (cm)', 'cm'], ['waga', 'waga_kg', 'Waga (kg)', 'kg']].forEach(function ([klucz, pole, nazwa, jednostka]) { %>
+          <li data-zmiana="<%= klucz %>">
+            <span class="hz-nazwa"><%= nazwa %></span>
+            <div class="hz-pola">
+              <label class="pole-filtra"><span>Nowa wartość (<%= jednostka %>)</span>
+                <input type="text" inputmode="decimal" name="<%= pole %>" size="6" autocomplete="off">
+              </label>
+              <label class="hz-wyczysc"><input type="checkbox" name="<%= pole %>_wyczysc" value="tak"> wyczyść wartość</label>
+            </div>
+            <button type="button" class="btn hz-usun" aria-label="Usuń zmianę: <%= nazwa %>">✕</button>
+          </li>
+          <% }); %>
+          <% parametryHurtu.forEach(function (p) { %>
+          <li data-zmiana="parametr-<%= p.id %>">
+            <span class="hz-nazwa"><%= nazwaParametru(p) %> <small class="hz-wlasny">parametr własny</small></span>
+            <div class="hz-pola">
+              <% if (p.typ === 'lista') { %>
+              <label class="pole-filtra"><span>Nowa wartość</span>
+                <select name="parametr_<%= p.id %>">
+                  <option value="">— nie zmieniaj —</option>
+                  <% (p.wartosci || []).forEach(function (w) { %>
+                  <option value="<%= w %>"><%= w %></option>
+                  <% }); %>
+                </select>
+              </label>
+              <% } else if (p.typ === 'liczba') { %>
+              <label class="pole-filtra"><span><%= p.jednostka ? `Nowa wartość (${p.jednostka})` : 'Nowa wartość' %></span>
+                <input type="text" inputmode="decimal" name="parametr_<%= p.id %>" size="8" autocomplete="off">
+              </label>
+              <% } else { %>
+              <label class="pole-filtra"><span>Nowa wartość</span>
+                <input type="text" name="parametr_<%= p.id %>" size="16" autocomplete="off">
+              </label>
+              <% } %>
+              <label class="hz-wyczysc"><input type="checkbox" name="parametr_<%= p.id %>_wyczysc" value="tak"> wyczyść wartość</label>
+            </div>
+            <button type="button" class="btn hz-usun" aria-label="Usuń zmianę: <%= nazwaParametru(p) %>">✕</button>
+          </li>
+          <% }); %>
+          <%# Informacja o bezpieczeństwie (GPSR). Powrót do tekstu domyślnego konta to osobne
+              pole wyboru, bo puste pole niczego nie kasuje. Oba naraz = odmowa serwera. %>
+          <li data-zmiana="bezpieczenstwo">
+            <span class="hz-nazwa">Informacja o bezpieczeństwie</span>
+            <div class="hz-pola hz-pola--szerokie">
+              <label class="pole-filtra hz-tekst"><span>Tekst (do <%= limitInformacjiBezpieczenstwa %> znaków)</span>
+                <textarea name="informacja_bezpieczenstwa" rows="6" maxlength="<%= limitInformacjiBezpieczenstwa %>" aria-describedby="hz-informacja-podpowiedz"></textarea>
+              </label>
+              <label class="hz-wyczysc"><input type="checkbox" name="informacja_bezpieczenstwa_domyslna" value="tak"> wróć do tekstu domyślnego konta</label>
+              <small class="hz-podpowiedz" id="hz-informacja-podpowiedz">Zastępuje też załączniki z Allegro.</small>
+            </div>
+            <button type="button" class="btn hz-usun" aria-label="Usuń zmianę: Informacja o bezpieczeństwie">✕</button>
+          </li>
+          <% if (stany) { %>
+          <li data-zmiana="prog">
+            <span class="hz-nazwa">Próg niskiego stanu</span>
+            <div class="hz-pola">
+              <label class="pole-filtra"><span>Sztuk</span>
+                <input type="text" inputmode="numeric" name="prog_niskiego_stanu" size="6" autocomplete="off">
+              </label>
+              <label class="hz-wyczysc"><input type="checkbox" name="prog_niskiego_stanu_bez" value="tak"> bez progu</label>
+            </div>
+            <button type="button" class="btn hz-usun" aria-label="Usuń zmianę: Próg niskiego stanu">✕</button>
+          </li>
+          <% } %>
+        </template>
+        <script type="module" src="<%= zasob('edycja-hurtowa.js') %>"></script>
       </div>
     </details>
 
@@ -558,7 +674,7 @@
   <%# Pasek stanow magazynowych; bez wlaczonych stanow (Ustawienia → Magazyn) go nie ma. %>
   <p class="magazyn-stany">
     <b>Stany magazynowe</b> liczone od <%= stany.od %>:
-    <% if (stany.naMinusie) { %><span class="stan-minus"><%= stany.naMinusie %> na minusie</span><% } else { %>nic na minusie<% } %>
+    <% if (stany.naMinusie) { %><a class="stan-minus" href="<%= stany.adresMinusa %>"><%= stany.naMinusie %> na minusie</a><% } else { %>nic na minusie<% } %>
     · <a href="<%= stany.adresNiskiegoStanu %>"><%= stany.zNiskimStanem %> z niskim stanem</a>
     · <a href="<%= stany.adresBezKarty %>">pozycje zamówień bez karty: <%= stany.bezKarty %></a>
     · <a href="<%= stany.adresImportu %>">Import stanu otwarcia</a>
@@ -604,19 +720,24 @@
           <a class="zaznacz-wszystkie" href="<%= sortowanie.marka.adres %>">Marka <span aria-hidden="true"><%= sortowanie.marka.strzalka %></span></a>
         </th>
         <% if (widok === 'katalog') { %>
-          <% naglowkiKanalow.forEach(function (k) { %>
-            <th class="magazyn-kanal"><%= k.etykieta %></th>
-          <% }); %>
+          <th class="liczba" scope="col">Cena zakupu netto</th>
+          <th class="liczba" scope="col">VAT</th>
         <% } else { %>
           <th scope="col" <% if (sortowanie.kategoria.aria) { %>aria-sort="<%= sortowanie.kategoria.aria %>"<% } %>>
             <a class="zaznacz-wszystkie" href="<%= sortowanie.kategoria.adres %>">Kategoria <%= sortowanie.kategoria.strzalka %></a>
           </th>
+        <% } %>
+        <% if (stany) { %><th class="liczba">Na stanie (szt.)</th><% } %>
+        <% if (widok === 'katalog') { %>
+          <% naglowkiKanalow.forEach(function (k) { %>
+            <th class="magazyn-kanal"><%= k.etykieta %></th>
+          <% }); %>
+        <% } else { %>
           <th class="liczba" scope="col" <% if (sortowanie.cena.aria) { %>aria-sort="<%= sortowanie.cena.aria %>"<% } %>>
             <a class="zaznacz-wszystkie" href="<%= sortowanie.cena.adres %>">Cena <span aria-hidden="true"><%= sortowanie.cena.strzalka %></span></a>
           </th>
           <% if (kolumnaKanalow) { %><th>Kanały</th><% } %>
         <% } %>
-        <% if (stany) { %><th class="liczba">Na stanie (szt.)</th><% } %>
       </tr>
     </thead>
     <tbody>
@@ -657,6 +778,15 @@
           </td>
           <td><% if (w.marka) { %><%= w.marka %><% } else { %><span class="magazyn-brak">—</span><% } %></td>
           <% if (widok === 'katalog') { %>
+            <td class="liczba"><% if (w.cenaZakupuNetto !== null) { %><%= w.cenaZakupuNetto %><% } else { %><span class="magazyn-brak">—</span><% } %></td>
+            <td class="liczba"><% if (w.stawkaVat) { %><%= w.stawkaVat %>%<% } else { %><span class="magazyn-brak">—</span><% } %></td>
+          <% } else { %>
+            <td><% if (w.kategoria) { %><%= w.kategoria %><% } else { %><span class="magazyn-brak">—</span><% } %></td>
+          <% } %>
+          <% if (stany) { %>
+            <td class="liczba kol-na-stanie<%= w.klasaStanu %>"><% if (w.opisNiskiegoStanu) { %><span title="<%= w.opisNiskiegoStanu %>" aria-hidden="true">⚠&#xfe0e;</span> <span class="poza-okiem"><%= w.opisNiskiegoStanu %></span><% } %><%= w.naStanie %></td>
+          <% } %>
+          <% if (widok === 'katalog') { %>
             <% w.kanaly.forEach(function (k) { %>
               <td class="magazyn-kanal">
                 <% if (!k) { %>
@@ -671,7 +801,6 @@
               </td>
             <% }); %>
           <% } else { %>
-            <td><% if (w.kategoria) { %><%= w.kategoria %><% } else { %><span class="magazyn-brak">—</span><% } %></td>
             <%# Szybka zmiana ceny: ołówek tylko dla konta z prawem do adresu zapisu (ta sama mapa praw co
                 strażnik). Bez skryptu ołówek jest zwykłym odnośnikiem do edycji danych karty. %>
             <% const adresCeny = '/magazyn/' + w.id + '/cena'; %>
@@ -682,9 +811,6 @@
             <% } %>
             <%# Plakietki kanałów jak na liście zamówień. %>
             <% if (kolumnaKanalow) { %><td><% if (!w.plakietkiKanalow.length) { %>—<% } %><% for (const k of w.plakietkiKanalow) { %><span class="plakietka plakietka--kanal plakietka--<%= k.klucz %><%= k.aktywna ? '' : ' plakietka--nieaktywna' %>" role="img" aria-label="<%= k.opis %>" title="<%= k.opis %>"><%= k.znak %></span><% } %></td><% } %>
-          <% } %>
-          <% if (stany) { %>
-            <td class="liczba kol-na-stanie<%= w.klasaStanu %>"><% if (w.opisNiskiegoStanu) { %><span title="<%= w.opisNiskiegoStanu %>" aria-hidden="true">⚠&#xfe0e;</span> <span class="poza-okiem"><%= w.opisNiskiegoStanu %></span><% } %><%= w.naStanie %></td>
           <% } %>
         </tr>
       <% }); %>
@@ -719,13 +845,30 @@
 <% if (stronicowanie) { %>
   <nav class="hist-strony magazyn-strony" aria-label="Strony listy kart">
     <% if (stronicowanie.wszystkie) { %>
-      <span></span>
-      <span class="hist-numer"><%= stronicowanie.napis %> · <a href="<%= stronicowanie.adresStron %>">po 100 na stronie</a></span>
-      <span></span>
+      <span class="magazyn-strony-licznik"><%= stronicowanie.napis %></span>
+      <a class="btn btn--maly" href="<%= stronicowanie.adresStron %>">Po 100 na stronie</a>
     <% } else { %>
-      <% if (stronicowanie.poprzednia) { %><a href="<%= stronicowanie.poprzednia %>">← Poprzednie</a><% } else { %><span></span><% } %>
-      <span class="hist-numer"><%= stronicowanie.napis %> · <a href="<%= stronicowanie.adresWszystkich %>">pokaż wszystkie</a></span>
-      <% if (stronicowanie.nastepna) { %><a href="<%= stronicowanie.nastepna %>">Następne →</a><% } else { %><span></span><% } %>
+      <% if (stronicowanie.poprzednia) { %>
+        <a class="btn btn--maly" href="<%= stronicowanie.poprzednia %>" rel="prev">← Poprzednie</a>
+      <% } else { %>
+        <span class="btn btn--maly" aria-disabled="true">← Poprzednie</span>
+      <% } %>
+      <% for (const pozycja of stronicowanie.numery) { %>
+        <% if (pozycja.luka) { %>
+          <span aria-hidden="true">…</span>
+        <% } else if (pozycja.biezaca) { %>
+          <span class="btn btn--maly btn--glowny" aria-current="page"><%= pozycja.numer %></span>
+        <% } else { %>
+          <a class="btn btn--maly" href="<%= pozycja.adres %>" aria-label="Strona <%= pozycja.numer %>"><%= pozycja.numer %></a>
+        <% } %>
+      <% } %>
+      <% if (stronicowanie.nastepna) { %>
+        <a class="btn btn--maly" href="<%= stronicowanie.nastepna %>" rel="next">Następne →</a>
+      <% } else { %>
+        <span class="btn btn--maly" aria-disabled="true">Następne →</span>
+      <% } %>
+      <span class="magazyn-strony-licznik"><%= stronicowanie.napis %></span>
+      <a class="btn btn--maly" href="<%= stronicowanie.adresWszystkich %>">Pokaż wszystkie</a>
     <% } %>
   </nav>
 <% } %>

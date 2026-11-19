@@ -63,7 +63,7 @@ describe('szerokość deklarowana przez ekran', () => {
     ['/ustawienia/integracje/poczta', 'formularz'],
     ['/ustawienia/wiadomosci-i-automatyzacje', 'formularz'],
     ['/ustawienia/automatyzacje/nowa', 'formularz'],
-    ['/ustawienia/magazyn', 'karta'],
+    ['/magazyn/ustawienia', 'karta'],
     ['/ustawienia/szablony-wiadomosci', 'karta'],
     ['/ustawienia/konta', 'karta'],
     ['/ustawienia/role', 'karta'],

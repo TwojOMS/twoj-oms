@@ -18,7 +18,7 @@ import PDFDocument from 'pdfkit';
 import { METODY_WZA } from '../../../src/domena/allegro-wysylka.js';
 import { stanyKanalowZKolizjami } from '../../../src/domena/kanal-stan.js';
 import { bladOperatora } from '../../../src/domena/bledy.js';
-import { KANALY } from '../../../scripts/demo-dane-firma.mjs';
+import { KANALY, USTAWIENIA_WOO_DEMO } from '../../../scripts/demo-dane-firma.mjs';
 import {
   katalogWoo,
   ofertyAllegro,
@@ -200,13 +200,7 @@ export function createAtrapaWoo({
       const szukane = new Set(ids.map(idProduktuWoo));
       return structuredClone(katalog().produkty.filter((p) => p.status === 'draft' && szukane.has(String(p.id))));
     },
-    ustawienieSklepu: async (id) =>
-      ({
-        woocommerce_dimension_unit: 'cm',
-        woocommerce_weight_unit: 'kg',
-        woocommerce_calc_taxes: 'no',
-        woocommerce_prices_include_tax: 'no',
-      })[id] ?? '',
+    ustawienieSklepu: async (id) => USTAWIENIA_WOO_DEMO[id] ?? '',
     pobierzProdukt: async (sciezka) => structuredClone(znajdz(sciezka)),
     pobierzStany: async (ids) =>
       structuredClone(katalog().produkty.filter((p) => ids.map(String).includes(String(p.id)))),
@@ -242,8 +236,8 @@ export function createAtrapaWoo({
           const sciezka = rodzic === null ? `products/${id}` : `products/${rodzic}/variations/${id}`;
           // Jak Woo: `price` idzie za ceną regularną, chyba że trwa promocja — wtedy zostaje promocyjna.
           const promocja = znajdz(sciezka).sale_price;
-          zapisz(sciezka, promocja ? { regular_price } : { regular_price, price: regular_price });
-          return { id, ok: true };
+          const zapisany = zapisz(sciezka, promocja ? { regular_price } : { regular_price, price: regular_price });
+          return { id, ok: true, cena: zapisany.price };
         } catch (e) {
           return { id, ok: false, blad: e.message };
         }

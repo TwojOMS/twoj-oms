@@ -35,7 +35,7 @@ export function trescOferty(db, kartaId, ustawienia, adresPublicznyZdjec = '', o
     .prepare("SELECT kategoria_id FROM karty_dane_kanalu WHERE karta_id = ? AND typ_kanalu = 'allegro'")
     .get(kartaId);
   const ilosc = iloscOferty(opcje.migawka, kartaId, ustawienia);
-  // E3d.02-03: wyjątek cennika dostaw z karty na koncie tych ustawień (bez klucza konta — bez wyjątku).
+  // Wyjątek cennika dostaw z karty na koncie tych ustawień (bez klucza konta — bez wyjątku).
   const wyjatek =
     typeof ustawienia?.klucz === 'string' && ustawienia.klucz
       ? wyjatekCennika(db, { kartaId, konto: ustawienia.klucz })
@@ -55,10 +55,13 @@ export function trescOferty(db, kartaId, ustawienia, adresPublicznyZdjec = '', o
     wyjatekCennika: wyjatek,
     recznaGr,
   });
-  const numery = (wartosc) => zdjecia.flatMap((z, i) => (z.ai === wartosc ? [i + 1] : [])).join(', ') || 'brak';
-  ostrzezenia.push(
-    `${zdjecia.some((z) => z.ai === 1) ? 'Zdjęcia wygenerowane przez AI: tak —' : zdjecia.some((z) => z.ai === null) ? 'Zdjęcia wygenerowane przez AI: nieznane —' : 'Zdjęcia wygenerowane przez AI: nie —'} zdjęcia: ${numery(1)}; nieznane: ${numery(null)}. OMS jeszcze nie wysyła znacznika aiGenerated do ERLI; ustaw go w panelu ERLI (tam tego znacznika nie można później wyłączyć).`,
-  );
+  const numery = (wartosc) => zdjecia.flatMap((z, i) => (z.ai === wartosc ? [i + 1] : []));
+  const doOznaczenia = [...numery(1), ...numery(null)];
+  if (doOznaczenia.length > 0) {
+    ostrzezenia.push(
+      `Zdjęcia ${doOznaczenia.join(', ')} mogą być wygenerowane przez AI. OMS nie oznacza tego w ERLI — jeśli tak jest, zaznacz to w panelu ERLI (tego znacznika nie da się potem wyłączyć).`,
+    );
+  }
   return {
     karta,
     bledy,

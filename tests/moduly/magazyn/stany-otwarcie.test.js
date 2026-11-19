@@ -346,24 +346,24 @@ it('kontynuacja odejmuje sprzedaż z przerwy i zapisuje także znane zero', asyn
 it('wyłączenie z licznikami 2/1 wymaga Rozumiem, bez objętych ofert nie wymaga', async () => {
   wlacz();
   db.prepare("UPDATE oferty_kanalow SET tryb = 'obserwowana', ilosc_z_oms = 1 WHERE kanal = 'woo_polcien'").run();
-  const ekran = await get('/ustawienia/magazyn');
+  const ekran = await get('/magazyn/ustawienia');
   expect(ekran.body).toContain('2 ofert wróci do stałej ilości, 1 przejętych przestanie być synchronizowanych');
   expect(ekran.body).toContain('name="rozumiem"');
-  expect((await post('/ustawienia/magazyn/stany', { wlacz: '0' })).statusCode).toBe(400);
+  expect((await post('/magazyn/ustawienia/stany', { wlacz: '0' })).statusCode).toBe(400);
   expect(migawkaStanow(db).wlaczone).toBe(true);
-  expect((await post('/ustawienia/magazyn/stany', { wlacz: '0', rozumiem: '1' })).statusCode).toBe(303);
+  expect((await post('/magazyn/ustawienia/stany', { wlacz: '0', rozumiem: '1' })).statusCode).toBe(303);
   expect(migawkaStanow(db).wlaczone).toBe(false);
   expect(iloscDlaKanalu({ migawka: migawkaStanow(db), kartaId: karta, tryb: 'zarzadzana', stalaIlosc: 7 }).ilosc).toBe(
     7,
   );
   wlacz();
   db.prepare("UPDATE oferty_kanalow SET tryb = 'obserwowana', ilosc_z_oms = 0").run();
-  expect((await get('/ustawienia/magazyn')).body).not.toContain('name="rozumiem"');
-  expect((await post('/ustawienia/magazyn/stany', { wlacz: '0' })).statusCode).toBe(303);
+  expect((await get('/magazyn/ustawienia')).body).not.toContain('name="rozumiem"');
+  expect((await post('/magazyn/ustawienia/stany', { wlacz: '0' })).statusCode).toBe(303);
 });
 
 it('włączenie daje odnośnik, podgląd pokazuje bezKarty i liczniki na konto', async () => {
-  const r = await post('/ustawienia/magazyn/stany', { wlacz: '1' });
+  const r = await post('/magazyn/ustawienia/stany', { wlacz: '1' });
   expect((await get(r.headers.location)).body).toContain('href="/magazyn/stany/otwarcie"');
   zakup({ at: new Date().toISOString(), produkt: 'nieznany' });
   const p = await get('/magazyn/stany/kanaly/podglad');
@@ -378,7 +378,7 @@ it('nie-admin i POST bez CSRF → 403, bez wywołania klienta', async () => {
     '/magazyn/stany/otwarcie/kontynuuj',
     '/magazyn/stany/otwarcie/zapisz',
     '/magazyn/stany/kanaly/zatwierdz',
-    '/ustawienia/magazyn/stany',
+    '/magazyn/ustawienia/stany',
   ])
     expect((await post(url, {}, { authorization: auth.authorization })).statusCode).toBe(403);
   wlacz();
@@ -392,7 +392,7 @@ it('nie-admin i POST bez CSRF → 403, bez wywołania klienta', async () => {
     '/magazyn/stany/otwarcie/kontynuuj',
     '/magazyn/stany/otwarcie/zapisz',
     '/magazyn/stany/kanaly/zatwierdz',
-    '/ustawienia/magazyn/stany',
+    '/magazyn/ustawienia/stany',
   ]) {
     expect((await post(url, { wlacz: '0' }, naglowki)).statusCode).toBe(403);
     expect((await post(url, {}, { ...jako(db, 'sprzedawca') })).statusCode).toBe(403);
@@ -401,7 +401,7 @@ it('nie-admin i POST bez CSRF → 403, bez wywołania klienta', async () => {
 });
 
 it.each([0, 1, 2])('D14: wyłączone stany, wariant %i, ekran bazowy i brak odczytów', async (wariant) => {
-  const bazoweUstawienia = (await get('/ustawienia/magazyn')).body;
+  const bazoweUstawienia = (await get('/magazyn/ustawienia')).body;
   const bazowyMagazyn = (await get('/magazyn')).body;
   if (wariant) {
     wlacz();
@@ -415,7 +415,7 @@ it.each([0, 1, 2])('D14: wyłączone stany, wariant %i, ekran bazowy i brak odcz
   for (const url of ['/magazyn/stany/otwarcie', '/magazyn/stany/kanaly/podglad'])
     expect((await get(url)).statusCode).toBe(303);
   expect((await post('/magazyn/stany/otwarcie/odczytaj')).statusCode).toBe(303);
-  if (!wariant) expect((await get('/ustawienia/magazyn')).body).toBe(bazoweUstawienia);
+  if (!wariant) expect((await get('/magazyn/ustawienia')).body).toBe(bazoweUstawienia);
   expect((await get('/magazyn')).body).toBe(bazowyMagazyn);
   expect(woo.pobierzStany).not.toHaveBeenCalled();
   expect(allegro.ofertyKonta).not.toHaveBeenCalled();

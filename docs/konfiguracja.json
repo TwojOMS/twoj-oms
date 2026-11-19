@@ -7805,7 +7805,7 @@
     },
     {
       "path": "src/moduly/rdzen/modul.ts",
-      "line": 30,
+      "line": 32,
       "expression": "env",
       "callee": "wczytajSprzedawce",
       "call": "wczytajSprzedawce(env)"
@@ -8218,21 +8218,21 @@
     },
     {
       "path": "src/moduly/magazyn/modul.ts",
-      "line": 114,
+      "line": 124,
       "expression": "env",
       "callee": "katalogZdjec",
       "call": "katalogZdjec(env)"
     },
     {
       "path": "src/moduly/magazyn/modul.ts",
-      "line": 114,
+      "line": 124,
       "expression": "env",
       "callee": "adresPublicznyZdjec",
       "call": "adresPublicznyZdjec(env)"
     },
     {
       "path": "src/moduly/ustawienia/modul.ts",
-      "line": 57,
+      "line": 56,
       "expression": "env",
       "callee": "adresFirmyZEnv",
       "call": "adresFirmyZEnv(env)"
@@ -8777,7 +8777,7 @@
     },
     {
       "path": "src/moduly/ustawienia/modul.ts",
-      "sha256": "6e814b9ff8d29524b879cd6351ae626125691422e257af7296bb833ac0e65e35",
+      "sha256": "8406909f1636896e85fefa5379d46ad3f4a9d37c371e62379fe81f9ef493e3bc",
       "normalizacja": "LF"
     },
     {
@@ -8859,7 +8859,7 @@
     },
     {
       "path": "src/moduly/ustawienia/modul.ts",
-      "sha256": "6e814b9ff8d29524b879cd6351ae626125691422e257af7296bb833ac0e65e35",
+      "sha256": "8406909f1636896e85fefa5379d46ad3f4a9d37c371e62379fe81f9ef493e3bc",
       "normalizacja": "LF"
     },
     {

@@ -8,7 +8,7 @@ describe('działy Ustawień', () => {
     expect(m?.dzialy.map((d) => d.etykieta)).toEqual([
       'Firma',
       'Integracje',
-      'Zamówienia i magazyn',
+      'Zamówienia',
       'Wysyłka i druk',
       'Faktury i podatki',
       'Komunikacja',

@@ -3,7 +3,7 @@ import { poprawneSekcje, sekcjeDlaErli } from './opis-sekcje.js';
 import { dobierzCennik, regulyKonta } from './cennik-dostaw.js';
 
 // Stawka panelu (E2.01: STAWKI_Z_ZW) → wyliczenie ERLI; nieznana stawka nie może trafić do paczki (D9).
-const STAWKI_ERLI = { '23': 'TAX_23', '8': 'TAX_8', '5': 'TAX_5', '0': 'TAX_0', zw: 'TAX_ZW' };
+export const STAWKI_ERLI = { '23': 'TAX_23', '8': 'TAX_8', '5': 'TAX_5', '0': 'TAX_0', zw: 'TAX_ZW' };
 const ROZSZERZENIA = new Set(['jpg', 'png', 'webp']);
 // D27: włączyć dopiero po potwierdzeniu w sandboxie ERLI.
 export const WYSYLAJ_AI_ERLI = false;
@@ -98,7 +98,7 @@ export function produktErliZKarty(wejscie) {
   const period = ustawienia.czasWysylkiDni;
   if (!Number.isSafeInteger(period) || period < 0)
     bledy.push('Ustaw czas wysyłki w dniach w konfiguratorze konta ERLI.');
-  // Cennik dobrany do rozmiaru (E3d.02, D5–D6): wyjątek na karcie, reguły konta albo jeden cennik.
+  // Cennik dobrany do rozmiaru: wyjątek na karcie, reguły konta albo jeden cennik.
   const dostawa = dobierzCennik({ karta, reguly: regulyKonta(ustawienia), wyjatek: wejscie.wyjatekCennika });
   const deliveryPriceList = dostawa.cennik ?? '';
   if (dostawa.odmowa?.kod === 'brak-wymiarow') bledy.push(dostawa.odmowa.tekst);

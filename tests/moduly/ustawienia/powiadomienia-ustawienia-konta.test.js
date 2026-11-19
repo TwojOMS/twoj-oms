@@ -50,7 +50,7 @@ it('każdy zalogowany widzi osiem domyślnie zaznaczonych pól i link z Mojego k
   const a = await get(app, '/ustawienia/powiadomienia', admin);
   expect(pola(a.body)).toHaveLength(9);
   expect((await get(app, '/konto', osoba)).body).toContain('href="/konto/powiadomienia"');
-  expect((await get(app, '/ustawienia/magazyn', osoba)).statusCode).toBe(403);
+  expect((await get(app, '/magazyn/ustawienia', osoba)).statusCode).toBe(403);
 });
 
 it('POST zapisuje tylko wyłączone rodzaje per konto, a ponowny zapis włącza wszystko', async () => {

@@ -29,7 +29,7 @@ async function uzupelnijOfertyDemo({ db, kanal, env, teraz, log }) {
     );
   }
   const erli = createAtrapaErli({ db, kanal, env, teraz, log });
-  const produkty = await erli.szukajProduktow();
+  const produkty = await erli.szukajProduktow({ pagination: { limit: 200 } });
   const stany = ['aktywna', 'do_wyslania', 'problem', 'blad', 'aktywna', 'aktywna'];
   for (const [i, karta] of karty.entries()) {
     const przejeta = i === 5;
@@ -106,6 +106,55 @@ async function uzupelnijOfertyDemo({ db, kanal, env, teraz, log }) {
                 ]
               : [],
         cenaDoPotwierdzeniaGr: i === 4 ? karta.cena_gr : null,
+      },
+      opcje,
+    );
+  }
+
+  const pozostale = db
+    .prepare(
+      `SELECT id, sku, nazwa, cena_gr, kategoria_glowna FROM karty_produktow
+      WHERE id NOT IN (${karty.map(() => '?').join(', ')})
+        AND id % 5 <> 0 AND sku NOT IN ('LMP-KIN-001', 'LMP-KIN-002')
+      ORDER BY id`,
+    )
+    .all(...karty.map((karta) => karta.id));
+  const zdjecia = db.prepare('SELECT adres_zrodlowy AS url FROM zdjecia_kart WHERE karta_id=? ORDER BY kolejnosc');
+  for (const karta of pozostale) {
+    const idZewnetrzne = idProduktuErli(db, karta.id);
+    if (ofertaPoIdZewnetrznym(db, kanal, idZewnetrzne)) continue;
+    const cena = karta.cena_gr;
+    const ilosc = 5;
+    const produkt = {
+      name: karta.nazwa,
+      sku: karta.sku,
+      price: cena,
+      stock: ilosc,
+      status: 'active',
+      description: '<p>Lampa z katalogu Pracownia Półcień.</p>',
+      images: zdjecia.all(karta.id),
+      externalCategories: [
+        { source: 'shop', breadcrumb: [{ id: karta.kategoria_glowna, name: karta.kategoria_glowna }] },
+      ],
+      currency: 'PLN',
+    };
+    if (!produkty.some((p) => p.externalId === idZewnetrzne)) await erli.utworzProdukt(idZewnetrzne, produkt);
+    const oferta = wstawOferte(
+      db,
+      { kartaId: karta.id, kanal, idZewnetrzne, stan: 'aktywna', pochodzenie: 'oms' },
+      opcje,
+    );
+    zmienOferte(
+      db,
+      oferta.id,
+      {
+        wyslanoAt: opcje.teraz,
+        wyslanaCenaGr: cena,
+        wyslanaIlosc: ilosc,
+        odczytCenaGr: cena,
+        odczytIlosc: ilosc,
+        odczytStatus: 'active',
+        odczytanoAt: opcje.teraz,
       },
       opcje,
     );

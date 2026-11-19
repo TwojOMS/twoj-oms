@@ -1,6 +1,6 @@
-<%# Słownik Magazynu (Kategorie albo Marki): lista płaska, liczba kart prowadzi do filtra listy
-    Magazynu, dodanie, zmiana nazwy (przepisuje karty), usunięcie tylko bez kart; przy kategoriach pobranie
-    z połączenia WooCommerce (tylko odczyt sklepu). Kolumna „Allegro” prowadzi do ekranu mapowania, „Producent” (tylko Marki) do słownika producentów. %>
+<%# Słownik Magazynu (Kategorie): lista płaska, liczba kart prowadzi do filtra listy
+    Magazynu, dodanie, zmiana nazwy (przepisuje karty), usunięcie tylko bez kart; pobranie
+    z połączenia WooCommerce (tylko odczyt sklepu). Kolumna „Allegro” prowadzi do ekranu mapowania. %>
 <p class="wroc"><a href="/magazyn">← Magazyn</a></p>
 
 <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: strona.tytul, podtytul: strona.podtytul}) %>
@@ -33,15 +33,12 @@
   <% } %>
   <div class="przewijak-tabeli">
   <table class="tresc-lista slownik-tabela">
-    <thead><tr><th scope="col">Nazwa</th><th scope="col" class="liczba">Karty</th><% if (producentMarki) { %><th scope="col">Producent</th><% } %><% if (allegro) { %><th scope="col">Allegro</th><% } %><th scope="col">Zmień nazwę</th><th scope="col">Usuń</th></tr></thead>
+    <thead><tr><th scope="col">Nazwa</th><th scope="col" class="liczba">Karty</th><% if (allegro) { %><th scope="col">Allegro</th><% } %><th scope="col">Zmień nazwę</th><th scope="col">Usuń</th></tr></thead>
     <tbody>
       <% pozycje.forEach(function (p, i) { %>
         <tr>
           <th scope="row" id="slownik-poz-<%= i %>"><%= p.nazwa %><% if (p.kanaly.length) { %> <span class="slownik-plakietka plakietka plakietka--woo" title="Pobrana z WooCommerce: <%= p.kanaly.join(', ') %>">W</span><% } %><% if (!p.wSlowniku) { %> <small class="magazyn-brak">tylko na kartach</small><% } %></th>
           <td class="liczba"><% if (p.karty > 0) { %><a href="<%= adresFiltra(p.nazwa) %>"><%= p.karty %></a><% } else { %>0<% } %></td>
-          <% if (producentMarki) { %>
-            <td><% const producent = producentMarki(p.nazwa); %><% if (producent) { %><a href="/magazyn/producenci#producent-<%= producent.id %>"><%= producent.nazwa %></a><% } else { %><small class="magazyn-brak">brak producenta</small> <a href="/magazyn/producenci#marki" id="slownik-producent-<%= i %>" aria-labelledby="slownik-producent-<%= i %> slownik-poz-<%= i %>">Przypisz</a><% } %></td>
-          <% } %>
           <% if (allegro) { %>
             <td>
               <% const przypisania = allegro.przypisania(p.nazwa); %>
@@ -71,7 +68,7 @@
       <tr class="slownik-bez">
         <th scope="row"><%= strona.bez %></th>
         <td class="liczba"><% if (bez > 0) { %><a href="<%= adresBez %>"><%= bez %></a><% } else { %>0<% } %></td>
-        <td colspan="<%= 2 + (allegro ? 1 : 0) + (producentMarki ? 1 : 0) %>"></td>
+        <td colspan="<%= 2 + (allegro ? 1 : 0) %>"></td>
       </tr>
     </tbody>
   </table>

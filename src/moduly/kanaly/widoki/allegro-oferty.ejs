@@ -1,7 +1,7 @@
 <%
   // Krok 6 „Oferty”. Wartości z odrzuconego formularza (`wartosci`) mają
-  // pierwszeństwo przed zapisanymi; identyfikatory list tylko z „Pobierz z Allegro”. Formularz nie ma
-  // pola cennikDostaw — cenniki są w tabeli reguł (`_cenniki-reguly.ejs`).
+  // pierwszeństwo przed zapisanymi; identyfikatory list tylko z „Pobierz z Allegro”. Cennika dostaw tu nie ma —
+  // krok pokazuje tylko podsumowanie powiązań cenników OMS z kontem.
   const u = ustawienia;
   const liczbaPl = (v) => v === null || v === undefined ? '' : String(v).replace('.', ',');
   const zapisane = {
@@ -71,8 +71,8 @@
       </select>
       <% if (bledyPol.stawkaVat) { %><br><span id="allegro-oferty-stawkaVat-blad"><%= bledyPol.stawkaVat %></span><% } %></p>
 
-    <%# Cennik dostaw jako reguły rozmiaru; cennik tylko z listy „Pobierz z Allegro”. %>
-    <%- include('_cenniki-reguly.ejs', {prefiks: 'allegro-oferty-cenniki', zapisane: u.cenniki, wyslane: wartosci, bledy: bledyPol, opcje: slowniki?.cenniki ?? []}) %>
+    <%# Cennik dostaw nie jest polem kroku: cenniki OMS i ich powiązania z kontami ustawia się w Magazynie. %>
+    <p id="allegro-oferty-cenniki"><%= cenniki %> <a href="/magazyn/cenniki">Ustaw w Magazyn → Cenniki</a></p>
 
     <fieldset><legend>Warunki i dane z konta Allegro</legend>
       <% if (!slowniki) { %><p class="ust-pomoc">Listy są puste — najpierw pobierz je z Allegro (sekcja wyżej).</p><% } %>

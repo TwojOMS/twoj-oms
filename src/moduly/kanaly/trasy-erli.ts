@@ -209,6 +209,7 @@ export function registerTrasyErli(
             otwarte,
             fokus,
             wartosciOfert,
+            cenniki: k ? sklepy.podsumowanieCennikow(params.kanal) : null,
             bledyOfert,
             stanyKiedys: sklepy.stanyKiedys(),
             stawkiVat: STAWKI_Z_ZW,

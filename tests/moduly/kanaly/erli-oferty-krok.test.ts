@@ -6,6 +6,7 @@ import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
 import { podpisz } from '../../../src/core/bezpieczenstwo/sesja.js';
 import { wczytajSekret } from '../../../src/core/bezpieczenstwo/sekret-sesji.js';
 import { ustawieniaOfertKonta } from '../../../src/oms/db/oferty-kanalow.ts';
+import { przelaczStany } from '../../../src/oms/db/stany-magazynowe.js';
 import type { ModulOms } from '../../../src/core/kontrakty.ts';
 import { createModulKanaly } from '../../../src/moduly/kanaly/modul.ts';
 import os from 'node:os';
@@ -21,6 +22,7 @@ const poprawne = {
   progPotwierdzeniaProcent: '20',
   stalaIlosc: '7',
   czasWysylkiDni: '2',
+  // Dawne pole reguł: zapis kroku je pomija, cenniki konta zostają bez zmian.
   cennikWiekszych: 'demo-cennik',
   stawkaVat: '23',
 };
@@ -68,18 +70,79 @@ async function setup(admin = true) {
     });
   return { klucz, req, s, transport };
 }
-it('renderuje Oferty po nadawaniu, ilość pusta i wymagana, domyślnie wstrzymane i próg 20%', async () => {
+it('renderuje Oferty po nadawaniu, ilość pusta i opcjonalna, domyślnie wstrzymane i próg 20%', async () => {
   const f = await setup();
   db.prepare("UPDATE kanaly_sprzedazy SET autoryzacja='polaczone' WHERE klucz=?").run(f.klucz);
   const r = await f.req('GET');
   expect(r.statusCode).toBe(200);
   expect(r.body).toContain('id="erli-oferty"');
-  expect(r.body).toMatch(/name="stalaIlosc"[^>]*value=""[^>]*required/);
+  const pole = r.body.match(/<input[^>]*name="stalaIlosc"[^>]*>/)?.[0];
+  expect(pole).toMatch(/value=""[^>]*min="1" max="1000000" step="1"/);
+  expect(pole).not.toMatch(/\brequired\b/);
   expect(r.body).toMatch(/name="progPotwierdzeniaProcent"[^>]*value="20"/);
   expect(r.body).toMatch(/value="wstrzymane"[^>]*checked/);
   expect(r.body).toContain('sprawdź w panelu ERLI, czy klucz ma zakres product');
   expect(ustawieniaOfertKonta(db, f.klucz).czynne).toBe(false);
   expect(f.transport).not.toHaveBeenCalled();
+});
+it.each([
+  [
+    false,
+    'Stała liczba sztuk',
+    'Tyle sztuk OMS wpisze w każdej ofercie ERLI. Po sprzedaży przywraca tę liczbę, więc oferta się nie wyprzedaje. Przy towarze robionym na zamówienie wpisz zapas, np. 50 — to też najwięcej, ile klient kupi w jednym zamówieniu. Możesz zostawić puste i uzupełnić przy wystawianiu oferty.',
+  ],
+  [
+    true,
+    'Stała liczba sztuk (gdy stany magazynowe są wyłączone)',
+    'Używana tylko wtedy, gdy stany magazynowe są wyłączone. Przy włączonych OMS wysyła stan karty pomniejszony o bufor.',
+  ],
+])('wiąże pomoc ze stałą liczbą sztuk (stany magazynowe kiedykolwiek włączone: %s)', async (stany, etykieta, pomoc) => {
+  const f = await setup();
+  db.prepare("UPDATE kanaly_sprzedazy SET autoryzacja='polaczone' WHERE klucz=?").run(f.klucz);
+  if (stany) przelaczStany(db, { wlacz: true, at: '2026-11-18T08:00:00Z' });
+  const r = await f.req('GET');
+  expect(r.body).toMatch(
+    /<input[^>]*name="stalaIlosc"[^>]*aria-describedby="erli-oferty-stalaIlosc-pomoc"><br><span id="erli-oferty-stalaIlosc-pomoc" class="ust-pomoc">/,
+  );
+  expect(r.body).toContain(`<label for="erli-oferty-stalaIlosc">${etykieta}</label>`);
+  expect(r.body).toContain(`id="erli-oferty-stalaIlosc-pomoc" class="ust-pomoc">${pomoc}</span>`);
+});
+it('wiąże pomoc i komunikat błędu z nieprawidłową stałą liczbą sztuk', async () => {
+  const f = await setup();
+  const r = await f.req('POST', { ...poprawne, stalaIlosc: '0' });
+  expect(r.body).toMatch(
+    /name="stalaIlosc"[^>]*aria-describedby="erli-oferty-stalaIlosc-pomoc erli-oferty-stalaIlosc-blad"/,
+  );
+});
+it.each([false, true])(
+  'pokazuje czas wysyłki ofert w dniach roboczych jako opcjonalny (historia stanów: %s)',
+  async (stany) => {
+    const f = await setup();
+    db.prepare("UPDATE kanaly_sprzedazy SET autoryzacja='polaczone' WHERE klucz=?").run(f.klucz);
+    if (stany) przelaczStany(db, { wlacz: true, at: '2026-11-18T08:00:00Z' });
+    const r = await f.req('GET');
+    const pole = r.body.match(/<input[^>]*name="czasWysylkiDni"[^>]*>/)?.[0];
+    expect(pole).toMatch(/min="0" max="365" step="1" aria-describedby="erli-oferty-czasWysylkiDni-pomoc"/);
+    expect(pole).not.toMatch(/\brequired\b/);
+    expect(r.body).toContain('<label for="erli-oferty-czasWysylkiDni">Czas wysyłki w dniach roboczych</label>');
+    expect(r.body).toContain(
+      'id="erli-oferty-czasWysylkiDni-pomoc" class="ust-pomoc">Obietnica dla kupującego: w ciągu tylu dni roboczych od zakupu wyślesz paczkę. OMS wpisuje ją w każdą ofertę ERLI i od niej liczy termin wysyłki zamówienia. Przy towarze robionym na zamówienie wpisz realny czas produkcji z zapasem. Możesz zostawić puste i uzupełnić przy wystawianiu oferty.</span>',
+    );
+  },
+);
+it('wyjaśnia, kiedy używany jest domyślny czas wysyłki z danych sklepu', async () => {
+  const f = await setup();
+  const r = await f.req('GET');
+  expect(r.body).toMatch(/name="domyslnyCzasWysylki"[^>]*aria-describedby="erli-czas-pomoc"/);
+  expect(r.body).toContain(
+    'id="erli-czas-pomoc">Nie trafia do ofert — czas w ofertach ustawiasz w kroku „Oferty”. Ten służy tylko zamówieniom z ofert założonych ręcznie w ERLI bez czasu wysyłki: OMS policzy z niego termin. Puste pole zostawia wtedy termin nieustalony.</span>',
+  );
+});
+it('zapisuje pusty czas wysyłki ofert jako NULL', async () => {
+  const f = await setup();
+  expect((await f.req('POST', poprawne)).statusCode).toBe(303);
+  expect((await f.req('POST', { ...poprawne, czasWysylkiDni: '' })).statusCode).toBe(303);
+  expect(ustawieniaOfertKonta(db, f.klucz).czasWysylkiDni).toBeNull();
 });
 it('zapisuje 12,5 jako 1250 bp i wszystkie pola bez wywołania ERLI', async () => {
   const f = await setup();
@@ -90,7 +153,7 @@ it('zapisuje 12,5 jako 1250 bp i wszystkie pola bez wywołania ERLI', async () =
     progPotwierdzeniaBp: 2000,
     stalaIlosc: 7,
     czasWysylkiDni: 2,
-    cenniki: [{ cennik: 'demo-cennik' }],
+    cenniki: [],
     stawkaVat: '23',
     czynne: true,
     aktorLogin: 'operator',
@@ -99,17 +162,56 @@ it('zapisuje 12,5 jako 1250 bp i wszystkie pola bez wywołania ERLI', async () =
   expect(ustawieniaOfertKonta(db, f.klucz).czynne).toBe(false);
   expect(f.transport).not.toHaveBeenCalled();
 });
-it('odrzuca pustą ilość przy polu, zachowuje wpisane wartości i nie zapisuje nic', async () => {
+it('zapisuje pustą ilość jako NULL razem z pozostałymi ustawieniami', async () => {
   const f = await setup();
+  expect((await f.req('POST', poprawne)).statusCode).toBe(303);
   const r = await f.req('POST', { ...poprawne, stalaIlosc: '' });
-  expect(r.statusCode).toBe(400);
-  expect(r.body).toContain('Podaj stałą liczbę sztuk');
-  expect(r.body).toMatch(/name="narzutProcent"[^>]*value="12,5"/);
-  expect(r.body).toMatch(/name="stalaIlosc"[^>]*aria-invalid="true"/);
+  expect(r.statusCode).toBe(303);
+  expect(ustawieniaOfertKonta(db, f.klucz)).toMatchObject({
+    zapisane: true,
+    stalaIlosc: null,
+    narzutBp: 1250,
+    progPotwierdzeniaBp: 2000,
+    czasWysylkiDni: 2,
+    cenniki: [],
+    stawkaVat: '23',
+  });
+});
+it('zapisuje krok „Oferty” z pustymi polami i przywraca domyślny narzut oraz próg', async () => {
+  const f = await setup();
+  db.prepare("UPDATE kanaly_sprzedazy SET autoryzacja='polaczone' WHERE klucz=?").run(f.klucz);
+  expect((await f.req('POST', { ...poprawne, progPotwierdzeniaProcent: '35' })).statusCode).toBe(303);
+  const r = await f.req('POST', {
+    narzutProcent: '',
+    progPotwierdzeniaProcent: ' ',
+    stalaIlosc: '',
+    czasWysylkiDni: '',
+    cennikWiekszych: '',
+    stawkaVat: '',
+  });
+  expect(r.statusCode).toBe(303);
+  expect(ustawieniaOfertKonta(db, f.klucz)).toMatchObject({
+    zapisane: true,
+    narzutBp: 0,
+    progPotwierdzeniaBp: 2000,
+    stalaIlosc: null,
+    czasWysylkiDni: null,
+    cenniki: [],
+    stawkaVat: null,
+  });
+  expect((await f.req('GET')).statusCode).toBe(200);
+  expect(f.transport).not.toHaveBeenCalled();
+});
+it('brak pola narzutu w ciele to nie puste pole — odmowa zamiast cichego 0%', async () => {
+  const f = await setup();
+  const { narzutProcent: _, ...bezNarzutu } = poprawne;
+  expect((await f.req('POST', bezNarzutu)).statusCode).toBe(400);
   expect(ustawieniaOfertKonta(db, f.klucz).zapisane).toBe(false);
 });
 it.each([
   ['narzutProcent', '12,555'],
+  ['narzutProcent', '-1'],
+  ['progPotwierdzeniaProcent', '0'],
   ['stalaIlosc', '0'],
   ['czasWysylkiDni', '366'],
   ['stawkaVat', '99'],
@@ -161,8 +263,7 @@ it('po zapisie ekran pokazuje zapisane ustawienia, a nie domyślne', async () =>
   expect(r.statusCode).toBe(200);
   expect(r.body).toMatch(/name="narzutProcent"[^>]*value="12[,.]5"/);
   expect(r.body).toMatch(/name="stalaIlosc"[^>]*value="7"/);
-  // E3d.02-02: cennik w tabeli reguł (pole „dla większych”); pola cennikDostaw formularz już nie ma.
-  expect(r.body).toMatch(/name="cennikWiekszych"[^>]*value="demo-cennik"/);
+  expect(r.body).not.toMatch(/name="cennikWiekszych"/);
   expect(r.body).not.toMatch(/name="cennikDostaw"/);
   expect(r.body).toMatch(/value="czynne"[^>]*checked/);
   expect(r.body).not.toMatch(/value="wstrzymane"[^>]*checked/);

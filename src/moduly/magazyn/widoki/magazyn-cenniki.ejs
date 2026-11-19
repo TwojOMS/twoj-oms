@@ -1,0 +1,71 @@
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: 'Cenniki'}) %>
+
+<% if (zapisano) { %><div class="pas-potwierdzenie" role="status"><p><%= zapisano %></p></div><% } %>
+<% if (blad) { %><div class="pas-uprzedzenie" role="alert"><p><%= blad %></p></div><% } %>
+
+<section class="ust-sekcja" id="cenniki-oms">
+  <h2 id="cenniki-oms-tytul">Cenniki OMS</h2>
+  <p>OMS bierze najmniejszy cennik z rozmiarem, w którym produkt się mieści (wymiary obraca); większe produkty dostają cennik domyślny. Karta bez wymiarów i wagi dostaje odmowę, gdy są cenniki z rozmiarem.</p>
+  <% if (!cenniki.length) { %>
+    <p>Nie ma jeszcze cenników OMS. Dodaj pierwszy — np. „Mała paczka” z rozmiarem i „Kurier” jako domyślny.</p>
+  <% } else { %>
+    <div class="przewijak-tabeli" tabindex="0" role="region" aria-labelledby="cenniki-oms-tytul">
+    <table class="tab-pozycje" id="cenniki-oms-tabela">
+      <thead><tr>
+        <th scope="col">Nazwa</th>
+        <th scope="col">Rozmiar</th>
+        <% konta.forEach(function (k) { %><th scope="col"><%= k.etykieta %></th><% }); %>
+        <th scope="col">Karty</th>
+        <th scope="col">Akcje</th>
+      </tr></thead>
+      <tbody>
+        <% cenniki.forEach(function (c) { %>
+          <tr id="cennik-<%= c.id %>">
+            <th scope="row"><%= c.nazwa %></th>
+            <td><%= c.opis %></td>
+            <% c.kolumny.forEach(function (p) { %>
+              <td><% if (!p.nazwa) { %>—<% } else { %><%= p.nazwa %><% if (p.brak) { %> <span class="ust-pomoc">(nie ma go już w <%= p.kanal %>)</span><% } %><% } %></td>
+            <% }); %>
+            <td><%= c.kart %></td>
+            <td><a href="<%= adres %>/<%= c.id %>" aria-label="Zmień: <%= c.nazwa %>">Zmień</a> · <a href="<%= adres %>/<%= c.id %>/usun" aria-label="Usuń: <%= c.nazwa %>">Usuń</a></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+    </div>
+  <% } %>
+  <div class="ust-akcje"><a class="btn btn--glowny" href="<%= adres %>/nowy">Dodaj cennik OMS</a></div>
+</section>
+
+<section class="ust-sekcja" id="cenniki-kanalow">
+  <h2>Cenniki w kanałach</h2>
+  <% if (!konta.length) { %>
+    <p>Nie ma połączonych kont Allegro ani ERLI.</p>
+  <% } %>
+  <% konta.forEach(function (k) { %>
+    <div class="ust-sekcja" id="kanal-<%= k.klucz %>">
+      <h3><%= k.etykieta %></h3>
+      <% if (k.lista) { %>
+        <p>Na liście <%= k.lista.length %> · <%= k.pobranoAt ? 'pobrano ' + k.pobranoAt : 'data pobrania nieznana' %>.</p>
+        <% if (k.lista.length > zwinOd) { %>
+          <details><summary>Pokaż nazwy cenników (<%= k.lista.length %>)</summary>
+            <ul><% k.lista.forEach(function (p) { %><li><%= p.nazwa %></li><% }); %></ul>
+          </details>
+        <% } else if (k.lista.length) { %>
+          <ul><% k.lista.forEach(function (p) { %><li><%= p.nazwa %></li><% }); %></ul>
+        <% } %>
+      <% } else { %>
+        <p>Lista cenników tego konta nie jest jeszcze pobrana.</p>
+      <% } %>
+      <% if (k.zablokowane) { %>
+        <p class="ust-akcje"><button class="btn" type="button" disabled aria-describedby="kanal-<%= k.klucz %>-powod"><%= k.przycisk %></button></p>
+        <p class="ust-pomoc" id="kanal-<%= k.klucz %>-powod"><%= k.zablokowane.napis %><% if (k.zablokowane.adres) { %> <a href="<%= k.zablokowane.adres %>">Przejdź do konta</a>.<% } %></p>
+      <% } else { %>
+        <form method="post" action="<%= adres %>/kanal/<%= encodeURIComponent(k.klucz) %>/pobierz" class="ust-akcje">
+          <% if (k.wersja !== undefined && k.wersja !== null) { %><input type="hidden" name="wersja" value="<%= k.wersja %>"><% } %>
+          <button class="btn" type="submit"><%= k.przycisk %></button>
+        </form>
+      <% } %>
+    </div>
+  <% }); %>
+</section>

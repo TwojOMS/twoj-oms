@@ -38,8 +38,11 @@ afterEach(async () => {
 });
 
 const producent = (nazwa) =>
-  dodajProducenta(db, { nazwa, adres: 'ul. Zmyślona 1\n00-001 Przykładowo', email: 'kontakt@example.com' }, { at: AT })
-    .id;
+  dodajProducenta(
+    db,
+    { nazwa, ulica: 'ul. Zmyślona 1', kod: '00-001', miasto: 'Przykładowo', kraj: 'PL', email: 'kontakt@example.com' },
+    { at: AT },
+  ).id;
 function slownik({ domyslny = true } = {}) {
   const pracownia = producent('Pracownia Półcień');
   przypiszMarki(db, [{ marka: 'Lampa Półcień', producentId: pracownia }], { at: AT });

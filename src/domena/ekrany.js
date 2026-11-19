@@ -242,6 +242,9 @@ export function ekranDlaAdresu(url) {
   for (const wzorzec of WZORCE_POZOSTALYCH_DOKUMENTOW_ZAMOWIENIA) {
     if (wzorzec.test(sciezka)) return 'pozostale-dokumenty-zamowienia';
   }
+  // Ustawienia i cenniki magazynu mieszkają pod /magazyn, ale otwiera je to samo uprawnienie co reszta Ustawień; musi
+  // być przed ekranem „magazyn”, który wygrywa jako pierwszy pasujący.
+  if (wSekcji(sciezka, '/magazyn/ustawienia') || wSekcji(sciezka, '/magazyn/cenniki')) return 'ustawienia';
   for (const ekran of EKRANY) {
     if ((ekran.dokladne ?? []).includes(sciezka)) return ekran.klucz;
     if (ekran.prefiksy.some((p) => wSekcji(sciezka, p))) return ekran.klucz;

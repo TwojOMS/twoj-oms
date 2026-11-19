@@ -18,7 +18,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-it('demo przez istniejące uzupełnienie ERLI pokazuje sześć stanów, bez zapisu i duplikatów', async () => {
+it('demo przez istniejące uzupełnienie ERLI zachowuje sześć scenariuszy, bez zapisu i duplikatów', async () => {
   const siec = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Sieć zabroniona'));
   katalog = mkdtempSync(join(tmpdir(), 'demo-oferty-erli-'));
   const baza = join(katalog, 'demo.sqlite');
@@ -36,8 +36,8 @@ it('demo przez istniejące uzupełnienie ERLI pokazuje sześć stanów, bez zapi
       .flatMap((k) => ofertyKarty(db, k.id))
       .filter((o) => o.kanal === opcje.kanal);
   const oferty = lista();
-  expect(oferty).toHaveLength(6);
-  expect(new Set(oferty.map((o) => o.kartaId)).size).toBe(6);
+  expect(oferty).toHaveLength(120);
+  expect(new Set(oferty.map((o) => o.kartaId)).size).toBe(120);
   expect(oferty).toEqual(
     expect.arrayContaining([
       expect.objectContaining({ stan: 'aktywna', odczytStatus: 'active', problemy: [] }),
@@ -58,7 +58,8 @@ it('demo przez istniejące uzupełnienie ERLI pokazuje sześć stanów, bez zapi
     ]),
   );
   expect(ustawieniaOfertKonta(db, opcje.kanal)).toMatchObject({ czynne: false, stalaIlosc: 5 });
-  const produkty = await atrapa.szukajProduktow();
+  const szukajProduktow = () => atrapa.szukajProduktow({ pagination: { limit: 200 } });
+  const produkty = await szukajProduktow();
   const istniejace = oferty.filter((o) => o.wyslanoAt || o.pochodzenie === 'przejeta');
   expect(produkty.map((p) => p.externalId).sort()).toEqual(istniejace.map((o) => o.idZewnetrzne).sort());
   for (const o of istniejace) {
@@ -77,7 +78,7 @@ it('demo przez istniejące uzupełnienie ERLI pokazuje sześć stanów, bez zapi
   expect(lista()).toEqual(oferty);
   const stabilneProdukty = (lista) =>
     lista.map(({ externalId, name, sku, price, stock, status }) => ({ externalId, name, sku, price, stock, status }));
-  expect(stabilneProdukty(await atrapa.szukajProduktow())).toEqual(stabilneProdukty(produkty));
+  expect(stabilneProdukty(await szukajProduktow())).toEqual(stabilneProdukty(produkty));
   await uzupelnijDemoErli({ ...opcje, kanal: 'erli_inny' });
   expect(lista()).toEqual(oferty);
   const zapisy = ['utworzProdukt', 'zmienProdukt', 'zmienProdukty'].map((m) => vi.spyOn(atrapa, m));

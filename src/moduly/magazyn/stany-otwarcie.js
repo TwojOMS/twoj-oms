@@ -153,7 +153,7 @@ export function registerStanyOtwarcie(app, { db, sklepy = {}, kontaAllegro = () 
     });
   const dostep = (req, reply) => {
     if (req.konto?.admin !== true) return odmowa(reply, 403, 'Tylko administrator może zatwierdzać stany.');
-    if (!przelacznikStanow(db).wlaczone) return reply.code(303).redirect('/ustawienia/magazyn');
+    if (!przelacznikStanow(db).wlaczone) return reply.code(303).redirect('/magazyn/ustawienia');
     return null;
   };
   // Allegro: ACTIVE; ENDED ze znacznikiem OMS; ENDED przy 0 bez znacznika = wyprzedana przez Allegro (D55, D56),
