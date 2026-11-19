@@ -1,4 +1,4 @@
-import { cenaZNarzutem } from './cena-kanalu.js';
+import { cenaDlaKanalu } from './cena-kanalu.js';
 import { poprawneSekcje, sekcjeDlaErli } from './opis-sekcje.js';
 import { dobierzCennik, regulyKonta } from './cennik-dostaw.js';
 
@@ -42,6 +42,7 @@ export function produktErliZKarty(wejscie) {
     adresPublicznyZdjec,
     wysylajAi = WYSYLAJ_AI_ERLI,
     ilosc,
+    recznaGr = null,
   } = wejscie;
   const bledy = [];
   const ostrzezenia = [];
@@ -75,7 +76,11 @@ export function produktErliZKarty(wejscie) {
       );
   }
 
-  const cena = cenaZNarzutem(karta.cena_gr, ustawienia.narzutBp);
+  // `recznaGr` = ręczna cena karty na tym koncie ERLI; bez niej cena karty z narzutem konta. Pętla musi
+  // liczyć tak samo jak podgląd wysyłki cen, inaczej następny przebieg cofnąłby cenę wysłaną ręcznie.
+  const cena = cenaDlaKanalu({ kartaGr: karta.cena_gr, narzutBp: ustawienia.narzutBp, recznaGr });
+  if (cena.bledy.includes('reczna'))
+    bledy.push('Ręczna cena tej karty w ERLI jest niepoprawna — ustaw ją ponownie na karcie albo usuń.');
   if (cena.bledy.includes('cena'))
     bledy.push('Ustaw cenę brutto większą od zera na karcie, w całkowitej liczbie groszy.');
   if (cena.bledy.includes('narzut'))

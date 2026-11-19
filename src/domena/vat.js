@@ -75,8 +75,28 @@ export function stawkaPozycji(p, domyslna, opcje) {
   return String(domyslna);
 }
 
-// „zw” z flagą = dzielnik 1 (netto = brutto). Bez flagi — `Number('zw')`, czyli NaN.
-const dzielnik = (stawka, opcje) => (zFlaga(opcje) && String(stawka).trim() === 'zw' ? 1 : 1 + Number(stawka) / 100);
+// Procent stawki: „zw” z flagą = 0 (netto = brutto). Bez flagi — `Number('zw')`, czyli NaN.
+const procent = (stawka, opcje) => (zFlaga(opcje) && String(stawka).trim() === 'zw' ? 0 : Number(stawka));
+
+/**
+ * Brutto w groszach z netto w groszach — JEDNA arytmetyka ceny dla karty, nowego produktu
+ * i podglądu w przeglądarce (moduł jest serwowany do formularza bez kopii).
+ *
+ * Na liczbach całkowitych, połówka grosza w górę: `floor((netto × (100 + p) + 50) / 100)`.
+ * Mnożenie przez 1,23 na floacie myli się o grosz przy połówkach; tu ułamka nie ma wcale.
+ * Zmierzone: dla 0–1 000 000 zł i stawek 23/8/5/0 wynik jest identyczny z dawnym
+ * `Math.round(gr × 1,23)`, więc dotychczasowe wywołania nie zmieniają zachowania.
+ */
+export function bruttoGrZNettoGr(nettoGr, stawka = STAWKA_VAT, opcje) {
+  const p = procent(stawka, opcje);
+  return Math.floor((nettoGr * (100 + p) + 50) / 100);
+}
+
+/** Netto w groszach z brutto w groszach — `floor(brutto × 100 / (100 + p) + ½)` bez floata. */
+export function nettoGrZBruttoGr(bruttoGr, stawka = STAWKA_VAT, opcje) {
+  const p = procent(stawka, opcje);
+  return Math.floor((bruttoGr * 200 + (100 + p)) / (2 * (100 + p)));
+}
 
 // ⚠️ TU DZIELENIE BRUTTO PRZEZ STAWKĘ JEST DOZWOLONE — to jedno z kilku sankcjonowanych miejsc
 // (obok domena/podsumowanie-vat.js, domena/wdt.js i netta z Allegro w domena/allegro-mapowanie.js),
@@ -105,7 +125,7 @@ export function nettoZBruttoDoPokazania(bruttoZl, stawka = STAWKA_VAT, opcje) {
   if (!Number.isFinite(n)) return null;
   // Przez grosze, nie na złotówkach: dzielenie floata przez 1,23 i toFixed(2) potrafi
   // chybić o grosz na wartościach granicznych, a tu i tak wszystko jest całkowite.
-  return (Math.round(Math.round(n * 100) / dzielnik(stawka, opcje)) / 100).toFixed(2);
+  return (nettoGrZBruttoGr(Math.round(n * 100), stawka, opcje) / 100).toFixed(2);
 }
 
 /**
@@ -127,5 +147,5 @@ export function bruttoZNetto(nettoZl, stawka = STAWKA_VAT, opcje) {
   if (tekst === '') return null;
   const n = Number(tekst);
   if (!Number.isFinite(n)) return null;
-  return (Math.round(Math.round(n * 100) * dzielnik(stawka, opcje)) / 100).toFixed(2);
+  return (bruttoGrZNettoGr(Math.round(n * 100), stawka, opcje) / 100).toFixed(2);
 }

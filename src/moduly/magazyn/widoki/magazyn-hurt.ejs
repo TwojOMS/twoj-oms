@@ -3,7 +3,7 @@
     PO CO TEN EKRAN. Nic jeszcze nie jest zapisane i to jest caly jego sens: jedno klikniecie
     dotyka setek kart, a z wymiaru, ktory tu powstanie, liczy sie paczka, gabaryt i wymiar
     w sklepie. Zestaw pokazany nizej liczy TA SAMA funkcja (domena/magazyn-hurt.js:
-    zmianyHurtem), ktora policzy go trasa zatwierdzajaca — i policzy go PONOWNIE, ze stanu
+    planHurtu), ktora policzy go trasa zatwierdzajaca — i policzy go PONOWNIE, ze stanu
     biezacego, a nie przepisze stad ukrytym polem.
 
     ⚠️ WIDOK NICZEGO NIE LICZY I NICZEGO NIE ROZSTRZYGA. Liczba kart, opisy „z czego na co"
@@ -44,15 +44,40 @@
       <%# ⚠️ ODMOWA JEST CALOSCIOWA i mowi, CZEGO nie zapisano. Jedno pole, ktorego panel nie
           rozumie, wstrzymuje wszystkie — przy setkach kart nikt by nie odtworzyl, ktora
           polowa weszla. %>
-      <p class="pasek-blokada"><%= blad %></p>
+      <p class="pasek-blokada" tabindex="-1" autofocus><%= blad %></p>
     <% } %>
 
     <% if (!blad && !wynik) { %>
       <p class="pasek-uwaga">
-        Nic jeszcze nie jest zapisane. Zmienisz <b><%= ileKart(ile) %></b> — przejrzyj listę
-        i dopiero wtedy zatwierdź. Puste pola formularza zostały pominięte: hurtem puste pole
+        Nic jeszcze nie jest zapisane. Przejrzyj listę i odznacz karty, których nie chcesz
+        zmieniać. Puste pola formularza zostały pominięte: hurtem puste pole
         znaczy „nie ruszaj tej kolumny”, a nie „skasuj ją”.
       </p>
+      <% if (zmianaCeny) { %>
+        <%# Cena katalogowa nie jest cena w kanale — bez tego zdania czlowiek uznalby, ze sklepy
+            dostaly juz nowa cene. %>
+        <p class="pasek-uwaga">
+          Zmienia cenę katalogową w OMS. Oferty Allegro wystawione z OMS przeliczą się same przy
+          przebiegu pętli (narzut konta); do sklepów i pozostałych ofert cena pójdzie dopiero
+          przyciskiem „Wyślij ceny do kanałów”.
+        </p>
+        <% if (pominieteBezCeny > 0) { %>
+          <p class="pasek-uwaga">
+            Pominięte: <%= ileKart(pominieteBezCeny) %> bez ceny katalogowej — zmiana o % i o kwotę
+            potrzebuje ceny. Ustaw im cenę trybem „zmień na kwotę”.
+          </p>
+        <% } %>
+      <% } %>
+      <% if (straciZalaczniki > 0) { %>
+        <%# Zalacznikow GPSR nie da sie dopiac z OMS — po zapisie zostaje tylko powrot na karcie
+            i ponowne wskazanie ich w Allegro, wiec liczbe kart podajemy wprost. %>
+        <p class="pasek-uwaga" id="hurt-straci-zalaczniki">
+          <%# „1 karta straci”, „2 karty stracą”, „5 kart straci” — czasownik idzie za forma liczebnika. %>
+          <b><%= ileKart(straciZalaczniki) %> <%= / karty$/.test(ileKart(straciZalaczniki)) ? 'stracą' : 'straci' %> załączniki z Allegro</b> w informacji o
+          bezpieczeństwie — zostanie u nich tekst z tego formularza albo tekst domyślny konta.
+          Odznacz te karty, jeśli załączniki mają zostać.
+        </p>
+      <% } %>
     <% } %>
 
     <% if (wynik) { %>
@@ -70,12 +95,29 @@
     <% } %>
 
     <% if (plan.length) { %>
-      <table class="tab-pozycje">
-        <thead><tr><th>Karta</th><th>Pole</th><th>Z</th><th>Na</th></tr></thead>
-        <tbody>
-          <% plan.forEach(function (z) { %>
+      <% if (!wynik && plan.length > 10) { %>
+        <div class="hurt-zaznaczenie" hidden>
+          <button class="btn" type="button" data-hurt-wybor="wszystkie">Zaznacz wszystkie</button>
+          <button class="btn" type="button" data-hurt-wybor="zadna">Odznacz wszystkie</button>
+        </div>
+      <% } %>
+      <table class="tab-pozycje tabela-hurtu">
+        <thead><tr>
+          <% if (!wynik) { %><th class="kol-zazn" scope="col" aria-label="Zaznaczenie"></th><% } %>
+          <th scope="col">Karta</th><th scope="col">Pole</th><th scope="col">Z</th><th scope="col">Na</th>
+        </tr></thead>
+        <% plan.forEach(function (z) { %>
+          <tbody>
             <% z.opisy.forEach(function (o, i) { %>
               <tr>
+                <% if (!wynik && i === 0) { %>
+                  <td class="kol-zazn" rowspan="<%= z.opisy.length %>">
+                    <label class="kol-zazn-etykieta">
+                      <input type="checkbox" name="zaznaczone" value="<%= z.id %>" form="zatwierdz-hurt"
+                             checked aria-label="Zaznacz kartę <%= z.nazwa %>">
+                    </label>
+                  </td>
+                <% } %>
                 <%# Nazwa karty stoi WYLACZNIE w pierwszym wierszu jej zmian — karta
                     zmieniajaca trzy pola jest nadal JEDNA karta, a powtorzona nazwa
                     czytalaby sie jak trzy. %>
@@ -85,11 +127,11 @@
                     komorka, ktorej cos nie doliczylo — a tu chodzi o roznice miedzy „nie ma
                     wymiaru" a „ma wymiar, ktory zaraz stracisz". %>
                 <td><% if (o.z) { %><%= o.z %><% } else { %><span class="magazyn-brak">—</span><% } %></td>
-                <td><% if (o.na) { %><b><%= o.na %></b><% } else { %><span class="magazyn-brak">—</span><% } %></td>
+                <td><% if (o.na) { %><b><%= o.na %></b><% if (o.zmianaProcent) { %> (<%= o.zmianaProcent %>)<% } %><% if (o.duzaZmiana) { %> <span class="waga waga--uwaga">duża zmiana</span><% } %><% } else { %><span class="magazyn-brak">—</span><% } %></td>
               </tr>
             <% }); %>
-          <% }); %>
-        </tbody>
+          </tbody>
+        <% }); %>
       </table>
     <% } else if (!blad && !wynik) { %>
       <p class="pusto">
@@ -107,17 +149,40 @@
           Zbior zostaje ZAMROZONY tym, co czlowiek wlasnie zobaczyl (stad jawne numery, takze
           przy zakresie „wszystkie pasujace"), a tresc zmiany liczy sie od nowa ze stanu bazy. %>
       <% if (plan.length && !wynik) { %>
-        <form method="post" action="/magazyn/hurt/zatwierdz">
-          <% plan.forEach(function (z) { %>
-            <input type="hidden" name="zaznaczone" value="<%= z.id %>">
-          <% }); %>
+        <form method="post" action="/magazyn/hurt/zatwierdz" id="zatwierdz-hurt">
           <% polaDoPrzeniesienia.forEach(function (p) { %>
             <input type="hidden" name="<%= p.name %>" value="<%= p.value %>">
           <% }); %>
-          <button class="btn btn--glowny" type="submit">Zapisz w <%= ileKart(ile) %></button>
+          <button class="btn btn--glowny" type="submit">Zapisz w <%= ile %> <%= ile === 1 ? 'karcie' : 'kartach' %></button>
         </form>
       <% } %>
       <a class="btn" href="<%= adresPowrotu %>"><%= wynik ? 'Wróć do magazynu' : 'Anuluj' %></a>
     </div>
   </div>
 </section>
+
+<% if (plan.length && !wynik) { %>
+  <script type="module">
+    const ekran = document.getElementById('zmiany-hurtem');
+    const checkboxy = [...ekran.querySelectorAll('input[form="zatwierdz-hurt"]')];
+    const zapisz = ekran.querySelector('#zatwierdz-hurt button[type="submit"]');
+    const aktualizuj = () => {
+      const ile = checkboxy.filter((pole) => pole.checked).length;
+      zapisz.textContent = `Zapisz w ${ile} ${ile === 1 ? 'karcie' : 'kartach'}`;
+      zapisz.disabled = ile === 0;
+    };
+    ekran.addEventListener('change', aktualizuj);
+    window.addEventListener('pageshow', aktualizuj);
+    const grupowe = ekran.querySelector('.hurt-zaznaczenie');
+    if (grupowe) {
+      grupowe.hidden = false;
+      grupowe.addEventListener('click', (zdarzenie) => {
+        const wybor = zdarzenie.target.closest('[data-hurt-wybor]')?.dataset.hurtWybor;
+        if (!wybor) return;
+        for (const pole of checkboxy) pole.checked = wybor === 'wszystkie';
+        aktualizuj();
+      });
+    }
+    aktualizuj();
+  </script>
+<% } %>

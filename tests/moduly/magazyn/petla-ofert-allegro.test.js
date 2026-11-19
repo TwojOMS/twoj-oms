@@ -25,6 +25,7 @@ import { createSerwerOfertAllegro, API_ATRAPY_ALLEGRO } from '../../../deploy/pr
 import { fixtureAllegro, daneAllegro, aktorAllegro } from '../../pomoc/allegro-konfigurator.ts';
 import { createRejestrKanalow } from '../../../src/moduly/kanaly/services/rejestr-kanalow.ts';
 import { createPetlaOfertAllegro } from '../../../src/moduly/magazyn/services/petla-ofert-allegro.js';
+import { ustawCeneReczna } from '../../../src/oms/db/ceny-kanalow.js';
 
 const T0 = Date.parse('2026-11-01T12:00:00.000Z');
 const BEZPIECZENSTWO = JSON.stringify({ typ: 'TEXT', tekst: 'Nie zostawiaj włączonej lampy bez nadzoru.' });
@@ -852,6 +853,30 @@ describe('E3.08b — synchronizacja i aktywacja', () => {
     expect(e.ofertaWAtrapie(o.idZewnetrzne).sellingMode.price.amount).toBe('73.75');
     po = ofertaPoId(e.db, ofertaId);
     expect(po).toMatchObject({ cenaDoPotwierdzeniaGr: null, problemy: [], wyslanaCenaGr: 7375, odczytCenaGr: 7375 });
+  });
+
+  it('T-M1: ręczna cena konta 105 zł → pętla liczy cel z ręcznej, po potwierdzeniu komenda ceny 105.00', async () => {
+    const e = srodowisko();
+    const { ofertaId, kartaId, p, o } = await wystawiona(e);
+    expect(e.ofertaWAtrapie(o.idZewnetrzne).sellingMode.price.amount).toBe('59.00');
+    ustawCeneReczna(e.db, {
+      kartaId,
+      kanal: e.KONTO,
+      cenaGr: 10500,
+      kto: 'administrator',
+      at: e.teraz().toISOString(),
+    });
+    const przed = e.ciala.length;
+    await przebieg(e, p);
+    expect(cialaPo(e, ZAPISY, przed)).toEqual([]);
+    expect(ofertaPoId(e.db, ofertaId).cenaDoPotwierdzeniaGr).toBe(10500);
+    ustawPola(e, ofertaId, { cenaPotwierdzonaGr: 10500 });
+    await przebieg(e, p);
+    const put = cialaPo(e, PUT_CENY, przed);
+    expect(put).toHaveLength(1);
+    expect(put[0].cialo.modification).toEqual({ type: 'FIXED_PRICE', price: { amount: '105.00', currency: 'PLN' } });
+    expect(e.ofertaWAtrapie(o.idZewnetrzne).sellingMode.price.amount).toBe('105.00');
+    expect(ofertaPoId(e.db, ofertaId)).toMatchObject({ cenaDoPotwierdzeniaGr: null, wyslanaCenaGr: 10500 });
   });
 
   it('zmiana opisu → PATCH z kompletem: parameters ze „Stanem”, images, responsibleProducer i safetyInformation', async () => {

@@ -101,7 +101,7 @@ export const LIMIT_ZAPISOW_PRZEBIEGU = 50;
 /** Część limitu, której PATCH-e nie zajmą — zmiana ilości i ceny wychodzi w tym samym przebiegu. */
 export const REZERWA_KOMEND_PRZEBIEGU = 10;
 const AKTYWNE = new Set(['ACTIVATING', 'ACTIVE']);
-const SYNCHRONIZOWANE = ['aktywna', 'nieaktywna', 'problem'];
+export const STANY_SYNCHRONIZACJI_ALLEGRO = Object.freeze(['aktywna', 'nieaktywna', 'problem']);
 /** Problemy, które sama synchronizacja wystawia i sama zdejmuje — wiersz z innym problemem czeka na człowieka. */
 const PROBLEMY_SYNCHRONIZACJI = new Set(['zakonczona', 'brak-w-allegro', 'karta', 'cena', 'zdejmowanie', 'odczyt']);
 const PROBLEM_CENY = () => ({
@@ -808,9 +808,9 @@ export function createPetlaOfertAllegro({
     const wiersze = db
       .prepare(
         `SELECT id FROM oferty_kanalow WHERE kanal = ? AND tryb IN ('zarzadzana', 'obserwowana')
-      AND stan IN (${SYNCHRONIZOWANE.map(() => '?').join(', ')}) AND id_zewnetrzne NOT LIKE 'ext:%' ORDER BY id`,
+      AND stan IN (${STANY_SYNCHRONIZACJI_ALLEGRO.map(() => '?').join(', ')}) AND id_zewnetrzne NOT LIKE 'ext:%' ORDER BY id`,
       )
-      .all(konto.klucz, ...SYNCHRONIZOWANE)
+      .all(konto.klucz, ...STANY_SYNCHRONIZACJI_ALLEGRO)
       .map((w) => ofertaPoId(db, Number(w.id)));
     // Wycofana karta albo „Zdejmij” idą dalej przy każdym problemie — ENDED musi wyjść, inaczej oferta dalej sprzedaje.
     // Tak samo znacznik „Wznów” — inaczej po problemie karty zostałby na zawsze, bez PATCH i bez przycisku.

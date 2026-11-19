@@ -259,6 +259,7 @@ describe('powiazaneOfertyAllegro — skad w ogole wziac co odpiac', () => {
         karta_id: kandelabr,
         karta_nazwa: 'Kandelabr srebrny',
         karta_sku: 'LMP-KAN-1',
+        status_publikacji: null,
       },
     ]);
   });

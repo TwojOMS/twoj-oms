@@ -99,6 +99,9 @@ export async function odczytajOstrzezenia(db, konto, { sklepy = {}, kontaAllegro
   return { fulfillment: null, fulfillmentIds: new Set(), backorders: null };
 }
 
+// Ekran mowi po polsku; surowe `stan` zostaje, bo od niego zalezy skutek objecia.
+const OPIS_STATUSU_WOO = { publish: 'opublikowany', draft: 'szkic' };
+
 export function podgladPrzejecia(db, kanal, typ, produkty = [], odczytaneAt = null) {
   const lustro = db
     .prepare(
@@ -130,6 +133,7 @@ export function podgladPrzejecia(db, kanal, typ, produkty = [], odczytaneAt = nu
             kartaId: p.karta_nazwa ? p.karta_id : null,
             nazwa: p.nazwa,
             stan: p.status_publikacji,
+            stanOpis: OPIS_STATUSU_WOO[p.status_publikacji] ?? p.status_publikacji ?? null,
             ilosc: p.ilosc_kanalu,
             odczytaneAt: p.ilosc_odczytana_at ?? p.odczytane_at,
             zamrozone: null,

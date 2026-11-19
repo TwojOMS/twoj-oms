@@ -18,6 +18,7 @@
 // zdarzenia): nowe zdarzenie tej samej rzeczy — kolejna wiadomość w wątku, kolejny
 // ruch paczki — daje NOWY klucz, więc odrzucone ostrzeżenie wraca samo.
 
+import { createHash } from 'node:crypto';
 import { etapPrzesylki, etykietaEtapu, bezRuchu, dniKalendarzowe } from './etap-przesylki.js';
 import { przesylkaUkryta } from './przesylka-stan.js';
 import { czyPaczkaBezGotowki } from './pobranie-zaplacone.js';
@@ -40,6 +41,8 @@ export const WYGASANIE_INTEGRACJI_MS = 24 * 60 * 60 * 1000;
 // (martwy czuwacz znaczy stęchłe lustra). Potem pieniądze (KSeF, terminy, korekty),
 // na końcu logistyka i korespondencja.
 
+const MAKS_DLUGOSC_KLUCZA = 300;
+
 /**
  * Biała lista kluczy dla trasy POST /ostrzezenia/odrzuc — jedyne miejsce znające
  * komplet prefiksów (tabela `ostrzezenia_odrzucone` celowo nie ma CHECK-a: listy w SQLite nie da się
@@ -48,9 +51,41 @@ export const WYGASANIE_INTEGRACJI_MS = 24 * 60 * 60 * 1000;
 export function kluczDozwolony(klucz) {
   return (
     typeof klucz === 'string' &&
-    klucz.length <= 300 &&
-    /^(faktura-ksef|faktura-termin|przesylka|wiadomosc|integracja|zwrot|pobranie|automatyzacja):./.test(klucz)
+    klucz.length <= MAKS_DLUGOSC_KLUCZA &&
+    /^(faktura-ksef|faktura-termin|przesylka|wiadomosc|integracja|zwrot|pobranie|automatyzacja|niski-stan):./.test(
+      klucz,
+    )
   );
+}
+
+const liczbaKart = new Intl.PluralRules('pl');
+
+export function ostrzezeniaNiskiegoStanu(karty) {
+  if (karty.length === 0) return [];
+
+  const pary = [...karty]
+    .sort((a, b) => a.id - b.id)
+    .map(({ id, stan }) => `${id}:${stan}`)
+    .join(',');
+  const prefiks = 'niski-stan:';
+  // Skrót zachowuje wpływ każdej karty na odrzucenie także po przekroczeniu limitu klucza.
+  const klucz =
+    prefiks +
+    (prefiks.length + pary.length <= MAKS_DLUGOSC_KLUCZA ? pary : createHash('sha256').update(pary).digest('hex'));
+
+  const liczba = karty.length;
+  const odmiana = { one: 'karta', few: 'karty', many: 'kart' }[liczbaKart.select(liczba)];
+  const przyklady = karty.slice(0, 3).map(({ sku, nazwa, stan }) => `${sku || nazwa} — ${stan} szt.`);
+  if (liczba > przyklady.length) przyklady.push('…');
+  return [
+    {
+      klucz,
+      typ: 'niski-stan',
+      tekst: `Niski stan: ${liczba} ${odmiana} (${przyklady.join(', ')})`,
+      przycisk: { href: '/magazyn?stan=niski', etykieta: 'Pokaż' },
+      etykietaOdrzucenia: 'Ignoruj',
+    },
+  ];
 }
 
 /**

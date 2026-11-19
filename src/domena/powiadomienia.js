@@ -39,6 +39,11 @@ export const RODZAJE_OSTRZEZEN = Object.freeze(
       opis: 'Przesyłka od dłuższego czasu nie zmieniła statusu u kuriera.',
     },
     {
+      typ: 'niski-stan',
+      nazwa: 'Niski stan magazynowy',
+      opis: 'Stan co najmniej jednej aktywnej karty jest równy ustawionemu progowi lub niższy.',
+    },
+    {
       typ: 'wiadomosc-allegro',
       nazwa: 'Wiadomości Allegro bez odpowiedzi',
       opis: 'Ostatnia wiadomość w wątku jest od kupującego i pochodzi z ostatnich siedmiu dni.',

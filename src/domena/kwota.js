@@ -54,3 +54,23 @@ export function groszeZKwoty(kwota, opis) {
   if (!Number.isSafeInteger(wynik)) odmow();
   return wynik;
 }
+
+/**
+ * Cena katalogowa wpisana przez człowieka („49,90”, „49.90”) → grosze. Jedna funkcja dla pola
+ * „Cena katalogowa (zł)” na karcie i dla ceny hurtem, żeby oba miejsca przyjmowały i odrzucały
+ * te same napisy.
+ *
+ * @param {string} napis
+ * @returns {number|null|undefined} grosze; `null` dla pustego napisu; `undefined`, gdy to nie kwota.
+ */
+export function groszeCenyKatalogowej(napis) {
+  const tekst = napis.trim();
+  if (!tekst) return null;
+  // Przecinek dziesiętny człowieka → kropka; resztę (znak, walutę, drugi przecinek) odrzuca
+  // `groszeZKwoty` — przeliczenie po cyfrach, bez mnożenia na floacie.
+  try {
+    return groszeZKwoty(tekst.replace(',', '.'), 'cena katalogowa karty');
+  } catch {
+    return undefined;
+  }
+}

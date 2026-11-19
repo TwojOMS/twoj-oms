@@ -1,4 +1,4 @@
-// „Wystaw na…” Allegro: podgląd, zatwierdzenie, lista, akcje (D16, D30, D40, D43).
+// „Wystaw oferty” Allegro: podgląd, zatwierdzenie, lista i akcje.
 // Klienci Allegro to atrapy; jedyne „wyjście” w podglądzie to prowizja (D40) — reszta nie woła kanału.
 import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
@@ -180,7 +180,7 @@ afterEach(async () => {
   vi.useRealTimers();
 });
 
-it('„Wystaw na…” pokazuje konta obu typów; konto bez zgody jest wyszarzone z komunikatem o braku zgody; jest „Aktywuj w Allegro”', async () => {
+it('„Wystaw oferty” pokazuje konta obu typów; konto bez zgody jest wyszarzone z komunikatem o braku zgody; jest „Aktywuj w Allegro”', async () => {
   karta(1);
   const r = await get('/magazyn');
   expect(r.statusCode).toBe(200);
@@ -400,7 +400,7 @@ it('„Aktywuj” bez zgody konta → 400 w obu trasach; hurt na jednym koncie n
   expect(ofertaPoId(db, obcy.id).wyslanePola.aktywuj).toBeUndefined();
 });
 
-it('konto sandbox ma dopisek „(sandbox)” na liście „Wystaw na…” i w nagłówku podglądu', async () => {
+it('konto sandbox ma dopisek „(sandbox)” na liście „Wystaw oferty” i w nagłówku podglądu', async () => {
   kontaAllegro[0] = { ...kontaAllegro[0], srodowisko: 'sandbox' };
   const id = karta(1);
   const l = await get('/magazyn');

@@ -353,6 +353,27 @@ it('brak pola transport nie wywraca podglądu i nie odblokowuje zlecenia', async
   expect(podglad.grupy[0].moznaZlecac).toBe(false);
 });
 
+it('włączony transport DPD nie wystarcza do odbioru paczki z niepotwierdzoną metodą dostawy', async () => {
+  const { db, ids } = dane();
+  const allegro = klient();
+  allegro.pobierzPrzesylkeWza.mockImplementation(async (id) => ({
+    id,
+    deliveryMethodId: 'niepotwierdzona-metoda',
+    transport: ['DPD'],
+    pickupAvailable: true,
+    packages: [{ waybill: id === 'shipment-1' ? 'AD-1' : 'AD-2' }],
+  }));
+  // Włączamy DPD, żeby wyłączenie przewoźnika nie maskowało błędnego dopasowania metody.
+  db.prepare('INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES (?, ?, ?)').run(
+    'podjazdy.allegro.dpd.aktywne',
+    '1',
+    '2026-09-22T12:00:00Z',
+  );
+  const usluga = createPodjazdy({ db, teraz: zegar, allegroDla: () => allegro });
+  const podglad = await usluga.przygotuj({ ids, data: '2026-09-23', adres });
+  expect(podglad.grupy[0]).toMatchObject({ kurierOdbierajacy: null, moznaZlecac: false });
+});
+
 it('429 przy szczegółach podjazdu także respektuje Retry-After', async () => {
   const { db, ids } = dane();
   const allegro = klient();

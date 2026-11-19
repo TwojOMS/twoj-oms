@@ -89,6 +89,7 @@ describe('migracja kart produktów', () => {
           ai_wspoltworzone: null,
           informacja_bezpieczenstwa: null,
           marka: null,
+          prog_niskiego_stanu: null,
         },
         {
           id: 8,
@@ -112,6 +113,7 @@ describe('migracja kart produktów', () => {
           ai_wspoltworzone: null,
           informacja_bezpieczenstwa: null,
           marka: null,
+          prog_niskiego_stanu: null,
         },
       ]);
       const pow = db.prepare('SELECT produkt_id, karta_id FROM produkty_sklepowe ORDER BY produkt_id').all();

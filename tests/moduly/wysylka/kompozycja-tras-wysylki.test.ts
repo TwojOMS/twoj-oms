@@ -226,6 +226,23 @@ describe('rzeczywiste manifesty i HTTP', () => {
     }
   });
 
+  it('skonfigurowany kurier bez klientów żadnego kanału nie wystarcza do nadania', async () => {
+    const fetch = vi.fn(async () => {
+      throw new Error('test nie zezwala na API');
+    });
+    vi.stubGlobal('fetch', fetch);
+    // Pozostawiamy adapter DPD aktywny, żeby wyizolować warunek obecności klienta kanału.
+    const a = await kompozycja(false, { RYNEK_CLIENT_ID: '', RYNEK_CLIENT_SECRET: '' });
+    try {
+      expect(a.usluga<{ dpd?: unknown }>('wysylka', 'kurierzy').dpd).toBeDefined();
+      expect(a.usluga<{ gotowe: () => boolean }>('wysylka', 'nadanie').gotowe()).toBe(false);
+      expect(fetch).not.toHaveBeenCalled();
+    } finally {
+      await a.app.close();
+      a.db.close();
+    }
+  });
+
   it('WzA dostaje znormalizowany rachunek tej samej usługi rdzenia', async () => {
     const createAllegroWza = vi.fn((_o: Parameters<NonNullable<FabrykiKurierow['createAllegroWza']>>[0]) => ({
       nadaj: async () => ({ numerListu: null }),

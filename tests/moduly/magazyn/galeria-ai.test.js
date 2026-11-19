@@ -151,3 +151,55 @@ it('galeria pokazuje stan importu, plakietki, domyślnie puste pole dodawania i 
   expect(dodawanie).not.toContain('checked');
   expect(dodawanie).toContain('Allegro i ERLI dodadzą oznaczenie AI; po wysłaniu zdjęcia na rynek nie da się go zdjąć');
 });
+
+const json = { ...auth, accept: 'application/json' };
+it('znacznik AI z Accept JSON oddaje zapisany stan, a odmowę po wysyłce jako JSON 409', async () => {
+  const id = dodaj(0),
+    wyslane = dodaj(1, '2026-11-13');
+  const r = await post(id, { ai: '1' }, json);
+  expect(r.statusCode).toBe(200);
+  expect(r.json()).toEqual({ id, ai: 1 });
+  expect((await post(id, {}, json)).json()).toEqual({ id, ai: 0 });
+  const odmowa = await post(wyslane, { ai: '0' }, json);
+  expect(odmowa.statusCode).toBe(409);
+  expect(odmowa.json()).toEqual({ blad: 'Nie można zmienić znacznika AI zdjęcia wysłanego do kanału.' });
+  expect((await post(9999, { ai: '1' }, json)).statusCode).toBe(404);
+});
+
+it('dane galerii niosą kanały, w których jest zdjęcie, i zdanie ostrzeżenia przed usunięciem', async () => {
+  await app.ready();
+  const { daneGalerii } = await import('../../../src/moduly/magazyn/galeria.js');
+  const definicje = [
+    { klucz: 'allegro-polcien', typ: 'allegro', etykieta: 'Allegro Półcień' },
+    { klucz: 'erli-polcien', typ: 'erli', etykieta: 'ERLI Półcień' },
+    { klucz: 'erli-zapas', typ: 'erli', etykieta: 'ERLI zapas' },
+  ];
+  const tylkoKarta = dodaj(0),
+    tylkoAllegro = dodaj(0, '2026-11-13T10:00:00Z'),
+    tylkoErli = dodaj(0, '2026-11-13T09:00:00Z'),
+    nieznane = dodaj(0, '2026-11-13T09:00:00Z', 'woo:demo', 1001);
+  db.prepare(
+    `INSERT INTO zdjecia_kart_allegro (zdjecie_id, konto, adres, ai, wgrano_at)
+    VALUES (?, 'allegro-polcien', 'https://allegro.example/z.png', 0, '2026-11-13T10:00:00Z')`,
+  ).run(tylkoAllegro);
+  const oferta = db.prepare(
+    `INSERT INTO oferty_kanalow (karta_id, kanal, id_zewnetrzne, pochodzenie, tryb, wyslany_skrot, utworzono_at, zmieniono_at)
+    VALUES (?, ?, ?, 'oms', 'zarzadzana', ?, '2026-11-13', '2026-11-13')`,
+  );
+  oferta.run(1000, 'erli-polcien', 'e-1', 'skrot');
+  oferta.run(1000, 'erli-zapas', 'e-2', null);
+  oferta.run(1000, 'allegro-polcien', 'a-1', 'skrot');
+  const galeria = new Map(daneGalerii(db, 1000, definicje).map((z) => [z.id, z]));
+  expect(galeria.get(tylkoKarta)).toMatchObject({ kanaly: [], uwagaUsuwania: null });
+  expect(galeria.get(tylkoAllegro).kanaly).toEqual(['Allegro Półcień', 'ERLI Półcień']);
+  expect(galeria.get(tylkoErli).kanaly).toEqual(['ERLI Półcień']);
+  expect(galeria.get(tylkoErli).uwagaUsuwania).toBe(
+    'Zdjęcie jest w ofercie ERLI Półcień — zniknie z karty. W ofercie zarządzanej z OMS zdjęcie zniknie przy ' +
+      'następnym przebiegu pętli ofert (chyba że treść jest zamrożona albo czeka). Oferty obserwowane i sklep Woo bez zmian.',
+  );
+  expect(galeria.get(tylkoAllegro).uwagaUsuwania).toMatch(/^Zdjęcie jest w ofertach Allegro Półcień, ERLI Półcień — /);
+  // Zdjęcie wysłane, ale bez śladu konta (np. kanał usunięty z konfiguracji) nadal ostrzega.
+  const obca = daneGalerii(db, 1001, definicje).find((z) => z.id === nieznane);
+  expect(obca.kanaly).toEqual(['kanału']);
+  expect(obca.uwagaUsuwania).toMatch(/^Zdjęcie jest w ofercie kanału — zniknie z karty\. /);
+});

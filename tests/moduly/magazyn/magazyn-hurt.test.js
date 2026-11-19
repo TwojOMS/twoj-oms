@@ -4,6 +4,7 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { utworzKarte, zastosujHurtem, kartyPoIdach } from '../../../src/oms/db/magazyn.js';
 import { polecenieZFormularza, zmianyHurtem } from '../../../src/domena/magazyn-hurt.js';
+import { dodajDoSlownika, nazwySlownika } from '../../../src/moduly/magazyn/services/slowniki-kart.js';
 
 // EDYCJA HURTEM W MAGAZYNIE — ekran, ktory istnieje dla 645 kart bez wymiaru, 965 bez
 // oznaczenia paczkomatu i 152 bez kategorii glownej.
@@ -63,6 +64,168 @@ const post = (app, url, payload, naglowki = auth) =>
 
 const podglad = (app, payload, naglowki) => post(app, '/magazyn/hurt', payload, naglowki);
 const zatwierdz = (app, payload, naglowki) => post(app, '/magazyn/hurt/zatwierdz', payload, naglowki);
+
+function daneZPodgladu(body, odznaczone = []) {
+  const dane = new URLSearchParams();
+  for (const [input] of sekcja(body, 'zmiany-hurtem').matchAll(/<input\b[^>]*>/g)) {
+    const atrybut = (nazwa) => new RegExp(`\\b${nazwa}="([^"]*)"`).exec(input)?.[1];
+    const typ = atrybut('type');
+    const nazwa = atrybut('name');
+    const wartosc = atrybut('value');
+    if (typ === 'hidden' || (typ === 'checkbox' && /\schecked\b/.test(input) && !odznaczone.includes(wartosc))) {
+      dane.append(nazwa, wartosc);
+    }
+  }
+  return dane.toString();
+}
+
+const zFormularza = { ...auth, 'content-type': 'application/x-www-form-urlencoded' };
+
+describe('próg niskiego stanu hurtem', () => {
+  it('pasek Edytuj ma pole progu i osobne pole wyboru „bez progu”', async () => {
+    kartaO('Lampa Półcień');
+    const r = await get(serwer(), '/magazyn');
+    expect(r.statusCode).toBe(200);
+    const pasek = sekcja(r.body, 'hurt-pasek');
+    expect(pasek).toMatch(/<input[^>]*name="prog_niskiego_stanu"/);
+    expect(pasek).toMatch(/<input type="checkbox" name="prog_niskiego_stanu_bez" value="tak"/);
+  });
+
+  it.each([
+    [{ prog_niskiego_stanu: '' }, 5, null],
+    [{ prog_niskiego_stanu: '0' }, 0, '0 szt.'],
+    [{ prog_niskiego_stanu: '', prog_niskiego_stanu_bez: 'tak' }, null, 'bez progu'],
+  ])('podgląd i zapis zmiany kart z formularza %j', async (pola, prog, opis) => {
+    const id = kartaO('Lampa Półcień', { prog_niskiego_stanu: 5 });
+    const app = serwer();
+    const dane = new URLSearchParams({ zaznaczone: String(id), paczkomat: 'tak', ...pola });
+    const r = await podglad(app, dane.toString(), zFormularza);
+    expect(r.statusCode).toBe(200);
+    expect(wiersz(id).prog_niskiego_stanu).toBe(5);
+    if (opis) {
+      expect(r.body).toContain('<td>Próg niskiego stanu</td>');
+      expect(r.body).toContain(`<b>${opis}</b>`);
+    } else {
+      expect(r.body).not.toContain('<td>Próg niskiego stanu</td>');
+    }
+    const zapis = await zatwierdz(app, daneZPodgladu(r.body), zFormularza);
+    expect(zapis.statusCode).toBe(200);
+    expect(wiersz(id)).toMatchObject({ prog_niskiego_stanu: prog, paczkomat: 'tak' });
+  });
+
+  it.each(['/magazyn/hurt', '/magazyn/hurt/zatwierdz'])(
+    'ujemny próg w %s odrzuca także zmianę paczkomatu',
+    async (url) => {
+      const id = kartaO('Lampa Półcień', { prog_niskiego_stanu: 5, paczkomat: 'nie' });
+      const dane = new URLSearchParams({ zaznaczone: String(id), prog_niskiego_stanu: '-1', paczkomat: 'tak' });
+      const r = await post(serwer(), url, dane.toString(), zFormularza);
+      expect(r.statusCode).toBe(400);
+      expect(r.body).toMatch(/Próg niskiego stanu/);
+      expect(wiersz(id)).toMatchObject({ prog_niskiego_stanu: 5, paczkomat: 'nie' });
+    },
+  );
+});
+
+describe('zaznaczenie w podglądzie hurtu', () => {
+  it('odznaczona karta zostaje nietknięta, a dwa pola jednej karty mają wspólny checkbox', async () => {
+    const ids = ['Bryza', 'Mgła', 'Iskra'].map((nazwa) => kartaO(nazwa));
+    const przed = wiersz(ids[2]);
+    const app = serwer();
+    const r = await podglad(app, { zakres: 'pasujace', szerokosc_cm: '70', paczkomat: 'nie' });
+    const ekran = sekcja(r.body, 'zmiany-hurtem');
+    expect(ileNaEkranie(r.body)).toBe('3');
+    const zapis = await zatwierdz(app, daneZPodgladu(r.body, [String(ids[2])]), zFormularza);
+    expect(zapis.statusCode).toBe(200);
+    expect(ileNaEkranie(zapis.body)).toBe('2');
+    expect(ids.slice(0, 2).map((id) => wiersz(id).szerokosc_mm)).toEqual([700, 700]);
+    expect(wiersz(ids[2])).toEqual(przed);
+    const checkboxy = [...ekran.matchAll(/<input\b[^>]*type="checkbox"[^>]*name="zaznaczone"[^>]*>/g)];
+    expect(checkboxy).toHaveLength(3);
+    for (const [input] of checkboxy) {
+      expect(input).toMatch(/\schecked\b/);
+      expect(input).toContain('form="zatwierdz-hurt"');
+    }
+    expect(ekran).not.toContain('Zaznacz wszystkie');
+  });
+
+  it('odznaczenie wszystkich daje odmowę bez zapisu', async () => {
+    const id = kartaO('Bryza');
+    const przed = wiersz(id);
+    const app = serwer();
+    const r = await podglad(app, { zaznaczone: String(id), paczkomat: 'nie' });
+    const zapis = await zatwierdz(app, daneZPodgladu(r.body, [String(id)]), zFormularza);
+    expect(zapis.statusCode).toBe(400);
+    expect(zapis.body).toMatch(/nie zaznaczono/i);
+    expect(wiersz(id)).toEqual(przed);
+  });
+
+  it.each([10, 11])('pokazuje akcje dla całej tabeli począwszy od 11 kart (plan: %i)', async (ile) => {
+    for (let i = 0; i < ile; i++) kartaO(`Klosz ${i}`);
+    const r = await podglad(serwer(), { zakres: 'pasujace', paczkomat: 'nie' });
+    const ekran = sekcja(r.body, 'zmiany-hurtem');
+    expect(ekran.includes('Zaznacz wszystkie')).toBe(ile > 10);
+    expect(ekran.includes('Odznacz wszystkie')).toBe(ile > 10);
+  });
+});
+
+describe('marka hurtem', () => {
+  it('pokazuje słownik w pasku i zapisuje markę z listy jako ręczną', async () => {
+    dodajDoSlownika(db, 'marki', 'Półcień');
+    const id = kartaO('Lampa', { marka: 'Przed zmianą' });
+    const app = serwer();
+    const lista = await get(app, '/magazyn');
+    const pasek = sekcja(lista.body, 'hurt-pasek');
+    expect(pasek).toMatch(/<select name="marka">\s*<option value="">— nie zmieniaj —<\/option>/);
+    expect(pasek).toContain('<option value="Półcień">Półcień</option>');
+    expect(pasek).toMatch(/name="marka_nowa" maxlength="200"/);
+    const r = await podglad(app, { zaznaczone: String(id), marka: 'Półcień' });
+    expect(wierszZmiany(r.body, 'Lampa')).toMatch(/Marka[\s\S]*Przed zmianą[\s\S]*Półcień/);
+    expect((await zatwierdz(app, daneZPodgladu(r.body), zFormularza)).statusCode).toBe(200);
+    expect(wiersz(id).marka).toBe('Półcień');
+    expect(
+      db.prepare("SELECT zrodlo, reczne FROM karty_zrodla_pol WHERE karta_id = ? AND pole = 'marka'").get(id),
+    ).toEqual({ zrodlo: 'reczne', reczne: 1 });
+  });
+
+  it('dopiero zatwierdzenie dopisuje znormalizowaną markę i zmienia kartę', async () => {
+    const id = kartaO('Lampa');
+    const przed = wiersz(id);
+    const app = serwer();
+    const r = await podglad(app, { zaznaczone: String(id), marka: '', marka_nowa: '  Półcień  ' });
+    expect(r.statusCode).toBe(200);
+    expect(wierszZmiany(r.body, 'Lampa')).toContain('<b>Półcień</b>');
+    expect(nazwySlownika(db, 'marki')).toEqual([]);
+    expect(wiersz(id)).toEqual(przed);
+    expect((await zatwierdz(app, daneZPodgladu(r.body), zFormularza)).statusCode).toBe(200);
+    expect(nazwySlownika(db, 'marki')).toEqual(['Półcień']);
+    expect(wiersz(id).marka).toBe('Półcień');
+  });
+
+  it.each([
+    [{ marka: 'Wybrana', marka_nowa: 'Wpisana' }, /Wybierz markę z listy albo wpisz nową — nie obie naraz/],
+    [{ marka: ['Pierwsza', 'Druga'] }, /dwa razy/],
+    [{ marka_nowa: ['Pierwsza', 'Druga'] }, /dwa razy/],
+  ])('odmawia całej operacji przy niejednoznacznej marce (%j)', async (pola, komunikat) => {
+    const id = kartaO('Lampa', { marka: 'Półcień' });
+    const przed = wiersz(id);
+    const app = serwer();
+    const dane = { zaznaczone: String(id), paczkomat: 'nie', ...pola };
+    for (const wyslij of [podglad, zatwierdz]) {
+      const r = await wyslij(app, dane);
+      expect(r.statusCode).toBe(400);
+      expect(r.body).toMatch(komunikat);
+    }
+    expect(wiersz(id)).toEqual(przed);
+    expect(nazwySlownika(db, 'marki')).toEqual([]);
+  });
+
+  it('puste pola marki pozostawiają dotychczasową markę przy zmianie innego pola', async () => {
+    const id = kartaO('Lampa', { marka: 'Półcień' });
+    const r = await zatwierdz(serwer(), { zaznaczone: String(id), paczkomat: 'nie', marka: '', marka_nowa: ' ' });
+    expect(r.statusCode).toBe(200);
+    expect(wiersz(id)).toMatchObject({ marka: 'Półcień', paczkomat: 'nie' });
+  });
+});
 
 /**
  * JEDNA SEKCJA EKRANU — bez reszty strony.
@@ -805,6 +968,8 @@ describe('reguly czyste — domain/magazyn-hurt.js', () => {
       wysokosc_cm: '',
       kategoria_glowna: '',
       paczkomat: '',
+      informacja_bezpieczenstwa: '',
+      informacja_bezpieczenstwa_domyslna: '',
     });
     expect(blad).toBe(null);
     expect(Object.keys(polecenie)).toEqual([]);
@@ -856,7 +1021,9 @@ describe('lista magazynu — zaznaczanie i pasek akcji', () => {
   it('kazdy wiersz ma pole wyboru z numerem karty', async () => {
     const id = kartaO('Kandelabr');
     const r = await get(serwer(), '/magazyn');
-    expect(wierszListy(r.body, 'Kandelabr')).toContain(`<input type="checkbox" name="zaznaczone" value="${id}">`);
+    expect(wierszListy(r.body, 'Kandelabr')).toMatch(
+      new RegExp(`<input type="checkbox" name="zaznaczone" value="${id}"[^>]*aria-label="Zaznacz kartę Kandelabr`),
+    );
   });
 
   it('pasek akcji prowadzi na PODGLAD, nie na zapis', async () => {

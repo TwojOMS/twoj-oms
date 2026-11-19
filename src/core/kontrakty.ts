@@ -279,6 +279,10 @@ export type UmiejetnosciKanalu = Readonly<{
   zmienOferte?: boolean;
   zmienIloscCene?: boolean;
   stanOferty?: boolean;
+  /** Kanał przyjmuje cenę liczoną przez OMS (`cenaDlaKanalu`) — także dla oferty prowadzonej ręcznie. */
+  cenyZOms?: boolean;
+  /** Kanał pozwala OMS-owi zmienić status oferty (publikacja, zakończenie) bez dotykania treści. */
+  statusZOms?: boolean;
 }>;
 
 export type RodzajPola = 'tekst' | 'adres' | 'sekret' | 'data' | 'wybor';

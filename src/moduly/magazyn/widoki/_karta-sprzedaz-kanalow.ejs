@@ -1,0 +1,56 @@
+<% if (sprzedazKanalow.length) { %>
+<section class="panel" id="sprzedaz-kanalow" aria-labelledby="sprzedaz-kanalow-tytul">
+  <div class="panel-glowa">
+    <h2 id="sprzedaz-kanalow-tytul">Sprzedaż w kanałach</h2>
+    <% if (mozeEdytowacOferty && sprzedazKanalow.some((kanal) => kanal.cenaDocelowa)) { %>
+      <form method="post" action="/magazyn/ceny-kanalow/podglad">
+        <input type="hidden" name="karty" value="<%= karta.id %>">
+        <button type="submit" class="btn">Wyślij ceny do kanałów</button>
+      </form>
+    <% } %>
+  </div>
+  <div class="panel-cialo sprzedaz-kanalow-siatka">
+    <% for (const kanal of sprzedazKanalow) { %>
+      <article class="sprzedaz-kanalow-okienko">
+        <h3>
+          <% if (kanal.rodzaj) { %><span class="plakietka plakietka--kanal plakietka--<%= kanal.rodzaj.klucz %>" aria-hidden="true"><%= kanal.rodzaj.znak %></span><% } %>
+          <% if (kanal.adres) { %>
+            <a href="<%= kanal.adres %>" target="_blank" rel="noopener noreferrer"><%= kanal.nazwa %></a>
+          <% } else { %><%= kanal.nazwa %><% } %>
+        </h3>
+        <% if (kanal.stan) { %><p class="sprzedaz-kanalow-stan"><%= kanal.stan %></p><% } %>
+        <p class="sprzedaz-kanalow-liczby">
+          <span>łącznie <strong><%= kanal.lacznie %></strong> szt.</span>
+          <span>30 dni: <strong><%= kanal.ostatnie30Dni %></strong> szt.</span>
+        </p>
+        <% if (kanal.cena) { %>
+          <p class="sprzedaz-kanalow-cena"><% if (kanal.cenaDocelowa) { %>Odczytana: <% } %><%= kanal.cena %></p>
+        <% } %>
+        <% if (kanal.cenaDocelowa) { %>
+          <p>Cena w kanale:
+            <% if (!kanal.cenaDocelowa.kwota) { %>nieustalona
+            <% } else if (kanal.cenaDocelowa.reczna) { %>ręczna <%= kanal.cenaDocelowa.kwota %>
+            <% } else { %>z karty + <%= kanal.cenaDocelowa.narzut %>% (<%= kanal.cenaDocelowa.kwota %>)
+            <% } %>
+          </p>
+          <% if (mozeEdytowacOferty) { %>
+            <form class="pola" method="post" action="/magazyn/<%= karta.id %>/cena-kanalu" aria-label="Ręczna cena – <%= kanal.nazwa %>">
+              <input type="hidden" name="kanal" value="<%= kanal.kanal %>">
+              <label for="cena-reczna-<%= kanal.kanal %>">Ręczna cena (zł)
+                <input id="cena-reczna-<%= kanal.kanal %>" type="text" name="cena_zl" inputmode="decimal" value="<%= kanal.cenaDocelowa.poleReczne %>" size="10" required>
+              </label>
+              <div class="pola-w-rzedzie">
+                <button type="submit" class="btn btn--glowny">Zapisz</button>
+                <% if (kanal.cenaDocelowa.reczna) { %>
+                  <button type="submit" class="btn btn--cichy" name="wyczysc" value="1" formnovalidate>Wróć do narzutu</button>
+                <% } %>
+              </div>
+            </form>
+          <% } %>
+        <% } %>
+      </article>
+    <% } %>
+  </div>
+  <%- include('_karta-historia-kanalow.ejs', { historia: sprzedazKanalow.historia }) %>
+</section>
+<% } %>

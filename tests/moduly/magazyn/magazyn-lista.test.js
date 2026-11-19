@@ -127,12 +127,12 @@ describe('GET /magazyn — tabela kart', () => {
 
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('Kandelabr');
-    // ⚠️ CENA PRZYPIETA DO SWOJEJ KOLUMNY, nie do strony. Samo `toContain('74.90')` nie
+    // ⚠️ CENA PRZYPIETA DO SWOJEJ KOLUMNY, nie do strony. Samo `toContain('74,90 zł')` nie
     // mowilo NIC o tym, w ktorym z czterech kanalow ta cena stoi — a tytul tego testu
     // obiecuje wlasnie kolumne. Wzorzec bierze PIERWSZA komorke kanalu (PRO) razem
     // z nastepna (sklep A), ktora ma byc pusta.
     expect(r.body).toMatch(
-      /<td class="magazyn-kanal">\s*74\.90\s*<\/td>\s*<td class="magazyn-kanal">\s*<span class="magazyn-brak">—<\/span>/,
+      /<td class="magazyn-kanal">\s*74,90 zł\s*<\/td>\s*<td class="magazyn-kanal">\s*<span class="magazyn-brak">—<\/span>/,
     );
     // Kanal bez produktu ma pokazac KRESKE, a nie pusta komorke: pusta wyglada jak
     // komorka, ktorej cos nie doliczylo.
@@ -179,7 +179,12 @@ describe('GET /magazyn — tabela kart', () => {
     // ⚠️ TRYB KATALOGOWY — to on niesie ceny kanalow po przebudowie.
     const r = await get(serwer(), '/magazyn?widok=katalog');
 
-    expect(komorkiKanalow(wierszKarty(r.body, 'Kandelabr'))).toEqual(['74.90', '99.00', '111.00', '222.00']);
+    expect(komorkiKanalow(wierszKarty(r.body, 'Kandelabr'))).toEqual([
+      '74,90 zł',
+      '99,00 zł',
+      '111,00 zł',
+      '222,00 zł',
+    ]);
     // Liczba kolumn cen ma sie zgadzac z liczba kanalow, ktore panel w ogole czyta.
     expect(komorkiKanalow(wierszKarty(r.body, 'Kandelabr'))).toHaveLength(4);
   });
@@ -197,16 +202,18 @@ describe('GET /magazyn — tabela kart', () => {
     expect(r.body).not.toMatch(/<th[^>]*>\s*SKU\s*<\/th>/);
   });
 
-  it('wymiary z milimetrow na centymetry, brak jako kreska', async () => {
+  it('wymiarów nie ma w tabeli, a braki wymiarów dalej wyłapuje filtr nad nią', async () => {
     kartaZProduktem({ nazwa: 'Kandelabr', szerokosc_mm: 700, wysokosc_mm: 1000 }, []);
     // Polowiczny wymiar to nadal BRAK wymiarow — ta sama regula, co w filtrze braków.
     kartaZProduktem({ nazwa: 'Lampion', szerokosc_mm: 700 }, []);
-    const r = await get(serwer(), '/magazyn');
+    const app = serwer();
+    const r = await get(app, '/magazyn');
 
-    expect(r.body).toContain('70 × 100 cm');
-    expect(r.body).not.toContain('700 × 1000');
-    // Wiersz z jednym wymiarem ma pokazac BRAK, a nie polowe wymiaru.
-    expect(r.body).not.toMatch(/× (null|undefined|—) cm/);
+    expect(r.body).not.toContain('70 × 100 cm');
+    expect(r.body).not.toMatch(/<th[^>]*>[\s\S]*?Wymiary[\s\S]*?<\/th>/);
+    const braki = await get(app, '/magazyn?brak=wymiary');
+    expect(wierszKarty(braki.body, 'Lampion')).toContain('>Lampion</a>');
+    expect(braki.body).not.toContain('>Kandelabr</a>');
   });
 
   it('filtr paczkomatu zachowuje trzy odróżnialne stany po usunięciu kolumny', async () => {
@@ -296,7 +303,7 @@ describe('GET /magazyn — tabela kart', () => {
     expect(r.body).not.toContain('javascript:');
     // Cena zostaje na ekranie takze wtedy, gdy adres odpadl — odmowa dotyczy odnosnika,
     // nie wiersza.
-    expect(r.body).toContain('99.00');
+    expect(r.body).toContain('99,00 zł');
   });
 
   it('tabela ma wlasny przewijak poziomy', async () => {
@@ -313,13 +320,8 @@ describe('GET /magazyn — tabela kart', () => {
     // ⚠️ CALE ZDANIE, nie „pusto": nazwa klasy `.pusto` stoi w arkuszu ukladu, ktory jedzie
     // w kazdej stronie panelu — alternatywa `|pusto` przepuszczala ten test zawsze.
     expect(r.body).toContain('Nie ma tu jeszcze ani jednej karty produktu.');
-    // ⚠️ `colspan` liczy sie z liczby kolumn kanalow (`6 + naglowkiKanalow.length`), wiec
-    // rozjezdza sie CICHO przy kazdej zmianie zestawu kolumn — komunikat pustej listy
-    // przestaje wtedy siegac konca tabeli i wyglada jak polamany render. Cztery kanaly
-    // plus zaznaczenie, miniatura, karta, wymiary i kategoria = dziewiec.
-    // plus kolumna „Kanały”, widoczna zawsze, gdy firma ma kanal = dziesiec.
-    // + kolumna Marka
-    expect(r.body).toContain('colspan="11"');
+    // Cztery wspólne nagłówki i cztery kolumny cen kanałów.
+    expect(r.body).toContain('colspan="8"');
   });
 });
 
@@ -354,8 +356,8 @@ describe('GET /magazyn — sortowanie z adresu', () => {
   it('ekran MOWI, po ktorej kolumnie sortuje — takze gdy nazwa z adresu odpadla', async () => {
     const app = serwer();
 
-    const poWymiarze = await get(app, '/magazyn?sort=wysokosc&kier=desc');
-    expect(poWymiarze.body).toMatch(/aria-sort="descending"[^>]*>\s*<a[^>]*>Wymiary/);
+    const poMarce = await get(app, '/magazyn?sort=marka&kier=desc');
+    expect(poMarce.body).toMatch(/aria-sort="descending"[^>]*>\s*<a[^>]*>Marka/);
 
     // ⚠️ TU JEST CALA STAWKA BIALEJ LISTY W TRASIE. Nazwa spoza listy wraca do domyslnej,
     // czyli lista JEST ulozona po nazwie — i ekran ma to powiedziec. Bez tego pokazywalby
@@ -653,7 +655,7 @@ describe('GET /magazyn — wyszukiwarka i filtry', () => {
     katalog();
     const app = serwer();
     const przed = await get(app, '/magazyn?fraza=Szpulka&kanal=pro');
-    const adres = /href="(\/magazyn\?[^"]*sort=wysokosc[^"]*)"/.exec(przed.body)[1].replace(/&amp;/g, '&');
+    const adres = /href="(\/magazyn\?[^"]*sort=cena[^"]*)"/.exec(przed.body)[1].replace(/&amp;/g, '&');
     const po = await get(app, adres);
 
     expect(nazwyWTabeli(przed.body)).toEqual(['Szpulka na PRO']);
@@ -923,10 +925,10 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
    */
   function przelacznik(body) {
     const glowa = glowaTabeli(body);
-    const span = /<span class="przelacznik">([\s\S]*?)<\/span>/.exec(glowa);
-    if (!span) throw new Error('W pasku nad tabelą nie ma przełącznika trybu kolumn');
-    const a = /<a\b[^>]*\bhref="([^"]*)"[^>]*>([\s\S]*?)<\/a>/.exec(span[1]);
-    if (!a) throw new Error(`Przełącznik trybu nie jest odnośnikiem: ${span[1].trim()}`);
+    const nav = /<nav[^>]*aria-label="Widoki magazynu"[^>]*>([\s\S]*?)<\/nav>/.exec(glowa);
+    if (!nav) throw new Error('W pasku nad tabelą nie ma zakładek widoków');
+    const a = /<a\b[^>]*\bhref="([^"]*)"\s*>([^<]+)<\/a>/.exec(nav[1]);
+    if (!a) throw new Error('Brak odnośnika do drugiego widoku');
     return { adres: a[1].replace(/&amp;/g, '&'), napis: a[2].replace(/<[^>]*>/g, '').trim() };
   }
 
@@ -1010,7 +1012,7 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
 
     const wKatalogu = await get(app, '/magazyn?brak=sku&widok=katalog');
     const doPorzadkow = przelacznik(wKatalogu.body);
-    expect(doPorzadkow.napis).toMatch(/porządk/);
+    expect(doPorzadkow.napis).toBe('Produkty');
     // ⚠️ CALY komplet parametrow, nie „zawiera brak=sku": przelacznik gubiacy sort/kier
     // wracalby do kolejnosci domyslnej po cichu (niezmiennik 4.13b). Tryb domyslny
     // NIE stoi w adresie — stad jego brak w oczekiwanym obiekcie.
@@ -1018,7 +1020,7 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
 
     const wPorzadkach = await get(app, '/magazyn?brak=sku&sort=nazwa&kier=desc');
     const doKatalogu = przelacznik(wPorzadkach.body);
-    expect(doKatalogu.napis).toMatch(/kanał/);
+    expect(doKatalogu.napis).toBe('Ceny w kanałach');
     expect(pola(doKatalogu.adres)).toEqual({
       brak: 'sku',
       sort: 'nazwa',
@@ -1069,13 +1071,13 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
 
     // Przelacznik jest JEDYNYM odnosnikiem, ktory tryb ZMIENIA — wycinamy go, zeby nie
     // wpadl tu jako falszywa czerwien.
-    const bezPrzelacznika = r.body.replace(/<span class="przelacznik">[\s\S]*?<\/span>/, '');
+    const bezPrzelacznika = r.body.replace(/<nav[^>]*aria-label="Widoki magazynu"[^>]*>[\s\S]*?<\/nav>/, '');
     expect(bezPrzelacznika.length).toBeLessThan(r.body.length);
     const adresy = [...bezPrzelacznika.matchAll(/href="(\/magazyn\?[^"]+)"/g)].map((m) => m[1].replace(/&amp;/g, '&'));
 
     // Naglowki sortujace, „zaznacz” i „Wyczyść zawężenie” — zero albo
     // garstka znaczylyby, ze petla nizej nie sprawdzila niczego.
-    expect(adresy.length).toBeGreaterThanOrEqual(6);
+    expect(adresy.length).toBeGreaterThanOrEqual(5);
     for (const adres of adresy) {
       expect(pola(adres).widok, adres).toBe('katalog');
     }
@@ -1084,12 +1086,10 @@ describe('dwa tryby tabeli — porządki i katalog', () => {
   it('pusta tabela sięga końca w OBU trybach', async () => {
     // ⚠️ `colspan` liczy sie z zestawu kolumn, wiec rozjezdza sie CICHO przy zmianie trybu:
     // komunikat pustej listy przestaje wtedy siegac konca tabeli i wyglada jak polamany
-    // render. Piec kolumn porzadkow i dziewiec katalogu (plus cztery kanaly).
-    // w obu trybach +1 — kolumna „Kanały” (firma testu ma kanaly).
+    // render. W Produktach jest siedem kolumn, w Cenach cztery wspólne i cztery kanały.
     const app = serwer();
-    // + kolumna Marka
     expect((await get(app, '/magazyn')).body).toContain('colspan="7"');
-    expect((await get(app, '/magazyn?widok=katalog')).body).toContain('colspan="11"');
+    expect((await get(app, '/magazyn?widok=katalog')).body).toContain('colspan="8"');
   });
 
   // ⚠️⚠️ STRAZNIK DRYFU: `colspan` jest LITERALEM w trasie (`kolumnPustej`), a liczba kolumn

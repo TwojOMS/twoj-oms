@@ -8,8 +8,9 @@
 import { stronaOdmowy } from '../../core/web/odmowa.js';
 import { rodzajKanalu } from '../../domena/kanaly.js';
 import { kanalyZrodloweKart } from '../../domena/karta-z-produktu.js';
+import { ofertySkuKanalu } from '../../oms/db/magazyn.js';
 import { przelacznikStanow } from '../../oms/db/stany-magazynowe.js';
-import { TYPY_IMPORTU, typImportu, planImportu, wykonajImport } from './services/import-kanalu.js';
+import { TYPY_IMPORTU, POWOD_BEZ_KARTY, typImportu, planImportu, wykonajImport } from './services/import-kanalu.js';
 
 const ADRES = '/magazyn/import';
 const adresEkranu = (kanal, typ) => `${ADRES}?kanal=${encodeURIComponent(kanal)}&typ=${encodeURIComponent(typ)}`;
@@ -33,11 +34,21 @@ export function registerImportMagazynu(app, { db, magazyn, pomoc, trescAllegro, 
     !wynikKanalu(stan, kanal)?.blad &&
     Boolean(wynikKanalu(stan, kanal));
 
+  // Import wiąże karty po SKU. Konto Allegro z ofertami i bez ani jednego SKU nie dostanie więc żadnych powiązań,
+  // a typy tworzące założą duplikaty — ekran ma wtedy odesłać do ręcznych powiązań.
+  const bezSku = (kanal) => {
+    if (!kanal || !czyAllegro(kanal)) return false;
+    const { razem, zSku } = ofertySkuKanalu(db, kanal);
+    return razem > 0 && zSku === 0;
+  };
+  const adresPowiazan = (kanal) => `/magazyn/powiazania?kanal=${encodeURIComponent(kanal)}`;
+
   const wspolne = () => ({
     szerokosc: 'formularz',
     stanyWlaczone: przelacznikStanow(db).wlaczone,
     erli: (kontaErli?.() ?? []).length > 0,
     typy: TYPY_IMPORTU,
+    powodBezKarty: POWOD_BEZ_KARTY,
   });
   const odmowa = (reply, status, komunikat, wroc = ADRES) =>
     stronaOdmowy(reply, status, komunikat, {
@@ -47,6 +58,7 @@ export function registerImportMagazynu(app, { db, magazyn, pomoc, trescAllegro, 
     });
 
   app.get(ADRES, async (req, reply) => {
+    reply.header('Cache-Control', 'no-store');
     const lista = kanaly().map(opisKanalu);
     const kanal = lista.some((k) => k.klucz === req.query?.kanal) ? req.query.kanal : null;
     const typ = typImportu(req.query?.typ);
@@ -57,6 +69,7 @@ export function registerImportMagazynu(app, { db, magazyn, pomoc, trescAllegro, 
         return reply.view('magazyn-import.ejs', {
           ...wspolne(),
           krok: 'trwa',
+          htmx: true,
           kanaly: lista,
           wybrany,
           typ,
@@ -91,17 +104,22 @@ export function registerImportMagazynu(app, { db, magazyn, pomoc, trescAllegro, 
         powody: plan.powody,
         juzPowiazane: plan.juzPowiazane,
         odczytane: wynikKanalu(stan, kanal).zapisane,
+        bezSku: bezSku(kanal),
+        powiazania: adresPowiazan(kanal),
         dlaczego: `/magazyn/pominiete?kanal=${encodeURIComponent(kanal)}`,
       });
     }
     const trwaInny = Boolean(stan?.trwa);
+    const zaznaczony = wybrany ?? (lista.length === 1 ? lista[0] : null);
     return reply.view('magazyn-import.ejs', {
       ...wspolne(),
       krok: 'wybor',
       kanaly: lista,
-      wybrany: wybrany ?? (lista.length === 1 ? lista[0] : null),
+      wybrany: zaznaczony,
       typ,
       trwaInny,
+      bezSku: bezSku(zaznaczony?.klucz),
+      powiazania: zaznaczony ? adresPowiazan(zaznaczony.klucz) : null,
     });
   });
 
@@ -156,6 +174,8 @@ export function registerImportMagazynu(app, { db, magazyn, pomoc, trescAllegro, 
       powody: wynik.powody,
       juzPowiazane: wynik.juzPowiazane,
       trescAllegro: wynik.trescAllegro,
+      sku: wynik.sku,
+      powiazania: adresPowiazan(kanal),
       dlaczego: `/magazyn/pominiete?kanal=${encodeURIComponent(kanal)}`,
     });
   });

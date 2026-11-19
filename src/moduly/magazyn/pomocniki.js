@@ -1,9 +1,16 @@
 import * as dbMagazynu from '../../oms/db/magazyn.js';
-import { polecenieZFormularza, zmianyHurtem, polaDoPrzeniesienia } from '../../domena/magazyn-hurt.js';
+import {
+  polecenieZFormularza,
+  planHurtu,
+  polaDoPrzeniesienia,
+  podpisCen,
+  cenyZgodneZPodpisem,
+} from '../../domena/magazyn-hurt.js';
 import { proponujSku } from '../../domena/sku-generator.js';
 import { przejeciaZeSklepu } from '../../domena/przejecie-sku.js';
 import { ocenZapis as ocenZapisDomeny } from '../../domena/zapis-do-sklepu.js';
 import { jednostkiSklepow, wyslijDoSklepow } from './services/magazyn-zapis.js';
+import { znacznikStatusuOferty } from '../../domena/allegro-oferta.js';
 import { propozycje, propozycjeOfert } from '../../domena/dopasowanie-ofert.js';
 import { grupujPominiete as grupujDomeny } from '../../domena/magazyn-pominiete.js';
 import { kanalyZrodloweKart } from '../../domena/karta-z-produktu.js';
@@ -22,7 +29,7 @@ import { miniaturaZLustra } from '../../domena/miniatura-pozycji.js';
 import { opisWymiarow, centymetryZMilimetrow, milimetryZCentymetrow, gramyZKilogramow } from '../../domena/rozmiar.js';
 import { czyPaczkomat } from '../../domena/paczkomat.js';
 import { zl } from '../../domena/kwoty.js';
-import { groszeZKwoty } from '../../domena/kwota.js';
+import { groszeCenyKatalogowej } from '../../domena/kwota.js';
 import { czyStawkaVat } from '../../domena/vat.js';
 import { poprawnyEan } from '../../domena/ean.js';
 import { fmtDataCzas } from '../../domena/format-daty.js';
@@ -46,6 +53,7 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
     SORTOWANIE_KART,
     niepowiazaneOfertyAllegro,
     powiazaneOfertyAllegro,
+    liczbaNiepowiazanychOfertAllegro,
     kartyDoPowiazania,
     powiazOfertyHurtem,
     odepnijOferte,
@@ -69,6 +77,7 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
     zliczeniaNiepowiazanych: (db) => dbMagazynu.zliczeniaNiepowiazanych(db, kanalyAllegro),
     niepowiazaneOfertyAllegro: (db) => dbMagazynu.niepowiazaneOfertyAllegro(db, kanalyAllegro),
     powiazaneOfertyAllegro: (db) => dbMagazynu.powiazaneOfertyAllegro(db, kanalyAllegro),
+    liczbaNiepowiazanychOfertAllegro: (db) => dbMagazynu.liczbaNiepowiazanychOfertAllegro(db, kanalyAllegro),
     powiazOfertyHurtem: (db, pary, opcje) => dbMagazynu.powiazOfertyHurtem(db, pary, kanalyAllegro, opcje),
     odepnijOferte: (db, id, opcje) => dbMagazynu.odepnijOferte(db, id, kanalyAllegro, opcje),
   };
@@ -156,8 +165,8 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
    * ⚠️ KOLEJNOSC JEST STALA, a nie „ktore znajdzie sie pierwsze w obiekcie": ta sama karta ma
    * pokazywac te sama miniature przy kazdym odswiezeniu, takze po odczycie, ktory dolozyl kanal.
    */
-  function zapisanaMiniatura(kanaly) {
-    for (const klucz of KOLUMNY_KANALOW) {
+  function zapisanaMiniatura(kanaly, kolumny = KOLUMNY_KANALOW) {
+    for (const klucz of kolumny) {
       const adres = kanaly?.[klucz]?.miniatura;
       // Lustro bierze sie z cudzego API, a wartosc laduje wprost w atrybucie `src` naszego
       // HTML-a — ten sam warunek, co przy adresie produktu obok.
@@ -221,17 +230,21 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
    */
   function opisPrzebiegu(stan) {
     const kanaly = (stan?.kanaly ?? []).map((k) => ({ ...k, etykieta: adresKanalu(k.kanal) }));
+    // Uzupelnione SKU to zmiana tozsamosci kart — przebieg mowi o niej wprost, nie tylko w liczbie zapisanych.
+    const skuUzup = kanaly.reduce((s, k) => s + (k.sku?.uzupelniono ?? 0), 0);
+    const skuPomin = kanaly.reduce((s, k) => s + (k.sku?.pominiete?.length ?? 0), 0);
+    const skuOpis = skuUzup || skuPomin ? ` · uzupełniono SKU: ${skuUzup} kart, pominięto: ${skuPomin}` : '';
     return {
       ...stan,
       kanaly,
-      postep: stan?.postep ? { ...stan.postep, etykieta: adresKanalu(stan.postep.kanal) } : null,
+      postep: stan?.postep && !stan.postep.faza ? { ...stan.postep, etykieta: adresKanalu(stan.postep.kanal) } : null,
       otworz: stan.trwa || Boolean(stan.blad) || kanaly.some((k) => k.blad),
       // Jedno zdanie zamiast trzech galezi w widoku (widok niczego nie liczy) — data przychodzi
       // sformatowana `fmtDataCzas`, ta sama funkcja, ktorej dotad uzywal wprost widok.
       streszczenie: stan.trwa
         ? 'trwa — nie zamykaj panelu'
         : stan.skonczony_at
-          ? `ostatni przebieg ${fmtDataCzas(stan.skonczony_at)}`
+          ? `ostatni przebieg ${fmtDataCzas(stan.skonczony_at)}${skuOpis}`
           : 'w tym uruchomieniu panelu jeszcze nieczytane',
       // Gotowy napis znacznika „N kanały ok" — odmiana liczona TU, NIE w widoku.
       kanalyOk: opisLiczbyKanalow(kanaly.length),
@@ -276,7 +289,7 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
    * `Object.create(null)`, bo kluczami sa nazwy z adresu HTTP — na literale `{}` zapytanie
    * o „constructor" siegnaloby do prototypu (ta sama pulapka, co przy bialej liscie w db/).
    */
-  function linkiSortowania(sort, kier, filtry, zaznacz = false, widok = 'porzadki') {
+  function linkiSortowania(sort, kier, filtry, zaznacz = false, widok = 'porzadki', wszystkie = false) {
     const przeciwny = kier === 'desc' ? 'asc' : 'desc';
     const linki = Object.create(null);
     for (const klucz of SORTOWANIE_KART.filter((klucz) => !['paczkomat', 'braki'].includes(klucz))) {
@@ -295,6 +308,7 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
           kier: aktywna ? przeciwny : 'asc',
           zaznacz,
           widok,
+          wszystkie,
         }),
         aktywna,
         aria: aktywna ? (kier === 'desc' ? 'descending' : 'ascending') : null,
@@ -308,10 +322,13 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
   // widok})` od wywolujacego) — kazdy wiersz linkuje karte z NIM jako `wroc`, zeby
   // powrot z karty trafil TU, a nie na goly „/magazyn". Koder liczy sie TUTAJ, przez
   // `adresKarty` (ten sam, co na karcie), a NIE w widoku — widok niczego nie liczy.
-  function wierszKarty(w, adresPowrotuListy) {
+  // `kolumny` — migawka kolumn kanałów wzięta raz na żądanie: `KOLUMNY_KANALOW` to „żywa” lista,
+  // której każdy odczyt pyta konfigurację, a ten wiersz powstaje dla każdej karty z osobna.
+  function wierszKarty(w, adresPowrotuListy, kolumny = KOLUMNY_KANALOW) {
     return {
       id: w.id,
       nazwa: w.nazwa,
+      ean: w.ean || null,
       sku: w.sku || null,
       // Milimetry → „70 × 100 cm" liczy domena, nie widok (domena/rozmiar.js).
       wymiary: opisWymiarow(w),
@@ -319,8 +336,8 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
       marka: w.marka || null,
       // Trzy stany paczkomatu; `null` znaczy „jeszcze nieoznaczone" i to CO INNEGO niz 'nie'.
       paczkomat: czyPaczkomat(w),
-      miniatura: zapisanaMiniatura(w.kanaly),
-      kanaly: KOLUMNY_KANALOW.map((klucz) => komorkaKanalu(w.kanaly?.[klucz])),
+      miniatura: zapisanaMiniatura(w.kanaly, kolumny),
+      kanaly: kolumny.map((klucz) => komorkaKanalu(w.kanaly?.[klucz])),
       // ⚠️ KOLUMNA „STAN" TRYBU PORZADKOW — ile brakuje przy tym karcie. Liczbe przynosi
       // zapytanie (`liczba_brakow`, TO SAMO wyrazenie, co filtr braków i kafle nad tabela),
       // wiec wiersz nie ma prawa twierdzic czego innego niz zawezenie, ktore go tu wpuscilo.
@@ -453,27 +470,38 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
   function paryZFormularza(body, oferty, karty) {
     const chciane = new Set();
     for (const klucz of Object.keys(body ?? {})) {
-      const m = /^(?:karta|reczny)_(\d+)$/u.exec(klucz);
+      const m = /^(?:karta|reczny|reczny_id)_(\d+)$/u.exec(klucz);
       if (m) chciane.add(Number(m[1]));
     }
 
-    const znaneKarty = new Set(karty.map((w) => w.id));
+    const znaneKarty = new Map(karty.map((w) => [w.id, w]));
+    const wartosc = (pole, id) => String(body?.[`${pole}_${id}`] ?? '').trim();
     const pary = [];
     const pominiete = [];
 
     for (const o of oferty) {
       if (!chciane.has(o.id)) continue;
       chciane.delete(o.id);
-      const reczny = String(body[`reczny_${o.id}`] ?? '').trim();
-      const zListy = String(body[`karta_${o.id}`] ?? '').trim();
-      const wybor = reczny || zListy;
+      const tekst = wartosc('reczny', o.id);
+      let recznyId = tekst ? wartosc('reczny_id', o.id) : '';
+      // Id z podpowiedzi liczy się tylko razem z nazwą, którą podpowiedź wpisała. Puste albo
+      // zmienione pole tekstowe znaczy, że id zostało po wcześniejszym wyborze (np. przeglądarka
+      // przywróciła ukryte pole po przeładowaniu) — wtedy decyduje to, co widać w wierszu.
+      const kartaZId = recznyId && /^\d+$/u.test(recznyId) ? znaneKarty.get(Number(recznyId)) : null;
+      if (kartaZId && !kartaZId.wycofana && kartaZId.nazwa.trim() !== tekst) recznyId = '';
+      const wybor = recznyId || tekst || wartosc('karta', o.id);
       // Wiersz zostawiony na „nie wiążę" nie jest pominieciem — jest brakiem decyzji
       // i nie ma o czym meldowac.
       if (!wybor) continue;
 
-      const kartaId = numerKarty(wybor);
-      if (kartaId === null || !znaneKarty.has(kartaId)) {
+      const kartaId = recznyId ? (/^\d+$/u.test(recznyId) ? Number(recznyId) : null) : numerKarty(wybor);
+      const karta = znaneKarty.get(kartaId);
+      if (!karta) {
         pominiete.push({ nazwa: o.nazwa, powod: `nie rozpoznałem karty „${wybor}"` });
+        continue;
+      }
+      if (recznyId && karta.wycofana) {
+        pominiete.push({ nazwa: o.nazwa, powod: `karta #${karta.id} jest wycofana` });
         continue;
       }
       pary.push({ produktId: o.id, kartaId });
@@ -482,30 +510,41 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
     // Numer, ktorego nie ma juz w lustrze (odczyt katalogu wycofal oferte miedzy wyswietleniem
     // formularza a jego wyslaniem). Meldujemy numerem, bo nazwy nie znamy juz skad wziac.
     for (const id of chciane) {
-      if (String(body[`reczny_${id}`] ?? '').trim() || String(body[`karta_${id}`] ?? '').trim()) {
+      if (wartosc('reczny_id', id) || wartosc('reczny', id) || wartosc('karta', id)) {
         pominiete.push({ nazwa: `oferta #${id}`, powod: 'nie ma jej już w lustrze Allegro' });
       }
     }
     return { pary, pominiete };
   }
 
+  function podpowiedzKarty(w, kolumny) {
+    return {
+      id: w.id,
+      nazwa: w.nazwa,
+      sku: w.sku || null,
+      ean: w.ean || null,
+      wymiary: opisWymiarow(w),
+      cena: w.cena_gr == null ? null : `${zl(w.cena_gr)} zł`,
+      miniatura: zapisanaMiniatura(w.kanaly, kolumny),
+      wycofana: Boolean(w.wycofana),
+    };
+  }
+
   /** Jeden wiersz ekranu powiazan, z policzonymi kandydatami. */
-  function wierszOferty(o, karty) {
+  function wierszOferty(o, karty, kolumny) {
     const lista = propozycje(o, karty);
     return {
       id: o.id,
       nazwa: o.nazwa,
       etykietaKanalu: adresKanalu(o.kanal),
+      znacznik: znacznikStatusuOferty(o.status_publikacji),
       adres: adresSklepu(o.adres),
       // ⚠️ „Najlepsza ocena" sluzy WYLACZNIE kolejnosci. `-1` dla oferty bez kandydatow, zeby
       // przy kolejnosci malejacej spadala na dol — a nie mieszala sie z ocenami zerowymi,
       // ktorych ta miara i tak nie produkuje.
       najlepsza: lista.length ? lista[0].ocena : -1,
       kandydaci: lista.map((p) => ({
-        id: p.karta.id,
-        nazwa: p.karta.nazwa,
-        sku: p.karta.sku || null,
-        wymiary: opisWymiarow(p.karta),
+        ...podpowiedzKarty(p.karta, kolumny),
         // ⚠️ PROCENT SKLADA SIE TUTAJ, a nie w widoku (widok w tym module niczego nie liczy).
         // I jest to JEDYNA etykieta oceny, jaka ekran pokazuje: slowa w rodzaju „pewne"
         // albo „słabe" odtworzylyby prog, ktory pomiar wlasnie obalil — w kubelku 0,50–0,67
@@ -539,6 +578,7 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
     const czesci = [];
     if (filtry?.fraza) czesci.push(['fraza', filtry.fraza]);
     if (filtry?.kanal) czesci.push(['kanal', filtry.kanal]);
+    if (filtry?.zakonczone) czesci.push(['zakonczone', '1']);
     if (sort) czesci.push(['sort', sort]);
     if (kier) czesci.push(['kier', kier]);
     // ⚠️ ADRES POWROTU JEST CZESCIA KOMPLETU (reguła: powrót na zawężony widok), a nie doklejka przy odnosniku: ten ekran
@@ -580,6 +620,7 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
     const pary = [];
     if (filtry.fraza && !pomin.includes('fraza')) pary.push({ name: 'fraza', value: filtry.fraza });
     if (filtry.kanal && !pomin.includes('kanal')) pary.push({ name: 'kanal', value: filtry.kanal });
+    if (filtry.zakonczone) pary.push({ name: 'zakonczone', value: '1' });
     // Kolejnosc NIE JEST filtrem, ale jedzie tymi samymi formularzami: bez tych dwoch pol
     // klikniecie „Filtruj" na liscie ulozonej po ocenie wracaloby do kolejnosci domyslnej.
     pary.push({ name: 'sort', value: sort }, { name: 'kier', value: kier });
@@ -709,17 +750,8 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
 
     const cenaSurowa = pole(body, 'cena_zl');
     if (cenaSurowa !== null) {
-      const tekst = cenaSurowa.trim();
-      let cena = null;
-      if (tekst) {
-        // Przecinek dziesietny czlowieka → kropka; reszte (znak, walute, drugi przecinek) odrzuca
-        // `groszeZKwoty` (domena/kwota.js) — przeliczenie po cyfrach, bez mnozenia na floacie.
-        try {
-          cena = groszeZKwoty(tekst.replace(',', '.'), 'cena katalogowa karty');
-        } catch {
-          cena = undefined;
-        }
-      }
+      // Ta sama funkcja czyta cenę hurtem (domena/magazyn-hurt.js).
+      const cena = groszeCenyKatalogowej(cenaSurowa);
       if (cena === undefined) {
         return {
           zmiany: null,
@@ -909,6 +941,7 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
   const HURT_BEZ_ZMIANY =
     'Nie wybrałeś, co zmienić — wszystkie pola formularza są puste. ' +
     'Puste pole hurtem znaczy „nie ruszaj tej kolumny", więc nie było czego zapisać.';
+  const CENY_ZMIENIONE_OD_PODGLADU = 'Ceny zmieniły się od podglądu — otwórz podgląd ponownie.';
 
   return {
     kartyZKanalami,
@@ -919,6 +952,7 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
     SORTOWANIE_KART,
     niepowiazaneOfertyAllegro,
     powiazaneOfertyAllegro,
+    liczbaNiepowiazanychOfertAllegro,
     kartyDoPowiazania,
     powiazOfertyHurtem,
     odepnijOferte,
@@ -936,8 +970,10 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
     zliczeniaBrakow,
     zliczeniaNiepowiazanych,
     polecenieZFormularza,
-    zmianyHurtem,
+    planHurtu,
     polaDoPrzeniesienia,
+    podpisCen,
+    cenyZgodneZPodpisem,
     proponujSku,
     przejeciaZeSklepu,
     ocenZapis,
@@ -989,6 +1025,7 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
     kanalAllegro,
     numerKarty,
     paryZFormularza,
+    podpowiedzKarty,
     wierszOferty,
     pozycjaListy,
     adresPowiazan,
@@ -1007,5 +1044,6 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
     zakresHurtu,
     HURT_BEZ_ZAZNACZENIA,
     HURT_BEZ_ZMIANY,
+    CENY_ZMIENIONE_OD_PODGLADU,
   };
 }

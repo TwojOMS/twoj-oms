@@ -5,6 +5,7 @@ import { ofertaAllegroZKarty } from '../../../domena/allegro-oferta-z-karty.js';
 import { WERSJA_OPISU_KATEGORII } from '../../../domena/tresc-oferty-allegro.js';
 import { ustawieniaOfertKonta } from '../../../oms/db/oferty-kanalow.ts';
 import { wyjatekCennika } from '../../../oms/db/cenniki-kart.ts';
+import { cenyReczneKarty } from '../../../oms/db/ceny-kanalow.js';
 import { znakInstalacji } from './petla-ofert.js';
 import { iloscOferty } from './tresc-oferty.js';
 
@@ -285,6 +286,9 @@ export function ofertaAllegroKarty(db, kartaId, konto, opcje = {}) {
   const ilosc = iloscOferty(opcje.migawka, kartaId, ustawienia);
   // Wyjątek cennika dostaw z karty na tym koncie (podgląd, karta i pętla czytają ten sam).
   const wyjatek = wyjatekCennika(db, { kartaId, konto: konto.klucz });
+  // Ręczna cena karty na tym koncie — ten sam odczyt dla podglądu, karty i pętli, żeby wysłana cena była
+  // tą, którą sprzedawca zobaczył; brak wiersza = cena karty z narzutem konta.
+  const recznaGr = cenyReczneKarty(db, kartaId).get(konto.klucz) ?? null;
   const wynik = ofertaAllegroZKarty({
     ...wspolne,
     konto,
@@ -294,6 +298,7 @@ export function ofertaAllegroKarty(db, kartaId, konto, opcje = {}) {
     producenciMarek,
     ilosc,
     wyjatekCennika: wyjatek,
+    recznaGr,
     tworzenie: opcje.tworzenie === true,
   });
   return { karta, ...wynik, bezKonta: false, ilosc: ilosc ?? null };

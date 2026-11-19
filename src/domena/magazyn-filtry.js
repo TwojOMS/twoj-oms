@@ -24,7 +24,7 @@ import { zl } from './kwoty.js';
 // wartości filtru kanału — trzecia kopia rozjechałaby się po cichu: filtr oferowałby kanał,
 // którego nie ma w kolumnach, albo kolumna stałaby bez możliwości zawężenia do niej.
 
-// ⚠️⚠️ SIEDEM POZYCJI, DOKŁADNIE TE, KTÓRE ZNA `warunkiKart`. Wartości `allegro`
+// ⚠️⚠️ OSIEM POZYCJI, DOKŁADNIE TE, KTÓRE ZNA `warunkiKart`. Wartości `allegro`
 // w oms/db/magazyn.js NIE MA, a nieznana wartość leci tam w `1 = 0`. Pozycja „bez oferty
 // na Allegro” wystawiona w interfejsie oddawałaby PUSTĄ LISTĘ przy każdym kliknięciu.
 // Braku po stronie Allegro nie ma tu wcale: żeby go policzyć, trzeba pytać o NIEOBECNOŚĆ
@@ -35,7 +35,20 @@ import { zl } from './kwoty.js';
 // NICZEGO nie brakuje — druga strona tej samej monety, liczona tym samym wyrażeniem
 // (`LICZBA_BRAKOW_SQL` w oms/db/magazyn.js). Stoi w tej samej liście, bo jedzie tym samym polem
 // adresu (`?brak=…`) i tym samym polem wyboru.
-export const BRAKI_MAGAZYNU = Object.freeze(['sku', 'wymiary', 'kategoria', 'paczkomat', 'zdjecie', 'opis', 'komplet']);
+//
+// ⚠️ `cena_zakupu` jest filtrem, ale NIE brakiem kompletu: nie wchodzi do `LICZBA_BRAKOW_SQL`,
+// więc karta bez ceny zakupu może być kompletna. Inaczej kafel postępu spadłby do zera w dniu,
+// w którym panel zaczął znać ceny zakupu. „Bez ceny” = brak ceny obowiązującej DZIŚ.
+export const BRAKI_MAGAZYNU = Object.freeze([
+  'sku',
+  'wymiary',
+  'kategoria',
+  'paczkomat',
+  'zdjecie',
+  'opis',
+  'cena_zakupu',
+  'komplet',
+]);
 
 // Trzy stany paczkomatu (domena/paczkomat.js) plus nazwa trzeciego, jakiej uzywa zapytanie.
 // ⚠️ Nie `brak`: baza zna `nieoznaczone`, a `brak` leci u niej w `1 = 0`.
@@ -50,6 +63,7 @@ export const BRAKI_ETYKIETY = Object.freeze({
   paczkomat: 'bez oznaczenia paczkomatu',
   zdjecie: 'bez zdjęcia',
   opis: 'bez opisu',
+  cena_zakupu: 'bez ceny zakupu',
   // Nie „kompletne" — pole wyboru czyta sie jako „pokaz karty: …", a ta pozycja jako jedyna
   // nie opisuje braku. Dopowiedzenie odroznia ja od brakow powyzej jednym spojrzeniem.
   komplet: 'komplet — nic nie brakuje',
@@ -64,7 +78,18 @@ export const PACZKOMAT_ETYKIETY = Object.freeze({
 // KOLEJNOSC PARAMETROW W ADRESIE. Stala, zeby ten sam widok mial zawsze ten sam adres
 // (historia przegladarki, zakladki, porownanie w tescie) — ta sama zasada, co przy
 // `adresZFiltrami` na liscie zamowien.
-const POLA = Object.freeze(['fraza', 'kanal', 'kategoria', 'marka', 'brak', 'paczkomat', 'cenaOd', 'cenaDo', 'oferty']);
+const POLA = Object.freeze([
+  'fraza',
+  'kanal',
+  'kategoria',
+  'marka',
+  'brak',
+  'stan',
+  'paczkomat',
+  'cenaOd',
+  'cenaDo',
+  'oferty',
+]);
 const POLA_CENY = Object.freeze(['cenaOd', 'cenaDo']);
 
 /**
@@ -112,11 +137,10 @@ function cena(surowa) {
 }
 
 /**
- * Filtry z adresu. Wartosc nieznana albo w zlym formacie spada do `null` (czyli „bez
- * filtra"), nigdy nie leci dalej — ta sama zasada, co przy `parsujFiltry` listy zamowien.
+ * Filtry z adresu. Nieznany filtr stanu zawęża do pustego zbioru, więc musi dotrzeć do zapytania.
  *
  * @returns {{fraza: string|null, kanal: string|null, kategoria: string|null, marka: string|null,
- *            brak: string|null, paczkomat: string|null, cenaOd: number|null, cenaDo: number|null}}
+ *            brak: string|null, stan?: string|null, paczkomat: string|null, cenaOd: number|null, cenaDo: number|null}}
  */
 export function filtryZZapytania(query = {}, kanaly) {
   wymagajListyKanalow(kanaly);
@@ -131,6 +155,7 @@ export function filtryZZapytania(query = {}, kanaly) {
     // Marka jak kategoria — lista otwarta, nazwa nietrafiona nie trafi w kartę.
     marka: napis(query?.marka),
     brak: zeSlownika(query?.brak, BRAKI_MAGAZYNU),
+    ...(query?.stan ? { stan: Array.isArray(query.stan) ? 'nieznany' : napis(query.stan) } : {}),
     paczkomat: zeSlownika(query?.paczkomat, PACZKOMAT_DO_FILTRA),
     cenaOd: cena(query?.cenaOd),
     cenaDo: cena(query?.cenaDo),
@@ -214,7 +239,7 @@ export function wartosciPol(filtry) {
  * zapytania jest poprawne, ale nieczytelne w pasku adresu (ta sama decyzja, co w
  * `adresZFiltrami` listy zamówień).
  */
-export function adresMagazynu(filtry, { sort, kier, zaznacz = false, widok } = {}) {
+export function adresMagazynu(filtry, { sort, kier, zaznacz = false, widok, wszystkie = false } = {}) {
   const czesci = parametryUkryte(filtry).map((p) => [p.name, p.value]);
   if (sort) czesci.push(['sort', sort]);
   if (kier) czesci.push(['kier', kier]);
@@ -238,6 +263,9 @@ export function adresMagazynu(filtry, { sort, kier, zaznacz = false, widok } = {
   // zna, więc nie wchodzi ani do pól formularza filtrów, ani do zawężenia przenoszonego
   // do akcji hurtowych.
   if (zaznacz) czesci.push(['zaznacz', '1']);
+  // „Pokaż wszystkie” to sposób oglądania listy (bez stron po 100), nie filtr — jedzie dalej przy zmianie
+  // kolejności i zawężenia, bo inaczej każde kliknięcie wracałoby człowieka do pierwszej setki.
+  if (wszystkie) czesci.push(['wszystkie', '1']);
   if (!czesci.length) return '/magazyn';
   return `/magazyn?${czesci.map(([k, w]) => `${k}=${encodeURIComponent(w)}`).join('&')}`;
 }

@@ -9,6 +9,7 @@ import {
   ostrzezeniaTerminow,
   ostrzezeniaZwrotow,
   ostrzezeniaIntegracji,
+  ostrzezeniaNiskiegoStanu,
 } from '../../src/domena/ostrzezenia.js';
 import { ekranyRoli } from '../../src/domena/ekrany.js';
 
@@ -76,6 +77,16 @@ it('pojedynczy ptaszek rozstrzyga: Produkcja z dopisanym ekranem Wiadomości wid
   const k = konto('produkcja');
   k.uprawnienia.add('wiadomosci');
   expect(typy(ostrzezeniaDlaKonta({ wiersze, konto: k }))).toEqual(['zwrot-korekta', 'wiadomosc-allegro']);
+});
+
+it('niski stan widzą administrator i konto z dostępem do Magazynu', () => {
+  const wiersze = ostrzezeniaNiskiegoStanu([{ id: 1, sku: 'POLCIEN', nazwa: 'Półcień', stan: 0, prog: 2 }]);
+  expect(wiersze).toHaveLength(1);
+  const k = konto('produkcja');
+  expect(ostrzezeniaDlaKonta({ wiersze, konto: k })).toEqual([]);
+  k.uprawnienia.add('magazyn');
+  expect(ostrzezeniaDlaKonta({ wiersze, konto: k })).toEqual(wiersze);
+  expect(ostrzezeniaDlaKonta({ wiersze, konto: konto('administrator', true) })).toEqual(wiersze);
 });
 
 it('konto null (pierwszy start, jak w menu) — pełny widok', () => {

@@ -58,8 +58,7 @@ describe('lista Magazynu', () => {
       const wiersze = [...html.matchAll(/<tr>([\s\S]*?)<\/tr>/g)].slice(1);
       expect(wiersze).toHaveLength(3);
       for (const w of wiersze) expect(w[1].match(/<td[\s>]/g)).toHaveLength(naglowki);
-      // + kolumna Marka
-      expect(naglowki).toBe(widok === 'porzadki' ? 7 : 7 + (html.match(/<th class="magazyn-kanal"/g)?.length ?? 0));
+      expect(naglowki).toBe(widok === 'porzadki' ? 7 : 4 + (html.match(/<th class="magazyn-kanal"/g)?.length ?? 0));
     }
   });
 
@@ -103,6 +102,7 @@ describe('lista Magazynu', () => {
       'kategoria',
       'zdjecie',
       'opis',
+      'cena_zakupu',
       'komplet',
     ]);
     expect(select).not.toMatch(/\d/);

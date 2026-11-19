@@ -1,23 +1,99 @@
 <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', { tytul: 'Nowy produkt', podtytul: 'Dane produktu w magazynie' }) %>
 <p class="wroc"><a href="/magazyn">← Wróć do magazynu</a></p>
-<section class="panel" aria-labelledby="nowa-karta-tytul">
-  <h2 id="nowa-karta-tytul">Utwórz kartę produktu</h2>
-  <% if (blad) { %><p class="pasek-blokada" id="nowa-karta-blad" role="alert" tabindex="-1" autofocus><%= blad %></p><% } %>
-  <form class="pola" method="post" action="/magazyn/nowa-karta" aria-labelledby="nowa-karta-tytul"<%- blad ? ' aria-describedby="nowa-karta-blad"' : '' %>>
-    <p><label for="nowa-nazwa">Nazwa (wymagana)</label><br>
-      <input id="nowa-nazwa" name="nazwa" type="text" required<%- blad && !wpisane.nazwa?.trim() ? ' aria-invalid="true" aria-describedby="nowa-karta-blad"' : '' %> value="<%= wpisane.nazwa ?? '' %>"></p>
-    <p><label for="nowa-sku">SKU</label><br>
-      <input id="nowa-sku" name="sku" type="text" autocorrect="off" autocapitalize="none" spellcheck="false" value="<%= wpisane.sku ?? '' %>"></p>
-    <p><label for="nowa-ean">EAN (8 lub 13 cyfr z cyfrą kontrolną)</label><br>
-      <input id="nowa-ean" name="ean" type="text" inputmode="numeric" value="<%= wpisane.ean ?? '' %>"></p>
-    <p><label for="nowa-cena">Cena brutto (zł, np. 28,90)</label><br>
-      <input id="nowa-cena" name="cena_zl" type="text" inputmode="decimal" value="<%= wpisane.cena_zl ?? '' %>"></p>
-    <p><label for="nowa-vat">Stawka VAT</label><br>
-      <select id="nowa-vat" name="stawka_vat">
-        <option value="">—</option>
-        <% stawkiVat.forEach(function (stawka) { %><option value="<%= stawka %>"<%- wpisane.stawka_vat === stawka ? ' selected' : '' %>><%= stawka %>%</option><% }); %>
-      </select></p>
-    <p class="wyjasnienie">Nowa karta ma stan magazynowy 0. Zdjęcia i opis dodasz na karcie.</p>
+<form class="nowa-karta" method="post" action="/magazyn/nowa-karta" enctype="multipart/form-data" data-ceny="/public/domena/cena-sprzedazy.js" aria-label="Nowy produkt"<%- blad ? ' aria-describedby="nowa-karta-blad"' : '' %>>
+  <% if (blad) { %><p class="pasek-blokada" id="nowa-karta-blad" role="alert" tabindex="-1" autofocus><%= blad %> <%= notatkaZdjec %></p><% } %>
+  <%# Enter w polu tekstowym ma uruchomić tworzenie, a nie pierwszą akcję edytora opisu. %>
+  <button type="submit" hidden>Utwórz kartę</button>
+  <section class="panel panel--edycja" aria-labelledby="nowa-podstawowe-tytul">
+    <div class="panel-glowa"><h2 id="nowa-podstawowe-tytul">Podstawowe</h2></div>
+    <div class="panel-cialo pola pola--siatka nowa-karta-pola">
+      <label class="pole-szerokie" for="nowa-nazwa">Nazwa (wymagana)
+        <input id="nowa-nazwa" name="nazwa" type="text" required<%- blad && !wpisane.nazwa?.trim() ? ' aria-invalid="true" aria-describedby="nowa-karta-blad"' : '' %> value="<%= wpisane.nazwa ?? '' %>">
+      </label>
+      <label for="nowa-sku">SKU
+        <input id="nowa-sku" name="sku" type="text" autocorrect="off" autocapitalize="none" spellcheck="false" value="<%= wpisane.sku ?? '' %>">
+      </label>
+      <label for="nowa-ean">EAN (8 lub 13 cyfr z cyfrą kontrolną)
+        <input id="nowa-ean" name="ean" type="text" inputmode="numeric" value="<%= wpisane.ean ?? '' %>">
+      </label>
+    </div>
+  </section>
+  <section class="panel panel--edycja" aria-labelledby="nowa-slowniki-tytul">
+    <div class="panel-glowa"><h2 id="nowa-slowniki-tytul">Marka i kategoria</h2></div>
+    <div class="panel-cialo pola pola--siatka nowa-karta-pola">
+      <% for (const [pole, etykieta, lista, etykietaNowej] of [
+        ['marka', 'Marka', marki, 'albo dodaj nową markę'],
+        ['kategoria_glowna', 'Kategoria główna', kategorie, 'albo dodaj nową kategorię'],
+      ]) { %>
+        <label><%= etykieta %>
+          <select name="<%= pole %>">
+            <option value="">— niewybrana —</option>
+            <% if (wpisane[pole] && !lista.includes(wpisane[pole])) { %>
+              <option value="<%= wpisane[pole] %>" selected><%= wpisane[pole] %></option>
+            <% } %>
+            <% lista.forEach(nazwa => { %>
+              <option value="<%= nazwa %>"<%- wpisane[pole] === nazwa ? ' selected' : '' %>><%= nazwa %></option>
+            <% }); %>
+          </select>
+        </label>
+        <label><%= etykietaNowej %>
+          <input name="<%= pole %>_nowa" value="<%= wpisane[pole + '_nowa'] ?? '' %>" maxlength="200"
+            autocomplete="off" placeholder="nowa nazwa — trafi do słownika">
+        </label>
+        <% if (pole === 'marka') { %>
+          <%# Producent wynika z marki: tylko podgląd, formularz go nie wysyła. %>
+          <p class="pole-szerokie wyjasnienie"><output id="nowa-producent" aria-live="polite" data-producenci="<%= JSON.stringify(producent.dane) %>"><%= producent.stan.tekst %><% if (producent.stan.link) { %><a href="/magazyn/producenci" target="_blank" rel="noopener">przypisz w Magazyn → Producenci</a><% } %></output></p>
+        <% } %>
+      <% } %>
+    </div>
+  </section>
+  <section class="panel panel--edycja" aria-labelledby="nowa-ceny-tytul">
+    <div class="panel-glowa"><h2 id="nowa-ceny-tytul">Ceny</h2></div>
+    <div class="panel-cialo pola">
+    <fieldset class="nowa-karta-ceny">
+      <legend>Ceny</legend>
+      <p><label for="nowa-zakup">Cena zakupu netto (zł)</label><br>
+        <input id="nowa-zakup" name="cena_zakupu_netto" type="text" inputmode="decimal" autocomplete="off" value="<%= wpisane.cena_zakupu_netto ?? '' %>"></p>
+      <p><label for="nowa-netto">Cena sprzedaży netto (zł)</label><br>
+        <input id="nowa-netto" name="cena_netto_zl" type="text" inputmode="decimal" autocomplete="off" aria-describedby="nowa-netto-pomoc" value="<%= wpisane.cena_netto_zl ?? '' %>">
+        <br><small id="nowa-netto-pomoc" class="wyjasnienie" hidden>Wybierz stawkę VAT, żeby liczyć netto.</small></p>
+      <p><label for="nowa-vat">Stawka VAT</label><br>
+        <select id="nowa-vat" name="stawka_vat">
+          <option value="">—</option>
+          <% stawkiVat.forEach(function (stawka) { %><option value="<%= stawka %>"<%- wpisane.stawka_vat === stawka ? ' selected' : '' %>><%= stawka %>%</option><% }); %>
+        </select></p>
+      <p><label for="nowa-cena">Cena sprzedaży brutto (zł, np. 28,90)</label><br>
+        <input id="nowa-cena" name="cena_zl" type="text" inputmode="decimal" autocomplete="off" value="<%= wpisane.cena_zl ?? '' %>"></p>
+      <p><output id="nowa-marza" for="nowa-zakup nowa-netto nowa-cena nowa-vat" aria-live="polite"></output></p>
+    </fieldset>
+    </div>
+  </section>
+  <section class="panel panel--edycja" id="opis-karty" aria-labelledby="opis-tytul">
+    <div class="panel-glowa"><h2 id="opis-tytul">Opis</h2></div>
+    <div class="panel-cialo">
+      <%- include('_karta-opis-edytor.ejs', { nowa: true }) %>
+    </div>
+  </section>
+  <section class="panel panel--edycja" aria-labelledby="nowa-zdjecia-tytul">
+    <div class="panel-glowa"><h2 id="nowa-zdjecia-tytul">Zdjęcia</h2></div>
+    <div class="panel-cialo">
+      <% if (!blad && notatkaZdjec) { %><p class="pasek-uwaga" role="status"><%= notatkaZdjec %></p><% } %>
+      <div class="strefa-pliku" data-strefa-pliku data-ai-na-plik data-maks-plikow="<%= maksZdjec %>" data-maks-bajtow="<%= limitZdjecia %>" data-opis-typow="JPEG, PNG lub WebP" role="group" aria-labelledby="nowa-zdjecia-label">
+        <label id="nowa-zdjecia-label" class="strefa-pliku-opis" for="nowa-zdjecia">Przeciągnij zdjęcia tutaj albo wybierz z dysku</label>
+        <p class="podpowiedz" id="nowa-zdjecia-pomoc">JPEG, PNG lub WebP, do 20 zdjęć po 10 MB. Pierwsze zdjęcie będzie główne.</p>
+        <input type="file" id="nowa-zdjecia" name="zdjecie" accept="<%= typyZdjec %>" multiple aria-describedby="nowa-zdjecia-pomoc nowa-zdjecia-ai">
+        <p class="podpowiedz" id="nowa-zdjecia-ai">AI oznacza zdjęcie wygenerowane lub istotnie zmienione przez AI.</p>
+        <p class="strefa-pliku-stan" data-strefa-stan role="status" aria-live="polite"></p>
+        <ul class="strefa-pliku-lista" data-strefa-lista role="list" aria-label="Wybrane zdjęcia" hidden></ul>
+      </div>
+    </div>
+  </section>
+  <div class="stopka-edycji">
+    <p class="wyjasnienie">Nowa karta ma stan magazynowy 0.</p>
+    <a class="btn" href="/magazyn">Anuluj</a>
     <button class="btn btn--glowny" type="submit">Utwórz kartę</button>
-  </form>
-</section>
+  </div>
+</form>
+<script type="module" src="<%= zasob('nowa-karta-ceny.js') %>"></script>
+<script type="module" src="<%= zasob('nowa-karta-producent.js') %>"></script>
+<script type="module" src="<%= zasob('strefa-pliku.js') %>"></script>

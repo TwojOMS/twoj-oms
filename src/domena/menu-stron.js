@@ -87,13 +87,14 @@ export function nawigacjaDla({
       .map((p) => ({ ...p, etykieta: klucz === 'faktury' ? 'Wystawione' : p.etykieta, biezaca: biezaca(p) })),
   );
   const maFaktury = pozycje.some((p) => p.klucz === 'faktury');
-  // Podmenu Magazynu — Produkty, Kategorie, Marki. Strona słownika jest „page” tylko pod własnym
+  // Podmenu Magazynu — Produkty, Kategorie, Marki, Producenci. Strona słownika jest „page” tylko pod własnym
   // adresem; Produkty zostają bieżące na liście i kartach, ale nie na stronach słowników.
   const adres = sciezka.split('?')[0];
   const podstronyMagazynu = (p) => {
     const slowniki = [
       { href: '/magazyn/kategorie', etykieta: 'Kategorie' },
       { href: '/magazyn/marki', etykieta: 'Marki' },
+      { href: '/magazyn/producenci', etykieta: 'Producenci' },
     ]
       // Podstrona słownika (np. …/kategorie/<nazwa>/allegro) — słownik bieżący jako „true”.
       .map((s) => ({ ...s, biezaca: adres === s.href ? 'page' : adres.startsWith(`${s.href}/`) ? 'true' : null }));

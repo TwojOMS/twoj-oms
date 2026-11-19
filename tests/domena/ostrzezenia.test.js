@@ -7,6 +7,7 @@ import {
   ostrzezeniaTerminow,
   ostrzezeniaZwrotow,
   ostrzezeniaPobran,
+  ostrzezeniaNiskiegoStanu,
   zlozOstrzezenia,
   kluczDozwolony,
   WYGASANIE_INTEGRACJI_MS,
@@ -494,6 +495,48 @@ describe('zlozOstrzezenia — odrzucenia, wygasanie, kolejność', () => {
   });
 });
 
+describe('zbiorcze ostrzeżenie o niskim stanie', () => {
+  const pierwsza = { id: 2, sku: 'POLCIEN', nazwa: 'Półcień', stan: 2, prog: 2 };
+  const druga = { id: 10, sku: null, nazwa: 'Karta bez SKU', stan: 0, prog: 2 };
+
+  it('grupuje karty w jednym wierszu, używa nazwy przy braku SKU i prowadzi do filtra', () => {
+    expect(ostrzezeniaNiskiegoStanu([])).toEqual([]);
+    expect(ostrzezeniaNiskiegoStanu([druga, pierwsza])).toEqual([
+      {
+        klucz: 'niski-stan:2:2,10:0',
+        typ: 'niski-stan',
+        tekst: 'Niski stan: 2 karty (Karta bez SKU — 0 szt., POLCIEN — 2 szt.)',
+        przycisk: { href: '/magazyn?stan=niski', etykieta: 'Pokaż' },
+        etykietaOdrzucenia: 'Ignoruj',
+      },
+    ]);
+  });
+
+  it('odrzucenie działa po zmianie kolejności kart, a po spadku stanu lub dodaniu karty wiersz wraca', () => {
+    const [wiersz] = ostrzezeniaNiskiegoStanu([druga, pierwsza]);
+    const odrzucone = new Map([[wiersz.klucz, TERAZ.toISOString()]]);
+    expect(zlozOstrzezenia({ wiersze: ostrzezeniaNiskiegoStanu([pierwsza, druga]), odrzucone })).toEqual([]);
+    for (const karty of [
+      [druga, { ...pierwsza, stan: 1 }],
+      [druga, pierwsza, { ...druga, id: 11 }],
+    ]) {
+      expect(zlozOstrzezenia({ wiersze: ostrzezeniaNiskiegoStanu(karty), odrzucone })).toHaveLength(1);
+    }
+  });
+
+  it('także dla kilkudziesięciu kart tworzy jeden klucz, który da się odrzucić i uwzględnia ostatnią kartę', () => {
+    const karty = Array.from({ length: 70 }, (_, i) => ({ ...pierwsza, id: i + 1 }));
+    const wiersze = ostrzezeniaNiskiegoStanu(karty);
+    expect(wiersze).toHaveLength(1);
+    const [wiersz] = wiersze;
+    expect(kluczDozwolony(wiersz.klucz)).toBe(true);
+    expect(wiersz.tekst).toContain('Niski stan: 70 kart');
+    expect(ostrzezeniaNiskiegoStanu([...karty].reverse())[0].klucz).toBe(wiersz.klucz);
+    karty.at(-1).stan--;
+    expect(ostrzezeniaNiskiegoStanu(karty)[0].klucz).not.toBe(wiersz.klucz);
+  });
+});
+
 describe('kluczDozwolony — biała lista prefiksów dla trasy POST', () => {
   it.each([
     'faktura-ksef:u-1',
@@ -502,6 +545,7 @@ describe('kluczDozwolony — biała lista prefiksów dla trasy POST', () => {
     'integracja:poller:woo_pro',
     'faktura-termin:2:141112',
     'zwrot:9',
+    'niski-stan:2:-3',
   ])('przyjmuje %s', (klucz) => {
     expect(kluczDozwolony(klucz)).toBe(true);
   });

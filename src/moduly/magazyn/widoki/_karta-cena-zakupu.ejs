@@ -1,0 +1,55 @@
+<% if (podgladCeny) { %>
+  <dt>Cena zakupu netto</dt>
+  <dd>
+    <% if (cenaZakupu) { %>
+      <%= cenaZakupu.cena %> (od <%= cenaZakupu.od %>)
+    <% } else { %>
+      <span class="magazyn-brak">—</span>
+    <% } %>
+    <% if (cenaPrzyszla) { %>
+      <div class="magazyn-brak">od <%= cenaPrzyszla.od %>: <%= cenaPrzyszla.cena %></div>
+    <% } %>
+  </dd>
+<% } else if (historiaCenyZakupu.length) { %>
+  <details class="karta-historia-ceny" <% if (usunCene) { %>open<% } %>>
+    <summary>Historia ceny zakupu (<%= historiaCenyZakupu.length %>)</summary>
+    <% if (usunCene) { %>
+      <form method="post" action="<%= usunCene.akcja %>" aria-labelledby="potwierdzenie-usuniecia-ceny">
+        <p class="pasek-uwaga" id="potwierdzenie-usuniecia-ceny">Usunąć cenę <%= usunCene.cena %> od <%= usunCene.od %>?</p>
+        <div class="stopka-edycji">
+          <button class="btn btn--groza" type="submit">Usuń</button>
+          <a class="btn btn--cichy" href="<%= adresKarty %>#dane-karty">Anuluj</a>
+        </div>
+      </form>
+    <% } %>
+    <div class="przewijak-tabeli">
+      <table class="tab-pozycje" aria-label="Historia ceny zakupu">
+        <thead>
+          <tr>
+            <th scope="col">Od</th>
+            <th scope="col">Cena netto</th>
+            <th scope="col">Wpisano</th>
+            <th scope="col">Kto</th>
+            <th scope="col">Źródło</th>
+            <th scope="col"><span class="poza-okiem">Akcje</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% for (const w of historiaCenyZakupu) { %>
+            <tr>
+              <td>
+                <%= w.przyszla ? 'od ' : '' %><%= w.od %>
+                <% if (w.obowiazuje) { %><div><strong>obowiązuje</strong></div><% } %>
+              </td>
+              <td><%= w.cena %></td>
+              <td><%= w.kiedy %></td>
+              <td><%= w.kto ?? '—' %></td>
+              <td><%= w.zrodlo %></td>
+              <td><a class="link-edytuj" href="<%= w.potwierdzenie %>" aria-label="Usuń cenę <%= w.cena %> od <%= w.od %>">Usuń</a></td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </details>
+<% } %>

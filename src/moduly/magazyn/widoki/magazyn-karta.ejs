@@ -27,39 +27,24 @@
     rozstrzyga — dostaje juz gotowy `adresPowrotu`. %>
 <p class="wroc"><a href="<%= adresPowrotu %>">← Magazyn</a></p>
 
-<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: (karta.nazwa), podtytul: (karta.sku ? karta.sku : 'bez SKU')}) %>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {
+  tytul: karta.nazwa,
+  podtytul: karta.sku || 'bez SKU',
+  idNaglowka: 'naglowek-karty',
+  opisHtml: karta.wycofana ? '<span class="plakietka plakietka--wycofana">wycofana ze sprzedaży</span>' : '',
+  akcje: include('_karta-wiecej.ejs', { pasek: false }).trim(),
+}) %>
+
+<% if (wycofanieSprzedazy) { %>
+  <%- include('_karta-wiecej.ejs', { pasek: true }) %>
+<% } %>
+<%- include('_karta-sprzedaz-kanalow.ejs') %>
 
 <%# ——— DANE KARTY ————————————————————————————————————————————————————————————————— %>
-<% if (karta.wycofana || mozeZmieniacSprzedaz) { %>
-<section class="panel" id="sprzedaz-karty">
-  <div class="panel-glowa"><h2 id="sprzedaz-karty-tytul">Sprzedaż karty</h2></div>
-  <div class="panel-cialo">
-    <% if (karta.wycofana) { %>
-      <p class="pasek-uwaga">Karta wycofana ze sprzedaży</p>
-      <% if (mozeZmieniacSprzedaz) { %>
-        <p id="przywrocenie-karty-opis">Oferty w kanałach nie wrócą automatycznie po przywróceniu karty do sprzedaży.</p>
-        <form method="post" action="/magazyn/<%= karta.id %>/przywroc" aria-labelledby="sprzedaz-karty-tytul" aria-describedby="przywrocenie-karty-opis">
-          <button type="submit" class="btn">Przywróć do sprzedaży</button>
-        </form>
-      <% } %>
-    <% } else if (mozeZmieniacSprzedaz && potwierdzWycofanie) { %>
-      <p id="wycofanie-karty-opis">Oferty tej karty w kanałach zostaną zakończone przy najbliższym przebiegu. Wycofać?</p>
-      <% if (kontaWstrzymaneWycofania.length) { %>
-        <p class="pasek-uwaga" id="wycofanie-karty-wstrzymane"><%= kontaWstrzymaneWycofania.length === 1 ? 'Konto Allegro' : 'Konta Allegro' %> <%= kontaWstrzymaneWycofania.join(', ') %> <%= kontaWstrzymaneWycofania.length === 1 ? 'ma' : 'mają' %> wstrzymane oferty (wyłączone, tylko odczyt albo bez zgody na oferty) — tam oferty tej karty nie zostaną zakończone, dopóki konto jest wstrzymane.</p>
-      <% } %>
-      <form method="post" action="/magazyn/<%= karta.id %>/wycofaj" aria-labelledby="sprzedaz-karty-tytul" aria-describedby="wycofanie-karty-opis<%= kontaWstrzymaneWycofania.length ? ' wycofanie-karty-wstrzymane' : '' %>">
-        <div class="stopka-edycji">
-          <button type="submit" class="btn" name="potwierdz" value="tak">Wycofaj ze sprzedaży</button>
-          <a class="btn btn--cichy" href="<%= adresKarty %>#sprzedaz-karty">Anuluj</a>
-        </div>
-      </form>
-    <% } else if (mozeZmieniacSprzedaz) { %>
-      <a class="btn btn--cichy" href="/magazyn/<%= karta.id %>?wycofaj=tak#sprzedaz-karty">Wycofaj ze sprzedaży</a>
-    <% } %>
-  </div>
-</section>
-<% } %>
-
+<%# Galeria stoi przed danymi w kodzie: na wąskim ekranie zdjęcie jest pierwsze, a od szerokiego CSS przenosi ją do
+    prawej kolumny obok danych — także w trybie edycji, żeby zdjęcie było widać przy poprawianiu nazwy i opisu. %>
+<div class="karta-dane-uklad">
+<%- include('_karta-galeria.ejs') %>
 <section class="panel<%= edytujDane ? ' panel--edycja' : '' %>" id="dane-karty">
   <div class="panel-glowa">
     <h2>Dane karty</h2>
@@ -103,6 +88,19 @@
               <option value="<%= s %>"<%- wartosci.stawka_vat === s ? ' selected' : '' %>><%= s %>%</option>
             <% }); %>
           </select>
+        </label>
+        <label for="cena-zakupu-netto">Cena zakupu netto (zł)
+          <input id="cena-zakupu-netto" name="cena_zakupu_netto" value="<%= wartosci.cena_zakupu_netto %>"
+            inputmode="decimal" placeholder="np. 12,30" aria-describedby="cena-zakupu-podpowiedz">
+          <%# Dopiski w etykiecie są dla oka; czytnik dostaje je raz, przez aria-describedby, a nie drugi raz w nazwie pola. %>
+          <small id="cena-zakupu-podpowiedz" aria-hidden="true">Puste = bez zmian. Stara cena zostaje w historii.</small>
+        </label>
+        <label for="cena-zakupu-od">Obowiązuje od
+          <input id="cena-zakupu-od" type="date" name="cena_zakupu_od" value="<%= wartosci.cena_zakupu_od %>"
+            <% if (blednaDataCenyZakupu) { %>aria-invalid="true" aria-describedby="cena-zakupu-wpisana-data"<% } %>>
+          <% if (blednaDataCenyZakupu) { %>
+            <small id="cena-zakupu-wpisana-data" aria-hidden="true">Wpisana data: <%= wartosci.cena_zakupu_od %></small>
+          <% } %>
         </label>
         <%# Pozycje z kategorii POWIAZANYCH produktow (plus ta juz ustawiona) — nie z palca:
             filtr kategorii dopasowuje CALA nazwe, a nazw jest kilkaset i nikt ich nie pamieta. %>
@@ -166,6 +164,7 @@
         <dd><% if (karta.cena) { %><%= karta.cena %><% } else { %><span class="magazyn-brak">—</span><% } %><%- include('_zrodlo-pola.ejs', { pole: 'cena_gr' }) %></dd>
         <dt>Stawka VAT</dt>
         <dd><% if (karta.stawkaVat) { %><%= karta.stawkaVat %>%<% } else { %><span class="magazyn-brak">—</span><% } %><%- include('_zrodlo-pola.ejs', { pole: 'stawka_vat' }) %></dd>
+        <%- include('_karta-cena-zakupu.ejs', { podgladCeny: true }) %>
         <dt>Kategoria główna</dt>
         <dd><% if (karta.kategoria) { %><%= karta.kategoria %><% } else { %><span class="magazyn-brak">niewybrana</span><% } %><%- include('_zrodlo-pola.ejs', { pole: 'kategoria_glowna' }) %></dd>
         <dt>Marka</dt>
@@ -179,10 +178,13 @@
         <dt>Opis</dt>
         <dd><% if (karta.opis) { %><%= karta.opis %><% } else { %><span class="magazyn-brak">bez opisu</span><% } %><%- include('_zrodlo-pola.ejs', { pole: zrodlaPol.opis_sekcje_json ? 'opis_sekcje_json' : 'opis' }) %></dd>
       </dl>
+      <%- include('_karta-cena-zakupu.ejs', { podgladCeny: false }) %>
     <% } %>
     <% if (zrodlaPol.zdjecia) { %><p class="podpowiedz">Zdjęcia <%- include('_zrodlo-pola.ejs', { pole: 'zdjecia' }) %></p><% } %>
   </div>
 </section>
+</div>
+<%- include('_karta-gpsr.ejs') %>
 <%- include('_karta-opis.ejs') %>
 <%- include('_karta-allegro.ejs') %>
 <%- include('_karta-cenniki.ejs') %>
@@ -195,16 +197,25 @@
     ⚠️ GALERIA OSOBNO PER PRODUKT, a nie jednym workiem: ta sama karta bywa sfotografowana
     inaczej na sklepie B, inaczej na sklepie A i inaczej na Allegro, a przy kazdym uzyciu zdjecia
     trzeba wiedziec, skad ktore pochodzi. %>
-<%- include('_karta-galeria.ejs') %>
 <% if (stanMagazynowy) { %>
 <%# Stan magazynowy karty; bez włączonych stanów (Ustawienia → Magazyn) sekcji nie ma.
     Liczbę, historię i klucz formularza liczy trasa — widok tylko wypisuje. %>
 <section class="panel" id="stan-karty">
   <div class="panel-naglowek">
-    <h2>Stan magazynowy: <span class="<%= stanMagazynowy.stan < 0 ? 'stan-minus' : '' %>"><%= stanMagazynowy.stan %> szt.</span></h2>
+    <h2>Stan magazynowy: <span class="<%= stanMagazynowy.naMinusie ? 'stan-minus' : '' %>"><%= stanMagazynowy.stan %> szt.</span>
+      <% if (stanMagazynowy.plakietka) { %><span class="znacznik znacznik--uwaga"><%= stanMagazynowy.plakietka %></span><% } %>
+    </h2>
   </div>
   <p class="podpowiedz">Przyjęcia i korekty: <%= stanMagazynowy.ruchy %>, zamówienia: −<%= stanMagazynowy.zuzycie %>.
-    <% if (stanMagazynowy.stan < 0) { %><b>Brak na stanie</b> — zamówienia przyjęte, towaru trzeba dokupić albo poprawić stan korektą.<% } %></p>
+    <% if (stanMagazynowy.naMinusie) { %><b>Brak na stanie</b> — zamówienia przyjęte, towaru trzeba dokupić albo poprawić stan korektą.<% } %></p>
+  <% if (stanMagazynowy.zapisanoProg) { %><p class="podpowiedz">Zapisano próg niskiego stanu.</p><% } %>
+  <form method="post" action="<%= stanMagazynowy.adresProgu %>" class="pola prog-stanu">
+    <label for="prog-niskiego-stanu">Ostrzegaj przy stanie ≤
+      <span><input id="prog-niskiego-stanu" name="prog_niskiego_stanu" type="number" min="0" step="1" value="<%= stanMagazynowy.prog ?? '' %>" aria-describedby="prog-niskiego-stanu-pomoc"> szt.</span>
+    </label>
+    <button class="btn btn--drugi" type="submit">Zapisz próg</button>
+  </form>
+  <p id="prog-niskiego-stanu-pomoc" class="podpowiedz">Puste pole wyłącza ostrzeżenie.</p>
   <% if (stanMagazynowy.blad) { %><p class="pasek-uwaga"><%= stanMagazynowy.blad %></p><% } %>
   <% if (stanMagazynowy.powtorzony) { %><p class="pasek-uwaga">Nic nie dopisano: ten formularz był już zapisany wcześniej
     (drugie kliknięcie albo powrót w przeglądarce). Jeśli to nowy ruch — wpisz go jeszcze raz w formularzu niżej.</p><% } %>
@@ -252,7 +263,15 @@
           <% if (o.aktywacjaZlecona) { %><p class="pasek-uwaga">Zlecono aktywację szkicu — wyśle ją pętla ofert.</p><% } %>
           <% o.problemy.forEach(p => { %><p class="pasek-uwaga"><%= p.tekst ?? (Array.isArray(p.bledy) ? p.bledy.map(b => b.tekst ?? b).join(' ') : p.kod ?? p) %></p><% }); %>
           <% if (o.blad) { %><p class="pasek-blokada"><%= o.blad %></p><% } %>
-          <% if (o.tryb === 'obserwowana') { %><p>Oferta obserwowana — OMS tylko ją odczytuje.</p><% } %>
+          <% if (o.tryb === 'obserwowana' && o.cenaZOms) { %><p>Oferta obserwowana — <span class="znacznik">cena z OMS</span> OMS prowadzi tylko jej cenę, resztę zmieniasz w Allegro.</p>
+          <% } else if (o.tryb === 'obserwowana') { %><p>Oferta obserwowana — OMS tylko ją odczytuje.</p><% } %>
+          <% if (mozeEdytowacOferty && o.tryb === 'obserwowana' && o.kontoAllegro) { %>
+            <% if (o.cenaZOms) { %>
+            <form class="w-linii" method="post" action="/magazyn/<%= karta.id %>/oferty/<%= o.id %>/oddaj-cene" aria-label="Oddanie ceny Allegro dla oferty <%= o.idZewnetrzne %>"><button class="btn" type="submit">Oddaj cenę Allegro</button></form>
+            <% } else { %>
+            <form class="w-linii" method="post" action="/magazyn/<%= karta.id %>/oferty/<%= o.id %>/steruj-cena/podglad" aria-label="Sterowanie ceną oferty <%= o.idZewnetrzne %>"><button class="btn" type="submit">Steruj ceną</button></form>
+            <% } %>
+          <% } %>
           <% if (mozeEdytowacOferty && o.tryb === 'obserwowana' && o.kontoErli) { %>
             <form class="w-linii" method="post" action="/magazyn/<%= karta.id %>/oferty/<%= o.id %>/objecie/podglad" aria-label="Objęcie zarządzaniem oferty <%= o.idZewnetrzne %>"><button class="btn" type="submit">Obejmij zarządzaniem</button></form>
           <% } %>
@@ -284,7 +303,7 @@
       </p>
     <% } if (produkty.length) { %>
       <table class="tab-pozycje">
-        <thead><tr><th>Produkt</th><th>Cena</th><th>Zdjęcia</th><th></th></tr></thead>
+        <thead><tr><th>Produkt</th><th>Cena</th><th>Status</th><th>Zdjęcia</th><th></th></tr></thead>
         <tbody>
           <% produkty.forEach(function (p) { %>
             <tr>
@@ -293,7 +312,7 @@
                 <% if (p.bladTresci) { %><p class="magazyn-brak"><%= p.bladTresci %><% if (p.bladTresciData) { %> · <%= p.bladTresciData %><% } %></p><% } %>
                 <div class="sku">
                   <%= p.etykietaKanalu %><% if (p.sku_sklepu) { %> · <%= p.sku_sklepu %><% } %><% if (p.adres) { %>
-                    · <a href="<%= p.adres %>" rel="noopener noreferrer" target="_blank">otwórz w sklepie</a>
+                    · <a href="<%= p.adres %>" rel="noopener noreferrer" target="_blank"><%= p.napisAdresu %></a>
                   <% } %>
                 </div>
                 <% if (p.zniknal) { %>
@@ -305,7 +324,29 @@
                   <div class="sku"><%= p.kategorie.join(' · ') %></div>
                 <% } %>
               </td>
-              <td><% if (p.cena === null) { %><span class="magazyn-brak">bez ceny</span><% } else { %><%= cenaPolska(p.cena) %><% } %></td>
+              <%# `magazyn-kanal`: kwota w jednej linii — „46,90 / zł" na dwie wygladalo jak usterka. %>
+              <td class="magazyn-kanal"><% if (p.cena === null) { %><span class="magazyn-brak">bez ceny</span><% } else { %><%= cenaPolska(p.cena) %><% } %></td>
+              <%# Status w kanale: zmiana idzie przez rozwijany pasek z pytaniem — przycisk w tabeli nie
+                  przełącza niczego jednym kliknięciem. Zablokowany przycisk mówi, dlaczego. %>
+              <td class="status-kanalu" data-produkt="<%= p.id %>">
+                <span class="znacznik znacznik--<%= p.status.ton %>"><%= p.status.plakietka %></span>
+                <% if (p.status.komunikat) { %><p class="magazyn-brak" role="alert"><%= p.status.komunikat %></p><% } %>
+                <% const s = p.status.akcja; if (s && p.status.powodBlokady) { %>
+                  <button class="btn btn--maly" type="button" disabled><%= s.napis %></button>
+                  <p class="sku"><%= p.status.powodBlokady %></p>
+                <% } else if (s) { %>
+                  <details class="status-kanalu__pasek">
+                    <summary class="btn btn--maly"><%= s.napis %></summary>
+                    <form class="w-linii" method="post" action="<%= s.adres %>">
+                      <p><%= s.pytanie %></p>
+                      <% Object.entries(s.pola).forEach(function ([nazwa, wartosc]) { %>
+                        <input type="hidden" name="<%= nazwa %>" value="<%= wartosc %>">
+                      <% }); %>
+                      <button class="btn btn--glowny" type="submit"><%= s.potwierdz %></button>
+                    </form>
+                  </details>
+                <% } %>
+              </td>
               <td>
                 <% if (!p.zdjecia.length) { %>
                   <span class="magazyn-brak">—</span>
@@ -357,11 +398,16 @@
     PODPOWIEDZIA, nie decyzja, i liczy ja ta sama funkcja, co na ekranie powiazan. %>
 <section class="panel" id="dopisz-oferte">
   <div class="panel-glowa">
-    <h2>Dopisz ofertę Allegro</h2>
+    <h2 id="dopisz-oferte-tytul">Dopisz ofertę Allegro</h2>
     <span class="dopisek">produkty ze sklepu wiąże import (Magazyn → Importuj), nie ten ekran</span>
   </div>
   <div class="panel-cialo">
-    <form class="szukajka" method="get" action="<%= adresKarty %>" role="search">
+    <% if (bladPowiazania) { %>
+      <p class="pasek-uwaga" role="alert"><%= bladPowiazania %></p>
+    <% } else if (przypietoOferte) { %>
+      <p class="pasek-info" role="status">Przypięto ofertę Allegro.</p>
+    <% } %>
+    <form class="szukajka" method="get" action="<%= adresKarty %>#dopisz-oferte" role="search" aria-labelledby="dopisz-oferte-tytul">
       <% ukryteWSzukajce.forEach(function (p) { %>
         <input type="hidden" name="<%= p.name %>" value="<%= p.value %>">
       <% }); %>
@@ -380,7 +426,7 @@
         </select>
       </label>
       <button type="submit">Szukaj</button>
-      <% if (szukamy) { %><a class="szukajka-wyczysc" href="<%= adresKarty %>">Wyczyść</a><% } %>
+      <% if (szukamy) { %><a class="szukajka-wyczysc" href="<%= adresKarty %>#dopisz-oferte">Wyczyść</a><% } %>
     </form>
 
     <p class="wyjasnienie">
@@ -414,6 +460,7 @@
                   <%= k.etykietaKanalu %><% if (k.adres) { %>
                     · <a href="<%= k.adres %>" rel="noopener noreferrer" target="_blank">oferta</a>
                   <% } %>
+                  <% if (k.znacznik) { %><span class="znacznik"><%= k.znacznik %></span><% } %>
                 </div>
               </td>
               <td>
@@ -426,8 +473,10 @@
               </td>
               <td>
                 <%# ⚠️ `adresPowiaz` — ta sama pulapka sklejania, co przy „Odepnij" wyzej. %>
-                <form class="w-linii" method="post" action="<%= adresPowiaz %>">
+                <form class="w-linii" method="post" action="<%= adresPowiaz %>#dopisz-oferte">
                   <input type="hidden" name="produktSklepowyId" value="<%= k.id %>">
+                  <input type="hidden" name="fraza" value="<%= filtry.fraza ?? '' %>">
+                  <input type="hidden" name="kanal" value="<%= filtry.kanal ?? '' %>">
                   <button class="btn" type="submit">Przypnij</button>
                 </form>
               </td>

@@ -1,19 +1,30 @@
 import { kartaPoId, produktyKarty, niepowiazaneOfertyAllegro, zapiszKarte } from '../../oms/db/magazyn.js';
 import { propozycjeOfert } from '../../domena/dopasowanie-ofert.js';
-import { adresKanalu } from '../../domena/kanaly.js';
+import { adresKanalu, rodzajKanalu } from '../../domena/kanaly.js';
+import { gdzieOtworzyc } from '../../domena/link-pozycji.js';
 import { miniaturaZLustra } from '../../domena/miniatura-pozycji.js';
 import { opisWymiarow, centymetryZMilimetrow, kilogramyZGramow } from '../../domena/rozmiar.js';
 import { daneOpisu } from './opis.js';
 import { randomBytes } from 'node:crypto';
 import { stanKarty, historiaKarty, dodajRuch } from '../../oms/db/stany-magazynowe.js';
+import { czyPonizejProgu, klasaStanu } from '../../domena/niski-stan.js';
 import { ETYKIETY_RUCHU, ruchZFormularza } from '../../domena/stany-magazynowe.js';
-import { fmtDataCzas } from '../../domena/format-daty.js';
+import { dzienWarszawa, fmtDataCzas, fmtDataCzasKrotko } from '../../domena/format-daty.js';
+import {
+  cenaObowiazujaca,
+  cenaPrzyszla,
+  dzienPolski,
+  dzienZNapisu,
+  zrodloCenyZakupu,
+} from '../../domena/cena-zakupu.js';
+import { historiaCenZakupu } from '../../oms/db/ceny-zakupu.js';
 import { czyPaczkomat } from '../../domena/paczkomat.js';
 import { zl, zlotowki } from '../../domena/kwoty.js';
 import { STAWKI_VAT } from '../../domena/vat.js';
 import { danePrezentacjiKarty, bladTresciOferty } from './karta-prezentacja.js';
 import { daneGalerii } from './galeria.js';
 import { ofertyDoWidoku, zmianyPonowienia, mozeWznowic, cennikiAllegro, opisDostawy } from './oferty.js';
+import { daneSprzedazyKarty } from './karta-sprzedaz-kanalow.js';
 import {
   wyjatekCennika,
   wyjatkiCennikowKarty,
@@ -22,12 +33,18 @@ import {
 } from '../../oms/db/cenniki-kart.ts';
 import { dobierzCennik, regulyKonta } from '../../domena/cennik-dostaw.js';
 import { nazwySlownika } from './services/slowniki-kart.js';
+import { czystaNazwa, markaZFormularza } from '../../domena/marka-karty.js';
 import { dekodujEncje } from '../../domena/slowniki-kart.js';
+import { znacznikStatusuOferty } from '../../domena/allegro-oferta.js';
 import { stronaOdmowy } from '../../core/web/odmowa.js';
 import { ofertaAllegroKarty } from './services/tresc-oferty-allegro.js';
+import { createStatusWKanale, registerStatusWKanale } from './status-w-kanale.js';
+import { daneGpsrKarty, registerGpsrKarty } from './karta-gpsr.js';
 import { dlugoscNazwyAllegro, LIMIT_NAZWY, PARAMETR_STAN } from '../../domena/allegro-oferta-z-karty.js';
 import { WERSJA_OPISU_KATEGORII } from '../../domena/tresc-oferty-allegro.js';
 import { ofertaPoId, zmienOferte, ustawieniaOfertKonta } from '../../oms/db/oferty-kanalow.ts';
+import { czyKonfliktErli, STANY_SYNCHRONIZACJI_ERLI, zamrozone } from './services/petla-ofert.js';
+import { STANY_SYNCHRONIZACJI_ALLEGRO } from './services/petla-ofert-allegro.js';
 const ADRES_HTTP = /^https?:\/\//i;
 export const adresSklepu = (a) => (typeof a === 'string' && ADRES_HTTP.test(a.trim()) ? a.trim() : null);
 const napis = (s) => (typeof s === 'string' && s.trim() ? s.trim() : null);
@@ -35,6 +52,18 @@ function pole(body, klucz) {
   if (!body || !Object.hasOwn(body, klucz)) return null;
   const wartosc = body[klucz];
   return typeof wartosc === 'string' ? wartosc : null;
+}
+
+export function polaSlownikowZFormularza(body) {
+  const zmiany = {};
+  const wpisanaKategoria = czystaNazwa(pole(body, 'kategoria_glowna_nowa'));
+  const wybranaKategoria = pole(body, 'kategoria_glowna');
+  if (wpisanaKategoria || wybranaKategoria !== null) {
+    zmiany.kategoria_glowna = wpisanaKategoria || czystaNazwa(wybranaKategoria) || null;
+  }
+  const { marka } = markaZFormularza(body);
+  if (marka !== undefined) zmiany.marka = marka;
+  return zmiany;
 }
 
 function listaTekstow(surowe) {
@@ -57,15 +86,16 @@ function listaTekstow(surowe) {
  * ⚠️ NA EKRAN IDZIE MINIATURA, nie oryginal: zmierzone przy zamowieniach 87 KB → 4 KB,
  * a galeria karty potrafi miec kilkanascie zdjec z trzech kanalow.
  *
- * ⚠️⚠️ ZDJECIE GLOWNE BIERZE ADRES Z LUSTRA, RESZTA ZOSTAJE PRZY ZGADYWANIU — i to nie jest
- * polowicznosc, tylko granica tego, co WIEMY. Kolumna `produkty_sklepowe.miniatura` trzyma
- * JEDNA wartosc: miniature zdjecia pierwszego z galerii (schema.sql). Podstawienie jej pod
- * kazdy kafelek pokazywaloby kilkanascie razy ten sam obrazek i klamaloby o tym, co w sklepie
- * naprawde lezy. Kafelki dalsze ida wiec dotychczasowa reguła — dokladnie tak, jak dzis.
+ * ⚠️⚠️ ZDJECIE GLOWNE BIERZE ADRES Z LUSTRA, RESZTA DOSTAJE ORYGINAL. Kolumna
+ * `produkty_sklepowe.miniatura` trzyma JEDNA wartosc: miniature zdjecia pierwszego z galerii
+ * (schema.sql). Podstawienie jej pod kazdy kafelek pokazywaloby kilkanascie razy ten sam
+ * obrazek i klamaloby o tym, co w sklepie naprawde lezy.
  *
- * ⚠️ REGULA „lustro wygrywa, zgadywanie zostaje siatka" JEST TA SAMA, ktora dostaja ekrany
- * zamowien (`domena/miniatura-pozycji.js`). Osobna kopia tutaj rozjechalaby sie z nimi przy
- * pierwszej zmianie.
+ * ⚠️ ODCHODZI OD REGULY EKRANOW ZAMOWIEN (`domena/miniatura-pozycji.js`), ktore bez lustra
+ * ZGADUJA adres (`-150x150`, `s150`). Na karcie zgadywany adres dawal puste ramki tam, gdzie
+ * sklep skaluje miniatury do wlasnego rozmiaru (404), a kazdy wiersz ma tu kilka zdjec naraz.
+ * Oryginal jest adresem PEWNYM: ciezszy, ale `loading="lazy"` i stale wymiary w widoku
+ * trzymaja koszt i uklad. Z domeny bierzemy tylko bramke adresu z lustra.
  */
 function galeriaProduktu(surowe, zapisanaMiniaturaGlownego) {
   const zdjecia = [];
@@ -74,20 +104,24 @@ function galeriaProduktu(surowe, zapisanaMiniaturaGlownego) {
     const oryginal = adresSklepu(adres);
     if (!oryginal) continue;
     const zLustra = zdjecia.length === 0 ? zapisanaMiniaturaGlownego : null;
-    zdjecia.push({ oryginal, miniatura: miniaturaZLustra(zLustra, oryginal) });
+    // `miniaturaZLustra(x, null)` oddaje adres z lustra albo null — bez zgadywania.
+    zdjecia.push({ oryginal, miniatura: miniaturaZLustra(zLustra, null) ?? oryginal });
   }
   return zdjecia;
 }
 
 /** Jeden powiazany produkt albo oferta — wiersz sekcji „Produkty i oferty". */
-function wierszProduktuKarty(p, kanalyAllegro, definicje) {
+function wierszProduktuKarty(p, kanalyAllegro, definicje, status) {
   return {
     id: p.id,
+    status,
     ...bladTresciOferty(p),
     nazwa: p.nazwa,
     etykietaKanalu: adresKanalu(p.kanal, definicje),
     cena: p.cena_gr === null || p.cena_gr === undefined ? null : zl(p.cena_gr),
     adres: adresSklepu(p.adres),
+    // Napis liczy model z rodzaju kanalu; widok go tylko wypisuje.
+    napisAdresu: `otwórz ${gdzieOtworzyc(rodzajKanalu(p.kanal, definicje)?.klucz)}`,
     sku_sklepu: p.sku_sklepu ?? null,
     kategorie: listaTekstow(p.kategorie_json),
     zdjecia: galeriaProduktu(p.zdjecia_json, p.miniatura),
@@ -108,6 +142,7 @@ const kandydatKarty = (oferta, propozycja, definicje) => ({
   nazwa: oferta.nazwa,
   etykietaKanalu: adresKanalu(oferta.kanal, definicje),
   adres: adresSklepu(oferta.adres),
+  znacznik: znacznikStatusuOferty(oferta.status_publikacji),
   // ⚠️ PROCENT SKLADA SIE TUTAJ (widok niczego nie liczy) i jest TA SAMA liczba, co na
   // ekranie powiazan — bo liczy ja ta sama funkcja, tylko zadana z drugiej strony.
   procent: propozycja ? `${Math.round(propozycja.ocena * 100)}%` : null,
@@ -135,11 +170,13 @@ const bezpiecznyWroc = (surowy) =>
 // ⚠️ `wroc` DOKLEJA SIE JAKO OSTATNI — kolejnosc parametrow ma zostac STALA (ta sama zasada,
 // co przy `POLA` w domena/magazyn-filtry.js), zeby ten sam stan ekranu mial zawsze ten sam
 // adres (zakladki, historia przegladarki, testy porownujace adresy).
-function adresKarty(id, { edytuj, fraza, kanal, wroc } = {}) {
+function adresKarty(id, { edytuj, fraza, kanal, wroc, usunCene, wycofaj } = {}) {
   const czesci = [];
   if (edytuj) czesci.push(['edytuj', edytuj]);
   if (fraza) czesci.push(['fraza', fraza]);
   if (kanal) czesci.push(['kanal', kanal]);
+  if (usunCene) czesci.push(['usun-cene', usunCene]);
+  if (wycofaj) czesci.push(['wycofaj', 'tak']);
   if (wroc) czesci.push(['wroc', wroc]);
   if (!czesci.length) return `/magazyn/${id}`;
   return `/magazyn/${id}?${czesci.map(([k, w]) => `${k}=${encodeURIComponent(w)}`).join('&')}`;
@@ -150,6 +187,31 @@ function adresKarty(id, { edytuj, fraza, kanal, wroc } = {}) {
 // To ten sam encoding, co `wroc` wewnatrz `adresKarty` — wyciagniety, zeby nie zyl osobno
 // w kazdym z tamtych dwoch miejsc.
 const zWroc = (sciezka, wroc) => (wroc ? `${sciezka}?wroc=${encodeURIComponent(wroc)}` : sciezka);
+
+function daneCenyZakupu(db, kartaId, dzis, usunParam, wroc) {
+  const wpisy = historiaCenZakupu(db, kartaId);
+  const biezaca = cenaObowiazujaca(wpisy, dzis);
+  const przyszla = cenaPrzyszla(wpisy, dzis);
+  const historia = wpisy.reverse().map((w) => ({
+    id: w.id,
+    cena: zlotowki(zl(w.cena_netto_gr)),
+    od: dzienPolski(w.obowiazuje_od),
+    kiedy: fmtDataCzasKrotko(w.wpisano_at),
+    kto: w.kto,
+    zrodlo: zrodloCenyZakupu(w.zrodlo),
+    obowiazuje: w.id === biezaca?.id,
+    przyszla: w.obowiazuje_od > dzis,
+    potwierdzenie: `${adresKarty(kartaId, { wroc, usunCene: w.id })}#dane-karty`,
+  }));
+  const usunId = typeof usunParam === 'string' ? Number(usunParam) : NaN;
+  const usuwany = historia.find((w) => w.id === usunId);
+  return {
+    cenaZakupu: historia.find((w) => w.id === biezaca?.id),
+    cenaPrzyszla: historia.find((w) => w.id === przyszla?.id),
+    historiaCenyZakupu: historia,
+    usunCene: usuwany && { ...usuwany, akcja: zWroc(`/magazyn/${kartaId}/cena-zakupu/${usuwany.id}/usun`, wroc) },
+  };
+}
 
 const BEZ_SKLEPOW = {
   title: 'Magazyn',
@@ -165,6 +227,7 @@ const BEZ_SKLEPOW = {
  * @param {string[]} opcje.kanalyAllegro — jawna lista kont do filtra i zapytania kandydatów
  * @param {() => readonly {klucz:string}[]} [opcje.kontaErli]
  * @param {() => readonly {klucz:string, zgoda?:boolean, tylkoOdczyt?:() => boolean}[]} [opcje.kontaAllegro] — konta Allegro do sekcji „Allegro” karty
+ * @param {Record<string, any>} [opcje.sklepy] — klienci Woo po kluczu kanału (kolumna Status)
  */
 export function createKartaMagazynu({
   db,
@@ -172,7 +235,9 @@ export function createKartaMagazynu({
   definicje,
   kontaErli = /** @returns {{ klucz: string }[]} */ () => [],
   kontaAllegro = /** @returns {{ klucz: string }[]} */ () => [],
+  sklepy = {},
 }) {
+  const statusy = createStatusWKanale({ db, definicje, sklepy, kontaAllegro });
   const kanalAllegro = (surowy) => {
     const s = napis(surowy);
     return s !== null && kanalyAllegro.includes(s) ? s : null;
@@ -186,7 +251,11 @@ export function createKartaMagazynu({
         'jest inny niż ten, o który chodziło. Wróć do magazynu i wejdź w kartę z listy: /magazyn',
     });
 
-  function ekranKarty(req, reply, { karta, blad = null, kod = 200, bladRuchu = null } = {}) {
+  function ekranKarty(
+    req,
+    reply,
+    { karta, blad = null, kod = 200, bladRuchu = null, bladPowiazania = null, bladStatusu = null, gpsr = null } = {},
+  ) {
     // ⚠️ FORMULARZ OTWIERA SIE WYLACZNIE NA `?edytuj=dane` — albo po ODMOWIE, zeby czlowiek
     // nie stracil tego, co wpisal. `typeof === 'string'` odsiewa powtorzony klucz w adresie
     // (`?edytuj=a&edytuj=b`), ktory Fastify oddaje jako TABLICE; biala lista jednej wartosci
@@ -201,11 +270,27 @@ export function createKartaMagazynu({
     const wroc = bezpiecznyWroc(req.query?.wroc);
     const adresPowrotu = wroc ?? '/magazyn';
 
-    const produkty = produktyKarty(db, karta.id).map((p) => wierszProduktuKarty(p, kanalyAllegro, definicje));
+    const wierszeLustra = produktyKarty(db, karta.id);
+    const ofertyKarty = ofertyDoWidoku(db, karta.id);
+    const admin = req.konto?.admin === true;
+    const produkty = wierszeLustra.map((p) =>
+      wierszProduktuKarty(
+        p,
+        kanalyAllegro,
+        definicje,
+        statusy.model(p, {
+          admin,
+          kartaId: karta.id,
+          oferty: ofertyKarty,
+          komunikat: bladStatusu?.produktId === p.id ? bladStatusu.tekst : null,
+        }),
+      ),
+    );
 
     // Kandydaci do dopisania. ⚠️ WYLACZNIE OFERTY ALLEGRO — patrz komentarz przy trasie
     // `POST /magazyn/:id/powiaz`.
-    const filtry = { fraza: napis(req.query?.fraza), kanal: kanalAllegro(req.query?.kanal) };
+    const zrodloFiltrow = bladPowiazania ? req.body : req.query;
+    const filtry = { fraza: napis(zrodloFiltrow?.fraza), kanal: kanalAllegro(zrodloFiltrow?.kanal) };
     const szukamy = Boolean(filtry.fraza || filtry.kanal);
     const oferty = niepowiazaneOfertyAllegro(db, kanalyAllegro);
 
@@ -250,6 +335,7 @@ export function createKartaMagazynu({
 
     // Wartosci POL formularza. Po odmowie wygrywa to, co czlowiek WPISAL — inaczej traci
     // wszystko, co wstukal w pozostalych polach, i wpisuje od nowa.
+    const dzis = dzienWarszawa(new Date().toISOString());
     const zBazy = {
       nazwa: karta.nazwa ?? '',
       sku: karta.sku ?? '',
@@ -260,6 +346,8 @@ export function createKartaMagazynu({
       ean: karta.ean ?? '',
       cena_zl: Number.isSafeInteger(karta.cena_gr) ? zl(karta.cena_gr) : '',
       stawka_vat: karta.stawka_vat ?? '',
+      cena_zakupu_netto: '',
+      cena_zakupu_od: dzis,
       kategoria_glowna: karta.kategoria_glowna ?? '',
       kategoria_glowna_nowa: '',
       marka: karta.marka ?? '',
@@ -273,11 +361,14 @@ export function createKartaMagazynu({
       wartosci[klucz] = wpisane === null ? zBazy[klucz] : wpisane;
     }
 
-    const ofertyKarty = ofertyDoWidoku(db, karta.id);
-    const potwierdzWycofanie = req.query?.wycofaj === 'tak';
+    const mozeZmieniacSprzedaz = req.konto?.admin === true;
+    const potwierdzWycofanie = mozeZmieniacSprzedaz && karta.wycofana !== 1 && req.query?.wycofaj === 'tak';
+    const allegroKarty = daneAllegroKarty(db, karta, kontaAllegro);
     return reply.code(kod).view('magazyn-karta.ejs', {
+      szerokosc: 'tabela',
       ...danePrezentacjiKarty(db, karta.id, definicje, req.query?.tresc),
-      galeriaKarty: daneGalerii(db, karta.id),
+      galeriaKarty: daneGalerii(db, karta.id, definicje),
+      sprzedazKanalow: daneSprzedazyKarty(db, karta.id, wierszeLustra, ofertyKarty, definicje, adresSklepu),
       ofertyKanalu: ofertyKarty.map((o) => ({
         ...o,
         kontoErli: kontaErli().some((k) => k.klucz === o.kanal),
@@ -285,11 +376,10 @@ export function createKartaMagazynu({
         wznow: mozeWznowic(o) && kontaAllegro().some((k) => k.klucz === o.kanal && k.zgoda !== false),
       })),
       mozeEdytowacOferty: req.konto?.admin === true,
-      mozeZmieniacSprzedaz: req.konto?.admin === true,
-      potwierdzWycofanie,
-      kontaWstrzymaneWycofania:
-        potwierdzWycofanie && req.konto?.admin === true ? kontaWstrzymaneWycofania(db, ofertyKarty, kontaAllegro) : [],
-      allegroKarty: daneAllegroKarty(db, karta, kontaAllegro),
+      mozeZmieniacSprzedaz,
+      wycofanieSprzedazy: potwierdzWycofanie ? ofertyDoZakonczenia(db, ofertyKarty, kontaAllegro(), kontaErli()) : null,
+      allegroKarty,
+      gpsrKarty: daneGpsrKarty(db, karta, kontaAllegro, gpsr),
       cennikiKarty: daneCennikowKarty(db, karta, { kontaAllegro, kontaErli, definicje }),
       title: `Magazyn — ${karta.nazwa}`,
       okruszki: [{ tekst: 'Magazyn', href: '/magazyn' }, { tekst: karta.nazwa }],
@@ -312,15 +402,20 @@ export function createKartaMagazynu({
         stawkaVat: karta.stawka_vat || null,
       },
       stawkiVat: STAWKI_VAT,
+      ...daneCenyZakupu(db, karta.id, dzis, req.query?.['usun-cene'], wroc),
+      blednaDataCenyZakupu: blad && wartosci.cena_zakupu_od && Boolean(dzienZNapisu(wartosci.cena_zakupu_od).blad),
       opisKarty: daneOpisu(db, karta.id, req.opisFormularz),
       // Stan magazynowy — `null`, gdy stany są wyłączone (sekcji na karcie wtedy nie ma).
-      stanMagazynowy: stanMagazynowyKarty(karta.id, bladRuchu, req.body, req.query?.ruch === 'powtorzony'),
+      stanMagazynowy: stanMagazynowyKarty(karta, bladRuchu, req.body, req.query),
       produkty,
       kandydaci,
       kategorie,
       marki,
       edytujDane,
       blad,
+      bladPowiazania,
+      przypietoOferte: kod === 200 && req.query?.przypieto === 'tak',
+      zapisanoBezpieczenstwo: kod === 200 && req.query?.zapisano === 'bezpieczenstwo',
       wartosci,
       szukamy,
       filtry,
@@ -335,6 +430,7 @@ export function createKartaMagazynu({
       ],
       adresPowrotu,
       adresKarty: adresKarty(karta.id, { wroc }),
+      adresPotwierdzeniaWycofania: adresKarty(karta.id, { wycofaj: true, wroc }),
       adresEdycji: adresKarty(karta.id, {
         fraza: filtry.fraza,
         kanal: filtry.kanal,
@@ -355,11 +451,18 @@ export function createKartaMagazynu({
 
   // Stan, historia i formularz ruchu. Klucz idempotencji powstaje przy RENDERZE formularza: drugie kliknięcie
   // tego samego formularza niesie ten sam klucz i ruch nie wchodzi drugi raz (ruchy_magazynowe.klucz UNIQUE).
-  function stanMagazynowyKarty(kartaId, bladRuchu, body, powtorzony = false) {
+  function stanMagazynowyKarty(karta, bladRuchu, body, query) {
+    const { id: kartaId, prog_niskiego_stanu: prog } = karta;
     const stan = stanKarty(db, kartaId);
     if (!stan) return null;
+    const klasa = klasaStanu(stan.stan, prog);
     return {
       ...stan,
+      prog,
+      naMinusie: klasa === 'minus',
+      plakietka: czyPonizejProgu(stan.stan, prog) ? `niski stan (${stan.stan} ≤ ${prog})` : null,
+      adresProgu: `/magazyn/${kartaId}/prog-stanu`,
+      zapisanoProg: query?.zapisano === 'prog-stanu',
       historia: historiaKarty(db, kartaId)
         .slice(0, 30)
         .map((w) => ({
@@ -379,14 +482,14 @@ export function createKartaMagazynu({
       klucz: randomBytes(12).toString('hex'),
       adresRuchu: `/magazyn/${kartaId}/ruch`,
       blad: bladRuchu,
-      powtorzony,
+      powtorzony: query?.ruch === 'powtorzony',
       wpisane: bladRuchu
         ? { rodzaj: String(body?.rodzaj ?? ''), ilosc: String(body?.ilosc ?? ''), powod: String(body?.powod ?? '') }
         : null,
     };
   }
 
-  return { ekranKarty, brakKarty };
+  return { ekranKarty, brakKarty, statusy };
 }
 
 // ——— sekcja „Allegro” karty ————————————————————————————————————————————
@@ -406,32 +509,51 @@ function jsonLubNull(surowe) {
   }
 }
 /**
- * Konta Allegro, na których wycofanie karty nie zakończy jej ofert — pętla pomija konto z wyłączonymi
- * ofertami (`oferty_czynne = 0`), konto w trybie tylko odczyt i konto bez zgody na oferty (nie wysyła ENDED).
- * Liczą się oferty zarządzane z numerem Allegro, jeszcze nie zakończone (synchronizacja w
- * `petla-ofert-allegro.js` bierze tylko takie).
  * @param {import('node:sqlite').DatabaseSync} db
- * @param {readonly {kanal:string, tryb:string, idZewnetrzne?:string|null, odczytStatus?:string|null}[]} oferty
- * @param {() => readonly {klucz:string, zgoda?:boolean, tylkoOdczyt?:() => boolean}[]} kontaAllegro
- * @returns {string[]}
+ * @param {readonly {klucz:string, zgoda?:boolean, tylkoOdczyt?:() => boolean}[]} konta
  */
-export function kontaWstrzymaneWycofania(db, oferty, kontaAllegro) {
-  const wstrzymane = new Set(
-    kontaAllegro()
-      .filter((k) => !ustawieniaOfertKonta(db, k.klucz).czynne || k.tylkoOdczyt?.() === true || k.zgoda === false)
-      .map((k) => k.klucz),
+function kontaWstrzymaneWycofania(db, konta) {
+  return konta
+    .filter((k) => !ustawieniaOfertKonta(db, k.klucz).czynne || k.tylkoOdczyt?.() === true || k.zgoda === false)
+    .map((k) => k.klucz)
+    .sort();
+}
+
+/**
+ * Licznik i ostrzeżenie opierają się na tym samym zestawie ofert zarejestrowanych do obsługi w pętlach.
+ * @param {import('node:sqlite').DatabaseSync} db
+ * @param {readonly import('../../oms/db/oferty-kanalow.ts').OfertaKanalu[]} oferty
+ * @param {readonly {klucz:string, zgoda?:boolean, tylkoOdczyt?:() => boolean}[]} kontaAllegro
+ * @param {readonly {klucz:string, tylkoOdczyt?:() => boolean}[]} kontaErli
+ */
+function ofertyDoZakonczenia(db, oferty, kontaAllegro, kontaErli) {
+  const konta = [...kontaAllegro, ...kontaErli];
+  const kluczeKont = new Set(konta.map((k) => k.klucz));
+  const kluczeErli = new Set(kontaErli.map((k) => k.klucz));
+  const wystawione = oferty.filter(
+    (o) =>
+      kluczeKont.has(o.kanal) &&
+      o.tryb === 'zarzadzana' &&
+      (kluczeErli.has(o.kanal)
+        ? STANY_SYNCHRONIZACJI_ERLI.includes(o.stan) && !czyKonfliktErli(o) && !zamrozone(o.odczytZamrozone, 'status')
+        : STANY_SYNCHRONIZACJI_ALLEGRO.includes(o.stan)) &&
+      o.idZewnetrzne &&
+      !o.idZewnetrzne.startsWith('ext:') &&
+      !['ENDED', 'INACTIVE', 'inactive'].includes(o.odczytStatus ?? '') &&
+      !o.odczytZarchiwizowana &&
+      !o.wyslanePola?.wycofanoAt,
   );
-  const numer = (/** @type {string|null|undefined} */ n) => typeof n === 'string' && n !== '' && !n.startsWith('ext:');
-  return [
-    ...new Set(
-      oferty
-        .filter(
-          (o) =>
-            wstrzymane.has(o.kanal) && o.tryb === 'zarzadzana' && numer(o.idZewnetrzne) && o.odczytStatus !== 'ENDED',
-        )
-        .map((o) => o.kanal),
+  const kontaOfert = new Set(wystawione.map((o) => o.kanal));
+  const wstrzymane = new Set(
+    kontaWstrzymaneWycofania(
+      db,
+      konta.filter((k) => kontaOfert.has(k.klucz)),
     ),
-  ].sort();
+  );
+  return {
+    liczba: wystawione.filter((o) => !wstrzymane.has(o.kanal)).length,
+    kontaWstrzymane: [...wstrzymane],
+  };
 }
 
 /** Środowisko sekcji „Allegro”: konto produkcyjne, gdy jest; inaczej pierwsze konto (brak kont → produkcja). */
@@ -807,26 +929,41 @@ export function zmianyCennikowZFormularza(db, kartaId, body, { kontaAllegro, kon
  * @param {string[]} opcje.kanalyAllegro
  * @param {() => readonly {klucz:string}[]} [opcje.kontaErli]
  * @param {() => readonly {klucz:string, zgoda?:boolean, tylkoOdczyt?:() => boolean}[]} [opcje.kontaAllegro]
+ * @param {Map<number, string>} [opcje.komunikatyNowychKart]
+ * @param {Record<string, any>} [opcje.sklepy] — klienci Woo po kluczu kanału (kolumna Status)
  */
 export function registerKartaMagazynu(
   app,
   {
     db,
     magazyn,
+    komunikatyNowychKart,
     kanalyAllegro,
     definicje,
     kontaErli = /** @returns {{ klucz: string }[]} */ () => [],
     kontaAllegro = /** @returns {{ klucz: string }[]} */ () => [],
+    sklepy = {},
   },
 ) {
-  const { ekranKarty, brakKarty } = createKartaMagazynu({ db, kanalyAllegro, definicje, kontaErli, kontaAllegro });
+  const { ekranKarty, brakKarty, statusy } = createKartaMagazynu({
+    db,
+    kanalyAllegro,
+    definicje,
+    kontaErli,
+    kontaAllegro,
+    sklepy,
+  });
+  registerStatusWKanale(app, { db, magazyn, statusy, ekranKarty, brakKarty, bezSklepow: BEZ_SKLEPOW });
+  registerGpsrKarty(app, { db, magazyn, kontaAllegro, ekranKarty, brakKarty, bezSklepow: BEZ_SKLEPOW });
   app.get('/magazyn/:id', async (req, reply) => {
     if (!magazyn || magazyn.gotowy?.() === false) return reply.view('pusta-strona.ejs', BEZ_SKLEPOW);
     const karta = kartaPoId(db, req.params.id);
     if (!karta) return brakKarty(reply, req.params.id);
     // ⚠️ TA TRASA WYLACZNIE CZYTA. Podpowiedzi sa PROPOZYCJA — wejscie na karte nie wiaze
     // ani jednej oferty (to samo rozstrzygniecie, co na ekranie powiazan).
-    return ekranKarty(req, reply, { karta });
+    const blad = req.query?.wynik === 'zdjecia' ? komunikatyNowychKart?.get(karta.id) : null;
+    if (blad) komunikatyNowychKart.delete(karta.id);
+    return ekranKarty(req, reply, { karta, blad });
   });
 
   // CSRF sprawdza wspólny hak panelu; zmiana sprzedaży wymaga flagi admina, jak akcje ofert.
@@ -835,7 +972,7 @@ export function registerKartaMagazynu(
       const odmowa = (kod, tekst) =>
         stronaOdmowy(reply, kod, tekst, {
           tytul: 'Nie zmieniono sprzedaży karty',
-          wroc: `/magazyn/${encodeURIComponent(req.params.id)}#sprzedaz-karty`,
+          wroc: `/magazyn/${encodeURIComponent(req.params.id)}#naglowek-karty`,
           napisWroc: 'Wróć do karty',
         });
       if (req.konto?.admin !== true)
@@ -847,7 +984,7 @@ export function registerKartaMagazynu(
         return odmowa(400, 'Potwierdź wycofanie karty ze sprzedaży w formularzu na karcie.');
       }
       zapiszKarte(db, karta.id, { wycofana: akcja === 'wycofaj' ? 1 : 0 });
-      return reply.code(303).redirect(`/magazyn/${karta.id}#sprzedaz-karty`);
+      return reply.code(303).redirect(`/magazyn/${karta.id}#naglowek-karty`);
     });
 
   // Ruch ręczny (przyjęcie / korekta). Odmowa wraca na kartę z kodem 400 i tym, co wpisano.

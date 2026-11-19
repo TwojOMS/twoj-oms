@@ -1,4 +1,4 @@
-// Wyjątek cennika dostaw na karcie (per konto Allegro i ERLI), podgląd „Wystaw na…” z linią
+// Wyjątek cennika dostaw na karcie (per konto Allegro i ERLI), podgląd „Wystaw oferty” z linią
 // „Cennik: <nazwa> — <powód>”, odmowa karty bez wymiarów/wagi przy regułach rozmiaru, zapis wyjątku Allegro tylko
 // z listy cenników konta. Wyjątek z karty wystarcza także na koncie bez reguł (Allegro jak ERLI).
 // Klienci Allegro i ERLI to atrapy; dane zmyślone („Pracownia Półcień”, lampy).

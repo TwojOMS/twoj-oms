@@ -12,6 +12,7 @@ import { utworzKarte, zapiszProduktSklepowy, powiazProdukt } from '../../../src/
 import { ustawieniaOfertKonta, zapiszUstawieniaOfertKonta, wstawOferte } from '../../../src/oms/db/oferty-kanalow.ts';
 import { pobierzTrescOfertAllegro } from '../../../src/moduly/magazyn/services/allegro-tresc-kart.js';
 import { ofertaAllegroKarty } from '../../../src/moduly/magazyn/services/tresc-oferty-allegro.js';
+import { ustawCeneReczna } from '../../../src/oms/db/ceny-kanalow.js';
 import { ofertaAllegroZKarty, ZNACZNIK_WGRANIA } from '../../../src/domena/allegro-oferta-z-karty.js';
 import { opisKategorii, trescOfertyAllegro } from '../../../src/domena/tresc-oferty-allegro.js';
 import {
@@ -235,6 +236,16 @@ describe('E3.06b — wejście E3.06 z bazy', () => {
     expect(w.zadanie.external.id).toMatch(new RegExp(`^\\S+-K${a}$`));
   });
 
+  it('T-M1: ręczna cena karty na tym koncie (105 zł) idzie do oferty; ręczna innego konta — nie', async () => {
+    const { db, a } = await bazaZImportem();
+    ustawCeneReczna(db, { kartaId: a, kanal: DRUGIE, cenaGr: 9900, kto: 'administrator', at: T0 });
+    expect(ofertaAllegroKarty(db, a, KONTO, { teraz: TERAZ }).zadanie.sellingMode.price.amount).toBe('59.00');
+    ustawCeneReczna(db, { kartaId: a, kanal: KANAL, cenaGr: 10500, kto: 'administrator', at: T0 });
+    const w = ofertaAllegroKarty(db, a, KONTO, { teraz: TERAZ });
+    expect(w.bledy).toEqual([]);
+    expect(w.zadanie.sellingMode.price).toEqual({ amount: '105.00', currency: 'PLN' });
+  });
+
   it('karta ręczna: mapa, reguły i marka środowiska konta, GPSR marki konta → nowy produkt', async () => {
     const { db } = await bazaZImportem();
     const b = kartaReczna(db);
@@ -333,7 +344,8 @@ describe('E3.06b — wejście E3.06 z bazy', () => {
     const nc = zapytania(db, () => ofertaAllegroKarty(db, c, KONTO, { teraz: TERAZ }));
     expect(nb).toBe(na);
     expect(nc).toBe(na);
-    expect(na).toBeLessThanOrEqual(16);
+    // 16 odczytów treści + 2 odczyty ręcznej ceny konta (sprawdzenie tabeli na starej bazie i sam wiersz).
+    expect(na).toBeLessThanOrEqual(18);
   });
 
   it('mapa wgranych zdjęć tylko tego konta: zdjęcie wgrane na inne konto idzie do wgrania', async () => {

@@ -5,6 +5,10 @@ import { utworzKarte } from '../../../src/oms/db/magazyn.js';
 import { zalozKonto, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
 import { podpisz, NAZWA_CIASTECZKA_OMS } from '../../../src/core/bezpieczenstwo/sesja.js';
 import { wczytajSekret } from '../../../src/core/bezpieczenstwo/sekret-sesji.js';
+import { dodajDoSlownika, usunZeSlownika, zmienNazwe } from '../../../src/moduly/magazyn/services/slowniki-kart.js';
+import { dodajProducenta, przypiszMarki, przypisaniaMarek, usunProducenta } from '../../../src/oms/db/producenci.js';
+
+const PRODUCENT = (nazwa) => ({ nazwa, adres: 'ul. Przykładowa 1, 00-001 Miasto', email: 'kontakt@polcien.invalid' });
 
 const auth = {
   authorization: `Basic ${Buffer.from('operator:atrapa').toString('base64')}`,
@@ -235,4 +239,37 @@ it('menu Magazynu: Kategorie i Marki są odnośnikami z aria-current na swojej s
     }
     expect(lista).not.toContain('wkrótce');
   }
+});
+
+it('Marki: zmiana nazwy zachowuje producenta, przy scaleniu zostaje producent marki docelowej', async () => {
+  db = openOmsDb(':memory:');
+  const p = dodajProducenta(db, PRODUCENT('Pracownia Półcień')).id;
+  const w = dodajProducenta(db, PRODUCENT('Warsztat Przykładowy')).id;
+  for (const m of ['Półcień', 'Półcień Mini', 'Lampa']) dodajDoSlownika(db, 'marki', m);
+  przypiszMarki(db, [
+    { marka: 'Półcień', producentId: p },
+    { marka: 'Półcień Mini', producentId: p },
+    { marka: 'Lampa', producentId: w },
+  ]);
+  expect(zmienNazwe(db, 'marki', 'Półcień', 'Półcień Studio')).toEqual({ karty: 0 });
+  expect(przypisaniaMarek(db).get('Półcień Studio')).toBe(p);
+  expect(przypisaniaMarek(db).has('Półcień')).toBe(false);
+
+  zmienNazwe(db, 'marki', 'Półcień Mini', 'Lampa');
+  expect(przypisaniaMarek(db)).toEqual(
+    new Map([
+      ['Lampa', w],
+      ['Półcień Studio', p],
+    ]),
+  );
+});
+
+it('Marki: usunięcie marki ze słownika zdejmuje jej producenta', async () => {
+  db = openOmsDb(':memory:');
+  const p = dodajProducenta(db, PRODUCENT('Pracownia Półcień')).id;
+  dodajDoSlownika(db, 'marki', 'Półcień');
+  przypiszMarki(db, [{ marka: 'Półcień', producentId: p }]);
+  expect(usunZeSlownika(db, 'marki', 'Półcień')).toEqual({ karty: 0 });
+  expect(przypisaniaMarek(db).size).toBe(0);
+  expect(usunProducenta(db, p)).toEqual({ ok: true });
 });

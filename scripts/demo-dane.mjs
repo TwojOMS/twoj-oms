@@ -28,7 +28,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PROBLEMY_ILOSCI, skrotZatwierdzenia } from '../src/domena/ilosc-kanalu.js';
 import { wstawOferte, zmienOferte, zapiszZatwierdzenieStanow } from '../src/oms/db/oferty-kanalow.ts';
-import { migawkaStanow } from '../src/oms/db/stany-magazynowe.js';
+import { migawkaStanow, stanyKart } from '../src/oms/db/stany-magazynowe.js';
 import { zapiszZamowienie, zapiszFaktyStatusu, dodajPozycjeReczna } from '../src/oms/db/zamowienia.js';
 import { utworzZamowienieReczne } from '../src/oms/db/zamowienia-reczne.js';
 import { dodajZwrot, oznaczPieniadzeOddane, zarezerwujKorekte, zapiszKorekte } from '../src/oms/db/zwroty.js';
@@ -2059,6 +2059,7 @@ function stanyKanalowDemo(db, { synchronizacja }) {
  */
 async function wypelnijMagazyn(db, { dzis, koniecDnia }) {
   const { odswiezMagazyn } = await import('../src/moduly/magazyn/services/magazyn-sync.js');
+  const { zapiszCeneZakupu } = await import('../src/oms/db/ceny-zakupu.js');
   const { utworzKartyZNiepowiazanych, niepowiazaneOfertyAllegro, powiazOfertyHurtem, zapiszKarte } =
     await import('../src/oms/db/magazyn.js');
   const { klienciKataloguDemo } = await import('./demo-dane-katalog.mjs');
@@ -2084,6 +2085,13 @@ async function wypelnijMagazyn(db, { dzis, koniecDnia }) {
   // Firma po porządkach: paczkomat oznaczony poza dwiema kartami, wymiary ze sklepu poza trzema produktami —
   // ekran braków ma co pokazać (0/30 kompletnych wyglądałoby na magazyn, którym nikt się nie zajmuje).
   const kartyDemo = db.prepare('SELECT id, kategoria_glowna FROM karty_produktow ORDER BY id').all();
+  const dzien = (przesuniecie) => iso(poczatekDnia(dzis) + przesuniecie * DOBA).slice(0, 10);
+  for (const [i, karta] of kartyDemo.slice(0, 3).entries()) {
+    const opcje = { kto: null, zrodlo: 'karta', at: teraz() };
+    zapiszCeneZakupu(db, karta.id, { gr: 4500 + i * 1000, od: dzien(-90) }, opcje);
+    zapiszCeneZakupu(db, karta.id, { gr: 5000 + i * 1000, od: dzien(-30) }, opcje);
+    if (i === 0) zapiszCeneZakupu(db, karta.id, { gr: 5500, od: dzien(30) }, opcje);
+  }
   for (const [i, w] of kartyDemo.entries()) {
     if (i < 2) continue;
     zapiszKarte(db, w.id, { paczkomat: PACZKOMAT_KATEGORII[w.kategoria_glowna] ?? 'tak' }, { at: teraz() });
@@ -2094,6 +2102,8 @@ async function wypelnijMagazyn(db, { dzis, koniecDnia }) {
     .filter((p) => p.kartaId);
   const oferty = powiazOfertyHurtem(db, pary, kanalyAllegro);
   (await import('./demo-dane-katalog.mjs')).zasiejOfertyAllegroDemo(db, { teraz });
+  (await import('./demo-dane-katalog.mjs')).zasiejCenyKanalowDemo(db, { teraz });
+  (await import('./demo-dane-katalog.mjs')).zasiejProducentowDemo(db, { teraz });
   // Pozycje zamówień demo powstały przed lustrem i niosą samo SKU — prawdziwe zamówienia z Woo mają
   // produkt_id/variation_id, z Allegro oferta_id. Uzupełniamy je z lustra po SKU w kanale zamówienia (tylko demo).
   const naLustro = db.prepare(
@@ -2117,7 +2127,10 @@ async function wypelnijMagazyn(db, { dzis, koniecDnia }) {
   const { przelaczStany, zapiszOtwarcie } = await import('../src/oms/db/stany-magazynowe.js');
   const granica = new Date(Date.parse(synchronizacja) - 30 * 86400000).toISOString();
   przelaczStany(db, { wlacz: true, konto: { id: null, login: 'demo' }, at: granica });
-  const zSku = db.prepare("SELECT id FROM karty_produktow WHERE TRIM(COALESCE(sku, '')) <> '' ORDER BY id").all();
+  const zSku = db
+    .prepare("SELECT id, wycofana FROM karty_produktow WHERE TRIM(COALESCE(sku, '')) <> '' ORDER BY id")
+    .all();
+  const kartyZOtwarciem = [];
   for (const [i, k] of zSku.entries()) {
     if (i % 9 === 4) continue; // kilka kart bez stanu otwarcia — zejdą na minus po pierwszym zamówieniu
     zapiszOtwarcie(db, {
@@ -2127,6 +2140,16 @@ async function wypelnijMagazyn(db, { dzis, koniecDnia }) {
       konto: { id: null, login: 'demo' },
       at: granica,
     });
+    if (!k.wycofana) kartyZOtwarciem.push(k.id);
+  }
+  // Przykłady są oparte na stanie po rozchodach. Dwa pokazują stan poniżej progu, trzeci równość,
+  // a pozostałe mają jeszcze zapas powyżej progu.
+  const { stany } = stanyKart(db);
+  const kartyZProgiem = kartyZOtwarciem.filter((id) => stany.get(id)?.stan > 0).slice(0, 6);
+  for (const [i, id] of kartyZProgiem.entries()) {
+    const { stan } = stany.get(id);
+    const prog = i < 3 ? stan + Number(i < 2) : 0;
+    zapiszKarte(db, id, { prog_niskiego_stanu: prog }, { at: teraz() });
   }
   stanyKanalowDemo(db, { synchronizacja });
   return {

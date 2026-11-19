@@ -1,0 +1,35 @@
+<% if (historia) { %>
+<div class="panel-cialo">
+  <details class="karta-historia-ceny" id="historia-kanalow">
+    <summary>Historia zmian w kanałach (<%= historia.lacznie %>)<% if (historia.ucieto) { %> — pokazano <%= historia.wpisy.length %> najnowszych<% } %></summary>
+    <div class="przewijak-tabeli">
+      <table class="tab-pozycje" aria-label="Historia zmian w kanałach">
+        <thead>
+          <tr>
+            <th scope="col">Kiedy</th>
+            <th scope="col">Kto</th>
+            <th scope="col">Kanał</th>
+            <th scope="col">Oferta</th>
+            <th scope="col">Pole</th>
+            <th scope="col">Było → jest</th>
+            <th scope="col">Wynik</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% for (const w of historia.wpisy) { %>
+            <tr data-zmiana="<%= w.id %>">
+              <td><%= w.kiedy %></td>
+              <td><%= w.kto %></td>
+              <td><%= w.kanal %></td>
+              <td><%= w.oferta %></td>
+              <td><%= w.pole %></td>
+              <td><%= w.bylo %> → <%= w.jest %></td>
+              <td><%= w.wynik %><% if (w.blad) { %>: <%= w.blad %><% } %></td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </details>
+</div>
+<% } %>

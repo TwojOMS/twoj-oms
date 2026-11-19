@@ -43,9 +43,10 @@ it('osobne przyciski kontrolują unikalne podmenu, a Magazyn prowadzi do Produkt
           // „Kategorie”/„Marki wkrótce” stały się działającymi odnośnikami.
           expect(lista).toContain('<a href="/magazyn/kategorie">Kategorie</a>');
           expect(lista).toContain('<a href="/magazyn/marki">Marki</a>');
+          expect(lista).toContain('<a href="/magazyn/producenci">Producenci</a>');
           expect(lista).not.toContain('aria-disabled');
           expect(lista).not.toContain('menu-ustawien-wkrotce');
-          expect(lista.match(/href=/g)).toHaveLength(3);
+          expect(lista.match(/href=/g)).toHaveLength(4);
         }
       }
       expect(ids.size).toBe(4);

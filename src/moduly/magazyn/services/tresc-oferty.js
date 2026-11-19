@@ -1,6 +1,7 @@
 import { produktErliZKarty } from '../../../domena/erli-produkt.js';
 import { iloscDlaKanalu } from '../../../domena/ilosc-kanalu.js';
 import { wyjatekCennika } from '../../../oms/db/cenniki-kart.ts';
+import { cenyReczneKarty } from '../../../oms/db/ceny-kanalow.js';
 
 const ROZSZERZENIE_TYPU = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 
@@ -39,6 +40,11 @@ export function trescOferty(db, kartaId, ustawienia, adresPublicznyZdjec = '', o
     typeof ustawienia?.klucz === 'string' && ustawienia.klucz
       ? wyjatekCennika(db, { kartaId, konto: ustawienia.klucz })
       : null;
+  // Ręczna cena karty na tym koncie — ten sam odczyt co podgląd wysyłki cen i okienko na karcie.
+  const recznaGr =
+    typeof ustawienia?.klucz === 'string' && ustawienia.klucz
+      ? (cenyReczneKarty(db, kartaId).get(ustawienia.klucz) ?? null)
+      : null;
   const { bledy, ostrzezenia, zadanie, dostawa } = produktErliZKarty({
     karta: { ...karta, opis },
     ustawienia,
@@ -47,6 +53,7 @@ export function trescOferty(db, kartaId, ustawienia, adresPublicznyZdjec = '', o
     adresPublicznyZdjec,
     ilosc,
     wyjatekCennika: wyjatek,
+    recznaGr,
   });
   const numery = (wartosc) => zdjecia.flatMap((z, i) => (z.ai === wartosc ? [i + 1] : [])).join(', ') || 'brak';
   ostrzezenia.push(

@@ -138,8 +138,8 @@ export function czyWolnoNadpisac(naszSku, wSklepie) {
     powod:
       `Produkt ma w sklepie numer „${ich}", a nasz rejestr mówi „${nasz}". Nie nadpisuję: ` +
       'numer w sklepie jest tożsamością produktu (adresy, eksporty, feed do Google), ' +
-      'a takiego zapisu nie da się cofnąć z panelu. Najpierw przejmij numer ze sklepu albo ' +
-      'popraw numer w sklepie.',
+      'a takiego zapisu nie da się cofnąć z panelu. ' +
+      'Najpierw uruchom import z kanału (uzupełni pusty numer karty) albo popraw numer w sklepie.',
   };
 }
 

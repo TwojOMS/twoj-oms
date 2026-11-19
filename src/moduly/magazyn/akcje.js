@@ -1,5 +1,12 @@
 import { stronaOdmowy } from '../../core/web/odmowa.js';
-import { polaSlownikowZFormularza, dopiszDoSlownikow, wTransakcji } from './services/slowniki-kart.js';
+import { znacznikStatusuOferty, liczbaZPrzymiotnikiem } from '../../domena/allegro-oferta.js';
+import { wpisZbedny, wpisZFormularza } from '../../domena/cena-zakupu.js';
+import { dzienWarszawa } from '../../domena/format-daty.js';
+import { cenyZakupuNa, historiaCenZakupu, usunWpisCenyZakupu, zapiszCeneZakupu } from '../../oms/db/ceny-zakupu.js';
+
+const opisZakonczonych = (n) => liczbaZPrzymiotnikiem(n, ['zakończona', 'zakończone', 'zakończonych']);
+import { dodajDoSlownika, dopiszDoSlownikow, wTransakcji } from './services/slowniki-kart.js';
+import { polaSlownikowZFormularza } from './karta.js';
 
 export function registerAkcjeMagazynu(
   app,
@@ -22,8 +29,10 @@ export function registerAkcjeMagazynu(
     nadajSku,
     produktyKart,
     polecenieZFormularza,
-    zmianyHurtem,
+    planHurtu,
     polaDoPrzeniesienia,
+    podpisCen,
+    cenyZgodneZPodpisem,
     proponujSku,
     przejeciaZeSklepu,
     propozycje,
@@ -38,6 +47,8 @@ export function registerAkcjeMagazynu(
     napis,
     kanalAllegro,
     paryZFormularza,
+    podpowiedzKarty,
+    KOLUMNY_KANALOW,
     wierszOferty,
     pozycjaListy,
     adresPowiazan,
@@ -52,6 +63,7 @@ export function registerAkcjeMagazynu(
     zakresHurtu,
     HURT_BEZ_ZAZNACZENIA,
     HURT_BEZ_ZMIANY,
+    CENY_ZMIENIONE_OD_PODGLADU,
   } = pomoc;
   // Odmowa „brak sklepu” w układzie OMS (status i tekst bez zmian); powrót na listę, z której przyszedł człowiek.
   const odmowaBezSklepow = (req, reply) =>
@@ -63,7 +75,18 @@ export function registerAkcjeMagazynu(
   const { ekranKarty, brakKarty } = karta;
   function ekranHurtu(
     reply,
-    { plan = [], zakres, zawezenie, polaFormularza = [], blad = null, wynik = null, kod = 200 },
+    {
+      plan = [],
+      zakres,
+      zawezenie,
+      polaFormularza = [],
+      blad = null,
+      wynik = null,
+      kod = 200,
+      zmianaCeny = false,
+      pominieteBezCeny = 0,
+      straciZalaczniki = 0,
+    },
   ) {
     return reply.code(kod).view('magazyn-hurt.ejs', {
       title: 'Magazyn — edycja hurtem',
@@ -76,6 +99,9 @@ export function registerAkcjeMagazynu(
       plan,
       wynik,
       blad,
+      zmianaCeny,
+      pominieteBezCeny,
+      straciZalaczniki,
       // Zakres i zawezenie wracaja na ekran, zeby przycisk „popraw zaznaczenie" prowadzil
       // do TEJ SAMEJ listy, z ktorej czlowiek przyszedl (reguła: filtry nie kasują frazy).
       zakres,
@@ -132,11 +158,50 @@ export function registerAkcjeMagazynu(
     // ⚠️⚠️ TA SAMA FUNKCJA LICZY PODGLAD I ZATWIERDZENIE, za kazdym razem ze stanu BIEZACEGO.
     // Gdyby zatwierdzenie przepisywalo gotowy zestaw z ukrytego pola, odczyt katalogow albo
     // druga karta miedzy jednym a drugim zmienilyby zbior po cichu.
-    const plan = zmianyHurtem(karty, polecenie);
-    if (!zapisz) return ekranHurtu(reply, { plan, zakres, zawezenie, polaFormularza });
+    // „Stara" cena zakupu to ta obowiazujaca w dniu „od" nowej — jednym zapytaniem dla wszystkich kart.
+    // ⚠️ Cena katalogowa „o %” i „o kwotę” liczy się od ceny bieżącej, więc drugi raz wysłany
+    // formularz policzyłby drugi raz. Zatwierdzenie przechodzi tylko przy cenach z podglądu.
+    if (zapisz && polecenie.cenaKatalogowa && !cenyZgodneZPodpisem(karty, pole(req.body, 'cena_podpis'))) {
+      return odmowa(CENY_ZMIENIONE_OD_PODGLADU);
+    }
 
-    // Jedna transakcja i JEDEN znacznik czasu na caly przebieg (db/magazyn.js).
-    const zmienione = zastosujHurtem(db, plan);
+    const cenyNaDzien = polecenie.cenaZakupu ? cenyZakupuNa(db, polecenie.cenaZakupu.od) : undefined;
+    const { plan, pominieteBezCeny, straciZalaczniki, blad: bladPlanu } = planHurtu(karty, polecenie, { cenyNaDzien });
+    if (bladPlanu) return odmowa(bladPlanu);
+    if (!zapisz) {
+      // „Dziś” ceny zakupu liczy TYLKO podgląd i oddaje je zatwierdzeniu ukrytym polem. Zatwierdzenie
+      // po północy liczyłoby własne „dziś” i zapisało inną datę, niż człowiek widział na podglądzie.
+      const pola = polecenie.cenaZakupu
+        ? [
+            ...polaFormularza.filter((p) => p.name !== 'cena_zakupu_od'),
+            { name: 'cena_zakupu_od', value: polecenie.cenaZakupu.od },
+          ]
+        : [...polaFormularza];
+      if (polecenie.cenaKatalogowa) {
+        const wPlanie = new Set(plan.map((wpis) => wpis.id));
+        pola.push({ name: 'cena_podpis', value: podpisCen(karty.filter((k) => wPlanie.has(k.id))) });
+      }
+      return ekranHurtu(reply, {
+        plan,
+        zakres,
+        zawezenie,
+        polaFormularza: pola,
+        zmianaCeny: Boolean(polecenie.cenaKatalogowa),
+        pominieteBezCeny,
+        straciZalaczniki,
+      });
+    }
+
+    // Jedna transakcja i JEDEN znacznik czasu na caly przebieg (db/magazyn.js). `kto` trafia do
+    // historii ceny zakupu — tak samo jak przy zapisie ceny z karty.
+    const zapiszPlan = () => zastosujHurtem(db, plan, { kto: req.konto?.login ?? null });
+    const zmienione = plan.some((wpis) => Object.hasOwn(wpis.zmiany, 'marka'))
+      ? wTransakcji(db, () => {
+          const ile = zapiszPlan();
+          if (ile) dodajDoSlownika(db, 'marki', polecenie.marka);
+          return ile;
+        })
+      : zapiszPlan();
     return ekranHurtu(reply, { zakres, zawezenie, polaFormularza, wynik: { zmienione } });
   }
 
@@ -183,7 +248,17 @@ export function registerAkcjeMagazynu(
   // widzial przed kliknieciem.
   function ekranSku(
     reply,
-    { pozycje = [], ileKolizji = 0, juzMaja = 0, wzorzec = '', zawezenie = '', blad = null, wynik = null, kod = 200 },
+    {
+      pozycje = [],
+      pominieteZeSkuSklepu = [],
+      ileKolizji = 0,
+      juzMaja = 0,
+      wzorzec = '',
+      zawezenie = '',
+      blad = null,
+      wynik = null,
+      kod = 200,
+    },
   ) {
     return reply.code(kod).view('magazyn-sku.ejs', {
       title: 'Magazyn — nadanie SKU',
@@ -191,6 +266,7 @@ export function registerAkcjeMagazynu(
       // sie od nowa przy zatwierdzeniu i nigdy nie jedzie stad.
       wzorzec,
       pozycje,
+      pominieteZeSkuSklepu,
       ileKolizji,
       juzMaja,
       // Liczba z tego, co FAKTYCZNIE weszlo — a przy podgladzie z dlugosci listy propozycji.
@@ -251,24 +327,39 @@ export function registerAkcjeMagazynu(
       karty = kartyPoIdach(db, numery);
     }
 
+    // Pomijamy każdą kartę z numerem w sklepie, bo numer z generatora różniłby się od sklepowego.
+    // Numeru w sklepie nie nadpisujemy, więc rozbieżność utrwaliłaby się na karcie.
+    // `pomijajProduktyKart` zapobiega uznaniu własnego numeru z lustra za kolizję.
+    const idy = karty.map((w) => w.id);
+    const pominieteZeSkuSklepu = przejeciaZeSklepu(
+      karty,
+      produktyKart(db, idy),
+      zajeteSku(db, { pomijajProduktyKart: idy }),
+    );
+    const pominieteIdy = new Set(pominieteZeSkuSklepu.map((p) => p.id));
+
     // ⚠️⚠️ ZAJETE NUMERY CZYTANE Z OBU ZBIOROW I ZA KAZDYM RAZEM OD NOWA (`zajeteSku`):
     // `karty.sku` ORAZ numery zyjace w sklepach, o ktorych `UNIQUE` nic nie wie.
     // ⚠️ TA SAMA FUNKCJA LICZY PODGLAD I ZAPIS, za kazdym razem ze stanu BIEZACEGO — miedzy
     // jednym a drugim mogl wejsc odczyt katalogow albo drugi operator.
     let propozycje;
     try {
-      propozycje = proponujSku(karty, wzorzec, zajeteSku(db));
+      propozycje = proponujSku(
+        karty.filter((w) => !pominieteIdy.has(w.id)),
+        wzorzec,
+        zajeteSku(db),
+      );
     } catch (e) {
       // ⚠️ KOMUNIKAT GENERATORA JEST ZDANIEM DLA CZLOWIEKA i idzie na ekran wprost — trasa
       // nie ma drugiej kopii tej reguly, wiec nie ma jak sie z nia rozjechac.
-      return odmowa(e.message);
+      return odmowa(e.message, { pominieteZeSkuSklepu });
     }
 
     // Ile kart zaznaczenie objelo, a generator ich NIE RUSZYL, bo maja juz numer. Liczba
     // jawna, a nie cisza: „zaznaczylem 300, dostales 250" musi byc widoczne na ekranie.
     const juzMaja = karty.filter((w) => String(w.sku ?? '').trim()).length;
     const ileKolizji = propozycje.filter((p) => p.kolizja).length;
-    const wspolne = { juzMaja, ileKolizji, wzorzec: wzorzec ?? '', zawezenie };
+    const wspolne = { juzMaja, ileKolizji, pominieteZeSkuSklepu, wzorzec: wzorzec ?? '', zawezenie };
     // Widok niczego nie liczy: uwaga przy wierszu i jej charakter skladaja sie TUTAJ.
     const doWidoku = (dodatkowa = () => null) =>
       propozycje.map((p) => ({
@@ -314,141 +405,6 @@ export function registerAkcjeMagazynu(
   // nadanych numerow i to, czego panel nie tknal.
   app.post('/magazyn/sku-zapisz', async (req, reply) => generujSku(req, reply, { zapisz: true }));
 
-  // ——— PRZEJECIE NUMERU ZE SKLEPU ——————————————————————————————————————————————
-  //
-  // PO CO TO JEST: czesc kart
-  // nie ma NASZEGO numeru, a ich produkt MA wlasny numer w sklepie. Generator SKU ich nie
-  // przejmuje i nie ma jak: on wydaje numery NOWE i poprawnie omija zajete, ale zostawia
-  // ROZBIEZNOSC (rejestr milczy, sklep ma numer).
-  //
-  // ⚠️⚠️ TO JEST BARIERA PRZED ZAPISEM DO SKLEPU, a nie wygoda. Karta bez numeru, ktorego
-  // produkt numer ma, po nadaniu numeru z generatora pojechalby do sklepu i NADPISAL numer
-  // bedacy tozsamoscia produktu — cicho i bez „cofnij".
-  //
-  // ⚠️⚠️ TA SAMA DROGA, CO PRZY GENERATORZE: podglad (`/magazyn/przejmij-podglad`) wylacznie
-  // liczy i pokazuje, zapisuje dopiero `/magazyn/przejmij-zapisz`, zbior liczony jest
-  // PONOWNIE przy zatwierdzeniu, a formularz podgladu niesie WYLACZNIE numery kart —
-  // nigdy gotowych numerow SKU.
-  //
-  // ⚠️ ANI JEDNEGO ZADANIA DO SKLEPU. Numer bierze sie z LUSTRA, bo tylko o nim wiemy, ze
-  // odpowiada temu, co czlowiek widzial na liscie. Swiezosc lustra jest tu przyjetym kosztem:
-  // przejecie zapisuje wylacznie do NASZEGO rejestru i niczego w sklepie nie rusza.
-
-  const PRZEJECIE_BEZ_ZAZNACZENIA =
-    'Nie zaznaczono ani jednej karty, więc nie przejąłem ' +
-    'żadnego numeru. Zaznacz karty na liście albo kliknij przycisk „dla wszystkich pasujących" — stoi przy tej samej akcji i podaje, ilu kart dotyczy.';
-  const PRZEJECIE_KOLIZJA =
-    'Nie przejąłem ANI JEDNEGO numeru: co najmniej jeden z nich jest ' +
-    'już zajęty — przez inną kartę produktu albo przez drugą kartę z tego samego zestawu. Numer ' +
-    'w sklepie jest tożsamością JEDNEGO produktu, a przejęcie połowy zestawu zostawiłoby ' +
-    'rejestr rozjechany ze sklepem bez śladu, gdzie przebiega granica. Rozstrzygnij kolizje ' +
-    'na kartach produktów i pokaż podgląd jeszcze raz.';
-  const PRZEJECIE_NIEAKTUALNY = 'nie przejąłem — ta karta zdobyła numer w międzyczasie';
-
-  // Etykieta znacznika przy wierszu. ⚠️ LICZY SIE TUTAJ, nie w widoku: „rozbieznosc"
-  // i „kolizja" to dwie rozne odpowiedzi i dwa rozne skutki (kolizja wstrzymuje CALY zapis),
-  // wiec widok nie ma prawa ich mylic ani nazywac po swojemu.
-  const ZNACZNIKI_PRZEJECIA = Object.freeze({
-    kolizja: 'kolizja',
-    rozbieznosc: 'rozbieżność',
-  });
-
-  // Ekran skladany w JEDNYM miejscu i uzywany przez OBIE trasy: podglad i wynik. Dwie kopie
-  // rozjechalyby sie po cichu, a wynik ma pokazywac DOKLADNIE ten sam ksztalt, ktory czlowiek
-  // widzial przed kliknieciem.
-  function ekranPrzejecia(reply, { pozycje = [], juzMaja = 0, zawezenie = '', blad = null, wynik = null, kod = 200 }) {
-    const gotowe = pozycje.filter((p) => p.sku);
-    const ileKolizji = pozycje.filter((p) => p.rodzaj === 'kolizja').length;
-    const ileRozbieznosci = pozycje.filter((p) => p.rodzaj === 'rozbieznosc').length;
-    return reply.code(kod).view('magazyn-przejecie.ejs', {
-      title: 'Magazyn — przejęcie numerów ze sklepu',
-      pozycje: pozycje.map((p) => ({
-        ...p,
-        // ⚠️ WIDOK NICZEGO NIE ROZSTRZYGA: etykieta znacznika przychodzi policzona,
-        // a nieznany rodzaj daje `null`, a nie napis „undefined" przy wierszu.
-        znacznik: Object.hasOwn(ZNACZNIKI_PRZEJECIA, p.rodzaj) ? ZNACZNIKI_PRZEJECIA[p.rodzaj] : null,
-      })),
-      // Numery kart, ktore pojada w formularzu zatwierdzenia — WYLACZNIE gotowe.
-      doZatwierdzenia: gotowe.map((p) => p.id),
-      ile: wynik ? wynik.przejete : gotowe.length,
-      ileKolizji,
-      ileRozbieznosci,
-      juzMaja,
-      wynik,
-      blad,
-      // ⚠️ PRZYCISK ISTNIEJE, GDY JEST CO PRZEJAC I NIC NIE KOLIDUJE — ale to UPRZEJMOSC,
-      // nie zabezpieczenie: trasa zapisujaca liczy zestaw PONOWNIE i sama odmawia.
-      mozna: Boolean(gotowe.length) && !ileKolizji && !wynik,
-      adresPowrotu: zawezenie ? `/magazyn?${zawezenie}` : '/magazyn',
-    });
-  }
-
-  /** Wspolna droga obu trns przejecia. `zapisz` rozstrzyga, czy to podglad, czy nadanie. */
-  function przejmijSku(req, reply, { zapisz }) {
-    if (!magazyn || magazyn.gotowy?.() === false) return odmowaBezSklepow(req, reply);
-
-    const zakres = zakresHurtu(pole(req.body, 'zakres'));
-    const zawezenie = pole(req.body, 'zawezenie') ?? '';
-
-    // ⚠️⚠️ ZBIOR MUSI BYC JAWNY. Puste `zaznaczone` nie ma prawa znaczyc „wszystkie".
-    let karty;
-    if (zakres === 'pasujace') {
-      const filtry = filtryZawezenia(zawezenie);
-      karty = kartyZKanalami(db, { fraza: filtry.fraza, filtry });
-    } else {
-      const numery = numeryZaznaczone(req.body?.zaznaczone);
-      if (!numery.length) {
-        return ekranPrzejecia(reply, { zawezenie, blad: PRZEJECIE_BEZ_ZAZNACZENIA, kod: 400 });
-      }
-      karty = kartyPoIdach(db, numery);
-    }
-
-    const idy = karty.map((w) => w.id);
-    // ⚠️⚠️ ZAJETE NUMERY BEZ PRODUKTOW TYCH KART. Numer, ktory karta ma PRZEJAC, zyje
-    // w lustrze — bez pominiecia kazde przejecie odbijaloby sie o wlasne odbicie i ekran
-    // meldowalby kolizje z niczym przy kazdej karcie.
-    // ⚠️ TA SAMA FUNKCJA LICZY PODGLAD I ZAPIS, za kazdym razem ze stanu BIEZACEGO.
-    const pozycje = przejeciaZeSklepu(karty, produktyKart(db, idy), zajeteSku(db, { pomijajProduktyKart: idy }));
-
-    // Ile kart zaznaczenie objelo, a przejecie ich NIE RUSZYLO, bo maja juz numer.
-    const juzMaja = karty.filter((w) => String(w.sku ?? '').trim()).length;
-    const wspolne = { juzMaja, zawezenie };
-
-    if (!zapisz) return ekranPrzejecia(reply, { ...wspolne, pozycje });
-
-    // ⚠️⚠️ KOLIZJA WSTRZYMUJE CALY ZAPIS, takze pozycje bezkolizyjne — ta sama zasada, co
-    // w generatorze SKU. ROZBIEZNOSC NIE WSTRZYMUJE I TO NIE JEST NIEKONSEKWENCJA: kolizja
-    // mowi „ten numer jest czyjas tozsamoscia" (dotyczy CUDZEGO wiersza), a rozbieznosc
-    // „nie wiem, ktory z numerow tej karty jest jej numerem" — i dotyczy WYLACZNIE jej.
-    if (pozycje.some((p) => p.rodzaj === 'kolizja')) {
-      return ekranPrzejecia(reply, { ...wspolne, pozycje, blad: PRZEJECIE_KOLIZJA, kod: 400 });
-    }
-
-    // Jedna transakcja i JEDEN znacznik czasu na caly przebieg — a warunek „SKU jest puste"
-    // w samym `UPDATE` pilnuje, ze karta, ktora numer zdobyla w miedzyczasie, nie zostanie
-    // przenumerowana (db/magazyn.js: nadajSku).
-    const { nadane, nieaktualne } = nadajSku(
-      db,
-      pozycje.filter((p) => p.sku).map(({ id, sku }) => ({ id, sku })),
-    );
-    const nieweszly = new Set(nieaktualne);
-    return ekranPrzejecia(reply, {
-      ...wspolne,
-      pozycje: pozycje.map((p) =>
-        nieweszly.has(p.id) ? { ...p, uwaga: PRZEJECIE_NIEAKTUALNY, zla: true, rodzaj: 'nieaktualny' } : p,
-      ),
-      wynik: { przejete: nadane.length, nieaktualne: nieaktualne.length },
-    });
-  }
-
-  // ⚠️⚠️ TA TRASA NICZEGO NIE ZAPISUJE. Podglad jest obowiazkowy i jest osobna trasa wlasnie
-  // po to, zeby „przejmij" nie dalo sie wywolac przez pomylke w polu formularza.
-  app.post('/magazyn/przejmij-podglad', async (req, reply) => przejmijSku(req, reply, { zapisz: false }));
-
-  // ⚠️ PRZEJECIE JEST PRZYCISKIEM, NIE SKUTKIEM UBOCZNYM WEJSCIA NA STRONE. Renderuje wynik
-  // zamiast przekierowywac: ekran wyniku jest jedynym miejscem, w ktorym widac komplet
-  // przejetych numerow i to, czego panel nie tknal.
-  app.post('/magazyn/przejmij-zapisz', async (req, reply) => przejmijSku(req, reply, { zapisz: true }));
   // Przy włączonych stanach przepięcie przenosi sprzedaż od granicy z ofertą, więc najpierw podgląd
   // („stan karty X: 7 → 4”), a zapis dopiero po potwierdzeniu. Formularz podglądu odsyła to samo ciało plus
   // `potwierdz=1`. Stany wyłączone albo przepięcie bez wpływu na stan — zapis od razu, jak dotąd.
@@ -469,7 +425,7 @@ export function registerAkcjeMagazynu(
   }
 
   function ekranPowiazan(req, reply, wynik = null, podgladPrzepiecia = null) {
-    const karty = kartyDoPowiazania(db);
+    const karty = kartyZKanalami(db, { kolumny: 'lista' });
     // ⚠️ Przy zerze kart ekran MÓWI, od czego zacząć,
     // zamiast pokazac pusta tabele albo sie wywalic. Wzorzec: `pusta-strona.ejs`.
     if (!karty.length) return reply.view('pusta-strona.ejs', { ...BEZ_KART, szerokosc: 'tabela' });
@@ -477,6 +433,7 @@ export function registerAkcjeMagazynu(
     const filtry = {
       fraza: napis(req.query?.fraza),
       kanal: kanalAllegro(req.query?.kanal),
+      zakonczone: req.query?.zakonczone === '1',
     };
     const sort = Object.hasOwn(SORTOWANIE_POWIAZAN, req.query?.sort) ? req.query.sort : SORTOWANIE_POWIAZAN_DOMYSLNE;
     const kier = String(req.query?.kier ?? '').toLowerCase() === 'desc' ? 'desc' : 'asc';
@@ -486,7 +443,10 @@ export function registerAkcjeMagazynu(
     const wroc = bezpiecznyWroc(req.query?.wroc ?? req.body?.wroc);
 
     const szukane = filtry.fraza ? filtry.fraza.toLowerCase() : null;
-    const wiersze = niepowiazaneOfertyAllegro(db)
+    // ⚠️ STATUS FILTRUJEMY TU, A NIE W `niepowiazaneOfertyAllegro`: zatwierdzenie hurtem i karta
+    // wolaja tamto zapytanie i musza dalej widziec wszystko, inaczej stary formularz z zakonczona
+    // oferta odpowiedzialby „nie ma jej w lustrze".
+    const pasujace = niepowiazaneOfertyAllegro(db)
       .filter((o) => !filtry.kanal || o.kanal === filtry.kanal)
       .filter(
         (o) =>
@@ -494,8 +454,12 @@ export function registerAkcjeMagazynu(
           String(o.nazwa ?? '')
             .toLowerCase()
             .includes(szukane),
-      )
-      .map((o) => wierszOferty(o, karty));
+      );
+    const zakonczone = pasujace.filter((o) => o.status_publikacji === 'ENDED').length;
+    const kolumny = [...KOLUMNY_KANALOW];
+    const wiersze = pasujace
+      .filter((o) => filtry.zakonczone || o.status_publikacji !== 'ENDED')
+      .map((o) => wierszOferty(o, karty, kolumny));
 
     const porzadek = SORTOWANIE_POWIAZAN[sort];
     // `w.id` na koncu daje kolejnosc powtarzalna miedzy odswiezeniami przy remisie.
@@ -508,7 +472,18 @@ export function registerAkcjeMagazynu(
       wiersze,
       // JEDNA lista podpowiedzi na CALA strone (rozstrzygniecie 3).
       pozycjeListy: karty.map(pozycjaListy),
-      juzPowiazane: powiazaneOfertyAllegro(db).map((p) => ({ ...p, etykietaKanalu: adresKanalu(p.kanal) })),
+      juzPowiazane: powiazaneOfertyAllegro(db).map((p) => ({
+        ...p,
+        etykietaKanalu: adresKanalu(p.kanal),
+        znacznik: znacznikStatusuOferty(p.status_publikacji),
+      })),
+      zakonczone: {
+        ile: zakonczone,
+        opis: opisZakonczonych(zakonczone),
+        pokazane: filtry.zakonczone,
+        adresPokaz: adresPowiazan({ ...filtry, zakonczone: true }, { sort, kier, wroc }) + '#lista-ofert',
+        adresUkryj: adresPowiazan({ ...filtry, zakonczone: false }, { sort, kier, wroc }) + '#lista-ofert',
+      },
       wynik,
       podgladPrzepiecia,
       // Adres, stan aktywnosci i strzalka KAZDEGO naglowka sortujacego — policzone tutaj,
@@ -521,7 +496,7 @@ export function registerAkcjeMagazynu(
       ukryteWFiltrach: ukrytePowiazan(filtry, { sort, kier, wroc }, ['kanal']),
       ukryteWSzukajce: ukrytePowiazan(filtry, { sort, kier, wroc }, ['fraza']),
       filtrowane: Boolean(filtry.fraza || filtry.kanal),
-      adresBezFiltrow: adresPowiazan({}, { sort, kier, wroc }),
+      adresBezFiltrow: adresPowiazan({ zakonczone: filtry.zakonczone }, { sort, kier, wroc }),
       // Powrot na zawezony magazyn (reguła: powrót na zawężony widok). Czytany RAZ, w tej funkcji — bo renderuja ja
       // TRZY trasy (odczyt, wiazanie hurtem, odpiecie) i osobny odczyt w kazdej z nich
       // rozjechalby sie po cichu przy pierwszej zmianie.
@@ -534,6 +509,15 @@ export function registerAkcjeMagazynu(
     if (!magazyn || magazyn.gotowy?.() === false) return reply.view('pusta-strona.ejs', BEZ_SKLEPOW);
     // ⚠️ TA TRASA WYLACZNIE CZYTA. Ani jednego zapisu — patrz naglowek sekcji.
     return ekranPowiazan(req, reply);
+  });
+
+  app.get('/magazyn/karty/podpowiedzi', async (req, reply) => {
+    const fraza = napis(req.query?.q);
+    if (!magazyn || magazyn.gotowy?.() === false || !fraza || [...fraza].length < 2) return [];
+    const zadanyLimit = Number(req.query?.limit);
+    const limit = Number.isInteger(zadanyLimit) && zadanyLimit > 0 ? Math.min(20, zadanyLimit) : 20;
+    const kolumny = [...KOLUMNY_KANALOW];
+    return kartyZKanalami(db, { fraza, kolumny: 'lista', limit }).map((w) => podpowiedzKarty(w, kolumny));
   });
 
   // ⚠️ ZATWIERDZENIE HURTEM JEST PRZYCISKIEM, NIE SKUTKIEM UBOCZNYM. Renderuje wynik zamiast
@@ -608,12 +592,22 @@ export function registerAkcjeMagazynu(
     // ze wszystko poszlo dobrze.
     if (blad) return ekranKarty(req, reply, { karta, blad, kod: 400 });
 
+    const at = new Date().toISOString();
+    // Cena zakupu sprawdzona PRZED transakcją: zła kwota albo data wstrzymuje cały zapis karty,
+    // tak samo jak każde inne pole formularza.
+    const cenaZakupu = wpisZFormularza(req.body, dzienWarszawa(at));
+    if (cenaZakupu.blad) return ekranKarty(req, reply, { karta, blad: cenaZakupu.blad, kod: 400 });
+    const { wpis } = cenaZakupu;
+
     // Kategoria i marka ze słownika albo „dodaj nową” — nowa nazwa trafia do słownika
     // w tej samej transakcji co zapis karty.
     Object.assign(zmiany, polaSlownikowZFormularza(req.body));
     wTransakcji(db, () => {
       zapiszKarte(db, karta.id, zmiany);
       dopiszDoSlownikow(db, zmiany);
+      if (wpis && !wpisZbedny(historiaCenZakupu(db, karta.id), wpis)) {
+        zapiszCeneZakupu(db, karta.id, wpis, { kto: req.konto?.login ?? null, zrodlo: 'karta', at });
+      }
     });
     // 303, a nie 302: po POST-cie przegladarka ma pojsc GET-em, zeby odswiezenie strony
     // nie proponowalo powtorzenia zapisu.
@@ -621,6 +615,21 @@ export function registerAkcjeMagazynu(
     // ktory JUZ niesie `?wroc=…` (patrz `adresKarty` przekazany widokowi), wiec query string
     // przezywa POST tak samo, jak przy kazdym innym POST-cie tej karty.
     return reply.code(303).redirect(adresKarty(karta.id, { wroc: bezpiecznyWroc(req.query.wroc) }));
+  });
+
+  app.post('/magazyn/:id/cena-zakupu/:wpisId/usun', async (req, reply) => {
+    if (!magazyn || magazyn.gotowy?.() === false) return odmowaBezSklepow(req, reply);
+    const kartaId = Number(req.params.id);
+    const wpisId = Number(req.params.wpisId);
+    if (!Number.isSafeInteger(kartaId) || kartaId <= 0) return brakKarty(reply, req.params.id);
+    const powrot = `${adresKarty(kartaId, { wroc: bezpiecznyWroc(req.query.wroc) })}#dane-karty`;
+    if (!Number.isSafeInteger(wpisId) || wpisId <= 0 || !usunWpisCenyZakupu(db, kartaId, wpisId)) {
+      return stronaOdmowy(reply, 404, 'Nie ma takiego wpisu ceny zakupu na tej karcie.', {
+        wroc: powrot,
+        napisWroc: 'Wróć do karty',
+      });
+    }
+    return reply.code(303).redirect(powrot);
   });
 
   /**
@@ -647,7 +656,7 @@ export function registerAkcjeMagazynu(
       return ekranKarty(req, reply, {
         karta,
         kod: 400,
-        blad: 'Nie rozpoznałem oferty do przypięcia — nic nie przypiąłem.',
+        bladPowiazania: 'Nie rozpoznałem oferty do przypięcia — nic nie przypiąłem.',
       });
     }
 
@@ -659,7 +668,7 @@ export function registerAkcjeMagazynu(
       return ekranKarty(req, reply, {
         karta,
         kod: 409,
-        blad:
+        bladPowiazania:
           'Nie przypiąłem tej pozycji: albo należy już do innej karty produktu, albo zniknęła ' +
           'z Allegro, albo jest produktem sklepowym — a produkty sklepowe wiąże ' +
           'import (Magazyn → Importuj), nie karta produktu.',
@@ -669,7 +678,13 @@ export function registerAkcjeMagazynu(
     // ktory JUZ niesie `?wroc=…` (patrz komentarz przy jego skladaniu w
     // `ekranKarty` — doklejenie na piechote za `adresKarty` wsadzaloby `/powiaz` w srodek
     // wartosci parametru).
-    return reply.code(303).redirect(adresKarty(karta.id, { wroc: bezpiecznyWroc(req.query.wroc) }));
+    const adres = adresKarty(karta.id, {
+      fraza: napis(req.body?.fraza),
+      kanal: kanalAllegro(req.body?.kanal),
+      wroc: bezpiecznyWroc(req.query.wroc),
+    });
+    const separator = adres.includes('?') ? '&' : '?';
+    return reply.code(303).redirect(`${adres}${separator}przypieto=tak#dopisz-oferte`);
   });
 
   /**

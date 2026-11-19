@@ -214,23 +214,25 @@ describe('karta produktu — galeria produktu', () => {
     expect(k).not.toContain(ZGADNIETY);
   });
 
-  // ⚠️ TA POLOWA PARY JEST CALYM SENSEM POPRAWKI. Produkt sprzed odczytu katalogu ma
-  // `miniatura` puste — i wtedy galeria ma pokazac to, co dzis, a nie pusta ramke.
-  it('produkt bez zapisanej miniatury pokazuje dotychczasowy adres zgadywany', async () => {
+  // ⚠️ Produkt sprzed odczytu katalogu ma `miniatura` puste. Karta NIE zgaduje wtedy `-150x150`
+  // (sklep skalujacy do wlasnego rozmiaru dawal 404 i pusta ramke), tylko pokazuje oryginal —
+  // adres pewny, choc ciezszy. Ekrany zamowien zostaja przy zgadywaniu (testy wyzej).
+  it('produkt bez zapisanej miniatury pokazuje oryginał, nie adres zgadywany', async () => {
     const k = kafelek(await kartaProduktu({ miniatura: null }), ORYGINAL);
-    expect(k).toContain(ZGADNIETY);
+    expect(k).toContain(`src="${ORYGINAL}"`);
+    expect(k).not.toContain(ZGADNIETY);
   });
 
   // ⚠️ LUSTRO ZNA MINIATURE TYLKO ZDJECIA GLOWNEGO — Store API oddaje `thumbnail` przy kazdym
   // zdjeciu, ale kolumna `miniatura` trzyma JEDNA wartosc, pierwsza z galerii (schema.sql).
-  // Pozostale kafelki musza wiec zostac przy dotychczasowym zgadywaniu: podstawienie im
-  // adresu zdjecia GLOWNEGO pokazywaloby kilkanascie razy ten sam obrazek i klamalo o tym,
-  // co w tym sklepie naprawde lezy.
-  it('drugie zdjęcie galerii zostaje przy dotychczasowym adresie, bo lustro go nie zna', async () => {
+  // Pozostale kafelki dostaja wiec oryginal: podstawienie im adresu zdjecia GLOWNEGO
+  // pokazywaloby kilkanascie razy ten sam obrazek i klamalo o tym, co w tym sklepie lezy.
+  it('drugie zdjęcie galerii pokazuje oryginał, bo lustro go nie zna', async () => {
     const drugie = 'https://sklep-polcien.example.invalid/wp-content/uploads/2026/07/kopula-2.jpg';
     const html = await kartaProduktu({ zdjecia_json: JSON.stringify([ORYGINAL, drugie]) });
     expect(kafelek(html, ORYGINAL)).toContain(`src="${PRAWDZIWY}"`);
-    expect(kafelek(html, drugie)).toContain('kopula-2-150x150.jpg');
+    expect(kafelek(html, drugie)).toContain(`src="${drugie}"`);
+    expect(kafelek(html, drugie)).not.toContain('kopula-2-150x150.jpg');
   });
 });
 

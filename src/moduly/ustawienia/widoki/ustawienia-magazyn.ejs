@@ -75,3 +75,13 @@
   <p id="ust-zrodla-pomoc">Przy pustym polu karty wygrywa źródło wyżej. Pola poprawione ręcznie nie są nadpisywane.</p>
   <% if (zrodla.length) { %><p>Przyciski „Wyżej” i „Niżej” zapisują kolejność.</p><% } %>
 </section>
+
+<section class="ust-sekcja" id="ust-producenci">
+  <h2 id="ust-producenci-tytul">Producenci (GPSR)</h2>
+  <% if (producenci.liczba === 0) { %>
+    <p>Nie masz jeszcze producentów — oferty Allegro i przepisy GPSR ich wymagają.</p>
+  <% } else { %>
+    <p>Producentów: <strong><%= producenci.liczba %></strong>. Domyślny: <% if (producenci.domyslny) { %><strong><%= producenci.domyslny %></strong><% } else { %>brak domyślnego<% } %>.</p>
+  <% } %>
+  <p><a href="/magazyn/producenci">Producenci</a></p>
+</section>

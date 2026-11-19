@@ -2,22 +2,26 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from './pliki-historyczne.js';
 
 // UKŁAD BELKI AKCJI — kontrakt ekranu, którego testy tras nie sprawdzają:
-// (1) pięć akcji, w tym „Wystaw na…”, jako <details name="akcja"> w jednej belce nad tabelą;
+// (1) cztery akcje jako <details name="akcja"> w jednej belce nad tabelą;
 // (2) formaction i pary zakresów zachowane;
 // (3) belka jest przyklejona (position: sticky) — reguła w arkuszu layoutu.
 const widok = readFileSync('src/oms/web/views/magazyn-lista.ejs', 'utf8');
 const layout = readFileSync('src/public/oms-uklad.css', 'utf8');
 
 describe('belka akcji magazynu', () => {
-  it('pięć akcji w details name="akcja" wewnątrz jednej belki', () => {
+  it('cztery akcje w details name="akcja" wewnątrz jednej belki', () => {
     // ⚠️ Koniec wycinka kotwiczymy forma ATRYBUTU `class="przewijak-tabeli"` — samo slowo
     // `przewijak-tabeli` pada wczesniej, wewnatrz komentarza ostrzegawczego nad divem, wiec
     // indexOf na golym slowie trafia w proze, a nie w element (i przycina wycinek za wczesnie).
     const belka = widok.slice(widok.indexOf('class="belka-akcji"'), widok.indexOf('class="przewijak-tabeli"'));
-    expect((belka.match(/<details class="akcja" name="akcja"/g) ?? []).length).toBe(5);
-    for (const tytul of ['Ustaw pola', 'Nadaj SKU', 'Przejmij numery', 'Zapisz do sklepów', 'Wystaw na…']) {
-      expect(belka).toContain(`<summary>${tytul}</summary>`);
-    }
+    expect((belka.match(/<details class="akcja" name="akcja"/g) ?? []).length).toBe(4);
+    expect([...belka.matchAll(/<summary>([^<]*)<\/summary>/g)].map((m) => m[1])).toEqual([
+      'Wystaw oferty',
+      'Edytuj',
+      'Nadaj SKU',
+      'Wyślij SKU i wymiary',
+    ]);
+    expect(belka).not.toContain('id="przejecie-pasek"');
     // ⚠️ ZADNA akcja nie jest rozwinieta z serwera. `open` na `.odczyt-szczegoly` wyzej JEST
     // regula (trwanie i blad odczytu), ale tutaj bylby wylacznie ozdoba: cztery ciala
     // rozwiniete naraz to dokladnie ten ekran, ktory ta przebudowa zwija.
@@ -58,14 +62,14 @@ describe('belka akcji magazynu', () => {
     expect(indeksZaznaczone).toBeLessThan(koniecFormularza);
   });
 
-  it('pary przycisków zakresu i formaction bez zmian', () => {
-    for (const adres of ['/magazyn/sku-podglad', '/magazyn/przejmij-podglad', '/magazyn/podglad-zapisu']) {
+  it('pozostałe akcje mają pary przycisków zakresu', () => {
+    for (const adres of ['/magazyn/sku-podglad', '/magazyn/podglad-zapisu']) {
       expect((widok.match(new RegExp(`formaction="${adres}"`, 'g')) ?? []).length).toBe(2);
     }
     // hurt bez formaction — trafia w action formularza:
     expect(widok).toContain('action="/magazyn/hurt"');
-    expect((widok.match(/name="zakres" value="zaznaczone"/g) ?? []).length).toBe(5);
-    expect((widok.match(/name="zakres" value="pasujace"/g) ?? []).length).toBe(5);
+    expect((widok.match(/name="zakres" value="zaznaczone"/g) ?? []).length).toBe(4);
+    expect((widok.match(/name="zakres" value="pasujace"/g) ?? []).length).toBe(4);
     // ⚠️ LICZBA, NIE OBECNOSC: duplikat ukrytego `zawezenie` (pole powtorzone przy kolejnej
     // akcji) wraca z Fastify TABLICA, `pole()` scina ja do null i caly hurtowy zakres znika
     // po cichu w formularzu, ktory go ustawia — `toContain` by tego nie zlapal, bo string

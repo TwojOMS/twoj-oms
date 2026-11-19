@@ -4,8 +4,9 @@
 import { brakiUstawienOfert } from './erli-oferty-ustawienia.js';
 import { bezIlosciKanalu, OSTRZEZENIE_BRAK_STANU } from './erli-produkt.js';
 import { dobierzCennik, regulyKonta } from './cennik-dostaw.js';
-import { cenaZNarzutem, kwotaDziesietna } from './cena-kanalu.js';
+import { cenaDlaKanalu, kwotaDziesietna } from './cena-kanalu.js';
 import { poprawneSekcje, sekcjeDlaAllegro } from './opis-sekcje.js';
+import { producentAllegro } from './producent-allegro.js';
 
 /** Problemy pętli Allegro zapisywane w rejestrze — jedno miejsce na kształty. */
 export const PROBLEMY_ALLEGRO = Object.freeze({
@@ -121,6 +122,7 @@ export function ofertaAllegroZKarty(wejscie) {
     katalog = null,
     teraz = new Date().toISOString(),
     ilosc,
+    recznaGr = null,
   } = wejscie ?? {};
   const bledy = [];
   const ostrzezenia = [];
@@ -407,7 +409,10 @@ export function ofertaAllegroZKarty(wejscie) {
   ) {
     blad('cennik', 'Cennik z karty nie istnieje już na koncie Allegro — wybierz inny');
   }
-  const cena = cenaZNarzutem(karta.cena_gr, ustawienia.narzutBp);
+  // `recznaGr` = ręczna cena karty na tym koncie; bez niej cena karty z narzutem konta.
+  const cena = cenaDlaKanalu({ kartaGr: karta.cena_gr, narzutBp: ustawienia.narzutBp, recznaGr });
+  if (cena.bledy.includes('reczna'))
+    blad('cena', `Ręczna cena konta ${nazwaKonta} musi być dodatnią, całkowitą liczbą groszy — popraw ją na karcie.`);
   if (cena.bledy.includes('cena'))
     blad('cena', 'Ustaw cenę brutto większą od zera na karcie, w całkowitej liczbie groszy.');
   if (cena.bledy.includes('narzut'))
@@ -438,28 +443,10 @@ export function ofertaAllegroZKarty(wejscie) {
   // GPSR.
   const pozycja = {};
   const przypisanie = marka ? producenciMarek.find((x) => napis(x.marka) === marka) : null;
-  const producentKonta = () => {
-    if (!napis(ustawienia.producentId)) {
-      blad('producent', `Ustaw producenta konta ${nazwaKonta} (krok Oferty w konfiguratorze konta).`);
-      return;
-    }
-    pozycja.responsibleProducer = { type: 'ID', id: napis(ustawienia.producentId) };
-    if (napis(ustawienia.osobaOdpowiedzialnaId))
-      pozycja.responsiblePerson = { id: napis(ustawienia.osobaOdpowiedzialnaId) };
-  };
-  if (przypisanie?.zrodlo === 'konto') producentKonta();
-  else if (przypisanie?.zrodlo === 'wybrany' && napis(przypisanie.producentId)) {
-    pozycja.responsibleProducer = { type: 'ID', id: napis(przypisanie.producentId) };
-    if (napis(przypisanie.osobaOdpowiedzialnaId))
-      pozycja.responsiblePerson = { id: napis(przypisanie.osobaOdpowiedzialnaId) };
-  } else if (droga === 'katalog-id') {
-    // Bez przypisania pole pomijamy — Allegro bierze dane GPSR z produktu.
-  } else if (!marka) producentKonta();
-  else
-    blad(
-      'producent',
-      `Przypisz producenta marki ${marka} na koncie ${nazwaKonta} (Ustawienia → Integracje → Moje połączenia, przy koncie Allegro → krok Oferty).`,
-    );
+  const producent = producentAllegro({ marka, droga, przypisanie, ustawienia, nazwaKonta });
+  if (producent.blad) blad('producent', producent.blad);
+  if (producent.responsibleProducer) pozycja.responsibleProducer = producent.responsibleProducer;
+  if (producent.responsiblePerson) pozycja.responsiblePerson = producent.responsiblePerson;
 
   const informacja = json(karta.informacja_bezpieczenstwa);
   if (informacja === undefined)

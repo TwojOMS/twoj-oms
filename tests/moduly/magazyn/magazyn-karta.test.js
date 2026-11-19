@@ -649,7 +649,7 @@ describe('GET /magazyn/:id — powiazane produkty i oferty', () => {
     }
   });
 
-  it('galeria pokazuje MINIATURY, a odnosnik prowadzi do oryginalu', async () => {
+  it('galeria bez miniatury z lustra pokazuje ORYGINAL, a odnosnik prowadzi do oryginalu', async () => {
     const id = kartaO('Kandelabr srebrny');
     const p = produktSklepu('Kandelabr srebrny', {
       zdjecia_json: JSON.stringify([
@@ -660,10 +660,11 @@ describe('GET /magazyn/:id — powiazane produkty i oferty', () => {
     powiazProdukt(db, p, id);
 
     const w = wierszProduktu((await get(serwer(), `/magazyn/${id}`)).body, 'Kandelabr srebrny');
-    // ⚠️ WARIANT 150 px, NIE ORYGINAL. Zmierzone przy zamowieniach: 87 KB → 4 KB, a galeria
-    // karty potrafi miec kilkanascie zdjec z trzech kanalow naraz.
-    expect(w).toContain('src="https://pro.sklep-polcien.example.invalid/wp-content/uploads/kandelabr-150x150.jpg"');
-    expect(w).toContain('src="https://pro.sklep-polcien.example.invalid/wp-content/uploads/kandelabr-2-150x150.jpg"');
+    // ⚠️ ORYGINAL, NIE ZGADYWANY WARIANT 150 px: sklep skalujacy miniatury do wlasnego
+    // rozmiaru dawal na zgadywany adres 404, czyli pusta ramke. Oryginal jest adresem pewnym.
+    expect(w).not.toContain('-150x150');
+    expect(w).toContain('src="https://pro.sklep-polcien.example.invalid/wp-content/uploads/kandelabr.jpg"');
+    expect(w).toContain('src="https://pro.sklep-polcien.example.invalid/wp-content/uploads/kandelabr-2.jpg"');
     // Klikniecie otwiera ORYGINAL — miniatura sluzy tylko ekranowi.
     expect(w).toContain('href="https://pro.sklep-polcien.example.invalid/wp-content/uploads/kandelabr.jpg"');
   });
@@ -825,6 +826,36 @@ describe('dopisanie oferty — PODPOWIEDZI PROPONUJA, wiaze klikniecie', () => {
     expect(nazwyKandydatow(body)).not.toContain('KANDELABR ozdobny wysoki');
   });
 
+  it('po przypięciu wraca do wyników z tą samą frazą i kontem oraz pokazuje potwierdzenie', async () => {
+    const id = kartaO('Lampion papierowy');
+    const kanal = 'allegro_polcien2';
+    const fraza = 'żółty & biały';
+    const o = oferta('Lampion żółty & biały', { kanal });
+    const nastepna = 'Klosz żółty & biały';
+    oferta(nastepna, { kanal });
+    oferta('Lampa żółty & biały');
+    const wroc = '/magazyn?brak=sku';
+    const app = serwer();
+
+    const r = await post(app, `/magazyn/${id}/powiaz?wroc=${encodeURIComponent(wroc)}`, {
+      produktSklepowyId: String(o),
+      fraza,
+      kanal,
+    });
+
+    expect(r.statusCode).toBe(303);
+    const cel = new URL(r.headers.location, 'http://localhost');
+    expect(cel.pathname).toBe(`/magazyn/${id}`);
+    expect(cel.searchParams.get('fraza')).toBe(fraza);
+    expect(cel.searchParams.get('kanal')).toBe(kanal);
+    expect(cel.searchParams.get('wroc')).toBe(wroc);
+    expect(cel.hash).toBe('#dopisz-oferte');
+
+    const { body } = await get(app, cel.pathname + cel.search);
+    expect(sekcja(body, 'dopisz-oferte')).toContain('Przypięto ofertę Allegro.');
+    expect(nazwyKandydatow(body)).toEqual([nastepna.replace('&', '&amp;')]);
+  });
+
   // ⚠️⚠️ BEZ TEGO TEN SAM PRODUKT TRAFILBY DO DWOCH KART, a wymiary, waga
   // i SKU poszlyby do sklepu z niewlasciwej karty.
   it('oferta przypieta do INNEJ karty odmawia przypiecia i zostaje przy swoim', async () => {
@@ -833,9 +864,18 @@ describe('dopisanie oferty — PODPOWIEDZI PROPONUJA, wiaze klikniecie', () => {
     const o = oferta('KANDELABR ozdobny');
     powiazProdukt(db, o, kandelabr);
 
-    const r = await post(serwer(), `/magazyn/${lampion}/powiaz`, { produktSklepowyId: String(o) });
+    const r = await post(serwer(), `/magazyn/${lampion}/powiaz`, {
+      produktSklepowyId: String(o),
+      fraza: 'ozdobny',
+      kanal: 'allegro_polcien2',
+    });
 
-    expect(r.statusCode).toBeGreaterThanOrEqual(400);
+    expect(r.statusCode).toBe(409);
+    const dopisz = sekcja(r.body, 'dopisz-oferte');
+    expect(dopisz).toContain('Nie przypiąłem tej pozycji');
+    expect(dopisz).toContain('name="fraza" value="ozdobny"');
+    expect(dopisz).toContain('<option value="allegro_polcien2" selected>');
+    expect(r.body).toMatch(/<main class="[^"]*\bszer-tabela\b/);
     expect(kartaProduktu(o)).toBe(kandelabr);
   });
 
@@ -1087,6 +1127,23 @@ describe('powrót z karty produktu z zachowaniem filtrów (wroc)', () => {
     expect(dane).toContain(`<input type="hidden" name="wroc" value="${wroc}">`);
   });
 
+  it('karta używa pełnej szerokości, a szukanie i czyszczenie wracają do sekcji ofert', async () => {
+    const id = kartaO('Lampion papierowy');
+    const kanal = 'allegro_polcien2';
+    oferta('Lampion papierowy', { kanal });
+    const wroc = '/magazyn?brak=sku';
+    const adres = `/magazyn/${id}?wroc=${encodeURIComponent(wroc)}`;
+    const { body } = await get(serwer(), `${adres}&fraza=papierowy&kanal=${kanal}`);
+
+    expect(body).toMatch(/<main class="[^"]*\bszer-tabela\b/);
+    const dopisz = sekcja(body, 'dopisz-oferte');
+    expect(dopisz).toContain(`method="get" action="${adres}#dopisz-oferte"`);
+    expect(dopisz).toContain(`href="${adres}#dopisz-oferte">Wyczyść</a>`);
+    const przypnij = dopisz.match(/<form class="w-linii" method="post"[\s\S]*?<\/form>/)?.[0];
+    expect(przypnij).toContain('type="hidden" name="fraza" value="papierowy"');
+    expect(przypnij).toContain(`type="hidden" name="kanal" value="${kanal}"`);
+  });
+
   it('zapis edycji z karty wraca pod adres z ?wroc, nie pod goly adres karty', async () => {
     const id = kartaO('Kandelabr srebrny');
     const wroc = '/magazyn?brak=sku';
@@ -1143,6 +1200,8 @@ describe('powrót z karty produktu z zachowaniem filtrów (wroc)', () => {
     expect(sekcja(body, 'produkty-karty')).toContain(
       `action="/magazyn/${id}/odepnij?wroc=${encodeURIComponent(wroc)}"`,
     );
-    expect(sekcja(body, 'dopisz-oferte')).toContain(`action="/magazyn/${id}/powiaz?wroc=${encodeURIComponent(wroc)}"`);
+    expect(sekcja(body, 'dopisz-oferte')).toContain(
+      `action="/magazyn/${id}/powiaz?wroc=${encodeURIComponent(wroc)}#dopisz-oferte"`,
+    );
   });
 });

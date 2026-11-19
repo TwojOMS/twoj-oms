@@ -224,6 +224,14 @@ export function registerWeb(app, { db, config }) {
       reply.type('image/png').send(znak.biezace().bajty ?? readFileSync(join(__publicDir, nazwa))),
     );
   }
+  // Czyste moduły domeny, którymi formularz liczy na żywo to samo, co serwer zapisze — bez
+  // drugiej kopii arytmetyki w src/public. Lista zamknięta: reszta domeny nie wychodzi z serwera.
+  for (const nazwa of ['cena-sprzedazy.js', 'vat.js', 'kwota.js']) {
+    const kod = readFileSync(join(__dir, '../../domena', nazwa), 'utf8');
+    app.get(`/public/domena/${nazwa}`, async (_req, reply) =>
+      reply.type('text/javascript; charset=utf-8').header('cache-control', 'no-cache').send(kod),
+    );
+  }
   // Starsze zakładki i przeglądarki pytające domyślnie o ICO trafiają na ten sam PNG co układ.
   app.get('/favicon.ico', async (_req, reply) => reply.redirect(zasob('favicon-32.png'), 301));
   wczytajSekret(db);

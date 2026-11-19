@@ -75,7 +75,11 @@ export function zamrozonePola(frozen) {
   return [];
 }
 
-const zamrozone = (lista, pole) => lista.includes('*') || lista.includes(pole);
+/** @param {unknown} lista */
+export const zamrozone = (lista, pole) => Array.isArray(lista) && (lista.includes('*') || lista.includes(pole));
+
+/** @param {import('../../../oms/db/oferty-kanalow.ts').OfertaKanalu} oferta */
+export const czyKonfliktErli = (oferta) => oferta.problemy.some((p) => p?.kod === 'konflikt');
 
 /** Problemy zdjęć: po `CZAS_POBRANIA_ZDJEC_MS` od wysyłki obraz bez `internalUrl` jest niepobrany. */
 export function problemyZdjec(oferta, produkt, terazMs) {
@@ -108,6 +112,7 @@ const komunikat = (e) => String(e?.message ?? e ?? 'nieznany błąd');
 const HORYZONT_WYJASNIEN_MS = 7 * 24 * 3600_000;
 // Stany wiersza oferty ERLI, która jest wystawiona i może sprzedawać — tylko one tworzą mianownik zera masowego.
 const STANY_SPRZEDAZY = Object.freeze(['aktywna', 'nieaktywna', 'problem']);
+export const STANY_SYNCHRONIZACJI_ERLI = Object.freeze([...STANY_SPRZEDAZY, 'sprawdzana']);
 
 export function createPetlaOfert({
   db,
@@ -742,12 +747,13 @@ export function createPetlaOfert({
     for (const id of ids) {
       const oferta = ofertaPoId(db, id);
       if (!oferta || oferta.stan === 'szkic' || oferta.stan === 'blad') continue;
-      if (oferta.problemy.some((p) => p?.kod === 'konflikt')) continue;
+      if (czyKonfliktErli(oferta)) continue;
       const produkt = produkty.get(oferta.idZewnetrzne) ?? null;
       try {
         if (oferta.stan === 'do_wyslania') await wyslij(konto, klucze, oferta, ustawienia);
         else if (oferta.stan === 'wyslana') await wyslanaBezPotwierdzenia(konto, klucze, oferta, produkt, ustawienia);
-        else if (produkt) await synchronizuj(konto, klucze, oferta, produkt, ustawienia, batch, masoweZero);
+        else if (produkt && STANY_SYNCHRONIZACJI_ERLI.includes(oferta.stan))
+          await synchronizuj(konto, klucze, oferta, produkt, ustawienia, batch, masoweZero);
         else if (oferta.stan !== 'sprawdzana') {
           zmien(oferta.id, {
             problemy: [

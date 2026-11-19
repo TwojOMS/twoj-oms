@@ -32,6 +32,17 @@ const uprawnieniaZFormularza = (v: unknown) =>
 const body = (r: FastifyRequest): Record<string, unknown> =>
   r.body && typeof r.body === 'object' && !Array.isArray(r.body) ? (r.body as Record<string, unknown>) : {};
 const url = (k: string) => root + '/' + encodeURIComponent(k);
+/** Próg potwierdzenia zmiany ceny w sklepie Woo: sklep ma zwykle szersze widełki cen niż Allegro (tam 20%). */
+export const PROG_POTWIERDZENIA_WOO_BP = 5000;
+/** Próg ceny konta Woo — konto bez zapisanych ustawień dostaje próg sklepu, nie wspólny domyślny. */
+export const progPotwierdzeniaWooBp = (u: { zapisane: boolean; progPotwierdzeniaBp: number }) =>
+  u.zapisane ? u.progPotwierdzeniaBp : PROG_POTWIERDZENIA_WOO_BP;
+// Pole z przecinkiem albo kropką; puste pole = wartość domyślna, reszta idzie do walidacji zapisu (NaN → odmowa).
+const procentZPola = (v: unknown, domyslnyBp: number) => {
+  const s = tekst(v).trim();
+  if (!s) return domyslnyBp / 100;
+  return /^-?\d+([.,]\d+)?$/.test(s) ? Number(s.replace(',', '.')) : NaN;
+};
 type Metoda = { strefa: string; instanceId: number; tytul: string; metodaWoo: string };
 type EnvSklep = { klucz: string; nazwa: string; adres: string; od: string; mapowanie: unknown };
 type Blad = { ok: false; kod: string; komunikat: string };
@@ -200,6 +211,20 @@ export function registerTrasyWoo(
       })(),
       bladStanow: null,
       wartosciStanow: null,
+      // Narzut i próg ceny widać zawsze, niezależnie od stanów magazynowych i kroku konfiguratora.
+      // Tabelę ustawień kont zakłada moduł magazynu — bez niej sekcji cen nie pokazujemy.
+      ...(() => {
+        try {
+          const u = k ? ustawieniaOfertKonta(db, k.klucz) : null;
+          return {
+            ustawieniaCen: u && { narzutProcent: u.narzutProcent, progProcent: progPotwierdzeniaWooBp(u) / 100 },
+          };
+        } catch {
+          return { ustawieniaCen: null };
+        }
+      })(),
+      bladCen: null,
+      wartosciCen: null,
       formularzId: '',
       metody,
       mapowanie,
@@ -354,10 +379,14 @@ export function registerTrasyWoo(
     if (czynne && uprawnieniaSklepu(JSON.parse(String(d?.ustawienia_json ?? '{}'))) === 'odczyt')
       return odmowStanow(TYLKO_ODCZYT_STANOW, null);
     try {
+      // Pierwszy zapis zakłada wiersz konta — bez tego próg ceny dostałby wspólne 20% zamiast progu sklepu.
+      const progCeny = ustawieniaOfertKonta(db, k.klucz).zapisane
+        ? {}
+        : { progPotwierdzeniaProcent: PROG_POTWIERDZENIA_WOO_BP / 100 };
       zapiszUstawieniaOfertKonta(
         db,
         k.klucz,
-        { czynne, buforSzt: liczbaStanow(b.buforSzt), progSkokuSzt: liczbaStanow(b.progSkokuSzt) },
+        { czynne, buforSzt: liczbaStanow(b.buforSzt), progSkokuSzt: liczbaStanow(b.progSkokuSzt), ...progCeny },
         { aktor: aktor(req).login, teraz: teraz().toISOString() },
       );
     } catch (e) {
@@ -366,6 +395,33 @@ export function registerTrasyWoo(
         komunikat,
         komunikat.startsWith('Bufor') ? 'buforSzt' : komunikat.startsWith('Próg') ? 'progSkokuSzt' : null,
       );
+    }
+    return powrot(reply, k.klucz);
+  }
+  // Narzut i próg ceny konta sklepu. Pole nieobecne w formularzu zostaje bez zmian; wersji sklepu nie zmienia.
+  function zapiszCeny(req: FastifyRequest, reply: FastifyReply, k: PolaczenieKanalu, b: Record<string, unknown>) {
+    const zmiany: Record<string, unknown> = {};
+    if ('narzutProcent' in b) zmiany.narzutProcent = procentZPola(b.narzutProcent, 0);
+    if ('progPotwierdzeniaProcent' in b)
+      zmiany.progPotwierdzeniaProcent = procentZPola(b.progPotwierdzeniaProcent, PROG_POTWIERDZENIA_WOO_BP);
+    else if (!ustawieniaOfertKonta(db, k.klucz).zapisane)
+      zmiany.progPotwierdzeniaProcent = PROG_POTWIERDZENIA_WOO_BP / 100;
+    try {
+      zapiszUstawieniaOfertKonta(db, k.klucz, zmiany, { aktor: aktor(req).login, teraz: teraz().toISOString() });
+    } catch (e) {
+      const komunikat = e instanceof Error ? e.message : 'Niepoprawne ustawienie cen.';
+      return widok(req, reply.code(400), k, {
+        blad: komunikat,
+        bladCen: {
+          pole: komunikat.startsWith('Narzut')
+            ? 'narzutProcent'
+            : komunikat.startsWith('Próg')
+              ? 'progPotwierdzeniaProcent'
+              : null,
+          komunikat,
+        },
+        wartosciCen: b,
+      });
     }
     return powrot(reply, k.klucz);
   }
@@ -380,6 +436,7 @@ export function registerTrasyWoo(
     'odlacz',
     'usun',
     'stany',
+    'ceny',
   ] as const;
   for (const operacja of operacje)
     trasa('POST', '/:kanal/' + operacja, async (req, reply) => {
@@ -404,6 +461,7 @@ export function registerTrasyWoo(
           k,
         );
       if (operacja === 'stany') return zapiszStany(req, reply, k, b);
+      if (operacja === 'ceny') return zapiszCeny(req, reply, k, b);
       let w;
       switch (operacja) {
         case 'klucze': {

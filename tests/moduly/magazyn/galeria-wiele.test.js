@@ -170,3 +170,76 @@ it('przyjmuje pełne 20 plików z ai, odmawia 21. z jego nazwą', async () => {
   expect((await upload(pliki, '1')).statusCode).toBe(303);
   expect(lista()).toHaveLength(20);
 });
+
+// Pola znacznika AI przy pliku: przeglądarka może je wysłać przed plikami albo po nich.
+function uploadZPolami(pliki, pola, { polaPrzed = false } = {}) {
+  const czesciPlikow = pliki.flatMap(([nazwa, bufor]) => [
+    Buffer.from(
+      `--paczka\r\nContent-Disposition: form-data; name="zdjecie"; filename="${nazwa}"\r\nContent-Type: image/png\r\n\r\n`,
+    ),
+    bufor,
+    Buffer.from('\r\n'),
+  ]);
+  const czesciPol = pola.map(([nazwa, wartosc]) =>
+    Buffer.from(`--paczka\r\nContent-Disposition: form-data; name="${nazwa}"\r\n\r\n${wartosc}\r\n`),
+  );
+  return app.inject({
+    method: 'POST',
+    url: '/magazyn/1000/zdjecia/wgraj',
+    headers: { ...auth, 'content-type': 'multipart/form-data; boundary=paczka' },
+    payload: Buffer.concat([
+      ...(polaPrzed ? [...czesciPol, ...czesciPlikow] : [...czesciPlikow, ...czesciPol]),
+      Buffer.from('--paczka--\r\n'),
+    ]),
+  });
+}
+it.each([false, true])('znacznik AI przy pliku dotyczy tylko swojego zdjęcia (pola przed: %s)', async (polaPrzed) => {
+  const r = await uploadZPolami(
+    [plik(1), plik(2), plik(3)],
+    [
+      ['zdjecie_ai_0', '0'],
+      ['zdjecie_ai_1', '1'],
+    ],
+    { polaPrzed },
+  );
+  expect(r.statusCode).toBe(303);
+  expect(lista().map((z) => [z.szerokosc, z.ai, z.ai_reczne])).toEqual([
+    [1, 0, 1],
+    [2, 1, 1],
+    [3, 0, 1],
+  ]);
+});
+it('znacznik przy pliku ma pierwszeństwo przed znacznikiem paczki', async () => {
+  const r = await uploadZPolami(
+    [plik(1), plik(2)],
+    [
+      ['ai', '1'],
+      ['zdjecie_ai_1', '0'],
+    ],
+  );
+  expect(r.statusCode).toBe(303);
+  expect(lista().map((z) => z.ai)).toEqual([1, 0]);
+});
+it.each([
+  ['zdjecie_ai_0', '2'],
+  ['zdjecie_ai_x', '1'],
+  ['zdjecie_ai_21', '1'],
+  ['inne', '1'],
+])('złe pole znacznika %s=%s odrzuca paczkę bez zapisu', async (nazwa, wartosc) => {
+  const r = await uploadZPolami([plik(1)], [[nazwa, wartosc]]);
+  expect(r.statusCode).toBe(400);
+  expect(r.body).toContain('Wybierz poprawny znacznik AI zdjęcia.');
+  expect(lista()).toEqual([]);
+  expect(await readdir(katalog)).toEqual([]);
+});
+it('20 plików, każdy ze swoim znacznikiem AI, oraz 21. plik z nazwą w odmowie', async () => {
+  const pliki = Array.from({ length: 20 }, (_, i) => plik(i + 1));
+  const pola = pliki.map((_, i) => [`zdjecie_ai_${i}`, String(i % 2)]);
+  const za = await uploadZPolami([...pliki, plik(21)], [...pola, ['zdjecie_ai_20', '1'], ['ai', '0']]);
+  expect(za.statusCode).toBe(400);
+  expect(za.body).toContain('obraz-21.png');
+  expect(lista()).toEqual([]);
+  const r = await uploadZPolami(pliki, [...pola, ['ai', '0']]);
+  expect(r.statusCode).toBe(303);
+  expect(lista().map((z) => z.ai)).toEqual(pola.map(([, w]) => Number(w)));
+});

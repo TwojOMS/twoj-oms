@@ -7,7 +7,9 @@
 // Dane z PRODUKTY w demo-dane-firma.mjs; warianty to pary, które w katalogu są już osobnymi SKU (zamówienia
 // demo nadal trafiają w te same SKU). Adresy w domenie .invalid — żaden link nie prowadzi do prawdziwego sklepu.
 import { KANALY, PRODUKTY } from './demo-dane-firma.mjs';
-import { wstawOferte, zmienOferte } from '../src/oms/db/oferty-kanalow.ts';
+import { wstawOferte, zmienOferte, zapiszUstawieniaOfertKonta } from '../src/oms/db/oferty-kanalow.ts';
+import { dodajProducenta, przypiszMarki, ustawDomyslnego } from '../src/oms/db/producenci.js';
+import { utworzKarte, powiazProdukt, zapiszKarte } from '../src/oms/db/magazyn.js';
 
 const ADRES_SKLEPU = 'https://sklep-polcien.example.invalid';
 const YOAST_KATEGORIA = '_yoast_wpseo_primary_product_cat';
@@ -48,6 +50,19 @@ function slug(tekst) {
     .replace(/^-|-$/g, '');
 }
 const cena = (gr) => (gr / 100).toFixed(2);
+
+// Ceny w kanałach: produkt w trwającej promocji i powiązany szkic (karta zostaje, sklep ukrył ofertę).
+const SKU_PROMOCJI_DEMO = 'LMP-STO-003';
+const SZKIC_DEMO = { sku: 'LMP-SZK-001', nazwa: 'Lampa Półcień 40 — szkic', cena_gr: 18900 };
+const KONTO_CEN_DEMO = 'polcien';
+const NARZUT_CEN_DEMO_PROCENT = 10;
+/** Koniec promocji: północ dnia uruchomienia + 30 dni (czas sklepu bez strefy, jak `date_on_sale_to` w Woo). */
+function koniecPromocjiDemo() {
+  const dzis = new Date();
+  return new Date(Date.UTC(dzis.getUTCFullYear(), dzis.getUTCMonth(), dzis.getUTCDate() + 30))
+    .toISOString()
+    .slice(0, 19);
+}
 
 // Zdjęcia produktów: pliki w src/public/demo-produkty (CC0, źródła w ZRODLA.md), serwowane przez sam panel
 // pod /public/ (bez logowania). ⚠️ Adres BEZWZGLĘDNY, i to w domenie demo publicznego: ekrany przepuszczają tylko http(s)
@@ -200,6 +215,31 @@ export function katalogWoo(kanal = kanalyTypu('woo')[0]) {
       attributes: [],
       ...wspolne(p.nazwa, p.kategoria, p.sku),
       ...wymiaryWoo(p.sku, p.kategoria, id),
+      ...(p.sku === SKU_PROMOCJI_DEMO
+        ? {
+            sale_price: cena(Math.round(p.cena_gr * 0.9)),
+            price: cena(Math.round(p.cena_gr * 0.9)),
+            date_on_sale_from: '',
+            date_on_sale_to: koniecPromocjiDemo(),
+          }
+        : {}),
+    });
+  }
+  if (kanal === KONTO_CEN_DEMO) {
+    id += 1;
+    produkty.push({
+      id,
+      type: 'simple',
+      sku: SZKIC_DEMO.sku,
+      price: cena(SZKIC_DEMO.cena_gr),
+      regular_price: cena(SZKIC_DEMO.cena_gr),
+      manage_stock: true,
+      backorders: 'no',
+      stock_status: 'instock',
+      stock_quantity: 5,
+      attributes: [],
+      ...wspolne(SZKIC_DEMO.nazwa, 'Lampy wiszące', 'LMP-WIS-001'),
+      status: 'draft',
     });
   }
   for (const w of WARIANTY) {
@@ -454,9 +494,15 @@ export function klienciKataloguDemo() {
  * Stan „firma zaczęła wystawiać z OMS” w bazie demo: mapa kategorii Lampy wiszące → 257, dwie marki
  * dopasowane do słownika 248811 i cztery oferty OMS na koncie allegro dla kart tylko ze sklepu (szkic, problem,
  * aktywna, nieaktywna). Aktywna i nieaktywna mają id z `ofertyAllegroDemoE3`, więc atrapa oddaje je po `GET`.
+ * Karty dostają EAN z tej samej pozycji katalogu, której używa wyszukiwarka produktów Allegro.
  */
 export function zasiejOfertyAllegroDemo(db, { teraz }) {
   const at = teraz();
+  const zapiszEan = db.prepare('UPDATE karty_produktow SET ean = ? WHERE sku = ?');
+  for (const [i, { sku }] of PRODUKTY.entries()) {
+    const nr = i + 1;
+    if (nr % 5 !== 0) zapiszEan.run(eanDemo(nr), sku);
+  }
   db.prepare(
     `INSERT INTO allegro_mapa_kategorii (kategoria_karty, srodowisko, kategoria_allegro_id, sciezka_json, potwierdzil, potwierdzono_at)
     VALUES ('Lampy wiszące', 'produkcja', '257', '["Dom i Ogród","Oświetlenie","Lampy"]', 'operator-demo', ?)`,
@@ -489,5 +535,104 @@ export function zasiejOfertyAllegroDemo(db, { teraz }) {
     if (!kartaId) throw new Error(`DEMO_OFERTY: brak karty ${sku}`);
     const o = wstawOferte(db, { kartaId, kanal: 'allegro', idZewnetrzne, pochodzenie: 'oms', stan }, { teraz: at });
     if (problemy) zmienOferte(db, o.id, { problemy }, { teraz: at });
+  }
+}
+
+/**
+ * Stan „Ceny w kanałach” w bazie demo: narzut 10% i próg 50% na koncie sklepu oraz karta powiązana ze szkicem
+ * z katalogu (sklep ukrył ofertę, karta zostaje). Wołane po pierwszej synchronizacji — szkic jest już w lustrze.
+ */
+export function zasiejCenyKanalowDemo(db, { teraz }) {
+  const at = teraz();
+  zapiszUstawieniaOfertKonta(
+    db,
+    KONTO_CEN_DEMO,
+    { narzutProcent: NARZUT_CEN_DEMO_PROCENT, progPotwierdzeniaProcent: 50 },
+    { teraz: at, aktor: 'demo' },
+  );
+  const produkt = db
+    .prepare('SELECT id FROM produkty_sklepowe WHERE kanal = ? AND sku_sklepu = ?')
+    .get(KONTO_CEN_DEMO, SZKIC_DEMO.sku);
+  if (!produkt) throw new Error('DEMO_CENY: brak szkicu w lustrze sklepu');
+  const kartaId = utworzKarte(
+    db,
+    { nazwa: SZKIC_DEMO.nazwa, sku: SZKIC_DEMO.sku, cena_gr: SZKIC_DEMO.cena_gr, kategoria_glowna: 'Lampy wiszące' },
+    { at },
+  );
+  powiazProdukt(db, produkt.id, kartaId);
+}
+
+const MARKA_POLCIEN = 'Pracownia Półcień';
+const MARKA_SZKLO = 'Zakład Szkła Przykładowego';
+// Marka z kartami, której nikt nie przypisał producentowi — ekran Producenci i karta pokazują wtedy brak.
+const MARKA_BEZ_PRODUCENTA = 'Marka przykładowa 001';
+
+const PRODUCENCI_DEMO = [
+  {
+    nazwa: MARKA_POLCIEN,
+    adres: 'ul. Przykładowa 1, 00-001 Miasto Przykładowe',
+    email: 'kontakt@example.invalid',
+    www: null,
+    domyslny: true,
+  },
+  {
+    nazwa: MARKA_SZKLO,
+    adres: 'ul. Hutnicza 2, 00-002 Miasto Przykładowe',
+    email: null,
+    www: 'https://szklo.example',
+    domyslny: false,
+  },
+];
+
+// SKU kart na markę; reszta kart zostaje bez marki, jak w firmie, która dopiero porządkuje katalog.
+const MARKI_KART_DEMO = {
+  [MARKA_POLCIEN]: ['LMP-STO-001', 'LMP-STO-002', 'LMP-STO-003', 'LMP-WIS-003', 'LMP-POD-001', 'LMP-POD-002'],
+  [MARKA_SZKLO]: ['LMP-STO-006', 'LMP-KIN-003', 'LMP-NOC-001', 'LMP-ABA-003'],
+  [MARKA_BEZ_PRODUCENTA]: ['LMP-ABA-001', 'LMP-ABA-002', 'LMP-AKC-003'],
+};
+
+// Własny tekst bezpieczeństwa mają cztery karty; karta LMP-STO-003 (marka Półcień) zostaje bez tekstu,
+// więc oferta użyje tekstu domyślnego konta.
+const TEKSTY_BEZPIECZENSTWA_DEMO = {
+  'LMP-STO-001': 'Nie zostawiaj włączonej lampy bez nadzoru. Używaj żarówek o mocy do 40 W.',
+  'LMP-STO-002': 'Szkło dymione nagrzewa się podczas pracy — przed czyszczeniem odłącz lampę i poczekaj, aż ostygnie.',
+  'LMP-POD-001': 'Ustaw lampę na stabilnym, równym podłożu. Nie stawiaj jej w pobliżu wody.',
+  'LMP-KIN-003': 'Klosz jest ze szkła — chroń przed uderzeniem. Montaż zleć osobie z uprawnieniami elektrycznymi.',
+};
+
+/**
+ * Producenci GPSR w bazie demo: dwaj zmyśleni (jeden domyślny), przypisani do marek kart, jedna marka z kartami
+ * zostaje bez producenta, a cztery karty dostają własny tekst bezpieczeństwa. Powtórne wywołanie niczego nie duplikuje.
+ */
+export function zasiejProducentowDemo(db, { teraz }) {
+  const at = teraz();
+  const dopiszMarke = db.prepare('INSERT OR IGNORE INTO marki (nazwa, utworzona_at) VALUES (?, ?)');
+  const kartaPoSku = db.prepare('SELECT id FROM karty_produktow WHERE sku = ?');
+  for (const [marka, skus] of Object.entries(MARKI_KART_DEMO)) {
+    dopiszMarke.run(marka, at);
+    for (const sku of skus) {
+      const kartaId = kartaPoSku.get(sku)?.id;
+      if (!kartaId) throw new Error(`DEMO_PRODUCENCI: brak karty ${sku}`);
+      zapiszKarte(db, kartaId, { marka }, { at });
+    }
+  }
+  const idPoNazwie = db.prepare('SELECT id FROM producenci WHERE nazwa = ?');
+  const zmiany = [];
+  for (const { domyslny, ...dane } of PRODUCENCI_DEMO) {
+    let id = idPoNazwie.get(dane.nazwa)?.id;
+    if (!id) {
+      const wynik = dodajProducenta(db, dane, { at });
+      if (!wynik.ok) throw new Error(`DEMO_PRODUCENCI: ${JSON.stringify(wynik.bledy)}`);
+      id = wynik.id;
+    }
+    if (domyslny) ustawDomyslnego(db, id, { at });
+    if (dane.nazwa !== MARKA_BEZ_PRODUCENTA) zmiany.push({ marka: dane.nazwa, producentId: id });
+  }
+  const przypisanie = przypiszMarki(db, zmiany, { at });
+  if (przypisanie.blad) throw new Error(`DEMO_PRODUCENCI: ${przypisanie.blad}`);
+  for (const [sku, tekst] of Object.entries(TEKSTY_BEZPIECZENSTWA_DEMO)) {
+    const kartaId = kartaPoSku.get(sku)?.id;
+    if (!kartaId) throw new Error(`DEMO_PRODUCENCI: brak karty ${sku}`);
+    zapiszKarte(db, kartaId, { informacja_bezpieczenstwa: JSON.stringify({ typ: 'TEXT', tekst }) }, { at });
   }
 }

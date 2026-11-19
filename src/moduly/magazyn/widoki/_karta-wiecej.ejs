@@ -1,0 +1,39 @@
+<% if (pasek) { %>
+  <% const { liczba, kontaWstrzymane } = wycofanieSprzedazy; %>
+  <section class="pasek-blokada karta-wycofanie" id="potwierdz-wycofanie-karty" tabindex="-1" aria-labelledby="wycofanie-karty-tytul">
+    <h2 id="wycofanie-karty-tytul">Wycofać kartę ze sprzedaży?</h2>
+    <p id="wycofanie-karty-opis">
+      <% if (liczba > 0) { %>
+        Zakończę oferty wystawione z OMS (<%= liczba %>) przy najbliższym przebiegu i zablokuję wystawianie nowych.
+      <% } else if (kontaWstrzymane.length) { %>
+        Ta karta nie ma ofert wystawionych z OMS, które można teraz zakończyć. Wycofanie zablokuje wystawianie nowych.
+      <% } else { %>
+        Ta karta nie ma ofert wystawionych z OMS. Wycofanie zablokuje wystawianie nowych.
+      <% } %>
+      Oferty istniejące w kanałach, które OMS tylko obserwuje, i produkty w sklepie zostają bez zmian.
+    </p>
+    <% if (kontaWstrzymane.length) { %>
+      <p class="pasek-uwaga" id="wycofanie-karty-wstrzymane"><%= kontaWstrzymane.length === 1 ? 'Konto' : 'Konta' %> <%= kontaWstrzymane.join(', ') %> <%= kontaWstrzymane.length === 1 ? 'ma' : 'mają' %> wstrzymane oferty (wyłączone, tylko odczyt albo bez zgody na oferty) — tam oferty tej karty nie zostaną zakończone, dopóki konto jest wstrzymane.</p>
+    <% } %>
+    <form method="post" action="/magazyn/<%= karta.id %>/wycofaj" aria-labelledby="wycofanie-karty-tytul" aria-describedby="wycofanie-karty-opis<%= kontaWstrzymane.length ? ' wycofanie-karty-wstrzymane' : '' %>">
+      <div class="stopka-edycji">
+        <button type="submit" class="btn btn--groza" name="potwierdz" value="tak">Wycofaj ze sprzedaży</button>
+        <a class="btn btn--cichy" href="<%= adresKarty %>#naglowek-karty">Anuluj</a>
+      </div>
+    </form>
+  </section>
+<% } else if (mozeZmieniacSprzedaz) { %>
+  <% if (karta.wycofana) { %>
+    <form class="karta-przywrocenie" method="post" action="/magazyn/<%= karta.id %>/przywroc">
+      <button type="submit" class="btn btn--cichy" aria-describedby="przywrocenie-karty-opis">Przywróć do sprzedaży</button>
+      <span id="przywrocenie-karty-opis" class="wyjasnienie">Oferty w kanałach nie wrócą automatycznie</span>
+    </form>
+  <% } else { %>
+    <details class="wydruki">
+      <summary class="btn btn--cichy">Więcej <span aria-hidden="true">⋯</span></summary>
+      <div class="wydruki-menu">
+        <a href="<%= adresPotwierdzeniaWycofania %>#potwierdz-wycofanie-karty">Wycofaj ze sprzedaży…</a>
+      </div>
+    </details>
+  <% } %>
+<% } %>

@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
+import { readFileSync } from 'node:fs';
+import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
+import { podpisz, NAZWA_CIASTECZKA_OMS } from '../../../src/core/bezpieczenstwo/sesja.js';
+import { wczytajSekret } from '../../../src/core/bezpieczenstwo/sekret-sesji.js';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import {
   zapiszProduktSklepowy,
@@ -63,6 +67,8 @@ function oferta(nazwa, nadpisania = {}) {
 const kartaO = (nazwa, reszta = {}) => utworzKarte(db, { nazwa, ...reszta });
 
 const get = (app, url) => app.inject({ method: 'GET', url, headers: auth });
+const podpowiedzi = (app, q, limit = '') =>
+  get(app, `/magazyn/karty/podpowiedzi?q=${encodeURIComponent(q)}&limit=${limit}`);
 const post = (app, url, payload, naglowki = auth) =>
   app.inject({
     method: 'POST',
@@ -93,6 +99,78 @@ function wierszOferty(body, nazwa) {
 
 // Nazwy kandydatow TEGO wiersza, w kolejnosci renderowania.
 const kandydaci = (wiersz) => [...wiersz.matchAll(/<span class="kandydat-nazwa">([^<]*)<\/span>/g)].map((m) => m[1]);
+
+describe('podpowiedzi kart', () => {
+  const miniatura = 'https://example.test/swieca-mini.webp';
+
+  it.each(['Świeca', 'SOJ-200', '59000012'])('szuka po frazie %s i zwraca wyłącznie dane do wyboru', async (fraza) => {
+    const id = kartaO('Świeca sojowa 200 ml', {
+      sku: 'SOJ-200',
+      ean: '5900001234567',
+      szerokosc_mm: 70,
+      wysokosc_mm: 100,
+      cena_gr: 2590,
+      opis: 'Opis niepotrzebny w podpowiedzi',
+      wycofana: 1,
+    });
+    powiazProdukt(db, oferta('Świeca w kanale', { miniatura }), id);
+    const r = await podpowiedzi(serwer(), fraza);
+    expect(r.statusCode).toBe(200);
+    expect(r.json()).toEqual([
+      {
+        id,
+        nazwa: 'Świeca sojowa 200 ml',
+        sku: 'SOJ-200',
+        ean: '5900001234567',
+        wymiary: '7 × 10 cm',
+        cena: '25.90 zł',
+        miniatura,
+        wycofana: true,
+      },
+    ]);
+  });
+
+  it('obcina limit do 20, uwzględnia mniejszy limit i odrzuca krótką frazę', async () => {
+    for (let i = 0; i < 25; i++) kartaO(`Świeca sojowa ${i}`);
+    const app = serwer();
+    expect((await podpowiedzi(app, 'Świeca', 999)).json()).toHaveLength(20);
+    expect((await podpowiedzi(app, 'Świeca')).json()).toHaveLength(20);
+    expect((await podpowiedzi(app, 'Świeca', 3)).json()).toHaveLength(3);
+    expect((await podpowiedzi(app, ' Ś ', 3)).json()).toEqual([]);
+  });
+
+  it('odmawia zalogowanemu bez uprawnienia Magazyn tak samo jak ekran powiązań', async () => {
+    const app = serwer();
+    await app.ready();
+    const login = 'operator-testowy';
+    zalozKonto(db, { login, imie: 'Operator', haslo: 'atrapa-testowa', rola: 'operator', admin: false });
+    const headers = { cookie: `${NAZWA_CIASTECZKA_OMS}=${podpisz(login, wczytajSekret(db), Date.now(), 0)}` };
+    expect((await app.inject({ url: '/magazyn/powiazania', headers })).statusCode).toBe(403);
+    expect((await app.inject({ url: '/magazyn/karty/podpowiedzi?q=Świeca', headers })).statusCode).toBe(403);
+  });
+
+  it('łączy pole z listboxem i pokazuje dane wewnątrz etykiety właściwego kandydata', async () => {
+    const id = kartaO('Świeca sojowa 200 ml', { sku: 'SOJ-200', cena_gr: 0 });
+    const druga = kartaO('Świeca sojowa 200 ml');
+    powiazProdukt(db, oferta('Świeca w kanale', { miniatura }), id);
+    const ofertaId = oferta('Świeca sojowa');
+    const r = await get(serwer(), '/magazyn/powiazania');
+    const wiersz = wierszOferty(r.body, 'Świeca sojowa');
+    expect(wiersz).toContain('list="karty-do-wyboru"');
+    expect(wiersz).toContain(`name="reczny_id_${ofertaId}"`);
+    expect(wiersz).toMatch(
+      new RegExp(
+        `role="combobox"[^>]*aria-expanded="false"[^>]*aria-controls="([^"]+)"[\\s\\S]*?id="\\1"[^>]*role="listbox"`,
+      ),
+    );
+    const skrypt = readFileSync(new URL('../../../src/public/wybor-karty.js', import.meta.url), 'utf8');
+    expect(skrypt).toContain('aria-activedescendant');
+    const etykiety = [...wiersz.matchAll(/<label class="kandydat">([\s\S]*?)<\/label>/g)].map((m) => m[1]);
+    expect(etykiety.find((e) => e.includes(`value="${id}"`))).toContain(`#${id} · SOJ-200 · 0.00 zł`);
+    expect(etykiety.find((e) => e.includes(`value="${id}"`))).toContain(`src="${miniatura}"`);
+    expect(etykiety.find((e) => e.includes(`value="${druga}"`))).toContain(`>#${druga}</span>`);
+  });
+});
 
 // Wartosci przyciskow wyboru TEGO wiersza (puste = „nie wiążę").
 const wybory = (wiersz) =>
@@ -331,6 +409,67 @@ describe('POST /magazyn/powiazania — zatwierdzenie hurtem', () => {
     expect(kartaOferty(a)).toBe(kandelabr);
   });
 
+  it('reczny_id wybiera właściwą z dwóch kart o tej samej nazwie i wygrywa z tekstem oraz radiem', async () => {
+    const pierwsza = kartaO('Świeca sojowa 200 ml');
+    const druga = kartaO('Świeca sojowa 200 ml');
+    const a = oferta('Świeca sojowa');
+    const r = await post(serwer(), '/magazyn/powiazania', {
+      [`karta_${a}`]: String(pierwsza),
+      [`reczny_${a}`]: 'Świeca sojowa 200 ml',
+      [`reczny_id_${a}`]: String(druga),
+    });
+    expect(r.statusCode).toBe(200);
+    expect(kartaOferty(a)).toBe(druga);
+  });
+
+  it('reczny_id przy pustym polu tekstowym nie wygrywa z radiem', async () => {
+    const swieca = kartaO('Świeca sojowa 200 ml');
+    const kandelabr = kartaO('Kandelabr srebrny');
+    const a = oferta('Świeca sojowa');
+    await post(serwer(), '/magazyn/powiazania', {
+      [`karta_${a}`]: String(swieca),
+      [`reczny_${a}`]: '',
+      [`reczny_id_${a}`]: String(kandelabr),
+    });
+    expect(kartaOferty(a)).toBe(swieca);
+  });
+
+  it('reczny_id wycofanej karty przy pustym polu tekstowym nie blokuje radia', async () => {
+    const swieca = kartaO('Świeca sojowa 200 ml');
+    const wycofana = kartaO('Świeca sojowa wycofana', { wycofana: 1 });
+    const a = oferta('Świeca sojowa');
+    await post(serwer(), '/magazyn/powiazania', {
+      [`karta_${a}`]: String(swieca),
+      [`reczny_${a}`]: '',
+      [`reczny_id_${a}`]: String(wycofana),
+    });
+    expect(kartaOferty(a)).toBe(swieca);
+  });
+
+  it('reczny_id przy tekście innej karty ustępuje tekstowi', async () => {
+    const swieca = kartaO('Świeca sojowa 200 ml');
+    const kandelabr = kartaO('Kandelabr srebrny');
+    const a = oferta('Świeca sojowa');
+    await post(serwer(), '/magazyn/powiazania', {
+      [`reczny_${a}`]: `Świeca sojowa 200 ml [#${swieca}]`,
+      [`reczny_id_${a}`]: String(kandelabr),
+    });
+    expect(kartaOferty(a)).toBe(swieca);
+  });
+
+  it.each(['nieznane', 'wycofane'])('pomija %s id mimo poprawnego tekstu', async (rodzaj) => {
+    const aktywna = kartaO('Świeca sojowa 200 ml');
+    const id = rodzaj === 'wycofane' ? kartaO('Świeca sojowa wycofana', { wycofana: 1 }) : 9999;
+    const a = oferta('Świeca sojowa');
+    const r = await post(serwer(), '/magazyn/powiazania', {
+      [`reczny_${a}`]: `Świeca sojowa 200 ml [#${aktywna}]`,
+      [`reczny_id_${a}`]: String(id),
+    });
+    expect(r.statusCode).toBe(200);
+    expect(kartaOferty(a)).toBeNull();
+    expect(panelWyniku(r.body)).toContain(rodzaj === 'wycofane' ? 'wycofana' : 'nie rozpoznałem karty');
+  });
+
   // ⚠️ NIEZMIENNIK 4.13a: pominiete wracaja Z POWODEM i musza byc widoczne. Ciche
   // wyrzucenie wiersza z hurtu znaczyloby „zatwierdzilem czterdziesci, weszlo trzydziesci
   // dziewiec" — bez slowa o tym, ktore i dlaczego.
@@ -559,13 +698,12 @@ describe('wejscie na ekran powiazan', () => {
       return m[0];
     };
 
-    // Lista nie prowadzi już na powiązania wprost (wejście jest z ekranu importu);
-    // sam ekran powiązań nadal przyjmuje `wroc` — testy niżej.
-    it('lista magazynu nie ma już odnośnika do powiązań', async () => {
+    // Lista ma wejście do powiązań (przycisk przy nagłówku); `wroc` przyjmuje sam ekran powiązań — testy niżej.
+    it('lista magazynu ma odnośnik do powiązań', async () => {
       kartaO('Kandelabr 70x100');
       const app = serwer();
       const r = await get(app, ZAWEZENIE);
-      expect(r.body).not.toContain('href="/magazyn/powiazania');
+      expect(r.body).toContain('href="/magazyn/powiazania"');
     });
 
     it('ekran powiązań odsyła tam, skąd kliknięto', async () => {

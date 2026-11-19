@@ -55,8 +55,12 @@ it('strefa wokół pola multiple, napis z wolnym miejscem, przycisk główny, sk
     /<button class="btn btn--glowny" type="submit"[^>]*data-strefa-przycisk[^>]*>Wgraj zdjęcia<\/button>/,
   );
   expect(form).toMatch(/aria-live="polite"/);
-  // przełącznik AI bez zmian
-  expect(form).toContain('<input type="checkbox" id="zdjecie-karty-ai" name="ai" value="1"');
+  // Znacznik AI per plik (skrypt dokłada pole `zdjecie_ai_<i>` przy każdym pliku); jedno pole na paczkę zostaje
+  // tylko dla przeglądarki bez skryptu.
+  expect(form).toMatch(/<div class="strefa-pliku"[^>]*data-ai-na-plik/);
+  const bezSkryptu = form.match(/<noscript>[\s\S]*?<\/noscript>/)?.[0] ?? '';
+  expect(bezSkryptu).toContain('<input type="checkbox" id="zdjecie-karty-ai" name="ai" value="1"');
+  expect(form.replace(bezSkryptu, '')).not.toContain('name="ai"');
   expect(form).toContain('Zdjęcie wygenerowane lub istotnie zmienione przez AI');
   const src = html.match(/<script type="module" src="(\/public\/strefa-pliku\.js\?v=[a-f0-9]{10})"><\/script>/)?.[1];
   expect(src).toBeTruthy();

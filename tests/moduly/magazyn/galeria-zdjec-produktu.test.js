@@ -224,3 +224,77 @@ it('etykieta źródła zdjęcia: Allegro, sklep, API i wgrane', async () => {
   const atrapa = { prepare: () => ({ all: () => wiersze }) };
   expect(daneGalerii(atrapa, 1).map((z) => z.etykieta)).toEqual(['z Allegro', 'ze sklepu', 'przez API', 'wgrane']);
 });
+
+const json = { ...auth, accept: 'application/json' };
+const pelna = (ids, headers = auth) =>
+  app.inject({
+    method: 'POST',
+    url: `${url}/kolejnosc`,
+    headers: { ...headers, 'content-type': 'application/x-www-form-urlencoded' },
+    payload: new URLSearchParams(ids.map((id) => ['kolejnosc', String(id)])).toString(),
+  });
+it('pełna lista ustawia kolejność permutacji i oznacza ręczną zmianę', async () => {
+  const a = dodaj(1000, 0),
+    b = dodaj(1000, 1),
+    c = dodaj(1000, 7);
+  const r = await pelna([c, a, b]);
+  expect(r.statusCode).toBe(303);
+  expect(r.headers.location).toBe('/magazyn/1000#zdjecia-karty');
+  expect(lista().map((z) => [z.id, z.kolejnosc])).toEqual([
+    [c, 0],
+    [a, 1],
+    [b, 2],
+  ]);
+  reczne();
+});
+it('pełna lista z Accept JSON oddaje nową kolejność, jedno zdjęcie też przechodzi', async () => {
+  const a = dodaj(1000, 0),
+    b = dodaj(1000, 1);
+  const r = await pelna([b, a], json);
+  expect(r.statusCode).toBe(200);
+  expect(r.json()).toEqual({ kolejnosc: [b, a] });
+  db.prepare('DELETE FROM zdjecia_kart WHERE id = ?').run(a);
+  expect((await pelna([b], json)).json()).toEqual({ kolejnosc: [b] });
+});
+it.each([
+  ['obce id', (a, b, c, cudze) => [a, b, cudze]],
+  ['brakujące id', (a, b) => [b, a]],
+  ['powtórzone id', (a, b) => [a, b, b]],
+  ['nadmiarowe id', (a, b, c, cudze) => [c, b, a, cudze]],
+  ['nieliczbowe id', (a, b) => [a, b, 'x']],
+  ['pusta lista', () => ['']],
+])('pełna lista: %s → 409 bez zmian, także w JSON', async (_, ids) => {
+  const a = dodaj(1000, 0),
+    b = dodaj(1000, 1),
+    c = dodaj(1000, 2),
+    cudze = dodaj(1001, 0);
+  const przed = lista();
+  const r = await pelna(ids(a, b, c, cudze));
+  expect(r.statusCode).toBe(409);
+  expect(r.body).toContain('Galeria zmieniła się — odśwież');
+  const j = await pelna(ids(a, b, c, cudze), json);
+  expect(j.statusCode).toBe(409);
+  expect(j.json()).toEqual({ blad: 'Galeria zmieniła się — odśwież stronę.' });
+  expect(lista()).toEqual(przed);
+  expect(db.prepare('SELECT * FROM karty_zrodla_pol WHERE karta_id=1000').all()).toEqual([]);
+});
+it('pełna lista dla nieznanej karty odmawia 404', async () => {
+  const r = await app.inject({
+    method: 'POST',
+    url: '/magazyn/9999/zdjecia/kolejnosc',
+    headers: { ...json, 'content-type': 'application/x-www-form-urlencoded' },
+    payload: 'kolejnosc=1',
+  });
+  expect(r.statusCode).toBe(404);
+  expect(r.json()).toEqual({ blad: 'Nie ma takiej karty produktu.' });
+});
+it('stara postać lewo/prawo z Accept JSON oddaje kolejność, a błędy jako JSON', async () => {
+  const a = dodaj(1000, 0),
+    b = dodaj(1000, 1);
+  const r = await post('/kolejnosc', { zdjecieId: String(a), kierunek: 'prawo' }, json);
+  expect(r.statusCode).toBe(200);
+  expect(r.json()).toEqual({ kolejnosc: [b, a] });
+  const zly = await post('/kolejnosc', { zdjecieId: String(a), kierunek: 'gora' }, json);
+  expect(zly.statusCode).toBe(400);
+  expect(zly.json()).toEqual({ blad: 'Wybierz przesunięcie w lewo albo w prawo.' });
+});

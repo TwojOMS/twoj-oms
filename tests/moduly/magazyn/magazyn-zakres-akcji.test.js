@@ -3,30 +3,9 @@ import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { utworzKarte, zapiszProduktSklepowy, powiazProdukt } from '../../../src/oms/db/magazyn.js';
 
-// ZAKRES PRZY AKCJI — wada uzytecznosci zgloszona przez wlasciciela wprost:
-// „nie ma opcji zaznaczania wszystkich produktow. Musze kliknac ponad 100 razy zeby
-// zaznaczyc te produkty do przejecia".
-//
-// ⚠️⚠️ FUNKCJA ISTNIALA. Pole wyboru „Zastosuj do" z pozycja „wszystkich pasujacych do
-// zawezenia" stalo w panelu EDYCJI HURTEM, a przyciski trzech pozostalych akcji — SKU,
-// przejecia numerow i zapisu do sklepow — TRZY SEKCJE NIZEJ, w osobnych panelach. Wszystko
-// siedzialo w jednym `<form>`, wiec DZIALALO: klikniecie „Pokaz numery do przejecia" bralo
-// zakres z pola, ktorego czlowiek przy tym przycisku nie widzial. W kodzie stal komentarz
-// „Zakres bierze sie z pola «Zastosuj do» wyzej"; na ekranie nie stalo nic. To jest wada
-// EKRANU, nie uzytkownika: akcja i jej zakres musza byc widoczne RAZEM.
-//
-// ⚠️⚠️ CZTERY RZECZY, KTORYCH TA SUITA PILNUJE:
-//   (1) KAZDA z czterech akcji ma WLASNA pare przyciskow niosacych zakres w sobie —
-//       zaden nie odsyla do pola stojacego gdzie indziej;
-//   (2) LICZBA stoi PRZY przycisku „wszystkich pasujacych" i jest TA SAMA, co dlugosc
-//       tabeli nizej (jeden odczyt, nie drugie zapytanie);
-//   (3) `zakres` NIE MA JAK przyjsc dwa razy — bo na ekranie nie ma juz zadnego pola
-//       o tej nazwie, sa wylacznie przyciski, a formularz wysyla TYLKO ten klikniety.
-//       Ta pulapka wystapila juz raz w tym module: powtorzony parametr wraca z Fastify
-//       jako TABLICA, parser scina ja do `null` i filtr znika w formularzu, ktory sluzy
-//       do jego ustawiania;
-//   (4) klikniecie „dla zaznaczonych" bierze ZAZNACZONE, a „dla wszystkich pasujacych"
-//       bierze CALE ZAWEZENIE — i ANI RAZU ODWROTNIE.
+// Przycisk przekazuje zakres razem z nazwą akcji, żeby użytkownik widział,
+// której części listy dotyczy podgląd. Licznik przy przycisku odpowiada liczbie kart w tabeli.
+// Powtórzony parametr `zakres` wraca z Fastify jako tablica, którą parser zamienia na `null`.
 
 const config = { auth: { user: 'adam', pass: 'x' } };
 const auth = {
@@ -55,7 +34,6 @@ beforeEach(() => {
 
 const kartaO = (nazwa, reszta = {}) => utworzKarte(db, { nazwa, ...reszta });
 
-/** Produkt w lustrze, powiazany z kartą — zeby przejecie numeru mialo co przejmowac. */
 function produktO(kartaId, { kanal = 'pro', sku = null } = {}) {
   const id = zapiszProduktSklepowy(db, {
     kanal,
@@ -181,7 +159,7 @@ async function klikniecie(app, adresListy, idPanelu, wartoscZakresu, dodatkowe =
   });
 }
 
-/** Nazwy kart z tabeli podgladu (hurt, przejecie, SKU maja ten sam ksztalt wiersza). */
+/** Nazwy kart z tabeli podgladu (hurt i SKU mają ten sam kształt wiersza). */
 function nazwyWPodgladzie(body, idSekcji) {
   const s = new RegExp(`<section[^>]*id="${idSekcji}"[\\s\\S]*?</section>`).exec(body);
   if (!s) throw new Error(`W podgladzie nie ma sekcji „${idSekcji}"`);
@@ -191,11 +169,10 @@ function nazwyWPodgladzie(body, idSekcji) {
 /** Ile wierszy ma TABELA KART — liczone z jej wlasnej kolumny, nie z jakiejkolwiek cyfry. */
 const ileWierszyTabeli = (body) => (body.match(/<td class="komorka-karta">/g) ?? []).length;
 
-// Cztery akcje ekranu. Kazda ma WLASNY nosnik (`id`) i WLASNA pare przyciskow.
+// Każdy testowany panel ma własną parę przycisków.
 const AKCJE = [
   { panel: 'hurt-pasek', cel: '/magazyn/hurt', slowo: 'zmieni' },
   { panel: 'sku-pasek', cel: '/magazyn/sku-podglad', slowo: 'numery' },
-  { panel: 'przejecie-pasek', cel: '/magazyn/przejmij-podglad', slowo: 'przej' },
   { panel: 'zapis-pasek', cel: '/magazyn/podglad-zapisu', slowo: 'sklep' },
 ];
 
@@ -214,7 +191,7 @@ describe('każda akcja niesie swój zakres w przyciskach, a nie w polu trzy sekc
   });
 
   // ⚠️ NAPIS MA MOWIC, CO SIE STANIE I NA CZYM. Sam „dla zaznaczonych" na przycisku bez
-  // nazwy akcji jest przy czterech podobnych parach nie do odroznienia od sasiada.
+  // nazwy akcji jest przy podobnych parach nie do odroznienia od sasiada.
   it.each(AKCJE)('oba przyciski panelu $panel nazywają akcję i swój zakres', async ({ panel: id, slowo }) => {
     kartaO('Kandelabr');
     const r = await get(serwer(), '/magazyn');
@@ -228,7 +205,7 @@ describe('każda akcja niesie swój zakres w przyciskach, a nie w polu trzy sekc
   });
 
   // ⚠️⚠️ TRASA BEZ PRZYCISKU JEST KODEM MARTWYM, a suita swieci wtedy na zielono. Kazda
-  // z czterech par ma prowadzic na WLASNY PODGLAD — i nigdy wprost na zapis.
+  // para ma prowadzic na WLASNY PODGLAD — i nigdy wprost na zapis.
   it.each(AKCJE)('oba przyciski panelu $panel prowadzą na $cel', async ({ panel: id, cel }) => {
     kartaO('Kandelabr');
     const r = await get(serwer(), '/magazyn');
@@ -364,51 +341,105 @@ describe('edycja hurtem: kliknięty przycisk rozstrzyga zbiór', () => {
   });
 });
 
-describe('przejęcie numerów: kliknięty przycisk rozstrzyga zbiór', () => {
-  // 277 kart czekajacych na przejecie numeru to DOKLADNIE ta sytuacja, ktora wlasciciel
-  // zglosil: „musze kliknac ponad 100 razy".
-  function trzyDoPrzejecia() {
-    const idy = {};
-    for (const [klucz, nazwa] of [
-      ['a', 'Bursztyn'],
-      ['b', 'Kandelabr'],
-      ['c', 'Sowa'],
-    ]) {
-      idy[klucz] = kartaO(nazwa);
-      produktO(idy[klucz], { sku: `SKU-${nazwa.toUpperCase()}-1` });
-    }
-    return idy;
-  }
-
-  it('„dla zaznaczonych" bierze WYŁĄCZNIE zaznaczone', async () => {
-    const { a } = trzyDoPrzejecia();
-
-    const r = await klikniecie(serwer(), '/magazyn?brak=sku', 'przejecie-pasek', 'zaznaczone', {
-      zaznaczone: String(a),
+describe('generator SKU przy istniejącym numerze sklepu', () => {
+  it('pokazuje powód pominięcia i do zatwierdzenia wysyła tylko kartę bez produktu', async () => {
+    const zeSklepu = kartaO('Kandelabr');
+    produktO(zeSklepu, { sku: ' PP-001 ' });
+    const bezProduktu = kartaO('Sowa');
+    const r = await klikniecie(serwer(), '/magazyn?brak=sku', 'sku-pasek', 'pasujace', {
+      wzorzec: 'NOWY',
     });
 
     expect(r.statusCode).toBe(200);
-    expect(nazwyWPodgladzie(r.body, 'przejecie-pozycje')).toEqual(['Bursztyn']);
+    expect(r.body).toContain('Kandelabr — sklep ma numer PP-001 — uzupełni import');
+    expect(nazwyWPodgladzie(r.body, 'sku-propozycje')).toEqual(['Sowa']);
+    expect(r.body).toContain(`name="zaznaczone" value="${bezProduktu}"`);
+    expect(r.body).not.toContain(`name="zaznaczone" value="${zeSklepu}"`);
+    expect(wiersz(bezProduktu).sku).toBeNull();
   });
 
-  // ⚠️⚠️ TO JEST ZGLOSZENIE WLASCICIELA, PRZELOZONE NA TEST: jedno klikniecie ma objac cale
-  // zawezenie, bez ani jednego pola wyboru.
-  it('„dla wszystkich pasujących" obejmuje cały zestaw JEDNYM kliknięciem, bez zaznaczania', async () => {
-    trzyDoPrzejecia();
+  it('przelicza barierę przy zapisie, gdy sklep uzyskał numer dopiero po podglądzie', async () => {
+    const zeSklepu = kartaO('Kandelabr');
+    const bezProduktu = kartaO('Sowa');
+    const app = serwer();
+    const payload = {
+      zakres: 'zaznaczone',
+      zaznaczone: [String(zeSklepu), String(bezProduktu)],
+      wzorzec: 'NOWY-{nnn}',
+    };
+    const podglad = await post(app, '/magazyn/sku-podglad', payload);
+    expect(nazwyWPodgladzie(podglad.body, 'sku-propozycje')).toEqual(['Kandelabr', 'Sowa']);
 
-    const r = await klikniecie(serwer(), '/magazyn?brak=sku', 'przejecie-pasek', 'pasujace');
+    produktO(zeSklepu, { sku: 'PP-001' });
+    const zapis = await post(app, '/magazyn/sku-zapisz', payload);
 
-    expect(r.statusCode).toBe(200);
-    expect(nazwyWPodgladzie(r.body, 'przejecie-pozycje').sort()).toEqual(['Bursztyn', 'Kandelabr', 'Sowa']);
+    expect(zapis.statusCode).toBe(200);
+    expect(zapis.body).toContain('Kandelabr — sklep ma numer PP-001 — uzupełni import');
+    expect(wiersz(zeSklepu).sku).toBeNull();
+    expect(wiersz(bezProduktu).sku).toBe('NOWY-001');
   });
 
-  // ⚠️⚠️ PODGLAD JEST OBOWIAZKOWY I ZOSTAJE OBOWIAZKOWY. Zmieniamy sposob wyboru zakresu,
-  // a nie bariery: klikniecie „dla wszystkich pasujacych" ma POKAZAC, a nie zapisac.
-  it('kliknięcie „dla wszystkich pasujących" niczego nie zapisuje', async () => {
-    const { a, b, c } = trzyDoPrzejecia();
+  it('przy zapisie pomija kartę, której produkty mają różne numery w sklepach', async () => {
+    const karta = kartaO('Kandelabr');
+    produktO(karta, { sku: 'PP-001' });
+    produktO(karta, { kanal: 'woo2', sku: 'PP-002' });
 
-    await klikniecie(serwer(), '/magazyn?brak=sku', 'przejecie-pasek', 'pasujace');
+    const zapis = await post(serwer(), '/magazyn/sku-zapisz', {
+      zakres: 'zaznaczone',
+      zaznaczone: [String(karta)],
+      wzorzec: 'NOWY-{nnn}',
+    });
 
-    for (const id of [a, b, c]) expect(wiersz(id).sku).toBeNull();
+    expect(zapis.statusCode).toBe(200);
+    expect(wiersz(karta).sku).toBeNull();
+  });
+
+  it('przy zapisie pomija kartę, której numer ze sklepu jest zajęty przez inną kartę', async () => {
+    kartaO('Bursztyn', { sku: 'PP-001' });
+    const karta = kartaO('Kandelabr');
+    produktO(karta, { sku: 'PP-001' });
+
+    const zapis = await post(serwer(), '/magazyn/sku-zapisz', {
+      zakres: 'zaznaczone',
+      zaznaczone: [String(karta)],
+      wzorzec: 'NOWY-{nnn}',
+    });
+
+    expect(zapis.statusCode).toBe(200);
+    expect(wiersz(karta).sku).toBeNull();
+  });
+
+  it('przy zapisie pomija obie karty w sporze o ten sam numer ze sklepu', async () => {
+    const pierwsza = kartaO('Kandelabr');
+    const druga = kartaO('Sowa');
+    produktO(pierwsza, { sku: 'PP-009' });
+    produktO(druga, { sku: 'PP-009' });
+
+    const zapis = await post(serwer(), '/magazyn/sku-zapisz', {
+      zakres: 'zaznaczone',
+      zaznaczone: [String(pierwsza), String(druga)],
+      wzorzec: 'NOWY-{nnn}',
+    });
+
+    expect(zapis.statusCode).toBe(200);
+    expect([wiersz(pierwsza).sku, wiersz(druga).sku]).toEqual([null, null]);
+  });
+
+  it('w podglądzie pokazuje powód pominięcia karty z rozbieżnością numerów', async () => {
+    const karta = kartaO('Kandelabr');
+    produktO(karta, { sku: 'PP-001' });
+    produktO(karta, { kanal: 'woo2', sku: 'PP-002' });
+
+    const podglad = await post(serwer(), '/magazyn/sku-podglad', {
+      zakres: 'zaznaczone',
+      zaznaczone: [String(karta)],
+      wzorzec: 'NOWY-{nnn}',
+    });
+
+    expect(podglad.statusCode).toBe(200);
+    expect(podglad.body).toMatch(
+      /<li>Kandelabr — Produkty tej karty mają w sklepach różne numery: .*PP-001.*PP-002.*<\/li>/,
+    );
+    expect(podglad.body).not.toContain('sklep ma numer  —');
   });
 });

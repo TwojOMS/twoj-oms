@@ -141,7 +141,7 @@ flowchart TD
 Testy tej drogi: indeks listy — `tests/moduly/zamowienia/lista/indeks-listy-zamowien.test.js`; reszta obok, w
 `tests/` według tej samej struktury katalogów co `src/`.
 
-## 5. Cztery miejsca, w których łatwo się zgubić
+## 5. Miejsca, w których łatwo się zgubić
 
 ### 5.1. Poller składany w `src/moduly/kanaly/services/kompozycja-kanalow.ts`
 
@@ -182,6 +182,26 @@ modułów (kanały, faktury, wysyłka, wiadomości), klientem GUS i funkcjami po
 dostaje ten obiekt i wyciąga z niego, czego potrzebuje. Szukając, skąd handler ma daną funkcję, szukaj jej
 w `return { … }` na końcu `createKontekstZamowien`. Usługi innych modułów kontekst dostaje przez `ctx.usluga(…)`
 w `src/moduly/zamowienia/modul.ts`.
+
+### 5.5. Ceny i statusy w kanałach (magazyn)
+
+Cena na karcie jest źródłem, a kanały dostają ją przez podgląd i zatwierdzenie:
+
+- `src/domena/cena-kanalu.js` — czyste liczenie ceny w kanale (cena karty, narzut konta, ręczna cena zastępuje narzut).
+- `src/oms/db/ceny-kanalow.js` — dostęp do ręcznych cen, dziennika zmian i statusu publikacji w lustrze.
+- `src/moduly/magazyn/ceny-kanalow.js` — trasy `/magazyn/ceny-kanalow/podglad` i `/zatwierdz` oraz ręczne ceny karty.
+- `src/moduly/magazyn/services/ceny-kanalow-podglad.js` — porównuje cenę w kanale z docelową i oznacza wiersze
+  pominięte (promocja, ceny netto, tylko odczyt, wstrzymanie) lub odznaczone (zmiana ponad próg).
+- `src/moduly/magazyn/services/ceny-kanalow-zapis.js` — zatwierdzenie: ponowne sprawdzenie i zapis w kanale tuż przed wysłaniem.
+- `src/moduly/magazyn/status-w-kanale.js` — ukrycie produktu (szkic) i jego przywrócenie.
+- `src/moduly/magazyn/karta-sprzedaz-kanalow.js` i `src/moduly/magazyn/historia-zmian-kanalow.js` — kolumny sprzedaży
+  w kanałach oraz historia zmian na karcie (widoki `_karta-sprzedaz-kanalow.ejs`, `_karta-historia-kanalow.ejs`).
+- `src/moduly/magazyn/widoki/magazyn-ceny-kanalow.ejs` — ekran podglądu i wyniku.
+
+Tabele: `ceny_kanalow_kart` (ręczna cena karty na koncie, migracja 0019 rdzenia, `src/moduly/rdzen/migracje/0019-ceny-kanalow-kart.ts`)
+oraz `zmiany_w_kanalach` (dziennik zmian ceny, statusu i sterowania ceną, z wynikiem `ok`, `blad` albo `w_toku`;
+migracja 0005 magazynu, `src/moduly/magazyn/migracje/0005-ceny-statusy-kanalow.ts`, która dokłada też flagi
+`cena_z_oms` i `status_z_oms` do `oferty_kanalow`). Dane demo tej funkcji: `zasiejCenyKanalowDemo` w `scripts/demo-dane-katalog.mjs`.
 
 ## 6. Gdzie szukać dalej
 

@@ -12,6 +12,7 @@
 //   • ODMOWA — operacje, których demo nie ma czym udawać (pollery zamówień, załączniki):
 //     czytelny błąd 4xx zamiast „not a function”; 4xx, bo usługi zwalniają wtedy rezerwacje jak po odmowie API.
 import { randomUUID } from 'node:crypto';
+import { setTimeout as odczekaj } from 'node:timers/promises';
 import { listaNaZadanie, mapaNaZadanie } from '../../../src/moduly/kanaly/kolekcje-na-zadanie.ts';
 import PDFDocument from 'pdfkit';
 import { METODY_WZA } from '../../../src/domena/allegro-wysylka.js';
@@ -28,6 +29,8 @@ import { wymagajTrybuProby } from './tryb.mjs';
 import { createSerwerOfertAllegro, createOfertyAllegro } from './allegro-oferty.mjs';
 import { WYMAGANE_UPRAWNIENIA, UPRAWNIENIA_OFERT } from '../../../src/domena/uprawnienia-kanalu.js';
 import { wczytajTokeny, zapiszTokeny } from '../../../src/oms/db/tokeny.js';
+import { idProduktuWoo, pozycjeCenWoo, statusProduktuWoo } from '../../../src/oms/woo/client.js';
+import { bladTylkoOdczyt } from '../../../src/domena/woo-uprawnienia.js';
 
 const SCHEMAT = `
   CREATE TABLE IF NOT EXISTS atrapa_kanaly_zmiany (kanal TEXT NOT NULL, sciezka TEXT NOT NULL, pola_json TEXT NOT NULL,
@@ -94,8 +97,16 @@ function kategorieWoo(produkty) {
 }
 
 /** Atrapa klienta Woo (createWooClient) jednego sklepu. */
-export function createAtrapaWoo({ db, kanal, log = (...t) => console.log(...t), env = process.env }) {
+export function createAtrapaWoo({
+  db,
+  kanal,
+  log = (...t) => console.log(...t),
+  env = process.env,
+  uprawnienia = 'zapis',
+}) {
   wymagajTrybuProby(env, 'atrapa sklepu Woo');
+  const tylkoOdczyt = uprawnienia === 'odczyt';
+  const wolnyKatalog = env.ATRAPA_WOO_WOLNY_KATALOG === 'tak';
   db.exec(SCHEMAT);
   const ślad = (t) => log(`atrapa sklepu ${kanal}: ${t} (piaskownica — nic nie poszło do sklepu)`);
   const zmiany = () =>
@@ -167,10 +178,28 @@ export function createAtrapaWoo({ db, kanal, log = (...t) => console.log(...t), 
       { id: 'cod', tytul: 'Płatność przy odbiorze', nazwaWoo: 'Pobranie', wlaczona: true },
       { id: 'bacs', tytul: 'Przelew bankowy', nazwaWoo: 'Przelew', wlaczona: true },
     ],
-    pobierzWszystkieProdukty: async () => structuredClone(katalog().produkty),
+    // Jak prawdziwy klient (`status=publish`): szkic w tym odczycie nie przychodzi.
+    pobierzWszystkieProdukty: async (naStronie) => {
+      const produkty = structuredClone(katalog().produkty.filter((p) => p.status === 'publish'));
+      const stron = wolnyKatalog ? Math.max(1, Math.ceil(produkty.length / 10)) : 1;
+      for (let strona = 1; strona <= stron; strona += 1) {
+        if (wolnyKatalog) await odczekaj(1200);
+        naStronie?.({ strona, stron });
+      }
+      return produkty;
+    },
     pobierzWarianty: async (id) => structuredClone(katalog().warianty.get(String(id)) ?? []),
     pobierzKategorieProduktow: async () => kategorieWoo(katalog().produkty),
-    pobierzMiniatury: async () => new Map(katalog().miniatury),
+    // Store API widzi tylko produkty opublikowane, więc szkic nie ma miniatury.
+    pobierzMiniatury: async () => {
+      const k = katalog();
+      const opublikowane = new Set(k.produkty.filter((p) => p.status === 'publish').map((p) => String(p.id)));
+      return new Map([...k.miniatury].filter(([id]) => opublikowane.has(String(id))));
+    },
+    async pobierzProduktyPowiazane(ids) {
+      const szukane = new Set(ids.map(idProduktuWoo));
+      return structuredClone(katalog().produkty.filter((p) => p.status === 'draft' && szukane.has(String(p.id))));
+    },
     ustawienieSklepu: async (id) =>
       ({
         woocommerce_dimension_unit: 'cm',
@@ -204,6 +233,27 @@ export function createAtrapaWoo({ db, kanal, log = (...t) => console.log(...t), 
         }
       });
     },
+    // Te same granice co klient (wspólne funkcje), sprawdzone na całej liście przed pierwszym zapisem.
+    async zapiszCenyHurtem(rodzicId, pozycje) {
+      if (tylkoOdczyt) throw bladTylkoOdczyt();
+      const rodzic = rodzicId === null ? null : idProduktuWoo(rodzicId);
+      return pozycjeCenWoo(pozycje).map(({ id, regular_price }) => {
+        try {
+          const sciezka = rodzic === null ? `products/${id}` : `products/${rodzic}/variations/${id}`;
+          // Jak Woo: `price` idzie za ceną regularną, chyba że trwa promocja — wtedy zostaje promocyjna.
+          const promocja = znajdz(sciezka).sale_price;
+          zapisz(sciezka, promocja ? { regular_price } : { regular_price, price: regular_price });
+          return { id, ok: true };
+        } catch (e) {
+          return { id, ok: false, blad: e.message };
+        }
+      });
+    },
+    async ustawStatusProduktu(id, status) {
+      if (tylkoOdczyt) throw bladTylkoOdczyt();
+      const s = statusProduktuWoo(status);
+      return structuredClone(zapisz(`products/${idProduktuWoo(id)}`, { status: s }));
+    },
     kup: (id, n) => zmienPoZakupie(id, n, -1),
     oddaj: (id, n) => zmienPoZakupie(id, n, 1),
     async zapiszProdukt(sciezka, pola) {
@@ -217,6 +267,7 @@ export function createAtrapaWoo({ db, kanal, log = (...t) => console.log(...t), 
       ślad(`status zamówienia ${id} → ${status}`);
       return { id: Number(id), status };
     },
+    tylkoOdczyt,
     atrapa: true,
   };
 }

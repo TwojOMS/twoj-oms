@@ -13,6 +13,7 @@ const klasyPrzycisku = new Set([
   'ust-uchwyt',
   'm-filter',
   'poza-okiem',
+  'karta-galeria-usun',
 ]);
 const kontenery = new Set(['szukajka', 'wydruki-menu', 'menu-uzytkownika-panel']);
 const pusteTagi = new Set('area base br col embed hr img input link meta param source track wbr'.split(' '));

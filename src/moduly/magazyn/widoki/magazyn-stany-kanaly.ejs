@@ -34,7 +34,7 @@
       <tbody><% dane.plan.wiersze.forEach(function(w) { %><tr>
         <th scope="row"><%= w.nazwa %> (<%= w.idZewnetrzne %>)</th>
         <td><% if (w.kartaId) { %><a href="/magazyn/<%= w.kartaId %>">Karta <%= w.kartaId %></a><% } else { %>Brak jednoznacznej karty<% } %></td>
-        <td><%= w.ilosc ?? 'brak odczytu' %></td><td><%= w.stan ?? 'brak odczytu' %></td>
+        <td><%= w.ilosc ?? 'brak odczytu' %></td><td><%= w.stanOpis ?? w.stan ?? 'brak odczytu' %></td>
       </tr><% }); %></tbody>
     </table>
   </div>
@@ -50,10 +50,12 @@
   <form method="post" action="/magazyn/stany/kanaly/objecie">
     <input type="hidden" name="konto" value="<%= dane.konto.klucz %>">
     <fieldset><legend>Wybierz przejęte oferty</legend>
-    <% dane.oferty.forEach(function(o) { %><p>
-      <input id="oferta-<%= o.id %>" type="checkbox" name="zaznaczone" value="<%= o.id %>">
-      <label for="oferta-<%= o.id %>"><%= o.idZewnetrzne %> · karta <%= o.kartaId %><%= o.iloscZOms ? ' · już objęta' : '' %></label>
-    </p><% }); %>
+    <table class="tab-pozycje"><tbody>
+    <% dane.oferty.forEach(function(o) { %><tr>
+      <td class="kol-zazn"><label class="kol-zazn-etykieta"><input type="checkbox" name="zaznaczone" value="<%= o.id %>" aria-label="Zaznacz ofertę <%= o.idZewnetrzne %>"></label></td>
+      <td><%= o.idZewnetrzne %> · karta <%= o.kartaId %><%= o.iloscZOms ? ' · już objęta' : '' %></td>
+    </tr><% }); %>
+    </tbody></table>
     </fieldset>
     <button class="btn" type="submit">Pokaż podgląd objęcia</button>
   </form>

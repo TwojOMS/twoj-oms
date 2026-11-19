@@ -28,6 +28,9 @@ export const MODUL_ERLI = {
     zmienOferte: true,
     zmienIloscCene: true,
     stanOferty: true,
+    // ERLI przyjmuje cenę z OMS-u tylko dla oferty zarządzanej (ta sama droga co pętla ofert), więc usługi cen
+    // pomijają oferty obserwowane mimo tej deklaracji.
+    cenyZOms: true,
   },
   kluczeEnv: { sekrety: ['KLUCZ_API'], wymagane: ['KLUCZ_API', 'ADRES_API', 'OD'] },
   // wysylkaPlatformy: false, bo ta umiejętność włącza ścieżki pisane pod Allegro

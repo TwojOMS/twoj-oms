@@ -51,7 +51,7 @@ it('pokazuje polskie liczby, wagę, wymiary i cenę oferty', async () => {
   const html = await strona();
   expect(html).toContain('1,9 kg');
   expect(html).toContain('31,5 × 40 cm');
-  expect(html.match(/289,00 zł/g)?.length).toBe(2);
+  expect(html.match(/289,00 zł/g)?.length).toBe(3); // dwa dotychczasowe miejsca i okienko „Sprzedaż w kanałach”
   expect(html).toContain(`action="/magazyn/${id}/tresc-oferty/${oferta}"`);
 });
 it.each([

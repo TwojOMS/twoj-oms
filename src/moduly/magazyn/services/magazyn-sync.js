@@ -23,13 +23,21 @@
 // rozciagnieta na odczyt HTTP (minuty) wciagnelaby do siebie zapisy pollera i cofnela je
 // wlasnym ROLLBACK-iem. Faza zapisu jest w calosci synchroniczna, wiec petla zdarzen nie ma
 // jak wejsc w srodek.
-import { zapiszProduktSklepowy, oznaczZnikniete, liczZyweProdukty } from '../../../oms/db/magazyn.js';
+import {
+  zapiszProduktSklepowy,
+  oznaczZnikniete,
+  liczZyweProdukty,
+  powiazaneProduktyKanalu,
+} from '../../../oms/db/magazyn.js';
+import { cenyBruttoSklepu } from '../../../domena/cena-kanalu.js';
 import { ofertaNaProdukt } from '../../../domena/allegro-oferta.js';
 import { wymagajListyKanalow } from '../../../domena/lista-kanalow.js';
 import { atrybutyZWariantu } from '../../../domena/atrybuty-wariantu.js';
 import { groszeZKwoty } from '../../../domena/kwota.js';
 import { opisDoSekcji } from '../../../domena/opis-sekcje.js';
+import { dekodujEncje } from '../../../domena/slowniki-kart.js';
 import { zapiszTrescWoo } from './woo-tresc-kart.js';
+import { uzupelnijSkuZImportu } from './sku-z-importu.js';
 
 // ⚠️ BIALA LISTA, nie „jakis niepusty napis". `zapiszProduktSklepowy` sprawdza wylacznie, czy
 // kanal jest niepusty, wiec literowka w kluczu konfiguracji zalozylaby kanal WIDMOWY: wiersze,
@@ -106,7 +114,13 @@ function cenaGr(surowa, opis) {
   return groszeZKwoty(surowa, opis);
 }
 
-const kategorieProduktu = (p) => (Array.isArray(p?.categories) ? p.categories : []);
+// Woo oddaje nazwy kategorii z encjami HTML („DIY &amp; Craft"). Dekodujemy je tu, w jedynym miejscu,
+// z ktorego nazwa idzie do kolumny kategorii, kategorii glownej i tresci oferty; widok koduje
+// tekst raz, przy wypisaniu.
+const kategorieProduktu = (p) =>
+  Array.isArray(p?.categories)
+    ? p.categories.map((k) => (typeof k?.name === 'string' ? { ...k, name: dekodujEncje(k.name) } : k))
+    : [];
 
 // Kategorie jako tablica NAZW — z niej korzysta filtr kategorii listy (json_each po tej
 // kolumnie) i tworzenie kart.
@@ -269,9 +283,9 @@ function wierszProduktu(kanal, p, odczytaneAt, miniatury, jednostki) {
     kategoria_glowna_zrodla: kategoriaGlownaZrodla(p),
     opis_zrodlowy: pusteNaNull(p?.short_description),
     ...wymiaryLustra(p, jednostki),
-    // Sklepy pobieramy WYLACZNIE ze `status=publish`, wiec stanu publikacji nie ma czym
-    // wypelnic — ta kolumna nalezy do Allegro (ACTIVE/ENDED).
-    status_publikacji: null,
+    // 'publish' z odczytu katalogu albo 'draft' z odczytu szkicow powiazanych. Brak pola
+    // zostaje pusty: pusty status liczy sie jako obecnosc, wiec nie zgadujemy.
+    status_publikacji: pusteNaNull(p?.status),
     ...iloscKanaluWoo(p),
     odczytane_at: odczytaneAt,
   };
@@ -325,7 +339,8 @@ function wierszWariantu(kanal, rodzic, wariant, odczytaneAt, miniatury, jednostk
     kategoria_glowna_zrodla: kategoriaGlownaZrodla(rodzic),
     opis_zrodlowy: pusteNaNull(rodzic?.short_description),
     ...wymiaryLustra(wariant, jednostki),
-    status_publikacji: null,
+    // Wariant nie ma wlasnej publikacji widocznej dla kupujacego: szkic rodzica ukrywa wszystkie.
+    status_publikacji: pusteNaNull(rodzic?.status),
     ...iloscKanaluWoo(wariant),
     odczytane_at: odczytaneAt,
   };
@@ -347,9 +362,9 @@ function wierszWariantu(kanal, rodzic, wariant, odczytaneAt, miniatury, jednostk
  * zlozony gdzie indziej) ma dac odczyt BEZ miniatur, a nie wyjatek — i bez wpisu w logu,
  * bo to nie jest awaria, tylko brak funkcji.
  */
-async function miniaturyKanalu({ kanal, klient, zapisz }) {
+async function miniaturyKanalu({ kanal, klient, zapisz, naStronie }) {
   try {
-    const mapa = await klient?.pobierzMiniatury?.();
+    const mapa = await klient?.pobierzMiniatury?.(naStronie);
     return mapa instanceof Map ? mapa : new Map();
   } catch (e) {
     zapisz(
@@ -361,11 +376,35 @@ async function miniaturyKanalu({ kanal, klient, zapisz }) {
 }
 
 // FAZA 1 dla sklepu: odczyt i mapowanie. Nic tu nie dotyka bazy.
-async function wierszeSklepu({ kanal, klient, odczytaneAt, zglos, zapisz }) {
-  const produkty = await klient.pobierzWszystkieProdukty();
+async function wierszeSklepu({ kanal, klient, odczytaneAt, zglos, zapisz, raportujFazy, powiazane = new Map() }) {
+  const start = performance.now();
+  let stronyListy = 0;
+  const stronaListy = ({ strona, stron }) => {
+    stronyListy = strona;
+    zglos({ kanal, faza: 'lista', strona, stron });
+  };
+  if (raportujFazy) zglos({ kanal, faza: 'lista' });
+  const produkty = await (raportujFazy
+    ? klient.pobierzWszystkieProdukty(stronaListy)
+    : klient.pobierzWszystkieProdukty());
+  const koniecListy = performance.now();
   // ⚠️ PO katalogu, a nie przed nim: sklep, ktory odmowil katalogu, nie ma po co byc pytany
   // o ozdobe — a przebieg i tak konczy sie wtedy bledem kanalu.
-  const miniatury = await miniaturyKanalu({ kanal, klient, zapisz });
+  let stronyMiniatur = 0;
+  if (raportujFazy) zglos({ kanal, faza: 'miniatury' });
+  const miniatury = await miniaturyKanalu({
+    kanal,
+    klient,
+    zapisz,
+    naStronie: raportujFazy
+      ? ({ strona, stron }) => {
+          stronyMiniatur = strona;
+          zglos({ kanal, faza: 'miniatury', strona, stron });
+        }
+      : undefined,
+  });
+  const koniecMiniatur = performance.now();
+  if (raportujFazy) zglos({ kanal, faza: 'ustawienia' });
   const jednostki = await jednostkiKanalu({ kanal, klient, zapisz });
   let liczyPodatki = null;
   try {
@@ -379,9 +418,10 @@ async function wierszeSklepu({ kanal, klient, odczytaneAt, zglos, zapisz }) {
   } catch (e) {
     zapisz(`magazyn: kanał ${kanal} — nie udało się potwierdzić cen brutto:`, opisBledu(e));
   }
+  const koniecUstawien = performance.now();
   let ostrzezonoOCenie = false;
   const zTrescia = (wiersz, rodzic, p = rodzic) => {
-    const brutto = liczyPodatki === 'no' || ['yes', true].includes(cenyBrutto);
+    const brutto = cenyBruttoSklepu(liczyPodatki, cenyBrutto);
     // Ostrzeżenie dotyczy pominiętej ceny regularnej, nie pustego cennika.
     if (!brutto && pusteNaNull(p?.regular_price) !== null && !ostrzezonoOCenie) {
       zapisz(
@@ -411,31 +451,73 @@ async function wierszeSklepu({ kanal, klient, odczytaneAt, zglos, zapisz }) {
   };
   const wiersze = [];
   let zrobione = 0;
-  for (const p of produkty) {
+  let odczytyWariantow = 0;
+  const doWierszy = async (p, miniaturyProduktu) => {
     // ⚠️ WARIANTY WOLAMY WYLACZNIE DLA `type: 'variable'`. Warianty NIE WYCHODZA z `/products`,
     // wiec lustro zbudowane z samej listy produktow nie zobaczyloby ANI JEDNEGO SKU wariantu,
     // czyli glownego celu magazynu. W druga strone: pytanie o warianty kazdego produktu to
     // setki zadan HTTP po nic.
     if (p?.type === 'variable') {
+      odczytyWariantow += 1;
       for (const w of await klient.pobierzWarianty(p?.id)) {
-        wiersze.push(zTrescia(wierszWariantu(kanal, p, w, odczytaneAt, miniatury, jednostki), p, w));
+        wiersze.push(zTrescia(wierszWariantu(kanal, p, w, odczytaneAt, miniaturyProduktu, jednostki), p, w));
       }
     } else {
-      wiersze.push(zTrescia(wierszProduktu(kanal, p, odczytaneAt, miniatury, jednostki), p));
+      wiersze.push(zTrescia(wierszProduktu(kanal, p, odczytaneAt, miniaturyProduktu, jednostki), p));
     }
+  };
+  for (const p of produkty) {
+    await doWierszy(p, miniatury);
     zrobione += 1;
     zglos({ kanal, zrobione, zTego: produkty.length });
+  }
+  // ⚠️ SZKICE POWIAZANE. Katalog przychodzi ze `status=publish`, wiec produkt z karta przelaczony
+  // w sklepie na szkic by w nim nie wystapil, a `oznaczZnikniete` uznaloby go za usuniety:
+  // karta pokazalaby „wycofany” i stracila miniature. Pytamy sklep tylko o powiazane id
+  // spoza odczytu — niepowiazany szkic nie ma po co wchodzic do lustra. Blad tego odczytu
+  // idzie dalej i przerywa kanal PRZED zapisem: polkniety oznaczylby szkice jako usuniete.
+  const odczytane = new Set(produkty.map((p) => String(p?.id ?? '')));
+  const brakujace = [...powiazane.keys()].filter((id) => !odczytane.has(id));
+  // Przy pustym odczycie „publish” szkicow nie pytamy: inaczej jeden szkic dalby `wiersze.length > 0`
+  // i hamulec pustego odczytu (`sprawdzPustyOdczyt`) przepuscilby wygaszenie calego katalogu.
+  if (produkty.length && brakujace.length && typeof klient.pobierzProduktyPowiazane === 'function') {
+    const szkice = (await klient.pobierzProduktyPowiazane(brakujace)) ?? [];
+    // Store API szkicu nie pokazuje, wiec miniatura zostaje ta z bazy; dopiero gdy jej brak,
+    // pierwsze zdjecie z odczytu. Nigdy pusta w miejsce istniejacej.
+    const miniaturySzkicow = new Map(
+      szkice.map((p) => [
+        String(p?.id ?? ''),
+        powiazane.get(String(p?.id ?? '')) ?? pusteNaNull(p?.images?.[0]?.src) ?? null,
+      ]),
+    );
+    for (const p of szkice) await doWierszy(p, miniaturySzkicow);
+  }
+  if (raportujFazy) {
+    zapisz(
+      `magazyn: kanał ${kanal} — odczyt: lista ${stronyListy} str. ${Math.round(koniecListy - start)} ms, ` +
+        `miniatury ${stronyMiniatur} str. ${Math.round(koniecMiniatur - koniecListy)} ms, ` +
+        `ustawienia ${Math.round(koniecUstawien - koniecMiniatur)} ms, ` +
+        `produkty ${produkty.length} (warianty: ${odczytyWariantow}) ${Math.round(performance.now() - koniecUstawien)} ms`,
+    );
   }
   return wiersze;
 }
 
 // FAZA 1 dla Allegro.
 //
-// ⚠️ `pobierzOferty()` JEST BEZ ARGUMENTU — klient jest juz per-konto. Kanal dokleja WOLAJACY,
+// Klient jest już per-konto, więc `pobierzOferty` przyjmuje tylko opcjonalne zgłoszenie strony. Kanał dokleja wołający,
 // z klucza mapy, i sprawdza go biala lista w `domena/allegro-oferta.js`. Rozlozenie tego na
 // `{ kanal, ...ofertaNaProdukt(o) }` RZUCA: `ofertaNaProdukt` wymaga kanalu jako argumentu.
-async function wierszeAllegro({ kanal, klient, odczytaneAt, zglos, kanalyAllegro }) {
-  const oferty = await klient.pobierzOferty();
+async function wierszeAllegro({ kanal, klient, odczytaneAt, zglos, zapisz, kanalyAllegro, raportujFazy }) {
+  const start = performance.now();
+  let stronyOfert = 0;
+  const stronaOfert = ({ strona, stron }) => {
+    stronyOfert = strona;
+    zglos({ kanal, faza: 'oferty', strona, stron });
+  };
+  if (raportujFazy) zglos({ kanal, faza: 'oferty' });
+  const oferty = await (raportujFazy ? klient.pobierzOferty(stronaOfert) : klient.pobierzOferty());
+  const koniecListy = performance.now();
   const wiersze = [];
   let zrobione = 0;
   for (const o of oferty) {
@@ -451,6 +533,12 @@ async function wierszeAllegro({ kanal, klient, odczytaneAt, zglos, kanalyAllegro
     });
     zrobione += 1;
     zglos({ kanal, zrobione, zTego: oferty.length });
+  }
+  if (raportujFazy) {
+    zapisz(
+      `magazyn: kanał ${kanal} — odczyt: lista ofert ${stronyOfert} str. ${Math.round(koniecListy - start)} ms, ` +
+        `oferty ${oferty.length} ${Math.round(performance.now() - koniecListy)} ms`,
+    );
   }
   return wiersze;
 }
@@ -491,6 +579,9 @@ function zapiszKanal(db, kanal, wiersze, odczytaneAt, trescKart = true, zRejestr
           'UPDATE produkty_sklepowe SET ilosc_kanalu = ?, stan_prowadzony = ?, ilosc_odczytana_at = ? WHERE id = ?',
         )
       : null;
+  // Karty, do ktorych doszla tresc Woo — po petli dostaja puste SKU z numeru w sklepie (w tej samej
+  // transakcji: przerwany odczyt nie zostawia numerow bez lustra, z ktorego pochodza).
+  const dotkniete = [];
   db.exec('BEGIN IMMEDIATE');
   try {
     for (const w of wiersze) {
@@ -498,8 +589,10 @@ function zapiszKanal(db, kanal, wiersze, odczytaneAt, trescKart = true, zRejestr
       // Lustro ilosci kanalu z data odczytu (tylko informacja; stan karty z `stanyKart`).
       if (lustroIlosci) lustroIlosci.run(w.ilosc_kanalu ?? null, w.stan_prowadzony ?? null, odczytaneAt, id);
       if (kartaZRejestru) kartaZRejestru.run(id);
-      if (trescKart) zapiszTrescWoo(db, w, id, odczytaneAt);
-      else if (w.tresc_woo) {
+      if (trescKart) {
+        const kartaId = zapiszTrescWoo(db, w, id, odczytaneAt);
+        if (kartaId) dotkniete.push(kartaId);
+      } else if (w.tresc_woo) {
         tresc.push({ id, kanal: w.kanal, produkt_id: w.produkt_id, wariant_id: w.wariant_id, tresc_woo: w.tresc_woo });
       }
       if (w.tresc_lista_zmieniona_at) {
@@ -509,9 +602,10 @@ function zapiszKanal(db, kanal, wiersze, odczytaneAt, trescKart = true, zRejestr
         ).run(id, w.tresc_lista_zmieniona_at);
       }
     }
+    const sku = trescKart ? uzupelnijSkuZImportu(db, dotkniete, { zrodlo: `woo:${kanal}`, at: odczytaneAt }) : null;
     const znikniete = oznaczZnikniete(db, kanal, odczytaneAt);
     db.exec('COMMIT');
-    return trescKart ? { zapisane: wiersze.length, znikniete } : { zapisane: wiersze.length, znikniete, tresc };
+    return trescKart ? { zapisane: wiersze.length, znikniete, sku } : { zapisane: wiersze.length, znikniete, tresc };
   } catch (e) {
     // Przerwany zapis ma zostawic lustro w stanie SPRZED przebiegu, a nie w polowie.
     db.exec('ROLLBACK');
@@ -583,8 +677,12 @@ async function przebiegKanalu({
     // ⚠️ HAMULEC STOI PRZED FAZA ZAPISU I TO JEST CALA JEGO TRESC. Przesuniety za nia chroni
     // juz tylko wynik funkcji: `oznaczZnikniete` zdazylo wtedy wygasic caly katalog kanalu.
     sprawdzPustyOdczyt(db, kanal, wiersze.length);
-    const { zapisane, znikniete, tresc } = zapiszKanal(db, kanal, wiersze, odczytaneAt, trescKart, zRejestru);
-    return trescKart ? { kanal, zapisane, znikniete, blad: null } : { kanal, zapisane, znikniete, blad: null, tresc };
+    const { zapisane, znikniete, tresc, sku } = zapiszKanal(db, kanal, wiersze, odczytaneAt, trescKart, zRejestru);
+    if (!trescKart) return { kanal, zapisane, znikniete, blad: null, tresc };
+    // Licznik SKU tylko, gdy cos sie stalo: spokojny przebieg ma wygladac jak dotad.
+    return sku?.uzupelniono || sku?.pominiete.length
+      ? { kanal, zapisane, znikniete, blad: null, sku }
+      : { kanal, zapisane, znikniete, blad: null };
   } catch (e) {
     // ⚠️ `znikniete: 0` NIE JEST tu kosmetyka — kanal, ktory padl, NIE ZOSTAL sprawdzony,
     // wiec nie wolno powiedziec o nim niczego poza bledem.
@@ -607,8 +705,8 @@ async function przebiegKanalu({
  * @param {Record<string, {pobierzWszystkieProdukty, pobierzWarianty}>} [p.sklepy] — klienci Woo
  * @param {Record<string, {pobierzOferty}>} [p.allegro] — MAPA kanal → klient z `klienciKanalow`
  * @param {() => string} [p.teraz] — wstrzykiwany zegar (patrz `znacznik`)
- * @param {(postep: {kanal: string, zrobione: number, zTego: number}) => void} [p.postep]
- * @param {(...czesci: unknown[]) => void} [p.log] — ślad po błędzie kanału; domyślnie `console.error`
+ * @param {(postep: {kanal: string, zrobione: number, zTego: number} | {kanal: string, faza: string, strona?: number, stron?: number | null}) => void} [p.postep]
+ * @param {(...czesci: unknown[]) => void} [p.log] — czasy faz i błędy kanału; domyślnie `console.error`
  * @param {boolean} [p.trescKart] — `false`: treść Woo nie idzie do kart, wraca w `kanaly[].tresc`
  * @returns {Promise<{kanaly: Array<{kanal, zapisane, znikniete, blad}>}>}
  *
@@ -660,6 +758,8 @@ export async function odswiezMagazyn({
   };
 
   const kanaly = [];
+  // Tylko odczyt do podglądu importu pokazuje fazy i raportuje ich czasy.
+  const raportujFazy = !trescKart;
   // Kanaly po kolei, nie rownolegle: rownolegly odczyt uderzalby w oba sklepy naraz, a zapis
   // i tak idzie po jednym polaczeniu do bazy. Przebieg jest z przycisku, wiec czas nie jest
   // tu waluta.
@@ -673,7 +773,16 @@ export async function odswiezMagazyn({
         odczytaneAt,
         zapisz,
         trescKart,
-        zbierz: () => wierszeSklepu({ kanal, klient, odczytaneAt, zglos, zapisz }),
+        zbierz: () =>
+          wierszeSklepu({
+            kanal,
+            klient,
+            odczytaneAt,
+            zglos,
+            zapisz,
+            raportujFazy,
+            powiazane: powiazaneProduktyKanalu(db, kanal),
+          }),
       }),
     );
   }
@@ -688,7 +797,7 @@ export async function odswiezMagazyn({
         zapisz,
         trescKart,
         zRejestru: true,
-        zbierz: () => wierszeAllegro({ kanal, klient, odczytaneAt, zglos, kanalyAllegro }),
+        zbierz: () => wierszeAllegro({ kanal, klient, odczytaneAt, zglos, zapisz, kanalyAllegro, raportujFazy }),
       }),
     );
   }

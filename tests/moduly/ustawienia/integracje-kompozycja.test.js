@@ -102,4 +102,22 @@ describe('renderer i istniejąca trasa', () => {
       a.db.close();
     }
   });
+
+  it('odmowę wiązania nieznanego konta renderuje jako stronę HTML', async () => {
+    // Formularz wiązania otwiera odpowiedź w przeglądarce i potrzebuje strony odmowy.
+    const a = await zbudujOms({ env });
+    try {
+      const r = await a.app.inject({
+        method: 'POST',
+        url: '/ustawienia/kanaly/nieznany/wiazanie',
+        headers,
+        payload: {},
+      });
+      expect(r.statusCode).toBe(404);
+      expect(r.headers['content-type']).toMatch(/^text\/html\b/);
+    } finally {
+      await a.app.close();
+      a.db.close();
+    }
+  });
 });

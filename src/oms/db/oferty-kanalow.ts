@@ -57,6 +57,9 @@ export type OfertaKanalu = {
   iloscWToku: unknown;
   iloscProblem: unknown;
   odczytIloscKanalu: number | null;
+  // Kolumny z magazyn/0005: cenę albo status oferty prowadzi OMS (także na ofercie obserwowanej).
+  cenaZOms: boolean;
+  statusZOms: boolean;
   utworzonoAt: string;
   zmienionoAt: string;
 };
@@ -199,6 +202,11 @@ const calkowitaLubNull = (nazwa: string) => (v: unknown) => {
     throw new Error(`Pole ${nazwa} musi być liczbą całkowitą albo null`);
   return v;
 };
+/** Flaga 0/1 w bazie, na wejściu wyłącznie true/false — 1 albo 'tak' to pomyłka wołającego, nie „prawda”. */
+const flaga = (nazwa: string) => (v: unknown) => {
+  if (typeof v !== 'boolean') throw new Error(`Pole ${nazwa} musi być true albo false`);
+  return v ? 1 : 0;
+};
 function wZakresie(opis: string, v: unknown, od: number, do_: number): number {
   if (typeof v !== 'number' || !Number.isInteger(v) || v < od || v > do_)
     throw new Error(`${opis} musi być liczbą całkowitą od ${od} do ${do_}`);
@@ -267,6 +275,9 @@ const POLA_OFERTY: Record<string, readonly [string, (v: unknown) => SQLInputValu
   iloscWToku: ['ilosc_w_toku_json', obiektLubNull('iloscWToku')],
   iloscProblem: ['ilosc_problem_json', obiektLubNull('iloscProblem')],
   odczytIloscKanalu: ['odczyt_ilosc_kanalu', calkowitaLubNull('odczytIloscKanalu')],
+  // Kolumny z magazyn/0005, tak samo bez CHECK w bazie.
+  cenaZOms: ['cena_z_oms', flaga('cenaZOms')],
+  statusZOms: ['status_z_oms', flaga('statusZOms')],
 };
 
 function oferta(w: Wiersz | undefined): OfertaKanalu | null {
@@ -315,6 +326,9 @@ function oferta(w: Wiersz | undefined): OfertaKanalu | null {
     iloscWToku: json(w.ilosc_w_toku_json),
     iloscProblem: json(w.ilosc_problem_json),
     odczytIloscKanalu: (w.odczyt_ilosc_kanalu as number | null | undefined) ?? null,
+    // Kolumny z magazyn/0005 — baza bez tej migracji daje zachowanie bez ceny i statusu z OMS.
+    cenaZOms: w.cena_z_oms === 1,
+    statusZOms: w.status_z_oms === 1,
     utworzonoAt: String(w.utworzono_at),
     zmienionoAt: String(w.zmieniono_at),
   };

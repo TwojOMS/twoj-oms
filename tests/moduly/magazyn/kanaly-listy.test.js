@@ -157,4 +157,11 @@ describe('kolumna „Kanały” na liście Magazynu', () => {
     expect(r.body).not.toContain('<th>Kanały</th>');
     expect(r.body).not.toContain('<th>Oferty</th>');
   });
+
+  it('firma bez kanałów i pusta lista → pusta komórka na sześć kolumn, bez kolumny „Kanały”', async () => {
+    await app.close();
+    const r = await serwer([]).inject({ url: '/magazyn', headers: auth });
+    expect(r.statusCode).toBe(200);
+    expect(r.body).toContain('colspan="6" class="pusto"');
+  });
 });

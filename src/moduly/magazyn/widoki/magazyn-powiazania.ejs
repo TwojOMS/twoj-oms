@@ -109,7 +109,7 @@
     Formularz, ktory ma wlasne pole `kanal`, nie moze wyslac `kanal` drugi raz: Fastify
     oddaje wtedy tablice, parser odrzuca ja do `null` i filtr znika dokladnie w tym
     formularzu, ktory sluzy do jego ustawiania. %>
-<form class="filtry" method="get" action="/magazyn/powiazania">
+<form class="filtry" method="get" action="/magazyn/powiazania#lista-ofert">
   <% ukryteWFiltrach.forEach(function (p) { %>
     <input type="hidden" name="<%= p.name %>" value="<%= p.value %>">
   <% }); %>
@@ -125,15 +125,22 @@
     </label>
     <button class="btn btn--glowny" type="submit">Filtruj</button>
   </div>
-  <% if (filtrowane) { %>
+  <% if (filtrowane || zakonczone.ile > 0) { %>
     <div class="chipy">
-      <a class="chipy-wyczysc" href="<%= adresBezFiltrow %>">Wyczyść zawężenie</a>
-      <span class="wynik-filtra"><%= wiersze.length %> ofert</span>
+      <% if (filtrowane) { %><a class="chipy-wyczysc" href="<%= adresBezFiltrow %>">Wyczyść zawężenie</a><% } %>
+      <span class="wynik-filtra"><%= wiersze.length %> ofert<% if (zakonczone.ile > 0 && !zakonczone.pokazane) { %> + <%= zakonczone.opis %><% } %></span>
+      <% if (zakonczone.ile > 0) { %>
+        <% if (zakonczone.pokazane) { %>
+          <a href="<%= zakonczone.adresUkryj %>">ukryj zakończone</a>
+        <% } else { %>
+          <a href="<%= zakonczone.adresPokaz %>">pokaż zakończone (<%= zakonczone.ile %>)</a>
+        <% } %>
+      <% } %>
     </div>
   <% } %>
 </form>
 
-<form class="szukajka" method="get" action="/magazyn/powiazania" role="search">
+<form class="szukajka" method="get" action="/magazyn/powiazania#lista-ofert" role="search">
   <% ukryteWSzukajce.forEach(function (p) { %>
     <input type="hidden" name="<%= p.name %>" value="<%= p.value %>">
   <% }); %>
@@ -157,6 +164,7 @@
     <option value="<%= p.wartosc %>"><%= p.opis %></option>
   <% }); %>
 </datalist>
+<script type="module" src="<%= zasob('wybor-karty.js') %>"></script>
 
 <%# ——— FORMULARZ ZATWIERDZENIA HURTEM ——————————————————————————————————————————
     ⚠️⚠️ JEDEN FORMULARZ NA CALA TABELE. Zatwierdzenie hurtem jest PRZYCISKIEM, nie skutkiem
@@ -164,7 +172,8 @@
 
     Formularz bez ukrytego pola z tokenem: ochrona CSRF (core/bezpieczenstwo/csrf.js) stoi na
     naglowkach Origin/Referer i jest hakiem globalnym. %>
-<form class="powiazania" method="post" action="/magazyn/powiazania">
+<form class="powiazania" id="lista-ofert" method="post" action="/magazyn/powiazania">
+  <span class="wybor-karty-status" role="status" data-wybor-karty-status></span>
   <%# Adres powrotu przezywa TAKZE wykonana robote: obie trasy POST renderuja ten sam
       ekran (`ekranPowiazan`), wiec bez tego pola ginalby po pierwszym powiazaniu. %>
   <% if (adresPowrotu !== '/magazyn') { %><input type="hidden" name="wroc" value="<%= adresPowrotu %>"><% } %>
@@ -173,14 +182,14 @@
       <thead>
         <tr>
           <th <% if (sortowanie.nazwa.aria) { %>aria-sort="<%= sortowanie.nazwa.aria %>"<% } %>>
-            <a class="zaznacz-wszystkie" href="<%= sortowanie.nazwa.adres %>">Oferta na Allegro <%= sortowanie.nazwa.strzalka %></a>
+            <a class="zaznacz-wszystkie" href="<%= sortowanie.nazwa.adres %>#lista-ofert">Oferta na Allegro <%= sortowanie.nazwa.strzalka %></a>
             <span class="magazyn-brak">/</span>
-            <a class="zaznacz-wszystkie" href="<%= sortowanie.kanal.adres %>">konto <%= sortowanie.kanal.strzalka %></a>
+            <a class="zaznacz-wszystkie" href="<%= sortowanie.kanal.adres %>#lista-ofert">konto <%= sortowanie.kanal.strzalka %></a>
           </th>
           <th <% if (sortowanie.ocena.aria) { %>aria-sort="<%= sortowanie.ocena.aria %>"<% } %>>
             <%# Kolejnosc po ocenie jest tu jedynym sposobem, zeby przejsc najpierw przez
                 to, co idzie szybko — ale NIE jest progiem: nic nie znika z listy. %>
-            <a class="zaznacz-wszystkie" href="<%= sortowanie.ocena.adres %>">Kandydaci <%= sortowanie.ocena.strzalka %></a>
+            <a class="zaznacz-wszystkie" href="<%= sortowanie.ocena.adres %>#lista-ofert">Kandydaci <%= sortowanie.ocena.strzalka %></a>
           </th>
           <th>Albo wskaż kartę sam</th>
         </tr>
@@ -194,12 +203,11 @@
                 <%= w.etykietaKanalu %><% if (w.adres) { %>
                   · <a href="<%= w.adres %>" rel="noopener noreferrer" target="_blank">oferta</a>
                 <% } %>
+                <% if (w.znacznik) { %><span class="znacznik"><%= w.znacznik %></span><% } %>
               </div>
             </td>
             <td class="komorka-kandydaci">
-              <%# ⚠️ „nie wiążę" jest zaznaczone z gory i JEST POTRZEBNE: ten ekran nie ma
-                  wlasnego skryptu, wiec bez tej pozycji raz kliknietego wyboru nie da sie
-                  cofnac inaczej niz przeladowaniem strony. %>
+              <%# „nie wiążę” pozwala cofnąć wybór kandydata. %>
               <label class="kandydat kandydat--zaden">
                 <input type="radio" name="karta_<%= w.id %>" value="" checked>
                 <span class="kandydat-nazwa-zadna">nie wiążę</span>
@@ -207,14 +215,17 @@
               <% w.kandydaci.forEach(function (k) { %>
                 <label class="kandydat">
                   <input type="radio" name="karta_<%= w.id %>" value="<%= k.id %>">
-                  <span class="kandydat-nazwa"><%= k.nazwa %></span>
-                  <%# Procent jest PODPOWIEDZIA, a nie decyzja — i stoi obok wspolnych slow,
-                      bo bez nich jest liczba bez pokrycia. %>
-                  <span class="kandydat-ocena"><%= k.procent %></span>
-                  <span class="kandydat-slowa"><%= k.slowa %></span>
-                  <% if (k.sku || k.wymiary) { %>
-                    <span class="kandydat-drobne"><%= [k.sku, k.wymiary].filter(Boolean).join(' · ') %></span>
+                  <% if (k.miniatura) { %>
+                    <img class="wybor-karty-miniatura" src="<%= k.miniatura %>" alt="" width="32" height="32" loading="lazy">
+                  <% } else { %>
+                    <span class="wybor-karty-miniatura" aria-hidden="true"></span>
                   <% } %>
+                  <span class="kandydat-opis">
+                    <span class="kandydat-nazwa"><%= k.nazwa %></span>
+                    <span class="kandydat-ocena"><%= k.procent %></span>
+                    <span class="kandydat-slowa"><%= k.slowa %></span>
+                    <span class="kandydat-drobne"><%= [`#${k.id}`, k.sku, k.wymiary, k.cena].filter(Boolean).join(' · ') %></span>
+                  </span>
                 </label>
               <% }); %>
               <% if (!w.kandydaci.length) { %>
@@ -225,14 +236,20 @@
                 <span class="magazyn-brak">Żadna karta nie ma z tą nazwą wspólnego słowa — wskaż ją obok.</span>
               <% } %>
             </td>
-            <td class="komorka-reczna">
+            <td class="komorka-reczna" data-wybor-karty="/magazyn/karty/podpowiedzi">
               <%# ⚠️ DROGA RECZNA JEST W KAZDYM WIERSZU, takze tam, gdzie kandydaci sa —
                   bo trzej najlepsi to nie to samo, co trzej trafni. Wpisane tu bije
                   zaznaczonego kandydata (patrz `paryZFormularza` w moduly/magazyn/pomocniki.js).
                   Zla nazwa nie wiaze niczego: wiersz wraca jako pominiety, z powodem. %>
               <input class="reczny" type="text" name="reczny_<%= w.id %>" value=""
                 list="karty-do-wyboru" autocomplete="off" placeholder="wpisz nazwę karty"
-                aria-label="Karta wskazana ręcznie dla oferty <%= w.nazwa %>">
+                aria-label="Karta wskazana ręcznie dla oferty <%= w.nazwa %>"
+                role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="podpowiedzi-kart-<%= w.id %>">
+              <input type="hidden" name="reczny_id_<%= w.id %>" value="">
+              <div class="wybor-karty-okno" hidden>
+                <div id="podpowiedzi-kart-<%= w.id %>" role="listbox" aria-label="Podpowiedzi kart"></div>
+                <div class="wybor-karty-komunikat" aria-hidden="true" hidden></div>
+              </div>
             </td>
           </tr>
         <% }); %>
@@ -275,16 +292,19 @@
       <details class="drobne">
         <summary>Pokaż wszystkie (<%= juzPowiazane.length %>)</summary>
         <table class="tab-pozycje">
-          <thead><tr><th>Oferta</th><th>Karta</th><th></th></tr></thead>
+          <thead><tr><th class="kol-zazn"><span class="poza-okiem">Wybór do sterowania ceną</span></th><th>Oferta</th><th>Karta</th><th></th></tr></thead>
           <tbody>
             <% juzPowiazane.forEach(function (p) { %>
               <tr>
+                <%# Pole wyboru należy do formularza pod tabelą (atrybut form): wiersz ma już własny
+                    formularz Odepnij, a formularzy nie wolno zagnieżdżać. %>
+                <td class="kol-zazn"><label class="kol-zazn-etykieta"><input type="checkbox" name="zaznaczone" value="<%= p.id %>" form="steruj-cena-hurtem" aria-label="Zaznacz ofertę <%= p.nazwa %>"></label></td>
                 <td>
                   <%# ⚠️ INNA KLASA NIZ W TABELI ROBOCZEJ i to nie jest kosmetyka: ta sama
                       klasa sprawialaby, ze oferta powiazana liczylaby sie jako wiersz roboty
                       w kazdej asercji i w kazdym liczeniu na tym ekranie. %>
                   <div class="nazwa-powiazanej"><%= p.nazwa %></div>
-                  <div class="sku"><%= p.etykietaKanalu %></div>
+                  <div class="sku"><%= p.etykietaKanalu %><% if (p.znacznik) { %> <span class="znacznik"><%= p.znacznik %></span><% } %></div>
                 </td>
                 <td>
                   <%= p.karta_nazwa %>
@@ -303,6 +323,10 @@
             <% }); %>
           </tbody>
         </table>
+        <form id="steruj-cena-hurtem" class="w-linii" method="post" action="/magazyn/oferty/steruj-cena/podglad" aria-label="Cena zaznaczonych ofert Allegro">
+          <button class="btn" type="submit">Steruj ceną zaznaczonych</button>
+          <button class="btn" type="submit" formaction="/magazyn/oferty/oddaj-cene">Oddaj cenę Allegro</button>
+        </form>
       </details>
     </div>
   </section>

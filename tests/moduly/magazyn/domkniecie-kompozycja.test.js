@@ -63,8 +63,6 @@ const trasy = [
   ['POST', '/magazyn/hurt/zatwierdz'],
   ['POST', '/magazyn/sku-podglad'],
   ['POST', '/magazyn/sku-zapisz'],
-  ['POST', '/magazyn/przejmij-podglad'],
-  ['POST', '/magazyn/przejmij-zapisz'],
   ['POST', '/magazyn/podglad-zapisu'],
   ['POST', '/magazyn/zapisz-do-sklepow'],
   ['GET', '/magazyn/powiazania'],
@@ -76,7 +74,7 @@ const trasy = [
 ];
 afterEach(() => vi.unstubAllGlobals());
 describe('brakujące trasy w rzeczywistym składzie', () => {
-  it('rejestruje wszystkie 18 tras i chroni je globalnym uwierzytelnieniem', async () => {
+  it('rejestruje trasy magazynu i chroni je globalnym uwierzytelnieniem', async () => {
     const a = await sklad();
     try {
       utworzKarte(a.db, { nazwa: 'Kandelabr', sku: 'TEST-7' });
@@ -88,6 +86,18 @@ describe('brakujące trasy w rzeczywistym składzie', () => {
         expect(odmowa.statusCode, `${method} ${url}`).toBe(401);
       }
       expect(fetch).not.toHaveBeenCalled();
+    } finally {
+      await a.app.close();
+      a.db.close();
+    }
+  });
+  it('ręczne przejęcie SKU nie ma trasy podglądu ani zapisu', async () => {
+    const a = await sklad();
+    try {
+      for (const url of ['/magazyn/przejmij-podglad', '/magazyn/przejmij-zapisz']) {
+        const r = await a.app.inject({ method: 'POST', url, headers, payload: {} });
+        expect(r.statusCode, url).toBe(404);
+      }
     } finally {
       await a.app.close();
       a.db.close();

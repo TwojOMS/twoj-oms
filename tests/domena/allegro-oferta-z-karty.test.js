@@ -592,6 +592,27 @@ describe('E3.06 — parametr „Stan”, cena, VAT i pozostałe pola', () => {
     expect(w.zadanie.sellingMode).toEqual({ format: 'BUY_NOW', price: { amount: '66.38', currency: 'PLN' } });
   });
 
+  it('T-M1: ręczna cena konta 105 zł wygrywa z narzutem; bez ręcznej złoty wynik bez zmian', () => {
+    const bezRecznej = ofertaAllegroZKarty(wejscie({ ustawienia: { narzutBp: 1250 }, recznaGr: null }));
+    expect(bezRecznej.bledy).toEqual([]);
+    expect(bezRecznej.zadanie.sellingMode.price).toEqual({ amount: '66.38', currency: 'PLN' });
+    const zReczna = ofertaAllegroZKarty(wejscie({ ustawienia: { narzutBp: 1250 }, recznaGr: 10500 }));
+    expect(zReczna.bledy).toEqual([]);
+    expect(zReczna.zadanie.sellingMode).toEqual({ format: 'BUY_NOW', price: { amount: '105.00', currency: 'PLN' } });
+    // Ręczna cena nie zależy od ceny karty: karta bez ceny i tak daje ofertę po cenie ustawionej dla konta.
+    const bezCenyKarty = ofertaAllegroZKarty(wejscie({ karta: { cena_gr: 0 }, recznaGr: 10500 }));
+    expect(bezCenyKarty.bledy).toEqual([]);
+    expect(bezCenyKarty.zadanie.sellingMode.price.amount).toBe('105.00');
+  });
+
+  it('T-M1: błędna ręczna cena → błąd ceny, bez cichego przejścia na narzut', () => {
+    for (const recznaGr of [0, -100, 104.5]) {
+      const w = ofertaAllegroZKarty(wejscie({ ustawienia: { narzutBp: 1250 }, recznaGr }));
+      expect(w.zadanie).toBeNull();
+      expect(w.bledy).toEqual([{ kod: 'cena', tekst: expect.stringContaining('Ręczna cena') }]);
+    }
+  });
+
   it('cena-kanalu: zaokrąglenie połówką w górę i zapis kwoty', () => {
     expect(cenaZNarzutem(5900, 1250)).toEqual({ bledy: [], grosze: 6638 });
     expect(cenaZNarzutem(5900, 0)).toEqual({ bledy: [], grosze: 5900 });

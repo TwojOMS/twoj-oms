@@ -582,6 +582,18 @@ const odpowiedz = (cialo) => ({ ok: true, status: 200, json: async () => cialo }
 const parametryWywolan = (fetchImpl) => fetchImpl.mock.calls.map(([url]) => new URL(url).searchParams);
 
 describe('pobierzOferty — stronicowanie', () => {
+  it('zgłasza każdą stronę ofert z liczbą stron wynikającą z totalCount', async () => {
+    const ile = LIMIT_STRONY_OFERT + 1;
+    const naStronie = vi.fn();
+    const oferty = await klient(kontoZOfertami(ile)).pobierzOferty(naStronie);
+
+    expect(oferty).toHaveLength(ile);
+    expect(naStronie.mock.calls).toEqual([
+      [{ strona: 1, stron: Math.ceil(ile / LIMIT_STRONY_OFERT) }],
+      [{ strona: 2, stron: Math.ceil(ile / LIMIT_STRONY_OFERT) }],
+    ]);
+  });
+
   it('pyta /sale/offers z limitem i offsetem od zera', async () => {
     const fetchImpl = kontoZOfertami(3);
     const oferty = await klient(fetchImpl).pobierzOferty();

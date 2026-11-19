@@ -698,6 +698,7 @@
     /* istniejace mowily wylacznie o problemach, a ekran podgladu nadania musi rozroznic */
     /* rzeczy, ktore POJADA, od tych, ktore sa warte oka, i od pominietych. */
     .waga--ok { background: var(--ok-tlo); color: var(--ok-tekst); }
+    .waga--duza { display: inline-block; font-size: .8rem; padding: .25rem .6rem; }
 
     /* ================================================================================= */
     /* FILTRY NAD TABELA (lista.ejs) — zakres dat, metoda wysylki, metoda platnosci.      */
@@ -710,6 +711,11 @@
     }
     .filtry-rzad { display: flex; flex-wrap: wrap; gap: .6rem .9rem; align-items: flex-end; }
     .pole-filtra { display: flex; flex-direction: column; gap: .2rem; }
+    /* Dopisek pod polem łamie się w wąskiej kolumnie: w kolumnie flex najszerszy element ustala
+       szerokość, więc długie zdanie rozciągałoby krótkie pole kwoty na pół paska. */
+    .pole-filtra > small { max-inline-size: 30ch; color: var(--tekst-przygaszony); }
+    /* Bez tego pole tekstowe w pasku dostaje czcionkę o stałej szerokości z arkusza przeglądarki. */
+    .pole-filtra > textarea { font: inherit; resize: vertical; }
     .pole-filtra > span:first-child {
       font-size: .67rem; text-transform: uppercase; letter-spacing: .06em; color: var(--tekst-przygaszony); font-weight: 700;
     }
@@ -1081,6 +1087,23 @@
     .tab-pozycje th { text-align: left; font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--tekst-przygaszony); padding: .3rem .5rem; border-bottom: 1px solid var(--ramka); }
     .tab-pozycje td { padding: .5rem; border-bottom: 1px solid var(--ramka); vertical-align: middle; font-size: .92rem; }
     .tab-pozycje input { font: inherit; font-size: .9rem; padding: .3rem .45rem; border: 1px solid var(--ramka-pola); border-radius: .3rem; width: 100%; }
+    .tabela-hurtu { overflow-wrap: anywhere; }
+    .tabela-hurtu .kol-zazn { min-width: 2.4rem; }
+    .tabela-hurtu .kol-zazn-etykieta { justify-content: center; padding: .5rem .25rem; }
+    .tabela-hurtu .kol-zazn input { width: 1.05rem; padding: 0; }
+    .tabela-hurtu tbody:has(.kol-zazn input:not(:checked)) { color: var(--tekst-przygaszony); background: var(--powierzchnia-2); }
+    .hurt-zaznaczenie { margin-bottom: .5rem; }
+    .tabela-hurtu .waga { display: inline-block; margin-left: .35rem; vertical-align: .1em; overflow-wrap: normal; }
+    /* Przy „zmień na kwotę” cena idzie dokładnie tak, jak wpisana — zaokrąglenie nic by nie zmieniło. */
+    .akcja-cialo:has(select[name="cena_tryb"] > option[value="na_kwote"]:checked) .hurt-zaokraglenie { display: none; }
+    @media (max-width: 480px) {
+      .tabela-hurtu { table-layout: fixed; --tabela-p: .35rem .25rem; }
+      .tabela-hurtu td { font-size: .85rem; }
+      .tabela-hurtu th:nth-last-child(4) { width: 25%; }
+      .tabela-hurtu th:nth-last-child(3) { width: 24%; }
+      .tabela-hurtu th:nth-last-child(2) { width: 15%; }
+      .tabela-hurtu th { overflow-wrap: normal; }
+    }
     /* Ilosc jest wieksza, bo przy pakowaniu to jedyna liczba, ktora sie liczy. */
     .kol-ilosc { width: 3.6rem; }
     .kol-cena { width: 8.5rem; }
@@ -1472,6 +1495,7 @@
       background: var(--plakietka-tlo, transparent); color: var(--plakietka-tekst, inherit);
     }
     html[data-motyw="ciemny"] .plakietka { border-color: var(--ramka-pola); }
+    .plakietka--wycofana { --plakietka-tlo: var(--blad-tlo); --plakietka-tekst: var(--blad-tekst); }
     .plakietka--inpost { --plakietka-tlo: var(--marka-inpost-tlo); --plakietka-tekst: var(--marka-inpost-tekst); }
     .plakietka--dpd { --plakietka-tlo: var(--marka-dpd-tlo); --plakietka-tekst: var(--marka-bialy); }
     .plakietka--dhl { --plakietka-tlo: var(--marka-dhl-tlo); --plakietka-tekst: var(--marka-dhl-tekst); }
@@ -1598,40 +1622,75 @@
     /* Brak wartosci: kreska w kolumnie kanalu i trzeci stan przy paczkomacie. Ma byc       */
     /* czytelne, ale ciszej niz wartosc — bo brak to nie jest liczba.                       */
     .magazyn-brak { color: var(--tekst-przygaszony); }
+    /* Szybka zmiana ceny w kolumnie „Cena” (public/szybka-cena.js). Ołówek cichy obok kwoty, z polem dotyku   */
+    /* co najmniej 24 px; edytor w miejscu kwoty. Komunikaty łamią się mimo `nowrap` z `.liczba`.              */
+    [data-szybka-cena-olowek]:not([hidden]) { display: inline-block; min-inline-size: 1.5rem; min-block-size: 1.5rem; text-align: center; color: var(--tekst-przygaszony); text-decoration: none; }
+    [data-szybka-cena-olowek]:hover { color: var(--link); }
+    .szybka-cena { display: grid; gap: .25rem; justify-items: end; }
+    .szybka-cena__wiersz { display: inline-flex; align-items: center; gap: .25rem; }
+    .szybka-cena__wpis { inline-size: 8ch; padding-inline: .3rem; text-align: end; }
+    .szybka-cena__blad { color: var(--blad-tekst); font-size: .85em; max-inline-size: 22ch; white-space: normal; text-align: start; }
+    .szybka-cena__wiecej, .szybka-cena__uwaga { font-size: .8em; }
+    .szybka-cena__uwaga { color: var(--uwaga-tekst); white-space: normal; }
+    .karta-historia-ceny { margin-top: 1rem; }
+    .karta-historia-ceny summary { cursor: pointer; color: var(--link); }
+    .karta-historia-ceny .tab-pozycje { margin-top: .6rem; }
+    /* Kwota w jednej linii; nagłówek kolumny z „Usuń” tylko dla czytnika — na 390 px brakowało dla niego miejsca. */
+    .karta-historia-ceny td:nth-child(2) { white-space: nowrap; }
+    @media (max-width: 600px) {
+      .karta-historia-ceny { --tabela-p: .4rem .25rem; --tabela-font: .72rem; }
+      .karta-historia-ceny td { font-size: .76rem; }
+    }
     /* Cztery kolumny kanalow: ceny czyta sie kolumnowo, wiec cyfry musza miec rowna       */
     /* szerokosc (bez tego „1" jest wezsza od „8" i kolumna faluje z wiersza na wiersz),   */
     /* a kwota nie ma prawa zlamac sie na dwie linie przy tysiacu wierszy.                  */
-    .magazyn-kanal { white-space: nowrap; font-variant-numeric: tabular-nums; }
-    /* Wymiar w jednej linii: „70 × 100 cm" ciete na dwie wyglada jak usterka w kazdym
-       wierszu. Napis jest krotki, wiec
-       nowrap nie rozpycha tabeli. */
-    .kol-wymiary { white-space: nowrap; }
+    /* Kwoty do prawej, jak kazda kolumna liczb: grosze stoja wtedy jeden pod drugim.        */
+    .magazyn-kanal { white-space: nowrap; font-variant-numeric: tabular-nums; text-align: right; }
     .magazyn-kanal a { color: var(--link); }
     /* Kolumna nazwy niesie DWIE rzeczy jedna pod druga (nazwa + SKU mniejszym drukiem),   */
     /* wiec potrzebuje szerokosci — inaczej nazwa produktu lamie sie na cztery linie       */
     /* i wiersz rosnie. Tabela ma wlasny przewijak, wiec to niczego nie rozpycha.          */
     .komorka-karta { min-width: 18rem; }
     .magazyn-tabela th a { color: var(--link); }
-    /* Pasek nad tabelą: co zawęża listę z lewej,          */
-    /* przełącznik trybu kolumn z prawej. Stoi NAD `.przewijak-tabeli`, więc nie jedzie       */
-    /* w bok razem z zawartością tabeli.                                                      */
-    .tabela-glowa {
-      display: flex; justify-content: space-between; align-items: baseline;
-      gap: 1rem; flex-wrap: wrap; margin: 0 0 .35rem;
+    .magazyn-ceny-tabela th, .magazyn-ceny-tabela td { overflow-wrap: anywhere; }
+    .magazyn-ceny-tabela th[scope="row"] {
+      background: transparent; color: var(--tekst); font-size: inherit; text-transform: none;
+      letter-spacing: normal; vertical-align: top;
     }
-    .tabela-glowa .przelacznik { font-size: .8rem; }
-    /* Przelacznik trybu kolumn to STEROWANIE tabela, nie zdanie — stoi w jednym rzedzie
-       z „Co panel pomija i dlaczego →" i „Powiąż oferty Allegro →", ktore podkreslenia
-       nie maja. Bez tej linii jako jedyny w calym rzedzie dostawal kreske spod reguly
-       ogolnej dla odnosnikow w zdaniu. Podkreslenie wraca na najechaniu. */
-    .tabela-glowa .przelacznik a { text-decoration: none; }
-    .tabela-glowa .przelacznik a:hover { text-decoration: underline; text-decoration-color: currentColor; }
+    .magazyn-ceny-oferta { font-weight: 600; }
+    .magazyn-ceny-kwota { white-space: nowrap; }
+    .magazyn-ceny-wybor {
+      display: inline-flex; align-items: center; gap: .35rem; min-height: 44px; min-width: 44px;
+      font-size: .85rem; font-weight: 400; cursor: pointer;
+    }
+    @media (max-width: 540px) {
+      .magazyn-ceny-tabela th, .magazyn-ceny-tabela td { padding: .5rem .35rem; }
+    }
+    /* Pasek nad tabelą: zakładki widoków z lewej, co zawęża listę z prawej. Stoi NAD       */
+    /* `.przewijak-tabeli`, więc nie jedzie w bok razem z zawartością tabeli.                 */
+    .tabela-glowa {
+      display: flex; justify-content: space-between; align-items: end;
+      gap: .35rem 1rem; flex-wrap: wrap; margin: 0 0 .5rem;
+    }
+    /* Zakładki jak w Ustawieniach (`.ust-zakladki`); tamten arkusz ładuje się tylko tam.    */
+    /* Aktywną wyróżnia kreska i pogrubienie, nie sam kolor.                                 */
+    .magazyn-zakladki { display: flex; gap: 1.5rem; flex-wrap: wrap; border-bottom: 1px solid var(--ramka); }
+    .magazyn-zakladki a {
+      padding: .45rem 0; color: var(--tekst-przygaszony); text-decoration: none;
+      border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap;
+    }
+    .magazyn-zakladki a:hover { color: var(--tekst); }
+    .magazyn-zakladki a[aria-current="page"] { color: var(--link); border-color: currentColor; font-weight: 600; }
     /* Kolumna „Stan" trybu porzadkow. Liczba brakow ma byc czytelna, ale CISZEJ niz tresc    */
     /* wiersza: to miara roboty do zrobienia, a nie dana karty — komplet mowi znacznikiem,    */
     /* tak samo jak „paczkomat: tak". Bez lamania na dwie linie przy ~1000 wierszach.         */
     .stan-braki { font-size: .8rem; color: var(--tekst-przygaszony); white-space: nowrap; }
     /* Stany magazynowe: liczba na minusie i pasek nad tabelą Magazynu. */
     .stan-minus { color: var(--blad-tekst); font-weight: 600; }
+    .stan-niski { color: var(--uwaga-tekst); font-weight: 600; }
+    .ostrzezenie--niski-stan td { background: var(--uwaga-tlo); }
+    .prog-stanu { flex-flow: row wrap; align-items: end; }
+    .prog-stanu input { inline-size: 10rem; max-inline-size: 100%; }
     .magazyn-stany { margin: .5rem 0; padding: .4rem .7rem; border: 1px solid var(--blad-ramka); border-radius: 6px; background: var(--blad-tlo-jasne); }
     /* Kafle brakow.                */
     /* ⚠️ `.kafel` PONIZEJ CELOWO SCOPOWANY PRZEZ `.kafle` (naglowek nawigacji): gola klasa */
@@ -1714,6 +1773,19 @@
     /* Jedno zdanie zasady akcji — wlasny wiersz pod przyciskami, ciszej niz one.              */
     .akcja-zasada { flex-basis: 100%; margin: 0; font-size: .8rem; color: var(--tekst-przygaszony); }
 
+    .sprzedaz-kanalow-siatka { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr)); gap: .75rem; }
+    .sprzedaz-kanalow-link { display: block; color: inherit; text-decoration: none; border-radius: .45rem; }
+    .sprzedaz-kanalow-okienko { box-sizing: border-box; height: 100%; display: flex; flex-direction: column; gap: .4rem;
+      padding: .75rem; border: 1px solid var(--ramka); border-radius: .45rem;
+      background: var(--powierzchnia-2); overflow-wrap: anywhere; }
+    .sprzedaz-kanalow-link:is(:hover, :focus-visible) .sprzedaz-kanalow-okienko { border-color: var(--marka-ramka); }
+    .sprzedaz-kanalow-link:is(:hover, :focus-visible) h3 { color: var(--link); text-decoration: underline; }
+    .sprzedaz-kanalow-okienko h3 { display: flex; align-items: baseline; gap: .4rem; margin: 0; font-size: .95rem; }
+    .sprzedaz-kanalow-okienko p { margin: 0; font-size: .85rem; }
+    .sprzedaz-kanalow-stan { color: var(--tekst-przygaszony); }
+    .sprzedaz-kanalow-liczby { display: flex; flex-wrap: wrap; gap: .15rem .65rem; font-variant-numeric: tabular-nums; }
+    .sprzedaz-kanalow-cena { font-weight: 600; }
+
     /* ================================================================================= */
     /* POWIAZANIA OFERT ALLEGRO Z KARTAMI (magazyn-powiazania.ejs).                      */
     /* ⚠️ ANI JEDNEGO NOWEGO KOLORU — te same zmienne, co wyzej, zdefiniowane w OBU       */
@@ -1725,12 +1797,16 @@
     .powiazania-tabela .nazwa-oferty { font-weight: 600; }
     .powiazania-tabela th a { color: var(--link); }
     .powiazania-tabela .komorka-kandydaci { min-width: 24rem; }
-    .powiazania-tabela .komorka-reczna { min-width: 14rem; }
+    .powiazania-tabela .komorka-reczna { min-width: 22rem; }
+    @media (max-width: 84rem) {
+      .powiazania-tabela .komorka-oferta { min-width: 17rem; }
+      .powiazania-tabela .komorka-kandydaci { min-width: 22rem; }
+    }
     /* Kandydat jest CALY klikalny — pole wyboru samo w sobie ma 13 px i przy kilkuset     */
     /* wierszach trafienie w nie mysza jest praca, a nie decyzja. Etykieta obejmujaca     */
     /* pole zalatwia to bez ani jednej linii skryptu.                                     */
     .kandydat {
-      display: flex; align-items: baseline; gap: .4rem; flex-wrap: wrap;
+      display: flex; align-items: center; gap: .4rem;
       padding: .18rem .3rem; border-radius: .25rem; cursor: pointer;
     }
     .kandydat:hover { background: var(--hover-wiersza); }
@@ -1743,12 +1819,54 @@
       font-variant-numeric: tabular-nums;
     }
     .kandydat-slowa, .kandydat-drobne { color: var(--tekst-przygaszony); font-size: .75rem; }
+    .kandydat-drobne { display: block; }
+    .kandydat-opis { min-width: 0; overflow-wrap: anywhere; }
+    .kandydat .wybor-karty-miniatura { inline-size: 32px; block-size: 32px; }
     .kandydat-nazwa-zadna { color: var(--tekst-przygaszony); font-size: .82rem; }
     .reczny {
       width: 100%; padding: .3rem .4rem; font: inherit; font-size: .85rem;
       background: var(--powierzchnia); color: var(--tekst);
       border: 1px solid var(--ramka-pola); border-radius: .25rem;
     }
+    .wybor-karty-status {
+      position: absolute; inline-size: 1px; block-size: 1px;
+      clip-path: inset(50%); overflow: hidden; white-space: nowrap;
+    }
+    .wybor-karty-okno {
+      position: fixed; z-index: 5; margin: 0; padding: 0;
+      box-sizing: border-box; inline-size: min(32rem, calc(100vw - 16px));
+      max-block-size: calc(30rem + 2px); max-block-size: min(calc(30rem + 2px), 50vh);
+      overflow: auto; overscroll-behavior: contain;
+      border: 1px solid var(--ramka-pola); border-radius: .4rem;
+      background: var(--powierzchnia); color: var(--tekst);
+    }
+    @supports (position-area: block-end) {
+      .wybor-karty-okno[popover] {
+        inset: auto;
+        position-area: block-end span-inline-start;
+        position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
+        position-visibility: anchors-visible;
+      }
+    }
+    .wybor-karty-komunikat { padding: .6rem .75rem; overflow-wrap: anywhere; }
+    .wybor-karty-opcja {
+      display: flex; align-items: center; gap: .6rem;
+      min-block-size: 3.75rem; box-sizing: border-box; padding: .25rem .65rem; cursor: pointer;
+    }
+    .wybor-karty-opcja:hover, .wybor-karty-opcja[aria-selected="true"] { background: var(--hover-wiersza); }
+    .wybor-karty-opcja[aria-selected="true"] { outline: 2px solid var(--link); outline-offset: -2px; }
+    .wybor-karty-miniatura {
+      display: block; flex: none; inline-size: 48px; block-size: 48px;
+      object-fit: contain; border-radius: .25rem; background: var(--tlo);
+    }
+    .wybor-karty-miniatura img { display: block; object-fit: contain; }
+    .wybor-karty-opis { min-inline-size: 0; }
+    .wybor-karty-nazwa, .wybor-karty-dane {
+      display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .wybor-karty-nazwa { font-weight: 600; }
+    .wybor-karty-nazwa mark { background: var(--marka); color: var(--na-marce); }
+    .wybor-karty-dane { color: var(--tekst-przygaszony); font-size: .78rem; }
     .nazwa-powiazanej { font-weight: 500; }
 
     /* Strony w budowie (raporty, ustawienia) — maja POWIEDZIEC, ze sa puste celowo, */
@@ -2249,8 +2367,53 @@
 #stan-karty .ruchy-przewijanie { overflow-x: auto; max-inline-size: 100%; }
 #stan-karty .ruchy-przewijanie table { min-inline-size: 38rem; }
 #stan-karty .ruchy-przewijanie td:last-child { white-space: normal; overflow-wrap: anywhere; overflow: visible; text-overflow: clip; }
+#dane-karty .pola--siatka { max-inline-size: 70rem; }
 #dane-karty .zrodlo-pola { display: inline-block; font-weight: normal; color: var(--tekst-przygaszony); margin-inline-start: .35rem; }
+.nowa-karta .nowa-karta-pola { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.nowa-karta-ceny {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .55rem .8rem;
+  min-inline-size: 0; margin: 0; padding: 0; border: 0;
+}
+/* Nagłówek sekcji już mówi „Ceny”; legenda zostaje tylko dla czytnika, żeby pola miały nazwę grupy. */
+.nowa-karta-ceny legend {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+.nowa-karta-ceny p { margin: 0; }
+.nowa-karta-ceny p > br { display: none; }
+.nowa-karta-ceny :is(input, select) { inline-size: 100%; }
+.nowa-karta-ceny p:last-child { grid-column: 1 / -1; }
+.nowa-karta .stopka-edycji { justify-content: flex-end; }
+.nowa-karta .stopka-edycji .wyjasnienie { margin-inline-end: auto; }
+.karta-przywrocenie { display: grid; justify-items: end; gap: .35rem; text-align: end; }
+.karta-wycofanie { margin-block: 0 1rem; }
+.karta-wycofanie h2 { margin: 0; font-size: 1rem; }
+.karta-wycofanie p { margin-block: .45rem 0; }
+.karta-wycofanie .stopka-edycji { margin-top: .6rem; padding-top: .6rem; }
+.nowa-karta [data-ai-na-plik] .strefa-pliku-lista {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+}
+.nowa-karta [data-ai-na-plik] .strefa-pliku-lista li { flex-wrap: wrap; }
+.nowa-karta .strefa-pliku-wybor-ai { display: inline-flex; gap: .25rem; align-items: center; }
+.nowa-karta #nowa-zdjecia-ai { margin-block: .5rem 0; }
+@media (max-width: 65rem) {
+  .nowa-karta-ceny { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 42rem) {
+  .nowa-karta .nowa-karta-pola, .nowa-karta-ceny { grid-template-columns: minmax(0, 1fr); }
+  .nowa-karta .stopka-edycji .wyjasnienie { flex-basis: 100%; }
+  .nowa-karta [data-ai-na-plik] .strefa-pliku-lista :is(label, button) { min-block-size: 3rem; }
+}
+#dopisz-oferte .szukajka { max-inline-size: 62rem; }
 #produkty-karty .magazyn-brak { overflow-wrap: anywhere; }
+/* Kolumna Status: plakietka nad przyciskiem, pytanie zawija się w wąskiej komórce zamiast rozpychać tabelę. */
+#produkty-karty td.status-kanalu { min-inline-size: 9rem; max-inline-size: 16rem; }
+#produkty-karty .status-kanalu > :is(.btn, details, p) { margin-block-start: .35rem; }
+#produkty-karty .status-kanalu p { margin-block-end: 0; white-space: normal; }
+#produkty-karty .status-kanalu__pasek > summary { list-style: none; cursor: pointer; inline-size: fit-content; }
+#produkty-karty .status-kanalu__pasek > summary::-webkit-details-marker { display: none; }
+#produkty-karty .status-kanalu__pasek[open] > summary { margin-block-end: .35rem; }
+#produkty-karty .status-kanalu__pasek form { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
 #opis-karty fieldset { min-inline-size: 0; margin-block: 1rem; padding: 1rem; border: 1px solid var(--ramka-pola); border-radius: .3rem; }
 #opis-karty .pola { margin-block-end: 1rem; }
 #opis-karty .pola p { margin-block: 0 .5rem; color: var(--tekst-przygaszony); font-size: .85rem; }
@@ -2260,11 +2423,79 @@
 #opis-karty .opis-sekcja { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); gap: 1rem; margin-block: 1rem; }
 #opis-karty .opis-element { min-inline-size: 0; overflow-wrap: anywhere; }
 #opis-karty .opis-element img { max-inline-size: 100%; block-size: auto; }
-.karta-galeria { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 1rem; list-style: none; padding: 0; }
-.karta-galeria > li { min-width: 0; }
-.karta-galeria img, .karta-galeria > li > .magazyn-brak { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: contain; }
-.karta-galeria-akcje, .karta-galeria-akcje form { display: flex; flex-wrap: wrap; gap: .4rem; }
-.karta-galeria-akcje button { min-block-size: 2rem; min-inline-size: 2rem; }
+/* Dane karty i galeria: na szerokim ekranie dane po lewej (~60%), zdjęcia po prawej (~40%), także w trybie edycji;
+   na wąskim galeria stoi nad danymi (kolejność w HTML). */
+.karta-dane-uklad { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; margin-block: 1rem; }
+.karta-dane-uklad > .panel { margin: 0; min-width: 0; }
+@media (min-width: 68.75rem) {
+  .karta-dane-uklad { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); grid-template-areas: "dane zdjecia"; align-items: start; }
+  .karta-dane-uklad > #dane-karty { grid-area: dane; }
+  .karta-dane-uklad > #zdjecia-karty { grid-area: zdjecia; }
+}
+/* Menu „⋯” wychodzi poza panel, więc panel galerii nie przycina zawartości. */
+#zdjecia-karty { overflow: visible; }
+#zdjecia-karty > .panel-glowa { border-radius: .4rem .4rem 0 0; }
+.karta-galeria-ile { color: var(--tekst-przygaszony); font-size: .85rem; }
+.karta-galeria-glowne { display: block; border: 1px solid var(--ramka); border-radius: 6px; background: var(--powierzchnia-2); overflow: hidden; cursor: zoom-in; }
+.karta-galeria-glowne img { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: contain; }
+div.karta-galeria-glowne { display: grid; place-items: center; aspect-ratio: 1; cursor: default; }
+.karta-galeria-glowne[hidden] { display: none; }
+.karta-galeria-pomoc { margin-block: .6rem; font-size: .85rem; }
+.karta-galeria { display: grid; grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr)); gap: .6rem; list-style: none; margin: 0; padding: 0; }
+.karta-galeria > li { position: relative; min-width: 0; }
+.karta-galeria-kadr { position: relative; border: 1px solid var(--ramka); border-radius: 6px; background: var(--powierzchnia-2); overflow: hidden; }
+.karta-galeria-kadr img, .karta-galeria-kadr > .magazyn-brak { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: contain; }
+.karta-galeria-kadr > .magazyn-brak { display: grid; place-items: center; margin: 0; padding: .3rem; font-size: .75rem; text-align: center; }
+.karta-galeria-obraz { display: block; cursor: zoom-in; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.karta-galeria--skrypt .karta-galeria-obraz { cursor: grab; }
+.karta-galeria--przeciaganie, .karta-galeria--przeciaganie .karta-galeria-obraz { cursor: grabbing; }
+.karta-galeria-miniatura--przeciagana { opacity: .45; }
+.karta-galeria-plakietka, .karta-galeria-znak-ai { position: absolute; left: .25rem; font-size: .7rem; line-height: 1.2; padding: .1rem .35rem; border-radius: 4px; pointer-events: none; }
+/* .plakietka i .znacznik same ustawiają display, więc atrybut hidden trzeba tu wzmocnić. */
+.karta-galeria-plakietka[hidden], .karta-galeria-znak-ai[hidden] { display: none; }
+.karta-galeria-plakietka { top: .25rem; background: var(--marka); color: var(--na-marce); }
+.karta-galeria-znak-ai { bottom: .25rem; background: var(--powierzchnia); color: var(--tekst); border: 1px solid var(--ramka); }
+.karta-galeria-kosz { position: absolute; top: .2rem; right: .2rem; margin: 0; }
+.karta-galeria-usun { display: grid; place-items: center; inline-size: 2rem; block-size: 2rem; padding: 0; border: 1px solid var(--ramka); border-radius: 6px; background: var(--powierzchnia); color: var(--tekst); cursor: pointer; }
+.karta-galeria-usun:hover, .karta-galeria-usun:focus-visible { background: var(--blad-tlo); color: var(--blad-tekst); border-color: var(--blad-tekst); }
+.karta-galeria-akcje { position: relative; min-block-size: 1.5rem; margin-top: .25rem; }
+.karta-galeria-podpis { margin: 0 1.9rem 0 0; font-size: .75rem; color: var(--tekst-przygaszony); overflow-wrap: anywhere; }
+/* Znacznik miejsca upuszczenia: pionowa kreska po stronie, na którą trafi przeciągane zdjęcie. */
+.karta-galeria-miniatura::before { content: ""; position: absolute; top: 0; bottom: 0; width: 3px; border-radius: 2px; background: var(--marka); opacity: 0; transition: opacity .12s; pointer-events: none; }
+.karta-galeria-cel--przed::before { left: -.35rem; opacity: 1; }
+.karta-galeria-cel--po::before { right: -.35rem; opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .karta-galeria-miniatura::before { transition: none; } }
+.karta-galeria-menu { position: absolute; right: 0; bottom: 0; }
+.karta-galeria-menu > summary { display: grid; place-items: center; inline-size: 1.75rem; block-size: 1.5rem; list-style: none; border-radius: 4px; color: var(--tekst); cursor: pointer; }
+.karta-galeria-menu > summary::-webkit-details-marker { display: none; }
+.karta-galeria-menu > summary:hover, .karta-galeria-menu[open] > summary { background: var(--powierzchnia-2); }
+.karta-galeria-menu-lista { position: absolute; z-index: 20; right: 0; top: calc(100% + .25rem); display: grid; gap: .4rem; inline-size: max-content; max-inline-size: min(17rem, 80vw); padding: .6rem; background: var(--powierzchnia); color: var(--tekst); border: 1px solid var(--ramka); border-radius: 6px; box-shadow: 0 6px 18px rgb(0 0 0 / .18); }
+.karta-galeria-menu-lista form { display: flex; flex-wrap: wrap; gap: .4rem; margin: 0; }
+.karta-galeria-menu-lista .btn { justify-content: flex-start; }
+.karta-galeria-menu-lista .karta-galeria-ai { margin: 0; padding-top: .4rem; border-top: 1px solid var(--ramka); }
+.karta-galeria-menu-lista .podpowiedz { margin: 0; font-size: .75rem; }
+.karta-galeria--skrypt [data-zapisz-ai] { display: none; }
+.karta-galeria-potwierdz { margin-top: .4rem; padding: .4rem; border: 1px solid var(--uwaga-tekst); border-radius: 6px; background: var(--uwaga-tlo); color: var(--uwaga-tekst); font-size: .8rem; overflow-wrap: anywhere; }
+.karta-galeria-potwierdz p { margin: 0 0 .5rem; }
+.karta-galeria-potwierdz [data-pytanie] { font-weight: 600; }
+.karta-galeria-potwierdz-przyciski { display: flex; flex-wrap: wrap; gap: .25rem; }
+.karta-galeria-potwierdz-przyciski .btn { min-inline-size: 0; max-inline-size: 100%; min-block-size: 1.5rem; padding-inline: .35rem; }
+.karta-galeria-komunikat { margin: .5rem 0 0; font-size: .85rem; color: var(--tekst-przygaszony); }
+.karta-galeria-komunikat:empty { margin: 0; }
+.karta-galeria-komunikat--blad { color: var(--blad-tekst); font-weight: 600; }
+.karta-galeria-dialog { max-inline-size: min(56rem, 94vw); max-block-size: 94vh; padding: .75rem; border: 1px solid var(--ramka); border-radius: 8px; background: var(--powierzchnia); color: var(--tekst); }
+.karta-galeria-dialog[open] { display: grid; gap: .5rem; justify-items: center; }
+.karta-galeria-dialog:modal, .karta-galeria-dialog::backdrop { overscroll-behavior: contain; }
+.karta-galeria-dialog::backdrop { background: var(--zaslona); }
+.karta-galeria-dialog > form { justify-self: end; margin: 0; }
+.karta-galeria-dialog [data-galeria-duze] { display: block; max-inline-size: 100%; max-block-size: calc(94vh - 7rem); width: auto; height: auto; object-fit: contain; }
+.karta-galeria-dialog-pasek { display: flex; align-items: center; gap: 1rem; }
+.karta-galeria-dialog-pasek [data-galeria-licznik] { min-inline-size: 4rem; text-align: center; font-variant-numeric: tabular-nums; }
+.karta-galeria-dodaj { margin-top: 1rem; border-top: 1px solid var(--ramka); padding-top: .6rem; }
+.karta-galeria-dodaj > summary { cursor: pointer; font-weight: 600; color: var(--link); min-block-size: 2rem; display: flex; align-items: center; }
+.karta-galeria-dodaj[open] > summary { margin-bottom: .6rem; }
+#zdjecia-karty [data-ai-na-plik] .strefa-pliku-lista li { flex-wrap: wrap; }
+.strefa-pliku-usun { display: inline-grid; place-items: center; inline-size: 2rem; block-size: 2rem; padding: 0; }
 .karta-galeria-wgrywanie { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
 .karta-galeria-wgrywanie label, .karta-galeria-wgrywanie .podpowiedz { flex-basis: 100%; margin: 0; }
 .karta-galeria-wgrywanie input { max-width: 100%; min-width: 0; }

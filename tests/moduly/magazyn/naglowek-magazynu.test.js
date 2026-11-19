@@ -53,7 +53,7 @@ const serwer = ({ stan = SPOKOJ, tresc = null, bezPrawa = false } = {}) => {
       ? { 'magazyn.trescAllegro': { start: vi.fn(), stan: () => ({ ...TRESC_SPOKOJ, ...tresc }), gotowy: () => true } }
       : {},
   });
-  odmowa.adresy = new Set(bezPrawa ? ['/magazyn/import', '/magazyn/nowa-karta'] : []);
+  odmowa.adresy = new Set(bezPrawa ? ['/magazyn/import', '/magazyn/nowa-karta', '/magazyn/powiazania'] : []);
   return app;
 };
 const lista = async (opcje) => {

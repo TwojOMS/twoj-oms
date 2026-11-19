@@ -1,5 +1,5 @@
 import { czyPozycjaPlaceholdera } from './indywidualne.js';
-import { modulZamowienia } from './moduly-kanalow.ts';
+import { czyTypKanalu, modulKanalu, modulZamowienia } from './moduly-kanalow.ts';
 
 // Dokad prowadzi POZYCJA zamowienia — jedno pytanie, jedna odpowiedz, jeden plik.
 // Regula mieszka tutaj, a nie w widoku — dokladnie tak samo, jak adres miniatury
@@ -102,11 +102,26 @@ const WZORCE = {
         ? `https://erli.pl/produkt/${id}`
         : null;
     },
+    gdzie: 'na ERLI',
     tytul: 'Otwórz produkt na ERLI',
   },
-  sklep: { adres: adresProduktu, tytul: 'Otwórz produkt w sklepie' },
-  allegro: { adres: adresOferty, tytul: 'Otwórz ofertę na Allegro' },
+  sklep: { adres: adresProduktu, gdzie: 'w sklepie', tytul: 'Otwórz produkt w sklepie' },
+  allegro: { adres: adresOferty, gdzie: 'na Allegro', tytul: 'Otwórz ofertę na Allegro' },
 };
+
+/**
+ * Dokąd prowadzi odnośnik kanału danego typu — „w sklepie”, „na Allegro”, „na ERLI”.
+ *
+ * Ta sama tablica, co tytuły odnośników pozycji zamówienia, żeby karta produktu nie trzymała
+ * drugiej mapy nazw kanałów. Typ nieznany (albo brak rodzaju) dostaje to samo, co zamówienie
+ * z nieznanego kanału w `modulZamowienia`: sklep.
+ *
+ * @param {string|null|undefined} typKanalu `typ` z definicji kanału (rodzajKanalu(...).klucz)
+ */
+export function gdzieOtworzyc(typKanalu) {
+  const modul = czyTypKanalu(typKanalu) ? modulKanalu(typKanalu) : modulZamowienia(null);
+  return WZORCE[modul.wzorzecLinku]?.gdzie ?? null;
+}
 
 /**
  * Odnosnik z pozycji zamowienia do jej zrodla — `{ adres, tytul }` albo `null`.

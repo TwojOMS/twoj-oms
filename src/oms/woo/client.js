@@ -13,6 +13,45 @@ export function bladInnegoOrigin(origin) {
   );
 }
 
+// ⚠️⚠️ GRANICE ZAPISU CENY I STATUSU PRODUKTU. Eksportowane, bo atrapa piaskownicy sprawdza
+// dokładnie te same — rozjazd atrapy z klientem ukryłby w piaskownicy pole, które poszłoby do sklepu.
+// Cena: wyłącznie cena regularna. Promocję (`sale_price`, daty promocji) OMS tylko czyta — zapis
+// skasowałby albo przestawił promocję ustawioną ręcznie w sklepie. `price` liczy sam Woo.
+export const POLA_CENY_WOO = Object.freeze(['id', 'regular_price']);
+// Szkic ukrywa produkt przed kupującym bez kasowania; `private`, `pending` i kosz zostają w sklepie.
+export const STATUSY_PRODUKTU_WOO = Object.freeze(['publish', 'draft']);
+
+/** Identyfikator produktu/wariantu Woo: dodatnia liczba całkowita (ląduje w adresie zapytania). */
+export function idProduktuWoo(id) {
+  const s = String(id ?? '');
+  if (!/^\d+$/.test(s) || !Number.isSafeInteger(Number(s)) || Number(s) <= 0) {
+    throw new Error(`Niepoprawny identyfikator produktu Woo „${s}”`);
+  }
+  return s;
+}
+
+/**
+ * Sprawdza CAŁĄ listę cen przed pierwszym żądaniem i oddaje pozycje zbudowane od nowa, wyłącznie
+ * z pól białej listy. Cena to napis „123.45” > 0 — tak ją oddaje Woo i tak buduje ją OMS.
+ */
+export function pozycjeCenWoo(pozycje) {
+  return pozycje.map((p) => {
+    if (!p || typeof p !== 'object' || Object.keys(p).some((k) => !POLA_CENY_WOO.includes(k)))
+      throw new Error('Niedozwolone pole zapisu ceny Woo — wolno tylko id i regular_price');
+    idProduktuWoo(p.id);
+    const cena = p.regular_price;
+    if (typeof cena !== 'string' || !/^\d+\.\d{2}$/.test(cena) || !(Number(cena) > 0))
+      throw new Error(`Niepoprawna cena Woo „${cena}” — oczekuję kwoty „123.45” większej od zera`);
+    return { id: p.id, regular_price: cena };
+  });
+}
+
+export function statusProduktuWoo(status) {
+  if (!STATUSY_PRODUKTU_WOO.includes(status))
+    throw new Error(`Niedozwolony status produktu Woo „${status}” — wolno tylko publish albo draft`);
+  return status;
+}
+
 export function createWooClient({
   baseUrl,
   ck,
@@ -238,7 +277,7 @@ export function createWooClient({
 
   // Jedna petla paginacji dla produktow i wariantow — druga kopia tej logiki to ta sama
   // klasa bledu, co druga kopia regul kursora.
-  async function pobierzWszystkieStrony(sciezka, parametry, coTo) {
+  async function pobierzWszystkieStrony(sciezka, parametry, coTo, naStronie = undefined) {
     const wszystko = [];
     let strona = 1;
     let stron = 1;
@@ -268,6 +307,7 @@ export function createWooClient({
           `Sklep zgłosił ${stron} stron ${coTo} (limit ${MAX_STRON}) — przerywam odczyt, żeby się nie zapętlić.`,
         );
       }
+      naStronie?.({ strona, stron });
       strona += 1;
     } while (strona <= stron);
     // Uciety odczyt (proxy zjadlo naglowki X-WP-*, sklep oddal je tylko na pierwszej stronie)
@@ -288,8 +328,8 @@ export function createWooClient({
   // (np. produkty przeniesione do innego sklepu). Bez tego magazyn założyłby karty-duchy.
   // orderby=id&order=asc: stabilna kolejnosc miedzy stronami, inaczej zmiana w sklepie
   // w trakcie odczytu przesuwa okno i wiersz wpada dwa razy albo znika.
-  const pobierzWszystkieProdukty = () =>
-    pobierzWszystkieStrony('/products', { status: 'publish', orderby: 'id', order: 'asc' }, 'produktów');
+  const pobierzWszystkieProdukty = (naStronie = undefined) =>
+    pobierzWszystkieStrony('/products', { status: 'publish', orderby: 'id', order: 'asc' }, 'produktów', naStronie);
 
   const pobierzWarianty = (produktId) =>
     pobierzWszystkieStrony(`/products/${produktId}/variations`, { orderby: 'id', order: 'asc' }, 'wariantów');
@@ -349,7 +389,7 @@ export function createWooClient({
    * Paginacja i twarda granica stron — te same, co przy katalogu; ta sama pętla, bo druga
    * kopia reguł paginacji to ta sama klasa błędu, co druga kopia reguł kursora.
    */
-  async function pobierzMiniatury() {
+  async function pobierzMiniatury(naStronie = undefined) {
     const wszystkie = [];
     let strona = 1;
     let stron = 1;
@@ -376,6 +416,7 @@ export function createWooClient({
           `Store API zgłosiło ${stron} stron (limit ${MAX_STRON}) — przerywam odczyt miniatur, żeby się nie zapętlić.`,
         );
       }
+      naStronie?.({ strona, stron });
       strona += 1;
     } while (strona <= stron);
     // Regula „ktore pole jest miniatura" siedzi w DOMENIE, zeby dalo sie ja sprawdzic
@@ -545,6 +586,11 @@ export function createWooClient({
         throw new Error('Niepoprawna ilość stanu Woo');
       return { id: p.id, stock_quantity: p.stock_quantity };
     });
+    return zapiszPaczkami(sciezka, update, 'Brak wyniku zapisu stanu Woo');
+  }
+
+  // `POST …/batch {update}` po ≤ 100 pozycji; wynik dla każdej pozycji osobno.
+  async function zapiszPaczkami(sciezka, update, brakWyniku) {
     const wynik = [];
     for (let i = 0; i < update.length; i += ROZMIAR_PACZKI_STANOW) {
       const paczka = update.slice(i, i + ROZMIAR_PACZKI_STANOW);
@@ -563,9 +609,48 @@ export function createWooClient({
         wynik.push(
           odpowiedz && !odpowiedz.error
             ? { id: p.id, ok: true }
-            : { id: p.id, ok: false, blad: odpowiedz?.error?.message || 'Brak wyniku zapisu stanu Woo' },
+            : { id: p.id, ok: false, blad: odpowiedz?.error?.message || brakWyniku },
         );
       }
+    }
+    return wynik;
+  }
+
+  // Cena regularna produktów albo wariantów jednego rodzica. Pozycje przechodzą przez białą listę
+  // `POLA_CENY_WOO` całe, zanim wyjdzie pierwsze żądanie.
+  async function zapiszCenyHurtem(rodzicId, pozycje) {
+    if (tylkoOdczyt) throw bladTylkoOdczyt();
+    const sciezka = rodzicId === null ? '/products' : `/products/${idProduktuWoo(rodzicId)}/variations`;
+    return zapiszPaczkami(sciezka, pozycjeCenWoo(pozycje), 'Brak wyniku zapisu ceny Woo');
+  }
+
+  // Status zawsze na produkcie nadrzędnym: wariant nie ma w Woo osobnej widoczności w sklepie.
+  // Ciało to dokładnie `{status}` — żadne inne pole produktu nie jedzie tą ścieżką.
+  const ustawStatusProduktu = async (id, status) => {
+    if (tylkoOdczyt) throw bladTylkoOdczyt();
+    const s = statusProduktuWoo(status);
+    const { dane } = await strzal(`/products/${idProduktuWoo(id)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ status: s }),
+    });
+    return dane;
+  };
+
+  // Powiązane produkty, które w sklepie są szkicem: `pobierzWszystkieProdukty` czyta tylko `publish`,
+  // więc bez tego odczytu powiązany szkic wyglądałby jak usunięty ze sklepu. To odczyt — działa także
+  // przy kluczu „Odczyt”. `include` ogranicza wynik do podanych id, więc jedna strona na paczkę.
+  async function pobierzProduktyPowiazane(ids) {
+    const identyfikatory = ids.map(idProduktuWoo);
+    const wynik = [];
+    for (let i = 0; i < identyfikatory.length; i += ROZMIAR_PACZKI_STANOW) {
+      const p = new URLSearchParams({
+        include: identyfikatory.slice(i, i + ROZMIAR_PACZKI_STANOW).join(','),
+        status: 'draft',
+        per_page: '100',
+      });
+      const { dane } = await strzal(`/products?${p}`);
+      if (!Array.isArray(dane)) throw new Error('Sklep zwrócił nieprawidłową listę szkiców produktów');
+      wynik.push(...dane);
     }
     return wynik;
   }
@@ -602,5 +687,8 @@ export function createWooClient({
     pobierzStany,
     pobierzStanyWariantow,
     zapiszStanyHurtem,
+    zapiszCenyHurtem,
+    ustawStatusProduktu,
+    pobierzProduktyPowiazane,
   };
 }

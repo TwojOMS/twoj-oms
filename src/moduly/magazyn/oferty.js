@@ -2,6 +2,7 @@ import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import {
   ofertyKarty,
   ofertaPoId,
+  ofertaPoIdZewnetrznym,
   wstawOferte,
   zmienOferte,
   ustawieniaOfertKonta,
@@ -15,7 +16,10 @@ import { stronaOdmowy } from '../../core/web/odmowa.js';
 import { fmtDataCzas } from '../../domena/format-daty.js';
 import { pobierzOfertyReczne, propozycjePrzejecia, transakcjaOfert } from './services/przejecie-ofert-erli.js';
 import { ofertaAllegroKarty } from './services/tresc-oferty-allegro.js';
-import { znakInstalacji } from './services/oferty-wspolne.js';
+import { bramkaZapisu, znakInstalacji } from './services/oferty-wspolne.js';
+import { cenaDlaKanalu, kwotaDziesietna } from '../../domena/cena-kanalu.js';
+import { groszeZKwoty } from '../../domena/kwota.js';
+import { cenyReczneKarty, zapiszZmianeWKanale } from '../../oms/db/ceny-kanalow.js';
 import { createOplatyAllegro } from './services/oplaty-allegro.js';
 import { BRAK_ZGODY_OFERT, gotowoscOfertAllegro } from '../kanaly/services/oferty-allegro-ustawienia.ts';
 import { migawkaStanow, przelacznikStanow } from '../../oms/db/stany-magazynowe.js';
@@ -616,4 +620,218 @@ export function registerOfertyMagazynu(
       else zmienOferte(db, o.id, zmianyZdjecia(o));
       return reply.code(303).redirect(`/magazyn/${o.kartaId}#produkty-karty`);
     });
+
+  // Sterowanie ceną oferty Allegro, której OMS nie zarządza. Włączenie i oddanie zmieniają tylko rejestr i dziennik
+  // zmian; cenę wysyła dopiero osobny przycisk, więc żadna z tych tras nie zapisuje niczego w Allegro.
+  const NAPIS_STERUJ = 'Włączenie niczego nie wysyła. Ceny wyślesz przyciskiem Wyślij ceny do kanałów.';
+  const POWODY_STERUJ = { 'oferty wstrzymane': 'oferty wstrzymane na koncie — włącz je w ustawieniach Allegro' };
+  const SKAD_CENY = { reczna: 'ręczna cena kanału', narzut: 'cena karty z narzutem konta' };
+  const zl = (gr) => zlotowki(kwotaDziesietna(gr));
+  const kto = (req) => String(req.konto?.login ?? 'panel');
+  /** Zaznaczone wiersze Powiązań → oferty do sterowania; wiersz zniknięty albo bez karty odpada. */
+  const celeZLustra = (req) => {
+    const surowe = req.body?.zaznaczone;
+    const ids = [...new Set(pomoc.numeryZaznaczone(Array.isArray(surowe) ? surowe : [surowe]))].sort((a, b) => a - b);
+    if (ids.length > LIMIT_KART_PODGLADU) return { ids, blad: `Za dużo ofert naraz (${ids.length}) — zaznacz do 200` };
+    if (!ids.length) return { ids, blad: 'Zaznacz co najmniej jedną ofertę.' };
+    const wiersz = db.prepare(
+      `SELECT kanal, produkt_id, karta_id, status_publikacji FROM produkty_sklepowe
+       WHERE id = ? AND zniknal_at IS NULL AND karta_id IS NOT NULL`,
+    );
+    const cele = ids
+      .map((id) => wiersz.get(id))
+      .filter(Boolean)
+      .map((w) => ({
+        kanal: w.kanal,
+        idZewnetrzne: String(w.produkt_id),
+        kartaId: Number(w.karta_id),
+        stan: ['ENDED', 'INACTIVE'].includes(w.status_publikacji) ? 'nieaktywna' : 'aktywna',
+      }));
+    return { ids, cele };
+  };
+  // Liczone od nowa przy podglądzie i przy zatwierdzeniu: hamulec konta mógł się zmienić w międzyczasie.
+  const ocenCel = (cel, konta) => {
+    const konto = konta.find((k) => k.klucz === cel.kanal);
+    const oferta = ofertaPoIdZewnetrznym(db, cel.kanal, cel.idZewnetrzne);
+    const z = { ...cel, konto, oferta, powod: null };
+    if (!konto) return { ...z, powod: 'konto spoza listy kont Allegro' };
+    if (oferta && oferta.kartaId !== cel.kartaId) return { ...z, powod: 'oferta jest w rejestrze innej karty' };
+    if (oferta?.tryb === 'zarzadzana') return { ...z, powod: 'ofertą zarządza OMS — cenę wysyła już teraz' };
+    if (oferta?.cenaZOms) return { ...z, powod: 'cena już z OMS' };
+    const bramka = bramkaZapisu({
+      konto,
+      ustawienia: ustawieniaOfertKonta(db, cel.kanal),
+      oferta: { kanal: cel.kanal, tryb: 'obserwowana', cena_z_oms: 1 },
+      klucze: konta.map((k) => k.klucz),
+      kanal: 'Allegro',
+      zakres: 'cena',
+    });
+    return bramka.wolno ? z : { ...z, powod: POWODY_STERUJ[bramka.powod] ?? bramka.powod };
+  };
+  const zakresSterowania = (oceny) =>
+    oceny
+      .filter((c) => !c.powod)
+      .map((c) => `${c.kanal}:${c.idZewnetrzne}:${c.kartaId}`)
+      .sort();
+  const wierszPodgladu = async (c) => {
+    const karta = db.prepare('SELECT nazwa, sku, cena_gr FROM karty_produktow WHERE id = ?').get(c.kartaId);
+    const w = { ...c, nazwa: karta?.nazwa ?? `Karta ${c.kartaId}`, sku: karta?.sku ?? '', teraz: null, cel: null };
+    if (c.powod) return w;
+    try {
+      const s = await c.konto.katalog.stanOferty(c.idZewnetrzne);
+      const gr = s.ok ? groszeZKwoty(s.dane?.sellingMode?.price?.amount, 'cena oferty z odczytu Allegro') : null;
+      w.teraz = gr === null ? 'nie udało się odczytać' : zl(gr);
+    } catch {
+      w.teraz = 'nie udało się odczytać';
+    }
+    const cena = cenaDlaKanalu({
+      kartaGr: Number(karta?.cena_gr),
+      narzutBp: ustawieniaOfertKonta(db, c.kanal).narzutBp,
+      recznaGr: cenyReczneKarty(db, c.kartaId).get(c.kanal) ?? null,
+    });
+    w.cel = cena.bledy.length
+      ? cena.zrodlo === 'reczna'
+        ? 'błędna ręczna cena kanału'
+        : 'brak ceny karty'
+      : `${zl(cena.grosze)} (${SKAD_CENY[cena.zrodlo]})`;
+    return w;
+  };
+  // Odczyt po kilka ofert naraz: 200 odczytów jeden po drugim trzymałoby podgląd zbyt długo.
+  const podgladCen = async (oceny) => {
+    const wiersze = [];
+    for (let i = 0; i < oceny.length; i += 5)
+      wiersze.push(...(await Promise.all(oceny.slice(i, i + 5).map(wierszPodgladu))));
+    return wiersze;
+  };
+  const zapiszSterowanie = (req, oceny, wlacz) =>
+    transakcjaOfert(db, () => {
+      const at = new Date().toISOString();
+      for (const c of oceny) {
+        const o =
+          c.oferta ??
+          wstawOferte(db, {
+            kartaId: c.kartaId,
+            kanal: c.kanal,
+            idZewnetrzne: c.idZewnetrzne,
+            pochodzenie: 'przejeta',
+            tryb: 'obserwowana',
+            stan: c.stan,
+          });
+        zmienOferte(db, o.id, { cenaZOms: wlacz });
+        zapiszZmianeWKanale(db, {
+          kanal: c.kanal,
+          kartaId: o.kartaId,
+          cel: `oferta:${c.idZewnetrzne}`,
+          pole: 'steruj_cena',
+          stara: wlacz ? '0' : '1',
+          nowa: wlacz ? '1' : '0',
+          kto: kto(req),
+          at,
+          wynik: 'ok',
+        });
+      }
+      return oceny.length;
+    });
+  const widokSterowania = (reply, dane) =>
+    reply.view('magazyn-steruj-cena.ejs', {
+      title: 'Sterowanie ceną Allegro',
+      napis: NAPIS_STERUJ,
+      wiersze: [],
+      token: '',
+      ids: [],
+      wynik: null,
+      ...dane,
+    });
+  /** Odmowa zatwierdzenia: hamulec albo stan rejestru zmienił się od podglądu — wtedy piszemy, dlaczego. */
+  const odmowaZatwierdzenia = (reply, oceny) => {
+    const powody = [...new Set(oceny.map((c) => c.powod).filter(Boolean))];
+    return odmowa(
+      reply,
+      409,
+      powody.length ? `Nie można włączyć sterowania ceną: ${powody.join('; ')}.` : 'Zaznacz co najmniej jedną ofertę.',
+    );
+  };
+
+  for (const akcja of ['podglad', 'zatwierdz'])
+    app.post(`/magazyn/oferty/steruj-cena/${akcja}`, async (req, reply) => {
+      if (!uprawniony(req)) return odmowa(reply, 403, 'Brak prawa edycji magazynu.');
+      const { ids, cele, blad } = celeZLustra(req);
+      if (blad) return odmowa(reply, 400, blad);
+      const konta = kontaAllegro();
+      const oceny = cele.map((c) => ocenCel(c, konta));
+      const zakres = zakresSterowania(oceny);
+      if (akcja === 'zatwierdz') {
+        if (!zakres.length) return odmowaZatwierdzenia(reply, oceny);
+        if (!waznyPodpis(req, 'steruj-cena', zakres, pomoc.pole(req.body, 'podglad')))
+          return odmowa(reply, 409, 'Podgląd jest nieaktualny — otwórz go ponownie przed włączeniem.');
+        const wlaczono = zapiszSterowanie(
+          req,
+          oceny.filter((c) => !c.powod),
+          true,
+        );
+        return widokSterowania(reply, {
+          wroc: '/magazyn/powiazania',
+          wynik: `Sterowanie ceną włączone: ${wlaczono}. Pominięto: ${ids.length - wlaczono}.`,
+        });
+      }
+      const czas = String(Date.now());
+      return widokSterowania(reply, {
+        wroc: '/magazyn/powiazania',
+        akcja: '/magazyn/oferty/steruj-cena/zatwierdz',
+        ids,
+        wiersze: await podgladCen(oceny),
+        token: zakres.length ? `${czas}.${podpis(req, 'steruj-cena', zakres, czas)}` : '',
+      });
+    });
+  app.post('/magazyn/oferty/oddaj-cene', async (req, reply) => {
+    if (!uprawniony(req)) return odmowa(reply, 403, 'Brak prawa edycji magazynu.');
+    const { ids, cele, blad } = celeZLustra(req);
+    if (blad) return odmowa(reply, 400, blad);
+    // Oddanie ceny tylko zwęża to, co OMS wysyła — nie potrzebuje podglądu ani czynnego konta.
+    const doOddania = cele
+      .map((c) => ({ ...c, oferta: ofertaPoIdZewnetrznym(db, c.kanal, c.idZewnetrzne) }))
+      .filter((c) => c.oferta?.cenaZOms);
+    const oddano = zapiszSterowanie(req, doOddania, false);
+    return widokSterowania(reply, {
+      wroc: '/magazyn/powiazania',
+      wynik: `Cenę oddano Allegro: ${oddano}. Pominięto: ${ids.length - oddano}.`,
+    });
+  });
+  /** Oferta z rejestru na karcie → cel sterowania; null, gdy nie należy do tej karty. */
+  const celZKarty = (req) => {
+    const o = ofertaPoId(db, Number(req.params.ofertaId));
+    if (!o || o.kartaId !== Number(req.params.id)) return null;
+    return { kanal: o.kanal, idZewnetrzne: o.idZewnetrzne, kartaId: o.kartaId, stan: o.stan, oferta: o };
+  };
+  for (const akcja of ['podglad', 'zatwierdz'])
+    app.post(`/magazyn/:id/oferty/:ofertaId/steruj-cena/${akcja}`, async (req, reply) => {
+      if (!uprawniony(req)) return odmowa(reply, 403, 'Brak prawa edycji magazynu.');
+      const cel = celZKarty(req);
+      if (!cel) return odmowa(reply, 404, 'Nie ma takiej oferty na karcie.');
+      const ocena = ocenCel(cel, kontaAllegro());
+      const zakres = zakresSterowania([ocena]);
+      const wroc = `/magazyn/${cel.kartaId}#produkty-karty`;
+      if (akcja === 'zatwierdz') {
+        if (!zakres.length) return odmowaZatwierdzenia(reply, [ocena]);
+        if (!waznyPodpis(req, 'steruj-cena', zakres, pomoc.pole(req.body, 'podglad')))
+          return odmowa(reply, 409, 'Podgląd jest nieaktualny — otwórz go ponownie przed włączeniem.');
+        zapiszSterowanie(req, [ocena], true);
+        return reply.code(303).redirect(wroc);
+      }
+      const czas = String(Date.now());
+      return widokSterowania(reply, {
+        wroc,
+        akcja: `/magazyn/${cel.kartaId}/oferty/${cel.oferta.id}/steruj-cena/zatwierdz`,
+        wiersze: await podgladCen([ocena]),
+        token: zakres.length ? `${czas}.${podpis(req, 'steruj-cena', zakres, czas)}` : '',
+      });
+    });
+  app.post('/magazyn/:id/oferty/:ofertaId/oddaj-cene', async (req, reply) => {
+    if (!uprawniony(req)) return odmowa(reply, 403, 'Brak prawa edycji magazynu.');
+    const cel = celZKarty(req);
+    if (!cel) return odmowa(reply, 404, 'Nie ma takiej oferty na karcie.');
+    if (!cel.oferta.cenaZOms) return odmowa(reply, 409, 'Cena tej oferty nie jest prowadzona przez OMS.');
+    zapiszSterowanie(req, [cel], false);
+    return reply.code(303).redirect(`/magazyn/${cel.kartaId}#produkty-karty`);
+  });
 }

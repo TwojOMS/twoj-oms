@@ -1,0 +1,128 @@
+<%# Słownik producentów (GPSR): lista z adresem, kontaktem i markami, formularz dodania albo edycji (błędy
+    walidacji z serwera przy polach), wybór producenta domyślnego i przypisanie producentów do marek. Bez JS:
+    każdy blok to osobny formularz z jednym przyciskiem. %>
+<p class="wroc"><a href="/magazyn">← Magazyn</a></p>
+
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: 'Producenci', podtytul: 'Producenci produktów do informacji GPSR — nazwa, adres pocztowy i adres elektroniczny. Producenta karty wskazuje jej marka, a gdy marka go nie ma — producent domyślny.'}) %>
+
+<% const f = formularz; const edycja = f.id !== null; const bledy = f.bledy || {}; %>
+<% const pierwszyBlad = ['nazwa', 'adres', 'email', 'www'].find(function (k) { return bledy[k]; }); %>
+<% const opisPola = function (k, podpowiedz) { const ids = [podpowiedz, bledy[k] ? 'producent-' + k + '-blad' : null].filter(Boolean); return (bledy[k] ? ' aria-invalid="true"' : '') + (ids.length ? ' aria-describedby="' + ids.join(' ') + '"' : '') + (k === pierwszyBlad ? ' autofocus' : ''); }; %>
+
+<div class="slownik" id="slownik-producenci">
+  <% if (blad) { %><p class="pasek-uwaga" role="alert"><%= blad %></p><% } %>
+  <% if (komunikat) { %><p class="pasek-info" role="status"><%= komunikat %></p><% } %>
+  <% if (pierwszyBlad) { %><p class="pasek-uwaga" role="alert">Popraw zaznaczone pola — producent nie został zapisany.</p><% } %>
+
+  <% if (!producenci.length) { %>
+    <p class="podpowiedz">Nie ma jeszcze żadnego producenta. Dodaj pierwszego poniżej.</p>
+  <% } else { %>
+  <div class="przewijak-tabeli">
+  <table class="tresc-lista slownik-tabela">
+    <thead><tr><th scope="col">Nazwa</th><th scope="col">Adres</th><th scope="col">E-mail / www</th><th scope="col">Marki</th><th scope="col">Zmień</th><th scope="col">Usuń</th></tr></thead>
+    <tbody>
+      <% producenci.forEach(function (p) { %>
+        <tr id="producent-<%= p.id %>">
+          <th scope="row" id="producent-poz-<%= p.id %>"><%= p.nazwa %><% if (p.domyslny) { %> <small class="podpowiedz">(domyślny)</small><% } %></th>
+          <td><%= adresJednaLinia(p) %></td>
+          <td>
+            <% if (p.email) { %><%= p.email %><br><% } %>
+            <% if (p.www) { %><%= p.www %><% } %>
+          </td>
+          <td><% if (p.marki.length) { %><%= p.marki.join(', ') %><% } else { %><small class="magazyn-brak">brak marek</small><% } %></td>
+          <td><a href="/magazyn/producenci?edytuj=<%= p.id %>#producent-formularz" id="producent-zmien-<%= p.id %>" aria-labelledby="producent-zmien-<%= p.id %> producent-poz-<%= p.id %>">Zmień</a></td>
+          <td>
+            <% if (!p.marki.length && !p.domyslny) { %>
+              <form method="post" action="/magazyn/producenci/<%= p.id %>/usun">
+                <button type="submit" class="btn" id="producent-usun-<%= p.id %>" aria-labelledby="producent-usun-<%= p.id %> producent-poz-<%= p.id %>">Usuń</button>
+              </form>
+            <% } %>
+          </td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+  </div>
+  <% } %>
+
+  <section class="panel" id="producent-formularz" aria-labelledby="producent-formularz-tytul">
+    <div class="panel-glowa"><h2 id="producent-formularz-tytul"><%= edycja ? 'Zmień producenta' : 'Nowy producent' %></h2></div>
+    <div class="panel-cialo">
+      <form method="post" action="<%= edycja ? '/magazyn/producenci/' + f.id + '/zmien' : '/magazyn/producenci/dodaj' %>" aria-labelledby="producent-formularz-tytul">
+        <div class="pola pola--siatka">
+          <label for="producent-nazwa">Nazwa (wymagana)
+            <input id="producent-nazwa" name="nazwa" required maxlength="<%= limity.nazwa %>" autocomplete="organization" value="<%= f.wartosci.nazwa %>"<%- opisPola('nazwa') %>>
+            <% if (bledy.nazwa) { %><span class="uwaga" id="producent-nazwa-blad"><%= bledy.nazwa %></span><% } %>
+          </label>
+          <label for="producent-email">E-mail
+            <input id="producent-email" name="email" type="email" maxlength="<%= limity.email %>" autocomplete="email" autocapitalize="none" spellcheck="false" value="<%= f.wartosci.email %>"<%- opisPola('email', 'producent-kontakt-podpowiedz') %>>
+            <% if (bledy.email) { %><span class="uwaga" id="producent-email-blad"><%= bledy.email %></span><% } %>
+          </label>
+          <label for="producent-www">Strona www
+            <input id="producent-www" name="www" type="url" maxlength="<%= limity.www %>" autocomplete="url" autocapitalize="none" spellcheck="false" value="<%= f.wartosci.www %>"<%- opisPola('www', 'producent-kontakt-podpowiedz') %>>
+            <% if (bledy.www) { %><span class="uwaga" id="producent-www-blad"><%= bledy.www %></span><% } %>
+          </label>
+          <label for="producent-adres" class="pole-szerokie">Adres pocztowy (wymagany)
+            <textarea id="producent-adres" name="adres" rows="3" required maxlength="<%= limity.adres %>" autocomplete="street-address"<%- opisPola('adres') %>><%= f.wartosci.adres %></textarea>
+            <% if (bledy.adres) { %><span class="uwaga" id="producent-adres-blad"><%= bledy.adres %></span><% } %>
+          </label>
+        </div>
+        <p class="podpowiedz" id="producent-kontakt-podpowiedz">Podaj e-mail albo stronę www — przepisy GPSR wymagają co najmniej jednego adresu elektronicznego.</p>
+        <div class="przyciski">
+          <button type="submit" class="btn btn--glowny"><%= edycja ? 'Zapisz zmiany' : 'Dodaj producenta' %></button>
+          <% if (edycja) { %><a href="/magazyn/producenci" class="btn">Anuluj</a><% } %>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <% if (producenci.length) { %>
+  <section class="panel" id="producent-domyslny" aria-labelledby="producent-domyslny-tytul">
+    <div class="panel-glowa"><h2 id="producent-domyslny-tytul">Producent domyślny</h2></div>
+    <div class="panel-cialo">
+      <form method="post" action="/magazyn/producenci/domyslny" class="slownik-zmien">
+        <label for="producent-domyslny-wybor">Dla kart, których marka nie ma producenta</label>
+        <select id="producent-domyslny-wybor" name="producent">
+          <option value="">— brak —</option>
+          <% producenci.forEach(function (p) { %><option value="<%= p.id %>"<%= p.domyslny ? ' selected' : '' %>><%= p.nazwa %></option><% }); %>
+        </select>
+        <button type="submit" class="btn">Zapisz domyślnego</button>
+      </form>
+    </div>
+  </section>
+  <% } %>
+
+  <section class="panel" id="marki" aria-labelledby="marki-tytul">
+    <div class="panel-glowa"><h2 id="marki-tytul">Marki</h2></div>
+    <div class="panel-cialo">
+      <% if (!marki.length) { %>
+        <p class="podpowiedz">Słownik marek jest pusty. Dodaj marki w <a href="/magazyn/marki">Magazyn → Marki</a>.</p>
+      <% } else if (!producenci.length) { %>
+        <p class="podpowiedz">Dodaj producenta, żeby przypisać go markom.</p>
+      <% } else { %>
+      <form method="post" action="/magazyn/producenci/marki" aria-labelledby="marki-tytul">
+        <div class="przewijak-tabeli">
+        <table class="tresc-lista slownik-tabela">
+          <thead><tr><th scope="col">Marka</th><th scope="col">Producent</th></tr></thead>
+          <tbody>
+            <% marki.forEach(function (m, i) { %>
+              <tr>
+                <th scope="row" id="marka-poz-<%= i %>"><%= m.nazwa %></th>
+                <td>
+                  <input type="hidden" name="marka" value="<%= m.nazwa %>">
+                  <select name="producent" aria-labelledby="marka-poz-<%= i %>">
+                    <option value="">— brak —</option>
+                    <% producenci.forEach(function (p) { %><option value="<%= p.id %>"<%= String(p.id) === String(m.producentId) ? ' selected' : '' %>><%= p.nazwa %></option><% }); %>
+                  </select>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+        </div>
+        <div class="przyciski"><button type="submit" class="btn btn--glowny">Zapisz przypisania</button></div>
+      </form>
+      <% } %>
+    </div>
+  </section>
+</div>

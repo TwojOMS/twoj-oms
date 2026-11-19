@@ -18,6 +18,8 @@ export const MODUL_WOO = {
     terminWysylki: false,
     scalanie: true,
     stany: 'produkty',
+    cenyZOms: true,
+    statusZOms: true,
   },
   kluczeEnv: { sekrety: ['CK', 'CS'], wymagane: ['URL', 'CK', 'CS', 'MAPOWANIE'] },
   konfigurator: {

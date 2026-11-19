@@ -40,7 +40,13 @@ function element(tag) {
     replaceChildren(...d) {
       this.children = [...d];
     },
-    addEventListener() {},
+    addEventListener(t, f) {
+      (this.sl ??= {})[t] = f;
+    },
+    querySelector(tag) {
+      return this.children.find((dziecko) => dziecko.tag === tag);
+    },
+    focus: vi.fn(),
   };
   return el;
 }
@@ -117,6 +123,36 @@ describe('opcjeZAtrybutow', () => {
     expect(o.maksPlikow).toBe(7);
     expect(o.wiele).toBe(true);
   });
+});
+
+it('nowa karta dopisuje zdjęcia, zachowuje ich znaczniki AI i aktualizuje indeks po usunięciu', () => {
+  const s = strefa();
+  s.el.dataset.aiNaPlik = '';
+  podlacz(s, srodowisko());
+  const a = plik('pierwsze.jpg');
+  const b = plik('drugie.jpg');
+  const c = plik('trzecie.jpg');
+  s.wyslij('drop', upuszczenie([a, b]));
+  const znacznik = (i) => s.lista.children[i].querySelector('label').querySelector('input');
+  expect(znacznik(0).checked).toBe(false);
+  znacznik(1).checked = true;
+  znacznik(1).sl.change();
+
+  s.pole.files = [c];
+  s.pole.sl.change();
+  expect(s.pole.files).toEqual([a, b, c]);
+  const usun = s.lista.children[0].querySelector('button');
+  expect(usun.type).toBe('button');
+  // Kosz zamiast napisu: nazwę dla czytnika i podpowiedź po najechaniu niesie atrybut, ikona jest ukryta.
+  expect(usun.textContent).toBe('');
+  expect(usun.attrs['aria-label']).toBe('Usuń z wyboru: pierwsze.jpg');
+  expect(usun.attrs.title).toBe('Usuń z wyboru');
+  expect(usun.htmlWstawiony).toMatch(/^<svg[^>]*aria-hidden="true"/);
+  usun.sl.click();
+
+  expect(s.pole.files).toEqual([b, c]);
+  expect(znacznik(0)).toMatchObject({ name: 'zdjecie_ai_0', value: '1', checked: true });
+  expect(znacznik(1)).toMatchObject({ name: 'zdjecie_ai_1', checked: false });
 });
 
 describe('strefa zdjęć karty (wiele plików)', () => {

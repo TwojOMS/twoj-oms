@@ -268,6 +268,12 @@ export function powodPominiecia(produkt, kanalySklepow) {
     return `zniknął ze sklepu (${napis(produkt.zniknal_at)}) — karty dla wycofanego produktu nie zakładamy`;
   }
 
+  // Szkic sklepu: ta sama zasada i ta sama obrona w głąb, co wyżej. SQL list do importu
+  // odrzuca szkice już sam; ten warunek łapie wołającego, który poda wiersz z innego źródła.
+  if (napis(produkt?.status_publikacji) === 'draft') {
+    return 'szkic w sklepie — karty dla nieopublikowanego produktu nie zakładamy';
+  }
+
   // ⚠️ WARIANT BEZ ROZMIARU TO NIE JEST JEDNA SPRAWA, TYLKO CZTERY.
   // Wrzucone do jednego worka „wariant bez rozmiaru" sprawialyby, ze karty, ktore powstac MOGA, nie powstaja,
   // a pozycje, ktore kartami nie beda nigdy, siedza w „robocie" i udaja usterke do naprawienia.

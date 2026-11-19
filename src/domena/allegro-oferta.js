@@ -172,3 +172,19 @@ export function ofertaNaProdukt(oferta, kanal, dozwoloneKanaly) {
     stan_prowadzony: 'tak',
   };
 }
+
+// Znacznik statusu oferty na ekranach powiazan. Aktywna i oferta bez znanego statusu nie dostaja
+// znacznika: ma sie wyrozniac to, co odbiega, a nie kazdy wiersz.
+const ZNACZNIKI_STATUSU_OFERTY = { ENDED: 'zakończona', INACTIVE: 'nieaktywna', ACTIVATING: 'włączana' };
+export function znacznikStatusuOferty(status) {
+  return ZNACZNIKI_STATUSU_OFERTY[status] ?? null;
+}
+
+// Liczba z przymiotnikiem w polskiej liczbie mnogiej: (1, ['zakończona','zakończone','zakończonych']).
+export function liczbaZPrzymiotnikiem(n, [jedna, kilka, wiele]) {
+  const reszta10 = n % 10;
+  const reszta100 = n % 100;
+  if (n === 1) return `1 ${jedna}`;
+  if (reszta10 >= 2 && reszta10 <= 4 && !(reszta100 >= 12 && reszta100 <= 14)) return `${n} ${kilka}`;
+  return `${n} ${wiele}`;
+}

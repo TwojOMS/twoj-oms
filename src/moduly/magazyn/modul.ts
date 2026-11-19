@@ -5,6 +5,8 @@ import { createPomocnikiMagazynu } from './pomocniki.js';
 import { registerListaMagazynu } from './lista.js';
 import { registerNowaKartaMagazynu } from './nowa-karta.js';
 import { registerAkcjeMagazynu } from './akcje.js';
+import { registerSzybkaCenaMagazynu } from './szybka-cena.js';
+import { registerCenyKanalow } from './ceny-kanalow.js';
 import { registerSynchronizacjaMagazynu } from './synchronizacja.js';
 import { registerImportMagazynu } from './import.js';
 import { registerZapisMagazynu } from './zapis.js';
@@ -13,7 +15,9 @@ import { registerProblemyOfert } from './problemy-ofert.js';
 import { registerStanyMagazynu } from './stany.js';
 import { registerOpisMagazynu } from './opis.js';
 import { registerSlownikiMagazynu } from './slowniki.js';
+import { registerProducenciMagazynu } from './producenci.js';
 import { registerKategorieAllegro } from './kategorie-allegro-trasy.js';
+import { registerProgStanu } from './prog-stanu.js';
 import * as zapytania from '../../oms/db/magazyn.js';
 import { listaNaZadanie, mapaNaZadanie } from '../kanaly/kolekcje-na-zadanie.ts';
 import { kanalKlientaUmie } from '../../domena/moduly-kanalow.ts';
@@ -25,6 +29,7 @@ import { migracjaOfertKanalow } from './migracje/0001-oferty-kanalow.ts';
 import { migracjaOfertAllegro } from './migracje/0002-oferty-allegro.ts';
 import { migracjaCennikowDostaw } from './migracje/0003-cenniki-dostaw.ts';
 import { migracjaStanowKanalow } from './migracje/0004-stany-kanalow.ts';
+import { migracjaCenStatusowKanalow } from './migracje/0005-ceny-statusy-kanalow.ts';
 import { createPetlaOfert, ODSTEP_PETLI_OFERT_MS } from './services/petla-ofert.js';
 import {
   katalogErli,
@@ -99,7 +104,13 @@ export const modulMagazyn: ModulOms<KonfiguracjaMagazynu> = {
   nazwa: 'magazyn',
   wersja: '1.0.0',
   wymaga: ['rdzen', 'web', 'kanaly'],
-  migracje: [migracjaOfertKanalow, migracjaOfertAllegro, migracjaCennikowDostaw, migracjaStanowKanalow],
+  migracje: [
+    migracjaOfertKanalow,
+    migracjaOfertAllegro,
+    migracjaCennikowDostaw,
+    migracjaStanowKanalow,
+    migracjaCenStatusowKanalow,
+  ],
   konfiguracja: (env) => ({ katalog: katalogZdjec(env), adresPublicznyZdjec: adresPublicznyZdjec(env) }),
   uprawnienia: [{ klucz: 'magazyn', etykieta: 'Magazyn', role: ['administrator', 'sprzedaz'] }],
   menu: [
@@ -160,6 +171,7 @@ export const modulMagazyn: ModulOms<KonfiguracjaMagazynu> = {
         .filter((k) => wszyscyKlienci[k.klucz])
         .map((k) => ({
           klucz: k.klucz,
+          klient: wszyscyKlienci[k.klucz],
           katalog: katalogErli(wszyscyKlienci[k.klucz] as unknown as KlientKataloguErli),
           tylkoOdczyt: () => repo.zapisyZablokowane(k.klucz),
         }));
@@ -274,6 +286,7 @@ export const modulMagazyn: ModulOms<KonfiguracjaMagazynu> = {
       ],
       uslugi: { magazyn, zapytania, trescAllegro },
       trasy: (app) => {
+        const komunikatyNowychKart = new Map<number, string>();
         registerZdjeciaMagazynu(app, { katalog: ctx.konfiguracja.katalog });
         registerGaleriaMagazynu(app, { db: ctx.db, katalog: ctx.konfiguracja.katalog });
         const opcje = {
@@ -292,17 +305,21 @@ export const modulMagazyn: ModulOms<KonfiguracjaMagazynu> = {
             definicje: config.definicje,
             kontaErli,
             kontaAllegro,
+            sklepy,
           }),
         };
         registerListaMagazynu(app, opcje);
-        registerNowaKartaMagazynu(app, opcje);
+        registerNowaKartaMagazynu(app, { ...opcje, katalog: ctx.konfiguracja.katalog, komunikatyNowychKart });
         registerSynchronizacjaMagazynu(app, opcje);
         registerImportMagazynu(app, { ...opcje, definicje: config.definicje });
         registerAkcjeMagazynu(app, opcje);
+        registerSzybkaCenaMagazynu(app, opcje);
+        registerCenyKanalow(app, opcje);
         registerZapisMagazynu(app, opcje);
         registerOfertyMagazynu(app, { ...opcje, adresPublicznyZdjec: ctx.konfiguracja.adresPublicznyZdjec });
         registerProblemyOfert(app, opcje);
         registerStanyMagazynu(app, opcje);
+        registerProgStanu(app, opcje);
         app.register(async (app) => (await import('./stany-otwarcie.js')).registerStanyOtwarcie(app, opcje));
         registerOpisMagazynu(app, opcje);
         // Magazyn → Kategorie i Marki; połączenia WooCommerce czytane z konfiguracji na żądanie.
@@ -317,15 +334,19 @@ export const modulMagazyn: ModulOms<KonfiguracjaMagazynu> = {
               etykieta?: string;
             }[],
         });
+        // Magazyn → Producenci (GPSR), obok Kategorii i Marek.
+        registerProducenciMagazynu(app, { db: ctx.db });
         // Mapowanie kategorii i marek na Allegro (na środowisko).
         registerKategorieAllegro(app, { db: ctx.db, kontaAllegro });
         registerKartaMagazynu(app, {
           db: ctx.db,
+          komunikatyNowychKart,
           magazyn: opcje.magazyn,
           kanalyAllegro,
           definicje: config.definicje,
           kontaErli,
           kontaAllegro,
+          sklepy,
         });
       },
     };

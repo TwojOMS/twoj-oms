@@ -25,6 +25,7 @@ const KATEGORIE = Object.fromEntries(P9.sciezka.map((k) => [k.id, k]));
 const CZYNNE = 'allegro-polcien'; // oferty czynne, zapisy wolne
 const WSTRZYMANE = 'allegro-polcien-2'; // oferty_czynne = 0
 const ODCZYT = 'allegro-polcien-3'; // oferty czynne, ale zapisy zablokowane (tryb tylko odczyt)
+const ERLI = 'erli-polcien';
 const ADRES_KATEGORII = `/magazyn/kategorie/${encodeURIComponent('Lampy stołowe')}/allegro`;
 const ADRES_MARKI = `/magazyn/marki/${encodeURIComponent('Pracownia Półcień')}/allegro`;
 const PELNY_ZAKRES = [
@@ -75,11 +76,17 @@ const tokenKonta = (k, scope) =>
       szyfrTestowy(db, 'tokeny_kanalu', 'access_token', k, jwt(scope)),
       szyfrTestowy(db, 'tokeny_kanalu', 'refresh_token', k, 'REFRESH-ATRAPA'),
     );
-const sekcjaSprzedazy = (body) => body.match(/<section[^>]*id="sprzedaz-karty"[\s\S]*?<\/section>/)?.[0] ?? '';
+const pasekWycofania = (body) =>
+  body.match(/<section[^>]*id="potwierdz-wycofanie-karty"[\s\S]*?<\/section>/)?.[0] ?? '';
 
 beforeEach(async () => {
   db = openOmsDb(':memory:');
-  klienci = { [CZYNNE]: atrapaKlienta(), [WSTRZYMANE]: atrapaKlienta(), [ODCZYT]: atrapaKlienta() };
+  klienci = {
+    [CZYNNE]: atrapaKlienta(),
+    [WSTRZYMANE]: atrapaKlienta(),
+    [ODCZYT]: atrapaKlienta(),
+    [ERLI]: { utworzProdukt: vi.fn(), zmienProdukt: vi.fn() },
+  };
   const konta = [CZYNNE, WSTRZYMANE, ODCZYT].map((klucz) => ({
     klucz,
     nazwa: klucz,
@@ -88,12 +95,18 @@ beforeEach(async () => {
   }));
   app = buildOmsServer({
     db,
-    config: { auth: { user: 'operator', pass: 'atrapa' }, definicje: definicjeKanalowHistoryczne },
+    config: {
+      auth: { user: 'operator', pass: 'atrapa' },
+      definicje: [
+        ...definicjeKanalowHistoryczne,
+        { klucz: ERLI, typ: 'erli', prefiks: 'ERLI_POLCIEN', etykieta: 'ERLI Półcień' },
+      ],
+    },
     magazyn: { stan: () => ({ trwa: false, kanaly: [] }) },
     nadpisania: {
       'kanaly.klienciKanalow': klienci,
       'kanaly.repozytoriumKanalow': {
-        listaTypu: (typ) => (typ === 'allegro' ? konta : []),
+        listaTypu: (typ) => (typ === 'allegro' ? konta : typ === 'erli' ? [{ klucz: ERLI, nazwa: 'Półcień' }] : []),
         zapisyZablokowane: (klucz) => klucz === ODCZYT,
         konfliktKlucza: () => false,
       },
@@ -263,8 +276,10 @@ it('N7: potwierdzenie wycofania wymienia konta ze wstrzymanymi ofertami albo w t
   oferta(CZYNNE, '7700000010', { stan: 'aktywna', odczytStatus: 'ACTIVE' });
   oferta(WSTRZYMANE, '7700000011', { stan: 'aktywna', odczytStatus: 'ACTIVE' });
   oferta(ODCZYT, '7700000012', { stan: 'aktywna', odczytStatus: 'ACTIVE' });
-  const s = sekcjaSprzedazy((await get(`/magazyn/${kartaId}?wycofaj=tak`, admin)).body);
-  expect(s).toContain('Oferty tej karty w kanałach zostaną zakończone przy najbliższym przebiegu. Wycofać?');
+  const s = pasekWycofania((await get(`/magazyn/${kartaId}?wycofaj=tak`, admin)).body);
+  expect(s).toContain(
+    'Zakończę oferty wystawione z OMS (1) przy najbliższym przebiegu i zablokuję wystawianie nowych.',
+  );
   expect(s).toMatch(OSTRZEZENIE);
   const zdanie = s.match(/<p[^>]*id="wycofanie-karty-wstrzymane"[^>]*>([\s\S]*?)<\/p>/)?.[1] ?? '';
   expect(zdanie).toContain(WSTRZYMANE);
@@ -274,22 +289,61 @@ it('N7: potwierdzenie wycofania wymienia konta ze wstrzymanymi ofertami albo w t
   expect(s).toMatch(/aria-describedby="wycofanie-karty-opis wycofanie-karty-wstrzymane"/);
 });
 
+it.each([
+  { rodzaj: 'obserwowaną', id: '7700000010', zmiany: { tryb: 'obserwowana', odczytStatus: 'ACTIVE' } },
+  { rodzaj: 'zakończoną', id: '7700000010', zmiany: { odczytStatus: 'ENDED' } },
+  { rodzaj: 'jeszcze niewystawioną', id: 'ext:szkic', zmiany: {} },
+  { rodzaj: 'Allegro w stanie błędu mimo nadanego numeru', id: '7700000010', zmiany: { stan: 'blad' } },
+  { rodzaj: 'Allegro w trakcie sprawdzania', id: '7700000010', zmiany: { stan: 'sprawdzana' } },
+])('licznik pomija ofertę $rodzaj', async ({ id, zmiany }) => {
+  oferta(CZYNNE, id, zmiany);
+  const s = pasekWycofania((await get(`/magazyn/${kartaId}?wycofaj=tak`, admin)).body);
+  expect(s).toContain('Ta karta nie ma ofert wystawionych z OMS.');
+});
+
+it.each([
+  { opis: 'w kolejce do wysłania', zmiany: { stan: 'do_wyslania' } },
+  { opis: 'z zamrożonym statusem', zmiany: { stan: 'problem', odczytStatus: 'active', odczytZamrozone: ['status'] } },
+  {
+    opis: 'ze wszystkimi zamrożonymi polami',
+    zmiany: { stan: 'problem', odczytStatus: 'active', odczytZamrozone: ['*'] },
+  },
+  { opis: 'z konfliktem identyfikatora', zmiany: { stan: 'problem', problemy: [{ kod: 'konflikt' }] } },
+])('licznik pomija ofertę ERLI $opis', async ({ zmiany }) => {
+  zapiszUstawieniaOfertKonta(db, ERLI, { czynne: true });
+  oferta(ERLI, 'abc-K1', zmiany);
+  const s = pasekWycofania((await get(`/magazyn/${kartaId}?wycofaj=tak`, admin)).body);
+  expect(s).toContain('Ta karta nie ma ofert wystawionych z OMS.');
+});
+
+it.each([
+  { stan: 'aktywna', odczytStatus: 'active' },
+  { stan: 'sprawdzana' },
+  { stan: 'problem', odczytStatus: 'active', odczytZamrozone: ['price'] },
+])('licznik uwzględnia ofertę ERLI w stanie $stan', async (zmiany) => {
+  zapiszUstawieniaOfertKonta(db, ERLI, { czynne: true });
+  oferta(ERLI, 'abc-K1', zmiany);
+  const s = pasekWycofania((await get(`/magazyn/${kartaId}?wycofaj=tak`, admin)).body);
+  expect(s).toContain('Zakończę oferty wystawione z OMS (1) przy najbliższym przebiegu');
+});
+
 it('N7: przy czynnym koncie (i bez wejścia w potwierdzenie) ostrzeżenia nie ma', async () => {
   oferta(CZYNNE, '7700000010', { stan: 'aktywna', odczytStatus: 'ACTIVE' });
-  expect(sekcjaSprzedazy((await get(`/magazyn/${kartaId}?wycofaj=tak`, admin)).body)).not.toMatch(OSTRZEZENIE);
+  expect(pasekWycofania((await get(`/magazyn/${kartaId}?wycofaj=tak`, admin)).body)).not.toMatch(OSTRZEZENIE);
   oferta(WSTRZYMANE, '7700000011', { stan: 'aktywna', odczytStatus: 'ACTIVE' });
-  expect(sekcjaSprzedazy((await get(`/magazyn/${kartaId}`, admin)).body)).not.toMatch(OSTRZEZENIE);
+  expect(pasekWycofania((await get(`/magazyn/${kartaId}`, admin)).body)).toBe('');
   // Oferta już zakończona w Allegro nie ma czego kończyć — konto wstrzymane nie dostaje zdania.
   zapiszUstawieniaOfertKonta(db, WSTRZYMANE, { czynne: true });
   oferta(ODCZYT, '7700000012', { stan: 'nieaktywna', odczytStatus: 'ENDED' });
-  expect(sekcjaSprzedazy((await get(`/magazyn/${kartaId}?wycofaj=tak`, admin)).body)).not.toMatch(OSTRZEZENIE);
+  expect(pasekWycofania((await get(`/magazyn/${kartaId}?wycofaj=tak`, admin)).body)).not.toMatch(OSTRZEZENIE);
 });
 
 it('N7 (T2): konto bez zgody na oferty też jest w ostrzeżeniu (pętla nie kończy tam ofert)', async () => {
   tokenKonta(CZYNNE, ['allegro:api:sale:offers:read']);
   oferta(CZYNNE, '7700000010', { stan: 'aktywna', odczytStatus: 'ACTIVE' });
-  const s = sekcjaSprzedazy((await get(`/magazyn/${kartaId}?wycofaj=tak`, admin)).body);
+  const s = pasekWycofania((await get(`/magazyn/${kartaId}?wycofaj=tak`, admin)).body);
   const zdanie = s.match(/<p[^>]*id="wycofanie-karty-wstrzymane"[^>]*>([\s\S]*?)<\/p>/)?.[1] ?? '';
   expect(zdanie).toContain(CZYNNE);
   expect(zdanie).toContain('bez zgody');
+  expect(s).toContain('Ta karta nie ma ofert wystawionych z OMS, które można teraz zakończyć.');
 });

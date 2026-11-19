@@ -468,6 +468,146 @@ describe('komplet metod', () => {
     expect(lista.some((k) => k.count === 0)).toBe(true);
   });
 
+  // Cena i status produktu: atrapa ma te same granice pól co klient, a szkic znika z katalogu `publish`
+  // jak w prawdziwym sklepie. Osobna baza w pamięci, żeby szkic nie przeciekł do innych testów.
+  describe('atrapa Woo — cena regularna, status produktu, powiązane szkice', () => {
+    const nowaAtrapa = (baza, opcje = {}) =>
+      createAtrapaWoo({ db: baza, kanal: 'polcien', env: ENV_DEMO, log: ciche, ...opcje });
+    const prawdziwy = createWooClient({
+      baseUrl: 'https://x.invalid',
+      ck: 'a',
+      cs: 'b',
+      fetchImpl: async () => {
+        throw new Error('sieć — żądanie nie powinno wyjść');
+      },
+    });
+    const zBaza = async (fn) => {
+      const baza = new DatabaseSync(':memory:');
+      try {
+        await fn(baza);
+      } finally {
+        baza.close();
+      }
+    };
+
+    it('atrapa ma trzy nowe metody klienta', () =>
+      zBaza(async (baza) => {
+        const atrapa = metody(nowaAtrapa(baza));
+        for (const m of ['zapiszCenyHurtem', 'ustawStatusProduktu', 'pobierzProduktyPowiazane']) {
+          expect(metody(prawdziwy)).toContain(m);
+          expect(atrapa).toContain(m);
+        }
+      }));
+
+    it('te same odmowy co klient: obce pola (sale_price, price), zła cena, status spoza publish/draft', () =>
+      zBaza(async (baza) => {
+        const atrapa = nowaAtrapa(baza);
+        const [produkt] = await atrapa.pobierzWszystkieProdukty();
+        const zle = [
+          [{ id: produkt.id, regular_price: '110.00', sale_price: '99.00' }],
+          [{ id: produkt.id, regular_price: '110.00', price: '110.00' }],
+          [{ id: produkt.id, regular_price: '110' }],
+          [{ id: produkt.id, regular_price: '0.00' }],
+          [{ id: 'x/../orders', regular_price: '1.00' }],
+        ];
+        for (const lista of zle) {
+          const [odAtrapy, odKlienta] = await Promise.all(
+            [atrapa, prawdziwy].map((k) =>
+              k.zapiszCenyHurtem(null, lista).then(
+                () => 'zapisane',
+                (e) => e.message,
+              ),
+            ),
+          );
+          expect(odAtrapy, JSON.stringify(lista)).not.toBe('zapisane');
+          expect(odAtrapy).toBe(odKlienta);
+        }
+        for (const status of ['pending', 'private', 'trash']) {
+          const [odAtrapy, odKlienta] = await Promise.all(
+            [atrapa, prawdziwy].map((k) =>
+              k.ustawStatusProduktu(produkt.id, status).then(
+                () => 'zapisane',
+                (e) => e.message,
+              ),
+            ),
+          );
+          expect(odAtrapy, status).not.toBe('zapisane');
+          expect(odAtrapy).toBe(odKlienta);
+        }
+        expect(baza.prepare('SELECT COUNT(*) AS n FROM atrapa_kanaly_zmiany').get().n).toBe(0);
+      }));
+
+    it('zapis ceny zmienia tylko regular_price (i liczoną z niej price), nigdy sale_price', () =>
+      zBaza(async (baza) => {
+        const atrapa = nowaAtrapa(baza);
+        const produkty = await atrapa.pobierzWszystkieProdukty();
+        const prosty = produkty.find((p) => p.type === 'simple');
+        const rodzic = produkty.find((p) => p.type === 'variable');
+        const [wariant] = await atrapa.pobierzWarianty(rodzic.id);
+        expect(
+          await atrapa.zapiszCenyHurtem(null, [
+            { id: prosty.id, regular_price: '110.00' },
+            { id: 999999, regular_price: '5.00' },
+          ]),
+        ).toEqual([
+          { id: prosty.id, ok: true },
+          { id: 999999, ok: false, blad: expect.any(String) },
+        ]);
+        expect(await atrapa.zapiszCenyHurtem(rodzic.id, [{ id: wariant.id, regular_price: '45.50' }])).toEqual([
+          { id: wariant.id, ok: true },
+        ]);
+        const drugi = nowaAtrapa(baza);
+        expect((await drugi.pobierzStany([prosty.id]))[0]).toEqual({
+          ...prosty,
+          regular_price: '110.00',
+          price: '110.00',
+        });
+        expect((await drugi.pobierzStanyWariantow(rodzic.id, [wariant.id]))[0]).toMatchObject({
+          regular_price: '45.50',
+          price: '45.50',
+        });
+        const zapisanePola = baza
+          .prepare('SELECT pola_json FROM atrapa_kanaly_zmiany')
+          .all()
+          .flatMap((w) => Object.keys(JSON.parse(w.pola_json)));
+        expect(zapisanePola).not.toContain('sale_price');
+      }));
+
+    it('szkic znika z katalogu publish i z miniatur, ale czyta go pobierzProduktyPowiazane; publish przywraca', () =>
+      zBaza(async (baza) => {
+        const atrapa = nowaAtrapa(baza);
+        const [produkt, inny] = await atrapa.pobierzWszystkieProdukty();
+        expect(await atrapa.pobierzProduktyPowiazane([produkt.id])).toEqual([]);
+        expect(await atrapa.ustawStatusProduktu(produkt.id, 'draft')).toMatchObject({
+          id: produkt.id,
+          status: 'draft',
+        });
+        const katalogPublish = await atrapa.pobierzWszystkieProdukty();
+        expect(katalogPublish.map((p) => p.id)).not.toContain(produkt.id);
+        expect(katalogPublish.every((p) => p.status === 'publish')).toBe(true);
+        expect((await atrapa.pobierzMiniatury()).has(String(produkt.id))).toBe(false);
+        expect(await atrapa.pobierzProduktyPowiazane([produkt.id, inny.id])).toEqual([{ ...produkt, status: 'draft' }]);
+        await atrapa.ustawStatusProduktu(produkt.id, 'publish');
+        expect((await atrapa.pobierzWszystkieProdukty()).map((p) => p.id)).toContain(produkt.id);
+        await expect(atrapa.ustawStatusProduktu(999999, 'draft')).rejects.toThrow(/404/);
+      }));
+
+    it('klucz „Odczyt”: atrapa odmawia zapisu ceny i statusu, odczyt szkiców działa', () =>
+      zBaza(async (baza) => {
+        const atrapa = nowaAtrapa(baza, { uprawnienia: 'odczyt' });
+        expect(atrapa.tylkoOdczyt).toBe(true);
+        const [produkt] = await atrapa.pobierzWszystkieProdukty();
+        await expect(
+          atrapa.zapiszCenyHurtem(null, [{ id: produkt.id, regular_price: '110.00' }]),
+        ).rejects.toMatchObject({ name: 'WooTylkoOdczyt' });
+        await expect(atrapa.ustawStatusProduktu(produkt.id, 'draft')).rejects.toMatchObject({
+          name: 'WooTylkoOdczyt',
+        });
+        expect(await atrapa.pobierzProduktyPowiazane([produkt.id])).toEqual([]);
+        expect(baza.prepare('SELECT COUNT(*) AS n FROM atrapa_kanaly_zmiany').get().n).toBe(0);
+      }));
+  });
+
   // Wystawianie ofert działa w piaskownicy na atrapie — żadna metoda E3 nie jest już odmową.
   it('ODMOWY_ALLEGRO nie zawiera metod ofert; atrapa ma je wszystkie, demo ma mapę, marki i 4 oferty', async () => {
     const prawdziwy = metody(

@@ -102,8 +102,8 @@ it('prawa i wyłączone moduły filtrują dzieci; sama pozycja Wystawione nie tw
   }
 });
 
-// Kategorie i Marki są już stronami — „wkrótce” zastąpiły linki.
-it('Magazyn prowadzi do Kategorii i Marek, a Produkty odróżniają stronę od sekcji', async () => {
+// Kategorie, Marki i Producenci są stronami — „wkrótce” zastąpiły linki.
+it('Magazyn prowadzi do Kategorii, Marek i Producentów, a Produkty odróżniają stronę od sekcji', async () => {
   const { db, app } = nowyPanel();
   try {
     for (const [url, current] of [
@@ -116,10 +116,11 @@ it('Magazyn prowadzi do Kategorii i Marek, a Produkty odróżniają stronę od s
       for (const lista of menu) {
         expect(lista).toContain(`<a href="/magazyn" aria-current="${current}">Produkty</a>`);
         const pozycje = [...lista.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/g)].map((m) => m[1]);
-        expect(pozycje).toHaveLength(3);
+        expect(pozycje).toHaveLength(4);
         for (const [i, [nazwa, adres]] of [
           ['Kategorie', '/magazyn/kategorie'],
           ['Marki', '/magazyn/marki'],
+          ['Producenci', '/magazyn/producenci'],
         ].entries()) {
           expect(pozycje[i + 1]).toBe(`<a href="${adres}">${nazwa}</a>`);
           expect(pozycje[i + 1]).not.toMatch(/aria-disabled|wkrótce/);

@@ -1,51 +1,105 @@
+<%# Galeria karty obok „Danych karty”. Każda akcja jest zwykłym formularzem, więc bez skryptu działa jak dawniej
+    (strzałki, usuwanie, znacznik AI, „ustaw jako główne” jako pełna kolejność). public/karta-galeria.js dokłada
+    przeciąganie, zapis bez przeładowania, pasek potwierdzenia usunięcia i powiększenie w <dialog>.
+    Atrybuty data-aria-wzor niosą napis z numerem miejsca — skrypt przelicza je po każdym przestawieniu. %>
+<% const ikonaKosza = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>'; %>
+<% const idsGalerii = galeriaKarty.map((z) => z.id); %>
 <section class="panel" id="zdjecia-karty">
-  <div class="panel-naglowek"><h2>Zdjęcia</h2><span><%= galeriaKarty.length %> z 20</span></div>
-  <% if (!galeriaKarty.length) { %><p class="magazyn-brak">Ta karta nie ma jeszcze zdjęć.</p><% } %>
-  <ol class="karta-galeria" role="list">
-    <% galeriaKarty.forEach((z, i) => { %>
-    <li>
-      <% if (z.adres) { %>
-      <img src="<%= z.adres %>" alt="<%= karta.nazwa %>" loading="lazy" width="<%= z.szerokosc || 240 %>" height="<%= z.wysokosc || 240 %>">
-      <% } else { %><div class="magazyn-brak">Brak podglądu zdjęcia</div><% } %>
-      <p><%= i + 1 %>. <%= z.etykieta %></p>
-      <% if (z.ai === 1) { %><span class="znacznik">AI</span><% } else if (z.ai == null) { %><span class="znacznik">AI: nieznane</span><% } %>
-      <form class="karta-galeria-ai" method="post" action="/magazyn/<%= karta.id %>/zdjecia/<%= z.id %>/ai" aria-label="Znacznik AI — zdjęcie <%= i + 1 %>">
-        <div class="karta-galeria-wybor">
-          <input type="checkbox" id="zdjecie-ai-<%= z.id %>" name="ai" value="1" <%= z.ai === 1 ? 'checked' : '' %> <%= z.wyslane_at ? 'disabled' : '' %> <%- z.wyslane_at ? 'aria-describedby="zdjecie-ai-blokada-' + z.id + '"' : '' %>>
-          <label for="zdjecie-ai-<%= z.id %>">Zdjęcie AI</label>
+  <div class="panel-glowa"><h2>Zdjęcia</h2><span class="karta-galeria-ile"><%= galeriaKarty.length %> z 20</span></div>
+  <div class="panel-cialo karta-galeria-cialo" data-karta-galeria data-adres-kolejnosc="/magazyn/<%= karta.id %>/zdjecia/kolejnosc" data-nazwa="<%= karta.nazwa %>">
+    <% if (!galeriaKarty.length) { %><p class="magazyn-brak">Ta karta nie ma jeszcze zdjęć.</p><% } else { %>
+    <% const glowne = galeriaKarty[0]; %>
+    <a class="karta-galeria-glowne"<% if (glowne.adres) { %> href="<%= glowne.adres %>"<% } else { %> hidden<% } %> data-galeria-glowne aria-label="Powiększ zdjęcie główne">
+      <img<% if (glowne.adres) { %> src="<%= glowne.adres %>"<% } %> alt="<%= karta.nazwa %>" width="<%= glowne.szerokosc || 480 %>" height="<%= glowne.wysokosc || 480 %>" fetchpriority="high">
+    </a>
+    <div class="karta-galeria-glowne magazyn-brak" data-galeria-brak-podgladu<%= glowne.adres ? ' hidden' : '' %>>Brak podglądu zdjęcia</div>
+    <p id="karta-galeria-pomoc" class="podpowiedz karta-galeria-pomoc">Pierwsze zdjęcie jest główne. Kolejność zmienisz, przeciągając miniaturę myszą, albo w menu „⋯” przy zdjęciu.</p>
+    <ol class="karta-galeria" role="list" aria-label="Kolejność zdjęć" aria-describedby="karta-galeria-pomoc">
+      <% galeriaKarty.forEach((z, i) => { const n = i + 1; %>
+      <li class="karta-galeria-miniatura" data-zdjecie-id="<%= z.id %>" data-adres="<%= z.adres || '' %>">
+        <div class="karta-galeria-kadr">
+          <% if (z.adres) { %>
+          <a class="karta-galeria-obraz" href="<%= z.adres %>" draggable="false" aria-label="Powiększ zdjęcie <%= n %>" data-aria-wzor="Powiększ zdjęcie {n}">
+            <img src="<%= z.adres %>" alt="" loading="lazy" draggable="false" width="<%= z.szerokosc || 240 %>" height="<%= z.wysokosc || 240 %>">
+          </a>
+          <% } else { %><div class="magazyn-brak">Brak podglądu zdjęcia</div><% } %>
+          <span class="plakietka karta-galeria-plakietka" data-glowne<%= i > 0 ? ' hidden' : '' %>>główne</span>
+          <% if (z.ai === 1) { %><span class="znacznik karta-galeria-znak-ai" data-znak-ai title="Zdjęcie wygenerowane lub zmienione przez AI">AI</span><% } else if (z.ai == null) { %><span class="znacznik karta-galeria-znak-ai" data-znak-ai title="Nie wiadomo, czy zdjęcie jest z AI">AI: nieznane</span><% } else { %><span class="znacznik karta-galeria-znak-ai" data-znak-ai hidden>AI</span><% } %>
+          <form class="karta-galeria-kosz" method="post" action="/magazyn/<%= karta.id %>/zdjecia/<%= z.id %>/usun"<% if (z.uwagaUsuwania) { %> data-uwaga="<%= z.uwagaUsuwania %>"<% } %>>
+            <button class="karta-galeria-usun" type="submit" aria-label="Usuń zdjęcie <%= n %>" data-aria-wzor="Usuń zdjęcie {n}" title="Usuń zdjęcie"><%- ikonaKosza %></button>
+          </form>
         </div>
-        <button class="btn btn--maly" type="submit" <%= z.wyslane_at ? 'disabled' : '' %>>Zapisz znacznik</button>
-      </form>
-      <% if (z.wyslane_at) { %><p class="podpowiedz" id="zdjecie-ai-blokada-<%= z.id %>">Zdjęcie poszło już do kanału — Allegro przyjmuje oznaczenie AI tylko przy wgraniu, ERLI zachowuje je na zawsze</p><% } %>
-      <div class="karta-galeria-akcje">
-        <form method="post" action="/magazyn/<%= karta.id %>/zdjecia/kolejnosc">
-          <input type="hidden" name="zdjecieId" value="<%= z.id %>">
-          <button class="btn btn--maly" type="submit" name="kierunek" value="lewo" aria-label="W lewo — zdjęcie <%= i + 1 %>" <%= i === 0 ? 'disabled' : '' %>>← W lewo</button>
-          <button class="btn btn--maly" type="submit" name="kierunek" value="prawo" aria-label="W prawo — zdjęcie <%= i + 1 %>" <%= i === galeriaKarty.length - 1 ? 'disabled' : '' %>>W prawo →</button>
-        </form>
-        <form method="post" action="/magazyn/<%= karta.id %>/zdjecia/<%= z.id %>/usun">
-          <button class="btn btn--maly" type="submit" aria-label="Usuń zdjęcie <%= i + 1 %>">Usuń</button>
-        </form>
+        <div class="karta-galeria-akcje">
+          <p class="karta-galeria-podpis"><span data-numer><%= n %></span>. <%= z.etykieta %></p>
+          <details class="karta-galeria-menu">
+            <summary aria-label="Więcej akcji — zdjęcie <%= n %>" data-aria-wzor="Więcej akcji — zdjęcie {n}" title="Więcej akcji">⋯</summary>
+            <div class="karta-galeria-menu-lista">
+              <form class="karta-galeria-przesun" method="post" action="/magazyn/<%= karta.id %>/zdjecia/kolejnosc">
+                <input type="hidden" name="zdjecieId" value="<%= z.id %>">
+                <button class="btn btn--maly" type="submit" name="kierunek" value="lewo" aria-label="Przesuń w lewo — zdjęcie <%= n %>" data-aria-wzor="Przesuń w lewo — zdjęcie {n}"<%= i === 0 ? ' disabled' : '' %>>Przesuń w lewo</button>
+                <button class="btn btn--maly" type="submit" name="kierunek" value="prawo" aria-label="Przesuń w prawo — zdjęcie <%= n %>" data-aria-wzor="Przesuń w prawo — zdjęcie {n}"<%= i === galeriaKarty.length - 1 ? ' disabled' : '' %>>Przesuń w prawo</button>
+              </form>
+              <form class="karta-galeria-na-glowne" method="post" action="/magazyn/<%= karta.id %>/zdjecia/kolejnosc">
+                <% [z.id, ...idsGalerii.filter((id) => id !== z.id)].forEach((id) => { %><input type="hidden" name="kolejnosc" value="<%= id %>"><% }) %>
+                <button class="btn btn--maly" type="submit"<%= i === 0 ? ' disabled' : '' %>>Ustaw jako główne</button>
+              </form>
+              <form class="karta-galeria-ai" method="post" action="/magazyn/<%= karta.id %>/zdjecia/<%= z.id %>/ai" aria-label="Znacznik AI — zdjęcie <%= n %>" data-aria-wzor="Znacznik AI — zdjęcie {n}">
+                <div class="karta-galeria-wybor">
+                  <input type="checkbox" id="zdjecie-ai-<%= z.id %>" name="ai" value="1" <%= z.ai === 1 ? 'checked' : '' %> <%= z.wyslane_at ? 'disabled' : '' %> <%- z.wyslane_at ? 'aria-describedby="zdjecie-ai-blokada-' + z.id + '"' : '' %>>
+                  <label for="zdjecie-ai-<%= z.id %>">Zdjęcie AI</label>
+                </div>
+                <button class="btn btn--maly" type="submit" data-zapisz-ai <%= z.wyslane_at ? 'disabled' : '' %>>Zapisz znacznik</button>
+                <% if (z.wyslane_at) { %><p class="podpowiedz" id="zdjecie-ai-blokada-<%= z.id %>">Zdjęcie poszło już do kanału — Allegro przyjmuje oznaczenie AI tylko przy wgraniu, ERLI zachowuje je na zawsze</p><% } %>
+              </form>
+            </div>
+          </details>
+        </div>
+      </li>
+      <% }); %>
+    </ol>
+    <div class="karta-galeria-potwierdz" data-galeria-potwierdz role="group" aria-labelledby="karta-galeria-potwierdz-pytanie" hidden>
+      <p id="karta-galeria-potwierdz-pytanie" data-pytanie>Usunąć zdjęcie?</p>
+      <p class="karta-galeria-uwaga" data-uwaga hidden></p>
+      <div class="karta-galeria-potwierdz-przyciski">
+        <button class="btn btn--groza btn--maly" type="button" data-tak>Tak, usuń</button>
+        <button class="btn btn--maly" type="button" data-anuluj>Anuluj</button>
       </div>
-    </li>
-    <% }); %>
-  </ol>
-  <form method="post" action="/magazyn/<%= karta.id %>/zdjecia/wgraj" enctype="multipart/form-data" class="karta-galeria-wgrywanie">
-    <%# Strefa przeciągania obejmuje to samo pole `multiple` (public/strefa-pliku.js); bez skryptu zostaje zwykłe pole i przycisk. %>
+    </div>
+    <p id="karta-galeria-komunikat" class="karta-galeria-komunikat" role="status" aria-live="polite" aria-atomic="true"></p>
+    <dialog class="karta-galeria-dialog" aria-label="Powiększenie zdjęcia" closedby="any">
+      <form method="dialog"><button class="btn btn--maly" type="submit" aria-label="Zamknij powiększenie" autofocus>✕</button></form>
+      <img src="" alt="" data-galeria-duze>
+      <div class="karta-galeria-dialog-pasek">
+        <button class="btn" type="button" data-galeria-krok="-1" aria-label="Poprzednie zdjęcie">←</button>
+        <span data-galeria-licznik>1 / <%= galeriaKarty.length %></span>
+        <button class="btn" type="button" data-galeria-krok="1" aria-label="Następne zdjęcie">→</button>
+      </div>
+    </dialog>
+    <% } %>
     <% const wolneMiejsce = Math.max(0, 20 - galeriaKarty.length); %>
-    <div class="strefa-pliku" data-strefa-pliku data-maks-plikow="<%= wolneMiejsce %>" data-maks-bajtow="10485760" data-opis-typow="JPEG, PNG lub WebP" role="group" aria-labelledby="zdjecie-karty-opis"<%- wolneMiejsce === 0 ? ' data-stan="pelna" aria-disabled="true"' : '' %>>
-      <label for="zdjecie-karty" class="strefa-pliku-opis" id="zdjecie-karty-opis">Przeciągnij zdjęcia tutaj albo wybierz z dysku</label>
-      <p id="zdjecie-karty-pomoc" class="podpowiedz">JPEG, PNG lub WebP, do 10 MB każde. Zostało miejsca na <%= wolneMiejsce %> z 20.</p>
-      <input type="file" id="zdjecie-karty" name="zdjecie" accept="image/jpeg,image/png,image/webp" multiple aria-describedby="zdjecie-karty-pomoc zdjecie-karty-stan" required<%= wolneMiejsce === 0 ? ' disabled' : '' %>>
-      <p class="strefa-pliku-stan" id="zdjecie-karty-stan" data-strefa-stan role="status" aria-live="polite"><%= wolneMiejsce === 0 ? 'Karta ma już 20 zdjęć. Usuń któreś, żeby dodać nowe.' : '' %></p>
-      <ul class="strefa-pliku-lista" data-strefa-lista role="list" aria-label="Wybrane zdjęcia" hidden></ul>
-    </div>
-    <script type="module" src="<%= zasob('strefa-pliku.js') %>"></script>
-    <div class="karta-galeria-wybor">
-      <input type="checkbox" id="zdjecie-karty-ai" name="ai" value="1" aria-describedby="zdjecie-karty-ai-pomoc">
-      <label for="zdjecie-karty-ai">Zdjęcie wygenerowane lub istotnie zmienione przez AI</label>
-    </div>
-    <p id="zdjecie-karty-ai-pomoc" class="podpowiedz">Allegro i ERLI dodadzą oznaczenie AI; po wysłaniu zdjęcia na rynek nie da się go zdjąć</p>
-    <button class="btn btn--glowny" type="submit" data-strefa-przycisk<%= wolneMiejsce === 0 ? ' disabled' : '' %>>Wgraj zdjęcia</button>
-  </form>
+    <details class="karta-galeria-dodaj"<%= galeriaKarty.length ? '' : ' open' %>>
+      <summary>Dodaj zdjęcia</summary>
+      <form method="post" action="/magazyn/<%= karta.id %>/zdjecia/wgraj" enctype="multipart/form-data" class="karta-galeria-wgrywanie">
+        <%# Strefa przeciągania obejmuje to samo pole `multiple` (public/strefa-pliku.js); bez skryptu zostaje zwykłe pole
+            i jeden znacznik AI na całą paczkę, ze skryptem znacznik AI i kosz są przy każdym pliku. %>
+        <div class="strefa-pliku" data-strefa-pliku data-ai-na-plik data-maks-plikow="<%= wolneMiejsce %>" data-maks-bajtow="10485760" data-opis-typow="JPEG, PNG lub WebP" role="group" aria-labelledby="zdjecie-karty-opis"<%- wolneMiejsce === 0 ? ' data-stan="pelna" aria-disabled="true"' : '' %>>
+          <label for="zdjecie-karty" class="strefa-pliku-opis" id="zdjecie-karty-opis">Przeciągnij zdjęcia tutaj albo wybierz z dysku</label>
+          <p id="zdjecie-karty-pomoc" class="podpowiedz">JPEG, PNG lub WebP, do 10 MB każde. Zostało miejsca na <%= wolneMiejsce %> z 20.</p>
+          <input type="file" id="zdjecie-karty" name="zdjecie" accept="image/jpeg,image/png,image/webp" multiple aria-describedby="zdjecie-karty-pomoc zdjecie-karty-stan" required<%= wolneMiejsce === 0 ? ' disabled' : '' %>>
+          <p class="strefa-pliku-stan" id="zdjecie-karty-stan" data-strefa-stan role="status" aria-live="polite"><%= wolneMiejsce === 0 ? 'Karta ma już 20 zdjęć. Usuń któreś, żeby dodać nowe.' : '' %></p>
+          <ul class="strefa-pliku-lista" data-strefa-lista role="list" aria-label="Wybrane zdjęcia" hidden></ul>
+        </div>
+        <script type="module" src="<%= zasob('strefa-pliku.js') %>"></script>
+        <noscript>
+          <div class="karta-galeria-wybor">
+            <input type="checkbox" id="zdjecie-karty-ai" name="ai" value="1" aria-describedby="zdjecie-karty-ai-pomoc">
+            <label for="zdjecie-karty-ai">Zdjęcie wygenerowane lub istotnie zmienione przez AI</label>
+          </div>
+        </noscript>
+        <p id="zdjecie-karty-ai-pomoc" class="podpowiedz"><span data-galeria-ai-pomoc hidden>Przy każdym pliku zaznacz „AI”, jeśli zdjęcie wygenerowano lub istotnie zmieniono przez AI. </span>Allegro i ERLI dodadzą oznaczenie AI; po wysłaniu zdjęcia na rynek nie da się go zdjąć</p>
+        <button class="btn btn--glowny" type="submit" data-strefa-przycisk<%= wolneMiejsce === 0 ? ' disabled' : '' %>>Wgraj zdjęcia</button>
+      </form>
+    </details>
+    <script type="module" src="<%= zasob('karta-galeria.js') %>"></script>
+  </div>
 </section>

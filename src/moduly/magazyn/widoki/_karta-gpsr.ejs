@@ -1,0 +1,104 @@
+<%# Bezpieczeństwo produktu (GPSR): producent ze słownika OMS, producent Allegro każdego konta i informacja
+    o bezpieczeństwie. Wszystko przychodzi policzone z karta-gpsr.js — widok nie rozstrzyga, kto jest producentem.
+    Informacja o bezpieczeństwie ma osobny formularz: zwykły zapis karty jej nie dotyka, a załączniki z Allegro
+    zastępuje dopiero świadome „Zamień na tekst” (dlatego pole tekstu siedzi wtedy w zwiniętym <details>).
+    Wszystko, co wpisał człowiek albo przyszło z Allegro, wyłącznie przez znacznik escapujący (z „=”). %>
+<% const g = typeof gpsrKarty !== 'undefined' ? gpsrKarty : null; %>
+<% if (g) { %>
+<% const p = g.producent; const b = g.bezpieczenstwo; %>
+<% const wartosc = b.wpisane != null ? b.wpisane : b.tekst; %>
+<% const opisy = 'gpsr-licznik' + (b.blad ? ' gpsr-blad' : ''); %>
+<section class="panel" id="gpsr-karty" aria-labelledby="gpsr-tytul">
+  <div class="panel-glowa"><h2 id="gpsr-tytul">Bezpieczeństwo produktu (GPSR)</h2></div>
+  <div class="panel-cialo">
+    <% if (typeof zapisanoBezpieczenstwo !== 'undefined' && zapisanoBezpieczenstwo) { %>
+      <p class="pasek-info" role="status">Zapisano informację o bezpieczeństwie.</p>
+    <% } %>
+
+    <% if (p.nazwa) { %>
+      <p>Producent: <strong><%= p.nazwa %></strong>
+        <span class="podpowiedz">(<%= p.zrodlo === 'marka' ? 'z marki ' + p.marka : 'producent domyślny' %>)</span>
+        · <a href="<%= p.adresSlownika %>">Producenci</a></p>
+      <% if (p.opis) { %><p class="podpowiedz"><%= p.opis %></p><% } %>
+      <% if (p.dopisek) { %><p class="podpowiedz"><%= p.dopisek %></p><% } %>
+    <% } else { %>
+      <p class="pasek-uwaga">Brak producenta. <%= p.brak %> — <a href="<%= p.adresSlownika %>">Producenci</a>.</p>
+    <% } %>
+
+    <% if (g.allegro.length) { %>
+      <div class="gpsr-konta">
+        <% g.allegro.forEach(a => { %>
+          <p data-konto="<%= a.konto %>"<% if (a.blad) { %> class="pasek-uwaga pasek-uwaga--zwarty"<% } %>>
+            Allegro <%= a.nazwaKonta %>:
+            <% if (a.blad) { %>
+              <%= a.blad %>
+            <% } else if (a.producentId) { %>
+              producent <strong><%= a.producentNazwa || a.producentId %></strong><% if (a.osoba) { %>, osoba odpowiedzialna <%= a.osoba.nazwa || a.osoba.id %><% } %>
+            <% } else { %>
+              bez własnego producenta
+            <% } %>
+            <% if (a.dopisek) { %><span class="podpowiedz">— <%= a.dopisek %></span><% } %>
+          </p>
+        <% }); %>
+      </div>
+    <% } %>
+
+    <h3 id="gpsr-informacja-tytul">Informacja o bezpieczeństwie</h3>
+    <% if (b.uszkodzona) { %>
+      <p class="pasek-uwaga">Zapisana informacja o bezpieczeństwie jest nieczytelna — wpisz tekst i zapisz go od nowa.</p>
+    <% } %>
+
+    <% const formularz = (zastap) => { %>
+      <form method="post" action="/magazyn/<%= karta.id %>/bezpieczenstwo" class="pola" aria-labelledby="gpsr-informacja-tytul">
+        <%# Przy zamianie załączników pusty tekst jest odmową, więc podpowiedź o tekście domyślnym by kłamała. %>
+        <label for="gpsr-tekst">Tekst dla kupującego<% if (!zastap) { %> (pusty = tekst domyślny konta)<% } %></label>
+        <textarea id="gpsr-tekst" name="tekst" rows="5" maxlength="<%= b.limit %>" data-licznik="gpsr-licznik"
+          aria-describedby="<%= opisy %>"<% if (b.blad) { %> aria-invalid="true"<% } %>><%= wartosc %></textarea>
+        <p class="podpowiedz" id="gpsr-licznik" aria-live="polite"><%= wartosc.length %> / <%= b.limit %> znaków</p>
+        <% if (b.blad) { %><p class="pasek-uwaga" id="gpsr-blad" role="alert"><%= b.blad %></p><% } %>
+        <% if (!zastap && !wartosc) { %>
+          <% b.domyslneKont.forEach(d => { %>
+            <details class="podpowiedz">
+              <summary>Używany tekst domyślny konta Allegro <%= d.nazwaKonta %></summary>
+              <p><% if (d.tekst) { %><%= d.tekst %><% } else { %>Konto nie ma tekstu domyślnego.<% } %></p>
+            </details>
+          <% }); %>
+        <% } %>
+        <div class="przyciski">
+          <% if (zastap) { %>
+            <button class="btn btn--glowny" type="submit" name="zastap" value="zalaczniki">Zamień na tekst</button>
+          <% } else { %>
+            <button class="btn btn--glowny" type="submit">Zapisz informację o bezpieczeństwie</button>
+          <% } %>
+        </div>
+      </form>
+    <% }; %>
+
+    <% if (b.typ === 'ATTACHMENTS') { %>
+      <p>Załączniki z Allegro <%= b.zalaczniki.nazwaKonta %> (<%= b.zalaczniki.liczba %>)</p>
+      <details<% if (b.blad) { %> open<% } %>>
+        <summary>Wpisz tekst zamiast załączników</summary>
+        <p class="podpowiedz">Tekst zastąpi załączniki z Allegro na tej karcie.</p>
+        <% formularz(true); %>
+      </details>
+    <% } else { %>
+      <% formularz(false); %>
+    <% } %>
+  </div>
+</section>
+<%# Licznik znaków bez biblioteki. Odświeżany z opóźnieniem, żeby czytnik ekranu (aria-live) nie czytał
+    każdego naciśnięcia klawisza. %>
+<script type="module">
+  for (const pole of document.querySelectorAll('#gpsr-karty textarea[data-licznik]')) {
+    const licznik = document.getElementById(pole.dataset.licznik);
+    const limit = pole.maxLength;
+    let czekaj;
+    pole.addEventListener('input', () => {
+      clearTimeout(czekaj);
+      czekaj = setTimeout(() => {
+        licznik.textContent = `${pole.value.length} / ${limit} znaków`;
+      }, 400);
+    });
+  }
+</script>
+<% } %>

@@ -24,6 +24,9 @@ export function klientSklepuPrzykladowego(d: { ck: string; cs: string }) {
     zapiszProdukt: odmowa,
     dodajNotatke: odmowa,
     ustawStatus: odmowa,
+    zapiszCenyHurtem: odmowa,
+    ustawStatusProduktu: odmowa,
+    pobierzProduktyPowiazane: odmowa,
     sprawdzPolaczenie: async () => (kluczeOk ? { ok: true } : { ok: false, powod: 'klucze' }),
     pobierzMetodyWysylki: async () => [
       { strefa: 'Polska', instanceId: 1, tytul: 'Kurier', metodaWoo: 'flat_rate', wlaczona: true },

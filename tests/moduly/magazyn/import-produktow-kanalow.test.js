@@ -186,6 +186,51 @@ describe('ekran wyboru', () => {
 });
 
 describe('Sprawdź — podgląd', () => {
+  it('pokazuje fazę listy i odpytuje o podgląd tego samego importu', async () => {
+    const katalog = Promise.withResolvers();
+    sklepy.pro.pobierzWszystkieProdukty.mockImplementation(async (naStronie) => {
+      naStronie?.({ strona: 3, stron: 7 });
+      return katalog.promise;
+    });
+    const app = serwer();
+    const start = await app.inject({
+      method: 'POST',
+      url: '/magazyn/import/sprawdz',
+      headers: auth,
+      payload: 'kanal=pro&typ=pelny',
+    });
+    expect(start.statusCode).toBe(303);
+    const url = start.headers.location;
+    const trwa = await app.inject({ url, headers: auth });
+    katalog.resolve(KATALOG_PRO);
+    expect(trwa.body).toContain('data-krok="trwa"');
+    expect(trwa.body).toContain('Pobieram listę produktów — strona 3 z 7');
+    expect(trwa.body).toContain('htmx.min.js');
+    expect(trwa.body).toContain('hx-get="/magazyn/import?kanal=pro&amp;typ=pelny"');
+    expect(trwa.body).toContain('hx-trigger="every 2.5s"');
+    expect(trwa.body).toContain('hx-select=".import-ekran"');
+    expect(trwa.body).toContain('hx-swap="outerHTML"');
+    expect(trwa.body).toMatch(/<a class="btn" [^>]+>Odśwież<\/a>/);
+
+    const odpytanie = () => app.inject({ url, headers: { ...auth, 'hx-request': 'true' } });
+    const podglad = await vi.waitFor(async () => {
+      const r = await odpytanie();
+      expect(r.body).toContain('data-krok="podglad"');
+      return r;
+    });
+    expect(podglad.body).toContain('data-krok="podglad"');
+    expect(podglad.body).not.toContain('hx-trigger="every 2.5s"');
+  });
+
+  it('pokazuje zieloną plakietkę ukończenia z rolą status także gdy import coś pominął', async () => {
+    const app = serwer();
+    const podglad = await sprawdz(app, 'allegro_swietlik', 'pelny');
+    expect(podglad).not.toContain('Import zakończony');
+    const wynik = await importuj(app, 'allegro_swietlik', 'pelny');
+    expect(liczba(wynik.body, 'pominie')).toBeGreaterThan(0);
+    expect(wynik.body).toMatch(/<p role="status">\s*<span class="waga waga--ok waga--duza">Import zakończony<\/span>/);
+  });
+
   it('czyta TYLKO wybrany kanał i nie zmienia kart (liczba i treść przed = po)', async () => {
     const app = serwer();
     const przed = { n: liczbaKart(), k1: kartaSql(karty.k1), k3: kartaSql(karty.k3), k4: kartaSql(karty.k4) };

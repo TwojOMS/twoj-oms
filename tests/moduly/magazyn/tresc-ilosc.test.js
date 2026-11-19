@@ -21,6 +21,7 @@ const { zapiszUstawieniaOfertKonta, zapiszZatwierdzenieStanow, wstawOferte } =
   await import('../../../src/oms/db/oferty-kanalow.ts');
 const { migawkaStanow, przelaczStany, przelacznikStanow, dodajRuch } =
   await import('../../../src/oms/db/stany-magazynowe.js');
+const { ustawCeneReczna } = await import('../../../src/oms/db/ceny-kanalow.js');
 const { trescOferty } = await import('../../../src/moduly/magazyn/services/tresc-oferty.js');
 const { ofertaAllegroKarty } = await import('../../../src/moduly/magazyn/services/tresc-oferty-allegro.js');
 const { pobierzTrescOfertAllegro } = await import('../../../src/moduly/magazyn/services/allegro-tresc-kart.js');
@@ -129,6 +130,20 @@ describe('E4.06 — ERLI: treść oferty z migawki', () => {
     });
     expect(w.bledy).toContain('Ustaw stałą liczbę sztuk w konfiguratorze konta ERLI (całkowitą, nieujemną).');
     expect(w.cialo).toBeNull();
+  });
+
+  it('ręczna cena karty na tym koncie ERLI wygrywa z narzutem — pętla nie cofa ceny wysłanej z podglądu', () => {
+    const db = bazaErli();
+    const id = lampaErli(db);
+    ustawCeneReczna(db, { kartaId: id, kanal: ERLI, cenaGr: 12345, kto: 'admin', at: T0 });
+    const bezKlucza = tresc(db, id);
+    const w = trescOferty(db, id, { ...USTAWIENIA_ERLI, klucz: ERLI, narzutBp: 1000 }, '', {
+      migawka: migawkaStanow(db),
+    });
+    expect(w.bledy).toEqual([]);
+    expect(w.cialo.price).toBe(12345);
+    // Ręczna cena innego konta nie przechodzi na to, które nie ma klucza w ustawieniach.
+    expect(bezKlucza.cialo.price).not.toBe(12345);
   });
 });
 
@@ -251,7 +266,7 @@ describe('E4.06 — Allegro: treść oferty z migawki', () => {
   });
 });
 
-// --- Ekran „Wystaw na…” ERLI ---
+// --- Ekran „Wystaw oferty” ERLI ---
 const auth = {
   authorization: `Basic ${Buffer.from('operator:atrapa').toString('base64')}`,
   origin: 'http://localhost',
@@ -289,7 +304,7 @@ async function serwer() {
   return { db, app, klient, podglad };
 }
 
-describe('E4.06 — podgląd „Wystaw na…”', () => {
+describe('podgląd „Wystaw oferty”', () => {
   it('stany nigdy niewłączone → dzisiejszy napis i stała ilość', async () => {
     const { db, app, podglad } = await serwer();
     try {

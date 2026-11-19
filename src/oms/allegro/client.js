@@ -527,7 +527,7 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
    * dziala, wyglada tu dokladnie tak samo jak filtr, ktory dziala. Chcemy i tak wszystkie
    * oferty (stan publikacji zapisujemy, zamiast odsiewac), wiec nie ma czego wysylac.
    */
-  async function pobierzOferty() {
+  async function pobierzOferty(naStronie = undefined) {
     const wszystkie = [];
     let strona = 0;
     // Ile ofert Allegro ZAPOWIEDZIALO w PIERWSZEJ odpowiedzi. Wziecie tej liczby z ostatniej
@@ -558,6 +558,7 @@ export function createAllegroClient({ ustawienia, tokeny, fetchImpl, http = tran
         zapowiedziano = Number.isFinite(total) && total > 0 ? total : null;
       }
       strona += 1;
+      naStronie?.({ strona, stron: zapowiedziano === null ? null : Math.ceil(zapowiedziano / LIMIT_STRONY_OFERT) });
       // DWA WARUNKI STOPU I OBA SA POTRZEBNE:
       //  - strona KROTSZA niz limit konczy odczyt, cokolwiek mowi `totalCount`. Inaczej
       //    zawyzona (albo zwyczajnie nieaktualna) liczba trzymalaby petle az do twardej

@@ -90,6 +90,14 @@ do kart wymagających uzupełnienia. Brak opisu i pustą galerię
 rozpoznasz po komunikatach na karcie produktu.
 Liczby na kaflach dotyczą całego katalogu, także przy zawężonej liście.
 
+## Akcje dla kart na liście
+
+- **Wystaw oferty** otwiera wybór konta i podgląd wystawiania.
+- **Edytuj** pokazuje podgląd zmian pól na wielu kartach.
+- **Nadaj SKU** proponuje nowe numery pustym kartom. Jeśli można przejąć numer z powiązanego produktu,
+  generator pokazuje powód pominięcia karty. Jej numer uzupełni import ze sklepu.
+- **Wyślij SKU i wymiary** pokazuje podgląd wartości do wysłania do WooCommerce. Zapis następuje po zatwierdzeniu.
+
 ## Allegro na karcie i mapy do Allegro
 
 Stan: 14.11.2026. Pełna instrukcja wystawiania ofert: „Allegro — wystawianie ofert z OMS-u”
@@ -110,10 +118,38 @@ z odnośnikami, uwagi niezablokowujące wystawienia, kategorię i jej źródło,
 się jak 5), „Wyjątek kategorii” oraz nadpisać wybrane parametry. „Zapisz dane Allegro” zapisuje. Gdy Allegro ma
 kilka produktów dla tego EAN, pojawia się wybór „Produkt z katalogu Allegro” z przyciskiem „Użyj tego produktu”.
 
-**Wystaw na… (Allegro).** Na liście kart zaznacz karty i użyj „Wystaw na…”, wybierając konto Allegro; dalej
+**Wystaw oferty (Allegro).** Na liście kart zaznacz karty i użyj „Wystaw oferty”, wybierając konto Allegro; dalej
 podgląd i „Zatwierdź”, jak przy ERLI. Karta, która ma już ofertę na tym koncie, jest odrzucana. Oferta powstaje
 najpierw jako nieaktywny szkic; aktywujesz ją przyciskiem „Aktywuj w Allegro” (przy ustawieniu „Aktywuj po
 sprawdzeniu: Nie”).
+
+## Ceny w kanałach
+
+Przykłady są zmyślone: „Pracownia Półcień”, konto `polcien`.
+
+Cenę sprzedaży ustawiasz raz, na karcie produktu, a OMS rozsyła ją do kanałów. **OMS jest źródłem ceny**:
+to, co wpiszesz na karcie, trafia na oferty w ERLI, Allegro i w sklepie WooCommerce.
+
+- **Cena docelowa.** To cena brutto z karty powiększona o narzut konta. Karta za 100 zł i narzut 10% daje
+  w kanale 110 zł.
+- **Narzut konta.** Każde konto kanału (np. `polcien`) ma własny narzut w procentach. Ustawisz go w ustawieniach
+  ofert tego konta. Bez narzutu cena w kanale równa się cenie z karty.
+- **Ręczna cena kanału.** Gdy dla jednego konta chcesz innej kwoty, wpisz ją na karcie przy tym kanale. Ręczna
+  cena zastępuje narzut tylko tam. „Wróć do narzutu” usuwa ją i cena znów jest liczona z karty.
+- **Podgląd.** Na liście magazynu zaznacz karty i wybierz „Wyślij ceny do kanałów”. Zanim cokolwiek pójdzie
+  do kanału, widzisz tabelę: cena teraz, cena docelowa i różnica. Wiersze, których nie wolno zmienić, są
+  **pominięte** i mają powód, np. „trwa promocja … zł — pominięte” (trwającej promocji w sklepie nie nadpisujemy),
+  „sklep liczy ceny netto”, „klucz tylko do odczytu”, „oferty wstrzymane”. Zmiana większa niż próg konta
+  (w Woo 50%) jest **odznaczona** — włączysz ją sam, jeśli to nie pomyłka.
+- **Zatwierdzenie.** Wysyłają się tylko zaznaczone wiersze. OMS przed wysłaniem jeszcze raz sprawdza, czy stan
+  w kanale się nie zmienił od podglądu. Każdy zapis trafia do historii zmian na karcie (kto, kiedy, stara i nowa
+  wartość, wynik).
+- **Ukrycie = szkic.** Na karcie możesz ukryć produkt w sklepie. Produkt nie jest kasowany, dostaje status
+  „szkic” i znika z witryny. Przywrócisz go jednym przyciskiem. Powiązany szkic nadal należy do karty.
+- **ERLI zarządzane.** Cenę w ERLI zmieniamy tylko na ofertach, które OMS prowadzi (tryb zarządzany). Oferta
+  tylko obserwowana, zarchiwizowana albo z ręcznie zablokowaną ceną jest w podglądzie pominięta z powodem.
+- **Hamulec kanału.** Gdy konto jest wstrzymane albo ma klucz tylko do odczytu, żadna cena nie pójdzie, choćbyś
+  zatwierdził podgląd. Sprawdzenie następuje tuż przed samym wysłaniem.
 
 ## Stany w kanałach
 

@@ -27,6 +27,16 @@ const sklepNaStron = (stron, cialo = (nr) => [{ id: nr }], naglowki = {}) =>
 const parametryWywolan = (fetchImpl) => fetchImpl.mock.calls.map(([url]) => new URL(url).searchParams);
 
 describe('pobierzWszystkieProdukty', () => {
+  it('zgłasza każdą stronę produktów bez zmiany wyniku', async () => {
+    const naStronie = vi.fn();
+    const wynik = await klient(sklepNaStron(2)).pobierzWszystkieProdukty(naStronie);
+    const bezCallbacku = await klient(sklepNaStron(2)).pobierzWszystkieProdukty();
+
+    expect(wynik).toEqual(bezCallbacku);
+    expect(wynik).toEqual([{ id: 1 }, { id: 2 }]);
+    expect(naStronie.mock.calls).toEqual([[{ strona: 1, stron: 2 }], [{ strona: 2, stron: 2 }]]);
+  });
+
   it('idzie po stronach do końca, wg X-WP-TotalPages', async () => {
     const fetchImpl = vi
       .fn()
@@ -133,6 +143,24 @@ describe('pobierzWszystkieProdukty', () => {
     const wszystkie = await klient(fetchImpl).pobierzWszystkieProdukty();
     expect(wszystkie).toHaveLength(1);
     expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('pobierzMiniatury', () => {
+  it('zgłasza każdą stronę miniatur bez zmiany wyniku', async () => {
+    const produkty = (nr) => [{ id: nr, images: [{ thumbnail: `https://przyklad.invalid/${nr}.jpg` }] }];
+    const naStronie = vi.fn();
+    const wynik = await klient(sklepNaStron(2, produkty)).pobierzMiniatury(naStronie);
+    const bezCallbacku = await klient(sklepNaStron(2, produkty)).pobierzMiniatury();
+
+    expect(wynik).toEqual(bezCallbacku);
+    expect(wynik).toEqual(
+      new Map([
+        ['1', 'https://przyklad.invalid/1.jpg'],
+        ['2', 'https://przyklad.invalid/2.jpg'],
+      ]),
+    );
+    expect(naStronie.mock.calls).toEqual([[{ strona: 1, stron: 2 }], [{ strona: 2, stron: 2 }]]);
   });
 });
 

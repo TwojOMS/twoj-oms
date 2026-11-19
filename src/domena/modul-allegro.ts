@@ -23,6 +23,8 @@ export const MODUL_ALLEGRO = {
     zmienOferte: true,
     zmienIloscCene: true,
     stanOferty: true,
+    cenyZOms: true,
+    statusZOms: true,
   },
   kluczeEnv: { sekrety: ['CLIENT_ID', 'CLIENT_SECRET'], wymagane: ['CLIENT_ID', 'CLIENT_SECRET', 'USER_AGENT', 'OD'] },
   konfigurator: {

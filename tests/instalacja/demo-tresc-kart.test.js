@@ -89,7 +89,11 @@ describe('treść kart demo', () => {
   it('Woo: pełny opis i galerie; jawne wyjątki dla kafli braków', () => {
     for (const kanal of KANALY.filter((k) => k.typ === 'woo')) {
       for (const p of katalogWoo(kanal.klucz).produkty) {
-        const sku = p.sku || 'LMP-' + { Rozmiar: 'WIS-001', Szkło: 'ABA-003', Rodzaj: 'AKC-001' }[p.attributes[0].name];
+        // Szkic „Ceny w kanałach” ma treść i zdjęcia produktu, z którego powstał.
+        const sku =
+          { 'LMP-SZK-001': 'LMP-WIS-001' }[p.sku] ||
+          p.sku ||
+          'LMP-' + { Rozmiar: 'WIS-001', Szkło: 'ABA-003', Rodzaj: 'AKC-001' }[p.attributes[0].name];
         const adresy = p.images.map((z) => z.src);
         sprawdzZdjecia(sku, adresy);
         if (bezTresci.has(sku)) expect([p.description, p.short_description]).toEqual(['', '']);

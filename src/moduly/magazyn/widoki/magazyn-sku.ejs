@@ -62,6 +62,19 @@
       </p>
     <% } %>
 
+    <% if (pominieteZeSkuSklepu.length) { %>
+      <p class="pasek-uwaga">Karty pominięte przez generator:</p>
+      <ul>
+        <% for (const p of pominieteZeSkuSklepu) { %>
+          <% if (p.rodzaj === 'gotowe') { %>
+            <li><%= p.nazwa %> — sklep ma numer <%= p.sku %> — uzupełni import</li>
+          <% } else { %>
+            <li><%= p.nazwa %> — <%= p.uwaga %></li>
+          <% } %>
+        <% } %>
+      </ul>
+    <% } %>
+
     <% if (ileKolizji) { %>
       <p class="pasek-blokada">
         <b><%= ileKolizji %></b> z proponowanych numerów jest już zajętych — patrz kolumna
@@ -87,7 +100,11 @@
         <% } else { %>
           <%# ⚠️ ZERO TO ODPOWIEDZ, A NIE AWARIA — i to jest jedyny slad po tym, ze zestaw
               policzono PONOWNIE. %>
-          Żadna karta nie dostała numeru — wszystkie miały go już wcześniej. Nic nie zapisałem.
+          <% if (pominieteZeSkuSklepu.length) { %>
+            Nie nadano żadnego numeru.
+          <% } else { %>
+            Żadna karta nie dostała numeru — wszystkie miały go już wcześniej. Nic nie zapisałem.
+          <% } %>
         <% } %>
       </p>
       <% if (wynik.nieaktualne) { %>
@@ -122,7 +139,9 @@
       </table>
     <% } else if (!blad) { %>
       <p class="pusto">
-        Żadna z zaznaczonych kart nie potrzebuje numeru — wszystkie już go mają.
+        <% if (!pominieteZeSkuSklepu.length) { %>
+          Żadna z zaznaczonych kart nie potrzebuje numeru — wszystkie już go mają.
+        <% } %>
         Nie ma czego zatwierdzać.
       </p>
     <% } %>

@@ -43,6 +43,8 @@ it.each([
       terminWysylki: false,
       scalanie: true,
       stany: 'produkty',
+      cenyZOms: true,
+      statusZOms: true,
     },
     { sciezka: '/ustawienia/integracje/woocommerce', nowy: 'nowy', dodaj: 'Dodaj sklep', kroki: [] },
   ],
@@ -71,6 +73,8 @@ it.each([
       zmienOferte: true,
       zmienIloscCene: true,
       stanOferty: true,
+      cenyZOms: true,
+      statusZOms: true,
     },
     { sciezka: '/ustawienia/integracje/allegro', nowy: 'nowe', dodaj: 'Dodaj konto', kroki: [] },
   ],
@@ -93,6 +97,16 @@ it.each([
     expect(m.konfigurator.kroki.length).toBeGreaterThan(0);
   },
 );
+
+it('ceny z OMS deklarują Woo, Allegro i ERLI, status z OMS tylko Woo i Allegro', () => {
+  expect(TYPY_KANALOW.filter((typ) => modulKanalu(typ).umiejetnosci.cenyZOms === true)).toEqual([
+    'woo',
+    'allegro',
+    'erli',
+  ]);
+  expect(TYPY_KANALOW.filter((typ) => modulKanalu(typ).umiejetnosci.statusZOms === true)).toEqual(['woo', 'allegro']);
+  expect('statusZOms' in modulKanalu('erli').umiejetnosci).toBe(false);
+});
 
 function zmienWoo(zmiany: Partial<OpisKanalu>) {
   return { ...MODULY_KANALOW, woo: { ...MODULY_KANALOW.woo, ...zmiany } };

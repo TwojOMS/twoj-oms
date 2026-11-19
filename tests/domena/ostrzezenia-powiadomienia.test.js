@@ -4,9 +4,10 @@ import * as ostrzezenia from '../../src/domena/ostrzezenia.js';
 it('osobisty filtr usuwa tylko wybrane typy, bez zmiany wierszy wejściowych', () => {
   const wiersze = [
     { typ: 'faktura-ksef', klucz: 'k' },
-    { typ: 'przesylka', klucz: 'p' },
+    { typ: 'niski-stan', klucz: 'niski-stan:2:0' },
   ];
   expect(ostrzezenia.zlozOstrzezenia({ wiersze, ukryteTypy: ['faktura-ksef'] })).toEqual([wiersze[1]]);
+  expect(ostrzezenia.zlozOstrzezenia({ wiersze, ukryteTypy: ['niski-stan'] })).toEqual([wiersze[0]]);
   expect(ostrzezenia.zlozOstrzezenia({ wiersze })).toHaveLength(2);
   expect(wiersze).toHaveLength(2);
 });
@@ -14,8 +15,8 @@ it('osobisty filtr usuwa tylko wybrane typy, bez zmiany wierszy wejściowych', (
 it('każdy typ ma dokładnie jeden opis i to samo źródło kolejności', async () => {
   const powiadomienia = await import('../../src/domena/powiadomienia.js');
   expect(powiadomienia.RODZAJE_OSTRZEZEN.map((r) => r.typ)).toEqual(ostrzezenia.KOLEJNOSC);
-  // Ósmy typ — „automatyzacja” (reguła wstrzymana, wysyłka niepewna; tylko admin).
-  expect(new Set(ostrzezenia.KOLEJNOSC).size).toBe(8);
+  expect(new Set(ostrzezenia.KOLEJNOSC).size).toBe(9);
+  expect(ostrzezenia.KOLEJNOSC).toContain('niski-stan');
   for (const r of powiadomienia.RODZAJE_OSTRZEZEN) {
     expect(r.nazwa.length).toBeGreaterThan(5);
     expect(r.opis.length).toBeGreaterThan(20);

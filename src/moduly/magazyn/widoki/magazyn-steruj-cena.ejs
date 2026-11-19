@@ -1,0 +1,35 @@
+<p class="wroc"><a href="<%= wroc %>">← Wróć</a></p>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: 'Sterowanie ceną Allegro', podtytul: 'cena z OMS, reszta oferty zostaje w Allegro'}) %>
+<section class="panel">
+  <div class="panel-glowa"><h2 id="steruj-cena-tytul"><%= wynik ? 'Wynik' : 'Podgląd włączenia' %></h2></div>
+  <div class="panel-cialo">
+    <% if (wynik) { %>
+      <p role="status"><%= wynik %></p>
+      <p><%= napis %></p>
+    <% } else { %>
+      <p class="pasek-uwaga"><%= napis %></p>
+      <p>Po włączeniu OMS prowadzi tylko cenę tych ofert. Treść, zdjęcia, ilość i status nadal zmieniasz w Allegro.</p>
+      <div class="przewijak-tabeli" tabindex="0" role="region" aria-labelledby="steruj-cena-tytul">
+        <table class="tab-pozycje">
+          <thead><tr><th scope="col">Karta</th><th scope="col">Oferta Allegro</th><th scope="col">Cena teraz w Allegro</th><th scope="col">Cena z OMS</th><th scope="col">Uwagi</th></tr></thead>
+          <tbody><% wiersze.forEach(w => { %><tr>
+            <td><a href="/magazyn/<%= w.kartaId %>"><%= w.nazwa %></a><% if (w.sku) { %><div class="sku"><%= w.sku %></div><% } %></td>
+            <td><%= w.idZewnetrzne %><div class="sku"><%= w.kanal %></div></td>
+            <td><%= w.teraz ?? '—' %></td>
+            <td><%= w.cel ?? '—' %></td>
+            <td><% if (w.powod) { %>Pominięta: <%= w.powod %><% } else { %><strong>zostanie włączone</strong><% } %></td>
+          </tr><% }); %></tbody>
+        </table>
+      </div>
+      <% if (token) { %>
+      <form class="import-akcje" method="post" action="<%= akcja %>" aria-labelledby="steruj-cena-tytul">
+        <% ids.forEach(id => { %><input type="hidden" name="zaznaczone" value="<%= id %>"><% }); %>
+        <input type="hidden" name="podglad" value="<%= token %>">
+        <button class="btn btn--glowny" type="submit">Włącz sterowanie ceną</button>
+      </form>
+      <% } else { %>
+        <p class="pasek-blokada">Żadnej z tych ofert nie można teraz przełączyć — powód jest w kolumnie Uwagi.</p>
+      <% } %>
+    <% } %>
+  </div>
+</section>

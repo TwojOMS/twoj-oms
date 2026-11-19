@@ -10,6 +10,13 @@
 //   accept pola → dozwolone typy, `multiple` pola → wiele plików, data-maks-bajtow, data-maks-plikow (wolne miejsce),
 //   data-opis-typow (np. „JPEG, PNG lub WebP”). Przycisk wysyłki w tym samym formularzu: `data-strefa-przycisk`.
 
+// Kosz z ikoną zamiast napisu „Usuń z wyboru” przy każdym pliku: przy kilkunastu plikach napis zajmował pół
+// wiersza. Nazwę niesie aria-label, podpowiedź po najechaniu — title.
+const IKONA_KOSZA =
+  '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path fill="none" ' +
+  'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ' +
+  'd="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>';
+
 const ROZSZERZENIA = {
   'image/jpeg': ['jpg', 'jpeg'],
   'image/png': ['png'],
@@ -48,6 +55,7 @@ export function opcjeZAtrybutow(strefa) {
     maksBajtow,
     maksPlikow,
     wiele: Boolean(pole?.multiple),
+    aiNaPlik: strefa.dataset.aiNaPlik !== undefined,
     komunikaty: {
       brak: 'Wybierz plik.',
       zlyTyp: (p) => `Plik „${p.name}” nie jest w formacie ${opisTypow}. Nic nie zostało dodane.`,
@@ -105,17 +113,33 @@ export function podlaczStrefePliku(
   const klasaNad = opcje.klasaNad ?? 'strefa-pliku--nad';
   const napisPrzycisku = przycisk?.textContent ?? '';
   let adresy = [];
+  let wybor = [];
+  let znacznikiAi = [];
+  const aiNaPlik = opcje.aiNaPlik && lista;
+  const moznaPrzeniesc = typeof srodowisko.DataTransfer === 'function';
+  const adresyWyboru = new Map();
+
+  const wpiszPliki = (pliki) => {
+    const przeniesienie = new srodowisko.DataTransfer();
+    for (const plik of pliki) przeniesienie.items.add(plik);
+    pole.files = przeniesienie.files;
+  };
 
   const ustawPrzycisk = (liczba) => {
     if (przycisk) przycisk.textContent = liczba > 0 ? `${napisPrzycisku} (${liczba})` : napisPrzycisku;
   };
-  const zwolnij = () => {
-    for (const adres of adresy) srodowisko.URL.revokeObjectURL(adres);
-    adresy = [];
+  const zwolnij = (zachowane = []) => {
     if (podglad) podglad.hidden = true;
     if (lista) {
       lista.replaceChildren();
       lista.hidden = true;
+    }
+    for (const adres of adresy) srodowisko.URL.revokeObjectURL(adres);
+    adresy = [];
+    for (const [plik, adres] of adresyWyboru) {
+      if (zachowane.includes(plik)) continue;
+      srodowisko.URL.revokeObjectURL(adres);
+      adresyWyboru.delete(plik);
     }
     ustawPrzycisk(0);
   };
@@ -129,12 +153,13 @@ export function podlaczStrefePliku(
     stan.textContent = tresc;
     strefa.dataset.stan = 'blad';
   };
-  const pozycja = (plik) => {
+  const pozycja = (plik, i) => {
     const dokument = strefa.ownerDocument;
     const li = dokument.createElement('li');
     const miniatura = dokument.createElement('img');
-    const adres = srodowisko.URL.createObjectURL(plik);
-    adresy.push(adres);
+    const adres = adresyWyboru.get(plik) ?? srodowisko.URL.createObjectURL(plik);
+    if (aiNaPlik) adresyWyboru.set(plik, adres);
+    else adresy.push(adres);
     miniatura.className = 'strefa-pliku-miniatura';
     miniatura.src = adres;
     miniatura.alt = '';
@@ -147,16 +172,48 @@ export function podlaczStrefePliku(
     rozmiar.className = 'strefa-pliku-rozmiar';
     rozmiar.textContent = rozmiarTekstem(plik.size);
     li.append(miniatura, nazwa, rozmiar);
+    if (aiNaPlik) {
+      const etykieta = dokument.createElement('label');
+      etykieta.className = 'strefa-pliku-wybor-ai';
+      const ai = dokument.createElement('input');
+      ai.type = 'checkbox';
+      ai.name = `zdjecie_ai_${i}`;
+      ai.value = '1';
+      ai.checked = znacznikiAi[i] === true;
+      ai.setAttribute('aria-label', `AI — ${plik.name}`);
+      ai.addEventListener('change', () => {
+        znacznikiAi[i] = ai.checked;
+      });
+      etykieta.append(ai, 'AI');
+      li.append(etykieta);
+      if (moznaPrzeniesc) {
+        const usun = dokument.createElement('button');
+        usun.type = 'button';
+        usun.className = 'btn btn--maly strefa-pliku-usun';
+        usun.innerHTML = IKONA_KOSZA;
+        usun.setAttribute('aria-label', `Usuń z wyboru: ${plik.name}`);
+        usun.setAttribute('title', 'Usuń z wyboru');
+        usun.addEventListener('click', () => {
+          wybor.splice(i, 1);
+          znacznikiAi.splice(i, 1);
+          wpiszPliki(wybor);
+          wybrano(wybor);
+          const nastepny = lista.children[Math.min(i, wybor.length - 1)]?.querySelector('button') ?? pole;
+          nastepny.focus();
+        });
+        li.append(usun);
+      }
+    }
     return li;
   };
   const wybrano = (pliki) => {
     const problem = sprawdzPliki(pliki, opcje);
     if (problem) return blad(problem);
-    zwolnij();
+    zwolnij(pliki);
     if (lista) {
       lista.replaceChildren(...pliki.map(pozycja));
-      lista.hidden = false;
-      stan.textContent = opcje.komunikaty.wybrane(pliki);
+      lista.hidden = pliki.length === 0;
+      stan.textContent = pliki.length ? opcje.komunikaty.wybrane(pliki) : 'Nie wybrano zdjęć.';
     } else {
       const [plik] = pliki;
       if (podglad) {
@@ -169,7 +226,21 @@ export function podlaczStrefePliku(
         opcje.komunikaty.wybrany?.(plik) ?? `Wybrany plik: ${plik.name} (${rozmiarTekstem(plik.size)})`;
     }
     ustawPrzycisk(pliki.length);
-    strefa.dataset.stan = 'wybrany';
+    strefa.dataset.stan = pliki.length ? 'wybrany' : '';
+  };
+
+  const dodajDoWyboru = (pliki) => {
+    const nastepne = [...wybor, ...pliki];
+    const problem = sprawdzPliki(nastepne, opcje);
+    if (problem) {
+      wpiszPliki(wybor);
+      return blad(problem, false);
+    }
+    // Tablica musi mieć wpis dla każdego pliku, również przy usuwaniu plików bez znacznika.
+    znacznikiAi.push(...pliki.map(() => false));
+    wybor = nastepne;
+    wpiszPliki(wybor);
+    wybrano(wybor);
   };
 
   const podswietl = (zdarzenie) => {
@@ -192,21 +263,26 @@ export function podlaczStrefePliku(
     const pliki = [...(zdarzenie.dataTransfer?.files ?? [])];
     if (pliki.length === 0) return;
     if (opcje.wiele && (opcje.maksPlikow <= 0 || pole.disabled)) return blad(opcje.komunikaty.pelna, false);
+    if (!moznaPrzeniesc) return;
+    if (aiNaPlik) return dodajDoWyboru(pliki);
     const problem = sprawdzPliki(pliki, opcje);
     if (problem) return blad(problem, !opcje.wiele);
-    const przeniesienie = new srodowisko.DataTransfer();
-    for (const plik of pliki) przeniesienie.items.add(plik);
-    pole.files = przeniesienie.files;
+    wpiszPliki(pliki);
     wybrano(pliki);
   });
   pole.addEventListener('change', () => {
     if (!pole.files || pole.files.length === 0) {
+      wybor = [];
+      znacznikiAi = [];
       zwolnij();
       stan.textContent = '';
       strefa.dataset.stan = '';
       return;
     }
-    wybrano([...pole.files]);
+    const pliki = [...pole.files];
+    if (aiNaPlik && moznaPrzeniesc) return dodajDoWyboru(pliki);
+    znacznikiAi = [];
+    wybrano(pliki);
   });
   if (podglad)
     podglad.addEventListener('error', () =>

@@ -1,10 +1,11 @@
 import { afterEach, it, expect } from 'vitest';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia, ustawCzynne } from '../../../src/core/bezpieczenstwo/konta.js';
 import { podmienLukiKsef } from '../../../src/oms/db/ostrzezenia.js';
+import { utworzKarte } from '../../../src/oms/db/magazyn.js';
+import { dodajRuch, przelaczStany } from '../../../src/oms/db/stany-magazynowe.js';
 import { RODZAJE_OSTRZEZEN } from '../../../src/domena/powiadomienia.js';
 import { nowyPanel, jako, get, post, BASIC } from '../../pomoc/panel-konta-testowe.js';
 
-// Ósmy rodzaj „automatyzacja” jest tylko dla administratora — konto sprzedaży nadal widzi siedem pól.
 const typy = [
   'integracja',
   'automatyzacja',
@@ -13,6 +14,7 @@ const typy = [
   'pobranie-korekta',
   'zwrot-korekta',
   'przesylka',
+  'niski-stan',
   'wiadomosc-allegro',
 ];
 const panele = [];
@@ -33,11 +35,11 @@ function panel() {
 }
 const pola = (html) => html.match(/<input[^>]*type="checkbox"[^>]*>/gu) ?? [];
 
-it('każdy zalogowany widzi siedem domyślnie zaznaczonych pól i link z Mojego konta', async () => {
+it('każdy zalogowany widzi osiem domyślnie zaznaczonych pól i link z Mojego konta', async () => {
   const { app, osoba, admin } = panel();
   const r = await get(app, '/ustawienia/powiadomienia', osoba);
   expect(r.statusCode).toBe(200);
-  expect(pola(r.body)).toHaveLength(7);
+  expect(pola(r.body)).toHaveLength(8);
   for (const rodzaj of RODZAJE_OSTRZEZEN.filter((x) => !x.tylkoAdmin)) {
     expect(r.body.includes(rodzaj.nazwa)).toBe(true);
     expect(r.body.includes(rodzaj.opis)).toBe(true);
@@ -46,7 +48,7 @@ it('każdy zalogowany widzi siedem domyślnie zaznaczonych pól i link z Mojego 
   for (const typ of typy.filter((t) => t !== 'automatyzacja'))
     expect(pola(r.body).find((p) => p.includes(`value="${typ}"`))).toContain('checked');
   const a = await get(app, '/ustawienia/powiadomienia', admin);
-  expect(pola(a.body)).toHaveLength(8);
+  expect(pola(a.body)).toHaveLength(9);
   expect((await get(app, '/konto', osoba)).body).toContain('href="/konto/powiadomienia"');
   expect((await get(app, '/ustawienia/magazyn', osoba)).statusCode).toBe(403);
 });
@@ -118,6 +120,38 @@ it('na stronie głównej A ukrywa KSeF, B nadal widzi ten sam wiersz, lustro i o
   expect((await get(app, '/', admin)).body).toContain('FV-DEMO');
   expect(db.prepare('SELECT * FROM ksef_luki').all()).toHaveLength(1);
   expect(db.prepare('SELECT * FROM ostrzezenia_odrzucone').all()).toHaveLength(0);
+});
+
+it('na liście zamówień niski stan podlega dostępowi, ustawieniom konta i odrzuceniu do zmiany stanu', async () => {
+  const { app, db, id, osoba, admin } = panel();
+  const kartaId = utworzKarte(db, { nazwa: 'Pracownia Półcień', sku: 'POLCIEN' });
+  db.prepare('UPDATE karty_produktow SET prog_niskiego_stanu = 2 WHERE id = ?').run(kartaId);
+  const wiersz = async (konto) => {
+    const r = await get(app, '/', konto);
+    expect(r.statusCode).toBe(200);
+    return r.body.match(/<tr class="ostrzezenie ostrzezenie--niski-stan">[\s\S]*?<\/tr>/gu) ?? [];
+  };
+  expect(await wiersz(admin)).toEqual([]);
+  przelaczStany(db, { wlacz: true });
+  expect(await wiersz(osoba)).toEqual([]);
+  ustawUprawnienia(db, id, ['zamowienia', 'magazyn']);
+  expect(await wiersz(osoba)).toHaveLength(1);
+
+  expect(
+    (await post(app, '/ustawienia/powiadomienia', osoba, { widoczne: typy.filter((t) => t !== 'niski-stan') }))
+      .statusCode,
+  ).toBe(303);
+  expect(await wiersz(osoba)).toEqual([]);
+  const widoczne = await wiersz(admin);
+  expect(widoczne).toHaveLength(1);
+  expect(widoczne[0]).toContain('Niski stan: 1 karta (POLCIEN — 0 szt.)');
+  expect(widoczne[0]).toContain('href="/magazyn?stan=niski">Pokaż');
+  const klucz = widoczne[0].match(/name="klucz" value="([^"]+)"/u)?.[1];
+  expect(klucz).toBe(`niski-stan:${kartaId}:0`);
+  expect((await post(app, '/ostrzezenia/odrzuc', admin, { klucz })).headers.location).toBe('/');
+  expect(await wiersz(admin)).toEqual([]);
+  dodajRuch(db, { kartaId, rodzaj: 'korekta', ilosc: -3, powod: 'Inwentaryzacja', klucz: 'korekta' });
+  expect((await wiersz(admin))[0]).toContain('Niski stan: 1 karta (POLCIEN — -3 szt.)');
 });
 
 it('POST z obcego Origin nie zapisuje ustawień', async () => {

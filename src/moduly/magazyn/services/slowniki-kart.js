@@ -3,6 +3,9 @@
 // Zmiana nazwy przepisuje karty w JEDNEJ transakcji i oznacza pole jako ręczne (import go potem nie nadpisze).
 import { zapiszKarte } from '../../../oms/db/magazyn.js';
 import { dekodujEncje } from '../../../domena/slowniki-kart.js';
+import { czystaNazwa } from '../../../domena/marka-karty.js';
+
+export { czystaNazwa };
 
 export const SLOWNIKI = Object.freeze({
   kategorie: Object.freeze({ tabela: 'kategorie_kart', kolumna: 'kategoria_glowna' }),
@@ -29,7 +32,6 @@ const slownik = (typ) => {
   if (!s) throw new Error(`nieznany słownik „${typ}”`);
   return s;
 };
-export const czystaNazwa = (wartosc) => (typeof wartosc === 'string' ? wartosc.trim().slice(0, 200) : '');
 
 const liczbaKart = (db, { kolumna }, nazwa) =>
   db.prepare(`SELECT COUNT(*) AS ile FROM karty_produktow WHERE ${kolumna} = ?`).get(nazwa).ile;
@@ -92,18 +94,20 @@ export function dodajDoSlownika(db, typ, nazwa, { at = teraz() } = {}) {
  * Zmiana nazwy: wszystkie karty ze starą nazwą dostają nową (ręcznie — zapiszKarte oznacza źródło),
  * stary wpis znika, nowy powstaje (albo już był — wtedy dwie nazwy się scalają). Jedna transakcja.
  */
-// Mapowania Allegro idą za nazwą (tabele z migracji magazynu 0002 — w bazie bez modułu ich nie ma).
-// Przy scaleniu z istniejącą nazwą zostaje mapowanie nazwy docelowej (UPDATE OR IGNORE + usunięcie resztek).
-const MAPOWANIA_ALLEGRO = Object.freeze({
+// Mapowania idą za nazwą: Allegro (tabele z migracji magazynu 0002 — w bazie bez modułu ich nie ma)
+// i producent marki (rdzeń). Przy scaleniu z istniejącą nazwą zostaje mapowanie nazwy docelowej
+// (UPDATE OR IGNORE + usunięcie resztek).
+const MAPOWANIA_MAREK = Object.freeze({
   kategorie: [['allegro_mapa_kategorii', 'kategoria_karty']],
   marki: [
     ['allegro_marki', 'marka'],
     ['allegro_marki_gpsr', 'marka'],
+    ['marki_producenci', 'marka'],
   ],
 });
 
-function przeniesMapowaniaAllegro(db, typ, stara, nowa) {
-  for (const [tabela, kolumna] of MAPOWANIA_ALLEGRO[typ] ?? []) {
+function przeniesMapowania(db, typ, stara, nowa) {
+  for (const [tabela, kolumna] of MAPOWANIA_MAREK[typ] ?? []) {
     if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(tabela)) continue;
     db.prepare(`UPDATE OR IGNORE ${tabela} SET ${kolumna} = ? WHERE ${kolumna} = ?`).run(nowa, stara);
     db.prepare(`DELETE FROM ${tabela} WHERE ${kolumna} = ?`).run(stara);
@@ -125,7 +129,7 @@ export function zmienNazwe(db, typ, stara, nowa, { at = teraz() } = {}) {
     db.prepare(`DELETE FROM ${s.tabela} WHERE nazwa = ?`).run(z);
     db.prepare(`INSERT OR IGNORE INTO ${s.tabela} (nazwa, utworzona_at) VALUES (?, ?)`).run(n, at);
     if (typ === 'kategorie') db.prepare('UPDATE kategorie_kart_kanaly SET nazwa = ? WHERE nazwa = ?').run(n, z);
-    przeniesMapowaniaAllegro(db, typ, z, n);
+    przeniesMapowania(db, typ, z, n);
     return { karty: karty.length };
   });
 }
@@ -140,27 +144,9 @@ export function usunZeSlownika(db, typ, nazwa) {
     if (karty > 0) return { karty };
     db.prepare(`DELETE FROM ${s.tabela} WHERE nazwa = ?`).run(n);
     if (typ === 'kategorie') db.prepare('DELETE FROM kategorie_kart_kanaly WHERE nazwa = ?').run(n);
+    if (typ === 'marki') db.prepare('DELETE FROM marki_producenci WHERE marka = ?').run(n);
     return { karty: 0 };
   });
-}
-
-const poleFormularza = (body, klucz) =>
-  body && Object.hasOwn(body, klucz) && typeof body[klucz] === 'string' ? body[klucz] : null;
-
-/**
- * Kategoria i marka z formularza karty: wybór ze słownika (`kategoria_glowna`, `marka`) albo — gdy wpisane —
- * „dodaj nową” (`…_nowa`), które wygrywa z wyborem. Pole, którego formularz nie przysłał, zostaje nietknięte;
- * puste znaczy „bez wartości” (NULL).
- */
-export function polaSlownikowZFormularza(body) {
-  const zmiany = {};
-  for (const { kolumna } of Object.values(SLOWNIKI)) {
-    const nowa = czystaNazwa(poleFormularza(body, `${kolumna}_nowa`));
-    const wybor = poleFormularza(body, kolumna);
-    if (nowa) zmiany[kolumna] = nowa;
-    else if (wybor !== null) zmiany[kolumna] = czystaNazwa(wybor) || null;
-  }
-  return zmiany;
 }
 
 /** Po zapisie karty: wartości kategorii i marki trafiają do słowników (nowe nazwy z „dodaj nową”). */

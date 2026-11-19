@@ -4,7 +4,7 @@ Instrukcja dla właściciela sklepu korzystającego z Twój OMS. Stan: 14.11.202
 Przykłady są fikcyjne: „Pracownia Półcień”, konto „Allegro Pracownia Półcień”, katalog lamp
 („Lampa stołowa Opal”, marka „Półcień”).
 
-Dokument opisuje wystawianie ofert według planu etapu 3. Zmiany „Aktywuj w Allegro”, ekran „Wystaw na…”
+Dokument opisuje wystawianie ofert według planu etapu 3. Zmiany „Aktywuj w Allegro”, ekran „Wystaw oferty”
 z prowizją i zegar pętli ofert były w chwili pisania jeszcze w toku — opisano je według planu. Co jest
 niepotwierdzone na prawdziwym Allegro, zebrano na końcu.
 
@@ -90,7 +90,7 @@ OMS to pokaże („oferty kart tej marki w nich nie przejdą”).
 
 ## Oferta z karty
 
-Na liście Magazynu zaznacz karty i wybierz „Wystaw na…” oraz konto Allegro. Ten sam formularz co przy ERLI: podgląd,
+Na liście Magazynu zaznacz karty i wybierz „Wystaw oferty” oraz konto Allegro. Ten sam formularz co przy ERLI: podgląd,
 potem „Zatwierdź”. Podgląd pokazuje nazwę, cenę z narzutem, ilość, kategorię, zdjęcia i błędy blokujące
 („Odmowa: …”) oraz uwagi. Prowizja z kalkulatora Allegro jest tylko informacją — nie blokuje zatwierdzenia;
 liczona jest dla najwyżej 20 kart naraz (przy większym wyborze: „prowizji nie policzono — zawęź wybór”, przy

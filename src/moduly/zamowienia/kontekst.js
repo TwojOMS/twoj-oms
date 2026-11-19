@@ -2,7 +2,7 @@ import { gusDostepny } from '../../domena/konfiguracja-gus.js';
 import { ekranOdmowyKarty } from './odmowa-karty.js';
 import { TYLKO_ODCZYT } from '../../domena/woo-uprawnienia.js';
 import { wystawienieFaktury } from '../../domena/wystawienie-faktury.js';
-import { maDostepDoAdresu } from '../../domena/ekrany.js';
+import { maDostepDoAdresu, maDostepDoEkranu } from '../../domena/ekrany.js';
 import { wylaczoneModuly } from '../../oms/db/moduly-opcjonalne.js';
 import { etykietyStatusow } from '../../oms/db/statusy.js';
 import {
@@ -61,10 +61,12 @@ import {
   ostrzezeniaTerminow,
   ostrzezeniaZwrotow,
   ostrzezeniaPobran,
+  ostrzezeniaNiskiegoStanu,
   zlozOstrzezenia,
   ostrzezeniaDlaKonta,
 } from '../../domena/ostrzezenia.js';
 import { ukryteTypyKonta } from '../../oms/db/powiadomienia.js';
+import { kartyNiskiegoStanu } from '../../oms/db/niski-stan.js';
 import {
   odrzucenia,
   lukiKsef,
@@ -418,6 +420,8 @@ export function createKontekstZamowien(opcje) {
         },
       };
       const dzis = dzienWarszawa(teraz.toISOString());
+      const konto = req?.konto ?? null;
+      const ukryteTypy = ukryteTypyKonta(db, konto?.id);
       const wiersze = [
         ...ostrzezeniaIntegracji({ zdrowie: zdrowie?.() ?? null }),
         // Kopia bazy (stara, brak, katalog niewidoczny, program wbudowany bez nadzoru). Własny
@@ -461,15 +465,24 @@ export function createKontekstZamowien(opcje) {
         ...ostrzezeniaZwrotow({ zwroty: zwrotyBezKorekty(db), dzis }),
         ...ostrzezeniaPobran({ pobrania: pobraniaBezGotowki(db) }),
         ...ostrzezeniaPrzesylek({ przesylki, zamowienia: numery, teraz }),
+        ...(() => {
+          if ((konto && !maDostepDoEkranu(konto, 'magazyn')) || ukryteTypy.includes('niski-stan')) return [];
+          try {
+            return ostrzezeniaNiskiegoStanu(kartyNiskiegoStanu(db));
+          } catch (e) {
+            req?.log?.error?.(e, 'ostrzeżenie o niskim stanie magazynowym nie policzyło się');
+            return [];
+          }
+        })(),
         // W trybie próby (piaskownica, demo publiczne) wątki są z atrapy — „nowa wiadomość” byłaby szumem.
         ...(config.proba === true ? [] : ostrzezeniaWiadomosci({ watki: listaWatkow(db), teraz })),
       ];
       // Najpierw prawa konta (wiersz bez prawa do ekranu przycisku = 403 po kliku).
       return zlozOstrzezenia({
-        wiersze: ostrzezeniaDlaKonta({ wiersze, konto: req?.konto ?? null }),
+        wiersze: ostrzezeniaDlaKonta({ wiersze, konto }),
         odrzucone: odrzucenia(db),
         teraz,
-        ukryteTypy: ukryteTypyKonta(db, req?.konto?.id),
+        ukryteTypy,
       });
     } catch (e) {
       req?.log?.error?.(e, 'ostrzeżenia strony głównej nie policzyły się');

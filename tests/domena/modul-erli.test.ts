@@ -37,6 +37,7 @@ it('umiejętności ERLI odpowiadają katalogowi', async () => {
     zmienOferte: true,
     zmienIloscCene: true,
     stanOferty: true,
+    cenyZOms: true,
   });
 });
 

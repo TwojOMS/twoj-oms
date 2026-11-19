@@ -4418,6 +4418,28 @@
       "sourceReviewCommit": "05f827c5669c750f04bc17c4357187445335e29a"
     },
     {
+      "nazwa": "ATRAPA_WOO_WOLNY_KATALOG",
+      "wlasciciel": "piaskownica / atrapy kanałów",
+      "sekcja": "Środowisko narzędzi i testów",
+      "opis": "Symuluje wolne stronicowanie katalogu Woo, żeby w piaskownicy było widać pasek importu.",
+      "zakres": "tooling",
+      "wymagalnosc": "opcjonalna wyłącznie w piaskownicy (OMS_TRYB=proba)",
+      "domyslna": "nie",
+      "wymagalnoscPoLudzku": "nie dotyczy instalacji — czyta ją tylko atrapa Woo w piaskownicy",
+      "skutekBraku": "Atrapa oddaje katalog natychmiast.",
+      "skutekBrakuPoLudzku": "Odczyt katalogu w atrapie działa bez sztucznego opóźnienia.",
+      "walidacja": "Wartość „tak” włącza odczyt po 10 produktów z opóźnieniem 1200 ms na stronę.",
+      "sekret": false,
+      "odczyty": [],
+      "wywolaniaPosrednie": [],
+      "sciezkaOdczytu": [
+        "deploy/proba/atrapy/kanaly.mjs:100"
+      ],
+      "aktywacja": "tooling",
+      "wlaczoneWMainNaPinie": false,
+      "sourceReviewCommit": "641f03364866b84134f86cbc22dc490f2035d892"
+    },
+    {
       "nazwa": "ATRAPA_ALLEGRO_KONCZY",
       "wlasciciel": "piaskownica / atrapy kanałów",
       "sekcja": "Środowisko narzędzi i testów",
@@ -7783,7 +7805,7 @@
     },
     {
       "path": "src/moduly/rdzen/modul.ts",
-      "line": 26,
+      "line": 30,
       "expression": "env",
       "callee": "wczytajSprzedawce",
       "call": "wczytajSprzedawce(env)"
@@ -7930,14 +7952,14 @@
     },
     {
       "path": "src/moduly/zamowienia/modul.ts",
-      "line": 50,
+      "line": 57,
       "expression": "env",
       "callee": "efektywnyTryb",
       "call": "efektywnyTryb(env)"
     },
     {
       "path": "src/moduly/zamowienia/modul.ts",
-      "line": 54,
+      "line": 61,
       "expression": "env",
       "callee": "konfiguracjaZamowien",
       "call": "konfiguracjaZamowien(env)"
@@ -8196,14 +8218,14 @@
     },
     {
       "path": "src/moduly/magazyn/modul.ts",
-      "line": 103,
+      "line": 114,
       "expression": "env",
       "callee": "katalogZdjec",
       "call": "katalogZdjec(env)"
     },
     {
       "path": "src/moduly/magazyn/modul.ts",
-      "line": 103,
+      "line": 114,
       "expression": "env",
       "callee": "adresPublicznyZdjec",
       "call": "adresPublicznyZdjec(env)"
@@ -9265,7 +9287,7 @@
       },
       {
         "path": "src/moduly/rdzen/modul.ts",
-        "sha256": "9461d3b8e18cf56c2c8387579b2e430cc4cfc0a439c520515ae19942b40a55d3",
+        "sha256": "0e8a68a1f28c9b354781d2a9d9f1fcab7c55474af72bb037ab19c11e1558134d",
         "expression": "wczytajSprzedawce(env)"
       },
       {

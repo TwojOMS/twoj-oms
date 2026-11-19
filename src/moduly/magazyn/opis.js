@@ -1,7 +1,7 @@
 import { opisDoSekcji, poprawneSekcje } from '../../domena/opis-sekcje.js';
 import { kartaPoId, zapiszKarte } from '../../oms/db/magazyn.js';
 
-function odczytajOpis(body) {
+export function odczytajOpis(body) {
   if (typeof body?.opis_sekcje_json === 'string') return JSON.parse(body.opis_sekcje_json);
   const liczba = Number(body?.opis_liczba);
   if (!Number.isSafeInteger(liczba) || liczba < 0 || liczba > 200) throw new Error('sekcje');
@@ -46,16 +46,19 @@ function oczyscOpis(opis) {
 }
 
 export function daneOpisu(db, kartaId, formularz = null) {
-  const zdjecia = db
-    .prepare('SELECT * FROM zdjecia_kart WHERE karta_id=? ORDER BY kolejnosc, id')
-    .all(kartaId)
-    .map((z) => ({
-      adres: z.adres_zrodlowy || `/magazyn/zdjecia/${z.plik}`,
-      podglad: z.plik ? `/magazyn/zdjecia/${z.plik}` : z.adres_zrodlowy,
-    }));
+  const zdjecia =
+    kartaId === null
+      ? []
+      : db
+          .prepare('SELECT * FROM zdjecia_kart WHERE karta_id=? ORDER BY kolejnosc, id')
+          .all(kartaId)
+          .map((z) => ({
+            adres: z.adres_zrodlowy || `/magazyn/zdjecia/${z.plik}`,
+            podglad: z.plik ? `/magazyn/zdjecia/${z.plik}` : z.adres_zrodlowy,
+          }));
   let opis;
   try {
-    opis = JSON.parse(kartaPoId(db, kartaId)?.opis_sekcje_json || '{"sekcje":[]}');
+    opis = JSON.parse((kartaId === null ? null : kartaPoId(db, kartaId)?.opis_sekcje_json) || '{"sekcje":[]}');
   } catch {
     opis = { sekcje: [] };
   }
@@ -85,7 +88,7 @@ export function daneOpisu(db, kartaId, formularz = null) {
   };
 }
 
-function zmienSekcje(opis, akcja) {
+export function zmienSekcje(opis, akcja) {
   if (akcja === 'dodaj') {
     opis.sekcje.push({ elementy: [{ typ: 'tekst', html: '' }] });
     return true;
@@ -104,6 +107,31 @@ function zmienSekcje(opis, akcja) {
   return true;
 }
 
+export function walidujOpis(opis, zdjecia) {
+  let czysty;
+  try {
+    czysty = oczyscOpis(opis);
+  } catch {
+    return { blad: 'Nieprawidłowy opis. Sprawdź listę sekcji i elementów.' };
+  }
+  const walidacja = poprawneSekcje(czysty);
+  if (!walidacja.ok) return { blad: walidacja.bledy.join(' ') };
+  if (
+    czysty.sekcje.some((s) => s.elementy.some((e) => e.typ === 'zdjecie' && !zdjecia.some((z) => z.adres === e.adres)))
+  )
+    return { blad: 'Zdjęcie nie należy do tej karty. Wybierz zdjęcie z listy.' };
+  return { czysty };
+}
+
+export function opisDoZapisu(czysty) {
+  // Dopiero zapis usuwa puste pola; podgląd i operacje edytora zachowują strukturę formularza.
+  return {
+    sekcje: czysty.sekcje
+      .map((s) => ({ elementy: s.elementy.filter((e) => e.typ !== 'tekst' || e.html.trim() !== '') }))
+      .filter((s) => s.elementy.length > 0),
+  };
+}
+
 export function registerOpisMagazynu(app, { db, karta, magazyn }) {
   app.post('/magazyn/:id/opis', async (req, reply) => {
     if (magazyn?.gotowy?.() === false) return reply.code(302).redirect('/magazyn');
@@ -114,32 +142,18 @@ export function registerOpisMagazynu(app, { db, karta, magazyn }) {
       req.opisFormularz = { opis, blad };
       return karta.ekranKarty(req, reply, { karta: rekord, kod });
     };
-    let czysty;
     try {
       opis = odczytajOpis(req.body);
-      czysty = oczyscOpis(opis);
     } catch {
       return ekran(400, 'Nieprawidłowy opis. Sprawdź listę sekcji i elementów.');
     }
-    const walidacja = poprawneSekcje(czysty);
-    if (!walidacja.ok) return ekran(400, walidacja.bledy.join(' '));
-    const zdjecia = daneOpisu(db, rekord.id).zdjecia;
-    if (
-      czysty.sekcje.some((s) =>
-        s.elementy.some((e) => e.typ === 'zdjecie' && !zdjecia.some((z) => z.adres === e.adres)),
-      )
-    ) {
-      return ekran(400, 'Zdjęcie nie należy do tej karty. Wybierz zdjęcie z listy.');
-    }
+    const { czysty, blad } = walidujOpis(opis, daneOpisu(db, rekord.id).zdjecia);
+    if (blad) return ekran(400, blad);
     const akcja = req.body?.akcja ?? 'zapisz';
     if (akcja === 'podglad') return ekran(200);
     if (typeof akcja === 'string' && zmienSekcje(opis, akcja)) return ekran(200);
     if (akcja !== 'zapisz') return ekran(400, 'Nieznana operacja edytora opisu.');
-    // Dopiero zapis usuwa puste pola; podgląd i operacje edytora zachowują strukturę formularza.
-    czysty.sekcje = czysty.sekcje
-      .map((s) => ({ elementy: s.elementy.filter((e) => e.typ !== 'tekst' || e.html.trim() !== '') }))
-      .filter((s) => s.elementy.length > 0);
-    zapiszKarte(db, rekord.id, { opis_sekcje_json: JSON.stringify(czysty) });
+    zapiszKarte(db, rekord.id, { opis_sekcje_json: JSON.stringify(opisDoZapisu(czysty)) });
     return reply.code(303).redirect(`/magazyn/${rekord.id}#opis-karty`);
   });
 }

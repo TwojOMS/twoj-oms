@@ -18,6 +18,7 @@ import { migracjaStatusowWlasnych } from './migracje/0002-statusy-wlasne.ts';
 import { migracjaIndeksuListy } from './migracje/0001-indeks-listy.ts';
 import { migracjaScalen } from './migracje/0003-scalenia.ts';
 import { migracjaIndeksuListyFaktura } from './migracje/0004-indeks-listy-faktura.ts';
+import { migracjaIndeksuPozycjiKarty } from './migracje/0005-indeks-pozycji-karty.ts';
 import { efektywnyTryb } from '../../core/tryb.ts';
 import { zrodloAdresuFirmy } from '../../oms/db/adres-firmy.js';
 import { zrodloNipuIBdoFirmy } from '../../oms/db/nip-bdo-firmy.js';
@@ -34,7 +35,13 @@ export function createModulZamowienia({
     nazwa: 'zamowienia',
     wersja: '1.0.0',
     wymaga: ['rdzen', 'web', 'kanaly', 'faktury', ...(zWiadomosciami ? ['wiadomosci'] : [])],
-    migracje: [migracjaIndeksuListy, migracjaStatusowWlasnych, migracjaScalen, migracjaIndeksuListyFaktura],
+    migracje: [
+      migracjaIndeksuListy,
+      migracjaStatusowWlasnych,
+      migracjaScalen,
+      migracjaIndeksuListyFaktura,
+      migracjaIndeksuPozycjiKarty,
+    ],
     uprawnienia: [{ klucz: 'zamowienia', etykieta: 'Zamówienia', role: ['admin', 'operator'] }],
     menu: [
       {

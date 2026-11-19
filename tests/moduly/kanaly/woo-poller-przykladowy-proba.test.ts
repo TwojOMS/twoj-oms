@@ -83,6 +83,9 @@ it.each([
   'zapiszProdukt',
   'dodajNotatke',
   'ustawStatus',
+  'zapiszCenyHurtem',
+  'ustawStatusProduktu',
+  'pobierzProduktyPowiazane',
 ])('proba: %s zwraca czytelną odmowę bez sieci', async (metoda) => {
   const { uslugi, fetchImpl, k } = await setup(true);
   await expect(uslugi.rejestrKanalow.klient(k)[metoda]()).rejects.toThrow(

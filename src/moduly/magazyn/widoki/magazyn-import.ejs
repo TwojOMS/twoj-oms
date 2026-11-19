@@ -1,6 +1,6 @@
 <%# MAGAZYN — „Importuj produkty”. Jeden ekran, cztery kroki (`krok`):
     wybor   — połączenie + typ, przycisk „Sprawdź";
-    trwa    — odczyt katalogu wybranego kanału w tle (odśwież stronę);
+    trwa    — odczyt katalogu wybranego kanału w tle, z odświeżaniem sekcji;
     podglad — liczby z planu (nic jeszcze nie zapisane do kart), przycisk „Importuj";
     wynik   — te same liczby po wykonaniu.
     Liczby liczy moduly/magazyn/services/import-kanalu.js; widok tylko rysuje. Formularze bez ukrytego pola z tokenem:
@@ -11,12 +11,13 @@
   podglad: { powiaze: 'Powiąże z kartami', utworzy: 'Utworzy nowe karty', zaktualizuje: 'Zaktualizuje treść kart', pominie: 'Pominie' },
   wynik: { powiaze: 'Powiązano z kartami', utworzy: 'Utworzono kart', zaktualizuje: 'Zaktualizowano kart', pominie: 'Pominięto' },
 }; _%>
+<%_ const FAZY = { lista: 'Pobieram listę produktów', miniatury: 'Pobieram miniatury', ustawienia: 'Czytam ustawienia sklepu', oferty: 'Pobieram listę ofert' }; _%>
 <p class="wroc"><a href="/magazyn">← Magazyn</a></p>
 
 <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: 'Importuj produkty', podtytul: 'z jednego sklepu albo konta sprzedaży'}) %>
 
 <% if (!kanaly.length && krok === 'wybor') { %>
-  <section class="panel import-ekran">
+  <section class="panel import-ekran" data-krok="wybor">
     <p>Nie ma z czego importować. <a href="/ustawienia/integracje">Połącz sklep albo konto w Ustawieniach</a>, potem wróć tutaj.</p>
   </section>
 <% } else if (krok === 'wybor') { %>
@@ -36,6 +37,9 @@
       <% if (erli) { %>
         <p class="wyjasnienie import-erli">Konta ERLI nie mają tu odczytu katalogu — ich oferty powiążesz ręcznie.</p>
       <% } %>
+      <% if (locals.bezSku) { %>
+        <p class="import-uwaga" id="import-bez-sku">Oferty tego konta nie mają sygnatur (SKU), więc import nie powiąże ich z kartami, a opcje tworzące karty założą duplikaty. Powiąż je na ekranie Powiązania — panel podpowie karty po nazwie → <a href="<%= powiazania %>">Powiązania ofert tego konta</a></p>
+      <% } %>
       <fieldset class="import-wybor">
         <legend>Co zrobić z produktami</legend>
         <% typy.forEach(function (t) { const zaznacz = typ && typ.klucz === t.klucz; %>
@@ -47,17 +51,20 @@
     </form>
   </section>
 <% } else if (krok === 'trwa') { %>
-  <section class="panel import-ekran" data-krok="trwa">
+  <section class="panel import-ekran" data-krok="trwa"
+    hx-get="<%= odswiez %>" hx-trigger="every 2.5s" hx-select=".import-ekran" hx-swap="outerHTML">
     <p><%- plakietka(wybrany) %><strong><%= wybrany.etykieta %></strong> · <%= typ.nazwa %></p>
     <p class="wyjasnienie" role="status">
-      <% if (locals.postep && postep.zTego) { %>
+      <% if (locals.postep && FAZY[postep.faza]) { %>
+        <%= FAZY[postep.faza] %><% if (postep.strona) { %> — strona <%= postep.strona %><% if (postep.stron) { %> z <%= postep.stron %><% } %><% } else { %>…<% } %>
+      <% } else if (locals.postep && postep.zTego) { %>
         <label for="import-postep">Czytam katalog — <%= postep.zrobione %> z <%= postep.zTego %></label>
         <progress id="import-postep" max="<%= postep.zTego %>" value="<%= postep.zrobione %>"></progress>
       <% } else { %>
         Czytam katalog…
       <% } %>
     </p>
-    <p><a class="btn" href="<%= odswiez %>">Odśwież</a></p>
+    <p><a class="btn" href="<%= odswiez %>" id="import-odswiez">Odśwież</a></p>
   </section>
 <% } else { %>
   <section class="panel import-ekran" data-krok="<%= krok %>">
@@ -65,10 +72,13 @@
     <% if (wybrany.allegro) { %>
       <p class="import-uwaga"><%= ZDANIE_D3 %>. <a href="https://help.allegro.com" target="_blank" rel="noopener noreferrer">Zasady Allegro (FAQ)</a></p>
     <% } %>
+    <% if (krok === 'podglad' && locals.bezSku && liczby.utworzy > 0) { %>
+      <p class="import-uwaga" id="import-bez-sku">Utworzy <%= liczby.utworzy %> nowych kart — sprawdź, czy tych produktów nie ma już w magazynie pod inną nazwą. Oferty tego konta nie mają SKU, więc import nie znajdzie istniejących kart. <a href="<%= powiazania %>">Powiąż oferty z kartami →</a></p>
+    <% } %>
     <% if (krok === 'podglad') { %>
       <p class="wyjasnienie">Odczytano <%= odczytane %> pozycji katalogu. Nic jeszcze nie zapisano do kart — tak wyglądałby import:</p>
     <% } else { %>
-      <p role="status"><strong>Import zakończony.</strong></p>
+      <p role="status"><span class="waga waga--ok waga--duza">Import zakończony</span></p>
     <% } %>
     <div class="kafelki kafelki--cztery">
       <% ['powiaze', 'utworzy', 'zaktualizuje', 'pominie'].forEach(function (klucz) { %>
@@ -81,10 +91,18 @@
     <% if (juzPowiazane) { %><p class="wyjasnienie">Już powiązanych z kartami: <%= juzPowiazane %>.</p><% } %>
     <% if (powody.length) { %>
       <ul class="import-powody">
-        <% powody.forEach(function (p) { %><li><%= p.ile %> — <%= p.powod %></li><% }) %>
+        <% powody.forEach(function (p) { %><li><%= p.ile %> — <%= p.powod %><% if (p.powod === powodBezKarty) { %> <a href="<%= powiazania %>">Powiąż je ręcznie →</a><% } %></li><% }) %>
       </ul>
     <% } %>
     <p><a href="<%= dlaczego %>">Dlaczego pomija? Pominięte z tego kanału →</a></p>
+    <% if (krok === 'wynik' && locals.sku && (sku.uzupelniono || sku.pominiete.length)) { %>
+      <p class="wyjasnienie">Uzupełniono SKU: <%= sku.uzupelniono %> kart, pominięto: <%= sku.pominiete.length %></p>
+      <% if (sku.pominiete.length) { %>
+        <ul class="import-powody">
+          <% sku.pominiete.forEach(function (p) { %><li><%= p.powod %></li><% }) %>
+        </ul>
+      <% } %>
+    <% } %>
     <% if (krok === 'wynik' && locals.trescAllegro === 'ruszyla') { %>
       <p class="wyjasnienie" role="status">Treść i zdjęcia ofert pobierają się w tle — postęp zobaczysz na liście magazynu.</p>
     <% } else if (krok === 'wynik' && locals.trescAllegro === 'zajeta') { %>

@@ -5,6 +5,7 @@
 // a gościa demo w podglądzie zatrzymuje na każdym POST-cie (core/bezpieczenstwo/podglad-demo.js) — tu nie
 // powtarzamy żadnej z tych blokad.
 import { przelacznikStanow, przelaczStany } from '../../../oms/db/stany-magazynowe.js';
+import { listaProducentow } from '../../../oms/db/producenci.js';
 import { nawigacjaUstawien } from '../nawigacja.js';
 import { stronaOdmowy } from '../../../core/web/odmowa.js';
 import { kolejnoscZrodel, polaczeniaZrodel, zapiszKolejnoscZrodel } from '../../magazyn/services/kolejnosc-zrodel.js';
@@ -14,6 +15,12 @@ const KOMUNIKATY = {
   wylaczono: 'Stany magazynowe są wyłączone.',
   bez_zmian: 'Nic się nie zmieniło — stany były już w tym położeniu.',
 };
+
+/** Liczba producentów GPSR i nazwa domyślnego (`null`, gdy żaden nie jest domyślny). */
+function podsumowanieProducentow(db) {
+  const lista = listaProducentow(db);
+  return { liczba: lista.length, domyslny: lista.find((p) => p.domyslny)?.nazwa ?? null };
+}
 
 export function registerUstawieniaMagazynuRoutes(app, { db }) {
   const liczniki = () => {
@@ -34,6 +41,7 @@ export function registerUstawieniaMagazynuRoutes(app, { db }) {
       przelacznik,
       liczniki: przelacznik.wlaczone ? liczniki() : { zarzadzane: 0, przejete: 0 },
       zrodla: kolejnoscZrodel(db).map((klucz) => polaczeniaZrodel(db).find((p) => p.klucz === klucz)),
+      producenci: podsumowanieProducentow(db),
       // Było już kiedyś włączone — ponowne włączenie zacznie liczyć od nowa (ostrzeżenie przy przycisku).
       bylWlaczony: przelacznik.historia.some((w) => w.wlaczone),
       zapisano:

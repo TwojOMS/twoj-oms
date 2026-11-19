@@ -1,5 +1,14 @@
 import { milimetryZCentymetrow, centymetryZMilimetrow, nazwaBezRozmiaru } from './rozmiar.js';
 import { PACZKOMAT_WARTOSCI } from './paczkomat.js';
+import { czyStawkaVat } from './vat.js';
+import { kwotaZakupuZNapisu, dzienZNapisu, dzienPolski } from './cena-zakupu.js';
+import { dzienWarszawa } from './format-daty.js';
+import { cenaPolska, zl } from './kwoty.js';
+import { markaZFormularza } from './marka-karty.js';
+import { cenaPoZmianie } from './cena-kanalu.js';
+import { groszeCenyKatalogowej } from './kwota.js';
+import { LIMIT_INFORMACJI_BEZPIECZENSTWA } from './allegro-oferta-z-karty.js';
+import { parsujProg } from './prog-stanu.js';
 
 // EDYCJA HURTEM W MAGAZYNIE — reguly czyste. Zadnej bazy, zadnego HTTP: tutaj rozstrzyga
 // sie WYLACZNIE, co formularz znaczy i ktore karty ta tresc faktycznie zmieni.
@@ -33,8 +42,24 @@ export const POLA_HURTU = Object.freeze([
   'szerokosc_cm',
   'wysokosc_cm',
   'kategoria_glowna',
+  'marka',
+  'marka_nowa',
   'paczkomat',
   'nazwa_bez_rozmiaru',
+  'stawka_vat',
+  // Wyjątek od zasady „hurt zmienia tylko kolumny karty”: cena zakupu ma własną tabelę z historią
+  // „obowiązuje od”, więc nie trafia do `zmiany`, tylko do osobnego pola planu `cenaZakupu`.
+  'cena_zakupu_netto',
+  'cena_zakupu_od',
+  'cena_tryb',
+  'cena_wartosc',
+  'cena_zaokraglenie',
+  // Informacja o bezpieczeństwie (GPSR): tekst albo jawny powrót do tekstu domyślnego konta.
+  // Dwa pola, bo puste pole tekstu znaczy „nie ruszaj”, a nie „skasuj”.
+  'informacja_bezpieczenstwa',
+  'informacja_bezpieczenstwa_domyslna',
+  'prog_niskiego_stanu',
+  'prog_niskiego_stanu_bez',
 ]);
 
 // Wartosc pola wyboru paczkomatu, ktora JAWNIE kasuje decyzje i wraca do stanu „jeszcze
@@ -63,6 +88,86 @@ const NIE_ROZUMIEM_WYMIARU = (surowe) =>
   'Wpisz samą liczbę (np. 70 albo 10,5) albo zostaw pole puste — puste pole hurtem ' +
   'znaczy „nie ruszaj tej kolumny", a nie „skasuj ją".';
 
+const TRYBY_CENY = new Set(['o_procent', 'na_kwote', 'o_kwote']);
+const ZAOKRAGLENIA_CENY = new Set(['grosz', '99', 'zloty']);
+// Znak przed wartością: plus, minus z klawiatury albo typograficzny (wklejony z dokumentu).
+const ZNAK_I_RESZTA = /^([+\-−])?\s*(.*)$/s;
+const WZOR_PROCENTU = /^(\d+)(?:[.,](\d{1,2}))?$/;
+
+/**
+ * Cena katalogowa hurtem: tryb, wartość i zaokrąglenie → `{ tryb, wartosc, zaokraglenie }`
+ * (procent w punktach bazowych, kwoty w groszach), `undefined` gdy nie zmieniamy ceny, albo `blad`.
+ *
+ * Wartość bez trybu jest odmową, a nie „nie zmieniaj”: przy pieniądzach wpisane „-10” bez
+ * wybranego trybu nie może po cichu przepaść ani zostać zgadnięte.
+ */
+function cenaKatalogowaZFormularza(body) {
+  const tryb = poleHurtu(body, 'cena_tryb');
+  const wartosc = poleHurtu(body, 'cena_wartosc');
+  const zaokraglenie = poleHurtu(body, 'cena_zaokraglenie');
+  if (tryb === null || wartosc === null || zaokraglenie === null) {
+    return { blad: 'Cena katalogowa przyszła dwa razy — nie wiem, którą wartość wybrać.' };
+  }
+  const t = tryb === BRAK_POLA ? '' : tryb.trim();
+  const w = wartosc === BRAK_POLA ? '' : wartosc.trim();
+  if (!t && !w) return {};
+  if (!t) {
+    return {
+      blad:
+        `Wpisano „${w}” przy cenie katalogowej, ale nie wybrano, co z nią zrobić. ` +
+        'Wybierz „zmień o %”, „zmień na kwotę” albo „zmień o kwotę”.',
+    };
+  }
+  if (!TRYBY_CENY.has(t)) {
+    return { blad: `„${t}” to nie jest sposób zmiany ceny. Wybierz go z listy przy cenie katalogowej.` };
+  }
+  if (!w) {
+    return {
+      blad: 'Wybrano zmianę ceny katalogowej, ale nie wpisano wartości. Wpisz ją albo wybierz „— nie zmieniaj —”.',
+    };
+  }
+  const z = zaokraglenie === BRAK_POLA ? 'grosz' : zaokraglenie.trim() || 'grosz';
+  if (!ZAOKRAGLENIA_CENY.has(z)) {
+    return { blad: `„${z}” to nie jest sposób zaokrąglenia ceny. Wybierz go z listy.` };
+  }
+
+  if (t === 'na_kwote') {
+    const gr = groszeCenyKatalogowej(w);
+    if (gr === undefined || gr === null) {
+      return { blad: `„${w}” to nie jest cena w złotych. Wpisz samą kwotę, np. 49,90.` };
+    }
+    if (cenaPoZmianie({ gr: null, tryb: t, wartosc: gr }).blad) {
+      return { blad: 'Cena katalogowa musi być większa od zera.' };
+    }
+    // Kwota podana wprost nie ma czego zaokrąglać.
+    return { cena: { tryb: t, wartosc: gr, zaokraglenie: 'grosz' } };
+  }
+
+  const [, znak = '+', reszta] = ZNAK_I_RESZTA.exec(w);
+  const ujemna = znak !== '+';
+  if (t === 'o_kwote') {
+    const gr = groszeCenyKatalogowej(reszta);
+    if (gr === undefined || gr === null) {
+      return { blad: `„${w}” to nie jest kwota w złotych. Wpisz samą kwotę ze znakiem, np. -10 albo +5,50.` };
+    }
+    return { cena: { tryb: t, wartosc: ujemna ? -gr : gr, zaokraglenie: z } };
+  }
+
+  const procent = WZOR_PROCENTU.exec(reszta);
+  if (!procent) {
+    return {
+      blad: `„${w}” to nie jest procent. Wpisz liczbę ze znakiem, np. -10 albo 7,5 (najwyżej dwa miejsca po przecinku).`,
+    };
+  }
+  const bp = Number(procent[1]) * 100 + Number(`${procent[2] ?? ''}00`.slice(0, 2));
+  const wartoscBp = ujemna ? -bp : bp;
+  // Zakres sprawdza ta sama funkcja, która potem liczy cenę — granice żyją w jednym miejscu.
+  if (cenaPoZmianie({ gr: 10000, tryb: t, wartosc: wartoscBp }).blad === 'PROCENT_POZA_ZAKRESEM') {
+    return { blad: `Zmiana ceny o ${w}% jest poza zakresem — procent musi być między −99% a +1000%.` };
+  }
+  return { cena: { tryb: t, wartosc: wartoscBp, zaokraglenie: z } };
+}
+
 /**
  * Tresc formularza hurtowego → POLECENIE, czyli komplet kolumn do ustawienia.
  *
@@ -74,7 +179,7 @@ const NIE_ROZUMIEM_WYMIARU = (surowe) =>
  * o ktorym ekran mowi „nie zapisalem", i przy sześciuset kartach nikt by juz nie odtworzyl,
  * ktora polowa weszla.
  */
-export function polecenieZFormularza(body) {
+export function polecenieZFormularza(body, { dzis = dzienWarszawa(new Date().toISOString()) } = {}) {
   const polecenie = {};
 
   // ⚠️ CENTYMETRY WCHODZA, MILIMETRY LADUJA W BAZIE — przelicza `domena/rozmiar.js`, TA SAMA
@@ -104,6 +209,10 @@ export function polecenieZFormularza(body) {
   // a czyszczenie musialoby byc osobnym, nazwanym wyborem (jak przy paczkomacie nizej).
   if (kategoria !== BRAK_POLA && kategoria.trim()) polecenie.kategoria_glowna = kategoria.trim();
 
+  const { marka, blad: bladMarki } = markaZFormularza(body, { hurt: true });
+  if (bladMarki) return { polecenie: null, blad: bladMarki };
+  if (marka !== undefined) polecenie.marka = marka;
+
   // ⚠️ PACZKOMAT WYLACZNIE RECZNIE, TRZY STANY, ZERO WYLICZANIA Z WYMIAROW.
   // Droga typowa to zaznaczyc duza grupe i ustawic „nie", a wyjatki poprawic
   // pojedynczo. Czwarta wartosc w kolumnie zepsulaby filtr „bez oznaczenia paczkomatu" —
@@ -124,6 +233,48 @@ export function polecenieZFormularza(body) {
     }
   }
 
+  // Stawka VAT — WYLACZNIE z listy panelu (`czyStawkaVat`, domena/vat.js), ta sama regula co
+  // formularz karty, bez „zw". Hurt stawki NIE KASUJE: karta umie, ale tutaj puste znaczy
+  // „nie zmieniaj", a jawnego wyboru „skasuj stawke" ten ekran nie ma.
+  const stawka = poleHurtu(body, 'stawka_vat');
+  if (stawka !== BRAK_POLA) {
+    if (typeof stawka !== 'string') {
+      return { polecenie: null, blad: 'Stawka VAT przyszła dwa razy — nie wiem, którą wybrać.' };
+    }
+    const s = stawka.trim();
+    if (s && !czyStawkaVat(s)) {
+      return {
+        polecenie: null,
+        blad: `„${s}” to nie jest stawka VAT z listy. Wybierz stawkę z listy albo „nie zmieniaj”.`,
+      };
+    }
+    if (s) polecenie.stawka_vat = s;
+  }
+
+  // Cena zakupu netto — wpis do historii „obowiązuje od”, nie kolumna karty. Pusta kwota znaczy
+  // „nie zmieniaj” także przy wpisanej dacie (pole daty bywa wypełnione z góry, jak na karcie),
+  // więc data bez kwoty jest ignorowana. Kwotę i dzień czytają te same funkcje co formularz karty.
+  const cena = poleHurtu(body, 'cena_zakupu_netto');
+  const od = poleHurtu(body, 'cena_zakupu_od');
+  if (cena === null || od === null) {
+    return { polecenie: null, blad: 'Cena zakupu przyszła dwa razy — nie wiem, którą wybrać.' };
+  }
+  if (cena !== BRAK_POLA && cena.trim()) {
+    const kwota = kwotaZakupuZNapisu(cena);
+    if (kwota.blad) return { polecenie: null, blad: kwota.blad };
+    let dzien = dzis;
+    if (od !== BRAK_POLA && od.trim()) {
+      const wynik = dzienZNapisu(od);
+      if (wynik.blad) return { polecenie: null, blad: wynik.blad };
+      dzien = wynik.dzien;
+    }
+    polecenie.cenaZakupu = { gr: kwota.gr, od: dzien };
+  }
+
+  const { cena: cenaKatalogowa, blad: bladCeny } = cenaKatalogowaZFormularza(body);
+  if (bladCeny) return { polecenie: null, blad: bladCeny };
+  if (cenaKatalogowa) polecenie.cenaKatalogowa = cenaKatalogowa;
+
   // Skrocenie nazwy o rozmiar. ⚠️ WYLACZNIE W REJESTRZE MAGAZYNU — nazwa NIE JEDZIE do
   // sklepu: jest zaindeksowanym tytulem strony, a jego zmiana w sklepie wplywa na pozycje
   // w wyszukiwarce.
@@ -132,7 +283,63 @@ export function polecenieZFormularza(body) {
     polecenie.nazwaBezRozmiaru = true;
   }
 
+  const { informacja, blad: bladInformacji } = informacjaBezpieczenstwaZFormularza(body);
+  if (bladInformacji) return { polecenie: null, blad: bladInformacji };
+  if (informacja !== BRAK_POLA) polecenie.informacja_bezpieczenstwa = informacja;
+
+  const surowyProg = poleHurtu(body, 'prog_niskiego_stanu');
+  const bezProgu = poleHurtu(body, 'prog_niskiego_stanu_bez');
+  const prog = surowyProg === BRAK_POLA ? null : parsujProg(surowyProg);
+  if (prog !== null && typeof prog === 'object') {
+    return {
+      polecenie: null,
+      blad: 'Próg niskiego stanu: wpisz liczbę całkowitą od 0 w górę albo wybierz „bez progu”.',
+    };
+  }
+  if (bezProgu !== BRAK_POLA && bezProgu !== '' && bezProgu !== 'tak') {
+    return { polecenie: null, blad: 'Próg niskiego stanu: nieprawidłowy wybór „bez progu”.' };
+  }
+  if (bezProgu === 'tak' && prog !== null) {
+    return { polecenie: null, blad: 'Próg niskiego stanu: wpisz liczbę albo wybierz „bez progu”.' };
+  }
+  if (bezProgu === 'tak') polecenie.prog_niskiego_stanu = null;
+  else if (prog !== null) polecenie.prog_niskiego_stanu = prog;
+
   return { polecenie, blad: null };
+}
+
+/**
+ * Informacja o bezpieczeństwie z formularza hurtu: JSON `{typ:'TEXT', tekst}`, `null` (powrót do
+ * tekstu domyślnego konta) albo `BRAK_POLA` (nie ruszaj).
+ *
+ * ⚠️ PUSTE POLE TEKSTU NIE ZNACZY „WRÓĆ DO DOMYŚLNEGO”. Kasowanie ma osobne, jawne pole wyboru:
+ * inaczej ustawienie samej stawki VAT zdjęłoby ręczne teksty GPSR z całej zaznaczonej grupy.
+ * Tekst normalizujemy tak samo jak karta (nowe linie bez `\r`, przycięcie), żeby ten sam tekst
+ * wpisany hurtem i na karcie nie wyglądał na zmianę.
+ */
+function informacjaBezpieczenstwaZFormularza(body) {
+  const tekstSurowy = poleHurtu(body, 'informacja_bezpieczenstwa');
+  const domyslna = poleHurtu(body, 'informacja_bezpieczenstwa_domyslna');
+  if (tekstSurowy === null || domyslna === null) {
+    return { blad: 'Informacja o bezpieczeństwie przyszła dwa razy — nie wiem, którą wybrać.' };
+  }
+  const tekst = tekstSurowy === BRAK_POLA ? '' : tekstSurowy.replace(/\r\n?/g, '\n').trim();
+  const powrot = domyslna !== BRAK_POLA && Boolean(domyslna.trim());
+  if (tekst && powrot) {
+    return {
+      blad:
+        'Informacja o bezpieczeństwie: wpisano tekst i zaznaczono powrót do tekstu domyślnego konta naraz. ' +
+        'Zostaw jedno z nich.',
+    };
+  }
+  if (tekst.length > LIMIT_INFORMACJI_BEZPIECZENSTWA) {
+    return {
+      blad: `Informacja o bezpieczeństwie ma ${tekst.length} znaków — Allegro przyjmie najwyżej ${LIMIT_INFORMACJI_BEZPIECZENSTWA}.`,
+    };
+  }
+  if (powrot) return { informacja: null };
+  if (tekst) return { informacja: JSON.stringify({ typ: 'TEXT', tekst }) };
+  return { informacja: BRAK_POLA };
 }
 
 /**
@@ -159,7 +366,17 @@ export function polaDoPrzeniesienia(body) {
 
 // Kolejnosc kolumn na ekranie podgladu. Stala i JEDNA — dwie listy rozjechalyby sie o jedna
 // pozycje, czyli „z czego na co" opisywaloby inna kolumne, niz nazywa.
-const KOLUMNY = Object.freeze(['nazwa', 'szerokosc_mm', 'wysokosc_mm', 'kategoria_glowna', 'paczkomat']);
+const KOLUMNY = Object.freeze([
+  'nazwa',
+  'szerokosc_mm',
+  'wysokosc_mm',
+  'kategoria_glowna',
+  'marka',
+  'paczkomat',
+  'stawka_vat',
+  'informacja_bezpieczenstwa',
+  'prog_niskiego_stanu',
+]);
 
 // Etykieta i postac czytelna KAZDEJ kolumny — liczone TUTAJ, bo widok w tym module niczego
 // nie liczy (ta sama zasada, co w magazyn-lista.ejs i magazyn-karta.ejs).
@@ -172,10 +389,57 @@ const OPIS_KOLUMNY = Object.freeze({
   szerokosc_mm: { etykieta: 'Szerokość', czytelnie: wCentymetrach },
   wysokosc_mm: { etykieta: 'Wysokość', czytelnie: wCentymetrach },
   kategoria_glowna: { etykieta: 'Kategoria główna', czytelnie: (w) => w || null },
+  marka: { etykieta: 'Marka', czytelnie: (w) => w || null },
   // ⚠️ Brak oznaczenia to STAN, a nie brak danych — i musi byc nazwany po imieniu, bo
   // wlasnie miedzy nim a „nie" przebiega cala roznica tej kolumny.
   paczkomat: { etykieta: 'Paczkomat', czytelnie: (w) => w || 'nieoznaczone' },
+  // Kolumna jest tekstowa, wiec stawka „0" to napis (prawdziwy), a nie brak — wychodzi „0%".
+  stawka_vat: { etykieta: 'Stawka VAT', czytelnie: (w) => (w ? `${w}%` : null) },
+  // JSON w kolumnie porównujemy po treści, nie po napisie: ten sam tekst zapisany przez kartę
+  // z innym odstępem albo kolejnością kluczy nie jest zmianą.
+  informacja_bezpieczenstwa: {
+    etykieta: 'Informacja o bezpieczeństwie',
+    czytelnie: informacjaCzytelnie,
+    doPorownania: informacjaDoPorownania,
+  },
+  prog_niskiego_stanu: {
+    etykieta: 'Próg niskiego stanu',
+    czytelnie: (w) => (w === null ? 'bez progu' : `${w} szt.`),
+  },
 });
+
+function informacjaZJsona(w) {
+  if (w === null || w === undefined || w === '') return null;
+  try {
+    const obiekt = JSON.parse(w);
+    return obiekt && typeof obiekt === 'object' ? obiekt : { typ: null };
+  } catch {
+    return { typ: null };
+  }
+}
+const SKROT_INFORMACJI = 100;
+function informacjaCzytelnie(w) {
+  const informacja = informacjaZJsona(w);
+  if (!informacja) return 'tekst domyślny konta';
+  if (informacja.typ === 'TEXT' && typeof informacja.tekst === 'string') {
+    const tekst = informacja.tekst.trim();
+    return tekst.length > SKROT_INFORMACJI ? `${tekst.slice(0, SKROT_INFORMACJI)}…` : tekst;
+  }
+  if (informacja.typ === 'ATTACHMENTS') {
+    const liczba = Array.isArray(informacja.zalaczniki) ? informacja.zalaczniki.length : 0;
+    return `załączniki z Allegro (${liczba})`;
+  }
+  return 'nieczytelny zapis';
+}
+function informacjaDoPorownania(w) {
+  const informacja = informacjaZJsona(w);
+  if (!informacja) return null;
+  if (informacja.typ === 'TEXT' && typeof informacja.tekst === 'string') {
+    return `TEXT:${informacja.tekst.replace(/\r\n?/g, '\n').trim()}`;
+  }
+  return w;
+}
+const maZalacznikiAllegro = (w) => informacjaZJsona(w)?.typ === 'ATTACHMENTS';
 
 /**
  * Wartosc docelowa JEDNEJ kolumny dla JEDNEJ karty — albo `BRAK_POLA`, gdy polecenie
@@ -205,8 +469,71 @@ function wartoscDocelowa(karta, polecenie, kolumna) {
  * albo przepisywalo gotowy zestaw z ukrytego pola, odczyt katalogow miedzy jednym a drugim
  * zmienilby zbior po cichu — to jest ta sama zasada, ktora obowiazuje zapis do sklepow.
  */
-export function zmianyHurtem(karty, polecenie) {
+export function zmianyHurtem(karty, polecenie, { cenyNaDzien } = {}) {
+  const { plan, blad } = planHurtu(karty, polecenie, { cenyNaDzien });
+  if (blad) throw new Error(`zmianyHurtem: ${blad}`);
+  return plan;
+}
+
+// Zmiana ceny o więcej niż połowę w którąkolwiek stronę dostaje na podglądzie oznaczenie — ten sam
+// próg co przy wysyłce cen do sklepów. Stała w kodzie, nie ustawienie konta: to ochrona przed
+// pomyłką o rząd wielkości (np. „100” zamiast „10”), a nie reguła handlowa.
+export const PROG_DUZEJ_ZMIANY_CENY_BP = 5000;
+
+const cenaNaEkranie = (gr) => cenaPolska(zl(gr));
+
+// Procent zmiany z jednym miejscem po przecinku, liczony z groszy na BigInt (połówką w górę).
+function procentZmiany(stara, nowa) {
+  const roznica = BigInt(nowa - stara);
+  const bezwzgledna = roznica < 0n ? -roznica : roznica;
+  const dziesiate = Number((bezwzgledna * 2000n + BigInt(stara)) / (2n * BigInt(stara)));
+  return `${roznica < 0n ? '−' : '+'}${Math.floor(dziesiate / 10)},${dziesiate % 10}%`;
+}
+
+function opisCeny(stara, nowa) {
+  const opis = { pole: 'Cena katalogowa', z: stara === null ? null : cenaNaEkranie(stara), na: cenaNaEkranie(nowa) };
+  if (stara) {
+    const roznica = BigInt(Math.abs(nowa - stara));
+    opis.zmianaProcent = procentZmiany(stara, nowa);
+    opis.duzaZmiana = roznica * 10000n > BigInt(PROG_DUZEJ_ZMIANY_CENY_BP) * BigInt(stara);
+  }
+  return opis;
+}
+
+const nazwaDoOdmowy = (karta) => `„${karta.nazwa}”${karta.sku ? ` (${karta.sku})` : ''}`;
+const ODMOWA_CENY = {
+  CENA_NIEDODATNIA: (karta, wynik) =>
+    `Cena katalogowa karty ${nazwaDoOdmowy(karta)} spadłaby do zera albo poniżej: ${wynik.rachunek}. ` +
+    'Nie zmieniłem ceny żadnej karcie — zmniejsz zmianę albo odznacz tę kartę na liście.',
+  CENA_POZA_ZAKRESEM: (karta) =>
+    `Cena katalogowa karty ${nazwaDoOdmowy(karta)} wyszłaby poza zakres, który panel umie zapisać. ` +
+    'Nie zmieniłem ceny żadnej karcie.',
+  PROCENT_POZA_ZAKRESEM: () => 'Procent zmiany ceny musi być między −99% a +1000%. Nie zmieniłem ceny żadnej karcie.',
+};
+
+/**
+ * Plan hurtu: zestaw zmian (jak opisuje `zmianyHurtem`) plus to, co dotyczy ceny katalogowej.
+ *
+ * @returns {{ plan: Array, pominieteBezCeny: number, straciZalaczniki: number, blad: string|null }}
+ *
+ * ⚠️ CENA, KTÓREJ NIE DA SIĘ POLICZYĆ NA JEDNEJ KARCIE, ODMAWIA CAŁOŚCI (pusty plan). Zapis
+ * „reszty” zostawiłby katalog w połowie przeceniony, a człowiek nie wiedziałby, które karty weszły.
+ * Karty bez ceny przy zmianie „o %” i „o kwotę” są pominięte i policzone — nie ma od czego liczyć.
+ */
+export function planHurtu(karty, polecenie, { cenyNaDzien } = {}) {
+  // Cena zakupu: „stara” to ta obowiązująca w dniu `od` (mapa id karty → grosze, liczona przez
+  // wołającego na ten dzień). Bez mapy każda karta wyglądałaby na „bez ceny” i podgląd obiecywałby
+  // zmianę kartom, które już ją mają — dlatego brak mapy przy cenie w poleceniu to błąd wołającego.
+  const cenaZakupu = polecenie?.cenaZakupu ?? null;
+  if (cenaZakupu && !(cenyNaDzien instanceof Map)) {
+    throw new Error('zmianyHurtem: polecenie ma cenę zakupu, a brak mapy cenyNaDzien');
+  }
+  const naCeny = cenaZakupu ? `${cenaPolska(zl(cenaZakupu.gr))} od ${dzienPolski(cenaZakupu.od)}` : null;
+  const cenaKatalogowa = polecenie?.cenaKatalogowa ?? null;
+
   const plan = [];
+  let pominieteBezCeny = 0;
+  let straciZalaczniki = 0;
   for (const karta of karty ?? []) {
     const zmiany = {};
     const opisy = [];
@@ -218,14 +545,68 @@ export function zmianyHurtem(karty, polecenie) {
       // nieodczytana z bazy) nie ma prawa udawac zmiany.
       const biezaca = karta[kolumna] ?? null;
       const nowa = docelowa ?? null;
-      if (biezaca === nowa) continue;
+      const { etykieta, czytelnie, doPorownania = (w) => w } = OPIS_KOLUMNY[kolumna];
+      if (doPorownania(biezaca) === doPorownania(nowa)) continue;
 
       zmiany[kolumna] = nowa;
-      const { etykieta, czytelnie } = OPIS_KOLUMNY[kolumna];
       opisy.push({ pole: etykieta, z: czytelnie(biezaca), na: czytelnie(nowa) });
     }
 
-    if (opisy.length) plan.push({ id: karta.id, nazwa: karta.nazwa, zmiany, opisy });
+    if (cenaKatalogowa) {
+      const stara = karta.cena_gr ?? null;
+      // Ta sama funkcja liczy podgląd i zatwierdzenie — trasa woła ten plan w obu przypadkach.
+      const wynik = cenaPoZmianie({ gr: stara, ...cenaKatalogowa });
+      if (wynik.pominieta) pominieteBezCeny += 1;
+      else if (wynik.blad)
+        return { plan: [], pominieteBezCeny: 0, straciZalaczniki: 0, blad: ODMOWA_CENY[wynik.blad](karta, wynik) };
+      else if (wynik.gr !== stara) {
+        zmiany.cena_gr = wynik.gr;
+        opisy.push(opisCeny(stara, wynik.gr));
+      }
+    }
+
+    const wpis = { id: karta.id, nazwa: karta.nazwa, zmiany };
+    if (cenaZakupu) {
+      const stara = cenyNaDzien.get(karta.id) ?? null;
+      if (stara !== cenaZakupu.gr) {
+        wpis.cenaZakupu = { gr: cenaZakupu.gr, od: cenaZakupu.od };
+        opisy.push({ pole: 'Cena zakupu netto', z: stara === null ? null : cenaPolska(zl(stara)), na: naCeny });
+      }
+    }
+
+    if (opisy.length) plan.push({ ...wpis, opisy });
+    // Allegro trzyma załączniki GPSR przy koncie; tekst albo powrót do domyślnego je odpina,
+    // a odtworzyć je da się tylko ręcznie na karcie — podgląd musi to policzyć.
+    if (Object.hasOwn(zmiany, 'informacja_bezpieczenstwa') && maZalacznikiAllegro(karta.informacja_bezpieczenstwa)) {
+      straciZalaczniki += 1;
+    }
   }
-  return plan;
+  return { plan, pominieteBezCeny, straciZalaczniki, blad: null };
+}
+
+/**
+ * Podpis cen, od których liczył podgląd: „id:grosze” po przecinku, pusty grosz dla karty bez ceny.
+ *
+ * ⚠️ ZMIANA „O %” I „O KWOTĘ” NIE JEST IDEMPOTENTNA: ten sam formularz „+10%” wysłany drugi raz
+ * (wstecz w przeglądarce, podwójny klik) dałby +21%. Zatwierdzenie liczy ze stanu bazy, ale tylko
+ * wtedy, gdy ceny są dokładnie te z podglądu. Zwykła lista zamiast skrótu, bo zatwierdzenie
+ * sprawdza tylko karty zostawione zaznaczone — podzbiór tych z podglądu.
+ */
+export function podpisCen(karty) {
+  return [...(karty ?? [])]
+    .sort((a, b) => a.id - b.id)
+    .map((k) => `${k.id}:${k.cena_gr ?? ''}`)
+    .join(',');
+}
+
+/** Czy każda z kart ma dziś tę samą cenę co w podpisie z podglądu (brak karty w podpisie = nie). */
+export function cenyZgodneZPodpisem(karty, podpis) {
+  if (typeof podpis !== 'string' || !podpis) return false;
+  const zPodgladu = new Map();
+  for (const para of podpis.split(',')) {
+    const [id, gr, ...nadmiar] = para.split(':');
+    if (gr === undefined || nadmiar.length || zPodgladu.has(id)) return false;
+    zPodgladu.set(id, gr);
+  }
+  return (karty ?? []).every((k) => zPodgladu.get(String(k.id)) === String(k.cena_gr ?? ''));
 }

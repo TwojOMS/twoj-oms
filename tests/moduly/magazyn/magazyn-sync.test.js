@@ -1295,6 +1295,52 @@ describe('odswiezMagazyn — znacznik czasu', () => {
 // ============================================================================
 
 describe('odswiezMagazyn — postęp', () => {
+  it('zgłasza fazę listy przed zapytaniem i po każdej stronie, a po odczycie loguje czasy', async () => {
+    const zdarzenia = [];
+    const log = vi.fn();
+    const wynik = await odswiezMagazyn({
+      db: openOmsDb(':memory:'),
+      kanalySklepow: ['pro'],
+      kanalyAllegro: [],
+      sklepy: {
+        pro: {
+          async pobierzWszystkieProdukty(naStronie) {
+            zdarzenia.push('zapytanie 1');
+            naStronie?.({ strona: 1, stron: 2 });
+            zdarzenia.push('zapytanie 2');
+            naStronie?.({ strona: 2, stron: 2 });
+            return [prosty()];
+          },
+          async pobierzMiniatury(naStronie) {
+            naStronie?.({ strona: 1, stron: 1 });
+            return new Map();
+          },
+        },
+      },
+      postep: (info) => zdarzenia.push(info),
+      log,
+      trescKart: false,
+    });
+    expect(wynik.kanaly[0].blad).toBeNull();
+    expect(zdarzenia).toEqual([
+      { kanal: 'pro', faza: 'lista' },
+      'zapytanie 1',
+      { kanal: 'pro', faza: 'lista', strona: 1, stron: 2 },
+      'zapytanie 2',
+      { kanal: 'pro', faza: 'lista', strona: 2, stron: 2 },
+      { kanal: 'pro', faza: 'miniatury' },
+      { kanal: 'pro', faza: 'miniatury', strona: 1, stron: 1 },
+      { kanal: 'pro', faza: 'ustawienia' },
+      { kanal: 'pro', zrobione: 1, zTego: 1 },
+    ]);
+    const odczyt = log.mock.calls.flat().filter((linia) => linia.includes(' — odczyt: '));
+    expect(odczyt).toEqual([
+      expect.stringMatching(
+        /^magazyn: kanał pro — odczyt: lista 2 str\. \d+ ms, miniatury 1 str\. \d+ ms, ustawienia \d+ ms, produkty 1 \(warianty: 0\) \d+ ms$/,
+      ),
+    ]);
+  });
+
   it('melduje postęp z nazwą kanału i licznikami', async () => {
     const db = openOmsDb(':memory:');
     const postep = vi.fn();

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
-import { utworzKarte, zapiszProduktSklepowy, powiazProdukt } from '../../../src/oms/db/magazyn.js';
+import { utworzKarte } from '../../../src/oms/db/magazyn.js';
 
 // „ZAZNACZ WSZYSTKIE" NA LISCIE KART — druga tura tego samego zgloszenia wlasciciela:
 // „ale dalej nie da sie zaznaczyc wszystkich pozycji. Tak jak zaznacza sie zamowienia na
@@ -10,7 +10,7 @@ import { utworzKarte, zapiszProduktSklepowy, powiazProdukt } from '../../../src/
 // ⚠️⚠️ POPRZEDNIA POPRAWKA ODPOWIEDZIALA NA INNE PYTANIE. Dolozyla przy kazdej akcji
 // przycisk „dla wszystkich pasujacych", czyli zakres CALY-ALBO-NIC liczony z zawezenia.
 // To NIE JEST zaznaczenie: nie da sie odhaczyc trzech kart i wykonac akcji na reszcie,
-// a przy przejeciu numerow — nieodwracalnym — wlasnie o to chodzi. Oba mechanizmy zostaja,
+// przy nadawaniu SKU przydaje się osobny wybór kart. Oba mechanizmy zostają,
 // bo odpowiadaja na dwie rozne potrzeby.
 //
 // ⚠️⚠️ I W KODZIE STAL KOMENTARZ, ZE SIE NIE DA: „NAGLOWEK TEJ KOLUMNY JEST PUSTY CELOWO
@@ -57,20 +57,6 @@ beforeEach(() => {
 
 const kartaO = (nazwa, reszta = {}) => utworzKarte(db, { nazwa, ...reszta });
 
-/** Produkt w lustrze z numerem sklepu — zeby przejecie numeru mialo co przejmowac. */
-function produktO(kartaId, sku) {
-  const id = zapiszProduktSklepowy(db, {
-    kanal: 'pro',
-    produkt_id: `p${kartaId}`,
-    wariant_id: '',
-    nazwa: 'Produkt',
-    sku_sklepu: sku,
-    odczytane_at: '2026-08-12T10:00:00.000Z',
-  });
-  powiazProdukt(db, id, kartaId);
-  return id;
-}
-
 const get = (app, url) => app.inject({ method: 'GET', url, headers: auth });
 const post = (app, url, payload) =>
   app.inject({
@@ -115,7 +101,7 @@ const zaznaczoneIdy = (body) =>
  * na `undefined` przechodziloby na zielono i nie chronilo niczego.
  */
 function odnosnikNaglowka(body) {
-  const komorka = /<th class="kol-zaznacz"[^>]*>([\s\S]*?)<\/th>/.exec(body);
+  const komorka = /<th class="kol-zazn"[^>]*>([\s\S]*?)<\/th>/.exec(body);
   if (!komorka) throw new Error('Tabela kart nie ma nagłówka kolumny zaznaczeń');
   const a = /<a\b[^>]*\bhref="([^"]*)"[^>]*>([\s\S]*?)<\/a>/.exec(komorka[1]);
   if (!a) throw new Error(`W nagłówku kolumny zaznaczeń nie ma odnośnika: ${komorka[1].trim()}`);
@@ -175,7 +161,7 @@ describe('nagłówek kolumny zaznaczeń prowadzi na „zaznacz wszystkie"', () =
     kartaO('Kandelabr');
 
     const r = await get(serwer(), '/magazyn');
-    const komorka = /<th class="kol-zaznacz"[^>]*>([\s\S]*?)<\/th>/.exec(r.body)[1];
+    const komorka = /<th class="kol-zazn"[^>]*>([\s\S]*?)<\/th>/.exec(r.body)[1];
 
     expect(komorka).not.toMatch(/<input/);
   });
@@ -292,13 +278,13 @@ describe('„zaznacz wszystkie" nie kasuje tego, co zawęziło listę', () => {
   });
 
   // ⚠️ SORTOWANIE NIE ZMIENIA ZBIORU, tylko kolejnosc — wiec zaznaczenie ma je PRZEZYC.
-  // Bez tego klikniecie w naglowek „Wymiary" po zaznaczeniu wszystkiego odznaczaloby
+  // Bez tego klikniecie w naglowek „Marka" po zaznaczeniu wszystkiego odznaczaloby
   // cala liste po cichu.
   it('nagłówki sortowania niosą zaznaczenie dalej', async () => {
     kartaO('Kandelabr');
 
     const r = await get(serwer(), '/magazyn?zaznacz=1');
-    const doSortowania = /<a class="zaznacz-wszystkie" href="([^"]*)"[^>]*>Wymiary/.exec(r.body);
+    const doSortowania = /<a class="zaznacz-wszystkie" href="([^"]*)"[^>]*>Marka/.exec(r.body);
 
     expect(doSortowania).not.toBeNull();
     expect(doSortowania[1]).toContain('zaznacz=1');
@@ -320,44 +306,40 @@ describe('„zaznacz wszystkie" nie kasuje tego, co zawęziło listę', () => {
 // ================================================================================
 
 describe('zaznaczone wiersze naprawdę trafiają w akcję', () => {
-  function trzyDoPrzejecia() {
-    const idy = [];
-    for (const nazwa of ['Bursztyn', 'Kandelabr', 'Sowa']) {
-      const id = kartaO(nazwa);
-      produktO(id, `SKU-${nazwa.toUpperCase()}-1`);
-      idy.push(id);
-    }
-    return idy;
+  function trzyBezSku() {
+    for (const nazwa of ['Bursztyn', 'Kandelabr', 'Sowa']) kartaO(nazwa);
   }
 
   // ⚠️⚠️ TO JEST CALE ZGLOSZENIE, PRZELOZONE NA TEST: jedno klikniecie w naglowek, potem
   // jedno w akcje — zamiast ponad stu klkniec w pola wyboru. Wysylamy DOKLADNIE to, co
   // ekran oznaczyl jako `checked`, a nie liste zlozona w tescie.
   it('jedno kliknięcie w nagłówek zastępuje sto kliknięć w pola wyboru', async () => {
-    trzyDoPrzejecia();
+    trzyBezSku();
     const app = serwer();
 
     const lista = await get(app, '/magazyn?brak=sku&zaznacz=1');
-    const r = await post(app, '/magazyn/przejmij-podglad', {
+    const r = await post(app, '/magazyn/sku-podglad', {
       zakres: 'zaznaczone',
+      wzorzec: 'NOWY-{nnn}',
       zawezenie: zawezenieFormularza(lista.body),
       zaznaczone: zaznaczoneIdy(lista.body),
     });
 
     expect(r.statusCode).toBe(200);
-    expect(nazwyWPodgladzie(r.body, 'przejecie-pozycje').sort()).toEqual(['Bursztyn', 'Kandelabr', 'Sowa']);
+    expect(nazwyWPodgladzie(r.body, 'sku-propozycje').sort()).toEqual(['Bursztyn', 'Kandelabr', 'Sowa']);
   });
 
   // ⚠️ DRUGA POLOWA: bez zaznaczenia ta sama droga ma nie przekazac NICZEGO. Gdyby ten test
   // przechodzil razem z poprzednim przy `checked` wpisanym na sztywno, poprzedni nie
   // dowodzilby niczego.
   it('bez kliknięcia w nagłówek ta sama droga nie niesie ani jednej karty', async () => {
-    trzyDoPrzejecia();
+    trzyBezSku();
     const app = serwer();
 
     const lista = await get(app, '/magazyn?brak=sku');
-    const r = await post(app, '/magazyn/przejmij-podglad', {
+    const r = await post(app, '/magazyn/sku-podglad', {
       zakres: 'zaznaczone',
+      wzorzec: 'NOWY-{nnn}',
       zawezenie: zawezenieFormularza(lista.body),
       zaznaczone: zaznaczoneIdy(lista.body),
     });
@@ -371,20 +353,21 @@ describe('zaznaczone wiersze naprawdę trafiają w akcję', () => {
   // W CHWILI ZATWIERDZENIA, a nie to, co mowi adres; tu odwzorowujemy to, pomijajac jeden
   // identyfikator.
   it('odhaczenie jednego wiersza po zaznaczeniu wszystkich zostawia resztę', async () => {
-    trzyDoPrzejecia();
+    trzyBezSku();
     const app = serwer();
 
     const lista = await get(app, '/magazyn?brak=sku&zaznacz=1');
     const wszystkie = zaznaczoneIdy(lista.body);
     const bezJednego = wszystkie.slice(1);
 
-    const r = await post(app, '/magazyn/przejmij-podglad', {
+    const r = await post(app, '/magazyn/sku-podglad', {
       zakres: 'zaznaczone',
+      wzorzec: 'NOWY-{nnn}',
       zawezenie: zawezenieFormularza(lista.body),
       zaznaczone: bezJednego,
     });
 
     expect(bezJednego).toHaveLength(2);
-    expect(nazwyWPodgladzie(r.body, 'przejecie-pozycje')).toHaveLength(2);
+    expect(nazwyWPodgladzie(r.body, 'sku-propozycje')).toHaveLength(2);
   });
 });

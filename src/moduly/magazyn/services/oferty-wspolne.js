@@ -50,9 +50,38 @@ export function bramkaZapisu({ konto, ustawienia, oferta, klucze, kanal = 'ERLI'
   if (!konto || !klucze.includes(konto.klucz)) return { wolno: false, powod: `konto spoza listy kont ${kanal}` };
   if (!ustawienia?.czynne) return { wolno: false, powod: 'oferty wstrzymane' };
   if (konto.tylkoOdczyt?.()) return { wolno: false, powod: 'konto w trybie tylko odczyt' };
-  const samaIlosc = zakres === 'ilosc' && oferta?.tryb === 'obserwowana' && Number(oferta.ilosc_z_oms) === 1;
-  if (!oferta || oferta.kanal !== konto.klucz || (oferta.tryb !== 'zarzadzana' && !samaIlosc))
+  // Oferta obserwowana oddaje OMS-owi tylko jeden wąski zakres na raz — flaga jednego zakresu
+  // nie otwiera żadnego innego (zwłaszcza PATCH treści z zakresem `null`).
+  const obserwowana = oferta?.tryb === 'obserwowana';
+  const samaIlosc = zakres === 'ilosc' && obserwowana && Number(oferta.ilosc_z_oms) === 1;
+  const samaCena = zakres === 'cena' && obserwowana && Number(oferta.cena_z_oms) === 1;
+  const samStatus = zakres === 'status' && obserwowana && Number(oferta.status_z_oms) === 1;
+  if (
+    !oferta ||
+    oferta.kanal !== konto.klucz ||
+    (oferta.tryb !== 'zarzadzana' && !samaIlosc && !samaCena && !samStatus)
+  )
     return { wolno: false, powod: 'oferta nie jest zarządzana przez OMS' };
+  return { wolno: true };
+}
+
+const ZAKRESY_WOO = ['cena', 'status'];
+
+/**
+ * Bramka zapisu ceny i statusu produktu Woo. Produkty Woo nie mają wiersza w rejestrze ofert, więc decyzja
+ * opiera się na wierszu lustra (`produkty_sklepowe`): ten sklep, ta karta. Woo nie ma hamulca „oferty
+ * wstrzymane” — zapis wyłącza klucz tylko do odczytu.
+ */
+export function bramkaZapisuWoo({ konto, klucze, produkt, kartaId, zakres }) {
+  if (!konto || !klucze?.includes(konto.klucz)) return { wolno: false, powod: 'konto spoza listy kont Woo' };
+  if (konto.tylkoOdczyt?.()) return { wolno: false, powod: 'konto w trybie tylko odczyt' };
+  if (!produkt || produkt.kanal !== konto.klucz) return { wolno: false, powod: 'produkt nie należy do tego konta' };
+  const karta = Number(kartaId);
+  if (!Number.isSafeInteger(karta) || karta <= 0 || Number(produkt.karta_id) !== karta)
+    return { wolno: false, powod: 'produkt nie jest powiązany z tą kartą' };
+  if (!ZAKRESY_WOO.includes(zakres)) return { wolno: false, powod: 'zakres zapisu poza ceną i statusem' };
+  // Cena znikniętego produktu trafiłaby donikąd albo do produktu odtworzonego pod tym samym id.
+  if (zakres === 'cena' && produkt.zniknal_at) return { wolno: false, powod: 'produkt zniknął ze sklepu' };
   return { wolno: true };
 }
 

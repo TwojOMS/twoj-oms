@@ -1,6 +1,6 @@
 // Strony słowników Magazynu: Kategorie (/magazyn/kategorie) i Marki (/magazyn/marki).
 // Lista płaska z liczbą kart (odnośnik do filtra listy Magazynu), dodanie, zmiana nazwy (przepisuje karty
-// w jednej transakcji), usunięcie tylko bez kart. Kategorie można też pobrać z połączenia WooCommerce
+// w jednej transakcji), usunięcie tylko bez kart. Marki pokazują producenta (GPSR) — tylko do odczytu. Kategorie można też pobrać z połączenia WooCommerce
 // (tylko odczyt sklepu). Uprawnienie: ekran „magazyn” — to samo, co edycja karty (prefiks /magazyn).
 import { kolumnaAllegro } from './kategorie-allegro-trasy.js';
 import {
@@ -11,6 +11,7 @@ import {
   scalKategorieWoo,
   czystaNazwa,
 } from './services/slowniki-kart.js';
+import { listaProducentow, przypisaniaMarek } from '../../oms/db/producenci.js';
 
 const STRONY = Object.freeze({
   kategorie: Object.freeze({
@@ -59,6 +60,13 @@ export function registerSlownikiMagazynu(app, { db, sklepy = {}, definicje = () 
       .filter((d) => typeof sklepy?.[d.klucz]?.pobierzKategorieProduktow === 'function')
       .map((d) => ({ klucz: d.klucz, etykieta: d.etykieta ?? d.klucz }));
 
+  // Marka → { id, nazwa } producenta (GPSR); marki bez przypisania nie ma w mapie.
+  function producentMarki() {
+    const producenci = new Map(listaProducentow(db).map((p) => [p.id, p]));
+    const przypisania = przypisaniaMarek(db);
+    return (marka) => producenci.get(przypisania.get(marka)) ?? null;
+  }
+
   function ekran(req, reply, strona, { kod = 200, blad = null, komunikat = null } = {}) {
     const { pozycje, bez } = listaSlownika(db, strona.typ);
     return reply.code(kod).view('magazyn-slownik.ejs', {
@@ -74,6 +82,8 @@ export function registerSlownikiMagazynu(app, { db, sklepy = {}, definicje = () 
       adresBez: `/magazyn?brak=${strona.filtr}`,
       // Kolumna „Allegro” (przypisanie na środowisko; null = brak konta i mapowań).
       allegro: kolumnaAllegro(db, strona.typ, kontaAllegro),
+      // Kolumna „Producent” na Markach — tylko do odczytu; przypisuje się na stronie Producenci.
+      producentMarki: strona.typ === 'marki' ? producentMarki() : null,
     });
   }
 

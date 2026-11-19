@@ -12,7 +12,15 @@ import {
 // Jawne wejście historycznych testów; pętle sprawdzają filtr i zachowanie bazy.
 const KANALY_MAGAZYNU = ['pro', 'swietlik', 'allegro_swietlik', 'allegro_polcien2'];
 import { openOmsDb } from '../../../src/oms/db/db.ts';
-import { utworzKarte, zapiszProduktSklepowy, powiazProdukt, kartyZKanalami } from '../../../src/oms/db/magazyn.js';
+import {
+  utworzKarte,
+  zapiszProduktSklepowy,
+  powiazProdukt,
+  kartyZKanalami,
+  zliczeniaBrakow,
+} from '../../../src/oms/db/magazyn.js';
+import { zapiszCeneZakupu } from '../../../src/oms/db/ceny-zakupu.js';
+import { dzienWarszawa } from '../../../src/domena/format-daty.js';
 
 // FILTRY MAGAZYNU — warstwa czysta miedzy adresem HTTP a zapytaniem.
 //
@@ -204,8 +212,13 @@ describe('slowniki filtrow zgadzaja sie z warstwa zapytan', () => {
     paczkomat: 'BezPaczkomatu',
     zdjecie: 'BezZdjecia',
     opis: 'BezOpisu',
+    cena_zakupu: 'BezCenyZakupu',
     komplet: 'Komplet',
   });
+  // Cena zakupu NIE jest warunkiem kompletu: karta, ktorej brakuje tylko ceny, jest kompletna.
+  // Gdyby cena weszla do liczby brakow, kafel postepu spadlby do zera w dniu wprowadzenia ceny.
+  const KOMPLETNE = ['BezCenyZakupu', 'Komplet'];
+  const wszystkieCeny = () => db.prepare('DELETE FROM ceny_zakupu_kart').run();
 
   function katalog() {
     // `karty.sku` ma UNIQUE, wiec kazda karta dostaje wlasny numer — inaczej atrapa wysypuje
@@ -226,6 +239,7 @@ describe('slowniki filtrow zgadzaja sie z warstwa zapytan', () => {
       paczkomat: { paczkomat: null },
       zdjecie: {},
       opis: {},
+      cena_zakupu: {},
     };
     const uzupelnijTresc = (id, brak) => {
       if (brak !== 'opis')
@@ -243,8 +257,12 @@ describe('slowniki filtrow zgadzaja sie z warstwa zapytan', () => {
     // ⚠️ `komplet` z KARTA_POZYCJI wlasna karta nie jest — to TA karta, ktora ma komplet.
     const komplet = utworzKarte(db, pelny(KARTA_POZYCJI.komplet));
     uzupelnijTresc(komplet);
+    const cena = (id) => zapiszCeneZakupu(db, id, { gr: 1000, od: '2020-01-01' }, { zrodlo: 'karta' });
+    cena(komplet);
     for (const [brak, dziura] of Object.entries(bez)) {
-      uzupelnijTresc(utworzKarte(db, { ...pelny(KARTA_POZYCJI[brak]), ...dziura }), brak);
+      const id = utworzKarte(db, { ...pelny(KARTA_POZYCJI[brak]), ...dziura });
+      uzupelnijTresc(id, brak);
+      if (brak !== 'cena_zakupu') cena(id);
     }
     // Dwa produkty w lustrze, w roznych kanalach — zeby „filtr zawezil" znaczylo cos wiecej
     // niz „filtr czegos nie wywalil".
@@ -263,16 +281,15 @@ describe('slowniki filtrow zgadzaja sie z warstwa zapytan', () => {
 
   it('KAZDA pozycja z BRAKI_MAGAZYNU zaweza do SWOJEJ karty, a nie do „byle niepelnej"', () => {
     katalog();
-    expect(kartyZKanalami(db, {})).toHaveLength(7);
+    expect(kartyZKanalami(db, {})).toHaveLength(8);
 
     for (const brak of BRAKI_MAGAZYNU) {
       const wynik = kartyZKanalami(db, { filtry: { brak } });
       // Pozycja nieznana bazie oddalaby ZERO na kazdym katalogu. A ze kazdej karcie
       // brakuje CZEGOS INNEGO, przestawienie dwoch galezi miedzy soba tez tu pada.
-      expect(
-        wynik.map((w) => w.nazwa),
-        `brak=${brak}`,
-      ).toEqual([KARTA_POZYCJI[brak]]);
+      expect(wynik.map((w) => w.nazwa).sort(), `brak=${brak}`).toEqual(
+        brak === 'komplet' ? KOMPLETNE : [KARTA_POZYCJI[brak]],
+      );
     }
   });
 
@@ -288,7 +305,39 @@ describe('slowniki filtrow zgadzaja sie z warstwa zapytan', () => {
     ).toBe('komplet');
     // Sześć niepelnych kart z `katalog()` ma tu NIE BYC — inaczej „komplet" znaczyloby
     // „cokolwiek", a hurt puszczony po tym zawezeniu ruszylby caly katalog.
-    expect(kartyZKanalami(db, { filtry: { brak: 'komplet' } }).map((w) => w.nazwa)).toEqual(['Komplet']);
+    expect(
+      kartyZKanalami(db, { filtry: { brak: 'komplet' } })
+        .map((w) => w.nazwa)
+        .sort(),
+    ).toEqual(KOMPLETNE);
+  });
+
+  it('bez ceny zakupu: liczy sie cena obowiazujaca DZIS, przyszla nie wystarcza', () => {
+    katalog();
+    expect(BRAKI_MAGAZYNU.indexOf('cena_zakupu')).toBe(BRAKI_MAGAZYNU.length - 2);
+    expect(BRAKI_ETYKIETY.cena_zakupu).toBe('bez ceny zakupu');
+    expect(filtryZZapytania({ brak: 'cena_zakupu' }, KANALY_MAGAZYNU).brak).toBe('cena_zakupu');
+
+    const przyszla = utworzKarte(db, { nazwa: 'TylkoPrzyszla', sku: 'SKU-TylkoPrzyszla' });
+    zapiszCeneZakupu(db, przyszla, { gr: 2000, od: '2099-01-01' }, { zrodlo: 'karta' });
+    const nazwy = () =>
+      kartyZKanalami(db, { filtry: { brak: 'cena_zakupu' } })
+        .map((w) => w.nazwa)
+        .sort();
+    expect(nazwy()).toEqual(['BezCenyZakupu', 'TylkoPrzyszla']);
+
+    // Cena z dniem „od" rownym dzisiejszemu juz obowiazuje (`<=`).
+    zapiszCeneZakupu(db, przyszla, { gr: 1900, od: dzienWarszawa(new Date().toISOString()) }, { zrodlo: 'karta' });
+    expect(nazwy()).toEqual(['BezCenyZakupu']);
+  });
+
+  it('cena zakupu nie wchodzi do kafla kompletu: skasowanie wszystkich cen go nie rusza', () => {
+    katalog();
+    const przed = zliczeniaBrakow(db);
+    expect(przed.komplet).toBe(2);
+    wszystkieCeny();
+    expect(zliczeniaBrakow(db)).toEqual(przed);
+    expect(kartyZKanalami(db, { filtry: { brak: 'cena_zakupu' } })).toHaveLength(8);
   });
 
   // Pole wyboru filtru sklada trasa jako `BRAKI_MAGAZYNU.map(k => ({k, BRAKI_ETYKIETY[k]}))`,

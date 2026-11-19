@@ -1,6 +1,7 @@
 // Ustawienia → Magazyn — przełącznik „Włącz stany magazynowe” na prawdziwym serwerze.
 import { describe, it, expect } from 'vitest';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
+import { dodajProducenta, ustawDomyslnego } from '../../../src/oms/db/producenci.js';
 import { przelacznikStanow } from '../../../src/oms/db/stany-magazynowe.js';
 import { nowyPanel, jako, get, post } from '../../pomoc/panel-konta-testowe.js';
 
@@ -85,5 +86,40 @@ describe('Ustawienia → Magazyn', () => {
     expect(r.statusCode).toBe(403);
     expect(przelacznikStanow(db)).toMatchObject({ wlaczone: false });
     expect(przelacznikStanow(db).historia).toHaveLength(0);
+  });
+
+  describe('blok „Producenci (GPSR)”', () => {
+    const blok = (html) => /<section class="ust-sekcja" id="ust-producenci">[\s\S]*?<\/section>/u.exec(html)?.[0] ?? '';
+    const dane = (nazwa) => ({ nazwa, adres: 'ul. Przykładowa 1, 00-001 Miasto', email: 'kontakt@polcien.invalid' });
+
+    it('bez producentów: zachęta i odnośnik do /magazyn/producenci', async () => {
+      const { app, admin } = panel();
+      const b = blok((await get(app, '/ustawienia/magazyn', admin)).body);
+      expect(b).toContain('Nie masz jeszcze producentów — oferty Allegro i przepisy GPSR ich wymagają');
+      expect(b).toContain('<a href="/magazyn/producenci">Producenci</a>');
+    });
+
+    it('dwóch producentów z domyślnym: liczba, nazwa domyślnego i odnośnik', async () => {
+      const { db, app, admin } = panel();
+      dodajProducenta(db, dane('Warsztat Przykładowy'));
+      const id = dodajProducenta(db, dane('Pracownia Półcień')).id;
+      ustawDomyslnego(db, id);
+      const b = blok((await get(app, '/ustawienia/magazyn', admin)).body);
+      expect(b).toContain('Producentów: <strong>2</strong>');
+      expect(b).toContain('Domyślny: <strong>Pracownia Półcień</strong>');
+      expect(b).not.toContain('Nie masz jeszcze producentów');
+      expect(b).toContain('href="/magazyn/producenci"');
+    });
+
+    it('bez domyślnego: „brak domyślnego”; nazwa z <script> jest escapowana', async () => {
+      const { db, app, admin } = panel();
+      dodajProducenta(db, dane('Bez domyślnego'));
+      expect(blok((await get(app, '/ustawienia/magazyn', admin)).body)).toContain('brak domyślnego');
+      const zly = dodajProducenta(db, dane('<script>alert(1)</script>')).id;
+      ustawDomyslnego(db, zly);
+      const b = blok((await get(app, '/ustawienia/magazyn', admin)).body);
+      expect(b).not.toContain('<script>alert(1)');
+      expect(b).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
+    });
   });
 });

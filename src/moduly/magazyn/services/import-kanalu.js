@@ -7,6 +7,7 @@
 import { kartaZeSku, szukajkaKartDoImportu, utworzKarte, powiazProdukt } from '../../../oms/db/magazyn.js';
 import { kartaZProduktu, powodPominiecia } from '../../../domena/karta-z-produktu.js';
 import { zapiszTrescWoo } from './woo-tresc-kart.js';
+import { uzupelnijSkuZImportu } from './sku-z-importu.js';
 import { kolejka } from './allegro-tresc-kart.js';
 
 // Kolejność = kolejność na ekranie. `wiaze` — łączy wiersz z kartą o tym samym SKU; `tworzy` — zakłada kartę,
@@ -56,14 +57,20 @@ export const TYPY_IMPORTU = Object.freeze([
 
 export const typImportu = (klucz) => TYPY_IMPORTU.find((t) => t.klucz === klucz) ?? null;
 
-const POWOD_BEZ_KARTY = 'nie ma karty z tym SKU — powiąż ręcznie albo wybierz typ, który tworzy karty';
+export const POWOD_BEZ_KARTY = 'nie ma karty z tym SKU — powiąż ręcznie albo wybierz typ, który tworzy karty';
 const POWOD_NIEZAIMPORTOWANY = 'nie był wcześniej zaimportowany — ten typ tylko aktualizuje powiązane';
 const POWOD_JEST_KARTA = 'karta z tym SKU już jest — ten typ tylko zakłada nowe';
 const POWOD_KILKA_KART = 'kilka kart z tym SKU — powiąż ręcznie';
 
 // Wiersze lustra WYŁĄCZNIE wybranego kanału. To zawężenie jest treścią „część": drugi kanał zostaje nietknięty.
+// Szkic sklepu odpada: import nie zakłada kart dla produktów, których kupujący nie widzi.
 const wierszeKanalu = (db, kanal) =>
-  db.prepare('SELECT * FROM produkty_sklepowe WHERE kanal = ? AND zniknal_at IS NULL ORDER BY id').all(kanal);
+  db
+    .prepare(
+      'SELECT * FROM produkty_sklepowe WHERE kanal = ? AND zniknal_at IS NULL' +
+        " AND COALESCE(status_publikacji, '') != 'draft' ORDER BY id",
+    )
+    .all(kanal);
 
 /**
  * Plan importu jednego kanału. Czyta, nie zapisuje.
@@ -149,7 +156,7 @@ export function planImportu(db, { kanal, typ, kanalyZrodlowe, allegro, tresc = [
 /**
  * Wykonanie importu jednego kanału. Wiązanie, karty i treść Woo — w jednej transakcji; treść Allegro rusza
  * po niej w tle (`trescAllegro.start`), zawężona do tego konta (i do nowych kart przy typach bez aktualizacji).
- * @returns {{liczby: object, powody: Array, juzPowiazane: number, nowe: number[], trescAllegro: 'ruszyla'|'zajeta'|'niedostepna'|null}}
+ * @returns {{liczby: object, powody: Array, juzPowiazane: number, nowe: number[], trescAllegro: 'ruszyla'|'zajeta'|'niedostepna'|null, sku: {uzupelniono: number, pominiete: Array}}}
  */
 export function wykonajImport(
   db,
@@ -157,6 +164,7 @@ export function wykonajImport(
 ) {
   const at = teraz();
   const nowe = [];
+  let sku = { uzupelniono: 0, pominiete: [] };
   let plan;
   db.exec('BEGIN IMMEDIATE');
   try {
@@ -180,10 +188,15 @@ export function wykonajImport(
       if (kartaId === undefined) throw new Error(`import: brak karty dla SKU „${p.sku}" z planu — import wycofany`);
       powiazProdukt(db, p.id, kartaId);
     }
+    // Allegro nie uzupełnia SKU: jego `external.id` to klucz oferty OMS-u, nie numer produktu w sklepie.
     if (!allegro) {
+      const dotkniete = [];
       for (const t of tresc) {
-        if (typ.aktualizuje || wierszeNowych.has(t.id)) zapiszTrescWoo(db, t, t.id, at);
+        if (!typ.aktualizuje && !wierszeNowych.has(t.id)) continue;
+        const kartaId = zapiszTrescWoo(db, t, t.id, at);
+        if (kartaId) dotkniete.push(kartaId);
       }
+      sku = uzupelnijSkuZImportu(db, dotkniete, { zrodlo: `woo:${kanal}`, at });
     }
     db.exec('COMMIT');
   } catch (e) {
@@ -209,5 +222,12 @@ export function wykonajImport(
           ? 'zajeta'
           : 'niedostepna';
   }
-  return { liczby: plan.liczby, powody: plan.powody, juzPowiazane: plan.juzPowiazane, nowe, trescAllegro: stanTresci };
+  return {
+    liczby: plan.liczby,
+    powody: plan.powody,
+    juzPowiazane: plan.juzPowiazane,
+    nowe,
+    trescAllegro: stanTresci,
+    sku,
+  };
 }

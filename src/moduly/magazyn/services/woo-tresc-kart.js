@@ -3,6 +3,8 @@ import { kolejnoscZrodel } from './kolejnosc-zrodel.js';
 
 // Wołane w synchronicznej transakcji odczytu katalogu, po zapisie lustra.
 // Nie tworzy kart ani nie pobiera zdjęć. Treść pochodzi z już odczytanej odpowiedzi Woo.
+// Oddaje id karty, do której doszła treść — wołający zbiera je dla uzupełnienia SKU
+// (`sku-z-importu.js`), które samo decyduje, czy karta numer dostanie.
 export function zapiszTrescWoo(db, produkt, idLustra, at) {
   const tresc = produkt.tresc_woo;
   if (!tresc) return;
@@ -93,4 +95,5 @@ export function zapiszTrescWoo(db, produkt, idLustra, at) {
     sciezka?.sciezka_json ?? (kategoria ? JSON.stringify([kategoria.name]) : null),
     at,
   );
+  return id;
 }

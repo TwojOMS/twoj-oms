@@ -46,22 +46,21 @@ describe('marka na liście magazynu', () => {
       [desc, 'descending', 'asc'],
     ]) {
       const th = [...tabela(body).matchAll(/<th\b[^>]*>[\s\S]*?<\/th>/g)].map((m) => m[0]);
-      const i = th.findIndex((h) => h.includes('Kategoria główna'));
-      expect(i).toBeGreaterThanOrEqual(0);
-      expect(th[i + 1]).toContain('>Marka ');
-      expect(th[i + 1]).toContain(`aria-sort="${aria}"`);
-      expect(th[i + 1]).toContain(`sort=marka&amp;kier=${kier}`);
+      const i = 3;
+      expect(th[i]).toContain('>Marka ');
+      expect(th[i]).toContain(`aria-sort="${aria}"`);
+      expect(th[i]).toContain(`sort=marka&amp;kier=${kier}`);
       expect(th.filter((h) => h.includes('aria-sort='))).toHaveLength(1);
       const rows = [...tabela(body).matchAll(/<tr>([\s\S]*?)<\/tr>/g)].map((m) => m[1]);
       for (const name of ['B pusty', 'C null']) {
         const row = rows.find((r) => r.includes(`>${name}</a>`));
         const cells = [...row.matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1]);
-        expect(cells[i + 1].trim()).toBe('<span class="magazyn-brak">—</span>');
+        expect(cells[i].trim()).toBe('<span class="magazyn-brak">—</span>');
       }
       const cells = [...rows.find((r) => r.includes('>A produkt</a>')).matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/g)].map(
         (m) => m[1],
       );
-      expect(cells[i + 1].trim()).toBe('Półcień');
+      expect(cells[i].trim()).toBe('Półcień');
     }
   });
 

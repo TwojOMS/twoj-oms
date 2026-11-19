@@ -1,0 +1,86 @@
+<p class="wroc"><a href="<%= wroc %>">← <%= kartaId ? 'Karta produktu' : 'Magazyn' %></a></p>
+<%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', { tytul: title }) %>
+
+<% if (podglad) { %>
+<section class="panel" aria-labelledby="ceny-podglad-tytul">
+  <div class="panel-glowa">
+    <h2 id="ceny-podglad-tytul">Pozycje do sprawdzenia</h2>
+  </div>
+  <div class="panel-cialo">
+    <p>Bez zmian: <strong><%= podglad.bezZmian %></strong> · Pominięte: <strong><%= podglad.pominiete %></strong></p>
+    <% if (!podglad.wiersze.length) { %>
+      <p>Brak pozycji do wyświetlenia.</p>
+    <% } else { %>
+      <form method="post" action="/magazyn/ceny-kanalow/zatwierdz" aria-labelledby="ceny-podglad-tytul">
+        <input type="hidden" name="podpis" value="<%= podglad.podpis %>">
+        <% if (kartaId) { %><input type="hidden" name="karty" value="<%= kartaId %>"><% } %>
+        <div class="przewijak-tabeli" tabindex="0" role="region" aria-labelledby="ceny-podglad-tytul">
+          <table class="tresc-lista magazyn-ceny-tabela">
+            <thead>
+              <tr>
+                <th scope="col">Oferta i kanał</th>
+                <th scope="col">Cena</th>
+                <th scope="col">Uwagi</th>
+              </tr>
+            </thead>
+            <tbody>
+            <% podglad.wiersze.forEach((w, i) => { %>
+              <tr>
+                <th scope="row">
+                  <div id="oferta-<%= i %>" class="magazyn-ceny-oferta">
+                    <% if (w.adres) { %>
+                      <a href="<%= w.adres %>"><%= w.nazwa || w.cel %></a>
+                    <% } else { %><%= w.nazwa || w.cel %><% } %>
+                  </div>
+                  <div class="wiersz-szczegoly"><%= w.etykietaKanalu %></div>
+                  <% if (w.doWyboru) { %>
+                    <label class="magazyn-ceny-wybor" id="wybor-<%= i %>" for="cena-<%= i %>">
+                      <input type="checkbox" id="cena-<%= i %>" name="<%= w.klucz %>" value="1"
+                        aria-labelledby="wybor-<%= i %> oferta-<%= i %>"<% if (w.zaznaczony) { %> checked<% } %>>
+                      Wyślij
+                    </label>
+                  <% } %>
+                </th>
+                <td>
+                  <span class="magazyn-ceny-kwota"><%= w.cenaObecna %></span> →
+                  <strong class="magazyn-ceny-kwota"><%= w.cenaDocelowa %></strong>
+                  <div class="wiersz-szczegoly"><%= w.opisZrodla %><% if (w.roznicaBp !== null) { %> · <%= w.roznica %><% } %></div>
+                </td>
+                <td>
+                  <% if (w.uwagi.length) { %><%= w.uwagi.join(' · ') %><% } else { %>—<% } %>
+                </td>
+              </tr>
+            <% }); %>
+            </tbody>
+          </table>
+        </div>
+        <% if (podglad.moznaZatwierdzic) { %>
+          <p><button type="submit" class="btn btn--glowny">Wyślij zaznaczone ceny</button></p>
+        <% } %>
+      </form>
+    <% } %>
+  </div>
+</section>
+<% } else { %>
+  <% for (const grupa of grupy) { %>
+    <section class="panel">
+      <div class="panel-glowa">
+        <h2><%= grupa.tytul %> (<%= grupa.pozycje.length %>)</h2>
+      </div>
+      <% if (grupa.pozycje.length) { %>
+        <div class="panel-cialo">
+          <ul class="lista-wyniku">
+            <% for (const w of grupa.pozycje) { %>
+              <li>
+                <a href="/magazyn/<%= w.kartaId %>#sprzedaz-kanalow"><%= w.nazwa || w.cel %></a>
+                <span><%= w.etykietaKanalu %></span>
+                <strong><%= w.cenaDocelowa %></strong>
+                <% if (w.opis) { %><span><%= w.opis %></span><% } %>
+              </li>
+            <% } %>
+          </ul>
+        </div>
+      <% } %>
+    </section>
+  <% } %>
+<% } %>

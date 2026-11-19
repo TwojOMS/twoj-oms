@@ -19,6 +19,10 @@ import { migracjaAiZdjec } from './migracje/0014-ai-zdjec.ts';
 import { migracjaKurierska } from './migracje/0015-kurierska.ts';
 import { migracjaSlownikowKart } from './migracje/0016-slowniki-kart.ts';
 import { migracjaStanowOtwarciaLustra } from './migracje/0017-stany-otwarcia-lustro.ts';
+import { migracjaCenZakupu } from './migracje/0018-ceny-zakupu.ts';
+import { migracjaCenKanalowKart } from './migracje/0019-ceny-kanalow-kart.ts';
+import { migracjaProducentow } from './migracje/0020-producenci.ts';
+import { migracjaProguNiskiegoStanu } from './migracje/0021-prog-niskiego-stanu.ts';
 export const modulRdzen: ModulOms<{ sprzedawca: DaneSprzedawcy }> = {
   nazwa: 'rdzen',
   wersja: '1.0.0',
@@ -46,6 +50,10 @@ export const modulRdzen: ModulOms<{ sprzedawca: DaneSprzedawcy }> = {
     migracjaKurierska,
     migracjaSlownikowKart,
     migracjaStanowOtwarciaLustra,
+    migracjaCenZakupu,
+    migracjaCenKanalowKart,
+    migracjaProducentow,
+    migracjaProguNiskiegoStanu,
   ],
   uprawnienia: [],
   menu: [],

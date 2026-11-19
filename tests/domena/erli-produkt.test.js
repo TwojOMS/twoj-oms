@@ -73,6 +73,13 @@ describe('produkt ERLI z karty', () => {
     expect(wynik.zadanie.price).toBe(cena);
   });
 
+  it('ręczna cena konta zastępuje cenę z narzutem; niepoprawna jest błędem, nie cichym narzutem', () => {
+    expect(produktErliZKarty({ ...wejscie(), recznaGr: 7777 }).zadanie.price).toBe(7777);
+    const zla = produktErliZKarty({ ...wejscie(), recznaGr: 12.5 });
+    expect(zla.zadanie).toBeNull();
+    expect(zla.bledy.some((b) => /Ręczna cena/.test(b))).toBe(true);
+  });
+
   it.each([3, 150])('przyjmuje nazwę długości %i po przycięciu', (dlugosc) => {
     const wynik = produktErliZKarty(wejscie({ karta: { nazwa: `  ${'a'.repeat(dlugosc)}  ` } }));
     expect(wynik.bledy).toEqual([]);

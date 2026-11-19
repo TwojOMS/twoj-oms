@@ -83,6 +83,26 @@
 </section>
 <%- include('woo-stany', { tytul: konfigurator.kroki[5].tytul, uprawnieniaKlucza, tylkoOdczyt, stanyKiedys: locals.stanyKiedys === true, ustawieniaStanow: locals.ustawieniaStanow, bladStanow: locals.bladStanow ?? null, wartosciStanow: locals.wartosciStanow ?? null }) %>
 <% } %>
+<%# Ceny w sklepie — poza krokami konfiguratora, widoczne zawsze (także bez stanów magazynowych i w szkicu). %>
+<% if (locals.ustawieniaCen) { const uc = locals.ustawieniaCen; const wc = locals.wartosciCen ?? null; const bc = locals.bladCen ?? null;
+  const pl = (v) => String(v).replace('.', ',');
+  const polaCen = [['narzutProcent', 'Narzut %', uc.narzutProcent, 'Cena w sklepie = cena z karty + narzut. Ręczną cenę ustawisz na karcie.'], ['progPotwierdzeniaProcent', 'Próg potwierdzenia zmiany ceny %', uc.progProcent, 'Zmiana ceny większa niż próg wymaga zaznaczenia w podglądzie przed wysyłką.']]; %>
+<section class="ust-sekcja" aria-labelledby="woo-ceny-tytul"><h2 id="woo-ceny-tytul">Ceny w sklepie</h2>
+<% if (tylkoOdczyt) { %>
+<p>Narzut: <%= pl(uc.narzutProcent) %>%. Próg potwierdzenia zmiany ceny: <%= pl(uc.progProcent) %>%.</p>
+<% } else { %>
+<form method="post" action="<%= adres %>/ceny" aria-labelledby="woo-ceny-tytul">
+  <input type="hidden" name="wersja" value="<%= k.wersja %>">
+  <% for (const [pole, etykieta, zapisana, pomoc] of polaCen) { const id = 'woo-ceny-' + pole, blad = bc && bc.pole === pole ? bc.komunikat : null; const wartosc = wc ? (typeof wc[pole] === 'string' ? wc[pole] : '') : pl(zapisana); %>
+  <p><label for="<%= id %>"><%= etykieta %></label><br>
+    <input id="<%= id %>" type="text" name="<%= pole %>" inputmode="decimal" value="<%= wartosc %>" autocomplete="off" size="8" aria-describedby="<%= id %>-pomoc<%= blad ? ' ' + id + '-blad' : '' %>"<% if (blad) { %> aria-invalid="true" autofocus<% } %>><br>
+    <span id="<%= id %>-pomoc" class="ust-pomoc"><%= pomoc %></span><% if (blad) { %><br><span id="<%= id %>-blad"><%= blad %></span><% } %></p>
+  <% } %>
+  <p><button class="btn btn--maly" type="submit">Zapisz ustawienia cen</button></p>
+</form>
+<% } %>
+</section>
+<% } %>
 <% if (!tylkoOdczyt) { %>
 <section class="ust-sekcja"><h2>Zarządzanie sklepem</h2>
 <form method="post" action="<%= adres %>/nazwa"><input type="hidden" name="wersja" value="<%= k.wersja %>"><p><label>Nazwa w OMS <input name="nazwa" value="<%= k.nazwa %>" required maxlength="80"></label></p><p><button class="btn btn--maly" type="submit">Zmień nazwę</button></p></form>

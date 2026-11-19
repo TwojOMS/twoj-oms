@@ -12,7 +12,7 @@
         <table class="tab-pozycje">
           <thead><tr><th scope="col">Wybór</th><th scope="col">Oferta ERLI</th><th scope="col">Karta</th><th scope="col">Powód</th></tr></thead>
           <tbody><% wiersze.forEach(w => { %><tr>
-            <td><% if (w.karta && ['active', 'inactive'].includes(w.produkt.status)) { %><label><input type="checkbox" name="zaznaczone" value="<%= w.produkt.externalId %>"> Przejmij <%= w.produkt.externalId %></label><% } %></td>
+            <td class="kol-zazn"><% if (w.karta && ['active', 'inactive'].includes(w.produkt.status)) { %><label class="kol-zazn-etykieta"><input type="checkbox" name="zaznaczone" value="<%= w.produkt.externalId %>" aria-label="Przejmij ofertę <%= w.produkt.externalId %>"></label><% } %></td>
             <th scope="row"><%= w.produkt.externalId %> · <%= w.produkt.name ?? '' %></th>
             <td><% if (w.karta) { %><a href="/magazyn/<%= w.karta.id %>"><%= w.karta.sku %> · <%= w.karta.nazwa %></a><% } else { %>Brak propozycji<% } %></td>
             <td><%= w.powod %><% if (!['active', 'inactive'].includes(w.produkt.status)) { %> · Brak rozpoznanego stanu oferty<% } %></td>
