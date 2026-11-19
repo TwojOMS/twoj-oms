@@ -39,7 +39,6 @@ Moduły (`src/moduly/`); każdy opisuje się w `modul.ts` i może mieć trasy, w
 | `zdrowie` | `/health`, kopie zapasowe, alarmy |
 | `automatyzacje` | reguły „gdy zdarzenie, zrób akcję” z dziennikiem wykonań |
 | `api` | API v1 dla programów na kluczach z zakresami: zamówienia, proformy, produkty, stany, sprzedaż ([opis](docs/api/README.md)) |
-| `api-panelu` | starsze API na haśle dla osobnego panelu zamówień indywidualnych, którego nie ma w tym repozytorium |
 | `rdzen` | wspólne tabele i ustawienia firmy (NIP, rachunek), z których korzystają pozostałe moduły |
 
 Integracje w kodzie: Allegro, ERLI, WooCommerce, inFakt, Fakturownia, KSeF, DPD, InPost, GUS (REGON), Meta, GA4,
