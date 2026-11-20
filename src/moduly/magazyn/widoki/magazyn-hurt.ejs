@@ -78,6 +78,11 @@
           Odznacz te karty, jeśli załączniki mają zostać.
         </p>
       <% } %>
+      <% if (locals.zdanieOfertCennika) { %>
+        <%# Hurt niczego nie wysyła do kanałów — bez tego zdania człowiek nie wiedziałby, że zmiana
+            cennika dotknie już wystawionych ofert przy następnym przebiegu pętli. %>
+        <p class="pasek-uwaga" id="hurt-oferty-cennika"><%= zdanieOfertCennika %></p>
+      <% } %>
     <% } %>
 
     <% if (wynik) { %>

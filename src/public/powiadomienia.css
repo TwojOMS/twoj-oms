@@ -1,0 +1,133 @@
+/* Strona powiadomień; tabela, zakładki i przyciski idą z tabele-prz065.css i oms-uklad.css. */
+.powiadomienia-zakladki {
+  display: flex;
+  gap: 0;
+  margin: 0;
+}
+.powiadomienia-pasek {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  justify-content: space-between;
+  margin: 0 0 4px;
+}
+.powiadomienia-pasek form {
+  margin: 0;
+}
+.powiadomienia-filtr {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.powiadomienia-filtr label {
+  color: var(--prz-muted);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+.powiadomienia-filtr select {
+  max-inline-size: 100%;
+  min-block-size: 32px;
+}
+.powiadomienia-tabela .powiadomienie-rodzaj {
+  color: var(--prz-muted);
+  min-inline-size: 11rem;
+}
+.powiadomienia-tabela .powiadomienie-tresc {
+  min-inline-size: 16rem;
+}
+.powiadomienia-tabela .powiadomienie-kiedy {
+  white-space: nowrap;
+}
+.powiadomienia-tabela .powiadomienie--nowe .powiadomienie-tresc {
+  font-weight: 700;
+}
+.powiadomienie--nowe {
+  --powiadomienie-pasek: var(--prz-accent);
+}
+.powiadomienie--pilne {
+  --powiadomienie-pasek: var(--st-czerwony-tekst);
+}
+.powiadomienia-tabela .powiadomienie > td:first-child {
+  box-shadow: inset 3px 0 0 var(--powiadomienie-pasek, transparent);
+}
+.powiadomienie-akcje {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.powiadomienie-akcje form {
+  margin: 0;
+}
+.powiadomienie-akcje .btn {
+  white-space: nowrap;
+}
+.powiadomienia .stronicowanie {
+  margin: 12px 0 0;
+}
+.powiadomienia .wyjasnienie {
+  color: var(--prz-muted);
+  margin: 14px 0 0;
+}
+.powiadomienia-filtr {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+.powiadomienia-filtr select {
+  flex: 1 1 10rem;
+  min-inline-size: 0;
+}
+
+@media (max-width: 600px) {
+  .powiadomienia .powiadomienia-przewijak {
+    border: 0;
+    overflow: visible;
+  }
+  .powiadomienia-filtr select {
+    flex-basis: 0;
+  }
+  .powiadomienia-tabela,
+  .powiadomienia-tabela tbody,
+  .powiadomienia-tabela td {
+    display: block;
+  }
+  .powiadomienia-tabela {
+    background: transparent;
+  }
+  .powiadomienia-tabela thead {
+    display: none;
+  }
+  .powiadomienia-tabela .powiadomienie {
+    background: var(--prz-surface);
+    border: 1px solid var(--prz-border);
+    border-radius: 6px;
+    box-shadow: inset 3px 0 0 var(--powiadomienie-pasek, transparent);
+    display: grid;
+    gap: 6px;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 12px;
+  }
+  .powiadomienia-tabela .powiadomienie + .powiadomienie {
+    margin-block-start: 8px;
+  }
+  .powiadomienia-tabela .powiadomienie > td {
+    border: 0;
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
+    padding: 0;
+  }
+  .powiadomienia-tabela .powiadomienie > td:first-child {
+    box-shadow: none;
+  }
+  .powiadomienia-tabela .powiadomienie-rodzaj,
+  .powiadomienia-tabela .powiadomienie-kiedy,
+  .powiadomienia-tabela .powiadomienie-status {
+    color: var(--prz-muted);
+    font-size: 0.8rem;
+  }
+  .powiadomienie-akcje .btn {
+    padding-inline: 0.6rem;
+    white-space: normal;
+  }
+}

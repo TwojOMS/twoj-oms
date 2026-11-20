@@ -1,11 +1,13 @@
 // Kreator z PRAWDZIWYM rejestrem modułu — zdarzenia
 // „Paczka nadana” i „Status zmienił się na”, akcja „mail do kupującego”, warunki w chwili wykonania; podgląd 30 dni
-// z podglądem maila; reguła ze statusem albo szablonem, którego już nie ma; ostrzeżenie na stronie głównej; stary adres
+// z podglądem maila; reguła ze statusem albo szablonem, którego już nie ma; ostrzeżenie w migawce; stary adres
 // zapisu automatu KSeF z sekcją reguł. Prawdziwy serwer i moduły; poczta to atrapa (nic nie wychodzi).
 import { describe, it, expect, afterEach } from 'vitest';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
 import { nowyPanel, jako, get, post } from '../../pomoc/panel-konta-testowe.js';
+import { przeliczPowiadomienia } from '../../pomoc/przelicz-powiadomienia.ts';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
+import { powiadomieniaKonta } from '../../../src/oms/db/powiadomienia.js';
 import { zapiszZamowienie, zapiszFaktyStatusu, pobierzZamowienie } from '../../../src/oms/db/zamowienia.js';
 import { faktyDlaStatusu } from '../../../src/domena/status-reczny.js';
 import { zapiszStatusy } from '../../../src/oms/db/statusy.js';
@@ -344,7 +346,7 @@ describe('reguła z nieistniejącym statusem albo szablonem', () => {
   });
 });
 
-describe('ostrzeżenie na stronie głównej (tylko admin)', () => {
+describe('ostrzeżenie automatyzacji w migawce (tylko admin)', () => {
   it('reguła wstrzymana i niepewna wysyłka → wiersze dla admina; konto bez admina ich nie widzi', async () => {
     const p = panel();
     const id = utworzRegule(
@@ -381,14 +383,16 @@ describe('ostrzeżenie na stronie głównej (tylko admin)', () => {
       VALUES (?, ?, ?, 'niepewne', 'zerwane', ?, ?, ?, ?)`,
       )
       .run(id, `zamowienie:${z}`, z, ...Array(4).fill(new Date().toISOString()));
-    const admin = await get(p.app, '/', p.admin);
-    expect(admin.statusCode).toBe(200);
-    expect(admin.body).toContain('Automatyzacja „Wysłane — sklep” jest wstrzymana');
-    expect(admin.body).toContain('nie wiadomo, czy mail wyszedł');
-    expect(admin.body).toContain(`href="${EKRAN}/${id}"`);
-    const ewa = await get(p.app, '/', p.ewa);
-    expect(ewa.statusCode).toBe(200);
-    expect(ewa.body).not.toContain('Automatyzacja „Wysłane — sklep”');
+    await przeliczPowiadomienia(p.app);
+    const automatyzacje = (login) =>
+      powiadomieniaKonta(p.db, kontoPoLoginie(p.db, login)).aktualne.filter((w) => w.typ === 'automatyzacja');
+    const admin = automatyzacje('adam');
+    expect(admin.map((w) => w.tekst)).toContainEqual(
+      expect.stringContaining('Automatyzacja „Wysłane — sklep” jest wstrzymana'),
+    );
+    expect(admin.map((w) => w.tekst)).toContainEqual(expect.stringContaining('nie wiadomo, czy mail wyszedł'));
+    expect(admin.map((w) => w.przycisk?.href)).toContain(`${EKRAN}/${id}`);
+    expect(automatyzacje('ewa')).toEqual([]);
   });
 });
 

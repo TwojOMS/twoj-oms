@@ -18,7 +18,7 @@ describe('menu Ustawień w kolumnie bocznej', () => {
       expect(bok).toContain('oms-settings-navigation');
       expect(bok).toMatch(/<li class="aktywna">\s*<a href="\/ustawienia\/firma" aria-current="true">/u); // Firma ma podmenu — bieżąca jest podstrona
       expect(r.body).toContain('<summary><span>Ustawienia: <strong>Firma</strong></span></summary>');
-      expect(bok.match(/<a /g)).toHaveLength(13); // 10 działów + 3 podstrony Firmy
+      expect(bok.match(/<a /g)).toHaveLength(14); // 11 działów + 3 podstrony Firmy
       expect(bok.match(/<aside/g)).toHaveLength(1);
       expect(r.body).not.toContain('id="ust-menu-aplikacji"');
       expect(r.body).not.toContain('Menu aplikacji');

@@ -6,7 +6,9 @@ import { tmpdir } from 'node:os';
 import { zbudujOms } from '../../../../src/oms/bootstrap.ts';
 import { zalozKonto } from '../../../../src/core/bezpieczenstwo/konta.js';
 import { ROZMIAR_STRONY } from '../../../../src/moduly/zamowienia/lista.js';
+import { powiadomieniaKonta } from '../../../../src/oms/db/powiadomienia.js';
 import { adresZFiltrami, bezpiecznyPowrotNaListe } from '../../../../src/domena/filtry-listy.js';
+import { przeliczPowiadomienia } from '../../../pomoc/przelicz-powiadomienia.ts';
 import { KANALY_TESTOWE, wstawGole } from './testowe-dane-listy.js';
 
 let a;
@@ -185,7 +187,7 @@ describe('ekran listy', () => {
     }
   });
 
-  it('ostrzeżenia paczek pytają o numer tylko zamówień, których paczka stoi — nie o całe okno 60 dni', async () => {
+  it('migawka pyta o numer tylko zamówień, których paczka stoi, a lista nie ponawia odczytu', async () => {
     const ids = wstawGole(a.db, 300);
     const teraz = new Date().toISOString();
     const ins = a.db
@@ -201,17 +203,23 @@ describe('ekran listy', () => {
       sql.push(tekst);
       return oryginal.call(this, tekst);
     };
-    let r;
     try {
-      r = await a.app.inject({ url: '/', headers: naglowki() });
+      await przeliczPowiadomienia(a);
+      const numery = sql.filter((s) => /SELECT id, numer FROM zamowienia/.test(s));
+      expect(numery.length).toBeGreaterThan(0);
+      for (const s of numery) expect(s.match(/\?/g).length).toBe(1);
+      expect(powiadomieniaKonta(a.db, null).aktualne.map((w) => w.tekst)).toContainEqual(
+        expect.stringContaining('Paczka STOI-1 (zam. T-1)'),
+      );
+      sql.length = 0;
+      const r = await a.app.inject({ url: '/', headers: naglowki() });
+      expect(r.statusCode).toBe(200);
+      const [, trescListy] = r.body.match(/<main\b[^>]*>([\s\S]*?)<\/main>/u);
+      expect(trescListy).not.toContain('Paczka STOI-1 (zam. T-1)');
+      expect(sql.filter((s) => /SELECT id, numer FROM zamowienia/.test(s))).toEqual([]);
     } finally {
       a.db.prepare = oryginal;
     }
-    expect(r.statusCode).toBe(200);
-    expect(r.body).toContain('Paczka STOI-1 (zam. T-1)');
-    const numery = sql.filter((s) => /SELECT id, numer FROM zamowienia/.test(s));
-    expect(numery.length).toBeGreaterThan(0);
-    for (const s of numery) expect(s.match(/\?/g).length).toBe(1);
   });
 
   it('akcje masowe (status, specyfikacje, faktury, nadanie) czytają tylko zaznaczone, nie całą tabelę', async () => {

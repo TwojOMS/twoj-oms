@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import {
   ostrzezeniaFaktur,
   ostrzezeniaPrzesylek,
-  ostrzezeniaWiadomosci,
   ostrzezeniaIntegracji,
   ostrzezeniaTerminow,
   ostrzezeniaZwrotow,
@@ -129,62 +128,6 @@ describe('ostrzezeniaPrzesylek — paczka bez ruchu', () => {
     const [w] = ostrzezeniaPrzesylek({ przesylki: [bezSkanu], zamowienia, teraz: TERAZ });
     expect(w.klucz).toBe('przesylka:5:2026-08-24T08:00:00.000Z');
     expect(w.tekst).toContain('MA260800102');
-  });
-});
-
-describe('ostrzezeniaWiadomosci — wątek czeka na odpowiedź', () => {
-  const watek = (reszta = {}) => ({
-    kanal: 'allegro_swietlik',
-    thread_id: 'w-1',
-    interlocutor_login: 'kupujacy77',
-    last_message_date_time: '2026-08-29T06:30:00.000Z',
-    ostatnia_od_kupujacego: 1,
-    ostatnia_tresc: 'Dzień dobry, czy da się zmienić rozmiar szablonu na 70x100?',
-    ...reszta,
-  });
-
-  // ⚠️ `teraz: TERAZ` NIE JEST OZDOBNIKIEM. Bez niego domyslny `new Date()` bierze
-  // PRAWDZIWY dzien, a fikstura ma date 29.08.2026 — test przechodzil, dopoki kalendarz
-  // nie wyszedl poza okno swiezosci wiadomosci, i od tej pory swiecil na czerwono bez
-  // zadnej zmiany w kodzie. Pozostale przypadki w tym opisie robily
-  // to poprawnie od poczatku.
-  it('ostatnia wiadomość od kupującego alarmuje z loginem', () => {
-    const [w] = ostrzezeniaWiadomosci({ watki: [watek()], teraz: TERAZ });
-    expect(w.typ).toBe('wiadomosc-allegro');
-    expect(w.klucz).toBe('wiadomosc:allegro_swietlik:w-1:2026-08-29T06:30:00.000Z');
-    expect(w.tekst).toContain('Nowa wiadomość z Allegro');
-    expect(w.tekst).toContain('kupujacy77');
-    expect(w.przycisk).toEqual({ href: '/wiadomosci', etykieta: 'Wiadomości' });
-  });
-
-  it('skrót treści jedzie w title, nie w tekście wiersza', () => {
-    const [w] = ostrzezeniaWiadomosci({ watki: [watek()], teraz: TERAZ });
-    expect(w.title).toContain('zmienić rozmiar');
-    expect(w.tekst).not.toContain('zmienić rozmiar');
-  });
-
-  it('wątek, w którym ostatnie słowo jest nasze, MILCZY', () => {
-    expect(ostrzezeniaWiadomosci({ watki: [watek({ ostatnia_od_kupujacego: 0 })], teraz: TERAZ })).toHaveLength(0);
-  });
-
-  // ⚠️ ZMIERZONE NA PRODUKCJI 29.08 godzinę po wdrożeniu: 18 wierszy „nowa wiadomość"
-  // z kwietnia–7 sierpnia. Prawdziwą przyczyną okazał się poller biorący z Allegro
-  // NAJSTARSZĄ wiadomość zamiast najnowszej (naprawione w b9a14a3), ale okno ZOSTAJE:
-  // definiuje, co znaczy „nowa" — i jest drugą linią obrony, gdyby lustro wątków znów
-  // zestarzało się niepostrzeżenie. Szum 18 wierszy uczy ignorowania całej tabelki.
-  it('wiadomość starsza niż 7 dni MILCZY — to nie jest już „nowa"', () => {
-    const stara = watek({ last_message_date_time: '2026-08-21T09:00:00.000Z' }); // 8 dni przed TERAZ
-    expect(ostrzezeniaWiadomosci({ watki: [stara], teraz: TERAZ })).toHaveLength(0);
-  });
-
-  it('wiadomość sprzed 6 dni jeszcze alarmuje', () => {
-    const swieza = watek({ last_message_date_time: '2026-08-23T10:00:00.000Z' });
-    expect(ostrzezeniaWiadomosci({ watki: [swieza], teraz: TERAZ })).toHaveLength(1);
-  });
-
-  it('wątek bez daty ostatniej wiadomości MILCZY — bez daty nie ma jak być świeżym', () => {
-    const bezDaty = watek({ last_message_date_time: null });
-    expect(ostrzezeniaWiadomosci({ watki: [bezDaty], teraz: TERAZ })).toHaveLength(0);
   });
 });
 
@@ -471,10 +414,10 @@ describe('zlozOstrzezenia — odrzucenia, wygasanie, kolejność', () => {
     expect(zlozOstrzezenia({ wiersze, odrzucone: dawno, teraz: TERAZ })).toHaveLength(1);
   });
 
-  it('kolejność typów: integracje → KSeF → terminy → zwroty → paczki → wiadomości', () => {
+  it('kolejność typów: kanały → integracje → KSeF → terminy → zwroty → paczki', () => {
     const wynik = zlozOstrzezenia({
       wiersze: [
-        wiersz('wiadomosc-allegro', 'wiadomosc:a:b:c'),
+        wiersz('kanal', 'kanal:allegro_polcien:pilne'),
         wiersz('przesylka', 'przesylka:1:a'),
         wiersz('zwrot-korekta', 'zwrot:9'),
         wiersz('faktura-termin', 'faktura-termin:2:141112'),
@@ -485,12 +428,12 @@ describe('zlozOstrzezenia — odrzucenia, wygasanie, kolejność', () => {
       teraz: TERAZ,
     });
     expect(wynik.map((w) => w.typ)).toEqual([
+      'kanal',
       'integracja',
       'faktura-ksef',
       'faktura-termin',
       'zwrot-korekta',
       'przesylka',
-      'wiadomosc-allegro',
     ]);
   });
 });
@@ -541,7 +484,7 @@ describe('kluczDozwolony — biała lista prefiksów dla trasy POST', () => {
   it.each([
     'faktura-ksef:u-1',
     'przesylka:7:2026-08-24T08:00:00.000Z',
-    'wiadomosc:allegro_swietlik:w-1:2026-08-29T06:30:00.000Z',
+    'kanal:allegro_polcien:uprzedzenie',
     'integracja:poller:woo_pro',
     'faktura-termin:2:141112',
     'zwrot:9',
@@ -554,6 +497,7 @@ describe('kluczDozwolony — biała lista prefiksów dla trasy POST', () => {
     ['pusty', ''],
     ['sam prefiks bez treści', 'przesylka:'],
     ['obcy typ', 'kosmos:1'],
+    ['wiadomość — nie jest już ostrzeżeniem', 'wiadomosc:allegro_polcien:w-1:2026-08-29T06:30:00.000Z'],
     ['nie-napis', null],
   ])('odrzuca: %s', (_nazwa, klucz) => {
     expect(kluczDozwolony(klucz)).toBe(false);

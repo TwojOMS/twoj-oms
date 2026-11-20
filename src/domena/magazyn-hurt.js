@@ -63,11 +63,25 @@ export const POLA_HURTU = Object.freeze([
   'informacja_bezpieczenstwa_domyslna',
   'prog_niskiego_stanu',
   'prog_niskiego_stanu_bez',
+  // Cennik OMS karty: id cennika albo `USUN_CENNIK`; puste = bez zmian.
+  'cennik_oms_hurt',
 ]);
 
 // Parametry wlasne kart: pola `parametr_<id>` i `parametr_<id>_wyczysc`. Zbior zalezy od
 // definicji w Ustawieniach, wiec nie miesci sie w stalej liscie — ten wzor jest jej odpowiednikiem.
 const POLE_PARAMETRU = /^parametr_(\d{1,9})(_wyczysc)?$/;
+
+// Cennik kanału wybrany na karcie dla konta: pole `cennik_konta_hurt_<klucz konta>`. Zbiór kont zależy od
+// konfiguracji, więc — jak przy parametrach — wzór zamiast stałej listy; klucz musi być bieżącym kontem. Zbiór znaków
+// ten sam, co klucz kanału w konfiguracji kanałów (z „-”), inaczej wybór takiego konta znikałby bez komunikatu.
+const POLE_CENNIKA_KONTA = /^cennik_konta_hurt_([a-z][a-z0-9_-]*)$/;
+
+// Jawne „usuń” w polach cenników. Puste pole znaczy „bez zmian”, więc usunięcie musi mieć własną wartość.
+export const USUN_CENNIK = '__usun__';
+
+// Opis cennika konta po usunięciu wyboru: konto wraca do cennika OMS karty albo do doboru po rozmiarze.
+const BEZ_WYBORU_KONTA = 'z cennika OMS / według rozmiaru';
+const BEZ_CENNIKA_OMS = 'według rozmiaru';
 
 /**
  * Pole nieprzyslane odrozniamy od przyslanego, ale niebedacego napisem.
@@ -147,6 +161,66 @@ function parametryZFormularza(body, definicje) {
     };
   }
   return { lista };
+}
+
+const CENNIK_DWA_RAZY = 'Cennik dostaw przyszedł dwa razy — nie wiem, który wybrać. Nie zmieniłem żadnej karty.';
+
+/**
+ * Cenniki dostaw z formularza hurtu → `{ oms, konta }` albo `{ blad }`. `oms`: `{ id, nazwa }`, `null` (usuń) albo
+ * `BRAK_POLA` (bez zmian); `konta`: `[{ konto, wartosc }]` w kolejności bieżących kont, `wartosc: null` = usuń wybór.
+ *
+ * `cenniki.oms` — cenniki OMS `{ id, nazwa }`; `cenniki.konta` — bieżące konta z listami (`kontaZCennikami`);
+ * `cenniki.bladWyboru(konto, wartosc)` — reguła zapisu wyboru z listy konta, ta sama co na karcie (domena nie zna
+ * modułu, więc dostaje ją od wołającego).
+ *
+ * ⚠️ KLUCZ KONTA SPOZA BIEŻĄCYCH KONT ODMAWIA CAŁOŚCI, także z pustą wartością: formularz pochodzi z innej
+ * konfiguracji kont niż ta, na której zapiszemy, a cicho pominięte pole wyglądałoby na zapisane.
+ */
+function cennikiZFormularza(body, { oms = [], konta = [], bladWyboru = () => null } = {}) {
+  const wynik = { oms: BRAK_POLA, konta: [] };
+
+  const surowyOms = poleHurtu(body, 'cennik_oms_hurt');
+  if (surowyOms === null) return { blad: CENNIK_DWA_RAZY };
+  const wybranyOms = surowyOms === BRAK_POLA ? '' : surowyOms.trim();
+  if (wybranyOms === USUN_CENNIK) wynik.oms = null;
+  else if (wybranyOms) {
+    const cennik = /^\d{1,9}$/.test(wybranyOms) ? oms.find((c) => c.id === Number(wybranyOms)) : undefined;
+    if (!cennik) {
+      return {
+        blad: 'Wybranego cennika OMS już nie ma — nie zmieniłem żadnej karty. Otwórz edycję hurtową od nowa.',
+      };
+    }
+    wynik.oms = { id: cennik.id, nazwa: cennik.nazwa };
+  }
+
+  const poKluczu = new Map(konta.map((k) => [k.klucz, k]));
+  const wybrane = new Map();
+  for (const pole of Object.keys(body ?? {})) {
+    const klucz = POLE_CENNIKA_KONTA.exec(pole)?.[1];
+    if (!klucz) continue;
+    const konto = poKluczu.get(klucz);
+    if (!konto) {
+      return {
+        blad:
+          `Konta „${klucz}” nie ma w bieżącej konfiguracji — nie zmieniłem żadnej karty. ` +
+          'Otwórz edycję hurtową od nowa.',
+      };
+    }
+    const surowe = poleHurtu(body, pole);
+    if (surowe === null) return { blad: CENNIK_DWA_RAZY };
+    // ⚠️ PUSTE ZNACZY „BEZ ZMIAN” — usunięcie wyboru konta to wyłącznie `USUN_CENNIK`.
+    const wartosc = surowe.trim();
+    if (!wartosc) continue;
+    if (wartosc === USUN_CENNIK) {
+      wybrane.set(klucz, { konto, wartosc: null });
+      continue;
+    }
+    const blad = bladWyboru(konto, wartosc);
+    if (blad) return { blad };
+    wybrane.set(klucz, { konto, wartosc });
+  }
+  for (const konto of konta) if (wybrane.has(konto.klucz)) wynik.konta.push(wybrane.get(konto.klucz));
+  return wynik;
 }
 
 const TRYBY_CENY = new Set(['o_procent', 'na_kwote', 'o_kwote']);
@@ -242,9 +316,14 @@ function cenaKatalogowaZFormularza(body) {
  */
 export function polecenieZFormularza(
   body,
-  { dzis = dzienWarszawa(new Date().toISOString()), parametry: definicjeParametrow = [] } = {},
+  { dzis = dzienWarszawa(new Date().toISOString()), parametry: definicjeParametrow = [], cenniki } = {},
 ) {
   const polecenie = {};
+
+  const wybory = cennikiZFormularza(body, cenniki);
+  if (wybory.blad) return { polecenie: null, blad: wybory.blad };
+  if (wybory.oms !== BRAK_POLA) polecenie.cennikOms = wybory.oms;
+  if (wybory.konta.length) polecenie.cennikiKont = wybory.konta;
 
   // ⚠️ CENTYMETRY WCHODZA, MILIMETRY LADUJA W BAZIE — przelicza `domena/rozmiar.js`, TA SAMA
   // funkcja, ktorej uzywa karta produktu. Druga kopia arytmetyki znaczylaby, ze „10,5 cm"
@@ -407,7 +486,7 @@ function informacjaBezpieczenstwaZFormularza(body) {
  * dopisane recznie do formularza nie ma prawa przejechac przez ekran podgladu do zapisu.
  * Puste pomijamy — puste znaczy „nie ruszaj", wiec nie ma czego przenosic. Parametry wlasne
  * przechodza po wzorze `POLE_PARAMETRU` (ich zbior zalezy od Ustawien); czy parametr o tym
- * numerze istnieje, sprawdza ponownie zatwierdzenie.
+ * numerze istnieje, sprawdza ponownie zatwierdzenie. Tak samo cenniki kont po `POLE_CENNIKA_KONTA`.
  */
 export function polaDoPrzeniesienia(body) {
   const pary = [];
@@ -418,6 +497,7 @@ export function polaDoPrzeniesienia(body) {
   };
   for (const klucz of POLA_HURTU) dodaj(klucz);
   for (const klucz of Object.keys(body ?? {})) if (POLE_PARAMETRU.test(klucz)) dodaj(klucz);
+  for (const klucz of Object.keys(body ?? {})) if (POLE_CENNIKA_KONTA.test(klucz)) dodaj(klucz);
   return pary;
 }
 
@@ -581,7 +661,14 @@ const ODMOWA_CENY = {
  * „reszty” zostawiłby katalog w połowie przeceniony, a człowiek nie wiedziałby, które karty weszły.
  * Karty bez ceny przy zmianie „o %” i „o kwotę” są pominięte i policzone — nie ma od czego liczyć.
  */
-export function planHurtu(karty, polecenie, { cenyNaDzien, wartosciParametrow } = {}) {
+export function planHurtu(karty, polecenie, { cenyNaDzien, wartosciParametrow, cennikiKart } = {}) {
+  // Cenniki: obecny cennik OMS i wybory kont każdej karty (id karty → `{ oms: {id, nazwa}|null, konta: Map }`).
+  // Bez mapy każda karta wyglądałaby na „bez cennika” i podgląd obiecywałby zmianę tym, które już go mają.
+  const cennikOms = polecenie?.cennikOms;
+  const cennikiKont = polecenie?.cennikiKont ?? [];
+  if ((cennikOms !== undefined || cennikiKont.length) && !(cennikiKart instanceof Map)) {
+    throw new Error('planHurtu: polecenie ma cenniki, a brak mapy cennikiKart');
+  }
   // Parametry: obecne wartości kart z bazy (id karty → id parametru → wartość). Bez mapy każda
   // karta wyglądałaby na pustą i podgląd obiecywałby zmianę kartom, które już ją mają.
   const parametry = polecenie?.parametry ?? null;
@@ -650,6 +737,29 @@ export function planHurtu(karty, polecenie, { cenyNaDzien, wartosciParametrow } 
         wpis.parametry[p.id] = p.wartosc;
         opisy.push({ pole: p.nazwa, z: parametrCzytelnie(p, stara), na: parametrCzytelnie(p, p.wartosc) });
       }
+    }
+
+    const obecneCenniki = cennikiKart?.get(karta.id);
+    if (cennikOms !== undefined) {
+      const stary = obecneCenniki?.oms ?? null;
+      if ((stary?.id ?? null) !== (cennikOms?.id ?? null)) {
+        wpis.cennikOms = cennikOms?.id ?? null;
+        opisy.push({
+          pole: 'Cennik OMS',
+          z: stary?.nazwa ?? BEZ_CENNIKA_OMS,
+          na: cennikOms?.nazwa ?? BEZ_CENNIKA_OMS,
+        });
+      }
+    }
+    for (const { konto, wartosc } of cennikiKont) {
+      const stara = obecneCenniki?.konta?.get(konto.klucz) ?? null;
+      if (stara === wartosc) continue;
+      wpis.cennikiKont ??= {};
+      wpis.cennikiKont[konto.klucz] = wartosc;
+      // Wybór spoza bieżącej listy (lista pobrana od nowa bez niego) opisujemy surową wartością.
+      const czytelnie = (w) =>
+        w === null ? BEZ_WYBORU_KONTA : (konto.cenniki?.find((p) => p.wartosc === w)?.nazwa ?? w);
+      opisy.push({ pole: `Cennik · ${konto.etykieta}`, z: czytelnie(stara), na: czytelnie(wartosc) });
     }
 
     if (opisy.length) plan.push({ ...wpis, opisy });

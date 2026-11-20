@@ -1,10 +1,12 @@
 // Ekran automatu wysyłki do KSeF (Ustawienia → Integracje → inFakt), wynik ostatniego przebiegu
-// i wiersz na stronie głównej. Prawdziwy serwer i prawdziwe moduły, konta z rolami; inFakt niepodłączony
+// i ostrzeżenie w migawce. Prawdziwy serwer i prawdziwe moduły, konta z rolami; inFakt niepodłączony
 // (ekran ma wtedy powiedzieć, że automat nic nie wyśle) — żadne żądanie nie wychodzi z procesu.
 import ejs from 'ejs';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia } from '../../../src/core/bezpieczenstwo/konta.js';
 import { nowyPanel, jako, get, post } from '../../pomoc/panel-konta-testowe.js';
+import { przeliczPowiadomienia } from '../../pomoc/przelicz-powiadomienia.ts';
+import { powiadomieniaKonta } from '../../../src/oms/db/powiadomienia.js';
 import { modulRdzen } from '../../../src/moduly/rdzen/modul.ts';
 import { modulWeb } from '../../../src/core/web/modul.ts';
 import { modulKanaly } from '../../../src/moduly/kanaly/modul.ts';
@@ -48,6 +50,11 @@ function panel() {
 afterEach(() => {
   vi.useRealTimers();
 });
+
+async function aktualnePoPrzeliczeniu({ app, db }) {
+  await przeliczPowiadomienia(app);
+  return powiadomieniaKonta(db, kontoPoLoginie(db, 'adam')).aktualne;
+}
 
 it('ustawienie B2C domyślnie wyłączone, zapis firmowy i 403 bez prawa do Ustawień', async () => {
   const p = panel();
@@ -153,8 +160,9 @@ describe('wynik ostatniego przebiegu', () => {
     const r = await get(p.app, '/faktury/ksef/automat', p.ewa);
     expect(r.body).toContain('Faktura B/10/2026 wstrzymana — automat jej nie wyśle');
     expect(r.body).toContain('action="/faktury/ksef/automat/zwolnij"');
-    const g = await get(p.app, '/', p.admin);
-    expect(g.body).toContain('Faktura B/10/2026 wstrzymana');
+    expect(await aktualnePoPrzeliczeniu(p)).toContainEqual(
+      expect.objectContaining({ tekst: expect.stringContaining('Faktura B/10/2026 wstrzymana') }),
+    );
     const z = await post(p.app, '/faktury/ksef/automat/zwolnij', p.ewa, { uuid: 'B' });
     expect(z.statusCode).toBe(303);
     expect(wczytajAutomatKsef(p.db).wstrzymane).toEqual([]);
@@ -317,12 +325,14 @@ describe('wynik ostatniego przebiegu', () => {
     expect(z.body).not.toContain('ręcznie');
   });
 
-  it('strona główna: wiersz ostrzeżenia przy błędzie automatu, z przyciskiem do wyniku', async () => {
+  it('migawka: wiersz ostrzeżenia przy błędzie automatu, z przyciskiem do wyniku', async () => {
     const p = panel();
     zapiszWynikAutomatu(p.db, wynik);
-    const r = await get(p.app, '/', p.admin);
-    expect(r.statusCode).toBe(200);
-    expect(r.body).toContain('Automat KSeF');
-    expect(r.body).toContain('href="/faktury/ksef/automat"');
+    expect(await aktualnePoPrzeliczeniu(p)).toContainEqual(
+      expect.objectContaining({
+        tekst: expect.stringContaining('Automat KSeF'),
+        przycisk: expect.objectContaining({ href: '/faktury/ksef/automat' }),
+      }),
+    );
   });
 });

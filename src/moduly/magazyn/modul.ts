@@ -33,6 +33,7 @@ import { migracjaCennikowDostaw } from './migracje/0003-cenniki-dostaw.ts';
 import { migracjaStanowKanalow } from './migracje/0004-stany-kanalow.ts';
 import { migracjaCenStatusowKanalow } from './migracje/0005-ceny-statusy-kanalow.ts';
 import { migracjaCennikowOms } from './migracje/0006-cenniki-oms.ts';
+import { migracjaCennikowKanalowKart } from './migracje/0007-cenniki-kanalow-kart.ts';
 import { createPetlaOfert, ODSTEP_PETLI_OFERT_MS } from './services/petla-ofert.js';
 import {
   katalogErli,
@@ -120,6 +121,7 @@ export const modulMagazyn: ModulOms<KonfiguracjaMagazynu> = {
     migracjaStanowKanalow,
     migracjaCenStatusowKanalow,
     migracjaCennikowOms,
+    migracjaCennikowKanalowKart,
   ],
   konfiguracja: (env) => ({ katalog: katalogZdjec(env), adresPublicznyZdjec: adresPublicznyZdjec(env) }),
   uprawnienia: [{ klucz: 'magazyn', etykieta: 'Magazyn', role: ['administrator', 'sprzedaz'] }],

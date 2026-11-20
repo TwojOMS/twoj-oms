@@ -3,15 +3,19 @@ import { konfiguracjaZamowien } from './konfiguracja.ts';
 import { ustawKanalIndywidualnyStatusow } from '../../oms/db/statusy.js';
 import { createKontekstZamowien } from './kontekst.js';
 import { registerListaRoutes } from './lista.js';
+import { registerPowiadomieniaRoutes } from './powiadomienia.js';
 import { registerKartaRoutes } from './karta.js';
 import { registerReczneRoutes } from './reczne.js';
 import { registerScalanieRoutes } from './scalanie.js';
 import { miniaturyEkranu } from './wspolne.js';
 import * as zapytania from '../../oms/db/zamowienia.js';
+import { powiadomieniaKonta } from '../../oms/db/powiadomienia.js';
+import { kluczDozwolony } from '../../domena/ostrzezenia.js';
 import { createSyncSklep } from './services/sync-sklep.js';
 import { MODULY_KANALOW } from '../../domena/moduly-kanalow.ts';
 import { sprawdzZapisZwrotny, zwrotneAllegro, zwrotneSklepu } from '../../integracje/kanal-modul.ts';
-import { zegarPonawianiaStatusow } from './zegary.ts';
+import { zegarPonawianiaStatusow, zegarMigawkiPowiadomien } from './zegary.ts';
+import { createMigawkaPowiadomien } from './services/migawka-powiadomien.js';
 import { createGusClient } from '../../oms/gus/client.js';
 import { integracje } from '../../integracje/klucze.js';
 import { migracjaStatusowWlasnych } from './migracje/0002-statusy-wlasne.ts';
@@ -107,11 +111,45 @@ export function createModulZamowienia({
         syncSklep,
         zdrowie: null,
       };
+      // Reguły powiadomień korzystają z tych samych źródeł co lista zamówień (zdrowie, kopie, KSeF), a te
+      // składa dopiero `trasy` — do tego czasu przebieg kończy się błędem w stanie migawki, nie pustą listą.
+      const migawka = createMigawkaPowiadomien({
+        db: ctx.db,
+        teraz: ctx.teraz,
+        log: ctx.log,
+        zbierz: (teraz: Date) => {
+          if (!kontekst) throw new Error('Trasy zamówień nie zostały jeszcze złożone');
+          return kontekst.wierszeOstrzezenFirmy(teraz, {
+            log: {
+              error: (e: unknown, tekst: string) => ctx.log(`${tekst}:`, e instanceof Error ? e.message : String(e)),
+            },
+          });
+        },
+      });
       // Status po chwilowej awarii kanału/sklepu wraca sam (zegary.ts).
-      const zegary = syncSklep ? [zegarPonawianiaStatusow({ sync: syncSklep, teraz: ctx.teraz, log: ctx.log })] : [];
+      const zegary = [
+        ...(syncSklep ? [zegarPonawianiaStatusow({ sync: syncSklep, teraz: ctx.teraz, log: ctx.log })] : []),
+        zegarMigawkiPowiadomien({ migawka }),
+      ];
       return {
         zegary,
         uslugi: {
+          // „Przelicz teraz" — po decyzji użytkownika (np. „Ignoruj"), bez czekania na zegar.
+          przeliczPowiadomienia: migawka.przeliczTeraz,
+          stanMigawkiPowiadomien: migawka.stan,
+          dzwonek: (konto: Parameters<typeof powiadomieniaKonta>[1]) => {
+            const teraz = ctx.teraz();
+            const { aktualne, nieprzeczytane, pilne } = powiadomieniaKonta(ctx.db, konto, { teraz, archiwum: false });
+            const stan = migawka.stan();
+            return {
+              nieprzeczytane,
+              pilne: pilne > 0,
+              wiersze: aktualne.filter((w) => kluczDozwolony(w.klucz)).slice(0, 5),
+              nieaktualne: Boolean(
+                stan?.blad_at || (stan?.odswiezone_at && +teraz - Date.parse(stan.odswiezone_at) > 5 * 60_000),
+              ),
+            };
+          },
           config: opcje.config,
           zapytania,
           miniaturyEkranu,
@@ -217,6 +255,7 @@ export function createModulZamowienia({
             },
           });
           registerListaRoutes(app, kontekst);
+          registerPowiadomieniaRoutes(app, { db: ctx.db, przelicz: migawka.przeliczTeraz });
           registerKartaRoutes(app, kontekst);
           registerReczneRoutes(app, kontekst);
           registerScalanieRoutes(app, kontekst);

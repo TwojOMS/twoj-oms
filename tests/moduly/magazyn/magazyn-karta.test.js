@@ -152,7 +152,7 @@ describe('GET /magazyn/:id — karta jest DOMYSLNIE DO ODCZYTU', () => {
     expect(dane).not.toContain('<textarea');
     expect(dane).not.toContain('<select');
     // ...a droga do edycji ma byc widoczna, inaczej „do odczytu" znaczy „nie do zmiany".
-    expect(dane).toContain(`href="/magazyn/${id}?edytuj=dane"`);
+    expect(dane).toContain(`href="/magazyn/${id}?edytuj=dane#dane-karty"`);
   });
 
   // ⚠️ NIEZMIENNIK 4.13b W WERSJI KARTY: odnosnik „Edytuj" sklada sie z PELNEGO kompletu
@@ -1096,7 +1096,7 @@ describe('powrót z karty produktu z zachowaniem filtrów (wroc)', () => {
 
     // ⚠️ `&amp;` — EJS `<%= %>` html-escapuje domyslnie, wiec surowy `&` w adresie renderuje
     // sie jako encja (ta sama pulapka, co w tescie linku „Wróć" wyzej).
-    expect(dane).toContain(`href="/magazyn/${id}?edytuj=dane&amp;wroc=${encodeURIComponent(wroc)}"`);
+    expect(dane).toContain(`href="/magazyn/${id}?edytuj=dane&amp;wroc=${encodeURIComponent(wroc)}#dane-karty"`);
   });
 
   // ⚠️⚠️ PUŁAPKA FORMULARZY GET: przegladarka przy submicie WYRZUCA query string z `action`

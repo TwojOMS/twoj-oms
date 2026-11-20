@@ -26,7 +26,15 @@ describe('ekranDlaAdresu', () => {
     expect(ekranDlaAdresu('/zamowienia/12/nadaj')).toBe('zamowienia');
     expect(ekranDlaAdresu('/zamowienia/12/status')).toBe('zamowienia');
     expect(ekranDlaAdresu('/kolejka-druku/3/zpl')).toBe('zamowienia');
-    expect(ekranDlaAdresu('/ostrzezenia/odrzuc')).toBe('zamowienia');
+  });
+
+  it('powiadomienia sa kazdego konta, jak jego wlasne ustawienia powiadomien', () => {
+    expect(ekranDlaAdresu('/powiadomienia')).toBe('kazdy');
+    expect(ekranDlaAdresu('/ostrzezenia/odrzuc')).toBe('kazdy');
+    expect(ekranDlaAdresu('/powiadomienia/przeczytane')).toBe('kazdy');
+    expect(ekranDlaAdresu('/powiadomienia/przesylka%3Ap1/otworz')).toBe('kazdy');
+    // Sam prefiks nazwy nie wystarcza — inna trasa o podobnym poczatku zostaje zamknieta.
+    expect(ekranDlaAdresu('/powiadomieniax')).toBe(null);
   });
 
   it('SPECYFIKACJA PACZKI zostaje przy zamowieniach, mimo ze brzmi jak dokument', () => {

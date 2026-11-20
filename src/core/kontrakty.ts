@@ -29,6 +29,8 @@ export type Zegar = {
   readonly nazwa: string;
   readonly odstepMs: number;
   readonly przebieg: () => Promise<void>;
+  /** Pierwszy przebieg zaraz po starcie procesu, nie dopiero po pierwszym odstępie. */
+  readonly naStarcie?: boolean;
 };
 
 export type StanZdrowia = { readonly alarmy: readonly string[]; readonly uwagi: readonly string[] };

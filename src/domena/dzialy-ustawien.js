@@ -53,6 +53,11 @@ export const DZIALY_USTAWIEN = [
     ],
   },
   {
+    klucz: 'powiadomienia',
+    etykieta: 'Powiadomienia',
+    zakladki: [z('powiadomienia', 'Powiadomienia', '/ustawienia/powiadomienia')],
+  },
+  {
     klucz: 'automatyzacje',
     etykieta: 'Automatyzacje',
     zakladki: [
@@ -114,7 +119,7 @@ export function modelNawigacjiUstawien(
   const maAdmina = admin || podgladDemo;
   const dzialy = DZIALY_USTAWIEN.map((d) => ({
     ...d,
-    zakladki: d.zakladki.filter((p) => (p.klucz === 'klucze-api' ? admin : !p.tylkoAdmin || maAdmina)),
+    zakladki: d.zakladki.filter((p) => !p.tylkoAdmin || maAdmina),
   })).filter((d) => d.zakladki.length);
   if (daneDemo && maAdmina)
     dzialy.find((d) => d.klucz === 'system').zakladki.push(z('demo', 'Dane demo', '/ustawienia/dane-demo', true));

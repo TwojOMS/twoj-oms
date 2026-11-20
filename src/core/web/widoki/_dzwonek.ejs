@@ -1,0 +1,52 @@
+<%
+  const { nieprzeczytane, pilne, wiersze, nieaktualne } = dzwonek;
+  const etykieta = nieprzeczytane ? `Powiadomienia, ${nieprzeczytane} nieprzeczytane` : pilne ? 'Powiadomienia, pilne' : 'Powiadomienia';
+  const ostrzezenie = 'Powiadomienia mogą być nieaktualne';
+%>
+<details class="dzwonek" data-menu="powiadomienia">
+  <summary class="oms-theme-button dzwonek-przycisk" aria-label="<%= etykieta %>" title="<%= nieaktualne ? ostrzezenie : etykieta %>"<% if (nieaktualne || (pilne && nieprzeczytane)) { %> aria-describedby="<%= [nieaktualne ? 'dzwonek-ostrzezenie' : '', pilne && nieprzeczytane ? 'dzwonek-pilne' : ''].filter(Boolean).join(' ') %>"<% } %>>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21a2 2 0 0 0 4 0"/>
+    </svg>
+    <% if (nieprzeczytane || pilne) { %>
+      <span class="dzwonek-licznik<%= pilne ? ' dzwonek-licznik--pilne' : '' %><%= nieprzeczytane ? '' : ' dzwonek-licznik--kropka' %>" aria-hidden="true"><%= nieprzeczytane > 9 ? '9+' : nieprzeczytane || '' %></span>
+    <% } %>
+    <% if (nieaktualne) { %><span class="dzwonek-wskaznik" aria-hidden="true">!</span><% } %>
+  </summary>
+  <section class="dzwonek-panel" aria-labelledby="dzwonek-tytul">
+    <div class="dzwonek-naglowek">
+      <h2 id="dzwonek-tytul">Powiadomienia</h2>
+      <% if (nieprzeczytane) { %>
+        <form method="post" action="/powiadomienia/przeczytane">
+          <input type="hidden" name="wszystkie" value="1">
+          <input type="hidden" name="powrot" value="<%= powrot %>">
+          <button class="btn btn--cichy" type="submit">Oznacz wszystkie jako przeczytane</button>
+        </form>
+      <% } %>
+    </div>
+    <% if (pilne && nieprzeczytane) { %><span id="dzwonek-pilne" hidden>Są pilne powiadomienia</span><% } %>
+    <% if (nieaktualne) { %><p class="dzwonek-ostrzezenie" id="dzwonek-ostrzezenie"><%= ostrzezenie %></p><% } %>
+    <% if (wiersze.length) { %>
+      <ul class="dzwonek-lista" role="list">
+        <% for (const w of wiersze) { %>
+          <li>
+            <form method="post" action="/powiadomienia/<%= encodeURIComponent(w.klucz) %>/otworz">
+              <button class="btn dzwonek-wiersz<%= w.przeczytane ? '' : ' dzwonek-wiersz--nieprzeczytany' %><%= w.pilne ? ' dzwonek-wiersz--pilne' : '' %>" type="submit" title="<%= w.tekst %>">
+                <span class="dzwonek-tekst"><%= w.tekst %></span>
+                <time datetime="<%= w.pierwszyRazAt %>">od <%= fmtDataCzasKrotko(w.pierwszyRazAt) %></time>
+              </button>
+            </form>
+          </li>
+        <% } %>
+      </ul>
+    <% } else { %>
+      <p class="dzwonek-pusty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 4h16l2 10v5H2v-5l2-10ZM2 14h6l2 3h4l2-3h6"/>
+        </svg>
+        Brak powiadomień
+      </p>
+    <% } %>
+    <div class="dzwonek-stopka"><a href="/powiadomienia">Zobacz wszystkie powiadomienia</a></div>
+  </section>
+</details>

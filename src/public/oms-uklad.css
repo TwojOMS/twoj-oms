@@ -2625,6 +2625,10 @@ div.karta-galeria-glowne { display: grid; place-items: center; aspect-ratio: 1; 
 .slownik-dodaj, .slownik-zmien { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 .slownik-dodaj label { flex-basis: 100%; font-weight: 600; }
 .slownik-dodaj input, .slownik-zmien input { min-inline-size: 0; inline-size: min(100%, 16rem); }
+.slownik .slownik-zmien { flex-wrap: nowrap; }
+.slownik .slownik-zmien input[name="nowa"] { --pole-h: var(--pole-h-maly); inline-size: 12rem; }
+.slownik .slownik-tabela .btn--maly,
+.slownik .slownik-tabela td:has(> .magazyn-brak) { white-space: nowrap; }
 .slownik-woo { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 .slownik-woo .podpowiedz { flex-basis: 100%; margin: 0; }
 .slownik-tabela td { vertical-align: middle; }
@@ -2632,6 +2636,8 @@ div.karta-galeria-glowne { display: grid; place-items: center; aspect-ratio: 1; 
   overflow-wrap: break-word; background: none; color: inherit; font-size: inherit; font-weight: 600;
   text-transform: none; letter-spacing: normal; padding: .7rem .85rem; text-align: start;
 }
+.slownik .slownik-tabela td,
+.slownik .slownik-tabela tbody th[scope="row"] { padding-block: .35rem; }
 .slownik-plakietka { display: inline-block; margin-inline-start: .35rem; font-size: .8rem; }
 .slownik-tabela .slownik-bez th[scope="row"] { font-weight: normal; font-style: italic; }
 

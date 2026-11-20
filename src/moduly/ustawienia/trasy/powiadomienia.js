@@ -34,7 +34,10 @@ export function registerPowiadomieniaRoutes(app, { db, loginDemo = null }) {
       return widok(req, reply.code(400), { blad: e.message });
     }
     // Ukryte = rodzaje z listy TEGO konta, których nie zaznaczyło (rodzaj spoza jego listy nie jest „wyłączony”).
-    const naLiscie = rodzajeDlaKonta(req.konto).map((r) => r.typ);
+    // Rodzaj „zawsze” nie ma pola na formularzu — jego brak w wyborze nie znaczy „ukryj”.
+    const naLiscie = rodzajeDlaKonta(req.konto)
+      .filter((r) => !r.zawsze)
+      .map((r) => r.typ);
     zapiszUkryteTypy(
       db,
       req.konto.id,

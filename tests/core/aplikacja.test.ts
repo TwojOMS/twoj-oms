@@ -241,6 +241,7 @@ describe('zbudujAplikacje', () => {
       { numer: 21 },
       { numer: 22 },
       { numer: 23 },
+      { numer: 24 },
     ]);
     db.exec("DELETE FROM uprawnienia WHERE ekran = 'zamowienia'");
     await buduj({ moduly: [rdzen, ekran], env, db, teraz });

@@ -5,8 +5,8 @@
 //
 // ⚠️ NIC tu nie jest liczone od nowa — ta sama zasada, co w sprawyKarty. Każdy typ woła
 // funkcję, która już rządzi swoją zakładką: paczki `bezRuchu`/`przesylkaUkryta`
-// (pastylka, karta, /przesylki?pokaz=bez_ruchu), wiadomości `czyjRuch` (kolejki
-// /wiadomosci), integracje strukturalny wynik `ocenZdrowie` (/health — model liczy się
+// (pastylka, karta, /przesylki?pokaz=bez_ruchu), kanały `stanKanalu` (pas na liście),
+// integracje strukturalny wynik `ocenZdrowie` (/health — model liczy się
 // raz, renderują go dwa renderery, reguła: model raz, dwa renderery), a luki KSeF przychodzą z lustra
 // pisanego przez czuwacza barierą `coWolnoWyslac` (pola wyboru na /faktury).
 //
@@ -15,19 +15,18 @@
 //
 // Kształt wiersza: { klucz, typ, tekst, title?, przycisk: {href, etykieta},
 // etykietaOdrzucenia }. Klucz jest deterministyczny (typ + tożsamość + znacznik
-// zdarzenia): nowe zdarzenie tej samej rzeczy — kolejna wiadomość w wątku, kolejny
-// ruch paczki — daje NOWY klucz, więc odrzucone ostrzeżenie wraca samo.
+// zdarzenia): nowe zdarzenie tej samej rzeczy — kolejny ruch paczki, kolejna
+// wstrzymana reguła — daje NOWY klucz, więc odrzucone ostrzeżenie wraca samo.
 
 import { createHash } from 'node:crypto';
 import { etapPrzesylki, etykietaEtapu, bezRuchu, dniKalendarzowe } from './etap-przesylki.js';
 import { przesylkaUkryta } from './przesylka-stan.js';
 import { czyPaczkaBezGotowki } from './pobranie-zaplacone.js';
 import { czyPobranie } from './wysylka.js';
-import { czyjRuch } from './czyj-ruch-watku.js';
 import { dzienWarszawa, fmtDataCzasKrotko } from './format-daty.js';
 import { fmtWiek } from './zdrowie.js';
 import { zl } from './kwoty.js';
-import { KOLEJNOSC } from './powiadomienia.js';
+import { KOLEJNOSC, tylkoDlaAdmina, zawszeWidoczny } from './powiadomienia.js';
 import { ekranDlaAdresu, maDostepDoEkranu } from './ekrany.js';
 import { NAZWA_ZAPASOWA } from './nazwa-programu.js';
 export { KOLEJNOSC } from './powiadomienia.js';
@@ -52,9 +51,7 @@ export function kluczDozwolony(klucz) {
   return (
     typeof klucz === 'string' &&
     klucz.length <= MAKS_DLUGOSC_KLUCZA &&
-    /^(faktura-ksef|faktura-termin|przesylka|wiadomosc|integracja|zwrot|pobranie|automatyzacja|niski-stan):./.test(
-      klucz,
-    )
+    /^(kanal|faktura-ksef|faktura-termin|przesylka|integracja|zwrot|pobranie|automatyzacja|niski-stan):./.test(klucz)
   );
 }
 
@@ -389,50 +386,6 @@ export function ostrzezeniaPrzesylek({ przesylki = [], zamowienia = new Map(), t
   return wiersze;
 }
 
-// „Nowa wiadomość" znaczy Z OSTATNICH 7 DNI. ⚠️ Zmierzone na produkcji: bez okna tabelka
-// pokazała kilkanaście wątków sprzed miesięcy. Przyczyną był poller biorący z odpowiedzi
-// Allegro NAJSTARSZĄ wiadomość zamiast najnowszej (naprawione; po naprawie zostały
-// pojedyncze prawdziwie czekające wątki). Okno ZOSTAJE mimo naprawy:
-// definiuje, co znaczy „nowa" — wątek czekający od miesięcy żyje na /wiadomosci,
-// a tabelka jest szturchnięciem o ŚWIEŻE (i drugą linią obrony, gdyby lustro wątków
-// znów zestarzało się niepostrzeżenie).
-export const OKNO_WIADOMOSCI_DNI = 7;
-
-/**
- * Wątki Allegro czekające na odpowiedź — `czyjRuch` z pustymi dowodami, bo „czeka"
- * zależy WYŁĄCZNIE od tego, czy ostatnia wiadomość jest od kupującego (odpowiedź
- * wysłana wprost w aplikacji Allegro gasi ostrzeżenie przy następnym przebiegu
- * pollera wiadomości, bo lustro wątków przestawia `ostatnia_od_kupujacego`).
- *
- * Wątek bez daty ostatniej wiadomości MILCZY: bez daty nie ma jak być świeżym,
- * a taki wiersz i tak widać w kolejce na /wiadomosci.
- */
-export function ostrzezeniaWiadomosci({ watki = [], teraz = new Date() } = {}) {
-  const t = teraz instanceof Date ? teraz.getTime() : Number(teraz);
-  const wiersze = [];
-  for (const w of watki) {
-    try {
-      if (czyjRuch(w, []) !== 'czeka') continue;
-      const kiedy = Date.parse(w.last_message_date_time ?? '');
-      const swieza = Number.isFinite(kiedy) && t - kiedy <= OKNO_WIADOMOSCI_DNI * 24 * 3600 * 1000;
-      if (!swieza) continue;
-      const skrot = String(w.ostatnia_tresc ?? '').slice(0, 120);
-      wiersze.push({
-        klucz: `wiadomosc:${w.kanal}:${w.thread_id}:${w.last_message_date_time}`,
-        typ: 'wiadomosc-allegro',
-        // Treść wiadomości NIE wchodzi do wiersza (ma zostać zwięzły) — skrót w title.
-        tekst: `Nowa wiadomość z Allegro od ${w.interlocutor_login ?? '(nieznany login)'} (${fmtDataCzasKrotko(w.last_message_date_time)}).`,
-        title: skrot || undefined,
-        przycisk: { href: '/wiadomosci', etykieta: 'Wiadomości' },
-        etykietaOdrzucenia: 'Ignoruj',
-      });
-    } catch {
-      /* jw. */
-    }
-  }
-  return wiersze;
-}
-
 // Polska odmiana liczebnika dla zbiorczego wiersza terminów — ta sama klasa mini-odmiany,
 // co `dniPoPolsku` w etap-przesylki.js (więcej form nie potrzeba).
 const fakturPoPolsku = (n) => {
@@ -505,8 +458,8 @@ export function ostrzezeniaZwrotow({ zwroty = [], dzis } = {}) {
 
 /**
  * Reguła automatyzacji wstrzymana bezpiecznikiem (>50 zamówień naraz) i maile, o których nie wiadomo,
- * czy wyszły (`niepewne` — zerwanie w trakcie wysyłki, restart) albo które padły (`blad`). Tylko dla admina — filtr
- * robi wołający (zamowienia/kontekst.js), bo przycisk prowadzi do Ustawień, które edytuje wyłącznie administrator.
+ * czy wyszły (`niepewne` — zerwanie w trakcie wysyłki, restart) albo które padły (`blad`). Tylko dla admina — flaga
+ * `tylkoAdmin` rodzaju (filtr `wierszeDlaKonta`), bo przycisk prowadzi do Ustawień, które edytuje wyłącznie administrator.
  * Klucz wstrzymania niesie chwilę ostatniej zmiany reguły (ponowne wstrzymanie po decyzji = nowy wiersz); klucz
  * niepewnych — id najnowszego z nich (nowy kłopot przywraca odrzucony wiersz).
  * Wejście: `[{ id, nazwa, wstrzymana_powod, zmieniona_at, zalegle, niepewne, blad, ostatni_id }]`.
@@ -624,8 +577,8 @@ const zdanieZegara = (nazwa, z) =>
  * Niedziałające integracje — ze STRUKTURALNEGO wyniku `ocenZdrowie` (reguła zdrowia
  * liczy się w domena/zdrowie.js; tu tylko drugi renderer tego samego modelu).
  *
- * ⚠️ KANAŁY ALLEGRO CELOWO POZA tym typem: mają na tej samej stronie własny pas
- * z wyjściem (wiązanie, reguła: martwy kanał widoczny) — drugi wiersz o tym samym uczyłby ignorowania obu.
+ * ⚠️ KANAŁY SPRZEDAŻY CELOWO POZA tym typem: mają własny typ `kanal` (`ostrzezeniaKanalow`, ten sam stan, co
+ * pas na liście zamówień) — drugi wiersz o tym samym uczyłby ignorowania obu.
  */
 export function ostrzezeniaIntegracji({ zdrowie } = {}) {
   if (!zdrowie) return [];
@@ -738,17 +691,76 @@ export function ostrzezeniaKopii({ kopie } = {}) {
  *   na braku danych nie chowamy — przeoczone ostrzeżenie jest gorsze niż martwy przycisk,
  *   a nieznany adres wyłapie test kompletności tras, nie ta tabelka.
  *
+ * - Rodzaj `zawsze` (awaria kanału) ZOSTAJE u każdego konta, traci tylko przycisk: o martwym kanale
+ *   ma wiedzieć każdy, a naprawić może ten, kto ma Ustawienia.
+ *
  * Filtruje tylko widok: lustra, odrzucenia, czuwacze i /health zostają bez zmian.
  */
 export function ostrzezeniaDlaKonta({ wiersze = [], konto = null } = {}) {
   if (!konto) return wiersze;
-  return wiersze.filter((w) => {
-    const href = w?.przycisk?.href;
-    if (!href) return true;
+  const wolno = (href) => {
     const ekran = ekranDlaAdresu(href);
-    if (ekran === null) return true;
-    return maDostepDoEkranu(konto, ekran);
+    return ekran === null || maDostepDoEkranu(konto, ekran);
+  };
+  const wynik = [];
+  for (const w of wiersze) {
+    const href = w?.przycisk?.href;
+    if (!href || wolno(href)) wynik.push(w);
+    else if (zawszeWidoczny(w?.typ)) wynik.push({ ...w, przycisk: null });
+  }
+  return wynik;
+}
+
+/**
+ * Filtr konta przy odczycie — jedna reguła dla listy zamówień i powiadomień: rodzaj `tylkoAdmin` tylko
+ * administratorowi, niski stan tylko z prawem do Magazynu (karty i progi żyją tam), osobiście ukryte rodzaje
+ * (poza `zawsze`), na końcu prawo do ekranu przycisku. Rodzaj nieznany przechodzi — na braku danych nie chowamy.
+ */
+export function wierszeDlaKonta({ wiersze = [], konto = null, ukryteTypy = [] } = {}) {
+  const ukryte = Array.isArray(ukryteTypy) ? ukryteTypy : [];
+  const zostaja = wiersze.filter((w) => {
+    if (tylkoDlaAdmina(w?.typ) && konto?.admin !== true) return false;
+    if (w?.typ === 'niski-stan' && konto && !maDostepDoEkranu(konto, 'magazyn')) return false;
+    return !(ukryte.includes(w?.typ) && !zawszeWidoczny(w?.typ));
   });
+  return ostrzezeniaDlaKonta({ wiersze: zostaja, konto });
+}
+
+/**
+ * Kanały sprzedaży wymagające uwagi (`kanalyWymagajaceUwagi` — ten sam stan, co pas na liście zamówień) jako
+ * wiersze powiadomień. Klucz niesie stopień: uprzedzenie przechodzące w awarię to nowa sprawa, więc
+ * zignorowane uprzedzenie nie chowa awarii. Pilnej awarii nie da się zignorować — kanał bez zamówień nie
+ * przestaje być problemem od kliknięcia.
+ */
+export function ostrzezeniaKanalow({ kanaly = [] } = {}) {
+  const wiersze = [];
+  for (const s of Array.isArray(kanaly) ? kanaly : []) {
+    try {
+      const pilne = s.pilne === true;
+      const naprawa = s.wolnoWiazac ? ' Naprawa: połączenie kanału z Allegro na nowo.' : '';
+      wiersze.push({
+        typ: 'kanal',
+        klucz: `kanal:${s.kanal ?? 'nieznany'}:${pilne ? 'pilne' : 'uprzedzenie'}`,
+        tekst: `${pilne ? 'Kanał nie działa' : 'Kanał wkrótce przestanie działać'}: ${s.powod}${naprawa}`,
+        pilne,
+        przycisk: { href: '/ustawienia/integracje', etykieta: 'Połączenia' },
+        etykietaOdrzucenia: pilne ? null : 'Ignoruj',
+      });
+    } catch {
+      /* jw. */
+    }
+  }
+  return wiersze;
+}
+
+/**
+ * Czy odrzucenie (`odrzucone_at` albo brak) dalej obowiązuje w chwili `t` (ms). Jedna reguła dla tabelki
+ * i migawki powiadomień — migawka na niej rozpoznaje koniec dobowego wyciszenia integracji.
+ */
+export function czyZignorowane(typ, odrzuconeAt, t) {
+  if (!odrzuconeAt) return false;
+  if (typ !== 'integracja') return true;
+  return t - Date.parse(odrzuconeAt) < WYGASANIE_INTEGRACJI_MS;
 }
 
 /**
@@ -760,10 +772,7 @@ export function zlozOstrzezenia({ wiersze = [], odrzucone = new Map(), teraz = n
   const t = teraz instanceof Date ? teraz.getTime() : Number(teraz);
   const widoczne = wiersze.filter((w) => {
     if (ukryteTypy.includes(w.typ)) return false;
-    const odrzuconeAt = odrzucone.get(w.klucz);
-    if (!odrzuconeAt) return true;
-    if (w.typ !== 'integracja') return false;
-    return !(t - Date.parse(odrzuconeAt) < WYGASANIE_INTEGRACJI_MS);
+    return !czyZignorowane(w.typ, odrzucone.get(w.klucz), t);
   });
   return widoczne
     .map((w, i) => ({ w, i }))

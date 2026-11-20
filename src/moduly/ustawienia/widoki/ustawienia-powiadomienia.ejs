@@ -5,14 +5,16 @@
 <% if (niewidoczne.length) { %><p class="pas-uprzedzenie">Nikt w firmie nie widzi: <%= niewidoczne.map(r => r.nazwa).join(', ') %>.</p><% } %>
 
 <section class="ust-sekcja">
-  <h2>Ostrzeżenia na stronie głównej</h2>
-  <p>Wybierz ostrzeżenia widoczne na Twojej liście zamówień. Ten wybór dotyczy tylko Twojego konta.</p>
+  <h2>Co pokazuje dzwonek</h2>
+  <p>Wybierz rodzaje powiadomień widoczne w dzwonku i na stronie Powiadomienia. Ten wybór dotyczy tylko Twojego konta. Awarii kanałów sprzedaży nie da się wyłączyć.</p>
   <% if (!moznaZapisac) { %><p>Konto serwisowe widzi wszystkie ostrzeżenia. Zaloguj się własnym kontem, aby zmienić ich widoczność.</p><% } %>
   <form method="post" action="/konto/powiadomienia">
     <% rodzaje.forEach(function (r) { %>
-      <p>
-        <label><input type="checkbox" name="widoczne" value="<%= r.typ %>" <%= ukryte.includes(r.typ) ? '' : 'checked' %> <%= moznaZapisac ? '' : 'disabled' %>> <strong><%= r.nazwa %></strong><br><span class="wyjasnienie"><%= r.opis %></span></label>
-      </p>
+      <% if (!r.zawsze) { %>
+        <p>
+          <label><input type="checkbox" name="widoczne" value="<%= r.typ %>" <%= ukryte.includes(r.typ) ? '' : 'checked' %> <%= moznaZapisac ? '' : 'disabled' %>> <strong><%= r.nazwa %></strong><br><span class="wyjasnienie"><%= r.opis %></span></label>
+        </p>
+      <% } %>
     <% }); %>
     <% if (moznaZapisac) { %><div class="ust-akcje"><button class="btn btn--glowny" type="submit">Zapisz</button></div><% } %>
   </form>

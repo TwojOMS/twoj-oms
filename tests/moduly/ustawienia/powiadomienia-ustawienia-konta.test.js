@@ -1,9 +1,13 @@
 import { afterEach, it, expect } from 'vitest';
+import ejs from 'ejs';
 import { zalozKonto, kontoPoLoginie, ustawUprawnienia, ustawCzynne } from '../../../src/core/bezpieczenstwo/konta.js';
 import { podmienLukiKsef } from '../../../src/oms/db/ostrzezenia.js';
 import { utworzKarte } from '../../../src/oms/db/magazyn.js';
 import { dodajRuch, przelaczStany } from '../../../src/oms/db/stany-magazynowe.js';
 import { RODZAJE_OSTRZEZEN } from '../../../src/domena/powiadomienia.js';
+import { powiadomieniaKonta } from '../../../src/oms/db/powiadomienia.js';
+import { createKontekstZamowien } from '../../../src/moduly/zamowienia/kontekst.js';
+import { createMigawkaPowiadomien } from '../../../src/moduly/zamowienia/services/migawka-powiadomien.js';
 import { nowyPanel, jako, get, post, BASIC } from '../../pomoc/panel-konta-testowe.js';
 
 const typy = [
@@ -15,7 +19,6 @@ const typy = [
   'zwrot-korekta',
   'przesylka',
   'niski-stan',
-  'wiadomosc-allegro',
 ];
 const panele = [];
 afterEach(async () => {
@@ -35,12 +38,49 @@ function panel() {
 }
 const pola = (html) => html.match(/<input[^>]*type="checkbox"[^>]*>/gu) ?? [];
 
-it('każdy zalogowany widzi osiem domyślnie zaznaczonych pól i link z Mojego konta', async () => {
+function migawkaFirmy(db) {
+  const kontekst = createKontekstZamowien({ db, config: {} });
+  return createMigawkaPowiadomien({ db, zbierz: (teraz) => kontekst.wierszeOstrzezenFirmy(teraz) });
+}
+
+it('zwykłe konto widzi aktywny dział Powiadomienia i ten sam opis na obu ekranach', async () => {
+  const { app, osoba } = panel();
+  const ustawienia = await get(app, '/ustawienia/powiadomienia', osoba);
+  const konto = await get(app, '/konto/powiadomienia', osoba);
+  expect(ustawienia.body).toContain('href="/ustawienia/powiadomienia" aria-current="page"');
+  for (const ekran of [ustawienia, konto]) {
+    expect(ekran.statusCode).toBe(200);
+    expect(ekran.body).toContain('<h2>Co pokazuje dzwonek</h2>');
+    expect(ekran.body).toContain(
+      'Wybierz rodzaje powiadomień widoczne w dzwonku i na stronie Powiadomienia. Ten wybór dotyczy tylko Twojego konta. Awarii kanałów sprzedaży nie da się wyłączyć.',
+    );
+    expect(ekran.body).not.toContain('na Twojej liście zamówień');
+  }
+});
+
+it('formularz pomija pole rodzaju, który jest zawsze widoczny', async () => {
+  const html = await ejs.renderFile('src/moduly/ustawienia/widoki/ustawienia-powiadomienia.ejs', {
+    zapisano: null,
+    blad: null,
+    niewidoczne: [],
+    moznaZapisac: true,
+    ukryte: [],
+    rodzaje: [
+      { typ: 'stale', nazwa: 'Powiadomienie stałe', opis: 'Zawsze widoczne', zawsze: true },
+      { typ: 'wybieralne', nazwa: 'Powiadomienie wybieralne', opis: 'Widoczne według ustawień' },
+    ],
+  });
+
+  expect(pola(html)).toEqual([expect.stringContaining('value="wybieralne"')]);
+});
+
+it('każdy zalogowany widzi siedem domyślnie zaznaczonych pól i link z Mojego konta', async () => {
   const { app, osoba, admin } = panel();
   const r = await get(app, '/ustawienia/powiadomienia', osoba);
   expect(r.statusCode).toBe(200);
-  expect(pola(r.body)).toHaveLength(8);
-  for (const rodzaj of RODZAJE_OSTRZEZEN.filter((x) => !x.tylkoAdmin)) {
+  expect(pola(r.body)).toHaveLength(7);
+  // Rodzaj „zawsze” nie ma pola — formularz mówi o nim jednym zdaniem (sprawdzone wyżej).
+  for (const rodzaj of RODZAJE_OSTRZEZEN.filter((x) => !x.tylkoAdmin && !x.zawsze)) {
     expect(r.body.includes(rodzaj.nazwa)).toBe(true);
     expect(r.body.includes(rodzaj.opis)).toBe(true);
   }
@@ -48,7 +88,7 @@ it('każdy zalogowany widzi osiem domyślnie zaznaczonych pól i link z Mojego k
   for (const typ of typy.filter((t) => t !== 'automatyzacja'))
     expect(pola(r.body).find((p) => p.includes(`value="${typ}"`))).toContain('checked');
   const a = await get(app, '/ustawienia/powiadomienia', admin);
-  expect(pola(a.body)).toHaveLength(9);
+  expect(pola(a.body)).toHaveLength(8);
   expect((await get(app, '/konto', osoba)).body).toContain('href="/konto/powiadomienia"');
   expect((await get(app, '/magazyn/ustawienia', osoba)).statusCode).toBe(403);
 });
@@ -106,52 +146,59 @@ it('konto bez id nie zapisuje; brak konta nie ukrywa ostrzeżeń', async () => {
   panele.push(p);
   podmienLukiKsef(p.db, [{ uuid: 'demo-luka', numer: 'FV-DEMO', invoiceDate: '2020-01-01' }]);
   expect((await post(p.app, '/ustawienia/powiadomienia', BASIC)).statusCode).toBe(403);
-  expect((await get(p.app, '/', BASIC)).body).toContain('FV-DEMO');
+  await migawkaFirmy(p.db).przeliczTeraz();
+  expect(powiadomieniaKonta(p.db, null).aktualne.map((w) => w.tekst)).toEqual([expect.stringContaining('FV-DEMO')]);
 });
 
-it('na stronie głównej A ukrywa KSeF, B nadal widzi ten sam wiersz, lustro i odrzucenia bez zmian', async () => {
-  const { app, db, id, osoba, admin } = panel();
+it('konto A ukrywa KSeF, konto B nadal widzi wiersz migawki, lustro i odrzucenia bez zmian', async () => {
+  const { app, db, id, osoba } = panel();
   // Wiersz KSeF prowadzi do /faktury, więc widzi go tylko konto z prawem `faktury`.
   ustawUprawnienia(db, id, ['zamowienia', 'faktury']);
   podmienLukiKsef(db, [{ uuid: 'demo-luka', numer: 'FV-DEMO', invoiceDate: '2020-01-01' }]);
-  expect((await get(app, '/', osoba)).body).toContain('FV-DEMO');
+  await migawkaFirmy(db).przeliczTeraz();
+  const faktury = (login) =>
+    powiadomieniaKonta(db, kontoPoLoginie(db, login)).aktualne.filter((w) => w.typ === 'faktura-ksef');
+  expect(faktury('sprzedawca-test')).toEqual([expect.objectContaining({ tekst: expect.stringContaining('FV-DEMO') })]);
   await post(app, '/ustawienia/powiadomienia', osoba, { widoczne: typy.filter((t) => t !== 'faktura-ksef') });
-  expect((await get(app, '/', osoba)).body).not.toContain('FV-DEMO');
-  expect((await get(app, '/', admin)).body).toContain('FV-DEMO');
+  expect(faktury('sprzedawca-test')).toEqual([]);
+  expect(faktury('admin-test')).toEqual([expect.objectContaining({ tekst: expect.stringContaining('FV-DEMO') })]);
   expect(db.prepare('SELECT * FROM ksef_luki').all()).toHaveLength(1);
   expect(db.prepare('SELECT * FROM ostrzezenia_odrzucone').all()).toHaveLength(0);
 });
 
-it('na liście zamówień niski stan podlega dostępowi, ustawieniom konta i odrzuceniu do zmiany stanu', async () => {
+it('w migawce niski stan podlega dostępowi, ustawieniom konta i odrzuceniu do zmiany stanu', async () => {
   const { app, db, id, osoba, admin } = panel();
   const kartaId = utworzKarte(db, { nazwa: 'Pracownia Półcień', sku: 'POLCIEN' });
   db.prepare('UPDATE karty_produktow SET prog_niskiego_stanu = 2 WHERE id = ?').run(kartaId);
-  const wiersz = async (konto) => {
-    const r = await get(app, '/', konto);
-    expect(r.statusCode).toBe(200);
-    return r.body.match(/<tr class="ostrzezenie ostrzezenie--niski-stan">[\s\S]*?<\/tr>/gu) ?? [];
-  };
-  expect(await wiersz(admin)).toEqual([]);
+  const migawka = migawkaFirmy(db);
+  const wiersze = (login) =>
+    powiadomieniaKonta(db, kontoPoLoginie(db, login)).aktualne.filter((w) => w.typ === 'niski-stan');
+  await migawka.przeliczTeraz();
+  expect(wiersze('admin-test')).toEqual([]);
   przelaczStany(db, { wlacz: true });
-  expect(await wiersz(osoba)).toEqual([]);
+  await migawka.przeliczTeraz();
+  expect(wiersze('sprzedawca-test')).toEqual([]);
   ustawUprawnienia(db, id, ['zamowienia', 'magazyn']);
-  expect(await wiersz(osoba)).toHaveLength(1);
+  expect(wiersze('sprzedawca-test')).toHaveLength(1);
 
   expect(
     (await post(app, '/ustawienia/powiadomienia', osoba, { widoczne: typy.filter((t) => t !== 'niski-stan') }))
       .statusCode,
   ).toBe(303);
-  expect(await wiersz(osoba)).toEqual([]);
-  const widoczne = await wiersz(admin);
-  expect(widoczne).toHaveLength(1);
-  expect(widoczne[0]).toContain('Niski stan: 1 karta (POLCIEN — 0 szt.)');
-  expect(widoczne[0]).toContain('href="/magazyn?stan=niski">Pokaż');
-  const klucz = widoczne[0].match(/name="klucz" value="([^"]+)"/u)?.[1];
-  expect(klucz).toBe(`niski-stan:${kartaId}:0`);
-  expect((await post(app, '/ostrzezenia/odrzuc', admin, { klucz })).headers.location).toBe('/');
-  expect(await wiersz(admin)).toEqual([]);
+  expect(wiersze('sprzedawca-test')).toEqual([]);
+  const klucz = `niski-stan:${kartaId}:0`;
+  expect(wiersze('admin-test')).toEqual([
+    expect.objectContaining({
+      klucz,
+      tekst: 'Niski stan: 1 karta (POLCIEN — 0 szt.)',
+      przycisk: { href: '/magazyn?stan=niski', etykieta: 'Pokaż' },
+    }),
+  ]);
+  expect((await post(app, '/ostrzezenia/odrzuc', admin, { klucz, powrot: '/' })).headers.location).toBe('/');
+  expect(wiersze('admin-test')).toEqual([]);
   dodajRuch(db, { kartaId, rodzaj: 'korekta', ilosc: -3, powod: 'Inwentaryzacja', klucz: 'korekta' });
-  expect((await wiersz(admin))[0]).toContain('Niski stan: 1 karta (POLCIEN — -3 szt.)');
+  await migawka.przeliczTeraz();
+  expect(wiersze('admin-test')[0].tekst).toContain('Niski stan: 1 karta (POLCIEN — -3 szt.)');
 });
 
 it('POST z obcego Origin nie zapisuje ustawień', async () => {

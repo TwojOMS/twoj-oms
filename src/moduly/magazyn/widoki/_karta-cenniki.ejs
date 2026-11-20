@@ -1,38 +1,47 @@
-<%# Cennik dostaw karty: jeden cennik OMS dla całej karty (puste = dobór po rozmiarze). Działa na kontach, z którymi
-    cennik ma powiązanie (Magazyn → Cenniki); tabela pod polem pokazuje, co karta dostaje teraz na każdym bieżącym
-    koncie Allegro i ERLI — ten sam dobór co podgląd „Wystaw na…”. Bez JS: jeden formularz, jedno „Zapisz”. %>
+<%# Cennik dostaw karty: opcjonalny cennik OMS karty (działa na kontach, z którymi ma powiązanie) i na każdym koncie
+    własny wybór cennika z pobranej listy konta — ten wygrywa z cennikiem OMS. „Teraz” pokazuje, co karta dostaje na
+    koncie (ten sam dobór co podgląd „Wystaw na…”). Bez JS: jeden formularz, jedno „Zapisz”. %>
 <% const ck = typeof cennikiKarty !== 'undefined' ? cennikiKarty : null; %>
 <% if (ck && ck.konta.length) { %>
-<% const NAPIS_CENNIKA = 'Wybrany cennik OMS działa na wszystkich kontach, z którymi ma powiązanie; na pozostałych karta dostaje cennik według rozmiaru. Zmiana dotyczy też już wystawionej oferty.'; %>
+<% const NAPIS_CENNIKA = 'Cennik wybrany dla konta wygrywa z cennikiem OMS karty. Puste pole konta: karta bierze cennik OMS (gdy ma powiązanie z tym kontem), a bez niego cennik według rozmiaru. Zmiana dotyczy też już wystawionej oferty.'; %>
+<% const edycja = mozeEdytowacOferty; %>
 <section class="panel" id="cenniki-karty" aria-labelledby="cenniki-tytul">
   <div class="panel-glowa"><h2 id="cenniki-tytul">Cennik dostaw</h2></div>
   <div class="panel-cialo">
-    <% if (mozeEdytowacOferty) { %>
-      <form method="post" action="/magazyn/<%= karta.id %>/cenniki" aria-labelledby="cenniki-tytul">
-        <div class="pola">
-          <div>
-            <label for="cennik-oms-karty">Cennik dostaw tej karty</label>
-            <select id="cennik-oms-karty" name="cennik_oms" aria-describedby="cennik-oms-karty-napis">
-              <option value=""<%= ck.wybor === '' ? ' selected' : '' %>>— według rozmiaru —</option>
-              <% ck.opcje.forEach(o => { %><option value="<%= o.id %>"<%= o.id === ck.wybor ? ' selected' : '' %>><%= o.etykieta %></option><% }); %>
-            </select>
-            <p class="podpowiedz" id="cennik-oms-karty-napis"><%= NAPIS_CENNIKA %></p>
-          </div>
+    <% if (edycja) { %><form method="post" action="/magazyn/<%= karta.id %>/cenniki" aria-labelledby="cenniki-tytul"><% } %>
+    <% if (edycja) { %>
+      <div class="pola">
+        <div>
+          <label for="cennik-oms-karty">Cennik OMS tej karty (opcjonalnie)</label>
+          <select id="cennik-oms-karty" name="cennik_oms" aria-describedby="cennik-oms-karty-napis">
+            <option value=""<%= ck.wybor === '' ? ' selected' : '' %>>— według rozmiaru —</option>
+            <% ck.opcje.forEach(o => { %><option value="<%= o.id %>"<%= o.id === ck.wybor ? ' selected' : '' %>><%= o.etykieta %></option><% }); %>
+          </select>
+          <p class="podpowiedz" id="cennik-oms-karty-napis"><%= NAPIS_CENNIKA %></p>
         </div>
-        <div class="przyciski"><button class="btn btn--glowny" type="submit">Zapisz cennik dostaw</button></div>
-      </form>
+      </div>
     <% } else { %>
-      <p>Cennik dostaw tej karty: <%= ck.nazwaWyboru || 'według rozmiaru' %></p>
+      <p>Cennik OMS tej karty: <%= ck.nazwaWyboru || 'według rozmiaru' %></p>
       <p class="podpowiedz"><%= NAPIS_CENNIKA %></p>
     <% } %>
     <div class="przewijak-tabeli">
       <table class="tab-pozycje">
         <caption>Cennik w ofercie na każdym koncie</caption>
+        <thead>
+          <tr><th scope="col">Konto</th><th scope="col">Cennik na tym koncie</th><th scope="col">Teraz</th></tr>
+        </thead>
         <tbody>
-          <% ck.konta.forEach(w => { %><tr><th scope="row"><%= w.etykieta %></th><td><% if (w.teraz) { %>Teraz: <%= w.teraz.nazwa %> — <%= w.teraz.powod %><% if (w.teraz.odmowa) { %> <span class="magazyn-brak">Odmowa: <%= w.teraz.odmowa %></span><% } %><% } else { %><span class="magazyn-brak">Odmowa: <%= w.odmowa %></span><% } %></td></tr><% }); %>
+          <% ck.konta.forEach(w => { %><tr><th scope="row"><%= w.etykieta %></th><td><%
+            if (!edycja) { %><%= w.nazwaWybranego || '—' %><%
+            } else if (w.opcje) { %><select name="<%= w.pole %>" aria-label="Cennik na koncie <%= w.etykieta %>">
+                <option value=""<%= w.wybrany === '' ? ' selected' : '' %>>— z cennika OMS / według rozmiaru —</option>
+                <% w.opcje.forEach(o => { %><option value="<%= o.wartosc %>"<%= o.wartosc === w.wybrany ? ' selected' : '' %>><%= o.nazwa %></option><% }); %>
+              </select><%
+            } else { %><span class="magazyn-brak">Lista cenników konta niepobrana — <a href="/magazyn/cenniki#kanal-<%= w.klucz %>">pobierz w Magazyn → Cenniki</a></span><% } %></td><td><% if (w.teraz) { %>Teraz: <%= w.teraz.nazwa %> — <%= w.teraz.powod %><% if (w.teraz.odmowa) { %> <span class="magazyn-brak">Odmowa: <%= w.teraz.odmowa %></span><% } %><% } else { %><span class="magazyn-brak">Odmowa: <%= w.odmowa %></span><% } %></td></tr><% }); %>
         </tbody>
       </table>
     </div>
+    <% if (edycja) { %><div class="przyciski"><button class="btn btn--glowny" type="submit">Zapisz cennik dostaw</button></div></form><% } %>
   </div>
 </section>
 <% } %>

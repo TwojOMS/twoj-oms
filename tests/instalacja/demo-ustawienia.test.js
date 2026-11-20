@@ -201,7 +201,7 @@ describe('Ustawienia w demo — gość ogląda wszystko', () => {
     expect(html).not.toMatch(/nie rozwiązuje się|ENOTFOUND|fetch failed/);
   });
 
-  it('Integracje: osobne konta Allegro (z Wysyłam z Allegro w koncie) oraz sklep Woo są oznaczone jako niesprawdzone atrapy', async () => {
+  it('Integracje: osobne konta Allegro (z Wysyłam z Allegro w koncie) pokazują uprzedzenie i awarię, sklep Woo jest atrapą', async () => {
     const { html } = await get('/ustawienia/integracje');
     // Wiersze listy zamiast kart; usługę niesie data-usluga, atrapę etykieta „Dane przykładowe”.
     const karty = html.match(/<li class="pol-wiersz[\s\S]*?<\/li>/g) ?? [];
@@ -214,15 +214,20 @@ describe('Ustawienia w demo — gość ogląda wszystko', () => {
       const uslugi = karty.filter((k) => k.includes(`data-usluga="${usluga}"`));
       expect(uslugi, usluga).toHaveLength(liczba);
       for (const karta of uslugi) {
-        expect(karta).toContain('Dane przykładowe');
         expect(karta).not.toContain('pol-stan--dziala');
+        // Konta Allegro w demo celowo pokazują uprzedzenie (token wygasa) i awarię (Outlet), żeby dzwonek miał
+        // pilną sprawę; atrapa sklepu Woo zostaje „Dane przykładowe”.
         if (usluga === 'allegro') expect(karta).toContain('Wysyłam z Allegro: włączone');
+        else expect(karta).toContain('Dane przykładowe');
       }
     }
-    // Zdrowe kanały nie wołają o pomoc na liście zamówień.
+    const allegro = karty.filter((k) => k.includes('data-usluga="allegro"'));
+    expect(allegro.some((k) => k.includes('wygasa'))).toBe(true);
+    expect(allegro.map((k) => k.match(/pol-stan--(\w+)/)?.[1]).sort()).toEqual(['uwaga', 'uwaga']);
+    // Na liście zamówień woła o pomoc tylko martwy Outlet — pas poważnej awarii, bez tabelki ostrzeżeń.
     const lista = (await get('/')).html;
-    expect(lista).not.toContain('class="pas-awaria"');
-    expect(lista).not.toContain('class="pas-uprzedzenie"');
+    expect(lista).toContain('class="pas-awaria"');
+    expect(lista).not.toContain('class="ostrzezenia"');
   });
 
   it('administrator demo widzi prawdziwe dane i może zapisywać — podgląd dotyczy tylko gościa', async () => {

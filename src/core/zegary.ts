@@ -4,12 +4,13 @@ export function uruchomZegary(
   zegary: readonly Zegar[],
   {
     ustawInterwal = setInterval,
+    ustawTimeout = setTimeout,
     log = (t: string) => console.error(t),
-  }: { ustawInterwal?: typeof setInterval; log?: (t: string) => void } = {},
+  }: { ustawInterwal?: typeof setInterval; ustawTimeout?: typeof setTimeout; log?: (t: string) => void } = {},
 ): ReturnType<typeof setInterval>[] {
-  return zegary.map((z) => {
+  return zegary.flatMap((z) => {
     let trwa = false;
-    return ustawInterwal(async () => {
+    const tik = async () => {
       if (trwa) {
         log(`zegar ${z.nazwa}: poprzedni przebieg jeszcze trwa — pomijam`);
         return;
@@ -22,6 +23,15 @@ export function uruchomZegary(
       } finally {
         trwa = false;
       }
-    }, z.odstepMs);
+    };
+    const uchwyty = [ustawInterwal(tik, z.odstepMs)];
+    if (z.naStarcie) {
+      // Ta sama flaga co interwał, więc start i pierwszy odstęp się nie nałożą. `unref` — sam przebieg startowy
+      // nie trzyma procesu przy życiu; uchwyt wraca z resztą, więc zamknięcie przed startem go odwoła.
+      const start = ustawTimeout(tik, 0);
+      start.unref?.();
+      uchwyty.push(start);
+    }
+    return uchwyty;
   });
 }

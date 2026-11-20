@@ -425,6 +425,13 @@
               <% if (locals.mozeUstawieniaMagazynu) { %><a class="hz-ustawienia" href="/magazyn/ustawienia/parametry">Magazyn → Ustawienia → Parametry kart</a><% } %>
             </div>
             <% } %>
+            <% const cennikiHurtu = locals.cennikiHurtu || { oms: [], konta: [] }; %>
+            <% if (cennikiHurtu.oms.length || cennikiHurtu.konta.length) { %>
+            <div class="hz-grupa">
+              <p>Wysyłka</p>
+              <button type="button" class="btn hz-opcja" data-z="cennik">Cennik dostaw</button>
+            </div>
+            <% } %>
             <div class="hz-grupa">
               <p>Inne</p>
               <button type="button" class="btn hz-opcja" data-z="bezpieczenstwo">Informacja o bezpieczeństwie</button>
@@ -594,6 +601,49 @@
             </div>
             <button type="button" class="btn hz-usun" aria-label="Usuń zmianę: Informacja o bezpieczeństwie">✕</button>
           </li>
+          <%# Cennik dostaw: cennik OMS karty i wybór z listy każdego konta. Pusta pozycja = bez zmian,
+              usunięcie to osobna pozycja — wiersz dodany przez pomyłkę nie skasuje wyborów kart.
+              Konto bez pobranej listy nie ma z czego wybrać, więc pole jest wyłączone z wyjaśnieniem. %>
+          <% if (cennikiHurtu.oms.length || cennikiHurtu.konta.length) { %>
+          <li data-zmiana="cennik">
+            <span class="hz-nazwa">Cennik dostaw</span>
+            <div class="hz-pola">
+              <% if (cennikiHurtu.oms.length) { %>
+              <label class="pole-filtra"><span>Cennik OMS</span>
+                <select name="cennik_oms_hurt">
+                  <option value="">— bez zmian —</option>
+                  <option value="__usun__">— usuń (według rozmiaru) —</option>
+                  <% cennikiHurtu.oms.forEach(function (c) { %>
+                  <option value="<%= c.id %>"><%= c.etykieta %></option>
+                  <% }); %>
+                </select>
+              </label>
+              <% } %>
+              <% cennikiHurtu.konta.forEach(function (k) { %>
+              <label class="pole-filtra"><span><%= k.etykieta %></span>
+                <% if (k.cenniki) { %>
+                <select name="cennik_konta_hurt_<%= k.klucz %>">
+                  <option value="">— bez zmian —</option>
+                  <option value="__usun__">— usuń wybór konta —</option>
+                  <% k.cenniki.forEach(function (c) { %>
+                  <option value="<%= c.wartosc %>"><%= c.nazwa %></option>
+                  <% }); %>
+                </select>
+                <% } else { %>
+                <select name="cennik_konta_hurt_<%= k.klucz %>" disabled aria-describedby="hz-cennik-podpowiedz">
+                  <option value="">— bez zmian —</option>
+                </select>
+                <% } %>
+              </label>
+              <% }); %>
+              <%# Jedno wyjaśnienie dla wszystkich kont bez listy — powtórzone przy każdym czytałoby się jak osobne błędy. %>
+              <% if (cennikiHurtu.konta.some(function (k) { return !k.cenniki; })) { %>
+              <small class="hz-podpowiedz" id="hz-cennik-podpowiedz"><%= cennikiHurtu.listaNiepobrana %></small>
+              <% } %>
+            </div>
+            <button type="button" class="btn hz-usun" aria-label="Usuń zmianę: Cennik dostaw">✕</button>
+          </li>
+          <% } %>
           <% if (stany) { %>
           <li data-zmiana="prog">
             <span class="hz-nazwa">Próg niskiego stanu</span>

@@ -43,7 +43,6 @@
       <% const bledyCen = typeof bledyCennikow !== 'undefined' ? bledyCennikow : {}; %>
       <% const wpisaneCen = typeof wpisaneCenniki !== 'undefined' ? wpisaneCenniki : {}; %>
       <% const zPolamiCennika = !naAllegro && wiersze.some(w => w.cennikWiersza); %>
-      <% if (zPolamiCennika) { %><p>Cennik wybrany przy karcie zmienia cennik tej karty na wszystkich kontach.</p><% } %>
       <form method="post" action="/magazyn/oferty/zatwierdz" aria-label="Zatwierdzenie ofert <%= naAllegro ? 'Allegro' : 'ERLI' %>">
       <% wiersze.forEach(w => { %>
         <section class="panel">
@@ -52,20 +51,27 @@
             <% w.bledy.forEach(b => { %><p class="pasek-blokada">Odmowa: <%= b.tekst %><% b.odnosniki.forEach((o, i) => { %><%= i ? ' · ' : ' ' %><% if (o.adres) { %><a href="<%= o.adres %>"><%= o.napis %></a><% } else { %><%= o.napis %><% } %><% }); %></p><% }); %>
             <% w.ostrzezenia.forEach(b => { %><p class="pasek-uwaga"><%= b %></p><% }); %>
             <% const cw = zPolamiCennika ? w.cennikWiersza : null; %>
+            <% const blad = bledyCen[w.id]; %>
             <% if (cw) {
                  const idPola = 'cennik-' + w.id;
-                 const wybor = wpisaneCen[w.id] ?? cw.wybor;
-                 const blad = bledyCen[w.id];
-                 const opisy = [blad ? 'blad-' + idPola : null, w.dostawa ? idPola + '-pomoc' : null].filter(Boolean).join(' ');
-                 const atrybuty = (blad ? ' aria-invalid="true"' : '') + (opisy ? ' aria-describedby="' + opisy + '"' : ''); %>
+                 const wybor = blad ? cw.wybor : (wpisaneCen[w.id] ?? cw.wybor);
+                 const opisy = [blad ? 'blad-' + idPola : null, idPola + '-konto', w.dostawa ? idPola + '-pomoc' : null].filter(Boolean).join(' '); %>
               <label for="<%= idPola %>">Cennik dostaw</label>
-              <select id="<%= idPola %>" name="cennik_<%= w.id %>" class="oferta-cennik"<%- atrybuty %>>
-                <option value=""<%= wybor === '' ? ' selected' : '' %>>— według rozmiaru (teraz: <%= cw.zKonta %>) —</option>
-                <% cw.opcje.forEach(o => { %><option value="<%= o.id %>"<%= o.id === wybor ? ' selected' : '' %>><%= o.etykieta %></option><% }); %>
+              <select id="<%= idPola %>" name="cennik_<%= w.id %>" class="oferta-cennik"<% if (blad) { %> aria-invalid="true"<% } %> aria-describedby="<%= opisy %>">
+                <option value=""<%= wybor === '' ? ' selected' : '' %>>— z cennika OMS / według rozmiaru (teraz: <%= cw.zKonta %>) —</option>
+                <% cw.opcje.forEach(o => { %><option value="<%= o.wartosc %>"<%= o.wartosc === wybor ? ' selected' : '' %>><%= o.nazwa %></option><% }); %>
+                <% if (wybor && !cw.opcje.some(o => o.wartosc === wybor)) { %>
+                  <option value="<%= wybor %>" selected><%= wybor %> (nie ma już na liście konta)</option>
+                <% } %>
               </select>
               <% if (blad) { %><p class="blad-pola pasek-blokada" id="blad-<%= idPola %>"><%= blad %></p><% } %>
+              <p class="podpowiedz" id="<%= idPola %>-konto">Cennik wybrany przy karcie dotyczy tylko tego konta.</p>
               <% if (w.dostawa) { %><p class="podpowiedz" id="<%= idPola %>-pomoc"><%= w.dostawa.powod %></p><% } %>
-            <% } else if (w.dostawa) { %><p>Cennik: <%= w.dostawa.nazwa %> — <%= w.dostawa.powod %></p><% } %>
+            <% } else { %>
+              <% if (blad) { %><p class="pasek-blokada"><%= blad %></p><% } %>
+              <% if (w.listaCennikowNiepobrana) { %><p class="podpowiedz"><%= w.listaCennikowNiepobrana %></p><% } %>
+              <% if (w.dostawa) { %><p>Cennik: <%= w.dostawa.nazwa %> — <%= w.dostawa.powod %></p><% } %>
+            <% } %>
             <% if (naAllegro && w.zadanie) { %>
               <p>Droga: <%= w.allegro.droga %> · Kategoria Allegro: <%= w.allegro.kategoria %> · Cena: <%= zlotowki(w.allegro.cena) %> · Ilość: <%= w.allegro.ilosc %></p>
               <% if (w.allegro.prowizja) { %><p>Prowizja: <%= w.allegro.prowizja %></p><% } %>

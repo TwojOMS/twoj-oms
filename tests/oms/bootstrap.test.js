@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { zbudujOms, uruchomZegary, ODSTEP_CZUWACZA_MS } from '../pomoc/budowa-oms-testowa.ts';
+import { przeliczPowiadomienia } from '../pomoc/przelicz-powiadomienia.ts';
 import {
   POWOD_TRWA,
   POWOD_NIE_TA_PORA,
@@ -1491,6 +1492,8 @@ describe('src/oms.js pozostaje cienkim punktem wejścia', () => {
         ['automatyzacje', 60000],
         // Ponawianie statusu po błędzie przejściowym (co 15 min).
         ['ponawianieStatusow', 900000],
+        // Migawka powiadomień (co minutę, plus raz zaraz po starcie).
+        ['migawkaPowiadomien', 60000],
         // Sprzątanie dziennika API (raz na dobę).
         ['api-dziennik', 3600000],
         // Sprzątanie idempotencji API (wpisy starsze niż 7 dni).
@@ -1504,7 +1507,7 @@ describe('src/oms.js pozostaje cienkim punktem wejścia', () => {
         ['straznikStanow', 30000],
       ].sort(),
     );
-    expect(wynik.liczba).toBe(19);
+    expect(wynik.liczba).toBe(20);
     expect(zrodlo).not.toMatch(/setInterval/);
   });
 });
@@ -2808,11 +2811,8 @@ describe('zbudujOms — jedna instancja tokenów na kanał', () => {
 });
 
 // ⚠️⚠️ TEN OPIS POWSTAŁ, BO MUTACJA PRZEŻYŁA. Wszystkie testy wyżej sprawdzały, że
-// `zbudujOms` ODDAJE `stanyKanalow` — żaden nie sprawdzał, czy ta wartość DOCHODZI DO TRASY.
-// Usunięcie jej z wywołania `buildOmsServer` przechodziło całą suitę, a na produkcji pas
-// ostrzeżenia po prostu nigdy by się nie pokazał: bez błędu, bez śladu i nie do odróżnienia
-// od „wszystkie kanały zdrowe". To ta sama klasa awarii, co device flow bez ani jednego
-// wywołania i zegar czuwacza w martwej gałęzi — tu złapana po raz czwarty.
+// `zbudujOms` oddaje `stanyKanalow`. Ten test sprawdza też drogę od tych stanów przez migawkę
+// aż do HTML-u listy. Test przelicza migawkę bez uruchamiania zegarów.
 describe('pas kanału dociera aż na stronę listy', () => {
   const naglowek = { authorization: `Basic ${Buffer.from('adam:x').toString('base64')}` };
   const KANAL = {
@@ -2822,7 +2822,6 @@ describe('pas kanału dociera aż na stronę listy', () => {
     ALLEGRO_SWIETLIK_API: 'https://api.allegro.test',
     ALLEGRO_USER_AGENT: UA,
   };
-
   it('martwy kanał JEST WIDOCZNY w HTML-u listy zamówień', async () => {
     const { app, db } = zbudujOms({ env: env(KANAL), createDpd: atrapaDpd() });
     zapiszTokeny(db, 'allegro_swietlik', {
@@ -2832,7 +2831,7 @@ describe('pas kanału dociera aż na stronę listy', () => {
       refreshWygasaAt: '2026-12-01T00:00:00.000Z',
     });
     db.prepare("UPDATE tokeny_kanalu SET ostatni_blad = 'invalid_grant' WHERE kanal = 'allegro_swietlik'").run();
-    await app.ready();
+    await przeliczPowiadomienia(app);
     const r = await app.inject({ method: 'GET', url: '/', headers: naglowek });
     expect(r.statusCode).toBe(200);
     expect(r.body).toMatch(/Kanał nie działa/);
@@ -2849,7 +2848,7 @@ describe('pas kanału dociera aż na stronę listy', () => {
       wygasaAt: '2026-12-01T00:00:00.000Z',
       refreshWygasaAt: '2026-12-01T00:00:00.000Z',
     });
-    await app.ready();
+    await przeliczPowiadomienia(app);
     const r = await app.inject({ method: 'GET', url: '/', headers: naglowek });
     expect(r.statusCode).toBe(200);
     // ⚠️ NIE po nazwie klasy: ona stoi TAKZE w arkuszu stylow w layoucie, wiec `toContain`

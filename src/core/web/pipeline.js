@@ -127,7 +127,16 @@ function wczytajLogo(plik) {
   if (!bajty.subarray(0, 8).equals(SYGNATURA_PNG)) throw new Error('OMS_LOGO_PLIK: plik nie jest obrazem PNG');
   return bajty;
 }
-export function registerWeb(app, { db, config }) {
+function dzwonekDlaKonta(req, odczytDzwonka) {
+  try {
+    return odczytDzwonka(req.konto);
+  } catch (e) {
+    req.log?.error?.(e, 'menu: odczyt powiadomień nie powiódł się');
+    return { nieprzeczytane: 0, pilne: false, wiersze: [], nieaktualne: true };
+  }
+}
+
+export function registerWeb(app, { db, config, odczytDzwonka = undefined }) {
   // Ten sam znak w belce i na karcie; bez konfiguracji karta używa PNG 32 px z paczki.
   const logo = config.marka?.logoPlik ? wczytajLogo(config.marka.logoPlik) : null;
   const znak = logoInstalacji(db, {
@@ -257,6 +266,9 @@ export function registerWeb(app, { db, config }) {
         // ale karta nie niesie w nim „Po terminie” — układ bierze brakujące statusy z `licznikiStatusow`.
         // Wynik zostaje w `reply.locals`, więc drugi render w tym samym żądaniu indeksu już nie odświeża.
         const widok = { ...reply.locals, ...args[0] };
+        if (odczytDzwonka && req.konto && !widok.wlasnyUklad && !widok.bezPaska && widok.dzwonek === undefined) {
+          reply.locals = { ...reply.locals, dzwonek: dzwonekDlaKonta(req, odczytDzwonka) };
+        }
         const wlasne = widok.panelStatusow ?? [];
         if (
           widok.licznikiStatusow === undefined &&

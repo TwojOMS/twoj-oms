@@ -48,7 +48,14 @@ export function createModulWeb(definicje: readonly DefinicjaKanalu[]): ModulOms<
         },
       },
       trasy: (app) => {
-        registerWeb(app, { db: ctx.db, config: ctx.usluga('web', 'config') });
+        // Dopiero przy rejestracji tras są już dostępne usługi wszystkich modułów, także Zamówień.
+        let odczytDzwonka;
+        try {
+          odczytDzwonka = ctx.usluga<Parameters<typeof registerWeb>[1]['odczytDzwonka']>('zamowienia', 'dzwonek');
+        } catch {
+          // Skład aplikacji może nie mieć modułu Zamówienia.
+        }
+        registerWeb(app, { db: ctx.db, config: ctx.usluga('web', 'config'), odczytDzwonka });
       },
     }),
   };

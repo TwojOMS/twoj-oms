@@ -3,7 +3,7 @@ import * as nawigacja from '../../../src/domena/podmenu-ustawien.js';
 
 const model = (url, o = { admin: true }) => nawigacja.modelNawigacjiUstawien?.(url, o);
 describe('działy Ustawień', () => {
-  it('pokazuje dokładnie 10 działów i zakładki wyłącznie bieżącego działu', () => {
+  it('pokazuje dokładnie 11 działów i zakładki wyłącznie bieżącego działu', () => {
     const m = model('/ustawienia/firma');
     expect(m?.dzialy.map((d) => d.etykieta)).toEqual([
       'Firma',
@@ -12,6 +12,7 @@ describe('działy Ustawień', () => {
       'Wysyłka i druk',
       'Faktury i podatki',
       'Komunikacja',
+      'Powiadomienia',
       'Automatyzacje',
       'Zespół i dostęp',
       'Kopie zapasowe',

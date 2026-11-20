@@ -175,7 +175,7 @@ describe('Klucze API w Ustawieniach', () => {
     expect(brak.statusCode).toBe(404);
     expect(brak.body).toContain('Nie ma takiego klucza.');
   });
-  it('tylko admin: odmawia na każdej trasie, również gościowi demo na GET', async () => {
+  it('tylko admin zmienia: odmawia na każdej trasie; gość demo dostaje tylko podgląd GET', async () => {
     const p = panel();
     const id = zalozKonto(p.db, { login: 'pracownik', imie: 'Test', haslo: 'h', rola: 'sprzedaz' });
     ustawUprawnienia(p.db, id, ['ustawienia']);
@@ -194,7 +194,7 @@ describe('Klucze API w Ustawieniach', () => {
     });
     registerKluczeApiRoutes(demo, { db: p.db });
     try {
-      expect((await get(demo, url)).statusCode).toBe(403);
+      expect((await get(demo, url)).statusCode).toBe(200);
     } finally {
       await demo.close();
     }
@@ -203,7 +203,7 @@ describe('Klucze API w Ustawieniach', () => {
     );
     expect(
       modelNawigacjiUstawien('/ustawienia/konta', { podgladDemo: true }).zakladki.some((z) => z.klucz === 'klucze-api'),
-    ).toBe(false);
+    ).toBe(true);
   });
   it('pokazuje klucz raz; F5 tego samego POST nie zakłada kolejnego ani nie ujawnia klucza', async () => {
     const p = panel();
@@ -383,7 +383,7 @@ describe('Klucze API w Ustawieniach', () => {
     expect(karta('klucz czynny')).toContain('<span class="klucze-api-prefiks">Prefiks: <code>');
   });
 
-  it('token jest przypięty do loginu; odwołanie nieznanego klucza daje 404; gość demo nie widzi zakładki w nawigacji', async () => {
+  it('token jest przypięty do loginu; odwołanie nieznanego klucza daje 404; gość demo widzi zakładkę w nawigacji', async () => {
     const p = panel();
     zalozKonto(p.db, { login: 'drugi', imie: 'Drugi', haslo: 'h', admin: true, rola: 'administrator' });
     const t = token(await get(p.app, url, p.admin));
@@ -393,7 +393,7 @@ describe('Klucze API w Ustawieniach', () => {
     expect(liczba(p.db)).toBe(0);
     expect((await post(p.app, `${url}/999/odwolaj`, p.admin, { potwierdzam: 'tak' })).statusCode).toBe(404);
     const klucze = (n) => n.kontekst.zakladki.map((z) => z.klucz);
-    expect(klucze(nawigacjaUstawien({ url, konto: { podgladDemo: true } }, {}))).not.toContain('klucze-api');
+    expect(klucze(nawigacjaUstawien({ url, konto: { podgladDemo: true } }, {}))).toContain('klucze-api');
     expect(klucze(nawigacjaUstawien({ url, konto: { admin: true } }, {}))).toContain('klucze-api');
   });
 });

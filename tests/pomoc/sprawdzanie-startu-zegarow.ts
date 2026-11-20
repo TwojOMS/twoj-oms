@@ -28,6 +28,8 @@ export const OCZEKIWANE_ZEGARY = [
   ['automatyzacje', 60000],
   // Ponawianie statusu po błędzie przejściowym Allegro/sklepu (co 15 min).
   ['ponawianieStatusow', 900000],
+  // Migawka powiadomień (co minutę, plus raz zaraz po starcie).
+  ['migawkaPowiadomien', 60000],
   // Moduł api raz na dobę usuwa wpisy dziennika API starsze niż 90 dni.
   ['api-dziennik', 3600000],
   // Moduł api co godzinę usuwa wpisy idempotencji starsze niż 7 dni.

@@ -1,0 +1,103 @@
+<%# Strona powiadomień konta. Widok niczego nie liczy: wiersze, statusy i adresy przychodzą z trasy
+    (moduly/zamowienia/powiadomienia.js), która czyta ten sam odczyt co dzwonek i lista zamówień.
+    Akcje to zwykłe formularze POST bez JavaScriptu; ukryte `powrot` odsyła na tę samą zakładkę i filtr. %>
+<link rel="stylesheet" href="<%= zasob('tabele-prz065.css') %>">
+<link rel="stylesheet" href="<%= zasob('powiadomienia.css') %>">
+<section class="prz065-tabele powiadomienia">
+
+  <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: 'Powiadomienia'}) %>
+
+  <div class="panel prz065-powierzchnia">
+    <div class="panel-cialo">
+      <nav class="prz065-zakladki" aria-label="Widok powiadomień">
+        <p class="powiadomienia-zakladki">
+          <a class="chip<%- widok === 'aktualne' ? ' chip--aktywny' : '' %>" href="<%= adresAktualne %>"<%- widok === 'aktualne' ? ' aria-current="page"' : '' %>>Aktualne (<%= liczbaAktualnych %>)</a>
+          <a class="chip<%- widok === 'archiwum' ? ' chip--aktywny' : '' %>" href="<%= adresArchiwum %>"<%- widok === 'archiwum' ? ' aria-current="page"' : '' %>>Archiwum</a>
+        </p>
+      </nav>
+
+      <div class="powiadomienia-pasek">
+        <form class="powiadomienia-filtr" method="get" action="/powiadomienia">
+          <% if (widok === 'archiwum') { %><input type="hidden" name="widok" value="archiwum"><% } %>
+          <label for="powiadomienia-rodzaj">Rodzaj</label>
+          <select id="powiadomienia-rodzaj" name="rodzaj">
+            <option value="">Wszystkie</option>
+            <% rodzaje.forEach((r) => { %>
+              <option value="<%= r.typ %>"<%- rodzaj === r.typ ? ' selected' : '' %>><%= r.nazwa %></option>
+            <% }); %>
+          </select>
+          <button class="btn btn--drugi" type="submit">Filtruj</button>
+        </form>
+        <% if (widok === 'aktualne' && wiersze.some((w) => !w.przeczytane)) { %>
+          <form method="post" action="/powiadomienia/przeczytane">
+            <input type="hidden" name="wszystkie" value="1">
+            <input type="hidden" name="powrot" value="<%= powrot %>">
+            <button class="btn btn--drugi" type="submit">Oznacz wszystkie jako przeczytane</button>
+          </form>
+        <% } %>
+      </div>
+
+      <% if (!wiersze.length) { %>
+        <p class="wyjasnienie"><%= widok === 'archiwum' ? 'Archiwum jest puste.' : 'Nie ma nic do zrobienia.' %></p>
+      <% } else { %>
+        <div class="przewijak-tabeli prz065-przewijak powiadomienia-przewijak" tabindex="0" role="region" aria-label="<%= widok === 'archiwum' ? 'Archiwum powiadomień' : 'Aktualne powiadomienia' %>">
+          <table class="tab-pozycje prz065-tabela powiadomienia-tabela" role="table">
+            <thead>
+              <tr>
+                <th scope="col">Rodzaj</th>
+                <th scope="col">Treść</th>
+                <th scope="col">Od kiedy</th>
+                <% if (widok === 'archiwum') { %><th scope="col">Status</th><% } else { %><th scope="col">Akcje</th><% } %>
+              </tr>
+            </thead>
+            <tbody role="rowgroup">
+              <% wiersze.forEach((w) => { %>
+                <tr class="powiadomienie<%- widok === 'aktualne' && !w.przeczytane ? ' powiadomienie--nowe' : '' %><%= widok === 'aktualne' && w.pilne ? ' powiadomienie--pilne' : '' %>" role="row">
+                  <td class="powiadomienie-rodzaj" role="cell"><%= w.nazwaRodzaju %></td>
+                  <td class="powiadomienie-tresc" role="cell"<% if (w.title) { %> title="<%= w.title %>"<% } %>><%= w.tekst %></td>
+                  <td class="powiadomienie-kiedy" role="cell"><%= fmtDataCzasKrotko(w.pierwszyRazAt) %></td>
+                  <% if (widok === 'archiwum') { %>
+                    <td class="powiadomienie-status" role="cell"><%= w.statusTekst %></td>
+                  <% } else { %>
+                    <td role="cell">
+                      <div class="powiadomienie-akcje">
+                        <% if (w.przycisk) { %>
+                          <form method="post" action="/powiadomienia/<%= encodeURIComponent(w.klucz) %>/otworz">
+                            <button class="btn" type="submit"><%= w.przycisk.etykieta %></button>
+                          </form>
+                        <% } %>
+                        <% if (!w.przeczytane) { %>
+                          <form method="post" action="/powiadomienia/przeczytane">
+                            <input type="hidden" name="klucz" value="<%= w.klucz %>">
+                            <input type="hidden" name="powrot" value="<%= powrot %>">
+                            <button class="btn btn--cichy" type="submit">Oznacz jako przeczytane</button>
+                          </form>
+                        <% } %>
+                        <% if (w.etykietaOdrzucenia) { %>
+                          <form method="post" action="/ostrzezenia/odrzuc">
+                            <input type="hidden" name="klucz" value="<%= w.klucz %>">
+                            <input type="hidden" name="powrot" value="<%= powrot %>">
+                            <button class="btn btn--cichy" type="submit"><%= w.etykietaOdrzucenia %></button>
+                          </form>
+                        <% } %>
+                      </div>
+                    </td>
+                  <% } %>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+
+      <% if (stronicowanie) { %>
+        <p class="wynik-szukania stronicowanie">
+          <% if (stronicowanie.poprzednia) { %><a href="<%= stronicowanie.poprzednia %>" rel="prev">← Poprzednia</a> · <% } %>
+          Strona <%= stronicowanie.strona %> z <%= stronicowanie.stron %> (<%= stronicowanie.lacznie %> pozycji)
+          <% if (stronicowanie.nastepna) { %> · <a href="<%= stronicowanie.nastepna %>" rel="next">Następna →</a><% } %>
+        </p>
+      <% } %>
+      <% if (widok === 'archiwum') { %><p class="wyjasnienie">Archiwum trzyma 30 dni.</p><% } %>
+    </div>
+  </div>
+</section>

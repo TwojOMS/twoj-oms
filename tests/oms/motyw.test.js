@@ -92,6 +92,10 @@ describe('bezpiecznyPowrot', () => {
     ['pusty', ''],
     ['sama nazwa', 'obcy.example'],
     ['rozszczepienie nagłówka', '/lista\r\nLocation: https://obcy.example'],
+    ['tabulator w środku (przeglądarka go usuwa → //)', '/\t/obcy.example'],
+    ['znak NUL', '/\x00obcy.example'],
+    ['znak DEL', '/lista\x7f'],
+    ['ukośnik wsteczny dalej w ścieżce', '/lista\\obcy.example'],
   ])('%s wraca na stronę główną', (_nazwa, wejscie) => {
     expect(bezpiecznyPowrot(wejscie)).toBe('/');
   });

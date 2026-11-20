@@ -74,7 +74,7 @@ describe('E3d.02 dobierzCennik — reguły rozmiaru konta', () => {
     }
     expect(TEKST_BRAK_WYMIAROW).toBe(
       'Brak wymiarów/wagi — OMS nie wie, czy produkt zmieści się w paczkomacie. ' +
-        'Uzupełnij wymiary albo ustaw cennik na karcie.',
+        'Uzupełnij wymiary albo ustaw cennik na karcie albo wybierz cennik dla konta.',
     );
   });
 
@@ -155,11 +155,13 @@ describe('dobierzCennik — cenniki OMS z nazwą', () => {
     expect(dobierzCennik({ karta: karta({ waga_g: null }), reguly: [MALA] })).toEqual(ODMOWA_WYMIARY);
   });
 
-  it('konto bez powiązanego cennika: odmowa wskazuje Magazyn → Cenniki', () => {
+  it('konto bez cennika z doboru: odmowa wskazuje wybór na karcie albo Magazyn → Cenniki', () => {
     expect(dobierzCennik({ karta: karta(), reguly: [] })).toEqual({
       odmowa: { kod: 'brak-cennika', tekst: TEKST_BRAK_CENNIKA },
     });
-    expect(TEKST_BRAK_CENNIKA).toBe('Konto nie ma powiązanego cennika dostaw — ustaw powiązanie w Magazyn → Cenniki.');
+    expect(TEKST_BRAK_CENNIKA).toBe(
+      'Brak cennika dla tego konta — wybierz go na karcie albo ustaw cennik z rozmiarem lub domyślny w Magazyn → Cenniki.',
+    );
   });
 });
 

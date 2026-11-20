@@ -1,10 +1,8 @@
-// Wiersz ostrzeżenia widzi tylko konto, które ma prawo do ekranu za jego przyciskiem.
-// Zgłoszenie: rola Produkcja widziała „Nowa wiadomość z Allegro…” z przyciskiem „Wiadomości”,
-// a klik dawał 403 (Produkcja nie ma ekranu `wiadomosci`).
+// Wiersz ostrzeżenia widzi tylko konto, które ma prawo do ekranu za jego przyciskiem — inaczej klik
+// w przycisk kończy się 403 (rola Produkcja nie ma np. ekranu faktur ani Ustawień).
 import { it, expect } from 'vitest';
 import {
   ostrzezeniaDlaKonta,
-  ostrzezeniaWiadomosci,
   ostrzezeniaFaktur,
   ostrzezeniaTerminow,
   ostrzezeniaZwrotow,
@@ -13,7 +11,6 @@ import {
 } from '../../src/domena/ostrzezenia.js';
 import { ekranyRoli } from '../../src/domena/ekrany.js';
 
-const teraz = new Date('2026-10-20T10:00:00Z');
 const konto = (rola, admin = false) => ({ id: 1, admin, uprawnienia: new Set(ekranyRoli(rola)) });
 
 // Wiersze z PRAWDZIWYCH budowniczych — adres przycisku ma być ten, który naprawdę stoi na ekranie.
@@ -32,28 +29,15 @@ const wiersze = [
     ],
     dzis: '2026-10-20',
   }),
-  ...ostrzezeniaWiadomosci({
-    watki: [
-      {
-        kanal: 'allegro',
-        thread_id: 't1',
-        interlocutor_login: 'kupujacy_1',
-        last_message_date_time: '2026-10-19T12:00:00Z',
-        ostatnia_od_kupujacego: 1,
-      },
-    ],
-    teraz,
-  }),
 ];
 const typy = (lista) => lista.map((w) => w.typ);
 
 it('budowniczy dali po jednym wierszu każdego badanego typu (inaczej test niczego nie dowodzi)', () => {
-  expect(typy(wiersze)).toEqual(['integracja', 'faktura-ksef', 'faktura-termin', 'zwrot-korekta', 'wiadomosc-allegro']);
+  expect(typy(wiersze)).toEqual(['integracja', 'faktura-ksef', 'faktura-termin', 'zwrot-korekta']);
 });
 
-it('Produkcja nie dostaje wiersza wiadomości ani faktur, ani integracji — dostaje zwrot (karta zamówienia)', () => {
+it('Produkcja nie dostaje wiersza faktur ani integracji — dostaje zwrot (karta zamówienia)', () => {
   const widoczne = typy(ostrzezeniaDlaKonta({ wiersze, konto: konto('produkcja') }));
-  expect(widoczne).not.toContain('wiadomosc-allegro');
   expect(widoczne).not.toContain('faktura-ksef');
   expect(widoczne).not.toContain('faktura-termin');
   expect(widoczne).not.toContain('integracja');
@@ -64,19 +48,18 @@ it('administrator dostaje wszystkie wiersze', () => {
   expect(ostrzezeniaDlaKonta({ wiersze, konto: konto('administrator', true) })).toEqual(wiersze);
 });
 
-it('Sprzedaż (bez finansów i ustawień) widzi faktury, zwrot i wiadomość, ale nie integrację (/ustawienia)', () => {
+it('Sprzedaż (bez finansów i ustawień) widzi faktury i zwrot, ale nie integrację (/ustawienia)', () => {
   expect(typy(ostrzezeniaDlaKonta({ wiersze, konto: konto('sprzedaz') }))).toEqual([
     'faktura-ksef',
     'faktura-termin',
     'zwrot-korekta',
-    'wiadomosc-allegro',
   ]);
 });
 
-it('pojedynczy ptaszek rozstrzyga: Produkcja z dopisanym ekranem Wiadomości widzi wiadomość', () => {
+it('pojedynczy ptaszek rozstrzyga: Produkcja z dopisanym ekranem Ustawień widzi awarię integracji', () => {
   const k = konto('produkcja');
-  k.uprawnienia.add('wiadomosci');
-  expect(typy(ostrzezeniaDlaKonta({ wiersze, konto: k }))).toEqual(['zwrot-korekta', 'wiadomosc-allegro']);
+  k.uprawnienia.add('ustawienia');
+  expect(typy(ostrzezeniaDlaKonta({ wiersze, konto: k }))).toEqual(['integracja', 'zwrot-korekta']);
 });
 
 it('niski stan widzą administrator i konto z dostępem do Magazynu', () => {

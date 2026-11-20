@@ -47,8 +47,9 @@ function nowyPlik() {
 const bez0003 = (moduly) =>
   moduly.map((m) => (m.nazwa === 'magazyn' ? { ...m, migracje: m.migracje.filter((x) => x.numer !== 3) } : m));
 // Te testy opisują dawny zapis reguł i wyjątków (przed cennikami OMS z magazyn/0006), więc baza bez 0006.
+// Baza sprzed 0006 nie ma też późniejszych migracji (wybór konta z 0007 zapisywałby się poza dawną tabelą).
 const bez0006 = (moduly) =>
-  moduly.map((m) => (m.nazwa === 'magazyn' ? { ...m, migracje: m.migracje.filter((x) => x.numer !== 6) } : m));
+  moduly.map((m) => (m.nazwa === 'magazyn' ? { ...m, migracje: m.migracje.filter((x) => x.numer < 6) } : m));
 const kolumny = (db, t) =>
   db
     .prepare(`PRAGMA table_info(${t})`)

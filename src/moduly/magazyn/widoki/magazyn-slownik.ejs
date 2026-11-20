@@ -42,24 +42,23 @@
           <% if (allegro) { %>
             <td>
               <% const przypisania = allegro.przypisania(p.nazwa); %>
-              <% if (przypisania.length) { przypisania.forEach(function (a) { %>
-                <span><%= a.tekst %><% if (allegro.wieleSrodowisk) { %> <small class="podpowiedz">(<%= a.srodowisko %>)</small><% } %></span><br>
-              <% }); } else { %><small class="magazyn-brak">nieprzypisana</small><br><% } %>
-              <a href="<%= allegro.adres(p.nazwa) %>" aria-labelledby="slownik-allegro-<%= i %> slownik-poz-<%= i %>" id="slownik-allegro-<%= i %>"><%= przypisania.length ? 'Zmień' : 'Przypisz' %></a>
+              <% if (przypisania.length) { przypisania.forEach(function (a, j) { %>
+                <span><%= a.tekst %><% if (allegro.wieleSrodowisk) { %> <small class="podpowiedz">(<%= a.srodowisko %>)</small><% } %></span><% if (j < przypisania.length - 1) { %><br><% } %>
+              <% }); } else { %><small class="magazyn-brak">nieprzypisana</small><% } %> · <a href="<%= allegro.adres(p.nazwa) %>" aria-labelledby="slownik-allegro-<%= i %> slownik-poz-<%= i %>" id="slownik-allegro-<%= i %>"><%= przypisania.length ? 'Zmień' : 'Przypisz' %></a>
             </td>
           <% } %>
           <td>
             <form method="post" action="<%= strona.adres %>/zmien" class="slownik-zmien">
               <input type="hidden" name="stara" value="<%= p.nazwa %>">
               <input name="nowa" value="<%= p.nazwa %>" required maxlength="200" autocomplete="off" aria-labelledby="slownik-poz-<%= i %> slownik-zmien-<%= i %>">
-              <button type="submit" class="btn" id="slownik-zmien-<%= i %>">Zmień nazwę</button>
+              <button type="submit" class="btn btn--maly" id="slownik-zmien-<%= i %>">Zmień nazwę</button>
             </form>
           </td>
           <td>
             <% if (p.karty === 0) { %>
               <form method="post" action="<%= strona.adres %>/usun">
                 <input type="hidden" name="nazwa" value="<%= p.nazwa %>">
-                <button type="submit" class="btn" id="slownik-usun-<%= i %>" aria-labelledby="slownik-usun-<%= i %> slownik-poz-<%= i %>">Usuń</button>
+                <button type="submit" class="btn btn--maly" id="slownik-usun-<%= i %>" aria-labelledby="slownik-usun-<%= i %> slownik-poz-<%= i %>">Usuń</button>
               </form>
             <% } %>
           </td>

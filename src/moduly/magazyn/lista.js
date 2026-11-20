@@ -1,7 +1,7 @@
 import { stanyKart } from '../../oms/db/stany-magazynowe.js';
 import { czyFiltrStanu, klasaStanu, pasujeDoStanu } from '../../domena/niski-stan.js';
 import { dzienWarszawa, fmtDataCzas } from '../../domena/format-daty.js';
-import { STANY_PO_POLSKU, mozeWystawiacHurtem } from './oferty.js';
+import { STANY_PO_POLSKU, mozeWystawiacHurtem, opcjeCennikowOms } from './oferty.js';
 import { rodzajKanalu } from '../../domena/kanaly.js';
 import { kanalyDostepnosciKart } from '../../oms/db/magazyn.js';
 import { listaParametrow } from '../../oms/db/parametry-kart.js';
@@ -15,6 +15,7 @@ import { LIMIT_INFORMACJI_BEZPIECZENSTWA } from '../../domena/allegro-oferta-z-k
 import { nazwySlownika } from './services/slowniki-kart.js';
 import { maDostepDoAdresu } from '../../domena/ekrany.js';
 import { KATALOG_INTEGRACJI } from '../../domena/katalog-integracji.ts';
+import { kontaZCennikami, TEKST_LISTA_NIEPOBRANA } from './services/cenniki-kont.js';
 
 /**
  * Plakietki kolumny „Kanały” jednej karty — po jednej na polaczenie, w ktorym
@@ -466,6 +467,20 @@ export function registerListaMagazynu(
       stawkiDoHurtu: STAWKI_VAT.map((s) => ({ klucz: s, etykieta: `${s}%` })),
       // Ten sam limit, co sprawdza trasa i karta — przeglądarka nie pozwoli wpisać więcej.
       limitInformacjiBezpieczenstwa: LIMIT_INFORMACJI_BEZPIECZENSTWA,
+      // Te same listy, z których trasa hurtu sprawdza wybór — pole spoza nich i tak dostałoby odmowę.
+      // Konto bez administratora dostałoby przy zapisie odmowę (jak na karcie), więc pozycji w ogóle nie widzi.
+      cennikiHurtu:
+        req.konto?.admin === true
+          ? {
+              oms: opcjeCennikowOms(db),
+              konta: kontaZCennikami(db, {
+                kontaAllegro: kontaAllegro(),
+                kontaErli: kontaErli(),
+                definicje: [...definicje],
+              }),
+              listaNiepobrana: TEKST_LISTA_NIEPOBRANA,
+            }
+          : { oms: [], konta: [], listaNiepobrana: TEKST_LISTA_NIEPOBRANA },
     });
   });
 }

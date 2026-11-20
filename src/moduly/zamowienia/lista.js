@@ -27,9 +27,8 @@ import { adresKartyZamowienia, kluczPozycjiListy } from '../../domena/adres-kart
 import { wybraneZListy, podzielDoStatusu, powodZaDuzegoDruku } from '../../domena/masowe.js';
 import { metodyPlatnosciWBazie } from '../../oms/db/filtry.js';
 import { normalizujMetode, opcjeMetodPlatnosci } from '../../domena/metody-platnosci.js';
-import { kanalyWymagajaceUwagi } from '../../domena/kanal-stan.js';
-import { kluczDozwolony } from '../../domena/ostrzezenia.js';
-import { odrzuc, poTerminie } from '../../oms/db/ostrzezenia.js';
+import { powiadomieniaKonta } from '../../oms/db/powiadomienia.js';
+import { poTerminie } from '../../oms/db/ostrzezenia.js';
 import { adresKanalu } from '../../domena/kanaly.js';
 import { maDostepDoAdresu } from '../../domena/ekrany.js';
 import { bladPolleraNaEkran } from '../../domena/zdrowie.js';
@@ -100,7 +99,6 @@ export function registerListaRoutes(app, kontekst) {
     syncSklep,
     wiadomosci,
     przesylkiAllegro,
-    stanyKanalow,
     zdrowie,
     fakturaAllegro,
     fakturaHurtem,
@@ -110,7 +108,6 @@ export function registerListaRoutes(app, kontekst) {
     wczytajListe,
     statusyDlaKarty,
     OKNO_OSTRZEZEN_PRZESYLEK_DNI,
-    zbierzOstrzezenia,
     wyborWiadomosci,
     daneWiadomosci,
     renderujKarte,
@@ -123,16 +120,6 @@ export function registerListaRoutes(app, kontekst) {
     zWynikami,
     magazynDlaKarty,
   } = kontekst;
-  app.post('/ostrzezenia/odrzuc', async (req, reply) => {
-    const klucz = typeof req.body?.klucz === 'string' ? req.body.klucz : null;
-    if (!kluczDozwolony(klucz))
-      return stronaOdmowy(reply, 400, 'Nieznany klucz ostrzeżenia.', {
-        tytul: 'Nie udało się ukryć ostrzeżenia',
-        napisWroc: 'Wróć do listy zamówień',
-      });
-    odrzuc(db, klucz, { kto: req.konto?.login ?? ktoKlikal(req) });
-    return reply.redirect('/');
-  });
   app.get('/', async (req, reply) => {
     // ⚠️ LISTA NIE CZYTA CALEJ BAZY. Liczniki zakladek, liczbe wynikow i wybor
     // strony daje indeks listy (oms/db/indeks-listy.js) — odpowiedzi TYCH SAMYCH regul domeny,
@@ -406,11 +393,7 @@ export function registerListaRoutes(app, kontekst) {
     }
 
     const stanPollera = poller?.stan?.() ?? null;
-    // ⚠️ WSZYSTKIE kanaly wymagajace uwagi, nie pierwszy z brzegu. Pasek pollera pokazuje
-    // JEDEN blad (`stan()` oddaje pierwszego pollera z bledem) — przy dwoch zepsutych
-    // kanalach drugi bylby niewidoczny, a przy jednym komunikat mowil o przyczynie
-    // technicznej zamiast o skutkach.
-    const kanalyDoUwagi = kanalyWymagajaceUwagi(stanyKanalow?.() ?? []);
+    const { aktualne } = powiadomieniaKonta(db, req.konto, { archiwum: false });
     // ⚠️ Pusta tabela bez frazy i filtrów znaczy DWIE różne rzeczy. „Nie ma tu nic do zrobienia”
     // jest prawdą tylko wtedy, gdy zamówienia są, a ta zakładka jest pusta; w nowej instalacji bez żadnego
     // zamówienia to samo zdanie mówi „wszystko załatwione”, choć kanał sprzedaży nie jest jeszcze podłączony.
@@ -434,11 +417,9 @@ export function registerListaRoutes(app, kontekst) {
         (u, i, wszystkie) => wszystkie.findIndex((x) => x.id === u.id) === i,
       ),
       indeksNieaktualny,
-      kanalyDoUwagi,
+      pilnePowiadomienia: aktualne.filter((w) => w.pilne),
       bazaBezZamowien,
       odnosnikDoKanalow,
-      // Tabelka ostrzezen — same fakty lokalne, zero sieci w tej trasie.
-      ostrzezenia: zbierzOstrzezenia(req),
       etykiety: etykietyStatusow(db),
       panelStatusow,
       filtry,
@@ -482,7 +463,7 @@ export function registerListaRoutes(app, kontekst) {
       // (`adresKanalu` — TA SAMA funkcja, ktora opisuje kolumne „Kanał sprzedaży"), bo bez
       // niej komunikat o padnietym Allegro czytaloby sie jak awarie sklepu.
       // ⚠️ `ostatni_blad` PODMIENIONY NA WERSJE EKRANOWA — po polsku i bez
-      // czkniec, TA SAMA regula, co w tabelce ostrzezen nad paskiem (domena/zdrowie.js,
+      // czkniec, TA SAMA regula, co w migawce powiadomien (domena/zdrowie.js,
       // bladPolleraNaEkran). Dwie rozne odpowiedzi o tym samym pollerze na jednym ekranie
       // — tabelka milczy, pasek krzyczy „Błąd" po angielsku — ucza ignorowania obu.
       // Instalacja bez kanałów (OMS_KANALY=[]) nie ma pollera wcale — „Brak synchronizacji” stałby

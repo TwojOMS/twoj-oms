@@ -4,6 +4,14 @@ import { wpisZbedny, wpisZFormularza } from '../../domena/cena-zakupu.js';
 import { dzienWarszawa } from '../../domena/format-daty.js';
 import { cenyZakupuNa, historiaCenZakupu, usunWpisCenyZakupu, zapiszCeneZakupu } from '../../oms/db/ceny-zakupu.js';
 import { listaParametrow, wartosciKart } from '../../oms/db/parametry-kart.js';
+import { cennikiOms, maCennikiOms } from '../../oms/db/cenniki-oms.ts';
+import { bladWyboruCennika, kontaZCennikami } from './services/cenniki-kont.js';
+import {
+  cennikiKartHurtu,
+  kontoZeZmienionaLista,
+  ofertyZmienioneCennikiem,
+  podpisListCennikow,
+} from './services/hurt-cenniki.js';
 
 const opisZakonczonych = (n) => liczbaZPrzymiotnikiem(n, ['zakończona', 'zakończone', 'zakończonych']);
 import { dodajDoSlownika, dopiszDoSlownikow, wTransakcji } from './services/slowniki-kart.js';
@@ -11,7 +19,16 @@ import { polaSlownikowZFormularza } from './karta.js';
 
 export function registerAkcjeMagazynu(
   app,
-  { db, magazyn, sklepy, pomoc, karta, kontaErli = /** @returns {{ klucz: string }[]} */ () => [] },
+  {
+    db,
+    magazyn,
+    sklepy,
+    pomoc,
+    karta,
+    kontaErli = /** @returns {{ klucz: string }[]} */ () => [],
+    kontaAllegro = /** @returns {{ klucz: string }[]} */ () => [],
+    definicje = /** @type {readonly { klucz: string, etykieta?: string }[]} */ ([]),
+  },
 ) {
   const {
     kartyZKanalami,
@@ -87,6 +104,7 @@ export function registerAkcjeMagazynu(
       zmianaCeny = false,
       pominieteBezCeny = 0,
       straciZalaczniki = 0,
+      ofertyCennika = null,
     },
   ) {
     return reply.code(kod).view('magazyn-hurt.ejs', {
@@ -103,6 +121,10 @@ export function registerAkcjeMagazynu(
       zmianaCeny,
       pominieteBezCeny,
       straciZalaczniki,
+      // Zdanie tylko przy N > 0: zero ofert to brak skutku w kanałach, nie informacja wymagająca uwagi.
+      zdanieOfertCennika: ofertyCennika?.razem
+        ? `Zmiana obejmie też ${liczbaZPrzymiotnikiem(ofertyCennika.razem, ['wystawioną ofertę', 'wystawione oferty', 'wystawionych ofert'])} (${ofertyCennika.konta.map((k) => `${k.etykieta}: ${k.ile}`).join(', ')}) — dostaną nowy cennik przy następnym przebiegu.`
+        : null,
       // Zakres i zawezenie wracaja na ekran, zeby przycisk „popraw zaznaczenie" prowadzil
       // do TEJ SAMEJ listy, z ktorej czlowiek przyszedl (reguła: filtry nie kasują frazy).
       zakres,
@@ -136,8 +158,37 @@ export function registerAkcjeMagazynu(
     // ⚠️ ODMOWA JEST CALOSCIOWA: jedno pole, ktorego nie rozumiemy, wstrzymuje CALY zapis,
     // a nie „to, co dalo sie odczytac". Przy setkach kart nikt by juz nie odtworzyl, ktora
     // polowa weszla.
-    const { polecenie, blad } = polecenieZFormularza(req.body, { parametry: listaParametrow(db) });
+    const kontaCennikow = kontaZCennikami(db, {
+      kontaAllegro: kontaAllegro(),
+      kontaErli: kontaErli(),
+      definicje: [...definicje],
+    });
+    const { polecenie, blad } = polecenieZFormularza(req.body, {
+      parametry: listaParametrow(db),
+      cenniki: {
+        oms: maCennikiOms(db) ? cennikiOms(db).map(({ id, nazwa }) => ({ id, nazwa })) : [],
+        konta: kontaCennikow,
+        bladWyboru: bladWyboruCennika,
+      },
+    });
+    // Cennik dostaw karty zmienia tylko administrator — ta sama reguła, co pole cennika na karcie. Odmowa całości:
+    // inne pola tego samego polecenia też nie wchodzą, żeby człowiek nie został z połową zmiany.
+    if ((polecenie?.cennikOms !== undefined || polecenie?.cennikiKont) && req.konto?.admin !== true) {
+      return stronaOdmowy(reply, 403, 'Cennik dostaw zmienia tylko administrator. Nie zmieniłem żadnej karty.', {
+        tytul: 'Nie zapisano zmian hurtem',
+        wroc: '/magazyn',
+        napisWroc: 'Wróć do magazynu',
+      });
+    }
     if (blad) return odmowa(blad);
+    // Lista konta pobrana ponownie między podglądem a zatwierdzeniem: człowiek wybierał z innej listy, niż
+    // ta, wobec której zapisalibyśmy wybór — odmowa całości jak przy cenach.
+    const zmienionaLista = zapisz ? kontoZeZmienionaLista(polecenie, pole(req.body, 'cenniki_podpis')) : null;
+    if (zmienionaLista) {
+      return odmowa(
+        `Lista cenników konta ${zmienionaLista.etykieta} zmieniła się od podglądu — nie zmieniłem żadnej karty. Otwórz edycję hurtową od nowa.`,
+      );
+    }
     // Puste polecenie to NIE jest „skasuj wszystko" — to jest brak decyzji.
     if (!Object.keys(polecenie).length) return odmowa(HURT_BEZ_ZMIANY);
 
@@ -178,7 +229,17 @@ export function registerAkcjeMagazynu(
       pominieteBezCeny,
       straciZalaczniki,
       blad: bladPlanu,
-    } = planHurtu(karty, polecenie, { cenyNaDzien, wartosciParametrow });
+    } = planHurtu(karty, polecenie, {
+      cenyNaDzien,
+      wartosciParametrow,
+      cennikiKart:
+        polecenie.cennikOms !== undefined || polecenie.cennikiKont
+          ? cennikiKartHurtu(
+              db,
+              karty.map((k) => k.id),
+            )
+          : undefined,
+    });
     if (bladPlanu) return odmowa(bladPlanu);
     if (!zapisz) {
       // „Dziś” ceny zakupu liczy TYLKO podgląd i oddaje je zatwierdzeniu ukrytym polem. Zatwierdzenie
@@ -193,7 +254,10 @@ export function registerAkcjeMagazynu(
         const wPlanie = new Set(plan.map((wpis) => wpis.id));
         pola.push({ name: 'cena_podpis', value: podpisCen(karty.filter((k) => wPlanie.has(k.id))) });
       }
+      const podpisList = podpisListCennikow(polecenie);
+      if (podpisList) pola.push({ name: 'cenniki_podpis', value: podpisList });
       return ekranHurtu(reply, {
+        ofertyCennika: ofertyZmienioneCennikiem(db, plan, kontaCennikow),
         plan,
         zakres,
         zawezenie,

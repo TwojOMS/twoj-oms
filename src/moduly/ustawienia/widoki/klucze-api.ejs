@@ -1,6 +1,7 @@
 <div class="klucze-api">
 <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Klucze API"}) %>
 <p>Klucze pozwalają integracjom korzystać z OMS. Nadaj tylko potrzebny dostęp.</p>
+<p>Opis API: <a href="https://github.com/TwojOMS/twoj-oms/blob/main/docs/api/README.md" target="_blank" rel="noopener noreferrer">dokumentacja w repozytorium (nowa karta)</a>.</p>
 <% if (blad) { %><div class="pas-uprzedzenie" role="alert"><p><%= blad %></p></div><% } %>
 <% if (potwierdzenie) { %>
   <div class="ust-sekcja">
@@ -26,6 +27,9 @@
     <p data-kopiowanie-wynik role="status" aria-live="polite"></p>
   </div>
 <% } %>
+<% if (podgladDemo) { %>
+<div class="ust-sekcja"><p><%= komunikatPodgladu %></p></div>
+<% } else { %>
 <div class="ust-sekcja">
   <h2>Nowy klucz</h2>
   <form method="post" action="/ustawienia/klucze-api">
@@ -48,6 +52,7 @@
     <div class="ust-akcje"><button type="submit" class="btn btn--glowny">Utwórz klucz</button></div>
   </form>
 </div>
+<% } %>
 <h2>Twoje klucze</h2>
 <% if (!klucze.length) { %><p>Nie masz jeszcze kluczy API.</p><% } %>
 <% klucze.forEach(k => { %>
@@ -56,6 +61,7 @@
       <div class="klucze-api-naglowek"><h3><%= k.nazwa %></h3><strong class="klucze-api-stan<%= k.stan === 'czynny' ? ' klucze-api-stan--czynny' : '' %>"><%= k.stan %></strong><span class="klucze-api-prefiks">Prefiks: <code><%= k.prefiks %></code></span></div>
       <p class="klucze-api-szczegoly">Zakresy: <%= k.zakresy.map(etykieta).join(', ') %> · Twórca: <%= k.utworzyl_login || 'konto serwisowe lub usunięte' %><% if (k.utworzyl_czynne === 0) { %> — konto wyłączone<% } %> · Utworzony: <%= fmtDataCzas(k.utworzony_at) %> · Wygasa: <%= k.wygasa_at ? k.wygasa_at.slice(0, 10) : 'bez terminu' %> · Ostatnie użycie: <%= k.ostatnio_uzyty_at ? fmtDataCzas(k.ostatnio_uzyty_at) : 'jeszcze nieużywany' %> · IP: <%= k.ostatnie_ip || '—' %></p>
     </div>
+    <% if (!podgladDemo) { %>
     <div class="klucze-api-akcje">
     <% if (!k.odwolany_at) { %>
       <form method="post" action="/ustawienia/klucze-api/<%= k.id %>/odwolaj" data-odwolaj-klucz>
@@ -66,6 +72,7 @@
       <button type="submit" class="btn btn--groza">Usuń</button>
     </form>
     </div>
+    <% } %>
   </div>
 <% }); %>
 </div>

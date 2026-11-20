@@ -1,4 +1,4 @@
-// Nadzór kopii bazy w panelu (usługa zdrowie.kopie → tabelka ostrzeżeń) i uwaga 26 h w /health.
+// Nadzór kopii bazy w panelu (usługa zdrowie.kopie → migawka i pas) i uwaga 26 h w /health.
 // Kopię robi dalej oms-kopia — tu tylko patrzymy na pliki oms-RRRR-MM-DD.sqlite (mtime ustawiany ręcznie).
 // Zegar sterowany (2026-10-28T10:00Z), dane zmyślone, sieć zabroniona.
 import { describe, it, expect, vi, afterEach } from 'vitest';
@@ -26,6 +26,7 @@ import { modulApiPanelu } from '../../../src/moduly/api-panelu/modul.ts';
 import { modulAutomatyzacje } from '../../../src/moduly/automatyzacje/modul.ts';
 import { zalozKonto } from '../../../src/core/bezpieczenstwo/konta.js';
 import { nowyPanel, jako, get } from '../../pomoc/panel-konta-testowe.js';
+import { przeliczPowiadomienia } from '../../pomoc/przelicz-powiadomienia.ts';
 
 const TERAZ = new Date('2026-10-28T10:00:00Z');
 const NAZWA_TWOJEFAKTURY = Object.freeze({
@@ -154,7 +155,7 @@ describe('usługa zdrowie.kopie i /health (kompozycja jak u klienta)', () => {
 
   // Zrzut sprzed B16a (e265efe): inFakt bez OMS_KOPIE_KATALOG — produkcja właściciela. Umowa z czujką monitoring.
   const HEALTH_PRZED =
-    '{"ok":true,"alarmy":[],"uwagi":[],"poller":{"zdrowy":true,"zrodla":[]},"czuwaczKsef":{"wlaczony":false,"zdrowy":true,"okAt":null,"wiekS":null,"blad":null,"bladAt":null,"bladSwiezszy":false},"czuwaczPrzesylek":{"wlaczony":false,"zdrowy":true,"okAt":null,"wiekS":null,"blad":null,"bladAt":null,"bladSwiezszy":false},"czuwaczOstrzezen":{"wlaczony":true,"zdrowy":true,"okAt":null,"wiekS":null,"blad":null,"bladAt":null,"bladSwiezszy":false},"czuwaczKosztow":{"wlaczony":false,"zdrowy":true,"ostatnieUdaneAt":null,"wiekS":null,"blad":null,"bladAt":null,"stan":"brak tokenu KSeF"},"kanaly":[],"proces":{"startAt":"2026-10-28T10:00:00.000Z","wiekS":0}}';
+    '{"ok":true,"alarmy":[],"uwagi":[],"poller":{"zdrowy":true,"zrodla":[]},"czuwaczKsef":{"wlaczony":false,"zdrowy":true,"okAt":null,"wiekS":null,"blad":null,"bladAt":null,"bladSwiezszy":false},"czuwaczPrzesylek":{"wlaczony":false,"zdrowy":true,"okAt":null,"wiekS":null,"blad":null,"bladAt":null,"bladSwiezszy":false},"czuwaczOstrzezen":{"wlaczony":true,"zdrowy":true,"okAt":null,"wiekS":null,"blad":null,"bladAt":null,"bladSwiezszy":false},"czuwaczKosztow":{"wlaczony":false,"zdrowy":true,"ostatnieUdaneAt":null,"wiekS":null,"blad":null,"bladAt":null,"stan":"brak tokenu KSeF"},"czuwaczPowiadomien":{"wlaczony":true,"zdrowy":true,"odswiezoneAt":null,"wiekS":null,"czasMs":null,"blad":null,"bladAt":null},"kanaly":[],"proces":{"startAt":"2026-10-28T10:00:00.000Z","wiekS":0}}';
 
   it('program inFakt bez katalogu kopii: /health bajt w bajt jak przed zmianą, panel milczy', async () => {
     const a = await oms({}, programTestowy({ id: 'infakt' }));
@@ -205,7 +206,7 @@ describe('usługa zdrowie.kopie i /health (kompozycja jak u klienta)', () => {
   });
 });
 
-describe('tabelka ostrzeżeń na stronie głównej', () => {
+describe('ostrzeżenia o kopiach w pasie awarii', () => {
   const zegar = () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(TERAZ);
@@ -221,21 +222,21 @@ describe('tabelka ostrzeżeń na stronie głównej', () => {
     return p;
   }
 
-  it('stara kopia: administrator widzi wiersz z przyciskiem „Kopie zapasowe”, konto bez Ustawień nie', async () => {
+  it('stara kopia: administrator widzi pas z odnośnikiem „Szczegóły”, konto bez Ustawień nie', async () => {
     zegar();
     const lok = katalog();
     kopia(lok, 'oms-2026-10-27.sqlite', 31);
     const p = panel({ env: { OMS_KOPIE_KATALOG: lok } });
+    await przeliczPowiadomienia(p.app);
     const admin = await get(p.app, '/', jako(p.db, 'admin-test'));
     expect(admin.statusCode).toBe(200);
-    expect(admin.body).toContain(ZDANIE_31);
-    expect(admin.body).toContain('/ustawienia/kopie');
+    expect(admin.body).toContain(`<p class="pas-awaria">${ZDANIE_31}. <a href="/powiadomienia">Szczegóły</a></p>`);
     const prod = await get(p.app, '/', jako(p.db, 'prod-test'));
     expect(prod.statusCode).toBe(200);
     expect(prod.body).not.toContain(ZDANIE_31);
   });
 
-  it('usługa zdrowie niezbudowana (moduł wyłączony): tabelka działa, wiersza kopii brak', async () => {
+  it('moduł zdrowia wyłączony: migawka i lista działają, pasa kopii brak', async () => {
     zegar();
     const lok = katalog();
     const moduly = [
@@ -256,12 +257,13 @@ describe('tabelka ostrzeżeń na stronie głównej', () => {
       modulApiPanelu,
     ];
     const p = panel({ env: { OMS_KOPIE_KATALOG: lok }, moduly });
+    await przeliczPowiadomienia(p.app);
     const r = await get(p.app, '/', jako(p.db, 'admin-test'));
     expect(r.statusCode).toBe(200);
     expect(r.body).not.toContain('Brak kopii bazy');
   });
 
-  it('wyjątek usługi kopii nie gasi reszty tabelki (wiersz pollera zostaje)', async () => {
+  it('wyjątek usługi kopii nie gasi pasa awarii pollera', async () => {
     zegar();
     const p = panel({
       nadpisania: {
@@ -273,6 +275,7 @@ describe('tabelka ostrzeżeń na stronie głównej', () => {
         }),
       },
     });
+    await przeliczPowiadomienia(p.app);
     const r = await get(p.app, '/', jako(p.db, 'admin-test'));
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain('Pobieranie zamówień z kanału woo_polcien nie działa: fetch failed');

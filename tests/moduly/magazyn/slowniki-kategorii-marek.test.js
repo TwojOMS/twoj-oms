@@ -61,6 +61,8 @@ it('Kategorie: lista płaska z liczbą kart jako odnośnikiem do filtra i wiersz
   expect(r.body).toMatch(/Bez kategorii[\s\S]*?href="\/magazyn\?brak=kategoria">1</);
   // Usuń widać tylko przy kategorii bez kart.
   expect(r.body).toContain('name="nazwa" value="Szablony"');
+  expect(r.body).toMatch(/class="btn btn--maly" id="slownik-zmien-\d+"[^>]*>Zmień nazwę<\/button>/);
+  expect(r.body).toMatch(/class="btn btn--maly" id="slownik-usun-\d+"[^>]*>Usuń<\/button>/);
 });
 
 it('Kategorie: dodanie, odmowa pustej nazwy i brak dubli', async () => {

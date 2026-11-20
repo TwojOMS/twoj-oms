@@ -1,5 +1,6 @@
 import type { Zegar } from '../../core/kontrakty.ts';
 import { ODSTEP_PONAWIANIA_STATUSU_MS } from './services/sync-sklep.js';
+import { ODSTEP_MIGAWKI_POWIADOMIEN_MS } from './services/migawka-powiadomien.js';
 
 type Wynik = { kandydatow: number; wyslane: number; bledy: number };
 
@@ -23,6 +24,21 @@ export function zegarPonawianiaStatusow(o: {
       } catch (e) {
         o.log('ponawianie statusów:', e instanceof Error ? e.message : String(e));
       }
+    },
+  };
+}
+
+/**
+ * Migawka powiadomień: także zaraz po starcie, żeby dzwonek po restarcie nie czekał odstępu na pierwszy stan.
+ * Błąd przebiegu ląduje w stanie migawki (`/health`) i logu w samej usłudze, zegar idzie dalej.
+ */
+export function zegarMigawkiPowiadomien(o: { migawka: { przebieg: () => Promise<unknown> } }): Zegar {
+  return {
+    nazwa: 'migawkaPowiadomien',
+    odstepMs: ODSTEP_MIGAWKI_POWIADOMIEN_MS,
+    naStarcie: true,
+    przebieg: async () => {
+      await o.migawka.przebieg();
     },
   };
 }

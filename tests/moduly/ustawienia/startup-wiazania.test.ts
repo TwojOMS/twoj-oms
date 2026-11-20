@@ -50,7 +50,7 @@ function blokada() {
     }
   };
 }
-it('pełny produkt przekazuje prawdziwe zdrowie do ostrzeżeń GET strony głównej', async () => {
+it('pełny produkt przekazuje prawdziwe zdrowie przez migawkę do pasa na liście', async () => {
   const zakoncz = blokada();
   const a = await zbudujOms({ env: envWoo, teraz: () => new Date('2026-10-02T10:00:00Z') });
   try {
@@ -60,13 +60,15 @@ it('pełny produkt przekazuje prawdziwe zdrowie do ostrzeżeń GET strony głów
       )
       .run('sklep', '2026-10-01T10:00:00Z', 'fixture-awaria', '2026-10-01T10:00:00Z', 'awaria', 1);
     expect((await a.app.inject('/health')).json().poller.zrodla[0].zdrowy).toBe(false);
+    await a.usluga<() => Promise<unknown>>('zamowienia', 'przeliczPowiadomienia')();
     const r = await a.app.inject({
       url: '/',
       headers: { authorization: 'Basic ' + Buffer.from('operator:atrapa').toString('base64') },
     });
     expect(r.statusCode, r.body).toBe(200);
-    expect(r.body).toContain('Pobieranie zamówień z kanału sklep nie działa: fixture-awaria');
-    expect(r.body).toContain('/ustawienia/lacznosc');
+    expect(r.body).toContain(
+      '<p class="pas-awaria">Pobieranie zamówień z kanału sklep nie działa: fixture-awaria <a href="/powiadomienia">Szczegóły</a></p>',
+    );
   } finally {
     await a.app.close();
     a.db.close();

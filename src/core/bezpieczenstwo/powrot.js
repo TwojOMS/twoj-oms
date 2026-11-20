@@ -20,7 +20,9 @@ export function bezpiecznyPowrot(surowa) {
   const t = String(surowa ?? '').trim();
   if (!t.startsWith('/')) return '/';
   if (t.startsWith('//') || t.startsWith('/\\')) return '/';
-  // Znaki sterujace w naglowku `Location` to droga do rozszczepienia odpowiedzi.
-  if (/[\r\n]/.test(t)) return '/';
+  // Znaki sterujace w naglowku `Location` to droga do rozszczepienia odpowiedzi, a tabulator
+  // i znak nowej linii przegladarka wycina z adresu: `/<TAB>/obcy.pl` staje sie `//obcy.pl`.
+  // Odwrotny ukosnik przegladarka czyta jak zwykly, wiec gdziekolwiek stoi — odrzucamy.
+  if (/[\x00-\x1f\x7f\\]/.test(t)) return '/';
   return t;
 }

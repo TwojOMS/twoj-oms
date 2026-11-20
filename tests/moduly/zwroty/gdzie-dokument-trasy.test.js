@@ -9,6 +9,7 @@ import { createModulFaktury } from '../../../src/moduly/faktury/modul.ts';
 import { MODULY } from '../../../src/moduly/lista.ts';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { programTestowy } from '../../pomoc/program-testowy.js';
+import { przeliczPowiadomienia } from '../../pomoc/przelicz-powiadomienia.ts';
 
 const auth = { authorization: `Basic ${Buffer.from('operator:fixture').toString('base64')}` };
 const zamowienie = (nr) => ({
@@ -163,14 +164,15 @@ describe('miejsca dokumentu w odpowiedziach tras', () => {
         db.close();
       }
     });
-    it(`lista zamówień: faktura wstrzymana przez automat KSeF, wbudowany=${wbudowany}`, async () => {
+    it(`powiadomienia: faktura wstrzymana przez automat KSeF, wbudowany=${wbudowany}`, async () => {
       const db = openOmsDb(':memory:');
       const app = serwer(db, program(wbudowany));
       try {
         db.prepare(
           "INSERT INTO ustawienia (klucz, wartosc, zmienione_at) VALUES ('ksef.automat.wstrzymane', ?, '2026-08-05T20:00:00Z')",
         ).run(JSON.stringify([{ uuid: 'u1', numer: 'FV/9', powod: 'Brak NIP' }]));
-        const r = await app.inject({ method: 'GET', url: '/', headers: auth });
+        await przeliczPowiadomienia(app);
+        const r = await app.inject({ method: 'GET', url: '/powiadomienia', headers: auth });
         expect(r.statusCode).toBe(200);
         expect(r.body).toContain(`Następny krok: popraw ${miejsce(wbudowany)} i wyślij ręcznie albo zwolnij.`);
       } finally {

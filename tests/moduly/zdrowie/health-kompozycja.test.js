@@ -153,7 +153,15 @@ describe('health dostępnych usług przez bootstrap', () => {
       expect(r.statusCode, r.body).toBe(200);
       expect(r.headers['cache-control']).toBe('no-store');
       expect(r.json()).toEqual(
-        ocenZdrowie({ teraz: teraz(), startAt: teraz(), zrodla: [], stanyPollera: [], kanaly: [] }),
+        // Skład z modułem zamówień: migawka powiadomień włączona, bez przebiegu (zegary nie ruszają w teście).
+        ocenZdrowie({
+          teraz: teraz(),
+          startAt: teraz(),
+          zrodla: [],
+          stanyPollera: [],
+          kanaly: [],
+          powiadomieniaWlaczone: true,
+        }),
       );
       for (const secret of [env.OMS_PASS, 'hash_hasla', 'sekret_sesji', 'access_token', 'refresh_token'])
         expect(r.body).not.toContain(secret);

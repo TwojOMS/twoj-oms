@@ -19,7 +19,7 @@ describe('rzeczywisty src/oms.js → main.ts → MODULY', () => {
   it('uruchamia dokładny zbiór rzeczywistych interwałów i usuwa je przy zamknięciu', async () => {
     const wynik = await wykonajZegary();
     expect(wynik.nazwy).toEqual([...OCZEKIWANE_ZEGARY].sort());
-    expect(wynik.liczba).toBe(19); // Zegary: automatKsef, automatyzacje, ponawianieStatusow, api-dziennik, api-idempotencja, petlaOfert, petlaOfertAllegro, petlaStanowWoo, straznikStanow (obok zegarów podstawowych).
+    expect(wynik.liczba).toBe(20); // Zegary: automatKsef, automatyzacje, ponawianieStatusow, migawkaPowiadomien, api-dziennik, api-idempotencja, petlaOfert, petlaOfertAllegro, petlaStanowWoo, straznikStanow (obok zegarów podstawowych).
   });
   it.each(['czuwaczOstrzezen', 'czuwaczKosztow', 'czuwaczArchiwumSprzedazy'])(
     'rzeczywisty zegar %s woła tę samą instancję usługi',

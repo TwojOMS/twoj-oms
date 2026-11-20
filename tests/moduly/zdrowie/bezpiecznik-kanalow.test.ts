@@ -38,6 +38,7 @@ const klucze = [
   'czuwaczPrzesylek',
   'czuwaczOstrzezen',
   'czuwaczKosztow',
+  'czuwaczPowiadomien',
   'kanaly',
   'proces',
 ];

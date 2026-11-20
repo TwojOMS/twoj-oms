@@ -118,6 +118,8 @@ export const PROG_PRZESYLEK_S = 3 * 3600;
 // Zegar #6 (czuwacz ostrzezen: lustra luk KSeF i terminow platnosci dla
 // tabelki na stronie glownej) chodzi co godzine — ten sam zapas.
 export const PROG_OSTRZEZEN_S = 3 * 3600;
+// Migawka powiadomień liczy się co minutę — dziesięć pominiętych przebiegów to już zegar, który stanął.
+export const PROG_POWIADOMIEN_S = 10 * 60;
 
 const wiekS = (teraz, isoAlboDate) => {
   if (!isoAlboDate) return null;
@@ -200,6 +202,8 @@ export function ocenZdrowie({
   kosztyModulWylaczony = false,
   kosztyWlaczoneOd = /** @type {string | null} */ (null),
   stanKosztow = null,
+  powiadomieniaWlaczone = false,
+  stanPowiadomien = null,
   kanaly = [],
 }) {
   const alarmy = [];
@@ -367,6 +371,36 @@ export function ocenZdrowie({
     }
   }
 
+  // MIGAWKA POWIADOMIEŃ — powiadomienia_stan. Dzwonek pokazuje ostatnią UDANĄ migawkę, więc stały błąd
+  // zbierania albo zatrzymany zegar wyglądałyby na ekranie jak „brak spraw" — stąd alarm. Błąd w wierszu jest
+  // bieżący (udany przebieg go czyści). Brak wiersza tuż po starcie nie alarmuje: przebieg startowy jeszcze idzie.
+  const czuwaczPowiadomien = {
+    wlaczony: Boolean(powiadomieniaWlaczone),
+    zdrowy: true,
+    odswiezoneAt: null,
+    wiekS: null,
+    czasMs: null,
+    blad: null,
+    bladAt: null,
+  };
+  if (powiadomieniaWlaczone && stanPowiadomien) {
+    czuwaczPowiadomien.odswiezoneAt = stanPowiadomien.odswiezone_at ?? null;
+    czuwaczPowiadomien.wiekS = wiekS(teraz, stanPowiadomien.odswiezone_at);
+    czuwaczPowiadomien.czasMs = stanPowiadomien.czas_ms ?? null;
+    czuwaczPowiadomien.blad = poPolsku(String(stanPowiadomien.blad ?? '').trim() || null);
+    czuwaczPowiadomien.bladAt = stanPowiadomien.blad_at ?? null;
+    if (czuwaczPowiadomien.blad) {
+      czuwaczPowiadomien.zdrowy = false;
+      alarmy.push(`migawka powiadomień: ${czuwaczPowiadomien.blad}`);
+    }
+    if (czuwaczPowiadomien.wiekS != null && czuwaczPowiadomien.wiekS > PROG_POWIADOMIEN_S) {
+      czuwaczPowiadomien.zdrowy = false;
+      alarmy.push(
+        `migawka powiadomień: ostatnie przeliczenie ${fmtWiek(czuwaczPowiadomien.wiekS)} temu (próg ${fmtWiek(PROG_POWIADOMIEN_S)})`,
+      );
+    }
+  }
+
   // KANALY ALLEGRO — ocena przyszla z zewnatrz (stanKanalu). Pilne = alarm; uprzedzenie
   // („token wygasa za N dni") = uwaga: kanal DZIALA, a czujka ma wlasna, rzadsza kadencje
   // dla uwag, zeby siedem dni uprzedzenia nie znaczylo czternastu budzikow.
@@ -393,6 +427,7 @@ export function ocenZdrowie({
     czuwaczPrzesylek,
     czuwaczOstrzezen,
     czuwaczKosztow,
+    czuwaczPowiadomien,
     kanaly: kanalyWynik,
     // MOMENT STARTU PROCESU. Panel znał tę liczbę od początku — `procesWiekS`
     // decyduje, czy młody proces ma czekać zamiast krzyczeć alarmem w pierwszej minucie po

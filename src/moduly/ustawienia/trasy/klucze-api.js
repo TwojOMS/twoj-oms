@@ -7,6 +7,7 @@ import {
   usunKluczApi,
 } from '../../../core/bezpieczenstwo/klucze-api.js';
 import { dopiszLogowanie } from '../../../core/bezpieczenstwo/konta.js';
+import { KOMUNIKAT_PODGLADU } from '../../../core/bezpieczenstwo/podglad-demo.js';
 import { nawigacjaUstawien } from '../nawigacja.js';
 
 const ADRES = '/ustawienia/klucze-api';
@@ -50,8 +51,13 @@ export function registerKluczeApiRoutes(app, { db, teraz = () => new Date() }) {
   function widok(req, reply, { blad = '', dane = {}, klucz = null, potwierdzenie = null } = {}) {
     const czas = Date.now();
     for (const [token, wpis] of formularze) if (wpis.doKiedy <= czas) formularze.delete(token);
-    const jednorazowy = randomBytes(32).toString('base64url');
-    formularze.set(jednorazowy, { doKiedy: czas + 15 * 60_000, login: req.konto.login });
+    // Gość demo tylko ogląda: nie ma formularza, więc nie ma po co zapełniać mapy tokenów.
+    const podgladDemo = req.konto?.podgladDemo === true;
+    let jednorazowy = null;
+    if (!podgladDemo) {
+      jednorazowy = randomBytes(32).toString('base64url');
+      formularze.set(jednorazowy, { doKiedy: czas + 15 * 60_000, login: req.konto.login });
+    }
     return reply.header('Cache-Control', 'no-store').view('klucze-api.ejs', {
       title: 'Klucze API',
       nawigacja: nawigacjaUstawien(req, reply),
@@ -59,6 +65,8 @@ export function registerKluczeApiRoutes(app, { db, teraz = () => new Date() }) {
       dane,
       klucz,
       jednorazowy,
+      podgladDemo,
+      komunikatPodgladu: KOMUNIKAT_PODGLADU,
       etykieta,
       opisZakresu,
       grupyZakresow,
@@ -70,7 +78,9 @@ export function registerKluczeApiRoutes(app, { db, teraz = () => new Date() }) {
       })),
     });
   }
-  app.get(ADRES, async (req, reply) => tylkoAdmin(req, reply) ?? widok(req, reply));
+  app.get(ADRES, async (req, reply) =>
+    req.konto?.podgladDemo === true ? widok(req, reply) : (tylkoAdmin(req, reply) ?? widok(req, reply)),
+  );
   app.post(ADRES, async (req, reply) => {
     const odmowa = tylkoAdmin(req, reply);
     if (odmowa) return odmowa;

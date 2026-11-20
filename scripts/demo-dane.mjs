@@ -26,6 +26,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stanyKanalowAtrapy } from '../deploy/proba/atrapy/kanaly.mjs';
+import { skrotKlucza } from '../src/domena/klucze-api.js';
+import { scalMigawke } from '../src/domena/migawka-powiadomien.js';
+import { createKontekstZamowien } from '../src/moduly/zamowienia/kontekst.js';
 import { PROBLEMY_ILOSCI, skrotZatwierdzenia } from '../src/domena/ilosc-kanalu.js';
 import { wstawOferte, zmienOferte, zapiszZatwierdzenieStanow } from '../src/oms/db/oferty-kanalow.ts';
 import { migawkaStanow, stanyKart } from '../src/oms/db/stany-magazynowe.js';
@@ -35,6 +39,8 @@ import { dodajZwrot, oznaczPieniadzeOddane, zarezerwujKorekte, zapiszKorekte } f
 import { dodajWplateReczna } from '../src/oms/db/platnosci.js';
 import { zapiszWiadomosc } from '../src/oms/db/wiadomosci.js';
 import { zamknijWatek } from '../src/oms/db/allegro-watki.js';
+import { odrzuc } from '../src/oms/db/ostrzezenia.js';
+import { zapiszMigawke } from '../src/oms/db/powiadomienia-migawka.js';
 import { zapiszRecznyKoszt } from '../src/oms/db/koszty.js';
 import { zapiszDaneMiesiaca } from '../src/oms/db/dane-miesieczne.js';
 import { dopiszKlienta } from '../src/oms/db/klienci.js';
@@ -300,6 +306,49 @@ function pusta(db) {
   }
 }
 
+function zasiejPowiadomieniaDemo(db, koniecDnia) {
+  // Testy starszych migracji uruchamiają generator na schemacie sprzed powiadomień.
+  if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='powiadomienia'").get()) return;
+
+  const teraz = new Date(koniecDnia);
+  const stanyKanalow = stanyKanalowAtrapy({ teraz: () => teraz });
+  const kontekst = createKontekstZamowien({ db, stanyKanalow });
+  const { wiersze, nieudane } = kontekst.wierszeOstrzezenFirmy(teraz);
+  if (nieudane.length) throw new Error(`DEMO_POWIADOMIENIA: ${nieudane.map((n) => n.zrodlo).join(', ')}`);
+
+  // Wiersze aktualne po resecie mają te same klucze co w pierwszym przebiegu zegara.
+  const poprzedniPrzebieg = new Date(koniecDnia - 60 * 60 * 1000);
+  const { wstaw } = scalMigawke({ nowe: wiersze, teraz: poprzedniPrzebieg });
+  const archiwum = [
+    {
+      klucz: 'przesylka:demo-doreczona',
+      typ: 'przesylka',
+      tekst: 'Paczka z lampą stołową do Hotelu Zaciszny Brzeg stała bez ruchu.',
+      rozwiazanaDniTemu: 8,
+    },
+    {
+      klucz: 'faktura-ksef:demo-wyslana',
+      typ: 'faktura-ksef',
+      tekst: 'Faktura za kinkiety dla Kawiarni Dzbanuszek czekała na wysłanie do KSeF.',
+      rozwiazanaDniTemu: 5,
+    },
+    {
+      klucz: 'przesylka:demo-odbior-osobisty',
+      typ: 'przesylka',
+      tekst: 'Paczka z kloszami stała bez ruchu. Klient umówił się na odbiór w pracowni.',
+      rozwiazanaDniTemu: 2,
+    },
+  ].map(({ rozwiazanaDniTemu, ...wiersz }) => ({
+    ...wiersz,
+    pilne: 0,
+    pierwszy_raz_at: iso(koniecDnia - (rozwiazanaDniTemu + 2) * DOBA),
+    ostatnio_at: iso(koniecDnia - (rozwiazanaDniTemu + 1) * DOBA),
+    rozwiazane_at: iso(koniecDnia - rozwiazanaDniTemu * DOBA),
+  }));
+  zapiszMigawke(db, { wstaw: [...wstaw, ...archiwum] }, { teraz: poprzedniPrzebieg });
+  odrzuc(db, 'przesylka:demo-odbior-osobisty', { kiedy: iso(koniecDnia - 3 * DOBA) });
+}
+
 /**
  * Wypełnia PUSTĄ bazę (po migracjach) danymi demo. Zwraca liczniki — test i skrypt je pokazują.
  * @param {import('node:sqlite').DatabaseSync} db
@@ -308,13 +357,17 @@ function pusta(db) {
  *   klasyfikacja kanałów raportu do granic historii)
  */
 export function wygenerujDaneDemo(db, { ziarno = 72, dzis, teraz, env = ENV_DEMO }) {
+  const koniecDnia = terazDemo(dzis, teraz);
+  const wynik = wypelnijPodstaweDemo(db, { ziarno, dzis, koniecDnia, env });
+  zasiejPowiadomieniaDemo(db, koniecDnia);
+  return wynik;
+}
+
+function wypelnijPodstaweDemo(db, { ziarno, dzis, koniecDnia, env }) {
   pusta(db);
   const los = losowanie(ziarno);
   licznikFaktur = 0;
   licznikKorekt = 0;
-  // „Teraz” demo: 06:30 w Polsce dnia `dzis`. Reset bywa robiony o każdej porze — późniejsza
-  // godzina dawałaby zamówienia i wiadomości z przyszłości dla porannego gościa.
-  const koniecDnia = terazDemo(dzis, teraz);
   // Kanał z panelu, poza trzema istniejącymi kanałami env. Zamówienia dopisze dopiero poller ERLI.
   // Starsze testy generatora budują bazę bez modułu kanałów — nie ma w niej tej tabeli.
   if (db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='kanaly_sprzedazy'").get()) {
@@ -677,6 +730,7 @@ export function wygenerujDaneDemo(db, { ziarno = 72, dzis, teraz, env = ENV_DEMO
   uzupelnieniaPrz087(db, { pomocnicy });
   uzupelnieniaPrz160(db, { dzis, pomocnicy });
   uzupelnieniaPrz163(db, { pomocnicy });
+  kluczeApiDemo(db, { koniecDnia });
 
   // Koszty (ręczne, bez KSeF) i dane miesięczne — trzy miesiące wstecz od `dzis`.
   const miesiace = [];
@@ -1649,6 +1703,52 @@ const POWOD_ZWROTU_PRZ160 = 'Kinkiet nie pasuje do wnęki — klient zatrzymuje 
  * i zwija resztę pod „Pokaż jeszcze 10”. Wczoraj wieczorem, opłacone, w realizacji: blisko góry listy przez cały dzień.
  * Bez `los` — sekwencja losowania reszty demo się nie przesuwa.
  */
+// Dwa klucze do obejrzenia na ekranie Klucze API. W bazie jest tylko skrót, jak przy prawdziwym zapisie;
+// pełnych kluczy nie ma nigdzie, więc nic nie da się nimi wywołać.
+function kluczeApiDemo(db, { koniecDnia }) {
+  if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='klucze_api'").get()) return;
+  const wstaw = db.prepare(
+    `INSERT INTO klucze_api (nazwa, prefiks, skrot, zakresy, utworzony_at, odwolany_at, ostatnio_uzyty_at, ostatnie_ip)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  );
+  const dziennik = db.prepare(
+    'INSERT INTO klucze_api_dziennik (klucz_id, prefiks, at, metoda, sciezka, status, ip) VALUES (?,?,?,?,?,?,?)',
+  );
+  const czynny = Number(
+    wstaw.run(
+      'Integracja magazynu',
+      'demomag1',
+      skrotKlucza('klucz-demo-integracja-magazynu'),
+      JSON.stringify(['zamowienia:odczyt', 'produkty:odczyt']),
+      iso(koniecDnia - 40 * DOBA),
+      null,
+      iso(koniecDnia - DOBA),
+      '203.0.113.17',
+    ).lastInsertRowid,
+  );
+  const odwolany = Number(
+    wstaw.run(
+      'Stary skrypt',
+      'demostr2',
+      skrotKlucza('klucz-demo-stary-skrypt'),
+      JSON.stringify(['stany:odczyt']),
+      iso(koniecDnia - 120 * DOBA),
+      iso(koniecDnia - 60 * DOBA),
+      iso(koniecDnia - 61 * DOBA),
+      '203.0.113.42',
+    ).lastInsertRowid,
+  );
+  const wpisy = [
+    [czynny, 'demomag1', DOBA + 3 * 3600000, 'GET', '/api/v1/zamowienia', 200, '203.0.113.17'],
+    [czynny, 'demomag1', DOBA + 2 * 3600000, 'GET', '/api/v1/produkty', 200, '203.0.113.17'],
+    [czynny, 'demomag1', DOBA, 'GET', '/api/v1/zamowienia/1042', 200, '203.0.113.17'],
+    [null, null, 30 * 3600000, 'GET', '/api/v1/zamowienia', 401, '198.51.100.8'],
+    [odwolany, 'demostr2', 61 * DOBA, 'GET', '/api/v1/stany', 200, '203.0.113.42'],
+  ];
+  for (const [id, prefiks, wstecz, metoda, sciezka, status, ip] of wpisy)
+    dziennik.run(id, prefiks, iso(koniecDnia - wstecz), metoda, sciezka, status, ip);
+}
+
 export const SKU_DUZEGO_KOSZYKA_PRZ163 = PRODUKTY.filter((p) => p.kanaly?.includes('polcien'))
   .slice(0, 15)
   .map((p) => p.sku);
@@ -2218,9 +2318,10 @@ export async function utworzBazeDemo({ baza, ziarno = 72, dzis, teraz, env = ENV
   // Baza demo jest jednorazowa — przy awarii w połowie i tak jest kasowana niżej.
   db.exec('PRAGMA synchronous = OFF');
   try {
-    const wynik = wygenerujDaneDemo(db, { ziarno, dzis, teraz, env });
+    const wynik = wypelnijPodstaweDemo(db, { ziarno, dzis, koniecDnia, env });
     wynik.magazyn = await wypelnijMagazyn(db, { dzis, koniecDnia });
     wynik.rozliczenia = await rozliczeniaPrz160(db, { dzis, koniecDnia, env });
+    zasiejPowiadomieniaDemo(db, koniecDnia);
     if (db.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok') throw new Error('DEMO_INTEGRITY');
     return wynik;
   } catch (e) {

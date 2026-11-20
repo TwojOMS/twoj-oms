@@ -343,3 +343,20 @@ describe('karta — okno Parametry z wymiarami i wagą', () => {
     expect(wiersz(id)).toMatchObject({ nazwa: 'Lampa Wymiarowa', sku: 'LW-1', szerokosc_mm: 750 });
   });
 });
+
+describe('karta — odnośniki edycji prowadzą do swojej sekcji', () => {
+  it('„Zmień” parametry kończy się kotwicą sekcji parametrów', async () => {
+    zdefiniujParametry();
+    const body = (await get(serwer(), `/magazyn/${karta}`)).body;
+    const s = sekcja(body, 'parametry-karty');
+    expect(s).toMatch(/<a class="link-edytuj" href="[^"]*edytuj=parametry[^"]*#parametry-karty">Zmień<\/a>/);
+    expect(body).toContain('id="parametry-karty"');
+  });
+
+  it('„Edytuj” dane karty kończy się kotwicą sekcji danych', async () => {
+    const body = (await get(serwer(), `/magazyn/${karta}`)).body;
+    const s = sekcja(body, 'dane-karty');
+    expect(s).toMatch(/<a class="link-edytuj" href="[^"]*edytuj=dane[^"]*#dane-karty">Edytuj<\/a>/);
+    expect(body).toContain('id="dane-karty"');
+  });
+});

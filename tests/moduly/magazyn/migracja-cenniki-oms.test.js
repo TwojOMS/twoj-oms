@@ -25,8 +25,9 @@ afterEach(() => {
   for (const db of bazy.splice(0)) if (db.isOpen) db.close();
 });
 
+// Baza sprzed 0006 nie ma też późniejszych migracji (wybór konta z 0007 zapisywałby się poza dawną tabelą).
 const bez0006 = (moduly) =>
-  moduly.map((m) => (m.nazwa === 'magazyn' ? { ...m, migracje: m.migracje.filter((x) => x.numer !== 6) } : m));
+  moduly.map((m) => (m.nazwa === 'magazyn' ? { ...m, migracje: m.migracje.filter((x) => x.numer < 6) } : m));
 
 function bazaPrzed() {
   const db = openOmsDb(':memory:', { moduly: bez0006(modulyDla(ENV_DEMO)), teraz: () => new Date(T0) });

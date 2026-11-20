@@ -32,6 +32,8 @@ import { wczytajTokeny, zapiszTokeny } from '../../../src/oms/db/tokeny.js';
 import { idProduktuWoo, pozycjeCenWoo, statusProduktuWoo } from '../../../src/oms/woo/client.js';
 import { bladTylkoOdczyt } from '../../../src/domena/woo-uprawnienia.js';
 
+const KONTA_ALLEGRO_DEMO = KANALY.filter((k) => k.typ === 'allegro').map((k) => k.klucz);
+
 const SCHEMAT = `
   CREATE TABLE IF NOT EXISTS atrapa_kanaly_zmiany (kanal TEXT NOT NULL, sciezka TEXT NOT NULL, pola_json TEXT NOT NULL,
     PRIMARY KEY (kanal, sciezka));
@@ -647,7 +649,7 @@ export function createAtrapaAllegro({
 export function zbudujAtrapyKanalow({ db, config, log, env = process.env }) {
   wymagajTrybuProby(env, 'atrapy kanałów');
   const sklepy = KANALY.filter((k) => k.typ === 'woo').map((k) => k.klucz);
-  const konta = KANALY.filter((k) => k.typ === 'allegro').map((k) => k.klucz);
+  const konta = KONTA_ALLEGRO_DEMO;
   // E3.25: główne konto ma zgodę, Outlet pozwala obejrzeć ekran ponownej zgody.
   // Nie nadpisujemy istniejącego tokenu: zmiana zakresów w bazie jest widoczna od razu w obu ekranach.
   for (const kanal of konta)
@@ -753,13 +755,16 @@ export function scalUslugiKanalow(s, atrapy, teraz = () => new Date()) {
  */
 export function stanyKanalowAtrapy({ config, teraz = () => new Date() }) {
   const DOBA = 86_400_000;
+  const kanaly = config ? Object.keys(config.kanaly ?? {}) : KONTA_ALLEGRO_DEMO;
   return () =>
     stanyKanalowZKolizjami(
-      Object.keys(config?.kanaly ?? {}).map((kanal, i) => {
-        const zostaloDni = 160 - i * 37;
+      kanaly.map((kanal, i) => {
+        // Outlet pokazuje awarię tokenu, a działające konto główne pozwala zobaczyć uprzedzenie.
+        const zostaloDni = kanal === 'allegro-outlet' ? -1 : 5;
         return {
           kanal,
           polaczony: true,
+          ostatniBlad: zostaloDni < 0 ? 'Połączenie wygasło' : null,
           zostaloDni,
           kontoAllegro: `pracownia_polcien_${i + 1}`,
           refreshWygasaAt: new Date(teraz().getTime() + zostaloDni * DOBA).toISOString(),

@@ -32,8 +32,14 @@ import {
 } from './oferty.js';
 import { STATUS_USUNIETEJ_Z_OMS } from './oferty.js';
 import { daneSprzedazyKarty } from './karta-sprzedaz-kanalow.js';
-import { wyjatekCennika } from '../../oms/db/cenniki-kart.ts';
-import { cennikOmsKarty, maCennikiOms, ustawCennikKarty } from '../../oms/db/cenniki-oms.ts';
+import {
+  usunWyjatekCennika,
+  wyjatekCennika,
+  zapiszWyjatekCennika,
+  zrodloWyjatkuCennika,
+} from '../../oms/db/cenniki-kart.ts';
+import { bladWyboruCennika, kontaZCennikami, nazwaCennikaKonta, odmowaDlaKonta } from './services/cenniki-kont.js';
+import { cennikOmsKarty, maCennikiOms, ustawCennikKarty, wCalosci } from '../../oms/db/cenniki-oms.ts';
 import { dobierzCennik, regulyKonta } from '../../domena/cennik-dostaw.js';
 import { nazwySlownika } from './services/slowniki-kart.js';
 import { czystaNazwa, markaZFormularza } from '../../domena/marka-karty.js';
@@ -408,7 +414,7 @@ export function createKartaMagazynu({
           },
         },
         adresy: {
-          adresEdycji: adresKarty(karta.id, { edytuj: 'parametry', wroc }),
+          adresEdycji: adresKarty(karta.id, { edytuj: 'parametry', wroc }) + '#parametry-karty',
           adresZapisu: zWroc(`/magazyn/${karta.id}/parametry`, wroc),
           adresAnuluj: adresKarty(karta.id, { wroc }),
         },
@@ -462,12 +468,13 @@ export function createKartaMagazynu({
       adresPowrotu,
       adresKarty: adresKarty(karta.id, { wroc }),
       adresPotwierdzeniaWycofania: adresKarty(karta.id, { wycofaj: true, wroc }),
-      adresEdycji: adresKarty(karta.id, {
-        fraza: filtry.fraza,
-        kanal: filtry.kanal,
-        edytuj: 'dane',
-        wroc,
-      }),
+      adresEdycji:
+        adresKarty(karta.id, {
+          fraza: filtry.fraza,
+          kanal: filtry.kanal,
+          edytuj: 'dane',
+          wroc,
+        }) + '#dane-karty',
       // ⚠️⚠️ PUŁAPKA SKLEJANIA: te dwa formularze doklejaly `/odepnij` i `/powiaz` PO gotowym
       // `adresKarty` (`<%= adresKarty %>/odepnij`). Skoro `adresKarty` moze dzis niesc
       // `?wroc=…`, naiwne doklejenie wsadzaloby ten dopisek W SRODEK wartosci parametru
@@ -938,19 +945,14 @@ function napisMapy(db, karta, srodowisko) {
     : null;
 }
 
-// Cennik dostaw karty: jeden cennik OMS na karcie, a „Teraz” osobno dla każdego bieżącego konta Allegro i ERLI.
-const kontaCennikow = (kontaAllegro, kontaErli) => [
-  ...kontaAllegro().map((k) => ({ klucz: k.klucz, rodzaj: 'allegro' })),
-  ...kontaErli().map((k) => ({ klucz: k.klucz, rodzaj: 'erli' })),
-];
-const etykietaKontaCennika = (klucz, rodzaj, definicje) =>
-  `${rodzaj === 'allegro' ? 'Allegro' : 'ERLI'} · ${adresKanalu(klucz, definicje)}`;
 const BLAD_CENNIKA_OMS = 'Wybierz cennik OMS z listy.';
+const POLE_CENNIKA_KONTA = 'cennik_konta_';
+const DOPISEK_SPOZA_LISTY = '(nie ma już na liście konta)';
 
 /**
- * Sekcja „Cennik dostaw” karty: pole wyboru cennika OMS karty (puste = dobór po rozmiarze) i na każde konto
- * cennik, który karta dostaje teraz (ten sam dobór co podgląd „Wystaw na…”), albo odmowa doboru. Cennik OMS
- * karty działa tylko na kontach, z którymi ma powiązanie.
+ * Sekcja „Cennik dostaw” karty: opcjonalny cennik OMS karty i na każde bieżące konto Allegro i ERLI własny wybór
+ * cennika z pobranej listy konta. „Teraz” to cennik, który karta dostaje (ten sam dobór co podgląd „Wystaw na…”),
+ * albo odmowa doboru. Wybór konta wygrywa z cennikiem OMS, a ten działa tylko na kontach z powiązaniem.
  * @param {import('node:sqlite').DatabaseSync} db
  * @param {any} karta wiersz `karty_produktow`
  * @param {{ kontaAllegro: () => readonly {klucz:string}[], kontaErli: () => readonly {klucz:string}[], definicje: readonly {klucz:string;etykieta?:string}[] }} opcje
@@ -958,19 +960,38 @@ const BLAD_CENNIKA_OMS = 'Wybierz cennik OMS z listy.';
 export function daneCennikowKarty(db, karta, { kontaAllegro, kontaErli, definicje }) {
   const opcje = opcjeCennikowOms(db);
   const wybor = String((maCennikiOms(db) ? cennikOmsKarty(db, karta.id)?.cennikId : null) ?? '');
-  const konta = kontaCennikow(kontaAllegro, kontaErli).map(({ klucz, rodzaj }) => {
-    const ustawienia = ustawieniaOfertKonta(db, klucz);
-    const nazwaWyjatku = nazwaCennikaKarty(db, karta.id, klucz);
-    const wyjatek = wyjatekCennika(db, { kartaId: karta.id, konto: klucz }) ?? '';
-    const dobor = dobierzCennik({ karta, reguly: regulyKonta(ustawienia), wyjatek, nazwaWyjatku });
-    return {
-      etykieta: etykietaKontaCennika(klucz, rodzaj, definicje),
-      teraz: opisDostawy(ustawienia, rodzaj, dobor, karta, nazwaWyjatku),
-      odmowa: dobor.odmowa?.tekst ?? null,
-    };
-  });
+  const konta = kontaZCennikami(db, { kontaAllegro: kontaAllegro(), kontaErli: kontaErli(), definicje }).map(
+    (konto) => {
+      const ustawienia = ustawieniaOfertKonta(db, konto.klucz);
+      const zrodlo = zrodloWyjatkuCennika(db, { kartaId: karta.id, konto: konto.klucz });
+      const wyjatek = wyjatekCennika(db, { kartaId: karta.id, konto: konto.klucz }) ?? '';
+      const dobor = odmowaDlaKonta(
+        konto,
+        dobierzCennik({ karta, reguly: regulyKonta(ustawienia), wyjatek, nazwaWyjatku: zrodlo }),
+      );
+      // Wybór konta (nie cennik OMS) — to on trafia do pola; zapisany, a nieobecny na liście, zostaje z dopiskiem.
+      const wybranyNaKoncie = zrodlo?.rodzaj === 'konto' ? wyjatek : '';
+      const opcjeKonta = konto.cenniki ? konto.cenniki.map((p) => ({ wartosc: p.wartosc, nazwa: p.nazwa })) : null;
+      if (opcjeKonta && wybranyNaKoncie && !nazwaCennikaKonta(konto, wybranyNaKoncie))
+        opcjeKonta.push({ wartosc: wybranyNaKoncie, nazwa: `${wybranyNaKoncie} ${DOPISEK_SPOZA_LISTY}` });
+      return {
+        klucz: konto.klucz,
+        pole: `${POLE_CENNIKA_KONTA}${konto.klucz}`,
+        etykieta: konto.etykieta,
+        opcje: opcjeKonta,
+        wybrany: wybranyNaKoncie,
+        nazwaWybranego: wybranyNaKoncie
+          ? (nazwaCennikaKonta(konto, wybranyNaKoncie) ?? `${wybranyNaKoncie} ${DOPISEK_SPOZA_LISTY}`)
+          : null,
+        teraz: opisDostawy(ustawienia, konto.rodzaj, dobor, karta, zrodlo),
+        odmowa: dobor.odmowa?.tekst ?? null,
+      };
+    },
+  );
   return { opcje, wybor, nazwaWyboru: opcje.find((o) => o.id === wybor)?.etykieta ?? null, konta };
 }
+
+class BladCennikaKarty extends Error {}
 
 /**
  * @param {import('fastify').FastifyInstance} app
@@ -1110,19 +1131,40 @@ export function registerKartaMagazynu(
     if (req.konto?.admin !== true) return odmowaCennika(reply, req.params.id, 403, 'Brak prawa edycji magazynu.');
     const karta = kartaPoId(db, req.params.id);
     if (!karta) return brakKarty(reply, req.params.id);
-    const surowe = pole(req.body, 'cennik_oms');
-    if (surowe !== null) {
-      const cennik = surowe.trim();
-      if (cennik && !opcjeCennikowOms(db).some((o) => o.id === cennik))
-        return odmowaCennika(reply, karta.id, 400, BLAD_CENNIKA_OMS);
-      if (cennik !== String(cennikOmsKarty(db, karta.id)?.cennikId ?? '')) {
-        const aktor = typeof req.konto?.login === 'string' ? req.konto.login : null;
-        ustawCennikKarty(
-          db,
-          { kartaId: karta.id, cennikId: cennik ? Number(cennik) : null },
-          { teraz: new Date().toISOString(), aktor },
-        );
-      }
+    const aktor = typeof req.konto?.login === 'string' ? req.konto.login : null;
+    const opcje = { teraz: new Date().toISOString(), aktor };
+    const konta = kontaZCennikami(db, {
+      kontaAllegro: kontaAllegro(),
+      kontaErli: kontaErli(),
+      definicje,
+    });
+    // Jedna całość: pierwszy błędny wybór wycofuje także to, co formularz zdążył zapisać wcześniej.
+    try {
+      wCalosci(db, () => {
+        const surowe = pole(req.body, 'cennik_oms');
+        if (surowe !== null) {
+          const cennik = surowe.trim();
+          if (cennik && !opcjeCennikowOms(db).some((o) => o.id === cennik))
+            throw new BladCennikaKarty(BLAD_CENNIKA_OMS);
+          if (cennik !== String(cennikOmsKarty(db, karta.id)?.cennikId ?? ''))
+            ustawCennikKarty(db, { kartaId: karta.id, cennikId: cennik ? Number(cennik) : null }, opcje);
+        }
+        for (const konto of konta) {
+          const surowy = pole(req.body, `${POLE_CENNIKA_KONTA}${konto.klucz}`);
+          if (surowy === null) continue;
+          const wartosc = surowy.trim();
+          const klucz = { kartaId: karta.id, konto: konto.klucz };
+          const obecny = zrodloWyjatkuCennika(db, klucz)?.rodzaj === 'konto' ? (wyjatekCennika(db, klucz) ?? '') : '';
+          const blad = bladWyboruCennika(konto, wartosc, obecny);
+          if (blad) throw new BladCennikaKarty(blad);
+          if (wartosc === obecny) continue;
+          if (wartosc) zapiszWyjatekCennika(db, { ...klucz, cennik: wartosc }, opcje);
+          else usunWyjatekCennika(db, klucz, opcje);
+        }
+      });
+    } catch (e) {
+      if (e instanceof BladCennikaKarty) return odmowaCennika(reply, karta.id, 400, e.message);
+      throw e;
     }
     return reply.code(303).redirect(`/magazyn/${karta.id}#cenniki-karty`);
   });

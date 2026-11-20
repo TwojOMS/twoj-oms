@@ -7,10 +7,8 @@
 // na uprawnienie „ustawienia” (tak jak Magazyn → Ustawienia), a hak demo blokuje POST gościa.
 import { cennikiOms } from '../../oms/db/cenniki-oms.ts';
 import { kartyCennikaOms, usunCennikOms, zapiszCennikOms } from '../../oms/db/cenniki-oms-zapis.ts';
-import { ustawieniaOfertKonta } from '../../oms/db/oferty-kanalow.ts';
 import { createOfertyAllegroUstawienia } from '../kanaly/services/oferty-allegro-ustawienia.ts';
-import { cennikiAllegro } from './oferty.js';
-import { adresKanalu } from '../../domena/kanaly.js';
+import { kontaZCennikami, stanWyboruCennika } from './services/cenniki-kont.js';
 import {
   centymetryZMilimetrow,
   gramyZKilogramow,
@@ -53,22 +51,6 @@ export function opisRozmiaru(c) {
   return `do ${cm.join(' × ')} cm, ${przecinek(kilogramyZGramow(c.doG))} kg`;
 }
 
-/** Ustawienia jawne konta ERLI (bez sekretów) — lista cenników i data ich pobrania. */
-function cennikiKontaErli(db, klucz) {
-  try {
-    const w = db
-      .prepare('SELECT ustawienia_json FROM konfiguracja_integracji WHERE integracja = ?')
-      .get(`erli:${klucz}`);
-    const u = JSON.parse(w?.ustawienia_json ?? '{}') ?? {};
-    return {
-      lista: Array.isArray(u.cennikiDostaw) ? u.cennikiDostaw.filter((n) => typeof n === 'string') : null,
-      pobranoAt: typeof u.cennikiPobranoAt === 'string' ? u.cennikiPobranoAt : null,
-    };
-  } catch {
-    return { lista: null, pobranoAt: null };
-  }
-}
-
 /**
  * @param {import('fastify').FastifyInstance} app
  * @param {{ db: import('node:sqlite').DatabaseSync, kontaAllegro: () => any[], kontaErli: () => any[],
@@ -80,26 +62,15 @@ export function registerCennikowOmsRoutes(app, o) {
 
   /** Bieżące konta Allegro i ERLI z listą cenników (`null` = lista niepobrana) i stanem przycisku pobrania. */
   function kontaEkranu() {
-    const definicje = o.definicje();
-    const allegro = o.kontaAllegro().map((k) => {
-      const slowniki = ustawieniaOfertKonta(db, k.klucz)?.slowniki ?? null;
-      const pobrana = Array.isArray(slowniki?.cenniki);
-      return {
-        klucz: k.klucz,
-        rodzaj: 'allegro',
-        nazwaKanalu: 'Allegro',
-        etykieta: `Allegro · ${adresKanalu(k.klucz, definicje)}`,
-        lista: pobrana
-          ? cennikiAllegro({ slowniki }).map((p) => ({ wartosc: p.id, nazwa: tekst(p.nazwa) || p.id }))
-          : null,
-        pobranoAt: pobrana ? data(slowniki.pobranoAt) : null,
-        przycisk: 'Pobierz cenniki z Allegro',
-        zablokowane: null,
-      };
+    const konta = kontaZCennikami(db, {
+      kontaAllegro: o.kontaAllegro(),
+      kontaErli: o.kontaErli(),
+      definicje: o.definicje(),
     });
     const sklepy = o.sklepyErli();
-    const erli = o.kontaErli().map((k) => {
-      const { lista, pobranoAt } = cennikiKontaErli(db, k.klucz);
+    return konta.map((k) => {
+      const wspolne = { ...k, lista: k.cenniki, pobranoAt: data(k.pobranoAt) };
+      if (k.rodzaj === 'allegro') return { ...wspolne, przycisk: 'Pobierz cenniki z Allegro', zablokowane: null };
       const stan = sklepy?.pobierz(k.klucz) ?? null;
       const gotowe =
         stan &&
@@ -108,12 +79,7 @@ export function registerCennikowOmsRoutes(app, o) {
         !stan.ustawienia?.kolizja &&
         stan.kluczZapisany === true;
       return {
-        klucz: k.klucz,
-        rodzaj: 'erli',
-        nazwaKanalu: 'ERLI',
-        etykieta: `ERLI · ${adresKanalu(k.klucz, definicje)}`,
-        lista: lista ? lista.map((n) => ({ wartosc: n, nazwa: n })) : null,
-        pobranoAt: data(pobranoAt),
+        ...wspolne,
         przycisk: 'Pobierz cenniki z ERLI',
         wersja: stan?.wersja ?? null,
         zablokowane: gotowe
@@ -127,7 +93,6 @@ export function registerCennikowOmsRoutes(app, o) {
             },
       };
     });
-    return [...allegro, ...erli];
   }
 
   /** Wiersz tabeli: komórka na każde bieżące konto (powiązanie z nazwą z listy albo oznaczeniem „nie ma już”). */
@@ -226,10 +191,12 @@ export function registerCennikowOmsRoutes(app, o) {
     const odmowa = (blad) => formularz(reply, { status: 400, cennik, pola, konta, blad });
     for (const k of konta) {
       const w = pola.powiazania[k.klucz];
-      if (w && k.lista && w !== dawne.get(k.klucz) && !k.lista.some((p) => p.wartosc === w))
+      const stan = stanWyboruCennika(k, w, dawne.get(k.klucz));
+      if (stan === 'spoza-listy')
         return odmowa(`Wybierz cennik z listy konta ${k.etykieta} albo „— brak powiązania —”.`);
       // Allegro przyjmuje w ofercie identyfikator cennika, więc bez pobranej listy nie ma czego bezpiecznie wpisać.
-      if (w && !k.lista && k.rodzaj === 'allegro' && w !== dawne.get(k.klucz))
+      // Nazwę cennika ERLI sprzedawca może przepisać z panelu ERLI, zanim pobierze listę.
+      if (stan === 'lista-niepobrana' && k.rodzaj === 'allegro')
         return odmowa(`Pobierz najpierw listę cenników konta ${k.etykieta}.`);
     }
     const rozmiar = pola.rodzaj === 'rozmiar';

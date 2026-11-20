@@ -72,7 +72,7 @@ export const EKRANY = [
     // `/zamowienia/specyfikacje.pdf` wpada tu SWIADOMIE, mimo ze brzmi jak dokument:
     // specyfikacja to kartka wkladana do KAZDEJ paczki (pdf/specyfikacja-pdf.js), bez VAT-u
     // i bez numeru faktury. Odciecie jej Produkcji zatrzymaloby pakowanie.
-    prefiksy: ['/zamowienia', '/ostrzezenia', '/kolejka-druku'],
+    prefiksy: ['/zamowienia', '/kolejka-druku'],
   },
   {
     klucz: 'faktury-zamowienia',
@@ -232,6 +232,10 @@ export function ekranDlaAdresu(url) {
   const sciezka = String(url ?? '').split('?')[0] || '/';
   if (czyTrasaOtwarta(sciezka)) return 'otwarte';
   if (DLA_KAZDEGO.includes(sciezka)) return 'kazdy';
+  // Powiadomienia konta: każdy widzi swoje — co w nich jest, zawęża odczyt prawami konta, nie bramka adresu.
+  if (wSekcji(sciezka, '/powiadomienia')) return 'kazdy';
+  // „Ignoruj” z tej strony: trasa sama przyjmuje tylko sprawę widoczną dla konta, więc nie wymaga ekranu Zamówień.
+  if (sciezka === '/ostrzezenia/odrzuc') return 'kazdy';
   if (sciezka === '/api' || sciezka.startsWith('/api/')) return 'api';
   for (const wzorzec of WZORCE_FAKTUR_ZAMOWIENIA) {
     if (wzorzec.test(sciezka)) return 'faktury-zamowienia';

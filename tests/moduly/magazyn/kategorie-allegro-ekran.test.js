@@ -324,10 +324,14 @@ it('brak zakresu odczytu, brak konta w środowisku albo odmowa Allegro → komun
 
 it('lista Kategorie i tabela marek na ekranie Producenci mają kolumnę Allegro', async () => {
   await post(ADRES_A, { srodowisko: 'produkcja', kategoria_id: '257' });
+  await post(ADRES_A, { srodowisko: 'sandbox', kategoria_id: '257' });
   const k = await get('/magazyn/kategorie');
   expect(k.body).toContain('Allegro');
   expect(k.body).toContain('Dom i Ogród › Oświetlenie › Lampy stołowe');
-  expect(k.body).toContain('nieprzypisana');
+  expect(k.body).toMatch(
+    /\(produkcja\)<\/small><\/span><br>\s*<span>[^<]+ <small[^>]*>\(sandbox\)<\/small><\/span>\s+· <a[^>]*>Zmień<\/a>/,
+  );
+  expect(k.body).toMatch(/nieprzypisana<\/small> · <a[^>]*href="[^"]+"[^>]*>Przypisz<\/a>/);
   expect(k.body).toContain(ADRES_B);
   const m = await get('/magazyn/producenci');
   expect(m.body).toContain('nieprzypisana');

@@ -19,6 +19,8 @@ import { czyFiltrStanu } from '../../domena/niski-stan.js';
 import { zapiszPrzepiecie } from './oferty-kanalow.ts';
 import { zapiszCeneZakupu } from './ceny-zakupu.js';
 import { ustawWartoscKarty, wyczyscWartoscKarty } from './parametry-kart.js';
+import { ustawCennikKarty } from './cenniki-oms.ts';
+import { usunWyjatekCennika, zapiszWyjatekCennika } from './cenniki-kart.ts';
 import { dzienWarszawa } from '../../domena/format-daty.js';
 
 const teraz = () => new Date().toISOString();
@@ -334,6 +336,26 @@ export function kartyPoIdach(db, ids) {
 }
 
 /**
+ * Cenniki dostaw jednego wpisu planu hurtu: `cennikOms` (id albo `null` = usuń) i `cennikiKont`
+ * (`{ konto: wartość | null }`). Zwraca, czy coś zapisano. Jak parametry — własne tabele z autorem i datą,
+ * bez `zmieniony_at` karty. Podgląd hurtu woła ją też na próbę (w SAVEPOINT, cofany), żeby policzyć
+ * oferty, którym zmieni się cennik — dlatego jest osobno od `zastosujHurtem`.
+ */
+export function zapiszCennikiHurtu(db, wpis, { at = teraz(), kto = null } = {}) {
+  let ruszona = false;
+  if (Object.hasOwn(wpis, 'cennikOms')) {
+    ustawCennikKarty(db, { kartaId: wpis.id, cennikId: wpis.cennikOms }, { teraz: at, aktor: kto });
+    ruszona = true;
+  }
+  for (const [konto, wartosc] of Object.entries(wpis.cennikiKont ?? {})) {
+    if (wartosc === null) usunWyjatekCennika(db, { kartaId: wpis.id, konto }, { teraz: at, aktor: kto });
+    else zapiszWyjatekCennika(db, { kartaId: wpis.id, konto, cennik: wartosc }, { teraz: at, aktor: kto });
+    ruszona = true;
+  }
+  return ruszona;
+}
+
+/**
  * EDYCJA HURTEM: gotowy plan `[{ id, zmiany }]` zapisany w JEDNEJ transakcji.
  * Oddaje liczbe faktycznie zmienionych wierszy.
  *
@@ -357,7 +379,13 @@ export function kartyPoIdach(db, ids) {
  */
 export function zastosujHurtem(db, plan, { at = teraz(), zrodlo = 'reczne', kto = null } = {}) {
   const kroki = (plan ?? []).filter(
-    (k) => k && (Object.keys(k.zmiany ?? {}).length || k.cenaZakupu || Object.keys(k.parametry ?? {}).length),
+    (k) =>
+      k &&
+      (Object.keys(k.zmiany ?? {}).length ||
+        k.cenaZakupu ||
+        Object.keys(k.parametry ?? {}).length ||
+        Object.hasOwn(k, 'cennikOms') ||
+        Object.keys(k.cennikiKont ?? {}).length),
   );
   for (const { zmiany = {} } of kroki) {
     for (const pole of Object.keys(zmiany)) {
@@ -388,7 +416,8 @@ export function zastosujHurtem(db, plan, { at = teraz(), zrodlo = 'reczne', kto 
   if (wlasnaTransakcja) db.exec('BEGIN IMMEDIATE');
   try {
     let zmienione = 0;
-    for (const { id, zmiany = {}, cenaZakupu, parametry = {} } of kroki) {
+    for (const krok of kroki) {
+      const { id, zmiany = {}, cenaZakupu, parametry = {} } = krok;
       // Wyjątek od „hurt zmienia tylko kolumny karty”: cena zakupu ma własną tabelę z historią.
       // Zapis w tej samej transakcji (odmowa cofa oba) i bez `zmieniony_at` karty — cena zakupu
       // nie wychodzi do API, więc jej zmiana nie może kazać klientom API pobierać kart od nowa.
@@ -414,6 +443,7 @@ export function zastosujHurtem(db, plan, { at = teraz(), zrodlo = 'reczne', kto 
         if (r.blad) throw new Error(`zastosujHurtem: ${r.blad}`);
         if (r.zmieniono) ruszona = true;
       }
+      if (zapiszCennikiHurtu(db, krok, { at, kto })) ruszona = true;
       // Liczymy KARTY, nie zapisy: cena i stawka na jednej karcie to jedna zmieniona karta.
       if (ruszona) zmienione += 1;
     }

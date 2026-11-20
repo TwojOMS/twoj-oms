@@ -73,33 +73,14 @@
   }
 %>
 <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', {tytul: "Zamówienia"}) %>
-<%# W trybie próby (piaskownica, demo publiczne) informacja o demo stoi NAD pasami %>
-<%# i ostrzeżeniami, na zielono — to nie awaria, więc nie ma jej chować w akapicie synchronizacji pod nimi. %>
+<%# W trybie próby informacja o demo stoi nad pasem awarii. %>
 <%# Gdy układ pokazuje pasek demo (demo publiczne), ta informacja stoi w jego dopisku — bez dubla. %>
 <% if (proba && !locals.demo) { %>
   <p class="pas-demo">Wersja demonstracyjna — dane z generatora, połączenia ze sklepami, Allegro i kurierami są wyłączone.</p>
 <% } %>
-<%# ⚠️⚠️ KANAŁY WOŁAJĄCE O POMOC — PAS, NIE PRZYPIS. %>
-<%# Panel WIEDZIAŁ, że kanał allegro_a nie żyje: zapisał błąd i pokazywał go zdaniem %>
-<%# obok daty synchronizacji. Nie wystarczyło — kanał był martwy siedem godzin, a awaria %>
-<%# wyszła dopiero przy nadawaniu paczki. Trzy rzeczy się zmieniają: pas jest OSOBNYM %>
-<%# blokiem, wymienia WSZYSTKIE zepsute kanały (pasek pollera pokazuje pierwszy z brzegu), %>
-<%# i mówi CO PRZESTAŁO DZIAŁAĆ zamiast przepisywać błąd techniczny. %>
-<% (typeof kanalyDoUwagi !== 'undefined' ? kanalyDoUwagi : []).forEach((k) => { %>
-  <p class="<%= k.pilne ? 'pas-awaria' : 'pas-uprzedzenie' %>">
-    <strong><%= k.pilne ? 'Kanał nie działa' : 'Kanał wkrótce przestanie działać' %>:</strong>
-    <%= k.powod %>
-    <% if (k.wolnoWiazac) { %>
-      <%# ⚠️ WYJŚCIE STOI PRZY OSTRZEŻENIU. Pas nie ma własnego przycisku („Połącz z Allegro” jest w %>
-      <%# Ustawieniach), więc mówimy WPROST, czym się to naprawia — inaczej pas jest stanem bez wyjścia. %>
-      Naprawa: połączenie kanału z Allegro na nowo.
-    <% } %>
-  </p>
+<% (locals.pilnePowiadomienia ?? []).forEach((w) => { %>
+  <p class="pas-awaria"><%= w.tekst %> <a href="/powiadomienia">Szczegóły</a></p>
 <% }); %>
-<%# TABELKA OSTRZEZEN: faktury bez KSeF, paczki bez ruchu, wiadomosci %>
-<%# Allegro, niedzialajace integracje. POD pasami kanalow (tamte maja wyjscie — wiazanie), %>
-<%# NAD akapitem synchronizacji. %>
-<%- include('_ostrzezenia.ejs', { ostrzezenia: typeof ostrzezenia !== 'undefined' ? ostrzezenia : [] }) %>
 <% if (!proba) { %>
 <p>
   <%# Znacznik pollera to NASZ czas (teraz(), UTC) — fmtDataCzas przeliczy go na Warszawe. %>

@@ -6,8 +6,11 @@ import { centymetryZMilimetrow, gramyZKilogramow, kilogramyZGramow, milimetryZCe
 
 export const TEKST_BRAK_WYMIAROW =
   'Brak wymiarów/wagi — OMS nie wie, czy produkt zmieści się w paczkomacie. ' +
-  'Uzupełnij wymiary albo ustaw cennik na karcie.';
-export const TEKST_BRAK_CENNIKA = 'Konto nie ma powiązanego cennika dostaw — ustaw powiązanie w Magazyn → Cenniki.';
+  'Uzupełnij wymiary albo ustaw cennik na karcie albo wybierz cennik dla konta.';
+// Konto może mieć powiązanie tylko z cennikiem „tylko na karcie” — wtedy reguł doboru nie ma, choć powiązanie jest,
+// więc napis nie twierdzi, że powiązania brak.
+export const TEKST_BRAK_CENNIKA =
+  'Brak cennika dla tego konta — wybierz go na karcie albo ustaw cennik z rozmiarem lub domyślny w Magazyn → Cenniki.';
 export const TEKST_BRAK_DOMYSLNEGO =
   'Produkt jest większy od cenników rozmiaru, a cennik domyślny nie ma powiązania z tym kontem — ' +
   'ustaw je w Magazyn → Cenniki.';
@@ -88,11 +91,19 @@ function cennikZRegul(karta, reguly) {
 /**
  * Dobór cennika dla karty. Kolejność: wyjątek na karcie → pusta lista → jedna reguła „wszystko” →
  * brak wymiarów/wagi → pierwsza pasująca reguła → „dla większych” (albo odmowa, gdy konto nie ma domyślnego).
- * `nazwaWyjatku` — nazwa cennika OMS karty do powodu.
+ * `nazwaWyjatku` — nazwa cennika OMS karty do powodu albo źródło wyjątku (`{ rodzaj: 'konto' }` — wybór na karcie
+ * dla tego konta; `{ rodzaj: 'oms', nazwaOms }` — cennik OMS karty). Źródło idzie tym samym parametrem, bo budowniczowie
+ * powodu przekazują dalej tylko jedną wartość.
  * Zwraca `{ cennik, powod: { rodzaj, numer?, tekst } }` albo `{ odmowa: { kod, tekst } }`.
  */
 export function dobierzCennik({ karta, reguly, wyjatek, nazwaWyjatku } = {}) {
-  const tekst = napis(nazwaWyjatku) ? `wyjątek na karcie: cennik OMS „${napis(nazwaWyjatku)}”` : 'wyjątek na karcie';
+  const nazwaOms = typeof nazwaWyjatku === 'object' ? (nazwaWyjatku?.nazwaOms ?? '') : nazwaWyjatku;
+  const zWyboruKonta = typeof nazwaWyjatku === 'object' && nazwaWyjatku?.rodzaj === 'konto';
+  const tekst = zWyboruKonta
+    ? 'wybrany na karcie dla tego konta'
+    : napis(nazwaOms)
+      ? `wyjątek na karcie: cennik OMS „${napis(nazwaOms)}”`
+      : 'wyjątek na karcie';
   const zWyjatku = napis(wyjatek) ? { cennik: napis(wyjatek), powod: { rodzaj: 'wyjatek', tekst } } : null;
   return zWyjatku ?? cennikZRegul(karta, reguly);
 }

@@ -10,11 +10,24 @@ import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { uruchomPiaskownice } from '../../deploy/proba/atrapy/index.mjs';
-import { createAtrapaWoo } from '../../deploy/proba/atrapy/kanaly.mjs';
+import { createAtrapaWoo, stanyKanalowAtrapy, zbudujAtrapyKanalow } from '../../deploy/proba/atrapy/kanaly.mjs';
 import { createAtrapaErli } from '../../deploy/proba/atrapy/erli.mjs';
 import { idProduktuErli } from '../../src/moduly/magazyn/services/petla-ofert.js';
-import { zalozKonto } from '../../src/core/bezpieczenstwo/konta.js';
-import { utworzBazeDemo, wygenerujDaneDemo, ENV_DEMO, nipFikcyjny } from '../../scripts/demo-dane.mjs';
+import { kontoPoLoginie, zalozKonto } from '../../src/core/bezpieczenstwo/konta.js';
+import {
+  utworzBazeDemo,
+  wygenerujDaneDemo,
+  ENV_DEMO,
+  KANALY_DEMO,
+  nipFikcyjny,
+  terazDemo,
+} from '../../scripts/demo-dane.mjs';
+import { modulyDla } from '../../src/moduly/lista.ts';
+import { openOmsDb } from '../../src/oms/db/db.ts';
+import { createKontekstZamowien } from '../../src/moduly/zamowienia/kontekst.js';
+import { createMigawkaPowiadomien } from '../../src/moduly/zamowienia/services/migawka-powiadomien.js';
+import { powiadomieniaKonta } from '../../src/oms/db/powiadomienia.js';
+import { kontaZCennikami } from '../../src/moduly/magazyn/services/cenniki-kont.js';
 import { FIRMY_B2B, KOSZTY, PRODUKTY, PRODUKTY_KATALOGU } from '../../scripts/demo-dane-firma.mjs';
 import {
   eanDemo,
@@ -738,6 +751,45 @@ describe('generator danych demo na świeżej bazie', () => {
   });
 });
 
+it('demo pokazuje aktualne i archiwalne powiadomienia także po pierwszym przebiegu migawki', async () => {
+  const env = envDla(katalog());
+  const db = openOmsDb(':memory:', { moduly: modulyDla(env) });
+  try {
+    const teraz = new Date(terazDemo(DZIS));
+    wygenerujDaneDemo(db, { dzis: DZIS, env });
+    zalozKonto(db, {
+      login: 'demo-admin',
+      imie: 'Administrator demo',
+      haslo: 'haslo-testu-demo-1',
+      rola: 'administrator',
+      admin: true,
+    });
+    const konto = kontoPoLoginie(db, 'demo-admin');
+    const przed = powiadomieniaKonta(db, konto, { teraz });
+    const { config } = zbudujAtrapyKanalow({ db, env });
+    const stanyKanalow = stanyKanalowAtrapy({ config, teraz: () => teraz });
+    const kontekst = createKontekstZamowien({ db, stanyKanalow });
+    const migawka = createMigawkaPowiadomien({
+      db,
+      zbierz: (chwila) => kontekst.wierszeOstrzezenFirmy(chwila),
+      teraz: () => teraz,
+    });
+    const wynik = await migawka.przebieg();
+    expect(wynik.blad).toBeUndefined();
+    expect(migawka.stan().blad).toBeNull();
+    const { aktualne, archiwum, pilne } = powiadomieniaKonta(db, konto, { teraz });
+    expect(pilne).toBeGreaterThanOrEqual(1);
+    expect(aktualne.length).toBeGreaterThanOrEqual(3);
+    expect(archiwum.length).toBeGreaterThanOrEqual(3);
+    expect(archiwum.map((w) => w.status)).toEqual(expect.arrayContaining(['zignorowane', 'rozwiazane']));
+    expect(aktualne.map((w) => w.klucz)).toEqual(przed.aktualne.map((w) => w.klucz));
+    expect(archiwum).toEqual(przed.archiwum);
+    for (const w of aktualne) expect(Date.parse(w.pierwszyRazAt)).toBeLessThan(teraz.getTime());
+  } finally {
+    db.close();
+  }
+});
+
 describe('generator danych demo — determinizm i odmowy', () => {
   it('zamówienia demo bez zmian', async () => {
     const env = envDla(katalog());
@@ -875,6 +927,74 @@ describe('dane demo do pokazania', () => {
       `SELECT id, sklep, utworzone_at FROM zamowienia z WHERE anulowane = 0 AND indywidualne = 0
     AND w_realizacji_at IS NULL AND wyslane_at IS NULL AND zwrot_at IS NULL AND NOT EXISTS (SELECT 1 FROM zwroty w WHERE w.zamowienie_id = z.id)`,
     );
+
+  it('dwa klucze API do obejrzenia: czynny i odwołany, w bazie tylko skrót, z wpisami dziennika', async () => {
+    const { db } = await baza(DZIS);
+    const klucze = tylko(db, 'SELECT * FROM klucze_api ORDER BY id');
+    expect(klucze.map((k) => [k.nazwa, k.odwolany_at === null])).toEqual([
+      ['Integracja magazynu', true],
+      ['Stary skrypt', false],
+    ]);
+    expect(JSON.parse(klucze[0].zakresy)).toEqual(['zamowienia:odczyt', 'produkty:odczyt']);
+    for (const k of klucze) {
+      expect(k.skrot).toMatch(/^[0-9a-f]{64}$/);
+      expect(k.skrot).not.toContain('toms_');
+    }
+    const wczoraj = Date.parse(`${DZIS}T06:30:00Z`) - 24 * 3600000;
+    expect(Math.abs(Date.parse(klucze[0].ostatnio_uzyty_at) - wczoraj)).toBeLessThan(6 * 3600000);
+    expect(tylko(db, 'SELECT COUNT(*) AS n FROM klucze_api_dziennik')[0].n).toBeGreaterThanOrEqual(3);
+  });
+
+  it('wybory na kartach różnią się od powiązań OMS, a Allegro Outlet nie ma listy ani powiązania', async () => {
+    const { db } = await baza('2026-11-13');
+    const wybory = tylko(
+      db,
+      `SELECT k.sku, w.konto, w.cennik_kanalu, p.cennik_kanalu AS cennik_z_oms
+       FROM karty_cenniki_kanalow w
+       JOIN karty_produktow k ON k.id = w.karta_id
+       LEFT JOIN karty_cennik_oms o ON o.karta_id = k.id
+       LEFT JOIN cenniki_dostaw_powiazania p ON p.cennik_id = o.cennik_id AND p.konto = w.konto
+       ORDER BY k.sku, w.konto`,
+    );
+    expect(wybory).toEqual([
+      {
+        sku: 'LMP-POD-001',
+        konto: 'allegro',
+        cennik_kanalu: 'atrapa-cennik-gabaryt',
+        cennik_z_oms: 'atrapa-cennik-standard',
+      },
+      {
+        sku: 'LMP-POD-002',
+        konto: 'allegro',
+        cennik_kanalu: 'atrapa-cennik-gabaryt',
+        cennik_z_oms: 'atrapa-cennik-standard',
+      },
+      {
+        sku: 'LMP-POD-002',
+        konto: 'erli_polcien',
+        cennik_kanalu: 'Kurier gabaryt Półcień',
+        cennik_z_oms: 'Dostawy Półcień',
+      },
+    ]);
+
+    const kontaAllegro = KANALY_DEMO.filter((k) => k.typ === 'allegro');
+    expect(kontaAllegro.map((k) => k.klucz)).toEqual(['allegro', 'allegro-outlet']);
+    const konta = kontaZCennikami(db, {
+      kontaAllegro,
+      kontaErli: tylko(db, "SELECT klucz FROM kanaly_sprzedazy WHERE typ = 'erli'"),
+      definicje: KANALY_DEMO,
+    });
+    expect(konta.find((k) => k.klucz === 'allegro')?.cenniki).toEqual([
+      { wartosc: 'atrapa-cennik-standard', nazwa: 'Standard' },
+      { wartosc: 'atrapa-cennik-gabaryt', nazwa: 'Kurier gabaryt' },
+    ]);
+    expect(konta.find((k) => k.klucz === 'erli_polcien')?.cenniki).toEqual([
+      { wartosc: 'Dostawy Półcień', nazwa: 'Dostawy Półcień' },
+      { wartosc: 'Kurier gabaryt Półcień', nazwa: 'Kurier gabaryt Półcień' },
+    ]);
+    expect(konta.find((k) => k.klucz === 'allegro-outlet')?.cenniki).toBeNull();
+    expect(tylko(db, 'SELECT konto FROM cenniki_dostaw_powiazania WHERE konto = ?', 'allegro-outlet')).toEqual([]);
+  });
 
   it('co najmniej 8 zamówień z 4–7 różnymi produktami, w sklepie, na obu kontach Allegro i w B2B; część z ilością > 1', async () => {
     const { db } = await baza('2026-11-13');

@@ -11,6 +11,7 @@ import { wstawOferte, zmienOferte, zapiszUstawieniaOfertKonta } from '../src/oms
 import { dodajProducenta, przypiszMarki, ustawDomyslnego } from '../src/oms/db/producenci.js';
 import { utworzKarte, powiazProdukt, zapiszKarte } from '../src/oms/db/magazyn.js';
 import { dodajCennikOms, ustawCennikKarty, ustawPowiazanieCennika } from '../src/oms/db/cenniki-oms.ts';
+import { zapiszWyjatekCennika } from '../src/oms/db/cenniki-kart.ts';
 
 const ADRES_SKLEPU = 'https://sklep-polcien.example.invalid';
 const YOAST_KATEGORIA = '_yoast_wpseo_primary_product_cat';
@@ -586,25 +587,56 @@ export function zasiejCenyKanalowDemo(db, { teraz }) {
 
 /**
  * Cenniki dostaw OMS w demo: lista po rozmiarze, domyślna i „tylko na karcie” (lampy podłogowe nie mieszczą się
- * w małej paczce). Każda wskazuje cennik atrapy Allegro i ERLI, więc krok „Oferty” i karta mają co pokazać.
+ * w małej paczce). Listy kont Allegro i ERLI mają po dwie pozycje, żeby wybór na karcie różnił się od
+ * cennika z powiązania OMS.
  */
 export function zasiejCennikiOmsDemo(db, { teraz }) {
   const opcje = { teraz: teraz(), aktor: 'demo' };
+  const allegro = { konto: 'allegro', cennik: 'atrapa-cennik-standard', cennikKarty: 'atrapa-cennik-gabaryt' };
+  const erli = { konto: 'erli_polcien', cennik: 'Dostawy Półcień', cennikKarty: 'Kurier gabaryt Półcień' };
+  // Outlet zostaje bez pobranej listy i powiązań, żeby karta pokazała wskazówkę pobrania cenników.
+  zapiszUstawieniaOfertKonta(
+    db,
+    allegro.konto,
+    {
+      slowniki: {
+        pobranoAt: opcje.teraz,
+        cenniki: [
+          { id: allegro.cennik, nazwa: 'Standard' },
+          { id: allegro.cennikKarty, nazwa: 'Kurier gabaryt' },
+        ],
+      },
+    },
+    opcje,
+  );
+  db.prepare(
+    `UPDATE konfiguracja_integracji
+     SET ustawienia_json = json_set(ustawienia_json, '$.cennikiDostaw', json_array(?, ?), '$.cennikiPobranoAt', ?)
+     WHERE integracja = ?`,
+  ).run(erli.cennik, erli.cennikKarty, opcje.teraz, `erli:${erli.konto}`);
+
   const listy = [
     dodajCennikOms(db, { nazwa: 'Mała paczka', doMm: [380, 640, 80], doG: 5000 }, opcje),
     dodajCennikOms(db, { nazwa: 'Domyślny', domyslny: true }, opcje),
     dodajCennikOms(db, { nazwa: 'Gabaryt' }, opcje),
   ];
   for (const cennikId of listy) {
-    ustawPowiazanieCennika(db, { cennikId, konto: 'allegro', cennikKanalu: 'atrapa-cennik-standard' }, opcje);
-    ustawPowiazanieCennika(db, { cennikId, konto: 'erli_polcien', cennikKanalu: 'Dostawy Półcień' }, opcje);
+    for (const { konto, cennik } of [allegro, erli]) {
+      ustawPowiazanieCennika(db, { cennikId, konto, cennikKanalu: cennik }, opcje);
+    }
   }
   const karta = db.prepare('SELECT id FROM karty_produktow WHERE sku = ?');
-  for (const sku of ['LMP-POD-001', 'LMP-POD-002']) {
+  const [trojnog, luk] = ['LMP-POD-001', 'LMP-POD-002'].map((sku) => {
     const kartaId = karta.get(sku)?.id;
     if (!kartaId) throw new Error(`DEMO_CENNIKI: brak karty ${sku}`);
-    ustawCennikKarty(db, { kartaId: Number(kartaId), cennikId: listy[2] }, opcje);
+    return Number(kartaId);
+  });
+  for (const kartaId of [trojnog, luk]) {
+    ustawCennikKarty(db, { kartaId, cennikId: listy[2] }, opcje);
   }
+  zapiszWyjatekCennika(db, { kartaId: trojnog, konto: allegro.konto, cennik: allegro.cennikKarty }, opcje);
+  zapiszWyjatekCennika(db, { kartaId: luk, konto: allegro.konto, cennik: allegro.cennikKarty }, opcje);
+  zapiszWyjatekCennika(db, { kartaId: luk, konto: erli.konto, cennik: erli.cennikKarty }, opcje);
 }
 
 const MARKA_POLCIEN = 'Pracownia Półcień';

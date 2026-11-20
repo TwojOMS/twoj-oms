@@ -136,25 +136,25 @@ describe('cenniki OMS — cennik na karcie (wyjątek)', () => {
     expect(db.prepare('SELECT count(*) n FROM cenniki_dostaw_powiazania WHERE cennik_id = ?').get(szklo).n).toBe(0);
   });
 
-  it('dawny zapis wyjątku per konto: karty o tym samym zbiorze par dzielą cennik „Wyjątek N”', () => {
+  it('zapis wyjątku per konto to wybór konta na karcie — cennika OMS karty nie rusza', () => {
     const db = baza();
     zapiszWyjatekCennika(db, { kartaId: 701, konto: 'allegro_lampy', cennik: ' a-szklo ' }, { teraz: T0 });
     zapiszWyjatekCennika(db, { kartaId: 702, konto: 'allegro_lampy', cennik: 'a-szklo' }, { teraz: T0 });
-    expect(cennikOmsKarty(db, 701).nazwa).toBe('Wyjątek 1');
-    expect(cennikOmsKarty(db, 702).cennikId).toBe(cennikOmsKarty(db, 701).cennikId);
     zapiszWyjatekCennika(db, { kartaId: 702, konto: 'erli_lampy', cennik: 'e-szklo' }, { teraz: T1 });
-    expect(cennikOmsKarty(db, 702).nazwa).toBe('Wyjątek 2');
-    // Cennik pierwszej karty się nie zmienił.
+    expect(cennikOmsKarty(db, 701)).toBeNull();
+    expect(cennikOmsKarty(db, 702)).toBeNull();
+    expect(cennikiOms(db)).toEqual([]);
+    // Wybór drugiej karty nie zmienia pierwszej.
     expect(wyjatekCennika(db, { kartaId: 701, konto: 'erli_lampy' })).toBeNull();
+    expect(wyjatekCennika(db, { kartaId: 701, konto: 'allegro_lampy' })).toBe('a-szklo');
     expect(wyjatkiCennikowKarty(db, 702).map((w) => [w.konto, w.cennik])).toEqual([
       ['allegro_lampy', 'a-szklo'],
       ['erli_lampy', 'e-szklo'],
     ]);
     expect(usunWyjatekCennika(db, { kartaId: 702, konto: 'erli_lampy' }, { teraz: T1 })).toBe(1);
-    expect(cennikOmsKarty(db, 702).nazwa).toBe('Wyjątek 1');
     expect(usunWyjatekCennika(db, { kartaId: 702, konto: 'erli_lampy' })).toBe(0);
     expect(usunWyjatekCennika(db, { kartaId: 702, konto: 'allegro_lampy' })).toBe(1);
-    expect(cennikOmsKarty(db, 702)).toBeNull();
+    expect(wyjatkiCennikowKarty(db, 702)).toEqual([]);
     expect(() => zapiszWyjatekCennika(db, { kartaId: 701, konto: 'erli_lampy', cennik: ' ' })).toThrow();
   });
 });

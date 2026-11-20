@@ -164,6 +164,7 @@ export function buildOmsServer(o: Record<string, any>) {
       get: (_target, property) => {
         if (property === 'then') return undefined;
         if (property === 'initialConfig') return przechwycony?.initialConfig;
+        if (property === 'usluga') return async (modul: string, nazwa: string) => (await gotowe).usluga(modul, nazwa);
         if (property === 'ready')
           return async () => {
             await gotowe;

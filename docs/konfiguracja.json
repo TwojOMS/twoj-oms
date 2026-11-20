@@ -7805,7 +7805,7 @@
     },
     {
       "path": "src/moduly/rdzen/modul.ts",
-      "line": 32,
+      "line": 33,
       "expression": "env",
       "callee": "wczytajSprzedawce",
       "call": "wczytajSprzedawce(env)"
@@ -7952,14 +7952,14 @@
     },
     {
       "path": "src/moduly/zamowienia/modul.ts",
-      "line": 57,
+      "line": 61,
       "expression": "env",
       "callee": "efektywnyTryb",
       "call": "efektywnyTryb(env)"
     },
     {
       "path": "src/moduly/zamowienia/modul.ts",
-      "line": 61,
+      "line": 65,
       "expression": "env",
       "callee": "konfiguracjaZamowien",
       "call": "konfiguracjaZamowien(env)"
@@ -8218,14 +8218,14 @@
     },
     {
       "path": "src/moduly/magazyn/modul.ts",
-      "line": 124,
+      "line": 126,
       "expression": "env",
       "callee": "katalogZdjec",
       "call": "katalogZdjec(env)"
     },
     {
       "path": "src/moduly/magazyn/modul.ts",
-      "line": 124,
+      "line": 126,
       "expression": "env",
       "callee": "adresPublicznyZdjec",
       "call": "adresPublicznyZdjec(env)"
@@ -8682,7 +8682,7 @@
     },
     {
       "path": "src/core/web/modul.ts",
-      "sha256": "f4a6b8a1ddc4a157fa9e83786ee70e2058748a7a7c2d88cdeb9d67022ab8eec5",
+      "sha256": "b5419c50f54dd8fc95fb55e40ded3d105f4e9a02d2f890c0a00360dcc90ea5f3",
       "normalizacja": "LF"
     },
     {
@@ -8732,7 +8732,7 @@
     },
     {
       "path": "src/moduly/zdrowie/modul.ts",
-      "sha256": "45d2c0fa27b5aa6852a87af9fb1699d6c18082dff77feed7830929e98ebbb5ec",
+      "sha256": "0e059364be6ee20b8899a526c8400be415de0bb291f9dc06b4af7481f7a935e2",
       "normalizacja": "LF"
     },
     {
@@ -8834,7 +8834,7 @@
     },
     {
       "path": "src/moduly/zdrowie/modul.ts",
-      "sha256": "45d2c0fa27b5aa6852a87af9fb1699d6c18082dff77feed7830929e98ebbb5ec",
+      "sha256": "0e059364be6ee20b8899a526c8400be415de0bb291f9dc06b4af7481f7a935e2",
       "normalizacja": "LF"
     },
     {
@@ -9287,7 +9287,7 @@
       },
       {
         "path": "src/moduly/rdzen/modul.ts",
-        "sha256": "0e8a68a1f28c9b354781d2a9d9f1fcab7c55474af72bb037ab19c11e1558134d",
+        "sha256": "389f56a67b280d7b46c63927064143b6a32ed03c7f789b304b63889f130d22ba",
         "expression": "wczytajSprzedawce(env)"
       },
       {

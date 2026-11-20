@@ -1,5 +1,5 @@
-// Wiersze „Nowa wiadomość z Allegro” na liście zamówień (zbierzOstrzezenia) znikają w trybie próby
-// (OMS_TRYB=proba: piaskownica i demo publiczne — wątki pochodzą z atrapy). Poza próbą pokazują się jak dotąd.
+// Wiadomość od kupującego nie jest ostrzeżeniem ani powiadomieniem — sygnalizuje ją licznik przy „Wiadomości”
+// w menu (wątki czekające na odpowiedź). Drugi sygnał o tym samym w tabelce uczyłby ignorowania obu.
 // Strona główna przez HTTP, zegar podawany (fałszywa data), dane zmyślone — bez sieci.
 import { afterEach, it, expect, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
@@ -37,15 +37,13 @@ function panel(env = {}) {
   return { ...p, admin: jako(db, 'admin-test') };
 }
 
-it('poza próbą: wiersz nowej wiadomości jest na liście zamówień', async () => {
+it('nowa wiadomość nie daje wiersza ostrzeżenia na liście zamówień', async () => {
   const { app, admin } = panel();
   const r = await get(app, '/', admin);
   expect(r.statusCode).toBe(200);
-  expect(r.body).toContain(TEKST);
+  expect(r.body).not.toContain(TEKST);
+  expect(r.body).not.toContain('ostrzezenie--wiadomosc-allegro');
 });
-
-// Przypadek „w trybie próby nie ma” sprawdza prawdziwa instancja demo: tests/instalacja/demo-gus-wiadomosci.test.js
-// (pomocnik nowyPanel nie przenosi OMS_TRYB do konfiguracji modułów).
 
 it('plakietka licznika przy „Wiadomości” w menu jest poza próbą', async () => {
   const poza = panel();

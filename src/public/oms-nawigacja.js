@@ -1,4 +1,4 @@
-// Menu rozwijane: `data-menu` (konto, nawigacja główna) oraz `.wydruki` (karta zamówienia i pasek
+// Menu rozwijane: `data-menu` (konto, powiadomienia, nawigacja główna) oraz `.wydruki` (karta zamówienia i pasek
 // akcji listy). Inne `<details>` w panelu (komentarz wewnętrzny, `.drobne`, metodologia, akordeon
 // akcji magazynu) to treść, nie menu — nie wolno ich zamykać kliknięciem obok.
 export const SELEKTOR_MENU = 'details[data-menu], details.wydruki';

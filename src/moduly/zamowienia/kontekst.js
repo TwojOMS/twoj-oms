@@ -55,7 +55,6 @@ import {
   ostrzezeniaAutomatyzacji,
   ostrzezeniaFaktur,
   ostrzezeniaPrzesylek,
-  ostrzezeniaWiadomosci,
   ostrzezeniaIntegracji,
   ostrzezeniaKopii,
   ostrzezeniaTerminow,
@@ -63,8 +62,10 @@ import {
   ostrzezeniaPobran,
   ostrzezeniaNiskiegoStanu,
   zlozOstrzezenia,
-  ostrzezeniaDlaKonta,
+  ostrzezeniaKanalow,
+  wierszeDlaKonta,
 } from '../../domena/ostrzezenia.js';
+import { kanalyWymagajaceUwagi } from '../../domena/kanal-stan.js';
 import { ukryteTypyKonta } from '../../oms/db/powiadomienia.js';
 import { kartyNiskiegoStanu } from '../../oms/db/niski-stan.js';
 import {
@@ -81,7 +82,6 @@ import { zProgramu } from '../../integracje/program-fakturowy.ts';
 import { wysylkaZKarty, zdanieJuzWyslano, POWOD_KOREKTA, POWOD_KOREKTA_CZEKA } from '../../domena/wysylka-ksef.js';
 import { czyWysylacKonsumenckie } from '../faktury/db/ksef-konsumenckie.js';
 import { czyFakturaDlaKazdego } from '../faktury/db/faktury-dla-kazdego.js';
-import { listaWatkow } from '../../oms/db/allegro-watki.js';
 import { adresKanalu, rodzajKanalu } from '../../domena/kanaly.js';
 import { przewoznikWiersza, linkSledzeniaPaczki } from '../../domena/przewoznik-przesylki.js';
 import { kartaPaczki } from '../../domena/karta-paczki.js';
@@ -404,82 +404,95 @@ export function createKontekstZamowien(opcje) {
     ];
   };
   const OKNO_OSTRZEZEN_PRZESYLEK_DNI = 60;
+  // Surowe wiersze reguł. Bez konta i bez `req` — tę samą listę liczy migawka powiadomień w tle dla całej
+  // firmy; kto co widzi, rozstrzyga dopiero odczyt (`wierszeDlaKonta`).
+  //
+  // Źródła z własnym try/catch: błąd jednego nie gasi reszty tabelki. `nieudane` dostaje źródło, które
+  // zawiodło (nazwa i prefiks jego kluczy) — migawka nie może wziąć jego pustej listy za „sprawa minęła”.
+  function wierszeOstrzezen(teraz, { niskiStan, log, nieudane = [] }) {
+    const zrodlo = (nazwa, prefiks, licz) => {
+      try {
+        return licz();
+      } catch (e) {
+        log?.error?.(e, `ostrzeżenia: źródło „${nazwa}” nie policzyło się`);
+        nieudane.push({ zrodlo: nazwa, prefiks });
+        return [];
+      }
+    };
+    const odIso = new Date(teraz.getTime() - OKNO_OSTRZEZEN_PRZESYLEK_DNI * 24 * 3600 * 1000).toISOString();
+    // Numer zamowienia czyta sie LENIWIE — tylko dla paczki, ktora naprawde stoi i trafia do
+    // ostrzezenia. Mapa calej tabeli kosztowala 32–56 ms przy 15 000 zamowien,
+    // a mapa calego okna 60 dni — 70 ms przy 28 000 paczek; stojacych paczek jest kilka.
+    const przesylki = przesylkiDoSledzenia(db, odIso);
+    const znane = new Map();
+    const numery = {
+      get: (id) => {
+        if (!znane.has(id)) znane.set(id, numeryZamowien(db, [id])[0]);
+        return znane.get(id);
+      },
+    };
+    const dzis = dzienWarszawa(teraz.toISOString());
+    return [
+      ...ostrzezeniaIntegracji({ zdrowie: zdrowie?.() ?? null }),
+      // Kopia bazy (stara, brak, katalog niewidoczny, program wbudowany bez nadzoru).
+      ...zrodlo('kopie bazy', 'integracja:kopia:', () => ostrzezeniaKopii({ kopie: kopie?.() ?? null })),
+      ...ostrzezeniaFaktur({ luki: lukiKsef(db), dzis }),
+      // Kłopot ostatniego przebiegu automatu KSeF (błąd, przerwany, „nie wiadomo”, pominięte).
+      ...(() => {
+        const a = wczytajAutomatKsef(db);
+        return ostrzezeniaAutomatuKsef({
+          wynik: a.wynik,
+          wstrzymane: a.wstrzymane,
+          nazwa: nazwaProgramu,
+          gdzie: gdzieProgramu,
+          tryb: a.tryb,
+        });
+      })(),
+      // Wysyłka KSeF bez rozstrzygnięcia od ponad doby — sprawdzić w KSeF przed ponowieniem.
+      ...zrodlo('niepewne wysyłki KSeF', 'faktura-ksef:niepewna:', () =>
+        ostrzezeniaNiepewnychKsef({ wysylki: niepewneKsef ? niepewneKsef(teraz) : [] }),
+      ),
+      // Reguła automatyzacji wstrzymana albo niepewna wysyłka maila.
+      ...ostrzezeniaAutomatyzacji({
+        reguly: regulyDoOstrzezen(db, new Date(teraz.getTime() - 7 * 24 * 3600 * 1000).toISOString()),
+      }),
+      ...ostrzezeniaTerminow({ poTerminie: poTerminie(db) }),
+      ...ostrzezeniaZwrotow({ zwroty: zwrotyBezKorekty(db), dzis }),
+      ...ostrzezeniaPobran({ pobrania: pobraniaBezGotowki(db) }),
+      ...ostrzezeniaPrzesylek({ przesylki, zamowienia: numery, teraz }),
+      ...(niskiStan
+        ? zrodlo('niski stan magazynu', 'niski-stan:', () => ostrzezeniaNiskiegoStanu(kartyNiskiegoStanu(db)))
+        : []),
+    ];
+  }
+  /**
+   * Sprawy całej firmy dla migawki powiadomień: niski stan i kanały sprzedaży zawsze (kto je zobaczy,
+   * rozstrzyga odczyt). Migawka zasila też pas na liście zamówień. Rzuca, gdy zebrać się
+   * nie da — przebieg zostawia wtedy poprzednią migawkę.
+   * @returns {{ wiersze: object[], nieudane: { zrodlo: string, prefiks: string }[] }} `nieudane` — źródła,
+   *   które zawiodły; ich sprawy migawka zostawia jak były.
+   */
+  function wierszeOstrzezenFirmy(teraz = new Date(), { log } = {}) {
+    const nieudane = [];
+    const wiersze = [
+      ...ostrzezeniaKanalow({ kanaly: kanalyWymagajaceUwagi(stanyKanalow?.() ?? []) }),
+      ...wierszeOstrzezen(teraz, { niskiStan: true, log, nieudane }),
+    ];
+    return { wiersze, nieudane };
+  }
   function zbierzOstrzezenia(req) {
     try {
       const teraz = new Date();
-      const odIso = new Date(teraz.getTime() - OKNO_OSTRZEZEN_PRZESYLEK_DNI * 24 * 3600 * 1000).toISOString();
-      // Numer zamowienia czyta sie LENIWIE — tylko dla paczki, ktora naprawde stoi i trafia do
-      // ostrzezenia. Mapa calej tabeli kosztowala 32–56 ms przy 15 000 zamowien,
-      // a mapa calego okna 60 dni — 70 ms przy 28 000 paczek; stojacych paczek jest kilka.
-      const przesylki = przesylkiDoSledzenia(db, odIso);
-      const znane = new Map();
-      const numery = {
-        get: (id) => {
-          if (!znane.has(id)) znane.set(id, numeryZamowien(db, [id])[0]);
-          return znane.get(id);
-        },
-      };
-      const dzis = dzienWarszawa(teraz.toISOString());
       const konto = req?.konto ?? null;
       const ukryteTypy = ukryteTypyKonta(db, konto?.id);
-      const wiersze = [
-        ...ostrzezeniaIntegracji({ zdrowie: zdrowie?.() ?? null }),
-        // Kopia bazy (stara, brak, katalog niewidoczny, program wbudowany bez nadzoru). Własny
-        // try/catch: błąd odczytu katalogu kopii nie może zgasić reszty tabelki.
-        ...(() => {
-          try {
-            return ostrzezeniaKopii({ kopie: kopie?.() ?? null });
-          } catch {
-            return [];
-          }
-        })(),
-        ...ostrzezeniaFaktur({ luki: lukiKsef(db), dzis }),
-        // Kłopot ostatniego przebiegu automatu KSeF (błąd, przerwany, „nie wiadomo”, pominięte).
-        ...(() => {
-          const a = wczytajAutomatKsef(db);
-          return ostrzezeniaAutomatuKsef({
-            wynik: a.wynik,
-            wstrzymane: a.wstrzymane,
-            nazwa: nazwaProgramu,
-            gdzie: gdzieProgramu,
-            tryb: a.tryb,
-          });
-        })(),
-        // Wysyłka KSeF bez rozstrzygnięcia od ponad doby — sprawdzić w KSeF przed ponowieniem. Własny
-        // try/catch: błąd tego źródła nie może zgasić całego Zdrowia.
-        ...(() => {
-          try {
-            return ostrzezeniaNiepewnychKsef({ wysylki: niepewneKsef ? niepewneKsef(teraz) : [] });
-          } catch {
-            return [];
-          }
-        })(),
-        // Reguła automatyzacji wstrzymana albo niepewna wysyłka maila — tylko administrator (reguły i ich
-        // dziennik są w Ustawieniach, dostępnych wyłącznie dla niego).
-        ...(req?.konto?.admin
-          ? ostrzezeniaAutomatyzacji({
-              reguly: regulyDoOstrzezen(db, new Date(teraz.getTime() - 7 * 24 * 3600 * 1000).toISOString()),
-            })
-          : []),
-        ...ostrzezeniaTerminow({ poTerminie: poTerminie(db) }),
-        ...ostrzezeniaZwrotow({ zwroty: zwrotyBezKorekty(db), dzis }),
-        ...ostrzezeniaPobran({ pobrania: pobraniaBezGotowki(db) }),
-        ...ostrzezeniaPrzesylek({ przesylki, zamowienia: numery, teraz }),
-        ...(() => {
-          if ((konto && !maDostepDoEkranu(konto, 'magazyn')) || ukryteTypy.includes('niski-stan')) return [];
-          try {
-            return ostrzezeniaNiskiegoStanu(kartyNiskiegoStanu(db));
-          } catch (e) {
-            req?.log?.error?.(e, 'ostrzeżenie o niskim stanie magazynowym nie policzyło się');
-            return [];
-          }
-        })(),
-        // W trybie próby (piaskownica, demo publiczne) wątki są z atrapy — „nowa wiadomość” byłaby szumem.
-        ...(config.proba === true ? [] : ostrzezeniaWiadomosci({ watki: listaWatkow(db), teraz })),
-      ];
-      // Najpierw prawa konta (wiersz bez prawa do ekranu przycisku = 403 po kliku).
+      const wiersze = wierszeOstrzezen(teraz, {
+        // Karty magazynu czyta się tylko wtedy, gdy konto i tak zobaczy wynik.
+        niskiStan: !((konto && !maDostepDoEkranu(konto, 'magazyn')) || ukryteTypy.includes('niski-stan')),
+        log: req?.log,
+      });
+      // Te same prawa i ukrycia co dzwonek (rodzaj tylko dla admina, magazyn, ekran przycisku).
       return zlozOstrzezenia({
-        wiersze: ostrzezeniaDlaKonta({ wiersze, konto }),
+        wiersze: wierszeDlaKonta({ wiersze, konto, ukryteTypy }),
         odrzucone: odrzucenia(db),
         teraz,
         ukryteTypy,
@@ -1497,6 +1510,7 @@ export function createKontekstZamowien(opcje) {
     statusyDlaKarty,
     OKNO_OSTRZEZEN_PRZESYLEK_DNI,
     zbierzOstrzezenia,
+    wierszeOstrzezenFirmy,
     wyborWiadomosci,
     daneWiadomosci,
     renderujKarte,

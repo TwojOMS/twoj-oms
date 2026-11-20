@@ -81,6 +81,7 @@ export const modulZdrowie: ModulOms<{ proba: boolean; kopieKatalog: string; kopi
       const kosztyModulWylaczony = opcjonalna<() => boolean>('koszty', 'modulWylaczony')?.() ?? false;
       const kosztyWlaczoneOd = opcjonalna<() => string | null>('koszty', 'wlaczoneOd')?.() ?? null;
       const stanKosztow = opcjonalna<() => any>('koszty', 'stanKosztow');
+      const stanPowiadomien = opcjonalna<() => any>('zamowienia', 'stanMigawkiPowiadomien');
       const p = puls.stan();
       const teraz = ctx.teraz();
       const wynik = ocenZdrowie({
@@ -111,6 +112,8 @@ export const modulZdrowie: ModulOms<{ proba: boolean; kopieKatalog: string; kopi
         kosztyModulWylaczony,
         kosztyWlaczoneOd,
         stanKosztow: stanKosztow?.() ?? null,
+        powiadomieniaWlaczone: Boolean(stanPowiadomien),
+        stanPowiadomien: stanPowiadomien?.() ?? null,
         kanaly: ctx.usluga<() => any[]>('kanaly', 'stanyKanalow')() as any,
       });
       const alarmy = alarmyKonfiguracjiKanalow(ctx.db, config, teraz, ctx.konfiguracja.proba);
