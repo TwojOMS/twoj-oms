@@ -865,7 +865,7 @@ function warunekParametru({ parametr, pw, pod, pdo, pbez }, czesci, params) {
  * Po filtrze braków idzie zaznaczenie calej listy i edycja hurtem — cicho zignorowany
  * filtr znaczylby hurtowa zmiane na calym katalogu zamiast na dwudziestu brakach.
  */
-function warunkiKart({ fraza, filtry = {} }) {
+function warunkiKart({ fraza, filtry = {}, kanalyErli = [] }) {
   const czesci = ['1 = 1'];
   const params = [];
   if (filtry.oferty != null) {
@@ -914,7 +914,28 @@ function warunkiKart({ fraza, filtry = {} }) {
     czesci.push('w.marka = ?');
     params.push(marka);
   }
-  if (kanal || cenaOd != null || cenaDo != null) {
+  // ⚠️ KONTO ERLI NIE MA LUSTRA — jego cena i obecnosc to AKTYWNA oferta z rejestru (`ok`, nie
+  // `p`/`pf`, z tego samego powodu co alias nizej). Cena: odczytana z ERLI, a bez odczytu wyslana —
+  // ta sama, ktora pokazuje kolumna. Oferta w innym stanie nie jest w sprzedazy, wiec nie zaweza.
+  const cenaErli = 'COALESCE(ok.odczyt_cena_gr, ok.wyslana_cena_gr)';
+  const ofertaErli = (warunekKanalu, paramsKanalu) => {
+    const pod = ['ok.karta_id = w.id', warunekKanalu, "ok.stan = 'aktywna'"];
+    const p = [...paramsKanalu];
+    if (cenaOd != null) {
+      pod.push(`${cenaErli} >= ?`);
+      p.push(Number(cenaOd));
+    }
+    if (cenaDo != null) {
+      pod.push(`${cenaErli} <= ?`);
+      p.push(Number(cenaDo));
+    }
+    return { sql: `EXISTS (SELECT 1 FROM oferty_kanalow ok WHERE ${pod.join(' AND ')})`, params: p };
+  };
+  if (kanal && kanalyErli.includes(kanal)) {
+    const erli = ofertaErli('ok.kanal = ?', [kanal]);
+    czesci.push(erli.sql);
+    params.push(...erli.params);
+  } else if (kanal || cenaOd != null || cenaDo != null) {
     const pod = ['pf.karta_id = w.id', 'pf.zniknal_at IS NULL', "COALESCE(pf.status_publikacji, '') != 'draft'"];
     if (kanal) {
       pod.push('pf.kanal = ?');
@@ -928,7 +949,15 @@ function warunkiKart({ fraza, filtry = {} }) {
       pod.push('pf.cena_gr <= ?');
       params.push(Number(cenaDo));
     }
-    czesci.push(`EXISTS (SELECT 1 FROM produkty_sklepowe pf WHERE ${pod.join(' AND ')})`);
+    const lustro = `EXISTS (SELECT 1 FROM produkty_sklepowe pf WHERE ${pod.join(' AND ')})`;
+    // Zakres ceny bez kanalu obejmuje wszystkie kolumny listy — takze konta ERLI.
+    if (!kanal && kanalyErli.length) {
+      const erli = ofertaErli(`ok.kanal IN (${kanalyErli.map(() => '?').join(', ')})`, kanalyErli);
+      czesci.push(`(${lustro} OR ${erli.sql})`);
+      params.push(...erli.params);
+    } else {
+      czesci.push(lustro);
+    }
   }
 
   // ⚠️ KATEGORIA SZUKA WE WSZYSTKICH KATEGORIACH PRODUKTU, nie tylko w `karty.kategoria_glowna`.
@@ -1025,9 +1054,9 @@ function kolumnyBez(db, tabela, alias, pomin) {
  * eksportu i karty. Kolumny wyliczone z tabeli z POMINIECIEM opisow, a nie wypisane wprost —
  * nowa kolumna karty ma trafic na liste sama, jak przy `w.*`.
  */
-export function kartyZKanalami(db, { fraza, filtry, sort, kier, kolumny, limit = null } = {}) {
+export function kartyZKanalami(db, { fraza, filtry, sort, kier, kolumny, limit = null, kanalyErli = [] } = {}) {
   if (filtry?.kategoria) zarejestrujDekodowanie(db);
-  const warunki = warunkiKart({ fraza, filtry });
+  const warunki = warunkiKart({ fraza, filtry, kanalyErli });
   const wgStanu = czyFiltrStanu(filtry?.stan);
   const zrodlo = wgStanu ? 'karty_produktow w JOIN json_each(?) stan ON w.id = stan.value' : 'karty_produktow w';
   const gdzie = filtry?.stan && !wgStanu ? '1 = 0' : warunki.gdzie;
@@ -1094,7 +1123,7 @@ export function kartyZKanalami(db, { fraza, filtry, sort, kier, kolumny, limit =
   const oferty = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'oferty_kanalow'").get()
     ? db
         .prepare(
-          `SELECT karta_id, kanal, stan, blad FROM oferty_kanalow WHERE karta_id IN (${wyborKart}) ORDER BY kanal, id`,
+          `SELECT karta_id, kanal, stan, blad, odczyt_cena_gr, wyslana_cena_gr FROM oferty_kanalow WHERE karta_id IN (${wyborKart}) ORDER BY kanal, id`,
         )
         .all(...parametryKart)
     : [];

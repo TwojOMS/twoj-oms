@@ -134,15 +134,26 @@ describe('filtr przewoźnika po prawdziwym przewoźniku', () => {
 });
 
 describe('kolumna Kurier i numer listu', () => {
-  it('logo przewoźnika z alt = nazwa; dla Allegro pod logo nazwa usługi (z pobraniem)', async () => {
+  it('plakietka przewoźnika; dla Allegro w niej pełna nazwa usługi (z pobraniem)', async () => {
     const r = await pobierz('/przesylki?pokaz=wszystkie');
     const [, kurierDpd] = komorki(wiersz(r.body, 'DPD-WLASNA'));
-    expect(kurierDpd).toContain('<img class="prz067-logo" src="/public/przewoznicy/dpd.svg" alt="DPD"');
+    expect(kurierDpd).toContain('<span class="plakietka plakietka--dpd" title="DPD">DPD</span>');
+    expect(kurierDpd).not.toContain('<img');
     const [, kurierAll] = komorki(wiersz(r.body, 'AD-ALL'));
-    expect(kurierAll).toContain('src="/public/przewoznicy/dpd.svg" alt="DPD"');
+    expect(kurierAll).toContain('plakietka plakietka--dpd');
     expect(kurierAll).toContain('Allegro Kurier DPD pobranie');
     const [, kurierOne] = komorki(wiersz(r.body, 'ONE-1'));
-    expect(kurierOne).toContain('src="/public/przewoznicy/allegro-one.png" alt="Allegro One"');
+    expect(kurierOne).toContain('plakietka plakietka--allegro-one');
+  });
+
+  it('paczka Przesyłek Erli dostaje turkusową plakietkę z nazwą przewoźnika albo ogólną', async () => {
+    paczka({ kurier: 'erli_przesylki', numer: 'ERLI-DPD', metoda: 'dpd', sklep: 'erli' });
+    paczka({ kurier: 'erli_przesylki', numer: 'ERLI-NIEZN', metoda: 'allegro_punkt', sklep: 'erli' });
+    const r = await pobierz('/przesylki?pokaz=wszystkie');
+    const [, znany] = komorki(wiersz(r.body, 'ERLI-DPD'));
+    expect(znany).toContain('<span class="plakietka plakietka--erli" title="Erli DPD">Erli DPD</span>');
+    const [, ogolny] = komorki(wiersz(r.body, 'ERLI-NIEZN'));
+    expect(ogolny).toContain('<span class="plakietka plakietka--erli" title="Przesyłki Erli">Przesyłki Erli</span>');
   });
 
   it('numer listu to link śledzenia przewoźnika w nowej karcie', async () => {

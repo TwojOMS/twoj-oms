@@ -315,7 +315,8 @@ export const PRODUKTY_KATALOGU = Array.from({ length: 119 }, (_, i) => {
     nazwa: `${nazwa} ${numer + 21}`,
     kategoria,
     cena_gr: (39 + ((numer * 47) % rozstepCeny)) * 100 + [0, 90, 99][i % 3],
-    kanaly: ['polcien'],
+    // Co druga karta ma też Allegro, żeby górę listy Magazynu po nazwie nie zajmował sam sklep i ERLI.
+    kanaly: i % 2 === 0 ? ['polcien', 'allegro'] : ['polcien'],
   };
 });
 

@@ -5,6 +5,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import ejs from 'ejs';
+import { createHash, createHmac } from 'node:crypto';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { modulyDla } from '../../../src/moduly/lista.ts';
 import { ENV_DEMO } from '../../../scripts/demo-dane.mjs';
@@ -239,6 +240,33 @@ describe('T-D2 — zatwierdzenie podglądu i zapis cen w kanałach', () => {
     const wynik = await zapis.zatwierdz('anna', p.podpis, klucze(p));
     expect(krotko(wynik.zapisane)).toEqual([{ kartaId: k, cel: 'produkt:1', wynik: 'ok' }]);
     expect(sklep.cena('1')).toBe('110.00');
+  });
+
+  it('podpis podglądu obejmuje tylko wiersze do wysłania — listy pominiętych i bez zmian są poza nim', async () => {
+    const doWyslania = karta();
+    const bezCeny = karta(null);
+    const bezOferty = karta();
+    lustro(doWyslania, 'sklep', 1);
+    lustro(bezCeny, 'sklep', 2);
+    const sklep = sklepWoo([produkt(1), produkt(2)]);
+    const { zapis } = usluga([definicja('sklep')], { sklep: sklep.klient });
+
+    const p = await zapis.podglad('anna', [doWyslania, bezCeny, bezOferty]);
+    expect(p.wiersze.map((w) => w.kartaId)).toEqual([doWyslania]);
+    expect(p.pominieteWiersze.map((w) => w.kartaId)).toEqual([bezCeny, bezOferty]);
+    // Skrót liczony niezależnie od usługi: gdyby objął listy do wyświetlenia, podpis by się nie zgadzał.
+    const [id, czas, mac] = p.podpis.split('.');
+    const skrot = createHash('sha256')
+      .update(JSON.stringify(p.wiersze.map((w) => [w.klucz, w.kartaId, w.staraGr, w.nowaGr, w.zrodlo])))
+      .digest('hex');
+    const oczekiwany = createHmac('sha256', Buffer.from('sekret testowy pracowni półcień'))
+      .update(JSON.stringify(['anna', id, skrot, Number(czas)]))
+      .digest('hex');
+    expect(mac).toBe(oczekiwany);
+
+    const wynik = await zapis.zatwierdz('anna', p.podpis, klucze(p));
+    expect(krotko(wynik.zapisane)).toEqual([{ kartaId: doWyslania, cel: 'produkt:1', wynik: 'ok' }]);
+    await expect(zapis.zatwierdz('anna', p.podpis, ['sklep|produkt:2'])).rejects.toMatchObject({ kod: 'wybor' });
   });
 
   it('cena karty albo narzut zmienione po podglądzie odrzucają całość, zanim cokolwiek wyjdzie', async () => {

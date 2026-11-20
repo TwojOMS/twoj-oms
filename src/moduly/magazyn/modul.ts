@@ -324,7 +324,21 @@ export const modulMagazyn: ModulOms<KonfiguracjaMagazynu> = {
           kontaAllegro,
           definicje: config.definicje,
           trescAllegro: ctx.usluga('magazyn', 'trescAllegro'),
-          pomoc: createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicje: config.definicje }),
+          pomoc: createPomocnikiMagazynu({
+            kanalySklepow,
+            kanalyAllegro,
+            // Same klucze kont ERLI — bez budowania katalogu i klienta, bo lista czyta je przy każdym żądaniu.
+            kanalyErli: listaNaZadanie(() => {
+              const repo = repozytorium();
+              return repo
+                ? repo
+                    .listaTypu('erli')
+                    .filter((k) => wszyscyKlienci[k.klucz])
+                    .map((k) => k.klucz)
+                : [];
+            }),
+            definicje: config.definicje,
+          }),
           karta: createKartaMagazynu({
             db: ctx.db,
             kanalyAllegro,

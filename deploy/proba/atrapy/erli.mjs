@@ -196,11 +196,11 @@ function zamowieniaStartowe(data, { demo = false } = {}) {
     zip: '00-001',
     phone: '500100200',
   };
-  // Godziny względem chwili zasiewu: świeże przeplatają się z innymi kanałami,
-  // pozostałe pokazują ostatnie dni i tygodnie, także po kolejnym resecie demo.
-  // PRZ-160.demo (właściciel 14.11: „zwiększ Erli do 30 zamówień, czyli ok. połowę Allegro”): 16 scenariuszy (0–15) bez zmian,
-  // 16 (PC-ERLI-0017) świeży duży koszyk z 5 różnymi produktami u góry listy (właściciel 14.11), od 17 starsze wysłane
-  // zamówienia z 31–56 dni — 30 importowanych (pending 0006 poller pomija), jak 60 dni innych kanałów.
+  // Godziny względem chwili zasiewu. W demo góra listy jest ustalona: Allegro One Kurier, sklep DPD z fakturą,
+  // potem ERLI z paczkomatem (wiek 0, kotwica tuż pod generatorem); reszta ERLI to ostatnie dni i tygodnie.
+  // 16 scenariuszy (0–15) kanału własnego bez zmian, 16 (PC-ERLI-0017) świeży duży koszyk z 5 różnymi produktami
+  // na pierwszej stronie, od 17 starsze wysłane zamówienia z 31–56 dni — 30 importowanych (pending 0006 poller
+  // pomija), jak 60 dni innych kanałów.
   const wiekGodziny = [
     0, 10, 27, 50, 77, 100, 130, 155, 185, 240, 310, 380, 450, 530, 620, 720, 5, 760, 805, 850, 895, 940, 985, 1030,
     1075, 1120, 1165, 1210, 1255, 1300, 1345,
@@ -226,9 +226,10 @@ function zamowieniaStartowe(data, { demo = false } = {}) {
         : [pozycja(i, i % 4 === 0 ? 2 : 1), ...(i % 4 === 0 ? [pozycja((i + 1) % 16)] : [])];
     const typeId =
       [
+        // Demo: u góry listy ERLI z paczkomatem; kanał własny zostaje przy scenariuszach 0–15 bez zmian.
+        demo ? 'erliPaczkomat' : 'dpd',
         'dpd',
-        'dpd',
-        'erliPaczkomat',
+        demo ? 'dpd' : 'erliPaczkomat',
         'dpd',
         'paczkomat',
         'odbiorOsobisty',
@@ -416,8 +417,17 @@ export function createAtrapaErli({
       throw e;
     }
   }
+  // Demo: ten sam zegar co generator — najświeższe ERLI tuż pod jego dwoma ostatnimi zamówieniami (góra listy
+  // ustalona niezależnie od godziny resetu). Bez demo albo przy pustej bazie: dwie godziny przed chwilą zasiewu.
+  function kotwicaZasiewu() {
+    const jestTabela =
+      demoZmiany && db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='zamowienia'").get();
+    const najnowsze = jestTabela ? db.prepare('SELECT MAX(utworzone_at) AS at FROM zamowienia').get()?.at : null;
+    const ms = najnowsze ? Date.parse(najnowsze) : NaN;
+    return Number.isFinite(ms) ? ms - 2 * 60000 : new Date(teraz()).getTime() - 2 * 3600000;
+  }
   function zasiej() {
-    const czas = new Date(new Date(teraz()).getTime() - 2 * 3600000).toISOString();
+    const czas = new Date(kotwicaZasiewu()).toISOString();
     for (const [i, z] of zamowieniaStartowe(czas, { demo: demoZmiany }).entries()) {
       zapisz('zamowienie', z.id, z);
       const id = String(i + 1).padStart(24, '0');

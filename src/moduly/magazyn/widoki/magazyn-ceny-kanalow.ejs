@@ -2,15 +2,25 @@
 <%- include('../../../core/web/widoki/_naglowek-ekranu.ejs', { tytul: title }) %>
 
 <% if (podglad) { %>
+<%
+  const doWyslania = podglad.wiersze.length;
+  const licznik = (napis, n, kotwica) => ({ napis, n, kotwica: n ? kotwica : null });
+  const liczniki = [
+    licznik('Do wysłania', doWyslania, null),
+    licznik('Bez zmian', podglad.bezZmianWiersze.length, 'bez-zmian'),
+    licznik('Pominięte', podglad.pominieteWiersze.length, 'pominiete'),
+  ];
+%>
 <section class="panel" aria-labelledby="ceny-podglad-tytul">
   <div class="panel-glowa">
     <h2 id="ceny-podglad-tytul">Pozycje do sprawdzenia</h2>
   </div>
   <div class="panel-cialo">
-    <p>Bez zmian: <strong><%= podglad.bezZmian %></strong> · Pominięte: <strong><%= podglad.pominiete %></strong></p>
-    <% if (!podglad.wiersze.length) { %>
+    <p class="magazyn-ceny-liczniki"><% liczniki.forEach((l, i) => { %><%= i ? ' · ' : '' %><%= l.napis %>: <% if (l.kotwica) { %><a href="#<%= l.kotwica %>"><strong><%= l.n %></strong></a><% } else { %><strong><%= l.n %></strong><% } %><% }); %></p>
+    <% if (!doWyslania && !podglad.pominieteWiersze.length && !podglad.bezZmianWiersze.length) { %>
       <p>Brak pozycji do wyświetlenia.</p>
-    <% } else { %>
+    <% } %>
+    <% if (doWyslania) { %>
       <form method="post" action="/magazyn/ceny-kanalow/zatwierdz" aria-labelledby="ceny-podglad-tytul">
         <input type="hidden" name="podpis" value="<%= podglad.podpis %>">
         <% if (kartaId) { %><input type="hidden" name="karty" value="<%= kartaId %>"><% } %>
@@ -18,6 +28,7 @@
           <table class="tresc-lista magazyn-ceny-tabela">
             <thead>
               <tr>
+                <th scope="col" id="ceny-kol-wyslij" class="magazyn-ceny-kol-wybor">Wyślij</th>
                 <th scope="col">Oferta i kanał</th>
                 <th scope="col">Cena</th>
                 <th scope="col">Uwagi</th>
@@ -26,6 +37,14 @@
             <tbody>
             <% podglad.wiersze.forEach((w, i) => { %>
               <tr>
+                <td class="magazyn-ceny-kol-wybor">
+                  <% if (w.doWyboru) { %>
+                  <label class="magazyn-ceny-wybor">
+                    <input type="checkbox" id="cena-<%= i %>" name="<%= w.klucz %>" value="1"
+                      aria-labelledby="ceny-kol-wyslij oferta-<%= i %>"<% if (w.zaznaczony) { %> checked<% } %>>
+                  </label>
+                  <% } %>
+                </td>
                 <th scope="row">
                   <div id="oferta-<%= i %>" class="magazyn-ceny-oferta">
                     <% if (w.adres) { %>
@@ -33,13 +52,6 @@
                     <% } else { %><%= w.nazwa || w.cel %><% } %>
                   </div>
                   <div class="wiersz-szczegoly"><%= w.etykietaKanalu %></div>
-                  <% if (w.doWyboru) { %>
-                    <label class="magazyn-ceny-wybor" id="wybor-<%= i %>" for="cena-<%= i %>">
-                      <input type="checkbox" id="cena-<%= i %>" name="<%= w.klucz %>" value="1"
-                        aria-labelledby="wybor-<%= i %> oferta-<%= i %>"<% if (w.zaznaczony) { %> checked<% } %>>
-                      Wyślij
-                    </label>
-                  <% } %>
                 </th>
                 <td>
                   <span class="magazyn-ceny-kwota"><%= w.cenaObecna %></span> →
@@ -58,6 +70,69 @@
           <p><button type="submit" class="btn btn--glowny">Wyślij zaznaczone ceny</button></p>
         <% } %>
       </form>
+    <% } %>
+    <% if (podglad.pominieteWiersze.length) { %>
+      <section id="pominiete" class="magazyn-ceny-sekcja" aria-labelledby="ceny-pominiete-tytul">
+        <h3 id="ceny-pominiete-tytul">Pominięte (<%= podglad.pominieteWiersze.length %>)</h3>
+        <div class="przewijak-tabeli" tabindex="0" role="region" aria-labelledby="ceny-pominiete-tytul">
+          <table class="tresc-lista magazyn-ceny-tabela">
+            <thead>
+              <tr>
+                <th scope="col">Oferta i kanał</th>
+                <th scope="col">Cena</th>
+                <th scope="col">Powód</th>
+              </tr>
+            </thead>
+            <tbody>
+            <% for (const w of podglad.pominieteWiersze) { %>
+              <tr>
+                <th scope="row">
+                  <div class="magazyn-ceny-oferta">
+                    <% if (w.adres) { %><a href="<%= w.adres %>"><%= w.nazwa || w.cel %></a><% } else { %><%= w.nazwa || w.cel %><% } %>
+                  </div>
+                  <% if (w.etykietaKanalu) { %><div class="wiersz-szczegoly"><%= w.etykietaKanalu %></div><% } %>
+                </th>
+                <td>
+                  <% if (w.kanal) { %>
+                    <span class="magazyn-ceny-kwota"><%= w.cenaObecna %></span> →
+                    <span class="magazyn-ceny-kwota"><%= w.cenaDocelowa %></span>
+                  <% } else { %>—<% } %>
+                </td>
+                <td><%= w.uwagi.join(' · ') %></td>
+              </tr>
+            <% } %>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    <% } %>
+    <% if (podglad.bezZmianWiersze.length) { %>
+      <details id="bez-zmian" class="magazyn-ceny-sekcja">
+        <summary><h3>Bez zmian (<%= podglad.bezZmianWiersze.length %>)</h3></summary>
+        <div class="przewijak-tabeli" tabindex="0" role="region" aria-label="Bez zmian">
+          <table class="tresc-lista magazyn-ceny-tabela">
+            <thead>
+              <tr>
+                <th scope="col">Oferta i kanał</th>
+                <th scope="col">Cena w kanale</th>
+              </tr>
+            </thead>
+            <tbody>
+            <% for (const w of podglad.bezZmianWiersze) { %>
+              <tr>
+                <th scope="row">
+                  <div class="magazyn-ceny-oferta">
+                    <% if (w.adres) { %><a href="<%= w.adres %>"><%= w.nazwa || w.cel %></a><% } else { %><%= w.nazwa || w.cel %><% } %>
+                  </div>
+                  <div class="wiersz-szczegoly"><%= w.etykietaKanalu %></div>
+                </th>
+                <td><span class="magazyn-ceny-kwota"><%= w.cenaObecna %></span></td>
+              </tr>
+            <% } %>
+            </tbody>
+          </table>
+        </div>
+      </details>
     <% } %>
   </div>
 </section>

@@ -156,7 +156,8 @@ describe('podgląd cen — ERLI', () => {
     oferta(karta(10000), 'E-9', { zarzadzana: false });
     const erli = kontoErli({ 'E-9': { price: 9000 } });
     const p = await podgladCen(db, [1], { definicje: [definicja('erli')], klienci: { erli: erli.klient } });
-    expect(p.wiersze).toEqual([
+    expect(p.wiersze).toEqual([]);
+    expect(p.pominieteWiersze).toEqual([
       expect.objectContaining({ cel: 'oferta:E-9', staraGr: null, uwagi: [NIEZARZADZANA], doWyboru: false }),
     ]);
     expect(p.pominiete).toBe(1);
@@ -174,11 +175,11 @@ describe('podgląd cen — ERLI', () => {
       'E-3': { price: 9000, frozen: ['name'] },
     });
     const p = await podgladCen(db, [1, 2, 3], { definicje: [definicja('erli')], klienci: { erli: erli.klient } });
-    expect(p.wiersze.map((w) => [w.cel, w.doWyboru, w.uwagi])).toEqual([
+    expect(p.pominieteWiersze.map((w) => [w.cel, w.doWyboru, w.uwagi])).toEqual([
       ['oferta:E-1', false, ['produkt zarchiwizowany w ERLI — pominięte']],
       ['oferta:E-2', false, ['cena zablokowana w ERLI ręczną zmianą — pominięte']],
-      ['oferta:E-3', true, []],
     ]);
+    expect(p.wiersze.map((w) => [w.cel, w.doWyboru, w.uwagi])).toEqual([['oferta:E-3', true, []]]);
   });
 });
 
@@ -261,7 +262,8 @@ describe('zapis cen — ERLI', () => {
     const u = usluga(['erli'], { erli: erli.klient });
 
     const wstrzymane = await u.podglad('ola', [1]);
-    expect(wstrzymane.wiersze).toEqual([expect.objectContaining({ uwagi: [WSTRZYMANE], doWyboru: false })]);
+    expect(wstrzymane.wiersze).toEqual([]);
+    expect(wstrzymane.pominieteWiersze).toEqual([expect.objectContaining({ uwagi: [WSTRZYMANE], doWyboru: false })]);
     expect(erli.odczyty).toEqual([]);
 
     zapiszUstawieniaOfertKonta(db, 'erli', { czynne: true });

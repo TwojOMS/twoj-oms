@@ -438,3 +438,18 @@ it('przy włączonych stanach magazynowych brak stałej ilości nie blokuje i ni
   expect(r.body).not.toContain('name="stalaIlosc"');
   expect(wierszKarty(r.body, id)).toBe(true);
 });
+it('akcja Wystaw oferty na liście ma podgląd tylko dla zaznaczonych, bez zakresu wszystkich pasujących', async () => {
+  const r = await get('/magazyn');
+  expect(r.statusCode).toBe(200);
+  expect(r.body).toContain('<summary aria-controls="oferty-pasek">Wystaw oferty</summary>');
+  const cialo = /<section[^>]*id="oferty-pasek"[^>]*>([\s\S]*?)<\/section>/.exec(r.body)?.[1] ?? '';
+  expect(cialo).toContain('value="zaznaczone">Pokaż podgląd — dla zaznaczonych');
+  expect(cialo).not.toContain('value="pasujace"');
+  expect(cialo).not.toContain('dla wszystkich pasujących');
+});
+it('pusty podgląd ofert nie odsyła do przycisku, którego już nie ma', async () => {
+  const r = await post('/magazyn/oferty/podglad', { konto: kanal, zakres: 'zaznaczone' });
+  expect(r.statusCode).toBe(400);
+  expect(r.body).toContain('Zaznacz co najmniej jedną kartę.');
+  expect(r.body).not.toContain('dla wszystkich pasujących');
+});

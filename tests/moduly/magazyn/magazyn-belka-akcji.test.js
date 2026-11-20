@@ -15,7 +15,7 @@ describe('belka akcji magazynu', () => {
     // indexOf na golym slowie trafia w proze, a nie w element (i przycina wycinek za wczesnie).
     const belka = widok.slice(widok.indexOf('class="belka-akcji"'), widok.indexOf('class="przewijak-tabeli"'));
     expect((belka.match(/<details class="akcja" name="akcja"/g) ?? []).length).toBe(4);
-    expect([...belka.matchAll(/<summary>([^<]*)<\/summary>/g)].map((m) => m[1])).toEqual([
+    expect([...belka.matchAll(/<summary[^>]*>([^<]*)<\/summary>/g)].map((m) => m[1])).toEqual([
       'Wystaw oferty',
       'Edytuj',
       'Nadaj SKU',
@@ -26,6 +26,49 @@ describe('belka akcji magazynu', () => {
     // regula (trwanie i blad odczytu), ale tutaj bylby wylacznie ozdoba: cztery ciala
     // rozwiniete naraz to dokladnie ten ekran, ktory ta przebudowa zwija.
     expect(belka).not.toMatch(/<details class="akcja" name="akcja"[^>]*\bopen\b/);
+  });
+
+  it('chipy akcji stoją w jednym wierszu, a ciała akcji dopiero za nimi', () => {
+    const belka = widok.slice(widok.indexOf('class="belka-akcji"'), widok.indexOf('class="tabela-glowa"'));
+    const pierwszeCialo = belka.indexOf('class="akcja-cialo');
+    expect(pierwszeCialo).toBeGreaterThan(-1);
+    // Ciało wewnątrz <details> łamie wiersz belki pod SWOIM chipem i spycha dalsze chipy w dół.
+    const chipy = [...belka.matchAll(/<details class="akcja"[\s\S]*?<\/details>/g)].map((m) => m[0]);
+    expect(chipy).toHaveLength(4);
+    for (const chip of chipy) {
+      expect(chip).not.toContain('akcja-cialo');
+      expect(belka.indexOf(chip)).toBeLessThan(pierwszeCialo);
+    }
+    // Każdy chip wskazuje swoje ciało, a ciało stoi w belce (ten sam formularz co tabela).
+    const cele = chipy.map((chip) => /<summary aria-controls="([^"]+)">/.exec(chip)?.[1]);
+    expect(cele).toEqual(['oferty-pasek', 'hurt-pasek', 'sku-pasek', 'zapis-pasek']);
+    for (const id of cele) {
+      expect(belka.slice(belka.lastIndexOf('<', pierwszeCialo))).toMatch(
+        new RegExp(`<section class="akcja-cialo[^"]*" id="${id}"`),
+      );
+    }
+  });
+
+  it('Enter w polu akcji nie wysyła cen do kanałów', () => {
+    // Enter w polu formularza klika PIERWSZY przycisk submit w kolejności znaczników. Przycisk
+    // cen stoi więc w znacznikach za ciałami akcji, a do wiersza chipów wraca regułą `order`.
+    const belka = widok.slice(widok.indexOf('class="belka-akcji"'), widok.indexOf('class="tabela-glowa"'));
+    const pierwszySubmit = belka.indexOf('type="submit"');
+    expect(pierwszySubmit).toBeGreaterThan(-1);
+    expect(belka.indexOf('formaction="/magazyn/ceny-kanalow/podglad"')).toBeGreaterThan(pierwszySubmit);
+    expect(layout).toMatch(/\.belka-akcji > \.akcja-cialo \{[^}]*\border: 1;/);
+  });
+
+  it('ciało widać tylko przy otwartym chipie', () => {
+    for (const [chip, cialo] of [
+      ['akcja-oferty', 'oferty-pasek'],
+      ['akcja-edytuj', 'hurt-pasek'],
+      ['akcja-sku', 'sku-pasek'],
+      ['akcja-zapis', 'zapis-pasek'],
+    ]) {
+      expect(widok).toContain(`id="${chip}"`);
+      expect(layout).toContain(`.belka-akcji:not(:has(#${chip}[open])) #${cialo}`);
+    }
   });
 
   it('belka stoi NAD przewijakiem tabeli, nie w nim ani pod nim', () => {
@@ -69,7 +112,7 @@ describe('belka akcji magazynu', () => {
     // hurt bez formaction — trafia w action formularza:
     expect(widok).toContain('action="/magazyn/hurt"');
     expect((widok.match(/name="zakres" value="zaznaczone"/g) ?? []).length).toBe(4);
-    expect((widok.match(/name="zakres" value="pasujace"/g) ?? []).length).toBe(3);
+    expect((widok.match(/name="zakres" value="pasujace"/g) ?? []).length).toBe(2);
     // ⚠️ LICZBA, NIE OBECNOSC: duplikat ukrytego `zawezenie` (pole powtorzone przy kolejnej
     // akcji) wraca z Fastify TABLICA, `pole()` scina ja do null i caly hurtowy zakres znika
     // po cichu w formularzu, ktory go ustawia — `toContain` by tego nie zlapal, bo string

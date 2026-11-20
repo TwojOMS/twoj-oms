@@ -187,7 +187,7 @@ describe('cena katalogowa hurtem — plan (domena)', () => {
 describe('cena katalogowa hurtem — podgląd i zatwierdzenie', () => {
   it('pasek „Edytuj” ma tryb, wartość ze znakiem i zaokrąglenie', async () => {
     const r = await app.inject({ method: 'GET', url: '/magazyn', headers });
-    const pasek = /<details[^>]*id="hurt-pasek"[\s\S]*?<\/details>/.exec(r.body)[0];
+    const pasek = /<section[^>]*id="hurt-pasek"[\s\S]*?<\/section>/.exec(r.body)[0];
     // Wiersz ceny pojawia się dopiero po wybraniu pozycji, więc tryb nie potrzebuje pustej opcji.
     expect(pasek).toMatch(
       /<select name="cena_tryb"[^>]*>\s*<option value="o_procent">zmień o %<\/option>\s*<option value="o_kwote">zmień o kwotę \(zł\)<\/option>\s*<option value="na_kwote">ustaw kwotę \(zł\)<\/option>/,

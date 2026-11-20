@@ -43,7 +43,7 @@ function serwer(dodatki = {}) {
 async function panel(dodatki) {
   const r = await serwer(dodatki).inject({ method: 'GET', url: '/magazyn', headers: auth });
   expect(r.statusCode).toBe(200);
-  const m = /<details[^>]*id="hurt-pasek"[\s\S]*?<\/details>/.exec(r.body);
+  const m = /<section[^>]*id="hurt-pasek"[\s\S]*?<\/section>/.exec(r.body);
   if (!m) throw new Error('Na ekranie nie ma panelu „hurt-pasek"');
   return m[0];
 }

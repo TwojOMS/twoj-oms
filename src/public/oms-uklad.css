@@ -1693,9 +1693,16 @@
     .magazyn-ceny-oferta { font-weight: 600; }
     .magazyn-ceny-kwota { white-space: nowrap; }
     .magazyn-ceny-wybor {
-      display: inline-flex; align-items: center; gap: .35rem; min-height: 44px; min-width: 44px;
+      display: inline-flex; align-items: center; justify-content: center; gap: .35rem; min-height: 44px; min-width: 44px;
       font-size: .85rem; font-weight: 400; cursor: pointer;
     }
+    /* Pole wyboru we własnej wąskiej kolumnie z lewej, żeby nie dokładało wierszowi linii pod nazwą. */
+    .magazyn-ceny-tabela .magazyn-ceny-kol-wybor { width: 1%; white-space: nowrap; padding-inline: .25rem; text-align: center; vertical-align: top; }
+    .magazyn-ceny-liczniki a { color: var(--link); }
+    .magazyn-ceny-sekcja { margin-top: 1.5rem; }
+    .magazyn-ceny-sekcja h3 { margin: 0 0 .5rem; font-size: .95rem; }
+    details.magazyn-ceny-sekcja > summary { cursor: pointer; width: fit-content; }
+    details.magazyn-ceny-sekcja > summary h3 { display: inline; }
     @media (max-width: 540px) {
       .magazyn-ceny-tabela th, .magazyn-ceny-tabela td { padding: .5rem .35rem; }
     }
@@ -1772,22 +1779,25 @@
     /* ⚠️⚠️ `overflow` na DOWOLNYM przodku zabija `position: sticky` — tabela przewija sie     */
     /* we WLASNYM wrapperze PONIZEJ belki i tak ma zostac. Belka wciagnieta do tego wrappera  */
     /* (albo owinieta nowym) odkleja sie PO CICHU: znacznik i klasy wygladaja poprawnie.      */
-    /* ⚠️ Cialo otwartej akcji lamie wiersz belki pod swoim chipem, a chipy dalszych akcji    */
-    /* schodza pod nie: flex `order` NIE PRZECHODZI przez shadow-sloty `<details>`. Zmierzone */
-    /* na makiecie, swiadome — nie „poprawiac" trikami.                                        */
+    /* ⚠️ Chipy akcji stoja zawsze w jednym wierszu, cialo otwartej akcji pod nimi. Ciala      */
+    /* stoja w znacznikach ZA chipami (poza `<details>`), bo cialo w `<details>` lamaloby     */
+    /* wiersz pod swoim chipem i spychalo dalsze chipy w dol.                                  */
     .belka-akcji { position: sticky; top: 0; z-index: 5;
       display: flex; flex-wrap: wrap; align-items: center; gap: .45rem .6rem;
       background: var(--marka); color: var(--na-marce); border-radius: .4rem;
       padding: .5rem .75rem; margin: 0 0 .7rem; font-size: .88rem; }
     .belka-akcji-etykieta { font-weight: 600; }
-    /* `display: contents` — chip i cialo maja byc DZIECMI belki (jednym wierszem flexa),     */
-    /* a nie lezec w osobnym pudelku `<details>` obok siebie.                                  */
+    /* `display: contents` — chip ma byc DZIECKIEM belki (elementem jej wiersza flexa).     */
     .belka-akcji details.akcja { display: contents; }
-    /* Chrome i Firefox owijaja tresc `<details>` w `::details-content`; bez tego to pudelko,  */
-    /* a nie `.akcja-cialo`, jest elementem flexa belki — krotkie cialo bierze szerokosc     */
-    /* tresci i chipy dalszych akcji wskakuja obok niego. Tylko `[open]`: zamknieta akcja    */
-    /* chowa cialo wlasnie przez `::details-content`, `contents` wypuscilby je na ekran.     */
-    .belka-akcji details.akcja[open]::details-content { display: contents; }
+    /* Cialo widac tylko przy otwartym chipie; wykluczanie robi `name="akcja"` na `<details>`. */
+    /* Zwiniete cialo dalej wysyla swoje pola — tak bylo, gdy siedzialo w `<details>`.        */
+    .belka-akcji:not(:has(#akcja-oferty[open])) #oferty-pasek,
+    .belka-akcji:not(:has(#akcja-edytuj[open])) #hurt-pasek,
+    .belka-akcji:not(:has(#akcja-sku[open])) #sku-pasek,
+    .belka-akcji:not(:has(#akcja-zapis[open])) #zapis-pasek { display: none; }
+    /* Przycisk cen stoi w znacznikach ZA cialami (Enter w polu akcji klika pierwszy submit),  */
+    /* a `order` cial oddaje go wierszowi chipow.                                              */
+    .belka-akcji > .akcja-cialo { order: 1; }
     .belka-akcji summary { list-style: none; cursor: pointer; white-space: nowrap;
       padding: .28rem .6rem; border-radius: .3rem; font-size: .85rem; font-weight: 500;
       border: 1px solid var(--marka-ramka); background: var(--marka-ciemniej); color: var(--na-marce); }

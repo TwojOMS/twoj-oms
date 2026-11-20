@@ -467,12 +467,25 @@ describe('nazwa programu w tekstach i widokach', () => {
     for (const m of metody) atrapaRzuca.add(m);
   };
 
+  // Ekrany rysowane po POST mają w bocznym menu liczby statusów, których wzorzec (zapisany, gdy liczył je
+  // tylko GET) nie zna. Liczby zdjęte przed skrótem reszty — pilnuje ich tests/core/menu-liczniki-po-post.test.js,
+  // a reszta ramy tych ekranów nadal znak w znak.
+  const PO_POST = new Set([
+    'faktury hurtem — podgląd',
+    'KSeF — podgląd',
+    'KSeF — wynik',
+    'bez programu: faktury hurtem — podgląd',
+  ]);
+  const bezLicznikowMenu = (k, html) =>
+    PO_POST.has(k) ? html.replace(/<span class="licznik"(?: data-status="[a-z_]+")?>[^<]*<\/span>/gu, '') : html;
+
   it('inFakt: każdy ekran programu fakturowego renderuje ten sam HTML co wzorzec (migawka)', async () => {
     const teraz = () => new Date();
     const wynik = {};
     const a = await zbudujOms({ env: envTestu(katalog), teraz, log: () => {}, nadpisania: Z_FAKTURA_ALLEGRO });
     try {
-      for (const [k, v] of Object.entries(await ekranyZProgramem(a, { awaria }))) wynik[k] = wpisMigawki(v);
+      for (const [k, v] of Object.entries(await ekranyZProgramem(a, { awaria })))
+        wynik[k] = wpisMigawki(bezLicznikowMenu(k, v));
     } finally {
       await a.app.close();
       a.db.close();
@@ -480,7 +493,7 @@ describe('nazwa programu w tekstach i widokach', () => {
     const b = await zbudujOms({ env: envTestu(katalog, { zKluczem: false }), teraz, log: () => {} });
     let c = null;
     try {
-      for (const [k, v] of Object.entries(await ekranyBezProgramu(b))) wynik[k] = wpisMigawki(v);
+      for (const [k, v] of Object.entries(await ekranyBezProgramu(b))) wynik[k] = wpisMigawki(bezLicznikowMenu(k, v));
       // Automat KSeF przy kluczu zapisanym w Ustawieniach: przed restartem („już podłączony…”), a po restarcie
       // i odłączeniu („odłączony…”) — dwa pozostałe zdania powodu bezczynności automatu.
       const zapis = await b.app.inject({

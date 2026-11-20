@@ -2,7 +2,7 @@
 // Wiersze to klony <template> wyrenderowanego przez serwer — skrypt nie składa HTML z napisów,
 // więc nazwy z bazy (marki, kategorie, parametry) przechodzą wyłącznie przez escapowanie EJS.
 
-const panel = document.querySelector('#hurt-pasek .hz');
+const panel = document.querySelector('#hurt-pasek.hz');
 if (panel) uruchom(panel);
 
 function uruchom(cialo) {

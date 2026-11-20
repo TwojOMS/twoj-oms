@@ -96,7 +96,7 @@ describe('osobny formularz klienta', () => {
     expect(html).toContain('Liczony w raportach jako kanał B2B (hurt)');
     expect(html).toContain('puste = kwota domyślna z Ustawień, 0 = wysyłka gratis');
     expect(html).toContain(
-      'doliczana jako osobna pozycja „Obsługa zamówienia”, gdy paczkę nadaje klient na swojej etykiecie',
+      'doliczana jako osobna pozycja „Obsługa zamówienia”, gdy paczkę nadaje klient na swojej etykiecie, np. zamówienia dropshipping',
     );
     for (const [pole, id] of [
       ['prog_darmowej_dostawy', 'prog-dostawy'],

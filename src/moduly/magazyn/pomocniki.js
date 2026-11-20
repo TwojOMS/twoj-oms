@@ -31,16 +31,26 @@ import { czyStawkaVat } from '../../domena/vat.js';
 import { poprawnyEan } from '../../domena/ean.js';
 import { fmtDataCzas } from '../../domena/format-daty.js';
 import { listaNaZadanie } from '../kanaly/kolekcje-na-zadanie.ts';
-export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicje }) {
+import { STANY_PO_POLSKU } from './oferty.js';
+export function createPomocnikiMagazynu({
+  kanalySklepow,
+  kanalyAllegro,
+  kanalyErli = /** @type {string[]} */ ([]),
+  definicje,
+}) {
   const adresKanalu = (klucz) => opisKanalu(klucz, definicje);
   const KANALY_SKLEPOW = kanalySklepow;
   const KANALY_ALLEGRO = kanalyAllegro;
   const KANALY_MAGAZYNU = listaNaZadanie(() => [...kanalySklepow, ...kanalyAllegro]);
+  // ERLI nie ma lustra produktów, więc nie ma go w `KANALY_MAGAZYNU` (synchronizacja, miniatury,
+  // pominięte). Na liście ma jednak kolumnę ceny i pozycję filtra — te czytają rejestr ofert.
+  const KANALY_ERLI = kanalyErli;
+  const KANALY_LISTY = listaNaZadanie(() => [...kanalySklepow, ...kanalyAllegro, ...kanalyErli]);
   // Bez sklepu Woo karty powstają z ofert Allegro — ta sama lista dla zakładania, „pominiętych” i grup.
   const KANALY_ZRODLOWE = listaNaZadanie(() => kanalyZrodloweKart(kanalySklepow, kanalyAllegro));
   // `parametry` (definicje z Ustawień) podaje lista: sprawdza filtr parametru i tłumaczy stare adresy.
   // Bez nich (zawężenie hurtu) filtr idzie surowo, a bazie zostaje oddać pusto zamiast szerzej.
-  const filtryZZapytania = (q, parametry) => filtryDomeny(q, KANALY_MAGAZYNU, parametry);
+  const filtryZZapytania = (q, parametry) => filtryDomeny(q, KANALY_LISTY, parametry);
   const ocenZapis = (w, p, j) => ocenZapisDomeny(w, p, j, kanalySklepow);
   const grupujPominiete = (p) => grupujDomeny(p, KANALY_ZRODLOWE);
   const {
@@ -71,6 +81,9 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
     zliczeniaNiepowiazanych,
   } = {
     ...dbMagazynu,
+    // Filtr kanału ERLI i zakres ceny bez kanału sięgają do rejestru ofert — baza musi wiedzieć,
+    // które klucze są kontami ERLI, a nie lustrem.
+    kartyZKanalami: (db, opcje) => dbMagazynu.kartyZKanalami(db, { ...opcje, kanalyErli: [...kanalyErli] }),
     produktyPominiete: (db) => dbMagazynu.produktyPominiete(db, KANALY_ZRODLOWE),
     utworzKartyZNiepowiazanych: (db) => dbMagazynu.utworzKartyZNiepowiazanych(db, { kanalySklepow: KANALY_ZRODLOWE }),
     zliczeniaNiepowiazanych: (db) => dbMagazynu.zliczeniaNiepowiazanych(db, kanalyAllegro),
@@ -95,14 +108,14 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
   // Z tego samego powodu widok nie dostaje stad `motyw` ani `sciezkaPowrotu` — wstawia je
   // globalny hook do KAZDEGO widoku.
 
-  // ⚠️ OSOBNA KOLUMNA NA KAZDY KANAL — kazdy sklep i kazde konto Allegro osobno (`kanalySklepow` + `kanalyAllegro`). Kolejnosc
+  // ⚠️ OSOBNA KOLUMNA NA KAZDY KANAL — kazdy sklep, kazde konto Allegro i kazde konto ERLI osobno. Kolejnosc
   // jest kolejnoscia kolumn na ekranie i JEDNYM zrodlem dla naglowka i dla wierszy — dwie
   // listy rozjechalyby sie o jedna kolumne, czyli cena z jednego sklepu wyladowalaby pod drugim.
   //
-  // ⚠️ TA SAMA LISTA JEST LISTA WARTOSCI FILTRU KANALU (`KANALY_MAGAZYNU` z domeny). Trzecia
+  // ⚠️ TA SAMA LISTA JEST LISTA WARTOSCI FILTRU KANALU (`KANALY_LISTY`). Trzecia
   // kopia rozjechalaby sie po cichu w jedna albo w druga strone: filtr oferowalby kanal,
   // ktory nie ma na ekranie kolumny, albo kolumna stalaby bez mozliwosci zawezenia do niej.
-  const KOLUMNY_KANALOW = KANALY_MAGAZYNU;
+  const KOLUMNY_KANALOW = KANALY_LISTY;
 
   // Pola, ktore FORMULARZ FILTROW wysyla SAM. Ukrytymi polami niesie wylacznie reszte —
   // wyslane dwa razy wracaja z Fastify jako TABLICA, ktora parser slusznie odrzuca do `null`,
@@ -168,7 +181,7 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
    * ⚠️ KOLEJNOSC JEST STALA, a nie „ktore znajdzie sie pierwsze w obiekcie": ta sama karta ma
    * pokazywac te sama miniature przy kazdym odswiezeniu, takze po odczycie, ktory dolozyl kanal.
    */
-  function zapisanaMiniatura(kanaly, kolumny = KOLUMNY_KANALOW) {
+  function zapisanaMiniatura(kanaly, kolumny = KANALY_MAGAZYNU) {
     for (const klucz of kolumny) {
       const adres = kanaly?.[klucz]?.miniatura;
       // Lustro bierze sie z cudzego API, a wartosc laduje wprost w atrybucie `src` naszego
@@ -185,6 +198,24 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
    *     w przygotowaniu) — kreska twierdzilaby, ze karty tam nie ma;
    *   - `{ cena: '74.90' }` → jest i kosztuje.
    */
+  /**
+   * Komorka konta ERLI z rejestru ofert. Przy kilku wpisach wygrywa aktywny (jak w plakietkach).
+   * Cena tylko dla aktywnej: odczytana z ERLI, a gdy odczytu jeszcze nie bylo — wyslana.
+   * Inny stan pokazuje stan zamiast kwoty: cena oferty, ktorej nie ma w sprzedazy, myli.
+   */
+  function komorkaErli(oferty, klucz) {
+    let wybrana = null;
+    for (const o of oferty ?? []) {
+      if (o.kanal !== klucz) continue;
+      if (!wybrana || (o.stan === 'aktywna' && wybrana.stan !== 'aktywna')) wybrana = o;
+    }
+    if (!wybrana) return null;
+    if (wybrana.stan !== 'aktywna')
+      return { cena: null, adres: null, stan: STANY_PO_POLSKU[wybrana.stan] ?? wybrana.stan };
+    const grosze = wybrana.odczyt_cena_gr ?? wybrana.wyslana_cena_gr;
+    return grosze == null ? { cena: null, adres: null, nieznana: true } : { cena: zl(grosze), adres: null };
+  }
+
   function komorkaKanalu(produkt) {
     if (!produkt) return null;
     return {
@@ -327,7 +358,7 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
   // `adresKarty` (ten sam, co na karcie), a NIE w widoku — widok niczego nie liczy.
   // `kolumny` — migawka kolumn kanałów wzięta raz na żądanie: `KOLUMNY_KANALOW` to „żywa” lista,
   // której każdy odczyt pyta konfigurację, a ten wiersz powstaje dla każdej karty z osobna.
-  function wierszKarty(w, adresPowrotuListy, kolumny = KOLUMNY_KANALOW) {
+  function wierszKarty(w, adresPowrotuListy, kolumny = KOLUMNY_KANALOW, kontaErli = new Set(KANALY_ERLI)) {
     return {
       id: w.id,
       nazwa: w.nazwa,
@@ -338,7 +369,9 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
       kategoria: w.kategoria_glowna || null,
       marka: w.marka || null,
       miniatura: zapisanaMiniatura(w.kanaly, kolumny),
-      kanaly: kolumny.map((klucz) => komorkaKanalu(w.kanaly?.[klucz])),
+      kanaly: kolumny.map((klucz) =>
+        kontaErli.has(klucz) ? komorkaErli(w.oferty, klucz) : komorkaKanalu(w.kanaly?.[klucz]),
+      ),
       // ⚠️ KOLUMNA „STAN" TRYBU PORZADKOW — ile brakuje przy tym karcie. Liczbe przynosi
       // zapytanie (`liczba_brakow`, TO SAMO wyrazenie, co filtr braków i kafle nad tabela),
       // wiec wiersz nie ma prawa twierdzic czego innego niz zawezenie, ktore go tu wpuscilo.
@@ -986,6 +1019,7 @@ export function createPomocnikiMagazynu({ kanalySklepow, kanalyAllegro, definicj
     wartosciPol,
     adresMagazynu,
     KANALY_MAGAZYNU,
+    KANALY_ERLI,
     BRAKI_ETYKIETY,
     adresKanalu,
     KANALY_SKLEPOW,

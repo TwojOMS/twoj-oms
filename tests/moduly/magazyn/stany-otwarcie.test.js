@@ -539,6 +539,9 @@ it('N9: sprzedaż do propozycji jednym zapytaniem o pozycje, nie jednym na zamó
   zakup();
   zakup();
   zakup();
+  // Menu strony po POST liczy statusy z indeksu listy; pierwsze odświeżenie indeksu czyta pozycje zamówień.
+  // Lista rozgrzewa indeks jak w działającym panelu, więc licznik niżej widzi tylko odczyt sprzedaży.
+  await get('/?wszystkie=1');
   const oryg = db.prepare.bind(db);
   let n = 0;
   vi.spyOn(db, 'prepare').mockImplementation((sql) => {

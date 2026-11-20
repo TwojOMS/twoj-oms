@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { openOmsDb } from '../../../src/oms/db/db.ts';
 import { buildOmsServer } from '../../pomoc/serwer-testowy-oms.ts';
 import { utworzKarte, zapiszProduktSklepowy, powiazProdukt } from '../../../src/oms/db/magazyn.js';
+import { wstawOferte } from '../../../src/oms/db/oferty-kanalow.ts';
 
 // Przycisk przekazuje zakres razem z nazwą akcji, żeby użytkownik widział,
 // której części listy dotyczy podgląd. Licznik przy przycisku odpowiada liczbie kart w tabeli.
@@ -363,6 +364,34 @@ describe('edycja hurtem: kliknięty przycisk rozstrzyga zbiór', () => {
     });
 
     expect(nazwyWPodgladzie(r.body, 'zmiany-hurtem')).not.toContain('Zmierzona');
+  });
+
+  // Konto ERLI nie ma lustra — zawężenie po nim czyta aktywne oferty z rejestru, także przy hurcie.
+  it('zakres „pasujace" przy kanale ERLI bierze tylko karty z aktywną ofertą', async () => {
+    const app = buildOmsServer({
+      db,
+      config,
+      magazyn,
+      nadpisania: {
+        'kanaly.klienciKanalow': { erli_polcien: {} },
+        'kanaly.repozytoriumKanalow': {
+          listaTypu: (typ) => (typ === 'erli' ? [{ klucz: 'erli_polcien', nazwa: 'ERLI Półcień' }] : []),
+          zapisyZablokowane: () => false,
+        },
+      },
+    });
+    await app.ready();
+    const oferta = (karta, stan) =>
+      wstawOferte(db, { kartaId: karta, kanal: 'erli_polcien', idZewnetrzne: `E-${karta}`, stan });
+    oferta(kartaO('Kandelabr'), 'aktywna');
+    oferta(kartaO('Chmurka'), 'do_wyslania');
+    kartaO('Sowa');
+
+    const r = await pasujaceWprost(app, '/magazyn?kanal=erli_polcien', { szerokosc_cm: '70', wysokosc_cm: '100' });
+
+    expect(r.statusCode).toBe(200);
+    expect(nazwyWPodgladzie(r.body, 'zmiany-hurtem')).toEqual(['Kandelabr']);
+    await app.close();
   });
 });
 

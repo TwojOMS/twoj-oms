@@ -83,7 +83,8 @@ describe('GET /przesylki', () => {
         .split('<tr>')
         .find((fragment) => fragment.includes('BEZRUCHU1'))
         ?.split('</tr>')[0];
-      expect(wiersz).toContain(`<span class="prz067-usluga drobne">${nazwa}</span>`);
+      expect(wiersz).toContain(`title="${nazwa}">${nazwa}</span>`);
+      expect(wiersz).toContain('class="plakietka plakietka--');
       expect(wiersz).not.toContain('allegro_wza');
     }
   });
@@ -95,7 +96,9 @@ describe('GET /przesylki', () => {
       .split('<tr>')
       .find((fragment) => fragment.includes('BEZRUCHU1'))
       ?.split('</tr>')[0];
-    expect(wiersz).toContain('<span class="prz067-usluga drobne">Allegro Kurier DPD</span>');
+    expect(wiersz).toContain(
+      '<span class="plakietka plakietka--dpd" title="Allegro Kurier DPD">Allegro Kurier DPD</span>',
+    );
   });
 
   it('reczna zmiana metody lub pobrania uniewaznia stara nazwe Allegro tak jak na karcie', async () => {
@@ -112,8 +115,8 @@ describe('GET /przesylki', () => {
         .split('<tr>')
         .find((fragment) => fragment.includes('BEZRUCHU1'))
         ?.split('</tr>')[0];
-      expect(wiersz).toContain(`<span class="prz067-usluga drobne">${oczekiwana}</span>`);
-      expect(wiersz).not.toContain('<span class="prz067-usluga drobne">Allegro Kurier DPD</span>');
+      expect(wiersz).toContain(`title="${oczekiwana}">${oczekiwana}</span>`);
+      expect(wiersz).not.toContain('>Allegro Kurier DPD</span>');
     }
   });
 
@@ -125,7 +128,7 @@ describe('GET /przesylki', () => {
       .split('<tr>')
       .find((fragment) => fragment.includes('WDRODZE1'))
       ?.split('</tr>')[0];
-    expect(wiersz).toMatch(/<img class="prz067-logo" src="\/public\/przewoznicy\/dpd\.svg" alt="DPD"/);
+    expect(wiersz).toContain('<span class="plakietka plakietka--dpd" title="DPD">DPD</span>');
     expect(wiersz).not.toContain('Allegro Kurier DHL');
   });
 

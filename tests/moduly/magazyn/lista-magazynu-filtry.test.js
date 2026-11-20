@@ -130,10 +130,10 @@ describe('lista Magazynu', () => {
     expect(tabela(r.body)).toContain('<td class="liczba kol-na-stanie">0</td>');
   });
 
-  it('oba przyciski podglądu używają stylu drugiej akcji', async () => {
+  it('przycisk podglądu używa stylu drugiej akcji', async () => {
     const r = await get();
     const przyciski = [...r.body.matchAll(/<button\b([^>]*)>Pokaż podgląd — [\s\S]*?<\/button>/g)];
-    expect(przyciski).toHaveLength(2);
+    expect(przyciski).toHaveLength(1);
     for (const [, attrs] of przyciski) expect(attrs).toContain('class="btn btn--drugi"');
   });
 });

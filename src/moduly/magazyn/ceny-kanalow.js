@@ -25,7 +25,7 @@ const zmianaProc = new Intl.NumberFormat('pl-PL', {
   maximumFractionDigits: 2,
   signDisplay: 'exceptZero',
 });
-const cena = (gr) => (gr === null ? '—' : waluta.format(gr / 100));
+const cena = (gr) => (gr == null ? '—' : waluta.format(gr / 100));
 const powrot = (kartaId) => (kartaId ? `/magazyn/${kartaId}#sprzedaz-kanalow` : '/magazyn');
 
 function zapiszCeneIDziennik(db, { kartaId, kanal, cenaGr, kto, at }) {
@@ -80,19 +80,26 @@ export function registerCenyKanalow(app, { db, definicje, pomoc, sklepy, kontaAl
 
     const kartaId = ids.length === 1 ? ids[0] : null;
     const podglad = await zapis.podglad(req.konto.login, ids);
-    const wiersze = podglad.wiersze.map((w) => ({
+    const doEkranu = (w) => ({
       ...w,
       cenaObecna: cena(w.staraGr),
       cenaDocelowa: cena(w.nowaGr),
       opisZrodla:
-        w.nowaGr === null ? '—' : w.zrodlo === 'reczna' ? 'ręczna' : `z karty + ${procent.format(w.narzutBp / 10000)}`,
-      roznica: w.roznicaBp === null ? '—' : zmianaProc.format(w.roznicaBp / 10000),
-    }));
+        w.nowaGr == null ? '—' : w.zrodlo === 'reczna' ? 'ręczna' : `z karty + ${procent.format(w.narzutBp / 10000)}`,
+      roznica: w.roznicaBp == null ? '—' : zmianaProc.format(w.roznicaBp / 10000),
+    });
+    const wiersze = podglad.wiersze.map(doEkranu);
     return reply.view('magazyn-ceny-kanalow.ejs', {
       title: 'Podgląd wysyłki cen',
       wroc: powrot(kartaId),
       kartaId,
-      podglad: { ...podglad, wiersze, moznaZatwierdzic: wiersze.some((w) => w.doWyboru) },
+      podglad: {
+        ...podglad,
+        wiersze,
+        pominieteWiersze: podglad.pominieteWiersze.map(doEkranu),
+        bezZmianWiersze: podglad.bezZmianWiersze.map((w) => ({ ...w, cenaObecna: cena(w.staraGr) })),
+        moznaZatwierdzic: wiersze.some((w) => w.doWyboru),
+      },
       grupy: null,
     });
   });

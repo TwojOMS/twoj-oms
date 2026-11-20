@@ -156,6 +156,7 @@ describe('T-D1 — usługa podglądu cen kanałów', () => {
       teraz,
     });
     const wiersz = (kanal, id) => wynik.wiersze.find((w) => w.kanal === kanal && w.kartaId === id);
+    const pominiety = (kanal, id) => wynik.pominieteWiersze.find((w) => w.kanal === kanal && w.kartaId === id);
     expect(wiersz('sklep', promocja)).toMatchObject({
       cel: 'produkt:1',
       nazwa: 'Lampa 1',
@@ -196,13 +197,33 @@ describe('T-D1 — usługa podglądu cen kanałów', () => {
       ['aukcje', bezSterowania, 'cena prowadzona w Allegro — włącz Steruj ceną'],
       ['aukcje', tylkoLustro, 'cena prowadzona w Allegro — włącz Steruj ceną'],
     ]) {
-      expect(wiersz(kanal, id)).toMatchObject({ doWyboru: false, zaznaczony: false, uwagi: [uwaga] });
+      expect(wiersz(kanal, id)).toBeUndefined();
+      expect(pominiety(kanal, id)).toMatchObject({ doWyboru: false, zaznaczony: false, uwagi: [uwaga], powod: uwaga });
     }
     expect(wiersz('sklep', bezZmiany)).toBeUndefined();
+    expect(wynik.bezZmianWiersze).toEqual([
+      {
+        kartaId: bezZmiany,
+        kanal: 'sklep',
+        etykietaKanalu: 'Pracownia Półcień (sklep)',
+        cel: 'produkt:3',
+        nazwa: 'Lampa 3',
+        adres: 'https://polcien.example.invalid/produkt/3',
+        staraGr: 11000,
+      },
+    ]);
     expect(wiersz('sklep', szkic)).toBeUndefined();
     expect(wynik.wiersze.some((w) => w.kartaId === osierocona)).toBe(false);
+    for (const id of [szkic, osierocona])
+      expect(wynik.pominieteWiersze.find((w) => w.kartaId === id)).toMatchObject({
+        nazwa: 'Lampa Półcień',
+        adres: `/magazyn/${id}#sprzedaz-kanalow`,
+        powod: 'karta bez oferty w kanałach z wysyłką cen',
+        doWyboru: false,
+      });
     expect(wynik).toMatchObject({ bezZmian: 1, pominiete: 7 });
-    expect(wynik.wiersze).toHaveLength(9);
+    expect(wynik.wiersze).toHaveLength(4);
+    expect(wynik.pominieteWiersze).toHaveLength(7);
     expect(netto.odczyty).toHaveLength(2);
     expect(odczyt.odczyty).toEqual([]);
     expect(aukcje.odczyty).toEqual(['501', '502']);
@@ -259,16 +280,36 @@ describe('T-D1 — usługa podglądu cen kanałów', () => {
     expect(wynik.bezZmian).toBe(0);
     expect(wynik.pominiete).toBe(3);
     expect(wynik.wiersze).toMatchObject([
-      { kartaId: bezCeny, nowaGr: null, doWyboru: false, uwagi: ['karta bez ceny'] },
       { kartaId: gratis, staraGr: 9500, doWyboru: true, uwagi: ['trwa promocja 0,00 zł'] },
+    ]);
+    expect(wynik.pominieteWiersze).toMatchObject([
+      { kartaId: bezCeny, nowaGr: null, doWyboru: false, uwagi: ['karta bez ceny'] },
       {
         kartaId: brakOdczytu,
         staraGr: null,
         doWyboru: false,
         uwagi: ['nie udało się odczytać ceny w kanale — pominięte'],
       },
+      { kartaId: szkicRodzica, powod: 'karta bez oferty w kanałach z wysyłką cen' },
     ]);
     expect(sklep.odczyty).not.toContain('/products/2/variations');
+  });
+
+  it('nazywa wiersz wariantu Woo pełną nazwą produktu, a nie samym opisem atrybutów', async () => {
+    const wariantowa = karta();
+    lustro(wariantowa, 'sklep', 7, { wariant_id: 71, nazwa: 'Szablon Lampa' });
+    const sklep = woo({
+      produkty: [produkt(7, { type: 'variable', name: 'Szablon Lampa', regular_price: '' })],
+      warianty: { 7: [produkt(71, { name: '70 x 100 cm' })] },
+    });
+    const wynik = await podgladCen(db, [wariantowa], {
+      definicje: [definicja('sklep')],
+      klienci: { sklep: sklep.klient },
+      teraz,
+    });
+    expect(wynik.wiersze).toMatchObject([
+      { kartaId: wariantowa, cel: 'wariant:7/71', nazwa: 'Szablon Lampa — 70 x 100 cm', staraGr: 9500 },
+    ]);
   });
 
   it('pomija kartę bez ceny po błędzie odczytu ceny z kanału', async () => {
@@ -288,7 +329,8 @@ describe('T-D1 — usługa podglądu cen kanałów', () => {
     expect(wynik).toMatchObject({
       bezZmian: 0,
       pominiete: 1,
-      wiersze: [{ kartaId: bezCeny, staraGr: null, nowaGr: null, doWyboru: false, uwagi: ['karta bez ceny'] }],
+      wiersze: [],
+      pominieteWiersze: [{ kartaId: bezCeny, staraGr: null, nowaGr: null, doWyboru: false, uwagi: ['karta bez ceny'] }],
     });
   });
 
@@ -339,8 +381,8 @@ describe('T-D1 — usługa podglądu cen kanałów', () => {
       teraz,
     });
 
-    expect(wynik).toMatchObject({ pominiete: 3, bezZmian: 0 });
-    expect(wynik.wiersze).toMatchObject(
+    expect(wynik).toMatchObject({ pominiete: 3, bezZmian: 0, wiersze: [] });
+    expect(wynik.pominieteWiersze).toMatchObject(
       [
         { kartaId: prywatny, cel: 'produkt:1', status: 'private' },
         { kartaId: oczekujacyRodzic, cel: 'wariant:2/22', status: 'pending' },

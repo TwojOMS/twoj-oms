@@ -189,7 +189,9 @@ describe('reset demo — ekrany, faktury, przesyłki i raporty', () => {
 
   it('utworzone przesyłki DHL, ORLEN Paczka i Allegro One', async () => {
     const { html } = await strona('/przesylki?pokaz=utworzone');
-    for (const p of ['DHL', 'ORLEN Paczka', 'Allegro One']) expect.soft(html, p).toContain(`alt="${p}"`);
+    // Przewoźnik widać jako plakietkę z nazwą usługi (logo zastąpione plakietkami).
+    for (const p of ['DHL', 'ORLEN Paczka', 'Allegro One'])
+      expect.soft(html, p).toMatch(new RegExp(`class="plakietka plakietka--[\\w-]+" title="[^"]*${p}`));
   });
 
   it('historia podjazdów ma kilka wpisów z paczkami', async () => {

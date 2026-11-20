@@ -49,7 +49,7 @@ export function registerAkcjeMagazynu(
     kanalAllegro,
     paryZFormularza,
     podpowiedzKarty,
-    KOLUMNY_KANALOW,
+    KANALY_MAGAZYNU,
     wierszOferty,
     pozycjaListy,
     adresPowiazan,
@@ -468,7 +468,7 @@ export function registerAkcjeMagazynu(
             .includes(szukane),
       );
     const zakonczone = pasujace.filter((o) => o.status_publikacji === 'ENDED').length;
-    const kolumny = [...KOLUMNY_KANALOW];
+    const kolumny = [...KANALY_MAGAZYNU];
     const wiersze = pasujace
       .filter((o) => filtry.zakonczone || o.status_publikacji !== 'ENDED')
       .map((o) => wierszOferty(o, karty, kolumny));
@@ -528,7 +528,7 @@ export function registerAkcjeMagazynu(
     if (!magazyn || magazyn.gotowy?.() === false || !fraza || [...fraza].length < 2) return [];
     const zadanyLimit = Number(req.query?.limit);
     const limit = Number.isInteger(zadanyLimit) && zadanyLimit > 0 ? Math.min(20, zadanyLimit) : 20;
-    const kolumny = [...KOLUMNY_KANALOW];
+    const kolumny = [...KANALY_MAGAZYNU];
     return kartyZKanalami(db, { fraza, kolumny: 'lista', limit }).map((w) => podpowiedzKarty(w, kolumny));
   });
 

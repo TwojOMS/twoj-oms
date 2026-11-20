@@ -48,10 +48,11 @@ function licznikWiadomosciDlaMenu(db, req) {
 // (Przesyłki, Faktury…). Z TEGO SAMEGO indeksu co lista, więc liczby się zgadzają.
 // ⚠️ Bez liczb, gdy indeksu nie ma (baza bez migracji) albo się nie odświeżył:
 // liczba sprzed zapisu, który nie doszedł, twierdziłaby coś, czego nie ma, a strona ma się otworzyć.
-// Domyślnie tylko GET (POST zwykle kończy się przekierowaniem); `naZadanie` — trasa, która po POST renderuje
-// stronę (formularz z błędem), prosi o liczby sama przez `reply.locals.licznikiMenuNaZadanie()`.
-async function licznikiStatusowDlaMenu(db, req, nawigacja, { naZadanie = false } = {}) {
-  if ((!naZadanie && req.method !== 'GET') || !nawigacja?.kontekst?.statusy?.length) return null;
+// Liczy je render pełnej strony z menu (wrapper `reply.view` niżej), bez względu na metodę i kod odpowiedzi:
+// krok formularza, podgląd i formularz z błędem po POST mają te same liczby co po GET. Przekierowanie,
+// odpowiedź JSON i fragment htmx menu nie rysują, więc indeksu nie odświeżają.
+async function licznikiStatusowDlaMenu(db, req, nawigacja) {
+  if (!nawigacja?.kontekst?.statusy?.length) return null;
   try {
     const teraz = Date.now();
     const indeks = indeksListy(db);
@@ -251,10 +252,20 @@ export function registerWeb(app, { db, config }) {
             ],
           };
         const render = () => view.call(this, typeof page === 'string' ? sciezkaWidoku(page) : page, ...args);
-        // Dopiero trasa z nawigacją Ustawień prosi o liczniki. Odmowa/404 nie odświeża indeksu.
-        // Wspólny render GET i formularza z błędem po POST korzysta z tego samego indeksu.
-        if (dane?.nawigacja?.kontekst?.dzial === 'ustawienia') {
-          return licznikiStatusowDlaMenu(db, req, dane.nawigacja, { naZadanie: true }).then((licznikiStatusow) => {
+        // Liczby statusów tylko tam, gdzie układ rysuje menu z nimi: bez samodzielnego dokumentu odmowy
+        // (`wlasnyUklad`) i bez ekranu bez paska (logowanie). Własny `panelStatusow` listy zwalnia z liczenia,
+        // ale karta nie niesie w nim „Po terminie” — układ bierze brakujące statusy z `licznikiStatusow`.
+        // Wynik zostaje w `reply.locals`, więc drugi render w tym samym żądaniu indeksu już nie odświeża.
+        const widok = { ...reply.locals, ...args[0] };
+        const wlasne = widok.panelStatusow ?? [];
+        if (
+          widok.licznikiStatusow === undefined &&
+          widok.nawigacja?.kontekst?.statusy?.some((s) => !wlasne.some((p) => p.klucz === s.klucz)) &&
+          !widok.wlasnyUklad &&
+          !widok.bezPaska
+        ) {
+          return licznikiStatusowDlaMenu(db, req, widok.nawigacja).then((licznikiStatusow) => {
+            reply.locals = { ...reply.locals, licznikiStatusow };
             args[0] = { ...args[0], licznikiStatusow };
             return render();
           });
@@ -328,9 +339,6 @@ export function registerWeb(app, { db, config }) {
             : licznikWiadomosciDlaMenu(db, req)
           : 0,
         modulWlaczony: (modul) => !odlozoneEkrany.includes(modul),
-        // Liczby przy statusach na KAŻDEJ zakładce, nie tylko na liście i karcie.
-        licznikiStatusow: await licznikiStatusowDlaMenu(db, req, nawigacja),
-        licznikiMenuNaZadanie: () => licznikiStatusowDlaMenu(db, req, nawigacja, { naZadanie: true }),
         // Kontrolki pytaja o SWOJ adres. Mapowanie adres -> zakres pozostaje jedno,
         // wspolne ze straznikiem; widok nie utrzymuje drugiej listy praw.
         mozeAdres: (url) => maDostepDoAdresu(req.konto ?? null, url),

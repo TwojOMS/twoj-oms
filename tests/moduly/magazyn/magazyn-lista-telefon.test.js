@@ -21,17 +21,18 @@ function deklaracje(selektor) {
 }
 
 describe('lista Magazynu na telefonie', () => {
-  it('otwarta akcja belki wypuszcza ciało z ::details-content, żeby zajęło cały wiersz', () => {
-    expect(deklaracje('.belka-akcji details.akcja[open]::details-content')).toMatch(/display:\s*contents/);
+  it('ciało akcji zajmuje cały wiersz belki, pod chipami', () => {
+    expect(deklaracje('.akcja-cialo')).toMatch(/flex-basis:\s*100%/);
+    expect(deklaracje('.belka-akcji > .akcja-cialo')).toMatch(/order:\s*1/);
   });
 
-  it('::details-content dostaje display: contents wyłącznie przy [open] — zamknięte akcje nie pokazują ciał', () => {
+  it('ciała stoją poza <details>, więc arkusz nie wypuszcza ich przez ::details-content', () => {
+    // `display: contents` na ::details-content pokazałby ciało przy chipie i złamał wiersz chipów.
     const selektory = [...layout.matchAll(/([^{}]+)\{/g)]
       .flatMap((m) => m[1].split(','))
       .map((s) => s.trim())
       .filter((s) => s.includes('::details-content') && s.includes('.belka-akcji'));
-    expect(selektory.length).toBeGreaterThan(0);
-    for (const s of selektory) expect(s).toMatch(/details\.akcja\[open\]::details-content$/);
+    expect(selektory).toEqual([]);
   });
 
   it('pole filtra i jego lista nie są szersze niż pasek filtrów, choćby opcja miała długą nazwę', () => {

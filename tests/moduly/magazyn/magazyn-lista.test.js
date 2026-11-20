@@ -316,6 +316,16 @@ describe('GET /magazyn — tabela kart', () => {
     expect(r.body).toMatch(/class="[^"]*przewijak-tabeli/);
   });
 
+  it('pod tabelą nie ma akapitu o cenach z kanału ani o stanach magazynowych', async () => {
+    // Akapit mówił „Magazyn nie prowadzi stanów”, a ten sam ekran przy włączonych stanach pokazuje kolumnę stanu.
+    for (const adres of ['/magazyn', '/magazyn?widok=katalog']) {
+      const r = await get(serwer(), adres);
+      expect(r.statusCode).toBe(200);
+      expect(r.body).not.toContain('dziś w kanale');
+      expect(r.body).not.toContain('nie prowadzi stanów magazynowych');
+    }
+  });
+
   it('pusta lista MOWI, ze jest pusta', async () => {
     // ⚠️ TRYB KATALOGOWY, bo to jego zestaw kolumn liczy `colspan` ponizej;
     // wariant porzadkow ma wlasna asercje w opisie „dwa tryby tabeli".

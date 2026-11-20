@@ -213,15 +213,27 @@ export function registerPrzesylkiRoutes(app, { db, kurierzy = {} }) {
           poTerminie = false;
         }
         const { zamowienie } = p;
-        // Nazwa uslugi (np. „Allegro Kurier DPD pobranie") zostaje pod logo dla przesylek Allegro —
-        // pobranie i rodzaj uslugi operator musi widziec. Dla wlasnego DPD/InPostu logo wystarcza.
+        // Nazwa uslugi (np. „Allegro Kurier DPD pobranie") idzie do plakietki dla przesylek Allegro —
+        // pobranie i rodzaj uslugi operator musi widziec. Dla wlasnego DPD/InPostu wystarcza nazwa przewoznika.
         const zAllegro = p.kurier === 'allegro_wza' || p.kurier === 'allegro';
         const kurierEtykieta = zAllegro && zamowienie ? nazwaDostawy(zamowienie) : p.kurier;
+        // Plakietka jak w kolumnie „Dostawa" listy zamowien. Paczka Przesylek Erli ma turkus ERLI
+        // niezaleznie od przewoznika; nieznany przewoznik spoza ERLI zostaje bez plakietki (sam tekst).
+        const zErli = p.kurier === 'erli_przesylki';
+        const usluga = zAllegro && zamowienie ? kurierEtykieta : null;
+        let plakietka = null;
+        if (zErli) {
+          const tekst = p.przewoznik ? `Erli ${p.przewoznik.nazwa}` : 'Przesyłki Erli';
+          plakietka = { klucz: 'erli', tekst };
+        } else if (p.przewoznik) {
+          plakietka = { klucz: p.przewoznik.klucz, tekst: usluga || p.przewoznik.nazwa };
+        }
         return {
           ...p,
+          plakietka,
           maProtokol: !!p.id_przesylki_kuriera && typeof kurierzy[p.kurier]?.protokolOdbioru === 'function',
           kurierEtykieta,
-          usluga: zAllegro && zamowienie ? kurierEtykieta : null,
+          usluga,
           // Ta sama funkcja co karta zamowienia i mail „Zamowienie wyslane".
           adresSledzenia: linkSledzeniaPaczki(p, zamowienie),
           etap,

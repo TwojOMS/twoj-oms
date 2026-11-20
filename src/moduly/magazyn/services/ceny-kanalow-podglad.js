@@ -5,6 +5,7 @@ import { MODUL_ERLI } from '../../../domena/modul-erli.ts';
 import { MODUL_WOO } from '../../../domena/modul-woo.ts';
 import { modulKanalu } from '../../../domena/moduly-kanalow.ts';
 import { groszeZKwoty } from '../../../domena/kwota.js';
+import { nazwaWariantuWoo } from '../../../domena/nazwa-wariantu-woo.js';
 import { czyTylkoOdczyt } from '../../../domena/woo-uprawnienia.js';
 import { cenyReczneKart } from '../../../oms/db/ceny-kanalow.js';
 import { DOMYSLNE_USTAWIENIA_OFERT, ustawieniaOfertKonta } from '../../../oms/db/oferty-kanalow.ts';
@@ -99,7 +100,7 @@ async function porownajWoo(klient, pozycje, teraz, pokaz, blokujPromocjeWoo) {
       const uwagi = odczyt ? uwagiWoo(odczyt, teraz) : [];
       pokaz(p, {
         staraGr,
-        nazwa: odczyt?.name || p.nazwa,
+        nazwa: p.wariant_id ? nazwaWariantuWoo(produkt?.name, odczyt?.name, p.nazwa) : odczyt?.name || p.nazwa,
         adres: adresHttp(odczyt?.permalink) ?? adresHttp(p.adres),
         uwagi: blokujPromocjeWoo && uwagi.length ? [] : uwagi,
         blokada:
@@ -190,6 +191,8 @@ async function porownajErli(klient, pozycje, ustawienia, pokaz) {
   pozycje.forEach((p, i) => pokaz(p, odczyty[i]));
 }
 
+const KARTA_BEZ_OFERTY = 'karta bez oferty w kanałach z wysyłką cen';
+
 const celOferty = (p) => `oferta:${p.produkt_id}`;
 
 // Jak podgląd czyta ceny danego typu kanału. O tym, czy konto w ogóle bierze udział, decyduje umiejętność
@@ -257,7 +260,10 @@ function danePodgladu(db, ids) {
 
 /**
  * Podgląd różnic cen dla kont obsługujących ceny z OMS-u. `klienci` to mapa kluczy kont na klientów.
- * `pominiete` zlicza wiersze bez pola wyboru oraz karty bez powiązanej oferty w podglądzie (tylko licznik).
+ * `wiersze` to wyłącznie oferty, które można wysłać — z nich liczy się podpis podglądu. Oferty z blokadą
+ * i karty bez oferty idą do `pominieteWiersze`, oferty z ceną już równą docelowej do `bezZmianWiersze`;
+ * obie listy służą tylko do wyświetlenia, a liczniki to ich długości. Zatwierdzenie woła tę samą funkcję,
+ * więc podział na listy jest w obu miejscach taki sam.
  */
 export async function podgladCen(
   db,
@@ -267,7 +273,7 @@ export async function podgladCen(
   const ids = [...new Set(kartaIds.map(Number))];
   if (ids.length > LIMIT_KART) throw new Error('zaznacz najwyżej 200 kart');
   if (ids.some((id) => !Number.isSafeInteger(id) || id <= 0)) throw new Error('Niepoprawny identyfikator karty');
-  const wynik = { wiersze: [], bezZmian: 0, pominiete: 0 };
+  const wynik = { wiersze: [], bezZmian: 0, pominiete: 0, bezZmianWiersze: [], pominieteWiersze: [] };
   if (!ids.length) return wynik;
   const chwila = typeof teraz === 'function' ? teraz() : teraz;
   const dane = danePodgladu(db, ids);
@@ -288,15 +294,22 @@ export async function podgladCen(
         narzutBp: ustawienia.narzutBp,
         recznaGr: dane.reczne.get(kartaId)?.get(klucz),
       });
+      const cel = kanal.cel(p);
       if (staraGr !== null && staraGr === nowaGr) {
-        wynik.bezZmian += 1;
+        wynik.bezZmianWiersze.push({
+          kartaId,
+          kanal: klucz,
+          etykietaKanalu: etykieta ?? klucz,
+          cel,
+          nazwa: nazwa || karta?.nazwa,
+          adres,
+          staraGr,
+        });
         return;
       }
       const pomin = nowaGr === null && (!blokada || blokada === BRAK_ODCZYTU) ? 'karta bez ceny' : blokada;
       const duzaZmiana = !pomin && cenaWymagaPotwierdzenia(staraGr, nowaGr, progBp);
-      const cel = kanal.cel(p);
-      if (pomin) wynik.pominiete += 1;
-      wynik.wiersze.push({
+      (pomin ? wynik.pominieteWiersze : wynik.wiersze).push({
         kartaId,
         kanal: klucz,
         etykietaKanalu: etykieta ?? klucz,
@@ -311,11 +324,24 @@ export async function podgladCen(
         uwagi: [...uwagi, ...(pomin ? [pomin] : []), ...(duzaZmiana ? [`duża zmiana > ${progBp / 100}%`] : [])],
         doWyboru: !pomin,
         zaznaczony: !pomin && !duzaZmiana,
+        ...(pomin ? { powod: pomin } : {}),
       });
     };
 
     if (pozycje.length) await kanal.porownaj(klienci[klucz], pozycje, { chwila, ustawienia, blokujPromocjeWoo }, pokaz);
   }
-  wynik.pominiete += ids.filter((id) => !kartyZOfertami.has(id)).length;
+  for (const kartaId of ids.filter((id) => !kartyZOfertami.has(id))) {
+    wynik.pominieteWiersze.push({
+      kartaId,
+      nazwa: dane.karty.get(String(kartaId))?.nazwa ?? `Karta ${kartaId}`,
+      adres: `/magazyn/${kartaId}#sprzedaz-kanalow`,
+      uwagi: [KARTA_BEZ_OFERTY],
+      powod: KARTA_BEZ_OFERTY,
+      doWyboru: false,
+      zaznaczony: false,
+    });
+  }
+  wynik.bezZmian = wynik.bezZmianWiersze.length;
+  wynik.pominiete = wynik.pominieteWiersze.length;
   return wynik;
 }

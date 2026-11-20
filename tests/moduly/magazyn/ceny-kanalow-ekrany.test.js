@@ -118,7 +118,10 @@ it('prowadzi z karty do podglądu i pokazuje blokady oraz domyślny wybór', asy
     expect(poleWyboru(r, nazwa)).toBeUndefined();
   }
   expect(r.body).toContain('duża zmiana');
-  expect(r.body).not.toContain('Lampa bez zmiany');
+  expect(
+    /<form method="post" action="\/magazyn\/ceny-kanalow\/zatwierdz"[\s\S]*?<\/form>/u.exec(r.body)?.[0],
+  ).not.toContain('Lampa bez zmiany');
+  expect(/<details[^>]*id="bez-zmian"[\s\S]*?<\/details>/u.exec(r.body)?.[0]).toContain('Lampa bez zmiany');
 });
 
 it('pokazuje administratorowi przycisk podglądu cen w formularzu listy', async () => {
@@ -243,4 +246,77 @@ it('pomija cenę, gdy promocja zacznie się po podglądzie', async () => {
   expect(wynik.body).toContain('Pominięte (1)');
   expect(wynik.body).toContain('trwa promocja');
   expect(zapiszCenyHurtem).not.toHaveBeenCalled();
+});
+
+it('rozdziela podgląd na do wysłania, pominięte z powodem i zwiniętą listę bez zmian', async () => {
+  const nowaKarta = (nazwa, produkt) => {
+    const id = utworzKarte(db, { nazwa, cena_gr: 10000 });
+    if (produkt) {
+      produkty.push({ type: 'simple', status: 'publish', ...produkt });
+      powiazProdukt(
+        db,
+        zapiszProduktSklepowy(db, {
+          kanal: BRUTTO,
+          produkt_id: String(produkt.id),
+          nazwa: produkt.name,
+          status_publikacji: 'publish',
+          odczytane_at: '2026-11-18T08:00:00.000Z',
+        }),
+        id,
+      );
+    }
+    return id;
+  };
+  const doZmiany = nowaKarta('Kinkiet do zmiany', { id: 40, name: 'Kinkiet mosiężny', regular_price: '95.00' });
+  const bezZmian = nowaKarta('Kinkiet bez zmian', { id: 41, name: 'Kinkiet biały', regular_price: '100.00' });
+  const promocja = nowaKarta('Kinkiet w promocji', {
+    id: 42,
+    name: 'Kinkiet zielony',
+    regular_price: '95.00',
+    sale_price: '59.00',
+  });
+  const bezOferty = nowaKarta('Kinkiet bez oferty');
+
+  const r = await post(
+    PODGLAD,
+    [doZmiany, bezZmian, promocja, bezOferty].map((id) => ['karty', String(id)]),
+  );
+  expect(r.statusCode).toBe(200);
+  const tekst = (html) => html.replace(/<[^>]+>/gu, '').replace(/\s+/gu, ' ');
+  expect(tekst(r.body)).toContain('Do wysłania: 1 · Bez zmian: 1 · Pominięte: 2');
+  expect(r.body).toMatch(/<a href="#bez-zmian">/u);
+  expect(r.body).toMatch(/<a href="#pominiete">/u);
+
+  const formularz = /<form method="post" action="\/magazyn\/ceny-kanalow\/zatwierdz"[\s\S]*?<\/form>/u.exec(
+    r.body,
+  )?.[0];
+  expect(formularz).toContain('Kinkiet mosiężny');
+  for (const obca of ['Kinkiet biały', 'Kinkiet zielony', 'Kinkiet bez oferty']) expect(formularz).not.toContain(obca);
+  const wiersz = /<tr>([\s\S]*?)<\/tr>/u.exec(formularz.split('<tbody>')[1])?.[1];
+  expect(wiersz).toMatch(
+    new RegExp(
+      `^\\s*<td[^>]*>\\s*<label[^>]*>\\s*<input type="checkbox" id="cena-0" name="${BRUTTO}\\|produkt:40"[^>]*>\\s*</label>\\s*</td>\\s*<th scope="row">`,
+      'u',
+    ),
+  );
+  expect(poleWyboru(r, `${BRUTTO}|produkt:40`)).toMatch(/aria-labelledby="[^"]*\boferta-0\b[^"]*"/u);
+
+  const pominiete = /<section[^>]*id="pominiete"[\s\S]*?<\/section>/u.exec(r.body)?.[0];
+  expect(tekst(pominiete)).toContain('Pominięte (2)');
+  expect(pominiete).toContain('Kinkiet zielony');
+  expect(pominiete).toContain('trwa promocja');
+  expect(pominiete).toContain(`<a href="/magazyn/${bezOferty}#sprzedaz-kanalow">Kinkiet bez oferty</a>`);
+  expect(pominiete).toContain('karta bez oferty w kanałach z wysyłką cen');
+  expect(pominiete).not.toMatch(/type="checkbox"/u);
+
+  const bezZmianSekcja = /<details[^>]*id="bez-zmian"[^>]*>[\s\S]*?<\/details>/u.exec(r.body)?.[0];
+  expect(bezZmianSekcja).toMatch(/^<details(?![^>]*\bopen\b)/u);
+  expect(tekst(bezZmianSekcja)).toContain('Bez zmian (1)');
+  expect(bezZmianSekcja).toContain('Kinkiet biały');
+  expect(bezZmianSekcja).toContain('Sklep Półcień');
+
+  const wynik = await post(ZATWIERDZ, { podpis: podpis(r), [`${BRUTTO}|produkt:40`]: '1' });
+  expect(wynik.statusCode).toBe(200);
+  expect(wynik.body).toContain('Zapisane (1)');
+  expect(zapiszCenyHurtem).toHaveBeenCalledWith(null, [{ id: '40', regular_price: '100.00' }]);
 });

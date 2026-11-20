@@ -288,7 +288,11 @@ export function createZapisCenKanalow({
       teraz,
       blokujPromocjeWoo,
     });
-    const teraz_ = new Map(swiezy.wiersze.map((w) => [kluczWiersza(w), w]));
+    // Oferta zablokowana od podglądu siedzi już w liście pominiętych; bierzemy ją z powodem blokady,
+    // żeby wynik mówił „trwa promocja”, a nie „zniknęła”. Karty bez oferty nie mają kanału — pomijamy.
+    const teraz_ = new Map(
+      [...swiezy.wiersze, ...swiezy.pominieteWiersze.filter((w) => w.kanal)].map((w) => [kluczWiersza(w), w]),
+    );
     const typy = new Map(wartosc(definicje).map((d) => [d.klucz, d.typ]));
     // Odpięcie oferty od karty zostawia w rejestrze kartę i flagę ceny z OMS-u, więc o tym, czy cena
     // karty może trafić do oferty, rozstrzyga dopiero bieżące powiązanie w lustrze. ERLI lustra nie ma —

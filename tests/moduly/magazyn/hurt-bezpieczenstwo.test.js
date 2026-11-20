@@ -171,7 +171,7 @@ describe('informacja o bezpieczeństwie hurtem — podgląd i zapis', () => {
     kartaO('Lampa Półcień Kula');
     const r = await serwer().inject({ method: 'GET', url: '/magazyn', headers: auth });
     expect(r.statusCode).toBe(200);
-    const pasek = /<details[^>]*id="hurt-pasek"[\s\S]*?<\/details>/.exec(r.body)[0];
+    const pasek = /<section[^>]*id="hurt-pasek"[\s\S]*?<\/section>/.exec(r.body)[0];
     const pole = /<textarea[^>]*name="informacja_bezpieczenstwa"[^>]*>/.exec(pasek)?.[0] ?? '';
     expect(pole).toContain(`maxlength="${LIMIT_INFORMACJI_BEZPIECZENSTWA}"`);
     expect(pasek).toMatch(/<textarea[^>]*name="informacja_bezpieczenstwa"[^>]*><\/textarea>/);

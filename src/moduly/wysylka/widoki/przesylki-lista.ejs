@@ -116,10 +116,11 @@
               <% if (p.zamowienie) { %><a class="link-numer" title="<%= p.zamowienie.numer %>" href="/zamowienia/<%= p.zamowienie_id %>"><%= p.zamowienie.numer %></a>
               <% } else { %>#<%= p.zamowienie_id %><% } %>
             </td>
-            <%# Logo PRAWDZIWEGO przewoznika; pod nim nazwa uslugi Allegro (pobranie, rodzaj
-                uslugi). Przewoznik nieznany → tekst jak dawniej, nigdy puste pole. %>
-            <% if (p.przewoznik) { %>
-              <td class="prz067-kurier"><img class="prz067-logo" src="<%= p.przewoznik.logo %>" alt="<%= p.przewoznik.nazwa %>" title="<%= p.usluga || p.przewoznik.nazwa %>" height="18" loading="lazy"><% if (p.usluga) { %><span class="prz067-usluga drobne"><%= p.usluga %></span><% } %></td>
+            <%# Plakietka PRAWDZIWEGO przewoznika (jak w kolumnie „Dostawa” listy zamowien); dla Allegro
+                w niej cala nazwa uslugi (pobranie, rodzaj). Przewoznik nieznany → tekst jak dawniej,
+                nigdy puste pole. %>
+            <% if (p.plakietka) { %>
+              <td class="prz067-kurier"><span class="plakietka plakietka--<%= p.plakietka.klucz %>" title="<%= p.plakietka.tekst %>"><%= p.plakietka.tekst %></span></td>
             <% } else { %>
               <td><%= p.kurierEtykieta %></td>
             <% } %>

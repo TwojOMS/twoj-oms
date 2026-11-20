@@ -215,7 +215,7 @@ describe('generator danych demo na świeżej bazie', () => {
     }
   });
 
-  it('pokazuje nowe SKU w lustrze Woo Półcień i poza Allegro oraz zamówieniami', () => {
+  it('pokazuje nowe SKU w lustrze Woo Półcień i Allegro, a w zamówieniach nie', () => {
     const db = new DatabaseSync(env.OMS_DB_PATH, { readOnly: true });
     try {
       const lustro = db
@@ -223,11 +223,12 @@ describe('generator danych demo na świeżej bazie', () => {
           "SELECT sku_sklepu, kanal FROM produkty_sklepowe WHERE sku_sklepu LIKE 'LMP-KAT-%' ORDER BY sku_sklepu, kanal",
         )
         .all();
+      // właściciel 19.11: Allegro też na kartach katalogu demo — co druga karta ma ofertę na koncie `allegro`.
       expect(lustro).toEqual(
         Array.from({ length: 119 }, (_, i) => ({
           sku_sklepu: `LMP-KAT-${String(i + 1).padStart(3, '0')}`,
           kanal: 'polcien',
-        })),
+        })).flatMap((w, i) => (i % 2 === 0 ? [{ ...w, kanal: 'allegro' }, w] : [w])),
       );
       const karty = db
         .prepare(

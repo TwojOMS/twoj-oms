@@ -35,8 +35,7 @@ const TRASY_HURTU = ['/magazyn/oferty/podglad', '/magazyn/oferty/zatwierdz', '/m
 const ZRZUT = process.env.OMS_ZRZUT_HTML_OFERT ?? '';
 
 /** Fragment paska „Zaznaczone karty” z formularzem hurtowych ofert (pusty, gdy go nie ma). */
-const pasekOfert = (html) =>
-  /<details class="akcja" name="akcja">\s*<summary>Wystaw oferty<\/summary>[\s\S]*?<\/details>/.exec(html)?.[0] ?? '';
+const pasekOfert = (html) => /<section[^>]*id="oferty-pasek"[\s\S]*?<\/section>/.exec(html)?.[0] ?? '';
 const kontaWPasku = (html) =>
   [...pasekOfert(html).matchAll(/<input type="radio" name="konto" value="([^"]+)"/g)].map((m) => m[1]);
 const tokenPodgladu = (html) => /name="podglad" value="([^"]+)"/.exec(html)?.[1];

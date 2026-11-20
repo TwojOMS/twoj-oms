@@ -85,11 +85,12 @@ it('demo: lista po pollerze pokazuje nazwy dostaw ERLI, obie drogi i żadnej blo
   }
   expect(komorki.some((k) => k.includes('plakietka--erli'))).toBe(true);
   expect(komorki.some((k) => k.includes('plakietka--dpd'))).toBe(true);
-  expect(dostawa(html, 'PC-ERLI-0001')).toContain('title="Kurier DPD">Kurier DPD</span>');
+  // Demo: najświeższe ERLI (0001) z paczkomatem u góry listy, DPD przeszedł na 0003.
+  expect(dostawa(html, 'PC-ERLI-0001')).toContain('title="Erli Paczkomat InPost">Erli Paczkomat InPost</span>');
   expect(dostawa(html, 'PC-ERLI-0002')).toContain('title="Kurier DPD (pobranie)">Kurier DPD (pobranie)</span>');
-  expect(dostawa(html, 'PC-ERLI-0003')).toContain('title="Erli Paczkomat InPost">Erli Paczkomat InPost</span>');
+  expect(dostawa(html, 'PC-ERLI-0003')).toContain('title="Kurier DPD">Kurier DPD</span>');
   expect(dostawa(html, 'PC-ERLI-0008')).toContain('title="Erli Kurier InPost">Erli Kurier InPost</span>');
-  expect(dostawa(html, 'PC-ERLI-0001')).not.toContain('umowa firmy');
+  expect(dostawa(html, 'PC-ERLI-0003')).not.toContain('umowa firmy');
   expect(dostawa(html, 'PC-ERLI-0011')).toContain('title="Erli Kurier InPost">Erli Kurier InPost</span>');
   // Pozycje ERLI (bez zdjęcia w zamówieniu) mają miniaturę produktu z lustra magazynu po SKU.
   const wiersze = html.match(/<tr\b[^>]*>[\s\S]*?<\/tr>/g) ?? [];

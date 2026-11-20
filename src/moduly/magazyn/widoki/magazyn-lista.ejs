@@ -102,7 +102,7 @@
     </label>
     <label class="pole-filtra">
       <span>Kanał sprzedaży</span>
-      <%# Lista ZAMKNIETA i TA SAMA, ktora rysuje kolumny cen (KANALY_MAGAZYNU). Kanal
+      <%# Lista ZAMKNIETA i TA SAMA, ktora rysuje kolumny cen (sklepy, konta Allegro i ERLI). Kanal
           w filtrze bez kolumny na ekranie — albo odwrotnie — to rozjazd, ktorego nikt nie
           zauwazy poza kims, kto policzy kolumny. %>
       <select name="kanal">
@@ -263,10 +263,11 @@
     przeladowuje. Gdyby akcje przelaczalo sie odnosnikiem (nowy adres), kazde przelaczenie
     kasowaloby odhaczone wiersze — czyli dokladnie to, czego belka ma nie robic.
 
-    ⚠️ CIALO OTWARTEJ AKCJI LAMIE WIERSZ BELKI POD SWOIM CHIPEM, a chipy dalszych akcji
-    schodza pod nie. Flex `order` NIE PRZECHODZI przez shadow-sloty `<details>`, wiec
-    przeniesienie ciala na koniec wiersza nie jest mozliwe bez JavaScriptu. Zachowanie jest
-    SWIADOME — nie „poprawiac" go trikami.
+    ⚠️ CHIPY STOJA ZAWSZE W JEDNYM WIERSZU, a cialo otwartej akcji lezy POD nimi na cala
+    szerokosc belki. Dlatego `<details>` niesie sam `<summary>`, a ciala stoja w znacznikach
+    za wszystkimi chipami: cialo wewnatrz `<details>` lamaloby wiersz pod SWOIM chipem
+    i spychalo dalsze chipy w dol. Ktore cialo widac, rozstrzyga `:has` w oms-uklad.css
+    (`#akcja-…[open]`), bez JavaScriptu; `aria-controls` laczy chip z jego cialem.
 
     ⚠️ W `<summary>` NIE WOLNO STAWIAC PRZYCISKU SUBMIT. Klikniecie w podsumowanie przelacza
     `<details>` i przegladarki roznie rozstrzygaja, co ma sie stac z przyciskiem w srodku:
@@ -311,9 +312,53 @@
   <div class="belka-akcji">
     <span class="belka-akcji-etykieta">Zaznaczone karty:</span>
     <% if (kontaOfert.length) { %>
-      <details class="akcja" name="akcja">
-        <summary>Wystaw oferty</summary>
-        <div class="akcja-cialo">
+      <details class="akcja" name="akcja" id="akcja-oferty">
+        <summary aria-controls="oferty-pasek">Wystaw oferty</summary>
+      </details>
+    <% } %>
+
+<%# ——— EDYTUJ (edycja hurtem) — lista zmian ———————————————————————————————————————— %>
+    <details class="akcja" name="akcja" id="akcja-edytuj">
+      <summary aria-controls="hurt-pasek">Edytuj</summary>
+    </details>
+
+<%# ——— NADAJ SKU ————————————————————————————————————————————————————————————————
+    ⚠️⚠️ TEN SAM FORMULARZ, CO AKCJA HURTU, I MUSI TAK BYC: pola wyboru kart stoja
+    w WIERSZACH tabeli nizej, a formularzy nie wolno zagniezdzac. Osobny przycisk prowadzi
+    gdzie indziej przez `formaction` — bez jednej linijki JavaScriptu (ten ekran nie ma wlasnego skryptu).
+    Skutek uboczny jest nazwany i pilnowany testem: zadanie generatora niesie pola hurtu
+    (i odwrotnie), a zadna z tych tras nie ma prawa ich uzyc — obie czytaja WYLACZNIE
+    po wlasnej bialej liscie. Zwiniecie akcji NICZEGO tu nie zmienia: `display: none` chowa
+    cialo przed OKIEM, a nie przed formularzem — zamknieta akcja dalej wysyla swoje pola.
+
+    ⚠️⚠️ PRZYCISK PROWADZI NA PODGLAD (`/magazyn/sku-podglad`), NIGDY WPROST NA NADANIE.
+    Podglad jest obowiazkowy i jest OSOBNA trasa: numer nadany tutaj pojedzie pozniej
+    do sklepow i stanie sie tozsamoscia produktu. %>
+    <details class="akcja" name="akcja" id="akcja-sku">
+      <summary aria-controls="sku-pasek">Nadaj SKU</summary>
+    </details>
+
+<%# ——— ZAPISZ DO SKLEPOW —————————————————————————————————————————————————————————
+    ⚠️⚠️ TO PRZYCISK, ZA KTORYM STOI ZAPIS SKU I WYMIAROW DO SKLEPU, KTORY SPRZEDAJE —
+    i jego skutku NIE DA SIE COFNAC kliknieciem. Dlatego prowadzi na PODGLAD
+    (`/magazyn/podglad-zapisu`), nigdy wprost na wysylke: wysylka ma wlasna trase, wlasny
+    przycisk i wlasny ekran wyniku.
+
+    ⚠️ ZAPIS WYSYLA WYLACZNIE SKU I WYMIARY. Ceny, nazwy, kategorie, zdjecia, opis i stan
+    magazynowy zostaja pod kontrola sklepu — to zasada calego modulu. Z tego przycisku do Allegro
+    nie idzie nic; oferty wiaze sie recznie.
+
+    ⚠️ CHIP WYGLADA JAK TRZY POZOSTALE I MA TAK WYGLADAC. Wyroznienie go barwa sugerowaloby,
+    ze to on wysyla — a wysyla dopiero przycisk na osobnym ekranie podgladu. %>
+    <details class="akcja" name="akcja" id="akcja-zapis">
+      <summary aria-controls="zapis-pasek">Wyślij SKU i wymiary</summary>
+    </details>
+
+<%# ——— CIAŁA AKCJI ————————————————————————————————————————————————————————————————
+    Stoją ZA wszystkimi chipami, żeby otwarta akcja nie spychała dalszych chipów pod siebie.
+    Widać tylko ciało otwartego chipa — reguła `:has` w oms-uklad.css. %>
+    <% if (kontaOfert.length) { %>
+      <section class="akcja-cialo" id="oferty-pasek">
           <%# Konta ERLI i Allegro; konto Allegro bez zgody na oferty wyszarzone z powodem. %>
           <% const pierwszeZeZgoda = kontaOfert.find((x) => x.zgoda); %>
           <fieldset class="konta-ofert">
@@ -329,16 +374,10 @@
             <% }); %>
           </fieldset>
           <button class="btn btn--drugi" type="submit" formaction="/magazyn/oferty/podglad" name="zakres" value="zaznaczone">Pokaż podgląd — dla zaznaczonych</button>
-          <button class="btn btn--drugi" type="submit" formaction="/magazyn/oferty/podglad" name="zakres" value="pasujace">Pokaż podgląd — dla wszystkich pasujących (<%= ilePasujacych %>)</button>
           <% if (kontaOfert.some(k => k.allegro && k.zgoda)) { %><button class="btn btn--drugi" type="submit" formaction="/magazyn/oferty/aktywuj">Aktywuj w Allegro — szkice zaznaczonych</button><% } %>
-        </div>
-      </details>
+      </section>
     <% } %>
-
-<%# ——— EDYTUJ (edycja hurtem) — lista zmian ———————————————————————————————————————— %>
-    <details class="akcja" name="akcja" id="hurt-pasek">
-      <summary>Edytuj</summary>
-      <div class="akcja-cialo hz">
+    <section class="akcja-cialo hz" id="hurt-pasek">
         <%# ⚠️ ZAWEZENIE JEDNYM POLEM, nie siedmioma osobnymi. Filtr ma własne pola o nazwach,
             które mogłyby się powtórzyć w akcjach — te same nazwy w jednym formularzu wracają
             z Fastify jako TABLICA i kasują się nawzajem. Składane przez `adresMagazynu`.
@@ -569,24 +608,8 @@
           <% } %>
         </template>
         <script type="module" src="<%= zasob('edycja-hurtowa.js') %>"></script>
-      </div>
-    </details>
-
-<%# ——— NADAJ SKU ————————————————————————————————————————————————————————————————
-    ⚠️⚠️ TEN SAM FORMULARZ, CO AKCJA HURTU, I MUSI TAK BYC: pola wyboru kart stoja
-    w WIERSZACH tabeli nizej, a formularzy nie wolno zagniezdzac. Osobny przycisk prowadzi
-    gdzie indziej przez `formaction` — bez jednej linijki JavaScriptu (ten ekran nie ma wlasnego skryptu).
-    Skutek uboczny jest nazwany i pilnowany testem: zadanie generatora niesie pola hurtu
-    (i odwrotnie), a zadna z tych tras nie ma prawa ich uzyc — obie czytaja WYLACZNIE
-    po wlasnej bialej liscie. Zwiniecie akcji NICZEGO tu nie zmienia: `<details>` chowa pola
-    przed OKIEM, a nie przed formularzem — zamknieta akcja dalej wysyla swoje pola.
-
-    ⚠️⚠️ PRZYCISK PROWADZI NA PODGLAD (`/magazyn/sku-podglad`), NIGDY WPROST NA NADANIE.
-    Podglad jest obowiazkowy i jest OSOBNA trasa: numer nadany tutaj pojedzie pozniej
-    do sklepow i stanie sie tozsamoscia produktu. %>
-    <details class="akcja" name="akcja" id="sku-pasek">
-      <summary>Nadaj SKU</summary>
-      <div class="akcja-cialo">
+    </section>
+    <section class="akcja-cialo" id="sku-pasek">
         <label class="pole-filtra">
           <span>Wzorzec numeru</span>
           <%# ⚠️ POLE TEKSTOWE, BO WZORZEC JEST DECYZJA, a nie wyborem z listy — ale kazdy
@@ -610,24 +633,8 @@
           </button>
         </div>
         <p class="akcja-zasada">Karta, która ma już numer, nigdy nie dostaje nowego.</p>
-      </div>
-    </details>
-
-<%# ——— ZAPISZ DO SKLEPOW —————————————————————————————————————————————————————————
-    ⚠️⚠️ TO PRZYCISK, ZA KTORYM STOI ZAPIS SKU I WYMIAROW DO SKLEPU, KTORY SPRZEDAJE —
-    i jego skutku NIE DA SIE COFNAC kliknieciem. Dlatego prowadzi na PODGLAD
-    (`/magazyn/podglad-zapisu`), nigdy wprost na wysylke: wysylka ma wlasna trase, wlasny
-    przycisk i wlasny ekran wyniku.
-
-    ⚠️ ZAPIS WYSYLA WYLACZNIE SKU I WYMIARY. Ceny, nazwy, kategorie, zdjecia, opis i stan
-    magazynowy zostaja pod kontrola sklepu — to zasada calego modulu. Z tego przycisku do Allegro
-    nie idzie nic; oferty wiaze sie recznie.
-
-    ⚠️ CHIP WYGLADA JAK TRZY POZOSTALE I MA TAK WYGLADAC. Wyroznienie go barwa sugerowaloby,
-    ze to on wysyla — a wysyla dopiero przycisk na osobnym ekranie podgladu. %>
-    <details class="akcja" name="akcja" id="zapis-pasek">
-      <summary>Wyślij SKU i wymiary</summary>
-      <div class="akcja-cialo">
+    </section>
+    <section class="akcja-cialo" id="zapis-pasek">
         <div class="akcja-przyciski">
           <button class="btn btn--glowny" type="submit" formaction="/magazyn/podglad-zapisu"
             name="zakres" value="zaznaczone">
@@ -643,9 +650,10 @@
           Wyśle wyłącznie SKU i wymiary — nigdy cen, nazw ani zdjęć; cudzego numeru nie
           nadpisze, a taki produkt wróci jako wstrzymany.
         </p>
-      </div>
-    </details>
-    <%# Przycisk po pozostałych akcjach, żeby Enter w ich polach zachował dotychczasową akcję domyślną. %>
+    </section>
+    <%# Przycisk ostatni w znacznikach: Enter w polu akcji klika PIERWSZY submit formularza, więc
+        stojąc wcześniej, wysyłałby ceny zamiast akcji, w której ktoś pisze. Do wiersza chipów
+        wraca regułą `order` w oms-uklad.css. %>
     <% if (konto?.admin === true) { %>
       <button class="btn btn--maly btn--drugi" type="submit" formaction="/magazyn/ceny-kanalow/podglad">Wyślij ceny do kanałów — dla zaznaczonych</button>
     <% } %>
@@ -793,6 +801,12 @@
                   <%# Kanal bez produktu pokazuje KRESKE, a nie pusta komorke: pusta wyglada
                       jak komorka, ktorej cos nie doliczylo. %>
                   <span class="magazyn-brak">—</span>
+                <% } else if (k.stan) { %>
+                  <%# Oferta ERLI poza sprzedaza: stan zamiast kwoty, bo cena oferty, ktorej nikt
+                      nie moze kupic, wygladalaby jak cena w kanale. %>
+                  <span class="magazyn-brak"><%= k.stan %></span>
+                <% } else if (k.nieznana) { %>
+                  <span class="magazyn-brak" title="cena nieznana">—</span>
                 <% } else if (k.adres) { %>
                   <a href="<%= k.adres %>" rel="noopener noreferrer" target="_blank"><%= k.cena === null ? 'bez ceny' : k.cena %></a>
                 <% } else { %>
@@ -872,8 +886,3 @@
     <% } %>
   </nav>
 <% } %>
-
-<p class="wyjasnienie">
-  Ceny są tym, co stoi <strong>dziś w kanale</strong> — karta wycofana ze sprzedaży zostaje
-  na liście, ale jej cena znika z kolumny. Magazyn nie prowadzi stanów magazynowych.
-</p>

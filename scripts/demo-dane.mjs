@@ -1335,9 +1335,14 @@ function uzupelnieniaPrz087(db, { pomocnicy }) {
   const oplacone = (ms, platnosc) =>
     ['cod', 'allegro_pobranie', 'bacs', 'przelew'].includes(platnosc) ? null : ms + 4 * 60000;
 
+  // Góra listy demo (właściciel: Allegro One Kurier, sklep DPD z fakturą, ERLI paczkomat — ERLI dokłada atrapa):
+  // te dwa liczą się od końca dnia demo, nie od godziny — są przy każdym resecie i nigdy nie trafią w przyszłość.
+  const GORA_ALLEGRO = { przedKoncemMin: 1 },
+    GORA_SKLEP = { przedKoncemMin: 2, chceFakture: true };
+
   // NOWE — 14 z dziś (12 + 2 duże), część jeszcze nieopłacona (przelew, pobranie).
   const NOWE = [
-    [W, 14, [['LMP-STO-006', 1]], 'dpd', null, 'przelewy24', 0, 12],
+    [W, 14, [['LMP-STO-006', 1]], 'dpd', null, 'przelewy24', null, null, undefined, GORA_SKLEP],
     ['allegro', 55, [['LMP-NOC-001', 1]], 'allegro_punkt', ONE, 'allegro', 0, 41],
     [
       W,
@@ -1355,7 +1360,7 @@ function uzupelnieniaPrz087(db, { pomocnicy }) {
     ['allegro', 56, [['LMP-KIN-003', 1]], 'allegro_kurier', DHL, 'allegro', 1, 37],
     [W, 16, [['LMP-POD-001', 1]], 'odbior_osobisty', null, 'bacs', 2, 18],
     [W, 17, [['LMP-ABA-001', 2]], 'dpd', null, 'cod', 2, 49],
-    ['allegro', 57, [['LMP-STO-001', 1]], 'allegro_kurier', ONE_KURIER, 'allegro', 3, 26],
+    ['allegro', 57, [['LMP-STO-001', 1]], 'allegro_kurier', ONE_KURIER, 'allegro', null, null, undefined, GORA_ALLEGRO],
     ['allegro', 58, [['LMP-AKC-002', 3]], 'allegro_paczkomat', null, 'allegro_pobranie', 3, 58],
     ['allegro', 59, [['LMP-WIS-002', 1]], 'allegro_kurier', DHL, 'allegro', 4, 33],
     [
@@ -1411,10 +1416,10 @@ function uzupelnieniaPrz087(db, { pomocnicy }) {
       18,
     ],
   ];
-  for (const [kanal, osoba, koszyk, wysylka, nazwaWysylki, platnosc, h, m, b2b] of NOWE) {
-    const ms = chwila(0, h, m);
+  for (const [kanal, osoba, koszyk, wysylka, nazwaWysylki, platnosc, h, m, b2b, gora] of NOWE) {
+    const ms = gora ? koniecDnia - gora.przedKoncemMin * 60000 : chwila(0, h, m);
     // Nic po „teraz” — reset o 00:20 ma mniej dzisiejszych nowych, nigdy zamówienie z przyszłości.
-    if (ms > koniecDnia - 60000) continue;
+    if (!gora && ms > koniecDnia - 60000) continue;
     dodaj({
       kanal,
       osoba: osoba ?? undefined,
@@ -1424,7 +1429,9 @@ function uzupelnieniaPrz087(db, { pomocnicy }) {
       ...(nazwaWysylki ? { nazwaWysylki } : {}),
       platnosc,
       utworzoneMs: ms,
-      oplaconeMs: oplacone(ms, platnosc),
+      // Góra listy jest opłacona przed „teraz” demo — gość od razu nada paczkę.
+      oplaconeMs: gora ? ms + 30000 : oplacone(ms, platnosc),
+      ...(gora?.chceFakture ? { chceFakture: true } : {}),
     });
     status('nowe');
   }

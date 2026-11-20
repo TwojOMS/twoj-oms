@@ -279,24 +279,5 @@
   .prz065-tabela--proformy td:nth-child(6)::before { content: 'Działania'; }
 }
 
-/* Logo przewoźnika w kolumnie „Kurier” (Przesyłki). Stała wysokość 18 px; najszersze
-   logo (DHL 176×39 ≈ 4,5:1) dałoby przy niej ~81 px i przy 1280 px poszerzało kolumnę ze 115 do
-   122 px. max-width 72 px trzyma kolumnę w dawnej szerokości; DHL zmniejsza się wtedy
-   do ~16 px wysokości, a object-fit: contain chroni proporcje.
-   Jasne tło z zaokrągleniem: logotypy są projektowane na biel — na ciemnym motywie bez podkładki
-   czarne „DHL”/„DPD” znikają. Podkładka jest celowo jasna w OBU motywach. */
+/* Plakietka przewoźnika w kolumnie „Kurier” (Przesyłki): pełna nazwa usługi Allegro ma się zawijać, nie ucinać. */
 .prz067-kurier { white-space: normal; }
-.prz067-logo {
-  background: #fff;
-  border-radius: 4px;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, .08);
-  box-sizing: content-box;
-  display: block;
-  height: 18px;
-  max-width: 72px;
-  object-fit: contain;
-  object-position: left center;
-  padding: 2px 4px;
-  width: auto;
-}
-.prz067-usluga { display: block; line-height: 1.25; margin-top: 3px; max-width: 16ch; }

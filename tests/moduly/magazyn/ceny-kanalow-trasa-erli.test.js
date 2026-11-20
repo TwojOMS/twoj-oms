@@ -91,9 +91,10 @@ async function sprawdzBlokade(r, kanal, klucz) {
   const wiersz = [...r.body.matchAll(/<tr>[\s\S]*?<\/tr>/gu)].find(([html]) => html.includes(kanal))?.[0];
   expect(wiersz).toContain('klucz tylko do odczytu');
   expect(wiersz).not.toContain('type="checkbox"');
-  const podpis = /name="podpis" value="([^"]+)"/u.exec(r.body)?.[1];
-  expect(podpis).toBeTruthy();
-  expect((await post(ZATWIERDZ, { podpis, [klucz]: '1' })).statusCode).toBe(400);
+  // Jedyna oferta jest zablokowana, więc nie ma czego wysłać: ekran nie daje formularza ani podpisu.
+  expect(r.body).not.toContain(`action="${ZATWIERDZ}"`);
+  expect(/<section[^>]*id="pominiete"[\s\S]*?<\/section>/u.exec(r.body)?.[0]).toContain(kanal);
+  expect((await post(ZATWIERDZ, { podpis: '', [klucz]: '1' })).statusCode).toBe(400);
 }
 
 it('podgląd z trasy odczytuje zarządzaną ofertę ERLI i pozwala wybrać jej cenę', async () => {

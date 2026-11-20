@@ -282,6 +282,7 @@ export function katalogWoo(kanal = kanalyTypu('woo')[0]) {
         return {
           id: rodzicId * 10 + i + 1,
           sku,
+          name: w.opcje[sku],
           price: cena(p.cena_gr),
           regular_price: cena(p.cena_gr),
           status: 'publish',
@@ -313,16 +314,18 @@ export function katalogWoo(kanal = kanalyTypu('woo')[0]) {
 /** Surowe oferty Allegro (`/sale/offers`) konta `kanal`; primaryImage to zdjęcie demo (adres http). */
 export function ofertyAllegro(kanal) {
   const nr = KANALY.findIndex((k) => k.klucz === kanal);
-  return PRODUKTY.filter((p) => p.kanaly.includes(kanal)).map((p, i) => ({
-    id: String(17000000000 + nr * 1000000 + i + 1),
-    name: p.nazwa,
-    external: { id: p.sku },
-    sellingMode: { format: 'BUY_NOW', price: { amount: cena(p.cena_gr), currency: 'PLN' } },
-    stock: { available: 2 + (i % 5), sold: i % 7 },
-    publication: { status: 'ACTIVE' },
-    category: { id: '257' },
-    primaryImage: { url: zdjecieProduktu(p.sku) },
-  }));
+  return produktyDemo
+    .filter((p) => p.kanaly.includes(kanal))
+    .map((p, i) => ({
+      id: String(17000000000 + nr * 1000000 + i + 1),
+      name: p.nazwa,
+      external: { id: p.sku },
+      sellingMode: { format: 'BUY_NOW', price: { amount: cena(p.cena_gr), currency: 'PLN' } },
+      stock: { available: 2 + (i % 5), sold: i % 7 },
+      publication: { status: 'ACTIVE' },
+      category: { id: '257' },
+      primaryImage: { url: zdjecieProduktu(p.sku) },
+    }));
 }
 
 // Pełna oferta (`GET /sale/product-offers/{id}`), kategoria i jej parametry w kształcie z pomiaru P8.
@@ -433,8 +436,8 @@ export function ofertaAllegroPelna(kanal, ofertaId) {
   const lista = [...ofertyAllegro(kanal), ...ofertyAllegroDemoE3(kanal)];
   const oferta = lista.find((o) => o.id === String(ofertaId));
   if (!oferta) return null;
-  const p = PRODUKTY.find((x) => x.sku === oferta.external.id);
-  const nr = PRODUKTY.indexOf(p) + 1;
+  const p = produktDemo(oferta.external.id);
+  const nr = produktyDemo.indexOf(p) + 1;
   const waga =
     WYMIARY_KATEGORII[p.kategoria] && !BEZ_WYMIAROW.has(p.sku)
       ? String(WYMIARY_KATEGORII[p.kategoria][3] / 1000)

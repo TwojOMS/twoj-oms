@@ -115,6 +115,7 @@ export function registerListaMagazynu(
     POLA_FORMULARZA_FILTROW,
     NAGLOWKI_KANALOW,
     KOLUMNY_KANALOW,
+    KANALY_ERLI,
     BEZ_SKLEPOW,
     opisPrzebiegu,
     opisPrzebieguTresci,
@@ -243,6 +244,7 @@ export function registerListaMagazynu(
     const definicjeTeraz = [...definicje];
     const kolumnyKanalow = [...KOLUMNY_KANALOW];
     const naglowkiKanalow = [...NAGLOWKI_KANALOW];
+    const kontaErliTeraz = new Set(KANALY_ERLI);
     const pokazPlakietki = widok !== 'katalog' && definicjeTeraz.length > 0;
     const obecnosc = new Map();
     if (pokazPlakietki) {
@@ -319,7 +321,7 @@ export function registerListaMagazynu(
       brakZgodyOfert: BRAK_ZGODY_OFERT,
       adresPowrotuListy,
       wiersze: naEkranie.map((w) => {
-        const wiersz = wierszKarty(w, adresPowrotuListy, kolumnyKanalow);
+        const wiersz = wierszKarty(w, adresPowrotuListy, kolumnyKanalow, kontaErliTeraz);
         const stan = naStanie(w.id);
         // Wycofana karta nie wchodzi do licznika ani filtra niskiego stanu, więc nie dostaje też jego znacznika.
         const klasa = stan === null ? 'zwykly' : klasaStanu(stan, w.wycofana === 1 ? null : w.prog_niskiego_stanu);
