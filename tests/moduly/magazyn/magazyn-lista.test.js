@@ -460,7 +460,8 @@ describe('GET /magazyn — stan ostatniego odczytu', () => {
     expect(pasekOdczytu(r.body)).toMatch(/swietlik\.example\.test: 120 z 668/);
 
     const po = await get(serwer(), '/magazyn');
-    expect(po.body).not.toContain('668');
+    // Zdanie o postepie, nie gola liczba: znacznik wersji plikow (`?v=b04f52668f`) tez bywa „668” (kopia publiczna 20.11).
+    expect(po.body).not.toContain('120 z 668');
   });
 });
 
